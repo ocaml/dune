@@ -69,7 +69,7 @@ module L : sig
 
   (** All the library archive files (.a, .cmxa, _stubs.a, ...)  that
       should be linked in when linking an executable. *)
-  val archive_files : t -> mode:Mode.t -> ext_lib:string -> Path.t list
+  val archive_files : t -> mode:Mode.t -> Path.t list
 
   val jsoo_runtime_files : t -> Path.t list
 
@@ -109,7 +109,12 @@ module Info : sig
     ; sub_systems      : Dune_file.Sub_system_info.t Sub_system_name.Map.t
     }
 
-  val of_library_stanza : dir:Path.t -> Dune_file.Library.t -> t
+  val of_library_stanza
+    : dir:Path.t
+    -> ext_lib:string
+    -> Dune_file.Library.t
+    -> t
+
   val of_findlib_package : Findlib.Package.t -> t
 end
 
@@ -257,6 +262,7 @@ module DB : sig
   (** Create a database from a list of library stanzas *)
   val create_from_library_stanzas
     :  ?parent:t
+    -> ext_lib:string
     -> (Path.t * Dune_file.Library.t) list
     -> t
 

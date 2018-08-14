@@ -295,7 +295,7 @@ let build_ppx_driver sctx ~lib_db ~dep_kind ~target ~dir_kind pps =
        (Lib_deps.info ~kind:dep_kind (Lib_deps.of_pps pps))
      >>>
      Build.of_result_map driver_and_libs ~f:(fun (_, libs) ->
-       Build.paths (Lib.L.archive_files libs ~mode ~ext_lib:ctx.ext_lib))
+       Build.paths (Lib.L.archive_files libs ~mode))
      >>>
      Build.run ~context:ctx (Ok compiler)
        [ A "-o" ; Target target

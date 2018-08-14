@@ -145,7 +145,7 @@ let link_exe
        link_flags
      >>>
      Build.of_result_map requires ~f:(fun libs ->
-       Build.paths (Lib.L.archive_files libs ~mode ~ext_lib:ctx.ext_lib))
+       Build.paths (Lib.L.archive_files libs ~mode))
      >>>
      Build.run ~context:ctx
        (Ok compiler)

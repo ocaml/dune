@@ -41,22 +41,40 @@ end
 
 open O
 
-let all =
-  let rec loop acc = function
-    | [] -> Ok (List.rev acc)
-    | t :: l ->
-      t >>= fun x ->
-      loop (x :: acc) l
-  in
-  fun l -> loop [] l
-
-let concat_map =
-  let rec loop f acc = function
-    | [] -> Ok (List.rev acc)
-    | x :: l ->
-      f x >>= fun y ->
-      loop f (List.rev_append y acc) l
-  in
-  fun l ~f -> loop f [] l
-
 type ('a, 'error) result = ('a, 'error) t
+
+module List = struct
+  let map t ~f =
+    let rec loop acc = function
+      | [] -> Ok (List.rev acc)
+      | x :: xs ->
+        f x >>= fun x ->
+        loop (x :: acc) xs
+    in
+    loop [] t
+
+  let all =
+    let rec loop acc = function
+      | [] -> Ok (List.rev acc)
+      | t :: l ->
+        t >>= fun x ->
+        loop (x :: acc) l
+    in
+    fun l -> loop [] l
+
+  let concat_map =
+    let rec loop f acc = function
+      | [] -> Ok (List.rev acc)
+      | x :: l ->
+        f x >>= fun y ->
+        loop f (List.rev_append y acc) l
+    in
+    fun l ~f -> loop f [] l
+
+  let rec iter t ~f =
+    match t with
+    | [] -> Ok ()
+    | x :: xs ->
+      f x >>= fun () ->
+      iter xs ~f
+end

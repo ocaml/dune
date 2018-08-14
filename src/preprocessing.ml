@@ -85,7 +85,7 @@ module Driver = struct
       ; lib = lazy lib
       ; replaces =
           let open Result.O in
-          Result.all
+          Result.List.all
             (List.map info.replaces
                ~f:(fun ((loc, name) as x) ->
                  resolve x >>= fun lib ->

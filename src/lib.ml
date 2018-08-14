@@ -575,7 +575,7 @@ module Dep_stack = struct
          }
 end
 
-let check_private_deps ~(lib : lib) ~loc ~allow_private_deps =
+let check_private_deps lib ~loc ~allow_private_deps =
   if (not allow_private_deps) && Status.is_private lib.info.status then
     Result.Error (Error (
       Private_deps_not_allowed { private_dep = lib ; pd_loc = loc }))
@@ -689,7 +689,7 @@ and resolve_dep db name ~allow_private_deps ~loc ~stack : t Or_exn.t =
   match find_internal db name ~stack with
   | St_initializing id ->
     Error (Dep_stack.dependency_cycle stack id)
-  | St_found lib -> check_private_deps ~lib ~loc ~allow_private_deps
+  | St_found lib -> check_private_deps lib ~loc ~allow_private_deps
   | St_not_found ->
     Error (Error (Library_not_available { loc; name; reason = Not_found }))
   | St_hidden (_, hidden) ->
@@ -733,13 +733,8 @@ and available_internal db name ~stack =
   | Error _ -> false
 
 and resolve_simple_deps db names ~allow_private_deps ~stack =
-  let rec loop acc = function
-    | [] -> Ok (List.rev acc)
-    | (loc, name) :: names ->
-      resolve_dep db name ~allow_private_deps ~loc ~stack >>= fun x ->
-      loop (x :: acc) names
-  in
-  loop [] names
+  Result.List.map names ~f:(fun (loc, name) ->
+    resolve_dep db name ~allow_private_deps ~loc ~stack)
 
 and resolve_complex_deps db deps ~allow_private_deps ~stack =
   let res, resolved_selects =
@@ -822,7 +817,7 @@ and resolve_user_deps db deps ~allow_private_deps ~pps ~stack =
         let rec check_runtime_deps acc pps = function
           | [] -> loop acc pps
           | lib :: ppx_rts ->
-            check_private_deps ~lib ~loc ~allow_private_deps >>= fun rt ->
+            check_private_deps lib ~loc ~allow_private_deps >>= fun rt ->
             check_runtime_deps (rt :: acc) pps ppx_rts
         and loop acc = function
           | [] -> Ok acc
@@ -838,7 +833,7 @@ and resolve_user_deps db deps ~allow_private_deps ~pps ~stack =
   in
   (deps, pps, resolved_selects)
 
-and closure_with_overlap_checks db ts ~stack =
+  and closure_with_overlap_checks db ts ~stack =
   let visited = ref String.Map.empty in
   let res = ref [] in
   let orig_stack = stack in
@@ -874,16 +869,10 @@ and closure_with_overlap_checks db ts ~stack =
       >>= fun () ->
       Dep_stack.push stack (to_id t) >>= fun stack ->
       t.requires >>= fun deps ->
-      iter deps ~stack >>| fun () ->
+      Result.List.iter deps ~f:(loop ~stack) >>| fun () ->
       res := t :: !res
-  and iter ts ~stack =
-    match ts with
-    | [] -> Ok ()
-    | t :: ts ->
-      loop t ~stack >>= fun () ->
-      iter ts ~stack
   in
-  iter ts ~stack >>| fun () ->
+  Result.List.iter ts ~f:(loop ~stack) >>| fun () ->
   List.rev !res
 
 let closure_with_overlap_checks db l =
@@ -1035,14 +1024,8 @@ module DB = struct
                       ; reason
                       }))
 
-  let find_many =
-    let rec loop t acc = function
-      | [] -> Ok (List.rev acc)
-      | name :: names ->
-        resolve t (Loc.none, name) >>= fun lib ->
-        loop t (lib ::acc) names
-    in
-    fun t names -> loop t [] names
+  let find_many t =
+    Result.List.map ~f:(fun name -> resolve t (Loc.none, name))
 
   let available t name = available_internal t name ~stack:Dep_stack.empty
 

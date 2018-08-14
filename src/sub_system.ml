@@ -107,7 +107,7 @@ module Register_backend(M : Backend) = struct
     let open Result.O in
     written_by_user_or_scan ~written_by_user ~to_scan
     >>= fun backends ->
-    wrap (Result.concat_map backends ~f:replaces)
+    wrap (Result.List.concat_map backends ~f:replaces)
     >>= fun replaced_backends ->
     match
       Set.diff (Set.of_list backends) (Set.of_list replaced_backends)
@@ -131,7 +131,7 @@ module Register_end_point(M : End_point) = struct
       (match M.Info.backends info with
        | None -> Ok None
        | Some l ->
-         Result.all (List.map l ~f:(M.Backend.resolve (Scope.libs c.scope)))
+         Result.List.all (List.map l ~f:(M.Backend.resolve (Scope.libs c.scope)))
          >>| Option.some)
       >>= fun written_by_user ->
       M.Backend.Selection_error.or_exn ~loc:(M.Info.loc info)

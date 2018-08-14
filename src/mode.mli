@@ -37,6 +37,7 @@ module Dict : sig
     type nonrec t = bool t
     val t : t Sexp.Of_sexp.t
     val all : t
+    val empty : t
     val is_empty : t -> bool
     val to_list : t -> mode list
     val of_list : mode list -> t

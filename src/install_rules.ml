@@ -131,10 +131,7 @@ module Gen(P : Params) = struct
           | None -> dst
           | Some dir -> sprintf "%s/%s" dir dst)
     in
-    let { Mode.Dict.byte; native } =
-      Mode_conf.Set.eval lib.modes
-        ~has_native:(Option.is_some ctx.ocamlopt)
-    in
+    let { Mode.Dict.byte; native } = Lib.modes lib' in
     let if_ cond l = if cond then l else [] in
     let files =
       let modules =

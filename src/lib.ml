@@ -66,6 +66,7 @@ module Info = struct
     ; dune_version : Syntax.Version.t option
     ; sub_systems      : Dune_file.Sub_system_info.t Sub_system_name.Map.t
     ; dynlink          : bool
+    ; modes            : Mode.Dict.Set.t
     }
 
   let user_written_deps t =
@@ -73,7 +74,7 @@ module Info = struct
       ~init:(Deps.to_lib_deps t.requires)
       ~f:(fun acc s -> Dune_file.Lib_dep.Direct s :: acc)
 
-  let of_library_stanza ~dir ~ext_lib (conf : Dune_file.Library.t) =
+  let of_library_stanza ~dir ~ext_lib ~has_native (conf : Dune_file.Library.t) =
     let archive_file ext = Path.relative dir (conf.name ^ ext) in
     let archive_files ~f_ext =
       Mode.Dict.of_func (fun ~mode -> [archive_file (f_ext mode)])
@@ -118,6 +119,7 @@ module Info = struct
     ; sub_systems = conf.sub_systems
     ; dune_version = Some conf.dune_version
     ; dynlink = conf.dynlink
+    ; modes = Dune_file.Mode_conf.Set.eval ~has_native conf.modes
     }
 
   let of_findlib_package pkg =
@@ -149,6 +151,7 @@ module Info = struct
     ; sub_systems      = sub_systems
     ; dune_version = None
     ; dynlink = true
+    ; modes = Mode.Dict.Set.empty
     }
 end
 
@@ -341,6 +344,7 @@ let unique_id    t = t.unique_id
 let dune_version t = t.info.dune_version
 
 let dynlink t = t.info.dynlink
+let modes t = t.info.modes
 
 let src_dir t = t.info.src_dir
 let obj_dir t = t.info.obj_dir
@@ -950,10 +954,10 @@ module DB = struct
     ; all    = Lazy.from_fun all
     }
 
-  let create_from_library_stanzas ?parent ~ext_lib stanzas =
+  let create_from_library_stanzas ?parent ~ext_lib ~has_native stanzas =
     let map =
       List.concat_map stanzas ~f:(fun (dir, (conf : Dune_file.Library.t)) ->
-        let info = Info.of_library_stanza ~dir ~ext_lib conf in
+        let info = Info.of_library_stanza ~dir ~ext_lib ~has_native conf in
         match conf.public with
         | None ->
           [(conf.name, Resolve_result.Found info)]

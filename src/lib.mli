@@ -27,6 +27,7 @@ val plugins      : t -> Path.t list Mode.Dict.t
 val jsoo_runtime : t -> Path.t list
 
 val dynlink : t -> bool
+val modes : t -> Mode.Dict.Set.t
 
 val dune_version : t -> Syntax.Version.t option
 
@@ -110,11 +111,13 @@ module Info : sig
     ; dune_version : Syntax.Version.t option
     ; sub_systems      : Dune_file.Sub_system_info.t Sub_system_name.Map.t
     ; dynlink : bool
+    ; modes : Mode.Dict.Set.t
     }
 
   val of_library_stanza
     : dir:Path.t
     -> ext_lib:string
+    -> has_native:bool
     -> Dune_file.Library.t
     -> t
 
@@ -266,6 +269,7 @@ module DB : sig
   val create_from_library_stanzas
     :  ?parent:t
     -> ext_lib:string
+    -> has_native:bool
     -> (Path.t * Dune_file.Library.t) list
     -> t
 

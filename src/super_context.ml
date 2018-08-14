@@ -509,6 +509,7 @@ let create
   in
   let scopes, public_libs =
     Scope.DB.create
+      ~has_native:(Option.is_some context.ocamlopt)
       ~projects
       ~context:context.name
       ~installed_libs

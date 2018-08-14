@@ -62,6 +62,11 @@ module Dict = struct
       ; native = true
       }
 
+    let empty =
+      { byte = false
+      ; native = true
+      }
+
     let to_list t =
       let l = [] in
       let l = if t.native then Native :: l else l in

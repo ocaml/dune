@@ -30,6 +30,8 @@ val dynlink : t -> bool
 val modes : t -> Mode.Dict.Set.t
 val headers : t -> Path.t list
 
+val foreign_archives : t -> Path.t list Mode.Dict.t
+
 val dune_version : t -> Syntax.Version.t option
 
 (** A unique integer identifier. It is only unique for the duration of

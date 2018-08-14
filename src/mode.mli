@@ -24,6 +24,8 @@ module Dict : sig
     ; native : 'a
     }
 
+  val map : 'a t -> f:('a -> 'b) -> 'b t
+
   val get : 'a t -> mode -> 'a
 
   val of_func : (mode:mode -> 'a) -> 'a t

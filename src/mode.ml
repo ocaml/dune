@@ -35,6 +35,11 @@ module Dict = struct
     ; native : 'a
     }
 
+  let map t ~f =
+    { byte = f t.byte
+    ; native = f t.native
+    }
+
   let get t = function
     | Byte   -> t.byte
     | Native -> t.native

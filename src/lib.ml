@@ -358,6 +358,8 @@ let is_local t = Path.is_managed t.info.obj_dir
 
 let status t = t.info.status
 
+let foreign_archives t = t.info.foreign_archives
+
 let package t =
   match t.info.status with
   | Installed ->

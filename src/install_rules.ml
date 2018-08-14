@@ -147,6 +147,7 @@ module Gen(P : Params) = struct
         Module.Name.Map.values modules
       in
       let archives = Lib.archives lib' in
+      let foreign_archives = Lib.foreign_archives lib' in
       List.concat
         [ List.concat_map modules ~f:(fun m ->
             List.concat
@@ -159,8 +160,7 @@ module Gen(P : Params) = struct
                   | Some f -> Some f.path)
               ])
         ; if_ byte (Mode.Dict.get archives Mode.Byte)
-        ; if_ (Library.has_stubs lib)
-            [ Library.stubs_archive ~dir lib ~ext_lib:ctx.ext_lib ]
+        ; if_ byte (Mode.Dict.get foreign_archives Mode.Byte)
         ; if_ native
             (let files =
                (Library.archive ~dir lib ~ext:ctx.ext_lib)

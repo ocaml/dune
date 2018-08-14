@@ -208,6 +208,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name fmt)
+ (deps (package dune) (source_tree test-cases/fmt))
+ (action
+  (chdir
+   test-cases/fmt
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name force-test)
  (deps (package dune) (source_tree test-cases/force-test))
  (action
@@ -816,6 +824,7 @@
   (alias fallback-dune)
   (alias findlib)
   (alias findlib-error)
+  (alias fmt)
   (alias force-test)
   (alias gen-opam-install-file)
   (alias github1019)
@@ -914,6 +923,7 @@
   (alias fallback-dune)
   (alias findlib)
   (alias findlib-error)
+  (alias fmt)
   (alias force-test)
   (alias github1019)
   (alias github1099)

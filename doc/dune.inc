@@ -117,6 +117,15 @@
  (files   dune-uninstall.1))
 
 (rule
+ (with-stdout-to dune-unstable-fmt.1
+  (run dune unstable-fmt --help=groff)))
+
+(install
+ (section man)
+ (package dune)
+ (files   dune-unstable-fmt.1))
+
+(rule
  (with-stdout-to dune-utop.1
   (run dune utop --help=groff)))
 

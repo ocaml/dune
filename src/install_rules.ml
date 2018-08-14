@@ -170,7 +170,7 @@ module Gen(P : Params) = struct
                files @ (Mode.Dict.get (Lib.plugins lib') Native)
              else
                files)
-        ; List.map lib.buildable.js_of_ocaml.javascript_files ~f:(Path.relative dir)
+        ; Lib.jsoo_runtime lib'
         ; List.map lib.install_c_headers ~f:(fun fn ->
             Path.relative dir (fn ^ ".h"))
         ]

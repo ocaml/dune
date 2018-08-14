@@ -28,6 +28,7 @@ val jsoo_runtime : t -> Path.t list
 
 val dynlink : t -> bool
 val modes : t -> Mode.Dict.Set.t
+val headers : t -> Path.t list
 
 val dune_version : t -> Syntax.Version.t option
 
@@ -110,8 +111,9 @@ module Info : sig
     ; virtual_deps     : (Loc.t * string) list
     ; dune_version : Syntax.Version.t option
     ; sub_systems      : Dune_file.Sub_system_info.t Sub_system_name.Map.t
-    ; dynlink : bool
-    ; modes : Mode.Dict.Set.t
+    ; dynlink          : bool
+    ; modes            : Mode.Dict.Set.t
+    ; headers          : Path.t list
     }
 
   val of_library_stanza

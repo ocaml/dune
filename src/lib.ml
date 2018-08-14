@@ -67,6 +67,7 @@ module Info = struct
     ; sub_systems      : Dune_file.Sub_system_info.t Sub_system_name.Map.t
     ; dynlink          : bool
     ; modes            : Mode.Dict.Set.t
+    ; headers          : Path.t list
     }
 
   let user_written_deps t =
@@ -120,6 +121,8 @@ module Info = struct
     ; dune_version = Some conf.dune_version
     ; dynlink = conf.dynlink
     ; modes = Dune_file.Mode_conf.Set.eval ~has_native conf.modes
+    ; headers = List.map conf.install_c_headers ~f:(fun fn ->
+      Path.relative dir (fn ^ ".h"))
     }
 
   let of_findlib_package pkg =
@@ -152,6 +155,7 @@ module Info = struct
     ; dune_version = None
     ; dynlink = true
     ; modes = Mode.Dict.Set.empty
+    ; headers = []
     }
 end
 
@@ -345,6 +349,7 @@ let dune_version t = t.info.dune_version
 
 let dynlink t = t.info.dynlink
 let modes t = t.info.modes
+let headers t = t.info.headers
 
 let src_dir t = t.info.src_dir
 let obj_dir t = t.info.obj_dir

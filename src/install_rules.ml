@@ -171,8 +171,7 @@ module Gen(P : Params) = struct
              else
                files)
         ; Lib.jsoo_runtime lib'
-        ; List.map lib.install_c_headers ~f:(fun fn ->
-            Path.relative dir (fn ^ ".h"))
+        ; Lib.headers lib'
         ]
     in
     let dlls  =

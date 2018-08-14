@@ -166,7 +166,7 @@ module Pkg = struct
            (Package.Name.to_string pkg.Package.name)
            (Path.to_string (Package.opam_file pkg))))
 
-  let default (project : Dune_project.t) =
+  let default (project : Dune_project.t) stanza =
     match Package.Name.Map.values project.packages with
     | [pkg] -> Ok pkg
     | [] ->
@@ -178,11 +178,12 @@ module Pkg = struct
     | _ :: _ :: _ ->
       Error
         (sprintf
-           "I can't determine automatically which package this (install ...) \
-            stanza is for. I have the choice between these ones:\n\
+           "I can't determine automatically which package this \
+            stanza is for.\nI have the choice between these ones:\n\
             %s\n\
-            You need to add a (package ...) field in this (install ...) stanza"
-           (listing (Package.Name.Map.values project.packages)))
+            You need to add a (package ...) field to this (%s) stanza."
+           (listing (Package.Name.Map.values project.packages))
+           stanza)
 
   let resolve (project : Dune_project.t) name =
     match Package.Name.Map.find project.packages name with
@@ -215,14 +216,14 @@ module Pkg = struct
     | Ok    x -> x
     | Error e -> Loc.fail loc "%s" e
 
-  let field =
+  let field stanza =
     map_validate
       (let%map p = Dune_project.get_exn ()
        and pkg = field_o "package" string in
        (p, pkg))
       ~f:(fun (p, pkg) ->
         match pkg with
-        | None -> default p
+        | None -> default p stanza
         | Some name -> resolve p (Package.Name.of_string name))
 end
 
@@ -1049,7 +1050,7 @@ module Install_conf = struct
     record
       (let%map section = field "section" Install.Section.t
        and files = field "files" (list file)
-       and package = Pkg.field
+       and package = Pkg.field "install"
        in
        { section
        ; files
@@ -1168,9 +1169,9 @@ module Executables = struct
 
   let pluralize s ~multi =
     if multi then
-      s
-    else
       s ^ "s"
+    else
+      s
 
   let common =
     let%map buildable = Buildable.t
@@ -1289,7 +1290,10 @@ module Executables = struct
           match
             match package with
             | None ->
-              (buildable.loc, Pkg.default project)
+              let stanza =
+                pluralize ~multi "executable"
+              in
+              (buildable.loc, Pkg.default project stanza)
             | Some (loc, name) ->
               (loc, Pkg.resolve project (Package.Name.of_string name))
           with
@@ -1705,7 +1709,7 @@ module Documentation = struct
 
   let t =
     record
-      (let%map package = Pkg.field
+      (let%map package = Pkg.field "documentation"
        and mld_files = Ordered_set_lang.field "mld_files"
        and loc = loc in
        { loc

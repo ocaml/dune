@@ -9,6 +9,8 @@ next
 
 - Highlight error locations in error messages (#1121, @emillon)
 
+- Display actual stanza when package is ambiguous (#1126, fix #1123, @emillon)
+
 1.1.1 (08/08/2018)
 ------------------
 

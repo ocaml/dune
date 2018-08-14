@@ -19,7 +19,7 @@ executable(s) stanza works the same way
   File "dune", line 1, characters 0-36:
   (executables (public_names foo bar))
   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  Error: name field may not be omitted before dune version 1.1
+  Error: names field may not be omitted before dune version 1.1
   [1]
 
 there's only a public name but it's invalid as a name

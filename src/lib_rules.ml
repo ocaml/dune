@@ -1,6 +1,7 @@
 open Import
 open Build.O
 open Dune_file
+open! No_io
 
 module SC = Super_context
 

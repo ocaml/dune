@@ -815,7 +815,7 @@ and resolve_user_deps db deps ~allow_private_deps ~pps ~stack =
       in
       let deps =
         deps >>= fun deps ->
-        pps >>= Result.concat_map ~f:(fun pp -> pp.ppx_runtime_deps)
+        pps >>= Result.List.concat_map ~f:(fun pp -> pp.ppx_runtime_deps)
         >>| List.rev_append deps
         >>= Result.List.map ~f:(check_private_deps ~loc ~allow_private_deps)
       in
@@ -859,10 +859,10 @@ and closure_with_overlap_checks db ts ~stack =
       >>= fun () ->
       Dep_stack.push stack (to_id t) >>= fun stack ->
       t.requires >>= fun deps ->
-      Result.iter deps ~f:(loop ~stack) >>| fun () ->
+      Result.List.iter deps ~f:(loop ~stack) >>| fun () ->
       res := t :: !res
   in
-  Result.iter ts ~f:(loop ~stack) >>| fun () ->
+  Result.List.iter ts ~f:(loop ~stack) >>| fun () ->
   List.rev !res
 
 let closure_with_overlap_checks db l =

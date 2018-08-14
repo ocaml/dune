@@ -65,10 +65,10 @@ module Backend = struct
       { info
       ; lib
       ; runner_libraries =
-          Result.all (List.map info.runner_libraries ~f:resolve)
+          Result.List.all (List.map info.runner_libraries ~f:resolve)
       ; extends =
           let open Result.O in
-          Result.all
+          Result.List.all
             (List.map info.extends
                ~f:(fun ((loc, name) as x) ->
                  resolve x >>= fun lib ->
@@ -182,12 +182,12 @@ include Sub_system.Register_end_point(
 
       let runner_libs =
         let open Result.O in
-        Result.concat_map backends
+        Result.List.concat_map backends
           ~f:(fun (backend : Backend.t) -> backend.runner_libraries)
         >>= fun libs ->
         Lib.DB.find_many (Scope.libs scope) [lib.name]
         >>= fun lib ->
-        Result.all
+        Result.List.all
           (List.map info.libraries
              ~f:(Lib.DB.resolve (Scope.libs scope)))
         >>= fun more_libs ->

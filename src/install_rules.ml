@@ -117,6 +117,7 @@ module Gen(P : Params) = struct
 
   let lib_install_files ~dir_contents ~dir ~sub_dir ~name ~scope ~dir_kind
         (lib : Library.t) =
+    let lib' = Lib.DB.find_exn (Scope.libs scope) (Library.best_name lib) in
     let obj_dir = Utils.library_object_directory ~dir lib.name in
     let make_entry section ?dst fn =
       Install.Entry.make section fn
@@ -168,7 +169,7 @@ module Gen(P : Params) = struct
                ; Library.archive ~dir lib ~ext:ctx.ext_lib
                ]
              in
-             if ctx.natdynlink_supported && lib.dynlink then
+             if ctx.natdynlink_supported && Lib.dynlink lib' then
                files @ [ Library.archive ~dir lib ~ext:".cmxs" ]
              else
                files)
@@ -178,7 +179,7 @@ module Gen(P : Params) = struct
         ]
     in
     let dlls  =
-      if_ (byte && Library.has_stubs lib && lib.dynlink)
+      if_ (byte && Library.has_stubs lib && Lib.dynlink lib')
         [Library.dll ~dir lib ~ext_dll:ctx.ext_dll]
     in
     let execs =

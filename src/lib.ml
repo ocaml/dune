@@ -65,6 +65,7 @@ module Info = struct
     ; virtual_deps     : (Loc.t * string) list
     ; dune_version : Syntax.Version.t option
     ; sub_systems      : Dune_file.Sub_system_info.t Sub_system_name.Map.t
+    ; dynlink          : bool
     }
 
   let user_written_deps t =
@@ -116,6 +117,7 @@ module Info = struct
     ; pps = Dune_file.Preprocess_map.pps conf.buildable.preprocess
     ; sub_systems = conf.sub_systems
     ; dune_version = Some conf.dune_version
+    ; dynlink = conf.dynlink
     }
 
   let of_findlib_package pkg =
@@ -146,6 +148,7 @@ module Info = struct
       foreign_archives = Mode.Dict.make_both []
     ; sub_systems      = sub_systems
     ; dune_version = None
+    ; dynlink = true
     }
 end
 
@@ -336,6 +339,8 @@ let jsoo_runtime t = t.info.jsoo_runtime
 let unique_id    t = t.unique_id
 
 let dune_version t = t.info.dune_version
+
+let dynlink t = t.info.dynlink
 
 let src_dir t = t.info.src_dir
 let obj_dir t = t.info.obj_dir
@@ -1011,6 +1016,15 @@ module DB = struct
         |> List.map ~f:Findlib.Package.name)
 
   let find = find
+
+  let find_exn t name =
+    match find t name with
+    | Ok lib -> lib
+    | Error reason ->
+      raise (Error (Library_not_available { reason
+                                          ; loc = Loc.none
+                                          ; name }))
+
   let find_even_when_hidden = find_even_when_hidden
 
   let resolve t (loc, name) =

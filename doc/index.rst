@@ -23,4 +23,5 @@ Welcome to dune's documentation!
    jsoo
    faq
    known-issues
+   supported-ocaml-versions
    migration

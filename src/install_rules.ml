@@ -140,7 +140,7 @@ module Gen(P : Params) = struct
       let modules =
         let { Dir_contents.Library_modules.modules; alias_module; _ } =
           Dir_contents.modules_of_library dir_contents
-            ~name:(Library.best_name lib)
+            ~name:(Lib.name lib')
         in
         let modules =
           match alias_module with

@@ -72,16 +72,10 @@ module Info = struct
       ~init:(Deps.to_lib_deps t.requires)
       ~f:(fun acc s -> Dune_file.Lib_dep.Direct s :: acc)
 
-  let of_library_stanza ~dir (conf : Dune_file.Library.t) =
+  let of_library_stanza ~dir ~ext_lib (conf : Dune_file.Library.t) =
     let archive_file ext = Path.relative dir (conf.name ^ ext) in
     let archive_files ~f_ext =
       Mode.Dict.of_func (fun ~mode -> [archive_file (f_ext mode)])
-    in
-    let stubs =
-      if Dune_file.Library.has_stubs conf then
-        [Dune_file.Library.stubs_archive conf ~dir ~ext_lib:""]
-      else
-        []
     in
     let jsoo_runtime =
       List.map conf.buildable.js_of_ocaml.javascript_files
@@ -93,9 +87,15 @@ module Info = struct
       | Some p -> Public p.package
     in
     let foreign_archives =
+      let stubs =
+        if Dune_file.Library.has_stubs conf then
+          [Dune_file.Library.stubs_archive conf ~dir ~ext_lib]
+        else
+          []
+      in
       { Mode.Dict.
         byte   = stubs
-      ; native = Path.relative dir conf.name :: stubs
+      ; native = Path.relative dir (conf.name ^ ext_lib) :: stubs
       }
     in
     { loc = conf.buildable.loc
@@ -420,11 +420,10 @@ module L = struct
   let jsoo_runtime_files ts =
     List.concat_map ts ~f:(fun t -> t.info.jsoo_runtime)
 
-  let archive_files ts ~mode ~ext_lib =
+  let archive_files ts ~mode =
     List.concat_map ts ~f:(fun t ->
       Mode.Dict.get t.info.archives mode @
-      List.map (Mode.Dict.get t.info.foreign_archives mode)
-        ~f:(Path.extend_basename ~suffix:ext_lib))
+      Mode.Dict.get t.info.foreign_archives mode)
 
   let remove_dups l =
     let rec loop acc l seen =
@@ -946,10 +945,10 @@ module DB = struct
     ; all    = Lazy.from_fun all
     }
 
-  let create_from_library_stanzas ?parent stanzas =
+  let create_from_library_stanzas ?parent ~ext_lib stanzas =
     let map =
       List.concat_map stanzas ~f:(fun (dir, (conf : Dune_file.Library.t)) ->
-        let info = Info.of_library_stanza ~dir conf in
+        let info = Info.of_library_stanza ~dir ~ext_lib conf in
         match conf.public with
         | None ->
           [(conf.name, Resolve_result.Found info)]

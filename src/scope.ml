@@ -50,7 +50,7 @@ module DB = struct
             (Project_name_map.keys t.by_name)
         ]
 
-  let create ~projects ~context ~installed_libs internal_libs =
+  let create ~projects ~context ~installed_libs ~ext_lib internal_libs =
     let projects_by_name =
       List.map projects ~f:(fun (project : Dune_project.t) ->
         (project.name, project))
@@ -119,7 +119,7 @@ module DB = struct
           let project = Option.value_exn project in
           let libs = Option.value libs ~default:[] in
           let db =
-            Lib.DB.create_from_library_stanzas libs ~parent:public_libs
+            Lib.DB.create_from_library_stanzas libs ~parent:public_libs ~ext_lib
           in
           let root = Path.append_local build_context_dir project.root in
           Some { project; db; root })

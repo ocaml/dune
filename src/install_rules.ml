@@ -146,8 +146,18 @@ module Gen(P : Params) = struct
         in
         Module.Name.Map.values modules
       in
-      let archives = Lib.archives lib' in
-      let foreign_archives = Lib.foreign_archives lib' in
+      let (native_archives, byte_archives) =
+        let archives = Lib.archives lib' in
+        let foreign_archives = Lib.foreign_archives lib' in
+        let archives mode =
+          (Mode.Dict.get archives mode) @ (Mode.Dict.get foreign_archives mode)
+        in
+        (archives Native, archives Byte)
+      in
+      let uniquify s =
+        Path.Set.of_list s
+        |> Path.Set.to_list
+      in
       List.concat
         [ List.concat_map modules ~f:(fun m ->
             List.concat
@@ -159,17 +169,14 @@ module Gen(P : Params) = struct
                   | None -> None
                   | Some f -> Some f.path)
               ])
-        ; if_ byte (Mode.Dict.get archives Mode.Byte)
-        ; if_ byte (Mode.Dict.get foreign_archives Mode.Byte)
+        ; uniquify (
+            if_ byte byte_archives
+            @ if_ native native_archives)
         ; if_ native
-            (let files =
-               (Library.archive ~dir lib ~ext:ctx.ext_lib)
-               :: Mode.Dict.get archives Native
-             in
-             if ctx.natdynlink_supported && Lib.dynlink lib' then
-               files @ (Mode.Dict.get (Lib.plugins lib') Native)
+            (if ctx.natdynlink_supported && Lib.dynlink lib' then
+               Mode.Dict.get (Lib.plugins lib') Native
              else
-               files)
+               [])
         ; Lib.jsoo_runtime lib'
         ; Lib.headers lib'
         ]

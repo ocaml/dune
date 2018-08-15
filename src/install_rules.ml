@@ -115,10 +115,13 @@ module Gen(P : Params) = struct
            >>>
            Build.write_file_dyn meta)))
 
-  let lib_install_files ~dir_contents ~dir ~sub_dir ~name ~scope ~dir_kind
-        (lib : Lib.t) =
-    let lib' = Lib.DB.find_exn (Scope.libs scope) (Library.best_name lib) in
-    let obj_dir = Utils.library_object_directory ~dir lib.name in
+  let lib_install_files ~dir_contents ~dir ~sub_dir ~scope ~dir_kind
+        (lib : Library.t) =
+    let kind = lib.kind in
+    let buildable = lib.buildable in
+    let lib = Lib.DB.find_exn (Scope.libs scope) (Library.best_name lib) in
+    let name = Lib.name lib in
+    let obj_dir = Lib.obj_dir lib in
     let make_entry section ?dst fn =
       Install.Entry.make section fn
         ~dst:(
@@ -131,13 +134,12 @@ module Gen(P : Params) = struct
           | None -> dst
           | Some dir -> sprintf "%s/%s" dir dst)
     in
-    let { Mode.Dict.byte; native } = Lib.modes lib' in
+    let { Mode.Dict.byte; native } = Lib.modes lib in
     let if_ cond l = if cond then l else [] in
     let files =
       let modules =
         let { Dir_contents.Library_modules.modules; alias_module; _ } =
-          Dir_contents.modules_of_library dir_contents
-            ~name:(Lib.name lib')
+          Dir_contents.modules_of_library dir_contents ~name
         in
         let modules =
           match alias_module with
@@ -147,8 +149,8 @@ module Gen(P : Params) = struct
         Module.Name.Map.values modules
       in
       let (native_archives, byte_archives) =
-        let archives = Lib.archives lib' in
-        let foreign_archives = Lib.foreign_archives lib' in
+        let archives = Lib.archives lib in
+        let foreign_archives = Lib.foreign_archives lib in
         let archives mode =
           (Mode.Dict.get archives mode) @ (Mode.Dict.get foreign_archives mode)
         in
@@ -173,17 +175,17 @@ module Gen(P : Params) = struct
             if_ byte byte_archives
             @ if_ native native_archives)
         ; if_ native
-            (if ctx.natdynlink_supported && Lib.dynlink lib' then
-               Mode.Dict.get (Lib.plugins lib') Native
+            (if ctx.natdynlink_supported && Lib.dynlink lib then
+               Mode.Dict.get (Lib.plugins lib) Native
              else
                [])
-        ; Lib.jsoo_runtime lib'
-        ; Lib.headers lib'
+        ; Lib.jsoo_runtime lib
+        ; Lib.headers lib
         ]
     in
-    let dlls = if_ byte (Option.to_list (Lib.dll lib')) in
+    let dlls = if_ byte (Option.to_list (Lib.dll lib)) in
     let execs =
-      match lib.kind with
+      match kind with
       | Normal | Ppx_deriver -> []
       | Ppx_rewriter ->
         match (dir_kind : File_tree.Dune_file.Kind.t) with
@@ -192,7 +194,7 @@ module Gen(P : Params) = struct
         | Jbuild ->
           let driver =
             let deps =
-              List.concat_map lib.buildable.libraries ~f:Lib_dep.to_lib_names
+              List.concat_map buildable.libraries ~f:Lib_dep.to_lib_names
             in
             match
               List.filter deps ~f:(function
@@ -305,9 +307,9 @@ module Gen(P : Params) = struct
         ~f:(fun { SC.Installable. dir; stanza; kind = dir_kind; scope; _ } ->
           let dir_contents = Dir_contents.get sctx ~dir in
           match stanza with
-          | Library ({ public = Some { package; sub_dir; name = (_, name); _ }
+          | Library ({ public = Some { package; sub_dir; _ }
                      ; _ } as lib) ->
-            List.map (lib_install_files ~dir ~sub_dir ~name lib ~scope
+            List.map (lib_install_files ~dir ~sub_dir lib ~scope
                         ~dir_kind ~dir_contents)
               ~f:(fun x -> package.name, x)
           | Install { section; files; package}->

@@ -31,6 +31,7 @@ val modes : t -> Mode.Dict.Set.t
 val headers : t -> Path.t list
 
 val foreign_archives : t -> Path.t list Mode.Dict.t
+val dll : t -> Path.t option
 
 val dune_version : t -> Syntax.Version.t option
 
@@ -116,11 +117,13 @@ module Info : sig
     ; dynlink          : bool
     ; modes            : Mode.Dict.Set.t
     ; headers          : Path.t list
+    ; dll              : Path.t option
     }
 
   val of_library_stanza
     : dir:Path.t
     -> ext_lib:string
+    -> ext_dll:string
     -> has_native:bool
     -> Dune_file.Library.t
     -> t
@@ -273,6 +276,7 @@ module DB : sig
   val create_from_library_stanzas
     :  ?parent:t
     -> ext_lib:string
+    -> ext_dll:string
     -> has_native:bool
     -> (Path.t * Dune_file.Library.t) list
     -> t

@@ -68,6 +68,7 @@ module Info = struct
     ; dynlink          : bool
     ; modes            : Mode.Dict.Set.t
     ; headers          : Path.t list
+    ; dll              : Path.t option
     }
 
   let user_written_deps t =
@@ -75,7 +76,8 @@ module Info = struct
       ~init:(Deps.to_lib_deps t.requires)
       ~f:(fun acc s -> Dune_file.Lib_dep.Direct s :: acc)
 
-  let of_library_stanza ~dir ~ext_lib ~has_native (conf : Dune_file.Library.t) =
+  let of_library_stanza ~dir ~ext_lib ~ext_dll ~has_native
+        (conf : Dune_file.Library.t) =
     let archive_file ext = Path.relative dir (conf.name ^ ext) in
     let archive_files ~f_ext =
       Mode.Dict.of_func (fun ~mode -> [archive_file (f_ext mode)])
@@ -89,9 +91,10 @@ module Info = struct
       | None   -> Status.Private conf.project.name
       | Some p -> Public p.package
     in
+    let has_stubs = Dune_file.Library.has_stubs conf in
     let foreign_archives =
       let stubs =
-        if Dune_file.Library.has_stubs conf then
+        if has_stubs then
           [Dune_file.Library.stubs_archive conf ~dir ~ext_lib]
         else
           []
@@ -123,6 +126,11 @@ module Info = struct
     ; modes = Dune_file.Mode_conf.Set.eval ~has_native conf.modes
     ; headers = List.map conf.install_c_headers ~f:(fun fn ->
       Path.relative dir (fn ^ ".h"))
+    ; dll =
+        if has_stubs && conf.dynlink then
+          Some (Dune_file.Library.dll ~dir ~ext_dll conf)
+        else
+          None
     }
 
   let of_findlib_package pkg =
@@ -156,6 +164,7 @@ module Info = struct
     ; dynlink = true
     ; modes = Mode.Dict.Set.empty
     ; headers = []
+    ; dll = None
     }
 end
 
@@ -359,6 +368,7 @@ let is_local t = Path.is_managed t.info.obj_dir
 let status t = t.info.status
 
 let foreign_archives t = t.info.foreign_archives
+let dll t = t.info.dll
 
 let package t =
   match t.info.status with
@@ -961,10 +971,11 @@ module DB = struct
     ; all    = Lazy.from_fun all
     }
 
-  let create_from_library_stanzas ?parent ~ext_lib ~has_native stanzas =
+  let create_from_library_stanzas ?parent ~ext_lib ~ext_dll ~has_native stanzas =
     let map =
       List.concat_map stanzas ~f:(fun (dir, (conf : Dune_file.Library.t)) ->
-        let info = Info.of_library_stanza ~dir ~ext_lib ~has_native conf in
+        let info =
+          Info.of_library_stanza ~dir ~ext_lib ~ext_dll ~has_native conf in
         match conf.public with
         | None ->
           [(conf.name, Resolve_result.Found info)]

@@ -514,6 +514,7 @@ let create
       ~context:context.name
       ~installed_libs
       ~ext_lib:context.ext_lib
+      ~ext_dll:context.ext_dll
       internal_libs
   in
   let stanzas =

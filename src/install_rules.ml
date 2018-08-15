@@ -116,7 +116,7 @@ module Gen(P : Params) = struct
            Build.write_file_dyn meta)))
 
   let lib_install_files ~dir_contents ~dir ~sub_dir ~name ~scope ~dir_kind
-        (lib : Library.t) =
+        (lib : Lib.t) =
     let lib' = Lib.DB.find_exn (Scope.libs scope) (Library.best_name lib) in
     let obj_dir = Utils.library_object_directory ~dir lib.name in
     let make_entry section ?dst fn =
@@ -181,10 +181,7 @@ module Gen(P : Params) = struct
         ; Lib.headers lib'
         ]
     in
-    let dlls  =
-      if_ (byte && Library.has_stubs lib && Lib.dynlink lib')
-        [Library.dll ~dir lib ~ext_dll:ctx.ext_dll]
-    in
+    let dlls = if_ byte (Option.to_list (Lib.dll lib')) in
     let execs =
       match lib.kind with
       | Normal | Ppx_deriver -> []

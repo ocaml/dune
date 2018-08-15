@@ -1,7 +1,3 @@
-(rule
- ((targets (hello_world.output))
-  (action (with-stdout-to %{targets} (run %{bin:hello_world})))))
-
-(alias
- ((name runtest)
-  (action (run diff -uw %{dep:hello_world.expected} %{dep:hello_world.output}))))
+(test
+ (name test)
+ (libraries hello_world))

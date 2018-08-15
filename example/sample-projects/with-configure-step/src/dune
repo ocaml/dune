@@ -1,12 +1,10 @@
 (executables
- ((names (plop))))
+ (names plop))
 
 (install
- ((section bin)
-  (files ((plop.exe as plop)))))
+ (section bin)
+ (files (plop.exe as plop)))
 
 (rule
- ((targets (config.ml))
-  (deps    (../config.full))
-  (action  (copy %{first-dep} %{targets}))))
-
+ (targets config.ml)
+ (action  (copy ../config.full %{targets})))

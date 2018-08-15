@@ -4,6 +4,8 @@
  (install_c_headers cfoo)
  (js_of_ocaml (javascript_files foo.js))
  (wrapped false)
+ (c_names c)
+ (cxx_names cpp) 
  (public_name foo))
 
 (library

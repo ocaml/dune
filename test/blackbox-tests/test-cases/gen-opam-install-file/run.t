@@ -27,6 +27,7 @@
     "_build/install/default/lib/foo/foo.mli" {"foo.mli"}
     "_build/install/default/lib/foo/foo.ml" {"foo.ml"}
     "_build/install/default/lib/foo/foo.cma" {"foo.cma"}
+    "_build/install/default/lib/foo/libfoo_stubs$ext_lib" {"libfoo_stubs$ext_lib"}
     "_build/install/default/lib/foo/foo.cmxa" {"foo.cmxa"}
     "_build/install/default/lib/foo/foo$ext_lib" {"foo$ext_lib"}
     "_build/install/default/lib/foo/foo.cmxs" {"foo.cmxs"}
@@ -52,4 +53,7 @@
   ]
   doc: [
     "_build/install/default/doc/foo/odoc-pages/doc.mld" {"odoc-pages/doc.mld"}
+  ]
+  stublibs: [
+    "_build/install/default/lib/stublibs/dllfoo_stubs$ext_dll"
   ]

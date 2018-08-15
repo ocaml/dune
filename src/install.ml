@@ -1,23 +1,29 @@
 open Import
 
 module Section = struct
-  type t =
-    | Lib
-    | Lib_root
-    | Libexec
-    | Libexec_root
-    | Bin
-    | Sbin
-    | Toplevel
-    | Share
-    | Share_root
-    | Etc
-    | Doc
-    | Stublibs
-    | Man
-    | Misc
+  module T = struct
+    type t =
+      | Lib
+      | Lib_root
+      | Libexec
+      | Libexec_root
+      | Bin
+      | Sbin
+      | Toplevel
+      | Share
+      | Share_root
+      | Etc
+      | Doc
+      | Stublibs
+      | Man
+      | Misc
 
-  let compare : t -> t -> Ordering.t = compare
+    let compare : t -> t -> Ordering.t = compare
+  end
+
+  include T
+
+  module Map = Map.Make(T)
 
   let to_string = function
     | Lib          -> "lib"
@@ -154,6 +160,15 @@ module Entry = struct
     ; section : Section.t
     }
 
+  let compare x y =
+    let c = Path.compare x.src y.src in
+    if c <> Eq then c
+    else
+      let c = Option.compare String.compare x.dst y.dst in
+      if c <> Eq then c
+      else
+        Section.compare x.section y.section
+
   let make section ?dst src =
     let dst =
       if Sys.win32 then
@@ -209,27 +224,25 @@ module Entry = struct
     { t with dst = Some dst }
 end
 
-module SMap = Map.Make(Section)
-
 let files entries =
   List.fold_left entries ~init:Path.Set.empty ~f:(fun acc (entry : Entry.t) ->
     Path.Set.add acc entry.src)
 
 let group entries =
   List.map entries ~f:(fun (entry : Entry.t) -> (entry.section, entry))
-  |> SMap.of_list_multi
-  |> SMap.to_list
+  |> Section.Map.of_list_multi
 
 let gen_install_file entries =
   let buf = Buffer.create 4096 in
   let pr fmt = Printf.bprintf buf (fmt ^^ "\n") in
-  List.iter (group entries) ~f:(fun (section, entries) ->
+  Section.Map.iteri (group entries) ~f:(fun section entries ->
     pr "%s: [" (Section.to_string section);
-      List.iter entries ~f:(fun (e : Entry.t) ->
-        let src = Path.to_string e.src in
-        match e.dst with
-        | None     -> pr "  %S"      src
-        | Some dst -> pr "  %S {%S}" src dst);
+    List.sort ~compare:Entry.compare entries
+    |> List.iter ~f:(fun (e : Entry.t) ->
+      let src = Path.to_string e.src in
+      match e.dst with
+      | None     -> pr "  %S"      src
+      | Some dst -> pr "  %S {%S}" src dst);
     pr "]");
   Buffer.contents buf
 

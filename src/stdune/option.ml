@@ -59,3 +59,10 @@ let equal eq x y =
   | Some _, None -> false
   | None, Some _ -> false
   | Some sx, Some sy -> eq sx sy
+
+let compare cmp x y =
+  match x, y with
+  | None, None -> Ordering.Eq
+  | Some _, None -> Gt
+  | None, Some _ -> Lt
+  | Some x, Some y -> cmp x y

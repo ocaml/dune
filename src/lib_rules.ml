@@ -17,21 +17,14 @@ module Gen (P : Install_rules.Params) = struct
      | Library stuff                                                   |
      +-----------------------------------------------------------------+ *)
 
-  let msvc_hack_cclibs cclibs =
-    let f lib =
-      if String.is_prefix lib ~prefix:"-l" then
-        String.sub lib ~pos:2 ~len:(String.length lib - 2) ^ ".lib"
-      else
-        lib
-    in
-    let cclibs = List.map cclibs ~f in
-    let f lib =
-      if String.is_prefix lib ~prefix:"-l" then
-        String.sub lib ~pos:2 ~len:(String.length lib - 2)
-      else
-        lib
-    in
-    List.map cclibs ~f
+  let msvc_hack_cclibs =
+    List.map ~f:(fun lib ->
+      let lib =
+        match String.drop_prefix lib ~prefix:"-l" with
+        | None -> lib
+        | Some l -> l ^ ".lib"
+      in
+      Option.value ~default:lib (String.drop_prefix ~prefix:"-l" lib))
 
   let build_lib (lib : Library.t) ~scope ~flags ~dir ~obj_dir ~mode
         ~top_sorted_modules ~modules =

@@ -86,6 +86,39 @@ module Gen (P : Install_rules.Params) = struct
                 | Native -> [Library.archive lib ~dir ~ext:ctx.ext_lib])
            ]))
 
+  (* If the compiler reads the cmi for module alias even with
+     [-w -49 -no-alias-deps], we must sandbox the build of the
+     alias module since the modules it references are built after. *)
+  let alias_module_build_sandbox =
+    Ocaml_version.always_reads_alias_cmi ctx.version
+
+  let build_alias_module (m : Module.t) ~main_module_name ~modules ~cctx
+        ~dynlink ~js_of_ocaml =
+    let file =
+      match m.impl with
+      | Some f -> f
+      | None -> Option.value_exn m.intf
+    in
+    SC.add_rule sctx
+      (Build.return
+         (Module.Name.Map.values (Module.Name.Map.remove modules m.name)
+          |> List.map ~f:(fun (m : Module.t) ->
+            sprintf "(** @canonical %s.%s *)\n\
+                     module %s = %s\n"
+              (Module.Name.to_string main_module_name)
+              (Module.Name.to_string m.name)
+              (Module.Name.to_string m.name)
+              (Module.Name.to_string (Module.real_unit_name m))
+          )
+          |> String.concat ~sep:"\n")
+       >>> Build.write_file_dyn file.path);
+    let cctx = Compilation_context.for_alias_module cctx in
+    Module_compilation.build_module cctx m
+      ~js_of_ocaml
+      ~dynlink
+      ~sandbox:alias_module_build_sandbox
+      ~dep_graphs:(Ocamldep.Dep_graphs.dummy m)
+
   let build_c_file (lib : Library.t) ~scope ~dir ~includes (src, dst) =
     SC.add_rule sctx
       (SC.expand_and_eval_set sctx ~scope ~dir lib.c_flags
@@ -130,11 +163,124 @@ module Gen (P : Install_rules.Params) = struct
           ]));
     dst
 
-  (* If the compiler reads the cmi for module alias even with
-     [-w -49 -no-alias-deps], we must sandbox the build of the
-     alias module since the modules it references are built after. *)
-  let alias_module_build_sandbox =
-    Ocaml_version.always_reads_alias_cmi ctx.version
+  let ocamlmklib (lib : Library.t) ~dir ~scope ~o_files ~sandbox ~custom
+        ~targets =
+    SC.add_rule sctx ~sandbox
+      (SC.expand_and_eval_set sctx ~scope ~dir
+         lib.c_library_flags ~standard:(Build.return [])
+       >>>
+       Build.run ~context:ctx
+         (Ok ctx.ocamlmklib)
+         [ As (Utils.g ())
+         ; if custom then A "-custom" else As []
+         ; A "-o"
+         ; Path (Path.relative dir (sprintf "%s_stubs" lib.name))
+         ; Deps o_files
+         ; Dyn (fun cclibs ->
+             (* https://github.com/ocaml/dune/issues/119 *)
+             if ctx.ccomp_type = "msvc" then
+               let cclibs = msvc_hack_cclibs cclibs in
+               Arg_spec.quote_args "-ldopt" cclibs
+             else
+               As cclibs
+           )
+         ; Hidden_targets targets
+         ])
+
+  let build_self_stubs lib ~scope ~dir ~o_files =
+    let static = Library.stubs_archive lib ~dir ~ext_lib:ctx.ext_lib in
+    let dynamic = Library.dll lib ~dir ~ext_dll:ctx.ext_dll in
+    let modes =
+      Mode_conf.Set.eval lib.modes
+        ~has_native:(Option.is_some ctx.ocamlopt) in
+    let ocamlmklib = ocamlmklib lib ~scope ~dir ~o_files in
+    if modes.native &&
+       modes.byte   &&
+       lib.dynlink
+    then begin
+      (* If we build for both modes and support dynlink, use a
+         single invocation to build both the static and dynamic
+         libraries *)
+      ocamlmklib ~sandbox:false ~custom:false ~targets:[static; dynamic]
+    end else begin
+      ocamlmklib ~sandbox:false ~custom:true ~targets:[static];
+      (* We can't tell ocamlmklib to build only the dll, so we
+         sandbox the action to avoid overriding the static archive *)
+      ocamlmklib ~sandbox:true ~custom:false ~targets:[dynamic]
+    end
+
+  let build_stubs lib ~dir ~scope ~requires ~dir_contents =
+    let all_dirs = Dir_contents.dirs dir_contents in
+    let h_files =
+      List.fold_left all_dirs ~init:[] ~f:(fun acc dc ->
+        String.Set.fold (Dir_contents.text_files dc) ~init:acc
+          ~f:(fun fn acc ->
+            if String.is_suffix fn ~suffix:".h" then
+              Path.relative (Dir_contents.dir dc) fn :: acc
+            else
+              acc))
+    in
+    let all_dirs = Path.Set.of_list (List.map all_dirs ~f:Dir_contents.dir) in
+    let resolve_name ~ext (loc, fn) =
+      let p = Path.relative dir (fn ^ ext) in
+      if not (match Path.parent p with
+        | None -> false
+        | Some p -> Path.Set.mem all_dirs p) then
+        Loc.fail loc
+          "File %a is not part of the current directory group. \
+           This is not allowed."
+          Path.pp (Path.drop_optional_build_context p)
+      ;
+      (p, Path.relative dir (fn ^ ctx.ext_obj))
+    in
+    let o_files =
+      let includes =
+        Arg_spec.S
+          [ Hidden_deps h_files
+          ; Arg_spec.of_result_map requires ~f:(fun libs ->
+              S [ Lib.L.c_include_flags libs ~stdlib_dir:ctx.stdlib_dir
+                ; Hidden_deps (SC.Libs.file_deps sctx libs ~ext:".h")
+                ])
+          ]
+      in
+      List.map lib.c_names ~f:(fun name ->
+        build_c_file   lib ~scope ~dir ~includes (resolve_name name ~ext:".c")
+      ) @ List.map lib.cxx_names ~f:(fun name ->
+        build_cxx_file lib ~scope ~dir ~includes (resolve_name name ~ext:".cpp")
+      )
+    in
+    match lib.self_build_stubs_archive with
+    | Some _ -> ()
+    | None -> build_self_stubs lib ~dir ~scope ~o_files
+
+  let build_shared lib ~dir ~flags ~(ctx : Context.t) =
+    Option.iter ctx.ocamlopt ~f:(fun ocamlopt ->
+      let src = Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext Native) in
+      let dst = Library.archive lib ~dir ~ext:".cmxs" in
+      let build =
+        Build.dyn_paths (Build.arr (fun () ->
+          [Library.archive lib ~dir ~ext:ctx.ext_lib]))
+        >>>
+        Ocaml_flags.get flags Native
+        >>>
+        Build.run ~context:ctx
+          (Ok ocamlopt)
+          [ Dyn (fun flags -> As flags)
+          ; A "-shared"; A "-linkall"
+          ; A "-I"; Path dir
+          ; A "-o"; Target dst
+          ; Dep src
+          ]
+      in
+      let build =
+        if Library.has_stubs lib then
+          Build.path (Library.stubs_archive ~dir lib ~ext_lib:ctx.ext_lib)
+          >>>
+          build
+        else
+          build
+      in
+      SC.add_rule sctx build)
 
   let library_rules (lib : Library.t) ~dir_contents ~dir ~scope
         ~compile_info ~dir_kind =
@@ -194,125 +340,16 @@ module Gen (P : Install_rules.Params) = struct
 
     let dep_graphs = Ocamldep.rules cctx in
 
-    Option.iter alias_module ~f:(fun m ->
-      let file =
-        match m.impl with
-        | Some f -> f
-        | None -> Option.value_exn m.intf
-      in
-      SC.add_rule sctx
-        (Build.return
-           (Module.Name.Map.values (Module.Name.Map.remove modules m.name)
-            |> List.map ~f:(fun (m : Module.t) ->
-              sprintf "(** @canonical %s.%s *)\n\
-                       module %s = %s\n"
-                (Module.Name.to_string main_module_name)
-                (Module.Name.to_string m.name)
-                (Module.Name.to_string m.name)
-                (Module.Name.to_string (Module.real_unit_name m))
-            )
-            |> String.concat ~sep:"\n")
-         >>> Build.write_file_dyn file.path));
-
-
     let dynlink = lib.dynlink in
     let js_of_ocaml = lib.buildable.js_of_ocaml in
     Module_compilation.build_modules cctx ~js_of_ocaml ~dynlink ~dep_graphs;
-    Option.iter alias_module ~f:(fun m ->
-      let cctx = Compilation_context.for_alias_module cctx in
-      Module_compilation.build_module cctx m
-        ~js_of_ocaml
-        ~dynlink
-        ~sandbox:alias_module_build_sandbox
-        ~dep_graphs:(Ocamldep.Dep_graphs.dummy m));
 
-    if Library.has_stubs lib then begin
-      let all_dirs = Dir_contents.dirs dir_contents in
-      let h_files =
-        List.fold_left all_dirs ~init:[] ~f:(fun acc dc ->
-          String.Set.fold (Dir_contents.text_files dc) ~init:acc
-            ~f:(fun fn acc ->
-              if String.is_suffix fn ~suffix:".h" then
-                Path.relative (Dir_contents.dir dc) fn :: acc
-              else
-                acc))
-      in
-      let all_dirs = Path.Set.of_list (List.map all_dirs ~f:Dir_contents.dir) in
-      let resolve_name ~ext (loc, fn) =
-        let p = Path.relative dir (fn ^ ext) in
-        if not (match Path.parent p with
-          | None -> false
-          | Some p -> Path.Set.mem all_dirs p) then
-          Loc.fail loc
-            "File %a is not part of the current directory group. \
-             This is not allowed."
-            Path.pp (Path.drop_optional_build_context p)
-        ;
-        (p, Path.relative dir (fn ^ ctx.ext_obj))
-      in
-      let o_files =
-        let includes =
-          Arg_spec.S
-            [ Hidden_deps h_files
-            ; Arg_spec.of_result_map requires ~f:(fun libs ->
-                S [ Lib.L.c_include_flags libs ~stdlib_dir:ctx.stdlib_dir
-                  ; Hidden_deps (SC.Libs.file_deps sctx libs ~ext:".h")
-                  ])
-            ]
-        in
-        List.map lib.c_names ~f:(fun name ->
-          build_c_file   lib ~scope ~dir ~includes (resolve_name name ~ext:".c")
-        ) @ List.map lib.cxx_names ~f:(fun name ->
-          build_cxx_file lib ~scope ~dir ~includes (resolve_name name ~ext:".cpp")
-        )
-      in
-      match lib.self_build_stubs_archive with
-      | Some _ -> ()
-      | None ->
-        let ocamlmklib ~sandbox ~custom ~targets =
-          SC.add_rule sctx ~sandbox
-            (SC.expand_and_eval_set sctx ~scope ~dir
-               lib.c_library_flags ~standard:(Build.return [])
-             >>>
-             Build.run ~context:ctx
-               (Ok ctx.ocamlmklib)
-               [ As (Utils.g ())
-               ; if custom then A "-custom" else As []
-               ; A "-o"
-               ; Path (Path.relative dir (sprintf "%s_stubs" lib.name))
-               ; Deps o_files
-               ; Dyn (fun cclibs ->
-                   (* https://github.com/ocaml/dune/issues/119 *)
-                   if ctx.ccomp_type = "msvc" then
-                     let cclibs = msvc_hack_cclibs cclibs in
-                     Arg_spec.quote_args "-ldopt" cclibs
-                   else
-                     As cclibs
-                 )
-               ; Hidden_targets targets
-               ])
-        in
-        let static = Library.stubs_archive lib ~dir ~ext_lib:ctx.ext_lib in
-        let dynamic = Library.dll lib ~dir ~ext_dll:ctx.ext_dll in
-        let modes =
-          Mode_conf.Set.eval lib.modes
-            ~has_native:(Option.is_some ctx.ocamlopt)
-        in
-        if modes.native &&
-           modes.byte   &&
-           lib.dynlink
-        then begin
-          (* If we build for both modes and support dynlink, use a
-             single invocation to build both the static and dynamic
-             libraries *)
-          ocamlmklib ~sandbox:false ~custom:false ~targets:[static; dynamic]
-        end else begin
-          ocamlmklib ~sandbox:false ~custom:true ~targets:[static];
-          (* We can't tell ocamlmklib to build only the dll, so we
-             sandbox the action to avoid overriding the static archive *)
-          ocamlmklib ~sandbox:true ~custom:false ~targets:[dynamic]
-        end
-    end;
+    Option.iter alias_module
+      ~f:(build_alias_module ~main_module_name ~modules ~cctx ~dynlink
+            ~js_of_ocaml);
+
+    if Library.has_stubs lib then
+      build_stubs lib ~dir ~scope ~requires ~dir_contents;
 
     List.iter Cm_kind.all ~f:(fun cm_kind ->
       let files =
@@ -346,38 +383,10 @@ module Gen (P : Install_rules.Params) = struct
     SC.add_rules sctx (
       let src = Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext Mode.Byte) in
       let target = Path.extend_basename src ~suffix:".js" in
-      Js_of_ocaml_rules.build_cm cctx
-        ~js_of_ocaml:lib.buildable.js_of_ocaml ~src ~target);
+      Js_of_ocaml_rules.build_cm cctx ~js_of_ocaml ~src ~target);
 
     if ctx.natdynlink_supported then
-      Option.iter ctx.ocamlopt ~f:(fun ocamlopt ->
-        let src = Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext Native) in
-        let dst = Library.archive lib ~dir ~ext:".cmxs" in
-        let build =
-          Build.dyn_paths (Build.arr (fun () ->
-            [Library.archive lib ~dir ~ext:ctx.ext_lib]))
-          >>>
-          Ocaml_flags.get flags Native
-          >>>
-          Build.run ~context:ctx
-            (Ok ocamlopt)
-            [ Dyn (fun flags -> As flags)
-            ; A "-shared"; A "-linkall"
-            ; A "-I"; Path dir
-            ; A "-o"; Target dst
-            ; Dep src
-            ]
-        in
-        let build =
-          if Library.has_stubs lib then
-            Build.path (Library.stubs_archive ~dir lib ~ext_lib:ctx.ext_lib)
-            >>>
-            build
-          else
-            build
-        in
-        SC.add_rule sctx build
-      );
+      build_shared lib ~dir ~flags ~ctx;
 
     Odoc.setup_library_odoc_rules lib ~requires ~modules ~dep_graphs ~scope;
 

@@ -263,12 +263,14 @@ end = struct
            https://github.com/ocaml/dune/issues/567 *)
         Some
           (Module.make (Module.Name.add_suffix main_module_name "__")
+             ~visibility:Public
              ~impl:(Module.File.make OCaml
                       (Path.relative dir (sprintf "%s__.ml-gen" lib_name)))
              ~obj_name:(lib_name ^ "__"))
       else
         Some
           (Module.make main_module_name
+             ~visibility:Public
              ~impl:(Module.File.make OCaml
                       (Path.relative dir (lib_name ^ ".ml-gen")))
              ~obj_name:lib_name)
@@ -427,7 +429,7 @@ let modules_of_files ~dir ~files =
   let impls = parse_one_set impl_files in
   let intfs = parse_one_set intf_files in
   Module.Name.Map.merge impls intfs ~f:(fun name impl intf ->
-    Some (Module.make name ?impl ?intf))
+    Some (Module.make name ~visibility:Public ?impl ?intf))
 
 let build_modules_map (d : Super_context.Dir_with_jbuild.t) ~modules =
   let libs, exes =

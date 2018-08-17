@@ -59,17 +59,22 @@ module File = struct
       ]
 end
 
+module Visibility = struct
+  type t = Public | Private
+end
+
 type t =
-  { name     : Name.t
-  ; impl     : File.t option
-  ; intf     : File.t option
-  ; obj_name : string
-  ; pp       : (unit, string list) Build.t option
+  { name       : Name.t
+  ; impl       : File.t option
+  ; intf       : File.t option
+  ; obj_name   : string
+  ; pp         : (unit, string list) Build.t option
+  ; visibility : Visibility.t
   }
 
 let name t = t.name
 
-let make ?impl ?intf ?obj_name name =
+let make ?impl ?intf ?obj_name ~visibility name =
   let file : File.t =
     match impl, intf with
     | None, None ->
@@ -95,6 +100,7 @@ let make ?impl ?intf ?obj_name name =
   ; intf
   ; obj_name
   ; pp = None
+  ; visibility
   }
 
 let real_unit_name t = Name.of_string (Filename.basename t.obj_name)

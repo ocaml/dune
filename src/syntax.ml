@@ -40,6 +40,10 @@ end
 module Supported_versions = struct
   type t = int Int.Map.t
 
+  let sexp_of_t (t : t) =
+    let open Sexp.To_sexp in
+    (list (pair int int)) (Int.Map.to_list t)
+
   let make l : t =
     match
       List.map l ~f:(fun (major, minor) -> (major, minor))
@@ -125,11 +129,15 @@ let set t ver parser =
   set t.key ver parser
 
 let get_exn t =
-  get t.key >>| function
-  | Some x -> x
+  get t.key >>= function
+  | Some x -> return x
   | None ->
+    get_all >>| fun context ->
     Exn.code_error "Syntax identifier is unset"
-      [ "name", Sexp.To_sexp.string t.name ]
+      [ "name", Sexp.To_sexp.string t.name
+      ; "supported_versions", Supported_versions.sexp_of_t t.supported_versions
+      ; "context", Univ_map.sexp_of_t context
+      ]
 
 let desc () =
   kind >>| fun kind ->

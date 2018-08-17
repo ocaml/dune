@@ -668,6 +668,7 @@ module Buildable = struct
   type t =
     { loc                      : Loc.t
     ; modules                  : Ordered_set_lang.t
+    ; private_modules          : Ordered_set_lang.t
     ; modules_without_implementation : Ordered_set_lang.t
     ; libraries                : Lib_dep.t list
     ; preprocess               : Preprocess_map.t
@@ -690,6 +691,7 @@ module Buildable = struct
       field "preprocessor_deps" (list Dep_conf.dparse) ~default:[]
     and lint = field "lint" Lint.dparse ~default:Lint.default
     and modules = modules_field "modules"
+    and private_modules = modules_field "private_modules"
     and modules_without_implementation =
       modules_field "modules_without_implementation"
     and libraries = field "libraries" Lib_deps.dparse ~default:[]
@@ -706,6 +708,7 @@ module Buildable = struct
     ; preprocessor_deps
     ; lint
     ; modules
+    ; private_modules
     ; modules_without_implementation
     ; libraries
     ; flags

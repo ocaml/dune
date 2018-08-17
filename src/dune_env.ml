@@ -1,4 +1,5 @@
-open! Stdune
+open Import
+
 type stanza = Stanza.t = ..
 
 module Stanza = struct
@@ -10,6 +11,7 @@ module Stanza = struct
     { flags          : Ordered_set_lang.Unexpanded.t
     ; ocamlc_flags   : Ordered_set_lang.Unexpanded.t
     ; ocamlopt_flags : Ordered_set_lang.Unexpanded.t
+    ; env_vars       : (string * string) list
     }
 
   type pattern =
@@ -21,12 +23,20 @@ module Stanza = struct
     ; rules : (pattern * config) list
     }
 
+  let env_vars_field =
+    field
+    "env-vars"
+      ~default:[]
+      (Syntax.since Stanza.syntax (1, 5) >>>
+      list (pair string string))
+
   let config =
     let%map flags = field_oslu "flags"
     and ocamlc_flags = field_oslu "ocamlc_flags"
     and ocamlopt_flags = field_oslu "ocamlopt_flags"
+    and env_vars = env_vars_field
     in
-    { flags; ocamlc_flags; ocamlopt_flags }
+    { flags; ocamlc_flags; ocamlopt_flags; env_vars }
 
   let rule =
     enter
@@ -43,6 +53,12 @@ module Stanza = struct
     and rules = repeat rule
     in
     { loc; rules }
+
+  let find t ~profile =
+    List.find_map t.rules ~f:(fun (pat, cfg) ->
+      match pat with
+      | Any -> Some cfg
+      | Profile a -> Option.some_if (a = profile) cfg)
 
 end
 

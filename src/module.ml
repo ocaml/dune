@@ -116,7 +116,13 @@ let file t (kind : Ml_kind.t) =
   in
   Option.map file ~f:(fun f -> f.path)
 
-let obj_file t ~obj_dir ~ext = Path.relative obj_dir (t.obj_name ^ ext)
+let obj_file t ~obj_dir ~ext =
+  let base =
+    match t.visibility with
+    | Public -> obj_dir
+    | Private -> Path.relative obj_dir ".private"
+  in
+  Path.relative base (t.obj_name ^ ext)
 
 let cm_source t kind = file t (Cm_kind.source kind)
 

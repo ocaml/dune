@@ -1,0 +1,10 @@
+(library
+ (name foo)
+ (modules foo bar)
+ (wrapped false)
+ (private_modules bar))
+
+(executable
+ (name runfoo)
+ (modules runfoo)
+ (libraries foo))

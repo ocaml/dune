@@ -53,11 +53,11 @@ development of the internal rules of Dune very composable and
 quite pleasant.
 
 To deal with process multiplexing, Dune uses a simplified
-Lwt/Async-like monad, implemented in [src/future.mli](src/future.mli).
+Lwt/Async-like monad, implemented in [src/fiber/fiber.mli](src/fiber/fiber.mli).
 
 ## Code flow
 
-- [src/jbuild.mli](src/jbuild.mli) contains the internal representation
+- [src/dune_file.mli](src/dune_file.mli) contains the internal representation
   of `dune` files and the parsing code
 - [src/jbuild_load.mli](src/jbuild_load.mli) contains the code to scan
   a source tree and build the internal database by reading

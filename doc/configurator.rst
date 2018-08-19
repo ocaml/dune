@@ -63,12 +63,12 @@ invoke it as an executable and tell dune about the targets that it produces:
 .. code-block:: lisp
 
   (executable
-   ((name discover)
-    (libraries (dune.configurator))))
+   (name discover)
+   (libraries dune.configurator))
 
   (rule
-   ((targets (config.h))
-    (action (run ./discover.exe))))
+   (targets config.h)
+   (action (run ./discover.exe)))
 
 Another common pattern is to produce a flags file with configurator and then use
 this flag file using ``:include``:
@@ -76,9 +76,9 @@ this flag file using ``:include``:
 .. code-block:: lisp
 
   (library
-   ((name mylib)
-    (c_names (foo))
-    (c_library_flags (:include (flags.sexp)))))
+   (name mylib)
+   (c_names foo)
+   (c_library_flags (:include (flags.sexp))))
 
 For this, generate the list of flags for your library — for example
 using ``Configurator.V1.Pkg_config`` — and then write them to a file,

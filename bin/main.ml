@@ -1374,12 +1374,15 @@ let utop =
     ] in
   let term =
     let%map common = common
-    and dir = Arg.(value & pos 0 dir "" & Arg.info [] ~docv:"PATH")
+    and dir = Arg.(value & pos 0 string "" & Arg.info [] ~docv:"PATH")
     and ctx_name = context_arg ~doc:{|Select context where to build/run utop.|}
     and args = Arg.(value & pos_right 0 string [] (Arg.info [] ~docv:"ARGS"))
     in
     set_dirs common;
-    let utop_target = dir |> Path.of_string |> Utop.utop_exe |> Path.to_string in
+    let dir = Path.of_string dir in
+    if not (Path.is_directory dir) then
+      die "cannot find directory: %a" Path.pp dir;
+    let utop_target = dir |> Utop.utop_exe |> Path.to_string in
     set_common_other common ~targets:[utop_target];
     let log = Log.create common in
     let (build_system, context, utop_path) =
@@ -1387,10 +1390,10 @@ let utop =
        let context = Main.find_context_exn setup ~name:ctx_name in
        let setup = { setup with contexts = [context] } in
        let target =
-         match resolve_targets_exn ~log common setup [utop_target] with
-         | [] -> die "no libraries defined in %s" dir
-         | [File target] -> target
-         | _ -> assert false
+         match resolve_target common ~setup utop_target with
+         | Error _ -> die "no library is defined in %a" Path.pp dir
+         | Ok [File target] -> target
+         | Ok _ -> assert false
        in
        do_build setup [File target] >>| fun () ->
        (setup.build_system, context, Path.to_string target)

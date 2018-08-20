@@ -14,6 +14,9 @@ next
 - Add `dune unstable-fmt` to format `dune` files. The interface and syntax are
   still subject to change, so use with caution. (#1130, fix #940, @emillon)
 
+- Improve error message for `dune utop` without a library name (#1154, fix
+  #1149, @emillon)
+
 1.1.1 (08/08/2018)
 ------------------
 

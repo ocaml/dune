@@ -37,7 +37,7 @@
         menhir test_menhir1__mock.ml.mock
       ocamldep .test.eobjs/test_menhir1__mock.ml.mock.d
         ocamlc test_menhir1__mock.mli.inferred
-        menhir test_menhir1.{ml,mli}
+        menhir test_menhir1.{cmly,ml,mli}
       ocamldep .test.eobjs/test_menhir1.ml.d
       ocamldep .test.eobjs/test_menhir1.mli.d
         ocamlc .test.eobjs/test_menhir1.{cmi,cmti}

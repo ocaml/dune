@@ -73,8 +73,14 @@ module Run (P : PARAMS) : sig end = struct
   let source m =
     Path.relative dir (m ^ ".mly")
 
-  let targets m =
-    List.map ~f:(Path.relative dir) [m ^ ".ml"; m ^ ".mli"]
+  let targets m ~cmly =
+    let base = [m ^ ".ml"; m ^ ".mli"] in
+    List.map ~f:(Path.relative dir) (
+      if cmly then
+        (m ^ ".cmly") :: base
+      else
+        base)
+
 
   let sources ms =
     List.map ~f:source ms
@@ -177,7 +183,7 @@ module Run (P : PARAMS) : sig end = struct
      This is the three-step process where Menhir is invoked twice and OCaml
      type inference is performed in between. *)
 
-  let process3 base (stanza : stanza) : unit =
+  let process3 base ~cmly (stanza : stanza) : unit =
 
     let expanded_flags = expand_flags stanza.flags in
 
@@ -231,7 +237,7 @@ module Run (P : PARAMS) : sig end = struct
         ; Deps (sources stanza.modules)
         ; As [ "--base" ; base ]
         ; A "--infer-read-reply"; Dep (inferred_mli base)
-        ; Hidden_targets (targets base)
+        ; Hidden_targets (targets base ~cmly)
         ]
     )
 
@@ -240,7 +246,7 @@ module Run (P : PARAMS) : sig end = struct
   (* [process3 stanza] converts a Menhir stanza into a set of build rules.
      This is a simpler one-step process where Menhir is invoked directly. *)
 
-  let process1 base (stanza : stanza) : unit =
+  let process1 base ~cmly (stanza : stanza) : unit =
     let expanded_flags = expand_flags stanza.flags in
     rule (
       expanded_flags
@@ -249,7 +255,7 @@ module Run (P : PARAMS) : sig end = struct
         [ Dyn (fun flags -> As flags)
         ; Deps (sources stanza.modules)
         ; As [ "--base" ; base ]
-        ; Hidden_targets (targets base)
+        ; Hidden_targets (targets base ~cmly)
         ]
     )
 
@@ -263,22 +269,23 @@ module Run (P : PARAMS) : sig end = struct
 
   let process (stanza : stanza) : unit =
     let base = Option.value_exn stanza.merge_into in
-    let ocaml_type_inference_disabled =
-      try
-        Ordered_set_lang.Unexpanded.fold_strings stanza.flags ~init:false
-          ~f:(fun pos sw acc ->
-            if pos = Pos
-               && String_with_vars.text_only sw = Some "--only-tokens" then
-              raise Exit
-            else
-              acc)
-      with Exit ->
-        true
+    let (ocaml_type_inference_disabled, cmly) =
+      Ordered_set_lang.Unexpanded.fold_strings stanza.flags
+        ~init:(false, false)
+        ~f:(fun pos sw ((only_tokens, cmly) as acc) ->
+          match pos with
+          | Neg -> acc
+          | Pos ->
+            begin match String_with_vars.text_only sw with
+            | Some "--only-tokens" -> (true, cmly)
+            | Some "--cmly" -> (only_tokens, true)
+            | Some _ | None -> acc
+            end)
     in
     if ocaml_type_inference_disabled then
-      process1 base stanza
+      process1 base stanza ~cmly
     else
-      process3 base stanza
+      process3 base stanza ~cmly
 
   (* ------------------------------------------------------------------------ *)
 

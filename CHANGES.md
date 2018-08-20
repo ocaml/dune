@@ -17,6 +17,9 @@ next
 - Improve error message for `dune utop` without a library name (#1154, fix
   #1149, @emillon)
 
+- Fix parsing `ocamllex` stanza in jbuild files (#1150, @rgrinberg)
+
+
 1.1.1 (08/08/2018)
 ------------------
 

@@ -28,3 +28,22 @@
         ocamlc src/.test.eobjs/test.{cmi,cmo,cmt}
       ocamlopt src/.test.eobjs/test.{cmx,o}
       ocamlopt src/test.exe
+
+  $ dune build --root cmly test.exe --display short --debug-dependency-path
+  Entering directory 'cmly'
+      ocamllex lexer1.ml
+      ocamldep .test.eobjs/lexer1.ml.d
+      ocamldep .test.eobjs/test.ml.d
+        menhir test_menhir1__mock.ml.mock
+      ocamldep .test.eobjs/test_menhir1__mock.ml.mock.d
+        ocamlc test_menhir1__mock.mli.inferred
+        menhir test_menhir1.{ml,mli}
+      ocamldep .test.eobjs/test_menhir1.ml.d
+      ocamldep .test.eobjs/test_menhir1.mli.d
+        ocamlc .test.eobjs/test_menhir1.{cmi,cmti}
+        ocamlc .test.eobjs/lexer1.{cmi,cmo,cmt}
+      ocamlopt .test.eobjs/lexer1.{cmx,o}
+      ocamlopt .test.eobjs/test_menhir1.{cmx,o}
+        ocamlc .test.eobjs/test.{cmi,cmo,cmt}
+      ocamlopt .test.eobjs/test.{cmx,o}
+      ocamlopt test.exe

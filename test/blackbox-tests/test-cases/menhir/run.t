@@ -1,4 +1,5 @@
-  $ dune build src/test.exe --display short --debug-dependency-path
+  $ dune build --root general src/test.exe --display short --debug-dependency-path
+  Entering directory 'general'
       ocamllex src/lexer1.ml
       ocamldep src/.test.eobjs/lexer1.ml.d
       ocamllex src/lexer2.ml

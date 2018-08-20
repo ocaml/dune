@@ -1,5 +1,6 @@
 open Import
 open! No_io
+open! Build.O
 
 module SC = Super_context
 
@@ -108,18 +109,22 @@ module Run (P : PARAMS) : sig end = struct
      [Hidden_targets] is for targets that are *not* command line arguments.  *)
 
   type args =
-    unit Arg_spec.t list
+    string list Arg_spec.t list
 
   (* [menhir args] generates a Menhir command line (a build action). *)
 
-  let menhir (args : args) : (unit, Action.t) Build.t =
+  let menhir (args : args) : (string list, Action.t) Build.t =
     Build.run ~dir menhir_binary args
 
   let rule : (unit, Action.t) Build.t -> unit =
     SC.add_rule sctx ~mode:stanza.mode ~loc:stanza.loc
 
-  let rule_menhir args =
-    rule (menhir args)
+  let expand_flags flags =
+    Super_context.expand_and_eval_set sctx
+      ~scope:(Compilation_context.scope cctx)
+      ~dir
+      ~standard:(Build.return [])
+      flags
 
   (* ------------------------------------------------------------------------ *)
 
@@ -149,19 +154,21 @@ module Run (P : PARAMS) : sig end = struct
 
   let () =
     List.iter stanzas ~f:(fun (stanza : stanza) ->
-      List.iter stanza.flags ~f:(fun flag ->
-        match flag with
-        | "--depend"
-        | "--raw-depend"
-        | "--infer"
-        | "--infer-write-query"
-        | "--infer-read-reply" ->
-            Loc.fail stanza.loc
-              "The flag %s must not be used in a menhir stanza."
-              flag
-        | _ ->
-            ()
-      )
+      Ordered_set_lang.Unexpanded.fold_strings stanza.flags ~init:()
+        ~f:(fun _pos sw () ->
+          match String_with_vars.text_only sw with
+          | None -> ()
+          | Some text ->
+            if List.mem text
+                 ~set:[ "--depend"
+                      ; "--raw-depend"
+                      ; "--infer"
+                      ; "--infer-write-query"
+                      ; "--infer-read-reply"
+                      ] then
+              Loc.fail (String_with_vars.loc sw)
+                "The flag %s must not be used in a menhir stanza." text
+        )
     )
 
   (* ------------------------------------------------------------------------ *)
@@ -172,14 +179,20 @@ module Run (P : PARAMS) : sig end = struct
 
   let process3 base (stanza : stanza) : unit =
 
+    let expanded_flags = expand_flags stanza.flags in
+
     (* 1. A first invocation of Menhir creates a mock [.ml] file. *)
 
-    rule_menhir
-      [ As stanza.flags
-      ; Deps (sources stanza.modules)
-      ; As [ "--base" ; base ]
-      ; A "--infer-write-query"; Target (mock_ml base)
-      ];
+    rule (
+      expanded_flags
+      >>>
+      menhir
+        [ Dyn (fun flags -> As flags)
+        ; Deps (sources stanza.modules)
+        ; As [ "--base" ; base ]
+        ; A "--infer-write-query"; Target (mock_ml base)
+        ]
+    );
 
     (* 2. The OCaml compiler performs type inference. *)
 
@@ -210,13 +223,17 @@ module Run (P : PARAMS) : sig end = struct
 
     (* 3. A second invocation of Menhir reads the inferred [.mli] file. *)
 
-    rule_menhir
-      [ As stanza.flags
-      ; Deps (sources stanza.modules)
-      ; As [ "--base" ; base ]
-      ; A "--infer-read-reply"; Dep (inferred_mli base)
-      ; Hidden_targets (targets base)
-      ]
+    rule (
+      expanded_flags
+      >>>
+      menhir
+        [ Dyn (fun flags -> As flags)
+        ; Deps (sources stanza.modules)
+        ; As [ "--base" ; base ]
+        ; A "--infer-read-reply"; Dep (inferred_mli base)
+        ; Hidden_targets (targets base)
+        ]
+    )
 
   (* ------------------------------------------------------------------------ *)
 
@@ -224,12 +241,17 @@ module Run (P : PARAMS) : sig end = struct
      This is a simpler one-step process where Menhir is invoked directly. *)
 
   let process1 base (stanza : stanza) : unit =
-    rule_menhir
-      [ As stanza.flags
-      ; Deps (sources stanza.modules)
-      ; As [ "--base" ; base ]
-      ; Hidden_targets (targets base)
-      ]
+    let expanded_flags = expand_flags stanza.flags in
+    rule (
+      expanded_flags
+      >>>
+      menhir
+        [ Dyn (fun flags -> As flags)
+        ; Deps (sources stanza.modules)
+        ; As [ "--base" ; base ]
+        ; Hidden_targets (targets base)
+        ]
+    )
 
   (* ------------------------------------------------------------------------ *)
 
@@ -242,7 +264,16 @@ module Run (P : PARAMS) : sig end = struct
   let process (stanza : stanza) : unit =
     let base = Option.value_exn stanza.merge_into in
     let ocaml_type_inference_disabled =
-      List.mem "--only-tokens" ~set:stanza.flags
+      try
+        Ordered_set_lang.Unexpanded.fold_strings stanza.flags ~init:false
+          ~f:(fun pos sw acc ->
+            if pos = Pos
+               && String_with_vars.text_only sw = Some "--only-tokens" then
+              raise Exit
+            else
+              acc)
+      with Exit ->
+        true
     in
     if ocaml_type_inference_disabled then
       process1 base stanza

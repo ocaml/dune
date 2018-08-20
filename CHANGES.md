@@ -11,6 +11,9 @@ next
 
 - Display actual stanza when package is ambiguous (#1126, fix #1123, @emillon)
 
+- Add `dune unstable-fmt` to format `dune` files. The interface and syntax are
+  still subject to change, so use with caution. (#1130, fix #940, @emillon)
+
 1.1.1 (08/08/2018)
 ------------------
 

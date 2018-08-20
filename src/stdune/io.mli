@@ -11,6 +11,7 @@ val with_file_out : ?binary:bool (* default true *) -> Path.t -> f:(out_channel 
 
 val with_lexbuf_from_file : Path.t -> f:(Lexing.lexbuf -> 'a) -> 'a
 
+val input_lines : in_channel -> string list
 val lines_of_file : Path.t -> string list
 
 val read_file : ?binary:bool -> Path.t -> string

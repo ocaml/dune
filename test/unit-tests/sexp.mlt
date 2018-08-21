@@ -1,6 +1,6 @@
 (* -*- tuareg -*- *)
 open Stdune;;
-open Sexp.Of_sexp;;
+open Dsexp.Of_sexp;;
 
 let print_loc ppf (_ : Sexp.Loc.t) = Format.pp_print_string ppf "<loc>";;
 #install_printer print_loc;;

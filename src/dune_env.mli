@@ -18,7 +18,7 @@ module Stanza : sig
     ; rules : (pattern * config) list
     }
 
-  val t : t Sexp.Of_sexp.t
+  val t : t Dsexp.Of_sexp.t
 end
 
 type stanza +=

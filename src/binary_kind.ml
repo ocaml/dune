@@ -6,7 +6,7 @@ type t =
   | Shared_object
 
 let t =
-  let open Sexp.Of_sexp in
+  let open Dsexp.Of_sexp in
   enum
     [ "exe"           , Exe
     ; "object"        , Object

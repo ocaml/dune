@@ -122,7 +122,7 @@ module Context = struct
         (* jbuild-workspace files *)
         (peek_exn >>= function
          | List (_, List _ :: _) ->
-           Sexp.Of_sexp.record (Opam.t ~profile ~x) >>| fun x -> Opam x
+           Dsexp.Of_sexp.record (Opam.t ~profile ~x) >>| fun x -> Opam x
          | _ -> t ~profile ~x)
       ~dune:(t ~profile ~x)
 

@@ -31,7 +31,7 @@ include Action_intf.Helpers
   with type string  := string
   with type t       := t
 
-val t : t Sexp.Of_sexp.t
+val t : t Dsexp.Of_sexp.t
 
 module For_shell : sig
   include Action_intf.Ast
@@ -39,7 +39,7 @@ module For_shell : sig
     with type path    := string
     with type string  := string
 
-  val sexp_of_t : t Sexp.To_sexp.t
+  val sexp_of_t : t Dsexp.To_sexp.t
 end
 
 (** Convert the action to a format suitable for printing *)

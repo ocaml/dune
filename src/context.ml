@@ -452,7 +452,7 @@ let create_for_opam ?root ~env ~env_nodes ~targets ~profile ~switch ~name
     >>= fun s ->
     let vars =
       Usexp.parse_string ~fname:"<opam output>" ~mode:Single s
-      |> Sexp.Of_sexp.(parse (list (pair string string)) Univ_map.empty)
+      |> Dsexp.Of_sexp.(parse (list (pair string string)) Univ_map.empty)
       |> Env.Map.of_list_multi
       |> Env.Map.mapi ~f:(fun var values ->
         match List.rev values with

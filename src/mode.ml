@@ -5,7 +5,7 @@ type t = Byte | Native
 let all = [Byte; Native]
 
 let t =
-  let open Sexp.Of_sexp in
+  let open Dsexp.Of_sexp in
   enum
     [ "byte"   , Byte
     ; "native" , Native
@@ -73,7 +73,7 @@ module Dict = struct
       ; native = List.mem Native ~set:l
       }
 
-    let t = Sexp.Of_sexp.(map (list t) ~f:of_list)
+    let t = Dsexp.Of_sexp.(map (list t) ~f:of_list)
 
     let is_empty t = not (t.byte || t.native)
 

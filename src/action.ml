@@ -1,5 +1,5 @@
 open Import
-open Sexp.Of_sexp
+open Dsexp.Of_sexp
 
 let ignore_loc k ~loc:_ = k
 
@@ -27,7 +27,7 @@ struct
 
   let t =
     let path = Path.t and string = String.t in
-    Sexp.Of_sexp.fix (fun t ->
+    Dsexp.Of_sexp.fix (fun t ->
       sum
         [ "run",
           (let%map prog = Program.t
@@ -268,7 +268,7 @@ module Prog = struct
 
   type t = (Path.t, Not_found.t) result
 
-  let t : t Sexp.Of_sexp.t = Sexp.Of_sexp.map Path.t ~f:Result.ok
+  let t : t Dsexp.Of_sexp.t = Dsexp.Of_sexp.map Path.t ~f:Result.ok
 
   let sexp_of_t = function
     | Ok s -> Path.sexp_of_t s
@@ -283,7 +283,7 @@ module rec Ast : Ast = Ast
 
 module String_with_sexp = struct
   type t = string
-  let t = Sexp.Of_sexp.string
+  let t = Dsexp.Of_sexp.string
   let sexp_of_t = Sexp.To_sexp.string
 end
 

@@ -10,14 +10,14 @@ module Dune_file = struct
       | _ -> assert false
 
     let lexer = function
-      | Dune   -> Sexp.Lexer.token
-      | Jbuild -> Sexp.Lexer.jbuild_token
+      | Dune   -> Dsexp.Lexer.token
+      | Jbuild -> Dsexp.Lexer.jbuild_token
   end
 
   module Plain = struct
     type t =
       { path          : Path.t
-      ; mutable sexps : Sexp.Ast.t list
+      ; mutable sexps : Dsexp.Ast.t list
       }
   end
 
@@ -39,7 +39,7 @@ module Dune_file = struct
 
   let extract_ignored_subdirs =
     let stanza =
-      let open Sexp.Of_sexp in
+      let open Dsexp.Of_sexp in
       let sub_dir =
         plain_string (fun ~loc dn ->
           if Filename.dirname dn <> Filename.current_dir_name ||
@@ -58,9 +58,9 @@ module Dune_file = struct
     fun sexps ->
       let ignored_subdirs, sexps =
         List.partition_map sexps ~f:(fun sexp ->
-          match (sexp : Sexp.Ast.t) with
+          match (sexp : Dsexp.Ast.t) with
           | List (_, (Atom (_, A "ignored_subdirs") :: _)) ->
-            Left (Sexp.Of_sexp.parse stanza Univ_map.empty sexp)
+            Left (Dsexp.Of_sexp.parse stanza Univ_map.empty sexp)
           | _ -> Right sexp)
       in
       let ignored_subdirs =

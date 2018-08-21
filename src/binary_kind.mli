@@ -7,7 +7,7 @@ type t =
   | Object
   | Shared_object
 
-val t : t Sexp.Of_sexp.t
+val t : t Dsexp.Of_sexp.t
 
 val sexp_of_t : t Sexp.To_sexp.t
 

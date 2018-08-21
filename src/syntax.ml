@@ -18,8 +18,8 @@ module Version = struct
 
   let sexp_of_t t = Sexp.unsafe_atom_of_string (to_string t)
 
-  let t : t Sexp.Of_sexp.t =
-    let open Sexp.Of_sexp in
+  let t : t Dsexp.Of_sexp.t =
+    let open Dsexp.Of_sexp in
     raw >>| function
     | Atom (loc, A s) -> begin
         try
@@ -123,7 +123,7 @@ let greatest_supported_version t =
 
 let key t = t.key
 
-open Sexp.Of_sexp
+open Dsexp.Of_sexp
 
 let set t ver parser =
   set t.key ver parser

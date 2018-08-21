@@ -19,7 +19,7 @@ end
 type 'ast generic =
   { ast : 'ast
   ; loc : Loc.t option
-  ; context : Univ_map.t (* Parsing context for Sexp.Of_sexp.parse *)
+  ; context : Univ_map.t (* Parsing context for Dsexp.Of_sexp.parse *)
   }
 
 type ast_expanded = (Loc.t * string, Ast.expanded) Ast.t
@@ -235,14 +235,14 @@ let field ?(default=standard) ?check name =
   let t =
     match check with
     | None -> t
-    | Some x -> Sexp.Of_sexp.(>>>) x t
+    | Some x -> Dsexp.Of_sexp.(>>>) x t
   in
-  Sexp.Of_sexp.field name t ~default
+  Dsexp.Of_sexp.field name t ~default
 
 module Unexpanded = struct
   type ast = (String_with_vars.t, Ast.unexpanded) Ast.t
   type t = ast generic
-  let t : t Sexp.Of_sexp.t =
+  let t : t Dsexp.Of_sexp.t =
     let open Stanza.Of_sexp in
     let%map context = get_all
     and (loc, ast) =
@@ -275,9 +275,9 @@ module Unexpanded = struct
     let t =
       match check with
       | None -> t
-      | Some x -> Sexp.Of_sexp.(>>>) x t
+      | Some x -> Dsexp.Of_sexp.(>>>) x t
     in
-    Sexp.Of_sexp.field name t ~default
+    Dsexp.Of_sexp.field name t ~default
 
   let files t ~f =
     let rec loop acc (ast : ast) =

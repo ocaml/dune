@@ -1275,7 +1275,7 @@ let update_universe t =
   Utils.Cached_digest.remove universe_file;
   let n =
     if Path.exists universe_file then
-      Sexp.Of_sexp.(parse int) Univ_map.empty
+      Dsexp.Of_sexp.(parse int) Univ_map.empty
         (Io.Dsexp.load ~mode:Single universe_file) + 1
     else
       0

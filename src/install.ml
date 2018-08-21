@@ -59,7 +59,7 @@ module Section = struct
     | _             -> None
 
   let t =
-    let open Sexp.Of_sexp in
+    let open Dsexp.Of_sexp in
     enum
       [ "lib"          , Lib
       ; "lib_root"     , Lib_root

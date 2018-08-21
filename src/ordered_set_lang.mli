@@ -4,7 +4,7 @@
 open Import
 
 type t
-val t : t Sexp.Of_sexp.t
+val t : t Dsexp.Of_sexp.t
 
 (** Return the location of the set. [loc standard] returns [None] *)
 val loc : t -> Loc.t option
@@ -68,9 +68,9 @@ val is_standard : t -> bool
 
 val field
   :  ?default:t
-  -> ?check:unit Sexp.Of_sexp.t
+  -> ?check:unit Dsexp.Of_sexp.t
   -> string
-  -> t Sexp.Of_sexp.fields_parser
+  -> t Dsexp.Of_sexp.fields_parser
 
 module Unexpanded : sig
   type expanded = t
@@ -81,9 +81,9 @@ module Unexpanded : sig
 
   val field
     :  ?default:t
-    -> ?check:unit Sexp.Of_sexp.t
+    -> ?check:unit Dsexp.Of_sexp.t
     -> string
-    -> t Sexp.Of_sexp.fields_parser
+    -> t Dsexp.Of_sexp.fields_parser
 
   val has_special_forms : t -> bool
 
@@ -91,7 +91,7 @@ module Unexpanded : sig
   val files
     : t
     -> f:(String_with_vars.t -> Path.t)
-    -> Sexp.syntax * Path.Set.t
+    -> Dsexp.syntax * Path.Set.t
 
   (** Expand [t] using with the given file contents. [file_contents] is a map from
       filenames to their parsed contents. Every [(:include fn)] in [t] is replaced by
@@ -99,7 +99,7 @@ module Unexpanded : sig
   val expand
     :  t
     -> dir:Path.t
-    -> files_contents:Sexp.Ast.t Path.Map.t
+    -> files_contents:Dsexp.Ast.t Path.Map.t
     -> f:(String_with_vars.t -> Value.t list)
     -> expanded
 

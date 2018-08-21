@@ -32,7 +32,7 @@ module Display : sig
     | Verbose  (** Display all commands fully     *)
     | Quiet    (** Only display errors            *)
 
-  val t : t Sexp.Of_sexp.t
+  val t : t Dsexp.Of_sexp.t
   val all : (string * t) list
 end
 
@@ -58,7 +58,7 @@ include S with type 'a field = 'a
 
 module Partial : S with type 'a field := 'a option
 
-val t : t Sexp.Of_sexp.t
+val t : t Dsexp.Of_sexp.t
 
 val merge : t -> Partial.t -> t
 

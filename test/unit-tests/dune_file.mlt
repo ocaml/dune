@@ -9,7 +9,7 @@ let sexp_pp = Sexp.pp Dune;;
 
 (* Dune_file.Executables.Link_mode.t *)
 let test s =
-  Sexp.Of_sexp.parse Dune_file.Executables.Link_mode.t Univ_map.empty
+  Dsexp.Of_sexp.parse Dune_file.Executables.Link_mode.t Univ_map.empty
     (Sexp.parse_string ~fname:"" ~mode:Sexp.Parser.Mode.Single s)
 [%%expect{|
 val sexp_pp : Format.formatter -> Usexp.t -> unit = <fun>

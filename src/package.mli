@@ -13,7 +13,7 @@ module Name : sig
 
   include Interned.S with type t := t
 
-  val t : t Sexp.Of_sexp.t
+  val t : t Dsexp.Of_sexp.t
 
   module Infix : Comparable.OPS with type t = t
 end

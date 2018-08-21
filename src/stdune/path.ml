@@ -34,10 +34,10 @@ let explode_path =
 module External : sig
   type t
 
+  include Dsexp.Sexpable with type t := t
+
   val compare : t -> t -> Ordering.t
   val compare_val : t -> t -> Ordering.t
-  val t : t Sexp.Of_sexp.t
-  val sexp_of_t : t Sexp.To_sexp.t
   val to_string : t -> string
   val of_string : string -> t
   val relative : t -> string -> t
@@ -72,9 +72,9 @@ end = struct
     make t
 
   let sexp_of_t t = Sexp.To_sexp.string (to_string t)
-  let t = Sexp.Of_sexp.plain_string (fun ~loc t ->
+  let t = Dsexp.Of_sexp.plain_string (fun ~loc t ->
     if Filename.is_relative t then
-      Sexp.Of_sexp.of_sexp_errorf loc "Absolute path expected"
+      Dsexp.Of_sexp.of_sexp_errorf loc "Absolute path expected"
     else
       of_string t)
 
@@ -130,8 +130,7 @@ end
 module Local : sig
   type t
 
-  val t : t Sexp.Of_sexp.t
-  val sexp_of_t : t Sexp.To_sexp.t
+  include Dsexp.Sexpable with type t := t
   val root : t
   val is_root : t -> bool
   val compare : t -> t -> Ordering.t
@@ -292,7 +291,7 @@ end = struct
       relative root s ?error_loc
 
   let t =
-    Sexp.Of_sexp.plain_string (fun ~loc:error_loc s ->
+    Dsexp.Of_sexp.plain_string (fun ~loc:error_loc s ->
       of_string s ~error_loc)
 
   let rec mkdir_p t =
@@ -608,7 +607,7 @@ let of_string ?error_loc s =
       make_local_path (Local.of_string s ?error_loc)
 
 let t =
-  let open Sexp.Of_sexp in
+  let open Dsexp.Of_sexp in
   if_list
     ~then_:
       (sum

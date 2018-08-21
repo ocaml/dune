@@ -44,7 +44,7 @@ let report_with_backtrace exn =
       in
       let pp ppf = Format.fprintf ppf "@{<error>Error@}: %s\n" msg in
       { p with loc = Some loc; pp }
-    | Sexp.Of_sexp.Of_sexp (loc, msg, hint') ->
+    | Dsexp.Of_sexp.Of_sexp (loc, msg, hint') ->
       let loc =
         { loc with
           start = { loc.start with pos_fname = !map_fname loc.start.pos_fname }
@@ -53,7 +53,7 @@ let report_with_backtrace exn =
       let pp ppf = Format.fprintf ppf "@{<error>Error@}: %s%s\n" msg
                      (match hint' with
                       | None -> ""
-                      | Some { Sexp.Of_sexp. on; candidates } ->
+                      | Some { Dsexp.Of_sexp. on; candidates } ->
                         hint on candidates)
       in
       { p with loc = Some loc; pp }

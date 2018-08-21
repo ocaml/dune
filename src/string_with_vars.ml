@@ -95,7 +95,7 @@ end = struct
 end
 
 let t =
-  let open Sexp.Of_sexp in
+  let open Dsexp.Of_sexp in
   let jbuild =
     raw >>| function
     | Template _ as t ->
@@ -104,14 +104,14 @@ let t =
         ]
     | Atom(loc, A s) -> Jbuild.parse s ~loc ~quoted:false
     | Quoted_string (loc, s) -> Jbuild.parse s ~loc ~quoted:true
-    | List (loc, _) -> Sexp.Of_sexp.of_sexp_error loc "Atom expected"
+    | List (loc, _) -> Dsexp.Of_sexp.of_sexp_error loc "Atom expected"
   in
   let dune =
     raw >>| function
     | Template t -> t
     | Atom(loc, A s) -> literal ~quoted:false ~loc s
     | Quoted_string (loc, s) -> literal ~quoted:true ~loc s
-    | List (loc, _) -> Sexp.Of_sexp.of_sexp_error loc "Unexpected list"
+    | List (loc, _) -> Dsexp.Of_sexp.of_sexp_error loc "Unexpected list"
   in
   let template_parser = Stanza.Of_sexp.switch_file_kind ~jbuild ~dune in
   let%map syntax_version = Syntax.get_exn Stanza.syntax
@@ -203,7 +203,7 @@ module Var = struct
 
   let to_string = string_of_var
 
-  let sexp_of_t t = Sexp.atom (to_string t)
+  let sexp_of_t t = Dsexp.atom (to_string t)
 
   let with_name t ~name =
     { t with name }

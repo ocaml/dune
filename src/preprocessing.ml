@@ -194,7 +194,7 @@ module Jbuild_driver = struct
       in
       Sexp.parse_string ~mode:Single ~fname:"<internal>" info
         ~lexer:Sexp.Lexer.jbuild_token
-      |> Sexp.Of_sexp.parse Driver.Info.parse parsing_context
+      |> Dsexp.Of_sexp.parse Driver.Info.parse parsing_context
     in
     (Pp.of_string name,
      { info

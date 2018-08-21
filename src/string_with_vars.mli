@@ -8,7 +8,7 @@ open Import
 type t
 (** A sequence of text and variables. *)
 
-val t : t Sexp.Of_sexp.t
+val t : t Dsexp.Of_sexp.t
 (** [t ast] takes an [ast] sexp and returns a string-with-vars.  This
     function distinguishes between unquoted variables — such as ${@} —
     and quoted variables — such as "${@}". *)

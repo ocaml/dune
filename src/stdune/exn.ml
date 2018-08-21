@@ -4,7 +4,7 @@ exception Code_error of Usexp.t
 
 exception Fatal_error of string
 
-exception Loc_error of Usexp.Loc.t * string
+exception Loc_error of Loc.t * string
 
 external raise         : exn -> _ = "%raise"
 external raise_notrace : exn -> _ = "%raise_notrace"

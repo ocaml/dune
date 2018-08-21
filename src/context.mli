@@ -122,6 +122,8 @@ type t =
   ; cmxs_magic_number       : string
   ; cmt_magic_number        : string
 
+  ; supports_shared_libraries : bool
+
   ; which_cache             : (string, Path.t option) Hashtbl.t
   }
 

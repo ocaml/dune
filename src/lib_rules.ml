@@ -196,7 +196,8 @@ module Gen (P : Install_rules.Params) = struct
     let ocamlmklib = ocamlmklib lib ~scope ~dir ~o_files in
     if modes.native &&
        modes.byte   &&
-       lib.dynlink
+       lib.dynlink  &&
+       ctx.supports_shared_libraries
     then begin
       (* If we build for both modes and support dynlink, use a
          single invocation to build both the static and dynamic
@@ -340,7 +341,7 @@ module Gen (P : Install_rules.Params) = struct
 
     let dep_graphs = Ocamldep.rules cctx in
 
-    let dynlink = lib.dynlink in
+    let dynlink = lib.dynlink && ctx.supports_shared_libraries in
     let js_of_ocaml = lib.buildable.js_of_ocaml in
     Module_compilation.build_modules cctx ~js_of_ocaml ~dynlink ~dep_graphs;
 

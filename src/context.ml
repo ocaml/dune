@@ -81,6 +81,7 @@ type t =
   ; ast_intf_magic_number   : string
   ; cmxs_magic_number       : string
   ; cmt_magic_number        : string
+  ; supports_shared_libraries : bool
   ; which_cache             : (string, Path.t option) Hashtbl.t
   }
 
@@ -105,12 +106,38 @@ let sexp_of_t t =
     ; "findlib_path", list path (Findlib.path t.findlib)
     ; "arch_sixtyfour", bool t.arch_sixtyfour
     ; "natdynlink_supported", bool t.natdynlink_supported
+    ; "supports_shared_libraries", bool t.supports_shared_libraries
     ; "opam_vars", string_hashtbl string t.opam_var_cache
     ; "ocaml_config", Ocaml_config.sexp_of_t t.ocaml_config
     ; "which", string_hashtbl (option path) t.which_cache
     ]
 
 let compare a b = compare a.name b.name
+
+(* Parse the [`ocamlc -where`/makefile_config] file *)
+module Makefile_config = struct
+  type t =
+    { supports_shared_libraries : bool
+    }
+
+  let load ~stdlib_dir =
+    let file = Path.relative stdlib_dir "Makefile.config" in
+    let lines = Io.lines_of_file file in
+    let vars =
+      List.filter_map lines ~f:(fun line ->
+        let line = String.trim line in
+        if line = "" || line.[0] = '#' then
+          None
+        else
+          String.lsplit2 line ~on:'=')
+      |> String.Map.of_list_reduce ~f:(fun _ x -> x)
+    in
+    { supports_shared_libraries =
+        (match String.Map.find vars "SUPPORTS_SHARED_LIBRARIES" with
+         | Some "false" -> false
+         | _ -> true)
+    }
+end
 
 let opam_config_var ~env ~cache var =
   match Hashtbl.find cache var with
@@ -340,6 +367,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     let version_string = Ocaml_config.version_string ocfg in
     let version        = Ocaml_version.of_ocaml_config ocfg in
     let arch_sixtyfour = Ocaml_config.word_size ocfg = 64 in
+    let makefile_config = Makefile_config.load ~stdlib_dir in
     Fiber.return
       { name
       ; implicit
@@ -403,6 +431,8 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       ; ast_intf_magic_number   = Ocaml_config.ast_intf_magic_number   ocfg
       ; cmxs_magic_number       = Ocaml_config.cmxs_magic_number       ocfg
       ; cmt_magic_number        = Ocaml_config.cmt_magic_number        ocfg
+
+      ; supports_shared_libraries = makefile_config.supports_shared_libraries
 
       ; which_cache
       }

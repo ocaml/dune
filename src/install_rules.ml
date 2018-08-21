@@ -178,7 +178,8 @@ module Gen(P : Params) = struct
         ]
     in
     let dlls  =
-      if_ (byte && Library.has_stubs lib && lib.dynlink)
+      if_ (byte && Library.has_stubs lib && lib.dynlink &&
+           ctx.supports_shared_libraries)
         [Library.dll ~dir lib ~ext_dll:ctx.ext_dll]
     in
     let execs =

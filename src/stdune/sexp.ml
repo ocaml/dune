@@ -110,14 +110,14 @@ module Of_sexp = struct
      - the first atom when parsing a constructor or a field
      - the universal map holding the user context
   *)
-  type 'kind context =
-    | Values : Loc.t * string option * Univ_map.t -> values context
-    | Fields : Loc.t * string option * Univ_map.t -> fields context
+  type ('kind, 'ctx) context =
+    | Values : Loc.t * string option * 'ctx -> (values, 'ctx) context
+    | Fields : Loc.t * string option * 'ctx -> (fields, 'ctx) context
 
-  type ('a, 'kind) parser =  'kind context -> 'kind -> 'a * 'kind
+  type ('a, 'kind, 'ctx) parser =  ('kind, 'ctx) context -> 'kind -> 'a * 'kind
 
-  type 'a t             = ('a, values) parser
-  type 'a fields_parser = ('a, fields) parser
+  type ('a, 'ctx) t             = ('a, values, 'ctx) parser
+  type ('a, 'ctx) fields_parser = ('a, fields, 'ctx) parser
 
   let return x _ctx state = (x, state)
   let (>>=) t f ctx state =
@@ -137,7 +137,7 @@ module Of_sexp = struct
     with exn ->
       f exn ctx state
 
-  let get_user_context : type k. k context -> Univ_map.t = function
+  let get_user_context : type k. (k, 'ctx) context -> 'ctx = function
     | Values (_, _, uc) -> uc
     | Fields (_, _, uc) -> uc
 

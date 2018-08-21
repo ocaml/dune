@@ -1485,18 +1485,19 @@ module Rule = struct
     }
 
   let ocamllex_jbuild =
-    enter
-      (if_list
-         ~then_:(
-           record
-             (let%map modules = field "modules" (list string)
-              and mode = Mode.field in
-              { modules; mode }))
-         ~else_:(
-           repeat string >>| fun modules ->
-           { modules
-           ; mode  = Standard
-           }))
+    peek_exn >>= function
+    | List (_, Atom (_, _) :: _) ->
+      enter (
+        repeat string >>| fun modules ->
+             { modules
+             ; mode  = Standard
+             }
+      )
+    | _ ->
+      record
+        (let%map modules = field "modules" (list string)
+         and mode = Mode.field in
+         { modules; mode })
 
   let ocamllex_dune =
     if_eos

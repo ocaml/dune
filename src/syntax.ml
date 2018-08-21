@@ -16,9 +16,11 @@ module Version = struct
 
   let to_string (a, b) = sprintf "%u.%u" a b
 
-  let sexp_of_t t = Sexp.unsafe_atom_of_string (to_string t)
+  let sexp_of_t t = Sexp.Atom (to_string t)
 
-  let t : t Dsexp.Of_sexp.t =
+  let dgen t = Dsexp.To_sexp.string (to_string t)
+
+  let dparse : t Dsexp.Of_sexp.t =
     let open Dsexp.Of_sexp in
     raw >>| function
     | Atom (loc, A s) -> begin
@@ -28,7 +30,7 @@ module Version = struct
           Loc.fail loc "Atom of the form NNN.NNN expected"
       end
     | sexp ->
-      of_sexp_error (Sexp.Ast.loc sexp) "Atom expected"
+      of_sexp_error (Dsexp.Ast.loc sexp) "Atom expected"
 
   let can_read
         ~parser_version:(parser_major, parser_minor)

@@ -89,11 +89,10 @@ let alias sctx ~dir ~scope (alias_conf : Alias_conf.t) =
       Blang.eval_bool blang ~dir ~f
   in
   let stamp =
-    let module S = Sexp.To_sexp in
-    Sexp.List
-      [ Sexp.unsafe_atom_of_string "user-alias"
-      ; Dune_file.Bindings.sexp_of_t Dune_file.Dep_conf.sexp_of_t alias_conf.deps
-      ; S.option Action.Unexpanded.sexp_of_t
+    Dsexp.List
+      [ Dsexp.unsafe_atom_of_string "user-alias"
+      ; Dune_file.Bindings.dgen Dune_file.Dep_conf.dgen alias_conf.deps
+      ; Dsexp.To_sexp.option Action.Unexpanded.dgen
           (Option.map alias_conf.action ~f:snd)
       ]
   in

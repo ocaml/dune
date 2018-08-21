@@ -77,7 +77,7 @@ module Parse = struct
   let with_include ~elt =
     generic ~elt ~inc:(
       sum [ ":include",
-            String_with_vars.t >>| fun s ->
+            String_with_vars.dparse >>| fun s ->
             Include s
           ])
 
@@ -89,7 +89,7 @@ module Parse = struct
 end
 
 
-let t =
+let dparse =
   let open Stanza.Of_sexp in
   let%map context = get_all
   and (loc, ast) =
@@ -232,39 +232,39 @@ let standard =
   }
 
 let field ?(default=standard) ?check name =
-  let t =
+  let dparse =
     match check with
-    | None -> t
-    | Some x -> Dsexp.Of_sexp.(>>>) x t
+    | None -> dparse
+    | Some x -> Dsexp.Of_sexp.(>>>) x dparse
   in
-  Dsexp.Of_sexp.field name t ~default
+  Dsexp.Of_sexp.field name dparse ~default
 
 module Unexpanded = struct
   type ast = (String_with_vars.t, Ast.unexpanded) Ast.t
   type t = ast generic
-  let t : t Dsexp.Of_sexp.t =
+  let dparse : t Dsexp.Of_sexp.t =
     let open Stanza.Of_sexp in
     let%map context = get_all
     and (loc, ast) =
       located (
         Parse.with_include
-          ~elt:(String_with_vars.t >>| fun s -> Ast.Element s))
+          ~elt:(String_with_vars.dparse >>| fun s -> Ast.Element s))
     in
     { ast
     ; loc = Some loc
     ; context
     }
 
-  let sexp_of_t t =
+  let dgen t =
     let open Ast in
-    let rec loop : ast -> Sexp.t = function
-      | Element s -> String_with_vars.sexp_of_t s
-      | Standard -> Sexp.atom ":standard"
+    let rec loop = function
+      | Element s -> String_with_vars.dgen s
+      | Standard -> Dsexp.atom ":standard"
       | Union l -> List (List.map l ~f:loop)
-      | Diff (a, b) -> List [loop a; Sexp.unsafe_atom_of_string "\\"; loop b]
+      | Diff (a, b) -> List [loop a; Dsexp.unsafe_atom_of_string "\\"; loop b]
       | Include fn ->
-        List [ Sexp.unsafe_atom_of_string ":include"
-             ; String_with_vars.sexp_of_t fn
+        List [ Dsexp.unsafe_atom_of_string ":include"
+             ; String_with_vars.dgen fn
              ]
     in
     loop t.ast
@@ -272,12 +272,12 @@ module Unexpanded = struct
   let standard = standard
 
   let field ?(default=standard) ?check name =
-    let t =
+    let dparse =
       match check with
-      | None -> t
-      | Some x -> Dsexp.Of_sexp.(>>>) x t
+      | None -> dparse
+      | Some x -> Dsexp.Of_sexp.(>>>) x dparse
     in
-    Dsexp.Of_sexp.field name t ~default
+    Dsexp.Of_sexp.field name dparse ~default
 
   let files t ~f =
     let rec loop acc (ast : ast) =
@@ -365,7 +365,7 @@ module Unexpanded = struct
         in
         let open Stanza.Of_sexp in
         parse
-          (Parse.without_include ~elt:(String_with_vars.t >>| f_elems))
+          (Parse.without_include ~elt:(String_with_vars.dparse >>| f_elems))
           context
           sexp
       | Union l -> Union (List.map l ~f:expand)

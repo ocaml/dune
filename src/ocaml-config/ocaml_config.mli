@@ -8,7 +8,7 @@ open Stdune
     contents of [Makefile.config]. *)
 type t
 
-val sexp_of_t : t -> Usexp.t
+val sexp_of_t : t Sexp.To_sexp.t
 
 module Prog_and_args : sig
   type t =
@@ -105,7 +105,8 @@ module Value : sig
     | Prog_and_args of Prog_and_args.t
 
   val to_string : t -> string
-  val sexp_of_t : t -> Usexp.t
+
+  val sexp_of_t : t Sexp.To_sexp.t
 end
 
 val to_list : t -> (string * Value.t) list

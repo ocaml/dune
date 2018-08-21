@@ -8,7 +8,7 @@ let syntax = Stanza.syntax
 let env_field =
   field_o "env"
     (Syntax.since syntax (1, 1) >>= fun () ->
-     Dune_env.Stanza.t)
+     Dune_env.Stanza.dparse)
 
 module Context = struct
   module Target = struct
@@ -224,7 +224,7 @@ let load ?x ?profile p =
         parse_contents lb first_line ~f:(fun _lang -> t ?x ?profile ()))
   | Jbuilder ->
     let sexp =
-      Io.Dsexp.load p ~mode:Many_as_one ~lexer:Sexp.Lexer.jbuild_token
+      Io.Dsexp.load p ~mode:Many_as_one ~lexer:Dsexp.Lexer.jbuild_token
     in
     parse
       (enter (t ?x ?profile ()))

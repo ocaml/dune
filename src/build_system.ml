@@ -1281,7 +1281,7 @@ let update_universe t =
       0
   in
   make_local_dirs t (Path.Set.singleton Path.build_dir);
-  Io.write_file universe_file (Sexp.to_string ~syntax:Dune (Sexp.To_sexp.int n))
+  Io.write_file universe_file (Dsexp.to_string ~syntax:Dune (Dsexp.To_sexp.int n))
 
 let do_build t ~request =
   entry_point t ~f:(fun () ->
@@ -1620,7 +1620,7 @@ module Alias = struct
 
   let add_action build_system t ~context ~loc ?(locks=[]) ~stamp action =
     let def = get_alias_def build_system t in
-    def.actions <- { stamp = Digest.string (Sexp.to_string ~syntax:Dune stamp)
+    def.actions <- { stamp = Digest.string (Dsexp.to_string ~syntax:Dune stamp)
                    ; action
                    ; locks
                    ; context

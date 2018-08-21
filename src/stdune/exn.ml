@@ -1,6 +1,6 @@
 type t = exn
 
-exception Code_error of Usexp.t
+exception Code_error of Sexp0.t
 
 exception Fatal_error of string
 
@@ -26,9 +26,9 @@ let protect ~f ~finally = protectx () ~f ~finally
 
 let code_error message vars =
   Code_error
-    (Usexp.List (Usexp.atom_or_quoted_string message
-                 :: List.map vars ~f:(fun (name, value) ->
-                   Usexp.List [Usexp.atom_or_quoted_string name; value])))
+    (Sexp0.List (Sexp0.Atom message
+                :: List.map vars ~f:(fun (name, value) ->
+                  Sexp0.List [Sexp0.Atom name; value])))
   |> raise
 
 include

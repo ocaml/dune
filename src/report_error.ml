@@ -57,9 +57,9 @@ let report_with_backtrace exn =
                         hint on candidates)
       in
       { p with loc = Some loc; pp }
-    | Sexp.Parse_error e ->
-      let loc = Sexp.Parse_error.loc     e in
-      let msg = Sexp.Parse_error.message e in
+    | Dsexp.Parse_error e ->
+      let loc = Dsexp.Parse_error.loc     e in
+      let msg = Dsexp.Parse_error.message e in
       let map_pos (pos : Lexing.position) =
         { pos with pos_fname = !map_fname pos.pos_fname }
       in
@@ -86,7 +86,7 @@ let report_with_backtrace exn =
           Format.fprintf ppf "@{<error>Internal error, please report upstream \
                               including the contents of _build/log.@}\n\
                               Description:%a\n"
-            Usexp.pp_quoted sexp
+            Sexp.pp sexp
       }
     | Unix.Unix_error (err, func, fname) ->
       { p with pp = fun ppf ->

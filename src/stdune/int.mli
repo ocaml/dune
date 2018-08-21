@@ -6,4 +6,6 @@ module Map : Map.S with type key = t
 
 val of_string_exn : string -> t
 
+val to_string : t -> string
+
 module Infix : Comparable.OPS with type t = t

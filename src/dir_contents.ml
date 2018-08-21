@@ -107,14 +107,14 @@ end = struct
            \n  %s\
            \n\
            \nThis will become an error in the future."
-          (let tag = Sexp.unsafe_atom_of_string
+          (let tag = Dsexp.unsafe_atom_of_string
                        "modules_without_implementation" in
            let modules =
              missing_intf_only
              |> uncapitalized
-             |> List.map ~f:Sexp.To_sexp.string
+             |> List.map ~f:Dsexp.To_sexp.string
            in
-           Sexp.to_string ~syntax:Dune (List (tag :: modules)))
+           Dsexp.to_string ~syntax:Dune (List (tag :: modules)))
       | Some loc ->
         let list_modules l =
           uncapitalized l

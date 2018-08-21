@@ -12,6 +12,8 @@ module Version : sig
 
   include Dsexp.Sexpable with type t := t
 
+  val sexp_of_t : t Sexp.To_sexp.t
+
   val to_string : t -> string
 
   (** Whether the parser can read the data or not *)

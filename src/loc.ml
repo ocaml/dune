@@ -2,15 +2,8 @@ open Import
 
 include Usexp.Loc
 
-(* TODO get rid of all this stuff once this parsing code moves to Usexp and
-   there will be no circular dependency *)
-let int n = Usexp.Atom (Usexp.Atom.of_int n)
-let string = Usexp.atom_or_quoted_string
-let record l =
-  let open Usexp in
-  List (List.map l ~f:(fun (n, v) -> List [Atom(Atom.of_string n); v]))
-
 let sexp_of_position_no_file (p : Lexing.position) =
+  let open Sexp.To_sexp in
   record
     [ "pos_lnum", int p.pos_lnum
     ; "pos_bol", int p.pos_bol
@@ -18,6 +11,7 @@ let sexp_of_position_no_file (p : Lexing.position) =
     ]
 
 let sexp_of_t t =
+  let open Sexp.To_sexp in
   record (* TODO handle when pos_fname differs *)
     [ "pos_fname", string t.start.pos_fname
     ; "start", sexp_of_position_no_file t.start

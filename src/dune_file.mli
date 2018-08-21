@@ -100,7 +100,9 @@ module Bindings : sig
 
   val singleton : 'a -> 'a t
 
-  val sexp_of_t : ('a -> Usexp.t) -> 'a t -> Usexp.t
+  val dgen : 'a Dsexp.To_sexp.t -> 'a t Dsexp.To_sexp.t
+
+  val sexp_of_t : 'a Sexp.To_sexp.t -> 'a t Sexp.To_sexp.t
 end
 
 module Dep_conf : sig
@@ -113,8 +115,8 @@ module Dep_conf : sig
     | Package of String_with_vars.t
     | Universe
 
-  val t : t Dsexp.Of_sexp.t
-  val sexp_of_t : t -> Dsexp.t
+  include Dsexp.Sexpable with type t := t
+  val sexp_of_t : t Sexp.To_sexp.t
 end
 
 module Buildable : sig
@@ -184,13 +186,13 @@ module Mode_conf : sig
     | Native
     | Best (** [Native] if available and [Byte] if not *)
 
-  val t : t Dsexp.Of_sexp.t
+  val dparse : t Dsexp.Of_sexp.t
   val compare : t -> t -> Ordering.t
   val pp : Format.formatter -> t -> unit
 
   module Set : sig
     include Set.S with type elt = t
-    val t : t Dsexp.Of_sexp.t
+    val dparse : t Dsexp.Of_sexp.t
 
     (** Both Byte and Native *)
     val default : t
@@ -260,8 +262,7 @@ module Executables : sig
       ; kind : Binary_kind.t
       }
 
-    val t : t Dsexp.Of_sexp.t
-    val sexp_of_t : t Dsexp.To_sexp.t
+    include Dsexp.Sexpable with type t := t
 
     val exe           : t
     val object_       : t

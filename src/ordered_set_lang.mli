@@ -4,7 +4,7 @@
 open Import
 
 type t
-val t : t Dsexp.Of_sexp.t
+val dparse : t Dsexp.Of_sexp.t
 
 (** Return the location of the set. [loc standard] returns [None] *)
 val loc : t -> Loc.t option

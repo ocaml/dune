@@ -94,13 +94,13 @@ end = struct
     }
 end
 
-let t =
+let dparse =
   let open Dsexp.Of_sexp in
   let jbuild =
     raw >>| function
     | Template _ as t ->
       Exn.code_error "Unexpected dune template from a jbuild file"
-        [ "t", Usexp.Ast.remove_locs t
+        [ "t", Dsexp.sexp_of_t (Dsexp.Ast.remove_locs t)
         ]
     | Atom(loc, A s) -> Jbuild.parse s ~loc ~quoted:false
     | Quoted_string (loc, s) -> Jbuild.parse s ~loc ~quoted:true
@@ -203,7 +203,7 @@ module Var = struct
 
   let to_string = string_of_var
 
-  let sexp_of_t t = Dsexp.atom (to_string t)
+  let sexp_of_t t = Sexp.To_sexp.string (to_string t)
 
   let with_name t ~name =
     { t with name }
@@ -284,7 +284,9 @@ let expand t ~mode ~dir ~f =
 
 let partial_expand t ~mode ~dir ~f = partial_expand t ~mode ~dir ~f
 
-let sexp_of_t t = Usexp.Template t.template
+let dgen { template; syntax_version = _ } = Usexp.Template template
+
+let sexp_of_t t = Dsexp.sexp_of_t (dgen t)
 
 let is_var { template; syntax_version = _ } ~name =
   match template.parts with

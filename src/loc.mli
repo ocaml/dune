@@ -1,3 +1,5 @@
+open Stdune
+
 type t = Usexp.Loc.t =
   { start : Lexing.position
   ; stop  : Lexing.position
@@ -5,7 +7,7 @@ type t = Usexp.Loc.t =
 
 val equal : t -> t -> bool
 
-val sexp_of_t : t -> Usexp.t
+val sexp_of_t : t Sexp.To_sexp.t
 
 val of_lexbuf : Lexing.lexbuf -> t
 

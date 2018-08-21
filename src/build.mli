@@ -95,7 +95,7 @@ val lines_of : Path.t -> ('a, string list) t
 val strings : Path.t -> ('a, string list) t
 
 (** Load an S-expression from a file *)
-val read_sexp : Path.t -> Usexp.syntax -> (unit, Sexp.Ast.t) t
+val read_sexp : Path.t -> Usexp.syntax -> (unit, Dsexp.Ast.t) t
 
 (** Evaluates to [true] if the file is present on the file system or is the target of a
     rule. *)

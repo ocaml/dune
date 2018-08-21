@@ -36,6 +36,8 @@ module External : sig
 
   include Dsexp.Sexpable with type t := t
 
+  val sexp_of_t : t Sexp.To_sexp.t
+
   val compare : t -> t -> Ordering.t
   val compare_val : t -> t -> Ordering.t
   val to_string : t -> string
@@ -72,7 +74,8 @@ end = struct
     make t
 
   let sexp_of_t t = Sexp.To_sexp.string (to_string t)
-  let t = Dsexp.Of_sexp.plain_string (fun ~loc t ->
+  let dgen t = Dsexp.To_sexp.string (to_string t)
+  let dparse = Dsexp.Of_sexp.plain_string (fun ~loc t ->
     if Filename.is_relative t then
       Dsexp.Of_sexp.of_sexp_errorf loc "Absolute path expected"
     else
@@ -131,6 +134,9 @@ module Local : sig
   type t
 
   include Dsexp.Sexpable with type t := t
+
+  val sexp_of_t : t Sexp.To_sexp.t
+
   val root : t
   val is_root : t -> bool
   val compare : t -> t -> Ordering.t
@@ -223,7 +229,7 @@ end = struct
     if not (Filename.is_relative path) then (
       Exn.code_error "Local.relative: received absolute path"
         [ "t", sexp_of_t t
-        ; "path", Usexp.atom_or_quoted_string path
+        ; "path", Sexp.To_sexp.string path
         ]
     );
     let rec loop t components =
@@ -290,7 +296,8 @@ end = struct
     | _ ->
       relative root s ?error_loc
 
-  let t =
+  let dgen t = Dsexp.To_sexp.string (to_string t)
+  let dparse =
     Dsexp.Of_sexp.plain_string (fun ~loc:error_loc s ->
       of_string s ~error_loc)
 
@@ -435,7 +442,7 @@ module Kind = struct
     | Local t -> Local.to_string t
     | External t -> External.to_string t
 
-  let sexp_of_t t = Sexp.atom_or_quoted_string (to_string t)
+  let sexp_of_t t = Sexp.To_sexp.string (to_string t)
 
   let of_string s =
     if Filename.is_relative s then
@@ -606,14 +613,14 @@ let of_string ?error_loc s =
     else
       make_local_path (Local.of_string s ?error_loc)
 
-let t =
+let dparse =
   let open Dsexp.Of_sexp in
   if_list
     ~then_:
       (sum
-         [ "In_build_dir"  , Local.t    >>| in_build_dir
-         ; "In_source_tree", Local.t    >>| in_source_tree
-         ; "External"      , External.t >>| external_
+         [ "In_build_dir"  , Local.dparse    >>| in_build_dir
+         ; "In_source_tree", Local.dparse    >>| in_source_tree
+         ; "External"      , External.dparse >>| external_
          ])
     ~else_:
       (* necessary for old build dirs *)
@@ -625,6 +632,13 @@ let sexp_of_t t =
   | In_build_dir s -> constr Local.sexp_of_t "In_build_dir" s
   | In_source_tree s -> constr Local.sexp_of_t "In_source_tree" s
   | External s -> constr External.sexp_of_t "External" s
+
+let dgen t =
+  let constr f x y = Dsexp.To_sexp.(pair string f) (x, y) in
+  match t with
+  | In_build_dir s -> constr Local.dgen "In_build_dir" s
+  | In_source_tree s -> constr Local.dgen "In_source_tree" s
+  | External s -> constr External.dgen "External" s
 
 let of_filename_relative_to_initial_cwd fn =
   external_ (
@@ -874,7 +888,7 @@ let insert_after_build_dir_exn =
     Exn.code_error
       "Path.insert_after_build_dir_exn"
       [ "path"  , sexp_of_t a
-      ; "insert", Sexp.unsafe_atom_of_string b
+      ; "insert", Sexp.To_sexp.string b
       ]
   in
   fun a b ->

@@ -4,6 +4,7 @@ module To_sexp = struct
   type nonrec 'a t = 'a -> t
   let unit () = List []
   let string = Usexp.atom_or_quoted_string
+  let atom = string
   let int n = Atom (Atom.of_int n)
   let float f = Atom (Atom.of_float f)
   let bool b = Atom (Atom.of_bool b)
@@ -604,6 +605,16 @@ end
 
 module type Sexpable = sig
   type t
-  val t : t Of_sexp.t
-  val sexp_of_t : t To_sexp.t
+  val dparse : t Of_sexp.t
+  val dgen : t To_sexp.t
 end
+
+let rec sexp_of_t = function
+  | Atom (A a) -> Sexp.Atom a
+  | List s -> List (List.map s ~f:sexp_of_t)
+  | Quoted_string s -> Sexp.Atom s
+  | Template t ->
+    List
+      [ Atom "template"
+      ; Atom (Usexp.Template.to_string ~syntax:Dune t)
+      ]

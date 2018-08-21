@@ -15,7 +15,7 @@ module Name = struct
 
   let pp fmt t = Format.pp_print_string fmt (to_string t)
 
-  let t = Dsexp.Of_sexp.(map string ~f:of_string)
+  let dparse = Dsexp.Of_sexp.(map string ~f:of_string)
 
   module Infix = Comparable.Operators(T)
 end

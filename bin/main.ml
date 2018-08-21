@@ -985,11 +985,11 @@ let rules =
        in
        Build_system.build_rules setup.build_system ~request ~recursive >>= fun rules ->
        let sexp_of_action action =
-         Action.for_shell action |> Action.For_shell.sexp_of_t
+         Action.for_shell action |> Action.For_shell.dgen
        in
        let print oc =
          let ppf = Format.formatter_of_out_channel oc in
-         Sexp.prepare_formatter ppf;
+         Dsexp.prepare_formatter ppf;
          Format.pp_open_vbox ppf 0;
          if makefile_syntax then begin
            List.iter rules ~f:(fun (rule : Build_system.Rule.t) ->
@@ -1000,25 +1000,25 @@ let rules =
                (fun ppf ->
                   Path.Set.iter rule.deps ~f:(fun dep ->
                     Format.fprintf ppf "@ %s" (Path.to_string dep)))
-               Sexp.pp_split_strings (sexp_of_action rule.action))
+               Dsexp.pp_split_strings (sexp_of_action rule.action))
          end else begin
            List.iter rules ~f:(fun (rule : Build_system.Rule.t) ->
              let sexp =
                let paths ps =
-                 Sexp.To_sexp.list Path.sexp_of_t (Path.Set.to_list ps)
+                 Dsexp.To_sexp.list Path.dgen (Path.Set.to_list ps)
                in
-               Sexp.To_sexp.record (
+               Dsexp.To_sexp.record (
                  List.concat
                    [ [ "deps"   , paths rule.deps
                      ; "targets", paths rule.targets ]
                    ; (match rule.context with
                       | None -> []
                       | Some c -> ["context",
-                                   Sexp.atom_or_quoted_string c.name])
+                                   Dsexp.atom_or_quoted_string c.name])
                    ; [ "action" , sexp_of_action rule.action ]
                    ])
              in
-             Format.fprintf ppf "%a@," Sexp.pp_split_strings sexp)
+             Format.fprintf ppf "%a@," Dsexp.pp_split_strings sexp)
          end;
          Format.pp_print_flush ppf ();
          Fiber.return ()
@@ -1472,7 +1472,7 @@ let printenv =
       Build_system.do_build setup.build_system ~request
       >>| fun l ->
       let pp ppf = Format.fprintf ppf "@[<v1>(@,@[<v>%a@]@]@,)"
-                     (Format.pp_print_list (Sexp.pp Dune)) in
+                     (Format.pp_print_list (Dsexp.pp Dune)) in
       match l with
       | [(_, env)] ->
         Format.printf "%a@." pp env

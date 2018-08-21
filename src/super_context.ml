@@ -166,7 +166,7 @@ module Pkg_version = struct
 
   module V = Vfile_kind.Make(struct
       type t = string option
-      let t = Sexp.To_sexp.(option string)
+      let dgen = Dsexp.To_sexp.(option string)
       let name = "Pkg_version"
     end)
 

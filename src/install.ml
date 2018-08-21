@@ -58,7 +58,7 @@ module Section = struct
     |"misc"         -> Some Misc
     | _             -> None
 
-  let t =
+  let dparse =
     let open Dsexp.Of_sexp in
     enum
       [ "lib"          , Lib

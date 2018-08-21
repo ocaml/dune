@@ -87,7 +87,7 @@ let common t = t.common
 let dump t =
   Build.fanout3 t.common t.specific.byte t.specific.native
   >>^ fun (common, byte, native) ->
-  List.map ~f:Sexp.To_sexp.(pair string (list string))
+  List.map ~f:Dsexp.To_sexp.(pair string (list string))
     [  "flags"         , common
     ; "ocamlc_flags"   , byte
     ; "ocamlopt_flags" , native

@@ -3,7 +3,7 @@ open Import
 let parse_sub_systems ~parsing_context sexps =
   List.filter_map sexps ~f:(fun sexp ->
     let name, ver, data =
-      Dsexp.Of_sexp.(parse (triple string (located Syntax.Version.t) raw)
+      Dsexp.Of_sexp.(parse (triple string (located Syntax.Version.dparse) raw)
                       parsing_context) sexp
     in
     match Sub_system_name.get name with
@@ -91,7 +91,7 @@ let gen ~(dune_version : Syntax.Version.t) confs =
     |> List.map ~f:(fun (name, (ver, conf)) ->
       let (module M) = Dune_file.Sub_system_info.get name in
       Dsexp.List [ Dsexp.atom (Sub_system_name.to_string name)
-                ; Syntax.Version.sexp_of_t ver
+                ; Syntax.Version.dgen ver
                 ; conf
                 ])
   in

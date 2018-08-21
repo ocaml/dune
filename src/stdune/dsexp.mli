@@ -252,6 +252,8 @@ end
 
 module type Sexpable = sig
   type t
-  val t : t Of_sexp.t
-  val sexp_of_t : t To_sexp.t
+  val dparse : t Of_sexp.t
+  val dgen : t To_sexp.t
 end
+
+val sexp_of_t : t Sexp.To_sexp.t

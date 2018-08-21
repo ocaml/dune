@@ -29,5 +29,5 @@ val copy_file : ?chmod:(int -> int) -> src:Path.t -> dst:Path.t -> unit -> unit
 val read_all : in_channel -> string
 
 module Dsexp : sig
-  val load : ?lexer:Usexp.Lexer.t -> Path.t -> mode:'a Sexp.Parser.Mode.t -> 'a
+  val load : ?lexer:Usexp.Lexer.t -> Path.t -> mode:'a Dsexp.Parser.Mode.t -> 'a
 end

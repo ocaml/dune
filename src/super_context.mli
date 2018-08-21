@@ -74,7 +74,7 @@ val ocaml_flags
   -> Ocaml_flags.t
 
 (** Dump a directory environment in a readable form *)
-val dump_env : t -> dir:Path.t -> (unit, Sexp.t list) Build.t
+val dump_env : t -> dir:Path.t -> (unit, Dsexp.t list) Build.t
 
 val find_scope_by_dir  : t -> Path.t              -> Scope.t
 val find_scope_by_name : t -> Dune_project.Name.t -> Scope.t
@@ -150,7 +150,7 @@ val add_alias_action
   -> Build_system.Alias.t
   -> loc:Loc.t option
   -> ?locks:Path.t list
-  -> stamp:Sexp.t
+  -> stamp:Dsexp.t
   -> (unit, Action.t) Build.t
   -> unit
 

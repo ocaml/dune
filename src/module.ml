@@ -8,7 +8,10 @@ module Name = struct
 
   include T
 
-  let t = Sexp.atom
+  let dparse = Dsexp.Of_sexp.string
+  let dgen = Dsexp.To_sexp.string
+
+  let sexp_of_t = Sexp.To_sexp.string
 
   let add_suffix = (^)
 

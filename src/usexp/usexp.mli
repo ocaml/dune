@@ -53,6 +53,8 @@ module Template : sig
     }
 
   val string_of_var : var -> string
+
+  val to_string : t -> syntax:syntax -> string
 end
 
 (** The S-expression type *)

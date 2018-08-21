@@ -13,7 +13,7 @@ let parse_file path_opt =
       let contents = String.concat ~sep:"\n" lines in
       ("<stdin>", contents)
   in
-  Sexp.parse_string
+  Dsexp.parse_string
     ~fname
     ~mode:Usexp.Parser.Mode.Many
     contents
@@ -96,7 +96,7 @@ let pp_top_sexps fmt sexps =
       first := false
     else
       Format.pp_print_string fmt "\n";
-    pp_top_sexp fmt (Sexp.Ast.remove_locs sexp);
+    pp_top_sexp fmt (Dsexp.Ast.remove_locs sexp);
   )
 
 let with_output path_opt k =

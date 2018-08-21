@@ -11,7 +11,7 @@ module Kind = struct
   type t = Default | Opam of Opam.t
 
   let sexp_of_t : t -> Sexp.t = function
-    | Default -> Sexp.unsafe_atom_of_string "default"
+    | Default -> Sexp.To_sexp.string "default"
     | Opam o  ->
       Sexp.To_sexp.(record [ "root"  , string o.root
                            ; "switch", string o.switch

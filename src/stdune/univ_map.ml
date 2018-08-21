@@ -14,7 +14,7 @@ module Key = struct
     type 'a Witness.t += T : t Witness.t
     val id : int
     val name : string
-    val sexp_of_t : t -> Usexp.t
+    val sexp_of_t : t -> Sexp.t
   end
 
   type 'a t = (module T with type t = 'a)
@@ -80,12 +80,12 @@ let singleton key v = Int.Map.singleton (Key.id key) (Binding.T (key, v))
 let superpose = Int.Map.superpose
 
 let sexp_of_t (t : t) =
-  let open Usexp in
+  let open Sexp in
   List (
     Int.Map.to_list t
     |> List.map ~f:(fun (_, (Binding.T (key, v))) ->
       let (module K) = key in
       List
-        [ atom_or_quoted_string K.name
+        [ Atom K.name
         ; K.sexp_of_t v
         ]))

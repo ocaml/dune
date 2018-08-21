@@ -1,4 +1,6 @@
-include module type of struct include Usexp end with module Loc := Usexp.Loc
+type t = Sexp0.t =
+  | Atom of string
+  | List of t list
 
 module To_sexp : sig
   type sexp = t
@@ -8,3 +10,7 @@ module To_sexp : sig
 
   val unknown : _ t
 end with type sexp := t
+
+val to_string : t -> string
+
+val pp : t Fmt.t

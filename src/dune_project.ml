@@ -7,7 +7,7 @@ module Kind = struct
     | Jbuilder
 
   let sexp_of_t t =
-    Dsexp.atom_or_quoted_string
+    Sexp.Atom
       (match t with
        | Dune -> "dune"
        | Jbuilder -> "jbuilder")
@@ -22,8 +22,8 @@ module Name : sig
 
   val to_string_hum : t -> string
 
-  val named_of_sexp : t Dsexp.Of_sexp.t
-  val sexp_of_t : t Dsexp.To_sexp.t
+  val dparse : t Dsexp.Of_sexp.t
+  val sexp_of_t : t Sexp.To_sexp.t
 
   val encode : t -> string
   val decode : string -> t
@@ -59,9 +59,9 @@ end = struct
     | Anonymous p -> sprintf "<anonymous %s>" (Path.to_string_maybe_quoted p)
 
   let sexp_of_t = function
-    | Named s -> Dsexp.To_sexp.string s
+    | Named s -> Sexp.To_sexp.string s
     | Anonymous p ->
-      List [ Dsexp.unsafe_atom_of_string "anonymous"
+      List [ Atom "anonymous"
            ; Path.sexp_of_t p
            ]
 
@@ -84,7 +84,7 @@ end = struct
     else
       None
 
-  let named_of_sexp =
+  let dparse =
     Dsexp.Of_sexp.plain_string (fun ~loc s ->
       if validate s then
         Named s
@@ -132,7 +132,7 @@ module Project_file = struct
     }
 
   let sexp_of_t { file; exists } =
-    Dsexp.To_sexp.(
+    Sexp.To_sexp.(
       record
         [ "file", Path.sexp_of_t file
         ; "exists", bool exists
@@ -278,10 +278,10 @@ let key =
   Univ_map.Key.create ~name:"dune-project"
     (fun { name; root; version; project_file; kind
          ; stanza_parser = _; packages = _ } ->
-      Dsexp.To_sexp.record
+      Sexp.To_sexp.record
         [ "name", Name.sexp_of_t name
         ; "root", Path.Local.sexp_of_t root
-        ; "version", Dsexp.To_sexp.(option string) version
+        ; "version", Sexp.To_sexp.(option string) version
         ; "project_file", Project_file.sexp_of_t project_file
         ; "kind", Kind.sexp_of_t kind
         ])
@@ -335,7 +335,7 @@ let default_name ~dir ~packages =
         name
 
 let name_field ~dir ~packages =
-    let%map name = field_o "name" Name.named_of_sexp in
+    let%map name = field_o "name" Name.dparse in
     match name with
     | Some x -> x
     | None   -> default_name ~dir ~packages
@@ -348,7 +348,7 @@ let parse ~dir ~lang ~packages ~file =
        multi_field "using"
          (let%map loc = loc
           and name = located string
-          and ver = located Syntax.Version.t
+          and ver = located Syntax.Version.dparse
           and parse_args = capture
           in
           (* We don't parse the arguments quite yet as we want to set

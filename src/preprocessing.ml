@@ -96,14 +96,14 @@ module Driver = struct
                  | Some t -> Ok t))
       }
 
-    let to_sexp t =
-      let open Sexp.To_sexp in
+    let dgen t =
+      let open Dsexp.To_sexp in
       let f x = string (Lib.name (Lazy.force x.lib)) in
       ((1, 0),
        record
-         [ "flags"            , Ordered_set_lang.Unexpanded.sexp_of_t
+         [ "flags"            , Ordered_set_lang.Unexpanded.dgen
                                   t.info.flags
-         ; "lint_flags"       , Ordered_set_lang.Unexpanded.sexp_of_t
+         ; "lint_flags"       , Ordered_set_lang.Unexpanded.dgen
                                   t.info.lint_flags
          ; "main"             , string t.info.main
          ; "replaces"         , list f (Result.ok_exn t.replaces)
@@ -192,8 +192,8 @@ module Jbuild_driver = struct
       let parsing_context =
         Univ_map.singleton (Syntax.key Stanza.syntax) (0, 0)
       in
-      Sexp.parse_string ~mode:Single ~fname:"<internal>" info
-        ~lexer:Sexp.Lexer.jbuild_token
+      Dsexp.parse_string ~mode:Single ~fname:"<internal>" info
+        ~lexer:Dsexp.Lexer.jbuild_token
       |> Dsexp.Of_sexp.parse Driver.Info.parse parsing_context
     in
     (Pp.of_string name,
@@ -462,9 +462,9 @@ let lint_module sctx ~dir ~dep_kind ~lint ~lib_name ~scope ~dir_kind =
     let alias = Build_system.Alias.lint ~dir in
     let add_alias fn build =
       SC.add_alias_action sctx alias build
-        ~stamp:(List [ Sexp.unsafe_atom_of_string "lint"
-                     ; Sexp.To_sexp.(option string) lib_name
-                     ; Path.sexp_of_t fn
+        ~stamp:(List [ Dsexp.unsafe_atom_of_string "lint"
+                     ; Dsexp.To_sexp.(option string) lib_name
+                     ; Path.dgen fn
                      ])
     in
     let lint =

@@ -16,9 +16,9 @@ module Dep_graph = struct
     | None ->
       Exn.code_error "Ocamldep.Dep_graph.deps_of"
         [ "dir", Path.sexp_of_t t.dir
-        ; "modules", Sexp.To_sexp.(list Module.Name.t)
+        ; "modules", Sexp.To_sexp.(list Module.Name.sexp_of_t)
                        (Module.Name.Map.keys t.per_module)
-        ; "module", Module.Name.t m.name
+        ; "module", Module.Name.sexp_of_t m.name
         ]
 
   let top_closed t modules =

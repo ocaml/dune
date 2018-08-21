@@ -22,7 +22,7 @@ module Gen(P : Params) = struct
       (Build.arr (fun () ->
          let dune_version = Option.value_exn (Lib.dune_version lib) in
          Format.asprintf "%a@."
-           (Sexp.pp (Stanza.File_kind.of_syntax dune_version))
+           (Dsexp.pp (Stanza.File_kind.of_syntax dune_version))
            (Lib.Sub_system.dump_config lib
             |> Installed_dune_file.gen ~dune_version))
        >>> Build.write_file_dyn

@@ -10,7 +10,7 @@ module Jbuild_version = struct
   type t =
     | V1
 
-  let t =
+  let dparse =
     enum
       [ "1", V1
       ]
@@ -53,7 +53,7 @@ module Lib_name : sig
 
   val validate : (Loc.t * result) -> wrapped:bool -> t
 
-  val t : (Loc.t * result) Dsexp.Of_sexp.t
+  val dparse : (Loc.t * result) Dsexp.Of_sexp.t
 end = struct
   type t = string
 
@@ -110,7 +110,7 @@ end = struct
         in
         loop false 0
 
-  let t = plain_string (fun ~loc s -> (loc, of_string s))
+  let dparse = plain_string (fun ~loc s -> (loc, of_string s))
 end
 
 let file =
@@ -210,9 +210,9 @@ module Pkg = struct
                  (hint name_s (Package.Name.Map.keys packages
                                |> List.map ~f:Package.Name.to_string)))
 
-  let t =
+  let dparse =
     let%map p = Dune_project.get_exn ()
-    and (loc, name) = located Package.Name.t in
+    and (loc, name) = located Package.Name.dparse in
     match resolve p name with
     | Ok    x -> x
     | Error e -> Loc.fail loc "%s" e
@@ -266,11 +266,11 @@ module Pps_and_flags = struct
       in
       (pps, List.concat flags)
 
-    let t = list item >>| split
+    let dparse = list item >>| split
   end
 
   module Dune_syntax = struct
-    let t =
+    let dparse =
       let%map l, flags =
         until_keyword "--"
           ~before:(plain_string (fun ~loc s -> (loc, s)))
@@ -286,10 +286,10 @@ module Pps_and_flags = struct
       (pps, more_flags @ Option.value flags ~default:[])
   end
 
-  let t =
+  let dparse =
     switch_file_kind
-      ~jbuild:Jbuild_syntax.t
-      ~dune:Dune_syntax.t
+      ~jbuild:Jbuild_syntax.dparse
+      ~dune:Dune_syntax.dparse
 end
 
 module Bindings = struct
@@ -344,17 +344,25 @@ module Bindings = struct
       in
       loop String.Set.empty [] l)
 
-  let t elem =
+  let dparse elem =
     switch_file_kind
       ~jbuild:(jbuild elem)
       ~dune:(dune elem)
 
-  let sexp_of_t sexp_of_a bindings =
+  let dgen dgen bindings =
     Dsexp.List (
+      List.map bindings ~f:(function
+        | Unnamed a -> dgen a
+        | Named (name, bindings) ->
+          Dsexp.List (Dsexp.atom (":" ^ name) :: List.map ~f:dgen bindings))
+    )
+
+  let sexp_of_t sexp_of_a bindings =
+    Sexp.List (
       List.map bindings ~f:(function
         | Unnamed a -> sexp_of_a a
         | Named (name, bindings) ->
-          Dsexp.List (Dsexp.atom (":" ^ name) :: List.map ~f:sexp_of_a bindings))
+          Sexp.List (Sexp.To_sexp.string (":" ^ name) :: List.map ~f:sexp_of_a bindings))
     )
 end
 
@@ -368,9 +376,9 @@ module Dep_conf = struct
     | Package of String_with_vars.t
     | Universe
 
-  let t =
-    let t =
-      let sw = String_with_vars.t in
+  let dparse =
+    let dparse =
+      let sw = String_with_vars.dparse in
       sum
         [ "file"       , (sw >>| fun x -> File x)
         ; "alias"      , (sw >>| fun x -> Alias x)
@@ -390,31 +398,33 @@ module Dep_conf = struct
         ]
     in
     if_list
-      ~then_:t
-      ~else_:(String_with_vars.t >>| fun x -> File x)
+      ~then_:dparse
+      ~else_:(String_with_vars.dparse >>| fun x -> File x)
 
   open Dsexp
-  let sexp_of_t = function
+  let dgen = function
     | File t ->
       List [ Dsexp.unsafe_atom_of_string "file"
-           ; String_with_vars.sexp_of_t t ]
+           ; String_with_vars.dgen t ]
     | Alias t ->
       List [ Dsexp.unsafe_atom_of_string "alias"
-           ; String_with_vars.sexp_of_t t ]
+           ; String_with_vars.dgen t ]
     | Alias_rec t ->
       List [ Dsexp.unsafe_atom_of_string "alias_rec"
-           ; String_with_vars.sexp_of_t t ]
+           ; String_with_vars.dgen t ]
     | Glob_files t ->
       List [ Dsexp.unsafe_atom_of_string "glob_files"
-           ; String_with_vars.sexp_of_t t ]
+           ; String_with_vars.dgen t ]
     | Source_tree t ->
       List [ Dsexp.unsafe_atom_of_string "files_recursively_in"
-           ; String_with_vars.sexp_of_t t ]
+           ; String_with_vars.dgen t ]
     | Package t ->
       List [ Dsexp.unsafe_atom_of_string "package"
-           ; String_with_vars.sexp_of_t t]
+           ; String_with_vars.dgen t]
     | Universe ->
       Dsexp.unsafe_atom_of_string "universe"
+
+  let sexp_of_t t = Dsexp.sexp_of_t (dgen t)
 end
 
 module Preprocess = struct
@@ -429,20 +439,20 @@ module Preprocess = struct
     | Action of Loc.t * Action.Unexpanded.t
     | Pps    of pps
 
-  let t =
+  let dparse =
     sum
       [ "no_preprocessing", return No_preprocessing
       ; "action",
-        (located Action.Unexpanded.t >>| fun (loc, x) ->
+        (located Action.Unexpanded.dparse >>| fun (loc, x) ->
          Action (loc, x))
       ; "pps",
         (let%map loc = loc
-         and pps, flags = Pps_and_flags.t in
+         and pps, flags = Pps_and_flags.dparse in
          Pps { loc; pps; flags; staged = false })
       ; "staged_pps",
         (let%map () = Syntax.since Stanza.syntax (1, 1)
          and loc = loc
-         and pps, flags = Pps_and_flags.t in
+         and pps, flags = Pps_and_flags.dparse in
          Pps { loc; pps; flags; staged = true })
       ]
 
@@ -464,16 +474,16 @@ module Blang = struct
     ; "<>", Neq
     ]
 
-  let t =
+  let dparse =
     let ops =
       List.map ops ~f:(fun (name, op) ->
         ( name
-        , (let%map x = String_with_vars.t
-           and y = String_with_vars.t
+        , (let%map x = String_with_vars.dparse
+           and y = String_with_vars.dparse
            in
            Compare (op, x, y))))
     in
-    let t =
+    let dparse =
       fix begin fun (t : String_with_vars.t Blang.t Dsexp.Of_sexp.t) ->
         if_list
           ~then_:(
@@ -481,19 +491,19 @@ module Blang = struct
             ; "and", repeat t >>| (fun x -> And x)
             ] @ ops
             |> sum)
-          ~else_:(String_with_vars.t >>| fun v -> Expr v)
+          ~else_:(String_with_vars.dparse >>| fun v -> Expr v)
       end
     in
     let%map () = Syntax.since Stanza.syntax (1, 1)
-    and t = t
+    and dparse = dparse
     in
-    t
+    dparse
 end
 
 module Per_module = struct
   include Per_item.Make(Module.Name)
 
-  let t ~default a =
+  let dparse ~default a =
     peek_exn >>= function
     | List (loc, Atom (_, A "per_module") :: _) ->
       sum [ "per_module",
@@ -517,7 +527,7 @@ end
 
 module Preprocess_map = struct
   type t = Preprocess.t Per_module.t
-  let t = Per_module.t Preprocess.t ~default:Preprocess.No_preprocessing
+  let dparse = Per_module.dparse Preprocess.dparse ~default:Preprocess.No_preprocessing
 
   let no_preprocessing = Per_module.for_all Preprocess.No_preprocessing
 
@@ -537,7 +547,7 @@ end
 module Lint = struct
   type t = Preprocess_map.t
 
-  let t = Preprocess_map.t
+  let dparse = Preprocess_map.dparse
 
   let default = Preprocess_map.default
   let no_lint = default
@@ -552,7 +562,7 @@ module Js_of_ocaml = struct
     ; javascript_files : string list
     }
 
-  let t =
+  let dparse =
     record
       (let%map flags = field_oslu "flags"
        and javascript_files = field "javascript_files" (list string) ~default:[]
@@ -617,7 +627,7 @@ module Lib_dep = struct
         in
         loop String.Set.empty String.Set.empty preds)
 
-  let t =
+  let dparse =
     if_list
       ~then_:(
         enter
@@ -649,9 +659,9 @@ module Lib_deps = struct
     | Optional
     | Forbidden
 
-  let t =
+  let dparse =
     let%map loc = loc
-    and t = repeat Lib_dep.t
+    and t = repeat Lib_dep.dparse
     in
     let add kind name acc =
       match String.Map.find acc name with
@@ -686,7 +696,7 @@ module Lib_deps = struct
       : kind String.Map.t);
     t
 
-  let t = parens_removed_in_dune t
+  let dparse = parens_removed_in_dune dparse
 
   let of_pps pps =
     List.map pps ~f:(fun pp -> Lib_dep.of_pp (Loc.none, pp))
@@ -720,22 +730,22 @@ module Buildable = struct
 
   let modules_field name = Ordered_set_lang.field name
 
-  let t =
+  let dparse =
     let%map loc = loc
     and preprocess =
-      field "preprocess" Preprocess_map.t ~default:Preprocess_map.default
+      field "preprocess" Preprocess_map.dparse ~default:Preprocess_map.default
     and preprocessor_deps =
-      field "preprocessor_deps" (list Dep_conf.t) ~default:[]
-    and lint = field "lint" Lint.t ~default:Lint.default
+      field "preprocessor_deps" (list Dep_conf.dparse) ~default:[]
+    and lint = field "lint" Lint.dparse ~default:Lint.default
     and modules = modules_field "modules"
     and modules_without_implementation =
       modules_field "modules_without_implementation"
-    and libraries = field "libraries" Lib_deps.t ~default:[]
+    and libraries = field "libraries" Lib_deps.dparse ~default:[]
     and flags = field_oslu "flags"
     and ocamlc_flags = field_oslu "ocamlc_flags"
     and ocamlopt_flags = field_oslu "ocamlopt_flags"
     and js_of_ocaml =
-      field "js_of_ocaml" Js_of_ocaml.t ~default:Js_of_ocaml.default
+      field "js_of_ocaml" Js_of_ocaml.dparse ~default:Js_of_ocaml.default
     and allow_overlapping_dependencies =
       field_b "allow_overlapping_dependencies"
     in
@@ -846,7 +856,7 @@ module Mode_conf = struct
   end
   include T
 
-  let t =
+  let dparse =
     enum
       [ "byte"  , Byte
       ; "native", Native
@@ -861,13 +871,13 @@ module Mode_conf = struct
   let pp fmt t =
     Format.pp_print_string fmt (to_string t)
 
-  let sexp_of_t t =
+  let dgen t =
     Dsexp.unsafe_atom_of_string (to_string t)
 
   module Set = struct
     include Set.Make(T)
 
-    let t = list t >>| of_list
+    let dparse = list dparse >>| of_list
 
     let default = of_list [Byte; Best]
 
@@ -886,7 +896,7 @@ module Library = struct
       | Ppx_deriver
       | Ppx_rewriter
 
-    let t =
+    let dparse =
       enum
         [ "normal"       , Normal
         ; "ppx_deriver"  , Ppx_deriver
@@ -920,11 +930,11 @@ module Library = struct
     ; dune_version             : Syntax.Version.t
     }
 
-  let t =
+  let dparse =
     record
-      (let%map buildable = Buildable.t
+      (let%map buildable = Buildable.dparse
        and loc = loc
-       and name = field_o "name" Lib_name.t
+       and name = field_o "name" Lib_name.dparse
        and public = Public_lib.public_name_field
        and synopsis = field_o "synopsis" string
        and install_c_headers =
@@ -939,8 +949,8 @@ module Library = struct
        and c_library_flags = field_oslu "c_library_flags"
        and virtual_deps =
          field "virtual_deps" (list (located string)) ~default:[]
-       and modes = field "modes" Mode_conf.Set.t ~default:Mode_conf.Set.default
-       and kind = field "kind" Kind.t ~default:Kind.Normal
+       and modes = field "modes" Mode_conf.Set.dparse ~default:Mode_conf.Set.default
+       and kind = field "kind" Kind.dparse ~default:Kind.Normal
        and wrapped = field "wrapped" bool ~default:true
        and optional = field_b "optional"
        and self_build_stubs_archive =
@@ -1047,9 +1057,9 @@ module Install_conf = struct
     ; package : Package.t
     }
 
-  let t =
+  let dparse =
     record
-      (let%map section = field "section" Install.Section.t
+      (let%map section = field "section" Install.Section.dparse
        and files = field "files" (list file)
        and package = Pkg.field "install"
        in
@@ -1107,16 +1117,16 @@ module Executables = struct
     let simple =
       Dsexp.Of_sexp.enum simple_representations
 
-    let t =
+    let dparse =
       if_list
         ~then_:
           (enter
-             (let%map mode = Mode_conf.t
-              and kind = Binary_kind.t in
+             (let%map mode = Mode_conf.dparse
+              and kind = Binary_kind.dparse in
               { mode; kind }))
         ~else_:simple
 
-    let simple_sexp_of_t link_mode =
+    let simple_dgen link_mode =
       let is_ok (_, candidate) =
         compare candidate link_mode = Eq
       in
@@ -1124,18 +1134,18 @@ module Executables = struct
       | Some (s, _) -> Some (Dsexp.unsafe_atom_of_string s)
       | None -> None
 
-    let sexp_of_t link_mode =
-      match simple_sexp_of_t link_mode with
+    let dgen link_mode =
+      match simple_dgen link_mode with
       | Some s -> s
       | None ->
         let { mode; kind } = link_mode in
-        Dsexp.To_sexp.pair Mode_conf.sexp_of_t Binary_kind.sexp_of_t (mode, kind)
+        Dsexp.To_sexp.pair Mode_conf.dgen Binary_kind.dgen (mode, kind)
 
     module Set = struct
       include Set.Make(T)
 
-      let t =
-        located (list t) >>| fun (loc, l) ->
+      let dparse =
+        located (list dparse) >>| fun (loc, l) ->
         match l with
         | [] -> of_sexp_errorf loc "No linking mode defined"
         | l ->
@@ -1175,12 +1185,12 @@ module Executables = struct
       s
 
   let common =
-    let%map buildable = Buildable.t
+    let%map buildable = Buildable.dparse
     and (_ : bool) = field "link_executables" ~default:true
                        (Syntax.deleted_in Stanza.syntax (1, 0) >>> bool)
-    and link_deps = field "link_deps" (list Dep_conf.t) ~default:[]
+    and link_deps = field "link_deps" (list Dep_conf.dparse) ~default:[]
     and link_flags = field_oslu "link_flags"
-    and modes = field "modes" Link_mode.Set.t ~default:Link_mode.Set.default
+    and modes = field "modes" Link_mode.Set.dparse ~default:Link_mode.Set.default
     and () = map_validate
                (field "inline_tests" (repeat junk >>| fun _ -> true) ~default:false)
                ~f:(function
@@ -1240,7 +1250,7 @@ module Executables = struct
         match Link_mode.Set.best_install_mode t.modes with
         | None when has_public_name ->
           let mode_to_string mode =
-            " - " ^ Dsexp.to_string ~syntax:Dune (Link_mode.sexp_of_t mode) in
+            " - " ^ Dsexp.to_string ~syntax:Dune (Link_mode.dgen mode) in
           let mode_strings = List.map ~f:mode_to_string Link_mode.installable_modes in
           Loc.fail
             buildable.loc
@@ -1358,7 +1368,7 @@ module Rule = struct
       | Not_a_rule_stanza
       | Ignore_source_files
 
-    let t =
+    let dparse =
       enum
         [ "standard"           , Standard
         ; "fallback"           , Fallback
@@ -1366,7 +1376,7 @@ module Rule = struct
         ; "promote-until-clean", Promote_but_delete_on_clean
         ]
 
-    let field = field "mode" t ~default:Standard
+    let field = field "mode" dparse ~default:Standard
   end
 
   type t =
@@ -1411,7 +1421,7 @@ module Rule = struct
       ]
 
   let short_form =
-    located Action.Unexpanded.t >>| fun (loc, action) ->
+    located Action.Unexpanded.dparse >>| fun (loc, action) ->
     { targets  = Infer
     ; deps     = Bindings.empty
     ; action   = (loc, action)
@@ -1422,10 +1432,11 @@ module Rule = struct
 
   let long_form =
     let%map loc = loc
-    and action = field "action" (located Action.Unexpanded.t)
+    and action = field "action" (located Action.Unexpanded.dparse)
     and targets = field "targets" (list file_in_current_dir)
-    and deps = field "deps" (Bindings.t Dep_conf.t) ~default:Bindings.empty
-    and locks = field "locks" (list String_with_vars.t) ~default:[]
+    and deps =
+      field "deps" (Bindings.dparse Dep_conf.dparse) ~default:Bindings.empty
+    and locks = field "locks" (list String_with_vars.dparse) ~default:[]
     and mode =
       map_validate
         (let%map fallback =
@@ -1433,7 +1444,7 @@ module Rule = struct
            ~check:(Syntax.renamed_in Stanza.syntax (1, 0)
                      ~to_:"(mode fallback)")
            "fallback"
-         and mode = field_o "mode" Mode.t
+         and mode = field_o "mode" Mode.dparse
          in
          (fallback, mode))
         ~f:(function
@@ -1475,7 +1486,7 @@ module Rule = struct
       of_sexp_errorf (Dsexp.Ast.loc sexp)
         "S-expression of the form (<atom> ...) expected"
 
-  let t =
+  let dparse =
     switch_file_kind
       ~jbuild:jbuild_syntax
       ~dune:dune_syntax
@@ -1582,7 +1593,7 @@ module Menhir = struct
       ~desc:"the menhir extension"
       [ (1, 0) ]
 
-  let t =
+  let dparse =
     record
       (let%map merge_into = field_o "merge_into" string
        and flags = field_oslu "flags"
@@ -1599,7 +1610,7 @@ module Menhir = struct
 
   let () =
     Dune_project.Extension.register syntax
-      (return [ "menhir", t >>| fun x -> [T x] ])
+      (return [ "menhir", dparse >>| fun x -> [T x] ])
 
   (* Syntax for jbuild files *)
   let jbuild_syntax =
@@ -1634,15 +1645,15 @@ module Alias_conf = struct
       else
         s)
 
-  let t =
+  let dparse =
     record
       (let%map name = field "name" alias_name
        and loc = loc
-       and package = field_o "package" Pkg.t
-       and action = field_o "action" (located Action.Unexpanded.t)
-       and locks = field "locks" (list String_with_vars.t) ~default:[]
-       and deps = field "deps" (Bindings.t Dep_conf.t) ~default:Bindings.empty
-       and enabled_if = field_o "enabled_if" Blang.t
+       and package = field_o "package" Pkg.dparse
+       and action = field_o "action" (located Action.Unexpanded.dparse)
+       and locks = field "locks" (list String_with_vars.dparse) ~default:[]
+       and deps = field "deps" (Bindings.dparse Dep_conf.dparse) ~default:Bindings.empty
+       and enabled_if = field_o "enabled_if" Blang.dparse
        in
        { name
        ; deps
@@ -1665,15 +1676,16 @@ module Tests = struct
 
   let gen_parse names =
     record
-      (let%map buildable = Buildable.t
+      (let%map buildable = Buildable.dparse
        and link_flags = field_oslu "link_flags"
        and names = names
-       and package = field_o "package" Pkg.t
-       and locks = field "locks" (list String_with_vars.t) ~default:[]
-       and modes = field "modes" Executables.Link_mode.Set.t
+       and package = field_o "package" Pkg.dparse
+       and locks = field "locks" (list String_with_vars.dparse) ~default:[]
+       and modes = field "modes" Executables.Link_mode.Set.dparse
                      ~default:Executables.Link_mode.Set.default
-       and deps = field "deps" (Bindings.t Dep_conf.t) ~default:Bindings.empty
-       and enabled_if = field_o "enabled_if" Blang.t
+       and deps =
+         field "deps" (Bindings.dparse Dep_conf.dparse) ~default:Bindings.empty
+       and enabled_if = field_o "enabled_if" Blang.dparse
        in
        { exes =
            { Executables.
@@ -1699,7 +1711,7 @@ module Copy_files = struct
            ; glob : String_with_vars.t
            }
 
-  let t = String_with_vars.t
+  let dparse = String_with_vars.dparse
 end
 
 module Documentation = struct
@@ -1709,7 +1721,7 @@ module Documentation = struct
     ; mld_files : Ordered_set_lang.t
     }
 
-  let t =
+  let dparse =
     record
       (let%map package = Pkg.field "documentation"
        and mld_files = Ordered_set_lang.field "mld_files"
@@ -1724,7 +1736,7 @@ end
 module Include_subdirs = struct
   type t = No | Unqualified
 
-  let t =
+  let dparse =
     enum
       [ "no", No
       ; "unqualified", Unqualified
@@ -1760,13 +1772,13 @@ module Stanzas = struct
 
   let stanzas : constructors =
     [ "library",
-      (let%map x = Library.t in
+      (let%map x = Library.dparse in
        [Library x])
     ; "executable" , Executables.single >>| execs
     ; "executables", Executables.multi  >>| execs
     ; "rule",
       (let%map loc = loc
-       and x = Rule.t in
+       and x = Rule.dparse in
        [Rule { x with loc }])
     ; "ocamllex",
       (let%map loc = loc
@@ -1777,27 +1789,27 @@ module Stanzas = struct
        and x = Rule.ocamlyacc in
        rules (Rule.ocamlyacc_to_rule loc x))
     ; "install",
-      (let%map x = Install_conf.t in
+      (let%map x = Install_conf.dparse in
        [Install x])
     ; "alias",
-      (let%map x = Alias_conf.t in
+      (let%map x = Alias_conf.dparse in
        [Alias x])
     ; "copy_files",
-      (let%map glob = Copy_files.t in
+      (let%map glob = Copy_files.dparse in
        [Copy_files {add_line_directive = false; glob}])
     ; "copy_files#",
-      (let%map glob = Copy_files.t in
+      (let%map glob = Copy_files.dparse in
        [Copy_files {add_line_directive = true; glob}])
     ; "include",
       (let%map loc = loc
        and fn = relative_file in
        [Include (loc, fn)])
     ; "documentation",
-      (let%map d = Documentation.t in
+      (let%map d = Documentation.dparse in
        [Documentation d])
     ; "jbuild_version",
       (let%map () = Syntax.deleted_in Stanza.syntax (1, 0)
-       and _ = Jbuild_version.t in
+       and _ = Jbuild_version.dparse in
        [])
     ; "tests",
       (let%map () = Syntax.since Stanza.syntax (1, 0)
@@ -1808,11 +1820,11 @@ module Stanzas = struct
        and t = Tests.single in
        [Tests t])
     ; "env",
-      (let%map x = Dune_env.Stanza.t in
+      (let%map x = Dune_env.Stanza.dparse in
        [Dune_env.T x])
     ; "include_subdirs",
       (let%map () = Syntax.since Stanza.syntax (1, 1)
-       and t = Include_subdirs.t
+       and t = Include_subdirs.dparse
        and loc = loc in
        [Include_subdirs (loc, t)])
     ]

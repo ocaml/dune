@@ -22,7 +22,7 @@ module Name : sig
   (** Convert to a string that is suitable for human readable messages *)
   val to_string_hum : t -> string
 
-  val sexp_of_t : t -> Dsexp.t
+  val sexp_of_t : t Sexp.To_sexp.t
 
   (** Convert to/from an encoded string that is suitable to use in filenames *)
   val encode : t -> string

@@ -28,6 +28,8 @@ type t
 
 include Dsexp.Sexpable with type t := t
 
+val sexp_of_t : t Sexp.To_sexp.t
+
 val compare : t -> t -> Ordering.t
 (** a directory is smaller than its descendants *)
 

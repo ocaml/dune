@@ -43,7 +43,7 @@ module Make(Data : sig type t end) = struct
       let name = Syntax.name syntax in
       if Hashtbl.mem langs name then
         Exn.code_error "Versioned_file.Lang.register: already registered"
-          [ "name", Dsexp.To_sexp.string name ];
+          [ "name", Sexp.To_sexp.string name ];
       Hashtbl.add langs name { syntax; data }
 
     let parse first_line : Instance.t =
@@ -53,7 +53,7 @@ module Make(Data : sig type t end) = struct
           } = first_line
       in
       let ver =
-        Dsexp.Of_sexp.parse Syntax.Version.t Univ_map.empty
+        Dsexp.Of_sexp.parse Syntax.Version.dparse Univ_map.empty
           (Atom (ver_loc, Dsexp.Atom.of_string ver)) in
       match Hashtbl.find langs name with
       | None ->

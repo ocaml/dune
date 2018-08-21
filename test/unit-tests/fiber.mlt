@@ -3,7 +3,7 @@ open Stdune;;
 open Fiber;;
 open Fiber.O;;
 
-let failing_fiber () =
+let failing_fiber () : unit Fiber.t =
   Fiber.yield ()
   >>= fun () ->
   raise Exit
@@ -28,7 +28,7 @@ let getter_fiber () =
 ;;
 
 [%%expect{|
-val failing_fiber : unit -> 'a t = <fun>
+val failing_fiber : unit -> unit t = <fun>
 val long_running_fiber : unit -> unit t = <fun>
 val ivar : unit Ivar.t = <abstr>
 val getter_fiber : unit -> unit t = <fun>
@@ -36,7 +36,7 @@ val getter_fiber : unit -> unit t = <fun>
 
 Fiber.run (Fiber.collect_errors failing_fiber)
 [%%expect{|
-- : ('a, exn list) Stdune.result = Error [Exit]
+- : (unit, exn list) Stdune.result = Error [Exit]
 |}]
 
 let success = ref false;;
@@ -65,13 +65,13 @@ Fiber.run (
 ;;
 
 [%%expect{|
-- : ('a, exn list) Stdune.result = Error [Exit]
+- : (unit, exn list) Stdune.result = Error [Exit]
 |}]
 
 Fiber.run (
   Fiber.collect_errors (fun () -> Fiber.with_error_handler failing_fiber ~on_error:ignore))
 [%%expect{|
-- : ('a, exn list) Stdune.result = Error []
+- : (unit, exn list) Stdune.result = Error []
 |}]
 
 Fiber.run (
@@ -85,7 +85,7 @@ Fiber.run (
   Fiber.collect_errors
     (fun () -> Fiber.fork_and_join failing_fiber long_running_fiber))
 [%%expect{|
-- : ('a * unit, exn list) Stdune.result = Error [Exit]
+- : (unit * unit, exn list) Stdune.result = Error [Exit]
 |}]
 
 Fiber.run (

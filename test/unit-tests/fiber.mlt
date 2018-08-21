@@ -21,17 +21,14 @@ let long_running_fiber () =
   loop 10
 ;;
 
-let ivar : unit Fiber.Ivar.t = Fiber.Ivar.create ();;
-
-let getter_fiber () =
-  Fiber.Ivar.read ivar
+let never_fiber () =
+  Fiber.never
 ;;
 
 [%%expect{|
 val failing_fiber : unit -> unit t = <fun>
 val long_running_fiber : unit -> unit t = <fun>
-val ivar : unit Ivar.t = <abstr>
-val getter_fiber : unit -> unit t = <fun>
+val never_fiber : unit -> 'a t = <fun>
 |}]
 
 Fiber.run (Fiber.collect_errors failing_fiber)
@@ -39,22 +36,14 @@ Fiber.run (Fiber.collect_errors failing_fiber)
 - : (unit, exn list) Stdune.result = Error [Exit]
 |}]
 
-let success = ref false;;
-
 try
-  Fiber.run (Fiber.collect_errors getter_fiber);
-  ()
+  Fiber.run (Fiber.collect_errors never_fiber);
+  Result.Error "should not reach here"
 with Fiber.Never ->
-  success := true
+  Result.ok ()
 ;;
 [%%expect{|
-val success : bool ref = {contents = false}
-- : unit = ()
-|}]
-
-!success;;
-[%%expect{|
-- : bool = true
+- : (unit, string) Stdune.result = Ok ()
 |}]
 
 Fiber.run (
@@ -63,7 +52,6 @@ Fiber.run (
     >>= fun () ->
     failing_fiber ())))
 ;;
-
 [%%expect{|
 - : (unit, exn list) Stdune.result = Error [Exit]
 |}]
@@ -104,7 +92,7 @@ let never_raised = ref false;;
 try
   Fiber.run (
     Fiber.fork_and_join
-      getter_fiber
+      never_fiber
       (fun () ->
          Fiber.collect_errors failing_fiber
          >>= fun _ ->
@@ -141,7 +129,7 @@ in
 try
   Fiber.run (
     Fiber.fork_and_join
-      getter_fiber
+      never_fiber
       (fun () ->
          Fiber.collect_errors forking_fiber
          >>= fun _ ->

@@ -853,7 +853,7 @@ module Library = struct
       let syntax =
         Syntax.create ~name:"variants"
           ~desc:"experimental variants feature"
-          [ (1, 0) ]
+          [ (0, 1) ]
       in
       Dune_project.Extension.register syntax (Sexp.Of_sexp.return []);
       syntax
@@ -921,11 +921,11 @@ module Library = struct
        and dune_version = Syntax.get_exn Stanza.syntax
        and virtual_modules =
          field_o "virtual_modules" (
-           Syntax.since Variants.syntax (1, 0)
+           Syntax.since Variants.syntax (0, 1)
            >>= fun () -> Ordered_set_lang.t)
        and implements =
          field_o "implements" (
-           Syntax.since Variants.syntax (1, 0)
+           Syntax.since Variants.syntax (0, 1)
            >>= fun () -> (located string))
        in
        let name =

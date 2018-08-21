@@ -7,7 +7,7 @@ type t =
   }
 
 let root t = t.root
-let name t = t.project.name
+let name t = Dune_project.name t.project
 let project t = t.project
 let libs t = t.db
 
@@ -53,14 +53,14 @@ module DB = struct
   let create ~projects ~context ~installed_libs ~ext_lib internal_libs =
     let projects_by_name =
       List.map projects ~f:(fun (project : Dune_project.t) ->
-        (project.name, project))
+        (Dune_project.name project, project))
       |> Project_name_map.of_list
       |> function
       | Ok x -> x
       | Error (_name, project1, project2) ->
         let to_sexp (project : Dune_project.t) =
           Sexp.To_sexp.(pair Dune_project.Name.sexp_of_t Path.Local.sexp_of_t)
-            (project.name, project.root)
+            (Dune_project.name project, Dune_project.root project)
         in
         Exn.code_error "Scope.DB.create got two projects with the same name"
           [ "project1", to_sexp project1
@@ -69,7 +69,7 @@ module DB = struct
     in
     let libs_by_project_name =
       List.map internal_libs ~f:(fun (dir, (lib : Dune_file.Library.t)) ->
-        (lib.project.name, (dir, lib)))
+        (Dune_project.name lib.project, (dir, lib)))
       |> Project_name_map.of_list_multi
     in
     let by_name_cell = ref Project_name_map.empty in
@@ -107,7 +107,7 @@ module DB = struct
           | Some project ->
             let scope =
               Option.value_exn
-                (Project_name_map.find !by_name_cell project.name)
+                (Project_name_map.find !by_name_cell (Dune_project.name project))
             in
             Redirect (Some scope.db, name))
         ~all:(fun () -> String.Map.keys public_libs)
@@ -121,7 +121,8 @@ module DB = struct
           let db =
             Lib.DB.create_from_library_stanzas libs ~parent:public_libs ~ext_lib
           in
-          let root = Path.append_local build_context_dir project.root in
+          let root =
+            Path.append_local build_context_dir (Dune_project.root project) in
           Some { project; db; root })
     in
     by_name_cell := by_name;

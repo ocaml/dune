@@ -548,7 +548,10 @@ module Dir_status = struct
                 Is_component_of_a_group_but_not_the_root None
           end
         | Some ft_dir ->
-          let project_root = Path.of_local (File_tree.Dir.project ft_dir).root in
+          let project_root =
+            File_tree.Dir.project ft_dir
+            |> Dune_project.root
+            |> Path.of_local in
           match Super_context.stanzas_in sctx ~dir with
           | None ->
             if Path.equal dir project_root ||

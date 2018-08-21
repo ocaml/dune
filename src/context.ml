@@ -302,14 +302,19 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
         | Some prev -> (var, sprintf "%s%c%s" v path_sep prev)
       in
       let vars =
+        let local_lib_path =
+          (Path.relative
+             (Config.local_install_dir ~context:name)
+             "lib")
+        in
         [ extend_var "CAML_LD_LIBRARY_PATH"
             (Path.relative
                (Config.local_install_dir ~context:name)
                "lib/stublibs")
         ; extend_var "OCAMLPATH" ~path_sep:ocamlpath_sep
-            (Path.relative
-               (Config.local_install_dir ~context:name)
-               "lib")
+            local_lib_path
+        ; extend_var "OCAMLFIND_IGNORE_DUPS_IN" ~path_sep:ocamlpath_sep
+            local_lib_path
         ; extend_var "MANPATH"
             (Config.local_install_man_dir ~context:name)
         ; "DUNE_CONFIGURATOR", (Path.to_string ocamlc)

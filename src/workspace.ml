@@ -224,7 +224,7 @@ let load ?x ?profile p =
         parse_contents lb first_line ~f:(fun _lang -> t ?x ?profile ()))
   | Jbuilder ->
     let sexp =
-      Io.Sexp.load p ~mode:Many_as_one ~lexer:Sexp.Lexer.jbuild_token
+      Dsexp.Io.load p ~mode:Many_as_one ~lexer:Sexp.Lexer.jbuild_token
     in
     parse
       (enter (t ?x ?profile ()))

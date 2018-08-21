@@ -53,7 +53,7 @@ module Lib_name : sig
 
   val validate : (Loc.t * result) -> wrapped:bool -> t
 
-  val t : (Loc.t * result) Sexp.Of_sexp.t
+  val t : (Loc.t * result) Dsexp.Of_sexp.t
 end = struct
   type t = string
 
@@ -350,11 +350,11 @@ module Bindings = struct
       ~dune:(dune elem)
 
   let sexp_of_t sexp_of_a bindings =
-    Sexp.List (
+    Dsexp.List (
       List.map bindings ~f:(function
         | Unnamed a -> sexp_of_a a
         | Named (name, bindings) ->
-          Sexp.List (Sexp.atom (":" ^ name) :: List.map ~f:sexp_of_a bindings))
+          Dsexp.List (Dsexp.atom (":" ^ name) :: List.map ~f:sexp_of_a bindings))
     )
 end
 
@@ -393,28 +393,28 @@ module Dep_conf = struct
       ~then_:t
       ~else_:(String_with_vars.t >>| fun x -> File x)
 
-  open Sexp
+  open Dsexp
   let sexp_of_t = function
     | File t ->
-      List [ Sexp.unsafe_atom_of_string "file"
+      List [ Dsexp.unsafe_atom_of_string "file"
            ; String_with_vars.sexp_of_t t ]
     | Alias t ->
-      List [ Sexp.unsafe_atom_of_string "alias"
+      List [ Dsexp.unsafe_atom_of_string "alias"
            ; String_with_vars.sexp_of_t t ]
     | Alias_rec t ->
-      List [ Sexp.unsafe_atom_of_string "alias_rec"
+      List [ Dsexp.unsafe_atom_of_string "alias_rec"
            ; String_with_vars.sexp_of_t t ]
     | Glob_files t ->
-      List [ Sexp.unsafe_atom_of_string "glob_files"
+      List [ Dsexp.unsafe_atom_of_string "glob_files"
            ; String_with_vars.sexp_of_t t ]
     | Source_tree t ->
-      List [ Sexp.unsafe_atom_of_string "files_recursively_in"
+      List [ Dsexp.unsafe_atom_of_string "files_recursively_in"
            ; String_with_vars.sexp_of_t t ]
     | Package t ->
-      List [ Sexp.unsafe_atom_of_string "package"
+      List [ Dsexp.unsafe_atom_of_string "package"
            ; String_with_vars.sexp_of_t t]
     | Universe ->
-      Sexp.unsafe_atom_of_string "universe"
+      Dsexp.unsafe_atom_of_string "universe"
 end
 
 module Preprocess = struct
@@ -474,7 +474,7 @@ module Blang = struct
            Compare (op, x, y))))
     in
     let t =
-      fix begin fun (t : String_with_vars.t Blang.t Sexp.Of_sexp.t) ->
+      fix begin fun (t : String_with_vars.t Blang.t Dsexp.Of_sexp.t) ->
         if_list
           ~then_:(
             [ "or", repeat t >>| (fun x -> Or x)
@@ -803,7 +803,7 @@ module Sub_system_info = struct
     val name   : Sub_system_name.t
     val loc    : t -> Loc.t
     val syntax : Syntax.t
-    val parse  : t Sexp.Of_sexp.t
+    val parse  : t Dsexp.Of_sexp.t
   end
 
   let all = Sub_system_name.Table.create ~default_value:None
@@ -862,7 +862,7 @@ module Mode_conf = struct
     Format.pp_print_string fmt (to_string t)
 
   let sexp_of_t t =
-    Sexp.unsafe_atom_of_string (to_string t)
+    Dsexp.unsafe_atom_of_string (to_string t)
 
   module Set = struct
     include Set.Make(T)
@@ -1038,7 +1038,7 @@ module Install_conf = struct
     | List (_, [Atom (_, A src); Atom (_, A "as"); Atom (_, A dst)]) ->
       junk >>> return { src; dst = Some dst }
     | sexp ->
-      of_sexp_error (Sexp.Ast.loc sexp)
+      of_sexp_error (Dsexp.Ast.loc sexp)
         "invalid format, <name> or (<name> as <install-as>) expected"
 
   type t =
@@ -1105,7 +1105,7 @@ module Executables = struct
       ]
 
     let simple =
-      Sexp.Of_sexp.enum simple_representations
+      Dsexp.Of_sexp.enum simple_representations
 
     let t =
       if_list
@@ -1121,7 +1121,7 @@ module Executables = struct
         compare candidate link_mode = Eq
       in
       match List.find ~f:is_ok simple_representations with
-      | Some (s, _) -> Some (Sexp.unsafe_atom_of_string s)
+      | Some (s, _) -> Some (Dsexp.unsafe_atom_of_string s)
       | None -> None
 
     let sexp_of_t link_mode =
@@ -1129,7 +1129,7 @@ module Executables = struct
       | Some s -> s
       | None ->
         let { mode; kind } = link_mode in
-        Sexp.To_sexp.pair Mode_conf.sexp_of_t Binary_kind.sexp_of_t (mode, kind)
+        Dsexp.To_sexp.pair Mode_conf.sexp_of_t Binary_kind.sexp_of_t (mode, kind)
 
     module Set = struct
       include Set.Make(T)
@@ -1240,7 +1240,7 @@ module Executables = struct
         match Link_mode.Set.best_install_mode t.modes with
         | None when has_public_name ->
           let mode_to_string mode =
-            " - " ^ Sexp.to_string ~syntax:Dune (Link_mode.sexp_of_t mode) in
+            " - " ^ Dsexp.to_string ~syntax:Dune (Link_mode.sexp_of_t mode) in
           let mode_strings = List.map ~f:mode_to_string Link_mode.installable_modes in
           Loc.fail
             buildable.loc
@@ -1472,7 +1472,7 @@ module Rule = struct
         | Some Action -> short_form
       end
     | sexp ->
-      of_sexp_errorf (Sexp.Ast.loc sexp)
+      of_sexp_errorf (Dsexp.Ast.loc sexp)
         "S-expression of the form (<atom> ...) expected"
 
   let t =
@@ -1756,7 +1756,7 @@ module Stanzas = struct
 
   type Stanza.t += Include of Loc.t * string
 
-  type constructors = (string * Stanza.t list Sexp.Of_sexp.t) list
+  type constructors = (string * Stanza.t list Dsexp.Of_sexp.t) list
 
   let stanzas : constructors =
     [ "library",
@@ -1837,7 +1837,7 @@ module Stanzas = struct
   exception Include_loop of Path.t * (Loc.t * Path.t) list
 
   let rec parse stanza_parser ~lexer ~current_file ~include_stack sexps =
-    List.concat_map sexps ~f:(Sexp.Of_sexp.parse stanza_parser Univ_map.empty)
+    List.concat_map sexps ~f:(Dsexp.Of_sexp.parse stanza_parser Univ_map.empty)
     |> List.concat_map ~f:(function
       | Include (loc, fn) ->
         let include_stack = (loc, current_file) :: include_stack in
@@ -1848,7 +1848,7 @@ module Stanzas = struct
             (Path.to_string_maybe_quoted current_file);
         if List.exists include_stack ~f:(fun (_, f) -> Path.equal f current_file) then
           raise (Include_loop (current_file, include_stack));
-        let sexps = Io.Sexp.load ~lexer current_file ~mode:Many in
+        let sexps = Dsexp.Io.load ~lexer current_file ~mode:Many in
         parse stanza_parser sexps ~lexer ~current_file ~include_stack
       | stanza -> [stanza])
 

@@ -20,6 +20,7 @@ module String     = String
 module Char       = Char
 module Bool       = Bool
 module Sexp       = Sexp
+module Dsexp      = Dsexp
 module Path       = Path
 module Fmt        = Fmt
 module Interned   = Interned

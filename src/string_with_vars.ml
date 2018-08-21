@@ -1,9 +1,10 @@
+open! Stdune
 open! Import
 
-open Usexp.Template
+open Dsexp.Template
 
 type t =
-  { template : Usexp.Template.t
+  { template : Dsexp.Template.t
   ; syntax_version : Syntax.Version.t
   }
 
@@ -25,7 +26,7 @@ let literal ~quoted ~loc s =
 (* This module implements the "old" template parsing that is only used in jbuild
    files *)
 module Jbuild : sig
-  val parse : string -> loc:Loc.t -> quoted:bool -> Usexp.Template.t
+  val parse : string -> loc:Loc.t -> quoted:bool -> Dsexp.Template.t
 end = struct
   type var_syntax = Parens | Braces
   module Token = struct
@@ -182,9 +183,9 @@ module Partial = struct
 end
 
 let invalid_multivalue (v : var) x =
-  Loc.fail v.loc "Variable %s expands to %d values, \
-                  however a single value is expected here. \
-                  Please quote this atom."
+  Dloc.fail v.loc "Variable %s expands to %d values, \
+                   however a single value is expected here. \
+                   Please quote this atom."
     (string_of_var v) (List.length x)
 
 module Var = struct
@@ -271,9 +272,9 @@ let expand t ~mode ~dir ~f =
         begin match var.syntax with
         | Percent ->
           if Var.is_macro var then
-            Loc.fail var.loc "Unknown macro %s" (Var.describe var)
+            Dloc.fail var.loc "Unknown macro %s" (Var.describe var)
           else
-            Loc.fail var.loc "Unknown variable %S" (Var.name var)
+            Dloc.fail var.loc "Unknown variable %S" (Var.name var)
         | Dollar_brace
         | Dollar_paren -> Some [Value.String (string_of_var var)]
         end
@@ -284,7 +285,7 @@ let expand t ~mode ~dir ~f =
 
 let partial_expand t ~mode ~dir ~f = partial_expand t ~mode ~dir ~f
 
-let dgen { template; syntax_version = _ } = Usexp.Template template
+let dgen { template; syntax_version = _ } = Dsexp.Template template
 
 let sexp_of_t t = Dsexp.sexp_of_t (dgen t)
 

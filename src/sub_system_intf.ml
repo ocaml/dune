@@ -1,3 +1,4 @@
+open! Stdune
 open! Import
 
 module type Info = Dune_file.Sub_system_info.S

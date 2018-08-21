@@ -1,10 +1,11 @@
+open! Stdune
 (** Dune representation of the source tree *)
 
 open! Import
 
 module Dune_file : sig
   module Kind : sig
-    type t = Usexp.syntax = Jbuild | Dune
+    type t = Dsexp.syntax = Jbuild | Dune
 
     val lexer : t -> Dsexp.Lexer.t
   end

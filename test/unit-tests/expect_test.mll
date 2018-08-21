@@ -78,7 +78,7 @@ let main () =
 
     Toploop.initialize_toplevel_env ();
     List.iter
-      [ "src/usexp/.usexp.objs"
+      [ "src/dsexp/.dsexp.objs"
       ; "src/stdune/.stdune.objs"
       ; "src/.dune.objs"
       ]

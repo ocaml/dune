@@ -1,3 +1,4 @@
+open! Stdune
 open Import
 open Dune_file
 open Build.O

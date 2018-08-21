@@ -10,7 +10,7 @@ module type Combinators = sig
   val list       : 'a t -> 'a list           t
   val array      : 'a t -> 'a array          t
   val option     : 'a t -> 'a option         t
-  val string_set : String.Set.t              t
-  val string_map : 'a t -> 'a String.Map.t   t
-  val string_hashtbl : 'a t -> (string, 'a) Hashtbl.t t
+  val string_set : String0.Set.t             t
+  val string_map : 'a t -> 'a String0.Map.t  t
+  val string_hashtbl : 'a t -> (string, 'a) Caml.Hashtbl.t t
 end

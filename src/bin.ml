@@ -1,4 +1,4 @@
-open Import
+open! Stdune
 
 let path_sep =
   if Sys.win32 then

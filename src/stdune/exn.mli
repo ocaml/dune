@@ -14,10 +14,10 @@ exception Code_error of Sexp0.t
 (** A fatal error, that should be reported to the user in a nice way *)
 exception Fatal_error of string
 
-exception Loc_error of Loc.t * string
+exception Loc_error of Loc0.t * string
 
 val fatalf
-  :  ?loc:Loc.t
+  :  ?loc:Loc0.t
   -> ('a, unit, string, string, string, 'b) format6
   -> 'a
 

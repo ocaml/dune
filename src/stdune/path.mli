@@ -3,6 +3,7 @@ module Local : sig
   type t
   val sexp_of_t : t -> Sexp.t
   val equal : t -> t -> bool
+  val to_string : t -> string
 end
 
 (** In the outside world *)
@@ -26,8 +27,6 @@ end
 
 type t
 
-include Dsexp.Sexpable with type t := t
-
 val sexp_of_t : t Sexp.To_sexp.t
 
 val compare : t -> t -> Ordering.t
@@ -44,7 +43,7 @@ end
 module Map : Map.S with type key = t
 module Table : Hashtbl.S with type key = t
 
-val of_string : ?error_loc:Usexp.Loc.t -> string -> t
+val of_string : ?error_loc:Loc.t -> string -> t
 val to_string : t -> string
 
 (** [to_string_maybe_quoted t] is [maybe_quoted (to_string t)] *)
@@ -57,7 +56,7 @@ val is_root : t -> bool
 
 val is_managed : t -> bool
 
-val relative : ?error_loc:Usexp.Loc.t -> t -> string -> t
+val relative : ?error_loc:Loc.t -> t -> string -> t
 
 (** Create an external path. If the argument is relative, assume it is
     relative to the initial directory jbuilder was launched in. *)
@@ -165,3 +164,8 @@ val of_local : Local.t -> t
 (** Set the workspace root. Can onyl be called once and the path must be
     absolute *)
 val set_root : External.t -> unit
+
+(** Internal use only *)
+module Internal : sig
+  val raw_kind : t -> Kind.t
+end

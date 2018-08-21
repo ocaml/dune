@@ -1,3 +1,4 @@
+open! Stdune
 open Import
 
 module Version = struct
@@ -27,7 +28,7 @@ module Version = struct
         try
           Scanf.sscanf s "%u.%u" (fun a b -> (a, b))
         with _ ->
-          Loc.fail loc "Atom of the form NNN.NNN expected"
+          Dloc.fail loc "Atom of the form NNN.NNN expected"
       end
     | sexp ->
       of_sexp_error (Dsexp.Ast.loc sexp) "Atom expected"
@@ -78,15 +79,15 @@ type t =
 
 module Error = struct
   let since loc t ver ~what =
-    Loc.fail loc "%s is only available since version %s of %s"
+    Dloc.fail loc "%s is only available since version %s of %s"
       what (Version.to_string ver) t.desc
 
   let renamed_in loc t ver ~what ~to_ =
-    Loc.fail loc "%s was renamed to '%s' in the %s version of %s"
+    Dloc.fail loc "%s was renamed to '%s' in the %s version of %s"
       what to_ (Version.to_string ver) t.desc
 
   let deleted_in loc t ?repl ver ~what =
-    Loc.fail loc "%s was deleted in version %s of %s%s"
+    Dloc.fail loc "%s was deleted in version %s of %s%s"
       what (Version.to_string ver) t.desc
       (match repl with
        | None -> ""
@@ -105,7 +106,7 @@ let name t = t.name
 
 let check_supported t (loc, ver) =
   if not (Supported_versions.is_supported t.supported_versions ver) then
-    Loc.fail loc "Version %s of %s is not supported.\n\
+    Dloc.fail loc "Version %s of %s is not supported.\n\
                   Supported versions:\n\
                   %s"
       (Version.to_string ver) t.name

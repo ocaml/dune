@@ -1,3 +1,4 @@
+open! Stdune
 (** String with variables of the form ${...} or $(...)
 
     Variables cannot contain "${", "$(", ")" or "}". For instance in "$(cat

@@ -1,3 +1,4 @@
+open! Stdune
 open! Import
 
 module Ast = struct
@@ -34,7 +35,7 @@ module Parse = struct
     let open Stanza.Of_sexp in
     let rec one (kind : Stanza.File_kind.t) =
       peek_exn >>= function
-      | Atom (loc, A "\\") -> Loc.fail loc "unexpected \\"
+      | Atom (loc, A "\\") -> Dloc.fail loc "unexpected \\"
       | (Atom (_, A "") | Quoted_string (_, _)) | Template _ ->
         elt
       | Atom (loc, A s) -> begin
@@ -42,10 +43,10 @@ module Parse = struct
           | ":standard" ->
             junk >>> return Standard
           | ":include" ->
-            Loc.fail loc
+            Dloc.fail loc
               "Invalid use of :include, should be: (:include <filename>)"
           | _ when s.[0] = ':' ->
-            Loc.fail loc "undefined symbol %s" s
+            Dloc.fail loc "undefined symbol %s" s
           | _ ->
             elt
         end
@@ -53,7 +54,7 @@ module Parse = struct
           match s, kind with
           | ":include", _ -> inc
           | s, Dune when s <> "" && s.[0] <> '-' && s.[0] <> ':' ->
-            Loc.fail loc
+            Dloc.fail loc
               "This atom must be quoted because it is the first element \
                of a list and doesn't start with - or :"
           | _ -> enter (many [] kind)
@@ -85,7 +86,7 @@ module Parse = struct
     generic ~elt ~inc:(
       enter
         (loc >>= fun loc ->
-         Loc.fail loc "(:include ...) is not allowed here"))
+         Dloc.fail loc "(:include ...) is not allowed here"))
 end
 
 
@@ -349,7 +350,7 @@ module Unexpanded = struct
             match f fn with
             | [x] -> Value.to_path ~dir x
             | _ ->
-              Loc.fail (String_with_vars.loc fn)
+              Dloc.fail (String_with_vars.loc fn)
                 "An unquoted templated expanded to more than one value. \
                  A file path is expected in this position."
           in

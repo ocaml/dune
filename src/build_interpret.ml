@@ -1,3 +1,4 @@
+open! Stdune
 open Import
 open Build.Repr
 
@@ -82,11 +83,11 @@ let static_deps t ~all_targets ~file_tree =
           if Path.Set.is_empty result then begin
             match inspect_path file_tree dir with
             | None ->
-              Loc.warn loc "Directory %s doesn't exist."
+              Dloc.warn loc "Directory %s doesn't exist."
                 (Path.to_string_maybe_quoted
                    (Path.drop_optional_build_context dir))
             | Some Reg ->
-              Loc.warn loc "%s is not a directory."
+              Dloc.warn loc "%s is not a directory."
                 (Path.to_string_maybe_quoted
                    (Path.drop_optional_build_context dir))
             | Some Dir ->
@@ -219,7 +220,7 @@ module Rule = struct
       match targets with
       | [] ->
         begin match loc with
-        | Some loc -> Loc.fail loc "Rule has no targets specified"
+        | Some loc -> Dloc.fail loc "Rule has no targets specified"
         | None -> Exn.code_error "Build_interpret.Rule.make: no targets" []
         end
       | x :: l ->
@@ -234,7 +235,7 @@ module Rule = struct
                                (List.map targets ~f:Target.path)
                 ]
             | Some loc ->
-              Loc.fail loc
+              Dloc.fail loc
                 "Rule has targets in different directories.\nTargets:\n%s"
                 (String.concat ~sep:"\n"
                    (List.map targets ~f:(fun t ->

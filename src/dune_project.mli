@@ -1,3 +1,4 @@
+open! Stdune
 (** dune-project files *)
 
 open Import

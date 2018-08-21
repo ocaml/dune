@@ -1,3 +1,4 @@
+open! Stdune
 open! Import
 
 module Outputs : module type of struct include Action_intf.Outputs end

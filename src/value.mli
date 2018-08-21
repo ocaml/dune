@@ -1,4 +1,4 @@
-open Stdune
+open! Stdune
 
 type t =
   | String of string

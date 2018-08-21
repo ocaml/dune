@@ -1,6 +1,6 @@
 (** Concurrency library *)
 
-open Stdune
+open! Stdune
 
 (** {1 Generals} *)
 

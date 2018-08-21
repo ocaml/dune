@@ -1,3 +1,4 @@
+open! Stdune
 open Import
 open! No_io
 open Build.O

@@ -5,6 +5,7 @@
     Super context are used for generating rules.
 *)
 
+open! Stdune
 open Import
 open Dune_file
 

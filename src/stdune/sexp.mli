@@ -3,7 +3,7 @@ type t = Sexp0.t =
   | List of t list
 
 module To_sexp : sig
-  type sexp = t
+  type sexp
   include Sexp_intf.Combinators with type 'a t = 'a -> t
 
   val record : (string * sexp) list -> sexp
@@ -13,4 +13,4 @@ end with type sexp := t
 
 val to_string : t -> string
 
-val pp : t Fmt.t
+val pp : Format.formatter -> 'a -> unit

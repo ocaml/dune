@@ -53,9 +53,9 @@ val enumerate_and : string list -> string
 (** Produces: "x, y or z" *)
 val enumerate_or  : string list -> string
 
-module Set : Set.S with type elt = t
+module Set : Set.S with type elt = t and type t = String0.Set.t
 module Map : sig
-  include Map.S with type key = t
+  include Map.S with type key = t and type 'a t = 'a String0.Map.t
 
   val pp : (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a t -> unit
 end

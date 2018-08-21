@@ -1,5 +1,5 @@
 (* -*- tuareg -*- *)
-open Stdune;;
+open! Stdune;;
 Path.set_root (Path.External.cwd ());
 Path.set_build_dir (Path.Kind.of_string "_build");
 

@@ -1,5 +1,6 @@
 (** Build rules *)
 
+open! Stdune
 open! Import
 
 type t

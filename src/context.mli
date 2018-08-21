@@ -18,6 +18,7 @@
     it is obtained by looking in another context.
 *)
 
+open! Stdune
 open! Import
 
 module Kind : sig

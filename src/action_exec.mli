@@ -1,4 +1,4 @@
-open Stdune
+open! Stdune
 
 val exec
   :  targets:Path.Set.t

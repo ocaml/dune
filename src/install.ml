@@ -1,3 +1,4 @@
+open! Stdune
 open Import
 
 module Section = struct
@@ -271,7 +272,7 @@ let load_install_file path =
       ; pos_cnum = col
       }
     in
-    Loc.fail { start =  pos; stop = pos } fmt
+    Dloc.fail { start =  pos; stop = pos } fmt
   in
   List.concat_map file.file_contents ~f:(function
     | Variable (pos, section, files) -> begin

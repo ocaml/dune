@@ -1,3 +1,4 @@
+open! Stdune
 open Import
 
 let map_fname = ref (fun x -> x)
@@ -120,7 +121,7 @@ let report exn =
       else
         p.loc
     in
-    Option.iter loc ~f:(fun loc -> Loc.print ppf loc);
+    Option.iter loc ~f:(fun loc -> Dloc.print ppf loc);
     p.pp ppf;
     Format.pp_print_flush ppf ();
     let s = Buffer.contents err_buf in

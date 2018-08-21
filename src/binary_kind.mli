@@ -1,6 +1,6 @@
 (** Linking modes for binaries *)
 
-open Stdune
+open! Stdune
 
 type t =
   | Exe

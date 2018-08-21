@@ -107,11 +107,11 @@ let read_file_and_normalize_eols fn =
           else
             len - src_pos
         in
-        Bytes.blit_string src src_pos dst dst_pos len;
-        Bytes.sub_string dst 0 (dst_pos + len)
+        Bytes.blit_string ~src ~src_pos ~dst ~dst_pos ~len;
+        Bytes.sub_string dst ~pos:0 ~len:(dst_pos + len)
       | Some i ->
         let len = i - src_pos in
-        Bytes.blit_string src src_pos dst dst_pos len;
+        Bytes.blit_string ~src ~src_pos ~dst ~dst_pos ~len;
         let dst_pos = dst_pos + len in
         Bytes.set dst dst_pos '\n';
         loop (i + 2) (dst_pos + 1)
@@ -123,8 +123,3 @@ let compare_text_files fn1 fn2 =
   let s1 = read_file_and_normalize_eols fn1 in
   let s2 = read_file_and_normalize_eols fn2 in
   String.compare s1 s2
-
-module Dsexp = struct
-  let load ?lexer path ~mode =
-    with_lexbuf_from_file path ~f:(Usexp.Parser.parse ~mode ?lexer)
-end

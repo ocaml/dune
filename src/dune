@@ -6,7 +6,7 @@
               xdg
               re
               opam_file_format
-              usexp
+              dsexp
               ocaml_config
               which_program)
  (synopsis    "Internal Dune library, do not use!")

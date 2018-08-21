@@ -1,6 +1,6 @@
 (** Opam install file *)
 
-open Stdune
+open! Stdune
 
 module Section : sig
   type t =

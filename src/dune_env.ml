@@ -1,3 +1,4 @@
+open! Stdune
 type stanza = Stanza.t = ..
 
 module Stanza = struct

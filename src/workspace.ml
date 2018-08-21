@@ -1,4 +1,4 @@
-open Import
+open! Stdune
 open Stanza.Of_sexp
 
 (* workspace files use the same version numbers as dune-project files
@@ -171,13 +171,13 @@ let t ?x ?profile:cmdline_profile () =
     List.fold_left contexts ~init:None ~f:(fun acc ctx ->
       let name = Context.name ctx in
       if String.Set.mem !defined_names name then
-        Loc.fail (Context.loc ctx)
+        Dloc.fail (Context.loc ctx)
           "second definition of build context %S" name;
       defined_names := String.Set.union !defined_names
                          (String.Set.of_list (Context.all_names ctx));
       match ctx, acc with
       | Opam { merlin = true; _ }, Some _ ->
-        Loc.fail (Context.loc ctx)
+        Dloc.fail (Context.loc ctx)
           "you can only have one context for merlin"
       | Opam { merlin = true; _ }, None ->
         Some name
@@ -224,7 +224,7 @@ let load ?x ?profile p =
         parse_contents lb first_line ~f:(fun _lang -> t ?x ?profile ()))
   | Jbuilder ->
     let sexp =
-      Io.Dsexp.load p ~mode:Many_as_one ~lexer:Dsexp.Lexer.jbuild_token
+      Dsexp.Io.load p ~mode:Many_as_one ~lexer:Dsexp.Lexer.jbuild_token
     in
     parse
       (enter (t ?x ?profile ()))

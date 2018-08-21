@@ -1,8 +1,9 @@
+open! Stdune
 open! Import
 
 module Dune_file = struct
   module Kind = struct
-    type t = Usexp.syntax = Jbuild | Dune
+    type t = Dsexp.syntax = Jbuild | Dune
 
     let of_basename = function
       | "dune"   -> Dune
@@ -75,7 +76,7 @@ module Dune_file = struct
           (Contents.Ocaml_script file, String.Set.empty)
         else
           let sexps =
-            Usexp.Parser.parse lb ~lexer:(Kind.lexer kind) ~mode:Many
+            Dsexp.Parser.parse lb ~lexer:(Kind.lexer kind) ~mode:Many
           in
           let ignored_subdirs, sexps = extract_ignored_subdirs sexps in
           (Plain { path = file; sexps }, ignored_subdirs)
@@ -88,11 +89,12 @@ let load_jbuild_ignore path =
     if Filename.dirname fn = Filename.current_dir_name then
       true
     else begin
-      Loc.(warn (of_pos ( Path.to_string path
-                        , i + 1, 0
-                        , String.length fn
-                        ))
-             "subdirectory expression %s ignored" fn);
+      Dloc.(warn (Loc.of_pos
+                    ( Path.to_string path
+                    , i + 1, 0
+                    , String.length fn
+                    ))
+              "subdirectory expression %s ignored" fn);
       false
     end)
   |> String.Set.of_list

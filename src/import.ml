@@ -1,3 +1,5 @@
+open! Stdune
+
 include Stdune
 include Errors
 

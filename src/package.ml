@@ -1,4 +1,4 @@
-open Stdune
+open! Stdune
 
 module Name = struct
   module T = Interned.Make(struct

@@ -12,14 +12,7 @@ end
 
 include StringLabels
 
-let compare a b = Ordering.of_int (String.compare a b)
-
-module T = struct
-  type t = StringLabels.t
-  let compare = compare
-  let equal (x : t) (y : t) = x = y
-  let hash (s : t) = Hashtbl.hash s
-end
+include String0.T.Include
 
 let capitalize   = capitalize_ascii
 let uncapitalize = uncapitalize_ascii
@@ -202,15 +195,16 @@ let maybe_quoted s =
   else
     Printf.sprintf {|"%s"|} escaped
 
-module Set = Set.Make(T)
+module Set = String0.Set
+
 module Map = struct
-  include Map.Make(T)
+  include String0.Map
   let pp f fmt t =
     Format.pp_print_list (fun fmt (k, v) ->
       Format.fprintf fmt "@[<hov 2>(%s@ =@ %a)@]" k f v
     ) fmt (to_list t)
 end
-module Table = Hashtbl.Make(T)
+module Table = Hashtbl.Make(String0.T)
 
 let enumerate_gen s =
   let s = " " ^ s ^ " " in

@@ -1,3 +1,4 @@
+open! Stdune
 open Import
 
 module type S = sig
@@ -57,7 +58,7 @@ module Make(Data : sig type t end) = struct
           (Atom (ver_loc, Dsexp.Atom.of_string ver)) in
       match Hashtbl.find langs name with
       | None ->
-        Loc.fail name_loc "Unknown language %S.%s" name
+        Dloc.fail name_loc "Unknown language %S.%s" name
           (hint name (Hashtbl.keys langs))
       | Some t ->
         Syntax.check_supported t.syntax (ver_loc, ver);

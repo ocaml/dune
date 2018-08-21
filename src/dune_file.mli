@@ -1,5 +1,6 @@
 (** Representation and parsing of jbuild files *)
 
+open! Stdune
 open Import
 
 (** Ppx preprocessors  *)

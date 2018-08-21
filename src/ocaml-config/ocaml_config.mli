@@ -2,7 +2,7 @@
 
     This library is internal to jbuilder and guarantees no API stability. *)
 
-open Stdune
+open! Stdune
 
 (** Represent a parsed and interpreted output of [ocamlc -config] and
     contents of [Makefile.config]. *)

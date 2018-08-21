@@ -9,7 +9,7 @@
 
 (executable
  (name gen_tests)
- (libraries stdune usexp)
+ (libraries stdune dsexp)
  (modules gen_tests))
 
 (include dune.inc)

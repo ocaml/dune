@@ -34,8 +34,6 @@ let explode_path =
 module External : sig
   type t
 
-  include Dsexp.Sexpable with type t := t
-
   val sexp_of_t : t Sexp.To_sexp.t
 
   val compare : t -> t -> Ordering.t
@@ -74,12 +72,6 @@ end = struct
     make t
 
   let sexp_of_t t = Sexp.To_sexp.string (to_string t)
-  let dgen t = Dsexp.To_sexp.string (to_string t)
-  let dparse = Dsexp.Of_sexp.plain_string (fun ~loc t ->
-    if Filename.is_relative t then
-      Dsexp.Of_sexp.of_sexp_errorf loc "Absolute path expected"
-    else
-      of_string t)
 
 (*
   let rec cd_dot_dot t =
@@ -133,8 +125,6 @@ end
 module Local : sig
   type t
 
-  include Dsexp.Sexpable with type t := t
-
   val sexp_of_t : t Sexp.To_sexp.t
 
   val root : t
@@ -142,9 +132,9 @@ module Local : sig
   val compare : t -> t -> Ordering.t
   val compare_val : t -> t -> Ordering.t
   val equal : t -> t -> bool
-  val of_string : ?error_loc:Usexp.Loc.t -> string -> t
+  val of_string : ?error_loc:Loc.t -> string -> t
   val to_string : t -> string
-  val relative : ?error_loc:Usexp.Loc.t -> t -> string -> t
+  val relative : ?error_loc:Loc.t -> t -> string -> t
   val append : t -> t -> t
   val parent : t -> t
   val mkdir_p : t -> unit
@@ -295,11 +285,6 @@ end = struct
     | _ when is_canonicalized s -> make s
     | _ ->
       relative root s ?error_loc
-
-  let dgen t = Dsexp.To_sexp.string (to_string t)
-  let dparse =
-    Dsexp.Of_sexp.plain_string (fun ~loc:error_loc s ->
-      of_string s ~error_loc)
 
   let rec mkdir_p t =
     if is_root t then
@@ -613,32 +598,12 @@ let of_string ?error_loc s =
     else
       make_local_path (Local.of_string s ?error_loc)
 
-let dparse =
-  let open Dsexp.Of_sexp in
-  if_list
-    ~then_:
-      (sum
-         [ "In_build_dir"  , Local.dparse    >>| in_build_dir
-         ; "In_source_tree", Local.dparse    >>| in_source_tree
-         ; "External"      , External.dparse >>| external_
-         ])
-    ~else_:
-      (* necessary for old build dirs *)
-      (plain_string (fun ~loc:_ s -> of_string s))
-
 let sexp_of_t t =
   let constr f x y = Sexp.To_sexp.(pair string f) (x, y) in
   match t with
   | In_build_dir s -> constr Local.sexp_of_t "In_build_dir" s
   | In_source_tree s -> constr Local.sexp_of_t "In_source_tree" s
   | External s -> constr External.sexp_of_t "External" s
-
-let dgen t =
-  let constr f x y = Dsexp.To_sexp.(pair string f) (x, y) in
-  match t with
-  | In_build_dir s -> constr Local.dgen "In_build_dir" s
-  | In_source_tree s -> constr Local.dgen "In_source_tree" s
-  | External s -> constr External.dgen "External" s
 
 let of_filename_relative_to_initial_cwd fn =
   external_ (
@@ -972,3 +937,10 @@ end
 let in_source s = in_source_tree (Local.of_string s)
 
 module Table = Hashtbl.Make(T)
+
+module Internal = struct
+  let raw_kind = function
+    | In_build_dir l -> Kind.Local l
+    | In_source_tree l -> Local l
+    | External l -> External l
+end

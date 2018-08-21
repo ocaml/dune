@@ -1,4 +1,4 @@
-open Import
+open! Stdune
 
 let quote_length s ~syntax =
   let n = ref 0 in

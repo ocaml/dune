@@ -1,3 +1,4 @@
+open! Stdune
 open Import
 open Dune_file
 
@@ -73,7 +74,7 @@ module Jbuilds = struct
             (match (kind : File_tree.Dune_file.Kind.t) with
              | Jbuild -> ()
              | Dune ->
-               Loc.fail loc
+               Dloc.fail loc
                  "#require is no longer supported in dune files.\n\
                   You can use the following function instead of \
                   Unix.open_process_in:\n\
@@ -84,7 +85,7 @@ module Jbuilds = struct
             | [] -> acc
             | ["unix"] -> Unix
             | _ ->
-              Loc.fail loc
+              Dloc.fail loc
                 "Using libraries other that \"unix\" is not supported.\n\
                  See the manual for details.";
         in
@@ -207,7 +208,7 @@ end
              Did you forgot to call [Jbuild_plugin.V*.send]?"
           (Path.to_string file);
       Fiber.return
-        (Io.Dsexp.load generated_jbuild ~mode:Many
+        (Dsexp.Io.load generated_jbuild ~mode:Many
            ~lexer:(File_tree.Dune_file.Kind.lexer kind)
          |> Jbuild.parse ~dir ~file ~project ~kind ~ignore_promoted_rules))
     >>| fun dynamic ->

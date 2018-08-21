@@ -1,4 +1,5 @@
 {
+open! Stdune
 open Re
 
 let no_slash        = diff any (char '/')
@@ -59,8 +60,8 @@ and char_set st = parse
   let parse_string s =
     let lb = Lexing.from_string s in
     match initial lb with
-    | re -> Import.Ok re
+    | re -> Result.Ok re
     | exception Failure msg ->
-      Import.Error (Lexing.lexeme_start lb, msg)
+      Error (Lexing.lexeme_start lb, msg)
 }
 

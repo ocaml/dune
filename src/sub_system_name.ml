@@ -1,4 +1,4 @@
-open Stdune
+open! Stdune
 
 include Interned.Make(struct
     let initial_size = 16

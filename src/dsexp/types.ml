@@ -1,3 +1,5 @@
+open! Stdune
+
 module Template = struct
   type var_syntax = Dollar_brace | Dollar_paren | Percent
 

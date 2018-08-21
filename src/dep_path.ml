@@ -1,4 +1,4 @@
-open Import
+open! Stdune
 
 module Entry = struct
   type t =

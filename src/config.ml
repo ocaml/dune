@@ -1,3 +1,4 @@
+open! Stdune
 open! Import
 
 let local_install_dir =
@@ -135,7 +136,7 @@ let load_config_file p =
       | None ->
         parse (enter dparse)
           (Univ_map.singleton (Syntax.key syntax) (0, 0))
-          (Io.Dsexp.load p ~mode:Many_as_one ~lexer:Dsexp.Lexer.jbuild_token)
+          (Dsexp.Io.load p ~mode:Many_as_one ~lexer:Dsexp.Lexer.jbuild_token)
       | Some first_line ->
         parse_contents lb first_line ~f:(fun _lang -> dparse))
 

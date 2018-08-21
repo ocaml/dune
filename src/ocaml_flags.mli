@@ -1,6 +1,6 @@
 (** OCaml flags *)
 
-open Stdune
+open! Stdune
 
 type t
 

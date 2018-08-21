@@ -1,6 +1,6 @@
 (** Utop rules *)
 
-open Stdune
+open! Stdune
 
 val utop_exe : Path.t -> Path.t
 (** Return the path of the utop bytecode binary inside a directory where

@@ -1,3 +1,4 @@
+open! Stdune
 open Import
 
 let system_shell_exn =
@@ -114,7 +115,7 @@ let executable_object_directory ~dir name =
   Path.relative dir ("." ^ name ^ ".eobjs")
 
 let program_not_found ?context ?hint ~loc prog =
-  Loc.fail_opt loc
+  Dloc.fail_opt loc
     "@{<error>Error@}: Program %s not found in the tree or in PATH%s%a"
     (String.maybe_quoted prog)
     (match context with

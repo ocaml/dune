@@ -1,25 +1,10 @@
+open! Stdune
 open Import
 
-include Usexp.Loc
-
-let sexp_of_position_no_file (p : Lexing.position) =
-  let open Sexp.To_sexp in
-  record
-    [ "pos_lnum", int p.pos_lnum
-    ; "pos_bol", int p.pos_bol
-    ; "pos_cnum", int p.pos_cnum
-    ]
-
-let sexp_of_t t =
-  let open Sexp.To_sexp in
-  record (* TODO handle when pos_fname differs *)
-    [ "pos_fname", string t.start.pos_fname
-    ; "start", sexp_of_position_no_file t.start
-    ; "stop", sexp_of_position_no_file t.stop
-    ]
+include Loc
 
 let of_lexbuf lb =
-  { start = Lexing.lexeme_start_p lb
+  { Loc.start = Lexing.lexeme_start_p lb
   ; stop  = Lexing.lexeme_end_p   lb
   }
 
@@ -41,19 +26,7 @@ let fail_opt t fmt =
   | None -> die fmt
   | Some t -> fail t fmt
 
-let in_file = Usexp.Loc.in_file
-
-let of_pos (fname, lnum, cnum, enum) =
-  let pos : Lexing.position =
-    { pos_fname = fname
-    ; pos_lnum  = lnum
-    ; pos_cnum  = cnum
-    ; pos_bol   = 0
-    }
-  in
-  { start = pos
-  ; stop  = { pos with pos_cnum = enum }
-  }
+let in_file = Loc.in_file
 
 let file_line path n =
   Io.with_file_in ~binary:false path
@@ -81,7 +54,7 @@ let file_lines path ~start ~stop =
     )
 
 let print ppf loc =
-  let { start; stop } = loc in
+  let { Loc.start; stop } = loc in
   let start_c = start.pos_cnum - start.pos_bol in
   let stop_c  = stop.pos_cnum  - start.pos_bol in
   let num_lines = stop.pos_lnum - start.pos_lnum in
@@ -113,28 +86,3 @@ let print ppf loc =
 let warn t fmt =
   Errors.kerrf ~f:print_to_console
     ("%a@{<warning>Warning@}: " ^^ fmt ^^ "@.") print t
-
-let to_file_colon_line t =
-  sprintf "%s:%d" t.start.pos_fname t.start.pos_lnum
-
-let pp_file_colon_line ppf t =
-  Format.pp_print_string ppf (to_file_colon_line t)
-
-let equal_position
-      { Lexing.pos_fname = f_a; pos_lnum = l_a
-      ; pos_bol = b_a; pos_cnum = c_a }
-      { Lexing.pos_fname = f_b; pos_lnum = l_b
-      ; pos_bol = b_b; pos_cnum = c_b }
-      =
-      let open Int.Infix in
-      String.equal f_a f_b
-      && l_a = l_b
-      && b_a = b_b
-      && c_a = c_b
-
-let equal
-      { start = start_a ; stop = stop_a }
-      { start = start_b ; stop = stop_b }
-  =
-  equal_position start_a start_b
-  && equal_position stop_a stop_b

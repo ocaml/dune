@@ -1,3 +1,4 @@
+open! Stdune
 open Import
 
 open Fiber.O
@@ -15,7 +16,7 @@ let print ?(skip_trailing_cr=Sys.win32) path1 path2 =
   in
   let loc = Loc.in_file file1 in
   let fallback () =
-    die "%aFiles %s and %s differ." Loc.print loc
+    die "%aFiles %s and %s differ." Dloc.print loc
       (Path.to_string_maybe_quoted path1)
       (Path.to_string_maybe_quoted path2)
   in
@@ -23,7 +24,7 @@ let print ?(skip_trailing_cr=Sys.win32) path1 path2 =
     match Bin.which "diff" with
     | None -> fallback ()
     | Some prog ->
-      Format.eprintf "%a@?" Loc.print loc;
+      Format.eprintf "%a@?" Dloc.print loc;
       Process.run ~dir ~env:Env.initial Strict prog
         (List.concat
            [ ["-u"]

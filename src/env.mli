@@ -1,4 +1,4 @@
-open Import
+open! Stdune
 
 module Var : sig
   type t = string

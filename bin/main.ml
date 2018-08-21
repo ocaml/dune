@@ -1,3 +1,4 @@
+open! Stdune
 open Dune
 open Import
 open Cmdliner
@@ -1005,7 +1006,7 @@ let rules =
            List.iter rules ~f:(fun (rule : Build_system.Rule.t) ->
              let sexp =
                let paths ps =
-                 Dsexp.To_sexp.list Path.dgen (Path.Set.to_list ps)
+                 Dsexp.To_sexp.list Path_dsexp.dgen (Path.Set.to_list ps)
                in
                Dsexp.To_sexp.record (
                  List.concat

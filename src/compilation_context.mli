@@ -1,5 +1,6 @@
 (** High-level API for compiling OCaml files *)
 
+open! Stdune
 open Import
 
 (** Represent a compilation context.

@@ -1,3 +1,4 @@
+open! Stdune
 open Import
 module Menhir_rules = Menhir
 open Dune_file
@@ -39,7 +40,7 @@ end = struct
           match m with
           | Ok m -> Some m
           | Error s ->
-            Loc.fail loc "Module %a doesn't exist." Module.Name.pp s)
+            Dloc.fail loc "Module %a doesn't exist." Module.Name.pp s)
       , modules
       )
 
@@ -100,7 +101,7 @@ end = struct
     if missing_intf_only <> [] then begin
       match Ordered_set_lang.loc buildable.modules_without_implementation with
       | None ->
-        Loc.warn buildable.loc
+        Dloc.warn buildable.loc
           "Some modules don't have an implementation.\
            \nYou need to add the following field to this stanza:\
            \n\
@@ -121,7 +122,7 @@ end = struct
           |> List.map ~f:(sprintf "- %s")
           |> String.concat ~sep:"\n"
         in
-        Loc.warn loc
+        Dloc.warn loc
           "The following modules must be listed here as they don't \
            have an implementation:\n\
            %s\n\
@@ -135,7 +136,7 @@ end = struct
         |> Option.value_exn
       in
       (* CR-soon jdimino for jdimino: report all errors *)
-      Loc.fail loc
+      Dloc.fail loc
         "Module %a has an implementation, it cannot be listed here"
         Module.Name.pp module_name
     end
@@ -154,7 +155,7 @@ end = struct
       )
     in
     Module.Name.Map.iteri fake_modules ~f:(fun m loc ->
-      Loc.warn loc "Module %a is excluded but it doesn't exist."
+      Dloc.warn loc "Module %a is excluded but it doesn't exist."
         Module.Name.pp m
     );
     check_invalid_module_listing ~buildable:conf ~intf_only ~modules
@@ -378,7 +379,7 @@ let build_modules_map (d : Super_context.Dir_with_jbuild.t) ~modules =
     with
     | Ok x -> x
     | Error (name, _, (lib2, _)) ->
-      Loc.fail lib2.buildable.loc
+      Dloc.fail lib2.buildable.loc
         "Library %S appears for the second time \
          in this directory"
         name
@@ -390,7 +391,7 @@ let build_modules_map (d : Super_context.Dir_with_jbuild.t) ~modules =
     with
     | Ok x -> x
     | Error (name, _, (exes2, _)) ->
-      Loc.fail exes2.buildable.loc
+      Dloc.fail exes2.buildable.loc
         "Executable %S appears for the second time \
          in this directory"
         name
@@ -416,7 +417,7 @@ let build_modules_map (d : Super_context.Dir_with_jbuild.t) ~modules =
               Option.some_if (n = name) b.loc)
             |> List.sort ~compare
           in
-          Loc.fail (Loc.in_file (List.hd locs).start.pos_fname)
+          Dloc.fail (Loc.in_file (List.hd locs).start.pos_fname)
             "Module %a is used in several stanzas:@\n\
              @[<v>%a@]@\n\
              @[%a@]"
@@ -441,7 +442,7 @@ let build_modules_map (d : Super_context.Dir_with_jbuild.t) ~modules =
             List.sort ~compare
               (b.Buildable.loc :: List.map rest ~f:(fun b -> b.Buildable.loc))
           in
-          Loc.warn (Loc.in_file b.loc.start.pos_fname)
+          Dloc.warn (Loc.in_file b.loc.start.pos_fname)
             "Module %a is used in several stanzas:@\n\
              @[<v>%a@]@\n\
              @[%a@]@\n\
@@ -477,7 +478,7 @@ let build_mlds_map (d : Super_context.Dir_with_jbuild.t) ~files =
             | Some s ->
               s
             | None ->
-              Loc.fail loc "%s.mld doesn't exist in %s" s
+              Dloc.fail loc "%s.mld doesn't exist in %s" s
                 (Path.to_string_maybe_quoted
                    (Path.drop_optional_build_context dir))
           )
@@ -513,7 +514,7 @@ module Dir_status = struct
       match stanza with
       | Include_subdirs (loc, x) ->
         if Option.is_some acc then
-          Loc.fail loc "The 'include_subdirs' stanza cannot appear \
+          Dloc.fail loc "The 'include_subdirs' stanza cannot appear \
                         more than once";
         Some x
       | _ -> acc)
@@ -523,7 +524,7 @@ module Dir_status = struct
       match stanza with
       | Library { buildable; _} | Executables { buildable; _ }
       | Tests { exes = { buildable; _ }; _ } ->
-        Loc.fail buildable.loc
+        Dloc.fail buildable.loc
           "This stanza is not allowed in a sub-directory of directory with \
            (include_subdirs unqualified).\n\
            Hint: add (include_subdirs no) to this file."
@@ -663,7 +664,7 @@ let rec get sctx ~dir =
             ~f:(fun acc (dir, files) ->
               let modules = modules_of_files ~dir ~files in
               Module.Name.Map.union acc modules ~f:(fun name x y ->
-                Loc.fail (Loc.in_file
+                Dloc.fail (Loc.in_file
                             (Path.to_string
                                (match File_tree.Dir.dune_file ft_dir with
                                 | None ->

@@ -1,3 +1,4 @@
+open! Stdune
 open Import
 
 module Vspec = struct
@@ -130,7 +131,7 @@ let strings p =
 let read_sexp p syntax =
   contents p
   >>^ fun s ->
-  Usexp.parse_string s
+  Dsexp.parse_string s
     ~lexer:(File_tree.Dune_file.Kind.lexer syntax)
     ~fname:(Path.to_string p) ~mode:Single
 

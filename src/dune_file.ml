@@ -1,3 +1,4 @@
+open! Stdune
 open Import
 open Stanza.Of_sexp
 
@@ -78,9 +79,9 @@ end = struct
   let validate (loc, res) ~wrapped =
     match res, wrapped with
     | Ok s, _ -> s
-    | Warn _, true -> Loc.fail loc "%s" wrapped_message
-    | Warn s, false -> Loc.warn loc "%s" wrapped_message; s
-    | Invalid, _ -> Loc.fail loc "%s" invalid_message
+    | Warn _, true -> Dloc.fail loc "%s" wrapped_message
+    | Warn s, false -> Dloc.warn loc "%s" wrapped_message; s
+    | Invalid, _ -> Dloc.fail loc "%s" invalid_message
 
   let valid_char = function
     | 'A'..'Z' | 'a'..'z' | '_' | '0'..'9' -> true
@@ -215,7 +216,7 @@ module Pkg = struct
     and (loc, name) = located Package.Name.dparse in
     match resolve p name with
     | Ok    x -> x
-    | Error e -> Loc.fail loc "%s" e
+    | Error e -> Dloc.fail loc "%s" e
 
   let field stanza =
     map_validate
@@ -1252,7 +1253,7 @@ module Executables = struct
           let mode_to_string mode =
             " - " ^ Dsexp.to_string ~syntax:Dune (Link_mode.dgen mode) in
           let mode_strings = List.map ~f:mode_to_string Link_mode.installable_modes in
-          Loc.fail
+          Dloc.fail
             buildable.loc
             "No installable mode found for %s.\n\
              One of the following modes is required:\n\
@@ -1288,8 +1289,8 @@ module Executables = struct
           | Some (loc, _) ->
             let func =
               match file_kind with
-              | Jbuild -> Loc.warn
-              | Dune   -> Loc.fail
+              | Jbuild -> Dloc.warn
+              | Dune   -> Dloc.fail
             in
             func loc
               "This field is useless without a (public_name%s ...) field."
@@ -1856,11 +1857,11 @@ module Stanzas = struct
         let dir = Path.parent_exn current_file in
         let current_file = Path.relative dir fn in
         if not (Path.exists current_file) then
-          Loc.fail loc "File %s doesn't exist."
+          Dloc.fail loc "File %s doesn't exist."
             (Path.to_string_maybe_quoted current_file);
         if List.exists include_stack ~f:(fun (_, f) -> Path.equal f current_file) then
           raise (Include_loop (current_file, include_stack));
-        let sexps = Io.Dsexp.load ~lexer current_file ~mode:Many in
+        let sexps = Dsexp.Io.load ~lexer current_file ~mode:Many in
         parse stanza_parser sexps ~lexer ~current_file ~include_stack
       | stanza -> [stanza])
 
@@ -1868,8 +1869,8 @@ module Stanzas = struct
     let (stanza_parser, lexer) =
       let (parser, lexer) =
         match (kind : File_tree.Dune_file.Kind.t) with
-        | Jbuild -> (jbuild_parser, Usexp.Lexer.jbuild_token)
-        | Dune   -> (Dune_project.stanza_parser project, Usexp.Lexer.token)
+        | Jbuild -> (jbuild_parser, Dsexp.Lexer.jbuild_token)
+        | Dune   -> (Dune_project.stanza_parser project, Dsexp.Lexer.token)
       in
       (Dune_project.set project parser, lexer)
     in
@@ -1885,7 +1886,7 @@ module Stanzas = struct
             (Path.to_string_maybe_quoted file)
             loc.Loc.start.pos_lnum
         in
-        Loc.fail loc
+        Dloc.fail loc
           "Recursive inclusion of jbuild files detected:\n\
            File %s is included from %s%s"
           (Path.to_string_maybe_quoted file)
@@ -1901,6 +1902,6 @@ module Stanzas = struct
         ~f:(function Dune_env.T e -> Some e | _ -> None)
     with
     | _ :: e :: _ ->
-      Loc.fail e.loc "The 'env' stanza cannot appear more than once"
+      Dloc.fail e.loc "The 'env' stanza cannot appear more than once"
     | _ -> stanzas
 end

@@ -1,4 +1,4 @@
-open Stdune
+open! Stdune
 
 module Execution_context : sig
   type t

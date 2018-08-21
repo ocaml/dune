@@ -1,3 +1,4 @@
+open! Stdune
 open Import
 open Dsexp.Of_sexp
 
@@ -269,10 +270,10 @@ module Prog = struct
   type t = (Path.t, Not_found.t) result
 
   let dparse : t Dsexp.Of_sexp.t =
-    Dsexp.Of_sexp.map Path.dparse ~f:Result.ok
+    Dsexp.Of_sexp.map Path_dsexp.dparse ~f:Result.ok
 
   let dgen = function
-    | Ok s -> Path.dgen s
+    | Ok s -> Path_dsexp.dgen s
     | Error (e : Not_found.t) -> Dsexp.To_sexp.string e.program
 end
 
@@ -290,7 +291,7 @@ end
 
 include Make_ast
     (Prog)
-    (Path)
+    (Path_dsexp)
     (String_with_sexp)
     (Ast)
 
@@ -384,11 +385,11 @@ module Unexpanded = struct
 
   let check_mkdir loc path =
     if not (Path.is_managed path) then
-      Loc.fail loc
+      Dloc.fail loc
         "(mkdir ...) is not supported for paths outside of the workspace:\n\
         \  %a\n"
         (Dsexp.pp Dune)
-        (List [Dsexp.unsafe_atom_of_string "mkdir"; Path.dgen path])
+        (List [Dsexp.unsafe_atom_of_string "mkdir"; Path_dsexp.dgen path])
 
   module Partial = struct
     module Program = Unresolved.Program
@@ -539,7 +540,7 @@ module Unexpanded = struct
           Chdir (res, partial_expand t ~dir ~map_exe ~f)
         | Right fn ->
           let loc = String_with_vars.loc fn in
-          Loc.fail loc
+          Dloc.fail loc
             "This directory cannot be evaluated statically.\n\
              This is not allowed by dune"
       end
@@ -734,7 +735,7 @@ module Infer = struct
         match fn with
         | Left  fn -> { acc with targets = Path.Set.add acc.targets fn }
         | Right sw ->
-          Loc.fail (String_with_vars.loc sw)
+          Dloc.fail (String_with_vars.loc sw)
             "Cannot determine this target statically."
       let ( +< ) acc fn =
         match fn with

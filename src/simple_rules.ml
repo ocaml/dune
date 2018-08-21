@@ -1,3 +1,4 @@
+open! Stdune
 open Import
 open Dune_file
 open Build.O
@@ -40,7 +41,7 @@ let copy_files sctx ~dir ~scope ~src_dir (def: Copy_files.t) =
      ensures that [sources_and_targets_known_so_far] returns the
      right answer for sub-directories only. *)
   if not (Path.is_descendant glob_in_src ~of_:src_dir) then
-    Loc.fail loc "%s is not a sub-directory of %s"
+    Dloc.fail loc "%s is not a sub-directory of %s"
       (Path.to_string_maybe_quoted glob_in_src) (Path.to_string_maybe_quoted src_dir);
   let glob = Path.basename glob_in_src in
   let src_in_src = Path.parent_exn glob_in_src in
@@ -49,11 +50,11 @@ let copy_files sctx ~dir ~scope ~src_dir (def: Copy_files.t) =
     | Ok re ->
       Re.compile re
     | Error (_pos, msg) ->
-      Loc.fail (String_with_vars.loc def.glob) "invalid glob: %s" msg
+      Dloc.fail (String_with_vars.loc def.glob) "invalid glob: %s" msg
   in
   let file_tree = Super_context.file_tree sctx in
   if not (File_tree.dir_exists file_tree src_in_src) then
-    Loc.fail
+    Dloc.fail
       loc
       "cannot find directory: %a"
       Path.pp src_in_src;

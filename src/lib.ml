@@ -1,4 +1,5 @@
 open Import
+open! Stdune
 open Result.O
 
 (* +-----------------------------------------------------------------+
@@ -319,7 +320,7 @@ exception Error of Error.t
 
 let not_available ~loc reason fmt =
   Errors.kerrf fmt ~f:(fun s ->
-    Loc.fail loc "%s %a" s
+    Dloc.fail loc "%s %a" s
       Error.Library_not_available.Reason.pp reason)
 
 (* +-----------------------------------------------------------------+
@@ -491,7 +492,7 @@ module Sub_system = struct
     | M.Info.T info ->
       let get ~loc lib' =
         if lib.unique_id = lib'.unique_id then
-          Loc.fail loc "Library %S depends on itself" lib.name
+          Dloc.fail loc "Library %S depends on itself" lib.name
         else
           M.get lib'
       in
@@ -1137,7 +1138,7 @@ let report_lib_error ppf (e : Error.t) =
   | No_solution_found_for_select { loc } ->
     Format.fprintf ppf
       "%a@{<error>Error@}: No solution found for this select form.\n"
-      Loc.print loc
+      Dloc.print loc
   | Dependency_cycle cycle ->
     Format.fprintf ppf
       "@{<error>Error@}: Dependency cycle detected between the \

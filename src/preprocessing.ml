@@ -1,3 +1,4 @@
+open! Stdune
 open Import
 open Build.O
 open Dune_file
@@ -91,7 +92,7 @@ module Driver = struct
                  resolve x >>= fun lib ->
                  match get ~loc lib with
                  | None ->
-                   Error (Loc.exnf loc "%S is not a %s" name
+                   Error (Dloc.exnf loc "%S is not a %s" name
                             (desc ~plural:false))
                  | Some t -> Ok t))
       }
@@ -119,9 +120,9 @@ module Driver = struct
 
   let make_error loc msg =
     match loc with
-    | User_file (loc, _) -> Error (Loc.exnf loc "%a" Fmt.text msg)
+    | User_file (loc, _) -> Error (Dloc.exnf loc "%a" Fmt.text msg)
     | Dot_ppx (path, pps) ->
-      Error (Loc.exnf (Loc.in_file (Path.to_string path)) "%a" Fmt.text
+      Error (Dloc.exnf (Loc.in_file (Path.to_string path)) "%a" Fmt.text
                (sprintf
                   "Failed to create on-demand ppx rewriter for %s; %s"
                   (String.enumerate_and (List.map pps ~f:Pp.to_string))
@@ -436,7 +437,7 @@ let setup_reason_rules sctx (m : Module.t) =
           | ".re"  -> ".re.ml"
           | ".rei" -> ".re.mli"
           | _     ->
-            Loc.fail
+            Dloc.fail
               (Loc.in_file
                  (Path.to_string (Path.drop_build_context_exn f.path)))
               "Unknown file extension for reason source file: %S"
@@ -464,7 +465,7 @@ let lint_module sctx ~dir ~dep_kind ~lint ~lib_name ~scope ~dir_kind =
       SC.add_alias_action sctx alias build
         ~stamp:(List [ Dsexp.unsafe_atom_of_string "lint"
                      ; Dsexp.To_sexp.(option string) lib_name
-                     ; Path.dgen fn
+                     ; Path_dsexp.dgen fn
                      ])
     in
     let lint =
@@ -490,7 +491,7 @@ let lint_module sctx ~dir ~dep_kind ~lint ~lib_name ~scope ~dir_kind =
                         ~scope)))
         | Pps { loc; pps; flags; staged } ->
           if staged then
-            Loc.fail loc
+            Dloc.fail loc
               "Staged ppx rewriters cannot be used as linters.";
           let args : _ Arg_spec.t =
             S [ As flags

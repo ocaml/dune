@@ -1,6 +1,6 @@
 (** Stanza in dune/jbuild files *)
 
-open Stdune
+open! Stdune
 
 type t = ..
 

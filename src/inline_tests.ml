@@ -1,3 +1,4 @@
+open! Stdune
 open Import
 open Dune_file
 open Build.O
@@ -74,7 +75,7 @@ module Backend = struct
                  resolve x >>= fun lib ->
                  match get ~loc lib with
                  | None ->
-                   Error (Loc.exnf loc "%S is not an %s" name
+                   Error (Dloc.exnf loc "%S is not an %s" name
                             (desc ~plural:false))
                  | Some t -> Ok t))
       }

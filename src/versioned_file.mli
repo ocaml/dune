@@ -1,6 +1,6 @@
 (** Implementation of versioned files *)
 
-open Stdune
+open! Stdune
 
 module type S = sig
   type data

@@ -1,36 +1,8 @@
 include module type of struct include Usexp end with module Loc := Usexp.Loc
 
-module type Combinators = sig
-  type 'a t
-  val unit       : unit                      t
-
-  val string     : string                    t
-  (** Convert an [Atom] or a [Quoted_string] from/to a string. *)
-
-  val int        : int                       t
-  val float      : float                     t
-  val bool       : bool                      t
-  val pair       : 'a t -> 'b t -> ('a * 'b) t
-  val triple     : 'a t -> 'b t -> 'c t -> ('a * 'b * 'c) t
-  val list       : 'a t -> 'a list           t
-  val array      : 'a t -> 'a array          t
-  val option     : 'a t -> 'a option         t
-
-  val string_set : String.Set.t            t
-  (** [atom_set] is a conversion to/from a set of strings representing atoms. *)
-
-  val string_map : 'a t -> 'a String.Map.t   t
-  (** [atom_map conv]: given a conversion [conv] to/from ['a], returns
-     a conversion to/from a map where the keys are atoms and the
-     values are of type ['a]. *)
-
-  val string_hashtbl : 'a t -> (string, 'a) Hashtbl.t t
-  (** [atom_hashtbl conv] is similar to [atom_map] for hash tables. *)
-end
-
 module To_sexp : sig
   type sexp = t
-  include Combinators with type 'a t = 'a -> t
+  include Sexp_intf.Combinators with type 'a t = 'a -> t
 
   val record : (string * sexp) list -> sexp
 
@@ -184,7 +156,7 @@ module Of_sexp : sig
   val record : 'a fields_parser -> 'a t
 
   (** Consume the next element of the input as a string, int, char, ... *)
-  include Combinators with type 'a t := 'a t
+  include Sexp_intf.Combinators with type 'a t := 'a t
 
   (** Unparsed next element of the input *)
   val raw : ast t

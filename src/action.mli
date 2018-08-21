@@ -72,7 +72,7 @@ module Unexpanded : sig
     with type path    := String_with_vars.t
     with type string  := String_with_vars.t
 
-  include Sexp.Sexpable with type t := t
+  include Dsexp.Sexpable with type t := t
 
   module Partial : sig
     include Action_intf.Ast

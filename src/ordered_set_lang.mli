@@ -76,7 +76,7 @@ module Unexpanded : sig
   type expanded = t
   type t
 
-  include Sexp.Sexpable with type t := t
+  include Dsexp.Sexpable with type t := t
   val standard : t
 
   val field

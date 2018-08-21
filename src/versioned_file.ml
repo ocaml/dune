@@ -14,11 +14,11 @@ module type S = sig
     end
     val get_exn : string -> Instance.t
   end
-  val load : Path.t -> f:(Lang.Instance.t -> 'a Sexp.Of_sexp.t) -> 'a
+  val load : Path.t -> f:(Lang.Instance.t -> 'a Dsexp.Of_sexp.t) -> 'a
   val parse_contents
     :  Lexing.lexbuf
     -> Dune_lexer.first_line
-    -> f:(Lang.Instance.t -> 'a Sexp.Of_sexp.t)
+    -> f:(Lang.Instance.t -> 'a Dsexp.Of_sexp.t)
     -> 'a
 end
 
@@ -43,7 +43,7 @@ module Make(Data : sig type t end) = struct
       let name = Syntax.name syntax in
       if Hashtbl.mem langs name then
         Exn.code_error "Versioned_file.Lang.register: already registered"
-          [ "name", Sexp.To_sexp.string name ];
+          [ "name", Dsexp.To_sexp.string name ];
       Hashtbl.add langs name { syntax; data }
 
     let parse first_line : Instance.t =
@@ -53,8 +53,8 @@ module Make(Data : sig type t end) = struct
           } = first_line
       in
       let ver =
-        Sexp.Of_sexp.parse Syntax.Version.t Univ_map.empty
-          (Atom (ver_loc, Sexp.Atom.of_string ver)) in
+        Dsexp.Of_sexp.parse Syntax.Version.t Univ_map.empty
+          (Atom (ver_loc, Dsexp.Atom.of_string ver)) in
       match Hashtbl.find langs name with
       | None ->
         Loc.fail name_loc "Unknown language %S.%s" name
@@ -76,11 +76,11 @@ module Make(Data : sig type t end) = struct
 
   let parse_contents lb first_line ~f =
     let lang = Lang.parse first_line in
-    let sexp = Sexp.Parser.parse lb ~mode:Many_as_one in
+    let sexp = Dsexp.Parser.parse lb ~mode:Many_as_one in
     let parsing_context =
       Univ_map.singleton (Syntax.key lang.syntax) lang.version
     in
-    Sexp.Of_sexp.parse (Sexp.Of_sexp.enter (f lang)) parsing_context sexp
+    Dsexp.Of_sexp.parse (Dsexp.Of_sexp.enter (f lang)) parsing_context sexp
 
   let load fn ~f =
     Io.with_lexbuf_from_file fn ~f:(fun lb ->

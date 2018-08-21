@@ -15,9 +15,9 @@ end
 module Diff_mode = Action_intf.Diff_mode
 
 module Make_ast
-    (Program : Sexp.Sexpable)
-    (Path    : Sexp.Sexpable)
-    (String  : Sexp.Sexpable)
+    (Program : Dsexp.Sexpable)
+    (Path    : Dsexp.Sexpable)
+    (String  : Dsexp.Sexpable)
     (Ast : Action_intf.Ast
      with type program := Program.t
      with type path    := Path.t

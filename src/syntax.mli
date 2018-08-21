@@ -10,7 +10,7 @@ module Version : sig
       [Z <= Y]. *)
   type t = int * int
 
-  include Sexp.Sexpable with type t := t
+  include Dsexp.Sexpable with type t := t
 
   val to_string : t -> string
 
@@ -57,24 +57,24 @@ val greatest_supported_version : t -> Version.t
 
 (** Indicate the field/constructor being parsed was deleted in the
     given version *)
-val deleted_in : t -> Version.t -> (unit, _) Sexp.Of_sexp.parser
+val deleted_in : t -> Version.t -> (unit, _) Dsexp.Of_sexp.parser
 
 (** Indicate the field/constructor being parsed was renamed in the
     given version *)
-val renamed_in : t -> Version.t -> to_:string ->  (unit, _) Sexp.Of_sexp.parser
+val renamed_in : t -> Version.t -> to_:string ->  (unit, _) Dsexp.Of_sexp.parser
 
 (** Indicate the field/constructor being parsed was introduced in the
     given version *)
-val since : t -> Version.t ->  (unit, _) Sexp.Of_sexp.parser
+val since : t -> Version.t ->  (unit, _) Dsexp.Of_sexp.parser
 
 (** {2 Low-level functions} *)
 
 val set
   :  t
   -> Version.t
-  -> ('a, 'k) Sexp.Of_sexp.parser
-  -> ('a, 'k) Sexp.Of_sexp.parser
+  -> ('a, 'k) Dsexp.Of_sexp.parser
+  -> ('a, 'k) Dsexp.Of_sexp.parser
 
-val get_exn : t -> (Version.t, 'k) Sexp.Of_sexp.parser
+val get_exn : t -> (Version.t, 'k) Dsexp.Of_sexp.parser
 
 val key : t -> Version.t Univ_map.Key.t

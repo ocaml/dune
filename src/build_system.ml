@@ -1276,7 +1276,7 @@ let update_universe t =
   let n =
     if Path.exists universe_file then
       Sexp.Of_sexp.(parse int) Univ_map.empty
-        (Dsexp.Io.load ~mode:Single universe_file) + 1
+        (Io.Dsexp.load ~mode:Single universe_file) + 1
     else
       0
   in

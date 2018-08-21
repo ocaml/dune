@@ -207,7 +207,7 @@ end
              Did you forgot to call [Jbuild_plugin.V*.send]?"
           (Path.to_string file);
       Fiber.return
-        (Dsexp.Io.load generated_jbuild ~mode:Many
+        (Io.Dsexp.load generated_jbuild ~mode:Many
            ~lexer:(File_tree.Dune_file.Kind.lexer kind)
          |> Jbuild.parse ~dir ~file ~project ~kind ~ignore_promoted_rules))
     >>| fun dynamic ->

@@ -123,3 +123,8 @@ let compare_text_files fn1 fn2 =
   let s1 = read_file_and_normalize_eols fn1 in
   let s2 = read_file_and_normalize_eols fn2 in
   String.compare s1 s2
+
+module Dsexp = struct
+  let load ?lexer path ~mode =
+    with_lexbuf_from_file path ~f:(Usexp.Parser.parse ~mode ?lexer)
+end

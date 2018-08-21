@@ -1,4 +1,4 @@
-Using variant features without enabling isn't allowed
+Variant feature is auto enabled when virtual_modules is used
 
   $ dune build --root variants-without-using
   Entering directory 'variants-without-using'

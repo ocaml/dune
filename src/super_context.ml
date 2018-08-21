@@ -335,7 +335,8 @@ end = struct
               Lib.DB.available (Scope.libs scope) lib)))
           end
         | Macro (Version, s) -> begin
-            match Package.Name.Map.find (Scope.project scope).packages
+            match Package.Name.Map.find
+                    (Dune_project.packages (Scope.project scope))
                     (Package.Name.of_string s) with
             | Some p ->
               let x =
@@ -523,7 +524,7 @@ let create
           src_dir = dir
         ; ctx_dir
         ; stanzas
-        ; scope = Scope.DB.find_by_name scopes project.Dune_project.name
+        ; scope = Scope.DB.find_by_name scopes (Dune_project.name project)
         ; kind
         })
   in

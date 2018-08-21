@@ -149,6 +149,12 @@ type t =
   ; project_file  : Project_file.t
   }
 
+let packages t = t.packages
+let version t = t.version
+let name t = t.name
+let root t = t.root
+let stanza_parser t = t.stanza_parser
+
 include Versioned_file.Make(struct
     type t = Stanza.Parser.t list
   end)
@@ -328,15 +334,15 @@ let default_name ~dir ~packages =
         "%S is not a valid opam package name."
         name
 
-let name ~dir ~packages =
-  let%map name = field_o "name" Name.named_of_sexp in
-  match name with
-  | Some x -> x
-  | None   -> default_name ~dir ~packages
+let name_field ~dir ~packages =
+    let%map name = field_o "name" Name.named_of_sexp in
+    match name with
+    | Some x -> x
+    | None   -> default_name ~dir ~packages
 
 let parse ~dir ~lang ~packages ~file =
   fields
-    (let%map name = name ~dir ~packages
+    (let%map name = name_field ~dir ~packages
      and version = field_o "version" string
      and extensions =
        multi_field "using"

@@ -35,16 +35,13 @@ module Project_file : sig
   type t
 end
 
-(* CR-soon diml: make this abstract *)
-type t = private
-  { kind          : Kind.t
-  ; name          : Name.t
-  ; root          : Path.Local.t
-  ; version       : string option
-  ; packages      : Package.t Package.Name.Map.t
-  ; stanza_parser : Stanza.t list Sexp.Of_sexp.t
-  ; project_file  : Project_file.t
-  }
+type t
+
+val packages : t -> Package.t Package.Name.Map.t
+val version : t -> string option
+val name : t -> Name.t
+val root : t -> Path.Local.t
+val stanza_parser : t -> Stanza.t list Sexp.Of_sexp.t
 
 module Lang : sig
   (** [register id stanzas_parser] register a new language. Users will

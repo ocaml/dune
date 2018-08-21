@@ -1,11 +1,7 @@
 open Dune;;
+open Stdune;;
 open Fiber;;
 open Fiber.O;;
-
-let opt_value_exn = function
-  | Some x -> x
-  | None -> failwith "option is empty"
-;;
 
 let failing_fiber () =
   Fiber.yield ()
@@ -25,18 +21,17 @@ let long_running_fiber () =
   loop 10
 ;;
 
-let ivar = Fiber.Ivar.create ();;
+let ivar : unit Fiber.Ivar.t = Fiber.Ivar.create ();;
 
 let getter_fiber () =
   Fiber.Ivar.read ivar
 ;;
 
 [%%expect{|
-val opt_value_exn : 'a option -> 'a = <fun>
 val failing_fiber : unit -> 'a t = <fun>
 val long_running_fiber : unit -> unit t = <fun>
-val ivar : '_weak1 Ivar.t = <abstr>
-val getter_fiber : unit -> '_weak2 t = <fun>
+val ivar : unit Ivar.t = <abstr>
+val getter_fiber : unit -> unit t = <fun>
 |}]
 
 Fiber.run (Fiber.collect_errors failing_fiber)
@@ -139,9 +134,9 @@ let forking_fiber () =
       Fiber.yield ()
       >>= fun () ->
       if x mod 2 = 1 then
-        Process.run Process.Strict ~env:Env.initial (opt_value_exn (Bin.which "true")) []
+        Process.run Process.Strict ~env:Env.initial (Option.value_exn (Bin.which "true")) []
       else
-        Process.run Process.Strict ~env:Env.initial (opt_value_exn (Bin.which "false")) [])
+        Process.run Process.Strict ~env:Env.initial (Option.value_exn (Bin.which "false")) [])
 in
 try
   Fiber.run (

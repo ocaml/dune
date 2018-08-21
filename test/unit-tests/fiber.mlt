@@ -37,7 +37,7 @@ Fiber.run (Fiber.collect_errors failing_fiber)
 |}]
 
 try
-  ignore (Fiber.run (Fiber.collect_errors never_fiber));
+  ignore (Fiber.run (Fiber.collect_errors never_fiber) : (unit, exn list) Result.t);
   Result.Error "should not reach here"
 with Fiber.Never ->
   Result.ok ()
@@ -90,15 +90,14 @@ let flag_set = ref false;;
 let never_raised = ref false;;
 
 try
-  ignore (
-    Fiber.run (
-      Fiber.fork_and_join
-        never_fiber
-        (fun () ->
-           Fiber.collect_errors failing_fiber
-           >>= fun _ ->
-           long_running_fiber ()
-           >>= fun _ -> Fiber.return (flag_set := true))))
+  Fiber.run (
+    Fiber.fork_and_join_unit
+      never_fiber
+      (fun () ->
+         Fiber.collect_errors failing_fiber
+         >>= fun _ ->
+         long_running_fiber ()
+         >>= fun _ -> Fiber.return (flag_set := true)))
 with Fiber.Never ->
   never_raised := true
 ;;
@@ -127,15 +126,14 @@ let forking_fiber () =
         Process.run Process.Strict ~env:Env.initial (Option.value_exn (Bin.which "false")) [])
 in
 try
-  ignore (
-    Fiber.run (
-      Fiber.fork_and_join
-        never_fiber
-        (fun () ->
-           Fiber.collect_errors forking_fiber
-           >>= fun _ ->
-           long_running_fiber ()
-           >>= fun _ -> Fiber.return (flag_set := true))))
+  Fiber.run (
+    Fiber.fork_and_join_unit
+      never_fiber
+      (fun () ->
+         Fiber.collect_errors forking_fiber
+         >>= fun _ ->
+         long_running_fiber ()
+         >>= fun _ -> Fiber.return (flag_set := true)))
 with Fiber.Never ->
   never_raised := true
 ;;

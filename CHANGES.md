@@ -19,6 +19,7 @@ next
 
 - Fix parsing `ocamllex` stanza in jbuild files (#1150, @rgrinberg)
 
+- Highlight multi-line errors (#1131, @anuragsoni)
 
 1.1.1 (08/08/2018)
 ------------------

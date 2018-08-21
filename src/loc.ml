@@ -70,10 +70,27 @@ let file_line path n =
       input_line ic
     )
 
+let file_lines path ~start ~stop =
+  Io.with_file_in ~binary:true path
+    ~f:(fun ic ->
+      let rec aux acc lnum =
+        if lnum > stop then
+          List.rev acc
+        else if lnum < start then
+          (ignore (input_line ic);
+           aux acc (lnum + 1))
+        else
+          let line = input_line ic in
+          aux ((string_of_int lnum, line) :: acc) (lnum + 1)
+      in
+      aux [] 1
+    )
+
 let print ppf loc =
   let { start; stop } = loc in
   let start_c = start.pos_cnum - start.pos_bol in
   let stop_c  = stop.pos_cnum  - start.pos_bol in
+  let num_lines = stop.pos_lnum - start.pos_lnum in
   let pp_file_excerpt pp () =
     let whole_file = start_c = 0 && stop_c = 0 in
     if not whole_file then
@@ -85,6 +102,14 @@ let print ppf loc =
           Format.fprintf pp "%s\n%*s\n" line
             stop_c
             (String.make len '^')
+        else if num_lines <= 10 then
+          let lines = file_lines path ~start:start.pos_lnum ~stop:stop.pos_lnum in
+          let last_lnum = Option.map ~f:fst (List.last lines) in
+          let padding_width = Option.value_exn
+                                (Option.map ~f:String.length last_lnum) in
+          List.iter ~f:(fun (lnum, l) ->
+            Format.fprintf pp "%*s: %s\n" padding_width lnum l)
+          lines
   in
   Format.fprintf ppf
     "@{<loc>File \"%s\", line %d, characters %d-%d:@}@\n%a"

@@ -167,7 +167,7 @@ module Pkg = struct
            (Path.to_string (Package.opam_file pkg))))
 
   let default (project : Dune_project.t) stanza =
-    match Package.Name.Map.values project.packages with
+    match Package.Name.Map.values (Dune_project.packages project) with
     | [pkg] -> Ok pkg
     | [] ->
       Error
@@ -182,16 +182,17 @@ module Pkg = struct
             stanza is for.\nI have the choice between these ones:\n\
             %s\n\
             You need to add a (package ...) field to this (%s) stanza."
-           (listing (Package.Name.Map.values project.packages))
+           (listing (Package.Name.Map.values (Dune_project.packages project)))
            stanza)
 
   let resolve (project : Dune_project.t) name =
-    match Package.Name.Map.find project.packages name with
+    let packages = Dune_project.packages project in
+    match Package.Name.Map.find packages name with
     | Some pkg ->
       Ok pkg
     | None ->
       let name_s = Package.Name.to_string name in
-      if Package.Name.Map.is_empty project.packages then
+      if Package.Name.Map.is_empty packages then
         Error (sprintf
                  "You cannot declare items to be installed without \
                   adding a <package>.opam file at the root of your project.\n\
@@ -205,8 +206,8 @@ module Pkg = struct
                   elements to be installed in this directory are:\n\
                   %s%s"
                  name_s
-                 (listing (Package.Name.Map.values project.packages))
-                 (hint name_s (Package.Name.Map.keys project.packages
+                 (listing (Package.Name.Map.values packages))
+                 (hint name_s (Package.Name.Map.keys packages
                                |> List.map ~f:Package.Name.to_string)))
 
   let t =
@@ -1856,7 +1857,7 @@ module Stanzas = struct
       let (parser, lexer) =
         match (kind : File_tree.Dune_file.Kind.t) with
         | Jbuild -> (jbuild_parser, Usexp.Lexer.jbuild_token)
-        | Dune   -> (project.stanza_parser, Usexp.Lexer.token)
+        | Dune   -> (Dune_project.stanza_parser project, Usexp.Lexer.token)
       in
       (Dune_project.set project parser, lexer)
     in

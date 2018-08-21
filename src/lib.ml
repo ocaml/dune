@@ -83,7 +83,7 @@ module Info = struct
     in
     let status =
       match conf.public with
-      | None   -> Status.Private conf.project.name
+      | None   -> Status.Private (Dune_project.name conf.project)
       | Some p -> Public p.package
     in
     let foreign_archives =

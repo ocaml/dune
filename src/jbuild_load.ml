@@ -242,13 +242,13 @@ let load ?extra_ignored_subtrees ?(ignore_promoted_rules=false) () =
       ~f:(fun dir acc ->
         let p = File_tree.Dir.project dir in
         match Path.kind (File_tree.Dir.path dir) with
-        | Local d when Path.Local.equal d p.root -> p :: acc
+        | Local d when Path.Local.equal d (Dune_project.root p) -> p :: acc
         | _ -> acc)
   in
   let packages =
     List.fold_left projects ~init:Package.Name.Map.empty
       ~f:(fun acc (p : Dune_project.t) ->
-        Package.Name.Map.merge acc p.packages ~f:(fun name a b ->
+        Package.Name.Map.merge acc (Dune_project.packages p) ~f:(fun name a b ->
           match a, b with
           | None, None -> None
           | None, Some _ -> b

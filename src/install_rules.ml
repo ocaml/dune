@@ -31,7 +31,7 @@ module Gen(P : Params) = struct
   let version_from_dune_project (pkg : Package.t) =
     let dir = Path.append (SC.build_dir sctx) pkg.path in
     let project = Scope.project (SC.find_scope_by_dir sctx dir) in
-    project.version
+    Dune_project.version project
 
   type version_method =
     | File of string

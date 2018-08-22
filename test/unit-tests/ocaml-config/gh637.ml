@@ -1,22 +1,24 @@
 open Stdune
 
-let valid_ocaml_config =
+let pwd = Sys.getcwd ()
+
+let valid_ocaml_config = Printf.sprintf
 {|version: 4.02.3
-standard_library_default: /usr/lib/ocaml
-standard_library: /usr/lib/ocaml
+standard_library_default: %s
+standard_library: %s
 standard_runtime: /usr/bin/ocamlrun
 ccomp_type: cc
 bytecomp_c_compiler: gcc -O -fno-defer-pop -Wall -D_FILE_OFFSET_BITS=64 -D_REENTRANT -O -fPIC
 bytecomp_c_libraries: -lm  -ldl -lcurses -lpthread
 native_c_compiler: gcc -O -Wall -D_FILE_OFFSET_BITS=64 -D_REENTRANT
 native_c_libraries: -lm  -ldl
-native_pack_linker: ld -r  -o 
+native_pack_linker: ld -r  -o
 ranlib: ranlib
 cc_profile: -pg
 architecture: none
 model: default
 system: unknown
-asm: 
+asm:
 asm_cfi_supported: false
 with_frame_pointers: false
 ext_obj: .o
@@ -38,14 +40,17 @@ ast_impl_magic_number: Caml1999M016
 ast_intf_magic_number: Caml1999N015
 cmxs_magic_number: Caml2007D002
 cmt_magic_number: Caml2012T004|}
+pwd pwd
 
 let () =
-  let open Result.O in
   match
-    valid_ocaml_config
-    |> String.split_lines
-    |> Ocaml_config.Vars.of_lines
-    >>= Ocaml_config.make
+    match
+      valid_ocaml_config
+      |> String.split_lines
+      |> Ocaml_config.Vars.of_lines
+    with
+    | Ok x -> Ocaml_config.make x
+    | Error msg -> Error (Ocamlc_config, msg)
   with
-  | Error e -> failwith e
+  | Error (_, e) -> failwith e
   | Ok (_ : Ocaml_config.t) -> ()

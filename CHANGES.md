@@ -19,6 +19,10 @@ next
 
 - Fix parsing `ocamllex` stanza in jbuild files (#1150, @rgrinberg)
 
+- Highlight multi-line errors (#1131, @anuragsoni)
+
+- Do no try to generate shared libraries when this is not supported by
+  the OS (#1165, fix #1051, @diml)
 
 1.1.1 (08/08/2018)
 ------------------

@@ -82,6 +82,7 @@ type t =
   ; cmxs_magic_number        : string
   ; cmt_magic_number         : string
   ; natdynlink_supported     : bool
+  ; supports_shared_libraries : bool
   }
 
 let version                  t = t.version
@@ -131,6 +132,7 @@ let ast_intf_magic_number    t = t.ast_intf_magic_number
 let cmxs_magic_number        t = t.cmxs_magic_number
 let cmt_magic_number         t = t.cmt_magic_number
 let natdynlink_supported     t = t.natdynlink_supported
+let supports_shared_libraries t = t.supports_shared_libraries
 
 let to_list t : (string * Value.t) list =
   [ "version"                  , String        t.version_string
@@ -179,6 +181,7 @@ let to_list t : (string * Value.t) list =
   ; "cmxs_magic_number"        , String        t.cmxs_magic_number
   ; "cmt_magic_number"         , String        t.cmt_magic_number
   ; "natdynlink_supported"     , Bool          t.natdynlink_supported
+  ; "supports_shared_libraries", Bool          t.supports_shared_libraries
   ]
 
 let sexp_of_t t =
@@ -189,9 +192,11 @@ let sexp_of_t t =
                   ; Value.sexp_of_t v
                   ]))
 
-exception E of string
-let fail fmt =
-  Printf.ksprintf (fun msg -> raise (E msg)) fmt
+module Origin = struct
+  type t =
+    | Ocamlc_config
+    | Makefile_config of Path.t
+end
 
 let split_prog s =
   match String.extract_blank_separated_words s with
@@ -209,7 +214,11 @@ module Vars = struct
         | Some i ->
           let x =
             (String.sub line ~pos:0 ~len:i,
-             String.sub line ~pos:(i + 2) ~len:(String.length line - i - 2))
+             let len = String.length line - i - 2 in
+             if len < 0 then
+               ""
+             else
+               String.sub line ~pos:(i + 2) ~len)
           in
           loop (x :: acc) lines
         | None ->
@@ -219,51 +228,71 @@ module Vars = struct
     Result.map_error (String.Map.of_list vars) ~f:(fun (var, _, _) ->
       Printf.sprintf "Variable %S present twice." var)
 
-  let get_opt t var = String.Map.find t var
+  let load_makefile_config file =
+    let lines = Io.lines_of_file file in
+    List.filter_map lines ~f:(fun line ->
+      let line = String.trim line in
+      if line = "" || line.[0] = '#' then
+        None
+      else
+        String.lsplit2 line ~on:'=')
+    |> String.Map.of_list_reduce ~f:(fun _ x -> x)
 
-  let get t var =
-    match get_opt t var with
-    | Some s -> s
-    | None   -> fail "Variable %S not found." var
+  exception E of Origin.t * string
 
-  let get_bool t var =
-    match get_opt t var with
-    | None -> false
-    | Some s ->
-      match s with
-      | "true"  -> true
-      | "false" -> false
-      | s ->
-        fail "Value of %S is neither 'true' neither 'false': %s." var s
+  module Getters(Origin : sig val origin : Origin.t end) = struct
+    let fail fmt =
+      Printf.ksprintf (fun msg -> raise (E (Origin.origin, msg))) fmt
 
-  let get_int_opt t var =
-    match get_opt t var with
-    | None -> None
-    | Some s ->
-      match int_of_string s with
-      | x -> Some x
-      | exception _ ->
-        fail "Value of %S is not an integer: %s." var s
+    let get_opt t var = String.Map.find t var
 
-  let get_words t var =
-    match get_opt t var with
-    | None   -> []
-    | Some s -> String.extract_blank_separated_words s
-
-  let get_prog_or_dummy t var =
-    Option.map (get_opt t var) ~f:(fun v ->
-      match split_prog v with
-      | None ->
-        { prog = Printf.sprintf "%s-not-found-in-ocaml-config" var
-        ; args = []
-        }
+    let get t var =
+      match get_opt t var with
       | Some s -> s
-    )
+      | None   -> fail "Variable %S not found." var
 
-  let get_prog_or_dummy_exn t var =
-    match get_prog_or_dummy t var with
-    | None -> fail "Variable %S not found." var
-    | Some s -> s
+    let get_bool t ?(default=false) var =
+      match get_opt t var with
+      | None -> default
+      | Some s ->
+        match s with
+        | "true"  -> true
+        | "false" -> false
+        | s ->
+          fail "Value of %S is neither 'true' neither 'false': %s." var s
+
+    let get_int_opt t var =
+      match get_opt t var with
+      | None -> None
+      | Some s ->
+        match int_of_string s with
+        | x -> Some x
+        | exception _ ->
+          fail "Value of %S is not an integer: %s." var s
+
+    let get_words t var =
+      match get_opt t var with
+      | None   -> []
+      | Some s -> String.extract_blank_separated_words s
+
+    let get_prog_or_dummy t var =
+      Option.map (get_opt t var) ~f:(fun v ->
+        match split_prog v with
+        | None ->
+          { prog = Printf.sprintf "%s-not-found-in-ocaml-config" var
+          ; args = []
+          }
+        | Some s -> s
+      )
+
+    let get_prog_or_dummy_exn t var =
+      match get_prog_or_dummy t var with
+      | None -> fail "Variable %S not found." var
+      | Some s -> s
+  end
+
+  module Ocamlc_config_getters =
+    Getters(struct let origin = Origin.Ocamlc_config end)
 end
 
 let get_arch_sixtyfour stdlib_dir =
@@ -287,7 +316,7 @@ let get_arch_sixtyfour stdlib_dir =
 
 let make vars =
   match
-    let open Vars in
+    let open Vars.Ocamlc_config_getters in
     let bytecomp_c_compiler =
       get_prog_or_dummy_exn vars "bytecomp_c_compiler" in
     let native_c_compiler =
@@ -369,6 +398,15 @@ let make vars =
     let natdynlink_supported =
       Sys.file_exists (Filename.concat standard_library "dynlink.cmxa")
     in
+
+    let file =
+      Path.relative (Path.of_string standard_library) "Makefile.config"
+    in
+    let vars = Vars.load_makefile_config file in
+    let module Getters =
+      Vars.Getters(struct let origin = Origin.Makefile_config file end)
+    in
+    let supports_shared_libraries = get_bool vars "SUPPORTS_SHARED_LIBRARIES" in
     { version
     ; version_string
     ; standard_library_default
@@ -416,7 +454,8 @@ let make vars =
     ; cmxs_magic_number
     ; cmt_magic_number
     ; natdynlink_supported
+    ; supports_shared_libraries
     }
   with
-  | t                 -> Ok t
-  | exception (E msg) -> Error msg
+  | t -> Ok t
+  | exception (Vars.E (origin, msg)) -> Error (origin, msg)

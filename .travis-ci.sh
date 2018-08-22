@@ -35,9 +35,9 @@ case "$TARGET" in
       if [ ! -e ~/ocaml/bin/opam -o ! -e ~/.opam/lock -o "$OPAM_RESET" = "1" ] ; then
         mkdir ~/ocaml/src
         cd ~/ocaml/src
-        wget https://github.com/ocaml/opam/releases/download/1.2.2/opam-full-1.2.2.tar.gz
-        tar -xzf opam-full-1.2.2.tar.gz
-        cd opam-full-1.2.2
+        wget https://github.com/ocaml/opam/releases/download/2.0.0-rc4/opam-full-2.0.0.tar.gz
+        tar -xzf opam-full-2.0.0.tar.gz
+        cd opam-full-2.0.0
         ./configure --prefix=$PREFIX/ocaml
         make lib-ext
         make all
@@ -45,7 +45,7 @@ case "$TARGET" in
         cd ../..
         rm -rf src
         rm -rf ~/.opam
-        opam init
+        opam init --disable-sandboxing
         eval $(opam config env)
         opam install ocamlfind utop ppxlib reason odoc menhir ocaml-migrate-parsetree js_of_ocaml-ppx js_of_ocaml-compiler
         opam remove dune jbuilder \

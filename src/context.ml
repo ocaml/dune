@@ -47,7 +47,7 @@ type t =
   ; findlib_toolchain       : string option
   ; arch_sixtyfour          : bool
   ; opam_var_cache          : (string, string) Hashtbl.t
-  ; natdynlink_supported    : bool
+  ; natdynlink_supported    : Dynlink_supported.By_the_os.t
   ; ocaml_config            : Ocaml_config.t
   ; version_string          : string
   ; version                 : Ocaml_version.t
@@ -81,6 +81,7 @@ type t =
   ; ast_intf_magic_number   : string
   ; cmxs_magic_number       : string
   ; cmt_magic_number        : string
+  ; supports_shared_libraries : Dynlink_supported.By_the_os.t
   ; which_cache             : (string, Path.t option) Hashtbl.t
   }
 
@@ -104,7 +105,10 @@ let sexp_of_t t =
     ; "env", Env.sexp_of_t (Env.diff t.env Env.initial)
     ; "findlib_path", list path (Findlib.path t.findlib)
     ; "arch_sixtyfour", bool t.arch_sixtyfour
-    ; "natdynlink_supported", bool t.natdynlink_supported
+    ; "natdynlink_supported",
+      bool (Dynlink_supported.By_the_os.get t.natdynlink_supported)
+    ; "supports_shared_libraries",
+      bool (Dynlink_supported.By_the_os.get t.supports_shared_libraries)
     ; "opam_vars", string_hashtbl string t.opam_var_cache
     ; "ocaml_config", Ocaml_config.sexp_of_t t.ocaml_config
     ; "which", string_hashtbl (option path) t.which_cache
@@ -260,19 +264,22 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     in
     let ocaml_config_ok_exn = function
       | Ok x -> x
-      | Error msg ->
+      | Error (Ocaml_config.Origin.Ocamlc_config, msg) ->
         die "Failed to parse the output of '%s -config':@\n\
              %s"
           (Path.to_string ocamlc) msg
+      | Error (Makefile_config file, msg) ->
+        Loc.fail (Loc.in_file (Path.to_string file)) "%s" msg
     in
     Fiber.fork_and_join
       findlib_path
       (fun () ->
          Process.run_capture_lines ~env Strict ocamlc ["-config"]
          >>| fun lines ->
-         let open Result.O in
          ocaml_config_ok_exn
-           (Ocaml_config.Vars.of_lines lines >>= Ocaml_config.make))
+           (match Ocaml_config.Vars.of_lines lines with
+            | Ok vars -> Ocaml_config.make vars
+            | Error msg -> Error (Ocamlc_config, msg)))
     >>= fun (findlib_path, ocfg) ->
     let version = Ocaml_version.of_ocaml_config ocfg in
     let env =
@@ -368,7 +375,8 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
 
       ; opam_var_cache
 
-      ; natdynlink_supported
+      ; natdynlink_supported =
+          Dynlink_supported.By_the_os.of_bool natdynlink_supported
 
       ; stdlib_dir
       ; ocaml_config = ocfg
@@ -403,6 +411,9 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       ; ast_intf_magic_number   = Ocaml_config.ast_intf_magic_number   ocfg
       ; cmxs_magic_number       = Ocaml_config.cmxs_magic_number       ocfg
       ; cmt_magic_number        = Ocaml_config.cmt_magic_number        ocfg
+      ; supports_shared_libraries =
+          Dynlink_supported.By_the_os.of_bool
+            (Ocaml_config.supports_shared_libraries ocfg)
 
       ; which_cache
       }

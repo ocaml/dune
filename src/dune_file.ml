@@ -913,7 +913,7 @@ module Library = struct
     ; wrapped                  : bool
     ; optional                 : bool
     ; buildable                : Buildable.t
-    ; dynlink                  : bool
+    ; dynlink                  : Dynlink_supported.t
     ; project                  : Dune_project.t
     ; sub_systems              : Sub_system_info.t Sub_system_name.Map.t
     ; no_keep_locs             : bool
@@ -999,7 +999,7 @@ module Library = struct
        ; wrapped
        ; optional
        ; buildable
-       ; dynlink = not no_dynlink
+       ; dynlink = Dynlink_supported.of_bool (not no_dynlink)
        ; project
        ; sub_systems
        ; no_keep_locs

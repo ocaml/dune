@@ -13,4 +13,4 @@ end with type sexp := t
 
 val to_string : t -> string
 
-val pp : Format.formatter -> 'a -> unit
+val pp : Format.formatter -> t -> unit

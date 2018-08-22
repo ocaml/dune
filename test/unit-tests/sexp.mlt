@@ -2,10 +2,10 @@
 open! Stdune;;
 open Dsexp.Of_sexp;;
 
-let print_loc ppf (_ : Dsexp.Loc.t) = Format.pp_print_string ppf "<loc>";;
+let print_loc ppf (_ : Loc.t) = Format.pp_print_string ppf "<loc>";;
 #install_printer print_loc;;
 [%%expect{|
-val print_loc : Format.formatter -> Dsexp.Loc.t -> unit = <fun>
+val print_loc : Format.formatter -> Loc.t -> unit = <fun>
 |}]
 
 Printexc.record_backtrace false;;
@@ -265,7 +265,7 @@ Different
    | Printing tests                                                  |
    +-----------------------------------------------------------------+ *)
 
-let loc = Dsexp.Loc.none
+let loc = Loc.none
 let a = Dsexp.atom
 let s x = Dsexp.Quoted_string x
 let t  x = Dsexp.Template { quoted = false; parts = x; loc }
@@ -310,7 +310,7 @@ let test syntax sexp =
 #install_printer print_sexp
 
 [%%expect{|
-val loc : Dsexp.Loc.t = <loc>
+val loc : Loc.t = <loc>
 val a : string -> Dsexp.t = <fun>
 val s : string -> Dsexp.t = <fun>
 val t : Dsexp.Template.part list -> Dsexp.t = <fun>

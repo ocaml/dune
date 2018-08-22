@@ -4,6 +4,7 @@ module type S = sig
   val add : 'a t -> key -> 'a -> unit
 
   val find : 'a t -> key -> 'a option
+  val find_exn : 'a t -> key -> 'a
   val find_or_add : 'a t -> key -> f:(key -> 'a) -> 'a
 
   val fold : 'a t -> init:'b -> f:('a -> 'b -> 'b) -> 'b

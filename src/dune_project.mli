@@ -29,6 +29,8 @@ module Name : sig
   val decode : string -> t
 
   module Infix : Comparable.OPS with type t = t
+  module Set : Set.S with type elt = t
+  module Table : Hashtbl.S with type key = t
 end
 
 module Project_file : sig

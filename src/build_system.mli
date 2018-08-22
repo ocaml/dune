@@ -16,6 +16,7 @@ type hook =
     tree. *)
 val create
   :  contexts:Context.t list
+  -> projects:Dune_project.t list
   -> file_tree:File_tree.t
   -> hook:(hook -> unit)
   -> t

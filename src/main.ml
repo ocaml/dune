@@ -91,7 +91,11 @@ let setup ?(log=Log.no_log)
     | Rule_completed -> incr rule_done
   in
   let build_system =
-    Build_system.create ~contexts ~file_tree:conf.file_tree ~hook
+    Build_system.create
+      ~contexts
+      ~projects:conf.projects
+      ~file_tree:conf.file_tree
+      ~hook
   in
   Gen_rules.gen conf
     ~build_system

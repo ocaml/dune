@@ -414,6 +414,7 @@ type t =
   ; hook : hook -> unit
   ; (* Package files are part of *)
     packages : Package.Name.t Path.Table.t
+  ; projects : Dune_project.t Dune_project.Name.Table.t
   }
 
 let string_of_paths set =
@@ -1220,31 +1221,33 @@ let finalize t =
   Utils.Cached_digest.dump ();
   Trace.dump t.trace
 
-let create ~contexts ~file_tree ~hook =
+let create ~contexts ~projects ~file_tree ~hook =
   Utils.Cached_digest.load ();
   let contexts =
     List.map contexts ~f:(fun c -> (c.Context.name, c))
     |> String.Map.of_list_exn
   in
-  let t =
-    { contexts
-    ; files      = Path.Table.create 1024
-    ; packages   = Path.Table.create 1024
-    ; trace      = Trace.load ()
-    ; local_mkdirs = Path.Set.empty
-    ; dirs       = Path.Table.create 1024
-    ; load_dir_stack = []
-    ; file_tree
-    ; gen_rules = String.Map.map contexts ~f:(fun _ ~dir:_ ->
-        die "gen_rules called too early")
-    ; build_dirs_to_keep = Path.Set.empty
-    ; files_of = Path.Table.create 1024
-    ; prefix = None
-    ; hook
-    }
+  let projects =
+    projects
+    |> List.map ~f:(fun proj -> Dune_project.name proj, proj)
+    |> Dune_project.Name.Table.of_list_exn
   in
-  at_exit (fun () -> finalize t);
-  t
+  { contexts
+  ; files      = Path.Table.create 1024
+  ; packages   = Path.Table.create 1024
+  ; projects
+  ; trace      = Trace.load ()
+  ; local_mkdirs = Path.Set.empty
+  ; dirs       = Path.Table.create 1024
+  ; load_dir_stack = []
+  ; file_tree
+  ; gen_rules = String.Map.map contexts ~f:(fun _ ~dir:_ ->
+      die "gen_rules called too early")
+  ; build_dirs_to_keep = Path.Set.empty
+  ; files_of = Path.Table.create 1024
+  ; prefix = None
+  ; hook
+  }
 
 let eval_request t ~request ~process_target =
   let { Build_interpret.Static_deps.

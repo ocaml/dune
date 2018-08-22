@@ -15,10 +15,15 @@ end
 
 module Diff_mode = Action_intf.Diff_mode
 
+module type With_sexp = sig
+  include Dsexp.Sexpable
+  val sexp_of_t : t Sexp.To_sexp.t
+end
+
 module Make_ast
-    (Program : Dsexp.Sexpable)
-    (Path    : Dsexp.Sexpable)
-    (String  : Dsexp.Sexpable)
+    (Program : With_sexp)
+    (Path    : With_sexp)
+    (String  : With_sexp)
     (Ast : Action_intf.Ast
      with type program := Program.t
      with type path    := Path.t
@@ -202,9 +207,9 @@ struct
       type sexp = Sexp.t
       let atom a = Sexp.Atom a
       let list a = Sexp.List a
-      let program s = Dsexp.sexp_of_t (Program.dgen s)
-      let string s = Dsexp.sexp_of_t (String.dgen s)
-      let path s = Dsexp.sexp_of_t (Path.dgen s)
+      let program = Program.sexp_of_t
+      let string = String.sexp_of_t
+      let path = Path.sexp_of_t
     end)
   let sexp_of_t = Sexpgen.gen
 
@@ -296,9 +301,30 @@ module Prog = struct
   let dparse : t Dsexp.Of_sexp.t =
     Dsexp.Of_sexp.map Path_dsexp.dparse ~f:Result.ok
 
-  let dgen = function
-    | Ok s -> Path_dsexp.dgen s
-    | Error (e : Not_found.t) -> Dsexp.To_sexp.string e.program
+  module Make_gen(P : sig
+      type sexp
+      val path : Path.t -> sexp
+      val string : string -> sexp
+    end) = struct
+    open P
+    let gen = function
+      | Ok s -> path s
+      | Error (e : Not_found.t) -> string e.program
+  end
+
+  module D = Make_gen(struct
+      type sexp = Dsexp.t
+      let path = Path_dsexp.dgen
+      let string = Dsexp.To_sexp.string
+    end)
+  let dgen = D.gen
+
+  module S = Make_gen(struct
+      type sexp = Sexp.t
+      let path = Path.sexp_of_t
+      let string = Sexp.To_sexp.string
+    end)
+  let sexp_of_t = S.gen
 end
 
 module type Ast = Action_intf.Ast
@@ -311,11 +337,17 @@ module String_with_sexp = struct
   type t = string
   let dparse = Dsexp.Of_sexp.string
   let dgen = Dsexp.To_sexp.string
+  let sexp_of_t = Sexp.To_sexp.string
+end
+
+module Path_sexp = struct
+  include Path_dsexp
+  let sexp_of_t = Path.sexp_of_t
 end
 
 include Make_ast
     (Prog)
-    (Path_dsexp)
+    (Path_sexp)
     (String_with_sexp)
     (Ast)
 

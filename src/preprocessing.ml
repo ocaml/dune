@@ -463,9 +463,9 @@ let lint_module sctx ~dir ~dep_kind ~lint ~lib_name ~scope ~dir_kind =
     let alias = Build_system.Alias.lint ~dir in
     let add_alias fn build =
       SC.add_alias_action sctx alias build
-        ~stamp:(List [ Dsexp.unsafe_atom_of_string "lint"
-                     ; Dsexp.To_sexp.(option string) lib_name
-                     ; Path_dsexp.dgen fn
+        ~stamp:(List [ Sexp.Atom "lint"
+                     ; Sexp.To_sexp.(option string) lib_name
+                     ; Path.sexp_of_t fn
                      ])
     in
     let lint =

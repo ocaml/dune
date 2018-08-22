@@ -90,10 +90,10 @@ let alias sctx ~dir ~scope (alias_conf : Alias_conf.t) =
       Blang.eval_bool blang ~dir ~f
   in
   let stamp =
-    Dsexp.List
-      [ Dsexp.unsafe_atom_of_string "user-alias"
-      ; Dune_file.Bindings.dgen Dune_file.Dep_conf.dgen alias_conf.deps
-      ; Dsexp.To_sexp.option Action.Unexpanded.dgen
+    Sexp.List
+      [ Sexp.Atom "user-alias"
+      ; Dune_file.Bindings.sexp_of_t Dune_file.Dep_conf.sexp_of_t alias_conf.deps
+      ; Sexp.To_sexp.option Action.Unexpanded.sexp_of_t
           (Option.map alias_conf.action ~f:snd)
       ]
   in

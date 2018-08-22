@@ -95,6 +95,8 @@ module Unexpanded : sig
     -> map_exe:(Path.t -> Path.t)
     -> f:(Value.t list option String_with_vars.expander)
     -> Partial.t
+
+  val sexp_of_t : t Sexp.To_sexp.t
 end
 
 (** Infer dependencies and targets.

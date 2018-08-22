@@ -130,59 +130,83 @@ struct
            Diff { optional = false; file1; file2; mode = Binary })
         ])
 
-  let rec dgen =
-    let path = Path.dgen and string = String.dgen in
-    function
-    | Run (a, xs) -> Dsexp.List (Dsexp.unsafe_atom_of_string "run"
-                                 :: Program.dgen a :: List.map xs ~f:string)
-    | Chdir (a, r) -> List [Dsexp.unsafe_atom_of_string "chdir" ;
-                            path a ; dgen r]
-    | Setenv (k, v, r) -> List [Dsexp.unsafe_atom_of_string "setenv" ;
-                                string k ; string v ; dgen r]
-    | Redirect (outputs, fn, r) ->
-      List [ Dsexp.atom (sprintf "with-%s-to" (Outputs.to_string outputs))
-           ; path fn
-           ; dgen r
-           ]
-    | Ignore (outputs, r) ->
-      List [ Dsexp.atom (sprintf "ignore-%s" (Outputs.to_string outputs))
-           ; dgen r
-           ]
-    | Progn l -> List (Dsexp.unsafe_atom_of_string "progn"
-                       :: List.map l ~f:dgen)
-    | Echo xs ->
-      List (Dsexp.unsafe_atom_of_string "echo" :: List.map xs ~f:string)
-    | Cat x -> List [Dsexp.unsafe_atom_of_string "cat"; path x]
-    | Copy (x, y) ->
-      List [Dsexp.unsafe_atom_of_string "copy"; path x; path y]
-    | Symlink (x, y) ->
-      List [Dsexp.unsafe_atom_of_string "symlink"; path x; path y]
-    | Copy_and_add_line_directive (x, y) ->
-      List [Dsexp.unsafe_atom_of_string "copy#"; path x; path y]
-    | System x -> List [Dsexp.unsafe_atom_of_string "system"; string x]
-    | Bash   x -> List [Dsexp.unsafe_atom_of_string "bash"; string x]
-    | Write_file (x, y) -> List [Dsexp.unsafe_atom_of_string "write-file";
-                                 path x; string y]
-    | Rename (x, y) -> List [Dsexp.unsafe_atom_of_string "rename";
-                             path x; path y]
-    | Remove_tree x -> List [Dsexp.unsafe_atom_of_string "remove-tree"; path x]
-    | Mkdir x       -> List [Dsexp.unsafe_atom_of_string "mkdir"; path x]
-    | Digest_files paths -> List [Dsexp.unsafe_atom_of_string "digest-files";
-                                  List (List.map paths ~f:path)]
-    | Diff { optional; file1; file2; mode = Binary} ->
-      assert (not optional);
-      List [Dsexp.unsafe_atom_of_string "cmp"; path file1; path file2]
-    | Diff { optional = false; file1; file2; mode = _ } ->
-      List [Dsexp.unsafe_atom_of_string "diff"; path file1; path file2]
-    | Diff { optional = true; file1; file2; mode = _ } ->
-      List [Dsexp.unsafe_atom_of_string "diff?"; path file1; path file2]
-    | Merge_files_into (srcs, extras, target) ->
-      List
-        [ Dsexp.unsafe_atom_of_string "merge-files-into"
-        ; List (List.map ~f:path srcs)
-        ; List (List.map ~f:string extras)
-        ; path target
-        ]
+  module Make_gen (P : sig
+      type sexp
+      val atom : string -> sexp
+      val list : sexp list -> sexp
+      val path : Path.t -> sexp
+      val string : String.t -> sexp
+      val program : Program.t -> sexp
+    end) = struct
+    open P
+    let rec gen =
+      function
+      | Run (a, xs) ->
+        list (atom "run" :: program a :: List.map xs ~f:string)
+      | Chdir (a, r) -> list [atom "chdir" ; path a ; gen r]
+      | Setenv (k, v, r) -> list [atom "setenv" ; string k ; string v ; gen r]
+      | Redirect (outputs, fn, r) ->
+        list [ atom (sprintf "with-%s-to" (Outputs.to_string outputs))
+             ; path fn
+             ; gen r
+             ]
+      | Ignore (outputs, r) ->
+        list [ atom (sprintf "ignore-%s" (Outputs.to_string outputs))
+             ; gen r
+             ]
+      | Progn l -> list (atom "progn" :: List.map l ~f:gen)
+      | Echo xs ->
+        list (atom "echo" :: List.map xs ~f:string)
+      | Cat x -> list [atom "cat"; path x]
+      | Copy (x, y) ->
+        list [atom "copy"; path x; path y]
+      | Symlink (x, y) ->
+        list [atom "symlink"; path x; path y]
+      | Copy_and_add_line_directive (x, y) ->
+        list [atom "copy#"; path x; path y]
+      | System x -> list [atom "system"; string x]
+      | Bash   x -> list [atom "bash"; string x]
+      | Write_file (x, y) -> list [atom "write-file"; path x; string y]
+      | Rename (x, y) -> list [atom "rename"; path x; path y]
+      | Remove_tree x -> list [atom "remove-tree"; path x]
+      | Mkdir x       -> list [atom "mkdir"; path x]
+      | Digest_files paths -> list [atom "digest-files";
+                                    list (List.map paths ~f:path)]
+      | Diff { optional; file1; file2; mode = Binary} ->
+        assert (not optional);
+        list [atom "cmp"; path file1; path file2]
+      | Diff { optional = false; file1; file2; mode = _ } ->
+        list [atom "diff"; path file1; path file2]
+      | Diff { optional = true; file1; file2; mode = _ } ->
+        list [atom "diff?"; path file1; path file2]
+      | Merge_files_into (srcs, extras, target) ->
+        list
+          [ atom "merge-files-into"
+          ; list (List.map ~f:path srcs)
+          ; list (List.map ~f:string extras)
+          ; path target
+          ]
+  end
+
+  module Dgen = Make_gen(struct
+      type sexp = Dsexp.t
+      let atom = Dsexp.unsafe_atom_of_string
+      let list s = Dsexp.List s
+      let program = Program.dgen
+      let string = String.dgen
+      let path = Path.dgen
+  end)
+  let dgen = Dgen.gen
+
+  module Sexpgen = Make_gen(struct
+      type sexp = Sexp.t
+      let atom a = Sexp.Atom a
+      let list a = Sexp.List a
+      let program s = Dsexp.sexp_of_t (Program.dgen s)
+      let string s = Dsexp.sexp_of_t (String.dgen s)
+      let path s = Dsexp.sexp_of_t (Path.dgen s)
+    end)
+  let sexp_of_t = Sexpgen.gen
 
   let run prog args = Run (prog, args)
   let chdir path t = Chdir (path, t)

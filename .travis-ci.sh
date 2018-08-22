@@ -31,10 +31,6 @@ case "$TARGET" in
         PREFIX=/Users/travis
       else
         PREFIX=/home/travis
-        # Install bwrap
-        sudo add-apt-repository ppa:ansible/bubblewrap
-        sudo apt-get update -qq
-        sudo apt-get install -y bubblewrap
       fi
       if [ ! -e ~/ocaml/bin/opam -o ! -e ~/.opam/lock -o "$OPAM_RESET" = "1" ] ; then
         mkdir ~/ocaml/src
@@ -49,7 +45,7 @@ case "$TARGET" in
         cd ../..
         rm -rf src
         rm -rf ~/.opam
-        opam init
+        opam init --disable-sandboxing
         eval $(opam config env)
         opam install ocamlfind utop ppxlib reason odoc menhir ocaml-migrate-parsetree js_of_ocaml-ppx js_of_ocaml-compiler
         opam remove dune jbuilder \

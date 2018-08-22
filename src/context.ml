@@ -114,31 +114,6 @@ let sexp_of_t t =
 
 let compare a b = compare a.name b.name
 
-(* Parse the [`ocamlc -where`/makefile_config] file *)
-module Makefile_config = struct
-  type t =
-    { supports_shared_libraries : bool
-    }
-
-  let load ~stdlib_dir =
-    let file = Path.relative stdlib_dir "Makefile.config" in
-    let lines = Io.lines_of_file file in
-    let vars =
-      List.filter_map lines ~f:(fun line ->
-        let line = String.trim line in
-        if line = "" || line.[0] = '#' then
-          None
-        else
-          String.lsplit2 line ~on:'=')
-      |> String.Map.of_list_reduce ~f:(fun _ x -> x)
-    in
-    { supports_shared_libraries =
-        (match String.Map.find vars "SUPPORTS_SHARED_LIBRARIES" with
-         | Some "false" -> false
-         | _ -> true)
-    }
-end
-
 let opam_config_var ~env ~cache var =
   match Hashtbl.find cache var with
   | Some _ as x -> Fiber.return x
@@ -287,19 +262,22 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     in
     let ocaml_config_ok_exn = function
       | Ok x -> x
-      | Error msg ->
+      | Error (Ocaml_config.Origin.Ocamlc_config, msg) ->
         die "Failed to parse the output of '%s -config':@\n\
              %s"
           (Path.to_string ocamlc) msg
+      | Error (Makefile_config file, msg) ->
+        Loc.fail (Loc.in_file (Path.to_string file)) "%s" msg
     in
     Fiber.fork_and_join
       findlib_path
       (fun () ->
          Process.run_capture_lines ~env Strict ocamlc ["-config"]
          >>| fun lines ->
-         let open Result.O in
          ocaml_config_ok_exn
-           (Ocaml_config.Vars.of_lines lines >>= Ocaml_config.make))
+           (match Ocaml_config.Vars.of_lines lines with
+            | Ok vars -> Ocaml_config.make vars
+            | Error msg -> Error (Ocamlc_config, msg)))
     >>= fun (findlib_path, ocfg) ->
     let version = Ocaml_version.of_ocaml_config ocfg in
     let env =
@@ -367,7 +345,6 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     let version_string = Ocaml_config.version_string ocfg in
     let version        = Ocaml_version.of_ocaml_config ocfg in
     let arch_sixtyfour = Ocaml_config.word_size ocfg = 64 in
-    let makefile_config = Makefile_config.load ~stdlib_dir in
     Fiber.return
       { name
       ; implicit
@@ -431,8 +408,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       ; ast_intf_magic_number   = Ocaml_config.ast_intf_magic_number   ocfg
       ; cmxs_magic_number       = Ocaml_config.cmxs_magic_number       ocfg
       ; cmt_magic_number        = Ocaml_config.cmt_magic_number        ocfg
-
-      ; supports_shared_libraries = makefile_config.supports_shared_libraries
+      ; supports_shared_libraries = Ocaml_config.supports_shared_libraries ocfg
 
       ; which_cache
       }

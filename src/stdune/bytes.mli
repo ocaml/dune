@@ -7,3 +7,9 @@ val blit_string
   -> dst_pos:int
   -> len:int
   -> unit
+
+val sub_string
+  :  t
+  -> pos:int
+  -> len:int
+  -> string

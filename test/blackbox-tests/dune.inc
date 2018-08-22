@@ -56,6 +56,14 @@
  (enabled_if (<> %{ocaml-config:system} win)))
 
 (alias
+ (name configurator-gh1166)
+ (deps (package dune) (source_tree test-cases/configurator-gh1166))
+ (action
+  (chdir
+   test-cases/configurator-gh1166
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name copy_files)
  (deps (package dune) (source_tree test-cases/copy_files))
  (action
@@ -822,6 +830,7 @@
   (alias byte-code-only)
   (alias c-stubs)
   (alias configurator)
+  (alias configurator-gh1166)
   (alias copy_files)
   (alias cross-compilation)
   (alias custom-build-dir)
@@ -923,6 +932,7 @@
   (alias byte-code-only)
   (alias c-stubs)
   (alias configurator)
+  (alias configurator-gh1166)
   (alias copy_files)
   (alias cross-compilation)
   (alias custom-build-dir)

@@ -7,23 +7,26 @@ module File = struct
     }
 
   (* XXX these sexp converters will be useful for the dump command *)
-  (* let _t =
-   *   let open Dsexp.Of_sexp in
-   *   peek_exn >>= function
-   *   | List (_, [_; Atom (_, A "as"); _]) ->
-   *     enter
-   *       (let % map src = Path.t
-   *        and () = junk
-   *        and dst = Path.t
-   *        in
-   *        { src; dst })
-   *   | sexp ->
-   *     Dsexp.Of_sexp.of_sexp_errorf (Sexp.Ast.loc sexp)
-   *       "(<file> as <file>) expected" *)
+  let _dparse =
+    let open Dsexp.Of_sexp in
+    peek_exn >>= function
+    | List (_, [_; Atom (_, A "as"); _]) ->
+      enter
+        (let%map src = Path_dsexp.dparse
+         and () = junk
+         and dst = Path_dsexp.dparse
+         in
+         { src; dst })
+    | sexp ->
+      Dsexp.Of_sexp.of_sexp_errorf (Dsexp.Ast.loc sexp)
+        "(<file> as <file>) expected"
 
-  (* let _sexp_of_t { src; dst } =
-   *   Sexp.List [Path.sexp_of_t src; Sexp.unsafe_atom_of_string "as";
-   *              Path.sexp_of_t dst] *)
+  let _sexp_of_t { src; dst } =
+    Sexp.List
+      [ Path.sexp_of_t src
+      ; Sexp.Atom "as"
+      ; Path.sexp_of_t dst
+      ]
 
   let db : t list ref = ref []
 

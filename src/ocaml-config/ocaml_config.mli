@@ -1,10 +1,11 @@
-(** Represent the output of [ocamlc -config].
+(** Represent the output of [ocamlc -config] and contents of [Makefile.config].
 
     This library is internal to jbuilder and guarantees no API stability. *)
 
 open Stdune
 
-(** Represent a parsed and interpreted output of [ocamlc -config] *)
+(** Represent a parsed and interpreted output of [ocamlc -config] and
+    contents of [Makefile.config]. *)
 type t
 
 val sexp_of_t : t -> Usexp.t
@@ -18,7 +19,8 @@ end
 
 (** {1 Raw bindings} *)
 
-(** Represent the parsed but uninterpreted output of [ocamlc -config] *)
+(** Represent the parsed but uninterpreted output of [ocamlc -config]
+    or contents of [Makefile.config]. *)
 module Vars : sig
   type t = string String.Map.t
 
@@ -28,8 +30,15 @@ end
 
 (** {1 Creation} *)
 
-(** Interpret raw bindings *)
-val make : Vars.t -> (t, string) Result.t
+module Origin : sig
+  type t =
+    | Ocamlc_config
+    | Makefile_config of Path.t
+end
+
+(** Interpret raw bindings (this function also loads the
+    [Makefile.config] file in the stdlib directory). *)
+val make : Vars.t -> (t, Origin.t * string) Result.t
 
 (** {1 Query} *)
 
@@ -83,6 +92,7 @@ val ast_intf_magic_number    : t -> string
 val cmxs_magic_number        : t -> string
 val cmt_magic_number         : t -> string
 val natdynlink_supported     : t -> bool
+val supports_shared_libraries : t -> bool
 
 (** {1 Values} *)
 

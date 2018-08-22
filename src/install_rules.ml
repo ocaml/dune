@@ -168,7 +168,7 @@ module Gen(P : Params) = struct
                ; Library.archive ~dir lib ~ext:ctx.ext_lib
                ]
              in
-             if ctx.natdynlink_supported && lib.dynlink then
+             if Dynlink_supported.get lib.dynlink ctx.natdynlink_supported then
                files @ [ Library.archive ~dir lib ~ext:".cmxs" ]
              else
                files)
@@ -178,7 +178,8 @@ module Gen(P : Params) = struct
         ]
     in
     let dlls  =
-      if_ (byte && Library.has_stubs lib && lib.dynlink)
+      if_ (byte && Library.has_stubs lib &&
+           Dynlink_supported.get lib.dynlink ctx.supports_shared_libraries)
         [Library.dll ~dir lib ~ext_dll:ctx.ext_dll]
     in
     let execs =

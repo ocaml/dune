@@ -86,7 +86,7 @@ type t =
   ; opam_var_cache : (string, string) Hashtbl.t
 
   ; (** Native dynlink *)
-    natdynlink_supported : bool
+    natdynlink_supported : Dynlink_supported.By_the_os.t
 
   ; ocaml_config            : Ocaml_config.t
   ; version_string          : string
@@ -122,7 +122,7 @@ type t =
   ; cmxs_magic_number       : string
   ; cmt_magic_number        : string
 
-  ; supports_shared_libraries : bool
+  ; supports_shared_libraries : Dynlink_supported.By_the_os.t
 
   ; which_cache             : (string, Path.t option) Hashtbl.t
   }

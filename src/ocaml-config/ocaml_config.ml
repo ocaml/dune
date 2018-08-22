@@ -214,7 +214,11 @@ module Vars = struct
         | Some i ->
           let x =
             (String.sub line ~pos:0 ~len:i,
-             String.sub line ~pos:(i + 2) ~len:(String.length line - i - 2))
+             let len = String.length line - i - 2 in
+             if len < 0 then
+               ""
+             else
+               String.sub line ~pos:(i + 2) ~len)
           in
           loop (x :: acc) lines
         | None ->

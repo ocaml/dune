@@ -44,8 +44,7 @@ let equal_position
       { Lexing.pos_fname = f_b; pos_lnum = l_b
       ; pos_bol = b_b; pos_cnum = c_b }
       =
-      let open Int.Infix in
-      Caml.String.equal f_a f_b
+      f_a = f_b
       && l_a = l_b
       && b_a = b_b
       && c_a = c_b

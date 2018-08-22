@@ -31,6 +31,10 @@ case "$TARGET" in
         PREFIX=/Users/travis
       else
         PREFIX=/home/travis
+        # Install bwrap
+        sudo add-apt-repository ppa:ansible/bubblewrap
+        sudo apt-get update -qq
+        sudo apt-get install -y bubblewrap
       fi
       if [ ! -e ~/ocaml/bin/opam -o ! -e ~/.opam/lock -o "$OPAM_RESET" = "1" ] ; then
         mkdir ~/ocaml/src

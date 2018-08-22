@@ -7,20 +7,6 @@ module File = struct
     }
 
   (* XXX these sexp converters will be useful for the dump command *)
-  let _dparse =
-    let open Dsexp.Of_sexp in
-    peek_exn >>= function
-    | List (_, [_; Atom (_, A "as"); _]) ->
-      enter
-        (let%map src = Path_dsexp.dparse
-         and () = junk
-         and dst = Path_dsexp.dparse
-         in
-         { src; dst })
-    | sexp ->
-      Dsexp.Of_sexp.of_sexp_errorf (Dsexp.Ast.loc sexp)
-        "(<file> as <file>) expected"
-
   let _sexp_of_t { src; dst } =
     Sexp.List
       [ Path.sexp_of_t src

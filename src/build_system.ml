@@ -1232,22 +1232,26 @@ let create ~contexts ~projects ~file_tree ~hook =
     |> List.map ~f:(fun proj -> Dune_project.name proj, proj)
     |> Dune_project.Name.Table.of_list_exn
   in
-  { contexts
-  ; files      = Path.Table.create 1024
-  ; packages   = Path.Table.create 1024
-  ; projects
-  ; trace      = Trace.load ()
-  ; local_mkdirs = Path.Set.empty
-  ; dirs       = Path.Table.create 1024
-  ; load_dir_stack = []
-  ; file_tree
-  ; gen_rules = String.Map.map contexts ~f:(fun _ ~dir:_ ->
-      die "gen_rules called too early")
-  ; build_dirs_to_keep = Path.Set.empty
-  ; files_of = Path.Table.create 1024
-  ; prefix = None
-  ; hook
-  }
+  let t =
+    { contexts
+    ; files      = Path.Table.create 1024
+    ; packages   = Path.Table.create 1024
+    ; projects
+    ; trace      = Trace.load ()
+    ; local_mkdirs = Path.Set.empty
+    ; dirs       = Path.Table.create 1024
+    ; load_dir_stack = []
+    ; file_tree
+    ; gen_rules = String.Map.map contexts ~f:(fun _ ~dir:_ ->
+        die "gen_rules called too early")
+    ; build_dirs_to_keep = Path.Set.empty
+    ; files_of = Path.Table.create 1024
+    ; prefix = None
+    ; hook
+    }
+  in
+  at_exit (fun () -> finalize t);
+  t
 
 let eval_request t ~request ~process_target =
   let { Build_interpret.Static_deps.

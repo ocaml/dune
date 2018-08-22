@@ -20,11 +20,3 @@ module Template = struct
     ; loc: Loc.t
     }
 end
-
-module Sexp = struct
-  type t =
-    | Atom of Atom.t
-    | Quoted_string of string
-    | List of t list
-    | Template of Template.t
-end

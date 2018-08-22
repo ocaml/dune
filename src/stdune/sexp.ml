@@ -1,4 +1,8 @@
-type t = Sexp0.t =
+module Array = ArrayLabels
+module List = ListLabels
+module String = StringLabels
+
+type t =
   | Atom of string
   | List of t list
 
@@ -21,18 +25,11 @@ module To_sexp = struct
   let option f = function
     | None -> List []
     | Some x -> List [f x]
-  let string_set set = list string (String0.Set.to_list set)
-  let string_map f map = list (pair string f) (String0.Map.to_list map)
 
   let record l =
     List (List.map l ~f:(fun (n, v) -> List [Atom n; v]))
 
   let unknown _ = Atom "<unknown>"
-
-  let string_hashtbl f h =
-    string_map f
-      (Caml.Hashtbl.fold h ~init:String0.Map.empty ~f:(fun ~key ~data acc ->
-         String0.Map.add acc key data))
 end
 
 let rec to_string = function

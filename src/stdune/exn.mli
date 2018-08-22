@@ -2,7 +2,7 @@
 
 (** An programming error, that should be reported upstream. The error message
     shouldn't try to be developer friendly rather than user friendly. *)
-exception Code_error of Sexp0.t
+exception Code_error of Sexp.t
 
 
 (* CR-soon diml:
@@ -14,14 +14,14 @@ exception Code_error of Sexp0.t
 (** A fatal error, that should be reported to the user in a nice way *)
 exception Fatal_error of string
 
-exception Loc_error of Loc0.t * string
+exception Loc_error of Loc.t * string
 
 val fatalf
-  :  ?loc:Loc0.t
+  :  ?loc:Loc.t
   -> ('a, unit, string, string, string, 'b) format6
   -> 'a
 
-val code_error : string -> (string * Sexp0.t) list -> _
+val code_error : string -> (string * Sexp.t) list -> _
 
 type t = exn
 

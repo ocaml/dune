@@ -7,6 +7,7 @@ module T = struct
       Eq
     else
       Gt
+  let sexp_of_t = Sexp.To_sexp.int
 end
 
 include T

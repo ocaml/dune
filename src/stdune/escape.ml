@@ -1,3 +1,5 @@
+module String = StringLabels
+
 type quote =
   | Needs_quoting_with_length of int
   | No_quoting

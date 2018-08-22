@@ -1,4 +1,4 @@
-type t = Loc0.t =
+type t =
   { start : Lexing.position
   ; stop  : Lexing.position
   }
@@ -45,7 +45,7 @@ let equal_position
       ; pos_bol = b_b; pos_cnum = c_b }
       =
       let open Int.Infix in
-      String.equal f_a f_b
+      Caml.String.equal f_a f_b
       && l_a = l_b
       && b_a = b_b
       && c_a = c_b

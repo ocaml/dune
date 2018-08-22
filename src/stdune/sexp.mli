@@ -1,4 +1,4 @@
-type t = Sexp0.t =
+type t =
   | Atom of string
   | List of t list
 

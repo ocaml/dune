@@ -1,5 +1,6 @@
 type t = int
 val compare : t -> t -> Ordering.t
+val sexp_of_t : t -> Sexp.t
 
 module Set : Set.S with type elt = t
 module Map : Map.S with type key = t

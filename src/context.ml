@@ -110,9 +110,9 @@ let sexp_of_t t =
       bool (Dynlink_supported.By_the_os.get t.natdynlink_supported)
     ; "supports_shared_libraries",
       bool (Dynlink_supported.By_the_os.get t.supports_shared_libraries)
-    ; "opam_vars", string_hashtbl string t.opam_var_cache
+    ; "opam_vars", Hashtbl.sexp_of_t string string t.opam_var_cache
     ; "ocaml_config", Ocaml_config.sexp_of_t t.ocaml_config
-    ; "which", string_hashtbl (option path) t.which_cache
+    ; "which", Hashtbl.sexp_of_t string (option path) t.which_cache
     ]
 
 let compare a b = compare a.name b.name

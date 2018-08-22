@@ -1,4 +1,4 @@
-type t = Loc0.t =
+type t =
   { start : Lexing.position
   ; stop  : Lexing.position
   }
@@ -9,9 +9,9 @@ val none : t
 
 val of_lexbuf : Lexing.lexbuf -> t
 
-val sexp_of_t : t -> Sexp0.t
+val sexp_of_t : t -> Sexp.t
 
-val sexp_of_position_no_file : Lexing.position -> Sexp0.t
+val sexp_of_position_no_file : Lexing.position -> Sexp.t
 
 val equal : t -> t -> bool
 

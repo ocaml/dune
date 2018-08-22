@@ -5,7 +5,17 @@ module Template = Template
 
 type syntax = Atom.syntax = Jbuild | Dune
 
-include Dsexp0
+type t =
+  | Atom of Atom.t
+  | Quoted_string of string
+  | List of t list
+  | Template of Template.t
+
+let atom_or_quoted_string s =
+  if Atom.is_valid_dune s then
+    Atom (Atom.of_string s)
+  else
+    Quoted_string s
 
 let atom s = Atom (Atom.of_string s)
 
@@ -128,6 +138,7 @@ let prepare_formatter ppf =
     }
 
 module Ast = struct
+  type dsexp = t
   type t =
     | Atom of Loc.t * Atom.t
     | Quoted_string of Loc.t * string
@@ -144,7 +155,7 @@ module Ast = struct
   let loc (Atom (loc, _) | Quoted_string (loc, _) | List (loc, _)
           | Template { loc ; _ }) = loc
 
-  let rec remove_locs t : Dsexp0.t =
+  let rec remove_locs t : dsexp =
     match t with
     | Template t -> Template (Template.remove_locs t)
     | Atom (_, s) -> Atom s
@@ -259,7 +270,6 @@ module To_sexp = struct
   type nonrec 'a t = 'a -> t
   let unit () = List []
   let string = atom_or_quoted_string
-  let atom = string
   let int n = Atom (Atom.of_int n)
   let float f = Atom (Atom.of_float f)
   let bool b = Atom (Atom.of_bool b)
@@ -270,14 +280,8 @@ module To_sexp = struct
   let option f = function
     | None -> List []
     | Some x -> List [f x]
-  let string_set set = list atom (String.Set.to_list set)
-  let string_map f map = list (pair atom f) (String.Map.to_list map)
   let record l =
     List (List.map l ~f:(fun (n, v) -> List [Atom(Atom.of_string n); v]))
-  let string_hashtbl f h =
-    string_map f
-      (Hashtbl.foldi h ~init:String.Map.empty ~f:(fun key data acc ->
-         String.Map.add acc key data))
 
   type field = string * dsexp option
 
@@ -669,21 +673,6 @@ module Of_sexp = struct
       (eos >>= function
        | true -> return None
        | false -> t >>| Option.some)
-
-  let string_set = list string >>| String.Set.of_list
-  let string_map t =
-    list (pair string t) >>= fun bindings ->
-    match String.Map.of_list bindings with
-    | Result.Ok x -> return x
-    | Error (key, _v1, _v2) ->
-      loc >>= fun loc ->
-      of_sexp_errorf loc "key %s present multiple times" key
-
-  let string_hashtbl t =
-    string_map t >>| fun map ->
-    let tbl = Hashtbl.create (String.Map.cardinal map + 32) in
-    String.Map.iteri map ~f:(Hashtbl.add tbl);
-    tbl
 
   let find_cstr cstrs loc name ctx values =
     match List.assoc cstrs name with

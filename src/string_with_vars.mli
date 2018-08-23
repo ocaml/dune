@@ -77,3 +77,5 @@ val partial_expand
   -> dir:Path.t
   -> f:(Value.t list option expander)
   -> 'a Partial.t
+
+val remove_locs : t -> t

@@ -261,9 +261,7 @@ include Sub_system.Register_end_point(
       SC.add_alias_action sctx
         ~loc:(Some info.loc)
         (Build_system.Alias.runtest ~dir)
-        ~stamp:(List [ Dsexp.unsafe_atom_of_string "ppx-runner"
-                     ; Quoted_string name
-                     ])
+        ~stamp:("ppx-runner", name)
         (let module A = Action in
          let exe = Path.relative inline_test_dir (name ^ ".exe") in
          Build.path exe >>>

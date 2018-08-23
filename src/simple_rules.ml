@@ -90,12 +90,12 @@ let alias sctx ~dir ~scope (alias_conf : Alias_conf.t) =
       Blang.eval_bool blang ~dir ~f
   in
   let stamp =
-    Dsexp.List
-      [ Dsexp.unsafe_atom_of_string "user-alias"
-      ; Dune_file.Bindings.dgen Dune_file.Dep_conf.dgen alias_conf.deps
-      ; Dsexp.To_sexp.option Action.Unexpanded.dgen
-          (Option.map alias_conf.action ~f:snd)
-      ]
+    ( "user-alias"
+    , Dune_file.Bindings.map
+        ~f:Dune_file.Dep_conf.remove_locs alias_conf.deps
+    , Option.map ~f:(fun (_loc, a) -> Action.Unexpanded.remove_locs a)
+        alias_conf.action
+    )
   in
   let loc = Some alias_conf.loc in
   if enabled then

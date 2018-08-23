@@ -302,6 +302,11 @@ module Bindings = struct
 
   let fold t ~f ~init = List.fold_left ~f:(fun acc x -> f x acc) ~init t
 
+  let map t ~f =
+    List.map t ~f:(function
+      | Unnamed a -> Unnamed (f a)
+      | Named (s, xs) -> Named (s, List.map ~f xs))
+
   let to_list =
     List.concat_map ~f:(function
       | Unnamed x -> [x]
@@ -376,6 +381,15 @@ module Dep_conf = struct
     | Source_tree of String_with_vars.t
     | Package of String_with_vars.t
     | Universe
+
+  let remove_locs = function
+    | File sw -> File (String_with_vars.remove_locs sw)
+    | Alias sw -> Alias (String_with_vars.remove_locs sw)
+    | Alias_rec sw -> Alias_rec (String_with_vars.remove_locs sw)
+    | Glob_files sw -> Glob_files (String_with_vars.remove_locs sw)
+    | Source_tree sw -> Source_tree (String_with_vars.remove_locs sw)
+    | Package sw -> Package (String_with_vars.remove_locs sw)
+    | Universe -> Universe
 
   let dparse =
     let dparse =

@@ -43,6 +43,8 @@ module Template : sig
   val string_of_var : var -> string
 
   val to_string : t -> syntax:syntax -> string
+
+  val remove_locs : t -> t
 end
 
 (** The S-expression type *)

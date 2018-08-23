@@ -91,6 +91,8 @@ module Bindings : sig
 
   type 'a t = 'a one list
 
+  val map : 'a t -> f:('a -> 'b) -> 'b t
+
   val find : 'a t -> string -> 'a list option
 
   val fold : 'a t -> f:('a one -> 'acc -> 'acc) -> init:'acc -> 'acc
@@ -115,6 +117,8 @@ module Dep_conf : sig
     | Source_tree of String_with_vars.t
     | Package of String_with_vars.t
     | Universe
+
+  val remove_locs : t -> t
 
   include Dsexp.Sexpable with type t := t
   val sexp_of_t : t Sexp.To_sexp.t

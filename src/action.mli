@@ -96,6 +96,8 @@ module Unexpanded : sig
     -> f:(Value.t list option String_with_vars.expander)
     -> Partial.t
 
+  val remove_locs : t -> t
+
   val sexp_of_t : t Sexp.To_sexp.t
 end
 

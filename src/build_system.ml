@@ -1621,7 +1621,7 @@ module Alias = struct
 
   let add_action build_system t ~context ~loc ?(locks=[]) ~stamp action =
     let def = get_alias_def build_system t in
-    def.actions <- { stamp = Digest.string (Dsexp.to_string ~syntax:Dune stamp)
+    def.actions <- { stamp = Digest.string (Marshal.to_string stamp [])
                    ; action
                    ; locks
                    ; context

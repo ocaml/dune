@@ -430,6 +430,16 @@ module Unexpanded = struct
 
   include Make_ast(String_with_vars)(String_with_vars)(String_with_vars)(Uast)
 
+  module Mapper = Make_mapper(Uast)(Uast)
+
+  let remove_locs =
+    let no_loc_template = String_with_vars.make_text Loc.none "" in
+    fun t ->
+      Mapper.map t ~dir:no_loc_template
+        ~f_program:(fun ~dir:_ -> String_with_vars.remove_locs)
+        ~f_path:(fun ~dir:_ -> String_with_vars.remove_locs)
+        ~f_string:(fun ~dir:_ -> String_with_vars.remove_locs)
+
   let dparse =
     if_list
       ~then_:dparse

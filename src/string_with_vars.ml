@@ -298,3 +298,7 @@ let text_only t =
   match t.template.parts with
   | [Text s] -> Some s
   | _ -> None
+
+let remove_locs t =
+  { t with template = Dsexp.Template.remove_locs t.template
+  }

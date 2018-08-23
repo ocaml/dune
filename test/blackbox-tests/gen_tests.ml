@@ -139,6 +139,7 @@ let exclusions =
   ; make "github764" ~skip_platforms:[Win]
   ; make "gen-opam-install-file" ~external_deps:true
   ; make "scope-ppx-bug" ~external_deps:true
+  ; make "findlib-dynload" ~external_deps:true
   (* The next test is disabled as it relies on configured opam
      swtiches and it's hard to get that working properly *)
   ; make "envs-and-contexts" ~external_deps:true ~enabled:false

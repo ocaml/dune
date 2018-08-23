@@ -208,6 +208,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name findlib-dynload)
+ (deps (package dune) (source_tree test-cases/findlib-dynload))
+ (action
+  (chdir
+   test-cases/findlib-dynload
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name findlib-error)
  (deps (package dune) (source_tree test-cases/findlib-error))
  (action
@@ -848,6 +856,7 @@
   (alias exec-missing)
   (alias fallback-dune)
   (alias findlib)
+  (alias findlib-dynload)
   (alias findlib-error)
   (alias fmt)
   (alias force-test)

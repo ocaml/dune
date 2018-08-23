@@ -77,6 +77,16 @@ module L : sig
   val remove_dups : t -> t
 end
 
+(** Operation on list of libraries and modules *)
+module Lib_and_module : sig
+  type nonrec t =
+    | Lib of t
+    | Module of Module.t * Path.t (** obj_dir *)
+
+  val link_flags : t list -> mode:Mode.t -> stdlib_dir:Path.t -> _ Arg_spec.t
+
+end
+
 (** {1 Raw library descriptions} *)
 
 (** Information about a library *)

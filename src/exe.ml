@@ -139,6 +139,10 @@ let link_exe
       Build.dyn_paths (Build.arr (fun (modules, _) ->
         artifacts modules ~ext:ctx.ext_obj))
   in
+  let arg_spec_for_requires =
+    Result.map requires ~f:(Link_time_code_gen.libraries_link ~name ~mode cctx)
+  in
+  (* The rule *)
   SC.add_rule sctx
     (Build.fanout3
        (register_native_objs_deps modules_and_cm_files >>^ snd)
@@ -154,8 +158,7 @@ let link_exe
        ; A "-o"; Target exe
        ; As linkage.flags
        ; Dyn (fun (_, _, link_flags) -> As link_flags)
-       ; Arg_spec.of_result_map requires ~f:(fun libs ->
-           Lib.L.link_flags libs ~mode ~stdlib_dir:ctx.stdlib_dir)
+       ; Arg_spec.of_result_map arg_spec_for_requires ~f:(fun x -> x)
        ; Dyn (fun (cm_files, _, _) -> Deps cm_files)
        ]);
   if linkage.ext = ".bc" then

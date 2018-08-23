@@ -856,7 +856,7 @@ module Action = struct
               assert false
             | Unnamed v :: _ -> [Path v]
             | [] ->
-              Dloc.warn loc "Variable '%s' used with no explicit \
+              Errors.warn loc "Variable '%s' used with no explicit \
                             dependencies@." key;
               [Value.String ""]
             end
@@ -874,7 +874,7 @@ module Action = struct
       | [] -> ()
       | x :: _ ->
         let loc = String_with_vars.loc x in
-        Dloc.warn loc
+        Errors.warn loc
           "Aliases must not have targets, this target will be ignored.\n\
            This will become an error in the future.";
     end;

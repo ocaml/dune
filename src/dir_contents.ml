@@ -101,7 +101,7 @@ end = struct
     if missing_intf_only <> [] then begin
       match Ordered_set_lang.loc buildable.modules_without_implementation with
       | None ->
-        Dloc.warn buildable.loc
+        Errors.warn buildable.loc
           "Some modules don't have an implementation.\
            \nYou need to add the following field to this stanza:\
            \n\
@@ -122,7 +122,7 @@ end = struct
           |> List.map ~f:(sprintf "- %s")
           |> String.concat ~sep:"\n"
         in
-        Dloc.warn loc
+        Errors.warn loc
           "The following modules must be listed here as they don't \
            have an implementation:\n\
            %s\n\
@@ -155,7 +155,7 @@ end = struct
       )
     in
     Module.Name.Map.iteri fake_modules ~f:(fun m loc ->
-      Dloc.warn loc "Module %a is excluded but it doesn't exist."
+      Errors.warn loc "Module %a is excluded but it doesn't exist."
         Module.Name.pp m
     );
     check_invalid_module_listing ~buildable:conf ~intf_only ~modules
@@ -442,7 +442,7 @@ let build_modules_map (d : Super_context.Dir_with_jbuild.t) ~modules =
             List.sort ~compare
               (b.Buildable.loc :: List.map rest ~f:(fun b -> b.Buildable.loc))
           in
-          Dloc.warn (Loc.in_file b.loc.start.pos_fname)
+          Errors.warn (Loc.in_file b.loc.start.pos_fname)
             "Module %a is used in several stanzas:@\n\
              @[<v>%a@]@\n\
              @[%a@]@\n\

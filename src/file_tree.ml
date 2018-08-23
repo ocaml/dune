@@ -89,12 +89,12 @@ let load_jbuild_ignore path =
     if Filename.dirname fn = Filename.current_dir_name then
       true
     else begin
-      Dloc.(warn (Loc.of_pos
-                    ( Path.to_string path
-                    , i + 1, 0
-                    , String.length fn
-                    ))
-              "subdirectory expression %s ignored" fn);
+      Errors.(warn (Loc.of_pos
+                      ( Path.to_string path
+                      , i + 1, 0
+                      , String.length fn
+                      ))
+                "subdirectory expression %s ignored" fn);
       false
     end)
   |> String.Set.of_list

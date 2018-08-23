@@ -196,7 +196,7 @@ let go ?(log=Log.no_log) ?(config=Config.default)
     ; waiting_for_available_job = Queue.create ()
     }
   in
-  printer := print t;
+  Errors.printer := print t;
   let fiber =
     Fiber.Var.set t_var t
       (Fiber.with_error_handler (fun () -> fiber) ~on_error:Report_error.report)

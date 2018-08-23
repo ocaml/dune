@@ -1138,7 +1138,7 @@ let report_lib_error ppf (e : Error.t) =
   | No_solution_found_for_select { loc } ->
     Format.fprintf ppf
       "%a@{<error>Error@}: No solution found for this select form.\n"
-      Dloc.print loc
+      Errors.print loc
   | Dependency_cycle cycle ->
     Format.fprintf ppf
       "@{<error>Error@}: Dependency cycle detected between the \

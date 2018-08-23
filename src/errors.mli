@@ -27,3 +27,13 @@ val exnf     : Loc.t         -> ('a, Format.formatter, unit, exn) format4 -> 'a
 val fail     : Loc.t         -> ('a, Format.formatter, unit, 'b ) format4 -> 'a
 val fail_lex : Lexing.lexbuf -> ('a, Format.formatter, unit, 'b ) format4 -> 'a
 val fail_opt : Loc.t option  -> ('a, Format.formatter, unit, 'b ) format4 -> 'a
+
+(** Prints "File ..., line ..., characters ...:\n" *)
+val print : Format.formatter -> Loc.t -> unit
+
+(** Prints a warning *)
+val warn : Loc.t -> ('a, Format.formatter, unit) format -> 'a
+
+val print_to_console : string -> unit
+
+val printer : (string -> unit) ref

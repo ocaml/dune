@@ -83,11 +83,11 @@ let static_deps t ~all_targets ~file_tree =
           if Path.Set.is_empty result then begin
             match inspect_path file_tree dir with
             | None ->
-              Dloc.warn loc "Directory %s doesn't exist."
+              Errors.warn loc "Directory %s doesn't exist."
                 (Path.to_string_maybe_quoted
                    (Path.drop_optional_build_context dir))
             | Some Reg ->
-              Dloc.warn loc "%s is not a directory."
+              Errors.warn loc "%s is not a directory."
                 (Path.to_string_maybe_quoted
                    (Path.drop_optional_build_context dir))
             | Some Dir ->

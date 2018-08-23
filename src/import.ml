@@ -89,6 +89,4 @@ module No_io = struct
   module Io = struct end
 end
 
-(* This is ugly *)
-let printer = ref (Printf.eprintf "%s%!")
-let print_to_console s = !printer s
+let print_to_console = Errors.print_to_console

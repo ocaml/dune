@@ -88,7 +88,7 @@ module Of_sexp = struct
     match Univ_map.find parsing_context (Syntax.key syntax) with
     | Some (0, _) ->
       let last = Option.value_exn (List.last entries) in
-      Dloc.warn (Dsexp.Ast.loc last)
+      Errors.warn (Dsexp.Ast.loc last)
         "Field %S is present several times, previous occurrences are ignored."
         name
     | _ ->

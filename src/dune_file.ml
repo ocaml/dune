@@ -80,7 +80,7 @@ end = struct
     match res, wrapped with
     | Ok s, _ -> s
     | Warn _, true -> Errors.fail loc "%s" wrapped_message
-    | Warn s, false -> Dloc.warn loc "%s" wrapped_message; s
+    | Warn s, false -> Errors.warn loc "%s" wrapped_message; s
     | Invalid, _ -> Errors.fail loc "%s" invalid_message
 
   let valid_char = function
@@ -1289,7 +1289,7 @@ module Executables = struct
           | Some (loc, _) ->
             let func =
               match file_kind with
-              | Jbuild -> Dloc.warn
+              | Jbuild -> Errors.warn
               | Dune   -> Errors.fail
             in
             func loc

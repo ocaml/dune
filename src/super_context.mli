@@ -151,7 +151,7 @@ val add_alias_action
   -> Build_system.Alias.t
   -> loc:Loc.t option
   -> ?locks:Path.t list
-  -> stamp:Sexp.t
+  -> stamp:Dsexp.t
   -> (unit, Action.t) Build.t
   -> unit
 

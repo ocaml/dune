@@ -286,7 +286,9 @@ module Alias0 = struct
 
   let dep_rec_internal ~name ~dir ~ctx_dir =
     Build.lazy_no_targets (lazy (
-      File_tree.Dir.fold dir ~traverse_ignored_dirs:false
+      File_tree.Dir.fold dir
+        ~traverse_ignored_dirs:false
+        ~stay_in_project:false
         ~init:(Build.return true)
         ~f:(fun dir acc ->
           let path = Path.append ctx_dir (File_tree.Dir.path dir) in
@@ -393,13 +395,21 @@ type hook =
   | Rule_started
   | Rule_completed
 
+module File_trace = struct
+  type t =
+    { own_digest: Digest.t
+    ; project_digest: Digest.t option
+    }
+end
+
 type t =
   { (* File specification by targets *)
     files       : File_spec.packed Path.Table.t
   ; contexts    : Context.t String.Map.t
   ; (* Table from target to digest of
        [(deps (filename + contents), targets (filename only), action)] *)
-    trace       : Digest.t Path.Table.t
+    trace       : File_trace.t Path.Table.t
+  ; project_state : Project_state.t
   ; file_tree   : File_tree.t
   ; mutable local_mkdirs : Path.Set.t
   ; mutable dirs : Dir_status.t Path.Table.t
@@ -761,6 +771,38 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
       in
       Digest.string (Marshal.to_string trace [])
     in
+    let current_project = File_tree.project t.file_tree dir in
+    let project_digest =
+      let open Option.O in
+      current_project
+      >>| Dune_project.name
+      >>| Project_state.get_current_digest
+            t.project_state ~projects:t.projects ~file_tree:t.file_tree
+    in
+    let new_trace =
+      { File_trace.
+        own_digest = hash;
+        project_digest
+      }
+    in
+    Path.Set.iter all_deps ~f:(fun dep ->
+      let dep_project = File_tree.project t.file_tree dep in
+      match current_project, dep_project with
+      | Some cur, Some dep ->
+        Project_state.register_dependency
+          t.project_state
+          ~target:(Dune_project.name cur)
+          ~dependency:(Dune_project.name dep)
+      | Some _, None ->
+        (* This is problematic because we now know that current project digest
+           is not descriptive enough: it doesn't account for this dependency.
+        *)
+        (* TODO introduce partitions (projects | targets), which would fix this problem. *)
+        if not (String.is_prefix (Path.to_string dep) ~prefix:"/usr/local") then begin
+          Format.eprintf "%s -> %s\n%!" (Path.to_string dir) (Path.to_string dep);
+          failwith "Target mapped to a project depends on target not mapped to a project."
+        end
+      | None, _ -> ());
     let sandbox_dir =
       if sandbox then
         Some (Path.relative sandbox_dir (Digest.to_hex hash))
@@ -771,10 +813,10 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
       List.fold_left targets_as_list ~init:false ~f:(fun acc fn ->
         match Path.Table.find t.trace fn with
         | None ->
-          Path.Table.add t.trace fn hash;
+          Path.Table.add t.trace fn new_trace;
           true
-        | Some prev_hash ->
-          Path.Table.replace t.trace ~key:fn ~data:hash;
+        | Some { own_digest = prev_hash; _ } ->
+          Path.Table.replace t.trace ~key:fn ~data:new_trace;
           acc || prev_hash <> hash)
     in
     let targets_missing =
@@ -1110,19 +1152,50 @@ The following targets are not:
   targets
 
 and wait_for_file t ~loc fn =
-  match Path.Table.find t.files fn with
-  | Some file -> wait_for_file_found fn file
-  | None ->
-    let dir = Path.parent_exn fn in
-    if Path.is_strict_descendant_of_build_dir dir then begin
-      load_dir t ~dir;
-      match Path.Table.find t.files fn with
-      | Some file -> wait_for_file_found fn file
-      | None -> no_rule_found t ~loc fn
-    end else if Path.exists fn then
-      Fiber.return ()
-    else
-      die "File unavailable: %s" (Path.to_string_maybe_quoted fn)
+  let recompute_rules_and_wait () =
+    match Path.Table.find t.files fn with
+    | Some file -> wait_for_file_found fn file
+    | None ->
+      let dir = Path.parent_exn fn in
+      if Path.is_strict_descendant_of_build_dir dir then begin
+        load_dir t ~dir;
+        match Path.Table.find t.files fn with
+        | Some file -> wait_for_file_found fn file
+        | None -> no_rule_found t ~loc fn
+      end else if Path.exists fn then
+        Fiber.return ()
+      else
+        die "File unavailable: %s" (Path.to_string_maybe_quoted fn)
+  in
+  if Path.exists fn then
+    match File_tree.project t.file_tree fn with
+    | Some proj ->
+      if Project_state.is_unclean
+           t.project_state
+           (Dune_project.name proj)
+           ~projects:t.projects
+           ~file_tree:t.file_tree then
+        recompute_rules_and_wait ()
+      else begin
+        match Path.Table.find t.trace fn with
+        | Some { project_digest = Some file_project_digest; _ } ->
+          let actual_project_digest =
+            Project_state.get_current_digest
+              t.project_state
+              (Dune_project.name proj)
+              ~projects:t.projects
+              ~file_tree:t.file_tree
+          in
+          if file_project_digest = actual_project_digest then
+            Fiber.return ()
+          else
+            recompute_rules_and_wait ()
+        | _ ->
+          recompute_rules_and_wait ()
+      end
+    | None -> recompute_rules_and_wait ()
+  else
+    recompute_rules_and_wait ()
 
 and wait_for_file_found fn (File_spec.T file) =
   Internal_rule.push_rev_dep file.rule fn ~f:(fun () ->
@@ -1186,14 +1259,14 @@ let stamp_file_for_files_of t ~dir ~ext =
     stamp_file
 
 module Trace = struct
-  type t = Digest.t Path.Table.t
+  type t = File_trace.t Path.Table.t
 
   let file = Path.relative Path.build_dir ".db"
 
   module P = Utils.Persistent(struct
       type nonrec t = t
       let name = "INCREMENTAL-DB"
-      let version = 1
+      let version = 2
     end)
 
   let dump t =
@@ -1219,7 +1292,8 @@ let finalize t =
   Promotion.finalize ();
   Promoted_to_delete.dump ();
   Utils.Cached_digest.dump ();
-  Trace.dump t.trace
+  Trace.dump t.trace;
+  Project_state.finalize t.project_state
 
 let create ~contexts ~projects ~file_tree ~hook =
   Utils.Cached_digest.load ();
@@ -1238,6 +1312,7 @@ let create ~contexts ~projects ~file_tree ~hook =
     ; packages   = Path.Table.create 1024
     ; projects
     ; trace      = Trace.load ()
+    ; project_state = Project_state.load ()
     ; local_mkdirs = Path.Set.empty
     ; dirs       = Path.Table.create 1024
     ; load_dir_stack = []

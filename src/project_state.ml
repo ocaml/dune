@@ -38,18 +38,56 @@ let load () =
     }
   | None -> t
 
+module Md5 : sig
+  type t
+  val init : unit -> t
+  val update : t -> string -> unit
+  val compute : t -> Digest.t
+end = struct
+  type t = {
+    buffer: bytes;
+    mutable size: int;
+  }
+
+  let capacity = 65536
+
+  let init () =
+    { buffer = Bytes.create capacity
+    ; size = 0
+    }
+
+  let compress t =
+    let digest = Digest.subbytes t.buffer 0 t.size in
+    Bytes.blit_string digest 0 t.buffer 0 16;
+    t.size <- 16
+
+  let update t content =
+    if (String.length content > capacity - 16) then
+      raise (Invalid_argument "Md5.update called with string that is too long")
+    else if (String.length content) + t.size > capacity then
+      compress t;
+    Bytes.blit_string content 0 t.buffer t.size (String.length content);
+    t.size <- t.size + (String.length content)
+
+  let compute t =
+    compress t;
+    Bytes.sub_string t.buffer 0 16
+end
+
 (* Own digest is computed for a group of interdependent projects, namely
    a strongly connected component (SCC) in the project depedency graph.
    It only accounts for files in projects from the group, and doesn't
    account for dependencies on other projects.
 *)
 let compute_own_digest projects ~file_tree =
+  let digest = Md5.init () in
   List.fold_left projects ~init:[] ~f:(fun acc project ->
     let root = Dune_project.root project in
     match File_tree.find_dir file_tree (Path.of_local root) with
     | Some dir ->
       File_tree.Dir.fold
         dir
+        ~stay_in_project:true
         ~traverse_ignored_dirs:false
         ~init:acc
         ~f:(fun dir acc ->
@@ -59,10 +97,10 @@ let compute_own_digest projects ~file_tree =
             ~f:(fun p acc -> p :: acc))
     | None -> acc)
   |> List.sort ~compare:Path.compare
-  |> List.map ~f:(fun path ->
-    String.concat ~sep:":" [Path.to_string path; Utils.Cached_digest.file path])
-  |> String.concat ~sep:";"
-  |> Digest.string
+  |> List.iter ~f:(fun path ->
+    Md5.update digest (Path.to_string path);
+    Md5.update digest (Utils.Cached_digest.file path));
+  Md5.compute digest
 
 (* This function computes current digests for root_project and all its
    direct or indirect dependencies. Digest for a project is computed
@@ -106,21 +144,48 @@ let compute_digests t root_project ~projects ~file_tree =
       | None -> acc)
     in
     let external_deps = Set.diff all_deps component in
-    let true_digest =
-      Set.fold external_deps ~init:[own_digest] ~f:(fun dep acc ->
-        Table.find_exn t.current_digests dep :: acc)
-      |> String.concat ~sep:";"
-      |> Digest.string
-    in
+    let true_digest_md5 = Md5.init () in
+    Md5.update true_digest_md5 own_digest;
+    Set.iter external_deps ~f:(fun dep ->
+      Md5.update true_digest_md5 (Table.find_exn t.current_digests dep));
+    let true_digest = Md5.compute true_digest_md5 in
     Set.iter component ~f:(fun project ->
       Table.replace t.current_digests ~key:project ~data:true_digest;
-      match Table.find t.saved_digests project with
-      | Some saved_digest ->
-        if saved_digest <> true_digest then begin
-          Table.remove t.saved_digests project;
-          Table.remove t.saved_deps project
-        end
-      | None -> ())
+      (match Table.find t.saved_digests project with
+       | Some saved_digest ->
+         if saved_digest <> true_digest then begin
+           Table.remove t.saved_digests project;
+           Table.remove t.saved_deps project;
+           if !Clflags.debug_partition_cache then
+             Format.eprintf
+               "Project dirty: %-25s (%s <- %s)"
+               (Dune_project.Name.to_string_hum project)
+               (Digest.to_hex true_digest)
+               (Digest.to_hex saved_digest)
+         end
+         else begin
+           Table.iter t.saved_deps ~f:(Table.replace t.current_deps);
+           if !Clflags.debug_partition_cache then
+             Format.eprintf
+               "Project clean: %-25s (%s)"
+               (Dune_project.Name.to_string_hum project)
+               (Digest.to_hex true_digest)
+         end
+       | None ->
+         if !Clflags.debug_partition_cache then
+           Format.eprintf
+             "Project dirty (no record): %-25s (%s)"
+             (Dune_project.Name.to_string_hum project)
+             (Digest.to_hex true_digest));
+      if !Clflags.debug_partition_cache then begin
+        Format.eprintf "\t [sdeps: %!";
+        Table.find_or_add t.saved_deps project ~f:(fun _ -> Set.empty)
+        |> Set.to_list
+        |> List.map ~f:Dune_project.Name.to_string_hum
+        |> String.concat ~sep:", "
+        |> prerr_string;
+        Format.eprintf "]\n%!"
+      end)
   in
   let rec iter_strong_components v =
     let v_info =
@@ -142,9 +207,14 @@ let compute_digests t root_project ~projects ~file_tree =
           if dep_info.on_stack then
             v_info.low_link <- min v_info.low_link dep_info.index
         | None ->
-          iter_strong_components dep;
-          v_info.low_link <- min v_info.low_link (Table.find_exn info dep).low_link
-      );
+          (* If dependency digest is already computed, then it's for sure
+             in a different SCC that was already processed before, don't
+             process it again.
+          *)
+          if not (Table.mem t.current_digests dep) then begin
+            iter_strong_components dep;
+            v_info.low_link <- min v_info.low_link (Table.find_exn info dep).low_link
+          end);
     if v_info.low_link = v_info.index then begin
       let component = ref Set.empty in
       let should_continue = ref true in
@@ -162,6 +232,13 @@ let compute_digests t root_project ~projects ~file_tree =
   in
   iter_strong_components root_project
 
+let get_current_digest t project ~projects ~file_tree =
+  match Dune_project.Name.Table.find t.current_digests project with
+  | Some digest -> digest
+  | None ->
+    compute_digests t project ~projects ~file_tree;
+    Dune_project.Name.Table.find_exn t.current_digests project
+
 let is_unclean t project ~projects ~file_tree =
   match Dune_project.Name.Table.(
     find t.current_digests project, find t.saved_digests project) with
@@ -174,41 +251,24 @@ let is_unclean t project ~projects ~file_tree =
   | Some _, None ->
     true
   | None, _ ->
-    compute_digests t project ~projects ~file_tree;
-    let current_digest =
-      Dune_project.Name.Table.find_exn t.current_digests project
-    in
+    let current_digest = get_current_digest t project ~projects ~file_tree in
     match Dune_project.Name.Table.find t.saved_digests project with
     | Some saved_digest ->
       current_digest <> saved_digest
     | None -> true
 
 let register_dependency t ~target ~dependency =
-  let deps =
-    Dune_project.Name.Table.find t.current_deps target
-    |> Option.value ~default:Dune_project.Name.Set.empty
-  in
-  let new_deps = Dune_project.Name.Set.add deps dependency in
-  Dune_project.Name.Table.replace t.current_deps ~key:target ~data:new_deps
-
-let mark_clean t project =
-  let visited = ref Dune_project.Name.Set.empty in
-  let rec go project =
-    visited := Dune_project.Name.Set.add !visited project;
-    match Dune_project.Name.Table.(
-      find t.current_digests project,
-      find_or_add t.current_deps project ~f:(fun _ -> Dune_project.Name.Set.empty)) with
-    | Some current_digest, current_deps ->
-      Dune_project.Name.Table.replace t.saved_digests ~key:project ~data:current_digest;
-      Dune_project.Name.Table.replace t.saved_deps ~key:project ~data:current_deps;
-      Dune_project.Name.Set.iter current_deps ~f:(fun dep ->
-        if not (Dune_project.Name.Set.mem !visited dep) then
-          go dep)
-    | None, _ ->
-      failwith "cannot mark clean project that wasn't checked for cleanliness before"
-  in
-  go project
+  if Dune_project.Name.compare target dependency <> Ordering.Eq then begin
+    let deps =
+      Dune_project.Name.Table.find_or_add
+        t.current_deps
+        target
+        ~f:(fun _ -> Dune_project.Name.Set.empty)
+    in
+    let new_deps = Dune_project.Name.Set.add deps dependency in
+    Dune_project.Name.Table.replace t.current_deps ~key:target ~data:new_deps
+  end
 
 let finalize t =
   if Path.build_dir_exists () then
-    P.dump file { digests = t.saved_digests; deps = t.saved_deps }
+    P.dump file { digests = t.current_digests; deps = t.current_deps }

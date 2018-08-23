@@ -24,6 +24,9 @@ val capture_outputs : bool ref
 (** Always print backtraces, to help debugging jbuilder itself *)
 val debug_backtraces : bool ref
 
+(** Print the partition cache state (see Project_state module) *)
+val debug_partition_cache : bool ref
+
 (** Command to use to diff things *)
 val diff_command : string option ref
 

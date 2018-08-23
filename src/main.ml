@@ -237,6 +237,9 @@ let bootstrap () =
       ; "--debug-backtraces",
         Set Clflags.debug_backtraces,
         " always print exception backtraces"
+      ; "--debug-partition-cache",
+        Set Clflags.debug_partition_cache,
+        " print the state of partition cache"
       ]
       anon "Usage: boot.exe [-j JOBS] [--dev]\nOptions are:";
     Clflags.debug_dep_path := true;

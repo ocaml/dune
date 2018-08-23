@@ -40,6 +40,7 @@ type common =
   { debug_dep_path        : bool
   ; debug_findlib         : bool
   ; debug_backtraces      : bool
+  ; debug_partition_cache : bool
   ; profile               : string option
   ; workspace_file        : Arg.Path.t option
   ; root                  : string
@@ -70,6 +71,7 @@ let set_common_other c ~targets =
   Clflags.debug_dep_path := c.debug_dep_path;
   Clflags.debug_findlib := c.debug_findlib;
   Clflags.debug_backtraces := c.debug_backtraces;
+  Clflags.debug_partition_cache := c.debug_partition_cache;
   Clflags.capture_outputs := c.capture_outputs;
   Clflags.diff_command := c.diff_command;
   Clflags.auto_promote := c.auto_promote;
@@ -278,6 +280,11 @@ let common =
          & flag
          & info ["debug-backtraces"] ~docs
              ~doc:{|Always print exception backtraces.|})
+  and debug_partition_cache =
+    Arg.(value
+         & flag
+         & info ["debug-partition-cache"] ~docs
+             ~doc:{|Print the state of partition cache.|})
   and display =
     Term.ret @@
     let%map verbose =
@@ -537,6 +544,7 @@ let common =
   { debug_dep_path
   ; debug_findlib
   ; debug_backtraces
+  ; debug_partition_cache
   ; profile
   ; capture_outputs = not no_buffer
   ; workspace_file

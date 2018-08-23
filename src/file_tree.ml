@@ -132,18 +132,24 @@ module Dir = struct
     String.Map.foldi (sub_dirs t) ~init:Path.Set.empty
       ~f:(fun s _ acc -> Path.Set.add acc (Path.relative t.path s))
 
-  let rec fold t ~traverse_ignored_dirs ~init:acc ~f =
-    if not traverse_ignored_dirs && t.ignored then
-      acc
-    else
-      let acc = f t acc in
-      String.Map.fold (sub_dirs t) ~init:acc ~f:(fun t acc ->
-        fold t ~traverse_ignored_dirs ~init:acc ~f)
+  let fold t ~stay_in_project ~traverse_ignored_dirs ~init:acc ~f =
+    let original_project = Dune_project.name (project t) in
+    let rec go t acc =
+      if not traverse_ignored_dirs && t.ignored then
+        acc
+      else if stay_in_project && Dune_project.name (project t) <> original_project then
+        acc
+      else
+        let acc = f t acc in
+        String.Map.fold (sub_dirs t) ~init:acc ~f:(fun t acc -> go t acc)
+    in
+    go t acc
 end
 
 type t =
   { root : Dir.t
   ; dirs : (Path.t, Dir.t) Hashtbl.t
+  ; projects : (Path.t, Dune_project.t option) Hashtbl.t
   }
 
 let root t = t.root
@@ -277,11 +283,12 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) path =
       ~project:(Lazy.force Dune_project.anonymous)
   in
   let dirs = Hashtbl.create 1024      in
+  let projects = Hashtbl.create 4096  in
   Hashtbl.add dirs Path.root root;
-  { root; dirs }
+  { root; dirs; projects }
 
 let fold t ~traverse_ignored_dirs ~init ~f =
-  Dir.fold t.root ~traverse_ignored_dirs ~init ~f
+  Dir.fold t.root ~stay_in_project:false ~traverse_ignored_dirs ~init ~f
 
 let rec find_dir t path =
   if not (Path.is_managed path) then
@@ -327,8 +334,25 @@ let files_recursively_in t ?(prefix_with=Path.root) path =
   match find_dir t path with
   | None -> Path.Set.empty
   | Some dir ->
-    Dir.fold dir ~init:Path.Set.empty ~traverse_ignored_dirs:true
+    Dir.fold dir ~init:Path.Set.empty ~stay_in_project:false ~traverse_ignored_dirs:true
       ~f:(fun dir acc ->
         let path = Path.append prefix_with (Dir.path dir) in
         String.Set.fold (Dir.files dir) ~init:acc ~f:(fun fn acc ->
           Path.Set.add acc (Path.relative path fn)))
+
+let project t path =
+  match Hashtbl.find t.projects path with
+  | Some res -> res
+  | None ->
+    let path = Path.drop_optional_build_context path in
+    let rec find_first_existing_parent_dir path =
+      match find_dir t path with
+      | Some dir -> Some (Dir.project dir)
+      | None ->
+        (match Path.parent path with
+         | Some parent -> find_first_existing_parent_dir parent
+         | None -> None)
+    in
+    let project = find_first_existing_parent_dir path in
+    Hashtbl.replace t.projects ~key:path ~data:project;
+    project

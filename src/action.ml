@@ -15,15 +15,10 @@ end
 
 module Diff_mode = Action_intf.Diff_mode
 
-module type With_sexp = sig
-  include Dsexp.Sexpable
-  val sexp_of_t : t Sexp.To_sexp.t
-end
-
 module Make_ast
-    (Program : With_sexp)
-    (Path    : With_sexp)
-    (String  : With_sexp)
+    (Program : Dsexp.Sexpable)
+    (Path    : Dsexp.Sexpable)
+    (String  : Dsexp.Sexpable)
     (Ast : Action_intf.Ast
      with type program := Program.t
      with type path    := Path.t
@@ -135,83 +130,57 @@ struct
            Diff { optional = false; file1; file2; mode = Binary })
         ])
 
-  module Make_gen (P : sig
-      type sexp
-      val atom : string -> sexp
-      val list : sexp list -> sexp
-      val path : Path.t -> sexp
-      val string : String.t -> sexp
-      val program : Program.t -> sexp
-    end) = struct
-    open P
-    let rec gen =
-      function
-      | Run (a, xs) ->
-        list (atom "run" :: program a :: List.map xs ~f:string)
-      | Chdir (a, r) -> list [atom "chdir" ; path a ; gen r]
-      | Setenv (k, v, r) -> list [atom "setenv" ; string k ; string v ; gen r]
-      | Redirect (outputs, fn, r) ->
-        list [ atom (sprintf "with-%s-to" (Outputs.to_string outputs))
-             ; path fn
-             ; gen r
-             ]
-      | Ignore (outputs, r) ->
-        list [ atom (sprintf "ignore-%s" (Outputs.to_string outputs))
-             ; gen r
-             ]
-      | Progn l -> list (atom "progn" :: List.map l ~f:gen)
-      | Echo xs ->
-        list (atom "echo" :: List.map xs ~f:string)
-      | Cat x -> list [atom "cat"; path x]
-      | Copy (x, y) ->
-        list [atom "copy"; path x; path y]
-      | Symlink (x, y) ->
-        list [atom "symlink"; path x; path y]
-      | Copy_and_add_line_directive (x, y) ->
-        list [atom "copy#"; path x; path y]
-      | System x -> list [atom "system"; string x]
-      | Bash   x -> list [atom "bash"; string x]
-      | Write_file (x, y) -> list [atom "write-file"; path x; string y]
-      | Rename (x, y) -> list [atom "rename"; path x; path y]
-      | Remove_tree x -> list [atom "remove-tree"; path x]
-      | Mkdir x       -> list [atom "mkdir"; path x]
-      | Digest_files paths -> list [atom "digest-files";
-                                    list (List.map paths ~f:path)]
-      | Diff { optional; file1; file2; mode = Binary} ->
-        assert (not optional);
-        list [atom "cmp"; path file1; path file2]
-      | Diff { optional = false; file1; file2; mode = _ } ->
-        list [atom "diff"; path file1; path file2]
-      | Diff { optional = true; file1; file2; mode = _ } ->
-        list [atom "diff?"; path file1; path file2]
-      | Merge_files_into (srcs, extras, target) ->
-        list
-          [ atom "merge-files-into"
-          ; list (List.map ~f:path srcs)
-          ; list (List.map ~f:string extras)
-          ; path target
-          ]
-  end
-
-  module Dgen = Make_gen(struct
-      type sexp = Dsexp.t
-      let atom = Dsexp.unsafe_atom_of_string
-      let list s = Dsexp.List s
-      let program = Program.dgen
-      let string = String.dgen
-      let path = Path.dgen
-  end)
-  let dgen = Dgen.gen
-
-  module Sexpgen = Make_gen(struct
-      type sexp = Sexp.t
-      let atom a = Sexp.Atom a
-      let list a = Sexp.List a
-      let program = Program.sexp_of_t
-      let string = String.sexp_of_t
-      let path = Path.sexp_of_t
-    end)
-  let sexp_of_t = Sexpgen.gen
+  let rec dgen =
+    let open Dsexp in
+    let program = Program.dgen in
+    let string = String.dgen in
+    let path = Path.dgen in
+    function
+    | Run (a, xs) ->
+      List (atom "run" :: program a :: List.map xs ~f:string)
+    | Chdir (a, r) -> List [atom "chdir" ; path a ; dgen r]
+    | Setenv (k, v, r) -> List [atom "setenv" ; string k ; string v ; dgen r]
+    | Redirect (outputs, fn, r) ->
+      List [ atom (sprintf "with-%s-to" (Outputs.to_string outputs))
+           ; path fn
+           ; dgen r
+           ]
+    | Ignore (outputs, r) ->
+      List [ atom (sprintf "ignore-%s" (Outputs.to_string outputs))
+           ; dgen r
+           ]
+    | Progn l -> List (atom "progn" :: List.map l ~f:dgen)
+    | Echo xs ->
+      List (atom "echo" :: List.map xs ~f:string)
+    | Cat x -> List [atom "cat"; path x]
+    | Copy (x, y) ->
+      List [atom "copy"; path x; path y]
+    | Symlink (x, y) ->
+      List [atom "symlink"; path x; path y]
+    | Copy_and_add_line_directive (x, y) ->
+      List [atom "copy#"; path x; path y]
+    | System x -> List [atom "system"; string x]
+    | Bash   x -> List [atom "bash"; string x]
+    | Write_file (x, y) -> List [atom "write-file"; path x; string y]
+    | Rename (x, y) -> List [atom "rename"; path x; path y]
+    | Remove_tree x -> List [atom "remove-tree"; path x]
+    | Mkdir x       -> List [atom "mkdir"; path x]
+    | Digest_files paths -> List [atom "digest-files";
+                                  List (List.map paths ~f:path)]
+    | Diff { optional; file1; file2; mode = Binary} ->
+      assert (not optional);
+      List [atom "cmp"; path file1; path file2]
+    | Diff { optional = false; file1; file2; mode = _ } ->
+      List [atom "diff"; path file1; path file2]
+    | Diff { optional = true; file1; file2; mode = _ } ->
+      List [atom "diff?"; path file1; path file2]
+    | Merge_files_into (srcs, extras, target) ->
+      List
+        [ atom "merge-files-into"
+        ; List (List.map ~f:path srcs)
+        ; List (List.map ~f:string extras)
+        ; path target
+        ]
 
   let run prog args = Run (prog, args)
   let chdir path t = Chdir (path, t)
@@ -301,30 +270,9 @@ module Prog = struct
   let dparse : t Dsexp.Of_sexp.t =
     Dsexp.Of_sexp.map Path_dsexp.dparse ~f:Result.ok
 
-  module Make_gen(P : sig
-      type sexp
-      val path : Path.t -> sexp
-      val string : string -> sexp
-    end) = struct
-    open P
-    let gen = function
-      | Ok s -> path s
-      | Error (e : Not_found.t) -> string e.program
-  end
-
-  module D = Make_gen(struct
-      type sexp = Dsexp.t
-      let path = Path_dsexp.dgen
-      let string = Dsexp.To_sexp.string
-    end)
-  let dgen = D.gen
-
-  module S = Make_gen(struct
-      type sexp = Sexp.t
-      let path = Path.sexp_of_t
-      let string = Sexp.To_sexp.string
-    end)
-  let sexp_of_t = S.gen
+  let dgen = function
+    | Ok s -> Path_dsexp.dgen s
+    | Error (e : Not_found.t) -> Dsexp.To_sexp.string e.program
 end
 
 module type Ast = Action_intf.Ast
@@ -337,17 +285,11 @@ module String_with_sexp = struct
   type t = string
   let dparse = Dsexp.Of_sexp.string
   let dgen = Dsexp.To_sexp.string
-  let sexp_of_t = Sexp.To_sexp.string
-end
-
-module Path_sexp = struct
-  include Path_dsexp
-  let sexp_of_t = Path.sexp_of_t
 end
 
 include Make_ast
     (Prog)
-    (Path_sexp)
+    (Path_dsexp)
     (String_with_sexp)
     (Ast)
 

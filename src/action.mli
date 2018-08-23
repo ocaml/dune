@@ -97,8 +97,6 @@ module Unexpanded : sig
     -> Partial.t
 
   val remove_locs : t -> t
-
-  val sexp_of_t : t Sexp.To_sexp.t
 end
 
 (** Infer dependencies and targets.

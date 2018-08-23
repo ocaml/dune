@@ -9,8 +9,6 @@ module Name : sig
 
   val opam_fn : t -> string
 
-  val pp : Format.formatter -> t -> unit
-
   include Interned.S with type t := t
 
   val dparse : t Dsexp.Of_sexp.t

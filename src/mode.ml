@@ -12,6 +12,10 @@ let dparse =
     ; "native" , Native
     ]
 
+let pp fmt = function
+  | Byte -> Format.pp_print_string fmt "byte"
+  | Native -> Format.pp_print_string fmt "native"
+
 let choose byte native = function
   | Byte   -> byte
   | Native -> native

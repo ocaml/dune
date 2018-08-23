@@ -225,7 +225,7 @@ module Extension = struct
   let instantiate ~loc ~parse_args (name_loc, name) (ver_loc, ver) =
     match Hashtbl.find extensions name with
     | None ->
-      Dloc.fail name_loc "Unknown extension %S.%s" name
+      Errors.fail name_loc "Unknown extension %S.%s" name
         (hint name (Hashtbl.keys extensions))
     | Some t ->
       Syntax.check_supported t.syntax (ver_loc, ver);
@@ -331,7 +331,7 @@ let default_name ~dir ~packages =
     match Name.named name with
     | Some x -> x
     | None ->
-      Dloc.fail (Loc.in_file (Path.to_string (Package.opam_file pkg)))
+      Errors.fail (Loc.in_file (Path.to_string (Package.opam_file pkg)))
         "%S is not a valid opam package name."
         name
 
@@ -362,7 +362,7 @@ let parse ~dir ~lang ~packages ~file =
             (Syntax.name e.extension.syntax, e.loc)))
      with
      | Error (name, _, loc) ->
-       Dloc.fail loc "Extension %S specified for the second time." name
+       Errors.fail loc "Extension %S specified for the second time." name
      | Ok map ->
        let project_file : Project_file.t = { file; exists = true } in
        let extensions =

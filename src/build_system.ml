@@ -240,7 +240,7 @@ module Alias0 = struct
 
     let of_user_written_path ~loc path =
       if not (Path.is_in_build_dir path) then
-        Dloc.fail loc "Invalid alias!\n\
+        Errors.fail loc "Invalid alias!\n\
                       Tried to reference path outside build dir: %S"
           (Path.to_string_maybe_quoted path);
       { dir = Path.parent_exn path
@@ -305,13 +305,13 @@ module Alias0 = struct
     match File_tree.find_dir file_tree src_dir with
     | None ->
       Build.fail { fail = fun () ->
-        Dloc.fail loc "Don't know about directory %s!"
+        Errors.fail loc "Don't know about directory %s!"
           (Path.to_string_maybe_quoted src_dir) }
     | Some dir ->
       dep_rec_internal ~name:t.name ~dir ~ctx_dir
       >>^ fun is_empty ->
       if is_empty && not (is_standard t.name) then
-        Dloc.fail loc
+        Errors.fail loc
           "This alias is empty.\n\
            Alias %S is not defined in %s or any of its descendants."
           t.name (Path.to_string_maybe_quoted src_dir)
@@ -687,7 +687,7 @@ let remove_old_artifacts t ~dir ~subdirs_to_keep =
 
 let no_rule_found =
   let fail fn ~loc =
-    Dloc.fail_opt loc "No rule found for %s" (Utils.describe_target fn)
+    Errors.fail_opt loc "No rule found for %s" (Utils.describe_target fn)
   in
   fun t ~loc fn ->
     match Utils.analyse_target fn with
@@ -1068,7 +1068,7 @@ and load_dir_step2_exn t ~dir ~collector ~lazy_generators =
               let present_targets =
                 Path.Set.diff source_files_for_targtes absent_targets
               in
-              Dloc.fail
+              Errors.fail
                 (rule_loc
                    ~file_tree:t.file_tree
                    ~loc:rule.loc

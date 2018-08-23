@@ -131,7 +131,7 @@ let expand_ocaml_config t pform name =
   match String.Map.find t.ocaml_config name with
   | Some x -> x
   | None ->
-    Dloc.fail (String_with_vars.Var.loc pform)
+    Errors.fail (String_with_vars.Var.loc pform)
       "Unknown ocaml configuration variable %S"
       name
 
@@ -145,7 +145,7 @@ let expand_vars t ~mode ~scope ~dir ?(bindings=Pform.Map.empty) s =
       | Macro (Ocaml_config, s) -> expand_ocaml_config t pform s
       | Var Project_root -> [Value.Dir (Scope.root scope)]
       | _ ->
-        Dloc.fail (String_with_vars.Var.loc pform)
+        Errors.fail (String_with_vars.Var.loc pform)
           "%s isn't allowed in this position"
           (String_with_vars.Var.describe pform)))
 
@@ -260,7 +260,7 @@ end = struct
   let parse_lib_file ~loc s =
     match String.lsplit2 s ~on:':' with
     | None ->
-      Dloc.fail loc "invalid %%{lib:...} form: %s" s
+      Errors.fail loc "invalid %%{lib:...} form: %s" s
     | Some x -> x
 
   open Build.O
@@ -279,10 +279,10 @@ end = struct
         | Var Targets ->
           begin match targets_written_by_user with
           | Infer ->
-            Dloc.fail loc "You cannot use %s with inferred rules."
+            Errors.fail loc "You cannot use %s with inferred rules."
               (String_with_vars.Var.describe pform)
           | Alias ->
-            Dloc.fail loc "You cannot use %s in aliases."
+            Errors.fail loc "You cannot use %s in aliases."
               (String_with_vars.Var.describe pform)
           | Static l ->
             Some (Value.L.dirs l) (* XXX hack to signal no dep *)
@@ -348,7 +348,7 @@ end = struct
               Resolved_forms.add_ddep acc ~key x
             | None ->
               Resolved_forms.add_fail acc { fail = fun () ->
-                Dloc.fail loc
+                Errors.fail loc
                   "Package %S doesn't exist in the current project." s
               }
           end
@@ -754,7 +754,7 @@ module Deps = struct
           Build.paths_glob ~loc ~dir (Re.compile re)
           >>^ Path.Set.to_list
         | Error (_pos, msg) ->
-          Dloc.fail (String_with_vars.loc s) "invalid glob: %s" msg
+          Errors.fail (String_with_vars.loc s) "invalid glob: %s" msg
       end
     | Source_tree s ->
       let path = expand_vars_path t ~scope ~dir s in
@@ -900,7 +900,7 @@ module Action = struct
     let targets = Path.Set.to_list targets in
     List.iter targets ~f:(fun target ->
       if Path.parent_exn target <> targets_dir then
-        Dloc.fail loc
+        Errors.fail loc
           "This action has targets in a different directory than the current \
            one, this is not allowed by dune at the moment:\n%s"
           (List.map targets ~f:(fun target ->

@@ -227,7 +227,7 @@ module Gen (P : Install_rules.Params) = struct
       if not (match Path.parent p with
         | None -> false
         | Some p -> Path.Set.mem all_dirs p) then
-        Dloc.fail loc
+        Errors.fail loc
           "File %a is not part of the current directory group. \
            This is not allowed."
           Path.pp (Path.drop_optional_build_context p)

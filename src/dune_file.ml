@@ -79,9 +79,9 @@ end = struct
   let validate (loc, res) ~wrapped =
     match res, wrapped with
     | Ok s, _ -> s
-    | Warn _, true -> Dloc.fail loc "%s" wrapped_message
+    | Warn _, true -> Errors.fail loc "%s" wrapped_message
     | Warn s, false -> Dloc.warn loc "%s" wrapped_message; s
-    | Invalid, _ -> Dloc.fail loc "%s" invalid_message
+    | Invalid, _ -> Errors.fail loc "%s" invalid_message
 
   let valid_char = function
     | 'A'..'Z' | 'a'..'z' | '_' | '0'..'9' -> true
@@ -216,7 +216,7 @@ module Pkg = struct
     and (loc, name) = located Package.Name.dparse in
     match resolve p name with
     | Ok    x -> x
-    | Error e -> Dloc.fail loc "%s" e
+    | Error e -> Errors.fail loc "%s" e
 
   let field stanza =
     map_validate
@@ -1253,7 +1253,7 @@ module Executables = struct
           let mode_to_string mode =
             " - " ^ Dsexp.to_string ~syntax:Dune (Link_mode.dgen mode) in
           let mode_strings = List.map ~f:mode_to_string Link_mode.installable_modes in
-          Dloc.fail
+          Errors.fail
             buildable.loc
             "No installable mode found for %s.\n\
              One of the following modes is required:\n\
@@ -1290,7 +1290,7 @@ module Executables = struct
             let func =
               match file_kind with
               | Jbuild -> Dloc.warn
-              | Dune   -> Dloc.fail
+              | Dune   -> Errors.fail
             in
             func loc
               "This field is useless without a (public_name%s ...) field."
@@ -1857,7 +1857,7 @@ module Stanzas = struct
         let dir = Path.parent_exn current_file in
         let current_file = Path.relative dir fn in
         if not (Path.exists current_file) then
-          Dloc.fail loc "File %s doesn't exist."
+          Errors.fail loc "File %s doesn't exist."
             (Path.to_string_maybe_quoted current_file);
         if List.exists include_stack ~f:(fun (_, f) -> Path.equal f current_file) then
           raise (Include_loop (current_file, include_stack));
@@ -1886,7 +1886,7 @@ module Stanzas = struct
             (Path.to_string_maybe_quoted file)
             loc.Loc.start.pos_lnum
         in
-        Dloc.fail loc
+        Errors.fail loc
           "Recursive inclusion of jbuild files detected:\n\
            File %s is included from %s%s"
           (Path.to_string_maybe_quoted file)
@@ -1902,6 +1902,6 @@ module Stanzas = struct
         ~f:(function Dune_env.T e -> Some e | _ -> None)
     with
     | _ :: e :: _ ->
-      Dloc.fail e.loc "The 'env' stanza cannot appear more than once"
+      Errors.fail e.loc "The 'env' stanza cannot appear more than once"
     | _ -> stanzas
 end

@@ -183,7 +183,7 @@ module Partial = struct
 end
 
 let invalid_multivalue (v : var) x =
-  Dloc.fail v.loc "Variable %s expands to %d values, \
+  Errors.fail v.loc "Variable %s expands to %d values, \
                    however a single value is expected here. \
                    Please quote this atom."
     (string_of_var v) (List.length x)
@@ -272,9 +272,9 @@ let expand t ~mode ~dir ~f =
         begin match var.syntax with
         | Percent ->
           if Var.is_macro var then
-            Dloc.fail var.loc "Unknown macro %s" (Var.describe var)
+            Errors.fail var.loc "Unknown macro %s" (Var.describe var)
           else
-            Dloc.fail var.loc "Unknown variable %S" (Var.name var)
+            Errors.fail var.loc "Unknown variable %S" (Var.name var)
         | Dollar_brace
         | Dollar_paren -> Some [Value.String (string_of_var var)]
         end

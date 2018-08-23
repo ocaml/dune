@@ -40,7 +40,7 @@ end = struct
           match m with
           | Ok m -> Some m
           | Error s ->
-            Dloc.fail loc "Module %a doesn't exist." Module.Name.pp s)
+            Errors.fail loc "Module %a doesn't exist." Module.Name.pp s)
       , modules
       )
 
@@ -136,7 +136,7 @@ end = struct
         |> Option.value_exn
       in
       (* CR-soon jdimino for jdimino: report all errors *)
-      Dloc.fail loc
+      Errors.fail loc
         "Module %a has an implementation, it cannot be listed here"
         Module.Name.pp module_name
     end
@@ -379,7 +379,7 @@ let build_modules_map (d : Super_context.Dir_with_jbuild.t) ~modules =
     with
     | Ok x -> x
     | Error (name, _, (lib2, _)) ->
-      Dloc.fail lib2.buildable.loc
+      Errors.fail lib2.buildable.loc
         "Library %S appears for the second time \
          in this directory"
         name
@@ -391,7 +391,7 @@ let build_modules_map (d : Super_context.Dir_with_jbuild.t) ~modules =
     with
     | Ok x -> x
     | Error (name, _, (exes2, _)) ->
-      Dloc.fail exes2.buildable.loc
+      Errors.fail exes2.buildable.loc
         "Executable %S appears for the second time \
          in this directory"
         name
@@ -417,7 +417,7 @@ let build_modules_map (d : Super_context.Dir_with_jbuild.t) ~modules =
               Option.some_if (n = name) b.loc)
             |> List.sort ~compare
           in
-          Dloc.fail (Loc.in_file (List.hd locs).start.pos_fname)
+          Errors.fail (Loc.in_file (List.hd locs).start.pos_fname)
             "Module %a is used in several stanzas:@\n\
              @[<v>%a@]@\n\
              @[%a@]"
@@ -478,7 +478,7 @@ let build_mlds_map (d : Super_context.Dir_with_jbuild.t) ~files =
             | Some s ->
               s
             | None ->
-              Dloc.fail loc "%s.mld doesn't exist in %s" s
+              Errors.fail loc "%s.mld doesn't exist in %s" s
                 (Path.to_string_maybe_quoted
                    (Path.drop_optional_build_context dir))
           )
@@ -514,7 +514,7 @@ module Dir_status = struct
       match stanza with
       | Include_subdirs (loc, x) ->
         if Option.is_some acc then
-          Dloc.fail loc "The 'include_subdirs' stanza cannot appear \
+          Errors.fail loc "The 'include_subdirs' stanza cannot appear \
                         more than once";
         Some x
       | _ -> acc)
@@ -524,7 +524,7 @@ module Dir_status = struct
       match stanza with
       | Library { buildable; _} | Executables { buildable; _ }
       | Tests { exes = { buildable; _ }; _ } ->
-        Dloc.fail buildable.loc
+        Errors.fail buildable.loc
           "This stanza is not allowed in a sub-directory of directory with \
            (include_subdirs unqualified).\n\
            Hint: add (include_subdirs no) to this file."
@@ -664,7 +664,7 @@ let rec get sctx ~dir =
             ~f:(fun acc (dir, files) ->
               let modules = modules_of_files ~dir ~files in
               Module.Name.Map.union acc modules ~f:(fun name x y ->
-                Dloc.fail (Loc.in_file
+                Errors.fail (Loc.in_file
                             (Path.to_string
                                (match File_tree.Dir.dune_file ft_dir with
                                 | None ->

@@ -25,7 +25,7 @@ and predicate =
   | Neg of string
 
 module Parse = struct
-  let error = Dloc.fail_lex
+  let error = Errors.fail_lex
 
   let next = Meta_lexer.token
 

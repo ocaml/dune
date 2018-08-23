@@ -62,11 +62,11 @@ module Gen(P : Install_rules.Params) = struct
         match Module.Name.Map.find modules mod_name with
         | Some m ->
           if not (Module.has_impl m) then
-            Dloc.fail loc "Module %a has no implementation."
+            Errors.fail loc "Module %a has no implementation."
               Module.Name.pp mod_name
           else
             { Exe.Program.name; main_module_name = mod_name }
-        | None -> Dloc.fail loc "Module %a doesn't exist."
+        | None -> Errors.fail loc "Module %a doesn't exist."
                     Module.Name.pp mod_name)
     in
 
@@ -296,7 +296,7 @@ module Gen(P : Install_rules.Params) = struct
           SC.add_rule sctx
             (Build.fail ~targets
                { fail = fun () ->
-                   Dloc.fail m.loc
+                   Errors.fail m.loc
                      "I can't determine what library/executable the files \
                       produced by this stanza are part of."
                })

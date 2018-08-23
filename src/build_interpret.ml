@@ -220,7 +220,7 @@ module Rule = struct
       match targets with
       | [] ->
         begin match loc with
-        | Some loc -> Dloc.fail loc "Rule has no targets specified"
+        | Some loc -> Errors.fail loc "Rule has no targets specified"
         | None -> Exn.code_error "Build_interpret.Rule.make: no targets" []
         end
       | x :: l ->
@@ -235,7 +235,7 @@ module Rule = struct
                                (List.map targets ~f:Target.path)
                 ]
             | Some loc ->
-              Dloc.fail loc
+              Errors.fail loc
                 "Rule has targets in different directories.\nTargets:\n%s"
                 (String.concat ~sep:"\n"
                    (List.map targets ~f:(fun t ->

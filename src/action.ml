@@ -441,7 +441,7 @@ module Unexpanded = struct
 
   let check_mkdir loc path =
     if not (Path.is_managed path) then
-      Dloc.fail loc
+      Errors.fail loc
         "(mkdir ...) is not supported for paths outside of the workspace:\n\
         \  %a\n"
         (Dsexp.pp Dune)
@@ -596,7 +596,7 @@ module Unexpanded = struct
           Chdir (res, partial_expand t ~dir ~map_exe ~f)
         | Right fn ->
           let loc = String_with_vars.loc fn in
-          Dloc.fail loc
+          Errors.fail loc
             "This directory cannot be evaluated statically.\n\
              This is not allowed by dune"
       end
@@ -791,7 +791,7 @@ module Infer = struct
         match fn with
         | Left  fn -> { acc with targets = Path.Set.add acc.targets fn }
         | Right sw ->
-          Dloc.fail (String_with_vars.loc sw)
+          Errors.fail (String_with_vars.loc sw)
             "Cannot determine this target statically."
       let ( +< ) acc fn =
         match fn with

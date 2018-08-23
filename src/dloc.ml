@@ -3,29 +3,6 @@ open Import
 
 include Loc
 
-let of_lexbuf lb =
-  { Loc.start = Lexing.lexeme_start_p lb
-  ; stop  = Lexing.lexeme_end_p   lb
-  }
-
-let exnf t fmt =
-  Format.pp_open_box err_ppf 0;
-  Format.pp_print_as err_ppf 7 ""; (* "Error: " *)
-  kerrf (fmt^^ "@]") ~f:(fun s -> Exn.Loc_error (t, s))
-
-let fail t fmt =
-  Format.pp_print_as err_ppf 7 ""; (* "Error: " *)
-  kerrf fmt ~f:(fun s ->
-    raise (Exn.Loc_error (t, s)))
-
-let fail_lex lb fmt =
-  fail (of_lexbuf lb) fmt
-
-let fail_opt t fmt =
-  match t with
-  | None -> die fmt
-  | Some t -> fail t fmt
-
 let in_file = Loc.in_file
 
 let file_line path n =

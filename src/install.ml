@@ -272,7 +272,7 @@ let load_install_file path =
       ; pos_cnum = col
       }
     in
-    Dloc.fail { start =  pos; stop = pos } fmt
+    Errors.fail { start =  pos; stop = pos } fmt
   in
   List.concat_map file.file_contents ~f:(function
     | Variable (pos, section, files) -> begin

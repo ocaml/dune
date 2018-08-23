@@ -171,13 +171,13 @@ let t ?x ?profile:cmdline_profile () =
     List.fold_left contexts ~init:None ~f:(fun acc ctx ->
       let name = Context.name ctx in
       if String.Set.mem !defined_names name then
-        Dloc.fail (Context.loc ctx)
+        Errors.fail (Context.loc ctx)
           "second definition of build context %S" name;
       defined_names := String.Set.union !defined_names
                          (String.Set.of_list (Context.all_names ctx));
       match ctx, acc with
       | Opam { merlin = true; _ }, Some _ ->
-        Dloc.fail (Context.loc ctx)
+        Errors.fail (Context.loc ctx)
           "you can only have one context for merlin"
       | Opam { merlin = true; _ }, None ->
         Some name

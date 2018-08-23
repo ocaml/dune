@@ -74,7 +74,7 @@ module Jbuilds = struct
             (match (kind : File_tree.Dune_file.Kind.t) with
              | Jbuild -> ()
              | Dune ->
-               Dloc.fail loc
+               Errors.fail loc
                  "#require is no longer supported in dune files.\n\
                   You can use the following function instead of \
                   Unix.open_process_in:\n\
@@ -85,7 +85,7 @@ module Jbuilds = struct
             | [] -> acc
             | ["unix"] -> Unix
             | _ ->
-              Dloc.fail loc
+              Errors.fail loc
                 "Using libraries other that \"unix\" is not supported.\n\
                  See the manual for details.";
         in

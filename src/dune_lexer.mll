@@ -12,7 +12,7 @@ let make_loc lexbuf : Loc.t =
 
 let invalid_lang_line start lexbuf =
   lexbuf.Lexing.lex_start_p <- start;
-  Dloc.fail_lex lexbuf
+  Errors.fail_lex lexbuf
     "Invalid first line, expected: (lang <lang> <version>)"
 }
 

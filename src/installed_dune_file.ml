@@ -17,7 +17,7 @@ let parse_sub_systems ~parsing_context sexps =
   |> (function
     | Ok x -> x
     | Error (name, _, (loc, _, _)) ->
-      Dloc.fail loc "%S present twice" (Sub_system_name.to_string name))
+      Errors.fail loc "%S present twice" (Sub_system_name.to_string name))
   |> Sub_system_name.Map.mapi ~f:(fun name (_, version, data) ->
     let (module M) = Dune_file.Sub_system_info.get name in
     Syntax.check_supported M.syntax version;
@@ -73,10 +73,10 @@ let load fname =
        | 2, Atom (A "1") -> state := 3; lexer := Dsexp.Lexer.jbuild_token
        | 2, Atom (A "2") -> state := 3; lexer := Dsexp.Lexer.token
        | 2, Atom (A version) ->
-         Dloc.fail (Loc.of_lexbuf lexbuf) "Unsupported version %S" version
+         Errors.fail (Loc.of_lexbuf lexbuf) "Unsupported version %S" version
        | 3, _ -> ()
        | _ ->
-         Dloc.fail (Loc.of_lexbuf lexbuf)
+         Errors.fail (Loc.of_lexbuf lexbuf)
            "This <lib>.dune file looks invalid, it should \
             contain a S-expression of the form (dune x.y ..)"
       );

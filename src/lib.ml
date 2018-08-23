@@ -320,7 +320,7 @@ exception Error of Error.t
 
 let not_available ~loc reason fmt =
   Errors.kerrf fmt ~f:(fun s ->
-    Dloc.fail loc "%s %a" s
+    Errors.fail loc "%s %a" s
       Error.Library_not_available.Reason.pp reason)
 
 (* +-----------------------------------------------------------------+
@@ -492,7 +492,7 @@ module Sub_system = struct
     | M.Info.T info ->
       let get ~loc lib' =
         if lib.unique_id = lib'.unique_id then
-          Dloc.fail loc "Library %S depends on itself" lib.name
+          Errors.fail loc "Library %S depends on itself" lib.name
         else
           M.get lib'
       in

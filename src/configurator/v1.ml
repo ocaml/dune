@@ -1,5 +1,10 @@
 open! Stdune
 
+(* we shadow this module on purpose because it's unusable without the build dir
+   initialized *)
+module Path = struct end
+module Io = Io.String_path
+
 let sprintf = Printf.sprintf
 let eprintf = Printf.eprintf
 
@@ -69,12 +74,10 @@ module Flags = struct
 
   let extract_blank_separated_words = String.extract_blank_separated_words
 
-  let write_lines fname s =
-    let path = Path.of_string fname in
+  let write_lines path s =
     Io.write_lines path s
 
-  let write_sexp fname s =
-    let path = Path.in_source fname in
+  let write_sexp path s =
     let sexp = Dsexp.List (List.map s ~f:(fun s -> Dsexp.Quoted_string s)) in
     Io.write_file path (Dsexp.to_string sexp ~syntax:Dune)
 end
@@ -160,12 +163,8 @@ let run t ~dir cmd =
       (Filename.quote stdout_fn)
       (Filename.quote stderr_fn)
   in
-  let stdout =
-    Io.read_file (Path.of_filename_relative_to_initial_cwd stdout_fn)
-  in
-  let stderr =
-    Io.read_file (Path.of_filename_relative_to_initial_cwd stderr_fn)
-  in
+  let stdout = Io.read_file stdout_fn in
+  let stderr = Io.read_file stderr_fn in
   logf t "-> process exited with code %d" exit_code;
   logf t "-> stdout:";
   List.iter (String.split_lines stdout) ~f:(logf t " | %s");
@@ -259,7 +258,7 @@ let compile_and_link_c_prog t ?(c_flags=[]) ?(link_flags=[]) code =
   let c_fname = base ^ ".c" in
   let obj_fname = base ^ t.ext_obj in
   let exe_fname = base ^ ".exe" in
-  Io.write_file (Path.of_filename_relative_to_initial_cwd c_fname) code;
+  Io.write_file c_fname code;
   logf t "compiling c program:";
   List.iter (String.split_lines code) ~f:(logf t " | %s");
   let run_ok args =
@@ -289,7 +288,7 @@ let compile_c_prog t ?(c_flags=[]) code =
   let base = dir ^/ "test" in
   let c_fname = base ^ ".c" in
   let obj_fname = base ^ t.ext_obj in
-  Io.write_file (Path.of_filename_relative_to_initial_cwd c_fname) code;
+  Io.write_file c_fname code;
   logf t "compiling c program:";
   List.iter (String.split_lines code) ~f:(logf t " | %s");
   let run_ok args =
@@ -307,7 +306,7 @@ let compile_c_prog t ?(c_flags=[]) code =
               ])
   in
   if ok then
-    Ok (Path.of_filename_relative_to_initial_cwd obj_fname)
+    Ok obj_fname
   else
     Error ()
 
@@ -438,7 +437,7 @@ const char *s%i = "BEGIN-%i-false-END";
     logf t "writing header file %s" fname;
     List.iter lines ~f:(logf t " | %s");
     let tmp_fname = fname ^ ".tmp" in
-    Io.write_lines (Path.of_filename_relative_to_initial_cwd tmp_fname) lines;
+    Io.write_lines tmp_fname lines;
     Sys.rename tmp_fname fname
 end
 

@@ -1,3 +1,4 @@
+open! Stdune
 open! Import
 
 let local_install_dir =
@@ -49,7 +50,7 @@ module Display = struct
       ; "quiet"    , Quiet
       ]
 
-  let t = enum all
+  let dparse = enum all
 end
 
 module Concurrency = struct
@@ -71,7 +72,7 @@ module Concurrency = struct
         else
           error
 
-  let t =
+  let dparse =
     plain_string (fun ~loc s ->
       match of_string s with
       | Error m -> of_sexp_errorf loc "%s" m
@@ -109,15 +110,15 @@ let default =
   ; concurrency = if inside_dune then Fixed 1 else Auto
   }
 
-let t =
-  let%map display = field "display" Display.t ~default:default.display
-  and concurrency = field "jobs" Concurrency.t ~default:default.concurrency
+let dparse =
+  let%map display = field "display" Display.dparse ~default:default.display
+  and concurrency = field "jobs" Concurrency.dparse ~default:default.concurrency
   in
   { display
   ; concurrency
   }
 
-let t = fields t
+let dparse = fields dparse
 
 let user_config_file =
   Path.relative (Path.of_filename_relative_to_initial_cwd Xdg.config_dir)
@@ -128,16 +129,16 @@ let () = Lang.register syntax ()
 
 let load_config_file p =
   match Which_program.t with
-  | Dune -> load p ~f:(fun _lang -> t)
+  | Dune -> load p ~f:(fun _lang -> dparse)
   | Jbuilder ->
     Io.with_lexbuf_from_file p ~f:(fun lb ->
       match Dune_lexer.maybe_first_line lb with
       | None ->
-        parse (enter t)
+        parse (enter dparse)
           (Univ_map.singleton (Syntax.key syntax) (0, 0))
-          (Io.Sexp.load p ~mode:Many_as_one ~lexer:Sexp.Lexer.jbuild_token)
+          (Dsexp.Io.load p ~mode:Many_as_one ~lexer:Dsexp.Lexer.jbuild_token)
       | Some first_line ->
-        parse_contents lb first_line ~f:(fun _lang -> t))
+        parse_contents lb first_line ~f:(fun _lang -> dparse))
 
 let load_user_config_file () =
   if Path.exists user_config_file then

@@ -22,7 +22,7 @@ val eq : 'a t -> 'b t -> ('a, 'b) eq option
 module Make
     (T : sig
        type t
-       val t : t Sexp.To_sexp.t
+       val dgen : t Dsexp.To_sexp.t
        val name : string
      end)
   : S with type t = T.t

@@ -1,3 +1,4 @@
+open! Stdune
 open Import
 open Fiber.O
 
@@ -130,7 +131,7 @@ let subst_string s path ~map =
             loop (i + 1) acc
           | Some (Error msg) ->
             let loc = loc_of_offset ~ofs:start ~len:(i + 1 - start) in
-            Loc.fail loc "%s" msg
+            Errors.fail loc "%s" msg
         end
       | _ -> loop (i + 1) acc
   in

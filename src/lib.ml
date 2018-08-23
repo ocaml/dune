@@ -1,4 +1,5 @@
 open Import
+open! Stdune
 open Result.O
 
 (* +-----------------------------------------------------------------+
@@ -202,7 +203,7 @@ module Sub_system0 = struct
   module type S = sig
     type t
     type sub_system += T of t
-    val to_sexp : (t -> Syntax.Version.t * Sexp.t) option
+    val dgen : (t -> Syntax.Version.t * Dsexp.t) option
   end
 
   type 'a s = (module S with type t = 'a)
@@ -319,7 +320,7 @@ exception Error of Error.t
 
 let not_available ~loc reason fmt =
   Errors.kerrf fmt ~f:(fun s ->
-    Loc.fail loc "%s %a" s
+    Errors.fail loc "%s %a" s
       Error.Library_not_available.Reason.pp reason)
 
 (* +-----------------------------------------------------------------+
@@ -455,7 +456,7 @@ module Sub_system = struct
       -> lib
       -> Info.t
       -> t
-    val to_sexp : (t -> Syntax.Version.t * Sexp.t) option
+    val dgen : (t -> Syntax.Version.t * Dsexp.t) option
   end
 
   module type S' = sig
@@ -491,7 +492,7 @@ module Sub_system = struct
     | M.Info.T info ->
       let get ~loc lib' =
         if lib.unique_id = lib'.unique_id then
-          Loc.fail loc "Library %S depends on itself" lib.name
+          Errors.fail loc "Library %S depends on itself" lib.name
         else
           M.get lib'
       in
@@ -502,7 +503,7 @@ module Sub_system = struct
   let dump_config lib =
     Sub_system_name.Map.filter_map lib.sub_systems ~f:(fun (lazy inst) ->
       let (Sub_system0.Instance.T ((module M), t)) = inst in
-      Option.map ~f:(fun f -> f t) M.to_sexp)
+      Option.map ~f:(fun f -> f t) M.dgen)
 end
 
 (* +-----------------------------------------------------------------+
@@ -582,25 +583,25 @@ let check_private_deps lib ~loc ~allow_private_deps =
     Ok lib
 
 let already_in_table (info : Info.t) name x =
-  let to_sexp = Sexp.To_sexp.(pair Path.sexp_of_t string) in
+  let dgen = Sexp.To_sexp.(pair Path.to_sexp string) in
   let sexp =
     match x with
     | St_initializing x ->
-      Sexp.List [Sexp.unsafe_atom_of_string "Initializing";
-                 Path.sexp_of_t x.path]
+      Sexp.List [Sexp.Atom "Initializing";
+                 Path.to_sexp x.path]
     | St_found t ->
-      List [Sexp.unsafe_atom_of_string "Found";
-            Path.sexp_of_t t.info.src_dir]
+      List [Sexp.Atom "Found";
+            Path.to_sexp t.info.src_dir]
     | St_not_found ->
-      Sexp.unsafe_atom_of_string "Not_found"
+      Sexp.Atom "Not_found"
     | St_hidden (_, { path; reason; _ }) ->
-      List [Sexp.unsafe_atom_of_string "Hidden";
-            Path.sexp_of_t path; Sexp.atom reason]
+      List [Sexp.Atom "Hidden";
+            Path.to_sexp path; Sexp.Atom reason]
   in
   Exn.code_error
     "Lib_db.DB: resolver returned name that's already in the table"
-    [ "name"            , Sexp.atom name
-    ; "returned_lib"    , to_sexp (info.src_dir, name)
+    [ "name"            , Sexp.To_sexp.string name
+    ; "returned_lib"    , dgen (info.src_dir, name)
     ; "conflicting_with", sexp
     ]
 
@@ -1137,7 +1138,7 @@ let report_lib_error ppf (e : Error.t) =
   | No_solution_found_for_select { loc } ->
     Format.fprintf ppf
       "%a@{<error>Error@}: No solution found for this select form.\n"
-      Loc.print loc
+      Errors.print loc
   | Dependency_cycle cycle ->
     Format.fprintf ppf
       "@{<error>Error@}: Dependency cycle detected between the \

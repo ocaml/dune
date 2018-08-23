@@ -1,6 +1,6 @@
 (** Parsing and interpretation of opam files *)
 
-open Stdune
+open! Stdune
 
 open OpamParserTypes
 

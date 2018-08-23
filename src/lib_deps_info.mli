@@ -3,7 +3,7 @@
 (** This module implements tracking of external library dependencies,
     for [dune external-lib-deps] *)
 
-open Import
+open! Stdune
 
 module Kind : sig
   type t =

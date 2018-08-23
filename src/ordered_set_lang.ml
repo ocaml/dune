@@ -1,3 +1,4 @@
+open! Stdune
 open! Import
 
 module Ast = struct
@@ -19,7 +20,7 @@ end
 type 'ast generic =
   { ast : 'ast
   ; loc : Loc.t option
-  ; context : Univ_map.t (* Parsing context for Sexp.Of_sexp.parse *)
+  ; context : Univ_map.t (* Parsing context for Dsexp.Of_sexp.parse *)
   }
 
 type ast_expanded = (Loc.t * string, Ast.expanded) Ast.t
@@ -34,7 +35,7 @@ module Parse = struct
     let open Stanza.Of_sexp in
     let rec one (kind : Stanza.File_kind.t) =
       peek_exn >>= function
-      | Atom (loc, A "\\") -> Loc.fail loc "unexpected \\"
+      | Atom (loc, A "\\") -> Errors.fail loc "unexpected \\"
       | (Atom (_, A "") | Quoted_string (_, _)) | Template _ ->
         elt
       | Atom (loc, A s) -> begin
@@ -42,10 +43,10 @@ module Parse = struct
           | ":standard" ->
             junk >>> return Standard
           | ":include" ->
-            Loc.fail loc
+            Errors.fail loc
               "Invalid use of :include, should be: (:include <filename>)"
           | _ when s.[0] = ':' ->
-            Loc.fail loc "undefined symbol %s" s
+            Errors.fail loc "undefined symbol %s" s
           | _ ->
             elt
         end
@@ -53,7 +54,7 @@ module Parse = struct
           match s, kind with
           | ":include", _ -> inc
           | s, Dune when s <> "" && s.[0] <> '-' && s.[0] <> ':' ->
-            Loc.fail loc
+            Errors.fail loc
               "This atom must be quoted because it is the first element \
                of a list and doesn't start with - or :"
           | _ -> enter (many [] kind)
@@ -77,7 +78,7 @@ module Parse = struct
   let with_include ~elt =
     generic ~elt ~inc:(
       sum [ ":include",
-            String_with_vars.t >>| fun s ->
+            String_with_vars.dparse >>| fun s ->
             Include s
           ])
 
@@ -85,11 +86,11 @@ module Parse = struct
     generic ~elt ~inc:(
       enter
         (loc >>= fun loc ->
-         Loc.fail loc "(:include ...) is not allowed here"))
+         Errors.fail loc "(:include ...) is not allowed here"))
 end
 
 
-let t =
+let dparse =
   let open Stanza.Of_sexp in
   let%map context = get_all
   and (loc, ast) =
@@ -232,39 +233,39 @@ let standard =
   }
 
 let field ?(default=standard) ?check name =
-  let t =
+  let dparse =
     match check with
-    | None -> t
-    | Some x -> Sexp.Of_sexp.(>>>) x t
+    | None -> dparse
+    | Some x -> Dsexp.Of_sexp.(>>>) x dparse
   in
-  Sexp.Of_sexp.field name t ~default
+  Dsexp.Of_sexp.field name dparse ~default
 
 module Unexpanded = struct
   type ast = (String_with_vars.t, Ast.unexpanded) Ast.t
   type t = ast generic
-  let t : t Sexp.Of_sexp.t =
+  let dparse : t Dsexp.Of_sexp.t =
     let open Stanza.Of_sexp in
     let%map context = get_all
     and (loc, ast) =
       located (
         Parse.with_include
-          ~elt:(String_with_vars.t >>| fun s -> Ast.Element s))
+          ~elt:(String_with_vars.dparse >>| fun s -> Ast.Element s))
     in
     { ast
     ; loc = Some loc
     ; context
     }
 
-  let sexp_of_t t =
+  let dgen t =
     let open Ast in
-    let rec loop : ast -> Sexp.t = function
-      | Element s -> String_with_vars.sexp_of_t s
-      | Standard -> Sexp.atom ":standard"
+    let rec loop = function
+      | Element s -> String_with_vars.dgen s
+      | Standard -> Dsexp.atom ":standard"
       | Union l -> List (List.map l ~f:loop)
-      | Diff (a, b) -> List [loop a; Sexp.unsafe_atom_of_string "\\"; loop b]
+      | Diff (a, b) -> List [loop a; Dsexp.unsafe_atom_of_string "\\"; loop b]
       | Include fn ->
-        List [ Sexp.unsafe_atom_of_string ":include"
-             ; String_with_vars.sexp_of_t fn
+        List [ Dsexp.unsafe_atom_of_string ":include"
+             ; String_with_vars.dgen fn
              ]
     in
     loop t.ast
@@ -272,12 +273,12 @@ module Unexpanded = struct
   let standard = standard
 
   let field ?(default=standard) ?check name =
-    let t =
+    let dparse =
       match check with
-      | None -> t
-      | Some x -> Sexp.Of_sexp.(>>>) x t
+      | None -> dparse
+      | Some x -> Dsexp.Of_sexp.(>>>) x dparse
     in
-    Sexp.Of_sexp.field name t ~default
+    Dsexp.Of_sexp.field name dparse ~default
 
   let files t ~f =
     let rec loop acc (ast : ast) =
@@ -349,7 +350,7 @@ module Unexpanded = struct
             match f fn with
             | [x] -> Value.to_path ~dir x
             | _ ->
-              Loc.fail (String_with_vars.loc fn)
+              Errors.fail (String_with_vars.loc fn)
                 "An unquoted templated expanded to more than one value. \
                  A file path is expected in this position."
           in
@@ -358,14 +359,14 @@ module Unexpanded = struct
           | None ->
             Exn.code_error
               "Ordered_set_lang.Unexpanded.expand"
-              [ "included-file", Path.sexp_of_t path
-              ; "files", Sexp.To_sexp.(list Path.sexp_of_t)
+              [ "included-file", Path.to_sexp path
+              ; "files", Sexp.To_sexp.(list Path.to_sexp)
                            (Path.Map.keys files_contents)
               ]
         in
         let open Stanza.Of_sexp in
         parse
-          (Parse.without_include ~elt:(String_with_vars.t >>| f_elems))
+          (Parse.without_include ~elt:(String_with_vars.dparse >>| f_elems))
           context
           sexp
       | Union l -> Union (List.map l ~f:expand)

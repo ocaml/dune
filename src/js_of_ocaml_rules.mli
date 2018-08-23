@@ -1,5 +1,6 @@
 (** Generate rules for js_of_ocaml *)
 
+open! Stdune
 open Import
 open Dune_file
 

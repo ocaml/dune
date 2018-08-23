@@ -1,6 +1,6 @@
 (** OCaml binaries *)
 
-open Stdune
+open! Stdune
 
 (** Character used to separate entries in [PATH] and similar
     environment variables *)

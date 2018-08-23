@@ -7,6 +7,7 @@ module T = struct
       Eq
     else
       Gt
+  let to_sexp = Sexp.To_sexp.int
 end
 
 include T
@@ -19,5 +20,7 @@ let of_string_exn s =
   | exception Failure _ ->
     failwith (Printf.sprintf "of_string_exn: invalid int %S" s)
   | s -> s
+
+let to_string i = string_of_int i
 
 module Infix = Comparable.Operators(T)

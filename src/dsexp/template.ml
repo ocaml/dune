@@ -1,4 +1,4 @@
-open Import
+open! Stdune
 
 include Types.Template
 
@@ -76,7 +76,7 @@ let pp_split_strings ppf (t : t) =
       | Var s ->
         Format.pp_print_string ppf (string_of_var s)
       | Text s ->
-        begin match String.split_on_char s ~on:'\n' with
+        begin match String.split s ~on:'\n' with
         | [] -> assert false
         | [s] -> Format.pp_print_string ppf (Escape.escaped ~syntax s)
         | split ->

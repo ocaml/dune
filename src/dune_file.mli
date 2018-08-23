@@ -1,5 +1,6 @@
 (** Representation and parsing of jbuild files *)
 
+open! Stdune
 open Import
 
 (** Ppx preprocessors  *)
@@ -90,6 +91,8 @@ module Bindings : sig
 
   type 'a t = 'a one list
 
+  val map : 'a t -> f:('a -> 'b) -> 'b t
+
   val find : 'a t -> string -> 'a list option
 
   val fold : 'a t -> f:('a one -> 'acc -> 'acc) -> init:'acc -> 'acc
@@ -100,7 +103,9 @@ module Bindings : sig
 
   val singleton : 'a -> 'a t
 
-  val sexp_of_t : ('a -> Usexp.t) -> 'a t -> Usexp.t
+  val dgen : 'a Dsexp.To_sexp.t -> 'a t Dsexp.To_sexp.t
+
+  val to_sexp : 'a Sexp.To_sexp.t -> 'a t Sexp.To_sexp.t
 end
 
 module Dep_conf : sig
@@ -113,8 +118,10 @@ module Dep_conf : sig
     | Package of String_with_vars.t
     | Universe
 
-  val t : t Sexp.Of_sexp.t
-  val sexp_of_t : t -> Sexp.t
+  val remove_locs : t -> t
+
+  include Dsexp.Sexpable with type t := t
+  val to_sexp : t Sexp.To_sexp.t
 end
 
 module Buildable : sig
@@ -170,7 +177,7 @@ module Sub_system_info : sig
     val syntax : Syntax.t
 
     (** Parse parameters written by the user in jbuid/dune files *)
-    val parse : t Sexp.Of_sexp.t
+    val parse : t Dsexp.Of_sexp.t
   end
 
   module Register(M : S) : sig end
@@ -184,13 +191,13 @@ module Mode_conf : sig
     | Native
     | Best (** [Native] if available and [Byte] if not *)
 
-  val t : t Sexp.Of_sexp.t
+  val dparse : t Dsexp.Of_sexp.t
   val compare : t -> t -> Ordering.t
   val pp : Format.formatter -> t -> unit
 
   module Set : sig
     include Set.S with type elt = t
-    val t : t Sexp.Of_sexp.t
+    val dparse : t Dsexp.Of_sexp.t
 
     (** Both Byte and Native *)
     val default : t
@@ -260,8 +267,7 @@ module Executables : sig
       ; kind : Binary_kind.t
       }
 
-    val t : t Sexp.Of_sexp.t
-    val sexp_of_t : t Sexp.To_sexp.t
+    include Dsexp.Sexpable with type t := t
 
     val exe           : t
     val object_       : t
@@ -391,6 +397,6 @@ module Stanzas : sig
     :  file:Path.t
     -> kind:File_tree.Dune_file.Kind.t
     -> Dune_project.t
-    -> Sexp.Ast.t list
+    -> Dsexp.Ast.t list
     -> t
 end

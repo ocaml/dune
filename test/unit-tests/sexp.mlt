@@ -1,11 +1,11 @@
 (* -*- tuareg -*- *)
-open Stdune;;
-open Sexp.Of_sexp;;
+open! Stdune;;
+open Dsexp.Of_sexp;;
 
-let print_loc ppf (_ : Sexp.Loc.t) = Format.pp_print_string ppf "<loc>";;
+let print_loc ppf (_ : Loc.t) = Format.pp_print_string ppf "<loc>";;
 #install_printer print_loc;;
 [%%expect{|
-val print_loc : Format.formatter -> Usexp.Loc.t -> unit = <fun>
+val print_loc : Format.formatter -> Loc.t -> unit = <fun>
 |}]
 
 Printexc.record_backtrace false;;
@@ -13,14 +13,14 @@ Printexc.record_backtrace false;;
 - : unit = ()
 |}]
 
-let sexp = lazy (Sexp.parse_string ~fname:"" ~mode:Single {|
+let sexp = lazy (Dsexp.parse_string ~fname:"" ~mode:Single {|
 ((foo 1)
  (foo 2))
 |});;
-Sexp.Ast.remove_locs (Lazy.force sexp)
+Dsexp.Ast.remove_locs (Lazy.force sexp)
 [%%expect{|
 val sexp : ast lazy_t = <lazy>
-- : Usexp.t =
+- : Dsexp.t =
 List
  [List [Atom (A "foo"); Atom (A "1")]; List [Atom (A "foo"); Atom (A "2")]]
 |}]
@@ -51,14 +51,14 @@ type 'res parse_result =
 let parse s =
   let f ~lexer =
     try
-      Ok (Sexp.parse_string ~fname:"" ~mode:Many ~lexer s
-          |> List.map ~f:Sexp.Ast.remove_locs)
+      Ok (Dsexp.parse_string ~fname:"" ~mode:Many ~lexer s
+          |> List.map ~f:Dsexp.Ast.remove_locs)
     with
-    | Sexp.Parse_error e -> Error (Sexp.Parse_error.message e)
+    | Dsexp.Parse_error e -> Error (Dsexp.Parse_error.message e)
     | Invalid_argument e -> Error e
   in
-  let jbuild = f ~lexer:Sexp.Lexer.jbuild_token in
-  let dune   = f ~lexer:Sexp.Lexer.token        in
+  let jbuild = f ~lexer:Dsexp.Lexer.jbuild_token in
+  let dune   = f ~lexer:Dsexp.Lexer.token        in
   if jbuild <> dune then
     Different { jbuild; dune }
   else
@@ -71,12 +71,12 @@ type 'res parse_result_diff = {
 type 'res parse_result =
     Same of ('res, string) Stdune.result
   | Different of 'res parse_result_diff
-val parse : string -> Usexp.t list parse_result = <fun>
+val parse : string -> Dsexp.t list parse_result = <fun>
 |}]
 
 parse {| # ## x##y x||y a#b|c#d copy# |}
 [%%expect{|
-- : Usexp.t list parse_result =
+- : Dsexp.t list parse_result =
 Same
  (Ok
    [Atom (A "#"); Atom (A "##"); Atom (A "x##y"); Atom (A "x||y");
@@ -86,7 +86,7 @@ Same
 
 parse {|x #| comment |# y|}
 [%%expect{|
-- : Usexp.t list parse_result =
+- : Dsexp.t list parse_result =
 Different
  {jbuild = Ok [Atom (A "x"); Atom (A "y")];
   dune =
@@ -97,7 +97,7 @@ Different
 
 parse {|x#|y|}
 [%%expect{|
-- : Usexp.t list parse_result =
+- : Dsexp.t list parse_result =
 Different
  {jbuild = Error "jbuild atoms cannot contain #|";
   dune = Ok [Atom (A "x#|y")]}
@@ -105,7 +105,7 @@ Different
 
 parse {|x|#y|}
 [%%expect{|
-- : Usexp.t list parse_result =
+- : Dsexp.t list parse_result =
 Different
  {jbuild = Error "jbuild atoms cannot contain |#";
   dune = Ok [Atom (A "x|#y")]}
@@ -113,56 +113,56 @@ Different
 
 parse {|"\a"|}
 [%%expect{|
-- : Usexp.t list parse_result =
+- : Dsexp.t list parse_result =
 Different
  {jbuild = Ok [Quoted_string "\\a"]; dune = Error "unknown escape sequence"}
 |}]
 
 parse {|"\%{x}"|}
 [%%expect{|
-- : Usexp.t list parse_result =
+- : Dsexp.t list parse_result =
 Different
  {jbuild = Ok [Quoted_string "\\%{x}"]; dune = Ok [Quoted_string "%{x}"]}
 |}]
 
 parse {|"$foo"|}
 [%%expect{|
-- : Usexp.t list parse_result = Same (Ok [Quoted_string "$foo"])
+- : Dsexp.t list parse_result = Same (Ok [Quoted_string "$foo"])
 |}]
 
 parse {|"%foo"|}
 [%%expect{|
-- : Usexp.t list parse_result = Same (Ok [Quoted_string "%foo"])
+- : Dsexp.t list parse_result = Same (Ok [Quoted_string "%foo"])
 |}]
 
 parse {|"bar%foo"|}
 [%%expect{|
-- : Usexp.t list parse_result = Same (Ok [Quoted_string "bar%foo"])
+- : Dsexp.t list parse_result = Same (Ok [Quoted_string "bar%foo"])
 |}]
 
 parse {|"bar$foo"|}
 [%%expect{|
-- : Usexp.t list parse_result = Same (Ok [Quoted_string "bar$foo"])
+- : Dsexp.t list parse_result = Same (Ok [Quoted_string "bar$foo"])
 |}]
 
 parse {|"%bar$foo%"|}
 [%%expect{|
-- : Usexp.t list parse_result = Same (Ok [Quoted_string "%bar$foo%"])
+- : Dsexp.t list parse_result = Same (Ok [Quoted_string "%bar$foo%"])
 |}]
 
 parse {|"$bar%foo%"|}
 [%%expect{|
-- : Usexp.t list parse_result = Same (Ok [Quoted_string "$bar%foo%"])
+- : Dsexp.t list parse_result = Same (Ok [Quoted_string "$bar%foo%"])
 |}]
 
 parse {|\${foo}|}
 [%%expect{|
-- : Usexp.t list parse_result = Same (Ok [Atom (A "\\${foo}")])
+- : Dsexp.t list parse_result = Same (Ok [Atom (A "\\${foo}")])
 |}]
 
 parse {|\%{foo}|}
 [%%expect{|
-- : Usexp.t list parse_result =
+- : Dsexp.t list parse_result =
 Different
  {jbuild = Ok [Atom (A "\\%{foo}")];
   dune =
@@ -177,17 +177,17 @@ Different
 
 parse {|\$bar%foo%|}
 [%%expect{|
-- : Usexp.t list parse_result = Same (Ok [Atom (A "\\$bar%foo%")])
+- : Dsexp.t list parse_result = Same (Ok [Atom (A "\\$bar%foo%")])
 |}]
 
 parse {|\$bar\%foo%|}
 [%%expect{|
-- : Usexp.t list parse_result = Same (Ok [Atom (A "\\$bar\\%foo%")])
+- : Dsexp.t list parse_result = Same (Ok [Atom (A "\\$bar\\%foo%")])
 |}]
 
 parse {|\$bar\%foo%{bar}|}
 [%%expect{|
-- : Usexp.t list parse_result =
+- : Dsexp.t list parse_result =
 Different
  {jbuild = Ok [Atom (A "\\$bar\\%foo%{bar}")];
   dune =
@@ -202,7 +202,7 @@ Different
 
 parse {|"bar%{foo}"|}
 [%%expect{|
-- : Usexp.t list parse_result =
+- : Dsexp.t list parse_result =
 Different
  {jbuild = Ok [Quoted_string "bar%{foo}"];
   dune =
@@ -217,7 +217,7 @@ Different
 
 parse {|"bar\%{foo}"|}
 [%%expect{|
-- : Usexp.t list parse_result =
+- : Dsexp.t list parse_result =
 Different
  {jbuild = Ok [Quoted_string "bar\\%{foo}"];
   dune = Ok [Quoted_string "bar%{foo}"]}
@@ -225,7 +225,7 @@ Different
 
 parse {|bar%%{foo}|}
 [%%expect{|
-- : Usexp.t list parse_result =
+- : Dsexp.t list parse_result =
 Different
  {jbuild = Ok [Atom (A "bar%%{foo}")];
   dune =
@@ -240,7 +240,7 @@ Different
 
 parse {|"bar%%{foo}"|}
 [%%expect{|
-- : Usexp.t list parse_result =
+- : Dsexp.t list parse_result =
 Different
  {jbuild = Ok [Quoted_string "bar%%{foo}"];
   dune =
@@ -255,7 +255,7 @@ Different
 
 parse {|"bar\%foo"|}
 [%%expect{|
-- : Usexp.t list parse_result =
+- : Dsexp.t list parse_result =
 Different
  {jbuild = Ok [Quoted_string "bar\\%foo"];
   dune = Error "unknown escape sequence"}
@@ -265,67 +265,67 @@ Different
    | Printing tests                                                  |
    +-----------------------------------------------------------------+ *)
 
-let loc = Sexp.Loc.none
-let a = Sexp.atom
-let s x = Sexp.Quoted_string x
-let t  x = Sexp.Template { quoted = false; parts = x; loc }
-let tq x = Sexp.Template { quoted = true ; parts = x; loc }
-let l x = Sexp.List x
-let var ?(syntax=Sexp.Template.Percent) ?payload name =
-  { Sexp.Template.
+let loc = Loc.none
+let a = Dsexp.atom
+let s x = Dsexp.Quoted_string x
+let t  x = Dsexp.Template { quoted = false; parts = x; loc }
+let tq x = Dsexp.Template { quoted = true ; parts = x; loc }
+let l x = Dsexp.List x
+let var ?(syntax=Dsexp.Template.Percent) ?payload name =
+  { Dsexp.Template.
     loc
   ; name
   ; payload
   ; syntax
   }
 
-type sexp = S of Sexp.syntax * Sexp.t
+type sexp = S of Dsexp.syntax * Dsexp.t
 
-let print_sexp ppf (S (syntax, sexp)) = Sexp.pp syntax ppf sexp;;
+let print_sexp ppf (S (syntax, sexp)) = Dsexp.pp syntax ppf sexp;;
 #install_printer print_sexp
 
 type round_trip_result =
   | Round_trip_success
-  | Did_not_round_trip of Sexp.t
+  | Did_not_round_trip of Dsexp.t
   | Did_not_parse_back of string
 
 let test syntax sexp =
   (S (syntax, sexp),
-   let s = Format.asprintf "%a" (Sexp.pp syntax) sexp in
+   let s = Format.asprintf "%a" (Dsexp.pp syntax) sexp in
    match
-     Sexp.parse_string s ~mode:Single ~fname:""
+     Dsexp.parse_string s ~mode:Single ~fname:""
        ~lexer:(match syntax with
-         | Jbuild -> Sexp.Lexer.jbuild_token
-         | Dune   -> Sexp.Lexer.token)
+         | Jbuild -> Dsexp.Lexer.jbuild_token
+         | Dune   -> Dsexp.Lexer.token)
    with
    | sexp' ->
-     let sexp' = Sexp.Ast.remove_locs sexp' in
+     let sexp' = Dsexp.Ast.remove_locs sexp' in
      if sexp = sexp' then
        Round_trip_success
      else
        Did_not_round_trip sexp'
-   | exception (Sexp.Parse_error e) ->
-     Did_not_parse_back (Sexp.Parse_error.message e))
+   | exception (Dsexp.Parse_error e) ->
+     Did_not_parse_back (Dsexp.Parse_error.message e))
 ;;
 #install_printer print_sexp
 
 [%%expect{|
-val loc : Usexp.Loc.t = <loc>
-val a : string -> Usexp.t = <fun>
-val s : string -> Usexp.t = <fun>
-val t : Usexp.Template.part list -> Usexp.t = <fun>
-val tq : Usexp.Template.part list -> Usexp.t = <fun>
-val l : Usexp.t list -> Usexp.t = <fun>
+val loc : Loc.t = <loc>
+val a : string -> Dsexp.t = <fun>
+val s : string -> Dsexp.t = <fun>
+val t : Dsexp.Template.part list -> Dsexp.t = <fun>
+val tq : Dsexp.Template.part list -> Dsexp.t = <fun>
+val l : Dsexp.t list -> Dsexp.t = <fun>
 val var :
-  ?syntax:Usexp.Template.var_syntax ->
-  ?payload:string -> string -> Usexp.Template.var = <fun>
-type sexp = S of Usexp.syntax * Usexp.t
+  ?syntax:Dsexp.Template.var_syntax ->
+  ?payload:string -> string -> Dsexp.Template.var = <fun>
+type sexp = S of Dsexp.syntax * Dsexp.t
 val print_sexp : Format.formatter -> sexp -> unit = <fun>
 type round_trip_result =
     Round_trip_success
-  | Did_not_round_trip of Usexp.t
+  | Did_not_round_trip of Dsexp.t
   | Did_not_parse_back of string
-val test : Usexp.syntax -> Usexp.t -> sexp * round_trip_result = <fun>
+val test : Dsexp.syntax -> Dsexp.t -> sexp * round_trip_result = <fun>
 |}]
 
 test Dune (a "toto")

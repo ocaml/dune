@@ -1,5 +1,6 @@
 (** META file parsing/printing *)
 
+open! Stdune
 open! Import
 
 type t =

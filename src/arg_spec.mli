@@ -1,3 +1,4 @@
+open! Stdune
 (** Command line arguments specification *)
 
 (** This module implements a small DSL to specify the command line

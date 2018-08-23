@@ -2,7 +2,7 @@
 (alias
  (name runtest)
  (deps (:workspace_root foo))
- (action (echo %{workspace_root})))
+ (action (echo "%{workspace_root}\n")))
 
 (alias
  (name   runtest)

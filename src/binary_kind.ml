@@ -1,12 +1,12 @@
-open Stdune
+open! Stdune
 
 type t =
   | Exe
   | Object
   | Shared_object
 
-let t =
-  let open Sexp.Of_sexp in
+let dparse =
+  let open Dsexp.Of_sexp in
   enum
     [ "exe"           , Exe
     ; "object"        , Object
@@ -21,7 +21,7 @@ let to_string = function
 let pp fmt t =
   Format.pp_print_string fmt (to_string t)
 
-let sexp_of_t t =
-  Sexp.unsafe_atom_of_string (to_string t)
+let dgen t =
+  Dsexp.unsafe_atom_of_string (to_string t)
 
 let all = [Exe; Object; Shared_object]

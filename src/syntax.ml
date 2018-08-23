@@ -1,3 +1,4 @@
+open! Stdune
 open Import
 
 module Version = struct
@@ -16,19 +17,21 @@ module Version = struct
 
   let to_string (a, b) = sprintf "%u.%u" a b
 
-  let sexp_of_t t = Sexp.unsafe_atom_of_string (to_string t)
+  let to_sexp t = Sexp.Atom (to_string t)
 
-  let t : t Sexp.Of_sexp.t =
-    let open Sexp.Of_sexp in
+  let dgen t = Dsexp.To_sexp.string (to_string t)
+
+  let dparse : t Dsexp.Of_sexp.t =
+    let open Dsexp.Of_sexp in
     raw >>| function
     | Atom (loc, A s) -> begin
         try
           Scanf.sscanf s "%u.%u" (fun a b -> (a, b))
         with _ ->
-          Loc.fail loc "Atom of the form NNN.NNN expected"
+          Errors.fail loc "Atom of the form NNN.NNN expected"
       end
     | sexp ->
-      of_sexp_error (Sexp.Ast.loc sexp) "Atom expected"
+      of_sexp_error (Dsexp.Ast.loc sexp) "Atom expected"
 
   let can_read
         ~parser_version:(parser_major, parser_minor)
@@ -40,7 +43,7 @@ end
 module Supported_versions = struct
   type t = int Int.Map.t
 
-  let sexp_of_t (t : t) =
+  let to_sexp (t : t) =
     let open Sexp.To_sexp in
     (list (pair int int)) (Int.Map.to_list t)
 
@@ -53,7 +56,7 @@ module Supported_versions = struct
     | Error _ ->
       Exn.code_error
         "Syntax.create"
-        [ "versions", Sexp.To_sexp.list Version.sexp_of_t l ]
+        [ "versions", Sexp.To_sexp.list Version.to_sexp l ]
 
   let greatest_supported_version t = Option.value_exn (Int.Map.max_binding t)
 
@@ -76,15 +79,15 @@ type t =
 
 module Error = struct
   let since loc t ver ~what =
-    Loc.fail loc "%s is only available since version %s of %s"
+    Errors.fail loc "%s is only available since version %s of %s"
       what (Version.to_string ver) t.desc
 
   let renamed_in loc t ver ~what ~to_ =
-    Loc.fail loc "%s was renamed to '%s' in the %s version of %s"
+    Errors.fail loc "%s was renamed to '%s' in the %s version of %s"
       what to_ (Version.to_string ver) t.desc
 
   let deleted_in loc t ?repl ver ~what =
-    Loc.fail loc "%s was deleted in version %s of %s%s"
+    Errors.fail loc "%s was deleted in version %s of %s%s"
       what (Version.to_string ver) t.desc
       (match repl with
        | None -> ""
@@ -95,7 +98,7 @@ end
 let create ~name ~desc supported_versions =
   { name
   ; desc
-  ; key = Univ_map.Key.create ~name Version.sexp_of_t
+  ; key = Univ_map.Key.create ~name Version.to_sexp
   ; supported_versions = Supported_versions.make supported_versions
   }
 
@@ -103,7 +106,7 @@ let name t = t.name
 
 let check_supported t (loc, ver) =
   if not (Supported_versions.is_supported t.supported_versions ver) then
-    Loc.fail loc "Version %s of %s is not supported.\n\
+    Errors.fail loc "Version %s of %s is not supported.\n\
                   Supported versions:\n\
                   %s"
       (Version.to_string ver) t.name
@@ -123,7 +126,7 @@ let greatest_supported_version t =
 
 let key t = t.key
 
-open Sexp.Of_sexp
+open Dsexp.Of_sexp
 
 let set t ver parser =
   set t.key ver parser
@@ -135,8 +138,8 @@ let get_exn t =
     get_all >>| fun context ->
     Exn.code_error "Syntax identifier is unset"
       [ "name", Sexp.To_sexp.string t.name
-      ; "supported_versions", Supported_versions.sexp_of_t t.supported_versions
-      ; "context", Univ_map.sexp_of_t context
+      ; "supported_versions", Supported_versions.to_sexp t.supported_versions
+      ; "context", Univ_map.to_sexp context
       ]
 
 let desc () =

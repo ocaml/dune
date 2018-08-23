@@ -1,3 +1,4 @@
+open! Stdune
 open! Import
 
 module Outputs : module type of struct include Action_intf.Outputs end
@@ -31,7 +32,7 @@ include Action_intf.Helpers
   with type string  := string
   with type t       := t
 
-val t : t Sexp.Of_sexp.t
+val dparse : t Dsexp.Of_sexp.t
 
 module For_shell : sig
   include Action_intf.Ast
@@ -39,7 +40,7 @@ module For_shell : sig
     with type path    := string
     with type string  := string
 
-  val sexp_of_t : t Sexp.To_sexp.t
+  val dgen : t Dsexp.To_sexp.t
 end
 
 (** Convert the action to a format suitable for printing *)
@@ -72,7 +73,7 @@ module Unexpanded : sig
     with type path    := String_with_vars.t
     with type string  := String_with_vars.t
 
-  include Sexp.Sexpable with type t := t
+  include Dsexp.Sexpable with type t := t
 
   module Partial : sig
     include Action_intf.Ast
@@ -94,6 +95,8 @@ module Unexpanded : sig
     -> map_exe:(Path.t -> Path.t)
     -> f:(Value.t list option String_with_vars.expander)
     -> Partial.t
+
+  val remove_locs : t -> t
 end
 
 (** Infer dependencies and targets.

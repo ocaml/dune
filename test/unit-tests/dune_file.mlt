@@ -1,18 +1,18 @@
 (* -*- tuareg -*- *)
 open Dune;;
-open Stdune;;
+open! Stdune;;
 
-let sexp_pp = Sexp.pp Dune;;
+let sexp_pp = Dsexp.pp Dune;;
 #install_printer Dune_file.Mode_conf.pp;;
 #install_printer Binary_kind.pp;;
 #install_printer sexp_pp;;
 
-(* Dune_file.Executables.Link_mode.t *)
+(* Dune_file.Executables.Link_mode.dparse *)
 let test s =
-  Sexp.Of_sexp.parse Dune_file.Executables.Link_mode.t Univ_map.empty
-    (Sexp.parse_string ~fname:"" ~mode:Sexp.Parser.Mode.Single s)
+  Dsexp.Of_sexp.parse Dune_file.Executables.Link_mode.dparse Univ_map.empty
+    (Dsexp.parse_string ~fname:"" ~mode:Dsexp.Parser.Mode.Single s)
 [%%expect{|
-val sexp_pp : Format.formatter -> Usexp.t -> unit = <fun>
+val sexp_pp : Format.formatter -> Dsexp.t -> unit = <fun>
 val test : string -> Dune_file.Executables.Link_mode.t = <fun>
 |}]
 
@@ -44,21 +44,21 @@ test "native"
 - : Dune_file.Executables.Link_mode.t = {mode = native; kind = exe}
 |}]
 
-(* Dune_file.Executables.Link_mode.sexp_of_t *)
+(* Dune_file.Executables.Link_mode.dgen *)
 let test l =
-  Dune_file.Executables.Link_mode.sexp_of_t l
+  Dune_file.Executables.Link_mode.dgen l
 [%%expect{|
-val test : Dune_file.Executables.Link_mode.t -> Usexp.t = <fun>
+val test : Dune_file.Executables.Link_mode.t -> Dsexp.t = <fun>
 |}]
 
 (* In the general case, modes are serialized as a list *)
 test {Dune_file.Executables.Link_mode.kind = Shared_object; mode = Byte }
 [%%expect{|
-- : Usexp.t = (byte shared_object)
+- : Dsexp.t = (byte shared_object)
 |}]
 
 (* But the specialized ones are serialized in the minimal version *)
 test Dune_file.Executables.Link_mode.exe
 [%%expect{|
-- : Usexp.t = exe
+- : Dsexp.t = exe
 |}]

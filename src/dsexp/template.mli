@@ -1,3 +1,5 @@
+open! Stdune
+
 type var_syntax = Types.Template.var_syntax =
   | Dollar_brace
   | Dollar_paren

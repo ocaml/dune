@@ -59,8 +59,8 @@ module Renderer = struct
       assert (opening_len <= 0xffff);
       let buf = Bytes.create (2 + opening_len + closing_len) in
       set16 buf 0 opening_len;
-      Bytes.blit_string opening 0 buf  2   opening_len;
-      Bytes.blit_string closing 0 buf (2 + opening_len) closing_len;
+      Bytes.blit_string ~src:opening ~src_pos:0 ~dst:buf ~dst_pos:2   ~len:opening_len;
+      Bytes.blit_string ~src:closing ~src_pos:0 ~dst:buf ~dst_pos:(2 + opening_len) ~len:closing_len;
       Bytes.unsafe_to_string buf
 
     let extract_opening_tag s =

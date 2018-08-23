@@ -1,6 +1,6 @@
 (** Opam install file *)
 
-open Stdune
+open! Stdune
 
 module Section : sig
   type t =
@@ -19,7 +19,7 @@ module Section : sig
     | Man
     | Misc
 
-  val t : t Sexp.Of_sexp.t
+  val dparse : t Dsexp.Of_sexp.t
 
   (** [true] iff the executable bit should be set for files installed
       in this location. *)

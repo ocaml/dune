@@ -1,5 +1,6 @@
 (** Workspaces definitions *)
 
+open! Stdune
 open! Import
 
 module Context : sig

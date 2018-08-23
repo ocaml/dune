@@ -1,4 +1,4 @@
-open Import
+open! Stdune
 
 module Var : sig
   type t = string
@@ -28,6 +28,6 @@ val diff : t -> t -> t
 
 val update : t -> var:string -> f:(string option -> string option) -> t
 
-val sexp_of_t : t -> Sexp.t
+val to_sexp : t -> Sexp.t
 
 val of_string_map : string String.Map.t -> t

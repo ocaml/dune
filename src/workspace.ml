@@ -1,4 +1,4 @@
-open Import
+open! Stdune
 open Stanza.Of_sexp
 
 (* workspace files use the same version numbers as dune-project files
@@ -8,7 +8,7 @@ let syntax = Stanza.syntax
 let env_field =
   field_o "env"
     (Syntax.since syntax (1, 1) >>= fun () ->
-     Dune_env.Stanza.t)
+     Dune_env.Stanza.dparse)
 
 module Context = struct
   module Target = struct
@@ -122,7 +122,7 @@ module Context = struct
         (* jbuild-workspace files *)
         (peek_exn >>= function
          | List (_, List _ :: _) ->
-           Sexp.Of_sexp.record (Opam.t ~profile ~x) >>| fun x -> Opam x
+           Dsexp.Of_sexp.record (Opam.t ~profile ~x) >>| fun x -> Opam x
          | _ -> t ~profile ~x)
       ~dune:(t ~profile ~x)
 
@@ -171,13 +171,13 @@ let t ?x ?profile:cmdline_profile () =
     List.fold_left contexts ~init:None ~f:(fun acc ctx ->
       let name = Context.name ctx in
       if String.Set.mem !defined_names name then
-        Loc.fail (Context.loc ctx)
+        Errors.fail (Context.loc ctx)
           "second definition of build context %S" name;
       defined_names := String.Set.union !defined_names
                          (String.Set.of_list (Context.all_names ctx));
       match ctx, acc with
       | Opam { merlin = true; _ }, Some _ ->
-        Loc.fail (Context.loc ctx)
+        Errors.fail (Context.loc ctx)
           "you can only have one context for merlin"
       | Opam { merlin = true; _ }, None ->
         Some name
@@ -224,7 +224,7 @@ let load ?x ?profile p =
         parse_contents lb first_line ~f:(fun _lang -> t ?x ?profile ()))
   | Jbuilder ->
     let sexp =
-      Io.Sexp.load p ~mode:Many_as_one ~lexer:Sexp.Lexer.jbuild_token
+      Dsexp.Io.load p ~mode:Many_as_one ~lexer:Dsexp.Lexer.jbuild_token
     in
     parse
       (enter (t ?x ?profile ()))

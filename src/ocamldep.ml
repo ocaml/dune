@@ -1,3 +1,4 @@
+open! Stdune
 open Import
 open Build.O
 
@@ -15,10 +16,10 @@ module Dep_graph = struct
     | Some x -> x
     | None ->
       Exn.code_error "Ocamldep.Dep_graph.deps_of"
-        [ "dir", Path.sexp_of_t t.dir
-        ; "modules", Sexp.To_sexp.(list Module.Name.t)
+        [ "dir", Path.to_sexp t.dir
+        ; "modules", Sexp.To_sexp.(list Module.Name.to_sexp)
                        (Module.Name.Map.keys t.per_module)
-        ; "module", Module.Name.t m.name
+        ; "module", Module.Name.to_sexp m.name
         ]
 
   let top_closed t modules =

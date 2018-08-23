@@ -1,19 +1,34 @@
-open Import
+module String = StringLabels
 
-let quote_length s ~syntax =
+type quote =
+  | Needs_quoting_with_length of int
+  | No_quoting
+
+let quote_length s =
   let n = ref 0 in
   let len = String.length s in
+  let needs_quoting = ref false in
   for i = 0 to len - 1 do
     n := !n + (match String.unsafe_get s i with
-      | '\"' | '\\' | '\n' | '\t' | '\r' | '\b' -> 2
-      | '%' ->
-        if syntax = Atom.Dune && i + 1 < len && s.[i+1] = '{' then 2 else 1
-      | ' ' .. '~' -> 1
-      | _ -> 4)
+      | '\"' | '\\' | '\n' | '\t' | '\r' | '\b' ->
+        needs_quoting := true;
+        2
+      | ' ' ->
+        needs_quoting := true;
+        1
+      | '!' .. '~' -> 1
+      | _ ->
+        needs_quoting := true;
+        4)
   done;
-  !n
+  if !needs_quoting then
+    Needs_quoting_with_length len
+  else (
+    assert (len = !n);
+    No_quoting
+  )
 
-let escape_to s ~dst:s' ~ofs ~syntax =
+let escape_to s ~dst:s' ~ofs =
   let n = ref ofs in
   let len = String.length s in
   for i = 0 to len - 1 do
@@ -28,8 +43,6 @@ let escape_to s ~dst:s' ~ofs ~syntax =
       Bytes.unsafe_set s' !n '\\'; incr n; Bytes.unsafe_set s' !n 'r'
     | '\b' ->
       Bytes.unsafe_set s' !n '\\'; incr n; Bytes.unsafe_set s' !n 'b'
-    | '%' when syntax = Atom.Dune && i + 1 < len && s.[i + 1] = '{' ->
-      Bytes.unsafe_set s' !n '\\'; incr n; Bytes.unsafe_set s' !n '%'
     | (' ' .. '~') as c -> Bytes.unsafe_set s' !n c
     | c ->
       let a = Char.code c in
@@ -44,24 +57,18 @@ let escape_to s ~dst:s' ~ofs ~syntax =
     incr n
   done
 
-(* Escape [s] if needed. *)
-let escaped s ~syntax =
-  let n = quote_length s ~syntax in
-  if n = 0 || n > String.length s then
-    let s' = Bytes.create n in
-    escape_to s ~dst:s' ~ofs:0 ~syntax;
-    Bytes.unsafe_to_string s'
-  else s
-
 (* Surround [s] with quotes, escaping it if necessary. *)
-let quoted s ~syntax =
+let quote_if_needed s =
   let len = String.length s in
-  let n = quote_length s ~syntax in
-  let s' = Bytes.create (n + 2) in
-  Bytes.unsafe_set s' 0 '"';
-  if len = 0 || n > len then
-    escape_to s ~dst:s' ~ofs:1 ~syntax
-  else
-    Bytes.blit_string ~src:s ~src_pos:0 ~dst:s' ~dst_pos:1 ~len;
-  Bytes.unsafe_set s' (n + 1) '"';
-  Bytes.unsafe_to_string s'
+  match quote_length s with
+  | No_quoting ->
+    s
+  | Needs_quoting_with_length n ->
+    let s' = Bytes.create (n + 2) in
+    Bytes.unsafe_set s' 0 '"';
+    if len = 0 || n > len then
+      escape_to s ~dst:s' ~ofs:1
+    else
+      Bytes.blit_string ~src:s ~src_pos:0 ~dst:s' ~dst_pos:1 ~len;
+    Bytes.unsafe_set s' (n + 1) '"';
+    Bytes.unsafe_to_string s'

@@ -1,4 +1,4 @@
-open Stdune
+open! Stdune
 
 module Var : sig
   type t =

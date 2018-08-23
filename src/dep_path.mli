@@ -1,6 +1,6 @@
 (** Dependency path *)
 
-open Stdune
+open! Stdune
 
 module Entry : sig
   type t =

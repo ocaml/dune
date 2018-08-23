@@ -1,4 +1,4 @@
-open Stdune
+open! Stdune
 
 module type Keys = sig
   type t

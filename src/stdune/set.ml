@@ -45,3 +45,6 @@ module Make(Elt : Comparable.S) : S with type elt = Elt.t = struct
   let choose = choose_opt
   let split x t = split t x
 end
+
+let to_sexp to_list f t =
+  Sexp.To_sexp.list f (to_list t)

@@ -1,6 +1,6 @@
 (** OCaml flags *)
 
-open Stdune
+open! Stdune
 
 type t
 
@@ -28,4 +28,4 @@ val prepend_common : string list -> t -> t
 
 val common : t -> (unit, string list) Build.t
 
-val dump : t -> (unit, Sexp.t list) Build.t
+val dump : t -> (unit, Dsexp.t list) Build.t

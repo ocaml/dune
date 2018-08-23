@@ -1,4 +1,4 @@
-open Stdune
+open! Stdune
 open Result.O
 
 module Prog_and_args = struct
@@ -17,14 +17,15 @@ module Value = struct
     | Words         of string list
     | Prog_and_args of Prog_and_args.t
 
-  let sexp_of_t : t -> Usexp.t = function
-    | Bool   x -> Atom (Usexp.Atom.of_bool x)
-    | Int    x -> Atom (Usexp.Atom.of_int x)
-    | String x -> Usexp.atom_or_quoted_string x
-    | Words  x -> List (List.map x ~f:Usexp.atom_or_quoted_string)
-    | Prog_and_args x ->
-      List (Usexp.atom_or_quoted_string x.prog
-            :: List.map x.args ~f:Usexp.atom_or_quoted_string)
+  let to_sexp : t -> Sexp.t =
+    let open Sexp.To_sexp in
+    function
+    | Bool   x -> bool x
+    | Int    x -> int x
+    | String x -> string x
+    | Words  x -> (list string) x
+    | Prog_and_args { prog; args } ->
+      (list string) (prog :: args)
 
   let to_string = function
     | Bool   x -> string_of_bool x
@@ -184,13 +185,14 @@ let to_list t : (string * Value.t) list =
   ; "supports_shared_libraries", Bool          t.supports_shared_libraries
   ]
 
-let sexp_of_t t =
-  Usexp.List
+let to_sexp t =
+  let open Sexp in
+  List
     (to_list t
      |> List.map ~f:(fun (k, v) ->
-       Usexp.List [ Usexp.atom_or_quoted_string k
-                  ; Value.sexp_of_t v
-                  ]))
+       List [ Atom k
+            ; Value.to_sexp v
+            ]))
 
 module Origin = struct
   type t =

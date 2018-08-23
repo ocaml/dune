@@ -1,13 +1,14 @@
+open! Stdune
 open Import
-open Sexp.Of_sexp
+open Dsexp.Of_sexp
 
 module Kind = struct
   type t =
     | Dune
     | Jbuilder
 
-  let sexp_of_t t =
-    Sexp.atom_or_quoted_string
+  let to_sexp t =
+    Sexp.Atom
       (match t with
        | Dune -> "dune"
        | Jbuilder -> "jbuilder")
@@ -22,8 +23,8 @@ module Name : sig
 
   val to_string_hum : t -> string
 
-  val named_of_sexp : t Sexp.Of_sexp.t
-  val sexp_of_t : t Sexp.To_sexp.t
+  val dparse : t Dsexp.Of_sexp.t
+  val to_sexp : t Sexp.To_sexp.t
 
   val encode : t -> string
   val decode : string -> t
@@ -58,11 +59,11 @@ end = struct
     | Named     s -> s
     | Anonymous p -> sprintf "<anonymous %s>" (Path.to_string_maybe_quoted p)
 
-  let sexp_of_t = function
+  let to_sexp = function
     | Named s -> Sexp.To_sexp.string s
     | Anonymous p ->
-      List [ Sexp.unsafe_atom_of_string "anonymous"
-           ; Path.sexp_of_t p
+      List [ Atom "anonymous"
+           ; Path.to_sexp p
            ]
 
   let validate name =
@@ -84,12 +85,12 @@ end = struct
     else
       None
 
-  let named_of_sexp =
-    Sexp.Of_sexp.plain_string (fun ~loc s ->
+  let dparse =
+    Dsexp.Of_sexp.plain_string (fun ~loc s ->
       if validate s then
         Named s
       else
-        Sexp.Of_sexp.of_sexp_errorf loc "invalid project name")
+        Dsexp.Of_sexp.of_sexp_errorf loc "invalid project name")
 
   let encode = function
     | Named     s -> s
@@ -131,10 +132,10 @@ module Project_file = struct
     ; mutable exists : bool
     }
 
-  let sexp_of_t { file; exists } =
+  let to_sexp { file; exists } =
     Sexp.To_sexp.(
       record
-        [ "file", Path.sexp_of_t file
+        [ "file", Path.to_sexp file
         ; "exists", bool exists
         ])
 end
@@ -145,7 +146,7 @@ type t =
   ; root          : Path.Local.t
   ; version       : string option
   ; packages      : Package.t Package.Name.Map.t
-  ; stanza_parser : Stanza.t list Sexp.Of_sexp.t
+  ; stanza_parser : Stanza.t list Dsexp.Of_sexp.t
   ; project_file  : Project_file.t
   }
 
@@ -202,14 +203,14 @@ let append_to_project_file t str =
 module Extension = struct
   type t =
     { syntax  : Syntax.t
-    ; stanzas : Stanza.Parser.t list Sexp.Of_sexp.t
+    ; stanzas : Stanza.Parser.t list Dsexp.Of_sexp.t
     }
 
   type instance =
     { extension  : t
     ; version    : Syntax.Version.t
     ; loc        : Loc.t
-    ; parse_args : Stanza.Parser.t list Sexp.Of_sexp.t -> Stanza.Parser.t list
+    ; parse_args : Stanza.Parser.t list Dsexp.Of_sexp.t -> Stanza.Parser.t list
     }
 
   let extensions = Hashtbl.create 32
@@ -224,7 +225,7 @@ module Extension = struct
   let instantiate ~loc ~parse_args (name_loc, name) (ver_loc, ver) =
     match Hashtbl.find extensions name with
     | None ->
-      Loc.fail name_loc "Unknown extension %S.%s" name
+      Errors.fail name_loc "Unknown extension %S.%s" name
         (hint name (Hashtbl.keys extensions))
     | Some t ->
       Syntax.check_supported t.syntax (ver_loc, ver);
@@ -242,7 +243,7 @@ module Extension = struct
       if f name then
         let version = Syntax.greatest_supported_version ext.syntax in
         let parse_args p =
-          let open Sexp.Of_sexp in
+          let open Dsexp.Of_sexp in
           let dune_project_edited = ref false in
           parse (enter p) Univ_map.empty (List (Loc.of_pos __POS__, []))
           |> List.map ~f:(fun (name, p) ->
@@ -251,10 +252,10 @@ module Extension = struct
              if not !dune_project_edited then begin
                dune_project_edited := true;
                Project_file_edit.append project_file
-                 (Sexp.to_string ~syntax:Dune
-                    (List [ Sexp.atom "using"
-                          ; Sexp.atom name
-                          ; Sexp.atom (Syntax.Version.to_string version)
+                 (Dsexp.to_string ~syntax:Dune
+                    (List [ Dsexp.atom "using"
+                          ; Dsexp.atom name
+                          ; Dsexp.atom (Syntax.Version.to_string version)
                           ]))
              end;
              p))
@@ -279,16 +280,16 @@ let key =
     (fun { name; root; version; project_file; kind
          ; stanza_parser = _; packages = _ } ->
       Sexp.To_sexp.record
-        [ "name", Name.sexp_of_t name
-        ; "root", Path.Local.sexp_of_t root
+        [ "name", Name.to_sexp name
+        ; "root", Path.Local.to_sexp root
         ; "version", Sexp.To_sexp.(option string) version
-        ; "project_file", Project_file.sexp_of_t project_file
-        ; "kind", Kind.sexp_of_t kind
+        ; "project_file", Project_file.to_sexp project_file
+        ; "kind", Kind.to_sexp kind
         ])
 
-let set t = Sexp.Of_sexp.set key t
+let set t = Dsexp.Of_sexp.set key t
 let get_exn () =
-  let open Sexp.Of_sexp in
+  let open Dsexp.Of_sexp in
   get key >>| function
   | Some t -> t
   | None ->
@@ -310,7 +311,7 @@ let anonymous = lazy (
   ; root          = get_local_path Path.root
   ; version       = None
   ; stanza_parser =
-      Sexp.Of_sexp.(set_many parsing_context (sum lang.data))
+      Dsexp.Of_sexp.(set_many parsing_context (sum lang.data))
   ; project_file  = { file = Path.relative Path.root filename; exists = false }
   })
 
@@ -330,12 +331,12 @@ let default_name ~dir ~packages =
     match Name.named name with
     | Some x -> x
     | None ->
-      Loc.fail (Loc.in_file (Path.to_string (Package.opam_file pkg)))
+      Errors.fail (Loc.in_file (Path.to_string (Package.opam_file pkg)))
         "%S is not a valid opam package name."
         name
 
 let name_field ~dir ~packages =
-    let%map name = field_o "name" Name.named_of_sexp in
+    let%map name = field_o "name" Name.dparse in
     match name with
     | Some x -> x
     | None   -> default_name ~dir ~packages
@@ -348,7 +349,7 @@ let parse ~dir ~lang ~packages ~file =
        multi_field "using"
          (let%map loc = loc
           and name = located string
-          and ver = located Syntax.Version.t
+          and ver = located Syntax.Version.dparse
           and parse_args = capture
           in
           (* We don't parse the arguments quite yet as we want to set
@@ -361,7 +362,7 @@ let parse ~dir ~lang ~packages ~file =
             (Syntax.name e.extension.syntax, e.loc)))
      with
      | Error (name, _, loc) ->
-       Loc.fail loc "Extension %S specified for the second time." name
+       Errors.fail loc "Extension %S specified for the second time." name
      | Ok map ->
        let project_file : Project_file.t = { file; exists = true } in
        let extensions =
@@ -375,14 +376,14 @@ let parse ~dir ~lang ~packages ~file =
            (lang.data ::
             List.map extensions ~f:(fun (ext : Extension.instance) ->
               ext.parse_args
-                (Sexp.Of_sexp.set_many parsing_context ext.extension.stanzas)))
+                (Dsexp.Of_sexp.set_many parsing_context ext.extension.stanzas)))
        in
        { kind = Dune
        ; name
        ; root = get_local_path dir
        ; version
        ; packages
-       ; stanza_parser = Sexp.Of_sexp.(set_many parsing_context (sum stanzas))
+       ; stanza_parser = Dsexp.Of_sexp.(set_many parsing_context (sum stanzas))
        ; project_file
        })
 
@@ -399,7 +400,7 @@ let make_jbuilder_project ~dir packages =
   ; version = None
   ; packages
   ; stanza_parser =
-      Sexp.Of_sexp.(set_many parsing_context (sum lang.data))
+      Dsexp.Of_sexp.(set_many parsing_context (sum lang.data))
   ; project_file = { file = Path.relative dir filename; exists = false }
   }
 

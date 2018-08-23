@@ -8,7 +8,7 @@ module Name : sig
 
   val add_suffix : t -> string -> t
 
-  val sexp_of_t : t Sexp.To_sexp.t
+  val to_sexp : t Sexp.To_sexp.t
   val compare : t -> t -> Ordering.t
   val of_string : string -> t
   val to_string : t -> string

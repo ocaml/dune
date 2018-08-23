@@ -234,7 +234,7 @@ module Alias0 = struct
       if not (Path.is_in_build_dir dir) || String.contains name '/' then
         Exn.code_error "Alias0.make: Invalid alias"
           [ "name", Sexp.To_sexp.string name
-          ; "dir", Path.sexp_of_t dir
+          ; "dir", Path.to_sexp dir
           ];
       { dir; name }
 
@@ -462,7 +462,7 @@ let entry_point t ~f =
    | stack ->
      Exn.code_error
        "Build_system.entry_point: called inside the rule generator callback"
-       ["stack", Sexp.To_sexp.list Path.sexp_of_t stack]
+       ["stack", Sexp.To_sexp.list Path.to_sexp stack]
   );
   f ()
 
@@ -1536,8 +1536,8 @@ let get_collector t ~dir =
          "Build_system.get_collector called on external directory"
        else
          "Build_system.get_collector called on closed directory")
-      [ "dir", Path.sexp_of_t dir
-      ; "load_dir_stack", Sexp.To_sexp.list Path.sexp_of_t t.load_dir_stack
+      [ "dir", Path.to_sexp dir
+      ; "load_dir_stack", Sexp.To_sexp.list Path.to_sexp t.load_dir_stack
       ]
 
 let add_rule t (rule : Build_interpret.Rule.t) =
@@ -1558,7 +1558,7 @@ let prefix_rules t prefix ~f =
   | [] -> ()
   | targets ->
     Exn.code_error "Build_system.prefix_rules' prefix contains targets"
-      ["targets", Path.Set.sexp_of_t (Build_interpret.Target.paths targets)]
+      ["targets", Path.Set.to_sexp (Build_interpret.Target.paths targets)]
   end;
   let prefix =
     match t.prefix with

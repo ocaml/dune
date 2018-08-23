@@ -11,7 +11,7 @@ module Kind = struct
   end
   type t = Default | Opam of Opam.t
 
-  let sexp_of_t : t -> Sexp.t = function
+  let to_sexp : t -> Sexp.t = function
     | Default -> Sexp.To_sexp.string "default"
     | Opam o  ->
       Sexp.To_sexp.(record [ "root"  , string o.root
@@ -86,12 +86,12 @@ type t =
   ; which_cache             : (string, Path.t option) Hashtbl.t
   }
 
-let sexp_of_t t =
+let to_sexp t =
   let open Sexp.To_sexp in
-  let path = Path.sexp_of_t in
+  let path = Path.to_sexp in
   record
     [ "name", string t.name
-    ; "kind", Kind.sexp_of_t t.kind
+    ; "kind", Kind.to_sexp t.kind
     ; "profile", string t.profile
     ; "merlin", bool t.merlin
     ; "for_host", option string (Option.map t.for_host ~f:(fun t -> t.name))
@@ -103,16 +103,16 @@ let sexp_of_t t =
     ; "ocamlopt", option path t.ocamlopt
     ; "ocamldep", path t.ocamldep
     ; "ocamlmklib", path t.ocamlmklib
-    ; "env", Env.sexp_of_t (Env.diff t.env Env.initial)
+    ; "env", Env.to_sexp (Env.diff t.env Env.initial)
     ; "findlib_path", list path (Findlib.path t.findlib)
     ; "arch_sixtyfour", bool t.arch_sixtyfour
     ; "natdynlink_supported",
       bool (Dynlink_supported.By_the_os.get t.natdynlink_supported)
     ; "supports_shared_libraries",
       bool (Dynlink_supported.By_the_os.get t.supports_shared_libraries)
-    ; "opam_vars", Hashtbl.sexp_of_t string string t.opam_var_cache
-    ; "ocaml_config", Ocaml_config.sexp_of_t t.ocaml_config
-    ; "which", Hashtbl.sexp_of_t string (option path) t.which_cache
+    ; "opam_vars", Hashtbl.to_sexp string string t.opam_var_cache
+    ; "ocaml_config", Ocaml_config.to_sexp t.ocaml_config
+    ; "which", Hashtbl.to_sexp string (option path) t.which_cache
     ]
 
 let compare a b = compare a.name b.name

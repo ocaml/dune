@@ -7,7 +7,7 @@ module Kind = struct
     | Dune
     | Jbuilder
 
-  let sexp_of_t t =
+  let to_sexp t =
     Sexp.Atom
       (match t with
        | Dune -> "dune"
@@ -24,7 +24,7 @@ module Name : sig
   val to_string_hum : t -> string
 
   val dparse : t Dsexp.Of_sexp.t
-  val sexp_of_t : t Sexp.To_sexp.t
+  val to_sexp : t Sexp.To_sexp.t
 
   val encode : t -> string
   val decode : string -> t
@@ -59,11 +59,11 @@ end = struct
     | Named     s -> s
     | Anonymous p -> sprintf "<anonymous %s>" (Path.to_string_maybe_quoted p)
 
-  let sexp_of_t = function
+  let to_sexp = function
     | Named s -> Sexp.To_sexp.string s
     | Anonymous p ->
       List [ Atom "anonymous"
-           ; Path.sexp_of_t p
+           ; Path.to_sexp p
            ]
 
   let validate name =
@@ -132,10 +132,10 @@ module Project_file = struct
     ; mutable exists : bool
     }
 
-  let sexp_of_t { file; exists } =
+  let to_sexp { file; exists } =
     Sexp.To_sexp.(
       record
-        [ "file", Path.sexp_of_t file
+        [ "file", Path.to_sexp file
         ; "exists", bool exists
         ])
 end
@@ -280,11 +280,11 @@ let key =
     (fun { name; root; version; project_file; kind
          ; stanza_parser = _; packages = _ } ->
       Sexp.To_sexp.record
-        [ "name", Name.sexp_of_t name
-        ; "root", Path.Local.sexp_of_t root
+        [ "name", Name.to_sexp name
+        ; "root", Path.Local.to_sexp root
         ; "version", Sexp.To_sexp.(option string) version
-        ; "project_file", Project_file.sexp_of_t project_file
-        ; "kind", Kind.sexp_of_t kind
+        ; "project_file", Project_file.to_sexp project_file
+        ; "kind", Kind.to_sexp kind
         ])
 
 let set t = Dsexp.Of_sexp.set key t

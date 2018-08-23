@@ -60,8 +60,8 @@ module Repr = struct
     | G_evaluated l -> l
     | G_unevaluated (loc, path, _) ->
       Exn.code_error "Build.get_glob_result_exn: got unevaluated"
-        [ "loc", Loc.sexp_of_t loc
-        ; "path", Path.sexp_of_t path ]
+        [ "loc", Loc.to_sexp loc
+        ; "path", Path.to_sexp path ]
 end
 include Repr
 let repr t = t

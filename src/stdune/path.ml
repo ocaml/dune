@@ -34,7 +34,7 @@ let explode_path =
 module External : sig
   type t
 
-  val sexp_of_t : t Sexp.To_sexp.t
+  val to_sexp : t Sexp.To_sexp.t
 
   val compare : t -> t -> Ordering.t
   val compare_val : t -> t -> Ordering.t
@@ -71,7 +71,7 @@ end = struct
         [ "t", Sexp.To_sexp.string t ];
     make t
 
-  let sexp_of_t t = Sexp.To_sexp.string (to_string t)
+  let to_sexp t = Sexp.To_sexp.string (to_string t)
 
 (*
   let rec cd_dot_dot t =
@@ -125,7 +125,7 @@ end
 module Local : sig
   type t
 
-  val sexp_of_t : t Sexp.To_sexp.t
+  val to_sexp : t Sexp.To_sexp.t
 
   val root : t
   val is_root : t -> bool
@@ -213,12 +213,12 @@ end = struct
       | exception Not_found -> t
       | i -> String.sub t ~pos:(i + 1) ~len:(len - i - 1)
 
-  let sexp_of_t t = Sexp.To_sexp.string (to_string t)
+  let to_sexp t = Sexp.To_sexp.string (to_string t)
 
   let relative ?error_loc t path =
     if not (Filename.is_relative path) then (
       Exn.code_error "Local.relative: received absolute path"
-        [ "t", sexp_of_t t
+        [ "t", to_sexp t
         ; "path", Sexp.To_sexp.string path
         ]
     );
@@ -367,7 +367,7 @@ end = struct
     let make p =
       if is_root p then
         Exn.code_error "Path.Local.Prefix.make"
-          [ "path", sexp_of_t p ];
+          [ "path", to_sexp p ];
       let p = to_string p in
       { len        = String.length p
       ; path       = p
@@ -398,8 +398,8 @@ let (abs_root, set_root) =
     | None -> root_dir := Some new_root
     | Some root_dir ->
       Exn.code_error "set_root: cannot set root_dir more than once"
-        [ "root_dir", External.sexp_of_t root_dir
-        ; "new_root_dir", External.sexp_of_t new_root
+        [ "root_dir", External.to_sexp root_dir
+        ; "new_root_dir", External.to_sexp new_root
         ]
   in
   let abs_root = lazy (
@@ -427,7 +427,7 @@ module Kind = struct
     | Local t -> Local.to_string t
     | External t -> External.to_string t
 
-  let sexp_of_t t = Sexp.To_sexp.string (to_string t)
+  let to_sexp t = Sexp.To_sexp.string (to_string t)
 
   let of_string s =
     if Filename.is_relative s then
@@ -478,8 +478,8 @@ let (build_dir_kind, build_dir_prefix, set_build_dir) =
           | External _ -> Local.Prefix.invalid)
     | Some build_dir ->
       Exn.code_error "set_build_dir: cannot set build_dir more than once"
-        [ "build_dir", Kind.sexp_of_t build_dir
-        ; "new_build_dir", Kind.sexp_of_t new_build_dir ]
+        [ "build_dir", Kind.to_sexp build_dir
+        ; "new_build_dir", Kind.to_sexp new_build_dir ]
   in
   let build_dir = lazy (
     match !build_dir with
@@ -598,12 +598,12 @@ let of_string ?error_loc s =
     else
       make_local_path (Local.of_string s ?error_loc)
 
-let sexp_of_t t =
+let to_sexp t =
   let constr f x y = Sexp.To_sexp.(pair string f) (x, y) in
   match t with
-  | In_build_dir s -> constr Local.sexp_of_t "In_build_dir" s
-  | In_source_tree s -> constr Local.sexp_of_t "In_source_tree" s
-  | External s -> constr External.sexp_of_t "External" s
+  | In_build_dir s -> constr Local.to_sexp "In_build_dir" s
+  | In_source_tree s -> constr Local.to_sexp "In_source_tree" s
+  | External s -> constr External.to_sexp "External" s
 
 let of_filename_relative_to_initial_cwd fn =
   external_ (
@@ -669,8 +669,8 @@ let append a b =
   | In_build_dir _ | External _ ->
     Exn.code_error "Path.append called with directory that's \
                     not in the source tree"
-      [ "a", sexp_of_t a
-      ; "b", sexp_of_t b
+      [ "a", to_sexp a
+      ; "b", to_sexp b
       ]
   | In_source_tree b -> append_local a b
 
@@ -694,7 +694,7 @@ let parent_exn t =
   match parent t with
   | Some p -> p
   | None -> Exn.code_error "Path.parent:exn t is root"
-              ["t", sexp_of_t t]
+              ["t", to_sexp t]
 
 let is_strict_descendant_of_build_dir = function
   | In_build_dir p -> not (Local.is_root p)
@@ -755,7 +755,7 @@ let drop_build_context t =
 
 let drop_build_context_exn t =
   match extract_build_context t with
-  | None -> Exn.code_error "Path.drop_build_context_exn" [ "t", sexp_of_t t ]
+  | None -> Exn.code_error "Path.drop_build_context_exn" [ "t", to_sexp t ]
   | Some (_, t) -> t
 
 let drop_optional_build_context t =
@@ -797,7 +797,7 @@ let explode_exn t =
   match explode t with
   | Some s -> s
   | None -> Exn.code_error "Path.explode_exn"
-              ["path", sexp_of_t t]
+              ["path", to_sexp t]
 
 let exists t =
   try Sys.file_exists (to_string t)
@@ -852,7 +852,7 @@ let insert_after_build_dir_exn =
   let error a b =
     Exn.code_error
       "Path.insert_after_build_dir_exn"
-      [ "path"  , sexp_of_t a
+      [ "path"  , to_sexp a
       ; "insert", Sexp.To_sexp.string b
       ]
   in
@@ -874,7 +874,7 @@ let rm_rf =
   fun t ->
     if not (is_managed t) then (
       Exn.code_error "Path.rm_rf called on external dir"
-        ["t", sexp_of_t t]
+        ["t", to_sexp t]
     );
     let fn = to_string t in
     match Unix.lstat fn with
@@ -885,7 +885,7 @@ let mkdir_p = function
   | External s -> External.mkdir_p s
   | In_source_tree s ->
     Exn.code_error "Path.mkdir_p cannot dir in source"
-      ["s", Local.sexp_of_t s]
+      ["s", Local.to_sexp s]
   | In_build_dir k ->
     Kind.mkdir_p (Kind.append_local (Lazy.force build_dir_kind) k)
 
@@ -927,7 +927,7 @@ let pp_debug ppf = function
 
 module Set = struct
   include Set.Make(T)
-  let sexp_of_t t = Sexp.To_sexp.(list sexp_of_t) (to_list t)
+  let to_sexp t = Sexp.To_sexp.(list to_sexp) (to_list t)
   let of_string_set ss ~f =
     String.Set.to_list ss
     |> List.map ~f

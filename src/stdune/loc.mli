@@ -9,7 +9,7 @@ val none : t
 
 val of_lexbuf : Lexing.lexbuf -> t
 
-val sexp_of_t : t -> Sexp.t
+val to_sexp : t -> Sexp.t
 
 val sexp_of_position_no_file : Lexing.position -> Sexp.t
 

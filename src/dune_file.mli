@@ -105,7 +105,7 @@ module Bindings : sig
 
   val dgen : 'a Dsexp.To_sexp.t -> 'a t Dsexp.To_sexp.t
 
-  val sexp_of_t : 'a Sexp.To_sexp.t -> 'a t Sexp.To_sexp.t
+  val to_sexp : 'a Sexp.To_sexp.t -> 'a t Sexp.To_sexp.t
 end
 
 module Dep_conf : sig
@@ -121,7 +121,7 @@ module Dep_conf : sig
   val remove_locs : t -> t
 
   include Dsexp.Sexpable with type t := t
-  val sexp_of_t : t Sexp.To_sexp.t
+  val to_sexp : t Sexp.To_sexp.t
 end
 
 module Buildable : sig

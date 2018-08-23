@@ -88,13 +88,13 @@ let iter t ~f = iter ~f t
 
 let keys t = foldi t ~init:[] ~f:(fun key _ acc -> key :: acc)
 
-let sexp_of_t (type key) f g t =
+let to_sexp (type key) f g t =
   let module M =
     Map.Make(struct
       type t = key
       let compare a b = Ordering.of_int (compare a b)
     end)
   in
-  Map.sexp_of_t M.to_list f g
+  Map.to_sexp M.to_list f g
     (foldi t ~init:M.empty ~f:(fun key data acc ->
        M.add acc key data))

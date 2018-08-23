@@ -30,7 +30,7 @@ let sexp_of_position_no_file (p : Lexing.position) =
     ; "pos_cnum", int p.pos_cnum
     ]
 
-let sexp_of_t t =
+let to_sexp t =
   let open Sexp.To_sexp in
   record (* TODO handle when pos_fname differs *)
     [ "pos_fname", string t.start.pos_fname

@@ -403,7 +403,7 @@ module type Sexpable = sig
   val dgen : t To_sexp.t
 end
 
-val sexp_of_t : t Sexp.To_sexp.t
+val to_sexp : t Sexp.To_sexp.t
 
 module Io : sig
   val load : ?lexer:Lexer.t -> Path.t -> mode:'a Parser.Mode.t -> 'a

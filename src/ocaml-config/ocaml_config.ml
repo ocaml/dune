@@ -17,7 +17,7 @@ module Value = struct
     | Words         of string list
     | Prog_and_args of Prog_and_args.t
 
-  let sexp_of_t : t -> Sexp.t =
+  let to_sexp : t -> Sexp.t =
     let open Sexp.To_sexp in
     function
     | Bool   x -> bool x
@@ -185,13 +185,13 @@ let to_list t : (string * Value.t) list =
   ; "supports_shared_libraries", Bool          t.supports_shared_libraries
   ]
 
-let sexp_of_t t =
+let to_sexp t =
   let open Sexp in
   List
     (to_list t
      |> List.map ~f:(fun (k, v) ->
        List [ Atom k
-            ; Value.sexp_of_t v
+            ; Value.to_sexp v
             ]))
 
 module Origin = struct

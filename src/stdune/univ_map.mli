@@ -23,4 +23,4 @@ val singleton : 'a Key.t -> 'a -> t
     in [b]. *)
 val superpose : t -> t -> t
 
-val sexp_of_t : t -> Sexp.t
+val to_sexp : t -> Sexp.t

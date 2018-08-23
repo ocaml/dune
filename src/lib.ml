@@ -583,20 +583,20 @@ let check_private_deps lib ~loc ~allow_private_deps =
     Ok lib
 
 let already_in_table (info : Info.t) name x =
-  let dgen = Sexp.To_sexp.(pair Path.sexp_of_t string) in
+  let dgen = Sexp.To_sexp.(pair Path.to_sexp string) in
   let sexp =
     match x with
     | St_initializing x ->
       Sexp.List [Sexp.Atom "Initializing";
-                 Path.sexp_of_t x.path]
+                 Path.to_sexp x.path]
     | St_found t ->
       List [Sexp.Atom "Found";
-            Path.sexp_of_t t.info.src_dir]
+            Path.to_sexp t.info.src_dir]
     | St_not_found ->
       Sexp.Atom "Not_found"
     | St_hidden (_, { path; reason; _ }) ->
       List [Sexp.Atom "Hidden";
-            Path.sexp_of_t path; Sexp.Atom reason]
+            Path.to_sexp path; Sexp.Atom reason]
   in
   Exn.code_error
     "Lib_db.DB: resolver returned name that's already in the table"

@@ -28,4 +28,4 @@ val mem : ('a, _) t -> 'a -> bool
 
 val keys : ('a, _) t -> 'a list
 
-val sexp_of_t : ('a -> Sexp.t) -> ('b -> Sexp.t) -> ('a, 'b) t -> Sexp.t
+val to_sexp : ('a -> Sexp.t) -> ('b -> Sexp.t) -> ('a, 'b) t -> Sexp.t

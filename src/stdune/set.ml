@@ -46,5 +46,5 @@ module Make(Elt : Comparable.S) : S with type elt = Elt.t = struct
   let split x t = split t x
 end
 
-let sexp_of_t to_list f t =
+let to_sexp to_list f t =
   Sexp.To_sexp.list f (to_list t)

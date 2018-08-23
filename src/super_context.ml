@@ -438,7 +438,7 @@ end = struct
     | node -> node
     | exception Exit ->
       Exn.code_error "Super_context.Env.get called on invalid directory"
-        [ "dir", Path.sexp_of_t dir ]
+        [ "dir", Path.to_sexp dir ]
 
   let ocaml_flags t ~dir =
     let rec loop t node =
@@ -837,9 +837,9 @@ module Action = struct
             begin match Dune_file.Bindings.find deps_written_by_user key with
             | None ->
               Exn.code_error "Local named variable not present in named deps"
-                [ "pform", String_with_vars.Var.sexp_of_t pform
+                [ "pform", String_with_vars.Var.to_sexp pform
                 ; "deps_written_by_user",
-                  Dune_file.Bindings.sexp_of_t Path.sexp_of_t deps_written_by_user
+                  Dune_file.Bindings.to_sexp Path.to_sexp deps_written_by_user
                 ]
             | Some x -> Value.L.paths x
             end
@@ -862,7 +862,7 @@ module Action = struct
             end
           | _ ->
             Exn.code_error "Unexpected variable in step2"
-              ["var", String_with_vars.Var.sexp_of_t pform]))
+              ["var", String_with_vars.Var.to_sexp pform]))
 
   let run sctx ~loc ~bindings ~dir ~dep_kind
         ~targets:targets_written_by_user ~targets_dir ~scope t

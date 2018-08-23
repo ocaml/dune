@@ -7,11 +7,11 @@ module File = struct
     }
 
   (* XXX these sexp converters will be useful for the dump command *)
-  let _sexp_of_t { src; dst } =
+  let _to_sexp { src; dst } =
     Sexp.List
-      [ Path.sexp_of_t src
+      [ Path.to_sexp src
       ; Sexp.Atom "as"
-      ; Path.sexp_of_t dst
+      ; Path.to_sexp dst
       ]
 
   let db : t list ref = ref []

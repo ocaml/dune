@@ -103,6 +103,6 @@ let gen ~(dune_version : Syntax.Version.t) confs =
          | (x, _) when x >= 1 -> "2"
          | (_, _) ->
            Exn.code_error "Cannot generate dune with unknown version"
-             ["dune_version", Syntax.Version.sexp_of_t dune_version])
+             ["dune_version", Syntax.Version.to_sexp dune_version])
     ; List sexps
     ]

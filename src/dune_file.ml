@@ -363,7 +363,7 @@ module Bindings = struct
           Dsexp.List (Dsexp.atom (":" ^ name) :: List.map ~f:dgen bindings))
     )
 
-  let sexp_of_t sexp_of_a bindings =
+  let to_sexp sexp_of_a bindings =
     Sexp.List (
       List.map bindings ~f:(function
         | Unnamed a -> sexp_of_a a
@@ -439,7 +439,7 @@ module Dep_conf = struct
     | Universe ->
       Dsexp.unsafe_atom_of_string "universe"
 
-  let sexp_of_t t = Dsexp.sexp_of_t (dgen t)
+  let to_sexp t = Dsexp.to_sexp (dgen t)
 end
 
 module Preprocess = struct

@@ -188,7 +188,7 @@ let targets =
           match loop a [], loop b [] with
           | [], [] -> acc
           | a, b ->
-            let targets x = Path.Set.sexp_of_t (Target.paths x) in
+            let targets x = Path.Set.to_sexp (Target.paths x) in
             Exn.code_error "Build_interpret.targets: cannot have targets \
                             under a [if_file_exists]"
               [ "targets-a", targets a
@@ -231,7 +231,7 @@ module Rule = struct
             match loc with
             | None ->
               Exn.code_error "rule has targets in different directories"
-                [ "targets", Sexp.To_sexp.list Path.sexp_of_t
+                [ "targets", Sexp.To_sexp.list Path.to_sexp
                                (List.map targets ~f:Target.path)
                 ]
             | Some loc ->

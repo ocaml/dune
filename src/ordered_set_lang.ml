@@ -359,8 +359,8 @@ module Unexpanded = struct
           | None ->
             Exn.code_error
               "Ordered_set_lang.Unexpanded.expand"
-              [ "included-file", Path.sexp_of_t path
-              ; "files", Sexp.To_sexp.(list Path.sexp_of_t)
+              [ "included-file", Path.to_sexp path
+              ; "files", Sexp.To_sexp.(list Path.to_sexp)
                            (Path.Map.keys files_contents)
               ]
         in

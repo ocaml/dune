@@ -17,7 +17,7 @@ module Version = struct
 
   let to_string (a, b) = sprintf "%u.%u" a b
 
-  let sexp_of_t t = Sexp.Atom (to_string t)
+  let to_sexp t = Sexp.Atom (to_string t)
 
   let dgen t = Dsexp.To_sexp.string (to_string t)
 
@@ -43,7 +43,7 @@ end
 module Supported_versions = struct
   type t = int Int.Map.t
 
-  let sexp_of_t (t : t) =
+  let to_sexp (t : t) =
     let open Sexp.To_sexp in
     (list (pair int int)) (Int.Map.to_list t)
 
@@ -56,7 +56,7 @@ module Supported_versions = struct
     | Error _ ->
       Exn.code_error
         "Syntax.create"
-        [ "versions", Sexp.To_sexp.list Version.sexp_of_t l ]
+        [ "versions", Sexp.To_sexp.list Version.to_sexp l ]
 
   let greatest_supported_version t = Option.value_exn (Int.Map.max_binding t)
 
@@ -98,7 +98,7 @@ end
 let create ~name ~desc supported_versions =
   { name
   ; desc
-  ; key = Univ_map.Key.create ~name Version.sexp_of_t
+  ; key = Univ_map.Key.create ~name Version.to_sexp
   ; supported_versions = Supported_versions.make supported_versions
   }
 
@@ -138,8 +138,8 @@ let get_exn t =
     get_all >>| fun context ->
     Exn.code_error "Syntax identifier is unset"
       [ "name", Sexp.To_sexp.string t.name
-      ; "supported_versions", Supported_versions.sexp_of_t t.supported_versions
-      ; "context", Univ_map.sexp_of_t context
+      ; "supported_versions", Supported_versions.to_sexp t.supported_versions
+      ; "context", Univ_map.to_sexp context
       ]
 
 let desc () =

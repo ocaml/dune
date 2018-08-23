@@ -853,9 +853,9 @@ module type Sexpable = sig
   val dgen : t To_sexp.t
 end
 
-let rec sexp_of_t = function
+let rec to_sexp = function
   | Atom (A a) -> Sexp.Atom a
-  | List s -> List (List.map s ~f:sexp_of_t)
+  | List s -> List (List.map s ~f:to_sexp)
   | Quoted_string s -> Sexp.Atom s
   | Template t ->
     List

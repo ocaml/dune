@@ -144,5 +144,5 @@ module Make(Key : Comparable.S) : S with type key = Key.t = struct
     union a b ~f:(fun _ _ y -> Some y)
 end
 
-let sexp_of_t to_list f g t =
+let to_sexp to_list f g t =
   Sexp.To_sexp.(list (pair f g)) (to_list t)

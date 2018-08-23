@@ -281,8 +281,8 @@ let mlds t (doc : Documentation.t) =
   | Some x -> x
   | None ->
     Exn.code_error "Dir_contents.mlds"
-      [ "doc", Loc.sexp_of_t doc.loc
-      ; "available", Sexp.To_sexp.(list Loc.sexp_of_t)
+      [ "doc", Loc.to_sexp doc.loc
+      ; "available", Sexp.To_sexp.(list Loc.to_sexp)
                        (List.map map ~f:(fun (d, _) -> d.Documentation.loc))
       ]
 

@@ -14,7 +14,7 @@ val loc : t -> Loc.t
 
 val syntax_version : t -> Syntax.Version.t
 
-val sexp_of_t : t Sexp.To_sexp.t
+val to_sexp : t Sexp.To_sexp.t
 
 include Dsexp.Sexpable with type t := t
 
@@ -47,7 +47,7 @@ end
 module Var : sig
   type t
 
-  val sexp_of_t : t -> Sexp.t
+  val to_sexp : t -> Sexp.t
 
   val name : t -> string
   val loc : t -> Loc.t

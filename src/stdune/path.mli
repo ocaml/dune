@@ -1,7 +1,7 @@
 (** In the current workspace (anything under the current project root) *)
 module Local : sig
   type t
-  val sexp_of_t : t -> Sexp.t
+  val to_sexp : t -> Sexp.t
   val equal : t -> t -> bool
   val to_string : t -> string
 end
@@ -27,7 +27,7 @@ end
 
 type t
 
-val sexp_of_t : t Sexp.To_sexp.t
+val to_sexp : t Sexp.To_sexp.t
 
 val compare : t -> t -> Ordering.t
 (** a directory is smaller than its descendants *)
@@ -36,7 +36,7 @@ val equal : t -> t -> bool
 
 module Set : sig
   include Set.S with type elt = t
-  val sexp_of_t : t Sexp.To_sexp.t
+  val to_sexp : t Sexp.To_sexp.t
   val of_string_set : String.Set.t -> f:(string -> elt) -> t
 end
 

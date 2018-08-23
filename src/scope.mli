@@ -2,7 +2,7 @@
 
 (** A scope is a project + a library database  *)
 
-open Stdune
+open! Stdune
 
 type t
 

@@ -1,6 +1,6 @@
 (** Implementation of versioned files *)
 
-open Stdune
+open! Stdune
 
 module type S = sig
   type data
@@ -30,14 +30,14 @@ module type S = sig
   (** [load fn ~f] loads a versioned file. It parses the first line,
       looks up the language, checks that the version is supported and
       parses the rest of the file with [f]. *)
-  val load : Path.t -> f:(Lang.Instance.t -> 'a Sexp.Of_sexp.t) -> 'a
+  val load : Path.t -> f:(Lang.Instance.t -> 'a Dsexp.Of_sexp.t) -> 'a
 
   (** Parse the contents of a versioned file after the first line has
       been read. *)
   val parse_contents
     :  Lexing.lexbuf
     -> Dune_lexer.first_line
-    -> f:(Lang.Instance.t -> 'a Sexp.Of_sexp.t)
+    -> f:(Lang.Instance.t -> 'a Dsexp.Of_sexp.t)
     -> 'a
 end
 

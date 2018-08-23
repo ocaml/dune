@@ -1,3 +1,4 @@
+open! Stdune
 open Import
 open Dune_file
 open Build.O
@@ -37,7 +38,7 @@ module Backend = struct
           (let%map loc = loc
            and runner_libraries = field "runner_libraries" (list (located string)) ~default:[]
            and flags = Ordered_set_lang.Unexpanded.field "flags"
-           and generate_runner = field_o "generate_runner" (located Action.Unexpanded.t)
+           and generate_runner = field_o "generate_runner" (located Action.Unexpanded.dparse)
            and extends = field "extends" (list (located string)) ~default:[]
            in
            { loc
@@ -74,21 +75,21 @@ module Backend = struct
                  resolve x >>= fun lib ->
                  match get ~loc lib with
                  | None ->
-                   Error (Loc.exnf loc "%S is not an %s" name
+                   Error (Errors.exnf loc "%S is not an %s" name
                             (desc ~plural:false))
                  | Some t -> Ok t))
       }
 
-    let to_sexp t =
-      let open Sexp.To_sexp in
+    let dgen t =
+      let open Dsexp.To_sexp in
       let lib x = string (Lib.name x) in
       let f x = string (Lib.name x.lib) in
       ((1, 0),
        record_fields
          [ field "runner_libraries" (list lib)
              (Result.ok_exn t.runner_libraries)
-         ; field "flags" Ordered_set_lang.Unexpanded.sexp_of_t t.info.flags
-         ; field_o "generate_runner" Action.Unexpanded.sexp_of_t
+         ; field "flags" Ordered_set_lang.Unexpanded.dgen t.info.flags
+         ; field_o "generate_runner" Action.Unexpanded.dgen
              (Option.map t.info.generate_runner ~f:snd)
          ; field "extends" (list f) (Result.ok_exn t.extends) ~default:[]
          ])
@@ -135,7 +136,7 @@ include Sub_system.Register_end_point(
           ~else_:
             (record
                (let%map loc = loc
-                and deps = field "deps" (list Dep_conf.t) ~default:[]
+                and deps = field "deps" (list Dep_conf.dparse) ~default:[]
                 and flags = Ordered_set_lang.Unexpanded.field "flags"
                 and backend = field_o "backend" (located string)
                 and libraries = field "libraries" (list (located string)) ~default:[]
@@ -260,9 +261,7 @@ include Sub_system.Register_end_point(
       SC.add_alias_action sctx
         ~loc:(Some info.loc)
         (Build_system.Alias.runtest ~dir)
-        ~stamp:(List [ Sexp.unsafe_atom_of_string "ppx-runner"
-                     ; Quoted_string name
-                     ])
+        ~stamp:("ppx-runner", name)
         (let module A = Action in
          let exe = Path.relative inline_test_dir (name ^ ".exe") in
          Build.path exe >>>

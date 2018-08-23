@@ -1,4 +1,5 @@
 {
+open! Stdune
 open Lexer_shared
 
 type block_string_line_kind =

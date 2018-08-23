@@ -1,11 +1,11 @@
-open Stdune
+open! Stdune
 
 type t =
   | String of string
   | Dir of Path.t
   | Path of Path.t
 
-val sexp_of_t : t Sexp.To_sexp.t
+val to_sexp : t Sexp.To_sexp.t
 
 val to_string : t -> dir:Path.t -> string
 

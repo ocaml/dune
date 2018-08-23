@@ -1,3 +1,4 @@
+open! Stdune
 open Import
 
 type t =
@@ -29,7 +30,7 @@ module DB = struct
       | None ->
         if Path.is_root d || not (Path.is_managed d) then
           Exn.code_error "Scope.DB.find_by_dir got an invalid path"
-            [ "dir"    , Path.sexp_of_t dir
+            [ "dir"    , Path.to_sexp dir
             ; "context", Sexp.To_sexp.string t.context
             ];
         let scope = loop (Path.parent_exn d) in
@@ -43,10 +44,10 @@ module DB = struct
     | Some x -> x
     | None ->
       Exn.code_error "Scope.DB.find_by_name"
-        [ "name"   , Dune_project.Name.sexp_of_t name
+        [ "name"   , Dune_project.Name.to_sexp name
         ; "context", Sexp.To_sexp.string t.context
         ; "names",
-          Sexp.To_sexp.(list Dune_project.Name.sexp_of_t)
+          Sexp.To_sexp.(list Dune_project.Name.to_sexp)
             (Project_name_map.keys t.by_name)
         ]
 
@@ -59,7 +60,7 @@ module DB = struct
       | Ok x -> x
       | Error (_name, project1, project2) ->
         let to_sexp (project : Dune_project.t) =
-          Sexp.To_sexp.(pair Dune_project.Name.sexp_of_t Path.Local.sexp_of_t)
+          Sexp.To_sexp.(pair Dune_project.Name.to_sexp Path.Local.to_sexp)
             (Dune_project.name project, Dune_project.root project)
         in
         Exn.code_error "Scope.DB.create got two projects with the same name"

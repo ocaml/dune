@@ -1,5 +1,6 @@
 (** Odoc rules *)
 
+open! Stdune
 open Import
 open Dune_file
 

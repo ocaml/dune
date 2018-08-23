@@ -1,4 +1,4 @@
-open Stdune
+open! Stdune
 
 module Outputs = struct
   type t =

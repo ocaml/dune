@@ -1,3 +1,4 @@
+open! Stdune
 open Import
 
 module Var = struct
@@ -62,7 +63,7 @@ let extend t ~vars =
 let extend_env x y =
   extend x ~vars:y.vars
 
-let sexp_of_t t =
+let to_sexp t =
   let open Sexp.To_sexp in
   (list (pair string string)) (Map.to_list t.vars)
 

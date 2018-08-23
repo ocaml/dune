@@ -1,5 +1,6 @@
+open! Stdune
 open Import
-open Sexp.Of_sexp
+open Dsexp.Of_sexp
 
 let ignore_loc k ~loc:_ = k
 
@@ -15,9 +16,9 @@ end
 module Diff_mode = Action_intf.Diff_mode
 
 module Make_ast
-    (Program : Sexp.Sexpable)
-    (Path    : Sexp.Sexpable)
-    (String  : Sexp.Sexpable)
+    (Program : Dsexp.Sexpable)
+    (Path    : Dsexp.Sexpable)
+    (String  : Dsexp.Sexpable)
     (Ast : Action_intf.Ast
      with type program := Program.t
      with type path    := Path.t
@@ -25,13 +26,13 @@ module Make_ast
 struct
   include Ast
 
-  let t =
-    let path = Path.t and string = String.t in
-    Sexp.Of_sexp.fix (fun t ->
+  let dparse =
+    let path = Path.dparse and string = String.dparse in
+    Dsexp.Of_sexp.fix (fun t ->
       sum
         [ "run",
-          (let%map prog = Program.t
-           and args = repeat string
+          (let%map prog = Program.dparse
+           and args = repeat String.dparse
            in
            Run (prog, args))
         ; "chdir",
@@ -129,55 +130,53 @@ struct
            Diff { optional = false; file1; file2; mode = Binary })
         ])
 
-  let rec sexp_of_t : _ -> Sexp.t =
-    let path = Path.sexp_of_t and string = String.sexp_of_t in
+  let rec dgen =
+    let open Dsexp in
+    let program = Program.dgen in
+    let string = String.dgen in
+    let path = Path.dgen in
     function
-    | Run (a, xs) -> List (Sexp.unsafe_atom_of_string "run"
-                           :: Program.sexp_of_t a :: List.map xs ~f:string)
-    | Chdir (a, r) -> List [Sexp.unsafe_atom_of_string "chdir" ;
-                            path a ; sexp_of_t r]
-    | Setenv (k, v, r) -> List [Sexp.unsafe_atom_of_string "setenv" ;
-                                string k ; string v ; sexp_of_t r]
+    | Run (a, xs) ->
+      List (atom "run" :: program a :: List.map xs ~f:string)
+    | Chdir (a, r) -> List [atom "chdir" ; path a ; dgen r]
+    | Setenv (k, v, r) -> List [atom "setenv" ; string k ; string v ; dgen r]
     | Redirect (outputs, fn, r) ->
-      List [ Sexp.atom (sprintf "with-%s-to" (Outputs.to_string outputs))
+      List [ atom (sprintf "with-%s-to" (Outputs.to_string outputs))
            ; path fn
-           ; sexp_of_t r
+           ; dgen r
            ]
     | Ignore (outputs, r) ->
-      List [ Sexp.atom (sprintf "ignore-%s" (Outputs.to_string outputs))
-           ; sexp_of_t r
+      List [ atom (sprintf "ignore-%s" (Outputs.to_string outputs))
+           ; dgen r
            ]
-    | Progn l -> List (Sexp.unsafe_atom_of_string "progn"
-                       :: List.map l ~f:sexp_of_t)
+    | Progn l -> List (atom "progn" :: List.map l ~f:dgen)
     | Echo xs ->
-      List (Sexp.unsafe_atom_of_string "echo" :: List.map xs ~f:string)
-    | Cat x -> List [Sexp.unsafe_atom_of_string "cat"; path x]
+      List (atom "echo" :: List.map xs ~f:string)
+    | Cat x -> List [atom "cat"; path x]
     | Copy (x, y) ->
-      List [Sexp.unsafe_atom_of_string "copy"; path x; path y]
+      List [atom "copy"; path x; path y]
     | Symlink (x, y) ->
-      List [Sexp.unsafe_atom_of_string "symlink"; path x; path y]
+      List [atom "symlink"; path x; path y]
     | Copy_and_add_line_directive (x, y) ->
-      List [Sexp.unsafe_atom_of_string "copy#"; path x; path y]
-    | System x -> List [Sexp.unsafe_atom_of_string "system"; string x]
-    | Bash   x -> List [Sexp.unsafe_atom_of_string "bash"; string x]
-    | Write_file (x, y) -> List [Sexp.unsafe_atom_of_string "write-file";
-                                 path x; string y]
-    | Rename (x, y) -> List [Sexp.unsafe_atom_of_string "rename";
-                             path x; path y]
-    | Remove_tree x -> List [Sexp.unsafe_atom_of_string "remove-tree"; path x]
-    | Mkdir x       -> List [Sexp.unsafe_atom_of_string "mkdir"; path x]
-    | Digest_files paths -> List [Sexp.unsafe_atom_of_string "digest-files";
+      List [atom "copy#"; path x; path y]
+    | System x -> List [atom "system"; string x]
+    | Bash   x -> List [atom "bash"; string x]
+    | Write_file (x, y) -> List [atom "write-file"; path x; string y]
+    | Rename (x, y) -> List [atom "rename"; path x; path y]
+    | Remove_tree x -> List [atom "remove-tree"; path x]
+    | Mkdir x       -> List [atom "mkdir"; path x]
+    | Digest_files paths -> List [atom "digest-files";
                                   List (List.map paths ~f:path)]
     | Diff { optional; file1; file2; mode = Binary} ->
       assert (not optional);
-      List [Sexp.unsafe_atom_of_string "cmp"; path file1; path file2]
+      List [atom "cmp"; path file1; path file2]
     | Diff { optional = false; file1; file2; mode = _ } ->
-      List [Sexp.unsafe_atom_of_string "diff"; path file1; path file2]
+      List [atom "diff"; path file1; path file2]
     | Diff { optional = true; file1; file2; mode = _ } ->
-      List [Sexp.unsafe_atom_of_string "diff?"; path file1; path file2]
+      List [atom "diff?"; path file1; path file2]
     | Merge_files_into (srcs, extras, target) ->
       List
-        [ Sexp.unsafe_atom_of_string "merge-files-into"
+        [ atom "merge-files-into"
         ; List (List.map ~f:path srcs)
         ; List (List.map ~f:string extras)
         ; path target
@@ -268,11 +267,12 @@ module Prog = struct
 
   type t = (Path.t, Not_found.t) result
 
-  let t : t Sexp.Of_sexp.t = Sexp.Of_sexp.map Path.t ~f:Result.ok
+  let dparse : t Dsexp.Of_sexp.t =
+    Dsexp.Of_sexp.map Path_dsexp.dparse ~f:Result.ok
 
-  let sexp_of_t = function
-    | Ok s -> Path.sexp_of_t s
-    | Error (e : Not_found.t) -> Sexp.To_sexp.string e.program
+  let dgen = function
+    | Ok s -> Path_dsexp.dgen s
+    | Error (e : Not_found.t) -> Dsexp.To_sexp.string e.program
 end
 
 module type Ast = Action_intf.Ast
@@ -283,13 +283,13 @@ module rec Ast : Ast = Ast
 
 module String_with_sexp = struct
   type t = string
-  let t = Sexp.Of_sexp.string
-  let sexp_of_t = Sexp.To_sexp.string
+  let dparse = Dsexp.Of_sexp.string
+  let dgen = Dsexp.To_sexp.string
 end
 
 include Make_ast
     (Prog)
-    (Path)
+    (Path_dsexp)
     (String_with_sexp)
     (Ast)
 
@@ -372,9 +372,19 @@ module Unexpanded = struct
 
   include Make_ast(String_with_vars)(String_with_vars)(String_with_vars)(Uast)
 
-  let t =
+  module Mapper = Make_mapper(Uast)(Uast)
+
+  let remove_locs =
+    let no_loc_template = String_with_vars.make_text Loc.none "" in
+    fun t ->
+      Mapper.map t ~dir:no_loc_template
+        ~f_program:(fun ~dir:_ -> String_with_vars.remove_locs)
+        ~f_path:(fun ~dir:_ -> String_with_vars.remove_locs)
+        ~f_string:(fun ~dir:_ -> String_with_vars.remove_locs)
+
+  let dparse =
     if_list
-      ~then_:t
+      ~then_:dparse
       ~else_:
         (loc >>| fun loc ->
          of_sexp_errorf
@@ -383,11 +393,11 @@ module Unexpanded = struct
 
   let check_mkdir loc path =
     if not (Path.is_managed path) then
-      Loc.fail loc
+      Errors.fail loc
         "(mkdir ...) is not supported for paths outside of the workspace:\n\
         \  %a\n"
-        (Sexp.pp Dune)
-        (List [Sexp.unsafe_atom_of_string "mkdir"; Path.sexp_of_t path])
+        (Dsexp.pp Dune)
+        (List [Dsexp.unsafe_atom_of_string "mkdir"; Path_dsexp.dgen path])
 
   module Partial = struct
     module Program = Unresolved.Program
@@ -538,7 +548,7 @@ module Unexpanded = struct
           Chdir (res, partial_expand t ~dir ~map_exe ~f)
         | Right fn ->
           let loc = String_with_vars.loc fn in
-          Loc.fail loc
+          Errors.fail loc
             "This directory cannot be evaluated statically.\n\
              This is not allowed by dune"
       end
@@ -733,7 +743,7 @@ module Infer = struct
         match fn with
         | Left  fn -> { acc with targets = Path.Set.add acc.targets fn }
         | Right sw ->
-          Loc.fail (String_with_vars.loc sw)
+          Errors.fail (String_with_vars.loc sw)
             "Cannot determine this target statically."
       let ( +< ) acc fn =
         match fn with

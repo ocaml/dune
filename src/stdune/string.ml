@@ -203,6 +203,7 @@ let maybe_quoted s =
     Printf.sprintf {|"%s"|} escaped
 
 module Set = Set.Make(T)
+
 module Map = struct
   include Map.Make(T)
   let pp f fmt t =

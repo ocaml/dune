@@ -1,9 +1,9 @@
-open Stdune
+open! Stdune
 
 type t = ..
 
 module Parser = struct
-  type nonrec t = string * t list Sexp.Of_sexp.t
+  type nonrec t = string * t list Dsexp.Of_sexp.t
 end
 
 let syntax =
@@ -13,7 +13,7 @@ let syntax =
     ]
 
 module File_kind = struct
-  type t = Sexp.syntax = Jbuild | Dune
+  type t = Dsexp.syntax = Jbuild | Dune
 
   let of_syntax = function
     | (0, _) -> Jbuild
@@ -21,11 +21,11 @@ module File_kind = struct
 end
 
 let file_kind () =
-  let open Sexp.Of_sexp in
+  let open Dsexp.Of_sexp in
   Syntax.get_exn syntax >>| File_kind.of_syntax
 
 module Of_sexp = struct
-  include Sexp.Of_sexp
+  include Dsexp.Of_sexp
 
   exception Parens_no_longer_necessary of Loc.t
 
@@ -88,7 +88,7 @@ module Of_sexp = struct
     match Univ_map.find parsing_context (Syntax.key syntax) with
     | Some (0, _) ->
       let last = Option.value_exn (List.last entries) in
-      Loc.warn (Sexp.Ast.loc last)
+      Errors.warn (Dsexp.Ast.loc last)
         "Field %S is present several times, previous occurrences are ignored."
         name
     | _ ->

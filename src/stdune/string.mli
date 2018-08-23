@@ -1,4 +1,5 @@
-include module type of struct include StringLabels end
+type t = string
+include module type of struct include StringLabels end with type t := t
 
 val equal : t -> t -> bool
 val compare : t -> t -> Ordering.t

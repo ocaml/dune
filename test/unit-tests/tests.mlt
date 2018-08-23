@@ -104,7 +104,7 @@ val conf : Findlib.Config.t =
   }
 |}]
 
-let env_pp fmt env = Sexp.pp Dune fmt (Env.sexp_of_t env);;
+let env_pp fmt env = Sexp.pp fmt (Env.to_sexp env);;
 #install_printer env_pp;;
 
 [%%expect{|

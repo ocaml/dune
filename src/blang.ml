@@ -35,7 +35,7 @@ let rec eval_bool t ~dir ~(f : 'a expander) =
     begin match f.f ~mode:Single a with
     | _, String "true" -> true
     | _, String "false" -> false
-    | loc, _ -> Loc.fail loc "This value must be either true or false"
+    | loc, _ -> Errors.fail loc "This value must be either true or false"
     end
   | And xs -> List.for_all ~f:(eval_bool ~f ~dir) xs
   | Or xs -> List.exists ~f:(eval_bool ~f ~dir) xs

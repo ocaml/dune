@@ -1,3 +1,4 @@
+open! Stdune
 open Import
 open OpamParserTypes
 
@@ -9,9 +10,9 @@ let load fn =
       OpamBaseParser.main OpamLexer.token lb (Path.to_string fn)
     with
     | OpamLexer.Error msg ->
-      Loc.fail_lex lb "%s" msg
+      Errors.fail_lex lb "%s" msg
     | Parsing.Parse_error ->
-      Loc.fail_lex lb "Parse error")
+      Errors.fail_lex lb "Parse error")
 
 let get_field t name =
   List.find_map t.file_contents

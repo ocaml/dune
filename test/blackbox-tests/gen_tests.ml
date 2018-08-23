@@ -1,27 +1,27 @@
-open Stdune
+open! Stdune
 
 let sprintf = Printf.sprintf
 
 module Sexp = struct
   let fields fields =
     List.map fields ~f:(fun (k, s) ->
-      Usexp.List (Usexp.atom k :: s))
+      Dsexp.List (Dsexp.atom k :: s))
 
   let strings fields =
-    Usexp.List (List.map fields ~f:Usexp.atom_or_quoted_string)
+    Dsexp.List (List.map fields ~f:Dsexp.atom_or_quoted_string)
 
   let constr name args =
-    Usexp.List (Usexp.atom name :: args)
+    Dsexp.List (Dsexp.atom name :: args)
 
   let parse s =
-    Usexp.parse_string ~fname:"gen_tests.ml" ~mode:Single s
-    |> Usexp.Ast.remove_locs
+    Dsexp.parse_string ~fname:"gen_tests.ml" ~mode:Single s
+    |> Dsexp.Ast.remove_locs
 end
 
 module Platform = struct
   type t = Win | Mac
 
-  open Usexp
+  open Dsexp
 
   let to_string = function
     | Win -> "win"
@@ -44,7 +44,7 @@ end
 let alias ?enabled_if ?action name ~deps =
   Sexp.constr "alias"
     (Sexp.fields (
-       [ "name", [Usexp.atom name]
+       [ "name", [Dsexp.atom name]
        ; "deps", deps
        ] @ (match action with
          | None -> []
@@ -56,7 +56,7 @@ let alias ?enabled_if ?action name ~deps =
 module Test = struct
   type t =
     { name           : string
-    ; env            : (string * Usexp.t) option
+    ; env            : (string * Dsexp.t) option
     ; skip_ocaml     : string option
     ; skip_platforms : Platform.t list
     ; enabled        : bool
@@ -76,7 +76,7 @@ module Test = struct
     }
 
   let pp_sexp fmt t =
-    let open Usexp in
+    let open Dsexp in
     let skip_version =
       match t.skip_ocaml with
       | None -> []
@@ -89,10 +89,10 @@ module Test = struct
         ; atom (sprintf "test-cases/%s" t.name)
         ; List
             [ atom "progn"
-            ; Usexp.List
+            ; Dsexp.List
                 ([ atom "run"
                  ; Sexp.parse "%{exe:cram.exe}" ]
-                 @ (List.map ~f:Usexp.atom_or_quoted_string
+                 @ (List.map ~f:Dsexp.atom_or_quoted_string
                       (skip_version @ ["-test"; "run.t"])))
             ; Sexp.strings ["diff?"; "run.t"; "run.t.corrected"]
             ]
@@ -115,7 +115,7 @@ module Test = struct
                        ; sprintf "test-cases/%s" t.name]
         ]
       ) ~action
-    |> Usexp.pp Dune fmt
+    |> Dsexp.pp Dune fmt
 end
 
 let exclusions =
@@ -123,7 +123,7 @@ let exclusions =
   let odoc = make ~external_deps:true ~skip_ocaml:"4.02.3" in
   [ make "js_of_ocaml" ~external_deps:true ~js:true
       ~env:("NODE", Sexp.parse "%{bin:node}")
-  ; make "github25" ~env:("OCAMLPATH", Usexp.atom "./findlib-packages")
+  ; make "github25" ~env:("OCAMLPATH", Dsexp.atom "./findlib-packages")
   ; odoc "odoc"
   ; odoc "odoc-unique-mlds"
   ; odoc "github717-odoc-index"
@@ -160,7 +160,7 @@ let pp_group fmt (name, tests) =
   alias name ~deps:(
     (List.map tests ~f:(fun (t : Test.t) ->
        Sexp.strings ["alias"; t.name])))
-  |> Usexp.pp Dune fmt
+  |> Dsexp.pp Dune fmt
 
 let () =
   let tests = Lazy.force all_tests in

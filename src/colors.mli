@@ -1,4 +1,4 @@
-open Stdune
+open! Stdune
 
 val colorize : key:string -> string -> string
 

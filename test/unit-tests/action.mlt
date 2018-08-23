@@ -2,8 +2,8 @@
 
 #warnings "-40";;
 
+open Stdune;;
 open Dune;;
-open Import;;
 open Action.Infer.Outcome;;
 Stdune.Path.set_build_dir (Path.Kind.of_string "_build");;
 
@@ -14,7 +14,7 @@ let infer (a : Action.t) =
    List.map (Path.Set.to_list x.targets) ~f:Path.to_string)
 [%%expect{|
 - : unit = ()
-val p : ?error_loc:Usexp.Loc.t -> string -> Path.t = <fun>
+val p : ?error_loc:Stdune__Loc.t -> string -> Path.t = <fun>
 val infer : Action.t -> string list * string list = <fun>
 |}]
 

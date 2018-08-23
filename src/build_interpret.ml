@@ -1,3 +1,4 @@
+open! Stdune
 open Import
 open Build.Repr
 
@@ -82,11 +83,11 @@ let static_deps t ~all_targets ~file_tree =
           if Path.Set.is_empty result then begin
             match inspect_path file_tree dir with
             | None ->
-              Loc.warn loc "Directory %s doesn't exist."
+              Errors.warn loc "Directory %s doesn't exist."
                 (Path.to_string_maybe_quoted
                    (Path.drop_optional_build_context dir))
             | Some Reg ->
-              Loc.warn loc "%s is not a directory."
+              Errors.warn loc "%s is not a directory."
                 (Path.to_string_maybe_quoted
                    (Path.drop_optional_build_context dir))
             | Some Dir ->
@@ -187,7 +188,7 @@ let targets =
           match loop a [], loop b [] with
           | [], [] -> acc
           | a, b ->
-            let targets x = Path.Set.sexp_of_t (Target.paths x) in
+            let targets x = Path.Set.to_sexp (Target.paths x) in
             Exn.code_error "Build_interpret.targets: cannot have targets \
                             under a [if_file_exists]"
               [ "targets-a", targets a
@@ -219,7 +220,7 @@ module Rule = struct
       match targets with
       | [] ->
         begin match loc with
-        | Some loc -> Loc.fail loc "Rule has no targets specified"
+        | Some loc -> Errors.fail loc "Rule has no targets specified"
         | None -> Exn.code_error "Build_interpret.Rule.make: no targets" []
         end
       | x :: l ->
@@ -230,11 +231,11 @@ module Rule = struct
             match loc with
             | None ->
               Exn.code_error "rule has targets in different directories"
-                [ "targets", Sexp.To_sexp.list Path.sexp_of_t
+                [ "targets", Sexp.To_sexp.list Path.to_sexp
                                (List.map targets ~f:Target.path)
                 ]
             | Some loc ->
-              Loc.fail loc
+              Errors.fail loc
                 "Rule has targets in different directories.\nTargets:\n%s"
                 (String.concat ~sep:"\n"
                    (List.map targets ~f:(fun t ->

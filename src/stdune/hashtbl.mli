@@ -27,3 +27,5 @@ val foldi : ('a, 'b) t -> init:'c -> f:('a -> 'b -> 'c -> 'c) -> 'c
 val mem : ('a, _) t -> 'a -> bool
 
 val keys : ('a, _) t -> 'a list
+
+val to_sexp : ('a -> Sexp.t) -> ('b -> Sexp.t) -> ('a, 'b) t -> Sexp.t

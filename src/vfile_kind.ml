@@ -1,3 +1,4 @@
+open! Stdune
 open Import
 
 module Id = struct
@@ -45,7 +46,7 @@ let eq (type a) (type b)
 module Make
     (T : sig
        type t
-       val t : t Sexp.To_sexp.t
+       val dgen : t Dsexp.To_sexp.t
        val name : string
      end)
   : S with type t = T.t =
@@ -53,7 +54,7 @@ struct
   type t = T.t
 
   (* XXX dune dump should make use of this *)
-  let _t = T.t
+  let _t = T.dgen
 
   module P = Utils.Persistent(struct
       type nonrec t = t

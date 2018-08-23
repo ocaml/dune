@@ -1,5 +1,6 @@
 module Ansi_color = Ansi_color
 module Array      = Array
+module Bytes      = Bytes
 module Comparable = Comparable
 module Either     = Either
 module Exn        = Exn
@@ -19,11 +20,13 @@ module Staged     = Staged
 module String     = String
 module Char       = Char
 module Bool       = Bool
+module Sexp_intf  = Sexp_intf
 module Sexp       = Sexp
 module Path       = Path
 module Fmt        = Fmt
 module Interned   = Interned
 module Univ_map   = Univ_map
+module Loc        = Loc
 
 external reraise : exn -> _ = "%reraise"
 
@@ -44,3 +47,5 @@ type ordering = Ordering.t =
   | Lt
   | Eq
   | Gt
+
+let sprintf = Printf.sprintf

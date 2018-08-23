@@ -80,6 +80,7 @@ let main () =
     List.iter
       [ "src/dsexp/.dsexp.objs"
       ; "src/stdune/.stdune.objs"
+      ; "src/fiber/.fiber.objs"
       ; "src/.dune.objs"
       ]
       ~f:Topdirs.dir_directory;

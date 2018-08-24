@@ -200,7 +200,7 @@ let path t = t.path
 let root_package_name s =
   match String.index s '.' with
   | None -> s
-  | Some i -> String.sub s ~pos:0 ~len:i
+  | Some i -> String.take s i
 
 let dummy_package t ~name =
   let dir =
@@ -223,8 +223,7 @@ let parse_package t ~meta_file ~name ~parent_dir ~vars =
     | None | Some "" -> parent_dir
     | Some pkg_dir ->
       if pkg_dir.[0] = '+' || pkg_dir.[0] = '^' then
-        Path.relative t.stdlib_dir
-          (String.sub pkg_dir ~pos:1 ~len:(String.length pkg_dir - 1))
+        Path.relative t.stdlib_dir (String.drop pkg_dir 1)
       else if Filename.is_relative pkg_dir then
         Path.relative parent_dir pkg_dir
       else

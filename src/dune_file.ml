@@ -614,8 +614,7 @@ module Lib_dep = struct
           ~before:(let%map s = string in
                    let len = String.length s in
                    if len > 0 && s.[0] = '!' then
-                     let s = String.sub s ~pos:1 ~len:(len - 1) in
-                     Right s
+                     Right (String.drop s 1)
                    else
                      Left s)
           ~after:file

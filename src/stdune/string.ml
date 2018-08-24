@@ -60,6 +60,15 @@ let drop_prefix s ~prefix =
   else
     None
 
+let drop_suffix s ~suffix =
+  if is_suffix s ~suffix then
+    if length s = length suffix then
+      Some s
+    else
+      Some (sub s ~pos:0 ~len:(length s - length suffix))
+  else
+    None
+
 let extract_words s ~is_word_char =
   let rec skip_blanks i =
     if i = length s then
@@ -230,3 +239,21 @@ let concat ~sep = function
   | [] -> ""
   | [x] -> x
   | xs -> concat ~sep xs
+
+let take s len =
+  sub s ~pos:0 ~len:(min (length s) len)
+
+let drop s n =
+  let len = length s in
+  sub s ~pos:(min n len) ~len:(max (len - n) 0)
+
+let split_n s n =
+  let len = length s in
+  if n > len then
+    Exn.code_error "String.split_n"
+      [ "s", Sexp.Atom s
+      ; "n", Sexp.Atom (string_of_int n)
+      ];
+  ( sub s ~pos:0 ~len:n
+  , sub s ~pos:n ~len:(len - n)
+  )

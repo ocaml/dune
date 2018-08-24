@@ -92,8 +92,8 @@ module Fancy = struct
         | exception _ -> prog_end
         | i -> i
       in
-      let before = String.sub s ~pos:0 ~len:prog_start in
-      let after = String.sub s ~pos:prog_end ~len:(len - prog_end) in
+      let before = String.take s prog_start in
+      let after = String.drop s prog_end in
       let prog = String.sub s ~pos:prog_start ~len:(prog_end - prog_start) in
       before, prog, after
     end

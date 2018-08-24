@@ -215,12 +215,9 @@ module Vars = struct
         match String.index line ':' with
         | Some i ->
           let x =
-            (String.sub line ~pos:0 ~len:i,
-             let len = String.length line - i - 2 in
-             if len < 0 then
-               ""
-             else
-               String.sub line ~pos:(i + 2) ~len)
+            ( String.take line i
+            , String.drop line (i + 2) (* skipping the space *)
+            )
           in
           loop (x :: acc) lines
         | None ->

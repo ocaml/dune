@@ -6,13 +6,11 @@ let parse_sub_systems ~parsing_context sexps =
       Dsexp.Of_sexp.(parse (triple string (located Syntax.Version.dparse) raw)
                       parsing_context) sexp
     in
-    match Sub_system_name.get name with
-    | None ->
-      (* We ignore sub-systems that are not internally known. These
-         correspond to plugins that are not in use in the current
-         workspace. *)
-      None
-    | Some name -> Some (name, (Dsexp.Ast.loc sexp, ver, data)))
+    (* We ignore sub-systems that are not internally known. These
+       correspond to plugins that are not in use in the current
+       workspace. *)
+    Option.bind (Sub_system_name.get name) ~f:(fun name ->
+      Some (name, (Dsexp.Ast.loc sexp, ver, data)))
   |> Sub_system_name.Map.of_list
   |> (function
     | Ok x -> x

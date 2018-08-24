@@ -198,7 +198,7 @@ let compute_digests t root_partition ~projects ~file_tree =
       Table.replace t.current_digests ~key:partition ~data:true_digest;
       (match Table.find t.saved_digests partition with
        | Some saved_digest ->
-         if saved_digest <> true_digest then begin
+         if saved_digest <> true_digest || !Clflags.force then begin
            Table.remove t.saved_digests partition;
            Table.remove t.saved_deps partition;
            if !Clflags.debug_partition_cache then

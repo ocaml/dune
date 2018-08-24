@@ -346,12 +346,19 @@ let project t path =
   | None ->
     let path = Path.drop_optional_build_context path in
     let rec find_first_existing_parent_dir path =
-      match find_dir t path with
-      | Some dir -> Some (Dir.project dir)
-      | None ->
-        (match Path.parent path with
-         | Some parent -> find_first_existing_parent_dir parent
-         | None -> None)
+      if not (Path.is_root path) && String.equal (Path.basename path) ".ppx" then
+        (* We don't want .ppx targets to belong to root <anonymous .> project,
+           since this often causes dependency graph to collapse to a single SCC.
+           TODO: alias targets still go to root, is it ok?
+        *)
+        None
+      else
+        match find_dir t path with
+        | Some dir -> Some (Dir.project dir)
+        | None ->
+          (match Path.parent path with
+           | Some parent -> find_first_existing_parent_dir parent
+           | None -> None)
     in
     let project = find_first_existing_parent_dir path in
     Hashtbl.replace t.projects ~key:path ~data:project;

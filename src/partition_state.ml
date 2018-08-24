@@ -96,7 +96,7 @@ end = struct
 
   let compress t =
     let digest = Digest.subbytes t.buffer 0 t.size in
-    Bytes.blit_string digest 0 t.buffer 0 16;
+    Bytes.blit_string ~src:digest ~src_pos:0 ~dst:t.buffer ~dst_pos:0 ~len:16;
     t.size <- 16
 
   let update t content =
@@ -104,12 +104,17 @@ end = struct
       raise (Invalid_argument "Md5.update called with string that is too long")
     else if (String.length content) + t.size > capacity then
       compress t;
-    Bytes.blit_string content 0 t.buffer t.size (String.length content);
+    Bytes.blit_string
+      ~src:content
+      ~src_pos:0
+      ~dst:t.buffer
+      ~dst_pos:t.size
+      ~len:(String.length content);
     t.size <- t.size + (String.length content)
 
   let compute t =
     compress t;
-    Bytes.sub_string t.buffer 0 16
+    Bytes.sub_string t.buffer ~pos:0 ~len:16
 end
 
 (* Own digest is computed for a group of interdependent partitions, namely

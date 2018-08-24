@@ -143,3 +143,6 @@ module Make(Key : Comparable.S) : S with type key = Key.t = struct
   let superpose a b =
     union a b ~f:(fun _ _ y -> Some y)
 end
+
+let to_sexp to_list f g t =
+  Sexp.To_sexp.(list (pair f g)) (to_list t)

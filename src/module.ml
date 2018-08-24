@@ -1,3 +1,4 @@
+open! Stdune
 open Import
 
 module Name = struct
@@ -8,7 +9,10 @@ module Name = struct
 
   include T
 
-  let t = Sexp.atom
+  let dparse = Dsexp.Of_sexp.string
+  let dgen = Dsexp.To_sexp.string
+
+  let to_sexp = Sexp.To_sexp.string
 
   let add_suffix = (^)
 

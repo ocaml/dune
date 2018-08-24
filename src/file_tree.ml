@@ -1,8 +1,9 @@
+open! Stdune
 open! Import
 
 module Dune_file = struct
   module Kind = struct
-    type t = Usexp.syntax = Jbuild | Dune
+    type t = Dsexp.syntax = Jbuild | Dune
 
     let of_basename = function
       | "dune"   -> Dune
@@ -10,14 +11,14 @@ module Dune_file = struct
       | _ -> assert false
 
     let lexer = function
-      | Dune   -> Sexp.Lexer.token
-      | Jbuild -> Sexp.Lexer.jbuild_token
+      | Dune   -> Dsexp.Lexer.token
+      | Jbuild -> Dsexp.Lexer.jbuild_token
   end
 
   module Plain = struct
     type t =
       { path          : Path.t
-      ; mutable sexps : Sexp.Ast.t list
+      ; mutable sexps : Dsexp.Ast.t list
       }
   end
 
@@ -39,7 +40,7 @@ module Dune_file = struct
 
   let extract_ignored_subdirs =
     let stanza =
-      let open Sexp.Of_sexp in
+      let open Dsexp.Of_sexp in
       let sub_dir =
         plain_string (fun ~loc dn ->
           if Filename.dirname dn <> Filename.current_dir_name ||
@@ -58,9 +59,9 @@ module Dune_file = struct
     fun sexps ->
       let ignored_subdirs, sexps =
         List.partition_map sexps ~f:(fun sexp ->
-          match (sexp : Sexp.Ast.t) with
+          match (sexp : Dsexp.Ast.t) with
           | List (_, (Atom (_, A "ignored_subdirs") :: _)) ->
-            Left (Sexp.Of_sexp.parse stanza Univ_map.empty sexp)
+            Left (Dsexp.Of_sexp.parse stanza Univ_map.empty sexp)
           | _ -> Right sexp)
       in
       let ignored_subdirs =
@@ -75,7 +76,7 @@ module Dune_file = struct
           (Contents.Ocaml_script file, String.Set.empty)
         else
           let sexps =
-            Usexp.Parser.parse lb ~lexer:(Kind.lexer kind) ~mode:Many
+            Dsexp.Parser.parse lb ~lexer:(Kind.lexer kind) ~mode:Many
           in
           let ignored_subdirs, sexps = extract_ignored_subdirs sexps in
           (Plain { path = file; sexps }, ignored_subdirs)
@@ -88,11 +89,12 @@ let load_jbuild_ignore path =
     if Filename.dirname fn = Filename.current_dir_name then
       true
     else begin
-      Loc.(warn (of_pos ( Path.to_string path
-                        , i + 1, 0
-                        , String.length fn
-                        ))
-             "subdirectory expression %s ignored" fn);
+      Errors.(warn (Loc.of_pos
+                      ( Path.to_string path
+                      , i + 1, 0
+                      , String.length fn
+                      ))
+                "subdirectory expression %s ignored" fn);
       false
     end)
   |> String.Set.of_list

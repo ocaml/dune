@@ -1,3 +1,5 @@
+open! Stdune
+
 (** Returns [true] if the input starts with "(* -*- tuareg -*- *)" *)
 val is_script : Lexing.lexbuf -> bool
 

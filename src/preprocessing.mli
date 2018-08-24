@@ -1,5 +1,6 @@
 (** Preprocessing of OCaml source files *)
 
+open! Stdune
 open! Import
 
 (** Preprocessing object *)

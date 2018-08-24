@@ -1,3 +1,4 @@
+open! Stdune
 open! Import
 
 include Sub_system_intf
@@ -7,7 +8,7 @@ module Register_backend(M : Backend) = struct
   include Lib.Sub_system.Register(struct
       include M
       type Lib.Sub_system.t += T of t
-      let to_sexp = Some to_sexp
+      let dgen = Some dgen
     end)
 
   let top_closure l ~deps =
@@ -39,7 +40,7 @@ module Register_backend(M : Backend) = struct
     Lib.DB.resolve db (loc, name) >>= fun lib ->
     match get lib with
     | None ->
-      Error (Loc.exnf loc "%S is not %s %s" name M.desc_article
+      Error (Errors.exnf loc "%S is not %s %s" name M.desc_article
                (M.desc ~plural:false))
     | Some t -> Ok t
 
@@ -52,7 +53,7 @@ module Register_backend(M : Backend) = struct
     let to_exn t ~loc =
       match t with
       | Too_many_backends backends ->
-        Loc.exnf loc
+        Errors.exnf loc
           "Too many independent %s found:\n%s"
           (M.desc ~plural:true)
           (String.concat ~sep:"\n"
@@ -62,7 +63,7 @@ module Register_backend(M : Backend) = struct
                   (Lib.name lib)
                   (Path.to_string_maybe_quoted (Lib.src_dir lib)))))
       | No_backend_found ->
-        Loc.exnf loc "No %s found." (M.desc ~plural:false)
+        Errors.exnf loc "No %s found." (M.desc ~plural:false)
       | Other exn ->
         exn
 
@@ -160,7 +161,7 @@ module Register_end_point(M : End_point) = struct
         type t = Library_compilation_context.t -> unit
         type Lib.Sub_system.t += T = Gen
         let instantiate ~resolve:_ ~get:_ _id info = gen info
-        let to_sexp = None
+        let dgen = None
       end)
 end
 

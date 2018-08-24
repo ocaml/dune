@@ -1,3 +1,4 @@
+open! Stdune
 (** Error reporting *)
 
 (** Captures the backtrace and report an error.

@@ -1,3 +1,3 @@
-open Import
+open Stdune
 
-val parse_string : string -> (Re.t, int * string) result
+val parse_string : string -> (Re.t, int * string) Result.result

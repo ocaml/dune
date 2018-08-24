@@ -36,7 +36,7 @@ let dirs =
   ; "src/xdg"                , Some "Xdg"
   ; "src/ocaml-config"       , Some "Ocaml_config"
   ; "vendor/boot"            , None
-  ; "src/usexp"              , Some "Usexp"
+  ; "src/dsexp"              , Some "Dsexp"
   ; "src"                    , None
   ]
 

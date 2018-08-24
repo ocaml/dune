@@ -1,15 +1,13 @@
 (** Linking modes for binaries *)
 
-open Stdune
+open! Stdune
 
 type t =
   | Exe
   | Object
   | Shared_object
 
-val t : t Sexp.Of_sexp.t
-
-val sexp_of_t : t Sexp.To_sexp.t
+include Dsexp.Sexpable with type t := t
 
 val all : t list
 

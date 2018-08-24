@@ -1,4 +1,4 @@
-open Import
+open! Stdune
 
 type stanza = Stanza.t = ..
 
@@ -18,7 +18,7 @@ module Stanza : sig
     ; rules : (pattern * config) list
     }
 
-  val t : t Sexp.Of_sexp.t
+  val dparse : t Dsexp.Of_sexp.t
 end
 
 type stanza +=

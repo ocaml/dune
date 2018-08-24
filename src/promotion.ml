@@ -1,4 +1,4 @@
-open Stdune
+open! Stdune
 
 module File = struct
   type t =
@@ -7,23 +7,12 @@ module File = struct
     }
 
   (* XXX these sexp converters will be useful for the dump command *)
-  let _t =
-    let open Sexp.Of_sexp in
-    peek_exn >>= function
-    | List (_, [_; Atom (_, A "as"); _]) ->
-      enter
-        (let%map src = Path.t
-         and () = junk
-         and dst = Path.t
-         in
-         { src; dst })
-    | sexp ->
-      Sexp.Of_sexp.of_sexp_errorf (Sexp.Ast.loc sexp)
-        "(<file> as <file>) expected"
-
-  let _sexp_of_t { src; dst } =
-    Sexp.List [Path.sexp_of_t src; Sexp.unsafe_atom_of_string "as";
-               Path.sexp_of_t dst]
+  let _to_sexp { src; dst } =
+    Sexp.List
+      [ Path.to_sexp src
+      ; Sexp.Atom "as"
+      ; Path.to_sexp dst
+      ]
 
   let db : t list ref = ref []
 

@@ -1,11 +1,14 @@
+open! Stdune
 open! Import
 
 module Name : sig
   type t
 
+  include Dsexp.Sexpable with type t := t
+
   val add_suffix : t -> string -> t
 
-  val t : t Sexp.To_sexp.t
+  val to_sexp : t Sexp.To_sexp.t
   val compare : t -> t -> Ordering.t
   val of_string : string -> t
   val to_string : t -> string

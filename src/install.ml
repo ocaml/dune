@@ -1,3 +1,4 @@
+open! Stdune
 open Import
 
 module Section = struct
@@ -58,8 +59,8 @@ module Section = struct
     |"misc"         -> Some Misc
     | _             -> None
 
-  let t =
-    let open Sexp.Of_sexp in
+  let dparse =
+    let open Dsexp.Of_sexp in
     enum
       [ "lib"          , Lib
       ; "lib_root"     , Lib_root
@@ -271,7 +272,7 @@ let load_install_file path =
       ; pos_cnum = col
       }
     in
-    Loc.fail { start =  pos; stop = pos } fmt
+    Errors.fail { start =  pos; stop = pos } fmt
   in
   List.concat_map file.file_contents ~f:(function
     | Variable (pos, section, files) -> begin

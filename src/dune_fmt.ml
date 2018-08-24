@@ -1,3 +1,4 @@
+open! Stdune
 open! Import
 
 let parse_file path_opt =
@@ -13,20 +14,20 @@ let parse_file path_opt =
       let contents = String.concat ~sep:"\n" lines in
       ("<stdin>", contents)
   in
-  Sexp.parse_string
+  Dsexp.parse_string
     ~fname
-    ~mode:Usexp.Parser.Mode.Many
+    ~mode:Dsexp.Parser.Mode.Many
     contents
 
 let can_be_displayed_inline =
   List.for_all ~f:(function
-    | Usexp.Atom _
-    | Usexp.Quoted_string _
-    | Usexp.Template _
-    | Usexp.List [_]
+    | Dsexp.Atom _
+    | Dsexp.Quoted_string _
+    | Dsexp.Template _
+    | Dsexp.List [_]
       ->
       true
-    | Usexp.List _
+    | Dsexp.List _
       ->
       false
   )
@@ -42,21 +43,21 @@ let print_inline_list fmt indent sexps =
       first := false
     else
       Format.pp_print_string fmt " ";
-    Usexp.pp Usexp.Dune fmt sexp
+    Dsexp.pp Dsexp.Dune fmt sexp
   );
   Format.pp_print_string fmt ")"
 
 let rec pp_sexp indent fmt =
   function
-    ( Usexp.Atom _
-    | Usexp.Quoted_string _
-    | Usexp.Template _
+    ( Dsexp.Atom _
+    | Dsexp.Quoted_string _
+    | Dsexp.Template _
     ) as sexp
     ->
     Format.fprintf fmt "%a%a"
       pp_indent indent
-      (Usexp.pp Usexp.Dune) sexp
-  | Usexp.List sexps
+      (Dsexp.pp Dsexp.Dune) sexp
+  | Dsexp.List sexps
     ->
     if can_be_displayed_inline sexps then
       print_inline_list fmt indent sexps
@@ -96,7 +97,7 @@ let pp_top_sexps fmt sexps =
       first := false
     else
       Format.pp_print_string fmt "\n";
-    pp_top_sexp fmt (Sexp.Ast.remove_locs sexp);
+    pp_top_sexp fmt (Dsexp.Ast.remove_locs sexp);
   )
 
 let with_output path_opt k =
@@ -110,10 +111,10 @@ let with_output path_opt k =
 
 let format_file ~input ~output =
   match parse_file input with
-  | exception Usexp.Parse_error e ->
+  | exception Dsexp.Parse_error e ->
     Printf.printf
       "Parse error: %s\n"
-      (Usexp.Parse_error.message e)
+      (Dsexp.Parse_error.message e)
   | sexps ->
     with_output output (fun fmt ->
       pp_top_sexps fmt sexps;

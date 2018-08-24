@@ -1,3 +1,4 @@
+open! Stdune
 open! Import
 
 type setup =

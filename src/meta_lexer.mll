@@ -29,7 +29,7 @@ rule token = parse
   | '=' { Equal }
   | "+=" { Plus_equal }
   | eof { Eof }
-  | _ { Loc.fail_lex lexbuf "invalid character" }
+  | _ { Errors.fail_lex lexbuf "invalid character" }
 
 and string buf = parse
   | '"'
@@ -44,4 +44,4 @@ and string buf = parse
       { Buffer.add_char buf c;
         string buf lexbuf }
   | eof
-      { Loc.fail_lex lexbuf "unterminated string" }
+      { Errors.fail_lex lexbuf "unterminated string" }

@@ -1,5 +1,5 @@
 (* -*- tuareg -*- *)
-open Stdune;;
+open! Stdune;;
 Path.set_root (Path.External.cwd ());
 Path.set_build_dir (Path.Kind.of_string "_build");
 
@@ -221,9 +221,9 @@ Path.insert_after_build_dir_exn Path.root "foobar"
 Exception:
 Code_error
  (List
-   [Atom (A "Path.insert_after_build_dir_exn");
-    List [Atom (A "path"); List [Atom (A "In_source_tree"); Atom (A ".")]];
-    List [Atom (A "insert"); Atom (A "foobar")]]).
+   [Atom "Path.insert_after_build_dir_exn";
+    List [Atom "path"; List [Atom "In_source_tree"; Atom "."]];
+    List [Atom "insert"; Atom "foobar"]]).
 |}]
 
 Path.insert_after_build_dir_exn Path.build_dir "foobar"
@@ -246,10 +246,9 @@ Path.append Path.build_dir (Path.relative Path.build_dir "foo")
 Exception:
 Code_error
  (List
-   [Quoted_string
-     "Path.append called with directory that's not in the source tree";
-    List [Atom (A "a"); List [Atom (A "In_build_dir"); Atom (A ".")]];
-    List [Atom (A "b"); List [Atom (A "In_build_dir"); Atom (A "foo")]]]).
+   [Atom "Path.append called with directory that's not in the source tree";
+    List [Atom "a"; List [Atom "In_build_dir"; Atom "."]];
+    List [Atom "b"; List [Atom "In_build_dir"; Atom "foo"]]]).
 |}]
 
 Path.append Path.root (Path.relative Path.build_dir "foo")
@@ -257,10 +256,9 @@ Path.append Path.root (Path.relative Path.build_dir "foo")
 Exception:
 Code_error
  (List
-   [Quoted_string
-     "Path.append called with directory that's not in the source tree";
-    List [Atom (A "a"); List [Atom (A "In_source_tree"); Atom (A ".")]];
-    List [Atom (A "b"); List [Atom (A "In_build_dir"); Atom (A "foo")]]]).
+   [Atom "Path.append called with directory that's not in the source tree";
+    List [Atom "a"; List [Atom "In_source_tree"; Atom "."]];
+    List [Atom "b"; List [Atom "In_build_dir"; Atom "foo"]]]).
 |}]
 
 Path.append Path.root (Path.relative Path.root "foo")
@@ -278,10 +276,9 @@ Path.append (Path.of_string "/root") (Path.relative Path.build_dir "foo")
 Exception:
 Code_error
  (List
-   [Quoted_string
-     "Path.append called with directory that's not in the source tree";
-    List [Atom (A "a"); List [Atom (A "External"); Atom (A "/root")]];
-    List [Atom (A "b"); List [Atom (A "In_build_dir"); Atom (A "foo")]]]).
+   [Atom "Path.append called with directory that's not in the source tree";
+    List [Atom "a"; List [Atom "External"; Atom "/root"]];
+    List [Atom "b"; List [Atom "In_build_dir"; Atom "foo"]]]).
 |}]
 
 Path.rm_rf (Path.of_string "/does/not/exist/foo/bar/baz")
@@ -289,10 +286,9 @@ Path.rm_rf (Path.of_string "/does/not/exist/foo/bar/baz")
 Exception:
 Code_error
  (List
-   [Quoted_string "Path.rm_rf called on external dir";
+   [Atom "Path.rm_rf called on external dir";
     List
-     [Atom (A "t");
-      List [Atom (A "External"); Atom (A "/does/not/exist/foo/bar/baz")]]]).
+     [Atom "t"; List [Atom "External"; Atom "/does/not/exist/foo/bar/baz"]]]).
 |}]
 
 Path.drop_build_context (Path.relative Path.build_dir "foo/bar")

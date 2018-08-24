@@ -1,4 +1,5 @@
 {
+open! Stdune
 type first_line =
   { lang    : Loc.t * string
   ; version : Loc.t * string
@@ -11,7 +12,7 @@ let make_loc lexbuf : Loc.t =
 
 let invalid_lang_line start lexbuf =
   lexbuf.Lexing.lex_start_p <- start;
-  Loc.fail_lex lexbuf
+  Errors.fail_lex lexbuf
     "Invalid first line, expected: (lang <lang> <version>)"
 }
 

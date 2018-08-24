@@ -1,3 +1,4 @@
+open! Stdune
 open Import
 open Build.O
 open Dune_file
@@ -91,19 +92,19 @@ module Driver = struct
                  resolve x >>= fun lib ->
                  match get ~loc lib with
                  | None ->
-                   Error (Loc.exnf loc "%S is not a %s" name
+                   Error (Errors.exnf loc "%S is not a %s" name
                             (desc ~plural:false))
                  | Some t -> Ok t))
       }
 
-    let to_sexp t =
-      let open Sexp.To_sexp in
+    let dgen t =
+      let open Dsexp.To_sexp in
       let f x = string (Lib.name (Lazy.force x.lib)) in
       ((1, 0),
        record
-         [ "flags"            , Ordered_set_lang.Unexpanded.sexp_of_t
+         [ "flags"            , Ordered_set_lang.Unexpanded.dgen
                                   t.info.flags
-         ; "lint_flags"       , Ordered_set_lang.Unexpanded.sexp_of_t
+         ; "lint_flags"       , Ordered_set_lang.Unexpanded.dgen
                                   t.info.lint_flags
          ; "main"             , string t.info.main
          ; "replaces"         , list f (Result.ok_exn t.replaces)
@@ -119,9 +120,9 @@ module Driver = struct
 
   let make_error loc msg =
     match loc with
-    | User_file (loc, _) -> Error (Loc.exnf loc "%a" Fmt.text msg)
+    | User_file (loc, _) -> Error (Errors.exnf loc "%a" Fmt.text msg)
     | Dot_ppx (path, pps) ->
-      Error (Loc.exnf (Loc.in_file (Path.to_string path)) "%a" Fmt.text
+      Error (Errors.exnf (Loc.in_file (Path.to_string path)) "%a" Fmt.text
                (sprintf
                   "Failed to create on-demand ppx rewriter for %s; %s"
                   (String.enumerate_and (List.map pps ~f:Pp.to_string))
@@ -192,9 +193,9 @@ module Jbuild_driver = struct
       let parsing_context =
         Univ_map.singleton (Syntax.key Stanza.syntax) (0, 0)
       in
-      Sexp.parse_string ~mode:Single ~fname:"<internal>" info
-        ~lexer:Sexp.Lexer.jbuild_token
-      |> Sexp.Of_sexp.parse Driver.Info.parse parsing_context
+      Dsexp.parse_string ~mode:Single ~fname:"<internal>" info
+        ~lexer:Dsexp.Lexer.jbuild_token
+      |> Dsexp.Of_sexp.parse Driver.Info.parse parsing_context
     in
     (Pp.of_string name,
      { info
@@ -436,7 +437,7 @@ let setup_reason_rules sctx (m : Module.t) =
           | ".re"  -> ".re.ml"
           | ".rei" -> ".re.mli"
           | _     ->
-            Loc.fail
+            Errors.fail
               (Loc.in_file
                  (Path.to_string (Path.drop_build_context_exn f.path)))
               "Unknown file extension for reason source file: %S"
@@ -462,10 +463,7 @@ let lint_module sctx ~dir ~dep_kind ~lint ~lib_name ~scope ~dir_kind =
     let alias = Build_system.Alias.lint ~dir in
     let add_alias fn build =
       SC.add_alias_action sctx alias build
-        ~stamp:(List [ Sexp.unsafe_atom_of_string "lint"
-                     ; Sexp.To_sexp.(option string) lib_name
-                     ; Path.sexp_of_t fn
-                     ])
+        ~stamp:("lint", lib_name, fn)
     in
     let lint =
       Per_module.map lint ~f:(function
@@ -490,7 +488,7 @@ let lint_module sctx ~dir ~dep_kind ~lint ~lib_name ~scope ~dir_kind =
                         ~scope)))
         | Pps { loc; pps; flags; staged } ->
           if staged then
-            Loc.fail loc
+            Errors.fail loc
               "Staged ppx rewriters cannot be used as linters.";
           let args : _ Arg_spec.t =
             S [ As flags

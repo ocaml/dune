@@ -1,3 +1,5 @@
+open! Stdune
+
 module Template = struct
   type var_syntax = Dollar_brace | Dollar_paren | Percent
 
@@ -17,12 +19,4 @@ module Template = struct
     ; parts: part list
     ; loc: Loc.t
     }
-end
-
-module Sexp = struct
-  type t =
-    | Atom of Atom.t
-    | Quoted_string of string
-    | List of t list
-    | Template of Template.t
 end

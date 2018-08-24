@@ -1,3 +1,4 @@
+open! Stdune
 open Import
 
 (** {1 Generals} *)
@@ -331,7 +332,7 @@ module Sub_system : sig
       -> lib
       -> Info.t
       -> t
-    val to_sexp : (t -> Syntax.Version.t * Sexp.t) option
+    val dgen : (t -> Syntax.Version.t * Dsexp.t) option
   end
 
   module Register(M : S) : sig
@@ -339,7 +340,7 @@ module Sub_system : sig
     val get : lib -> M.t option
   end
 
-  val dump_config : lib -> (Syntax.Version.t * Sexp.t) Sub_system_name.Map.t
+  val dump_config : lib -> (Syntax.Version.t * Dsexp.t) Sub_system_name.Map.t
 end with type lib := t
 
 (** {1 Dependencies for META files} *)

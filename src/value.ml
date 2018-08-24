@@ -1,3 +1,4 @@
+open! Stdune
 open Import
 
 type t =
@@ -5,12 +6,12 @@ type t =
   | Dir of Path.t
   | Path of Path.t
 
-let sexp_of_t =
+let to_sexp =
   let open Sexp.To_sexp in
   function
   | String s -> (pair string string) ("string", s)
-  | Path p -> (pair string Path.sexp_of_t) ("path", p)
-  | Dir p -> (pair string Path.sexp_of_t) ("dir", p)
+  | Path p -> (pair string Path.to_sexp) ("path", p)
+  | Dir p -> (pair string Path.to_sexp) ("dir", p)
 
 let string_of_path ~dir p = Path.reach ~from:dir p
 

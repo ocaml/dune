@@ -1,3 +1,4 @@
+open! Stdune
 open Import
 open Dune_file
 
@@ -130,7 +131,7 @@ let expand_ocaml_config t pform name =
   match String.Map.find t.ocaml_config name with
   | Some x -> x
   | None ->
-    Loc.fail (String_with_vars.Var.loc pform)
+    Errors.fail (String_with_vars.Var.loc pform)
       "Unknown ocaml configuration variable %S"
       name
 
@@ -144,7 +145,7 @@ let expand_vars t ~mode ~scope ~dir ?(bindings=Pform.Map.empty) s =
       | Macro (Ocaml_config, s) -> expand_ocaml_config t pform s
       | Var Project_root -> [Value.Dir (Scope.root scope)]
       | _ ->
-        Loc.fail (String_with_vars.Var.loc pform)
+        Errors.fail (String_with_vars.Var.loc pform)
           "%s isn't allowed in this position"
           (String_with_vars.Var.describe pform)))
 
@@ -166,7 +167,7 @@ module Pkg_version = struct
 
   module V = Vfile_kind.Make(struct
       type t = string option
-      let t = Sexp.To_sexp.(option string)
+      let dgen = Dsexp.To_sexp.(option string)
       let name = "Pkg_version"
     end)
 
@@ -259,7 +260,7 @@ end = struct
   let parse_lib_file ~loc s =
     match String.lsplit2 s ~on:':' with
     | None ->
-      Loc.fail loc "invalid %%{lib:...} form: %s" s
+      Errors.fail loc "invalid %%{lib:...} form: %s" s
     | Some x -> x
 
   open Build.O
@@ -278,10 +279,10 @@ end = struct
         | Var Targets ->
           begin match targets_written_by_user with
           | Infer ->
-            Loc.fail loc "You cannot use %s with inferred rules."
+            Errors.fail loc "You cannot use %s with inferred rules."
               (String_with_vars.Var.describe pform)
           | Alias ->
-            Loc.fail loc "You cannot use %s in aliases."
+            Errors.fail loc "You cannot use %s in aliases."
               (String_with_vars.Var.describe pform)
           | Static l ->
             Some (Value.L.dirs l) (* XXX hack to signal no dep *)
@@ -347,7 +348,7 @@ end = struct
               Resolved_forms.add_ddep acc ~key x
             | None ->
               Resolved_forms.add_fail acc { fail = fun () ->
-                Loc.fail loc
+                Errors.fail loc
                   "Package %S doesn't exist in the current project." s
               }
           end
@@ -437,7 +438,7 @@ end = struct
     | node -> node
     | exception Exit ->
       Exn.code_error "Super_context.Env.get called on invalid directory"
-        [ "dir", Path.sexp_of_t dir ]
+        [ "dir", Path.to_sexp dir ]
 
   let ocaml_flags t ~dir =
     let rec loop t node =
@@ -753,7 +754,7 @@ module Deps = struct
           Build.paths_glob ~loc ~dir (Re.compile re)
           >>^ Path.Set.to_list
         | Error (_pos, msg) ->
-          Loc.fail (String_with_vars.loc s) "invalid glob: %s" msg
+          Errors.fail (String_with_vars.loc s) "invalid glob: %s" msg
       end
     | Source_tree s ->
       let path = expand_vars_path t ~scope ~dir s in
@@ -836,9 +837,9 @@ module Action = struct
             begin match Dune_file.Bindings.find deps_written_by_user key with
             | None ->
               Exn.code_error "Local named variable not present in named deps"
-                [ "pform", String_with_vars.Var.sexp_of_t pform
+                [ "pform", String_with_vars.Var.to_sexp pform
                 ; "deps_written_by_user",
-                  Dune_file.Bindings.sexp_of_t Path.sexp_of_t deps_written_by_user
+                  Dune_file.Bindings.to_sexp Path.to_sexp deps_written_by_user
                 ]
             | Some x -> Value.L.paths x
             end
@@ -855,13 +856,13 @@ module Action = struct
               assert false
             | Unnamed v :: _ -> [Path v]
             | [] ->
-              Loc.warn loc "Variable '%s' used with no explicit \
+              Errors.warn loc "Variable '%s' used with no explicit \
                             dependencies@." key;
               [Value.String ""]
             end
           | _ ->
             Exn.code_error "Unexpected variable in step2"
-              ["var", String_with_vars.Var.sexp_of_t pform]))
+              ["var", String_with_vars.Var.to_sexp pform]))
 
   let run sctx ~loc ~bindings ~dir ~dep_kind
         ~targets:targets_written_by_user ~targets_dir ~scope t
@@ -873,7 +874,7 @@ module Action = struct
       | [] -> ()
       | x :: _ ->
         let loc = String_with_vars.loc x in
-        Loc.warn loc
+        Errors.warn loc
           "Aliases must not have targets, this target will be ignored.\n\
            This will become an error in the future.";
     end;
@@ -899,7 +900,7 @@ module Action = struct
     let targets = Path.Set.to_list targets in
     List.iter targets ~f:(fun target ->
       if Path.parent_exn target <> targets_dir then
-        Loc.fail loc
+        Errors.fail loc
           "This action has targets in a different directory than the current \
            one, this is not allowed by dune at the moment:\n%s"
           (List.map targets ~f:(fun target ->

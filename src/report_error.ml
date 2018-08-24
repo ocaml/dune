@@ -1,3 +1,4 @@
+open! Stdune
 open Import
 
 let map_fname = ref (fun x -> x)
@@ -44,7 +45,7 @@ let report_with_backtrace exn =
       in
       let pp ppf = Format.fprintf ppf "@{<error>Error@}: %s\n" msg in
       { p with loc = Some loc; pp }
-    | Sexp.Of_sexp.Of_sexp (loc, msg, hint') ->
+    | Dsexp.Of_sexp.Of_sexp (loc, msg, hint') ->
       let loc =
         { loc with
           start = { loc.start with pos_fname = !map_fname loc.start.pos_fname }
@@ -53,13 +54,13 @@ let report_with_backtrace exn =
       let pp ppf = Format.fprintf ppf "@{<error>Error@}: %s%s\n" msg
                      (match hint' with
                       | None -> ""
-                      | Some { Sexp.Of_sexp. on; candidates } ->
+                      | Some { Dsexp.Of_sexp. on; candidates } ->
                         hint on candidates)
       in
       { p with loc = Some loc; pp }
-    | Sexp.Parse_error e ->
-      let loc = Sexp.Parse_error.loc     e in
-      let msg = Sexp.Parse_error.message e in
+    | Dsexp.Parse_error e ->
+      let loc = Dsexp.Parse_error.loc     e in
+      let msg = Dsexp.Parse_error.message e in
       let map_pos (pos : Lexing.position) =
         { pos with pos_fname = !map_fname pos.pos_fname }
       in
@@ -86,7 +87,7 @@ let report_with_backtrace exn =
           Format.fprintf ppf "@{<error>Internal error, please report upstream \
                               including the contents of _build/log.@}\n\
                               Description:%a\n"
-            Usexp.pp_quoted sexp
+            Sexp.pp sexp
       }
     | Unix.Unix_error (err, func, fname) ->
       { p with pp = fun ppf ->
@@ -120,7 +121,7 @@ let report exn =
       else
         p.loc
     in
-    Option.iter loc ~f:(fun loc -> Loc.print ppf loc);
+    Option.iter loc ~f:(fun loc -> Errors.print ppf loc);
     p.pp ppf;
     Format.pp_print_flush ppf ();
     let s = Buffer.contents err_buf in

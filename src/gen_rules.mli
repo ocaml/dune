@@ -1,3 +1,4 @@
+open! Stdune
 open! Import
 
 (* Generate rules. Returns evaluated jbuilds per context names. *)

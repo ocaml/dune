@@ -1,4 +1,4 @@
-open Stdune
+open! Stdune
 
 let sprintf = Printf.sprintf
 let eprintf = Printf.eprintf
@@ -75,8 +75,8 @@ module Flags = struct
 
   let write_sexp fname s =
     let path = Path.in_source fname in
-    let sexp = Usexp.List (List.map s ~f:(fun s -> Usexp.Quoted_string s)) in
-    Io.write_file path (Usexp.to_string sexp ~syntax:Dune)
+    let sexp = Dsexp.List (List.map s ~f:(fun s -> Dsexp.Quoted_string s)) in
+    Io.write_file path (Dsexp.to_string sexp ~syntax:Dune)
 end
 
 module Find_in_path = struct

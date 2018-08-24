@@ -1,10 +1,10 @@
 type t = exn
 
-exception Code_error of Usexp.t
+exception Code_error of Sexp.t
 
 exception Fatal_error of string
 
-exception Loc_error of Usexp.Loc.t * string
+exception Loc_error of Loc.t * string
 
 external raise         : exn -> _ = "%raise"
 external raise_notrace : exn -> _ = "%raise_notrace"
@@ -26,9 +26,9 @@ let protect ~f ~finally = protectx () ~f ~finally
 
 let code_error message vars =
   Code_error
-    (Usexp.List (Usexp.atom_or_quoted_string message
-                 :: List.map vars ~f:(fun (name, value) ->
-                   Usexp.List [Usexp.atom_or_quoted_string name; value])))
+    (List (Atom message
+           :: List.map vars ~f:(fun (name, value) ->
+             Sexp.List [Atom name; value])))
   |> raise
 
 include

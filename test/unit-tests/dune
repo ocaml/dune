@@ -10,7 +10,7 @@
 (executable
  (name sexp_tests)
  (modules sexp_tests)
- (libraries stdune usexp))
+ (libraries stdune dsexp))
 
 (alias
  (name runtest)
@@ -33,6 +33,17 @@
  (deps (:t filename.mlt)
   (glob_files %{project_root}/src/.dune.objs/*.cmi)
   (glob_files %{project_root}/src/stdune/.stdune.objs/*.cmi))
+ (action (chdir %{project_root}
+          (progn
+           (run %{exe:expect_test.exe} %{t})
+           (diff? %{t} %{t}.corrected)))))
+
+(alias
+ (name runtest)
+ (deps (:t fiber.mlt)
+  (glob_files %{project_root}/src/.dune.objs/*.cmi)
+  (glob_files %{project_root}/src/stdune/.stdune.objs/*.cmi)
+  (glob_files %{project_root}/src/fiber/.fiber.objs/*.cmi))
  (action (chdir %{project_root}
           (progn
            (run %{exe:expect_test.exe} %{t})

@@ -1,5 +1,6 @@
 (** Simple rules: user, copy_files, alias *)
 
+open! Stdune
 open Import
 open Dune_file
 

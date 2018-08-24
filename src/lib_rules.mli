@@ -1,4 +1,4 @@
-open Stdune
+open! Stdune
 open Dune_file
 
 module Gen (S : sig val sctx : Super_context.t end) : sig
@@ -13,6 +13,6 @@ module Gen (S : sig val sctx : Super_context.t end) : sig
     -> dir_contents:Dir_contents.t
     -> dir:Path.t
     -> scope:Scope.t
-    -> dir_kind:Usexp.syntax
+    -> dir_kind:Dsexp.syntax
     -> Compilation_context.t * Merlin.t
 end

@@ -464,6 +464,10 @@ let list_packages ?(tab = 20) ?(descr = false) ch =
     packages_sorted
 ;;
 
+let list_packages' ?prefix () =
+  lazy_init();
+  Fl_package_base.list_packages ?prefix ()
+
 
 type rectype =
   | Record_core

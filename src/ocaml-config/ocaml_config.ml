@@ -261,13 +261,11 @@ module Vars = struct
           fail "Value of %S is neither 'true' neither 'false': %s." var s
 
     let get_int_opt t var =
-      match get_opt t var with
-      | None -> None
-      | Some s ->
+      Option.bind (get_opt t var) ~f:(fun s ->
         match int_of_string s with
         | x -> Some x
         | exception _ ->
-          fail "Value of %S is not an integer: %s." var s
+          fail "Value of %S is not an integer: %s." var s)
 
     let get_words t var =
       match get_opt t var with

@@ -14,6 +14,14 @@ let rec filter_map l ~f =
     | None -> filter_map l ~f
     | Some x -> x :: filter_map l ~f
 
+let rec filter_opt l =
+  match l with
+  | [] -> []
+  | x :: l ->
+    match x with
+    | None -> filter_opt l
+    | Some x -> x :: filter_opt l
+
 let filteri l ~f =
   let rec filteri l i =
     match l with

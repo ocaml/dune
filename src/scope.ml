@@ -77,19 +77,17 @@ module DB = struct
     let public_libs =
       let public_libs =
         List.filter_map internal_libs ~f:(fun (_dir, lib) ->
-          match lib.public with
-          | None -> None
-          | Some p -> Some (Dune_file.Public_lib.name p, lib.project))
+          Option.map lib.public ~f:(fun p ->
+            (Dune_file.Public_lib.name p, lib.project)))
         |> String.Map.of_list
         |> function
         | Ok x -> x
         | Error (name, _, _) ->
           match
             List.filter_map internal_libs ~f:(fun (_dir, lib) ->
-              match lib.public with
-              | None   -> None
-              | Some p -> Option.some_if (name = Dune_file.Public_lib.name p)
-                            lib.buildable.loc)
+              Option.bind lib.public ~f:(fun p ->
+                Option.some_if (name = Dune_file.Public_lib.name p)
+                  lib.buildable.loc))
           with
           | [] | [_] -> assert false
           | loc1 :: loc2 :: _ ->

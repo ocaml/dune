@@ -304,9 +304,9 @@ let find_and_acknowledge_meta t ~fq_name =
         else
           loop dirs
     | [] ->
-      match String.Map.find t.builtins root_name with
-      | Some meta -> Some (t.stdlib_dir, Path.of_string "<internal>", meta)
-      | None -> None
+      String.Map.find t.builtins root_name
+      |> Option.map ~f:(fun meta ->
+        (t.stdlib_dir, Path.of_string "<internal>", meta))
   in
   match loop t.path with
   | None ->

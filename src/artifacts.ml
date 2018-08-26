@@ -23,8 +23,9 @@ let create (context : Context.t) ~public_libs l ~f =
                 | None -> Filename.basename src
               in
               let key =
-                if Sys.win32 && Filename.extension name = ".exe" then
-                  String.sub name ~pos:0 ~len:(String.length name - 4)
+                if Sys.win32 then
+                  Option.value ~default:name
+                    (String.drop_suffix name ~suffix:".exe")
                 else
                   name
               in

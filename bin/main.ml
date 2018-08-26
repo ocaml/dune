@@ -695,7 +695,7 @@ let resolve_target common ~(setup : Main.setup) s =
       else
         (1, true)
     in
-    let s = String.sub s ~pos ~len:(String.length s - pos) in
+    let s = String.drop s pos in
     let path = Path.relative Path.root (prefix_target common s) in
     check_path setup.contexts path;
     if Path.is_root path then

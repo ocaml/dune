@@ -72,7 +72,7 @@ let make ?impl ?intf ?obj_name name =
       let fn = Path.basename file.path in
       match String.index fn '.' with
       | None   -> fn
-      | Some i -> String.sub fn ~pos:0 ~len:i
+      | Some i -> String.take fn i
   in
   { name
   ; impl

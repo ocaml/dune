@@ -215,12 +215,9 @@ module Vars = struct
         match String.index line ':' with
         | Some i ->
           let x =
-            (String.sub line ~pos:0 ~len:i,
-             let len = String.length line - i - 2 in
-             if len < 0 then
-               ""
-             else
-               String.sub line ~pos:(i + 2) ~len)
+            ( String.take line i
+            , String.drop line (i + 2) (* skipping the space *)
+            )
           in
           loop (x :: acc) lines
         | None ->
@@ -264,13 +261,11 @@ module Vars = struct
           fail "Value of %S is neither 'true' neither 'false': %s." var s
 
     let get_int_opt t var =
-      match get_opt t var with
-      | None -> None
-      | Some s ->
+      Option.bind (get_opt t var) ~f:(fun s ->
         match int_of_string s with
         | x -> Some x
         | exception _ ->
-          fail "Value of %S is not an integer: %s." var s
+          fail "Value of %S is not an integer: %s." var s)
 
     let get_words t var =
       match get_opt t var with

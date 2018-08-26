@@ -14,7 +14,7 @@ let explode_path =
       component acc path i (i - 1)
   and component acc path end_ i =
     if i < 0 then
-      String.sub path ~pos:0 ~len:(end_ + 1)::acc
+      String.take path (end_ + 1) :: acc
     else if is_dir_sep (String.unsafe_get path i) then
       start
         (String.sub path ~pos:(i + 1) ~len:(end_ - i)::acc)
@@ -180,7 +180,7 @@ end = struct
   let to_list =
     let rec loop t acc i j =
       if i = 0 then
-        String.sub t ~pos:0 ~len:j :: acc
+        String.take t j :: acc
       else
         match t.[i - 1] with
         | '/' -> loop t (String.sub t ~pos:i ~len:(j - i) :: acc) (i - 1) (i - 1)
@@ -201,7 +201,7 @@ end = struct
       let t = to_string t in
       match String.rindex_from t (String.length t - 1) '/' with
       | exception Not_found -> root
-      | i -> make (String.sub t ~pos:0 ~len:i)
+      | i -> make (String.take t i)
 
   let basename t =
     if is_root t then
@@ -322,7 +322,7 @@ end = struct
       let t_len = String.length t in
       if (t_len > of_len && t.[of_len] = '/'
           && String.is_prefix t ~prefix:of_) then
-        Some (make (String.sub t ~pos:(of_len + 1) ~len:(t_len - of_len - 1)))
+        Some (make (String.drop t (of_len + 1)))
       else
         None
 
@@ -722,14 +722,13 @@ let extract_build_context = function
   | In_build_dir p when Local.is_root p -> None
   | In_build_dir t ->
     let t = Local.to_string t in
-    begin match String.index t '/' with
+    begin match String.lsplit2 t ~on:'/' with
     | None ->
-      Some ( String.sub t ~pos:0 ~len:(String.length t)
-           , in_source_tree Local.root )
-    | Some j ->
+      Some (t, in_source_tree Local.root )
+    | Some (before, after) ->
       Some
-        ( String.sub t ~pos:0 ~len:j
-        , String.sub t ~pos:(j + 1) ~len:(String.length t - j - 1)
+        ( before
+        , after
           |> Local.of_string
           |> in_source_tree )
     end
@@ -739,12 +738,12 @@ let extract_build_context_dir = function
   | External _ -> None
   | In_build_dir t ->
     let t_str = Local.to_string t in
-    begin match String.index t_str '/' with
+    begin match String.lsplit2 t_str ~on:'/' with
     | None -> Some (in_build_dir t, in_source_tree Local.root)
-    | Some j ->
+    | Some (before, after) ->
       Some
-        ( in_build_dir (Local.of_string (String.sub t_str ~pos:0 ~len:j))
-        , (String.sub t_str ~pos:(j + 1) ~len:(String.length t_str - j - 1))
+        ( in_build_dir (Local.of_string before)
+        , after
           |> Local.of_string
           |> in_source_tree
         )
@@ -776,12 +775,12 @@ let split_first_component t =
   match kind t, is_root t with
   | Local t, false ->
     let t = Local.to_string t in
-    begin match String.index t '/' with
+    begin match String.lsplit2 t ~on:'/' with
     | None -> Some (t, root)
-    | Some i ->
+    | Some (before, after) ->
       Some
-        ( String.sub t ~pos:0 ~len:i
-        , String.sub t ~pos:(i + 1) ~len:(String.length t - i - 1)
+        ( before
+        , after
           |> Local.of_string
           |> in_source_tree )
     end

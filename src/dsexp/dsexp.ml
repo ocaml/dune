@@ -557,7 +557,7 @@ module Of_sexp = struct
   let if_paren_colon_form ~then_ ~else_ =
     peek_exn >>= function
     | List (_, Atom (loc, A s) :: _) when String.is_prefix s ~prefix:":" ->
-      let name = String.sub s ~pos:1 ~len:(String.length s - 1) in
+      let name = String.drop s 1 in
       enter
         (junk >>= fun () ->
          then_ >>| fun f ->

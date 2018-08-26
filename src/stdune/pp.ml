@@ -69,7 +69,7 @@ module Renderer = struct
 
     let extract_closing_tag s =
       let pos = 2 + get16 s 0 in
-      String.sub s ~pos ~len:(String.length s - pos)
+      String.drop s pos
 
 
     let rec pp th ppf t =

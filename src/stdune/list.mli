@@ -6,6 +6,8 @@ val is_empty : _ t -> bool
 
 val filter_map : 'a t -> f:('a -> 'b option) -> 'b t
 
+val filter_opt : 'a option t -> 'a t
+
 val filteri : 'a t -> f:(int -> 'a -> bool) -> 'a t
 
 val concat_map : 'a t -> f:('a -> 'b t) -> 'b t

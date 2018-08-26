@@ -178,13 +178,12 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     >>= fun findlib_config ->
 
     let get_tool_using_findlib_config prog =
-      Option.bind findlib_config ~f:(fun conf ->
-        match Findlib.Config.get conf prog with
-        | None -> None
-        | Some s ->
-          match Filename.analyze_program_name s with
-          | In_path | Relative_to_current_dir -> which s
-          | Absolute -> Some (Path.of_filename_relative_to_initial_cwd s))
+      let open Option.O in
+      findlib_config >>= fun conf ->
+      Findlib.Config.get conf prog >>= fun s ->
+      match Filename.analyze_program_name s with
+      | In_path | Relative_to_current_dir -> which s
+      | Absolute -> Some (Path.of_filename_relative_to_initial_cwd s)
     in
 
     let ocamlc =

@@ -541,7 +541,7 @@ let create
           let keep =
             match (stanza : Stanza.t) with
             | Library lib ->
-              Lib.DB.available (Scope.libs scope) (Lib_name.of_local lib.name)
+              Lib.DB.available (Scope.libs scope) (Library.best_name lib)
             | Documentation _
             | Install _   -> true
             | _           -> false

@@ -422,7 +422,7 @@ module Gen (P : Install_rules.Params) = struct
   let rules (lib : Library.t) ~dir_contents ~dir ~scope
         ~dir_kind : Compilation_context.t * Merlin.t =
     let compile_info =
-      Lib.DB.get_compile_info (Scope.libs scope) lib.name
+      Lib.DB.get_compile_info (Scope.libs scope) (Library.best_name lib)
         ~allow_overlaps:lib.buildable.allow_overlapping_dependencies
     in
     SC.Libs.gen_select_rules sctx compile_info ~dir;

@@ -188,7 +188,7 @@ include Sub_system.Register_end_point(
         Result.List.concat_map backends
           ~f:(fun (backend : Backend.t) -> backend.runner_libraries)
         >>= fun libs ->
-        Lib.DB.find_many (Scope.libs scope) [Lib_name.of_local lib.name]
+        Lib.DB.find_many (Scope.libs scope) [Dune_file.Library.best_name lib]
         >>= fun lib ->
         Result.List.all
           (List.map info.libraries

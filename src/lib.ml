@@ -954,11 +954,11 @@ module DB = struct
         let info = Info.of_library_stanza ~dir ~ext_lib conf in
         match conf.public with
         | None ->
-          [Lib_name.of_local conf.name, Resolve_result.Found info]
+          [Dune_file.Library.best_name conf, Resolve_result.Found info]
         | Some p ->
           let name = Dune_file.Public_lib.name p in
           if name = Lib_name.of_local conf.name then
-            [(name, Found info)]
+            [name, Found info]
           else
             [ name                       , Found info
             ; Lib_name.of_local conf.name, Redirect (None, name)
@@ -1032,10 +1032,10 @@ module DB = struct
   let available t name = available_internal t name ~stack:Dep_stack.empty
 
   let get_compile_info t ?(allow_overlaps=false) name =
-    match find_even_when_hidden t (Lib_name.of_local name) with
+    match find_even_when_hidden t name with
     | None ->
       Exn.code_error "Lib.DB.get_compile_info got library that doesn't exist"
-        [ "name", Lib_name.Local.to_sexp name ]
+        [ "name", Lib_name.to_sexp name ]
     | Some lib ->
       let t = Option.some_if (not allow_overlaps) t in
       Compile.for_lib t lib

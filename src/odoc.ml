@@ -197,7 +197,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
         ~requires ~(dep_graphs:Ocamldep.Dep_graph.t Ml_kind.Dict.t) =
     let lib =
       Option.value_exn (Lib.DB.find_even_when_hidden (Scope.libs scope)
-                          (Lib_name.of_local library.name)) in
+                          (Library.best_name library)) in
     (* Using the proper package name doesn't actually work since odoc assumes
        that a package contains only 1 library *)
     let pkg_or_lnu = pkg_or_lnu lib in
@@ -517,7 +517,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
                let scope = SC.find_scope_by_dir sctx w.ctx_dir in
                Some (Option.value_exn (
                  Lib.DB.find_even_when_hidden (Scope.libs scope)
-                   (Lib_name.of_local l.name))
+                   (Library.best_name l))
                )
              end
            | _ -> None

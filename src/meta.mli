@@ -4,7 +4,7 @@ open! Stdune
 open! Import
 
 type t =
-  { name    : string
+  { name    : Lib_name.t option
   ; entries : entry list
   }
 
@@ -35,7 +35,7 @@ module Simplified : sig
   end
 
   type t =
-    { name : string
+    { name : Lib_name.t option
     ; vars : Rules.t String.Map.t
     ; subs : t list
     }
@@ -43,10 +43,10 @@ module Simplified : sig
   val pp : Format.formatter -> t -> unit
 end
 
-val load : Path.t -> name:string -> Simplified.t
+val load : Path.t -> name:Lib_name.t option -> Simplified.t
 
 (** Builtin META files for libraries distributed with the compiler. For when ocamlfind is
     not installed. *)
-val builtins : stdlib_dir:Path.t -> Simplified.t String.Map.t
+val builtins : stdlib_dir:Path.t -> Simplified.t Lib_name.Map.t
 
 val pp : Format.formatter -> entry list -> unit

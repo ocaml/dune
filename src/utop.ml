@@ -65,7 +65,9 @@ let setup sctx ~dir ~(libs : Library.t list) ~scope =
     let requires =
       let open Result.O in
       Lib.DB.find_many (Scope.libs scope)
-        ("utop" :: List.map libs ~f:(fun (lib : Library.t) -> lib.name))
+        (Lib_name.of_string_exn "utop"
+         :: List.map libs ~f:(fun (lib : Library.t) ->
+           Lib_name.of_local lib.name))
       >>= Lib.closure
     in
     let cctx =

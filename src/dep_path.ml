@@ -4,19 +4,20 @@ module Entry = struct
   type t =
     | Path of Path.t
     | Alias of Path.t
-    | Library of Path.t * string
-    | Preprocess of string list
+    | Library of Path.t * Lib_name.t
+    | Preprocess of Lib_name.t list
     | Loc of Loc.t
 
   let to_string = function
     | Path p -> Utils.describe_target p
     | Alias p -> "alias " ^ Utils.describe_target p
     | Library (path, lib_name) ->
-      sprintf "library %S in %s" lib_name (Path.to_string_maybe_quoted path)
+      Format.asprintf "library %a in %s" Lib_name.pp_quoted lib_name
+        (Path.to_string_maybe_quoted path)
     | Preprocess l ->
       Sexp.to_string
         (List [ Atom "pps"
-              ; Sexp.To_sexp.(list string) l])
+              ; Sexp.To_sexp.(list Lib_name.to_sexp) l])
     | Loc loc ->
       Loc.to_file_colon_line loc
 

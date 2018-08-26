@@ -582,7 +582,10 @@ let installed_libraries =
        let ctx = List.hd ctxs in
        let findlib = ctx.findlib in
        if na then begin
-         let pkgs = Findlib.all_unavailable_packages findlib in
+         let pkgs =
+           Findlib.all_unavailable_packages findlib
+           |> List.map ~f:(fun (l, e) -> (Lib_name.to_string l, e))
+         in
          let longest = String.longest_map pkgs ~f:fst in
          let ppf = Format.std_formatter in
          List.iter pkgs ~f:(fun (n, r) ->
@@ -592,13 +595,15 @@ let installed_libraries =
          Fiber.return ()
        end else begin
          let pkgs = Findlib.all_packages findlib in
-         let max_len = String.longest_map pkgs ~f:Findlib.Package.name in
+         let max_len = String.longest_map pkgs ~f:(fun n ->
+           Findlib.Package.name n
+           |> Lib_name.to_string) in
          List.iter pkgs ~f:(fun pkg ->
            let ver =
              Option.value (Findlib.Package.version pkg) ~default:"n/a"
            in
            Printf.printf "%-*s (version: %s)\n" max_len
-             (Findlib.Package.name pkg) ver);
+             (Lib_name.to_string (Findlib.Package.name pkg)) ver);
          Fiber.return ()
        end)
   in
@@ -829,11 +834,11 @@ let clean =
   (term, Term.info "clean" ~doc ~man)
 
 let format_external_libs libs =
-  String.Map.to_list libs
+  Lib_name.Map.to_list libs
   |> List.map ~f:(fun (name, kind) ->
     match (kind : Lib_deps_info.Kind.t) with
-    | Optional -> sprintf "- %s (optional)" name
-    | Required -> sprintf "- %s" name)
+    | Optional -> sprintf "- %s (optional)" (Lib_name.to_string name)
+    | Required -> sprintf "- %s" (Lib_name.to_string name))
   |> String.concat ~sep:"\n"
 
 let external_lib_deps =
@@ -876,20 +881,20 @@ let external_lib_deps =
                   | Some x -> x)
              in
              let externals =
-               String.Map.filteri lib_deps ~f:(fun name _ ->
-                 not (String.Set.mem internals name))
+               Lib_name.Map.filteri lib_deps ~f:(fun name _ ->
+                 not (Lib_name.Set.mem internals name))
              in
              if only_missing then begin
                let context =
                  List.find_exn setup.contexts ~f:(fun c -> c.name = context_name)
                in
                let missing =
-                 String.Map.filteri externals ~f:(fun name _ ->
+                 Lib_name.Map.filteri externals ~f:(fun name _ ->
                    not (Findlib.available context.findlib name))
                in
-               if String.Map.is_empty missing then
+               if Lib_name.Map.is_empty missing then
                  acc
-               else if String.Map.for_alli missing
+               else if Lib_name.Map.for_alli missing
                          ~f:(fun _ kind -> kind = Lib_deps_info.Kind.Optional)
                then begin
                  Format.eprintf
@@ -907,13 +912,14 @@ let external_lib_deps =
                     Hint: try: opam install %s@."
                    context_name
                    (format_external_libs missing)
-                   (String.Map.to_list missing
+                   (Lib_name.Map.to_list missing
                     |> List.filter_map ~f:(fun (name, kind) ->
                       match (kind : Lib_deps_info.Kind.t) with
                       | Optional -> None
-                      | Required -> Some (Findlib.root_package_name name))
-                    |> String.Set.of_list
-                    |> String.Set.to_list
+                      | Required -> Some (Lib_name.package_name name))
+                    |> Package.Name.Set.of_list
+                    |> Package.Name.Set.to_list
+                    |> List.map ~f:Package.Name.to_string
                     |> String.concat ~sep:" ");
                  true
                end

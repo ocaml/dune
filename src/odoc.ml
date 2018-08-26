@@ -11,8 +11,9 @@ let lib_unique_name lib =
   let name = Lib.name lib in
   match Lib.status lib with
   | Installed -> assert false
-  | Public _  -> name
-  | Private scope_name -> SC.Scope_key.to_string name scope_name
+  | Public _  -> Lib_name.to_string name
+  | Private scope_name ->
+    SC.Scope_key.to_string (Lib_name.to_string name) scope_name
 
 let pkg_or_lnu lib =
   match Lib.package lib with
@@ -196,7 +197,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
         ~requires ~(dep_graphs:Ocamldep.Dep_graph.t Ml_kind.Dict.t) =
     let lib =
       Option.value_exn (Lib.DB.find_even_when_hidden (Scope.libs scope)
-                          library.name) in
+                          (Lib_name.of_local library.name)) in
     (* Using the proper package name doesn't actually work since odoc assumes
        that a package contains only 1 library *)
     let pkg_or_lnu = pkg_or_lnu lib in
@@ -350,6 +351,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
       () (* rules were already setup lazily in gen_rules *)
     | "_odoc" :: "lib" :: lib :: _ ->
       let lib, lib_db = SC.Scope_key.of_string sctx lib in
+      let lib = Lib_name.of_string_exn lib in
       begin match Lib.DB.find lib_db lib with
       | Error _ -> ()
       | Ok lib  -> SC.load_dir sctx ~dir:(Lib.src_dir lib)
@@ -358,6 +360,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
       (* TODO we can be a better with the error handling in the case where
          lib_unique_name_or_pkg is neither a valid pkg or lnu *)
       let lib, lib_db = SC.Scope_key.of_string sctx lib_unique_name_or_pkg in
+      let lib = Lib_name.of_string_exn lib in
       let setup_pkg_html_rules pkg =
         setup_pkg_html_rules ~pkg ~libs:(
           Lib.Set.to_list (load_all_odoc_rules_pkg ~pkg)) in
@@ -413,9 +416,9 @@ module Gen (S : sig val sctx : SC.t end) = struct
     let b = Buffer.create 512 in
     Lib.Map.to_list entry_modules
     |> List.sort ~compare:(fun (x, _) (y, _) ->
-      String.compare (Lib.name x) (Lib.name y))
+      Lib_name.compare (Lib.name x) (Lib.name y))
     |> List.iter ~f:(fun (lib, modules) ->
-      Printf.bprintf b "{2 Library %s}\n" (Lib.name lib);
+      Printf.bprintf b "{2 Library %s}\n" (Lib_name.to_string (Lib.name lib));
       Buffer.add_string b (
         match modules with
         | [ x ] ->
@@ -513,7 +516,8 @@ module Gen (S : sig val sctx : SC.t end) = struct
              | None ->
                let scope = SC.find_scope_by_dir sctx w.ctx_dir in
                Some (Option.value_exn (
-                 Lib.DB.find_even_when_hidden (Scope.libs scope) l.name)
+                 Lib.DB.find_even_when_hidden (Scope.libs scope)
+                   (Lib_name.of_local l.name))
                )
              end
            | _ -> None

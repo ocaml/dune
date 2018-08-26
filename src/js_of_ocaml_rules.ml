@@ -24,7 +24,7 @@ let runtime_file ~sctx fname =
   match
     Artifacts.file_of_lib (SC.artifacts sctx)
       ~loc:Loc.none
-      ~lib:"js_of_ocaml-compiler" ~file:fname
+      ~lib:(Lib_name.of_string_exn "js_of_ocaml-compiler") ~file:fname
   with
   | Error _ ->
     Arg_spec.Dyn (fun _ ->
@@ -89,7 +89,10 @@ let link_rule cc ~runtime ~target =
           ) else (
             let lib_name = Lib.name lib in
             List.map ~f:(fun js ->
-              in_build_dir ~ctx [lib_name ; Path.basename js]) jsoo_archives
+              in_build_dir ~ctx
+                [ Lib_name.to_string lib_name
+                ; Path.basename js
+                ]) jsoo_archives
           )
         )
       in
@@ -138,6 +141,7 @@ let setup_separate_compilation_rules sctx components =
     match components with
     | [] | _ :: _ :: _ -> ()
     | [pkg] ->
+      let pkg = Lib_name.of_string_exn pkg in
       let ctx = SC.context sctx in
       match Lib.DB.find (SC.installed_libs sctx) pkg with
       | Error _ -> ()
@@ -146,17 +150,18 @@ let setup_separate_compilation_rules sctx components =
         let archives =
           (* Special case for the stdlib because it is not referenced
              in the META *)
-          match Lib.name pkg with
+          match Lib_name.to_string (Lib.name pkg) with
           | "stdlib" -> Path.relative ctx.stdlib_dir "stdlib.cma" :: archives
           | _ -> archives
         in
         List.iter archives ~f:(fun fn ->
           let name = Path.basename fn in
           let src = Path.relative (Lib.src_dir pkg) name in
+          let lib_name = Lib_name.to_string (Lib.name pkg) in
           let target =
-            in_build_dir ~ctx [ Lib.name pkg; sprintf "%s.js" name]
+            in_build_dir ~ctx [lib_name ; sprintf "%s.js" name]
           in
-          let dir = in_build_dir ~ctx [ Lib.name pkg ] in
+          let dir = in_build_dir ~ctx [lib_name] in
           let spec = Arg_spec.Dep src in
           SC.add_rule sctx
             (Build.return (standard sctx)

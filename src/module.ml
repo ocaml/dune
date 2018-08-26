@@ -122,7 +122,8 @@ let iter t ~f =
   Option.iter t.intf ~f:(f Ml_kind.Intf)
 
 let with_wrapper t ~libname =
-  { t with obj_name = sprintf "%s__%s" libname t.name }
+  { t with obj_name
+           = sprintf "%s__%s" (Lib_name.Local.to_string libname) t.name }
 
 let map_files t ~f =
   { t with

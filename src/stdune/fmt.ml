@@ -54,3 +54,7 @@ let record fmt = function
 
 let tuple ppfa ppfb fmt (a, b) =
   Format.fprintf fmt "@[<hv>(%a, %a)@]" ppfa a ppfb b
+
+let optional ppf fmt = function
+  | None -> Format.fprintf fmt "<None>"
+  | Some a -> ppf fmt a

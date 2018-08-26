@@ -5,9 +5,11 @@ open Import
 
 (** Ppx preprocessors  *)
 module Pp : sig
-  type t = private string
+  type t = private Lib_name.t
   val of_string : string -> t
   val to_string : t -> string
+
+  val to_lib_name : t -> Lib_name.t
   val compare : t -> t -> Ordering.t
 end
 
@@ -58,8 +60,8 @@ end
 
 module Lib_dep : sig
   type choice =
-    { required  : String.Set.t
-    ; forbidden : String.Set.t
+    { required  : Lib_name.Set.t
+    ; forbidden : Lib_name.Set.t
     ; file      : string
     }
 
@@ -70,11 +72,11 @@ module Lib_dep : sig
     }
 
   type t =
-    | Direct of (Loc.t * string)
+    | Direct of (Loc.t * Lib_name.t)
     | Select of select
 
-  val to_lib_names : t -> string list
-  val direct : Loc.t * string -> t
+  val to_lib_names : t -> Lib_name.t list
+  val direct : Loc.t * Lib_name.t -> t
   val of_pp : Loc.t * Pp.t -> t
 end
 
@@ -146,13 +148,13 @@ end
 
 module Public_lib : sig
   type t =
-    { name    : Loc.t * string (** Full public name *)
+    { name    : Loc.t * Lib_name.t (** Full public name *)
     ; package : Package.t      (** Package it is part of *)
     ; sub_dir : string option  (** Subdirectory inside the installation
                                    directory *)
     }
 
-  val name : t -> string
+  val name : t -> Lib_name.t
 end
 
 module Sub_system_info : sig
@@ -215,11 +217,11 @@ module Library : sig
   end
 
   type t =
-    { name                     : string
+    { name                     : Lib_name.Local.t
     ; public                   : Public_lib.t option
     ; synopsis                 : string option
     ; install_c_headers        : string list
-    ; ppx_runtime_libraries    : (Loc.t * string) list
+    ; ppx_runtime_libraries    : (Loc.t * Lib_name.t) list
     ; modes                    : Mode_conf.Set.t
     ; kind                     : Kind.t
     ; c_flags                  : Ordered_set_lang.Unexpanded.t
@@ -229,7 +231,7 @@ module Library : sig
     ; library_flags            : Ordered_set_lang.Unexpanded.t
     ; c_library_flags          : Ordered_set_lang.Unexpanded.t
     ; self_build_stubs_archive : string option
-    ; virtual_deps             : (Loc.t * string) list
+    ; virtual_deps             : (Loc.t * Lib_name.t) list
     ; wrapped                  : bool
     ; optional                 : bool
     ; buildable                : Buildable.t
@@ -244,7 +246,7 @@ module Library : sig
   val stubs_archive : t -> dir:Path.t -> ext_lib:string -> Path.t
   val dll : t -> dir:Path.t -> ext_dll:string -> Path.t
   val archive : t -> dir:Path.t -> ext:string -> Path.t
-  val best_name : t -> string
+  val best_name : t -> Lib_name.t
 end
 
 module Install_conf : sig

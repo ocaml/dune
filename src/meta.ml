@@ -2,7 +2,7 @@ open! Stdune
 open Import
 
 type t =
-  { name    : string
+  { name    : Lib_name.t option
   ; entries : entry list
   }
 
@@ -34,7 +34,7 @@ module Parse = struct
     | String s ->
       if String.contains s '.' then
         error lb "'.' not allowed in sub-package names";
-      s
+      Lib_name.of_string_exn s
     | _ -> error lb "package name expected"
 
   let string lb =
@@ -88,7 +88,8 @@ module Parse = struct
       let name = package_name lb in
       lparen lb;
       let sub_entries = entries lb (depth + 1) [] in
-      entries lb depth (Package { name; entries = sub_entries } :: acc)
+      entries lb depth (Package { name = Some name; entries = sub_entries }
+                        :: acc)
     | Name var ->
       let predicates, action =
         match next lb with
@@ -134,14 +135,14 @@ module Simplified = struct
   end
 
   type t =
-    { name : string
+    { name : Lib_name.t option
     ; vars : Rules.t String.Map.t
     ; subs : t list
     }
 
   let rec pp fmt t =
     Fmt.record fmt
-      [ "name", Fmt.const Fmt.quoted t.name
+      [ "name", Fmt.const (Fmt.optional Lib_name.pp_quoted) t.name
       ; "vars", Fmt.const (String.Map.pp Rules.pp) t.vars
       ; "subs", Fmt.const (Fmt.ocaml_list pp) t.subs
       ]
@@ -196,9 +197,15 @@ let archives name =
 
 let builtins ~stdlib_dir =
   let version = version "[distributed with Ocaml]" in
-  let simple name ?dir ?(archive_name=name) deps =
+  let simple name ?dir ?archive_name deps =
+    let archive_name =
+      match archive_name with
+      | None -> name
+      | Some a -> a
+    in
+    let name = Lib_name.of_string_exn name in
     let archives = archives archive_name in
-    { name
+    { name = Some name
     ; entries =
         (requires deps ::
          version       ::
@@ -211,7 +218,7 @@ let builtins ~stdlib_dir =
     let sub name deps =
       Package (simple name deps ~archive_name:("ocaml" ^ name))
     in
-    { name = "compiler-libs"
+    { name = Some (Lib_name.of_string_exn "compiler-libs")
     ; entries =
         [ requires []
         ; version
@@ -227,7 +234,7 @@ let builtins ~stdlib_dir =
   let unix = simple "unix" [] ~dir:"+" in
   let bigarray = simple "bigarray" ["unix"] ~dir:"+" in
   let threads =
-    { name = "threads"
+    { name = Some (Lib_name.of_string_exn "threads")
     ; entries =
         [ version
         ; requires ~preds:[Pos "mt"; Pos "mt_vm"   ] ["threads.vm"]
@@ -242,7 +249,7 @@ let builtins ~stdlib_dir =
     }
   in
   let num =
-    { name = "num"
+    { name = Some (Lib_name.of_string_exn "num")
     ; entries =
         [ requires ["num.core"]
         ; version
@@ -259,8 +266,9 @@ let builtins ~stdlib_dir =
     else
       [ compiler_libs; str; unix; bigarray; threads ]
   in
-  List.map libs ~f:(fun t -> t.name, simplify t)
-  |> String.Map.of_list_exn
+  List.filter_map libs ~f:(fun t ->
+    Option.map t.name ~f:(fun name -> name, simplify t))
+  |> Lib_name.Map.of_list_exn
 
 let string_of_action = function
   | Set -> "="
@@ -313,5 +321,10 @@ and pp_entry ppf entry =
       var (String.concat ~sep:"," (List.map predicates ~f:string_of_predicate))
       (string_of_action action) (pp_quoted_value var) value
   | Package { name; entries } ->
+    let name =
+      match name with
+      | None -> ""
+      | Some l -> Lib_name.to_string l
+    in
     fprintf ppf "@[<v 2>package %S (@,%a@]@,)"
       name pp entries

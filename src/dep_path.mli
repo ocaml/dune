@@ -6,8 +6,8 @@ module Entry : sig
   type t =
     | Path of Path.t
     | Alias of Path.t
-    | Library of Path.t * string
-    | Preprocess of string list
+    | Library of Path.t * Lib_name.t
+    | Preprocess of Lib_name.t list
     | Loc of Loc.t
 
   val to_string : t -> string

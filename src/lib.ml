@@ -28,7 +28,7 @@ end
 module Info = struct
   module Deps = struct
     type t =
-      | Simple  of (Loc.t * string) list
+      | Simple  of (Loc.t * Lib_name.t) list
       | Complex of Dune_file.Lib_dep.t list
 
     let of_lib_deps deps =
@@ -60,10 +60,10 @@ module Info = struct
     ; foreign_archives : Path.t list Mode.Dict.t
     ; jsoo_runtime     : Path.t list
     ; requires         : Deps.t
-    ; ppx_runtime_deps : (Loc.t * string) list
+    ; ppx_runtime_deps : (Loc.t * Lib_name.t) list
     ; pps              : (Loc.t * Dune_file.Pp.t) list
     ; optional         : bool
-    ; virtual_deps     : (Loc.t * string) list
+    ; virtual_deps     : (Loc.t * Lib_name.t) list
     ; dune_version : Syntax.Version.t option
     ; sub_systems      : Dune_file.Sub_system_info.t Sub_system_name.Map.t
     }
@@ -74,7 +74,8 @@ module Info = struct
       ~f:(fun acc s -> Dune_file.Lib_dep.Direct s :: acc)
 
   let of_library_stanza ~dir ~ext_lib (conf : Dune_file.Library.t) =
-    let archive_file ext = Path.relative dir (conf.name ^ ext) in
+    let archive_file ext =
+      Path.relative dir (Lib_name.Local.to_string conf.name ^ ext) in
     let archive_files ~f_ext =
       Mode.Dict.of_func (fun ~mode -> [archive_file (f_ext mode)])
     in
@@ -96,7 +97,9 @@ module Info = struct
       in
       { Mode.Dict.
         byte   = stubs
-      ; native = Path.relative dir (conf.name ^ ext_lib) :: stubs
+      ; native =
+          Path.relative dir (Lib_name.Local.to_string conf.name ^ ext_lib)
+          :: stubs
       }
     in
     { loc = conf.buildable.loc
@@ -159,7 +162,7 @@ module Error0 = struct
     module Reason = struct
       module Hidden = struct
         type t =
-          { name   : string
+          { name   : Lib_name.t
           ; path   : Path.t
           ; reason : string
           }
@@ -180,7 +183,7 @@ module Error0 = struct
 
     type t =
       { loc    : Loc.t
-      ; name   : string
+      ; name   : Lib_name.t
       ; reason : Reason.t
       }
   end
@@ -217,13 +220,13 @@ module Id = struct
   type t =
     { unique_id : int
     ; path      : Path.t
-    ; name      : string
+    ; name      : Lib_name.t
     }
 end
 
 type t =
   { info              : Info.t
-  ; name              : string
+  ; name              : Lib_name.t
   ; unique_id         : int
   ; requires          : t list Or_exn.t
   ; ppx_runtime_deps  : t list Or_exn.t
@@ -241,9 +244,9 @@ type t =
 
 and db =
   { parent  : db option
-  ; resolve : string -> resolve_result
-  ; table   : (string, status) Hashtbl.t
-  ; all     : string list Lazy.t
+  ; resolve : Lib_name.t -> resolve_result
+  ; table   : (Lib_name.t, status) Hashtbl.t
+  ; all     : Lib_name.t list Lazy.t
   }
 
 and status =
@@ -255,7 +258,7 @@ and status =
 and error =
   | Library_not_available        of Error0.Library_not_available.t
   | No_solution_found_for_select of Error0.No_solution_found_for_select.t
-  | Dependency_cycle             of (Path.t * string) list
+  | Dependency_cycle             of (Path.t * Lib_name.t) list
   | Conflict                     of conflict
   | Overlap                      of overlap
   | Private_deps_not_allowed     of private_deps_not_allowed
@@ -264,7 +267,7 @@ and resolve_result =
   | Not_found
   | Found    of Info.t
   | Hidden   of Info.t * string
-  | Redirect of db option * string
+  | Redirect of db option * Lib_name.t
 
 and conflict =
   { lib1 : t * Dep_path.Entry.t list
@@ -310,7 +313,7 @@ module Error = struct
   type t = error =
     | Library_not_available        of Library_not_available.t
     | No_solution_found_for_select of No_solution_found_for_select.t
-    | Dependency_cycle             of (Path.t * string) list
+    | Dependency_cycle             of (Path.t * Lib_name.t) list
     | Conflict                     of Conflict.t
     | Overlap                      of Overlap.t
     | Private_deps_not_allowed     of Private_deps_not_allowed.t
@@ -347,9 +350,7 @@ let status t = t.info.status
 
 let package t =
   match t.info.status with
-  | Installed ->
-    Some (Findlib.root_package_name t.name
-          |> Package.Name.of_string)
+  | Installed -> Some (Lib_name.package_name t.name)
   | Public p -> Some p.name
   | Private _ ->
     None
@@ -451,7 +452,7 @@ module Sub_system = struct
     type t
     type sub_system += T of t
     val instantiate
-      :  resolve:(Loc.t * string -> lib Or_exn.t)
+      :  resolve:(Loc.t * Lib_name.t -> lib Or_exn.t)
       -> get:(loc:Loc.t -> lib -> t option)
       -> lib
       -> Info.t
@@ -492,7 +493,8 @@ module Sub_system = struct
     | M.Info.T info ->
       let get ~loc lib' =
         if lib.unique_id = lib'.unique_id then
-          Errors.fail loc "Library %S depends on itself" lib.name
+          Errors.fail loc "Library %a depends on itself"
+            Lib_name.pp_quoted lib.name
         else
           M.get lib'
       in
@@ -583,7 +585,7 @@ let check_private_deps lib ~loc ~allow_private_deps =
     Ok lib
 
 let already_in_table (info : Info.t) name x =
-  let dgen = Sexp.To_sexp.(pair Path.to_sexp string) in
+  let to_sexp = Sexp.To_sexp.(pair Path.to_sexp Lib_name.to_sexp) in
   let sexp =
     match x with
     | St_initializing x ->
@@ -600,8 +602,8 @@ let already_in_table (info : Info.t) name x =
   in
   Exn.code_error
     "Lib_db.DB: resolver returned name that's already in the table"
-    [ "name"            , Sexp.To_sexp.string name
-    ; "returned_lib"    , dgen (info.src_dir, name)
+    [ "name"            , Lib_name.to_sexp name
+    ; "returned_lib"    , to_sexp (info.src_dir, name)
     ; "conflicting_with", sexp
     ]
 
@@ -635,7 +637,7 @@ let rec instantiate db name (info : Info.t) ~stack ~hidden =
   let requires         = map_error requires         in
   let ppx_runtime_deps = map_error ppx_runtime_deps in
   let resolve (loc, name) =
-    resolve_dep db name ~allow_private_deps ~loc ~stack in
+    resolve_dep db (name : Lib_name.t) ~allow_private_deps ~loc ~stack in
   let t =
     { info
     ; name
@@ -680,12 +682,12 @@ and find_even_when_hidden db name =
   | St_not_found          -> None
   | St_hidden (t, _)      -> Some t
 
-and find_internal db name ~stack : status =
+and find_internal db (name : Lib_name.t) ~stack : status =
   match Hashtbl.find db.table name with
   | Some x -> x
   | None   -> resolve_name db name ~stack
 
-and resolve_dep db name ~allow_private_deps ~loc ~stack : t Or_exn.t =
+and resolve_dep db (name : Lib_name.t) ~allow_private_deps ~loc ~stack : t Or_exn.t =
   match find_internal db name ~stack with
   | St_initializing id ->
     Error (Dep_stack.dependency_cycle stack id)
@@ -727,12 +729,12 @@ and resolve_name db name ~stack =
     | _ ->
       instantiate db name info ~stack ~hidden:(Some hidden)
 
-and available_internal db name ~stack =
+and available_internal db (name : Lib_name.t) ~stack =
   match resolve_dep db name ~allow_private_deps:true ~loc:Loc.none ~stack with
   | Ok    _ -> true
   | Error _ -> false
 
-and resolve_simple_deps db names ~allow_private_deps ~stack =
+and resolve_simple_deps db (names : ((Loc.t * Lib_name.t) list)) ~allow_private_deps ~stack =
   Result.List.map names ~f:(fun (loc, name) ->
     resolve_dep db name ~allow_private_deps ~loc ~stack)
 
@@ -750,13 +752,13 @@ and resolve_complex_deps db deps ~allow_private_deps ~stack =
           let res, src_fn =
             match
               List.find_map choices ~f:(fun { required; forbidden; file } ->
-                if String.Set.exists forbidden
+                if Lib_name.Set.exists forbidden
                      ~f:(available_internal db ~stack) then
                   None
                 else
                   match
                     let deps =
-                      String.Set.fold required ~init:[] ~f:(fun x acc ->
+                      Lib_name.Set.fold required ~init:[] ~f:(fun x acc ->
                         (Loc.none, x) :: acc)
                     in
                     resolve_simple_deps ~allow_private_deps db deps ~stack
@@ -808,7 +810,7 @@ and resolve_user_deps db deps ~allow_private_deps ~pps ~stack =
         { (fst first) with stop = (fst last).stop }
       in
       let pps =
-        let pps = (pps : (Loc.t * Dune_file.Pp.t) list :> (Loc.t * string) list) in
+        let pps = (pps : (Loc.t * Dune_file.Pp.t) list :> (Loc.t * Lib_name.t) list) in
         resolve_simple_deps db pps ~allow_private_deps:true ~stack
         >>= fun pps ->
         closure_with_overlap_checks None pps ~stack
@@ -834,11 +836,11 @@ and resolve_user_deps db deps ~allow_private_deps ~pps ~stack =
   (deps, pps, resolved_selects)
 
   and closure_with_overlap_checks db ts ~stack =
-  let visited = ref String.Map.empty in
+  let visited = ref Lib_name.Map.empty in
   let res = ref [] in
   let orig_stack = stack in
   let rec loop t ~stack =
-    match String.Map.find !visited t.name with
+    match Lib_name.Map.find !visited t.name with
     | Some (t', stack') ->
       if t.unique_id = t'.unique_id then
         Ok ()
@@ -849,7 +851,7 @@ and resolve_user_deps db deps ~allow_private_deps ~pps ~stack =
                            ; lib2 = (t , req_by stack )
                            }))
     | None ->
-      visited := String.Map.add !visited t.name (t, stack);
+      visited := Lib_name.Map.add !visited t.name (t, stack);
       (match db with
        | None -> Ok ()
        | Some db ->
@@ -934,7 +936,7 @@ module DB = struct
       | Not_found
       | Found    of Info.t
       | Hidden   of Info.t * string
-      | Redirect of db option * string
+      | Redirect of db option * Lib_name.t
   end
 
   type t = db
@@ -952,22 +954,22 @@ module DB = struct
         let info = Info.of_library_stanza ~dir ~ext_lib conf in
         match conf.public with
         | None ->
-          [(conf.name, Resolve_result.Found info)]
+          [Lib_name.of_local conf.name, Resolve_result.Found info]
         | Some p ->
           let name = Dune_file.Public_lib.name p in
-          if name = conf.name then
+          if name = Lib_name.of_local conf.name then
             [(name, Found info)]
           else
-            [ name     , Found info
-            ; conf.name, Redirect (None, name)
+            [ name                       , Found info
+            ; Lib_name.of_local conf.name, Redirect (None, name)
             ])
-      |> String.Map.of_list
+      |> Lib_name.Map.of_list
       |> function
       | Ok x -> x
       | Error (name, _, _) ->
         match
           List.filter_map stanzas ~f:(fun (_, (conf : Dune_file.Library.t)) ->
-            if name = conf.name ||
+            if name = Lib_name.of_local conf.name ||
                match conf.public with
                | None -> false
                | Some p -> name = Dune_file.Public_lib.name p
@@ -976,19 +978,19 @@ module DB = struct
         with
         | [] | [_] -> assert false
         | loc1 :: loc2 :: _ ->
-          die "Library %S is defined twice:\n\
+          die "Library %a is defined twice:\n\
                - %s\n\
                - %s"
-            name
+            Lib_name.pp_quoted name
             (Loc.to_file_colon_line loc1)
             (Loc.to_file_colon_line loc2)
     in
     create () ?parent
       ~resolve:(fun name ->
-        match String.Map.find map name with
+        match Lib_name.Map.find map name with
         | None   -> Not_found
         | Some x -> x)
-      ~all:(fun () -> String.Map.keys map)
+      ~all:(fun () -> Lib_name.Map.keys map)
 
   let create_from_findlib ?(external_lib_deps_mode=false) findlib =
     create ()
@@ -1030,10 +1032,10 @@ module DB = struct
   let available t name = available_internal t name ~stack:Dep_stack.empty
 
   let get_compile_info t ?(allow_overlaps=false) name =
-    match find_even_when_hidden t name with
+    match find_even_when_hidden t (Lib_name.of_local name) with
     | None ->
       Exn.code_error "Lib.DB.get_compile_info got library that doesn't exist"
-        [ "name", Sexp.To_sexp.string name ]
+        [ "name", Lib_name.Local.to_sexp name ]
     | Some lib ->
       let t = Option.some_if (not allow_overlaps) t in
       Compile.for_lib t lib
@@ -1060,7 +1062,7 @@ module DB = struct
 
   let resolve_pps t pps =
     resolve_simple_deps t ~allow_private_deps:true
-      (pps : (Loc.t * Dune_file.Pp.t) list :> (Loc.t * string) list)
+      (pps : (Loc.t * Dune_file.Pp.t) list :> (Loc.t * Lib_name.t) list)
       ~stack:Dep_stack.empty
 
   let rec all ?(recursive=false) t =
@@ -1081,8 +1083,8 @@ end
 
 module Meta = struct
   let to_names ts =
-    List.fold_left ts ~init:String.Set.empty ~f:(fun acc t ->
-      String.Set.add acc t.name)
+    List.fold_left ts ~init:Lib_name.Set.empty ~f:(fun acc t ->
+      Lib_name.Set.add acc t.name)
 
   (* For the deprecated method, we need to put all the runtime
      dependencies of the transitive closure.
@@ -1110,30 +1112,34 @@ let report_lib_error ppf (e : Error.t) =
   match e with
   | Library_not_available { loc = _; name; reason } ->
     Format.fprintf ppf
-      "@{<error>Error@}: Library %S %a.@\n"
-      name
+      "@{<error>Error@}: Library %a %a.@\n"
+      Lib_name.pp_quoted name
       Error.Library_not_available.Reason.pp reason
   | Conflict { lib1 = (lib1, rb1); lib2 = (lib2, rb2) } ->
     Format.fprintf ppf
       "@[<v>@{<error>Error@}: Conflict between the following libraries:@,\
-       - %S in %s@,\
+       - %a in %s@,\
       \    %a@,\
-       - %S in %s@,\
+       - %a in %s@,\
       \    %a@,\
        This cannot work.@\n"
-      lib1.name (Path.to_string_maybe_quoted lib1.info.src_dir)
+      Lib_name.pp_quoted lib1.name
+      (Path.to_string_maybe_quoted lib1.info.src_dir)
       Dep_path.Entries.pp rb1
-      lib2.name (Path.to_string_maybe_quoted lib2.info.src_dir)
+      Lib_name.pp_quoted lib2.name
+      (Path.to_string_maybe_quoted lib2.info.src_dir)
       Dep_path.Entries.pp rb2
   | Overlap { in_workspace = lib1; installed = (lib2, rb2) } ->
     Format.fprintf ppf
       "@[<v>@{<error>Error@}: Conflict between the following libraries:@,\
-       - %S in %s@,\
-       - %S in %s@,\
+       - %a in %s@,\
+       - %a in %s@,\
       \    %a@,\
        This is not allowed.@\n"
-      lib1.name (Path.to_string_maybe_quoted lib1.info.src_dir)
-      lib2.name (Path.to_string_maybe_quoted lib2.info.src_dir)
+      Lib_name.pp_quoted lib1.name
+      (Path.to_string_maybe_quoted lib1.info.src_dir)
+      Lib_name.pp_quoted lib2.name
+      (Path.to_string_maybe_quoted lib2.info.src_dir)
       Dep_path.Entries.pp rb2
   | No_solution_found_for_select { loc } ->
     Format.fprintf ppf
@@ -1145,15 +1151,15 @@ let report_lib_error ppf (e : Error.t) =
        following libraries:@\n\
        @[<v>%a@]\n"
       (Format.pp_print_list (fun ppf (path, name) ->
-         Format.fprintf ppf "-> %S in %s"
-           name (Path.to_string_maybe_quoted path)))
+         Format.fprintf ppf "-> %a in %s"
+           Lib_name.pp_quoted name (Path.to_string_maybe_quoted path)))
       cycle
   | Private_deps_not_allowed t ->
     Format.fprintf ppf
-      "@{<error>Error@}: Library %S is private, it cannot be a dependency of \
-       a public library.\nYou need to give %S a public name.\n"
-      t.private_dep.name
-      t.private_dep.name
+      "@{<error>Error@}: Library %a is private, it cannot be a dependency of \
+       a public library.\nYou need to give %a a public name.\n"
+      Lib_name.pp_quoted t.private_dep.name
+      Lib_name.pp_quoted t.private_dep.name
 
 let () =
   Report_error.register (fun exn ->

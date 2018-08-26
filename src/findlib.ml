@@ -1,6 +1,8 @@
 open! Stdune
 open Import
 
+module Opam_package = Package
+
 module P  = Variant
 module Ps = Variant.Set
 
@@ -122,7 +124,7 @@ module Config = struct
     if not (Path.exists conf_file) then
       die "@{<error>Error@}: ocamlfind toolchain %s isn't defined in %a \
            (context: %s)" toolchain Path.pp path context;
-    let vars = (Meta.load ~name:"" conf_file).vars in
+    let vars = (Meta.load ~name:None conf_file).vars in
     { vars = String.Map.map vars ~f:Rules.of_meta_rules
     ; preds = Ps.make [toolchain]
     }
@@ -139,7 +141,7 @@ end
 module Package = struct
   type t =
     { meta_file : Path.t
-    ; name      : string
+    ; name      : Lib_name.t
     ; dir       : Path.t
     ; vars      : Vars.t
     }
@@ -160,8 +162,12 @@ module Package = struct
   let version          t = Vars.get       t.vars "version"          Ps.empty
   let description      t = Vars.get       t.vars "description"      Ps.empty
   let jsoo_runtime     t = get_paths      t      "jsoo_runtime"     Ps.empty
-  let requires         t = Vars.get_words t.vars "requires"         preds
-  let ppx_runtime_deps t = Vars.get_words t.vars "ppx_runtime_deps" preds
+  let requires         t =
+    Vars.get_words t.vars "requires"         preds
+    |> List.map ~f:Lib_name.of_string_exn
+  let ppx_runtime_deps t =
+    Vars.get_words t.vars "ppx_runtime_deps" preds
+    |> List.map ~f:Lib_name.of_string_exn
 
   let archives t = make_archives t "archive" preds
   let plugins t =
@@ -170,7 +176,8 @@ module Package = struct
       (make_archives t "plugin" preds)
 
   let dune_file t =
-    let fn = Path.relative t.dir (sprintf "%s.dune" t.name) in
+    let fn = Path.relative t.dir
+               (sprintf "%s.dune" (Lib_name.to_string t.name)) in
     Option.some_if (Path.exists fn) fn
 end
 
@@ -191,22 +198,20 @@ end
 type t =
   { stdlib_dir : Path.t
   ; path       : Path.t list
-  ; builtins   : Meta.Simplified.t String.Map.t
-  ; packages   : (string, (Package.t, Unavailable_reason.t) result) Hashtbl.t
+  ; builtins   : Meta.Simplified.t Lib_name.Map.t
+  ; packages   : (Lib_name.t, (Package.t, Unavailable_reason.t) result) Hashtbl.t
   }
 
 let path t = t.path
-
-let root_package_name s =
-  match String.index s '.' with
-  | None -> s
-  | Some i -> String.take s i
 
 let dummy_package t ~name =
   let dir =
     match t.path with
     | [] -> t.stdlib_dir
-    | dir :: _ -> Path.relative dir (root_package_name name)
+    | dir :: _ ->
+      Lib_name.package_name name
+      |> Opam_package.Name.to_string
+      |> Path.relative dir
   in
   { Package.
     meta_file = Path.relative dir "META"
@@ -244,7 +249,7 @@ let parse_package t ~meta_file ~name ~parent_dir ~vars =
       List.for_all exists_if ~f:(fun fn ->
         Path.exists (Path.relative dir fn))
     | [] ->
-      if not (String.Map.mem t.builtins (root_package_name name)) then
+      if not (Lib_name.Map.mem t.builtins (Lib_name.root_lib name)) then
         true
       else
         (* The META files for installed packages are sometimes broken,
@@ -277,34 +282,38 @@ let parse_and_acknowledge_meta t ~dir ~meta_file (meta : Meta.Simplified.t) =
     in
     Hashtbl.add t.packages full_name res;
     List.iter meta.subs ~f:(fun (meta : Meta.Simplified.t) ->
-      loop ~dir ~full_name:(sprintf "%s.%s" full_name meta.name) meta)
+      let full_name =
+        match meta.name with
+        | None -> full_name
+        | Some name -> Lib_name.nest full_name name in
+      loop ~dir ~full_name meta)
   in
-  loop ~dir ~full_name:meta.name meta
+  loop ~dir ~full_name:(Option.value_exn meta.name) meta
 
 (* Search for a <package>/META file in the findlib search path, parse
    it and add its contents to [t.packages] *)
 let find_and_acknowledge_meta t ~fq_name =
-  let root_name = root_package_name fq_name in
+  let root_name = Lib_name.root_lib fq_name in
   let rec loop dirs : (Path.t * Path.t * Meta.Simplified.t) option =
     match dirs with
     | dir :: dirs ->
-      let sub_dir = Path.relative dir root_name in
+      let sub_dir = Path.relative dir (Lib_name.to_string root_name) in
       let fn = Path.relative sub_dir "META" in
       if Path.exists fn then
         Some (sub_dir,
               fn,
-              Meta.load ~name:root_name fn)
+              Meta.load ~name:(Some root_name) fn)
       else
         (* Alternative layout *)
-        let fn = Path.relative dir ("META." ^ root_name) in
+        let fn = Path.relative dir ("META." ^ (Lib_name.to_string root_name)) in
         if Path.exists fn then
           Some (dir,
                 fn,
-                Meta.load fn ~name:root_name)
+                Meta.load fn ~name:(Some root_name))
         else
           loop dirs
     | [] ->
-      String.Map.find t.builtins root_name
+      Lib_name.Map.find t.builtins root_name
       |> Option.map ~f:(fun meta ->
         (t.stdlib_dir, Path.of_string "<internal>", meta))
   in
@@ -336,15 +345,18 @@ let root_packages t =
     List.concat_map t.path ~f:(fun dir ->
       Sys.readdir (Path.to_string dir)
       |> Array.to_list
-      |> List.filter ~f:(fun name ->
-        Path.exists (Path.relative dir (name ^ "/META"))))
-    |> String.Set.of_list
+      |> List.filter_map ~f:(fun name ->
+        if Path.exists (Path.relative dir (name ^ "/META")) then
+          Some (Lib_name.of_string_exn name)
+        else
+          None))
+    |> Lib_name.Set.of_list
   in
-  String.Set.union pkgs
-    (String.Set.of_list (String.Map.keys t.builtins))
+  Lib_name.Set.union pkgs
+    (Lib_name.Set.of_list (Lib_name.Map.keys t.builtins))
 
 let load_all_packages t =
-  String.Set.iter (root_packages t) ~f:(fun pkg ->
+  Lib_name.Set.iter (root_packages t) ~f:(fun pkg ->
     find_and_acknowledge_meta t ~fq_name:pkg)
 
 let all_packages t =
@@ -353,7 +365,7 @@ let all_packages t =
     match x with
     | Ok    p -> p :: acc
     | Error _ -> acc)
-  |> List.sort ~compare:(fun (a : Package.t) b -> String.compare a.name b.name)
+  |> List.sort ~compare:(fun (a : Package.t) b -> Lib_name.compare a.name b.name)
 
 let create ~stdlib_dir ~path =
   { stdlib_dir
@@ -368,4 +380,4 @@ let all_unavailable_packages t =
     match x with
     | Ok    _ -> acc
     | Error e -> ((name, e) :: acc))
-  |> List.sort ~compare:(fun (a, _) (b, _) -> String.compare a b)
+  |> List.sort ~compare:(fun (a, _) (b, _) -> Lib_name.compare a b)

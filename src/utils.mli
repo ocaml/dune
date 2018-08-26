@@ -19,7 +19,7 @@ val describe_target : Path.t -> string
     library should be stored. *)
 val library_object_directory
   :  dir:Path.t
-  -> string
+  -> Lib_name.Local.t
   -> Path.t
 
 (** Return the directory where the object files for the given

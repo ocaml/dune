@@ -38,82 +38,6 @@ let module_name =
 
 let module_names = list module_name >>| String.Set.of_list
 
-module Lib_name : sig
-  type t
-
-  type result =
-    | Ok of t
-    | Warn of t
-    | Invalid
-
-  val invalid_message : string
-
-  val to_string : t -> string
-
-  val of_string : string -> result
-
-  val validate : (Loc.t * result) -> wrapped:bool -> t
-
-  val dparse : (Loc.t * result) Dsexp.Of_sexp.t
-end = struct
-  type t = string
-
-  let invalid_message =
-    "invalid library name.\n\
-     Hint: library names must be non-empty and composed only of \
-     the following characters: 'A'..'Z',  'a'..'z', '_'  or '0'..'9'"
-
-  let wrapped_message =
-    sprintf
-      "%s.\n\
-       This is temporary allowed for libraries with (wrapped false).\
-       \nIt will not be supported in the future. \
-       Please choose a valid name field."
-      invalid_message
-
-  type result =
-    | Ok of t
-    | Warn of t
-    | Invalid
-
-  let validate (loc, res) ~wrapped =
-    match res, wrapped with
-    | Ok s, _ -> s
-    | Warn _, true -> Errors.fail loc "%s" wrapped_message
-    | Warn s, false -> Errors.warn loc "%s" wrapped_message; s
-    | Invalid, _ -> Errors.fail loc "%s" invalid_message
-
-  let valid_char = function
-    | 'A'..'Z' | 'a'..'z' | '_' | '0'..'9' -> true
-    | _ -> false
-
-  let to_string s = s
-
-  let of_string name =
-    match name with
-    | "" -> Invalid
-    | s ->
-      if s.[0] = '.' then
-        Invalid
-      else
-        let len = String.length s in
-        let rec loop warn i =
-          if i = len - 1 then
-            if warn then Warn s else Ok s
-          else
-            let c = String.unsafe_get s i in
-            if valid_char c then
-              loop warn (i + 1)
-            else if c = '.' then
-              loop true (i + 1)
-            else
-              Invalid
-        in
-        loop false 0
-
-  let dparse = plain_string (fun ~loc s -> (loc, of_string s))
-end
-
 let file =
   plain_string (fun ~loc s ->
     match s with
@@ -230,20 +154,23 @@ module Pkg = struct
 end
 
 module Pp : sig
-  type t = private string
+  type t = private Lib_name.t
   val of_string : string -> t
   val to_string : t -> string
   val compare : t -> t -> Ordering.t
+  val to_lib_name : t -> Lib_name.t
 end = struct
-  type t = string
+  type t = Lib_name.t
+
+  let to_lib_name s = s
 
   let of_string s =
     assert (not (String.is_prefix s ~prefix:"-"));
-    s
+    Lib_name.of_string_exn s
 
-  let to_string t = t
+  let to_string = Lib_name.to_string
 
-  let compare = String.compare
+  let compare = Lib_name.compare
 end
 
 module Pps_and_flags = struct
@@ -591,8 +518,8 @@ end
 
 module Lib_dep = struct
   type choice =
-    { required  : String.Set.t
-    ; forbidden : String.Set.t
+    { required  : Lib_name.Set.t
+    ; forbidden : Lib_name.Set.t
     ; file      : string
     }
 
@@ -603,7 +530,7 @@ module Lib_dep = struct
     }
 
   type t =
-    | Direct of (Loc.t * string)
+    | Direct of (Loc.t * Lib_name.t)
     | Select of select
 
   let choice =
@@ -614,9 +541,9 @@ module Lib_dep = struct
           ~before:(let%map s = string in
                    let len = String.length s in
                    if len > 0 && s.[0] = '!' then
-                     Right (String.drop s 1)
+                     Right (Lib_name.of_string_exn (String.drop s 1))
                    else
-                     Left s)
+                     Left (Lib_name.of_string_exn s))
           ~after:file
       in
       match file with
@@ -625,21 +552,21 @@ module Lib_dep = struct
       | Some file ->
         let rec loop required forbidden = function
           | [] ->
-            let common = String.Set.inter required forbidden in
-            Option.iter (String.Set.choose common) ~f:(fun name ->
+            let common = Lib_name.Set.inter required forbidden in
+            Option.iter (Lib_name.Set.choose common) ~f:(fun name ->
               of_sexp_errorf loc
                 "library %S is both required and forbidden in this clause"
-                name);
+                (Lib_name.to_string name));
             { required
             ; forbidden
             ; file
             }
           | Left s :: l ->
-            loop (String.Set.add required s) forbidden l
+            loop (Lib_name.Set.add required s) forbidden l
           | Right s :: l ->
-            loop required (String.Set.add forbidden s) l
+            loop required (Lib_name.Set.add forbidden s) l
         in
-        loop String.Set.empty String.Set.empty preds)
+        loop Lib_name.Set.empty Lib_name.Set.empty preds)
 
   let dparse =
     if_list
@@ -651,18 +578,20 @@ module Lib_dep = struct
            and () = keyword "from"
            and choices = repeat choice in
            Select { result_fn; choices; loc }))
-      ~else_:(plain_string (fun ~loc s -> Direct (loc, s)))
+      ~else_:(
+        let%map (loc, name) = located Lib_name.dparse in
+        Direct (loc, name))
 
   let to_lib_names = function
     | Direct (_, s) -> [s]
     | Select s ->
-      List.fold_left s.choices ~init:String.Set.empty ~f:(fun acc x ->
-        String.Set.union acc (String.Set.union x.required x.forbidden))
-      |> String.Set.to_list
+      List.fold_left s.choices ~init:Lib_name.Set.empty ~f:(fun acc x ->
+        Lib_name.Set.union acc (Lib_name.Set.union x.required x.forbidden))
+      |> Lib_name.Set.to_list
 
   let direct x = Direct x
 
-  let of_pp (loc, pp) = Direct (loc, Pp.to_string pp)
+  let of_pp (loc, pp) = Direct (loc, Pp.to_lib_name pp)
 end
 
 module Lib_deps = struct
@@ -678,36 +607,37 @@ module Lib_deps = struct
     and t = repeat Lib_dep.dparse
     in
     let add kind name acc =
-      match String.Map.find acc name with
-      | None -> String.Map.add acc name kind
+      match Lib_name.Map.find acc name with
+      | None -> Lib_name.Map.add acc name kind
       | Some kind' ->
         match kind, kind' with
         | Required, Required ->
-          of_sexp_errorf loc "library %S is present twice" name
+          of_sexp_errorf loc "library %S is present twice"
+            (Lib_name.to_string name)
         | (Optional|Forbidden), (Optional|Forbidden) ->
           acc
         | Optional, Required | Required, Optional ->
           of_sexp_errorf loc
             "library %S is present both as an optional \
              and required dependency"
-            name
+            (Lib_name.to_string name)
         | Forbidden, Required | Required, Forbidden ->
           of_sexp_errorf loc
             "library %S is present both as a forbidden \
              and required dependency"
-            name
+            (Lib_name.to_string name)
     in
     ignore (
-      List.fold_left t ~init:String.Map.empty ~f:(fun acc x ->
+      List.fold_left t ~init:Lib_name.Map.empty ~f:(fun acc x ->
         match x with
         | Lib_dep.Direct (_, s) -> add Required s acc
         | Select { choices; _ } ->
           List.fold_left choices ~init:acc ~f:(fun acc c ->
             let acc =
-              String.Set.fold c.Lib_dep.required ~init:acc ~f:(add Optional)
+              Lib_name.Set.fold c.Lib_dep.required ~init:acc ~f:(add Optional)
             in
-            String.Set.fold c.forbidden ~init:acc ~f:(add Forbidden)))
-      : kind String.Map.t);
+            Lib_name.Set.fold c.forbidden ~init:acc ~f:(add Forbidden)))
+      : kind Lib_name.Map.t);
     t
 
   let dparse = parens_removed_in_dune dparse
@@ -721,9 +651,9 @@ module Lib_deps = struct
        | Lib_dep.Direct (_, s) -> [(s, kind)]
        | Select { choices; _ } ->
          List.concat_map choices ~f:(fun c ->
-           String.Set.to_list c.Lib_dep.required
+           Lib_name.Set.to_list c.Lib_dep.required
            |> List.map ~f:(fun d -> (d, Lib_deps_info.Kind.Optional))))
-     |> String.Map.of_list_reduce ~f:Lib_deps_info.Kind.merge
+     |> Lib_name.Map.of_list_reduce ~f:Lib_deps_info.Kind.merge
 end
 
 module Buildable = struct
@@ -786,7 +716,7 @@ end
 
 module Public_lib = struct
   type t =
-    { name    : Loc.t * string
+    { name    : Loc.t * Lib_name.t
     ; package : Package.t
     ; sub_dir : string option
     }
@@ -796,25 +726,23 @@ module Public_lib = struct
   let public_name_field =
     map_validate
       (let%map project = Dune_project.get_exn ()
-       and loc_name = field_o "public_name" (located string) in
+       and loc_name = field_o "public_name" (located Lib_name.dparse) in
        (project, loc_name))
       ~f:(fun (project, loc_name) ->
         match loc_name with
         | None -> Ok None
         | Some ((_, s) as loc_name) ->
-          match String.split s ~on:'.' with
-          | [] -> assert false
-          | pkg :: rest ->
-            match Pkg.resolve project (Package.Name.of_string pkg) with
-            | Ok pkg ->
-              Ok (Some
-                    { package = pkg
-                    ; sub_dir =
-                        if rest = [] then None else
-                          Some (String.concat rest ~sep:"/")
-                    ; name    = loc_name
-                    })
-            | Error _ as e -> e)
+          let (pkg, rest) = Lib_name.split s in
+          match Pkg.resolve project pkg with
+          | Ok pkg ->
+            Ok (Some
+                  { package = pkg
+                  ; sub_dir =
+                      if rest = [] then None else
+                        Some (String.concat rest ~sep:"/")
+                  ; name    = loc_name
+                  })
+          | Error _ as e -> e)
 end
 
 module Sub_system_info = struct
@@ -919,11 +847,11 @@ module Library = struct
   end
 
   type t =
-    { name                     : string
+    { name                     : Lib_name.Local.t
     ; public                   : Public_lib.t option
     ; synopsis                 : string option
     ; install_c_headers        : string list
-    ; ppx_runtime_libraries    : (Loc.t * string) list
+    ; ppx_runtime_libraries    : (Loc.t * Lib_name.t) list
     ; modes                    : Mode_conf.Set.t
     ; kind                     : Kind.t
     ; c_flags                  : Ordered_set_lang.Unexpanded.t
@@ -933,7 +861,7 @@ module Library = struct
     ; library_flags            : Ordered_set_lang.Unexpanded.t
     ; c_library_flags          : Ordered_set_lang.Unexpanded.t
     ; self_build_stubs_archive : string option
-    ; virtual_deps             : (Loc.t * string) list
+    ; virtual_deps             : (Loc.t * Lib_name.t) list
     ; wrapped                  : bool
     ; optional                 : bool
     ; buildable                : Buildable.t
@@ -948,13 +876,13 @@ module Library = struct
     record
       (let%map buildable = Buildable.dparse
        and loc = loc
-       and name = field_o "name" Lib_name.dparse
+       and name = field_o "name" Lib_name.Local.dparse_loc
        and public = Public_lib.public_name_field
        and synopsis = field_o "synopsis" string
        and install_c_headers =
          field "install_c_headers" (list string) ~default:[]
        and ppx_runtime_libraries =
-         field "ppx_runtime_libraries" (list (located string)) ~default:[]
+         field "ppx_runtime_libraries" (list (located Lib_name.dparse)) ~default:[]
        and c_flags = field_oslu "c_flags"
        and cxx_flags = field_oslu "cxx_flags"
        and c_names = field "c_names" (list c_name) ~default:[]
@@ -962,7 +890,7 @@ module Library = struct
        and library_flags = field_oslu "library_flags"
        and c_library_flags = field_oslu "c_library_flags"
        and virtual_deps =
-         field "virtual_deps" (list (located string)) ~default:[]
+         field "virtual_deps" (list (located Lib_name.dparse)) ~default:[]
        and modes = field "modes" Mode_conf.Set.dparse ~default:Mode_conf.Set.default
        and kind = field "kind" Kind.dparse ~default:Kind.Normal
        and wrapped = field "wrapped" bool ~default:true
@@ -981,19 +909,18 @@ module Library = struct
          let open Syntax.Version.Infix in
          match name, public with
          | Some n, _ ->
-           Lib_name.validate n ~wrapped
-           |> Lib_name.to_string
+           Lib_name.Local.validate n ~wrapped
          | None, Some { name = (loc, name) ; _ }  ->
            if dune_version >= (1, 1) then
-             match Lib_name.of_string name with
-             | Ok m -> Lib_name.to_string m
+             match Lib_name.to_local name with
+             | Ok m -> m
              | Warn _ | Invalid ->
                of_sexp_errorf loc
                  "%s.\n\
                   Public library names don't have this restriction. \
                   You can either change this public name to be a valid library \
                   name or add a \"name\" field with a valid library name."
-                 Lib_name.invalid_message
+                 Lib_name.Local.invalid_message
            else
              of_sexp_error loc "name field cannot be omitted before version \
                                 1.1 of the dune language"
@@ -1036,17 +963,19 @@ module Library = struct
     | _            -> true
 
   let stubs_archive t ~dir ~ext_lib =
-    Path.relative dir (sprintf "lib%s_stubs%s" t.name ext_lib)
+    Path.relative dir (sprintf "lib%s_stubs%s"
+                         (Lib_name.Local.to_string t.name) ext_lib)
 
   let dll t ~dir ~ext_dll =
-    Path.relative dir (sprintf "dll%s_stubs%s" t.name ext_dll)
+    Path.relative dir (sprintf "dll%s_stubs%s"
+                         (Lib_name.Local.to_string t.name) ext_dll)
 
   let archive t ~dir ~ext =
-    Path.relative dir (t.name ^ ext)
+    Path.relative dir (Lib_name.Local.to_string t.name ^ ext)
 
   let best_name t =
     match t.public with
-    | None -> t.name
+    | None -> Lib_name.of_local t.name
     | Some p -> snd p.name
 end
 

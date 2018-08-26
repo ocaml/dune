@@ -71,16 +71,16 @@ let build_system t = t.build_system
 let host t = Option.value t.host ~default:t
 
 let internal_lib_names t =
-  List.fold_left t.stanzas ~init:String.Set.empty
+  List.fold_left t.stanzas ~init:Lib_name.Set.empty
     ~f:(fun acc { Dir_with_jbuild. stanzas; _ } ->
       List.fold_left stanzas ~init:acc ~f:(fun acc -> function
         | Library lib ->
-          String.Set.add
+          Lib_name.Set.add
             (match lib.public with
              | None -> acc
              | Some { name = (_, name); _ } ->
-               String.Set.add acc name)
-            lib.name
+               Lib_name.Set.add acc name)
+            (Lib_name.of_local lib.name)
         | _ -> acc))
 
 let public_libs    t = t.public_libs
@@ -235,13 +235,13 @@ end = struct
 
     let empty () =
       { failures  = []
-      ; lib_deps  = String.Map.empty
+      ; lib_deps  = Lib_name.Map.empty
       ; sdeps     = Path.Set.empty
       ; ddeps     = String.Map.empty
       }
 
     let add_lib_dep acc lib kind =
-      acc.lib_deps <- String.Map.add acc.lib_deps lib kind
+      acc.lib_deps <- Lib_name.Map.add acc.lib_deps lib kind
 
     let add_fail acc fail =
       acc.failures <- fail :: acc.failures;
@@ -261,7 +261,7 @@ end = struct
     match String.lsplit2 s ~on:':' with
     | None ->
       Errors.fail loc "invalid %%{lib:...} form: %s" s
-    | Some x -> x
+    | Some (lib, f) -> (Lib_name.of_string_exn lib, f)
 
   open Build.O
 
@@ -330,7 +330,7 @@ end = struct
               end
           end
         | Macro (Lib_available, s) -> begin
-            let lib = s in
+            let lib = Lib_name.of_string_exn s in
             Resolved_forms.add_lib_dep acc lib Optional;
             Some (str_exp (string_of_bool (
               Lib.DB.available (Scope.libs scope) lib)))
@@ -540,7 +540,8 @@ let create
         List.filter_map stanzas ~f:(fun stanza ->
           let keep =
             match (stanza : Stanza.t) with
-            | Library lib -> Lib.DB.available (Scope.libs scope) lib.name
+            | Library lib ->
+              Lib.DB.available (Scope.libs scope) (Lib_name.of_local lib.name)
             | Documentation _
             | Install _   -> true
             | _           -> false
@@ -696,7 +697,7 @@ module Libs = struct
     prefix_rules t prefix ~f
 
   let lib_files_alias ~dir ~name ~ext =
-    Alias.make (sprintf "lib-%s%s-all" name ext) ~dir
+    Alias.make (sprintf "lib-%s%s-all" (Lib_name.to_string name) ext) ~dir
 
   let setup_file_deps_alias t ~dir ~ext lib files =
     add_alias_deps t

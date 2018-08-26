@@ -13,6 +13,6 @@ module Kind : sig
   val merge : t -> t -> t
 end
 
-type t = Kind.t String.Map.t
+type t = Kind.t Lib_name.Map.t
 
 val merge : t -> t -> t

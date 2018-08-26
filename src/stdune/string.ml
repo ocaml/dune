@@ -249,11 +249,7 @@ let drop s n =
 
 let split_n s n =
   let len = length s in
-  if n > len then
-    Exn.code_error "String.split_n"
-      [ "s", Sexp.Atom s
-      ; "n", Sexp.Atom (string_of_int n)
-      ];
+  let n = min n len in
   ( sub s ~pos:0 ~len:n
   , sub s ~pos:n ~len:(len - n)
   )

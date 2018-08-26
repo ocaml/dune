@@ -57,11 +57,7 @@ String.split_n "foobar" 3;;
 
 String.split_n "foobar" 10;;
 [%%expect{|
-Exception:
-Code_error
- (List
-   [Atom "String.split_n"; List [Atom "s"; Atom "foobar"];
-    List [Atom "n"; Atom "10"]]).
+- : string * string = ("foobar", "")
 |}]
 
 String.split_n "foobar" 0;;
@@ -81,9 +77,5 @@ String.split_n "" 0;;
 
 String.split_n "" 10;;
 [%%expect{|
-Exception:
-Code_error
- (List
-   [Atom "String.split_n"; List [Atom "s"; Atom ""];
-    List [Atom "n"; Atom "10"]]).
+- : string * string = ("", "")
 |}]

@@ -17,7 +17,7 @@ val dir : t -> Path.t
 val text_files : t -> String.Set.t
 
 module Library_modules : sig
-  type t =
+  type t = private
     { modules          : Module.t Module.Name.Map.t
     ; alias_module     : Module.t option
     ; main_module_name : Module.Name.t
@@ -42,7 +42,7 @@ val mlds : t -> Dune_file.Documentation.t -> Path.t list
 
 val get : Super_context.t -> dir:Path.t -> t
 
-type kind =
+type kind = private
   | Standalone
   | Group_root of t list Lazy.t (** Sub-directories part of the group *)
   | Group_part of t

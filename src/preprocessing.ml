@@ -356,13 +356,7 @@ let ppx_driver_exe sctx libs ~dir_kind =
       | None  , Some _ -> scope_for_key
       | None  , None   -> None)
   in
-  let key =
-    match names with
-    | [] -> "+none+"
-    | _  ->
-      List.map names ~f:Lib_name.to_string
-      |> String.concat ~sep:"+"
-  in
+  let key = Lib_name.L.to_key names in
   let key =
     match scope_for_key with
     | None            -> key

@@ -34,8 +34,7 @@ module Pub_name = struct
 end
 
 let string_of_deps deps =
-  Lib_name.Set.to_list deps
-  |> List.map ~f:Lib_name.to_string
+  Lib_name.Set.to_string_list deps
   |> String.concat ~sep:" "
 
 let rule var predicates action value =

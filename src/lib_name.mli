@@ -49,8 +49,15 @@ val package_name : t -> Package.Name.t
 val root_lib : t -> t
 
 module Map : Map.S with type key = t
-module Set : Set.S with type elt = t
+module Set : sig
+  include Set.S with type elt = t
+  val to_string_list : t -> string list
+end
 
 val to_sexp : t Sexp.To_sexp.t
 
 val nest : t -> t -> t
+
+module L : sig
+  val to_key : t list -> string
+end

@@ -101,7 +101,11 @@ let of_local t = t
 type t = string
 
 module Map = Map.Make(String)
-module Set = Set.Make(String)
+module Set = struct
+  include Set.Make(String)
+
+  let to_string_list = to_list
+end
 
 let root_lib t =
   match String.lsplit2 t ~on:'.' with
@@ -112,3 +116,9 @@ let package_name t =
   Package.Name.of_string (root_lib t)
 
 let nest x y = sprintf "%s.%s" x y
+
+module L = struct
+  let to_key = function
+    | [] -> "+none+"
+    | names  -> String.concat ~sep:"+" names
+end

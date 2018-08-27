@@ -48,3 +48,5 @@ val includes             : t -> string list Arg_spec.t Cm_kind.Dict.t
 val preprocessing        : t -> Preprocessing.t
 val no_keep_locs         : t -> bool
 val opaque               : t -> bool
+
+val set_modules : t -> Module.t Module.Name.Map.t -> t

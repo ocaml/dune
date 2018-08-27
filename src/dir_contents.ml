@@ -168,6 +168,7 @@ module Library_modules : sig
     { modules          : Module.t Module.Name.Map.t
     ; alias_module     : Module.t option
     ; main_module_name : Module.Name.t
+    ; deprecated       : Module.t Module.Name.Map.t
     }
 
   val make : Library.t -> dir:Path.t -> Module.t Module.Name.Map.t -> t
@@ -176,25 +177,32 @@ end = struct
     { modules          : Module.t Module.Name.Map.t
     ; alias_module     : Module.t option
     ; main_module_name : Module.Name.t
+    ; deprecated       : Module.t Module.Name.Map.t
     }
 
   let make (lib : Library.t) ~dir (modules : Module.t Module.Name.Map.t) =
     let main_module_name =
       Module.Name.of_string (Lib_name.Local.to_string lib.name) in
-    let modules =
-      if not lib.wrapped then
-        modules
-      else
+    let (modules, deprecated) =
+      let wrap_modules modules =
         let open Module.Name.Infix in
-        Module.Name.Map.map modules ~f:(fun m ->
+        Module.Name.Map.map modules ~f:(fun (m : Module.t) ->
           if m.name = main_module_name then
             m
           else
             Module.with_wrapper m ~libname:lib.name)
+      in
+      match lib.wrapped with
+      | Simple false -> (modules, Module.Name.Map.empty)
+      | Simple true -> (wrap_modules modules, Module.Name.Map.empty)
+      | Yes_with_transition _ ->
+        ( wrap_modules modules
+        , Module.Name.Map.map ~f:Module.deprecate modules
+        )
     in
     let alias_module =
       let lib_name = Lib_name.Local.to_string lib.name in
-      if not lib.wrapped ||
+      if not (Library.Wrapped.to_bool lib.wrapped) ||
          (Module.Name.Map.cardinal modules = 1 &&
           Module.Name.Map.mem modules main_module_name) then
         None
@@ -215,7 +223,7 @@ end = struct
                       (Path.relative dir (lib_name ^ ".ml-gen")))
              ~obj_name:lib_name)
     in
-    { modules; alias_module; main_module_name }
+    { modules; alias_module; main_module_name; deprecated }
 end
 
 module Executables_modules = struct

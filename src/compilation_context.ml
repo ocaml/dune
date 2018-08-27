@@ -105,3 +105,6 @@ let for_alias_module t =
   ; includes     = Includes.empty
   ; alias_module = None
   }
+
+let set_modules t modules =
+  { t with modules }

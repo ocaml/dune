@@ -113,15 +113,15 @@ let link_rule cc ~runtime ~target =
     ; Arg_spec.Dyn get_all
     ]
 
-let build_cm cc ~(js_of_ocaml:Dune_file.Js_of_ocaml.t) ~src ~target =
-  let sctx = Compilation_context.super_context cc in
-  let dir = Compilation_context.dir cc in
+let build_cm cctx ~(js_of_ocaml:Dune_file.Js_of_ocaml.t) ~src ~target =
+  let sctx = Compilation_context.super_context cctx in
+  let dir = Compilation_context.dir cctx in
   if separate_compilation_enabled sctx
   then
     let itarget = Path.extend_basename src ~suffix:".js" in
     let spec = Arg_spec.Dep src in
     let flags =
-      let scope = Compilation_context.scope cc in
+      let scope = Compilation_context.scope cctx in
       SC.expand_and_eval_set sctx ~scope ~dir js_of_ocaml.flags
         ~standard:(Build.return (standard sctx))
     in

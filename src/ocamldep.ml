@@ -51,6 +51,20 @@ module Dep_graph = struct
     { dir = Path.root
     ; per_module = Module.Name.Map.singleton m.name (Build.return [])
     }
+
+  let deprecated ~modules ~deprecated =
+    { dir = Path.root
+    ; per_module = Module.Name.Map.merge deprecated modules ~f:(fun _ d m ->
+        match d, m with
+        | None, None -> assert false
+        | Some deprecated, None ->
+          Exn.code_error "deprecated module needs counterpart"
+            [ "deprecated", Module.to_sexp deprecated
+            ]
+        | None, Some _ -> None
+        | Some _, Some m -> Some (Build.return [m])
+      )
+    }
 end
 
 module Dep_graphs = struct
@@ -58,6 +72,9 @@ module Dep_graphs = struct
 
   let dummy m =
     Ml_kind.Dict.make_both (Dep_graph.dummy m)
+
+  let deprecated ~modules ~deprecated =
+    Ml_kind.Dict.make_both (Dep_graph.deprecated ~modules ~deprecated)
 end
 
 let parse_module_names ~(unit : Module.t) ~modules words =

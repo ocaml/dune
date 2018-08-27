@@ -138,7 +138,8 @@ module Gen(P : Params) = struct
     let if_ cond l = if cond then l else [] in
     let files =
       let modules =
-        let { Dir_contents.Library_modules.modules; alias_module; _ } =
+        let { Dir_contents.Library_modules.modules; alias_module; deprecated
+            ; main_module_name = _ } =
           Dir_contents.modules_of_library dir_contents
             ~name:(Library.best_name lib)
         in
@@ -147,7 +148,9 @@ module Gen(P : Params) = struct
           | None -> modules
           | Some m -> Module.Name.Map.add modules m.name m
         in
-        Module.Name.Map.values modules
+        List.rev_append
+          (Module.Name.Map.values modules)
+          (Module.Name.Map.values deprecated)
       in
       let virtual_library = Library.is_virtual lib in
       List.concat

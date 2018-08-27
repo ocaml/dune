@@ -18,6 +18,11 @@ module Dep_graphs : sig
   type t = Dep_graph.t Ml_kind.Dict.t
 
   val dummy : Module.t -> t
+
+  val deprecated
+    :  modules:Module.t Module.Name.Map.t
+    -> deprecated:Module.t Module.Name.Map.t
+    -> t
 end
 
 (** Generate ocamldep rules for all the modules in the context. *)

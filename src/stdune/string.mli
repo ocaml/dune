@@ -10,9 +10,14 @@ val is_empty : t -> bool
 val is_prefix : t -> prefix:t -> bool
 val is_suffix : t -> suffix:t -> bool
 
-val drop_prefix : t -> prefix:t -> t option
+val take : t -> int -> t
+val drop : t -> int -> t
+val split_n : t -> int -> t * t
 
-(** These only change ASCII charactes *)
+val drop_prefix : t -> prefix:t -> t option
+val drop_suffix : t -> suffix:t -> t option
+
+(** These only change ASCII characters *)
 val capitalize   : t -> t
 val uncapitalize : t -> t
 val uppercase    : t -> t

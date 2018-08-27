@@ -90,36 +90,30 @@ let parse_deps cctx ~file ~unit lines =
   match lines with
   | [] | _ :: _ :: _ -> invalid ()
   | [line] ->
-    match String.index line ':' with
+    match String.lsplit2 line ~on:':' with
     | None -> invalid ()
-    | Some i ->
-      let basename =
-        String.sub line ~pos:0 ~len:i
-        |> Filename.basename
-      in
+    | Some (basename, deps) ->
+      let basename = Filename.basename basename in
       if basename <> Path.basename file then invalid ();
       let deps =
-        String.extract_blank_separated_words
-          (String.sub line ~pos:(i + 1) ~len:(String.length line - (i + 1)))
+        String.extract_blank_separated_words deps
         |> parse_module_names ~unit ~modules
       in
-      (match lib_interface_module with
-       | None -> ()
-       | Some (m : Module.t) ->
-         let open Module.Name.Infix in
-         if unit.name <> m.name && not (is_alias_module cctx unit) &&
-            List.exists deps ~f:(fun x -> Module.name x = m.name) then
-           die "Module %a in directory %s depends on %a.\n\
-                This doesn't make sense to me.\n\
-                \n\
-                %a is the main module of the library and is \
-                the only module exposed \n\
-                outside of the library. Consequently, it should \
-                be the one depending \n\
-                on all the other modules in the library."
-             Module.Name.pp unit.name (Path.to_string dir)
-             Module.Name.pp m.name
-             Module.Name.pp m.name);
+      Option.iter lib_interface_module ~f:(fun (m : Module.t) ->
+        let open Module.Name.Infix in
+        if unit.name <> m.name && not (is_alias_module cctx unit) &&
+           List.exists deps ~f:(fun x -> Module.name x = m.name) then
+          die "Module %a in directory %s depends on %a.\n\
+               This doesn't make sense to me.\n\
+               \n\
+               %a is the main module of the library and is \
+               the only module exposed \n\
+               outside of the library. Consequently, it should \
+               be the one depending \n\
+               on all the other modules in the library."
+            Module.Name.pp unit.name (Path.to_string dir)
+            Module.Name.pp m.name
+            Module.Name.pp m.name);
       match alias_module with
       | None -> deps
       | Some m -> m :: deps

@@ -169,7 +169,7 @@ let go ?(log=Log.no_log) ?(config=Config.default)
              String.drop_prefix p ~prefix:of_
            with
            | None | Some "" -> None
-           | Some s -> Some (String.sub s ~pos:1 ~len:(String.length s - 1))
+           | Some s -> Some (String.drop s 1)
          in
          match descendant_simple cwd ~of_:initial_cwd with
          | Some s -> s

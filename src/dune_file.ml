@@ -614,8 +614,7 @@ module Lib_dep = struct
           ~before:(let%map s = string in
                    let len = String.length s in
                    if len > 0 && s.[0] = '!' then
-                     let s = String.sub s ~pos:1 ~len:(len - 1) in
-                     Right s
+                     Right (String.drop s 1)
                    else
                      Left s)
           ~after:file
@@ -1145,9 +1144,8 @@ module Executables = struct
       let is_ok (_, candidate) =
         compare candidate link_mode = Eq
       in
-      match List.find ~f:is_ok simple_representations with
-      | Some (s, _) -> Some (Dsexp.unsafe_atom_of_string s)
-      | None -> None
+      List.find ~f:is_ok simple_representations
+      |> Option.map ~f:(fun (s, _) -> Dsexp.unsafe_atom_of_string s)
 
     let dgen link_mode =
       match simple_dgen link_mode with
@@ -1288,13 +1286,12 @@ module Executables = struct
           in
           List.map2 names public_names
             ~f:(fun (_, name) (_, pub) ->
-              match pub with
-              | None -> None
-              | Some pub -> Some ({ Install_conf.
-                                    src = name ^ ext
-                                  ; dst = Some pub
-                                  }))
-          |> List.filter_map ~f:(fun x -> x)
+              Option.map pub ~f:(fun pub ->
+                { Install_conf.
+                  src = name ^ ext
+                ; dst = Some pub
+                }))
+          |> List.filter_opt
       in
       match to_install with
       | [] -> begin

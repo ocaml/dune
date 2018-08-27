@@ -37,8 +37,7 @@ let extension_start =
 
 let split_extension fn =
   let i = extension_start fn in
-  (String.sub fn ~pos:0 ~len:i,
-   String.sub fn ~pos:i ~len:(String.length fn - i))
+  String.split_n fn i
 
 let split_extension_after_dot fn =
   let i = extension_start fn + 1 in
@@ -46,12 +45,10 @@ let split_extension_after_dot fn =
   if i > len then
     (fn, "")
   else
-    (String.sub fn ~pos:0 ~len:i,
-     String.sub fn ~pos:i ~len:(String.length fn - i))
+    String.split_n fn i
 
 let extension fn =
-  let i = extension_start fn in
-  String.sub fn ~pos:i ~len:(String.length fn - i)
+  String.drop fn (extension_start fn)
 
 type program_name_kind =
   | In_path

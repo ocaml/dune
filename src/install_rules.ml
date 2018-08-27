@@ -102,8 +102,7 @@ module Gen(P : Params) = struct
              List.iter template ~f:(fun s ->
                if String.is_prefix s ~prefix:"#" then
                  match
-                   String.extract_blank_separated_words
-                     (String.sub s ~pos:1 ~len:(String.length s - 1))
+                   String.extract_blank_separated_words (String.drop s 1)
                  with
                  | ["JBUILDER_GEN" | "DUNE_GEN"] ->
                    Format.fprintf ppf "%a@," Meta.pp meta.entries

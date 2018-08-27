@@ -260,7 +260,7 @@ let run_internal ?dir ?(stdout_to=Terminal) ?(stderr_to=Terminal) ~env ~purpose
   close_std_output close_stdout;
   close_std_output close_stderr;
   Scheduler.wait_for_process pid
-  >>| fun status ->
+  >>| fun exit_status ->
   let output =
     match output_filename with
     | None -> ""
@@ -273,13 +273,10 @@ let run_internal ?dir ?(stdout_to=Terminal) ?(stderr_to=Terminal) ~env ~purpose
       else
         s
   in
-  Log.command (Scheduler.log scheduler)
-    ~command_line:command_line
-    ~output:output
-    ~exit_status:status;
+  Log.command (Scheduler.log scheduler) ~command_line ~output ~exit_status;
   let _, progname, _ = Fancy.split_prog prog in
   let print fmt = Errors.kerrf ~f:(Scheduler.print scheduler) fmt in
-  match status with
+  match exit_status with
   | WEXITED n when code_is_ok ok_codes n ->
     if display = Verbose then begin
       if output <> "" then

@@ -163,7 +163,15 @@ end = struct
     modules
 end
 
-module Library_modules = struct
+module Library_modules : sig
+  type t = private
+    { modules          : Module.t Module.Name.Map.t
+    ; alias_module     : Module.t option
+    ; main_module_name : Module.Name.t
+    }
+
+  val make : Library.t -> dir:Path.t -> Module.t Module.Name.Map.t -> t
+end = struct
   type t =
     { modules          : Module.t Module.Name.Map.t
     ; alias_module     : Module.t option

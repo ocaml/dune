@@ -582,14 +582,12 @@ let installed_libraries =
        let ctx = List.hd ctxs in
        let findlib = ctx.findlib in
        if na then begin
-         let pkgs =
-           Findlib.all_unavailable_packages findlib
-           |> List.map ~f:(fun (l, e) -> (Lib_name.to_string l, e))
-         in
-         let longest = String.longest_map pkgs ~f:fst in
+         let pkgs = Findlib.all_unavailable_packages findlib in
+         let longest =
+           String.longest_map pkgs ~f:(fun (n, _) -> Lib_name.to_string n) in
          let ppf = Format.std_formatter in
          List.iter pkgs ~f:(fun (n, r) ->
-           Format.fprintf ppf "%-*s -> %a@\n" longest n
+           Format.fprintf ppf "%-*s -> %a@\n" longest (Lib_name.to_string n)
              Findlib.Unavailable_reason.pp r);
          Format.pp_print_flush ppf ();
          Fiber.return ()

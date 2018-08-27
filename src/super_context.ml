@@ -765,7 +765,7 @@ module Deps = struct
       Alias.dep (Alias.package_install ~context:t.context ~pkg)
       >>^ fun () -> []
     | Universe ->
-      Build.path Build_system.universe_file
+      Build.path universe_file
       >>^ fun () -> []
 
   let interpret t ~scope ~dir l =

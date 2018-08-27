@@ -5,11 +5,15 @@ module Partition = struct
     type t =
       | Project of Dune_project.Name.t
       | Target of Path.t
+      | Universe
 
     let compare a b =
       match a, b with
+      | Universe , Universe  -> Ordering.Eq
       | Project x, Project y -> Dune_project.Name.compare x y
       | Target  x, Target  y -> Path.compare x y
+      | Universe , _         -> Lt
+      | _        , Universe  -> Gt
       | Project _, Target  _ -> Lt
       | Target  _, Project _ -> Gt
 
@@ -21,13 +25,17 @@ module Partition = struct
   include T
 
   let for_target target ~file_tree =
-    match File_tree.project file_tree target with
-    | Some project -> Project (Dune_project.name project)
-    | None -> Target target
+    if Path.equal target universe_file then
+      Universe
+    else
+      match File_tree.project file_tree target with
+      | Some project -> Project (Dune_project.name project)
+      | None -> Target target
 
   let to_string_hum = function
     | Project project -> Dune_project.Name.to_string_hum project
-    | Target target -> Format.sprintf "<target: %s>" (Path.to_string target)
+    | Target target   -> Format.sprintf "<target: %s>" (Path.to_string target)
+    | Universe        -> "(universe)"
 
   module Set = struct
     include Set.Make (T)
@@ -147,6 +155,10 @@ let compute_own_digest partitions ~projects ~file_tree =
           (Dune_project.Name.to_string_hum project))
     | Partition.Target _ ->
       (* Targets have no own digests, and are fully expressed by their deps. *)
+      acc
+    | Partition.Universe ->
+      (* (universe) should have a different digest every time. *)
+      Md5.update digest (Format.sprintf "%f" (Unix.gettimeofday ()));
       acc)
   |> List.sort ~compare:Path.compare
   |> List.iter ~f:(fun path ->
@@ -226,14 +238,14 @@ let compute_digests t root_partition ~projects ~file_tree =
         let all_deps =
           Table.find_or_add t.saved_deps partition ~f:(fun _ -> Set.empty)
         in
-        let project_deps = Partition.Set.filter all_deps ~f:(function
-          | Partition.Project _ -> true
+        let important_deps = Partition.Set.filter all_deps ~f:(function
+          | Partition.Project _ | Partition.Universe -> true
           | _ -> false)
         in
-        let target_deps = Partition.Set.diff all_deps project_deps in
+        let target_deps = Partition.Set.diff all_deps important_deps in
         let target_deps_count = Partition.Set.cardinal target_deps in
         Format.eprintf "\t [deps: %!";
-        Set.to_list project_deps
+        Set.to_list important_deps
         |> List.map ~f:Partition.to_string_hum
         |> String.concat ~sep:", "
         |> prerr_string;

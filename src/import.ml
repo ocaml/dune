@@ -90,3 +90,6 @@ module No_io = struct
 end
 
 let print_to_console = Errors.print_to_console
+
+(** File for the [(universe)] dependency. *)
+let universe_file = Path.relative Path.build_dir ".universe-state"

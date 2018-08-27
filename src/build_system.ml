@@ -1336,8 +1336,6 @@ let eval_request t ~request ~process_target =
        >>| fun () ->
        result)
 
-let universe_file = Path.relative Path.build_dir ".universe-state"
-
 let update_universe t =
   (* To workaround the fact that [mtime] is not precise enough on OSX *)
   Utils.Cached_digest.remove universe_file;

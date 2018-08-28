@@ -179,7 +179,8 @@ end = struct
     }
 
   let make (lib : Library.t) ~dir (modules : Module.t Module.Name.Map.t) =
-    let main_module_name = Module.Name.of_string lib.name in
+    let main_module_name =
+      Module.Name.of_string (Lib_name.Local.to_string lib.name) in
     let modules =
       if not lib.wrapped then
         modules
@@ -192,6 +193,7 @@ end = struct
             Module.with_wrapper m ~libname:lib.name)
     in
     let alias_module =
+      let lib_name = Lib_name.Local.to_string lib.name in
       if not lib.wrapped ||
          (Module.Name.Map.cardinal modules = 1 &&
           Module.Name.Map.mem modules main_module_name) then
@@ -204,14 +206,14 @@ end = struct
         Some
           (Module.make (Module.Name.add_suffix main_module_name "__")
              ~impl:(Module.File.make OCaml
-                      (Path.relative dir (sprintf "%s__.ml-gen" lib.name)))
-             ~obj_name:(lib.name ^ "__"))
+                      (Path.relative dir (sprintf "%s__.ml-gen" lib_name)))
+             ~obj_name:(lib_name ^ "__"))
       else
         Some
           (Module.make main_module_name
              ~impl:(Module.File.make OCaml
-                      (Path.relative dir (lib.name ^ ".ml-gen")))
-             ~obj_name:lib.name)
+                      (Path.relative dir (lib_name ^ ".ml-gen")))
+             ~obj_name:lib_name)
     in
     { modules; alias_module; main_module_name }
 end
@@ -221,14 +223,14 @@ module Executables_modules = struct
 end
 
 type modules =
-  { libraries : Library_modules.t String.Map.t
+  { libraries : Library_modules.t Lib_name.Map.t
   ; executables : Executables_modules.t String.Map.t
   ; (* Map from modules to the buildable they are part of *)
     rev_map : Buildable.t Module.Name.Map.t
   }
 
 let empty_modules =
-  { libraries = String.Map.empty
+  { libraries = Lib_name.Map.empty
   ; executables = String.Map.empty
   ; rev_map = Module.Name.Map.empty
   }
@@ -259,12 +261,12 @@ let text_files t = t.text_files
 
 let modules_of_library t ~name =
   let map = (Lazy.force t.modules).libraries in
-  match String.Map.find map name with
+  match Lib_name.Map.find map name with
   | Some m -> m
   | None ->
     Exn.code_error "Dir_contents.modules_of_library"
-      [ "name", Sexp.To_sexp.string name
-      ; "available", Sexp.To_sexp.(list string) (String.Map.keys map)
+      [ "name", Lib_name.to_sexp name
+      ; "available", Sexp.To_sexp.(list Lib_name.to_sexp) (Lib_name.Map.keys map)
       ]
 
 let modules_of_executables t ~first_exe =
@@ -383,14 +385,14 @@ let build_modules_map (d : Super_context.Dir_with_jbuild.t) ~modules =
   in
   let libraries =
     match
-      String.Map.of_list_map libs ~f:(fun (lib, m) -> Library.best_name lib, m)
+      Lib_name.Map.of_list_map libs ~f:(fun (lib, m) -> Library.best_name lib, m)
     with
     | Ok x -> x
     | Error (name, _, (lib2, _)) ->
       Errors.fail lib2.buildable.loc
-        "Library %S appears for the second time \
+        "Library %a appears for the second time \
          in this directory"
-        name
+        Lib_name.pp_quoted name
   in
   let executables =
     match

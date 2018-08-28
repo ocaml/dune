@@ -79,7 +79,7 @@ module DB = struct
         List.filter_map internal_libs ~f:(fun (_dir, lib) ->
           Option.map lib.public ~f:(fun p ->
             (Dune_file.Public_lib.name p, lib.project)))
-        |> String.Map.of_list
+        |> Lib_name.Map.of_list
         |> function
         | Ok x -> x
         | Error (name, _, _) ->
@@ -91,17 +91,17 @@ module DB = struct
           with
           | [] | [_] -> assert false
           | loc1 :: loc2 :: _ ->
-            die "Public library %S is defined twice:\n\
+            die "Public library %a is defined twice:\n\
                  - %s\n\
                  - %s"
-              name
+              Lib_name.pp_quoted name
               (Loc.to_file_colon_line loc1)
               (Loc.to_file_colon_line loc2)
       in
       Lib.DB.create ()
         ~parent:installed_libs
         ~resolve:(fun name ->
-          match String.Map.find public_libs name with
+          match Lib_name.Map.find public_libs name with
           | None -> Not_found
           | Some project ->
             let scope =
@@ -109,7 +109,7 @@ module DB = struct
                 (Project_name_map.find !by_name_cell (Dune_project.name project))
             in
             Redirect (Some scope.db, name))
-        ~all:(fun () -> String.Map.keys public_libs)
+        ~all:(fun () -> Lib_name.Map.keys public_libs)
     in
     let by_name =
       let build_context_dir = Path.relative Path.build_dir context in

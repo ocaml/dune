@@ -24,3 +24,5 @@ val record : (string * unit t) list t
 val tuple : 'a t -> 'b t -> ('a * 'b) t
 
 val nl : unit t
+
+val optional : 'a t -> 'a option t

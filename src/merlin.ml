@@ -70,7 +70,7 @@ type t =
   { requires   : Lib.Set.t
   ; flags      : (unit, string list) Build.t
   ; preprocess : Preprocess.t
-  ; libname    : string option
+  ; libname    : Lib_name.Local.t option
   ; source_dirs: Path.Set.t
   ; objs_dirs  : Path.Set.t
   }

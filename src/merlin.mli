@@ -9,7 +9,7 @@ val make
   :  ?requires:Lib.t list Or_exn.t
   -> ?flags:(unit, string list) Build.t
   -> ?preprocess:Dune_file.Preprocess.t
-  -> ?libname:string
+  -> ?libname:Lib_name.Local.t
   -> ?source_dirs: Path.Set.t
   -> ?objs_dirs:Path.Set.t
   -> unit

@@ -14,23 +14,20 @@ val create
 (** The search path for this DB *)
 val path : t -> Path.t list
 
-(** [root_package_name "foo.*"] is "foo" *)
-val root_package_name : string -> string
-
 module Package : sig
   (** Representation of a findlib package *)
   type t
 
   val meta_file        : t -> Path.t
-  val name             : t -> string
+  val name             : t -> Lib_name.t
   val dir              : t -> Path.t
   val version          : t -> string option
   val description      : t -> string option
   val archives         : t -> Path.t list Mode.Dict.t
   val plugins          : t -> Path.t list Mode.Dict.t
   val jsoo_runtime     : t -> Path.t list
-  val requires         : t -> string list
-  val ppx_runtime_deps : t -> string list
+  val requires         : t -> Lib_name.t list
+  val ppx_runtime_deps : t -> Lib_name.t list
   val dune_file        : t -> Path.t option
 end
 
@@ -46,18 +43,18 @@ module Unavailable_reason : sig
 end
 
 (** Lookup a package in the given database *)
-val find : t -> string -> (Package.t, Unavailable_reason.t) result
+val find : t -> Lib_name.t -> (Package.t, Unavailable_reason.t) result
 
-val available : t -> string -> bool
+val available : t -> Lib_name.t -> bool
 
 (** List all the packages available in this Database *)
 val all_packages  : t -> Package.t list
 
 (** List all the packages that are not available in this database *)
-val all_unavailable_packages : t -> (string * Unavailable_reason.t) list
+val all_unavailable_packages : t -> (Lib_name.t * Unavailable_reason.t) list
 
 (** A dummy package. This is used to implement [external-lib-deps] *)
-val dummy_package : t -> name:string -> Package.t
+val dummy_package : t -> name:Lib_name.t -> Package.t
 
 module Config : sig
   type t

@@ -87,7 +87,7 @@ val iter : t -> f:(Ml_kind.t -> File.t -> unit) -> unit
 val has_impl : t -> bool
 
 (** Prefix the object name with the library name. *)
-val with_wrapper : t -> libname:string -> t
+val with_wrapper : t -> libname:Lib_name.Local.t -> t
 
 val map_files : t -> f:(Ml_kind.t -> File.t -> File.t) -> t
 

@@ -1332,7 +1332,7 @@ let all_lib_deps t ~request =
   List.fold_left (rules_for_targets t targets) ~init:Path.Map.empty
     ~f:(fun acc rule ->
       let deps = Internal_rule.lib_deps rule in
-      if String.Map.is_empty deps then
+      if Lib_name.Map.is_empty deps then
         acc
       else
         let deps =
@@ -1347,7 +1347,7 @@ let all_lib_deps_by_context t ~request =
   let rules = rules_for_targets t targets in
   List.fold_left rules ~init:[] ~f:(fun acc rule ->
     let deps = Internal_rule.lib_deps rule in
-    if String.Map.is_empty deps then
+    if Lib_name.Map.is_empty deps then
       acc
     else
       match Path.extract_build_context rule.dir with
@@ -1356,7 +1356,7 @@ let all_lib_deps_by_context t ~request =
   |> String.Map.of_list_multi
   |> String.Map.filteri ~f:(fun ctx _ -> String.Map.mem t.contexts ctx)
   |> String.Map.map ~f:(function
-    | [] -> String.Map.empty
+    | [] -> Lib_name.Map.empty
     | x :: l -> List.fold_left l ~init:x ~f:Lib_deps_info.merge)
 
 module Rule = struct

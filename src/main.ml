@@ -133,8 +133,8 @@ let external_lib_deps ?log ~packages () =
      Path.Map.map
        (Build_system.all_lib_deps setup.build_system
           ~request:(Build.paths install_files))
-       ~f:(String.Map.filteri ~f:(fun name _ ->
-         not (String.Set.mem internals name))))
+       ~f:(Lib_name.Map.filteri ~f:(fun name _ ->
+         not (Lib_name.Set.mem internals name))))
 
 let ignored_during_bootstrap =
   Path.Set.of_list

@@ -156,7 +156,7 @@ let lib_deps =
       | Catch (t, _) -> loop t acc
       | Lazy_no_targets t -> loop (Lazy.force t) acc
   in
-  fun t -> loop (Build.repr t) String.Map.empty
+  fun t -> loop (Build.repr t) Lib_name.Map.empty
 
 let targets =
   let rec loop : type a b. (a, b) t -> Target.t list -> Target.t list = fun t acc ->

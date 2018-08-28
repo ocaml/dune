@@ -107,7 +107,7 @@ let describe_target fn =
     Path.to_string_maybe_quoted fn
 
 let library_object_directory ~dir name =
-  Path.relative dir ("." ^ name ^ ".objs")
+  Path.relative dir ("." ^ Lib_name.Local.to_string name ^ ".objs")
 
 (* Use "eobjs" rather than "objs" to avoid a potential conflict with a
    library of the same name *)

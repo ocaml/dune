@@ -12,7 +12,7 @@ module type S = sig
 
   (** Create an instance of the sub-system *)
   val instantiate
-    :  resolve:(Loc.t * string -> Lib.t Or_exn.t)
+    :  resolve:(Loc.t * Lib_name.t -> Lib.t Or_exn.t)
     -> get:(loc:Loc.t -> Lib.t -> t option)
     -> Lib.t
     -> Info.t
@@ -44,7 +44,7 @@ module type Registered_backend = sig
   val get : Lib.t -> t option
 
   (** Resolve a backend name *)
-  val resolve : Lib.DB.t -> Loc.t * string -> t Or_exn.t
+  val resolve : Lib.DB.t -> Loc.t * Lib_name.t -> t Or_exn.t
 
   module Selection_error : sig
     type nonrec t =
@@ -105,7 +105,7 @@ module type End_point = sig
     include Info
 
     (** Additional backends specified by the user at use-site *)
-    val backends : t -> (Loc.t * string) list option
+    val backends : t -> (Loc.t * Lib_name.t) list option
   end
 
   val gen_rules

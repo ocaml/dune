@@ -16,6 +16,8 @@ val of_cm_kind : Cm_kind.t -> t
 
 val variant : t -> Variant.t
 
+val pp : t Fmt.t
+
 module Dict : sig
   type mode = t
 

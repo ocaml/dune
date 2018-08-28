@@ -2,6 +2,7 @@ module type S = sig
   type t
   val compare : t -> t -> Ordering.t
   val to_string : t -> string
+  val pp: t Fmt.t
   val make : string -> t
   val get : string -> t option
   module Set : sig
@@ -119,6 +120,7 @@ module No_interning(R : Settings)() = struct
   let compare = String.compare
   let make s = s
   let to_string s = s
+  let pp fmt s = Format.fprintf fmt "%S" (to_string s)
   let get s = Some s
 
   module Set = struct

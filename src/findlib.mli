@@ -29,6 +29,8 @@ module Package : sig
   val requires         : t -> Lib_name.t list
   val ppx_runtime_deps : t -> Lib_name.t list
   val dune_file        : t -> Path.t option
+
+  val preds : Variant.Set.t
 end
 
 module Unavailable_reason : sig

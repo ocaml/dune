@@ -440,6 +440,24 @@ module L = struct
     loop [] l Int.Set.empty
 end
 
+module Lib_and_module = struct
+  type nonrec t =
+    | Lib of t
+    | Module of Module.t * Path.t (** obj_dir *)
+
+  let link_flags ts ~mode ~stdlib_dir =
+    let libs = List.filter_map ts ~f:(function Lib lib -> Some lib | Module _ -> None) in
+    Arg_spec.S
+      (L.c_include_flags libs ~stdlib_dir ::
+       List.map ts ~f:(function
+         | Lib t ->
+           Arg_spec.Deps (Mode.Dict.get t.info.archives mode)
+         | Module (m,obj_dir) ->
+           Dep (Module.cm_file_unsafe m ~obj_dir (Mode.cm_kind mode))
+       ))
+
+end
+
 (* +-----------------------------------------------------------------+
    | Sub-systems                                                     |
    +-----------------------------------------------------------------+ *)

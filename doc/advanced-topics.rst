@@ -57,6 +57,58 @@ set of predicates:
   it is linked as part of a driver or meant to add a ``-ppx`` argument
   to the compiler, choose the former behavior
 
+Dynamic loading of packages
+===========================
+
+Dune supports the ``findlib.dynload`` package from `findlib
+<http://projects.camlcity.org/projects/findlib.html>_` that allows to dynamically
+load packages and their dependencies (using OCaml Dynlink module).
+So adding the ability for an application to have plugins just requires
+to add ``findlib.dynload`` to the set of library dependencies:
+
+.. code:: scheme
+    (library
+      (name mytool)
+      (public_name mytool)
+      (modules ...)
+    )
+
+    (executable
+      (name main)
+      (public_name mytool)
+      (libraries mytool findlib.dynload)
+      (modules ...)
+    )
+
+
+Then you could use in your application ``Fl_dynload.load_packages l``
+that will load the list ``l`` of packages. The packages are loaded
+only once. So trying to load a package statically linked does nothing.
+
+A plugin creator just need to link to your library:
+
+.. code:: scheme
+    (library
+      (name mytool_plugin_a)
+      (public_name mytool-plugin-a)
+      (libraries mytool)
+    )
+
+By choosing some naming convention, for example all the plugins of
+``mytool`` should start with ``mytool-plugin-``. You can automatically
+load all the plugins installed for your tool by listing the existing packages:
+
+.. code:: ocaml
+    let () = Findlib.init ()
+    let () =
+      let pkgs = Fl_package_base.list_packages () in
+      let pkgs =
+        List.filter
+          (fun pkg -> 14 <= String.length pkg && String.sub pkg 0 14 = "mytool-plugin-")
+          pkgs
+      in
+      Fl_dynload.load_packages pkgs
+
 .. _advanced-cross-compilation:
 
 Cross Compilation

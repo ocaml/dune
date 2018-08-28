@@ -4,6 +4,7 @@ module type S = sig
   type t
   val compare : t -> t -> Ordering.t
   val to_string : t -> string
+  val pp : t Fmt.t
 
   val make : string -> t
 

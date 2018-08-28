@@ -207,6 +207,9 @@ let compute_digests t root_partition ~projects ~file_tree =
       Md5.update true_digest_md5 (Table.find_exn t.current_digests dep));
     let true_digest = Md5.compute true_digest_md5 in
     Set.iter component ~f:(fun partition ->
+      let all_saved_deps =
+        Table.find_or_add t.saved_deps partition ~f:(fun _ -> Set.empty)
+      in
       Table.replace t.current_digests ~key:partition ~data:true_digest;
       (match Table.find t.saved_digests partition with
        | Some saved_digest ->
@@ -235,22 +238,19 @@ let compute_digests t root_partition ~projects ~file_tree =
              (Partition.to_string_hum partition)
              (Digest.to_hex true_digest));
       if !Clflags.debug_partition_cache then begin
-        let all_deps =
-          Table.find_or_add t.saved_deps partition ~f:(fun _ -> Set.empty)
-        in
-        let important_deps = Partition.Set.filter all_deps ~f:(function
+        let important_deps = Partition.Set.filter all_saved_deps ~f:(function
           | Partition.Project _ | Partition.Universe -> true
           | _ -> false)
         in
-        let target_deps = Partition.Set.diff all_deps important_deps in
-        let target_deps_count = Partition.Set.cardinal target_deps in
+        let other_deps = Partition.Set.diff all_saved_deps important_deps in
+        let other_deps_count = Partition.Set.cardinal other_deps in
         Format.eprintf "\t [deps: %!";
         Set.to_list important_deps
         |> List.map ~f:Partition.to_string_hum
         |> String.concat ~sep:", "
         |> prerr_string;
-        if target_deps_count > 0 then
-          Format.eprintf ", ...%d target deps" target_deps_count;
+        if other_deps_count > 0 then
+          Format.eprintf ", ...%d target deps" other_deps_count;
         Format.eprintf "]\n%!"
       end)
   in

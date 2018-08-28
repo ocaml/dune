@@ -27,6 +27,10 @@ next
 - Fix `Flags.write_{sexp,lines}` in configurator by avoiding the use of
   `Stdune.Path` (#1175, fix #1161, @rgrinberg)
 
+- Add support for `findlib.dynload`: when linking an executable using
+  `findlib.dynload`, automatically record linked in libraries and
+  findlib predicates (#1172, @bobot)
+
 1.1.1 (08/08/2018)
 ------------------
 

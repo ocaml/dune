@@ -166,7 +166,7 @@ let gen ~package ~version libs =
                   entries = directory name :: pkg.entries
                 })
     in
-    { name = Some (Lib_name.of_string_exn name)
+    { name = Some (Lib_name.of_string_exn ~loc:None name)
     ; entries = entries @ subs
     }
   in

@@ -164,10 +164,10 @@ module Package = struct
   let jsoo_runtime     t = get_paths      t      "jsoo_runtime"     Ps.empty
   let requires         t =
     Vars.get_words t.vars "requires"         preds
-    |> List.map ~f:Lib_name.of_string_exn
+    |> List.map ~f:(Lib_name.of_string_exn ~loc:None)
   let ppx_runtime_deps t =
     Vars.get_words t.vars "ppx_runtime_deps" preds
-    |> List.map ~f:Lib_name.of_string_exn
+    |> List.map ~f:(Lib_name.of_string_exn ~loc:None)
 
   let archives t = make_archives t "archive" preds
   let plugins t =
@@ -347,7 +347,7 @@ let root_packages t =
       |> Array.to_list
       |> List.filter_map ~f:(fun name ->
         if Path.exists (Path.relative dir (name ^ "/META")) then
-          Some (Lib_name.of_string_exn name)
+          Some (Lib_name.of_string_exn ~loc:None name)
         else
           None))
     |> Lib_name.Set.of_list

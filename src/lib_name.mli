@@ -2,7 +2,7 @@ open Stdune
 
 type t
 
-val of_string_exn : string -> t
+val of_string_exn : loc:Loc.t option -> string -> t
 val to_string : t -> string
 
 include Dsexp.Sexpable with type t := t

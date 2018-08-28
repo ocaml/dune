@@ -155,7 +155,7 @@ end
 
 module Pp : sig
   type t = private Lib_name.t
-  val of_string : string -> t
+  val of_string : loc:Loc.t option -> string -> t
   val to_string : t -> string
   val compare : t -> t -> Ordering.t
   val to_lib_name : t -> Lib_name.t
@@ -164,9 +164,9 @@ end = struct
 
   let to_lib_name s = s
 
-  let of_string s =
+  let of_string ~loc s =
     assert (not (String.is_prefix s ~prefix:"-"));
-    Lib_name.of_string_exn s
+    Lib_name.of_string_exn ~loc s
 
   let to_string = Lib_name.to_string
 
@@ -179,7 +179,7 @@ module Pps_and_flags = struct
       if String.is_prefix s ~prefix:"-" then
         Right [s]
       else
-        Left (loc, Pp.of_string s)
+        Left (loc, Pp.of_string ~loc:(Some loc) s)
 
     let item =
       peek_exn >>= function
@@ -209,7 +209,7 @@ module Pps_and_flags = struct
           if String.is_prefix s ~prefix:"-" then
             Right s
           else
-            Left (loc, Pp.of_string s))
+            Left (loc, Pp.of_string ~loc:(Some loc) s))
       in
       (pps, more_flags @ Option.value flags ~default:[])
   end
@@ -538,12 +538,14 @@ module Lib_dep = struct
       let%map loc = loc
       and preds, file =
         until_keyword "->"
-          ~before:(let%map s = string in
+          ~before:(let%map s = string
+                   and loc = loc in
                    let len = String.length s in
                    if len > 0 && s.[0] = '!' then
-                     Right (Lib_name.of_string_exn (String.drop s 1))
+                     Right (Lib_name.of_string_exn ~loc:(Some loc)
+                              (String.drop s 1))
                    else
-                     Left (Lib_name.of_string_exn s))
+                     Left (Lib_name.of_string_exn ~loc:(Some loc) s))
           ~after:file
       in
       match file with

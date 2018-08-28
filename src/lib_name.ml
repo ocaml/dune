@@ -94,7 +94,7 @@ let to_sexp t = Sexp.Atom t
 
 let to_string t = t
 
-let of_string_exn s = s
+let of_string_exn ~loc:_ s = s
 
 let of_local t = t
 

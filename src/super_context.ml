@@ -261,7 +261,7 @@ end = struct
     match String.lsplit2 s ~on:':' with
     | None ->
       Errors.fail loc "invalid %%{lib:...} form: %s" s
-    | Some (lib, f) -> (Lib_name.of_string_exn lib, f)
+    | Some (lib, f) -> (Lib_name.of_string_exn ~loc:(Some loc) lib, f)
 
   open Build.O
 
@@ -330,7 +330,7 @@ end = struct
               end
           end
         | Macro (Lib_available, s) -> begin
-            let lib = Lib_name.of_string_exn s in
+            let lib = Lib_name.of_string_exn ~loc:(Some loc) s in
             Resolved_forms.add_lib_dep acc lib Optional;
             Some (str_exp (string_of_bool (
               Lib.DB.available (Scope.libs scope) lib)))

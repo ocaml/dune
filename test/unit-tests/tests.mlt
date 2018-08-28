@@ -35,7 +35,7 @@ val findlib : Findlib.t = <abstr>
 |}]
 
 let pkg =
-  match Findlib.find findlib (Lib_name.of_string_exn "foo") with
+  match Findlib.find findlib (Lib_name.of_string_exn ~loc:None "foo") with
   | Ok x -> x
   | Error _ -> assert false;;
 
@@ -59,7 +59,7 @@ open Meta
 
 let meta =
   Path.in_source "test/unit-tests/findlib-db/foo/META"
-  |> Meta.load ~name:(Some (Lib_name.of_string_exn "foo"))
+  |> Meta.load ~name:(Some (Lib_name.of_string_exn ~loc:None "foo"))
 
 [%%expect{|
 val meta : Simplified.t =

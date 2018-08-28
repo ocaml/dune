@@ -351,7 +351,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
       () (* rules were already setup lazily in gen_rules *)
     | "_odoc" :: "lib" :: lib :: _ ->
       let lib, lib_db = SC.Scope_key.of_string sctx lib in
-      let lib = Lib_name.of_string_exn lib in
+      let lib = Lib_name.of_string_exn ~loc:None lib in
       begin match Lib.DB.find lib_db lib with
       | Error _ -> ()
       | Ok lib  -> SC.load_dir sctx ~dir:(Lib.src_dir lib)
@@ -360,7 +360,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
       (* TODO we can be a better with the error handling in the case where
          lib_unique_name_or_pkg is neither a valid pkg or lnu *)
       let lib, lib_db = SC.Scope_key.of_string sctx lib_unique_name_or_pkg in
-      let lib = Lib_name.of_string_exn lib in
+      let lib = Lib_name.of_string_exn ~loc:None lib in
       let setup_pkg_html_rules pkg =
         setup_pkg_html_rules ~pkg ~libs:(
           Lib.Set.to_list (load_all_odoc_rules_pkg ~pkg)) in

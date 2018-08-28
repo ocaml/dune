@@ -203,7 +203,8 @@ module Gen(P : Params) = struct
             | [] -> None
             | l ->
               match Scope.name scope
-                  , List.mem ~set:l (Lib_name.of_string_exn "ppxlib") with
+                  , List.mem ~set:l (Lib_name.of_string_exn ~loc:None "ppxlib")
+              with
               | Named "ppxlib", _ | _, true ->
                 Some "ppxlib.runner"
               | _ ->

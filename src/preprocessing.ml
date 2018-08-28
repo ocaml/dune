@@ -199,7 +199,7 @@ module Jbuild_driver = struct
         ~lexer:Dsexp.Lexer.jbuild_token
       |> Dsexp.Of_sexp.parse Driver.Info.parse parsing_context
     in
-    (Pp.of_string name,
+    (Pp.of_string ~loc:None name,
      { info
      ; lib = lazy (assert false)
      ; replaces = Ok []
@@ -221,9 +221,9 @@ module Jbuild_driver = struct
   |}
 
   let drivers =
-    [ Pp.of_string "ocaml-migrate-parsetree.driver-main" , omp
-    ; Pp.of_string "ppxlib.runner"                       , ppxlib
-    ; Pp.of_string "ppx_driver.runner"                   , ppx_driver
+    [ Pp.of_string ~loc:None "ocaml-migrate-parsetree.driver-main" , omp
+    ; Pp.of_string ~loc:None "ppxlib.runner"                       , ppxlib
+    ; Pp.of_string ~loc:None "ppx_driver.runner"                   , ppx_driver
     ]
 
   let get_driver pps =
@@ -323,7 +323,7 @@ let get_rules sctx key ~dir_kind =
     | [] -> []
     | driver :: rest -> List.sort rest ~compare:String.compare @ [driver]
   in
-  let pps = List.map names ~f:Dune_file.Pp.of_string in
+  let pps = List.map names ~f:(Dune_file.Pp.of_string ~loc:None) in
   build_ppx_driver sctx pps ~lib_db ~dep_kind:Required ~target:exe ~dir_kind
 
 let gen_rules sctx components =

@@ -6,7 +6,7 @@ open Import
 (** Ppx preprocessors  *)
 module Pp : sig
   type t = private Lib_name.t
-  val of_string : string -> t
+  val of_string : loc:Loc.t option -> string -> t
   val to_string : t -> string
 
   val to_lib_name : t -> Lib_name.t

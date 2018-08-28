@@ -34,7 +34,7 @@ module Parse = struct
     | String s ->
       if String.contains s '.' then
         error lb "'.' not allowed in sub-package names";
-      Lib_name.of_string_exn s
+      Lib_name.of_string_exn ~loc:None s
     | _ -> error lb "package name expected"
 
   let string lb =
@@ -203,7 +203,7 @@ let builtins ~stdlib_dir =
       | None -> name
       | Some a -> a
     in
-    let name = Lib_name.of_string_exn name in
+    let name = Lib_name.of_string_exn ~loc:None name in
     let archives = archives archive_name in
     { name = Some name
     ; entries =
@@ -218,7 +218,7 @@ let builtins ~stdlib_dir =
     let sub name deps =
       Package (simple name deps ~archive_name:("ocaml" ^ name))
     in
-    { name = Some (Lib_name.of_string_exn "compiler-libs")
+    { name = Some (Lib_name.of_string_exn ~loc:None "compiler-libs")
     ; entries =
         [ requires []
         ; version
@@ -234,7 +234,7 @@ let builtins ~stdlib_dir =
   let unix = simple "unix" [] ~dir:"+" in
   let bigarray = simple "bigarray" ["unix"] ~dir:"+" in
   let threads =
-    { name = Some (Lib_name.of_string_exn "threads")
+    { name = Some (Lib_name.of_string_exn ~loc:None "threads")
     ; entries =
         [ version
         ; requires ~preds:[Pos "mt"; Pos "mt_vm"   ] ["threads.vm"]
@@ -249,7 +249,7 @@ let builtins ~stdlib_dir =
     }
   in
   let num =
-    { name = Some (Lib_name.of_string_exn "num")
+    { name = Some (Lib_name.of_string_exn ~loc:None "num")
     ; entries =
         [ requires ["num.core"]
         ; version

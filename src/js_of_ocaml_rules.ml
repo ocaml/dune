@@ -20,11 +20,11 @@ let in_build_dir ~ctx =
   let init = Path.relative ctx.Context.build_dir ".js" in
   List.fold_left ~init ~f:Path.relative
 
-let runtime_file ~sctx fname =
+let runtime_file ~sctx file =
   match
     Artifacts.file_of_lib (SC.artifacts sctx)
       ~loc:Loc.none
-      ~lib:(Lib_name.of_string_exn "js_of_ocaml-compiler") ~file:fname
+      ~lib:(Lib_name.of_string_exn ~loc:None "js_of_ocaml-compiler") ~file
   with
   | Error _ ->
     Arg_spec.Dyn (fun _ ->
@@ -141,7 +141,7 @@ let setup_separate_compilation_rules sctx components =
     match components with
     | [] | _ :: _ :: _ -> ()
     | [pkg] ->
-      let pkg = Lib_name.of_string_exn pkg in
+      let pkg = Lib_name.of_string_exn ~loc:None pkg in
       let ctx = SC.context sctx in
       match Lib.DB.find (SC.installed_libs sctx) pkg with
       | Error _ -> ()

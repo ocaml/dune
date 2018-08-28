@@ -43,9 +43,7 @@ let prepend_exn exn entry =
   | E (exn, entries) -> E (exn, entry :: entries)
   | exn -> E (exn, [entry])
 
-let reraise exn entry =
-  let raw_backtrace = Printexc.get_raw_backtrace () in
-  Printexc.raise_with_backtrace (prepend_exn exn entry) raw_backtrace
+let reraise exn entry = reraise (prepend_exn exn entry)
 
 let unwrap_exn = function
   | E (exn, entries) -> (exn, Some entries)

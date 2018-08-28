@@ -40,7 +40,8 @@ module Register_backend(M : Backend) = struct
     Lib.DB.resolve db (loc, name) >>= fun lib ->
     match get lib with
     | None ->
-      Error (Errors.exnf loc "%S is not %s %s" name M.desc_article
+      Error (Errors.exnf loc "%a is not %s %s" Lib_name.pp_quoted name
+               M.desc_article
                (M.desc ~plural:false))
     | Some t -> Ok t
 
@@ -60,7 +61,7 @@ module Register_backend(M : Backend) = struct
              (List.map backends ~f:(fun t ->
                 let lib = M.lib t in
                 sprintf "- %S in %s"
-                  (Lib.name lib)
+                  (Lib_name.to_string (Lib.name lib))
                   (Path.to_string_maybe_quoted (Lib.src_dir lib)))))
       | No_backend_found ->
         Errors.exnf loc "No %s found." (M.desc ~plural:false)

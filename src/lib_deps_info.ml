@@ -11,10 +11,10 @@ module Kind = struct
     | _ -> Required
 end
 
-type t = Kind.t String.Map.t
+type t = Kind.t Lib_name.Map.t
 
 let merge a b =
-  String.Map.merge a b ~f:(fun _ a b ->
+  Lib_name.Map.merge a b ~f:(fun _ a b ->
     match a, b with
     | None, None -> None
     | x, None | None, x -> x

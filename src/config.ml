@@ -14,7 +14,7 @@ let local_install_man_dir ~context =
 let local_install_lib_dir ~context ~package =
   Path.relative
     (Path.relative (local_install_dir ~context) "lib")
-    package
+    (Package.Name.to_string package)
 
 let dev_null =
   Path.of_filename_relative_to_initial_cwd

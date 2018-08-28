@@ -27,7 +27,7 @@ module Driver = struct
         ; as_ppx_flags : Ordered_set_lang.Unexpanded.t
         ; lint_flags   : Ordered_set_lang.Unexpanded.t
         ; main         : string
-        ; replaces     : (Loc.t * string) list
+        ; replaces     : (Loc.t * Lib_name.t) list
         }
 
       type Dune_file.Sub_system_info.t += T of t
@@ -53,7 +53,8 @@ module Driver = struct
                ~check:(Syntax.since syntax (1, 1))
            and lint_flags = Ordered_set_lang.Unexpanded.field "lint_flags"
            and main = field "main" string
-           and replaces = field "replaces" (list (located string)) ~default:[]
+           and replaces =
+             field "replaces" (list (located (Lib_name.dparse))) ~default:[]
            in
            { loc
            ; flags
@@ -92,14 +93,15 @@ module Driver = struct
                  resolve x >>= fun lib ->
                  match get ~loc lib with
                  | None ->
-                   Error (Errors.exnf loc "%S is not a %s" name
+                   Error (Errors.exnf loc "%a is not a %s"
+                            Lib_name.pp_quoted name
                             (desc ~plural:false))
                  | Some t -> Ok t))
       }
 
     let dgen t =
       let open Dsexp.To_sexp in
-      let f x = string (Lib.name (Lazy.force x.lib)) in
+      let f x = Lib_name.dgen (Lib.name (Lazy.force x.lib)) in
       ((1, 0),
        record
          [ "flags"            , Ordered_set_lang.Unexpanded.dgen
@@ -139,7 +141,7 @@ module Driver = struct
         | _ ->
           match
             List.filter_map libs ~f:(fun lib ->
-              match Lib.name lib with
+              match Lib_name.to_string (Lib.name lib) with
               | "ocaml-migrate-parsetree" | "ppxlib" | "ppx_driver" as s ->
                 Some s
               | _ -> None)
@@ -171,7 +173,7 @@ module Driver = struct
         (sprintf
            "Too many incompatible ppx drivers were found: %s."
            (String.enumerate_and (List.map ts ~f:(fun t ->
-              Lib.name (lib t)))))
+              Lib_name.to_string (Lib.name (lib t))))))
     | Error (Other exn) ->
       Error exn
 end
@@ -197,7 +199,7 @@ module Jbuild_driver = struct
         ~lexer:Dsexp.Lexer.jbuild_token
       |> Dsexp.Of_sexp.parse Driver.Info.parse parsing_context
     in
-    (Pp.of_string name,
+    (Pp.of_string ~loc:None name,
      { info
      ; lib = lazy (assert false)
      ; replaces = Ok []
@@ -219,9 +221,9 @@ module Jbuild_driver = struct
   |}
 
   let drivers =
-    [ Pp.of_string "ocaml-migrate-parsetree.driver-main" , omp
-    ; Pp.of_string "ppxlib.runner"                       , ppxlib
-    ; Pp.of_string "ppx_driver.runner"                   , ppx_driver
+    [ Pp.of_string ~loc:None "ocaml-migrate-parsetree.driver-main" , omp
+    ; Pp.of_string ~loc:None "ppxlib.runner"                       , ppxlib
+    ; Pp.of_string ~loc:None "ppx_driver.runner"                   , ppx_driver
     ]
 
   let get_driver pps =
@@ -270,7 +272,7 @@ let build_ppx_driver sctx ~lib_db ~dep_kind ~target ~dir_kind pps =
       (* Extend the dependency stack as we don't have locations at
          this point *)
       Dep_path.prepend_exn e
-        (Preprocess (pps : Dune_file.Pp.t list :> string list)))
+        (Preprocess (pps : Dune_file.Pp.t list :> Lib_name.t list)))
       (Lib.DB.resolve_pps lib_db
          (List.map pps ~f:(fun x -> (Loc.none, x)))
        >>= Lib.closure
@@ -321,7 +323,7 @@ let get_rules sctx key ~dir_kind =
     | [] -> []
     | driver :: rest -> List.sort rest ~compare:String.compare @ [driver]
   in
-  let pps = List.map names ~f:Dune_file.Pp.of_string in
+  let pps = List.map names ~f:(Dune_file.Pp.of_string ~loc:None) in
   build_ppx_driver sctx pps ~lib_db ~dep_kind:Required ~target:exe ~dir_kind
 
 let gen_rules sctx components =
@@ -334,10 +336,10 @@ let ppx_driver_exe sctx libs ~dir_kind =
   let names =
     let names = List.rev_map libs ~f:Lib.name in
     match (dir_kind : File_tree.Dune_file.Kind.t) with
-    | Dune -> List.sort names ~compare:String.compare
+    | Dune -> List.sort names ~compare:Lib_name.compare
     | Jbuild ->
       match names with
-      | last :: others -> List.sort others ~compare:String.compare @ [last]
+      | last :: others -> List.sort others ~compare:Lib_name.compare @ [last]
       | [] -> []
   in
   let scope_for_key =
@@ -354,11 +356,7 @@ let ppx_driver_exe sctx libs ~dir_kind =
       | None  , Some _ -> scope_for_key
       | None  , None   -> None)
   in
-  let key =
-    match names with
-    | [] -> "+none+"
-    | _  -> String.concat names ~sep:"+"
-  in
+  let key = Lib_name.L.to_key names in
   let key =
     match scope_for_key with
     | None            -> key
@@ -373,6 +371,7 @@ module Compat_ppx_exe_kind = struct
 end
 
 let get_compat_ppx_exe sctx ~name ~kind =
+  let name = Lib_name.to_string name in
   match (kind : Compat_ppx_exe_kind.t) with
   | Dune ->
     ppx_exe sctx ~key:name ~dir_kind:Dune
@@ -410,7 +409,8 @@ let workspace_root_var = String_with_vars.virt_var __POS__ "workspace_root"
 let cookie_library_name lib_name =
   match lib_name with
   | None -> []
-  | Some name -> ["--cookie"; sprintf "library-name=%S" name]
+  | Some name ->
+    ["--cookie"; sprintf "library-name=%S" (Lib_name.Local.to_string name)]
 
 (* Generate rules for the reason modules in [modules] and return a
    a new module with only OCaml sources *)

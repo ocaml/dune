@@ -16,7 +16,7 @@ module Gen(P : Params) = struct
   let ctx = Super_context.context sctx
 
   let lib_dune_file ~dir ~name =
-    Path.relative dir (name ^ ".dune")
+    Path.relative dir ((Lib_name.to_string name) ^ ".dune")
 
   let gen_lib_dune_file lib =
     SC.add_rule sctx
@@ -115,7 +115,7 @@ module Gen(P : Params) = struct
            >>>
            Build.write_file_dyn meta)))
 
-  let lib_install_files ~dir_contents ~dir ~sub_dir ~name ~scope ~dir_kind
+  let lib_install_files ~dir_contents ~dir ~sub_dir ~(name : Lib_name.t) ~scope ~dir_kind
         (lib : Library.t) =
     let obj_dir = Utils.library_object_directory ~dir lib.name in
     let make_entry section ?dst fn =
@@ -195,13 +195,16 @@ module Gen(P : Params) = struct
               List.concat_map lib.buildable.libraries ~f:Lib_dep.to_lib_names
             in
             match
-              List.filter deps ~f:(function
+              List.filter deps ~f:(fun lib_name ->
+                match Lib_name.to_string lib_name with
                 | "ppx_driver" | "ppxlib" | "ppx_type_conv" -> true
                 | _ -> false)
             with
             | [] -> None
             | l ->
-              match Scope.name scope, List.mem ~set:l "ppxlib" with
+              match Scope.name scope
+                  , List.mem ~set:l (Lib_name.of_string_exn ~loc:None "ppxlib")
+              with
               | Named "ppxlib", _ | _, true ->
                 Some "ppxlib.runner"
               | _ ->

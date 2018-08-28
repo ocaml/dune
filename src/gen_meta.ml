@@ -8,6 +8,7 @@ module Pub_name = struct
     | Id  of string
 
   let parse s =
+    let s = Lib_name.to_string s in
     match String.split s ~on:'.' with
     | [] -> assert false
     | x :: l ->
@@ -32,7 +33,9 @@ module Pub_name = struct
   let to_string t = String.concat ~sep:"." (to_list t)
 end
 
-let string_of_deps deps = String.Set.to_list deps |> String.concat ~sep:" "
+let string_of_deps deps =
+  Lib_name.Set.to_string_list deps
+  |> String.concat ~sep:" "
 
 let rule var predicates action value =
   Rule { var; predicates; action; value }
@@ -82,7 +85,7 @@ let gen_lib pub_name lib ~version =
       ; requires ~preds lib_deps
       ]
     ; archives ~preds lib
-    ; if String.Set.is_empty ppx_rt_deps then
+    ; if Lib_name.Set.is_empty ppx_rt_deps then
         []
       else
         [ Comment "This is what dune uses to find out the runtime \
@@ -163,7 +166,7 @@ let gen ~package ~version libs =
                   entries = directory name :: pkg.entries
                 })
     in
-    { name
+    { name = Some (Lib_name.of_string_exn ~loc:None name)
     ; entries = entries @ subs
     }
   in

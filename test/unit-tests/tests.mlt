@@ -11,9 +11,11 @@ let () =
 ;;
 
 let print_pkg ppf pkg =
-  Format.fprintf ppf "<package:%s>" (Findlib.Package.name pkg)
+  Format.fprintf ppf "<package:%s>"
+    (Lib_name.to_string (Findlib.Package.name pkg))
 ;;
 
+#install_printer Lib_name.pp_quoted;;
 #install_printer print_pkg;;
 #install_printer String.Map.pp;;
 
@@ -33,7 +35,7 @@ val findlib : Findlib.t = <abstr>
 |}]
 
 let pkg =
-  match Findlib.find findlib "foo" with
+  match Findlib.find findlib (Lib_name.of_string_exn ~loc:None "foo") with
   | Ok x -> x
   | Error _ -> assert false;;
 
@@ -45,7 +47,7 @@ val pkg : Findlib.Package.t = <package:foo>
 Findlib.Package.requires pkg;;
 
 [%%expect{|
-- : string list = ["baz"]
+- : Lib_name.t list = ["baz"]
 |}]
 
 (* +-----------------------------------------------------------------+
@@ -57,7 +59,7 @@ open Meta
 
 let meta =
   Path.in_source "test/unit-tests/findlib-db/foo/META"
-  |> Meta.load ~name:"foo"
+  |> Meta.load ~name:(Some (Lib_name.of_string_exn ~loc:None "foo"))
 
 [%%expect{|
 val meta : Simplified.t =

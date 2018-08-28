@@ -29,7 +29,7 @@ module Executables_modules : sig
 end
 
 (** Modules attached to a library. [name] is the library best name. *)
-val modules_of_library : t -> name:string -> Library_modules.t
+val modules_of_library : t -> name:Lib_name.t -> Library_modules.t
 
 (** Modules attached to a set of executables. *)
 val modules_of_executables : t -> first_exe:string -> Executables_modules.t

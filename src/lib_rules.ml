@@ -35,7 +35,7 @@ module Gen (P : Install_rules.Params) = struct
         if not (Library.has_stubs lib) then
           []
         else
-          let stubs_name = lib.name ^ "_stubs" in
+          let stubs_name = Lib_name.Local.to_string lib.name ^ "_stubs" in
           match mode with
           | Byte -> ["-dllib"; "-l" ^ stubs_name; "-cclib"; "-l" ^ stubs_name]
           | Native -> ["-cclib"; "-l" ^ stubs_name]
@@ -175,7 +175,8 @@ module Gen (P : Install_rules.Params) = struct
          [ As (Utils.g ())
          ; if custom then A "-custom" else As []
          ; A "-o"
-         ; Path (Path.relative dir (sprintf "%s_stubs" lib.name))
+         ; Path (Path.relative dir (sprintf "%s_stubs"
+                                      (Lib_name.Local.to_string lib.name)))
          ; Deps o_files
          ; Dyn (fun cclibs ->
              (* https://github.com/ocaml/dune/issues/119 *)
@@ -421,7 +422,7 @@ module Gen (P : Install_rules.Params) = struct
   let rules (lib : Library.t) ~dir_contents ~dir ~scope
         ~dir_kind : Compilation_context.t * Merlin.t =
     let compile_info =
-      Lib.DB.get_compile_info (Scope.libs scope) lib.name
+      Lib.DB.get_compile_info (Scope.libs scope) (Library.best_name lib)
         ~allow_overlaps:lib.buildable.allow_overlapping_dependencies
     in
     SC.Libs.gen_select_rules sctx compile_info ~dir;

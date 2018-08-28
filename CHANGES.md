@@ -24,6 +24,9 @@ next
 - Do no try to generate shared libraries when this is not supported by
   the OS (#1165, fix #1051, @diml)
 
+- Fix `Flags.write_{sexp,lines}` in configurator by avoiding the use of
+  `Stdune.Path` (#1175, fix #1161, @rgrinberg)
+
 1.1.1 (08/08/2018)
 ------------------
 

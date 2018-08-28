@@ -490,7 +490,7 @@ let get_file : type a. t -> Path.t -> a File_kind.t -> a File_spec.t = fun t fn 
 let vfile_to_string (type a) (module K : Vfile_kind.S with type t = a) _fn x =
   K.to_string x
 
-let load_vfile (type a) (module K : Vfile_kind.S with type t = a) fn =
+let load_vfile_exn (type a) (module K : Vfile_kind.S with type t = a) fn =
   K.load fn
 
 module Build_exec = struct
@@ -532,7 +532,7 @@ module Build_exec = struct
         let file : b File_spec.t = get_file bs fn (Sexp_file kind) in
         (match file.data with
         | Some data -> data
-        | None -> load_vfile kind fn)
+        | None -> load_vfile_exn kind fn)
       | Dyn_paths t ->
         let fns = exec dyn_deps t x in
         dyn_deps := Path.Set.union !dyn_deps fns;

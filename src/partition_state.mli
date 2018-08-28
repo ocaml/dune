@@ -5,26 +5,24 @@ open! Stdune
 type t
 
 (** Represents a set of targets that are logically related and are
-    more likely to have internal changes than external (dependencies).
-*)
+    more likely to have internal changes than external (dependencies). *)
 module Partition : sig
   type t
 
-  (** Assigns the best possible partition to a target deterministically. *)
+  (** Assigns target to a partition deterministically. *)
   val for_target : Path.t -> file_tree:File_tree.t -> t
 end
 
 (** Loads .partition-db file from disk, or creates an empty db if it's absent. *)
 val load : unit -> t
 
-(** Returns current digest of a partition, computing it if it's not yet been computed.
+(** Returns current digest of a partition, computing it if not yet computed.
 
     Digest is computed against dependencies that were saved
     from the previous build, so in the case any dependencies change,
     the truly correct digest will be only calculated during the next build,
     when new dependencies are saved. This shouldn't be a correctness
-    issue in practice.
-*)
+    issue in practice. *)
 val get_current_digest
   : t
   -> Partition.t
@@ -32,7 +30,9 @@ val get_current_digest
   -> file_tree:File_tree.t
   -> Digest.t
 
-(** Checks if current digest of a partition differs from saved digest, if any. *)
+(** Checks if current digest of a partition differs from saved digest, if any.
+
+    Current digest will be computed eagerly even if saved digest is not present. *)
 val is_unclean
   :  t
   -> Partition.t

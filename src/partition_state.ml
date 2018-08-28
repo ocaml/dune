@@ -47,10 +47,12 @@ module Partition = struct
 end
 
 type t = {
-  (* Partitions that haven't been checked yet are absent. *)
+  (* current_* tables contain information about partitions
+     that have already been checked by [is_unclean] or [get_current_digest]. *)
   current_digests: Digest.t Partition.Table.t;
   current_deps: Partition.Set.t Partition.Table.t;
 
+  (* saved_* tables contain information from previous run loaded from disk. *)
   saved_digests: Digest.t Partition.Table.t;
   saved_deps: Partition.Set.t Partition.Table.t;
 }
@@ -132,7 +134,7 @@ end
 *)
 let compute_own_digest partitions ~projects ~file_tree =
   let digest = Md5.init () in
-  Partition.Set.fold partitions ~init:[] ~f:(fun partition acc ->
+  let paths = Partition.Set.fold partitions ~init:[] ~f:(fun partition acc ->
     match partition with
     | Partition.Project project ->
       let root = Dune_project.root
@@ -158,13 +160,79 @@ let compute_own_digest partitions ~projects ~file_tree =
       acc
     | Partition.Universe ->
       (* (universe) should have a different digest every time. *)
-      Md5.update digest (Format.sprintf "%f" (Unix.gettimeofday ()));
+      Md5.update digest (Format.sprintf "%.6f" (Unix.gettimeofday ()));
       acc)
-  |> List.sort ~compare:Path.compare
+  in
+  List.sort paths ~compare:Path.compare
   |> List.iter ~f:(fun path ->
     Md5.update digest (Path.to_string path);
     Md5.update digest (Utils.Cached_digest.file path));
   Md5.compute digest
+
+(* Computes and saves digest for an SCC in partition graph, assuming that dependency
+   digests are already computed. *)
+let compute_component_digest t component ~projects ~file_tree =
+  let module Table = Partition.Table in
+  let module Set = Partition.Set in
+  let own_digest = compute_own_digest component ~projects ~file_tree in
+  let all_deps = Set.fold component ~init:Set.empty ~f:(fun partition acc ->
+    match Table.find t.saved_deps partition with
+    | Some deps -> Set.union acc deps
+    | None -> acc)
+  in
+  let external_deps = Set.diff all_deps component in
+  let true_digest_md5 = Md5.init () in
+  Md5.update true_digest_md5 own_digest;
+  Set.iter external_deps ~f:(fun dep ->
+    Md5.update true_digest_md5 (Table.find_exn t.current_digests dep));
+  let true_digest = Md5.compute true_digest_md5 in
+  Set.iter component ~f:(fun partition ->
+    let all_saved_deps =
+      Table.find_or_add t.saved_deps partition ~f:(fun _ -> Set.empty)
+    in
+    Table.replace t.current_digests ~key:partition ~data:true_digest;
+    (match Table.find t.saved_digests partition with
+     | Some saved_digest ->
+       if saved_digest <> true_digest || !Clflags.force then begin
+         Table.remove t.saved_digests partition;
+         Table.remove t.saved_deps partition;
+         if !Clflags.debug_partition_cache then
+           Format.eprintf
+             "Partition dirty: %-25s (%s <- %s)"
+             (Partition.to_string_hum partition)
+             (Digest.to_hex true_digest)
+             (Digest.to_hex saved_digest)
+       end
+       else begin
+         Table.iter t.saved_deps ~f:(Table.replace t.current_deps);
+         if !Clflags.debug_partition_cache then
+           Format.eprintf
+             "Partition clean: %-25s (%s)"
+             (Partition.to_string_hum partition)
+             (Digest.to_hex true_digest)
+       end
+     | None ->
+       if !Clflags.debug_partition_cache then
+         Format.eprintf
+           "Partition dirty (no record): %-25s (%s)"
+           (Partition.to_string_hum partition)
+           (Digest.to_hex true_digest));
+    if !Clflags.debug_partition_cache then begin
+      let target_deps = Partition.Set.filter all_saved_deps ~f:(function
+        | Partition.Target _ -> true
+        | _ -> false)
+      in
+      let other_deps = Partition.Set.diff all_saved_deps target_deps in
+      let target_deps_count = Partition.Set.cardinal target_deps in
+      Format.eprintf "\t [deps: %!";
+      Set.to_list other_deps
+      |> List.map ~f:Partition.to_string_hum
+      |> String.concat ~sep:", "
+      |> prerr_string;
+      if target_deps_count > 0 then
+        Format.eprintf ", ...%d target deps" target_deps_count;
+      Format.eprintf "]\n%!"
+    end)
 
 (* This function computes current digests for root_partition and all its
    direct or indirect dependencies. Digest for a partition is computed
@@ -176,6 +244,8 @@ let compute_own_digest partitions ~projects ~file_tree =
 *)
 let compute_digests t root_partition ~projects ~file_tree =
   (* This function implements Tarjan's strongly connected components (SCC) algorithm. *)
+  let module Table = Partition.Table in
+  let module Set = Partition.Set in
   let module Local = struct
     type info = {
       mutable index: int;
@@ -184,75 +254,11 @@ let compute_digests t root_partition ~projects ~file_tree =
     }
   end in
   let open Local in
-  let module Table = Partition.Table in
-  let module Set = Partition.Set in
   let next_index = ref 0 in
   let stack = Stack.create () in
   let info = Table.create 64 in
   let iter_deps partition ~f =
     Option.iter (Table.find t.saved_deps partition) ~f:(fun deps -> Set.iter deps ~f)
-  in
-  (* This function assumes that the component dependencies digests are already computed. *)
-  let compute_component_digest component =
-    let own_digest = compute_own_digest component ~projects ~file_tree in
-    let all_deps = Set.fold component ~init:Set.empty ~f:(fun partition acc ->
-      match Table.find t.saved_deps partition with
-      | Some deps -> Set.union acc deps
-      | None -> acc)
-    in
-    let external_deps = Set.diff all_deps component in
-    let true_digest_md5 = Md5.init () in
-    Md5.update true_digest_md5 own_digest;
-    Set.iter external_deps ~f:(fun dep ->
-      Md5.update true_digest_md5 (Table.find_exn t.current_digests dep));
-    let true_digest = Md5.compute true_digest_md5 in
-    Set.iter component ~f:(fun partition ->
-      let all_saved_deps =
-        Table.find_or_add t.saved_deps partition ~f:(fun _ -> Set.empty)
-      in
-      Table.replace t.current_digests ~key:partition ~data:true_digest;
-      (match Table.find t.saved_digests partition with
-       | Some saved_digest ->
-         if saved_digest <> true_digest || !Clflags.force then begin
-           Table.remove t.saved_digests partition;
-           Table.remove t.saved_deps partition;
-           if !Clflags.debug_partition_cache then
-             Format.eprintf
-               "Partition dirty: %-25s (%s <- %s)"
-               (Partition.to_string_hum partition)
-               (Digest.to_hex true_digest)
-               (Digest.to_hex saved_digest)
-         end
-         else begin
-           Table.iter t.saved_deps ~f:(Table.replace t.current_deps);
-           if !Clflags.debug_partition_cache then
-             Format.eprintf
-               "Partition clean: %-25s (%s)"
-               (Partition.to_string_hum partition)
-               (Digest.to_hex true_digest)
-         end
-       | None ->
-         if !Clflags.debug_partition_cache then
-           Format.eprintf
-             "Partition dirty (no record): %-25s (%s)"
-             (Partition.to_string_hum partition)
-             (Digest.to_hex true_digest));
-      if !Clflags.debug_partition_cache then begin
-        let important_deps = Partition.Set.filter all_saved_deps ~f:(function
-          | Partition.Project _ | Partition.Universe -> true
-          | _ -> false)
-        in
-        let other_deps = Partition.Set.diff all_saved_deps important_deps in
-        let other_deps_count = Partition.Set.cardinal other_deps in
-        Format.eprintf "\t [deps: %!";
-        Set.to_list important_deps
-        |> List.map ~f:Partition.to_string_hum
-        |> String.concat ~sep:", "
-        |> prerr_string;
-        if other_deps_count > 0 then
-          Format.eprintf ", ...%d target deps" other_deps_count;
-        Format.eprintf "]\n%!"
-      end)
   in
   let rec iter_strong_components v =
     let v_info =
@@ -273,8 +279,7 @@ let compute_digests t root_partition ~projects ~file_tree =
         | None ->
           (* If dependency digest is already computed, then it's for sure
              in a different SCC that was already processed before, don't
-             process it again.
-          *)
+             process it again. *)
           if not (Table.mem t.current_digests dep) then begin
             iter_strong_components dep;
             v_info.low_link <- min v_info.low_link (Table.find_exn info dep).low_link
@@ -291,7 +296,7 @@ let compute_digests t root_partition ~projects ~file_tree =
       done;
       (* Tarjan's algorithm outputs SCCs in reverse topological sorting order, so
          we can be sure that all dependencies are already processed *)
-      compute_component_digest !component
+      compute_component_digest t !component ~projects ~file_tree
     end
   in
   iter_strong_components root_partition
@@ -308,8 +313,7 @@ let is_unclean t partition ~projects ~file_tree =
     find t.current_digests partition, find t.saved_digests partition) with
   | Some current_digest, Some saved_digest ->
     (* If current digest was computed that's different from saved digest, saved digest
-       should be immediately removed.
-    *)
+       should be immediately removed. *)
     assert (current_digest = saved_digest);
     false
   | Some _, None ->

@@ -139,7 +139,6 @@ end = struct
         Anonymous p
       | _ when validate s -> Named s
       | _ -> invalid s
-
 end
 
 module Project_file = struct

@@ -151,7 +151,6 @@ end
 type t =
   { root : Dir.t
   ; dirs : (Path.t, Dir.t) Hashtbl.t
-  ; projects : (Path.t, Dune_project.t option) Hashtbl.t
   }
 
 let root t = t.root
@@ -285,9 +284,8 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) path =
       ~project:(Lazy.force Dune_project.anonymous)
   in
   let dirs = Hashtbl.create 1024      in
-  let projects = Hashtbl.create 4096  in
   Hashtbl.add dirs Path.root root;
-  { root; dirs; projects }
+  { root; dirs }
 
 let fold t ~traverse_ignored_dirs ~init ~f =
   Dir.fold t.root ~stay_in_project:false ~traverse_ignored_dirs ~init ~f
@@ -343,25 +341,19 @@ let files_recursively_in t ?(prefix_with=Path.root) path =
           Path.Set.add acc (Path.relative path fn)))
 
 let project t path =
-  match Hashtbl.find t.projects path with
-  | Some res -> res
-  | None ->
-    let path = Path.drop_optional_build_context path in
-    let rec find_first_existing_parent_dir path =
-      if not (Path.is_root path) && String.equal (Path.basename path) ".ppx" then
-        (* We don't want .ppx targets to belong to root <anonymous .> project,
-           since this often causes dependency graph to collapse to a single SCC.
-           TODO: alias targets still go to root, is it ok?
-        *)
-        None
-      else
-        match find_dir t path with
-        | Some dir -> Some (Dir.project dir)
-        | None ->
-          (match Path.parent path with
-           | Some parent -> find_first_existing_parent_dir parent
-           | None -> None)
-    in
-    let project = find_first_existing_parent_dir path in
-    Hashtbl.replace t.projects ~key:path ~data:project;
-    project
+  let path = Path.drop_optional_build_context path in
+  let rec proj_of_first_existing_parent path =
+    if not (Path.is_root path) && String.equal (Path.basename path) ".ppx" then
+      (* We don't want .ppx targets to belong to root <anonymous .> project,
+         since this often causes dependency graph to collapse to a single SCC.
+         TODO: alias targets still go to root, is it ok? *)
+      None
+    else
+      match find_dir t path with
+      | Some dir -> Some (Dir.project dir)
+      | None ->
+        (match Path.parent path with
+         | Some parent -> proj_of_first_existing_parent parent
+         | None -> None)
+  in
+  proj_of_first_existing_parent path

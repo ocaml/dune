@@ -42,6 +42,13 @@
              (file-name-nondirectory (buffer-file-name))))
     (revert-buffer nil t)))
 
+;;;###autoload
+(defun dune-runtest-and-promote ()
+  "Runt tests in the current directory and promote the current buffer."
+  (interactive)
+  (compile (format "%s build @@runtest" dune-command))
+  (dune-promote))
+
 (provide 'dune)
 
 ;;; dune.el ends here

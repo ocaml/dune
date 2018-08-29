@@ -20,6 +20,7 @@ module Name : sig
     | Anonymous of Path.t
 
   val compare : t -> t -> Ordering.t
+  val equal : t -> t -> bool
 
   val to_string_hum : t -> string
 

@@ -19,6 +19,7 @@ module Name : sig
     | Anonymous of Path.t
 
   val compare : t -> t -> Ordering.t
+  val equal : t -> t -> bool
 
   (** Convert to a string that is suitable for human readable messages *)
   val to_string_hum : t -> string
@@ -28,6 +29,8 @@ module Name : sig
   (** Convert to/from an encoded string that is suitable to use in filenames *)
   val encode : t -> string
   val decode : string -> t
+
+  val anonymous_root : t
 
   module Infix : Comparable.OPS with type t = t
   module Set : Set.S with type elt = t

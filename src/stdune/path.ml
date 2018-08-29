@@ -935,6 +935,8 @@ end
 
 let in_source s = in_source_tree (Local.of_string s)
 
+let in_build s = in_build_dir (Local.of_string s)
+
 module Table = Hashtbl.Make(T)
 
 module Internal = struct

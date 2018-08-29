@@ -340,20 +340,30 @@ let files_recursively_in t ?(prefix_with=Path.root) path =
         String.Set.fold (Dir.files dir) ~init:acc ~f:(fun fn acc ->
           Path.Set.add acc (Path.relative path fn)))
 
-let project t path =
-  let path = Path.drop_optional_build_context path in
-  let rec proj_of_first_existing_parent path =
-    if not (Path.is_root path) && String.equal (Path.basename path) ".ppx" then
-      (* We don't want .ppx targets to belong to root <anonymous .> project,
-         since this often causes dependency graph to collapse to a single SCC.
-         TODO: alias targets still go to root, is it ok? *)
-      None
-    else
+let rec project t path =
+  match Path.explode path with
+  | Some ("_build" :: ".aliases" :: p) ->
+    (* Aliases should belong to the same project as the directory they're in. *)
+    project t (Path.in_build (String.concat ~sep:"/" p))
+  | Some ("_build" :: "install" :: _) ->
+    (* Ideally, we would like to map these to projects via package they belong to,
+       but that's not trivial since file-to-package mapping is computed later, so
+       for now we settle on single-target partitions *)
+    None
+  | Some ("_build" :: ".misc" :: _) ->
+    (* We don't want these targets to belong to <anonymous .> partition *)
+    None
+  | Some ("_build" :: _ :: ".ppx" :: _) ->
+    (* We don't want PPX targets to belong to <anonymous .> partition *)
+    None
+  | _ ->
+    let path = Path.drop_optional_build_context path in
+    let rec proj_of_first_existing_parent path =
       match find_dir t path with
       | Some dir -> Some (Dir.project dir)
       | None ->
         (match Path.parent path with
          | Some parent -> proj_of_first_existing_parent parent
          | None -> None)
-  in
-  proj_of_first_existing_parent path
+    in
+    proj_of_first_existing_parent path

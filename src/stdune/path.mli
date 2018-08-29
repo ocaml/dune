@@ -159,6 +159,9 @@ val set_build_dir : Kind.t -> unit
 (** paths guaranteed to be in the source directory *)
 val in_source : string -> t
 
+(** paths guaranteed to be in the build directory *)
+val in_build : string -> t
+
 val of_local : Local.t -> t
 
 (** Set the workspace root. Can onyl be called once and the path must be

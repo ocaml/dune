@@ -166,11 +166,16 @@ let to_sexp { name; impl; intf; obj_name ; pp } =
 
 let deprecate t =
   { t with
-    intf = None
-  ; impl =
+    impl =
       Some (
-        let impl = Option.value_exn t.impl in
-        let (base, _) = Path.split_extension impl.path in
+        let path =
+          match t.intf, t.impl with
+          | Some _, Some impl
+          | None, Some impl -> impl.path
+          | Some intf, _ -> intf.path
+          | None, None -> assert false
+        in
+        let (base, _) = Path.split_extension path in
         { syntax = OCaml
         ; path = Path.extend_basename base ~suffix:".ml-gen"
         }

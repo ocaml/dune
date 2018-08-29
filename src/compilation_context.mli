@@ -49,4 +49,4 @@ val preprocessing        : t -> Preprocessing.t
 val no_keep_locs         : t -> bool
 val opaque               : t -> bool
 
-val set_modules : t -> Module.t Module.Name.Map.t -> t
+val for_deprecated : t -> Module.t Module.Name.Map.t -> t

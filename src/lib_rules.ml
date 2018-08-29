@@ -147,7 +147,7 @@ module Gen (P : Install_rules.Params) = struct
     );
     let dep_graphs =
       Ocamldep.Dep_graphs.deprecated ~modules ~deprecated in
-    let cctx = Compilation_context.set_modules cctx deprecated in
+    let cctx = Compilation_context.for_deprecated cctx deprecated in
     Module_compilation.build_modules cctx ~js_of_ocaml ~dynlink ~dep_graphs
 
   let build_c_file (lib : Library.t) ~scope ~dir ~includes (src, dst) =

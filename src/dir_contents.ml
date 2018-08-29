@@ -168,7 +168,7 @@ module Library_modules : sig
     { modules          : Module.t Module.Name.Map.t
     ; alias_module     : Module.t option
     ; main_module_name : Module.Name.t
-    ; deprecated       : Module.t Module.Name.Map.t
+    ; wrapped_compat   : Module.t Module.Name.Map.t
     }
 
   val make : Library.t -> dir:Path.t -> Module.t Module.Name.Map.t -> t
@@ -177,13 +177,13 @@ end = struct
     { modules          : Module.t Module.Name.Map.t
     ; alias_module     : Module.t option
     ; main_module_name : Module.Name.t
-    ; deprecated       : Module.t Module.Name.Map.t
+    ; wrapped_compat   : Module.t Module.Name.Map.t
     }
 
   let make (lib : Library.t) ~dir (modules : Module.t Module.Name.Map.t) =
     let main_module_name =
       Module.Name.of_string (Lib_name.Local.to_string lib.name) in
-    let (modules, deprecated) =
+    let (modules, wrapped_compat) =
       let wrap_modules modules =
         let open Module.Name.Infix in
         Module.Name.Map.map modules ~f:(fun (m : Module.t) ->
@@ -223,7 +223,11 @@ end = struct
                       (Path.relative dir (lib_name ^ ".ml-gen")))
              ~obj_name:lib_name)
     in
-    { modules; alias_module; main_module_name; deprecated }
+    { modules
+    ; alias_module
+    ; main_module_name
+    ; wrapped_compat
+    }
 end
 
 module Executables_modules = struct

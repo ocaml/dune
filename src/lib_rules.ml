@@ -120,19 +120,19 @@ module Gen (P : Install_rules.Params) = struct
       ~sandbox:alias_module_build_sandbox
       ~dep_graphs:(Ocamldep.Dep_graphs.dummy m)
 
-  let build_deprecated_modules (lib : Library.t)
+  let build_wrapped_compat_modules (lib : Library.t)
         cctx
         ~modules
         ~js_of_ocaml
         ~dynlink
-        ~(deprecated : Module.t Module.Name.Map.t) =
+        ~(wrapped_compat : Module.t Module.Name.Map.t) =
     let lib_name = String.capitalize (Lib_name.Local.to_string lib.name) in
     let transition_message =
       match lib.wrapped with
       | Simple _ -> "" (* will never be accessed anyway *)
       | Yes_with_transition r -> r
     in
-    Module.Name.Map.iteri deprecated ~f:(fun name m ->
+    Module.Name.Map.iteri wrapped_compat ~f:(fun name m ->
       let contents =
         let name = Module.Name.to_string name in
         let hidden_name = sprintf "%s__%s" lib_name name in
@@ -146,8 +146,8 @@ module Gen (P : Install_rules.Params) = struct
       |> SC.add_rule sctx
     );
     let dep_graphs =
-      Ocamldep.Dep_graphs.deprecated ~modules ~deprecated in
-    let cctx = Compilation_context.for_deprecated cctx deprecated in
+      Ocamldep.Dep_graphs.wrapped_compat ~modules ~wrapped_compat in
+    let cctx = Compilation_context.for_wrapped_compat cctx wrapped_compat in
     Module_compilation.build_modules cctx ~js_of_ocaml ~dynlink ~dep_graphs
 
   let build_c_file (lib : Library.t) ~scope ~dir ~includes (src, dst) =
@@ -323,7 +323,7 @@ module Gen (P : Install_rules.Params) = struct
     in
     let flags = SC.ocaml_flags sctx ~scope ~dir lib.buildable in
     let { Dir_contents.Library_modules.
-          modules; main_module_name; alias_module ; deprecated } =
+          modules; main_module_name; alias_module ; wrapped_compat } =
       Dir_contents.modules_of_library dir_contents ~name:(Library.best_name lib)
     in
     let source_modules = modules in
@@ -375,8 +375,8 @@ module Gen (P : Install_rules.Params) = struct
     in
     let js_of_ocaml = lib.buildable.js_of_ocaml in
 
-    build_deprecated_modules lib cctx ~dynlink ~js_of_ocaml
-      ~deprecated ~modules;
+    build_wrapped_compat_modules lib cctx ~dynlink ~js_of_ocaml
+      ~wrapped_compat ~modules;
 
     let dep_graphs = Ocamldep.rules cctx in
 
@@ -396,7 +396,7 @@ module Gen (P : Install_rules.Params) = struct
     in
     List.iter Cm_kind.all ~f:(fun cm_kind ->
       let files = add_cms ~cm_kind ~init:Path.Set.empty modules in
-      let files = add_cms ~cm_kind ~init:files deprecated in
+      let files = add_cms ~cm_kind ~init:files wrapped_compat in
       SC.Libs.setup_file_deps_alias sctx ~dir lib ~ext:(Cm_kind.ext cm_kind)
         files);
 
@@ -413,7 +413,7 @@ module Gen (P : Install_rules.Params) = struct
          else
            acc)
      in
-     let deprecated_modules = Module.Name.Map.values deprecated in
+     let deprecated_modules = Module.Name.Map.values wrapped_compat in
      (* deprecated modules have implementations so we can just append them *)
      let top_sorted_modules =
        Ocamldep.Dep_graph.top_closed_implementations dep_graphs.impl modules

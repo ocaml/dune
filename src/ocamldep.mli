@@ -19,9 +19,9 @@ module Dep_graphs : sig
 
   val dummy : Module.t -> t
 
-  val deprecated
+  val wrapped_compat
     :  modules:Module.t Module.Name.Map.t
-    -> deprecated:Module.t Module.Name.Map.t
+    -> wrapped_compat:Module.t Module.Name.Map.t
     -> t
 end
 

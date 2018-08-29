@@ -21,7 +21,7 @@ module Library_modules : sig
     { modules          : Module.t Module.Name.Map.t
     ; alias_module     : Module.t option
     ; main_module_name : Module.Name.t
-    ; deprecated       : Module.t Module.Name.Map.t
+    ; wrapped_compat   : Module.t Module.Name.Map.t
     }
 end
 

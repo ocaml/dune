@@ -31,6 +31,8 @@ next
   `findlib.dynload`, automatically record linked in libraries and
   findlib predicates (#1172, @bobot)
 
+- Add support for promoting a selected list of files (#..., @diml)
+
 1.1.1 (08/08/2018)
 ------------------
 

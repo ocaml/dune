@@ -49,7 +49,11 @@ let group_by_targets db =
   (* Sort the list of possible sources for deterministic behavior *)
   |> Path.Map.map ~f:(List.sort ~compare:Path.compare)
 
-let do_promote db =
+type files_to_promote =
+  | All
+  | These of Path.t list * (Path.t -> unit)
+
+let do_promote db files_to_promote =
   let by_targets = group_by_targets db  in
   let potential_build_contexts =
     match Path.readdir_unsorted Path.build_dir with
@@ -63,7 +67,7 @@ let do_promote db =
           Option.some_if (Path.is_directory path) path)
   in
   let dirs_to_clear_from_cache = Path.root :: potential_build_contexts in
-  Path.Map.iteri by_targets ~f:(fun dst srcs ->
+  let promote_one dst srcs =
     match srcs with
     | [] -> assert false
     | src :: others ->
@@ -77,18 +81,40 @@ let do_promote db =
       File.promote { src; dst };
       List.iter others ~f:(fun path ->
         Format.eprintf " -> ignored %s.@."
-          (Path.to_string_maybe_quoted path)))
+          (Path.to_string_maybe_quoted path))
+  in
+  match files_to_promote with
+  | All ->
+    Path.Map.iteri by_targets ~f:promote_one;
+    []
+  | These (files, on_missing) ->
+    let files =
+      Path.Set.of_list files |> Path.Set.to_list
+    in
+    let by_targets =
+      List.fold_left files ~init:by_targets ~f:(fun map fn ->
+        match Path.Map.find by_targets fn with
+        | None ->
+          on_missing fn;
+          map
+        | Some srcs ->
+          promote_one fn srcs;
+          Path.Map.remove by_targets fn)
+    in
+    Path.Map.to_list by_targets
+    |> List.concat_map ~f:(fun (dst, srcs) ->
+      List.map srcs ~f:(fun src -> { File.src; dst }))
 
 let finalize () =
   let db =
     if !Clflags.auto_promote then
-      (do_promote !File.db; [])
+      do_promote !File.db All
     else
       !File.db
   in
   dump_db db
 
-let promote_files_registered_in_last_run () =
+let promote_files_registered_in_last_run files_to_promote =
   let db = load_db () in
-  do_promote db;
-  dump_db []
+  let db = do_promote db files_to_promote in
+  dump_db db

@@ -1424,12 +1424,27 @@ let promote =
     ; `Blocks help_secs
     ] in
   let term =
-    let%map common = common in
+    let%map common = common
+    and files =
+      Arg.(value & pos_all Cmdliner.Arg.file [] & info [] ~docv:"FILE")
+    in
     set_common common ~targets:[];
     (* We load and restore the digest cache as we need to clear the
        cache for promoted files, due to issues on OSX. *)
     Utils.Cached_digest.load ();
-    Promotion.promote_files_registered_in_last_run ();
+    Promotion.promote_files_registered_in_last_run
+      (match files with
+       | [] -> All
+       | _ ->
+         let files =
+           List.map files
+             ~f:(fun fn -> Path.of_string (prefix_target common fn))
+         in
+         let on_missing fn =
+           Format.eprintf "@{<warning>Warning@}: Nothing to promote for %a.@."
+             Path.pp fn
+         in
+         These (files, on_missing));
     Utils.Cached_digest.dump ()
   in
   (term, Term.info "promote" ~doc ~man )

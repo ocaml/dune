@@ -241,7 +241,7 @@ module Gen (P : Install_rules.Params) = struct
       ocamlmklib ~sandbox:true ~custom:false ~targets:[dynamic]
     end
 
-  let build_stubs lib ~dir ~scope ~requires ~dir_contents =
+  let build_o_files lib ~dir ~scope ~requires ~dir_contents =
     let all_dirs = Dir_contents.dirs dir_contents in
     let h_files =
       List.fold_left all_dirs ~init:[] ~f:(fun acc dc ->
@@ -265,25 +265,32 @@ module Gen (P : Install_rules.Params) = struct
       ;
       (p, Path.relative dir (fn ^ ctx.ext_obj))
     in
-    let o_files =
-      let includes =
-        Arg_spec.S
-          [ Hidden_deps h_files
-          ; Arg_spec.of_result_map requires ~f:(fun libs ->
-              S [ Lib.L.c_include_flags libs ~stdlib_dir:ctx.stdlib_dir
-                ; Hidden_deps (SC.Libs.file_deps sctx libs ~ext:".h")
-                ])
-          ]
-      in
-      List.map lib.c_names ~f:(fun name ->
-        build_c_file   lib ~scope ~dir ~includes (resolve_name name ~ext:".c")
-      ) @ List.map lib.cxx_names ~f:(fun name ->
-        build_cxx_file lib ~scope ~dir ~includes (resolve_name name ~ext:".cpp")
-      )
+    let includes =
+      Arg_spec.S
+        [ Hidden_deps h_files
+        ; Arg_spec.of_result_map requires ~f:(fun libs ->
+            S [ Lib.L.c_include_flags libs ~stdlib_dir:ctx.stdlib_dir
+              ; Hidden_deps (SC.Libs.file_deps sctx libs ~ext:".h")
+              ])
+        ]
     in
-    match lib.self_build_stubs_archive with
-    | Some _ -> ()
-    | None -> build_self_stubs lib ~dir ~scope ~o_files
+    List.map lib.c_names ~f:(fun name ->
+      build_c_file   lib ~scope ~dir ~includes (resolve_name name ~ext:".c")
+    ) @ List.map lib.cxx_names ~f:(fun name ->
+      build_cxx_file lib ~scope ~dir ~includes (resolve_name name ~ext:".cpp")
+    )
+
+  let build_stubs lib ~dir ~scope ~requires ~dir_contents =
+    let vlib_stubs_o_files = [] in (* TODO *)
+    let lib_o_files =
+      if Library.has_stubs lib then
+        build_o_files lib ~dir ~scope ~requires ~dir_contents
+      else
+        []
+    in
+    match vlib_stubs_o_files @ lib_o_files with
+    | [] -> ()
+    | o_files -> build_self_stubs lib ~dir ~scope ~o_files
 
   let build_shared lib ~dir ~flags ~(ctx : Context.t) =
     Option.iter ctx.ocamlopt ~f:(fun ocamlopt ->
@@ -406,33 +413,35 @@ module Gen (P : Install_rules.Params) = struct
          Path.relative dir (header ^ ".h"))
        |> Path.Set.of_list);
 
-    (let modules =
-       Module.Name.Map.fold modules ~init:[] ~f:(fun m acc ->
-         if Module.has_impl m then
-           m :: acc
-         else
-           acc)
-     in
-     let wrapped_compat = Module.Name.Map.values wrapped_compat in
-     (* Compatibility modules have implementations so we can just append them.
-        We append the modules at the end as no library modules depend on
-        them. *)
-     let top_sorted_modules =
-       Ocamldep.Dep_graph.top_closed_implementations dep_graphs.impl modules
-       >>^ fun modules -> modules @ wrapped_compat
-     in
-     (let modules = modules @ wrapped_compat in
+    if not (Library.is_virtual lib) then begin
+      (let modules =
+         Module.Name.Map.fold modules ~init:[] ~f:(fun m acc ->
+           if Module.has_impl m then
+             m :: acc
+           else
+             acc)
+       in
+       let wrapped_compat = Module.Name.Map.values wrapped_compat in
+       (* Compatibility modules have implementations so we can just append them.
+          We append the modules at the end as no library modules depend on
+          them. *)
+       let top_sorted_modules =
+         Ocamldep.Dep_graph.top_closed_implementations dep_graphs.impl modules
+         >>^ fun modules -> modules @ wrapped_compat
+       in
+       (let modules = modules @ wrapped_compat in
         List.iter Mode.all ~f:(fun mode ->
-       build_lib lib ~scope ~flags ~dir ~obj_dir ~mode ~top_sorted_modules
-         ~modules)));
-    (* Build *.cma.js *)
-    SC.add_rules sctx (
-      let src = Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext Mode.Byte) in
-      let target = Path.extend_basename src ~suffix:".js" in
-      Js_of_ocaml_rules.build_cm cctx ~js_of_ocaml ~src ~target);
+          build_lib lib ~scope ~flags ~dir ~obj_dir ~mode ~top_sorted_modules
+            ~modules)));
+      (* Build *.cma.js *)
+      SC.add_rules sctx (
+        let src = Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext Mode.Byte) in
+        let target = Path.extend_basename src ~suffix:".js" in
+        Js_of_ocaml_rules.build_cm cctx ~js_of_ocaml ~src ~target);
 
-    if Dynlink_supported.By_the_os.get ctx.natdynlink_supported then
+      if Dynlink_supported.By_the_os.get ctx.natdynlink_supported then
       build_shared lib ~dir ~flags ~ctx;
+    end;
 
     Odoc.setup_library_odoc_rules lib ~requires ~modules ~dep_graphs ~scope;
 

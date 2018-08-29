@@ -127,7 +127,7 @@ module Gen (P : Install_rules.Params) = struct
         ~dynlink
         ~(deprecated : Module.t Module.Name.Map.t) =
     let lib_name = String.capitalize (Lib_name.Local.to_string lib.name) in
-    let transition_until =
+    let transition_message =
       match lib.wrapped with
       | Simple _ -> "" (* will never be accessed anyway *)
       | Yes_with_transition r -> r
@@ -137,9 +137,8 @@ module Gen (P : Install_rules.Params) = struct
         let name = Module.Name.to_string name in
         let hidden_name = sprintf "%s__%s" lib_name name in
         let real_name = sprintf "%s.%s" lib_name name in
-        sprintf "include %s [@@deprecated \"%s is not guaranteed past %s. \
-                 Use %s instead.\"]"
-          hidden_name name transition_until real_name
+        sprintf "include %s [@@deprecated \"%s. Use %s instead.\"]"
+          hidden_name transition_message real_name
       in
       let source_path = Option.value_exn (Module.file m Impl) in
       Build.return contents

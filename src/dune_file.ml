@@ -868,7 +868,7 @@ module Library = struct
       if_list
         ~then_:(
           Syntax.since Stanza.syntax (1, 2) >>= fun () ->
-          sum ["transition_until", string >>| fun x -> Yes_with_transition x])
+          sum ["transition", string >>| fun x -> Yes_with_transition x])
         ~else_:(bool >>| fun w -> Simple w)
 
     let field = field "wrapped" ~default:(Simple true) dparse

@@ -821,6 +821,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name variants)
+ (deps (package dune) (source_tree test-cases/variants))
+ (action
+  (chdir
+   test-cases/variants
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name windows-diff)
  (deps (package dune) (source_tree test-cases/windows-diff))
  (action
@@ -937,6 +945,7 @@
   (alias use-meta)
   (alias utop)
   (alias utop-default)
+  (alias variants)
   (alias windows-diff)
   (alias workspaces)))
 
@@ -1028,6 +1037,7 @@
   (alias too-many-parens)
   (alias use-meta)
   (alias utop-default)
+  (alias variants)
   (alias windows-diff)
   (alias workspaces)))
 

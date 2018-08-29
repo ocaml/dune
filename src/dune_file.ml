@@ -848,6 +848,17 @@ module Library = struct
         ]
   end
 
+  module Variants = struct
+    let syntax =
+      let syntax =
+        Syntax.create ~name:"in_development_do_not_use_variants"
+          ~desc:"the experimental variants feature"
+          [ (0, 0) ]
+      in
+      Dune_project.Extension.register syntax (Dsexp.Of_sexp.return []);
+      syntax
+  end
+
   type t =
     { name                     : Lib_name.Local.t
     ; public                   : Public_lib.t option
@@ -872,6 +883,8 @@ module Library = struct
     ; sub_systems              : Sub_system_info.t Sub_system_name.Map.t
     ; no_keep_locs             : bool
     ; dune_version             : Syntax.Version.t
+    ; virtual_modules          : Ordered_set_lang.t option
+    ; implements               : (Loc.t * string) option
     }
 
   let dparse =
@@ -906,6 +919,14 @@ module Library = struct
          Sub_system_info.record_parser ()
        and project = Dune_project.get_exn ()
        and dune_version = Syntax.get_exn Stanza.syntax
+       and virtual_modules =
+         field_o "virtual_modules" (
+           Syntax.since Variants.syntax (0, 1)
+           >>= fun () -> Ordered_set_lang.dparse)
+       and implements =
+         field_o "implements" (
+           Syntax.since Variants.syntax (0, 1)
+           >>= fun () -> (located string))
        in
        let name =
          let open Syntax.Version.Infix in
@@ -934,6 +955,12 @@ module Library = struct
                "name field is missing"
            )
        in
+       Option.both virtual_modules implements
+       |> Option.iter ~f:(fun (virtual_modules, (_, impl)) ->
+         of_sexp_errorf
+           (Ordered_set_lang.loc virtual_modules
+           |> Option.value_exn)
+           "A library cannot be both virtual and implement %s" impl);
        { name
        ; public
        ; synopsis
@@ -957,6 +984,8 @@ module Library = struct
        ; sub_systems
        ; no_keep_locs
        ; dune_version
+       ; virtual_modules
+       ; implements
        })
 
   let has_stubs t =

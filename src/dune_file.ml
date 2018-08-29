@@ -851,7 +851,7 @@ module Library = struct
   module Variants = struct
     let syntax =
       let syntax =
-        Syntax.create ~name:"variants"
+        Syntax.create ~name:"in_development_do_not_use_variants"
           ~desc:"experimental variants feature"
           [ (0, 0) ]
       in

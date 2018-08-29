@@ -137,8 +137,8 @@ module Gen (P : Install_rules.Params) = struct
         let name = Module.Name.to_string name in
         let hidden_name = sprintf "%s__%s" lib_name name in
         let real_name = sprintf "%s.%s" lib_name name in
-        sprintf "include %s [@@deprecated \"%s. Use %s instead.\"]"
-          hidden_name transition_message real_name
+        sprintf {|[@@@deprecated "%s. Use %s instead."] include %s|}
+          transition_message real_name hidden_name
       in
       let source_path = Option.value_exn (Module.file m Impl) in
       Build.return contents

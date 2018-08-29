@@ -197,7 +197,8 @@ end = struct
       | Simple true -> (wrap_modules modules, Module.Name.Map.empty)
       | Yes_with_transition _ ->
         ( wrap_modules modules
-        , Module.Name.Map.map ~f:Module.deprecate modules
+        , Module.Name.Map.remove modules main_module_name
+          |> Module.Name.Map.map ~f:Module.deprecate
         )
     in
     let alias_module =

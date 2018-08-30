@@ -164,8 +164,13 @@ module Gen(P : Params) = struct
                   | Some f -> Some f.path)
               ])
         ; if_ (byte && not virtual_library) [ Library.archive ~dir lib ~ext:".cma" ]
-        ; if_ (Library.has_stubs lib && not virtual_library)
+        ; if virtual_library then (
+            (lib.c_names @ lib.cxx_names)
+            |> List.map ~f:(fun (_, c) -> Path.relative dir (c ^ ext_obj))
+          ) else if Library.has_stubs lib then (
             [ Library.stubs_archive ~dir lib ~ext_lib:ctx.ext_lib ]
+          ) else
+            []
         ; if_ (native && not virtual_library)
             (let files =
                [ Library.archive ~dir lib ~ext:".cmxa"

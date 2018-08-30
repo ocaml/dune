@@ -17,6 +17,12 @@ let make_printer ?(backtrace=false) ?hint ?loc pp =
   ; backtrace
   }
 
+let set_loc p ~loc =
+  {p with loc = Some loc}
+
+let set_hint p ~hint =
+  {p with hint = Some hint}
+
 let builtin_printer = function
   | Dsexp.Of_sexp.Of_sexp (loc, msg, hint') ->
     let loc =

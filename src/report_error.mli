@@ -20,8 +20,15 @@ val make_printer :
   (Format.formatter -> unit) ->
   printer
 
-(** Register an error reporter. *)
+val set_loc : printer -> loc:Loc.t -> printer
+
+val set_hint : printer -> hint:string -> printer
+
+(** Register an error printer. *)
 val register : (exn -> printer option) -> unit
+
+(** Find an error printer *)
+val find_printer : exn -> printer option
 
 (**/**)
 val map_fname : (string -> string) ref

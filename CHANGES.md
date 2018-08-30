@@ -36,6 +36,8 @@ next
 - Add an emacs mode providing helpers to promote correction files
   (#1192, @diml)
 
+- Improve message suggesting to remove parentheses (#1196, fix #1173, @emillon)
+
 1.1.1 (08/08/2018)
 ------------------
 

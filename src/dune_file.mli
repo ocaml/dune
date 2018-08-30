@@ -249,6 +249,7 @@ module Library : sig
   val dll : t -> dir:Path.t -> ext_dll:string -> Path.t
   val archive : t -> dir:Path.t -> ext:string -> Path.t
   val best_name : t -> Lib_name.t
+  val is_virtual : t -> bool
 end
 
 module Install_conf : sig

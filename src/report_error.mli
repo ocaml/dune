@@ -11,12 +11,14 @@ open! Stdune
     We cache what is actually printed to the screen.  *)
 val report : exn -> unit
 
-type printer =
-  { loc       : Loc.t option
-  ; pp        : Format.formatter -> unit
-  ; hint      : string option
-  ; backtrace : bool
-  }
+type printer
+
+val make_printer :
+  ?backtrace:bool ->
+  ?hint:string ->
+  ?loc:Loc.t ->
+  (Format.formatter -> unit) ->
+  printer
 
 (** Register an error reporter. *)
 val register : (exn -> printer option) -> unit

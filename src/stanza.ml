@@ -33,15 +33,12 @@ module Of_sexp = struct
     Report_error.register
       (function
         | Parens_no_longer_necessary loc ->
-          Some
-            { loc = Some loc
-            ; hint = None
-            ; backtrace = false
-            ; pp = fun ppf ->
-                Format.fprintf ppf
-                  "These parentheses are no longer necessary with dune, \
-                   please remove them.@\n"
-            }
+          let pp ppf =
+            Format.fprintf ppf
+              "These parentheses are no longer necessary with dune, \
+               please remove them.@\n"
+          in
+          Some (Report_error.make_printer ~loc pp)
         | _ -> None)
 
   let switch_file_kind ~jbuild ~dune =

@@ -868,7 +868,9 @@ module Library = struct
       sum
         [ "true", return (Simple true)
         ; "false", return (Simple false)
-        ; "transition", string >>| fun x -> Yes_with_transition x
+        ; "transition",
+          Syntax.since Stanza.syntax (1, 2) >>= fun () ->
+          string >>| fun x -> Yes_with_transition x
         ]
 
     let field = field "wrapped" ~default:(Simple true) dparse

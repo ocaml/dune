@@ -168,7 +168,7 @@ end = struct
     let sub_systems =
       match P.dune_file pkg with
       | None -> Sub_system_name.Map.empty
-      | Some fn -> Installed_dune_file.load fn
+      | Some fn -> (Installed_dune_file.load fn).sub_systems
     in
     { loc              = loc
     ; kind             = Normal

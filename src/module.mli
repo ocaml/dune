@@ -95,4 +95,4 @@ val set_pp : t -> (unit, string list) Build.t option -> t
 
 val to_sexp : t Sexp.To_sexp.t
 
-val deprecate : t -> t
+val wrapped_compat : t -> t

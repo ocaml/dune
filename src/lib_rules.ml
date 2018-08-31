@@ -413,13 +413,13 @@ module Gen (P : Install_rules.Params) = struct
          else
            acc)
      in
-     let deprecated_modules = Module.Name.Map.values wrapped_compat in
+     let wrapped_compat = Module.Name.Map.values wrapped_compat in
      (* deprecated modules have implementations so we can just append them *)
      let top_sorted_modules =
        Ocamldep.Dep_graph.top_closed_implementations dep_graphs.impl modules
-       >>^ fun modules -> modules @ deprecated_modules
+       >>^ fun modules -> modules @ wrapped_compat
      in
-     (let modules = modules @ deprecated_modules in
+     (let modules = modules @ wrapped_compat in
         List.iter Mode.all ~f:(fun mode ->
        build_lib lib ~scope ~flags ~dir ~obj_dir ~mode ~top_sorted_modules
          ~modules)));

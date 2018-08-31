@@ -169,22 +169,12 @@ let wrapped_compat t =
     intf = None
   ; impl =
       Some (
-        let path =
-          match t.intf, t.impl with
-          | Some _, Some impl
-          | None, Some impl -> impl.path
-          | Some intf, _ -> intf.path
-          | None, None -> assert false
-        in
-        let path =
-          Path.L.relative (Path.parent_exn path)
-            [ ".wrapped_compat"
-            ; Path.basename path
-            ]
-        in
-        let (base, _) = Path.split_extension path in
         { syntax = OCaml
-        ; path = Path.extend_basename base ~suffix:".ml-gen"
+        ; path =
+          Path.L.relative (dir t)
+            [ ".wrapped_compat"
+            ; Name.to_string t.name ^ ".ml-gen"
+            ]
         }
       )
   }

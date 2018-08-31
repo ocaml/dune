@@ -96,6 +96,13 @@ to use the :ref:`include_subdirs` stanza.
   only intended for libraries that manually prefix all their modules by the
   library name and to ease porting of existing projects to dune
 
+- ``(wrapped (transition <message>))`` Is the same as ``(wrapped true)`` except
+  that it will also generate unwrapped (not prefixed by the library name)
+  modules to preserve compatibility. This is useful for libraries that would
+  like to transition from ``(wrapped false)`` to ``(wrapped true)`` without
+  breaking compatibility for users. The ``<message>`` will be included in the
+  deprecation notice for the unwrapped modules.
+
 - ``(preprocess <preprocess-spec>)`` specifies how to preprocess files if
   needed. The default is ``no_processing``. Other options are described in the
   `Preprocessing specification`_ section

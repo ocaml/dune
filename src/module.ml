@@ -166,7 +166,8 @@ let to_sexp { name; impl; intf; obj_name ; pp } =
 
 let deprecate t =
   { t with
-    impl =
+    intf = None
+  ; impl =
       Some (
         let path =
           match t.intf, t.impl with

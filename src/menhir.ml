@@ -71,7 +71,7 @@ module Run (P : PARAMS) = struct
   (* Find the menhir binary. *)
 
   let menhir_binary =
-    SC.resolve_program sctx "menhir" ~loc:None ~hint:"opam install menhir"
+    SC.resolve_program sctx "menhir" ~loc:None ~hint:"try: opam install menhir"
 
   (* [menhir args] generates a Menhir command line (a build action). *)
 

@@ -1229,16 +1229,14 @@ let () =
            match !Clflags.external_lib_deps_hint with
            | [] -> (* during bootstrap *) None
            | l ->
-             Some (List.map l ~f:quote_for_shell |> String.concat ~sep:" "))
+             let cmdline =
+               List.map l ~f:quote_for_shell |> String.concat ~sep:" "
+             in
+             Some ("try: " ^ cmdline))
         | Private_deps_not_allowed t ->
           (Some t.pd_loc, None)
         | _ -> (None, None)
       in
-      Some
-        { Report_error.
-          loc
-        ; hint
-        ; pp = (fun ppf -> report_lib_error ppf e)
-        ; backtrace = false
-        }
+      let pp ppf = report_lib_error ppf e in
+      Some (Report_error.make_printer ?loc ?hint pp)
     | _ -> None)

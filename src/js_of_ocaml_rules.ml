@@ -14,7 +14,7 @@ let sourcemap sctx = if dev_mode sctx then ["--source-map-inline"] else []
 
 let standard sctx = pretty sctx @ sourcemap sctx
 
-let install_jsoo_hint = "opam install js_of_ocaml-compiler"
+let install_jsoo_hint = "try: opam install js_of_ocaml-compiler"
 
 let in_build_dir ~ctx =
   let init = Path.relative ctx.Context.build_dir ".js" in

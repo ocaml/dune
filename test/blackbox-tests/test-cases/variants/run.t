@@ -2,8 +2,8 @@ Variant feature is auto enabled when virtual_modules is used
 
   $ dune build --root variants-without-using
   File "dune", line 3, characters 1-25:
-   (virtual_modules foobar))
-   ^^^^^^^^^^^^^^^^^^^^^^^^
+  3 |  (virtual_modules foobar))
+       ^^^^^^^^^^^^^^^^^^^^^^^^
   Error: 'virtual_modules' is only available since version 0.1 of the experimental variants feature
   [1]
 

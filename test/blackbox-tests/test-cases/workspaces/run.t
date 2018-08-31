@@ -2,8 +2,8 @@ jbuild still discovers workspaces as usual
 
   $ jbuilder build --root jbuilder-default-name
   File "jbuild-workspace", line 1, characters 10-24:
-  (context (does-not-exist))
-            ^^^^^^^^^^^^^^
+  1 | (context (does-not-exist))
+                ^^^^^^^^^^^^^^
   Error: Unknown constructor does-not-exist
   [1]
 
@@ -16,8 +16,8 @@ dune uses a versioned file. If the version is missing, then we get an error.
 
   $ dune build --root dune-no-version
   File "dune-workspace", line 1, characters 0-19:
-  (context (default))
-  ^^^^^^^^^^^^^^^^^^^
+  1 | (context (default))
+      ^^^^^^^^^^^^^^^^^^^
   Error: Invalid first line, expected: (lang <lang> <version>)
   [1]
 

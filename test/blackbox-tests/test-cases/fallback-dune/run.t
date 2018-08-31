@@ -2,8 +2,8 @@ fallback isn't allowed in dune
 
   $ dune build --root dune1
   File "dune", line 2, characters 1-11:
-   (fallback)
-   ^^^^^^^^^^
+  2 |  (fallback)
+       ^^^^^^^^^^
   Error: 'fallback' was renamed to '(mode fallback)' in the 1.0 version of the dune language
   [1]
 
@@ -11,8 +11,8 @@ fallback isn't allowed in dune
 
   $ dune build --root dune2
   File "dune", line 2, characters 1-17:
-   (fallback false)
-   ^^^^^^^^^^^^^^^^
+  2 |  (fallback false)
+       ^^^^^^^^^^^^^^^^
   Error: 'fallback' was renamed to '(mode fallback)' in the 1.0 version of the dune language
   [1]
 

@@ -19,8 +19,8 @@ displayed. This can happen for:
 
   $ dune build --root documentation
   File "dune", line 1, characters 0-15:
-  (documentation)
-  ^^^^^^^^^^^^^^^
+  1 | (documentation)
+      ^^^^^^^^^^^^^^^
   Error: I can't determine automatically which package this stanza is for.
   I have the choice between these ones:
   - pkg1 (because of pkg1.opam)

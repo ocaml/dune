@@ -142,7 +142,9 @@ module Gen(P : Params) = struct
               modules
             ; alias_module
             ; wrapped_compat
-            ; main_module_name = _ } =
+            ; main_module_name = _
+            ; virtual_modules = _
+            } =
           Dir_contents.modules_of_library dir_contents
             ~name:(Library.best_name lib)
         in

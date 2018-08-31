@@ -5,11 +5,21 @@ open Dune_file
 open! No_io
 
 module Modules_field_evaluator : sig
+  type t = private
+    { all_modules : Module.t Module.Name.Map.t
+    ; virtual_modules : Module.t Module.Name.Map.t
+    }
+
   val eval
     :  modules:Module.t Module.Name.Map.t
     -> buildable:Buildable.t
-    -> Module.t Module.Name.Map.t
+    -> virtual_modules:Ordered_set_lang.t option
+    -> t
 end = struct
+  type t =
+    { all_modules : Module.t Module.Name.Map.t
+    ; virtual_modules : Module.t Module.Name.Map.t
+    }
 
   let eval =
     let module Value = struct
@@ -38,10 +48,9 @@ end = struct
       ( !fake_modules
       , Module.Name.Map.filter_map modules ~f:(fun (loc, m) ->
           match m with
-          | Ok m -> Some m
+          | Ok m -> Some (loc, m)
           | Error s ->
             Errors.fail loc "Module %a doesn't exist." Module.Name.pp s)
-      , modules
       )
 
   type field =
@@ -50,54 +59,97 @@ end = struct
 
   type incorrect_field =
     { correct_field : field
-    ; module_: Module.t
+    ; module_: Loc.t * Module.t
     }
 
   type error =
     | Incorrect_field of incorrect_field
+    | Virtual_intf_overlap of (Loc.t * Module.t)
 
-  let fold_errors ~f ~init ~modules ~intf_only =
+  let fold_errors ~f ~init ~modules ~intf_only ~virtual_modules =
     let init =
       Module.Name.Map.fold intf_only ~init
-        ~f:(fun (module_ : Module.t) acc ->
+        ~f:(fun ((_, (module_ : Module.t)) as module_loc) acc ->
           if Option.is_none module_.impl then
             acc
           else
             f (Incorrect_field
                  { correct_field = Modules
-                 ; module_
+                 ; module_ = module_loc
                  }
               ) acc)
     in
+    let init =
+      Module.Name.Map.fold virtual_modules ~init
+        ~f:(fun (_, (module_ : Module.t) as module_loc) acc ->
+          if Option.is_some module_.impl then
+            f (Incorrect_field
+                 { correct_field = Modules
+                 ; module_ = module_loc
+                 }
+              ) acc
+          else if Module.Name.Map.mem intf_only (Module.name module_) then
+            f (Virtual_intf_overlap module_loc) acc
+          else
+            acc)
+    in
     Module.Name.Map.fold modules ~init
-      ~f:(fun (module_ : Module.t) acc ->
+      ~f:(fun (_, (module_ : Module.t) as module_loc) acc ->
         if Option.is_some module_.impl then
           acc
-        else if not (Module.Name.Map.mem intf_only (Module.name module_)) then
+        else if not (Module.Name.Map.mem intf_only (Module.name module_))
+              && not (Module.Name.Map.mem virtual_modules (Module.name module_))
+        then
           f (Incorrect_field
                { correct_field = Intf_only
-               ; module_
+               ; module_ = module_loc
                }
             ) acc
         else
           acc)
 
   let check_invalid_module_listing ~(buildable : Buildable.t) ~intf_only
-        ~modules ~modules_without_implementation_locs =
-    let (missing_modules, missing_intf_only) =
-      let (missing_modules, missing_intf_only) =
-        fold_errors ~init:([], []) ~modules ~intf_only
-          ~f:(fun e (missing_modules, missing_intf_only) ->
-            let (Incorrect_field { correct_field; module_ }) = e in
-            begin match correct_field with
-            | Modules -> (module_ :: missing_modules, missing_intf_only)
-            | Intf_only -> (missing_modules, module_ :: missing_intf_only)
-            end)
+        ~modules ~virtual_modules =
+    let (missing_modules, missing_intf_only, virt_intf_overlaps) =
+      let (missing_modules, missing_intf_only, virt_intf_overlaps) =
+        fold_errors ~init:([], [], []) ~modules ~intf_only ~virtual_modules
+          ~f:(fun e (missing_modules, missing_intf_only, virt_intf_overlaps) ->
+            match e with
+            | Incorrect_field { correct_field = Modules; module_ } ->
+              ( module_ :: missing_modules
+              , missing_intf_only
+              , virt_intf_overlaps
+              )
+            | Incorrect_field { correct_field = Intf_only; module_ } ->
+              ( missing_modules
+              , module_ :: missing_intf_only
+              , virt_intf_overlaps
+              )
+            | Virtual_intf_overlap module_ ->
+              ( missing_modules
+              , missing_intf_only
+              , module_ :: virt_intf_overlaps
+              ))
       in
-      (List.rev missing_modules, List.rev missing_intf_only)
+      ( List.rev missing_modules
+      , List.rev missing_intf_only
+      , List.rev virt_intf_overlaps
+      )
     in
     let uncapitalized =
-      List.map ~f:(fun m -> Module.name m |> Module.Name.uncapitalize) in
+      List.map ~f:(fun (_, m) -> Module.name m |> Module.Name.uncapitalize) in
+    if virt_intf_overlaps <> [] then begin
+      let (loc, _) = List.hd virt_intf_overlaps in
+      Errors.fail loc
+        "These modules appear in the virtual_libraries \
+         and modules_without_implementation fields: \
+         \n%s\nThis is not possible."
+        (virt_intf_overlaps
+         |> uncapitalized
+         |> List.map ~f:(sprintf "- %s")
+         |> String.concat ~sep:"\n"
+        )
+    end;
     if missing_intf_only <> [] then begin
       match Ordered_set_lang.loc buildable.modules_without_implementation with
       | None ->
@@ -130,10 +182,9 @@ end = struct
           (list_modules missing_intf_only)
     end;
     if missing_modules <> [] then begin
-      let module_name = Module.name (List.hd missing_modules) in
-      let (loc, _) =
-        Module.Name.Map.find modules_without_implementation_locs module_name
-        |> Option.value_exn
+      let (loc, module_name) =
+        let (loc, module_) = List.hd missing_modules in
+        (loc, Module.name module_)
       in
       (* CR-soon jdimino for jdimino: report all errors *)
       Errors.fail loc
@@ -142,45 +193,66 @@ end = struct
     end
 
   let eval ~modules:(all_modules : Module.t Module.Name.Map.t)
-        ~buildable:(conf : Buildable.t) =
-    let (fake_modules, modules, _) =
+        ~buildable:(conf : Buildable.t) ~virtual_modules =
+    let (fake_modules, modules) =
       eval ~standard:all_modules ~all_modules conf.modules in
-    let (fake_modules, intf_only, modules_without_implementation_locs) =
-      let (fake_modules', intf_only, locs) =
+    let (fake_modules, intf_only) =
+      let (fake_modules', intf_only) =
         eval ~standard:Module.Name.Map.empty ~all_modules
           conf.modules_without_implementation in
       ( Module.Name.Map.superpose fake_modules' fake_modules
       , intf_only
-      , locs
       )
+    in
+    let (fake_modules, virtual_modules) =
+      match virtual_modules with
+      | None -> (fake_modules, Module.Name.Map.empty)
+      | Some virtual_modules ->
+        let (fake_modules', virtual_modules) =
+          eval ~standard:Module.Name.Map.empty ~all_modules
+            virtual_modules in
+        ( Module.Name.Map.superpose fake_modules' fake_modules
+        , virtual_modules
+        )
     in
     Module.Name.Map.iteri fake_modules ~f:(fun m loc ->
       Errors.warn loc "Module %a is excluded but it doesn't exist."
         Module.Name.pp m
     );
-    check_invalid_module_listing ~buildable:conf ~intf_only ~modules
-      ~modules_without_implementation_locs;
-    modules
+    check_invalid_module_listing ~buildable:conf ~intf_only
+      ~modules ~virtual_modules;
+    let drop_locs = Module.Name.Map.map ~f:snd in
+    { all_modules = drop_locs modules
+    ; virtual_modules = drop_locs virtual_modules
+    }
 end
 
 module Library_modules : sig
   type t = private
     { modules          : Module.t Module.Name.Map.t
+    ; virtual_modules  : Module.t Module.Name.Map.t
     ; alias_module     : Module.t option
     ; main_module_name : Module.Name.t
     ; wrapped_compat   : Module.t Module.Name.Map.t
     }
 
-  val make : Library.t -> dir:Path.t -> Module.t Module.Name.Map.t -> t
+  val make
+    :  Library.t
+    -> dir:Path.t
+    -> Module.t Module.Name.Map.t
+    -> virtual_modules:Module.t Module.Name.Map.t
+    -> t
 end = struct
   type t =
     { modules          : Module.t Module.Name.Map.t
+    ; virtual_modules  : Module.t Module.Name.Map.t
     ; alias_module     : Module.t option
     ; main_module_name : Module.Name.t
     ; wrapped_compat   : Module.t Module.Name.Map.t
     }
 
-  let make (lib : Library.t) ~dir (modules : Module.t Module.Name.Map.t) =
+  let make (lib : Library.t) ~dir (modules : Module.t Module.Name.Map.t)
+        ~virtual_modules =
     let main_module_name =
       Module.Name.of_string (Lib_name.Local.to_string lib.name) in
     let (modules, wrapped_compat) =
@@ -228,6 +300,7 @@ end = struct
     ; alias_module
     ; main_module_name
     ; wrapped_compat
+    ; virtual_modules
     }
 end
 
@@ -383,15 +456,24 @@ let build_modules_map (d : Super_context.Dir_with_jbuild.t) ~modules =
   let libs, exes =
     List.filter_partition_map d.stanzas ~f:(fun stanza ->
       match (stanza : Stanza.t) with
-      | Library lib->
-        let modules =
+      | Library lib ->
+        let { Modules_field_evaluator.
+              all_modules = modules
+            ; virtual_modules
+            } =
           Modules_field_evaluator.eval ~modules ~buildable:lib.buildable
+            ~virtual_modules:lib.virtual_modules
         in
-        Left (lib, Library_modules.make lib ~dir:d.ctx_dir modules)
+        Left ( lib
+             , Library_modules.make lib ~dir:d.ctx_dir modules ~virtual_modules)
       | Executables exes
       | Tests { exes; _} ->
-        let modules =
+        let { Modules_field_evaluator.
+              all_modules = modules
+            ; virtual_modules = _
+            } =
           Modules_field_evaluator.eval ~modules ~buildable:exes.buildable
+            ~virtual_modules:None
         in
         Right (exes, modules)
       | _ -> Skip)

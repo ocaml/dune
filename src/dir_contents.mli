@@ -19,6 +19,7 @@ val text_files : t -> String.Set.t
 module Library_modules : sig
   type t = private
     { modules          : Module.t Module.Name.Map.t
+    ; virtual_modules  : Module.t Module.Name.Map.t
     ; alias_module     : Module.t option
     ; main_module_name : Module.Name.t
     ; wrapped_compat   : Module.t Module.Name.Map.t

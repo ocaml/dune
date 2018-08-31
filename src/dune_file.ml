@@ -1008,6 +1008,8 @@ module Library = struct
     match t.public with
     | None -> Lib_name.of_local t.name
     | Some p -> snd p.name
+
+  let is_virtual t = Option.is_some t.virtual_modules
 end
 
 module Install_conf = struct

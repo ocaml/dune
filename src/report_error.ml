@@ -162,7 +162,7 @@ let report exn =
       if dependency_path <> [] then
         Format.fprintf ppf "%a@\n" Dep_path.Entries.pp
           (List.rev dependency_path);
-      Option.iter p.hint ~f:(fun s -> Format.fprintf ppf "Hint: try: %s\n" s);
+      Option.iter p.hint ~f:(fun s -> Format.fprintf ppf "Hint: %s\n" s);
       Format.pp_print_flush ppf ();
       let s = Buffer.contents err_buf in
       Buffer.clear err_buf;

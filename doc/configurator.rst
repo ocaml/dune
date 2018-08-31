@@ -9,7 +9,7 @@ stubs, but there are no limitations on this.
 
 Configurator allows you to query for the following features:
 
-* Variables defined in ``ocamlc - config``,
+* Variables defined in ``ocamlc -config``,
 
 * pkg-config_ flags for packages,
 

@@ -48,6 +48,15 @@ module Local = struct
   let dparse_loc =
     Dsexp.Of_sexp.plain_string (fun ~loc s -> (loc, of_string s))
 
+  let dparse =
+    let open Dsexp.Of_sexp in
+    let%map (loc, res) = dparse_loc
+    in
+    match res with
+    | Ok s
+    | Warn s -> s
+    | Invalid -> of_sexp_errorf loc "invalid library names"
+
   let dgen = Dsexp.To_sexp.string
 
   let to_sexp = Sexp.To_sexp.string

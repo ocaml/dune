@@ -22,10 +22,15 @@ module Gen(P : Params) = struct
     SC.add_rule sctx
       (Build.arr (fun () ->
          let dune_version = Option.value_exn (Lib.dune_version lib) in
+         let installed_dune_file =
+           { Installed_dune_file.
+             virtual_library = None
+           ; sub_systems = Lib.Sub_system.dump_config lib
+           }
+         in
          Format.asprintf "%a@."
            (Dsexp.pp (Stanza.File_kind.of_syntax dune_version))
-           (Lib.Sub_system.dump_config lib
-            |> Installed_dune_file.gen ~dune_version))
+           (Installed_dune_file.gen ~dune_version installed_dune_file))
        >>> Build.write_file_dyn
              (lib_dune_file ~dir:(Lib.src_dir lib) ~name:(Lib.name lib)))
 

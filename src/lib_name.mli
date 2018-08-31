@@ -15,7 +15,8 @@ module Local : sig
     | Warn of t
     | Invalid
 
-  val dgen : t Dsexp.To_sexp.t
+  include Dsexp.Sexpable with type t := t
+
   val dparse_loc : (Loc.t * result) Dsexp.Of_sexp.t
   val validate : (Loc.t * result) -> wrapped:bool -> t
 

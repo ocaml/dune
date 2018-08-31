@@ -6,12 +6,17 @@ module SC = Super_context
 module Includes = struct
   type t = string list Arg_spec.t Cm_kind.Dict.t
 
-  let make sctx ~opaque ~requires : _ Cm_kind.Dict.t =
+  let make sctx ~dir ~opaque ~requires : _ Cm_kind.Dict.t =
     match requires with
     | Error exn -> Cm_kind.Dict.make_all (Arg_spec.Dyn (fun _ -> raise exn))
     | Ok libs ->
       let iflags =
         Lib.L.include_flags libs ~stdlib_dir:(SC.context sctx).stdlib_dir
+        |> Response_file.process_ocaml_call
+             sctx
+             ~key:"include-flags"
+             ~exec_dir:dir
+             ~response_file_dir:dir
       in
       let cmi_includes =
         Arg_spec.S [ iflags
@@ -92,7 +97,7 @@ let create ~super_context ~scope ~dir ?(dir_kind=File_tree.Dune_file.Kind.Dune)
   ; lib_interface_module
   ; flags
   ; requires
-  ; includes = Includes.make super_context ~opaque ~requires
+  ; includes = Includes.make super_context ~opaque ~requires ~dir
   ; preprocessing
   ; no_keep_locs
   ; opaque

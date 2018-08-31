@@ -46,18 +46,18 @@ module L : sig
   type nonrec t = t list
 
   val include_paths : t -> stdlib_dir:Path.t -> Path.Set.t
-  val include_flags : t -> stdlib_dir:Path.t -> _ Arg_spec.t
+  val include_flags : t -> stdlib_dir:Path.t -> Arg_spec.Simple.t
 
-  val c_include_flags : t -> stdlib_dir:Path.t -> _ Arg_spec.t
+  val c_include_flags : t -> stdlib_dir:Path.t -> Arg_spec.Simple.t
 
-  val link_flags : t -> mode:Mode.t -> stdlib_dir:Path.t -> _ Arg_spec.t
+  val link_flags : t -> mode:Mode.t -> stdlib_dir:Path.t -> Arg_spec.Simple.t
 
   val compile_and_link_flags
     :  compile:t
     -> link:t
     -> mode:Mode.t
     -> stdlib_dir:Path.t
-    -> _ Arg_spec.t
+    -> Arg_spec.Simple.t
 
   (** All the library archive files (.a, .cmxa, _stubs.a, ...)  that
       should be linked in when linking an executable. *)
@@ -74,8 +74,11 @@ module Lib_and_module : sig
     | Lib of t
     | Module of Module.t * Path.t (** obj_dir *)
 
-  val link_flags : t list -> mode:Mode.t -> stdlib_dir:Path.t -> _ Arg_spec.t
-
+  val link_flags
+    :  t list
+    -> mode:Mode.t
+    -> stdlib_dir:Path.t
+    -> Arg_spec.Simple.t
 end
 
 (** {1 Errors} *)

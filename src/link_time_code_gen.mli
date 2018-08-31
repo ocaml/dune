@@ -5,5 +5,5 @@ val libraries_link
   -> mode:Mode.t
   -> Compilation_context.t
   -> Lib.L.t
-  -> _ Arg_spec.t
+  -> Arg_spec.Simple.t
 (** Insert link time generated code for findlib_dynload in the list *)

@@ -273,6 +273,11 @@ module Gen (P : Install_rules.Params) = struct
         [ Hidden_deps h_files
         ; Arg_spec.of_result_map requires ~f:(fun libs ->
             S [ Lib.L.c_include_flags libs ~stdlib_dir:ctx.stdlib_dir
+                |> Response_file.process_ocaml_call
+                     sctx
+                     ~exec_dir:dir
+                     ~response_file_dir:dir
+                     ~key:"c-include-flags"
               ; Hidden_deps (Lib_file_deps.L.file_deps sctx libs ~exts:[".h"])
               ])
         ]

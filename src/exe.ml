@@ -140,7 +140,14 @@ let link_exe
         artifacts modules ~ext:ctx.ext_obj))
   in
   let arg_spec_for_requires =
-    Result.map requires ~f:(Link_time_code_gen.libraries_link ~name ~mode cctx)
+    Result.map requires
+      ~f:(fun libs ->
+        Link_time_code_gen.libraries_link ~name ~mode cctx libs
+        |> Response_file.process_ocaml_call
+             sctx
+             ~exec_dir:dir
+             ~response_file_dir:dir
+             ~key:("link-flags-" ^ Path.basename exe))
   in
   (* The rule *)
   SC.add_rule sctx

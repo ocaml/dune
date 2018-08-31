@@ -414,7 +414,9 @@ module Gen (P : Install_rules.Params) = struct
            acc)
      in
      let wrapped_compat = Module.Name.Map.values wrapped_compat in
-     (* deprecated modules have implementations so we can just append them *)
+     (* Compatibility modules have implementations so we can just append them.
+        We append the modules at the end as no library modules depend on
+        them. *)
      let top_sorted_modules =
        Ocamldep.Dep_graph.top_closed_implementations dep_graphs.impl modules
        >>^ fun modules -> modules @ wrapped_compat

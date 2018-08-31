@@ -44,7 +44,7 @@
 
 ;;;###autoload
 (defun dune-runtest-and-promote ()
-  "Runt tests in the current directory and promote the current buffer."
+  "Run tests in the current directory and promote the current buffer."
   (interactive)
   (compile (format "%s build @@runtest" dune-command))
   (dune-promote))

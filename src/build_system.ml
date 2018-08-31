@@ -396,21 +396,40 @@ type hook =
   | Rule_started
   | Rule_completed
 
+module Cached_file_spec = struct
+  type t' =
+    { package_deps : Package.Name.Set.t
+    ; package : Package.Name.t
+    }
+
+  (* A cached file spec that is None represents a file that has been
+     computed and cached before, but no additional data was available
+     at that point. *)
+  type t = t' option
+end
+
+module Maybe_cached_file_spec = struct
+  type t =
+    | Computed of File_spec.packed
+    | Cached of Cached_file_spec.t
+end
+
 module File_trace = struct
   type t =
-    { own_digest: Digest.t
-    ; partition_digest: Digest.t
+    { own_digest : Digest.t
+    ; partition_digest : Digest.t
+    ; mutable cached_spec : Cached_file_spec.t
     }
 end
 
 type t =
   { (* File specification by targets *)
-    files       : File_spec.packed Path.Table.t
+    files       : Maybe_cached_file_spec.t Path.Table.t
   ; contexts    : Context.t String.Map.t
-  ; (* Table from target to digest of
-       [(deps (filename + contents), targets (filename only), action)] *)
-    trace       : File_trace.t Path.Table.t
+  ; trace       : File_trace.t Path.Table.t
   ; partition_state : Partition_state.t
+  ; (* Cached results of package_deps function *)
+    pkg_deps_cache : Package.Name.Set.t Path.Table.t
   ; file_tree   : File_tree.t
   ; mutable local_mkdirs : Path.Set.t
   ; mutable dirs : Dir_status.t Path.Table.t
@@ -480,18 +499,32 @@ let entry_point t ~f =
 module Target = Build_interpret.Target
 module Pre_rule = Build_interpret.Rule
 
-let get_file : type a. t -> Path.t -> a File_kind.t -> a File_spec.t = fun t fn kind ->
-  match Path.Table.find t.files fn with
-  | None -> die "no rule found for %s" (Path.to_string fn)
-  | Some (File_spec.T file) ->
-    let Eq = File_kind.eq_exn kind file.kind in
-    file
-
 let vfile_to_string (type a) (module K : Vfile_kind.S with type t = a) _fn x =
   K.to_string x
 
 let load_vfile_exn (type a) (module K : Vfile_kind.S with type t = a) fn =
   K.load fn
+
+let store_vfile_exn : type a. t -> Path.t -> a Vfile_kind.t -> a -> unit
+  = fun t fn kind data ->
+    match Path.Table.find t.files fn with
+    | Some (Maybe_cached_file_spec.Computed (File_spec.T file)) ->
+      let Eq = File_kind.eq_exn (Sexp_file kind) file.kind in
+      file.data <- Some data
+    | Some (Maybe_cached_file_spec.Cached _) -> ()
+    | None -> die "no rule found for %s" (Path.to_string fn)
+
+let get_vfile_data : type a. t -> Path.t -> a Vfile_kind.t -> a
+  = fun t fn kind ->
+    match Path.Table.find t.files fn with
+    | Some (Maybe_cached_file_spec.Computed (File_spec.T file)) ->
+      let Eq = File_kind.eq_exn (Sexp_file kind) file.kind in
+      (match file.data with
+      | Some data -> data
+      | None -> load_vfile_exn kind fn)
+    | Some (Maybe_cached_file_spec.Cached _) ->
+      load_vfile_exn kind fn
+    | None -> die "no rule found for %s" (Path.to_string fn)
 
 module Build_exec = struct
   open Build.Repr
@@ -503,8 +536,7 @@ module Build_exec = struct
       | Arr f -> f x
       | Targets _ -> x
       | Store_vfile (Vspec.T (fn, kind)) ->
-        let file = get_file bs fn (Sexp_file kind) in
-        file.data <- Some x;
+        store_vfile_exn bs fn kind x;
         Write_file (fn, vfile_to_string kind fn x)
       | Compose (a, b) ->
         exec dyn_deps a x |> exec dyn_deps b
@@ -529,10 +561,7 @@ module Build_exec = struct
       | Contents p -> Io.read_file p
       | Lines_of p -> Io.lines_of_file p
       | Vpath (Vspec.T (fn, kind)) ->
-        let file : b File_spec.t = get_file bs fn (Sexp_file kind) in
-        (match file.data with
-        | Some data -> data
-        | None -> load_vfile_exn kind fn)
+        get_vfile_data bs fn kind
       | Dyn_paths t ->
         let fns = exec dyn_deps t x in
         dyn_deps := Path.Set.union !dyn_deps fns;
@@ -574,11 +603,15 @@ module Build_exec = struct
 end
 
 (* [copy_source] is [true] for rules copying files from the source directory *)
-let add_spec t fn spec ~copy_source =
+let add_computed_spec t fn spec ~copy_source =
   match Path.Table.find t.files fn with
   | None ->
-    Path.Table.add t.files fn spec
-  | Some (File_spec.T { rule; _ }) ->
+    Path.Table.add t.files fn (Maybe_cached_file_spec.Computed spec)
+  | Some (Maybe_cached_file_spec.Cached _) ->
+    (* This might happen if rules for directory are evaluated after some
+       individual cached target from this directory has already been accessed. *)
+    ()
+  | Some (Maybe_cached_file_spec.Computed (File_spec.T { rule; _ })) ->
     match copy_source, rule.mode with
     | true, (Standard | Not_a_rule_stanza) ->
       Errors.warn (Internal_rule.loc rule ~dir:(Path.parent_exn fn)
@@ -598,7 +631,7 @@ let add_spec t fn spec ~copy_source =
                "To keep the current behavior and get rid of this warning, add a field \
                 (fallback) to the rule."
            | _ -> assert false);
-      Path.Table.add t.files fn spec
+      Path.Table.add t.files fn (Maybe_cached_file_spec.Computed spec)
     | _ ->
       let (File_spec.T { rule = rule2; _ }) = spec in
       let string_of_loc = function
@@ -619,9 +652,9 @@ let add_spec t fn spec ~copy_source =
 let create_file_specs t targets rule ~copy_source =
   List.iter targets ~f:(function
     | Target.Normal fn ->
-      add_spec t fn (File_spec.create rule Ignore_contents) ~copy_source
+      add_computed_spec t fn (File_spec.create rule Ignore_contents) ~copy_source
     | Target.Vfile (Vspec.T (fn, kind)) ->
-      add_spec t fn (File_spec.create rule (Sexp_file kind)) ~copy_source)
+      add_computed_spec t fn (File_spec.create rule (Sexp_file kind)) ~copy_source)
 
 (* This contains the targets of the actions that are being executed. On exit, we need to
    delete them as they might contain garbage *)
@@ -795,7 +828,8 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
         let new_trace =
           { File_trace.
             own_digest = hash;
-            partition_digest
+            partition_digest;
+            cached_spec = None
           }
         in
         Path.Set.iter all_deps ~f:(fun dep ->
@@ -1144,33 +1178,18 @@ The following targets are not:
 
   targets
 
-and wait_for_file t ~loc fn =
-  let recompute_rules_and_wait () =
-    match Path.Table.find t.files fn with
-    | Some file -> wait_for_file_found fn file
-    | None ->
-      let dir = Path.parent_exn fn in
-      if Path.is_strict_descendant_of_build_dir dir then begin
-        load_dir t ~dir;
-        match Path.Table.find t.files fn with
-        | Some file -> wait_for_file_found fn file
-        | None -> no_rule_found t ~loc fn
-      end else if Path.exists fn then
-        Fiber.return ()
-      else
-        die "File unavailable: %s" (Path.to_string_maybe_quoted fn)
-  in
-  if Path.exists fn then
+and wait_for_file ?(use_cache=true) t ~loc fn =
+  if not use_cache then
+    Path.Table.remove t.trace fn;
+  if Path.exists fn then begin
     let partition = Partition_state.Partition.for_target fn ~file_tree:t.file_tree in
-    if Partition_state.is_unclean
+    if not (Partition_state.is_unclean
          t.partition_state
          partition
          ~projects:t.projects
-         ~file_tree:t.file_tree then
-      recompute_rules_and_wait ()
-    else begin
+         ~file_tree:t.file_tree) then begin
       match Path.Table.find t.trace fn with
-      | Some { partition_digest = file_partition_digest; _ } ->
+      | Some { partition_digest = file_partition_digest; cached_spec; _ } ->
         let actual_partition_digest =
           Partition_state.get_current_digest
             t.partition_state
@@ -1179,16 +1198,29 @@ and wait_for_file t ~loc fn =
             ~file_tree:t.file_tree
         in
         if file_partition_digest = actual_partition_digest then
-          Fiber.return ()
-        else
-          recompute_rules_and_wait ()
-      | _ ->
-        recompute_rules_and_wait ()
+          Path.Table.replace t.files ~key:fn ~data:(Maybe_cached_file_spec.Cached cached_spec)
+      | _ -> ()
     end
-  else
-    recompute_rules_and_wait ()
+  end;
+  match Path.Table.find t.files fn with
+  | Some (Maybe_cached_file_spec.Computed file) -> wait_for_file_found t fn file
+  | Some (Maybe_cached_file_spec.Cached _) -> Fiber.return ()
+  | None ->
+    let dir = Path.parent_exn fn in
+    if Path.is_strict_descendant_of_build_dir dir then begin
+      load_dir t ~dir;
+      match Path.Table.find t.files fn with
+      | Some (Maybe_cached_file_spec.Computed file) -> wait_for_file_found t fn file
+      | Some (Maybe_cached_file_spec.Cached _) ->
+        (* This shouldn't really happen, but it's not a problem if it does. *)
+        Fiber.return ()
+      | None -> no_rule_found t ~loc fn
+    end else if Path.exists fn then
+      Fiber.return ()
+    else
+      die "File unavailable: %s" (Path.to_string_maybe_quoted fn)
 
-and wait_for_file_found fn (File_spec.T file) =
+and wait_for_file_found t fn (File_spec.T file) =
   Internal_rule.push_rev_dep file.rule fn ~f:(fun () ->
     match file.rule.exec with
     | Not_started { eval_rule; exec_rule } ->
@@ -1211,6 +1243,20 @@ and wait_for_file_found fn (File_spec.T file) =
                 ; rule_execution
                 };
       Fiber.Future.wait rule_execution)
+  >>| fun () ->
+  match Path.Table.find t.trace fn with
+  | Some trace ->
+    (match Path.Table.(find t.packages fn, find t.pkg_deps_cache fn) with
+     | Some package, Some package_deps ->
+       trace.cached_spec <-
+         Some
+           { Cached_file_spec.
+             package_deps
+           ; package
+           }
+     | _ -> ())
+  | None ->
+    die "File trace for recomputed rule %s is unexpectedly missing" (Path.to_string fn)
 
 and wait_for_deps ~loc t deps =
   Fiber.parallel_iter (Path.Set.to_list deps) ~f:(wait_for_file ~loc t)
@@ -1303,6 +1349,7 @@ let create ~contexts ~projects ~file_tree ~hook =
     ; packages   = Path.Table.create 1024
     ; projects
     ; trace      = Trace.load ()
+    ; pkg_deps_cache = Path.Table.create 1024
     ; partition_state = Partition_state.load ()
     ; local_mkdirs = Path.Set.empty
     ; dirs       = Path.Table.create 1024
@@ -1363,23 +1410,33 @@ module Ir_set = Set.Make(Internal_rule)
 
 
 let rules_for_files t paths =
-  Path.Set.fold paths ~init:[] ~f:(fun path acc ->
+  Path.Set.to_list paths
+  |> List.map ~f:(fun path ->
     if Path.is_in_build_dir path then
       load_dir t ~dir:(Path.parent_exn path);
     match Path.Table.find t.files path with
-    | None -> acc
-    | Some (File_spec.T { rule; _ }) -> rule :: acc)
-  |> Ir_set.of_list
-  |> Ir_set.to_list
+    | None -> Fiber.return None
+    | Some (Maybe_cached_file_spec.Computed (File_spec.T { rule; _ })) ->
+      Fiber.return (Some rule)
+    | Some (Maybe_cached_file_spec.Cached _) ->
+      wait_for_file ~use_cache:false ~loc:None t path
+      >>| fun () ->
+      match Path.Table.find t.files path with
+      | Some (Maybe_cached_file_spec.Computed (File_spec.T { rule; _ })) -> Some rule
+      | _ ->
+        die "Evoking rule cache failed for %s while computing rules" (Path.to_string path))
+  |> Fiber.all
+  >>| List.filter_opt
+  >>| List.sort ~compare:Internal_rule.compare
 
 let rules_for_targets t targets =
-  match
-    Internal_rule.Id.Top_closure.top_closure (rules_for_files t targets)
-      ~key:(fun (r : Internal_rule.t) -> r.id)
-      ~deps:(fun (r : Internal_rule.t) ->
-        let x = Lazy.force r.static_deps in
-        rules_for_files t (Path.Set.union x.action_deps x.rule_deps))
-  with
+  Internal_rule.Id.Top_closure.top_closure_f (rules_for_files t targets)
+    ~key:(fun (r : Internal_rule.t) -> Fiber.return r.id)
+    ~deps:(fun (r : Internal_rule.t) ->
+      let x = Lazy.force r.static_deps in
+      rules_for_files t (Path.Set.union x.action_deps x.rule_deps))
+  >>| fun result ->
+  match result with
   | Ok l -> l
   | Error cycle ->
     die "dependency cycle detected:\n   %s"
@@ -1399,23 +1456,23 @@ let static_deps_of_request t request =
 
 let all_lib_deps t ~request =
   let targets = static_deps_of_request t request in
-  List.fold_left (rules_for_targets t targets) ~init:Path.Map.empty
-    ~f:(fun acc rule ->
-      let deps = Internal_rule.lib_deps rule in
-      if Lib_name.Map.is_empty deps then
-        acc
-      else
-        let deps =
-          match Path.Map.find acc rule.dir with
-          | None -> deps
-          | Some deps' -> Lib_deps_info.merge deps deps'
-        in
-        Path.Map.add acc rule.dir deps)
+  rules_for_targets t targets
+  >>| List.fold_left ~init:Path.Map.empty ~f:(fun acc rule ->
+    let deps = Internal_rule.lib_deps rule in
+    if Lib_name.Map.is_empty deps then
+      acc
+    else
+      let deps =
+        match Path.Map.find acc rule.dir with
+        | None -> deps
+        | Some deps' -> Lib_deps_info.merge deps deps'
+      in
+      Path.Map.add acc rule.dir deps)
 
 let all_lib_deps_by_context t ~request =
   let targets = static_deps_of_request t request in
-  let rules = rules_for_targets t targets in
-  List.fold_left rules ~init:[] ~f:(fun acc rule ->
+  rules_for_targets t targets
+  >>| List.fold_left ~init:[] ~f:(fun acc rule ->
     let deps = Internal_rule.lib_deps rule in
     if Lib_name.Map.is_empty deps then
       acc
@@ -1423,9 +1480,9 @@ let all_lib_deps_by_context t ~request =
       match Path.extract_build_context rule.dir with
       | None -> acc
       | Some (context, _) -> (context, deps) :: acc)
-  |> String.Map.of_list_multi
-  |> String.Map.filteri ~f:(fun ctx _ -> String.Map.mem t.contexts ctx)
-  |> String.Map.map ~f:(function
+  >>| String.Map.of_list_multi
+  >>| String.Map.filteri ~f:(fun ctx _ -> String.Map.mem t.contexts ctx)
+  >>| String.Map.map ~f:(function
     | [] -> Lib_name.Map.empty
     | x :: l -> List.fold_left l ~init:x ~f:Lib_deps_info.merge)
 
@@ -1460,10 +1517,20 @@ let build_rules_internal ?(recursive=false) t ~request =
     if Path.is_in_build_dir dir then
       load_dir t ~dir;
     match Path.Table.find t.files fn with
-    | Some file ->
+    | Some (Maybe_cached_file_spec.Computed file) ->
       file_found fn file
     | None ->
       Fiber.return ()
+    | Some (Maybe_cached_file_spec.Cached _) ->
+      wait_for_file ~use_cache:false t ~loc:None fn
+      >>= fun () ->
+      (match Path.Table.find t.files fn with
+       | Some (Maybe_cached_file_spec.Computed file) ->
+         file_found fn file
+       | _ ->
+         die
+           "Evoking rule cache for %s failed while computing internal build rules"
+           (Path.to_string fn))
   and file_found fn (File_spec.T { rule = ir; _ }) =
     if Rule.Id.Set.mem !rules_seen ir.id then
       Fiber.return ()
@@ -1554,7 +1621,7 @@ let package_deps t pkg files =
   and loop_deps fn acc =
     match Path.Table.find t.files fn with
     | None -> acc
-    | Some (File_spec.T { rule = ir; _ }) ->
+    | Some (Maybe_cached_file_spec.Computed (File_spec.T { rule = ir; _ })) ->
       if Rule.Id.Set.mem !rules_seen ir.id then
         acc
       else begin
@@ -1570,12 +1637,26 @@ let package_deps t pkg files =
           (Path.Set.union (Lazy.force ir.static_deps).action_deps dyn_deps)
           ~init:acc ~f:loop
       end
+    | Some (Maybe_cached_file_spec.Cached (Some { package; package_deps })) ->
+      let open Package.Name.Infix in
+      if package = pkg then
+        Package.Name.Set.union acc package_deps
+      else
+        Package.Name.Set.add acc package
+    | Some (Maybe_cached_file_spec.Cached None) ->
+      (* This should only ever happen for targets in _build/misc *)
+      acc
   in
   let open Build.O in
   Build.paths_for_rule files >>^ fun () ->
   (* We know that at this point of execution, all the relevant ivars
      have been filled *)
-  Path.Set.fold files ~init:Package.Name.Set.empty ~f:loop_deps
+  Path.Set.to_list files
+  |> List.map ~f:(fun fn ->
+    let deps = loop_deps fn Package.Name.Set.empty in
+    Path.Table.replace t.pkg_deps_cache ~key:fn ~data:deps;
+    deps)
+  |> List.fold_left ~init:Package.Name.Set.empty ~f:Package.Name.Set.union
 
 (* +-----------------------------------------------------------------+
    | Adding rules to the system                                      |

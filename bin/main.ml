@@ -876,9 +876,10 @@ let external_lib_deps =
        >>= fun setup ->
        let targets = resolve_targets_exn ~log common setup targets in
        let request = request_of_targets setup targets in
+       (Build_system.all_lib_deps_by_context setup.build_system ~request)
+       >>= fun deps ->
        let failure =
-         String.Map.foldi ~init:false
-           (Build_system.all_lib_deps_by_context setup.build_system ~request)
+         String.Map.foldi deps ~init:false
            ~f:(fun context_name lib_deps acc ->
              let internals =
                Super_context.internal_lib_names

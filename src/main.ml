@@ -134,9 +134,10 @@ let external_lib_deps ?log ~packages () =
      in
      let sctx = Option.value_exn (String.Map.find setup.scontexts "default") in
      let internals = Super_context.internal_lib_names sctx in
+     (Build_system.all_lib_deps setup.build_system
+        ~request:(Build.paths install_files))
+     >>|
      Path.Map.map
-       (Build_system.all_lib_deps setup.build_system
-          ~request:(Build.paths install_files))
        ~f:(Lib_name.Map.filteri ~f:(fun name _ ->
          not (Lib_name.Set.mem internals name))))
 

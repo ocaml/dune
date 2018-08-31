@@ -17,6 +17,13 @@ module type S = sig
     -> deps:('a -> 'a list)
     -> 'a list
     -> ('a list, 'a list) result
+
+  (** Identical to above, but works with fibers. *)
+  val top_closure_f
+    :  key:('a -> key Fiber.t)
+    -> deps:('a -> 'a list Fiber.t)
+    -> 'a list Fiber.t
+    -> ('a list, 'a list) result Fiber.t
 end
 
 module Int    : S with type key := int

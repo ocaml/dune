@@ -18,6 +18,11 @@ module Dep_graphs : sig
   type t = Dep_graph.t Ml_kind.Dict.t
 
   val dummy : Module.t -> t
+
+  val wrapped_compat
+    :  modules:Module.t Module.Name.Map.t
+    -> wrapped_compat:Module.t Module.Name.Map.t
+    -> t
 end
 
 (** Generate ocamldep rules for all the modules in the context. *)

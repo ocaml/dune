@@ -216,6 +216,14 @@ module Library : sig
       | Ppx_rewriter
   end
 
+  module Wrapped : sig
+    type t =
+      | Simple of bool
+      | Yes_with_transition of string
+
+    val to_bool : t -> bool
+  end
+
   type t =
     { name                     : Lib_name.Local.t
     ; public                   : Public_lib.t option
@@ -232,7 +240,7 @@ module Library : sig
     ; c_library_flags          : Ordered_set_lang.Unexpanded.t
     ; self_build_stubs_archive : string option
     ; virtual_deps             : (Loc.t * Lib_name.t) list
-    ; wrapped                  : bool
+    ; wrapped                  : Wrapped.t
     ; optional                 : bool
     ; buildable                : Buildable.t
     ; dynlink                  : Dynlink_supported.t

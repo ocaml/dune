@@ -120,6 +120,36 @@ module Gen (P : Install_rules.Params) = struct
       ~sandbox:alias_module_build_sandbox
       ~dep_graphs:(Ocamldep.Dep_graphs.dummy m)
 
+  let build_wrapped_compat_modules (lib : Library.t)
+        cctx
+        ~modules
+        ~js_of_ocaml
+        ~dynlink
+        ~(wrapped_compat : Module.t Module.Name.Map.t) =
+    let lib_name = String.capitalize (Lib_name.Local.to_string lib.name) in
+    let transition_message =
+      match lib.wrapped with
+      | Simple _ -> "" (* will never be accessed anyway *)
+      | Yes_with_transition r -> r
+    in
+    Module.Name.Map.iteri wrapped_compat ~f:(fun name m ->
+      let contents =
+        let name = Module.Name.to_string name in
+        let hidden_name = sprintf "%s__%s" lib_name name in
+        let real_name = sprintf "%s.%s" lib_name name in
+        sprintf {|[@@@deprecated "%s. Use %s instead."] include %s|}
+          transition_message real_name hidden_name
+      in
+      let source_path = Option.value_exn (Module.file m Impl) in
+      Build.return contents
+      >>> Build.write_file_dyn source_path
+      |> SC.add_rule sctx
+    );
+    let dep_graphs =
+      Ocamldep.Dep_graphs.wrapped_compat ~modules ~wrapped_compat in
+    let cctx = Compilation_context.for_wrapped_compat cctx wrapped_compat in
+    Module_compilation.build_modules cctx ~js_of_ocaml ~dynlink ~dep_graphs
+
   let build_c_file (lib : Library.t) ~scope ~dir ~includes (src, dst) =
     SC.add_rule sctx
       (SC.expand_and_eval_set sctx ~scope ~dir lib.c_flags
@@ -293,7 +323,7 @@ module Gen (P : Install_rules.Params) = struct
     in
     let flags = SC.ocaml_flags sctx ~scope ~dir lib.buildable in
     let { Dir_contents.Library_modules.
-          modules; main_module_name; alias_module } =
+          modules; main_module_name; alias_module ; wrapped_compat } =
       Dir_contents.modules_of_library dir_contents ~name:(Library.best_name lib)
     in
     let source_modules = modules in
@@ -318,7 +348,7 @@ module Gen (P : Install_rules.Params) = struct
     in
 
     let lib_interface_module =
-      if lib.wrapped then
+      if Library.Wrapped.to_bool lib.wrapped then
         Module.Name.Map.find modules main_module_name
       else
         None
@@ -340,12 +370,16 @@ module Gen (P : Install_rules.Params) = struct
         ~opaque
     in
 
-    let dep_graphs = Ocamldep.rules cctx in
-
     let dynlink =
       Dynlink_supported.get lib.dynlink ctx.supports_shared_libraries
     in
     let js_of_ocaml = lib.buildable.js_of_ocaml in
+
+    build_wrapped_compat_modules lib cctx ~dynlink ~js_of_ocaml
+      ~wrapped_compat ~modules;
+
+    let dep_graphs = Ocamldep.rules cctx in
+
     Module_compilation.build_modules cctx ~js_of_ocaml ~dynlink ~dep_graphs;
 
     Option.iter alias_module
@@ -355,15 +389,17 @@ module Gen (P : Install_rules.Params) = struct
     if Library.has_stubs lib then
       build_stubs lib ~dir ~scope ~requires ~dir_contents;
 
+    let add_cms ~cm_kind ~init = Module.Name.Map.fold ~init ~f:(fun m acc ->
+      match Module.cm_file m ~obj_dir cm_kind with
+      | None -> acc
+      | Some fn -> Path.Set.add acc fn)
+    in
     List.iter Cm_kind.all ~f:(fun cm_kind ->
-      let files =
-        Module.Name.Map.fold modules ~init:Path.Set.empty ~f:(fun m acc ->
-          match Module.cm_file m ~obj_dir cm_kind with
-          | None -> acc
-          | Some fn -> Path.Set.add acc fn)
-      in
+      let files = add_cms ~cm_kind ~init:Path.Set.empty modules in
+      let files = add_cms ~cm_kind ~init:files wrapped_compat in
       SC.Libs.setup_file_deps_alias sctx ~dir lib ~ext:(Cm_kind.ext cm_kind)
         files);
+
     SC.Libs.setup_file_deps_group_alias sctx ~dir lib ~exts:[".cmi"; ".cmx"];
     SC.Libs.setup_file_deps_alias sctx ~dir lib ~ext:".h"
       (List.map lib.install_c_headers ~f:(fun header ->
@@ -377,12 +413,18 @@ module Gen (P : Install_rules.Params) = struct
          else
            acc)
      in
+     let wrapped_compat = Module.Name.Map.values wrapped_compat in
+     (* Compatibility modules have implementations so we can just append them.
+        We append the modules at the end as no library modules depend on
+        them. *)
      let top_sorted_modules =
        Ocamldep.Dep_graph.top_closed_implementations dep_graphs.impl modules
+       >>^ fun modules -> modules @ wrapped_compat
      in
-     List.iter Mode.all ~f:(fun mode ->
+     (let modules = modules @ wrapped_compat in
+        List.iter Mode.all ~f:(fun mode ->
        build_lib lib ~scope ~flags ~dir ~obj_dir ~mode ~top_sorted_modules
-         ~modules));
+         ~modules)));
     (* Build *.cma.js *)
     SC.add_rules sctx (
       let src = Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext Mode.Byte) in

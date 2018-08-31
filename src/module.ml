@@ -32,6 +32,12 @@ end
 
 module Syntax = struct
   type t = OCaml | Reason
+
+  let to_sexp =
+    let open Sexp.To_sexp in
+    function
+    | OCaml -> string "OCaml"
+    | Reason -> string "Reason"
 end
 
 module File = struct
@@ -41,6 +47,13 @@ module File = struct
     }
 
   let make syntax path = { syntax; path }
+
+  let to_sexp { path; syntax } =
+    let open Sexp.To_sexp in
+    record
+      [ "path", Path.to_sexp path
+      ; "syntax", Syntax.to_sexp syntax
+      ]
 end
 
 type t =
@@ -140,3 +153,28 @@ let dir t =
   Path.parent_exn file.path
 
 let set_pp t pp = { t with pp }
+
+let to_sexp { name; impl; intf; obj_name ; pp } =
+  let open Sexp.To_sexp in
+  record
+    [ "name", Name.to_sexp name
+    ; "obj_name", string obj_name
+    ; "impl", (option File.to_sexp) impl
+    ; "intf", (option File.to_sexp) intf
+    ; "pp", (option string) (Option.map ~f:(fun _ -> "has pp") pp)
+    ]
+
+let wrapped_compat t =
+  { t with
+    intf = None
+  ; impl =
+      Some (
+        { syntax = OCaml
+        ; path =
+          Path.L.relative (dir t)
+            [ ".wrapped_compat"
+            ; Name.to_string t.name ^ ".ml-gen"
+            ]
+        }
+      )
+  }

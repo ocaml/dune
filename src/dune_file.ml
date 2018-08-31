@@ -859,6 +859,27 @@ module Library = struct
       syntax
   end
 
+  module Wrapped = struct
+    type t =
+      | Simple of bool
+      | Yes_with_transition of string
+
+    let dparse =
+      sum
+        [ "true", return (Simple true)
+        ; "false", return (Simple false)
+        ; "transition",
+          Syntax.since Stanza.syntax (1, 2) >>= fun () ->
+          string >>| fun x -> Yes_with_transition x
+        ]
+
+    let field = field "wrapped" ~default:(Simple true) dparse
+
+    let to_bool = function
+      | Simple b -> b
+      | Yes_with_transition _ -> true
+  end
+
   type t =
     { name                     : Lib_name.Local.t
     ; public                   : Public_lib.t option
@@ -875,7 +896,7 @@ module Library = struct
     ; c_library_flags          : Ordered_set_lang.Unexpanded.t
     ; self_build_stubs_archive : string option
     ; virtual_deps             : (Loc.t * Lib_name.t) list
-    ; wrapped                  : bool
+    ; wrapped                  : Wrapped.t
     ; optional                 : bool
     ; buildable                : Buildable.t
     ; dynlink                  : Dynlink_supported.t
@@ -908,7 +929,7 @@ module Library = struct
          field "virtual_deps" (list (located Lib_name.dparse)) ~default:[]
        and modes = field "modes" Mode_conf.Set.dparse ~default:Mode_conf.Set.default
        and kind = field "kind" Kind.dparse ~default:Kind.Normal
-       and wrapped = field "wrapped" bool ~default:true
+       and wrapped = Wrapped.field
        and optional = field_b "optional"
        and self_build_stubs_archive =
          field "self_build_stubs_archive" (option string) ~default:None
@@ -932,7 +953,7 @@ module Library = struct
          let open Syntax.Version.Infix in
          match name, public with
          | Some n, _ ->
-           Lib_name.Local.validate n ~wrapped
+           Lib_name.Local.validate n ~wrapped:(Wrapped.to_bool wrapped)
          | None, Some { name = (loc, name) ; _ }  ->
            if dune_version >= (1, 1) then
              match Lib_name.to_local name with

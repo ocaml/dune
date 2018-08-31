@@ -105,3 +105,11 @@ let for_alias_module t =
   ; includes     = Includes.empty
   ; alias_module = None
   }
+
+let for_wrapped_compat t modules =
+  { t with
+    flags = Ocaml_flags.default ~profile:(SC.profile t.super_context)
+  ; includes = Includes.empty
+  ; alias_module = None
+  ; modules
+  }

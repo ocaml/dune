@@ -92,3 +92,7 @@ val with_wrapper : t -> libname:Lib_name.Local.t -> t
 val map_files : t -> f:(Ml_kind.t -> File.t -> File.t) -> t
 
 val set_pp : t -> (unit, string list) Build.t option -> t
+
+val to_sexp : t Sexp.To_sexp.t
+
+val wrapped_compat : t -> t

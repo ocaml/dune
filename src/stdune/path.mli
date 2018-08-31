@@ -169,3 +169,7 @@ val set_root : External.t -> unit
 module Internal : sig
   val raw_kind : t -> Kind.t
 end
+
+module L : sig
+  val relative : t -> string list -> t
+end

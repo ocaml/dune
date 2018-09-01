@@ -172,7 +172,7 @@ module Run (P : PARAMS) : sig end = struct
                       ; "--infer-write-query"
                       ; "--infer-read-reply"
                       ] then
-              Loc.fail (String_with_vars.loc sw)
+              Errors.fail (String_with_vars.loc sw)
                 "The flag %s must not be used in a menhir stanza." text
         )
     )

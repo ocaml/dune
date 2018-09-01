@@ -853,7 +853,7 @@ module Library = struct
       let syntax =
         Syntax.create ~name:"in_development_do_not_use_variants"
           ~desc:"the experimental variants feature"
-          [ (0, 0) ]
+          [ (0, 1) ]
       in
       Dune_project.Extension.register syntax (Dsexp.Of_sexp.return []);
       syntax

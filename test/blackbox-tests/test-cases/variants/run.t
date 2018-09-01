@@ -1,16 +1,17 @@
 Variant feature is auto enabled when virtual_modules is used
 
   $ dune build --root variants-without-using
-  File "dune", line 3, characters 1-25:
-  3 |  (virtual_modules foobar))
-       ^^^^^^^^^^^^^^^^^^^^^^^^
-  Error: 'virtual_modules' is only available since version 0.1 of the experimental variants feature
-  [1]
+  Entering directory 'variants-without-using'
 
   $ dune build --root variants-using
-  File "dune-project", line 2, characters 42-45:
-  2 | 
-  Error: Version 0.1 of in_development_do_not_use_variants is not supported.
-  Supported versions:
-  - 0.0
+  Entering directory 'variants-using'
+
+virtual libraries may not implement their virtual modules
+
+  $ dune build --root invalid-virtual-lib
+  Entering directory 'invalid-virtual-lib'
+  File "dune", line 3, characters 18-21:
+  3 |  (virtual_modules foo bar))
+                        ^^^
+  Error: Module Foo has an implementation, it cannot be listed here
   [1]

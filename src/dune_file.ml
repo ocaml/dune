@@ -873,7 +873,7 @@ module Library = struct
           string >>| fun x -> Yes_with_transition x
         ]
 
-    let field = field "wrapped" ~default:(Simple true) dparse
+    let field = field "wrapped" ~default:(Loc.none, Simple true) (located dparse)
 
     let to_bool = function
       | Simple b -> b
@@ -929,7 +929,7 @@ module Library = struct
          field "virtual_deps" (list (located Lib_name.dparse)) ~default:[]
        and modes = field "modes" Mode_conf.Set.dparse ~default:Mode_conf.Set.default
        and kind = field "kind" Kind.dparse ~default:Kind.Normal
-       and wrapped = Wrapped.field
+       and (wrapped_loc, wrapped) = Wrapped.field
        and optional = field_b "optional"
        and self_build_stubs_archive =
          field "self_build_stubs_archive" (option string) ~default:None
@@ -982,6 +982,13 @@ module Library = struct
            (Ordered_set_lang.loc virtual_modules
            |> Option.value_exn)
            "A library cannot be both virtual and implement %s" impl);
+       begin match virtual_modules, Wrapped.to_bool wrapped, implements with
+       | Some _, false, _ ->
+         of_sexp_error wrapped_loc "A virtual library must be wrapped"
+       | _, false, Some _ ->
+         of_sexp_error wrapped_loc "An implementation must be wrapped"
+       | _, _, _ -> ()
+       end;
        { name
        ; public
        ; synopsis

@@ -1,13 +1,16 @@
 open Stdune
 
-(** [file_deps t libs ~ext] returns a list of path dependencies for all the
-    files with extension [ext] of libraries [libs]. *)
-val file_deps : Super_context.t -> Lib.L.t -> ext:string -> Path.t list
+module L : sig
 
-val file_deps_with_exts
-  :  Super_context.t
-  -> (Lib.t * string) list
-  -> Path.t list
+  (** [file_deps t libs ~ext] returns a list of path dependencies for all the
+      files with extension [ext] of libraries [libs]. *)
+  val file_deps : Super_context.t -> Lib.L.t -> ext:string -> Path.t list
+
+  val file_deps_with_exts
+    :  Super_context.t
+    -> (Lib.t * string) list
+    -> Path.t list
+end
 
 (** Setup the alias that depends on all files with a given extension
     for a library *)

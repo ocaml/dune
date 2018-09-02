@@ -17,16 +17,18 @@ let setup_file_deps_group_alias t ~dir ~exts lib =
          (lib_files_alias ~dir ~name:(Library.best_name lib) ~ext))
      |> Path.Set.of_list)
 
-let file_deps_of_lib t (lib : Lib.t) ~ext =
-  if Lib.is_local lib then
-    Alias.stamp_file
-      (lib_files_alias ~dir:(Lib.src_dir lib) ~name:(Lib.name lib) ~ext)
-  else
-    Build_system.stamp_file_for_files_of (Super_context.build_system t)
-      ~dir:(Lib.obj_dir lib) ~ext
+module L = struct
+  let file_deps_of_lib t (lib : Lib.t) ~ext =
+    if Lib.is_local lib then
+      Alias.stamp_file
+        (lib_files_alias ~dir:(Lib.src_dir lib) ~name:(Lib.name lib) ~ext)
+    else
+      Build_system.stamp_file_for_files_of (Super_context.build_system t)
+        ~dir:(Lib.obj_dir lib) ~ext
 
-let file_deps_with_exts t lib_exts =
-  List.rev_map lib_exts ~f:(fun (lib, ext) -> file_deps_of_lib t lib ~ext)
+  let file_deps_with_exts t lib_exts =
+    List.rev_map lib_exts ~f:(fun (lib, ext) -> file_deps_of_lib t lib ~ext)
 
-let file_deps t libs ~ext =
-  List.rev_map libs ~f:(file_deps_of_lib t ~ext)
+  let file_deps t libs ~ext =
+    List.rev_map libs ~f:(file_deps_of_lib t ~ext)
+end

@@ -17,6 +17,8 @@ module Gen (P : Install_rules.Params) = struct
 
   let opaque = SC.opaque sctx
 
+  module Virtual = Virtual_rules.Gen(P)
+
   (* +-----------------------------------------------------------------+
      | Library stuff                                                   |
      +-----------------------------------------------------------------+ *)
@@ -358,6 +360,8 @@ module Gen (P : Install_rules.Params) = struct
         ; virtual_modules = _ } =
       Dir_contents.modules_of_library dir_contents ~name:(Library.best_name lib)
     in
+    let impl = Virtual.impl ~lib ~scope ~modules in
+    Option.iter impl ~f:(Virtual.setup_copy_rules_for_impl ~dir);
     let source_modules = modules in
     (* Preprocess before adding the alias module as it doesn't need
        preprocessing *)

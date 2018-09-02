@@ -30,6 +30,7 @@ module Local : sig
   val invalid_message : string
 
   val pp_quoted : t Fmt.t
+  val pp : t Fmt.t
 end
 
 val compare : t -> t -> Ordering.t

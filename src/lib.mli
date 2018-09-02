@@ -27,6 +27,8 @@ val archives     : t -> Path.t list Mode.Dict.t
 val plugins      : t -> Path.t list Mode.Dict.t
 val jsoo_runtime : t -> Path.t list
 
+val virtual_ : t -> Lib_info.Virtual.t option
+
 val dune_version : t -> Syntax.Version.t option
 
 (** A unique integer identifier. It is only unique for the duration of

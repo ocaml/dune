@@ -100,6 +100,7 @@ let make ?impl ?intf ?obj_name name =
 let real_unit_name t = Name.of_string (Filename.basename t.obj_name)
 
 let has_impl t = Option.is_some t.impl
+let has_intf t = Option.is_some t.intf
 
 let file t (kind : Ml_kind.t) =
   let file =

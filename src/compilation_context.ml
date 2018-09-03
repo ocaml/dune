@@ -16,7 +16,7 @@ module Includes = struct
       let cmi_includes =
         Arg_spec.S [ iflags
                    ; Hidden_deps
-                       (Lib_deps.L.file_deps sctx libs ~exts:[".cmi"])
+                       (Lib_file_deps.L.file_deps sctx libs ~exts:[".cmi"])
                    ]
       in
       let cmx_includes =
@@ -29,9 +29,9 @@ module Includes = struct
                        [".cmi"]
                      else
                        [".cmi"; ".cmx"]))
-                  |> Lib_deps.L.file_deps_with_exts sctx
+                  |> Lib_file_deps.L.file_deps_with_exts sctx
                 else
-                  Lib_deps.L.file_deps sctx libs ~exts:[".cmi"; ".cmx"]
+                  Lib_file_deps.L.file_deps sctx libs ~exts:[".cmi"; ".cmx"]
               )
           ]
       in

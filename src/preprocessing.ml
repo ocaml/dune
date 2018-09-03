@@ -87,16 +87,14 @@ module Driver = struct
       ; lib = lazy lib
       ; replaces =
           let open Result.O in
-          Result.List.all
-            (List.map info.replaces
-               ~f:(fun ((loc, name) as x) ->
-                 resolve x >>= fun lib ->
-                 match get ~loc lib with
-                 | None ->
-                   Error (Errors.exnf loc "%a is not a %s"
-                            Lib_name.pp_quoted name
-                            (desc ~plural:false))
-                 | Some t -> Ok t))
+          Result.List.map info.replaces ~f:(fun ((loc, name) as x) ->
+            resolve x >>= fun lib ->
+            match get ~loc lib with
+            | None ->
+              Error (Errors.exnf loc "%a is not a %s"
+                       Lib_name.pp_quoted name
+                       (desc ~plural:false))
+            | Some t -> Ok t)
       }
 
     let dgen t =

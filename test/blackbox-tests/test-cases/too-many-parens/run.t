@@ -15,8 +15,8 @@ are readable.
 
   $ dune build --root b
   File "dune", line 4, characters 12-17:
-   (libraries (lib)))
-              ^^^^^
+  4 |  (libraries (lib)))
+                  ^^^^^
   Error: 'select' expected
   Hint: dune files require less parentheses than jbuild files.
   If you just converted this file from a jbuild file, try removing these parentheses.
@@ -24,8 +24,8 @@ are readable.
 
   $ dune build --root c
   File "dune", line 3, characters 7-14:
-   (deps (x y z)))
-         ^^^^^^^
+  3 |  (deps (x y z)))
+             ^^^^^^^
   Error: Unknown constructor x
   Hint: dune files require less parentheses than jbuild files.
   If you just converted this file from a jbuild file, try removing these parentheses.
@@ -50,8 +50,8 @@ When the inner syntax is wrong, do not warn about the parens:
 
   $ dune build --root e
   File "dune", line 3, characters 7-15:
-   (deps (glob *)) ; this form doesn't exist
-         ^^^^^^^^
+  3 |  (deps (glob *)) ; this form doesn't exist
+             ^^^^^^^^
   Error: Unknown constructor glob
   Hint: dune files require less parentheses than jbuild files.
   If you just converted this file from a jbuild file, try removing these parentheses.

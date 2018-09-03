@@ -63,6 +63,9 @@ let file_lines path ~start ~stop =
       aux [] 1
     )
 
+let pp_line padding_width pp (lnum, l) =
+  Format.fprintf pp "%*s | %s\n" padding_width lnum l
+
 let print ppf loc =
   let { Loc.start; stop } = loc in
   let start_c = start.pos_cnum - start.pos_bol in
@@ -73,11 +76,15 @@ let print ppf loc =
     if not whole_file then
       let path = Path.of_string start.pos_fname in
       if Path.exists path then
-        let line = file_line path start.pos_lnum in
+        let line_num = start.pos_lnum in
+        let line_num_str = string_of_int line_num in
+        let padding_width = String.length line_num_str in
+        let line = file_line path line_num in
         if stop_c <= String.length line then
           let len = stop_c - start_c in
-          Format.fprintf pp "%s\n%*s\n" line
-            stop_c
+          Format.fprintf pp "%a%*s\n"
+            (pp_line padding_width) (line_num_str, line)
+            (stop_c + padding_width + 3)
             (String.make len '^')
         else
           let get_padding lines =
@@ -93,7 +100,7 @@ let print ppf loc =
           in
           let print_lines lines padding_width =
             List.iter ~f:(fun (lnum, l) ->
-              Format.fprintf pp "%*s | %s\n" padding_width lnum l) lines;
+              pp_line padding_width pp (lnum, l)) lines;
           in
           if num_lines <= max_lines_to_print_in_full then
             let lines = file_lines path ~start:start.pos_lnum ~stop:stop.pos_lnum in

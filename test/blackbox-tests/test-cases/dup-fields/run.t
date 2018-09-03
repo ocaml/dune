@@ -5,8 +5,8 @@ Duplicating a field in a dune file is an error:
 
   $ dune build --root dune
   File "dune", line 4, characters 1-20:
-   (action (echo bar)))
-   ^^^^^^^^^^^^^^^^^^^
+  4 |  (action (echo bar)))
+       ^^^^^^^^^^^^^^^^^^^
   Error: Field "action" is present too many times
   [1]
 
@@ -17,8 +17,8 @@ For backward compatibility, it is only a warning in jbuild files:
 
   $ dune build --root jbuild
   File "jbuild", line 4, characters 2-21:
-    (action (echo bar))))
-    ^^^^^^^^^^^^^^^^^^^
+  4 |   (action (echo bar))))
+        ^^^^^^^^^^^^^^^^^^^
   Warning: Field "action" is present several times, previous occurrences are ignored.
   Entering directory 'jbuild'
   bar

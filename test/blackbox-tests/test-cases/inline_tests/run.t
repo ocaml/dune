@@ -6,15 +6,15 @@
 
   $ dune runtest missing-backend
   File "missing-backend/dune", line 3, characters 1-15:
-   (inline_tests))
-   ^^^^^^^^^^^^^^
+  3 |  (inline_tests))
+       ^^^^^^^^^^^^^^
   Error: No inline tests backend found.
   [1]
 
   $ dune runtest too-many-backends
   File "too-many-backends/dune", line 17, characters 1-15:
-   (inline_tests)
-   ^^^^^^^^^^^^^^
+  17 |  (inline_tests)
+        ^^^^^^^^^^^^^^
   Error: Too many independent inline tests backends found:
   - "backend_tmb1" in _build/default/too-many-backends
   - "backend_tmb2" in _build/default/too-many-backends

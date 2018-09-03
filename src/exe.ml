@@ -146,7 +146,7 @@ let link_exe
         |> Response_file.process_ocaml_call
              sctx
              ~exec_dir:dir
-             ~response_file_dir:dir
+             ~response_file_dir:obj_dir
              ~key:("link-flags-" ^ Path.basename exe))
   in
   (* The rule *)

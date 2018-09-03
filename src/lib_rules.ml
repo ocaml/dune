@@ -1,8 +1,11 @@
 open! Stdune
 open Import
 open Build.O
-open Dune_file
 open! No_io
+
+module Buildable = Dune_file.Buildable
+module Library = Dune_file.Library
+module Mode_conf = Dune_file.Mode_conf
 
 module SC = Super_context
 
@@ -270,7 +273,7 @@ module Gen (P : Install_rules.Params) = struct
         [ Hidden_deps h_files
         ; Arg_spec.of_result_map requires ~f:(fun libs ->
             S [ Lib.L.c_include_flags libs ~stdlib_dir:ctx.stdlib_dir
-              ; Hidden_deps (SC.Libs.file_deps sctx libs ~ext:".h")
+              ; Hidden_deps (Lib_file_deps.L.file_deps sctx libs ~exts:[".h"])
               ])
         ]
     in
@@ -404,11 +407,11 @@ module Gen (P : Install_rules.Params) = struct
     List.iter Cm_kind.all ~f:(fun cm_kind ->
       let files = add_cms ~cm_kind ~init:Path.Set.empty modules in
       let files = add_cms ~cm_kind ~init:files wrapped_compat in
-      SC.Libs.setup_file_deps_alias sctx ~dir lib ~ext:(Cm_kind.ext cm_kind)
+      Lib_file_deps.setup_file_deps_alias sctx ~dir lib ~exts:[Cm_kind.ext cm_kind]
         files);
 
-    SC.Libs.setup_file_deps_group_alias sctx ~dir lib ~exts:[".cmi"; ".cmx"];
-    SC.Libs.setup_file_deps_alias sctx ~dir lib ~ext:".h"
+    Lib_file_deps.setup_file_deps_group_alias sctx ~dir lib ~exts:[".cmi"; ".cmx"];
+    Lib_file_deps.setup_file_deps_alias sctx ~dir lib ~exts:[".h"]
       (List.map lib.install_c_headers ~f:(fun header ->
          Path.relative dir (header ^ ".h"))
        |> Path.Set.of_list);

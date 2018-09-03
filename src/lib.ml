@@ -598,9 +598,8 @@ and resolve_name db name ~stack =
       instantiate db name info ~stack ~hidden:(Some hidden)
 
 and available_internal db (name : Lib_name.t) ~stack =
-  match resolve_dep db name ~allow_private_deps:true ~loc:Loc.none ~stack with
-  | Ok    _ -> true
-  | Error _ -> false
+  resolve_dep db name ~allow_private_deps:true ~loc:Loc.none ~stack
+  |> Result.is_ok
 
 and resolve_simple_deps db (names : ((Loc.t * Lib_name.t) list)) ~allow_private_deps ~stack =
   Result.List.map names ~f:(fun (loc, name) ->

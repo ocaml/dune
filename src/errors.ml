@@ -2,6 +2,10 @@ open! Stdune
 
 exception Already_reported
 
+let max_lines_to_print_in_full = 10
+
+let context_lines = 2
+
 let err_buf = Buffer.create 128
 let err_ppf = Format.formatter_of_buffer err_buf
 let kerrf fmt ~f =
@@ -75,14 +79,37 @@ let print ppf loc =
           Format.fprintf pp "%s\n%*s\n" line
             stop_c
             (String.make len '^')
-        else if num_lines <= 10 then
-          let lines = file_lines path ~start:start.pos_lnum ~stop:stop.pos_lnum in
-          let last_lnum = Option.map ~f:fst (List.last lines) in
-          let padding_width = Option.value_exn
-                                (Option.map ~f:String.length last_lnum) in
-          List.iter ~f:(fun (lnum, l) ->
-            Format.fprintf pp "%*s: %s\n" padding_width lnum l)
-          lines
+        else
+          let get_padding lines =
+            let (lnum, _) = Option.value_exn (List.last lines) in
+            String.length lnum
+          in
+          let print_ellipsis padding_width =
+            (* We add 2 to the width of max line to account for
+               the extra space and the `|` character at the end
+               of a line number *)
+            let line = String.make (padding_width + 2) '.' in
+            Format.fprintf pp "%s\n" line
+          in
+          let print_lines lines padding_width =
+            List.iter ~f:(fun (lnum, l) ->
+              Format.fprintf pp "%*s | %s\n" padding_width lnum l) lines;
+          in
+          if num_lines <= max_lines_to_print_in_full then
+            let lines = file_lines path ~start:start.pos_lnum ~stop:stop.pos_lnum in
+            print_lines lines (get_padding lines)
+          else
+            (* We need to send the padding width from the last four lines
+               so the two blocks of lines align if they have different number
+               of digits in their line numbers *)
+            let first_shown_lines = file_lines path ~start:(start.pos_lnum)
+                               ~stop:(start.pos_lnum + context_lines) in
+            let last_shown_lines = file_lines path ~start:(stop.pos_lnum - context_lines)
+                              ~stop:(stop.pos_lnum) in
+            let padding_width = get_padding last_shown_lines in
+            (print_lines first_shown_lines padding_width;
+             print_ellipsis padding_width;
+             print_lines last_shown_lines padding_width)
   in
   Format.fprintf ppf
     "@{<loc>File \"%s\", line %d, characters %d-%d:@}@\n%a"

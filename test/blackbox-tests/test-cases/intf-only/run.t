@@ -24,8 +24,8 @@ Errors:
   $ dune build --display short --root a foo.cma
   Entering directory 'a'
   File "dune", line 1, characters 0-21:
-  1: (library
-  2:  (name foo))
+  1 | (library
+  2 |  (name foo))
   Warning: Some modules don't have an implementation.
   You need to add the following field to this stanza:
   

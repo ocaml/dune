@@ -3,11 +3,11 @@ message is displayed:
 
   $ dune build --root=public --display=short
   File "jbuild", line 4, characters 2-74:
-  4:   (
-  5:    (name mylib)
-  6:    (public_name mylib)
-  7:    (modes (shared_object))
-  8:    )
+  4 |   (
+  5 |    (name mylib)
+  6 |    (public_name mylib)
+  7 |    (modes (shared_object))
+  8 |    )
   Error: No installable mode found for this executable.
   One of the following modes is required:
    - exe

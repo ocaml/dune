@@ -37,16 +37,7 @@ module Set : Set.S with type elt = t
 
 module Map : Map.S with type key = t
 
-module Status : sig
-  type t =
-    | Installed
-    | Public  of Package.t
-    | Private of Dune_project.Name.t
-
-  val pp : t Fmt.t
-end
-
-val status : t -> Status.t
+val status : t -> Lib_info.Status.t
 
 val package : t -> Package.Name.t option
 
@@ -85,13 +76,6 @@ module Lib_and_module : sig
 
   val link_flags : t list -> mode:Mode.t -> stdlib_dir:Path.t -> _ Arg_spec.t
 
-end
-
-(** {1 Raw library descriptions} *)
-
-(** Information about a library *)
-module Info : sig
-  type t
 end
 
 (** {1 Errors} *)
@@ -215,8 +199,8 @@ module DB : sig
   module Resolve_result : sig
     type nonrec t =
       | Not_found
-      | Found    of Info.t
-      | Hidden   of Info.t * string
+      | Found    of Lib_info.t
+      | Hidden   of Lib_info.t * string
       | Redirect of t option * Lib_name.t
   end
 

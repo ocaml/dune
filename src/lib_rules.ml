@@ -273,7 +273,7 @@ module Gen (P : Install_rules.Params) = struct
         [ Hidden_deps h_files
         ; Arg_spec.of_result_map requires ~f:(fun libs ->
             S [ Lib.L.c_include_flags libs ~stdlib_dir:ctx.stdlib_dir
-              ; Hidden_deps (Lib_deps.L.file_deps sctx libs ~ext:".h")
+              ; Hidden_deps (Lib_deps.L.file_deps sctx libs ~exts:[".h"])
               ])
         ]
     in
@@ -407,11 +407,11 @@ module Gen (P : Install_rules.Params) = struct
     List.iter Cm_kind.all ~f:(fun cm_kind ->
       let files = add_cms ~cm_kind ~init:Path.Set.empty modules in
       let files = add_cms ~cm_kind ~init:files wrapped_compat in
-      Lib_deps.setup_file_deps_alias sctx ~dir lib ~ext:(Cm_kind.ext cm_kind)
+      Lib_deps.setup_file_deps_alias sctx ~dir lib ~exts:[Cm_kind.ext cm_kind]
         files);
 
     Lib_deps.setup_file_deps_group_alias sctx ~dir lib ~exts:[".cmi"; ".cmx"];
-    Lib_deps.setup_file_deps_alias sctx ~dir lib ~ext:".h"
+    Lib_deps.setup_file_deps_alias sctx ~dir lib ~exts:[".h"]
       (List.map lib.install_c_headers ~f:(fun header ->
          Path.relative dir (header ^ ".h"))
        |> Path.Set.of_list);

@@ -789,13 +789,22 @@ module Infer = struct
     (Unexp.infer t).targets
 end
 
+let symlink_managed_paths sandboxed deps =
+  let steps =
+    Path.Set.fold (Deps.paths deps)
+      ~init:[]
+      ~f:(fun path acc ->
+        if Path.is_managed path then
+          Symlink (path, sandboxed path)::acc
+        else
+          acc
+      )
+  in
+  Progn steps
+
 let sandbox t ~sandboxed ~deps ~targets : t =
   Progn
-    [ Progn (List.filter_map deps ~f:(fun path ->
-        if Path.is_managed path then
-          Some (Symlink (path, sandboxed path))
-        else
-          None))
+    [ symlink_managed_paths sandboxed deps
     ; map t
         ~dir:Path.root
         ~f_string:(fun ~dir:_ x -> x)

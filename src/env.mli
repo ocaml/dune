@@ -31,3 +31,5 @@ val update : t -> var:string -> f:(string option -> string option) -> t
 val to_sexp : t -> Sexp.t
 
 val of_string_map : string String.Map.t -> t
+
+val iter : t -> f:(string -> string -> unit) -> unit

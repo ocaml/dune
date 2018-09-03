@@ -35,8 +35,8 @@ end
 
 module Static_deps : sig
   type t =
-    { rule_deps   : Path.Set.t
-    ; action_deps : Path.Set.t
+    { rule_deps   : Deps.t
+    ; action_deps : Deps.t
     }
 end
 

@@ -20,8 +20,8 @@ end
 
 module Static_deps = struct
   type t =
-    { rule_deps   : Path.Set.t
-    ; action_deps : Path.Set.t
+    { rule_deps   : Deps.t
+    ; action_deps : Deps.t
     }
 end
 
@@ -67,13 +67,13 @@ let static_deps t ~all_targets ~file_tree =
     | Second t -> loop t acc targets_allowed
     | Split (a, b) -> loop a (loop b acc targets_allowed) targets_allowed
     | Fanout (a, b) -> loop a (loop b acc targets_allowed) targets_allowed
-    | Paths fns -> { acc with action_deps = Path.Set.union fns acc.action_deps }
+    | Paths fns -> { acc with action_deps = Deps.add_paths acc.action_deps fns }
     | Paths_for_rule fns ->
-      { acc with rule_deps = Path.Set.union fns acc.rule_deps }
+      { acc with rule_deps = Deps.add_paths acc.rule_deps fns }
     | Paths_glob state -> begin
         match !state with
         | G_evaluated l ->
-          { acc with action_deps = Path.Set.union acc.action_deps l }
+          { acc with action_deps = Deps.add_paths acc.action_deps l }
         | G_unevaluated (loc, dir, re) ->
           let targets = all_targets ~dir in
           let result =
@@ -95,7 +95,7 @@ let static_deps t ~all_targets ~file_tree =
               ()
           end;
           state := G_evaluated result;
-          let action_deps = Path.Set.union result acc.action_deps in
+          let action_deps = Deps.add_paths acc.action_deps result in
           { acc with action_deps }
       end
     | If_file_exists (p, state) -> begin
@@ -114,18 +114,19 @@ let static_deps t ~all_targets ~file_tree =
       end
     | Dyn_paths t -> loop t acc targets_allowed
     | Vpath (Vspec.T (p, _)) ->
-      { acc with rule_deps = Path.Set.add acc.rule_deps p }
-    | Contents p -> { acc with rule_deps = Path.Set.add acc.rule_deps p }
-    | Lines_of p -> { acc with rule_deps = Path.Set.add acc.rule_deps p }
+      { acc with rule_deps = Deps.add_path acc.rule_deps p }
+    | Contents p -> { acc with rule_deps = Deps.add_path acc.rule_deps p }
+    | Lines_of p -> { acc with rule_deps = Deps.add_path acc.rule_deps p }
     | Record_lib_deps _ -> acc
     | Fail _ -> acc
     | Memo m -> loop m.t acc targets_allowed
     | Catch (t, _) -> loop t acc targets_allowed
     | Lazy_no_targets t -> loop (Lazy.force t) acc false
+    | Env_var var -> { acc with action_deps = Deps.add_env_var acc.action_deps var }
   in
   loop (Build.repr t)
-    { rule_deps = Path.Set.empty
-    ; action_deps = Path.Set.empty
+    { rule_deps = Deps.empty
+    ; action_deps = Deps.empty
     }
     true
 
@@ -155,6 +156,7 @@ let lib_deps =
       | Memo m -> loop m.t acc
       | Catch (t, _) -> loop t acc
       | Lazy_no_targets t -> loop (Lazy.force t) acc
+      | Env_var _ -> acc
   in
   fun t -> loop (Build.repr t) Lib_name.Map.empty
 
@@ -198,6 +200,7 @@ let targets =
     | Memo m -> loop m.t acc
     | Catch (t, _) -> loop t acc
     | Lazy_no_targets _ -> acc
+    | Env_var _ -> acc
   in
   fun t -> loop (Build.repr t) []
 

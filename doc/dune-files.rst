@@ -1250,6 +1250,9 @@ syntax:
 - ``(package <pkg>)`` depend on all files installed by ``<package>``, as well
   as on the transitive package dependencies of ``<package>``. This can be used
   to test a command against the files that will be installed
+- ``(env <var>)``: depend on the value of the environment variable ``<var>``.
+  If this variable becomes set, becomes unset, or changes value, the target
+  will be rebuilt.
 
 In all these cases, the argument supports `Variables expansion`_.
 

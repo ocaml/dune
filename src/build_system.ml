@@ -37,10 +37,10 @@ let files_in_source_tree_to_delete () =
   Promoted_to_delete.load ()
 
 module Exec_status = struct
-  type rule_evaluation = (Action.t * Path.Set.t) Fiber.Future.t
+  type rule_evaluation = (Action.t * Deps.t) Fiber.Future.t
   type rule_execution = unit Fiber.Future.t
 
-  type eval_rule = unit -> (Action.t * Path.Set.t) Fiber.t
+  type eval_rule = unit -> (Action.t * Deps.t) Fiber.t
   type exec_rule = rule_evaluation -> unit Fiber.t
 
   module Evaluating_rule = struct
@@ -139,8 +139,8 @@ module Internal_rule = struct
      dependency paths. *)
   let root =
     { id          = Id.gen ()
-    ; static_deps = lazy { rule_deps   = Path.Set.empty
-                         ; action_deps = Path.Set.empty
+    ; static_deps = lazy { rule_deps   = Deps.empty
+                         ; action_deps = Deps.empty
                          }
     ; targets     = Path.Set.empty
     ; context     = None
@@ -484,7 +484,7 @@ module Build_exec = struct
 
   let exec bs t x =
     let rec exec
-      : type a b. Path.Set.t ref -> (a, b) t -> a -> b = fun dyn_deps t x ->
+      : type a b. Deps.t ref -> (a, b) t -> a -> b = fun dyn_deps t x ->
       match t with
       | Arr f -> f x
       | Targets _ -> x
@@ -519,7 +519,7 @@ module Build_exec = struct
         Option.value_exn file.data
       | Dyn_paths t ->
         let fns = exec dyn_deps t x in
-        dyn_deps := Path.Set.union !dyn_deps fns;
+        dyn_deps := Deps.add_paths !dyn_deps fns;
         x
       | Record_lib_deps _ -> x
       | Fail { fail } -> fail ()
@@ -533,26 +533,28 @@ module Build_exec = struct
         end
       | Lazy_no_targets t ->
         exec dyn_deps (Lazy.force t) x
+      | Env_var _ ->
+        x
       | Memo m ->
         match m.state with
         | Evaluated (x, deps) ->
-          dyn_deps := Path.Set.union !dyn_deps deps;
+          dyn_deps := Deps.union !dyn_deps deps;
           x
         | Evaluating ->
           die "Dependency cycle evaluating memoized build arrow %s" m.name
         | Unevaluated ->
           m.state <- Evaluating;
-          let dyn_deps' = ref Path.Set.empty in
+          let dyn_deps' = ref Deps.empty in
           match exec dyn_deps' m.t x with
           | x ->
             m.state <- Evaluated (x, !dyn_deps');
-            dyn_deps := Path.Set.union !dyn_deps !dyn_deps';
+            dyn_deps := Deps.union !dyn_deps !dyn_deps';
             x
           | exception exn ->
             m.state <- Unevaluated;
             reraise exn
     in
-    let dyn_deps = ref Path.Set.empty in
+    let dyn_deps = ref Deps.empty in
     let result = exec dyn_deps (Build.repr t) x in
     (result, !dyn_deps)
 end
@@ -630,22 +632,22 @@ let clear_targets_digests_after_rule_execution targets =
     die "@{<error>Error@}: Rule failed to generate the following targets:\n%s"
       (string_of_paths missing)
 
+let make_local_dir t fn =
+  if not (Path.Set.mem t.local_mkdirs fn) then begin
+    Path.mkdir_p fn;
+    t.local_mkdirs <- Path.Set.add t.local_mkdirs fn
+  end
+
 let make_local_dirs t paths =
-  Path.Set.iter paths ~f:(fun path ->
-    if Path.is_managed path && not (Path.Set.mem t.local_mkdirs path) then begin
-      Path.mkdir_p path;
-      t.local_mkdirs <- Path.Set.add t.local_mkdirs path
-    end)
+  Path.Set.iter paths ~f:(make_local_dir t)
+
+let make_local_parent_dirs_for t ~map_path path =
+  let path = map_path path in
+  if Path.is_managed path then
+    Option.iter (Path.parent path) ~f:(make_local_dir t)
 
 let make_local_parent_dirs t paths ~map_path =
-  Path.Set.iter paths ~f:(fun path ->
-    let path = map_path path in
-    if Path.is_managed path then (
-      Option.iter (Path.parent path) ~f:(fun parent ->
-        if not (Path.Set.mem t.local_mkdirs parent) then begin
-          Path.mkdir_p parent;
-          t.local_mkdirs <- Path.Set.add t.local_mkdirs parent
-        end)))
+  Path.Set.iter paths ~f:(make_local_parent_dirs_for t ~map_path)
 
 let sandbox_dir = Path.relative Path.build_dir ".sandbox"
 
@@ -710,6 +712,12 @@ let no_rule_found =
           ctx
           (hint ctx (String.Map.keys t.contexts))
 
+let parallel_iter_paths paths ~f =
+  Fiber.parallel_iter (Path.Set.to_list paths) ~f
+
+let parallel_iter_deps deps ~f =
+  parallel_iter_paths (Deps.paths deps) ~f
+
 let rec compile_rule t ?(copy_source=false) pre_rule =
   let { Pre_rule.
         context
@@ -742,19 +750,21 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
          wait_for_deps ~loc t static_deps)
       (fun () ->
          Fiber.Future.wait rule_evaluation >>= fun (action, dyn_deps) ->
-         wait_for_deps ~loc t (Path.Set.diff dyn_deps static_deps)
+         wait_for_path_deps ~loc t (Deps.path_diff dyn_deps static_deps)
          >>| fun () ->
          (action, dyn_deps))
     >>= fun (action, dyn_deps) ->
     make_local_parent_dirs t targets ~map_path:(fun x -> x);
-    let all_deps = Path.Set.union static_deps dyn_deps in
-    let all_deps_as_list = Path.Set.to_list all_deps in
+    let all_deps = Deps.union static_deps dyn_deps in
     let targets_as_list  = Path.Set.to_list targets  in
+    let env =
+      match context with
+      | None -> Env.empty
+      | Some c -> c.env
+    in
     let hash =
       let trace =
-        ( all_deps_as_list
-          |> List.map ~f:(fun fn ->
-            (Path.to_string fn, Utils.Cached_digest.file fn)),
+        ( Deps.trace all_deps env,
           List.map targets_as_list ~f:Path.to_string,
           Option.map context ~f:(fun c -> c.name),
           Action.for_shell action)
@@ -796,11 +806,11 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
           | Some sandbox_dir ->
             Path.rm_rf sandbox_dir;
             let sandboxed path = Path.sandbox_managed_paths ~sandbox_dir path in
-            make_local_parent_dirs t all_deps ~map_path:sandboxed;
+            make_local_parent_dirs t (Deps.paths all_deps) ~map_path:sandboxed;
             make_local_parent_dirs t targets  ~map_path:sandboxed;
             Action.sandbox action
               ~sandboxed
-              ~deps:all_deps_as_list
+              ~deps:all_deps
               ~targets:targets_as_list
           | None ->
             action
@@ -1148,8 +1158,11 @@ and wait_for_file_found fn (File_spec.T file) =
                 };
       Fiber.Future.wait rule_execution)
 
+and wait_for_path_deps ~loc t paths =
+  parallel_iter_paths paths ~f:(wait_for_file ~loc t)
+
 and wait_for_deps ~loc t deps =
-  Fiber.parallel_iter (Path.Set.to_list deps) ~f:(wait_for_file ~loc t)
+  wait_for_path_deps ~loc t (Deps.paths deps)
 
 let stamp_file_for_files_of t ~dir ~ext =
   let files_of_dir =
@@ -1255,17 +1268,13 @@ let eval_request t ~request ~process_target =
             ~file_tree:t.file_tree
   in
 
-  let process_targets ts =
-    Fiber.parallel_iter (Path.Set.to_list ts) ~f:process_target
-  in
-
   Fiber.fork_and_join_unit
-    (fun () -> process_targets static_deps)
+    (fun () -> parallel_iter_deps ~f:process_target static_deps)
     (fun () ->
        wait_for_deps t ~loc:None rule_deps
        >>= fun () ->
        let result, dyn_deps = Build_exec.exec t request () in
-       process_targets (Path.Set.diff dyn_deps static_deps)
+       parallel_iter_paths ~f:process_target (Deps.path_diff dyn_deps static_deps)
        >>| fun () ->
        result)
 
@@ -1291,7 +1300,6 @@ let do_build t ~request =
 
 module Ir_set = Set.Make(Internal_rule)
 
-
 let rules_for_files t paths =
   Path.Set.fold paths ~init:[] ~f:(fun path acc ->
     if Path.is_in_build_dir path then
@@ -1304,11 +1312,12 @@ let rules_for_files t paths =
 
 let rules_for_targets t targets =
   match
-    Internal_rule.Id.Top_closure.top_closure (rules_for_files t targets)
+    Internal_rule.Id.Top_closure.top_closure
+      (rules_for_files t targets)
       ~key:(fun (r : Internal_rule.t) -> r.id)
       ~deps:(fun (r : Internal_rule.t) ->
         let x = Lazy.force r.static_deps in
-        rules_for_files t (Path.Set.union x.action_deps x.rule_deps))
+        rules_for_files t (Deps.path_union x.action_deps x.rule_deps))
   with
   | Ok l -> l
   | Error cycle ->
@@ -1325,7 +1334,7 @@ let static_deps_of_request t request =
       } = Build_interpret.static_deps request ~all_targets:(targets_of t)
             ~file_tree:t.file_tree
   in
-  Path.Set.union rule_deps action_deps
+  Deps.path_union rule_deps action_deps
 
 let all_lib_deps t ~request =
   let targets = static_deps_of_request t request in
@@ -1364,7 +1373,7 @@ module Rule = struct
 
   type t =
     { id      : Id.t
-    ; deps    : Path.Set.t
+    ; deps    : Deps.t
     ; targets : Path.Set.t
     ; context : Context.t option
     ; action  : Action.t
@@ -1375,8 +1384,8 @@ end
 
 module Rule_set = Set.Make(Rule)
 
-let rules_for_files rules paths =
-  Path.Set.fold paths ~init:Rule_set.empty ~f:(fun path acc ->
+let rules_for_files rules deps =
+  Path.Set.fold (Deps.paths deps) ~init:Rule_set.empty ~f:(fun path acc ->
     match Path.Map.find rules path with
     | None -> acc
     | Some rule -> Rule_set.add acc rule)
@@ -1418,7 +1427,7 @@ let build_rules_internal ?(recursive=false) t ~request =
         let static_deps = (Lazy.force ir.static_deps).action_deps in
         { Rule.
           id      = ir.id
-        ; deps    = Path.Set.union static_deps dyn_deps
+        ; deps    = Deps.union static_deps dyn_deps
         ; targets = ir.targets
         ; context = ir.context
         ; action  = action
@@ -1429,12 +1438,12 @@ let build_rules_internal ?(recursive=false) t ~request =
         Fiber.return ()
       else
         Fiber.Future.wait rule >>= fun rule ->
-        Fiber.parallel_iter (Path.Set.to_list rule.deps) ~f:loop
+        parallel_iter_deps rule.deps ~f:loop
     end
   in
-  let targets = ref Path.Set.empty in
+  let targets = ref Deps.empty in
   eval_request t ~request ~process_target:(fun fn ->
-    targets := Path.Set.add !targets fn;
+    targets := Deps.add_path !targets fn;
     loop fn)
   >>= fun () ->
   Fiber.all (List.map !rules ~f:Fiber.Future.wait)
@@ -1497,7 +1506,7 @@ let package_deps t pkg files =
           | Not_started _ -> assert false
         in
         Path.Set.fold
-          (Path.Set.union (Lazy.force ir.static_deps).action_deps dyn_deps)
+          (Deps.path_union (Lazy.force ir.static_deps).action_deps dyn_deps)
           ~init:acc ~f:loop
       end
   in

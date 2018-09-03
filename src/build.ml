@@ -29,6 +29,7 @@ module Repr = struct
     | Memo : 'a memo -> (unit, 'a) t
     | Catch : ('a, 'b) t * (exn -> 'b) -> ('a, 'b) t
     | Lazy_no_targets : ('a, 'b) t Lazy.t -> ('a, 'b) t
+    | Env_var : string -> ('a, 'a) t
 
   and 'a memo =
     { name          : string
@@ -39,7 +40,7 @@ module Repr = struct
   and 'a memo_state =
     | Unevaluated
     | Evaluating
-    | Evaluated of 'a * Path.Set.t
+    | Evaluated of 'a * Deps.t
 
   and ('a, 'b) if_file_exists_state =
     | Undecided of ('a, 'b) t * ('a, 'b) t
@@ -117,6 +118,8 @@ let vpath vp = Vpath vp
 let dyn_paths t = Dyn_paths (t >>^ Path.Set.of_list)
 let dyn_path_set t = Dyn_paths t
 let paths_for_rule ps = Paths_for_rule ps
+
+let env_var s = Env_var s
 
 let catch t ~on_error = Catch (t, on_error)
 

@@ -873,11 +873,15 @@ module Library = struct
           string >>| fun x -> Yes_with_transition x
         ]
 
-    let field = field "wrapped" ~default:(Loc.none, Simple true) (located dparse)
+    let field = field_o "wrapped" (located dparse)
 
     let to_bool = function
       | Simple b -> b
       | Yes_with_transition _ -> true
+
+    let value = function
+      | None -> Simple true
+      | Some (_loc, w) -> w
   end
 
   type t =
@@ -929,7 +933,7 @@ module Library = struct
          field "virtual_deps" (list (located Lib_name.dparse)) ~default:[]
        and modes = field "modes" Mode_conf.Set.dparse ~default:Mode_conf.Set.default
        and kind = field "kind" Kind.dparse ~default:Kind.Normal
-       and (wrapped_loc, wrapped) = Wrapped.field
+       and wrapped = Wrapped.field
        and optional = field_b "optional"
        and self_build_stubs_archive =
          field "self_build_stubs_archive" (option string) ~default:None
@@ -953,7 +957,8 @@ module Library = struct
          let open Syntax.Version.Infix in
          match name, public with
          | Some n, _ ->
-           Lib_name.Local.validate n ~wrapped:(Wrapped.to_bool wrapped)
+           let wrapped = Wrapped.to_bool (Wrapped.value wrapped) in
+           Lib_name.Local.validate n ~wrapped
          | None, Some { name = (loc, name) ; _ }  ->
            if dune_version >= (1, 1) then
              match Lib_name.to_local name with
@@ -982,11 +987,13 @@ module Library = struct
            (Ordered_set_lang.loc virtual_modules
            |> Option.value_exn)
            "A library cannot be both virtual and implement %s" impl);
-       begin match virtual_modules, Wrapped.to_bool wrapped, implements with
-       | Some _, false, _ ->
-         of_sexp_error wrapped_loc "A virtual library must be wrapped"
-       | _, false, Some _ ->
-         of_sexp_error wrapped_loc "An implementation must be wrapped"
+       begin match virtual_modules, wrapped, implements with
+       | Some _, Some (loc, Wrapped.Simple false), _ ->
+         of_sexp_error loc "A virtual library must be wrapped"
+       | _, Some (loc, _), Some _ ->
+         of_sexp_error loc
+           "Wrapped cannot be set for implementations. \
+            It is inherited from the virtual library."
        | _, _, _ -> ()
        end;
        { name
@@ -1004,7 +1011,7 @@ module Library = struct
        ; c_library_flags
        ; self_build_stubs_archive
        ; virtual_deps
-       ; wrapped
+       ; wrapped = Wrapped.value wrapped
        ; optional
        ; buildable
        ; dynlink = Dynlink_supported.of_bool (not no_dynlink)

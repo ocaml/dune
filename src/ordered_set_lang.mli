@@ -80,6 +80,8 @@ module Unexpanded : sig
   include Dsexp.Sexpable with type t := t
   val standard : t
 
+  val of_strings : pos:string * int * int * int -> string list -> t
+
   val field
     :  ?default:t
     -> ?check:unit Dsexp.Of_sexp.t

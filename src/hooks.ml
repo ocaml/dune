@@ -16,3 +16,5 @@ module End_of_build = struct
     List.iter !persistent_hooks ~f:(fun f -> f ());
     one_off_hooks := []
 end
+
+let () = at_exit End_of_build.run

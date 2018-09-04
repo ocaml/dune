@@ -11,8 +11,6 @@ open! Stdune
     We cache what is actually printed to the screen.  *)
 val report : exn -> unit
 
-val clear_cache : unit -> unit
-
 type printer
 
 val make_printer :

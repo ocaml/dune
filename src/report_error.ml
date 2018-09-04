@@ -121,6 +121,8 @@ let reported = ref String.Set.empty
 let clear_cache () =
   reported := String.Set.empty
 
+let () = Hooks.End_of_build.always clear_cache
+
 let report exn =
   let exn, dependency_path = Dep_path.unwrap_exn exn in
   match exn with

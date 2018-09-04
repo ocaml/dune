@@ -10,9 +10,6 @@ module File : sig
   val register : t -> unit
 end
 
-(** Clear registered promotions db. *)
-val clear_cache : unit -> unit
-
 (** Promote all registered files if [!Clflags.auto_promote]. Otherwise
     dump the list of registered files to [_build/.to-promote]. *)
 val finalize : unit -> unit

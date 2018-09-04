@@ -236,24 +236,11 @@ let go ?log ?config ?gen_status_line fiber =
 *)
 let poll ?log ?config ?(cache_init=true) ~init ~once ~finally ~watch () =
   let t = prepare ?log ?config () in
-  let saved_setup = ref None in
-  let setup () =
-    match !saved_setup with
-    | Some c -> c
-    | None ->
-      Format.eprintf "Internal error: setup failed.\n";
-      exit 1
-  in
-  let init () =
-    init ()
-    >>| fun setup ->
-    saved_setup := Some setup
-  in
   let wait_success () =
     let old_generator = t.gen_status_line in
     set_status_line_generator
       (fun () ->
-         { message = Some "Success, polling filesystem for changes..."
+         { message = Some "Success.\nWaiting for filesystem changes..."
          ; show_jobs = false
          })
     >>= fun () ->
@@ -265,7 +252,7 @@ let poll ?log ?config ?(cache_init=true) ~init ~once ~finally ~watch () =
     let old_generator = t.gen_status_line in
     set_status_line_generator
       (fun () ->
-         { message = Some "Had errors, polling filesystem for changes..."
+         { message = Some "Had errors.\nWaiting for filesystem changes..."
          ; show_jobs = false
          })
     >>= fun () ->
@@ -282,16 +269,16 @@ let poll ?log ?config ?(cache_init=true) ~init ~once ~finally ~watch () =
      else
        init ())
     >>= fun _ ->
-    once (setup ())
+    once ()
     >>= fun _ ->
-    finally (setup ())
+    finally ()
     >>= fun _ ->
     wait_success ()
     >>= fun _ ->
     main_loop ()
   in
   let continue_on_error () =
-    finally (setup ())
+    finally ()
     >>= fun _ ->
     wait_failure ()
     >>= fun _ ->

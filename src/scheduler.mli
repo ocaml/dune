@@ -22,7 +22,6 @@ val go
               v                  |
     init --> once --> finally  --/
 
-    The result of [~init] gets passed in every call to [~once] and [~finally].
     If cache_init is false, every iteration reexecutes init instead of
     saving it.
 
@@ -32,12 +31,12 @@ val poll
   :  ?log:Log.t
   -> ?config:Config.t
   -> ?cache_init:bool
-  -> init:(unit -> 'a Fiber.t)
-  -> once:('a -> 'b Fiber.t)
-  -> finally:('a -> 'c Fiber.t)
+  -> init:(unit -> unit Fiber.t)
+  -> once:(unit -> unit Fiber.t)
+  -> finally:(unit -> unit Fiber.t)
   -> watch:(unit -> unit Fiber.t)
   -> unit
-  -> 'd
+  -> 'a
 
 (** Wait for the following process to terminate *)
 val wait_for_process : int -> Unix.process_status Fiber.t

@@ -40,7 +40,7 @@ Errors:
   3 |  (modules_without_implementation x))
                                        ^
   Warning: The following modules must be listed here as they don't have an implementation:
-  - y
+  - Y
   This will become an error in the future.
         ocamlc .foo.objs/foo.{cmi,cmo,cmt}
         ocamlc foo.cma

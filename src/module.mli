@@ -96,3 +96,8 @@ val set_pp : t -> (unit, string list) Build.t option -> t
 val to_sexp : t Sexp.To_sexp.t
 
 val wrapped_compat : t -> t
+
+module Name_map : sig
+  type module_
+  type t = module_ Name.Map.t
+end with type module_ := t

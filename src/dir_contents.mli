@@ -18,15 +18,16 @@ val text_files : t -> String.Set.t
 
 module Library_modules : sig
   type t = private
-    { modules          : Module.t Module.Name.Map.t
+    { modules          : Module.Name_map.t
+    ; virtual_modules  : Module.Name_map.t
     ; alias_module     : Module.t option
     ; main_module_name : Module.Name.t
-    ; wrapped_compat   : Module.t Module.Name.Map.t
+    ; wrapped_compat   : Module.Name_map.t
     }
 end
 
 module Executables_modules : sig
-  type t = Module.t Module.Name.Map.t
+  type t = Module.Name_map.t
 end
 
 (** Modules attached to a library. [name] is the library best name. *)

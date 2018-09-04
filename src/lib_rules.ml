@@ -333,7 +333,11 @@ module Gen (P : Install_rules.Params) = struct
     in
     let flags = SC.ocaml_flags sctx ~scope ~dir lib.buildable in
     let { Dir_contents.Library_modules.
-          modules; main_module_name; alias_module ; wrapped_compat } =
+          modules
+        ; main_module_name
+        ; alias_module
+        ; wrapped_compat
+        ; virtual_modules = _ } =
       Dir_contents.modules_of_library dir_contents ~name:(Library.best_name lib)
     in
     let source_modules = modules in

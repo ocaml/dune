@@ -66,6 +66,26 @@ end = struct
     | Incorrect_field of incorrect_field
     | Virtual_intf_overlap of (Loc.t * Module.t)
 
+  module Module_errors = struct
+    type t =
+      { missing_modules    : (Loc.t * Module.t) list
+      ; missing_intf_only  : (Loc.t * Module.t) list
+      ; virt_intf_overlaps : (Loc.t * Module.t) list
+      }
+
+    let empty =
+      { missing_modules    = []
+      ; missing_intf_only  = []
+      ; virt_intf_overlaps = []
+      }
+
+    let map { missing_modules ; missing_intf_only ; virt_intf_overlaps } ~f =
+      { missing_modules = f missing_modules
+      ; missing_intf_only = f missing_intf_only
+      ; virt_intf_overlaps = f virt_intf_overlaps
+      }
+  end
+
   let fold_errors ~f ~init ~modules ~intf_only ~virtual_modules =
     let init =
       Module.Name.Map.fold intf_only ~init
@@ -110,31 +130,25 @@ end = struct
 
   let check_invalid_module_listing ~(buildable : Buildable.t) ~intf_only
         ~modules ~virtual_modules =
-    let (missing_modules, missing_intf_only, virt_intf_overlaps) =
-      let (missing_modules, missing_intf_only, virt_intf_overlaps) =
-        fold_errors ~init:([], [], []) ~modules ~intf_only ~virtual_modules
-          ~f:(fun e (missing_modules, missing_intf_only, virt_intf_overlaps) ->
-            match e with
-            | Incorrect_field { correct_field = Modules; module_ } ->
-              ( module_ :: missing_modules
-              , missing_intf_only
-              , virt_intf_overlaps
-              )
-            | Incorrect_field { correct_field = Intf_only; module_ } ->
-              ( missing_modules
-              , module_ :: missing_intf_only
-              , virt_intf_overlaps
-              )
-            | Virtual_intf_overlap module_ ->
-              ( missing_modules
-              , missing_intf_only
-              , module_ :: virt_intf_overlaps
-              ))
-      in
-      ( List.rev missing_modules
-      , List.rev missing_intf_only
-      , List.rev virt_intf_overlaps
-      )
+    let { Module_errors.
+          missing_modules
+        ; missing_intf_only
+        ; virt_intf_overlaps
+        } =
+      fold_errors ~init:Module_errors.empty ~modules ~intf_only ~virtual_modules
+        ~f:(fun e (errors : Module_errors.t) ->
+          match e with
+          | Incorrect_field { correct_field = Modules; module_ } ->
+            { errors with missing_modules = module_ :: errors.missing_modules}
+          | Incorrect_field { correct_field = Intf_only; module_ } ->
+            { errors with
+              missing_intf_only = module_ :: errors.missing_intf_only
+            }
+          | Virtual_intf_overlap module_ ->
+            { errors with
+              virt_intf_overlaps = module_ :: errors.virt_intf_overlaps
+            })
+      |> Module_errors.map ~f:List.rev
     in
     let uncapitalized =
       List.map ~f:(fun (_, m) -> Module.name m |> Module.Name.uncapitalize) in

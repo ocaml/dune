@@ -53,19 +53,6 @@ end = struct
             Errors.fail loc "Module %a doesn't exist." Module.Name.pp s)
       )
 
-  type field =
-    | Modules
-    | Intf_only
-
-  type incorrect_field =
-    { correct_field : field
-    ; module_: Loc.t * Module.t
-    }
-
-  type error =
-    | Incorrect_field of incorrect_field
-    | Virtual_intf_overlap of (Loc.t * Module.t)
-
   module Module_errors = struct
     type t =
       { missing_modules    : (Loc.t * Module.t) list
@@ -86,47 +73,43 @@ end = struct
       }
   end
 
-  let fold_errors ~f ~init ~modules ~intf_only ~virtual_modules =
-    let init =
-      Module.Name.Map.fold intf_only ~init
+  let find_errors ~modules ~intf_only ~virtual_modules =
+    let missing_modules =
+      Module.Name.Map.fold intf_only ~init:[]
         ~f:(fun ((_, (module_ : Module.t)) as module_loc) acc ->
           if Option.is_none module_.impl then
             acc
           else
-            f (Incorrect_field
-                 { correct_field = Modules
-                 ; module_ = module_loc
-                 }
-              ) acc)
+            module_loc :: acc)
     in
-    let init =
-      Module.Name.Map.fold virtual_modules ~init
+    let errors =
+      Module.Name.Map.fold virtual_modules ~init:Module_errors.empty
         ~f:(fun (_, (module_ : Module.t) as module_loc) acc ->
           if Option.is_some module_.impl then
-            f (Incorrect_field
-                 { correct_field = Modules
-                 ; module_ = module_loc
-                 }
-              ) acc
+            { acc with missing_modules = module_loc :: acc.missing_modules }
           else if Module.Name.Map.mem intf_only (Module.name module_) then
-            f (Virtual_intf_overlap module_loc) acc
+            { acc with virt_intf_overlaps = module_loc :: acc.virt_intf_overlaps
+            }
           else
             acc)
     in
-    Module.Name.Map.fold modules ~init
-      ~f:(fun (_, (module_ : Module.t) as module_loc) acc ->
-        if Option.is_some module_.impl then
-          acc
-        else if not (Module.Name.Map.mem intf_only (Module.name module_))
-              && not (Module.Name.Map.mem virtual_modules (Module.name module_))
-        then
-          f (Incorrect_field
-               { correct_field = Intf_only
-               ; module_ = module_loc
-               }
-            ) acc
-        else
-          acc)
+    let missing_intf_only =
+      Module.Name.Map.fold modules ~init:[]
+        ~f:(fun (_, (module_ : Module.t) as module_loc) acc ->
+          if Option.is_some module_.impl then
+            acc
+          else if not (Module.Name.Map.mem intf_only (Module.name module_))
+                && not (Module.Name.Map.mem virtual_modules (Module.name module_))
+          then
+            module_loc :: acc
+          else
+            acc) in
+    assert (List.is_empty errors.missing_intf_only);
+    { errors with
+      missing_modules = List.rev_append errors.missing_modules missing_modules
+    ; missing_intf_only
+    }
+    |> Module_errors.map ~f:List.rev
 
   let check_invalid_module_listing ~(buildable : Buildable.t) ~intf_only
         ~modules ~virtual_modules =
@@ -134,21 +117,7 @@ end = struct
           missing_modules
         ; missing_intf_only
         ; virt_intf_overlaps
-        } =
-      fold_errors ~init:Module_errors.empty ~modules ~intf_only ~virtual_modules
-        ~f:(fun e (errors : Module_errors.t) ->
-          match e with
-          | Incorrect_field { correct_field = Modules; module_ } ->
-            { errors with missing_modules = module_ :: errors.missing_modules}
-          | Incorrect_field { correct_field = Intf_only; module_ } ->
-            { errors with
-              missing_intf_only = module_ :: errors.missing_intf_only
-            }
-          | Virtual_intf_overlap module_ ->
-            { errors with
-              virt_intf_overlaps = module_ :: errors.virt_intf_overlaps
-            })
-      |> Module_errors.map ~f:List.rev
+        } = find_errors ~modules ~intf_only ~virtual_modules
     in
     let uncapitalized =
       List.map ~f:(fun (_, m) -> Module.name m |> Module.Name.uncapitalize) in

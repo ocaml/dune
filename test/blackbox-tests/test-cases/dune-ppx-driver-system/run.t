@@ -69,7 +69,7 @@ Test that going throught the -ppx option of the compiler works
   $ dune build test_ppx_staged.cma
       ocamldep .test_ppx_staged.objs/test_ppx_staged.ml.d
   tool name: ocamldep
-  args:--cookie library-name="test_ppx_staged"
+  args:--as-ppx --cookie library-name="test_ppx_staged"
         ocamlc .test_ppx_staged.objs/test_ppx_staged.{cmi,cmo,cmt}
   tool name: ocamlc
-  args:--cookie library-name="test_ppx_staged"
+  args:--as-ppx --cookie library-name="test_ppx_staged"

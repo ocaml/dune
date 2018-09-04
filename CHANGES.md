@@ -42,6 +42,8 @@ next
   wrapped modules but keep unwrapped modules with a deprecation message to
   preserve compatibility. (#1188, fix #985, @rgrinberg)
 
+- Fix the flags passed to the ppx rewriter when using `staged_pps` (#1218, @diml)
+
 1.1.1 (08/08/2018)
 ------------------
 

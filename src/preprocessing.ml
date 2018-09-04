@@ -49,8 +49,10 @@ module Driver = struct
           (let%map loc = loc
            and flags = Ordered_set_lang.Unexpanded.field "flags"
            and as_ppx_flags =
-             Ordered_set_lang.Unexpanded.field "flags"
-               ~check:(Syntax.since syntax (1, 1))
+             Ordered_set_lang.Unexpanded.field "as_ppx_flags"
+               ~check:(Syntax.since syntax (1, 2))
+               ~default:(Ordered_set_lang.Unexpanded.of_strings ["--as-ppx"]
+                           ~pos:__POS__)
            and lint_flags = Ordered_set_lang.Unexpanded.field "lint_flags"
            and main = field "main" string
            and replaces =

@@ -138,8 +138,9 @@ end = struct
     in
     let uncapitalized =
       List.map ~f:(fun (_, m) -> Module.name m |> Module.Name.uncapitalize) in
-    if virt_intf_overlaps <> [] then begin
-      let (loc, _) = List.hd virt_intf_overlaps in
+    begin match virt_intf_overlaps with
+    | [] -> ()
+    | (loc, _) :: _ ->
       Errors.fail loc
         "These modules appear in the virtual_libraries \
          and modules_without_implementation fields: \
@@ -181,15 +182,13 @@ end = struct
            This will become an error in the future."
           (list_modules missing_intf_only)
     end;
-    if missing_modules <> [] then begin
-      let (loc, module_name) =
-        let (loc, module_) = List.hd missing_modules in
-        (loc, Module.name module_)
-      in
+    begin match missing_modules with
+    | [] -> ()
+    | (loc, module_) :: _ ->
       (* CR-soon jdimino for jdimino: report all errors *)
       Errors.fail loc
         "Module %a has an implementation, it cannot be listed here"
-        Module.Name.pp module_name
+        Module.Name.pp (Module.name module_)
     end
 
   let eval ~modules:(all_modules : Module.t Module.Name.Map.t)

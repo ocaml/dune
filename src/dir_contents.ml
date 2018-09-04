@@ -231,8 +231,7 @@ end = struct
 
   let make (lib : Library.t) ~dir (modules : Module.Name_map.t)
         ~virtual_modules =
-    let main_module_name =
-      Module.Name.of_string (Lib_name.Local.to_string lib.name) in
+    let main_module_name = Library.main_module_name lib in
     let (modules, wrapped_compat) =
       let wrap_modules modules =
         let open Module.Name.Infix in

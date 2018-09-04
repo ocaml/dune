@@ -41,6 +41,23 @@ module Deps = struct
     | Complex l -> l
 end
 
+module Virtual = struct
+  module Modules = struct
+    type t =
+      | Unexpanded
+  end
+
+  module Dep_graph = struct
+    type t =
+      | Local
+  end
+
+  type t =
+    { modules   : Modules.t
+    ; dep_graph : Dep_graph.t
+    }
+end
+
 type t =
   { loc              : Loc.t
   ; kind             : Dune_file.Library.Kind.t
@@ -60,6 +77,8 @@ type t =
   ; virtual_deps     : (Loc.t * Lib_name.t) list
   ; dune_version : Syntax.Version.t option
   ; sub_systems      : Dune_file.Sub_system_info.t Sub_system_name.Map.t
+  ; virtual_         : Virtual.t option
+  ; implements       : (Loc.t * Lib_name.t) option
   }
 
 let user_written_deps t =
@@ -96,6 +115,14 @@ let of_library_stanza ~dir ~ext_lib (conf : Dune_file.Library.t) =
         :: stubs
     }
   in
+  let virtual_ =
+    Option.map conf.virtual_modules ~f:(fun _ ->
+      { Virtual.
+        modules = Virtual.Modules.Unexpanded
+      ; dep_graph = Virtual.Dep_graph.Local
+      }
+    )
+  in
   { loc = conf.buildable.loc
   ; kind     = conf.kind
   ; src_dir  = dir
@@ -114,6 +141,8 @@ let of_library_stanza ~dir ~ext_lib (conf : Dune_file.Library.t) =
   ; pps = Dune_file.Preprocess_map.pps conf.buildable.preprocess
   ; sub_systems = conf.sub_systems
   ; dune_version = Some conf.dune_version
+  ; virtual_
+  ; implements = conf.implements
   }
 
 let of_findlib_package pkg =
@@ -144,4 +173,6 @@ let of_findlib_package pkg =
     foreign_archives = Mode.Dict.make_both []
   ; sub_systems      = sub_systems
   ; dune_version = None
+  ; virtual_ = None
+  ; implements = None
   }

@@ -28,6 +28,9 @@ module Name = struct
   module Map = String.Map
   module Top_closure = Top_closure.String
   module Infix = Comparable.Operators(T)
+
+  let of_local_lib_name s =
+    of_string (Lib_name.Local.to_string s)
 end
 
 module Syntax = struct

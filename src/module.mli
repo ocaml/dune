@@ -24,6 +24,8 @@ module Name : sig
   module Top_closure : Top_closure.S with type key := t
 
   module Infix : Comparable.OPS with type t = t
+
+  val of_local_lib_name : Lib_name.Local.t -> t
 end
 
 module Syntax : sig

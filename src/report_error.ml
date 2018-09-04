@@ -118,6 +118,9 @@ let report_with_backtrace exn =
 
 let reported = ref String.Set.empty
 
+let clear_cache () =
+  reported := String.Set.empty
+
 let report exn =
   let exn, dependency_path = Dep_path.unwrap_exn exn in
   match exn with

@@ -18,13 +18,6 @@ module Target = struct
       Path.Set.add acc (path t))
 end
 
-module Static_deps = struct
-  type t =
-    { rule_deps   : Deps.t
-    ; action_deps : Deps.t
-    }
-end
-
 type file_kind = Reg | Dir
 
 let inspect_path file_tree path =
@@ -67,13 +60,14 @@ let static_deps t ~all_targets ~file_tree =
     | Second t -> loop t acc targets_allowed
     | Split (a, b) -> loop a (loop b acc targets_allowed) targets_allowed
     | Fanout (a, b) -> loop a (loop b acc targets_allowed) targets_allowed
-    | Paths fns -> { acc with action_deps = Deps.add_paths acc.action_deps fns }
+    | Paths fns ->
+      Static_deps.add_action_paths acc fns
     | Paths_for_rule fns ->
-      { acc with rule_deps = Deps.add_paths acc.rule_deps fns }
+      Static_deps.add_rule_paths acc fns
     | Paths_glob state -> begin
         match !state with
         | G_evaluated l ->
-          { acc with action_deps = Deps.add_paths acc.action_deps l }
+          Static_deps.add_action_paths acc l
         | G_unevaluated (loc, dir, re) ->
           let targets = all_targets ~dir in
           let result =
@@ -95,8 +89,7 @@ let static_deps t ~all_targets ~file_tree =
               ()
           end;
           state := G_evaluated result;
-          let action_deps = Deps.add_paths acc.action_deps result in
-          { acc with action_deps }
+          Static_deps.add_action_paths acc result
       end
     | If_file_exists (p, state) -> begin
         match !state with
@@ -114,21 +107,18 @@ let static_deps t ~all_targets ~file_tree =
       end
     | Dyn_paths t -> loop t acc targets_allowed
     | Vpath (Vspec.T (p, _)) ->
-      { acc with rule_deps = Deps.add_path acc.rule_deps p }
-    | Contents p -> { acc with rule_deps = Deps.add_path acc.rule_deps p }
-    | Lines_of p -> { acc with rule_deps = Deps.add_path acc.rule_deps p }
+      Static_deps.add_rule_path acc p
+    | Contents p -> Static_deps.add_rule_path acc p
+    | Lines_of p -> Static_deps.add_rule_path acc p
     | Record_lib_deps _ -> acc
     | Fail _ -> acc
     | Memo m -> loop m.t acc targets_allowed
     | Catch (t, _) -> loop t acc targets_allowed
     | Lazy_no_targets t -> loop (Lazy.force t) acc false
-    | Env_var var -> { acc with action_deps = Deps.add_env_var acc.action_deps var }
+    | Env_var var ->
+      Static_deps.add_action_env_var acc var
   in
-  loop (Build.repr t)
-    { rule_deps = Deps.empty
-    ; action_deps = Deps.empty
-    }
-    true
+  loop (Build.repr t) Static_deps.empty true
 
 let lib_deps =
   let rec loop : type a b. (a, b) t -> Lib_deps_info.t -> Lib_deps_info.t

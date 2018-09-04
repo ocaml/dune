@@ -109,7 +109,7 @@ module Internal_rule = struct
 
   type t =
     { id               : Id.t
-    ; static_deps      : Build_interpret.Static_deps.t Lazy.t
+    ; static_deps      : Static_deps.t Lazy.t
     ; targets          : Path.Set.t
     ; context          : Context.t option
     ; build            : (unit, Action.t) Build.t
@@ -131,7 +131,7 @@ module Internal_rule = struct
   let lib_deps t =
     (* Forcing this lazy ensures that the various globs and
        [if_file_exists] are resolved inside the [Build.t] value. *)
-    ignore (Lazy.force t.static_deps : Build_interpret.Static_deps.t);
+    ignore (Lazy.force t.static_deps : Static_deps.t);
     Build_interpret.lib_deps t.build
 
   (* Represent the build goal given by the user. This rule is never
@@ -139,9 +139,7 @@ module Internal_rule = struct
      dependency paths. *)
   let root =
     { id          = Id.gen ()
-    ; static_deps = lazy { rule_deps   = Deps.empty
-                         ; action_deps = Deps.empty
-                         }
+    ; static_deps = lazy Static_deps.empty
     ; targets     = Path.Set.empty
     ; context     = None
     ; build       = Build.return (Action.Progn [])
@@ -739,12 +737,14 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
 
   let eval_rule () =
     t.hook Rule_started;
-    wait_for_deps t (Lazy.force static_deps).rule_deps ~loc
+    let static_deps = Lazy.force static_deps in
+    wait_for_deps t (Static_deps.rule_deps static_deps) ~loc
     >>| fun () ->
     Build_exec.exec t build ()
   in
   let exec_rule (rule_evaluation : Exec_status.rule_evaluation) =
-    let static_deps = (Lazy.force static_deps).action_deps in
+    let static_deps = Lazy.force static_deps in
+    let static_deps = Static_deps.action_deps static_deps in
     Fiber.fork_and_join_unit
       (fun () ->
          wait_for_deps ~loc t static_deps)
@@ -1261,12 +1261,14 @@ let create ~contexts ~file_tree ~hook =
   t
 
 let eval_request t ~request ~process_target =
-  let { Build_interpret.Static_deps.
-        rule_deps
-      ; action_deps = static_deps
-      } = Build_interpret.static_deps request ~all_targets:(targets_of t)
-            ~file_tree:t.file_tree
+  let static_deps =
+    Build_interpret.static_deps
+      request
+      ~all_targets:(targets_of t)
+      ~file_tree:t.file_tree
   in
+  let rule_deps = Static_deps.rule_deps static_deps in
+  let static_deps = Static_deps.action_deps static_deps in
 
   Fiber.fork_and_join_unit
     (fun () -> parallel_iter_deps ~f:process_target static_deps)
@@ -1317,7 +1319,7 @@ let rules_for_targets t targets =
       ~key:(fun (r : Internal_rule.t) -> r.id)
       ~deps:(fun (r : Internal_rule.t) ->
         let x = Lazy.force r.static_deps in
-        rules_for_files t (Deps.path_union x.action_deps x.rule_deps))
+        rules_for_files t (Static_deps.paths x))
   with
   | Ok l -> l
   | Error cycle ->
@@ -1328,13 +1330,11 @@ let rules_for_targets t targets =
        |> String.concat ~sep:"\n-> ")
 
 let static_deps_of_request t request =
-  let { Build_interpret.Static_deps.
-        rule_deps
-      ; action_deps
-      } = Build_interpret.static_deps request ~all_targets:(targets_of t)
-            ~file_tree:t.file_tree
-  in
-  Deps.path_union rule_deps action_deps
+  Static_deps.paths @@
+  Build_interpret.static_deps
+    request
+    ~all_targets:(targets_of t)
+    ~file_tree:t.file_tree
 
 let all_lib_deps t ~request =
   let targets = static_deps_of_request t request in
@@ -1424,10 +1424,13 @@ let build_rules_internal ?(recursive=false) t ~request =
       Fiber.fork (fun () ->
         Fiber.Future.wait rule_evaluation
         >>| fun (action, dyn_deps) ->
-        let static_deps = (Lazy.force ir.static_deps).action_deps in
+        let action_deps =
+          Static_deps.action_deps
+            (Lazy.force ir.static_deps)
+        in
         { Rule.
           id      = ir.id
-        ; deps    = Deps.union static_deps dyn_deps
+        ; deps    = Deps.union action_deps dyn_deps
         ; targets = ir.targets
         ; context = ir.context
         ; action  = action
@@ -1505,8 +1508,12 @@ let package_deps t pkg files =
             Option.value_exn (Fiber.Future.peek rule_evaluation)
           | Not_started _ -> assert false
         in
+        let action_deps =
+          Static_deps.action_deps
+            (Lazy.force ir.static_deps)
+        in
         Path.Set.fold
-          (Deps.path_union (Lazy.force ir.static_deps).action_deps dyn_deps)
+          (Deps.path_union action_deps dyn_deps)
           ~init:acc ~f:loop
       end
   in

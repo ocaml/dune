@@ -178,3 +178,7 @@ let wrapped_compat t =
         }
       )
   }
+
+module Name_map = struct
+  type nonrec t = t Name.Map.t
+end

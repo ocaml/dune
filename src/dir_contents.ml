@@ -6,19 +6,19 @@ open! No_io
 
 module Modules_field_evaluator : sig
   type t = private
-    { all_modules : Module.t Module.Name.Map.t
-    ; virtual_modules : Module.t Module.Name.Map.t
+    { all_modules : Module.Name_map.t
+    ; virtual_modules : Module.Name_map.t
     }
 
   val eval
-    :  modules:Module.t Module.Name.Map.t
+    :  modules:Module.Name_map.t
     -> buildable:Buildable.t
     -> virtual_modules:Ordered_set_lang.t option
     -> t
 end = struct
   type t =
-    { all_modules : Module.t Module.Name.Map.t
-    ; virtual_modules : Module.t Module.Name.Map.t
+    { all_modules : Module.Name_map.t
+    ; virtual_modules : Module.Name_map.t
     }
 
   let eval =
@@ -174,7 +174,7 @@ end = struct
         Module.Name.pp (Module.name module_)
     end
 
-  let eval ~modules:(all_modules : Module.t Module.Name.Map.t)
+  let eval ~modules:(all_modules : Module.Name_map.t)
         ~buildable:(conf : Buildable.t) ~virtual_modules =
     let (fake_modules, modules) =
       eval ~standard:all_modules ~all_modules conf.modules in
@@ -211,29 +211,29 @@ end
 
 module Library_modules : sig
   type t = private
-    { modules          : Module.t Module.Name.Map.t
-    ; virtual_modules  : Module.t Module.Name.Map.t
+    { modules          : Module.Name_map.t
+    ; virtual_modules  : Module.Name_map.t
     ; alias_module     : Module.t option
     ; main_module_name : Module.Name.t
-    ; wrapped_compat   : Module.t Module.Name.Map.t
+    ; wrapped_compat   : Module.Name_map.t
     }
 
   val make
     :  Library.t
     -> dir:Path.t
-    -> Module.t Module.Name.Map.t
-    -> virtual_modules:Module.t Module.Name.Map.t
+    -> Module.Name_map.t
+    -> virtual_modules:Module.Name_map.t
     -> t
 end = struct
   type t =
-    { modules          : Module.t Module.Name.Map.t
-    ; virtual_modules  : Module.t Module.Name.Map.t
+    { modules          : Module.Name_map.t
+    ; virtual_modules  : Module.Name_map.t
     ; alias_module     : Module.t option
     ; main_module_name : Module.Name.t
-    ; wrapped_compat   : Module.t Module.Name.Map.t
+    ; wrapped_compat   : Module.Name_map.t
     }
 
-  let make (lib : Library.t) ~dir (modules : Module.t Module.Name.Map.t)
+  let make (lib : Library.t) ~dir (modules : Module.Name_map.t)
         ~virtual_modules =
     let main_module_name =
       Module.Name.of_string (Lib_name.Local.to_string lib.name) in
@@ -287,7 +287,7 @@ end = struct
 end
 
 module Executables_modules = struct
-  type t = Module.t Module.Name.Map.t
+  type t = Module.Name_map.t
 end
 
 type modules =

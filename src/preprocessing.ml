@@ -49,8 +49,10 @@ module Driver = struct
           (let%map loc = loc
            and flags = Ordered_set_lang.Unexpanded.field "flags"
            and as_ppx_flags =
-             Ordered_set_lang.Unexpanded.field "flags"
-               ~check:(Syntax.since syntax (1, 1))
+             Ordered_set_lang.Unexpanded.field "as_ppx_flags"
+               ~check:(Syntax.since syntax (1, 2))
+               ~default:(Ordered_set_lang.Unexpanded.of_strings ["--as-ppx"]
+                           ~pos:__POS__)
            and lint_flags = Ordered_set_lang.Unexpanded.field "lint_flags"
            and main = field "main" string
            and replaces =
@@ -87,16 +89,14 @@ module Driver = struct
       ; lib = lazy lib
       ; replaces =
           let open Result.O in
-          Result.List.all
-            (List.map info.replaces
-               ~f:(fun ((loc, name) as x) ->
-                 resolve x >>= fun lib ->
-                 match get ~loc lib with
-                 | None ->
-                   Error (Errors.exnf loc "%a is not a %s"
-                            Lib_name.pp_quoted name
-                            (desc ~plural:false))
-                 | Some t -> Ok t))
+          Result.List.map info.replaces ~f:(fun ((loc, name) as x) ->
+            resolve x >>= fun lib ->
+            match get ~loc lib with
+            | None ->
+              Error (Errors.exnf loc "%a is not a %s"
+                       Lib_name.pp_quoted name
+                       (desc ~plural:false))
+            | Some t -> Ok t)
       }
 
     let dgen t =
@@ -417,7 +417,7 @@ let cookie_library_name lib_name =
 let setup_reason_rules sctx (m : Module.t) =
   let ctx = SC.context sctx in
   let refmt =
-    SC.resolve_program sctx ~loc:None "refmt" ~hint:"opam install reason" in
+    SC.resolve_program sctx ~loc:None "refmt" ~hint:"try: opam install reason" in
   let rule src target =
     Build.run ~context:ctx refmt
       [ A "--print"

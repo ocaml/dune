@@ -845,6 +845,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name wrapped-transition)
+ (deps (package dune) (source_tree test-cases/wrapped-transition))
+ (action
+  (chdir
+   test-cases/wrapped-transition
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name runtest)
  (deps
   (alias action-modifying-a-dependency)
@@ -947,7 +955,8 @@
   (alias utop-default)
   (alias variants)
   (alias windows-diff)
-  (alias workspaces)))
+  (alias workspaces)
+  (alias wrapped-transition)))
 
 (alias
  (name runtest-no-deps)
@@ -1039,7 +1048,8 @@
   (alias utop-default)
   (alias variants)
   (alias windows-diff)
-  (alias workspaces)))
+  (alias workspaces)
+  (alias wrapped-transition)))
 
 (alias (name runtest-disabled) (deps (alias envs-and-contexts)))
 

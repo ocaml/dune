@@ -23,7 +23,7 @@ let libraries_link ~name ~mode cctx libs =
        after findlib.dynload a module containing the info *)
     let libs =
       List.filter
-        ~f:(fun lib -> match Lib.status lib with | Lib.Status.Private _ -> false | _ -> true)
+        ~f:(fun lib -> not (Lib_info.Status.is_private (Lib.status lib)))
         libs
     in
     let preds = Variant.Set.add Findlib.Package.preds (Mode.variant mode) in

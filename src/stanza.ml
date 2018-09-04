@@ -9,7 +9,7 @@ end
 let syntax =
   Syntax.create ~name:"dune" ~desc:"the dune language"
     [ (0, 0) (* Jbuild syntax *)
-    ; (1, 1)
+    ; (1, 2)
     ]
 
 module File_kind = struct
@@ -27,21 +27,22 @@ let file_kind () =
 module Of_sexp = struct
   include Dsexp.Of_sexp
 
-  exception Parens_no_longer_necessary of Loc.t
+  exception Parens_no_longer_necessary of Loc.t * exn
 
   let () =
     Report_error.register
       (function
-        | Parens_no_longer_necessary loc ->
-          Some
-            { loc = Some loc
-            ; hint = None
-            ; backtrace = false
-            ; pp = fun ppf ->
-                Format.fprintf ppf
-                  "These parentheses are no longer necessary with dune, \
-                   please remove them.@\n"
-            }
+        | Parens_no_longer_necessary (loc, exn) ->
+          let hint =
+            "dune files require less parentheses than jbuild files.\n\
+             If you just converted this file from a jbuild file, try removing these parentheses."
+          in
+          Option.map (Report_error.find_printer exn)
+            ~f:(fun printer ->
+              printer
+              |> Report_error.set_loc ~loc
+              |> Report_error.set_hint ~hint
+            )
         | _ -> None)
 
   let switch_file_kind ~jbuild ~dune =
@@ -64,12 +65,12 @@ module Of_sexp = struct
                   (if is_record then
                      peek >>= function
                      | Some (List _) ->
-                       raise (Parens_no_longer_necessary loc)
+                       raise (Parens_no_longer_necessary (loc, exn))
                      | _ -> t
                    else
                      t)
                   >>= fun _ ->
-                  raise (Parens_no_longer_necessary loc)))
+                  raise (Parens_no_longer_necessary (loc, exn))))
               (function
                 | Parens_no_longer_necessary _ as exn -> raise exn
                 | _ -> raise exn))

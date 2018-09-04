@@ -853,10 +853,35 @@ module Library = struct
       let syntax =
         Syntax.create ~name:"in_development_do_not_use_variants"
           ~desc:"the experimental variants feature"
-          [ (0, 0) ]
+          [ (0, 1) ]
       in
       Dune_project.Extension.register syntax (Dsexp.Of_sexp.return []);
       syntax
+  end
+
+  module Wrapped = struct
+    type t =
+      | Simple of bool
+      | Yes_with_transition of string
+
+    let dparse =
+      sum
+        [ "true", return (Simple true)
+        ; "false", return (Simple false)
+        ; "transition",
+          Syntax.since Stanza.syntax (1, 2) >>= fun () ->
+          string >>| fun x -> Yes_with_transition x
+        ]
+
+    let field = field_o "wrapped" (located dparse)
+
+    let to_bool = function
+      | Simple b -> b
+      | Yes_with_transition _ -> true
+
+    let value = function
+      | None -> Simple true
+      | Some (_loc, w) -> w
   end
 
   type t =
@@ -875,7 +900,7 @@ module Library = struct
     ; c_library_flags          : Ordered_set_lang.Unexpanded.t
     ; self_build_stubs_archive : string option
     ; virtual_deps             : (Loc.t * Lib_name.t) list
-    ; wrapped                  : bool
+    ; wrapped                  : Wrapped.t
     ; optional                 : bool
     ; buildable                : Buildable.t
     ; dynlink                  : Dynlink_supported.t
@@ -908,7 +933,7 @@ module Library = struct
          field "virtual_deps" (list (located Lib_name.dparse)) ~default:[]
        and modes = field "modes" Mode_conf.Set.dparse ~default:Mode_conf.Set.default
        and kind = field "kind" Kind.dparse ~default:Kind.Normal
-       and wrapped = field "wrapped" bool ~default:true
+       and wrapped = Wrapped.field
        and optional = field_b "optional"
        and self_build_stubs_archive =
          field "self_build_stubs_archive" (option string) ~default:None
@@ -932,6 +957,7 @@ module Library = struct
          let open Syntax.Version.Infix in
          match name, public with
          | Some n, _ ->
+           let wrapped = Wrapped.to_bool (Wrapped.value wrapped) in
            Lib_name.Local.validate n ~wrapped
          | None, Some { name = (loc, name) ; _ }  ->
            if dune_version >= (1, 1) then
@@ -961,6 +987,15 @@ module Library = struct
            (Ordered_set_lang.loc virtual_modules
            |> Option.value_exn)
            "A library cannot be both virtual and implement %s" impl);
+       begin match virtual_modules, wrapped, implements with
+       | Some _, Some (loc, Wrapped.Simple false), _ ->
+         of_sexp_error loc "A virtual library must be wrapped"
+       | _, Some (loc, _), Some _ ->
+         of_sexp_error loc
+           "Wrapped cannot be set for implementations. \
+            It is inherited from the virtual library."
+       | _, _, _ -> ()
+       end;
        { name
        ; public
        ; synopsis
@@ -976,7 +1011,7 @@ module Library = struct
        ; c_library_flags
        ; self_build_stubs_archive
        ; virtual_deps
-       ; wrapped
+       ; wrapped = Wrapped.value wrapped
        ; optional
        ; buildable
        ; dynlink = Dynlink_supported.of_bool (not no_dynlink)
@@ -1008,6 +1043,8 @@ module Library = struct
     match t.public with
     | None -> Lib_name.of_local t.name
     | Some p -> snd p.name
+
+  let is_virtual t = Option.is_some t.virtual_modules
 end
 
 module Install_conf = struct

@@ -10,7 +10,8 @@
               ocaml_config
               which_program)
  (synopsis    "Internal Dune library, do not use!")
- (preprocess  (action (run src/let-syntax/pp.exe %{input-file}))))
+ (preprocess  (action
+               (run %{project_root}/src/let-syntax/pp.exe %{input-file}))))
 
 (ocamllex meta_lexer glob_lexer dune_lexer)
 

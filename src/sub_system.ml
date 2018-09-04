@@ -133,7 +133,7 @@ module Register_end_point(M : End_point) = struct
       (match M.Info.backends info with
        | None -> Ok None
        | Some l ->
-         Result.List.all (List.map l ~f:(M.Backend.resolve (Scope.libs c.scope)))
+         Result.List.map l ~f:(M.Backend.resolve (Scope.libs c.scope))
          >>| Option.some)
       >>= fun written_by_user ->
       M.Backend.Selection_error.or_exn ~loc:(M.Info.loc info)

@@ -31,6 +31,19 @@ next
   `findlib.dynload`, automatically record linked in libraries and
   findlib predicates (#1172, @bobot)
 
+- Add support for promoting a selected list of files (#1192, @diml)
+
+- Add an emacs mode providing helpers to promote correction files
+  (#1192, @diml)
+
+- Improve message suggesting to remove parentheses (#1196, fix #1173, @emillon)
+
+- Add `(wrapped (transition "..message.."))` as an option that will generate
+  wrapped modules but keep unwrapped modules with a deprecation message to
+  preserve compatibility. (#1188, fix #985, @rgrinberg)
+
+- Fix the flags passed to the ppx rewriter when using `staged_pps` (#1218, @diml)
+
 1.1.1 (08/08/2018)
 ------------------
 

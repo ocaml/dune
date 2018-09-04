@@ -17,13 +17,13 @@ argument of "package".
 
   $ cd package-without-pub-name && dune build -p foo
   File "dune", line 3, characters 1-14:
-   (package foo))
-   ^^^^^^^^^^^^^
+  3 |  (package foo))
+       ^^^^^^^^^^^^^
   Error: This field is useless without a (public_name ...) field.
   [1]
 
   $ cd package-without-pub-name-jbuild && dune build -p foo
   File "jbuild", line 3, characters 2-15:
-    (package foo)))
-    ^^^^^^^^^^^^^
+  3 |   (package foo)))
+        ^^^^^^^^^^^^^
   Warning: This field is useless without a (public_name ...) field.

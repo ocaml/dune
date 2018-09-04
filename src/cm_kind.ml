@@ -1,3 +1,5 @@
+open Stdune
+
 type t = Cmi | Cmo | Cmx
 
 let all = [Cmi; Cmo; Cmx]
@@ -35,3 +37,10 @@ module Dict = struct
     ; cmx = x
     }
 end
+
+let to_sexp =
+  let open Sexp.To_sexp in
+  function
+  | Cmi -> string "cmi"
+  | Cmo -> string "cmo"
+  | Cmx -> string "cmx"

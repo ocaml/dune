@@ -16,7 +16,7 @@ module Includes = struct
       let cmi_includes =
         Arg_spec.S [ iflags
                    ; Hidden_deps
-                       (SC.Libs.file_deps sctx libs ~ext:".cmi")
+                       (Lib_file_deps.L.file_deps sctx libs ~exts:[".cmi"])
                    ]
       in
       let cmx_includes =
@@ -26,12 +26,12 @@ module Includes = struct
               ( if opaque then
                   List.map libs ~f:(fun lib ->
                     (lib, if Lib.is_local lib then
-                       ".cmi"
+                       [".cmi"]
                      else
-                       ".cmi-and-.cmx"))
-                  |> SC.Libs.file_deps_with_exts sctx
+                       [".cmi"; ".cmx"]))
+                  |> Lib_file_deps.L.file_deps_with_exts sctx
                 else
-                  SC.Libs.file_deps sctx libs ~ext:".cmi-and-.cmx"
+                  Lib_file_deps.L.file_deps sctx libs ~exts:[".cmi"; ".cmx"]
               )
           ]
       in
@@ -104,4 +104,12 @@ let for_alias_module t =
     flags        = Ocaml_flags.append_common flags ["-w"; "-49"]
   ; includes     = Includes.empty
   ; alias_module = None
+  }
+
+let for_wrapped_compat t modules =
+  { t with
+    flags = Ocaml_flags.default ~profile:(SC.profile t.super_context)
+  ; includes = Includes.empty
+  ; alias_module = None
+  ; modules
   }

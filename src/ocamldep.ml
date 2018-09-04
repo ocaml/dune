@@ -51,6 +51,20 @@ module Dep_graph = struct
     { dir = Path.root
     ; per_module = Module.Name.Map.singleton m.name (Build.return [])
     }
+
+  let wrapped_compat ~modules ~wrapped_compat =
+    { dir = Path.root
+    ; per_module = Module.Name.Map.merge wrapped_compat modules ~f:(fun _ d m ->
+        match d, m with
+        | None, None -> assert false
+        | Some wrapped_compat, None ->
+          Exn.code_error "deprecated module needs counterpart"
+            [ "deprecated", Module.to_sexp wrapped_compat
+            ]
+        | None, Some _ -> None
+        | Some _, Some m -> Some (Build.return [m])
+      )
+    }
 end
 
 module Dep_graphs = struct
@@ -58,6 +72,9 @@ module Dep_graphs = struct
 
   let dummy m =
     Ml_kind.Dict.make_both (Dep_graph.dummy m)
+
+  let wrapped_compat ~modules ~wrapped_compat =
+    Ml_kind.Dict.make_both (Dep_graph.wrapped_compat ~modules ~wrapped_compat)
 end
 
 let parse_module_names ~(unit : Module.t) ~modules words =

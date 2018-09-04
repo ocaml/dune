@@ -14,7 +14,7 @@ let sourcemap sctx = if dev_mode sctx then ["--source-map-inline"] else []
 
 let standard sctx = pretty sctx @ sourcemap sctx
 
-let install_jsoo_hint = "opam install js_of_ocaml-compiler"
+let install_jsoo_hint = "try: opam install js_of_ocaml-compiler"
 
 let in_build_dir ~ctx =
   let init = Path.relative ctx.Context.build_dir ".js" in
@@ -113,15 +113,15 @@ let link_rule cc ~runtime ~target =
     ; Arg_spec.Dyn get_all
     ]
 
-let build_cm cc ~(js_of_ocaml:Dune_file.Js_of_ocaml.t) ~src ~target =
-  let sctx = Compilation_context.super_context cc in
-  let dir = Compilation_context.dir cc in
+let build_cm cctx ~(js_of_ocaml:Dune_file.Js_of_ocaml.t) ~src ~target =
+  let sctx = Compilation_context.super_context cctx in
+  let dir = Compilation_context.dir cctx in
   if separate_compilation_enabled sctx
   then
     let itarget = Path.extend_basename src ~suffix:".js" in
     let spec = Arg_spec.Dep src in
     let flags =
-      let scope = Compilation_context.scope cc in
+      let scope = Compilation_context.scope cctx in
       SC.expand_and_eval_set sctx ~scope ~dir js_of_ocaml.flags
         ~standard:(Build.return (standard sctx))
     in

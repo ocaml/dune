@@ -1,4 +1,4 @@
-;;; dune.el --- Align words in an intelligent way
+;;; dune.el --- Integration with the dune build system
 
 ;; Copyright 2018 Jane Street Group, LLC <opensource@janestreet.com>
 ;; URL: https://github.com/ocaml/dune
@@ -7,7 +7,7 @@
 ;;; Commentary:
 
 ;; This package provides helper functions for interacting with the
-;; dune build system from emacs.
+;; dune build system from Emacs.
 
 ;; Installation:
 ;; You need to install the OCaml program ``dune''.  The
@@ -22,20 +22,18 @@
 (defgroup dune nil
   "Integration with the dune build system."
   :tag "Dune build system."
-  :version "1.0"
-  :group 'align)
+  :version "1.0")
 
 (defcustom dune-command "dune"
   "The dune command."
-  :type 'string
-  :group 'dune)
+  :type 'string)
 
 ;;;###autoload
 (defun dune-promote ()
   "Promote the correction for the current file."
   (interactive)
   (if (buffer-modified-p)
-      (error "Cannot promote as buffer is modified.")
+      (error "Cannot promote as buffer is modified")
     (shell-command
      (format "%s promote %s"
              dune-command

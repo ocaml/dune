@@ -121,6 +121,11 @@ end = struct
     in
     let uncapitalized =
       List.map ~f:(fun (_, m) -> Module.name m |> Module.Name.uncapitalize) in
+    let line_list modules =
+      List.map ~f:(fun (_, m) ->
+        Module.name m |> Module.Name.to_string |> sprintf "- %s") modules
+      |> String.concat ~sep:"\n"
+    in
     begin match virt_intf_overlaps with
     | [] -> ()
     | (loc, _) :: _ ->
@@ -128,11 +133,7 @@ end = struct
         "These modules appear in the virtual_libraries \
          and modules_without_implementation fields: \
          \n%s\nThis is not possible."
-        (virt_intf_overlaps
-         |> uncapitalized
-         |> List.map ~f:(sprintf "- %s")
-         |> String.concat ~sep:"\n"
-        )
+        (line_list virt_intf_overlaps)
     end;
     if missing_intf_only <> [] then begin
       match Ordered_set_lang.loc buildable.modules_without_implementation with
@@ -153,17 +154,12 @@ end = struct
            in
            Dsexp.to_string ~syntax:Dune (List (tag :: modules)))
       | Some loc ->
-        let list_modules l =
-          uncapitalized l
-          |> List.map ~f:(sprintf "- %s")
-          |> String.concat ~sep:"\n"
-        in
         Errors.warn loc
           "The following modules must be listed here as they don't \
            have an implementation:\n\
            %s\n\
            This will become an error in the future."
-          (list_modules missing_intf_only)
+          (line_list missing_intf_only)
     end;
     begin match missing_modules with
     | [] -> ()

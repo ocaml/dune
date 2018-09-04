@@ -42,7 +42,7 @@ virtual libraries may not implement their virtual modules
   4 |  (virtual_modules m))
                         ^
   Error: These modules appear in the virtual_libraries and modules_without_implementation fields: 
-  - m
+  - M
   This is not possible.
   -------------------------
   impl: false. modules_without_implementation: true. virtual_modules: false

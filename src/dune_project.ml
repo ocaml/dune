@@ -202,8 +202,9 @@ let append_to_project_file t str =
 
 module Extension = struct
   type t =
-    { syntax  : Syntax.t
-    ; stanzas : Stanza.Parser.t list Dsexp.Of_sexp.t
+    { syntax       : Syntax.t
+    ; stanzas      : Stanza.Parser.t list Dsexp.Of_sexp.t
+    ; experimental : bool
     }
 
   type instance =
@@ -215,12 +216,12 @@ module Extension = struct
 
   let extensions = Hashtbl.create 32
 
-  let register syntax stanzas =
+  let register ?(experimental=false) syntax stanzas =
     let name = Syntax.name syntax in
     if Hashtbl.mem extensions name then
       Exn.code_error "Dune_project.Extension.register: already registered"
         [ "name", Sexp.To_sexp.string name ];
-    Hashtbl.add extensions name { syntax; stanzas }
+    Hashtbl.add extensions name { syntax; stanzas ; experimental }
 
   let instantiate ~loc ~parse_args (name_loc, name) (ver_loc, ver) =
     match Hashtbl.find extensions name with
@@ -241,7 +242,12 @@ module Extension = struct
   let automatic ~project_file ~f =
     Hashtbl.foldi extensions ~init:[] ~f:(fun name ext acc ->
       if f name then
-        let version = Syntax.greatest_supported_version ext.syntax in
+        let version =
+          if ext.experimental then
+            (0, 0)
+          else
+            Syntax.greatest_supported_version ext.syntax
+        in
         let parse_args p =
           let open Dsexp.Of_sexp in
           let dune_project_edited = ref false in

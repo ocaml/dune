@@ -861,7 +861,8 @@ module Library = struct
           ~desc:"the experimental variants feature"
           [ (0, 1) ]
       in
-      Dune_project.Extension.register syntax (Dsexp.Of_sexp.return []);
+      Dune_project.Extension.register ~experimental:true
+        syntax (Dsexp.Of_sexp.return []);
       syntax
   end
 

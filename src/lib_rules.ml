@@ -324,6 +324,24 @@ module Gen (P : Install_rules.Params) = struct
       in
       SC.add_rule sctx build)
 
+  let setup_file_deps lib ~dir ~obj_dir ~modules ~wrapped_compat =
+    let add_cms ~cm_kind ~init = Module.Name.Map.fold ~init ~f:(fun m acc ->
+      match Module.cm_file m ~obj_dir cm_kind with
+      | None -> acc
+      | Some fn -> Path.Set.add acc fn)
+    in
+    List.iter Cm_kind.all ~f:(fun cm_kind ->
+      let files = add_cms ~cm_kind ~init:Path.Set.empty modules in
+      let files = add_cms ~cm_kind ~init:files wrapped_compat in
+      Lib_file_deps.setup_file_deps_alias sctx ~dir lib ~exts:[Cm_kind.ext cm_kind]
+        files);
+
+    Lib_file_deps.setup_file_deps_group_alias sctx ~dir lib ~exts:[".cmi"; ".cmx"];
+    Lib_file_deps.setup_file_deps_alias sctx ~dir lib ~exts:[".h"]
+      (List.map lib.install_c_headers ~f:(fun header ->
+         Path.relative dir (header ^ ".h"))
+       |> Path.Set.of_list)
+
   let library_rules (lib : Library.t) ~dir_contents ~dir ~scope
         ~compile_info ~dir_kind =
     let obj_dir = Utils.library_object_directory ~dir lib.name in
@@ -403,22 +421,7 @@ module Gen (P : Install_rules.Params) = struct
     if Library.has_stubs lib then
       build_stubs lib ~dir ~scope ~requires ~dir_contents;
 
-    let add_cms ~cm_kind ~init = Module.Name.Map.fold ~init ~f:(fun m acc ->
-      match Module.cm_file m ~obj_dir cm_kind with
-      | None -> acc
-      | Some fn -> Path.Set.add acc fn)
-    in
-    List.iter Cm_kind.all ~f:(fun cm_kind ->
-      let files = add_cms ~cm_kind ~init:Path.Set.empty modules in
-      let files = add_cms ~cm_kind ~init:files wrapped_compat in
-      Lib_file_deps.setup_file_deps_alias sctx ~dir lib ~exts:[Cm_kind.ext cm_kind]
-        files);
-
-    Lib_file_deps.setup_file_deps_group_alias sctx ~dir lib ~exts:[".cmi"; ".cmx"];
-    Lib_file_deps.setup_file_deps_alias sctx ~dir lib ~exts:[".h"]
-      (List.map lib.install_c_headers ~f:(fun header ->
-         Path.relative dir (header ^ ".h"))
-       |> Path.Set.of_list);
+    setup_file_deps lib ~dir ~obj_dir ~modules ~wrapped_compat;
 
     if not (Library.is_virtual lib) then begin
       (let modules =

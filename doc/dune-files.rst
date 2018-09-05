@@ -348,13 +348,13 @@ The extensions for the various linking modes are chosen as follows:
 ================ ============= =================
 compilation mode binary kind   extensions
 ---------------- ------------- -----------------
-byte             c             .bc.c
 byte             exe           .bc and .bc.js
 native/best      exe           .exe
 byte             object        .bc%{ext_obj}
 native/best      object        .exe%{ext_obj}
 byte             shared_object .bc%{ext_dll}
 native/best      shared_object %{ext_dll}
+byte             c             .bc.c
 ================ ============= =================
 
 Where ``%{ext_obj}`` and ``%{ext_dll}`` are the extensions for object

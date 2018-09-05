@@ -7,6 +7,7 @@
       ocamlopt test.exe.o
            gcc static.exe
         ocamlc test.bc
+        ocamlc test.bc.c
         ocamlc test.bc.so
       ocamlopt test.exe
       ocamlopt test$ext_dll
@@ -16,6 +17,8 @@
   OK: ./dynamic.exe ./test$ext_dll
         static alias runtest
   OK: ./static.exe
+        static alias runtest
+  OK: ./static.bc.c
         static alias runtest
   OK: ./static.bc
        dynamic alias runtest

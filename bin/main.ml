@@ -57,6 +57,8 @@ type common =
     orig_args             : string list
   ; config                : Config.t
   ; default_target        : string
+  (* For build & runtest only *)
+  ; watch : bool
   }
 
 let prefix_target common s = common.target_prefix ^ s
@@ -75,6 +77,7 @@ let set_common_other c ~targets =
   Clflags.diff_command := c.diff_command;
   Clflags.auto_promote := c.auto_promote;
   Clflags.force := c.force;
+  Clflags.watch := c.watch;
   Clflags.external_lib_deps_hint :=
     List.concat
       [ ["dune"; "external-lib-deps"; "--missing"]
@@ -130,6 +133,39 @@ module Log = struct
     Log.create ~display:common.config.display ()
 end
 
+let watch_command =
+  lazy (
+    let excludes = [ {|\.#|}
+                   ; {|_build|}
+                   ; {|\.hg|}
+                   ; {|\.git|}
+                   ; {|~$|}
+                   ; {|/#[^#]*#$|}
+                   ; {|\.install$|}
+                   ]
+    in
+    let path = Path.to_string_maybe_quoted Path.root in
+    match Bin.which "inotifywait" with
+    | Some inotifywait ->
+      (* On Linux, use inotifywait. *)
+      let excludes = String.concat ~sep:"|" excludes in
+      inotifywait, ["-r"; path; "--exclude"; excludes; "-e"; "close_write"; "-q"]
+    | None ->
+      (* On all other platforms, try to use fswatch. fswatch's event
+         filtering is not reliable (at least on Linux), so don't try to
+         use it, instead act on all events. *)
+      (match Bin.which "fswatch" with
+       | Some fswatch ->
+         let excludes = List.concat_map excludes ~f:(fun x -> ["--exclude"; x]) in
+         fswatch, ["-r"; path; "-1"] @ excludes
+       | None ->
+         die "@{<error>Error@}: fswatch (or inotifywait) was not found. \
+              One of them needs to be installed for watch mode to work.\n"))
+
+let watch_changes () =
+  let watch, args = Lazy.force watch_command in
+  Process.run Strict watch args ~env:Env.initial ~stdout_to:(File Config.dev_null)
+
 module Scheduler = struct
   include Dune.Scheduler
 
@@ -140,6 +176,22 @@ module Scheduler = struct
       fiber
     in
     Scheduler.go ?log ~config:common.config fiber
+
+  let poll ?log ?cache_init ~common ~init ~once ~finally () =
+    let init () =
+      Main.set_concurrency ?log common.config
+      >>= fun () ->
+      init ()
+    in
+    Scheduler.poll
+      ?log
+      ~config:common.config
+      ?cache_init
+      ~init
+      ~once
+      ~finally
+      ~watch:watch_changes
+      ()
 end
 
 type target =
@@ -331,6 +383,12 @@ let common =
          & info ["force"; "f"]
              ~doc:"Force actions associated to aliases to be re-executed even
                    if their dependencies haven't changed.")
+  and watch =
+    Arg.(value
+         & flag
+         & info ["watch"; "w"]
+             ~doc:"Instead of terminating build after completion, wait continuously
+              for file changes.")
   and root,
       only_packages,
       ignore_promoted_rules,
@@ -556,6 +614,7 @@ let common =
   ; config
   ; build_dir
   ; default_target
+  ; watch
   }
 
 let installed_libraries =
@@ -753,6 +812,25 @@ let resolve_targets_exn ~log common setup user_targets =
     | Ok targets ->
       targets)
 
+let run_build_command ~log ~common ~targets =
+  let init () = Fiber.return () in
+  let once () =
+    Main.setup ~log common
+    >>= fun setup ->
+    do_build setup (targets setup)
+  in
+  let finally () =
+    Hooks.End_of_build.run ();
+    Fiber.return ()
+  in
+  if common.watch then begin
+    (* Forcing this lazy here causes the exception raised when watch binary is not found
+       to actually terminate the program, instead of entering an error loop. *)
+    ignore (Lazy.force watch_command);
+    Scheduler.poll ~cache_init:false ~log ~common ~init ~once ~finally ()
+  end
+  else Scheduler.go ~log ~common (once ())
+
 let build_targets =
   let doc = "Build the given targets, or all installable targets if none are given." in
   let man =
@@ -773,10 +851,8 @@ let build_targets =
     in
     set_common common ~targets;
     let log = Log.create common in
-    Scheduler.go ~log ~common
-      (Main.setup ~log common >>= fun setup ->
-       let targets = resolve_targets_exn ~log common setup targets in
-       do_build setup targets)
+    let targets setup = resolve_targets_exn ~log common setup targets in
+    run_build_command ~log ~common ~targets
   in
   (term, Term.info "build" ~doc ~man)
 
@@ -800,16 +876,14 @@ let runtest =
         | dir when dir.[String.length dir - 1] = '/' -> sprintf "@%sruntest" dir
         | dir -> sprintf "@%s/runtest" dir));
     let log = Log.create common in
-    Scheduler.go ~log ~common
-      (Main.setup ~log common >>= fun setup ->
-       let check_path = check_path setup.contexts in
-       let targets =
-         List.map dirs ~f:(fun dir ->
-           let dir = Path.(relative root) (prefix_target common dir) in
-           check_path dir;
-           Alias_rec (Path.relative dir "runtest"))
-       in
-       do_build setup targets)
+    let targets (setup : Main.setup) =
+      let check_path = check_path setup.contexts in
+      List.map dirs ~f:(fun dir ->
+        let dir = Path.(relative root) (prefix_target common dir) in
+        check_path dir;
+        Alias_rec (Path.relative dir "runtest"))
+    in
+    run_build_command ~log ~common ~targets
   in
   (term, Term.info "runtest" ~doc ~man)
 

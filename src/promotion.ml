@@ -19,11 +19,16 @@ module File = struct
   let register t = db := t :: !db
 
   let promote { src; dst } =
-    Format.eprintf "Promoting %s to %s.@."
+    Errors.print_to_console (Format.sprintf "Promoting %s to %s.@."
       (Path.to_string_maybe_quoted src)
-      (Path.to_string_maybe_quoted dst);
+      (Path.to_string_maybe_quoted dst));
     Io.copy_file ~src ~dst ()
 end
+
+let clear_cache () =
+  File.db := []
+
+let () = Hooks.End_of_build.always clear_cache
 
 module P = Utils.Persistent(struct
     type t = File.t list
@@ -48,6 +53,8 @@ let group_by_targets db =
   |> Path.Map.of_list_multi
   (* Sort the list of possible sources for deterministic behavior *)
   |> Path.Map.map ~f:(List.sort ~compare:Path.compare)
+
+let were_files_promoted = ref false
 
 type files_to_promote =
   | All
@@ -79,6 +86,7 @@ let do_promote db files_to_promote =
       List.iter dirs_to_clear_from_cache ~f:(fun dir ->
         Utils.Cached_digest.remove (Path.append dir dst));
       File.promote { src; dst };
+      were_files_promoted := true;
       List.iter others ~f:(fun path ->
         Format.eprintf " -> ignored %s.@."
           (Path.to_string_maybe_quoted path))
@@ -106,6 +114,7 @@ let do_promote db files_to_promote =
       List.map srcs ~f:(fun src -> { File.src; dst }))
 
 let finalize () =
+  were_files_promoted := false;
   let db =
     if !Clflags.auto_promote then
       do_promote !File.db All
@@ -113,6 +122,9 @@ let finalize () =
       !File.db
   in
   dump_db db
+
+let were_files_promoted () =
+  !were_files_promoted
 
 let promote_files_registered_in_last_run files_to_promote =
   let db = load_db () in

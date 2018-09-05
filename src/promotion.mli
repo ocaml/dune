@@ -14,6 +14,9 @@ end
     dump the list of registered files to [_build/.to-promote]. *)
 val finalize : unit -> unit
 
+(** Returns true if any files were promoted the last time [finalize] ran. *)
+val were_files_promoted : unit -> bool
+
 (** Describe what files should be promoted. The second argument of
     [These] is a function that is called on files that cannot be
     promoted. *)

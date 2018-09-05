@@ -612,7 +612,7 @@ let create_file_specs t targets rule ~copy_source =
 let pending_targets = ref Path.Set.empty
 
 let () =
-  at_exit (fun () ->
+  Hooks.End_of_build.always (fun () ->
     let fns = !pending_targets in
     pending_targets := Path.Set.empty;
     Path.Set.iter fns ~f:Path.unlink_no_err)
@@ -1257,7 +1257,7 @@ let create ~contexts ~file_tree ~hook =
     ; hook
     }
   in
-  at_exit (fun () -> finalize t);
+  Hooks.End_of_build.once (fun () -> finalize t);
   t
 
 let eval_request t ~request ~process_target =

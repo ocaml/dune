@@ -84,7 +84,10 @@ let setup ?(log=Log.no_log)
   let rule_done  = ref 0 in
   let rule_total = ref 0 in
   let gen_status_line () =
-    Some (sprintf "Done: %u/%u" !rule_done !rule_total)
+    { Scheduler.
+      message = Some (sprintf "Done: %u/%u" !rule_done !rule_total)
+    ; show_jobs = true
+    }
   in
   let hook (hook : Build_system.hook) =
     match hook with

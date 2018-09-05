@@ -79,3 +79,6 @@ let update t ~var ~f =
 
 let of_string_map m =
   make (String.Map.foldi ~init:Map.empty ~f:(fun k v acc -> Map.add acc k v) m)
+
+let iter t =
+  Map.iteri t.vars

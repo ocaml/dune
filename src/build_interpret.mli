@@ -33,13 +33,6 @@ module Rule : sig
     -> t
 end
 
-module Static_deps : sig
-  type t =
-    { rule_deps   : Path.Set.t
-    ; action_deps : Path.Set.t
-    }
-end
-
 (* must be called first *)
 val static_deps
   :  (_, _) Build.t

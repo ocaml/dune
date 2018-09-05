@@ -44,6 +44,9 @@ next
 
 - Fix the flags passed to the ppx rewriter when using `staged_pps` (#1218, @diml)
 
+- Add `(env var)` to add a dependency to an environment variable.
+  (#1186, @emillon)
+
 1.1.1 (08/08/2018)
 ------------------
 

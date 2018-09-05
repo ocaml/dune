@@ -119,6 +119,7 @@ module Dep_conf : sig
     | Source_tree of String_with_vars.t
     | Package of String_with_vars.t
     | Universe
+    | Env_var of String_with_vars.t
 
   val remove_locs : t -> t
 

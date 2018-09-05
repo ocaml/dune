@@ -739,6 +739,10 @@ module Deps = struct
     | Universe ->
       Build.path Build_system.universe_file
       >>^ fun () -> []
+    | Env_var var_sw ->
+      let var = expand_vars_string t ~scope ~dir var_sw in
+      Build.env_var var
+      >>^ fun () -> []
 
   let interpret t ~scope ~dir l =
     List.map l ~f:(dep t ~scope ~dir)

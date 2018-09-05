@@ -1003,7 +1003,7 @@ let rules =
                   Format.pp_print_string ppf (Path.to_string p)))
                (Path.Set.to_list rule.targets)
                (fun ppf ->
-                  Path.Set.iter rule.deps ~f:(fun dep ->
+                  Path.Set.iter (Deps.paths rule.deps) ~f:(fun dep ->
                     Format.fprintf ppf "@ %s" (Path.to_string dep)))
                Dsexp.pp_split_strings (sexp_of_action rule.action))
          end else begin
@@ -1014,7 +1014,7 @@ let rules =
                in
                Dsexp.To_sexp.record (
                  List.concat
-                   [ [ "deps"   , paths rule.deps
+                   [ [ "deps"   , Deps.to_sexp rule.deps
                      ; "targets", paths rule.targets ]
                    ; (match rule.context with
                       | None -> []

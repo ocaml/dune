@@ -125,6 +125,6 @@ end
 val sandbox
   :  t
   -> sandboxed:(Path.t -> Path.t)
-  -> deps:Path.t list
+  -> deps:Deps.t
   -> targets:Path.t list
   -> t

@@ -3,6 +3,7 @@
 open! Stdune
 
 type t =
+  | C
   | Exe
   | Object
   | Shared_object

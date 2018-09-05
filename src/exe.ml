@@ -67,6 +67,8 @@ module Linkage = struct
     in
     let ext =
       match wanted_mode, m.kind with
+      | Byte   , C             -> ".bc.c"
+      | Native , C             -> raise (Exn.Fatal_error "C file generation only supports bytecode!")
       | Byte   , Exe           -> ".bc"
       | Native , Exe           -> ".exe"
       | Byte   , Object        -> ".bc"  ^ ctx.ext_obj
@@ -76,6 +78,7 @@ module Linkage = struct
     in
     let flags =
       match m.kind with
+      | C -> o_flags
       | Exe ->
         begin
           match wanted_mode, real_mode with

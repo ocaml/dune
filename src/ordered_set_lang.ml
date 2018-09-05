@@ -272,6 +272,13 @@ module Unexpanded = struct
 
   let standard = standard
 
+  let of_strings ~pos l =
+    { ast = Ast.Union (List.map l ~f:(fun x ->
+        Ast.Element (String_with_vars.virt_text pos x)))
+    ; loc = Some (Loc.of_pos pos)
+    ; context = Univ_map.empty
+    }
+
   let field ?(default=standard) ?check name =
     let dparse =
       match check with

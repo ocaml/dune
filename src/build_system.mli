@@ -232,7 +232,7 @@ module Rule : sig
 
   type t =
     { id      : Id.t
-    ; deps    : Path.Set.t
+    ; deps    : Deps.t
     ; targets : Path.Set.t
     ; context : Context.t option
     ; action  : Action.t

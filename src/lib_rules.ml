@@ -285,8 +285,7 @@ module Gen (P : Install_rules.Params) = struct
       build_cxx_file lib ~scope ~dir ~includes (resolve_name name ~ext:".cpp")
     )
 
-  let build_stubs lib ~dir ~scope ~requires ~dir_contents =
-    let vlib_stubs_o_files = [] in (* TODO *)
+  let build_stubs lib ~dir ~scope ~requires ~dir_contents ~vlib_stubs_o_files =
     let lib_o_files =
       if Library.has_stubs lib then
         build_o_files lib ~dir ~scope ~requires ~dir_contents
@@ -422,8 +421,13 @@ module Gen (P : Install_rules.Params) = struct
       ~f:(build_alias_module ~main_module_name ~modules ~cctx ~dynlink
             ~js_of_ocaml);
 
-    if Library.has_stubs lib then
-      build_stubs lib ~dir ~scope ~requires ~dir_contents;
+    let vlib_stubs_o_files =
+      match impl with
+      | None -> []
+      | Some impl -> Virtual.vlib_stubs_o_files impl
+    in
+    if Library.has_stubs lib || not (List.is_empty vlib_stubs_o_files) then
+      build_stubs lib ~dir ~scope ~requires ~dir_contents ~vlib_stubs_o_files;
 
     setup_file_deps lib ~dir ~obj_dir ~modules ~wrapped_compat;
 

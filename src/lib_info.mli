@@ -48,6 +48,7 @@ type t = private
   ; synopsis         : string option
   ; archives         : Path.t list Mode.Dict.t
   ; plugins          : Path.t list Mode.Dict.t
+  ; foreign_objects  : string list
   ; foreign_archives : Path.t list Mode.Dict.t (** [.a/.lib/...] files *)
   ; jsoo_runtime     : Path.t list
   ; requires         : Deps.t

@@ -200,6 +200,11 @@ let is_local t = Path.is_managed t.info.obj_dir
 
 let status t = t.info.status
 
+let foreign_objects t ~ext =
+  let obj_dir = obj_dir t in
+  List.map t.info.foreign_objects ~f:(fun p ->
+    Path.extend_basename (Path.relative obj_dir p) ~suffix:ext)
+
 let package t =
   match t.info.status with
   | Installed -> Some (Lib_name.package_name t.name)

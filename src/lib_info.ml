@@ -68,6 +68,7 @@ type t =
   ; synopsis         : string option
   ; archives         : Path.t list Mode.Dict.t
   ; plugins          : Path.t list Mode.Dict.t
+  ; foreign_objects  : string list
   ; foreign_archives : Path.t list Mode.Dict.t
   ; jsoo_runtime     : Path.t list
   ; requires         : Deps.t
@@ -102,19 +103,21 @@ let of_library_stanza ~dir ~ext_lib (conf : Dune_file.Library.t) =
     | Some p -> Public p.package
   in
   let virtual_library = Dune_file.Library.is_virtual conf in
-  let foreign_archives =
+  let (foreign_archives, foreign_objects) =
     let stubs =
       if Dune_file.Library.has_stubs conf then
         [Dune_file.Library.stubs_archive conf ~dir ~ext_lib]
       else
         []
     in
-    { Mode.Dict.
-      byte   = stubs
-    ; native =
-        Path.relative dir (Lib_name.Local.to_string conf.name ^ ext_lib)
-        :: stubs
-    }
+    ({ Mode.Dict.
+       byte   = stubs
+     ; native =
+         Path.relative dir (Lib_name.Local.to_string conf.name ^ ext_lib)
+         :: stubs
+     }
+    , List.map (conf.c_names @ conf.cxx_names) ~f:snd
+    )
   in
   let virtual_ =
     Option.map conf.virtual_modules ~f:(fun _ ->
@@ -143,6 +146,7 @@ let of_library_stanza ~dir ~ext_lib (conf : Dune_file.Library.t) =
   ; archives
   ; plugins
   ; optional = conf.optional
+  ; foreign_objects
   ; foreign_archives
   ; jsoo_runtime
   ; status
@@ -180,6 +184,7 @@ let of_findlib_package pkg =
   ; virtual_deps     = []
   ; optional         = false
   ; status           = Installed
+  ; foreign_objects  = []
   ; (* We don't know how these are named for external libraries *)
     foreign_archives = Mode.Dict.make_both []
   ; sub_systems      = sub_systems

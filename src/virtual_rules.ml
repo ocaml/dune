@@ -13,6 +13,9 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
   open P
   let ctx = Super_context.context sctx
 
+  let vlib_stubs_o_files { Implementation.vlib ; _ } =
+    Lib.foreign_objects vlib ~ext:ctx.ext_obj
+
   let setup_copy_rules_for_impl ~dir
         { Implementation.vlib ; impl ; vlib_modules } =
     let copy_to_obj_dir =

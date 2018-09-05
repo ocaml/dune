@@ -101,6 +101,7 @@ let of_library_stanza ~dir ~ext_lib (conf : Dune_file.Library.t) =
     | None   -> Status.Private (Dune_project.name conf.project)
     | Some p -> Public p.package
   in
+  let virtual_library = Dune_file.Library.is_virtual conf in
   let foreign_archives =
     let stubs =
       if Dune_file.Library.has_stubs conf then
@@ -123,14 +124,24 @@ let of_library_stanza ~dir ~ext_lib (conf : Dune_file.Library.t) =
       }
     )
   in
+  let (archives, plugins) =
+    if virtual_library then
+      ( Mode.Dict.make_both []
+      , Mode.Dict.make_both []
+      )
+    else
+      ( archive_files ~f_ext:Mode.compiled_lib_ext
+      , archive_files ~f_ext:Mode.plugin_ext
+      )
+  in
   { loc = conf.buildable.loc
   ; kind     = conf.kind
   ; src_dir  = dir
   ; obj_dir  = Utils.library_object_directory ~dir conf.name
   ; version  = None
   ; synopsis = conf.synopsis
-  ; archives = archive_files ~f_ext:Mode.compiled_lib_ext
-  ; plugins  = archive_files ~f_ext:Mode.plugin_ext
+  ; archives
+  ; plugins
   ; optional = conf.optional
   ; foreign_archives
   ; jsoo_runtime

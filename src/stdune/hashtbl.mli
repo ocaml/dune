@@ -8,6 +8,8 @@ val hash : 'a -> int
 
 val create : ?random:bool -> int -> ('a, 'b) t
 
+val reset : ('a, 'b) t -> unit
+
 val remove : ('a, _) t -> 'a -> unit
 
 val length : (_, _) t -> int

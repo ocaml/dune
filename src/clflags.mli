@@ -35,3 +35,6 @@ val auto_promote : bool ref
 
 (** Force re-running actions associated to aliases *)
 val force : bool ref
+
+(** Instead of terminating build after completion, watch for changes *)
+val watch : bool ref

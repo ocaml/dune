@@ -2,6 +2,11 @@ open! Stdune
 open Import
 open Fiber.O
 
+type status_line_config =
+  { message   : string option
+  ; show_jobs : bool
+  }
+
 type running_job =
   { pid  : int
   ; ivar : Unix.process_status Fiber.Ivar.t
@@ -66,7 +71,7 @@ type t =
   ; mutable concurrency       : int
   ; waiting_for_available_job : t Fiber.Ivar.t Queue.t
   ; mutable status_line       : string
-  ; mutable gen_status_line   : unit -> string option
+  ; mutable gen_status_line   : unit -> status_line_config
   }
 
 let log t = t.log
@@ -136,13 +141,18 @@ let rec go_rec t =
   end else begin
     if t.display = Progress then begin
       match t.gen_status_line () with
-      | None ->
+      | { message = None; _ } ->
         if t.status_line <> "" then begin
           hide_status_line t.status_line;
           flush stderr
         end
-      | Some status_line ->
-        let status_line = sprintf "%s (jobs: %u)" status_line count in
+      | { message = Some status_line; show_jobs } ->
+        let status_line =
+          if show_jobs then
+            sprintf "%s (jobs: %u)" status_line count
+          else
+            status_line
+        in
         hide_status_line t.status_line;
         show_status_line   status_line;
         flush stderr;
@@ -156,8 +166,8 @@ let rec go_rec t =
     go_rec t
   end
 
-let go ?(log=Log.no_log) ?(config=Config.default)
-      ?(gen_status_line=fun () -> None) fiber =
+let prepare ?(log=Log.no_log) ?(config=Config.default)
+      ?(gen_status_line=fun () -> { message = None; show_jobs = false }) () =
   Log.infof log "Workspace root: %s"
     (Path.to_absolute_filename Path.root |> String.maybe_quoted);
   let cwd = Sys.getcwd () in
@@ -190,18 +200,102 @@ let go ?(log=Log.no_log) ?(config=Config.default)
     { log
     ; gen_status_line
     ; original_cwd = cwd
-    ; display      = config.display
+    ; display      = config.Config.display
     ; concurrency  = (match config.concurrency with Auto -> 1 | Fixed n -> n)
     ; status_line  = ""
     ; waiting_for_available_job = Queue.create ()
     }
   in
   Errors.printer := print t;
+  t
+
+let run t fiber =
   let fiber =
     Fiber.Var.set t_var t
-      (Fiber.with_error_handler (fun () -> fiber) ~on_error:Report_error.report)
+      (Fiber.with_error_handler fiber ~on_error:Report_error.report)
   in
   Fiber.run
     (Fiber.fork_and_join_unit
        (fun () -> go_rec t)
        (fun () -> fiber))
+
+let go ?log ?config ?gen_status_line fiber =
+  let t = prepare ?log ?config ?gen_status_line () in
+  run t (fun () -> fiber)
+
+(** Fiber loop looks like this (if cache_init is true):
+              /------------------\
+              v                  |
+    init --> once --> finally  --/
+
+    The result of [~init] gets passed in every call to [~once] and [~finally].
+    If cache_init is false, every iteration reexecutes init instead of
+    saving it.
+
+    [~watch] should return after the first change to any of the project files.
+*)
+let poll ?log ?config ?(cache_init=true) ~init ~once ~finally ~watch () =
+  let t = prepare ?log ?config () in
+  let wait_success () =
+    let old_generator = t.gen_status_line in
+    set_status_line_generator
+      (fun () ->
+         { message = Some "Success.\nWaiting for filesystem changes..."
+         ; show_jobs = false
+         })
+    >>= fun () ->
+    watch ()
+    >>= fun _ ->
+    set_status_line_generator old_generator
+  in
+  let wait_failure () =
+    let old_generator = t.gen_status_line in
+    set_status_line_generator
+      (fun () ->
+         { message = Some "Had errors.\nWaiting for filesystem changes..."
+         ; show_jobs = false
+         })
+    >>= fun () ->
+    (if Promotion.were_files_promoted () then
+       Fiber.return ()
+     else
+       watch ())
+    >>= fun _ ->
+    set_status_line_generator old_generator
+  in
+  let rec main_loop () =
+    (if cache_init then
+       Fiber.return ()
+     else
+       init ())
+    >>= fun _ ->
+    once ()
+    >>= fun _ ->
+    finally ()
+    >>= fun _ ->
+    wait_success ()
+    >>= fun _ ->
+    main_loop ()
+  in
+  let continue_on_error () =
+    finally ()
+    >>= fun _ ->
+    wait_failure ()
+    >>= fun _ ->
+    main_loop ()
+  in
+  let main () =
+    (if cache_init then
+       init ()
+     else
+       Fiber.return ())
+    >>= fun _ ->
+    main_loop ()
+  in
+  let rec loop f =
+    try
+      run t f
+    with Fiber.Never ->
+      loop continue_on_error
+  in
+  loop main

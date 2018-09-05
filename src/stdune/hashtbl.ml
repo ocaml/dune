@@ -73,6 +73,7 @@ let replace = replace
 let length = length
 let remove = remove
 let mem = mem
+let reset = reset
 
 let find = find_opt
 

@@ -66,6 +66,10 @@ val path_set : Path.Set.t -> ('a, 'a) t
     of the action produced by the build arrow. *)
 val paths_glob : loc:Loc.t -> dir:Path.t -> Re.re -> ('a, Path.Set.t) t
 
+(** [env_var v] records [v] as an environment variable that is read by the
+    action produced by the build arrow. *)
+val env_var : string -> ('a, 'a) t
+
 (** Compute the set of source of all files present in the sub-tree
     starting at [dir] and record them as dependencies. *)
 val source_tree
@@ -197,6 +201,7 @@ module Repr : sig
     | Memo : 'a memo -> (unit, 'a) t
     | Catch : ('a, 'b) t * (exn -> 'b) -> ('a, 'b) t
     | Lazy_no_targets : ('a, 'b) t Lazy.t -> ('a, 'b) t
+    | Env_var : string -> ('a, 'a) t
 
   and 'a memo =
     { name          : string
@@ -207,7 +212,7 @@ module Repr : sig
   and 'a memo_state =
     | Unevaluated
     | Evaluating
-    | Evaluated of 'a * Path.Set.t (* dynamic dependencies *)
+    | Evaluated of 'a * Deps.t (* dynamic dependencies *)
 
   and ('a, 'b) if_file_exists_state =
     | Undecided of ('a, 'b) t * ('a, 'b) t

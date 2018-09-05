@@ -10,3 +10,4 @@ let debug_partition_cache = ref false
 let diff_command = ref None
 let auto_promote = ref false
 let force = ref false
+let watch = ref false

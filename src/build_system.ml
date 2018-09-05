@@ -829,11 +829,15 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
     let deps_or_rule_changed =
       List.fold_left targets_as_list ~init:false ~f:(fun acc fn ->
         let current_partition =
-          Partition_state.Partition.for_target fn ~file_tree:t.file_tree
+          Partition_state.Partition.for_path fn ~file_tree:t.file_tree
         in
         let partition_digest =
           Partition_state.get_current_digest
-            t.partition_state current_partition ~projects:t.projects ~file_tree:t.file_tree
+            t.partition_state
+            current_partition
+            ~projects:t.projects
+            ~file_tree:t.file_tree
+            ~contexts:t.contexts
         in
         let new_trace =
           { File_trace.
@@ -842,12 +846,23 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
             cached_spec = None
           }
         in
-        Path.Set.iter all_deps ~f:(fun dep ->
-          let dep_partition = Partition_state.Partition.for_target dep ~file_tree:t.file_tree in
+        let register_dep dep_partition =
           Partition_state.register_dependency
             t.partition_state
             ~target:current_partition
-            ~dependency:dep_partition);
+            ~dependency:dep_partition;
+        in
+        Path.Set.iter (Deps.paths all_deps) ~f:(fun dep ->
+          let dep_partition = Partition_state.Partition.for_path dep ~file_tree:t.file_tree in
+          register_dep dep_partition);
+        String.Set.iter (Deps.env_vars all_deps) ~f:(fun var ->
+          let context =
+            match context with
+            | Some ctx -> ctx.name
+            | None -> die "environment variable dependencies must belong to a context"
+          in
+          let dep_partition = Partition_state.Partition.for_env_var ~var ~context in
+          register_dep dep_partition);
         match Path.Table.find t.trace fn with
         | None ->
           Path.Table.add t.trace fn new_trace;
@@ -1192,12 +1207,13 @@ and wait_for_file ?(use_cache=true) t ~loc fn =
   if not use_cache then
     Path.Table.remove t.trace fn;
   if Path.exists fn then begin
-    let partition = Partition_state.Partition.for_target fn ~file_tree:t.file_tree in
+    let partition = Partition_state.Partition.for_path fn ~file_tree:t.file_tree in
     if not (Partition_state.is_unclean
-         t.partition_state
-         partition
-         ~projects:t.projects
-         ~file_tree:t.file_tree) then begin
+              t.partition_state
+              partition
+              ~projects:t.projects
+              ~file_tree:t.file_tree
+              ~contexts:t.contexts) then begin
       match Path.Table.find t.trace fn with
       | Some { partition_digest = file_partition_digest; cached_spec; _ } ->
         let actual_partition_digest =
@@ -1206,6 +1222,7 @@ and wait_for_file ?(use_cache=true) t ~loc fn =
             partition
             ~projects:t.projects
             ~file_tree:t.file_tree
+            ~contexts:t.contexts
         in
         if file_partition_digest = actual_partition_digest then
           Path.Table.replace t.files ~key:fn ~data:(Maybe_cached_file_spec.Cached cached_spec)

@@ -2,20 +2,37 @@ open Import
 
 module Partition = struct
   module T = struct
+    module Env_var = struct
+      type t =
+        { var: string
+        ; context: string
+        }
+
+      let compare a b =
+        match String.compare a.var b.var with
+        | Eq ->
+          String.compare a.context b.context
+        | ord -> ord
+    end
+
     type t =
       | Project of Dune_project.Name.t
       | Target of Path.t
+      | Env_var of Env_var.t
       | Universe
 
     let compare a b =
       match a, b with
-      | Universe , Universe  -> Ordering.Eq
       | Project x, Project y -> Dune_project.Name.compare x y
       | Target  x, Target  y -> Path.compare x y
-      | Universe , _         -> Lt
-      | _        , Universe  -> Gt
-      | Project _, Target  _ -> Lt
-      | Target  _, Project _ -> Gt
+      | Env_var x, Env_var y -> Env_var.compare x y
+      | Universe , Universe  -> Ordering.Eq
+      | Project _, _         -> Lt
+      | _        , Project _ -> Gt
+      | Target  _, _         -> Lt
+      | _        , Target  _ -> Gt
+      | Env_var _, _         -> Lt
+      | _        , Env_var _ -> Gt
 
     let equal a b = compare a b = Eq
 
@@ -24,18 +41,24 @@ module Partition = struct
 
   include T
 
-  let for_target target ~file_tree =
-    if Path.equal target universe_file then
+  let for_path path ~file_tree =
+    if Path.equal path universe_file then
       Universe
     else
-      match File_tree.project file_tree target with
+      match File_tree.project file_tree path with
       | Some project -> Project (Dune_project.name project)
-      | None -> Target target
+      | None ->
+        (* We assume here that all source files can be successfully mapped to projects. *)
+        Target path
+
+  let for_env_var ~var ~context =
+    Env_var { var; context }
 
   let to_string_hum = function
-    | Project project -> Dune_project.Name.to_string_hum project
-    | Target target   -> Format.sprintf "<target: %s>" (Path.to_string target)
-    | Universe        -> "(universe)"
+    | Project project          -> Dune_project.Name.to_string_hum project
+    | Target target            -> Format.sprintf "<target: %s>" (Path.to_string target)
+    | Env_var { var; context } -> Format.sprintf "(env: %s in %s)" var context
+    | Universe                 -> "(universe)"
 
   module Set = struct
     include Set.Make (T)
@@ -132,9 +155,11 @@ end
    It only accounts for files in partitions from the group, and doesn't
    account for dependencies on other partitions.
 *)
-let compute_own_digest partitions ~projects ~file_tree =
+let compute_own_digest partitions ~projects ~file_tree ~contexts =
   let digest = Md5.init () in
-  let paths = Partition.Set.fold partitions ~init:[] ~f:(fun partition acc ->
+  let paths = ref [] in
+  let env_vars = ref [] in
+  Partition.Set.iter partitions ~f:(fun partition ->
     match partition with
     | Partition.Project project ->
       let root = Dune_project.root
@@ -146,35 +171,50 @@ let compute_own_digest partitions ~projects ~file_tree =
           dir
           ~stay_in_project:true
           ~traverse_ignored_dirs:false
-          ~init:acc
-          ~f:(fun dir acc ->
-            Path.Set.fold
+          ~init:()
+          ~f:(fun dir _ ->
+            Path.Set.iter
               (File_tree.Dir.file_paths dir)
-              ~init:acc
-              ~f:(fun p acc -> p :: acc))
+              ~f:(fun p -> paths := p :: !paths))
       | None ->
         die "root of project %s is not an existing directory"
           (Dune_project.Name.to_string_hum project))
     | Partition.Target _ ->
       (* Targets have no own digests, and are fully expressed by their deps. *)
-      acc
+      ()
+    | Partition.Env_var var ->
+      env_vars := var :: !env_vars
     | Partition.Universe ->
-      (* (universe) should have a different digest every time. *)
-      Md5.update digest (Format.sprintf "%.6f" (Unix.gettimeofday ()));
-      acc)
-  in
-  List.sort paths ~compare:Path.compare
+      (* (universe) should have a different digest every time.
+         It should be only encountered once, so it's safe to update digest immediately. *)
+      Md5.update digest (Format.sprintf "%.6f" (Unix.gettimeofday ())));
+  List.sort !paths ~compare:Path.compare
   |> List.iter ~f:(fun path ->
     Md5.update digest (Path.to_string path);
-    Md5.update digest (Utils.Cached_digest.file path));
+    Md5.update digest (Utils.Cached_digest.file path);
+    Md5.update digest "\x00");
+  List.sort !env_vars ~compare:Partition.Env_var.compare
+  |> List.iter ~f:(fun { Partition.Env_var. var; context } ->
+    let env =
+      match String.Map.find contexts context with
+      | Some ctx -> ctx.Context.env
+      | None -> Env.empty
+    in
+    Md5.update digest var;
+    Md5.update digest "=";
+    match Env.get env var with
+    | Some value ->
+      Md5.update digest (Digest.string value);
+      Md5.update digest "\x00";
+    | None -> Md5.update digest "unset\x00");
   Md5.compute digest
 
 (* Computes and saves digest for an SCC in partition graph, assuming that dependency
    digests are already computed. *)
-let compute_component_digest t component ~projects ~file_tree =
+let compute_component_digest t component ~projects ~file_tree ~contexts =
   let module Table = Partition.Table in
   let module Set = Partition.Set in
-  let own_digest = compute_own_digest component ~projects ~file_tree in
+  let own_digest = compute_own_digest component ~projects ~file_tree ~contexts in
   let all_deps = Set.fold component ~init:Set.empty ~f:(fun partition acc ->
     match Table.find t.saved_deps partition with
     | Some deps -> Set.union acc deps
@@ -242,7 +282,7 @@ let compute_component_digest t component ~projects ~file_tree =
    As soon as digest for a partition is computed, saved digest is removed if
    it's different from the newly computed digest.
 *)
-let compute_digests t root_partition ~projects ~file_tree =
+let compute_digests t root_partition ~projects ~file_tree ~contexts =
   (* This function implements Tarjan's strongly connected components (SCC) algorithm. *)
   let module Table = Partition.Table in
   let module Set = Partition.Set in
@@ -296,19 +336,19 @@ let compute_digests t root_partition ~projects ~file_tree =
       done;
       (* Tarjan's algorithm outputs SCCs in reverse topological sorting order, so
          we can be sure that all dependencies are already processed *)
-      compute_component_digest t !component ~projects ~file_tree
+      compute_component_digest t !component ~projects ~file_tree ~contexts
     end
   in
   iter_strong_components root_partition
 
-let get_current_digest t partition ~projects ~file_tree =
+let get_current_digest t partition ~projects ~file_tree ~contexts =
   match Partition.Table.find t.current_digests partition with
   | Some digest -> digest
   | None ->
-    compute_digests t partition ~projects ~file_tree;
+    compute_digests t partition ~projects ~file_tree ~contexts;
     Partition.Table.find_exn t.current_digests partition
 
-let is_unclean t partition ~projects ~file_tree =
+let is_unclean t partition ~projects ~file_tree ~contexts =
   match Partition.Table.(
     find t.current_digests partition, find t.saved_digests partition) with
   | Some current_digest, Some saved_digest ->
@@ -319,7 +359,7 @@ let is_unclean t partition ~projects ~file_tree =
   | Some _, None ->
     true
   | None, _ ->
-    let current_digest = get_current_digest t partition ~projects ~file_tree in
+    let current_digest = get_current_digest t partition ~projects ~file_tree ~contexts in
     match Partition.Table.find t.saved_digests partition with
     | Some saved_digest ->
       current_digest <> saved_digest

@@ -7,6 +7,8 @@ type t =
 
 let paths t = t.paths
 
+let env_vars t = t.vars
+
 let trace_path fn =
   (Path.to_string fn, Utils.Cached_digest.file fn)
 

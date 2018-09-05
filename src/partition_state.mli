@@ -9,8 +9,11 @@ type t
 module Partition : sig
   type t
 
-  (** Assigns target to a partition deterministically. *)
-  val for_target : Path.t -> file_tree:File_tree.t -> t
+  (** Assigns path to a partition. *)
+  val for_path : Path.t -> file_tree:File_tree.t -> t
+
+  (** Assigns environmental variable dep in a certain context to a partition. *)
+  val for_env_var : var:string -> context:string -> t
 end
 
 (** Loads .partition-db file from disk, or creates an empty db if it's absent. *)
@@ -28,6 +31,7 @@ val get_current_digest
   -> Partition.t
   -> projects:Dune_project.t Dune_project.Name.Table.t
   -> file_tree:File_tree.t
+  -> contexts:Context.t String.Map.t
   -> Digest.t
 
 (** Checks if current digest of a partition differs from saved digest, if any.
@@ -38,6 +42,7 @@ val is_unclean
   -> Partition.t
   -> projects:Dune_project.t Dune_project.Name.Table.t
   -> file_tree:File_tree.t
+  -> contexts:Context.t String.Map.t
   -> bool
 
 (** Updates the current partition dependency graph. *)

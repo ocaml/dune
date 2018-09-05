@@ -98,7 +98,7 @@ val file_exists : t -> Path.t -> string -> bool
 
 val files_recursively_in : t -> ?prefix_with:Path.t -> Path.t -> Path.Set.t
 
-(** Tries to assign a project to a path, taking into account build prefixes
+(** Tries to assign path to a project, taking into account build prefixes
     and generated subdirectories. It's possible that no project can be
     assigned, e.g. for .ppx targets. *)
 val project : t -> Path.t -> Dune_project.t option

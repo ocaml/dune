@@ -509,7 +509,9 @@ let store_vfile_exn : type a. t -> Path.t -> a Vfile_kind.t -> a -> unit
     | Some (Maybe_cached_file_spec.Computed (File_spec.T file)) ->
       let Eq = File_kind.eq_exn (Sexp_file kind) file.kind in
       file.data <- Some data
-    | Some (Maybe_cached_file_spec.Cached _) -> ()
+    | Some (Maybe_cached_file_spec.Cached _) ->
+      (* We can assume that vfiles won't change if their dependencies hasn't *)
+      ()
     | None -> die "no rule found for %s" (Path.to_string fn)
 
 let get_vfile_data : type a. t -> Path.t -> a Vfile_kind.t -> a
@@ -603,7 +605,7 @@ module Build_exec = struct
 end
 
 (* [copy_source] is [true] for rules copying files from the source directory *)
-let add_computed_spec t fn spec ~copy_source =
+let add_spec t fn spec ~copy_source =
   match Path.Table.find t.files fn with
   | None ->
     Path.Table.add t.files fn (Maybe_cached_file_spec.Computed spec)
@@ -652,9 +654,9 @@ let add_computed_spec t fn spec ~copy_source =
 let create_file_specs t targets rule ~copy_source =
   List.iter targets ~f:(function
     | Target.Normal fn ->
-      add_computed_spec t fn (File_spec.create rule Ignore_contents) ~copy_source
+      add_spec t fn (File_spec.create rule Ignore_contents) ~copy_source
     | Target.Vfile (Vspec.T (fn, kind)) ->
-      add_computed_spec t fn (File_spec.create rule (Sexp_file kind)) ~copy_source)
+      add_spec t fn (File_spec.create rule (Sexp_file kind)) ~copy_source)
 
 (* This contains the targets of the actions that are being executed. On exit, we need to
    delete them as they might contain garbage *)
@@ -1208,12 +1210,12 @@ and wait_for_file ?(use_cache=true) t ~loc fn =
     Path.Table.remove t.trace fn;
   if Path.exists fn then begin
     let partition = Partition_state.Partition.for_path fn ~file_tree:t.file_tree in
-    if not (Partition_state.is_unclean
-              t.partition_state
-              partition
-              ~projects:t.projects
-              ~file_tree:t.file_tree
-              ~contexts:t.contexts) then begin
+    if (Partition_state.is_clean
+          t.partition_state
+          partition
+          ~projects:t.projects
+          ~file_tree:t.file_tree
+          ~contexts:t.contexts) then begin
       match Path.Table.find t.trace fn with
       | Some { partition_digest = file_partition_digest; cached_spec; _ } ->
         let actual_partition_digest =
@@ -1275,12 +1277,7 @@ and wait_for_file_found t fn (File_spec.T file) =
   | Some trace ->
     (match Path.Table.(find t.packages fn, find t.pkg_deps_cache fn) with
      | Some package, Some package_deps ->
-       trace.cached_spec <-
-         Some
-           { Cached_file_spec.
-             package_deps
-           ; package
-           }
+       trace.cached_spec <- Some { Cached_file_spec. package_deps; package }
      | _ -> ())
   | None ->
     die "File trace for recomputed rule %s is unexpectedly missing" (Path.to_string fn)
@@ -1451,7 +1448,7 @@ let rules_for_files t paths =
       match Path.Table.find t.files path with
       | Some (Maybe_cached_file_spec.Computed (File_spec.T { rule; _ })) -> Some rule
       | _ ->
-        die "Evoking rule cache failed for %s while computing rules" (Path.to_string path))
+        die "Evicting rule cache failed for %s while computing rules" (Path.to_string path))
   |> Fiber.all
   >>| List.filter_opt
   >>| List.sort ~compare:Internal_rule.compare
@@ -1555,7 +1552,7 @@ let build_rules_internal ?(recursive=false) t ~request =
          file_found fn file
        | _ ->
          die
-           "Evoking rule cache for %s failed while computing internal build rules"
+           "Evicting rule cache for %s failed while computing internal build rules"
            (Path.to_string fn))
   and file_found fn (File_spec.T { rule = ir; _ }) =
     if Rule.Id.Set.mem !rules_seen ir.id then

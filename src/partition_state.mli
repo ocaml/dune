@@ -34,10 +34,10 @@ val get_current_digest
   -> contexts:Context.t String.Map.t
   -> Digest.t
 
-(** Checks if current digest of a partition differs from saved digest, if any.
+(** Checks if current digest of a partition is the same as saved digest, if any.
 
     Current digest will be computed eagerly even if saved digest is not present. *)
-val is_unclean
+val is_clean
   :  t
   -> Partition.t
   -> projects:Dune_project.t Dune_project.Name.Table.t

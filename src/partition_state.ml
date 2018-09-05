@@ -71,7 +71,7 @@ end
 
 type t = {
   (* current_* tables contain information about partitions
-     that have already been checked by [is_unclean] or [get_current_digest]. *)
+     that have already been checked by [is_clean] or [get_current_digest]. *)
   current_digests: Digest.t Partition.Table.t;
   current_deps: Partition.Set.t Partition.Table.t;
 
@@ -109,6 +109,7 @@ let load () =
     }
   | None -> t
 
+(* A helper module for computing large digests incrementally. *)
 module Md5 : sig
   type t
   val init : unit -> t
@@ -162,23 +163,26 @@ let compute_own_digest partitions ~projects ~file_tree ~contexts =
   Partition.Set.iter partitions ~f:(fun partition ->
     match partition with
     | Partition.Project project ->
-      let root = Dune_project.root
-                   (Dune_project.Name.Table.find_exn projects project)
-      in
-      (match File_tree.find_dir file_tree (Path.of_local root) with
-      | Some dir ->
-        File_tree.Dir.fold
-          dir
-          ~stay_in_project:true
-          ~traverse_ignored_dirs:false
-          ~init:()
-          ~f:(fun dir _ ->
-            Path.Set.iter
-              (File_tree.Dir.file_paths dir)
-              ~f:(fun p -> paths := p :: !paths))
-      | None ->
-        die "root of project %s is not an existing directory"
-          (Dune_project.Name.to_string_hum project))
+      (match Dune_project.Name.Table.find projects project with
+       | Some proj ->
+         let root = Dune_project.root proj in
+         (match File_tree.find_dir file_tree (Path.of_local root) with
+          | Some dir ->
+            File_tree.Dir.fold
+              dir
+              ~stay_in_project:true
+              ~traverse_ignored_dirs:false
+              ~init:()
+              ~f:(fun dir _ ->
+                Path.Set.iter
+                  (File_tree.Dir.file_paths dir)
+                  ~f:(fun p -> paths := p :: !paths))
+          | None ->
+            die "root of project %s is not an existing directory"
+              (Dune_project.Name.to_string_hum project))
+       | None ->
+         (* The project might have been deleted or renamed since the last run. *)
+         ())
     | Partition.Target _ ->
       (* Targets have no own digests, and are fully expressed by their deps. *)
       ()
@@ -202,11 +206,11 @@ let compute_own_digest partitions ~projects ~file_tree ~contexts =
     in
     Md5.update digest var;
     Md5.update digest "=";
-    match Env.get env var with
-    | Some value ->
-      Md5.update digest (Digest.string value);
-      Md5.update digest "\x00";
-    | None -> Md5.update digest "unset\x00");
+    (match Env.get env var with
+     | Some value ->
+       Md5.update digest (Digest.string value)
+     | None -> ());
+    Md5.update digest "\x00");
   Md5.compute digest
 
 (* Computes and saves digest for an SCC in partition graph, assuming that dependency
@@ -348,22 +352,22 @@ let get_current_digest t partition ~projects ~file_tree ~contexts =
     compute_digests t partition ~projects ~file_tree ~contexts;
     Partition.Table.find_exn t.current_digests partition
 
-let is_unclean t partition ~projects ~file_tree ~contexts =
+let is_clean t partition ~projects ~file_tree ~contexts =
   match Partition.Table.(
     find t.current_digests partition, find t.saved_digests partition) with
   | Some current_digest, Some saved_digest ->
     (* If current digest was computed that's different from saved digest, saved digest
        should be immediately removed. *)
     assert (current_digest = saved_digest);
-    false
-  | Some _, None ->
     true
+  | Some _, None ->
+    false
   | None, _ ->
     let current_digest = get_current_digest t partition ~projects ~file_tree ~contexts in
     match Partition.Table.find t.saved_digests partition with
     | Some saved_digest ->
-      current_digest <> saved_digest
-    | None -> true
+      current_digest = saved_digest
+    | None -> false
 
 let register_dependency t ~target ~dependency =
   if not (Partition.equal target dependency) then begin

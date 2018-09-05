@@ -139,7 +139,8 @@ module Dir = struct
     let rec go t acc =
       if not traverse_ignored_dirs && t.ignored then
         acc
-      else if stay_in_project && Dune_project.name (project t) <> original_project then
+      else if stay_in_project
+           && not Dune_project.(Name.equal (name (project t)) original_project) then
         acc
       else
         let acc = f t acc in

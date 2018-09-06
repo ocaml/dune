@@ -51,6 +51,9 @@ next
   running and restarts the build when something change on the
   filesystem (#1140, @kodek16)
 
+- Cleanup the way we detect the library search path. We no longer call
+  `opam config var lib` in the default build context (#1226, @diml)
+
 1.1.1 (08/08/2018)
 ------------------
 

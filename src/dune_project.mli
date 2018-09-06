@@ -63,7 +63,11 @@ module Extension : sig
 
       in their [dune-project] file. [parser] is used to describe
       what [<args>] might be. *)
-  val register : Syntax.t -> Stanza.Parser.t list Dsexp.Of_sexp.t -> unit
+  val register
+    :  ?experimental:bool
+    -> Syntax.t
+    -> Stanza.Parser.t list Dsexp.Of_sexp.t
+    -> unit
 end
 
 (** Load a project description from the following directory. [files]

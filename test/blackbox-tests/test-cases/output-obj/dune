@@ -33,7 +33,7 @@
           %{ocaml-config:bytecomp_c_libraries})))
 
 (rule
- (targets static.bc.c)
+ (targets static.bc.c.exe)
  (deps test.bc.c static.c)
  (action (run %{cc} -o %{targets} -I %{ocaml_where} -I . %{deps}
           %{ocaml-config:bytecomp_c_libraries} -L %{ocaml_where} -lcamlrun)))
@@ -56,7 +56,7 @@
 (alias
  (name runtest)
  (action
-  (run ./static.bc.c)))
+  (run ./static.bc.c.exe)))
 
 (alias
  (name   runtest)

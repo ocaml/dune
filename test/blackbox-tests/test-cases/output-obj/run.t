@@ -18,8 +18,8 @@
         static alias runtest
   OK: ./static.exe
         static alias runtest
-  OK: ./static.bc.c
-        static alias runtest
   OK: ./static.bc
+        static alias runtest
+  OK: ./static.bc.c.exe
        dynamic alias runtest
   OK: ./dynamic.exe ./test.bc.so

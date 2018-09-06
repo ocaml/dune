@@ -685,7 +685,8 @@ end
 let cache = Hashtbl.create 32
 
 let clear_cache () =
-  Hashtbl.reset cache
+  Hashtbl.reset cache;
+  Hashtbl.reset Dir_status.cache
 
 let () = Hooks.End_of_build.always clear_cache
 

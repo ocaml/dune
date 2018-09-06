@@ -357,6 +357,9 @@ let rec project t path =
   | Some ("_build" :: _ :: ".ppx" :: _) ->
     (* We don't want PPX targets to belong to <anonymous .> partition *)
     None
+  | Some ("_opam" :: _) ->
+    (* We don't want local OPAM switches to belong to <anonymous .> partition *)
+    None
   | _ ->
     let path = Path.drop_optional_build_context path in
     let rec proj_of_first_existing_parent path =

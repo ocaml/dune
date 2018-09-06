@@ -287,7 +287,8 @@ let build_ppx_driver sctx ~lib_db ~dep_kind ~target ~dir_kind pps =
   in
   (* CR-someday diml: what we should do is build the .cmx/.cmo once
      and for all at the point where the driver is defined. *)
-  let ml = Path.relative (Option.value_exn (Path.parent target)) "ppx.ml" in
+  let dir = Option.value_exn (Path.parent target) in
+  let ml = Path.relative dir "ppx.ml" in
   SC.add_rule sctx
     (Build.of_result_map driver_and_libs ~f:(fun (driver, _) ->
        Build.return (sprintf "let () = %s ()\n" driver.info.main))
@@ -306,7 +307,13 @@ let build_ppx_driver sctx ~lib_db ~dep_kind ~target ~dir_kind pps =
            (Result.map driver_and_libs ~f:(fun (_driver, libs) ->
               Lib.L.compile_and_link_flags ~mode ~stdlib_dir:ctx.stdlib_dir
                 ~compile:libs
-                ~link:libs))
+                ~link:libs
+              |> Response_file.process_ocaml_call
+                   sctx
+                   ~exec_dir:ctx.build_dir
+                   ~response_file_dir:dir
+                   ~key:"link-flags"
+            ))
        ; Dep ml
        ])
 

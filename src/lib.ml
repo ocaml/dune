@@ -226,9 +226,9 @@ module L = struct
   type nonrec t = t list
 
   let to_iflags dirs =
-    Arg_spec.S
+    Arg_spec.Simple.S
       (Path.Set.fold dirs ~init:[] ~f:(fun dir acc ->
-         Arg_spec.Path dir :: A "-I" :: acc)
+         Arg_spec.Simple.Path dir :: A "-I" :: acc)
        |> List.rev)
 
   let include_paths ts ~stdlib_dir =
@@ -252,10 +252,10 @@ module L = struct
     to_iflags (c_include_paths ts ~stdlib_dir)
 
   let link_flags ts ~mode ~stdlib_dir =
-    Arg_spec.S
+    Arg_spec.Simple.S
       (c_include_flags ts ~stdlib_dir ::
        List.map ts ~f:(fun t ->
-         Arg_spec.Deps (Mode.Dict.get t.info.archives mode)))
+         Arg_spec.Simple.Deps (Mode.Dict.get t.info.archives mode)))
 
   let compile_and_link_flags ~compile ~link ~mode ~stdlib_dir =
     let dirs =
@@ -263,10 +263,10 @@ module L = struct
         (  include_paths compile ~stdlib_dir)
         (c_include_paths link    ~stdlib_dir)
     in
-    Arg_spec.S
+    Arg_spec.Simple.S
       (to_iflags dirs ::
        List.map link ~f:(fun t ->
-         Arg_spec.Deps (Mode.Dict.get t.info.archives mode)))
+         Arg_spec.Simple.Deps (Mode.Dict.get t.info.archives mode)))
 
   let jsoo_runtime_files ts =
     List.concat_map ts ~f:(fun t -> t.info.jsoo_runtime)
@@ -295,12 +295,14 @@ module Lib_and_module = struct
     | Module of Module.t * Path.t (** obj_dir *)
 
   let link_flags ts ~mode ~stdlib_dir =
-    let libs = List.filter_map ts ~f:(function Lib lib -> Some lib | Module _ -> None) in
-    Arg_spec.S
+    let libs =
+      List.filter_map ts ~f:(function Lib lib -> Some lib | Module _ -> None)
+    in
+    Arg_spec.Simple.S
       (L.c_include_flags libs ~stdlib_dir ::
        List.map ts ~f:(function
          | Lib t ->
-           Arg_spec.Deps (Mode.Dict.get t.info.archives mode)
+           Arg_spec.Simple.Deps (Mode.Dict.get t.info.archives mode)
          | Module (m,obj_dir) ->
            Dep (Module.cm_file_unsafe m ~obj_dir (Mode.cm_kind mode))
        ))

@@ -59,6 +59,9 @@ let libraries_link ~name ~mode cctx libs =
       cctx
       module_;
     let lm = (of_libs before)@[Lib.Lib_and_module.Module (module_,obj_dir)]@(of_libs after) in
-    Arg_spec.S [A "-linkall"; Lib.Lib_and_module.link_flags lm ~mode ~stdlib_dir]
+    Arg_spec.Simple.S
+      [ A "-linkall"
+      ; Lib.Lib_and_module.link_flags lm ~mode ~stdlib_dir
+      ]
   | None ->
     Lib.L.link_flags libs ~mode ~stdlib_dir

@@ -244,7 +244,7 @@ module Gen (P : Install_rules.Params) = struct
       ocamlmklib ~sandbox:true ~custom:false ~targets:[dynamic]
     end
 
-  let build_o_files lib ~dir ~scope ~requires ~dir_contents =
+  let build_o_files lib ~dir ~obj_dir ~scope ~requires ~dir_contents =
     let all_dirs = Dir_contents.dirs dir_contents in
     let h_files =
       List.fold_left all_dirs ~init:[] ~f:(fun acc dc ->
@@ -273,6 +273,11 @@ module Gen (P : Install_rules.Params) = struct
         [ Hidden_deps h_files
         ; Arg_spec.of_result_map requires ~f:(fun libs ->
             S [ Lib.L.c_include_flags libs ~stdlib_dir:ctx.stdlib_dir
+                |> Response_file.process_ocaml_call
+                     sctx
+                     ~exec_dir:dir
+                     ~response_file_dir:obj_dir
+                     ~key:"c-include-flags"
               ; Hidden_deps (Lib_file_deps.L.file_deps sctx libs ~exts:[".h"])
               ])
         ]
@@ -283,11 +288,11 @@ module Gen (P : Install_rules.Params) = struct
       build_cxx_file lib ~scope ~dir ~includes (resolve_name name ~ext:".cpp")
     )
 
-  let build_stubs lib ~dir ~scope ~requires ~dir_contents =
+  let build_stubs lib ~dir ~obj_dir ~scope ~requires ~dir_contents =
     let vlib_stubs_o_files = [] in (* TODO *)
     let lib_o_files =
       if Library.has_stubs lib then
-        build_o_files lib ~dir ~scope ~requires ~dir_contents
+        build_o_files lib ~dir ~obj_dir ~scope ~requires ~dir_contents
       else
         []
     in
@@ -419,7 +424,7 @@ module Gen (P : Install_rules.Params) = struct
             ~js_of_ocaml);
 
     if Library.has_stubs lib then
-      build_stubs lib ~dir ~scope ~requires ~dir_contents;
+      build_stubs lib ~dir ~obj_dir ~scope ~requires ~dir_contents;
 
     setup_file_deps lib ~dir ~obj_dir ~modules ~wrapped_compat;
 

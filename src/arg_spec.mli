@@ -53,3 +53,20 @@ val quote_args : string -> string list -> _ t
 
 val of_result : 'a t Or_exn.t -> 'a t
 val of_result_map : 'a Or_exn.t -> f:('a -> 'b t) -> 'b t
+
+(** Serializable subset of [t] *)
+module Simple : sig
+  type t =
+    | A     of string
+    | As    of string list
+    | S     of t list
+    | Dep   of Path.t
+    | Deps  of Path.t list
+    | Path  of Path.t
+    | Paths of Path.t list
+
+  val deps : t -> Path.Set.t
+  val expand : t -> dir:Path.t -> string list
+end
+
+val of_simple : Simple.t -> 'a t

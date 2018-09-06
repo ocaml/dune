@@ -149,7 +149,7 @@ let watch_command =
     | Some inotifywait ->
       (* On Linux, use inotifywait. *)
       let excludes = String.concat ~sep:"|" excludes in
-      inotifywait, ["-r"; path; "--exclude"; excludes; "-e"; "close_write"; "-q"]
+      inotifywait, ["-r"; path; "--exclude"; excludes; "-e"; "close_write"; "-e"; "delete"; "-q"]
     | None ->
       (* On all other platforms, try to use fswatch. fswatch's event
          filtering is not reliable (at least on Linux), so don't try to

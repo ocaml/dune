@@ -66,15 +66,15 @@ module Linkage = struct
       | Best   -> if Option.is_some ctx.ocamlopt then Native else Byte
     in
     let ext =
-      match wanted_mode, m.kind with
-      | Byte   , C             -> ".bc.c"
-      | Native , C             -> raise (Exn.Fatal_error "C file generation only supports bytecode!")
-      | Byte   , Exe           -> ".bc"
-      | Native , Exe           -> ".exe"
-      | Byte   , Object        -> ".bc"  ^ ctx.ext_obj
-      | Native , Object        -> ".exe" ^ ctx.ext_obj
-      | Byte   , Shared_object -> ".bc"  ^ ctx.ext_dll
-      | Native , Shared_object ->          ctx.ext_dll
+      match wanted_mode, m.kind, m.loc with
+      | Byte   , C             ,  _  -> ".bc.c"
+      | Native , C             , loc -> raise (Exn.Loc_error (loc, "C file generation only supports bytecode!"))
+      | Byte   , Exe           ,  _  -> ".bc"
+      | Native , Exe           ,  _  -> ".exe"
+      | Byte   , Object        ,  _  -> ".bc"  ^ ctx.ext_obj
+      | Native , Object        ,  _  -> ".exe" ^ ctx.ext_obj
+      | Byte   , Shared_object ,  _  -> ".bc"  ^ ctx.ext_dll
+      | Native , Shared_object ,  _  ->          ctx.ext_dll
     in
     let flags =
       match m.kind with

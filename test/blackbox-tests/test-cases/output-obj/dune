@@ -53,6 +53,8 @@
  (action
   (run ./static.bc)))
 
+;; This fails in travis.  Can't seem to find libcamlrun (see pull request #1229
+;; for discussion)
 (alias
  (name runtest)
  (action

@@ -245,6 +245,9 @@ let bootstrap () =
       ; "--debug-partition-cache",
         Set Clflags.debug_partition_cache,
         " print the state of partition cache"
+      ; "--use-partitions",
+        Set Clflags.use_partitions,
+        " use partition cache to speed up consequent builds"
       ]
       anon "Usage: boot.exe [-j JOBS] [--dev]\nOptions are:";
     Clflags.debug_dep_path := true;

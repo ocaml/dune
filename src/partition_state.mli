@@ -19,6 +19,9 @@ end
 (** Loads .partition-db file from disk, or creates an empty db if it's absent. *)
 val load : unit -> t
 
+(** Clears all saved and current partition information. *)
+val reset : t -> unit
+
 (** Returns current digest of a partition, computing it if not yet computed.
 
     Digest is computed against dependencies that were saved

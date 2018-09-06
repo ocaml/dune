@@ -10,6 +10,12 @@ let alias_dir = Path.(relative build_dir) ".aliases"
 (* Where we store stamp files for [stamp_file_for_files_of] *)
 let misc_dir = Path.(relative build_dir) ".misc"
 
+(* A flag to distinguish between first and consequent builds in watch mode. *)
+let first_build = ref true
+
+let should_use_partitions () =
+  !Clflags.use_partitions || !Clflags.watch
+
 module Promoted_to_delete = struct
   module P = Utils.Persistent(struct
       type t = Path.Set.t
@@ -830,41 +836,51 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
     in
     let deps_or_rule_changed =
       List.fold_left targets_as_list ~init:false ~f:(fun acc fn ->
-        let current_partition =
-          Partition_state.Partition.for_path fn ~file_tree:t.file_tree
-        in
-        let partition_digest =
-          Partition_state.get_current_digest
-            t.partition_state
-            current_partition
-            ~projects:t.projects
-            ~file_tree:t.file_tree
-            ~contexts:t.contexts
-        in
         let new_trace =
-          { File_trace.
-            own_digest = hash;
-            partition_digest;
-            cached_spec = None
-          }
+          if should_use_partitions () then begin
+            let current_partition =
+              Partition_state.Partition.for_path fn ~file_tree:t.file_tree
+            in
+            let partition_digest =
+              Partition_state.get_current_digest
+                t.partition_state
+                current_partition
+                ~projects:t.projects
+                ~file_tree:t.file_tree
+                ~contexts:t.contexts
+            in
+            let register_dep dep_partition =
+              Partition_state.register_dependency
+                t.partition_state
+                ~target:current_partition
+                ~dependency:dep_partition;
+            in
+            Path.Set.iter (Deps.paths all_deps) ~f:(fun dep ->
+              let dep_partition =
+                Partition_state.Partition.for_path dep ~file_tree:t.file_tree
+              in
+              register_dep dep_partition);
+            String.Set.iter (Deps.env_vars all_deps) ~f:(fun var ->
+              let context =
+                match context with
+                | Some ctx -> ctx.name
+                | None -> die "environment variable dependencies must belong to a context"
+              in
+              let dep_partition = Partition_state.Partition.for_env_var ~var ~context in
+              register_dep dep_partition);
+            { File_trace.
+              own_digest = hash;
+              partition_digest;
+              cached_spec = None
+            }
+          end
+          else
+            { File_trace.
+              own_digest = hash;
+              partition_digest = Digest.string "";
+              cached_spec = None
+            }
         in
-        let register_dep dep_partition =
-          Partition_state.register_dependency
-            t.partition_state
-            ~target:current_partition
-            ~dependency:dep_partition;
-        in
-        Path.Set.iter (Deps.paths all_deps) ~f:(fun dep ->
-          let dep_partition = Partition_state.Partition.for_path dep ~file_tree:t.file_tree in
-          register_dep dep_partition);
-        String.Set.iter (Deps.env_vars all_deps) ~f:(fun var ->
-          let context =
-            match context with
-            | Some ctx -> ctx.name
-            | None -> die "environment variable dependencies must belong to a context"
-          in
-          let dep_partition = Partition_state.Partition.for_env_var ~var ~context in
-          register_dep dep_partition);
         match Path.Table.find t.trace fn with
         | None ->
           Path.Table.add t.trace fn new_trace;
@@ -1208,29 +1224,31 @@ The following targets are not:
 and wait_for_file ?(use_cache=true) t ~loc fn =
   if not use_cache then
     Path.Table.remove t.trace fn;
-  if Path.exists fn then begin
-    let partition = Partition_state.Partition.for_path fn ~file_tree:t.file_tree in
-    if (Partition_state.is_clean
-          t.partition_state
-          partition
-          ~projects:t.projects
-          ~file_tree:t.file_tree
-          ~contexts:t.contexts) then begin
-      match Path.Table.find t.trace fn with
-      | Some { partition_digest = file_partition_digest; cached_spec; _ } ->
-        let actual_partition_digest =
-          Partition_state.get_current_digest
+  if should_use_partitions () then
+    if Path.exists fn then begin
+      let partition = Partition_state.Partition.for_path fn ~file_tree:t.file_tree in
+      if (Partition_state.is_clean
             t.partition_state
             partition
             ~projects:t.projects
             ~file_tree:t.file_tree
-            ~contexts:t.contexts
-        in
-        if file_partition_digest = actual_partition_digest then
-          Path.Table.replace t.files ~key:fn ~data:(Maybe_cached_file_spec.Cached cached_spec)
-      | _ -> ()
-    end
-  end;
+            ~contexts:t.contexts) then begin
+        match Path.Table.find t.trace fn with
+        | Some { partition_digest = file_partition_digest; cached_spec; _ } ->
+          let actual_partition_digest =
+            Partition_state.get_current_digest
+              t.partition_state
+              partition
+              ~projects:t.projects
+              ~file_tree:t.file_tree
+              ~contexts:t.contexts
+          in
+          if file_partition_digest = actual_partition_digest then
+            Path.Table.replace t.files
+              ~key:fn ~data:(Maybe_cached_file_spec.Cached cached_spec)
+        | _ -> ()
+      end
+    end;
   match Path.Table.find t.files fn with
   | Some (Maybe_cached_file_spec.Computed file) -> wait_for_file_found t fn file
   | Some (Maybe_cached_file_spec.Cached _) -> Fiber.return ()
@@ -1357,7 +1375,9 @@ let finalize t =
   Promoted_to_delete.dump ();
   Utils.Cached_digest.dump ();
   Trace.dump t.trace;
-  Partition_state.finalize t.partition_state
+  if should_use_partitions () then
+    Partition_state.finalize t.partition_state;
+  first_build := false
 
 let create ~contexts ~projects ~file_tree ~hook =
   Utils.Cached_digest.load ();
@@ -1428,6 +1448,8 @@ let update_universe t =
 
 let do_build t ~request =
   entry_point t ~f:(fun () ->
+    if !Clflags.watch && !first_build then
+      Partition_state.reset t.partition_state;
     update_universe t;
     eval_request t ~request ~process_target:(wait_for_file ~loc:None t))
 

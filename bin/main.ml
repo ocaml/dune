@@ -58,8 +58,9 @@ type common =
     orig_args             : string list
   ; config                : Config.t
   ; default_target        : string
-  (* For build & runtest only *)
-  ; watch : bool
+  ; (* For build & runtest only *)
+    watch                 : bool
+  ; use_partitions        : bool
   }
 
 let prefix_target common s = common.target_prefix ^ s
@@ -80,6 +81,7 @@ let set_common_other c ~targets =
   Clflags.auto_promote := c.auto_promote;
   Clflags.force := c.force;
   Clflags.watch := c.watch;
+  Clflags.use_partitions := c.use_partitions;
   Clflags.external_lib_deps_hint :=
     List.concat
       [ ["dune"; "external-lib-deps"; "--missing"]
@@ -338,6 +340,11 @@ let common =
          & flag
          & info ["debug-partition-cache"] ~docs
              ~doc:{|Print the state of partition cache.|})
+  and use_partitions =
+    Arg.(value
+         & flag
+         & info ["use-partitions"] ~docs
+        ~doc:{|Use partition cache to speed up consequent builds.|})
   and display =
     Term.ret @@
     let%map verbose =
@@ -623,6 +630,7 @@ let common =
   ; build_dir
   ; default_target
   ; watch
+  ; use_partitions
   }
 
 let installed_libraries =

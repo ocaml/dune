@@ -124,6 +124,12 @@ let load () =
     }
   | None -> t
 
+let reset t =
+  Partition.Table.reset t.current_digests;
+  Partition.Table.reset t.current_deps;
+  Partition.Table.reset t.saved_digests;
+  Partition.Table.reset t.saved_deps;
+
 (* A helper module for computing large digests incrementally. *)
 module Md5 : sig
   type t

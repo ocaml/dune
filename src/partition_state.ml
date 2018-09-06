@@ -17,6 +17,7 @@ module Partition = struct
 
     type t =
       | Project of Dune_project.Name.t
+      | Dir of Path.t
       | Target of Path.t
       | Env_var of Env_var.t
       | Universe
@@ -24,11 +25,14 @@ module Partition = struct
     let compare a b =
       match a, b with
       | Project x, Project y -> Dune_project.Name.compare x y
+      | Dir     x, Dir     y -> Path.compare x y
       | Target  x, Target  y -> Path.compare x y
       | Env_var x, Env_var y -> Env_var.compare x y
       | Universe , Universe  -> Ordering.Eq
       | Project _, _         -> Lt
       | _        , Project _ -> Gt
+      | Dir     _, _         -> Lt
+      | _        , Dir     _ -> Gt
       | Target  _, _         -> Lt
       | _        , Target  _ -> Gt
       | Env_var _, _         -> Lt
@@ -46,7 +50,17 @@ module Partition = struct
       Universe
     else
       match File_tree.project file_tree path with
-      | Some project -> Project (Dune_project.name project)
+      | Some project ->
+        if Dune_project.(Name.equal (name project) Name.anonymous_root) then
+          (* Instead of assigning paths to <anonymous .>, use dir partitions. *)
+          let dir =
+            Path.drop_optional_alias_dir path
+            |> Path.drop_optional_build_context
+            |> Path.parent_exn
+          in
+          Dir dir
+        else
+          Project (Dune_project.name project)
       | None ->
         (* We assume here that all source files can be successfully mapped to projects. *)
         Target path
@@ -56,6 +70,7 @@ module Partition = struct
 
   let to_string_hum = function
     | Project project          -> Dune_project.Name.to_string_hum project
+    | Dir dir                  -> Format.sprintf "<dir: %s>" (Path.to_string dir)
     | Target target            -> Format.sprintf "<target: %s>" (Path.to_string target)
     | Env_var { var; context } -> Format.sprintf "(env: %s in %s)" var context
     | Universe                 -> "(universe)"
@@ -160,6 +175,17 @@ let compute_own_digest partitions ~projects ~file_tree ~contexts =
   let digest = Md5.init () in
   let paths = ref [] in
   let env_vars = ref [] in
+  let walk_dir_tree root =
+    File_tree.Dir.fold
+      root
+      ~stay_in_project:true
+      ~traverse_ignored_dirs:false
+      ~init:()
+      ~f:(fun dir _ ->
+        Path.Set.iter
+          (File_tree.Dir.file_paths dir)
+          ~f:(fun p -> paths := p :: !paths))
+  in
   Partition.Set.iter partitions ~f:(fun partition ->
     match partition with
     | Partition.Project project ->
@@ -167,21 +193,20 @@ let compute_own_digest partitions ~projects ~file_tree ~contexts =
        | Some proj ->
          let root = Dune_project.root proj in
          (match File_tree.find_dir file_tree (Path.of_local root) with
-          | Some dir ->
-            File_tree.Dir.fold
-              dir
-              ~stay_in_project:true
-              ~traverse_ignored_dirs:false
-              ~init:()
-              ~f:(fun dir _ ->
-                Path.Set.iter
-                  (File_tree.Dir.file_paths dir)
-                  ~f:(fun p -> paths := p :: !paths))
+          | Some root ->
+            walk_dir_tree root
           | None ->
             die "root of project %s is not an existing directory"
               (Dune_project.Name.to_string_hum project))
        | None ->
          (* The project might have been deleted or renamed since the last run. *)
+         ())
+    | Partition.Dir dir ->
+      (match File_tree.find_dir file_tree dir with
+       | Some dir ->
+         walk_dir_tree dir
+       | None ->
+         (* Dir no longer exists. *)
          ())
     | Partition.Target _ ->
       (* Targets have no own digests, and are fully expressed by their deps. *)
@@ -335,7 +360,7 @@ let compute_digests t root_partition ~projects ~file_tree ~contexts =
         let w = Stack.pop stack in
         (Table.find_exn info w).on_stack <- false;
         component := Set.add !component w;
-        if w = v then
+        if Partition.equal w v then
           should_continue := false
       done;
       (* Tarjan's algorithm outputs SCCs in reverse topological sorting order, so

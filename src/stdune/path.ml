@@ -798,6 +798,12 @@ let explode_exn t =
   | None -> Exn.code_error "Path.explode_exn"
               ["path", to_sexp t]
 
+let drop_optional_alias_dir t =
+  match explode t with
+  | Some ("_build" :: ".aliases" :: p) ->
+    in_build_dir (Local.of_string (String.concat ~sep:"/" p))
+  | _ -> t
+
 let exists t =
   try Sys.file_exists (to_string t)
   with Sys_error _ -> false

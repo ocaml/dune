@@ -341,11 +341,8 @@ let files_recursively_in t ?(prefix_with=Path.root) path =
         String.Set.fold (Dir.files dir) ~init:acc ~f:(fun fn acc ->
           Path.Set.add acc (Path.relative path fn)))
 
-let rec project t path =
+let project t path =
   match Path.explode path with
-  | Some ("_build" :: ".aliases" :: p) ->
-    (* Aliases should belong to the same project as the directory they're in. *)
-    project t (Path.in_build (String.concat ~sep:"/" p))
   | Some ("_build" :: "install" :: _) ->
     (* Ideally, we would like to map these to projects via package they belong to,
        but that's not trivial since file-to-package mapping is computed later, so
@@ -361,7 +358,10 @@ let rec project t path =
     (* We don't want local OPAM switches to belong to <anonymous .> partition *)
     None
   | _ ->
-    let path = Path.drop_optional_build_context path in
+    let path =
+      Path.drop_optional_alias_dir path
+      |> Path.drop_optional_build_context
+    in
     let rec proj_of_first_existing_parent path =
       match find_dir t path with
       | Some dir -> Some (Dir.project dir)

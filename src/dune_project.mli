@@ -30,6 +30,8 @@ module Name : sig
   val encode : t -> string
   val decode : string -> t
 
+  val anonymous_root : t
+
   module Infix : Comparable.OPS with type t = t
   module Set : Set.S with type elt = t
   module Table : Hashtbl.S with type key = t

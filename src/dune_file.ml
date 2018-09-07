@@ -1108,21 +1108,21 @@ module Executables = struct
     end
     include T
 
-    let make mode kind loc =
+    let make mode kind =
       { mode
       ; kind
-      ; loc
+      ; loc = Loc.none
       }
 
-    let exe           = make Best Exe Loc.none
-    let object_       = make Best Object Loc.none
-    let shared_object = make Best Shared_object Loc.none
+    let exe           = make Best Exe
+    let object_       = make Best Object
+    let shared_object = make Best Shared_object
 
-    let byte_exe           = make Byte Exe Loc.none
+    let byte_exe           = make Byte Exe
 
-    let native_exe           = make Native Exe Loc.none
-    let native_object        = make Native Object Loc.none
-    let native_shared_object = make Native Shared_object Loc.none
+    let native_exe           = make Native Exe
+    let native_object        = make Native Object
+    let native_shared_object = make Native Shared_object
 
     let byte   = byte_exe
     let native = native_exe
@@ -1162,7 +1162,7 @@ module Executables = struct
       match simple_dgen link_mode with
       | Some s -> s
       | None ->
-        let { mode; kind; _ } = link_mode in
+        let { mode; kind; loc = _ } = link_mode in
         Dsexp.To_sexp.pair Mode_conf.dgen Binary_kind.dgen (mode, kind)
 
     module Set = struct

@@ -61,6 +61,10 @@ end
 
 module Visibility = struct
   type t = Public | Private
+
+  let to_sexp = function
+    | Public -> Sexp.To_sexp.string "public"
+    | Private -> Sexp.To_sexp.string "private"
 end
 
 type t =
@@ -170,7 +174,7 @@ let dir t =
 
 let set_pp t pp = { t with pp }
 
-let to_sexp { name; impl; intf; obj_name ; pp } =
+let to_sexp { name; impl; intf; obj_name ; pp ; visibility } =
   let open Sexp.To_sexp in
   record
     [ "name", Name.to_sexp name
@@ -178,6 +182,7 @@ let to_sexp { name; impl; intf; obj_name ; pp } =
     ; "impl", (option File.to_sexp) impl
     ; "intf", (option File.to_sexp) intf
     ; "pp", (option string) (Option.map ~f:(fun _ -> "has pp") pp)
+    ; "visibility", Visibility.to_sexp visibility
     ]
 
 let wrapped_compat t =
@@ -198,3 +203,11 @@ let wrapped_compat t =
 module Name_map = struct
   type nonrec t = t Name.Map.t
 end
+
+let is_public t =
+  match (t.visibility : Visibility.t) with
+  | Public -> true
+  | Private -> false
+
+let set_private t =
+  { t with visibility = Visibility.Private }

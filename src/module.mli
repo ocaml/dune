@@ -110,3 +110,7 @@ module Name_map : sig
   type module_
   type t = module_ Name.Map.t
 end with type module_ := t
+
+val is_public : t -> bool
+
+val set_private : t -> t

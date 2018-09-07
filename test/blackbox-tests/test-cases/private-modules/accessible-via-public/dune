@@ -8,3 +8,7 @@
  (name runfoo)
  (modules runfoo)
  (libraries foo))
+
+(alias
+ (name default)
+ (action (run ./runfoo.exe)))

@@ -359,6 +359,21 @@ module type Gen = sig
   val sctx : Super_context.t
 end
 
+let stanza_package = function
+  | Library { public = Some { package; _ }; _ }
+  | Alias { package = Some package ;  _ }
+  | Install { package; _ }
+  | Documentation { package; _ }
+  | Tests { package = Some package; _} ->
+      Some package
+  | _ -> None
+
+let relevant_stanzas pkgs stanzas =
+  List.filter stanzas ~f:(fun stanza ->
+    match stanza_package stanza with
+    | Some package -> Package.Name.Set.mem pkgs package.name
+    | None -> true)
+
 let gen ~contexts ~build_system
       ?(external_lib_deps_mode=false)
       ?only_packages conf =
@@ -388,17 +403,9 @@ let gen ~contexts ~build_system
       | None -> stanzas
       | Some pkgs ->
         List.map stanzas ~f:(fun (dir_conf : Jbuild_load.Jbuild.t) ->
-          let stanzas =
-            List.filter dir_conf.stanzas ~f:(fun stanza ->
-              match (stanza : Stanza.t) with
-              | Library { public = Some { package; _ }; _ }
-              | Alias { package = Some package ;  _ }
-              | Install { package; _ }
-              | Documentation { package; _ } ->
-                Package.Name.Set.mem pkgs package.name
-              | _ -> true)
-          in
-          { dir_conf with stanzas })
+          { dir_conf with
+            stanzas = relevant_stanzas pkgs dir_conf.stanzas
+          })
     in
     Fiber.fork_and_join host stanzas >>= fun (host, stanzas) ->
     let sctx =

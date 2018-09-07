@@ -54,6 +54,8 @@ next
 - Cleanup the way we detect the library search path. We no longer call
   `opam config var lib` in the default build context (#1226, @diml)
 
+- Make test stanzas honor the -p flag. (#1236, fix #1231, @emillon)
+
 1.1.1 (08/08/2018)
 ------------------
 

@@ -170,13 +170,15 @@ let map_files t ~f =
   ; intf = Option.map t.intf ~f:(f Ml_kind.Intf)
   }
 
-let dir t =
+let src_dir t =
   let file =
-    match t.intf with
-    | Some x -> x
-    | None -> Option.value_exn t.impl
+    match t.intf, t.impl with
+    | Some x, Some _
+    | Some x, None
+    | None, Some x -> Some x
+    | None, None -> None
   in
-  Path.parent_exn file.path
+  Option.map ~f:(fun f -> Path.parent_exn f.path) file
 
 let set_pp t pp = { t with pp }
 
@@ -198,19 +200,29 @@ let wrapped_compat t =
       Some (
         { syntax = OCaml
         ; path =
-          Path.L.relative (dir t)
-            [ ".wrapped_compat"
-            ; Name.to_string t.name ^ ".ml-gen"
-            ]
+            Path.L.relative (Option.value_exn (src_dir t))
+              [ ".wrapped_compat"
+              ; Name.to_string t.name ^ ".ml-gen"
+              ]
         }
       )
   }
 
 module Name_map = struct
   type nonrec t = t Name.Map.t
+
+  let of_list_exn modules =
+    List.map modules ~f:(fun m -> (name m, m))
+    |> Name.Map.of_list_exn
 end
 
 let is_public t = Visibility.is_public t.visibility
 
 let set_private t =
   { t with visibility = Private }
+
+let remove_files t =
+  { t with
+    intf = None
+  ; impl = None
+  }

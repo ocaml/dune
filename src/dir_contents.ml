@@ -390,8 +390,8 @@ let rec get sctx ~dir =
                    @\n- %a\
                    @\n- %a"
                   Module.Name.pp_quote name
-                  Path.pp (Module.dir x)
-                  Path.pp (Module.dir y)))
+                  (Fmt.optional Path.pp) (Module.src_dir x)
+                  (Fmt.optional Path.pp) (Module.src_dir y)))
         in
         build_modules_map d ~scope:d.scope ~modules)
       in

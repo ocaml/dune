@@ -130,3 +130,5 @@ Implementations cannot introduce new modules to the library's interface
 They can only introduce private modules:
   $ dune build --root impl-private-modules
   Entering directory 'impl-private-modules'
+
+  $ dune build --root variants-simple

@@ -7,6 +7,14 @@ module Implementation = struct
     ; impl            : Dune_file.Library.t
     ; vlib_modules    : Module.t Module.Name.Map.t
     }
+
+  let dep_graph { vlib ; vlib_modules ; impl = _ }
+        (impl_graph : Ocamldep.Dep_graphs.t) =
+    let obj_dir = Lib.obj_dir vlib in
+    let vlib_graph = Ocamldep.rules_for_lib ~obj_dir ~modules:vlib_modules in
+    Ocamldep.Dep_graphs.merge_for_impl ~vlib:vlib_graph ~impl:impl_graph
+
+  let virtual_modules t = t.vlib_modules
 end
 
 module Gen (P : sig val sctx : Super_context.t end) = struct
@@ -32,6 +40,12 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
       let copy_obj_file ext =
         copy_to_obj_dir (Module.obj_file m ~obj_dir ~ext) in
       copy_obj_file (Cm_kind.ext Cmi);
+      if Module.has_intf m then begin
+        Module.file m Ml_kind.Intf
+        |> Option.value_exn
+        |> Path.extend_basename ~suffix:".all-deps"
+        |> copy_to_obj_dir
+      end;
       if Module.has_impl m then begin
         if modes.byte then
           copy_obj_file (Cm_kind.ext Cmo);

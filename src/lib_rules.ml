@@ -389,6 +389,8 @@ module Gen (P : Install_rules.Params) = struct
     let cctx =
       Compilation_context.create ()
         ~super_context:sctx
+        ?virtual_modules:(
+          Option.map impl ~f:Virtual_rules.Implementation.virtual_modules)
         ~scope
         ~dir
         ~dir_kind
@@ -418,7 +420,12 @@ module Gen (P : Install_rules.Params) = struct
     build_wrapped_compat_modules lib cctx ~dynlink ~js_of_ocaml
       ~wrapped_compat ~modules;
 
-    let dep_graphs = Ocamldep.rules cctx in
+    let dep_graphs =
+      let dep_graphs = Ocamldep.rules cctx in
+      match impl with
+      | None -> dep_graphs
+      | Some impl -> Virtual_rules.Implementation.dep_graph impl dep_graphs
+    in
 
     Module_compilation.build_modules cctx ~js_of_ocaml ~dynlink ~dep_graphs;
 

@@ -131,7 +131,6 @@ module Buildable : sig
   type t =
     { loc                      : Loc.t
     ; modules                  : Ordered_set_lang.t
-    ; private_modules          : Ordered_set_lang.t
     ; modules_without_implementation : Ordered_set_lang.t
     ; libraries                : Lib_dep.t list
     ; preprocess               : Preprocess_map.t
@@ -252,6 +251,7 @@ module Library : sig
     ; dune_version             : Syntax.Version.t
     ; virtual_modules          : Ordered_set_lang.t option
     ; implements               : (Loc.t * Lib_name.t) option
+    ; private_modules          : Ordered_set_lang.t
     }
 
   val has_stubs : t -> bool

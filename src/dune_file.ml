@@ -664,11 +664,12 @@ module Lib_deps = struct
      |> Lib_name.Map.of_list_reduce ~f:Lib_deps_info.Kind.merge
 end
 
+let modules_field name = Ordered_set_lang.field name
+
 module Buildable = struct
   type t =
     { loc                      : Loc.t
     ; modules                  : Ordered_set_lang.t
-    ; private_modules          : Ordered_set_lang.t
     ; modules_without_implementation : Ordered_set_lang.t
     ; libraries                : Lib_dep.t list
     ; preprocess               : Preprocess_map.t
@@ -681,8 +682,6 @@ module Buildable = struct
     ; allow_overlapping_dependencies : bool
     }
 
-  let modules_field name = Ordered_set_lang.field name
-
   let dparse =
     let%map loc = loc
     and preprocess =
@@ -691,7 +690,6 @@ module Buildable = struct
       field "preprocessor_deps" (list Dep_conf.dparse) ~default:[]
     and lint = field "lint" Lint.dparse ~default:Lint.default
     and modules = modules_field "modules"
-    and private_modules = modules_field "private_modules"
     and modules_without_implementation =
       modules_field "modules_without_implementation"
     and libraries = field "libraries" Lib_deps.dparse ~default:[]
@@ -708,7 +706,6 @@ module Buildable = struct
     ; preprocessor_deps
     ; lint
     ; modules
-    ; private_modules
     ; modules_without_implementation
     ; libraries
     ; flags
@@ -920,6 +917,7 @@ module Library = struct
     ; dune_version             : Syntax.Version.t
     ; virtual_modules          : Ordered_set_lang.t option
     ; implements               : (Loc.t * Lib_name.t) option
+    ; private_modules          : Ordered_set_lang.t
     }
 
   let dparse =
@@ -962,6 +960,7 @@ module Library = struct
          field_o "implements" (
            Syntax.since Variants.syntax (0, 1)
            >>= fun () -> located Lib_name.dparse)
+       and private_modules = modules_field "private_modules"
        in
        let name =
          let open Syntax.Version.Infix in
@@ -1032,6 +1031,7 @@ module Library = struct
        ; dune_version
        ; virtual_modules
        ; implements
+       ; private_modules
        })
 
   let has_stubs t =

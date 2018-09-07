@@ -195,7 +195,8 @@ module Jbuild_driver = struct
       let parsing_context =
         Univ_map.singleton (Syntax.key Stanza.syntax) (0, 0)
       in
-      Dsexp.parse_string ~mode:Single ~fname:"<internal>" info
+      let fname = Printf.sprintf "<internal-%s>" name in
+      Dsexp.parse_string ~mode:Single ~fname info
         ~lexer:Dsexp.Lexer.jbuild_token
       |> Dsexp.Of_sexp.parse Driver.Info.parse parsing_context
     in

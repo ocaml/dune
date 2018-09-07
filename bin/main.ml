@@ -41,6 +41,7 @@ type common =
   { debug_dep_path        : bool
   ; debug_findlib         : bool
   ; debug_backtraces      : bool
+  ; debug_partition_cache : bool
   ; profile               : string option
   ; workspace_file        : Arg.Path.t option
   ; root                  : string
@@ -57,8 +58,9 @@ type common =
     orig_args             : string list
   ; config                : Config.t
   ; default_target        : string
-  (* For build & runtest only *)
-  ; watch : bool
+  ; (* For build & runtest only *)
+    watch                 : bool
+  ; use_partitions        : bool
   }
 
 let prefix_target common s = common.target_prefix ^ s
@@ -73,11 +75,13 @@ let set_common_other c ~targets =
   Clflags.debug_dep_path := c.debug_dep_path;
   Clflags.debug_findlib := c.debug_findlib;
   Clflags.debug_backtraces := c.debug_backtraces;
+  Clflags.debug_partition_cache := c.debug_partition_cache;
   Clflags.capture_outputs := c.capture_outputs;
   Clflags.diff_command := c.diff_command;
   Clflags.auto_promote := c.auto_promote;
   Clflags.force := c.force;
   Clflags.watch := c.watch;
+  Clflags.use_partitions := c.use_partitions;
   Clflags.external_lib_deps_hint :=
     List.concat
       [ ["dune"; "external-lib-deps"; "--missing"]
@@ -331,6 +335,16 @@ let common =
          & flag
          & info ["debug-backtraces"] ~docs
              ~doc:{|Always print exception backtraces.|})
+  and debug_partition_cache =
+    Arg.(value
+         & flag
+         & info ["debug-partition-cache"] ~docs
+             ~doc:{|Print the state of partition cache.|})
+  and use_partitions =
+    Arg.(value
+         & flag
+         & info ["use-partitions"] ~docs
+        ~doc:{|Use partition cache to speed up consequent builds.|})
   and display =
     Term.ret @@
     let%map verbose =
@@ -596,6 +610,7 @@ let common =
   { debug_dep_path
   ; debug_findlib
   ; debug_backtraces
+  ; debug_partition_cache
   ; profile
   ; capture_outputs = not no_buffer
   ; workspace_file
@@ -615,6 +630,7 @@ let common =
   ; build_dir
   ; default_target
   ; watch
+  ; use_partitions
   }
 
 let installed_libraries =
@@ -942,9 +958,10 @@ let external_lib_deps =
        >>= fun setup ->
        let targets = resolve_targets_exn ~log common setup targets in
        let request = request_of_targets setup targets in
+       (Build_system.all_lib_deps_by_context setup.build_system ~request)
+       >>= fun deps ->
        let failure =
-         String.Map.foldi ~init:false
-           (Build_system.all_lib_deps_by_context setup.build_system ~request)
+         String.Map.foldi deps ~init:false
            ~f:(fun context_name lib_deps acc ->
              let internals =
                Super_context.internal_lib_names

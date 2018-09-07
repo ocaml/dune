@@ -20,6 +20,7 @@ module Name : sig
     | Anonymous of Path.t
 
   val compare : t -> t -> Ordering.t
+  val equal : t -> t -> bool
 
   val to_string_hum : t -> string
 
@@ -35,6 +36,8 @@ module Name : sig
   val anonymous_root : t
 
   module Infix : Comparable.OPS with type t = t
+  module Set : Set.S with type elt = t
+  module Table : Hashtbl.S with type key = t
 end = struct
   module T = struct
     type t =
@@ -47,11 +50,24 @@ end = struct
       | Anonymous x, Anonymous y -> Path.compare   x y
       | Named     _, Anonymous _ -> Lt
       | Anonymous _, Named     _ -> Gt
+
+    let equal a b =
+      compare a b = Eq
+
+    let hash t = Hashtbl.hash t
   end
 
   include T
 
   module Infix = Comparable.Operators(T)
+
+  module Set = struct
+    include Set.Make (T)
+  end
+
+  module Table = struct
+    include Hashtbl.Make (T)
+  end
 
   let anonymous_root = Anonymous Path.root
 

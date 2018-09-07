@@ -95,7 +95,11 @@ let setup ?(log=Log.no_log)
     | Rule_completed -> incr rule_done
   in
   let build_system =
-    Build_system.create ~contexts ~file_tree:conf.file_tree ~hook
+    Build_system.create
+      ~contexts
+      ~projects:conf.projects
+      ~file_tree:conf.file_tree
+      ~hook
   in
   Gen_rules.gen conf
     ~build_system
@@ -133,9 +137,10 @@ let external_lib_deps ?log ~packages () =
      in
      let sctx = Option.value_exn (String.Map.find setup.scontexts "default") in
      let internals = Super_context.internal_lib_names sctx in
+     (Build_system.all_lib_deps setup.build_system
+        ~request:(Build.paths install_files))
+     >>|
      Path.Map.map
-       (Build_system.all_lib_deps setup.build_system
-          ~request:(Build.paths install_files))
        ~f:(Lib_name.Map.filteri ~f:(fun name _ ->
          not (Lib_name.Set.mem internals name))))
 
@@ -237,6 +242,12 @@ let bootstrap () =
       ; "--debug-backtraces",
         Set Clflags.debug_backtraces,
         " always print exception backtraces"
+      ; "--debug-partition-cache",
+        Set Clflags.debug_partition_cache,
+        " print the state of partition cache"
+      ; "--use-partitions",
+        Set Clflags.use_partitions,
+        " use partition cache to speed up consequent builds"
       ]
       anon "Usage: boot.exe [-j JOBS] [--dev]\nOptions are:";
     Clflags.debug_dep_path := true;

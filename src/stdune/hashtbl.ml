@@ -32,6 +32,11 @@ module Make(H : Hashable.S) = struct
         let x = f key in
         add t key x;
         x
+    let find_exn t key =
+      match find t key with
+      | Some x -> x
+      | None ->
+        failwith "Hashtbl.find_exn called for unknown key"
 
     let foldi t ~init ~f =
       fold t ~init ~f:(fun ~key ~data acc -> f key data acc)

@@ -24,6 +24,9 @@ val capture_outputs : bool ref
 (** Always print backtraces, to help debugging jbuilder itself *)
 val debug_backtraces : bool ref
 
+(** Print the partition cache state (see Partition_state module) *)
+val debug_partition_cache : bool ref
+
 (** Command to use to diff things *)
 val diff_command : string option ref
 
@@ -35,3 +38,7 @@ val force : bool ref
 
 (** Instead of terminating build after completion, watch for changes *)
 val watch : bool ref
+
+(** Use partition cache to speed up consequent builds.
+    Note that partition cache is used by default with watch mode. *)
+val use_partitions : bool ref

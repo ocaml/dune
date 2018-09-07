@@ -134,13 +134,19 @@ module Dir = struct
     String.Map.foldi (sub_dirs t) ~init:Path.Set.empty
       ~f:(fun s _ acc -> Path.Set.add acc (Path.relative t.path s))
 
-  let rec fold t ~traverse_ignored_dirs ~init:acc ~f =
-    if not traverse_ignored_dirs && t.ignored then
-      acc
-    else
-      let acc = f t acc in
-      String.Map.fold (sub_dirs t) ~init:acc ~f:(fun t acc ->
-        fold t ~traverse_ignored_dirs ~init:acc ~f)
+  let fold t ~stay_in_project ~traverse_ignored_dirs ~init:acc ~f =
+    let original_project = Dune_project.name (project t) in
+    let rec go t acc =
+      if not traverse_ignored_dirs && t.ignored then
+        acc
+      else if stay_in_project
+           && not Dune_project.(Name.equal (name (project t)) original_project) then
+        acc
+      else
+        let acc = f t acc in
+        String.Map.fold (sub_dirs t) ~init:acc ~f:(fun t acc -> go t acc)
+    in
+    go t acc
 end
 
 type t =
@@ -283,7 +289,7 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) path =
   { root; dirs }
 
 let fold t ~traverse_ignored_dirs ~init ~f =
-  Dir.fold t.root ~traverse_ignored_dirs ~init ~f
+  Dir.fold t.root ~stay_in_project:false ~traverse_ignored_dirs ~init ~f
 
 let rec find_dir t path =
   if not (Path.is_managed path) then
@@ -329,8 +335,39 @@ let files_recursively_in t ?(prefix_with=Path.root) path =
   match find_dir t path with
   | None -> Path.Set.empty
   | Some dir ->
-    Dir.fold dir ~init:Path.Set.empty ~traverse_ignored_dirs:true
+    Dir.fold dir ~init:Path.Set.empty ~stay_in_project:false ~traverse_ignored_dirs:true
       ~f:(fun dir acc ->
         let path = Path.append prefix_with (Dir.path dir) in
         String.Set.fold (Dir.files dir) ~init:acc ~f:(fun fn acc ->
           Path.Set.add acc (Path.relative path fn)))
+
+let project t path =
+  match Path.explode path with
+  | Some ("_build" :: "install" :: _) ->
+    (* Ideally, we would like to map these to projects via package they belong to,
+       but that's not trivial since file-to-package mapping is computed later, so
+       for now we settle on single-target partitions *)
+    None
+  | Some ("_build" :: ".misc" :: _) ->
+    (* We don't want these targets to belong to <anonymous .> partition *)
+    None
+  | Some ("_build" :: _ :: ".ppx" :: _) ->
+    (* We don't want PPX targets to belong to <anonymous .> partition *)
+    None
+  | Some ("_opam" :: _) ->
+    (* We don't want local OPAM switches to belong to <anonymous .> partition *)
+    None
+  | _ ->
+    let path =
+      Path.drop_optional_alias_dir path
+      |> Path.drop_optional_build_context
+    in
+    let rec proj_of_first_existing_parent path =
+      match find_dir t path with
+      | Some dir -> Some (Dir.project dir)
+      | None ->
+        (match Path.parent path with
+         | Some parent -> proj_of_first_existing_parent parent
+         | None -> None)
+    in
+    proj_of_first_existing_parent path

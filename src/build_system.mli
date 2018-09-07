@@ -17,6 +17,7 @@ type hook =
     tree. *)
 val create
   :  contexts:Context.t list
+  -> projects:Dune_project.t list
   -> file_tree:File_tree.t
   -> hook:(hook -> unit)
   -> t
@@ -192,9 +193,6 @@ val do_build
 
 (** {2 Other queries} *)
 
-(** File for the [(universe)] dependency. *)
-val universe_file : Path.t
-
 val is_target : t -> Path.t -> bool
 
 (** Return all the library dependencies (as written by the user)
@@ -202,14 +200,14 @@ val is_target : t -> Path.t -> bool
 val all_lib_deps
   :  t
   -> request:(unit, unit) Build.t
-  -> Lib_deps_info.t Path.Map.t
+  -> Lib_deps_info.t Path.Map.t Fiber.t
 
 (** Return all the library dependencies required to build this
    request, by context name *)
 val all_lib_deps_by_context
   :  t
   -> request:(unit, unit) Build.t
-  -> Lib_deps_info.t String.Map.t
+  -> Lib_deps_info.t String.Map.t Fiber.t
 
 (** List of all buildable targets *)
 val all_targets : t -> Path.t list

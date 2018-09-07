@@ -36,5 +36,8 @@ val trace : t -> Env.t -> (string * string) list
 (** Return the path dependencies only. *)
 val paths : t -> Path.Set.t
 
+(** Return environment variable dependencies only. *)
+val env_vars : t -> String.Set.t
+
 (** Serializer. *)
 val to_sexp : t -> Dsexp.t

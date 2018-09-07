@@ -651,6 +651,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name partition-cache)
+ (deps (package dune) (source_tree test-cases/partition-cache))
+ (action
+  (chdir
+   test-cases/partition-cache
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name path-variables)
  (deps (package dune) (source_tree test-cases/path-variables))
  (action
@@ -940,6 +948,7 @@
   (alias odoc-unique-mlds)
   (alias output-obj)
   (alias package-dep)
+  (alias partition-cache)
   (alias path-variables)
   (alias ppx-rewriter)
   (alias preprocess-with-action)
@@ -1039,6 +1048,7 @@
   (alias ocamllex-jbuild)
   (alias output-obj)
   (alias package-dep)
+  (alias partition-cache)
   (alias path-variables)
   (alias preprocess-with-action)
   (alias project-root)

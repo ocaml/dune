@@ -916,7 +916,7 @@ module Library = struct
     ; no_keep_locs             : bool
     ; dune_version             : Syntax.Version.t
     ; virtual_modules          : Ordered_set_lang.t option
-    ; implements               : (Loc.t * string) option
+    ; implements               : (Loc.t * Lib_name.t) option
     }
 
   let dparse =
@@ -958,7 +958,7 @@ module Library = struct
        and implements =
          field_o "implements" (
            Syntax.since Variants.syntax (0, 1)
-           >>= fun () -> (located string))
+           >>= fun () -> located Lib_name.dparse)
        in
        let name =
          let open Syntax.Version.Infix in
@@ -993,7 +993,8 @@ module Library = struct
          of_sexp_errorf
            (Ordered_set_lang.loc virtual_modules
            |> Option.value_exn)
-           "A library cannot be both virtual and implement %s" impl);
+           "A library cannot be both virtual and implement %s"
+           (Lib_name.to_string impl));
        begin match virtual_modules, wrapped, implements with
        | Some _, Some (loc, Wrapped.Simple false), _ ->
          of_sexp_error loc "A virtual library must be wrapped"
@@ -1052,6 +1053,9 @@ module Library = struct
     | Some p -> snd p.name
 
   let is_virtual t = Option.is_some t.virtual_modules
+
+  let main_module_name t =
+    Module.Name.of_local_lib_name t.name
 end
 
 module Install_conf = struct

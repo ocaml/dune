@@ -189,6 +189,14 @@ specific sub-directory and its children by using:
 -  ``dune build @foo/bar/runtest``
 -  ``dune runtest foo/bar``
 
+Watch mode
+==========
+
+The ``dune build`` and ``dune runtest`` commands support a ``-w`` (or
+``--watch``) flag. When it is passed, dune will perform the action as usual, and
+then wait for file changes and rebuild (or rerun the tests). This feature
+requires ``inotifywait`` or ``fswatch`` to be installed.
+
 Launching the Toplevel (REPL)
 =============================
 

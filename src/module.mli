@@ -24,6 +24,8 @@ module Name : sig
   module Top_closure : Top_closure.S with type key := t
 
   module Infix : Comparable.OPS with type t = t
+
+  val of_local_lib_name : Lib_name.Local.t -> t
 end
 
 module Syntax : sig
@@ -85,6 +87,7 @@ val cmti_file : t -> obj_dir:Path.t -> Path.t
 val iter : t -> f:(Ml_kind.t -> File.t -> unit) -> unit
 
 val has_impl : t -> bool
+val has_intf : t -> bool
 
 (** Prefix the object name with the library name. *)
 val with_wrapper : t -> libname:Lib_name.Local.t -> t

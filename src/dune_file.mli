@@ -250,7 +250,7 @@ module Library : sig
     ; no_keep_locs             : bool
     ; dune_version             : Syntax.Version.t
     ; virtual_modules          : Ordered_set_lang.t option
-    ; implements               : (Loc.t * string) option
+    ; implements               : (Loc.t * Lib_name.t) option
     }
 
   val has_stubs : t -> bool
@@ -259,6 +259,7 @@ module Library : sig
   val archive : t -> dir:Path.t -> ext:string -> Path.t
   val best_name : t -> Lib_name.t
   val is_virtual : t -> bool
+  val main_module_name : t -> Module.Name.t
 end
 
 module Install_conf : sig

@@ -82,6 +82,7 @@ type t =
   ; pps               : t list Or_exn.t
   ; resolved_selects  : Resolved_select.t list
   ; user_written_deps : Dune_file.Lib_deps.t
+  ; implements        : t Or_exn.t option
   ; (* This is mutable to avoid this error:
 
        {[
@@ -188,6 +189,8 @@ let plugins      t = t.info.plugins
 let jsoo_runtime t = t.info.jsoo_runtime
 let unique_id    t = t.unique_id
 
+let virtual_     t = t.info.virtual_
+
 let dune_version t = t.info.dune_version
 
 let src_dir t = t.info.src_dir
@@ -196,6 +199,11 @@ let obj_dir t = t.info.obj_dir
 let is_local t = Path.is_managed t.info.obj_dir
 
 let status t = t.info.status
+
+let foreign_objects t ~ext =
+  let obj_dir = obj_dir t in
+  List.map t.info.foreign_objects ~f:(fun p ->
+    Path.extend_basename (Path.relative obj_dir p) ~suffix:ext)
 
 let package t =
   match t.info.status with
@@ -492,11 +500,33 @@ let rec instantiate db name (info : Lib_info.t) ~stack ~hidden =
 
   let allow_private_deps = Lib_info.Status.is_private info.status in
 
+  let resolve (loc, name) =
+    resolve_dep db (name : Lib_name.t) ~allow_private_deps ~loc ~stack in
+
+  let implements = Option.map info.implements ~f:resolve in
+
   let requires, pps, resolved_selects =
     resolve_user_deps db info.requires ~allow_private_deps ~pps:info.pps ~stack
   in
+  let requires =
+    match implements with
+    | None -> requires
+    | Some implements ->
+      implements >>= fun implements ->
+      implements.requires >>= fun irequires ->
+      requires >>| fun requires ->
+      L.remove_dups (List.rev_append irequires requires)
+  in
   let ppx_runtime_deps =
-    resolve_simple_deps db info.ppx_runtime_deps ~allow_private_deps ~stack
+    let ppx_rd =
+      resolve_simple_deps db info.ppx_runtime_deps ~allow_private_deps ~stack in
+    match implements with
+    | None -> ppx_rd
+    | Some implements ->
+      implements >>= fun implements ->
+      implements.ppx_runtime_deps >>= fun ippx_rd ->
+      ppx_rd >>| fun ppx_rd ->
+      L.remove_dups (List.rev_append ippx_rd ppx_rd)
   in
   let map_error x =
     Result.map_error x ~f:(fun e ->
@@ -504,8 +534,6 @@ let rec instantiate db name (info : Lib_info.t) ~stack ~hidden =
   in
   let requires         = map_error requires         in
   let ppx_runtime_deps = map_error ppx_runtime_deps in
-  let resolve (loc, name) =
-    resolve_dep db (name : Lib_name.t) ~allow_private_deps ~loc ~stack in
   let t =
     { info
     ; name
@@ -516,6 +544,7 @@ let rec instantiate db name (info : Lib_info.t) ~stack ~hidden =
     ; resolved_selects
     ; user_written_deps = Lib_info.user_written_deps info
     ; sub_systems       = Sub_system_name.Map.empty
+    ; implements
     }
   in
   t.sub_systems <-
@@ -702,7 +731,7 @@ and resolve_user_deps db deps ~allow_private_deps ~pps ~stack =
   in
   (deps, pps, resolved_selects)
 
-  and closure_with_overlap_checks db ts ~stack =
+and closure_with_overlap_checks db ts ~stack =
   let visited = ref Lib_name.Map.empty in
   let res = ref [] in
   let orig_stack = stack in

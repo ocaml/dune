@@ -161,7 +161,8 @@ module Gen(P : Params) = struct
       List.concat
         [ List.concat_map modules ~f:(fun m ->
             List.concat
-              [ [ Module.cm_file_unsafe m ~obj_dir Cmi ]
+              [ if_ (Module.is_public m)
+                  [ Module.cm_file_unsafe m ~obj_dir Cmi ]
               ; if_ (native && Module.has_impl m)
                   [ Module.cm_file_unsafe m ~obj_dir Cmx ]
               ; if_ (native && Module.has_impl m && virtual_library)
@@ -171,7 +172,8 @@ module Gen(P : Params) = struct
                   | None -> None
                   | Some f -> Some f.path)
               ])
-        ; if_ (byte && not virtual_library) [ Library.archive ~dir lib ~ext:".cma" ]
+        ; if_ (byte && not virtual_library)
+            [ Library.archive ~dir lib ~ext:".cma" ]
         ; if virtual_library then (
             (lib.c_names @ lib.cxx_names)
             |> List.map ~f:(fun (_, c) -> Path.relative dir (c ^ ext_obj))

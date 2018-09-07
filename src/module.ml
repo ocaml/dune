@@ -28,6 +28,9 @@ module Name = struct
   module Map = String.Map
   module Top_closure = Top_closure.String
   module Infix = Comparable.Operators(T)
+
+  let of_local_lib_name s =
+    of_string (Lib_name.Local.to_string s)
 end
 
 module Syntax = struct
@@ -97,6 +100,7 @@ let make ?impl ?intf ?obj_name name =
 let real_unit_name t = Name.of_string (Filename.basename t.obj_name)
 
 let has_impl t = Option.is_some t.impl
+let has_intf t = Option.is_some t.intf
 
 let file t (kind : Ml_kind.t) =
   let file =

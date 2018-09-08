@@ -272,6 +272,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name github1231)
+ (deps (package dune) (source_tree test-cases/github1231))
+ (action
+  (chdir
+   test-cases/github1231
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name github20)
  (deps (package dune) (source_tree test-cases/github20))
  (action
@@ -888,6 +896,7 @@
   (alias gen-opam-install-file)
   (alias github1019)
   (alias github1099)
+  (alias github1231)
   (alias github20)
   (alias github24)
   (alias github25)
@@ -992,6 +1001,7 @@
   (alias force-test)
   (alias github1019)
   (alias github1099)
+  (alias github1231)
   (alias github20)
   (alias github24)
   (alias github25)

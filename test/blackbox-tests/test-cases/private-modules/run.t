@@ -4,14 +4,12 @@
   private module bar
 
   $ dune build --root inaccessible-in-deps 2>&1 | grep -v "cd _build"
-  Info: creating file dune-project with this contents: (lang dune 1.2)
   Entering directory 'inaccessible-in-deps'
         ocamlc .foo.eobjs/foo.{cmi,cmo,cmt} (exit 2)
   File "foo.ml", line 1, characters 0-5:
   Error: Unbound module X
 
   $ dune build --root excluded-from-install-file
-  Info: creating file dune-project with this contents: (lang dune 1.2)
   Entering directory 'excluded-from-install-file'
   lib: [
     "_build/install/default/lib/lib/META" {"META"}

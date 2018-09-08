@@ -960,7 +960,10 @@ module Library = struct
          field_o "implements" (
            Syntax.since Variants.syntax (0, 1)
            >>= fun () -> located Lib_name.dparse)
-       and private_modules = modules_field "private_modules"
+       and private_modules =
+         field "private_modules" ~default:Ordered_set_lang.standard (
+           Syntax.since Stanza.syntax (1, 2)
+           >>= fun () -> Ordered_set_lang.dparse)
        in
        let name =
          let open Syntax.Version.Infix in

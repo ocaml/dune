@@ -70,23 +70,36 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
                 ~name:(Lib.name vlib) in
             (vlib_modules, virtual_modules)
         in
-        let (missing_modules, impl_modules_with_intf) =
-          Module.Name.Map.foldi virtual_modules ~init:([], [])
-            ~f:(fun m _ (mms, ims) ->
+        let (missing_modules, impl_modules_with_intf, private_virtual_modules) =
+          Module.Name.Map.foldi virtual_modules ~init:([], [], [])
+            ~f:(fun m _ (mms, ims, pvms) ->
               match Module.Name.Map.find modules m with
-              | None -> (m :: mms, ims)
+              | None -> (m :: mms, ims, pvms)
               | Some m ->
-                ( mms
-                , if Module.has_intf m then
+                let ims =
+                  if Module.has_intf m then
                     Module.name m :: ims
                   else
                     ims
-                ))
+                in
+                let pvms =
+                  if Module.is_public m then
+                    pvms
+                  else
+                    Module.name m :: pvms
+                in
+                (mms, ims, pvms))
         in
         let module_list ms =
           List.map ms ~f:Module.Name.to_string
           |> String.concat ~sep:"\n"
         in
+        if private_virtual_modules <> [] then begin
+          (* The loc here will never be none as we've some private modules *)
+          Errors.fail_opt (Ordered_set_lang.loc lib.private_modules)
+            "These private modules cannot be private:\n%s"
+            (module_list private_virtual_modules)
+        end;
         if missing_modules <> [] then begin
           Errors.fail lib.buildable.loc
             "Library %a cannot implement %a because the following \

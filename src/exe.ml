@@ -48,6 +48,7 @@ module Linkage = struct
     ; flags
     }
 
+  let  c_flags = ["-output-obj"]    
   let  o_flags = ["-output-complete-obj"]
   let so_flags_windows = o_flags
   let so_flags_unix    = ["-output-complete-obj"; "-runtime-variant"; "_pic"]
@@ -78,7 +79,7 @@ module Linkage = struct
     in
     let flags =
       match m.kind with
-      | C -> o_flags
+      | C -> c_flags
       | Exe ->
         begin
           match wanted_mode, real_mode with

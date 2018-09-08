@@ -149,12 +149,11 @@ module Gen(P : Install_rules.Params) = struct
      | Tests                                                           |
      +-----------------------------------------------------------------+ *)
 
-  let tests_rules (t : Tests.t) ~dir ~scope ~dir_contents
-        ~dir_kind ~src_dir =
+  let tests_rules (t : Tests.t) ~dir ~scope ~dir_contents ~dir_kind =
     let test_kind (loc, name) =
-      let sources = SC.source_files sctx ~src_path:src_dir in
+      let files = Dir_contents.text_files dir_contents in
       let expected_basename = name ^ ".expected" in
-      if String.Set.mem sources expected_basename then
+      if String.Set.mem files expected_basename then
         `Expect
           { Action.Unexpanded.Diff.
             file1 = String_with_vars.make_text loc expected_basename
@@ -244,8 +243,7 @@ module Gen(P : Install_rules.Params) = struct
             loop stanzas merlins cctxs
           | Tests tests ->
             let cctx, merlin =
-              tests_rules tests ~dir ~scope ~src_dir
-                ~dir_contents ~dir_kind:kind
+              tests_rules tests ~dir ~scope ~dir_contents ~dir_kind:kind
             in
             loop stanzas (merlin :: merlins)
               ((tests.exes.buildable.loc, cctx) :: cctxs)

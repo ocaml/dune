@@ -124,7 +124,7 @@ let obj_file t ~obj_dir ~ext =
   let base =
     match t.visibility with
     | Public -> obj_dir
-    | Private -> Path.relative obj_dir ".private"
+    | Private -> Utils.library_private_obj_dir ~obj_dir
   in
   Path.relative base (t.obj_name ^ ext)
 

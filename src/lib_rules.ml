@@ -346,7 +346,7 @@ module Gen (P : Install_rules.Params) = struct
   let library_rules (lib : Library.t) ~dir_contents ~dir ~scope
         ~compile_info ~dir_kind =
     let obj_dir = Utils.library_object_directory ~dir lib.name in
-    let private_obj_dir = Path.relative obj_dir ".private" in
+    let private_obj_dir = Utils.library_private_obj_dir ~obj_dir in
     let requires = Lib.Compile.requires compile_info in
     let dep_kind =
       if lib.optional then Lib_deps_info.Kind.Optional else Required

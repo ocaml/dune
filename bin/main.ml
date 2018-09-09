@@ -90,25 +90,13 @@ let set_common c ~targets =
   set_common_other c ~targets
 
 let restore_cwd_and_execve common prog argv env =
-  let env = Env.to_unix env in
   let prog =
     if Filename.is_relative prog then
       Filename.concat common.root prog
     else
       prog
   in
-  Sys.chdir initial_cwd;
-  if Sys.win32 then
-    let pid = Unix.create_process_env prog argv env
-                Unix.stdin Unix.stdout Unix.stderr
-    in
-    match snd (Unix.waitpid [] pid) with
-    | WEXITED   0 -> ()
-    | WEXITED   n -> exit n
-    | WSIGNALED _ -> exit 255
-    | WSTOPPED  _ -> assert false
-  else
-    Unix.execve prog argv env
+  Proc.restore_cwd_and_execve prog argv ~env
 
 module Main = struct
   include Dune.Main
@@ -1367,7 +1355,7 @@ let exec =
       raise Already_reported
     | Some real_prog, _ ->
       let real_prog = Path.to_string real_prog     in
-      let argv      = Array.of_list (prog :: args) in
+      let argv      = prog :: args in
       restore_cwd_and_execve common real_prog argv context.env
   in
   (term, Term.info "exec" ~doc ~man)
@@ -1478,7 +1466,7 @@ let utop =
        (setup.build_system, context, Path.to_string target)
       ) |> Scheduler.go ~log ~common in
     Build_system.finalize build_system;
-    restore_cwd_and_execve common utop_path (Array.of_list (utop_path :: args))
+    restore_cwd_and_execve common utop_path (utop_path :: args)
       context.env
   in
   (term, Term.info "utop" ~doc ~man )

@@ -1,6 +1,3 @@
-open! Stdune
-open Import
-
 module Var = struct
   type t = string
   let compare =
@@ -33,7 +30,7 @@ let to_unix t =
   | None ->
     let res =
       Map.foldi ~init:[] ~f:(fun k v acc ->
-        (sprintf "%s=%s" k v)::acc
+        (Printf.sprintf "%s=%s" k v)::acc
       ) t.vars
       |> Array.of_list in
     t.unix <- Some res;

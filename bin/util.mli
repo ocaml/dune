@@ -7,3 +7,5 @@ val parse_alias
   -> string list * Path.t * string
 
 val check_path : Context.t list -> Path.t -> unit
+
+val find_root : unit -> string * string list

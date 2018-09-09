@@ -1,6 +1,6 @@
 (library
  (name      main)
- (modules   main)
+ (modules   (:standard \ main_dune main_jbuilder))
  (libraries unix dune cmdliner)
  (preprocess (action (run src/let-syntax/pp.exe %{input-file}))))
 

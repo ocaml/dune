@@ -1,95 +1,17 @@
 open! Stdune
 open Dune
 open Import
-open Cmdliner
+module Term = Cmdliner.Term
+module Manpage = Cmdliner.Manpage
 open Fiber.O
 
 (* Things in src/ don't depend on cmdliner to speed up the
    bootstrap, so we set this reference here *)
 let () = suggest_function := Cmdliner_suggest.value
 
-module Arg = struct
-  include Arg
-
-  let package_name =
-    Arg.conv ((fun p -> Ok (Package.Name.of_string p)), Package.Name.pp)
-
-  module Path : sig
-    type t
-    val path : t -> Path.t
-    val arg : t -> string
-
-    val conv : t conv
-  end = struct
-    type t = string
-
-    let path p = Path.of_filename_relative_to_initial_cwd p
-    let arg s = s
-
-    let conv = Arg.conv ((fun p -> Ok p), Format.pp_print_string)
-  end
-
-  let path = Path.conv
-
-  [@@@ocaml.warning "-32"]
-  let file = path
-end
-
 module Let_syntax = Cmdliner.Term
 
-type common =
-  { debug_dep_path        : bool
-  ; debug_findlib         : bool
-  ; debug_backtraces      : bool
-  ; profile               : string option
-  ; workspace_file        : Arg.Path.t option
-  ; root                  : string
-  ; target_prefix         : string
-  ; only_packages         : Package.Name.Set.t option
-  ; capture_outputs       : bool
-  ; x                     : string option
-  ; diff_command          : string option
-  ; auto_promote          : bool
-  ; force                 : bool
-  ; ignore_promoted_rules : bool
-  ; build_dir             : string
-  ; (* Original arguments for the external-lib-deps hint *)
-    orig_args             : string list
-  ; config                : Config.t
-  ; default_target        : string
-  (* For build & runtest only *)
-  ; watch : bool
-  }
-
-let prefix_target common s = common.target_prefix ^ s
-
-let set_dirs c =
-  if c.root <> Filename.current_dir_name then
-    Sys.chdir c.root;
-  Path.set_root (Path.External.cwd ());
-  Path.set_build_dir (Path.Kind.of_string c.build_dir)
-
-let set_common_other c ~targets =
-  Clflags.debug_dep_path := c.debug_dep_path;
-  Clflags.debug_findlib := c.debug_findlib;
-  Clflags.debug_backtraces := c.debug_backtraces;
-  Clflags.capture_outputs := c.capture_outputs;
-  Clflags.diff_command := c.diff_command;
-  Clflags.auto_promote := c.auto_promote;
-  Clflags.force := c.force;
-  Clflags.watch := c.watch;
-  Clflags.external_lib_deps_hint :=
-    List.concat
-      [ ["dune"; "external-lib-deps"; "--missing"]
-      ; c.orig_args
-      ; targets
-      ]
-
-let set_common c ~targets =
-  set_dirs c;
-  set_common_other c ~targets
-
-let restore_cwd_and_execve common prog argv env =
+let restore_cwd_and_execve (common : Common.t) prog argv env =
   let prog =
     if Filename.is_relative prog then
       Filename.concat common.root prog
@@ -101,7 +23,7 @@ let restore_cwd_and_execve common prog argv env =
 module Main = struct
   include Dune.Main
 
-  let setup ~log ?external_lib_deps_mode common =
+  let setup ~log ?external_lib_deps_mode (common : Common.t) =
     setup
       ~log
       ?workspace_file:(Option.map ~f:Arg.Path.path common.workspace_file)
@@ -117,7 +39,7 @@ end
 module Log = struct
   include Dune.Log
 
-  let create common =
+  let create (common : Common.t) =
     Log.create ~display:common.config.display ()
 end
 
@@ -157,7 +79,7 @@ let watch_changes () =
 module Scheduler = struct
   include Dune.Scheduler
 
-  let go ?log ~common fiber =
+  let go ?log ~(common : Common.t) fiber =
     let fiber =
       Main.set_concurrency ?log common.config
       >>= fun () ->
@@ -165,7 +87,7 @@ module Scheduler = struct
     in
     Scheduler.go ?log ~config:common.config fiber
 
-  let poll ?log ?cache_init ~common ~init ~once ~finally () =
+  let poll ?log ?cache_init ~(common : Common.t) ~init ~once ~finally () =
     let init () =
       Main.set_concurrency ?log common.config
       >>= fun () ->
@@ -182,42 +104,9 @@ module Scheduler = struct
       ()
 end
 
-type target =
-  | File      of Path.t
-  | Alias     of Path.t
-  | Alias_rec of Path.t
-
-let parse_alias path ~contexts =
-  let dir = Path.parent_exn path in
-  let name = Path.basename path in
-  match Path.extract_build_context dir with
-  | None -> (contexts, dir, name)
-  | Some ("install", _) ->
-    die "Invalid alias: %s.\n\
-         There are no aliases in %s."
-      (Path.to_string_maybe_quoted Path.(relative build_dir "install"))
-      (Path.to_string_maybe_quoted path)
-  | Some (ctx, dir) -> ([ctx], dir, name)
-
-let request_of_targets (setup : Main.setup) targets =
-  let open Build.O in
-  let contexts = List.map setup.contexts ~f:(fun c -> c.Context.name) in
-  List.fold_left targets ~init:(Build.return ()) ~f:(fun acc target ->
-    acc >>>
-    match target with
-    | File path -> Build.path path
-    | Alias path ->
-      let contexts, dir, name = parse_alias path ~contexts in
-      Build_system.Alias.dep_multi_contexts ~dir ~name
-        ~file_tree:setup.file_tree ~contexts
-    | Alias_rec path ->
-      let contexts, dir, name = parse_alias path ~contexts in
-      Build_system.Alias.dep_rec_multi_contexts ~dir ~name
-        ~file_tree:setup.file_tree ~contexts)
-
 let do_build (setup : Main.setup) targets =
   Build_system.do_build setup.build_system
-    ~request:(request_of_targets setup targets)
+    ~request:(Target.request setup targets)
 
 let find_root () =
   let cwd = Sys.getcwd () in
@@ -581,7 +470,8 @@ let common =
     Config.adapt_display config
       ~output_is_a_tty:(Lazy.force Colors.stderr_supports_colors)
   in
-  { debug_dep_path
+  { Common.
+    debug_dep_path
   ; debug_findlib
   ; debug_backtraces
   ; profile
@@ -615,7 +505,7 @@ let installed_libraries =
            & info ["na"; "not-available"]
                ~doc:"List libraries that are not available and explain why")
     in
-    set_common common ~targets:[];
+    Common.set_common common ~targets:[];
     let env = Main.setup_env ~capture_outputs:common.capture_outputs in
     Scheduler.go ~log:(Log.create common) ~common
       (Context.create
@@ -664,142 +554,6 @@ let resolve_package_install setup pkg =
          (Package.Name.Map.keys setup.packages
           |> List.map ~f:Package.Name.to_string))
 
-let target_hint (setup : Main.setup) path =
-  assert (Path.is_managed path);
-  let sub_dir = Option.value ~default:path (Path.parent path) in
-  let candidates = Build_system.all_targets setup.build_system in
-  let candidates =
-    if Path.is_in_build_dir path then
-      candidates
-    else
-      List.map candidates ~f:(fun path ->
-        match Path.extract_build_context path with
-        | None -> path
-        | Some (_, path) -> path)
-  in
-  let candidates =
-    (* Only suggest hints for the basename, otherwise it's slow when there are lots of
-       files *)
-    List.filter_map candidates ~f:(fun path ->
-      if Path.equal (Path.parent_exn path) sub_dir then
-        Some (Path.to_string path)
-      else
-        None)
-  in
-  let candidates = String.Set.of_list candidates |> String.Set.to_list in
-  hint (Path.to_string path) candidates
-
-let check_path contexts =
-  let contexts =
-    String.Set.of_list (List.map contexts ~f:(fun c -> c.Context.name))
-  in
-  fun path ->
-    let internal path =
-      die "This path is internal to dune: %s"
-        (Path.to_string_maybe_quoted path)
-    in
-    if Path.is_in_build_dir path then
-      match Path.extract_build_context path with
-      | None -> internal path
-      | Some (name, _) ->
-        if name = "" || name.[0] = '.' then internal path;
-        if not (name = "install" || String.Set.mem contexts name) then
-          die "%s refers to unknown build context: %s%s"
-            (Path.to_string_maybe_quoted path)
-            name
-            (hint name (String.Set.to_list contexts))
-
-type resolve_input =
-  | Path of Path.t
-  | String of string
-
-let resolve_path path ~(setup : Main.setup) =
-  check_path setup.contexts path;
-  let can't_build path =
-    Error (path, target_hint setup path);
-  in
-  if not (Path.is_managed path) then
-    Ok [File path]
-  else if Path.is_in_build_dir path then begin
-    if Build_system.is_target setup.build_system path then
-      Ok [File path]
-    else
-      can't_build path
-  end else
-    match
-      List.filter_map setup.contexts ~f:(fun ctx ->
-        let path = Path.append ctx.Context.build_dir path in
-        if Build_system.is_target setup.build_system path then
-          Some (File path)
-        else
-          None)
-    with
-    | [] -> can't_build path
-    | l  -> Ok l
-
-let resolve_target common ~(setup : Main.setup) s =
-  if String.is_prefix s ~prefix:"@" then begin
-    let pos, is_rec =
-      if String.length s >= 2 && s.[1] = '@' then
-        (2, false)
-      else
-        (1, true)
-    in
-    let s = String.drop s pos in
-    let path = Path.relative Path.root (prefix_target common s) in
-    check_path setup.contexts path;
-    if Path.is_root path then
-      die "@@ on the command line must be followed by a valid alias name"
-    else if not (Path.is_managed path) then
-      die "@@ on the command line must be followed by a relative path"
-    else
-      Ok [if is_rec then Alias_rec path else Alias path]
-  end else begin
-    let path = Path.relative Path.root (prefix_target common s) in
-    resolve_path path ~setup
-  end
-
-let log_targets ~log targets =
-  List.iter targets ~f:(function
-    | File path ->
-      Log.info log @@ "- " ^ (Path.to_string path)
-    | Alias path ->
-      Log.info log @@ "- alias " ^
-                      (Path.to_string_maybe_quoted path)
-    | Alias_rec path ->
-      Log.info log @@ "- recursive alias " ^
-                      (Path.to_string_maybe_quoted path));
-  flush stdout
-
-let resolve_targets_mixed ~log common (setup : Main.setup) user_targets =
-  match user_targets with
-  | [] -> []
-  | _ ->
-    let targets =
-      List.map user_targets ~f:(function
-        | String s -> resolve_target common ~setup s
-        | Path p -> resolve_path p ~setup) in
-    if common.config.display = Verbose then begin
-      Log.info log "Actual targets:";
-      List.concat_map targets ~f:(function
-        | Ok targets -> targets
-        | Error _ -> [])
-      |> log_targets ~log
-    end;
-    targets
-
-let resolve_targets ~log common (setup : Main.setup) user_targets =
-  List.map ~f:(fun s -> String s) user_targets
-  |> resolve_targets_mixed ~log common setup
-
-let resolve_targets_exn ~log common setup user_targets =
-  resolve_targets ~log common setup user_targets
-  |> List.concat_map ~f:(function
-    | Error (path, hint) ->
-      die "Don't know how to build %a%s" Path.pp path hint
-    | Ok targets ->
-      targets)
-
 let run_build_command ~log ~common ~targets =
   let init () = Fiber.return () in
   let once () =
@@ -837,9 +591,9 @@ let build_targets =
     let%map common = common
     and targets = Arg.(value & pos_all string [default_target] name_)
     in
-    set_common common ~targets;
+    Common.set_common common ~targets;
     let log = Log.create common in
-    let targets setup = resolve_targets_exn ~log common setup targets in
+    let targets setup = Target.resolve_targets_exn ~log common setup targets in
     run_build_command ~log ~common ~targets
   in
   (term, Term.info "build" ~doc ~man)
@@ -858,18 +612,18 @@ let runtest =
     let%map common = common
     and dirs = Arg.(value & pos_all string ["."] name_)
     in
-    set_common common
+    Common.set_common common
       ~targets:(List.map dirs ~f:(function
         | "" | "." -> "@runtest"
         | dir when dir.[String.length dir - 1] = '/' -> sprintf "@%sruntest" dir
         | dir -> sprintf "@%s/runtest" dir));
     let log = Log.create common in
     let targets (setup : Main.setup) =
-      let check_path = check_path setup.contexts in
+      let check_path = Util.check_path setup.contexts in
       List.map dirs ~f:(fun dir ->
-        let dir = Path.(relative root) (prefix_target common dir) in
+        let dir = Path.(relative root) (Common.prefix_target common dir) in
         check_path dir;
-        Alias_rec (Path.relative dir "runtest"))
+        Target.Alias_rec (Path.relative dir "runtest"))
     in
     run_build_command ~log ~common ~targets
   in
@@ -886,7 +640,7 @@ let clean =
   let term =
     let%map common = common
     in
-    set_common common ~targets:[];
+    Common.set_common common ~targets:[];
     Build_system.files_in_source_tree_to_delete ()
     |> Path.Set.iter ~f:Path.unlink_no_err;
     Path.rm_rf Path.build_dir
@@ -923,13 +677,13 @@ let external_lib_deps =
            & pos_all string []
            & Arg.info [] ~docv:"TARGET")
     in
-    set_common common ~targets:[];
+    Common.set_common common ~targets:[];
     let log = Log.create common in
     Scheduler.go ~log ~common
       (Main.setup ~log common ~external_lib_deps_mode:true
        >>= fun setup ->
-       let targets = resolve_targets_exn ~log common setup targets in
-       let request = request_of_targets setup targets in
+       let targets = Target.resolve_targets_exn ~log common setup targets in
+       let request = Target.request setup targets in
        let failure =
          String.Map.foldi ~init:false
            (Build_system.all_lib_deps_by_context setup.build_system ~request)
@@ -1040,7 +794,7 @@ let rules =
            & Arg.info [] ~docv:"TARGET")
     in
     let out = Option.map ~f:Path.of_string out in
-    set_common common ~targets;
+    Common.set_common common ~targets;
     let log = Log.create common in
     Scheduler.go ~log ~common
       (Main.setup ~log common ~external_lib_deps_mode:true
@@ -1048,7 +802,9 @@ let rules =
        let request =
          match targets with
          | [] -> Build.paths (Build_system.all_targets setup.build_system)
-         | _  -> resolve_targets_exn ~log common setup targets |> request_of_targets setup
+         | _  ->
+           Target.resolve_targets_exn ~log common setup targets
+           |> Target.request setup
        in
        Build_system.build_rules setup.build_system ~request ~recursive >>= fun rules ->
        let sexp_of_action action =
@@ -1146,7 +902,7 @@ let install_uninstall ~what =
     and pkgs =
       Arg.(value & pos_all package_name [] name_)
     in
-    set_common common ~targets:[];
+    Common.set_common common ~targets:[];
     let log = Log.create common in
     Scheduler.go ~log ~common
       (Main.setup ~log common >>= fun setup ->
@@ -1285,7 +1041,7 @@ let exec =
       Arg.(value
            & pos_right 0 string [] (Arg.info [] ~docv:"ARGS"))
     in
-    set_common common ~targets:[prog];
+    Common.set_common common ~targets:[prog];
     let log = Log.create common in
     let setup = Scheduler.go ~log ~common (Main.setup ~log common) in
     let context = Main.find_context_exn setup ~name:context in
@@ -1296,7 +1052,7 @@ let exec =
       | In_path ->
         `Search prog
       | Relative_to_current_dir ->
-        let prog = prefix_target common prog in
+        let prog = Common.prefix_target common prog in
         `This_rel (Path.relative context.build_dir prog) in
     let targets = lazy (
       (match prog_where with
@@ -1310,8 +1066,8 @@ let exec =
          [p]
        | `This_abs _ ->
          [])
-      |> List.map ~f:(fun p -> Path p)
-      |> resolve_targets_mixed ~log common setup
+      |> List.map ~f:(fun p -> Target.Path p)
+      |> Target.resolve_targets_mixed ~log common setup
       |> List.concat_map ~f:(function
         | Ok targets -> targets
         | Error _ -> [])
@@ -1418,7 +1174,7 @@ let subst =
              & info ["n"; "name"] ~docv:"NAME"
                  ~doc:"Use this project name instead of detecting it.")
       in
-      set_common common ~targets:[];
+      Common.set_common common ~targets:[];
       Scheduler.go ~common (Watermarks.subst ?name ())
     | Dune ->
       let%map () = Term.const () in
@@ -1445,19 +1201,19 @@ let utop =
     and ctx_name = context_arg ~doc:{|Select context where to build/run utop.|}
     and args = Arg.(value & pos_right 0 string [] (Arg.info [] ~docv:"ARGS"))
     in
-    set_dirs common;
+    Common.set_dirs common;
     let dir = Path.of_string dir in
     if not (Path.is_directory dir) then
       die "cannot find directory: %a" Path.pp dir;
     let utop_target = dir |> Utop.utop_exe |> Path.to_string in
-    set_common_other common ~targets:[utop_target];
+    Common.set_common_other common ~targets:[utop_target];
     let log = Log.create common in
     let (build_system, context, utop_path) =
       (Main.setup ~log common >>= fun setup ->
        let context = Main.find_context_exn setup ~name:ctx_name in
        let setup = { setup with contexts = [context] } in
        let target =
-         match resolve_target common ~setup utop_target with
+         match Target.resolve_target common ~setup utop_target with
          | Error _ -> die "no library is defined in %a" Path.pp dir
          | Ok [File target] -> target
          | Ok _ -> assert false
@@ -1490,7 +1246,7 @@ let promote =
     and files =
       Arg.(value & pos_all Cmdliner.Arg.file [] & info [] ~docv:"FILE")
     in
-    set_common common ~targets:[];
+    Common.set_common common ~targets:[];
     (* We load and restore the digest cache as we need to clear the
        cache for promoted files, due to issues on OSX. *)
     Utils.Cached_digest.load ();
@@ -1500,7 +1256,7 @@ let promote =
        | _ ->
          let files =
            List.map files
-             ~f:(fun fn -> Path.of_string (prefix_target common fn))
+             ~f:(fun fn -> Path.of_string (Common.prefix_target common fn))
          in
          let on_missing fn =
            Format.eprintf "@{<warning>Warning@}: Nothing to promote for %a.@."
@@ -1522,12 +1278,12 @@ let printenv =
     let%map common = common
     and dir = Arg.(value & pos 0 dir "" & info [] ~docv:"PATH")
     in
-    set_common common ~targets:[];
+    Common.set_common common ~targets:[];
     let log = Log.create common in
     Scheduler.go ~log ~common (
       Main.setup ~log common >>= fun setup ->
       let dir = Path.of_string dir in
-      check_path setup.contexts dir;
+      Util.check_path setup.contexts dir;
       let request =
         let dump sctx ~dir =
           let open Build.O in

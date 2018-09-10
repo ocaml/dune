@@ -56,6 +56,9 @@ next
 
 - Make test stanzas honor the -p flag. (#1236, fix #1231, @emillon)
 
+- Test stanzas take an optional (action) field to customize how they run (#1248,
+  #1195, @emillon)
+
 1.1.1 (08/08/2018)
 ------------------
 

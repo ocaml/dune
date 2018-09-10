@@ -9,12 +9,19 @@ module SC = Super_context
 let interpret_locks sctx ~dir ~scope locks =
   List.map locks ~f:(SC.expand_vars_path sctx ~dir ~scope)
 
-let user_rule sctx ~dir ~scope (rule : Rule.t) =
+let dep_bindings ~extra_bindings deps =
+  let base = Pform.Map.of_bindings deps in
+  match extra_bindings with
+  | Some bindings -> Pform.Map.superpose base bindings
+  | None -> base
+
+let user_rule sctx ?extra_bindings ~dir ~scope (rule : Rule.t) =
   let targets : SC.Action.targets =
     match rule.targets with
     | Infer -> Infer
     | Static fns -> Static (List.map fns ~f:(Path.relative dir))
   in
+  let bindings = dep_bindings ~extra_bindings rule.deps in
   SC.add_rule_get_targets sctx ~mode:rule.mode ~loc:rule.loc
     ~locks:(interpret_locks sctx ~dir ~scope rule.locks)
     (SC.Deps.interpret_named sctx ~scope ~dir rule.deps
@@ -24,7 +31,7 @@ let user_rule sctx ~dir ~scope (rule : Rule.t) =
        (snd rule.action)
        ~loc:(fst rule.action)
        ~dir
-       ~bindings:(Pform.Map.of_bindings rule.deps)
+       ~bindings
        ~dep_kind:Required
        ~targets
        ~targets_dir:dir
@@ -76,7 +83,7 @@ let add_alias sctx ~dir ~name ~stamp ~loc ?(locks=[]) build =
   let alias = Build_system.Alias.make name ~dir in
   SC.add_alias_action sctx alias ~loc ~locks ~stamp build
 
-let alias sctx ~dir ~scope (alias_conf : Alias_conf.t) =
+let alias sctx ?extra_bindings ~dir ~scope (alias_conf : Alias_conf.t) =
   let enabled =
     match alias_conf.enabled_if with
     | None -> true
@@ -110,13 +117,14 @@ let alias sctx ~dir ~scope (alias_conf : Alias_conf.t) =
        match alias_conf.action with
        | None -> Build.progn []
        | Some (loc, action) ->
+         let bindings = dep_bindings ~extra_bindings alias_conf.deps in
          SC.Action.run
            sctx
            action
            ~loc
            ~dir
            ~dep_kind:Required
-           ~bindings:(Pform.Map.of_bindings alias_conf.deps)
+           ~bindings
            ~targets:Alias
            ~targets_dir:dir
            ~scope)

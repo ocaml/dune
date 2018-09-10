@@ -1695,6 +1695,7 @@ module Tests = struct
     ; package    : Package.t option
     ; deps       : Dep_conf.t Bindings.t
     ; enabled_if : String_with_vars.t Blang.t option
+    ; action     : Action.Unexpanded.t option
     }
 
   let gen_parse names =
@@ -1709,6 +1710,7 @@ module Tests = struct
        and deps =
          field "deps" (Bindings.dparse Dep_conf.dparse) ~default:Bindings.empty
        and enabled_if = field_o "enabled_if" Blang.dparse
+       and action = field_o "action" Action.Unexpanded.dparse
        in
        { exes =
            { Executables.
@@ -1722,6 +1724,7 @@ module Tests = struct
        ; package
        ; deps
        ; enabled_if
+       ; action
        })
 
   let multi = gen_parse (field "names" (list (located string)))

@@ -12,6 +12,92 @@ type running_job =
   ; ivar : Unix.process_status Fiber.Ivar.t
   }
 
+module Watch : sig
+  (** Has to be called before any other operations. *)
+  val init : unit -> unit
+
+  (** A blocking wait, returns only when some change was detected. *)
+  val wait_block : unit -> unit
+
+end = struct
+  let command =
+    lazy (
+      let excludes = [ {|/_build|}
+                     ; {|/\..+|}
+                     ; {|~$|}
+                     ; {|/#[^#]*#$|}
+                     ; {|4913|} (* https://github.com/neovim/neovim/issues/3460 *)
+                     ]
+      in
+      let path = Path.to_string_maybe_quoted Path.root in
+      match Bin.which "inotifywait" with
+      | Some inotifywait ->
+        (* On Linux, use inotifywait. *)
+        let excludes = String.concat ~sep:"|" excludes in
+        inotifywait, ["-r"; path; "--exclude"; excludes; "-e"; "close_write"; "-e"; "delete"; "-m"; "-q"]
+      | None ->
+        (* On all other platforms, try to use fswatch. fswatch's event
+           filtering is not reliable (at least on Linux), so don't try to
+           use it, instead act on all events. *)
+        (match Bin.which "fswatch" with
+         | Some fswatch ->
+           let excludes = List.concat_map excludes ~f:(fun x -> ["--exclude"; x]) in
+           fswatch, ["-r"; path] @ excludes
+         | None ->
+           die "@{<error>Error@}: fswatch (or inotifywait) was not found. \
+                One of them needs to be installed for watch mode to work.\n"))
+
+  let pipe_r = ref None
+  let pid = ref None
+
+  let init () =
+    let prog, args = Lazy.force command in
+    let prog = Path.to_absolute_filename prog in
+    let args = Array.of_list (prog :: args) in
+    let r, w = Unix.pipe () in
+    pid := Some (Unix.create_process
+                   prog
+                   args
+                   (Unix.descr_of_in_channel stdin)
+                   w
+                   (Unix.descr_of_out_channel stderr));
+    Unix.set_nonblock r;
+    pipe_r := Some r;
+    let cleanup () =
+      match !pid with
+      | Some pid ->
+        Unix.kill pid Sys.sigterm;
+        ignore (Unix.waitpid [] pid)
+      | None -> ()
+    in
+    at_exit cleanup
+
+  let buf_size = 65536
+  let buf = Bytes.create buf_size
+
+  let rec clear_pipe pipe_r =
+    try
+      let bytes_read = Unix.read pipe_r buf 0 buf_size in
+      if bytes_read = 0 then begin
+        die "Watch pipe closed unexpectedly" end
+      else begin
+        clear_pipe pipe_r
+      end
+    with Unix.Unix_error (err, _, _) as exn ->
+      if (err = Unix.EAGAIN) || (err = Unix.EWOULDBLOCK) then
+        ()
+      else reraise exn
+
+  let wait_block () =
+    match !pipe_r with
+    | Some r ->
+      let forever = -1.0 in
+      let _ = Unix.select [r] [] [] forever in
+      clear_pipe r;
+    | None ->
+      die "Watch.wait_block() called without prior initialization"
+end
+
 module Running_jobs : sig
   val add : running_job -> unit
   val wait : unit -> running_job * Unix.process_status
@@ -97,9 +183,31 @@ let print t msg =
 
 let t_var : t Fiber.Var.t = Fiber.Var.create ()
 
+let update_status_line t =
+  if t.display = Progress then begin
+    match t.gen_status_line () with
+    | { message = None; _ } ->
+      if t.status_line <> "" then begin
+        hide_status_line t.status_line;
+        flush stderr
+      end
+    | { message = Some status_line; show_jobs } ->
+      let status_line =
+        if show_jobs then
+          sprintf "%s (jobs: %u)" status_line (Running_jobs.count ())
+        else
+          status_line
+      in
+      hide_status_line t.status_line;
+      show_status_line   status_line;
+      flush stderr;
+      t.status_line <- status_line;
+  end
+
 let set_status_line_generator f =
   Fiber.Var.get_exn t_var >>| fun t ->
-  t.gen_status_line <- f
+  t.gen_status_line <- f;
+  update_status_line t
 
 let set_concurrency n =
   Fiber.Var.get_exn t_var >>| fun t ->
@@ -139,25 +247,7 @@ let rec go_rec t =
     flush stderr;
     Fiber.return ()
   end else begin
-    if t.display = Progress then begin
-      match t.gen_status_line () with
-      | { message = None; _ } ->
-        if t.status_line <> "" then begin
-          hide_status_line t.status_line;
-          flush stderr
-        end
-      | { message = Some status_line; show_jobs } ->
-        let status_line =
-          if show_jobs then
-            sprintf "%s (jobs: %u)" status_line count
-          else
-            status_line
-        in
-        hide_status_line t.status_line;
-        show_status_line   status_line;
-        flush stderr;
-        t.status_line <- status_line;
-    end;
+    update_status_line t;
     let job, status = Running_jobs.wait () in
     Fiber.Ivar.fill job.ivar status
     >>= fun () ->
@@ -223,18 +313,8 @@ let go ?log ?config ?gen_status_line fiber =
   let t = prepare ?log ?config ?gen_status_line () in
   run t (fun () -> fiber)
 
-(** Fiber loop looks like this (if cache_init is true):
-              /------------------\
-              v                  |
-    init --> once --> finally  --/
-
-    The result of [~init] gets passed in every call to [~once] and [~finally].
-    If cache_init is false, every iteration reexecutes init instead of
-    saving it.
-
-    [~watch] should return after the first change to any of the project files.
-*)
-let poll ?log ?config ?(cache_init=true) ~init ~once ~finally ~watch () =
+let poll ?log ?config ?(cache_init=true) ~init ~once ~finally () =
+  Watch.init ();
   let t = prepare ?log ?config () in
   let wait_success () =
     let old_generator = t.gen_status_line in
@@ -244,8 +324,7 @@ let poll ?log ?config ?(cache_init=true) ~init ~once ~finally ~watch () =
          ; show_jobs = false
          })
     >>= fun () ->
-    watch ()
-    >>= fun _ ->
+    Watch.wait_block ();
     set_status_line_generator old_generator
   in
   let wait_failure () =
@@ -256,11 +335,8 @@ let poll ?log ?config ?(cache_init=true) ~init ~once ~finally ~watch () =
          ; show_jobs = false
          })
     >>= fun () ->
-    (if Promotion.were_files_promoted () then
-       Fiber.return ()
-     else
-       watch ())
-    >>= fun _ ->
+    if not (Promotion.were_files_promoted ()) then
+      Watch.wait_block ();
     set_status_line_generator old_generator
   in
   let rec main_loop () =

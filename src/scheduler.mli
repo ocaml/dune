@@ -24,8 +24,6 @@ val go
 
     If cache_init is false, every iteration reexecutes init instead of
     saving it.
-
-    [~watch] should return after the first change to any of the project files.
 *)
 val poll
   :  ?log:Log.t
@@ -34,7 +32,6 @@ val poll
   -> init:(unit -> unit Fiber.t)
   -> once:(unit -> unit Fiber.t)
   -> finally:(unit -> unit Fiber.t)
-  -> watch:(unit -> unit Fiber.t)
   -> unit
   -> 'a
 

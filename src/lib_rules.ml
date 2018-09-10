@@ -396,7 +396,7 @@ module Gen (P : Install_rules.Params) = struct
         ~dir
         ~dir_kind
         ~obj_dir
-        ~private_obj_dir:private_obj_dir
+        ~private_obj_dir
         ~modules
         ?alias_module
         ?lib_interface_module

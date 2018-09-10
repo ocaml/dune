@@ -28,5 +28,5 @@
       ocamlopt generated.exe
      generated generated.output
             sh (internal) (exit 1)
-  (cd _build/default && /usr/bin/sh -c 'false generated.expected generated.output')
+  (cd _build/default && /usr/sh -c 'false generated.expected generated.output')
   [1]

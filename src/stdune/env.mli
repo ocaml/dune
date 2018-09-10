@@ -1,5 +1,3 @@
-open! Stdune
-
 module Var : sig
   type t = string
   val compare : t -> t -> Ordering.t

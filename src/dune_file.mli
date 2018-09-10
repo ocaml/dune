@@ -385,6 +385,7 @@ module Tests : sig
     ; package    : Package.t option
     ; deps       : Dep_conf.t Bindings.t
     ; enabled_if : String_with_vars.t Blang.t option
+    ; action     : Action.Unexpanded.t option
     }
 end
 

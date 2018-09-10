@@ -27,6 +27,8 @@ module Fmt        = Fmt
 module Interned   = Interned
 module Univ_map   = Univ_map
 module Loc        = Loc
+module Env        = Env
+module Proc       = Proc
 
 external reraise : exn -> _ = "%reraise"
 

@@ -65,6 +65,10 @@ module Visibility = struct
   let to_sexp = function
     | Public -> Sexp.To_sexp.string "public"
     | Private -> Sexp.To_sexp.string "private"
+
+  let is_public = function
+    | Public -> true
+    | Private -> false
 end
 
 type t =
@@ -204,10 +208,7 @@ module Name_map = struct
   type nonrec t = t Name.Map.t
 end
 
-let is_public t =
-  match (t.visibility : Visibility.t) with
-  | Public -> true
-  | Private -> false
+let is_public t = Visibility.is_public t.visibility
 
 let set_private t =
   { t with visibility = Visibility.Private }

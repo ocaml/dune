@@ -743,7 +743,7 @@ to ``expect_test.expected``.
 The optional fields that are supported are a subset of the alias and executables
 fields. In particular, all fields except for ``public_names`` are supported from
 the `executables stanza <shared-exe-fields>`_. Alias fields apart from ``name``
-and ``action`` are allowed.
+are allowed.
 
 test
 ----

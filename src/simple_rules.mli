@@ -7,6 +7,7 @@ open Dune_file
 (** Interpret a [(rule ...)] stanza and return the targets it produces. *)
 val user_rule
   :  Super_context.t
+  -> ?extra_bindings:Pform.Map.t
   -> dir:Path.t
   -> scope:Scope.t
   -> Rule.t
@@ -24,6 +25,7 @@ val copy_files
 (** Interpret an [(alias ...)] stanza. *)
 val alias
   :  Super_context.t
+  -> ?extra_bindings:Pform.Map.t
   -> dir:Path.t
   -> scope:Scope.t
   -> Alias_conf.t

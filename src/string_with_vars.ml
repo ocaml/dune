@@ -8,14 +8,27 @@ type t =
   ; syntax_version : Syntax.Version.t
   }
 
-let make_text ?(quoted=false) loc s =
+let make ?(quoted=false) loc part =
   { template =
-      { parts = [Text s]
+      { parts = [part]
       ; quoted
       ; loc
       }
   ; syntax_version = (1, 0)
   }
+
+let make_text ?quoted loc s =
+  make ?quoted loc (Text s)
+
+let make_var ?quoted loc name =
+  let var =
+    { loc
+    ; name
+    ; payload = None
+    ; syntax = Percent
+  }
+  in
+  make ?quoted loc (Var var)
 
 let literal ~quoted ~loc s =
   { parts = [Text s]

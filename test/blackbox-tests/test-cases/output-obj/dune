@@ -55,10 +55,10 @@
 
 ;; This fails in travis.  Can't seem to find libcamlrun (see pull request #1229
 ;; for discussion)
-(alias
- (name runtest)
- (action
-  (run ./static.bc.c.exe)))
+;(alias
+; (name runtest)
+; (action
+;  (run ./static.bc.c.exe)))
 
 (alias
  (name   runtest)

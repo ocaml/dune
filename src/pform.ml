@@ -137,6 +137,7 @@ module Map = struct
       ; "profile"        , string context.profile
       ; "workspace_root" , values [Value.Dir context.build_dir]
       ; "ROOT"           , renamed_in ~version:(1, 0) ~new_name:"workspace_root"
+      ; "name"           , since ~version:(1, 2) (Var.Values [Value.String context.name])
       ]
     in
     { vars =

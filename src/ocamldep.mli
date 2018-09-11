@@ -39,7 +39,7 @@ val rules_for_auxiliary_module
   -> Dep_graphs.t
 
 (** Get the dep graph for an already defined library *)
-val rules_for_lib
+val graph_of_remote_lib
   :  obj_dir:Path.t
   -> modules:Module.t Module.Name.Map.t
   -> Dep_graph.t Ml_kind.Dict.t

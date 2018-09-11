@@ -11,7 +11,8 @@ module Implementation = struct
   let dep_graph { vlib ; vlib_modules ; impl = _ }
         (impl_graph : Ocamldep.Dep_graphs.t) =
     let obj_dir = Lib.obj_dir vlib in
-    let vlib_graph = Ocamldep.rules_for_lib ~obj_dir ~modules:vlib_modules in
+    let vlib_graph =
+      Ocamldep.graph_of_remote_lib ~obj_dir ~modules:vlib_modules in
     Ocamldep.Dep_graphs.merge_for_impl ~vlib:vlib_graph ~impl:impl_graph
 
   let virtual_modules t = t.vlib_modules

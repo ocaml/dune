@@ -276,7 +276,7 @@ let rules cctx = rules_generic cctx ~modules:(CC.modules cctx)
 let rules_for_auxiliary_module cctx (m : Module.t) =
   rules_generic cctx ~modules:(Module.Name.Map.singleton m.name m)
 
-let rules_for_lib ~obj_dir ~modules =
+let graph_of_remote_lib ~obj_dir ~modules =
   let deps_of unit ~ml_kind =
     match Module.file unit ml_kind with
     | None -> Build.return []

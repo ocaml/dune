@@ -8,11 +8,11 @@ type t =
 
 let dparse =
   let open Dsexp.Of_sexp in
-  enum
-    [ "c"             , C
-    ; "exe"           , Exe
-    ; "object"        , Object
-    ; "shared_object" , Shared_object
+  sum
+    [ "c"             , Syntax.since Stanza.syntax (1, 2) >>> return C
+    ; "exe"           , return Exe
+    ; "object"        , return Object
+    ; "shared_object" , return Shared_object
     ]
 
 let to_string = function

@@ -200,6 +200,10 @@ let wrapped_compat t =
       Some (
         { syntax = OCaml
         ; path =
+            (* Option.value_exn cannot fail because we disallow wrapped
+               compatibility mode for virtual libraries. That means none of the
+               modules are implementing a virtual module, and therefore all have
+               a source dir *)
             Path.L.relative (Option.value_exn (src_dir t))
               [ ".wrapped_compat"
               ; Name.to_string t.name ^ ".ml-gen"

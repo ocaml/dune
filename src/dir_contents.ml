@@ -14,6 +14,7 @@ module Modules_field_evaluator : sig
     :  modules:Module.Name_map.t
     -> buildable:Buildable.t
     -> virtual_modules:Ordered_set_lang.t option
+    -> private_modules:Ordered_set_lang.t
     -> t
 end = struct
   type t =
@@ -55,25 +56,29 @@ end = struct
 
   module Module_errors = struct
     type t =
-      { missing_modules    : (Loc.t * Module.t) list
-      ; missing_intf_only  : (Loc.t * Module.t) list
-      ; virt_intf_overlaps : (Loc.t * Module.t) list
+      { missing_modules      : (Loc.t * Module.t) list
+      ; missing_intf_only    : (Loc.t * Module.t) list
+      ; virt_intf_overlaps   : (Loc.t * Module.t) list
+      ; private_virt_modules : (Loc.t * Module.t) list
       }
 
     let empty =
-      { missing_modules    = []
-      ; missing_intf_only  = []
-      ; virt_intf_overlaps = []
+      { missing_modules      = []
+      ; missing_intf_only    = []
+      ; virt_intf_overlaps   = []
+      ; private_virt_modules = []
       }
 
-    let map { missing_modules ; missing_intf_only ; virt_intf_overlaps } ~f =
+    let map { missing_modules ; missing_intf_only ; virt_intf_overlaps
+            ; private_virt_modules } ~f =
       { missing_modules = f missing_modules
       ; missing_intf_only = f missing_intf_only
       ; virt_intf_overlaps = f virt_intf_overlaps
+      ; private_virt_modules = f private_virt_modules
       }
   end
 
-  let find_errors ~modules ~intf_only ~virtual_modules =
+  let find_errors ~modules ~intf_only ~virtual_modules ~private_modules =
     let missing_modules =
       Module.Name.Map.fold intf_only ~init:[]
         ~f:(fun ((_, (module_ : Module.t)) as module_loc) acc ->
@@ -89,6 +94,10 @@ end = struct
             { acc with missing_modules = module_loc :: acc.missing_modules }
           else if Module.Name.Map.mem intf_only (Module.name module_) then
             { acc with virt_intf_overlaps = module_loc :: acc.virt_intf_overlaps
+            }
+          else if Module.Name.Map.mem private_modules (Module.name module_) then
+            { acc with private_virt_modules =
+                         module_loc :: acc.private_virt_modules
             }
           else
             acc)
@@ -112,12 +121,13 @@ end = struct
     |> Module_errors.map ~f:List.rev
 
   let check_invalid_module_listing ~(buildable : Buildable.t) ~intf_only
-        ~modules ~virtual_modules =
+        ~modules ~virtual_modules ~private_modules =
     let { Module_errors.
           missing_modules
         ; missing_intf_only
         ; virt_intf_overlaps
-        } = find_errors ~modules ~intf_only ~virtual_modules
+        ; private_virt_modules
+        } = find_errors ~modules ~intf_only ~virtual_modules ~private_modules
     in
     let uncapitalized =
       List.map ~f:(fun (_, m) -> Module.name m |> Module.Name.uncapitalize) in
@@ -126,6 +136,14 @@ end = struct
         Module.name m |> Module.Name.to_string |> sprintf "- %s") modules
       |> String.concat ~sep:"\n"
     in
+    begin match private_virt_modules with
+    | [] -> ()
+    | (loc, _) :: _ ->
+      Errors.fail loc
+        "The following modules are declared as virtual and private: \
+        \n%s\nThis is not possible."
+        (line_list private_virt_modules)
+    end;
     begin match virt_intf_overlaps with
     | [] -> ()
     | (loc, _) :: _ ->
@@ -171,7 +189,8 @@ end = struct
     end
 
   let eval ~modules:(all_modules : Module.Name_map.t)
-        ~buildable:(conf : Buildable.t) ~virtual_modules =
+        ~buildable:(conf : Buildable.t) ~virtual_modules
+        ~private_modules =
     let (fake_modules, modules) =
       eval ~standard:all_modules ~all_modules conf.modules in
     let (fake_modules, intf_only) =
@@ -193,14 +212,27 @@ end = struct
         , virtual_modules
         )
     in
+    let (fake_modules, private_modules) =
+      let (fake_modules', private_modules) =
+        eval ~standard:Module.Name.Map.empty ~all_modules private_modules
+      in
+      ( Module.Name.Map.superpose fake_modules' fake_modules
+      , private_modules
+      )
+    in
     Module.Name.Map.iteri fake_modules ~f:(fun m loc ->
       Errors.warn loc "Module %a is excluded but it doesn't exist."
         Module.Name.pp m
     );
     check_invalid_module_listing ~buildable:conf ~intf_only
-      ~modules ~virtual_modules;
+      ~modules ~virtual_modules ~private_modules;
     let drop_locs = Module.Name.Map.map ~f:snd in
-    { all_modules = drop_locs modules
+    { all_modules =
+        Module.Name.Map.map modules ~f:(fun (_, m) ->
+          if Module.Name.Map.mem private_modules (Module.name m) then
+            Module.set_private m
+          else
+            m)
     ; virtual_modules = drop_locs virtual_modules
     }
 end
@@ -247,7 +279,11 @@ end = struct
       | Yes_with_transition _ ->
         ( wrap_modules modules
         , Module.Name.Map.remove modules main_module_name
-          |> Module.Name.Map.map ~f:Module.wrapped_compat
+          |> Module.Name.Map.filter_map ~f:(fun m ->
+            if Module.is_public m then
+              Some (Module.wrapped_compat m)
+            else
+              None)
         )
     in
     let alias_module =
@@ -263,12 +299,14 @@ end = struct
            https://github.com/ocaml/dune/issues/567 *)
         Some
           (Module.make (Module.Name.add_suffix main_module_name "__")
+             ~visibility:Public
              ~impl:(Module.File.make OCaml
                       (Path.relative dir (sprintf "%s__.ml-gen" lib_name)))
              ~obj_name:(lib_name ^ "__"))
       else
         Some
           (Module.make main_module_name
+             ~visibility:Public
              ~impl:(Module.File.make OCaml
                       (Path.relative dir (lib_name ^ ".ml-gen")))
              ~obj_name:lib_name)
@@ -427,7 +465,7 @@ let modules_of_files ~dir ~files =
   let impls = parse_one_set impl_files in
   let intfs = parse_one_set intf_files in
   Module.Name.Map.merge impls intfs ~f:(fun name impl intf ->
-    Some (Module.make name ?impl ?intf))
+    Some (Module.make name ~visibility:Public ?impl ?intf))
 
 let build_modules_map (d : Super_context.Dir_with_jbuild.t) ~modules =
   let libs, exes =
@@ -438,19 +476,24 @@ let build_modules_map (d : Super_context.Dir_with_jbuild.t) ~modules =
               all_modules = modules
             ; virtual_modules
             } =
-          Modules_field_evaluator.eval ~modules ~buildable:lib.buildable
+          Modules_field_evaluator.eval ~modules
+            ~buildable:lib.buildable
             ~virtual_modules:lib.virtual_modules
+            ~private_modules:lib.private_modules
         in
         Left ( lib
-             , Library_modules.make lib ~dir:d.ctx_dir modules ~virtual_modules)
+             , Library_modules.make lib ~dir:d.ctx_dir modules ~virtual_modules
+             )
       | Executables exes
       | Tests { exes; _} ->
         let { Modules_field_evaluator.
               all_modules = modules
             ; virtual_modules = _
             } =
-          Modules_field_evaluator.eval ~modules ~buildable:exes.buildable
+          Modules_field_evaluator.eval ~modules
+            ~buildable:exes.buildable
             ~virtual_modules:None
+            ~private_modules:Ordered_set_lang.standard
         in
         Right (exes, modules)
       | _ -> Skip)

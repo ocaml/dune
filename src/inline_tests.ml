@@ -173,6 +173,7 @@ include Sub_system.Register_end_point(
              ~impl:{ path   = Path.relative inline_test_dir main_module_filename
                    ; syntax = OCaml
                    }
+             ~visibility:Public
              ~obj_name:name)
       in
 

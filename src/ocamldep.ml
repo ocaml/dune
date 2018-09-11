@@ -89,18 +89,12 @@ module Dep_graphs = struct
                 | Some d, None
                 | None, Some d -> Some d
                 | Some v, Some i ->
-                  Some (v &&& i >>^ (fun (v, i) ->
-                    Module.Name.Map.merge
-                      (Module.Name_map.of_list_exn v)
-                      (Module.Name_map.of_list_exn i)
-                      ~f:(fun _ vlib_module impl_module ->
-                        match vlib_module, impl_module with
-                        | None, None -> assert false
-                        | Some m, None -> Some (Module.remove_files m)
-                        | None, Some impl
-                        | Some _, Some impl -> Some impl)
-                    |> Module.Name.Map.values
-                  ))
+                  (* only happens when the alias module is virtual *)
+                  Some (
+                    v &&& i >>^ (fun (v, i) ->
+                      assert (v = []);
+                      i)
+                  )
               )
         }
     (* implementations don't introduce interface deps b/c they don't have

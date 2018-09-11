@@ -28,6 +28,7 @@ val create
   -> ?preprocessing        : Preprocessing.t
   -> ?no_keep_locs         : bool
   -> opaque                : bool
+  -> ?stdlib               : Dune_file.Library.Stdlib.t
   -> unit
   -> t
 
@@ -50,5 +51,6 @@ val includes             : t -> string list Arg_spec.t Cm_kind.Dict.t
 val preprocessing        : t -> Preprocessing.t
 val no_keep_locs         : t -> bool
 val opaque               : t -> bool
+val stdlib               : t -> Dune_file.Library.Stdlib.t option
 
 val for_wrapped_compat : t -> Module.t Module.Name.Map.t -> t

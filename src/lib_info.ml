@@ -88,7 +88,7 @@ let user_written_deps t =
     ~init:(Deps.to_lib_deps t.requires)
     ~f:(fun acc s -> Dune_file.Lib_dep.Direct s :: acc)
 
-let of_library_stanza ~dir ~ext_lib (conf : Dune_file.Library.t) =
+let of_library_stanza ~dir ~ext_lib ~ext_obj (conf : Dune_file.Library.t) =
   let (_loc, lib_name) = conf.name in
   let archive_file ext =
     Path.relative dir (Lib_name.Local.to_string lib_name ^ ext) in
@@ -120,6 +120,21 @@ let of_library_stanza ~dir ~ext_lib (conf : Dune_file.Library.t) =
      }
     , List.map (conf.c_names @ conf.cxx_names) ~f:snd
     )
+  in
+  let foreign_archives =
+    match conf.stdlib with
+    | Some { exit_module = Some m; _ } ->
+      let obj_name = Path.relative dir (Module.Name.uncapitalize m) in
+      { Mode.Dict.
+        byte =
+          Path.extend_basename obj_name ~suffix:".cmo" ::
+          foreign_archives.byte
+      ; native =
+          Path.extend_basename obj_name ~suffix:".cmx" ::
+          Path.extend_basename obj_name ~suffix:ext_obj ::
+          foreign_archives.native
+      }
+    | _ -> foreign_archives
   in
   let virtual_ =
     Option.map conf.virtual_modules ~f:(fun _ ->

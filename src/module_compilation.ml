@@ -31,11 +31,13 @@ end
 let force_read_cmi source_file =
   [ "-intf-suffix"; Path.extension source_file ]
 
-let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs ~cm_kind (m : Module.t) =
+let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
+      ~cm_kind (m : Module.t) =
   let sctx     = CC.super_context cctx in
   let dir      = CC.dir           cctx in
   let obj_dir  = CC.obj_dir       cctx in
   let ctx      = SC.context       sctx in
+  let stdlib   = CC.stdlib        cctx in
   let private_obj_dir = CC.private_obj_dir cctx in
   Option.iter (Mode.of_cm_kind cm_kind |> Context.compiler ctx) ~f:(fun compiler ->
     Option.iter (Module.cm_source m cm_kind) ~f:(fun src ->
@@ -135,6 +137,21 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs ~cm_kind (m : Module.t) =
               | None -> S []
               | Some (m : Module.t) ->
                 As ["-open"; Module.Name.to_string m.name])
+           ; As (match stdlib with
+               | None -> []
+               | Some { Dune_file.Library.Stdlib.modules_before_stdlib; _ } ->
+                 let flags = ["-nopervasives"; "-nostdlib"] in
+                 if Module.Name.Set.mem modules_before_stdlib m.name then
+                   flags
+                 else
+                   match CC.lib_interface_module cctx with
+                   | None -> flags
+                   | Some m' ->
+                     (* See comment in [Dune_file.Stdlib]. *)
+                     if m.name = m'.name then
+                       "-w" :: "-49" :: flags
+                     else
+                       "-open" :: Module.Name.to_string m'.name :: flags)
            ; A "-o"; Target dst
            ; A "-c"; Ml_kind.flag ml_kind; Dep src
            ; Hidden_targets hidden_targets

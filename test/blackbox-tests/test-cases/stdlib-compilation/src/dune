@@ -1,0 +1,6 @@
+(library
+ (public_name stdlib)
+ (stdlib
+  (modules_before_stdlib CamlinternalFormatBasics)
+  (exit_module std_exit)
+  (internal_modules Camlinternal*)))

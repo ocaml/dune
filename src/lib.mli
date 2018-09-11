@@ -229,6 +229,7 @@ module DB : sig
   val create_from_library_stanzas
     :  ?parent:t
     -> ext_lib:string
+    -> ext_obj:string
     -> (Path.t * Dune_file.Library.t) list
     -> t
 

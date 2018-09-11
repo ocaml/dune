@@ -402,6 +402,7 @@ module Gen (P : Install_rules.Params) = struct
         ~preprocessing:pp
         ~no_keep_locs:lib.no_keep_locs
         ~opaque
+        ?stdlib:lib.stdlib
     in
 
     let dynlink =
@@ -418,8 +419,9 @@ module Gen (P : Install_rules.Params) = struct
 
     Module_compilation.build_modules cctx ~js_of_ocaml ~dynlink ~dep_graphs;
 
-    Option.iter (Lib_modules.alias lib_modules)
-      ~f:(build_alias_module ~modules ~cctx ~dynlink ~js_of_ocaml);
+    if Option.is_none lib.stdlib then
+      Option.iter (Lib_modules.alias lib_modules)
+        ~f:(build_alias_module ~modules ~cctx ~dynlink ~js_of_ocaml);
 
     let vlib_stubs_o_files =
       match impl with
@@ -433,6 +435,23 @@ module Gen (P : Install_rules.Params) = struct
 
     if not (Library.is_virtual lib) then begin
       (let modules =
+         match lib.stdlib with
+         | Some { exit_module = Some name; _ } -> begin
+             match Module.Name.Map.find modules name with
+             | None -> modules
+             | Some m ->
+               (* These files needs to be alongside stdlib.cma as the
+                  compiler implicitly adds this module. *)
+               List.iter [".cmx"; ".cmo"; ctx.ext_obj] ~f:(fun ext ->
+                 let src = Module.obj_file m ~obj_dir ~ext in
+                 let dst = Module.obj_file m ~obj_dir:dir ~ext in
+                 SC.add_rule sctx (Build.copy ~src ~dst));
+               Module.Name.Map.remove modules name
+           end
+         | _ ->
+           modules
+       in
+       let modules =
          Module.Name.Map.fold modules ~init:[] ~f:(fun m acc ->
            if Module.has_impl m then
              m :: acc
@@ -459,7 +478,7 @@ module Gen (P : Install_rules.Params) = struct
         Js_of_ocaml_rules.build_cm cctx ~js_of_ocaml ~src ~target);
 
       if Dynlink_supported.By_the_os.get ctx.natdynlink_supported then
-      build_shared lib ~dir ~flags ~ctx;
+        build_shared lib ~dir ~flags ~ctx;
     end;
 
     Odoc.setup_library_odoc_rules lib ~requires ~modules ~dep_graphs ~scope;

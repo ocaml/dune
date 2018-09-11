@@ -66,6 +66,7 @@ type t = private
 val of_library_stanza
   : dir:Path.t
   -> ext_lib:string
+  -> ext_obj:string
   -> Dune_file.Library.t
   -> t
 

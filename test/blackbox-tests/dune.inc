@@ -473,6 +473,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name lint)
+ (deps (package dune) (source_tree test-cases/lint))
+ (action
+  (chdir
+   test-cases/lint
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name loop)
  (deps (package dune) (source_tree test-cases/loop))
  (action
@@ -927,6 +935,7 @@
   (alias intf-only)
   (alias lib-available)
   (alias link-deps)
+  (alias lint)
   (alias loop)
   (alias macro-expand-error)
   (alias menhir)
@@ -1031,6 +1040,7 @@
   (alias intf-only)
   (alias lib-available)
   (alias link-deps)
+  (alias lint)
   (alias loop)
   (alias macro-expand-error)
   (alias merlin-tests)

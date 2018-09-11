@@ -14,9 +14,6 @@ type running_job =
   }
 
 module Watch : sig
-  (** Has to be called before any other operations. *)
-  val init : unit -> unit
-
   (** Runs forever, communicating () events to channel when changes are detected. *)
   val wait_to_chan : unit Event.channel -> 'a
 
@@ -48,30 +45,6 @@ end = struct
            die "@{<error>Error@}: fswatch (or inotifywait) was not found. \
                 One of them needs to be installed for watch mode to work.\n"))
 
-  let pipe_r = ref None
-  let pid = ref None
-
-  let init () =
-    let prog, args = Lazy.force command in
-    let prog = Path.to_absolute_filename prog in
-    let args = Array.of_list (prog :: args) in
-    let r, w = Unix.pipe () in
-    pid := Some (Unix.create_process
-                   prog
-                   args
-                   (Unix.descr_of_in_channel stdin)
-                   w
-                   (Unix.descr_of_out_channel stderr));
-    pipe_r := Some r;
-    let cleanup () =
-      match !pid with
-      | Some pid ->
-        Unix.kill pid Sys.sigterm;
-        ignore (Unix.waitpid [] pid)
-      | None -> ()
-    in
-    at_exit cleanup
-
   let buf_size = 65536
   let buf = Bytes.create buf_size
 
@@ -84,16 +57,31 @@ end = struct
     if bytes_read = 0 then
       die "Watch pipe closed unexpectedly"
 
-  let rec wait_to_chan chan =
-    match !pipe_r with
-    | Some r ->
+  let wait_to_chan chan =
+    let prog, args = Lazy.force command in
+    let prog = Path.to_absolute_filename prog in
+    let args = Array.of_list (prog :: args) in
+    let r, w = Unix.pipe () in
+    let pid = Unix.create_process
+                prog
+                args
+                (Unix.descr_of_in_channel stdin)
+                w
+                (Unix.descr_of_out_channel stderr)
+    in
+    let cleanup () =
+      Unix.kill pid Sys.sigterm;
+      ignore (Unix.waitpid [] pid)
+    in
+    at_exit cleanup;
+    let rec loop () =
       let forever = -1.0 in
       let _ = Unix.select [r] [] [] forever in
       clear_pipe r;
       Event.(sync (send chan ()));
-      wait_to_chan chan
-    | None ->
-      die "Watch.write_to_chan() called without prior initialization"
+      loop ()
+    in
+    loop ()
 end
 
 module Running_jobs : sig
@@ -269,7 +257,6 @@ let rec restart_waiting_for_available_job t =
 
 let watch_channel = lazy (
   if !Clflags.watch then begin
-    Watch.init ();
     let chan = Event.new_channel () in
     ignore (Thread.create Watch.wait_to_chan chan);
     chan
@@ -405,8 +392,7 @@ let poll ?log ?config ~once ~finally ~canceled () =
          ; show_jobs = false
          })
     >>= fun () ->
-    if not (Promotion.were_files_promoted ()) then
-      Event.(sync (receive watch_chan));
+    Event.(sync (receive watch_chan));
     set_status_line_generator old_generator
   in
   let rec main_loop () =

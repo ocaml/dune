@@ -60,12 +60,7 @@ module Scheduler = struct
       >>= fun () ->
       once ()
     in
-    Scheduler.poll
-      ?log
-      ~config:common.config
-      ~once
-      ~finally
-      ()
+    Scheduler.poll ?log ~config:common.config ~once ~finally ()
 end
 
 let do_build (setup : Main.setup) targets =

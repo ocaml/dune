@@ -36,6 +36,7 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs ~cm_kind (m : Module.t) =
   let dir      = CC.dir           cctx in
   let obj_dir  = CC.obj_dir       cctx in
   let ctx      = SC.context       sctx in
+  let private_obj_dir = CC.private_obj_dir cctx in
   Option.iter (Mode.of_cm_kind cm_kind |> Context.compiler ctx) ~f:(fun compiler ->
     Option.iter (Module.cm_source m cm_kind) ~f:(fun src ->
       let ml_kind = Cm_kind.source cm_kind in
@@ -123,6 +124,9 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs ~cm_kind (m : Module.t) =
            ; no_keep_locs
            ; cmt_args
            ; A "-I"; Path obj_dir
+           ; (match private_obj_dir with
+              | None -> S []
+              | Some private_obj_dir -> S [A "-I"; Path private_obj_dir])
            ; Cm_kind.Dict.get (CC.includes cctx) cm_kind
            ; As extra_args
            ; if dynlink || cm_kind <> Cmx then As [] else A "-nodynlink"

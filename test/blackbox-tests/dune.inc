@@ -685,6 +685,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name private-modules)
+ (deps (package dune) (source_tree test-cases/private-modules))
+ (action
+  (chdir
+   test-cases/private-modules
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name private-public-overlap)
  (deps (package dune) (source_tree test-cases/private-public-overlap))
  (action
@@ -960,6 +968,7 @@
   (alias path-variables)
   (alias ppx-rewriter)
   (alias preprocess-with-action)
+  (alias private-modules)
   (alias private-public-overlap)
   (alias project-root)
   (alias promote)
@@ -1060,6 +1069,7 @@
   (alias package-dep)
   (alias path-variables)
   (alias preprocess-with-action)
+  (alias private-modules)
   (alias project-root)
   (alias promote)
   (alias quoting)

@@ -59,17 +59,30 @@ module File = struct
       ]
 end
 
+module Visibility = struct
+  type t = Public | Private
+
+  let to_sexp = function
+    | Public -> Sexp.To_sexp.string "public"
+    | Private -> Sexp.To_sexp.string "private"
+
+  let is_public = function
+    | Public -> true
+    | Private -> false
+end
+
 type t =
-  { name     : Name.t
-  ; impl     : File.t option
-  ; intf     : File.t option
-  ; obj_name : string
-  ; pp       : (unit, string list) Build.t option
+  { name       : Name.t
+  ; impl       : File.t option
+  ; intf       : File.t option
+  ; obj_name   : string
+  ; pp         : (unit, string list) Build.t option
+  ; visibility : Visibility.t
   }
 
 let name t = t.name
 
-let make ?impl ?intf ?obj_name name =
+let make ?impl ?intf ?obj_name ~visibility name =
   let file : File.t =
     match impl, intf with
     | None, None ->
@@ -95,6 +108,7 @@ let make ?impl ?intf ?obj_name name =
   ; intf
   ; obj_name
   ; pp = None
+  ; visibility
   }
 
 let real_unit_name t = Name.of_string (Filename.basename t.obj_name)
@@ -110,7 +124,13 @@ let file t (kind : Ml_kind.t) =
   in
   Option.map file ~f:(fun f -> f.path)
 
-let obj_file t ~obj_dir ~ext = Path.relative obj_dir (t.obj_name ^ ext)
+let obj_file t ~obj_dir ~ext =
+  let base =
+    match t.visibility with
+    | Public -> obj_dir
+    | Private -> Utils.library_private_obj_dir ~obj_dir
+  in
+  Path.relative base (t.obj_name ^ ext)
 
 let cm_source t kind = file t (Cm_kind.source kind)
 
@@ -158,7 +178,7 @@ let dir t =
 
 let set_pp t pp = { t with pp }
 
-let to_sexp { name; impl; intf; obj_name ; pp } =
+let to_sexp { name; impl; intf; obj_name ; pp ; visibility } =
   let open Sexp.To_sexp in
   record
     [ "name", Name.to_sexp name
@@ -166,6 +186,7 @@ let to_sexp { name; impl; intf; obj_name ; pp } =
     ; "impl", (option File.to_sexp) impl
     ; "intf", (option File.to_sexp) intf
     ; "pp", (option string) (Option.map ~f:(fun _ -> "has pp") pp)
+    ; "visibility", Visibility.to_sexp visibility
     ]
 
 let wrapped_compat t =
@@ -186,3 +207,8 @@ let wrapped_compat t =
 module Name_map = struct
   type nonrec t = t Name.Map.t
 end
+
+let is_public t = Visibility.is_public t.visibility
+
+let set_private t =
+  { t with visibility = Private }

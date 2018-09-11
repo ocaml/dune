@@ -59,6 +59,9 @@ next
 - Test stanzas take an optional (action) field to customize how they run (#1248,
   #1195, @emillon)
 
+- Add support for private modules via the `private_modules` field (#1241, fix
+  #427, @rgrinberg)
+
 1.1.1 (08/08/2018)
 ------------------
 

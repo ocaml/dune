@@ -211,4 +211,4 @@ end
 let is_public t = Visibility.is_public t.visibility
 
 let set_private t =
-  { t with visibility = Visibility.Private }
+  { t with visibility = Private }

@@ -279,7 +279,11 @@ end = struct
       | Yes_with_transition _ ->
         ( wrap_modules modules
         , Module.Name.Map.remove modules main_module_name
-          |> Module.Name.Map.map ~f:Module.wrapped_compat
+          |> Module.Name.Map.filter_map ~f:(fun m ->
+            if Module.is_public m then
+              Some (Module.wrapped_compat m)
+            else
+              None)
         )
     in
     let alias_module =

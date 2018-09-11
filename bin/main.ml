@@ -54,17 +54,15 @@ module Scheduler = struct
     in
     Scheduler.go ?log ~config:common.config fiber
 
-  let poll ?log ?cache_init ~(common : Common.t) ~init ~once ~finally () =
-    let init () =
+  let poll ?log ~common ~once ~finally () =
+    let once () =
       Main.set_concurrency ?log common.config
       >>= fun () ->
-      init ()
+      once ()
     in
     Scheduler.poll
       ?log
       ~config:common.config
-      ?cache_init
-      ~init
       ~once
       ~finally
       ()
@@ -134,7 +132,6 @@ let resolve_package_install setup pkg =
           |> List.map ~f:Package.Name.to_string))
 
 let run_build_command ~log ~common ~targets =
-  let init () = Fiber.return () in
   let once () =
     Main.setup ~log common
     >>= fun setup ->
@@ -142,10 +139,14 @@ let run_build_command ~log ~common ~targets =
   in
   let finally () =
     Hooks.End_of_build.run ();
-    Fiber.return ()
+    Hooks.End_of_build_not_canceled.run ()
+  in
+  let canceled () =
+    Hooks.End_of_build.run ();
+    Hooks.End_of_build_not_canceled.clear ()
   in
   if common.watch then begin
-    Scheduler.poll ~cache_init:false ~log ~common ~init ~once ~finally ()
+    Scheduler.poll ~log ~common ~once ~finally ~canceled ()
   end
   else Scheduler.go ~log ~common (once ())
 

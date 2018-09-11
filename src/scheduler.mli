@@ -17,21 +17,18 @@ val go
   -> 'a Fiber.t
   -> 'a
 
-(** Runs a fiber loop that looks like this (if cache_init is true, as default):
-              /------------------\
-              v                  |
-    init --> once --> finally  --/
+(** Runs [once] in a loop, executing [finally] after every iteration,
+    even if Fiber.Never was encountered.
 
-    If cache_init is false, every iteration reexecutes init instead of
-    saving it.
+    If any source files change in the middle of iteration, it gets
+    canceled, and [canceled] is called instead of [finally].
 *)
 val poll
   :  ?log:Log.t
   -> ?config:Config.t
-  -> ?cache_init:bool
-  -> init:(unit -> unit Fiber.t)
   -> once:(unit -> unit Fiber.t)
-  -> finally:(unit -> unit Fiber.t)
+  -> finally:(unit -> unit)
+  -> canceled:(unit -> unit)
   -> unit
   -> 'a
 

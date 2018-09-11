@@ -8,16 +8,17 @@ type status_line_config =
   }
 
 type running_job =
-  { pid  : int
-  ; ivar : Unix.process_status Fiber.Ivar.t
+  { pid      : int
+  ; build_id : int
+  ; ivar     : Unix.process_status Fiber.Ivar.t
   }
 
 module Watch : sig
   (** Has to be called before any other operations. *)
   val init : unit -> unit
 
-  (** A blocking wait, returns only when some change was detected. *)
-  val wait_block : unit -> unit
+  (** Runs forever, communicating () events to channel when changes are detected. *)
+  val wait_to_chan : unit Event.channel -> 'a
 
 end = struct
   let command =
@@ -61,7 +62,6 @@ end = struct
                    (Unix.descr_of_in_channel stdin)
                    w
                    (Unix.descr_of_out_channel stderr));
-    Unix.set_nonblock r;
     pipe_r := Some r;
     let cleanup () =
       match !pid with
@@ -75,33 +75,37 @@ end = struct
   let buf_size = 65536
   let buf = Bytes.create buf_size
 
-  let rec clear_pipe pipe_r =
-    try
-      let bytes_read = Unix.read pipe_r buf 0 buf_size in
-      if bytes_read = 0 then begin
-        die "Watch pipe closed unexpectedly" end
-      else begin
-        clear_pipe pipe_r
-      end
-    with Unix.Unix_error (err, _, _) as exn ->
-      if (err = Unix.EAGAIN) || (err = Unix.EWOULDBLOCK) then
-        ()
-      else reraise exn
+  let clear_pipe pipe_r =
+    (* NOTE: this function is supposed to read and drop all data from the
+       pipe in a non-blocking way, but due to Windows not supporting
+       [set_nonblock], we settle for the possibility of multiple watch
+       events being emitted if a large number of files changes at once. *)
+    let bytes_read = Unix.read pipe_r buf 0 buf_size in
+    if bytes_read = 0 then
+      die "Watch pipe closed unexpectedly"
 
-  let wait_block () =
+  let rec wait_to_chan chan =
     match !pipe_r with
     | Some r ->
       let forever = -1.0 in
       let _ = Unix.select [r] [] [] forever in
       clear_pipe r;
+      Event.(sync (send chan ()));
+      wait_to_chan chan
     | None ->
-      die "Watch.wait_block() called without prior initialization"
+      die "Watch.write_to_chan() called without prior initialization"
 end
 
 module Running_jobs : sig
   val add : running_job -> unit
-  val wait : unit -> running_job * Unix.process_status
   val count : unit -> int
+
+  (** Runs forever, communicating events to channel when children terminate. *)
+  val wait_to_chan : (int * Unix.process_status) Event.channel -> 'a
+
+  (** Removes a process previously returned via channel from the table. *)
+  val resolve_and_remove_job : int -> running_job
+
 end = struct
   let all = Hashtbl.create 128
 
@@ -109,28 +113,18 @@ end = struct
 
   let count () = Hashtbl.length all
 
-  let resolve_and_remove_job pid =
-    let job =
-      match Hashtbl.find all pid with
-      | Some job -> job
-      | None -> assert false
-    in
-    Hashtbl.remove all pid;
-    job
-
-  exception Finished of running_job * Unix.process_status
+  exception Finished of int * Unix.process_status
 
   let wait_nonblocking_win32 () =
     match
-      Hashtbl.iter all ~f:(fun ~key:pid ~data:job ->
+      Hashtbl.iter all ~f:(fun ~key:pid ~data:_ ->
         let pid, status = Unix.waitpid [WNOHANG] pid in
         if pid <> 0 then
-          raise_notrace (Finished (job, status)))
+          raise_notrace (Finished (pid, status)))
     with
     | () -> None
-    | exception (Finished (job, status)) ->
-      Hashtbl.remove all job.pid;
-      Some (job, status)
+    | exception (Finished (pid, status)) ->
+      Some (pid, status)
 
   let rec wait_win32 () =
     match wait_nonblocking_win32 () with
@@ -140,24 +134,52 @@ end = struct
     | Some x -> x
 
   let wait_unix () =
-    let pid, status = Unix.wait () in
-    (resolve_and_remove_job pid, status)
+    Unix.wait ()
 
   let wait =
     if Sys.win32 then
       wait_win32
     else
       wait_unix
+
+  let rec wait_to_chan chan =
+    try
+      let pid, status = wait () in
+      Event.(sync (send chan (pid, status)));
+      wait_to_chan chan
+    with
+    | Unix.Unix_error (err, _, _) as exn ->
+      if err = Unix.ECHILD then begin
+        Thread.delay 0.001;
+        wait_to_chan chan
+      end
+      else reraise exn
+
+  let resolve_and_remove_job pid =
+    let job =
+      match Hashtbl.find all pid with
+      | Some job -> job
+      | None -> assert false
+    in
+    Hashtbl.remove all pid;
+    job
 end
 
 type t =
-  { log                       : Log.t
-  ; original_cwd              : string
-  ; display                   : Config.Display.t
-  ; mutable concurrency       : int
-  ; waiting_for_available_job : t Fiber.Ivar.t Queue.t
-  ; mutable status_line       : string
-  ; mutable gen_status_line   : unit -> status_line_config
+  { log                        : Log.t
+  ; original_cwd               : string
+  ; display                    : Config.Display.t
+  ; mutable concurrency        : int
+  ; waiting_for_available_job  : waiting_job Queue.t
+  ; mutable status_line        : string
+  ; mutable gen_status_line    : unit -> status_line_config
+  ; mutable cur_build_id       : int
+  ; mutable cur_build_canceled : bool
+  }
+
+and waiting_job =
+  { build_id : int
+  ; ivar     : t Fiber.Ivar.t
   }
 
 let log t = t.log
@@ -219,13 +241,14 @@ let wait_for_available_job () =
     Fiber.return t
   else begin
     let ivar = Fiber.Ivar.create () in
-    Queue.push ivar t.waiting_for_available_job;
+    Queue.push { ivar; build_id = t.cur_build_id } t.waiting_for_available_job;
     Fiber.Ivar.read ivar
   end
 
 let wait_for_process pid =
+  Fiber.Var.get_exn t_var >>= fun t ->
   let ivar = Fiber.Ivar.create () in
-  Running_jobs.add { pid; ivar };
+  Running_jobs.add { pid; build_id = t.cur_build_id; ivar };
   Fiber.Ivar.read ivar
 
 let rec restart_waiting_for_available_job t =
@@ -233,28 +256,68 @@ let rec restart_waiting_for_available_job t =
      Running_jobs.count () >= t.concurrency then
     Fiber.return ()
   else begin
-    Fiber.Ivar.fill (Queue.pop t.waiting_for_available_job) t
+    let { build_id; ivar } = Queue.pop t.waiting_for_available_job in
+    begin
+      if build_id = t.cur_build_id then
+        Fiber.Ivar.fill ivar t
+      else
+        Fiber.return ()
+    end
     >>= fun () ->
     restart_waiting_for_available_job t
   end
 
-let rec go_rec t =
-  Fiber.yield ()
-  >>= fun () ->
-  let count = Running_jobs.count () in
-  if count = 0 then begin
-    hide_status_line t.status_line;
-    flush stderr;
-    Fiber.return ()
-  end else begin
-    update_status_line t;
-    let job, status = Running_jobs.wait () in
-    Fiber.Ivar.fill job.ivar status
-    >>= fun () ->
-    restart_waiting_for_available_job t
-    >>= fun () ->
-    go_rec t
+let watch_channel = lazy (
+  if !Clflags.watch then begin
+    Watch.init ();
+    let chan = Event.new_channel () in
+    ignore (Thread.create Watch.wait_to_chan chan);
+    chan
   end
+  else Event.new_channel ())
+
+let job_channel = lazy (
+  let chan = Event.new_channel () in
+  ignore (Thread.create Running_jobs.wait_to_chan chan);
+  chan)
+
+let go_rec t =
+  let recv () = Event.(
+    choose [ wrap (receive (Lazy.force watch_channel)) (fun () -> `Files_changed)
+           ; wrap (receive (Lazy.force job_channel)) (fun x -> `Job_completed x)
+           ])
+  in
+  let rec go_rec t =
+    Fiber.yield ()
+    >>= fun () ->
+    let count = Running_jobs.count () in
+    if count = 0 then begin
+      hide_status_line t.status_line;
+      flush stderr;
+      Fiber.return ()
+    end else begin
+      update_status_line t;
+      begin
+        match Event.sync (recv ()) with
+        | `Job_completed (pid, status) ->
+          let job = Running_jobs.resolve_and_remove_job pid in
+          begin
+            if job.build_id = t.cur_build_id then
+              Fiber.Ivar.fill job.ivar status
+            else
+              Fiber.return ()
+          end
+          >>= fun () ->
+          restart_waiting_for_available_job t
+          >>= fun () ->
+          go_rec t
+        | `Files_changed ->
+          t.cur_build_canceled <- true;
+          Fiber.return ()
+      end
+    end
+  in
+  go_rec t
 
 let prepare ?(log=Log.no_log) ?(config=Config.default)
       ?(gen_status_line=fun () -> { message = None; show_jobs = false }) () =
@@ -294,6 +357,8 @@ let prepare ?(log=Log.no_log) ?(config=Config.default)
     ; concurrency  = (match config.concurrency with Auto -> 1 | Fixed n -> n)
     ; status_line  = ""
     ; waiting_for_available_job = Queue.create ()
+    ; cur_build_id = 0
+    ; cur_build_canceled = false
     }
   in
   Errors.printer := print t;
@@ -313,9 +378,14 @@ let go ?log ?config ?gen_status_line fiber =
   let t = prepare ?log ?config ?gen_status_line () in
   run t (fun () -> fiber)
 
-let poll ?log ?config ?(cache_init=true) ~init ~once ~finally () =
-  Watch.init ();
+let poll ?log ?config ~once ~finally ~canceled () =
+  let watch_chan = Lazy.force watch_channel in
   let t = prepare ?log ?config () in
+  let once () =
+    t.cur_build_id <- t.cur_build_id + 1;
+    t.cur_build_canceled <- false;
+    once ()
+  in
   let wait_success () =
     let old_generator = t.gen_status_line in
     set_status_line_generator
@@ -324,7 +394,7 @@ let poll ?log ?config ?(cache_init=true) ~init ~once ~finally () =
          ; show_jobs = false
          })
     >>= fun () ->
-    Watch.wait_block ();
+    Event.(sync (receive watch_chan));
     set_status_line_generator old_generator
   in
   let wait_failure () =
@@ -336,37 +406,28 @@ let poll ?log ?config ?(cache_init=true) ~init ~once ~finally () =
          })
     >>= fun () ->
     if not (Promotion.were_files_promoted ()) then
-      Watch.wait_block ();
+      Event.(sync (receive watch_chan));
     set_status_line_generator old_generator
   in
   let rec main_loop () =
-    (if cache_init then
-       Fiber.return ()
-     else
-       init ())
-    >>= fun _ ->
     once ()
     >>= fun _ ->
-    finally ()
-    >>= fun _ ->
+    finally ();
     wait_success ()
     >>= fun _ ->
     main_loop ()
   in
   let continue_on_error () =
-    finally ()
-    >>= fun _ ->
-    wait_failure ()
-    >>= fun _ ->
-    main_loop ()
-  in
-  let main () =
-    (if cache_init then
-       init ()
-     else
-       Fiber.return ())
-    >>= fun _ ->
-    main_loop ()
+    if not t.cur_build_canceled then begin
+      finally ();
+      wait_failure ()
+      >>= fun _ ->
+      main_loop ()
+    end
+    else begin
+      canceled ();
+      main_loop ()
+    end
   in
   let rec loop f =
     try
@@ -374,4 +435,4 @@ let poll ?log ?config ?(cache_init=true) ~init ~once ~finally () =
     with Fiber.Never ->
       loop continue_on_error
   in
-  loop main
+  loop main_loop

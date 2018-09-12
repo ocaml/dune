@@ -29,6 +29,8 @@ val jsoo_runtime : t -> Path.t list
 
 val foreign_objects : t -> ext:string -> Path.t list
 
+val main_module_name : t -> Module.Name.t option Or_exn.t
+
 val virtual_ : t -> Lib_info.Virtual.t option
 
 val dune_version : t -> Syntax.Version.t option

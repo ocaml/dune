@@ -214,6 +214,10 @@ let gen_id =
   let next = ref (-1) in
   fun () -> incr next; !next
 
+let cmdline_approximate_length prog args =
+  List.fold_left args ~init:(String.length prog) ~f:(fun acc arg ->
+    acc + String.length arg)
+
 let run_internal ?dir ?(stdout_to=Terminal) ?(stderr_to=Terminal) ~env ~purpose
       fail_mode prog args =
   Scheduler.wait_for_available_job ()
@@ -234,8 +238,22 @@ let run_internal ?dir ?(stdout_to=Terminal) ?(stderr_to=Terminal) ~env ~purpose
   if display = Verbose then
     Format.eprintf "@{<kwd>Running@}[@{<id>%d@}]: %s@." id
       (Colors.strip_colors_for_stderr command_line);
-  let prog = Path.reach_for_running ?from:dir prog in
-  let argv = Array.of_list (prog :: args) in
+  let prog_str = Path.reach_for_running ?from:dir prog in
+  let args, response_file =
+    if Sys.win32 && cmdline_approximate_length prog_str args >= 1024 then
+      match Response_file.get ~prog with
+      | Not_supported -> (args, None)
+      | Zero_terminated_strings arg ->
+        let fn = Temp.create "responsefile" ".data" in
+        Io.with_file_out fn ~f:(fun oc ->
+          List.iter args ~f:(fun arg ->
+            output_string oc arg;
+            output_char oc '\000'));
+        ([arg; Path.to_string fn], Some fn)
+    else
+      (args, None)
+  in
+  let argv = Array.of_list (prog_str :: args) in
   let output_filename, stdout_fd, stderr_fd, to_close =
     match stdout_to, stderr_to with
     | (Terminal, _ | _, Terminal) when !Clflags.capture_outputs ->
@@ -248,7 +266,7 @@ let run_internal ?dir ?(stdout_to=Terminal) ?(stderr_to=Terminal) ~env ~purpose
   let stdout, close_stdout = get_std_output stdout_to ~default:stdout_fd in
   let stderr, close_stderr = get_std_output stderr_to ~default:stderr_fd in
   let run () =
-    Unix.create_process_env prog argv (Env.to_unix env)
+    Unix.create_process_env prog_str argv (Env.to_unix env)
       Unix.stdin stdout stderr
   in
   let pid =
@@ -261,6 +279,7 @@ let run_internal ?dir ?(stdout_to=Terminal) ?(stderr_to=Terminal) ~env ~purpose
   close_std_output close_stderr;
   Scheduler.wait_for_process pid
   >>| fun exit_status ->
+  Option.iter response_file ~f:Path.unlink;
   let output =
     match output_filename with
     | None -> ""
@@ -274,7 +293,7 @@ let run_internal ?dir ?(stdout_to=Terminal) ?(stderr_to=Terminal) ~env ~purpose
         s
   in
   Log.command (Scheduler.log scheduler) ~command_line ~output ~exit_status;
-  let _, progname, _ = Fancy.split_prog prog in
+  let _, progname, _ = Fancy.split_prog prog_str in
   let print fmt = Errors.kerrf ~f:(Scheduler.print scheduler) fmt in
   match exit_status with
   | WEXITED n when code_is_ok ok_codes n ->

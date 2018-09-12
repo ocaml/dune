@@ -19,7 +19,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
   let setup_copy_rules_for_impl ~dir
         { Implementation.vlib ; impl ; vlib_modules } =
     let copy_to_obj_dir =
-      let obj_dir = Utils.library_object_directory ~dir impl.name in
+      let obj_dir = Utils.library_object_directory ~dir (snd impl.name) in
       fun file ->
         let dst = Path.relative obj_dir (Path.basename file) in
         Super_context.add_rule sctx (Build.symlink ~src:file ~dst)
@@ -75,7 +75,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
       Errors.fail lib.buildable.loc
         "Library %a cannot implement %a because the following \
          modules lack an implementation:\n%s"
-        Lib_name.Local.pp lib.name
+        Lib_name.Local.pp (snd lib.name)
         Lib_name.pp implements
         (module_list missing_modules)
     end;

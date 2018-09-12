@@ -40,7 +40,7 @@ module Gen (P : Install_rules.Params) = struct
         if not (Library.has_stubs lib) then
           []
         else
-          let stubs_name = Lib_name.Local.to_string lib.name ^ "_stubs" in
+          let stubs_name = Library.stubs_name lib in
           match mode with
           | Byte -> ["-dllib"; "-l" ^ stubs_name; "-cclib"; "-l" ^ stubs_name]
           | Native -> ["-cclib"; "-l" ^ stubs_name]

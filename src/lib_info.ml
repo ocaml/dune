@@ -89,8 +89,9 @@ let user_written_deps t =
     ~f:(fun acc s -> Dune_file.Lib_dep.Direct s :: acc)
 
 let of_library_stanza ~dir ~ext_lib (conf : Dune_file.Library.t) =
+  let (_loc, lib_name) = conf.name in
   let archive_file ext =
-    Path.relative dir (Lib_name.Local.to_string conf.name ^ ext) in
+    Path.relative dir (Lib_name.Local.to_string lib_name ^ ext) in
   let archive_files ~f_ext =
     Mode.Dict.of_func (fun ~mode -> [archive_file (f_ext mode)])
   in
@@ -114,7 +115,7 @@ let of_library_stanza ~dir ~ext_lib (conf : Dune_file.Library.t) =
     ({ Mode.Dict.
        byte   = stubs
      ; native =
-         Path.relative dir (Lib_name.Local.to_string conf.name ^ ext_lib)
+         Path.relative dir (Lib_name.Local.to_string lib_name ^ ext_lib)
          :: stubs
      }
     , List.map (conf.c_names @ conf.cxx_names) ~f:snd
@@ -142,7 +143,7 @@ let of_library_stanza ~dir ~ext_lib (conf : Dune_file.Library.t) =
   { loc = conf.buildable.loc
   ; kind     = conf.kind
   ; src_dir  = dir
-  ; obj_dir  = Utils.library_object_directory ~dir conf.name
+  ; obj_dir  = Utils.library_object_directory ~dir (snd conf.name)
   ; version  = None
   ; synopsis = conf.synopsis
   ; archives

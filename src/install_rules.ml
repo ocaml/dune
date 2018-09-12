@@ -117,7 +117,8 @@ module Gen(P : Params) = struct
 
   let lib_install_files ~dir_contents ~dir ~sub_dir ~(name : Lib_name.t) ~scope ~dir_kind
         (lib : Library.t) =
-    let obj_dir = Utils.library_object_directory ~dir lib.name in
+    let (_loc, lib_name_local) = lib.name in
+    let obj_dir = Utils.library_object_directory ~dir lib_name_local in
     let ext_obj = ctx.ext_obj in
     let make_entry section ?dst fn =
       Install.Entry.make section fn

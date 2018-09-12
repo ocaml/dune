@@ -161,7 +161,7 @@ include Sub_system.Register_end_point(
 
       let inline_test_dir =
         Path.relative dir (sprintf ".%s.inline-tests"
-                             (Lib_name.Local.to_string lib.name))
+                             (Lib_name.Local.to_string (snd lib.name)))
       in
 
       let name = "run" in
@@ -179,7 +179,7 @@ include Sub_system.Register_end_point(
 
       let bindings =
         Pform.Map.singleton "library-name"
-          (Values [String (Lib_name.Local.to_string lib.name)])
+          (Values [String (Lib_name.Local.to_string (snd lib.name))])
       in
 
       let runner_libs =

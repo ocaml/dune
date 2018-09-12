@@ -215,6 +215,13 @@ let wrapped_compat t =
 module Name_map = struct
   type nonrec t = t Name.Map.t
 
+  let impl_only =
+    Name.Map.fold ~init:[] ~f:(fun m acc ->
+      if has_impl m then
+        m :: acc
+      else
+        acc)
+
   let of_list_exn modules =
     List.map modules ~f:(fun m -> (name m, m))
     |> Name.Map.of_list_exn

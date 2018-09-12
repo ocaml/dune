@@ -110,6 +110,8 @@ module Name_map : sig
   type module_
   type t = module_ Name.Map.t
 
+  val impl_only : t -> module_ list
+
   val of_list_exn : module_ list -> t
 end with type module_ := t
 

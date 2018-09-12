@@ -467,13 +467,7 @@ module Gen (P : Install_rules.Params) = struct
          | _ ->
            modules
        in
-       let modules =
-         Module.Name.Map.fold modules ~init:[] ~f:(fun m acc ->
-           if Module.has_impl m then
-             m :: acc
-           else
-             acc)
-       in
+       let modules = Module.Name_map.impl_only modules in
        let wrapped_compat = Module.Name.Map.values wrapped_compat in
        (* Compatibility modules have implementations so we can just append them.
           We append the modules at the end as no library modules depend on

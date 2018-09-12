@@ -1061,7 +1061,9 @@ module Library = struct
   let is_virtual t = Option.is_some t.virtual_modules
 
   let main_module_name t =
-    Module.Name.of_local_lib_name t.name
+    match t.implements with
+    | Some _ -> None
+    | None -> Some (Module.Name.of_local_lib_name t.name)
 end
 
 module Install_conf = struct

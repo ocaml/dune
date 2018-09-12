@@ -392,21 +392,23 @@ module Gen (S : sig val sctx : SC.t end) = struct
       |> Path.Set.of_list
     )
 
-  let entry_modules_by_lib lib =
-    let dc = Dir_contents.get sctx ~dir:(Lib.src_dir lib) in
+  let entry_modules_by_lib lib ~scope =
+    let dc = Dir_contents.get sctx ~dir:(Lib.src_dir lib) ~scope in
     let m = Dir_contents.modules_of_library dc ~name:(Lib.name lib) in
     match m.alias_module with
     | Some alias_mod ->
+      let main_module_name = Option.value_exn m.main_module_name in
       [Option.value ~default:alias_mod
-         (Module.Name.Map.find m.modules m.main_module_name)]
+         (Module.Name.Map.find m.modules main_module_name)]
     | None -> Module.Name.Map.values m.modules
 
   let entry_modules ~(pkg : Package.t) =
     libs_of_pkg ~pkg:pkg.name
     |> Lib.Set.to_list
     |> List.filter_map ~f:(fun l ->
+      let scope = Super_context.find_scope_by_dir sctx (Lib.src_dir l) in
       if Lib.is_local l then (
-        Some (l, entry_modules_by_lib l)
+        Some (l, entry_modules_by_lib l ~scope)
       ) else (
         None
       ))
@@ -477,9 +479,10 @@ module Gen (S : sig val sctx : SC.t end) = struct
       let map = lazy (
         stanzas
         |> List.concat_map ~f:(fun (w : SC.Dir_with_jbuild.t) ->
+          let scope = Super_context.find_scope_by_dir sctx w.ctx_dir in
           List.filter_map w.stanzas ~f:(function
             | Documentation d ->
-              let dc = Dir_contents.get sctx ~dir:w.ctx_dir in
+              let dc = Dir_contents.get sctx ~scope ~dir:w.ctx_dir in
               let mlds = Dir_contents.mlds dc d in
               Some (d.package.name, mlds)
             | _ ->

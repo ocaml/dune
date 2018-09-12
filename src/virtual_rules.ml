@@ -105,7 +105,8 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
               "Library %a isn't virtual and cannot be implemented"
               Lib_name.pp implements
           | Some Unexpanded ->
-            let dir_contents = Dir_contents.get sctx ~dir:(Lib.src_dir vlib) in
+            let dir_contents =
+              Dir_contents.get sctx ~scope ~dir:(Lib.src_dir vlib) in
             let { Dir_contents.Library_modules.
                   virtual_modules
                 ; modules = vlib_modules

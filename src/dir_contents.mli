@@ -21,7 +21,7 @@ module Library_modules : sig
     { modules          : Module.Name_map.t
     ; virtual_modules  : Module.Name_map.t
     ; alias_module     : Module.t option
-    ; main_module_name : Module.Name.t
+    ; main_module_name : Module.Name.t option
     ; wrapped_compat   : Module.Name_map.t
     }
 end
@@ -42,7 +42,7 @@ val lookup_module : t -> Module.Name.t -> Dune_file.Buildable.t option
 (** All mld files attached to this documentation stanza *)
 val mlds : t -> Dune_file.Documentation.t -> Path.t list
 
-val get : Super_context.t -> dir:Path.t -> t
+val get : Super_context.t -> dir:Path.t -> scope:Scope.t -> t
 
 type kind = private
   | Standalone

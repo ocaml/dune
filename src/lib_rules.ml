@@ -131,7 +131,11 @@ module Gen (P : Install_rules.Params) = struct
         ~js_of_ocaml
         ~dynlink
         ~(wrapped_compat : Module.t Module.Name.Map.t) =
-    let lib_name = String.capitalize (Lib_name.Local.to_string lib.name) in
+    let main_module_name =
+      Library.main_module_name lib
+      |> Option.value_exn
+      |> Module.Name.to_string
+    in
     let transition_message =
       match lib.wrapped with
       | Simple _ -> "" (* will never be accessed anyway *)
@@ -140,8 +144,8 @@ module Gen (P : Install_rules.Params) = struct
     Module.Name.Map.iteri wrapped_compat ~f:(fun name m ->
       let contents =
         let name = Module.Name.to_string name in
-        let hidden_name = sprintf "%s__%s" lib_name name in
-        let real_name = sprintf "%s.%s" lib_name name in
+        let hidden_name = sprintf "%s__%s" main_module_name name in
+        let real_name = sprintf "%s.%s" main_module_name name in
         sprintf {|[@@@deprecated "%s. Use %s instead."] include %s|}
           transition_message real_name hidden_name
       in
@@ -210,8 +214,7 @@ module Gen (P : Install_rules.Params) = struct
          [ As (Utils.g ())
          ; if custom then A "-custom" else As []
          ; A "-o"
-         ; Path (Path.relative dir (sprintf "%s_stubs"
-                                      (Lib_name.Local.to_string lib.name)))
+         ; Path (Library.stubs lib ~dir)
          ; Deps o_files
          ; Dyn (fun cclibs ->
              (* https://github.com/ocaml/dune/issues/119 *)
@@ -345,7 +348,7 @@ module Gen (P : Install_rules.Params) = struct
 
   let library_rules (lib : Library.t) ~dir_contents ~dir ~scope
         ~compile_info ~dir_kind =
-    let obj_dir = Utils.library_object_directory ~dir lib.name in
+    let obj_dir = Utils.library_object_directory ~dir (snd lib.name) in
     let private_obj_dir = Utils.library_private_obj_dir ~obj_dir in
     let requires = Lib.Compile.requires compile_info in
     let dep_kind =
@@ -372,7 +375,7 @@ module Gen (P : Install_rules.Params) = struct
           (SC.Deps.interpret sctx ~scope ~dir
              lib.buildable.preprocessor_deps)
         ~lint:lib.buildable.lint
-        ~lib_name:(Some lib.name)
+        ~lib_name:(Some (snd lib.name))
         ~dir_kind
     in
     let modules = Preprocessing.pp_modules pp modules in
@@ -384,11 +387,9 @@ module Gen (P : Install_rules.Params) = struct
     in
 
     let lib_interface_module =
-      if Library.Wrapped.to_bool lib.wrapped then
-        Module.Name.Map.find modules main_module_name
-      else
-        None
+      Option.bind main_module_name ~f:(Module.Name.Map.find modules)
     in
+
     let cctx =
       Compilation_context.create ()
         ~super_context:sctx
@@ -420,8 +421,10 @@ module Gen (P : Install_rules.Params) = struct
     Module_compilation.build_modules cctx ~js_of_ocaml ~dynlink ~dep_graphs;
 
     Option.iter alias_module
-      ~f:(build_alias_module ~main_module_name ~modules ~cctx ~dynlink
-            ~js_of_ocaml);
+      ~f:(fun alias_module ->
+        let main_module_name = Option.value_exn main_module_name in
+        build_alias_module alias_module ~main_module_name ~modules ~cctx
+          ~dynlink ~js_of_ocaml);
 
     let vlib_stubs_o_files =
       match impl with
@@ -488,7 +491,7 @@ module Gen (P : Install_rules.Params) = struct
        ~requires:(Lib.Compile.requires compile_info)
        ~flags
        ~preprocess:(Buildable.single_preprocess lib.buildable)
-       ~libname:lib.name
+       ~libname:(snd lib.name)
        ~objs_dirs:(Path.Set.singleton obj_dir))
 
   let rules (lib : Library.t) ~dir_contents ~dir ~scope

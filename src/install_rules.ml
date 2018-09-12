@@ -325,7 +325,7 @@ module Gen(P : Params) = struct
     let entries_per_package =
       List.concat_map (SC.stanzas_to_consider_for_install sctx)
         ~f:(fun { SC.Installable. dir; stanza; kind = dir_kind; scope; _ } ->
-          let dir_contents = Dir_contents.get sctx ~dir in
+          let dir_contents = Dir_contents.get sctx ~dir ~scope in
           match stanza with
           | Library ({ public = Some { package; sub_dir; name = (_, name); _ }
                      ; _ } as lib) ->

@@ -242,7 +242,7 @@ module Library_modules : sig
     { modules          : Module.Name_map.t
     ; virtual_modules  : Module.Name_map.t
     ; alias_module     : Module.t option
-    ; main_module_name : Module.Name.t
+    ; main_module_name : Module.Name.t option
     ; wrapped_compat   : Module.Name_map.t
     }
 
@@ -251,32 +251,34 @@ module Library_modules : sig
     -> dir:Path.t
     -> Module.Name_map.t
     -> virtual_modules:Module.Name_map.t
+    -> main_module_name:Module.Name.t option
     -> t
 end = struct
   type t =
     { modules          : Module.Name_map.t
     ; virtual_modules  : Module.Name_map.t
     ; alias_module     : Module.t option
-    ; main_module_name : Module.Name.t
+    ; main_module_name : Module.Name.t option
     ; wrapped_compat   : Module.Name_map.t
     }
 
   let make (lib : Library.t) ~dir (modules : Module.Name_map.t)
-        ~virtual_modules =
-    let main_module_name = Library.main_module_name lib in
+        ~virtual_modules ~main_module_name =
     let (modules, wrapped_compat) =
       let wrap_modules modules =
+        let main_module_name = Option.value_exn main_module_name in
         let open Module.Name.Infix in
         Module.Name.Map.map modules ~f:(fun (m : Module.t) ->
           if m.name = main_module_name then
             m
           else
-            Module.with_wrapper m ~libname:lib.name)
+            Module.with_wrapper m ~main_module_name)
       in
       match lib.wrapped with
       | Simple false -> (modules, Module.Name.Map.empty)
       | Simple true -> (wrap_modules modules, Module.Name.Map.empty)
       | Yes_with_transition _ ->
+        let main_module_name = Option.value_exn main_module_name in
         ( wrap_modules modules
         , Module.Name.Map.remove modules main_module_name
           |> Module.Name.Map.filter_map ~f:(fun m ->
@@ -287,16 +289,23 @@ end = struct
         )
     in
     let alias_module =
-      let lib_name = Lib_name.Local.to_string lib.name in
+      let lib_name = Lib_name.Local.to_string (snd lib.name) in
+      let modules_contain_main_module = lazy (
+        match main_module_name with
+        | None -> false
+        | Some mmn -> Module.Name.Map.mem modules mmn
+      )
+      in
       if not (Library.Wrapped.to_bool lib.wrapped) ||
          (Module.Name.Map.cardinal modules = 1 &&
-          Module.Name.Map.mem modules main_module_name) then
+          Lazy.force modules_contain_main_module) then
         None
-      else if Module.Name.Map.mem modules main_module_name then
+      else if Lazy.force modules_contain_main_module then
         (* This module needs an implementation for non-jbuilder
            users of the library:
 
            https://github.com/ocaml/dune/issues/567 *)
+        let main_module_name = Option.value_exn main_module_name in
         Some
           (Module.make (Module.Name.add_suffix main_module_name "__")
              ~visibility:Public
@@ -304,6 +313,7 @@ end = struct
                       (Path.relative dir (sprintf "%s__.ml-gen" lib_name)))
              ~obj_name:(lib_name ^ "__"))
       else
+        let main_module_name = Option.value_exn main_module_name in
         Some
           (Module.make main_module_name
              ~visibility:Public
@@ -467,7 +477,7 @@ let modules_of_files ~dir ~files =
   Module.Name.Map.merge impls intfs ~f:(fun name impl intf ->
     Some (Module.make name ~visibility:Public ?impl ?intf))
 
-let build_modules_map (d : Super_context.Dir_with_jbuild.t) ~modules =
+let build_modules_map (d : Super_context.Dir_with_jbuild.t) ~scope ~modules =
   let libs, exes =
     List.filter_partition_map d.stanzas ~f:(fun stanza ->
       match (stanza : Stanza.t) with
@@ -481,8 +491,19 @@ let build_modules_map (d : Super_context.Dir_with_jbuild.t) ~modules =
             ~virtual_modules:lib.virtual_modules
             ~private_modules:lib.private_modules
         in
+        let main_module_name =
+          match Library.main_module_name lib with
+          | Some _ as mmn -> mmn
+          | None ->
+            let name = Library.best_name lib in
+            let loc = fst lib.name in
+            Lib.DB.resolve (Scope.libs scope) (loc, name)
+            |> Result.bind ~f:Lib.main_module_name
+            |> Result.ok_exn
+        in
         Left ( lib
              , Library_modules.make lib ~dir:d.ctx_dir modules ~virtual_modules
+                 ~main_module_name
              )
       | Executables exes
       | Tests { exes; _} ->
@@ -732,7 +753,7 @@ let clear_cache () =
 
 let () = Hooks.End_of_build.always clear_cache
 
-let rec get sctx ~dir =
+let rec get sctx ~dir ~scope =
   match Hashtbl.find cache dir with
   | Some t -> t
   | None ->
@@ -745,7 +766,7 @@ let rec get sctx ~dir =
           { kind = Standalone
           ; dir
           ; text_files = files
-          ; modules = lazy (build_modules_map d
+          ; modules = lazy (build_modules_map d ~scope
                               ~modules:(modules_of_files ~dir:d.ctx_dir ~files))
           ; mlds = lazy (build_mlds_map d ~files)
           }
@@ -764,7 +785,7 @@ let rec get sctx ~dir =
         match Hashtbl.find cache dir with
         | Some t -> t
         | None ->
-          ignore (get sctx ~dir:(Path.parent_exn dir) : t);
+          ignore (get sctx ~scope ~dir:(Path.parent_exn dir) : t);
           (* Filled while scanning the group root *)
           Option.value_exn (Hashtbl.find cache dir)
       end
@@ -809,11 +830,12 @@ let rec get sctx ~dir =
                   Path.pp (Module.dir x)
                   Path.pp (Module.dir y)))
         in
-        build_modules_map d ~modules)
+        build_modules_map d ~scope ~modules)
       in
       let t =
         { kind = Group_root
-                   (lazy (List.map subdirs ~f:(fun (dir, _) -> get sctx ~dir)))
+                   (lazy (List.map subdirs
+                            ~f:(fun (dir, _) -> get sctx ~scope ~dir)))
         ; dir
         ; text_files = files
         ; modules

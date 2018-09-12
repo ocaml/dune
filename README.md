@@ -120,8 +120,7 @@ $ make release
 $ make install
 ```
 
-Note however that `make install` requires the `opam-installer`
-tool. Running simply `make` will build dune using the development
+Running simply `make` will build dune using the development
 settings.
 
 If you do not have `make`, you can do the following:

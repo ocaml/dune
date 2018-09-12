@@ -299,10 +299,6 @@ workspace. With a specific list of packages, it will only install these
 packages. If several build contexts are configured, the installation will be
 performed for all of them.
 
-Note that ``dune install`` is a thin wrapper around the ``opam-installer`` tool,
-so you will need to install this tool in order to be able to use ``dune
-install``.
-
 Destination
 -----------
 

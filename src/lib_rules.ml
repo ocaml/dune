@@ -131,17 +131,17 @@ module Gen (P : Install_rules.Params) = struct
         ~js_of_ocaml
         ~dynlink
         ~(wrapped_compat : Module.t Module.Name.Map.t) =
-    let main_module_name =
-      Library.main_module_name lib
-      |> Option.value_exn
-      |> Module.Name.to_string
-    in
     let transition_message =
       match lib.wrapped with
       | Simple _ -> "" (* will never be accessed anyway *)
       | Yes_with_transition r -> r
     in
     Module.Name.Map.iteri wrapped_compat ~f:(fun name m ->
+      let main_module_name =
+        Library.main_module_name lib
+        |> Option.value_exn
+        |> Module.Name.to_string
+      in
       let contents =
         let name = Module.Name.to_string name in
         let hidden_name = sprintf "%s__%s" main_module_name name in

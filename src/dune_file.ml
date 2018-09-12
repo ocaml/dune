@@ -1066,9 +1066,11 @@ module Library = struct
   let is_virtual t = Option.is_some t.virtual_modules
 
   let main_module_name t =
-    match t.implements with
-    | Some _ -> None
-    | None -> Some (Module.Name.of_local_lib_name (snd t.name))
+    match t.implements, Wrapped.to_bool t.wrapped with
+    | Some _, true -> None
+    | Some _, false -> assert false
+    | None, false -> None
+    | None, true -> Some (Module.Name.of_local_lib_name (snd t.name))
 end
 
 module Install_conf = struct

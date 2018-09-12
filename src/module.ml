@@ -158,9 +158,11 @@ let iter t ~f =
   Option.iter t.impl ~f:(f Ml_kind.Impl);
   Option.iter t.intf ~f:(f Ml_kind.Intf)
 
-let with_wrapper t ~libname =
+let with_wrapper t ~main_module_name =
   { t with obj_name
-           = sprintf "%s__%s" (Lib_name.Local.to_string libname) t.name }
+           = sprintf "%s__%s"
+               (String.uncapitalize main_module_name) t.name
+  }
 
 let map_files t ~f =
   { t with

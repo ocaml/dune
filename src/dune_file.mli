@@ -281,6 +281,7 @@ module Executables : sig
     type t =
       { mode : Mode_conf.t
       ; kind : Binary_kind.t
+      ; loc : Loc.t
       }
 
     include Dsexp.Sexpable with type t := t

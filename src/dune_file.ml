@@ -1104,6 +1104,7 @@ module Executables = struct
       type t =
         { mode : Mode_conf.t
         ; kind : Binary_kind.t
+        ; loc : Loc.t
         }
 
       let compare a b =
@@ -1116,6 +1117,7 @@ module Executables = struct
     let make mode kind =
       { mode
       ; kind
+      ; loc = Loc.none
       }
 
     let exe           = make Best Exe
@@ -1150,8 +1152,9 @@ module Executables = struct
         ~then_:
           (enter
              (let%map mode = Mode_conf.dparse
-              and kind = Binary_kind.dparse in
-              { mode; kind }))
+              and kind = Binary_kind.dparse
+              and loc = loc in
+              { mode; kind; loc}))
         ~else_:simple
 
     let simple_dgen link_mode =
@@ -1165,7 +1168,7 @@ module Executables = struct
       match simple_dgen link_mode with
       | Some s -> s
       | None ->
-        let { mode; kind } = link_mode in
+        let { mode; kind; loc = _ } = link_mode in
         Dsexp.To_sexp.pair Mode_conf.dgen Binary_kind.dgen (mode, kind)
 
     module Set = struct

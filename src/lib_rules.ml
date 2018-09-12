@@ -329,7 +329,8 @@ module Gen (P : Install_rules.Params) = struct
       in
       SC.add_rule sctx build)
 
-  let setup_file_deps lib ~dir ~obj_dir ~modules ~wrapped_compat =
+  let setup_file_deps lib ~dir ~obj_dir ~modules ~wrapped_compat
+        ~modules_of_vlib =
     let add_cms ~cm_kind ~init = Module.Name.Map.fold ~init ~f:(fun m acc ->
       match Module.cm_file m ~obj_dir cm_kind with
       | None -> acc
@@ -338,6 +339,7 @@ module Gen (P : Install_rules.Params) = struct
     List.iter Cm_kind.all ~f:(fun cm_kind ->
       let files = add_cms ~cm_kind ~init:Path.Set.empty modules in
       let files = add_cms ~cm_kind ~init:files wrapped_compat in
+      let files = add_cms ~cm_kind ~init:files modules_of_vlib in
       Lib_file_deps.setup_file_deps_alias sctx ~dir lib ~exts:[Cm_kind.ext cm_kind]
         files);
 
@@ -441,7 +443,11 @@ module Gen (P : Install_rules.Params) = struct
     if Library.has_stubs lib || not (List.is_empty vlib_stubs_o_files) then
       build_stubs lib ~dir ~scope ~requires ~dir_contents ~vlib_stubs_o_files;
 
-    setup_file_deps lib ~dir ~obj_dir ~modules ~wrapped_compat;
+    setup_file_deps lib ~dir ~obj_dir ~modules ~wrapped_compat
+      ~modules_of_vlib:(
+        match impl with
+        | None -> Module.Name.Map.empty
+        | Some impl -> Virtual_rules.Implementation.virtual_modules impl);
 
     if not (Library.is_virtual lib) then begin
       (let modules =

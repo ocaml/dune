@@ -396,7 +396,8 @@ let common =
     Arg.(value
          & opt (some string) None
          & info ["diff-command"] ~docs
-             ~doc:"Shell command to use to diff files")
+             ~doc:"Shell command to use to diff files.
+                   Use - to disable printing the diff.")
   in
   let build_dir = Option.value ~default:"_build" build_dir in
   let root, to_cwd =

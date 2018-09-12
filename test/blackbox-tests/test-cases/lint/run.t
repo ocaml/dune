@@ -8,9 +8,9 @@ The lint alias will run preprocessing actions listed under (lint):
 When using ppxlib, it is possible to define and promote corrections:
 
   $ cp correct/add.ml.orig correct/add.ml
-  $ dune build @correct/lint --diff-command false
-            sh (internal) (exit 1)
-  (cd _build/default && /bin/sh -c 'false correct/add.ml correct/add.ml.lint-corrected')
+  $ dune build @correct/lint
+  File "correct/add.ml", line 1, characters 0-0:
+  Files _build/default/correct/add.ml and _build/default/correct/add.ml.lint-corrected differ.
   [1]
   $ dune promote correct/add.ml
   Promoting _build/default/correct/add.ml.lint-corrected to correct/add.ml.

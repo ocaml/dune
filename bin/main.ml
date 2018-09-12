@@ -588,7 +588,13 @@ let runtest =
       List.map dirs ~f:(fun dir ->
         let dir = Path.(relative root) (Common.prefix_target common dir) in
         check_path dir;
-        Target.Alias_rec (Path.relative dir "runtest"))
+        Target.Alias
+          { Alias.
+            name = "runtest"
+          ; recursive = true
+          ; dir
+          ; contexts = setup.contexts
+          })
     in
     run_build_command ~log ~common ~targets
   in

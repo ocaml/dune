@@ -585,3 +585,5 @@ let cc_g (ctx : t) =
     ["-g"]
   else
     []
+
+let name t = t.name

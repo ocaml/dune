@@ -2,8 +2,7 @@ open Stdune
 
 type t =
   | File      of Path.t
-  | Alias     of Path.t
-  | Alias_rec of Path.t
+  | Alias     of Alias.t
 
 val request
   :  Dune.Main.setup

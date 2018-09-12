@@ -2,18 +2,6 @@ open! Stdune
 open Dune
 open Import
 
-let parse_alias path ~contexts =
-  let dir = Path.parent_exn path in
-  let name = Path.basename path in
-  match Path.extract_build_context dir with
-  | None -> (contexts, dir, name)
-  | Some ("install", _) ->
-    die "Invalid alias: %s.\n\
-         There are no aliases in %s."
-      (Path.to_string_maybe_quoted Path.(relative build_dir "install"))
-      (Path.to_string_maybe_quoted path)
-  | Some (ctx, dir) -> ([ctx], dir, name)
-
 let check_path contexts =
   let contexts =
     String.Set.of_list (List.map contexts ~f:(fun c -> c.Context.name))

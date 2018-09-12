@@ -80,6 +80,7 @@ type t =
   ; sub_systems      : Dune_file.Sub_system_info.t Sub_system_name.Map.t
   ; virtual_         : Virtual.t option
   ; implements       : (Loc.t * Lib_name.t) option
+  ; main_module_name : Module.Name.t option
   }
 
 let user_written_deps t =
@@ -137,6 +138,7 @@ let of_library_stanza ~dir ~ext_lib (conf : Dune_file.Library.t) =
       , archive_files ~f_ext:Mode.plugin_ext
       )
   in
+  let main_module_name = Dune_file.Library.main_module_name conf in
   { loc = conf.buildable.loc
   ; kind     = conf.kind
   ; src_dir  = dir
@@ -158,6 +160,7 @@ let of_library_stanza ~dir ~ext_lib (conf : Dune_file.Library.t) =
   ; dune_version = Some conf.dune_version
   ; virtual_
   ; implements = conf.implements
+  ; main_module_name
   }
 
 let of_findlib_package pkg =
@@ -191,4 +194,5 @@ let of_findlib_package pkg =
   ; dune_version = None
   ; virtual_ = None
   ; implements = None
+  ; main_module_name = None
   }

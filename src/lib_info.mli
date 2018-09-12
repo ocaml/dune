@@ -60,6 +60,7 @@ type t = private
   ; sub_systems      : Dune_file.Sub_system_info.t Sub_system_name.Map.t
   ; virtual_         : Virtual.t option
   ; implements       : (Loc.t * Lib_name.t) option
+  ; main_module_name : Module.Name.t option
   }
 
 val of_library_stanza

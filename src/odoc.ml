@@ -395,12 +395,11 @@ module Gen (S : sig val sctx : SC.t end) = struct
   let entry_modules_by_lib lib ~scope =
     let dc = Dir_contents.get sctx ~dir:(Lib.src_dir lib) ~scope in
     let m = Dir_contents.modules_of_library dc ~name:(Lib.name lib) in
-    match m.alias_module with
-    | Some alias_mod ->
-      let main_module_name = Option.value_exn m.main_module_name in
-      [Option.value ~default:alias_mod
-         (Module.Name.Map.find m.modules main_module_name)]
-    | None -> Module.Name.Map.values m.modules
+    match Lib_modules.alias m with
+    | Some { module_name ; alias_module } ->
+      [Option.value ~default:alias_module
+         (Module.Name.Map.find (Lib_modules.modules m) module_name)]
+    | None -> Module.Name.Map.values (Lib_modules.modules m)
 
   let entry_modules ~(pkg : Package.t) =
     libs_of_pkg ~pkg:pkg.name

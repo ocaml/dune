@@ -98,20 +98,21 @@ module Gen (P : Install_rules.Params) = struct
   let alias_module_build_sandbox =
     Ocaml_version.always_reads_alias_cmi ctx.version
 
-  let build_alias_module (m : Module.t) ~main_module_name ~modules ~cctx
-        ~dynlink ~js_of_ocaml =
+  let build_alias_module { Lib_modules.Alias_module.module_name ; alias_module }
+        ~modules ~cctx ~dynlink ~js_of_ocaml =
     let file =
-      match m.impl with
+      match alias_module.impl with
       | Some f -> f
-      | None -> Option.value_exn m.intf
+      | None -> Option.value_exn alias_module.intf
     in
     SC.add_rule sctx
       (Build.return
-         (Module.Name.Map.values (Module.Name.Map.remove modules m.name)
+         (Module.Name.Map.values
+            (Module.Name.Map.remove modules alias_module.name)
           |> List.map ~f:(fun (m : Module.t) ->
             sprintf "(** @canonical %s.%s *)\n\
                      module %s = %s\n"
-              (Module.Name.to_string main_module_name)
+              (Module.Name.to_string module_name)
               (Module.Name.to_string m.name)
               (Module.Name.to_string m.name)
               (Module.Name.to_string (Module.real_unit_name m))
@@ -119,11 +120,11 @@ module Gen (P : Install_rules.Params) = struct
           |> String.concat ~sep:"\n")
        >>> Build.write_file_dyn file.path);
     let cctx = Compilation_context.for_alias_module cctx in
-    Module_compilation.build_module cctx m
+    Module_compilation.build_module cctx alias_module
       ~js_of_ocaml
       ~dynlink
       ~sandbox:alias_module_build_sandbox
-      ~dep_graphs:(Ocamldep.Dep_graphs.dummy m)
+      ~dep_graphs:(Ocamldep.Dep_graphs.dummy alias_module)
 
   let build_wrapped_compat_modules (lib : Library.t)
         cctx
@@ -355,14 +356,10 @@ module Gen (P : Install_rules.Params) = struct
       if lib.optional then Lib_deps_info.Kind.Optional else Required
     in
     let flags = SC.ocaml_flags sctx ~scope ~dir lib.buildable in
-    let { Lib_modules.
-          modules
-        ; main_module_name
-        ; alias_module
-        ; wrapped_compat
-        ; virtual_modules = _ } =
+    let lib_modules =
       Dir_contents.modules_of_library dir_contents ~name:(Library.best_name lib)
     in
+    let modules = Lib_modules.modules lib_modules in
     let impl = Virtual.impl ~lib ~scope ~modules in
     Option.iter impl ~f:(Virtual.setup_copy_rules_for_impl ~dir);
     let source_modules = modules in
@@ -380,14 +377,13 @@ module Gen (P : Install_rules.Params) = struct
     in
     let modules = Preprocessing.pp_modules pp modules in
 
-    let modules =
-      match alias_module with
-      | None -> modules
-      | Some m -> Module.Name.Map.add modules m.name m
-    in
-
-    let lib_interface_module =
-      Option.bind main_module_name ~f:(Module.Name.Map.find modules)
+    let (modules, alias_module) =
+      match Lib_modules.alias lib_modules with
+      | None -> (modules, None)
+      | Some { module_name = _ ; alias_module } ->
+        ( Module.Name.Map.add modules alias_module.name alias_module
+        , Some alias_module
+        )
     in
 
     let cctx =
@@ -400,7 +396,7 @@ module Gen (P : Install_rules.Params) = struct
         ~private_obj_dir
         ~modules
         ?alias_module
-        ?lib_interface_module
+        ?lib_interface_module:(Lib_modules.lib_interface_module lib_modules)
         ~flags
         ~requires
         ~preprocessing:pp
@@ -413,6 +409,8 @@ module Gen (P : Install_rules.Params) = struct
     in
     let js_of_ocaml = lib.buildable.js_of_ocaml in
 
+    let wrapped_compat = Lib_modules.wrapped_compat lib_modules in
+
     build_wrapped_compat_modules lib cctx ~dynlink ~js_of_ocaml
       ~wrapped_compat ~modules;
 
@@ -420,11 +418,8 @@ module Gen (P : Install_rules.Params) = struct
 
     Module_compilation.build_modules cctx ~js_of_ocaml ~dynlink ~dep_graphs;
 
-    Option.iter alias_module
-      ~f:(fun alias_module ->
-        let main_module_name = Option.value_exn main_module_name in
-        build_alias_module alias_module ~main_module_name ~modules ~cctx
-          ~dynlink ~js_of_ocaml);
+    Option.iter (Lib_modules.alias lib_modules)
+      ~f:(build_alias_module ~modules ~cctx ~dynlink ~js_of_ocaml);
 
     let vlib_stubs_o_files =
       match impl with

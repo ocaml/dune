@@ -1,12 +1,6 @@
 open Stdune
 
-type t = private
-  { modules          : Module.Name_map.t
-  ; virtual_modules  : Module.Name_map.t
-  ; alias_module     : Module.t option
-  ; main_module_name : Module.Name.t option
-  ; wrapped_compat   : Module.Name_map.t
-  }
+type t
 
 module Alias_module : sig
   type t =

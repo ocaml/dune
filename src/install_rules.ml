@@ -138,29 +138,14 @@ module Gen(P : Params) = struct
     in
     let if_ cond l = if cond then l else [] in
     let files =
-      let modules =
-        let { Lib_modules.
-              modules
-            ; alias_module
-            ; wrapped_compat
-            ; main_module_name = _
-            ; virtual_modules = _
-            } =
-          Dir_contents.modules_of_library dir_contents
-            ~name:(Library.best_name lib)
-        in
-        let modules =
-          match alias_module with
-          | None -> modules
-          | Some m -> Module.Name.Map.add modules m.name m
-        in
-        List.rev_append
-          (Module.Name.Map.values modules)
-          (Module.Name.Map.values wrapped_compat)
+      let installable_modules =
+        Dir_contents.modules_of_library dir_contents
+          ~name:(Library.best_name lib)
+        |> Lib_modules.installable_modules
       in
       let virtual_library = Library.is_virtual lib in
       List.concat
-        [ List.concat_map modules ~f:(fun m ->
+        [ List.concat_map installable_modules ~f:(fun m ->
             List.concat
               [ if_ (Module.is_public m)
                   [ Module.cm_file_unsafe m ~obj_dir Cmi ]

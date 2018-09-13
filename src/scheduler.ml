@@ -68,33 +68,62 @@ end = struct
            die "@{<error>Error@}: fswatch (or inotifywait) was not found. \
                 One of them needs to be installed for watch mode to work.\n"))
 
+  let buffering_time = 0.5 (* seconds *)
+
   let wait_to_chan chan =
-    let prog, args = Lazy.force command in
-    let prog = Path.to_absolute_filename prog in
-    let args = Array.of_list (prog :: args) in
-    let r, w = Unix.pipe () in
-    let pid = Unix.create_process
-                prog
-                args
-                (Unix.descr_of_in_channel stdin)
-                w
-                (Unix.descr_of_out_channel stderr)
-    in
-    let cleanup () =
-      Unix.kill pid Sys.sigterm;
-      ignore (Unix.waitpid [] pid)
-    in
-    at_exit cleanup;
-    let r_in = Unix.in_channel_of_descr r in
-    let rec loop () =
-      let fn = Path.of_string (input_line r_in) in
-      if not (String.Table.mem
-                ignored_files_for_watch
-                (Path.to_absolute_filename fn)) then
-        Event.(sync (send chan ()));
+    let counter = ref 0 in
+    let counter_mtx = Mutex.create () in
+
+    let worker_thread () =
+      let prog, args = Lazy.force command in
+      let prog = Path.to_absolute_filename prog in
+      let args = Array.of_list (prog :: args) in
+      let r, w = Unix.pipe () in
+      let pid = Unix.create_process
+                  prog
+                  args
+                  (Unix.descr_of_in_channel stdin)
+                  w
+                  (Unix.descr_of_out_channel stderr)
+      in
+      let cleanup () =
+        Unix.kill pid Sys.sigterm;
+        ignore (Unix.waitpid [] pid)
+      in
+      at_exit cleanup;
+      let r_in = Unix.in_channel_of_descr r in
+      let rec loop () =
+        let fn = Path.of_string (input_line r_in) in
+        if not (String.Table.mem
+                  ignored_files_for_watch
+                  (Path.to_absolute_filename fn)) then begin
+          Mutex.lock counter_mtx;
+          counter := !counter + 1;
+          Mutex.unlock counter_mtx
+        end;
+        loop ()
+      in
       loop ()
     in
-    loop ()
+
+    let buffer_thread () =
+      let saved_counter = ref 0 in
+      let rec loop () =
+        Thread.delay buffering_time;
+        Mutex.lock counter_mtx;
+        let counter = !counter in
+        Mutex.unlock counter_mtx;
+        if counter > !saved_counter then begin
+          saved_counter := counter;
+          Event.(sync (send chan ()))
+        end;
+        loop ()
+      in
+      loop ()
+    in
+
+    ignore (Thread.create worker_thread ());
+    buffer_thread ()
 end
 
 module Running_jobs : sig

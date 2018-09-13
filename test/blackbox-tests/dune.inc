@@ -805,6 +805,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name target-dir-alias)
+ (deps (package dune) (source_tree test-cases/target-dir-alias))
+ (action
+  (chdir
+   test-cases/target-dir-alias
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name tests-stanza)
  (deps (package dune) (source_tree test-cases/tests-stanza))
  (action
@@ -983,6 +991,7 @@
   (alias shadow-bindings)
   (alias subst)
   (alias syntax-versioning)
+  (alias target-dir-alias)
   (alias tests-stanza)
   (alias tests-stanza-action)
   (alias too-many-parens)
@@ -1081,6 +1090,7 @@
   (alias shadow-bindings)
   (alias subst)
   (alias syntax-versioning)
+  (alias target-dir-alias)
   (alias tests-stanza)
   (alias tests-stanza-action)
   (alias too-many-parens)

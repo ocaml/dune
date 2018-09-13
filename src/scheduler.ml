@@ -110,21 +110,17 @@ module Running_jobs : sig
 end = struct
   let all = Hashtbl.create 128
 
-  (* Internal count is slightly different from logical count, since it counts
-     the actual number of child processes, and so is decreased right after a
-     process is waited on, while the logical count is decreased when a finished
-     process is processed via [resolve_and_remove_job]. *)
-  let i_count = ref 0
-  let i_count_mtx = Mutex.create ()
-  let i_count_cv = Condition.create ()
+  let running_pids = ref Int.Set.empty
+  let running_pids_mtx = Mutex.create ()
+  let something_is_running_cv = Condition.create ()
 
   let add job =
     Hashtbl.add all job.pid job;
-    Mutex.lock i_count_mtx;
-    i_count := !i_count + 1;
-    if !i_count = 1 then
-      Condition.signal i_count_cv;
-    Mutex.unlock i_count_mtx
+    Mutex.lock running_pids_mtx;
+    running_pids := Int.Set.add !running_pids job.pid;
+    if Int.Set.cardinal !running_pids = 1 then
+      Condition.signal something_is_running_cv;
+    Mutex.unlock running_pids_mtx
 
   let resolve_and_remove_job pid =
     let job =
@@ -138,15 +134,22 @@ end = struct
   exception Finished of int * Unix.process_status
 
   let wait_nonblocking_win32 () =
+    Mutex.lock running_pids_mtx;
     match
-      Hashtbl.iter all ~f:(fun ~key:pid ~data:_ ->
+      Int.Set.iter !running_pids ~f:(fun pid ->
         let pid, status = Unix.waitpid [WNOHANG] pid in
         if pid <> 0 then
-          raise_notrace (Finished (pid, status)))
+          raise_notrace (Finished (pid, status)));
     with
-    | () -> None
+    | () ->
+      Mutex.unlock running_pids_mtx;
+      None
     | exception (Finished (pid, status)) ->
+      Mutex.unlock running_pids_mtx;
       Some (pid, status)
+    | exception exn ->
+      Mutex.unlock running_pids_mtx;
+      reraise exn
 
   let rec wait_win32 () =
     match wait_nonblocking_win32 () with
@@ -165,17 +168,17 @@ end = struct
       wait_unix
 
   let rec wait_to_chan chan =
-    if !i_count = 0 then
-      Condition.wait i_count_cv i_count_mtx;
-    Mutex.unlock i_count_mtx;
+    if Int.Set.is_empty !running_pids then
+      Condition.wait something_is_running_cv running_pids_mtx;
+    Mutex.unlock running_pids_mtx;
     let pid, status = wait () in
     Event.(sync (send chan (pid, status)));
-    Mutex.lock i_count_mtx;
-    i_count := !i_count - 1;
+    Mutex.lock running_pids_mtx;
+    running_pids := Int.Set.remove !running_pids pid;
     wait_to_chan chan
 
   let wait_to_chan chan =
-    Mutex.lock i_count_mtx;
+    Mutex.lock running_pids_mtx;
     wait_to_chan chan
 
   let count () = Hashtbl.length all

@@ -14,6 +14,7 @@ module Section : sig
     | Share
     | Share_root
     | Etc
+    | Etc_root
     | Doc
     | Stublibs
     | Man
@@ -39,6 +40,7 @@ module Section : sig
       ; share        : Path.t
       ; share_root   : Path.t
       ; etc          : Path.t
+      ; etc_root     : Path.t
       ; doc          : Path.t
       ; stublibs     : Path.t
       ; man          : Path.t

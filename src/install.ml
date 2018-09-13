@@ -14,6 +14,7 @@ module Section = struct
       | Share
       | Share_root
       | Etc
+      | Etc_root
       | Doc
       | Stublibs
       | Man
@@ -37,6 +38,7 @@ module Section = struct
     | Share        -> "share"
     | Share_root   -> "share_root"
     | Etc          -> "etc"
+    | Etc_root     -> "etc_root"
     | Doc          -> "doc"
     | Stublibs     -> "stublibs"
     | Man          -> "man"
@@ -53,6 +55,7 @@ module Section = struct
     |"share"        -> Some Share
     |"share_root"   -> Some Share_root
     |"etc"          -> Some Etc
+    |"etc_root"     -> Some Etc_root
     |"doc"          -> Some Doc
     |"stublibs"     -> Some Stublibs
     |"man"          -> Some Man
@@ -72,6 +75,7 @@ module Section = struct
       ; "share"        , Share
       ; "share_root"   , Share_root
       ; "etc"          , Etc
+      ; "etc_root"     , Etc_root
       ; "doc"          , Doc
       ; "stublibs"     , Stublibs
       ; "man"          , Man
@@ -85,6 +89,7 @@ module Section = struct
     | Share
     | Share_root
     | Etc
+    | Etc_root
     | Doc
     | Man
     | Misc
@@ -108,6 +113,7 @@ module Section = struct
       ; share        : Path.t
       ; share_root   : Path.t
       ; etc          : Path.t
+      ; etc_root     : Path.t
       ; doc          : Path.t
       ; stublibs     : Path.t
       ; man          : Path.t
@@ -123,6 +129,7 @@ module Section = struct
       { lib_root
       ; libexec_root
       ; share_root
+      ; etc_root
       ; bin          = Path.relative destdir "bin"
       ; sbin         = Path.relative destdir "sbin"
       ; man          = Path.relative destdir "man"
@@ -147,6 +154,7 @@ module Section = struct
       | Share        -> t.share
       | Share_root   -> t.share_root
       | Etc          -> t.etc
+      | Etc_root     -> t.etc_root
       | Doc          -> t.doc
       | Stublibs     -> t.stublibs
       | Man          -> t.man

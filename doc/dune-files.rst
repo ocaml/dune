@@ -639,6 +639,7 @@ manual. The following sections are available:
 -  ``share``
 -  ``share_root``
 -  ``etc``
+-  ``etc_root``
 -  ``doc``
 -  ``stublibs``
 -  ``man``

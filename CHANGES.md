@@ -62,6 +62,8 @@ next
 - Add support for private modules via the `private_modules` field (#1241, fix
   #427, @rgrinberg)
 
+- Do not print diffs by default when running inside dune (#1260, @diml)
+
 1.1.1 (08/08/2018)
 ------------------
 

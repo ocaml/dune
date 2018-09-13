@@ -20,13 +20,13 @@
       ocamlopt .expect_test.eobjs/expect_test.{cmx,o}
       ocamlopt expect_test.exe
    expect_test expect_test.output
-  $ dune runtest --diff-command false --root generated --display short
+  $ dune runtest --root generated --display short
   Entering directory 'generated'
       ocamldep .generated.eobjs/generated.ml.d
         ocamlc .generated.eobjs/generated.{cmi,cmo,cmt}
       ocamlopt .generated.eobjs/generated.{cmx,o}
       ocamlopt generated.exe
      generated generated.output
-            sh (internal) (exit 1)
-  (cd _build/default && /bin/sh -c 'false generated.expected generated.output')
+  File "generated.expected", line 1, characters 0-0:
+  Files _build/default/generated.expected and _build/default/generated.output differ.
   [1]

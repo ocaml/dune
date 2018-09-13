@@ -18,14 +18,8 @@
 ;; NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 ;; CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-(require 'scheme)
-
 (defvar dune-mode-hook nil
   "Hooks for the `dune-mode'.")
-
-(defvar dune-program
-  (expand-file-name "dune-lint" dune-temporary-file-directory)
-  "Script to use to check the dune file.")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;                     Syntax highlighting
@@ -40,9 +34,10 @@
 (defconst dune-keywords-regex
   (eval-when-compile
     (concat (regexp-opt
-             '("jbuild_version" "library" "executable" "executables" "rule"
+             '("library" "executable" "executables" "rule"
                "ocamllex" "ocamlyacc" "menhir" "alias" "install"
-               "copy_files" "copy_files#" "include")
+               "copy_files" "copy_files#" "include" "tests" "test"
+               "env" "ignored_subdirs")
              ) "\\(?:\\_>\\|[[:space:]]\\)"))
   "Keywords in dune files.")
 
@@ -50,22 +45,21 @@
   (eval-when-compile
     (regexp-opt
      '("name" "public_name" "synopsis" "modules" "libraries" "wrapped"
-       "inline_tests" "inline_tests.backend"
        "preprocess" "preprocessor_deps" "optional" "c_names" "cxx_names"
        "install_c_headers" "modes" "no_dynlink" "kind"
        "ppx_runtime_libraries" "virtual_deps" "js_of_ocaml" "flags"
        "ocamlc_flags" "ocamlopt_flags" "library_flags" "c_flags"
        "cxx_flags" "c_library_flags" "self_build_stubs_archive"
-       "modules_without_implementation"
+       "modules_without_implementation" "allow_overlapping_dependencies"
+       "inline_tests"
        ;; + for "executable" and "executables":
-       "package" "link_flags" "modes" "names" "public_names"
+       "package" "link_flags" "link_deps" "names" "public_names"
        ;; + for "rule":
-       "targets" "action" "deps" "mode"
+       "targets" "action" "deps" "mode" "fallback" "locks"
        ;; + for "menhir":
        "merge_into"
        ;; + for "install"
-       "section" "files" "lib" "libexec" "bin" "sbin" "toplevel" "share"
-       "share_root" "etc" "doc" "stublibs" "man" "misc")
+       "section" "files")
      'symbols))
   "Field names allowed in dune files.")
 
@@ -77,12 +71,14 @@
                "with-stdout-to" "with-stderr-to" "with-outputs-to"
                "ignore-stdout" "ignore-stderr" "ignore-outputs"
                "progn" "echo" "write-file" "cat" "copy" "copy#" "system"
-               "bash" "diff" "diff?"
-               ;; inline_tests and inline_tests.backend
+               "bash" "diff" "diff?" "cmp"
                ;; FIXME: "flags" is already a field and we do not have enough
                ;; context to distinguishing both.
                "backend" "generate_runner" "runner_libraries" "flags"
-               "extends")
+               "extends"
+               ;; Dependency specification
+               "file" "alias" "alias_rec" "glob_files" "files_recursively_in"
+               "universe" "package")
              t)
             "\\(?:\\_>\\|[[:space:]]\\)"))
   "Builtin sub-fields in dune")
@@ -90,7 +86,7 @@
 (defvar dune-var-kind-regex
   (eval-when-compile
     (regexp-opt
-     '("path" "path-no-dep" "exe" "bin" "lib" "libexec" "lib-available"
+     '("dep" "path-no-dep" "exe" "bin" "lib" "libexec" "lib-available"
        "version" "read" "read-lines" "read-strings")
      'words))
   "Optional prefix to variable names.")
@@ -121,12 +117,7 @@
     (,(eval-when-compile
         (concat "(" (regexp-opt '("fallback") t)))
      1 dune-error-face)
-    (,(concat "${" dune-var-regex "}")
-     (1 dune-error-face)
-     (2 font-lock-builtin-face)
-     (4 font-lock-variable-name-face)
-     (5 font-lock-variable-name-face))
-    (,(concat "$(" dune-var-regex ")")
+    (,(concat "%{" dune-var-regex "}")
      (1 dune-error-face)
      (2 font-lock-builtin-face)
      (4 font-lock-variable-name-face)
@@ -193,44 +184,39 @@
 ;;;;                          Skeletons
 ;; See Info node "Autotype".
 
-(define-skeleton dune-insert-version-form
-  "Insert the dune version."
-  nil
-  "(jbuild_version 1" _ ")" > ?\n)
-
 (define-skeleton dune-insert-library-form
   "Insert a library stanza."
   nil
   "(library" > \n
-  "((name        " _ ")" > \n
+  "(name        " _ ")" > \n
   "(public_name " _ ")" > \n
-  "(libraries  (" _ "))" > \n
-  "(synopsis \"" _ "\")))" > ?\n)
+  "(libraries   " _ ")" > \n
+  "(synopsis \"" _ "\"))" > ?\n)
 
 (define-skeleton dune-insert-executable-form
   "Insert an executable stanza."
   nil
   "(executable" > \n
-  "((name        " _ ")" > \n
+  "(name        " _ ")" > \n
   "(public_name " _ ")" > \n
-  "(modules    (" _ "))" > \n
-  "(libraries  (" _ "))))" > ?\n)
+  "(modules     " _ ")" > \n
+  "(libraries   " _ "))" > ?\n)
 
 (define-skeleton dune-insert-executables-form
   "Insert an executables stanza."
   nil
   "(executables" > \n
-  "((names        (" _ "))" > \n
-  "(public_names (" _ "))" > \n
-  "(libraries    (" _ "))))" > ?\n)
+  "(names        " _ ")" > \n
+  "(public_names " _ ")" > \n
+  "(libraries    " _ "))" > ?\n)
 
 (define-skeleton dune-insert-rule-form
   "Insert a rule stanza."
   nil
   "(rule" > \n
-  "((targets (" _ "))" > \n
-  "(deps    (" _ "))" > \n
-  "(action  (" _ "))))" > ?\n)
+  "(targets " _ ")" > \n
+  "(deps    " _ ")" > \n
+  "(action  (" _ ")))" > ?\n)
 
 (define-skeleton dune-insert-ocamllex-form
   "Insert an ocamllex stanza."
@@ -252,27 +238,49 @@
   "Insert an alias stanza."
   nil
   "(alias" > \n
-  "((name " _ ")" > \n
-  "(deps (" _ "))))" > ?\n)
+  "(name " _ ")" > \n
+  "(deps " _ "))" > ?\n)
 
 (define-skeleton dune-insert-install-form
   "Insert an install stanza."
   nil
   "(install" > \n
-  "((section " _ ")" > \n
-  "(files (" _ "))))" > ?\n)
+  "(section " _ ")" > \n
+  "(files   " _ "))" > ?\n)
 
 (define-skeleton dune-insert-copyfiles-form
   "Insert a copy_files stanza."
   nil
   "(copy_files " _ ")" > ?\n)
 
+(define-skeleton dune-insert-test-form
+  "Insert a test stanza."
+  nil
+  "(test" > \n
+  "(name " _ "))" > ?\n)
+
+(define-skeleton dune-insert-tests-form
+  "Insert a tests stanza."
+  nil
+  "(tests" > \n
+  "(names " _ "))" > ?\n)
+
+(define-skeleton dune-insert-env-form
+  "Insert a env stanza."
+  nil
+  "(env" > \n
+  "(" _ " " _ "))" > ?\n)
+
+(define-skeleton dune-insert-ignored-subdirs-form
+  "Insert a ignored_subdirs stanza."
+  nil
+  "(ignored_subdirs (" _ "))" > ?\n)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defvar dune-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map "\C-c\C-c" 'compile)
-    (define-key map "\C-c.v" 'dune-insert-version-form)
     (define-key map "\C-c.l" 'dune-insert-library-form)
     (define-key map "\C-c.e" 'dune-insert-executable-form)
     (define-key map "\C-c.x" 'dune-insert-executables-form)
@@ -283,6 +291,9 @@
     (define-key map "\C-c.a" 'dune-insert-alias-form)
     (define-key map "\C-c.i" 'dune-insert-install-form)
     (define-key map "\C-c.c" 'dune-insert-copyfiles-form)
+    (define-key map "\C-c.t" 'dune-insert-tests-form)
+    (define-key map "\C-c.v" 'dune-insert-env-form)
+    (define-key map "\C-c.d" 'dune-insert-ignored-subdirs-form)
     map)
   "Keymap used in dune mode.")
 
@@ -292,17 +303,19 @@
     "dune mode menu."
     '("Dune/jbuild"
       ("Stanzas"
-       ["version" dune-insert-version-form t]
        ["library" dune-insert-library-form t]
        ["executable" dune-insert-executable-form t]
        ["executables" dune-insert-executables-form t]
        ["rule" dune-insert-rule-form t]
+       ["alias" dune-insert-alias-form t]
        ["ocamllex" dune-insert-ocamllex-form t]
        ["ocamlyacc" dune-insert-ocamlyacc-form t]
        ["menhir" dune-insert-menhir-form t]
-       ["alias" dune-insert-alias-form t]
        ["install" dune-insert-install-form t]
        ["copy_files" dune-insert-copyfiles-form t]
+       ["test" dune-insert-test-form t]
+       ["env" dune-insert-env-form t]
+       ["ignored_subdirs" dune-insert-ignored-subdirs-form t]
        )))
   (easy-menu-add dune-mode-menu))
 
@@ -322,7 +335,7 @@
 
 ;;;###autoload
 (add-to-list 'auto-mode-alist
-             '("\\(?:\\`\\|/\\)jbuild\\(?:\\.inc\\)?\\'" . dune-mode))
+             '("\\(?:\\`\\|/\\)dune\\(?:\\.inc\\)?\\'" . dune-mode))
 
 
 (provide 'dune-mode)

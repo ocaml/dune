@@ -25,15 +25,19 @@
   (expand-file-name "dune" temporary-file-directory)
   "Directory where to duplicate the files for flymake.")
 
+(defvar dune-program
+  (expand-file-name "dune-lint" dune-temporary-file-directory)
+  "Script to use to check the dune file.")
+
 (defvar dune--allowed-file-name-masks
-  '("\\(?:\\`\\|/\\)jbuild\\'" dune-flymake-init
+  '("\\(?:\\`\\|/\\)dune\\'" dune-flymake-init
     dune-flymake-cleanup)
   "Flymake entry for dune files.  See `flymake-allowed-file-name-masks'.")
 
 (defvar dune--err-line-patterns
   ;; Beware that the path from the root will be reported by dune
   ;; but flymake requires it to match the file name.
-  '(("File \"[^\"]*\\(jbuild\\)\", line \\([0-9]+\\), \
+  '(("File \"[^\"]*\\(dune\\)\", line \\([0-9]+\\), \
 characters \\([0-9]+\\)-\\([0-9]+\\): +\\([^\n]*\\)$"
      1 2 3 5))
   "Value of `flymake-err-line-patterns' for dune files.")
@@ -66,21 +70,21 @@ let errors =
   let root = match root with
     | None | Some \"\" -> \"\"
     | Some r -> \"--root=\" ^ Filename.quote r in
-  let cmd = sprintf \"jbuilder external-lib-deps %s %s\" root
+  let cmd = sprintf \"dune external-lib-deps %s %s\" root
               (Filename.quote (Filename.basename filename)) in
   let env = Unix.environment() in
   let (_,_,fh) as p = Unix.open_process_full cmd env in
   let out = read_all fh in
   match Unix.close_process_full p with
   | Unix.WEXITED (0|1) ->
-     (* jbuilder will normally exit with 1 as it will not be able to
+     (* dune will normally exit with 1 as it will not be able to
         perform the requested action. *)
      out
-  | Unix.WEXITED 127 -> printf \"jbuilder not found in path.\\n\"; exit 1
-  | Unix.WEXITED n -> printf \"jbuilder exited with status %d.\\n\" n; exit 1
-  | Unix.WSIGNALED n -> printf \"jbuilder was killed by signal %d.\\n\" n;
+  | Unix.WEXITED 127 -> printf \"dune not found in path.\\n\"; exit 1
+  | Unix.WEXITED n -> printf \"dune exited with status %d.\\n\" n; exit 1
+  | Unix.WSIGNALED n -> printf \"dune was killed by signal %d.\\n\" n;
                         exit 1
-  | Unix.WSTOPPED n -> printf \"jbuilder was stopped by signal %d\\n.\" n;
+  | Unix.WSTOPPED n -> printf \"dune was stopped by signal %d\\n.\" n;
                        exit 1
 
 
@@ -122,7 +126,7 @@ let () =
 
 (defun dune--root (filename)
   "Return the root and copy the necessary context files for dune."
-  ;; FIXME: the root depends on jbuild-workspace.  If none is found,
+  ;; FIXME: the root depends on dune-project.  If none is found,
   ;; assume the commands are issued from the dir where opam files are found.
   (let* ((dir (locate-dominating-file (file-name-directory filename)
                                       #'dune--opam-files)))

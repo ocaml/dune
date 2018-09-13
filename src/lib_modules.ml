@@ -127,3 +127,10 @@ let virtual_modules t = t.virtual_modules
 let wrapped_compat t = t.wrapped_compat
 
 let modules t = t.modules
+
+let entry_modules t =
+  match alias t with
+  | None -> Module.Name.Map.values t.modules
+  | Some { module_name ; alias_module } ->
+    [Option.value ~default:alias_module
+       (Module.Name.Map.find t.modules module_name)]

@@ -21,6 +21,8 @@ val virtual_modules : t -> Module.Name_map.t
 
 val installable_modules : t -> Module.t list
 
+val entry_modules : t -> Module.t list
+
 val make
   :  Dune_file.Library.t
   -> dir:Path.t

@@ -21,19 +21,23 @@
 (require 'flymake)
 (require 'dune-mode)
 
+(defvar dune-program
+  (expand-file-name "dune-lint" dune-temporary-file-directory)
+  "Script to use to check the dune file.")
+
 (defvar dune-flymake-temporary-file-directory
   (expand-file-name "dune" temporary-file-directory)
   "Directory where to duplicate the files for flymake.")
 
 (defvar dune--allowed-file-name-masks
-  '("\\(?:\\`\\|/\\)jbuild\\'" dune-flymake-init
+  '("\\(?:\\`\\|/\\)dune\\'" dune-flymake-init
     dune-flymake-cleanup)
   "Flymake entry for dune files.  See `flymake-allowed-file-name-masks'.")
 
 (defvar dune--err-line-patterns
   ;; Beware that the path from the root will be reported by dune
   ;; but flymake requires it to match the file name.
-  '(("File \"[^\"]*\\(jbuild\\)\", line \\([0-9]+\\), \
+  '(("File \"[^\"]*\\(dune\\)\", line \\([0-9]+\\), \
 characters \\([0-9]+\\)-\\([0-9]+\\): +\\([^\n]*\\)$"
      1 2 3 5))
   "Value of `flymake-err-line-patterns' for dune files.")
@@ -122,7 +126,7 @@ let () =
 
 (defun dune--root (filename)
   "Return the root and copy the necessary context files for dune."
-  ;; FIXME: the root depends on jbuild-workspace.  If none is found,
+  ;; FIXME: the root depends on dune-workspace.  If none is found,
   ;; assume the commands are issued from the dir where opam files are found.
   (let* ((dir (locate-dominating-file (file-name-directory filename)
                                       #'dune--opam-files)))
@@ -169,7 +173,5 @@ let () =
 (defun dune-flymake-dune-mode-hook ()
   (push dune--allowed-file-name-masks flymake-allowed-file-name-masks)
   (setq-local flymake-err-line-patterns dune--err-line-patterns))
-
-(add-hook )
 
 (provide 'dune-flymake)

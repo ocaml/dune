@@ -18,14 +18,8 @@
 ;; NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 ;; CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-(require 'scheme)
-
 (defvar dune-mode-hook nil
   "Hooks for the `dune-mode'.")
-
-(defvar dune-program
-  (expand-file-name "dune-lint" dune-temporary-file-directory)
-  "Script to use to check the dune file.")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;                     Syntax highlighting
@@ -190,122 +184,12 @@
     value))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;                          Skeletons
-;; See Info node "Autotype".
-
-(define-skeleton dune-insert-version-form
-  "Insert the dune version."
-  nil
-  "(jbuild_version 1" _ ")" > ?\n)
-
-(define-skeleton dune-insert-library-form
-  "Insert a library stanza."
-  nil
-  "(library" > \n
-  "((name        " _ ")" > \n
-  "(public_name " _ ")" > \n
-  "(libraries  (" _ "))" > \n
-  "(synopsis \"" _ "\")))" > ?\n)
-
-(define-skeleton dune-insert-executable-form
-  "Insert an executable stanza."
-  nil
-  "(executable" > \n
-  "((name        " _ ")" > \n
-  "(public_name " _ ")" > \n
-  "(modules    (" _ "))" > \n
-  "(libraries  (" _ "))))" > ?\n)
-
-(define-skeleton dune-insert-executables-form
-  "Insert an executables stanza."
-  nil
-  "(executables" > \n
-  "((names        (" _ "))" > \n
-  "(public_names (" _ "))" > \n
-  "(libraries    (" _ "))))" > ?\n)
-
-(define-skeleton dune-insert-rule-form
-  "Insert a rule stanza."
-  nil
-  "(rule" > \n
-  "((targets (" _ "))" > \n
-  "(deps    (" _ "))" > \n
-  "(action  (" _ "))))" > ?\n)
-
-(define-skeleton dune-insert-ocamllex-form
-  "Insert an ocamllex stanza."
-  nil
-  "(ocamllex (" _ "))" > ?\n)
-
-(define-skeleton dune-insert-ocamlyacc-form
-  "Insert an ocamlyacc stanza."
-  nil
-  "(ocamlyacc (" _ "))" > ?\n)
-
-(define-skeleton dune-insert-menhir-form
-  "Insert a menhir stanza."
-  nil
-  "(menhir" > \n
-  "((modules (" _ "))))" > ?\n)
-
-(define-skeleton dune-insert-alias-form
-  "Insert an alias stanza."
-  nil
-  "(alias" > \n
-  "((name " _ ")" > \n
-  "(deps (" _ "))))" > ?\n)
-
-(define-skeleton dune-insert-install-form
-  "Insert an install stanza."
-  nil
-  "(install" > \n
-  "((section " _ ")" > \n
-  "(files (" _ "))))" > ?\n)
-
-(define-skeleton dune-insert-copyfiles-form
-  "Insert a copy_files stanza."
-  nil
-  "(copy_files " _ ")" > ?\n)
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defvar dune-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map "\C-c\C-c" 'compile)
-    (define-key map "\C-c.v" 'dune-insert-version-form)
-    (define-key map "\C-c.l" 'dune-insert-library-form)
-    (define-key map "\C-c.e" 'dune-insert-executable-form)
-    (define-key map "\C-c.x" 'dune-insert-executables-form)
-    (define-key map "\C-c.r" 'dune-insert-rule-form)
-    (define-key map "\C-c.p" 'dune-insert-ocamllex-form)
-    (define-key map "\C-c.y" 'dune-insert-ocamlyacc-form)
-    (define-key map "\C-c.m" 'dune-insert-menhir-form)
-    (define-key map "\C-c.a" 'dune-insert-alias-form)
-    (define-key map "\C-c.i" 'dune-insert-install-form)
-    (define-key map "\C-c.c" 'dune-insert-copyfiles-form)
     map)
   "Keymap used in dune mode.")
-
-(defun dune-build-menu ()
-  (easy-menu-define
-    dune-mode-menu  (list dune-mode-map)
-    "dune mode menu."
-    '("Dune/jbuild"
-      ("Stanzas"
-       ["version" dune-insert-version-form t]
-       ["library" dune-insert-library-form t]
-       ["executable" dune-insert-executable-form t]
-       ["executables" dune-insert-executables-form t]
-       ["rule" dune-insert-rule-form t]
-       ["ocamllex" dune-insert-ocamllex-form t]
-       ["ocamlyacc" dune-insert-ocamlyacc-form t]
-       ["menhir" dune-insert-menhir-form t]
-       ["alias" dune-insert-alias-form t]
-       ["install" dune-insert-install-form t]
-       ["copy_files" dune-insert-copyfiles-form t]
-       )))
-  (easy-menu-add dune-mode-menu))
-
 
 ;;;###autoload
 (define-derived-mode dune-mode prog-mode "dune"
@@ -322,7 +206,7 @@
 
 ;;;###autoload
 (add-to-list 'auto-mode-alist
-             '("\\(?:\\`\\|/\\)jbuild\\(?:\\.inc\\)?\\'" . dune-mode))
+             '("\\(?:\\`\\|/\\)dune\\(?:\\.inc\\)?\\'" . dune-mode))
 
 
 (provide 'dune-mode)

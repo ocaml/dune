@@ -89,3 +89,41 @@ let make (lib : Dune_file.Library.t) ~dir (modules : Module.Name_map.t)
     in
     make_wrapped ~transition ~modules ~virtual_modules ~dir ~main_module_name
       ~lib
+
+module Alias_module = struct
+  type t =
+    { module_name : Module.Name.t
+    ; alias_module : Module.t
+    }
+end
+
+let alias t =
+  match t.alias_module, t.main_module_name with
+  | None, None -> None
+  | None, Some _ -> None
+  | Some _, None -> assert false
+  | Some alias_module, Some module_name ->
+    Some
+      { Alias_module.
+        module_name
+      ; alias_module
+      }
+
+let installable_modules t =
+  let modules =
+    List.rev_append
+      (Module.Name.Map.values t.modules)
+      (Module.Name.Map.values t.wrapped_compat)
+  in
+  match t.alias_module with
+  | None -> modules
+  | Some alias -> alias :: modules
+
+let lib_interface_module t =
+  Option.bind t.main_module_name ~f:(Module.Name.Map.find t.modules)
+
+let virtual_modules t = t.virtual_modules
+
+let wrapped_compat t = t.wrapped_compat
+
+let modules t = t.modules

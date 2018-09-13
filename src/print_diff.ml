@@ -35,6 +35,7 @@ let print ?(skip_trailing_cr=Sys.win32) path1 path2 =
       fallback ()
   in
   match !Clflags.diff_command with
+  | Some "-" -> fallback ()
   | Some cmd ->
     let sh, arg = Utils.system_shell_exn ~needed_to:"print diffs" in
     let cmd =
@@ -48,19 +49,22 @@ let print ?(skip_trailing_cr=Sys.win32) path1 path2 =
        else
          sprintf "cd %s && %s" (quote_for_shell (Path.to_string dir)) cmd)
   | None ->
-    match Bin.which "patdiff" with
-    | None -> normal_diff ()
-    | Some prog ->
-      Process.run ~dir ~env:Env.initial Strict prog
-        [ "-keep-whitespace"
-        ; "-location-style"; "omake"
-        ; if Lazy.force Colors.stderr_supports_colors then
-            "-unrefined"
-          else
-            "-ascii"
-        ; file1
-        ; file2
-        ]
-      >>= fun () ->
-      (* Use "diff" if "patdiff" reported no differences *)
-      normal_diff ()
+    if Config.inside_dune then
+      fallback ()
+    else
+      match Bin.which "patdiff" with
+      | None -> normal_diff ()
+      | Some prog ->
+        Process.run ~dir ~env:Env.initial Strict prog
+          [ "-keep-whitespace"
+          ; "-location-style"; "omake"
+          ; if Lazy.force Colors.stderr_supports_colors then
+              "-unrefined"
+            else
+              "-ascii"
+          ; file1
+          ; file2
+          ]
+        >>= fun () ->
+        (* Use "diff" if "patdiff" reported no differences *)
+        normal_diff ()

@@ -237,120 +237,12 @@ end = struct
     }
 end
 
-module Library_modules : sig
-  type t = private
-    { modules          : Module.Name_map.t
-    ; virtual_modules  : Module.Name_map.t
-    ; alias_module     : Module.t option
-    ; main_module_name : Module.Name.t option
-    ; wrapped_compat   : Module.Name_map.t
-    }
-
-  val make
-    :  Library.t
-    -> dir:Path.t
-    -> Module.Name_map.t
-    -> virtual_modules:Module.Name_map.t
-    -> main_module_name:Module.Name.t option
-    -> t
-end = struct
-  type t =
-    { modules          : Module.Name_map.t
-    ; virtual_modules  : Module.Name_map.t
-    ; alias_module     : Module.t option
-    ; main_module_name : Module.Name.t option
-    ; wrapped_compat   : Module.Name_map.t
-    }
-
-  let make_unwrapped ~modules ~virtual_modules ~main_module_name =
-    assert (Module.Name.Map.is_empty virtual_modules);
-    assert (main_module_name = None);
-    { modules
-    ; alias_module = None
-    ; main_module_name = None
-    ; wrapped_compat = Module.Name.Map.empty
-    ; virtual_modules = Module.Name.Map.empty
-    }
-
-  let make_wrapped ~(lib : Library.t) ~dir ~transition ~modules
-        ~virtual_modules ~main_module_name =
-    let wrap_modules modules =
-      let open Module.Name.Infix in
-      Module.Name.Map.map modules ~f:(fun (m : Module.t) ->
-        if m.name = main_module_name then
-          m
-        else
-          Module.with_wrapper m ~main_module_name)
-    in
-    let (modules, wrapped_compat) =
-      if transition then
-        ( wrap_modules modules
-        , Module.Name.Map.remove modules main_module_name
-          |> Module.Name.Map.filter_map ~f:(fun m ->
-            if Module.is_public m then
-              Some (Module.wrapped_compat m)
-            else
-              None)
-        )
-      else
-        wrap_modules modules, Module.Name.Map.empty
-    in
-    let alias_module =
-      let lib_name = Lib_name.Local.to_string (snd lib.name) in
-      if Module.Name.Map.cardinal modules = 1 &&
-         Module.Name.Map.mem modules main_module_name then
-        None
-      else if Module.Name.Map.mem modules main_module_name then
-        (* This module needs an implementation for non-jbuilder
-           users of the library:
-
-           https://github.com/ocaml/dune/issues/567 *)
-        Some
-          (Module.make (Module.Name.add_suffix main_module_name "__")
-             ~visibility:Public
-             ~impl:(Module.File.make OCaml
-                      (Path.relative dir (sprintf "%s__.ml-gen" lib_name)))
-             ~obj_name:(lib_name ^ "__"))
-      else
-        Some
-          (Module.make main_module_name
-             ~visibility:Public
-             ~impl:(Module.File.make OCaml
-                      (Path.relative dir (lib_name ^ ".ml-gen")))
-             ~obj_name:lib_name)
-    in
-    { modules
-    ; alias_module
-    ; main_module_name = Some main_module_name
-    ; wrapped_compat
-    ; virtual_modules
-    }
-
-
-  let make (lib : Library.t) ~dir (modules : Module.Name_map.t)
-        ~virtual_modules ~main_module_name =
-    match lib.wrapped, main_module_name with
-    | Simple false, _ ->
-      make_unwrapped ~modules ~virtual_modules ~main_module_name
-    | (Yes_with_transition _ | Simple true), None ->
-      assert false
-    | wrapped, Some main_module_name ->
-      let transition =
-        match wrapped with
-        | Simple true -> false
-        | Yes_with_transition _ -> true
-        | Simple false -> assert false
-      in
-      make_wrapped ~transition ~modules ~virtual_modules ~dir ~main_module_name
-        ~lib
-end
-
 module Executables_modules = struct
   type t = Module.Name_map.t
 end
 
 type modules =
-  { libraries : Library_modules.t Lib_name.Map.t
+  { libraries : Lib_modules.t Lib_name.Map.t
   ; executables : Executables_modules.t String.Map.t
   ; (* Map from modules to the buildable they are part of *)
     rev_map : Buildable.t Module.Name.Map.t
@@ -518,7 +410,7 @@ let build_modules_map (d : Super_context.Dir_with_jbuild.t) ~scope ~modules =
             |> Result.ok_exn
         in
         Left ( lib
-             , Library_modules.make lib ~dir:d.ctx_dir modules ~virtual_modules
+             , Lib_modules.make lib ~dir:d.ctx_dir modules ~virtual_modules
                  ~main_module_name
              )
       | Executables exes

@@ -139,7 +139,7 @@ module Gen(P : Params) = struct
     let if_ cond l = if cond then l else [] in
     let files =
       let modules =
-        let { Dir_contents.Library_modules.
+        let { Lib_modules.
               modules
             ; alias_module
             ; wrapped_compat

@@ -106,7 +106,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
               Lib_name.pp implements
           | Some Unexpanded ->
             let dir_contents =
-              Dir_contents.get sctx ~scope ~dir:(Lib.src_dir vlib) in
+              Dir_contents.get sctx ~dir:(Lib.src_dir vlib) in
             let lib_modules =
               Dir_contents.modules_of_library dir_contents
                 ~name:(Lib.name vlib) in

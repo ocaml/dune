@@ -662,7 +662,7 @@ let clear_cache () =
 
 let () = Hooks.End_of_build.always clear_cache
 
-let rec get sctx ~dir ~scope =
+let rec get sctx ~dir =
   match Hashtbl.find cache dir with
   | Some t -> t
   | None ->
@@ -675,7 +675,7 @@ let rec get sctx ~dir ~scope =
           { kind = Standalone
           ; dir
           ; text_files = files
-          ; modules = lazy (build_modules_map d ~scope
+          ; modules = lazy (build_modules_map d ~scope:d.scope
                               ~modules:(modules_of_files ~dir:d.ctx_dir ~files))
           ; mlds = lazy (build_mlds_map d ~files)
           }
@@ -694,7 +694,7 @@ let rec get sctx ~dir ~scope =
         match Hashtbl.find cache dir with
         | Some t -> t
         | None ->
-          ignore (get sctx ~scope ~dir:(Path.parent_exn dir) : t);
+          ignore (get sctx ~dir:(Path.parent_exn dir) : t);
           (* Filled while scanning the group root *)
           Option.value_exn (Hashtbl.find cache dir)
       end
@@ -739,12 +739,11 @@ let rec get sctx ~dir ~scope =
                   Path.pp (Module.dir x)
                   Path.pp (Module.dir y)))
         in
-        build_modules_map d ~scope ~modules)
+        build_modules_map d ~scope:d.scope ~modules)
       in
       let t =
         { kind = Group_root
-                   (lazy (List.map subdirs
-                            ~f:(fun (dir, _) -> get sctx ~scope ~dir)))
+                   (lazy (List.map subdirs ~f:(fun (dir, _) -> get sctx ~dir)))
         ; dir
         ; text_files = files
         ; modules

@@ -320,9 +320,7 @@ module Gen(P : Install_rules.Params) = struct
          if components <> [] then SC.load_dir sctx ~dir:(Path.parent_exn dir)
        | Some _ ->
          (* This interprets "rule" and "copy_files" stanzas. *)
-         let dir_contents =
-           let scope = Super_context.find_scope_by_dir sctx dir in
-           Dir_contents.get sctx ~scope ~dir in
+         let dir_contents = Dir_contents.get sctx ~dir in
          match Dir_contents.kind dir_contents with
          | Standalone ->
            gen_rules dir_contents ~dir

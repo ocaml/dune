@@ -32,7 +32,7 @@ val lookup_module : t -> Module.Name.t -> Dune_file.Buildable.t option
 (** All mld files attached to this documentation stanza *)
 val mlds : t -> Dune_file.Documentation.t -> Path.t list
 
-val get : Super_context.t -> dir:Path.t -> scope:Scope.t -> t
+val get : Super_context.t -> dir:Path.t -> t
 
 type kind = private
   | Standalone

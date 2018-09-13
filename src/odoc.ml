@@ -392,8 +392,8 @@ module Gen (S : sig val sctx : SC.t end) = struct
       |> Path.Set.of_list
     )
 
-  let entry_modules_by_lib lib ~scope =
-    Dir_contents.get sctx ~dir:(Lib.src_dir lib) ~scope
+  let entry_modules_by_lib lib =
+    Dir_contents.get sctx ~dir:(Lib.src_dir lib)
     |> Dir_contents.modules_of_library ~name:(Lib.name lib)
     |> Lib_modules.entry_modules
 
@@ -401,9 +401,8 @@ module Gen (S : sig val sctx : SC.t end) = struct
     libs_of_pkg ~pkg:pkg.name
     |> Lib.Set.to_list
     |> List.filter_map ~f:(fun l ->
-      let scope = Super_context.find_scope_by_dir sctx (Lib.src_dir l) in
       if Lib.is_local l then (
-        Some (l, entry_modules_by_lib l ~scope)
+        Some (l, entry_modules_by_lib l)
       ) else (
         None
       ))
@@ -474,10 +473,9 @@ module Gen (S : sig val sctx : SC.t end) = struct
       let map = lazy (
         stanzas
         |> List.concat_map ~f:(fun (w : SC.Dir_with_jbuild.t) ->
-          let scope = Super_context.find_scope_by_dir sctx w.ctx_dir in
           List.filter_map w.stanzas ~f:(function
             | Documentation d ->
-              let dc = Dir_contents.get sctx ~scope ~dir:w.ctx_dir in
+              let dc = Dir_contents.get sctx ~dir:w.ctx_dir in
               let mlds = Dir_contents.mlds dc d in
               Some (d.package.name, mlds)
             | _ ->

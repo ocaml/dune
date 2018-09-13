@@ -107,16 +107,12 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
           | Some Unexpanded ->
             let dir_contents =
               Dir_contents.get sctx ~scope ~dir:(Lib.src_dir vlib) in
-            let { Lib_modules.
-                  virtual_modules
-                ; modules = vlib_modules
-                ; main_module_name = _
-                ; alias_module = _
-                ; wrapped_compat = _
-                } =
+            let lib_modules =
               Dir_contents.modules_of_library dir_contents
                 ~name:(Lib.name vlib) in
-            (vlib_modules, virtual_modules)
+            ( Lib_modules.modules lib_modules
+            , Lib_modules.virtual_modules lib_modules
+            )
         in
         check_virtual_modules_field ~lib ~virtual_modules ~modules ~implements;
         { Implementation.

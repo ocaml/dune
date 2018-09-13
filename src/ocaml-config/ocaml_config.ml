@@ -84,6 +84,7 @@ type t =
   ; cmt_magic_number         : string
   ; natdynlink_supported     : bool
   ; supports_shared_libraries : bool
+  ; windows_unicode          : bool
   }
 
 let version                  t = t.version
@@ -134,6 +135,7 @@ let cmxs_magic_number        t = t.cmxs_magic_number
 let cmt_magic_number         t = t.cmt_magic_number
 let natdynlink_supported     t = t.natdynlink_supported
 let supports_shared_libraries t = t.supports_shared_libraries
+let windows_unicode          t = t.windows_unicode
 
 let to_list t : (string * Value.t) list =
   [ "version"                  , String        t.version_string
@@ -183,6 +185,7 @@ let to_list t : (string * Value.t) list =
   ; "cmt_magic_number"         , String        t.cmt_magic_number
   ; "natdynlink_supported"     , Bool          t.natdynlink_supported
   ; "supports_shared_libraries", Bool          t.supports_shared_libraries
+  ; "windows_unicode"          , Bool          t.windows_unicode
   ]
 
 let to_sexp t =
@@ -391,6 +394,7 @@ let make vars =
     let ast_intf_magic_number   = get      vars "ast_intf_magic_number"   in
     let cmxs_magic_number       = get      vars "cmxs_magic_number"       in
     let cmt_magic_number        = get      vars "cmt_magic_number"        in
+    let windows_unicode         = get_bool vars "windows_unicode"         in
 
     let natdynlink_supported =
       Sys.file_exists (Filename.concat standard_library "dynlink.cmxa")
@@ -452,6 +456,7 @@ let make vars =
     ; cmt_magic_number
     ; natdynlink_supported
     ; supports_shared_libraries
+    ; windows_unicode
     }
   with
   | t -> Ok t

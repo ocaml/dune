@@ -93,6 +93,7 @@ val cmxs_magic_number        : t -> string
 val cmt_magic_number         : t -> string
 val natdynlink_supported     : t -> bool
 val supports_shared_libraries : t -> bool
+val windows_unicode          : t -> bool
 
 (** {1 Values} *)
 

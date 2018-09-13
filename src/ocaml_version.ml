@@ -17,3 +17,6 @@ let supports_color_in_ocamlparam version =
 
 let supports_ocaml_color version =
   version >= (4, 05, 0)
+
+let supports_response_file version =
+  version >= (4, 05, 0)

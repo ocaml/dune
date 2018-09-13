@@ -62,6 +62,9 @@ next
 - Add support for private modules via the `private_modules` field (#1241, fix
   #427, @rgrinberg)
 
+- Add support for passing arguments to the OCaml compiler via a
+  response file when the list of arguments is too long (#1256, @diml)
+
 - Do not print diffs by default when running inside dune (#1260, @diml)
 
 1.1.1 (08/08/2018)

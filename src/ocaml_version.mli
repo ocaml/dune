@@ -18,3 +18,6 @@ val supports_color_in_ocamlparam : t -> bool
 
 (** Does this support [OCAML_COLOR]? *)
 val supports_ocaml_color : t -> bool
+
+(** Does this this support [-args0]? *)
+val supports_response_file : t -> bool

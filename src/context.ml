@@ -391,7 +391,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     let version_string = Ocaml_config.version_string ocfg in
     let version        = Ocaml_version.of_ocaml_config ocfg in
     let arch_sixtyfour = Ocaml_config.word_size ocfg = 64 in
-    Fiber.return
+    let t =
       { name
       ; implicit
       ; kind
@@ -461,6 +461,18 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
 
       ; which_cache
       }
+    in
+    if Ocaml_version.supports_response_file version then begin
+      let set prog =
+        Response_file.set ~prog (Zero_terminated_strings "-args0")
+      in
+      set t.ocaml;
+      set t.ocamlc;
+      Option.iter t.ocamlopt ~f:set;
+      set t.ocamldep;
+      set t.ocamlmklib
+    end;
+    Fiber.return t
   in
 
   let implicit = not (List.mem ~set:targets Workspace.Context.Target.Native) in

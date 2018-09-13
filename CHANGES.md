@@ -67,6 +67,9 @@ next
 
 - Do not print diffs by default when running inside dune (#1260, @diml)
 
+- Interpret `$ dune build dir` as building the default alias in `dir`. (#1259,
+  @rgrinberg)
+
 1.1.1 (08/08/2018)
 ------------------
 

@@ -584,11 +584,10 @@ let runtest =
         | dir -> sprintf "@%s/runtest" dir));
     let log = Log.create common in
     let targets (setup : Main.setup) =
-      let check_path = Util.check_path setup.contexts in
       List.map dirs ~f:(fun dir ->
         let dir = Path.(relative root) (Common.prefix_target common dir) in
-        check_path dir;
-        Target.Alias_rec (Path.relative dir "runtest"))
+        Target.Alias (Alias.in_dir ~name:"runtest" ~recursive:true
+                        ~contexts:setup.contexts dir))
     in
     run_build_command ~log ~common ~targets
   in

@@ -10,8 +10,7 @@ let hint = Dune.Import.hint
 
 type t =
   | File      of Path.t
-  | Alias     of Path.t
-  | Alias_rec of Path.t
+  | Alias     of Alias.t
 
 type resolve_input =
   | Path of Path.t
@@ -19,30 +18,23 @@ type resolve_input =
 
 let request (setup : Dune.Main.setup) targets =
   let open Build.O in
-  let contexts = List.map setup.contexts ~f:(fun c -> c.Context.name) in
   List.fold_left targets ~init:(Build.return ()) ~f:(fun acc target ->
     acc >>>
     match target with
     | File path -> Build.path path
-    | Alias path ->
-      let contexts, dir, name = Util.parse_alias path ~contexts in
-      Build_system.Alias.dep_multi_contexts ~dir ~name
-        ~file_tree:setup.file_tree ~contexts
-    | Alias_rec path ->
-      let contexts, dir, name = Util.parse_alias path ~contexts in
-      Build_system.Alias.dep_rec_multi_contexts ~dir ~name
-        ~file_tree:setup.file_tree ~contexts)
+    | Alias { Alias. name; recursive; dir; contexts } ->
+      let contexts = List.map ~f:Dune.Context.name contexts in
+      (if recursive then
+         Build_system.Alias.dep_rec_multi_contexts
+       else
+         Build_system.Alias.dep_multi_contexts)
+        ~dir ~name ~file_tree:setup.file_tree ~contexts)
 
 let log_targets ~log targets =
   List.iter targets ~f:(function
     | File path ->
       Log.info log @@ "- " ^ (Path.to_string path)
-    | Alias path ->
-      Log.info log @@ "- alias " ^
-                      (Path.to_string_maybe_quoted path)
-    | Alias_rec path ->
-      Log.info log @@ "- recursive alias " ^
-                      (Path.to_string_maybe_quoted path));
+    | Alias a -> Log.info log (Alias.to_log_string a));
   flush stdout
 
 let target_hint (setup : Dune.Main.setup) path =
@@ -59,8 +51,8 @@ let target_hint (setup : Dune.Main.setup) path =
         | Some (_, path) -> path)
   in
   let candidates =
-    (* Only suggest hints for the basename, otherwise it's slow when there are lots of
-       files *)
+    (* Only suggest hints for the basename, otherwise it's slow when there are
+       lots of files *)
     List.filter_map candidates ~f:(fun path ->
       if Path.equal (Path.parent_exn path) sub_dir then
         Some (Path.to_string path)
@@ -70,13 +62,15 @@ let target_hint (setup : Dune.Main.setup) path =
   let candidates = String.Set.of_list candidates |> String.Set.to_list in
   hint (Path.to_string path) candidates
 
-
 let resolve_path path ~(setup : Dune.Main.setup) =
   Util.check_path setup.contexts path;
   let can't_build path =
     Error (path, target_hint setup path);
   in
-  if not (Path.is_managed path) then
+  if Dune.File_tree.dir_exists setup.file_tree path then
+    Ok [ Alias (Alias.in_dir ~name:"default" ~recursive:true
+                  ~contexts:setup.contexts path) ]
+  else if not (Path.is_managed path) then
     Ok [File path]
   else if Path.is_in_build_dir path then begin
     if Build_system.is_target setup.build_system path then
@@ -96,26 +90,11 @@ let resolve_path path ~(setup : Dune.Main.setup) =
     | l  -> Ok l
 
 let resolve_target common ~(setup : Dune.Main.setup) s =
-  if String.is_prefix s ~prefix:"@" then begin
-    let pos, is_rec =
-      if String.length s >= 2 && s.[1] = '@' then
-        (2, false)
-      else
-        (1, true)
-    in
-    let s = String.drop s pos in
-    let path = Path.relative Path.root (Common.prefix_target common s) in
-    Util.check_path setup.contexts path;
-    if Path.is_root path then
-      die "@@ on the command line must be followed by a valid alias name"
-    else if not (Path.is_managed path) then
-      die "@@ on the command line must be followed by a relative path"
-    else
-      Ok [if is_rec then Alias_rec path else Alias path]
-  end else begin
+  match Alias.of_string common s ~contexts:setup.contexts with
+  | Some a -> Ok [Alias a]
+  | None ->
     let path = Path.relative Path.root (Common.prefix_target common s) in
     resolve_path path ~setup
-  end
 
 let resolve_targets_mixed ~log common (setup : Dune.Main.setup) user_targets =
   match user_targets with

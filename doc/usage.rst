@@ -154,6 +154,19 @@ definition is assumed:
 Which means that by default ``dune build`` will build everything that
 is installable.
 
+When using a directory as a target, it will be interpreted as building the
+default target in the directory. The directory must exist in the source tree.
+
+.. code::
+
+   dune build dir
+
+Is equivalent to:
+
+.. code::
+
+   dune build @@dir/default
+
 Finding external libraries
 ==========================
 

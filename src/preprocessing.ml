@@ -475,7 +475,7 @@ let lint_module sctx ~dir ~dep_kind ~lint ~lib_name ~scope ~dir_kind =
              let action = Action.Unexpanded.Chdir (workspace_root_var, action) in
              Module.iter source ~f:(fun _ (src : Module.File.t) ->
                let bindings = Pform.Map.input_file src.path in
-               add_alias src.path ~loc:None
+               add_alias src.path ~loc:(Some loc)
                  (Build.path src.path
                   >>^ (fun _ -> Dune_file.Bindings.empty)
                   >>> SC.Action.run sctx
@@ -556,7 +556,7 @@ let make sctx ~dir ~dep_kind ~lint ~preprocess
          let ast =
            pped_module m ~f:(fun _kind src dst ->
              let bindings = Pform.Map.input_file src in
-             SC.add_rule sctx
+             SC.add_rule sctx ~loc
                (preprocessor_deps
                 >>>
                 Build.path src
@@ -605,7 +605,7 @@ let make sctx ~dir ~dep_kind ~lint ~preprocess
            let ast = setup_reason_rules sctx m in
            if lint then lint_module ~ast ~source:m;
            pped_module ast ~f:(fun kind src dst ->
-             SC.add_rule sctx
+             SC.add_rule sctx ~loc
                (promote_correction ~suffix:corrected_suffix
                   (Option.value_exn (Module.file m kind))
                   (preprocessor_deps >>^ ignore

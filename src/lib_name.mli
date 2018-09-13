@@ -39,7 +39,7 @@ val pp : t Fmt.t
 
 val pp_quoted : t Fmt.t
 
-val of_local : Local.t -> t
+val of_local : (Loc.t * Local.t) -> t
 
 val to_local : t -> Local.result
 

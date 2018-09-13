@@ -97,7 +97,7 @@ let to_string t = t
 
 let of_string_exn ~loc:_ s = s
 
-let of_local t = t
+let of_local (_loc, t) = t
 
 type t = string
 

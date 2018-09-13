@@ -892,7 +892,7 @@ module Library = struct
   end
 
   type t =
-    { name                     : Lib_name.Local.t
+    { name                     : (Loc.t * Lib_name.Local.t)
     ; public                   : Public_lib.t option
     ; synopsis                 : string option
     ; install_c_headers        : string list
@@ -968,13 +968,13 @@ module Library = struct
        let name =
          let open Syntax.Version.Infix in
          match name, public with
-         | Some n, _ ->
+         | Some (loc, res), _ ->
            let wrapped = Wrapped.to_bool (Wrapped.value wrapped) in
-           Lib_name.Local.validate n ~wrapped
+           (loc, Lib_name.Local.validate (loc, res) ~wrapped)
          | None, Some { name = (loc, name) ; _ }  ->
            if dune_version >= (1, 1) then
              match Lib_name.to_local name with
-             | Ok m -> m
+             | Ok m -> (loc, m)
              | Warn _ | Invalid ->
                of_sexp_errorf loc
                  "%s.\n\
@@ -1042,16 +1042,21 @@ module Library = struct
     | [], [], None -> false
     | _            -> true
 
+  let stubs_name t =
+    Lib_name.Local.to_string (snd t.name) ^ "_stubs"
+
+  let stubs t ~dir = Path.relative dir (stubs_name t)
+
   let stubs_archive t ~dir ~ext_lib =
     Path.relative dir (sprintf "lib%s_stubs%s"
-                         (Lib_name.Local.to_string t.name) ext_lib)
+                         (Lib_name.Local.to_string (snd t.name)) ext_lib)
 
   let dll t ~dir ~ext_dll =
     Path.relative dir (sprintf "dll%s_stubs%s"
-                         (Lib_name.Local.to_string t.name) ext_dll)
+                         (Lib_name.Local.to_string (snd t.name)) ext_dll)
 
   let archive t ~dir ~ext =
-    Path.relative dir (Lib_name.Local.to_string t.name ^ ext)
+    Path.relative dir (Lib_name.Local.to_string (snd t.name) ^ ext)
 
   let best_name t =
     match t.public with
@@ -1061,7 +1066,11 @@ module Library = struct
   let is_virtual t = Option.is_some t.virtual_modules
 
   let main_module_name t =
-    Module.Name.of_local_lib_name t.name
+    match t.implements, Wrapped.to_bool t.wrapped with
+    | Some _, true -> None
+    | Some _, false -> assert false
+    | None, false -> None
+    | None, true -> Some (Module.Name.of_local_lib_name (snd t.name))
 end
 
 module Install_conf = struct

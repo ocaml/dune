@@ -16,22 +16,12 @@ val dir : t -> Path.t
     [ocamlyacc], [menhir] stanzas. *)
 val text_files : t -> String.Set.t
 
-module Library_modules : sig
-  type t = private
-    { modules          : Module.Name_map.t
-    ; virtual_modules  : Module.Name_map.t
-    ; alias_module     : Module.t option
-    ; main_module_name : Module.Name.t
-    ; wrapped_compat   : Module.Name_map.t
-    }
-end
-
 module Executables_modules : sig
   type t = Module.Name_map.t
 end
 
 (** Modules attached to a library. [name] is the library best name. *)
-val modules_of_library : t -> name:Lib_name.t -> Library_modules.t
+val modules_of_library : t -> name:Lib_name.t -> Lib_modules.t
 
 (** Modules attached to a set of executables. *)
 val modules_of_executables : t -> first_exe:string -> Executables_modules.t

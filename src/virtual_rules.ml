@@ -19,7 +19,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
   let setup_copy_rules_for_impl ~dir
         { Implementation.vlib ; impl ; vlib_modules } =
     let copy_to_obj_dir =
-      let obj_dir = Utils.library_object_directory ~dir impl.name in
+      let obj_dir = Utils.library_object_directory ~dir (snd impl.name) in
       fun file ->
         let dst = Path.relative obj_dir (Path.basename file) in
         Super_context.add_rule sctx (Build.symlink ~src:file ~dst)
@@ -75,7 +75,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
       Errors.fail lib.buildable.loc
         "Library %a cannot implement %a because the following \
          modules lack an implementation:\n%s"
-        Lib_name.Local.pp lib.name
+        Lib_name.Local.pp (snd lib.name)
         Lib_name.pp implements
         (module_list missing_modules)
     end;
@@ -105,17 +105,14 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
               "Library %a isn't virtual and cannot be implemented"
               Lib_name.pp implements
           | Some Unexpanded ->
-            let dir_contents = Dir_contents.get sctx ~dir:(Lib.src_dir vlib) in
-            let { Dir_contents.Library_modules.
-                  virtual_modules
-                ; modules = vlib_modules
-                ; main_module_name = _
-                ; alias_module = _
-                ; wrapped_compat = _
-                } =
+            let dir_contents =
+              Dir_contents.get sctx ~dir:(Lib.src_dir vlib) in
+            let lib_modules =
               Dir_contents.modules_of_library dir_contents
                 ~name:(Lib.name vlib) in
-            (vlib_modules, virtual_modules)
+            ( Lib_modules.modules lib_modules
+            , Lib_modules.virtual_modules lib_modules
+            )
         in
         check_virtual_modules_field ~lib ~virtual_modules ~modules ~implements;
         { Implementation.

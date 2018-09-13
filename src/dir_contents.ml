@@ -237,94 +237,12 @@ end = struct
     }
 end
 
-module Library_modules : sig
-  type t = private
-    { modules          : Module.Name_map.t
-    ; virtual_modules  : Module.Name_map.t
-    ; alias_module     : Module.t option
-    ; main_module_name : Module.Name.t
-    ; wrapped_compat   : Module.Name_map.t
-    }
-
-  val make
-    :  Library.t
-    -> dir:Path.t
-    -> Module.Name_map.t
-    -> virtual_modules:Module.Name_map.t
-    -> t
-end = struct
-  type t =
-    { modules          : Module.Name_map.t
-    ; virtual_modules  : Module.Name_map.t
-    ; alias_module     : Module.t option
-    ; main_module_name : Module.Name.t
-    ; wrapped_compat   : Module.Name_map.t
-    }
-
-  let make (lib : Library.t) ~dir (modules : Module.Name_map.t)
-        ~virtual_modules =
-    let main_module_name = Library.main_module_name lib in
-    let (modules, wrapped_compat) =
-      let wrap_modules modules =
-        let open Module.Name.Infix in
-        Module.Name.Map.map modules ~f:(fun (m : Module.t) ->
-          if m.name = main_module_name then
-            m
-          else
-            Module.with_wrapper m ~libname:lib.name)
-      in
-      match lib.wrapped with
-      | Simple false -> (modules, Module.Name.Map.empty)
-      | Simple true -> (wrap_modules modules, Module.Name.Map.empty)
-      | Yes_with_transition _ ->
-        ( wrap_modules modules
-        , Module.Name.Map.remove modules main_module_name
-          |> Module.Name.Map.filter_map ~f:(fun m ->
-            if Module.is_public m then
-              Some (Module.wrapped_compat m)
-            else
-              None)
-        )
-    in
-    let alias_module =
-      let lib_name = Lib_name.Local.to_string lib.name in
-      if not (Library.Wrapped.to_bool lib.wrapped) ||
-         (Module.Name.Map.cardinal modules = 1 &&
-          Module.Name.Map.mem modules main_module_name) then
-        None
-      else if Module.Name.Map.mem modules main_module_name then
-        (* This module needs an implementation for non-jbuilder
-           users of the library:
-
-           https://github.com/ocaml/dune/issues/567 *)
-        Some
-          (Module.make (Module.Name.add_suffix main_module_name "__")
-             ~visibility:Public
-             ~impl:(Module.File.make OCaml
-                      (Path.relative dir (sprintf "%s__.ml-gen" lib_name)))
-             ~obj_name:(lib_name ^ "__"))
-      else
-        Some
-          (Module.make main_module_name
-             ~visibility:Public
-             ~impl:(Module.File.make OCaml
-                      (Path.relative dir (lib_name ^ ".ml-gen")))
-             ~obj_name:lib_name)
-    in
-    { modules
-    ; alias_module
-    ; main_module_name
-    ; wrapped_compat
-    ; virtual_modules
-    }
-end
-
 module Executables_modules = struct
   type t = Module.Name_map.t
 end
 
 type modules =
-  { libraries : Library_modules.t Lib_name.Map.t
+  { libraries : Lib_modules.t Lib_name.Map.t
   ; executables : Executables_modules.t String.Map.t
   ; (* Map from modules to the buildable they are part of *)
     rev_map : Buildable.t Module.Name.Map.t
@@ -467,7 +385,7 @@ let modules_of_files ~dir ~files =
   Module.Name.Map.merge impls intfs ~f:(fun name impl intf ->
     Some (Module.make name ~visibility:Public ?impl ?intf))
 
-let build_modules_map (d : Super_context.Dir_with_jbuild.t) ~modules =
+let build_modules_map (d : Super_context.Dir_with_jbuild.t) ~scope ~modules =
   let libs, exes =
     List.filter_partition_map d.stanzas ~f:(fun stanza ->
       match (stanza : Stanza.t) with
@@ -481,8 +399,19 @@ let build_modules_map (d : Super_context.Dir_with_jbuild.t) ~modules =
             ~virtual_modules:lib.virtual_modules
             ~private_modules:lib.private_modules
         in
+        let main_module_name =
+          match Library.main_module_name lib with
+          | Some _ as mmn -> mmn
+          | None ->
+            let name = Library.best_name lib in
+            let loc = fst lib.name in
+            Lib.DB.resolve (Scope.libs scope) (loc, name)
+            |> Result.bind ~f:Lib.main_module_name
+            |> Result.ok_exn
+        in
         Left ( lib
-             , Library_modules.make lib ~dir:d.ctx_dir modules ~virtual_modules
+             , Lib_modules.make lib ~dir:d.ctx_dir modules ~virtual_modules
+                 ~main_module_name
              )
       | Executables exes
       | Tests { exes; _} ->
@@ -525,7 +454,8 @@ let build_modules_map (d : Super_context.Dir_with_jbuild.t) ~modules =
     let rev_modules =
       List.rev_append
         (List.concat_map libs ~f:(fun (l, m) ->
-           List.map (Module.Name.Map.values m.modules) ~f:(fun m ->
+           let modules = Lib_modules.modules m in
+           List.map (Module.Name.Map.values modules) ~f:(fun m ->
              (Module.name m, l.buildable))))
         (List.concat_map exes ~f:(fun (e, m) ->
            List.map (Module.Name.Map.values m) ~f:(fun m ->
@@ -745,7 +675,7 @@ let rec get sctx ~dir =
           { kind = Standalone
           ; dir
           ; text_files = files
-          ; modules = lazy (build_modules_map d
+          ; modules = lazy (build_modules_map d ~scope:d.scope
                               ~modules:(modules_of_files ~dir:d.ctx_dir ~files))
           ; mlds = lazy (build_mlds_map d ~files)
           }
@@ -809,7 +739,7 @@ let rec get sctx ~dir =
                   Path.pp (Module.dir x)
                   Path.pp (Module.dir y)))
         in
-        build_modules_map d ~modules)
+        build_modules_map d ~scope:d.scope ~modules)
       in
       let t =
         { kind = Group_root

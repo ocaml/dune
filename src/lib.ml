@@ -205,6 +205,13 @@ let foreign_objects t ~ext =
   List.map t.info.foreign_objects ~f:(fun p ->
     Path.extend_basename (Path.relative obj_dir p) ~suffix:ext)
 
+let main_module_name t =
+  match t.info.main_module_name, t.implements with
+  | Some _ as mmn, (None | Some _) -> Ok mmn
+  | None, Some vlib ->
+    vlib >>| fun vlib -> vlib.info.main_module_name
+  | None, None -> Ok None
+
 let package t =
   match t.info.status with
   | Installed -> Some (Lib_name.package_name t.name)

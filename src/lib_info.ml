@@ -80,6 +80,7 @@ type t =
   ; sub_systems      : Dune_file.Sub_system_info.t Sub_system_name.Map.t
   ; virtual_         : Virtual.t option
   ; implements       : (Loc.t * Lib_name.t) option
+  ; main_module_name : Module.Name.t option
   }
 
 let user_written_deps t =
@@ -88,8 +89,9 @@ let user_written_deps t =
     ~f:(fun acc s -> Dune_file.Lib_dep.Direct s :: acc)
 
 let of_library_stanza ~dir ~ext_lib (conf : Dune_file.Library.t) =
+  let (_loc, lib_name) = conf.name in
   let archive_file ext =
-    Path.relative dir (Lib_name.Local.to_string conf.name ^ ext) in
+    Path.relative dir (Lib_name.Local.to_string lib_name ^ ext) in
   let archive_files ~f_ext =
     Mode.Dict.of_func (fun ~mode -> [archive_file (f_ext mode)])
   in
@@ -113,7 +115,7 @@ let of_library_stanza ~dir ~ext_lib (conf : Dune_file.Library.t) =
     ({ Mode.Dict.
        byte   = stubs
      ; native =
-         Path.relative dir (Lib_name.Local.to_string conf.name ^ ext_lib)
+         Path.relative dir (Lib_name.Local.to_string lib_name ^ ext_lib)
          :: stubs
      }
     , List.map (conf.c_names @ conf.cxx_names) ~f:snd
@@ -137,10 +139,11 @@ let of_library_stanza ~dir ~ext_lib (conf : Dune_file.Library.t) =
       , archive_files ~f_ext:Mode.plugin_ext
       )
   in
+  let main_module_name = Dune_file.Library.main_module_name conf in
   { loc = conf.buildable.loc
   ; kind     = conf.kind
   ; src_dir  = dir
-  ; obj_dir  = Utils.library_object_directory ~dir conf.name
+  ; obj_dir  = Utils.library_object_directory ~dir (snd conf.name)
   ; version  = None
   ; synopsis = conf.synopsis
   ; archives
@@ -158,6 +161,7 @@ let of_library_stanza ~dir ~ext_lib (conf : Dune_file.Library.t) =
   ; dune_version = Some conf.dune_version
   ; virtual_
   ; implements = conf.implements
+  ; main_module_name
   }
 
 let of_findlib_package pkg =
@@ -191,4 +195,5 @@ let of_findlib_package pkg =
   ; dune_version = None
   ; virtual_ = None
   ; implements = None
+  ; main_module_name = None
   }

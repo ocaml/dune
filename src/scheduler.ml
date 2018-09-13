@@ -71,8 +71,8 @@ end = struct
   let buffering_time = 0.5 (* seconds *)
 
   let wait_to_chan chan =
-    let counter = ref 0 in
-    let counter_mtx = Mutex.create () in
+    let event_mtx = Mutex.create () in
+    let event_cv = Condition.create () in
 
     let worker_thread () =
       let prog, args = Lazy.force command in
@@ -97,9 +97,9 @@ end = struct
         if not (String.Table.mem
                   ignored_files_for_watch
                   (Path.to_absolute_filename fn)) then begin
-          Mutex.lock counter_mtx;
-          counter := !counter + 1;
-          Mutex.unlock counter_mtx
+          Mutex.lock event_mtx;
+          Condition.signal event_cv;
+          Mutex.unlock event_mtx
         end;
         loop ()
       in
@@ -107,16 +107,12 @@ end = struct
     in
 
     let buffer_thread () =
-      let saved_counter = ref 0 in
       let rec loop () =
+        Mutex.lock event_mtx;
+        Condition.wait event_cv event_mtx;
+        Mutex.unlock event_mtx;
         Thread.delay buffering_time;
-        Mutex.lock counter_mtx;
-        let counter = !counter in
-        Mutex.unlock counter_mtx;
-        if counter > !saved_counter then begin
-          saved_counter := counter;
-          Event.(sync (send chan ()))
-        end;
+        Event.(sync (send chan ()));
         loop ()
       in
       loop ()

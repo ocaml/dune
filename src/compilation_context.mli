@@ -19,6 +19,7 @@ val create
   -> dir                   : Path.t
   -> ?dir_kind             : File_tree.Dune_file.Kind.t
   -> ?obj_dir              : Path.t
+  -> ?private_obj_dir      : Path.t
   -> modules               : Module.t Module.Name.Map.t
   -> ?alias_module         : Module.t
   -> ?lib_interface_module : Module.t
@@ -39,6 +40,7 @@ val scope                : t -> Scope.t
 val dir                  : t -> Path.t
 val dir_kind             : t -> File_tree.Dune_file.Kind.t
 val obj_dir              : t -> Path.t
+val private_obj_dir      : t -> Path.t option
 val modules              : t -> Module.t Module.Name.Map.t
 val alias_module         : t -> Module.t option
 val lib_interface_module : t -> Module.t option

@@ -40,7 +40,7 @@ let libraries_link ~name ~mode cctx libs =
     SC.add_rule sctx (Build.write_file ml s);
     let impl = Module.File.make OCaml ml in
     let name = Module.Name.of_string basename in
-    let module_ = Module.make ~impl name in
+    let module_ = Module.make ~impl name ~visibility:Public in
     let cctx = Compilation_context.(
       create
         ~super_context:sctx

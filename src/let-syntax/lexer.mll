@@ -28,12 +28,21 @@ let fail lb msg =
   exit 1
 
 let ps t s =
-  String.iter s ~f:(function
-    | '\n' -> t.line <- t.line + 1
-    | _    -> ());
-  output_string t.oc s
+  let len = String.length s in
+  if len > 0 then
+    if s.[len - 1] = '\n' then begin
+      assert (String.index s '\n' = len - 1);
+      t.line <- t.line + 1;
+      if len > 1 && s.[len - 2] = '\r' then begin
+        output_substring t.oc s 0 (len - 2);
+        output_char t.oc '\n'
+      end else
+        output_string t.oc s
+    end else
+      output_string t.oc s
 let pc t = function
   | '\n' -> t.line <- t.line + 1; output_char t.oc '\n'
+  | '\r' -> assert false
   | c    -> output_char t.oc c
 let npc t n c = for _ = 1 to n do pc t c done
 let pf t fmt = ksprintf (ps t) fmt
@@ -179,8 +188,8 @@ and lhs t = parse
   | eof
     { ()
     }
-  | newline as s
-    { Buffer.add_string t.buf s;
+  | newline
+    { Buffer.add_char t.buf '\n';
       Lexing.new_line lexbuf;
       lhs t lexbuf
     }

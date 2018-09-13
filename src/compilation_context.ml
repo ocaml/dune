@@ -50,6 +50,7 @@ type t =
   ; dir                  : Path.t
   ; dir_kind             : File_tree.Dune_file.Kind.t
   ; obj_dir              : Path.t
+  ; private_obj_dir      : Path.t option
   ; modules              : Module.t Module.Name.Map.t
   ; alias_module         : Module.t option
   ; lib_interface_module : Module.t option
@@ -66,6 +67,7 @@ let scope                t = t.scope
 let dir                  t = t.dir
 let dir_kind             t = t.dir_kind
 let obj_dir              t = t.obj_dir
+let private_obj_dir      t = t.private_obj_dir
 let modules              t = t.modules
 let alias_module         t = t.alias_module
 let lib_interface_module t = t.lib_interface_module
@@ -79,14 +81,16 @@ let opaque               t = t.opaque
 let context              t = Super_context.context t.super_context
 
 let create ~super_context ~scope ~dir ?(dir_kind=File_tree.Dune_file.Kind.Dune)
-      ?(obj_dir=dir) ~modules ?alias_module ?lib_interface_module ~flags
-      ~requires ?(preprocessing=Preprocessing.dummy) ?(no_keep_locs=false)
+      ?(obj_dir=dir) ?private_obj_dir ~modules ?alias_module
+      ?lib_interface_module ~flags ~requires ?(preprocessing=Preprocessing.dummy)
+      ?(no_keep_locs=false)
       ~opaque () =
   { super_context
   ; scope
   ; dir
   ; dir_kind
   ; obj_dir
+  ; private_obj_dir
   ; modules
   ; alias_module
   ; lib_interface_module

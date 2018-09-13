@@ -155,3 +155,5 @@ val best_mode : t -> Mode.t
 
 (** [\["-g"\]] if [!Clflags.g] and [\[\]] otherwise *)
 val cc_g : t -> string list
+
+val name : t -> string

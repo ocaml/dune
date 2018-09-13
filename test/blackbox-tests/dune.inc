@@ -685,6 +685,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name private-modules)
+ (deps (package dune) (source_tree test-cases/private-modules))
+ (action
+  (chdir
+   test-cases/private-modules
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name private-public-overlap)
  (deps (package dune) (source_tree test-cases/private-public-overlap))
  (action
@@ -794,6 +802,14 @@
  (action
   (chdir
    test-cases/syntax-versioning
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
+ (name target-dir-alias)
+ (deps (package dune) (source_tree test-cases/target-dir-alias))
+ (action
+  (chdir
+   test-cases/target-dir-alias
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
@@ -960,6 +976,7 @@
   (alias path-variables)
   (alias ppx-rewriter)
   (alias preprocess-with-action)
+  (alias private-modules)
   (alias private-public-overlap)
   (alias project-root)
   (alias promote)
@@ -974,6 +991,7 @@
   (alias shadow-bindings)
   (alias subst)
   (alias syntax-versioning)
+  (alias target-dir-alias)
   (alias tests-stanza)
   (alias tests-stanza-action)
   (alias too-many-parens)
@@ -1060,6 +1078,7 @@
   (alias package-dep)
   (alias path-variables)
   (alias preprocess-with-action)
+  (alias private-modules)
   (alias project-root)
   (alias promote)
   (alias quoting)
@@ -1071,6 +1090,7 @@
   (alias shadow-bindings)
   (alias subst)
   (alias syntax-versioning)
+  (alias target-dir-alias)
   (alias tests-stanza)
   (alias tests-stanza-action)
   (alias too-many-parens)

@@ -396,7 +396,8 @@ let common =
     Arg.(value
          & opt (some string) None
          & info ["diff-command"] ~docs
-             ~doc:"Shell command to use to diff files")
+             ~doc:"Shell command to use to diff files.
+                   Use - to disable printing the diff.")
   in
   let build_dir = Option.value ~default:"_build" build_dir in
   let root, to_cwd =
@@ -583,11 +584,10 @@ let runtest =
         | dir -> sprintf "@%s/runtest" dir));
     let log = Log.create common in
     let targets (setup : Main.setup) =
-      let check_path = Util.check_path setup.contexts in
       List.map dirs ~f:(fun dir ->
         let dir = Path.(relative root) (Common.prefix_target common dir) in
-        check_path dir;
-        Target.Alias_rec (Path.relative dir "runtest"))
+        Target.Alias (Alias.in_dir ~name:"runtest" ~recursive:true
+                        ~contexts:setup.contexts dir))
     in
     run_build_command ~log ~common ~targets
   in
@@ -838,7 +838,7 @@ let clear_executable_bits x = x land (lnot 0o111)
 
 let install_uninstall ~what =
   let doc =
-    sprintf "%s packages using opam-installer." (String.capitalize what)
+    sprintf "%s packages." (String.capitalize what)
   in
   let name_ = Arg.info [] ~docv:"PACKAGE" in
   let term =

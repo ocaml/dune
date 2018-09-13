@@ -190,6 +190,10 @@ to use the :ref:`include_subdirs` stanza.
   such modules to avoid surprises. ``<modules>`` must be a subset of
   the modules listed in the ``(modules ...)`` field.
 
+- ``(private_modules <modules>)`` species a list of modules that will be marked
+  as private. Private modules are inaccessible from outside the libraries they
+  are defined in.
+
 - ``(allow_overlapping_dependencies)`` allows external dependencies to
   overlap with libraries that are present in the workspace
 
@@ -308,6 +312,7 @@ compilation is not available.
 
 ``<binary-kind>`` is one of:
 
+= ``c`` for producing OCaml bytecode embedded in a C file
 - ``exe`` for normal executables
 - ``object`` for producing static object files that can be manually
   linked into C applications
@@ -326,6 +331,7 @@ code executables and native shared objects:
 
 Additionally, you can use the following short-hands:
 
+- ``c`` for ``(byte c)``
 - ``exe`` for ``(best exe)``
 - ``object`` for ``(best object)``
 - ``shared_object`` for ``(best shared_object)``
@@ -352,6 +358,7 @@ byte             object        .bc%{ext_obj}
 native/best      object        .exe%{ext_obj}
 byte             shared_object .bc%{ext_dll}
 native/best      shared_object %{ext_dll}
+byte             c             .bc.c
 ================ ============= =================
 
 Where ``%{ext_obj}`` and ``%{ext_dll}`` are the extensions for object

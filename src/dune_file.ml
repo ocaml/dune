@@ -664,6 +664,8 @@ module Lib_deps = struct
      |> Lib_name.Map.of_list_reduce ~f:Lib_deps_info.Kind.merge
 end
 
+let modules_field name = Ordered_set_lang.field name
+
 module Buildable = struct
   type t =
     { loc                      : Loc.t
@@ -679,8 +681,6 @@ module Buildable = struct
     ; js_of_ocaml              : Js_of_ocaml.t
     ; allow_overlapping_dependencies : bool
     }
-
-  let modules_field name = Ordered_set_lang.field name
 
   let dparse =
     let%map loc = loc
@@ -917,6 +917,7 @@ module Library = struct
     ; dune_version             : Syntax.Version.t
     ; virtual_modules          : Ordered_set_lang.t option
     ; implements               : (Loc.t * Lib_name.t) option
+    ; private_modules          : Ordered_set_lang.t
     }
 
   let dparse =
@@ -959,6 +960,10 @@ module Library = struct
          field_o "implements" (
            Syntax.since Variants.syntax (0, 1)
            >>= fun () -> located Lib_name.dparse)
+       and private_modules =
+         field "private_modules" ~default:Ordered_set_lang.standard (
+           Syntax.since Stanza.syntax (1, 2)
+           >>= fun () -> Ordered_set_lang.dparse)
        in
        let name =
          let open Syntax.Version.Infix in
@@ -1029,6 +1034,7 @@ module Library = struct
        ; dune_version
        ; virtual_modules
        ; implements
+       ; private_modules
        })
 
   let has_stubs t =
@@ -1098,6 +1104,7 @@ module Executables = struct
       type t =
         { mode : Mode_conf.t
         ; kind : Binary_kind.t
+        ; loc : Loc.t
         }
 
       let compare a b =
@@ -1110,6 +1117,7 @@ module Executables = struct
     let make mode kind =
       { mode
       ; kind
+      ; loc = Loc.none
       }
 
     let exe           = make Best Exe
@@ -1144,8 +1152,9 @@ module Executables = struct
         ~then_:
           (enter
              (let%map mode = Mode_conf.dparse
-              and kind = Binary_kind.dparse in
-              { mode; kind }))
+              and kind = Binary_kind.dparse
+              and loc = loc in
+              { mode; kind; loc}))
         ~else_:simple
 
     let simple_dgen link_mode =
@@ -1159,7 +1168,7 @@ module Executables = struct
       match simple_dgen link_mode with
       | Some s -> s
       | None ->
-        let { mode; kind } = link_mode in
+        let { mode; kind; loc = _ } = link_mode in
         Dsexp.To_sexp.pair Mode_conf.dgen Binary_kind.dgen (mode, kind)
 
     module Set = struct

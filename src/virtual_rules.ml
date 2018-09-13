@@ -39,6 +39,53 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
           List.iter [Cm_kind.ext Cmx; ctx.ext_obj] ~f:copy_obj_file
       end)
 
+  let check_virtual_modules_field ~(lib : Dune_file.Library.t) ~virtual_modules
+        ~modules ~implements =
+    let (missing_modules, impl_modules_with_intf, private_virtual_modules) =
+      Module.Name.Map.foldi virtual_modules ~init:([], [], [])
+        ~f:(fun m _ (mms, ims, pvms) ->
+          match Module.Name.Map.find modules m with
+          | None -> (m :: mms, ims, pvms)
+          | Some m ->
+            let ims =
+              if Module.has_intf m then
+                Module.name m :: ims
+              else
+                ims
+            in
+            let pvms =
+              if Module.is_public m then
+                pvms
+              else
+                Module.name m :: pvms
+            in
+            (mms, ims, pvms))
+    in
+    let module_list ms =
+      List.map ms ~f:Module.Name.to_string
+      |> String.concat ~sep:"\n"
+    in
+    if private_virtual_modules <> [] then begin
+      (* The loc here will never be none as we've some private modules *)
+      Errors.fail_opt (Ordered_set_lang.loc lib.private_modules)
+        "These private modules cannot be private:\n%s"
+        (module_list private_virtual_modules)
+    end;
+    if missing_modules <> [] then begin
+      Errors.fail lib.buildable.loc
+        "Library %a cannot implement %a because the following \
+         modules lack an implementation:\n%s"
+        Lib_name.Local.pp lib.name
+        Lib_name.pp implements
+        (module_list missing_modules)
+    end;
+    if impl_modules_with_intf <> [] then begin
+      Errors.fail lib.buildable.loc
+        "The following modules cannot have .mli files as they implement \
+         virtual modules:\n%s"
+        (module_list impl_modules_with_intf)
+    end
+
   let impl ~(lib : Dune_file.Library.t) ~scope ~modules =
     Option.map lib.implements ~f:begin fun (loc, implements) ->
       match Lib.DB.find (Scope.libs scope) implements with
@@ -70,37 +117,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
                 ~name:(Lib.name vlib) in
             (vlib_modules, virtual_modules)
         in
-        let (missing_modules, impl_modules_with_intf) =
-          Module.Name.Map.foldi virtual_modules ~init:([], [])
-            ~f:(fun m _ (mms, ims) ->
-              match Module.Name.Map.find modules m with
-              | None -> (m :: mms, ims)
-              | Some m ->
-                ( mms
-                , if Module.has_intf m then
-                    Module.name m :: ims
-                  else
-                    ims
-                ))
-        in
-        let module_list ms =
-          List.map ms ~f:Module.Name.to_string
-          |> String.concat ~sep:"\n"
-        in
-        if missing_modules <> [] then begin
-          Errors.fail lib.buildable.loc
-            "Library %a cannot implement %a because the following \
-             modules lack an implementation:\n%s"
-            Lib_name.Local.pp lib.name
-            Lib_name.pp implements
-            (module_list missing_modules)
-        end;
-        if impl_modules_with_intf <> [] then begin
-          Errors.fail lib.buildable.loc
-            "The following modules cannot have .mli files as they implement \
-             virtual modules:\n%s"
-            (module_list impl_modules_with_intf)
-        end;
+        check_virtual_modules_field ~lib ~virtual_modules ~modules ~implements;
         { Implementation.
           impl = lib
         ; vlib

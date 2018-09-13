@@ -22,6 +22,8 @@ val library_object_directory
   -> Lib_name.Local.t
   -> Path.t
 
+val library_private_obj_dir : obj_dir:Path.t -> Path.t
+
 (** Return the directory where the object files for the given
     executable should be stored. *)
 val executable_object_directory

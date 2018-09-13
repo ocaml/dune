@@ -57,6 +57,7 @@ let setup sctx ~dir ~(libs : Library.t list) ~scope =
       Module.Name.Map.singleton
         main_module_name
         (Module.make main_module_name
+           ~visibility:Public
            ~impl:{ path   = Path.relative utop_exe_dir main_module_filename
                  ; syntax = Module.Syntax.OCaml
                  }

@@ -827,10 +827,13 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
     end >>| fun () ->
     begin
       match mode with
-      | Standard | Fallback | Not_a_rule_stanza | Ignore_source_files -> ()
+      | Standard | Fallback | Not_a_rule_stanza | Ignore_source_files ->
+        Path.Set.iter targets ~f:(fun path ->
+          Option.iter (Path.drop_build_context path) ~f:Scheduler.don't_ignore_for_watch)
       | Promote | Promote_but_delete_on_clean ->
         Path.Set.iter targets ~f:(fun path ->
           let in_source_tree = Option.value_exn (Path.drop_build_context path) in
+          Scheduler.ignore_for_watch in_source_tree;
           if not (Path.exists in_source_tree) ||
              (Utils.Cached_digest.file path <>
               Utils.Cached_digest.file in_source_tree) then begin

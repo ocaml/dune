@@ -13,8 +13,21 @@ type running_job =
   ; ivar     : Unix.process_status Fiber.Ivar.t
   }
 
+let ignored_files_for_watch = String.Table.create 64
+
+let ignore_for_watch path =
+  assert (Path.is_in_source_tree path);
+  String.Table.replace
+    ignored_files_for_watch
+    ~key:(Path.to_string path)
+    ~data:()
+
+let don't_ignore_for_watch path =
+  assert (Path.is_in_source_tree path);
+  String.Table.remove ignored_files_for_watch (Path.to_string path)
+
 module Watch : sig
-  (** Runs forever, communicating () events to channel when changes are detected. *)
+  (** Runs forever, communicating events to channel when changes are detected. *)
   val wait_to_chan : unit Event.channel -> 'a
 
 end = struct
@@ -32,7 +45,13 @@ end = struct
       | Some inotifywait ->
         (* On Linux, use inotifywait. *)
         let excludes = String.concat ~sep:"|" excludes in
-        inotifywait, ["-r"; path; "--exclude"; excludes; "-e"; "close_write"; "-e"; "delete"; "-m"; "-q"]
+        inotifywait, [
+          "-r"; path;
+          "--exclude"; excludes;
+          "-e"; "close_write"; "-e"; "delete";
+          "--format"; "%w%f";
+          "-m";
+          "-q"]
       | None ->
         (* On all other platforms, try to use fswatch. fswatch's event
            filtering is not reliable (at least on Linux), so don't try to
@@ -40,22 +59,14 @@ end = struct
         (match Bin.which "fswatch" with
          | Some fswatch ->
            let excludes = List.concat_map excludes ~f:(fun x -> ["--exclude"; x]) in
-           fswatch, ["-r"; path] @ excludes
+           fswatch, [
+             "-r"; path;
+             "--event"; "Created";
+             "--event"; "Updated";
+             "--event"; "Removed"] @ excludes
          | None ->
            die "@{<error>Error@}: fswatch (or inotifywait) was not found. \
                 One of them needs to be installed for watch mode to work.\n"))
-
-  let buf_size = 65536
-  let buf = Bytes.create buf_size
-
-  let clear_pipe pipe_r =
-    (* NOTE: this function is supposed to read and drop all data from the
-       pipe in a non-blocking way, but due to Windows not supporting
-       [set_nonblock], we settle for the possibility of multiple watch
-       events being emitted if a large number of files changes at once. *)
-    let bytes_read = Unix.read pipe_r buf 0 buf_size in
-    if bytes_read = 0 then
-      die "Watch pipe closed unexpectedly"
 
   let wait_to_chan chan =
     let prog, args = Lazy.force command in
@@ -74,11 +85,15 @@ end = struct
       ignore (Unix.waitpid [] pid)
     in
     at_exit cleanup;
+    let r_in = Unix.in_channel_of_descr r in
     let rec loop () =
       let forever = -1.0 in
       let _ = Unix.select [r] [] [] forever in
-      clear_pipe r;
-      Event.(sync (send chan ()));
+      let fn = Path.of_string (input_line r_in) in
+      if not (String.Table.mem
+                ignored_files_for_watch
+                (Path.to_absolute_filename fn)) then
+        Event.(sync (send chan ()));
       loop ()
     in
     loop ()

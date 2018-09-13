@@ -40,6 +40,18 @@ val set_status_line_generator : (unit -> status_line_config) -> unit Fiber.t
 
 val set_concurrency : int -> unit Fiber.t
 
+(** Make the scheduler ignore changes to a certain file in watch mode.
+
+    This is used with promoted files that are copied back to the source tree
+    after generation *)
+val ignore_for_watch : Path.t -> unit
+
+(** Make the scheduler keep track of changes to a certain file in watch mode.
+
+    If a target was promoted before, and has a different mode now, this function
+    allows us to stop ignoring it *)
+val don't_ignore_for_watch : Path.t -> unit
+
 (** Scheduler information *)
 type t
 

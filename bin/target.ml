@@ -62,16 +62,14 @@ let target_hint (setup : Dune.Main.setup) path =
   let candidates = String.Set.of_list candidates |> String.Set.to_list in
   hint (Path.to_string path) candidates
 
-
 let resolve_path path ~(setup : Dune.Main.setup) =
   Util.check_path setup.contexts path;
   let can't_build path =
     Error (path, target_hint setup path);
   in
   if Dune.File_tree.dir_exists setup.file_tree path then
-    let (dir, contexts) =
-      Alias.parse_dir_and_contexts path setup.contexts in
-    Ok [ Alias (Alias.in_dir ~name:"default" ~recursive:true ~contexts dir) ]
+    Ok [ Alias (Alias.in_dir ~name:"default" ~recursive:true
+                  ~contexts:setup.contexts path) ]
   else if not (Path.is_managed path) then
     Ok [File path]
   else if Path.is_in_build_dir path then begin

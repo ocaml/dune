@@ -16,19 +16,6 @@ let to_log_string { name ; recursive; dir ; contexts = _ } =
     (Path.to_string_maybe_quoted dir)
     name
 
-let parse_dir_and_contexts path contexts =
-  let dir = Path.parent_exn path in
-  match Path.extract_build_context dir with
-  | None -> (dir, contexts)
-  | Some ("install", _) ->
-    die "Invalid alias: %s.\n\
-         There are no aliases in %s."
-      (Path.to_string_maybe_quoted Path.(relative build_dir "install"))
-      (Path.to_string_maybe_quoted path)
-  | Some (ctx, dir) ->
-    Util.check_path contexts dir;
-    (dir, [List.find_exn contexts ~f:(fun c -> Dune.Context.name c = ctx)])
-
 let in_dir ~name ~recursive ~contexts dir =
   Util.check_path contexts dir;
   match Path.extract_build_context dir with

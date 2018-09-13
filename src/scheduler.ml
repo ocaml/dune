@@ -165,13 +165,17 @@ end = struct
       wait_unix
 
   let rec wait_to_chan chan =
-    Mutex.lock i_count_mtx;
     if !i_count = 0 then
       Condition.wait i_count_cv i_count_mtx;
-    i_count := !i_count - 1;
     Mutex.unlock i_count_mtx;
     let pid, status = wait () in
     Event.(sync (send chan (pid, status)));
+    Mutex.lock i_count_mtx;
+    i_count := !i_count - 1;
+    wait_to_chan chan
+
+  let wait_to_chan chan =
+    Mutex.lock i_count_mtx;
     wait_to_chan chan
 
   let count () = Hashtbl.length all

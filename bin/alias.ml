@@ -29,6 +29,28 @@ let parse_dir_and_contexts path contexts =
     Util.check_path contexts dir;
     (dir, [List.find_exn contexts ~f:(fun c -> Dune.Context.name c = ctx)])
 
+let in_dir ~name ~recursive ~contexts dir =
+  Util.check_path contexts dir;
+  match Path.extract_build_context dir with
+  | None ->
+    { dir
+    ; recursive
+    ; name
+    ; contexts
+    }
+  | Some ("install", _) ->
+    die "Invalid alias: %s.\n\
+         There are no aliases in %s."
+      (Path.to_string_maybe_quoted Path.(relative build_dir "install"))
+      (Path.to_string_maybe_quoted dir)
+  | Some (ctx, dir) ->
+    { dir
+    ; recursive
+    ; name
+    ; contexts =
+        [List.find_exn contexts ~f:(fun c -> Dune.Context.name c = ctx)]
+    }
+
 let of_string common s ~contexts =
   if not (String.is_prefix s ~prefix:"@") then
     None
@@ -41,7 +63,6 @@ let of_string common s ~contexts =
     in
     let s = String.drop s pos in
     let path = Path.relative Path.root (Common.prefix_target common s) in
-    Util.check_path contexts path;
     if Path.is_root path then
       die "@@ on the command line must be followed by a valid alias name"
     else if not (Path.is_managed path) then
@@ -49,24 +70,4 @@ let of_string common s ~contexts =
     else
       let dir = Path.parent_exn path in
       let name = Path.basename path in
-      match Path.extract_build_context dir with
-      | None ->
-        Some
-          { dir
-          ; recursive
-          ; name
-          ; contexts
-          }
-      | Some ("install", _) ->
-        die "Invalid alias: %s.\n\
-             There are no aliases in %s."
-          (Path.to_string_maybe_quoted Path.(relative build_dir "install"))
-          (Path.to_string_maybe_quoted path)
-      | Some (ctx, dir) ->
-        Some
-          { dir
-          ; recursive
-          ; name
-          ; contexts =
-              [List.find_exn contexts ~f:(fun c -> Dune.Context.name c = ctx)]
-          }
+      Some (in_dir ~name ~recursive ~contexts dir)

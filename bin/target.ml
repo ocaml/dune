@@ -51,8 +51,8 @@ let target_hint (setup : Dune.Main.setup) path =
         | Some (_, path) -> path)
   in
   let candidates =
-    (* Only suggest hints for the basename, otherwise it's slow when there are lots of
-       files *)
+    (* Only suggest hints for the basename, otherwise it's slow when there are
+       lots of files *)
     List.filter_map candidates ~f:(fun path ->
       if Path.equal (Path.parent_exn path) sub_dir then
         Some (Path.to_string path)
@@ -71,14 +71,7 @@ let resolve_path path ~(setup : Dune.Main.setup) =
   if Dune.File_tree.dir_exists setup.file_tree path then
     let (dir, contexts) =
       Alias.parse_dir_and_contexts path setup.contexts in
-    Ok [Alias
-          { Alias.
-            name = "default"
-          ; recursive = true
-          ; contexts
-          ; dir
-          }
-       ]
+    Ok [ Alias (Alias.in_dir ~name:"default" ~recursive:true ~contexts dir) ]
   else if not (Path.is_managed path) then
     Ok [File path]
   else if Path.is_in_build_dir path then begin

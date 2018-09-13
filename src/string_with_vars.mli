@@ -25,6 +25,7 @@ include Dsexp.Sexpable with type t := t
 val virt       : ?quoted: bool -> (string * int * int * int) -> string -> t
 val virt_var   : ?quoted: bool -> (string * int * int * int) -> string -> t
 val virt_text  : (string * int * int * int) -> string -> t
+val make_var   : ?quoted: bool -> Loc.t -> string -> t
 val make_text  : ?quoted: bool -> Loc.t -> string -> t
 
 val is_var : t -> name:string -> bool

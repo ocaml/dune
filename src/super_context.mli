@@ -234,6 +234,8 @@ module Action : sig
     -> scope:Scope.t
     -> Action.Unexpanded.t
     -> (Path.t Bindings.t, Action.t) Build.t
+
+  val map_exe : t -> Path.t -> Path.t
 end
 
 module Pkg_version : sig

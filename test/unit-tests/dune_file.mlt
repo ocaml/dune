@@ -19,29 +19,35 @@ val test : string -> Dune_file.Executables.Link_mode.t = <fun>
 (* Link modes can be read as a (<mode> <kind>) list *)
 test "(best exe)"
 [%%expect{|
-- : Dune_file.Executables.Link_mode.t = {mode = best; kind = exe}
+- : Dune_file.Executables.Link_mode.t =
+{mode = best; kind = exe; loc = <abstr>}
 |}]
 
 (* Some shortcuts also exist *)
 test "exe"
 [%%expect{|
-- : Dune_file.Executables.Link_mode.t = {mode = best; kind = exe}
+- : Dune_file.Executables.Link_mode.t =
+{mode = best; kind = exe; loc = <abstr>}
 |}]
 test "object"
 [%%expect{|
-- : Dune_file.Executables.Link_mode.t = {mode = best; kind = object}
+- : Dune_file.Executables.Link_mode.t =
+{mode = best; kind = object; loc = <abstr>}
 |}]
 test "shared_object"
 [%%expect{|
-- : Dune_file.Executables.Link_mode.t = {mode = best; kind = shared_object}
+- : Dune_file.Executables.Link_mode.t =
+{mode = best; kind = shared_object; loc = <abstr>}
 |}]
 test "byte"
 [%%expect{|
-- : Dune_file.Executables.Link_mode.t = {mode = byte; kind = exe}
+- : Dune_file.Executables.Link_mode.t =
+{mode = byte; kind = exe; loc = <abstr>}
 |}]
 test "native"
 [%%expect{|
-- : Dune_file.Executables.Link_mode.t = {mode = native; kind = exe}
+- : Dune_file.Executables.Link_mode.t =
+{mode = native; kind = exe; loc = <abstr>}
 |}]
 
 (* Dune_file.Executables.Link_mode.dgen *)
@@ -52,7 +58,7 @@ val test : Dune_file.Executables.Link_mode.t -> Dsexp.t = <fun>
 |}]
 
 (* In the general case, modes are serialized as a list *)
-test {Dune_file.Executables.Link_mode.kind = Shared_object; mode = Byte }
+test {Dune_file.Executables.Link_mode.kind = Shared_object; mode = Byte; loc=Loc.none}
 [%%expect{|
 - : Dsexp.t = (byte shared_object)
 |}]

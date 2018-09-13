@@ -41,23 +41,29 @@ module File : sig
   val make : Syntax.t -> Path.t -> t
 end
 
+module Visibility : sig
+  type t = Public | Private
+end
+
 (** Representation of a module. It is guaranteed that at least one of
    [impl] or [intf] is set. *)
 type t = private
-  { name      : Name.t (** Name of the module. This is always the
-                           basename of the filename without the
-                           extension. *)
-  ; impl      : File.t option
-  ; intf      : File.t option
-  ; obj_name  : string (** Object name. It is different from [name]
-                           for wrapped modules. *)
-  ; pp        : (unit, string list) Build.t option (** Preprocessing flags *)
+  { name       : Name.t (** Name of the module. This is always the
+                            basename of the filename without the
+                            extension. *)
+  ; impl       : File.t option
+  ; intf       : File.t option
+  ; obj_name   : string (** Object name. It is different from [name]
+                            for wrapped modules. *)
+  ; pp         : (unit, string list) Build.t option (** Preprocessing flags *)
+  ; visibility : Visibility.t
   }
 
 val make
   :  ?impl:File.t
   -> ?intf:File.t
   -> ?obj_name:string
+  -> visibility:Visibility.t
   -> Name.t
   -> t
 
@@ -104,3 +110,7 @@ module Name_map : sig
   type module_
   type t = module_ Name.Map.t
 end with type module_ := t
+
+val is_public : t -> bool
+
+val set_private : t -> t

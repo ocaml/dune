@@ -3,9 +3,10 @@ General tests
 
   $ printf titi > x
 
-  $ dune build --display short --diff-command false @blah 2>&1 | sed 's/.*false.*/DIFF/'
-            sh (internal) (exit 1)
-  DIFF
+  $ dune build --display short @blah
+  File "x", line 1, characters 0-0:
+  Files _build/default/x and _build/default/x.gen differ.
+  [1]
   $ cat x
   titi
 
@@ -14,7 +15,7 @@ General tests
   $ cat x
   toto
 
-  $ dune build --display short --diff-command false @blah
+  $ dune build --display short @blah
   $ cat x
   toto
 
@@ -22,13 +23,14 @@ Otherwise this test fails on OSX
   $ dune clean --display short
 
   $ printf titi > x
-  $ dune build --display short --diff-command false @blah --auto-promote 2>&1 | sed 's/.*false.*/DIFF/'
-            sh (internal) (exit 1)
-  DIFF
+  $ dune build --display short @blah --auto-promote
+  File "x", line 1, characters 0-0:
+  Files _build/default/x and _build/default/x.gen differ.
   Promoting _build/default/x.gen to x.
+  [1]
   $ cat x
   toto
-  $ dune build --display short --diff-command false @blah
+  $ dune build --display short @blah
   $ cat x
   toto
 
@@ -37,11 +39,12 @@ Test single file promotion
 
   $ printf a > x
   $ printf a > y
-  $ dune build --display short --diff-command false @blah @blah2 2>&1 | sed 's/.*false.*/DIFF/'
-            sh (internal) (exit 1)
-  DIFF
-            sh (internal) (exit 1)
-  DIFF
+  $ dune build --display short @blah @blah2
+  File "x", line 1, characters 0-0:
+  Files _build/default/x and _build/default/x.gen differ.
+  File "y", line 1, characters 0-0:
+  Files _build/default/y and _build/default/y.gen differ.
+  [1]
   $ dune promote x
   Promoting _build/default/x.gen to x.
   $ cat x

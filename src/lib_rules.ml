@@ -346,6 +346,7 @@ module Gen (P : Install_rules.Params) = struct
   let library_rules (lib : Library.t) ~dir_contents ~dir ~scope
         ~compile_info ~dir_kind =
     let obj_dir = Utils.library_object_directory ~dir lib.name in
+    let private_obj_dir = Utils.library_private_obj_dir ~obj_dir in
     let requires = Lib.Compile.requires compile_info in
     let dep_kind =
       if lib.optional then Lib_deps_info.Kind.Optional else Required
@@ -395,6 +396,7 @@ module Gen (P : Install_rules.Params) = struct
         ~dir
         ~dir_kind
         ~obj_dir
+        ~private_obj_dir
         ~modules
         ?alias_module
         ?lib_interface_module
@@ -453,7 +455,8 @@ module Gen (P : Install_rules.Params) = struct
             ~modules)));
       (* Build *.cma.js *)
       SC.add_rules sctx (
-        let src = Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext Mode.Byte) in
+        let src =
+          Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext Mode.Byte) in
         let target = Path.extend_basename src ~suffix:".js" in
         Js_of_ocaml_rules.build_cm cctx ~js_of_ocaml ~src ~target);
 

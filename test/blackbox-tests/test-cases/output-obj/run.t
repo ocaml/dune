@@ -10,6 +10,7 @@
         ocamlc test.bc.so
       ocamlopt test.exe
       ocamlopt test$ext_dll
+#        ocamlc test.bc.c
 
   $ dune build @runtest
        dynamic alias runtest
@@ -20,3 +21,5 @@
   OK: ./static.bc
        dynamic alias runtest
   OK: ./dynamic.exe ./test.bc.so
+#        static alias runtest
+#  OK: ./static.bc.c.exe

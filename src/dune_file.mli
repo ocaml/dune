@@ -251,6 +251,7 @@ module Library : sig
     ; dune_version             : Syntax.Version.t
     ; virtual_modules          : Ordered_set_lang.t option
     ; implements               : (Loc.t * Lib_name.t) option
+    ; private_modules          : Ordered_set_lang.t
     }
 
   val has_stubs : t -> bool
@@ -280,6 +281,7 @@ module Executables : sig
     type t =
       { mode : Mode_conf.t
       ; kind : Binary_kind.t
+      ; loc : Loc.t
       }
 
     include Dsexp.Sexpable with type t := t
@@ -385,6 +387,7 @@ module Tests : sig
     ; package    : Package.t option
     ; deps       : Dep_conf.t Bindings.t
     ; enabled_if : String_with_vars.t Blang.t option
+    ; action     : Action.Unexpanded.t option
     }
 end
 

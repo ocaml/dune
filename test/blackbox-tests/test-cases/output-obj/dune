@@ -2,6 +2,7 @@
  (name all)
  (deps test.bc
        test.exe
+;       test.bc.c
        test.bc%{ext_obj}
        test.exe%{ext_obj}
        test.bc%{ext_dll}
@@ -13,6 +14,7 @@
  (name test)
  (modes (byte   exe          )
         (native exe          )
+;        (byte   c            )
         (byte   object       )
         (native object       )
         (byte   shared_object)
@@ -30,6 +32,12 @@
  (action (run %{cc} -o %{targets} -I %{ocaml_where} -I . %{deps}
           %{ocaml-config:bytecomp_c_libraries})))
 
+;(rule
+; (targets static.bc.c.exe)
+; (deps test.bc.c static.c)
+; (action (run %{cc} -o %{targets} -I %{ocaml_where} -I . %{deps}
+;          %{ocaml-config:bytecomp_c_libraries} -L %{ocaml_where} -lcamlrun)))
+
 (rule
  (targets dynamic.exe)
  (deps dynamic.c)
@@ -44,6 +52,13 @@
  (name runtest)
  (action
   (run ./static.bc)))
+
+;; This fails in travis.  Can't seem to find libcamlrun (see pull request #1229
+;; for discussion)
+;(alias
+; (name runtest)
+; (action
+;  (run ./static.bc.c.exe)))
 
 (alias
  (name   runtest)

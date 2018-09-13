@@ -48,6 +48,7 @@ module Linkage = struct
     ; flags
     }
 
+  let  c_flags = ["-output-obj"]    
   let  o_flags = ["-output-complete-obj"]
   let so_flags_windows = o_flags
   let so_flags_unix    = ["-output-complete-obj"; "-runtime-variant"; "_pic"]
@@ -67,6 +68,8 @@ module Linkage = struct
     in
     let ext =
       match wanted_mode, m.kind with
+      | Byte   , C             -> ".bc.c"
+      | Native , C             -> Errors.fail m.loc "C file generation only supports bytecode!"
       | Byte   , Exe           -> ".bc"
       | Native , Exe           -> ".exe"
       | Byte   , Object        -> ".bc"  ^ ctx.ext_obj
@@ -76,6 +79,7 @@ module Linkage = struct
     in
     let flags =
       match m.kind with
+      | C -> c_flags
       | Exe ->
         begin
           match wanted_mode, real_mode with

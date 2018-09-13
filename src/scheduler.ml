@@ -19,7 +19,7 @@ let ignore_for_watch path =
   assert (Path.is_in_source_tree path);
   String.Table.replace
     ignored_files_for_watch
-    ~key:(Path.to_string path)
+    ~key:(Path.to_absolute_filename path)
     ~data:()
 
 let don't_ignore_for_watch path =
@@ -87,8 +87,6 @@ end = struct
     at_exit cleanup;
     let r_in = Unix.in_channel_of_descr r in
     let rec loop () =
-      let forever = -1.0 in
-      let _ = Unix.select [r] [] [] forever in
       let fn = Path.of_string (input_line r_in) in
       if not (String.Table.mem
                 ignored_files_for_watch
@@ -112,9 +110,30 @@ module Running_jobs : sig
 end = struct
   let all = Hashtbl.create 128
 
-  let add job = Hashtbl.add all job.pid job
+  (* Internal count is slightly different from logical count, since it counts
+     the actual number of child processes, and so is decreased right after a
+     process is waited on, while the logical count is decreased when a finished
+     process is processed via [resolve_and_remove_job]. *)
+  let i_count = ref 0
+  let i_count_mtx = Mutex.create ()
+  let i_count_cv = Condition.create ()
 
-  let count () = Hashtbl.length all
+  let add job =
+    Hashtbl.add all job.pid job;
+    Mutex.lock i_count_mtx;
+    i_count := !i_count + 1;
+    if !i_count = 1 then
+      Condition.signal i_count_cv;
+    Mutex.unlock i_count_mtx
+
+  let resolve_and_remove_job pid =
+    let job =
+      match Hashtbl.find all pid with
+      | Some job -> job
+      | None -> assert false
+    in
+    Hashtbl.remove all pid;
+    job
 
   exception Finished of int * Unix.process_status
 
@@ -146,26 +165,16 @@ end = struct
       wait_unix
 
   let rec wait_to_chan chan =
-    try
-      let pid, status = wait () in
-      Event.(sync (send chan (pid, status)));
-      wait_to_chan chan
-    with
-    | Unix.Unix_error (err, _, _) as exn ->
-      if err = Unix.ECHILD then begin
-        Thread.delay 0.001;
-        wait_to_chan chan
-      end
-      else reraise exn
+    Mutex.lock i_count_mtx;
+    if !i_count = 0 then
+      Condition.wait i_count_cv i_count_mtx;
+    i_count := !i_count - 1;
+    Mutex.unlock i_count_mtx;
+    let pid, status = wait () in
+    Event.(sync (send chan (pid, status)));
+    wait_to_chan chan
 
-  let resolve_and_remove_job pid =
-    let job =
-      match Hashtbl.find all pid with
-      | Some job -> job
-      | None -> assert false
-    in
-    Hashtbl.remove all pid;
-    job
+  let count () = Hashtbl.length all
 end
 
 type t =
@@ -283,10 +292,14 @@ let job_channel = lazy (
   ignore (Thread.create Running_jobs.wait_to_chan chan);
   chan)
 
+type event =
+  | Files_changed
+  | Job_completed of int * Unix.process_status
+
 let go_rec t =
   let recv () = Event.(
-    choose [ wrap (receive (Lazy.force watch_channel)) (fun () -> `Files_changed)
-           ; wrap (receive (Lazy.force job_channel)) (fun x -> `Job_completed x)
+    choose [ wrap (receive (Lazy.force watch_channel)) (fun () -> Files_changed)
+           ; wrap (receive (Lazy.force job_channel)) (fun (p, s) -> Job_completed (p, s))
            ])
   in
   let rec go_rec t =
@@ -301,7 +314,7 @@ let go_rec t =
       update_status_line t;
       begin
         match Event.sync (recv ()) with
-        | `Job_completed (pid, status) ->
+        | Job_completed (pid, status) ->
           let job = Running_jobs.resolve_and_remove_job pid in
           begin
             if job.build_id = t.cur_build_id then
@@ -313,7 +326,7 @@ let go_rec t =
           restart_waiting_for_available_job t
           >>= fun () ->
           go_rec t
-        | `Files_changed ->
+        | Files_changed ->
           t.cur_build_canceled <- true;
           Fiber.return ()
       end

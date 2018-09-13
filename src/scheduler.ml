@@ -70,7 +70,37 @@ end = struct
 
   let buffering_time = 0.5 (* seconds *)
 
+  let buffer_capacity = 65536
+  let buffer = Bytes.create buffer_capacity
+  let buffer_size = ref 0
+
+  let read_lines fd =
+    let len = Unix.read fd buffer !buffer_size (buffer_capacity - !buffer_size) in
+    buffer_size := !buffer_size + len;
+    let lines = ref [] in
+    let line_start = ref 0 in
+    for i = 0 to !buffer_size - 1 do
+      let c = Bytes.get buffer i in
+      if c = '\n' || c = '\r' then begin
+        if !line_start < i then begin
+          let line = Bytes.sub_string
+                       buffer
+                       ~pos:!line_start
+                       ~len:(i - !line_start) in
+          lines := line :: !lines;
+        end;
+        line_start := i + 1
+      end
+    done;
+    buffer_size := !buffer_size - !line_start;
+    Bytes.blit
+      ~src:buffer ~src_pos:!line_start
+      ~dst:buffer ~dst_pos:0
+      ~len:!buffer_size;
+    List.rev !lines
+
   let wait_to_chan chan =
+    let event_counter = ref 0 in
     let event_mtx = Mutex.create () in
     let event_cv = Condition.create () in
 
@@ -91,13 +121,15 @@ end = struct
         ignore (Unix.waitpid [] pid)
       in
       at_exit cleanup;
-      let r_in = Unix.in_channel_of_descr r in
       let rec loop () =
-        let fn = Path.of_string (input_line r_in) in
-        if not (String.Table.mem
-                  ignored_files_for_watch
-                  (Path.to_absolute_filename fn)) then begin
+        let lines = read_lines r in
+        let lines = List.filter lines ~f:(fun line ->
+          let fn = Path.of_string line in
+          not (String.Table.mem ignored_files_for_watch (Path.to_absolute_filename fn)))
+        in
+        if not (List.is_empty lines) then begin
           Mutex.lock event_mtx;
+          event_counter := !event_counter + 1;
           Condition.signal event_cv;
           Mutex.unlock event_mtx
         end;
@@ -107,12 +139,15 @@ end = struct
     in
 
     let buffer_thread () =
+      let saved_counter = ref 0 in
       let rec loop () =
         Mutex.lock event_mtx;
-        Condition.wait event_cv event_mtx;
+        if !event_counter = !saved_counter then
+          Condition.wait event_cv event_mtx;
+        saved_counter := !event_counter;
         Mutex.unlock event_mtx;
-        Thread.delay buffering_time;
         Event.(sync (send chan ()));
+        Thread.delay buffering_time;
         loop ()
       in
       loop ()

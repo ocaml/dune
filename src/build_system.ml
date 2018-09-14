@@ -827,9 +827,7 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
     end >>| fun () ->
     begin
       match mode with
-      | Standard | Fallback | Not_a_rule_stanza | Ignore_source_files ->
-        Path.Set.iter targets ~f:(fun path ->
-          Option.iter (Path.drop_build_context path) ~f:Scheduler.don't_ignore_for_watch)
+      | Standard | Fallback | Not_a_rule_stanza | Ignore_source_files -> ()
       | Promote | Promote_but_delete_on_clean ->
         Path.Set.iter targets ~f:(fun path ->
           let in_source_tree = Option.value_exn (Path.drop_build_context path) in

@@ -22,13 +22,14 @@ let ignore_for_watch path =
     ~key:(Path.to_absolute_filename path)
     ~data:()
 
-let don't_ignore_for_watch path =
-  assert (Path.is_in_source_tree path);
-  String.Table.remove ignored_files_for_watch (Path.to_string path)
-
 module Watch : sig
   (** Runs forever, communicating events to channel when changes are detected. *)
-  val wait_to_chan : unit Event.channel -> 'a
+  val wait_to_chan : Path.t list Event.channel -> 'a
+
+  (** Compares a batch of changed files to ignored files list.
+
+      This should be only called from the main thread. *)
+  val should_trigger_rebuild : Path.t list -> bool
 
 end = struct
   let command =
@@ -101,6 +102,7 @@ end = struct
 
   let wait_to_chan chan =
     let event_counter = ref 0 in
+    let new_events = ref [] in
     let event_mtx = Mutex.create () in
     let event_cv = Condition.create () in
 
@@ -122,17 +124,12 @@ end = struct
       in
       at_exit cleanup;
       let rec loop () =
-        let lines = read_lines r in
-        let lines = List.filter lines ~f:(fun line ->
-          let fn = Path.of_string line in
-          not (String.Table.mem ignored_files_for_watch (Path.to_absolute_filename fn)))
-        in
-        if not (List.is_empty lines) then begin
-          Mutex.lock event_mtx;
-          event_counter := !event_counter + 1;
-          Condition.signal event_cv;
-          Mutex.unlock event_mtx
-        end;
+        let lines = List.map (read_lines r) ~f:Path.of_string in
+        Mutex.lock event_mtx;
+        event_counter := !event_counter + 1;
+        new_events := lines :: !new_events;
+        Condition.signal event_cv;
+        Mutex.unlock event_mtx;
         loop ()
       in
       loop ()
@@ -145,8 +142,11 @@ end = struct
         if !event_counter = !saved_counter then
           Condition.wait event_cv event_mtx;
         saved_counter := !event_counter;
+        let events_to_send = !new_events in
+        new_events := [];
         Mutex.unlock event_mtx;
-        Event.(sync (send chan ()));
+        List.iter events_to_send ~f:(fun batch ->
+          Event.(sync (send chan batch)));
         Thread.delay buffering_time;
         loop ()
       in
@@ -155,6 +155,18 @@ end = struct
 
     ignore (Thread.create worker_thread ());
     buffer_thread ()
+
+  let should_trigger_rebuild fns =
+    List.filter fns ~f:(fun fn ->
+      let fn = Path.to_absolute_filename fn in
+      if String.Table.mem ignored_files_for_watch fn then begin
+        (* only use ignored record once *)
+        String.Table.remove ignored_files_for_watch fn;
+        false
+      end
+      else true)
+    |> List.is_empty
+    |> not
 end
 
 module Running_jobs : sig
@@ -360,12 +372,12 @@ let job_channel = lazy (
   chan)
 
 type event =
-  | Files_changed
+  | Files_changed of Path.t list
   | Job_completed of int * Unix.process_status
 
 let go_rec t =
   let recv () = Event.(
-    choose [ wrap (receive (Lazy.force watch_channel)) (fun () -> Files_changed)
+    choose [ wrap (receive (Lazy.force watch_channel)) (fun fns -> Files_changed fns)
            ; wrap (receive (Lazy.force job_channel)) (fun (p, s) -> Job_completed (p, s))
            ])
   in
@@ -393,9 +405,12 @@ let go_rec t =
           restart_waiting_for_available_job t
           >>= fun () ->
           go_rec t
-        | Files_changed ->
-          t.cur_build_canceled <- true;
-          Fiber.return ()
+        | Files_changed fns ->
+          if Watch.should_trigger_rebuild fns then begin
+            t.cur_build_canceled <- true;
+            Fiber.return ()
+          end
+          else go_rec t
       end
     end
   in
@@ -468,6 +483,13 @@ let poll ?log ?config ~once ~finally ~canceled () =
     t.cur_build_canceled <- false;
     once ()
   in
+  let rec block_waiting_for_changes () =
+    let fns = Event.(sync (receive watch_chan)) in
+    if Watch.should_trigger_rebuild fns then
+      ()
+    else
+      block_waiting_for_changes ()
+  in
   let wait_success () =
     let old_generator = t.gen_status_line in
     set_status_line_generator
@@ -476,7 +498,7 @@ let poll ?log ?config ~once ~finally ~canceled () =
          ; show_jobs = false
          })
     >>= fun () ->
-    Event.(sync (receive watch_chan));
+    block_waiting_for_changes ();
     set_status_line_generator old_generator
   in
   let wait_failure () =
@@ -487,7 +509,7 @@ let poll ?log ?config ~once ~finally ~canceled () =
          ; show_jobs = false
          })
     >>= fun () ->
-    Event.(sync (receive watch_chan));
+    block_waiting_for_changes ();
     set_status_line_generator old_generator
   in
   let rec main_loop () =

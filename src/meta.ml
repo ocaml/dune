@@ -233,6 +233,7 @@ let builtins ~stdlib_dir =
   let str = simple "str" [] ~dir:"+" in
   let unix = simple "unix" [] ~dir:"+" in
   let bigarray = simple "bigarray" ["unix"] ~dir:"+" in
+  let dynlink = simple "dynlink" [] ~dir:"+" in
   let threads =
     { name = Some (Lib_name.of_string_exn ~loc:None "threads")
     ; entries =
@@ -262,9 +263,9 @@ let builtins ~stdlib_dir =
        because it would produce an error message mentioning
        a "hidden" package (which could be confusing). *)
     if Path.exists (Path.relative stdlib_dir "nums.cma") then
-      [ compiler_libs; str; unix; bigarray; threads; num ]
+      [ compiler_libs; str; unix; bigarray; threads; dynlink; num ]
     else
-      [ compiler_libs; str; unix; bigarray; threads ]
+      [ compiler_libs; str; unix; bigarray; threads; dynlink ]
   in
   List.filter_map libs ~f:(fun t ->
     Option.map t.name ~f:(fun name -> name, simplify t))

@@ -132,3 +132,6 @@ They can only introduce private modules:
   Entering directory 'impl-private-modules'
 
   $ dune build --root variants-simple
+  Entering directory 'variants-simple'
+           foo alias default
+  running implementation

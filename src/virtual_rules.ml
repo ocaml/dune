@@ -31,7 +31,8 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
       let obj_dir = Utils.library_object_directory ~dir (snd impl.name) in
       fun file ->
         let dst = Path.relative obj_dir (Path.basename file) in
-        Super_context.add_rule sctx (Build.symlink ~src:file ~dst)
+        Super_context.add_rule ~loc:(Loc.of_pos __POS__)
+          sctx (Build.symlink ~src:file ~dst)
     in
     let obj_dir = Lib.obj_dir vlib in
     let modes =

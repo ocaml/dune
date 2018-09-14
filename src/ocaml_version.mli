@@ -21,3 +21,6 @@ val supports_ocaml_color : t -> bool
 
 (** Does this this support [-args0]? *)
 val supports_response_file : t -> bool
+
+(** Does ocamlmklib support [-args0]? *)
+val ocamlmklib_supports_response_file : t -> bool

@@ -233,6 +233,7 @@ let builtins ~stdlib_dir =
   let str = simple "str" [] ~dir:"+" in
   let unix = simple "unix" [] ~dir:"+" in
   let bigarray = simple "bigarray" ["unix"] ~dir:"+" in
+  let dynlink = simple "dynlink" [] ~dir:"+" in
   let threads =
     { name = Some (Lib_name.of_string_exn ~loc:None "threads")
     ; entries =
@@ -258,13 +259,14 @@ let builtins ~stdlib_dir =
     }
   in
   let libs =
+    let base = [compiler_libs; str; unix; bigarray; threads; dynlink] in
     (* We do not rely on an "exists_if" ocamlfind variable,
        because it would produce an error message mentioning
        a "hidden" package (which could be confusing). *)
     if Path.exists (Path.relative stdlib_dir "nums.cma") then
-      [ compiler_libs; str; unix; bigarray; threads; num ]
+      num :: base
     else
-      [ compiler_libs; str; unix; bigarray; threads ]
+      base
   in
   List.filter_map libs ~f:(fun t ->
     Option.map t.name ~f:(fun name -> name, simplify t))

@@ -70,6 +70,9 @@ next
 - Interpret `$ dune build dir` as building the default alias in `dir`. (#1259,
   @rgrinberg)
 
+- Make the `dynlink` library available without findlib installed (#1270, fix
+  #1264, @rgrinberg)
+
 1.1.1 (08/08/2018)
 ------------------
 

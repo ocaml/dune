@@ -19,7 +19,7 @@
 ;; CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 (require 'flymake)
-(require 'dune-mode)
+(require 'dune)
 
 (defvar dune-flymake-temporary-file-directory
   (expand-file-name "dune" temporary-file-directory)
@@ -173,7 +173,5 @@ let () =
 (defun dune-flymake-dune-mode-hook ()
   (push dune--allowed-file-name-masks flymake-allowed-file-name-masks)
   (setq-local flymake-err-line-patterns dune--err-line-patterns))
-
-(add-hook )
 
 (provide 'dune-flymake)

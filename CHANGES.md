@@ -1,5 +1,5 @@
-next
-----
+1.2.0 (14/09/2018)
+------------------
 
 - Ignore stderr output when trying to find out the number of jobs
   available (#1118, fix #1116, @diml)

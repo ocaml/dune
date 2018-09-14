@@ -15,7 +15,7 @@ module Implementation = struct
       Ocamldep.graph_of_remote_lib ~obj_dir ~modules:vlib_modules in
     Ocamldep.Dep_graphs.merge_for_impl ~vlib:vlib_graph ~impl:impl_graph
 
-  let virtual_modules t = t.vlib_modules
+  let vlib_modules t = t.vlib_modules
 end
 
 module Gen (P : sig val sctx : Super_context.t end) = struct

@@ -391,8 +391,8 @@ module Gen (P : Install_rules.Params) = struct
     let cctx =
       Compilation_context.create ()
         ~super_context:sctx
-        ?virtual_modules:(
-          Option.map impl ~f:Virtual_rules.Implementation.virtual_modules)
+        ?vlib_modules:(
+          Option.map impl ~f:Virtual_rules.Implementation.vlib_modules)
         ~scope
         ~dir
         ~dir_kind
@@ -447,7 +447,7 @@ module Gen (P : Install_rules.Params) = struct
       ~modules_of_vlib:(
         match impl with
         | None -> Module.Name.Map.empty
-        | Some impl -> Virtual_rules.Implementation.virtual_modules impl);
+        | Some impl -> Virtual_rules.Implementation.vlib_modules impl);
 
     if not (Library.is_virtual lib) then begin
       (let modules =

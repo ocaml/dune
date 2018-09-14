@@ -234,7 +234,7 @@ let deps_of cctx ~ml_kind unit =
             | Some v -> Some v
             | None ->
               Module.name m
-              |> Module.Name.Map.find (Compilation_context.virtual_modules cctx)
+              |> Module.Name.Map.find (Compilation_context.vlib_modules cctx)
               |> Option.bind ~f:file_path
           in
           Option.map ~f:all_deps_path module_file_

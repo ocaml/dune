@@ -26,7 +26,7 @@
   "Directory where to duplicate the files for flymake.")
 
 (defvar dune-program
-  (expand-file-name "dune-lint" dune-temporary-file-directory)
+  (expand-file-name "dune-lint" dune-flymake-temporary-file-directory)
   "Script to use to check the dune file.")
 
 (defvar dune--allowed-file-name-masks

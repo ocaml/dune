@@ -47,15 +47,15 @@
 (defvar dune-error-face 'dune-error-face
   "Face for errors (e.g. obsolete constructs).")
 
-(defconst dune-keywords-regex
+(defconst dune-stanzas-regex
   (eval-when-compile
     (concat (regexp-opt
              '("library" "executable" "executables" "rule"
                "ocamllex" "ocamlyacc" "menhir" "alias" "install"
                "copy_files" "copy_files#" "include" "tests" "test"
-               "env" "ignored_subdirs")
+               "env" "ignored_subdirs" "include_subdirs")
              ) "\\(?:\\_>\\|[[:space:]]\\)"))
-  "Keywords in dune files.")
+  "Stanzas in dune files.")
 
 (defconst dune-fields-regex
   (eval-when-compile
@@ -66,14 +66,16 @@
        "ppx_runtime_libraries" "virtual_deps" "js_of_ocaml" "flags"
        "ocamlc_flags" "ocamlopt_flags" "library_flags" "c_flags"
        "cxx_flags" "c_library_flags" "self_build_stubs_archive"
-       "modules_without_implementation" "allow_overlapping_dependencies"
-       "inline_tests"
+       "modules_without_implementation" "private_modules"
+       "allow_overlapping_dependencies"
        ;; + for "executable" and "executables":
        "package" "link_flags" "link_deps" "names" "public_names"
        ;; + for "rule":
        "targets" "action" "deps" "mode" "fallback" "locks"
        ;; + for "menhir":
        "merge_into"
+       ;; + for "alias"
+       "enabled_if"
        ;; + for "install"
        "section" "files")
      'symbols))
@@ -82,7 +84,11 @@
 (defvar dune-builtin-regex
   (eval-when-compile
     (concat (regexp-opt
-             '(;; Actions
+             '(;; Linking modes
+               "byte" "native" "best"
+               ;; modes
+               "standard" "fallback" "promote" "promote-until-clean"
+               ;; Actions
                "run" "chdir" "setenv"
                "with-stdout-to" "with-stderr-to" "with-outputs-to"
                "ignore-stdout" "ignore-stderr" "ignore-outputs"
@@ -116,8 +122,11 @@
   `(list (concat "(" ,field "[[:space:]]+" ,(regexp-opt vals t))
          1 font-lock-constant-face))
 
-(setq dune-font-lock-keywords
-  `((,dune-keywords-regex . font-lock-keyword-face)
+(defvar dune-font-lock-keywords
+  `((,(concat "(\\(" dune-stanzas-regex "\\)") 1 font-lock-keyword-face)
+    ("\\(:[a-zA-Z]+\\)\\b" 1 font-lock-builtin-face)
+    ("([^ ]+ +\\(as\\) +[^ ]+)"
+     1 font-lock-keyword-face)
     (,(concat "(" dune-fields-regex) 1 font-lock-function-name-face)
     ("\\(true\\|false\\)" 1 font-lock-constant-face)
     ("(\\(select\\)[[:space:]]+[^[:space:]]+[[:space:]]+\\(from\\)\\>"
@@ -130,6 +139,7 @@
                                 "promote-until-clean"))
     (,(concat "(" dune-builtin-regex) 1 font-lock-builtin-face)
     ("(preprocess[[:space:]]+(\\(pps\\)" 1 font-lock-builtin-face)
+    ("(name +\\(runtest\\))" 1 font-lock-builtin-face)
     (,(eval-when-compile
         (concat "(" (regexp-opt '("fallback") t)))
      1 dune-error-face)
@@ -137,8 +147,7 @@
      (1 dune-error-face)
      (2 font-lock-builtin-face)
      (4 font-lock-variable-name-face)
-     (5 font-lock-variable-name-face))
-    ("\\(:[a-zA-Z]+\\)\\b" 1 font-lock-builtin-face)))
+     (5 font-lock-variable-name-face))))
 
 (defvar dune-mode-syntax-table
   (let ((table (make-syntax-table)))

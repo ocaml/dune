@@ -200,10 +200,7 @@ let is_local t = Path.is_managed t.info.obj_dir
 
 let status t = t.info.status
 
-let foreign_objects t ~ext =
-  let obj_dir = obj_dir t in
-  List.map t.info.foreign_objects ~f:(fun p ->
-    Path.extend_basename (Path.relative obj_dir p) ~suffix:ext)
+let foreign_objects t = t.info.foreign_objects
 
 let main_module_name t =
   match t.info.main_module_name with

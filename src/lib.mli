@@ -27,7 +27,7 @@ val archives     : t -> Path.t list Mode.Dict.t
 val plugins      : t -> Path.t list Mode.Dict.t
 val jsoo_runtime : t -> Path.t list
 
-val foreign_objects : t -> ext:string -> Path.t list
+val foreign_objects : t -> Path.t list
 
 val main_module_name : t -> Module.Name.t option Or_exn.t
 

@@ -68,7 +68,7 @@ type t =
   ; synopsis         : string option
   ; archives         : Path.t list Mode.Dict.t
   ; plugins          : Path.t list Mode.Dict.t
-  ; foreign_objects  : string list
+  ; foreign_objects  : Path.t list
   ; foreign_archives : Path.t list Mode.Dict.t
   ; jsoo_runtime     : Path.t list
   ; requires         : Deps.t
@@ -105,6 +105,7 @@ let of_library_stanza ~dir ~ext_lib ~ext_obj (conf : Dune_file.Library.t) =
     | Some p -> Public p.package
   in
   let virtual_library = Dune_file.Library.is_virtual conf in
+  let obj_dir = Utils.library_object_directory ~dir (snd conf.name) in
   let (foreign_archives, foreign_objects) =
     let stubs =
       if Dune_file.Library.has_stubs conf then
@@ -118,7 +119,8 @@ let of_library_stanza ~dir ~ext_lib ~ext_obj (conf : Dune_file.Library.t) =
          Path.relative dir (Lib_name.Local.to_string lib_name ^ ext_lib)
          :: stubs
      }
-    , List.map (conf.c_names @ conf.cxx_names) ~f:snd
+    , List.map (conf.c_names @ conf.cxx_names) ~f:(fun (_, name) ->
+        Path.relative obj_dir (name ^ ext_obj))
     )
   in
   let foreign_archives =
@@ -158,7 +160,7 @@ let of_library_stanza ~dir ~ext_lib ~ext_obj (conf : Dune_file.Library.t) =
   { loc = conf.buildable.loc
   ; kind     = conf.kind
   ; src_dir  = dir
-  ; obj_dir  = Utils.library_object_directory ~dir (snd conf.name)
+  ; obj_dir
   ; version  = None
   ; synopsis = conf.synopsis
   ; archives

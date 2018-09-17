@@ -278,6 +278,7 @@ let compile_and_link_c_prog t ?(c_flags=[]) ?(link_flags=[]) code =
              ; "-o" ; exe_fname
              ; c_fname
              ]
+           ; link_flags
            ])
   in
   if ok then Ok () else Error ()

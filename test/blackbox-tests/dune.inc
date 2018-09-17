@@ -639,6 +639,14 @@
     (diff? run.t run.t.corrected)))))
 
 (alias
+ (name optional)
+ (deps (package dune) (source_tree test-cases/optional))
+ (action
+  (chdir
+   test-cases/optional
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name output-obj)
  (deps (package dune) (source_tree test-cases/output-obj))
  (action
@@ -979,6 +987,7 @@
   (alias ocamllex-jbuild)
   (alias odoc)
   (alias odoc-unique-mlds)
+  (alias optional)
   (alias output-obj)
   (alias package-dep)
   (alias path-variables)
@@ -1083,6 +1092,7 @@
   (alias ocaml-syntax)
   (alias ocamldep-multi-stanzas)
   (alias ocamllex-jbuild)
+  (alias optional)
   (alias output-obj)
   (alias package-dep)
   (alias path-variables)

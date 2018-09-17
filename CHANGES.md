@@ -11,6 +11,9 @@ next
 - Fix digest calculation of aliases. It should take into account extra bindings
   passed to the alias (#1277, fix #1276, @rgrinberg)
 
+- Fix a bug causing `dune` to fail eagerly when an optional library
+  isn't available (#1281, @diml)
+
 1.2.0 (14/09/2018)
 ------------------
 

@@ -206,11 +206,13 @@ let foreign_objects t ~ext =
     Path.extend_basename (Path.relative obj_dir p) ~suffix:ext)
 
 let main_module_name t =
-  match t.info.main_module_name, t.implements with
-  | Some _ as mmn, (None | Some _) -> Ok mmn
-  | None, Some vlib ->
-    vlib >>| fun vlib -> vlib.info.main_module_name
-  | None, None -> Ok None
+  match t.info.main_module_name with
+  | This mmn -> Ok mmn
+  | Inherited_from _ ->
+    Option.value_exn t.implements >>| fun vlib ->
+    match vlib.info.main_module_name with
+    | This x -> x
+    | Inherited_from _ -> assert false
 
 let package t =
   match t.info.status with

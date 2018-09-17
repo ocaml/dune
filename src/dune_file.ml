@@ -1065,12 +1065,18 @@ module Library = struct
 
   let is_virtual t = Option.is_some t.virtual_modules
 
-  let main_module_name t =
+  module Main_module_name = struct
+    type t =
+      | This of Module.Name.t option
+      | Inherited_from of (Loc.t * Lib_name.t)
+  end
+
+  let main_module_name t : Main_module_name.t =
     match t.implements, Wrapped.to_bool t.wrapped with
-    | Some _, true -> None
+    | Some x, true -> Inherited_from x
     | Some _, false -> assert false
-    | None, false -> None
-    | None, true -> Some (Module.Name.of_local_lib_name (snd t.name))
+    | None, false -> This None
+    | None, true -> This (Some (Module.Name.of_local_lib_name (snd t.name)))
 end
 
 module Install_conf = struct

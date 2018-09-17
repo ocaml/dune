@@ -396,7 +396,10 @@ module Gen (P : Install_rules.Params) = struct
         ~private_obj_dir
         ~modules
         ?alias_module
-        ?lib_interface_module:(Lib_modules.lib_interface_module lib_modules)
+        ?lib_interface_module:
+          (Option.map (Lib_modules.lib_interface_module lib_modules)
+             ~f:(fun name ->
+               Option.value_exn (Module.Name.Map.find modules name)))
         ~flags
         ~requires
         ~preprocessing:pp

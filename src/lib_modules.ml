@@ -121,8 +121,7 @@ let installable_modules t =
   | None -> modules
   | Some alias -> alias :: modules
 
-let lib_interface_module t =
-  Option.bind t.main_module_name ~f:(Module.Name.Map.find t.modules)
+let lib_interface_module t = t.main_module_name
 
 let virtual_modules t = t.virtual_modules
 

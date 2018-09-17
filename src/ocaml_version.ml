@@ -20,3 +20,6 @@ let supports_ocaml_color version =
 
 let supports_response_file version =
   version >= (4, 05, 0)
+
+let ocamlmklib_supports_response_file version =
+  version >= (4, 08, 0)

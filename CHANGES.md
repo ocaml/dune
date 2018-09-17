@@ -14,6 +14,8 @@
 - Fix a bug causing `dune` to fail eagerly when an optional library
   isn't available (#1281, @diml)
 
+- ocamlmklib should use response files only if ocaml >= 4.08 (@1268, @bryphe)
+
 1.2.0 (14/09/2018)
 ------------------
 

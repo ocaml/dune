@@ -139,9 +139,9 @@ module Gen (P : Install_rules.Params) = struct
     in
     Module.Name.Map.iteri wrapped_compat ~f:(fun name m ->
       let main_module_name =
-        Library.main_module_name lib
-        |> Option.value_exn
-        |> Module.Name.to_string
+        match Library.main_module_name lib with
+        | This (Some mmn) -> Module.Name.to_string mmn
+        | _ -> assert false
       in
       let contents =
         let name = Module.Name.to_string name in

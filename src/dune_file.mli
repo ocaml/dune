@@ -262,7 +262,13 @@ module Library : sig
   val archive : t -> dir:Path.t -> ext:string -> Path.t
   val best_name : t -> Lib_name.t
   val is_virtual : t -> bool
-  val main_module_name : t -> Module.Name.t option
+
+  module Main_module_name : sig
+    type t =
+      | This of Module.Name.t option
+      | Inherited_from of (Loc.t * Lib_name.t)
+  end
+  val main_module_name : t -> Main_module_name.t
 end
 
 module Install_conf : sig

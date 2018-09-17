@@ -169,11 +169,9 @@ let build_modules_map (d : Super_context.Dir_with_jbuild.t) ~scope ~modules =
         in
         let main_module_name =
           match Library.main_module_name lib with
-          | Some _ as mmn -> mmn
-          | None ->
-            let name = Library.best_name lib in
-            let loc = fst lib.name in
-            Lib.DB.resolve (Scope.libs scope) (loc, name)
+          | This mmn -> mmn
+          | Inherited_from lib ->
+            Lib.DB.resolve (Scope.libs scope) lib
             |> Result.bind ~f:Lib.main_module_name
             |> Result.ok_exn
         in

@@ -77,9 +77,9 @@ type t =
   { info              : Lib_info.t
   ; name              : Lib_name.t
   ; unique_id         : int
-  ; requires          : t list Or_exn.t
-  ; ppx_runtime_deps  : t list Or_exn.t
-  ; pps               : t list Or_exn.t
+  ; requires          : (Loc.t * t) list Or_exn.t
+  ; ppx_runtime_deps  : (Loc.t * t) list Or_exn.t
+  ; pps               : (Loc.t * t) list Or_exn.t
   ; resolved_selects  : Resolved_select.t list
   ; user_written_deps : Dune_file.Lib_deps.t
   ; implements        : t Or_exn.t option
@@ -294,11 +294,11 @@ module L = struct
     let rec loop acc l seen =
       match l with
       | [] -> acc
-      | x :: l ->
+      | ((_, x) as loc_lib) :: l ->
         if Int.Set.mem seen x.unique_id then
           loop acc l seen
         else
-          loop (x :: acc) l (Int.Set.add seen x.unique_id)
+          loop (loc_lib :: acc) l (Int.Set.add seen x.unique_id)
     in
     loop [] l Int.Set.empty
 end
@@ -495,257 +495,258 @@ let result_of_resolve_status = function
   | St_not_found          -> Error Error.Library_not_available.Reason.Not_found
   | St_hidden (_, hidden) -> Error (Hidden hidden)
 
-let rec instantiate db name (info : Lib_info.t) ~stack ~hidden =
-  let id, stack =
-    Dep_stack.create_and_push stack name info.src_dir
-  in
-  Option.iter (Hashtbl.find db.table name) ~f:(fun x ->
-    already_in_table info name x);
-  (* Add [id] to the table, to detect loops *)
-  Hashtbl.add db.table name (St_initializing id);
+module Resolve : sig
 
-  let allow_private_deps = Lib_info.Status.is_private info.status in
+  val find
+    :  db
+    -> Lib_name.t
+    -> (lib, Error0.Library_not_available.Reason.t) result
 
-  let resolve (loc, name) =
-    resolve_dep db (name : Lib_name.t) ~allow_private_deps ~loc ~stack in
+  val find_internal : db -> Lib_name.t -> stack:Dep_stack.t -> status
 
-  let implements = Option.map info.implements ~f:resolve in
+  val available_internal : db -> Lib_name.t -> stack:Dep_stack.t -> bool
 
-  let requires, pps, resolved_selects =
-    resolve_user_deps db info.requires ~allow_private_deps ~pps:info.pps ~stack
-  in
-  let requires =
-    match implements with
-    | None -> requires
-    | Some implements ->
-      implements >>= fun implements ->
-      implements.requires >>= fun irequires ->
-      requires >>| fun requires ->
-      L.remove_dups (List.rev_append irequires requires)
-  in
-  let ppx_runtime_deps =
-    let ppx_rd =
-      resolve_simple_deps db info.ppx_runtime_deps ~allow_private_deps ~stack in
-    match implements with
-    | None -> ppx_rd
-    | Some implements ->
-      implements >>= fun implements ->
-      implements.ppx_runtime_deps >>= fun ippx_rd ->
-      ppx_rd >>| fun ppx_rd ->
-      L.remove_dups (List.rev_append ippx_rd ppx_rd)
-  in
-  let map_error x =
-    Result.map_error x ~f:(fun e ->
-      Dep_path.prepend_exn e (Library (info.src_dir, name)))
-  in
-  let requires         = map_error requires         in
-  let ppx_runtime_deps = map_error ppx_runtime_deps in
-  let t =
-    { info
-    ; name
-    ; unique_id         = id.unique_id
-    ; requires
-    ; ppx_runtime_deps
-    ; pps
-    ; resolved_selects
-    ; user_written_deps = Lib_info.user_written_deps info
-    ; sub_systems       = Sub_system_name.Map.empty
-    ; implements
-    }
-  in
-  t.sub_systems <-
-    Sub_system_name.Map.mapi info.sub_systems ~f:(fun name info ->
-      lazy (Sub_system.instantiate name info t ~resolve));
+  val resolve_pps
+    :  db
+    -> stack:Dep_stack.t
+    -> (Loc.t * Dune_file.Pp.t) list
+    -> (Loc.t * lib) list Or_exn.t
 
-  let res =
-    let hidden =
-      match hidden with
-      | None ->
-        Option.some_if
-          (info.optional &&
-           not (Result.is_ok t.requires && Result.is_ok t.ppx_runtime_deps))
-          "optional with unavailable dependencies"
-      | Some _ -> hidden
+  val resolve_deps
+    :  db
+    -> Lib_info.Deps.t
+    -> allow_private_deps:bool
+    -> stack:Dep_stack.t
+    -> (Loc.t * lib) list Or_exn.t * Resolved_select.t list
+
+end = struct
+
+  let rec instantiate db name (info : Lib_info.t) ~stack ~hidden =
+    let id, stack =
+      Dep_stack.create_and_push stack name info.src_dir
     in
-    match hidden with
-    | None -> St_found t
-    | Some reason ->
-      St_hidden (t, { name; path = t.info.src_dir; reason })
-  in
-  Hashtbl.replace db.table ~key:name ~data:res;
-  res
+    Option.iter (Hashtbl.find db.table name) ~f:(fun x ->
+      already_in_table info name x);
+    (* Add [id] to the table, to detect loops *)
+    Hashtbl.add db.table name (St_initializing id);
 
-and find db name : (t, Error.Library_not_available.Reason.t) result =
-  result_of_resolve_status (find_internal db name ~stack:Dep_stack.empty)
+    let allow_private_deps = Lib_info.Status.is_private info.status in
 
-and find_even_when_hidden db name =
-  match find_internal db name ~stack:Dep_stack.empty with
+    let resolve (loc, name) =
+      resolve_dep db (name : Lib_name.t) ~allow_private_deps ~loc ~stack
+    in
+
+    let implements = Option.map info.implements ~f:resolve in
+
+    let requires, resolved_selects =
+      resolve_deps db info.requires ~allow_private_deps ~stack in
+
+    let pps = resolve_pps db ~stack info.pps in
+
+    let requires =
+      match implements with
+      | None -> requires
+      | Some implements ->
+        implements >>= fun implements ->
+        implements.requires >>= fun irequires ->
+        requires >>| fun requires ->
+        L.remove_dups (List.rev_append irequires requires)
+    in
+    let ppx_runtime_deps =
+      let ppx_rd =
+        resolve_simple_deps db info.ppx_runtime_deps ~allow_private_deps ~stack in
+      match implements with
+      | None -> ppx_rd
+      | Some implements ->
+        implements >>= fun implements ->
+        implements.ppx_runtime_deps >>= fun ippx_rd ->
+        ppx_rd >>| fun ppx_rd ->
+        L.remove_dups (List.rev_append ippx_rd ppx_rd)
+    in
+    let map_error x =
+      Result.map_error x ~f:(fun e ->
+        Dep_path.prepend_exn e (Library (info.src_dir, name)))
+    in
+    let requires         = map_error requires         in
+    let ppx_runtime_deps = map_error ppx_runtime_deps in
+    let t =
+      { info
+      ; name
+      ; unique_id         = id.unique_id
+      ; requires
+      ; ppx_runtime_deps
+      ; pps
+      ; resolved_selects
+      ; user_written_deps = Lib_info.user_written_deps info
+      ; sub_systems       = Sub_system_name.Map.empty
+      ; implements
+      }
+    in
+    t.sub_systems <-
+      Sub_system_name.Map.mapi info.sub_systems ~f:(fun name info ->
+        lazy (Sub_system.instantiate name info t ~resolve));
+
+    let res =
+      let hidden =
+        match hidden with
+        | None ->
+          Option.some_if
+            (info.optional &&
+             not (Result.is_ok t.requires && Result.is_ok t.ppx_runtime_deps))
+            "optional with unavailable dependencies"
+        | Some _ -> hidden
+      in
+      match hidden with
+      | None -> St_found t
+      | Some reason ->
+        St_hidden (t, { name; path = t.info.src_dir; reason })
+    in
+    Hashtbl.replace db.table ~key:name ~data:res;
+    res
+
+  and find db name : (t, Error.Library_not_available.Reason.t) result =
+    result_of_resolve_status (find_internal db name ~stack:Dep_stack.empty)
+
+  and find_internal db (name : Lib_name.t) ~stack : status =
+    match Hashtbl.find db.table name with
+    | Some x -> x
+    | None   -> resolve_name db name ~stack
+
+  and resolve_dep db (name : Lib_name.t) ~allow_private_deps ~loc ~stack : t Or_exn.t =
+    match find_internal db name ~stack with
+    | St_initializing id ->
+      Error (Dep_stack.dependency_cycle stack id)
+    | St_found lib -> check_private_deps lib ~loc ~allow_private_deps
+    | St_not_found ->
+      Error (Error (Library_not_available { loc; name; reason = Not_found }))
+    | St_hidden (_, hidden) ->
+      Error (Error (Library_not_available { loc; name; reason = Hidden hidden }))
+
+  and resolve_name db name ~stack =
+    match db.resolve name with
+    | Redirect (db', name') -> begin
+        let db' = Option.value db' ~default:db in
+        match find_internal db' name' ~stack with
+        | St_initializing _ as x -> x
+        | x ->
+          Hashtbl.add db.table name x;
+          x
+      end
+    | Found info ->
+      instantiate db name info ~stack ~hidden:None
+    | Not_found ->
+      let res =
+        match db.parent with
+        | None    -> St_not_found
+        | Some db -> find_internal db name ~stack
+      in
+      Hashtbl.add db.table name res;
+      res
+    | Hidden (info, hidden) ->
+      match
+        match db.parent with
+        | None    -> St_not_found
+        | Some db -> find_internal db name ~stack
+      with
+      | St_found _ as x ->
+        Hashtbl.add db.table name x;
+        x
+      | _ ->
+        instantiate db name info ~stack ~hidden:(Some hidden)
+
+  and available_internal db (name : Lib_name.t) ~stack =
+    resolve_dep db name ~allow_private_deps:true ~loc:Loc.none ~stack
+    |> Result.is_ok
+
+  and resolve_simple_deps db (names : ((Loc.t * Lib_name.t) list))
+        ~allow_private_deps ~stack : (Loc.t * t) list Or_exn.t =
+    Result.List.map names ~f:(fun (loc, name) ->
+      resolve_dep db name ~allow_private_deps ~loc ~stack >>| fun lib ->
+      (loc, lib))
+
+  and resolve_complex_deps db deps ~allow_private_deps ~stack =
+    let res, resolved_selects =
+      List.fold_left deps ~init:(Ok [], []) ~f:(fun (acc_res, acc_selects) dep ->
+        let res, acc_selects =
+          match (dep : Dune_file.Lib_dep.t) with
+          | Direct (loc, name) ->
+            let res =
+              resolve_dep db name ~allow_private_deps ~loc ~stack
+            in
+            ((res >>| fun x -> [loc, x]), acc_selects)
+          | Select { result_fn; choices; loc } ->
+            let res, src_fn =
+              match
+                List.find_map choices ~f:(fun { required; forbidden; file } ->
+                  if Lib_name.Set.exists forbidden
+                       ~f:(available_internal db ~stack) then
+                    None
+                  else
+                    match
+                      let deps =
+                        Lib_name.Set.fold required ~init:[] ~f:(fun x acc ->
+                          (loc, x) :: acc)
+                      in
+                      resolve_simple_deps ~allow_private_deps db deps ~stack
+                    with
+                    | Ok ts -> Some (ts, file)
+                    | Error _ -> None)
+              with
+              | Some (ts, file) ->
+                (Ok ts, Ok file)
+              | None ->
+                let e = { Error.No_solution_found_for_select.loc } in
+                (Error (Error (No_solution_found_for_select e)),
+                 Error e)
+            in
+            (res, { Resolved_select. src_fn; dst_fn = result_fn } :: acc_selects)
+        in
+        let res =
+          match res, acc_res with
+          | Ok l, Ok acc -> Ok (List.rev_append l acc)
+          | (Error _ as res), _
+          | _, (Error _ as res) -> res
+        in
+        (res, acc_selects))
+    in
+    let res =
+      match res with
+      | Ok    l -> Ok (List.rev l)
+      | Error _ -> res
+    in
+    (res, resolved_selects)
+
+  and resolve_deps db deps ~allow_private_deps ~stack
+    : ((Loc.t * t) list Or_exn.t * Resolved_select.t list) =
+    match (deps : Lib_info.Deps.t) with
+    | Simple  names ->
+      (resolve_simple_deps db names ~allow_private_deps ~stack, [])
+    | Complex names ->
+      resolve_complex_deps ~allow_private_deps db names ~stack
+
+  and resolve_pps db ~stack pps =
+    let pps =
+      (pps : (Loc.t * Dune_file.Pp.t) list :> (Loc.t * Lib_name.t) list) in
+    resolve_simple_deps db pps ~allow_private_deps:true ~stack
+end
+
+let find_even_when_hidden db name =
+  match Resolve.find_internal db name ~stack:Dep_stack.empty with
   | St_initializing _     -> assert false
   | St_found t            -> Some t
   | St_not_found          -> None
   | St_hidden (t, _)      -> Some t
 
-and find_internal db (name : Lib_name.t) ~stack : status =
-  match Hashtbl.find db.table name with
-  | Some x -> x
-  | None   -> resolve_name db name ~stack
-
-and resolve_dep db (name : Lib_name.t) ~allow_private_deps ~loc ~stack : t Or_exn.t =
-  match find_internal db name ~stack with
-  | St_initializing id ->
-    Error (Dep_stack.dependency_cycle stack id)
-  | St_found lib -> check_private_deps lib ~loc ~allow_private_deps
-  | St_not_found ->
-    Error (Error (Library_not_available { loc; name; reason = Not_found }))
-  | St_hidden (_, hidden) ->
-    Error (Error (Library_not_available { loc; name; reason = Hidden hidden }))
-
-and resolve_name db name ~stack =
-  match db.resolve name with
-  | Redirect (db', name') -> begin
-      let db' = Option.value db' ~default:db in
-      match find_internal db' name' ~stack with
-      | St_initializing _ as x -> x
-      | x ->
-        Hashtbl.add db.table name x;
-        x
-    end
-  | Found info ->
-    instantiate db name info ~stack ~hidden:None
-  | Not_found ->
-    let res =
-      match db.parent with
-      | None    -> St_not_found
-      | Some db -> find_internal db name ~stack
-    in
-    Hashtbl.add db.table name res;
-    res
-  | Hidden (info, hidden) ->
-    match
-      match db.parent with
-      | None    -> St_not_found
-      | Some db -> find_internal db name ~stack
-    with
-    | St_found _ as x ->
-      Hashtbl.add db.table name x;
-      x
-    | _ ->
-      instantiate db name info ~stack ~hidden:(Some hidden)
-
-and available_internal db (name : Lib_name.t) ~stack =
-  resolve_dep db name ~allow_private_deps:true ~loc:Loc.none ~stack
-  |> Result.is_ok
-
-and resolve_simple_deps db (names : ((Loc.t * Lib_name.t) list)) ~allow_private_deps ~stack =
-  Result.List.map names ~f:(fun (loc, name) ->
-    resolve_dep db name ~allow_private_deps ~loc ~stack)
-
-and resolve_complex_deps db deps ~allow_private_deps ~stack =
-  let res, resolved_selects =
-    List.fold_left deps ~init:(Ok [], []) ~f:(fun (acc_res, acc_selects) dep ->
-      let res, acc_selects =
-        match (dep : Dune_file.Lib_dep.t) with
-        | Direct (loc, name) ->
-          let res =
-            resolve_dep db name ~allow_private_deps ~loc ~stack >>| fun x -> [x]
-          in
-          (res, acc_selects)
-        | Select { result_fn; choices; loc } ->
-          let res, src_fn =
-            match
-              List.find_map choices ~f:(fun { required; forbidden; file } ->
-                if Lib_name.Set.exists forbidden
-                     ~f:(available_internal db ~stack) then
-                  None
-                else
-                  match
-                    let deps =
-                      Lib_name.Set.fold required ~init:[] ~f:(fun x acc ->
-                        (loc, x) :: acc)
-                    in
-                    resolve_simple_deps ~allow_private_deps db deps ~stack
-                  with
-                  | Ok ts -> Some (ts, file)
-                  | Error _ -> None)
-            with
-            | Some (ts, file) ->
-              (Ok ts, Ok file)
-            | None ->
-              let e = { Error.No_solution_found_for_select.loc } in
-              (Error (Error (No_solution_found_for_select e)),
-               Error e)
-          in
-          (res, { Resolved_select. src_fn; dst_fn = result_fn } :: acc_selects)
-      in
-      let res =
-        match res, acc_res with
-        | Ok l, Ok acc -> Ok (List.rev_append l acc)
-        | (Error _ as res), _
-        | _, (Error _ as res) -> res
-      in
-      (res, acc_selects))
-  in
-  let res =
-    match res with
-    | Ok    l -> Ok (List.rev l)
-    | Error _ -> res
-  in
-  (res, resolved_selects)
-
-and resolve_deps db deps ~allow_private_deps ~stack =
-  match (deps : Lib_info.Deps.t) with
-  | Simple  names ->
-    (resolve_simple_deps db names ~allow_private_deps ~stack, [])
-  | Complex names ->
-    resolve_complex_deps ~allow_private_deps db names ~stack
-
-and resolve_user_deps db deps ~allow_private_deps ~pps ~stack =
-  let deps, resolved_selects =
-    resolve_deps db deps ~allow_private_deps ~stack in
-  let deps, pps =
-    match pps with
-    | [] -> (deps, Ok [])
-    | first :: others as pps ->
-      (* Location of the list of ppx rewriters *)
-      let loc =
-        let last = Option.value (List.last others) ~default:first in
-        { (fst first) with stop = (fst last).stop }
-      in
-      let pps =
-        let pps = (pps : (Loc.t * Dune_file.Pp.t) list :> (Loc.t * Lib_name.t) list) in
-        resolve_simple_deps db pps ~allow_private_deps:true ~stack
-        >>= fun pps ->
-        closure_with_overlap_checks None pps ~stack
-      in
-      let deps =
-        let rec check_runtime_deps acc pps = function
-          | [] -> loop acc pps
-          | lib :: ppx_rts ->
-            check_private_deps lib ~loc ~allow_private_deps >>= fun rt ->
-            check_runtime_deps (rt :: acc) pps ppx_rts
-        and loop acc = function
-          | [] -> Ok acc
-          | pp :: pps ->
-            pp.ppx_runtime_deps >>= fun rt_deps ->
-            check_runtime_deps acc pps rt_deps
-        in
-        deps >>= fun deps ->
-        pps  >>= fun pps  ->
-        loop deps pps
-      in
-      (deps, pps)
-  in
-  (deps, pps, resolved_selects)
-
-and closure_with_overlap_checks db ts ~stack =
-  let visited = ref Lib_name.Map.empty in
+let closure_with_overlap_checks db ~deps ~pps ~allow_private_deps ~stack =
+  let visited_deps = ref Lib_name.Map.empty in
+  let visited_pps = ref Lib_name.Map.empty in
   let res = ref [] in
   let orig_stack = stack in
-  let rec loop t ~stack =
+  let check t ~visited ~stack =
     match Lib_name.Map.find !visited t.name with
     | Some (t', stack') ->
       if t.unique_id = t'.unique_id then
-        Ok ()
+        Ok `Visited
       else
         let req_by = Dep_stack.to_required_by ~stop_at:orig_stack in
         Error
@@ -755,12 +756,12 @@ and closure_with_overlap_checks db ts ~stack =
     | None ->
       visited := Lib_name.Map.add !visited t.name (t, stack);
       (match db with
-       | None -> Ok ()
+       | None -> Ok `New
        | Some db ->
-         match find_internal db t.name ~stack with
+         match Resolve.find_internal db t.name ~stack with
          | St_found t' ->
            if t.unique_id = t'.unique_id then
-             Ok ()
+             Ok `New
            else begin
              let req_by = Dep_stack.to_required_by stack ~stop_at:orig_stack in
              Error
@@ -770,28 +771,49 @@ and closure_with_overlap_checks db ts ~stack =
                          }))
            end
          | _ -> assert false)
-      >>= fun () ->
+  in
+  let rec loop_pp (_loc, t) ~stack =
+    check t ~visited:visited_pps ~stack >>= function
+    | `Visited -> Ok ()
+    | `New ->
       Dep_stack.push stack (to_id t) >>= fun stack ->
       t.requires >>= fun deps ->
-      Result.List.iter deps ~f:(loop ~stack) >>| fun () ->
+      Result.List.iter deps ~f:(loop_pp ~stack) >>= fun () ->
+      t.ppx_runtime_deps >>= fun ppx_rds ->
+      Result.List.iter ppx_rds ~f:(loop_dep ~stack)
+  and loop_dep (pd_loc, t) ~stack =
+    check t ~visited:visited_deps ~stack >>= function
+    | `Visited -> Ok ()
+    | `New ->
+      Dep_stack.push stack (to_id t) >>= fun stack ->
+      if not allow_private_deps && Lib_info.Status.is_private (status t) then
+        Result.Error (Error (
+          Private_deps_not_allowed { private_dep = t ; pd_loc }))
+      else
+        Ok ()
+      >>= fun () ->
+      t.requires >>= fun deps ->
+      Result.List.iter deps ~f:(loop_dep ~stack) >>= fun () ->
+      t.pps >>= fun pps ->
+      Result.List.iter pps ~f:(loop_pp ~stack) >>| fun () ->
       res := t :: !res
   in
-  Result.List.iter ts ~f:(loop ~stack) >>| fun () ->
+  Result.List.iter pps ~f:(loop_pp ~stack) >>= fun () ->
+  Result.List.iter deps ~f:(loop_dep ~stack) >>| fun () ->
   List.rev !res
 
-let closure_with_overlap_checks db l =
-  closure_with_overlap_checks db l ~stack:Dep_stack.empty
+let closure_with_overlap_checks db =
+  closure_with_overlap_checks db ~stack:Dep_stack.empty
 
-let closure l = closure_with_overlap_checks None l
+let closure l =
+  closure_with_overlap_checks ~pps:[] None
+    ~allow_private_deps:true
+    ~deps:(List.map ~f:(fun lib -> (lib.info.loc, lib)) l)
 
 let to_exn res =
   match res with
   | Ok    x -> x
   | Error e -> raise e
-
-let requires_exn         t = to_exn t.requires
-let ppx_runtime_deps_exn t = to_exn t.ppx_runtime_deps
-let closure_exn          l = to_exn (closure l)
 
 module Compile = struct
   module Resolved_select = Resolved_select
@@ -807,10 +829,14 @@ module Compile = struct
     }
 
   let for_lib db (t : lib) =
-    { direct_requires   = t.requires
-    ; requires          = t.requires >>= closure_with_overlap_checks db
+    let allow_private_deps = Lib_info.Status.is_private (status t) in
+    { direct_requires   = t.requires >>| List.map ~f:snd
+    ; requires          =
+        (t.requires >>= fun deps ->
+         t.pps >>= fun pps ->
+         closure_with_overlap_checks db ~deps ~pps ~allow_private_deps)
     ; resolved_selects  = t.resolved_selects
-    ; pps               = t.pps
+    ; pps               = t.pps >>| List.map ~f:snd
     ; optional          = t.info.optional
     ; user_written_deps = t.user_written_deps
     ; sub_systems       = t.sub_systems
@@ -915,7 +941,7 @@ module DB = struct
         Findlib.all_packages findlib
         |> List.map ~f:Findlib.Package.name)
 
-  let find = find
+  let find = Resolve.find
   let find_even_when_hidden = find_even_when_hidden
 
   let resolve t (loc, name) =
@@ -931,7 +957,8 @@ module DB = struct
   let find_many t ~loc =
     Result.List.map ~f:(fun name -> resolve t (loc, name))
 
-  let available t name = available_internal t name ~stack:Dep_stack.empty
+  let available t name =
+    Resolve.available_internal t name ~stack:Dep_stack.empty
 
   let get_compile_info t ?(allow_overlaps=false) name =
     match find_even_when_hidden t name with
@@ -943,19 +970,24 @@ module DB = struct
       Compile.for_lib t lib
 
   let resolve_user_written_deps t ?(allow_overlaps=false) deps ~pps =
-    let res, pps, resolved_selects =
-      resolve_user_deps t (Lib_info.Deps.of_lib_deps deps) ~pps
+    let pps = Resolve.resolve_pps t ~stack:Dep_stack.empty pps in
+    let res, resolved_selects =
+      Resolve.resolve_deps t (Lib_info.Deps.of_lib_deps deps)
         ~stack:Dep_stack.empty ~allow_private_deps:true
     in
+    let overlap_db = Option.some_if (not allow_overlaps) t in
     let requires =
-      res
-      >>=
-      closure_with_overlap_checks (Option.some_if (not allow_overlaps) t)
+      res >>= fun deps ->
+      pps >>= fun pps ->
+      closure_with_overlap_checks overlap_db
+        ~allow_private_deps:true ~deps ~pps
     in
     { Compile.
-      direct_requires = res
+      direct_requires = res >>| List.map ~f:snd
     ; requires
-    ; pps
+    ; pps = (pps >>= fun pps ->
+             closure_with_overlap_checks overlap_db
+               ~allow_private_deps:true ~deps:[] ~pps)
     ; resolved_selects
     ; optional          = false
     ; user_written_deps = deps
@@ -963,9 +995,8 @@ module DB = struct
     }
 
   let resolve_pps t pps =
-    resolve_simple_deps t ~allow_private_deps:true
-      (pps : (Loc.t * Dune_file.Pp.t) list :> (Loc.t * Lib_name.t) list)
-      ~stack:Dep_stack.empty
+    Resolve.resolve_pps t ~stack:Dep_stack.empty pps
+    >>| List.map ~f:snd
 
   let rec all ?(recursive=false) t =
     let l =
@@ -985,6 +1016,10 @@ end
 
 module Meta = struct
   let to_names ts =
+    List.fold_left ts ~init:Lib_name.Set.empty ~f:(fun acc (_loc, t) ->
+      Lib_name.Set.add acc t.name)
+
+  let to_names_no_loc ts =
     List.fold_left ts ~init:Lib_name.Set.empty ~f:(fun acc t ->
       Lib_name.Set.add acc t.name)
 
@@ -998,12 +1033,14 @@ module Meta = struct
 
      Sigh... *)
   let ppx_runtime_deps_for_deprecated_method t =
-    closure_exn [t]
-    |> List.concat_map ~f:ppx_runtime_deps_exn
-    |> to_names
+    closure_with_overlap_checks None ~deps:[] ~pps:[t.info.loc, t]
+      ~allow_private_deps:false
+    |> to_exn
+    |> to_names_no_loc
 
-  let requires         t = to_names (requires_exn         t)
-  let ppx_runtime_deps t = to_names (ppx_runtime_deps_exn t)
+  let requires         t = to_names (to_exn t.requires)
+  (* TODO need proper calculation of ppx_rd *)
+  let ppx_runtime_deps t = ppx_runtime_deps_for_deprecated_method t
 end
 
 (* +-----------------------------------------------------------------+

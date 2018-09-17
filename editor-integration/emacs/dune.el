@@ -188,12 +188,14 @@
         (save-excursion
           (goto-char (cadr (smie-indent--parent)))
           (cond
-           ((looking-at-p dune-keywords-regex) 1)
+           ((looking-at-p dune-stanzas-regex) 1)
            ((looking-at-p dune-fields-regex)
             (smie-rule-parent 0))
            ((smie-rule-sibling-p) (cons 'column (current-column)))
            (t (cons 'column (current-column)))))
       '(column . 0)))
+   ((eq kind :list-intro)
+    nil)
    (t 1)))
 
 (defun verbose-dune-smie-rules (kind token)

@@ -1,5 +1,5 @@
-next
-----
+1.2.1 (17/09/2018)
+------------------
 
 - Enrich the `dune` Emacs mode with syntax highlighting and indentation. New
   file `dune-flymake` to provide a hook `dune-flymake-dune-mode-hook` to enable

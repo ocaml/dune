@@ -47,6 +47,13 @@
 (defvar dune-error-face 'dune-error-face
   "Face for errors (e.g. obsolete constructs).")
 
+(defface dune-separator-face
+  '((((background light)) (:foreground "firebrick"))
+    (((background dark)) (:foreground "DarkOrange1")))
+  "Face for various kind of separators such as ':'.")
+(defvar dune-separator-face 'dune-separator-face
+  "Face for various kind of separators such as ':'.")
+
 (defconst dune-stanzas-regex
   (eval-when-compile
     (concat (regexp-opt
@@ -108,15 +115,11 @@
 (defvar dune-var-kind-regex
   (eval-when-compile
     (regexp-opt
-     '("dep" "path-no-dep" "exe" "bin" "lib" "libexec" "lib-available"
+     '("ocaml-config"
+       "dep" "exe" "bin" "lib" "libexec" "lib-available"
        "version" "read" "read-lines" "read-strings")
      'words))
   "Optional prefix to variable names.")
-
-(defvar dune-var-regex
-      (concat "\\(!?\\)\\(\\(?:" dune-var-kind-regex
-              ":\\)?\\)\\([a-zA-Z][a-zA-Z0-9_.-]*\\|[<@^]\\)"
-              "\\(\\(?::[a-zA-Z][a-zA-Z0-9_.-]*\\)?\\)"))
 
 (defmacro dune--field-vals (field &rest vals)
   `(list (concat "(" ,field "[[:space:]]+" ,(regexp-opt vals t))
@@ -124,10 +127,14 @@
 
 (defvar dune-font-lock-keywords
   `((,(concat "(\\(" dune-stanzas-regex "\\)") 1 font-lock-keyword-face)
-    ("\\(:[a-zA-Z]+\\)\\b" 1 font-lock-builtin-face)
-    ("([^ ]+ +\\(as\\) +[^ ]+)"
-     1 font-lock-keyword-face)
+    ("([^ ]+ +\\(as\\) +[^ ]+)" 1 font-lock-keyword-face)
     (,(concat "(" dune-fields-regex) 1 font-lock-function-name-face)
+    (,(concat "%{" dune-var-kind-regex " *\\(\\:\\)[^{}:]*\\(\\(?::\\)?\\)")
+     (1 font-lock-builtin-face)
+     (2 dune-separator-face)
+     (3 dune-separator-face))
+    ("%{\\([^{}]*\\)}" 1 font-lock-variable-name-face keep)
+    ("\\(:[a-zA-Z]+\\)\\b" 1 font-lock-builtin-face)
     ("\\(true\\|false\\)" 1 font-lock-constant-face)
     ("(\\(select\\)[[:space:]]+[^[:space:]]+[[:space:]]+\\(from\\)\\>"
      (1 font-lock-constant-face)
@@ -142,12 +149,7 @@
     ("(name +\\(runtest\\))" 1 font-lock-builtin-face)
     (,(eval-when-compile
         (concat "(" (regexp-opt '("fallback") t)))
-     1 dune-error-face)
-    (,(concat "%{" dune-var-regex "}")
-     (1 dune-error-face)
-     (2 font-lock-builtin-face)
-     (4 font-lock-variable-name-face)
-     (5 font-lock-variable-name-face))))
+     1 dune-error-face)))
 
 (defvar dune-mode-syntax-table
   (let ((table (make-syntax-table)))

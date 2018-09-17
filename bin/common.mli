@@ -31,3 +31,12 @@ val set_common : t -> targets:string list -> unit
 val set_common_other : t -> targets:string list -> unit
 
 val set_dirs : t -> unit
+
+val help_secs
+  : [> `Blocks of [> `P of string | `S of string ] list
+    | `P of string
+    | `S of string ] list
+
+val footer : [> `Blocks of [> `P of string | `S of string ] list ]
+
+val term : t Cmdliner.Term.t

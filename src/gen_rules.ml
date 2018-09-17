@@ -169,11 +169,14 @@ module Gen(P : Install_rules.Params) = struct
       let run_action =
         match t.action with
         | Some a -> a
-        | None -> Action.Unexpanded.Run (String_with_vars.make_var loc test_var_name, [])
+        | None -> Action.Unexpanded.Run (
+          String_with_vars.make_var loc test_var_name, [])
       in
-      let test_exe = s ^ ".exe" in
-      let test_exe_path = Super_context.Action.map_exe sctx (Path.relative dir test_exe) in
-      let extra_bindings = Pform.Map.singleton test_var_name (Values [Path test_exe_path]) in
+      let extra_bindings =
+        let test_exe = s ^ ".exe" in
+        let test_exe_path =
+          Super_context.Action.map_exe sctx (Path.relative dir test_exe) in
+        Pform.Map.singleton test_var_name (Values [Path test_exe_path]) in
       let add_alias ~loc ~action ~locks =
         let alias =
           { Alias_conf.
@@ -190,7 +193,7 @@ module Gen(P : Install_rules.Params) = struct
       in
       match test_kind (loc, s) with
       | `Regular ->
-          add_alias ~loc ~action:run_action ~locks:[]
+        add_alias ~loc ~action:run_action ~locks:[]
       | `Expect diff ->
         let rule =
           { Rule.
@@ -203,7 +206,8 @@ module Gen(P : Install_rules.Params) = struct
           ; loc
           } in
         add_alias ~loc ~action:(Diff diff) ~locks:t.locks;
-        ignore (Simple_rules.user_rule sctx rule ~extra_bindings ~dir ~scope : Path.t list));
+        ignore (Simple_rules.user_rule sctx rule ~extra_bindings ~dir ~scope
+                : Path.t list));
     executables_rules t.exes ~dir ~scope ~dir_kind
       ~dir_contents
 

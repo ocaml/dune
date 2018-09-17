@@ -3,10 +3,13 @@ next
 
 - Enrich the `dune` Emacs mode with syntax highlighting and indentation. New
   file `dune-flymake` to provide a hook `dune-flymake-dune-mode-hook` to enable
-  linting of dune files.
+  linting of dune files. (#1265, @Chris00)
 
 - Pass `link_flags` to `cc` when compiling with `Configurator.V1.c_test` (#1274,
   @rgrinberg)
+
+- Fix digest calculation of aliases. It should take into account extra bindings
+  passed to the alias (#1277, fix #1276, @rgrinberg)
 
 1.2.0 (14/09/2018)
 ------------------

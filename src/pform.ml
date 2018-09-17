@@ -44,6 +44,8 @@ let renamed_in ~new_name ~version  = Renamed_in (version, new_name)
 let deleted_in ~version ?repl kind = Deleted_in (kind, version, repl)
 let since ~version v               = Since (v, version)
 
+type 'a pform = 'a t
+
 module Map = struct
   type 'a map = 'a t String.Map.t
 
@@ -232,4 +234,13 @@ module Map = struct
           ]
     ; macros = String.Map.empty
     }
+
+  type stamp =
+    (string * Var.t pform) list
+    * (string * Macro.t pform) list
+
+  let to_stamp { vars; macros } : stamp =
+    ( String.Map.to_list vars
+    , String.Map.to_list macros
+    )
 end

@@ -102,6 +102,7 @@ let alias sctx ?extra_bindings ~dir ~scope (alias_conf : Alias_conf.t) =
         ~f:Dune_file.Dep_conf.remove_locs alias_conf.deps
     , Option.map ~f:(fun (_loc, a) -> Action.Unexpanded.remove_locs a)
         alias_conf.action
+    , Option.map extra_bindings ~f:Pform.Map.to_stamp
     )
   in
   let loc = Some alias_conf.loc in

@@ -123,7 +123,7 @@ Implementations cannot introduce new modules to the library's interface
   2 |  (name foo_impl)
   3 |  (implements foo))
   Error: The following modules aren't part of the virtual library's interface:
-  Baz
+  - Baz
   They must be marked as private using the (private_modules ..) field
   [1]
 

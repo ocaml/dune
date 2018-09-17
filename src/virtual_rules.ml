@@ -40,19 +40,18 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
       end)
 
   let module_list ms =
-    List.map ms ~f:Module.Name.to_string
+    List.map ms ~f:(fun m -> sprintf "- %s" (Module.Name.to_string m))
     |> String.concat ~sep:"\n"
 
   let check_module_fields ~(lib : Dune_file.Library.t) ~virtual_modules
         ~modules ~implements =
     let new_public_modules =
-      Module.Name.Map.fold modules ~init:[] ~f:(fun m acc ->
+      Module.Name.Map.foldi modules ~init:[] ~f:(fun name m acc ->
         if Module.is_public m
-        && not (Module.Name.Map.mem virtual_modules (Module.name m)) then
-          (Module.name m) :: acc
+        && not (Module.Name.Map.mem virtual_modules name) then
+          name :: acc
         else
-          acc
-      )
+          acc)
     in
     if new_public_modules <> [] then begin
       Errors.fail lib.buildable.loc

@@ -41,16 +41,17 @@
 ;;;;               Syntax highlighting of dune files
 
 (defface dune-error-face
-  '((t (:foreground "yellow" :background "red" :bold t)))
-  "Face for errors (e.g. obsolete constructs).")
+  '((t (:inherit error)))
+  "Face for errors (e.g. obsolete constructs)."
+  :group 'dune)
 
 (defvar dune-error-face 'dune-error-face
   "Face for errors (e.g. obsolete constructs).")
 
 (defface dune-separator-face
-  '((((background light)) (:foreground "firebrick"))
-    (((background dark)) (:foreground "DarkOrange1")))
-  "Face for various kind of separators such as ':'.")
+  '((t (:inherit default)))
+  "Face for various kind of separators such as ':'."
+  :group 'dune)
 (defvar dune-separator-face 'dune-separator-face
   "Face for various kind of separators such as ':'.")
 

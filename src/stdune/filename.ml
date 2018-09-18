@@ -1,4 +1,4 @@
-include Caml.Filename
+include Dune_caml.Filename
 
 (* Return the index of the start of the extension, using the same semantic as
    [Filename.extension] in 4.04 *)

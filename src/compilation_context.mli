@@ -18,7 +18,7 @@ val create
   -> scope                 : Scope.t
   -> dir                   : Path.t
   -> ?private_obj_dir      : Path.t
-  -> ?vlib_modules      : Module.Name_map.t
+  -> ?modules_of_vlib      : Module.Name_map.t
   -> ?dir_kind             : File_tree.Dune_file.Kind.t
   -> ?obj_dir              : Path.t
   -> modules               : Module.t Module.Name.Map.t
@@ -54,6 +54,8 @@ val no_keep_locs         : t -> bool
 val opaque               : t -> bool
 val stdlib               : t -> Dune_file.Library.Stdlib.t option
 
-val vlib_modules      : t -> Module.Name_map.t
+(** Modules of the virtual library. Non-empty only for implementations of
+    virtual libs *)
+val modules_of_vlib      : t -> Module.Name_map.t
 
 val for_wrapped_compat : t -> Module.t Module.Name.Map.t -> t

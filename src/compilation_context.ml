@@ -61,7 +61,7 @@ type t =
   ; no_keep_locs         : bool
   ; opaque               : bool
   ; stdlib               : Dune_file.Library.Stdlib.t option
-  ; vlib_modules      : Module.Name_map.t
+  ; modules_of_vlib      : Module.Name_map.t
   }
 
 let super_context        t = t.super_context
@@ -80,12 +80,12 @@ let preprocessing        t = t.preprocessing
 let no_keep_locs         t = t.no_keep_locs
 let opaque               t = t.opaque
 let stdlib               t = t.stdlib
-let vlib_modules      t = t.vlib_modules
+let modules_of_vlib      t = t.modules_of_vlib
 
 let context              t = Super_context.context t.super_context
 
 let create ~super_context ~scope ~dir ?private_obj_dir
-      ?(vlib_modules=Module.Name.Map.empty)
+      ?(modules_of_vlib=Module.Name.Map.empty)
       ?(dir_kind=File_tree.Dune_file.Kind.Dune)
       ?(obj_dir=dir) ~modules ?alias_module ?lib_interface_module ~flags
       ~requires ?(preprocessing=Preprocessing.dummy) ?(no_keep_locs=false)
@@ -106,7 +106,7 @@ let create ~super_context ~scope ~dir ?private_obj_dir
   ; no_keep_locs
   ; opaque
   ; stdlib
-  ; vlib_modules
+  ; modules_of_vlib
   }
 
 let for_alias_module t =

@@ -39,7 +39,7 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
   let ctx      = SC.context       sctx in
   let stdlib   = CC.stdlib        cctx in
   let private_obj_dir = CC.private_obj_dir cctx in
-  let vlib_modules = CC.vlib_modules cctx in
+  let modules_of_vlib = CC.modules_of_vlib cctx in
   Mode.of_cm_kind cm_kind
   |> Context.compiler ctx
   |> Option.iter ~f:(fun compiler ->
@@ -48,7 +48,7 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
       let dst = Module.cm_file_unsafe m ~obj_dir cm_kind in
       let extra_args, extra_deps, other_targets =
         match cm_kind, m.intf
-              , Module.Name.Map.mem vlib_modules (Module.name m) with
+              , Module.Name.Map.mem modules_of_vlib (Module.name m) with
         (* If there is no mli, [ocamlY -c file.ml] produces both the
            .cmY and .cmi. We choose to use ocamlc to produce the cmi
            and to produce the cmx we have to wait to avoid race

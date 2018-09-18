@@ -170,13 +170,12 @@ let map_files t ~f =
   ; intf = Option.map t.intf ~f:(f Ml_kind.Intf)
   }
 
-let dir t =
-  let file =
-    match t.intf with
-    | Some x -> x
-    | None -> Option.value_exn t.impl
-  in
-  Path.parent_exn file.path
+let src_dir t =
+  match t.intf, t.impl with
+  | None, None -> None
+  | Some x, Some _
+  | Some x, None
+  | None, Some x -> Some (Path.parent_exn x.path)
 
 let set_pp t pp = { t with pp }
 
@@ -198,19 +197,40 @@ let wrapped_compat t =
       Some (
         { syntax = OCaml
         ; path =
-          Path.L.relative (dir t)
-            [ ".wrapped_compat"
-            ; Name.to_string t.name ^ ".ml-gen"
-            ]
+            (* Option.value_exn cannot fail because we disallow wrapped
+               compatibility mode for virtual libraries. That means none of the
+               modules are implementing a virtual module, and therefore all have
+               a source dir *)
+            Path.L.relative (Option.value_exn (src_dir t))
+              [ ".wrapped_compat"
+              ; Name.to_string t.name ^ ".ml-gen"
+              ]
         }
       )
   }
 
 module Name_map = struct
   type nonrec t = t Name.Map.t
+
+  let impl_only =
+    Name.Map.fold ~init:[] ~f:(fun m acc ->
+      if has_impl m then
+        m :: acc
+      else
+        acc)
+
+  let of_list_exn modules =
+    List.map modules ~f:(fun m -> (name m, m))
+    |> Name.Map.of_list_exn
 end
 
 let is_public t = Visibility.is_public t.visibility
 
 let set_private t =
   { t with visibility = Private }
+
+let remove_files t =
+  { t with
+    intf = None
+  ; impl = None
+  }

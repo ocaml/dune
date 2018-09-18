@@ -1,5 +1,7 @@
 (** ocamldep management *)
 
+open Stdune
+
 module Dep_graph : sig
   type t
 
@@ -23,6 +25,8 @@ module Dep_graphs : sig
     :  modules:Module.t Module.Name.Map.t
     -> wrapped_compat:Module.t Module.Name.Map.t
     -> t
+
+  val merge_for_impl : vlib:t -> impl:t -> t
 end
 
 (** Generate ocamldep rules for all the modules in the context. *)
@@ -33,3 +37,9 @@ val rules_for_auxiliary_module
   :  Compilation_context.t
   -> Module.t
   -> Dep_graphs.t
+
+(** Get the dep graph for an already defined library *)
+val graph_of_remote_lib
+  :  obj_dir:Path.t
+  -> modules:Module.t Module.Name.Map.t
+  -> Dep_graph.t Ml_kind.Dict.t

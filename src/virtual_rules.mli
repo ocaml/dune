@@ -2,6 +2,13 @@ open Stdune
 
 module Implementation : sig
   type t
+
+  val dep_graph
+    :  t
+    -> Ocamldep.Dep_graphs.t
+    -> Ocamldep.Dep_graph.t Ml_kind.Dict.t
+
+  val modules_of_vlib : t -> Module.Name_map.t
 end
 
 module Gen (S : sig val sctx : Super_context.t end) : sig

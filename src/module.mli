@@ -79,7 +79,7 @@ val cmt_file  : t -> obj_dir:Path.t -> Ml_kind.t -> Path.t option
 
 val obj_file : t -> obj_dir:Path.t -> ext:string -> Path.t
 
-val dir : t -> Path.t
+val src_dir : t -> Path.t option
 
 (** Same as [cm_file] but doesn't raise if [cm_kind] is [Cmo] or [Cmx]
     and the module has no implementation. *)
@@ -109,8 +109,14 @@ val wrapped_compat : t -> t
 module Name_map : sig
   type module_
   type t = module_ Name.Map.t
+
+  val impl_only : t -> module_ list
+
+  val of_list_exn : module_ list -> t
 end with type module_ := t
 
 val is_public : t -> bool
 
 val set_private : t -> t
+
+val remove_files : t -> t

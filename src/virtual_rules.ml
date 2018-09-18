@@ -5,8 +5,17 @@ module Implementation = struct
   type t =
     { vlib            : Lib.t
     ; impl            : Dune_file.Library.t
-    ; vlib_modules    : Module.t Module.Name.Map.t
+    ; modules_of_vlib    : Module.t Module.Name.Map.t
     }
+
+  let dep_graph { vlib ; modules_of_vlib ; impl = _ }
+        (impl_graph : Ocamldep.Dep_graphs.t) =
+    let obj_dir = Lib.obj_dir vlib in
+    let vlib_graph =
+      Ocamldep.graph_of_remote_lib ~obj_dir ~modules:modules_of_vlib in
+    Ocamldep.Dep_graphs.merge_for_impl ~vlib:vlib_graph ~impl:impl_graph
+
+  let modules_of_vlib t = t.modules_of_vlib
 end
 
 module Gen (P : sig val sctx : Super_context.t end) = struct
@@ -17,21 +26,28 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
     Lib.foreign_objects vlib
 
   let setup_copy_rules_for_impl ~dir
-        { Implementation.vlib ; impl ; vlib_modules } =
+        { Implementation.vlib ; impl ; modules_of_vlib } =
     let copy_to_obj_dir =
       let obj_dir = Utils.library_object_directory ~dir (snd impl.name) in
       fun file ->
         let dst = Path.relative obj_dir (Path.basename file) in
-        Super_context.add_rule sctx (Build.symlink ~src:file ~dst)
+        Super_context.add_rule ~loc:(Loc.of_pos __POS__)
+          sctx (Build.symlink ~src:file ~dst)
     in
     let obj_dir = Lib.obj_dir vlib in
     let modes =
       Dune_file.Mode_conf.Set.eval impl.modes
         ~has_native:(Option.is_some ctx.ocamlopt) in
-    Module.Name.Map.iter vlib_modules ~f:(fun m ->
+    Module.Name.Map.iter modules_of_vlib ~f:(fun m ->
       let copy_obj_file ext =
         copy_to_obj_dir (Module.obj_file m ~obj_dir ~ext) in
       copy_obj_file (Cm_kind.ext Cmi);
+      if Module.has_intf m then begin
+        Module.file m Ml_kind.Intf
+        |> Option.value_exn
+        |> Path.extend_basename ~suffix:".all-deps"
+        |> copy_to_obj_dir
+      end;
       if Module.has_impl m then begin
         if modes.byte then
           copy_obj_file (Cm_kind.ext Cmo);
@@ -113,7 +129,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
           Option.map (Lib.virtual_ vlib) ~f:(fun (v : Lib_info.Virtual.t) ->
             v.modules)
         in
-        let (vlib_modules, virtual_modules) =
+        let (modules_of_vlib, virtual_modules) =
           match virtual_modules with
           | None ->
             Errors.fail lib.buildable.loc
@@ -133,7 +149,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
         { Implementation.
           impl = lib
         ; vlib
-        ; vlib_modules
+        ; modules_of_vlib
         }
     end
 end

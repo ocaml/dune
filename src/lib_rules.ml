@@ -329,7 +329,8 @@ module Gen (P : Install_rules.Params) = struct
       in
       SC.add_rule sctx build)
 
-  let setup_file_deps lib ~dir ~obj_dir ~modules ~wrapped_compat =
+  let setup_file_deps lib ~dir ~obj_dir ~modules ~wrapped_compat
+        ~modules_of_vlib =
     let add_cms ~cm_kind ~init = Module.Name.Map.fold ~init ~f:(fun m acc ->
       match Module.cm_file m ~obj_dir cm_kind with
       | None -> acc
@@ -338,6 +339,7 @@ module Gen (P : Install_rules.Params) = struct
     List.iter Cm_kind.all ~f:(fun cm_kind ->
       let files = add_cms ~cm_kind ~init:Path.Set.empty modules in
       let files = add_cms ~cm_kind ~init:files wrapped_compat in
+      let files = add_cms ~cm_kind ~init:files modules_of_vlib in
       Lib_file_deps.setup_file_deps_alias sctx ~dir lib ~exts:[Cm_kind.ext cm_kind]
         files);
 
@@ -389,6 +391,8 @@ module Gen (P : Install_rules.Params) = struct
     let cctx =
       Compilation_context.create ()
         ~super_context:sctx
+        ?modules_of_vlib:(
+          Option.map impl ~f:Virtual_rules.Implementation.modules_of_vlib)
         ~scope
         ~dir
         ~dir_kind
@@ -418,7 +422,12 @@ module Gen (P : Install_rules.Params) = struct
     build_wrapped_compat_modules lib cctx ~dynlink ~js_of_ocaml
       ~wrapped_compat ~modules;
 
-    let dep_graphs = Ocamldep.rules cctx in
+    let dep_graphs =
+      let dep_graphs = Ocamldep.rules cctx in
+      match impl with
+      | None -> dep_graphs
+      | Some impl -> Virtual_rules.Implementation.dep_graph impl dep_graphs
+    in
 
     Module_compilation.build_modules cctx ~js_of_ocaml ~dynlink ~dep_graphs;
 
@@ -434,7 +443,11 @@ module Gen (P : Install_rules.Params) = struct
     if Library.has_stubs lib || not (List.is_empty vlib_stubs_o_files) then
       build_stubs lib ~dir ~scope ~requires ~dir_contents ~vlib_stubs_o_files;
 
-    setup_file_deps lib ~dir ~obj_dir ~modules ~wrapped_compat;
+    setup_file_deps lib ~dir ~obj_dir ~modules ~wrapped_compat
+      ~modules_of_vlib:(
+        match impl with
+        | None -> Module.Name.Map.empty
+        | Some impl -> Virtual_rules.Implementation.modules_of_vlib impl);
 
     if not (Library.is_virtual lib) then begin
       (let modules =
@@ -454,13 +467,7 @@ module Gen (P : Install_rules.Params) = struct
          | _ ->
            modules
        in
-       let modules =
-         Module.Name.Map.fold modules ~init:[] ~f:(fun m acc ->
-           if Module.has_impl m then
-             m :: acc
-           else
-             acc)
-       in
+       let modules = Module.Name_map.impl_only modules in
        let wrapped_compat = Module.Name.Map.values wrapped_compat in
        (* Compatibility modules have implementations so we can just append them.
           We append the modules at the end as no library modules depend on

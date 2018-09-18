@@ -75,6 +75,39 @@ module Dep_graphs = struct
 
   let wrapped_compat ~modules ~wrapped_compat =
     Ml_kind.Dict.make_both (Dep_graph.wrapped_compat ~modules ~wrapped_compat)
+
+  let merge_for_impl ~(vlib : t) ~(impl : t) =
+    { Ml_kind.Dict.
+      impl =
+        { Dep_graph.
+          dir = impl.impl.dir
+        ; per_module =
+            Module.Name.Map.merge vlib.impl.per_module impl.impl.per_module
+              ~f:(fun _ vlib impl ->
+                match vlib, impl with
+                | None, None -> assert false
+                | Some d, None
+                | None, Some d -> Some d
+                | Some v, Some i ->
+                  (* Special case when there's only 1 module named after the
+                     alias module *)
+                  Some (
+                    v &&& i >>^ (fun (v, i) ->
+                      assert (v = []);
+                      i)
+                  )
+              )
+        }
+    (* implementations don't introduce interface deps b/c they don't have
+       interfaces *)
+    ; intf =
+        { vlib.intf with
+          per_module =
+            Module.Name.Map.map vlib.intf.per_module ~f:(fun v ->
+              v >>^ List.map ~f:Module.remove_files
+            )
+        }
+    }
 end
 
 let parse_module_names ~(unit : Module.t) ~modules words =
@@ -188,15 +221,24 @@ let deps_of cctx ~ml_kind unit =
         );
       let build_paths dependencies =
         let dependency_file_path m =
-          let path =
+          let file_path m =
             if is_alias_module cctx m then
               None
             else
               match Module.file m Ml_kind.Intf with
               | Some _ as x -> x
-              | None -> Module.file m Ml_kind.Impl
+              | None ->
+                Module.file m Ml_kind.Impl
           in
-          Option.map path ~f:all_deps_path
+          let module_file_ =
+            match file_path m with
+            | Some v -> Some v
+            | None ->
+              Module.name m
+              |> Module.Name.Map.find (Compilation_context.modules_of_vlib cctx)
+              |> Option.bind ~f:file_path
+          in
+          Option.map ~f:all_deps_path module_file_
         in
         List.filter_map dependencies ~f:dependency_file_path
       in
@@ -228,3 +270,25 @@ let rules cctx = rules_generic cctx ~modules:(CC.modules cctx)
 
 let rules_for_auxiliary_module cctx (m : Module.t) =
   rules_generic cctx ~modules:(Module.Name.Map.singleton m.name m)
+
+let graph_of_remote_lib ~obj_dir ~modules =
+  let deps_of unit ~ml_kind =
+    match Module.file unit ml_kind with
+    | None -> Build.return []
+    | Some file ->
+      let file_in_obj_dir ~suffix file =
+        let base = Path.basename file in
+        Path.relative obj_dir (base ^ suffix)
+      in
+      let all_deps_path file = file_in_obj_dir file ~suffix:".all-deps" in
+      let all_deps_file = all_deps_path file in
+      Build.memoize (Path.to_string all_deps_file)
+        (Build.lines_of all_deps_file >>^ parse_module_names ~unit ~modules)
+  in
+  Ml_kind.Dict.of_func (fun ~ml_kind ->
+    let per_module =
+      Module.Name.Map.map modules ~f:(deps_of ~ml_kind) in
+    { Dep_graph.
+      dir = obj_dir
+    ; per_module
+    })

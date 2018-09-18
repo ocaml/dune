@@ -3,6 +3,8 @@ open! Stdune
 include Stdune
 include Errors
 
+module Re = Dune_re
+
 (* To make bug reports usable *)
 let () = Printexc.record_backtrace true
 

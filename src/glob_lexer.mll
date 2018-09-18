@@ -1,5 +1,6 @@
 {
 open! Stdune
+module Re = Dune_re
 open Re
 
 let no_slash        = diff any (char '/')

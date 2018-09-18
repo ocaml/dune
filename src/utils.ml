@@ -151,6 +151,14 @@ let install_file ~(package : Package.Name.t) ~findlib_toolchain =
   | None -> package ^ ".install"
   | Some x -> sprintf "%s-%s.install" package x
 
+let line_directive ~filename:fn ~line_number =
+  let directive =
+    match Filename.extension fn with
+    | ".c" | ".cpp" | ".h" -> "line"
+    | _ -> ""
+  in
+  sprintf "#%s %d %S\n" directive line_number fn
+
 module type Persistent_desc = sig
   type t
   val name : string

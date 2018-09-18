@@ -41,19 +41,24 @@ end
 
 (** A simple renderer that doesn't take tags *)
 module Render : Renderer.S
-  with type Tag.t         = unit
-  with type Tag.Handler.t = unit
+    with type Tag.t         = unit
+    with type Tag.Handler.t = unit
+
+val pp : Format.formatter -> unit t -> unit
 
 val nop : 'a t
 val seq : 'a t -> 'a t -> 'a t
 val concat : 'a t list -> 'a t
-val vbox : ?indent:int -> 'a t -> 'a t
-val hbox : 'a t -> 'a t
+val box : ?indent:int -> 'a t list -> 'a t
+val vbox : ?indent:int -> 'a t list -> 'a t
+val hbox : 'a t list -> 'a t
+val hvbox : ?indent:int -> 'a t list -> 'a t
+val hovbox : ?indent:int -> 'a t list -> 'a t
 
 val int    : int    -> _ t
 val string : string -> _ t
 val char   : char   -> _ t
-val list   : ('a -> 'b t) -> 'a list -> 'b t
+val list   : ?sep:'b t -> 'a list -> f:('a -> 'b t) -> 'b t
 
 val space   : _ t
 val cut     : _ t

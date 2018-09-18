@@ -2,12 +2,15 @@ type +'a t =
   | Nop
   | Seq of 'a t * 'a t
   | Concat of 'a t list
+  | Box of int * 'a t
   | Vbox of int * 'a t
   | Hbox of 'a t
+  | Hvbox of int * 'a t
+  | Hovbox of int * 'a t
   | Int of int
   | String of string
   | Char of char
-  | List : ('a -> 'b t) * 'a list -> 'b t
+  | List : 'b t * ('a -> 'b t) * 'a list -> 'b t
   | Space
   | Cut
   | Newline
@@ -71,12 +74,15 @@ module Renderer = struct
       let pos = 2 + get16 s 0 in
       String.drop s pos
 
-
     let rec pp th ppf t =
       match t with
       | Nop -> ()
       | Seq (a, b) -> pp th ppf a; pp th ppf b
       | Concat l -> List.iter l ~f:(pp th ppf)
+      | Box (indent, t) ->
+        pp_open_box ppf indent;
+        pp th ppf t;
+        pp_close_box ppf ()
       | Vbox (indent, t) ->
         pp_open_vbox ppf indent;
         pp th ppf t;
@@ -85,19 +91,29 @@ module Renderer = struct
         pp_open_hbox ppf ();
         pp th ppf t;
         pp_close_box ppf ()
-     | Int    x -> pp_print_int ppf x
-     | String x -> pp_print_string ppf x
-     | Char   x -> pp_print_char ppf x
-     | List (f, l) -> pp_print_list (fun ppf x -> pp th ppf (f x)) ppf l
-     | Space -> pp_print_space ppf ()
-     | Cut -> pp_print_cut ppf ()
-     | Newline -> pp_force_newline ppf ()
-     | Text s -> pp_print_text ppf s
-     | Tag (tag, t) ->
-       let opening, th, closing = Tag.Handler.handle th tag in
-       pp_open_tag ppf (embed_tag ~opening ~closing);
-       pp th ppf t;
-       pp_close_tag ppf ()
+      | Hvbox (indent, t) ->
+        pp_open_hvbox ppf indent;
+        pp th ppf t;
+        pp_close_box ppf ()
+      | Hovbox (indent, t) ->
+        pp_open_hovbox ppf indent;
+        pp th ppf t;
+        pp_close_box ppf ()
+      | Int    x -> pp_print_int ppf x
+      | String x -> pp_print_string ppf x
+      | Char   x -> pp_print_char ppf x
+      | List (sep, f, l) ->
+        pp_print_list (fun ppf x -> pp th ppf (f x)) ppf l
+          ~pp_sep:(fun ppf () -> pp th ppf sep)
+      | Space -> pp_print_space ppf ()
+      | Cut -> pp_print_cut ppf ()
+      | Newline -> pp_force_newline ppf ()
+      | Text s -> pp_print_text ppf s
+      | Tag (tag, t) ->
+        let opening, th, closing = Tag.Handler.handle th tag in
+        pp_open_tag ppf (embed_tag ~opening ~closing);
+        pp th ppf t;
+        pp_close_tag ppf ()
 
     let setup ppf =
       let funcs = pp_get_formatter_tag_functions ppf () in
@@ -139,16 +155,21 @@ module Render = Renderer.Make(struct
     end
   end)
 
+let pp ppf t = Render.pp () ppf t
+
 let nop = Nop
 let seq a b = Seq (a, b)
 let concat l = Concat l
-let vbox ?(indent=0) t = Vbox (indent, t)
-let hbox t = Hbox t
+let box ?(indent=0) l = Box (indent, Concat l)
+let vbox ?(indent=0) l = Vbox (indent, Concat l)
+let hbox l = Hbox (Concat l)
+let hvbox ?(indent=0) l = Hvbox (indent, Concat l)
+let hovbox ?(indent=0) l = Hovbox (indent, Concat l)
 
 let int x = Int x
 let string x = String x
 let char x = Char x
-let list f l = List (f, l)
+let list ?(sep=Cut) l ~f = List (sep, f, l)
 
 let space = Space
 let cut = Cut

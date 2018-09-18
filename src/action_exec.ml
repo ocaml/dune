@@ -113,13 +113,10 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to =
     Io.with_file_in src ~f:(fun ic ->
       Io.with_file_out dst ~f:(fun oc ->
         let fn = Path.drop_optional_build_context src in
-        let directive =
-          if List.mem (Path.extension fn) ~set:[".c"; ".cpp"; ".h"] then
-            "line"
-          else
-            ""
-        in
-        Printf.fprintf oc "#%s 1 %S\n" directive (Path.to_string fn);
+        output_string oc
+          (Utils.line_directive
+             ~filename:(Path.to_string fn)
+             ~line_number:1);
         Io.copy_channels ic oc));
     Fiber.return ()
   | System cmd ->

@@ -212,19 +212,19 @@ module Make_mapper
     (Src : Action_intf.Ast)
     (Dst : Action_intf.Ast)
 = struct
-  let rec map (t : Src.t) ~dir ~f_program ~f_string ~f_path : Dst.t =
+  let map_one_step f (t : Src.t) ~dir ~f_program ~f_string ~f_path : Dst.t =
     match t with
     | Run (prog, args) ->
       Run (f_program ~dir prog, List.map args ~f:(f_string ~dir))
     | Chdir (fn, t) ->
-      Chdir (f_path ~dir fn, map t ~dir:fn ~f_program ~f_string ~f_path)
+      Chdir (f_path ~dir fn, f t ~dir:fn ~f_program ~f_string ~f_path)
     | Setenv (var, value, t) ->
-      Setenv (f_string ~dir var, f_string ~dir value, map t ~dir ~f_program ~f_string ~f_path)
+      Setenv (f_string ~dir var, f_string ~dir value, f t ~dir ~f_program ~f_string ~f_path)
     | Redirect (outputs, fn, t) ->
-      Redirect (outputs, f_path ~dir fn, map t ~dir ~f_program ~f_string ~f_path)
+      Redirect (outputs, f_path ~dir fn, f t ~dir ~f_program ~f_string ~f_path)
     | Ignore (outputs, t) ->
-      Ignore (outputs, map t ~dir ~f_program ~f_string ~f_path)
-    | Progn l -> Progn (List.map l ~f:(fun t -> map t ~dir ~f_program ~f_string ~f_path))
+      Ignore (outputs, f t ~dir ~f_program ~f_string ~f_path)
+    | Progn l -> Progn (List.map l ~f:(fun t -> f t ~dir ~f_program ~f_string ~f_path))
     | Echo xs -> Echo (List.map xs ~f:(f_string ~dir))
     | Cat x -> Cat (f_path ~dir x)
     | Copy (x, y) -> Copy (f_path ~dir x, f_path ~dir y)
@@ -250,6 +250,9 @@ module Make_mapper
         (List.map sources ~f:(f_path ~dir),
          List.map extras ~f:(f_string ~dir),
          f_path ~dir target)
+
+  let rec map t ~dir ~f_program ~f_string ~f_path =
+    map_one_step map t ~dir ~f_program ~f_string ~f_path
 end
 
 module Prog = struct
@@ -310,7 +313,20 @@ end
 module Relativise = Make_mapper(Ast)(For_shell.Ast)
 
 let for_shell t =
-  Relativise.map t
+  let rec loop t ~dir ~f_program ~f_string ~f_path =
+    match t with
+    | Symlink (src, dst) ->
+      let src =
+        match Path.parent dst with
+        | None -> Path.to_string src
+        | Some from -> Path.reach ~from src
+      in
+      let dst = Path.reach ~from:dir dst in
+      For_shell.Symlink (src, dst)
+    | t ->
+      Relativise.map_one_step loop t ~dir ~f_program ~f_string ~f_path
+  in
+  loop t
     ~dir:Path.root
     ~f_string:(fun ~dir:_ x -> x)
     ~f_path:(fun ~dir x -> Path.reach x ~from:dir)

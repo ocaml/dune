@@ -883,8 +883,7 @@ let rm_rf =
 let mkdir_p = function
   | External s -> External.mkdir_p s
   | In_source_tree s ->
-    Exn.code_error "Path.mkdir_p cannot dir in source"
-      ["s", Local.to_sexp s]
+    Local.mkdir_p s
   | In_build_dir k ->
     Kind.mkdir_p (Kind.append_local (Lazy.force build_dir_kind) k)
 

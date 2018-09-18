@@ -1,3 +1,3 @@
 open Stdune
 
-val parse_string : string -> (Re.t, int * string) Result.result
+val parse_string : string -> (Dune_re.t, int * string) Result.result

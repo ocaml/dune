@@ -4,4 +4,4 @@
 let parse_string _ = failwith "globs are not available during bootstrap"
 
 (* To force the ordering during bootstrap *)
-let _ = Re.compile
+let _ = Dune_re.compile

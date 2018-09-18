@@ -4,7 +4,7 @@
               stdune
               fiber
               xdg
-              re
+              dune_re
               opam_file_format
               dsexp
               ocaml_config

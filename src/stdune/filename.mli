@@ -1,4 +1,4 @@
-include module type of struct include Caml.Filename end
+include module type of struct include Dune_caml.Filename end
 
 val split_extension : string -> string * string
 val split_extension_after_dot : string -> string * string

@@ -1,4 +1,4 @@
-module Char = Caml.Char
+module Char = Dune_caml.Char
 
 include struct
   [@@@warning "-32-3"]

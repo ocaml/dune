@@ -1,5 +1,5 @@
 (* Because other the syntax s.[x] causes trouble *)
-module String = Caml.String
+module String = Dune_caml.String
 
 include struct
   [@@@warning "-32-3"]

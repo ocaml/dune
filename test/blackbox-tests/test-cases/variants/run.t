@@ -140,12 +140,5 @@ Virtual library with a single module
 Virtual library where a wrapped module is virtual
   $ dune build --root variants-sub-module
   Entering directory 'variants-sub-module'
-      ocamlopt impl/.impl.objs/vlib__Vmod.{cmx,o} (exit 2)
-  (cd _build/default && /Users/rgrinberg/.opam/4.06.1/bin/ocamlopt.opt -w @a-4-29-40-41-42-44-45-48-58-59-60-40 -strict-sequence -strict-formats -short-paths -keep-locs -g -I impl/.impl.objs -I impl/.impl.objs/.private -intf-suffix .ml -no-alias-deps -opaque -open Vlib -o impl/.impl.objs/vlib__Vmod.cmx -c -impl impl/vmod.ml)
-  File "command line", line 1:
-  Error: Unbound module Vlib
-        ocamlc .run.eobjs/run.{cmi,cmo,cmt} (exit 2)
-  (cd _build/default && /Users/rgrinberg/.opam/4.06.1/bin/ocamlc.opt -w @a-4-29-40-41-42-44-45-48-58-59-60-40 -strict-sequence -strict-formats -short-paths -keep-locs -g -bin-annot -I .run.eobjs -I impl/.impl.objs -no-alias-deps -opaque -o .run.eobjs/run.cmo -c -impl run.ml)
-  File "run.ml", line 1, characters 0-13:
-  Error: Unbound module Vlib
-  [1]
+           run alias default
+  Impl's Vmd.run ()

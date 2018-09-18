@@ -43,7 +43,8 @@ let make_wrapped ~(lib : Dune_file.Library.t) ~dir ~transition ~modules
       wrap_modules modules, Module.Name.Map.empty
   in
   let alias_module =
-    let lib_name = Lib_name.Local.to_string (snd lib.name) in
+    let alias_prefix =
+      String.uncapitalize (Module.Name.to_string main_module_name) in
     if Module.Name.Map.cardinal modules = 1 &&
        Module.Name.Map.mem modules main_module_name ||
        Option.is_some lib.stdlib then
@@ -57,15 +58,15 @@ let make_wrapped ~(lib : Dune_file.Library.t) ~dir ~transition ~modules
         (Module.make (Module.Name.add_suffix main_module_name "__")
            ~visibility:Public
            ~impl:(Module.File.make OCaml
-                    (Path.relative dir (sprintf "%s__.ml-gen" lib_name)))
-           ~obj_name:(lib_name ^ "__"))
+                    (Path.relative dir (sprintf "%s__.ml-gen" alias_prefix)))
+           ~obj_name:(alias_prefix ^ "__"))
     else
       Some
         (Module.make main_module_name
            ~visibility:Public
            ~impl:(Module.File.make OCaml
-                    (Path.relative dir (lib_name ^ ".ml-gen")))
-           ~obj_name:lib_name)
+                    (Path.relative dir (alias_prefix ^ ".ml-gen")))
+           ~obj_name:alias_prefix)
   in
   { modules
   ; alias_module

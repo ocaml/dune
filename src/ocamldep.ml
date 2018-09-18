@@ -89,7 +89,8 @@ module Dep_graphs = struct
                 | Some d, None
                 | None, Some d -> Some d
                 | Some v, Some i ->
-                  (* only happens when the alias module is virtual *)
+                  (* Special case when there's only 1 module named after the
+                     alias module *)
                   Some (
                     v &&& i >>^ (fun (v, i) ->
                       assert (v = []);

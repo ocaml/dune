@@ -3,6 +3,9 @@ next
 
 - Support colors on Windows (#1290, @diml)
 
+- Allow `dune.configurator` and `base` to be used together (#1291, fix
+  #1167, @diml)
+
 1.2.1 (17/09/2018)
 ------------------
 

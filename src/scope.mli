@@ -26,6 +26,7 @@ module DB : sig
     -> context:string
     -> installed_libs:Lib.DB.t
     -> ext_lib:string
+    -> ext_obj:string
     -> (Path.t * Dune_file.Library.t) list
     -> t * Lib.DB.t
 

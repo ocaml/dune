@@ -116,24 +116,48 @@ let parse_deps cctx ~file ~unit lines =
         String.extract_blank_separated_words deps
         |> parse_module_names ~unit ~modules
       in
-      Option.iter lib_interface_module ~f:(fun (m : Module.t) ->
-        let open Module.Name.Infix in
-        if unit.name <> m.name && not (is_alias_module cctx unit) &&
-           List.exists deps ~f:(fun x -> Module.name x = m.name) then
-          die "Module %a in directory %s depends on %a.\n\
-               This doesn't make sense to me.\n\
-               \n\
-               %a is the main module of the library and is \
-               the only module exposed \n\
-               outside of the library. Consequently, it should \
-               be the one depending \n\
-               on all the other modules in the library."
-            Module.Name.pp unit.name (Path.to_string dir)
-            Module.Name.pp m.name
-            Module.Name.pp m.name);
-      match alias_module with
-      | None -> deps
-      | Some m -> m :: deps
+      let stdlib = CC.stdlib cctx in
+      let deps =
+        match stdlib, CC.lib_interface_module cctx with
+        | Some { modules_before_stdlib; _ }, Some m when unit.name = m.name ->
+          (* See comment in [Dune_file.Stdlib]. *)
+          List.filter deps ~f:(fun m ->
+            Module.Name.Set.mem modules_before_stdlib m.Module.name)
+        | _ -> deps
+      in
+      if Option.is_none stdlib then
+        Option.iter lib_interface_module ~f:(fun (m : Module.t) ->
+          let open Module.Name.Infix in
+          if unit.name <> m.name && not (is_alias_module cctx unit) &&
+             List.exists deps ~f:(fun x -> Module.name x = m.name) then
+            die "Module %a in directory %s depends on %a.\n\
+                 This doesn't make sense to me.\n\
+                 \n\
+                 %a is the main module of the library and is \
+                 the only module exposed \n\
+                 outside of the library. Consequently, it should \
+                 be the one depending \n\
+                 on all the other modules in the library."
+              Module.Name.pp unit.name (Path.to_string dir)
+              Module.Name.pp m.name
+              Module.Name.pp m.name);
+      match stdlib with
+      | None -> begin
+          match alias_module with
+          | None -> deps
+          | Some m -> m :: deps
+        end
+      | Some { modules_before_stdlib; _ } ->
+        if Module.Name.Set.mem modules_before_stdlib unit.name then
+          deps
+        else
+          match CC.lib_interface_module cctx with
+          | None -> deps
+          | Some m ->
+            if unit.name = m.name then
+              deps
+            else
+              m :: deps
 
 let deps_of cctx ~ml_kind unit =
   let sctx = CC.super_context cctx in
@@ -192,11 +216,13 @@ let deps_of cctx ~ml_kind unit =
 let rules_generic cctx ~modules =
   Ml_kind.Dict.of_func
     (fun ~ml_kind ->
-      let per_module = Module.Name.Map.map modules ~f:(deps_of cctx ~ml_kind) in
-      { Dep_graph.
-        dir = CC.dir cctx
-      ; per_module
-      })
+       let per_module =
+         Module.Name.Map.map modules ~f:(deps_of cctx ~ml_kind)
+       in
+       { Dep_graph.
+         dir = CC.dir cctx
+       ; per_module
+       })
 
 let rules cctx = rules_generic cctx ~modules:(CC.modules cctx)
 

@@ -200,10 +200,7 @@ let is_local t = Path.is_managed t.info.obj_dir
 
 let status t = t.info.status
 
-let foreign_objects t ~ext =
-  let obj_dir = obj_dir t in
-  List.map t.info.foreign_objects ~f:(fun p ->
-    Path.extend_basename (Path.relative obj_dir p) ~suffix:ext)
+let foreign_objects t = t.info.foreign_objects
 
 let main_module_name t =
   match t.info.main_module_name with
@@ -853,10 +850,10 @@ module DB = struct
     ; all    = Lazy.from_fun all
     }
 
-  let create_from_library_stanzas ?parent ~ext_lib stanzas =
+  let create_from_library_stanzas ?parent ~ext_lib ~ext_obj stanzas =
     let map =
       List.concat_map stanzas ~f:(fun (dir, (conf : Dune_file.Library.t)) ->
-        let info = Lib_info.of_library_stanza ~dir ~ext_lib conf in
+        let info = Lib_info.of_library_stanza ~dir ~ext_lib ~ext_obj conf in
         match conf.public with
         | None ->
           [Dune_file.Library.best_name conf, Resolve_result.Found info]

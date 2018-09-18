@@ -60,6 +60,7 @@ type t =
   ; preprocessing        : Preprocessing.t
   ; no_keep_locs         : bool
   ; opaque               : bool
+  ; stdlib               : Dune_file.Library.Stdlib.t option
   }
 
 let super_context        t = t.super_context
@@ -77,14 +78,16 @@ let includes             t = t.includes
 let preprocessing        t = t.preprocessing
 let no_keep_locs         t = t.no_keep_locs
 let opaque               t = t.opaque
+let stdlib               t = t.stdlib
 
 let context              t = Super_context.context t.super_context
 
 let create ~super_context ~scope ~dir ?(dir_kind=File_tree.Dune_file.Kind.Dune)
       ?(obj_dir=dir) ?private_obj_dir ~modules ?alias_module
-      ?lib_interface_module ~flags ~requires ?(preprocessing=Preprocessing.dummy)
+      ?lib_interface_module ~flags ~requires
+      ?(preprocessing=Preprocessing.dummy)
       ?(no_keep_locs=false)
-      ~opaque () =
+      ~opaque ?stdlib () =
   { super_context
   ; scope
   ; dir
@@ -100,14 +103,18 @@ let create ~super_context ~scope ~dir ?(dir_kind=File_tree.Dune_file.Kind.Dune)
   ; preprocessing
   ; no_keep_locs
   ; opaque
+  ; stdlib
   }
 
 let for_alias_module t =
   let flags = Ocaml_flags.default ~profile:(SC.profile t.super_context) in
   { t with
-    flags        = Ocaml_flags.append_common flags ["-w"; "-49"]
+    flags =
+      Ocaml_flags.append_common flags
+        ["-w"; "-49"; "-nopervasives"; "-nostdlib"]
   ; includes     = Includes.empty
   ; alias_module = None
+  ; stdlib       = None
   }
 
 let for_wrapped_compat t modules =
@@ -115,5 +122,6 @@ let for_wrapped_compat t modules =
     flags = Ocaml_flags.default ~profile:(SC.profile t.super_context)
   ; includes = Includes.empty
   ; alias_module = None
+  ; stdlib = None
   ; modules
   }

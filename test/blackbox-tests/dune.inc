@@ -430,6 +430,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name install-libdir)
+ (deps (package dune) (source_tree test-cases/install-libdir))
+ (action
+  (chdir
+   test-cases/install-libdir
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name installable-dup-private-libs)
  (deps (package dune) (source_tree test-cases/installable-dup-private-libs))
  (action
@@ -971,6 +979,7 @@
   (alias ignored_subdirs)
   (alias include-loop)
   (alias inline_tests)
+  (alias install-libdir)
   (alias installable-dup-private-libs)
   (alias intf-only)
   (alias lib-available)
@@ -1081,6 +1090,7 @@
   (alias ignored_subdirs)
   (alias include-loop)
   (alias inline_tests)
+  (alias install-libdir)
   (alias installable-dup-private-libs)
   (alias intf-only)
   (alias lib-available)

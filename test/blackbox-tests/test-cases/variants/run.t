@@ -114,3 +114,19 @@ virtual libraries may not implement their virtual modules
   
   This will become an error in the future.
   -------------------------
+
+Implementations cannot introduce new modules to the library's interface
+  $ dune build --root impl-public-modules
+  Entering directory 'impl-public-modules'
+  File "impl/dune", line 1, characters 0-44:
+  1 | (library
+  2 |  (name foo_impl)
+  3 |  (implements foo))
+  Error: The following modules aren't part of the virtual library's interface:
+  - Baz
+  They must be marked as private using the (private_modules ..) field
+  [1]
+
+They can only introduce private modules:
+  $ dune build --root impl-private-modules
+  Entering directory 'impl-private-modules'

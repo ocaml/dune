@@ -39,8 +39,27 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
           List.iter [Cm_kind.ext Cmx; ctx.ext_obj] ~f:copy_obj_file
       end)
 
-  let check_virtual_modules_field ~(lib : Dune_file.Library.t) ~virtual_modules
+  let module_list ms =
+    List.map ms ~f:(fun m -> sprintf "- %s" (Module.Name.to_string m))
+    |> String.concat ~sep:"\n"
+
+  let check_module_fields ~(lib : Dune_file.Library.t) ~virtual_modules
         ~modules ~implements =
+    let new_public_modules =
+      Module.Name.Map.foldi modules ~init:[] ~f:(fun name m acc ->
+        if Module.is_public m
+        && not (Module.Name.Map.mem virtual_modules name) then
+          name :: acc
+        else
+          acc)
+    in
+    if new_public_modules <> [] then begin
+      Errors.fail lib.buildable.loc
+        "The following modules aren't part of the virtual library's interface:\
+         \n%s\n\
+         They must be marked as private using the (private_modules ..) field"
+        (module_list new_public_modules)
+    end;
     let (missing_modules, impl_modules_with_intf, private_virtual_modules) =
       Module.Name.Map.foldi virtual_modules ~init:([], [], [])
         ~f:(fun m _ (mms, ims, pvms) ->
@@ -60,10 +79,6 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
                 Module.name m :: pvms
             in
             (mms, ims, pvms))
-    in
-    let module_list ms =
-      List.map ms ~f:Module.Name.to_string
-      |> String.concat ~sep:"\n"
     in
     if private_virtual_modules <> [] then begin
       (* The loc here will never be none as we've some private modules *)
@@ -114,7 +129,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
             , Lib_modules.virtual_modules lib_modules
             )
         in
-        check_virtual_modules_field ~lib ~virtual_modules ~modules ~implements;
+        check_module_fields ~lib ~virtual_modules ~modules ~implements;
         { Implementation.
           impl = lib
         ; vlib

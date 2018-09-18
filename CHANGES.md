@@ -1,3 +1,8 @@
+next
+----
+
+- Support colors on Windows (#1290, @diml)
+
 1.2.1 (17/09/2018)
 ------------------
 

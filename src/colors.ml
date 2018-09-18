@@ -28,7 +28,6 @@ let colorize =
     apply_string [Fg fore; Bg back] str
 
 let stderr_supports_colors = lazy(
-  not Sys.win32        &&
   Unix.(isatty stderr) &&
   match Env.get Env.initial "TERM" with
   | None        -> false

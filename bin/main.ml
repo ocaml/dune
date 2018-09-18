@@ -493,7 +493,7 @@ let install_uninstall ~what =
     let%map common = Common.term
     and prefix_from_command_line =
       Arg.(value
-           & opt (some dir) None
+           & opt (some string) None
            & info ["destdir"; "prefix"]
                ~docv:"PREFIX"
                ~doc:"Directory where files are copied. For instance binaries \
@@ -503,7 +503,7 @@ let install_uninstall ~what =
                      the same prefix as the ocaml compiler.")
     and libdir_from_command_line =
       Arg.(value
-           & opt (some dir) None
+           & opt (some string) None
            & info ["libdir"]
                ~docv:"PATH"
                ~doc:"Directory where library files are copied, relative to \

@@ -171,14 +171,11 @@ let map_files t ~f =
   }
 
 let src_dir t =
-  let file =
-    match t.intf, t.impl with
-    | Some x, Some _
-    | Some x, None
-    | None, Some x -> Some x
-    | None, None -> None
-  in
-  Option.map ~f:(fun f -> Path.parent_exn f.path) file
+  match t.intf, t.impl with
+  | None, None -> None
+  | Some x, Some _
+  | Some x, None
+  | None, Some x -> Some (Path.parent_exn x.path)
 
 let set_pp t pp = { t with pp }
 

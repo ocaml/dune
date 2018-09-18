@@ -23,7 +23,8 @@ let make_wrapped ~(lib : Dune_file.Library.t) ~dir ~transition ~modules
   let wrap_modules modules =
     let open Module.Name.Infix in
     Module.Name.Map.map modules ~f:(fun (m : Module.t) ->
-      if m.name = main_module_name then
+      if m.name = main_module_name  ||
+         Dune_file.Library.special_compiler_module lib m then
         m
       else
         Module.with_wrapper m ~main_module_name)
@@ -44,10 +45,11 @@ let make_wrapped ~(lib : Dune_file.Library.t) ~dir ~transition ~modules
   let alias_module =
     let lib_name = Lib_name.Local.to_string (snd lib.name) in
     if Module.Name.Map.cardinal modules = 1 &&
-       Module.Name.Map.mem modules main_module_name then
+       Module.Name.Map.mem modules main_module_name ||
+       Option.is_some lib.stdlib then
       None
     else if Module.Name.Map.mem modules main_module_name then
-      (* This module needs an implementation for non-jbuilder
+      (* This module needs an implementation for non-dune
          users of the library:
 
          https://github.com/ocaml/dune/issues/567 *)
@@ -119,8 +121,7 @@ let installable_modules t =
   | None -> modules
   | Some alias -> alias :: modules
 
-let lib_interface_module t =
-  Option.bind t.main_module_name ~f:(Module.Name.Map.find t.modules)
+let lib_interface_module t = t.main_module_name
 
 let virtual_modules t = t.virtual_modules
 

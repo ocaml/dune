@@ -15,7 +15,7 @@ val modules : t -> Module.Name_map.t
 
 val wrapped_compat : t -> Module.Name_map.t
 
-val lib_interface_module : t -> Module.t option
+val lib_interface_module : t -> Module.Name.t option
 
 val virtual_modules : t -> Module.Name_map.t
 

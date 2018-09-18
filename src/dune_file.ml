@@ -32,11 +32,9 @@ let module_name =
         String.iter s ~f:(function
           | 'A'..'Z' | 'a'..'z' | '0'..'9' | '\'' | '_' -> ()
           | _ -> raise_notrace Exit);
-        String.capitalize s
+        Module.Name.of_string s
       with Exit ->
         invalid_module_name ~loc name)
-
-let module_names = list module_name >>| String.Set.of_list
 
 let file =
   plain_string (fun ~loc s ->
@@ -456,10 +454,7 @@ module Per_module = struct
     | List (loc, Atom (_, A "per_module") :: _) ->
       sum [ "per_module",
             repeat
-              (pair a module_names >>| fun (pp, names) ->
-               let names =
-                 List.map ~f:Module.Name.of_string (String.Set.to_list names)
-               in
+              (pair a (list module_name) >>| fun (pp, names) ->
                (names, pp))
             >>| fun x ->
             of_mapping x ~default
@@ -891,6 +886,46 @@ module Library = struct
       | Some (_loc, w) -> w
   end
 
+  module Stdlib = struct
+    type t =
+      { modules_before_stdlib : Module.Name.Set.t
+      ; exit_module : Module.Name.t option
+      ; internal_modules : Re.re
+      }
+
+    let syntax =
+      let syntax =
+        Syntax.create ~name:"experimental_building_ocaml_compiler_with_dune"
+          ~desc:"experimental feature for building the compiler with dune"
+          [ (0, 1) ]
+      in
+      Dune_project.Extension.register ~experimental:true
+        syntax (Dsexp.Of_sexp.return []);
+      syntax
+
+    let glob =
+      plain_string (fun ~loc str ->
+        match Glob_lexer.parse_string str with
+        | Ok re ->
+          Re.compile re
+        | Error (_pos, msg) ->
+          Errors.fail loc "invalid glob: %s" msg)
+
+    let dparse =
+      fields
+        (let%map modules_before_stdlib =
+           field "modules_before_stdlib" (list module_name) ~default:[]
+         and exit_module =
+           field_o "exit_module" module_name
+         and internal_modules =
+           field "internal_modules" glob ~default:(Re.compile Re.empty)
+         in
+         { modules_before_stdlib = Module.Name.Set.of_list modules_before_stdlib
+         ; exit_module
+         ; internal_modules
+         })
+  end
+
   type t =
     { name                     : (Loc.t * Lib_name.Local.t)
     ; public                   : Public_lib.t option
@@ -918,6 +953,7 @@ module Library = struct
     ; virtual_modules          : Ordered_set_lang.t option
     ; implements               : (Loc.t * Lib_name.t) option
     ; private_modules          : Ordered_set_lang.t
+    ; stdlib                   : Stdlib.t option
     }
 
   let dparse =
@@ -964,6 +1000,8 @@ module Library = struct
          field "private_modules" ~default:Ordered_set_lang.standard (
            Syntax.since Stanza.syntax (1, 2)
            >>= fun () -> Ordered_set_lang.dparse)
+       and stdlib =
+         field_o "stdlib" (Syntax.since Stdlib.syntax (0, 1) >>> Stdlib.dparse)
        in
        let name =
          let open Syntax.Version.Infix in
@@ -1035,6 +1073,7 @@ module Library = struct
        ; virtual_modules
        ; implements
        ; private_modules
+       ; stdlib
        })
 
   let has_stubs t =
@@ -1077,6 +1116,15 @@ module Library = struct
     | Some _, false -> assert false
     | None, false -> This None
     | None, true -> This (Some (Module.Name.of_local_lib_name (snd t.name)))
+
+  let special_compiler_module t (m : Module.t) =
+    match t.stdlib with
+    | None -> false
+    | Some stdlib ->
+      Re.execp stdlib.internal_modules (Module.Name.to_string m.name) ||
+      match stdlib.exit_module with
+      | None -> false
+      | Some n -> n = m.name
 end
 
 module Install_conf = struct

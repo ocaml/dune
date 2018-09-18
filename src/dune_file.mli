@@ -225,6 +225,24 @@ module Library : sig
     val to_bool : t -> bool
   end
 
+  module Stdlib : sig
+    (** Extra information for the OCaml stdlib. Note: contrary to
+        normal libraries, the library interface of the stdlib (the
+        Stdlib module) is used as the alias module when compiling all
+        the other modules. We cannot generate an implicit one as that
+        would break hard-coded names inside the compiler. *)
+    type t =
+      { modules_before_stdlib : Module.Name.Set.t
+      (** Modules that the Stdlib module depend on. *)
+      ; exit_module : Module.Name.t option
+      (** Modules that's implicitely added by the compiler at the
+          end when linking an executable *)
+      ; internal_modules : Re.re
+      (** Module names that are hardcoded in the compiler and so
+          cannot be wrapped *)
+      }
+  end
+
   type t =
     { name                     : (Loc.t * Lib_name.Local.t)
     ; public                   : Public_lib.t option
@@ -252,6 +270,7 @@ module Library : sig
     ; virtual_modules          : Ordered_set_lang.t option
     ; implements               : (Loc.t * Lib_name.t) option
     ; private_modules          : Ordered_set_lang.t
+    ; stdlib                   : Stdlib.t option
     }
 
   val has_stubs : t -> bool
@@ -269,6 +288,12 @@ module Library : sig
       | Inherited_from of (Loc.t * Lib_name.t)
   end
   val main_module_name : t -> Main_module_name.t
+
+  (** Returns [true] is a special module, i.e. one whose compilation
+      unit name is hard-coded inside the compiler. It is not possible
+      to change the compilation unit name of such modules, so they
+      cannot be wrapped. *)
+  val special_compiler_module : t -> Module.t -> bool
 end
 
 module Install_conf : sig

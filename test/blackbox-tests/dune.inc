@@ -797,6 +797,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name stdlib-compilation)
+ (deps (package dune) (source_tree test-cases/stdlib-compilation))
+ (action
+  (chdir
+   test-cases/stdlib-compilation
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name subst)
  (deps (package dune) (source_tree test-cases/subst))
  (action
@@ -1006,6 +1014,7 @@
   (alias select)
   (alias several-packages)
   (alias shadow-bindings)
+  (alias stdlib-compilation)
   (alias subst)
   (alias syntax-versioning)
   (alias target-dir-alias)
@@ -1107,6 +1116,7 @@
   (alias select)
   (alias several-packages)
   (alias shadow-bindings)
+  (alias stdlib-compilation)
   (alias subst)
   (alias syntax-versioning)
   (alias target-dir-alias)

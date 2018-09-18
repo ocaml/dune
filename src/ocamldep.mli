@@ -26,9 +26,7 @@ module Dep_graphs : sig
 end
 
 (** Generate ocamldep rules for all the modules in the context. *)
-val rules
-  :  Compilation_context.t
-  -> Dep_graphs.t
+val rules : Compilation_context.t -> Dep_graphs.t
 
 (** Compute the dependencies of an auxiliary module. *)
 val rules_for_auxiliary_module

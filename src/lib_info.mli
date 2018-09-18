@@ -48,7 +48,7 @@ type t = private
   ; synopsis         : string option
   ; archives         : Path.t list Mode.Dict.t
   ; plugins          : Path.t list Mode.Dict.t
-  ; foreign_objects  : string list
+  ; foreign_objects  : Path.t list
   ; foreign_archives : Path.t list Mode.Dict.t (** [.a/.lib/...] files *)
   ; jsoo_runtime     : Path.t list
   ; requires         : Deps.t
@@ -66,6 +66,7 @@ type t = private
 val of_library_stanza
   : dir:Path.t
   -> ext_lib:string
+  -> ext_obj:string
   -> Dune_file.Library.t
   -> t
 

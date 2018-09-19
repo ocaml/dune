@@ -661,7 +661,7 @@ and resolve_complex_deps db deps ~allow_private_deps ~stack =
                   match
                     let deps =
                       Lib_name.Set.fold required ~init:[] ~f:(fun x acc ->
-                        (Loc.none, x) :: acc)
+                        (loc, x) :: acc)
                     in
                     resolve_simple_deps ~allow_private_deps db deps ~stack
                   with

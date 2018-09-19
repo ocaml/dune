@@ -131,7 +131,14 @@ They can only introduce private modules:
   $ dune build --root impl-private-modules
   Entering directory 'impl-private-modules'
 
+Virtual library with a single module
   $ dune build --root variants-simple
   Entering directory 'variants-simple'
            foo alias default
   running implementation
+
+Virtual library where a wrapped module is virtual
+  $ dune build --root variants-sub-module
+  Entering directory 'variants-sub-module'
+           run alias default
+  Impl's Vmd.run ()

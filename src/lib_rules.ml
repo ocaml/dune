@@ -431,7 +431,7 @@ module Gen (P : Install_rules.Params) = struct
 
     Module_compilation.build_modules cctx ~js_of_ocaml ~dynlink ~dep_graphs;
 
-    if Option.is_none lib.stdlib then
+    if Option.is_none lib.stdlib && Option.is_none impl then
       Option.iter (Lib_modules.alias lib_modules)
         ~f:(build_alias_module ~modules ~cctx ~dynlink ~js_of_ocaml);
 

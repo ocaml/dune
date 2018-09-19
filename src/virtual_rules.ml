@@ -5,17 +5,19 @@ module Implementation = struct
   type t =
     { vlib            : Lib.t
     ; impl            : Dune_file.Library.t
-    ; modules_of_vlib    : Module.t Module.Name.Map.t
+    ; vlib_modules    : Lib_modules.t
     }
 
-  let dep_graph { vlib ; modules_of_vlib ; impl = _ }
+  let modules_of_vlib t = Lib_modules.modules t.vlib_modules
+
+  let dep_graph ({ vlib ; vlib_modules = _ ; impl = _ } as t)
         (impl_graph : Ocamldep.Dep_graphs.t) =
+    let modules_of_vlib = modules_of_vlib t in
     let obj_dir = Lib.obj_dir vlib in
     let vlib_graph =
       Ocamldep.graph_of_remote_lib ~obj_dir ~modules:modules_of_vlib in
     Ocamldep.Dep_graphs.merge_for_impl ~vlib:vlib_graph ~impl:impl_graph
 
-  let modules_of_vlib t = t.modules_of_vlib
 end
 
 module Gen (P : sig val sctx : Super_context.t end) = struct
@@ -26,7 +28,15 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
     Lib.foreign_objects vlib
 
   let setup_copy_rules_for_impl ~dir
-        { Implementation.vlib ; impl ; modules_of_vlib } =
+        ({ Implementation.vlib ; impl ; vlib_modules } as t) =
+    let modules_of_vlib =
+      let modules_of_vlib = Implementation.modules_of_vlib t in
+      match Lib_modules.alias vlib_modules with
+      | None -> modules_of_vlib
+      | Some { alias_module; module_name = _ } ->
+        Module.Name.Map.add modules_of_vlib
+          (Module.name alias_module) alias_module
+    in
     let copy_to_obj_dir =
       let obj_dir = Utils.library_object_directory ~dir (snd impl.name) in
       fun file ->
@@ -129,7 +139,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
           Option.map (Lib.virtual_ vlib) ~f:(fun (v : Lib_info.Virtual.t) ->
             v.modules)
         in
-        let (modules_of_vlib, virtual_modules) =
+        let vlib_modules =
           match virtual_modules with
           | None ->
             Errors.fail lib.buildable.loc
@@ -138,18 +148,15 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
           | Some Unexpanded ->
             let dir_contents =
               Dir_contents.get sctx ~dir:(Lib.src_dir vlib) in
-            let lib_modules =
-              Dir_contents.modules_of_library dir_contents
-                ~name:(Lib.name vlib) in
-            ( Lib_modules.modules lib_modules
-            , Lib_modules.virtual_modules lib_modules
-            )
+            Dir_contents.modules_of_library dir_contents
+              ~name:(Lib.name vlib)
         in
+        let virtual_modules = Lib_modules.virtual_modules vlib_modules in
         check_module_fields ~lib ~virtual_modules ~modules ~implements;
         { Implementation.
           impl = lib
         ; vlib
-        ; modules_of_vlib
+        ; vlib_modules
         }
     end
 end

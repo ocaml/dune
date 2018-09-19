@@ -14,7 +14,7 @@ open Simplified
 
 let echo s =
   let lines = String.split_lines s in
-  if s <> "" && s.[String.length s - 1] <> '\n' then
+  if not (String.is_suffix s ~suffix:"\n") then
     match List.rev lines with
     | [] -> [Run ("echo", ["-n"])]
     | last :: rest ->

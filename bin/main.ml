@@ -403,7 +403,7 @@ let rules =
                   Path.Set.iter (Deps.paths rule.deps) ~f:(fun dep ->
                     Format.fprintf ppf "@ %s" (Path.to_string dep)))
                Pp.pp
-               (Sh_of_action.pp action))
+               (Action_to_sh.pp action))
          end else begin
            List.iter rules ~f:(fun (rule : Build_system.Rule.t) ->
              let sexp =

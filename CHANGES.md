@@ -6,6 +6,9 @@ next
 - Allow `dune.configurator` and `base` to be used together (#1291, fix
   #1167, @diml)
 
+- Support interrupting and restarting builds on file changes (#1246,
+  @kodek16)
+
 1.2.1 (17/09/2018)
 ------------------
 

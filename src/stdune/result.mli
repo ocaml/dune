@@ -38,4 +38,10 @@ module List : sig
     :  'a list
     -> f:('a -> ('b list, 'error) t)
     -> ('b list, 'error) t
+
+  val fold_left
+    :  'a list
+    -> f:('acc -> 'a -> ('acc, 'c) result)
+    -> init:'acc
+    -> ('acc, 'c) result
 end

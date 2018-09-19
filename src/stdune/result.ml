@@ -77,4 +77,11 @@ module List = struct
     | x :: xs ->
       f x >>= fun () ->
       iter xs ~f
+
+  let rec fold_left t ~f ~init =
+    match t with
+    | [] -> Ok init
+    | x :: xs ->
+      f init x >>= fun init ->
+      fold_left xs ~f ~init
 end

@@ -9,6 +9,8 @@ next
 - Support interrupting and restarting builds on file changes (#1246,
   @kodek16)
 
+- Fix findlib-dynload support with byte mode only (#1295, @bobot)
+
 1.2.1 (17/09/2018)
 ------------------
 
@@ -25,7 +27,7 @@ next
 - Fix a bug causing `dune` to fail eagerly when an optional library
   isn't available (#1281, @diml)
 
-- ocamlmklib should use response files only if ocaml >= 4.08 (@1268, @bryphe)
+- ocamlmklib should use response files only if ocaml >= 4.08 (#1268, @bryphe)
 
 1.2.0 (14/09/2018)
 ------------------

@@ -30,8 +30,7 @@ $ make all-supported-ocaml-versions
 - `vendor/` contains dependencies of Dune, that have been vendored
 - `plugin/` contains the API given to `dune` files that are OCaml
   scripts
-- `src/` contains the core of `Dune`, as a library so that it can
-  be used to implement the Jenga bridge later
+- `src/` contains the core of `Dune`
 - `bin/` contains the command line interface
 - `doc/` contains the manual and rules to generate the manual pages
 

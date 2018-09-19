@@ -342,7 +342,7 @@ end
 module Rule : sig
   module Targets : sig
     type t =
-      | Static of string list
+      | Static of String_with_vars.t list
       | Infer
   end
 

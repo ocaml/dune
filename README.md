@@ -30,7 +30,6 @@ dune.
 [appveyor-img]:   https://ci.appveyor.com/api/projects/status/rsxayce22e8f2jkp?svg=true
 [merlin]:         https://github.com/ocaml/merlin
 [opam]:           https://opam.ocaml.org
-[jenga]:          https://github.com/janestreet/jenga
 [issues]:         https://github.com/ocaml/dune/issues
 [topkg-jbuilder]: https://github.com/diml/topkg-jbuilder
 [video]:          https://youtu.be/BNZhmMAJarw
@@ -89,15 +88,6 @@ This feature should make cross-compilation easy, see details in the
 [roadmap](ROADMAP.md).
 
 This feature requires [opam][opam].
-
-### Jenga bridge
-
-[Jenga][jenga] is another build system for OCaml that has more
-advanced features such as polling or much better editor
-integration. Jenga is more powerful and more complex and as a result
-has many more dependencies.  It is planned to implement a small bridge
-between the two so that a dune project can build with Jenga using
-this bridge.
 
 Requirements
 ------------

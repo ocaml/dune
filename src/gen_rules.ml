@@ -65,7 +65,7 @@ module Gen(P : Install_rules.Params) = struct
             Errors.fail loc "Module %a has no implementation."
               Module.Name.pp mod_name
           else
-            { Exe.Program.name; main_module_name = mod_name }
+            { Exe.Program.name; main_module_name = mod_name ; loc }
         | None -> Errors.fail loc "Module %a doesn't exist."
                     Module.Name.pp mod_name)
     in

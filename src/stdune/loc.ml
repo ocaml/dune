@@ -15,6 +15,8 @@ let in_file fn =
   ; stop = pos
   }
 
+let in_dir = in_file
+
 let none = in_file "<none>"
 
 let of_lexbuf lexbuf : t =

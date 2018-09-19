@@ -241,6 +241,7 @@ module DB : sig
   val find : t -> Lib_name.t -> (lib, Error.Library_not_available.Reason.t) result
   val find_many
     :  t
+    -> loc:Loc.t
     -> Lib_name.t list
     -> lib list Or_exn.t
 

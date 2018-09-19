@@ -661,7 +661,7 @@ and resolve_complex_deps db deps ~allow_private_deps ~stack =
                   match
                     let deps =
                       Lib_name.Set.fold required ~init:[] ~f:(fun x acc ->
-                        (Loc.none, x) :: acc)
+                        (loc, x) :: acc)
                     in
                     resolve_simple_deps ~allow_private_deps db deps ~stack
                   with
@@ -928,8 +928,8 @@ module DB = struct
                       ; reason
                       }))
 
-  let find_many t =
-    Result.List.map ~f:(fun name -> resolve t (Loc.none, name))
+  let find_many t ~loc =
+    Result.List.map ~f:(fun name -> resolve t (loc, name))
 
   let available t name = available_internal t name ~stack:Dep_stack.empty
 

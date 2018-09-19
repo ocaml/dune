@@ -9,6 +9,7 @@ module Program = struct
   type t =
     { name             : string
     ; main_module_name : Module.Name.t
+    ; loc              : Loc.t
     }
 end
 
@@ -112,6 +113,7 @@ end
 
 let link_exe
       ~name
+      ~loc
       ~(linkage:Linkage.t)
       ~top_sorted_modules
       ?(link_flags=Build.arr (fun _ -> []))
@@ -144,7 +146,8 @@ let link_exe
         artifacts modules ~ext:ctx.ext_obj))
   in
   let arg_spec_for_requires =
-    Result.map requires ~f:(Link_time_code_gen.libraries_link ~name ~mode cctx)
+    Result.map requires ~f:(
+      Link_time_code_gen.libraries_link ~name ~loc ~mode cctx)
   in
   (* The rule *)
   SC.add_rule sctx
@@ -190,7 +193,7 @@ let build_and_link_many
   (* CR-someday jdimino: this should probably say [~dynlink:false] *)
   Module_compilation.build_modules cctx ~js_of_ocaml ~dep_graphs;
 
-  List.iter programs ~f:(fun { Program.name; main_module_name } ->
+  List.iter programs ~f:(fun { Program.name; main_module_name ; loc } ->
     let top_sorted_modules =
       let main = Option.value_exn
                    (Module.Name.Map.find (CC.modules cctx) main_module_name) in
@@ -199,6 +202,7 @@ let build_and_link_many
     in
     List.iter linkages ~f:(fun linkage ->
       link_exe cctx
+        ~loc
         ~name
         ~linkage
         ~top_sorted_modules

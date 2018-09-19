@@ -11,6 +11,10 @@
   m: init
   a: init
 
+  $ dune exec mytool_modes_byte a
+  m: init
+  a: init
+
   $ dune exec mytool mytool-plugin-b
   m: init
   a: init

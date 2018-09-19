@@ -113,9 +113,9 @@ end
 
 let link_exe
       ~name
-      ~loc
       ~(linkage:Linkage.t)
       ~top_sorted_modules
+      ~arg_spec_for_requires
       ?(link_flags=Build.arr (fun _ -> []))
       ?(js_of_ocaml=Dune_file.Js_of_ocaml.default)
       cctx
@@ -146,8 +146,7 @@ let link_exe
         artifacts modules ~ext:ctx.ext_obj))
   in
   let arg_spec_for_requires =
-    Result.map requires ~f:(
-      Link_time_code_gen.libraries_link ~name ~loc ~mode cctx)
+    Lazy.force (Mode.Dict.get arg_spec_for_requires mode)
   in
   (* The rule *)
   SC.add_rule sctx
@@ -200,13 +199,18 @@ let build_and_link_many
       Ocamldep.Dep_graph.top_closed_implementations dep_graphs.impl
         [main]
     in
+    let arg_spec_for_requires =
+      Mode.Dict.of_func (fun ~mode ->
+        lazy (Result.map (CC.requires cctx)
+                ~f:(Link_time_code_gen.libraries_link ~loc ~name ~mode cctx)))
+    in
     List.iter linkages ~f:(fun linkage ->
       link_exe cctx
-        ~loc
         ~name
         ~linkage
         ~top_sorted_modules
         ~js_of_ocaml
+        ~arg_spec_for_requires
         ?link_flags))
 
 let build_and_link ~program =

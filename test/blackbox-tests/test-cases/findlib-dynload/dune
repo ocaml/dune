@@ -27,6 +27,7 @@
 
 
 (rule (copy main.ml main_with_a.ml))
+(rule (copy main.ml main_modes_byte.ml))
 
 (executable
   (name main_with_a)
@@ -36,6 +37,14 @@
   (libraries mytool findlib.dynload a threads)
  )
 
+(executable
+  (name main_modes_byte)
+  (modules main_modes_byte)
+  (public_name mytool_modes_byte)
+  (package mytool)
+  (libraries mytool findlib.dynload threads)
+  (modes byte)
+ )
 
 (executable
   (name main_auto)

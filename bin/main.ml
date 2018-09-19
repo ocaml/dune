@@ -43,39 +43,6 @@ module Log = struct
     Log.create ~display:common.config.display ()
 end
 
-let watch_command =
-  lazy (
-    let excludes = [ {|\.#|}
-                   ; {|_build|}
-                   ; {|\.hg|}
-                   ; {|\.git|}
-                   ; {|~$|}
-                   ; {|/#[^#]*#$|}
-                   ; {|\.install$|}
-                   ]
-    in
-    let path = Path.to_string_maybe_quoted Path.root in
-    match Bin.which "inotifywait" with
-    | Some inotifywait ->
-      (* On Linux, use inotifywait. *)
-      let excludes = String.concat ~sep:"|" excludes in
-      inotifywait, ["-r"; path; "--exclude"; excludes; "-e"; "close_write"; "-e"; "delete"; "-q"]
-    | None ->
-      (* On all other platforms, try to use fswatch. fswatch's event
-         filtering is not reliable (at least on Linux), so don't try to
-         use it, instead act on all events. *)
-      (match Bin.which "fswatch" with
-       | Some fswatch ->
-         let excludes = List.concat_map excludes ~f:(fun x -> ["--exclude"; x]) in
-         fswatch, ["-r"; path; "-1"] @ excludes
-       | None ->
-         die "@{<error>Error@}: fswatch (or inotifywait) was not found. \
-              One of them needs to be installed for watch mode to work.\n"))
-
-let watch_changes () =
-  let watch, args = Lazy.force watch_command in
-  Process.run Strict watch args ~env:Env.initial ~stdout_to:(File Config.dev_null)
-
 module Scheduler = struct
   include Dune.Scheduler
 
@@ -87,21 +54,13 @@ module Scheduler = struct
     in
     Scheduler.go ?log ~config:common.config fiber
 
-  let poll ?log ?cache_init ~(common : Common.t) ~init ~once ~finally () =
-    let init () =
+  let poll ?log ~(common : Common.t) ~once ~finally () =
+    let once () =
       Main.set_concurrency ?log common.config
       >>= fun () ->
-      init ()
+      once ()
     in
-    Scheduler.poll
-      ?log
-      ~config:common.config
-      ?cache_init
-      ~init
-      ~once
-      ~finally
-      ~watch:watch_changes
-      ()
+    Scheduler.poll ?log ~config:common.config ~once ~finally ()
 end
 
 let do_build (setup : Main.setup) targets =
@@ -168,7 +127,6 @@ let resolve_package_install setup pkg =
           |> List.map ~f:Package.Name.to_string))
 
 let run_build_command ~log ~common ~targets =
-  let init () = Fiber.return () in
   let once () =
     Main.setup ~log common
     >>= fun setup ->
@@ -176,13 +134,14 @@ let run_build_command ~log ~common ~targets =
   in
   let finally () =
     Hooks.End_of_build.run ();
-    Fiber.return ()
+    Hooks.End_of_build_not_canceled.run ()
+  in
+  let canceled () =
+    Hooks.End_of_build.run ();
+    Hooks.End_of_build_not_canceled.clear ()
   in
   if common.watch then begin
-    (* Forcing this lazy here causes the exception raised when watch binary is not found
-       to actually terminate the program, instead of entering an error loop. *)
-    ignore (Lazy.force watch_command);
-    Scheduler.poll ~cache_init:false ~log ~common ~init ~once ~finally ()
+    Scheduler.poll ~log ~common ~once ~finally ~canceled ()
   end
   else Scheduler.go ~log ~common (once ())
 

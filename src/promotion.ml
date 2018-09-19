@@ -54,8 +54,6 @@ let group_by_targets db =
   (* Sort the list of possible sources for deterministic behavior *)
   |> Path.Map.map ~f:(List.sort ~compare:Path.compare)
 
-let were_files_promoted = ref false
-
 type files_to_promote =
   | All
   | These of Path.t list * (Path.t -> unit)
@@ -86,7 +84,6 @@ let do_promote db files_to_promote =
       List.iter dirs_to_clear_from_cache ~f:(fun dir ->
         Utils.Cached_digest.remove (Path.append dir dst));
       File.promote { src; dst };
-      were_files_promoted := true;
       List.iter others ~f:(fun path ->
         Format.eprintf " -> ignored %s.@."
           (Path.to_string_maybe_quoted path))
@@ -114,7 +111,6 @@ let do_promote db files_to_promote =
       List.map srcs ~f:(fun src -> { File.src; dst }))
 
 let finalize () =
-  were_files_promoted := false;
   let db =
     if !Clflags.auto_promote then
       do_promote !File.db All
@@ -122,9 +118,6 @@ let finalize () =
       !File.db
   in
   dump_db db
-
-let were_files_promoted () =
-  !were_files_promoted
 
 let promote_files_registered_in_last_run files_to_promote =
   let db = load_db () in

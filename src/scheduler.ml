@@ -8,20 +8,192 @@ type status_line_config =
   }
 
 type running_job =
-  { pid  : int
-  ; ivar : Unix.process_status Fiber.Ivar.t
+  { pid      : int
+  ; build_id : int
+  ; ivar     : Unix.process_status Fiber.Ivar.t
   }
+
+module Watch : sig
+  (** Runs forever, communicating events to channel when changes are
+      detected. *)
+  val wait_to_chan : Path.t list Event.channel -> 'a
+
+  (** Compares a batch of changed files to ignored files list.
+
+      This should be only called from the main thread. *)
+  val should_trigger_rebuild : Path.t list -> bool
+
+  (** Ignore the next event about this file. *)
+  val ignore_file : Path.t -> unit
+end = struct
+  let ignored_files = String.Table.create 64
+
+  let ignore_file path =
+    assert (Path.is_in_source_tree path);
+    String.Table.replace
+      ignored_files
+      ~key:(Path.to_absolute_filename path)
+      ~data:()
+
+  let command =
+    lazy (
+      let excludes = [ {|/_build|}
+                     ; {|/\..+|}
+                     ; {|~$|}
+                     ; {|/#[^#]*#$|}
+                     ; {|4913|} (* https://github.com/neovim/neovim/issues/3460 *)
+                     ]
+      in
+      let path = Path.to_string_maybe_quoted Path.root in
+      match Bin.which "inotifywait" with
+      | Some inotifywait ->
+        (* On Linux, use inotifywait. *)
+        let excludes = String.concat ~sep:"|" excludes in
+        inotifywait, [
+          "-r"; path;
+          "--exclude"; excludes;
+          "-e"; "close_write"; "-e"; "delete";
+          "--format"; "%w%f";
+          "-m";
+          "-q"]
+      | None ->
+        (* On all other platforms, try to use fswatch. fswatch's event
+           filtering is not reliable (at least on Linux), so don't try to
+           use it, instead act on all events. *)
+        (match Bin.which "fswatch" with
+         | Some fswatch ->
+           let excludes =
+             List.concat_map excludes ~f:(fun x -> ["--exclude"; x])
+           in
+           fswatch, [
+             "-r"; path;
+             "--event"; "Created";
+             "--event"; "Updated";
+             "--event"; "Removed"] @ excludes
+         | None ->
+           die "@{<error>Error@}: fswatch (or inotifywait) was not found. \
+                One of them needs to be installed for watch mode to work.\n"))
+
+  let buffering_time = 0.5 (* seconds *)
+
+  let buffer_capacity = 65536
+  let buffer = Bytes.create buffer_capacity
+  let buffer_size = ref 0
+
+  let read_lines fd =
+    let len = Unix.read fd buffer !buffer_size (buffer_capacity - !buffer_size) in
+    buffer_size := !buffer_size + len;
+    let lines = ref [] in
+    let line_start = ref 0 in
+    for i = 0 to !buffer_size - 1 do
+      let c = Bytes.get buffer i in
+      if c = '\n' || c = '\r' then begin
+        if !line_start < i then begin
+          let line = Bytes.sub_string
+                       buffer
+                       ~pos:!line_start
+                       ~len:(i - !line_start) in
+          lines := line :: !lines;
+        end;
+        line_start := i + 1
+      end
+    done;
+    buffer_size := !buffer_size - !line_start;
+    Bytes.blit
+      ~src:buffer ~src_pos:!line_start
+      ~dst:buffer ~dst_pos:0
+      ~len:!buffer_size;
+    List.rev !lines
+
+  let wait_to_chan chan =
+    let new_events = ref [] in
+    let event_mtx = Mutex.create () in
+    let event_cv = Condition.create () in
+
+    let worker_thread () =
+      let prog, args = Lazy.force command in
+      let prog = Path.to_absolute_filename prog in
+      let args = Array.of_list (prog :: args) in
+      let r, w = Unix.pipe () in
+      let pid =
+        Unix.create_process
+          prog
+          args
+          Unix.stdin
+          w
+          Unix.stderr
+      in
+      let cleanup () =
+        Unix.kill pid Sys.sigterm;
+        ignore (Unix.waitpid [] pid)
+      in
+      at_exit cleanup;
+      let rec loop () =
+        let lines = List.map (read_lines r) ~f:Path.of_string in
+        Mutex.lock event_mtx;
+        new_events := lines :: !new_events;
+        Condition.signal event_cv;
+        Mutex.unlock event_mtx;
+        loop ()
+      in
+      loop ()
+    in
+
+    let rec buffer_thread () =
+      Mutex.lock event_mtx;
+      if List.is_empty !new_events then
+        Condition.wait event_cv event_mtx;
+      let events_to_send = !new_events in
+      new_events := [];
+      Mutex.unlock event_mtx;
+      List.iter events_to_send ~f:(fun batch ->
+        Event.(sync (send chan batch)));
+      Thread.delay buffering_time;
+      buffer_thread ()
+    in
+
+    ignore (Thread.create worker_thread ());
+    buffer_thread ()
+
+  let should_trigger_rebuild fns =
+    List.filter fns ~f:(fun fn ->
+      let fn = Path.to_absolute_filename fn in
+      if String.Table.mem ignored_files fn then begin
+        (* only use ignored record once *)
+        String.Table.remove ignored_files fn;
+        false
+      end
+      else true)
+    |> List.is_empty
+    |> not
+end
+
+let ignore_for_watch = Watch.ignore_file
 
 module Running_jobs : sig
   val add : running_job -> unit
-  val wait : unit -> running_job * Unix.process_status
   val count : unit -> int
+
+  (** Runs forever, communicating events to channel when children terminate. *)
+  val wait_to_chan : (int * Unix.process_status) Event.channel -> 'a
+
+  (** Removes a process previously returned via channel from the table. *)
+  val resolve_and_remove_job : int -> running_job
+
 end = struct
   let all = Hashtbl.create 128
 
-  let add job = Hashtbl.add all job.pid job
+  let running_pids = ref Int.Set.empty
+  let running_pids_mtx = Mutex.create ()
+  let something_is_running_cv = Condition.create ()
 
-  let count () = Hashtbl.length all
+  let add job =
+    Hashtbl.add all job.pid job;
+    Mutex.lock running_pids_mtx;
+    running_pids := Int.Set.add !running_pids job.pid;
+    if Int.Set.cardinal !running_pids = 1 then
+      Condition.signal something_is_running_cv;
+    Mutex.unlock running_pids_mtx
 
   let resolve_and_remove_job pid =
     let job =
@@ -32,19 +204,25 @@ end = struct
     Hashtbl.remove all pid;
     job
 
-  exception Finished of running_job * Unix.process_status
+  exception Finished of int * Unix.process_status
 
   let wait_nonblocking_win32 () =
+    Mutex.lock running_pids_mtx;
     match
-      Hashtbl.iter all ~f:(fun ~key:pid ~data:job ->
+      Int.Set.iter !running_pids ~f:(fun pid ->
         let pid, status = Unix.waitpid [WNOHANG] pid in
         if pid <> 0 then
-          raise_notrace (Finished (job, status)))
+          raise_notrace (Finished (pid, status)));
     with
-    | () -> None
-    | exception (Finished (job, status)) ->
-      Hashtbl.remove all job.pid;
-      Some (job, status)
+    | () ->
+      Mutex.unlock running_pids_mtx;
+      None
+    | exception (Finished (pid, status)) ->
+      Mutex.unlock running_pids_mtx;
+      Some (pid, status)
+    | exception exn ->
+      Mutex.unlock running_pids_mtx;
+      reraise exn
 
   let rec wait_win32 () =
     match wait_nonblocking_win32 () with
@@ -54,24 +232,46 @@ end = struct
     | Some x -> x
 
   let wait_unix () =
-    let pid, status = Unix.wait () in
-    (resolve_and_remove_job pid, status)
+    Unix.wait ()
 
   let wait =
     if Sys.win32 then
       wait_win32
     else
       wait_unix
+
+  let rec wait_to_chan chan =
+    if Int.Set.is_empty !running_pids then
+      Condition.wait something_is_running_cv running_pids_mtx;
+    Mutex.unlock running_pids_mtx;
+    let pid, status = wait () in
+    Event.(sync (send chan (pid, status)));
+    Mutex.lock running_pids_mtx;
+    running_pids := Int.Set.remove !running_pids pid;
+    wait_to_chan chan
+
+  let wait_to_chan chan =
+    Mutex.lock running_pids_mtx;
+    wait_to_chan chan
+
+  let count () = Hashtbl.length all
 end
 
 type t =
-  { log                       : Log.t
-  ; original_cwd              : string
-  ; display                   : Config.Display.t
-  ; mutable concurrency       : int
-  ; waiting_for_available_job : t Fiber.Ivar.t Queue.t
-  ; mutable status_line       : string
-  ; mutable gen_status_line   : unit -> status_line_config
+  { log                        : Log.t
+  ; original_cwd               : string
+  ; display                    : Config.Display.t
+  ; mutable concurrency        : int
+  ; waiting_for_available_job  : waiting_job Queue.t
+  ; mutable status_line        : string
+  ; mutable gen_status_line    : unit -> status_line_config
+  ; mutable cur_build_id       : int
+  ; mutable cur_build_canceled : bool
+  }
+
+and waiting_job =
+  { build_id : int
+  ; ivar     : t Fiber.Ivar.t
   }
 
 let log t = t.log
@@ -97,9 +297,31 @@ let print t msg =
 
 let t_var : t Fiber.Var.t = Fiber.Var.create ()
 
+let update_status_line t =
+  if t.display = Progress then begin
+    match t.gen_status_line () with
+    | { message = None; _ } ->
+      if t.status_line <> "" then begin
+        hide_status_line t.status_line;
+        flush stderr
+      end
+    | { message = Some status_line; show_jobs } ->
+      let status_line =
+        if show_jobs then
+          sprintf "%s (jobs: %u)" status_line (Running_jobs.count ())
+        else
+          status_line
+      in
+      hide_status_line t.status_line;
+      show_status_line   status_line;
+      flush stderr;
+      t.status_line <- status_line;
+  end
+
 let set_status_line_generator f =
   Fiber.Var.get_exn t_var >>| fun t ->
-  t.gen_status_line <- f
+  t.gen_status_line <- f;
+  update_status_line t
 
 let set_concurrency n =
   Fiber.Var.get_exn t_var >>| fun t ->
@@ -111,13 +333,14 @@ let wait_for_available_job () =
     Fiber.return t
   else begin
     let ivar = Fiber.Ivar.create () in
-    Queue.push ivar t.waiting_for_available_job;
+    Queue.push { ivar; build_id = t.cur_build_id } t.waiting_for_available_job;
     Fiber.Ivar.read ivar
   end
 
 let wait_for_process pid =
+  Fiber.Var.get_exn t_var >>= fun t ->
   let ivar = Fiber.Ivar.create () in
-  Running_jobs.add { pid; ivar };
+  Running_jobs.add { pid; build_id = t.cur_build_id; ivar };
   Fiber.Ivar.read ivar
 
 let rec restart_waiting_for_available_job t =
@@ -125,46 +348,76 @@ let rec restart_waiting_for_available_job t =
      Running_jobs.count () >= t.concurrency then
     Fiber.return ()
   else begin
-    Fiber.Ivar.fill (Queue.pop t.waiting_for_available_job) t
+    let { build_id; ivar } = Queue.pop t.waiting_for_available_job in
+    begin
+      if build_id = t.cur_build_id then
+        Fiber.Ivar.fill ivar t
+      else
+        Fiber.return ()
+    end
     >>= fun () ->
     restart_waiting_for_available_job t
   end
 
-let rec go_rec t =
-  Fiber.yield ()
-  >>= fun () ->
-  let count = Running_jobs.count () in
-  if count = 0 then begin
-    hide_status_line t.status_line;
-    flush stderr;
-    Fiber.return ()
-  end else begin
-    if t.display = Progress then begin
-      match t.gen_status_line () with
-      | { message = None; _ } ->
-        if t.status_line <> "" then begin
-          hide_status_line t.status_line;
-          flush stderr
-        end
-      | { message = Some status_line; show_jobs } ->
-        let status_line =
-          if show_jobs then
-            sprintf "%s (jobs: %u)" status_line count
-          else
-            status_line
-        in
-        hide_status_line t.status_line;
-        show_status_line   status_line;
-        flush stderr;
-        t.status_line <- status_line;
-    end;
-    let job, status = Running_jobs.wait () in
-    Fiber.Ivar.fill job.ivar status
-    >>= fun () ->
-    restart_waiting_for_available_job t
-    >>= fun () ->
-    go_rec t
+let watch_channel = lazy (
+  if !Clflags.watch then begin
+    let chan = Event.new_channel () in
+    ignore (Thread.create Watch.wait_to_chan chan);
+    chan
   end
+  else Event.new_channel ())
+
+let job_channel = lazy (
+  let chan = Event.new_channel () in
+  ignore (Thread.create Running_jobs.wait_to_chan chan);
+  chan)
+
+type event =
+  | Files_changed of Path.t list
+  | Job_completed of int * Unix.process_status
+
+let go_rec t =
+  let recv () = Event.(
+    choose [ wrap (receive (Lazy.force watch_channel))
+               (fun fns -> Files_changed fns)
+           ; wrap (receive (Lazy.force job_channel))
+               (fun (p, s) -> Job_completed (p, s))
+           ])
+  in
+  let rec go_rec t =
+    Fiber.yield ()
+    >>= fun () ->
+    let count = Running_jobs.count () in
+    if count = 0 then begin
+      hide_status_line t.status_line;
+      flush stderr;
+      Fiber.return ()
+    end else begin
+      update_status_line t;
+      begin
+        match Event.sync (recv ()) with
+        | Job_completed (pid, status) ->
+          let job = Running_jobs.resolve_and_remove_job pid in
+          begin
+            if job.build_id = t.cur_build_id then
+              Fiber.Ivar.fill job.ivar status
+            else
+              Fiber.return ()
+          end
+          >>= fun () ->
+          restart_waiting_for_available_job t
+          >>= fun () ->
+          go_rec t
+        | Files_changed fns ->
+          if Watch.should_trigger_rebuild fns then begin
+            t.cur_build_canceled <- true;
+            Fiber.return ()
+          end
+          else go_rec t
+      end
+    end
+  in
+  go_rec t
 
 let prepare ?(log=Log.no_log) ?(config=Config.default)
       ?(gen_status_line=fun () -> { message = None; show_jobs = false }) () =
@@ -204,6 +457,8 @@ let prepare ?(log=Log.no_log) ?(config=Config.default)
     ; concurrency  = (match config.concurrency with Auto -> 1 | Fixed n -> n)
     ; status_line  = ""
     ; waiting_for_available_job = Queue.create ()
+    ; cur_build_id = 0
+    ; cur_build_canceled = false
     }
   in
   Errors.printer := print t;
@@ -223,19 +478,21 @@ let go ?log ?config ?gen_status_line fiber =
   let t = prepare ?log ?config ?gen_status_line () in
   run t (fun () -> fiber)
 
-(** Fiber loop looks like this (if cache_init is true):
-              /------------------\
-              v                  |
-    init --> once --> finally  --/
-
-    The result of [~init] gets passed in every call to [~once] and [~finally].
-    If cache_init is false, every iteration reexecutes init instead of
-    saving it.
-
-    [~watch] should return after the first change to any of the project files.
-*)
-let poll ?log ?config ?(cache_init=true) ~init ~once ~finally ~watch () =
+let poll ?log ?config ~once ~finally ~canceled () =
+  let watch_chan = Lazy.force watch_channel in
   let t = prepare ?log ?config () in
+  let once () =
+    t.cur_build_id <- t.cur_build_id + 1;
+    t.cur_build_canceled <- false;
+    once ()
+  in
+  let rec block_waiting_for_changes () =
+    let fns = Event.(sync (receive watch_chan)) in
+    if Watch.should_trigger_rebuild fns then
+      ()
+    else
+      block_waiting_for_changes ()
+  in
   let wait_success () =
     let old_generator = t.gen_status_line in
     set_status_line_generator
@@ -244,8 +501,7 @@ let poll ?log ?config ?(cache_init=true) ~init ~once ~finally ~watch () =
          ; show_jobs = false
          })
     >>= fun () ->
-    watch ()
-    >>= fun _ ->
+    block_waiting_for_changes ();
     set_status_line_generator old_generator
   in
   let wait_failure () =
@@ -256,41 +512,28 @@ let poll ?log ?config ?(cache_init=true) ~init ~once ~finally ~watch () =
          ; show_jobs = false
          })
     >>= fun () ->
-    (if Promotion.were_files_promoted () then
-       Fiber.return ()
-     else
-       watch ())
-    >>= fun _ ->
+    block_waiting_for_changes ();
     set_status_line_generator old_generator
   in
   let rec main_loop () =
-    (if cache_init then
-       Fiber.return ()
-     else
-       init ())
-    >>= fun _ ->
     once ()
     >>= fun _ ->
-    finally ()
-    >>= fun _ ->
+    finally ();
     wait_success ()
     >>= fun _ ->
     main_loop ()
   in
   let continue_on_error () =
-    finally ()
-    >>= fun _ ->
-    wait_failure ()
-    >>= fun _ ->
-    main_loop ()
-  in
-  let main () =
-    (if cache_init then
-       init ()
-     else
-       Fiber.return ())
-    >>= fun _ ->
-    main_loop ()
+    if not t.cur_build_canceled then begin
+      finally ();
+      wait_failure ()
+      >>= fun _ ->
+      main_loop ()
+    end
+    else begin
+      canceled ();
+      main_loop ()
+    end
   in
   let rec loop f =
     try
@@ -298,4 +541,4 @@ let poll ?log ?config ?(cache_init=true) ~init ~once ~finally ~watch () =
     with Fiber.Never ->
       loop continue_on_error
   in
-  loop main
+  loop main_loop

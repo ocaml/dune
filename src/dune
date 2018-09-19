@@ -5,6 +5,7 @@
               fiber
               xdg
               dune_re
+              threads
               opam_file_format
               dsexp
               ocaml_config

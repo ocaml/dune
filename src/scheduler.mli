@@ -17,24 +17,18 @@ val go
   -> 'a Fiber.t
   -> 'a
 
-(** Runs a fiber loop that looks like this (if cache_init is true, as default):
-              /------------------\
-              v                  |
-    init --> once --> finally  --/
+(** Runs [once] in a loop, executing [finally] after every iteration,
+    even if Fiber.Never was encountered.
 
-    If cache_init is false, every iteration reexecutes init instead of
-    saving it.
-
-    [~watch] should return after the first change to any of the project files.
+    If any source files change in the middle of iteration, it gets
+    canceled, and [canceled] is called instead of [finally].
 *)
 val poll
   :  ?log:Log.t
   -> ?config:Config.t
-  -> ?cache_init:bool
-  -> init:(unit -> unit Fiber.t)
   -> once:(unit -> unit Fiber.t)
-  -> finally:(unit -> unit Fiber.t)
-  -> watch:(unit -> unit Fiber.t)
+  -> finally:(unit -> unit)
+  -> canceled:(unit -> unit)
   -> unit
   -> 'a
 
@@ -45,6 +39,12 @@ val wait_for_process : int -> Unix.process_status Fiber.t
 val set_status_line_generator : (unit -> status_line_config) -> unit Fiber.t
 
 val set_concurrency : int -> unit Fiber.t
+
+(** Make the scheduler ignore next change to a certain file in watch mode.
+
+    This is used with promoted files that are copied back to the source tree
+    after generation *)
+val ignore_for_watch : Path.t -> unit
 
 (** Scheduler information *)
 type t

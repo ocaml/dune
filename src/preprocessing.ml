@@ -387,22 +387,18 @@ let get_compat_ppx_exe sctx ~name ~kind =
     ppx_exe sctx ~key ~dir_kind:Jbuild
 
 let get_ppx_driver sctx ~loc ~scope ~dir_kind pps =
-  let sctx = SC.host sctx in
   let open Result.O in
-  match (dir_kind : File_tree.Dune_file.Kind.t) with
-  | Dune ->
-    Lib.DB.resolve_pps (Scope.libs scope) pps
-    >>= fun libs ->
-    Lib.closure libs
-    >>=
-    Driver.select ~loc:(User_file (loc, pps))
-    >>= fun driver ->
-    Ok (ppx_driver_exe sctx libs ~dir_kind, driver)
-  | Jbuild ->
-    let driver = Jbuild_driver.get_driver pps in
-    Lib.DB.resolve_pps (Scope.libs scope) pps
-    >>= fun libs ->
-    Ok (ppx_driver_exe sctx libs ~dir_kind, driver)
+  Lib.DB.resolve_pps (Scope.libs scope) pps
+  >>= fun libs ->
+  (match (dir_kind : File_tree.Dune_file.Kind.t) with
+   | Dune ->
+     Lib.closure libs
+     >>=
+     Driver.select ~loc:(User_file (loc, pps))
+   | Jbuild ->
+     Ok (Jbuild_driver.get_driver pps))
+  >>| fun driver ->
+  (ppx_driver_exe (SC.host sctx) libs ~dir_kind, driver)
 
 let target_var         = String_with_vars.virt_var __POS__ "targets"
 let workspace_root_var = String_with_vars.virt_var __POS__ "workspace_root"
@@ -663,8 +659,8 @@ let pp_module_as t ?(lint=true) name m =
   Per_module.get t name m ~lint
 
 let get_ppx_driver sctx ~scope ~dir_kind pps =
-  let sctx = SC.host sctx in
   let open Result.O in
   Lib.DB.resolve_pps (Scope.libs scope) pps
   >>| fun libs ->
+  let sctx = SC.host sctx in
   ppx_driver_exe sctx libs ~dir_kind

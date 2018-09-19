@@ -54,7 +54,7 @@ module Scheduler = struct
     in
     Scheduler.go ?log ~config:common.config fiber
 
-  let poll ?log ~common ~once ~finally () =
+  let poll ?log ~(common : Common.t) ~once ~finally () =
     let once () =
       Main.set_concurrency ?log common.config
       >>= fun () ->

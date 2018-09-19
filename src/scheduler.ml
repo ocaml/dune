@@ -13,17 +13,9 @@ type running_job =
   ; ivar     : Unix.process_status Fiber.Ivar.t
   }
 
-let ignored_files_for_watch = String.Table.create 64
-
-let ignore_for_watch path =
-  assert (Path.is_in_source_tree path);
-  String.Table.replace
-    ignored_files_for_watch
-    ~key:(Path.to_absolute_filename path)
-    ~data:()
-
 module Watch : sig
-  (** Runs forever, communicating events to channel when changes are detected. *)
+  (** Runs forever, communicating events to channel when changes are
+      detected. *)
   val wait_to_chan : Path.t list Event.channel -> 'a
 
   (** Compares a batch of changed files to ignored files list.
@@ -31,7 +23,18 @@ module Watch : sig
       This should be only called from the main thread. *)
   val should_trigger_rebuild : Path.t list -> bool
 
+  (** Ignore the next event about this file. *)
+  val ignore_file : Path.t -> unit
 end = struct
+  let ignored_files = String.Table.create 64
+
+  let ignore_file path =
+    assert (Path.is_in_source_tree path);
+    String.Table.replace
+      ignored_files
+      ~key:(Path.to_absolute_filename path)
+      ~data:()
+
   let command =
     lazy (
       let excludes = [ {|/_build|}
@@ -59,7 +62,9 @@ end = struct
            use it, instead act on all events. *)
         (match Bin.which "fswatch" with
          | Some fswatch ->
-           let excludes = List.concat_map excludes ~f:(fun x -> ["--exclude"; x]) in
+           let excludes =
+             List.concat_map excludes ~f:(fun x -> ["--exclude"; x])
+           in
            fswatch, [
              "-r"; path;
              "--event"; "Created";
@@ -101,7 +106,6 @@ end = struct
     List.rev !lines
 
   let wait_to_chan chan =
-    let event_counter = ref 0 in
     let new_events = ref [] in
     let event_mtx = Mutex.create () in
     let event_cv = Condition.create () in
@@ -111,12 +115,13 @@ end = struct
       let prog = Path.to_absolute_filename prog in
       let args = Array.of_list (prog :: args) in
       let r, w = Unix.pipe () in
-      let pid = Unix.create_process
-                  prog
-                  args
-                  (Unix.descr_of_in_channel stdin)
-                  w
-                  (Unix.descr_of_out_channel stderr)
+      let pid =
+        Unix.create_process
+          prog
+          args
+          Unix.stdin
+          w
+          Unix.stderr
       in
       let cleanup () =
         Unix.kill pid Sys.sigterm;
@@ -126,7 +131,6 @@ end = struct
       let rec loop () =
         let lines = List.map (read_lines r) ~f:Path.of_string in
         Mutex.lock event_mtx;
-        event_counter := !event_counter + 1;
         new_events := lines :: !new_events;
         Condition.signal event_cv;
         Mutex.unlock event_mtx;
@@ -135,22 +139,17 @@ end = struct
       loop ()
     in
 
-    let buffer_thread () =
-      let saved_counter = ref 0 in
-      let rec loop () =
-        Mutex.lock event_mtx;
-        if !event_counter = !saved_counter then
-          Condition.wait event_cv event_mtx;
-        saved_counter := !event_counter;
-        let events_to_send = !new_events in
-        new_events := [];
-        Mutex.unlock event_mtx;
-        List.iter events_to_send ~f:(fun batch ->
-          Event.(sync (send chan batch)));
-        Thread.delay buffering_time;
-        loop ()
-      in
-      loop ()
+    let rec buffer_thread () =
+      Mutex.lock event_mtx;
+      if List.is_empty !new_events then
+        Condition.wait event_cv event_mtx;
+      let events_to_send = !new_events in
+      new_events := [];
+      Mutex.unlock event_mtx;
+      List.iter events_to_send ~f:(fun batch ->
+        Event.(sync (send chan batch)));
+      Thread.delay buffering_time;
+      buffer_thread ()
     in
 
     ignore (Thread.create worker_thread ());
@@ -159,15 +158,17 @@ end = struct
   let should_trigger_rebuild fns =
     List.filter fns ~f:(fun fn ->
       let fn = Path.to_absolute_filename fn in
-      if String.Table.mem ignored_files_for_watch fn then begin
+      if String.Table.mem ignored_files fn then begin
         (* only use ignored record once *)
-        String.Table.remove ignored_files_for_watch fn;
+        String.Table.remove ignored_files fn;
         false
       end
       else true)
     |> List.is_empty
     |> not
 end
+
+let ignore_for_watch = Watch.ignore_file
 
 module Running_jobs : sig
   val add : running_job -> unit
@@ -377,8 +378,10 @@ type event =
 
 let go_rec t =
   let recv () = Event.(
-    choose [ wrap (receive (Lazy.force watch_channel)) (fun fns -> Files_changed fns)
-           ; wrap (receive (Lazy.force job_channel)) (fun (p, s) -> Job_completed (p, s))
+    choose [ wrap (receive (Lazy.force watch_channel))
+               (fun fns -> Files_changed fns)
+           ; wrap (receive (Lazy.force job_channel))
+               (fun (p, s) -> Job_completed (p, s))
            ])
   in
   let rec go_rec t =

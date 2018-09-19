@@ -837,6 +837,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name targets-with-vars)
+ (deps (package dune) (source_tree test-cases/targets-with-vars))
+ (action
+  (chdir
+   test-cases/targets-with-vars
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name tests-stanza)
  (deps (package dune) (source_tree test-cases/tests-stanza))
  (action
@@ -1027,6 +1035,7 @@
   (alias subst)
   (alias syntax-versioning)
   (alias target-dir-alias)
+  (alias targets-with-vars)
   (alias tests-stanza)
   (alias tests-stanza-action)
   (alias too-many-parens)
@@ -1130,6 +1139,7 @@
   (alias subst)
   (alias syntax-versioning)
   (alias target-dir-alias)
+  (alias targets-with-vars)
   (alias tests-stanza)
   (alias tests-stanza-action)
   (alias too-many-parens)

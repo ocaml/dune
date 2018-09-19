@@ -47,6 +47,16 @@ The dune-universe_ repository contains a snapshot of the latest versions of all
 opam packages depending on dune. It is therefore a useful reference to
 search through to find different approaches to constructing build rules.
 
+What is Jenga?
+==============
+
+jenga_ is a build system developed by Jane Street mainly for internal use. It
+was never usable outside of Jane Street, and hence not recommended for general
+use. It has no relationship to dune apart from dune being the successor to Jenga
+externally. Eventually, dune is expected to replace Jenga internally at Jane
+Street as well.
+
 .. _dune-universe: https://github.com/dune-universe/dune-universe
 .. _topkg-jbuilder: https://github.com/samoht/topkg-jbuilder
 .. _dune-release: https://github.com/samoht/dune-release
+.. _jenga: https://github.com/janestreet/jenga

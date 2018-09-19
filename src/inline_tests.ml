@@ -155,9 +155,11 @@ include Sub_system.Register_end_point(
           ; stanza = lib
           ; scope
           ; source_modules
-          ; _
+          ; compile_info = _
           } = c
       in
+
+      let loc = lib.buildable.loc in
 
       let inline_test_dir =
         Path.relative dir (sprintf ".%s.inline-tests"
@@ -187,7 +189,7 @@ include Sub_system.Register_end_point(
         Result.List.concat_map backends
           ~f:(fun (backend : Backend.t) -> backend.runner_libraries)
         >>= fun libs ->
-        Lib.DB.find_many (Scope.libs scope) [Dune_file.Library.best_name lib]
+        Lib.DB.find_many ~loc (Scope.libs scope) [Dune_file.Library.best_name lib]
         >>= fun lib ->
         Result.List.map info.libraries ~f:(Lib.DB.resolve (Scope.libs scope))
         >>= fun more_libs ->
@@ -238,7 +240,7 @@ include Sub_system.Register_end_point(
           ~flags:(Ocaml_flags.of_list ["-w"; "-24"]);
       in
       Exe.build_and_link cctx
-        ~program:{ name; main_module_name }
+        ~program:{ name; main_module_name ; loc }
         ~linkages:[Exe.Linkage.native_or_custom (SC.context sctx)]
         ~link_flags:(Build.return ["-linkall"]);
 

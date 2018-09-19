@@ -1,9 +1,11 @@
 (** Compilation and linking of executables *)
+open Stdune
 
 module Program : sig
   type t =
     { name             : string
     ; main_module_name : Module.Name.t
+    ; loc              : Loc.t
     }
 end
 
@@ -47,18 +49,6 @@ val build_and_link
 val build_and_link_many
   :  programs:Program.t list
   -> linkages:Linkage.t list
-  -> ?link_flags:(unit, string list) Build.t
-  -> ?js_of_ocaml:Dune_file.Js_of_ocaml.t
-  -> Compilation_context.t
-  -> unit
-
-(** {1 Low-level functions} *)
-
-(** Link a single executable *)
-val link_exe
-  :  name:string
-  -> linkage:Linkage.t
-  -> top_sorted_modules:(unit, Module.t list) Build.t
   -> ?link_flags:(unit, string list) Build.t
   -> ?js_of_ocaml:Dune_file.Js_of_ocaml.t
   -> Compilation_context.t

@@ -12,7 +12,7 @@ let rec cut_after_libs ~pkg_name before = function
 
 let findlib_dynload = Lib_name.of_string_exn ~loc:None "findlib.dynload"
 
-let libraries_link ~name ~mode cctx libs =
+let libraries_link ~name ~loc ~mode cctx libs =
   let sctx       = CC.super_context cctx in
   let ctx        = SC.context       sctx in
   let obj_dir    = CC.obj_dir       cctx in
@@ -49,7 +49,8 @@ let libraries_link ~name ~mode cctx libs =
         ~dir_kind:(dir_kind cctx)
         ~obj_dir:(obj_dir cctx)
         ~modules:(Module.Name.Map.singleton name module_)
-        ~requires:(Lib.DB.find_many (SC.public_libs sctx) [Lib_name.of_string_exn ~loc:None "findlib"])
+        ~requires:(Lib.DB.find_many ~loc (SC.public_libs sctx)
+                     [Lib_name.of_string_exn ~loc:(Some loc) "findlib"])
         ~flags:Ocaml_flags.empty
         ~opaque:true
         ())

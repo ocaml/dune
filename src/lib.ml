@@ -928,8 +928,8 @@ module DB = struct
                       ; reason
                       }))
 
-  let find_many t =
-    Result.List.map ~f:(fun name -> resolve t (Loc.none, name))
+  let find_many t ~loc =
+    Result.List.map ~f:(fun name -> resolve t (loc, name))
 
   let available t name = available_internal t name ~stack:Dep_stack.empty
 

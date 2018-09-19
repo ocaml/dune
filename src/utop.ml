@@ -63,10 +63,12 @@ let setup sctx ~dir ~(libs : Library.t list) ~scope =
                  }
            ~obj_name:exe_name)
     in
+    let loc = Loc.in_dir (Path.to_string dir) in
     let requires =
       let open Result.O in
       Lib.DB.find_many (Scope.libs scope)
-        (Lib_name.of_string_exn ~loc:None "utop"
+        ~loc
+        (Lib_name.of_string_exn ~loc:(Some loc) "utop"
          :: List.map libs ~f:Library.best_name)
       >>= Lib.closure
     in
@@ -83,7 +85,7 @@ let setup sctx ~dir ~(libs : Library.t list) ~scope =
                   ["-w"; "-24"])
     in
     Exe.build_and_link cctx
-      ~program:{ name = exe_name ; main_module_name }
+      ~program:{ name = exe_name ; main_module_name ; loc }
       ~linkages:[Exe.Linkage.custom]
       ~link_flags:(Build.return ["-linkall"; "-warn-error"; "-31"]);
     add_module_rules sctx ~dir:utop_exe_dir requires

@@ -15,6 +15,41 @@ module Gen(P : Params) = struct
 
   let ctx = Super_context.context sctx
 
+  let gen_dune_package ~version ~(pkg : Local_package.t) =
+    let dune_package_file = Local_package.dune_package_file pkg in
+    let name = Local_package.name pkg in
+    version >>^ (fun version ->
+      let dune_version = Syntax.greatest_supported_version Stanza.syntax in
+      let dune_package =
+        let libs =
+          let pkg_root =
+            Config.local_install_lib_dir ~context:ctx.name ~package:name
+          in
+          let lib_root lib =
+            let (_, subdir) = Lib_name.split (Lib.name lib) in
+            Path.L.relative pkg_root subdir
+          in
+          Local_package.libs pkg
+          |> Lib.Set.to_list
+          |> List.map ~f:(fun lib ->
+            let lib_root = lib_root lib in
+            let map_paths p = Path.relative lib_root (Path.basename p) in
+            Lib.to_dune_lib ~root:pkg_root ~map_paths lib)
+        in
+        { Dune_package.
+          version
+        ; name
+        ; libs
+        }
+        |> Dune_package.gen ~dune_version
+      in
+      Format.asprintf "%a@."
+        (Fmt.list ~pp_sep:Fmt.nl
+           (Dune_lang.pp (Stanza.File_kind.of_syntax dune_version)))
+        dune_package)
+    >>> Build.write_file_dyn dune_package_file
+    |> Super_context.add_rule sctx ~dir:ctx.build_dir
+
   let version_from_dune_project (pkg : Package.t) =
     let dir = Path.append (SC.build_dir sctx) pkg.path in
     let project = Scope.project (SC.find_scope_by_dir sctx dir) in
@@ -57,14 +92,16 @@ module Gen(P : Params) = struct
     let path = Local_package.build_dir pkg in
     let pkg_name = Local_package.name pkg in
     let meta = Local_package.meta_file pkg in
-    let pkg = Local_package.package pkg in
     SC.on_load_dir sctx ~dir:path ~f:(fun () ->
       let meta_template = Path.extend_basename meta ~suffix:".template" in
 
       let version =
+        let pkg = Local_package.package pkg in
         let get = pkg_version ~pkg path in
         Super_context.Pkg_version.set sctx pkg get
       in
+
+      gen_dune_package ~version:(Build.return None) ~pkg;
 
       let template =
         Build.if_file_exists meta_template
@@ -186,12 +223,6 @@ module Gen(P : Params) = struct
       ; List.map (Lib_archives.files archives) ~f:(make_entry Lib)
       ; List.map execs ~f:(make_entry Libexec)
       ; List.map (Lib_archives.dlls archives) ~f:(Install.Entry.make Stublibs)
-      ; [ Library.best_name lib
-          |> Lib.DB.find_even_when_hidden (Scope.libs scope)
-          |> Option.value_exn
-          |> Lib.dune_file
-          |> make_entry Lib
-        ]
       ]
 
   let local_install_rules (entries : Install.Entry.t list)
@@ -215,6 +246,7 @@ module Gen(P : Params) = struct
   let install_file (package : Local_package.t) entries =
     let opam = Local_package.opam_file package in
     let meta = Local_package.meta_file package in
+    let dune_package = Local_package.dune_package_file package in
     let package_name = Local_package.name package in
     let pkg_build_dir = Local_package.build_dir package in
     let install_paths = Local_package.install_paths package in
@@ -226,6 +258,7 @@ module Gen(P : Params) = struct
       local_install_rules ~package:package_name ~install_paths (
         Install.Entry.make Lib opam ~dst:"opam"
         :: Install.Entry.make Lib meta ~dst:"META"
+        :: Install.Entry.make Lib dune_package ~dst:"dune-package"
         :: docs)
       |> List.rev_append entries
     in

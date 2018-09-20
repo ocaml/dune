@@ -128,6 +128,9 @@ let opam_file t = Path.append t.ctx_build_dir (Package.opam_file t.pkg)
 let meta_file t = Path.append t.ctx_build_dir (Package.meta_file t.pkg)
 let build_dir t = Path.append t.ctx_build_dir t.pkg.path
 let name t = t.pkg.name
+let dune_package_file t =
+  Path.relative (build_dir t)
+    (Package.Name.to_string (name t) ^ ".dune-package")
 
 let install_paths t =
   Install.Section.Paths.make ~package:t.pkg.name ~destdir:Path.root ()

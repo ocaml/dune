@@ -539,7 +539,6 @@ module Lib_deps = struct
   let of_pps pps =
     List.map pps ~f:(fun pp -> Lib_dep.of_lib_name (Loc.none, pp))
 
-
   let info t ~kind =
     List.concat_map t ~f:(function
       | Lib_dep.Direct (_, s) -> [(s, kind)]
@@ -781,20 +780,6 @@ module Mode_conf = struct
 end
 
 module Library = struct
-  module Kind = struct
-    type t =
-      | Normal
-      | Ppx_deriver
-      | Ppx_rewriter
-
-    let decode =
-      enum
-        [ "normal"       , Normal
-        ; "ppx_deriver"  , Ppx_deriver
-        ; "ppx_rewriter" , Ppx_rewriter
-        ]
-  end
-
   module Variants = struct
     let syntax =
       let syntax =
@@ -871,7 +856,7 @@ module Library = struct
     ; install_c_headers        : string list
     ; ppx_runtime_libraries    : (Loc.t * Lib_name.t) list
     ; modes                    : Mode_conf.Set.t
-    ; kind                     : Kind.t
+    ; kind                     : Dune_package.Lib.Kind.t
     ; c_flags                  : Ordered_set_lang.Unexpanded.t
     ; c_names                  : (Loc.t * string) list
     ; cxx_flags                : Ordered_set_lang.Unexpanded.t
@@ -914,7 +899,8 @@ module Library = struct
        and virtual_deps =
          field "virtual_deps" (list (located Lib_name.decode)) ~default:[]
        and modes = field "modes" Mode_conf.Set.decode ~default:Mode_conf.Set.default
-       and kind = field "kind" Kind.decode ~default:Kind.Normal
+       and kind = field "kind" Dune_package.Lib.Kind.decode
+                    ~default:Dune_package.Lib.Kind.Normal
        and wrapped = Wrapped.field
        and optional = field_b "optional"
        and self_build_stubs_archive =

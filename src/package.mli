@@ -13,7 +13,7 @@ module Name : sig
 
   include Interned.S with type t := t
 
-  val decode : t Dune_lang.Decoder.t
+  include Dune_lang.Conv with type t := t
 
   module Infix : Comparable.OPS with type t = t
 end

@@ -25,9 +25,17 @@
   backend_mbc1
 
   $ dune runtest dune-file
-  (dune
-   2
-   ((inline_tests.backend
+  (lang dune 1.6)
+  (name foo)
+  (library
+   (name foo)
+   (kind normal)
+   (archives (byte foo.cma) (native foo.cmxa))
+   (plugins (byte foo.cma) (native foo.cmxs))
+   (foreign_archives (native foo$ext_lib))
+   (main_module_name Foo)
+   (sub_systems
+    (inline_tests.backend
      1.0
      ((runner_libraries str)
       (flags

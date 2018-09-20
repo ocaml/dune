@@ -21,6 +21,8 @@ module Name = struct
 
   let decode = Dune_lang.Decoder.(map string ~f:of_string)
 
+  let encode t = Dune_lang.Encoder.(string (to_string t))
+
   module Infix = Comparable.Operators(T)
 end
 

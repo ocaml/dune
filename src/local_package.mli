@@ -23,6 +23,8 @@ val meta_file : t -> Path.t
 
 val opam_file : t -> Path.t
 
+val dune_package_file : t -> Path.t
+
 val name : t -> Package.Name.t
 
 val install_paths : t -> Install.Section.Paths.t

@@ -154,6 +154,10 @@ module Local : sig
   val extension : t -> string
   val is_suffix : t -> suffix:string -> bool
   val split_extension : t -> t * string
+
+  module L : sig
+    val relative : ?error_loc:Loc.t -> t -> string list -> t
+  end
   module Set : Set.S with type elt = t
 
   module Prefix : sig
@@ -226,6 +230,33 @@ end = struct
 
   let to_sexp t = Sexp.Encoder.string (to_string t)
 
+  module L = struct
+    let relative_result t components =
+      let rec loop t components =
+        match components with
+        | [] -> Result.Ok t
+        | "." :: rest -> loop t rest
+        | ".." :: rest ->
+          if is_root t then
+            Result.Error ()
+          else
+            loop (parent t) rest
+        | fn :: rest ->
+          if is_root t then
+            loop (make fn) rest
+          else
+            loop (make (to_string t ^ "/" ^ fn)) rest
+      in loop t components
+
+    let relative ?error_loc t components =
+      match relative_result t components with
+      | Result.Ok t -> t
+      | Error () ->
+        Exn.fatalf ?loc:error_loc "path outside the workspace: %s from %s"
+          (String.concat ~sep:"/" components)
+          (to_string t)
+  end
+
   let relative ?error_loc t path =
     if not (Filename.is_relative path) then (
       Exn.code_error "Local.relative: received absolute path"
@@ -233,25 +264,11 @@ end = struct
         ; "path", Sexp.Encoder.string path
         ]
     );
-    let rec loop t components =
-      match components with
-      | [] -> Result.Ok t
-      | "." :: rest -> loop t rest
-      | ".." :: rest ->
-        if is_root t then
-          Result.Error ()
-        else
-          loop (parent t) rest
-      | fn :: rest ->
-        if is_root t then
-          loop (make fn) rest
-        else
-          loop (make (to_string t ^ "/" ^ fn)) rest
-    in
-    match loop t (explode_path path) with
+    match L.relative_result t (explode_path path) with
     | Result.Ok t -> t
     | Error () ->
-      Exn.fatalf ?loc:error_loc "path outside the workspace: %s from %s" path
+      Exn.fatalf ?loc:error_loc "path outside the workspace: %s from %s"
+        path
         (to_string t)
 
   let is_canonicalized =

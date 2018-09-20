@@ -3,10 +3,18 @@ Reproduction case for #1549: too many parentheses in installed .dune files
   $ dune build --root backend
   Entering directory 'backend'
 
-  $ cat backend/_build/install/default/lib/dune_inline_tests/dune_inline_tests.dune
-  (dune
-   2
-   ((inline_tests.backend
+  $ cat backend/_build/install/default/lib/dune_inline_tests/dune-package
+  (lang dune 1.6)
+  (name dune_inline_tests)
+  (library
+   (name dune_inline_tests)
+   (kind normal)
+   (archives (byte simple_tests.cma) (native simple_tests.cmxa))
+   (plugins (byte simple_tests.cma) (native simple_tests.cmxs))
+   (foreign_archives (native simple_tests$ext_lib))
+   (main_module_name Simple_tests)
+   (sub_systems
+    (inline_tests.backend
      1.0
      ((flags :standard)
       (generate_runner

@@ -278,6 +278,7 @@ module Encoder = struct
   let triple fa fb fc (a, b, c) = List [fa a; fb b; fc c]
   let list f l = List (List.map l ~f)
   let array f a = list f (Array.to_list a)
+  let sexp x = x
   let option f = function
     | None -> List []
     | Some x -> List [f x]

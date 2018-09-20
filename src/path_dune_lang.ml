@@ -36,3 +36,15 @@ let decode =
     ; "In_source_tree", string    >>| Path.(relative root)
     ; "External"      , external_
     ]
+
+module Local = struct
+  let encode ~dir:from p =
+    let open Dune_lang.Encoder in
+    string (Path.reach ~from p)
+
+  let decode ~dir =
+    let open Dune_lang.Decoder in
+    let%map (error_loc, path) = located string
+    in
+    Path.relative ~error_loc dir path
+end

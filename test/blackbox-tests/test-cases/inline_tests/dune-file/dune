@@ -20,5 +20,4 @@
 
 (alias
  (name runtest)
- (deps foo.dune)
- (action (echo "%{read:foo.dune}")))
+ (action (echo %{read:foo.dune-package})))

@@ -195,13 +195,6 @@ module Mode_conf : sig
 end
 
 module Library : sig
-  module Kind : sig
-    type t =
-      | Normal
-      | Ppx_deriver
-      | Ppx_rewriter
-  end
-
   module Wrapped : sig
     type t =
       | Simple of bool
@@ -235,7 +228,7 @@ module Library : sig
     ; install_c_headers        : string list
     ; ppx_runtime_libraries    : (Loc.t * Lib_name.t) list
     ; modes                    : Mode_conf.Set.t
-    ; kind                     : Kind.t
+    ; kind                     : Dune_package.Lib.Kind.t
     ; c_flags                  : Ordered_set_lang.Unexpanded.t
     ; c_names                  : (Loc.t * string) list
     ; cxx_flags                : Ordered_set_lang.Unexpanded.t

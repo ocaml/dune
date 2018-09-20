@@ -4,8 +4,8 @@ ppx artifacts installed for rewriters
   Entering directory 'ppx'
   lib: [
     "_build/install/default/lib/foo/META" {"META"}
+    "_build/install/default/lib/foo/dune-package" {"dune-package"}
     "_build/install/default/lib/foo/opam" {"opam"}
-    "_build/install/default/lib/foo/ppx_rewriter_dune/foo.ppx_rewriter_dune.dune" {"ppx_rewriter_dune/foo.ppx_rewriter_dune.dune"}
     "_build/install/default/lib/foo/ppx_rewriter_dune/foo_ppx_rewriter_dune$ext_lib" {"ppx_rewriter_dune/foo_ppx_rewriter_dune$ext_lib"}
     "_build/install/default/lib/foo/ppx_rewriter_dune/foo_ppx_rewriter_dune.cma" {"ppx_rewriter_dune/foo_ppx_rewriter_dune.cma"}
     "_build/install/default/lib/foo/ppx_rewriter_dune/foo_ppx_rewriter_dune.cmi" {"ppx_rewriter_dune/foo_ppx_rewriter_dune.cmi"}
@@ -14,7 +14,6 @@ ppx artifacts installed for rewriters
     "_build/install/default/lib/foo/ppx_rewriter_dune/foo_ppx_rewriter_dune.cmxa" {"ppx_rewriter_dune/foo_ppx_rewriter_dune.cmxa"}
     "_build/install/default/lib/foo/ppx_rewriter_dune/foo_ppx_rewriter_dune.cmxs" {"ppx_rewriter_dune/foo_ppx_rewriter_dune.cmxs"}
     "_build/install/default/lib/foo/ppx_rewriter_dune/foo_ppx_rewriter_dune.ml" {"ppx_rewriter_dune/foo_ppx_rewriter_dune.ml"}
-    "_build/install/default/lib/foo/ppx_rewriter_jbuild/foo.ppx_rewriter_jbuild.dune" {"ppx_rewriter_jbuild/foo.ppx_rewriter_jbuild.dune"}
     "_build/install/default/lib/foo/ppx_rewriter_jbuild/foo_ppx_rewriter_jbuild$ext_lib" {"ppx_rewriter_jbuild/foo_ppx_rewriter_jbuild$ext_lib"}
     "_build/install/default/lib/foo/ppx_rewriter_jbuild/foo_ppx_rewriter_jbuild.cma" {"ppx_rewriter_jbuild/foo_ppx_rewriter_jbuild.cma"}
     "_build/install/default/lib/foo/ppx_rewriter_jbuild/foo_ppx_rewriter_jbuild.cmi" {"ppx_rewriter_jbuild/foo_ppx_rewriter_jbuild.cmi"}
@@ -36,6 +35,7 @@ stubs and js files installed
   lib: [
     "_build/install/default/lib/foo/META" {"META"}
     "_build/install/default/lib/foo/cfoo.h" {"cfoo.h"}
+    "_build/install/default/lib/foo/dune-package" {"dune-package"}
     "_build/install/default/lib/foo/foo$ext_lib" {"foo$ext_lib"}
     "_build/install/default/lib/foo/foo.cma" {"foo.cma"}
     "_build/install/default/lib/foo/foo.cmi" {"foo.cmi"}
@@ -43,7 +43,6 @@ stubs and js files installed
     "_build/install/default/lib/foo/foo.cmx" {"foo.cmx"}
     "_build/install/default/lib/foo/foo.cmxa" {"foo.cmxa"}
     "_build/install/default/lib/foo/foo.cmxs" {"foo.cmxs"}
-    "_build/install/default/lib/foo/foo.dune" {"foo.dune"}
     "_build/install/default/lib/foo/foo.js" {"foo.js"}
     "_build/install/default/lib/foo/foo.ml" {"foo.ml"}
     "_build/install/default/lib/foo/libfoo_stubs$ext_lib" {"libfoo_stubs$ext_lib"}
@@ -59,6 +58,7 @@ install stanza is respected
   Entering directory 'install-stanza'
   lib: [
     "_build/install/default/lib/foo/META" {"META"}
+    "_build/install/default/lib/foo/dune-package" {"dune-package"}
     "_build/install/default/lib/foo/opam" {"opam"}
   ]
   share: [
@@ -72,6 +72,7 @@ public exes are installed
   Entering directory 'exe'
   lib: [
     "_build/install/default/lib/foo/META" {"META"}
+    "_build/install/default/lib/foo/dune-package" {"dune-package"}
     "_build/install/default/lib/foo/opam" {"opam"}
   ]
   bin: [
@@ -84,6 +85,7 @@ mld files are installed
   Entering directory 'mld'
   lib: [
     "_build/install/default/lib/foo/META" {"META"}
+    "_build/install/default/lib/foo/dune-package" {"dune-package"}
     "_build/install/default/lib/foo/opam" {"opam"}
   ]
   doc: [
@@ -96,6 +98,7 @@ unwrapped libraries have the correct artifacts
   Entering directory 'lib-unwrapped'
   lib: [
     "_build/install/default/lib/foo/META" {"META"}
+    "_build/install/default/lib/foo/dune-package" {"dune-package"}
     "_build/install/default/lib/foo/foo$ext_lib" {"foo$ext_lib"}
     "_build/install/default/lib/foo/foo.cma" {"foo.cma"}
     "_build/install/default/lib/foo/foo.cmi" {"foo.cmi"}
@@ -104,7 +107,6 @@ unwrapped libraries have the correct artifacts
     "_build/install/default/lib/foo/foo.cmx" {"foo.cmx"}
     "_build/install/default/lib/foo/foo.cmxa" {"foo.cmxa"}
     "_build/install/default/lib/foo/foo.cmxs" {"foo.cmxs"}
-    "_build/install/default/lib/foo/foo.dune" {"foo.dune"}
     "_build/install/default/lib/foo/foo.ml" {"foo.ml"}
     "_build/install/default/lib/foo/foo.mli" {"foo.mli"}
     "_build/install/default/lib/foo/opam" {"opam"}
@@ -118,6 +120,7 @@ wrapped lib with lib interface module
     "_build/install/default/lib/foo/META" {"META"}
     "_build/install/default/lib/foo/bar.ml" {"bar.ml"}
     "_build/install/default/lib/foo/bar.mli" {"bar.mli"}
+    "_build/install/default/lib/foo/dune-package" {"dune-package"}
     "_build/install/default/lib/foo/foo$ext_lib" {"foo$ext_lib"}
     "_build/install/default/lib/foo/foo.cma" {"foo.cma"}
     "_build/install/default/lib/foo/foo.cmi" {"foo.cmi"}
@@ -125,7 +128,6 @@ wrapped lib with lib interface module
     "_build/install/default/lib/foo/foo.cmx" {"foo.cmx"}
     "_build/install/default/lib/foo/foo.cmxa" {"foo.cmxa"}
     "_build/install/default/lib/foo/foo.cmxs" {"foo.cmxs"}
-    "_build/install/default/lib/foo/foo.dune" {"foo.dune"}
     "_build/install/default/lib/foo/foo.ml" {"foo.ml"}
     "_build/install/default/lib/foo/foo__.cmi" {"foo__.cmi"}
     "_build/install/default/lib/foo/foo__.cmt" {"foo__.cmt"}
@@ -146,6 +148,7 @@ wrapped lib without lib interface module
     "_build/install/default/lib/foo/META" {"META"}
     "_build/install/default/lib/foo/bar.ml" {"bar.ml"}
     "_build/install/default/lib/foo/bar.mli" {"bar.mli"}
+    "_build/install/default/lib/foo/dune-package" {"dune-package"}
     "_build/install/default/lib/foo/foo$ext_lib" {"foo$ext_lib"}
     "_build/install/default/lib/foo/foo.cma" {"foo.cma"}
     "_build/install/default/lib/foo/foo.cmi" {"foo.cmi"}
@@ -153,7 +156,6 @@ wrapped lib without lib interface module
     "_build/install/default/lib/foo/foo.cmx" {"foo.cmx"}
     "_build/install/default/lib/foo/foo.cmxa" {"foo.cmxa"}
     "_build/install/default/lib/foo/foo.cmxs" {"foo.cmxs"}
-    "_build/install/default/lib/foo/foo.dune" {"foo.dune"}
     "_build/install/default/lib/foo/foo.ml" {"foo.ml"}
     "_build/install/default/lib/foo/foo__Bar.cmi" {"foo__Bar.cmi"}
     "_build/install/default/lib/foo/foo__Bar.cmt" {"foo__Bar.cmt"}

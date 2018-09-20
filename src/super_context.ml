@@ -153,10 +153,6 @@ let expand_vars_string t ~scope ~dir ?bindings s =
   expand_vars t ~mode:Single ~scope ~dir ?bindings s
   |> Value.to_string ~dir
 
-let expand_vars_string_list t ~scope ~dir ?bindings s =
-  expand_vars t ~mode:Many ~scope ~dir ?bindings s
-  |> List.map ~f:(Value.to_string ~dir)
-
 let expand_vars_path t ~scope ~dir ?bindings s =
   expand_vars t ~mode:Single ~scope ~dir ?bindings s
   |> Value.to_path ~error_loc:(String_with_vars.loc s) ~dir

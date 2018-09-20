@@ -21,17 +21,26 @@ let user_rule sctx ?extra_bindings ~dir ~scope (rule : Rule.t) =
     | Infer -> Infer
     | Static fns ->
       let f fn =
-        let loc = String_with_vars.loc fn in
+        let not_in_dir ~error_loc s =
+          Errors.fail
+            error_loc
+            "%s does not denote a file in the current directory" s;
+        in
+        let error_loc = String_with_vars.loc fn in
         List.map ~f:(function
-          | "." | ".." ->
-            Errors.fail loc "'.' and '..' are not valid filenames"
-          | fn ->
-            if Filename.dirname fn <> Filename.current_dir_name then
-              Errors.fail
-                loc
-                "%s does not denote a file in the current directory" fn;
-            Path.relative ~error_loc:loc dir fn
-        ) (SC.expand_vars_string_list sctx ~scope ~dir fn)
+          | Value.String ("." | "..") ->
+            Errors.fail error_loc "'.' and '..' are not valid filenames"
+          | String s ->
+            if Filename.dirname s <> Filename.current_dir_name then
+              not_in_dir ~error_loc s;
+            Path.relative ~error_loc dir s
+          | Path p ->
+            if Path.parent p <> Some dir then
+              not_in_dir ~error_loc (Path.to_string p);
+            p
+          | Dir p ->
+            not_in_dir ~error_loc (Path.to_string p)
+        ) (SC.expand_vars sctx ~mode:Many ~scope ~dir fn)
       in
       Static (List.concat_map ~f fns)
   in

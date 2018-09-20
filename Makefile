@@ -1,4 +1,6 @@
-INSTALL_ARGS := $(if $(PREFIX),--prefix $(PREFIX),)
+PREFIX_ARG := $(if $(PREFIX),--prefix $(PREFIX),)
+LIBDIR_ARG := $(if $(LIBDIR),--libdir $(LIBDIR),)
+INSTALL_ARGS := $(PREFIX_ARG) $(LIBDIR_ARG)
 BIN := ./_build/default/bin/main_dune.exe
 
 -include Makefile.dev

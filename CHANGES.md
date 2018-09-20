@@ -13,6 +13,9 @@ next
 
 - Make `dune rules -m` output a valid makefile (#1293, @diml)
 
+- Fix a race condition on Windows that was introduced in 1.2.0
+  (#1304, fix #1303, @diml)
+
 1.2.1 (17/09/2018)
 ------------------
 

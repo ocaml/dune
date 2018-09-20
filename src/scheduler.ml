@@ -8,9 +8,8 @@ type status_line_config =
   }
 
 type running_job =
-  { pid      : int
-  ; build_id : int
-  ; ivar     : Unix.process_status Fiber.Ivar.t
+  { pid  : int
+  ; ivar : Unix.process_status Fiber.Ivar.t
   }
 
 module Watch : sig
@@ -180,6 +179,8 @@ module Running_jobs : sig
   (** Removes a process previously returned via channel from the table. *)
   val resolve_and_remove_job : int -> running_job
 
+  (** Send the following signal to all running jobs *)
+  val killall : int -> unit
 end = struct
   let all = Hashtbl.create 128
 
@@ -255,6 +256,9 @@ end = struct
     wait_to_chan chan
 
   let count () = Hashtbl.length all
+
+  let killall signal =
+    Hashtbl.iter all ~f:(fun ~key:pid ~data:_ -> Unix.kill pid signal)
 end
 
 type t =
@@ -262,16 +266,10 @@ type t =
   ; original_cwd               : string
   ; display                    : Config.Display.t
   ; mutable concurrency        : int
-  ; waiting_for_available_job  : waiting_job Queue.t
+  ; waiting_for_available_job  : t Fiber.Ivar.t Queue.t
   ; mutable status_line        : string
   ; mutable gen_status_line    : unit -> status_line_config
-  ; mutable cur_build_id       : int
   ; mutable cur_build_canceled : bool
-  }
-
-and waiting_job =
-  { build_id : int
-  ; ivar     : t Fiber.Ivar.t
   }
 
 let log t = t.log
@@ -333,14 +331,13 @@ let wait_for_available_job () =
     Fiber.return t
   else begin
     let ivar = Fiber.Ivar.create () in
-    Queue.push { ivar; build_id = t.cur_build_id } t.waiting_for_available_job;
+    Queue.push ivar t.waiting_for_available_job;
     Fiber.Ivar.read ivar
   end
 
 let wait_for_process pid =
-  Fiber.Var.get_exn t_var >>= fun t ->
   let ivar = Fiber.Ivar.create () in
-  Running_jobs.add { pid; build_id = t.cur_build_id; ivar };
+  Running_jobs.add { pid; ivar };
   Fiber.Ivar.read ivar
 
 let rec restart_waiting_for_available_job t =
@@ -348,13 +345,8 @@ let rec restart_waiting_for_available_job t =
      Running_jobs.count () >= t.concurrency then
     Fiber.return ()
   else begin
-    let { build_id; ivar } = Queue.pop t.waiting_for_available_job in
-    begin
-      if build_id = t.cur_build_id then
-        Fiber.Ivar.fill ivar t
-      else
-        Fiber.return ()
-    end
+    let ivar = Queue.pop t.waiting_for_available_job in
+    Fiber.Ivar.fill ivar t
     >>= fun () ->
     restart_waiting_for_available_job t
   end
@@ -398,12 +390,7 @@ let go_rec t =
         match Event.sync (recv ()) with
         | Job_completed (pid, status) ->
           let job = Running_jobs.resolve_and_remove_job pid in
-          begin
-            if job.build_id = t.cur_build_id then
-              Fiber.Ivar.fill job.ivar status
-            else
-              Fiber.return ()
-          end
+          Fiber.Ivar.fill job.ivar status
           >>= fun () ->
           restart_waiting_for_available_job t
           >>= fun () ->
@@ -457,7 +444,6 @@ let prepare ?(log=Log.no_log) ?(config=Config.default)
     ; concurrency  = (match config.concurrency with Auto -> 1 | Fixed n -> n)
     ; status_line  = ""
     ; waiting_for_available_job = Queue.create ()
-    ; cur_build_id = 0
     ; cur_build_canceled = false
     }
   in
@@ -482,7 +468,6 @@ let poll ?log ?config ~once ~finally ~canceled () =
   let watch_chan = Lazy.force watch_channel in
   let t = prepare ?log ?config () in
   let once () =
-    t.cur_build_id <- t.cur_build_id + 1;
     t.cur_build_canceled <- false;
     once ()
   in
@@ -531,6 +516,18 @@ let poll ?log ?config ~once ~finally ~canceled () =
       main_loop ()
     end
     else begin
+      set_status_line_generator
+        (fun () ->
+           { message = Some "Had errors.\nKilling current build..."
+           ; show_jobs = false
+           })
+      >>= fun () ->
+      Queue.clear t.waiting_for_available_job;
+      Running_jobs.killall Sys.sigkill;
+      while Running_jobs.count () > 0 do
+        let pid, _ = Event.sync (Event.receive (Lazy.force job_channel)) in
+        ignore (Running_jobs.resolve_and_remove_job pid : running_job);
+      done;
       canceled ();
       main_loop ()
     end

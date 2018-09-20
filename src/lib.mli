@@ -70,8 +70,6 @@ module L : sig
   val archive_files : t -> mode:Mode.t -> Path.t list
 
   val jsoo_runtime_files : t -> Path.t list
-
-  val remove_dups : t -> t
 end
 
 (** Operation on list of libraries and modules *)

@@ -3,7 +3,7 @@
 module Type : sig
   type windows = Windows
   type unix = Unix
-  type 'a t =
+  type 'a t = private
     | Windows : windows t
     | Unix : unix t
 end

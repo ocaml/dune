@@ -96,6 +96,14 @@ val expand_vars_string
   -> String_with_vars.t
   -> string
 
+val expand_vars_string_list
+  : t
+  -> scope:Scope.t
+  -> dir:Path.t
+  -> ?bindings:Pform.Map.t
+  -> String_with_vars.t
+  -> string list
+
 val expand_vars_path
   :  t
   -> scope:Scope.t

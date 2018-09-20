@@ -22,17 +22,18 @@ let user_rule sctx ?extra_bindings ~dir ~scope (rule : Rule.t) =
     | Static fns ->
       let f fn =
         let loc = String_with_vars.loc fn in
-        match SC.expand_vars_string sctx ~scope ~dir fn with
-        | "." | ".." ->
-          Errors.fail loc "'.' and '..' are not valid filenames"
-        | fn ->
-          if Filename.dirname fn <> Filename.current_dir_name then
-            Errors.fail
-              loc
-              "%s does not denote a file in the current directory" fn;
-          Path.relative ~error_loc:loc dir fn
+        List.map ~f:(function
+          | "." | ".." ->
+            Errors.fail loc "'.' and '..' are not valid filenames"
+          | fn ->
+            if Filename.dirname fn <> Filename.current_dir_name then
+              Errors.fail
+                loc
+                "%s does not denote a file in the current directory" fn;
+            Path.relative ~error_loc:loc dir fn
+        ) (SC.expand_vars_string_list sctx ~scope ~dir fn)
       in
-      Static (List.map fns ~f)
+      Static (List.concat_map ~f fns)
   in
   let bindings = dep_bindings ~extra_bindings rule.deps in
   SC.add_rule_get_targets sctx ~mode:rule.mode ~loc:rule.loc

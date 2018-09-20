@@ -1374,6 +1374,7 @@ module Rule = struct
 
   type t =
     { id      : Id.t
+    ; dir     : Path.t
     ; deps    : Deps.t
     ; targets : Path.Set.t
     ; context : Context.t option
@@ -1431,6 +1432,7 @@ let build_rules_internal ?(recursive=false) t ~request =
         in
         { Rule.
           id      = ir.id
+        ; dir     = ir.dir
         ; deps    = Deps.union action_deps dyn_deps
         ; targets = ir.targets
         ; context = ir.context

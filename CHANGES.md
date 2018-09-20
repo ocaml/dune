@@ -11,6 +11,8 @@ next
 
 - Fix findlib-dynload support with byte mode only (#1295, @bobot)
 
+- Make `dune rules -m` output a valid makefile (#1293, @diml)
+
 1.2.1 (17/09/2018)
 ------------------
 

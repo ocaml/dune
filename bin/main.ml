@@ -387,14 +387,23 @@ let rules =
          Format.pp_open_vbox ppf 0;
          if makefile_syntax then begin
            List.iter rules ~f:(fun (rule : Build_system.Rule.t) ->
-             Format.fprintf ppf "@[<hov 2>@{<makefile-stuff>%a:%t@}@]@,@<0>\t@{<makefile-action>%a@}@,@,"
+             let action =
+               Action.For_shell.Progn
+                 [ Mkdir (Path.to_string rule.dir)
+                 ; Action.for_shell rule.action
+                 ]
+             in
+             Format.fprintf ppf
+               "@[<hov 2>@{<makefile-stuff>%a:%t@}@]@,\
+                @<0>\t@{<makefile-action>%a@}@,@,"
                (Format.pp_print_list ~pp_sep:Format.pp_print_space (fun ppf p ->
                   Format.pp_print_string ppf (Path.to_string p)))
                (Path.Set.to_list rule.targets)
                (fun ppf ->
                   Path.Set.iter (Deps.paths rule.deps) ~f:(fun dep ->
                     Format.fprintf ppf "@ %s" (Path.to_string dep)))
-               Dsexp.pp_split_strings (sexp_of_action rule.action))
+               Pp.pp
+               (Action_to_sh.pp action))
          end else begin
            List.iter rules ~f:(fun (rule : Build_system.Rule.t) ->
              let sexp =

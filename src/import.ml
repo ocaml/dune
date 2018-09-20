@@ -51,7 +51,7 @@ let need_quoting s =
       false
     else
       match s.[i] with
-      | ' ' | '\"' -> true
+      | ' ' | '\"' | '(' | ')' | '{' | '}' | ';' | '#' -> true
       | _ -> loop (i + 1)
   in
   loop 0

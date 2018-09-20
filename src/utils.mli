@@ -58,6 +58,9 @@ val install_file
   -> findlib_toolchain:string option
   -> string
 
+(** Produce a line directive *)
+val line_directive : filename:string -> line_number:int -> string
+
 module type Persistent_desc = sig
   type t
   val name : string

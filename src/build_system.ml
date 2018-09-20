@@ -754,7 +754,7 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
          >>| fun () ->
          (action, dyn_deps))
     >>= fun (action, dyn_deps) ->
-    make_local_parent_dirs t targets ~map_path:(fun x -> x);
+    make_local_dir t dir;
     let all_deps = Deps.union static_deps dyn_deps in
     let targets_as_list  = Path.Set.to_list targets  in
     let env =
@@ -807,7 +807,7 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
             Path.rm_rf sandbox_dir;
             let sandboxed path = Path.sandbox_managed_paths ~sandbox_dir path in
             make_local_parent_dirs t (Deps.paths all_deps) ~map_path:sandboxed;
-            make_local_parent_dirs t targets  ~map_path:sandboxed;
+            make_local_dir t (sandboxed dir);
             Action.sandbox action
               ~sandboxed
               ~deps:all_deps

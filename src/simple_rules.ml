@@ -94,7 +94,7 @@ let copy_files sctx ~dir ~scope ~src_dir (def: Copy_files.t) =
   List.map files ~f:(fun basename ->
     let file_src = Path.relative src_in_build basename in
     let file_dst = Path.relative dir basename in
-    SC.add_rule sctx
+    SC.add_rule sctx ~loc
       ((if def.add_line_directive
         then Build.copy_and_add_line_directive
         else Build.copy)

@@ -112,6 +112,7 @@ module Linkage = struct
 end
 
 let link_exe
+      ~loc
       ~name
       ~(linkage:Linkage.t)
       ~top_sorted_modules
@@ -149,7 +150,7 @@ let link_exe
     Lazy.force (Mode.Dict.get arg_spec_for_requires mode)
   in
   (* The rule *)
-  SC.add_rule sctx
+  SC.add_rule sctx ~loc
     (Build.fanout3
        (register_native_objs_deps modules_and_cm_files >>^ snd)
        (Ocaml_flags.get (CC.flags cctx) mode)
@@ -206,6 +207,7 @@ let build_and_link_many
     in
     List.iter linkages ~f:(fun linkage ->
       link_exe cctx
+        ~loc
         ~name
         ~linkage
         ~top_sorted_modules

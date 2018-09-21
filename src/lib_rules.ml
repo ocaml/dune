@@ -65,7 +65,7 @@ module Gen (P : Install_rules.Params) = struct
           obj_deps >>>
           Build.paths (artifacts modules ~ext:ctx.ext_obj)
       in
-      SC.add_rule sctx
+      SC.add_rule sctx ~loc:lib.buildable.loc
         (obj_deps
          >>>
          Build.fanout4
@@ -160,8 +160,8 @@ module Gen (P : Install_rules.Params) = struct
     let cctx = Compilation_context.for_wrapped_compat cctx wrapped_compat in
     Module_compilation.build_modules cctx ~js_of_ocaml ~dynlink ~dep_graphs
 
-  let build_c_file (lib : Library.t) ~scope ~dir ~includes (src, dst) =
-    SC.add_rule sctx
+  let build_c_file (lib : Library.t) ~scope ~dir ~includes (loc, src, dst) =
+    SC.add_rule sctx ~loc
       (SC.expand_and_eval_set sctx ~scope ~dir lib.c_flags
          ~standard:(Build.return (Context.cc_g ctx))
        >>>
@@ -178,7 +178,7 @@ module Gen (P : Install_rules.Params) = struct
          ]);
     dst
 
-  let build_cxx_file (lib : Library.t) ~scope ~dir ~includes (src, dst) =
+  let build_cxx_file (lib : Library.t) ~scope ~dir ~includes (loc, src, dst) =
     let open Arg_spec in
     let output_param =
       if ctx.ccomp_type = "msvc" then
@@ -186,7 +186,7 @@ module Gen (P : Install_rules.Params) = struct
       else
         [A "-o"; Target dst]
     in
-    SC.add_rule sctx
+    SC.add_rule sctx ~loc
       (SC.expand_and_eval_set sctx ~scope ~dir lib.cxx_flags
          ~standard:(Build.return (Context.cc_g ctx))
        >>>
@@ -207,6 +207,7 @@ module Gen (P : Install_rules.Params) = struct
   let ocamlmklib (lib : Library.t) ~dir ~scope ~o_files ~sandbox ~custom
         ~targets =
     SC.add_rule sctx ~sandbox
+      ~loc:lib.buildable.loc
       (SC.expand_and_eval_set sctx ~scope ~dir
          lib.c_library_flags ~standard:(Build.return [])
        >>>
@@ -272,7 +273,7 @@ module Gen (P : Install_rules.Params) = struct
            This is not allowed."
           Path.pp (Path.drop_optional_build_context p)
       ;
-      (p, Path.relative dir (fn ^ ctx.ext_obj))
+      (loc, p, Path.relative dir (fn ^ ctx.ext_obj))
     in
     let includes =
       Arg_spec.S

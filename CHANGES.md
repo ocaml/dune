@@ -13,6 +13,8 @@ next
 
 - Make `dune rules -m` output a valid makefile (#1293, @diml)
 
+- Expand variables in `(targets ..)` field (#1301, fix #1189, @nojb)
+
 1.2.1 (17/09/2018)
 ------------------
 

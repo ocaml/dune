@@ -11,6 +11,8 @@ next
 
 - Fix findlib-dynload support with byte mode only (#1295, @bobot)
 
+- Expand variables in `(targets ..)` field (#1301, fix #1189, @nojb)
+
 1.2.1 (17/09/2018)
 ------------------
 

@@ -20,55 +20,29 @@ module Event : sig
   (** Ignore the ne next file change event about this file. *)
   val ignore_next_file_change_event : Path.t -> unit
 
-  (** Register a job that has just started *)
-  val register_job : job -> unit
+  (** Register the fact that a job was started. *)
+  val register_job_started : unit -> unit
 
-  (** Number of jobs for which the status hasn't been reported yet *)
+  (** Number of jobs for which the status hasn't been reported yet .*)
   val pending_jobs : unit -> int
 
-  (** Must be called from another thread than the main one. *)
+  (** Send an event to the main thread. *)
   val send_files_changed : Path.t list -> unit
-  type 'a process =
-    | Job : job -> OS.Type.windows process
-    | Pid : int -> OS.Type.unix process
-  val send_process_completed : OS.t process -> Unix.process_status -> unit
+  val send_job_completed : job -> Unix.process_status -> unit
 end = struct
   type t =
     | Files_changed
     | Job_completed of job * Unix.process_status
 
-  type 'a process =
-    | Job : job -> OS.Type.windows process
-    | Pid : int -> OS.Type.unix process
-
-  let processes_completed : (OS.t process * Unix.process_status) Queue.t =
-    Queue.create ()
+  let jobs_completed = Queue.create ()
   let files_changed = ref []
   let mutex = Mutex.create ()
   let cond = Condition.create ()
 
   let ignored_files = String.Table.create 64
-  type _ jobs =
-    | Windows : int ref -> OS.Type.windows jobs
-    | Unix : (int, job) Hashtbl.t -> OS.Type.unix jobs
-  let jobs =
-    let f : type t. t OS.Type.t -> t jobs = function
-      | OS.Type.Windows -> Windows (ref 0)
-      | OS.Type.Unix -> Unix (Hashtbl.create 128)
-    in
-    f OS.t
+  let pending_jobs = ref 0
 
-  let register_job job =
-    match jobs with
-    | Windows n -> incr n
-    | Unix tbl ->
-      assert (not (Hashtbl.mem tbl job.pid));
-      Hashtbl.add tbl job.pid job
-
-  let pending_jobs () =
-    match jobs with
-    | Windows n -> !n
-    | Unix tbl -> Hashtbl.length tbl
+  let register_job_started () = incr pending_jobs
 
   let ignore_next_file_change_event path =
     assert (Path.is_in_source_tree path);
@@ -78,29 +52,7 @@ end = struct
       ~data:()
 
   let available () =
-    not (List.is_empty !files_changed && Queue.is_empty processes_completed)
-
-  let event_of_process : type a. a jobs -> a process -> Unix.process_status -> t
-    = fun jobs process status ->
-      let job =
-        match jobs, process with
-        | Windows n, Job job ->
-          decr n;
-          job
-        | Unix tbl, Pid pid ->
-          match Hashtbl.find tbl pid with
-          | Some job ->
-            Hashtbl.remove tbl pid;
-            job
-          | None ->
-            Mutex.unlock mutex;
-            die "File watcher died: %s"
-              (match status with
-               | WEXITED n -> sprintf "exited with code %d" n
-               | WSIGNALED n -> sprintf "got signal %s" (Utils.signal_name n)
-               | WSTOPPED _ -> assert false)
-      in
-      Job_completed (job, status)
+    not (List.is_empty !files_changed && Queue.is_empty jobs_completed)
 
   let next () =
     Mutex.lock mutex;
@@ -108,8 +60,9 @@ end = struct
       if not (available ()) then Condition.wait cond mutex;
       match !files_changed with
       | [] ->
-        let (process, status) = Queue.pop processes_completed in
-        event_of_process jobs process status
+        let (job, status) = Queue.pop jobs_completed in
+        decr pending_jobs;
+        Job_completed (job, status)
       | fns ->
         files_changed := [];
         let only_ignored_files =
@@ -138,12 +91,14 @@ end = struct
     if not avail then Condition.signal cond;
     Mutex.unlock mutex
 
-  let send_process_completed process status =
+  let send_job_completed job status =
     Mutex.lock mutex;
     let avail = available () in
-    Queue.push (process, status) processes_completed;
+    Queue.push (job, status) jobs_completed;
     if not avail then Condition.signal cond;
     Mutex.unlock mutex
+
+  let pending_jobs () = !pending_jobs
 end
 
 let ignore_for_watch = Event.ignore_next_file_change_event
@@ -283,10 +238,10 @@ module Process_watcher : sig
   (** Initialize the process watcher thread. *)
   val init : unit -> unit
 
-  (** Register a new running job *)
+  (** Register a new running job. *)
   val register_job : job -> unit
 
-  (** Send the following signal to all running processes *)
+  (** Send the following signal to all running processes. *)
   val killall : int -> unit
 end = struct
   let mutex = Mutex.create ()
@@ -294,18 +249,13 @@ end = struct
 
   module Process_table : sig
     val add : job -> unit
-    val remove : pid:int -> unit
+    val remove : pid:int -> Unix.process_status -> unit
     val running_count : unit -> int
     val iter : f:(job -> unit) -> unit
   end = struct
     type process_state =
       | Running of job
-      | Terminated_before_being_registered
-      (* On Unix, [Unix.wait] returns any child that has terminated. In
-         particular, it might return a pid that has not yet been added
-         to [jobs]. We must record when this happens so that we know not
-         to add the pid to [jobs], otherwise the state would be
-         inconsistent and we could get a dead lock. *)
+      | Zombie of Unix.process_status
 
     let table = Hashtbl.create 128
     let running_count = ref 0
@@ -314,7 +264,7 @@ end = struct
       Hashtbl.fold table ~init:0 ~f:(fun data acc ->
         match data with
         | Running _ -> acc + 1
-        | Terminated_before_being_registered -> acc)
+        | Zombie _ -> acc)
       = !running_count
 
     let add job =
@@ -323,32 +273,34 @@ end = struct
         Hashtbl.add table job.pid (Running job);
         incr running_count;
         if !running_count = 1 then Condition.signal something_is_running_cv
-      | Some Terminated_before_being_registered ->
-        Hashtbl.remove table job.pid
+      | Some (Zombie status) ->
+        Hashtbl.remove table job.pid;
+        Event.send_job_completed job status
       | Some (Running _) ->
         assert false
 
-    let remove ~pid =
+    let remove ~pid status =
       match Hashtbl.find table pid with
       | None ->
-        Hashtbl.add table pid Terminated_before_being_registered
-      | Some (Running _) ->
+        Hashtbl.add table pid (Zombie status)
+      | Some (Running job) ->
         decr running_count;
-        Hashtbl.remove table pid
-      | Some Terminated_before_being_registered ->
+        Hashtbl.remove table pid;
+        Event.send_job_completed job status
+      | Some (Zombie _) ->
         assert false
 
     let iter ~f =
       Hashtbl.iter table ~f:(fun ~key:_ ~data ->
         match data with
         | Running job -> f job
-        | Terminated_before_being_registered -> ())
+        | Zombie _ -> ())
 
     let running_count () = !running_count
   end
 
   let register_job job =
-    Event.register_job job;
+    Event.register_job_started ();
     Mutex.lock mutex;
     Process_table.add job;
     Mutex.unlock mutex
@@ -364,58 +316,44 @@ end = struct
   exception Finished of job * Unix.process_status
 
   let wait_nonblocking_win32 () =
-    Mutex.lock mutex;
-    match
+    try
       Process_table.iter ~f:(fun job ->
         let pid, status = Unix.waitpid [WNOHANG] job.pid in
         if pid <> 0 then
-          raise_notrace (Finished (job, status)))
-    with
-    | () ->
-      Mutex.unlock mutex;
-      None
-    | exception (Finished (job, status)) ->
+          raise_notrace (Finished (job, status)));
+      false
+    with Finished (job, status) ->
       (* We need to do the [Unix.waitpid] and remove the process while
          holding the lock, otherwise the pid might be reused in
          between. *)
-      Process_table.remove ~pid:job.pid;
-      Mutex.unlock mutex;
-      Some (Event.Job job, status)
-    | exception exn ->
-      Mutex.unlock mutex;
-      reraise exn
+      Process_table.remove ~pid:job.pid status;
+      true
 
-  let rec wait_win32 () =
-    match wait_nonblocking_win32 () with
-    | None ->
+  let wait_win32 () =
+    while not (wait_nonblocking_win32 ()) do
+      Mutex.unlock mutex;
       ignore (Unix.select [] [] [] 0.001);
-      wait_win32 ()
-    | Some x -> x
+      Mutex.lock mutex
+    done
 
   let wait_unix () =
+    Mutex.unlock mutex;
     let pid, status = Unix.wait () in
-    (Event.Pid pid, status)
+    Mutex.lock mutex;
+    Process_table.remove ~pid status
 
   let wait =
-    let f : type t. t OS.Type.t -> unit -> t Event.process * Unix.process_status
-      = function
-        | OS.Type.Windows -> wait_win32
-        | OS.Type.Unix -> wait_unix
-    in
-    f OS.t
+    if Sys.win32 then
+      wait_win32
+    else
+      wait_unix
 
   let run () =
     Mutex.lock mutex;
     while true do
       if Process_table.running_count () = 0 then
         Condition.wait something_is_running_cv mutex;
-      Mutex.unlock mutex;
-      let process, status = wait () in
-      Event.send_process_completed process status;
-      Mutex.lock mutex;
-      match process with
-      | Event.Job _ -> ()
-      | Event.Pid pid -> Process_table.remove ~pid
+      wait ()
     done
 
   let init = lazy (ignore (Thread.create run () : Thread.t))

@@ -9,7 +9,7 @@ module Execution_context : sig
   val add_refs : t -> int -> unit
   val deref : t -> unit
 
-  (* Create a new context with a new referebce count. [on_release] is called when the
+  (* Create a new context with a new reference count. [on_release] is called when the
      context is no longer used. *)
   val create_sub
     :  t

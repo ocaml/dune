@@ -289,69 +289,100 @@ module Process_watcher : sig
   (** Send the following signal to all running processes *)
   val killall : int -> unit
 end = struct
-  type process_state =
-    | Running of job
-    | Terminated_before_being_registered
-    (* On Unix, [Unix.wait] returns any child that has terminated. In
-       particular, it might return a pid that has not yet been added
-       to [jobs]. We must record when this happens so that we know not
-       to add the pid to [jobs], otherwise the state would be
-       inconsistent and we could get a dead lock. *)
-
-  let jobs = Hashtbl.create 128
-  let running_count = ref 0
-  let jobs_mtx = Mutex.create ()
+  let mutex = Mutex.create ()
   let something_is_running_cv = Condition.create ()
 
-  let register_job job =
-    Event.register_job job;
-    Mutex.lock jobs_mtx;
-    begin
-      match Hashtbl.find jobs job.pid with
+  module Process_table : sig
+    val add : job -> unit
+    val remove : pid:int -> unit
+    val running_count : unit -> int
+    val iter : f:(job -> unit) -> unit
+  end = struct
+    type process_state =
+      | Running of job
+      | Terminated_before_being_registered
+      (* On Unix, [Unix.wait] returns any child that has terminated. In
+         particular, it might return a pid that has not yet been added
+         to [jobs]. We must record when this happens so that we know not
+         to add the pid to [jobs], otherwise the state would be
+         inconsistent and we could get a dead lock. *)
+
+    let table = Hashtbl.create 128
+    let running_count = ref 0
+
+    let _invariant () =
+      Hashtbl.fold table ~init:0 ~f:(fun data acc ->
+        match data with
+        | Running _ -> acc + 1
+        | Terminated_before_being_registered -> acc)
+      = !running_count
+
+    let add job =
+      match Hashtbl.find table job.pid with
       | None ->
-        Hashtbl.add jobs job.pid (Running job);
+        Hashtbl.add table job.pid (Running job);
         incr running_count;
         if !running_count = 1 then Condition.signal something_is_running_cv
       | Some Terminated_before_being_registered ->
-        Hashtbl.remove jobs job.pid
+        Hashtbl.remove table job.pid
       | Some (Running _) ->
         assert false
-    end;
-    Mutex.unlock jobs_mtx
+
+    let remove ~pid =
+      match Hashtbl.find table pid with
+      | None ->
+        Hashtbl.add table pid Terminated_before_being_registered
+      | Some (Running _) ->
+        decr running_count;
+        Hashtbl.remove table pid
+      | Some Terminated_before_being_registered ->
+        assert false
+
+    let iter ~f =
+      Hashtbl.iter table ~f:(fun ~key:_ ~data ->
+        match data with
+        | Running job -> f job
+        | Terminated_before_being_registered -> ())
+
+    let running_count () = !running_count
+  end
+
+  let register_job job =
+    Event.register_job job;
+    Mutex.lock mutex;
+    Process_table.add job;
+    Mutex.unlock mutex
 
   let killall signal =
-    Mutex.lock jobs_mtx;
-    Hashtbl.iter jobs ~f:(fun ~key:_ ~data ->
-      match data with
-      | Terminated_before_being_registered -> ()
-      | Running job ->
-        try
-          Unix.kill job.pid signal
-        with _ -> ());
-    Mutex.unlock jobs_mtx
+    Mutex.lock mutex;
+    Process_table.iter ~f:(fun job ->
+      try
+        Unix.kill job.pid signal
+      with _ -> ());
+    Mutex.unlock mutex
 
   exception Finished of job * Unix.process_status
 
   let wait_nonblocking_win32 () =
-    Mutex.lock jobs_mtx;
+    Mutex.lock mutex;
     match
-      Hashtbl.iter jobs ~f:(fun ~key:_ ~data ->
-        match data with
-        | Terminated_before_being_registered -> ()
-        | Running job ->
-          let pid, status = Unix.waitpid [WNOHANG] job.pid in
-          if pid <> 0 then
-            raise_notrace (Finished (job, status)))
+      Process_table.iter ~f:(fun job ->
+        let pid, status = Unix.waitpid [WNOHANG] job.pid in
+        if pid <> 0 then
+          raise_notrace (Finished (job, status)))
     with
     | () ->
-      Mutex.unlock jobs_mtx;
+      Mutex.unlock mutex;
       None
     | exception (Finished (job, status)) ->
-      Hashtbl.remove jobs job.pid;
-      Mutex.unlock jobs_mtx;
+      (* We need to do the [Unix.waitpid] and remove the process while
+         holding the lock, otherwise the pid might be reused in
+         between. *)
+      Process_table.remove ~pid:job.pid;
+      Mutex.unlock mutex;
       Some (Event.Job job, status)
     | exception exn ->
-      Mutex.unlock jobs_mtx;
+      Mutex.unlock mutex;
       reraise exn
 
   let rec wait_win32 () =
@@ -374,25 +405,17 @@ end = struct
     f OS.t
 
   let run () =
-    Mutex.lock jobs_mtx;
+    Mutex.lock mutex;
     while true do
-      if !running_count = 0 then
-        Condition.wait something_is_running_cv jobs_mtx;
-      Mutex.unlock jobs_mtx;
+      if Process_table.running_count () = 0 then
+        Condition.wait something_is_running_cv mutex;
+      Mutex.unlock mutex;
       let process, status = wait () in
       Event.send_process_completed process status;
-      Mutex.lock jobs_mtx;
-      decr running_count;
+      Mutex.lock mutex;
       match process with
       | Event.Job _ -> ()
-      | Event.Pid pid ->
-        match Hashtbl.find jobs pid with
-        | None ->
-          Hashtbl.add jobs pid Terminated_before_being_registered
-        | Some (Running _) ->
-          Hashtbl.remove jobs pid
-        | Some Terminated_before_being_registered ->
-          assert false
+      | Event.Pid pid -> Process_table.remove ~pid
     done
 
   let init = lazy (ignore (Thread.create run () : Thread.t))

@@ -108,7 +108,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
     in
     if private_virtual_modules <> [] then begin
       (* The loc here will never be none as we've some private modules *)
-      Errors.fail_opt (Ordered_set_lang.loc lib.private_modules)
+      Errors.fail_opt (Option.bind lib.private_modules ~f:Ordered_set_lang.loc)
         "These private modules cannot be private:\n%s"
         (module_list private_virtual_modules)
     end;

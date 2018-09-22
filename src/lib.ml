@@ -195,6 +195,7 @@ let dune_version t = t.info.dune_version
 
 let src_dir t = t.info.src_dir
 let obj_dir t = t.info.obj_dir
+let private_obj_dir t = t.info.private_obj_dir
 
 let is_local t = Path.is_managed t.info.obj_dir
 

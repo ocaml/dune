@@ -64,6 +64,7 @@ type t =
   ; status           : Status.t
   ; src_dir          : Path.t
   ; obj_dir          : Path.t
+  ; private_obj_dir  : Path.t option
   ; version          : string option
   ; synopsis         : string option
   ; archives         : Path.t list Mode.Dict.t
@@ -106,6 +107,10 @@ let of_library_stanza ~dir ~ext_lib ~ext_obj (conf : Dune_file.Library.t) =
   in
   let virtual_library = Dune_file.Library.is_virtual conf in
   let obj_dir = Utils.library_object_directory ~dir (snd conf.name) in
+  let private_obj_dir =
+    Option.map conf.private_modules ~f:(fun _ ->
+      Utils.library_private_obj_dir ~obj_dir)
+  in
   let (foreign_archives, foreign_objects) =
     let stubs =
       if Dune_file.Library.has_stubs conf then
@@ -179,6 +184,7 @@ let of_library_stanza ~dir ~ext_lib ~ext_obj (conf : Dune_file.Library.t) =
   ; virtual_
   ; implements = conf.implements
   ; main_module_name
+  ; private_obj_dir
   }
 
 let of_findlib_package pkg =
@@ -213,4 +219,5 @@ let of_findlib_package pkg =
   ; virtual_ = None
   ; implements = None
   ; main_module_name = This None
+  ; private_obj_dir = None
   }

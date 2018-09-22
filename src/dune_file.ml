@@ -941,7 +941,7 @@ module Library = struct
     ; dune_version             : Syntax.Version.t
     ; virtual_modules          : Ordered_set_lang.t option
     ; implements               : (Loc.t * Lib_name.t) option
-    ; private_modules          : Ordered_set_lang.t
+    ; private_modules          : Ordered_set_lang.t option
     ; stdlib                   : Stdlib.t option
     }
 
@@ -986,7 +986,7 @@ module Library = struct
            Syntax.since Variants.syntax (0, 1)
            >>= fun () -> located Lib_name.dparse)
        and private_modules =
-         field "private_modules" ~default:Ordered_set_lang.standard (
+         field_o "private_modules" (
            Syntax.since Stanza.syntax (1, 2)
            >>= fun () -> Ordered_set_lang.dparse)
        and stdlib =

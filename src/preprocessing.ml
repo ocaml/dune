@@ -526,7 +526,7 @@ let lint_module sctx ~dir ~dep_kind ~lint ~lib_name ~scope ~dir_kind =
                          ]))))))
     in
     fun ~(source : Module.t) ~ast ->
-      Per_module.get lint source.name ~source ~ast)
+      Per_module.get lint (Module.name source) ~source ~ast)
 
 type t = (Module.t -> lint:bool -> Module.t) Per_module.t
 
@@ -653,7 +653,7 @@ let make sctx ~dir ~dep_kind ~lint ~preprocess
 
 let pp_modules t ?(lint=true) modules =
   Module.Name.Map.map modules ~f:(fun (m : Module.t) ->
-    Per_module.get t m.name m ~lint)
+    Per_module.get t (Module.name m) m ~lint)
 
 let pp_module_as t ?(lint=true) name m =
   Per_module.get t name m ~lint

@@ -109,14 +109,13 @@ module Gen (S : sig val sctx : SC.t end) = struct
   end
 
   let module_deps (m : Module.t) ~doc_dir ~(dep_graphs:Ocamldep.Dep_graphs.t) =
-    Build.dyn_paths
-      ((match m.intf with
-         | Some _ ->
-           Ocamldep.Dep_graph.deps_of dep_graphs.intf m
-         | None ->
-           (* When a module has no .mli, use the dependencies for the .ml *)
-           Ocamldep.Dep_graph.deps_of dep_graphs.impl m)
-       >>^ List.map ~f:(Module.odoc_file ~doc_dir))
+    (if Module.has_intf m then
+       Ocamldep.Dep_graph.deps_of dep_graphs.intf m
+     else
+       (* When a module has no .mli, use the dependencies for the .ml *)
+       Ocamldep.Dep_graph.deps_of dep_graphs.impl m)
+    >>^ List.map ~f:(Module.odoc_file ~doc_dir)
+    |> Build.dyn_paths
 
   let compile_module (m : Module.t) ~obj_dir ~includes:(file_deps, iflags)
         ~dep_graphs ~doc_dir ~pkg_or_lnu =

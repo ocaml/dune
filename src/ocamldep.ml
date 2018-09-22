@@ -12,14 +12,15 @@ module Dep_graph = struct
     }
 
   let deps_of t (m : Module.t) =
-    match Module.Name.Map.find t.per_module m.name with
+    let name = Module.name m in
+    match Module.Name.Map.find t.per_module name with
     | Some x -> x
     | None ->
       Exn.code_error "Ocamldep.Dep_graph.deps_of"
         [ "dir", Path.to_sexp t.dir
         ; "modules", Sexp.To_sexp.(list Module.Name.to_sexp)
                        (Module.Name.Map.keys t.per_module)
-        ; "module", Module.Name.to_sexp m.name
+        ; "module", Module.Name.to_sexp name
         ]
 
   let top_closed t modules =
@@ -49,7 +50,7 @@ module Dep_graph = struct
 
   let dummy (m : Module.t) =
     { dir = Path.root
-    ; per_module = Module.Name.Map.singleton m.name (Build.return [])
+    ; per_module = Module.Name.Map.singleton (Module.name m) (Build.return [])
     }
 
   let wrapped_compat ~modules ~wrapped_compat =
@@ -114,7 +115,7 @@ let parse_module_names ~(unit : Module.t) ~modules words =
   let open Module.Name.Infix in
   List.filter_map words ~f:(fun m ->
     let m = Module.Name.of_string m in
-    if m = unit.name then
+    if m = Module.name unit then
       None
     else
       Module.Name.Map.find modules m)
@@ -123,7 +124,7 @@ let is_alias_module cctx (m : Module.t) =
   let open Module.Name.Infix in
   match CC.alias_module cctx with
   | None -> false
-  | Some alias -> alias.name = m.name
+  | Some alias -> Module.name alias = Module.name m
 
 let parse_deps cctx ~file ~unit lines =
   let dir                  = CC.dir                  cctx in
@@ -152,17 +153,20 @@ let parse_deps cctx ~file ~unit lines =
       let stdlib = CC.stdlib cctx in
       let deps =
         match stdlib, CC.lib_interface_module cctx with
-        | Some { modules_before_stdlib; _ }, Some m when unit.name = m.name ->
+        | Some { modules_before_stdlib; _ }, Some m
+          when Module.name unit = Module.name m ->
           (* See comment in [Dune_file.Stdlib]. *)
           List.filter deps ~f:(fun m ->
-            Module.Name.Set.mem modules_before_stdlib m.Module.name)
+            Module.Name.Set.mem modules_before_stdlib (Module.name m))
         | _ -> deps
       in
       if Option.is_none stdlib then
         Option.iter lib_interface_module ~f:(fun (m : Module.t) ->
+          let m = Module.name m in
           let open Module.Name.Infix in
-          if unit.name <> m.name && not (is_alias_module cctx unit) &&
-             List.exists deps ~f:(fun x -> Module.name x = m.name) then
+          if Module.name unit <> m
+          && not (is_alias_module cctx unit)
+          && List.exists deps ~f:(fun x -> Module.name x = m) then
             die "Module %a in directory %s depends on %a.\n\
                  This doesn't make sense to me.\n\
                  \n\
@@ -171,9 +175,9 @@ let parse_deps cctx ~file ~unit lines =
                  outside of the library. Consequently, it should \
                  be the one depending \n\
                  on all the other modules in the library."
-              Module.Name.pp unit.name (Path.to_string dir)
-              Module.Name.pp m.name
-              Module.Name.pp m.name);
+              Module.Name.pp (Module.name unit) (Path.to_string dir)
+              Module.Name.pp m
+              Module.Name.pp m);
       match stdlib with
       | None -> begin
           match alias_module with
@@ -181,13 +185,13 @@ let parse_deps cctx ~file ~unit lines =
           | Some m -> m :: deps
         end
       | Some { modules_before_stdlib; _ } ->
-        if Module.Name.Set.mem modules_before_stdlib unit.name then
+        if Module.Name.Set.mem modules_before_stdlib (Module.name unit) then
           deps
         else
           match CC.lib_interface_module cctx with
           | None -> deps
           | Some m ->
-            if unit.name = m.name then
+            if Module.name unit = Module.name m then
               deps
             else
               m :: deps
@@ -209,7 +213,8 @@ let deps_of cctx ~ml_kind unit =
       let all_deps_file = all_deps_path file in
       let ocamldep_output = file_in_obj_dir file ~suffix:".d" in
       SC.add_rule sctx
-        (let flags = Option.value unit.pp ~default:(Build.return []) in
+        (let flags =
+           Option.value (Module.pp_flags unit) ~default:(Build.return []) in
          flags >>>
          Build.run ~context (Ok context.ocamldep)
            [ A "-modules"
@@ -269,7 +274,7 @@ let rules_generic cctx ~modules =
 let rules cctx = rules_generic cctx ~modules:(CC.modules cctx)
 
 let rules_for_auxiliary_module cctx (m : Module.t) =
-  rules_generic cctx ~modules:(Module.Name.Map.singleton m.name m)
+  rules_generic cctx ~modules:(Module.Name.Map.singleton (Module.name m) m)
 
 let graph_of_remote_lib ~obj_dir ~modules =
   let deps_of unit ~ml_kind =

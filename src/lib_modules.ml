@@ -23,7 +23,7 @@ let make_wrapped ~(lib : Dune_file.Library.t) ~dir ~transition ~modules
   let wrap_modules modules =
     let open Module.Name.Infix in
     Module.Name.Map.map modules ~f:(fun (m : Module.t) ->
-      if m.name = main_module_name  ||
+      if Module.name m = main_module_name  ||
          Dune_file.Library.special_compiler_module lib m then
         m
       else

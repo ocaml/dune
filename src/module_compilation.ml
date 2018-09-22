@@ -47,7 +47,7 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
       let ml_kind = Cm_kind.source cm_kind in
       let dst = Module.cm_file_unsafe m ~obj_dir cm_kind in
       let extra_args, extra_deps, other_targets =
-        match cm_kind, m.intf
+        match cm_kind, Module.intf m
               , Module.Name.Map.mem modules_of_vlib (Module.name m) with
         (* If there is no mli, [ocamlY -c file.ml] produces both the
            .cmY and .cmi. We choose to use ocamlc to produce the cmi
@@ -115,7 +115,7 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
       in
       let flags =
         let flags = Ocaml_flags.get_for_cm (CC.flags cctx) ~cm_kind in
-        match m.pp with
+        match Module.pp_flags m with
         | None -> flags
         | Some pp ->
           Build.fanout flags pp >>^ fun (flags, pp_flags) ->
@@ -141,22 +141,24 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
            ; (match CC.alias_module cctx with
               | None -> S []
               | Some (m : Module.t) ->
-                As ["-open"; Module.Name.to_string m.name])
+                As ["-open"; Module.Name.to_string (Module.name m)])
            ; As (match stdlib with
                | None -> []
                | Some { Dune_file.Library.Stdlib.modules_before_stdlib; _ } ->
                  let flags = ["-nopervasives"; "-nostdlib"] in
-                 if Module.Name.Set.mem modules_before_stdlib m.name then
+                 if Module.Name.Set.mem modules_before_stdlib
+                      (Module.name m) then
                    flags
                  else
                    match CC.lib_interface_module cctx with
                    | None -> flags
                    | Some m' ->
                      (* See comment in [Dune_file.Stdlib]. *)
-                     if m.name = m'.name then
+                     if Module.name m = Module.name m' then
                        "-w" :: "-49" :: flags
                      else
-                       "-open" :: Module.Name.to_string m'.name :: flags)
+                       "-open" :: Module.Name.to_string (Module.name m')
+                       :: flags)
            ; A "-o"; Target dst
            ; A "-c"; Ml_kind.flag ml_kind; Dep src
            ; Hidden_targets hidden_targets
@@ -182,7 +184,8 @@ let build_modules ?sandbox ?js_of_ocaml ?dynlink ~dep_graphs cctx =
   Module.Name.Map.iter
     (match CC.alias_module cctx with
      | None -> CC.modules cctx
-     | Some (m : Module.t) -> Module.Name.Map.remove (CC.modules cctx) m.name)
+     | Some (m : Module.t) ->
+       Module.Name.Map.remove (CC.modules cctx) (Module.name m))
     ~f:(build_module cctx ?sandbox ?js_of_ocaml ?dynlink ~dep_graphs)
 
 let ocamlc_i ?sandbox ?(flags=[]) ~dep_graphs cctx (m : Module.t) ~output =
@@ -207,7 +210,7 @@ let ocamlc_i ?sandbox ?(flags=[]) ~dep_graphs cctx (m : Module.t) ~output =
        ; (match CC.alias_module cctx with
           | None -> S []
           | Some (m : Module.t) ->
-            As ["-open"; Module.Name.to_string m.name])
+            As ["-open"; Module.Name.to_string (Module.name m)])
        ; As flags
        ; A "-i"; Ml_kind.flag Impl; Dep src
        ]

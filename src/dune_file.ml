@@ -1110,10 +1110,11 @@ module Library = struct
     match t.stdlib with
     | None -> false
     | Some stdlib ->
-      Re.execp stdlib.internal_modules (Module.Name.to_string m.name) ||
+      let name = Module.name m in
+      Re.execp stdlib.internal_modules (Module.Name.to_string name) ||
       match stdlib.exit_module with
       | None -> false
-      | Some n -> n = m.name
+      | Some n -> n = name
 end
 
 module Install_conf = struct

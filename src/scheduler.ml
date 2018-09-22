@@ -2,38 +2,116 @@ open! Stdune
 open Import
 open Fiber.O
 
-type status_line_config =
-  { message   : string option
-  ; show_jobs : bool
-  }
-
-type running_job =
+type job =
   { pid  : int
   ; ivar : Unix.process_status Fiber.Ivar.t
   }
 
-module Watch : sig
-  (** Runs forever, communicating events to channel when changes are
-      detected. *)
-  val wait_to_chan : Path.t list Event.channel -> 'a
+(** The event queue *)
+module Event : sig
+  type t =
+    | Files_changed
+    | Job_completed of job * Unix.process_status
 
-  (** Compares a batch of changed files to ignored files list.
+  (** Return the next event. File changes event are always flattened
+      and returned first. *)
+  val next : unit -> t
 
-      This should be only called from the main thread. *)
-  val should_trigger_rebuild : Path.t list -> bool
+  (** Ignore the ne next file change event about this file. *)
+  val ignore_next_file_change_event : Path.t -> unit
 
-  (** Ignore the next event about this file. *)
-  val ignore_file : Path.t -> unit
+  (** Register the fact that a job was started. *)
+  val register_job_started : unit -> unit
+
+  (** Number of jobs for which the status hasn't been reported yet .*)
+  val pending_jobs : unit -> int
+
+  (** Send an event to the main thread. *)
+  val send_files_changed : Path.t list -> unit
+  val send_job_completed : job -> Unix.process_status -> unit
 end = struct
-  let ignored_files = String.Table.create 64
+  type t =
+    | Files_changed
+    | Job_completed of job * Unix.process_status
 
-  let ignore_file path =
+  let jobs_completed = Queue.create ()
+  let files_changed = ref []
+  let mutex = Mutex.create ()
+  let cond = Condition.create ()
+
+  let ignored_files = String.Table.create 64
+  let pending_jobs = ref 0
+
+  let register_job_started () = incr pending_jobs
+
+  let ignore_next_file_change_event path =
     assert (Path.is_in_source_tree path);
     String.Table.replace
       ignored_files
       ~key:(Path.to_absolute_filename path)
       ~data:()
 
+  let available () =
+    not (List.is_empty !files_changed && Queue.is_empty jobs_completed)
+
+  let next () =
+    Mutex.lock mutex;
+    let rec loop () =
+      if not (available ()) then Condition.wait cond mutex;
+      match !files_changed with
+      | [] ->
+        let (job, status) = Queue.pop jobs_completed in
+        decr pending_jobs;
+        Job_completed (job, status)
+      | fns ->
+        files_changed := [];
+        let only_ignored_files =
+          List.fold_left fns ~init:true ~f:(fun acc fn ->
+            let fn = Path.to_absolute_filename fn in
+            if String.Table.mem ignored_files fn then begin
+              (* only use ignored record once *)
+              String.Table.remove ignored_files fn;
+              acc
+            end else
+              false)
+        in
+        if only_ignored_files then
+          loop ()
+        else
+          Files_changed
+    in
+    let ev = loop () in
+    Mutex.unlock mutex;
+    ev
+
+  let send_files_changed files =
+    Mutex.lock mutex;
+    let avail = available () in
+    files_changed := List.rev_append files !files_changed;
+    if not avail then Condition.signal cond;
+    Mutex.unlock mutex
+
+  let send_job_completed job status =
+    Mutex.lock mutex;
+    let avail = available () in
+    Queue.push (job, status) jobs_completed;
+    if not avail then Condition.signal cond;
+    Mutex.unlock mutex
+
+  let pending_jobs () = !pending_jobs
+end
+
+let ignore_for_watch = Event.ignore_next_file_change_event
+
+type status_line_config =
+  { message   : string option
+  ; show_jobs : bool
+  }
+
+module File_watcher : sig
+  (** Initializes the file watcher. *)
+  val init : unit -> unit
+end = struct
   let command =
     lazy (
       let excludes = [ {|/_build|}
@@ -104,8 +182,8 @@ end = struct
       ~len:!buffer_size;
     List.rev !lines
 
-  let wait_to_chan chan =
-    let new_events = ref [] in
+  let init = lazy(
+    let files_changed = ref [] in
     let event_mtx = Mutex.create () in
     let event_cv = Condition.create () in
 
@@ -130,7 +208,7 @@ end = struct
       let rec loop () =
         let lines = List.map (read_lines r) ~f:Path.of_string in
         Mutex.lock event_mtx;
-        new_events := lines :: !new_events;
+        files_changed := List.rev_append lines !files_changed;
         Condition.signal event_cv;
         Mutex.unlock event_mtx;
         loop ()
@@ -138,102 +216,140 @@ end = struct
       loop ()
     in
 
+    (* The buffer thread is used to avoid flooding the main thread
+       with file changes events when a lot of file changes are reported
+       at once. In particular, this avoids restarting the build over
+       and over in a short period of time when many events are
+       reported at once.
+
+       It works as follow:
+
+       - when the first event is received, send it to the main thread
+       immediately so that we get a fast response time
+
+       - after the first event is received, buffer subsequent events
+       for [buffering_time]
+    *)
     let rec buffer_thread () =
       Mutex.lock event_mtx;
-      if List.is_empty !new_events then
+      if List.is_empty !files_changed then
         Condition.wait event_cv event_mtx;
-      let events_to_send = !new_events in
-      new_events := [];
+      let files = !files_changed in
+      files_changed := [];
       Mutex.unlock event_mtx;
-      List.iter events_to_send ~f:(fun batch ->
-        Event.(sync (send chan batch)));
+      Event.send_files_changed files;
       Thread.delay buffering_time;
       buffer_thread ()
     in
 
-    ignore (Thread.create worker_thread ());
-    buffer_thread ()
+    ignore (Thread.create worker_thread () : Thread.t);
+    ignore (Thread.create buffer_thread () : Thread.t))
 
-  let should_trigger_rebuild fns =
-    List.filter fns ~f:(fun fn ->
-      let fn = Path.to_absolute_filename fn in
-      if String.Table.mem ignored_files fn then begin
-        (* only use ignored record once *)
-        String.Table.remove ignored_files fn;
-        false
-      end
-      else true)
-    |> List.is_empty
-    |> not
+  let init () = Lazy.force init
 end
 
-let ignore_for_watch = Watch.ignore_file
+module Process_watcher : sig
+  (** Initialize the process watcher thread. *)
+  val init : unit -> unit
 
-module Running_jobs : sig
-  val add : running_job -> unit
-  val count : unit -> int
+  (** Register a new running job. *)
+  val register_job : job -> unit
 
-  (** Runs forever, communicating events to channel when children terminate. *)
-  val wait_to_chan : (int * Unix.process_status) Event.channel -> 'a
-
-  (** Removes a process previously returned via channel from the table. *)
-  val resolve_and_remove_job : int -> running_job
-
-  (** Send the following signal to all running jobs *)
+  (** Send the following signal to all running processes. *)
   val killall : int -> unit
 end = struct
-  let all = Hashtbl.create 128
-
-  let running_pids = ref Int.Set.empty
-  let running_pids_mtx = Mutex.create ()
+  let mutex = Mutex.create ()
   let something_is_running_cv = Condition.create ()
 
-  let add job =
-    Hashtbl.add all job.pid job;
-    Mutex.lock running_pids_mtx;
-    running_pids := Int.Set.add !running_pids job.pid;
-    if Int.Set.cardinal !running_pids = 1 then
-      Condition.signal something_is_running_cv;
-    Mutex.unlock running_pids_mtx
+  module Process_table : sig
+    val add : job -> unit
+    val remove : pid:int -> Unix.process_status -> unit
+    val running_count : unit -> int
+    val iter : f:(job -> unit) -> unit
+  end = struct
+    type process_state =
+      | Running of job
+      | Zombie of Unix.process_status
 
-  let resolve_and_remove_job pid =
-    let job =
-      match Hashtbl.find all pid with
-      | Some job -> job
-      | None -> assert false
-    in
-    Hashtbl.remove all pid;
-    job
+    (* Invariant: [!running_count] is equal to the number of
+       [Running _] values in [table]. *)
+    let table = Hashtbl.create 128
+    let running_count = ref 0
 
-  exception Finished of int * Unix.process_status
+    let add job =
+      match Hashtbl.find table job.pid with
+      | None ->
+        Hashtbl.add table job.pid (Running job);
+        incr running_count;
+        if !running_count = 1 then Condition.signal something_is_running_cv
+      | Some (Zombie status) ->
+        Hashtbl.remove table job.pid;
+        Event.send_job_completed job status
+      | Some (Running _) ->
+        assert false
+
+    let remove ~pid status =
+      match Hashtbl.find table pid with
+      | None ->
+        Hashtbl.add table pid (Zombie status)
+      | Some (Running job) ->
+        decr running_count;
+        Hashtbl.remove table pid;
+        Event.send_job_completed job status
+      | Some (Zombie _) ->
+        assert false
+
+    let iter ~f =
+      Hashtbl.iter table ~f:(fun ~key:_ ~data ->
+        match data with
+        | Running job -> f job
+        | Zombie _ -> ())
+
+    let running_count () = !running_count
+  end
+
+  let register_job job =
+    Event.register_job_started ();
+    Mutex.lock mutex;
+    Process_table.add job;
+    Mutex.unlock mutex
+
+  let killall signal =
+    Mutex.lock mutex;
+    Process_table.iter ~f:(fun job ->
+      try
+        Unix.kill job.pid signal
+      with Unix.Unix_error _ -> ());
+    Mutex.unlock mutex
+
+  exception Finished of job * Unix.process_status
 
   let wait_nonblocking_win32 () =
-    Mutex.lock running_pids_mtx;
-    match
-      Int.Set.iter !running_pids ~f:(fun pid ->
-        let pid, status = Unix.waitpid [WNOHANG] pid in
+    try
+      Process_table.iter ~f:(fun job ->
+        let pid, status = Unix.waitpid [WNOHANG] job.pid in
         if pid <> 0 then
-          raise_notrace (Finished (pid, status)));
-    with
-    | () ->
-      Mutex.unlock running_pids_mtx;
-      None
-    | exception (Finished (pid, status)) ->
-      Mutex.unlock running_pids_mtx;
-      Some (pid, status)
-    | exception exn ->
-      Mutex.unlock running_pids_mtx;
-      reraise exn
+          raise_notrace (Finished (job, status)));
+      false
+    with Finished (job, status) ->
+      (* We need to do the [Unix.waitpid] and remove the process while
+         holding the lock, otherwise the pid might be reused in
+         between. *)
+      Process_table.remove ~pid:job.pid status;
+      true
 
-  let rec wait_win32 () =
-    match wait_nonblocking_win32 () with
-    | None ->
+  let wait_win32 () =
+    while not (wait_nonblocking_win32 ()) do
+      Mutex.unlock mutex;
       ignore (Unix.select [] [] [] 0.001);
-      wait_win32 ()
-    | Some x -> x
+      Mutex.lock mutex
+    done
 
   let wait_unix () =
-    Unix.wait ()
+    Mutex.unlock mutex;
+    let pid, status = Unix.wait () in
+    Mutex.lock mutex;
+    Process_table.remove ~pid status
 
   let wait =
     if Sys.win32 then
@@ -241,24 +357,17 @@ end = struct
     else
       wait_unix
 
-  let rec wait_to_chan chan =
-    if Int.Set.is_empty !running_pids then
-      Condition.wait something_is_running_cv running_pids_mtx;
-    Mutex.unlock running_pids_mtx;
-    let pid, status = wait () in
-    Event.(sync (send chan (pid, status)));
-    Mutex.lock running_pids_mtx;
-    running_pids := Int.Set.remove !running_pids pid;
-    wait_to_chan chan
+  let run () =
+    Mutex.lock mutex;
+    while true do
+      if Process_table.running_count () = 0 then
+        Condition.wait something_is_running_cv mutex;
+      wait ()
+    done
 
-  let wait_to_chan chan =
-    Mutex.lock running_pids_mtx;
-    wait_to_chan chan
+  let init = lazy (ignore (Thread.create run () : Thread.t))
 
-  let count () = Hashtbl.length all
-
-  let killall signal =
-    Hashtbl.iter all ~f:(fun ~key:pid ~data:_ -> Unix.kill pid signal)
+  let init () = Lazy.force init
 end
 
 type t =
@@ -306,7 +415,7 @@ let update_status_line t =
     | { message = Some status_line; show_jobs } ->
       let status_line =
         if show_jobs then
-          sprintf "%s (jobs: %u)" status_line (Running_jobs.count ())
+          sprintf "%s (jobs: %u)" status_line (Event.pending_jobs ())
         else
           status_line
       in
@@ -327,7 +436,7 @@ let set_concurrency n =
 
 let wait_for_available_job () =
   Fiber.Var.get_exn t_var >>= fun t ->
-  if Running_jobs.count () < t.concurrency then
+  if Event.pending_jobs () < t.concurrency then
     Fiber.return t
   else begin
     let ivar = Fiber.Ivar.create () in
@@ -337,12 +446,12 @@ let wait_for_available_job () =
 
 let wait_for_process pid =
   let ivar = Fiber.Ivar.create () in
-  Running_jobs.add { pid; ivar };
+  Process_watcher.register_job { pid; ivar };
   Fiber.Ivar.read ivar
 
 let rec restart_waiting_for_available_job t =
   if Queue.is_empty t.waiting_for_available_job ||
-     Running_jobs.count () >= t.concurrency then
+     Event.pending_jobs () >= t.concurrency then
     Fiber.return ()
   else begin
     let ivar = Queue.pop t.waiting_for_available_job in
@@ -351,35 +460,11 @@ let rec restart_waiting_for_available_job t =
     restart_waiting_for_available_job t
   end
 
-let watch_channel = lazy (
-  if !Clflags.watch then begin
-    let chan = Event.new_channel () in
-    ignore (Thread.create Watch.wait_to_chan chan);
-    chan
-  end
-  else Event.new_channel ())
-
-let job_channel = lazy (
-  let chan = Event.new_channel () in
-  ignore (Thread.create Running_jobs.wait_to_chan chan);
-  chan)
-
-type event =
-  | Files_changed of Path.t list
-  | Job_completed of int * Unix.process_status
-
 let go_rec t =
-  let recv () = Event.(
-    choose [ wrap (receive (Lazy.force watch_channel))
-               (fun fns -> Files_changed fns)
-           ; wrap (receive (Lazy.force job_channel))
-               (fun (p, s) -> Job_completed (p, s))
-           ])
-  in
   let rec go_rec t =
     Fiber.yield ()
     >>= fun () ->
-    let count = Running_jobs.count () in
+    let count = Event.pending_jobs () in
     if count = 0 then begin
       hide_status_line t.status_line;
       flush stderr;
@@ -387,20 +472,16 @@ let go_rec t =
     end else begin
       update_status_line t;
       begin
-        match Event.sync (recv ()) with
-        | Job_completed (pid, status) ->
-          let job = Running_jobs.resolve_and_remove_job pid in
+        match Event.next () with
+        | Job_completed (job, status) ->
           Fiber.Ivar.fill job.ivar status
           >>= fun () ->
           restart_waiting_for_available_job t
           >>= fun () ->
           go_rec t
-        | Files_changed fns ->
-          if Watch.should_trigger_rebuild fns then begin
-            t.cur_build_canceled <- true;
-            Fiber.return ()
-          end
-          else go_rec t
+        | Files_changed ->
+          t.cur_build_canceled <- true;
+          Fiber.return ()
       end
     end
   in
@@ -410,6 +491,8 @@ let prepare ?(log=Log.no_log) ?(config=Config.default)
       ?(gen_status_line=fun () -> { message = None; show_jobs = false }) () =
   Log.infof log "Workspace root: %s"
     (Path.to_absolute_filename Path.root |> String.maybe_quoted);
+  if !Clflags.watch then File_watcher.init ();
+  Process_watcher.init ();
   let cwd = Sys.getcwd () in
   if cwd <> initial_cwd then
     Printf.eprintf "Entering directory '%s'\n%!"
@@ -465,18 +548,15 @@ let go ?log ?config ?gen_status_line fiber =
   run t (fun () -> fiber)
 
 let poll ?log ?config ~once ~finally ~canceled () =
-  let watch_chan = Lazy.force watch_channel in
   let t = prepare ?log ?config () in
   let once () =
     t.cur_build_canceled <- false;
     once ()
   in
-  let rec block_waiting_for_changes () =
-    let fns = Event.(sync (receive watch_chan)) in
-    if Watch.should_trigger_rebuild fns then
-      ()
-    else
-      block_waiting_for_changes ()
+  let block_waiting_for_changes () =
+    match Event.next () with
+    | Job_completed _ -> assert false
+    | Files_changed -> ()
   in
   let wait_success () =
     let old_generator = t.gen_status_line in
@@ -514,8 +594,7 @@ let poll ?log ?config ~once ~finally ~canceled () =
       wait_failure ()
       >>= fun _ ->
       main_loop ()
-    end
-    else begin
+    end else begin
       set_status_line_generator
         (fun () ->
            { message = Some "Had errors.\nKilling current build..."
@@ -523,10 +602,11 @@ let poll ?log ?config ~once ~finally ~canceled () =
            })
       >>= fun () ->
       Queue.clear t.waiting_for_available_job;
-      Running_jobs.killall Sys.sigkill;
-      while Running_jobs.count () > 0 do
-        let pid, _ = Event.sync (Event.receive (Lazy.force job_channel)) in
-        ignore (Running_jobs.resolve_and_remove_job pid : running_job);
+      Process_watcher.killall Sys.sigkill;
+      while Event.pending_jobs () > 0 do
+        match Event.next () with
+        | Files_changed -> ()
+        | Job_completed _ -> ()
       done;
       canceled ();
       main_loop ()

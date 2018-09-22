@@ -13,6 +13,8 @@ next
 
 - Make `dune rules -m` output a valid makefile (#1293, @diml)
 
+- Expand variables in `(targets ..)` field (#1301, fix #1189, @nojb)
+
 - Fix a race condition on Windows that was introduced in 1.2.0
   (#1304, fix #1303, @diml)
 

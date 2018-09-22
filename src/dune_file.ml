@@ -43,17 +43,6 @@ let file =
       of_sexp_errorf loc "'.' and '..' are not valid filenames"
     | fn -> fn)
 
-let file_in_current_dir =
-  plain_string (fun ~loc s ->
-    match s with
-    | "." | ".." ->
-      of_sexp_errorf loc "'.' and '..' are not valid filenames"
-    | fn ->
-      if Filename.dirname fn <> Filename.current_dir_name then
-        of_sexp_errorf loc "file in current directory expected"
-      else
-        fn)
-
 let relative_file =
   plain_string (fun ~loc fn ->
     if Filename.is_relative fn then
@@ -1446,7 +1435,7 @@ end
 module Rule = struct
   module Targets = struct
     type t =
-      | Static of string list (* List of files in the current directory *)
+      | Static of String_with_vars.t list (* List of files in the current directory *)
       | Infer
   end
 
@@ -1525,7 +1514,7 @@ module Rule = struct
   let long_form =
     let%map loc = loc
     and action = field "action" (located Action.Unexpanded.dparse)
-    and targets = field "targets" (list file_in_current_dir)
+    and targets = field "targets" (list String_with_vars.dparse)
     and deps =
       field "deps" (Bindings.dparse Dep_conf.dparse) ~default:Bindings.empty
     and locks = field "locks" (list String_with_vars.dparse) ~default:[]
@@ -1634,7 +1623,7 @@ module Rule = struct
     let module S = String_with_vars in
     List.map modules ~f:(fun name ->
       let src = name ^ ".mll" in
-      let dst = name ^ ".ml"  in
+      let dst = String_with_vars.make_text loc (name ^ ".ml")  in
       { targets = Static [dst]
       ; deps    = Bindings.singleton (Dep_conf.File (S.virt_text __POS__ src))
       ; action  =
@@ -1656,7 +1645,10 @@ module Rule = struct
     let module S = String_with_vars in
     List.map modules ~f:(fun name ->
       let src = name ^ ".mly" in
-      { targets = Static [name ^ ".ml"; name ^ ".mli"]
+      let dsts =
+        List.map ~f:(String_with_vars.make_text loc) [name ^ ".ml"; name ^ ".mli"]
+      in
+      { targets = Static dsts
       ; deps    = Bindings.singleton (Dep_conf.File (S.virt_text __POS__ src))
       ; action  =
           (loc,

@@ -41,11 +41,19 @@
 ;;;;               Syntax highlighting of dune files
 
 (defface dune-error-face
-  '((t (:foreground "yellow" :background "red" :bold t)))
-  "Face for errors (e.g. obsolete constructs).")
+  '((t (:inherit error)))
+  "Face for errors (e.g. obsolete constructs)."
+  :group 'dune)
 
 (defvar dune-error-face 'dune-error-face
   "Face for errors (e.g. obsolete constructs).")
+
+(defface dune-separator-face
+  '((t (:inherit default)))
+  "Face for various kind of separators such as ':'."
+  :group 'dune)
+(defvar dune-separator-face 'dune-separator-face
+  "Face for various kind of separators such as ':'.")
 
 (defconst dune-stanzas-regex
   (eval-when-compile
@@ -108,15 +116,11 @@
 (defvar dune-var-kind-regex
   (eval-when-compile
     (regexp-opt
-     '("dep" "path-no-dep" "exe" "bin" "lib" "libexec" "lib-available"
+     '("ocaml-config"
+       "dep" "exe" "bin" "lib" "libexec" "lib-available"
        "version" "read" "read-lines" "read-strings")
      'words))
   "Optional prefix to variable names.")
-
-(defvar dune-var-regex
-      (concat "\\(!?\\)\\(\\(?:" dune-var-kind-regex
-              ":\\)?\\)\\([a-zA-Z][a-zA-Z0-9_.-]*\\|[<@^]\\)"
-              "\\(\\(?::[a-zA-Z][a-zA-Z0-9_.-]*\\)?\\)"))
 
 (defmacro dune--field-vals (field &rest vals)
   `(list (concat "(" ,field "[[:space:]]+" ,(regexp-opt vals t))
@@ -124,10 +128,14 @@
 
 (defvar dune-font-lock-keywords
   `((,(concat "(\\(" dune-stanzas-regex "\\)") 1 font-lock-keyword-face)
-    ("\\(:[a-zA-Z]+\\)\\b" 1 font-lock-builtin-face)
-    ("([^ ]+ +\\(as\\) +[^ ]+)"
-     1 font-lock-keyword-face)
+    ("([^ ]+ +\\(as\\) +[^ ]+)" 1 font-lock-keyword-face)
     (,(concat "(" dune-fields-regex) 1 font-lock-function-name-face)
+    (,(concat "%{" dune-var-kind-regex " *\\(\\:\\)[^{}:]*\\(\\(?::\\)?\\)")
+     (1 font-lock-builtin-face)
+     (2 dune-separator-face)
+     (3 dune-separator-face))
+    ("%{\\([^{}]*\\)}" 1 font-lock-variable-name-face keep)
+    ("\\(:[a-zA-Z]+\\)\\b" 1 font-lock-builtin-face)
     ("\\(true\\|false\\)" 1 font-lock-constant-face)
     ("(\\(select\\)[[:space:]]+[^[:space:]]+[[:space:]]+\\(from\\)\\>"
      (1 font-lock-constant-face)
@@ -142,12 +150,7 @@
     ("(name +\\(runtest\\))" 1 font-lock-builtin-face)
     (,(eval-when-compile
         (concat "(" (regexp-opt '("fallback") t)))
-     1 dune-error-face)
-    (,(concat "%{" dune-var-regex "}")
-     (1 dune-error-face)
-     (2 font-lock-builtin-face)
-     (4 font-lock-variable-name-face)
-     (5 font-lock-variable-name-face))))
+     1 dune-error-face)))
 
 (defvar dune-mode-syntax-table
   (let ((table (make-syntax-table)))
@@ -186,12 +189,14 @@
         (save-excursion
           (goto-char (cadr (smie-indent--parent)))
           (cond
-           ((looking-at-p dune-keywords-regex) 1)
+           ((looking-at-p dune-stanzas-regex) 1)
            ((looking-at-p dune-fields-regex)
             (smie-rule-parent 0))
            ((smie-rule-sibling-p) (cons 'column (current-column)))
            (t (cons 'column (current-column)))))
       '(column . 0)))
+   ((eq kind :list-intro)
+    nil)
    (t 1)))
 
 (defun verbose-dune-smie-rules (kind token)

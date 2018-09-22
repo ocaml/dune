@@ -257,15 +257,10 @@ end = struct
       | Running of job
       | Zombie of Unix.process_status
 
+    (* Invariant: [!running_count] is equal to the number of
+       [Running _] values in [table]. *)
     let table = Hashtbl.create 128
     let running_count = ref 0
-
-    let _invariant () =
-      Hashtbl.fold table ~init:0 ~f:(fun data acc ->
-        match data with
-        | Running _ -> acc + 1
-        | Zombie _ -> acc)
-      = !running_count
 
     let add job =
       match Hashtbl.find table job.pid with

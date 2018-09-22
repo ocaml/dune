@@ -140,7 +140,12 @@ let dot_merlin sctx ~dir ~more_src_dirs ~scope ~dir_kind
               ( Path.Set.add src_dirs (
                   Lib.src_dir lib
                   |> Path.drop_optional_build_context)
-              , Path.Set.add obj_dirs (Lib.obj_dir lib)))
+              ,
+              let obj_dirs = Path.Set.add obj_dirs (Lib.obj_dir lib) in
+              match Lib.private_obj_dir lib with
+              | None -> obj_dirs
+              | Some private_obj_dir -> Path.Set.add obj_dirs private_obj_dir
+            ))
         in
         let src_dirs =
           Path.Set.union src_dirs (Path.Set.of_list more_src_dirs)

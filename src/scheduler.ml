@@ -216,6 +216,20 @@ end = struct
       loop ()
     in
 
+    (* The buffer thread is used to avoid flooding the main thread
+       with file changes events when a lot of file changes are reported
+       at once. In particular, this avoids restarting the build over
+       and over in a short period of time when many events are
+       reported at once.
+
+       It works as follow:
+
+       - when the first event is received, send it to the main thread
+       immediately so that we get a fast response time
+
+       - after the first event is received, buffer subsequent events
+       for [buffering_time]
+    *)
     let rec buffer_thread () =
       Mutex.lock event_mtx;
       if List.is_empty !files_changed then

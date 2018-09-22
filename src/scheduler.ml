@@ -319,7 +319,7 @@ end = struct
     Process_table.iter ~f:(fun job ->
       try
         Unix.kill job.pid signal
-      with _ -> ());
+      with Unix.Unix_error _ -> ());
     Mutex.unlock mutex
 
   exception Finished of job * Unix.process_status

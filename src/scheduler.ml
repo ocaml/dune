@@ -115,6 +115,7 @@ end = struct
   let command =
     lazy (
       let excludes = [ {|/_build|}
+                     ; {|/_opam|}
                      ; {|/\..+|}
                      ; {|~$|}
                      ; {|/#[^#]*#$|}

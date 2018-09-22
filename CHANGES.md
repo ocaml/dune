@@ -21,6 +21,9 @@ next
 - Fix the generation of .merlin files to account for private modules
   (@rgrinberg, fix #1314)
 
+- Exclude the local opam switch direcory (`_opam`) from the list of watched
+  directories (#1315, @dysinger)
+
 1.2.1 (17/09/2018)
 ------------------
 

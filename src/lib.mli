@@ -18,6 +18,8 @@ val src_dir : t -> Path.t
 (** Directory where the object files for the library are located. *)
 val obj_dir : t -> Path.t
 
+val private_obj_dir : t -> Path.t option
+
 (** Same as [Path.is_managed (obj_dir t)] *)
 val is_local : t -> bool
 

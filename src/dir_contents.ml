@@ -165,7 +165,9 @@ let build_modules_map (d : Super_context.Dir_with_jbuild.t) ~scope ~modules =
           Modules_field_evaluator.eval ~modules
             ~buildable:lib.buildable
             ~virtual_modules:lib.virtual_modules
-            ~private_modules:lib.private_modules
+            ~private_modules:(
+              Option.value ~default:Ordered_set_lang.standard
+                lib.private_modules)
         in
         let main_module_name =
           match Library.main_module_name lib with

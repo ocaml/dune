@@ -54,6 +54,44 @@ quite pleasant.
 To deal with process multiplexing, Dune uses a simplified
 Lwt/Async-like monad, implemented in [src/fiber/fiber.mli](src/fiber/fiber.mli).
 
+## Tests
+
+Dune uses [cram style](https://blog.janestreet.com/testing-with-expectations/)
+tests for its test suite. The test suite is contained in
+[test/blackbox-tests](test/blackbox-tests). A single test consists of a test
+directory in the test-cases/ sub directory which contains a run.t file defining
+the test.
+
+An example `run.t` file:
+
+```
+A description of the test. The command running the tests is preceeded by
+two spaces and a $. The expected output of the command is also indetended by
+two spaces and is right below the command (note the absence of a $)
+
+  $ echo "the expected output is below"
+  the expected output is below
+```
+
+Running the entire test suite is done with `$ make test`. A particular test can
+be executed with `$ dune build @<test-name>`.
+
+Running the test will execute the command after the `$` and its output will be
+compared against the expected output right below the command. Any differences
+will result in a test failure.
+
+### Adding a Test
+
+Simply add a new directory in test/blackbox-tests/test-cases and then `$ make`
+generate the rules for the test , followed by `$ make promote` to accept the new
+rules.
+
+### Accepting Corrections
+
+A failing expect test will generate a diff between the expected and actual
+output. If the new output generate by the command is satisfactory, it can be
+*promoted* with the `$ make promote` command.
+
 ## Code flow
 
 - [src/dune_file.mli](src/dune_file.mli) contains the internal representation

@@ -101,20 +101,21 @@ module Gen (P : Install_rules.Params) = struct
   let build_alias_module { Lib_modules.Alias_module.module_name ; alias_module }
         ~modules ~cctx ~dynlink ~js_of_ocaml =
     let file =
-      match alias_module.impl with
+      match Module.impl alias_module with
       | Some f -> f
-      | None -> Option.value_exn alias_module.intf
+      | None -> Option.value_exn (Module.intf alias_module)
     in
     SC.add_rule sctx
       (Build.return
          (Module.Name.Map.values
-            (Module.Name.Map.remove modules alias_module.name)
+            (Module.Name.Map.remove modules (Module.name alias_module))
           |> List.map ~f:(fun (m : Module.t) ->
+            let name = Module.Name.to_string (Module.name m) in
             sprintf "(** @canonical %s.%s *)\n\
                      module %s = %s\n"
               (Module.Name.to_string module_name)
-              (Module.Name.to_string m.name)
-              (Module.Name.to_string m.name)
+              name
+              name
               (Module.Name.to_string (Module.real_unit_name m))
           )
           |> String.concat ~sep:"\n")
@@ -384,7 +385,7 @@ module Gen (P : Install_rules.Params) = struct
       match Lib_modules.alias lib_modules with
       | None -> (modules, None)
       | Some { module_name = _ ; alias_module } ->
-        ( Module.Name.Map.add modules alias_module.name alias_module
+        ( Module.Name.Map.add modules (Module.name alias_module) alias_module
         , Some alias_module
         )
     in
@@ -498,7 +499,8 @@ module Gen (P : Install_rules.Params) = struct
       match alias_module with
       | None -> Ocaml_flags.common flags
       | Some m ->
-        Ocaml_flags.prepend_common ["-open"; Module.Name.to_string m.name] flags
+        Ocaml_flags.prepend_common
+          ["-open"; Module.Name.to_string (Module.name m)] flags
         |> Ocaml_flags.common
     in
 

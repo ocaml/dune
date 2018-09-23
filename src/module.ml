@@ -81,6 +81,9 @@ type t =
   }
 
 let name t = t.name
+let pp_flags t = t.pp
+let intf t = t.intf
+let impl t = t.impl
 
 let make ?impl ?intf ?obj_name ~visibility name =
   let file : File.t =
@@ -234,3 +237,7 @@ let remove_files t =
     intf = None
   ; impl = None
   }
+
+let sources t =
+  List.filter_map [t.intf; t.impl]
+    ~f:(Option.map ~f:(fun (x : File.t) -> x.path))

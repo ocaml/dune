@@ -67,15 +67,15 @@ let find_errors ~modules ~intf_only ~virtual_modules ~private_modules =
   let missing_modules =
     Module.Name.Map.fold intf_only ~init:[]
       ~f:(fun ((_, (module_ : Module.t)) as module_loc) acc ->
-        if Option.is_none module_.impl then
-          acc
+        if Module.has_impl module_ then
+          module_loc :: acc
         else
-          module_loc :: acc)
+          acc)
   in
   let errors =
     Module.Name.Map.fold virtual_modules ~init:Module_errors.empty
       ~f:(fun (_, (module_ : Module.t) as module_loc) acc ->
-        if Option.is_some module_.impl then
+        if Module.has_impl module_ then
           { acc with missing_modules = module_loc :: acc.missing_modules }
         else if Module.Name.Map.mem intf_only (Module.name module_) then
           { acc with virt_intf_overlaps = module_loc :: acc.virt_intf_overlaps
@@ -90,7 +90,7 @@ let find_errors ~modules ~intf_only ~virtual_modules ~private_modules =
   let missing_intf_only =
     Module.Name.Map.fold modules ~init:[]
       ~f:(fun (_, (module_ : Module.t) as module_loc) acc ->
-        if Option.is_some module_.impl then
+        if Module.has_impl module_ then
           acc
         else if not (Module.Name.Map.mem intf_only (Module.name module_))
              && not (Module.Name.Map.mem virtual_modules (Module.name module_))

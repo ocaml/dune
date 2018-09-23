@@ -780,13 +780,13 @@ and closure_with_overlap_checks db ts ~stack ~linking =
       res := t :: !res
   in
   Result.List.iter ts ~f:(loop ~stack) >>= fun () ->
-  let res = !res in
-  build_impl_map res >>= fun impls ->
-  if linking then
+  let closure = List.rev !res in
+  build_impl_map closure >>= fun impls ->
+  if linking && not (Lib_name.Map.is_empty impls) then
     ensure_impl_for_every_vlibs ~impls >>= fun impls ->
-    second_step_closure res ~impls
+    second_step_closure closure ~impls
   else
-    Ok (List.rev res)
+    Ok closure
 
 and second_step_closure ts ~impls =
   let visited = ref Lib_name.Set.empty in

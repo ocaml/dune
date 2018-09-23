@@ -1,5 +1,5 @@
-next
-----
+1.3.0 (23/09/2018)
+------------------
 
 - Support colors on Windows (#1290, @diml)
 
@@ -13,7 +13,8 @@ next
 
 - Make `dune rules -m` output a valid makefile (#1293, @diml)
 
-- Expand variables in `(targets ..)` field (#1301, fix #1189, @nojb)
+- Expand variables in `(targets ..)` field (#1301, #1320, fix #1189, @nojb,
+  @rgrinberg, @diml)
 
 - Fix a race condition on Windows that was introduced in 1.2.0
   (#1304, fix #1303, @diml)
@@ -21,7 +22,7 @@ next
 - Fix the generation of .merlin files to account for private modules
   (@rgrinberg, fix #1314)
 
-- Exclude the local opam switch direcory (`_opam`) from the list of watched
+- Exclude the local opam switch directory (`_opam`) from the list of watched
   directories (#1315, @dysinger)
 
 - Fix compilation of the module generated for `findlib.dynload`

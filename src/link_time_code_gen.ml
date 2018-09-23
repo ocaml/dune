@@ -55,7 +55,7 @@ let libraries_link ~name ~loc ~mode cctx libs =
         ~opaque:true
         ())
     in
-    Module_compilation.build_module ~dynlink:false
+    Module_compilation.build_module
       ~dep_graphs:(Ocamldep.Dep_graphs.dummy module_)
       cctx
       module_;

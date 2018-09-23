@@ -24,6 +24,9 @@ next
 - Exclude the local opam switch direcory (`_opam`) from the list of watched
   directories (#1315, @dysinger)
 
+- Fix compilation of the module generated for `findlib.dynload`
+  (#1317, fix #1310, @diml)
+
 1.2.1 (17/09/2018)
 ------------------
 

@@ -149,3 +149,11 @@ Executable that tries to build against a virtual library without an implementati
   Error: No implementation found for virtual library "vlib"
   
   [1]
+
+Executable that tries to use two implementations for the same virtual lib
+  $ dune build --root double-implementation
+  Entering directory 'double-implementation'
+  Error: Conflicting implementations for virtual library "vlib"- "impl1"
+  - "impl2"
+  This cannot work.
+  [1]

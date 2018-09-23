@@ -536,22 +536,13 @@ let rec instantiate db name (info : Lib_info.t) ~stack ~hidden =
   let requires =
     match implements with
     | None -> requires
-    | Some implements ->
-      implements >>= fun implements ->
-      implements.requires >>= fun irequires ->
+    | Some impl ->
+      impl >>= fun impl ->
       requires >>| fun requires ->
-      L.remove_dups (List.rev_append irequires requires)
+      impl :: requires
   in
   let ppx_runtime_deps =
-    let ppx_rd =
-      resolve_simple_deps db info.ppx_runtime_deps ~allow_private_deps ~stack in
-    match implements with
-    | None -> ppx_rd
-    | Some implements ->
-      implements >>= fun implements ->
-      implements.ppx_runtime_deps >>= fun ippx_rd ->
-      ppx_rd >>| fun ppx_rd ->
-      L.remove_dups (List.rev_append ippx_rd ppx_rd)
+    resolve_simple_deps db info.ppx_runtime_deps ~allow_private_deps ~stack
   in
   let map_error x =
     Result.map_error x ~f:(fun e ->

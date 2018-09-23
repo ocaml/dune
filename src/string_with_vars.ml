@@ -312,6 +312,8 @@ let text_only t =
   | [Text s] -> Some s
   | _ -> None
 
+let has_vars t = Option.is_none (text_only t)
+
 let remove_locs t =
   { t with template = Dsexp.Template.remove_locs t.template
   }

@@ -37,7 +37,6 @@ there's only a public name which is invalid, but sine the library is unwrapped,
 it's just a warning
 
   $ dune build --root public-name-invalid-wrapped-false
-  Info: creating file dune-project with this contents: (lang dune 1.2)
   File "dune", line 3, characters 14-21:
   3 |  (public_name foo.bar))
                     ^^^^^^^

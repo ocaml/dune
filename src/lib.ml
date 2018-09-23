@@ -1080,7 +1080,7 @@ let report_lib_error ppf (e : Error.t) =
   match e with
   | Double_implementation { impl1 ; impl2 ; vlib } ->
     Format.fprintf ppf
-      "@{<error>Error@}: Conflicting implementations for virtual library %a@,\
+      "@{<error>Error@}: Conflicting implementations for virtual library %a:\n\
        - %a@,\
        - %a@,\
        This cannot work.@\n"
@@ -1089,7 +1089,7 @@ let report_lib_error ppf (e : Error.t) =
       Lib_name.pp_quoted impl2
   | No_implementation { for_vlib } ->
     Format.fprintf ppf
-      "@{<error>Error@}: No implementation found for virtual library %a@.\n"
+      "@{<error>Error@}: No implementation found for virtual library %a.@\n"
       Lib_name.pp_quoted for_vlib
   | Library_not_available { loc = _; name; reason } ->
     Format.fprintf ppf

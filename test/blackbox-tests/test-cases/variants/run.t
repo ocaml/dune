@@ -142,3 +142,10 @@ Virtual library where a wrapped module is virtual
   Entering directory 'variants-sub-module'
            run alias default
   Impl's Vmd.run ()
+
+Executable that tries to build against a virtual library without an implementation
+  $ dune build --root missing-implementation
+  Entering directory 'missing-implementation'
+  Error: No implementation found for virtual library "vlib"
+  
+  [1]

@@ -154,9 +154,7 @@ module Gen(P : Params) = struct
               ; if_ (native && Module.has_impl m && virtual_library)
                   [ Module.obj_file m ~obj_dir ~ext:ext_obj ]
               ; List.filter_map Ml_kind.all ~f:(Module.cmt_file m ~obj_dir)
-              ; List.filter_map [m.intf;m.impl] ~f:(function
-                  | None -> None
-                  | Some f -> Some f.path)
+              ; Module.sources m
               ])
         ; if_ (byte && not virtual_library)
             [ Library.archive ~dir lib ~ext:".cma" ]

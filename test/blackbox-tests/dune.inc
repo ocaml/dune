@@ -473,6 +473,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name lib-errors)
+ (deps (package dune) (source_tree test-cases/lib-errors))
+ (action
+  (chdir
+   test-cases/lib-errors
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name link-deps)
  (deps (package dune) (source_tree test-cases/link-deps))
  (action
@@ -991,6 +999,7 @@
   (alias installable-dup-private-libs)
   (alias intf-only)
   (alias lib-available)
+  (alias lib-errors)
   (alias link-deps)
   (alias lint)
   (alias loop)
@@ -1103,6 +1112,7 @@
   (alias installable-dup-private-libs)
   (alias intf-only)
   (alias lib-available)
+  (alias lib-errors)
   (alias link-deps)
   (alias lint)
   (alias loop)

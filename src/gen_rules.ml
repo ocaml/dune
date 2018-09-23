@@ -53,7 +53,7 @@ module Gen(P : Install_rules.Params) = struct
     in
     let modules =
       Module.Name.Map.map modules ~f:(fun m ->
-        Preprocessing.pp_module_as pp m.name m)
+        Preprocessing.pp_module_as pp (Module.name m) m)
     in
 
     let programs =

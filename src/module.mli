@@ -45,20 +45,9 @@ module Visibility : sig
   type t = Public | Private
 end
 
-(** Representation of a module. It is guaranteed that at least one of
-   [impl] or [intf] is set. *)
-type t = private
-  { name       : Name.t (** Name of the module. This is always the
-                            basename of the filename without the
-                            extension. *)
-  ; impl       : File.t option
-  ; intf       : File.t option
-  ; obj_name   : string (** Object name. It is different from [name]
-                            for wrapped modules. *)
-  ; pp         : (unit, string list) Build.t option (** Preprocessing flags *)
-  ; visibility : Visibility.t
-  }
+type t
 
+(** [obj_name] Object name. It is different from [name] for wrapped modules. *)
 val make
   :  ?impl:File.t
   -> ?intf:File.t
@@ -71,6 +60,11 @@ val name : t -> Name.t
 
 (** Real unit name once wrapped. This is always a valid module name. *)
 val real_unit_name : t -> Name.t
+
+val intf : t -> File.t option
+val impl : t -> File.t option
+
+val pp_flags : t -> (unit, string list) Build.t option
 
 val file      : t -> Ml_kind.t -> Path.t option
 val cm_source : t -> Cm_kind.t -> Path.t option
@@ -100,6 +94,7 @@ val with_wrapper : t -> main_module_name:Name.t -> t
 
 val map_files : t -> f:(Ml_kind.t -> File.t -> File.t) -> t
 
+(** Set preprocessing flags *)
 val set_pp : t -> (unit, string list) Build.t option -> t
 
 val to_sexp : t Sexp.To_sexp.t
@@ -120,3 +115,5 @@ val is_public : t -> bool
 val set_private : t -> t
 
 val remove_files : t -> t
+
+val sources : t -> Path.t list

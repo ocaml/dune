@@ -142,6 +142,20 @@ module Error : sig
       }
   end
 
+  module Double_implementation : sig
+    type t =
+      { impl1 : Lib_name.t
+      ; impl2 : Lib_name.t
+      ; vlib  : Lib_name.t
+      }
+  end
+
+  module No_implementation : sig
+    type t =
+      { for_vlib : Lib_name.t
+      }
+  end
+
   type t =
     | Library_not_available        of Library_not_available.t
     | No_solution_found_for_select of No_solution_found_for_select.t
@@ -149,6 +163,8 @@ module Error : sig
     | Conflict                     of Conflict.t
     | Overlap                      of Overlap.t
     | Private_deps_not_allowed     of Private_deps_not_allowed.t
+    | Double_implementation        of Double_implementation.t
+    | No_implementation            of No_implementation.t
 end
 
 exception Error of Error.t
@@ -262,7 +278,7 @@ module DB : sig
       order of dependencies.
 
       This function is for executables stanzas.  *)
-  val resolve_user_written_deps
+  val resolve_user_written_deps_for_exes
     :  t
     -> ?allow_overlaps:bool
     -> Dune_file.Lib_dep.t list
@@ -282,7 +298,7 @@ end with type lib := t
 
 (** {1 Transitive closure} *)
 
-val closure : L.t -> L.t Or_exn.t
+val closure : L.t -> linking:bool -> L.t Or_exn.t
 
 (** {1 Sub-systems} *)
 

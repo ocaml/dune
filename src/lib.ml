@@ -40,6 +40,20 @@ module Error0 = struct
   module No_solution_found_for_select = struct
     type t = { loc : Loc.t }
   end
+
+  module Double_implementation = struct
+    type t =
+      { impl1 : Lib_name.t
+      ; impl2 : Lib_name.t
+      ; vlib  : Lib_name.t
+      }
+  end
+
+  module No_implementation = struct
+    type t =
+      { for_vlib : Lib_name.t
+      }
+  end
 end
 
 module Resolved_select = struct
@@ -112,6 +126,8 @@ and error =
   | Conflict                     of conflict
   | Overlap                      of overlap
   | Private_deps_not_allowed     of private_deps_not_allowed
+  | Double_implementation        of Error0.Double_implementation.t
+  | No_implementation            of Error0.No_implementation.t
 
 and resolve_result =
   | Not_found
@@ -167,6 +183,8 @@ module Error = struct
     | Conflict                     of Conflict.t
     | Overlap                      of Overlap.t
     | Private_deps_not_allowed     of Private_deps_not_allowed.t
+    | Double_implementation        of Double_implementation.t
+    | No_implementation            of No_implementation.t
 end
 
 exception Error of Error.t
@@ -716,7 +734,7 @@ and resolve_user_deps db deps ~allow_private_deps ~pps ~stack =
         let pps = (pps : (Loc.t * Dune_file.Pp.t) list :> (Loc.t * Lib_name.t) list) in
         resolve_simple_deps db pps ~allow_private_deps:true ~stack
         >>= fun pps ->
-        closure_with_overlap_checks None pps ~stack
+        closure_with_overlap_checks None pps ~stack ~linking:true
       in
       let deps =
         deps >>= fun init ->
@@ -731,7 +749,7 @@ and resolve_user_deps db deps ~allow_private_deps ~pps ~stack =
   in
   (deps, pps, resolved_selects)
 
-and closure_with_overlap_checks db ts ~stack =
+and closure_with_overlap_checks db ts ~stack ~linking =
   let visited = ref Lib_name.Map.empty in
   let res = ref [] in
   let orig_stack = stack in
@@ -770,8 +788,69 @@ and closure_with_overlap_checks db ts ~stack =
       Result.List.iter deps ~f:(loop ~stack) >>| fun () ->
       res := t :: !res
   in
-  Result.List.iter ts ~f:(loop ~stack) >>| fun () ->
+  Result.List.iter ts ~f:(loop ~stack) >>= fun () ->
+  let res = !res in
+  build_impl_map res >>= fun impls ->
+  if linking then
+    ensure_impl_for_every_vlibs ~impls >>= fun impls ->
+    second_step_closure res ~impls
+  else
+    Ok (List.rev res)
+
+and second_step_closure ts ~impls =
+  let visited = ref Lib_name.Set.empty in
+  let res = ref [] in
+  let rec loop t =
+    let t =
+      Option.value ~default:t (Lib_name.Map.find impls t.name) in
+    if Lib_name.Set.mem !visited t.name then
+      Ok ()
+    else begin
+      visited := Lib_name.Set.add !visited t.name;
+      t.requires >>= fun deps ->
+      Result.List.iter deps ~f:loop >>| fun () ->
+      res := t :: !res
+    end
+  in
+  Result.List.iter ts ~f:loop >>| fun () ->
   List.rev !res
+
+and build_impl_map closure =
+  let rec loop acc = function
+    | [] -> Ok acc
+    | lib :: libs ->
+      match lib.implements, lib.info.virtual_ with
+      | None, None -> loop acc libs
+      | Some _, Some _ -> assert false (* can't be virtual and implement *)
+      | None, Some _ ->
+        loop (Lib_name.Map.add acc lib.name None) libs
+      | Some vlib, None ->
+        vlib >>= fun vlib ->
+        begin match Lib_name.Map.find acc vlib.name with
+        | None ->
+          (* we've already traversed the virtual library because it must have
+             occured earlier in the closure *)
+          assert false
+        | Some None ->
+          loop (Lib_name.Map.add acc vlib.name (Some lib)) libs
+        | Some (Some lib') ->
+          Error (Error (Double_implementation
+                          { impl2 = lib.name
+                          ; impl1 = lib'.name
+                          ; vlib = vlib.name
+                          }))
+        end
+  in loop Lib_name.Map.empty closure
+
+and ensure_impl_for_every_vlibs ~impls =
+  let rec loop acc = function
+    | [] -> Ok acc
+    | (vlib_name, None) :: _ ->
+      Error (Error (No_implementation { for_vlib = vlib_name }))
+    | (vlib, Some impl) :: libs ->
+      loop (Lib_name.Map.add acc vlib impl) libs
+  in
+  loop Lib_name.Map.empty (Lib_name.Map.to_list impls)
 
 let closure_with_overlap_checks db l =
   closure_with_overlap_checks db l ~stack:Dep_stack.empty
@@ -785,7 +864,7 @@ let to_exn res =
 
 let requires_exn         t = to_exn t.requires
 let ppx_runtime_deps_exn t = to_exn t.ppx_runtime_deps
-let closure_exn          l = to_exn (closure l)
+let closure_exn          l ~linking = to_exn (closure l ~linking)
 
 module Compile = struct
   module Resolved_select = Resolved_select
@@ -802,7 +881,8 @@ module Compile = struct
 
   let for_lib db (t : lib) =
     { direct_requires   = t.requires
-    ; requires          = t.requires >>= closure_with_overlap_checks db
+    ; requires          =
+        t.requires >>= closure_with_overlap_checks db ~linking:false
     ; resolved_selects  = t.resolved_selects
     ; pps               = t.pps
     ; optional          = t.info.optional
@@ -936,7 +1016,7 @@ module DB = struct
       let t = Option.some_if (not allow_overlaps) t in
       Compile.for_lib t lib
 
-  let resolve_user_written_deps t ?(allow_overlaps=false) deps ~pps =
+  let resolve_user_written_deps_for_exes t ?(allow_overlaps=false) deps ~pps =
     let res, pps, resolved_selects =
       resolve_user_deps t (Lib_info.Deps.of_lib_deps deps) ~pps
         ~stack:Dep_stack.empty ~allow_private_deps:true
@@ -945,6 +1025,7 @@ module DB = struct
       res
       >>=
       closure_with_overlap_checks (Option.some_if (not allow_overlaps) t)
+        ~linking:true
     in
     { Compile.
       direct_requires = res
@@ -992,7 +1073,7 @@ module Meta = struct
 
      Sigh... *)
   let ppx_runtime_deps_for_deprecated_method t =
-    closure_exn [t]
+    closure_exn [t] ~linking:false
     |> List.concat_map ~f:ppx_runtime_deps_exn
     |> to_names
 
@@ -1006,6 +1087,19 @@ end
 
 let report_lib_error ppf (e : Error.t) =
   match e with
+  | Double_implementation { impl1 ; impl2 ; vlib } ->
+    Format.fprintf ppf
+      "@{<error>Error@}: Conflicting implementations for virtual library %a@,\
+       - %a@,\
+       - %a@,\
+       This cannot work.@\n"
+      Lib_name.pp_quoted vlib
+      Lib_name.pp_quoted impl1
+      Lib_name.pp_quoted impl2
+  | No_implementation { for_vlib } ->
+    Format.fprintf ppf
+      "@{<error>Error@}: No implementation found for virtual library %a@.\n"
+      Lib_name.pp_quoted for_vlib
   | Library_not_available { loc = _; name; reason } ->
     Format.fprintf ppf
       "@{<error>Error@}: Library %a %a.@\n"

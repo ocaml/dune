@@ -1436,8 +1436,22 @@ end
 module Rule = struct
   module Targets = struct
     type t =
-      | Static of String_with_vars.t list (* List of files in the current directory *)
+      (* List of files in the current directory *)
+      | Static of String_with_vars.t list
       | Infer
+
+    let dparse_static =
+      let%map syntax_version = Syntax.get_exn Stanza.syntax
+      and targets = list String_with_vars.dparse
+      in
+      if syntax_version < (1, 3) then
+        List.iter targets ~f:(fun target ->
+          if String_with_vars.has_vars target then
+            Syntax.Error.since (String_with_vars.loc target)
+              Stanza.syntax
+              (1, 3)
+              ~what:"Using variables in the targets field");
+      Static targets
   end
 
 
@@ -1515,7 +1529,7 @@ module Rule = struct
   let long_form =
     let%map loc = loc
     and action = field "action" (located Action.Unexpanded.dparse)
-    and targets = field "targets" (list String_with_vars.dparse)
+    and targets = field "targets" Targets.dparse_static
     and deps =
       field "deps" (Bindings.dparse Dep_conf.dparse) ~default:Bindings.empty
     and locks = field "locks" (list String_with_vars.dparse) ~default:[]
@@ -1539,7 +1553,7 @@ module Rule = struct
           | true, None -> Ok Fallback
           | false, None -> Ok Standard)
     in
-    { targets = Static targets
+    { targets
     ; deps
     ; action
     ; mode

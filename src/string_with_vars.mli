@@ -30,6 +30,8 @@ val make_text  : ?quoted: bool -> Loc.t -> string -> t
 
 val is_var : t -> name:string -> bool
 
+val has_vars : t -> bool
+
 (** If [t] contains no variable, returns the contents of [t]. *)
 val text_only : t -> string option
 

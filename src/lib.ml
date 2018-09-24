@@ -514,40 +514,79 @@ let result_of_resolve_status = function
   | St_not_found          -> Error Error.Library_not_available.Reason.Not_found
   | St_hidden (_, hidden) -> Error (Hidden hidden)
 
-module Variants : sig
-  module Info : sig
-    type full
-    type for_second_step_closure
+module Virtual_libs : sig
+  (** Make sure that for every virtual library in the list there is at
+      most one corresponding implementation.
 
-    val is_empty : full -> bool
-  end
-
-  val build_impl_map
-    :  (Dep_stack.t * lib) list
+      Additionally, if linking is [true], ensures that every virtual
+      library as an implementation and re-arrange the list so that
+      implementations replaces virtual libraries. *)
+  val associate
+    :  (t * Dep_stack.t) list
     -> orig_stack:Dep_stack.t
-    -> (Info.full, exn) result
-
-  val ensure_impl_for_every_vlibs
-    :  impls:Info.full
-    -> orig_stack:Dep_stack.t
-    -> (Info.for_second_step_closure, exn) result
-
-  val second_step_closure
-    :  lib list
-    -> impls:Info.for_second_step_closure
-    -> (lib list, exn) result
+    -> linking:bool
+    -> t list Or_exn.t
 end = struct
-  module Info = struct
-    type vlib_status =
-      | No_impl of Dep_stack.t
-      | Impl of Dep_stack.t * lib
-    type full = vlib_status Lib_name.Map.t
-    type for_second_step_closure = lib Lib_name.Map.t
+  module Table = struct
+    module Partial = struct
+      type vlib_status =
+        | No_impl of Dep_stack.t
+        | Impl of lib * Dep_stack.t
+      type t = vlib_status Lib_name.Map.t
 
-    let is_empty = Lib_name.Map.is_empty
+      let is_empty = Lib_name.Map.is_empty
+
+      let make closure ~orig_stack : t Or_exn.t =
+        let rec loop acc = function
+          | [] -> Ok acc
+          | (lib, stack) :: libs ->
+            match lib.implements, lib.info.virtual_ with
+            | None, None -> loop acc libs
+            | Some _, Some _ ->
+              assert false (* can't be virtual and implement *)
+            | None, Some _ ->
+              loop (Lib_name.Map.add acc lib.name (No_impl stack)) libs
+            | Some vlib, None ->
+              vlib >>= fun vlib ->
+              begin match Lib_name.Map.find acc vlib.name with
+              | None ->
+                (* we've already traversed the virtual library because
+                   it must have occured earlier in the closure *)
+                assert false
+              | Some (No_impl _) ->
+                loop (Lib_name.Map.add acc vlib.name (Impl (lib, stack))) libs
+              | Some (Impl (lib', stack')) ->
+                let req_by' =
+                  Dep_stack.to_required_by stack' ~stop_at:orig_stack
+                in
+                let req_by =
+                  Dep_stack.to_required_by stack ~stop_at:orig_stack
+                in
+                Error (Error (Double_implementation
+                                { impl2 = (lib.name, req_by)
+                                ; impl1 = (lib'.name, req_by')
+                                ; vlib = vlib.name
+                                }))
+              end
+        in
+        loop Lib_name.Map.empty closure
+    end
+
+    type t = lib Lib_name.Map.t
+
+    let make impls ~orig_stack : t Or_exn.t =
+      let rec loop acc = function
+        | [] -> Ok acc
+        | (vlib_name, Partial.No_impl stack) :: _ ->
+          let rb = Dep_stack.to_required_by stack ~stop_at:orig_stack in
+          Error (Error (No_implementation { for_vlib = (vlib_name, rb) }))
+        | (vlib, (Impl (impl, _stack))) :: libs ->
+          loop (Lib_name.Map.add acc vlib impl) libs
+      in
+      loop Lib_name.Map.empty (Lib_name.Map.to_list impls)
   end
 
-  let second_step_closure ts ~impls =
+  let second_step_closure ts impls =
     let visited = ref Lib_name.Set.empty in
     let res = ref [] in
     let rec loop t =
@@ -565,46 +604,16 @@ end = struct
     Result.List.iter ts ~f:loop >>| fun () ->
     List.rev !res
 
-  let build_impl_map closure ~orig_stack =
-    let rec loop acc = function
-      | [] -> Ok acc
-      | (stack, lib) :: libs ->
-        match lib.implements, lib.info.virtual_ with
-        | None, None -> loop acc libs
-        | Some _, Some _ -> assert false (* can't be virtual and implement *)
-        | None, Some _ ->
-          loop (Lib_name.Map.add acc lib.name (Info.No_impl stack)) libs
-        | Some vlib, None ->
-          vlib >>= fun vlib ->
-          begin match Lib_name.Map.find acc vlib.name with
-          | None ->
-            (* we've already traversed the virtual library because it must have
-               occured earlier in the closure *)
-            assert false
-          | Some (No_impl _) ->
-            loop (Lib_name.Map.add acc vlib.name (Impl (stack, lib))) libs
-          | Some (Impl (stack', lib')) ->
-            let req_by' = Dep_stack.to_required_by stack' ~stop_at:orig_stack in
-            let req_by = Dep_stack.to_required_by stack ~stop_at:orig_stack in
-            Error (Error (Double_implementation
-                            { impl2 = (lib.name, req_by)
-                            ; impl1 = (lib'.name, req_by')
-                            ; vlib = vlib.name
-                            }))
-          end
-    in
-    loop Lib_name.Map.empty closure
-
-  let ensure_impl_for_every_vlibs ~impls ~orig_stack =
-    let rec loop acc = function
-      | [] -> Ok acc
-      | (vlib_name, Info.No_impl stack) :: _ ->
-        let rb = Dep_stack.to_required_by stack ~stop_at:orig_stack in
-        Error (Error (No_implementation { for_vlib = (vlib_name, rb) }))
-      | (vlib, (Impl (_stack, impl))) :: libs ->
-        loop (Lib_name.Map.add acc vlib impl) libs
-    in
-    loop Lib_name.Map.empty (Lib_name.Map.to_list impls)
+  let associate closure ~orig_stack ~linking =
+    Table.Partial.make closure ~orig_stack
+    >>= fun impls ->
+    let closure = List.map closure ~f:fst in
+    if linking && not (Table.Partial.is_empty impls) then
+      Table.make impls ~orig_stack
+      >>= fun impls ->
+      second_step_closure closure impls
+    else
+      Ok closure
 end
 
 let rec instantiate db name (info : Lib_info.t) ~stack ~hidden =
@@ -870,17 +879,10 @@ and closure_with_overlap_checks db ts ~stack ~linking =
       Dep_stack.push stack (to_id t) >>= fun new_stack ->
       t.requires >>= fun deps ->
       Result.List.iter deps ~f:(loop ~stack:new_stack) >>| fun () ->
-      res := (stack, t) :: !res
+      res := (t, stack) :: !res
   in
   Result.List.iter ts ~f:(loop ~stack) >>= fun () ->
-  let closure = List.rev !res in
-  Variants.build_impl_map closure ~orig_stack >>= fun impls ->
-  if linking && not (Variants.Info.is_empty impls) then
-    Variants.ensure_impl_for_every_vlibs ~impls ~orig_stack
-    >>= fun impls ->
-    Variants.second_step_closure (List.map ~f:snd closure) ~impls
-  else
-    Ok (List.map ~f:snd closure)
+  Virtual_libs.associate (List.rev !res) ~linking ~orig_stack
 
 let closure_with_overlap_checks db l =
   closure_with_overlap_checks db l ~stack:Dep_stack.empty

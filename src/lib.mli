@@ -143,17 +143,11 @@ module Error : sig
   end
 
   module Double_implementation : sig
-    type t =
-      { impl1 : Lib_name.t * Dep_path.Entry.t list
-      ; impl2 : Lib_name.t * Dep_path.Entry.t list
-      ; vlib  : Lib_name.t
-      }
+    type t
   end
 
   module No_implementation : sig
-    type t =
-      { for_vlib : Lib_name.t
-      }
+    type t
   end
 
   type t =

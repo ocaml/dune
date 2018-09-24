@@ -43,15 +43,15 @@ module Error0 = struct
 
   module Double_implementation = struct
     type t =
-      { impl1 : Lib_name.t * Dep_path.Entry.t list
-      ; impl2 : Lib_name.t * Dep_path.Entry.t list
+      { impl1 : Lib_name.t * Lib_info.t * Dep_path.Entry.t list
+      ; impl2 : Lib_name.t * Lib_info.t * Dep_path.Entry.t list
       ; vlib  : Lib_name.t
       }
   end
 
   module No_implementation = struct
     type t =
-      { for_vlib : Lib_name.t * Dep_path.Entry.t list
+      { for_vlib : Lib_name.t * Lib_info.t * Dep_path.Entry.t list
       }
   end
 end
@@ -532,9 +532,9 @@ end = struct
       type vlib_status =
         | No_impl of Dep_stack.t
         | Impl of lib * Dep_stack.t
-      type t = vlib_status Lib_name.Map.t
+      type t = vlib_status Map.t
 
-      let is_empty = Lib_name.Map.is_empty
+      let is_empty = Map.is_empty
 
       let make closure ~orig_stack : t Or_exn.t =
         let rec loop acc = function
@@ -545,16 +545,16 @@ end = struct
             | Some _, Some _ ->
               assert false (* can't be virtual and implement *)
             | None, Some _ ->
-              loop (Lib_name.Map.add acc lib.name (No_impl stack)) libs
+              loop (Map.add acc lib (No_impl stack)) libs
             | Some vlib, None ->
               vlib >>= fun vlib ->
-              begin match Lib_name.Map.find acc vlib.name with
+              begin match Map.find acc vlib with
               | None ->
                 (* we've already traversed the virtual library because
                    it must have occured earlier in the closure *)
                 assert false
               | Some (No_impl _) ->
-                loop (Lib_name.Map.add acc vlib.name (Impl (lib, stack))) libs
+                loop (Map.add acc vlib (Impl (lib, stack))) libs
               | Some (Impl (lib', stack')) ->
                 let req_by' =
                   Dep_stack.to_required_by stack' ~stop_at:orig_stack
@@ -563,35 +563,36 @@ end = struct
                   Dep_stack.to_required_by stack ~stop_at:orig_stack
                 in
                 Error (Error (Double_implementation
-                                { impl2 = (lib.name, req_by)
-                                ; impl1 = (lib'.name, req_by')
+                                { impl2 = (lib.name, lib.info, req_by)
+                                ; impl1 = (lib'.name, lib'.info, req_by')
                                 ; vlib = vlib.name
                                 }))
               end
         in
-        loop Lib_name.Map.empty closure
+        loop Map.empty closure
     end
 
-    type t = lib Lib_name.Map.t
+    type t = lib Map.t
 
     let make impls ~orig_stack : t Or_exn.t =
       let rec loop acc = function
         | [] -> Ok acc
-        | (vlib_name, Partial.No_impl stack) :: _ ->
+        | (vlib, Partial.No_impl stack) :: _ ->
           let rb = Dep_stack.to_required_by stack ~stop_at:orig_stack in
-          Error (Error (No_implementation { for_vlib = (vlib_name, rb) }))
+          Error
+            (Error
+               (No_implementation { for_vlib = (vlib.name, vlib.info, rb) }))
         | (vlib, (Impl (impl, _stack))) :: libs ->
-          loop (Lib_name.Map.add acc vlib impl) libs
+          loop (Map.add acc vlib impl) libs
       in
-      loop Lib_name.Map.empty (Lib_name.Map.to_list impls)
+      loop Map.empty (Map.to_list impls)
   end
 
   let second_step_closure ts impls =
     let visited = ref Lib_name.Set.empty in
     let res = ref [] in
     let rec loop t =
-      let t =
-        Option.value ~default:t (Lib_name.Map.find impls t.name) in
+      let t = Option.value ~default:t (Map.find impls t) in
       if Lib_name.Set.mem !visited t.name then
         Ok ()
       else begin
@@ -1126,22 +1127,23 @@ let report_lib_error ppf (e : Error.t) =
   in
   match e with
   | Double_implementation
-      { impl1 = (impl1, rb1) ; impl2 = (impl2, rb2) ; vlib } ->
+      { impl1 = (impl1, info1, rb1) ; impl2 = (impl2, info2, rb2) ; vlib } ->
     Format.fprintf ppf
-      "@[<v>@{<error>Error@}: Conflicting implementations for virtual library %a:@,\
-       - %a%a@,\
-       - %a%a@,\
+      "@[<v>@{<error>Error@}: \
+       Conflicting implementations for virtual library %a:@,\
+       - %a in %a%a@,\
+       - %a in %a%a@,\
        This cannot work.@]"
       Lib_name.pp_quoted vlib
-      Lib_name.pp_quoted impl1
+      Lib_name.pp_quoted impl1 Path.pp info1.src_dir
       dep_path rb1
-      Lib_name.pp_quoted impl2
+      Lib_name.pp_quoted impl2 Path.pp info2.src_dir
       dep_path rb2
-  | No_implementation { for_vlib = (name, rb) } ->
+  | No_implementation { for_vlib = (name, info, rb) } ->
     Format.fprintf ppf
       "@[<v 3>@{<error>Error@}: \
-       No implementation found for virtual library %a.%a@]"
-      Lib_name.pp_quoted name
+       No implementation found for virtual library %a (%a).%a@]"
+      Lib_name.pp_quoted name Path.pp info.src_dir
       dep_path rb
   | Library_not_available { loc = _; name; reason } ->
     Format.fprintf ppf

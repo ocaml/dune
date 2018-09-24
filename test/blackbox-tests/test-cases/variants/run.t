@@ -146,15 +146,15 @@ Virtual library where a wrapped module is virtual
 Executable that tries to build against a virtual library without an implementation
   $ dune build --root missing-implementation
   Entering directory 'missing-implementation'
-  Error: No implementation found for virtual library "vlib".
+  Error: No implementation found for virtual library "vlib" (_build/default/vlib).
   [1]
 
 Executable that tries to use two implementations for the same virtual lib
   $ dune build --root double-implementation
   Entering directory 'double-implementation'
   Error: Conflicting implementations for virtual library "vlib":
-  - "impl1"
+  - "impl1" in _build/default/impl1
      -> required by library "bar" in _build/default
-  - "impl2"
+  - "impl2" in _build/default/impl2
   This cannot work.
   [1]

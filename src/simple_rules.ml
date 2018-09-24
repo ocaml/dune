@@ -66,9 +66,12 @@ let copy_files sctx ~dir ~scope ~src_dir (def: Copy_files.t) =
     let src_glob = SC.expand_vars_string sctx ~dir def.glob ~scope in
     Path.relative src_dir src_glob ~error_loc:loc
   in
-  if def.syntax_version < (1, 3) && not (Path.is_descendant glob_in_src ~of_:src_dir) then
-    Errors.fail loc "%s is not a sub-directory of %s"
-      (Path.to_string_maybe_quoted glob_in_src) (Path.to_string_maybe_quoted src_dir);
+  if def.syntax_version < (1, 3)
+  && not (Path.is_descendant glob_in_src ~of_:src_dir) then
+    Syntax.Error.since loc Stanza.syntax def.syntax_version
+      ~what:(sprintf "%s is not a sub-directory of %s. This"
+               (Path.to_string_maybe_quoted glob_in_src)
+               (Path.to_string_maybe_quoted src_dir));
   let glob = Path.basename glob_in_src in
   let src_in_src = Path.parent_exn glob_in_src in
   let re =

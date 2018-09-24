@@ -13,7 +13,7 @@
       ocamlopt .test.eobjs/lexer1.{cmx,o}
         ocamlc .test.eobjs/test.{cmi,cmo,cmt}
       ocamlopt .test.eobjs/test.{cmx,o}
-      ocamlopt test
+      ocamlopt test.exe
   $ dune build --root test1 @bar-source --display short
   Entering directory 'test1'
   #line 1 "include/bar.h"

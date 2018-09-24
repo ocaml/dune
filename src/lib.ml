@@ -524,12 +524,12 @@ module Variants : sig
 
   val build_impl_map
     :  (Dep_stack.t * lib) list
-    -> stack:Dep_stack.t
+    -> orig_stack:Dep_stack.t
     -> (Info.full, exn) result
 
   val ensure_impl_for_every_vlibs
     :  impls:Info.full
-    -> stack:Dep_stack.t
+    -> orig_stack:Dep_stack.t
     -> (Info.for_second_step_closure, exn) result
 
   val second_step_closure
@@ -565,7 +565,7 @@ end = struct
     Result.List.iter ts ~f:loop >>| fun () ->
     List.rev !res
 
-  let build_impl_map closure ~stack:orig_stack =
+  let build_impl_map closure ~orig_stack =
     let rec loop acc = function
       | [] -> Ok acc
       | (stack, lib) :: libs ->
@@ -595,7 +595,7 @@ end = struct
     in
     loop Lib_name.Map.empty closure
 
-  let ensure_impl_for_every_vlibs ~impls ~stack:orig_stack =
+  let ensure_impl_for_every_vlibs ~impls ~orig_stack =
     let rec loop acc = function
       | [] -> Ok acc
       | (vlib_name, Info.No_impl stack) :: _ ->
@@ -874,9 +874,9 @@ and closure_with_overlap_checks db ts ~stack ~linking =
   in
   Result.List.iter ts ~f:(loop ~stack) >>= fun () ->
   let closure = List.rev !res in
-  Variants.build_impl_map closure ~stack >>= fun impls ->
+  Variants.build_impl_map closure ~orig_stack >>= fun impls ->
   if linking && not (Variants.Info.is_empty impls) then
-    Variants.ensure_impl_for_every_vlibs ~impls ~stack:orig_stack
+    Variants.ensure_impl_for_every_vlibs ~impls ~orig_stack
     >>= fun impls ->
     Variants.second_step_closure (List.map ~f:snd closure) ~impls
   else

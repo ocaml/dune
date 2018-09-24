@@ -4,7 +4,6 @@ authors: ["Jane Street Group, LLC <opensource@janestreet.com>"]
 homepage: "https://github.com/ocaml/dune"
 bug-reports: "https://github.com/ocaml/dune/issues"
 dev-repo: "git+https://github.com/ocaml/dune.git"
-doc: "https://dune.readthedocs.io/en/latest/"
 license: "MIT"
 depends: [
   "ocaml" {>= "4.02"}

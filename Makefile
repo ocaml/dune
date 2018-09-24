@@ -56,8 +56,19 @@ livedoc:
 update-jbuilds: $(BIN)
 	$(BIN) build @doc/runtest --auto-promote
 
+# If the first argument is "run"...
+ifeq (dune,$(firstword $(MAKECMDGOALS)))
+  # use the rest as arguments for "run"
+  RUN_ARGS := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
+  # ...and turn them into do-nothing targets
+  $(eval $(RUN_ARGS):;@:)
+endif
+
+dune: $(BIN)
+	$(BIN) $(RUN_ARGS)
+
 .PHONY: default install uninstall reinstall clean test doc
-.PHONY: promote accept-corrections opam-release
+.PHONY: promote accept-corrections opam-release dune
 
 opam-release:
 	dune-release distrib --skip-build --skip-lint --skip-tests

@@ -51,7 +51,7 @@ module Error0 = struct
 
   module No_implementation = struct
     type t =
-      { for_vlib : Lib_name.t
+      { for_vlib : Lib_name.t * Dep_path.Entry.t list
       }
   end
 end
@@ -514,6 +514,10 @@ let result_of_resolve_status = function
   | St_not_found          -> Error Error.Library_not_available.Reason.Not_found
   | St_hidden (_, hidden) -> Error (Hidden hidden)
 
+type vlib_status =
+  | No_impl of Dep_stack.t
+  | Impl of Dep_stack.t * lib
+
 let rec instantiate db name (info : Lib_info.t) ~stack ~hidden =
   let id, stack =
     Dep_stack.create_and_push stack name info.src_dir
@@ -783,7 +787,7 @@ and closure_with_overlap_checks db ts ~stack ~linking =
   let closure = List.rev !res in
   build_impl_map closure ~stack >>= fun impls ->
   if linking && not (Lib_name.Map.is_empty impls) then
-    ensure_impl_for_every_vlibs ~impls >>= fun impls ->
+    ensure_impl_for_every_vlibs ~impls ~stack:orig_stack >>= fun impls ->
     second_step_closure (List.map ~f:snd closure) ~impls
   else
     Ok (List.map ~f:snd closure)
@@ -814,7 +818,7 @@ and build_impl_map closure ~stack:orig_stack =
       | None, None -> loop acc libs
       | Some _, Some _ -> assert false (* can't be virtual and implement *)
       | None, Some _ ->
-        loop (Lib_name.Map.add acc lib.name None) libs
+        loop (Lib_name.Map.add acc lib.name (No_impl stack)) libs
       | Some vlib, None ->
         vlib >>= fun vlib ->
         begin match Lib_name.Map.find acc vlib.name with
@@ -822,9 +826,9 @@ and build_impl_map closure ~stack:orig_stack =
           (* we've already traversed the virtual library because it must have
              occured earlier in the closure *)
           assert false
-        | Some None ->
-          loop (Lib_name.Map.add acc vlib.name (Some (stack, lib))) libs
-        | Some (Some (stack', lib')) ->
+        | Some (No_impl _) ->
+          loop (Lib_name.Map.add acc vlib.name (Impl (stack, lib))) libs
+        | Some (Impl (stack', lib')) ->
           let req_by' = Dep_stack.to_required_by stack' ~stop_at:orig_stack in
           let req_by = Dep_stack.to_required_by stack ~stop_at:orig_stack in
           Error (Error (Double_implementation
@@ -835,14 +839,14 @@ and build_impl_map closure ~stack:orig_stack =
         end
   in
   loop Lib_name.Map.empty closure
-  >>| Lib_name.Map.map ~f:(Option.map ~f:snd)
 
-and ensure_impl_for_every_vlibs ~impls =
+and ensure_impl_for_every_vlibs ~impls ~stack:orig_stack =
   let rec loop acc = function
     | [] -> Ok acc
-    | (vlib_name, None) :: _ ->
-      Error (Error (No_implementation { for_vlib = vlib_name }))
-    | (vlib, Some impl) :: libs ->
+    | (vlib_name, No_impl stack) :: _ ->
+      let rb = Dep_stack.to_required_by stack ~stop_at:orig_stack in
+      Error (Error (No_implementation { for_vlib = (vlib_name, rb) }))
+    | (vlib, (Impl (_stack, impl))) :: libs ->
       loop (Lib_name.Map.add acc vlib impl) libs
   in
   loop Lib_name.Map.empty (Lib_name.Map.to_list impls)
@@ -1096,10 +1100,12 @@ let report_lib_error ppf (e : Error.t) =
       Dep_path.Entries.pp rb1
       Lib_name.pp_quoted impl2
       Dep_path.Entries.pp rb2
-  | No_implementation { for_vlib } ->
+  | No_implementation { for_vlib = (name, rb) } ->
     Format.fprintf ppf
-      "@{<error>Error@}: No implementation found for virtual library %a.@\n"
-      Lib_name.pp_quoted for_vlib
+      "@{<error>Error@}: No implementation found for virtual library %a.@,\
+      \    %a@,"
+      Lib_name.pp_quoted name
+      Dep_path.Entries.pp rb
   | Library_not_available { loc = _; name; reason } ->
     Format.fprintf ppf
       "@{<error>Error@}: Library %a %a.@\n"

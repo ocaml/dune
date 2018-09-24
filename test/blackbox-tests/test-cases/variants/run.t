@@ -147,6 +147,7 @@ Executable that tries to build against a virtual library without an implementati
   $ dune build --root missing-implementation
   Entering directory 'missing-implementation'
   Error: No implementation found for virtual library "vlib".
+      -> required by library "vlib" in _build/default/vlib
   [1]
 
 Executable that tries to use two implementations for the same virtual lib

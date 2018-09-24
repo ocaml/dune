@@ -867,9 +867,9 @@ and closure_with_overlap_checks db ts ~stack ~linking =
            end
          | _ -> assert false)
       >>= fun () ->
-      Dep_stack.push stack (to_id t) >>= fun stack ->
+      Dep_stack.push stack (to_id t) >>= fun new_stack ->
       t.requires >>= fun deps ->
-      Result.List.iter deps ~f:(loop ~stack) >>| fun () ->
+      Result.List.iter deps ~f:(loop ~stack:new_stack) >>| fun () ->
       res := (stack, t) :: !res
   in
   Result.List.iter ts ~f:(loop ~stack) >>= fun () ->
@@ -1116,27 +1116,31 @@ end
    +-----------------------------------------------------------------+ *)
 
 let report_lib_error ppf (e : Error.t) =
+  let dep_path ppf dp =
+    match dp with
+    | [] -> ()
+    | _ ->
+      Format.fprintf ppf "@,   %a" Dep_path.Entries.pp dp
+  in
   match e with
   | Double_implementation
       { impl1 = (impl1, rb1) ; impl2 = (impl2, rb2) ; vlib } ->
     Format.fprintf ppf
-      "@{<error>Error@}: Conflicting implementations for virtual library %a:\n\
-       - %a@,\
-      \    %a@,@\n\
-       - %a@,@\n\
-      \    %a@,\
-       This cannot work.@\n"
+      "@[<v>@{<error>Error@}: Conflicting implementations for virtual library %a:@,\
+       - %a%a@,\
+       - %a%a@,\
+       This cannot work.@]"
       Lib_name.pp_quoted vlib
       Lib_name.pp_quoted impl1
-      Dep_path.Entries.pp rb1
+      dep_path rb1
       Lib_name.pp_quoted impl2
-      Dep_path.Entries.pp rb2
+      dep_path rb2
   | No_implementation { for_vlib = (name, rb) } ->
     Format.fprintf ppf
-      "@{<error>Error@}: No implementation found for virtual library %a.@,\
-      \    %a@,"
+      "@[<v 3>@{<error>Error@}: \
+       No implementation found for virtual library %a.%a@]"
       Lib_name.pp_quoted name
-      Dep_path.Entries.pp rb
+      dep_path rb
   | Library_not_available { loc = _; name; reason } ->
     Format.fprintf ppf
       "@{<error>Error@}: Library %a %a.@\n"
@@ -1145,38 +1149,35 @@ let report_lib_error ppf (e : Error.t) =
   | Conflict { lib1 = (lib1, rb1); lib2 = (lib2, rb2) } ->
     Format.fprintf ppf
       "@[<v>@{<error>Error@}: Conflict between the following libraries:@,\
-       - %a in %s@,\
-      \    %a@,\
-       - %a in %s@,\
-      \    %a@,\
-       This cannot work.@\n"
+       - %a in %s%a@,\
+       - %a in %s%a@,\
+       This cannot work.@]@\n"
       Lib_name.pp_quoted lib1.name
       (Path.to_string_maybe_quoted lib1.info.src_dir)
-      Dep_path.Entries.pp rb1
+      dep_path rb1
       Lib_name.pp_quoted lib2.name
       (Path.to_string_maybe_quoted lib2.info.src_dir)
-      Dep_path.Entries.pp rb2
+      dep_path rb2
   | Overlap { in_workspace = lib1; installed = (lib2, rb2) } ->
     Format.fprintf ppf
       "@[<v>@{<error>Error@}: Conflict between the following libraries:@,\
        - %a in %s@,\
-       - %a in %s@,\
-      \    %a@,\
-       This is not allowed.@\n"
+       - %a in %s%a@,\
+       This is not allowed.@]@\n"
       Lib_name.pp_quoted lib1.name
       (Path.to_string_maybe_quoted lib1.info.src_dir)
       Lib_name.pp_quoted lib2.name
       (Path.to_string_maybe_quoted lib2.info.src_dir)
-      Dep_path.Entries.pp rb2
+      dep_path rb2
   | No_solution_found_for_select { loc } ->
     Format.fprintf ppf
-      "%a@{<error>Error@}: No solution found for this select form.\n"
+      "%a@{<error>Error@}: No solution found for this select form.@\n"
       Errors.print loc
   | Dependency_cycle cycle ->
     Format.fprintf ppf
       "@{<error>Error@}: Dependency cycle detected between the \
        following libraries:@\n\
-       @[<v>%a@]\n"
+       @[<v>%a@]@\n"
       (Format.pp_print_list (fun ppf (path, name) ->
          Format.fprintf ppf "-> %a in %s"
            Lib_name.pp_quoted name (Path.to_string_maybe_quoted path)))

@@ -1,6 +1,12 @@
 (executable
  (name foo)
- (libraries impl1 impl2))
+ (libraries bar impl2)
+ (modules foo))
+
+(library
+ (name bar)
+ (libraries impl1)
+ (modules))
 
 (alias
  (name default)

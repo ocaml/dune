@@ -144,8 +144,8 @@ module Error : sig
 
   module Double_implementation : sig
     type t =
-      { impl1 : Lib_name.t
-      ; impl2 : Lib_name.t
+      { impl1 : Lib_name.t * Dep_path.Entry.t list
+      ; impl2 : Lib_name.t * Dep_path.Entry.t list
       ; vlib  : Lib_name.t
       }
   end

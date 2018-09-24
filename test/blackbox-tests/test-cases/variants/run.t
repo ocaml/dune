@@ -154,6 +154,8 @@ Executable that tries to use two implementations for the same virtual lib
   Entering directory 'double-implementation'
   Error: Conflicting implementations for virtual library "vlib":
   - "impl1"
+      -> required by library "impl1" in _build/default/impl1
   - "impl2"
+      -> required by library "impl2" in _build/default/impl2
   This cannot work.
   [1]

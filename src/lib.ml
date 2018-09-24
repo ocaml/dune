@@ -43,8 +43,8 @@ module Error0 = struct
 
   module Double_implementation = struct
     type t =
-      { impl1 : Lib_name.t
-      ; impl2 : Lib_name.t
+      { impl1 : Lib_name.t * Dep_path.Entry.t list
+      ; impl2 : Lib_name.t * Dep_path.Entry.t list
       ; vlib  : Lib_name.t
       }
   end
@@ -777,16 +777,16 @@ and closure_with_overlap_checks db ts ~stack ~linking =
       Dep_stack.push stack (to_id t) >>= fun stack ->
       t.requires >>= fun deps ->
       Result.List.iter deps ~f:(loop ~stack) >>| fun () ->
-      res := t :: !res
+      res := (stack, t) :: !res
   in
   Result.List.iter ts ~f:(loop ~stack) >>= fun () ->
   let closure = List.rev !res in
-  build_impl_map closure >>= fun impls ->
+  build_impl_map closure ~stack >>= fun impls ->
   if linking && not (Lib_name.Map.is_empty impls) then
     ensure_impl_for_every_vlibs ~impls >>= fun impls ->
-    second_step_closure closure ~impls
+    second_step_closure (List.map ~f:snd closure) ~impls
   else
-    Ok closure
+    Ok (List.map ~f:snd closure)
 
 and second_step_closure ts ~impls =
   let visited = ref Lib_name.Set.empty in
@@ -806,10 +806,10 @@ and second_step_closure ts ~impls =
   Result.List.iter ts ~f:loop >>| fun () ->
   List.rev !res
 
-and build_impl_map closure =
+and build_impl_map closure ~stack:orig_stack =
   let rec loop acc = function
     | [] -> Ok acc
-    | lib :: libs ->
+    | (stack, lib) :: libs ->
       match lib.implements, lib.info.virtual_ with
       | None, None -> loop acc libs
       | Some _, Some _ -> assert false (* can't be virtual and implement *)
@@ -823,15 +823,19 @@ and build_impl_map closure =
              occured earlier in the closure *)
           assert false
         | Some None ->
-          loop (Lib_name.Map.add acc vlib.name (Some lib)) libs
-        | Some (Some lib') ->
+          loop (Lib_name.Map.add acc vlib.name (Some (stack, lib))) libs
+        | Some (Some (stack', lib')) ->
+          let req_by' = Dep_stack.to_required_by stack' ~stop_at:orig_stack in
+          let req_by = Dep_stack.to_required_by stack ~stop_at:orig_stack in
           Error (Error (Double_implementation
-                          { impl2 = lib.name
-                          ; impl1 = lib'.name
+                          { impl2 = (lib.name, req_by)
+                          ; impl1 = (lib'.name, req_by')
                           ; vlib = vlib.name
                           }))
         end
-  in loop Lib_name.Map.empty closure
+  in
+  loop Lib_name.Map.empty closure
+  >>| Lib_name.Map.map ~f:(Option.map ~f:snd)
 
 and ensure_impl_for_every_vlibs ~impls =
   let rec loop acc = function
@@ -1078,15 +1082,20 @@ end
 
 let report_lib_error ppf (e : Error.t) =
   match e with
-  | Double_implementation { impl1 ; impl2 ; vlib } ->
+  | Double_implementation
+      { impl1 = (impl1, rb1) ; impl2 = (impl2, rb2) ; vlib } ->
     Format.fprintf ppf
       "@{<error>Error@}: Conflicting implementations for virtual library %a:\n\
        - %a@,\
-       - %a@,\
+      \    %a@,@\n\
+       - %a@,@\n\
+      \    %a@,\
        This cannot work.@\n"
       Lib_name.pp_quoted vlib
       Lib_name.pp_quoted impl1
+      Dep_path.Entries.pp rb1
       Lib_name.pp_quoted impl2
+      Dep_path.Entries.pp rb2
   | No_implementation { for_vlib } ->
     Format.fprintf ppf
       "@{<error>Error@}: No implementation found for virtual library %a.@\n"

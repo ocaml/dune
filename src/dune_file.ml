@@ -1808,6 +1808,7 @@ end
 module Copy_files = struct
   type t = { add_line_directive : bool
            ; glob : String_with_vars.t
+           ; syntax_version : Syntax.Version.t
            }
 
   let dparse = String_with_vars.dparse
@@ -1894,11 +1895,13 @@ module Stanzas = struct
       (let%map x = Alias_conf.dparse in
        [Alias x])
     ; "copy_files",
-      (let%map glob = Copy_files.dparse in
-       [Copy_files {add_line_directive = false; glob}])
+      (let%map glob = Copy_files.dparse
+       and syntax_version = Syntax.get_exn Stanza.syntax in
+       [Copy_files {add_line_directive = false; glob; syntax_version}])
     ; "copy_files#",
-      (let%map glob = Copy_files.dparse in
-       [Copy_files {add_line_directive = true; glob}])
+      (let%map glob = Copy_files.dparse
+       and syntax_version = Syntax.get_exn Stanza.syntax in
+       [Copy_files {add_line_directive = true; glob; syntax_version}])
     ; "include",
       (let%map loc = loc
        and fn = relative_file in

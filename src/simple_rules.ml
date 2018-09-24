@@ -66,11 +66,7 @@ let copy_files sctx ~dir ~scope ~src_dir (def: Copy_files.t) =
     let src_glob = SC.expand_vars_string sctx ~dir def.glob ~scope in
     Path.relative src_dir src_glob ~error_loc:loc
   in
-  (* The following condition is required for merlin to work.
-     Additionally, the order in which the rules are evaluated only
-     ensures that [sources_and_targets_known_so_far] returns the
-     right answer for sub-directories only. *)
-  if not (Path.is_descendant glob_in_src ~of_:src_dir) then
+  if def.syntax_version < (1, 3) && not (Path.is_descendant glob_in_src ~of_:src_dir) then
     Errors.fail loc "%s is not a sub-directory of %s"
       (Path.to_string_maybe_quoted glob_in_src) (Path.to_string_maybe_quoted src_dir);
   let glob = Path.basename glob_in_src in

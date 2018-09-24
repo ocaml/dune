@@ -28,6 +28,10 @@
 - Fix compilation of the module generated for `findlib.dynload`
   (#1317, fix #1310, @diml)
 
+- Lift restriction on `copy_files` and `copy_files#` stanzas that files to be
+  copied should be in a subdirectory of the current directory.
+  (#1323, fix #911, @nojb)
+
 1.2.1 (17/09/2018)
 ------------------
 

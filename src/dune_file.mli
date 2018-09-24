@@ -402,6 +402,7 @@ module Copy_files : sig
   type t =
     { add_line_directive : bool
     ; glob : String_with_vars.t
+    ; syntax_version : Syntax.Version.t
     }
 end
 

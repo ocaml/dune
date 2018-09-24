@@ -1638,8 +1638,8 @@ module Rule = struct
     let module S = String_with_vars in
     List.map modules ~f:(fun name ->
       let src = name ^ ".mll" in
-      let dst = String_with_vars.make_text loc (name ^ ".ml")  in
-      { targets = Static [dst]
+      let dst = name ^ ".ml" in
+      { targets = Static [S.make_text loc dst]
       ; deps    = Bindings.singleton (Dep_conf.File (S.virt_text __POS__ src))
       ; action  =
           (loc,
@@ -1660,10 +1660,7 @@ module Rule = struct
     let module S = String_with_vars in
     List.map modules ~f:(fun name ->
       let src = name ^ ".mly" in
-      let dsts =
-        List.map ~f:(String_with_vars.make_text loc) [name ^ ".ml"; name ^ ".mli"]
-      in
-      { targets = Static dsts
+      { targets = Static (List.map ~f:(S.make_text loc) [name ^ ".ml"; name ^ ".mli"])
       ; deps    = Bindings.singleton (Dep_conf.File (S.virt_text __POS__ src))
       ; action  =
           (loc,

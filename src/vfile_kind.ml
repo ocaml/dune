@@ -21,9 +21,9 @@ module Id = struct
   let eq (type a) (type b)
         (module A : S with type t = a)
         (module B : S with type t = b)
-    : (a, b) eq option =
+    : (a, b) Type_eq.t option =
     match A.X with
-    | B.X -> Some Eq
+    | B.X -> Some Type_eq.T
     | _   -> None
 end
 

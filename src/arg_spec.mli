@@ -42,7 +42,7 @@ type 'a t =
   | Hidden_deps    of Path.t list
   | Hidden_targets of Path.t list
   (** Register dependencies but produce no argument *)
-  | Dyn      of ('a -> nothing t)
+  | Dyn      of ('a -> Nothing.t t)
 
 val add_deps    : _ t list -> Path.Set.t -> Path.Set.t
 val add_targets : _ t list -> Path.t list -> Path.t list

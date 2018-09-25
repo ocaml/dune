@@ -13,7 +13,7 @@ type 'a t =
   | Paths    of Path.t list
   | Hidden_deps    of Path.t list
   | Hidden_targets of Path.t list
-  | Dyn      of ('a -> nothing t)
+  | Dyn      of ('a -> Nothing.t t)
 
 let rec add_deps ts set =
   List.fold_left ts ~init:set ~f:(fun set t ->
@@ -37,7 +37,7 @@ let rec add_targets ts acc =
 let expand ~dir ts x =
   let dyn_deps = ref Path.Set.empty in
   let add_dep path = dyn_deps := Path.Set.add !dyn_deps path in
-  let rec loop_dyn : nothing t -> string list = function
+  let rec loop_dyn : Nothing.t t -> string list = function
     | A s  -> [s]
     | As l -> l
     | Dep fn ->

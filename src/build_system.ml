@@ -192,9 +192,9 @@ module File_kind = struct
     | Ignore_contents : unit t
     | Sexp_file       : 'a Vfile_kind.t -> 'a t
 
-  let eq : type a b. a t -> b t -> (a, b) eq option = fun a b ->
+  let eq : type a b. a t -> b t -> (a, b) Type_eq.t option = fun a b ->
     match a, b with
-    | Ignore_contents, Ignore_contents -> Some Eq
+    | Ignore_contents, Ignore_contents -> Some Type_eq.T
     | Sexp_file a    , Sexp_file b     -> Vfile_kind.eq a b
     | _                                -> None
 
@@ -471,7 +471,7 @@ let get_file : type a. t -> Path.t -> a File_kind.t -> a File_spec.t = fun t fn 
   match Path.Table.find t.files fn with
   | None -> die "no rule found for %s" (Path.to_string fn)
   | Some (File_spec.T file) ->
-    let Eq = File_kind.eq_exn kind file.kind in
+    let Type_eq.T = File_kind.eq_exn kind file.kind in
     file
 
 let vfile_to_string (type a) (module K : Vfile_kind.S with type t = a) _fn x =

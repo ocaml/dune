@@ -1,9 +1,3 @@
-module Eq = struct
-  type ('a, 'b) t = T : ('a, 'a) t
-
-  let cast (type a) (type b) (T : (a, b) t) (x : a) : b = x
-end
-
 module Key = struct
   module Witness = struct
     type 'a t = ..
@@ -37,9 +31,9 @@ module Key = struct
 
   let eq (type a) (type b)
         (module A : T with type t = a)
-        (module B : T with type t = b) : (a, b) Eq.t =
+        (module B : T with type t = b) : (a, b) Type_eq.t =
     match A.T with
-    | B.T -> Eq.T
+    | B.T -> Type_eq.T
     | _ -> assert false
 end
 
@@ -66,14 +60,14 @@ let find t key =
   | None -> None
   | Some (Binding.T (key', v)) ->
     let eq = Key.eq key' key in
-    Some (Eq.cast eq v)
+    Some (Type_eq.cast eq v)
 
 let find_exn t key =
   match Int.Map.find t (Key.id key) with
   | None -> failwith "Univ_map.find_exn"
   | Some (Binding.T (key', v)) ->
     let eq = Key.eq key' key in
-    Eq.cast eq v
+    Type_eq.cast eq v
 
 let singleton key v = Int.Map.singleton (Key.id key) (Binding.T (key, v))
 

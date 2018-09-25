@@ -29,10 +29,6 @@ module Sys = struct
       remove
 end
 
-type ('a, 'b) eq = Eq : ('a, 'a) eq
-
-type nothing = (int, string) eq
-
 let protect  = Exn.protect
 let protectx = Exn.protectx
 

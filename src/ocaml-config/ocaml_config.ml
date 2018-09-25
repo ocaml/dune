@@ -341,7 +341,8 @@ let make vars =
     let standard_library_default = get vars "standard_library_default" in
     let standard_library         = get vars "standard_library" in
     let standard_runtime =
-      Option.value (get_opt vars "standard_runtime") ~default:"-"
+      Option.value (get_opt vars "standard_runtime")
+        ~default:"the_standard_runtime_variable_was_deleted"
     in
     let ccomp_type               = get vars "ccomp_type" in
     let bytecomp_c_libraries     = get_words vars "bytecomp_c_libraries" in

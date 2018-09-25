@@ -6,7 +6,7 @@ open Result.O
    | Types                                                           |
    +-----------------------------------------------------------------+ *)
 
-module Error0 = struct
+module Error = struct
   module Library_not_available = struct
     module Reason = struct
       module Hidden = struct
@@ -43,22 +43,55 @@ module Error0 = struct
 
   module Double_implementation = struct
     type t =
-      { impl1 : Lib_name.t * Lib_info.t * Dep_path.Entry.t list
-      ; impl2 : Lib_name.t * Lib_info.t * Dep_path.Entry.t list
+      { impl1 : Lib_info.t * Dep_path.Entry.t list
+      ; impl2 : Lib_info.t * Dep_path.Entry.t list
       ; vlib  : Lib_name.t
       }
   end
 
   module No_implementation = struct
     type t =
-      { for_vlib : Lib_name.t * Lib_info.t * Dep_path.Entry.t list
+      { for_vlib : Lib_info.t * Dep_path.Entry.t list
       }
   end
+
+  module Conflict = struct
+    type t =
+      { lib1 : Lib_info.t * Dep_path.Entry.t list
+      ; lib2 : Lib_info.t * Dep_path.Entry.t list
+      }
+  end
+
+  module Overlap = struct
+    type t =
+      { in_workspace : Lib_info.t
+      ; installed    : Lib_info.t * Dep_path.Entry.t list
+      }
+  end
+
+  module Private_deps_not_allowed = struct
+    type t =
+      { private_dep : Lib_info.t
+      ; loc         : Loc.t
+      }
+  end
+
+  type t =
+    | Library_not_available        of Library_not_available.t
+    | No_solution_found_for_select of No_solution_found_for_select.t
+    | Dependency_cycle             of (Path.t * Lib_name.t) list
+    | Conflict                     of Conflict.t
+    | Overlap                      of Overlap.t
+    | Private_deps_not_allowed     of Private_deps_not_allowed.t
+    | Double_implementation        of Double_implementation.t
+    | No_implementation            of No_implementation.t
 end
+
+exception Error of Error.t
 
 module Resolved_select = struct
   type t =
-    { src_fn : (string, Error0.No_solution_found_for_select.t) result
+    { src_fn : (string, Error.No_solution_found_for_select.t) result
     ; dst_fn : string
     }
 end
@@ -117,17 +150,7 @@ and status =
   | St_initializing of Id.t (* To detect cycles *)
   | St_found        of t
   | St_not_found
-  | St_hidden       of t * Error0.Library_not_available.Reason.Hidden.t
-
-and error =
-  | Library_not_available        of Error0.Library_not_available.t
-  | No_solution_found_for_select of Error0.No_solution_found_for_select.t
-  | Dependency_cycle             of (Path.t * Lib_name.t) list
-  | Conflict                     of conflict
-  | Overlap                      of overlap
-  | Private_deps_not_allowed     of private_deps_not_allowed
-  | Double_implementation        of Error0.Double_implementation.t
-  | No_implementation            of Error0.No_implementation.t
+  | St_hidden       of t * Error.Library_not_available.Reason.Hidden.t
 
 and resolve_result =
   | Not_found
@@ -135,59 +158,7 @@ and resolve_result =
   | Hidden   of Lib_info.t * string
   | Redirect of db option * Lib_name.t
 
-and conflict =
-  { lib1 : t * Dep_path.Entry.t list
-  ; lib2 : t * Dep_path.Entry.t list
-  }
-
-and overlap =
-  { in_workspace : t
-  ; installed    : t * Dep_path.Entry.t list
-  }
-
-and private_deps_not_allowed =
-  { private_dep    : t
-  ; pd_loc         : Loc.t
-  }
-
 type lib = t
-
-module Error = struct
-  include Error0
-
-  module Conflict = struct
-    type nonrec t = conflict =
-      { lib1 : t * Dep_path.Entry.t list
-      ; lib2 : t * Dep_path.Entry.t list
-      }
-  end
-
-  module Overlap = struct
-    type nonrec t = overlap =
-      { in_workspace : t
-      ; installed    : t * Dep_path.Entry.t list
-      }
-  end
-
-  module Private_deps_not_allowed = struct
-    type nonrec t = private_deps_not_allowed =
-      { private_dep : t
-      ; pd_loc      : Loc.t
-      }
-  end
-
-  type t = error =
-    | Library_not_available        of Library_not_available.t
-    | No_solution_found_for_select of No_solution_found_for_select.t
-    | Dependency_cycle             of (Path.t * Lib_name.t) list
-    | Conflict                     of Conflict.t
-    | Overlap                      of Overlap.t
-    | Private_deps_not_allowed     of Private_deps_not_allowed.t
-    | Double_implementation        of Double_implementation.t
-    | No_implementation            of No_implementation.t
-end
-
-exception Error of Error.t
 
 let not_available ~loc reason fmt =
   Errors.kerrf fmt ~f:(fun s ->
@@ -481,7 +452,7 @@ let check_private_deps lib ~loc ~allow_private_deps =
   if (not allow_private_deps) && Lib_info.Status.is_private lib.info.status
   then
     Result.Error (Error (
-      Private_deps_not_allowed { private_dep = lib ; pd_loc = loc }))
+      Private_deps_not_allowed { private_dep = lib.info; loc }))
   else
     Ok lib
 
@@ -563,8 +534,8 @@ end = struct
                   Dep_stack.to_required_by stack ~stop_at:orig_stack
                 in
                 Error (Error (Double_implementation
-                                { impl2 = (lib.name, lib.info, req_by)
-                                ; impl1 = (lib'.name, lib'.info, req_by')
+                                { impl2 = (lib.info, req_by)
+                                ; impl1 = (lib'.info, req_by')
                                 ; vlib = vlib.name
                                 }))
               end
@@ -581,7 +552,7 @@ end = struct
           let rb = Dep_stack.to_required_by stack ~stop_at:orig_stack in
           Error
             (Error
-               (No_implementation { for_vlib = (vlib.name, vlib.info, rb) }))
+               (No_implementation { for_vlib = (vlib.info, rb) }))
         | (vlib, (Impl (impl, _stack))) :: libs ->
           loop (Map.add acc vlib impl) libs
       in
@@ -589,14 +560,14 @@ end = struct
   end
 
   let second_step_closure ts impls =
-    let visited = ref Lib_name.Set.empty in
+    let visited = ref Int.Set.empty in
     let res = ref [] in
     let rec loop t =
       let t = Option.value ~default:t (Map.find impls t) in
-      if Lib_name.Set.mem !visited t.name then
+      if Int.Set.mem !visited t.unique_id then
         Ok ()
       else begin
-        visited := Lib_name.Set.add !visited t.name;
+        visited := Int.Set.add !visited t.unique_id;
         t.requires >>= fun deps ->
         Result.List.iter deps ~f:loop >>| fun () ->
         res := t :: !res
@@ -855,8 +826,8 @@ and closure_with_overlap_checks db ts ~stack ~linking =
       else
         let req_by = Dep_stack.to_required_by ~stop_at:orig_stack in
         Error
-          (Error (Conflict { lib1 = (t', req_by stack')
-                           ; lib2 = (t , req_by stack )
+          (Error (Conflict { lib1 = (t'.info, req_by stack')
+                           ; lib2 = (t.info, req_by stack )
                            }))
     | None ->
       visited := Lib_name.Map.add !visited t.name (t, stack);
@@ -871,8 +842,8 @@ and closure_with_overlap_checks db ts ~stack ~linking =
              let req_by = Dep_stack.to_required_by stack ~stop_at:orig_stack in
              Error
                (Error (Overlap
-                         { in_workspace = t'
-                         ; installed    = (t, req_by)
+                         { in_workspace = t'.info
+                         ; installed    = (t.info, req_by)
                          }))
            end
          | _ -> assert false)
@@ -1125,54 +1096,51 @@ let report_lib_error ppf (e : Error.t) =
     | _ ->
       Format.fprintf ppf "@,   %a" Dep_path.Entries.pp dp
   in
+  let lib ppf (info : Lib_info.t) =
+    Format.fprintf ppf "%a in %a"
+      Lib_name.pp_quoted info.name Path.pp info.src_dir
+  in
+  let lib_and_dep_path ppf (info, dp) =
+    Format.fprintf ppf "%a%a" lib info dep_path dp
+  in
   match e with
-  | Double_implementation
-      { impl1 = (impl1, info1, rb1) ; impl2 = (impl2, info2, rb2) ; vlib } ->
+  | Double_implementation { impl1; impl2; vlib } ->
     Format.fprintf ppf
       "@[<v>@{<error>Error@}: \
        Conflicting implementations for virtual library %a:@,\
-       - %a in %a%a@,\
-       - %a in %a%a@,\
+       - %a@,\
+       - %a@,\
        This cannot work.@]"
       Lib_name.pp_quoted vlib
-      Lib_name.pp_quoted impl1 Path.pp info1.src_dir
-      dep_path rb1
-      Lib_name.pp_quoted impl2 Path.pp info2.src_dir
-      dep_path rb2
-  | No_implementation { for_vlib = (name, info, rb) } ->
+      lib_and_dep_path impl1
+      lib_and_dep_path impl2
+  | No_implementation { for_vlib = (info, dp) } ->
     Format.fprintf ppf
       "@[<v 3>@{<error>Error@}: \
        No implementation found for virtual library %a (%a).%a@]"
-      Lib_name.pp_quoted name Path.pp info.src_dir
-      dep_path rb
+      Lib_name.pp_quoted info.name Path.pp info.src_dir
+      dep_path dp
   | Library_not_available { loc = _; name; reason } ->
     Format.fprintf ppf
       "@{<error>Error@}: Library %a %a.@\n"
       Lib_name.pp_quoted name
       Error.Library_not_available.Reason.pp reason
-  | Conflict { lib1 = (lib1, rb1); lib2 = (lib2, rb2) } ->
+  | Conflict { lib1; lib2 } ->
     Format.fprintf ppf
       "@[<v>@{<error>Error@}: Conflict between the following libraries:@,\
-       - %a in %s%a@,\
-       - %a in %s%a@,\
+       - %a@,\
+       - %a@,\
        This cannot work.@]@\n"
-      Lib_name.pp_quoted lib1.name
-      (Path.to_string_maybe_quoted lib1.info.src_dir)
-      dep_path rb1
-      Lib_name.pp_quoted lib2.name
-      (Path.to_string_maybe_quoted lib2.info.src_dir)
-      dep_path rb2
-  | Overlap { in_workspace = lib1; installed = (lib2, rb2) } ->
+      lib_and_dep_path lib1
+      lib_and_dep_path lib2
+  | Overlap { in_workspace; installed } ->
     Format.fprintf ppf
       "@[<v>@{<error>Error@}: Conflict between the following libraries:@,\
-       - %a in %s@,\
-       - %a in %s%a@,\
+       - %a@,\
+       - %a@,\
        This is not allowed.@]@\n"
-      Lib_name.pp_quoted lib1.name
-      (Path.to_string_maybe_quoted lib1.info.src_dir)
-      Lib_name.pp_quoted lib2.name
-      (Path.to_string_maybe_quoted lib2.info.src_dir)
-      dep_path rb2
+      lib in_workspace
+      lib_and_dep_path installed
   | No_solution_found_for_select { loc } ->
     Format.fprintf ppf
       "%a@{<error>Error@}: No solution found for this select form.@\n"
@@ -1183,8 +1151,8 @@ let report_lib_error ppf (e : Error.t) =
        following libraries:@\n\
        @[<v>%a@]@\n"
       (Format.pp_print_list (fun ppf (path, name) ->
-         Format.fprintf ppf "-> %a in %s"
-           Lib_name.pp_quoted name (Path.to_string_maybe_quoted path)))
+         Format.fprintf ppf "-> %a in %a"
+           Lib_name.pp_quoted name Path.pp path))
       cycle
   | Private_deps_not_allowed t ->
     Format.fprintf ppf
@@ -1209,7 +1177,7 @@ let () =
              in
              Some ("try: " ^ cmdline))
         | Private_deps_not_allowed t ->
-          (Some t.pd_loc, None)
+          (Some t.loc, None)
         | _ -> (None, None)
       in
       let pp ppf = report_lib_error ppf e in

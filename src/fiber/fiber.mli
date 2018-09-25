@@ -4,9 +4,10 @@ open! Stdune
 
 (** {1 Generals} *)
 
-(** Type of fiber. A fiber represent a suspended computation. Note that using the same
-    fiber twice will execute it twice, which is probably not what you want. To share the
-    result of a fiber, use an [Ivar.t].  *)
+(** Type of fiber. A fiber represent a suspended computation. Note
+    that using the same fiber twice will execute it twice, which is
+    probably not what you want. To share the result of a fiber, use an
+    [Ivar.t].  *)
 type 'a t
 
 (** Create a fiber that has already terminated. *)
@@ -34,8 +35,9 @@ end
 module Future : sig
   type 'a fiber
 
-  (** A future represent a promise that will eventually yield a value. It is used to
-      represent the result of a fiber running in the background. *)
+  (** A future represent a promise that will eventually yield a
+      value. It is used to represent the result of a fiber running in
+      the background. *)
   type 'a t
 
   (** Wait for the given future to yield a value. *)
@@ -51,14 +53,15 @@ val fork : (unit -> 'a t) -> 'a Future.t t
 (** [nfork l] is similar to [fork] but creates [n] sub-fibers. *)
 val nfork : (unit -> 'a t) list -> 'a Future.t list t
 
-(** [nfork_map l ~f] is the same as [nfork (List.map l ~f:(fun x () -> f x))] but more
-    efficient. *)
+(** [nfork_map l ~f] is the same as [nfork (List.map l ~f:(fun x () ->
+    f x))] but more efficient. *)
 val nfork_map : 'a list -> f:('a -> 'b t) -> 'b Future.t list t
 
 (** {1 Joining} *)
 
-(** The following combinators are helpers to combine the result of several fibers into
-    one. Note that they do not introduce parallelism. *)
+(** The following combinators are helpers to combine the result of
+    several fibers into one. Note that they do not introduce
+    parallelism. *)
 
 val both : 'a t -> 'b t -> ('a * 'b) t
 val all : 'a t list -> 'a list t
@@ -66,10 +69,12 @@ val all_unit : unit t list -> unit t
 
 (** {1 Forking + joining} *)
 
-(** The following functions combine forking 2 or more fibers followed by joining the
-    results. For every function, we give an equivalent implementation using the more basic
-    functions as documentation. Note however that these functions are implemented as
-    primitives and so are more efficient that the suggested implementation. *)
+(** The following functions combine forking 2 or more fibers followed
+    by joining the results. For every function, we give an equivalent
+    implementation using the more basic functions as
+    documentation. Note however that these functions are implemented as
+    primitives and so are more efficient that the suggested
+    implementation. *)
 
 (** For two fibers and wait for their results:
 
@@ -143,25 +148,27 @@ end with type 'a fiber := 'a t
 
 (** {1 Error handling} *)
 
-(** [with_error_handler f ~on_error] calls [on_error] for every exception raised during
-    the execution of [f]. This include exceptions raised when calling [f ()] or during the
-    execution of fibers after [f ()] has returned. Exceptions raised by [on_error] are
-    passed on to the parent error handler.
+(** [with_error_handler f ~on_error] calls [on_error] for every
+    exception raised during the execution of [f]. This include
+    exceptions raised when calling [f ()] or during the execution of
+    fibers after [f ()] has returned. Exceptions raised by [on_error]
+    are passed on to the parent error handler.
 
-    It is guaranteed that after the fiber has returned a value, [on_error] will never be
-    called.
-*)
+    It is guaranteed that after the fiber has returned a value,
+    [on_error] will never be called.  *)
 val with_error_handler
   :  (unit -> 'a t)
   -> on_error:(exn -> unit)
   -> 'a t
 
-(** If [t] completes without raising, then [wait_errors t] is the same as [t () >>| fun x
-    -> Ok x]. However, if the execution of [t] is aborted by an exception, then
-    [wait_errors t] will complete and yield [Error ()].
+(** If [t] completes without raising, then [wait_errors t] is the same
+    as [t () >>| fun x -> Ok x]. However, if the execution of [t] is
+    aborted by an exception, then [wait_errors t] will complete and
+    yield [Error ()].
 
-    Note that [wait_errors] only completes after all sub-fibers have completed. For
-    instance, in the following code [wait_errors] will only complete after 3s:
+    Note that [wait_errors] only completes after all sub-fibers have
+    completed. For instance, in the following code [wait_errors] will
+    only complete after 3s:
 
     {[
       wait_errors
@@ -174,17 +181,18 @@ val with_error_handler
 
     {[
       wait_errors
-        (fork (fun () -> sleep 3) >>= fun _ ->
-         raise Exit)
-    }]
+        (fork (fun () -> sleep 3) >>= fun _ -> raise Exit)
+    ]}
 *)
 val wait_errors : 'a t -> ('a, unit) Result.t t
 
-(** [fold_errors f ~init ~on_error] calls [on_error] for every exception raised during the
-    execution of [f]. This include exceptions raised when calling [f ()] or during the
-    execution of fibers after [f ()] has returned.
+(** [fold_errors f ~init ~on_error] calls [on_error] for every
+    exception raised during the execution of [f]. This include
+    exceptions raised when calling [f ()] or during the execution of
+    fibers after [f ()] has returned.
 
-    Exceptions raised by [on_error] are passed on to the parent error handler. *)
+    Exceptions raised by [on_error] are passed on to the parent error
+    handler. *)
 val fold_errors
   :  (unit -> 'a t)
   -> init:'b
@@ -246,8 +254,9 @@ end with type 'a fiber := 'a t
 (** Wait for one iteration of the scheduler *)
 val yield : unit -> unit t
 
-(** [run t] runs a fiber until it yield a result. If it becomes clear that the execution
-    of the fiber will never terminate, raise [Never]. *)
+(** [run t] runs a fiber until it yield a result. If it becomes clear
+    that the execution of the fiber will never terminate, raise
+    [Never]. *)
 val run : 'a t -> 'a
 
 exception Never

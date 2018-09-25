@@ -193,7 +193,7 @@ include Sub_system.Register_end_point(
         >>= fun lib ->
         Result.List.map info.libraries ~f:(Lib.DB.resolve (Scope.libs scope))
         >>= fun more_libs ->
-        Lib.closure (lib @ libs @ more_libs)
+        Lib.closure ~linking:true (lib @ libs @ more_libs)
       in
 
       (* Generate the runner file *)

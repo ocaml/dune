@@ -70,7 +70,7 @@ let setup sctx ~dir ~(libs : Library.t list) ~scope =
         ~loc
         (Lib_name.of_string_exn ~loc:(Some loc) "utop"
          :: List.map libs ~f:Library.best_name)
-      >>= Lib.closure
+      >>= Lib.closure ~linking:true
     in
     let cctx =
       Compilation_context.create ()

@@ -326,7 +326,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
     fun ~pkg ~libs ->
       if not (Package.Name.Table.get loaded pkg) then begin
         Package.Name.Table.set loaded ~key:pkg ~data:true;
-        let requires = Lib.closure libs in
+        let requires = Lib.closure libs ~linking:false in
         List.iter libs ~f:(setup_lib_html_rules ~requires);
         let pkg_odocs = odocs (Pkg pkg) in
         List.iter pkg_odocs ~f:(setup_html ~requires);
@@ -367,8 +367,10 @@ module Gen (S : sig val sctx : SC.t end) = struct
       | Error _ -> ()
       | Ok lib ->
         begin match Lib.package lib with
-        | None -> setup_lib_html_rules lib ~requires:(Lib.closure [lib])
-        | Some pkg -> setup_pkg_html_rules pkg
+        | None ->
+          setup_lib_html_rules lib ~requires:(Lib.closure ~linking:false [lib])
+        | Some pkg ->
+          setup_pkg_html_rules pkg
         end
       end;
       Option.iter

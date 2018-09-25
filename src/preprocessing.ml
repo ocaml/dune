@@ -276,7 +276,7 @@ let build_ppx_driver sctx ~lib_db ~dep_kind ~target ~dir_kind pps =
         (Preprocess (pps : Dune_file.Pp.t list :> Lib_name.t list)))
       (Lib.DB.resolve_pps lib_db
          (List.map pps ~f:(fun x -> (Loc.none, x)))
-       >>= Lib.closure
+       >>= Lib.closure ~linking:true
        >>= fun resolved_pps ->
        match jbuild_driver with
        | None ->
@@ -392,7 +392,7 @@ let get_ppx_driver sctx ~loc ~scope ~dir_kind pps =
   >>= fun libs ->
   (match (dir_kind : File_tree.Dune_file.Kind.t) with
    | Dune ->
-     Lib.closure libs
+     Lib.closure libs ~linking:true
      >>=
      Driver.select ~loc:(User_file (loc, pps))
    | Jbuild ->

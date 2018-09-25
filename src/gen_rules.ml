@@ -134,7 +134,7 @@ module Gen(P : Install_rules.Params) = struct
         ~dir_contents ~scope ~dir_kind
         (exes : Executables.t) : Compilation_context.t * Merlin.t =
     let compile_info =
-      Lib.DB.resolve_user_written_deps (Scope.libs scope)
+      Lib.DB.resolve_user_written_deps_for_exes (Scope.libs scope)
         exes.buildable.libraries
         ~pps:(Dune_file.Preprocess_map.pps exes.buildable.preprocess)
         ~allow_overlaps:exes.buildable.allow_overlapping_dependencies

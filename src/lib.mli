@@ -120,25 +120,25 @@ module Error : sig
 
   module Conflict : sig
     (** When two libraries in a transitive closure conflict *)
-    type nonrec t =
-      { lib1 : t * Dep_path.Entry.t list
-      ; lib2 : t * Dep_path.Entry.t list
+    type t =
+      { lib1 : Lib_info.t * Dep_path.Entry.t list
+      ; lib2 : Lib_info.t * Dep_path.Entry.t list
       }
   end
 
   module Overlap : sig
     (** A conflict that doesn't prevent compilation, but that we still
         consider as an error to avoid surprises. *)
-    type nonrec t =
-      { in_workspace : t
-      ; installed    : t * Dep_path.Entry.t list
+    type t =
+      { in_workspace : Lib_info.t
+      ; installed    : Lib_info.t * Dep_path.Entry.t list
       }
   end
 
   module Private_deps_not_allowed : sig
-    type nonrec t =
-      { private_dep : t
-      ; pd_loc      : Loc.t
+    type t =
+      { private_dep : Lib_info.t
+      ; loc         : Loc.t
       }
   end
 

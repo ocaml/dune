@@ -60,6 +60,7 @@ end
 
 type t =
   { loc              : Loc.t
+  ; name             : Lib_name.t
   ; kind             : Dune_file.Library.Kind.t
   ; status           : Status.t
   ; src_dir          : Path.t
@@ -163,6 +164,7 @@ let of_library_stanza ~dir ~ext_lib ~ext_obj (conf : Dune_file.Library.t) =
   in
   let main_module_name = Dune_file.Library.main_module_name conf in
   { loc = conf.buildable.loc
+  ; name = Dune_file.Library.best_name conf
   ; kind     = conf.kind
   ; src_dir  = dir
   ; obj_dir
@@ -197,6 +199,7 @@ let of_findlib_package pkg =
     | Some fn -> Installed_dune_file.load fn
   in
   { loc              = loc
+  ; name             = Findlib.Package.name pkg
   ; kind             = Normal
   ; src_dir          = P.dir pkg
   ; obj_dir          = P.dir pkg

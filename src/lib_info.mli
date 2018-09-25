@@ -40,6 +40,7 @@ end
 
 type t = private
   { loc              : Loc.t
+  ; name             : Lib_name.t
   ; kind             : Dune_file.Library.Kind.t
   ; status           : Status.t
   ; src_dir          : Path.t

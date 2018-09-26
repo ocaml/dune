@@ -146,9 +146,9 @@ module Package = struct
     ; vars      : Vars.t
     }
 
-  let meta_file t = t.meta_file
-  let name      t = t.name
-  let dir       t = t.dir
+  let loc  t = Loc.in_dir (Path.to_string t.meta_file)
+  let name t = t.name
+  let dir  t = t.dir
 
   let preds = Ps.of_list [P.ppx_driver; P.mt; P.mt_posix]
 

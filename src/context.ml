@@ -104,7 +104,7 @@ let to_sexp t =
     ; "ocamldep", path t.ocamldep
     ; "ocamlmklib", path t.ocamlmklib
     ; "env", Env.to_sexp (Env.diff t.env Env.initial)
-    ; "findlib_path", list path (Findlib.path t.findlib)
+    ; "findlib_path", list path (Findlib.paths t.findlib)
     ; "arch_sixtyfour", bool t.arch_sixtyfour
     ; "natdynlink_supported",
       bool (Dynlink_supported.By_the_os.get t.natdynlink_supported)
@@ -275,7 +275,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       | None -> []
       | Some s -> Bin.parse_path s ~sep:ocamlpath_sep
     in
-    let findlib_path () =
+    let findlib_paths () =
       match Build_environment_kind.query ~kind ~findlib_toolchain ~env with
       | Cross_compilation_using_findlib_toolchain toolchain ->
         let ocamlfind = which_exn "ocamlfind" in
@@ -316,7 +316,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
         Errors.fail (Loc.in_file (Path.to_string file)) "%s" msg
     in
     Fiber.fork_and_join
-      findlib_path
+      findlib_paths
       (fun () ->
          Process.run_capture_lines ~env Strict ocamlc ["-config"]
          >>| fun lines ->
@@ -324,7 +324,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
            (match Ocaml_config.Vars.of_lines lines with
             | Ok vars -> Ocaml_config.make vars
             | Error msg -> Error (Ocamlc_config, msg)))
-    >>= fun (findlib_path, ocfg) ->
+    >>= fun (findlib_paths, ocfg) ->
     let version = Ocaml_version.of_ocaml_config ocfg in
     let env =
       (* See comment in ansi_color.ml for setup_env_for_colors.
@@ -406,14 +406,17 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
             ~f:Path.of_filename_relative_to_initial_cwd
 
       ; ocaml_bin  = dir
-      ; ocaml      = (match which "ocaml" with Some p -> p | None -> prog_not_found_in_path "ocaml")
+      ; ocaml      =
+          (match which "ocaml" with
+          | Some p -> p
+          | None -> prog_not_found_in_path "ocaml")
       ; ocamlc
       ; ocamlopt   = get_ocaml_tool     "ocamlopt"
       ; ocamldep   = get_ocaml_tool_exn "ocamldep"
       ; ocamlmklib = get_ocaml_tool_exn "ocamlmklib"
 
       ; env
-      ; findlib = Findlib.create ~stdlib_dir ~path:findlib_path
+      ; findlib = Findlib.create ~stdlib_dir ~paths:findlib_paths
       ; findlib_toolchain
       ; arch_sixtyfour
 

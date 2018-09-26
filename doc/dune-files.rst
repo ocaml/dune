@@ -136,10 +136,9 @@ to use the :ref:`include_subdirs` stanza.
   advanced use only, by default you shouldn't set this option
 
 - ``(kind <kind>)`` is the kind of the library. The default is ``normal``, other
-  available choices are ``ppx_rewriter`` and ``ppx_deriver`` and must be set
-  when the library is intended to be used as a ppx rewriter or a ``[@@deriving
-  ...]`` plugin. The reason why ``ppx_rewriter`` and ``ppx_deriver`` are split
-  is historical and hopefully we won't need two options soon
+  available choices are ``ppx_deriver`` and ``ppx_rewriter``. ``ppx_deriver``
+  is used for ppx preprocessors using the ``ppx_deriving`` package and
+  ``ppx_rewriter`` should be set for other types of ppx preprocessors.
 
 - ``(ppx_runtime_libraries (<library-names>))`` is for when the library is a ppx
   rewriter or a ``[@@deriving ...]`` plugin and has runtime dependencies. You

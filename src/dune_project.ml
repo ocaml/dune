@@ -26,8 +26,8 @@ module Name : sig
   val dparse : t Dsexp.Of_sexp.t
   val to_sexp : t Sexp.To_sexp.t
 
-  val encode : t -> string
-  val decode : string -> t
+  val to_encoded_string : t -> string
+  val of_encoded_string : string -> t
 
   val anonymous : Path.t -> t option
   val named : string -> t option
@@ -92,7 +92,7 @@ end = struct
       else
         Dsexp.Of_sexp.of_sexp_errorf loc "invalid project name")
 
-  let encode = function
+  let to_encoded_string = function
     | Named     s -> s
     | Anonymous p ->
       if Path.is_root p then
@@ -103,7 +103,7 @@ end = struct
                   | '/' -> '.'
                   | c   -> c)
 
-  let decode =
+  let of_encoded_string =
     let invalid s =
       (* Users would see this error if they did "dune build
          _build/default/.ppx/..." *)

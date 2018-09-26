@@ -26,8 +26,8 @@ module Name : sig
   val to_sexp : t Sexp.To_sexp.t
 
   (** Convert to/from an encoded string that is suitable to use in filenames *)
-  val encode : t -> string
-  val decode : string -> t
+  val to_encoded_string : t -> string
+  val of_encoded_string : string -> t
 
   module Infix : Comparable.OPS with type t = t
 end

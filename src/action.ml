@@ -1,6 +1,6 @@
 open! Stdune
 open Import
-open Dsexp.Of_sexp
+open Galach.Of_sexp
 
 let ignore_loc k ~loc:_ = k
 
@@ -16,9 +16,9 @@ end
 module Diff_mode = Action_intf.Diff_mode
 
 module Make_ast
-    (Program : Dsexp.Sexpable)
-    (Path    : Dsexp.Sexpable)
-    (String  : Dsexp.Sexpable)
+    (Program : Galach.Sexpable)
+    (Path    : Galach.Sexpable)
+    (String  : Galach.Sexpable)
     (Ast : Action_intf.Ast
      with type program := Program.t
      with type path    := Path.t
@@ -28,7 +28,7 @@ struct
 
   let dparse =
     let path = Path.dparse and string = String.dparse in
-    Dsexp.Of_sexp.fix (fun t ->
+    Galach.Of_sexp.fix (fun t ->
       sum
         [ "run",
           (let%map prog = Program.dparse
@@ -131,7 +131,7 @@ struct
         ])
 
   let rec dgen =
-    let open Dsexp in
+    let open Galach in
     let program = Program.dgen in
     let string = String.dgen in
     let path = Path.dgen in
@@ -270,12 +270,12 @@ module Prog = struct
 
   type t = (Path.t, Not_found.t) result
 
-  let dparse : t Dsexp.Of_sexp.t =
-    Dsexp.Of_sexp.map Path_dsexp.dparse ~f:Result.ok
+  let dparse : t Galach.Of_sexp.t =
+    Galach.Of_sexp.map Path_galach.dparse ~f:Result.ok
 
   let dgen = function
-    | Ok s -> Path_dsexp.dgen s
-    | Error (e : Not_found.t) -> Dsexp.To_sexp.string e.program
+    | Ok s -> Path_galach.dgen s
+    | Error (e : Not_found.t) -> Galach.To_sexp.string e.program
 end
 
 module type Ast = Action_intf.Ast
@@ -286,13 +286,13 @@ module rec Ast : Ast = Ast
 
 module String_with_sexp = struct
   type t = string
-  let dparse = Dsexp.Of_sexp.string
-  let dgen = Dsexp.To_sexp.string
+  let dparse = Galach.Of_sexp.string
+  let dgen = Galach.To_sexp.string
 end
 
 include Make_ast
     (Prog)
-    (Path_dsexp)
+    (Path_galach)
     (String_with_sexp)
     (Ast)
 
@@ -412,8 +412,8 @@ module Unexpanded = struct
       Errors.fail loc
         "(mkdir ...) is not supported for paths outside of the workspace:\n\
         \  %a\n"
-        (Dsexp.pp Dune)
-        (List [Dsexp.unsafe_atom_of_string "mkdir"; Path_dsexp.dgen path])
+        (Galach.pp Dune)
+        (List [Galach.unsafe_atom_of_string "mkdir"; Path_galach.dgen path])
 
   module Partial = struct
     module Program = Unresolved.Program

@@ -35,7 +35,7 @@ module type Backend = sig
 
   (** Dump the sub-system configuration. This is used to generate META
       files. *)
-  val dgen : t -> Syntax.Version.t * Dsexp.t
+  val dgen : t -> Syntax.Version.t * Galach.t
 end
 
 module type Registered_backend = sig

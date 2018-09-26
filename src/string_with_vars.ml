@@ -1,10 +1,10 @@
 open! Stdune
 open! Import
 
-open Dsexp.Template
+open Galach.Template
 
 type t =
-  { template : Dsexp.Template.t
+  { template : Galach.Template.t
   ; syntax_version : Syntax.Version.t
   }
 
@@ -39,7 +39,7 @@ let literal ~quoted ~loc s =
 (* This module implements the "old" template parsing that is only used in jbuild
    files *)
 module Jbuild : sig
-  val parse : string -> loc:Loc.t -> quoted:bool -> Dsexp.Template.t
+  val parse : string -> loc:Loc.t -> quoted:bool -> Galach.Template.t
 end = struct
   type var_syntax = Parens | Braces
   module Token = struct
@@ -109,23 +109,23 @@ end = struct
 end
 
 let dparse =
-  let open Dsexp.Of_sexp in
+  let open Galach.Of_sexp in
   let jbuild =
     raw >>| function
     | Template _ as t ->
       Exn.code_error "Unexpected dune template from a jbuild file"
-        [ "t", Dsexp.to_sexp (Dsexp.Ast.remove_locs t)
+        [ "t", Galach.to_sexp (Galach.Ast.remove_locs t)
         ]
     | Atom(loc, A s) -> Jbuild.parse s ~loc ~quoted:false
     | Quoted_string (loc, s) -> Jbuild.parse s ~loc ~quoted:true
-    | List (loc, _) -> Dsexp.Of_sexp.of_sexp_error loc "Atom expected"
+    | List (loc, _) -> Galach.Of_sexp.of_sexp_error loc "Atom expected"
   in
   let dune =
     raw >>| function
     | Template t -> t
     | Atom(loc, A s) -> literal ~quoted:false ~loc s
     | Quoted_string (loc, s) -> literal ~quoted:true ~loc s
-    | List (loc, _) -> Dsexp.Of_sexp.of_sexp_error loc "Unexpected list"
+    | List (loc, _) -> Galach.Of_sexp.of_sexp_error loc "Unexpected list"
   in
   let template_parser = Stanza.Of_sexp.switch_file_kind ~jbuild ~dune in
   let%map syntax_version = Syntax.get_exn Stanza.syntax
@@ -298,9 +298,9 @@ let expand t ~mode ~dir ~f =
 
 let partial_expand t ~mode ~dir ~f = partial_expand t ~mode ~dir ~f
 
-let dgen { template; syntax_version = _ } = Dsexp.Template template
+let dgen { template; syntax_version = _ } = Galach.Template template
 
-let to_sexp t = Dsexp.to_sexp (dgen t)
+let to_sexp t = Galach.to_sexp (dgen t)
 
 let is_var { template; syntax_version = _ } ~name =
   match template.parts with
@@ -315,5 +315,5 @@ let text_only t =
 let has_vars t = Option.is_none (text_only t)
 
 let remove_locs t =
-  { t with template = Dsexp.Template.remove_locs t.template
+  { t with template = Galach.Template.remove_locs t.template
   }

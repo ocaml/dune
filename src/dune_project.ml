@@ -1,6 +1,6 @@
 open! Stdune
 open Import
-open Dsexp.Of_sexp
+open Galach.Of_sexp
 
 module Kind = struct
   type t =
@@ -23,7 +23,7 @@ module Name : sig
 
   val to_string_hum : t -> string
 
-  val dparse : t Dsexp.Of_sexp.t
+  val dparse : t Galach.Of_sexp.t
   val to_sexp : t Sexp.To_sexp.t
 
   val encode : t -> string
@@ -86,11 +86,11 @@ end = struct
       None
 
   let dparse =
-    Dsexp.Of_sexp.plain_string (fun ~loc s ->
+    Galach.Of_sexp.plain_string (fun ~loc s ->
       if validate s then
         Named s
       else
-        Dsexp.Of_sexp.of_sexp_errorf loc "invalid project name")
+        Galach.Of_sexp.of_sexp_errorf loc "invalid project name")
 
   let encode = function
     | Named     s -> s
@@ -146,7 +146,7 @@ type t =
   ; root          : Path.Local.t
   ; version       : string option
   ; packages      : Package.t Package.Name.Map.t
-  ; stanza_parser : Stanza.t list Dsexp.Of_sexp.t
+  ; stanza_parser : Stanza.t list Galach.Of_sexp.t
   ; project_file  : Project_file.t
   }
 
@@ -203,7 +203,7 @@ let append_to_project_file t str =
 module Extension = struct
   type t =
     { syntax       : Syntax.t
-    ; stanzas      : Stanza.Parser.t list Dsexp.Of_sexp.t
+    ; stanzas      : Stanza.Parser.t list Galach.Of_sexp.t
     ; experimental : bool
     }
 
@@ -211,7 +211,7 @@ module Extension = struct
     { extension  : t
     ; version    : Syntax.Version.t
     ; loc        : Loc.t
-    ; parse_args : Stanza.Parser.t list Dsexp.Of_sexp.t -> Stanza.Parser.t list
+    ; parse_args : Stanza.Parser.t list Galach.Of_sexp.t -> Stanza.Parser.t list
     }
 
   let extensions = Hashtbl.create 32
@@ -249,7 +249,7 @@ module Extension = struct
             Syntax.greatest_supported_version ext.syntax
         in
         let parse_args p =
-          let open Dsexp.Of_sexp in
+          let open Galach.Of_sexp in
           let dune_project_edited = ref false in
           parse (enter p) Univ_map.empty (List (Loc.of_pos __POS__, []))
           |> List.map ~f:(fun (name, p) ->
@@ -258,10 +258,10 @@ module Extension = struct
              if not !dune_project_edited then begin
                dune_project_edited := true;
                Project_file_edit.append project_file
-                 (Dsexp.to_string ~syntax:Dune
-                    (List [ Dsexp.atom "using"
-                          ; Dsexp.atom name
-                          ; Dsexp.atom (Syntax.Version.to_string version)
+                 (Galach.to_string ~syntax:Dune
+                    (List [ Galach.atom "using"
+                          ; Galach.atom name
+                          ; Galach.atom (Syntax.Version.to_string version)
                           ]))
              end;
              p))
@@ -293,9 +293,9 @@ let key =
         ; "kind", Kind.to_sexp kind
         ])
 
-let set t = Dsexp.Of_sexp.set key t
+let set t = Galach.Of_sexp.set key t
 let get_exn () =
-  let open Dsexp.Of_sexp in
+  let open Galach.Of_sexp in
   get key >>| function
   | Some t -> t
   | None ->
@@ -317,7 +317,7 @@ let anonymous = lazy (
   ; root          = get_local_path Path.root
   ; version       = None
   ; stanza_parser =
-      Dsexp.Of_sexp.(set_many parsing_context (sum lang.data))
+      Galach.Of_sexp.(set_many parsing_context (sum lang.data))
   ; project_file  = { file = Path.relative Path.root filename; exists = false }
   })
 
@@ -382,14 +382,14 @@ let parse ~dir ~lang ~packages ~file =
            (lang.data ::
             List.map extensions ~f:(fun (ext : Extension.instance) ->
               ext.parse_args
-                (Dsexp.Of_sexp.set_many parsing_context ext.extension.stanzas)))
+                (Galach.Of_sexp.set_many parsing_context ext.extension.stanzas)))
        in
        { kind = Dune
        ; name
        ; root = get_local_path dir
        ; version
        ; packages
-       ; stanza_parser = Dsexp.Of_sexp.(set_many parsing_context (sum stanzas))
+       ; stanza_parser = Galach.Of_sexp.(set_many parsing_context (sum stanzas))
        ; project_file
        })
 
@@ -406,7 +406,7 @@ let make_jbuilder_project ~dir packages =
   ; version = None
   ; packages
   ; stanza_parser =
-      Dsexp.Of_sexp.(set_many parsing_context (sum lang.data))
+      Galach.Of_sexp.(set_many parsing_context (sum lang.data))
   ; project_file = { file = Path.relative dir filename; exists = false }
   }
 

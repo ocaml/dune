@@ -5,7 +5,7 @@ type t
 val of_string_exn : loc:Loc.t option -> string -> t
 val to_string : t -> string
 
-include Dsexp.Sexpable with type t := t
+include Galach.Sexpable with type t := t
 
 module Local : sig
   type t
@@ -15,8 +15,8 @@ module Local : sig
     | Warn of t
     | Invalid
 
-  val dgen : t Dsexp.To_sexp.t
-  val dparse_loc : (Loc.t * result) Dsexp.Of_sexp.t
+  val dgen : t Galach.To_sexp.t
+  val dparse_loc : (Loc.t * result) Galach.Of_sexp.t
   val validate : (Loc.t * result) -> wrapped:bool -> t
 
   val to_sexp : t Sexp.To_sexp.t

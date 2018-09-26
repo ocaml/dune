@@ -60,7 +60,7 @@ module Section = struct
     | _             -> None
 
   let dparse =
-    let open Dsexp.Of_sexp in
+    let open Galach.Of_sexp in
     enum
       [ "lib"          , Lib
       ; "lib_root"     , Lib_root

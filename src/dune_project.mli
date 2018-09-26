@@ -42,7 +42,7 @@ val packages : t -> Package.t Package.Name.Map.t
 val version : t -> string option
 val name : t -> Name.t
 val root : t -> Path.Local.t
-val stanza_parser : t -> Stanza.t list Dsexp.Of_sexp.t
+val stanza_parser : t -> Stanza.t list Galach.Of_sexp.t
 
 module Lang : sig
   (** [register id stanzas_parser] register a new language. Users will
@@ -66,7 +66,7 @@ module Extension : sig
   val register
     :  ?experimental:bool
     -> Syntax.t
-    -> Stanza.Parser.t list Dsexp.Of_sexp.t
+    -> Stanza.Parser.t list Galach.Of_sexp.t
     -> unit
 end
 
@@ -91,5 +91,5 @@ val ensure_project_file_exists : t -> unit
 val append_to_project_file : t -> string -> unit
 
 (** Set the project we are currently parsing dune files for *)
-val set : t -> ('a, 'k) Dsexp.Of_sexp.parser -> ('a, 'k) Dsexp.Of_sexp.parser
-val get_exn : unit -> (t, 'k) Dsexp.Of_sexp.parser
+val set : t -> ('a, 'k) Galach.Of_sexp.parser -> ('a, 'k) Galach.Of_sexp.parser
+val get_exn : unit -> (t, 'k) Galach.Of_sexp.parser

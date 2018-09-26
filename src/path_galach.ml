@@ -10,8 +10,8 @@ let dgen p =
     | Kind.Local    l -> Local.to_string l
   in
   let make constr =
-    Dsexp.List [ Dsexp.atom constr
-               ; Dsexp.atom_or_quoted_string arg
+    Galach.List [ Galach.atom constr
+               ; Galach.atom_or_quoted_string arg
                ]
   in
   if is_in_build_dir p then
@@ -22,11 +22,11 @@ let dgen p =
     make "External"
 
 let dparse =
-  let open Dsexp.Of_sexp in
+  let open Galach.Of_sexp in
   let external_ =
     plain_string (fun ~loc t ->
       if Filename.is_relative t then
-        Dsexp.Of_sexp.of_sexp_errorf loc "Absolute path expected"
+        Galach.Of_sexp.of_sexp_errorf loc "Absolute path expected"
       else
         Path.of_string ~error_loc:loc t
     )

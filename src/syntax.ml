@@ -19,10 +19,10 @@ module Version = struct
 
   let to_sexp t = Sexp.Atom (to_string t)
 
-  let dgen t = Dsexp.To_sexp.string (to_string t)
+  let dgen t = Galach.To_sexp.string (to_string t)
 
-  let dparse : t Dsexp.Of_sexp.t =
-    let open Dsexp.Of_sexp in
+  let dparse : t Galach.Of_sexp.t =
+    let open Galach.Of_sexp in
     raw >>| function
     | Atom (loc, A s) -> begin
         try
@@ -31,7 +31,7 @@ module Version = struct
           Errors.fail loc "Atom of the form NNN.NNN expected"
       end
     | sexp ->
-      of_sexp_error (Dsexp.Ast.loc sexp) "Atom expected"
+      of_sexp_error (Galach.Ast.loc sexp) "Atom expected"
 
   let can_read
         ~parser_version:(parser_major, parser_minor)
@@ -126,7 +126,7 @@ let greatest_supported_version t =
 
 let key t = t.key
 
-open Dsexp.Of_sexp
+open Galach.Of_sexp
 
 let set t ver parser =
   set t.key ver parser

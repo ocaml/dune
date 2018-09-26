@@ -80,7 +80,7 @@ module Backend = struct
       }
 
     let dgen t =
-      let open Dsexp.To_sexp in
+      let open Galach.To_sexp in
       let lib x = Lib_name.dgen (Lib.name x) in
       let f x = Lib_name.dgen (Lib.name x.lib) in
       ((1, 0),

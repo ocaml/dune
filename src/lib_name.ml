@@ -2,8 +2,8 @@ open Stdune
 
 exception Invalid_lib_name of string
 
-let dgen = Dsexp.To_sexp.string
-let dparse = Dsexp.Of_sexp.string
+let dgen = Galach.To_sexp.string
+let dparse = Galach.Of_sexp.string
 
 module Local = struct
   type t = string
@@ -46,9 +46,9 @@ module Local = struct
     | Invalid -> raise (Invalid_lib_name s)
 
   let dparse_loc =
-    Dsexp.Of_sexp.plain_string (fun ~loc s -> (loc, of_string s))
+    Galach.Of_sexp.plain_string (fun ~loc s -> (loc, of_string s))
 
-  let dgen = Dsexp.To_sexp.string
+  let dgen = Galach.To_sexp.string
 
   let to_sexp = Sexp.To_sexp.string
 

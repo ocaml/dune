@@ -46,7 +46,7 @@ let eq (type a) (type b)
 module Make
     (T : sig
        type t
-       val dgen : t Dsexp.To_sexp.t
+       val dgen : t Galach.To_sexp.t
        val name : string
      end)
   : S with type t = T.t =

@@ -102,7 +102,7 @@ module Sub_system0 = struct
   module type S = sig
     type t
     type sub_system += T of t
-    val dgen : (t -> Syntax.Version.t * Dsexp.t) option
+    val dgen : (t -> Syntax.Version.t * Galach.t) option
   end
 
   type 'a s = (module S with type t = 'a)
@@ -328,7 +328,7 @@ module Sub_system = struct
       -> lib
       -> Info.t
       -> t
-    val dgen : (t -> Syntax.Version.t * Dsexp.t) option
+    val dgen : (t -> Syntax.Version.t * Galach.t) option
   end
 
   module type S' = sig

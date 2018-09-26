@@ -24,7 +24,7 @@ let set_hint p ~hint =
   {p with hint = Some hint}
 
 let builtin_printer = function
-  | Dsexp.Of_sexp.Of_sexp (loc, msg, hint') ->
+  | Galach.Of_sexp.Of_sexp (loc, msg, hint') ->
     let loc =
       { loc with
         start = { loc.start with pos_fname = !map_fname loc.start.pos_fname }
@@ -33,7 +33,7 @@ let builtin_printer = function
     let pp ppf = Format.fprintf ppf "@{<error>Error@}: %s%s\n" msg
                    (match hint' with
                     | None -> ""
-                    | Some { Dsexp.Of_sexp. on; candidates } ->
+                    | Some { Galach.Of_sexp. on; candidates } ->
                       hint on candidates)
     in
     Some (make_printer ~loc pp)
@@ -45,9 +45,9 @@ let builtin_printer = function
     in
     let pp ppf = Format.fprintf ppf "@{<error>Error@}: %s\n" msg in
     Some (make_printer ~loc pp)
-  | Dsexp.Parse_error e ->
-    let loc = Dsexp.Parse_error.loc     e in
-    let msg = Dsexp.Parse_error.message e in
+  | Galach.Parse_error e ->
+    let loc = Galach.Parse_error.loc     e in
+    let msg = Galach.Parse_error.message e in
     let map_pos (pos : Lexing.position) =
       { pos with pos_fname = !map_fname pos.pos_fname }
     in

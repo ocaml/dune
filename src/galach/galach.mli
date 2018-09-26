@@ -1,7 +1,13 @@
-open! Stdune
-(** Parsing of s-expressions.
+(** Parsing of the Galach language.
 
-    This library is internal to jbuilder and guarantees no API stability.*)
+    This library is internal to jbuilder and guarantees no API
+    stability.
+
+    The Galach language is the language used in all Dune configuration
+    files.
+*)
+
+open! Stdune
 
 type syntax = Jbuild | Dune
 

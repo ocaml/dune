@@ -1,0 +1,7 @@
+(library
+ (name galach)
+ (synopsis "[Internal] The galach language")
+ (libraries stdune)
+ (public_name dune._galach))
+
+(ocamllex galach_lexer jbuild_lexer)

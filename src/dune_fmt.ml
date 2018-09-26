@@ -14,20 +14,20 @@ let parse_file path_opt =
       let contents = String.concat ~sep:"\n" lines in
       ("<stdin>", contents)
   in
-  Dsexp.parse_string
+  Galach.parse_string
     ~fname
-    ~mode:Dsexp.Parser.Mode.Many
+    ~mode:Galach.Parser.Mode.Many
     contents
 
 let can_be_displayed_inline =
   List.for_all ~f:(function
-    | Dsexp.Atom _
-    | Dsexp.Quoted_string _
-    | Dsexp.Template _
-    | Dsexp.List [_]
+    | Galach.Atom _
+    | Galach.Quoted_string _
+    | Galach.Template _
+    | Galach.List [_]
       ->
       true
-    | Dsexp.List _
+    | Galach.List _
       ->
       false
   )
@@ -43,21 +43,21 @@ let print_inline_list fmt indent sexps =
       first := false
     else
       Format.pp_print_string fmt " ";
-    Dsexp.pp Dsexp.Dune fmt sexp
+    Galach.pp Galach.Dune fmt sexp
   );
   Format.pp_print_string fmt ")"
 
 let rec pp_sexp indent fmt =
   function
-    ( Dsexp.Atom _
-    | Dsexp.Quoted_string _
-    | Dsexp.Template _
+    ( Galach.Atom _
+    | Galach.Quoted_string _
+    | Galach.Template _
     ) as sexp
     ->
     Format.fprintf fmt "%a%a"
       pp_indent indent
-      (Dsexp.pp Dsexp.Dune) sexp
-  | Dsexp.List sexps
+      (Galach.pp Galach.Dune) sexp
+  | Galach.List sexps
     ->
     if can_be_displayed_inline sexps then
       print_inline_list fmt indent sexps
@@ -97,7 +97,7 @@ let pp_top_sexps fmt sexps =
       first := false
     else
       Format.pp_print_string fmt "\n";
-    pp_top_sexp fmt (Dsexp.Ast.remove_locs sexp);
+    pp_top_sexp fmt (Galach.Ast.remove_locs sexp);
   )
 
 let with_output path_opt k =
@@ -111,10 +111,10 @@ let with_output path_opt k =
 
 let format_file ~input ~output =
   match parse_file input with
-  | exception Dsexp.Parse_error e ->
+  | exception Galach.Parse_error e ->
     Printf.printf
       "Parse error: %s\n"
-      (Dsexp.Parse_error.message e)
+      (Galach.Parse_error.message e)
   | sexps ->
     with_output output (fun fmt ->
       pp_top_sexps fmt sexps;

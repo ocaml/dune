@@ -6,7 +6,7 @@ type t = Byte | Native
 let all = [Byte; Native]
 
 let dparse =
-  let open Dsexp.Of_sexp in
+  let open Galach.Of_sexp in
   enum
     [ "byte"   , Byte
     ; "native" , Native
@@ -78,7 +78,7 @@ module Dict = struct
       ; native = List.mem Native ~set:l
       }
 
-    let dparse = Dsexp.Of_sexp.(map (list dparse) ~f:of_list)
+    let dparse = Galach.Of_sexp.(map (list dparse) ~f:of_list)
 
     let is_empty t = not (t.byte || t.native)
 

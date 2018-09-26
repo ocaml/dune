@@ -383,7 +383,7 @@ let rules =
        in
        let print oc =
          let ppf = Format.formatter_of_out_channel oc in
-         Dsexp.prepare_formatter ppf;
+         Galach.prepare_formatter ppf;
          Format.pp_open_vbox ppf 0;
          if makefile_syntax then begin
            List.iter rules ~f:(fun (rule : Build_system.Rule.t) ->
@@ -408,20 +408,20 @@ let rules =
            List.iter rules ~f:(fun (rule : Build_system.Rule.t) ->
              let sexp =
                let paths ps =
-                 Dsexp.To_sexp.list Path_dsexp.dgen (Path.Set.to_list ps)
+                 Galach.To_sexp.list Path_galach.dgen (Path.Set.to_list ps)
                in
-               Dsexp.To_sexp.record (
+               Galach.To_sexp.record (
                  List.concat
                    [ [ "deps"   , Deps.to_sexp rule.deps
                      ; "targets", paths rule.targets ]
                    ; (match rule.context with
                       | None -> []
                       | Some c -> ["context",
-                                   Dsexp.atom_or_quoted_string c.name])
+                                   Galach.atom_or_quoted_string c.name])
                    ; [ "action" , sexp_of_action rule.action ]
                    ])
              in
-             Format.fprintf ppf "%a@," Dsexp.pp_split_strings sexp)
+             Format.fprintf ppf "%a@," Galach.pp_split_strings sexp)
          end;
          Format.pp_print_flush ppf ();
          Fiber.return ()
@@ -890,7 +890,7 @@ let printenv =
       Build_system.do_build setup.build_system ~request
       >>| fun l ->
       let pp ppf = Format.fprintf ppf "@[<v1>(@,@[<v>%a@]@]@,)"
-                     (Format.pp_print_list (Dsexp.pp Dune)) in
+                     (Format.pp_print_list (Galach.pp Dune)) in
       match l with
       | [(_, env)] ->
         Format.printf "%a@." pp env

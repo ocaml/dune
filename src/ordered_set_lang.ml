@@ -20,7 +20,7 @@ end
 type 'ast generic =
   { ast : 'ast
   ; loc : Loc.t option
-  ; context : Univ_map.t (* Parsing context for Dsexp.Of_sexp.parse *)
+  ; context : Univ_map.t (* Parsing context for Galach.Of_sexp.parse *)
   }
 
 type ast_expanded = (Loc.t * string, Ast.expanded) Ast.t
@@ -236,14 +236,14 @@ let field ?(default=standard) ?check name =
   let dparse =
     match check with
     | None -> dparse
-    | Some x -> Dsexp.Of_sexp.(>>>) x dparse
+    | Some x -> Galach.Of_sexp.(>>>) x dparse
   in
-  Dsexp.Of_sexp.field name dparse ~default
+  Galach.Of_sexp.field name dparse ~default
 
 module Unexpanded = struct
   type ast = (String_with_vars.t, Ast.unexpanded) Ast.t
   type t = ast generic
-  let dparse : t Dsexp.Of_sexp.t =
+  let dparse : t Galach.Of_sexp.t =
     let open Stanza.Of_sexp in
     let%map context = get_all
     and (loc, ast) =
@@ -260,11 +260,11 @@ module Unexpanded = struct
     let open Ast in
     let rec loop = function
       | Element s -> String_with_vars.dgen s
-      | Standard -> Dsexp.atom ":standard"
+      | Standard -> Galach.atom ":standard"
       | Union l -> List (List.map l ~f:loop)
-      | Diff (a, b) -> List [loop a; Dsexp.unsafe_atom_of_string "\\"; loop b]
+      | Diff (a, b) -> List [loop a; Galach.unsafe_atom_of_string "\\"; loop b]
       | Include fn ->
-        List [ Dsexp.unsafe_atom_of_string ":include"
+        List [ Galach.unsafe_atom_of_string ":include"
              ; String_with_vars.dgen fn
              ]
     in
@@ -283,9 +283,9 @@ module Unexpanded = struct
     let dparse =
       match check with
       | None -> dparse
-      | Some x -> Dsexp.Of_sexp.(>>>) x dparse
+      | Some x -> Galach.Of_sexp.(>>>) x dparse
     in
-    Dsexp.Of_sexp.field name dparse ~default
+    Galach.Of_sexp.field name dparse ~default
 
   let files t ~f =
     let rec loop acc (ast : ast) =

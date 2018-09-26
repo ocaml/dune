@@ -270,11 +270,11 @@ module Bindings = struct
       ~dune:(dune elem)
 
   let dgen dgen bindings =
-    Dsexp.List (
+    Galach.List (
       List.map bindings ~f:(function
         | Unnamed a -> dgen a
         | Named (name, bindings) ->
-          Dsexp.List (Dsexp.atom (":" ^ name) :: List.map ~f:dgen bindings))
+          Galach.List (Galach.atom (":" ^ name) :: List.map ~f:dgen bindings))
     )
 
   let to_sexp sexp_of_a bindings =
@@ -333,33 +333,33 @@ module Dep_conf = struct
       ~then_:dparse
       ~else_:(String_with_vars.dparse >>| fun x -> File x)
 
-  open Dsexp
+  open Galach
   let dgen = function
     | File t ->
-      List [ Dsexp.unsafe_atom_of_string "file"
+      List [ Galach.unsafe_atom_of_string "file"
            ; String_with_vars.dgen t ]
     | Alias t ->
-      List [ Dsexp.unsafe_atom_of_string "alias"
+      List [ Galach.unsafe_atom_of_string "alias"
            ; String_with_vars.dgen t ]
     | Alias_rec t ->
-      List [ Dsexp.unsafe_atom_of_string "alias_rec"
+      List [ Galach.unsafe_atom_of_string "alias_rec"
            ; String_with_vars.dgen t ]
     | Glob_files t ->
-      List [ Dsexp.unsafe_atom_of_string "glob_files"
+      List [ Galach.unsafe_atom_of_string "glob_files"
            ; String_with_vars.dgen t ]
     | Source_tree t ->
-      List [ Dsexp.unsafe_atom_of_string "files_recursively_in"
+      List [ Galach.unsafe_atom_of_string "files_recursively_in"
            ; String_with_vars.dgen t ]
     | Package t ->
-      List [ Dsexp.unsafe_atom_of_string "package"
+      List [ Galach.unsafe_atom_of_string "package"
            ; String_with_vars.dgen t]
     | Universe ->
-      Dsexp.unsafe_atom_of_string "universe"
+      Galach.unsafe_atom_of_string "universe"
     | Env_var t ->
-      List [ Dsexp.unsafe_atom_of_string "env_var"
+      List [ Galach.unsafe_atom_of_string "env_var"
            ; String_with_vars.dgen t]
 
-  let to_sexp t = Dsexp.to_sexp (dgen t)
+  let to_sexp t = Galach.to_sexp (dgen t)
 end
 
 module Preprocess = struct
@@ -419,7 +419,7 @@ module Blang = struct
            Compare (op, x, y))))
     in
     let dparse =
-      fix begin fun (t : String_with_vars.t Blang.t Dsexp.Of_sexp.t) ->
+      fix begin fun (t : String_with_vars.t Blang.t Galach.Of_sexp.t) ->
         if_list
           ~then_:(
             [ "or", repeat t >>| (fun x -> Or x)
@@ -747,7 +747,7 @@ module Sub_system_info = struct
     val name   : Sub_system_name.t
     val loc    : t -> Loc.t
     val syntax : Syntax.t
-    val parse  : t Dsexp.Of_sexp.t
+    val parse  : t Galach.Of_sexp.t
   end
 
   let all = Sub_system_name.Table.create ~default_value:None
@@ -806,7 +806,7 @@ module Mode_conf = struct
     Format.pp_print_string fmt (to_string t)
 
   let dgen t =
-    Dsexp.unsafe_atom_of_string (to_string t)
+    Galach.unsafe_atom_of_string (to_string t)
 
   module Set = struct
     include Set.Make(T)
@@ -846,7 +846,7 @@ module Library = struct
           [ (0, 1) ]
       in
       Dune_project.Extension.register ~experimental:true
-        syntax (Dsexp.Of_sexp.return []);
+        syntax (Galach.Of_sexp.return []);
       syntax
   end
 
@@ -889,7 +889,7 @@ module Library = struct
           [ (0, 1) ]
       in
       Dune_project.Extension.register ~experimental:true
-        syntax (Dsexp.Of_sexp.return []);
+        syntax (Galach.Of_sexp.return []);
       syntax
 
     let glob =
@@ -1129,7 +1129,7 @@ module Install_conf = struct
     | List (_, [Atom (_, A src); Atom (_, A "as"); Atom (_, A dst)]) ->
       junk >>> return { src; dst = Some dst }
     | sexp ->
-      of_sexp_error (Dsexp.Ast.loc sexp)
+      of_sexp_error (Galach.Ast.loc sexp)
         "invalid format, <name> or (<name> as <install-as>) expected"
 
   type t =
@@ -1198,7 +1198,7 @@ module Executables = struct
       ]
 
     let simple =
-      Dsexp.Of_sexp.enum simple_representations
+      Galach.Of_sexp.enum simple_representations
 
     let dparse =
       if_list
@@ -1215,14 +1215,14 @@ module Executables = struct
         compare candidate link_mode = Eq
       in
       List.find ~f:is_ok simple_representations
-      |> Option.map ~f:(fun (s, _) -> Dsexp.unsafe_atom_of_string s)
+      |> Option.map ~f:(fun (s, _) -> Galach.unsafe_atom_of_string s)
 
     let dgen link_mode =
       match simple_dgen link_mode with
       | Some s -> s
       | None ->
         let { mode; kind; loc = _ } = link_mode in
-        Dsexp.To_sexp.pair Mode_conf.dgen Binary_kind.dgen (mode, kind)
+        Galach.To_sexp.pair Mode_conf.dgen Binary_kind.dgen (mode, kind)
 
     module Set = struct
       include Set.Make(T)
@@ -1333,7 +1333,7 @@ module Executables = struct
         match Link_mode.Set.best_install_mode t.modes with
         | None when has_public_name ->
           let mode_to_string mode =
-            " - " ^ Dsexp.to_string ~syntax:Dune (Link_mode.dgen mode) in
+            " - " ^ Galach.to_string ~syntax:Dune (Link_mode.dgen mode) in
           let mode_strings = List.map ~f:mode_to_string Link_mode.installable_modes in
           Errors.fail
             buildable.loc
@@ -1579,7 +1579,7 @@ module Rule = struct
         | Some Action -> short_form
       end
     | sexp ->
-      of_sexp_errorf (Dsexp.Ast.loc sexp)
+      of_sexp_errorf (Galach.Ast.loc sexp)
         "S-expression of the form (<atom> ...) expected"
 
   let dparse =
@@ -1868,7 +1868,7 @@ module Stanzas = struct
 
   type Stanza.t += Include of Loc.t * string
 
-  type constructors = (string * Stanza.t list Dsexp.Of_sexp.t) list
+  type constructors = (string * Stanza.t list Galach.Of_sexp.t) list
 
   let stanzas : constructors =
     [ "library",
@@ -1951,7 +1951,7 @@ module Stanzas = struct
   exception Include_loop of Path.t * (Loc.t * Path.t) list
 
   let rec parse stanza_parser ~lexer ~current_file ~include_stack sexps =
-    List.concat_map sexps ~f:(Dsexp.Of_sexp.parse stanza_parser Univ_map.empty)
+    List.concat_map sexps ~f:(Galach.Of_sexp.parse stanza_parser Univ_map.empty)
     |> List.concat_map ~f:(function
       | Include (loc, fn) ->
         let include_stack = (loc, current_file) :: include_stack in
@@ -1962,7 +1962,7 @@ module Stanzas = struct
             (Path.to_string_maybe_quoted current_file);
         if List.exists include_stack ~f:(fun (_, f) -> Path.equal f current_file) then
           raise (Include_loop (current_file, include_stack));
-        let sexps = Dsexp.Io.load ~lexer current_file ~mode:Many in
+        let sexps = Galach.Io.load ~lexer current_file ~mode:Many in
         parse stanza_parser sexps ~lexer ~current_file ~include_stack
       | stanza -> [stanza])
 
@@ -1970,8 +1970,8 @@ module Stanzas = struct
     let (stanza_parser, lexer) =
       let (parser, lexer) =
         match (kind : File_tree.Dune_file.Kind.t) with
-        | Jbuild -> (jbuild_parser, Dsexp.Lexer.jbuild_token)
-        | Dune   -> (Dune_project.stanza_parser project, Dsexp.Lexer.token)
+        | Jbuild -> (jbuild_parser, Galach.Lexer.jbuild_token)
+        | Dune   -> (Dune_project.stanza_parser project, Galach.Lexer.token)
       in
       (Dune_project.set project parser, lexer)
     in

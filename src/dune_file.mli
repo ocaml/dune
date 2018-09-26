@@ -105,7 +105,7 @@ module Bindings : sig
 
   val singleton : 'a -> 'a t
 
-  val dgen : 'a Dsexp.To_sexp.t -> 'a t Dsexp.To_sexp.t
+  val dgen : 'a Galach.To_sexp.t -> 'a t Galach.To_sexp.t
 
   val to_sexp : 'a Sexp.To_sexp.t -> 'a t Sexp.To_sexp.t
 end
@@ -123,7 +123,7 @@ module Dep_conf : sig
 
   val remove_locs : t -> t
 
-  include Dsexp.Sexpable with type t := t
+  include Galach.Sexpable with type t := t
   val to_sexp : t Sexp.To_sexp.t
 end
 
@@ -180,7 +180,7 @@ module Sub_system_info : sig
     val syntax : Syntax.t
 
     (** Parse parameters written by the user in jbuid/dune files *)
-    val parse : t Dsexp.Of_sexp.t
+    val parse : t Galach.Of_sexp.t
   end
 
   module Register(M : S) : sig end
@@ -194,13 +194,13 @@ module Mode_conf : sig
     | Native
     | Best (** [Native] if available and [Byte] if not *)
 
-  val dparse : t Dsexp.Of_sexp.t
+  val dparse : t Galach.Of_sexp.t
   val compare : t -> t -> Ordering.t
   val pp : Format.formatter -> t -> unit
 
   module Set : sig
     include Set.S with type elt = t
-    val dparse : t Dsexp.Of_sexp.t
+    val dparse : t Galach.Of_sexp.t
 
     (** Both Byte and Native *)
     val default : t
@@ -317,7 +317,7 @@ module Executables : sig
       ; loc : Loc.t
       }
 
-    include Dsexp.Sexpable with type t := t
+    include Galach.Sexpable with type t := t
 
     val exe           : t
     val object_       : t
@@ -449,6 +449,6 @@ module Stanzas : sig
     :  file:Path.t
     -> kind:File_tree.Dune_file.Kind.t
     -> Dune_project.t
-    -> Dsexp.Ast.t list
+    -> Galach.Ast.t list
     -> t
 end

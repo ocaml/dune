@@ -2,17 +2,17 @@
 open Dune;;
 open! Stdune;;
 
-let sexp_pp = Dsexp.pp Dune;;
+let sexp_pp = Galach.pp Dune;;
 #install_printer Dune_file.Mode_conf.pp;;
 #install_printer Binary_kind.pp;;
 #install_printer sexp_pp;;
 
 (* Dune_file.Executables.Link_mode.dparse *)
 let test s =
-  Dsexp.Of_sexp.parse Dune_file.Executables.Link_mode.dparse Univ_map.empty
-    (Dsexp.parse_string ~fname:"" ~mode:Dsexp.Parser.Mode.Single s)
+  Galach.Of_sexp.parse Dune_file.Executables.Link_mode.dparse Univ_map.empty
+    (Galach.parse_string ~fname:"" ~mode:Galach.Parser.Mode.Single s)
 [%%expect{|
-val sexp_pp : Format.formatter -> Dsexp.t -> unit = <fun>
+val sexp_pp : Format.formatter -> Galach.t -> unit = <fun>
 val test : string -> Dune_file.Executables.Link_mode.t = <fun>
 |}]
 
@@ -54,17 +54,17 @@ test "native"
 let test l =
   Dune_file.Executables.Link_mode.dgen l
 [%%expect{|
-val test : Dune_file.Executables.Link_mode.t -> Dsexp.t = <fun>
+val test : Dune_file.Executables.Link_mode.t -> Galach.t = <fun>
 |}]
 
 (* In the general case, modes are serialized as a list *)
 test {Dune_file.Executables.Link_mode.kind = Shared_object; mode = Byte; loc=Loc.none}
 [%%expect{|
-- : Dsexp.t = (byte shared_object)
+- : Galach.t = (byte shared_object)
 |}]
 
 (* But the specialized ones are serialized in the minimal version *)
 test Dune_file.Executables.Link_mode.exe
 [%%expect{|
-- : Dsexp.t = exe
+- : Galach.t = exe
 |}]

@@ -7,7 +7,7 @@ type t =
   | Shared_object
 
 let dparse =
-  let open Dsexp.Of_sexp in
+  let open Galach.Of_sexp in
   sum
     [ "c"             , Syntax.since Stanza.syntax (1, 2) >>> return C
     ; "exe"           , return Exe
@@ -25,6 +25,6 @@ let pp fmt t =
   Format.pp_print_string fmt (to_string t)
 
 let dgen t =
-  Dsexp.unsafe_atom_of_string (to_string t)
+  Galach.unsafe_atom_of_string (to_string t)
 
 let all = [C; Exe; Object; Shared_object]

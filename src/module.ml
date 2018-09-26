@@ -9,8 +9,8 @@ module Name = struct
 
   include T
 
-  let dparse = Dsexp.Of_sexp.string
-  let dgen = Dsexp.To_sexp.string
+  let dparse = Galach.Of_sexp.string
+  let dgen = Galach.To_sexp.string
 
   let to_sexp = Sexp.To_sexp.string
 

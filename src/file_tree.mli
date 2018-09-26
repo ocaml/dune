@@ -5,9 +5,9 @@ open! Import
 
 module Dune_file : sig
   module Kind : sig
-    type t = Dsexp.syntax = Jbuild | Dune
+    type t = Galach.syntax = Jbuild | Dune
 
-    val lexer : t -> Dsexp.Lexer.t
+    val lexer : t -> Galach.Lexer.t
   end
 
   module Plain : sig
@@ -16,7 +16,7 @@ module Dune_file : sig
         as we don't need them. *)
     type t =
       { path          : Path.t
-      ; mutable sexps : Dsexp.Ast.t list
+      ; mutable sexps : Galach.Ast.t list
       }
   end
 

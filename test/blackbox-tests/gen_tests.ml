@@ -5,23 +5,23 @@ let sprintf = Printf.sprintf
 module Sexp = struct
   let fields fields =
     List.map fields ~f:(fun (k, s) ->
-      Dsexp.List (Dsexp.atom k :: s))
+      Galach.List (Galach.atom k :: s))
 
   let strings fields =
-    Dsexp.List (List.map fields ~f:Dsexp.atom_or_quoted_string)
+    Galach.List (List.map fields ~f:Galach.atom_or_quoted_string)
 
   let constr name args =
-    Dsexp.List (Dsexp.atom name :: args)
+    Galach.List (Galach.atom name :: args)
 
   let parse s =
-    Dsexp.parse_string ~fname:"gen_tests.ml" ~mode:Single s
-    |> Dsexp.Ast.remove_locs
+    Galach.parse_string ~fname:"gen_tests.ml" ~mode:Single s
+    |> Galach.Ast.remove_locs
 end
 
 module Platform = struct
   type t = Win | Mac
 
-  open Dsexp
+  open Galach
 
   let to_string = function
     | Win -> "win"
@@ -44,7 +44,7 @@ end
 let alias ?enabled_if ?action name ~deps =
   Sexp.constr "alias"
     (Sexp.fields (
-       [ "name", [Dsexp.atom name]
+       [ "name", [Galach.atom name]
        ; "deps", deps
        ] @ (match action with
          | None -> []
@@ -56,7 +56,7 @@ let alias ?enabled_if ?action name ~deps =
 module Test = struct
   type t =
     { name           : string
-    ; env            : (string * Dsexp.t) option
+    ; env            : (string * Galach.t) option
     ; skip_ocaml     : string option
     ; skip_platforms : Platform.t list
     ; enabled        : bool
@@ -76,7 +76,7 @@ module Test = struct
     }
 
   let pp_sexp fmt t =
-    let open Dsexp in
+    let open Galach in
     let skip_version =
       match t.skip_ocaml with
       | None -> []
@@ -89,10 +89,10 @@ module Test = struct
         ; atom (sprintf "test-cases/%s" t.name)
         ; List
             [ atom "progn"
-            ; Dsexp.List
+            ; Galach.List
                 ([ atom "run"
                  ; Sexp.parse "%{exe:cram.exe}" ]
-                 @ (List.map ~f:Dsexp.atom_or_quoted_string
+                 @ (List.map ~f:Galach.atom_or_quoted_string
                       (skip_version @ ["-test"; "run.t"])))
             ; Sexp.strings ["diff?"; "run.t"; "run.t.corrected"]
             ]
@@ -115,7 +115,7 @@ module Test = struct
                        ; sprintf "test-cases/%s" t.name]
         ]
       ) ~action
-    |> Dsexp.pp Dune fmt
+    |> Galach.pp Dune fmt
 end
 
 let exclusions =
@@ -123,7 +123,7 @@ let exclusions =
   let odoc = make ~external_deps:true ~skip_ocaml:"4.02.3" in
   [ make "js_of_ocaml" ~external_deps:true ~js:true
       ~env:("NODE", Sexp.parse "%{bin:node}")
-  ; make "github25" ~env:("OCAMLPATH", Dsexp.atom "./findlib-packages")
+  ; make "github25" ~env:("OCAMLPATH", Galach.atom "./findlib-packages")
   ; odoc "odoc"
   ; odoc "odoc-unique-mlds"
   ; odoc "github717-odoc-index"
@@ -161,7 +161,7 @@ let pp_group fmt (name, tests) =
   alias name ~deps:(
     (List.map tests ~f:(fun (t : Test.t) ->
        Sexp.strings ["alias"; t.name])))
-  |> Dsexp.pp Dune fmt
+  |> Galach.pp Dune fmt
 
 let () =
   let tests = Lazy.force all_tests in

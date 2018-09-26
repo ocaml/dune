@@ -138,7 +138,7 @@ let prepare_formatter ppf =
     }
 
 module Ast = struct
-  type dsexp = t
+  type galach = t
   type t =
     | Atom of Loc.t * Atom.t
     | Quoted_string of Loc.t * string
@@ -155,7 +155,7 @@ module Ast = struct
   let loc (Atom (loc, _) | Quoted_string (loc, _) | List (loc, _)
           | Template { loc ; _ }) = loc
 
-  let rec remove_locs t : dsexp =
+  let rec remove_locs t : galach =
     match t with
     | Template t -> Template (Template.remove_locs t)
     | Atom (_, s) -> Atom s
@@ -264,7 +264,7 @@ let parse_string ~fname ~mode ?lexer str =
     };
   Parser.parse ~mode ?lexer lb
 
-type dsexp = t
+type galach = t
 
 module To_sexp = struct
   type nonrec 'a t = 'a -> t
@@ -283,7 +283,7 @@ module To_sexp = struct
   let record l =
     List (List.map l ~f:(fun (n, v) -> List [Atom(Atom.of_string n); v]))
 
-  type field = string * dsexp option
+  type field = string * galach option
 
   let field name f ?(equal=(=)) ?default v =
     match default with

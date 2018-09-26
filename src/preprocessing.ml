@@ -100,7 +100,7 @@ module Driver = struct
       }
 
     let dgen t =
-      let open Dsexp.To_sexp in
+      let open Galach.To_sexp in
       let f x = Lib_name.dgen (Lib.name (Lazy.force x.lib)) in
       ((1, 0),
        record
@@ -196,9 +196,9 @@ module Jbuild_driver = struct
         Univ_map.singleton (Syntax.key Stanza.syntax) (0, 0)
       in
       let fname = Printf.sprintf "<internal-%s>" name in
-      Dsexp.parse_string ~mode:Single ~fname info
-        ~lexer:Dsexp.Lexer.jbuild_token
-      |> Dsexp.Of_sexp.parse Driver.Info.parse parsing_context
+      Galach.parse_string ~mode:Single ~fname info
+        ~lexer:Galach.Lexer.jbuild_token
+      |> Galach.Of_sexp.parse Driver.Info.parse parsing_context
     in
     (Pp.of_string ~loc:None name,
      { info

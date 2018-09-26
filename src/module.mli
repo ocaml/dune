@@ -4,7 +4,7 @@ open! Import
 module Name : sig
   type t
 
-  include Dsexp.Sexpable with type t := t
+  include Galach.Sexpable with type t := t
 
   val add_suffix : t -> string -> t
 

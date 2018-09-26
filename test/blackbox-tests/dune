@@ -9,7 +9,7 @@
 
 (executable
  (name gen_tests)
- (libraries stdune dsexp)
+ (libraries stdune galach)
  (modules gen_tests))
 
 (include dune.inc)

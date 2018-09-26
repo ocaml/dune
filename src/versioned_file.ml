@@ -15,11 +15,11 @@ module type S = sig
     end
     val get_exn : string -> Instance.t
   end
-  val load : Path.t -> f:(Lang.Instance.t -> 'a Dsexp.Of_sexp.t) -> 'a
+  val load : Path.t -> f:(Lang.Instance.t -> 'a Galach.Of_sexp.t) -> 'a
   val parse_contents
     :  Lexing.lexbuf
     -> Dune_lexer.first_line
-    -> f:(Lang.Instance.t -> 'a Dsexp.Of_sexp.t)
+    -> f:(Lang.Instance.t -> 'a Galach.Of_sexp.t)
     -> 'a
 end
 
@@ -54,8 +54,8 @@ module Make(Data : sig type t end) = struct
           } = first_line
       in
       let ver =
-        Dsexp.Of_sexp.parse Syntax.Version.dparse Univ_map.empty
-          (Atom (ver_loc, Dsexp.Atom.of_string ver)) in
+        Galach.Of_sexp.parse Syntax.Version.dparse Univ_map.empty
+          (Atom (ver_loc, Galach.Atom.of_string ver)) in
       match Hashtbl.find langs name with
       | None ->
         Errors.fail name_loc "Unknown language %S.%s" name
@@ -77,11 +77,11 @@ module Make(Data : sig type t end) = struct
 
   let parse_contents lb first_line ~f =
     let lang = Lang.parse first_line in
-    let sexp = Dsexp.Parser.parse lb ~mode:Many_as_one in
+    let sexp = Galach.Parser.parse lb ~mode:Many_as_one in
     let parsing_context =
       Univ_map.singleton (Syntax.key lang.syntax) lang.version
     in
-    Dsexp.Of_sexp.parse (Dsexp.Of_sexp.enter (f lang)) parsing_context sexp
+    Galach.Of_sexp.parse (Galach.Of_sexp.enter (f lang)) parsing_context sexp
 
   let load fn ~f =
     Io.with_lexbuf_from_file fn ~f:(fun lb ->

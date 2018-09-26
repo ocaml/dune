@@ -136,7 +136,7 @@ let load_config_file p =
       | None ->
         parse (enter dparse)
           (Univ_map.singleton (Syntax.key syntax) (0, 0))
-          (Dsexp.Io.load p ~mode:Many_as_one ~lexer:Dsexp.Lexer.jbuild_token)
+          (Galach.Io.load p ~mode:Many_as_one ~lexer:Galach.Lexer.jbuild_token)
       | Some first_line ->
         parse_contents lb first_line ~f:(fun _lang -> dparse))
 

@@ -1288,13 +1288,13 @@ let update_universe t =
   Utils.Cached_digest.remove universe_file;
   let n =
     if Path.exists universe_file then
-      Dsexp.Of_sexp.(parse int) Univ_map.empty
-        (Dsexp.Io.load ~mode:Single universe_file) + 1
+      Galach.Of_sexp.(parse int) Univ_map.empty
+        (Galach.Io.load ~mode:Single universe_file) + 1
     else
       0
   in
   make_local_dirs t (Path.Set.singleton Path.build_dir);
-  Io.write_file universe_file (Dsexp.to_string ~syntax:Dune (Dsexp.To_sexp.int n))
+  Io.write_file universe_file (Galach.to_string ~syntax:Dune (Galach.To_sexp.int n))
 
 let do_build t ~request =
   entry_point t ~f:(fun () ->

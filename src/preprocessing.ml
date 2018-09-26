@@ -301,7 +301,7 @@ let build_ppx_driver sctx ~lib_db ~dep_kind ~target ~dir_kind pps =
      Build.of_result_map driver_and_libs ~f:(fun (_, libs) ->
        Build.paths (Lib.L.archive_files libs ~mode))
      >>>
-     Build.run ~context:ctx (Ok compiler)
+     Build.run (Ok compiler) ~dir:ctx.build_dir
        [ A "-o" ; Target target
        ; Arg_spec.of_result
            (Result.map driver_and_libs ~f:(fun (_driver, libs) ->
@@ -416,7 +416,7 @@ let setup_reason_rules sctx (m : Module.t) =
   let refmt =
     SC.resolve_program sctx ~loc:None "refmt" ~hint:"try: opam install reason" in
   let rule src target =
-    Build.run ~context:ctx refmt
+    Build.run ~dir:ctx.build_dir refmt
       [ A "--print"
       ; A "binary"
       ; Dep src
@@ -517,7 +517,7 @@ let lint_module sctx ~dir ~dep_kind ~lint ~lib_name ~scope ~dir_kind =
                     (Option.value_exn (Module.file source kind))
                     (Build.of_result_map driver_and_flags ~f:(fun (exe, flags) ->
                        flags >>>
-                       Build.run ~context:(SC.context sctx)
+                       Build.run ~dir:(SC.context sctx).build_dir
                          (Ok exe)
                          [ args
                          ; Ml_kind.ppx_driver_flag kind
@@ -611,7 +611,7 @@ let make sctx ~dir ~dep_kind ~lint ~preprocess
                      ~f:(fun (exe, flags) ->
                        flags
                        >>>
-                       Build.run ~context:(SC.context sctx)
+                       Build.run ~dir:(SC.context sctx).build_dir
                          (Ok exe)
                          [ args
                          ; A "-o"; Target dst

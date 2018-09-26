@@ -45,9 +45,6 @@ module Run (P : PARAMS) = struct
 
   open P
 
-  let context =
-    SC.context sctx
-
   (* If [m] is a (short) module name, such as "myparser", then [source dir m]
      is the corresponding source file, and [targets dir m] is the list of
      targets that Menhir must build. *)
@@ -79,7 +76,7 @@ module Run (P : PARAMS) = struct
     string list Arg_spec.t list
 
   let menhir (args : args) =
-    flags >>> Build.run menhir_binary ~dir ~context args
+    flags >>> Build.run menhir_binary ~dir args
 
   let rule : (unit, Action.t) Build.t -> unit =
     SC.add_rule sctx ~mode:stanza.mode ~loc:stanza.loc

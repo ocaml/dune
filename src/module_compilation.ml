@@ -126,7 +126,7 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
          other_cm_files >>>
          flags
          >>>
-         Build.run ~dir ~context:ctx (Ok compiler)
+         Build.run ~dir (Ok compiler)
            [ Dyn (fun flags -> As flags)
            ; no_keep_locs
            ; cmt_args
@@ -203,7 +203,7 @@ let ocamlc_i ?sandbox ?(flags=[]) ~dep_graphs cctx (m : Module.t) ~output =
   SC.add_rule sctx ?sandbox
     (cm_deps >>>
      Ocaml_flags.get_for_cm (CC.flags cctx) ~cm_kind:Cmo >>>
-     Build.run ~context:ctx (Ok ctx.ocamlc)
+     Build.run (Ok ctx.ocamlc) ~dir:ctx.build_dir
        [ Dyn (fun ocaml_flags -> As ocaml_flags)
        ; A "-I"; Path obj_dir
        ; Cm_kind.Dict.get (CC.includes cctx) Cmo

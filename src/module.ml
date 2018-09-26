@@ -9,10 +9,10 @@ module Name = struct
 
   include T
 
-  let dparse = Dsexp.Of_sexp.string
-  let dgen = Dsexp.To_sexp.string
+  let decode = Dune_lang.Decoder.string
+  let encode = Dune_lang.Encoder.string
 
-  let to_sexp = Sexp.To_sexp.string
+  let to_sexp = Sexp.Encoder.string
 
   let add_suffix = (^)
 
@@ -37,7 +37,7 @@ module Syntax = struct
   type t = OCaml | Reason
 
   let to_sexp =
-    let open Sexp.To_sexp in
+    let open Sexp.Encoder in
     function
     | OCaml -> string "OCaml"
     | Reason -> string "Reason"
@@ -52,7 +52,7 @@ module File = struct
   let make syntax path = { syntax; path }
 
   let to_sexp { path; syntax } =
-    let open Sexp.To_sexp in
+    let open Sexp.Encoder in
     record
       [ "path", Path.to_sexp path
       ; "syntax", Syntax.to_sexp syntax
@@ -63,8 +63,8 @@ module Visibility = struct
   type t = Public | Private
 
   let to_sexp = function
-    | Public -> Sexp.To_sexp.string "public"
-    | Private -> Sexp.To_sexp.string "private"
+    | Public -> Sexp.Encoder.string "public"
+    | Private -> Sexp.Encoder.string "private"
 
   let is_public = function
     | Public -> true
@@ -90,9 +90,9 @@ let make ?impl ?intf ?obj_name ~visibility name =
     match impl, intf with
     | None, None ->
       Exn.code_error "Module.make called with no files"
-        [ "name", Sexp.To_sexp.string name
-        ; "impl", Sexp.To_sexp.(option unknown) impl
-        ; "intf", Sexp.To_sexp.(option unknown) intf
+        [ "name", Sexp.Encoder.string name
+        ; "impl", Sexp.Encoder.(option unknown) impl
+        ; "intf", Sexp.Encoder.(option unknown) intf
         ]
     | Some file, _
     | _, Some file -> file
@@ -183,7 +183,7 @@ let src_dir t =
 let set_pp t pp = { t with pp }
 
 let to_sexp { name; impl; intf; obj_name ; pp ; visibility } =
-  let open Sexp.To_sexp in
+  let open Sexp.Encoder in
   record
     [ "name", Name.to_sexp name
     ; "obj_name", string obj_name

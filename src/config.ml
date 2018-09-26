@@ -30,7 +30,7 @@ let default_build_profile =
   | Dune     -> "dev"
   | Jbuilder -> "release"
 
-open Stanza.Of_sexp
+open Stanza.Decoder
 
 (* the configuration file use the same version numbers as dune-project
    files for simplicity *)
@@ -50,7 +50,7 @@ module Display = struct
       ; "quiet"    , Quiet
       ]
 
-  let dparse = enum all
+  let decode = enum all
 end
 
 module Concurrency = struct
@@ -72,7 +72,7 @@ module Concurrency = struct
         else
           error
 
-  let dparse =
+  let decode =
     plain_string (fun ~loc s ->
       match of_string s with
       | Error m -> of_sexp_errorf loc "%s" m
@@ -110,15 +110,15 @@ let default =
   ; concurrency = if inside_dune then Fixed 1 else Auto
   }
 
-let dparse =
-  let%map display = field "display" Display.dparse ~default:default.display
-  and concurrency = field "jobs" Concurrency.dparse ~default:default.concurrency
+let decode =
+  let%map display = field "display" Display.decode ~default:default.display
+  and concurrency = field "jobs" Concurrency.decode ~default:default.concurrency
   in
   { display
   ; concurrency
   }
 
-let dparse = fields dparse
+let decode = fields decode
 
 let user_config_file =
   Path.relative (Path.of_filename_relative_to_initial_cwd Xdg.config_dir)
@@ -129,16 +129,16 @@ let () = Lang.register syntax ()
 
 let load_config_file p =
   match Which_program.t with
-  | Dune -> load p ~f:(fun _lang -> dparse)
+  | Dune -> load p ~f:(fun _lang -> decode)
   | Jbuilder ->
     Io.with_lexbuf_from_file p ~f:(fun lb ->
       match Dune_lexer.maybe_first_line lb with
       | None ->
-        parse (enter dparse)
+        parse (enter decode)
           (Univ_map.singleton (Syntax.key syntax) (0, 0))
-          (Dsexp.Io.load p ~mode:Many_as_one ~lexer:Dsexp.Lexer.jbuild_token)
+          (Dune_lang.Io.load p ~mode:Many_as_one ~lexer:Dune_lang.Lexer.jbuild_token)
       | Some first_line ->
-        parse_contents lb first_line ~f:(fun _lang -> dparse))
+        parse_contents lb first_line ~f:(fun _lang -> decode))
 
 let load_user_config_file () =
   if Path.exists user_config_file then

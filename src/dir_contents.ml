@@ -53,7 +53,7 @@ let modules_of_library t ~name =
   | None ->
     Exn.code_error "Dir_contents.modules_of_library"
       [ "name", Lib_name.to_sexp name
-      ; "available", Sexp.To_sexp.(list Lib_name.to_sexp) (Lib_name.Map.keys map)
+      ; "available", Sexp.Encoder.(list Lib_name.to_sexp) (Lib_name.Map.keys map)
       ]
 
 let modules_of_executables t ~first_exe =
@@ -62,8 +62,8 @@ let modules_of_executables t ~first_exe =
   | Some m -> m
   | None ->
     Exn.code_error "Dir_contents.modules_of_executables"
-      [ "first_exe", Sexp.To_sexp.string first_exe
-      ; "available", Sexp.To_sexp.(list string) (String.Map.keys map)
+      [ "first_exe", Sexp.Encoder.string first_exe
+      ; "available", Sexp.Encoder.(list string) (String.Map.keys map)
       ]
 
 let lookup_module t name =
@@ -79,7 +79,7 @@ let mlds t (doc : Documentation.t) =
   | None ->
     Exn.code_error "Dir_contents.mlds"
       [ "doc", Loc.to_sexp doc.loc
-      ; "available", Sexp.To_sexp.(list Loc.to_sexp)
+      ; "available", Sexp.Encoder.(list Loc.to_sexp)
                        (List.map map ~f:(fun (d, _) -> d.Documentation.loc))
       ]
 

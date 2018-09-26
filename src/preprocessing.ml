@@ -42,7 +42,7 @@ module Driver = struct
       *)
       let syntax = Stanza.syntax
 
-      open Stanza.Of_sexp
+      open Stanza.Decoder
 
       let parse =
         record
@@ -56,7 +56,7 @@ module Driver = struct
            and lint_flags = Ordered_set_lang.Unexpanded.field "lint_flags"
            and main = field "main" string
            and replaces =
-             field "replaces" (list (located (Lib_name.dparse))) ~default:[]
+             field "replaces" (list (located (Lib_name.decode))) ~default:[]
            in
            { loc
            ; flags
@@ -99,14 +99,14 @@ module Driver = struct
             | Some t -> Ok t)
       }
 
-    let dgen t =
-      let open Dsexp.To_sexp in
-      let f x = Lib_name.dgen (Lib.name (Lazy.force x.lib)) in
+    let encode t =
+      let open Dune_lang.Encoder in
+      let f x = Lib_name.encode (Lib.name (Lazy.force x.lib)) in
       ((1, 0),
        record
-         [ "flags"            , Ordered_set_lang.Unexpanded.dgen
+         [ "flags"            , Ordered_set_lang.Unexpanded.encode
                                   t.info.flags
-         ; "lint_flags"       , Ordered_set_lang.Unexpanded.dgen
+         ; "lint_flags"       , Ordered_set_lang.Unexpanded.encode
                                   t.info.lint_flags
          ; "main"             , string t.info.main
          ; "replaces"         , list f (Result.ok_exn t.replaces)
@@ -196,9 +196,9 @@ module Jbuild_driver = struct
         Univ_map.singleton (Syntax.key Stanza.syntax) (0, 0)
       in
       let fname = Printf.sprintf "<internal-%s>" name in
-      Dsexp.parse_string ~mode:Single ~fname info
-        ~lexer:Dsexp.Lexer.jbuild_token
-      |> Dsexp.Of_sexp.parse Driver.Info.parse parsing_context
+      Dune_lang.parse_string ~mode:Single ~fname info
+        ~lexer:Dune_lang.Lexer.jbuild_token
+      |> Dune_lang.Decoder.parse Driver.Info.parse parsing_context
     in
     (Pp.of_string ~loc:None name,
      { info

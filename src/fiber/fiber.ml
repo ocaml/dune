@@ -234,7 +234,7 @@ module Var = struct
     fiber ctx k
 
   let create () =
-    create ~name:"var" (fun _ -> Sexp.To_sexp.string "var")
+    create ~name:"var" (fun _ -> Sexp.Encoder.string "var")
 end
 
 let with_error_handler f ~on_error ctx k =

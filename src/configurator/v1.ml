@@ -78,8 +78,8 @@ module Flags = struct
     Io.write_lines path s
 
   let write_sexp path s =
-    let sexp = Dsexp.List (List.map s ~f:(fun s -> Dsexp.Quoted_string s)) in
-    Io.write_file path (Dsexp.to_string sexp ~syntax:Dune)
+    let sexp = Dune_lang.List (List.map s ~f:(fun s -> Dune_lang.Quoted_string s)) in
+    Io.write_file path (Dune_lang.to_string sexp ~syntax:Dune)
 end
 
 module Find_in_path = struct

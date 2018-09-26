@@ -22,7 +22,7 @@ val eq : 'a t -> 'b t -> ('a, 'b) Type_eq.t option
 module Make
     (T : sig
        type t
-       val dgen : t Dsexp.To_sexp.t
+       val encode : t Dune_lang.Encoder.t
        val name : string
      end)
   : S with type t = T.t

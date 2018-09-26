@@ -11,7 +11,7 @@ module Name : sig
 
   include Interned.S with type t := t
 
-  val dparse : t Dsexp.Of_sexp.t
+  val decode : t Dune_lang.Decoder.t
 
   module Infix : Comparable.OPS with type t = t
 end

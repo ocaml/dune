@@ -7,7 +7,7 @@
               dune_re
               threads
               opam_file_format
-              dsexp
+              dune_lang
               ocaml_config
               which_program)
  (synopsis    "Internal Dune library, do not use!")

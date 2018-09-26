@@ -4,5 +4,5 @@ module Make(Elt : Comparable.S) : S with type elt = Elt.t
 
 val to_sexp
   :  ('a -> 'b list)
-  -> 'b Sexp.To_sexp.t
-  -> 'a Sexp.To_sexp.t
+  -> 'b Sexp.Encoder.t
+  -> 'a Sexp.Encoder.t

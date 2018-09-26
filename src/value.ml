@@ -7,7 +7,7 @@ type t =
   | Path of Path.t
 
 let to_sexp =
-  let open Sexp.To_sexp in
+  let open Sexp.Encoder in
   function
   | String s -> (pair string string) ("string", s)
   | Path p -> (pair string Path.to_sexp) ("path", p)

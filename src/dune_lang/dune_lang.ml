@@ -138,7 +138,7 @@ let prepare_formatter ppf =
     }
 
 module Ast = struct
-  type dsexp = t
+  type dune_lang = t
   type t =
     | Atom of Loc.t * Atom.t
     | Quoted_string of Loc.t * string
@@ -155,7 +155,7 @@ module Ast = struct
   let loc (Atom (loc, _) | Quoted_string (loc, _) | List (loc, _)
           | Template { loc ; _ }) = loc
 
-  let rec remove_locs t : dsexp =
+  let rec remove_locs t : dune_lang =
     match t with
     | Template t -> Template (Template.remove_locs t)
     | Atom (_, s) -> Atom s
@@ -264,9 +264,9 @@ let parse_string ~fname ~mode ?lexer str =
     };
   Parser.parse ~mode ?lexer lb
 
-type dsexp = t
+type dune_lang = t
 
-module To_sexp = struct
+module Encoder = struct
   type nonrec 'a t = 'a -> t
   let unit () = List []
   let string = atom_or_quoted_string
@@ -283,7 +283,7 @@ module To_sexp = struct
   let record l =
     List (List.map l ~f:(fun (n, v) -> List [Atom(Atom.of_string n); v]))
 
-  type field = string * dsexp option
+  type field = string * dune_lang option
 
   let field name f ?(equal=(=)) ?default v =
     match default with
@@ -302,7 +302,7 @@ module To_sexp = struct
   let unknown _ = unsafe_atom_of_string "<unknown>"
 end
 
-module Of_sexp = struct
+module Decoder = struct
   type ast = Ast.t =
     | Atom of Loc.t * Atom.t
     | Quoted_string of Loc.t * string
@@ -314,10 +314,10 @@ module Of_sexp = struct
     ; candidates: string list
     }
 
-  exception Of_sexp of Loc.t * string * hint option
+  exception Decoder of Loc.t * string * hint option
 
   let of_sexp_error ?hint loc msg =
-    raise (Of_sexp (loc, msg, hint))
+    raise (Decoder (loc, msg, hint))
   let of_sexp_errorf ?hint loc fmt =
     Printf.ksprintf (fun msg -> of_sexp_error loc ?hint msg) fmt
   let no_templates ?hint loc fmt =
@@ -847,10 +847,10 @@ module Of_sexp = struct
   end
 end
 
-module type Sexpable = sig
+module type Conv = sig
   type t
-  val dparse : t Of_sexp.t
-  val dgen : t To_sexp.t
+  val decode : t Decoder.t
+  val encode : t Encoder.t
 end
 
 let rec to_sexp = function

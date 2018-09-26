@@ -37,4 +37,4 @@ val trace : t -> Env.t -> (string * string) list
 val paths : t -> Path.Set.t
 
 (** Serializer. *)
-val to_sexp : t -> Dsexp.t
+val to_sexp : t -> Dune_lang.t

@@ -2,7 +2,7 @@ open! Import
 
 type t = Byte | Native
 
-val dparse : t Dsexp.Of_sexp.t
+val decode : t Dune_lang.Decoder.t
 
 val all : t list
 
@@ -37,7 +37,7 @@ module Dict : sig
   module Set : sig
 
     type nonrec t = bool t
-    val dparse : t Dsexp.Of_sexp.t
+    val decode : t Dune_lang.Decoder.t
     val all : t
     val is_empty : t -> bool
     val to_list : t -> mode list

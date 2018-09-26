@@ -28,4 +28,4 @@ val prepend_common : string list -> t -> t
 
 val common : t -> (unit, string list) Build.t
 
-val dump : t -> (unit, Dsexp.t list) Build.t
+val dump : t -> (unit, Dune_lang.t list) Build.t

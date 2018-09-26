@@ -167,7 +167,7 @@ module Pkg_version = struct
 
   module V = Vfile_kind.Make(struct
       type t = string option
-      let dgen = Dsexp.To_sexp.(option string)
+      let encode = Dune_lang.Encoder.(option string)
       let name = "Pkg_version"
     end)
 

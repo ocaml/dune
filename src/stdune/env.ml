@@ -42,7 +42,7 @@ let of_unix arr =
     match String.lsplit2 s ~on:'=' with
     | None ->
       Exn.code_error "Env.of_unix: entry without '=' found in the environ"
-        ["var", Sexp.To_sexp.string s]
+        ["var", Sexp.Encoder.string s]
     | Some (k, v) -> (k, v))
   |> Map.of_list_multi
   |> Map.map ~f:(function
@@ -61,7 +61,7 @@ let extend_env x y =
   extend x ~vars:y.vars
 
 let to_sexp t =
-  let open Sexp.To_sexp in
+  let open Sexp.Encoder in
   (list (pair string string)) (Map.to_list t.vars)
 
 let diff x y =

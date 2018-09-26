@@ -7,7 +7,7 @@ module T = struct
       Eq
     else
       Gt
-  let to_sexp = Sexp.To_sexp.int
+  let to_sexp = Sexp.Encoder.int
 end
 
 include T

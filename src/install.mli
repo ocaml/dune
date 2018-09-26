@@ -19,7 +19,7 @@ module Section : sig
     | Man
     | Misc
 
-  val dparse : t Dsexp.Of_sexp.t
+  val decode : t Dune_lang.Decoder.t
 
   (** [true] iff the executable bit should be set for files installed
       in this location. *)

@@ -2,7 +2,7 @@ type t =
   | Atom of string
   | List of t list
 
-module To_sexp : sig
+module Encoder : sig
   type sexp
   include Sexp_intf.Combinators with type 'a t = 'a -> t
 

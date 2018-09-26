@@ -1,6 +1,6 @@
 open! Stdune
 open Import
-open Dsexp.Of_sexp
+open Dune_lang.Decoder
 
 let ignore_loc k ~loc:_ = k
 
@@ -16,9 +16,9 @@ end
 module Diff_mode = Action_intf.Diff_mode
 
 module Make_ast
-    (Program : Dsexp.Sexpable)
-    (Path    : Dsexp.Sexpable)
-    (String  : Dsexp.Sexpable)
+    (Program : Dune_lang.Conv)
+    (Path    : Dune_lang.Conv)
+    (String  : Dune_lang.Conv)
     (Ast : Action_intf.Ast
      with type program := Program.t
      with type path    := Path.t
@@ -26,13 +26,13 @@ module Make_ast
 struct
   include Ast
 
-  let dparse =
-    let path = Path.dparse and string = String.dparse in
-    Dsexp.Of_sexp.fix (fun t ->
+  let decode =
+    let path = Path.decode and string = String.decode in
+    Dune_lang.Decoder.fix (fun t ->
       sum
         [ "run",
-          (let%map prog = Program.dparse
-           and args = repeat String.dparse
+          (let%map prog = Program.decode
+           and args = repeat String.decode
            in
            Run (prog, args))
         ; "chdir",
@@ -130,26 +130,26 @@ struct
            Diff { optional = false; file1; file2; mode = Binary })
         ])
 
-  let rec dgen =
-    let open Dsexp in
-    let program = Program.dgen in
-    let string = String.dgen in
-    let path = Path.dgen in
+  let rec encode =
+    let open Dune_lang in
+    let program = Program.encode in
+    let string = String.encode in
+    let path = Path.encode in
     function
     | Run (a, xs) ->
       List (atom "run" :: program a :: List.map xs ~f:string)
-    | Chdir (a, r) -> List [atom "chdir" ; path a ; dgen r]
-    | Setenv (k, v, r) -> List [atom "setenv" ; string k ; string v ; dgen r]
+    | Chdir (a, r) -> List [atom "chdir" ; path a ; encode r]
+    | Setenv (k, v, r) -> List [atom "setenv" ; string k ; string v ; encode r]
     | Redirect (outputs, fn, r) ->
       List [ atom (sprintf "with-%s-to" (Outputs.to_string outputs))
            ; path fn
-           ; dgen r
+           ; encode r
            ]
     | Ignore (outputs, r) ->
       List [ atom (sprintf "ignore-%s" (Outputs.to_string outputs))
-           ; dgen r
+           ; encode r
            ]
-    | Progn l -> List (atom "progn" :: List.map l ~f:dgen)
+    | Progn l -> List (atom "progn" :: List.map l ~f:encode)
     | Echo xs ->
       List (atom "echo" :: List.map xs ~f:string)
     | Cat x -> List [atom "cat"; path x]
@@ -270,12 +270,12 @@ module Prog = struct
 
   type t = (Path.t, Not_found.t) result
 
-  let dparse : t Dsexp.Of_sexp.t =
-    Dsexp.Of_sexp.map Path_dsexp.dparse ~f:Result.ok
+  let decode : t Dune_lang.Decoder.t =
+    Dune_lang.Decoder.map Path_dune_lang.decode ~f:Result.ok
 
-  let dgen = function
-    | Ok s -> Path_dsexp.dgen s
-    | Error (e : Not_found.t) -> Dsexp.To_sexp.string e.program
+  let encode = function
+    | Ok s -> Path_dune_lang.encode s
+    | Error (e : Not_found.t) -> Dune_lang.Encoder.string e.program
 end
 
 module type Ast = Action_intf.Ast
@@ -286,13 +286,13 @@ module rec Ast : Ast = Ast
 
 module String_with_sexp = struct
   type t = string
-  let dparse = Dsexp.Of_sexp.string
-  let dgen = Dsexp.To_sexp.string
+  let decode = Dune_lang.Decoder.string
+  let encode = Dune_lang.Encoder.string
 end
 
 include Make_ast
     (Prog)
-    (Path_dsexp)
+    (Path_dune_lang)
     (String_with_sexp)
     (Ast)
 
@@ -398,9 +398,9 @@ module Unexpanded = struct
         ~f_path:(fun ~dir:_ -> String_with_vars.remove_locs)
         ~f_string:(fun ~dir:_ -> String_with_vars.remove_locs)
 
-  let dparse =
+  let decode =
     if_list
-      ~then_:dparse
+      ~then_:decode
       ~else_:
         (loc >>| fun loc ->
          of_sexp_errorf
@@ -412,8 +412,8 @@ module Unexpanded = struct
       Errors.fail loc
         "(mkdir ...) is not supported for paths outside of the workspace:\n\
         \  %a\n"
-        (Dsexp.pp Dune)
-        (List [Dsexp.unsafe_atom_of_string "mkdir"; Path_dsexp.dgen path])
+        (Dune_lang.pp Dune)
+        (List [Dune_lang.unsafe_atom_of_string "mkdir"; Path_dune_lang.encode path])
 
   module Partial = struct
     module Program = Unresolved.Program

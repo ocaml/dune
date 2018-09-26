@@ -5,7 +5,7 @@ open! Stdune
 open Import
 
 type t
-val dparse : t Dsexp.Of_sexp.t
+val decode : t Dune_lang.Decoder.t
 
 (** Return the location of the set. [loc standard] returns [None] *)
 val loc : t -> Loc.t option
@@ -69,24 +69,24 @@ val is_standard : t -> bool
 
 val field
   :  ?default:t
-  -> ?check:unit Dsexp.Of_sexp.t
+  -> ?check:unit Dune_lang.Decoder.t
   -> string
-  -> t Dsexp.Of_sexp.fields_parser
+  -> t Dune_lang.Decoder.fields_parser
 
 module Unexpanded : sig
   type expanded = t
   type t
 
-  include Dsexp.Sexpable with type t := t
+  include Dune_lang.Conv with type t := t
   val standard : t
 
   val of_strings : pos:string * int * int * int -> string list -> t
 
   val field
     :  ?default:t
-    -> ?check:unit Dsexp.Of_sexp.t
+    -> ?check:unit Dune_lang.Decoder.t
     -> string
-    -> t Dsexp.Of_sexp.fields_parser
+    -> t Dune_lang.Decoder.fields_parser
 
   val has_special_forms : t -> bool
 
@@ -94,7 +94,7 @@ module Unexpanded : sig
   val files
     : t
     -> f:(String_with_vars.t -> Path.t)
-    -> Dsexp.syntax * Path.Set.t
+    -> Dune_lang.syntax * Path.Set.t
 
   (** Expand [t] using with the given file contents. [file_contents] is a map from
       filenames to their parsed contents. Every [(:include fn)] in [t] is replaced by
@@ -102,7 +102,7 @@ module Unexpanded : sig
   val expand
     :  t
     -> dir:Path.t
-    -> files_contents:Dsexp.Ast.t Path.Map.t
+    -> files_contents:Dune_lang.Ast.t Path.Map.t
     -> f:(String_with_vars.t -> Value.t list)
     -> expanded
 

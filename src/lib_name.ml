@@ -2,8 +2,8 @@ open Stdune
 
 exception Invalid_lib_name of string
 
-let dgen = Dsexp.To_sexp.string
-let dparse = Dsexp.Of_sexp.string
+let encode = Dune_lang.Encoder.string
+let decode = Dune_lang.Decoder.string
 
 module Local = struct
   type t = string
@@ -45,12 +45,12 @@ module Local = struct
     | Warn _
     | Invalid -> raise (Invalid_lib_name s)
 
-  let dparse_loc =
-    Dsexp.Of_sexp.plain_string (fun ~loc s -> (loc, of_string s))
+  let decode_loc =
+    Dune_lang.Decoder.plain_string (fun ~loc s -> (loc, of_string s))
 
-  let dgen = Dsexp.To_sexp.string
+  let encode = Dune_lang.Encoder.string
 
-  let to_sexp = Sexp.To_sexp.string
+  let to_sexp = Sexp.Encoder.string
 
   let pp_quoted fmt t = Format.fprintf fmt "%S" t
   let pp fmt t = Format.fprintf fmt "%s" t

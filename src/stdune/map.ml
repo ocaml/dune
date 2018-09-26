@@ -145,4 +145,4 @@ module Make(Key : Comparable.S) : S with type key = Key.t = struct
 end
 
 let to_sexp to_list f g t =
-  Sexp.To_sexp.(list (pair f g)) (to_list t)
+  Sexp.Encoder.(list (pair f g)) (to_list t)

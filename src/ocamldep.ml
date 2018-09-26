@@ -18,7 +18,7 @@ module Dep_graph = struct
     | None ->
       Exn.code_error "Ocamldep.Dep_graph.deps_of"
         [ "dir", Path.to_sexp t.dir
-        ; "modules", Sexp.To_sexp.(list Module.Name.to_sexp)
+        ; "modules", Sexp.Encoder.(list Module.Name.to_sexp)
                        (Module.Name.Map.keys t.per_module)
         ; "module", Module.Name.to_sexp name
         ]

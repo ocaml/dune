@@ -6,8 +6,8 @@ type t =
   | Object
   | Shared_object
 
-let dparse =
-  let open Dsexp.Of_sexp in
+let decode =
+  let open Dune_lang.Decoder in
   sum
     [ "c"             , Syntax.since Stanza.syntax (1, 2) >>> return C
     ; "exe"           , return Exe
@@ -24,7 +24,7 @@ let to_string = function
 let pp fmt t =
   Format.pp_print_string fmt (to_string t)
 
-let dgen t =
-  Dsexp.unsafe_atom_of_string (to_string t)
+let encode t =
+  Dune_lang.unsafe_atom_of_string (to_string t)
 
 let all = [C; Exe; Object; Shared_object]

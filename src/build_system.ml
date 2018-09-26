@@ -231,7 +231,7 @@ module Alias0 = struct
     let make name ~dir =
       if not (Path.is_in_build_dir dir) || String.contains name '/' then
         Exn.code_error "Alias0.make: Invalid alias"
-          [ "name", Sexp.To_sexp.string name
+          [ "name", Sexp.Encoder.string name
           ; "dir", Path.to_sexp dir
           ];
       { dir; name }
@@ -460,7 +460,7 @@ let entry_point t ~f =
    | stack ->
      Exn.code_error
        "Build_system.entry_point: called inside the rule generator callback"
-       ["stack", Sexp.To_sexp.list Path.to_sexp stack]
+       ["stack", Sexp.Encoder.list Path.to_sexp stack]
   );
   f ()
 
@@ -1288,13 +1288,13 @@ let update_universe t =
   Utils.Cached_digest.remove universe_file;
   let n =
     if Path.exists universe_file then
-      Dsexp.Of_sexp.(parse int) Univ_map.empty
-        (Dsexp.Io.load ~mode:Single universe_file) + 1
+      Dune_lang.Decoder.(parse int) Univ_map.empty
+        (Dune_lang.Io.load ~mode:Single universe_file) + 1
     else
       0
   in
   make_local_dirs t (Path.Set.singleton Path.build_dir);
-  Io.write_file universe_file (Dsexp.to_string ~syntax:Dune (Dsexp.To_sexp.int n))
+  Io.write_file universe_file (Dune_lang.to_string ~syntax:Dune (Dune_lang.Encoder.int n))
 
 let do_build t ~request =
   entry_point t ~f:(fun () ->
@@ -1556,7 +1556,7 @@ let get_collector t ~dir =
        else
          "Build_system.get_collector called on closed directory")
       [ "dir", Path.to_sexp dir
-      ; "load_dir_stack", Sexp.To_sexp.list Path.to_sexp t.load_dir_stack
+      ; "load_dir_stack", Sexp.Encoder.list Path.to_sexp t.load_dir_stack
       ]
 
 let add_rule t (rule : Build_interpret.Rule.t) =

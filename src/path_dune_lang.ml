@@ -3,15 +3,15 @@ open Path
 
 type t = Path.t
 
-let dgen p =
+let encode p =
   let arg =
     match Internal.raw_kind p with
     | Kind.External l -> External.to_string l
     | Kind.Local    l -> Local.to_string l
   in
   let make constr =
-    Dsexp.List [ Dsexp.atom constr
-               ; Dsexp.atom_or_quoted_string arg
+    Dune_lang.List [ Dune_lang.atom constr
+               ; Dune_lang.atom_or_quoted_string arg
                ]
   in
   if is_in_build_dir p then
@@ -21,12 +21,12 @@ let dgen p =
   else
     make "External"
 
-let dparse =
-  let open Dsexp.Of_sexp in
+let decode =
+  let open Dune_lang.Decoder in
   let external_ =
     plain_string (fun ~loc t ->
       if Filename.is_relative t then
-        Dsexp.Of_sexp.of_sexp_errorf loc "Absolute path expected"
+        Dune_lang.Decoder.of_sexp_errorf loc "Absolute path expected"
       else
         Path.of_string ~error_loc:loc t
     )

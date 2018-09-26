@@ -39,7 +39,7 @@ module Dict = struct
 end
 
 let to_sexp =
-  let open Sexp.To_sexp in
+  let open Sexp.Encoder in
   function
   | Cmi -> string "cmi"
   | Cmo -> string "cmo"

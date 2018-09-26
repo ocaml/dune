@@ -35,7 +35,7 @@ module type Backend = sig
 
   (** Dump the sub-system configuration. This is used to generate META
       files. *)
-  val dgen : t -> Syntax.Version.t * Dsexp.t
+  val encode : t -> Syntax.Version.t * Dune_lang.t
 end
 
 module type Registered_backend = sig

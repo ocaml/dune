@@ -175,7 +175,7 @@ let targets =
         match !state with
         | Decided (v, _) ->
           Exn.code_error "Build_interpret.targets got decided if_file_exists"
-            ["exists", Sexp.To_sexp.bool v]
+            ["exists", Sexp.Encoder.bool v]
         | Undecided (a, b) ->
           match loop a [], loop b [] with
           | [], [] -> acc
@@ -224,7 +224,7 @@ module Rule = struct
             match loc with
             | None ->
               Exn.code_error "rule has targets in different directories"
-                [ "targets", Sexp.To_sexp.list Path.to_sexp
+                [ "targets", Sexp.Encoder.list Path.to_sexp
                                (List.map targets ~f:Target.path)
                 ]
             | Some loc ->

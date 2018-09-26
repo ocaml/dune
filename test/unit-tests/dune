@@ -10,7 +10,7 @@
 (executable
  (name sexp_tests)
  (modules sexp_tests)
- (libraries stdune dsexp))
+ (libraries stdune dune_lang))
 
 (alias
  (name runtest)

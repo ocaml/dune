@@ -1,6 +1,6 @@
 open! Stdune
 open Import
-open Dsexp.Of_sexp
+open Dune_lang.Decoder
 
 module Kind = struct
   type t =
@@ -23,8 +23,8 @@ module Name : sig
 
   val to_string_hum : t -> string
 
-  val dparse : t Dsexp.Of_sexp.t
-  val to_sexp : t Sexp.To_sexp.t
+  val decode : t Dune_lang.Decoder.t
+  val to_sexp : t Sexp.Encoder.t
 
   val to_encoded_string : t -> string
   val of_encoded_string : string -> t
@@ -60,7 +60,7 @@ end = struct
     | Anonymous p -> sprintf "<anonymous %s>" (Path.to_string_maybe_quoted p)
 
   let to_sexp = function
-    | Named s -> Sexp.To_sexp.string s
+    | Named s -> Sexp.Encoder.string s
     | Anonymous p ->
       List [ Atom "anonymous"
            ; Path.to_sexp p
@@ -85,12 +85,12 @@ end = struct
     else
       None
 
-  let dparse =
-    Dsexp.Of_sexp.plain_string (fun ~loc s ->
+  let decode =
+    Dune_lang.Decoder.plain_string (fun ~loc s ->
       if validate s then
         Named s
       else
-        Dsexp.Of_sexp.of_sexp_errorf loc "invalid project name")
+        Dune_lang.Decoder.of_sexp_errorf loc "invalid project name")
 
   let to_encoded_string = function
     | Named     s -> s
@@ -133,7 +133,7 @@ module Project_file = struct
     }
 
   let to_sexp { file; exists } =
-    Sexp.To_sexp.(
+    Sexp.Encoder.(
       record
         [ "file", Path.to_sexp file
         ; "exists", bool exists
@@ -146,7 +146,7 @@ type t =
   ; root          : Path.Local.t
   ; version       : string option
   ; packages      : Package.t Package.Name.Map.t
-  ; stanza_parser : Stanza.t list Dsexp.Of_sexp.t
+  ; stanza_parser : Stanza.t list Dune_lang.Decoder.t
   ; project_file  : Project_file.t
   }
 
@@ -203,7 +203,7 @@ let append_to_project_file t str =
 module Extension = struct
   type t =
     { syntax       : Syntax.t
-    ; stanzas      : Stanza.Parser.t list Dsexp.Of_sexp.t
+    ; stanzas      : Stanza.Parser.t list Dune_lang.Decoder.t
     ; experimental : bool
     }
 
@@ -211,7 +211,7 @@ module Extension = struct
     { extension  : t
     ; version    : Syntax.Version.t
     ; loc        : Loc.t
-    ; parse_args : Stanza.Parser.t list Dsexp.Of_sexp.t -> Stanza.Parser.t list
+    ; parse_args : Stanza.Parser.t list Dune_lang.Decoder.t -> Stanza.Parser.t list
     }
 
   let extensions = Hashtbl.create 32
@@ -220,7 +220,7 @@ module Extension = struct
     let name = Syntax.name syntax in
     if Hashtbl.mem extensions name then
       Exn.code_error "Dune_project.Extension.register: already registered"
-        [ "name", Sexp.To_sexp.string name ];
+        [ "name", Sexp.Encoder.string name ];
     Hashtbl.add extensions name { syntax; stanzas ; experimental }
 
   let instantiate ~loc ~parse_args (name_loc, name) (ver_loc, ver) =
@@ -249,7 +249,7 @@ module Extension = struct
             Syntax.greatest_supported_version ext.syntax
         in
         let parse_args p =
-          let open Dsexp.Of_sexp in
+          let open Dune_lang.Decoder in
           let dune_project_edited = ref false in
           parse (enter p) Univ_map.empty (List (Loc.of_pos __POS__, []))
           |> List.map ~f:(fun (name, p) ->
@@ -258,10 +258,10 @@ module Extension = struct
              if not !dune_project_edited then begin
                dune_project_edited := true;
                Project_file_edit.append project_file
-                 (Dsexp.to_string ~syntax:Dune
-                    (List [ Dsexp.atom "using"
-                          ; Dsexp.atom name
-                          ; Dsexp.atom (Syntax.Version.to_string version)
+                 (Dune_lang.to_string ~syntax:Dune
+                    (List [ Dune_lang.atom "using"
+                          ; Dune_lang.atom name
+                          ; Dune_lang.atom (Syntax.Version.to_string version)
                           ]))
              end;
              p))
@@ -285,17 +285,17 @@ let key =
   Univ_map.Key.create ~name:"dune-project"
     (fun { name; root; version; project_file; kind
          ; stanza_parser = _; packages = _ } ->
-      Sexp.To_sexp.record
+      Sexp.Encoder.record
         [ "name", Name.to_sexp name
         ; "root", Path.Local.to_sexp root
-        ; "version", Sexp.To_sexp.(option string) version
+        ; "version", Sexp.Encoder.(option string) version
         ; "project_file", Project_file.to_sexp project_file
         ; "kind", Kind.to_sexp kind
         ])
 
-let set t = Dsexp.Of_sexp.set key t
+let set t = Dune_lang.Decoder.set key t
 let get_exn () =
-  let open Dsexp.Of_sexp in
+  let open Dune_lang.Decoder in
   get key >>| function
   | Some t -> t
   | None ->
@@ -317,7 +317,7 @@ let anonymous = lazy (
   ; root          = get_local_path Path.root
   ; version       = None
   ; stanza_parser =
-      Dsexp.Of_sexp.(set_many parsing_context (sum lang.data))
+      Dune_lang.Decoder.(set_many parsing_context (sum lang.data))
   ; project_file  = { file = Path.relative Path.root filename; exists = false }
   })
 
@@ -342,7 +342,7 @@ let default_name ~dir ~packages =
         name
 
 let name_field ~dir ~packages =
-    let%map name = field_o "name" Name.dparse in
+    let%map name = field_o "name" Name.decode in
     match name with
     | Some x -> x
     | None   -> default_name ~dir ~packages
@@ -355,7 +355,7 @@ let parse ~dir ~lang ~packages ~file =
        multi_field "using"
          (let%map loc = loc
           and name = located string
-          and ver = located Syntax.Version.dparse
+          and ver = located Syntax.Version.decode
           and parse_args = capture
           in
           (* We don't parse the arguments quite yet as we want to set
@@ -382,14 +382,14 @@ let parse ~dir ~lang ~packages ~file =
            (lang.data ::
             List.map extensions ~f:(fun (ext : Extension.instance) ->
               ext.parse_args
-                (Dsexp.Of_sexp.set_many parsing_context ext.extension.stanzas)))
+                (Dune_lang.Decoder.set_many parsing_context ext.extension.stanzas)))
        in
        { kind = Dune
        ; name
        ; root = get_local_path dir
        ; version
        ; packages
-       ; stanza_parser = Dsexp.Of_sexp.(set_many parsing_context (sum stanzas))
+       ; stanza_parser = Dune_lang.Decoder.(set_many parsing_context (sum stanzas))
        ; project_file
        })
 
@@ -406,7 +406,7 @@ let make_jbuilder_project ~dir packages =
   ; version = None
   ; packages
   ; stanza_parser =
-      Dsexp.Of_sexp.(set_many parsing_context (sum lang.data))
+      Dune_lang.Decoder.(set_many parsing_context (sum lang.data))
   ; project_file = { file = Path.relative dir filename; exists = false }
   }
 

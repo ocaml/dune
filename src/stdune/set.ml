@@ -47,4 +47,4 @@ module Make(Elt : Comparable.S) : S with type elt = Elt.t = struct
 end
 
 let to_sexp to_list f t =
-  Sexp.To_sexp.list f (to_list t)
+  Sexp.Encoder.list f (to_list t)

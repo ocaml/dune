@@ -12,9 +12,9 @@ module Kind = struct
   type t = Default | Opam of Opam.t
 
   let to_sexp : t -> Sexp.t = function
-    | Default -> Sexp.To_sexp.string "default"
+    | Default -> Sexp.Encoder.string "default"
     | Opam o  ->
-      Sexp.To_sexp.(record [ "root"  , string o.root
+      Sexp.Encoder.(record [ "root"  , string o.root
                            ; "switch", string o.switch
                            ])
 end
@@ -87,7 +87,7 @@ type t =
   }
 
 let to_sexp t =
-  let open Sexp.To_sexp in
+  let open Sexp.Encoder in
   let path = Path.to_sexp in
   record
     [ "name", string t.name
@@ -509,8 +509,8 @@ let create_for_opam ?root ~env ~env_nodes ~targets ~profile ~switch ~name
       ["config"; "env"; "--root"; root; "--switch"; switch; "--sexp"]
     >>= fun s ->
     let vars =
-      Dsexp.parse_string ~fname:"<opam output>" ~mode:Single s
-      |> Dsexp.Of_sexp.(parse (list (pair string string)) Univ_map.empty)
+      Dune_lang.parse_string ~fname:"<opam output>" ~mode:Single s
+      |> Dune_lang.Decoder.(parse (list (pair string string)) Univ_map.empty)
       |> Env.Map.of_list_multi
       |> Env.Map.mapi ~f:(fun var values ->
         match List.rev values with

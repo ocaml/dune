@@ -9,7 +9,7 @@ type t =
 (* XXX otherwise the dependency isn't recorded by bootstrap *)
 module Sexp_intf = Sexp_intf
 
-module To_sexp = struct
+module Encoder = struct
   type sexp = t
   type 'a t = 'a -> sexp
 

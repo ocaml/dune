@@ -138,8 +138,7 @@ val of_result_map
 val memoize : string -> (unit, 'a) t -> (unit, 'a) t
 
 val run
-  :  context:Context.t
-  -> ?dir:Path.t (* default: [context.build_dir] *)
+  :  dir:Path.t
   -> ?stdout_to:Path.t
   -> Action.Prog.t
   -> 'a Arg_spec.t list

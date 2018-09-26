@@ -5,7 +5,7 @@ open Fiber.O
 module Kind = struct
   module Opam = struct
     type t =
-      { root   : string
+      { root   : string option
       ; switch : string
       }
   end
@@ -14,7 +14,7 @@ module Kind = struct
   let to_sexp : t -> Sexp.t = function
     | Default -> Sexp.Encoder.string "default"
     | Opam o  ->
-      Sexp.Encoder.(record [ "root"  , string o.root
+      Sexp.Encoder.(record [ "root"  , option string o.root
                            ; "switch", string o.switch
                            ])
 end
@@ -117,11 +117,13 @@ let to_sexp t =
 
 let compare a b = compare a.name b.name
 
+let opam = lazy (Bin.which "opam")
+
 let opam_config_var ~env ~cache var =
   match Hashtbl.find cache var with
   | Some _ as x -> Fiber.return x
   | None ->
-    match Bin.opam with
+    match Lazy.force opam with
     | None -> Fiber.return None
     | Some fn ->
       Process.run_capture (Accept All) fn ~env
@@ -188,9 +190,9 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       ~profile () =
   let opam_var_cache = Hashtbl.create 128 in
   (match kind with
-   | Opam { root; _ } ->
+   | Opam { root = Some root; _ } ->
      Hashtbl.add opam_var_cache "root" root
-   | Default -> ());
+   | _ -> ());
   let prog_not_found_in_path prog =
     Utils.program_not_found prog ~context:name ~loc:None
   in
@@ -498,61 +500,93 @@ let default ?(merlin=true) ~env_nodes ~env ~targets () =
   create ~kind:Default ~path:Bin.path ~env ~env_nodes ~name:"default"
     ~merlin ~targets ()
 
-let create_for_opam ?root ~env ~env_nodes ~targets ~profile ~switch ~name
-      ?(merlin=false) () =
-  match Bin.opam with
-  | None -> Utils.program_not_found "opam" ~loc:None
-  | Some fn ->
-    (match root with
-     | Some root -> Fiber.return root
-     | None ->
-       Process.run_capture_line Strict ~env fn ["config"; "var"; "root"])
-    >>= fun root ->
-    Process.run_capture ~env Strict fn
-      ["config"; "env"; "--root"; root; "--switch"; switch; "--sexp"]
-    >>= fun s ->
-    let vars =
-      Dune_lang.parse_string ~fname:"<opam output>" ~mode:Single s
-      |> Dune_lang.Decoder.(parse (list (pair string string)) Univ_map.empty)
-      |> Env.Map.of_list_multi
-      |> Env.Map.mapi ~f:(fun var values ->
-        match List.rev values with
-        | [] -> assert false
-        | [x] -> x
-        | x :: _ ->
-          Format.eprintf
-            "@{<warning>Warning@}: variable %S present multiple times in the output of:\n\
-             @{<details>%s@}@."
-            var
-            (String.concat ~sep:" "
-               (List.map ~f:quote_for_shell
-                  [Path.to_string fn; "config"; "env"; "--root"; root;
-                   "--switch"; switch; "--sexp"]));
-          x)
-    in
-    let path =
-      match Env.Map.find vars "PATH" with
-      | None   -> Bin.path
-      | Some s -> Bin.parse_path s
-    in
-    let env = Env.extend env ~vars in
-    create ~kind:(Opam { root; switch }) ~profile ~targets ~path ~env ~env_nodes
-      ~name ~merlin ()
+let opam_version =
+  let res = ref None in
+  fun opam env ->
+    match !res with
+    | Some future -> Fiber.Future.wait future
+    | None ->
+      Fiber.fork (fun () ->
+        Process.run_capture_line Strict ~env opam ["--version"]
+        >>| fun s ->
+        try
+          Scanf.sscanf s "%d.%d.%d" (fun a b c -> a, b, c)
+        with _ ->
+          die "@{<error>Error@}: `%a config --version' \
+               returned invalid output:\n%s"
+            Path.pp opam s)
+      >>= fun future ->
+      res := Some future;
+      Fiber.Future.wait future
 
-let create ?merlin ?workspace_env ~env def =
+let create_for_opam ~root ~env ~env_nodes ~targets ~profile
+      ~switch ~name ~merlin () =
+  let opam =
+    match Lazy.force opam with
+    | None -> Utils.program_not_found "opam" ~loc:None
+    | Some fn -> fn
+  in
+  opam_version opam env
+  >>= fun version ->
+  let args =
+    List.concat
+      [ [ "config"; "env" ]
+      ; (match root with
+         | None -> []
+         | Some root -> [ "--root"; root ])
+      ; [ "--switch"; switch; "--sexp" ]
+      ; if version < (2, 0, 0) then [] else ["--set-switch"]
+      ]
+  in
+  Process.run_capture ~env Strict opam args
+  >>= fun s ->
+  let vars =
+    Dune_lang.parse_string ~fname:"<opam output>" ~mode:Single s
+    |> Dune_lang.Decoder.(parse (list (pair string string)) Univ_map.empty)
+    |> Env.Map.of_list_multi
+    |> Env.Map.mapi ~f:(fun var values ->
+      match List.rev values with
+      | [] -> assert false
+      | [x] -> x
+      | x :: _ ->
+        Format.eprintf
+          "@{<warning>Warning@}: variable %S present multiple times in the \
+           output of:\n\
+           @{<details>%s@}@."
+          var
+          (String.concat ~sep:" "
+             (List.map ~f:quote_for_shell
+                (Path.to_string opam :: args)));
+        x)
+  in
+  let path =
+    match Env.Map.find vars "PATH" with
+    | None   -> Bin.path
+    | Some s -> Bin.parse_path s
+  in
+  let env = Env.extend env ~vars in
+  create ~kind:(Opam { root; switch }) ~profile ~targets ~path ~env ~env_nodes
+    ~name ~merlin ()
+
+let create ~env (workspace : Workspace.t) =
   let env_nodes context =
     { Env_nodes.
       context
-    ; workspace = workspace_env
+    ; workspace = workspace.env
     }
   in
-  match (def : Workspace.Context.t) with
-  | Default { targets; profile; env = env_node ; loc = _ } ->
-    default ~env ~env_nodes:(env_nodes env_node) ~profile ~targets ?merlin ()
-  | Opam { base = { targets ; profile ; env = env_node ; loc = _ }
-         ; name; switch; root; merlin = _ } ->
-    create_for_opam ?root ~env_nodes:(env_nodes env_node) ~env ~profile
-      ~switch ~name ?merlin ~targets ()
+  Fiber.parallel_map workspace.contexts ~f:(fun def ->
+    match def with
+    | Default { targets; profile; env = env_node ; loc = _ } ->
+      let merlin =
+        workspace.merlin_context = Some (Workspace.Context.name def)
+      in
+      default ~env ~env_nodes:(env_nodes env_node) ~profile ~targets ~merlin ()
+    | Opam { base = { targets; profile; env = env_node; loc = _ }
+           ; name; switch; root; merlin } ->
+      create_for_opam ~root ~env_nodes:(env_nodes env_node) ~env ~profile
+        ~switch ~name ~merlin ~targets ())
+  >>| List.concat
 
 let which t s = which ~cache:t.which_cache ~path:t.path s
 

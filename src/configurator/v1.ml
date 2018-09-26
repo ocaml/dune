@@ -366,10 +366,14 @@ module C_define = struct
         pr {|
 const char s%i[] = {
   'B', 'E', 'G', 'I', 'N', '-', %s'-',
+#if %s >= 0
   D9((%s)),
+#else
+  '-', D9((- %s)),
+#endif
   '-', 'E', 'N', 'D'
 };
-|} i c_arr_i name
+|} i c_arr_i name name name
       | String ->
         pr {|const char *s%i = "BEGIN-%i-" %s "-END";|} i i name;
       | Switch ->

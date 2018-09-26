@@ -769,10 +769,11 @@ module Scope_key = struct
       (key, public_libs sctx)
     | Some (key, scope) ->
       ( key
-      , Scope.libs (find_scope_by_name sctx (Dune_project.Name.decode scope)))
+      , Scope.libs (find_scope_by_name sctx
+                      (Dune_project.Name.of_encoded_string scope)))
 
   let to_string key scope =
-    sprintf "%s@%s" key (Dune_project.Name.encode scope)
+    sprintf "%s@%s" key (Dune_project.Name.to_encoded_string scope)
 end
 
 module Action = struct

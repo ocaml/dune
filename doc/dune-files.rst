@@ -1122,9 +1122,9 @@ Dune accepts three kinds of preprocessing:
 - ``(action <action>)`` to preprocess files using the given action
 - ``(pps <ppx-rewriters-and-flags>)`` to preprocess files using the given list
   of ppx rewriters
-- ``(staged_pps <ppx-rewriters-and-flags>)`` is similar to ``(pps
-    ...)`` but behave slightly differently and is needed for certain
-    ppx rewriters (see below for details)
+- ``(staged_pps <ppx-rewriters-and-flags>)`` is similar to ``(pps ...)``
+  but behave slightly differently and is needed for certain ppx rewriters
+  (see below for details)
 
 Dune normally assumes that the compilation pipeline is sequenced as
 follow:

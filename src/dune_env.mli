@@ -18,7 +18,7 @@ module Stanza : sig
     ; rules : (pattern * config) list
     }
 
-  val dparse : t Dsexp.Of_sexp.t
+  val decode : t Dune_lang.Decoder.t
 end
 
 type stanza +=

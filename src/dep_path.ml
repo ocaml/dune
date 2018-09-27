@@ -17,7 +17,7 @@ module Entry = struct
     | Preprocess l ->
       Sexp.to_string
         (List [ Atom "pps"
-              ; Sexp.To_sexp.(list Lib_name.to_sexp) l])
+              ; Sexp.Encoder.(list Lib_name.to_sexp) l])
     | Loc loc ->
       Loc.to_file_colon_line loc
 

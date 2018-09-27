@@ -149,7 +149,7 @@ val parse_string
   -> string
   -> 'a
 
-module To_sexp : sig
+module Encoder : sig
   type sexp = t
   include Sexp_intf.Combinators with type 'a t = 'a -> t
 
@@ -171,7 +171,7 @@ module To_sexp : sig
   val unknown : _ t
 end with type sexp := t
 
-module Of_sexp : sig
+module Decoder : sig
   type ast = Ast.t =
     | Atom of Loc.t * Atom.t
     | Quoted_string of Loc.t * string
@@ -183,7 +183,7 @@ module Of_sexp : sig
     ; candidates: string list
     }
 
-  exception Of_sexp of Loc.t * string * hint option
+  exception Decoder of Loc.t * string * hint option
 
   (** Monad producing a value of type ['a] by parsing an input
       composed of a sequence of S-expressions.
@@ -397,13 +397,13 @@ module Of_sexp : sig
   end
 end
 
-module type Sexpable = sig
+module type Conv = sig
   type t
-  val dparse : t Of_sexp.t
-  val dgen : t To_sexp.t
+  val decode : t Decoder.t
+  val encode : t Encoder.t
 end
 
-val to_sexp : t Sexp.To_sexp.t
+val to_sexp : t Sexp.Encoder.t
 
 module Io : sig
   val load : ?lexer:Lexer.t -> Path.t -> mode:'a Parser.Mode.t -> 'a

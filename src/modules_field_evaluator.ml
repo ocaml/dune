@@ -148,14 +148,14 @@ let check_invalid_module_listing ~(buildable : Buildable.t) ~intf_only
          \n  %s\
          \n\
          \nThis will become an error in the future."
-        (let tag = Dsexp.unsafe_atom_of_string
+        (let tag = Dune_lang.unsafe_atom_of_string
                      "modules_without_implementation" in
          let modules =
            missing_intf_only
            |> uncapitalized
-           |> List.map ~f:Dsexp.To_sexp.string
+           |> List.map ~f:Dune_lang.Encoder.string
          in
-         Dsexp.to_string ~syntax:Dune (List (tag :: modules)))
+         Dune_lang.to_string ~syntax:Dune (List (tag :: modules)))
     | Some loc ->
       Errors.warn loc
         "The following modules must be listed here as they don't \

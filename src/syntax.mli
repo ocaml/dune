@@ -10,9 +10,9 @@ module Version : sig
       [Z <= Y]. *)
   type t = int * int
 
-  include Dsexp.Sexpable with type t := t
+  include Dune_lang.Conv with type t := t
 
-  val to_sexp : t Sexp.To_sexp.t
+  val to_sexp : t Sexp.Encoder.t
 
   val to_string : t -> string
 
@@ -59,24 +59,24 @@ val greatest_supported_version : t -> Version.t
 
 (** Indicate the field/constructor being parsed was deleted in the
     given version *)
-val deleted_in : t -> Version.t -> (unit, _) Dsexp.Of_sexp.parser
+val deleted_in : t -> Version.t -> (unit, _) Dune_lang.Decoder.parser
 
 (** Indicate the field/constructor being parsed was renamed in the
     given version *)
-val renamed_in : t -> Version.t -> to_:string ->  (unit, _) Dsexp.Of_sexp.parser
+val renamed_in : t -> Version.t -> to_:string ->  (unit, _) Dune_lang.Decoder.parser
 
 (** Indicate the field/constructor being parsed was introduced in the
     given version *)
-val since : t -> Version.t ->  (unit, _) Dsexp.Of_sexp.parser
+val since : t -> Version.t ->  (unit, _) Dune_lang.Decoder.parser
 
 (** {2 Low-level functions} *)
 
 val set
   :  t
   -> Version.t
-  -> ('a, 'k) Dsexp.Of_sexp.parser
-  -> ('a, 'k) Dsexp.Of_sexp.parser
+  -> ('a, 'k) Dune_lang.Decoder.parser
+  -> ('a, 'k) Dune_lang.Decoder.parser
 
-val get_exn : t -> (Version.t, 'k) Dsexp.Of_sexp.parser
+val get_exn : t -> (Version.t, 'k) Dune_lang.Decoder.parser
 
 val key : t -> Version.t Univ_map.Key.t

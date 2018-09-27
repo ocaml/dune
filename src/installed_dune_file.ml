@@ -3,14 +3,14 @@ open! Stdune
 let parse_sub_systems ~parsing_context sexps =
   List.filter_map sexps ~f:(fun sexp ->
     let name, ver, data =
-      Dsexp.Of_sexp.(parse (triple string (located Syntax.Version.dparse) raw)
+      Dune_lang.Decoder.(parse (triple string (located Syntax.Version.decode) raw)
                        parsing_context) sexp
     in
     (* We ignore sub-systems that are not internally known. These
        correspond to plugins that are not in use in the current
        workspace. *)
     Option.map (Sub_system_name.get name) ~f:(fun name ->
-      (name, (Dsexp.Ast.loc sexp, ver, data))))
+      (name, (Dune_lang.Ast.loc sexp, ver, data))))
   |> Sub_system_name.Map.of_list
   |> (function
     | Ok x -> x
@@ -30,10 +30,10 @@ let parse_sub_systems ~parsing_context sexps =
       | (_, _) ->
         Univ_map.add parsing_context (Syntax.key M.syntax) (snd version)
     in
-    M.T (Dsexp.Of_sexp.parse M.parse parsing_context data))
+    M.T (Dune_lang.Decoder.parse M.parse parsing_context data))
 
 let of_sexp =
-  let open Dsexp.Of_sexp in
+  let open Dune_lang.Decoder in
   let version =
     plain_string (fun ~loc -> function
       | "1" -> (0, 0)
@@ -62,14 +62,14 @@ let load fname =
        which point we can decide what lexer to use for the reset of
        the file. *)
     let state = ref 0 in
-    let lexer = ref Dsexp.Lexer.token in
+    let lexer = ref Dune_lang.Lexer.token in
     let lexer lb =
-      let token : Dsexp.Lexer.Token.t = !lexer lb in
+      let token : Dune_lang.Lexer.Token.t = !lexer lb in
       (match !state, token with
        | 0, Lparen -> state := 1
        | 1, Atom (A "dune") -> state := 2
-       | 2, Atom (A "1") -> state := 3; lexer := Dsexp.Lexer.jbuild_token
-       | 2, Atom (A "2") -> state := 3; lexer := Dsexp.Lexer.token
+       | 2, Atom (A "1") -> state := 3; lexer := Dune_lang.Lexer.jbuild_token
+       | 2, Atom (A "2") -> state := 3; lexer := Dune_lang.Lexer.token
        | 2, Atom (A version) ->
          Errors.fail (Loc.of_lexbuf lexbuf) "Unsupported version %S" version
        | 3, _ -> ()
@@ -80,22 +80,22 @@ let load fname =
       );
       token
     in
-    Dsexp.Of_sexp.parse of_sexp Univ_map.empty
-      (Dsexp.Parser.parse ~lexer ~mode:Single lexbuf))
+    Dune_lang.Decoder.parse of_sexp Univ_map.empty
+      (Dune_lang.Parser.parse ~lexer ~mode:Single lexbuf))
 
 let gen ~(dune_version : Syntax.Version.t) confs =
   let sexps =
     Sub_system_name.Map.to_list confs
     |> List.map ~f:(fun (name, (ver, conf)) ->
       let (module M) = Dune_file.Sub_system_info.get name in
-      Dsexp.List [ Dsexp.atom (Sub_system_name.to_string name)
-                ; Syntax.Version.dgen ver
+      Dune_lang.List [ Dune_lang.atom (Sub_system_name.to_string name)
+                ; Syntax.Version.encode ver
                 ; conf
                 ])
   in
-  Dsexp.List
-    [ Dsexp.unsafe_atom_of_string "dune"
-    ; Dsexp.unsafe_atom_of_string
+  Dune_lang.List
+    [ Dune_lang.unsafe_atom_of_string "dune"
+    ; Dune_lang.unsafe_atom_of_string
         (match dune_version with
          | (0, 0) -> "1"
          | (x, _) when x >= 1 -> "2"

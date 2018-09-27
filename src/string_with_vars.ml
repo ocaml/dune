@@ -1,10 +1,10 @@
 open! Stdune
 open! Import
 
-open Dsexp.Template
+open Dune_lang.Template
 
 type t =
-  { template : Dsexp.Template.t
+  { template : Dune_lang.Template.t
   ; syntax_version : Syntax.Version.t
   }
 
@@ -39,7 +39,7 @@ let literal ~quoted ~loc s =
 (* This module implements the "old" template parsing that is only used in jbuild
    files *)
 module Jbuild : sig
-  val parse : string -> loc:Loc.t -> quoted:bool -> Dsexp.Template.t
+  val parse : string -> loc:Loc.t -> quoted:bool -> Dune_lang.Template.t
 end = struct
   type var_syntax = Parens | Braces
   module Token = struct
@@ -108,26 +108,26 @@ end = struct
     }
 end
 
-let dparse =
-  let open Dsexp.Of_sexp in
+let decode =
+  let open Dune_lang.Decoder in
   let jbuild =
     raw >>| function
     | Template _ as t ->
       Exn.code_error "Unexpected dune template from a jbuild file"
-        [ "t", Dsexp.to_sexp (Dsexp.Ast.remove_locs t)
+        [ "t", Dune_lang.to_sexp (Dune_lang.Ast.remove_locs t)
         ]
     | Atom(loc, A s) -> Jbuild.parse s ~loc ~quoted:false
     | Quoted_string (loc, s) -> Jbuild.parse s ~loc ~quoted:true
-    | List (loc, _) -> Dsexp.Of_sexp.of_sexp_error loc "Atom expected"
+    | List (loc, _) -> Dune_lang.Decoder.of_sexp_error loc "Atom expected"
   in
   let dune =
     raw >>| function
     | Template t -> t
     | Atom(loc, A s) -> literal ~quoted:false ~loc s
     | Quoted_string (loc, s) -> literal ~quoted:true ~loc s
-    | List (loc, _) -> Dsexp.Of_sexp.of_sexp_error loc "Unexpected list"
+    | List (loc, _) -> Dune_lang.Decoder.of_sexp_error loc "Unexpected list"
   in
-  let template_parser = Stanza.Of_sexp.switch_file_kind ~jbuild ~dune in
+  let template_parser = Stanza.Decoder.switch_file_kind ~jbuild ~dune in
   let%map syntax_version = Syntax.get_exn Stanza.syntax
   and template = template_parser
   in
@@ -217,7 +217,7 @@ module Var = struct
 
   let to_string = string_of_var
 
-  let to_sexp t = Sexp.To_sexp.string (to_string t)
+  let to_sexp t = Sexp.Encoder.string (to_string t)
 
   let with_name t ~name =
     { t with name }
@@ -298,9 +298,9 @@ let expand t ~mode ~dir ~f =
 
 let partial_expand t ~mode ~dir ~f = partial_expand t ~mode ~dir ~f
 
-let dgen { template; syntax_version = _ } = Dsexp.Template template
+let encode { template; syntax_version = _ } = Dune_lang.Template template
 
-let to_sexp t = Dsexp.to_sexp (dgen t)
+let to_sexp t = Dune_lang.to_sexp (encode t)
 
 let is_var { template; syntax_version = _ } ~name =
   match template.parts with
@@ -315,5 +315,5 @@ let text_only t =
 let has_vars t = Option.is_none (text_only t)
 
 let remove_locs t =
-  { t with template = Dsexp.Template.remove_locs t.template
+  { t with template = Dune_lang.Template.remove_locs t.template
   }

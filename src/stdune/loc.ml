@@ -25,7 +25,7 @@ let of_lexbuf lexbuf : t =
   }
 
 let sexp_of_position_no_file (p : Lexing.position) =
-  let open Sexp.To_sexp in
+  let open Sexp.Encoder in
   record
     [ "pos_lnum", int p.pos_lnum
     ; "pos_bol", int p.pos_bol
@@ -33,7 +33,7 @@ let sexp_of_position_no_file (p : Lexing.position) =
     ]
 
 let to_sexp t =
-  let open Sexp.To_sexp in
+  let open Sexp.Encoder in
   record (* TODO handle when pos_fname differs *)
     [ "pos_fname", string t.start.pos_fname
     ; "start", sexp_of_position_no_file t.start

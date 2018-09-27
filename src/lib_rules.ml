@@ -76,7 +76,7 @@ module Gen (P : Install_rules.Params) = struct
            (SC.expand_and_eval_set sctx ~scope ~dir lib.library_flags
               ~standard:(Build.return []))
          >>>
-         Build.run ~context:ctx (Ok compiler)
+         Build.run (Ok compiler) ~dir:ctx.build_dir
            [ Dyn (fun (_, _, flags, _) -> As flags)
            ; A "-a"; A "-o"; Target target
            ; As stubs_flags
@@ -166,7 +166,7 @@ module Gen (P : Install_rules.Params) = struct
       (SC.expand_and_eval_set sctx ~scope ~dir lib.c_flags
          ~standard:(Build.return (Context.cc_g ctx))
        >>>
-       Build.run ~context:ctx
+       Build.run
          (* We have to execute the rule in the library directory as
             the .o is produced in the current directory *)
          ~dir:(Path.parent_exn src)
@@ -191,7 +191,7 @@ module Gen (P : Install_rules.Params) = struct
       (SC.expand_and_eval_set sctx ~scope ~dir lib.cxx_flags
          ~standard:(Build.return (Context.cc_g ctx))
        >>>
-       Build.run ~context:ctx
+       Build.run
          (* We have to execute the rule in the library directory as
             the .o is produced in the current directory *)
          ~dir:(Path.parent_exn src)
@@ -212,7 +212,7 @@ module Gen (P : Install_rules.Params) = struct
       (SC.expand_and_eval_set sctx ~scope ~dir
          lib.c_library_flags ~standard:(Build.return [])
        >>>
-       Build.run ~context:ctx
+       Build.run ~dir:ctx.build_dir
          (Ok ctx.ocamlmklib)
          [ As (Utils.g ())
          ; if custom then A "-custom" else As []
@@ -312,7 +312,7 @@ module Gen (P : Install_rules.Params) = struct
         >>>
         Ocaml_flags.get flags Native
         >>>
-        Build.run ~context:ctx
+        Build.run ~dir:ctx.build_dir
           (Ok ocamlopt)
           [ Dyn (fun flags -> As flags)
           ; A "-shared"; A "-linkall"

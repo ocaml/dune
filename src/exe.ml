@@ -159,7 +159,7 @@ let link_exe
      Build.of_result_map requires ~f:(fun libs ->
        Build.paths (Lib.L.archive_files libs ~mode))
      >>>
-     Build.run ~context:ctx
+     Build.run ~dir:ctx.build_dir
        (Ok compiler)
        [ Dyn (fun (_, flags,_) -> As flags)
        ; A "-o"; Target exe

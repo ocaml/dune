@@ -20,7 +20,7 @@ end
 type 'ast generic =
   { ast : 'ast
   ; loc : Loc.t option
-  ; context : Univ_map.t (* Parsing context for Dsexp.Of_sexp.parse *)
+  ; context : Univ_map.t (* Parsing context for Dune_lang.Decoder.parse *)
   }
 
 type ast_expanded = (Loc.t * string, Ast.expanded) Ast.t
@@ -28,11 +28,11 @@ type t = ast_expanded generic
 let loc t = t.loc
 
 module Parse = struct
-  open Stanza.Of_sexp
+  open Stanza.Decoder
   open Ast
 
   let generic ~inc ~elt =
-    let open Stanza.Of_sexp in
+    let open Stanza.Decoder in
     let rec one (kind : Stanza.File_kind.t) =
       peek_exn >>= function
       | Atom (loc, A "\\") -> Errors.fail loc "unexpected \\"
@@ -78,7 +78,7 @@ module Parse = struct
   let with_include ~elt =
     generic ~elt ~inc:(
       sum [ ":include",
-            String_with_vars.dparse >>| fun s ->
+            String_with_vars.decode >>| fun s ->
             Include s
           ])
 
@@ -90,8 +90,8 @@ module Parse = struct
 end
 
 
-let dparse =
-  let open Stanza.Of_sexp in
+let decode =
+  let open Stanza.Decoder in
   let%map context = get_all
   and (loc, ast) =
     located (Parse.without_include
@@ -233,39 +233,39 @@ let standard =
   }
 
 let field ?(default=standard) ?check name =
-  let dparse =
+  let decode =
     match check with
-    | None -> dparse
-    | Some x -> Dsexp.Of_sexp.(>>>) x dparse
+    | None -> decode
+    | Some x -> Dune_lang.Decoder.(>>>) x decode
   in
-  Dsexp.Of_sexp.field name dparse ~default
+  Dune_lang.Decoder.field name decode ~default
 
 module Unexpanded = struct
   type ast = (String_with_vars.t, Ast.unexpanded) Ast.t
   type t = ast generic
-  let dparse : t Dsexp.Of_sexp.t =
-    let open Stanza.Of_sexp in
+  let decode : t Dune_lang.Decoder.t =
+    let open Stanza.Decoder in
     let%map context = get_all
     and (loc, ast) =
       located (
         Parse.with_include
-          ~elt:(String_with_vars.dparse >>| fun s -> Ast.Element s))
+          ~elt:(String_with_vars.decode >>| fun s -> Ast.Element s))
     in
     { ast
     ; loc = Some loc
     ; context
     }
 
-  let dgen t =
+  let encode t =
     let open Ast in
     let rec loop = function
-      | Element s -> String_with_vars.dgen s
-      | Standard -> Dsexp.atom ":standard"
+      | Element s -> String_with_vars.encode s
+      | Standard -> Dune_lang.atom ":standard"
       | Union l -> List (List.map l ~f:loop)
-      | Diff (a, b) -> List [loop a; Dsexp.unsafe_atom_of_string "\\"; loop b]
+      | Diff (a, b) -> List [loop a; Dune_lang.unsafe_atom_of_string "\\"; loop b]
       | Include fn ->
-        List [ Dsexp.unsafe_atom_of_string ":include"
-             ; String_with_vars.dgen fn
+        List [ Dune_lang.unsafe_atom_of_string ":include"
+             ; String_with_vars.encode fn
              ]
     in
     loop t.ast
@@ -280,12 +280,12 @@ module Unexpanded = struct
     }
 
   let field ?(default=standard) ?check name =
-    let dparse =
+    let decode =
       match check with
-      | None -> dparse
-      | Some x -> Dsexp.Of_sexp.(>>>) x dparse
+      | None -> decode
+      | Some x -> Dune_lang.Decoder.(>>>) x decode
     in
-    Dsexp.Of_sexp.field name dparse ~default
+    Dune_lang.Decoder.field name decode ~default
 
   let files t ~f =
     let rec loop acc (ast : ast) =
@@ -367,13 +367,13 @@ module Unexpanded = struct
             Exn.code_error
               "Ordered_set_lang.Unexpanded.expand"
               [ "included-file", Path.to_sexp path
-              ; "files", Sexp.To_sexp.(list Path.to_sexp)
+              ; "files", Sexp.Encoder.(list Path.to_sexp)
                            (Path.Map.keys files_contents)
               ]
         in
-        let open Stanza.Of_sexp in
+        let open Stanza.Decoder in
         parse
-          (Parse.without_include ~elt:(String_with_vars.dparse >>| f_elems))
+          (Parse.without_include ~elt:(String_with_vars.decode >>| f_elems))
           context
           sexp
       | Union l -> Union (List.map l ~f:expand)

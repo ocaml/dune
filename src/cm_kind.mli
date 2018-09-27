@@ -7,7 +7,7 @@ val all : t list
 val ext : t -> string
 val source : t -> Ml_kind.t
 
-val to_sexp : t Sexp.To_sexp.t
+val to_sexp : t Sexp.Encoder.t
 
 module Dict : sig
   type cm_kind = t

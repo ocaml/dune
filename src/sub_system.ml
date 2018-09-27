@@ -8,7 +8,7 @@ module Register_backend(M : Backend) = struct
   include Lib.Sub_system.Register(struct
       include M
       type Lib.Sub_system.t += T of t
-      let dgen = Some dgen
+      let encode = Some encode
     end)
 
   let top_closure l ~deps =
@@ -162,7 +162,7 @@ module Register_end_point(M : End_point) = struct
         type t = Library_compilation_context.t -> unit
         type Lib.Sub_system.t += T = Gen
         let instantiate ~resolve:_ ~get:_ _id info = gen info
-        let dgen = None
+        let encode = None
       end)
 end
 

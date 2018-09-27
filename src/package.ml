@@ -15,7 +15,7 @@ module Name = struct
 
   let pp fmt t = Format.pp_print_string fmt (to_string t)
 
-  let dparse = Dsexp.Of_sexp.(map string ~f:of_string)
+  let decode = Dune_lang.Decoder.(map string ~f:of_string)
 
   module Infix = Comparable.Operators(T)
 end

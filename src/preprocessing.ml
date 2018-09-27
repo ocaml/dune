@@ -42,7 +42,7 @@ module Driver = struct
       *)
       let syntax = Stanza.syntax
 
-      open Stanza.Of_sexp
+      open Stanza.Decoder
 
       let parse =
         record
@@ -56,7 +56,7 @@ module Driver = struct
            and lint_flags = Ordered_set_lang.Unexpanded.field "lint_flags"
            and main = field "main" string
            and replaces =
-             field "replaces" (list (located (Lib_name.dparse))) ~default:[]
+             field "replaces" (list (located (Lib_name.decode))) ~default:[]
            in
            { loc
            ; flags
@@ -99,14 +99,14 @@ module Driver = struct
             | Some t -> Ok t)
       }
 
-    let dgen t =
-      let open Dsexp.To_sexp in
-      let f x = Lib_name.dgen (Lib.name (Lazy.force x.lib)) in
+    let encode t =
+      let open Dune_lang.Encoder in
+      let f x = Lib_name.encode (Lib.name (Lazy.force x.lib)) in
       ((1, 0),
        record
-         [ "flags"            , Ordered_set_lang.Unexpanded.dgen
+         [ "flags"            , Ordered_set_lang.Unexpanded.encode
                                   t.info.flags
-         ; "lint_flags"       , Ordered_set_lang.Unexpanded.dgen
+         ; "lint_flags"       , Ordered_set_lang.Unexpanded.encode
                                   t.info.lint_flags
          ; "main"             , string t.info.main
          ; "replaces"         , list f (Result.ok_exn t.replaces)
@@ -196,9 +196,9 @@ module Jbuild_driver = struct
         Univ_map.singleton (Syntax.key Stanza.syntax) (0, 0)
       in
       let fname = Printf.sprintf "<internal-%s>" name in
-      Dsexp.parse_string ~mode:Single ~fname info
-        ~lexer:Dsexp.Lexer.jbuild_token
-      |> Dsexp.Of_sexp.parse Driver.Info.parse parsing_context
+      Dune_lang.parse_string ~mode:Single ~fname info
+        ~lexer:Dune_lang.Lexer.jbuild_token
+      |> Dune_lang.Decoder.parse Driver.Info.parse parsing_context
     in
     (Pp.of_string ~loc:None name,
      { info
@@ -301,7 +301,7 @@ let build_ppx_driver sctx ~lib_db ~dep_kind ~target ~dir_kind pps =
      Build.of_result_map driver_and_libs ~f:(fun (_, libs) ->
        Build.paths (Lib.L.archive_files libs ~mode))
      >>>
-     Build.run ~context:ctx (Ok compiler)
+     Build.run (Ok compiler) ~dir:ctx.build_dir
        [ A "-o" ; Target target
        ; Arg_spec.of_result
            (Result.map driver_and_libs ~f:(fun (_driver, libs) ->
@@ -416,7 +416,7 @@ let setup_reason_rules sctx (m : Module.t) =
   let refmt =
     SC.resolve_program sctx ~loc:None "refmt" ~hint:"try: opam install reason" in
   let rule src target =
-    Build.run ~context:ctx refmt
+    Build.run ~dir:ctx.build_dir refmt
       [ A "--print"
       ; A "binary"
       ; Dep src
@@ -517,7 +517,7 @@ let lint_module sctx ~dir ~dep_kind ~lint ~lib_name ~scope ~dir_kind =
                     (Option.value_exn (Module.file source kind))
                     (Build.of_result_map driver_and_flags ~f:(fun (exe, flags) ->
                        flags >>>
-                       Build.run ~context:(SC.context sctx)
+                       Build.run ~dir:(SC.context sctx).build_dir
                          (Ok exe)
                          [ args
                          ; Ml_kind.ppx_driver_flag kind
@@ -611,7 +611,7 @@ let make sctx ~dir ~dep_kind ~lint ~preprocess
                      ~f:(fun (exe, flags) ->
                        flags
                        >>>
-                       Build.run ~context:(SC.context sctx)
+                       Build.run ~dir:(SC.context sctx).build_dir
                          (Ok exe)
                          [ args
                          ; A "-o"; Target dst

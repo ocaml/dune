@@ -8,17 +8,17 @@ type t
 
 val create
   :  stdlib_dir:Path.t
-  -> path:Path.t list
+  -> paths:Path.t list
   -> t
 
 (** The search path for this DB *)
-val path : t -> Path.t list
+val paths : t -> Path.t list
 
 module Package : sig
   (** Representation of a findlib package *)
   type t
 
-  val meta_file        : t -> Path.t
+  val loc              : t -> Loc.t
   val name             : t -> Lib_name.t
   val dir              : t -> Path.t
   val version          : t -> string option

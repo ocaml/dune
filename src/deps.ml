@@ -57,12 +57,12 @@ let add_env_var t var =
 
 let to_sexp {paths; vars} =
   let sexp_paths =
-    Dsexp.To_sexp.list Path_dsexp.dgen (Path.Set.to_list paths)
+    Dune_lang.Encoder.list Path_dune_lang.encode (Path.Set.to_list paths)
   in
   let sexp_vars =
-    Dsexp.To_sexp.list Dsexp.To_sexp.string (String.Set.to_list vars)
+    Dune_lang.Encoder.list Dune_lang.Encoder.string (String.Set.to_list vars)
   in
-  Dsexp.To_sexp.record
+  Dune_lang.Encoder.record
     [ ("paths", sexp_paths)
     ; ("vars", sexp_vars)
     ]

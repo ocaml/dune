@@ -1,5 +1,5 @@
 open! Stdune
-open Stanza.Of_sexp
+open Stanza.Decoder
 
 (* workspace files use the same version numbers as dune-project files
    for simplicity *)
@@ -8,7 +8,7 @@ let syntax = Stanza.syntax
 let env_field =
   field_o "env"
     (Syntax.since syntax (1, 1) >>= fun () ->
-     Dune_env.Stanza.dparse)
+     Dune_env.Stanza.decode)
 
 module Context = struct
   module Target = struct
@@ -122,7 +122,7 @@ module Context = struct
         (* jbuild-workspace files *)
         (peek_exn >>= function
          | List (_, List _ :: _) ->
-           Dsexp.Of_sexp.record (Opam.t ~profile ~x) >>| fun x -> Opam x
+           Dune_lang.Decoder.record (Opam.t ~profile ~x) >>| fun x -> Opam x
          | _ -> t ~profile ~x)
       ~dune:(t ~profile ~x)
 
@@ -224,7 +224,7 @@ let load ?x ?profile p =
         parse_contents lb first_line ~f:(fun _lang -> t ?x ?profile ()))
   | Jbuilder ->
     let sexp =
-      Dsexp.Io.load p ~mode:Many_as_one ~lexer:Dsexp.Lexer.jbuild_token
+      Dune_lang.Io.load p ~mode:Many_as_one ~lexer:Dune_lang.Lexer.jbuild_token
     in
     parse
       (enter (t ?x ?profile ()))

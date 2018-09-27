@@ -34,7 +34,7 @@ let explode_path =
 module External : sig
   type t
 
-  val to_sexp : t Sexp.To_sexp.t
+  val to_sexp : t Sexp.Encoder.t
 
   val compare : t -> t -> Ordering.t
   val compare_val : t -> t -> Ordering.t
@@ -68,10 +68,10 @@ end = struct
   let of_string t =
     if Filename.is_relative t then
       Exn.code_error "Path.External.of_string: relative path given"
-        [ "t", Sexp.To_sexp.string t ];
+        [ "t", Sexp.Encoder.string t ];
     make t
 
-  let to_sexp t = Sexp.To_sexp.string (to_string t)
+  let to_sexp t = Sexp.Encoder.string (to_string t)
 
 (*
   let rec cd_dot_dot t =
@@ -125,7 +125,7 @@ end
 module Local : sig
   type t
 
-  val to_sexp : t Sexp.To_sexp.t
+  val to_sexp : t Sexp.Encoder.t
 
   val root : t
   val is_root : t -> bool
@@ -213,13 +213,13 @@ end = struct
       | exception Not_found -> t
       | i -> String.sub t ~pos:(i + 1) ~len:(len - i - 1)
 
-  let to_sexp t = Sexp.To_sexp.string (to_string t)
+  let to_sexp t = Sexp.Encoder.string (to_string t)
 
   let relative ?error_loc t path =
     if not (Filename.is_relative path) then (
       Exn.code_error "Local.relative: received absolute path"
         [ "t", to_sexp t
-        ; "path", Sexp.To_sexp.string path
+        ; "path", Sexp.Encoder.string path
         ]
     );
     let rec loop t components =
@@ -427,7 +427,7 @@ module Kind = struct
     | Local t -> Local.to_string t
     | External t -> External.to_string t
 
-  let to_sexp t = Sexp.To_sexp.string (to_string t)
+  let to_sexp t = Sexp.Encoder.string (to_string t)
 
   let of_string s =
     if Filename.is_relative s then
@@ -599,7 +599,7 @@ let of_string ?error_loc s =
       make_local_path (Local.of_string s ?error_loc)
 
 let to_sexp t =
-  let constr f x y = Sexp.To_sexp.(pair string f) (x, y) in
+  let constr f x y = Sexp.Encoder.(pair string f) (x, y) in
   match t with
   | In_build_dir s -> constr Local.to_sexp "In_build_dir" s
   | In_source_tree s -> constr Local.to_sexp "In_source_tree" s
@@ -852,7 +852,7 @@ let insert_after_build_dir_exn =
     Exn.code_error
       "Path.insert_after_build_dir_exn"
       [ "path"  , to_sexp a
-      ; "insert", Sexp.To_sexp.string b
+      ; "insert", Sexp.Encoder.string b
       ]
   in
   fun a b ->
@@ -925,7 +925,7 @@ let pp_debug ppf = function
 
 module Set = struct
   include Set.Make(T)
-  let to_sexp t = Sexp.To_sexp.(list to_sexp) (to_list t)
+  let to_sexp t = Sexp.Encoder.(list to_sexp) (to_list t)
   let of_string_set ss ~f =
     String.Set.to_list ss
     |> List.map ~f

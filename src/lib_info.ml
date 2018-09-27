@@ -191,7 +191,7 @@ let of_library_stanza ~dir ~ext_lib ~ext_obj (conf : Dune_file.Library.t) =
 
 let of_findlib_package pkg =
   let module P = Findlib.Package in
-  let loc = Loc.in_file (Path.to_string (P.meta_file pkg)) in
+  let loc = P.loc pkg in
   let add_loc x = (loc, x) in
   let sub_systems =
     match P.dune_file pkg with

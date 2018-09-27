@@ -59,8 +59,8 @@ module Section = struct
     |"misc"         -> Some Misc
     | _             -> None
 
-  let dparse =
-    let open Dsexp.Of_sexp in
+  let decode =
+    let open Dune_lang.Decoder in
     enum
       [ "lib"          , Lib
       ; "lib_root"     , Lib_root

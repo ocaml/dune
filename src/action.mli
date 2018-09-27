@@ -32,7 +32,7 @@ include Action_intf.Helpers
   with type string  := string
   with type t       := t
 
-val dparse : t Dsexp.Of_sexp.t
+val decode : t Dune_lang.Decoder.t
 
 module For_shell : sig
   include Action_intf.Ast
@@ -40,7 +40,7 @@ module For_shell : sig
     with type path    := string
     with type string  := string
 
-  val dgen : t Dsexp.To_sexp.t
+  val encode : t Dune_lang.Encoder.t
 end
 
 (** Convert the action to a format suitable for printing *)
@@ -73,7 +73,7 @@ module Unexpanded : sig
     with type path    := String_with_vars.t
     with type string  := String_with_vars.t
 
-  include Dsexp.Sexpable with type t := t
+  include Dune_lang.Conv with type t := t
 
   module Partial : sig
     include Action_intf.Ast

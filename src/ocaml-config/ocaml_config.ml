@@ -18,7 +18,7 @@ module Value = struct
     | Prog_and_args of Prog_and_args.t
 
   let to_sexp : t -> Sexp.t =
-    let open Sexp.To_sexp in
+    let open Sexp.Encoder in
     function
     | Bool   x -> bool x
     | Int    x -> int x

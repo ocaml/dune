@@ -4,6 +4,9 @@ next
 - Do not fail if the output of `ocamlc -config` doesn't include
   `standard_runtime` (#...., @diml)
 
+- Let `Configurator.V1.C_define.import` handle negative integers
+  (@Chris00)
+
 1.3.0 (23/09/2018)
 ------------------
 

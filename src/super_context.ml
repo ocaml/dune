@@ -45,6 +45,7 @@ type t =
   ; packages                         : Package.t Package.Name.Map.t
   ; file_tree                        : File_tree.t
   ; artifacts                        : Artifacts.t
+  ; artifacts_cache                  : (string, A.Prog.t) Hashtbl.t
   ; stanzas_to_consider_for_install  : Installable.t list
   ; cxx_flags                        : string list
   ; pforms                           : Pform.Map.t
@@ -486,7 +487,10 @@ let dump_env t ~dir =
   Ocaml_flags.dump (Env.ocaml_flags t ~dir)
 
 let resolve_program t ?hint ~loc bin =
-  Artifacts.binary ?hint ~loc t.artifacts bin
+  Hashtbl.find_or_add
+    t.artifacts_cache
+    ~f:(Artifacts.binary ?hint ~loc t.artifacts)
+    bin
 
 let create
       ~(context:Context.t)
@@ -598,6 +602,7 @@ let create
     ; file_tree
     ; stanzas_to_consider_for_install
     ; artifacts
+    ; artifacts_cache = Hashtbl.create 5
     ; cxx_flags
     ; pforms
     ; ocaml_config

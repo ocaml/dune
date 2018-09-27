@@ -542,12 +542,12 @@ module Lib_deps = struct
 
   let info t ~kind =
     List.concat_map t ~f:(function
-       | Lib_dep.Direct (_, s) -> [(s, kind)]
-       | Select { choices; _ } ->
-         List.concat_map choices ~f:(fun c ->
-           Lib_name.Set.to_list c.Lib_dep.required
-           |> List.map ~f:(fun d -> (d, Lib_deps_info.Kind.Optional))))
-     |> Lib_name.Map.of_list_reduce ~f:Lib_deps_info.Kind.merge
+      | Lib_dep.Direct (_, s) -> [(s, kind)]
+      | Select { choices; _ } ->
+        List.concat_map choices ~f:(fun c ->
+          Lib_name.Set.to_list c.Lib_dep.required
+          |> List.map ~f:(fun d -> (d, Lib_deps_info.Kind.Optional))))
+    |> Lib_name.Map.of_list_reduce ~f:Lib_deps_info.Kind.merge
 end
 
 let modules_field name = Ordered_set_lang.field name
@@ -584,8 +584,8 @@ module Auto_format = struct
 
   let enabled_for_to_sexp =
     function
-      | Default -> Sexp.Atom "default"
-      | Only l -> List [Atom "only"; List (List.map ~f:language_to_sexp l)]
+    | Default -> Sexp.Atom "default"
+    | Only l -> List [Atom "only"; List (List.map ~f:language_to_sexp l)]
 
   type t =
     { loc : Loc.t
@@ -981,7 +981,7 @@ module Library = struct
        |> Option.iter ~f:(fun (virtual_modules, (_, impl)) ->
          of_sexp_errorf
            (Ordered_set_lang.loc virtual_modules
-           |> Option.value_exn)
+            |> Option.value_exn)
            "A library cannot be both virtual and implement %s"
            (Lib_name.to_string impl));
        begin match virtual_modules, wrapped, implements with
@@ -1097,15 +1097,30 @@ end
 
 module Install_conf = struct
   type file =
-    { src : string
-    ; dst : string option
+    { src : String_with_vars.t
+    ; dst : String_with_vars.t option
     }
 
   let file =
+    let decode = 
+      let%map is_atom = peek_exn >>| function Atom _ -> true | _ -> false
+      and s = String_with_vars.decode
+      and version = Syntax.get_exn Stanza.syntax in
+      if not is_atom && version < (1, 6) then
+        Syntax.Error.since (String_with_vars.loc s) Stanza.syntax (1, 6)
+          ~what:(sprintf "Using %s here" (if String_with_vars.has_vars s then "variables" else "quoted strings"));
+      s
+    in
     peek_exn >>= function
-    | Atom (_, A src) -> junk >>| fun () -> { src; dst = None }
-    | List (_, [Atom (_, A src); Atom (_, A "as"); Atom (_, A dst)]) ->
-      junk >>> return { src; dst = Some dst }
+    | Atom _ | Quoted_string _ | Template _ ->
+      decode >>| fun src ->
+      { src; dst = None }
+    | List (_, [_; Atom (_, A "as"); _]) ->
+      enter
+        (decode >>= fun src ->
+         keyword "as" >>>
+         decode >>= fun dst ->
+         return { src; dst = Some dst })
     | sexp ->
       of_sexp_error (Dune_lang.Ast.loc sexp)
         "invalid format, <name> or (<name> as <install-as>) expected"
@@ -1339,11 +1354,11 @@ module Executables = struct
             | Some pns -> pns
           in
           List.map2 names public_names
-            ~f:(fun (_, name) (_, pub) ->
+            ~f:(fun (locn, name) (locp, pub) ->
               Option.map pub ~f:(fun pub ->
                 { Install_conf.
-                  src = name ^ ext
-                ; dst = Some pub
+                  src = String_with_vars.make_text locn (name ^ ext)
+                ; dst = Some (String_with_vars.make_text locp pub)
                 }))
           |> List.filter_opt
       in
@@ -1523,9 +1538,9 @@ module Rule = struct
       map_validate
         (let%map fallback =
            field_b
-           ~check:(Syntax.renamed_in Stanza.syntax (1, 0)
-                     ~to_:"(mode fallback)")
-           "fallback"
+             ~check:(Syntax.renamed_in Stanza.syntax (1, 0)
+                       ~to_:"(mode fallback)")
+             "fallback"
          and mode = field_o "mode" Mode.decode
          in
          (fallback, mode))
@@ -1586,10 +1601,10 @@ module Rule = struct
     | List (_, Atom (_, _) :: _) ->
       enter (
         repeat string >>| fun modules ->
-             { modules
-             ; mode  = Standard
-             ; enabled_if = Blang.true_
-             }
+        { modules
+        ; mode  = Standard
+        ; enabled_if = Blang.true_
+        }
       )
     | _ ->
       record

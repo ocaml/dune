@@ -207,6 +207,15 @@ module Cached_digest = struct
     ; table       = Hashtbl.create 1024
     }
 
+  let refresh fn =
+    let digest = Digest.file (Path.to_string fn) in
+    Hashtbl.replace cache.table ~key:fn
+      ~data:{ digest
+            ; timestamp = (Unix.stat (Path.to_string fn)).st_mtime
+            ; timestamp_checked = cache.checked_key
+            };
+    digest
+
   let file fn =
     match Hashtbl.find cache.table fn with
     | Some x ->
@@ -223,13 +232,7 @@ module Cached_digest = struct
         x.digest
       end
     | None ->
-      let digest = Digest.file (Path.to_string fn) in
-      Hashtbl.add cache.table fn
-        { digest
-        ; timestamp = (Unix.stat (Path.to_string fn)).st_mtime
-        ; timestamp_checked = cache.checked_key
-        };
-      digest
+      refresh fn
 
   let remove fn = Hashtbl.remove cache.table fn
 

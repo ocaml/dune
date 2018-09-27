@@ -8,4 +8,4 @@ _build, things are rebuild as expected.
   $ echo 0 > _build/default/x
   $ dune build x
   $ cat _build/default/x
-  0
+  42

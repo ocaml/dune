@@ -117,8 +117,8 @@ module Driver = struct
 
   (* Where are we called from? *)
   type loc =
-    | User_file of Loc.t * (Loc.t * Pp.t) list
-    | Dot_ppx   of Path.t * Pp.t list
+    | User_file of Loc.t * (Loc.t * Lib_name.t) list
+    | Dot_ppx   of Path.t * Lib_name.t list
 
   let make_error loc msg =
     match loc with
@@ -127,7 +127,7 @@ module Driver = struct
       Error (Errors.exnf (Loc.in_file (Path.to_string path)) "%a" Fmt.text
                (sprintf
                   "Failed to create on-demand ppx rewriter for %s; %s"
-                  (String.enumerate_and (List.map pps ~f:Pp.to_string))
+                  (String.enumerate_and (List.map pps ~f:Lib_name.to_string))
                   (String.uncapitalize msg)))
 
   let select libs ~loc =
@@ -157,7 +157,7 @@ module Driver = struct
                compatible with Dune. Examples of ppx rewriters that \
                are compatible with Dune are ones using \
                ocaml-migrate-parsetree, ppxlib or ppx_driver."
-              (String.enumerate_and (List.map pps ~f:Pp.to_string))
+              (String.enumerate_and (List.map pps ~f:Lib_name.to_string))
               (match pps with
                | [_] -> "is"
                | _   -> "are")
@@ -190,7 +190,7 @@ module Jbuild_driver = struct
      information. If it is, use the corresponding hardcoded driver
      information. *)
 
-  let make name info : (Pp.t * Driver.t) Lazy.t = lazy (
+  let make name info : (Lib_name.t * Driver.t) Lazy.t = lazy (
     let info =
       let parsing_context =
         Univ_map.singleton (Syntax.key Stanza.syntax) (0, 0)
@@ -200,7 +200,7 @@ module Jbuild_driver = struct
         ~lexer:Dune_lang.Lexer.jbuild_token
       |> Dune_lang.Decoder.parse Driver.Info.parse parsing_context
     in
-    (Pp.of_string ~loc:None name,
+    (Lib_name.of_string_exn ~loc:None name,
      { info
      ; lib = lazy (assert false)
      ; replaces = Ok []
@@ -222,9 +222,9 @@ module Jbuild_driver = struct
   |}
 
   let drivers =
-    [ Pp.of_string ~loc:None "ocaml-migrate-parsetree.driver-main" , omp
-    ; Pp.of_string ~loc:None "ppxlib.runner"                       , ppxlib
-    ; Pp.of_string ~loc:None "ppx_driver.runner"                   , ppx_driver
+    [ Lib_name.of_string_exn ~loc:None "ocaml-migrate-parsetree.driver-main" , omp
+    ; Lib_name.of_string_exn ~loc:None "ppxlib.runner"                       , ppxlib
+    ; Lib_name.of_string_exn ~loc:None "ppx_driver.runner"                   , ppx_driver
     ]
 
   let get_driver pps =
@@ -272,8 +272,7 @@ let build_ppx_driver sctx ~lib_db ~dep_kind ~target ~dir_kind pps =
     Result.map_error ~f:(fun e ->
       (* Extend the dependency stack as we don't have locations at
          this point *)
-      Dep_path.prepend_exn e
-        (Preprocess (pps : Dune_file.Pp.t list :> Lib_name.t list)))
+      Dep_path.prepend_exn e (Preprocess pps))
       (Lib.DB.resolve_pps lib_db
          (List.map pps ~f:(fun x -> (Loc.none, x)))
        >>= Lib.closure ~linking:true
@@ -324,7 +323,7 @@ let get_rules sctx key ~dir_kind =
     | [] -> []
     | driver :: rest -> List.sort rest ~compare:String.compare @ [driver]
   in
-  let pps = List.map names ~f:(Dune_file.Pp.of_string ~loc:None) in
+  let pps = List.map names ~f:(Lib_name.of_string_exn ~loc:None) in
   build_ppx_driver sctx pps ~lib_db ~dep_kind:Required ~target:exe ~dir_kind
 
 let gen_rules sctx components =

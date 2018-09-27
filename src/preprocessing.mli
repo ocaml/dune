@@ -42,7 +42,7 @@ val get_ppx_driver
   :  Super_context.t
   -> scope:Scope.t
   -> dir_kind:File_tree.Dune_file.Kind.t
-  -> (Loc.t * Dune_file.Pp.t) list
+  -> (Loc.t * Lib_name.t) list
   -> Path.t Or_exn.t
 
 module Compat_ppx_exe_kind : sig

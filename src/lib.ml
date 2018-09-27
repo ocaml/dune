@@ -796,7 +796,6 @@ and resolve_user_deps db deps ~allow_private_deps ~pps ~stack =
         { (fst first) with stop = (fst last).stop }
       in
       let pps =
-        let pps = (pps : (Loc.t * Dune_file.Pp.t) list :> (Loc.t * Lib_name.t) list) in
         resolve_simple_deps db pps ~allow_private_deps:true ~stack
         >>= fun pps ->
         closure_with_overlap_checks None pps ~stack ~linking:true
@@ -1042,9 +1041,7 @@ module DB = struct
     }
 
   let resolve_pps t pps =
-    resolve_simple_deps t ~allow_private_deps:true
-      (pps : (Loc.t * Dune_file.Pp.t) list :> (Loc.t * Lib_name.t) list)
-      ~stack:Dep_stack.empty
+    resolve_simple_deps t ~allow_private_deps:true pps ~stack:Dep_stack.empty
 
   let rec all ?(recursive=false) t =
     let l =

@@ -276,12 +276,12 @@ module DB : sig
     :  t
     -> ?allow_overlaps:bool
     -> Dune_file.Lib_dep.t list
-    -> pps:(Loc.t * Dune_file.Pp.t) list
+    -> pps:(Loc.t * Lib_name.t) list
     -> Compile.t
 
   val resolve_pps
     :  t
-    -> (Loc.t * Dune_file.Pp.t) list
+    -> (Loc.t * Lib_name.t) list
     -> L.t Or_exn.t
 
   (** Return the list of all libraries in this database. If

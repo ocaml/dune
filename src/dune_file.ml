@@ -140,33 +140,13 @@ module Pkg = struct
         | Some name -> resolve p (Package.Name.of_string name))
 end
 
-module Pp : sig
-  type t = private Lib_name.t
-  val of_string : loc:Loc.t option -> string -> t
-  val to_string : t -> string
-  val compare : t -> t -> Ordering.t
-  val to_lib_name : t -> Lib_name.t
-end = struct
-  type t = Lib_name.t
-
-  let to_lib_name s = s
-
-  let of_string ~loc s =
-    assert (not (String.is_prefix s ~prefix:"-"));
-    Lib_name.of_string_exn ~loc s
-
-  let to_string = Lib_name.to_string
-
-  let compare = Lib_name.compare
-end
-
 module Pps_and_flags = struct
   module Jbuild_syntax = struct
     let of_string ~loc s =
       if String.is_prefix s ~prefix:"-" then
         Right [s]
       else
-        Left (loc, Pp.of_string ~loc:(Some loc) s)
+        Left (loc, Lib_name.of_string_exn ~loc:(Some loc) s)
 
     let item =
       peek_exn >>= function
@@ -196,7 +176,7 @@ module Pps_and_flags = struct
           if String.is_prefix s ~prefix:"-" then
             Right s
           else
-            Left (loc, Pp.of_string ~loc:(Some loc) s))
+            Left (loc, Lib_name.of_string_exn ~loc:(Some loc) s))
       in
       (pps, more_flags @ Option.value flags ~default:[])
   end
@@ -365,7 +345,7 @@ end
 module Preprocess = struct
   type pps =
     { loc : Loc.t
-    ; pps : (Loc.t * Pp.t) list
+    ; pps : (Loc.t * Lib_name.t) list
     ; flags : string list
     ; staged : bool
     }
@@ -467,13 +447,11 @@ module Preprocess_map = struct
 
   let default = Per_module.for_all Preprocess.No_preprocessing
 
-  module Pp_map = Map.Make(Pp)
-
   let pps t =
-    Per_module.fold t ~init:Pp_map.empty ~f:(fun pp acc ->
+    Per_module.fold t ~init:Lib_name.Map.empty ~f:(fun pp acc ->
       List.fold_left (Preprocess.pps pp) ~init:acc ~f:(fun acc (loc, pp) ->
-        Pp_map.add acc pp loc))
-    |> Pp_map.foldi ~init:[] ~f:(fun pp loc acc -> (loc, pp) :: acc)
+        Lib_name.Map.add acc pp loc))
+    |> Lib_name.Map.foldi ~init:[] ~f:(fun pp loc acc -> (loc, pp) :: acc)
 end
 
 module Lint = struct
@@ -583,7 +561,7 @@ module Lib_dep = struct
 
   let direct x = Direct x
 
-  let of_pp (loc, pp) = Direct (loc, Pp.to_lib_name pp)
+  let of_lib_name (loc, pp) = Direct (loc, pp)
 end
 
 module Lib_deps = struct
@@ -635,7 +613,7 @@ module Lib_deps = struct
   let decode = parens_removed_in_dune decode
 
   let of_pps pps =
-    List.map pps ~f:(fun pp -> Lib_dep.of_pp (Loc.none, pp))
+    List.map pps ~f:(fun pp -> Lib_dep.of_lib_name (Loc.none, pp))
 
 
   let info t ~kind =

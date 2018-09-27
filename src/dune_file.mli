@@ -3,20 +3,10 @@
 open! Stdune
 open Import
 
-(** Ppx preprocessors  *)
-module Pp : sig
-  type t = private Lib_name.t
-  val of_string : loc:Loc.t option -> string -> t
-  val to_string : t -> string
-
-  val to_lib_name : t -> Lib_name.t
-  val compare : t -> t -> Ordering.t
-end
-
 module Preprocess : sig
   type pps =
     { loc   : Loc.t
-    ; pps   : (Loc.t * Pp.t) list
+    ; pps   : (Loc.t * Lib_name.t) list
     ; flags : string list
     ; staged : bool
     }
@@ -39,7 +29,7 @@ module Preprocess_map : sig
       given module *)
   val find : Module.Name.t -> t -> Preprocess.t
 
-  val pps : t -> (Loc.t * Pp.t) list
+  val pps : t -> (Loc.t * Lib_name.t) list
 end
 
 module Lint : sig
@@ -77,12 +67,12 @@ module Lib_dep : sig
 
   val to_lib_names : t -> Lib_name.t list
   val direct : Loc.t * Lib_name.t -> t
-  val of_pp : Loc.t * Pp.t -> t
+  val of_lib_name : Loc.t * Lib_name.t -> t
 end
 
 module Lib_deps : sig
   type t = Lib_dep.t list
-  val of_pps : Pp.t list -> t
+  val of_pps : Lib_name.t list -> t
   val info : t -> kind:Lib_deps_info.Kind.t -> Lib_deps_info.t
 end
 

@@ -75,7 +75,7 @@ type t =
   ; jsoo_runtime     : Path.t list
   ; requires         : Deps.t
   ; ppx_runtime_deps : (Loc.t * Lib_name.t) list
-  ; pps              : (Loc.t * Dune_file.Pp.t) list
+  ; pps              : (Loc.t * Lib_name.t) list
   ; optional         : bool
   ; virtual_deps     : (Loc.t * Lib_name.t) list
   ; dune_version : Syntax.Version.t option

@@ -7,6 +7,8 @@ next
 - Let `Configurator.V1.C_define.import` handle negative integers
   (#1334, @Chris00)
 
+- Pass `--set-switch` to opam (#1341, fix #1337, @diml)
+
 1.3.0 (23/09/2018)
 ------------------
 

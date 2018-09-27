@@ -80,13 +80,15 @@ let installed_libraries =
     Common.set_common common ~targets:[];
     let env = Main.setup_env ~capture_outputs:common.capture_outputs in
     Scheduler.go ~log:(Log.create common) ~common
-      (Context.create
-         (Default { loc = Loc.of_pos __POS__
-                  ; targets = [Native]
-                  ; profile = Config.default_build_profile
-                  ; env     = None
-                  })
-         ~env
+      (Context.create ~env
+         { merlin_context = Some "default"
+         ; contexts = [Default { loc = Loc.of_pos __POS__
+                               ; targets = [Native]
+                               ; profile = Config.default_build_profile
+                               ; env     = None
+                               }]
+         ; env = None
+         }
        >>= fun ctxs ->
        let ctx = List.hd ctxs in
        let findlib = ctx.findlib in

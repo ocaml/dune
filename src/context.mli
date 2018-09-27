@@ -24,7 +24,7 @@ open! Import
 module Kind : sig
   module Opam : sig
     type t =
-      { root   : string
+      { root   : string option
       ; switch : string
       }
   end
@@ -133,12 +133,7 @@ val to_sexp : t -> Sexp.t
 (** Compare the context names *)
 val compare : t -> t -> Ordering.t
 
-val create
-  :  ?merlin:bool
-  -> ?workspace_env:Dune_env.Stanza.t
-  -> env:Env.t
-  -> Workspace.Context.t
-  -> t list Fiber.t
+val create : env:Env.t -> Workspace.t -> t list Fiber.t
 
 val which : t -> string -> Path.t option
 

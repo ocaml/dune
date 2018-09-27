@@ -12,9 +12,6 @@ val path : Path.t list
 (** Parse a [PATH] like variable *)
 val parse_path : ?sep:char -> string -> Path.t list
 
-(** The opam tool *)
-val opam : Path.t option
-
 (** Extension to append to executable filenames *)
 val exe : string
 

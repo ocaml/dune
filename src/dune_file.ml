@@ -823,7 +823,7 @@ module Library = struct
           ~desc:"the experimental variants feature"
           [ (0, 1) ]
       in
-      Dune_project.Extension.register ~experimental:true
+      Dune_project.Extension.register_simple ~experimental:true
         syntax (Dune_lang.Decoder.return []);
       syntax
   end
@@ -866,7 +866,7 @@ module Library = struct
           ~desc:"experimental feature for building the compiler with dune"
           [ (0, 1) ]
       in
-      Dune_project.Extension.register ~experimental:true
+      Dune_project.Extension.register_simple ~experimental:true
         syntax (Dune_lang.Decoder.return []);
       syntax
 
@@ -1683,7 +1683,8 @@ module Menhir = struct
   type Stanza.t += T of t
 
   let () =
-    Dune_project.Extension.register syntax
+    Dune_project.Extension.register_simple
+      syntax
       (return [ "menhir", decode >>| fun x -> [T x] ])
 
   (* Syntax for jbuild files *)

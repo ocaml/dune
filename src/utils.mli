@@ -82,6 +82,9 @@ module Cached_digest : sig
   (** Clear the following digest from the cache *)
   val remove : Path.t -> unit
 
+  (** Same as {!file} but forces the digest to be recomputed *)
+  val refresh : Path.t -> Digest.t
+
   (** Dump/load the cache to/from the disk *)
   val dump : unit -> unit
   val load : unit -> unit

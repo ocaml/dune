@@ -384,6 +384,34 @@ module Files_of = struct
     }
 end
 
+module Trace = struct
+  module Entry = struct
+    type t =
+      { rule_digest    : Digest.t
+      ; targets_digest : Digest.t
+      }
+  end
+
+  (* Keyed by the first target *)
+  type t = Entry.t Path.Table.t
+
+  let file = Path.relative Path.build_dir ".db"
+
+  module P = Utils.Persistent(struct
+      type nonrec t = t
+      let name = "INCREMENTAL-DB"
+      let version = 2
+    end)
+
+  let dump t =
+    if Path.build_dir_exists () then P.dump file t
+
+  let load () =
+    match P.load file with
+    | Some t -> t
+    | None -> Path.Table.create 1024
+end
+
 type extra_sub_directories_to_keep =
   | All
   | These of String.Set.t
@@ -398,7 +426,7 @@ type t =
   ; contexts    : Context.t String.Map.t
   ; (* Table from target to digest of
        [(deps (filename + contents), targets (filename only), action)] *)
-    trace       : Digest.t Path.Table.t
+    trace       : Trace.t
   ; file_tree   : File_tree.t
   ; mutable local_mkdirs : Path.Set.t
   ; mutable dirs : Dir_status.t Path.Table.t
@@ -617,18 +645,18 @@ let () =
     pending_targets := Path.Set.empty;
     Path.Set.iter fns ~f:Path.unlink_no_err)
 
-let clear_targets_digests_after_rule_execution targets =
-  let missing =
-    List.fold_left targets ~init:Path.Set.empty ~f:(fun acc fn ->
-      match Unix.lstat (Path.to_string fn) with
-      | exception _ -> Path.Set.add acc fn
-      | (_ : Unix.stats) ->
-        Utils.Cached_digest.remove fn;
-        acc)
+let compute_targets_digest_after_rule_execution targets =
+  let good, bad =
+    List.partition_map targets ~f:(fun fn ->
+      match Utils.Cached_digest.refresh fn with
+      | digest -> Left digest
+      | exception (Unix.Unix_error _ | Sys_error _) -> Right fn)
   in
-  if not (Path.Set.is_empty missing) then
+  match bad with
+  | [] -> Digest.string (Marshal.to_string good [])
+  | missing ->
     die "@{<error>Error@}: Rule failed to generate the following targets:\n%s"
-      (string_of_paths missing)
+      (string_of_paths (Path.Set.of_list missing))
 
 let make_local_dir t fn =
   if not (Path.Set.mem t.local_mkdirs fn) then begin
@@ -762,7 +790,9 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
       | None -> Env.empty
       | Some c -> c.env
     in
-    let hash =
+    let head_target = List.hd targets_as_list in
+    let prev_trace = Path.Table.find t.trace head_target in
+    let rule_digest =
       let trace =
         ( Deps.trace all_deps env,
           List.map targets_as_list ~f:Path.to_string,
@@ -771,34 +801,30 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
       in
       Digest.string (Marshal.to_string trace [])
     in
+    let targets_digest =
+      match List.map targets_as_list ~f:Utils.Cached_digest.file with
+      | l -> Some (Digest.string (Marshal.to_string l []))
+      | exception (Unix.Unix_error _ | Sys_error _) -> None
+    in
     let sandbox_dir =
       if sandbox then
-        Some (Path.relative sandbox_dir (Digest.to_hex hash))
+        Some (Path.relative sandbox_dir (Digest.to_hex rule_digest))
       else
         None
-    in
-    let deps_or_rule_changed =
-      List.fold_left targets_as_list ~init:false ~f:(fun acc fn ->
-        match Path.Table.find t.trace fn with
-        | None ->
-          Path.Table.add t.trace fn hash;
-          true
-        | Some prev_hash ->
-          Path.Table.replace t.trace ~key:fn ~data:hash;
-          acc || prev_hash <> hash)
-    in
-    let targets_missing =
-      List.exists targets_as_list ~f:(fun fn ->
-        match Unix.lstat (Path.to_string fn) with
-        | exception _ -> true
-        | (_ : Unix.stats) -> false)
     in
     let force =
       !Clflags.force &&
       List.exists targets_as_list ~f:Path.is_alias_stamp_file
     in
+    let something_changed =
+      match prev_trace, targets_digest with
+      | Some prev_trace, Some targets_digest ->
+        prev_trace.rule_digest <> rule_digest ||
+        prev_trace.targets_digest <> targets_digest
+      | _ -> true
+    in
     begin
-      if deps_or_rule_changed || targets_missing || force then begin
+      if force || something_changed then begin
         List.iter targets_as_list ~f:Path.unlink_no_err;
         pending_targets := Path.Set.union targets !pending_targets;
         let action =
@@ -821,7 +847,11 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
         Option.iter sandbox_dir ~f:Path.rm_rf;
         (* All went well, these targets are no longer pending *)
         pending_targets := Path.Set.diff !pending_targets targets;
-        clear_targets_digests_after_rule_execution targets_as_list
+        let targets_digest =
+          compute_targets_digest_after_rule_execution targets_as_list
+        in
+        Path.Table.replace t.trace ~key:head_target
+          ~data:{ rule_digest; targets_digest }
       end else
         Fiber.return ()
     end >>| fun () ->
@@ -1198,26 +1228,6 @@ let stamp_file_for_files_of t ~dir ~ext =
                (Action.digest_files files))));
     files_of_dir.stamps <- String.Map.add files_of_dir.stamps ext stamp_file;
     stamp_file
-
-module Trace = struct
-  type t = Digest.t Path.Table.t
-
-  let file = Path.relative Path.build_dir ".db"
-
-  module P = Utils.Persistent(struct
-      type nonrec t = t
-      let name = "INCREMENTAL-DB"
-      let version = 1
-    end)
-
-  let dump t =
-    if Path.build_dir_exists () then P.dump file t
-
-  let load () =
-    match P.load file with
-    | Some t -> t
-    | None -> Path.Table.create 1024
-end
 
 let all_targets t =
   String.Map.iter t.contexts ~f:(fun ctx ->

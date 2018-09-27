@@ -21,6 +21,7 @@ Welcome to dune's documentation!
    configurator
    menhir
    jsoo
+   formatting
    faq
    known-issues
    migration

@@ -628,6 +628,61 @@ end
 
 let modules_field name = Ordered_set_lang.field name
 
+module Auto_format = struct
+  let syntax =
+    Syntax.create ~name:"fmt"
+      ~desc:"integration with automatic formatters"
+      [ (1, 0) ]
+
+  type language =
+    | Ocaml
+    | Reason
+
+  let language_to_sexp = function
+    | Ocaml -> Sexp.Atom "ocaml"
+    | Reason -> Sexp.Atom "reason"
+
+  let language =
+    sum
+      [ ("ocaml", return Ocaml)
+      ; ("reason", return Reason)
+      ]
+
+  type enabled_for =
+    | Default
+    | Only of language list
+
+  let enabled_for_field =
+    let%map r = field_o "enabled_for" (repeat language) in
+    match r with
+    | Some l -> Only l
+    | None -> Default
+
+  let enabled_for_to_sexp =
+    function
+      | Default -> Sexp.Atom "default"
+      | Only l -> List [Atom "only"; List (List.map ~f:language_to_sexp l)]
+
+  type t =
+    { loc : Loc.t
+    ; enabled_for : enabled_for
+    }
+
+  let to_sexp {enabled_for; loc = _} =
+    Sexp.List
+      [ List [Atom "enabled_for"; enabled_for_to_sexp enabled_for]
+      ]
+
+  let dparse_args =
+    let%map loc = loc
+    and enabled_for = record enabled_for_field
+    in
+    ({loc; enabled_for}, [])
+
+  let key =
+    Dune_project.Extension.register syntax dparse_args to_sexp
+end
+
 module Buildable = struct
   type t =
     { loc                      : Loc.t

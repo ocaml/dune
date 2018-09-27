@@ -117,6 +117,25 @@ module Dep_conf : sig
   val to_sexp : t Sexp.Encoder.t
 end
 
+module Auto_format : sig
+  type language =
+    | Ocaml
+    | Reason
+
+  type enabled_for =
+    | Default
+    | Only of language list
+
+  type t =
+    { loc : Loc.t
+    ; enabled_for : enabled_for
+    }
+
+  val syntax : Syntax.t
+
+  val key : t Dune_project.Extension.t
+end
+
 module Buildable : sig
   type t =
     { loc                      : Loc.t

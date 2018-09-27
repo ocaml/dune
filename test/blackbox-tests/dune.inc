@@ -574,6 +574,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name install-with-var)
+ (deps (package dune) (source_tree test-cases/install-with-var))
+ (action
+  (chdir
+   test-cases/install-with-var
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name installable-dup-private-libs)
  (deps (package dune) (source_tree test-cases/installable-dup-private-libs))
  (action
@@ -1159,6 +1167,7 @@
   (alias inline_tests)
   (alias install-dry-run)
   (alias install-libdir)
+  (alias install-with-var)
   (alias installable-dup-private-libs)
   (alias intf-only)
   (alias lib-available)
@@ -1290,6 +1299,7 @@
   (alias inline_tests)
   (alias install-dry-run)
   (alias install-libdir)
+  (alias install-with-var)
   (alias installable-dup-private-libs)
   (alias intf-only)
   (alias lib-available)

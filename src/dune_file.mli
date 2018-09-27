@@ -284,8 +284,8 @@ end
 
 module Install_conf : sig
   type file =
-    { src : string
-    ; dst : string option
+    { src : String_with_vars.t
+    ; dst : String_with_vars.t option
     }
 
   type t =

@@ -315,8 +315,7 @@ let create
             }))
   in
   let artifacts =
-    Artifacts.create context ~public_libs stanzas
-      ~f:(fun (d : Dir_with_dune.t) -> d.stanzas)
+    Artifacts.create context ~public_libs ~build_system
   in
   let cxx_flags =
     List.filter context.ocamlc_cflags

@@ -59,6 +59,10 @@ module Gen(P : Install_rules.Params) = struct
   module Alias = Build_system.Alias
   module CC = Compilation_context
   module SC = Super_context
+  (* We need to instantiate Install_rules earlier to avoid issues whenever
+   * Super_context is used too soon.
+   * See: https://github.com/ocaml/dune/pull/1354#issuecomment-427922592 *)
+  module Install_rules = Install_rules.Gen(P)
   module Lib_rules = Lib_rules.Gen(P)
 
   let sctx = P.sctx
@@ -94,10 +98,10 @@ module Gen(P : Install_rules.Params) = struct
           merlin = Some merlin
         ; cctx = Some (exes.buildable.loc, cctx)
         ; js =
-          Some (List.concat_map exes.names ~f:(fun (_, exe) ->
-            List.map
-              [exe ^ ".bc.js" ; exe ^ ".bc.runtime.js"]
-              ~f:(Path.relative ctx_dir)))
+            Some (List.concat_map exes.names ~f:(fun (_, exe) ->
+              List.map
+                [exe ^ ".bc.js" ; exe ^ ".bc.runtime.js"]
+                ~f:(Path.relative ctx_dir)))
         }
       | Alias alias ->
         Simple_rules.alias sctx alias ~dir ~scope;
@@ -126,7 +130,8 @@ module Gen(P : Install_rules.Params) = struct
         }
       | Install { Install_conf. section = _; files; package = _ } ->
         List.map files ~f:(fun { Install_conf. src; dst = _ } ->
-          Path.relative ctx_dir src)
+          let src_expanded = SC.expand_vars_string sctx ~dir src ~scope in
+          Path.relative ctx_dir src_expanded)
         |> Path.Set.of_list
         |> Super_context.add_alias_deps sctx
              (Build_system.Alias.all ~dir:ctx_dir);
@@ -227,9 +232,6 @@ module Gen(P : Install_rules.Params) = struct
     | _  -> These String.Set.empty
 
   let init () =
-    let module Install_rules =
-      Install_rules.Gen(P)
-    in
     Install_rules.init ();
     Lib_rules.Odoc.init ()
 end
@@ -294,7 +296,8 @@ let gen ~contexts ~build_system
         ~external_lib_deps_mode
         ~stanzas
     in
-    let module M = Gen(struct let sctx = sctx end) in
+    let module P = struct let sctx = sctx end in
+    let module M = Gen(P) in
     Fiber.Ivar.fill (Option.value_exn (Hashtbl.find sctxs context.name)) sctx
     >>| fun () ->
     (context.name, (module M : Gen))

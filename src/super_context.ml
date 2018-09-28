@@ -54,6 +54,7 @@ type t =
   ; libs_by_package : (Package.t * Lib.Set.t) Package.Name.Map.t
   ; env                              : (Path.t, Env_node.t) Hashtbl.t
   ; pkg_version                      : Pkg_version.t
+  ; map_exe                          : Path.t -> Path.t
   }
 
 let context t = t.context
@@ -564,6 +565,16 @@ let create
     |> String.Map.of_list_exn
   in
   let pkg_version = Pkg_version.make ~build_dir:context.build_dir in
+  let map_exe =
+    match host with
+    | None -> fun exe -> exe
+    | Some host ->
+      fun exe ->
+        match Path.extract_build_context_dir exe with
+        | Some (dir, exe) when Path.equal dir context.build_dir ->
+          Path.append host.context.build_dir exe
+        | _ -> exe
+  in
   let t =
     { context
     ; host
@@ -596,6 +607,7 @@ let create
           Some (pkg, Lib.Set.of_list libs))
     ; env = Hashtbl.create 128
     ; pkg_version
+    ; map_exe
     }
   in
   let context_env_node = lazy (
@@ -765,16 +777,7 @@ module Action = struct
     | Infer
     | Alias
 
-
-  let map_exe sctx =
-    match sctx.host with
-    | None -> (fun exe -> exe)
-    | Some host ->
-      fun exe ->
-        match Path.extract_build_context_dir exe with
-        | Some (dir, exe) when Path.equal dir sctx.context.build_dir ->
-          Path.append host.context.build_dir exe
-        | _ -> exe
+  let map_exe sctx = sctx.map_exe
 
   let expand_step1 sctx ~dir ~dep_kind ~scope ~targets_written_by_user
         ~map_exe ~bindings t =

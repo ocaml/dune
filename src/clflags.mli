@@ -3,9 +3,6 @@
 (** Compilation flags for OCaml files *)
 (*val ocaml_comp_flags : string list ref*)
 
-(** [-g] *)
-val g : bool ref
-
 (** Print dependency path in case of error *)
 val debug_dep_path : bool ref
 

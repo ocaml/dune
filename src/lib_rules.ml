@@ -171,7 +171,7 @@ module Gen (P : Install_rules.Params) = struct
             the .o is produced in the current directory *)
          ~dir:(Path.parent_exn src)
          (Ok ctx.ocamlc)
-         [ As (Utils.g ())
+         [ A "-g"
          ; includes
          ; Dyn (fun c_flags -> Arg_spec.quote_args "-ccopt" c_flags)
          ; A "-o"; Target dst
@@ -214,7 +214,7 @@ module Gen (P : Install_rules.Params) = struct
        >>>
        Build.run ~dir:ctx.build_dir
          (Ok ctx.ocamlmklib)
-         [ As (Utils.g ())
+         [ A "-g"
          ; if custom then A "-custom" else As []
          ; A "-o"
          ; Path (Library.stubs lib ~dir)

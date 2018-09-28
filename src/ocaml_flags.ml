@@ -2,8 +2,8 @@ open! Stdune
 open Import
 open Build.O
 
-let default_ocamlc_flags   = Utils.g
-let default_ocamlopt_flags = Utils.g
+let default_ocamlc_flags   = ["-g"]
+let default_ocamlopt_flags = ["-g"]
 
 let dev_mode_warnings =
   "@a" ^
@@ -50,8 +50,8 @@ let of_list l =
 let default ~profile =
   { common = Build.return (default_flags ~profile)
   ; specific =
-      { byte   = Build.return (default_ocamlc_flags   ())
-      ; native = Build.return (default_ocamlopt_flags ())
+      { byte   = Build.return default_ocamlc_flags
+      ; native = Build.return default_ocamlopt_flags
       }
   }
 

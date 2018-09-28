@@ -50,9 +50,6 @@ val program_not_found
 (** Raise an error about a library not found *)
 val library_not_found : ?context:string -> ?hint:string -> string -> _
 
-(** [\["-g"\]] if [!Clflags.g] and [\[\]] otherwise *)
-val g : unit -> string list
-
 val install_file
   :  package:Package.Name.t
   -> findlib_toolchain:string option

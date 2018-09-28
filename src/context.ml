@@ -620,7 +620,7 @@ let best_mode t : Mode.t =
   | None   -> Byte
 
 let cc_g (ctx : t) =
-  if !Clflags.g && ctx.ccomp_type <> "msvc" then
+  if ctx.ccomp_type <> "msvc" then
     ["-g"]
   else
     []

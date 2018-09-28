@@ -139,12 +139,6 @@ let library_not_found ?context ?hint lib =
        | Some h -> Format.fprintf fmt "@ Hint: %s" h)
     hint
 
-let g () =
-  if !Clflags.g then
-    ["-g"]
-  else
-    []
-
 let install_file ~(package : Package.Name.t) ~findlib_toolchain =
   let package = Package.Name.to_string package in
   match findlib_toolchain with

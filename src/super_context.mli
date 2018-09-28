@@ -55,6 +55,7 @@ val build_dir : t -> Path.t
 val profile   : t -> string
 val host : t -> t
 val build_system : t -> Build_system.t
+val pkg_version : t -> Pkg_version.t
 
 (** All public libraries of the workspace *)
 val public_libs : t -> Lib.DB.t
@@ -236,10 +237,6 @@ module Action : sig
     -> (Path.t Bindings.t, Action.t) Build.t
 
   val map_exe : t -> Path.t -> Path.t
-end
-
-module Pkg_version : sig
-  val set : t -> Package.t -> (unit, string option) Build.t -> (unit, string option) Build.t
 end
 
 module Scope_key : sig

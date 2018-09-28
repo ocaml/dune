@@ -53,6 +53,8 @@ type t =
   ; host                             : t option
   ; libs_by_package : (Package.t * Lib.Set.t) Package.Name.Map.t
   ; env                              : (Path.t, Env_node.t) Hashtbl.t
+  ; pkg_version                      : Pkg_version.t
+  ; map_exe                          : Path.t -> Path.t
   }
 
 let context t = t.context
@@ -67,6 +69,7 @@ let cxx_flags t = t.cxx_flags
 let build_dir t = t.context.build_dir
 let profile t = t.context.profile
 let build_system t = t.build_system
+let pkg_version t = t.pkg_version
 
 let host t = Option.value t.host ~default:t
 
@@ -161,30 +164,6 @@ type targets =
   | Static of Path.t list
   | Infer
   | Alias
-
-module Pkg_version = struct
-  open Build.O
-
-  module V = Vfile_kind.Make(struct
-      type t = string option
-      let encode = Dune_lang.Encoder.(option string)
-      let name = "Pkg_version"
-    end)
-
-  let spec sctx (p : Package.t) =
-    let fn =
-      Path.relative (Path.append sctx.context.build_dir p.path)
-        (sprintf "%s.version.sexp" (Package.Name.to_string p.name))
-    in
-    Build.Vspec.T (fn, (module V))
-
-  let read sctx p = Build.vpath (spec sctx p)
-
-  let set sctx p get =
-    let spec = spec sctx p in
-    add_rule sctx (get >>> Build.store_vfile spec);
-    Build.vpath spec
-end
 
 module Expander : sig
   module Resolved_forms : sig
@@ -341,7 +320,7 @@ end = struct
                     (Package.Name.of_string s) with
             | Some p ->
               let x =
-                Pkg_version.read sctx p >>^ function
+                Pkg_version.read (pkg_version sctx) p >>^ function
                 | None   -> [Value.String ""]
                 | Some s -> [String s]
               in
@@ -585,6 +564,17 @@ let create
       | Prog_and_args x -> Value.L.strings (x.prog :: x.args)))
     |> String.Map.of_list_exn
   in
+  let pkg_version = Pkg_version.make ~build_dir:context.build_dir in
+  let map_exe =
+    match host with
+    | None -> fun exe -> exe
+    | Some host ->
+      fun exe ->
+        match Path.extract_build_context_dir exe with
+        | Some (dir, exe) when Path.equal dir context.build_dir ->
+          Path.append host.context.build_dir exe
+        | _ -> exe
+  in
   let t =
     { context
     ; host
@@ -616,6 +606,8 @@ let create
           let libs = Option.value libs ~default:[] in
           Some (pkg, Lib.Set.of_list libs))
     ; env = Hashtbl.create 128
+    ; pkg_version
+    ; map_exe
     }
   in
   let context_env_node = lazy (
@@ -785,16 +777,7 @@ module Action = struct
     | Infer
     | Alias
 
-
-  let map_exe sctx =
-    match sctx.host with
-    | None -> (fun exe -> exe)
-    | Some host ->
-      fun exe ->
-        match Path.extract_build_context_dir exe with
-        | Some (dir, exe) when Path.equal dir sctx.context.build_dir ->
-          Path.append host.context.build_dir exe
-        | _ -> exe
+  let map_exe sctx = sctx.map_exe
 
   let expand_step1 sctx ~dir ~dep_kind ~scope ~targets_written_by_user
         ~map_exe ~bindings t =

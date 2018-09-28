@@ -78,7 +78,9 @@ module Gen(P : Params) = struct
                 ; File "VERSION"
                 ]
           in
-          Super_context.Pkg_version.set sctx pkg get
+          let pkg_version = Super_context.pkg_version sctx in
+          Super_context.add_rule sctx (Pkg_version.rule pkg_version pkg get);
+          Pkg_version.read pkg_version pkg
         in
 
         let template =

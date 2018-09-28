@@ -31,8 +31,8 @@ And build it with:
 
 The executable will be built as ``_build/default/hello_world.exe``. Note that
 native code executables will have the ``.exe`` extension on all platforms
-(including non-Windows systems). The executable can ran with: ``$ dune exec
-./hello_world.exe``
+(including non-Windows systems). The executable can be built and run in a single
+step with ``dune exec ./hello_world.exe``.
 
 Building a hello world program using Lwt
 ========================================

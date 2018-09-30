@@ -279,8 +279,7 @@ let load ?extra_ignored_subtrees ?(ignore_promoted_rules=false) () =
           in
           dune_file :: dune_files
       in
-      String.Map.fold sub_dirs ~init:dune_files
-        ~f:(fun dir dune_files -> walk dir dune_files)
+      String.Map.fold sub_dirs ~init:dune_files ~f:walk
     end
   in
   let dune_files = walk (File_tree.root ftree) [] in

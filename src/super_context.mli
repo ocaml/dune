@@ -10,7 +10,7 @@ open Import
 open Dune_file
 
 (** A directory with a jbuild *)
-module Dir_with_jbuild : sig
+module Dir_with_dune : sig
   type t =
     { src_dir : Path.t
     ; ctx_dir : Path.t (** [_build/context-name/src_dir] *)
@@ -43,8 +43,8 @@ val create
   -> t
 
 val context   : t -> Context.t
-val stanzas   : t -> Dir_with_jbuild.t list
-val stanzas_in : t -> dir:Path.t -> Dir_with_jbuild.t option
+val stanzas   : t -> Dir_with_dune.t list
+val stanzas_in : t -> dir:Path.t -> Dir_with_dune.t option
 val packages  : t -> Package.t Package.Name.Map.t
 val libs_by_package : t -> (Package.t * Lib.Set.t) Package.Name.Map.t
 val file_tree : t -> File_tree.t

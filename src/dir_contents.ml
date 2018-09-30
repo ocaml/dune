@@ -85,7 +85,7 @@ let mlds t (doc : Documentation.t) =
 
 (* As a side-effect, setup user rules and copy_files rules. *)
 let load_text_files sctx ft_dir
-      { Super_context.Dir_with_jbuild.
+      { Super_context.Dir_with_dune.
         ctx_dir = dir
       ; src_dir
       ; scope
@@ -152,7 +152,7 @@ let modules_of_files ~dir ~files =
   Module.Name.Map.merge impls intfs ~f:(fun name impl intf ->
     Some (Module.make name ~visibility:Public ?impl ?intf))
 
-let build_modules_map (d : Super_context.Dir_with_jbuild.t) ~scope ~modules =
+let build_modules_map (d : Super_context.Dir_with_dune.t) ~scope ~modules =
   let libs, exes =
     List.filter_partition_map d.stanzas ~f:(fun stanza ->
       match (stanza : Stanza.t) with
@@ -282,7 +282,7 @@ let build_modules_map (d : Super_context.Dir_with_jbuild.t) ~scope ~modules =
   in
   { libraries; executables; rev_map }
 
-let build_mlds_map (d : Super_context.Dir_with_jbuild.t) ~files =
+let build_mlds_map (d : Super_context.Dir_with_dune.t) ~files =
   let dir = d.ctx_dir in
   let mlds = lazy (
     String.Set.fold files ~init:String.Map.empty ~f:(fun fn acc ->

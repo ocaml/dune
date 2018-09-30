@@ -216,7 +216,7 @@ module Gen(P : Install_rules.Params) = struct
      +-----------------------------------------------------------------+ *)
 
   let gen_rules dir_contents
-        { SC.Dir_with_jbuild. src_dir; ctx_dir; stanzas; scope; kind } =
+        { SC.Dir_with_dune. src_dir; ctx_dir; stanzas; scope; kind } =
     let merlins, cctxs =
       let rec loop stanzas merlins cctxs =
         let dir = ctx_dir in

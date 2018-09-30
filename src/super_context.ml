@@ -5,7 +5,7 @@ open Dune_file
 module A = Action
 module Alias = Build_system.Alias
 
-module Dir_with_jbuild = struct
+module Dir_with_dune = struct
   type t =
     { src_dir : Path.t
     ; ctx_dir : Path.t
@@ -40,8 +40,8 @@ type t =
   ; scopes                           : Scope.DB.t
   ; public_libs                      : Lib.DB.t
   ; installed_libs                   : Lib.DB.t
-  ; stanzas                          : Dir_with_jbuild.t list
-  ; stanzas_per_dir                  : Dir_with_jbuild.t Path.Map.t
+  ; stanzas                          : Dir_with_dune.t list
+  ; stanzas_per_dir                  : Dir_with_dune.t Path.Map.t
   ; packages                         : Package.t Package.Name.Map.t
   ; file_tree                        : File_tree.t
   ; artifacts                        : Artifacts.t
@@ -72,7 +72,7 @@ let host t = Option.value t.host ~default:t
 
 let internal_lib_names t =
   List.fold_left t.stanzas ~init:Lib_name.Set.empty
-    ~f:(fun acc { Dir_with_jbuild. stanzas; _ } ->
+    ~f:(fun acc { Dir_with_dune. stanzas; _ } ->
       List.fold_left stanzas ~init:acc ~f:(fun acc -> function
         | Library lib ->
           Lib_name.Set.add
@@ -523,7 +523,7 @@ let create
     List.map stanzas
       ~f:(fun { Dune_load.Dune_file. dir; project; stanzas; kind } ->
         let ctx_dir = Path.append context.build_dir dir in
-        { Dir_with_jbuild.
+        { Dir_with_dune.
           src_dir = dir
         ; ctx_dir
         ; stanzas
@@ -533,7 +533,7 @@ let create
   in
   let stanzas_per_dir =
     List.map stanzas ~f:(fun stanzas ->
-      (stanzas.Dir_with_jbuild.ctx_dir, stanzas))
+      (stanzas.Dir_with_dune.ctx_dir, stanzas))
     |> Path.Map.of_list_exn
   in
   let stanzas_to_consider_for_install =
@@ -568,7 +568,7 @@ let create
   in
   let artifacts =
     Artifacts.create context ~public_libs stanzas
-      ~f:(fun (d : Dir_with_jbuild.t) -> d.stanzas)
+      ~f:(fun (d : Dir_with_dune.t) -> d.stanzas)
   in
   let cxx_flags =
     List.filter context.ocamlc_cflags
@@ -642,7 +642,7 @@ let create
         ~inherit_from:(Some (lazy (make ~inherit_from:None ~config:workspace)))
   ) in
   List.iter stanzas
-    ~f:(fun { Dir_with_jbuild. ctx_dir; scope; stanzas
+    ~f:(fun { Dir_with_dune. ctx_dir; scope; stanzas
             ; kind = _ ; src_dir = _ } ->
       List.iter stanzas ~f:(function
         | Dune_env.T config ->

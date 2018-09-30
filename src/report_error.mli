@@ -3,7 +3,7 @@ open! Stdune
 
 (** Captures the backtrace and report an error.
 
-    Because jbuilder doesn't stop at the first error, it might end up
+    Because dune doesn't stop at the first error, it might end up
     reporting the same error twice about missing libraries for
     instance. To avoid this, we keep a cache of reported errors and
     ignore errors that have already been reported.

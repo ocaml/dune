@@ -11,8 +11,8 @@ val local_install_lib_dir : context:string -> package:Package.Name.t -> Path.t
 
 val dev_null : Path.t
 
-(** When this file is present in a directory jbuilder will delete
-    nothing in it if it knows to generate this file. *)
+(** When this file is present in a directory dune will delete nothing in it if
+    it knows to generate this file. *)
 val dune_keep_fname : string
 
 (** Are we running inside an emacs shell? *)
@@ -23,7 +23,7 @@ val inside_dune : bool
 
 val default_build_profile : string
 
-(** Jbuilder configuration *)
+(** Dune configuration *)
 
 module Display : sig
   type t =

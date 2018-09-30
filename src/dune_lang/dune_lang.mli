@@ -1,7 +1,7 @@
 open! Stdune
 (** Parsing of s-expressions.
 
-    This library is internal to jbuilder and guarantees no API stability.*)
+    This library is internal to dune and guarantees no API stability.*)
 
 type syntax = Jbuild | Dune
 

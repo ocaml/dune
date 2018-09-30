@@ -12,13 +12,13 @@ val debug_findlib : bool ref
 (** Compiler warnings *)
 val warnings : string ref
 
-(** The command line for "Hint: try: jbuilder external-lib-deps ..." *)
+(** The command line for "Hint: try: dune external-lib-deps ..." *)
 val external_lib_deps_hint : string list ref
 
 (** Capture the output of sub-commands *)
 val capture_outputs : bool ref
 
-(** Always print backtraces, to help debugging jbuilder itself *)
+(** Always print backtraces, to help debugging dune itself *)
 val debug_backtraces : bool ref
 
 (** Command to use to diff things *)

@@ -43,6 +43,5 @@ val set_concurrency : ?log:Log.t -> Config.t -> unit Fiber.t
 
 (**/**)
 
-(* This is used to bootstrap jbuilder itself. It is not part of the
-   public API. *)
+(* This is used to bootstrap dune itself. It is not part of the public API. *)
 val bootstrap : unit -> unit

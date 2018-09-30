@@ -177,9 +177,8 @@ val resolve_program
   -> Action.Prog.t
 
 module Libs : sig
-  (** Make sure all rules produces by [f] record the library
-      dependencies for [jbuilder external-lib-deps] and depend on the
-      generation of the .merlin file.
+  (** Make sure all rules produces by [f] record the library dependencies for
+      [dune external-lib-deps] and depend on the generation of the .merlin file.
 
       /!\ WARNING /!\: make sure the last function call inside [f] is
       fully applied, otherwise the function might end up being executed

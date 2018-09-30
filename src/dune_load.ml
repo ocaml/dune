@@ -2,7 +2,7 @@ open! Stdune
 open Import
 open Dune_file
 
-module Jbuild = struct
+module Dune_file = struct
   type t =
     { dir     : Path.t
     ; project : Dune_project.t
@@ -27,7 +27,7 @@ module Jbuild = struct
     }
 end
 
-module Jbuilds = struct
+module Dune_files = struct
   type script =
     { dir     : Path.t
     ; file    : Path.t
@@ -36,15 +36,15 @@ module Jbuilds = struct
     }
 
   type one =
-    | Literal of Jbuild.t
+    | Literal of Dune_file.t
     | Script  of script
 
   type t =
-    { jbuilds               : one list
+    { dune_files            : one list
     ; ignore_promoted_rules : bool
     }
 
-  let generated_jbuilds_dir = Path.relative Path.build_dir ".jbuilds"
+  let generated_dune_files_dir = Path.relative Path.build_dir ".dune"
 
   let ensure_parent_dir_exists path =
     if Path.is_in_build_dir path then
@@ -110,9 +110,9 @@ module Jbuilds = struct
 let () =
   Hashtbl.add Toploop.directive_table "require" (Toploop.Directive_string ignore);
   Hashtbl.add Toploop.directive_table "use" (Toploop.Directive_string (fun _ ->
-    failwith "#use is not allowed inside jbuild in OCaml syntax"));
+    failwith "#use is not allowed inside a dune file in OCaml syntax"));
   Hashtbl.add Toploop.directive_table "use_mod" (Toploop.Directive_string (fun _ ->
-    failwith "#use is not allowed inside jbuild in OCaml syntax"))
+    failwith "#use is not allowed inside a dune file in OCaml syntax"))
 
 module Jbuild_plugin = struct
   module V1 = struct
@@ -161,22 +161,22 @@ end
         (Path.to_string plugin) plugin_contents);
     extract_requires plugin plugin_contents ~kind
 
-  let eval { jbuilds; ignore_promoted_rules } ~(context : Context.t) =
+  let eval { dune_files; ignore_promoted_rules } ~(context : Context.t) =
     let open Fiber.O in
     let static, dynamic =
-      List.partition_map jbuilds ~f:(function
+      List.partition_map dune_files ~f:(function
         | Literal x -> Left  x
         | Script  x -> Right x)
     in
     Fiber.parallel_map dynamic ~f:(fun { dir; file; project; kind } ->
-      let generated_jbuild =
-        Path.append (Path.relative generated_jbuilds_dir context.name) file
+      let generated_dune_file =
+        Path.append (Path.relative generated_dune_files_dir context.name) file
       in
-      let wrapper = Path.extend_basename generated_jbuild ~suffix:".ml" in
-      ensure_parent_dir_exists generated_jbuild;
+      let wrapper = Path.extend_basename generated_dune_file ~suffix:".ml" in
+      ensure_parent_dir_exists generated_dune_file;
       let requires =
         create_plugin_wrapper context ~exec_dir:dir ~plugin:file ~wrapper
-          ~target:generated_jbuild ~kind
+          ~target:generated_dune_file ~kind
       in
       let context = Option.value context.for_host ~default:context in
       let cmas =
@@ -203,36 +203,38 @@ end
       Process.run Strict ~dir ~env:context.env context.ocaml
         args
       >>= fun () ->
-      if not (Path.exists generated_jbuild) then
-        die "@{<error>Error:@} %s failed to produce a valid jbuild file.\n\
+      if not (Path.exists generated_dune_file) then
+        die "@{<error>Error:@} %s failed to produce a valid dune_file file.\n\
              Did you forgot to call [Jbuild_plugin.V*.send]?"
           (Path.to_string file);
       Fiber.return
-        (Dune_lang.Io.load generated_jbuild ~mode:Many
+        (Dune_lang.Io.load generated_dune_file ~mode:Many
            ~lexer:(File_tree.Dune_file.Kind.lexer kind)
-         |> Jbuild.parse ~dir ~file ~project ~kind ~ignore_promoted_rules))
+         |> Dune_file.parse ~dir ~file ~project ~kind ~ignore_promoted_rules))
     >>| fun dynamic ->
     static @ dynamic
 end
 
 type conf =
-  { file_tree : File_tree.t
-  ; jbuilds   : Jbuilds.t
-  ; packages  : Package.t Package.Name.Map.t
-  ; projects  : Dune_project.t list
+  { file_tree  : File_tree.t
+  ; dune_files : Dune_files.t
+  ; packages   : Package.t Package.Name.Map.t
+  ; projects   : Dune_project.t list
   }
 
 let interpret ~dir ~project ~ignore_promoted_rules
       ~(dune_file:File_tree.Dune_file.t) =
   match dune_file.contents with
   | Plain p ->
-    let jbuild =
-      Jbuilds.Literal
-        (Jbuild.parse p.sexps ~dir ~file:p.path ~project  ~kind:dune_file.kind
+    let dune_file =
+      Dune_files.Literal
+        (Dune_file.parse p.sexps ~dir ~file:p.path
+           ~project
+           ~kind:dune_file.kind
            ~ignore_promoted_rules)
     in
     p.sexps <- [];
-    jbuild
+    dune_file
   | Ocaml_script file ->
     Script { dir; project; file; kind = dune_file.kind }
 
@@ -261,29 +263,29 @@ let load ?extra_ignored_subtrees ?(ignore_promoted_rules=false) () =
               (Path.to_string_maybe_quoted (Package.opam_file b))))
   in
 
-  let rec walk dir jbuilds =
+  let rec walk dir dune_files =
     if File_tree.Dir.ignored dir then
-      jbuilds
+      dune_files
     else begin
       let path = File_tree.Dir.path dir in
       let sub_dirs = File_tree.Dir.sub_dirs dir in
       let project = File_tree.Dir.project dir in
-      let jbuilds =
+      let dune_files =
         match File_tree.Dir.dune_file dir with
-        | None -> jbuilds
+        | None -> dune_files
         | Some dune_file ->
-          let jbuild =
+          let dune_file =
             interpret ~dir:path ~project ~ignore_promoted_rules ~dune_file
           in
-          jbuild :: jbuilds
+          dune_file :: dune_files
       in
-      String.Map.fold sub_dirs ~init:jbuilds
-        ~f:(fun dir jbuilds -> walk dir jbuilds)
+      String.Map.fold sub_dirs ~init:dune_files
+        ~f:(fun dir dune_files -> walk dir dune_files)
     end
   in
-  let jbuilds = walk (File_tree.root ftree) [] in
+  let dune_files = walk (File_tree.root ftree) [] in
   { file_tree = ftree
-  ; jbuilds = { jbuilds; ignore_promoted_rules }
+  ; dune_files = { dune_files; ignore_promoted_rules }
   ; packages
   ; projects
   }

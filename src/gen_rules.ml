@@ -375,7 +375,7 @@ let gen ~contexts ~build_system
       ?(external_lib_deps_mode=false)
       ?only_packages conf =
   let open Fiber.O in
-  let { Dune_load. file_tree; jbuilds; packages; projects } = conf in
+  let { Dune_load. file_tree; dune_files; packages; projects } = conf in
   let packages =
     match only_packages with
     | None -> packages
@@ -395,11 +395,11 @@ let gen ~contexts ~build_system
         >>| fun x -> Some x
     in
     let stanzas () =
-      Dune_load.Jbuilds.eval ~context jbuilds >>| fun stanzas ->
+      Dune_load.Dune_files.eval ~context dune_files >>| fun stanzas ->
       match only_packages with
       | None -> stanzas
       | Some pkgs ->
-        List.map stanzas ~f:(fun (dir_conf : Dune_load.Jbuild.t) ->
+        List.map stanzas ~f:(fun (dir_conf : Dune_load.Dune_file.t) ->
           { dir_conf with
             stanzas = relevant_stanzas pkgs dir_conf.stanzas
           })

@@ -502,12 +502,13 @@ let create
     Lib.DB.create_from_findlib context.findlib ~external_lib_deps_mode
   in
   let internal_libs =
-    List.concat_map stanzas ~f:(fun { Dune_load.Jbuild. dir; stanzas; _ } ->
-      let ctx_dir = Path.append context.build_dir dir in
-      List.filter_map stanzas ~f:(fun stanza ->
-        match (stanza : Stanza.t) with
-        | Library lib -> Some (ctx_dir, lib)
-        | _ -> None))
+    List.concat_map stanzas
+      ~f:(fun { Dune_load.Dune_file. dir; stanzas; project = _ ; kind = _ } ->
+        let ctx_dir = Path.append context.build_dir dir in
+        List.filter_map stanzas ~f:(fun stanza ->
+          match (stanza : Stanza.t) with
+          | Library lib -> Some (ctx_dir, lib)
+          | _ -> None))
   in
   let scopes, public_libs =
     Scope.DB.create
@@ -520,7 +521,7 @@ let create
   in
   let stanzas =
     List.map stanzas
-      ~f:(fun { Dune_load.Jbuild. dir; project; stanzas; kind } ->
+      ~f:(fun { Dune_load.Dune_file. dir; project; stanzas; kind } ->
         let ctx_dir = Path.append context.build_dir dir in
         { Dir_with_jbuild.
           src_dir = dir
@@ -537,31 +538,33 @@ let create
   in
   let stanzas_to_consider_for_install =
     if not external_lib_deps_mode then
-      List.concat_map stanzas ~f:(fun { ctx_dir; stanzas; scope; kind; _ } ->
-        List.filter_map stanzas ~f:(fun stanza ->
-          let keep =
-            match (stanza : Stanza.t) with
-            | Library lib ->
-              Lib.DB.available (Scope.libs scope) (Library.best_name lib)
-            | Documentation _
-            | Install _   -> true
-            | _           -> false
-          in
-          Option.some_if keep { Installable.
-                                dir = ctx_dir
-                              ; scope
-                              ; stanza
-                              ; kind
-                              }))
+      List.concat_map stanzas
+        ~f:(fun { ctx_dir; stanzas; scope; kind ; src_dir = _ } ->
+          List.filter_map stanzas ~f:(fun stanza ->
+            let keep =
+              match (stanza : Stanza.t) with
+              | Library lib ->
+                Lib.DB.available (Scope.libs scope) (Library.best_name lib)
+              | Documentation _
+              | Install _   -> true
+              | _           -> false
+            in
+            Option.some_if keep { Installable.
+                                  dir = ctx_dir
+                                ; scope
+                                ; stanza
+                                ; kind
+                                }))
     else
-      List.concat_map stanzas ~f:(fun { ctx_dir; stanzas; scope; kind; _ } ->
-        List.map stanzas ~f:(fun stanza ->
-          { Installable.
-            dir = ctx_dir
-          ; scope
-          ; stanza
-          ; kind
-          }))
+      List.concat_map stanzas
+        ~f:(fun { ctx_dir; stanzas; scope; kind ; src_dir = _ } ->
+          List.map stanzas ~f:(fun stanza ->
+            { Installable.
+              dir = ctx_dir
+            ; scope
+            ; stanza
+            ; kind
+            }))
   in
   let artifacts =
     Artifacts.create context ~public_libs stanzas
@@ -639,7 +642,8 @@ let create
         ~inherit_from:(Some (lazy (make ~inherit_from:None ~config:workspace)))
   ) in
   List.iter stanzas
-    ~f:(fun { Dir_with_jbuild. ctx_dir; scope; stanzas; _ } ->
+    ~f:(fun { Dir_with_jbuild. ctx_dir; scope; stanzas
+            ; kind = _ ; src_dir = _ } ->
       List.iter stanzas ~f:(function
         | Dune_env.T config ->
           let inherit_from =

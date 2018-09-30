@@ -20,7 +20,7 @@ let dev_null =
   Path.of_filename_relative_to_initial_cwd
     (if Sys.win32 then "nul" else "/dev/null")
 
-let jbuilder_keep_fname = ".jbuilder-keep"
+let dune_keep_fname = ".dune-keep"
 
 let inside_emacs = Option.is_some (Env.get Env.initial "INSIDE_EMACS")
 let inside_dune  = Option.is_some (Env.get Env.initial "INSIDE_DUNE")

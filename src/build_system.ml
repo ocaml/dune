@@ -689,7 +689,7 @@ let rec with_locks mutexes ~f =
 
 let remove_old_artifacts t ~dir ~subdirs_to_keep =
   if not (Path.is_in_build_dir dir) ||
-     Path.Table.mem t.files (Path.relative dir Config.jbuilder_keep_fname) then
+     Path.Table.mem t.files (Path.relative dir Config.dune_keep_fname) then
     ()
   else
     match Path.readdir_unsorted dir with

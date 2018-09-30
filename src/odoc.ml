@@ -164,13 +164,13 @@ module Gen (S : sig val sctx : SC.t end) = struct
 
   let setup_html (odoc_file : odoc) ~requires =
     let deps = Dep.deps requires in
-    let to_remove, jbuilder_keep =
+    let to_remove, dune_keep =
       match odoc_file.source with
       | Mld -> odoc_file.html_file, []
       | Module ->
-        let jbuilder_keep =
-          Build.create_file (odoc_file.html_dir ++ Config.jbuilder_keep_fname) in
-        odoc_file.html_dir, [jbuilder_keep]
+        let dune_keep =
+          Build.create_file (odoc_file.html_dir ++ Config.dune_keep_fname) in
+        odoc_file.html_dir, [dune_keep]
     in
     SC.add_rule sctx
       (deps
@@ -186,7 +186,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
               ; Dep odoc_file.odoc_input
               ; Hidden_targets [odoc_file.html_file]
               ]
-         :: jbuilder_keep))
+         :: dune_keep))
 
   let css_file = Paths.html_root ++ "odoc.css"
 

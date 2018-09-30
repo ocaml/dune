@@ -13,7 +13,7 @@ val dev_null : Path.t
 
 (** When this file is present in a directory jbuilder will delete
     nothing in it if it knows to generate this file. *)
-val jbuilder_keep_fname : string
+val dune_keep_fname : string
 
 (** Are we running inside an emacs shell? *)
 val inside_emacs : bool

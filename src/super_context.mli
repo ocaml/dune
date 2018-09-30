@@ -37,7 +37,7 @@ val create
   -> projects:Dune_project.t list
   -> file_tree:File_tree.t
   -> packages:Package.t Package.Name.Map.t
-  -> stanzas:Jbuild_load.Jbuild.t list
+  -> stanzas:Dune_load.Jbuild.t list
   -> external_lib_deps_mode:bool
   -> build_system:Build_system.t
   -> t

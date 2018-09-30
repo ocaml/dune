@@ -502,7 +502,7 @@ let create
     Lib.DB.create_from_findlib context.findlib ~external_lib_deps_mode
   in
   let internal_libs =
-    List.concat_map stanzas ~f:(fun { Jbuild_load.Jbuild. dir; stanzas; _ } ->
+    List.concat_map stanzas ~f:(fun { Dune_load.Jbuild. dir; stanzas; _ } ->
       let ctx_dir = Path.append context.build_dir dir in
       List.filter_map stanzas ~f:(fun stanza ->
         match (stanza : Stanza.t) with
@@ -520,7 +520,7 @@ let create
   in
   let stanzas =
     List.map stanzas
-      ~f:(fun { Jbuild_load.Jbuild. dir; project; stanzas; kind } ->
+      ~f:(fun { Dune_load.Jbuild. dir; project; stanzas; kind } ->
         let ctx_dir = Path.append context.build_dir dir in
         { Dir_with_jbuild.
           src_dir = dir

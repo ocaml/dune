@@ -202,19 +202,19 @@ let get_name ~files ?name () =
         with
         | Some name -> name
         | None ->
-          let shortest =
-            match package_names with
-            | [] -> assert false
-            | first :: rest ->
-              List.fold_left rest ~init:first ~f:(fun acc s ->
-                if String.length s < String.length acc then
-                  s
-                else
-                  acc)
+          let name =
+            let prefix = String.longest_prefix package_names in
+            if prefix = "" then
+              None
+            else
+              match String.drop_suffix prefix ~suffix:"-" with
+              | None ->
+                Option.some_if (List.mem ~set:package_names prefix) prefix
+              | Some _ as p -> p
           in
-          if List.for_all package_names ~f:(String.is_prefix ~prefix:shortest) then
-            shortest
-          else
+          match name with
+          | Some name -> name
+          | None ->
             die "@{<error>Error@}: cannot determine name automatically.\n\
                  You must pass a [--name] command line argument."
   in

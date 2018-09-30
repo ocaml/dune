@@ -79,3 +79,8 @@ String.split_n "" 10;;
 [%%expect{|
 - : string * string = ("", "")
 |}]
+
+String.longest_prefix ["food"; "foo"; "foo-bar"]
+[%%expect{|
+- : string = "foo"
+|}]

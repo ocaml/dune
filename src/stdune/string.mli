@@ -45,6 +45,8 @@ val escape_double_quote : t -> t
 val longest : string list -> int
 val longest_map : 'a list -> f:('a -> string) -> int
 
+val longest_prefix : t list -> t
+
 val exists : t -> f:(char -> bool) -> bool
 val for_all : t -> f:(char -> bool) -> bool
 

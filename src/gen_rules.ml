@@ -16,71 +16,6 @@ module Gen(P : Install_rules.Params) = struct
 
   let sctx = P.sctx
 
-  (* +-----------------------------------------------------------------+
-     | Tests                                                           |
-     +-----------------------------------------------------------------+ *)
-
-  let tests_rules (t : Tests.t) ~dir ~scope ~dir_contents ~dir_kind =
-    let test_kind (loc, name) =
-      let files = Dir_contents.text_files dir_contents in
-      let expected_basename = name ^ ".expected" in
-      if String.Set.mem files expected_basename then
-        `Expect
-          { Action.Unexpanded.Diff.
-            file1 = String_with_vars.make_text loc expected_basename
-          ; file2 = String_with_vars.make_text loc (name ^ ".output")
-          ; optional = false
-          ; mode = Text
-          }
-      else
-        `Regular
-    in
-    List.iter t.exes.names ~f:(fun (loc, s) ->
-      let test_var_name = "test" in
-      let run_action =
-        match t.action with
-        | Some a -> a
-        | None -> Action.Unexpanded.Run (
-          String_with_vars.make_var loc test_var_name, [])
-      in
-      let extra_bindings =
-        let test_exe = s ^ ".exe" in
-        let test_exe_path =
-          Super_context.Action.map_exe sctx (Path.relative dir test_exe) in
-        Pform.Map.singleton test_var_name (Values [Path test_exe_path]) in
-      let add_alias ~loc ~action ~locks =
-        let alias =
-          { Alias_conf.
-            name = "runtest"
-          ; locks
-          ; package = t.package
-          ; deps = t.deps
-          ; action = Some (loc, action)
-          ; enabled_if = t.enabled_if
-          ; loc
-          }
-        in
-        Simple_rules.alias sctx ~extra_bindings ~dir ~scope alias
-      in
-      match test_kind (loc, s) with
-      | `Regular ->
-        add_alias ~loc ~action:run_action ~locks:[]
-      | `Expect diff ->
-        let rule =
-          { Rule.
-            targets = Infer
-          ; deps = Bindings.empty
-          ; action =
-              (loc, Action.Unexpanded.Redirect (Stdout, diff.file2, run_action))
-          ; mode = Standard
-          ; locks = t.locks
-          ; loc
-          } in
-        add_alias ~loc ~action:(Diff diff) ~locks:t.locks;
-        ignore (Simple_rules.user_rule sctx rule ~extra_bindings ~dir ~scope
-                : Path.t list));
-    Exe_rules.rules t.exes ~dir ~scope ~dir_kind ~dir_contents
-
   let gen_format_rules sctx ~dir =
     let scope = SC.find_scope_by_dir sctx dir in
     let project = Scope.project scope in
@@ -121,7 +56,7 @@ module Gen(P : Install_rules.Params) = struct
             loop stanzas merlins cctxs
           | Tests tests ->
             let cctx, merlin =
-              tests_rules tests
+              Test_rules.rules tests
               ~sctx ~dir ~scope ~dir_contents ~dir_kind:kind
             in
             loop stanzas (merlin :: merlins)

@@ -1074,14 +1074,14 @@ module Library = struct
          let err =
            match c_names, cxx_names, self_build_stubs_archive with
            | _, _, None -> None
-           | (_ :: _), _, Some _ -> Some ("c_names", loc)
-           | _, (_ :: _), Some _ -> Some ("cxx_names", loc)
+           | (_ :: _), _, Some _ -> Some "c_names"
+           | _, (_ :: _), Some _ -> Some "cxx_names"
            | [], [], _ -> None
          in
          match err with
          | None ->
            self_build_stubs_archive
-         | Some (name, loc) ->
+         | Some name ->
            of_sexp_errorf loc
              "A library cannot use (self_build_stubs_archive ...) \
               and (%s ...) simultaneously." name

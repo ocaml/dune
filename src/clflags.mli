@@ -9,9 +9,6 @@ val debug_dep_path : bool ref
 (** Debug the findlib implementation *)
 val debug_findlib : bool ref
 
-(** Compiler warnings *)
-val warnings : string ref
-
 (** The command line for "Hint: try: dune external-lib-deps ..." *)
 val external_lib_deps_hint : string list ref
 

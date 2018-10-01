@@ -207,6 +207,7 @@ module Run (P : PARAMS) : sig end = struct
     let mock_module : Module.t =
       Module.make
         name
+        ~visibility:Public
         ~impl:{ path = mock_ml base; syntax = OCaml }
     in
 

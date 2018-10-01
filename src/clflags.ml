@@ -1,4 +1,3 @@
-(*let ocaml_comp_flags = ref ["-g"]*)
 let debug_findlib = ref false
 let debug_dep_path = ref false
 let external_lib_deps_hint = ref []

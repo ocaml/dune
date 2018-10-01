@@ -1,8 +1,5 @@
 (** Command line flags *)
 
-(** Compilation flags for OCaml files *)
-(*val ocaml_comp_flags : string list ref*)
-
 (** Print dependency path in case of error *)
 val debug_dep_path : bool ref
 

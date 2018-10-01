@@ -18,7 +18,7 @@ module Jbuilds : sig
     -> Jbuild.t list Fiber.t
 end
 
-type conf =
+type conf = private
   { file_tree : File_tree.t
   ; jbuilds   : Jbuilds.t
   ; packages  : Package.t Package.Name.Map.t

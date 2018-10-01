@@ -1,4 +1,4 @@
-(** Setup of Jbuilder *)
+(** Setup of dune *)
 
 (** These parameters are set by [ocaml configure.ml] or copied from
     [setup.defaults.ml]. During bootstrap, values from [setup.boot.ml]

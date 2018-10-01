@@ -5,7 +5,7 @@ open Dune_file
 module A = Action
 module Alias = Build_system.Alias
 
-module Dir_with_jbuild = struct
+module Dir_with_dune = struct
   type t =
     { src_dir : Path.t
     ; ctx_dir : Path.t
@@ -40,8 +40,8 @@ type t =
   ; scopes                           : Scope.DB.t
   ; public_libs                      : Lib.DB.t
   ; installed_libs                   : Lib.DB.t
-  ; stanzas                          : Dir_with_jbuild.t list
-  ; stanzas_per_dir                  : Dir_with_jbuild.t Path.Map.t
+  ; stanzas                          : Dir_with_dune.t list
+  ; stanzas_per_dir                  : Dir_with_dune.t Path.Map.t
   ; packages                         : Package.t Package.Name.Map.t
   ; file_tree                        : File_tree.t
   ; artifacts                        : Artifacts.t
@@ -72,7 +72,7 @@ let host t = Option.value t.host ~default:t
 
 let internal_lib_names t =
   List.fold_left t.stanzas ~init:Lib_name.Set.empty
-    ~f:(fun acc { Dir_with_jbuild. stanzas; _ } ->
+    ~f:(fun acc { Dir_with_dune. stanzas; _ } ->
       List.fold_left stanzas ~init:acc ~f:(fun acc -> function
         | Library lib ->
           Lib_name.Set.add
@@ -502,12 +502,13 @@ let create
     Lib.DB.create_from_findlib context.findlib ~external_lib_deps_mode
   in
   let internal_libs =
-    List.concat_map stanzas ~f:(fun { Jbuild_load.Jbuild. dir; stanzas; _ } ->
-      let ctx_dir = Path.append context.build_dir dir in
-      List.filter_map stanzas ~f:(fun stanza ->
-        match (stanza : Stanza.t) with
-        | Library lib -> Some (ctx_dir, lib)
-        | _ -> None))
+    List.concat_map stanzas
+      ~f:(fun { Dune_load.Dune_file. dir; stanzas; project = _ ; kind = _ } ->
+        let ctx_dir = Path.append context.build_dir dir in
+        List.filter_map stanzas ~f:(fun stanza ->
+          match (stanza : Stanza.t) with
+          | Library lib -> Some (ctx_dir, lib)
+          | _ -> None))
   in
   let scopes, public_libs =
     Scope.DB.create
@@ -520,9 +521,9 @@ let create
   in
   let stanzas =
     List.map stanzas
-      ~f:(fun { Jbuild_load.Jbuild. dir; project; stanzas; kind } ->
+      ~f:(fun { Dune_load.Dune_file. dir; project; stanzas; kind } ->
         let ctx_dir = Path.append context.build_dir dir in
-        { Dir_with_jbuild.
+        { Dir_with_dune.
           src_dir = dir
         ; ctx_dir
         ; stanzas
@@ -532,40 +533,42 @@ let create
   in
   let stanzas_per_dir =
     List.map stanzas ~f:(fun stanzas ->
-      (stanzas.Dir_with_jbuild.ctx_dir, stanzas))
+      (stanzas.Dir_with_dune.ctx_dir, stanzas))
     |> Path.Map.of_list_exn
   in
   let stanzas_to_consider_for_install =
     if not external_lib_deps_mode then
-      List.concat_map stanzas ~f:(fun { ctx_dir; stanzas; scope; kind; _ } ->
-        List.filter_map stanzas ~f:(fun stanza ->
-          let keep =
-            match (stanza : Stanza.t) with
-            | Library lib ->
-              Lib.DB.available (Scope.libs scope) (Library.best_name lib)
-            | Documentation _
-            | Install _   -> true
-            | _           -> false
-          in
-          Option.some_if keep { Installable.
-                                dir = ctx_dir
-                              ; scope
-                              ; stanza
-                              ; kind
-                              }))
+      List.concat_map stanzas
+        ~f:(fun { ctx_dir; stanzas; scope; kind ; src_dir = _ } ->
+          List.filter_map stanzas ~f:(fun stanza ->
+            let keep =
+              match (stanza : Stanza.t) with
+              | Library lib ->
+                Lib.DB.available (Scope.libs scope) (Library.best_name lib)
+              | Documentation _
+              | Install _   -> true
+              | _           -> false
+            in
+            Option.some_if keep { Installable.
+                                  dir = ctx_dir
+                                ; scope
+                                ; stanza
+                                ; kind
+                                }))
     else
-      List.concat_map stanzas ~f:(fun { ctx_dir; stanzas; scope; kind; _ } ->
-        List.map stanzas ~f:(fun stanza ->
-          { Installable.
-            dir = ctx_dir
-          ; scope
-          ; stanza
-          ; kind
-          }))
+      List.concat_map stanzas
+        ~f:(fun { ctx_dir; stanzas; scope; kind ; src_dir = _ } ->
+          List.map stanzas ~f:(fun stanza ->
+            { Installable.
+              dir = ctx_dir
+            ; scope
+            ; stanza
+            ; kind
+            }))
   in
   let artifacts =
     Artifacts.create context ~public_libs stanzas
-      ~f:(fun (d : Dir_with_jbuild.t) -> d.stanzas)
+      ~f:(fun (d : Dir_with_dune.t) -> d.stanzas)
   in
   let cxx_flags =
     List.filter context.ocamlc_cflags
@@ -639,7 +642,8 @@ let create
         ~inherit_from:(Some (lazy (make ~inherit_from:None ~config:workspace)))
   ) in
   List.iter stanzas
-    ~f:(fun { Dir_with_jbuild. ctx_dir; scope; stanzas; _ } ->
+    ~f:(fun { Dir_with_dune. ctx_dir; scope; stanzas
+            ; kind = _ ; src_dir = _ } ->
       List.iter stanzas ~f:(function
         | Dune_env.T config ->
           let inherit_from =

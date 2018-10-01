@@ -216,7 +216,7 @@ module Gen(P : Install_rules.Params) = struct
      +-----------------------------------------------------------------+ *)
 
   let gen_rules dir_contents
-        { SC.Dir_with_jbuild. src_dir; ctx_dir; stanzas; scope; kind } =
+        { SC.Dir_with_dune. src_dir; ctx_dir; stanzas; scope; kind } =
     let merlins, cctxs =
       let rec loop stanzas merlins cctxs =
         let dir = ctx_dir in
@@ -375,7 +375,7 @@ let gen ~contexts ~build_system
       ?(external_lib_deps_mode=false)
       ?only_packages conf =
   let open Fiber.O in
-  let { Jbuild_load. file_tree; jbuilds; packages; projects } = conf in
+  let { Dune_load. file_tree; dune_files; packages; projects } = conf in
   let packages =
     match only_packages with
     | None -> packages
@@ -395,11 +395,11 @@ let gen ~contexts ~build_system
         >>| fun x -> Some x
     in
     let stanzas () =
-      Jbuild_load.Jbuilds.eval ~context jbuilds >>| fun stanzas ->
+      Dune_load.Dune_files.eval ~context dune_files >>| fun stanzas ->
       match only_packages with
       | None -> stanzas
       | Some pkgs ->
-        List.map stanzas ~f:(fun (dir_conf : Jbuild_load.Jbuild.t) ->
+        List.map stanzas ~f:(fun (dir_conf : Dune_load.Dune_file.t) ->
           { dir_conf with
             stanzas = relevant_stanzas pkgs dir_conf.stanzas
           })

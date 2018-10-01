@@ -41,7 +41,7 @@ let setup ?(log=Log.no_log)
       () =
   let env = setup_env ~capture_outputs in
   let conf =
-    Jbuild_load.load ?extra_ignored_subtrees ?ignore_promoted_rules ()
+    Dune_load.load ?extra_ignored_subtrees ?ignore_promoted_rules ()
   in
   Option.iter only_packages ~f:(fun set ->
     Package.Name.Set.iter set ~f:(fun pkg ->

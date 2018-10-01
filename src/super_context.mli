@@ -10,7 +10,7 @@ open Import
 open Dune_file
 
 (** A directory with a jbuild *)
-module Dir_with_jbuild : sig
+module Dir_with_dune : sig
   type t =
     { src_dir : Path.t
     ; ctx_dir : Path.t (** [_build/context-name/src_dir] *)
@@ -37,14 +37,14 @@ val create
   -> projects:Dune_project.t list
   -> file_tree:File_tree.t
   -> packages:Package.t Package.Name.Map.t
-  -> stanzas:Jbuild_load.Jbuild.t list
+  -> stanzas:Dune_load.Dune_file.t list
   -> external_lib_deps_mode:bool
   -> build_system:Build_system.t
   -> t
 
 val context   : t -> Context.t
-val stanzas   : t -> Dir_with_jbuild.t list
-val stanzas_in : t -> dir:Path.t -> Dir_with_jbuild.t option
+val stanzas   : t -> Dir_with_dune.t list
+val stanzas_in : t -> dir:Path.t -> Dir_with_dune.t option
 val packages  : t -> Package.t Package.Name.Map.t
 val libs_by_package : t -> (Package.t * Lib.Set.t) Package.Name.Map.t
 val file_tree : t -> File_tree.t
@@ -177,9 +177,8 @@ val resolve_program
   -> Action.Prog.t
 
 module Libs : sig
-  (** Make sure all rules produces by [f] record the library
-      dependencies for [jbuilder external-lib-deps] and depend on the
-      generation of the .merlin file.
+  (** Make sure all rules produces by [f] record the library dependencies for
+      [dune external-lib-deps] and depend on the generation of the .merlin file.
 
       /!\ WARNING /!\: make sure the last function call inside [f] is
       fully applied, otherwise the function might end up being executed

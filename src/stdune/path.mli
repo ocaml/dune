@@ -58,8 +58,8 @@ val is_managed : t -> bool
 
 val relative : ?error_loc:Loc.t -> t -> string -> t
 
-(** Create an external path. If the argument is relative, assume it is
-    relative to the initial directory jbuilder was launched in. *)
+(** Create an external path. If the argument is relative, assume it is relative
+    to the initial directory dune was launched in. *)
 val of_filename_relative_to_initial_cwd : string -> t
 
 (** Convert a path to an absolute filename. Must be called after the workspace

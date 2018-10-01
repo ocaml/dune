@@ -146,9 +146,9 @@ module Package = struct
     ; vars      : Vars.t
     }
 
-  let meta_file t = t.meta_file
-  let name      t = t.name
-  let dir       t = t.dir
+  let loc  t = Loc.in_dir (Path.to_string t.meta_file)
+  let name t = t.name
+  let dir  t = t.dir
 
   let preds = Ps.of_list [P.ppx_driver; P.mt; P.mt_posix]
 
@@ -197,16 +197,16 @@ end
 
 type t =
   { stdlib_dir : Path.t
-  ; path       : Path.t list
+  ; paths      : Path.t list
   ; builtins   : Meta.Simplified.t Lib_name.Map.t
   ; packages   : (Lib_name.t, (Package.t, Unavailable_reason.t) result) Hashtbl.t
   }
 
-let path t = t.path
+let paths t = t.paths
 
 let dummy_package t ~name =
   let dir =
-    match t.path with
+    match t.paths with
     | [] -> t.stdlib_dir
     | dir :: _ ->
       Lib_name.package_name name
@@ -296,6 +296,10 @@ let find_and_acknowledge_meta t ~fq_name =
   let root_name = Lib_name.root_lib fq_name in
   let rec loop dirs : (Path.t * Path.t * Meta.Simplified.t) option =
     match dirs with
+    | [] ->
+      Lib_name.Map.find t.builtins root_name
+      |> Option.map ~f:(fun meta ->
+        (t.stdlib_dir, Path.of_string "<internal>", meta))
     | dir :: dirs ->
       let sub_dir = Path.relative dir (Lib_name.to_string root_name) in
       let fn = Path.relative sub_dir "META" in
@@ -312,12 +316,8 @@ let find_and_acknowledge_meta t ~fq_name =
                 Meta.load fn ~name:(Some root_name))
         else
           loop dirs
-    | [] ->
-      Lib_name.Map.find t.builtins root_name
-      |> Option.map ~f:(fun meta ->
-        (t.stdlib_dir, Path.of_string "<internal>", meta))
   in
-  match loop t.path with
+  match loop t.paths with
   | None ->
     Hashtbl.add t.packages root_name (Error Not_found)
   | Some (dir, meta_file, meta) ->
@@ -335,14 +335,11 @@ let find t name =
       Hashtbl.add t.packages name res;
       res
 
-let available t name =
-  match find t name with
-  | Ok    _ -> true
-  | Error _ -> false
+let available t name = Result.is_ok (find t name)
 
 let root_packages t =
   let pkgs =
-    List.concat_map t.path ~f:(fun dir ->
+    List.concat_map t.paths ~f:(fun dir ->
       Sys.readdir (Path.to_string dir)
       |> Array.to_list
       |> List.filter_map ~f:(fun name ->
@@ -367,9 +364,9 @@ let all_packages t =
     | Error _ -> acc)
   |> List.sort ~compare:(fun (a : Package.t) b -> Lib_name.compare a.name b.name)
 
-let create ~stdlib_dir ~path =
+let create ~stdlib_dir ~paths =
   { stdlib_dir
-  ; path
+  ; paths
   ; builtins = Meta.builtins ~stdlib_dir
   ; packages = Hashtbl.create 1024
   }

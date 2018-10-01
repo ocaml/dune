@@ -4,11 +4,11 @@ open! Import
 module Name : sig
   type t
 
-  include Dsexp.Sexpable with type t := t
+  include Dune_lang.Conv with type t := t
 
   val add_suffix : t -> string -> t
 
-  val to_sexp : t Sexp.To_sexp.t
+  val to_sexp : t Sexp.Encoder.t
   val compare : t -> t -> Ordering.t
   val of_string : string -> t
   val to_string : t -> string
@@ -97,7 +97,7 @@ val map_files : t -> f:(Ml_kind.t -> File.t -> File.t) -> t
 (** Set preprocessing flags *)
 val set_pp : t -> (unit, string list) Build.t option -> t
 
-val to_sexp : t Sexp.To_sexp.t
+val to_sexp : t Sexp.Encoder.t
 
 val wrapped_compat : t -> t
 

@@ -13,6 +13,6 @@ module Gen (S : sig val sctx : Super_context.t end) : sig
     -> dir_contents:Dir_contents.t
     -> dir:Path.t
     -> scope:Scope.t
-    -> dir_kind:Dsexp.syntax
+    -> dir_kind:Dune_lang.syntax
     -> Compilation_context.t * Merlin.t
 end

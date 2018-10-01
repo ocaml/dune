@@ -102,7 +102,7 @@ module Sub_system0 = struct
   module type S = sig
     type t
     type sub_system += T of t
-    val dgen : (t -> Syntax.Version.t * Dsexp.t) option
+    val encode : (t -> Syntax.Version.t * Dune_lang.t) option
   end
 
   type 'a s = (module S with type t = 'a)
@@ -328,7 +328,7 @@ module Sub_system = struct
       -> lib
       -> Info.t
       -> t
-    val dgen : (t -> Syntax.Version.t * Dsexp.t) option
+    val encode : (t -> Syntax.Version.t * Dune_lang.t) option
   end
 
   module type S' = sig
@@ -376,7 +376,7 @@ module Sub_system = struct
   let dump_config lib =
     Sub_system_name.Map.filter_map lib.sub_systems ~f:(fun (lazy inst) ->
       let (Sub_system0.Instance.T ((module M), t)) = inst in
-      Option.map ~f:(fun f -> f t) M.dgen)
+      Option.map ~f:(fun f -> f t) M.encode)
 end
 
 (* +-----------------------------------------------------------------+
@@ -457,7 +457,7 @@ let check_private_deps lib ~loc ~allow_private_deps =
     Ok lib
 
 let already_in_table (info : Lib_info.t) name x =
-  let to_sexp = Sexp.To_sexp.(pair Path.to_sexp Lib_name.to_sexp) in
+  let to_sexp = Sexp.Encoder.(pair Path.to_sexp Lib_name.to_sexp) in
   let sexp =
     match x with
     | St_initializing x ->
@@ -796,7 +796,6 @@ and resolve_user_deps db deps ~allow_private_deps ~pps ~stack =
         { (fst first) with stop = (fst last).stop }
       in
       let pps =
-        let pps = (pps : (Loc.t * Dune_file.Pp.t) list :> (Loc.t * Lib_name.t) list) in
         resolve_simple_deps db pps ~allow_private_deps:true ~stack
         >>= fun pps ->
         closure_with_overlap_checks None pps ~stack ~linking:true
@@ -1042,9 +1041,7 @@ module DB = struct
     }
 
   let resolve_pps t pps =
-    resolve_simple_deps t ~allow_private_deps:true
-      (pps : (Loc.t * Dune_file.Pp.t) list :> (Loc.t * Lib_name.t) list)
-      ~stack:Dep_stack.empty
+    resolve_simple_deps t ~allow_private_deps:true pps ~stack:Dep_stack.empty
 
   let rec all ?(recursive=false) t =
     let l =

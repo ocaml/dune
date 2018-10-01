@@ -75,7 +75,7 @@ type t =
   ; jsoo_runtime     : Path.t list
   ; requires         : Deps.t
   ; ppx_runtime_deps : (Loc.t * Lib_name.t) list
-  ; pps              : (Loc.t * Dune_file.Pp.t) list
+  ; pps              : (Loc.t * Lib_name.t) list
   ; optional         : bool
   ; virtual_deps     : (Loc.t * Lib_name.t) list
   ; dune_version : Syntax.Version.t option
@@ -191,7 +191,7 @@ let of_library_stanza ~dir ~ext_lib ~ext_obj (conf : Dune_file.Library.t) =
 
 let of_findlib_package pkg =
   let module P = Findlib.Package in
-  let loc = Loc.in_file (Path.to_string (P.meta_file pkg)) in
+  let loc = P.loc pkg in
   let add_loc x = (loc, x) in
   let sub_systems =
     match P.dune_file pkg with

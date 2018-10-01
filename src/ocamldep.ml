@@ -18,7 +18,7 @@ module Dep_graph = struct
     | None ->
       Exn.code_error "Ocamldep.Dep_graph.deps_of"
         [ "dir", Path.to_sexp t.dir
-        ; "modules", Sexp.To_sexp.(list Module.Name.to_sexp)
+        ; "modules", Sexp.Encoder.(list Module.Name.to_sexp)
                        (Module.Name.Map.keys t.per_module)
         ; "module", Module.Name.to_sexp name
         ]
@@ -216,7 +216,7 @@ let deps_of cctx ~ml_kind unit =
         (let flags =
            Option.value (Module.pp_flags unit) ~default:(Build.return []) in
          flags >>>
-         Build.run ~context (Ok context.ocamldep)
+         Build.run (Ok context.ocamldep) ~dir:context.build_dir
            [ A "-modules"
            ; Dyn (fun flags -> As flags)
            ; Ml_kind.flag ml_kind

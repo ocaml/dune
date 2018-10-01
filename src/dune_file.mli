@@ -3,20 +3,10 @@
 open! Stdune
 open Import
 
-(** Ppx preprocessors  *)
-module Pp : sig
-  type t = private Lib_name.t
-  val of_string : loc:Loc.t option -> string -> t
-  val to_string : t -> string
-
-  val to_lib_name : t -> Lib_name.t
-  val compare : t -> t -> Ordering.t
-end
-
 module Preprocess : sig
   type pps =
     { loc   : Loc.t
-    ; pps   : (Loc.t * Pp.t) list
+    ; pps   : (Loc.t * Lib_name.t) list
     ; flags : string list
     ; staged : bool
     }
@@ -39,7 +29,7 @@ module Preprocess_map : sig
       given module *)
   val find : Module.Name.t -> t -> Preprocess.t
 
-  val pps : t -> (Loc.t * Pp.t) list
+  val pps : t -> (Loc.t * Lib_name.t) list
 end
 
 module Lint : sig
@@ -77,12 +67,12 @@ module Lib_dep : sig
 
   val to_lib_names : t -> Lib_name.t list
   val direct : Loc.t * Lib_name.t -> t
-  val of_pp : Loc.t * Pp.t -> t
+  val of_lib_name : Loc.t * Lib_name.t -> t
 end
 
 module Lib_deps : sig
   type t = Lib_dep.t list
-  val of_pps : Pp.t list -> t
+  val of_pps : Lib_name.t list -> t
   val info : t -> kind:Lib_deps_info.Kind.t -> Lib_deps_info.t
 end
 
@@ -105,9 +95,9 @@ module Bindings : sig
 
   val singleton : 'a -> 'a t
 
-  val dgen : 'a Dsexp.To_sexp.t -> 'a t Dsexp.To_sexp.t
+  val encode : 'a Dune_lang.Encoder.t -> 'a t Dune_lang.Encoder.t
 
-  val to_sexp : 'a Sexp.To_sexp.t -> 'a t Sexp.To_sexp.t
+  val to_sexp : 'a Sexp.Encoder.t -> 'a t Sexp.Encoder.t
 end
 
 module Dep_conf : sig
@@ -123,8 +113,8 @@ module Dep_conf : sig
 
   val remove_locs : t -> t
 
-  include Dsexp.Sexpable with type t := t
-  val to_sexp : t Sexp.To_sexp.t
+  include Dune_lang.Conv with type t := t
+  val to_sexp : t Sexp.Encoder.t
 end
 
 module Buildable : sig
@@ -180,7 +170,7 @@ module Sub_system_info : sig
     val syntax : Syntax.t
 
     (** Parse parameters written by the user in jbuid/dune files *)
-    val parse : t Dsexp.Of_sexp.t
+    val parse : t Dune_lang.Decoder.t
   end
 
   module Register(M : S) : sig end
@@ -194,13 +184,13 @@ module Mode_conf : sig
     | Native
     | Best (** [Native] if available and [Byte] if not *)
 
-  val dparse : t Dsexp.Of_sexp.t
+  val decode : t Dune_lang.Decoder.t
   val compare : t -> t -> Ordering.t
   val pp : Format.formatter -> t -> unit
 
   module Set : sig
     include Set.S with type elt = t
-    val dparse : t Dsexp.Of_sexp.t
+    val decode : t Dune_lang.Decoder.t
 
     (** Both Byte and Native *)
     val default : t
@@ -317,7 +307,7 @@ module Executables : sig
       ; loc : Loc.t
       }
 
-    include Dsexp.Sexpable with type t := t
+    include Dune_lang.Conv with type t := t
 
     val exe           : t
     val object_       : t
@@ -449,6 +439,6 @@ module Stanzas : sig
     :  file:Path.t
     -> kind:File_tree.Dune_file.Kind.t
     -> Dune_project.t
-    -> Dsexp.Ast.t list
+    -> Dune_lang.Ast.t list
     -> t
 end

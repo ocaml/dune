@@ -31,15 +31,15 @@ module Backend = struct
       *)
       let syntax = Stanza.syntax
 
-      open Stanza.Of_sexp
+      open Stanza.Decoder
 
       let parse =
         record
           (let%map loc = loc
-           and runner_libraries = field "runner_libraries" (list (located Lib_name.dparse)) ~default:[]
+           and runner_libraries = field "runner_libraries" (list (located Lib_name.decode)) ~default:[]
            and flags = Ordered_set_lang.Unexpanded.field "flags"
-           and generate_runner = field_o "generate_runner" (located Action.Unexpanded.dparse)
-           and extends = field "extends" (list (located Lib_name.dparse)) ~default:[]
+           and generate_runner = field_o "generate_runner" (located Action.Unexpanded.decode)
+           and extends = field "extends" (list (located Lib_name.decode)) ~default:[]
            in
            { loc
            ; runner_libraries
@@ -79,16 +79,16 @@ module Backend = struct
             | Some t -> Ok t)
       }
 
-    let dgen t =
-      let open Dsexp.To_sexp in
-      let lib x = Lib_name.dgen (Lib.name x) in
-      let f x = Lib_name.dgen (Lib.name x.lib) in
+    let encode t =
+      let open Dune_lang.Encoder in
+      let lib x = Lib_name.encode (Lib.name x) in
+      let f x = Lib_name.encode (Lib.name x.lib) in
       ((1, 0),
        record_fields
          [ field "runner_libraries" (list lib)
              (Result.ok_exn t.runner_libraries)
-         ; field "flags" Ordered_set_lang.Unexpanded.dgen t.info.flags
-         ; field_o "generate_runner" Action.Unexpanded.dgen
+         ; field "flags" Ordered_set_lang.Unexpanded.encode t.info.flags
+         ; field_o "generate_runner" Action.Unexpanded.encode
              (Option.map t.info.generate_runner ~f:snd)
          ; field "extends" (list f) (Result.ok_exn t.extends) ~default:[]
          ])
@@ -127,7 +127,7 @@ include Sub_system.Register_end_point(
 
       let syntax = Stanza.syntax
 
-      open Stanza.Of_sexp
+      open Stanza.Decoder
 
       let parse =
         if_eos
@@ -135,10 +135,10 @@ include Sub_system.Register_end_point(
           ~else_:
             (record
                (let%map loc = loc
-                and deps = field "deps" (list Dep_conf.dparse) ~default:[]
+                and deps = field "deps" (list Dep_conf.decode) ~default:[]
                 and flags = Ordered_set_lang.Unexpanded.field "flags"
-                and backend = field_o "backend" (located Lib_name.dparse)
-                and libraries = field "libraries" (list (located Lib_name.dparse)) ~default:[]
+                and backend = field_o "backend" (located Lib_name.decode)
+                and libraries = field "libraries" (list (located Lib_name.decode)) ~default:[]
                 in
                 { loc
                 ; deps

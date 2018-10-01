@@ -5,7 +5,7 @@ type t
 val of_string_exn : loc:Loc.t option -> string -> t
 val to_string : t -> string
 
-include Dsexp.Sexpable with type t := t
+include Dune_lang.Conv with type t := t
 
 module Local : sig
   type t
@@ -15,11 +15,11 @@ module Local : sig
     | Warn of t
     | Invalid
 
-  val dgen : t Dsexp.To_sexp.t
-  val dparse_loc : (Loc.t * result) Dsexp.Of_sexp.t
+  val encode : t Dune_lang.Encoder.t
+  val decode_loc : (Loc.t * result) Dune_lang.Decoder.t
   val validate : (Loc.t * result) -> wrapped:bool -> t
 
-  val to_sexp : t Sexp.To_sexp.t
+  val to_sexp : t Sexp.Encoder.t
 
   val of_string_exn : string -> t
 
@@ -55,7 +55,7 @@ module Set : sig
   val to_string_list : t -> string list
 end
 
-val to_sexp : t Sexp.To_sexp.t
+val to_sexp : t Sexp.Encoder.t
 
 val nest : t -> t -> t
 

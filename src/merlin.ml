@@ -29,7 +29,7 @@ module Preprocess = struct
           | Gt | Lt as ne -> ne
           | Eq ->
             List.compare pps1 pps2 ~compare:(fun (_, a) (_, b) ->
-              Dune_file.Pp.compare a b)
+              Lib_name.compare a b)
       with
       | Eq -> a
       | _  -> Other

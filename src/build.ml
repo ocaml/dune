@@ -134,7 +134,7 @@ let strings p =
 let read_sexp p syntax =
   contents p
   >>^ fun s ->
-  Dsexp.parse_string s
+  Dune_lang.parse_string s
     ~lexer:(File_tree.Dune_file.Kind.lexer syntax)
     ~fname:(Path.to_string p) ~mode:Single
 
@@ -195,7 +195,7 @@ let prog_and_args ?(dir=Path.root) prog args =
     >>>
     arr fst))
 
-let run ~context ?(dir=context.Context.build_dir) ?stdout_to prog args =
+let run ~dir ?stdout_to prog args =
   let targets = Arg_spec.add_targets args (Option.to_list stdout_to) in
   prog_and_args ~dir prog args
   >>>

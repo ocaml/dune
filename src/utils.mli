@@ -50,9 +50,6 @@ val program_not_found
 (** Raise an error about a library not found *)
 val library_not_found : ?context:string -> ?hint:string -> string -> _
 
-(** [\["-g"\]] if [!Clflags.g] and [\[\]] otherwise *)
-val g : unit -> string list
-
 val install_file
   :  package:Package.Name.t
   -> findlib_toolchain:string option
@@ -81,6 +78,9 @@ module Cached_digest : sig
 
   (** Clear the following digest from the cache *)
   val remove : Path.t -> unit
+
+  (** Same as {!file} but forces the digest to be recomputed *)
+  val refresh : Path.t -> Digest.t
 
   (** Dump/load the cache to/from the disk *)
   val dump : unit -> unit

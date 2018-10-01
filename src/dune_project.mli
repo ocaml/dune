@@ -23,11 +23,11 @@ module Name : sig
   (** Convert to a string that is suitable for human readable messages *)
   val to_string_hum : t -> string
 
-  val to_sexp : t Sexp.To_sexp.t
+  val to_sexp : t Sexp.Encoder.t
 
   (** Convert to/from an encoded string that is suitable to use in filenames *)
-  val encode : t -> string
-  val decode : string -> t
+  val to_encoded_string : t -> string
+  val of_encoded_string : string -> t
 
   module Infix : Comparable.OPS with type t = t
 end
@@ -42,7 +42,7 @@ val packages : t -> Package.t Package.Name.Map.t
 val version : t -> string option
 val name : t -> Name.t
 val root : t -> Path.Local.t
-val stanza_parser : t -> Stanza.t list Dsexp.Of_sexp.t
+val stanza_parser : t -> Stanza.t list Dune_lang.Decoder.t
 
 module Lang : sig
   (** [register id stanzas_parser] register a new language. Users will
@@ -56,6 +56,8 @@ module Lang : sig
 end
 
 module Extension : sig
+  type 'a t
+
   (** [register id parser] registers a new extension. Users will
       enable this extension by writing:
 
@@ -66,7 +68,16 @@ module Extension : sig
   val register
     :  ?experimental:bool
     -> Syntax.t
-    -> Stanza.Parser.t list Dsexp.Of_sexp.t
+    -> ('a * Stanza.Parser.t list) Dune_lang.Decoder.t
+    -> ('a -> Sexp.t)
+    -> 'a t
+
+  (** A simple version where the arguments are not used through
+      [find_extension_args]. *)
+  val register_simple
+    :  ?experimental:bool
+    -> Syntax.t
+    -> Stanza.Parser.t list Dune_lang.Decoder.t
     -> unit
 end
 
@@ -91,5 +102,9 @@ val ensure_project_file_exists : t -> unit
 val append_to_project_file : t -> string -> unit
 
 (** Set the project we are currently parsing dune files for *)
-val set : t -> ('a, 'k) Dsexp.Of_sexp.parser -> ('a, 'k) Dsexp.Of_sexp.parser
-val get_exn : unit -> (t, 'k) Dsexp.Of_sexp.parser
+val set : t -> ('a, 'k) Dune_lang.Decoder.parser -> ('a, 'k) Dune_lang.Decoder.parser
+val get_exn : unit -> (t, 'k) Dune_lang.Decoder.parser
+
+(** Find arguments passed to (using). [None] means that the extension was not
+    written in dune-project. *)
+val find_extension_args : t -> 'a Extension.t -> 'a option

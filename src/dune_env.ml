@@ -2,7 +2,7 @@ open! Stdune
 type stanza = Stanza.t = ..
 
 module Stanza = struct
-  open Stanza.Of_sexp
+  open Stanza.Decoder
 
   let field_oslu name = Ordered_set_lang.Unexpanded.field name
 
@@ -37,7 +37,7 @@ module Stanza = struct
        in
        (pat, configs))
 
-  let dparse =
+  let decode =
     let%map () = Syntax.since Stanza.syntax (1, 0)
     and loc = loc
     and rules = repeat rule

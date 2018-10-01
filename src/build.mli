@@ -100,7 +100,7 @@ val lines_of : Path.t -> ('a, string list) t
 val strings : Path.t -> ('a, string list) t
 
 (** Load an S-expression from a file *)
-val read_sexp : Path.t -> Dsexp.syntax -> (unit, Dsexp.Ast.t) t
+val read_sexp : Path.t -> Dune_lang.syntax -> (unit, Dune_lang.Ast.t) t
 
 (** Evaluates to [true] if the file is present on the file system or is the target of a
     rule. *)
@@ -138,8 +138,7 @@ val of_result_map
 val memoize : string -> (unit, 'a) t -> (unit, 'a) t
 
 val run
-  :  context:Context.t
-  -> ?dir:Path.t (* default: [context.build_dir] *)
+  :  dir:Path.t
   -> ?stdout_to:Path.t
   -> Action.Prog.t
   -> 'a Arg_spec.t list

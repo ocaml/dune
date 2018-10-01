@@ -78,8 +78,8 @@ module Flags = struct
     Io.write_lines path s
 
   let write_sexp path s =
-    let sexp = Dsexp.List (List.map s ~f:(fun s -> Dsexp.Quoted_string s)) in
-    Io.write_file path (Dsexp.to_string sexp ~syntax:Dune)
+    let sexp = Dune_lang.List (List.map s ~f:(fun s -> Dune_lang.Quoted_string s)) in
+    Io.write_file path (Dune_lang.to_string sexp ~syntax:Dune)
 end
 
 module Find_in_path = struct
@@ -366,10 +366,14 @@ module C_define = struct
         pr {|
 const char s%i[] = {
   'B', 'E', 'G', 'I', 'N', '-', %s'-',
+#if %s >= 0
   D9((%s)),
+#else
+  '-', D9((- %s)),
+#endif
   '-', 'E', 'N', 'D'
 };
-|} i c_arr_i name
+|} i c_arr_i name name name
       | String ->
         pr {|const char *s%i = "BEGIN-%i-" %s "-END";|} i i name;
       | Switch ->

@@ -2,4 +2,8 @@
 (alias
  (name   x)
  (deps   data (universe))
- (action (system "echo hello >> data")))
+ (action (system "\| echo hello >> data
+                 "\| # To force the mtime to change:
+                 "\| # https://github.com/ocaml/dune/pull/1359
+                 "\| touch -d tomorrow data
+                 )))

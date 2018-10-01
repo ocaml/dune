@@ -125,7 +125,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
        >>>
        module_deps m ~doc_dir ~dep_graphs
        >>>
-       Build.run ~context ~dir:doc_dir odoc
+       Build.run ~dir:doc_dir odoc
          [ A "compile"
          ; A "-I"; Path doc_dir
          ; iflags
@@ -140,7 +140,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
     SC.add_rule sctx
       (includes
        >>>
-       Build.run ~context ~dir:doc_dir odoc
+       Build.run ~dir:doc_dir odoc
          [ A "compile"
          ; Dyn (fun x -> x)
          ; As ["--pkg"; Package.Name.to_string pkg]
@@ -178,7 +178,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
        Build.progn (
          Build.remove_tree to_remove
          :: Build.mkdir odoc_file.html_dir
-         :: Build.run ~context ~dir:Paths.html_root
+         :: Build.run ~dir:Paths.html_root
               odoc
               [ A "html"
               ; odoc_include_flags requires
@@ -213,7 +213,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
 
   let setup_css_rule () =
     SC.add_rule sctx
-      (Build.run ~context
+      (Build.run
          ~dir:context.build_dir
          odoc
          [ A "css"; A "-o"; Path Paths.html_root

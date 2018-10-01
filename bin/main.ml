@@ -80,13 +80,15 @@ let installed_libraries =
     Common.set_common common ~targets:[];
     let env = Main.setup_env ~capture_outputs:common.capture_outputs in
     Scheduler.go ~log:(Log.create common) ~common
-      (Context.create
-         (Default { loc = Loc.of_pos __POS__
-                  ; targets = [Native]
-                  ; profile = Config.default_build_profile
-                  ; env     = None
-                  })
-         ~env
+      (Context.create ~env
+         { merlin_context = Some "default"
+         ; contexts = [Default { loc = Loc.of_pos __POS__
+                               ; targets = [Native]
+                               ; profile = Config.default_build_profile
+                               ; env     = None
+                               }]
+         ; env = None
+         }
        >>= fun ctxs ->
        let ctx = List.hd ctxs in
        let findlib = ctx.findlib in
@@ -379,11 +381,11 @@ let rules =
        in
        Build_system.build_rules setup.build_system ~request ~recursive >>= fun rules ->
        let sexp_of_action action =
-         Action.for_shell action |> Action.For_shell.dgen
+         Action.for_shell action |> Action.For_shell.encode
        in
        let print oc =
          let ppf = Format.formatter_of_out_channel oc in
-         Dsexp.prepare_formatter ppf;
+         Dune_lang.prepare_formatter ppf;
          Format.pp_open_vbox ppf 0;
          if makefile_syntax then begin
            List.iter rules ~f:(fun (rule : Build_system.Rule.t) ->
@@ -408,20 +410,20 @@ let rules =
            List.iter rules ~f:(fun (rule : Build_system.Rule.t) ->
              let sexp =
                let paths ps =
-                 Dsexp.To_sexp.list Path_dsexp.dgen (Path.Set.to_list ps)
+                 Dune_lang.Encoder.list Path_dune_lang.encode (Path.Set.to_list ps)
                in
-               Dsexp.To_sexp.record (
+               Dune_lang.Encoder.record (
                  List.concat
                    [ [ "deps"   , Deps.to_sexp rule.deps
                      ; "targets", paths rule.targets ]
                    ; (match rule.context with
                       | None -> []
                       | Some c -> ["context",
-                                   Dsexp.atom_or_quoted_string c.name])
+                                   Dune_lang.atom_or_quoted_string c.name])
                    ; [ "action" , sexp_of_action rule.action ]
                    ])
              in
-             Format.fprintf ppf "%a@," Dsexp.pp_split_strings sexp)
+             Format.fprintf ppf "%a@," Dune_lang.pp_split_strings sexp)
          end;
          Format.pp_print_flush ppf ();
          Fiber.return ()
@@ -890,7 +892,7 @@ let printenv =
       Build_system.do_build setup.build_system ~request
       >>| fun l ->
       let pp ppf = Format.fprintf ppf "@[<v1>(@,@[<v>%a@]@]@,)"
-                     (Format.pp_print_list (Dsexp.pp Dune)) in
+                     (Format.pp_print_list (Dune_lang.pp Dune)) in
       match l with
       | [(_, env)] ->
         Format.printf "%a@." pp env

@@ -27,7 +27,7 @@ end
 
 type t
 
-val to_sexp : t Sexp.To_sexp.t
+val to_sexp : t Sexp.Encoder.t
 
 val compare : t -> t -> Ordering.t
 (** a directory is smaller than its descendants *)
@@ -36,7 +36,7 @@ val equal : t -> t -> bool
 
 module Set : sig
   include Set.S with type elt = t
-  val to_sexp : t Sexp.To_sexp.t
+  val to_sexp : t Sexp.Encoder.t
   val of_string_set : String.Set.t -> f:(string -> elt) -> t
 end
 

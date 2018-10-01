@@ -72,12 +72,8 @@ let setup ?(log=Log.no_log)
         | None -> Workspace.default ?x ?profile ()
   in
 
-  Fiber.parallel_map workspace.contexts ~f:(fun ctx_def ->
-    let name = Workspace.Context.name ctx_def in
-    Context.create ?workspace_env:workspace.env
-      ctx_def ~env ~merlin:(workspace.merlin_context = Some name))
+  Context.create ~env workspace
   >>= fun contexts ->
-  let contexts = List.concat contexts in
   List.iter contexts ~f:(fun (ctx : Context.t) ->
     Log.infof log "@[<1>Dune context:@,%a@]@." Sexp.pp
       (Context.to_sexp ctx));

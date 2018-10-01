@@ -8,7 +8,7 @@ type t =
   | Object
   | Shared_object
 
-include Dsexp.Sexpable with type t := t
+include Dune_lang.Conv with type t := t
 
 val all : t list
 

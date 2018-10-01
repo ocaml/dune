@@ -2,7 +2,6 @@ open! Stdune
 open Import
 module Menhir_rules = Menhir
 open Dune_file
-open Build.O
 open! No_io
 
 (* +-----------------------------------------------------------------+
@@ -16,134 +15,6 @@ module Gen(P : Install_rules.Params) = struct
   module Lib_rules = Lib_rules.Gen(P)
 
   let sctx = P.sctx
-  let ctx = SC.context sctx
-
-  let opaque = SC.opaque sctx
-
-  (* +-----------------------------------------------------------------+
-     | Executables stuff                                               |
-     +-----------------------------------------------------------------+ *)
-
-  let executables_rules ~dir ~dir_kind
-        ~dir_contents ~scope ~compile_info
-        (exes : Executables.t) =
-    (* Use "eobjs" rather than "objs" to avoid a potential conflict
-       with a library of the same name *)
-    let obj_dir =
-      Utils.executable_object_directory ~dir (List.hd exes.names |> snd)
-    in
-    let requires = Lib.Compile.requires compile_info in
-    let modules =
-      Dir_contents.modules_of_executables dir_contents
-        ~first_exe:(snd (List.hd exes.names))
-    in
-
-    let preprocessor_deps =
-      SC.Deps.interpret sctx exes.buildable.preprocessor_deps
-        ~scope ~dir
-    in
-    let pp =
-      Preprocessing.make sctx ~dir ~dep_kind:Required
-        ~scope
-        ~preprocess:exes.buildable.preprocess
-        ~preprocessor_deps
-        ~lint:exes.buildable.lint
-        ~lib_name:None
-        ~dir_kind
-    in
-    let modules =
-      Module.Name.Map.map modules ~f:(fun m ->
-        Preprocessing.pp_module_as pp (Module.name m) m)
-    in
-
-    let programs =
-      List.map exes.names ~f:(fun (loc, name) ->
-        let mod_name = Module.Name.of_string name in
-        match Module.Name.Map.find modules mod_name with
-        | Some m ->
-          if not (Module.has_impl m) then
-            Errors.fail loc "Module %a has no implementation."
-              Module.Name.pp mod_name
-          else
-            { Exe.Program.name; main_module_name = mod_name ; loc }
-        | None -> Errors.fail loc "Module %a doesn't exist."
-                    Module.Name.pp mod_name)
-    in
-
-    let linkages =
-      let module L = Executables.Link_mode in
-      let l =
-        let has_native = Option.is_some ctx.ocamlopt in
-        List.filter_map (L.Set.to_list exes.modes) ~f:(fun (mode : L.t) ->
-          match has_native, mode.mode with
-          | false, Native ->
-            None
-          | _ ->
-            Some (Exe.Linkage.of_user_config ctx mode))
-      in
-      (* If bytecode was requested but not native or best version,
-         add custom linking *)
-      if L.Set.mem exes.modes L.byte         &&
-         not (L.Set.mem exes.modes L.native) &&
-         not (L.Set.mem exes.modes L.exe) then
-        Exe.Linkage.custom :: l
-      else
-        l
-    in
-
-    let flags = SC.ocaml_flags sctx ~scope ~dir exes.buildable in
-    let link_deps =
-      SC.Deps.interpret sctx ~scope ~dir exes.link_deps
-    in
-    let link_flags =
-      link_deps >>^ ignore >>>
-      SC.expand_and_eval_set sctx exes.link_flags
-        ~scope
-        ~dir
-        ~standard:(Build.return [])
-    in
-
-    let cctx =
-      Compilation_context.create ()
-        ~super_context:sctx
-        ~scope
-        ~dir
-        ~dir_kind
-        ~obj_dir
-        ~modules
-        ~flags
-        ~requires
-        ~preprocessing:pp
-        ~opaque
-    in
-
-    Exe.build_and_link_many cctx
-      ~programs
-      ~linkages
-      ~link_flags
-      ~js_of_ocaml:exes.buildable.js_of_ocaml;
-
-    (cctx,
-     Merlin.make ()
-       ~requires:(Lib.Compile.requires compile_info)
-       ~flags:(Ocaml_flags.common flags)
-       ~preprocess:(Buildable.single_preprocess exes.buildable)
-       ~objs_dirs:(Path.Set.singleton obj_dir))
-
-  let executables_rules ~dir
-        ~dir_contents ~scope ~dir_kind
-        (exes : Executables.t) : Compilation_context.t * Merlin.t =
-    let compile_info =
-      Lib.DB.resolve_user_written_deps_for_exes (Scope.libs scope)
-        exes.buildable.libraries
-        ~pps:(Dune_file.Preprocess_map.pps exes.buildable.preprocess)
-        ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
-    in
-    SC.Libs.gen_select_rules sctx compile_info ~dir;
-    SC.Libs.with_lib_deps sctx compile_info ~dir
-      ~f:(fun () ->
-        executables_rules exes ~dir
-          ~dir_contents ~scope ~compile_info ~dir_kind)
 
   (* +-----------------------------------------------------------------+
      | Tests                                                           |
@@ -208,8 +79,7 @@ module Gen(P : Install_rules.Params) = struct
         add_alias ~loc ~action:(Diff diff) ~locks:t.locks;
         ignore (Simple_rules.user_rule sctx rule ~extra_bindings ~dir ~scope
                 : Path.t list));
-    executables_rules t.exes ~dir ~scope ~dir_kind
-      ~dir_contents
+    Exe_rules.rules t.exes ~dir ~scope ~dir_kind ~dir_contents
 
   let gen_format_rules sctx ~dir =
     let scope = SC.find_scope_by_dir sctx dir in
@@ -240,7 +110,8 @@ module Gen(P : Install_rules.Params) = struct
               ((lib.buildable.loc, cctx) :: cctxs)
           | Executables exes ->
             let cctx, merlin =
-              executables_rules exes ~dir ~scope
+              Exe_rules.rules exes
+                ~sctx ~dir ~scope
                 ~dir_contents ~dir_kind:kind
             in
             loop stanzas (merlin :: merlins)
@@ -250,7 +121,8 @@ module Gen(P : Install_rules.Params) = struct
             loop stanzas merlins cctxs
           | Tests tests ->
             let cctx, merlin =
-              tests_rules tests ~dir ~scope ~dir_contents ~dir_kind:kind
+              tests_rules tests
+              ~sctx ~dir ~scope ~dir_contents ~dir_kind:kind
             in
             loop stanzas (merlin :: merlins)
               ((tests.exes.buildable.loc, cctx) :: cctxs)

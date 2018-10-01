@@ -148,7 +148,7 @@ let module_names (stanza : Dune_file.Menhir.t) =
   | Some m -> [Module.Name.of_string m]
   | None -> List.map stanza.modules ~f:Module.Name.of_string
 
-let gen_rules cctx stanza ~dir =
+let gen_rules ~dir cctx stanza =
   let module R = Run(struct
     let sctx = Compilation_context.super_context cctx
     let dir = dir

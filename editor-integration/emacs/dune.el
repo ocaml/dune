@@ -89,7 +89,7 @@
      'symbols))
   "Field names allowed in dune files.")
 
-(defvar dune-builtin-regex
+(defconst dune-builtin-regex
   (eval-when-compile
     (concat (regexp-opt
              '(;; Linking modes
@@ -113,6 +113,10 @@
             "\\(?:\\_>\\|[[:space:]]\\)"))
   "Builtin sub-fields in dune")
 
+(defconst dune-builtin-labels-regex
+  (regexp-opt '("standard" "include") 'words)
+  "Builtin :labels in dune")
+
 (defvar dune-var-kind-regex
   (eval-when-compile
     (regexp-opt
@@ -135,7 +139,10 @@
      (2 dune-separator-face)
      (3 dune-separator-face))
     ("%{\\([^{}]*\\)}" 1 font-lock-variable-name-face keep)
-    ("\\(:[a-zA-Z]+\\)\\b" 1 font-lock-builtin-face)
+    (,(concat "\\(:" dune-builtin-labels-regex "\\)[[:space:]()\n]")
+     1 font-lock-builtin-face)
+    ;; Named dependencies:
+    ("(\\(:[a-zA-Z]+\\)[[:space:]]+" 1 font-lock-variable-name-face)
     ("\\(true\\|false\\)" 1 font-lock-constant-face)
     ("(\\(select\\)[[:space:]]+[^[:space:]]+[[:space:]]+\\(from\\)\\>"
      (1 font-lock-constant-face)

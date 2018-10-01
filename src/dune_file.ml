@@ -1002,7 +1002,7 @@ module Library = struct
        and wrapped = Wrapped.field
        and optional = field_b "optional"
        and self_build_stubs_archive =
-         field "self_build_stubs_archive" (option string) ~default:None
+         located (field "self_build_stubs_archive" (option string) ~default:None)
        and no_dynlink = field_b "no_dynlink"
        and no_keep_locs = field_b "no_keep_locs"
        and sub_systems =
@@ -1069,6 +1069,23 @@ module Library = struct
             It is inherited from the virtual library."
        | _, _, _ -> ()
        end;
+       let self_build_stubs_archive =
+         let loc, self_build_stubs_archive = self_build_stubs_archive in
+         let err =
+           match c_names, cxx_names, self_build_stubs_archive with
+           | _, _, None -> None
+           | (_ :: _), _, Some _ -> Some ("c_names", loc)
+           | _, (_ :: _), Some _ -> Some ("cxx_names", loc)
+           | [], [], _ -> None
+         in
+         match err with
+         | None ->
+           self_build_stubs_archive
+         | Some (name, loc) ->
+           of_sexp_errorf loc
+             "A library cannot use (self_build_stubs_archive ...) \
+              and (%s ...) simultaneously." name
+       in
        { name
        ; public
        ; synopsis

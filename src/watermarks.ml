@@ -207,10 +207,13 @@ let get_name ~files ?name () =
             if prefix = "" then
               None
             else
-              match String.drop_suffix prefix ~suffix:"-" with
-              | None ->
+              match String.drop_suffix prefix ~suffix:"-"
+                  , String.drop_suffix prefix ~suffix:"_" with
+              | Some _, Some _ -> assert false
+              | None, None ->
                 Option.some_if (List.mem ~set:package_names prefix) prefix
-              | Some _ as p -> p
+              | (Some _ as p), None
+              | None, (Some _ as p) -> p
           in
           match name with
           | Some name -> name

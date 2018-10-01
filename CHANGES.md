@@ -12,6 +12,9 @@ next
 
 - Pass `--set-switch` to opam (#1341, fix #1337, @diml)
 
+- Fix bad interaction between multi-directory libraries the `menhir`
+  stanza (#1373, fix #1372, @diml)
+
 1.3.0 (23/09/2018)
 ------------------
 

@@ -215,7 +215,7 @@ module Gen(P : Install_rules.Params) = struct
      | Stanza                                                          |
      +-----------------------------------------------------------------+ *)
 
-  let gen_rules dir_contents
+  let gen_rules dir_contents cctxs
         { SC.Dir_with_dune. src_dir; ctx_dir; stanzas; scope; kind } =
     let merlins, cctxs =
       let rec loop stanzas merlins cctxs =
@@ -260,7 +260,7 @@ module Gen(P : Install_rules.Params) = struct
           | _ ->
             loop stanzas merlins cctxs
       in
-      loop stanzas [] []
+      loop stanzas [] cctxs
     in
     Option.iter (Merlin.merge_all merlins) ~f:(fun m ->
       let more_src_dirs =
@@ -298,14 +298,15 @@ module Gen(P : Install_rules.Params) = struct
                       produced by this stanza are part of."
                })
         | Some cctx ->
-          Menhir_rules.gen_rules cctx m
+          Menhir_rules.gen_rules cctx m ~dir:ctx_dir
         end
-      | _ -> ())
+      | _ -> ());
+    cctxs
 
-  let gen_rules dir_contents ~dir =
+  let gen_rules dir_contents cctxs ~dir : (Loc.t * Compilation_context.t) list =
     match SC.stanzas_in sctx ~dir with
-    | None -> ()
-    | Some d -> gen_rules dir_contents d
+    | None -> []
+    | Some d -> gen_rules dir_contents cctxs d
 
   let gen_rules ~dir components : Build_system.extra_sub_directories_to_keep =
     (match components with
@@ -327,13 +328,14 @@ module Gen(P : Install_rules.Params) = struct
          let dir_contents = Dir_contents.get sctx ~dir in
          match Dir_contents.kind dir_contents with
          | Standalone ->
-           gen_rules dir_contents ~dir
+           ignore (gen_rules dir_contents [] ~dir : _ list)
          | Group_part root ->
            SC.load_dir sctx ~dir:(Dir_contents.dir root)
          | Group_root (lazy subs) ->
-           gen_rules dir_contents ~dir;
+           let cctxs = gen_rules dir_contents [] ~dir in
            List.iter subs ~f:(fun dc ->
-             gen_rules dir_contents ~dir:(Dir_contents.dir dc)));
+             ignore (gen_rules dir_contents cctxs ~dir:(Dir_contents.dir dc)
+                     : _ list)));
     match components with
     | [] -> These (String.Set.of_list [".js"; "_doc"; ".ppx"])
     | [(".js"|"_doc"|".ppx")] -> All

@@ -281,7 +281,7 @@ module Run (P : PARAMS) : sig end = struct
             | Some _ | None -> acc
             end)
     in
-    if ocaml_type_inference_disabled then
+    if ocaml_type_inference_disabled || not stanza.infer then
       process1 base stanza ~cmly
     else
       process3 base stanza ~cmly

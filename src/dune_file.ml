@@ -1731,25 +1731,31 @@ module Menhir = struct
     ; modules    : string list
     ; mode       : Rule.Mode.t
     ; loc        :  Loc.t
+    ; infer      : bool
     }
 
   let syntax =
     Syntax.create
       ~name:"menhir"
       ~desc:"the menhir extension"
-      [ (1, 0) ]
+      [ 1, 0
+      ; 2, 0
+      ]
 
   let decode =
     record
       (let%map merge_into = field_o "merge_into" string
        and flags = field_oslu "flags"
        and modules = field "modules" (list string)
-       and mode = Rule.Mode.field in
+       and mode = Rule.Mode.field
+       and infer = field_b "infer" ~check:(Syntax.since syntax (2, 0))
+       in
        { merge_into
        ; flags
        ; modules
        ; mode
        ; loc = Loc.none
+       ; infer
        })
 
   type Stanza.t += T of t
@@ -1771,6 +1777,7 @@ module Menhir = struct
        ; modules
        ; mode
        ; loc = Loc.none
+       ; infer = false
        })
 end
 

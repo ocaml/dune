@@ -390,6 +390,7 @@ module Menhir : sig
     ; modules    : string list
     ; mode       : Rule.Mode.t
     ; loc        : Loc.t
+    ; infer      : bool
     }
 
   type Stanza.t += T of t

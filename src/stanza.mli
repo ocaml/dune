@@ -52,6 +52,11 @@ module Decoder : sig
     -> string
     -> bool fields_parser
 
+  val field_o_b
+    :  ?check:(unit t)
+    -> string
+    -> bool option fields_parser
+
   (** Nop in dune files and [enter t] in jbuild files. Additionally it
       displays a nice error messages when parentheses are used in dune
       files. *)

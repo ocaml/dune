@@ -11,7 +11,7 @@ Test that using menhir automatically update the dune-project file
 
   $ echo '(library (name x)) (menhir (modules x))' >> src/dune
   $ dune build
-  Info: appending this line to dune-project: (using menhir 1.0)
+  Info: appending this line to dune-project: (using menhir 2.0)
   $ cat dune-project
   (lang dune 1.3)
-  (using menhir 1.0)
+  (using menhir 2.0)

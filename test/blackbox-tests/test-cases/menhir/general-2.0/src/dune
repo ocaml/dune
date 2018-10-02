@@ -2,11 +2,11 @@
 
 (menhir
  (modules test_menhir1)
- (flags (:standard --unused-tokens)))
+ (flags :standard --unused-tokens))
 
 (menhir
  (merge_into test_base)
- (flags (--explain))
+ (flags --explain)
  (modules tokens parser))
 
 (executables

@@ -211,6 +211,14 @@ module Gen(P : Install_rules.Params) = struct
     executables_rules t.exes ~dir ~scope ~dir_kind
       ~dir_contents
 
+  let gen_format_rules sctx ~dir =
+    let scope = SC.find_scope_by_dir sctx dir in
+    let project = Scope.project scope in
+    match Dune_project.find_extension_args project Auto_format.key with
+    | None -> ()
+    | Some config ->
+      Format_rules.gen_rules sctx config ~dir
+
   (* +-----------------------------------------------------------------+
      | Stanza                                                          |
      +-----------------------------------------------------------------+ *)
@@ -304,6 +312,7 @@ module Gen(P : Install_rules.Params) = struct
     cctxs
 
   let gen_rules dir_contents cctxs ~dir : (Loc.t * Compilation_context.t) list =
+    gen_format_rules sctx ~dir;
     match SC.stanzas_in sctx ~dir with
     | None -> []
     | Some d -> gen_rules dir_contents cctxs d

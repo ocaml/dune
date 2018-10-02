@@ -15,6 +15,8 @@ next
 - Fix bad interaction between multi-directory libraries the `menhir`
   stanza (#1373, fix #1372, @diml)
 
+- Integration with automatic formatters (#1252, fix #1201, @emillon)
+
 1.3.0 (23/09/2018)
 ------------------
 

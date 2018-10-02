@@ -1,16 +1,10 @@
 (** Command line flags *)
 
-(** Compilation flags for OCaml files *)
-(*val ocaml_comp_flags : string list ref*)
-
 (** Print dependency path in case of error *)
 val debug_dep_path : bool ref
 
 (** Debug the findlib implementation *)
 val debug_findlib : bool ref
-
-(** Compiler warnings *)
-val warnings : string ref
 
 (** The command line for "Hint: try: dune external-lib-deps ..." *)
 val external_lib_deps_hint : string list ref

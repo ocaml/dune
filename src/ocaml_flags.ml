@@ -22,16 +22,19 @@ let dev_mode_warnings =
        ; 60
        ])
 
+let default_warnings =
+  "-40"
+
 let default_flags ~profile =
   if profile = "dev" then
-    [ "-w"; dev_mode_warnings ^ !Clflags.warnings
+    [ "-w"; dev_mode_warnings ^ default_warnings
     ; "-strict-sequence"
     ; "-strict-formats"
     ; "-short-paths"
     ; "-keep-locs"
     ]
   else
-    [ "-w"; !Clflags.warnings ]
+    [ "-w"; default_warnings ]
 
 type t =
   { common     : (unit, string list) Build.t

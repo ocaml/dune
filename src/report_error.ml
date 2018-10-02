@@ -3,6 +3,14 @@ open Import
 
 let map_fname = ref (fun x -> x)
 
+let map_pos (pos : Lexing.position) =
+  { pos with pos_fname = !map_fname pos.pos_fname }
+
+let map_loc (loc : Loc.t) : Loc.t =
+  { start = map_pos loc.start
+  ; stop  = map_pos loc.stop
+  }
+
 type printer =
   { loc       : Loc.t option
   ; pp        : Format.formatter -> unit
@@ -11,6 +19,7 @@ type printer =
   }
 
 let make_printer ?(backtrace=false) ?hint ?loc pp =
+  let loc = Option.map ~f:map_loc loc in
   { loc
   ; pp
   ; hint
@@ -25,11 +34,6 @@ let set_hint p ~hint =
 
 let builtin_printer = function
   | Dune_lang.Decoder.Decoder (loc, msg, hint') ->
-    let loc =
-      { loc with
-        start = { loc.start with pos_fname = !map_fname loc.start.pos_fname }
-      }
-    in
     let pp ppf = Format.fprintf ppf "@{<error>Error@}: %s%s\n" msg
                    (match hint' with
                     | None -> ""
@@ -38,24 +42,11 @@ let builtin_printer = function
     in
     Some (make_printer ~loc pp)
   | Exn.Loc_error (loc, msg) ->
-    let loc =
-      { loc with
-        start = { loc.start with pos_fname = !map_fname loc.start.pos_fname }
-      }
-    in
     let pp ppf = Format.fprintf ppf "@{<error>Error@}: %s\n" msg in
     Some (make_printer ~loc pp)
   | Dune_lang.Parse_error e ->
     let loc = Dune_lang.Parse_error.loc     e in
     let msg = Dune_lang.Parse_error.message e in
-    let map_pos (pos : Lexing.position) =
-      { pos with pos_fname = !map_fname pos.pos_fname }
-    in
-    let loc : Loc.t =
-      { start = map_pos loc.start
-      ; stop  = map_pos loc.stop
-      }
-    in
     let pp ppf = Format.fprintf ppf "@{<error>Error@}: %s\n" msg in
     Some (make_printer ~loc pp)
   | Exn.Fatal_error msg ->

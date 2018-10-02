@@ -36,6 +36,9 @@ next
 
 - Exit gracefully when a signal is received (#1366, @diml)
 
+- Load all defined libraries recursively into utop (#1384, fix #1344,
+  @rgrinberg)
+
 1.3.0 (23/09/2018)
 ------------------
 

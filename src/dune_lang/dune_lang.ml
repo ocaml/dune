@@ -791,6 +791,13 @@ module Decoder = struct
        | true -> return true
        | _ -> bool)
 
+  let field_o_b ?check ?on_dup name =
+    field_o name ?on_dup
+      (Option.value check ~default:(return ()) >>= fun () ->
+       eos >>= function
+       | true -> return true
+       | _ -> bool)
+
   let multi_field name t (Fields (_, _, uc)) state =
     let rec loop acc field =
       match field with

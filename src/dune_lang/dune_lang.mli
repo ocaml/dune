@@ -381,6 +381,12 @@ module Decoder : sig
     -> string
     -> bool fields_parser
 
+  val field_o_b
+    :  ?check:(unit t)
+    -> ?on_dup:(Univ_map.t -> string -> Ast.t list -> unit)
+    -> string
+    -> bool option fields_parser
+
   (** A field that can appear multiple times *)
   val multi_field
     :  string

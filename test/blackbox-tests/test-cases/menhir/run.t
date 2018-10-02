@@ -5,14 +5,8 @@
       ocamllex src/lexer2.ml
       ocamldep src/.test.eobjs/lexer2.ml.d
       ocamldep src/.test.eobjs/test.ml.d
-        menhir src/test_base__mock.ml.mock
-      ocamldep src/.test.eobjs/test_base__mock.ml.mock.d
-        ocamlc src/test_base__mock.mli.inferred
         menhir src/test_base.{ml,mli}
       ocamldep src/.test.eobjs/test_base.ml.d
-        menhir src/test_menhir1__mock.ml.mock
-      ocamldep src/.test.eobjs/test_menhir1__mock.ml.mock.d
-        ocamlc src/test_menhir1__mock.mli.inferred
         menhir src/test_menhir1.{ml,mli}
       ocamldep src/.test.eobjs/test_menhir1.ml.d
       ocamldep src/.test.eobjs/test_base.mli.d
@@ -34,9 +28,6 @@
       ocamllex lexer1.ml
       ocamldep .test.eobjs/lexer1.ml.d
       ocamldep .test.eobjs/test.ml.d
-        menhir test_menhir1__mock.ml.mock
-      ocamldep .test.eobjs/test_menhir1__mock.ml.mock.d
-        ocamlc test_menhir1__mock.mli.inferred
         menhir test_menhir1.{cmly,ml,mli}
       ocamldep .test.eobjs/test_menhir1.ml.d
       ocamldep .test.eobjs/test_menhir1.mli.d

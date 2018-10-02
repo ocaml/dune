@@ -1748,7 +1748,13 @@ module Menhir = struct
        and flags = field_oslu "flags"
        and modules = field "modules" (list string)
        and mode = Rule.Mode.field
-       and infer = field_b "infer" ~check:(Syntax.since syntax (2, 0))
+       and infer = field_o_b "infer" ~check:(Syntax.since syntax (2, 0))
+       and menhir_syntax = Syntax.get_exn syntax
+       in
+       let infer =
+         match infer with
+         | Some infer -> infer
+         | None -> menhir_syntax >= (2, 0)
        in
        { merge_into
        ; flags

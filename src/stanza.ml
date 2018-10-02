@@ -98,4 +98,5 @@ module Decoder = struct
   let field name ?default t = field name ?default t ~on_dup
   let field_o name t = field_o name t ~on_dup
   let field_b ?check name = field_b name ?check ~on_dup
+  let field_o_b ?check name = field_o_b name ?check ~on_dup
 end

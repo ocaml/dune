@@ -26,6 +26,9 @@ next
 
 - Support for new menhir rules (#863, fix #305, @fpottier, @rgrinberg)
 
+- Do not remove flags when compiling compatibility modules for wrapped mode
+  (#1382, fix #1364, @rgrinberg)
+
 1.3.0 (23/09/2018)
 ------------------
 

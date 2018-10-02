@@ -185,6 +185,19 @@ let longest_map l ~f =
 
 let longest l = longest_map l ~f:(fun x -> x)
 
+let longest_prefix = function
+  | [] -> ""
+  | [x] -> x
+  | x :: xs ->
+    let rec loop len i =
+      if i < len && List.for_all xs ~f:(fun s -> s.[i] = x.[i]) then
+        loop len (i + 1)
+      else
+        i
+    in
+    let len =
+      List.fold_left ~init:(length x) ~f:(fun acc x -> min acc (length x)) xs in
+    sub ~pos:0 x ~len:(loop len 0)
 
 let exists =
   let rec loop s i len f =

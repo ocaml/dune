@@ -21,6 +21,9 @@ next
   `(c_names ...)` or `(cxx_names ...)` simultaneously.
   (#1375, fix #1306, @nojb)
 
+- Improve name detection for packages when the prefix isn't an actual package
+  (#1361, fix #1360, @rgrinberg)
+
 1.3.0 (23/09/2018)
 ------------------
 

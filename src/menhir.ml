@@ -35,6 +35,11 @@ module type PARAMS = sig
 
   val cctx: Compilation_context.t
 
+  (* [dir] is the directory inside [_build/<context>/...] where the build
+     happens. If the [(menhir ...)] stanza appears in [src/jbuild], then [dir]
+     is of the form [_build/<context>/src], e.g., [_build/default/src]. *)
+  val dir : Path.t
+
   (* [stanza] is the [(menhir ...)] stanza, as found in the [jbuild] file. *)
 
   val stanza: stanza
@@ -54,13 +59,6 @@ module Run (P : PARAMS) : sig end = struct
 
   let sctx =
     Compilation_context.super_context cctx
-
-  (* [dir] is the directory inside [_build/<context>/...] where the build
-     happens. If the [(menhir ...)] stanza appears in [src/jbuild], then [dir]
-     is of the form [_build/<context>/src], e.g., [_build/default/src]. *)
-
-  let dir =
-    Compilation_context.dir cctx
 
   (* ------------------------------------------------------------------------ *)
 
@@ -315,9 +313,10 @@ let targets (stanza : Dune_file.Menhir.t) : string list =
 let module_names (stanza : Dune_file.Menhir.t) : Module.Name.t list =
   List.map (modules stanza) ~f:Module.Name.of_string
 
-let gen_rules cctx stanza =
+let gen_rules ~dir cctx stanza =
   let module R = Run (struct
     let cctx = cctx
+    let dir = dir
     let stanza = stanza
   end) in
   ()

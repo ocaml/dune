@@ -784,19 +784,15 @@ module Decoder = struct
     | None ->
       (None, add_known name state)
 
-  let field_b ?check ?on_dup name =
-    field name ~default:false ?on_dup
+  let field_b_gen field_gen ?check ?on_dup name =
+    field_gen name ?on_dup
       (Option.value check ~default:(return ()) >>= fun () ->
        eos >>= function
        | true -> return true
        | _ -> bool)
 
-  let field_o_b ?check ?on_dup name =
-    field_o name ?on_dup
-      (Option.value check ~default:(return ()) >>= fun () ->
-       eos >>= function
-       | true -> return true
-       | _ -> bool)
+  let field_b = field_b_gen (field ~default:false)
+  let field_o_b = field_b_gen field_o
 
   let multi_field name t (Fields (_, _, uc)) state =
     let rec loop acc field =

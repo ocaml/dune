@@ -24,16 +24,6 @@ module Installable = struct
     }
 end
 
-module Env_node = struct
-  type t =
-    { dir                 : Path.t
-    ; inherit_from        : t Lazy.t option
-    ; scope               : Scope.t
-    ; config              : Dune_env.Stanza.t
-    ; mutable ocaml_flags : Ocaml_flags.t option
-    }
-end
-
 type t =
   { context                          : Context.t
   ; build_system                     : Build_system.t
@@ -419,8 +409,6 @@ module Env : sig
   val ocaml_flags : t -> dir:Path.t -> Ocaml_flags.t
   val get : t -> dir:Path.t -> Env_node.t
 end = struct
-  open Env_node
-
   let rec get t ~dir =
     match Hashtbl.find t.env dir with
     | Some node -> node
@@ -441,36 +429,10 @@ end = struct
         [ "dir", Path.to_sexp dir ]
 
   let ocaml_flags t ~dir =
-    let rec loop t node =
-      match node.ocaml_flags with
-      | Some x -> x
-      | None ->
-        let default =
-          match node.inherit_from with
-          | None -> Ocaml_flags.default ~profile:(profile t)
-          | Some (lazy node) -> loop t node
-        in
-        let flags =
-          match List.find_map node.config.rules ~f:(fun (pat, cfg) ->
-            match (pat : Dune_env.Stanza.pattern), profile t with
-            | Any, _ -> Some cfg
-            | Profile a, b -> Option.some_if (a = b) cfg)
-          with
-          | None -> default
-          | Some cfg ->
-            Ocaml_flags.make
-              ~flags:cfg.flags
-              ~ocamlc_flags:cfg.ocamlc_flags
-              ~ocamlopt_flags:cfg.ocamlopt_flags
-              ~default
-              ~eval:(expand_and_eval_set t ~scope:node.scope ~dir:node.dir
-                       ?bindings:None)
-        in
-        node.ocaml_flags <- Some flags;
-        flags
-    in
-    loop t (get t ~dir)
-
+    Env_node.ocaml_flags
+      (get t ~dir)
+      ~profile:(profile t)
+      ~eval:(expand_and_eval_set t ?bindings:None)
 end
 
 
@@ -622,14 +584,10 @@ let create
     }
   in
   let context_env_node = lazy (
-    let make ~inherit_from ~config =
-      { Env_node.
-        dir = context.build_dir
-      ; scope = Scope.DB.find_by_dir scopes context.build_dir
-      ; ocaml_flags = None
-      ; inherit_from
-      ; config
-      }
+    let make =
+      Env_node.make
+        ~dir:context.build_dir
+        ~scope:(Scope.DB.find_by_dir scopes context.build_dir)
     in
     match context.env_nodes with
     | { context = None; workspace = None } ->
@@ -653,12 +611,11 @@ let create
               lazy (Env.get t ~dir:(Path.parent_exn ctx_dir))
           in
           Hashtbl.add t.env ctx_dir
-            { dir          = ctx_dir
-            ; inherit_from = Some inherit_from
-            ; scope        = scope
-            ; config       = config
-            ; ocaml_flags  = None
-            }
+            (Env_node.make
+             ~dir:ctx_dir
+             ~inherit_from:(Some inherit_from)
+             ~scope
+             ~config)
         | _ -> ()));
   if not (Hashtbl.mem t.env context.build_dir) then
     Hashtbl.add t.env context.build_dir (Lazy.force context_env_node);

@@ -5,7 +5,8 @@ Dealing with foreign libraries
 The OCaml programming language allows to interface libraries written
 in foreign languages such as C. This section explains how to do this
 with Dune. Note that it does not cover how to write the C stubs
-themselves, this is covered by the OCaml manual: LINK TO MANUAL.
+themselves, this is covered by the OCaml manual:
+https://caml.inria.fr/pub/docs/manual-ocaml/intfc.html.
 
 More precisely, this section covers:
 - how to add C/C++ stubs to an OCaml library
@@ -22,8 +23,8 @@ build.
 Adding C/C++ stubs to an OCaml library
 ======================================
 
-To add C stubs to an OCaml library, simply list the C files with the
-``.c`` extension via the ``c_names`` field of the :ref:`library`
+To add C stubs to an OCaml library, simply list the C files without
+the ``.c`` extension via the ``c_names`` field of the :ref:`library`
 stanza. For instance:
 
 .. code:: scheme

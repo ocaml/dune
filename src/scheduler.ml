@@ -448,14 +448,28 @@ end = struct
 
   external sys_exit : int -> _ = "caml_sys_exit"
 
-  let run () =
-    let last_exit_signals = Queue.create () in
-    while true do
-      let signal =
+  let signal_waiter () =
+    if Sys.win32 then begin
+      let r, w = Unix.pipe () in
+      let buf = Bytes.create 1 in
+      Sys.set_signal Sys.sigint
+        (Signal_handle (fun _ -> assert (Unix.write w buf 0 1 = 1)));
+      fun () ->
+        assert (Unix.read r buf 0 1 = 1);
+        Signal.Int
+    end else begin
+      ignore (Unix.sigprocmask SIG_BLOCK signos : int list);
+      fun () ->
         Thread.wait_signal signos
         |> Signal.of_int
         |> Option.value_exn
-      in
+    end
+
+  let run () =
+    let last_exit_signals = Queue.create () in
+    let wait_signal = signal_waiter () in
+    while true do
+      let signal = wait_signal () in
       Event.send_signal signal;
       match signal with
       | Int | Quit | Term ->
@@ -472,11 +486,7 @@ end = struct
         if n = 3 then sys_exit 1
     done
 
-  let init = lazy (
-    if not Sys.win32 then begin
-      ignore (Unix.sigprocmask SIG_BLOCK signos : int list);
-      ignore (Thread.create run () : Thread.t)
-    end)
+  let init = lazy (ignore (Thread.create run () : Thread.t))
 
   let init () = Lazy.force init
 end

@@ -28,52 +28,55 @@ module Gen(P : Install_rules.Params) = struct
      | Stanza                                                          |
      +-----------------------------------------------------------------+ *)
 
+  let cons_maybe hd_o tl =
+    match hd_o with
+    | Some hd -> hd::tl
+    | None -> tl
+
   let gen_rules dir_contents cctxs
-        { SC.Dir_with_dune. src_dir; ctx_dir; stanzas; scope; kind } =
+        { SC.Dir_with_dune. src_dir; ctx_dir; stanzas; scope; kind = dir_kind } =
+    let for_stanza ~dir = function
+      | Library lib ->
+        let cctx, merlin = Lib_rules.rules lib ~dir ~scope ~dir_contents ~dir_kind in
+        (Some merlin, Some (lib.buildable.loc, cctx))
+      | Executables exes ->
+        let cctx, merlin =
+          Exe_rules.rules exes
+            ~sctx ~dir ~scope
+            ~dir_contents ~dir_kind
+        in
+        (Some merlin, Some (exes.buildable.loc, cctx))
+      | Alias alias ->
+        Simple_rules.alias sctx alias ~dir ~scope;
+        (None, None)
+      | Tests tests ->
+        let cctx, merlin =
+          Test_rules.rules tests ~sctx ~dir ~scope ~dir_contents ~dir_kind
+        in
+        (Some merlin, Some (tests.exes.buildable.loc, cctx))
+      | Copy_files { glob; _ } ->
+        let source_dirs =
+          let loc = String_with_vars.loc glob in
+          let src_glob = SC.expand_vars_string sctx ~dir glob ~scope in
+          Path.relative src_dir src_glob ~error_loc:loc
+          |> Path.parent_exn
+          |> Path.Set.singleton
+        in
+        (Some (Merlin.make ~source_dirs ()), None)
+      | _ ->
+        (None, None)
+    in
     let merlins, cctxs =
       let rec loop stanzas merlins cctxs =
         let dir = ctx_dir in
         match stanzas with
         | [] -> (List.rev merlins, List.rev cctxs)
         | stanza :: stanzas ->
-          match (stanza : Stanza.t) with
-          | Library lib ->
-            let cctx, merlin =
-              Lib_rules.rules lib ~dir ~scope ~dir_contents ~dir_kind:kind
-            in
-            loop stanzas (merlin :: merlins)
-              ((lib.buildable.loc, cctx) :: cctxs)
-          | Executables exes ->
-            let cctx, merlin =
-              Exe_rules.rules exes
-                ~sctx ~dir ~scope
-                ~dir_contents ~dir_kind:kind
-            in
-            loop stanzas (merlin :: merlins)
-              ((exes.buildable.loc, cctx) :: cctxs)
-          | Alias alias ->
-            Simple_rules.alias sctx alias ~dir ~scope;
-            loop stanzas merlins cctxs
-          | Tests tests ->
-            let cctx, merlin =
-              Test_rules.rules tests
-              ~sctx ~dir ~scope ~dir_contents ~dir_kind:kind
-            in
-            loop stanzas (merlin :: merlins)
-              ((tests.exes.buildable.loc, cctx) :: cctxs)
-          | Copy_files { glob; _ } ->
-            let src_dir =
-              let loc = String_with_vars.loc glob in
-              let src_glob = SC.expand_vars_string sctx ~dir glob ~scope in
-              Path.parent_exn (Path.relative src_dir src_glob ~error_loc:loc)
-            in
-            let merlin =
-              Merlin.make ()
-                ~source_dirs:(Path.Set.singleton src_dir)
-            in
-            loop stanzas (merlin :: merlins) cctxs
-          | _ ->
-            loop stanzas merlins cctxs
+          let merlin_opt, cctx_opt = for_stanza ~dir stanza in
+          loop
+            stanzas
+            (cons_maybe merlin_opt merlins)
+            (cons_maybe cctx_opt cctxs)
       in
       loop stanzas [] cctxs
     in
@@ -82,7 +85,7 @@ module Gen(P : Install_rules.Params) = struct
         List.map (Dir_contents.dirs dir_contents) ~f:(fun dc ->
           Path.drop_optional_build_context (Dir_contents.dir dc))
       in
-      Merlin.add_rules sctx ~dir:ctx_dir ~more_src_dirs ~scope ~dir_kind:kind
+      Merlin.add_rules sctx ~dir:ctx_dir ~more_src_dirs ~scope ~dir_kind
         (Merlin.add_source_dir m src_dir));
     Utop.setup sctx ~dir:ctx_dir ~scope ~libs:(
       List.filter_map stanzas ~f:(function

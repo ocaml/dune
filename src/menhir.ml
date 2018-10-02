@@ -109,7 +109,7 @@ module Run (P : PARAMS) : sig end = struct
 
      [Deps]           is for command line arguments that are dependencies.
      [As]             is for command line arguments
-                      that are neither dependencies nor targets.
+     that are neither dependencies nor targets.
      [Hidden_targets] is for targets that are *not* command line arguments.  *)
 
   type args =
@@ -145,11 +145,11 @@ module Run (P : PARAMS) : sig end = struct
   let stanzas : stanza list =
     match stanza.merge_into with
     | None ->
-        List.map ~f:(fun m ->
-          { stanza with modules = [ m ]; merge_into = Some m }
-        ) stanza.modules
+      List.map ~f:(fun m ->
+        { stanza with modules = [ m ]; merge_into = Some m }
+      ) stanza.modules
     | Some _ ->
-        [ stanza ]
+      [ stanza ]
 
   (* ------------------------------------------------------------------------ *)
 
@@ -302,9 +302,9 @@ end
 let modules (stanza : Dune_file.Menhir.t) : string list =
   match stanza.merge_into with
   | Some m ->
-      [m]
+    [m]
   | None ->
-      stanza.modules
+    stanza.modules
 
 let targets (stanza : Dune_file.Menhir.t) : string list =
   let f m = [m ^ ".ml"; m ^ ".mli"] in
@@ -314,9 +314,10 @@ let module_names (stanza : Dune_file.Menhir.t) : Module.Name.t list =
   List.map (modules stanza) ~f:Module.Name.of_string
 
 let gen_rules ~dir cctx stanza =
-  let module R = Run (struct
-    let cctx = cctx
-    let dir = dir
-    let stanza = stanza
-  end) in
+  let module R =
+    Run (struct
+      let cctx = cctx
+      let dir = dir
+      let stanza = stanza
+    end) in
   ()

@@ -24,6 +24,8 @@ next
 - Improve name detection for packages when the prefix isn't an actual package
   (#1361, fix #1360, @rgrinberg)
 
+- Support for new menhir rules (#863, fix #305, @fpottier, @rgrinberg)
+
 1.3.0 (23/09/2018)
 ------------------
 

@@ -48,44 +48,60 @@ let utop_exe dir =
      generating a utop for a library with C stubs. *)
   |> Path.extend_basename ~suffix:(Mode.exe_ext Mode.Native)
 
-let setup sctx ~dir ~(libs : Library.t list) ~scope =
-  match libs with
-  | [] -> ()
-  | _ :: _ ->
-    let utop_exe_dir = utop_exe_dir ~dir in
-    let modules =
-      Module.Name.Map.singleton
-        main_module_name
-        (Module.make main_module_name
-           ~visibility:Public
-           ~impl:{ path   = Path.relative utop_exe_dir main_module_filename
-                 ; syntax = Module.Syntax.OCaml
-                 }
-           ~obj_name:exe_name)
-    in
-    let loc = Loc.in_dir (Path.to_string dir) in
-    let requires =
-      let open Result.O in
-      Lib.DB.find_many (Scope.libs scope)
-        ~loc
-        (Lib_name.of_string_exn ~loc:(Some loc) "utop"
-         :: List.map libs ~f:Library.best_name)
-      >>= Lib.closure ~linking:true
-    in
-    let cctx =
-      Compilation_context.create ()
-        ~super_context:sctx
-        ~scope
-        ~dir:utop_exe_dir
-        ~modules
-        ~opaque:false
-        ~requires
-        ~flags:(Ocaml_flags.append_common
-                  (Ocaml_flags.default ~profile:(Super_context.profile sctx))
-                  ["-w"; "-24"])
-    in
-    Exe.build_and_link cctx
-      ~program:{ name = exe_name ; main_module_name ; loc }
-      ~linkages:[Exe.Linkage.custom]
-      ~link_flags:(Build.return ["-linkall"; "-warn-error"; "-31"]);
-    add_module_rules sctx ~dir:utop_exe_dir requires
+let is_utop_dir dir =
+  match Path.parent dir with
+  | None -> false
+  | Some dir' -> Path.equal dir (utop_exe_dir ~dir:dir')
+
+let libs_under_dir sctx ~dir =
+  Super_context.stanzas sctx
+  |> List.fold_left ~init:Lib_name.Set.empty
+       ~f:(fun acc (d : Super_context.Dir_with_dune.t) ->
+         if Path.is_descendant ~of_:dir d.ctx_dir then
+           List.fold_left d.stanzas ~init:acc ~f:(fun acc -> function
+             | Dune_file.Library l ->
+               Lib_name.Set.add acc (Library.best_name l)
+             | _ ->
+               acc)
+         else
+           acc)
+
+let setup sctx ~dir =
+  let scope = Super_context.find_scope_by_dir sctx dir in
+  let utop_exe_dir = utop_exe_dir ~dir in
+  let libs = Lib_name.Set.to_list (libs_under_dir sctx ~dir) in
+  let modules =
+    Module.Name.Map.singleton
+      main_module_name
+      (Module.make main_module_name
+         ~visibility:Public
+         ~impl:{ path   = Path.relative utop_exe_dir main_module_filename
+               ; syntax = Module.Syntax.OCaml
+               }
+         ~obj_name:exe_name)
+  in
+  let loc = Loc.in_dir (Path.to_string dir) in
+  let requires =
+    let open Result.O in
+    Lib.DB.find_many (Scope.libs scope)
+      ~loc
+      (Lib_name.of_string_exn ~loc:(Some loc) "utop" :: libs)
+    >>= Lib.closure ~linking:true
+  in
+  let cctx =
+    Compilation_context.create ()
+      ~super_context:sctx
+      ~scope
+      ~dir:utop_exe_dir
+      ~modules
+      ~opaque:false
+      ~requires
+      ~flags:(Ocaml_flags.append_common
+                (Ocaml_flags.default ~profile:(Super_context.profile sctx))
+                ["-w"; "-24"])
+  in
+  Exe.build_and_link cctx
+    ~program:{ name = exe_name ; main_module_name ; loc }
+    ~linkages:[Exe.Linkage.custom]
+    ~link_flags:(Build.return ["-linkall"; "-warn-error"; "-31"]);
+  add_module_rules sctx ~dir:utop_exe_dir requires

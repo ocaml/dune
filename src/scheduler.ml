@@ -465,9 +465,8 @@ end = struct
         |> Option.value_exn
     end
 
-  let run () =
+  let run wait_signal =
     let last_exit_signals = Queue.create () in
-    let wait_signal = signal_waiter () in
     while true do
       let signal = wait_signal () in
       Event.send_signal signal;
@@ -486,7 +485,9 @@ end = struct
         if n = 3 then sys_exit 1
     done
 
-  let init = lazy (ignore (Thread.create run () : Thread.t))
+  let init = lazy (
+    let wait_signal = signal_waiter () in
+    ignore (Thread.create run wait_signal : Thread.t))
 
   let init () = Lazy.force init
 end

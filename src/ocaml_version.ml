@@ -23,3 +23,6 @@ let supports_response_file version =
 
 let ocamlmklib_supports_response_file version =
   version >= (4, 08, 0)
+
+let pervasives_includes_result version =
+  version >= (4, 03, 0)

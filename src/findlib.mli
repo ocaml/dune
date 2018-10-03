@@ -9,6 +9,7 @@ type t
 val create
   :  stdlib_dir:Path.t
   -> paths:Path.t list
+  -> version:Ocaml_version.t
   -> t
 
 (** The search path for this DB *)

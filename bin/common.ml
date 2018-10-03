@@ -282,7 +282,7 @@ let term =
            & opt (some string) None
            & info ["p"; for_release] ~docs ~docv:"PACKAGES"
                ~doc:{|Shorthand for $(b,--root . --only-packages PACKAGE
-                      --promote ignore --no-config --profile release).
+                      --ignore-promoted-rules --no-config --profile release).
                       You must use this option in your $(i,<package>.opam)
                       files, in order to build only what's necessary when
                       your project contains multiple packages as well as

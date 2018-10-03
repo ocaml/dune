@@ -38,7 +38,9 @@ let add_module_rules sctx ~dir lib_requires =
   in
   Super_context.add_rule sctx utop_ml
 
-let utop_exe_dir ~dir = Path.relative dir ".utop"
+let utop_dir_basename = ".utop"
+
+let utop_exe_dir ~dir = Path.relative dir utop_dir_basename
 
 let utop_exe dir =
   Path.relative (utop_exe_dir ~dir) exe_name
@@ -48,10 +50,7 @@ let utop_exe dir =
      generating a utop for a library with C stubs. *)
   |> Path.extend_basename ~suffix:(Mode.exe_ext Mode.Native)
 
-let is_utop_dir dir =
-  match Path.parent dir with
-  | None -> false
-  | Some dir' -> Path.equal dir (utop_exe_dir ~dir:dir')
+let is_utop_dir dir = Path.basename dir = utop_dir_basename
 
 let libs_under_dir sctx ~dir =
   Super_context.stanzas sctx

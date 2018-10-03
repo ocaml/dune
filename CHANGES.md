@@ -29,6 +29,8 @@ next
 - Do not remove flags when compiling compatibility modules for wrapped mode
   (#1382, fix #1364, @rgrinberg)
 
+- Fix reason support when using `staged_pps` (#1384, @charlesetc)
+
 1.3.0 (23/09/2018)
 ------------------
 

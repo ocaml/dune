@@ -272,6 +272,7 @@ This has the following effects:
 -  it tells dune to build everything that is installable and to
    ignore packages other than ``name`` defined in your project
 -  it sets the root to prevent dune from looking it up
+-  it silently ignores all rules with ``(mode promote)``
 -  it sets the build profile to ``release``
 -  it uses whatever concurrency option opam provides
 -  it sets the default target to ``@install`` rather than ``@@default``

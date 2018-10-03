@@ -10,16 +10,17 @@ module Op : sig
     | Neq
 end
 
-type 'a t =
-  | Expr of 'a
-  | And of 'a t list
-  | Or of 'a t list
-  | Compare of Op.t * 'a * 'a
+type t =
+  | Const of bool
+  | Expr of String_with_vars.t
+  | And of t list
+  | Or of t list
+  | Compare of Op.t * String_with_vars.t * String_with_vars.t
 
-type 'a expander =
-  { f : 'value. mode:'value String_with_vars.Mode.t
-      -> 'a
-      -> Loc.t * 'value
-  }
+val true_ : t
 
-val eval_bool : 'a t -> dir:Path.t -> f:'a expander -> bool
+val eval
+  :  t
+  -> dir:Path.t
+  -> f:Value.t list option  String_with_vars.expander
+  -> bool

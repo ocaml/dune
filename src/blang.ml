@@ -17,29 +17,29 @@ module Op = struct
     | _, _ -> false
 end
 
-type 'a t =
-  | Expr of 'a
-  | And of 'a t list
-  | Or of 'a t list
-  | Compare of Op.t * 'a * 'a
+type t =
+  | Const of bool
+  | Expr of String_with_vars.t
+  | And of t list
+  | Or of t list
+  | Compare of Op.t * String_with_vars.t * String_with_vars.t
 
-type 'a expander =
-  { f : 'value. mode:'value String_with_vars.Mode.t
-      -> 'a
-      -> Loc.t * 'value
-  }
+let true_ = Const true
 
-let rec eval_bool t ~dir ~(f : 'a expander) =
+let rec eval t ~dir ~f =
   match t with
-  | Expr a ->
-    begin match f.f ~mode:Single a with
-    | _, String "true" -> true
-    | _, String "false" -> false
-    | loc, _ -> Errors.fail loc "This value must be either true or false"
+  | Const x -> x
+  | Expr sw ->
+    begin match String_with_vars.expand sw ~mode:Single ~dir ~f with
+    | String "true" -> true
+    | String "false" -> false
+    | _ ->
+      let loc = String_with_vars.loc sw in
+      Errors.fail loc "This value must be either true or false"
     end
-  | And xs -> List.for_all ~f:(eval_bool ~f ~dir) xs
-  | Or xs -> List.exists ~f:(eval_bool ~f ~dir) xs
+  | And xs -> List.for_all ~f:(eval ~f ~dir) xs
+  | Or xs -> List.exists ~f:(eval ~f ~dir) xs
   | Compare (op, x, y) ->
-    let ((_, x), (_, y)) = (f.f ~mode:Many x, f.f ~mode:Many y) in
-    Value.L.compare_vals ~dir x y
-    |> Op.eval op
+    let x = String_with_vars.expand x ~mode:Many ~dir ~f
+    and y = String_with_vars.expand y ~mode:Many ~dir ~f in
+    Op.eval op (Value.L.compare_vals ~dir x y)

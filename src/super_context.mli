@@ -113,6 +113,13 @@ val expand_and_eval_set
   -> standard:(unit, string list) Build.t
   -> (unit, string list) Build.t
 
+val eval_blang
+  :  t
+  -> Blang.t
+  -> scope:Scope.t
+  -> dir:Path.t
+  -> bool
+
 val prefix_rules
   :  t
   -> (unit, unit) Build.t

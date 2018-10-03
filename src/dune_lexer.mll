@@ -29,7 +29,7 @@ and maybe_first_line = parse
     { let start = Lexing.lexeme_start_p lexbuf in
       let lang    = atom start lexbuf in
       let version = atom start lexbuf in
-      first_line_end start lexbuf;
+      first_line_rparen_end start lexbuf;
       Some { lang; version }
     }
   | ""
@@ -48,9 +48,9 @@ and atom start = parse
       invalid_lang_line start lexbuf
     }
 
-and first_line_end start = parse
-  | blank* ')' blank* (newline | eof)
-    { ()
+and first_line_rparen_end start = parse
+  | blank* ')' blank* (newline | eof as s)
+    { if s <> "" then Lexing.new_line lexbuf
     }
   | ""
     { to_eol lexbuf;

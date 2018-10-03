@@ -504,13 +504,7 @@ end = struct
         if n = 3 then sys_exit 1
     done
 
-  let init = lazy (
-    if Sys.win32 then
-      (* See https://github.com/ocaml/dune/pull/1366 *)
-      ()
-    else
-      ignore (Thread.create run () : Thread.t)
-  )
+  let init = lazy (ignore (Thread.create run () : Thread.t))
 
   let init () = Lazy.force init
 end

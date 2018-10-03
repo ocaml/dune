@@ -7,11 +7,56 @@ type job =
   ; ivar : Unix.process_status Fiber.Ivar.t
   }
 
+module Signal = struct
+  type t = Int | Quit | Term
+  let compare : t -> t -> Ordering.t = compare
+
+  module Set = Set.Make(struct
+      type nonrec t = t
+      let compare = compare
+    end)
+
+  let all = [Int; Quit; Term]
+
+  let to_int = function
+    | Int -> Sys.sigint
+    | Quit -> Sys.sigquit
+    | Term -> Sys.sigterm
+
+  let of_int =
+    List.map all ~f:(fun t -> to_int t, t)
+    |> Int.Map.of_list_reduce ~f:(fun _ t -> t)
+    |> Int.Map.find
+
+  let name t = Utils.signal_name (to_int t)
+end
+
+module Thread = struct
+  include Thread
+
+  let block_signals = lazy (
+    let signos = List.map Signal.all ~f:Signal.to_int in
+    ignore (Unix.sigprocmask SIG_BLOCK signos : int list)
+  )
+
+  let create =
+    if Sys.win32 then
+      Thread.create
+    else
+      (* On unix, we make sure to block signals globally before
+         starting a thread so that only the signal watcher thread can
+         receive signals. *)
+      fun f x ->
+        Lazy.force block_signals;
+        Thread.create f x
+end
+
 (** The event queue *)
 module Event : sig
   type t =
     | Files_changed
     | Job_completed of job * Unix.process_status
+    | Signal of Signal.t
 
   (** Return the next event. File changes event are always flattened
       and returned first. *)
@@ -29,13 +74,16 @@ module Event : sig
   (** Send an event to the main thread. *)
   val send_files_changed : Path.t list -> unit
   val send_job_completed : job -> Unix.process_status -> unit
+  val send_signal : Signal.t -> unit
 end = struct
   type t =
     | Files_changed
     | Job_completed of job * Unix.process_status
+    | Signal of Signal.t
 
   let jobs_completed = Queue.create ()
   let files_changed = ref []
+  let signals = ref Signal.Set.empty
   let mutex = Mutex.create ()
   let cond = Condition.create ()
 
@@ -52,33 +100,40 @@ end = struct
       ~data:()
 
   let available () =
-    not (List.is_empty !files_changed && Queue.is_empty jobs_completed)
+    not (List.is_empty !files_changed
+         && Queue.is_empty jobs_completed
+         && Signal.Set.is_empty !signals)
 
   let next () =
     Mutex.lock mutex;
     let rec loop () =
-      if not (available ()) then Condition.wait cond mutex;
-      match !files_changed with
-      | [] ->
-        let (job, status) = Queue.pop jobs_completed in
-        decr pending_jobs;
-        Job_completed (job, status)
-      | fns ->
-        files_changed := [];
-        let only_ignored_files =
-          List.fold_left fns ~init:true ~f:(fun acc fn ->
-            let fn = Path.to_absolute_filename fn in
-            if String.Table.mem ignored_files fn then begin
-              (* only use ignored record once *)
-              String.Table.remove ignored_files fn;
-              acc
-            end else
-              false)
-        in
-        if only_ignored_files then
-          loop ()
-        else
-          Files_changed
+      while not (available ()) do Condition.wait cond mutex done;
+      match Signal.Set.choose !signals with
+      | Some signal ->
+        signals := Signal.Set.remove !signals signal;
+        Signal signal
+      | None ->
+        match !files_changed with
+        | [] ->
+          let (job, status) = Queue.pop jobs_completed in
+          decr pending_jobs;
+          Job_completed (job, status)
+        | fns ->
+          files_changed := [];
+          let only_ignored_files =
+            List.fold_left fns ~init:true ~f:(fun acc fn ->
+              let fn = Path.to_absolute_filename fn in
+              if String.Table.mem ignored_files fn then begin
+                (* only use ignored record once *)
+                String.Table.remove ignored_files fn;
+                acc
+              end else
+                false)
+          in
+          if only_ignored_files then
+            loop ()
+          else
+            Files_changed
     in
     let ev = loop () in
     Mutex.unlock mutex;
@@ -98,6 +153,13 @@ end = struct
     if not avail then Condition.signal cond;
     Mutex.unlock mutex
 
+  let send_signal signal =
+    Mutex.lock mutex;
+    let avail = available () in
+    signals := Signal.Set.add !signals signal;
+    if not avail then Condition.signal cond;
+    Mutex.unlock mutex
+
   let pending_jobs () = !pending_jobs
 end
 
@@ -109,9 +171,18 @@ type status_line_config =
   }
 
 module File_watcher : sig
-  (** Initializes the file watcher. *)
-  val init : unit -> unit
+  type t
+
+  (** Create a new file watcher. *)
+  val create : unit -> t
+
+  (** Pid of the external file watcher process *)
+  val pid : t -> int
 end = struct
+  type t = int
+
+  let pid t = t
+
   let command =
     lazy (
       let excludes = [ {|/_build|}
@@ -153,22 +224,26 @@ end = struct
                 One of them needs to be installed for watch mode to work.\n"))
 
   let buffering_time = 0.5 (* seconds *)
-
   let buffer_capacity = 65536
-  let buffer = Bytes.create buffer_capacity
-  let buffer_size = ref 0
 
-  let read_lines fd =
-    let len = Unix.read fd buffer !buffer_size (buffer_capacity - !buffer_size) in
-    buffer_size := !buffer_size + len;
+  type buffer =
+    { data : Bytes.t
+    ; mutable size : int
+    }
+
+  let read_lines buffer fd =
+    let len =
+      Unix.read fd buffer.data buffer.size (buffer_capacity - buffer.size)
+    in
+    buffer.size <- buffer.size + len;
     let lines = ref [] in
     let line_start = ref 0 in
-    for i = 0 to !buffer_size - 1 do
-      let c = Bytes.get buffer i in
+    for i = 0 to buffer.size - 1 do
+      let c = Bytes.get buffer.data i in
       if c = '\n' || c = '\r' then begin
         if !line_start < i then begin
           let line = Bytes.sub_string
-                       buffer
+                       buffer.data
                        ~pos:!line_start
                        ~len:(i - !line_start) in
           lines := line :: !lines;
@@ -176,45 +251,47 @@ end = struct
         line_start := i + 1
       end
     done;
-    buffer_size := !buffer_size - !line_start;
+    buffer.size <- buffer.size - !line_start;
     Bytes.blit
-      ~src:buffer ~src_pos:!line_start
-      ~dst:buffer ~dst_pos:0
-      ~len:!buffer_size;
+      ~src:buffer.data ~src_pos:!line_start
+      ~dst:buffer.data ~dst_pos:0
+      ~len:buffer.size;
     List.rev !lines
 
-  let init = lazy(
+  let spawn_external_watcher () =
+    let prog, args = Lazy.force command in
+    let prog = Path.to_absolute_filename prog in
+    let args = Array.of_list (prog :: args) in
+    let r, w = Unix.pipe () in
+    let pid =
+      Unix.create_process
+        prog
+        args
+        Unix.stdin
+        w
+        Unix.stderr
+    in
+    Unix.close w;
+    (r, pid)
+
+  let create () =
     let files_changed = ref [] in
     let event_mtx = Mutex.create () in
     let event_cv = Condition.create () in
 
-    let worker_thread () =
-      let prog, args = Lazy.force command in
-      let prog = Path.to_absolute_filename prog in
-      let args = Array.of_list (prog :: args) in
-      let r, w = Unix.pipe () in
-      let pid =
-        Unix.create_process
-          prog
-          args
-          Unix.stdin
-          w
-          Unix.stderr
+    let worker_thread pipe =
+      let buffer =
+        { data = Bytes.create buffer_capacity
+        ; size = 0
+        }
       in
-      let cleanup () =
-        Unix.kill pid Sys.sigterm;
-        ignore (Unix.waitpid [] pid)
-      in
-      at_exit cleanup;
-      let rec loop () =
-        let lines = List.map (read_lines r) ~f:Path.of_string in
+      while true do
+        let lines = List.map (read_lines buffer pipe) ~f:Path.of_string in
         Mutex.lock event_mtx;
         files_changed := List.rev_append lines !files_changed;
         Condition.signal event_cv;
         Mutex.unlock event_mtx;
-        loop ()
-      in
-      loop ()
+      done
     in
 
     (* The buffer thread is used to avoid flooding the main thread
@@ -233,8 +310,9 @@ end = struct
     *)
     let rec buffer_thread () =
       Mutex.lock event_mtx;
-      if List.is_empty !files_changed then
-        Condition.wait event_cv event_mtx;
+      while List.is_empty !files_changed do
+        Condition.wait event_cv event_mtx
+      done;
       let files = !files_changed in
       files_changed := [];
       Mutex.unlock event_mtx;
@@ -243,10 +321,12 @@ end = struct
       buffer_thread ()
     in
 
-    ignore (Thread.create worker_thread () : Thread.t);
-    ignore (Thread.create buffer_thread () : Thread.t))
+    let pipe, pid = spawn_external_watcher () in
 
-  let init () = Lazy.force init
+    ignore (Thread.create worker_thread pipe : Thread.t);
+    ignore (Thread.create buffer_thread () : Thread.t);
+
+    pid
 end
 
 module Process_watcher : sig
@@ -361,12 +441,76 @@ end = struct
   let run () =
     Mutex.lock mutex;
     while true do
-      if Process_table.running_count () = 0 then
-        Condition.wait something_is_running_cv mutex;
+      while Process_table.running_count () = 0 do
+        Condition.wait something_is_running_cv mutex
+      done;
       wait ()
     done
 
   let init = lazy (ignore (Thread.create run () : Thread.t))
+
+  let init () = Lazy.force init
+end
+
+module Signal_watcher : sig
+  val init : unit -> unit
+end = struct
+
+  let signos = List.map Signal.all ~f:Signal.to_int
+
+  let warning = {|
+
+**************************************************************
+* Press Control+C again quickly to perform an emergency exit *
+**************************************************************
+
+|}
+
+  external sys_exit : int -> _ = "caml_sys_exit"
+
+  let signal_waiter () =
+    if Sys.win32 then begin
+      let r, w = Unix.pipe () in
+      let buf = Bytes.create 1 in
+      Sys.set_signal Sys.sigint
+        (Signal_handle (fun _ -> assert (Unix.write w buf 0 1 = 1)));
+      Staged.stage (fun () ->
+        assert (Unix.read r buf 0 1 = 1);
+        Signal.Int)
+    end else
+      Staged.stage (fun () ->
+        Thread.wait_signal signos
+        |> Signal.of_int
+        |> Option.value_exn)
+
+  let run () =
+    let last_exit_signals = Queue.create () in
+    let wait_signal = Staged.unstage (signal_waiter ()) in
+    while true do
+      let signal = wait_signal () in
+      Event.send_signal signal;
+      match signal with
+      | Int | Quit | Term ->
+        let now = Unix.gettimeofday () in
+        Queue.push now last_exit_signals;
+        (* Discard old signals *)
+        while Queue.length last_exit_signals >= 0 &&
+              now -. Queue.peek last_exit_signals > 1.
+        do
+          ignore (Queue.pop last_exit_signals : float)
+        done;
+        let n = Queue.length last_exit_signals in
+        if n = 2 then prerr_endline warning;
+        if n = 3 then sys_exit 1
+    done
+
+  let init = lazy (
+    if Sys.win32 then
+      (* See https://github.com/ocaml/dune/pull/1366 *)
+      ()
+    else
+      ignore (Thread.create run () : Thread.t)
+  )
 
   let init () = Lazy.force init
 end
@@ -461,6 +605,10 @@ let rec restart_waiting_for_available_job t =
     restart_waiting_for_available_job t
   end
 
+let got_signal t signal =
+  if t.display = Verbose then
+    Log.infof t.log "Got signal %s, exiting." (Signal.name signal)
+
 let go_rec t =
   let rec go_rec t =
     Fiber.yield ()
@@ -483,6 +631,9 @@ let go_rec t =
         | Files_changed ->
           t.cur_build_canceled <- true;
           Fiber.return ()
+        | Signal signal ->
+          got_signal t signal;
+          Fiber.return ()
       end
     end
   in
@@ -492,7 +643,9 @@ let prepare ?(log=Log.no_log) ?(config=Config.default)
       ?(gen_status_line=fun () -> { message = None; show_jobs = false }) () =
   Log.infof log "Workspace root: %s"
     (Path.to_absolute_filename Path.root |> String.maybe_quoted);
-  if !Clflags.watch then File_watcher.init ();
+  (* The signal watcher must be initialized first so that signals are
+     blocked in all threads. *)
+  Signal_watcher.init ();
   Process_watcher.init ();
   let cwd = Sys.getcwd () in
   if cwd <> initial_cwd then
@@ -544,12 +697,26 @@ let run t fiber =
        (fun () -> go_rec t)
        (fun () -> fiber))
 
+let kill_and_wait_for_all_processes () =
+  Process_watcher.killall Sys.sigkill;
+  while Event.pending_jobs () > 0 do
+    ignore (Event.next () : Event.t)
+  done
+
 let go ?log ?config ?gen_status_line fiber =
   let t = prepare ?log ?config ?gen_status_line () in
-  run t (fun () -> fiber)
+  try
+    run t (fun () -> fiber)
+  with exn ->
+    kill_and_wait_for_all_processes ();
+    raise exn
+
+type exit_or_continue = Exit | Continue
+type got_signal = Got_signal
 
 let poll ?log ?config ~once ~finally ~canceled () =
   let t = prepare ?log ?config () in
+  let watcher = File_watcher.create () in
   let once () =
     t.cur_build_canceled <- false;
     once ()
@@ -557,37 +724,32 @@ let poll ?log ?config ~once ~finally ~canceled () =
   let block_waiting_for_changes () =
     match Event.next () with
     | Job_completed _ -> assert false
-    | Files_changed -> ()
+    | Files_changed -> Continue
+    | Signal signal ->
+      got_signal t signal;
+      Exit
   in
-  let wait_success () =
+  let wait msg =
     let old_generator = t.gen_status_line in
     set_status_line_generator
       (fun () ->
-         { message = Some "Success.\nWaiting for filesystem changes..."
+         { message = Some (msg ^ ".\nWaiting for filesystem changes...")
          ; show_jobs = false
          })
     >>= fun () ->
-    block_waiting_for_changes ();
-    set_status_line_generator old_generator
+    let res = block_waiting_for_changes () in
+    set_status_line_generator old_generator >>> Fiber.return res
   in
-  let wait_failure () =
-    let old_generator = t.gen_status_line in
-    set_status_line_generator
-      (fun () ->
-         { message = Some "Had errors.\nWaiting for filesystem changes..."
-         ; show_jobs = false
-         })
-    >>= fun () ->
-    block_waiting_for_changes ();
-    set_status_line_generator old_generator
-  in
+  let wait_success () = wait "Success" in
+  let wait_failure () = wait "Had errors" in
   let rec main_loop () =
     once ()
     >>= fun _ ->
     finally ();
     wait_success ()
-    >>= fun _ ->
-    main_loop ()
+    >>= function
+    | Exit -> Fiber.return Got_signal
+    | Continue -> main_loop ()
   in
   let continue_on_error () =
     if not t.cur_build_canceled then begin
@@ -604,19 +766,34 @@ let poll ?log ?config ~once ~finally ~canceled () =
       >>= fun () ->
       Queue.clear t.waiting_for_available_job;
       Process_watcher.killall Sys.sigkill;
-      while Event.pending_jobs () > 0 do
-        match Event.next () with
-        | Files_changed -> ()
-        | Job_completed _ -> ()
-      done;
-      canceled ();
-      main_loop ()
+      let rec loop () =
+        if Event.pending_jobs () = 0 then
+          Continue
+        else
+          match Event.next () with
+          | Files_changed -> loop ()
+          | Job_completed _ -> loop ()
+          | Signal signal ->
+            got_signal t signal;
+            Exit
+      in
+      match loop () with
+      | Exit ->
+        Fiber.return Got_signal
+      | Continue ->
+        canceled ();
+        main_loop ()
     end
   in
   let rec loop f =
-    try
-      run t f
-    with Fiber.Never ->
-      loop continue_on_error
+    match run t f with
+    | Got_signal -> (Fiber.Never, None)
+    | exception Fiber.Never -> loop continue_on_error
+    | exception exn -> (exn, Some (Printexc.get_raw_backtrace ()))
   in
-  loop main_loop
+  let exn, bt = loop main_loop in
+  ignore (wait_for_process (File_watcher.pid watcher) : _ Fiber.t);
+  kill_and_wait_for_all_processes ();
+  match bt with
+  | None -> Exn.raise exn
+  | Some bt -> Exn.raise_with_backtrace exn bt

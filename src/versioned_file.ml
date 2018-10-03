@@ -87,3 +87,15 @@ module Make(Data : sig type t end) = struct
     Io.with_lexbuf_from_file fn ~f:(fun lb ->
       parse_contents lb (Dune_lexer.first_line lb) ~f)
 end
+
+let no_more_lang =
+  let open Dune_lang.Decoder in
+  let%map (_ : _ list) =
+    multi_field "lang"
+      (let%map loc = loc
+       and _ = repeat raw
+       in
+       Errors.fail loc
+         "The (lang ..) line cannot appear more than once.")
+  in
+  ()

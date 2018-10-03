@@ -42,3 +42,6 @@ module type S = sig
 end
 
 module Make(Data : sig type t end) : S with type data := Data.t
+
+(** Raise with an informative message when seeing a (lang ...) field. *)
+val no_more_lang : unit Dune_lang.Decoder.fields_parser

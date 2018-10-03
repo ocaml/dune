@@ -56,6 +56,7 @@ let rules (t : Dune_file.Tests.t) ~sctx ~dir ~scope ~dir_contents ~dir_kind =
         ; mode = Standard
         ; locks = t.locks
         ; loc
+        ; enabled_if = t.enabled_if
         } in
       add_alias ~loc ~action:(Diff diff) ~locks:t.locks;
       ignore (Simple_rules.user_rule sctx rule ~extra_bindings ~dir ~scope

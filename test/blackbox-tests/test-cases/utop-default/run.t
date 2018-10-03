@@ -5,12 +5,14 @@ By default, dune utop tries to make a toplevel for the current directory:
   
   # 
 
-If there is no library there, it displays an error message:
 
-  $ dune utop --root nothing-in-root
+Utop will load libs recursively:
+
+  $ echo 'exit 0;;' | dune utop --root nothing-in-root | grep -v 'version'
   Entering directory 'nothing-in-root'
-  No library is defined in .
-  [1]
+  
+  # 
+
 
 The message where the library path does not exist is different:
 

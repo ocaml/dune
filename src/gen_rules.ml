@@ -87,10 +87,6 @@ module Gen(P : Install_rules.Params) = struct
       in
       Merlin.add_rules sctx ~dir:ctx_dir ~more_src_dirs ~scope ~dir_kind
         (Merlin.add_source_dir m src_dir));
-    Utop.setup sctx ~dir:ctx_dir ~scope ~libs:(
-      List.filter_map stanzas ~f:(function
-        | Library lib -> Some lib
-        | _ -> None));
     List.iter stanzas ~f:(fun stanza ->
       match (stanza : Stanza.t) with
       | Menhir.T m when SC.eval_blang sctx m.enabled_if ~dir:ctx_dir ~scope ->
@@ -141,7 +137,10 @@ module Gen(P : Install_rules.Params) = struct
        | None ->
          (* We get here when [dir] is a generated directory, such as
             [.utop] or [.foo.objs]. *)
-         if components <> [] then SC.load_dir sctx ~dir:(Path.parent_exn dir)
+         if Utop.is_utop_dir dir then
+           Utop.setup sctx ~dir:(Path.parent_exn dir)
+         else if components <> [] then
+           SC.load_dir sctx ~dir:(Path.parent_exn dir)
        | Some _ ->
          (* This interprets "rule" and "copy_files" stanzas. *)
          let dir_contents = Dir_contents.get sctx ~dir in

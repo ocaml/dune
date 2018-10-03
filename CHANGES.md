@@ -31,6 +31,8 @@ next
 
 - Fix reason support when using `staged_pps` (#1384, @charlesetc)
 
+- Exit gracefully when a signal is received (#1366, @diml)
+
 1.3.0 (23/09/2018)
 ------------------
 

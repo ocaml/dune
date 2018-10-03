@@ -93,7 +93,7 @@ module Gen(P : Install_rules.Params) = struct
         | _ -> None));
     List.iter stanzas ~f:(fun stanza ->
       match (stanza : Stanza.t) with
-      | Menhir.T m ->
+      | Menhir.T m when SC.eval_blang sctx m.enabled_if ~dir:ctx_dir ~scope ->
         begin match
           List.find_map (Menhir_rules.module_names m)
             ~f:(fun name ->

@@ -135,19 +135,21 @@ let expand_ocaml_config t pform name =
       "Unknown ocaml configuration variable %S"
       name
 
+let expand_var t ~scope ~bindings pform syntax_version =
+  (match Pform.Map.expand bindings pform syntax_version with
+   | None -> Pform.Map.expand t.pforms pform syntax_version
+   | Some _ as x -> x)
+  |> Option.map ~f:(function
+    | Pform.Expansion.Var (Values l) -> l
+    | Macro (Ocaml_config, s) -> expand_ocaml_config t pform s
+    | Var Project_root -> [Value.Dir (Scope.root scope)]
+    | _ ->
+      Errors.fail (String_with_vars.Var.loc pform)
+        "%s isn't allowed in this position"
+        (String_with_vars.Var.describe pform))
+
 let expand_vars t ~mode ~scope ~dir ?(bindings=Pform.Map.empty) s =
-  String_with_vars.expand ~mode ~dir s ~f:(fun pform syntax_version ->
-    (match Pform.Map.expand bindings pform syntax_version with
-     | None -> Pform.Map.expand t.pforms pform syntax_version
-     | Some _ as x -> x)
-    |> Option.map ~f:(function
-      | Pform.Expansion.Var (Values l) -> l
-      | Macro (Ocaml_config, s) -> expand_ocaml_config t pform s
-      | Var Project_root -> [Value.Dir (Scope.root scope)]
-      | _ ->
-        Errors.fail (String_with_vars.Var.loc pform)
-          "%s isn't allowed in this position"
-          (String_with_vars.Var.describe pform)))
+  String_with_vars.expand ~mode ~dir s ~f:(expand_var t ~scope ~bindings)
 
 let expand_vars_string t ~scope ~dir ?bindings s =
   expand_vars t ~mode:Single ~scope ~dir ?bindings s
@@ -156,6 +158,12 @@ let expand_vars_string t ~scope ~dir ?bindings s =
 let expand_vars_path t ~scope ~dir ?bindings s =
   expand_vars t ~mode:Single ~scope ~dir ?bindings s
   |> Value.to_path ~error_loc:(String_with_vars.loc s) ~dir
+
+let eval_blang t blang ~scope ~dir =
+  match blang with
+  | Blang.Const x -> x (* common case *)
+  | _ ->
+    Blang.eval blang ~dir ~f:(expand_var t ~scope ~bindings:Pform.Map.empty)
 
 type targets =
   | Static of Path.t list

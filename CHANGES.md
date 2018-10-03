@@ -31,6 +31,9 @@ next
 
 - Fix reason support when using `staged_pps` (#1384, @charlesetc)
 
+- Add support for `enabled_if` in `rule`, `menhir`, `ocamllex`,
+  `ocamlyacc` (#...., @diml)
+
 1.3.0 (23/09/2018)
 ------------------
 

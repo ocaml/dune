@@ -53,17 +53,22 @@ let utop_exe dir =
 let is_utop_dir dir = Path.basename dir = utop_dir_basename
 
 let libs_under_dir sctx ~dir =
-  Super_context.stanzas sctx
-  |> List.fold_left ~init:Lib_name.Set.empty
-       ~f:(fun acc (d : Super_context.Dir_with_dune.t) ->
-         if Path.is_descendant ~of_:dir d.ctx_dir then
-           List.fold_left d.stanzas ~init:acc ~f:(fun acc -> function
-             | Dune_file.Library l ->
-               Lib_name.Set.add acc (Library.best_name l)
-             | _ ->
-               acc)
-         else
-           acc)
+  let open Option.O in
+  (Path.drop_build_context dir >>= fun dir ->
+   File_tree.find_dir (Super_context.file_tree sctx) dir >>|
+   (File_tree.Dir.fold ~traverse_ignored_dirs:true
+      ~init:Lib_name.Set.empty ~f:(fun dir acc ->
+        let dir =
+          Path.append (Super_context.build_dir sctx) (File_tree.Dir.path dir) in
+        match Super_context.stanzas_in sctx ~dir with
+        | None -> acc
+        | Some (d : Super_context.Dir_with_dune.t) ->
+          List.fold_left d.stanzas ~init:acc ~f:(fun acc -> function
+            | Dune_file.Library l ->
+              Lib_name.Set.add acc (Library.best_name l)
+            | _ ->
+              acc))))
+  |> Option.value ~default:Lib_name.Set.empty
 
 let setup sctx ~dir =
   let scope = Super_context.find_scope_by_dir sctx dir in

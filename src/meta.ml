@@ -241,6 +241,7 @@ let builtins ~stdlib_dir ~version:ocaml_version =
   let dynlink = simple "dynlink" [] ~dir:"+" in
   let bytes = dummy "bytes" in
   let result = dummy "result" in
+  let uchar = dummy "uchar" in
   let threads =
     { name = Some (Lib_name.of_string_exn ~loc:None "threads")
     ; entries =
@@ -272,6 +273,11 @@ let builtins ~stdlib_dir ~version:ocaml_version =
       if Ocaml_version.pervasives_includes_result ocaml_version then
         result :: base
       else base in
+    let base =
+      if Ocaml_version.stdlib_includes_uchar ocaml_version then
+        uchar :: base
+      else
+        base in
     (* We do not rely on an "exists_if" ocamlfind variable,
        because it would produce an error message mentioning
        a "hidden" package (which could be confusing). *)

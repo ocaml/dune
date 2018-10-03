@@ -27,3 +27,6 @@ val ocamlmklib_supports_response_file : t -> bool
 
 (** Whether [Pervasives] includes the [result] type *)
 val pervasives_includes_result : t -> bool
+
+(** Whether the standard library includes the [Uchar] module *)
+val stdlib_includes_uchar : t -> bool

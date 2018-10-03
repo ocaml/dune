@@ -647,7 +647,7 @@ let make sctx ~dir ~dep_kind ~lint ~preprocess
         (fun m ~lint ->
            let ast = setup_reason_rules sctx m in
            if lint then lint_module ~ast ~source:m;
-           Module.set_pp m pp)
+           Module.set_pp ast pp)
       end)
 
 let pp_modules t ?(lint=true) modules =

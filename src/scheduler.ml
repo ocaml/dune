@@ -31,6 +31,26 @@ module Signal = struct
   let name t = Utils.signal_name (to_int t)
 end
 
+module Thread = struct
+  include Thread
+
+  let block_signals = lazy (
+    let signos = List.map Signal.all ~f:Signal.to_int in
+    ignore (Unix.sigprocmask SIG_BLOCK signos : int list)
+  )
+
+  let create =
+    if Sys.win32 then
+      Thread.create
+    else
+      (* On unix, we make sure to block signals globally before
+         starting a thread so that only the signal watcher thread can
+         receive signals. *)
+      fun f x ->
+        Lazy.force block_signals;
+        Thread.create f x
+end
+
 (** The event queue *)
 module Event : sig
   type t =
@@ -454,19 +474,18 @@ end = struct
       let buf = Bytes.create 1 in
       Sys.set_signal Sys.sigint
         (Signal_handle (fun _ -> assert (Unix.write w buf 0 1 = 1)));
-      fun () ->
+      Staged.stage (fun () ->
         assert (Unix.read r buf 0 1 = 1);
-        Signal.Int
-    end else begin
-      ignore (Unix.sigprocmask SIG_BLOCK signos : int list);
-      fun () ->
+        Signal.Int)
+    end else
+      Staged.stage (fun () ->
         Thread.wait_signal signos
         |> Signal.of_int
-        |> Option.value_exn
-    end
+        |> Option.value_exn)
 
-  let run wait_signal =
+  let run () =
     let last_exit_signals = Queue.create () in
+    let wait_signal = Staged.unstage (signal_waiter ()) in
     while true do
       let signal = wait_signal () in
       Event.send_signal signal;
@@ -485,9 +504,7 @@ end = struct
         if n = 3 then sys_exit 1
     done
 
-  let init = lazy (
-    let wait_signal = signal_waiter () in
-    ignore (Thread.create run wait_signal : Thread.t))
+  let init = lazy (ignore (Thread.create run () : Thread.t))
 
   let init () = Lazy.force init
 end

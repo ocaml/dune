@@ -28,6 +28,7 @@ let findlib =
     Findlib.create
     ~stdlib_dir:cwd
     ~paths:[Path.relative cwd "test/unit-tests/findlib-db"]
+    ~version:(Ocaml_version.make (4, 02, 3))
 ;;
 
 [%%expect{|

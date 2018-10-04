@@ -419,10 +419,17 @@ module Copy_files : sig
 end
 
 module Documentation : sig
+  module Doc_Syntax : sig
+    type t = Reason | OCaml | All
+
+    val decode : t Dune_lang.Decoder.t
+  end
+
   type t =
     { loc         : Loc.t
     ; package     : Package.t
     ; mld_files   : Ordered_set_lang.t
+    ; syntax      : Doc_Syntax.t
     }
 end
 

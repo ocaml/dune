@@ -5,7 +5,6 @@ open Stanza.Decoder
 (* This file defines the jbuild types as well as the S-expression
    syntax for the various supported version of the specification.
 *)
-
 (* Deprecated *)
 module Jbuild_version = struct
   type t =
@@ -1894,20 +1893,34 @@ module Copy_files = struct
 end
 
 module Documentation = struct
+  module Doc_Syntax = struct
+    type t = Reason | OCaml | All
+
+    let decode =
+      enum [ "reason", Reason
+           ; "ocaml", OCaml
+           ; "re", Reason
+           ; "ml", OCaml
+           ; "all", All]
+  end
+
   type t =
     { loc : Loc.t
     ; package : Package.t
     ; mld_files : Ordered_set_lang.t
+    ; syntax : Doc_Syntax.t
     }
 
   let decode =
     record
       (let%map package = Pkg.field "documentation"
        and mld_files = Ordered_set_lang.field "mld_files"
+       and syntax = field ~default: Doc_Syntax.All "syntax" Doc_Syntax.decode
        and loc = loc in
        { loc
        ; package
        ; mld_files
+       ; syntax
        }
       )
 end

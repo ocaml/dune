@@ -176,6 +176,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name env-var-expansion)
+ (deps (package dune) (source_tree test-cases/env-var-expansion))
+ (action
+  (chdir
+   test-cases/env-var-expansion
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name envs-and-contexts)
  (deps (package dune) (source_tree test-cases/envs-and-contexts))
  (action
@@ -1013,6 +1021,7 @@
   (alias enabled_if)
   (alias env)
   (alias env-tracking)
+  (alias env-var-expansion)
   (alias exclude-missing-module)
   (alias exec-cmd)
   (alias exec-missing)
@@ -1136,6 +1145,7 @@
   (alias enabled_if)
   (alias env)
   (alias env-tracking)
+  (alias env-var-expansion)
   (alias exclude-missing-module)
   (alias exec-cmd)
   (alias exec-missing)

@@ -75,6 +75,11 @@ module Unexpanded : sig
 
   include Dune_lang.Conv with type t := t
 
+  type expansion_context = {
+    dir: Path.t;
+    env: Env.t;
+  }
+
   module Partial : sig
     include Action_intf.Ast
       with type program = (Unresolved.Program.t, String_with_vars.t) either
@@ -83,7 +88,7 @@ module Unexpanded : sig
 
     val expand
       :  t
-      -> dir:Path.t
+      -> ectx:expansion_context
       -> map_exe:(Path.t -> Path.t)
       -> f:(Value.t list option String_with_vars.expander)
       -> Unresolved.t
@@ -91,7 +96,7 @@ module Unexpanded : sig
 
   val partial_expand
     :  t
-    -> dir:Path.t
+    -> ectx:expansion_context
     -> map_exe:(Path.t -> Path.t)
     -> f:(Value.t list option String_with_vars.expander)
     -> Partial.t

@@ -415,6 +415,11 @@ module Unexpanded = struct
         (Dune_lang.pp Dune)
         (List [Dune_lang.unsafe_atom_of_string "mkdir"; Path_dune_lang.encode path])
 
+  type expansion_context = {
+    dir: Path.t;
+    env: Env.t;
+  }
+
   module Partial = struct
     module Program = Unresolved.Program
 
@@ -427,7 +432,7 @@ module Unexpanded = struct
     include Past
 
     module E = struct
-      let expand ~dir ~mode ~f ~l ~r =
+      let expand ~ectx:{ dir; _ } ~mode ~f ~l ~r =
         Either.map ~l
           ~r:(fun s ->
             r ~loc:(Some (String_with_vars.loc s))
@@ -458,11 +463,11 @@ module Unexpanded = struct
           ~r:prog_and_args_of_values
     end
 
-    let rec expand t ~dir ~map_exe ~f : Unresolved.t =
+    let rec expand t ~ectx ~map_exe ~f : Unresolved.t =
       match t with
       | Run (prog, args) ->
-        let args = List.concat_map args ~f:(E.strings ~dir ~f) in
-        let prog, more_args = E.prog_and_args ~dir ~f prog in
+        let args = List.concat_map args ~f:(E.strings ~ectx ~f) in
+        let prog, more_args = E.prog_and_args ~ectx ~f prog in
         let prog =
           match prog with
           | Search _ -> prog
@@ -470,60 +475,62 @@ module Unexpanded = struct
         in
         Run (prog, more_args @ args)
       | Chdir (fn, t) ->
-        let fn = E.path ~dir ~f fn in
-        Chdir (fn, expand t ~dir:fn ~map_exe ~f)
+        let fn = E.path ~ectx ~f fn in
+        Chdir (fn, expand t ~ectx:{ ectx with dir = fn } ~map_exe ~f)
       | Setenv (var, value, t) ->
-        Setenv (E.string ~dir ~f var, E.string ~dir ~f value,
-                expand t ~dir ~map_exe ~f)
+        let var = E.string ~ectx ~f var in
+        let value = E.string ~ectx ~f value in
+        let ectx = { ectx with env = Env.add ectx.env ~var ~value } in
+        Setenv (var, value, expand t ~ectx ~map_exe ~f)
       | Redirect (outputs, fn, t) ->
-        Redirect (outputs, E.path ~dir ~f fn, expand t ~dir ~map_exe ~f)
+        Redirect (outputs, E.path ~ectx ~f fn, expand t ~ectx ~map_exe ~f)
       | Ignore (outputs, t) ->
-        Ignore (outputs, expand t ~dir ~map_exe ~f)
-      | Progn l -> Progn (List.map l ~f:(fun t -> expand t ~dir ~map_exe ~f))
-      | Echo xs -> Echo (List.concat_map xs ~f:(E.strings ~dir ~f))
-      | Cat x -> Cat (E.path ~dir ~f x)
+        Ignore (outputs, expand t ~ectx ~map_exe ~f)
+      | Progn l -> Progn (List.map l ~f:(fun t -> expand t ~ectx ~map_exe ~f))
+      | Echo xs -> Echo (List.concat_map xs ~f:(E.strings ~ectx ~f))
+      | Cat x -> Cat (E.path ~ectx ~f x)
       | Copy (x, y) ->
-        Copy (E.path ~dir ~f x, E.path ~dir ~f y)
+        Copy (E.path ~ectx ~f x, E.path ~ectx ~f y)
       | Symlink (x, y) ->
-        Symlink (E.path ~dir ~f x, E.path ~dir ~f y)
+        Symlink (E.path ~ectx ~f x, E.path ~ectx ~f y)
       | Copy_and_add_line_directive (x, y) ->
-        Copy_and_add_line_directive (E.path ~dir ~f x, E.path ~dir ~f y)
-      | System x -> System (E.string ~dir ~f x)
-      | Bash x -> Bash (E.string ~dir ~f x)
-      | Write_file (x, y) -> Write_file (E.path ~dir ~f x, E.string ~dir ~f y)
+        Copy_and_add_line_directive (E.path ~ectx ~f x, E.path ~ectx ~f y)
+      | System x -> System (E.string ~ectx ~f x)
+      | Bash x -> Bash (E.string ~ectx ~f x)
+      | Write_file (x, y) -> Write_file (E.path ~ectx ~f x, E.string ~ectx ~f y)
       | Rename (x, y) ->
-        Rename (E.path ~dir ~f x, E.path ~dir ~f y)
+        Rename (E.path ~ectx ~f x, E.path ~ectx ~f y)
       | Remove_tree x ->
-        Remove_tree (E.path ~dir ~f x)
+        Remove_tree (E.path ~ectx ~f x)
       | Mkdir x -> begin
           match x with
           | Left  path -> Mkdir path
           | Right tmpl ->
-            let path = E.path ~dir ~f x in
+            let path = E.path ~ectx ~f x in
             check_mkdir (String_with_vars.loc tmpl) path;
             Mkdir path
         end
       | Digest_files x ->
-        Digest_files (List.map x ~f:(E.path ~dir ~f))
+        Digest_files (List.map x ~f:(E.path ~ectx ~f))
       | Diff { optional; file1; file2; mode } ->
         Diff { optional
-             ; file1 = E.path ~dir ~f file1
-             ; file2 = E.path ~dir ~f file2
+             ; file1 = E.path ~ectx ~f file1
+             ; file2 = E.path ~ectx ~f file2
              ; mode
              }
       | Merge_files_into (sources, extras, target) ->
         Merge_files_into
-          (List.map ~f:(E.path ~dir ~f) sources,
-           List.map ~f:(E.string ~dir ~f) extras,
-           E.path ~dir ~f target)
+          (List.map ~f:(E.path ~ectx ~f) sources,
+           List.map ~f:(E.string ~ectx ~f) extras,
+           E.path ~ectx ~f target)
   end
 
   module E = struct
-    let expand ~dir ~mode ~f ~map x =
-      match String_with_vars.partial_expand ~mode ~dir ~f x with
+    let expand ~ectx ~mode ~f ~map x =
+      match String_with_vars.partial_expand ~mode ~dir:ectx.dir ~f x with
       | Expanded e ->
         let loc = Some (String_with_vars.loc x) in
-        Left (map ~loc e ~dir)
+        Left (map ~loc e ~dir:ectx.dir)
       | Unexpanded x -> Right x
 
     let string = expand ~mode:Single ~map:(ignore_loc Value.to_string)
@@ -535,17 +542,17 @@ module Unexpanded = struct
     let prog_and_args = expand ~mode:Many ~map:prog_and_args_of_values
   end
 
-  let rec partial_expand t ~dir ~map_exe ~f : Partial.t =
+  let rec partial_expand t ~ectx ~map_exe ~f : Partial.t =
     match t with
     | Run (prog, args) ->
       let args =
         List.concat_map args ~f:(fun arg ->
-          match E.strings ~dir ~f arg with
+          match E.strings ~ectx ~f arg with
           | Left args -> List.map args ~f:(fun x -> Left x)
           | Right _ as x -> [x])
       in
       begin
-        match E.prog_and_args ~dir ~f prog with
+        match E.prog_and_args ~ectx ~f prog with
         | Left (prog, more_args) ->
           let more_args = List.map more_args ~f:(fun x -> Left x) in
           let prog =
@@ -558,10 +565,11 @@ module Unexpanded = struct
           Run (prog, args)
       end
     | Chdir (fn, t) -> begin
-        let res = E.path ~dir ~f fn in
+        let res = E.path ~ectx ~f fn in
         match res with
         | Left dir ->
-          Chdir (res, partial_expand t ~dir ~map_exe ~f)
+          let ectx = { ectx with dir } in
+          Chdir (res, partial_expand t ~ectx ~map_exe ~f)
         | Right fn ->
           let loc = String_with_vars.loc fn in
           Errors.fail loc
@@ -569,47 +577,47 @@ module Unexpanded = struct
              This is not allowed by dune"
       end
     | Setenv (var, value, t) ->
-      Setenv (E.string ~dir ~f var, E.string ~dir ~f value,
-              partial_expand t ~dir ~map_exe ~f)
+      Setenv (E.string ~ectx ~f var, E.string ~ectx ~f value,
+              partial_expand t ~ectx ~map_exe ~f)
     | Redirect (outputs, fn, t) ->
-      Redirect (outputs, E.path ~dir ~f fn, partial_expand t ~dir ~map_exe ~f)
+      Redirect (outputs, E.path ~ectx ~f fn, partial_expand t ~ectx ~map_exe ~f)
     | Ignore (outputs, t) ->
-      Ignore (outputs, partial_expand t ~dir ~map_exe ~f)
-    | Progn l -> Progn (List.map l ~f:(partial_expand ~dir ~map_exe ~f))
-    | Echo xs -> Echo (List.map xs ~f:(E.cat_strings ~dir ~f))
-    | Cat x -> Cat (E.path ~dir ~f x)
+      Ignore (outputs, partial_expand t ~ectx ~map_exe ~f)
+    | Progn l -> Progn (List.map l ~f:(partial_expand ~ectx ~map_exe ~f))
+    | Echo xs -> Echo (List.map xs ~f:(E.cat_strings ~ectx ~f))
+    | Cat x -> Cat (E.path ~ectx ~f x)
     | Copy (x, y) ->
-      Copy (E.path ~dir ~f x, E.path ~dir ~f y)
+      Copy (E.path ~ectx ~f x, E.path ~ectx ~f y)
     | Symlink (x, y) ->
-      Symlink (E.path ~dir ~f x, E.path ~dir ~f y)
+      Symlink (E.path ~ectx ~f x, E.path ~ectx ~f y)
     | Copy_and_add_line_directive (x, y) ->
-      Copy_and_add_line_directive (E.path ~dir ~f x, E.path ~dir ~f y)
-    | System x -> System (E.string ~dir ~f x)
-    | Bash x -> Bash (E.string ~dir ~f x)
-    | Write_file (x, y) -> Write_file (E.path ~dir ~f x, E.string ~dir ~f y)
+      Copy_and_add_line_directive (E.path ~ectx ~f x, E.path ~ectx ~f y)
+    | System x -> System (E.string ~ectx ~f x)
+    | Bash x -> Bash (E.string ~ectx ~f x)
+    | Write_file (x, y) -> Write_file (E.path ~ectx ~f x, E.string ~ectx ~f y)
     | Rename (x, y) ->
-      Rename (E.path ~dir ~f x, E.path ~dir ~f y)
+      Rename (E.path ~ectx ~f x, E.path ~ectx ~f y)
     | Remove_tree x ->
-      Remove_tree (E.path ~dir ~f x)
+      Remove_tree (E.path ~ectx ~f x)
     | Mkdir x ->
-      let res = E.path ~dir ~f x in
+      let res = E.path ~ectx ~f x in
       (match res with
        | Left path -> check_mkdir (String_with_vars.loc x) path
        | Right _   -> ());
       Mkdir res
     | Digest_files x ->
-      Digest_files (List.map x ~f:(E.path ~dir ~f))
+      Digest_files (List.map x ~f:(E.path ~ectx ~f))
     | Diff { optional; file1; file2; mode } ->
       Diff { optional
-           ; file1 = E.path ~dir ~f file1
-           ; file2 = E.path ~dir ~f file2
+           ; file1 = E.path ~ectx ~f file1
+           ; file2 = E.path ~ectx ~f file2
            ; mode
            }
     | Merge_files_into (sources, extras, target) ->
       Merge_files_into
-        (List.map sources ~f:(E.path ~dir ~f),
-         List.map extras ~f:(E.string ~dir ~f),
-         E.path ~dir ~f target)
+        (List.map sources ~f:(E.path ~ectx ~f),
+         List.map extras ~f:(E.string ~ectx ~f),
+         E.path ~ectx ~f target)
 end
 
 let fold_one_step t ~init:acc ~f =

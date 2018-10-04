@@ -135,13 +135,24 @@ let expand_ocaml_config t pform name =
       "Unknown ocaml configuration variable %S"
       name
 
-let expand_var t ~scope ~bindings pform syntax_version =
+let expand_env ~env pform s : Value.t list =
+  match String.rsplit2 s ~on:'=' with
+  | None ->
+    Errors.fail (String_with_vars.Var.loc pform)
+      "%s must always come with a default value\n\
+       Hint: the syntax is %%{env:VAR=DEFAULT-VALUE}"
+      (String_with_vars.Var.describe pform)
+  | Some (var, default) ->
+    [String (Option.value ~default (Env.get env var))]
+
+let expand_var t ~scope ~bindings ~env pform syntax_version =
   (match Pform.Map.expand bindings pform syntax_version with
    | None -> Pform.Map.expand t.pforms pform syntax_version
    | Some _ as x -> x)
   |> Option.map ~f:(function
     | Pform.Expansion.Var (Values l) -> l
     | Macro (Ocaml_config, s) -> expand_ocaml_config t pform s
+    | Macro (Env, s) -> expand_env ~env pform s
     | Var Project_root -> [Value.Dir (Scope.root scope)]
     | _ ->
       Errors.fail (String_with_vars.Var.loc pform)
@@ -149,7 +160,8 @@ let expand_var t ~scope ~bindings pform syntax_version =
         (String_with_vars.Var.describe pform))
 
 let expand_vars t ~mode ~scope ~dir ?(bindings=Pform.Map.empty) s =
-  String_with_vars.expand ~mode ~dir s ~f:(expand_var t ~scope ~bindings)
+  String_with_vars.expand ~mode ~dir s
+    ~f:(expand_var t ~scope ~bindings ~env:Env.initial)
 
 let expand_vars_string t ~scope ~dir ?bindings s =
   expand_vars t ~mode:Single ~scope ~dir ?bindings s
@@ -163,7 +175,8 @@ let eval_blang t blang ~scope ~dir =
   match blang with
   | Blang.Const x -> x (* common case *)
   | _ ->
-    Blang.eval blang ~dir ~f:(expand_var t ~scope ~bindings:Pform.Map.empty)
+    Blang.eval blang ~dir
+      ~f:(expand_var t ~scope ~bindings:Pform.Map.empty ~env:Env.initial)
 
 type targets =
   | Static of Path.t list
@@ -213,16 +226,16 @@ module Expander : sig
 
   type sctx = t
 
-  val with_expander
+  val partial_expand
     :  sctx
-    -> dir:Path.t
+    -> ectx:Action.Unexpanded.expansion_context
     -> dep_kind:Lib_deps_info.Kind.t
     -> scope:Scope.t
     -> targets_written_by_user:targets
     -> map_exe:(Path.t -> Path.t)
     -> bindings:Pform.Map.t
-    -> f:(Value.t list option String_with_vars.expander -> 'a)
-    -> 'a * Resolved_forms.t
+    -> Action.Unexpanded.t
+    -> Action.Unexpanded.Partial.t * Resolved_forms.t
 end = struct
   module Resolved_forms = struct
     type t =
@@ -273,15 +286,17 @@ end = struct
 
   open Build.O
 
-  let expander ~acc sctx ~dir ~dep_kind ~scope ~targets_written_by_user
+  let expander ~acc sctx ~ectx ~dep_kind ~scope ~targets_written_by_user
         ~map_exe ~bindings pform syntax_version =
     let loc = String_with_vars.Var.loc pform in
     let key = String_with_vars.Var.full_name pform in
+    let { Action.Unexpanded. dir; env } = ectx in
     let res =
       Pform.Map.expand bindings pform syntax_version
       |> Option.bind ~f:(function
         | Pform.Expansion.Var (Values l) -> Some l
         | Macro (Ocaml_config, s) -> Some (expand_ocaml_config sctx pform s)
+        | Macro (Env, s) -> Some (expand_env ~env pform s)
         | Var Project_root -> Some [Value.Dir (Scope.root scope)]
         | Var (First_dep | Deps | Named_local) -> None
         | Var Targets ->
@@ -392,12 +407,16 @@ end = struct
     );
     res
 
-  let with_expander sctx ~dir ~dep_kind ~scope ~targets_written_by_user
-        ~map_exe ~bindings ~f =
+  let partial_expand sctx ~ectx ~dep_kind ~scope ~targets_written_by_user
+        ~map_exe ~bindings t =
     let acc = Resolved_forms.empty () in
-    ( f (expander ~acc sctx ~dir ~dep_kind ~scope ~targets_written_by_user ~map_exe ~bindings)
-    , acc
-    )
+    let partial =
+      Action.Unexpanded.partial_expand t ~ectx ~map_exe ~f:(
+        expander ~acc sctx ~ectx ~dep_kind ~scope ~targets_written_by_user
+          ~map_exe ~bindings
+      )
+    in
+    (partial, acc)
 end
 
 let expand_and_eval_set t ~scope ~dir ?bindings set ~standard =
@@ -422,6 +441,8 @@ let expand_and_eval_set t ~scope ~dir ?bindings set ~standard =
     let files_contents = List.combine paths sexps |> Path.Map.of_list_exn in
     let set = Ordered_set_lang.Unexpanded.expand set ~dir ~files_contents ~f in
     Ordered_set_lang.String.eval set ~standard ~parse
+
+module External_env = Env
 
 module Env : sig
   val ocaml_flags : t -> dir:Path.t -> Ocaml_flags.t
@@ -471,8 +492,7 @@ end = struct
               ~ocamlc_flags:cfg.ocamlc_flags
               ~ocamlopt_flags:cfg.ocamlopt_flags
               ~default
-              ~eval:(expand_and_eval_set t ~scope:node.scope ~dir:node.dir
-                       ?bindings:None)
+              ~eval:(expand_and_eval_set t ~scope:node.scope ~dir ?bindings:None)
         in
         node.ocaml_flags <- Some flags;
         flags
@@ -808,21 +828,22 @@ module Action = struct
           Path.append host.context.build_dir exe
         | _ -> exe
 
-  let expand_step1 sctx ~dir ~dep_kind ~scope ~targets_written_by_user
+  let expand_step1 sctx ~ectx ~dep_kind ~scope ~targets_written_by_user
         ~map_exe ~bindings t =
-    Expander.with_expander sctx ~dir ~dep_kind ~scope ~targets_written_by_user ~map_exe ~bindings
-      ~f:(fun f -> U.partial_expand t ~dir ~map_exe ~f)
+    Expander.partial_expand sctx ~ectx ~dep_kind ~scope
+      ~targets_written_by_user ~map_exe ~bindings t
 
-  let expand_step2 ~dir ~dynamic_expansions ~bindings
+  let expand_step2 ~ectx ~dynamic_expansions ~bindings
         ~(deps_written_by_user : Path.t Dune_file.Bindings.t)
         ~map_exe t =
-    U.Partial.expand t ~dir ~map_exe ~f:(fun pform syntax_version ->
+    U.Partial.expand t ~ectx ~map_exe ~f:(fun pform syntax_version ->
       let key = String_with_vars.Var.full_name pform in
       let loc = String_with_vars.Var.loc pform in
       match String.Map.find dynamic_expansions key with
       | Some _ as opt -> opt
       | None ->
-        Option.map (Pform.Map.expand bindings pform syntax_version) ~f:(function
+        Option.map (Pform.Map.expand bindings pform syntax_version) ~f:(
+          function
           | Var Named_local ->
             begin match Dune_file.Bindings.find deps_written_by_user key with
             | None ->
@@ -868,8 +889,9 @@ module Action = struct
           "Aliases must not have targets, this target will be ignored.\n\
            This will become an error in the future.";
     end;
+    let ectx = { Action.Unexpanded.dir; env = External_env.initial } in
     let t, forms =
-      expand_step1 sctx t ~dir ~dep_kind ~scope
+      expand_step1 sctx t ~ectx ~dep_kind ~scope
         ~targets_written_by_user ~map_exe ~bindings
     in
     let { Action.Infer.Outcome. deps; targets } =
@@ -911,8 +933,8 @@ module Action = struct
             ~f:(fun acc (var, _) value -> String.Map.add acc var value)
         in
         let unresolved =
-          expand_step2 t ~dir ~dynamic_expansions ~deps_written_by_user ~map_exe
-            ~bindings
+          expand_step2 t ~ectx ~dynamic_expansions ~deps_written_by_user
+            ~map_exe ~bindings
         in
         Action.Unresolved.resolve unresolved ~f:(fun loc prog ->
           let sctx = host sctx in

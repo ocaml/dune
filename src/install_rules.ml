@@ -38,6 +38,34 @@ module Gen(P : Params) = struct
     | File of string
     | From_dune_project
 
+  let pkg_version path ~(pkg : Package.t) =
+    match pkg.version_from_opam_file with
+    | Some s -> Build.return (Some s)
+    | None ->
+      let rec loop = function
+        | [] -> Build.return None
+        | candidate :: rest ->
+          match candidate with
+          | File fn ->
+            let p = Path.relative path fn in
+            Build.if_file_exists p
+              ~then_:(Build.lines_of p
+                      >>^ function
+                      | ver :: _ -> Some ver
+                      | _ -> Some "")
+              ~else_:(loop rest)
+          | From_dune_project ->
+            match version_from_dune_project pkg with
+            | None -> loop rest
+            | Some _ as x -> Build.return x
+      in
+      loop
+        [ File (Package.Name.version_fn pkg.name)
+        ; From_dune_project
+        ; File "version"
+        ; File "VERSION"
+        ]
+
   let init_meta () =
     SC.libs_by_package sctx
     |> Package.Name.Map.iter ~f:(fun ((pkg : Package.t), libs) ->
@@ -48,34 +76,7 @@ module Gen(P : Params) = struct
         let meta_template = Path.extend_basename meta ~suffix:".template" in
 
         let version =
-          let get =
-            match pkg.version_from_opam_file with
-            | Some s -> Build.return (Some s)
-            | None ->
-              let rec loop = function
-                | [] -> Build.return None
-                | candidate :: rest ->
-                  match candidate with
-                  | File fn ->
-                    let p = Path.relative path fn in
-                    Build.if_file_exists p
-                      ~then_:(Build.lines_of p
-                              >>^ function
-                              | ver :: _ -> Some ver
-                              | _ -> Some "")
-                      ~else_:(loop rest)
-                  | From_dune_project ->
-                    match version_from_dune_project pkg with
-                    | None -> loop rest
-                    | Some _ as x -> Build.return x
-              in
-              loop
-                [ File ((Package.Name.to_string pkg.name) ^ ".version")
-                ; From_dune_project
-                ; File "version"
-                ; File "VERSION"
-                ]
-          in
+          let get = pkg_version ~pkg path in
           Super_context.Pkg_version.set sctx pkg get
         in
 
@@ -278,8 +279,7 @@ module Gen(P : Params) = struct
          >>^ fun packages ->
          Package.Name.Set.to_list packages
          |> List.map ~f:(fun pkg ->
-           Build_system.Alias.package_install
-             ~context:(SC.context sctx) ~pkg
+           Build_system.Alias.package_install ~context:ctx ~pkg
            |> Build_system.Alias.stamp_file)
          |> Path.Set.of_list);
     SC.add_rule sctx
@@ -307,7 +307,7 @@ module Gen(P : Params) = struct
   let init_install () =
     let entries_per_package =
       List.concat_map (SC.stanzas_to_consider_for_install sctx)
-        ~f:(fun { SC.Installable. dir; stanza; kind = dir_kind; scope; _ } ->
+        ~f:(fun { SC.Installable. dir; stanza; kind = dir_kind; scope } ->
           let dir_contents = Dir_contents.get sctx ~dir in
           match stanza with
           | Library ({ public = Some { package; sub_dir; name = (_, name); _ }

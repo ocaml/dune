@@ -15,6 +15,8 @@ module Name = struct
 
   let meta_fn (t : t) = "META." ^ to_string t
 
+  let version_fn (t : t) = to_string t ^ ".version"
+
   let pp fmt t = Format.pp_print_string fmt (to_string t)
 
   let decode = Dune_lang.Decoder.(map string ~f:of_string)

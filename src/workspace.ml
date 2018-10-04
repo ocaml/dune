@@ -160,6 +160,7 @@ include Versioned_file.Make(struct type t = unit end)
 let () = Lang.register syntax ()
 
 let t ?x ?profile:cmdline_profile () =
+  Versioned_file.no_more_lang >>= fun () ->
   env_field >>= fun env ->
   field "profile" string ~default:Config.default_build_profile
   >>= fun profile ->

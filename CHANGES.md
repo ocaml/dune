@@ -31,7 +31,16 @@ next
 
 - Fix reason support when using `staged_pps` (#1384, @charlesetc)
 
+- Add support for `enabled_if` in `rule`, `menhir`, `ocamllex`,
+  `ocamlyacc` (#1387, @diml)
+
 - Exit gracefully when a signal is received (#1366, @diml)
+
+- Load all defined libraries recursively into utop (#1384, fix #1344,
+  @rgrinberg)
+
+- Allow to use libraries `bytes`, `result` and `uchar` without `findlib`
+  installed (#1391, @nojb)
 
 1.3.0 (23/09/2018)
 ------------------

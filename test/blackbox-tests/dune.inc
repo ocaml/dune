@@ -152,6 +152,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name enabled_if)
+ (deps (package dune) (source_tree test-cases/enabled_if))
+ (action
+  (chdir
+   test-cases/enabled_if
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name env)
  (deps (package dune) (source_tree test-cases/env))
  (action
@@ -197,6 +205,14 @@
  (action
   (chdir
    test-cases/exec-missing
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
+ (name extra-lang-line)
+ (deps (package dune) (source_tree test-cases/extra-lang-line))
+ (action
+  (chdir
+   test-cases/extra-lang-line
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
@@ -994,11 +1010,13 @@
   (alias dune-ppx-driver-system)
   (alias dune-project-edition)
   (alias dup-fields)
+  (alias enabled_if)
   (alias env)
   (alias env-tracking)
   (alias exclude-missing-module)
   (alias exec-cmd)
   (alias exec-missing)
+  (alias extra-lang-line)
   (alias fallback-dune)
   (alias findlib)
   (alias findlib-dynload)
@@ -1115,11 +1133,13 @@
   (alias dune-ppx-driver-system)
   (alias dune-project-edition)
   (alias dup-fields)
+  (alias enabled_if)
   (alias env)
   (alias env-tracking)
   (alias exclude-missing-module)
   (alias exec-cmd)
   (alias exec-missing)
+  (alias extra-lang-line)
   (alias fallback-dune)
   (alias findlib)
   (alias findlib-error)

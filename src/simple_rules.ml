@@ -16,49 +16,52 @@ let dep_bindings ~extra_bindings deps =
   | None -> base
 
 let user_rule sctx ?extra_bindings ~dir ~scope (rule : Rule.t) =
-  let targets : SC.Action.targets =
-    match rule.targets with
-    | Infer -> Infer
-    | Static fns ->
-      let f fn =
-        let not_in_dir ~error_loc s =
-          Errors.fail
-            error_loc
-            "%s does not denote a file in the current directory" s;
+  if SC.eval_blang sctx rule.enabled_if ~dir ~scope then begin
+    let targets : SC.Action.targets =
+      match rule.targets with
+      | Infer -> Infer
+      | Static fns ->
+        let f fn =
+          let not_in_dir ~error_loc s =
+            Errors.fail
+              error_loc
+              "%s does not denote a file in the current directory" s;
+          in
+          let error_loc = String_with_vars.loc fn in
+          List.map ~f:(function
+            | Value.String ("." | "..") ->
+              Errors.fail error_loc "'.' and '..' are not valid filenames"
+            | String s ->
+              if Filename.dirname s <> Filename.current_dir_name then
+                not_in_dir ~error_loc s;
+              Path.relative ~error_loc dir s
+            | Path p ->
+              if Path.parent p <> Some dir then
+                not_in_dir ~error_loc (Path.to_string p);
+              p
+            | Dir p ->
+              not_in_dir ~error_loc (Path.to_string p)
+          ) (SC.expand_vars sctx ~mode:Many ~scope ~dir fn)
         in
-        let error_loc = String_with_vars.loc fn in
-        List.map ~f:(function
-          | Value.String ("." | "..") ->
-            Errors.fail error_loc "'.' and '..' are not valid filenames"
-          | String s ->
-            if Filename.dirname s <> Filename.current_dir_name then
-              not_in_dir ~error_loc s;
-            Path.relative ~error_loc dir s
-          | Path p ->
-            if Path.parent p <> Some dir then
-              not_in_dir ~error_loc (Path.to_string p);
-            p
-          | Dir p ->
-            not_in_dir ~error_loc (Path.to_string p)
-        ) (SC.expand_vars sctx ~mode:Many ~scope ~dir fn)
-      in
-      Static (List.concat_map ~f fns)
-  in
-  let bindings = dep_bindings ~extra_bindings rule.deps in
-  SC.add_rule_get_targets sctx ~mode:rule.mode ~loc:rule.loc
-    ~locks:(interpret_locks sctx ~dir ~scope rule.locks)
-    (SC.Deps.interpret_named sctx ~scope ~dir rule.deps
-     >>>
-     SC.Action.run
-       sctx
-       (snd rule.action)
-       ~loc:(fst rule.action)
-       ~dir
-       ~bindings
-       ~dep_kind:Required
-       ~targets
-       ~targets_dir:dir
-       ~scope)
+        Static (List.concat_map ~f fns)
+    in
+    let bindings = dep_bindings ~extra_bindings rule.deps in
+    SC.add_rule_get_targets sctx ~mode:rule.mode ~loc:rule.loc
+      ~locks:(interpret_locks sctx ~dir ~scope rule.locks)
+      (SC.Deps.interpret_named sctx ~scope ~dir rule.deps
+       >>>
+       SC.Action.run
+         sctx
+         (snd rule.action)
+         ~loc:(fst rule.action)
+         ~dir
+         ~bindings
+         ~dep_kind:Required
+         ~targets
+         ~targets_dir:dir
+         ~scope)
+  end else
+    []
 
 let copy_files sctx ~dir ~scope ~src_dir (def: Copy_files.t) =
   let loc = String_with_vars.loc def.glob in
@@ -106,18 +109,6 @@ let add_alias sctx ~dir ~name ~stamp ~loc ?(locks=[]) build =
   SC.add_alias_action sctx alias ~loc ~locks ~stamp build
 
 let alias sctx ?extra_bindings ~dir ~scope (alias_conf : Alias_conf.t) =
-  let enabled =
-    match alias_conf.enabled_if with
-    | None -> true
-    | Some blang ->
-      let f : String_with_vars.t Blang.expander =
-        { f = fun ~mode sw ->
-            ( String_with_vars.loc sw
-            , Super_context.expand_vars sctx ~scope ~mode ~dir sw
-            )
-        } in
-      Blang.eval_bool blang ~dir ~f
-  in
   let stamp =
     ( "user-alias"
     , Dune_file.Bindings.map
@@ -128,7 +119,7 @@ let alias sctx ?extra_bindings ~dir ~scope (alias_conf : Alias_conf.t) =
     )
   in
   let loc = Some alias_conf.loc in
-  if enabled then
+  if SC.eval_blang sctx alias_conf.enabled_if ~dir ~scope then
     add_alias sctx
       ~dir
       ~loc

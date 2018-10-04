@@ -377,9 +377,8 @@ module Preprocess = struct
 end
 
 module Blang = struct
-  type 'a t = 'a Blang.t
+  include Blang
 
-  open Blang
   let ops =
     [ "=", Op.Eq
     ; ">=", Gte
@@ -399,7 +398,7 @@ module Blang = struct
            Compare (op, x, y))))
     in
     let decode =
-      fix begin fun (t : String_with_vars.t Blang.t Dune_lang.Decoder.t) ->
+      fix begin fun t ->
         if_list
           ~then_:(
             [ "or", repeat t >>| (fun x -> Or x)
@@ -414,6 +413,10 @@ module Blang = struct
     in
     decode
 end
+
+let enabled_if =
+  field "enabled_if" ~default:Blang.true_
+    (Syntax.since Stanza.syntax (1, 4) >>> Blang.decode)
 
 module Per_module = struct
   include Per_item.Make(Module.Name)
@@ -1532,6 +1535,7 @@ module Rule = struct
     ; mode     : Mode.t
     ; locks    : String_with_vars.t list
     ; loc      : Loc.t
+    ; enabled_if : Blang.t
     }
 
   type action_or_field = Action | Field
@@ -1574,6 +1578,7 @@ module Rule = struct
     ; mode     = Standard
     ; locks    = []
     ; loc      = loc
+    ; enabled_if = Blang.true_
     }
 
   let long_form =
@@ -1602,6 +1607,7 @@ module Rule = struct
           | false, Some mode -> Ok mode
           | true, None -> Ok Fallback
           | false, None -> Ok Standard)
+    and enabled_if = enabled_if
     in
     { targets
     ; deps
@@ -1609,6 +1615,7 @@ module Rule = struct
     ; mode
     ; locks
     ; loc
+    ; enabled_if
     }
 
   let jbuild_syntax =
@@ -1669,7 +1676,9 @@ module Rule = struct
           ~then_:(
             record
               (let%map modules = field "modules" (list string)
-               and mode = Mode.field in
+               and mode = Mode.field
+
+               in
                { modules; mode }))
           ~else_:(
             repeat string >>| fun modules ->
@@ -1704,6 +1713,7 @@ module Rule = struct
       ; mode
       ; locks = []
       ; loc
+      ; enabled_if = Blang.true_
       })
 
   let ocamlyacc_to_rule loc { modules; mode } =
@@ -1721,6 +1731,7 @@ module Rule = struct
       ; mode
       ; locks = []
       ; loc
+      ; enabled_if = Blang.true_
       })
 end
 
@@ -1732,13 +1743,14 @@ module Menhir = struct
     ; mode       : Rule.Mode.t
     ; loc        :  Loc.t
     ; infer      : bool
+    ; enabled_if : Blang.t
     }
 
   let syntax =
     Syntax.create
       ~name:"menhir"
       ~desc:"the menhir extension"
-      [ 1, 0
+      [ 1, 1
       ; 2, 0
       ]
 
@@ -1750,6 +1762,7 @@ module Menhir = struct
        and mode = Rule.Mode.field
        and infer = field_o_b "infer" ~check:(Syntax.since syntax (2, 0))
        and menhir_syntax = Syntax.get_exn syntax
+       and enabled_if = enabled_if
        in
        let infer =
          match infer with
@@ -1762,6 +1775,7 @@ module Menhir = struct
        ; mode
        ; loc = Loc.none
        ; infer
+       ; enabled_if
        })
 
   type Stanza.t += T of t
@@ -1784,6 +1798,7 @@ module Menhir = struct
        ; mode
        ; loc = Loc.none
        ; infer = false
+       ; enabled_if = Blang.true_
        })
 end
 
@@ -1794,7 +1809,7 @@ module Alias_conf = struct
     ; action  : (Loc.t * Action.Unexpanded.t) option
     ; locks   : String_with_vars.t list
     ; package : Package.t option
-    ; enabled_if : String_with_vars.t Blang.t option
+    ; enabled_if : Blang.t
     ; loc : Loc.t
     }
 
@@ -1813,7 +1828,7 @@ module Alias_conf = struct
        and action = field_o "action" (located Action.Unexpanded.decode)
        and locks = field "locks" (list String_with_vars.decode) ~default:[]
        and deps = field "deps" (Bindings.decode Dep_conf.decode) ~default:Bindings.empty
-       and enabled_if = field_o "enabled_if" Blang.decode
+       and enabled_if = field "enabled_if" Blang.decode ~default:Blang.true_
        in
        { name
        ; deps
@@ -1831,7 +1846,7 @@ module Tests = struct
     ; locks      : String_with_vars.t list
     ; package    : Package.t option
     ; deps       : Dep_conf.t Bindings.t
-    ; enabled_if : String_with_vars.t Blang.t option
+    ; enabled_if : Blang.t
     ; action     : Action.Unexpanded.t option
     }
 
@@ -1846,7 +1861,7 @@ module Tests = struct
                      ~default:Executables.Link_mode.Set.default
        and deps =
          field "deps" (Bindings.decode Dep_conf.decode) ~default:Bindings.empty
-       and enabled_if = field_o "enabled_if" Blang.decode
+       and enabled_if = enabled_if
        and action = field_o "action" Action.Unexpanded.decode
        in
        { exes =

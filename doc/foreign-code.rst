@@ -5,12 +5,12 @@ Dealing with foreign libraries
 The OCaml programming language allows to interface libraries written
 in foreign languages such as C. This section explains how to do this
 with Dune. Note that it does not cover how to write the C stubs
-themselves, this is covered by the OCaml manual:
-https://caml.inria.fr/pub/docs/manual-ocaml/intfc.html.
+themselves, this is covered by the
+`OCaml manual <https://caml.inria.fr/pub/docs/manual-ocaml/intfc.html>`_
 
 More precisely, this section covers:
 - how to add C/C++ stubs to an OCaml library
-- how to pass specific compilaction flags for compiling the stubs
+- how to pass specific compilation flags for compiling the stubs
 - how to build a library with a foreign build system
 
 Note that in general Dune has limited support for building source
@@ -69,7 +69,7 @@ Foreign build sandboxing
 ========================
 
 When the build of a C library is too complicated to express in the
-Dune language, it is possible to simply *sandbox* an foreign
+Dune language, it is possible to simply *sandbox* a foreign
 build. Note that this method can be used to build other things, not
 just C libraries.
 
@@ -116,7 +116,7 @@ named ``lib<ocaml-lib-name>_stubs.a`` and
 ``dll<ocaml-lib-name>_stubs.so``.
 
 The last step is to attach these archives to an OCaml library as
-follow:
+follows:
 
 .. code:: scheme
 
@@ -127,7 +127,8 @@ follow:
 Then, whenever you use the ``foo`` library, you will also be able to
 use C functions from ``libfoo``. Note that the argument of
 ``self_build_stubs_archive`` has to be the name of the library. If you
-put anything else it will be ignored, this is a bug in Dune.
+put anything else it will be ignored, this is a
+`known bug in Dune <https://github.com/ocaml/dune/issues/1393>`_.
 
 Limitations
 -----------

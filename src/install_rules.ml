@@ -44,10 +44,8 @@ module Gen(P : Params) = struct
         Lib.Set.iter libs ~f:gen_lib_dune_file;
       let path = Path.append ctx.build_dir pkg.path in
       SC.on_load_dir sctx ~dir:path ~f:(fun () ->
-        let meta_fn = "META." ^ (Package.Name.to_string pkg.name) in
-
-        let meta_template = Path.relative path (meta_fn ^ ".template"     ) in
-        let meta          = Path.relative path  meta_fn                     in
+        let meta = Path.append ctx.build_dir (Package.meta_file pkg) in
+        let meta_template = Path.extend_basename meta ~suffix:".template" in
 
         let version =
           let get =
@@ -244,7 +242,7 @@ module Gen(P : Params) = struct
     | Default -> true
     | Opam _  -> false
 
-  let install_file package_path package entries =
+  let install_file (package : Package.t) entries =
     let entries =
       let files = SC.source_files sctx ~src_path:Path.root in
       String.Set.fold files ~init:entries ~f:(fun fn acc ->
@@ -254,28 +252,29 @@ module Gen(P : Params) = struct
           acc)
     in
     let entries =
-      let opam = Path.relative package_path (Package.Name.opam_fn package) in
+      let opam = Package.opam_file package in
       Install.Entry.make Lib opam ~dst:"opam" :: entries
     in
     let entries =
-      let meta_fn = "META." ^ (Package.Name.to_string package) in
-      let meta = Path.append ctx.build_dir (Path.relative package_path meta_fn) in
+      let meta = Path.append ctx.build_dir (Package.meta_file package) in
       Install.Entry.make Lib meta ~dst:"META" :: entries
     in
     let fn =
-      Path.relative (Path.append ctx.build_dir package_path)
-        (Utils.install_file ~package ~findlib_toolchain:ctx.findlib_toolchain)
+      Path.relative (Path.append ctx.build_dir package.path)
+        (Utils.install_file ~package:package.name
+           ~findlib_toolchain:ctx.findlib_toolchain)
     in
     let install_paths =
-      Install.Section.Paths.make ~package ~destdir:Path.root ()
+      Install.Section.Paths.make ~package:package.name ~destdir:Path.root ()
     in
-    let entries = local_install_rules entries ~package ~install_paths in
+    let entries =
+      local_install_rules entries ~package:package.name ~install_paths in
     let files = Install.files entries in
     SC.add_alias_deps sctx
-      (Alias.package_install ~context:ctx ~pkg:package)
+      (Alias.package_install ~context:ctx ~pkg:package.name)
       files
       ~dyn_deps:
-        (Build_system.package_deps (SC.build_system sctx) package files
+        (Build_system.package_deps (SC.build_system sctx) package.name files
          >>^ fun packages ->
          Package.Name.Set.to_list packages
          |> List.map ~f:(fun pkg ->
@@ -335,7 +334,7 @@ module Gen(P : Params) = struct
         Option.value (Package.Name.Map.find entries_per_package pkg.name)
           ~default:[]
       in
-      install_file pkg.path pkg.name stanzas)
+      install_file pkg stanzas)
 
   let init_install_files () =
     if not ctx.implicit then

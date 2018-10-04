@@ -23,3 +23,5 @@ type t =
   }
 
 val opam_file : t -> Path.t
+
+val meta_file : t -> Path.t

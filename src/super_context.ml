@@ -230,7 +230,7 @@ module Expander : sig
 
   type sctx = t
 
-  val with_expander
+  val partial_expand
     :  sctx
     -> ectx:Action.Unexpanded.expansion_context
     -> dep_kind:Lib_deps_info.Kind.t
@@ -238,8 +238,8 @@ module Expander : sig
     -> targets_written_by_user:targets
     -> map_exe:(Path.t -> Path.t)
     -> bindings:Pform.Map.t
-    -> f:(Value.t list option String_with_vars.expander -> 'a)
-    -> 'a * Resolved_forms.t
+    -> Action.Unexpanded.t
+    -> Action.Unexpanded.Partial.t * Resolved_forms.t
 end = struct
   module Resolved_forms = struct
     type t =
@@ -411,12 +411,16 @@ end = struct
     );
     res
 
-  let with_expander sctx ~ectx ~dep_kind ~scope ~targets_written_by_user
-        ~map_exe ~bindings ~f =
+  let partial_expand sctx ~ectx ~dep_kind ~scope ~targets_written_by_user
+        ~map_exe ~bindings t =
     let acc = Resolved_forms.empty () in
-    ( f (expander ~acc sctx ~ectx ~dep_kind ~scope ~targets_written_by_user ~map_exe ~bindings)
-    , acc
-    )
+    let partial =
+      Action.Unexpanded.partial_expand t ~ectx ~map_exe ~f:(
+        expander ~acc sctx ~ectx ~dep_kind ~scope ~targets_written_by_user
+          ~map_exe ~bindings
+      )
+    in
+    (partial, acc)
 end
 
 let expand_and_eval_set t ~scope ~dir ?bindings set ~standard =
@@ -830,9 +834,8 @@ module Action = struct
 
   let expand_step1 sctx ~ectx ~dep_kind ~scope ~targets_written_by_user
         ~map_exe ~bindings t =
-    Expander.with_expander sctx ~ectx ~dep_kind ~scope
-      ~targets_written_by_user ~map_exe ~bindings
-      ~f:(fun f -> U.partial_expand t ~ectx ~map_exe ~f)
+    Expander.partial_expand sctx ~ectx ~dep_kind ~scope
+      ~targets_written_by_user ~map_exe ~bindings t
 
   let expand_step2 ~ectx ~dynamic_expansions ~bindings
         ~(deps_written_by_user : Path.t Dune_file.Bindings.t)

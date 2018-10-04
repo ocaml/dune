@@ -6,6 +6,7 @@ Make sure that we require a default value regardless of the context
   3 |  (action (echo %{env:DUNE_ENV_VAR})))
                        ^^^^^^^^^^^^^^^^^
   Error: %{env:..} must always come with a default value
+  Hint: the syntax is %{env:VAR=DEFAULT-VALUE}
   [1]
   $ dune build --root missing-default-in-blang @echo
   Entering directory 'missing-default-in-blang'
@@ -13,6 +14,7 @@ Make sure that we require a default value regardless of the context
   3 |  (enabled_if (= true %{env:DUNE_ENV_VAR}))
                              ^^^^^^^^^^^^^^^^^
   Error: %{env:..} must always come with a default value
+  Hint: the syntax is %{env:VAR=DEFAULT-VALUE}
   [1]
 
 Actually test that the environment changes are properly tracked, i.e. that

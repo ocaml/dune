@@ -139,15 +139,11 @@ let expand_env ~env pform s : Value.t list =
   match String.rsplit2 s ~on:'=' with
   | None ->
     Errors.fail (String_with_vars.Var.loc pform)
-      "%s must always come with a default value"
+      "%s must always come with a default value\n\
+       Hint: the syntax is %%{env:VAR=DEFAULT-VALUE}"
       (String_with_vars.Var.describe pform)
   | Some (var, default) ->
-    let value =
-      match Env.get env var with
-      | None -> default
-      | Some v -> v
-    in
-    [String value]
+    [String (Option.value ~default (Env.get env var))]
 
 let expand_var t ~scope ~bindings ~env pform syntax_version =
   (match Pform.Map.expand bindings pform syntax_version with

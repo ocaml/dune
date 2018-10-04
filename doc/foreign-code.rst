@@ -121,14 +121,11 @@ follows:
 .. code:: scheme
 
           (library
-           (name foo)
+           (name bar)
            (self_build_stubs_archive foo))
 
-Then, whenever you use the ``foo`` library, you will also be able to
-use C functions from ``libfoo``. Note that the argument of
-``self_build_stubs_archive`` has to be the name of the library. If you
-put anything else it will be ignored, this is a
-`known bug in Dune <https://github.com/ocaml/dune/issues/1393>`_.
+Then, whenever you use the ``bar`` library, you will also be able to
+use C functions from ``libfoo``.
 
 Limitations
 -----------

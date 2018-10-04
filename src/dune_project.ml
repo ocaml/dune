@@ -394,6 +394,7 @@ let parse ~dir ~lang ~packages ~file =
           (* We don't parse the arguments quite yet as we want to set
              the version of extensions before parsing them. *)
           Extension.instantiate ~loc ~parse_args name ver)
+     and () = Versioned_file.no_more_lang
      in
      match
        String.Map.of_list

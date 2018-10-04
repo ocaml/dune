@@ -113,6 +113,7 @@ let default =
 let decode =
   let%map display = field "display" Display.decode ~default:default.display
   and concurrency = field "jobs" Concurrency.decode ~default:default.concurrency
+  and () = Versioned_file.no_more_lang
   in
   { display
   ; concurrency

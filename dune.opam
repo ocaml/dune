@@ -17,7 +17,6 @@ build: [
 ]
 conflicts: [
   "jbuilder" {!= "transition"}
-  "menhir" { < "20180523" }
 ]
 
 synopsis: "Fast, portable and opinionated build system"

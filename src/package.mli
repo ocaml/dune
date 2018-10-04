@@ -9,6 +9,8 @@ module Name : sig
 
   val opam_fn : t -> string
 
+  val version_fn : t -> string
+
   include Interned.S with type t := t
 
   val decode : t Dune_lang.Decoder.t
@@ -23,3 +25,5 @@ type t =
   }
 
 val opam_file : t -> Path.t
+
+val meta_file : t -> Path.t

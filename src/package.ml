@@ -13,6 +13,10 @@ module Name = struct
 
   let opam_fn (t : t) = to_string t ^ ".opam"
 
+  let meta_fn (t : t) = "META." ^ to_string t
+
+  let version_fn (t : t) = to_string t ^ ".version"
+
   let pp fmt t = Format.pp_print_string fmt (to_string t)
 
   let decode = Dune_lang.Decoder.(map string ~f:of_string)
@@ -28,3 +32,5 @@ type t =
   }
 
 let opam_file t = Path.relative t.path (Name.opam_fn t.name)
+
+let meta_file t = Path.relative t.path (Name.meta_fn t.name)

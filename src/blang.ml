@@ -26,22 +26,20 @@ type t =
 
 let true_ = Const true
 
-let rec eval t ~ectx ~f =
+let rec eval t ~dir ~f =
   match t with
   | Const x -> x
   | Expr sw ->
-    begin match String_with_vars.expand sw ~mode:Single ~ectx ~f with
+    begin match String_with_vars.expand sw ~mode:Single ~dir ~f with
     | String "true" -> true
     | String "false" -> false
     | _ ->
       let loc = String_with_vars.loc sw in
       Errors.fail loc "This value must be either true or false"
     end
-  | And xs -> List.for_all ~f:(eval ~f ~ectx) xs
-  | Or xs -> List.exists ~f:(eval ~f ~ectx) xs
+  | And xs -> List.for_all ~f:(eval ~f ~dir) xs
+  | Or xs -> List.exists ~f:(eval ~f ~dir) xs
   | Compare (op, x, y) ->
-    let x = String_with_vars.expand x ~mode:Many ~ectx ~f
-    and y = String_with_vars.expand y ~mode:Many ~ectx ~f in
-    Op.eval op (Value.L.compare_vals ~dir:ectx.dir x y)
-
-let eval t ~dir ~f = eval t ~ectx:{ String_with_vars.dir; env = Env.initial } ~f
+    let x = String_with_vars.expand x ~mode:Many ~dir ~f
+    and y = String_with_vars.expand y ~mode:Many ~dir ~f in
+    Op.eval op (Value.L.compare_vals ~dir x y)

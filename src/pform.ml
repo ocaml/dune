@@ -193,7 +193,7 @@ module Map = struct
         Syntax.Error.deleted_in (String_with_vars.Var.loc pform)
           Stanza.syntax in_version ~what:(describe pform) ?repl
 
-  let expand t ~env:_ pform syntax_version =
+  let expand t pform syntax_version =
     match String_with_vars.Var.payload pform with
     | None ->
       Option.map (expand t.vars ~syntax_version ~pform) ~f:(fun x ->

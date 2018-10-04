@@ -231,20 +231,15 @@ module Var = struct
        | Some _ -> { t with payload = Some ".." })
 end
 
-type expansion_context = {
-  dir: Path.t;
-  env: Env.t;
-}
-
-type 'a expander = env:Env.t -> Var.t -> Syntax.Version.t -> 'a
+type 'a expander = Var.t -> Syntax.Version.t -> 'a
 
 let partial_expand
   : 'a.t
   -> mode:'a Mode.t
-  -> ectx:expansion_context
+  -> dir:Path.t
   -> f:Value.t list option expander
   -> 'a Partial.t
-  = fun ({template; syntax_version} as t) ~mode ~ectx ~f ->
+  = fun ({template; syntax_version} as t) ~mode ~dir ~f ->
     let commit_text acc_text acc =
       let s = concat_rev acc_text in
       if s = "" then acc else Text s :: acc
@@ -261,11 +256,11 @@ let partial_expand
         end
       | Text s :: items -> loop (s :: acc_text) acc items
       | Var var as it :: items ->
-        begin match f ~env:ectx.env var syntax_version with
+        begin match f var syntax_version with
         | Some ([] | _::_::_ as e) when not template.quoted ->
           invalid_multivalue var e
         | Some t ->
-          loop (Value.L.concat ~dir:ectx.dir t :: acc_text) acc items
+          loop (Value.L.concat ~dir t :: acc_text) acc items
         | None -> loop [] (it :: commit_text acc_text acc) items
         end
     in
@@ -273,7 +268,7 @@ let partial_expand
     | [] -> Partial.Expanded (Mode.string mode "")
     | [Text s] -> Expanded (Mode.string mode s)
     | [Var var] when not template.quoted ->
-      begin match f ~env:ectx.env var syntax_version with
+      begin match f var syntax_version with
       | None -> Partial.Unexpanded t
       | Some e -> Expanded (
         match Mode.value mode e with
@@ -282,10 +277,10 @@ let partial_expand
       end
     | _ -> loop [] [] template.parts
 
-let expand t ~mode ~ectx ~f =
+let expand t ~mode ~dir ~f =
   match
-    partial_expand t ~mode ~ectx ~f:(fun ~env var syntax_version ->
-      match f ~env var syntax_version with
+    partial_expand t ~mode ~dir ~f:(fun var syntax_version ->
+      match f var syntax_version with
       | None ->
         begin match var.syntax with
         | Percent ->
@@ -301,7 +296,7 @@ let expand t ~mode ~ectx ~f =
   | Partial.Expanded s -> s
   | Unexpanded _ -> assert false (* we are expanding every variable *)
 
-let partial_expand t ~mode ~ectx ~f = partial_expand t ~mode ~ectx ~f
+let partial_expand t ~mode ~dir ~f = partial_expand t ~mode ~dir ~f
 
 let encode { template; syntax_version = _ } = Dune_lang.Template template
 

@@ -415,6 +415,11 @@ module Unexpanded = struct
         (Dune_lang.pp Dune)
         (List [Dune_lang.unsafe_atom_of_string "mkdir"; Path_dune_lang.encode path])
 
+  type expansion_context = {
+    dir: Path.t;
+    env: Env.t;
+  }
+
   module Partial = struct
     module Program = Unresolved.Program
 
@@ -427,11 +432,11 @@ module Unexpanded = struct
     include Past
 
     module E = struct
-      let expand ~ectx ~mode ~f ~l ~r =
+      let expand ~ectx:{ dir; _ } ~mode ~f ~l ~r =
         Either.map ~l
           ~r:(fun s ->
             r ~loc:(Some (String_with_vars.loc s))
-              (String_with_vars.expand s ~ectx ~f ~mode) ~dir:ectx.dir)
+              (String_with_vars.expand s ~dir ~f ~mode) ~dir)
 
       let string =
         expand ~mode:Single
@@ -522,7 +527,7 @@ module Unexpanded = struct
 
   module E = struct
     let expand ~ectx ~mode ~f ~map x =
-      match String_with_vars.partial_expand ~mode ~ectx ~f x with
+      match String_with_vars.partial_expand ~mode ~dir:ectx.dir ~f x with
       | Expanded e ->
         let loc = Some (String_with_vars.loc x) in
         Left (map ~loc e ~dir:ectx.dir)

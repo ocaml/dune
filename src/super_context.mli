@@ -84,7 +84,8 @@ val expand_vars
   :  t
   -> mode:'a String_with_vars.Mode.t
   -> scope:Scope.t
-  -> dir:Path.t -> ?bindings:Pform.Map.t
+  -> dir:Path.t
+  -> ?bindings:Pform.Map.t
   -> String_with_vars.t
   -> 'a
 

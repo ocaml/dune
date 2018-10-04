@@ -65,19 +65,24 @@ module Var : sig
   val describe : t -> string
 end
 
-type 'a expander = Var.t -> Syntax.Version.t -> 'a
+type expansion_context = {
+  dir: Path.t;
+  env: Env.t;
+}
+
+type 'a expander = env:Env.t -> Var.t -> Syntax.Version.t -> 'a
 
 val expand
   :  t
   -> mode:'a Mode.t
-  -> dir:Path.t
+  -> ectx: expansion_context
   -> f:(Value.t list option expander)
   -> 'a
 
 val partial_expand
   :  t
   -> mode:'a Mode.t
-  -> dir:Path.t
+  -> ectx: expansion_context
   -> f:(Value.t list option expander)
   -> 'a Partial.t
 

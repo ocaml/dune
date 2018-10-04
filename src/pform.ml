@@ -25,6 +25,7 @@ module Macro = struct
     | Read_lines
     | Path_no_dep
     | Ocaml_config
+    | Env
 end
 
 module Expansion = struct
@@ -90,6 +91,7 @@ module Map = struct
 
       ; "path-no-dep", deleted_in ~version:(1, 0) Macro.Path_no_dep
       ; "ocaml-config", macro Ocaml_config
+      ; "env", since ~version:(1, 4) Macro.Env
       ]
 
   let create ~(context : Context.t) ~cxx_flags =
@@ -191,7 +193,7 @@ module Map = struct
         Syntax.Error.deleted_in (String_with_vars.Var.loc pform)
           Stanza.syntax in_version ~what:(describe pform) ?repl
 
-  let expand t pform syntax_version =
+  let expand t ~env:_ pform syntax_version =
     match String_with_vars.Var.payload pform with
     | None ->
       Option.map (expand t.vars ~syntax_version ~pform) ~f:(fun x ->

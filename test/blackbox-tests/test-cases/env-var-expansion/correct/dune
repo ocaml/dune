@@ -1,0 +1,18 @@
+(alias
+ (name echo1)
+ (action (echo %{env:DUNE_ENV_VAR=true})))
+
+(alias
+ (name echo2)
+ (action (setenv DUNE_ENV_VAR false
+          (echo %{env:DUNE_ENV_VAR=true}))))
+
+(alias
+ (name enabled)
+ (enabled_if (= true %{env:DUNE_ENV_VAR=true}))
+ (action (echo "enabled!")))
+
+(alias
+ (name disabled)
+ (enabled_if (= true %{env:DUNE_ENV_VAR=false}))
+ (action (echo "enabled!")))

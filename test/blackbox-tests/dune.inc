@@ -176,6 +176,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name env-var-expansion)
+ (deps (package dune) (source_tree test-cases/env-var-expansion))
+ (action
+  (chdir
+   test-cases/env-var-expansion
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name envs-and-contexts)
  (deps (package dune) (source_tree test-cases/envs-and-contexts))
  (action

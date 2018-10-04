@@ -83,7 +83,7 @@ module Unexpanded : sig
 
     val expand
       :  t
-      -> dir:Path.t
+      -> ectx:String_with_vars.expansion_context
       -> map_exe:(Path.t -> Path.t)
       -> f:(Value.t list option String_with_vars.expander)
       -> Unresolved.t
@@ -91,7 +91,7 @@ module Unexpanded : sig
 
   val partial_expand
     :  t
-    -> dir:Path.t
+    -> ectx:String_with_vars.expansion_context
     -> map_exe:(Path.t -> Path.t)
     -> f:(Value.t list option String_with_vars.expander)
     -> Partial.t

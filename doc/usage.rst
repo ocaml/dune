@@ -220,11 +220,11 @@ with locally defined libraries loaded.
 
    $ dune utop <dir> -- <args>
 
-Where ``<dir>`` is a directory containing a ``dune`` file defining all the
-libraries that will be loaded (using the ``library`` stanza). ``<args>`` will be
-passed as arguments to the utop command itself. For example, ``dune utop lib --
--implicit-bindings`` will start ``utop`` with the libraries defined in ``lib``
-and implicit bindings for toplevel expressions.
+Where ``<dir>`` is a directory under which dune will search (recursively) for
+all libraries that will be loaded. ``<args>`` will be passed as arguments to the
+utop command itself. For example, ``dune utop lib -- -implicit-bindings`` will
+start ``utop`` with the libraries defined in ``lib`` and implicit bindings for
+toplevel expressions.
 
 Requirements & Limitations
 --------------------------
@@ -272,6 +272,7 @@ This has the following effects:
 -  it tells dune to build everything that is installable and to
    ignore packages other than ``name`` defined in your project
 -  it sets the root to prevent dune from looking it up
+-  it silently ignores all rules with ``(mode promote)``
 -  it sets the build profile to ``release``
 -  it uses whatever concurrency option opam provides
 -  it sets the default target to ``@install`` rather than ``@@default``

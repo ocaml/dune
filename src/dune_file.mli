@@ -380,6 +380,7 @@ module Rule : sig
     ; mode     : Mode.t
     ; locks    : String_with_vars.t list
     ; loc      : Loc.t
+    ; enabled_if : Blang.t
     }
 end
 
@@ -391,6 +392,7 @@ module Menhir : sig
     ; mode       : Rule.Mode.t
     ; loc        : Loc.t
     ; infer      : bool
+    ; enabled_if : Blang.t
     }
 
   type Stanza.t += T of t
@@ -403,7 +405,7 @@ module Alias_conf : sig
     ; action  : (Loc.t * Action.Unexpanded.t) option
     ; locks   : String_with_vars.t list
     ; package : Package.t option
-    ; enabled_if : String_with_vars.t Blang.t option
+    ; enabled_if : Blang.t
     ; loc : Loc.t
     }
 end
@@ -430,7 +432,7 @@ module Tests : sig
     ; locks      : String_with_vars.t list
     ; package    : Package.t option
     ; deps       : Dep_conf.t Bindings.t
-    ; enabled_if : String_with_vars.t Blang.t option
+    ; enabled_if : Blang.t
     ; action     : Action.Unexpanded.t option
     }
 end

@@ -42,6 +42,8 @@
 - Allow to use libraries `bytes`, `result` and `uchar` without `findlib`
   installed (#1391, @nojb)
 
+- Take argument to self_build_stubs_archive into account. (#1395, @nojb)
+
 1.3.0 (23/09/2018)
 ------------------
 

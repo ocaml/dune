@@ -1124,17 +1124,20 @@ module Library = struct
     | _            -> true
 
   let stubs_name t =
-    Lib_name.Local.to_string (snd t.name) ^ "_stubs"
+    let name =
+      match t.self_build_stubs_archive with
+      | None -> Lib_name.Local.to_string (snd t.name)
+      | Some s -> s
+    in
+    name ^ "_stubs"
 
   let stubs t ~dir = Path.relative dir (stubs_name t)
 
   let stubs_archive t ~dir ~ext_lib =
-    Path.relative dir (sprintf "lib%s_stubs%s"
-                         (Lib_name.Local.to_string (snd t.name)) ext_lib)
+    Path.relative dir (sprintf "lib%s%s" (stubs_name t) ext_lib)
 
   let dll t ~dir ~ext_dll =
-    Path.relative dir (sprintf "dll%s_stubs%s"
-                         (Lib_name.Local.to_string (snd t.name)) ext_dll)
+    Path.relative dir (sprintf "dll%s%s" (stubs_name t) ext_dll)
 
   let archive t ~dir ~ext =
     Path.relative dir (Lib_name.Local.to_string (snd t.name) ^ ext)

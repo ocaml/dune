@@ -1647,6 +1647,7 @@ module Rule = struct
   type lex_or_yacc =
     { modules : string list
     ; mode    : Mode.t
+    ; enabled_if : Blang.t
     }
 
   let ocamllex_jbuild =
@@ -1656,13 +1657,14 @@ module Rule = struct
         repeat string >>| fun modules ->
              { modules
              ; mode  = Standard
+             ; enabled_if = Blang.true_
              }
       )
     | _ ->
       record
         (let%map modules = field "modules" (list string)
          and mode = Mode.field in
-         { modules; mode })
+         { modules; mode; enabled_if = Blang.true_ })
 
   let ocamllex_dune =
     if_eos
@@ -1670,6 +1672,7 @@ module Rule = struct
         return
           { modules = []
           ; mode  = Standard
+          ; enabled_if = Blang.true_
           })
       ~else_:(
         if_list
@@ -1677,13 +1680,14 @@ module Rule = struct
             record
               (let%map modules = field "modules" (list string)
                and mode = Mode.field
-
+               and enabled_if = enabled_if
                in
-               { modules; mode }))
+               { modules; mode; enabled_if }))
           ~else_:(
             repeat string >>| fun modules ->
             { modules
             ; mode  = Standard
+            ; enabled_if = Blang.true_
             }))
 
   let ocamllex =
@@ -1693,7 +1697,7 @@ module Rule = struct
 
   let ocamlyacc = ocamllex
 
-  let ocamllex_to_rule loc { modules; mode } =
+  let ocamllex_to_rule loc { modules; mode; enabled_if } =
     let module S = String_with_vars in
     List.map modules ~f:(fun name ->
       let src = name ^ ".mll" in
@@ -1713,10 +1717,10 @@ module Rule = struct
       ; mode
       ; locks = []
       ; loc
-      ; enabled_if = Blang.true_
+      ; enabled_if
       })
 
-  let ocamlyacc_to_rule loc { modules; mode } =
+  let ocamlyacc_to_rule loc { modules; mode; enabled_if } =
     let module S = String_with_vars in
     List.map modules ~f:(fun name ->
       let src = name ^ ".mly" in
@@ -1731,7 +1735,7 @@ module Rule = struct
       ; mode
       ; locks = []
       ; loc
-      ; enabled_if = Blang.true_
+      ; enabled_if
       })
 end
 

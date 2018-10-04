@@ -364,10 +364,10 @@ let all_packages t =
     | Error _ -> acc)
   |> List.sort ~compare:(fun (a : Package.t) b -> Lib_name.compare a.name b.name)
 
-let create ~stdlib_dir ~paths =
+let create ~stdlib_dir ~paths ~version =
   { stdlib_dir
   ; paths
-  ; builtins = Meta.builtins ~stdlib_dir
+  ; builtins = Meta.builtins ~stdlib_dir ~version
   ; packages = Hashtbl.create 1024
   }
 

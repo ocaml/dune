@@ -195,7 +195,7 @@ let archives name =
   ; plugin  "native" (name ^ ".cmxs")
   ]
 
-let builtins ~stdlib_dir =
+let builtins ~stdlib_dir ~version:ocaml_version =
   let version = version "[distributed with Ocaml]" in
   let simple name ?dir ?archive_name deps =
     let archive_name =
@@ -212,6 +212,11 @@ let builtins ~stdlib_dir =
          match dir with
          | None -> archives
          | Some d -> directory d :: archives)
+    }
+  in
+  let dummy name =
+    { name = Some (Lib_name.of_string_exn ~loc:None name)
+    ; entries = [version]
     }
   in
   let compiler_libs =
@@ -234,6 +239,9 @@ let builtins ~stdlib_dir =
   let unix = simple "unix" [] ~dir:"+" in
   let bigarray = simple "bigarray" ["unix"] ~dir:"+" in
   let dynlink = simple "dynlink" [] ~dir:"+" in
+  let bytes = dummy "bytes" in
+  let result = dummy "result" in
+  let uchar = dummy "uchar" in
   let threads =
     { name = Some (Lib_name.of_string_exn ~loc:None "threads")
     ; entries =
@@ -259,7 +267,17 @@ let builtins ~stdlib_dir =
     }
   in
   let libs =
-    let base = [compiler_libs; str; unix; bigarray; threads; dynlink] in
+    let base =
+      [compiler_libs; str; unix; bigarray; threads; dynlink; bytes] in
+    let base =
+      if Ocaml_version.pervasives_includes_result ocaml_version then
+        result :: base
+      else base in
+    let base =
+      if Ocaml_version.stdlib_includes_uchar ocaml_version then
+        uchar :: base
+      else
+        base in
     (* We do not rely on an "exists_if" ocamlfind variable,
        because it would produce an error message mentioning
        a "hidden" package (which could be confusing). *)

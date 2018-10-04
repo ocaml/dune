@@ -1,6 +1,8 @@
 (** Version numbers for ocamlc and ocamlopt *)
 type t
 
+val make : int * int * int -> t
+
 val of_ocaml_config : Ocaml_config.t -> t
 
 (** Does this support [-no-keep-locs]? *)
@@ -24,3 +26,9 @@ val supports_response_file : t -> bool
 
 (** Does ocamlmklib support [-args0]? *)
 val ocamlmklib_supports_response_file : t -> bool
+
+(** Whether [Pervasives] includes the [result] type *)
+val pervasives_includes_result : t -> bool
+
+(** Whether the standard library includes the [Uchar] module *)
+val stdlib_includes_uchar : t -> bool

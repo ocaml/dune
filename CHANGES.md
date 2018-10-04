@@ -39,6 +39,9 @@ next
 - Load all defined libraries recursively into utop (#1384, fix #1344,
   @rgrinberg)
 
+- Allow to use libraries `bytes`, `result` and `uchar` without `findlib`
+  installed (#1391, @nojb)
+
 1.3.0 (23/09/2018)
 ------------------
 

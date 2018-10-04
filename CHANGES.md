@@ -1,5 +1,5 @@
-next
-----
+1.4.0 (4/10/2018)
+-----------------
 
 - Do not fail if the output of `ocamlc -config` doesn't include
   `standard_runtime` (#1326, @diml)

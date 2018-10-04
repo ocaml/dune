@@ -15,6 +15,7 @@ Welcome to dune's documentation!
    project-layout-specification
    dune-files
    tests
+   foreign-code
    documentation
    usage
    advanced-topics

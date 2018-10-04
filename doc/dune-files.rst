@@ -174,6 +174,8 @@ to use the :ref:`include_subdirs` stanza.
   ``-lbar`` here, or whatever flags are necessary to to link against this
   library
 
+.. _self_build_stubs_archive:
+
 - ``(self_build_stubs_archive <c-libname>)`` indicates to dune that the
   library has stubs, but that the stubs are built manually. The aim of the field
   is to embed a library written in foreign language and/or building with another

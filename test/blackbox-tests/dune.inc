@@ -152,6 +152,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name duplicate-target-no-loc)
+ (deps (package dune) (source_tree test-cases/duplicate-target-no-loc))
+ (action
+  (chdir
+   test-cases/duplicate-target-no-loc
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name enabled_if)
  (deps (package dune) (source_tree test-cases/enabled_if))
  (action
@@ -1026,6 +1034,7 @@
   (alias dune-ppx-driver-system)
   (alias dune-project-edition)
   (alias dup-fields)
+  (alias duplicate-target-no-loc)
   (alias enabled_if)
   (alias env)
   (alias env-tracking)
@@ -1151,6 +1160,7 @@
   (alias dune-ppx-driver-system)
   (alias dune-project-edition)
   (alias dup-fields)
+  (alias duplicate-target-no-loc)
   (alias enabled_if)
   (alias env)
   (alias env-tracking)

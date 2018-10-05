@@ -231,11 +231,13 @@ module Var = struct
        | Some _ -> { t with payload = Some ".." })
 end
 
+type 'a expander = Var.t -> Syntax.Version.t -> 'a
+
 let partial_expand
   : 'a.t
   -> mode:'a Mode.t
   -> dir:Path.t
-  -> f:(Var.t -> Syntax.Version.t -> Value.t list option)
+  -> f:Value.t list option expander
   -> 'a Partial.t
   = fun ({template; syntax_version} as t) ~mode ~dir ~f ->
     let commit_text acc_text acc =
@@ -274,8 +276,6 @@ let partial_expand
         | Some s -> s)
       end
     | _ -> loop [] [] template.parts
-
-type 'a expander = Var.t -> Syntax.Version.t -> 'a
 
 let expand t ~mode ~dir ~f =
   match

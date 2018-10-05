@@ -24,6 +24,7 @@ module Macro : sig
     | Read_lines
     | Path_no_dep
     | Ocaml_config
+    | Env
 end
 
 module Expansion : sig

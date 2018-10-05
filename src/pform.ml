@@ -25,6 +25,7 @@ module Macro = struct
     | Read_lines
     | Path_no_dep
     | Ocaml_config
+    | Env
 end
 
 module Expansion = struct
@@ -90,6 +91,7 @@ module Map = struct
 
       ; "path-no-dep", deleted_in ~version:(1, 0) Macro.Path_no_dep
       ; "ocaml-config", macro Ocaml_config
+      ; "env", since ~version:(1, 4) Macro.Env
       ]
 
   let create ~(context : Context.t) ~cxx_flags =

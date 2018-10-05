@@ -38,46 +38,45 @@ module Gen(P : Params) = struct
     | File of string
     | From_dune_project
 
+  let pkg_version path ~(pkg : Package.t) =
+    match pkg.version_from_opam_file with
+    | Some s -> Build.return (Some s)
+    | None ->
+      let rec loop = function
+        | [] -> Build.return None
+        | candidate :: rest ->
+          match candidate with
+          | File fn ->
+            let p = Path.relative path fn in
+            Build.if_file_exists p
+              ~then_:(Build.lines_of p
+                      >>^ function
+                      | ver :: _ -> Some ver
+                      | _ -> Some "")
+              ~else_:(loop rest)
+          | From_dune_project ->
+            match version_from_dune_project pkg with
+            | None -> loop rest
+            | Some _ as x -> Build.return x
+      in
+      loop
+        [ File (Package.Name.version_fn pkg.name)
+        ; From_dune_project
+        ; File "version"
+        ; File "VERSION"
+        ]
+
   let init_meta () =
     SC.libs_by_package sctx
     |> Package.Name.Map.iter ~f:(fun ((pkg : Package.t), libs) ->
         Lib.Set.iter libs ~f:gen_lib_dune_file;
       let path = Path.append ctx.build_dir pkg.path in
       SC.on_load_dir sctx ~dir:path ~f:(fun () ->
-        let meta_fn = "META." ^ (Package.Name.to_string pkg.name) in
-
-        let meta_template = Path.relative path (meta_fn ^ ".template"     ) in
-        let meta          = Path.relative path  meta_fn                     in
+        let meta = Path.append ctx.build_dir (Package.meta_file pkg) in
+        let meta_template = Path.extend_basename meta ~suffix:".template" in
 
         let version =
-          let get =
-            match pkg.version_from_opam_file with
-            | Some s -> Build.return (Some s)
-            | None ->
-              let rec loop = function
-                | [] -> Build.return None
-                | candidate :: rest ->
-                  match candidate with
-                  | File fn ->
-                    let p = Path.relative path fn in
-                    Build.if_file_exists p
-                      ~then_:(Build.lines_of p
-                              >>^ function
-                              | ver :: _ -> Some ver
-                              | _ -> Some "")
-                      ~else_:(loop rest)
-                  | From_dune_project ->
-                    match version_from_dune_project pkg with
-                    | None -> loop rest
-                    | Some _ as x -> Build.return x
-              in
-              loop
-                [ File ((Package.Name.to_string pkg.name) ^ ".version")
-                ; From_dune_project
-                ; File "version"
-                ; File "VERSION"
-                ]
-          in
+          let get = pkg_version ~pkg path in
           Super_context.Pkg_version.set sctx pkg get
         in
 
@@ -244,7 +243,7 @@ module Gen(P : Params) = struct
     | Default -> true
     | Opam _  -> false
 
-  let install_file package_path package entries =
+  let install_file (package : Package.t) entries =
     let entries =
       let files = SC.source_files sctx ~src_path:Path.root in
       String.Set.fold files ~init:entries ~f:(fun fn acc ->
@@ -254,33 +253,33 @@ module Gen(P : Params) = struct
           acc)
     in
     let entries =
-      let opam = Path.relative package_path (Package.Name.opam_fn package) in
+      let opam = Package.opam_file package in
       Install.Entry.make Lib opam ~dst:"opam" :: entries
     in
     let entries =
-      let meta_fn = "META." ^ (Package.Name.to_string package) in
-      let meta = Path.append ctx.build_dir (Path.relative package_path meta_fn) in
+      let meta = Path.append ctx.build_dir (Package.meta_file package) in
       Install.Entry.make Lib meta ~dst:"META" :: entries
     in
     let fn =
-      Path.relative (Path.append ctx.build_dir package_path)
-        (Utils.install_file ~package ~findlib_toolchain:ctx.findlib_toolchain)
+      Path.relative (Path.append ctx.build_dir package.path)
+        (Utils.install_file ~package:package.name
+           ~findlib_toolchain:ctx.findlib_toolchain)
     in
     let install_paths =
-      Install.Section.Paths.make ~package ~destdir:Path.root ()
+      Install.Section.Paths.make ~package:package.name ~destdir:Path.root ()
     in
-    let entries = local_install_rules entries ~package ~install_paths in
+    let entries =
+      local_install_rules entries ~package:package.name ~install_paths in
     let files = Install.files entries in
     SC.add_alias_deps sctx
-      (Alias.package_install ~context:ctx ~pkg:package)
+      (Alias.package_install ~context:ctx ~pkg:package.name)
       files
       ~dyn_deps:
-        (Build_system.package_deps (SC.build_system sctx) package files
+        (Build_system.package_deps (SC.build_system sctx) package.name files
          >>^ fun packages ->
          Package.Name.Set.to_list packages
          |> List.map ~f:(fun pkg ->
-           Build_system.Alias.package_install
-             ~context:(SC.context sctx) ~pkg
+           Build_system.Alias.package_install ~context:ctx ~pkg
            |> Build_system.Alias.stamp_file)
          |> Path.Set.of_list);
     SC.add_rule sctx
@@ -308,7 +307,7 @@ module Gen(P : Params) = struct
   let init_install () =
     let entries_per_package =
       List.concat_map (SC.stanzas_to_consider_for_install sctx)
-        ~f:(fun { SC.Installable. dir; stanza; kind = dir_kind; scope; _ } ->
+        ~f:(fun { SC.Installable. dir; stanza; kind = dir_kind; scope } ->
           let dir_contents = Dir_contents.get sctx ~dir in
           match stanza with
           | Library ({ public = Some { package; sub_dir; name = (_, name); _ }
@@ -335,7 +334,7 @@ module Gen(P : Params) = struct
         Option.value (Package.Name.Map.find entries_per_package pkg.name)
           ~default:[]
       in
-      install_file pkg.path pkg.name stanzas)
+      install_file pkg stanzas)
 
   let init_install_files () =
     if not ctx.implicit then

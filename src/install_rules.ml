@@ -114,7 +114,38 @@ module Gen(P : Params) = struct
            >>>
            Build.write_file_dyn meta)))
 
-  let lib_install_files ~dir_contents ~dir ~sub_dir ~(name : Lib_name.t) ~scope ~dir_kind
+  let lib_ppxs ~(lib : Dune_file.Library.t) ~scope ~dir_kind =
+    match lib.kind with
+    | Normal | Ppx_deriver -> []
+    | Ppx_rewriter ->
+      let name = Dune_file.Library.best_name lib in
+      match (dir_kind : File_tree.Dune_file.Kind.t) with
+      | Dune ->
+        [Preprocessing.get_compat_ppx_exe sctx ~name ~kind:Dune]
+      | Jbuild ->
+        let driver =
+          let deps =
+            List.concat_map lib.buildable.libraries ~f:Lib_dep.to_lib_names
+          in
+          match
+            List.filter deps ~f:(fun lib_name ->
+              match Lib_name.to_string lib_name with
+              | "ppx_driver" | "ppxlib" | "ppx_type_conv" -> true
+              | _ -> false)
+          with
+          | [] -> None
+          | l ->
+            match Scope.name scope
+                , List.mem ~set:l (Lib_name.of_string_exn ~loc:None "ppxlib")
+            with
+            | Named "ppxlib", _ | _, true ->
+              Some "ppxlib.runner"
+            | _ ->
+              Some "ppx_driver.runner"
+        in
+        [Preprocessing.get_compat_ppx_exe sctx ~name ~kind:(Jbuild driver)]
+
+  let lib_install_files ~dir_contents ~dir ~sub_dir ~scope ~dir_kind
         (lib : Library.t) =
     let (_loc, lib_name_local) = lib.name in
     let obj_dir = Utils.library_object_directory ~dir lib_name_local in
@@ -184,41 +215,13 @@ module Gen(P : Params) = struct
            Dynlink_supported.get lib.dynlink ctx.supports_shared_libraries)
         [Library.dll ~dir lib ~ext_dll:ctx.ext_dll]
     in
-    let execs =
-      match lib.kind with
-      | Normal | Ppx_deriver -> []
-      | Ppx_rewriter ->
-        match (dir_kind : File_tree.Dune_file.Kind.t) with
-        | Dune ->
-          [Preprocessing.get_compat_ppx_exe sctx ~name ~kind:Dune]
-        | Jbuild ->
-          let driver =
-            let deps =
-              List.concat_map lib.buildable.libraries ~f:Lib_dep.to_lib_names
-            in
-            match
-              List.filter deps ~f:(fun lib_name ->
-                match Lib_name.to_string lib_name with
-                | "ppx_driver" | "ppxlib" | "ppx_type_conv" -> true
-                | _ -> false)
-            with
-            | [] -> None
-            | l ->
-              match Scope.name scope
-                  , List.mem ~set:l (Lib_name.of_string_exn ~loc:None "ppxlib")
-              with
-              | Named "ppxlib", _ | _, true ->
-                Some "ppxlib.runner"
-              | _ ->
-                Some "ppx_driver.runner"
-          in
-          [Preprocessing.get_compat_ppx_exe sctx ~name ~kind:(Jbuild driver)]
-    in
+    let execs = lib_ppxs ~lib ~scope ~dir_kind in
     List.concat
       [ List.map files ~f:(make_entry Lib    )
       ; List.map execs ~f:(make_entry Libexec)
       ; List.map dlls  ~f:(Install.Entry.make Stublibs)
-      ; [make_entry Lib (lib_dune_file ~dir ~name)]
+      ; [make_entry Lib (lib_dune_file ~dir
+                           ~name:(Dune_file.Library.best_name lib))]
       ]
 
   let is_odig_doc_file fn =
@@ -310,9 +313,9 @@ module Gen(P : Params) = struct
         ~f:(fun { SC.Installable. dir; stanza; kind = dir_kind; scope } ->
           let dir_contents = Dir_contents.get sctx ~dir in
           match stanza with
-          | Library ({ public = Some { package; sub_dir; name = (_, name); _ }
+          | Library ({ public = Some { package; sub_dir; name = _}
                      ; _ } as lib) ->
-            List.map (lib_install_files ~dir ~sub_dir ~name lib ~scope
+            List.map (lib_install_files ~dir ~sub_dir lib ~scope
                         ~dir_kind ~dir_contents)
               ~f:(fun x -> package.name, x)
           | Install { section; files; package}->

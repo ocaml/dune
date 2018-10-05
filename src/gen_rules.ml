@@ -8,6 +8,15 @@ open! No_io
    | Utils                                                           |
    +-----------------------------------------------------------------+ *)
 
+let stanza_package = function
+  | Library { public = Some { package; _ }; _ }
+  | Alias { package = Some package ;  _ }
+  | Install { package; _ }
+  | Documentation { package; _ }
+  | Tests { package = Some package; _} ->
+    Some package
+  | _ -> None
+
 module Gen(P : Install_rules.Params) = struct
   module Alias = Build_system.Alias
   module CC = Compilation_context
@@ -37,7 +46,8 @@ module Gen(P : Install_rules.Params) = struct
         { SC.Dir_with_dune. src_dir; ctx_dir; stanzas; scope; kind = dir_kind } =
     let for_stanza ~dir = function
       | Library lib ->
-        let cctx, merlin = Lib_rules.rules lib ~dir ~scope ~dir_contents ~dir_kind in
+        let cctx, merlin =
+          Lib_rules.rules lib ~dir ~scope ~dir_contents ~dir_kind in
         (Some merlin, Some (lib.buildable.loc, cctx))
       | Executables exes ->
         let cctx, merlin =
@@ -175,15 +185,6 @@ module type Gen = sig
   val init : unit -> unit
   val sctx : Super_context.t
 end
-
-let stanza_package = function
-  | Library { public = Some { package; _ }; _ }
-  | Alias { package = Some package ;  _ }
-  | Install { package; _ }
-  | Documentation { package; _ }
-  | Tests { package = Some package; _} ->
-      Some package
-  | _ -> None
 
 let relevant_stanzas pkgs stanzas =
   List.filter stanzas ~f:(fun stanza ->

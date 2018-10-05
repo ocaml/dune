@@ -49,7 +49,7 @@ module Linkage = struct
     ; flags
     }
 
-  let  c_flags = ["-output-obj"]    
+  let  c_flags = ["-output-obj"]
   let  o_flags = ["-output-complete-obj"]
   let so_flags_windows = o_flags
   let so_flags_unix    = ["-output-complete-obj"; "-runtime-variant"; "_pic"]

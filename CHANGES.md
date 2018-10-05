@@ -44,6 +44,11 @@
 
 - Take argument to self_build_stubs_archive into account. (#1395, @nojb)
 
+- Fix bad interaction between `env` customization and vendored
+  projects: when a vendored project didn't have its own `env` stanza,
+  the `env` stanza from the enclosing project was in effect (#....,
+  @diml)
+
 1.3.0 (23/09/2018)
 ------------------
 

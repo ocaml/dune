@@ -53,6 +53,10 @@ type t =
   ; host                             : t option
   ; libs_by_package : (Package.t * Lib.Set.t) Package.Name.Map.t
   ; env                              : (Path.t, Env_node.t) Hashtbl.t
+  ; (* Env node that represent the environment configured for the
+       workspace. It is used as default at the root of every project
+       in the workspace. *)
+    default_env : Env_node.t Lazy.t
   }
 
 let context t = t.context
@@ -446,28 +450,52 @@ module External_env = Env
 
 module Env : sig
   val ocaml_flags : t -> dir:Path.t -> Ocaml_flags.t
-  val get : t -> dir:Path.t -> Env_node.t
 end = struct
   open Env_node
 
-  let rec get t ~dir =
+  let get_env_stanza t ~dir =
+    let open Option.O in
+    stanzas_in t ~dir >>= fun x ->
+    List.find_map x.stanzas ~f:(function
+      | Dune_env.T config -> Some config
+      | _ -> None)
+
+  let rec get t ~dir ~scope =
     match Hashtbl.find t.env dir with
     | Some node -> node
     | None ->
-      begin match Path.parent dir with
-      | None -> raise_notrace Exit
-      | Some parent ->
-        let node = get t ~dir:parent in
-        Hashtbl.add t.env dir node;
-        node
-      end
+      let node =
+        let inherit_from =
+          if Path.equal dir (Scope.root scope) then
+            t.default_env
+          else
+            match Path.parent dir with
+            | None -> raise_notrace Exit
+            | Some parent -> lazy (get t ~dir:parent ~scope)
+        in
+        match get_env_stanza t ~dir with
+        | None -> Lazy.force inherit_from
+        | Some config ->
+          { dir          = dir
+          ; inherit_from = Some inherit_from
+          ; scope        = scope
+          ; config       = config
+          ; ocaml_flags  = None
+          }
+      in
+      Hashtbl.add t.env dir node;
+      node
 
   let get t ~dir =
-    match get t ~dir with
-    | node -> node
-    | exception Exit ->
-      Exn.code_error "Super_context.Env.get called on invalid directory"
-        [ "dir", Path.to_sexp dir ]
+    match Hashtbl.find t.env dir with
+    | Some node -> node
+    | None ->
+      let scope = find_scope_by_dir t dir in
+      try
+        get t ~dir ~scope
+      with Exit ->
+        Exn.code_error "Super_context.Env.get called on invalid directory"
+          [ "dir", Path.to_sexp dir ]
 
   let ocaml_flags t ~dir =
     let rec loop t node =
@@ -616,40 +644,7 @@ let create
       | Prog_and_args x -> Value.L.strings (x.prog :: x.args)))
     |> String.Map.of_list_exn
   in
-  let t =
-    { context
-    ; host
-    ; build_system
-    ; scopes
-    ; public_libs
-    ; installed_libs
-    ; stanzas
-    ; stanzas_per_dir
-    ; packages
-    ; file_tree
-    ; stanzas_to_consider_for_install
-    ; artifacts
-    ; cxx_flags
-    ; pforms
-    ; ocaml_config
-    ; chdir = Build.arr (fun (action : Action.t) ->
-        match action with
-        | Chdir _ -> action
-        | _ -> Chdir (context.build_dir, action))
-    ; libs_by_package =
-        Lib.DB.all public_libs
-        |> Lib.Set.to_list
-        |> List.map ~f:(fun lib ->
-          (Option.value_exn (Lib.package lib), lib))
-        |> Package.Name.Map.of_list_multi
-        |> Package.Name.Map.merge packages ~f:(fun _name pkg libs ->
-          let pkg  = Option.value_exn pkg          in
-          let libs = Option.value libs ~default:[] in
-          Some (pkg, Lib.Set.of_list libs))
-    ; env = Hashtbl.create 128
-    }
-  in
-  let context_env_node = lazy (
+  let default_env = lazy (
     let make ~inherit_from ~config =
       { Env_node.
         dir = context.build_dir
@@ -669,28 +664,39 @@ let create
       make ~config:context
         ~inherit_from:(Some (lazy (make ~inherit_from:None ~config:workspace)))
   ) in
-  List.iter stanzas
-    ~f:(fun { Dir_with_dune. ctx_dir; scope; stanzas
-            ; kind = _ ; src_dir = _ } ->
-      List.iter stanzas ~f:(function
-        | Dune_env.T config ->
-          let inherit_from =
-            if Path.equal ctx_dir (Scope.root scope) then
-              context_env_node
-            else
-              lazy (Env.get t ~dir:(Path.parent_exn ctx_dir))
-          in
-          Hashtbl.add t.env ctx_dir
-            { dir          = ctx_dir
-            ; inherit_from = Some inherit_from
-            ; scope        = scope
-            ; config       = config
-            ; ocaml_flags  = None
-            }
-        | _ -> ()));
-  if not (Hashtbl.mem t.env context.build_dir) then
-    Hashtbl.add t.env context.build_dir (Lazy.force context_env_node);
-  t
+  { context
+  ; host
+  ; build_system
+  ; scopes
+  ; public_libs
+  ; installed_libs
+  ; stanzas
+  ; stanzas_per_dir
+  ; packages
+  ; file_tree
+  ; stanzas_to_consider_for_install
+  ; artifacts
+  ; cxx_flags
+  ; pforms
+  ; ocaml_config
+  ; chdir = Build.arr (fun (action : Action.t) ->
+      match action with
+      | Chdir _ -> action
+      | _ -> Chdir (context.build_dir, action))
+  ; libs_by_package =
+      Lib.DB.all public_libs
+      |> Lib.Set.to_list
+      |> List.map ~f:(fun lib ->
+        (Option.value_exn (Lib.package lib), lib))
+      |> Package.Name.Map.of_list_multi
+      |> Package.Name.Map.merge packages ~f:(fun _name pkg libs ->
+        let pkg  = Option.value_exn pkg          in
+        let libs = Option.value libs ~default:[] in
+        Some (pkg, Lib.Set.of_list libs))
+  ; env = Hashtbl.create 128
+  ; default_env
+  }
+
 module Libs = struct
   open Build.O
 

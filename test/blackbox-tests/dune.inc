@@ -152,6 +152,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name duplicate-target-no-loc)
+ (deps (package dune) (source_tree test-cases/duplicate-target-no-loc))
+ (action
+  (chdir
+   test-cases/duplicate-target-no-loc
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name enabled_if)
  (deps (package dune) (source_tree test-cases/enabled_if))
  (action
@@ -333,6 +341,14 @@
  (action
   (chdir
    test-cases/github1372
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
+ (name github1395)
+ (deps (package dune) (source_tree test-cases/github1395))
+ (action
+  (chdir
+   test-cases/github1395
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
@@ -1018,6 +1034,7 @@
   (alias dune-ppx-driver-system)
   (alias dune-project-edition)
   (alias dup-fields)
+  (alias duplicate-target-no-loc)
   (alias enabled_if)
   (alias env)
   (alias env-tracking)
@@ -1040,6 +1057,7 @@
   (alias github1306)
   (alias github1342)
   (alias github1372)
+  (alias github1395)
   (alias github20)
   (alias github24)
   (alias github25)
@@ -1142,6 +1160,7 @@
   (alias dune-ppx-driver-system)
   (alias dune-project-edition)
   (alias dup-fields)
+  (alias duplicate-target-no-loc)
   (alias enabled_if)
   (alias env)
   (alias env-tracking)
@@ -1162,6 +1181,7 @@
   (alias github1306)
   (alias github1342)
   (alias github1372)
+  (alias github1395)
   (alias github20)
   (alias github24)
   (alias github25)

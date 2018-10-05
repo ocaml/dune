@@ -28,7 +28,7 @@ apply:
 
   $ dune printenv --profile default vendor/without-env-customization
   (
-   (flags (-w -40 ":standard + in ."))
+   (flags (-w -40))
    (ocamlc_flags (-g))
    (ocamlopt_flags (-g))
   )

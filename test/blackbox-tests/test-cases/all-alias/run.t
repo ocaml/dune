@@ -30,3 +30,9 @@
   $ dune build --display short --root user-defined @all
   Entering directory 'user-defined'
           echo foo
+
+@all includes user defined install alias
+
+  $ dune build --display short --root install-alias @all
+  Entering directory 'install-alias'
+          echo foo

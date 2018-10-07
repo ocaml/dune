@@ -109,3 +109,55 @@ unwrapped libraries have the correct artifacts
     "_build/install/default/lib/foo/foo.mli" {"foo.mli"}
     "_build/install/default/lib/foo/opam" {"opam"}
   ]
+
+wrapped lib with lib interface module
+
+  $ dune build --root lib-wrapped-alias
+  Entering directory 'lib-wrapped-alias'
+  lib: [
+    "_build/install/default/lib/foo/META" {"META"}
+    "_build/install/default/lib/foo/bar.ml" {"bar.ml"}
+    "_build/install/default/lib/foo/bar.mli" {"bar.mli"}
+    "_build/install/default/lib/foo/foo$ext_lib" {"foo$ext_lib"}
+    "_build/install/default/lib/foo/foo.cma" {"foo.cma"}
+    "_build/install/default/lib/foo/foo.cmi" {"foo.cmi"}
+    "_build/install/default/lib/foo/foo.cmt" {"foo.cmt"}
+    "_build/install/default/lib/foo/foo.cmx" {"foo.cmx"}
+    "_build/install/default/lib/foo/foo.cmxa" {"foo.cmxa"}
+    "_build/install/default/lib/foo/foo.cmxs" {"foo.cmxs"}
+    "_build/install/default/lib/foo/foo.dune" {"foo.dune"}
+    "_build/install/default/lib/foo/foo.ml" {"foo.ml"}
+    "_build/install/default/lib/foo/foo__.cmi" {"foo__.cmi"}
+    "_build/install/default/lib/foo/foo__.cmt" {"foo__.cmt"}
+    "_build/install/default/lib/foo/foo__.cmx" {"foo__.cmx"}
+    "_build/install/default/lib/foo/foo__.ml-gen" {"foo__.ml-gen"}
+    "_build/install/default/lib/foo/foo__Bar.cmi" {"foo__Bar.cmi"}
+    "_build/install/default/lib/foo/foo__Bar.cmt" {"foo__Bar.cmt"}
+    "_build/install/default/lib/foo/foo__Bar.cmti" {"foo__Bar.cmti"}
+    "_build/install/default/lib/foo/foo__Bar.cmx" {"foo__Bar.cmx"}
+    "_build/install/default/lib/foo/opam" {"opam"}
+  ]
+
+wrapped lib without lib interface module
+
+  $ dune build --root lib-wrapped-no-alias
+  Entering directory 'lib-wrapped-no-alias'
+  lib: [
+    "_build/install/default/lib/foo/META" {"META"}
+    "_build/install/default/lib/foo/bar.ml" {"bar.ml"}
+    "_build/install/default/lib/foo/bar.mli" {"bar.mli"}
+    "_build/install/default/lib/foo/foo$ext_lib" {"foo$ext_lib"}
+    "_build/install/default/lib/foo/foo.cma" {"foo.cma"}
+    "_build/install/default/lib/foo/foo.cmi" {"foo.cmi"}
+    "_build/install/default/lib/foo/foo.cmt" {"foo.cmt"}
+    "_build/install/default/lib/foo/foo.cmx" {"foo.cmx"}
+    "_build/install/default/lib/foo/foo.cmxa" {"foo.cmxa"}
+    "_build/install/default/lib/foo/foo.cmxs" {"foo.cmxs"}
+    "_build/install/default/lib/foo/foo.dune" {"foo.dune"}
+    "_build/install/default/lib/foo/foo.ml-gen" {"foo.ml-gen"}
+    "_build/install/default/lib/foo/foo__Bar.cmi" {"foo__Bar.cmi"}
+    "_build/install/default/lib/foo/foo__Bar.cmt" {"foo__Bar.cmt"}
+    "_build/install/default/lib/foo/foo__Bar.cmti" {"foo__Bar.cmti"}
+    "_build/install/default/lib/foo/foo__Bar.cmx" {"foo__Bar.cmx"}
+    "_build/install/default/lib/foo/opam" {"opam"}
+  ]

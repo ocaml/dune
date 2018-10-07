@@ -73,6 +73,13 @@ module Gen(P : Install_rules.Params) = struct
           |> Path.Set.singleton
         in
         (Some (Merlin.make ~source_dirs ()), None)
+      | Install { Install_conf. section = _; files; package = _ } ->
+        List.map files ~f:(fun { Install_conf. src; dst = _ } ->
+          Path.relative ctx_dir src)
+        |> Path.Set.of_list
+        |> Super_context.add_alias_deps sctx
+             (Build_system.Alias.all ~dir:ctx_dir);
+        (None, None)
       | _ ->
         (None, None)
     in

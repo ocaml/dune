@@ -62,6 +62,7 @@ let make_watermark_map ~name ~version ~commit =
 let subst_string s path ~map =
   let len = String.length s in
   let longest_var = String.longest (String.Map.keys map) in
+  let double_percent_len = String.length "%%" in
   let loc_of_offset ~ofs ~len =
     let rec loop lnum bol i =
       if i = ofs then
@@ -104,7 +105,7 @@ let subst_string s path ~map =
       | 'A'..'Z' | '_' -> in_var ~start (i + 1) acc
       | _ -> loop (i + 1) acc
   and in_var ~start i acc =
-    if i - start > longest_var then
+    if i - start > longest_var + double_percent_len then
       loop i acc
     else if i = len then
       acc

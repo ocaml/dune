@@ -1,68 +1,9 @@
-  $ dune build @runtest @install-file --display short
-         refmt bar.re.ml
-      ocamldep .rlib.objs/bar.re.ml.d
-      ocamldep pp/.reasononlypp.eobjs/reasononlypp.ml.d
-        ocamlc pp/.reasononlypp.eobjs/reasononlypp.{cmi,cmo,cmt}
-      ocamlopt pp/.reasononlypp.eobjs/reasononlypp.{cmx,o}
-      ocamlopt pp/reasononlypp.exe
-  reasononlypp cppome.pp.re
-         refmt cppome.pp.re.ml
-      ocamldep .rlib.objs/cppome.pp.re.ml.d
-      ocamldep ppx/.reasonppx.objs/reasonppx.ml.d
-        ocamlc ppx/.reasonppx.objs/reasonppx.{cmi,cmo,cmt}
-      ocamlopt ppx/.reasonppx.objs/reasonppx.{cmx,o}
-      ocamlopt ppx/reasonppx.{a,cmxa}
-      ocamlopt .ppx/jbuild/reasonppx@rlib/ppx.exe
-           ppx foo.pp.ml
-      ocamldep .rlib.objs/foo.pp.ml.d
-         refmt hello.re.ml
-           ppx hello.re.pp.ml
-      ocamldep .rlib.objs/hello.re.pp.ml.d
-         refmt pped.re.ml
-      ocamldep .rlib.objs/pped.re.ml.d
-        ocamlc .rlib.objs/rlib.{cmi,cmo,cmt}
-      ocamlopt .rlib.objs/rlib.{cmx,o}
-      ocamldep .rlib.objs/bar.mli.d
-        ocamlc .rlib.objs/rlib__Bar.{cmi,cmti}
-      ocamlopt .rlib.objs/rlib__Bar.{cmx,o}
-         refmt foo.re.mli
-           ppx foo.re.pp.mli
-      ocamldep .rlib.objs/foo.re.pp.mli.d
-        ocamlc .rlib.objs/rlib__Foo.{cmi,cmti}
-      ocamlopt .rlib.objs/rlib__Foo.{cmx,o}
-         refmt hello.re.mli
-           ppx hello.re.pp.mli
-      ocamldep .rlib.objs/hello.re.pp.mli.d
-        ocamlc .rlib.objs/rlib__Hello.{cmi,cmti}
-      ocamlopt .rlib.objs/rlib__Hello.{cmx,o}
-         refmt pped.re.mli
-      ocamldep .rlib.objs/pped.re.mli.d
-        ocamlc .rlib.objs/rlib__Pped.{cmi,cmti}
-      ocamlopt .rlib.objs/rlib__Pped.{cmx,o}
-  reasononlypp cppome.pp.rei
-         refmt cppome.pp.re.mli
-      ocamldep .rlib.objs/cppome.pp.re.mli.d
-        ocamlc .rlib.objs/rlib__Cppome.{cmi,cmti}
-      ocamlopt .rlib.objs/rlib__Cppome.{cmx,o}
-      ocamlopt rlib.{a,cmxa}
-      ocamlopt rlib.cmxs
-  reasononlypp rbin.pp.re
-         refmt rbin.pp.re.ml
-      ocamldep .rbin.eobjs/rbin.pp.re.ml.d
-        ocamlc .rbin.eobjs/rbin.{cmi,cmo,cmt}
-      ocamlopt .rbin.eobjs/rbin.{cmx,o}
-      ocamlopt rbin.exe
+  $ dune build @runtest @install-file
           rbin alias runtest
   Cppome
   hello world
   Bar
   Foo
-        ocamlc .rlib.objs/rlib__Bar.{cmo,cmt}
-        ocamlc .rlib.objs/rlib__Foo.{cmo,cmt}
-        ocamlc .rlib.objs/rlib__Hello.{cmo,cmt}
-        ocamlc .rlib.objs/rlib__Pped.{cmo,cmt}
-        ocamlc .rlib.objs/rlib__Cppome.{cmo,cmt}
-        ocamlc rlib.cma
   lib: [
     "_build/install/default/lib/rlib/META" {"META"}
     "_build/install/default/lib/rlib/bar.mli" {"bar.mli"}

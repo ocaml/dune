@@ -319,8 +319,10 @@ let run_internal ?dir ?(stdout_to=Output.stdout) ?(stderr_to=Output.stderr)
   in
   Output.release stdout_to;
   Output.release stderr_to;
+  let stats_event = Stats.Catapult.on_process_start ~program:prog_str ~args in
   Scheduler.wait_for_process pid
   >>| fun exit_status ->
+  Stats.Catapult.on_process_end stats_event;
   Option.iter response_file ~f:Path.unlink;
   let output =
     match output_filename with

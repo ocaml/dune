@@ -24,6 +24,7 @@ type t =
   (* For build & runtest only *)
   ; watch : bool
   ; stats : bool
+  ; catapult_trace_file : string option
   }
 
 let prefix_target common s = common.target_prefix ^ s
@@ -49,7 +50,8 @@ let set_common_other c ~targets =
       ; c.orig_args
       ; targets
       ];
-  if c.stats then Stats.enable ()
+  if c.stats then Stats.enable ();
+  Option.iter ~f:Stats.Catapult.enable c.catapult_trace_file
 
 let set_common c ~targets =
   set_dirs c;
@@ -354,6 +356,12 @@ let term =
          & info ["stats"] ~docs
              ~doc:{|Record and print statistics about Dune resource usage.
                    |})
+  and catapult_trace_file =
+    Arg.(value
+         & opt (some string) None
+         & info ["trace-file"] ~docs ~docv:"FILE"
+             ~doc:"Output trace data in catapult format
+                   (compatible with chrome://tracing)")
   in
   let build_dir = Option.value ~default:"_build" build_dir in
   let root, to_cwd =
@@ -414,4 +422,5 @@ let term =
   ; default_target
   ; watch
   ; stats
+  ; catapult_trace_file
   }

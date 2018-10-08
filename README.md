@@ -84,7 +84,7 @@ several configurations simultaneously. This helps maintaining packages
 across several versions of OCaml as you can test them all at once
 without hassle.
 
-To learn more about cross-compilation, read the [documentation](https://dune.readthedocs.io/en/latest/advanced-topics.html#cross-compilation).
+In particular, this makes it easy to handle [cross-compilation](https://dune.readthedocs.io/en/latest/advanced-topics.html#cross-compilation).
 
 This feature requires [opam][opam].
 

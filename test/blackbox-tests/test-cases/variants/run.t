@@ -158,3 +158,10 @@ Executable that tries to use two implementations for the same virtual lib
   - "impl2" in _build/default/impl2
   This cannot work.
   [1]
+
+Install files for implemenations and virtual libs have all the artifacts:
+  $ dune build --root install-file
+  Entering directory 'install-file'
+  No rule found for impl/.impl.objs/vlib.cmt
+  No rule found for impl/vlib.ml-gen
+  [1]

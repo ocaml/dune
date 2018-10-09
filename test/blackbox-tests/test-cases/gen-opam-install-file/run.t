@@ -45,7 +45,7 @@ stubs and js files installed
     "_build/install/default/lib/foo/foo.cmxs" {"foo.cmxs"}
     "_build/install/default/lib/foo/foo.dune" {"foo.dune"}
     "_build/install/default/lib/foo/foo.js" {"foo.js"}
-    "_build/install/default/lib/foo/foo.ml-gen" {"foo.ml-gen"}
+    "_build/install/default/lib/foo/foo.ml" {"foo.ml"}
     "_build/install/default/lib/foo/libfoo_stubs$ext_lib" {"libfoo_stubs$ext_lib"}
     "_build/install/default/lib/foo/opam" {"opam"}
   ]
@@ -130,7 +130,7 @@ wrapped lib with lib interface module
     "_build/install/default/lib/foo/foo__.cmi" {"foo__.cmi"}
     "_build/install/default/lib/foo/foo__.cmt" {"foo__.cmt"}
     "_build/install/default/lib/foo/foo__.cmx" {"foo__.cmx"}
-    "_build/install/default/lib/foo/foo__.ml-gen" {"foo__.ml-gen"}
+    "_build/install/default/lib/foo/foo__.ml" {"foo__.ml"}
     "_build/install/default/lib/foo/foo__Bar.cmi" {"foo__Bar.cmi"}
     "_build/install/default/lib/foo/foo__Bar.cmt" {"foo__Bar.cmt"}
     "_build/install/default/lib/foo/foo__Bar.cmti" {"foo__Bar.cmti"}
@@ -154,7 +154,7 @@ wrapped lib without lib interface module
     "_build/install/default/lib/foo/foo.cmxa" {"foo.cmxa"}
     "_build/install/default/lib/foo/foo.cmxs" {"foo.cmxs"}
     "_build/install/default/lib/foo/foo.dune" {"foo.dune"}
-    "_build/install/default/lib/foo/foo.ml-gen" {"foo.ml-gen"}
+    "_build/install/default/lib/foo/foo.ml" {"foo.ml"}
     "_build/install/default/lib/foo/foo__Bar.cmi" {"foo__Bar.cmi"}
     "_build/install/default/lib/foo/foo__Bar.cmt" {"foo__Bar.cmt"}
     "_build/install/default/lib/foo/foo__Bar.cmti" {"foo__Bar.cmti"}

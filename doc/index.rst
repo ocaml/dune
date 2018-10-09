@@ -22,6 +22,7 @@ Welcome to dune's documentation!
    configurator
    menhir
    jsoo
+   variants
    formatting
    faq
    known-issues

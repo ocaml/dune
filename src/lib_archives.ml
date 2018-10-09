@@ -5,6 +5,12 @@ type t =
   ; files : Path.t list
   }
 
+let files t = t.files
+let dlls t = t.dlls
+
+let all { files; dlls } =
+  Path.Set.of_list (List.rev_append dlls files)
+
 module Library = Dune_file.Library
 
 let make ~(ctx : Context.t) ~installable_modules ~dir (lib : Library.t) =

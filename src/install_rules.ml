@@ -172,14 +172,14 @@ module Gen(P : Params) = struct
           let dst = Path.basename source |> String.drop_suffix ~suffix:"-gen" in
           make_entry Lib source ?dst))
     in
-    let { Lib_archives.dlls ; files} =
+    let archives =
       Lib_archives.make ~ctx ~installable_modules ~dir lib in
     let execs = lib_ppxs ~lib ~scope ~dir_kind in
     List.concat
       [ sources
-      ; List.map files ~f:(make_entry Lib    )
+      ; List.map (Lib_archives.files archives) ~f:(make_entry Lib)
       ; List.map execs ~f:(make_entry Libexec)
-      ; List.map dlls  ~f:(Install.Entry.make Stublibs)
+      ; List.map (Lib_archives.dlls archives) ~f:(Install.Entry.make Stublibs)
       ; [make_entry Lib (lib_dune_file ~dir
                            ~name:(Dune_file.Library.best_name lib))]
       ]

@@ -1,9 +1,6 @@
 open Stdune
 
-type t =
-  { dlls : Path.t list
-  ; files : Path.t list
-  }
+type t
 
 val make
   :  ctx:Context.t
@@ -11,3 +8,8 @@ val make
   -> dir:Path.t
   -> Dune_file.Library.t
   -> t
+
+val files : t -> Path.t list
+val dlls : t -> Path.t list
+
+val all : t -> Path.Set.t

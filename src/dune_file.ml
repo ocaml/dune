@@ -737,18 +737,6 @@ module Mode_conf = struct
 end
 
 module Library = struct
-  module Variants = struct
-    let syntax =
-      let syntax =
-        Syntax.create ~name:"in_development_do_not_use_variants"
-          ~desc:"the experimental variants feature"
-          [ (0, 1) ]
-      in
-      Dune_project.Extension.register_simple ~experimental:true
-        syntax (Dune_lang.Decoder.return []);
-      syntax
-  end
-
   module Wrapped = struct
     type t =
       | Simple of bool
@@ -870,11 +858,11 @@ module Library = struct
        and dune_version = Syntax.get_exn Stanza.syntax
        and virtual_modules =
          field_o "virtual_modules" (
-           Syntax.since Variants.syntax (0, 1)
+           Syntax.since Stanza.syntax (1, 7)
            >>= fun () -> Ordered_set_lang.decode)
        and implements =
          field_o "implements" (
-           Syntax.since Variants.syntax (0, 1)
+           Syntax.since Stanza.syntax (1, 7)
            >>= fun () -> located Lib_name.decode)
        and private_modules =
          field_o "private_modules" (

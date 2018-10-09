@@ -45,6 +45,9 @@ unreleased
 
 - Remove `--stats` and track fd usage in `--trace-file` (#1667, @emillon)
 
+- Add virtual libraries feature and enable it by default (#1430 fixes #921,
+  @rgrinberg)
+
 1.6.2 (05/12/2018)
 ------------------
 

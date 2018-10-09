@@ -40,8 +40,8 @@ all-supported-ocaml-versions:
 	$(BIN) build @install @runtest --workspace dune-workspace.dev --root .
 
 clean:
-	$(BIN) clean
 	rm -f ./boot.exe $(wildcard ./bootstrap.cmi ./bootstrap.cmo ./bootstrap.exe)
+	$(BIN) clean
 
 distclean: clean
 	rm -f src/setup.ml

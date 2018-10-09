@@ -167,12 +167,24 @@ module Gen(P : Params) = struct
         ~has_native:(Option.is_some ctx.ocamlopt)
     in
     let if_ cond l = if cond then l else [] in
+    let installable_modules =
+      Dir_contents.modules_of_library dir_contents
+        ~name:(Library.best_name lib)
+      |> Lib_modules.installable_modules
+    in
+    let sources =
+      List.concat_map installable_modules ~f:(fun m ->
+        List.map (Module.sources m) ~f:(fun source ->
+          let dst =
+            let (path, ext) = Path.split_extension source in
+            if ext = ".ml-gen" then
+              Some (Path.basename path ^ ".ml")
+            else
+              None
+          in
+          make_entry Lib source ?dst))
+    in
     let files =
-      let installable_modules =
-        Dir_contents.modules_of_library dir_contents
-          ~name:(Library.best_name lib)
-        |> Lib_modules.installable_modules
-      in
       let virtual_library = Library.is_virtual lib in
       List.concat
         [ List.concat_map installable_modules ~f:(fun m ->
@@ -184,7 +196,6 @@ module Gen(P : Params) = struct
               ; if_ (native && Module.has_impl m && virtual_library)
                   [ Module.obj_file m ~obj_dir ~ext:ext_obj ]
               ; List.filter_map Ml_kind.all ~f:(Module.cmt_file m ~obj_dir)
-              ; Module.sources m
               ])
         ; if_ (byte && not virtual_library)
             [ Library.archive ~dir lib ~ext:".cma" ]
@@ -217,7 +228,8 @@ module Gen(P : Params) = struct
     in
     let execs = lib_ppxs ~lib ~scope ~dir_kind in
     List.concat
-      [ List.map files ~f:(make_entry Lib    )
+      [ sources
+      ; List.map files ~f:(make_entry Lib    )
       ; List.map execs ~f:(make_entry Libexec)
       ; List.map dlls  ~f:(Install.Entry.make Stublibs)
       ; [make_entry Lib (lib_dune_file ~dir

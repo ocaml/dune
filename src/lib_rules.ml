@@ -494,7 +494,6 @@ module Gen (P : Install_rules.Params) = struct
         Js_of_ocaml_rules.build_cm cctx ~js_of_ocaml ~src ~target);
 
       Lib_archives.make ~ctx ~dir lib
-        ~installable_modules:(Lib_modules.installable_modules lib_modules)
       |> Lib_archives.all
       |> Super_context.add_alias_deps sctx (Build_system.Alias.all ~dir);
 

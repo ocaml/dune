@@ -47,3 +47,6 @@
     "_build/install/default/lib/rlib/rlib__Pped.cmti" {"rlib__Pped.cmti"}
     "_build/install/default/lib/rlib/rlib__Pped.cmx" {"rlib__Pped.cmx"}
   ]
+  bin: [
+    "_build/install/default/bin/refmt" {"refmt"}
+  ]

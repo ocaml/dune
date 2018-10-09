@@ -1,1 +1,1 @@
-let run = () => print_endline("Bar");
+let run () = print_endline "Bar"

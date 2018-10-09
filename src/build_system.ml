@@ -277,9 +277,13 @@ module Alias0 = struct
       let dir = Path.append (Path.(relative build_dir) ctx) dir in
       stamp_file (make ~dir name)))
 
-  let is_standard = function
-    | "runtest" | "install" | "doc" | "doc-private" | "lint" | "default" -> true
-    | _ -> false
+  let standard_aliases = Hashtbl.create 7
+
+  let is_standard = Hashtbl.mem standard_aliases
+
+  let make_standard name =
+    Hashtbl.add standard_aliases name ();
+    make name
 
   open Build.O
 
@@ -328,12 +332,12 @@ module Alias0 = struct
            It is not defined in %s or any of its descendants."
         name (Path.to_string_maybe_quoted src_dir)
 
-  let default     = make "default"
-  let runtest     = make "runtest"
-  let install     = make "install"
-  let doc         = make "doc"
-  let private_doc = make "doc-private"
-  let lint        = make "lint"
+  let default     = make_standard "default"
+  let runtest     = make_standard "runtest"
+  let install     = make_standard "install"
+  let doc         = make_standard "doc"
+  let private_doc = make_standard "doc-private"
+  let lint        = make_standard "lint"
 
   let package_install ~(context : Context.t) ~pkg =
     make (sprintf ".%s-files" (Package.Name.to_string pkg))

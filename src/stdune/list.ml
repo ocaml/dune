@@ -2,6 +2,8 @@ type 'a t = 'a list
 
 include ListLabels
 
+let map ~f t = rev (rev_map ~f t)
+
 let is_empty = function
   | [] -> true
   | _  -> false

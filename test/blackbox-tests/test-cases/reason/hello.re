@@ -1,1 +1,1 @@
-let run = fun () => print_endline("hello world");
+let run () = print_endline "hello world"

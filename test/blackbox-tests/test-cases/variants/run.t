@@ -165,3 +165,14 @@ Install files for implemenations and virtual libs have all the artifacts:
   No rule found for impl/.impl.objs/vlib.cmt
   No rule found for impl/vlib.ml-gen
   [1]
+
+Implementations may refer to virtual library's modules
+  $ dune build --root impl-using-vlib-modules
+  Entering directory 'impl-using-vlib-modules'
+  Module Foo in directory _build/default/impl depends on Vlib.
+  This doesn't make sense to me.
+  
+  Vlib is the main module of the library and is the only module exposed 
+  outside of the library. Consequently, it should be the one depending 
+  on all the other modules in the library.
+  [1]

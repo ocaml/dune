@@ -33,7 +33,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
       let modules_of_vlib = Implementation.modules_of_vlib t in
       match Lib_modules.alias vlib_modules with
       | None -> modules_of_vlib
-      | Some { alias_module; module_name = _ } ->
+      | Some { alias_module; main_module_name = _ } ->
         Module.Name.Map.add modules_of_vlib
           (Module.name alias_module) alias_module
     in

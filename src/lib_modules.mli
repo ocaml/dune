@@ -4,7 +4,7 @@ type t
 
 module Alias_module : sig
   type t =
-    { module_name : Module.Name.t
+    { main_module_name : Module.Name.t
     ; alias_module : Module.t
     }
 end

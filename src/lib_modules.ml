@@ -95,7 +95,7 @@ let make (lib : Dune_file.Library.t) ~dir (modules : Module.Name_map.t)
 
 module Alias_module = struct
   type t =
-    { module_name : Module.Name.t
+    { main_module_name : Module.Name.t
     ; alias_module : Module.t
     }
 end
@@ -105,10 +105,10 @@ let alias t =
   | None, None -> None
   | None, Some _ -> None
   | Some _, None -> assert false
-  | Some alias_module, Some module_name ->
+  | Some alias_module, Some main_module_name ->
     Some
       { Alias_module.
-        module_name
+        main_module_name
       ; alias_module
       }
 
@@ -133,6 +133,6 @@ let modules t = t.modules
 let entry_modules t =
   match alias t with
   | None -> Module.Name.Map.values t.modules
-  | Some { module_name ; alias_module } ->
+  | Some { main_module_name ; alias_module } ->
     [Option.value ~default:alias_module
-       (Module.Name.Map.find t.modules module_name)]
+       (Module.Name.Map.find t.modules main_module_name)]

@@ -98,7 +98,8 @@ module Gen (P : Install_rules.Params) = struct
   let alias_module_build_sandbox =
     Ocaml_version.always_reads_alias_cmi ctx.version
 
-  let build_alias_module { Lib_modules.Alias_module.module_name ; alias_module }
+  let build_alias_module { Lib_modules.Alias_module.main_module_name
+                         ; alias_module }
         ~modules ~cctx ~dynlink ~js_of_ocaml =
     let file =
       match Module.impl alias_module with
@@ -113,7 +114,7 @@ module Gen (P : Install_rules.Params) = struct
             let name = Module.Name.to_string (Module.name m) in
             sprintf "(** @canonical %s.%s *)\n\
                      module %s = %s\n"
-              (Module.Name.to_string module_name)
+              (Module.Name.to_string main_module_name)
               name
               name
               (Module.Name.to_string (Module.real_unit_name m))
@@ -384,7 +385,7 @@ module Gen (P : Install_rules.Params) = struct
     let (modules, alias_module) =
       match Lib_modules.alias lib_modules with
       | None -> (modules, None)
-      | Some { module_name = _ ; alias_module } ->
+      | Some { main_module_name = _ ; alias_module } ->
         ( Module.Name.Map.add modules (Module.name alias_module) alias_module
         , Some alias_module
         )

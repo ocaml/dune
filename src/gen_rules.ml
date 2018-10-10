@@ -17,6 +17,11 @@ let stanza_package = function
     Some package
   | _ -> None
 
+let glob_all_files =
+  Re.any
+  |> Re.rep1
+  |> Re.compile
+
 module Gen(P : Install_rules.Params) = struct
   module Alias = Build_system.Alias
   module CC = Compilation_context
@@ -132,6 +137,9 @@ module Gen(P : Install_rules.Params) = struct
           Menhir_rules.gen_rules cctx m ~dir:ctx_dir
         end
       | _ -> ());
+    Super_context.add_alias_deps sctx
+      ~dyn_deps:(Build.paths_glob glob_all_files ~dir:ctx_dir ~loc:Loc.none)
+      (Build_system.Alias.all ~dir:ctx_dir) Path.Set.empty;
     cctxs
 
   let gen_rules dir_contents cctxs ~dir : (Loc.t * Compilation_context.t) list =

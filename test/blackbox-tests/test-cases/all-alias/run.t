@@ -4,6 +4,11 @@
   Entering directory 'private-exe'
       ocamldep .foo.eobjs/foo.ml.d
         ocamlc .foo.eobjs/foo.{cmi,cmo,cmt}
+        ocamlc foo.bc
+   js_of_ocaml .js/stdlib/stdlib.cma.js
+   js_of_ocaml foo.bc.runtime.js
+   js_of_ocaml .foo.eobjs/foo.cmo.js
+     jsoo_link foo.bc.js
       ocamlopt .foo.eobjs/foo.{cmx,o}
       ocamlopt foo.exe
 

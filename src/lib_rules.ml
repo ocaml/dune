@@ -485,8 +485,11 @@ module Gen (P : Install_rules.Params) = struct
       (* Build *.cma.js *)
       SC.add_rules sctx (
         let src =
-          Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext Mode.Byte) in
-        let target = Path.extend_basename src ~suffix:".js" in
+          Library.archive lib ~dir
+            ~ext:(Mode.compiled_lib_ext Mode.Byte) in
+        let target =
+          Path.relative obj_dir (Path.basename src)
+          |> Path.extend_basename ~suffix:".js" in
         Js_of_ocaml_rules.build_cm cctx ~js_of_ocaml ~src ~target);
 
       if Dynlink_supported.By_the_os.get ctx.natdynlink_supported then

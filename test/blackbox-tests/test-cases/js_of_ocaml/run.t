@@ -1,4 +1,4 @@
-  $ dune build --display short bin/technologic.bc.js @install lib/x.cma.js lib/x__Y.cmo.js bin/z.cmo.js
+  $ dune build --display short bin/technologic.bc.js @install
         ocamlc lib/stubs$ext_obj
     ocamlmklib lib/dllx_stubs$ext_dll,lib/libx_stubs$ext_lib
       ocamlopt .ppx/js_of_ocaml-ppx/ppx.exe
@@ -15,7 +15,6 @@
            ppx bin/z.pp.ml
       ocamldep bin/.technologic.eobjs/z.pp.ml.d
    js_of_ocaml .js/js_of_ocaml/js_of_ocaml.cma.js
-   js_of_ocaml lib/.x.objs/x__Y.cmo.js
         ocamlc lib/.x.objs/x.{cmi,cmo,cmt}
       ocamlopt lib/.x.objs/x.{cmx,o}
       ocamlopt lib/x.{a,cmxa}
@@ -23,11 +22,11 @@
    js_of_ocaml .js/stdlib/stdlib.cma.js
    js_of_ocaml bin/technologic.bc.runtime.js
         ocamlc lib/x.cma
-   js_of_ocaml lib/x.cma.js
+   js_of_ocaml lib/.x.objs/x.cma.js
         ocamlc bin/.technologic.eobjs/z.{cmi,cmo,cmt}
-   js_of_ocaml bin/.technologic.eobjs/z.cmo.js
         ocamlc bin/.technologic.eobjs/technologic.{cmi,cmo,cmt}
    js_of_ocaml bin/.technologic.eobjs/technologic.cmo.js
+   js_of_ocaml bin/.technologic.eobjs/z.cmo.js
      jsoo_link bin/technologic.bc.js
   $ $NODE ./_build/default/bin/technologic.bc.js
   buy it

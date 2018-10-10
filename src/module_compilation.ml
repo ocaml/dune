@@ -170,13 +170,9 @@ let build_module ?sandbox ?js_of_ocaml ?dynlink ~dep_graphs cctx m =
   Option.iter js_of_ocaml ~f:(fun js_of_ocaml ->
     (* Build *.cmo.js *)
     let sctx     = CC.super_context cctx in
-    let dir      = CC.dir           cctx in
     let obj_dir  = CC.obj_dir       cctx in
     let src = Module.cm_file_unsafe m ~obj_dir Cm_kind.Cmo in
-    let target =
-      Path.extend_basename (Module.cm_file_unsafe m ~obj_dir:dir Cm_kind.Cmo)
-        ~suffix:".js"
-    in
+    let target = Path.extend_basename src ~suffix:".js" in
     SC.add_rules sctx
       (Js_of_ocaml_rules.build_cm cctx ~js_of_ocaml ~src ~target))
 

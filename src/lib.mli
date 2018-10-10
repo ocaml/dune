@@ -28,6 +28,7 @@ val kind         : t -> Dune_file.Library.Kind.t
 val archives     : t -> Path.t list Mode.Dict.t
 val plugins      : t -> Path.t list Mode.Dict.t
 val jsoo_runtime : t -> Path.t list
+val jsoo_archive : t -> Path.t option
 
 val foreign_objects : t -> Path.t list
 

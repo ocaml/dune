@@ -73,6 +73,7 @@ type t =
   ; foreign_objects  : Path.t list
   ; foreign_archives : Path.t list Mode.Dict.t
   ; jsoo_runtime     : Path.t list
+  ; jsoo_archive     : Path.t option
   ; requires         : Deps.t
   ; ppx_runtime_deps : (Loc.t * Lib_name.t) list
   ; pps              : (Loc.t * Lib_name.t) list
@@ -92,8 +93,10 @@ let user_written_deps t =
 
 let of_library_stanza ~dir ~ext_lib ~ext_obj (conf : Dune_file.Library.t) =
   let (_loc, lib_name) = conf.name in
-  let archive_file ext =
+  let obj_dir = Utils.library_object_directory ~dir lib_name in
+  let gen_archive_file ~dir ext =
     Path.relative dir (Lib_name.Local.to_string lib_name ^ ext) in
+  let archive_file = gen_archive_file ~dir in
   let archive_files ~f_ext =
     Mode.Dict.of_func (fun ~mode -> [archive_file (f_ext mode)])
   in
@@ -107,7 +110,6 @@ let of_library_stanza ~dir ~ext_lib ~ext_obj (conf : Dune_file.Library.t) =
     | Some p -> Public p.package
   in
   let virtual_library = Dune_file.Library.is_virtual conf in
-  let obj_dir = Utils.library_object_directory ~dir (snd conf.name) in
   let private_obj_dir =
     Option.map conf.private_modules ~f:(fun _ ->
       Utils.library_private_obj_dir ~obj_dir)
@@ -144,6 +146,7 @@ let of_library_stanza ~dir ~ext_lib ~ext_obj (conf : Dune_file.Library.t) =
       }
     | _ -> foreign_archives
   in
+  let jsoo_archive = Some (gen_archive_file ~dir:obj_dir ".cma.js") in
   let virtual_ =
     Option.map conf.virtual_modules ~f:(fun _ ->
       { Virtual.
@@ -176,6 +179,7 @@ let of_library_stanza ~dir ~ext_lib ~ext_obj (conf : Dune_file.Library.t) =
   ; foreign_objects
   ; foreign_archives
   ; jsoo_runtime
+  ; jsoo_archive
   ; status
   ; virtual_deps     = conf.virtual_deps
   ; requires         = Deps.of_lib_deps conf.buildable.libraries
@@ -208,6 +212,7 @@ let of_findlib_package pkg =
   ; archives         = P.archives pkg
   ; plugins          = P.plugins pkg
   ; jsoo_runtime     = P.jsoo_runtime pkg
+  ; jsoo_archive     = None
   ; requires         = Simple (List.map (P.requires pkg) ~f:add_loc)
   ; ppx_runtime_deps = List.map (P.ppx_runtime_deps pkg) ~f:add_loc
   ; pps              = []

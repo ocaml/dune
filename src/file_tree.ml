@@ -259,6 +259,16 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) path =
               ignored
               || String.Set.mem ignored_subdirs fn
               || Path.Set.mem extra_ignored_subtrees path
+              || List.exists
+                   (Dune_project.schemes project)
+                   ~f:(fun (_loc,
+                            { Dune_project.Scheme.
+                              dir_extension
+                            ; file_extension = _
+                            ; alias_name = _
+                            ; action_template = _
+                            }) ->
+                        Path.extension path = "." ^ dir_extension)
             in
             String.Map.add acc fn
               (walk path ~dirs_visited ~project ~ignored))

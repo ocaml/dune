@@ -24,6 +24,62 @@ module Gen(P : Install_rules.Params) = struct
     | Some config ->
       Format_rules.gen_rules sctx config ~dir
 
+  let gen_scheme_rules ~dir =
+    let scope = SC.find_scope_by_dir sctx dir in
+    let project = Scope.project scope in
+    let add_alias ~loc ~file ~alias_name ~action_template =
+      let deps =
+        [Dune_file.Bindings.Unnamed
+           (Dune_file.Dep_conf.File
+              (String_with_vars.make_text
+                 loc
+                 (Path.to_string file)))]
+      in
+      let extra_bindings =
+        let file_path =
+          Path.relative (Scope.root scope) (Path.to_string file)
+        in
+        Pform.Map.singleton
+          "test"
+          (Pform.Var.Values [Value.Path file_path])
+      in
+      Simple_rules.alias sctx
+        ~extra_bindings
+        ~dir
+        ~scope
+        { Alias_conf.
+          name       = alias_name
+        ; deps
+        ; action     = Some (loc, action_template)
+        ; locks      = []
+        ; package    = None
+        ; enabled_if = Blang.true_
+        ; loc
+        }
+    in
+    let path_has_extension path ext =
+      Path.extension path = "." ^ ext
+    in
+    File_tree.fold (SC.file_tree sctx)
+      ~traverse_ignored_dirs:true
+      ~init:()
+      ~f:(fun (ftd : File_tree.Dir.t) () ->
+        List.iter (Dune_project.schemes project)
+          ~f:(fun (loc,
+                   { Dune_project.Scheme.
+                     dir_extension
+                   ; file_extension
+                   ; alias_name
+                   ; action_template
+                   }) ->
+               if path_has_extension (File_tree.Dir.path ftd) dir_extension then begin
+                 Path.Set.iter (File_tree.Dir.file_paths ftd)
+                   ~f:(fun file ->
+                     if path_has_extension file file_extension then
+                       add_alias ~loc ~file ~alias_name ~action_template
+                   )
+               end))
+
   (* +-----------------------------------------------------------------+
      | Stanza                                                          |
      +-----------------------------------------------------------------+ *)
@@ -155,7 +211,7 @@ module Gen(P : Install_rules.Params) = struct
              ignore (gen_rules dir_contents cctxs ~dir:(Dir_contents.dir dc)
                      : _ list)));
     match components with
-    | [] -> These (String.Set.of_list [".js"; "_doc"; ".ppx"])
+    | [] -> gen_scheme_rules ~dir; These (String.Set.of_list [".js"; "_doc"; ".ppx"])
     | [(".js"|"_doc"|".ppx")] -> All
     | _  -> These String.Set.empty
 

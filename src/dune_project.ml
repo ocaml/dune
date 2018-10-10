@@ -126,6 +126,15 @@ end = struct
       | _ -> invalid s
 end
 
+module Alias_name = struct
+  let decode =
+    plain_string (fun ~loc s ->
+      if Filename.basename s <> s then
+        of_sexp_errorf loc "%S is not a valid alias name" s
+      else
+        s)
+end
+
 module Project_file = struct
   type t =
     { file           : Path.t
@@ -140,6 +149,39 @@ module Project_file = struct
         ])
 end
 
+module Scheme = struct
+  type t =
+    { dir_extension : string
+    ; file_extension : string
+    ; alias_name : string
+    ; action_template : Action.Unexpanded.t
+    }
+
+  let extension =
+    plain_string (fun ~loc s ->
+      if String.length s = 0 then
+        of_sexp_errorf loc "\"\" is not a valid extension"
+      else if s.[0] = '.' then
+        of_sexp_errorf loc "an extension should not have a leading dot"
+      else
+        s)
+
+  let decode_fields =
+    let%map dir_extension = field "dir_extension" extension
+    and file_extension = field "extension" extension
+    and alias_name = field "alias" Alias_name.decode
+    and action_template = field "action" Action.Unexpanded.decode
+    in
+    { dir_extension
+    ; file_extension
+    ; alias_name
+    ; action_template
+    }
+
+  let fields = fields decode_fields
+end
+
+
 type t =
   { kind          : Kind.t
   ; name          : Name.t
@@ -149,6 +191,7 @@ type t =
   ; stanza_parser : Stanza.t list Dune_lang.Decoder.t
   ; project_file  : Project_file.t
   ; extension_args : Univ_map.t
+  ; schemes       : (Loc.t * Scheme.t) list
   }
 
 let packages t = t.packages
@@ -156,6 +199,7 @@ let version t = t.version
 let name t = t.name
 let root t = t.root
 let stanza_parser t = t.stanza_parser
+let schemes t = t.schemes
 
 let find_extension_args t key =
   Univ_map.find t.extension_args key
@@ -316,7 +360,8 @@ let make_parsing_context ~(lang : Lang.Instance.t) ~extensions =
 let key =
   Univ_map.Key.create ~name:"dune-project"
     (fun { name; root; version; project_file; kind
-         ; stanza_parser = _; packages = _ ; extension_args = _ } ->
+         ; stanza_parser = _; packages = _ ; extension_args = _
+         ; schemes = _ } ->
       Sexp.Encoder.record
         [ "name", Name.to_sexp name
         ; "root", Path.Local.to_sexp root
@@ -352,6 +397,7 @@ let anonymous = lazy (
       Dune_lang.Decoder.(set_many parsing_context (sum lang.data))
   ; project_file  = { file = Path.relative Path.root filename; exists = false }
   ; extension_args = Univ_map.empty
+  ; schemes       = []
   })
 
 let default_name ~dir ~packages =
@@ -394,8 +440,32 @@ let parse ~dir ~lang ~packages ~file =
           (* We don't parse the arguments quite yet as we want to set
              the version of extensions before parsing them. *)
           Extension.instantiate ~loc ~parse_args name ver)
+     and schemes =
+       multi_field "run_test_scheme"
+         (let%map loc = loc
+          and schemes = Scheme.fields in
+          loc, schemes)
      and () = Versioned_file.no_more_lang
      in
+     (* Ensure that schemes are explicitly enabled if used. *)
+     begin match schemes with
+     | [] -> ()
+     | (first_scheme_loc, _) :: _ ->
+       let run_test_scheme_enabled =
+         List.exists
+           explicit_extensions
+           ~f:(fun { Extension.
+                     extension
+                   ; version = _
+                   ; loc = _
+                   ; parse_args = _
+                   } ->
+                Syntax.name (Extension.syntax extension) = "run_test_schemes")
+       in
+       if not run_test_scheme_enabled then
+         Errors.fail first_scheme_loc
+           "Run test schemes should be explicitly enabled."
+     end;
      match
        String.Map.of_list
          (List.map explicit_extensions ~f:(fun (e : Extension.instance) ->
@@ -443,6 +513,7 @@ let parse ~dir ~lang ~packages ~file =
        ; stanza_parser = Dune_lang.Decoder.(set_many parsing_context (sum stanzas))
        ; project_file
        ; extension_args
+       ; schemes
        })
 
 let load_dune_project ~dir packages =
@@ -461,6 +532,7 @@ let make_jbuilder_project ~dir packages =
       Dune_lang.Decoder.(set_many parsing_context (sum lang.data))
   ; project_file = { file = Path.relative dir filename; exists = false }
   ; extension_args = Univ_map.empty
+  ; schemes = []
   }
 
 let read_name file =

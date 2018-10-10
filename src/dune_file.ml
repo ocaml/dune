@@ -631,6 +631,17 @@ end
 
 let modules_field name = Ordered_set_lang.field name
 
+module Test_scheme = struct
+  let syntax =
+    Syntax.create ~name:"run_test_schemes"
+      ~desc:"test schemes"
+      [ (0, 1) ]
+
+  let () =
+    Dune_project.Extension.register_simple ~experimental:true syntax
+      (Dune_lang.Decoder.return [])
+end
+
 module Auto_format = struct
   let syntax =
     Syntax.create ~name:"fmt"
@@ -1820,16 +1831,9 @@ module Alias_conf = struct
     ; loc : Loc.t
     }
 
-  let alias_name =
-    plain_string (fun ~loc s ->
-      if Filename.basename s <> s then
-        of_sexp_errorf loc "%S is not a valid alias name" s
-      else
-        s)
-
   let decode =
     record
-      (let%map name = field "name" alias_name
+      (let%map name = field "name" Dune_project.Alias_name.decode
        and loc = loc
        and package = field_o "package" Pkg.decode
        and action = field_o "action" (located Action.Unexpanded.decode)

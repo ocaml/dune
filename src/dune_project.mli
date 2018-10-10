@@ -32,8 +32,21 @@ module Name : sig
   module Infix : Comparable.OPS with type t = t
 end
 
+module Alias_name : sig
+  val decode : string Stanza.Decoder.t
+end
+
 module Project_file : sig
   type t
+end
+
+module Scheme : sig
+  type t =
+    { dir_extension : string
+    ; file_extension : string
+    ; alias_name : string
+    ; action_template : Action.Unexpanded.t
+    }
 end
 
 type t
@@ -43,6 +56,7 @@ val version : t -> string option
 val name : t -> Name.t
 val root : t -> Path.Local.t
 val stanza_parser : t -> Stanza.t list Dune_lang.Decoder.t
+val schemes : t -> (Loc.t * Scheme.t) list
 
 module Lang : sig
   (** [register id stanzas_parser] register a new language. Users will

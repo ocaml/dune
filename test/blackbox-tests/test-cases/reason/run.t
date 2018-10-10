@@ -25,7 +25,7 @@
     "_build/install/default/lib/rlib/rlib.cmxa" {"rlib.cmxa"}
     "_build/install/default/lib/rlib/rlib.cmxs" {"rlib.cmxs"}
     "_build/install/default/lib/rlib/rlib.dune" {"rlib.dune"}
-    "_build/install/default/lib/rlib/rlib.ml-gen" {"rlib.ml-gen"}
+    "_build/install/default/lib/rlib/rlib.ml" {"rlib.ml"}
     "_build/install/default/lib/rlib/rlib__Bar.cmi" {"rlib__Bar.cmi"}
     "_build/install/default/lib/rlib/rlib__Bar.cmt" {"rlib__Bar.cmt"}
     "_build/install/default/lib/rlib/rlib__Bar.cmti" {"rlib__Bar.cmti"}
@@ -46,4 +46,7 @@
     "_build/install/default/lib/rlib/rlib__Pped.cmt" {"rlib__Pped.cmt"}
     "_build/install/default/lib/rlib/rlib__Pped.cmti" {"rlib__Pped.cmti"}
     "_build/install/default/lib/rlib/rlib__Pped.cmx" {"rlib__Pped.cmx"}
+  ]
+  bin: [
+    "_build/install/default/bin/refmt" {"refmt"}
   ]

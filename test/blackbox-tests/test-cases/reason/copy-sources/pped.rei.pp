@@ -1,1 +1,1 @@
-let y : int
+val y : int

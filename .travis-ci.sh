@@ -47,8 +47,7 @@ case "$TARGET" in
         rm -rf ~/.opam
         opam init --disable-sandboxing
         eval $(opam config env)
-        opam pin add -n reason git+https://github.com/facebook/reason\#2c5fdbea2a8eb4a9fb43f237345d65a1caf8da3a
-        opam install ocamlfind utop ppxlib reason odoc menhir ocaml-migrate-parsetree js_of_ocaml-ppx js_of_ocaml-compiler
+        opam install ocamlfind utop ppxlib odoc menhir ocaml-migrate-parsetree js_of_ocaml-ppx js_of_ocaml-compiler
         opam remove dune jbuilder \
              `opam list --depends-on jbuilder --installed --short` \
              `opam list --depends-on dune     --installed --short`
@@ -80,8 +79,7 @@ case "$TARGET" in
       opam list
       echo "version: \"1.0+dev$DATE\"" >> dune.opam
       opam pin add dune . --no-action
-      opam pin add -n reason git+https://github.com/facebook/reason\#2c5fdbea2a8eb4a9fb43f237345d65a1caf8da3a
-      opam install ocamlfind utop ppxlib reason odoc ocaml-migrate-parsetree js_of_ocaml-ppx js_of_ocaml-compiler
+      opam install ocamlfind utop ppxlib odoc ocaml-migrate-parsetree js_of_ocaml-ppx js_of_ocaml-compiler
       echo -en "travis_fold:end:opam.deps\r"
     fi
     echo -en "travis_fold:start:dune.bootstrap\r"

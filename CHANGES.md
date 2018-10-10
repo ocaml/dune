@@ -46,8 +46,10 @@
 
 - Fix bad interaction between `env` customization and vendored
   projects: when a vendored project didn't have its own `env` stanza,
-  the `env` stanza from the enclosing project was in effect (#....,
+  the `env` stanza from the enclosing project was in effect (#1408,
   @diml)
+
+- Fix stop early bug when scanning for watermarks (#1423, @diml)
 
 1.3.0 (23/09/2018)
 ------------------

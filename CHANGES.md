@@ -49,7 +49,7 @@
   the `env` stanza from the enclosing project was in effect (#1408,
   @diml)
 
-- Fix stop early bug when scanning for watermarks (#1423, @diml)
+- Fix stop early bug when scanning for watermarks (#1423, @struktured)
 
 1.3.0 (23/09/2018)
 ------------------

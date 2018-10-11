@@ -7,6 +7,7 @@ module Atom : sig
   type t = private A of string [@@unboxed]
 
   val is_valid : t -> Syntax.t -> bool
+  val equal : t -> t -> bool
 
   val of_string : string -> t
   val to_string : t -> string
@@ -111,6 +112,7 @@ val add_loc : t -> loc:Loc.t -> Ast.t
 
 (** Concrete syntax tree *)
 module Cst : sig
+  type sexp = t
   module Comment : sig
     type t =
       | Lines of string list
@@ -150,9 +152,11 @@ module Cst : sig
 
   val concrete : Ast.t -> t
 
+  val to_sexp : t -> sexp option
+
   (** Return all the comments contained in a concrete syntax tree *)
   val extract_comments : t list -> (Loc.t * Comment.t) list
-end
+end with type sexp := t
 
 (** Insert comments in a concrete syntax tree. Comments are inserted
     based on their location. *)

@@ -290,6 +290,7 @@ module Library : sig
   val archive : t -> dir:Path.t -> ext:string -> Path.t
   val best_name : t -> Lib_name.t
   val is_virtual : t -> bool
+  val is_impl : t -> bool
 
   module Main_module_name : sig
     type t =

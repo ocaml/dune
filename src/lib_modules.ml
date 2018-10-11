@@ -6,6 +6,7 @@ type t =
   ; alias_module     : Module.t option
   ; main_module_name : Module.Name.t option
   ; wrapped_compat   : Module.Name_map.t
+  ; implements       : bool
   }
 
 let virtual_modules t = t.virtual_modules
@@ -22,6 +23,7 @@ let make_unwrapped ~modules ~virtual_modules ~main_module_name =
   ; main_module_name = None
   ; wrapped_compat = Module.Name.Map.empty
   ; virtual_modules = Module.Name.Map.empty
+  ; implements = false
   }
 
 let make_wrapped ~(lib : Dune_file.Library.t) ~dir ~transition ~modules
@@ -79,6 +81,7 @@ let make_wrapped ~(lib : Dune_file.Library.t) ~dir ~transition ~modules
   ; main_module_name = Some main_module_name
   ; wrapped_compat
   ; virtual_modules
+  ; implements = Dune_file.Library.is_impl lib
   }
 
 
@@ -129,15 +132,18 @@ let installable_modules t =
   | Some alias -> alias :: modules
 
 let lib_interface_module t =
-  match t.main_module_name, t.alias_module with
-  | None, None -> None
-  | None, Some _ -> assert false
-  | Some main_module_name, None ->
-    Module.Name.Map.find t.modules main_module_name
-  | Some main_module_name, Some alias_module ->
-    Module.Name.Map.find t.modules main_module_name
-    |> Option.value ~default:alias_module
-    |> Option.some
+  if t.implements then
+    None
+  else
+    match t.main_module_name, t.alias_module with
+    | None, None -> None
+    | None, Some _ -> assert false
+    | Some main_module_name, None ->
+      Module.Name.Map.find t.modules main_module_name
+    | Some main_module_name, Some alias_module ->
+      Module.Name.Map.find t.modules main_module_name
+      |> Option.value ~default:alias_module
+      |> Option.some
 
 let entry_modules t =
   match lib_interface_module t with
@@ -148,9 +154,14 @@ let set_modules t pped_modules =
   { t with modules = pped_modules }
 
 let for_compilation t =
-  match t.alias_module with
-  | None -> t.modules
-  | Some alias -> Module.Name_map.add t.modules alias
+  match t.alias_module, t.implements with
+  | _, true
+  | None, false -> t.modules
+  | Some alias, false -> Module.Name_map.add t.modules alias
 
 let have_artifacts t =
-  Module.Name.Map.superpose (for_compilation t) t.wrapped_compat
+  let base =
+    Module.Name.Map.superpose t.modules t.wrapped_compat in
+  match t.alias_module with
+  | None -> base
+  | Some alias_module -> Module.Name_map.add base alias_module

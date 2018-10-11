@@ -428,7 +428,8 @@ module Gen (P : Install_rules.Params) = struct
 
     if Option.is_none lib.stdlib && Option.is_none impl then
       Option.iter (Lib_modules.alias lib_modules)
-        ~f:(build_alias_module ~modules:source_modules ~cctx ~dynlink ~js_of_ocaml);
+        ~f:(build_alias_module ~modules:source_modules ~cctx ~dynlink
+              ~js_of_ocaml);
 
     let vlib_stubs_o_files =
       match impl with

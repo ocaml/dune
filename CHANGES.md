@@ -1,3 +1,8 @@
+next
+----
+
+- Filter out empty paths from `OCAMLPATH` and `PATH` (#1436, @rgrinberg)
+
 1.4.0 (10/10/2018)
 ------------------
 

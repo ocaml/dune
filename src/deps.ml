@@ -8,15 +8,16 @@ type t =
 let paths t = t.paths
 
 let trace_path fn =
-  (Path.to_string fn, Utils.Cached_digest.file fn)
+  let digest, perms = Utils.Cached_digest.file fn in
+  (Path.to_string fn, digest, perms)
 
 let trace_var env var =
-  let value =
+  let value, present =
     match Env.get env var with
-    | None -> "unset"
-    | Some v -> Digest.string v |> Digest.to_hex
+    | None -> "unset", 0
+    | Some v -> Digest.string v |> Digest.to_hex, 1
   in
-  (var, value)
+  (var, value, present)
 
 let trace {paths; vars} env =
   List.concat

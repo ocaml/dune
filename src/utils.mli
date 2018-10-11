@@ -74,13 +74,13 @@ end
 (** Digest files with caching *)
 module Cached_digest : sig
   (** Digest the contents of the following file *)
-  val file : Path.t -> Digest.t
+  val file : Path.t -> Digest.t * Unix.file_perm
 
   (** Clear the following digest from the cache *)
   val remove : Path.t -> unit
 
   (** Same as {!file} but forces the digest to be recomputed *)
-  val refresh : Path.t -> Digest.t
+  val refresh : Path.t -> Digest.t * Unix.file_perm
 
   (** Dump/load the cache to/from the disk *)
   val dump : unit -> unit

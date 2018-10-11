@@ -187,6 +187,7 @@ end
 module Cached_digest = struct
   type file =
     { mutable digest            : Digest.t
+    ; mutable permissions       : Unix.file_perm
     ; mutable timestamp         : float
     ; mutable timestamp_checked : int
     }
@@ -202,28 +203,38 @@ module Cached_digest = struct
     }
 
   let refresh fn =
-    let digest = Digest.file (Path.to_string fn) in
+    let filename = Path.to_string fn in
+    let digest = Digest.file filename in
+    let stat = Unix.stat filename in
     Hashtbl.replace cache.table ~key:fn
       ~data:{ digest
-            ; timestamp = (Unix.stat (Path.to_string fn)).st_mtime
+            ; permissions = stat.st_perm
+            ; timestamp = stat.st_mtime
             ; timestamp_checked = cache.checked_key
             };
-    digest
+    digest, stat.st_perm
 
   let file fn =
     match Hashtbl.find cache.table fn with
     | Some x ->
       if x.timestamp_checked = cache.checked_key then
-        x.digest
+        x.digest, x.permissions
       else begin
-        let mtime = (Unix.stat (Path.to_string fn)).st_mtime in
+        let filename = Path.to_string fn in
+        let stat = Unix.stat filename in
+        let mtime = stat.st_mtime in
+        let permissions = stat.st_perm in
         if mtime <> x.timestamp then begin
-          let digest = Digest.file (Path.to_string fn) in
-          x.digest    <- digest;
-          x.timestamp <- mtime;
+          let digest = Digest.file filename in
+          x.digest      <- digest;
+          x.permissions <- permissions;
+          x.timestamp   <- mtime;
+        end else if permissions <> x.permissions then begin
+          (* mtime is not updated when permissions are changed *)
+          x.permissions <- permissions;
         end;
         x.timestamp_checked <- cache.checked_key;
-        x.digest
+        x.digest, x.permissions
       end
     | None ->
       refresh fn

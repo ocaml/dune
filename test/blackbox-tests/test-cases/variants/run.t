@@ -169,10 +169,8 @@ Install files for implemenations and virtual libs have all the artifacts:
 Implementations may refer to virtual library's modules
   $ dune build --root impl-using-vlib-modules
   Entering directory 'impl-using-vlib-modules'
-  Module Foo in directory _build/default/impl depends on Vlib.
-  This doesn't make sense to me.
-  
-  Vlib is the main module of the library and is the only module exposed 
-  outside of the library. Consequently, it should be the one depending 
-  on all the other modules in the library.
+      ocamlopt impl/.impl.objs/vlib__Foo.{cmx,o} (exit 2)
+  (cd _build/default && /Users/rgrinberg/.opam/4.06.1/bin/ocamlopt.opt -w @a-4-29-40-41-42-44-45-48-58-59-60-40 -strict-sequence -strict-formats -short-paths -keep-locs -g -I impl/.impl.objs -I impl/.impl.objs/.private -I vlib/.vlib.objs -intf-suffix .ml -no-alias-deps -opaque -open Vlib -o impl/.impl.objs/vlib__Foo.cmx -c -impl impl/foo.ml)
+  File "impl/foo.ml", line 2, characters 2-9:
+  Error: Unbound value Bar.run
   [1]

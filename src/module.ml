@@ -225,6 +225,9 @@ module Name_map = struct
   let of_list_exn modules =
     List.map modules ~f:(fun m -> (name m, m))
     |> Name.Map.of_list_exn
+
+  let add t module_ =
+    Name.Map.add t (name module_) module_
 end
 
 let is_public t = Visibility.is_public t.visibility

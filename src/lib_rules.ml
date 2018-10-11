@@ -130,10 +130,10 @@ module Gen (P : Install_rules.Params) = struct
 
   let build_wrapped_compat_modules (lib : Library.t)
         cctx
-        ~modules
         ~js_of_ocaml
         ~dynlink
-        ~(wrapped_compat : Module.t Module.Name.Map.t) =
+        ~modules
+        ~wrapped_compat =
     let transition_message =
       match lib.wrapped with
       | Simple _ -> "" (* will never be accessed anyway *)
@@ -158,7 +158,8 @@ module Gen (P : Install_rules.Params) = struct
       |> SC.add_rule sctx
     );
     let dep_graphs =
-      Ocamldep.Dep_graphs.wrapped_compat ~modules ~wrapped_compat in
+      Ocamldep.Dep_graphs.wrapped_compat ~modules ~wrapped_compat
+    in
     let cctx = Compilation_context.for_wrapped_compat cctx wrapped_compat in
     Module_compilation.build_modules cctx ~js_of_ocaml ~dynlink ~dep_graphs
 
@@ -332,8 +333,7 @@ module Gen (P : Install_rules.Params) = struct
       in
       SC.add_rule sctx build)
 
-  let setup_file_deps lib ~dir ~obj_dir ~modules ~wrapped_compat
-        ~modules_of_vlib =
+  let setup_file_deps lib ~dir ~obj_dir ~modules ~modules_of_vlib =
     let add_cms ~cm_kind ~init = Module.Name.Map.fold ~init ~f:(fun m acc ->
       match Module.cm_file m ~obj_dir cm_kind with
       | None -> acc
@@ -341,7 +341,6 @@ module Gen (P : Install_rules.Params) = struct
     in
     List.iter Cm_kind.all ~f:(fun cm_kind ->
       let files = add_cms ~cm_kind ~init:Path.Set.empty modules in
-      let files = add_cms ~cm_kind ~init:files wrapped_compat in
       let files = add_cms ~cm_kind ~init:files modules_of_vlib in
       Lib_file_deps.setup_file_deps_alias sctx ~dir lib ~exts:[Cm_kind.ext cm_kind]
         files);
@@ -364,10 +363,9 @@ module Gen (P : Install_rules.Params) = struct
     let lib_modules =
       Dir_contents.modules_of_library dir_contents ~name:(Library.best_name lib)
     in
-    let modules = Lib_modules.modules lib_modules in
-    let impl = Virtual.impl ~lib ~scope ~modules in
+    let source_modules = Lib_modules.modules lib_modules in
+    let impl = Virtual.impl ~lib ~scope ~modules:source_modules in
     Option.iter impl ~f:(Virtual.setup_copy_rules_for_impl ~dir);
-    let source_modules = modules in
     (* Preprocess before adding the alias module as it doesn't need
        preprocessing *)
     let pp =
@@ -380,16 +378,14 @@ module Gen (P : Install_rules.Params) = struct
         ~lib_name:(Some (snd lib.name))
         ~dir_kind
     in
-    let modules = Preprocessing.pp_modules pp modules in
 
-    let (modules, alias_module) =
-      match Lib_modules.alias lib_modules with
-      | None -> (modules, None)
-      | Some { main_module_name = _ ; alias_module } ->
-        ( Module.Name.Map.add modules (Module.name alias_module) alias_module
-        , Some alias_module
-        )
+    let lib_modules =
+      Preprocessing.pp_modules pp source_modules
+      |> Lib_modules.set_modules lib_modules
     in
+
+    let alias_module = Lib_modules.alias_module lib_modules in
+    let modules = Lib_modules.for_compilation lib_modules in
 
     let cctx =
       Compilation_context.create ()
@@ -403,10 +399,7 @@ module Gen (P : Install_rules.Params) = struct
         ~private_obj_dir
         ~modules
         ?alias_module
-        ?lib_interface_module:
-          (Option.map (Lib_modules.lib_interface_module lib_modules)
-             ~f:(fun name ->
-               Option.value_exn (Module.Name.Map.find modules name)))
+        ?lib_interface_module:(Lib_modules.lib_interface_module lib_modules)
         ~flags
         ~requires
         ~preprocessing:pp
@@ -421,9 +414,8 @@ module Gen (P : Install_rules.Params) = struct
     let js_of_ocaml = lib.buildable.js_of_ocaml in
 
     let wrapped_compat = Lib_modules.wrapped_compat lib_modules in
-
     build_wrapped_compat_modules lib cctx ~dynlink ~js_of_ocaml
-      ~wrapped_compat ~modules;
+      ~modules ~wrapped_compat;
 
     let dep_graphs =
       let dep_graphs = Ocamldep.rules cctx in
@@ -436,7 +428,7 @@ module Gen (P : Install_rules.Params) = struct
 
     if Option.is_none lib.stdlib && Option.is_none impl then
       Option.iter (Lib_modules.alias lib_modules)
-        ~f:(build_alias_module ~modules ~cctx ~dynlink ~js_of_ocaml);
+        ~f:(build_alias_module ~modules:source_modules ~cctx ~dynlink ~js_of_ocaml);
 
     let vlib_stubs_o_files =
       match impl with
@@ -446,43 +438,44 @@ module Gen (P : Install_rules.Params) = struct
     if Library.has_stubs lib || not (List.is_empty vlib_stubs_o_files) then
       build_stubs lib ~dir ~scope ~requires ~dir_contents ~vlib_stubs_o_files;
 
-    setup_file_deps lib ~dir ~obj_dir ~modules ~wrapped_compat
+    setup_file_deps lib ~dir ~obj_dir
+      ~modules:(Lib_modules.have_artifacts lib_modules)
       ~modules_of_vlib:(
         match impl with
         | None -> Module.Name.Map.empty
         | Some impl -> Virtual_rules.Implementation.modules_of_vlib impl);
 
     if not (Library.is_virtual lib) then begin
-      (let modules =
-         match lib.stdlib with
-         | Some { exit_module = Some name; _ } -> begin
-             match Module.Name.Map.find modules name with
-             | None -> modules
-             | Some m ->
-               (* These files needs to be alongside stdlib.cma as the
-                  compiler implicitly adds this module. *)
-               List.iter [".cmx"; ".cmo"; ctx.ext_obj] ~f:(fun ext ->
-                 let src = Module.obj_file m ~obj_dir ~ext in
-                 let dst = Module.obj_file m ~obj_dir:dir ~ext in
-                 SC.add_rule sctx (Build.copy ~src ~dst));
-               Module.Name.Map.remove modules name
-           end
-         | _ ->
-           modules
-       in
-       let modules = Module.Name_map.impl_only modules in
-       let wrapped_compat = Module.Name.Map.values wrapped_compat in
-       (* Compatibility modules have implementations so we can just append them.
-          We append the modules at the end as no library modules depend on
-          them. *)
-       let top_sorted_modules =
-         Ocamldep.Dep_graph.top_closed_implementations dep_graphs.impl modules
-         >>^ fun modules -> modules @ wrapped_compat
-       in
-       (let modules = modules @ wrapped_compat in
-        List.iter Mode.all ~f:(fun mode ->
-          build_lib lib ~scope ~flags ~dir ~obj_dir ~mode ~top_sorted_modules
-            ~modules)));
+      let modules =
+        match lib.stdlib with
+        | Some { exit_module = Some name; _ } -> begin
+            match Module.Name.Map.find modules name with
+            | None -> modules
+            | Some m ->
+              (* These files needs to be alongside stdlib.cma as the
+                 compiler implicitly adds this module. *)
+              List.iter [".cmx"; ".cmo"; ctx.ext_obj] ~f:(fun ext ->
+                let src = Module.obj_file m ~obj_dir ~ext in
+                let dst = Module.obj_file m ~obj_dir:dir ~ext in
+                SC.add_rule sctx (Build.copy ~src ~dst));
+              Module.Name.Map.remove modules name
+          end
+        | _ ->
+          modules
+      in
+      let modules = Module.Name_map.impl_only modules in
+      let wrapped_compat = Module.Name.Map.values wrapped_compat in
+      (* Compatibility modules have implementations so we can just append them.
+         We append the modules at the end as no library modules depend on
+         them. *)
+      let top_sorted_modules =
+        Ocamldep.Dep_graph.top_closed_implementations dep_graphs.impl modules
+        >>^ fun modules -> modules @ wrapped_compat
+      in
+      (let modules = modules @ wrapped_compat in
+       List.iter Mode.all ~f:(fun mode ->
+         build_lib lib ~scope ~flags ~dir ~obj_dir ~mode ~top_sorted_modules
+           ~modules));
       (* Build *.cma.js *)
       SC.add_rules sctx (
         let src =

@@ -8,6 +8,12 @@ type t =
   ; wrapped_compat   : Module.Name_map.t
   }
 
+let virtual_modules t = t.virtual_modules
+let alias_module t = t.alias_module
+let wrapped_compat t = t.wrapped_compat
+let modules t = t.modules
+let main_module_name t = t.main_module_name
+
 let make_unwrapped ~modules ~virtual_modules ~main_module_name =
   assert (Module.Name.Map.is_empty virtual_modules);
   assert (main_module_name = None);
@@ -122,17 +128,29 @@ let installable_modules t =
   | None -> modules
   | Some alias -> alias :: modules
 
-let lib_interface_module t = t.main_module_name
-
-let virtual_modules t = t.virtual_modules
-
-let wrapped_compat t = t.wrapped_compat
-
-let modules t = t.modules
+let lib_interface_module t =
+  match t.main_module_name, t.alias_module with
+  | None, None -> None
+  | None, Some _ -> assert false
+  | Some main_module_name, None ->
+    Module.Name.Map.find t.modules main_module_name
+  | Some main_module_name, Some alias_module ->
+    Module.Name.Map.find t.modules main_module_name
+    |> Option.value ~default:alias_module
+    |> Option.some
 
 let entry_modules t =
-  match alias t with
+  match lib_interface_module t with
   | None -> Module.Name.Map.values t.modules
-  | Some { main_module_name ; alias_module } ->
-    [Option.value ~default:alias_module
-       (Module.Name.Map.find t.modules main_module_name)]
+  | Some m -> [m]
+
+let set_modules t pped_modules =
+  { t with modules = pped_modules }
+
+let for_compilation t =
+  match t.alias_module with
+  | None -> t.modules
+  | Some alias -> Module.Name_map.add t.modules alias
+
+let have_artifacts t =
+  Module.Name.Map.superpose (for_compilation t) t.wrapped_compat

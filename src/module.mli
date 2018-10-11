@@ -108,6 +108,8 @@ module Name_map : sig
   val impl_only : t -> module_ list
 
   val of_list_exn : module_ list -> t
+
+  val add : t -> module_ -> t
 end with type module_ := t
 
 val is_public : t -> bool

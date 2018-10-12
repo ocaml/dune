@@ -5,6 +5,8 @@ type t =
   ; vars : String.Set.t
   }
 
+type trace = (string * string * int option) list
+
 let paths t = t.paths
 
 let trace_path fn =

@@ -29,9 +29,11 @@ val add_env_var : t -> string -> t
 
 (** {1} Deconstructors *)
 
+type trace
+
 (** [trace t] is an abstract value that is guaranteed to change if the set of
     dependencies denoted by t changes, modulo hash collisions. *)
-val trace : t -> Env.t -> (string * string * int option) list
+val trace : t -> Env.t -> trace
 
 (** Return the path dependencies only. *)
 val paths : t -> Path.Set.t

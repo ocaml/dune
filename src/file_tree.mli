@@ -43,6 +43,7 @@ module Dir : sig
   val sub_dirs : t -> t String.Map.t
   val sub_dir_paths : t -> Path.Set.t
   val sub_dir_names : t -> String.Set.t
+  val scheme : t -> (Loc.t * Dune_project.Scheme.t) option
 
   (** Whether this directory is ignored by an [ignored_subdirs] stanza
      or [jbuild-ignore] file in one of its ancestor directories. *)

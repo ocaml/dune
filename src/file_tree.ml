@@ -104,6 +104,7 @@ module Dir = struct
     { path     : Path.t
     ; ignored  : bool
     ; contents : contents Lazy.t
+    ; scheme   : (Loc.t * Dune_project.Scheme.t) option
     }
 
   and contents =
@@ -117,6 +118,7 @@ module Dir = struct
 
   let path t = t.path
   let ignored t = t.ignored
+  let scheme t = t.scheme
 
   let files     t = (contents t).files
   let sub_dirs  t = (contents t).sub_dirs
@@ -177,7 +179,7 @@ end
 module File_map = Map.Make(File)
 
 let load ?(extra_ignored_subtrees=Path.Set.empty) path =
-  let rec walk path ~dirs_visited ~project ~ignored : Dir.t =
+  let rec walk path ~dirs_visited ~project ~ignored ~scheme : Dir.t =
     let contents = lazy (
       let files, sub_dirs =
         Path.readdir_unsorted path
@@ -255,29 +257,33 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) path =
                     (Path.to_string_maybe_quoted first_path)
                     (Path.to_string_maybe_quoted path)
             in
+            let scheme =
+              List.find
+                (Dune_project.schemes project)
+                ~f:(fun (_loc,
+                         { Dune_project.Scheme.
+                           dir_extension
+                         ; file_extension = _
+                         ; alias_name = _
+                         ; action_template = _
+                         }) ->
+                     Path.extension path = "." ^ dir_extension)
+            in
             let ignored =
               ignored
               || String.Set.mem ignored_subdirs fn
               || Path.Set.mem extra_ignored_subtrees path
-              || List.exists
-                   (Dune_project.schemes project)
-                   ~f:(fun (_loc,
-                            { Dune_project.Scheme.
-                              dir_extension
-                            ; file_extension = _
-                            ; alias_name = _
-                            ; action_template = _
-                            }) ->
-                        Path.extension path = "." ^ dir_extension)
+              || scheme <> None
             in
             String.Map.add acc fn
-              (walk path ~dirs_visited ~project ~ignored))
+              (walk path ~dirs_visited ~project ~ignored ~scheme))
       in
       { Dir. files; sub_dirs; dune_file; project })
     in
     { path
     ; contents
     ; ignored
+    ; scheme
     }
   in
   let root =
@@ -287,6 +293,7 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) path =
                        path)
       ~ignored:false
       ~project:(Lazy.force Dune_project.anonymous)
+      ~scheme:None
   in
   let dirs = Hashtbl.create 1024      in
   Hashtbl.add dirs Path.root root;

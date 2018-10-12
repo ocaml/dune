@@ -26,7 +26,6 @@ module Gen(P : Install_rules.Params) = struct
 
   let gen_scheme_rules ~dir =
     let scope = SC.find_scope_by_dir sctx dir in
-    let project = Scope.project scope in
     let add_alias ~loc ~file ~alias_name ~action_template =
       let deps =
         [Dune_file.Bindings.Unnamed
@@ -64,21 +63,19 @@ module Gen(P : Install_rules.Params) = struct
       ~traverse_ignored_dirs:true
       ~init:()
       ~f:(fun (ftd : File_tree.Dir.t) () ->
-        List.iter (Dune_project.schemes project)
-          ~f:(fun (loc,
-                   { Dune_project.Scheme.
-                     dir_extension
-                   ; file_extension
-                   ; alias_name
-                   ; action_template
-                   }) ->
-               if path_has_extension (File_tree.Dir.path ftd) dir_extension then begin
-                 Path.Set.iter (File_tree.Dir.file_paths ftd)
-                   ~f:(fun file ->
-                     if path_has_extension file file_extension then
-                       add_alias ~loc ~file ~alias_name ~action_template
-                   )
-               end))
+        match File_tree.Dir.scheme ftd with
+        | None -> ()
+        | Some (loc,
+                { Dune_project.Scheme.
+                  dir_extension = _
+                ; file_extension
+                ; alias_name
+                ; action_template
+                }) ->
+          Path.Set.iter (File_tree.Dir.file_paths ftd)
+            ~f:(fun file ->
+              if path_has_extension file file_extension then
+                add_alias ~loc ~file ~alias_name ~action_template))
 
   (* +-----------------------------------------------------------------+
      | Stanza                                                          |

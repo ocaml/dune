@@ -18,3 +18,15 @@
 (rule (copy x3 x4))
 
 (rule (with-stdout-to x3-x2-dyn-dep (system "printf x2")))
+
+(alias
+  (name complex-repro-case)
+  (deps cd1 cd3))
+
+(rule (copy cd2 cd1))
+(rule (copy cd4 cd3))
+(rule (copy %{read:dcd3} cd2))
+(rule (copy %{read:dcd1} cd4))
+
+(rule (with-stdout-to dcd3 (system "printf cd3")))
+(rule (with-stdout-to dcd1 (system "printf cd1")))

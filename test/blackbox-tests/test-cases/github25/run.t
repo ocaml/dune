@@ -8,10 +8,10 @@ We need ocamlfind to run this test
 
   $ dune build @install --display short --only hello
         ocamlc root/.hello.objs/hello.{cmi,cmo,cmt}
+        ocamlc root/hello.cma
       ocamlopt root/.hello.objs/hello.{cmx,o}
       ocamlopt root/hello.{a,cmxa}
       ocamlopt root/hello.cmxs
-        ocamlc root/hello.cma
 
   $ dune build @install --display short --only pas-de-bol 2>&1 | sed 's/[^ "]*findlib-packages/.../'
       ocamldep root/.pas_de_bol.objs/a.ml.d

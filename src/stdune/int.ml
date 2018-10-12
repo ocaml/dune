@@ -15,6 +15,10 @@ include T
 module Set = Set.Make(T)
 module Map = Map.Make(T)
 
+let equal (a : t) b = a = b
+
+let hash (t : t) = t
+
 let of_string_exn s =
   match int_of_string s with
   | exception Failure _ ->

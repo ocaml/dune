@@ -565,6 +565,8 @@ end
 
 include T
 
+let hash (t : t) = Hashtbl.hash t
+
 let build_dir = in_build_dir Local.root
 
 let is_root = function

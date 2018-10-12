@@ -375,6 +375,35 @@ let nfork_map l ~f ctx k =
 
 let nfork l : _ Future.t list t = nfork_map l ~f:(fun f -> f ())
 
+module Once = struct
+  type 'a state =
+    | Running of 'a Future.t
+    | Not_started of (unit -> 'a t)
+    | Starting
+
+  type 'a t = { mutable state : 'a state }
+
+  let create f = { state = Not_started f }
+
+  let get t =
+    match t.state with
+    | Running fut -> Future.wait fut
+    | Not_started f ->
+      t.state <- Starting;
+      fork f >>= fun fut ->
+      t.state <- Running fut;
+      Future.wait fut
+    | Starting ->
+      failwith "Fiber.Once.get: recursive evaluation"
+
+  let peek t =
+    match t.state with
+    | Running fut -> Future.peek fut
+    | _ -> None
+
+  let peek_exn t = Option.value_exn (peek t)
+end
+
 module Mutex = struct
   type t =
     { mutable locked  : bool

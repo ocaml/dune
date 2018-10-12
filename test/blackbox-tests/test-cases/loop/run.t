@@ -23,6 +23,7 @@ does show a cycle.
       _build/default/result2
   --> _build/default/input
   --> _build/default/result2
+  -> required by result2
   -> required by input
   -> required by result1
   [1]

@@ -23,6 +23,13 @@ unreleased
   opened by Dune (#1635, #1643, fixes #1633, @jonludlam, @rgrinberg,
   @diml)
 
+- Reimplement the core of Dune using a new generic memoization system
+  (#1489, @rudihorn, @diml)
+
+- Replace the broken cycle detection algorithm by a state of the art
+  one from [this paper](https://doi.org/10.1145/2756553) (#1489,
+  @rudihorn)
+
 1.6.2 (05/12/2018)
 ------------------
 

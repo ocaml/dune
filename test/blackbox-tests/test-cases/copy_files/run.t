@@ -10,9 +10,9 @@
         ocamlc bar$ext_obj
     ocamlmklib dllfoo_stubs$ext_dll,libfoo_stubs$ext_lib
         ocamlc .test.eobjs/lexer1.{cmi,cmo,cmt}
-      ocamlopt .test.eobjs/lexer1.{cmx,o}
         ocamlc .test.eobjs/test.{cmi,cmo,cmt}
       ocamlopt .test.eobjs/test.{cmx,o}
+      ocamlopt .test.eobjs/lexer1.{cmx,o}
       ocamlopt test.exe
   $ dune build --root test1 @bar-source --display short
   Entering directory 'test1'

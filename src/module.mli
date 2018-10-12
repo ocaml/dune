@@ -25,7 +25,9 @@ module Name : sig
 
   module Map : Map.S with type key = t
 
-  module Top_closure : Top_closure.S with type key := t
+  module Top_closure : Top_closure.S
+    with type key := t
+     and type 'a monad := 'a Monad.Id.t
 
   module Infix : Comparable.OPS with type t = t
 

@@ -9,9 +9,9 @@
         ocamlc .main.eobjs/bar.{cmi,cmo,cmt}
       ocamlopt .main.eobjs/bar.{cmx,o}
         ocamlc .main.eobjs/foo.{cmi,cmo,cmt}
-      ocamlopt .main.eobjs/foo.{cmx,o}
         ocamlc .main.eobjs/main.{cmi,cmo,cmt}
       ocamlopt .main.eobjs/main.{cmx,o}
+      ocamlopt .main.eobjs/foo.{cmx,o}
       ocamlopt main.exe
           main alias runtest
   bar has unix

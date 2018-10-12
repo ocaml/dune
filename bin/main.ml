@@ -264,13 +264,14 @@ let external_lib_deps =
     in
     Common.set_common common ~targets:[];
     let log = Log.create common in
-    let setup =
+    let setup, lib_deps =
       Scheduler.go ~log ~common
-        (Main.setup ~log common ~external_lib_deps_mode:true)
+        (Main.setup ~log common ~external_lib_deps_mode:true >>= fun setup ->
+         let targets = Target.resolve_targets_exn ~log common setup targets in
+         let request = Target.request setup targets in
+         Build_system.all_lib_deps setup.build_system ~request >>| fun deps ->
+         (setup, deps))
     in
-    let targets = Target.resolve_targets_exn ~log common setup targets in
-    let request = Target.request setup targets in
-    let lib_deps = Build_system.all_lib_deps setup.build_system ~request in
     let failure =
       String.Map.foldi lib_deps ~init:false
         ~f:(fun context_name lib_deps_by_dir acc ->

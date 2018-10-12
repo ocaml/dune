@@ -1,0 +1,4 @@
+(library
+ (name dag)
+ (libraries stdune)
+ (synopsis "Directed Acyclic Graph library"))

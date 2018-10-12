@@ -1,0 +1,4 @@
+(library
+ (name memo)
+ (libraries stdune dag fiber)
+ (synopsis "Function memoizer"))

@@ -9,15 +9,15 @@ Successes:
       ocamldep .foo.objs/intf.mli.d
         ocamlc .foo.objs/foo__Intf.{cmi,cmti}
         ocamlc .foo.objs/foo.{cmi,cmo,cmt}
-        ocamlc test/.bar.objs/bar.{cmi,cmo,cmt}
-      ocamlopt test/.bar.objs/bar.{cmx,o}
-      ocamlopt test/bar.{a,cmxa}
-      ocamlopt test/bar.cmxs
+        ocamlc foo.cma
       ocamlopt .foo.objs/foo.{cmx,o}
       ocamlopt foo.{a,cmxa}
       ocamlopt foo.cmxs
-        ocamlc foo.cma
+        ocamlc test/.bar.objs/bar.{cmi,cmo,cmt}
         ocamlc test/bar.cma
+      ocamlopt test/.bar.objs/bar.{cmx,o}
+      ocamlopt test/bar.{a,cmxa}
+      ocamlopt test/bar.cmxs
 
 Errors:
 

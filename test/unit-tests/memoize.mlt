@@ -1,0 +1,236 @@
+(* -*- tuareg -*- *)
+
+open Dune;;
+open Stdune;;
+open Fiber.O;;
+open Memo;;
+
+module String_fn = Memo.Make(String)
+module Int_fn = Memo.Make(Int)
+[%%expect{|
+module String_fn :
+  sig
+    type 'a t = 'a Memo.Make(Stdune.String).t
+    val create :
+      string ->
+      ?allow_cutoff:bool ->
+      (module Memo__.Memo_intf.Data with type t = 'a) ->
+      (string -> 'a Fiber.t) -> 'a t
+    val exec : 'a t -> string -> 'a Fiber.t
+    val peek : 'a t -> string -> 'a option
+    val peek_exn : 'a t -> string -> 'a
+    val get_deps : 'a t -> string -> (string * Sexp.t) list option
+    module Stack_frame :
+      sig
+        val instance_of : Stack_frame.t -> of_:'a t -> bool
+        val input : Stack_frame.t -> string option
+      end
+  end
+module Int_fn :
+  sig
+    type 'a t = 'a Memo.Make(Stdune.Int).t
+    val create :
+      string ->
+      ?allow_cutoff:bool ->
+      (module Memo__.Memo_intf.Data with type t = 'a) ->
+      (int -> 'a Fiber.t) -> 'a t
+    val exec : 'a t -> int -> 'a Fiber.t
+    val peek : 'a t -> int -> 'a option
+    val peek_exn : 'a t -> int -> 'a
+    val get_deps : 'a t -> int -> (string * Sexp.t) list option
+    module Stack_frame :
+      sig
+        val instance_of : Stack_frame.t -> of_:'a t -> bool
+        val input : Stack_frame.t -> int option
+      end
+  end
+|}]
+
+(* to run a computation *)
+let run exec f v =
+  let exn = ref None in
+  try
+    Fiber.run
+      (Fiber.with_error_handler (fun () -> exec f v)
+         ~on_error:(fun e -> exn := Some e))
+  with Fiber.Never ->
+    raise (Option.value ~default:Fiber.Never !exn);;
+let run_int f v = run Int_fn.exec f v
+let run_string f v = run String_fn.exec f v
+let run = run_string
+
+(* the trivial dependencies are simply the identity function *)
+let compdep x = Fiber.return (x ^ x);;
+
+(* our two dependencies are called some and another *)
+let mcompdep1 = String_fn.create "some" (module String) compdep;;
+let mcompdep2 = String_fn.create "another" (module String) compdep;;
+
+(* compute the dependencies once so they are present in the
+   global hash table *)
+run mcompdep1 "a";;
+run mcompdep2 "a";;
+
+[%%expect{|
+val run : ('a -> 'b -> 'c Fiber.t) -> 'a -> 'b -> 'c = <fun>
+val run_int : 'a Int_fn.t -> int -> 'a = <fun>
+val run_string : 'a String_fn.t -> string -> 'a = <fun>
+val run : 'a String_fn.t -> string -> 'a = <fun>
+val compdep : string -> string Fiber.t = <fun>
+val mcompdep1 : string String_fn.t = <abstr>
+val mcompdep2 : string String_fn.t = <abstr>
+- : string = "aa"
+- : string = "aa"
+|}]
+
+(* define a counter so we can track how often our computation
+   has been run *)
+let counter = ref 0;;
+
+(* our computation increases the counter, adds the two
+   dependencies, "some" and "another" and works by multiplying
+   the input by two *)
+let comp x =
+  Fiber.return x >>=
+  String_fn.exec mcompdep1 >>=
+  String_fn.exec mcompdep2 >>=
+  (fun a -> counter := !counter + 1; String.sub a 0 (String.length a |> min 3) |> Fiber.return);;
+
+let mcomp = String_fn.create "test" (module String) comp;;
+
+[%%expect{|
+val counter : int ref = {contents = 0}
+val comp : string -> string Fiber.t = <fun>
+val mcomp : string String_fn.t = <abstr>
+|}]
+
+(* running it the first time should increase the counter,
+   running it again should not, but should still return the
+   same result *)
+!counter;;
+run mcomp "a";;
+!counter;;
+run mcomp "a";;
+!counter;;
+
+[%%expect{|
+- : int = 0
+- : string = "aaa"
+- : int = 1
+- : string = "aaa"
+- : int = 1
+|}]
+
+String_fn.get_deps mcomp "a";;
+
+[%%expect{|
+- : (string * Sexp.t) list option =
+Some [("another", Atom "aa"); ("some", Atom "a")]
+|}]
+
+(* running it on a new input should cause it to recompute
+   the first time it is run *)
+run mcomp "hello";;
+!counter;;
+run mcomp "hello";;
+!counter;;
+
+[%%expect{|
+- : string = "hel"
+- : int = 2
+- : string = "hel"
+- : int = 2
+|}]
+
+(* updating the first dependency should require recomputation of mcomp 7 *)
+run mcompdep1 "testtest";;
+run mcomp "hello";;
+!counter;;
+run mcomp "hello";;
+!counter;;
+
+[%%expect{|
+- : string = "testtesttesttest"
+- : string = "hel"
+- : int = 2
+- : string = "hel"
+- : int = 2
+|}]
+
+let stack = ref [];;
+let dump_stack v =
+  get_call_stack >>| (fun s -> stack := s; v);;
+
+let mcompcycle =
+  let mcompcycle = Fdecl.create () in
+  let compcycle x =
+    Fiber.return x
+    >>= dump_stack
+    >>= (fun x ->
+          counter := !counter + 1;
+          if !counter < 20 then
+            ((x + 1) mod 3) |> Int_fn.exec (Fdecl.get mcompcycle)
+          else
+            failwith "cycle"
+        ) in
+  let fn = Int_fn.create "cycle" (module String) compcycle in
+  Fdecl.set mcompcycle fn;
+  fn;;
+
+[%%expect{|
+val stack : '_weak1 list ref = {contents = []}
+val dump_stack : 'a -> 'a Fiber.t = <fun>
+val mcompcycle : string Int_fn.t = <abstr>
+|}]
+
+counter := 0;
+try
+ run_int mcompcycle 5 |> ignore;
+ None
+with
+ | Cycle_error.E err ->
+   let cycle =
+     Cycle_error.get err
+     |> List.filter_map ~f:Int_fn.Stack_frame.input
+   in
+   Some cycle;;
+!counter;;
+!stack |> List.map ~f:(fun st -> Stack_frame.name st, Stack_frame.input st);;
+
+[%%expect{|
+- : int list option = Some [2; 1; 0; 2]
+- : int = 4
+- : (string * Sexp.t) list =
+[("cycle", Atom "2"); ("cycle", Atom "1"); ("cycle", Atom "0");
+ ("cycle", Atom "5")]
+|}]
+
+let mfib =
+  let mfib = Fdecl.create () in
+  let compfib x =
+    let mfib = Int_fn.exec (Fdecl.get mfib) in
+    counter := !counter + 1;
+    if x <= 1 then
+      Fiber.return x
+    else
+      mfib (x - 1)
+      >>= (fun r1 ->
+        mfib (x - 2)
+        >>| fun r2 -> r1 + r2) in
+  let fn = Int_fn.create "fib" (module Int) compfib in
+  Fdecl.set mfib fn;
+  fn;;
+
+counter := 0;
+run_int mfib 2000;;
+!counter;;
+run_int mfib 1800;;
+!counter;;
+
+[%%expect{|
+val mfib : int Int_fn.t = <abstr>
+- : int = 2406280077793834213
+- : int = 2001
+- : int = 3080005411477819488
+- : int = 2001
+|}]

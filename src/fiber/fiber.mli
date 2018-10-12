@@ -120,6 +120,26 @@ val parallel_map : 'a list -> f:('a -> 'b t) -> 'b list t
 *)
 val parallel_iter : 'a list -> f:('a -> unit t) -> unit t
 
+(** {1 Execute once fibers} *)
+
+module Once : sig
+  type 'a fiber = 'a t
+  type 'a t
+
+  val create : (unit -> 'a fiber) -> 'a t
+
+  (** [get t] returns the value of [t]. If [get] was never called
+      before on this [t], it is executed at this point, otherwise
+      returns a fiber that waits for the fiber from the first call to
+      [get t] to terminate. *)
+  val get : 'a t -> 'a fiber
+
+  (** [peek t] returns [Some v] if [get t] has already been called and
+      has yielded a value [v]. *)
+  val peek : 'a t -> 'a option
+  val peek_exn : 'a t -> 'a
+end with type 'a fiber := 'a t
+
 (** {1 Local storage} *)
 
 (** Variables local to a fiber *)

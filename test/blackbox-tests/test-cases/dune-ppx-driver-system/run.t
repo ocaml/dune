@@ -149,18 +149,18 @@ Test using installed drivers
   $ dune build --display short --root jbuild-driver @all
   Entering directory 'jbuild-driver'
         ocamlc .testdriver.objs/testdriver.{cmi,cmo,cmt}
+        ocamlc testdriver.cma
       ocamlopt .testdriver.objs/testdriver.{cmx,o}
       ocamlopt testdriver.{a,cmxa}
+      ocamlopt testdriver.cmxs
       ocamlopt .ppx/jbuild/631757a4a4789e0bd29628f7a73480f7/ppx.exe
            ppx test_ppx_args.pp.ml
       ocamldep .test_ppx_args.objs/test_ppx_args.pp.ml.d
         ocamlc .test_ppx_args.objs/test_ppx_args.{cmi,cmo,cmt}
+        ocamlc test_ppx_args.cma
       ocamlopt .test_ppx_args.objs/test_ppx_args.{cmx,o}
       ocamlopt test_ppx_args.{a,cmxa}
       ocamlopt test_ppx_args.cmxs
-        ocamlc testdriver.cma
-      ocamlopt testdriver.cmxs
-        ocamlc test_ppx_args.cma
 
   $ dune build --display short --root jbuild-driver @install
   Entering directory 'jbuild-driver'

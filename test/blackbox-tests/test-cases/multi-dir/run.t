@@ -62,8 +62,8 @@ Test for (include_subdir unqualified) with (preprocess (action ...))
           main sub/foo.pp.ml
       ocamldep .foo.objs/foo.pp.ml.d
         ocamlc .foo.objs/foo.{cmi,cmo,cmt}
+        ocamlc foo.cma
+        ocamlc main.bc
       ocamlopt .foo.objs/foo.{cmx,o}
       ocamlopt foo.{a,cmxa}
       ocamlopt foo.cmxs
-        ocamlc main.bc
-        ocamlc foo.cma

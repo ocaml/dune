@@ -29,3 +29,6 @@ val prepend_exn : exn -> Entry.t -> exn
 
 (** Extract a wrapped exception *)
 val unwrap_exn : exn -> exn * Entry.t list option
+
+(** Apply [f] to the underlying exception. *)
+val map : f:(exn -> exn) -> exn -> exn

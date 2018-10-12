@@ -3,7 +3,7 @@
  (modules expect_test)
  (link_flags (-linkall))
  (modes byte)
- (libraries which_program_dune unix dune compiler-libs.toplevel test_common))
+ (libraries which_program_dune unix dune compiler-libs.toplevel test_common dag))
 
 (ocamllex expect_test)
 
@@ -56,12 +56,12 @@
   (glob_files %{project_root}/src/stdune/.stdune.objs/*.cmi))
  (action (chdir %{project_root}
           (progn
-           (run %{exe:expect_test.exe} %{t})
+           (run %{exe:expect_test.exe} %{t}) 
            (diff? %{t} %{t}.corrected)))))
 
 (alias
  (name runtest)
- (deps (:t action.mlt)
+ (deps (:t action.mlt) 
   (glob_files %{project_root}/src/.dune.objs/*.cmi)
   (glob_files %{project_root}/src/stdune/.stdune.objs/*.cmi))
  (action (chdir %{project_root}
@@ -118,3 +118,32 @@
           (progn
            (run %{exe:expect_test.exe} %{t})
            (diff? %{t} %{t}.corrected)))))
+
+(alias
+ (name runtestmem)
+ (deps (:t memoize.mlt)
+  (glob_files %{project_root}/src/.dune.objs/*.cmi)
+  (glob_files %{project_root}/src/stdune/.stdune.objs/*.cmi)
+  (glob_files %{project_root}/src/memo/.memo.objs/*.cmi)
+  (glob_files %{project_root}/src/fiber/.fiber.objs/*.cmi))
+ (action (chdir %{project_root}
+          (progn
+           (run %{exe:expect_test.exe} %{t})
+           (diff? %{t} %{t}.corrected)))))
+(alias
+ (name runtest)
+ (deps (alias runtestmem)))
+
+(alias
+ (name runtestdag)
+ (deps (:t dag.mlt)
+  (glob_files %{project_root}/src/stdune/.stdune.objs/*.cmi)
+  (glob_files %{project_root}/src/dag/.dag.objs/*.cmi))
+ (action (chdir %{project_root}
+          (progn
+           (run %{exe:expect_test.exe} %{t})
+           (diff? %{t} %{t}.corrected)))))
+
+(alias
+ (name runtest)
+ (deps (alias runtestdag)))

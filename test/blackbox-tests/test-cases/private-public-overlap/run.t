@@ -20,10 +20,10 @@ On the other hand, public libraries may have private preprocessors
            ppx mylib.pp.ml
       ocamldep .mylib.objs/mylib.pp.ml.d
         ocamlc .mylib.objs/mylib.{cmi,cmo,cmt}
+        ocamlc mylib.cma
       ocamlopt .mylib.objs/mylib.{cmx,o}
       ocamlopt mylib.{a,cmxa}
       ocamlopt mylib.cmxs
-        ocamlc mylib.cma
 
 Unless they introduce private runtime dependencies:
   $ dune build --display short --root private-runtime-deps

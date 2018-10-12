@@ -9,13 +9,13 @@ let paths t = t.paths
 
 let trace_path fn =
   let digest, perms = Utils.Cached_digest.file fn in
-  (Path.to_string fn, digest, perms)
+  (Path.to_string fn, digest, Some perms)
 
 let trace_var env var =
   let value, present =
     match Env.get env var with
-    | None -> "unset", 0
-    | Some v -> Digest.string v |> Digest.to_hex, 1
+    | None -> "unset", None
+    | Some v -> Digest.string v |> Digest.to_hex, None
   in
   (var, value, present)
 

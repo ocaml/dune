@@ -131,8 +131,8 @@ let source_files t ~src_path =
   | Some dir -> File_tree.Dir.files dir
 
 
-let expand_ocaml_config t pform name =
-  match String.Map.find t.ocaml_config name with
+let expand_ocaml_config ocaml_config pform name =
+  match String.Map.find ocaml_config name with
   | Some x -> x
   | None ->
     Errors.fail (String_with_vars.Var.loc pform)
@@ -155,9 +155,26 @@ let expand_var t ~scope ~bindings ~env pform syntax_version =
    | Some _ as x -> x)
   |> Option.map ~f:(function
     | Pform.Expansion.Var (Values l) -> l
-    | Macro (Ocaml_config, s) -> expand_ocaml_config t pform s
+    | Macro (Ocaml_config, s) -> expand_ocaml_config t.ocaml_config pform s
     | Macro (Env, s) -> expand_env ~env pform s
     | Var Project_root -> [Value.Dir (Scope.root scope)]
+    | _ ->
+      Errors.fail (String_with_vars.Var.loc pform)
+        "%s isn't allowed in this position"
+        (String_with_vars.Var.describe pform))
+
+let expand_var_no_scope pforms ocaml_config ~bindings ~env pform syntax_version =
+  (match Pform.Map.expand bindings pform syntax_version with
+   | None -> Pform.Map.expand pforms pform syntax_version
+   | Some _ as x -> x)
+  |> Option.map ~f:(function
+    | Pform.Expansion.Var (Values l) -> l
+    | Macro (Ocaml_config, s) -> expand_ocaml_config ocaml_config pform s
+    | Macro (Env, s) -> expand_env ~env pform s
+    | Var Project_root ->
+      Errors.fail (String_with_vars.Var.loc pform)
+        "Variables requiring scope not permitted in this position" (* XXX COMBAK *)
+        (String_with_vars.Var.describe pform)
     | _ ->
       Errors.fail (String_with_vars.Var.loc pform)
         "%s isn't allowed in this position"
@@ -181,6 +198,13 @@ let eval_blang t blang ~scope ~dir =
   | _ ->
     Blang.eval blang ~dir
       ~f:(expand_var t ~scope ~bindings:Pform.Map.empty ~env:Env.initial)
+
+let eval_blang_no_scope pforms ocaml_config blang ~dir =
+  match blang with
+  | Blang.Const x -> x (* common case *)
+  | _ ->
+    Blang.eval blang ~dir
+      ~f:(expand_var_no_scope pforms ocaml_config ~bindings:Pform.Map.empty ~env:Env.initial)
 
 type targets =
   | Static of Path.t list
@@ -299,7 +323,7 @@ end = struct
       Pform.Map.expand bindings pform syntax_version
       |> Option.bind ~f:(function
         | Pform.Expansion.Var (Values l) -> Some l
-        | Macro (Ocaml_config, s) -> Some (expand_ocaml_config sctx pform s)
+        | Macro (Ocaml_config, s) -> Some (expand_ocaml_config sctx.ocaml_config pform s)
         | Macro (Env, s) -> Some (expand_env ~env pform s)
         | Var Project_root -> Some [Value.Dir (Scope.root scope)]
         | Var (First_dep | Deps | Named_local) -> None
@@ -554,6 +578,38 @@ let create
       ~external_lib_deps_mode
       ~build_system
   =
+  let cxx_flags =
+    List.filter context.ocamlc_cflags
+      ~f:(fun s -> not (String.is_prefix s ~prefix:"-std="))
+  in
+  let pforms = Pform.Map.create ~context ~cxx_flags in
+  let ocaml_config =
+    let string s = [Value.String s] in
+    Ocaml_config.to_list context.ocaml_config
+    |> List.map  ~f:(fun (k, v) ->
+      ( k
+      , match (v : Ocaml_config.Value.t) with
+      | Bool          x -> string (string_of_bool x)
+      | Int           x -> string (string_of_int x)
+      | String        x -> string x
+      | Words         x -> Value.L.strings x
+      | Prog_and_args x -> Value.L.strings (x.prog :: x.args)))
+    |> String.Map.of_list_exn
+  in
+  let stanzas =
+    List.map stanzas
+      ~f:(fun (file : Dune_load.Dune_file.t) ->
+        let stanzas =
+          List.filter file.stanzas ~f:(fun stanza ->
+            match (stanza : Stanza.t) with
+            | Library lib ->
+              let ctx_dir = Path.append context.build_dir file.dir in
+              eval_blang_no_scope pforms ocaml_config lib.enabled_if ~dir:ctx_dir
+            | _ ->
+              true)
+        in
+        { file with stanzas })
+  in
   let installed_libs =
     Lib.DB.create_from_findlib context.findlib ~external_lib_deps_mode
   in
@@ -625,24 +681,6 @@ let create
   let artifacts =
     Artifacts.create context ~public_libs stanzas
       ~f:(fun (d : Dir_with_dune.t) -> d.stanzas)
-  in
-  let cxx_flags =
-    List.filter context.ocamlc_cflags
-      ~f:(fun s -> not (String.is_prefix s ~prefix:"-std="))
-  in
-  let pforms = Pform.Map.create ~context ~cxx_flags in
-  let ocaml_config =
-    let string s = [Value.String s] in
-    Ocaml_config.to_list context.ocaml_config
-    |> List.map  ~f:(fun (k, v) ->
-      ( k
-      , match (v : Ocaml_config.Value.t) with
-      | Bool          x -> string (string_of_bool x)
-      | Int           x -> string (string_of_int x)
-      | String        x -> string x
-      | Words         x -> Value.L.strings x
-      | Prog_and_args x -> Value.L.strings (x.prog :: x.args)))
-    |> String.Map.of_list_exn
   in
   let default_env = lazy (
     let make ~inherit_from ~config =

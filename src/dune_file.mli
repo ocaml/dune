@@ -280,6 +280,7 @@ module Library : sig
     ; implements               : (Loc.t * Lib_name.t) option
     ; private_modules          : Ordered_set_lang.t option
     ; stdlib                   : Stdlib.t option
+    ; enabled_if               : Blang.t
     }
 
   val has_stubs : t -> bool

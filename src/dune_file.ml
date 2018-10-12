@@ -979,6 +979,7 @@ module Library = struct
     ; implements               : (Loc.t * Lib_name.t) option
     ; private_modules          : Ordered_set_lang.t option
     ; stdlib                   : Stdlib.t option
+    ; enabled_if               : Blang.t
     }
 
   let decode =
@@ -1027,6 +1028,7 @@ module Library = struct
            >>= fun () -> Ordered_set_lang.decode)
        and stdlib =
          field_o "stdlib" (Syntax.since Stdlib.syntax (0, 1) >>> Stdlib.decode)
+       and enabled_if = enabled_if (* COMBAK This will set it for 1.4, not 1.5 *)
        in
        let name =
          let open Syntax.Version.Infix in
@@ -1116,6 +1118,7 @@ module Library = struct
        ; implements
        ; private_modules
        ; stdlib
+       ; enabled_if
        })
 
   let has_stubs t =

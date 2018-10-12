@@ -464,7 +464,8 @@ let parse ~dir ~lang ~packages ~file =
        in
        if not run_test_scheme_enabled then
          Errors.fail first_scheme_loc
-           "Run test schemes should be explicitly enabled."
+           "Run test schemes should be explicitly enabled by adding:\n\
+            (using run_test_schemes 0.1)"
      end;
      match
        String.Map.of_list

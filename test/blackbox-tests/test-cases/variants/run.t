@@ -165,3 +165,10 @@ Install files for implemenations and virtual libs have all the artifacts:
   No rule found for impl/.impl.objs/vlib.cmt
   No rule found for impl/vlib.ml-gen
   [1]
+
+Implementations may refer to virtual library's modules
+  $ dune build --root impl-using-vlib-modules
+  Entering directory 'impl-using-vlib-modules'
+          test alias default
+  bar from vlib
+  Foo.run implemented

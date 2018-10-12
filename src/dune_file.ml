@@ -1148,6 +1148,7 @@ module Library = struct
     | Some p -> snd p.name
 
   let is_virtual t = Option.is_some t.virtual_modules
+  let is_impl t = Option.is_some t.implements
 
   module Main_module_name = struct
     type t =

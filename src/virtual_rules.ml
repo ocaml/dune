@@ -31,9 +31,9 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
         ({ Implementation.vlib ; impl ; vlib_modules } as t) =
     let modules_of_vlib =
       let modules_of_vlib = Implementation.modules_of_vlib t in
-      match Lib_modules.alias vlib_modules with
+      match Lib_modules.alias_module vlib_modules with
       | None -> modules_of_vlib
-      | Some { alias_module; module_name = _ } ->
+      | Some alias_module ->
         Module.Name.Map.add modules_of_vlib
           (Module.name alias_module) alias_module
     in
@@ -52,12 +52,12 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
       let copy_obj_file ext =
         copy_to_obj_dir (Module.obj_file m ~obj_dir ~ext) in
       copy_obj_file (Cm_kind.ext Cmi);
-      if Module.has_intf m then begin
-        Module.file m Ml_kind.Intf
-        |> Option.value_exn
-        |> Path.extend_basename ~suffix:".all-deps"
-        |> copy_to_obj_dir
-      end;
+      List.iter [Intf; Impl] ~f:(fun kind ->
+        Module.file m kind
+        |> Option.iter ~f:(fun f ->
+          Path.relative obj_dir (Path.basename f ^ ".all-deps")
+          |> copy_to_obj_dir)
+      );
       if Module.has_impl m then begin
         if modes.byte then
           copy_obj_file (Cm_kind.ext Cmo);

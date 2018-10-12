@@ -111,14 +111,16 @@ module Dep_graphs = struct
     }
 end
 
-let parse_module_names ~(unit : Module.t) ~modules words =
+let parse_module_names ~(unit : Module.t) ~modules ~modules_of_vlib words =
   let open Module.Name.Infix in
   List.filter_map words ~f:(fun m ->
     let m = Module.Name.of_string m in
     if m = Module.name unit then
       None
     else
-      Module.Name.Map.find modules m)
+      match Module.Name.Map.find modules m with
+      | Some _ as m -> m
+      | None -> Module.Name.Map.find modules_of_vlib m)
 
 let is_alias_module cctx (m : Module.t) =
   let open Module.Name.Infix in
@@ -131,6 +133,7 @@ let parse_deps cctx ~file ~unit lines =
   let alias_module         = CC.alias_module         cctx in
   let lib_interface_module = CC.lib_interface_module cctx in
   let modules              = CC.modules              cctx in
+  let modules_of_vlib      = CC.modules_of_vlib      cctx in
   let invalid () =
     die "ocamldep returned unexpected output for %s:\n\
          %s"
@@ -148,7 +151,7 @@ let parse_deps cctx ~file ~unit lines =
       if basename <> Path.basename file then invalid ();
       let deps =
         String.extract_blank_separated_words deps
-        |> parse_module_names ~unit ~modules
+        |> parse_module_names ~unit ~modules ~modules_of_vlib
       in
       let stdlib = CC.stdlib cctx in
       let deps =
@@ -210,6 +213,7 @@ let deps_of cctx ~ml_kind unit =
       in
       let all_deps_path file = file_in_obj_dir file ~suffix:".all-deps" in
       let context = SC.context sctx in
+      let modules_of_vlib = Compilation_context.modules_of_vlib cctx in
       let all_deps_file = all_deps_path file in
       let ocamldep_output = file_in_obj_dir file ~suffix:".d" in
       SC.add_rule sctx
@@ -240,7 +244,7 @@ let deps_of cctx ~ml_kind unit =
             | Some v -> Some v
             | None ->
               Module.name m
-              |> Module.Name.Map.find (Compilation_context.modules_of_vlib cctx)
+              |> Module.Name.Map.find modules_of_vlib
               |> Option.bind ~f:file_path
           in
           Option.map ~f:all_deps_path module_file_
@@ -258,7 +262,8 @@ let deps_of cctx ~ml_kind unit =
           >>> Build.merge_files_dyn ~target:all_deps_file);
       Build.memoize (Path.to_string all_deps_file)
         ( Build.lines_of all_deps_file
-          >>^ parse_module_names ~unit ~modules:(CC.modules cctx))
+          >>^ parse_module_names
+                ~modules_of_vlib ~unit ~modules:(CC.modules cctx))
 
 let rules_generic cctx ~modules =
   Ml_kind.Dict.of_func
@@ -288,7 +293,9 @@ let graph_of_remote_lib ~obj_dir ~modules =
       let all_deps_path file = file_in_obj_dir file ~suffix:".all-deps" in
       let all_deps_file = all_deps_path file in
       Build.memoize (Path.to_string all_deps_file)
-        (Build.lines_of all_deps_file >>^ parse_module_names ~unit ~modules)
+        (Build.lines_of all_deps_file
+         >>^ parse_module_names ~unit ~modules
+               ~modules_of_vlib:Module.Name.Map.empty)
   in
   Ml_kind.Dict.of_func (fun ~ml_kind ->
     let per_module =

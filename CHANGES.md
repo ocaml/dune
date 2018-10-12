@@ -3,6 +3,9 @@ next
 
 - Filter out empty paths from `OCAMLPATH` and `PATH` (#1436, @rgrinberg)
 
+- Do not add the `lib.cma.js` target in lib's directory. Put this target in a
+  sub directory instead. (#1435, fix #1302, @rgrinberg)
+
 1.4.0 (10/10/2018)
 ------------------
 

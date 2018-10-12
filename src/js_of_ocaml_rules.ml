@@ -16,9 +16,8 @@ let standard sctx = pretty sctx @ sourcemap sctx
 
 let install_jsoo_hint = "try: opam install js_of_ocaml-compiler"
 
-let in_build_dir ~ctx =
-  let init = Path.relative ctx.Context.build_dir ".js" in
-  List.fold_left ~init ~f:Path.relative
+let in_build_dir ~ctx args =
+  Path.L.relative ctx.Context.build_dir (".js" :: args)
 
 let runtime_file ~sctx file =
   match
@@ -73,29 +72,22 @@ let exe_rule cc ~javascript_files ~src ~target =
   in
   js_of_ocaml_rule sctx ~dir ~flags:(fun (_,flags) -> As flags) ~spec ~target
 
-let jsoo_archives lib =
-  List.map (Lib.archives lib).byte ~f:(Path.extend_basename ~suffix:".js")
+let jsoo_archives ~ctx lib =
+  match Lib.jsoo_archive lib with
+  | Some a -> [a]
+  | None ->
+    List.map (Lib.archives lib).byte ~f:(fun archive ->
+      in_build_dir ~ctx
+        [ Lib_name.to_string (Lib.name lib)
+        ; Path.basename archive ^ ".js"
+        ])
 
 let link_rule cc ~runtime ~target =
   let sctx = Compilation_context.super_context cc in
   let ctx = Compilation_context.context cc in
   let get_all (cm, _) =
     Arg_spec.of_result_map (Compilation_context.requires cc) ~f:(fun libs ->
-      let all_libs =
-        List.concat_map libs ~f:(fun (lib : Lib.t) ->
-          let jsoo_archives = jsoo_archives lib in
-          if Lib.is_local lib then (
-            jsoo_archives
-          ) else (
-            let lib_name = Lib.name lib in
-            List.map ~f:(fun js ->
-              in_build_dir ~ctx
-                [ Lib_name.to_string lib_name
-                ; Path.basename js
-                ]) jsoo_archives
-          )
-        )
-      in
+      let all_libs = List.concat_map libs ~f:(jsoo_archives ~ctx) in
       (* Special case for the stdlib because it is not referenced in the META *)
       let all_libs = in_build_dir ~ctx ["stdlib"; "stdlib.cma.js"] :: all_libs in
       let all_other_modules =
@@ -118,7 +110,6 @@ let build_cm cctx ~(js_of_ocaml:Dune_file.Js_of_ocaml.t) ~src ~target =
   let dir = Compilation_context.dir cctx in
   if separate_compilation_enabled sctx
   then
-    let itarget = Path.extend_basename src ~suffix:".js" in
     let spec = Arg_spec.Dep src in
     let flags =
       let scope = Compilation_context.scope cctx in
@@ -127,12 +118,8 @@ let build_cm cctx ~(js_of_ocaml:Dune_file.Js_of_ocaml.t) ~src ~target =
     in
     [ flags
       >>>
-      js_of_ocaml_rule sctx ~dir ~flags:(fun flags -> As flags) ~spec ~target:itarget
+      js_of_ocaml_rule sctx ~dir ~flags:(fun flags -> As flags) ~spec ~target
     ]
-    @ (if Path.equal target itarget then
-         []
-       else
-         [Build.symlink ~src:itarget ~dst:target])
   else []
 
 let setup_separate_compilation_rules sctx components =

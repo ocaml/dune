@@ -53,6 +53,7 @@ type t = private
   ; foreign_objects  : Path.t list
   ; foreign_archives : Path.t list Mode.Dict.t (** [.a/.lib/...] files *)
   ; jsoo_runtime     : Path.t list
+  ; jsoo_archive     : Path.t option
   ; requires         : Deps.t
   ; ppx_runtime_deps : (Loc.t * Lib_name.t) list
   ; pps              : (Loc.t * Lib_name.t) list

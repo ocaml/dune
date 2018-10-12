@@ -386,12 +386,13 @@ module Gen (P : Install_rules.Params) = struct
 
     let alias_module = Lib_modules.alias_module lib_modules in
     let modules = Lib_modules.for_compilation lib_modules in
+    let modules_of_vlib =
+      Option.map impl ~f:Virtual_rules.Implementation.modules_of_vlib in
 
     let cctx =
       Compilation_context.create ()
         ~super_context:sctx
-        ?modules_of_vlib:(
-          Option.map impl ~f:Virtual_rules.Implementation.modules_of_vlib)
+        ?modules_of_vlib
         ~scope
         ~dir
         ~dir_kind
@@ -465,6 +466,11 @@ module Gen (P : Install_rules.Params) = struct
           modules
       in
       let modules = Module.Name_map.impl_only modules in
+      let modules =
+        match modules_of_vlib with
+        | None -> modules
+        | Some m -> List.rev_append modules (Module.Name_map.impl_only m)
+      in
       let wrapped_compat = Module.Name.Map.values wrapped_compat in
       (* Compatibility modules have implementations so we can just append them.
          We append the modules at the end as no library modules depend on

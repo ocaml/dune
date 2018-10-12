@@ -169,9 +169,6 @@ Install files for implemenations and virtual libs have all the artifacts:
 Implementations may refer to virtual library's modules
   $ dune build --root impl-using-vlib-modules
   Entering directory 'impl-using-vlib-modules'
-      ocamlopt test.exe (exit 2)
-  (cd _build/default && /Users/rgrinberg/.opam/4.06.1/bin/ocamlopt.opt -w @a-4-29-40-41-42-44-45-48-58-59-60-40 -strict-sequence -strict-formats -short-paths -keep-locs -g -o test.exe -I impl impl/impl.cmxa .test.eobjs/test.cmx)
-  File "_none_", line 1:
-  Error: No implementations provided for the following modules:
-           Vlib__Bar referenced from impl/impl.cmxa(Vlib__Foo)
-  [1]
+          test alias default
+  bar from vlib
+  Foo.run implemented

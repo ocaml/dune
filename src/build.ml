@@ -116,6 +116,8 @@ let path_set ps = Paths ps
 let paths_glob ~loc ~dir re =
   let predicate p = Re.execp re (Path.basename p) in
   Paths_glob (ref (G_unevaluated (loc, dir, predicate)))
+let paths_matching ~loc ~dir f =
+  Paths_glob (ref (G_unevaluated (loc, dir, f)))
 let vpath vp = Vpath vp
 let dyn_paths t = Dyn_paths (t >>^ Path.Set.of_list)
 let dyn_path_set t = Dyn_paths t

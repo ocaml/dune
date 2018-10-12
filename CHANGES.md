@@ -6,6 +6,9 @@ next
 - Do not add the `lib.cma.js` target in lib's directory. Put this target in a
   sub directory instead. (#1435, fix #1302, @rgrinberg)
 
+- Install generated OCaml files with a `.ml` rather than a `.ml-gen` extension
+  (#1425, fix #1414, @rgrinberg)
+
 1.4.0 (10/10/2018)
 ------------------
 

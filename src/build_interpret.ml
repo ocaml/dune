@@ -68,12 +68,9 @@ let static_deps t ~all_targets ~file_tree =
         match !state with
         | G_evaluated l ->
           Static_deps.add_action_paths acc l
-        | G_unevaluated (loc, dir, re) ->
+        | G_unevaluated (loc, dir, f) ->
           let targets = all_targets ~dir in
-          let result =
-            Path.Set.filter targets ~f:(fun path ->
-              Re.execp re (Path.basename path))
-          in
+          let result = Path.Set.filter targets ~f in
           if Path.Set.is_empty result then begin
             match inspect_path file_tree dir with
             | None ->

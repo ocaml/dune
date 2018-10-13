@@ -47,7 +47,7 @@ module Repr = struct
     | Decided   of bool * ('a, 'b) t
 
   and glob_state =
-    | G_unevaluated of Loc.t * Path.t * Re.re
+    | G_unevaluated of Loc.t * Path.t * (Path.t -> bool)
     | G_evaluated   of Path.Set.t
 
   let get_if_file_exists_exn state =
@@ -113,7 +113,11 @@ let lazy_no_targets t = Lazy_no_targets t
 let path p = Paths (Path.Set.singleton p)
 let paths ps = Paths (Path.Set.of_list ps)
 let path_set ps = Paths ps
-let paths_glob ~loc ~dir re = Paths_glob (ref (G_unevaluated (loc, dir, re)))
+let paths_glob ~loc ~dir re =
+  let predicate p = Re.execp re (Path.basename p) in
+  Paths_glob (ref (G_unevaluated (loc, dir, predicate)))
+let paths_matching ~loc ~dir f =
+  Paths_glob (ref (G_unevaluated (loc, dir, f)))
 let vpath vp = Vpath vp
 let dyn_paths t = Dyn_paths (t >>^ Path.Set.of_list)
 let dyn_path_set t = Dyn_paths t

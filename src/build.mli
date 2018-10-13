@@ -66,6 +66,15 @@ val path_set : Path.Set.t -> ('a, 'a) t
     of the action produced by the build arrow. *)
 val paths_glob : loc:Loc.t -> dir:Path.t -> Re.re -> ('a, Path.Set.t) t
 
+
+(** Evaluate a predicate against all targets and record all the matched files as
+    dependencies of the action produced by the build arrow. *)
+val paths_matching
+  :  loc:Loc.t
+  -> dir:Path.t
+  -> (Path.t -> bool)
+  -> ('a, Path.Set.t) t
+
 (** [env_var v] records [v] as an environment variable that is read by the
     action produced by the build arrow. *)
 val env_var : string -> ('a, 'a) t
@@ -218,7 +227,7 @@ module Repr : sig
     | Decided   of bool * ('a, 'b) t
 
   and glob_state =
-    | G_unevaluated of Loc.t * Path.t * Re.re
+    | G_unevaluated of Loc.t * Path.t * (Path.t -> bool)
     | G_evaluated   of Path.Set.t
 
   val get_if_file_exists_exn : ('a, 'b) if_file_exists_state ref -> ('a, 'b) t

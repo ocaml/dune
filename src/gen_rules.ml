@@ -17,11 +17,6 @@ let stanza_package = function
     Some package
   | _ -> None
 
-let glob_all_files =
-  Re.any
-  |> Re.rep1
-  |> Re.compile
-
 module Gen(P : Install_rules.Params) = struct
   module Alias = Build_system.Alias
   module CC = Compilation_context
@@ -53,22 +48,28 @@ module Gen(P : Install_rules.Params) = struct
       | Library lib ->
         let cctx, merlin =
           Lib_rules.rules lib ~dir ~scope ~dir_contents ~dir_kind in
-        (Some merlin, Some (lib.buildable.loc, cctx))
+        (Some merlin, Some (lib.buildable.loc, cctx), None)
       | Executables exes ->
         let cctx, merlin =
           Exe_rules.rules exes
             ~sctx ~dir ~scope
             ~dir_contents ~dir_kind
         in
-        (Some merlin, Some (exes.buildable.loc, cctx))
+        ( Some merlin
+        , Some (exes.buildable.loc, cctx)
+        , Some (List.concat_map exes.names ~f:(fun (_, exe) ->
+            List.map
+              [exe ^ ".bc.js" ; exe ^ ".bc.runtime.js"]
+              ~f:(Path.relative ctx_dir)))
+        )
       | Alias alias ->
         Simple_rules.alias sctx alias ~dir ~scope;
-        (None, None)
+        (None, None, None)
       | Tests tests ->
         let cctx, merlin =
           Test_rules.rules tests ~sctx ~dir ~scope ~dir_contents ~dir_kind
         in
-        (Some merlin, Some (tests.exes.buildable.loc, cctx))
+        (Some merlin, Some (tests.exes.buildable.loc, cctx), None)
       | Copy_files { glob; _ } ->
         let source_dirs =
           let loc = String_with_vars.loc glob in
@@ -77,30 +78,36 @@ module Gen(P : Install_rules.Params) = struct
           |> Path.parent_exn
           |> Path.Set.singleton
         in
-        (Some (Merlin.make ~source_dirs ()), None)
+        (Some (Merlin.make ~source_dirs ()), None, None)
       | Install { Install_conf. section = _; files; package = _ } ->
         List.map files ~f:(fun { Install_conf. src; dst = _ } ->
           Path.relative ctx_dir src)
         |> Path.Set.of_list
         |> Super_context.add_alias_deps sctx
              (Build_system.Alias.all ~dir:ctx_dir);
-        (None, None)
+        (None, None, None)
       | _ ->
-        (None, None)
+        (None, None, None)
     in
-    let merlins, cctxs =
-      let rec loop stanzas merlins cctxs =
+    let merlins, cctxs, js_targets =
+      let rec loop stanzas merlins cctxs js_targets =
         let dir = ctx_dir in
         match stanzas with
-        | [] -> (List.rev merlins, List.rev cctxs)
+        | [] -> (List.rev merlins, List.rev cctxs, js_targets)
         | stanza :: stanzas ->
-          let merlin_opt, cctx_opt = for_stanza ~dir stanza in
+          let merlin_opt, cctx_opt, js_targets' = for_stanza ~dir stanza in
+          let js_targets =
+            match js_targets' with
+            | None -> js_targets
+            | Some js_targets' -> List.rev_append js_targets' js_targets
+          in
           loop
             stanzas
             (cons_maybe merlin_opt merlins)
             (cons_maybe cctx_opt cctxs)
+            js_targets
       in
-      loop stanzas [] cctxs
+      loop stanzas [] cctxs []
     in
     Option.iter (Merlin.merge_all merlins) ~f:(fun m ->
       let more_src_dirs =
@@ -138,7 +145,8 @@ module Gen(P : Install_rules.Params) = struct
         end
       | _ -> ());
     Super_context.add_alias_deps sctx
-      ~dyn_deps:(Build.paths_glob glob_all_files ~dir:ctx_dir ~loc:Loc.none)
+      ~dyn_deps:(Build.paths_matching ~dir:ctx_dir ~loc:Loc.none (fun p ->
+        not (List.exists js_targets ~f:(Path.equal p))))
       (Build_system.Alias.all ~dir:ctx_dir) Path.Set.empty;
     cctxs
 

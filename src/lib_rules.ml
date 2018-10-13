@@ -493,10 +493,6 @@ module Gen (P : Install_rules.Params) = struct
           |> Path.extend_basename ~suffix:".js" in
         Js_of_ocaml_rules.build_cm cctx ~js_of_ocaml ~src ~target);
 
-      Lib_archives.make ~ctx ~dir lib
-      |> Lib_archives.all
-      |> Super_context.add_alias_deps sctx (Build_system.Alias.all ~dir);
-
       if Dynlink_supported.By_the_os.get ctx.natdynlink_supported then
         build_shared lib ~dir ~flags ~ctx;
     end;

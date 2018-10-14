@@ -8,8 +8,9 @@ let dev_files p =
   | _ -> false
 
 let add_obj_dir sctx ~dir ~obj_dir =
-  Super_context.add_alias_deps
-    sctx
-    (Build_system.Alias.check ~dir)
-    ~dyn_deps:(Build.paths_matching ~loc:Loc.none ~dir:obj_dir dev_files)
-    Path.Set.empty
+  if (Super_context.context sctx).merlin then
+    Super_context.add_alias_deps
+      sctx
+      (Build_system.Alias.check ~dir)
+      ~dyn_deps:(Build.paths_matching ~loc:Loc.none ~dir:obj_dir dev_files)
+      Path.Set.empty

@@ -10,6 +10,8 @@ let suffix = choose "" "i"
 
 let to_string = choose "impl" "intf"
 
+let pp fmt t = Format.pp_print_string fmt (to_string t)
+
 let flag t = choose (Arg_spec.A "-impl") (A "-intf") t
 
 let ppx_driver_flag t = choose (Arg_spec.A "--impl") (A "--intf") t

@@ -99,14 +99,39 @@ module Dep_graphs = struct
                   )
               )
         }
-    (* implementations don't introduce interface deps b/c they don't have
-       interfaces *)
+    (* implementations introduce interface dependencies for private modules
+       only *)
     ; intf =
-        { vlib.intf with
-          per_module =
-            Module.Name.Map.map vlib.intf.per_module ~f:(fun v ->
-              v >>^ List.map ~f:Module.remove_files
-            )
+        { Dep_graph.
+          dir = impl.intf.dir
+        ; per_module =
+            Module.Name.Map.merge vlib.intf.per_module impl.intf.per_module
+              ~f:(fun name vlib impl ->
+                match vlib, impl with
+                | None, None -> assert false
+                | Some v, Some i ->
+                  (* This can happen when we are implementing the virtual module
+                     or this is a private module. In the former case, we should
+                     simply use [v], and in the latter, we should use [i]. But
+                     since we can't the tell the cases apart here, we'll just
+                     return the non empty list *)
+                  v &&& i >>^ (function
+                    | [], modules
+                    | modules, [] -> modules
+                    | (_ :: _ as vlib), (_ :: _ as impl) ->
+                      let sexp_modules ms =
+                        Sexp.Encoder.list Module.Name.to_sexp
+                          (List.map ~f:Module.name ms)
+                      in
+                      Exn.code_error
+                        "merge_for_impl: intf deps from impl and vlib"
+                        [ "name", Module.Name.to_sexp name
+                        ; "vlib", sexp_modules vlib
+                        ; "impl", sexp_modules impl
+                        ])
+                  |> Option.some
+                | Some d, None
+                | None, Some d -> Some d)
         }
     }
 end

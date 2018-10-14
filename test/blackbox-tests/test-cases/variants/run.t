@@ -130,6 +130,22 @@ Implementations cannot introduce new modules to the library's interface
 They can only introduce private modules:
   $ dune build --root impl-private-modules
   Entering directory 'impl-private-modules'
+  Internal error, please report upstream including the contents of _build/log.
+  Description:
+  (Ocamldep.Dep_graph.deps_of
+   (dir (In_build_dir default/vlib/.foo.objs))
+   (modules (Bar))
+   (module Priv))
+  Backtrace:
+  Raised at file "src/dep_path.ml", line 46, characters 24-55
+  Called from file "src/fiber/fiber.ml", line 243, characters 6-18
+  
+  I must not segfault.  Uncertainty is the mind-killer.  Exceptions are
+  the little-death that brings total obliteration.  I will fully express
+  my cases.  Execution will pass over me and through me.  And when it
+  has gone past, I will unwind the stack along its path.  Where the
+  cases are handled there will be nothing.  Only I will remain.
+  [1]
 
 Virtual library with a single module
   $ dune build --root variants-simple

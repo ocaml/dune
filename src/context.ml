@@ -187,7 +187,7 @@ let ocamlfind_printconf_path ~env ~ocamlfind ~toolchain =
   List.map l ~f:Path.of_filename_relative_to_initial_cwd
 
 let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
-      ~profile =
+      ~host_toolchain ~profile =
   let opam_var_cache = Hashtbl.create 128 in
   (match kind with
    | Opam { root = Some root; _ } ->
@@ -483,7 +483,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
   in
 
   let implicit = not (List.mem ~set:targets Workspace.Context.Target.Native) in
-  create_one ~host:None ~findlib_toolchain:None ~implicit ~name ~merlin
+  create_one ~host:None ~findlib_toolchain:host_toolchain ~implicit ~name ~merlin
   >>= fun native ->
   Fiber.parallel_map targets ~f:(function
     | Native -> Fiber.return None
@@ -522,7 +522,7 @@ let opam_version =
       Fiber.Future.wait future
 
 let create_for_opam ~root ~env ~env_nodes ~targets ~profile
-      ~switch ~name ~merlin =
+      ~switch ~name ~merlin ~host_toolchain =
   let opam =
     match Lazy.force opam with
     | None -> Utils.program_not_found "opam" ~loc:None
@@ -568,7 +568,7 @@ let create_for_opam ~root ~env ~env_nodes ~targets ~profile
   in
   let env = Env.extend env ~vars in
   create ~kind:(Opam { root; switch }) ~profile ~targets ~path ~env ~env_nodes
-    ~name ~merlin
+    ~name ~merlin ~host_toolchain
 
 let create ~env (workspace : Workspace.t) =
   let env_nodes context =
@@ -583,11 +583,13 @@ let create ~env (workspace : Workspace.t) =
       let merlin =
         workspace.merlin_context = Some (Workspace.Context.name def)
       in
+      let host_toolchain = Env.get env "OCAMLFIND_TOOLCHAIN" in
       default ~env ~env_nodes:(env_nodes env_node) ~profile ~targets ~merlin
+        ~host_toolchain
     | Opam { base = { targets; profile; env = env_node; loc = _ }
            ; name; switch; root; merlin } ->
       create_for_opam ~root ~env_nodes:(env_nodes env_node) ~env ~profile
-        ~switch ~name ~merlin ~targets)
+        ~switch ~name ~merlin ~targets ~host_toolchain:None)
   >>| List.concat
 
 let which t s = which ~cache:t.which_cache ~path:t.path s

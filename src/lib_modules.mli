@@ -27,6 +27,8 @@ val lib_interface_module : t -> Module.t option
 
 val entry_modules : t -> Module.t list
 
+val has_private_modules : t -> bool
+
 val make
   :  Dune_file.Library.t
   -> dir:Path.t

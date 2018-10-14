@@ -159,6 +159,9 @@ let for_compilation t =
   | None, false -> t.modules
   | Some alias, false -> Module.Name_map.add t.modules alias
 
+let has_private_modules t =
+  Module.Name.Map.exists t.modules ~f:(fun m -> not (Module.is_public m))
+
 let have_artifacts t =
   let base =
     Module.Name.Map.superpose t.modules t.wrapped_compat in

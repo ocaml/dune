@@ -17,6 +17,46 @@ let stanza_package = function
     Some package
   | _ -> None
 
+module For_stanza = struct
+  type ('merlin, 'cctx, 'js) t =
+    { merlin : 'merlin
+    ; cctx   : 'cctx
+    ; js     : 'js
+    }
+
+  let empty_none =
+    { merlin = None
+    ; cctx = None
+    ; js = None
+    }
+
+  let empty_list =
+    { merlin = []
+    ; cctx = []
+    ; js = []
+    }
+
+  let cons_maybe hd_o tl =
+    match hd_o with
+    | Some hd -> hd::tl
+    | None -> tl
+
+  let cons acc x =
+    { merlin = cons_maybe x.merlin acc.merlin
+    ; cctx = cons_maybe x.cctx acc.cctx
+    ; js =
+        match x.js with
+        | None -> acc.js
+        | Some js -> List.rev_append acc.js js
+    }
+
+  let rev t =
+    { t with
+      merlin = List.rev t.merlin
+    ; cctx = List.rev t.cctx
+    }
+end
+
 module Gen(P : Install_rules.Params) = struct
   module Alias = Build_system.Alias
   module CC = Compilation_context
@@ -37,39 +77,44 @@ module Gen(P : Install_rules.Params) = struct
      | Stanza                                                          |
      +-----------------------------------------------------------------+ *)
 
-  let cons_maybe hd_o tl =
-    match hd_o with
-    | Some hd -> hd::tl
-    | None -> tl
-
   let gen_rules dir_contents cctxs
         { SC.Dir_with_dune. src_dir; ctx_dir; stanzas; scope; kind = dir_kind } =
     let for_stanza ~dir = function
       | Library lib ->
         let cctx, merlin =
           Lib_rules.rules lib ~dir ~scope ~dir_contents ~dir_kind in
-        (Some merlin, Some (lib.buildable.loc, cctx), None)
+        { For_stanza.
+          merlin = Some merlin
+        ; cctx = Some (lib.buildable.loc, cctx)
+        ; js = None
+        }
       | Executables exes ->
         let cctx, merlin =
           Exe_rules.rules exes
             ~sctx ~dir ~scope
             ~dir_contents ~dir_kind
         in
-        ( Some merlin
-        , Some (exes.buildable.loc, cctx)
-        , Some (List.concat_map exes.names ~f:(fun (_, exe) ->
+        { For_stanza.
+          merlin = Some merlin
+        ; cctx = Some (exes.buildable.loc, cctx)
+        ; js =
+          Some (List.concat_map exes.names ~f:(fun (_, exe) ->
             List.map
               [exe ^ ".bc.js" ; exe ^ ".bc.runtime.js"]
               ~f:(Path.relative ctx_dir)))
-        )
+        }
       | Alias alias ->
         Simple_rules.alias sctx alias ~dir ~scope;
-        (None, None, None)
+        For_stanza.empty_none
       | Tests tests ->
         let cctx, merlin =
           Test_rules.rules tests ~sctx ~dir ~scope ~dir_contents ~dir_kind
         in
-        (Some merlin, Some (tests.exes.buildable.loc, cctx), None)
+        { For_stanza.
+          merlin = Some merlin
+        ; cctx = Some (tests.exes.buildable.loc, cctx)
+        ; js = None
+        }
       | Copy_files { glob; _ } ->
         let source_dirs =
           let loc = String_with_vars.loc glob in
@@ -78,36 +123,29 @@ module Gen(P : Install_rules.Params) = struct
           |> Path.parent_exn
           |> Path.Set.singleton
         in
-        (Some (Merlin.make ~source_dirs ()), None, None)
+        { For_stanza.
+          merlin = Some (Merlin.make ~source_dirs ())
+        ; cctx = None
+        ; js = None
+        }
       | Install { Install_conf. section = _; files; package = _ } ->
         List.map files ~f:(fun { Install_conf. src; dst = _ } ->
           Path.relative ctx_dir src)
         |> Path.Set.of_list
         |> Super_context.add_alias_deps sctx
              (Build_system.Alias.all ~dir:ctx_dir);
-        (None, None, None)
+        For_stanza.empty_none
       | _ ->
-        (None, None, None)
+        For_stanza.empty_none
     in
-    let merlins, cctxs, js_targets =
-      let rec loop stanzas merlins cctxs js_targets =
-        let dir = ctx_dir in
-        match stanzas with
-        | [] -> (List.rev merlins, List.rev cctxs, js_targets)
-        | stanza :: stanzas ->
-          let merlin_opt, cctx_opt, js_targets' = for_stanza ~dir stanza in
-          let js_targets =
-            match js_targets' with
-            | None -> js_targets
-            | Some js_targets' -> List.rev_append js_targets' js_targets
-          in
-          loop
-            stanzas
-            (cons_maybe merlin_opt merlins)
-            (cons_maybe cctx_opt cctxs)
-            js_targets
-      in
-      loop stanzas [] cctxs []
+    let { For_stanza.
+          merlin = merlins
+        ; cctx = cctxs
+        ; js = js_targets
+        } = List.fold_left stanzas
+              ~init:{ For_stanza.empty_list with cctx = cctxs }
+              ~f:(fun acc a -> For_stanza.cons acc (for_stanza ~dir:ctx_dir a))
+            |> For_stanza.rev
     in
     Option.iter (Merlin.merge_all merlins) ~f:(fun m ->
       let more_src_dirs =

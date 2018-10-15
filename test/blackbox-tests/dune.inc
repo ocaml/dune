@@ -55,6 +55,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name check-alias)
+ (deps (package dune) (source_tree test-cases/check-alias))
+ (action
+  (chdir
+   test-cases/check-alias
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name configurator)
  (deps (package dune) (source_tree test-cases/configurator))
  (action
@@ -1038,6 +1046,7 @@
   (alias block-strings)
   (alias byte-code-only)
   (alias c-stubs)
+  (alias check-alias)
   (alias configurator)
   (alias configurator-gh1166)
   (alias copy_files)
@@ -1166,6 +1175,7 @@
   (alias block-strings)
   (alias byte-code-only)
   (alias c-stubs)
+  (alias check-alias)
   (alias configurator)
   (alias configurator-gh1166)
   (alias copy_files)

@@ -339,6 +339,7 @@ module Alias0 = struct
   let private_doc = make_standard "doc-private"
   let lint        = make_standard "lint"
   let all         = make_standard "all"
+  let check       = make_standard "check"
 
   let package_install ~(context : Context.t) ~pkg =
     make (sprintf ".%s-files" (Package.Name.to_string pkg))

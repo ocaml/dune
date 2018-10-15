@@ -21,6 +21,9 @@ next
 - Produce the odoc index page with the content wrapper to make it consistent
   with odoc's theming (#1469, @rizo)
 
+- Unblock signals in processes started by dune (#1461, fixes #1451,
+  @diml)
+
 1.4.0 (10/10/2018)
 ------------------
 

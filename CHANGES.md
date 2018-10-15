@@ -12,6 +12,9 @@ next
 - Allow to use the `bigarray` library in >= 4.07 without ocamlfind and without
   installing the corresponding `otherlib`. (#1455, @nojb)
 
+- Add `@all` alias to build all targets defined in a directory (#1409, fix
+  #1220, @rgrinberg)
+
 1.4.0 (10/10/2018)
 ------------------
 

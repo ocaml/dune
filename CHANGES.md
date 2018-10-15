@@ -9,6 +9,9 @@ next
 - Install generated OCaml files with a `.ml` rather than a `.ml-gen` extension
   (#1425, fix #1414, @rgrinberg)
 
+- Allow to use the `bigarray` library in >= 4.07 without ocamlfind and without
+  installing the corresponding `otherlib`. (#1455, @nojb)
+
 1.4.0 (10/10/2018)
 ------------------
 

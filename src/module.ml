@@ -69,6 +69,8 @@ module Visibility = struct
   let is_public = function
     | Public -> true
     | Private -> false
+
+  let is_private t = not (is_public t)
 end
 
 type t =
@@ -231,6 +233,7 @@ module Name_map = struct
 end
 
 let is_public t = Visibility.is_public t.visibility
+let is_private t = Visibility.is_private t.visibility
 
 let set_private t =
   { t with visibility = Private }

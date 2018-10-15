@@ -160,7 +160,7 @@ let for_compilation t =
   | Some alias, false -> Module.Name_map.add t.modules alias
 
 let has_private_modules t =
-  Module.Name.Map.exists t.modules ~f:(fun m -> not (Module.is_public m))
+  Module.Name.Map.exists t.modules ~f:Module.is_private
 
 let have_artifacts t =
   let base =

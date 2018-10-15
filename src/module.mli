@@ -113,6 +113,7 @@ module Name_map : sig
 end with type module_ := t
 
 val is_public : t -> bool
+val is_private : t -> bool
 
 val set_private : t -> t
 

@@ -238,7 +238,8 @@ let builtins ~stdlib_dir ~version:ocaml_version =
   let str = simple "str" [] ~dir:"+" in
   let unix = simple "unix" [] ~dir:"+" in
   let bigarray =
-    if Ocaml_version.stdlib_includes_bigarray ocaml_version then
+    if Ocaml_version.stdlib_includes_bigarray ocaml_version &&
+       not (Path.exists (Path.relative stdlib_dir "bigarray.cma")) then
       dummy "bigarray"
     else
       simple "bigarray" ["unix"] ~dir:"+"

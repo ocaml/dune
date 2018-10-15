@@ -190,10 +190,10 @@ Install files for implemenations and virtual libs have all the artifacts:
     "_build/install/default/lib/impl/vlib__Foo.cmi" {"vlib__Foo.cmi"}
     "_build/install/default/lib/impl/vlib__Foo.cmt" {"vlib__Foo.cmt"}
     "_build/install/default/lib/impl/vlib__Foo.cmx" {"vlib__Foo.cmx"}
-    "_build/install/default/lib/impl/vlib_impl__.cmi" {"vlib_impl__.cmi"}
-    "_build/install/default/lib/impl/vlib_impl__.cmt" {"vlib_impl__.cmt"}
-    "_build/install/default/lib/impl/vlib_impl__.cmx" {"vlib_impl__.cmx"}
-    "_build/install/default/lib/impl/vlib_impl__.ml" {"vlib_impl__.ml"}
+    "_build/install/default/lib/impl/vlib__impl__.cmi" {"vlib__impl__.cmi"}
+    "_build/install/default/lib/impl/vlib__impl__.cmt" {"vlib__impl__.cmt"}
+    "_build/install/default/lib/impl/vlib__impl__.cmx" {"vlib__impl__.cmx"}
+    "_build/install/default/lib/impl/vlib__impl__.ml" {"vlib__impl__.ml"}
   ]
 
 Implementations may refer to virtual library's modules

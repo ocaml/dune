@@ -53,16 +53,19 @@ let make_wrapped ~(lib : Dune_file.Library.t) ~dir ~transition ~modules
   let implements = Dune_file.Library.is_impl lib in
   let alias_module =
     let alias_prefix =
-      let base =
-        String.uncapitalize (Module.Name.to_string main_module_name) in
-      if implements then
-        sprintf "%s_%s__" base (Lib_name.Local.to_string (snd lib.name))
-      else
-        base
-    in
-    let alias_module_name =
-      Module.Name.of_string (String.capitalize alias_prefix) in
-    if Module.Name.Map.cardinal modules = 1 &&
+      String.uncapitalize (Module.Name.to_string main_module_name) in
+    if implements then
+      let alias_prefix =
+        sprintf "%s__%s__" alias_prefix
+          (Lib_name.Local.to_string (snd lib.name)) in
+      let name = Module.Name.of_string alias_prefix in
+      Some
+        (Module.make name
+           ~visibility:Public
+           ~impl:(Module.File.make OCaml
+                    (Path.relative dir (sprintf "%s.ml-gen" alias_prefix)))
+           ~obj_name:alias_prefix)
+    else if Module.Name.Map.cardinal modules = 1 &&
        Module.Name.Map.mem modules main_module_name ||
        Option.is_some lib.stdlib then
       None
@@ -72,14 +75,14 @@ let make_wrapped ~(lib : Dune_file.Library.t) ~dir ~transition ~modules
 
          https://github.com/ocaml/dune/issues/567 *)
       Some
-        (Module.make (Module.Name.add_suffix alias_module_name "__")
+        (Module.make (Module.Name.add_suffix main_module_name "__")
            ~visibility:Public
            ~impl:(Module.File.make OCaml
                     (Path.relative dir (sprintf "%s__.ml-gen" alias_prefix)))
            ~obj_name:(alias_prefix ^ "__"))
     else
       Some
-        (Module.make alias_module_name
+        (Module.make main_module_name 
            ~visibility:Public
            ~impl:(Module.File.make OCaml
                     (Path.relative dir (alias_prefix ^ ".ml-gen")))

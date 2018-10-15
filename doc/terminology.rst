@@ -43,20 +43,11 @@ Terminology
 -  **build context root**: the root of a build context named ``foo`` is
    ``<root>/_build/<foo>``
 
-- **alias**: an alias is a build target that doesn't produce any file
-   and has configurable dependencies. Aliases are
-   per-directory. However, on the command line, asking for an alias to
-   be built in a given directory will trigger the construction of the
-   alias in all children directories recursively. Dune defines the
-   following standard aliases:
-
-   -  ``default`` which is the alias build by default when no targets
-      are specified on the command line. See :ref:`default-alias` for
-      details
-   -  ``runtest`` which runs user defined tests
-   -  ``install`` which depends on everything that should be installed
-   -  ``doc``     which depends on the generated HTML
-      documentation. See :ref:`documentation` for details.
+- **alias**: an alias is a build target that doesn't produce any file and has
+   configurable dependencies. Aliases are per-directory. However, on the command
+   line, asking for an alias to be built in a given directory will trigger the
+   construction of the alias in all children directories recursively. Dune
+   defines several :ref:`builtin-aliases`.
 
 - **environment**: in dune, each directory has an environment
   attached to it. The environment determines the default values of

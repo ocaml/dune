@@ -15,6 +15,9 @@ next
 - Add `@all` alias to build all targets defined in a directory (#1409, fix
   #1220, @rgrinberg)
 
+- Add `@check` alias to build all targets required for type checking and tooling
+  support. (#1447, fix #1220, @rgrinberg)
+
 1.4.0 (10/10/2018)
 ------------------
 

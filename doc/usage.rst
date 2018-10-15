@@ -192,6 +192,10 @@ There's a few aliases that dune automatically creates for the user
 * ``all`` - build all available targets in a directory and installable artifacts
   defined in that directory.
 
+* ``check`` - This alias will build the minimal set of targets required for
+  tooling support. Essentially, this is ``.cmi``, ``.cmt``, ``.cmti``, and
+  .merlin files.
+
 Finding external libraries
 ==========================
 

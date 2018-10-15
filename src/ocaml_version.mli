@@ -32,3 +32,6 @@ val pervasives_includes_result : t -> bool
 
 (** Whether the standard library includes the [Uchar] module *)
 val stdlib_includes_uchar : t -> bool
+
+(** Whether the standard library includes the [Bigarray] module *)
+val stdlib_includes_bigarray : t -> bool

@@ -31,3 +31,6 @@ let pervasives_includes_result version =
 
 let stdlib_includes_uchar version =
   version >= (4, 03, 0)
+
+let stdlib_includes_bigarray version =
+  version >= (4, 07, 0)

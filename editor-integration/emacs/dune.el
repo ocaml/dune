@@ -188,7 +188,7 @@
    ((and (eq kind :after) (equal token ")"))
     (save-excursion
       (goto-char (cadr (smie-indent--parent)))
-      (if (looking-at-p dune-keywords-regex)
+      (if (looking-at-p dune-stanzas-regex)
           '(column . 0)
         1)))
    ((eq kind :before)

@@ -9,6 +9,15 @@ next
 - Install generated OCaml files with a `.ml` rather than a `.ml-gen` extension
   (#1425, fix #1414, @rgrinberg)
 
+- Allow to use the `bigarray` library in >= 4.07 without ocamlfind and without
+  installing the corresponding `otherlib`. (#1455, @nojb)
+
+- Add `@all` alias to build all targets defined in a directory (#1409, fix
+  #1220, @rgrinberg)
+
+- Add `@check` alias to build all targets required for type checking and tooling
+  support. (#1447, fix #1220, @rgrinberg)
+
 1.4.0 (10/10/2018)
 ------------------
 

@@ -5,6 +5,7 @@ open! Stdune;;
 let sexp_pp = Dune_lang.pp Dune;;
 #install_printer Dune_file.Mode_conf.pp;;
 #install_printer Binary_kind.pp;;
+#install_printer Dune_file.Executables.Link_mode.pp;;
 #install_printer sexp_pp;;
 
 (* Dune_file.Executables.Link_mode.decode *)
@@ -19,35 +20,29 @@ val test : string -> Dune_file.Executables.Link_mode.t = <fun>
 (* Link modes can be read as a (<mode> <kind>) list *)
 test "(best exe)"
 [%%expect{|
-- : Dune_file.Executables.Link_mode.t =
-{mode = best; kind = exe; loc = <abstr>}
+- : Dune_file.Executables.Link_mode.t = { mode = best; kind = exe }
 |}]
 
 (* Some shortcuts also exist *)
 test "exe"
 [%%expect{|
-- : Dune_file.Executables.Link_mode.t =
-{mode = best; kind = exe; loc = <abstr>}
+- : Dune_file.Executables.Link_mode.t = { mode = best; kind = exe }
 |}]
 test "object"
 [%%expect{|
-- : Dune_file.Executables.Link_mode.t =
-{mode = best; kind = object; loc = <abstr>}
+- : Dune_file.Executables.Link_mode.t = { mode = best; kind = object }
 |}]
 test "shared_object"
 [%%expect{|
-- : Dune_file.Executables.Link_mode.t =
-{mode = best; kind = shared_object; loc = <abstr>}
+- : Dune_file.Executables.Link_mode.t = { mode = best; kind = shared_object }
 |}]
 test "byte"
 [%%expect{|
-- : Dune_file.Executables.Link_mode.t =
-{mode = byte; kind = exe; loc = <abstr>}
+- : Dune_file.Executables.Link_mode.t = { mode = byte; kind = exe }
 |}]
 test "native"
 [%%expect{|
-- : Dune_file.Executables.Link_mode.t =
-{mode = native; kind = exe; loc = <abstr>}
+- : Dune_file.Executables.Link_mode.t = { mode = native; kind = exe }
 |}]
 
 (* Dune_file.Executables.Link_mode.encode *)

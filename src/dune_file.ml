@@ -1281,6 +1281,12 @@ module Executables = struct
         let { mode; kind; loc = _ } = link_mode in
         Dune_lang.Encoder.pair Mode_conf.encode Binary_kind.encode (mode, kind)
 
+    let pp fmt { mode ; kind ; loc = _ } =
+      Fmt.record fmt
+        [ "mode", Fmt.const Mode_conf.pp mode
+        ; "kind", Fmt.const Binary_kind.pp kind
+        ]
+
     module Set = struct
       include Set.Make(T)
 

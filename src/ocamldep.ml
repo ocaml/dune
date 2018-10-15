@@ -136,6 +136,12 @@ module Dep_graphs = struct
     }
 end
 
+let is_alias_module cctx (m : Module.t) =
+  let open Module.Name.Infix in
+  match CC.alias_module cctx with
+  | None -> false
+  | Some alias -> Module.name alias = Module.name m
+
 let parse_module_names ~(unit : Module.t) ~modules ~modules_of_vlib words =
   let open Module.Name.Infix in
   List.filter_map words ~f:(fun m ->
@@ -146,12 +152,6 @@ let parse_module_names ~(unit : Module.t) ~modules ~modules_of_vlib words =
       match Module.Name.Map.find modules m with
       | Some _ as m -> m
       | None -> Module.Name.Map.find modules_of_vlib m)
-
-let is_alias_module cctx (m : Module.t) =
-  let open Module.Name.Infix in
-  match CC.alias_module cctx with
-  | None -> false
-  | Some alias -> Module.name alias = Module.name m
 
 let parse_deps cctx ~file ~unit lines =
   let dir                  = CC.dir                  cctx in

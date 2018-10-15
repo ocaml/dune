@@ -130,22 +130,9 @@ Implementations cannot introduce new modules to the library's interface
 They can only introduce private modules:
   $ dune build --root impl-private-modules
   Entering directory 'impl-private-modules'
-  Internal error, please report upstream including the contents of _build/log.
-  Description:
-  (Ocamldep.Dep_graph.deps_of
-   (dir (In_build_dir default/vlib/.foo.objs))
-   (modules (Bar))
-   (module Priv))
-  Backtrace:
-  Raised at file "src/dep_path.ml", line 46, characters 24-55
-  Called from file "src/fiber/fiber.ml", line 243, characters 6-18
-  
-  I must not segfault.  Uncertainty is the mind-killer.  Exceptions are
-  the little-death that brings total obliteration.  I will fully express
-  my cases.  Execution will pass over me and through me.  And when it
-  has gone past, I will unwind the stack along its path.  Where the
-  cases are handled there will be nothing.  Only I will remain.
-  [1]
+          test alias default
+  Private module Baz
+  implementing bar
 
 Virtual library with a single module
   $ dune build --root variants-simple
@@ -178,9 +165,36 @@ Executable that tries to use two implementations for the same virtual lib
 Install files for implemenations and virtual libs have all the artifacts:
   $ dune build --root install-file
   Entering directory 'install-file'
-  No rule found for impl/.impl.objs/vlib.cmt
-  No rule found for impl/vlib.ml-gen
-  [1]
+  lib: [
+    "_build/install/default/lib/vlib/META" {"META"}
+    "_build/install/default/lib/vlib/foo.mli" {"foo.mli"}
+    "_build/install/default/lib/vlib/opam" {"opam"}
+    "_build/install/default/lib/vlib/vlib.cmi" {"vlib.cmi"}
+    "_build/install/default/lib/vlib/vlib.cmt" {"vlib.cmt"}
+    "_build/install/default/lib/vlib/vlib.cmx" {"vlib.cmx"}
+    "_build/install/default/lib/vlib/vlib.dune" {"vlib.dune"}
+    "_build/install/default/lib/vlib/vlib.ml" {"vlib.ml"}
+    "_build/install/default/lib/vlib/vlib$ext_obj" {"vlib$ext_obj"}
+    "_build/install/default/lib/vlib/vlib__Foo.cmi" {"vlib__Foo.cmi"}
+    "_build/install/default/lib/vlib/vlib__Foo.cmti" {"vlib__Foo.cmti"}
+  ]
+  lib: [
+    "_build/install/default/lib/impl/META" {"META"}
+    "_build/install/default/lib/impl/foo.ml" {"foo.ml"}
+    "_build/install/default/lib/impl/impl$ext_lib" {"impl$ext_lib"}
+    "_build/install/default/lib/impl/impl.cma" {"impl.cma"}
+    "_build/install/default/lib/impl/impl.cmxa" {"impl.cmxa"}
+    "_build/install/default/lib/impl/impl.cmxs" {"impl.cmxs"}
+    "_build/install/default/lib/impl/impl.dune" {"impl.dune"}
+    "_build/install/default/lib/impl/opam" {"opam"}
+    "_build/install/default/lib/impl/vlib__Foo.cmi" {"vlib__Foo.cmi"}
+    "_build/install/default/lib/impl/vlib__Foo.cmt" {"vlib__Foo.cmt"}
+    "_build/install/default/lib/impl/vlib__Foo.cmx" {"vlib__Foo.cmx"}
+    "_build/install/default/lib/impl/vlib_impl__.cmi" {"vlib_impl__.cmi"}
+    "_build/install/default/lib/impl/vlib_impl__.cmt" {"vlib_impl__.cmt"}
+    "_build/install/default/lib/impl/vlib_impl__.cmx" {"vlib_impl__.cmx"}
+    "_build/install/default/lib/impl/vlib_impl__.ml" {"vlib_impl__.ml"}
+  ]
 
 Implementations may refer to virtual library's modules
   $ dune build --root impl-using-vlib-modules

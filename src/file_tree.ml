@@ -273,7 +273,6 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) path =
               ignored
               || String.Set.mem ignored_subdirs fn
               || Path.Set.mem extra_ignored_subtrees path
-              || scheme <> None
             in
             String.Map.add acc fn
               (walk path ~dirs_visited ~project ~ignored ~scheme))

@@ -363,6 +363,9 @@ module Gen (P : Install_rules.Params) = struct
     let lib_modules =
       Dir_contents.modules_of_library dir_contents ~name:(Library.best_name lib)
     in
+    Check_rules.add_obj_dir sctx ~dir ~obj_dir;
+    if Lib_modules.has_private_modules lib_modules then
+      Check_rules.add_obj_dir sctx ~dir ~obj_dir:private_obj_dir;
     let source_modules = Lib_modules.modules lib_modules in
     let impl = Virtual.impl ~lib ~scope ~modules:source_modules in
     Option.iter impl ~f:(Virtual.setup_copy_rules_for_impl ~dir);

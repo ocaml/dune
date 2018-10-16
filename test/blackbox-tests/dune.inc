@@ -15,6 +15,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name all-alias)
+ (deps (package dune) (source_tree test-cases/all-alias))
+ (action
+  (chdir
+   test-cases/all-alias
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name bad-alias-error)
  (deps (package dune) (source_tree test-cases/bad-alias-error))
  (action
@@ -44,6 +52,14 @@
  (action
   (chdir
    test-cases/c-stubs
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
+ (name check-alias)
+ (deps (package dune) (source_tree test-cases/check-alias))
+ (action
+  (chdir
+   test-cases/check-alias
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
@@ -1025,10 +1041,12 @@
  (deps
   (alias action-modifying-a-dependency)
   (alias aliases)
+  (alias all-alias)
   (alias bad-alias-error)
   (alias block-strings)
   (alias byte-code-only)
   (alias c-stubs)
+  (alias check-alias)
   (alias configurator)
   (alias configurator-gh1166)
   (alias copy_files)
@@ -1152,10 +1170,12 @@
  (deps
   (alias action-modifying-a-dependency)
   (alias aliases)
+  (alias all-alias)
   (alias bad-alias-error)
   (alias block-strings)
   (alias byte-code-only)
   (alias c-stubs)
+  (alias check-alias)
   (alias configurator)
   (alias configurator-gh1166)
   (alias copy_files)

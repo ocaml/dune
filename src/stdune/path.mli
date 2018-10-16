@@ -81,6 +81,8 @@ val basename : t -> string
 val parent : t -> t option
 val parent_exn : t -> t
 
+val is_suffix : t -> suffix:string -> bool
+
 val extend_basename : t -> suffix:string -> t
 
 (** Extract the build context from a path. For instance, representing paths as strings:

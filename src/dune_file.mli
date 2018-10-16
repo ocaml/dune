@@ -337,6 +337,8 @@ module Executables : sig
 
     val compare : t -> t -> Ordering.t
 
+    val pp : t Fmt.t
+
     module Set : Set.S with type elt = t
   end
 

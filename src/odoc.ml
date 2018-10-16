@@ -249,12 +249,14 @@ module Gen (S : sig val sctx : SC.t end) = struct
     <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
   </head>
   <body>
-    <div class="by-name">
-    <h2>OCaml package documentation</h2>
-    <ol>
-    %s
-    </ol>
-    </div>
+    <main class="content">
+      <div class="by-name">
+      <h2>OCaml package documentation</h2>
+      <ol>
+      %s
+      </ol>
+      </div>
+    </main>
   </body>
 </html>|} list_items
     in

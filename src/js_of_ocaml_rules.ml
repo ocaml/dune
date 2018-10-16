@@ -19,24 +19,31 @@ let install_jsoo_hint = "try: opam install js_of_ocaml-compiler"
 let in_build_dir ~ctx args =
   Path.L.relative ctx.Context.build_dir (".js" :: args)
 
-let runtime_file ~sctx file =
+let jsoo ~dir sctx =
+  SC.resolve_program sctx ~dir ~loc:None ~hint:install_jsoo_hint
+    "js_of_ocaml"
+
+let runtime_file ~dir ~sctx file =
   match
     Artifacts.file_of_lib (SC.artifacts sctx)
       ~loc:Loc.none
       ~lib:(Lib_name.of_string_exn ~loc:None "js_of_ocaml-compiler") ~file
   with
   | Error _ ->
-    Arg_spec.Dyn (fun _ ->
-      Utils.library_not_found ~context:(SC.context sctx).name
-        ~hint:install_jsoo_hint
-        "js_of_ocaml-compiler")
+    begin match jsoo ~dir sctx with
+    | Ok path when Path.exists (Path.relative path file) ->
+      Arg_spec.Dep path
+    | _ ->
+      Arg_spec.Dyn (fun _ ->
+        Utils.library_not_found ~context:(SC.context sctx).name
+          ~hint:install_jsoo_hint
+          "js_of_ocaml-compiler")
+    end
   | Ok f -> Arg_spec.Dep f
 
 let js_of_ocaml_rule sctx ~dir ~flags ~spec ~target =
-  let jsoo =
-    SC.resolve_program sctx ~dir ~loc:None ~hint:install_jsoo_hint
-      "js_of_ocaml" in
-  let runtime = runtime_file ~sctx "runtime.js" in
+  let jsoo = jsoo ~dir sctx in
+  let runtime = runtime_file ~dir ~sctx "runtime.js" in
   Build.run ~dir
     jsoo
     [ Arg_spec.Dyn flags

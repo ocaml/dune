@@ -1,14 +1,23 @@
 {
 open StdLabels
+
+type kind = Ignore | Expect
 }
 
 rule code txt start = parse
+  | "[%%ignore]\n" {
+    let pos = start.Lexing.pos_cnum in
+    let len = Lexing.lexeme_start lexbuf - pos in
+    let s = String.sub txt ~pos ~len in
+    Lexing.new_line lexbuf;
+    (Ignore, start, s) :: code txt lexbuf.lex_curr_p lexbuf
+  }
   | "[%%expect{|\n" {
     let pos = start.Lexing.pos_cnum in
     let len = Lexing.lexeme_start lexbuf - pos in
     let s = String.sub txt ~pos ~len in
     Lexing.new_line lexbuf;
-    (start, s) :: expectation txt lexbuf
+    (Expect, start, s) :: expectation txt lexbuf
   }
   | [^'\n']*'\n' {
     Lexing.new_line lexbuf;
@@ -22,7 +31,7 @@ rule code txt start = parse
       if String.trim s = "" then
         []
       else
-        [(start, s)]
+        [(Expect, start, s)]
     end else
       []
   }
@@ -87,18 +96,30 @@ let main () =
 
     let buf = Buffer.create (String.length file_contents + 1024) in
     let ppf = Format.formatter_of_buffer buf in
-    List.iter chunks ~f:(fun (pos, s) ->
-      Format.fprintf ppf "%s[%%%%expect{|@." s;
+    let null_ppf = Format.make_formatter (fun _ _ _ -> ()) (fun () -> ()) in
+    List.iter chunks ~f:(fun (kind, pos, s) ->
+      begin match kind with
+      | Ignore -> Format.fprintf ppf "%s[%%%%ignore]@." s
+      | Expect -> Format.fprintf ppf "%s[%%%%expect{|@." s
+      end;
       let lexbuf = Lexing.from_string s in
       lexbuf.lex_curr_p <- pos;
       let phrases = !Toploop.parse_use_file lexbuf in
       List.iter phrases ~f:(fun phr ->
         try
+          let ppf =
+            match kind with
+            | Expect -> ppf
+            | Ignore -> null_ppf
+          in
           ignore (Toploop.execute_phrase true ppf phr : bool)
         with exn ->
           Location.report_exception ppf exn
       );
-      Format.fprintf ppf "@?|}]@.");
+      begin match kind with
+      | Ignore -> ()
+      | Expect -> Format.fprintf ppf "@?|}]@."
+      end);
     Buffer.contents buf)
 
 let () =

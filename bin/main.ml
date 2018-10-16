@@ -454,6 +454,77 @@ let print_unix_error f =
 let set_executable_bits   x = x lor  0o111
 let clear_executable_bits x = x land (lnot 0o111)
 
+(** Operations that act on real files or just pretend to (for --dry-run) *)
+module type FILE_OPERATIONS = sig
+  val copy_file : src:Path.t -> dst:Path.t -> executable:bool -> unit
+  val mkdir_p : Path.t -> unit
+  val remove_if_exists : Path.t -> unit
+  val remove_dir_if_empty : Path.t -> unit
+end
+
+module File_ops_dry_run : FILE_OPERATIONS = struct
+  let copy_file ~src ~dst ~executable =
+    Format.printf
+      "Copying %a to %a (executable: %b)\n"
+      Path.pp src
+      Path.pp dst
+      executable
+
+  let mkdir_p path =
+    Format.printf
+      "Creating directory %a\n"
+      Path.pp
+      path
+
+  let remove_if_exists path =
+    Format.printf
+      "Removing (if it exists) %a\n"
+      Path.pp
+      path
+
+  let remove_dir_if_empty path =
+    Format.printf
+      "Removing directory (if empty) %a\n"
+      Path.pp
+      path
+end
+
+module File_ops_real : FILE_OPERATIONS = struct
+  let copy_file ~src ~dst ~executable =
+    let chmod =
+      if executable then
+        set_executable_bits
+     else
+       clear_executable_bits
+    in
+    Io.copy_file ~src ~dst ~chmod ()
+
+  let remove_if_exists dst =
+    if Path.exists dst then begin
+      Printf.eprintf
+        "Deleting %s\n%!"
+        (Path.to_string_maybe_quoted dst);
+      print_unix_error (fun () -> Path.unlink dst)
+    end
+
+  let remove_dir_if_empty dir =
+    if Path.exists dir then
+      match Path.readdir_unsorted dir with
+      | [] ->
+          Printf.eprintf "Deleting empty directory %s\n%!"
+          (Path.to_string_maybe_quoted dir);
+        print_unix_error (fun () -> Path.rmdir dir)
+      | _  -> ()
+
+  let mkdir_p = Path.mkdir_p
+end
+
+let file_operations ~dry_run : (module FILE_OPERATIONS) =
+  if dry_run then
+    (module File_ops_dry_run)
+  else
+    (module File_ops_real)
+
 let install_uninstall ~what =
   let doc =
     sprintf "%s packages." (String.capitalize what)
@@ -480,6 +551,12 @@ let install_uninstall ~what =
                      $(b,prefix) or absolute. If $(b,--prefix) \
                      is specified the default is $(i,\\$prefix/lib), otherwise \
                      it is the output of $(b,ocamlfind printconf destdir)"
+          )
+    and dry_run =
+      Arg.(value
+           & flag
+           & info ["dry-run"]
+          ~doc:"Only display the file operations that would be performed."
           )
     and pkgs =
       Arg.(value & pos_all package_name [] name_)
@@ -523,6 +600,7 @@ let install_uninstall ~what =
        let install_files_by_context =
          CMap.of_list_multi install_files |> CMap.to_list
        in
+       let (module Ops) = file_operations ~dry_run in
        Fiber.parallel_iter install_files_by_context
          ~f:(fun (context, install_files) ->
            get_prefix context ~from_command_line:prefix_from_command_line
@@ -540,7 +618,6 @@ let install_uninstall ~what =
              in
              let files_deleted_in = ref Path.Set.empty in
              List.iter entries ~f:(fun { Install.Entry. src; dst; section } ->
-               let src = src in
                let dst = Option.value dst ~default:(Path.basename src) in
                let dst =
                  Path.relative (Install.Section.Paths.get paths section) dst
@@ -549,33 +626,20 @@ let install_uninstall ~what =
                if what = "install" then begin
                  Printf.eprintf "Installing %s\n%!"
                    (Path.to_string_maybe_quoted dst);
-                 Path.mkdir_p dir;
-                 Io.copy_file () ~src ~dst
-                   ~chmod:(
-                     if Install.Section.should_set_executable_bit section then
-                       set_executable_bits
-                     else
-                       clear_executable_bits)
+                 Ops.mkdir_p dir;
+                 let executable =
+                   Install.Section.should_set_executable_bit section
+                 in
+                 Ops.copy_file ~src ~dst ~executable
                end else begin
-                 if Path.exists dst then begin
-                   Printf.eprintf "Deleting %s\n%!"
-                     (Path.to_string_maybe_quoted dst);
-                   print_unix_error (fun () -> Path.unlink dst)
-                 end;
+                 Ops.remove_if_exists dst;
                  files_deleted_in := Path.Set.add !files_deleted_in dir;
                end;
                Path.Set.to_list !files_deleted_in
                (* This [List.rev] is to ensure we process children
                   directories before their parents *)
                |> List.rev
-               |> List.iter ~f:(fun dir ->
-                 if Path.exists dir then
-                   match Path.readdir_unsorted dir with
-                   | [] ->
-                     Printf.eprintf "Deleting empty directory %s\n%!"
-                       (Path.to_string_maybe_quoted dst);
-                     print_unix_error (fun () -> Path.rmdir dir)
-                   | _  -> ())))))
+               |> List.iter ~f:Ops.remove_dir_if_empty))))
   in
   (term, Term.info what ~doc ~man:Common.help_secs)
 

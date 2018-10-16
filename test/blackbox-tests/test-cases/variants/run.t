@@ -202,3 +202,12 @@ Implementations may refer to virtual library's modules
           test alias default
   bar from vlib
   Foo.run implemented
+
+Implementations may have private modules that have overlapping names with the
+virtual lib
+  $ dune build --root private-modules-overlapping-names
+  Entering directory 'private-modules-overlapping-names'
+  Multiple rules generated for _build/default/impl/.impl.objs/priv.ml.all-deps:
+  - <internal location>
+  - src/virtual_rules.ml:36
+  [1]

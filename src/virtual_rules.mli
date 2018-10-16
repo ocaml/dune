@@ -8,7 +8,7 @@ module Implementation : sig
     -> Ocamldep.Dep_graphs.t
     -> Ocamldep.Dep_graph.t Ml_kind.Dict.t
 
-  val modules_of_vlib : t -> Module.Name_map.t
+  val vlib_modules : t -> Lib_modules.t
 end
 
 module Gen (S : sig val sctx : Super_context.t end) : sig

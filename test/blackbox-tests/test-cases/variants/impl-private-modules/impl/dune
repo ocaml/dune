@@ -1,4 +1,4 @@
 (library
  (name foo_impl)
- (private_modules baz)
+ (private_modules priv)
  (implements foo))

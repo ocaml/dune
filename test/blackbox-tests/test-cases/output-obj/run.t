@@ -1,17 +1,4 @@
-  $ dune build --display short @all
-      ocamldep .test.eobjs/test.ml.d
-        ocamlc .test.eobjs/test.{cmi,cmo,cmt}
-        ocamlc test.bc.o
-           gcc static.bc
-      ocamlopt .test.eobjs/test.{cmx,o}
-      ocamlopt test.exe.o
-           gcc static.exe
-        ocamlc test.bc
-        ocamlc test.bc.so
-      ocamlopt test.exe
-      ocamlopt test$ext_dll
-#        ocamlc test.bc.c
-
+  $ dune build @all
   $ dune build @runtest
        dynamic alias runtest
   OK: ./dynamic.exe ./test.bc.so

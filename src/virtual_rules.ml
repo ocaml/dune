@@ -8,14 +8,14 @@ module Implementation = struct
     ; vlib_modules    : Lib_modules.t
     }
 
-  let modules_of_vlib t = Lib_modules.modules t.vlib_modules
+  let vlib_modules t = t.vlib_modules
 
   let dep_graph ({ vlib ; vlib_modules = _ ; impl = _ } as t)
         (impl_graph : Ocamldep.Dep_graphs.t) =
-    let modules_of_vlib = modules_of_vlib t in
+    let modules = Lib_modules.modules t.vlib_modules in
     let obj_dir = Lib.obj_dir vlib in
     let vlib_graph =
-      Ocamldep.graph_of_remote_lib ~obj_dir ~modules:modules_of_vlib in
+      Ocamldep.graph_of_remote_lib ~obj_dir ~modules in
     Ocamldep.Dep_graphs.merge_for_impl ~vlib:vlib_graph ~impl:impl_graph
 
 end
@@ -28,15 +28,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
     Lib.foreign_objects vlib
 
   let setup_copy_rules_for_impl ~dir
-        ({ Implementation.vlib ; impl ; vlib_modules } as t) =
-    let modules_of_vlib =
-      let modules_of_vlib = Implementation.modules_of_vlib t in
-      match Lib_modules.alias_module vlib_modules with
-      | None -> modules_of_vlib
-      | Some alias_module ->
-        Module.Name.Map.add modules_of_vlib
-          (Module.name alias_module) alias_module
-    in
+        ({ Implementation.vlib ; impl ; vlib_modules }) =
     let copy_to_obj_dir =
       let obj_dir = Utils.library_object_directory ~dir (snd impl.name) in
       fun file ->
@@ -48,10 +40,10 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
     let modes =
       Dune_file.Mode_conf.Set.eval impl.modes
         ~has_native:(Option.is_some ctx.ocamlopt) in
-    Module.Name.Map.iter modules_of_vlib ~f:(fun m ->
-      let copy_obj_file ext =
-        copy_to_obj_dir (Module.obj_file m ~obj_dir ~ext) in
-      copy_obj_file (Cm_kind.ext Cmi);
+    let copy_obj_file m ext =
+      copy_to_obj_dir (Module.obj_file m ~obj_dir ~ext) in
+    let copy_module m =
+      copy_obj_file m (Cm_kind.ext Cmi);
       List.iter [Intf; Impl] ~f:(fun kind ->
         Module.file m kind
         |> Option.iter ~f:(fun f ->
@@ -60,10 +52,24 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
       );
       if Module.has_impl m then begin
         if modes.byte then
-          copy_obj_file (Cm_kind.ext Cmo);
+          copy_obj_file m (Cm_kind.ext Cmo);
         if modes.native then
-          List.iter [Cm_kind.ext Cmx; ctx.ext_obj] ~f:copy_obj_file
-      end)
+          List.iter [Cm_kind.ext Cmx; ctx.ext_obj] ~f:(copy_obj_file m)
+      end
+    in
+    let copy_alias_module m =
+      copy_obj_file m (Cm_kind.ext Cmi);
+      List.iter [Intf; Impl] ~f:(fun kind ->
+        Module.file m kind
+        |> Option.iter ~f:(copy_to_obj_dir)
+      );
+      if modes.byte then
+        copy_obj_file m (Cm_kind.ext Cmo);
+      if modes.native then
+        List.iter [Cm_kind.ext Cmx; ctx.ext_obj] ~f:(copy_obj_file m)
+    in
+    Option.iter (Lib_modules.alias_module vlib_modules) ~f:copy_alias_module;
+    Module.Name.Map.iter (Lib_modules.modules vlib_modules) ~f:copy_module
 
   let module_list ms =
     List.map ms ~f:(fun m -> sprintf "- %s" (Module.Name.to_string m))

@@ -238,7 +238,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
         in
         Some (sp "<li>%s%s</li>" link version_suffix))
     in
-    let list_items = String.concat ~sep:"\n    " list_items in
+    let list_items = String.concat ~sep:"\n      " list_items in
     let html = sp
 {|<!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml">

@@ -12,11 +12,7 @@ let infer (a : Action.t) =
   let x = Action.Infer.infer a in
   (List.map (Path.Set.to_list x.deps) ~f:Path.to_string,
    List.map (Path.Set.to_list x.targets) ~f:Path.to_string)
-[%%expect{|
-- : unit = ()
-val p : ?error_loc:Stdune__Loc.t -> string -> Path.t = <fun>
-val infer : Action.t -> string list * string list = <fun>
-|}]
+[%%ignore]
 
 infer (Copy (p "a", p "b"));;
 [%%expect{|

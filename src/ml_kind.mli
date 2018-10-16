@@ -1,6 +1,10 @@
+open Stdune
+
 type t = Impl | Intf
 
 val all : t list
+
+val pp : t Fmt.t
 
 (** "" or "i" *)
 val suffix : t -> string

@@ -1,1 +1,3 @@
-let run () = print_endline "implementing bar"
+let run () =
+  Priv.run ();
+  print_endline "implementing bar"

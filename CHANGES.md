@@ -18,6 +18,9 @@ next
 - Add `@check` alias to build all targets required for type checking and tooling
   support. (#1447, fix #1220, @rgrinberg)
 
+- Produce the odoc index page with the content wrapper to make it consistent
+  with odoc's theming (#1469, @rizo)
+
 1.4.0 (10/10/2018)
 ------------------
 

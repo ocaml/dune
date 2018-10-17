@@ -12,5 +12,7 @@ let restore_cwd_and_execve prog argv ~env =
     | WEXITED   n -> exit n
     | WSIGNALED _ -> exit 255
     | WSTOPPED  _ -> assert false
-  else
+  else begin
+    ignore (Unix.sigprocmask SIG_SETMASK [] : int list);
     Unix.execve prog argv env
+  end

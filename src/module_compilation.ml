@@ -46,9 +46,13 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
     Option.iter (Module.cm_source m cm_kind) ~f:(fun src ->
       let ml_kind = Cm_kind.source cm_kind in
       let dst = Module.cm_file_unsafe m ~obj_dir cm_kind in
+      let public_vlib_module =
+        match Module.Name.Map.find modules_of_vlib (Module.name m) with
+        | None -> false
+        | Some m -> Module.is_public m
+      in
       let extra_args, extra_deps, other_targets =
-        match cm_kind, Module.intf m
-              , Module.Name.Map.mem modules_of_vlib (Module.name m) with
+        match cm_kind, Module.intf m, public_vlib_module with
         (* If there is no mli, [ocamlY -c file.ml] produces both the
            .cmY and .cmi. We choose to use ocamlc to produce the cmi
            and to produce the cmx we have to wait to avoid race

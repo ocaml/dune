@@ -9,6 +9,14 @@ In order to build itself, Dune uses an OCaml script
 single `boot.ml` file. This file is built using `ocamlopt` or `ocamlc`
 and used to build everything else.
 
+To get the development version bootstrapped and installed, run the following
+while in the project's root directory:
+
+```sh
+$ make          # create the dune.exe file and bootstrap the dune build
+$ make install  # install the newly built dune
+```
+
 Note that we don't include all of the sources in boot.ml. We skip a
 few parts to speed up the build. In particular:
 - vendored libraries are replaced by simpler implementations taken

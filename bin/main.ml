@@ -434,6 +434,15 @@ let rules =
   in
   (term, Term.info "rules" ~doc ~man)
 
+let interpret_destdir ~destdir path =
+  match destdir with
+  | None ->
+    path
+  | Some prefix ->
+    Path.append_local
+      (Path.of_string prefix)
+      (Path.local_part path)
+
 let get_dirs context ~prefix_from_command_line ~libdir_from_command_line =
   match prefix_from_command_line with
   | Some p ->
@@ -568,6 +577,7 @@ let install_uninstall ~what =
       Arg.(value & pos_all package_name [] name_)
     in
     Common.set_common common ~targets:[];
+    let destdir = Sys.getenv_opt "DESTDIR" in
     let log = Log.create common in
     Scheduler.go ~log ~common
       (Main.setup ~log common >>= fun setup ->
@@ -610,21 +620,23 @@ let install_uninstall ~what =
        Fiber.parallel_iter install_files_by_context
          ~f:(fun (context, install_files) ->
            get_dirs context ~prefix_from_command_line ~libdir_from_command_line
-           >>| fun (destdir, libdir) ->
+           >>| fun (prefix, libdir) ->
            List.iter install_files ~f:(fun (package, path) ->
              let entries = Install.load_install_file path in
              let paths =
                Install.Section.Paths.make
                  ~package
-                 ~destdir
+                 ~destdir:prefix
                  ?libdir
                  ()
              in
              let files_deleted_in = ref Path.Set.empty in
              List.iter entries ~f:(fun { Install.Entry. src; dst; section } ->
-               let dst = Option.value dst ~default:(Path.basename src) in
                let dst =
-                 Path.relative (Install.Section.Paths.get paths section) dst
+                 dst
+                 |> Option.value ~default:(Path.basename src)
+                 |> Path.relative (Install.Section.Paths.get paths section)
+                 |> interpret_destdir ~destdir
                in
                let dir = Path.parent_exn dst in
                if what = "install" then begin

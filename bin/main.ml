@@ -83,9 +83,10 @@ let installed_libraries =
       (Context.create ~env
          { merlin_context = Some "default"
          ; contexts = [Default { loc = Loc.of_pos __POS__
-                               ; targets = [Native]
-                               ; profile = Config.default_build_profile
-                               ; env     = None
+                               ; targets   = [Native]
+                               ; profile   = Config.default_build_profile
+                               ; env       = None
+                               ; toolchain = None
                                }]
          ; env = None
          }

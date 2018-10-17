@@ -47,22 +47,26 @@ module Context = struct
 
   module Common = struct
     type t =
-      { loc     : Loc.t
-      ; profile : string
-      ; targets : Target.t list
-      ; env     : Dune_env.Stanza.t option
+      { loc       : Loc.t
+      ; profile   : string
+      ; targets   : Target.t list
+      ; env       : Dune_env.Stanza.t option
+      ; toolchain : string option
       }
 
     let t ~profile =
       let%map env = env_field
       and targets = field "targets" (list Target.t) ~default:[Target.Native]
       and profile = field "profile" string ~default:profile
+      and toolchain =
+        field_o "toolchain" (Syntax.since syntax (1, 5) >>= fun () -> string)
       and loc = loc
       in
       { targets
       ; profile
       ; loc
       ; env
+      ; toolchain
       }
   end
 
@@ -147,6 +151,7 @@ module Context = struct
       ; profile = Option.value profile
                     ~default:Config.default_build_profile
       ; env = None
+      ; toolchain = None
       }
 end
 

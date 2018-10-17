@@ -579,17 +579,21 @@ let create ~env (workspace : Workspace.t) =
   in
   Fiber.parallel_map workspace.contexts ~f:(fun def ->
     match def with
-    | Default { targets; profile; env = env_node ; loc = _ } ->
+    | Default { targets; profile; env = env_node ; toolchain ; loc = _ } ->
       let merlin =
         workspace.merlin_context = Some (Workspace.Context.name def)
       in
-      let host_toolchain = Env.get env "OCAMLFIND_TOOLCHAIN" in
+      let host_toolchain =
+        match toolchain, Env.get env "OCAMLFIND_TOOLCHAIN" with
+        | Some t, _ -> Some t
+        | None, default -> default
+      in
       default ~env ~env_nodes:(env_nodes env_node) ~profile ~targets ~merlin
         ~host_toolchain
-    | Opam { base = { targets; profile; env = env_node; loc = _ }
+    | Opam { base = { targets; profile; env = env_node; toolchain; loc = _ }
            ; name; switch; root; merlin } ->
       create_for_opam ~root ~env_nodes:(env_nodes env_node) ~env ~profile
-        ~switch ~name ~merlin ~targets ~host_toolchain:None)
+        ~switch ~name ~merlin ~targets ~host_toolchain:toolchain)
   >>| List.concat
 
 let which t s = which ~cache:t.which_cache ~path:t.path s

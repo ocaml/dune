@@ -253,7 +253,7 @@ let run_internal ?dir ?(stdout_to=Terminal) ?(stderr_to=Terminal) ~env ~purpose
     else
       (args, None)
   in
-  let argv = Array.of_list (prog_str :: args) in
+  let argv = prog_str :: args in
   let output_filename, stdout_fd, stderr_fd, to_close =
     match stdout_to, stderr_to with
     | (Terminal, _ | _, Terminal) when !Clflags.capture_outputs ->
@@ -266,8 +266,12 @@ let run_internal ?dir ?(stdout_to=Terminal) ?(stderr_to=Terminal) ~env ~purpose
   let stdout, close_stdout = get_std_output stdout_to ~default:stdout_fd in
   let stderr, close_stderr = get_std_output stderr_to ~default:stderr_fd in
   let run () =
-    Unix.create_process_env prog_str argv (Env.to_unix env)
-      Unix.stdin stdout stderr
+    Spawn.spawn ()
+      ~prog:prog_str
+      ~argv
+      ~env:(Spawn.Env.of_array (Env.to_unix env))
+      ~stdout
+      ~stderr
   in
   let pid =
     match dir with

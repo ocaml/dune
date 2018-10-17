@@ -261,15 +261,13 @@ end = struct
   let spawn_external_watcher () =
     let prog, args = Lazy.force command in
     let prog = Path.to_absolute_filename prog in
-    let args = Array.of_list (prog :: args) in
+    let argv = prog :: args in
     let r, w = Unix.pipe () in
     let pid =
-      Unix.create_process
-        prog
-        args
-        Unix.stdin
-        w
-        Unix.stderr
+      Spawn.spawn ()
+        ~prog
+        ~argv
+        ~stdout:w
     in
     Unix.close w;
     (r, pid)

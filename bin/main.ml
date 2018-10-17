@@ -434,15 +434,21 @@ let rules =
   in
   (term, Term.info "rules" ~doc ~man)
 
-let get_prefix context ~from_command_line =
-  match from_command_line with
-  | Some p -> Fiber.return (Path.of_string p)
-  | None -> Context.install_prefix context
-
-let get_libdir context ~prefix ~libdir_from_command_line =
-  match libdir_from_command_line with
-  | Some p -> Fiber.return (Some (Path.relative prefix p))
-  | None -> Context.install_ocaml_libdir context
+let get_dirs context ~prefix_from_command_line ~libdir_from_command_line =
+  match prefix_from_command_line with
+  | Some p ->
+    let prefix = Path.of_string p in
+    let dir = Option.value ~default:"lib" libdir_from_command_line in
+    Fiber.return (prefix, Some (Path.relative prefix dir))
+  | None ->
+    Context.install_prefix context >>= fun prefix ->
+    let libdir =
+      match libdir_from_command_line with
+      | None -> Context.install_ocaml_libdir context
+      | Some l -> Fiber.return (Some (Path.relative prefix l))
+    in
+    libdir >>| fun libdir ->
+    (prefix, libdir)
 
 let print_unix_error f =
   try
@@ -603,16 +609,14 @@ let install_uninstall ~what =
        let (module Ops) = file_operations ~dry_run in
        Fiber.parallel_iter install_files_by_context
          ~f:(fun (context, install_files) ->
-           get_prefix context ~from_command_line:prefix_from_command_line
-           >>= fun prefix ->
-           get_libdir context ~prefix ~libdir_from_command_line
-           >>| fun libdir ->
+           get_dirs context ~prefix_from_command_line ~libdir_from_command_line
+           >>| fun (destdir, libdir) ->
            List.iter install_files ~f:(fun (package, path) ->
              let entries = Install.load_install_file path in
              let paths =
                Install.Section.Paths.make
                  ~package
-                 ~destdir:prefix
+                 ~destdir
                  ?libdir
                  ()
              in

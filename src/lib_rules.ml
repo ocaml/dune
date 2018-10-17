@@ -100,11 +100,22 @@ module Gen (P : Install_rules.Params) = struct
 
   let build_alias_module { Lib_modules.Alias_module.main_module_name
                          ; alias_module }
-        ~modules ~cctx ~dynlink ~js_of_ocaml =
+        ~modules ~modules_of_vlib ~cctx ~dynlink ~js_of_ocaml =
     let file =
       match Module.impl alias_module with
       | Some f -> f
       | None -> Option.value_exn (Module.intf alias_module)
+    in
+    let modules =
+      match modules_of_vlib with
+      | None -> modules
+      | Some vlib ->
+        Module.Name.Map.merge modules vlib ~f:(fun _ impl vlib ->
+          match impl, vlib with
+          | None, None -> assert false
+          | Some _, (None | Some _) -> impl
+          | _, Some vlib -> Option.some_if (Module.is_public vlib) vlib
+        )
     in
     SC.add_rule sctx
       (Build.return
@@ -389,13 +400,14 @@ module Gen (P : Install_rules.Params) = struct
 
     let alias_module = Lib_modules.alias_module lib_modules in
     let modules = Lib_modules.for_compilation lib_modules in
-    let modules_of_vlib =
-      Option.map impl ~f:Virtual_rules.Implementation.modules_of_vlib in
 
     let cctx =
       Compilation_context.create ()
         ~super_context:sctx
-        ?modules_of_vlib
+        ?modules_of_vlib:(
+          Option.map impl ~f:(fun impl ->
+            Virtual_rules.Implementation.vlib_modules impl
+            |> Lib_modules.modules ))
         ~scope
         ~dir
         ~dir_kind
@@ -430,10 +442,14 @@ module Gen (P : Install_rules.Params) = struct
 
     Module_compilation.build_modules cctx ~js_of_ocaml ~dynlink ~dep_graphs;
 
-    if Option.is_none lib.stdlib && Option.is_none impl then
+    let vlib_modules =
+      Option.map ~f:Virtual_rules.Implementation.vlib_modules impl in
+
+    if Option.is_none lib.stdlib then
       Option.iter (Lib_modules.alias lib_modules)
         ~f:(build_alias_module ~modules:source_modules ~cctx ~dynlink
-              ~js_of_ocaml);
+              ~js_of_ocaml
+              ~modules_of_vlib:(Option.map vlib_modules ~f:Lib_modules.modules));
 
     let vlib_stubs_o_files =
       match impl with
@@ -446,9 +462,9 @@ module Gen (P : Install_rules.Params) = struct
     setup_file_deps lib ~dir ~obj_dir
       ~modules:(Lib_modules.have_artifacts lib_modules)
       ~modules_of_vlib:(
-        match impl with
+        match vlib_modules with
         | None -> Module.Name.Map.empty
-        | Some impl -> Virtual_rules.Implementation.modules_of_vlib impl);
+        | Some modules -> Lib_modules.for_compilation modules);
 
     if not (Library.is_virtual lib) then begin
       let modules =
@@ -470,9 +486,12 @@ module Gen (P : Install_rules.Params) = struct
       in
       let modules = Module.Name_map.impl_only modules in
       let modules =
-        match modules_of_vlib with
+        match vlib_modules with
         | None -> modules
-        | Some m -> List.rev_append modules (Module.Name_map.impl_only m)
+        | Some vlib_modules ->
+          Lib_modules.modules vlib_modules
+          |> Module.Name_map.impl_only
+          |> List.rev_append modules
       in
       let wrapped_compat = Module.Name.Map.values wrapped_compat in
       (* Compatibility modules have implementations so we can just append them.

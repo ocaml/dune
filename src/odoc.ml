@@ -238,7 +238,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
         in
         Some (sp "<li>%s%s</li>" link version_suffix))
     in
-    let list_items = String.concat ~sep:"\n    " list_items in
+    let list_items = String.concat ~sep:"\n      " list_items in
     let html = sp
 {|<!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml">
@@ -249,12 +249,14 @@ module Gen (S : sig val sctx : SC.t end) = struct
     <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
   </head>
   <body>
-    <div class="by-name">
-    <h2>OCaml package documentation</h2>
-    <ol>
-    %s
-    </ol>
-    </div>
+    <main class="content">
+      <div class="by-name">
+      <h2>OCaml package documentation</h2>
+      <ol>
+      %s
+      </ol>
+      </div>
+    </main>
   </body>
 </html>|} list_items
     in

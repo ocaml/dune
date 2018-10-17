@@ -99,6 +99,8 @@ val set_pp : t -> (unit, string list) Build.t option -> t
 
 val to_sexp : t Sexp.Encoder.t
 
+val pp : t Fmt.t
+
 val wrapped_compat : t -> t
 
 module Name_map : sig

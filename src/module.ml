@@ -36,11 +36,13 @@ end
 module Syntax = struct
   type t = OCaml | Reason
 
-  let to_sexp =
-    let open Sexp.Encoder in
-    function
-    | OCaml -> string "OCaml"
-    | Reason -> string "Reason"
+  let to_string = function
+    | OCaml -> "ocaml"
+    | Reason -> "reason"
+
+  let pp fmt t = Format.pp_print_string fmt (to_string t)
+
+  let to_sexp t = Sexp.Encoder.string (to_string t)
 end
 
 module File = struct
@@ -57,14 +59,24 @@ module File = struct
       [ "path", Path.to_sexp path
       ; "syntax", Syntax.to_sexp syntax
       ]
+
+  let pp fmt { path; syntax } =
+    Fmt.record fmt
+      [ "path", Fmt.const Path.pp path
+      ; "syntax", Fmt.const Syntax.pp syntax
+      ]
 end
 
 module Visibility = struct
   type t = Public | Private
 
-  let to_sexp = function
-    | Public -> Sexp.Encoder.string "public"
-    | Private -> Sexp.Encoder.string "private"
+  let to_string = function
+    | Public -> "public"
+    | Private -> "private"
+
+  let pp fmt t = Format.pp_print_string fmt (to_string t)
+
+  let to_sexp t = Sexp.Encoder.string (to_string t)
 
   let is_public = function
     | Public -> true
@@ -193,6 +205,15 @@ let to_sexp { name; impl; intf; obj_name ; pp ; visibility } =
     ; "intf", (option File.to_sexp) intf
     ; "pp", (option string) (Option.map ~f:(fun _ -> "has pp") pp)
     ; "visibility", Visibility.to_sexp visibility
+    ]
+
+let pp fmt { name; impl; intf; obj_name ; pp = _ ; visibility } =
+  Fmt.record fmt
+    [ "name", Fmt.const Name.pp name
+    ; "impl", Fmt.const (Fmt.optional File.pp) impl
+    ; "intf", Fmt.const (Fmt.optional File.pp) intf
+    ; "obj_name", Fmt.const Format.pp_print_string obj_name
+    ; "visibility", Fmt.const Visibility.pp visibility
     ]
 
 let wrapped_compat t =

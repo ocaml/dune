@@ -5,5 +5,4 @@ If there is an (action) field defined in a test stanza and dune-project sets
   File "dune", line 3, characters 2-24:
   3 |   (action (run %{test}))
         ^^^^^^^^^^^^^^^^^^^^^^
-  Error: 'action' is only available since version 1.2 of the dune language
-  [1]
+  Warning: 'action' is only available since version 1.2 of the dune language

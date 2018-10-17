@@ -267,3 +267,43 @@ But also when the prefix is explicit:
   Copying _build/install/default/lib/foo/opam to DESTDIR/prefix/lib/foo/opam (executable: false)
   Creating directory DESTDIR/prefix/bin
   Copying _build/install/default/bin/exec to DESTDIR/prefix/bin/exec (executable: true)
+
+DESTDIR can also be passed as a command line flag.
+
+  $ dune install --destdir DESTDIR --prefix prefix --dry-run
+  Installing DESTDIR/prefix/lib/foo/META
+  Installing DESTDIR/prefix/lib/foo/foo$ext_lib
+  Installing DESTDIR/prefix/lib/foo/foo.cma
+  Installing DESTDIR/prefix/lib/foo/foo.cmi
+  Installing DESTDIR/prefix/lib/foo/foo.cmt
+  Installing DESTDIR/prefix/lib/foo/foo.cmx
+  Installing DESTDIR/prefix/lib/foo/foo.cmxa
+  Installing DESTDIR/prefix/lib/foo/foo.cmxs
+  Installing DESTDIR/prefix/lib/foo/foo.dune
+  Installing DESTDIR/prefix/lib/foo/foo.ml
+  Installing DESTDIR/prefix/lib/foo/opam
+  Installing DESTDIR/prefix/bin/exec
+  Creating directory DESTDIR/prefix/lib/foo
+  Copying _build/install/default/lib/foo/META to DESTDIR/prefix/lib/foo/META (executable: false)
+  Creating directory DESTDIR/prefix/lib/foo
+  Copying _build/install/default/lib/foo/foo$ext_lib to DESTDIR/prefix/lib/foo/foo$ext_lib (executable: false)
+  Creating directory DESTDIR/prefix/lib/foo
+  Copying _build/install/default/lib/foo/foo.cma to DESTDIR/prefix/lib/foo/foo.cma (executable: false)
+  Creating directory DESTDIR/prefix/lib/foo
+  Copying _build/install/default/lib/foo/foo.cmi to DESTDIR/prefix/lib/foo/foo.cmi (executable: false)
+  Creating directory DESTDIR/prefix/lib/foo
+  Copying _build/install/default/lib/foo/foo.cmt to DESTDIR/prefix/lib/foo/foo.cmt (executable: false)
+  Creating directory DESTDIR/prefix/lib/foo
+  Copying _build/install/default/lib/foo/foo.cmx to DESTDIR/prefix/lib/foo/foo.cmx (executable: false)
+  Creating directory DESTDIR/prefix/lib/foo
+  Copying _build/install/default/lib/foo/foo.cmxa to DESTDIR/prefix/lib/foo/foo.cmxa (executable: false)
+  Creating directory DESTDIR/prefix/lib/foo
+  Copying _build/install/default/lib/foo/foo.cmxs to DESTDIR/prefix/lib/foo/foo.cmxs (executable: false)
+  Creating directory DESTDIR/prefix/lib/foo
+  Copying _build/install/default/lib/foo/foo.dune to DESTDIR/prefix/lib/foo/foo.dune (executable: false)
+  Creating directory DESTDIR/prefix/lib/foo
+  Copying _build/install/default/lib/foo/foo.ml to DESTDIR/prefix/lib/foo/foo.ml (executable: false)
+  Creating directory DESTDIR/prefix/lib/foo
+  Copying _build/install/default/lib/foo/opam to DESTDIR/prefix/lib/foo/opam (executable: false)
+  Creating directory DESTDIR/prefix/bin
+  Copying _build/install/default/bin/exec to DESTDIR/prefix/bin/exec (executable: true)

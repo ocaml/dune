@@ -550,7 +550,7 @@ let install_uninstall ~what =
     and prefix_from_command_line =
       Arg.(value
            & opt (some string) None
-           & info ["destdir"; "prefix"]
+           & info ["prefix"]
                ~docv:"PREFIX"
                ~doc:"Directory where files are copied. For instance binaries \
                      are copied into $(i,\\$prefix/bin), library files into \
@@ -567,6 +567,15 @@ let install_uninstall ~what =
                      is specified the default is $(i,\\$prefix/lib), otherwise \
                      it is the output of $(b,ocamlfind printconf destdir)"
           )
+    and destdir =
+      Arg.(value
+           & opt (some string) None
+           & info ["destdir"]
+               ~env:(env_var "DESTDIR")
+               ~docv:"PATH"
+               ~doc:"When passed, this directory is prepended to all \
+                     installed paths."
+          )
     and dry_run =
       Arg.(value
            & flag
@@ -577,7 +586,6 @@ let install_uninstall ~what =
       Arg.(value & pos_all package_name [] name_)
     in
     Common.set_common common ~targets:[];
-    let destdir = Sys.getenv_opt "DESTDIR" in
     let log = Log.create common in
     Scheduler.go ~log ~common
       (Main.setup ~log common >>= fun setup ->

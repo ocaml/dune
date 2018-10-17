@@ -1876,7 +1876,8 @@ module Tests = struct
        and deps =
          field "deps" (Bindings.decode Dep_conf.decode) ~default:Bindings.empty
        and enabled_if = enabled_if
-       and action = field_o "action" Action.Unexpanded.decode
+       and action =
+         field_o "action" (Syntax.since Stanza.syntax (1, 2) >>> Action.Unexpanded.decode)
        in
        { exes =
            { Executables.

@@ -268,3 +268,15 @@ let remove_files t =
 let sources t =
   List.filter_map [t.intf; t.impl]
     ~f:(Option.map ~f:(fun (x : File.t) -> x.path))
+
+module Obj_map = struct
+  include Map.Make(struct
+      type nonrec t = t
+      let compare m1 m2 = String.compare m1.obj_name m2.obj_name
+    end)
+
+  let top_closure t =
+    Top_closure.String.top_closure
+      ~key:(fun m -> m.obj_name)
+      ~deps:(fun m -> Option.value_exn (find t m))
+end

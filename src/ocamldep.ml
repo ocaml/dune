@@ -42,10 +42,33 @@ module Dep_graph = struct
         (Fmt.list ~pp_sep:Fmt.nl (Fmt.prefix (Fmt.string "-> ") Module.Name.pp))
         (List.map cycle ~f:Module.name)
 
+  let top_closed_multi (ts : (Module.Name_map.t * t) list) modules =
+    List.concat_map ts ~f:(fun (module_map, t) ->
+      List.map (Module.Name.Map.to_list t.per_module) ~f:(fun (unit, deps) ->
+        let unit =
+          Module.Name.Map.find module_map unit
+          |> Option.value_exn
+        in
+        deps >>^ fun deps -> (unit, deps)))
+    |> Build.all >>^ fun per_module ->
+    let per_obj = Module.Obj_map.of_list_exn per_module in
+    match Module.Obj_map.top_closure per_obj modules with
+    | Ok modules -> modules
+    | Error cycle ->
+      die "dependency cycle between modules\n   %a"
+        (Fmt.list ~pp_sep:Fmt.nl (Fmt.prefix (Fmt.string "-> ") Module.Name.pp))
+        (List.map cycle ~f:Module.name)
+
   let top_closed_implementations t modules =
     Build.memoize "top sorted implementations" (
       let filter_out_intf_only = List.filter ~f:Module.has_impl in
       top_closed t (filter_out_intf_only modules)
+      >>^ filter_out_intf_only)
+
+  let top_closed_multi_implementations ts modules =
+    Build.memoize "top sorted mutli implementations" (
+      let filter_out_intf_only = List.filter ~f:Module.has_impl in
+      top_closed_multi ts (filter_out_intf_only modules)
       >>^ filter_out_intf_only)
 
   let dummy (m : Module.t) =

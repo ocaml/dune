@@ -14,6 +14,16 @@ module Dep_graph : sig
     :  t
     -> Module.t list
     -> (unit, Module.t list) Build.t
+
+  val top_closed_multi
+    : (Module.Name_map.t * t) list
+    -> Module.t list
+    -> (unit, Module.t list) Build.t
+
+  val top_closed_multi_implementations
+    : (Module.Name_map.t * t) list
+    -> Module.t list
+    -> (unit, Module.t list) Build.t
 end
 
 module Dep_graphs : sig

@@ -114,6 +114,16 @@ module Name_map : sig
   val add : t -> module_ -> t
 end with type module_ := t
 
+module Obj_map : sig
+  type module_
+  include Map.S with type key = module_
+
+  val top_closure
+    :  module_ list t
+    -> module_ list
+    -> (module_ list, module_ list) Result.result
+end with type module_ := t
+
 val is_public : t -> bool
 val is_private : t -> bool
 

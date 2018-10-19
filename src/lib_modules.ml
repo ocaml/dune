@@ -197,6 +197,9 @@ let for_compilation t =
 let has_private_modules t =
   Module.Name.Map.exists t.modules ~f:Module.is_private
 
+let public_modules t =
+  Module.Name.Map.filter ~f:Module.is_public t.modules
+
 let have_artifacts t =
   let base =
     Module.Name.Map.superpose t.modules t.wrapped_compat in

@@ -50,6 +50,7 @@ module External : sig
   val extension : t -> string
   val is_suffix : t -> suffix:string -> bool
   val split_extension : t -> t * string
+  val as_local : t -> string
 end = struct
   include Interned.No_interning(struct
       let initial_size = 512
@@ -123,6 +124,10 @@ end = struct
 
   let cwd () = make (Sys.getcwd ())
   let initial_cwd = cwd ()
+
+  let as_local t =
+    let s = to_string t in
+    "." ^ s
 end
 
 module Local : sig
@@ -959,3 +964,8 @@ module L = struct
   (* TODO more efficient implementation *)
   let relative t = List.fold_left ~init:t ~f:relative
 end
+
+let local_part = function
+  | External e -> Local.of_string (External.as_local e)
+  | In_source_tree l -> l
+  | In_build_dir l -> l

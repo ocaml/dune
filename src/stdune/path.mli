@@ -175,3 +175,10 @@ end
 module L : sig
   val relative : t -> string list -> t
 end
+
+(** Return the "local part" of a path.
+    For local paths (in build directory or source tree),
+    this returns the path itself.
+    For external paths, it returns a path that is relative to the current
+    directory. For example, the local part of [/a/b] is [./a/b]. *)
+val local_part : t -> Local.t

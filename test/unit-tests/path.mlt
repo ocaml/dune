@@ -10,11 +10,17 @@ let e = Path.of_filename_relative_to_initial_cwd;;
 
 #install_printer Path.pp_debug;;
 
+let pp_path_local fmt l =
+  Format.pp_print_string fmt (Path.Local.to_string l);;
+
+#install_printer pp_path_local;;
+
 Path.(let p = relative root "foo" in descendant p ~of_:p)
 [%%expect{|
 - : unit = ()
 val r : string -> Path.t = <fun>
 val e : string -> Path.t = <fun>
+val pp_path_local : Format.formatter -> Path.Local.t -> unit = <fun>
 - : Path.t option = Some (In_source_tree ".")
 |}]
 
@@ -126,7 +132,7 @@ Path.(descendant (relative build_dir "foo") ~of_:root)
 
 Path.(descendant (relative build_dir "foo") ~of_:(absolute "/foo/bar"))
 [%%expect{|
-File "test/unit-tests/path.mlt", line 127, characters 50-58:
+File "test/unit-tests/path.mlt", line 133, characters 50-58:
 Error: Unbound value absolute
 |}]
 
@@ -147,7 +153,7 @@ Path.(descendant (relative build_dir "foo/bar") ~of_:(relative build_dir "foo"))
 
 Path.(descendant (absolute "/foo/bar") ~of_:(absolute "/foo"))
 [%%expect{|
-File "test/unit-tests/path.mlt", line 148, characters 18-26:
+File "test/unit-tests/path.mlt", line 154, characters 18-26:
 Error: Unbound value absolute
 |}]
 
@@ -352,4 +358,19 @@ Path.relative Path.root "_build"
 Path.relative (r "foo") "../_build"
 [%%expect{|
 - : Path.t = (In_build_dir ".")
+|}]
+
+Path.local_part (Path.of_string "/c/d")
+[%%expect{|
+- : Path.Local.t = c/d
+|}]
+
+Path.local_part (Path.insert_after_build_dir_exn Path.build_dir "c/d")
+[%%expect{|
+- : Path.Local.t = c/d
+|}]
+
+Path.local_part (r "c/d")
+[%%expect{|
+- : Path.Local.t = c/d
 |}]

@@ -186,3 +186,124 @@ in libdir:
   Removing (if it exists) OPAM_VAR_PREFIX/bin/exec
   Removing directory (if empty) OPAM_VAR_PREFIX/bin
   Removing directory (if empty) /LIBDIR/foo
+
+The DESTDIR var is supported. When set, it is prepended to the prefix.
+This is the case when the prefix is implicit:
+
+  $ DESTDIR=DESTDIR dune install --dry-run 2>&1 | sed "s#$(opam config var prefix)#/OPAM_VAR_PREFIX#"
+  Installing DESTDIR/OPAM_VAR_PREFIX/lib/foo/META
+  Installing DESTDIR/OPAM_VAR_PREFIX/lib/foo/foo$ext_lib
+  Installing DESTDIR/OPAM_VAR_PREFIX/lib/foo/foo.cma
+  Installing DESTDIR/OPAM_VAR_PREFIX/lib/foo/foo.cmi
+  Installing DESTDIR/OPAM_VAR_PREFIX/lib/foo/foo.cmt
+  Installing DESTDIR/OPAM_VAR_PREFIX/lib/foo/foo.cmx
+  Installing DESTDIR/OPAM_VAR_PREFIX/lib/foo/foo.cmxa
+  Installing DESTDIR/OPAM_VAR_PREFIX/lib/foo/foo.cmxs
+  Installing DESTDIR/OPAM_VAR_PREFIX/lib/foo/foo.dune
+  Installing DESTDIR/OPAM_VAR_PREFIX/lib/foo/foo.ml
+  Installing DESTDIR/OPAM_VAR_PREFIX/lib/foo/opam
+  Installing DESTDIR/OPAM_VAR_PREFIX/bin/exec
+  Creating directory DESTDIR/OPAM_VAR_PREFIX/lib/foo
+  Copying _build/install/default/lib/foo/META to DESTDIR/OPAM_VAR_PREFIX/lib/foo/META (executable: false)
+  Creating directory DESTDIR/OPAM_VAR_PREFIX/lib/foo
+  Copying _build/install/default/lib/foo/foo$ext_lib to DESTDIR/OPAM_VAR_PREFIX/lib/foo/foo$ext_lib (executable: false)
+  Creating directory DESTDIR/OPAM_VAR_PREFIX/lib/foo
+  Copying _build/install/default/lib/foo/foo.cma to DESTDIR/OPAM_VAR_PREFIX/lib/foo/foo.cma (executable: false)
+  Creating directory DESTDIR/OPAM_VAR_PREFIX/lib/foo
+  Copying _build/install/default/lib/foo/foo.cmi to DESTDIR/OPAM_VAR_PREFIX/lib/foo/foo.cmi (executable: false)
+  Creating directory DESTDIR/OPAM_VAR_PREFIX/lib/foo
+  Copying _build/install/default/lib/foo/foo.cmt to DESTDIR/OPAM_VAR_PREFIX/lib/foo/foo.cmt (executable: false)
+  Creating directory DESTDIR/OPAM_VAR_PREFIX/lib/foo
+  Copying _build/install/default/lib/foo/foo.cmx to DESTDIR/OPAM_VAR_PREFIX/lib/foo/foo.cmx (executable: false)
+  Creating directory DESTDIR/OPAM_VAR_PREFIX/lib/foo
+  Copying _build/install/default/lib/foo/foo.cmxa to DESTDIR/OPAM_VAR_PREFIX/lib/foo/foo.cmxa (executable: false)
+  Creating directory DESTDIR/OPAM_VAR_PREFIX/lib/foo
+  Copying _build/install/default/lib/foo/foo.cmxs to DESTDIR/OPAM_VAR_PREFIX/lib/foo/foo.cmxs (executable: false)
+  Creating directory DESTDIR/OPAM_VAR_PREFIX/lib/foo
+  Copying _build/install/default/lib/foo/foo.dune to DESTDIR/OPAM_VAR_PREFIX/lib/foo/foo.dune (executable: false)
+  Creating directory DESTDIR/OPAM_VAR_PREFIX/lib/foo
+  Copying _build/install/default/lib/foo/foo.ml to DESTDIR/OPAM_VAR_PREFIX/lib/foo/foo.ml (executable: false)
+  Creating directory DESTDIR/OPAM_VAR_PREFIX/lib/foo
+  Copying _build/install/default/lib/foo/opam to DESTDIR/OPAM_VAR_PREFIX/lib/foo/opam (executable: false)
+  Creating directory DESTDIR/OPAM_VAR_PREFIX/bin
+  Copying _build/install/default/bin/exec to DESTDIR/OPAM_VAR_PREFIX/bin/exec (executable: true)
+
+But also when the prefix is explicit:
+
+  $ DESTDIR=DESTDIR dune install --prefix prefix --dry-run
+  Installing DESTDIR/prefix/lib/foo/META
+  Installing DESTDIR/prefix/lib/foo/foo$ext_lib
+  Installing DESTDIR/prefix/lib/foo/foo.cma
+  Installing DESTDIR/prefix/lib/foo/foo.cmi
+  Installing DESTDIR/prefix/lib/foo/foo.cmt
+  Installing DESTDIR/prefix/lib/foo/foo.cmx
+  Installing DESTDIR/prefix/lib/foo/foo.cmxa
+  Installing DESTDIR/prefix/lib/foo/foo.cmxs
+  Installing DESTDIR/prefix/lib/foo/foo.dune
+  Installing DESTDIR/prefix/lib/foo/foo.ml
+  Installing DESTDIR/prefix/lib/foo/opam
+  Installing DESTDIR/prefix/bin/exec
+  Creating directory DESTDIR/prefix/lib/foo
+  Copying _build/install/default/lib/foo/META to DESTDIR/prefix/lib/foo/META (executable: false)
+  Creating directory DESTDIR/prefix/lib/foo
+  Copying _build/install/default/lib/foo/foo$ext_lib to DESTDIR/prefix/lib/foo/foo$ext_lib (executable: false)
+  Creating directory DESTDIR/prefix/lib/foo
+  Copying _build/install/default/lib/foo/foo.cma to DESTDIR/prefix/lib/foo/foo.cma (executable: false)
+  Creating directory DESTDIR/prefix/lib/foo
+  Copying _build/install/default/lib/foo/foo.cmi to DESTDIR/prefix/lib/foo/foo.cmi (executable: false)
+  Creating directory DESTDIR/prefix/lib/foo
+  Copying _build/install/default/lib/foo/foo.cmt to DESTDIR/prefix/lib/foo/foo.cmt (executable: false)
+  Creating directory DESTDIR/prefix/lib/foo
+  Copying _build/install/default/lib/foo/foo.cmx to DESTDIR/prefix/lib/foo/foo.cmx (executable: false)
+  Creating directory DESTDIR/prefix/lib/foo
+  Copying _build/install/default/lib/foo/foo.cmxa to DESTDIR/prefix/lib/foo/foo.cmxa (executable: false)
+  Creating directory DESTDIR/prefix/lib/foo
+  Copying _build/install/default/lib/foo/foo.cmxs to DESTDIR/prefix/lib/foo/foo.cmxs (executable: false)
+  Creating directory DESTDIR/prefix/lib/foo
+  Copying _build/install/default/lib/foo/foo.dune to DESTDIR/prefix/lib/foo/foo.dune (executable: false)
+  Creating directory DESTDIR/prefix/lib/foo
+  Copying _build/install/default/lib/foo/foo.ml to DESTDIR/prefix/lib/foo/foo.ml (executable: false)
+  Creating directory DESTDIR/prefix/lib/foo
+  Copying _build/install/default/lib/foo/opam to DESTDIR/prefix/lib/foo/opam (executable: false)
+  Creating directory DESTDIR/prefix/bin
+  Copying _build/install/default/bin/exec to DESTDIR/prefix/bin/exec (executable: true)
+
+DESTDIR can also be passed as a command line flag.
+
+  $ dune install --destdir DESTDIR --prefix prefix --dry-run
+  Installing DESTDIR/prefix/lib/foo/META
+  Installing DESTDIR/prefix/lib/foo/foo$ext_lib
+  Installing DESTDIR/prefix/lib/foo/foo.cma
+  Installing DESTDIR/prefix/lib/foo/foo.cmi
+  Installing DESTDIR/prefix/lib/foo/foo.cmt
+  Installing DESTDIR/prefix/lib/foo/foo.cmx
+  Installing DESTDIR/prefix/lib/foo/foo.cmxa
+  Installing DESTDIR/prefix/lib/foo/foo.cmxs
+  Installing DESTDIR/prefix/lib/foo/foo.dune
+  Installing DESTDIR/prefix/lib/foo/foo.ml
+  Installing DESTDIR/prefix/lib/foo/opam
+  Installing DESTDIR/prefix/bin/exec
+  Creating directory DESTDIR/prefix/lib/foo
+  Copying _build/install/default/lib/foo/META to DESTDIR/prefix/lib/foo/META (executable: false)
+  Creating directory DESTDIR/prefix/lib/foo
+  Copying _build/install/default/lib/foo/foo$ext_lib to DESTDIR/prefix/lib/foo/foo$ext_lib (executable: false)
+  Creating directory DESTDIR/prefix/lib/foo
+  Copying _build/install/default/lib/foo/foo.cma to DESTDIR/prefix/lib/foo/foo.cma (executable: false)
+  Creating directory DESTDIR/prefix/lib/foo
+  Copying _build/install/default/lib/foo/foo.cmi to DESTDIR/prefix/lib/foo/foo.cmi (executable: false)
+  Creating directory DESTDIR/prefix/lib/foo
+  Copying _build/install/default/lib/foo/foo.cmt to DESTDIR/prefix/lib/foo/foo.cmt (executable: false)
+  Creating directory DESTDIR/prefix/lib/foo
+  Copying _build/install/default/lib/foo/foo.cmx to DESTDIR/prefix/lib/foo/foo.cmx (executable: false)
+  Creating directory DESTDIR/prefix/lib/foo
+  Copying _build/install/default/lib/foo/foo.cmxa to DESTDIR/prefix/lib/foo/foo.cmxa (executable: false)
+  Creating directory DESTDIR/prefix/lib/foo
+  Copying _build/install/default/lib/foo/foo.cmxs to DESTDIR/prefix/lib/foo/foo.cmxs (executable: false)
+  Creating directory DESTDIR/prefix/lib/foo
+  Copying _build/install/default/lib/foo/foo.dune to DESTDIR/prefix/lib/foo/foo.dune (executable: false)
+  Creating directory DESTDIR/prefix/lib/foo
+  Copying _build/install/default/lib/foo/foo.ml to DESTDIR/prefix/lib/foo/foo.ml (executable: false)
+  Creating directory DESTDIR/prefix/lib/foo
+  Copying _build/install/default/lib/foo/opam to DESTDIR/prefix/lib/foo/opam (executable: false)
+  Creating directory DESTDIR/prefix/bin
+  Copying _build/install/default/bin/exec to DESTDIR/prefix/bin/exec (executable: true)

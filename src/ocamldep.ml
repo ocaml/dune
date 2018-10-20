@@ -8,13 +8,13 @@ module SC = Super_context
 module Dep_graph = struct
   type t =
     { dir        : Path.t
-    ; per_module : (unit, Module.t list) Build.t Module.Name.Map.t
+    ; per_module : (Module.t * (unit, Module.t list) Build.t) Module.Name.Map.t
     }
 
   let deps_of t (m : Module.t) =
     let name = Module.name m in
     match Module.Name.Map.find t.per_module name with
-    | Some x -> x
+    | Some (_, x) -> x
     | None ->
       Exn.code_error "Ocamldep.Dep_graph.deps_of"
         [ "dir", Path.to_sexp t.dir
@@ -24,16 +24,19 @@ module Dep_graph = struct
         ]
 
   let top_closed t modules =
-    Build.all
-      (List.map (Module.Name.Map.to_list t.per_module) ~f:(fun (unit, deps) ->
-         deps >>^ fun deps -> (unit, deps)))
+    Module.Name.Map.to_list t.per_module
+    |> List.map ~f:(fun (unit, (_module, deps)) ->
+      deps >>^ fun deps -> (unit, deps))
+    |> Build.all
     >>^ fun per_module ->
     let per_module = Module.Name.Map.of_list_exn per_module in
     match
       Module.Name.Top_closure.top_closure modules
         ~key:Module.name
         ~deps:(fun m ->
-          Option.value_exn (Module.Name.Map.find per_module (Module.name m)))
+          Module.name m
+          |> Module.Name.Map.find per_module
+          |> Option.value_exn)
     with
     | Ok modules -> modules
     | Error cycle ->
@@ -42,13 +45,10 @@ module Dep_graph = struct
         (Fmt.list ~pp_sep:Fmt.nl (Fmt.prefix (Fmt.string "-> ") Module.Name.pp))
         (List.map cycle ~f:Module.name)
 
-  let top_closed_multi (ts : (Module.Name_map.t * t) list) modules =
-    List.concat_map ts ~f:(fun (module_map, t) ->
-      List.map (Module.Name.Map.to_list t.per_module) ~f:(fun (unit, deps) ->
-        let unit =
-          Module.Name.Map.find module_map unit
-          |> Option.value_exn
-        in
+  let top_closed_multi (ts : t list) modules =
+    List.concat_map ts ~f:(fun t ->
+      Module.Name.Map.to_list t.per_module
+      |> List.map ~f:(fun (_name, (unit, deps)) ->
         deps >>^ fun deps -> (unit, deps)))
     |> Build.all >>^ fun per_module ->
     let per_obj = Module.Obj_map.of_list_exn per_module in
@@ -73,7 +73,8 @@ module Dep_graph = struct
 
   let dummy (m : Module.t) =
     { dir = Path.root
-    ; per_module = Module.Name.Map.singleton (Module.name m) (Build.return [])
+    ; per_module =
+        Module.Name.Map.singleton (Module.name m) (m, (Build.return []))
     }
 
   let wrapped_compat ~modules ~wrapped_compat =
@@ -86,7 +87,7 @@ module Dep_graph = struct
             [ "deprecated", Module.to_sexp wrapped_compat
             ]
         | None, Some _ -> None
-        | Some _, Some m -> Some (Build.return [m])
+        | Some _, Some m -> Some (m, (Build.return [m]))
       )
     }
 end
@@ -100,6 +101,17 @@ module Dep_graphs = struct
   let wrapped_compat ~modules ~wrapped_compat =
     Ml_kind.Dict.make_both (Dep_graph.wrapped_compat ~modules ~wrapped_compat)
 
+  let merge_impl _ vlib impl =
+    match vlib, impl with
+    | None, None -> assert false
+    | Some d, None
+    | None, Some d -> Some d
+    | Some (mv, v), Some (mi, i) ->
+      if Module.is_private mv then
+        Some (mv, v)
+      else
+        Some (mi, i)
+
   let merge_for_impl ~(vlib : t) ~(impl : t) =
     { Ml_kind.Dict.
       impl =
@@ -107,54 +119,14 @@ module Dep_graphs = struct
           dir = impl.impl.dir
         ; per_module =
             Module.Name.Map.merge vlib.impl.per_module impl.impl.per_module
-              ~f:(fun _ vlib impl ->
-                match vlib, impl with
-                | None, None -> assert false
-                | Some d, None
-                | None, Some d -> Some d
-                | Some v, Some i ->
-                  (* Special case when there's only 1 module named after the
-                     alias module *)
-                  Some (
-                    v &&& i >>^ (fun (v, i) ->
-                      assert (v = []);
-                      i)
-                  )
-              )
+              ~f:merge_impl
         }
-    (* implementations introduce interface dependencies for private modules
-       only *)
     ; intf =
         { Dep_graph.
           dir = impl.intf.dir
         ; per_module =
             Module.Name.Map.merge vlib.intf.per_module impl.intf.per_module
-              ~f:(fun name vlib impl ->
-                match vlib, impl with
-                | None, None -> assert false
-                | Some v, Some i ->
-                  (* This can happen when we are implementing the virtual module
-                     or this is a private module. In the former case, we should
-                     simply use [v], and in the latter, we should use [i]. But
-                     since we can't the tell the cases apart here, we'll just
-                     return the non empty list *)
-                  v &&& i >>^ (function
-                    | [], modules
-                    | modules, [] -> modules
-                    | (_ :: _ as vlib), (_ :: _ as impl) ->
-                      let sexp_modules ms =
-                        Sexp.Encoder.list Module.Name.to_sexp
-                          (List.map ~f:Module.name ms)
-                      in
-                      Exn.code_error
-                        "merge_for_impl: intf deps from impl and vlib"
-                        [ "name", Module.Name.to_sexp name
-                        ; "vlib", sexp_modules vlib
-                        ; "impl", sexp_modules impl
-                        ])
-                  |> Option.some
-                | Some d, None
-                | None, Some d -> Some d)
+              ~f:merge_impl
         }
     }
 end
@@ -317,7 +289,7 @@ let rules_generic cctx ~modules =
   Ml_kind.Dict.of_func
     (fun ~ml_kind ->
        let per_module =
-         Module.Name.Map.map modules ~f:(deps_of cctx ~ml_kind)
+         Module.Name.Map.map modules ~f:(fun m -> (m, deps_of cctx ~ml_kind m))
        in
        { Dep_graph.
          dir = CC.dir cctx
@@ -347,7 +319,7 @@ let graph_of_remote_lib ~obj_dir ~modules =
   in
   Ml_kind.Dict.of_func (fun ~ml_kind ->
     let per_module =
-      Module.Name.Map.map modules ~f:(deps_of ~ml_kind) in
+      Module.Name.Map.map modules ~f:(fun m -> (m, deps_of ~ml_kind m)) in
     { Dep_graph.
       dir = obj_dir
     ; per_module

@@ -113,22 +113,14 @@ module Dep_graphs = struct
         Some (mi, i)
 
   let merge_for_impl ~(vlib : t) ~(impl : t) =
-    { Ml_kind.Dict.
-      impl =
-        { Dep_graph.
-          dir = impl.impl.dir
-        ; per_module =
-            Module.Name.Map.merge vlib.impl.per_module impl.impl.per_module
-              ~f:merge_impl
-        }
-    ; intf =
-        { Dep_graph.
-          dir = impl.intf.dir
-        ; per_module =
-            Module.Name.Map.merge vlib.intf.per_module impl.intf.per_module
-              ~f:merge_impl
-        }
-    }
+    Ml_kind.Dict.of_func (fun ~ml_kind ->
+      let impl = Ml_kind.Dict.get impl ml_kind in
+      { impl with
+        per_module =
+          Module.Name.Map.merge ~f:merge_impl
+            (Ml_kind.Dict.get vlib ml_kind).per_module
+            impl.per_module
+      })
 end
 
 let is_alias_module cctx (m : Module.t) =

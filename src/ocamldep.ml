@@ -45,31 +45,36 @@ module Dep_graph = struct
         (Fmt.list ~pp_sep:Fmt.nl (Fmt.prefix (Fmt.string "-> ") Module.Name.pp))
         (List.map cycle ~f:Module.name)
 
-  let top_closed_multi (ts : t list) modules =
-    List.concat_map ts ~f:(fun t ->
-      Module.Name.Map.to_list t.per_module
-      |> List.map ~f:(fun (_name, (unit, deps)) ->
-        deps >>^ fun deps -> (unit, deps)))
-    |> Build.all >>^ fun per_module ->
-    let per_obj =
-      Module.Obj_map.of_list_reduce per_module ~f:List.rev_append in
-    match Module.Obj_map.top_closure per_obj modules with
-    | Ok modules -> modules
-    | Error cycle ->
-      die "dependency cycle between modules\n   %a"
-        (Fmt.list ~pp_sep:Fmt.nl (Fmt.prefix (Fmt.string "-> ") Module.Name.pp))
-        (List.map cycle ~f:Module.name)
+  module Multi = struct
+    let top_closed_multi (ts : t list) modules =
+      List.concat_map ts ~f:(fun t ->
+        Module.Name.Map.to_list t.per_module
+        |> List.map ~f:(fun (_name, (unit, deps)) ->
+          deps >>^ fun deps -> (unit, deps)))
+      |> Build.all >>^ fun per_module ->
+      let per_obj =
+        Module.Obj_map.of_list_reduce per_module ~f:List.rev_append in
+      match Module.Obj_map.top_closure per_obj modules with
+      | Ok modules -> modules
+      | Error cycle ->
+        die "dependency cycle between modules\n   %a"
+          (Fmt.list ~pp_sep:Fmt.nl
+             (Fmt.prefix (Fmt.string "-> ") Module.Name.pp))
+          (List.map cycle ~f:Module.name)
+
+    let top_closed_implementations ts modules =
+      Build.memoize "top sorted mutli implementations" (
+        let filter_out_intf_only = List.filter ~f:Module.has_impl in
+        top_closed_multi ts (filter_out_intf_only modules)
+        >>^ filter_out_intf_only)
+  end
+
+  let top_closed_multi_implementations = Multi.top_closed_implementations
 
   let top_closed_implementations t modules =
     Build.memoize "top sorted implementations" (
       let filter_out_intf_only = List.filter ~f:Module.has_impl in
       top_closed t (filter_out_intf_only modules)
-      >>^ filter_out_intf_only)
-
-  let top_closed_multi_implementations ts modules =
-    Build.memoize "top sorted mutli implementations" (
-      let filter_out_intf_only = List.filter ~f:Module.has_impl in
-      top_closed_multi ts (filter_out_intf_only modules)
       >>^ filter_out_intf_only)
 
   let dummy (m : Module.t) =

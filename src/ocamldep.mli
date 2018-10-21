@@ -15,11 +15,6 @@ module Dep_graph : sig
     -> Module.t list
     -> (unit, Module.t list) Build.t
 
-  val top_closed_multi
-    :  t list
-    -> Module.t list
-    -> (unit, Module.t list) Build.t
-
   val top_closed_multi_implementations
     :  t list
     -> Module.t list

@@ -51,7 +51,8 @@ module Dep_graph = struct
       |> List.map ~f:(fun (_name, (unit, deps)) ->
         deps >>^ fun deps -> (unit, deps)))
     |> Build.all >>^ fun per_module ->
-    let per_obj = Module.Obj_map.of_list_exn per_module in
+    let per_obj =
+      Module.Obj_map.of_list_reduce per_module ~f:List.rev_append in
     match Module.Obj_map.top_closure per_obj modules with
     | Ok modules -> modules
     | Error cycle ->
@@ -101,23 +102,34 @@ module Dep_graphs = struct
   let wrapped_compat ~modules ~wrapped_compat =
     Ml_kind.Dict.make_both (Dep_graph.wrapped_compat ~modules ~wrapped_compat)
 
-  let merge_impl _ vlib impl =
+  let merge_impl ~(ml_kind : Ml_kind.t) _ vlib impl =
     match vlib, impl with
     | None, None -> assert false
-    | Some d, None
+    | Some _, None -> None (* we don't care about internal vlib deps *)
     | None, Some d -> Some d
-    | Some (mv, v), Some (mi, i) ->
-      if Module.is_private mv then
-        Some (mv, v)
-      else
+    | Some (mv, _), Some (mi, i) ->
+      if Module.obj_name mv = Module.obj_name mi
+      && Module.intf_only mv
+      && Module.impl_only mi then
+        match ml_kind with
+        | Impl -> Some (mi, i)
+        | Intf -> None
+      else if Module.is_private mv || Module.is_private mi then
         Some (mi, i)
+      else
+        let open Sexp.Encoder in
+        Exn.code_error "merge_impl: unexpected dep graph"
+          [ "ml_kind", string (Ml_kind.to_string ml_kind)
+          ; "mv", Module.to_sexp mv
+          ; "mi", Module.to_sexp mi
+          ]
 
   let merge_for_impl ~(vlib : t) ~(impl : t) =
     Ml_kind.Dict.of_func (fun ~ml_kind ->
       let impl = Ml_kind.Dict.get impl ml_kind in
       { impl with
         per_module =
-          Module.Name.Map.merge ~f:merge_impl
+          Module.Name.Map.merge ~f:(merge_impl ~ml_kind)
             (Ml_kind.Dict.get vlib ml_kind).per_module
             impl.per_module
       })

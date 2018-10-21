@@ -3,10 +3,7 @@ open Stdune
 module Implementation : sig
   type t
 
-  val dep_graph
-    :  t
-    -> Ocamldep.Dep_graphs.t
-    -> Ocamldep.Dep_graph.t Ml_kind.Dict.t
+  val vlib_dep_graph : t -> Ocamldep.Dep_graphs.t
 
   val vlib_modules : t -> Lib_modules.t
 end

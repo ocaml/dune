@@ -133,6 +133,9 @@ let real_unit_name t = Name.of_string (Filename.basename t.obj_name)
 let has_impl t = Option.is_some t.impl
 let has_intf t = Option.is_some t.intf
 
+let impl_only t = has_impl t && not (has_intf t)
+let intf_only t = has_intf t && not (has_impl t)
+
 let file t (kind : Ml_kind.t) =
   let file =
     match kind with
@@ -148,6 +151,8 @@ let obj_file t ~obj_dir ~ext =
     | Private -> Utils.library_private_obj_dir ~obj_dir
   in
   Path.relative base (t.obj_name ^ ext)
+
+let obj_name t = t.obj_name
 
 let cm_source t kind = file t (Cm_kind.source kind)
 
@@ -278,5 +283,12 @@ module Obj_map = struct
   let top_closure t =
     Top_closure.String.top_closure
       ~key:(fun m -> m.obj_name)
-      ~deps:(fun m -> Option.value_exn (find t m))
+      ~deps:(fun m ->
+        match find t m with
+        | Some m -> m
+        | None ->
+          Exn.code_error "top_closure: unable to find key"
+            [ "m", to_sexp m
+            ; "t", (Sexp.Encoder.list to_sexp) (keys t)
+            ])
 end

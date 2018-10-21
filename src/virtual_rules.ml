@@ -10,14 +10,10 @@ module Implementation = struct
 
   let vlib_modules t = t.vlib_modules
 
-  let dep_graph ({ vlib ; vlib_modules = _ ; impl = _ } as t)
-        (impl_graph : Ocamldep.Dep_graphs.t) =
+  let vlib_dep_graph ({ vlib ; vlib_modules = _ ; impl = _ } as t) =
     let modules = Lib_modules.modules t.vlib_modules in
     let obj_dir = Lib.obj_dir vlib in
-    let vlib_graph =
-      Ocamldep.graph_of_remote_lib ~obj_dir ~modules in
-    Ocamldep.Dep_graphs.merge_for_impl ~vlib:vlib_graph ~impl:impl_graph
-
+    Ocamldep.graph_of_remote_lib ~obj_dir ~modules
 end
 
 module Gen (P : sig val sctx : Super_context.t end) = struct

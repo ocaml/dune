@@ -363,7 +363,8 @@ module Gen (P : Install_rules.Params) = struct
        |> Path.Set.of_list)
 
   let setup_build_archives (lib : Dune_file.Library.t)
-        ~wrapped_compat ~cctx ~(dep_graphs : Ocamldep.Dep_graphs.t) =
+        ~wrapped_compat ~cctx ~(dep_graphs : Ocamldep.Dep_graphs.t)
+        ~vlib_dep_graphs =
     let dir = Compilation_context.dir cctx in
     let obj_dir = Compilation_context.obj_dir cctx in
     let scope = Compilation_context.scope cctx in
@@ -396,8 +397,16 @@ module Gen (P : Install_rules.Params) = struct
        We append the modules at the end as no library modules depend on
        them. *)
     let top_sorted_modules =
-      Ocamldep.Dep_graph.top_closed_implementations dep_graphs.impl modules
-      >>^ fun modules -> modules @ wrapped_compat
+      match vlib_dep_graphs with
+      | None ->
+        Ocamldep.Dep_graph.top_closed_implementations dep_graphs.impl modules
+        >>^ fun modules -> modules @ wrapped_compat
+      | Some (vlib_dep_graphs : Ocamldep.Dep_graphs.t) ->
+        Ocamldep.Dep_graph.top_closed_multi_implementations
+          [ vlib_dep_graphs.impl
+          ; dep_graphs.impl
+          ]
+          modules
     in
     (let modules = modules @ wrapped_compat in
      List.iter Mode.all ~f:(fun mode ->
@@ -486,11 +495,16 @@ module Gen (P : Install_rules.Params) = struct
     build_wrapped_compat_modules lib cctx ~dynlink ~js_of_ocaml
       ~modules ~wrapped_compat;
 
-    let dep_graphs =
+    let (vlib_dep_graphs, dep_graphs) =
       let dep_graphs = Ocamldep.rules cctx in
       match impl with
-      | None -> dep_graphs
-      | Some impl -> Virtual_rules.Implementation.dep_graph impl dep_graphs
+      | None ->
+        (None, dep_graphs)
+      | Some impl ->
+        let vlib = Virtual_rules.Implementation.vlib_dep_graph impl in
+        ( Some vlib
+        , Ocamldep.Dep_graphs.merge_for_impl ~vlib ~impl:dep_graphs
+        )
     in
 
     Module_compilation.build_modules cctx ~js_of_ocaml ~dynlink ~dep_graphs;
@@ -520,7 +534,8 @@ module Gen (P : Install_rules.Params) = struct
         | Some modules -> Lib_modules.for_compilation modules);
 
     if not (Library.is_virtual lib) then
-      setup_build_archives lib ~wrapped_compat ~cctx ~dep_graphs;
+      setup_build_archives lib ~wrapped_compat ~cctx ~dep_graphs
+        ~vlib_dep_graphs;
 
     Odoc.setup_library_odoc_rules lib ~requires ~modules ~dep_graphs ~scope;
 

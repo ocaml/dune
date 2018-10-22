@@ -773,7 +773,7 @@ let exec =
         raise Already_reported
       | _::_ ->
         Format.eprintf "@{<Error>Error@}: Program %S isn't built yet \
-                        you need to buid it first or remove the \
+                        you need to build it first or remove the \
                         --no-build option.@." prog;
         raise Already_reported
       end

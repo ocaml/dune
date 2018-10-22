@@ -80,6 +80,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name copy-files-non-sub-dir-error)
+ (deps (package dune) (source_tree test-cases/copy-files-non-sub-dir-error))
+ (action
+  (chdir
+   test-cases/copy-files-non-sub-dir-error
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name copy_files)
  (deps (package dune) (source_tree test-cases/copy_files))
  (action
@@ -1057,6 +1065,7 @@
   (alias check-alias)
   (alias configurator)
   (alias configurator-gh1166)
+  (alias copy-files-non-sub-dir-error)
   (alias copy_files)
   (alias cross-compilation)
   (alias custom-build-dir)
@@ -1187,6 +1196,7 @@
   (alias check-alias)
   (alias configurator)
   (alias configurator-gh1166)
+  (alias copy-files-non-sub-dir-error)
   (alias copy_files)
   (alias cross-compilation)
   (alias custom-build-dir)

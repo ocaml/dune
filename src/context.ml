@@ -175,7 +175,7 @@ module Build_environment_kind = struct
           | None -> Unknown
 end
 
-let ocamlfind_printconf_path ~env ~ocamlfind ?toolchain () =
+let ocamlfind_printconf_path ~env ~ocamlfind ~toolchain =
   let args =
     let args = ["printconf"; "path"] in
     match toolchain with
@@ -187,7 +187,7 @@ let ocamlfind_printconf_path ~env ~ocamlfind ?toolchain () =
   List.map l ~f:Path.of_filename_relative_to_initial_cwd
 
 let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
-      ~profile () =
+      ~host_toolchain ~profile =
   let opam_var_cache = Hashtbl.create 128 in
   (match kind with
    | Opam { root = Some root; _ } ->
@@ -215,7 +215,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     >>| Path.of_filename_relative_to_initial_cwd)
   in
 
-  let create_one ~name ~implicit ?findlib_toolchain ?host ~merlin () =
+  let create_one ~name ~implicit ~findlib_toolchain ~host ~merlin =
     (match findlib_toolchain with
      | None -> Fiber.return None
      | Some toolchain ->
@@ -281,7 +281,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       match Build_environment_kind.query ~kind ~findlib_toolchain ~env with
       | Cross_compilation_using_findlib_toolchain toolchain ->
         let ocamlfind = which_exn "ocamlfind" in
-        ocamlfind_printconf_path ~env ~ocamlfind ~toolchain ()
+        ocamlfind_printconf_path ~env ~ocamlfind ~toolchain:(Some toolchain)
 
       | Hardcoded_path l ->
         Fiber.return
@@ -302,7 +302,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       | Unknown ->
         match which "ocamlfind" with
         | Some ocamlfind ->
-          ocamlfind_printconf_path ~env ~ocamlfind ()
+          ocamlfind_printconf_path ~env ~ocamlfind ~toolchain:None
 
         | None ->
           Fiber.return
@@ -483,22 +483,24 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
   in
 
   let implicit = not (List.mem ~set:targets Workspace.Context.Target.Native) in
-  create_one () ~implicit ~name ~merlin >>= fun native ->
+  create_one ~host:None ~findlib_toolchain:host_toolchain ~implicit ~name ~merlin
+  >>= fun native ->
   Fiber.parallel_map targets ~f:(function
     | Native -> Fiber.return None
     | Named findlib_toolchain ->
       let name = sprintf "%s.%s" name findlib_toolchain in
-      create_one () ~implicit:false ~name ~findlib_toolchain ~host:native
-        ~merlin:false
+      create_one ~implicit:false ~name ~host:(Some native) ~merlin:false
+        ~findlib_toolchain:(Some findlib_toolchain)
       >>| fun x -> Some x)
   >>| fun others ->
   native :: List.filter_map others ~f:(fun x -> x)
 
-let opam_config_var t var = opam_config_var ~env:t.env ~cache:t.opam_var_cache var
+let opam_config_var t var =
+  opam_config_var ~env:t.env ~cache:t.opam_var_cache var
 
-let default ?(merlin=true) ~env_nodes ~env ~targets () =
+let default ~merlin ~env_nodes ~env ~targets =
   create ~kind:Default ~path:Bin.path ~env ~env_nodes ~name:"default"
-    ~merlin ~targets ()
+    ~merlin ~targets
 
 let opam_version =
   let res = ref None in
@@ -520,7 +522,7 @@ let opam_version =
       Fiber.Future.wait future
 
 let create_for_opam ~root ~env ~env_nodes ~targets ~profile
-      ~switch ~name ~merlin () =
+      ~switch ~name ~merlin ~host_toolchain =
   let opam =
     match Lazy.force opam with
     | None -> Utils.program_not_found "opam" ~loc:None
@@ -566,7 +568,7 @@ let create_for_opam ~root ~env ~env_nodes ~targets ~profile
   in
   let env = Env.extend env ~vars in
   create ~kind:(Opam { root; switch }) ~profile ~targets ~path ~env ~env_nodes
-    ~name ~merlin ()
+    ~name ~merlin ~host_toolchain
 
 let create ~env (workspace : Workspace.t) =
   let env_nodes context =
@@ -577,15 +579,21 @@ let create ~env (workspace : Workspace.t) =
   in
   Fiber.parallel_map workspace.contexts ~f:(fun def ->
     match def with
-    | Default { targets; profile; env = env_node ; loc = _ } ->
+    | Default { targets; profile; env = env_node ; toolchain ; loc = _ } ->
       let merlin =
         workspace.merlin_context = Some (Workspace.Context.name def)
       in
-      default ~env ~env_nodes:(env_nodes env_node) ~profile ~targets ~merlin ()
-    | Opam { base = { targets; profile; env = env_node; loc = _ }
+      let host_toolchain =
+        match toolchain, Env.get env "OCAMLFIND_TOOLCHAIN" with
+        | Some t, _ -> Some t
+        | None, default -> default
+      in
+      default ~env ~env_nodes:(env_nodes env_node) ~profile ~targets ~merlin
+        ~host_toolchain
+    | Opam { base = { targets; profile; env = env_node; toolchain; loc = _ }
            ; name; switch; root; merlin } ->
       create_for_opam ~root ~env_nodes:(env_nodes env_node) ~env ~profile
-        ~switch ~name ~merlin ~targets ())
+        ~switch ~name ~merlin ~targets ~host_toolchain:toolchain)
   >>| List.concat
 
 let which t s = which ~cache:t.which_cache ~path:t.path s

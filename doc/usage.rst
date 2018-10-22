@@ -468,6 +468,8 @@ context or can be the description of an opam switch, as follows:
   higher precedence than the toplevel ``env`` stanza in the workspace file. This
   field the same options as the :ref:`dune-env` stanza.
 
+- ``(toolchain <findlib_coolchain>)`` set findlib toolchain for the context.
+
 Both ``(default ...)`` and ``(opam ...)`` accept a ``targets`` field in order to
 setup cross compilation. See :ref:`advanced-cross-compilation` for more
 information.

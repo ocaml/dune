@@ -24,6 +24,9 @@ next
 - Unblock signals in processes started by dune (#1461, fixes #1451,
   @diml)
 
+- Respect `OCAMLFIND_TOOLCHAIN` and add a `toolchain` option to contexts in the
+  workspace file. (#1449, fix #1413, @rgrinberg)
+
 1.4.0 (10/10/2018)
 ------------------
 

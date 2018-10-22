@@ -27,6 +27,9 @@ next
 - Respect `OCAMLFIND_TOOLCHAIN` and add a `toolchain` option to contexts in the
   workspace file. (#1449, fix #1413, @rgrinberg)
 
+- Fix error message when using `copy_files` stanza to copy files from a non sub directory
+  with lang set to dune < 1.3 (#1486, fixes #1485, @NathanReb)
+
 1.4.0 (10/10/2018)
 ------------------
 

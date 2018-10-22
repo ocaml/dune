@@ -151,6 +151,22 @@ module Section = struct
       | Stublibs     -> t.stublibs
       | Man          -> t.man
       | Misc         -> invalid_arg"Install.Paths.get"
+
+    let man_subdir p =
+      match Filename.split_extension_after_dot p with
+      | (_, "") -> None
+      | (_, man_section) -> Some ("man" ^ man_section)
+
+    let install_path t section p =
+      let section_path = get t section in
+      match section with
+      | Man ->
+          begin
+            match man_subdir p with
+            | Some subdir -> Path.L.relative section_path [subdir; p]
+            | None -> Path.relative section_path p
+          end
+      | _ -> Path.relative section_path p
   end
 end
 

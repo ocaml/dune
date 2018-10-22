@@ -30,6 +30,8 @@ next
 - Fix error message when using `copy_files` stanza to copy files from a non sub directory
   with lang set to dune < 1.3 (#1486, fixes #1485, @NathanReb)
 
+- Install man pages in the correct subdirectory (#1483, fixes #1441, @emillon)
+
 1.4.0 (10/10/2018)
 ------------------
 

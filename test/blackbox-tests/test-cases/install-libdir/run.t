@@ -14,6 +14,9 @@
   Installing install/lib/foo/foo.ml
   Installing install/lib/foo/opam
   Installing install/bin/exec
+  Installing install/man/a-man-page-with-no-ext
+  Installing install/man/man1/a-man-page.1
+  Installing install/man/man3/another-man-page.3
 
 If prefix is passed, the default for libdir is `$prefix/lib`:
 
@@ -30,6 +33,9 @@ If prefix is passed, the default for libdir is `$prefix/lib`:
   Installing install/lib/foo/foo.ml
   Installing install/lib/foo/opam
   Installing install/bin/exec
+  Installing install/man/a-man-page-with-no-ext
+  Installing install/man/man1/a-man-page.1
+  Installing install/man/man3/another-man-page.3
   Creating directory install/lib/foo
   Copying _build/install/default/lib/foo/META to install/lib/foo/META (executable: false)
   Creating directory install/lib/foo
@@ -54,6 +60,12 @@ If prefix is passed, the default for libdir is `$prefix/lib`:
   Copying _build/install/default/lib/foo/opam to install/lib/foo/opam (executable: false)
   Creating directory install/bin
   Copying _build/install/default/bin/exec to install/bin/exec (executable: true)
+  Creating directory install/man
+  Copying _build/install/default/man/a-man-page-with-no-ext to install/man/a-man-page-with-no-ext (executable: false)
+  Creating directory install/man/man1
+  Copying _build/install/default/man/man1/a-man-page.1 to install/man/man1/a-man-page.1 (executable: false)
+  Creating directory install/man/man3
+  Copying _build/install/default/man/man3/another-man-page.3 to install/man/man3/another-man-page.3 (executable: false)
 
 If prefix is not passed, libdir defaults to the output of `ocamlfind printconf
 destdir`:
@@ -71,6 +83,9 @@ destdir`:
   Installing /OCAMLFIND_DESTDIR/foo/foo.ml
   Installing /OCAMLFIND_DESTDIR/foo/opam
   Installing OPAM_VAR_PREFIX/bin/exec
+  Installing OPAM_VAR_PREFIX/man/a-man-page-with-no-ext
+  Installing OPAM_VAR_PREFIX/man/man1/a-man-page.1
+  Installing OPAM_VAR_PREFIX/man/man3/another-man-page.3
   Creating directory /OCAMLFIND_DESTDIR/foo
   Copying _build/install/default/lib/foo/META to /OCAMLFIND_DESTDIR/foo/META (executable: false)
   Creating directory /OCAMLFIND_DESTDIR/foo
@@ -95,6 +110,12 @@ destdir`:
   Copying _build/install/default/lib/foo/opam to /OCAMLFIND_DESTDIR/foo/opam (executable: false)
   Creating directory OPAM_VAR_PREFIX/bin
   Copying _build/install/default/bin/exec to OPAM_VAR_PREFIX/bin/exec (executable: true)
+  Creating directory OPAM_VAR_PREFIX/man
+  Copying _build/install/default/man/a-man-page-with-no-ext to OPAM_VAR_PREFIX/man/a-man-page-with-no-ext (executable: false)
+  Creating directory OPAM_VAR_PREFIX/man/man1
+  Copying _build/install/default/man/man1/a-man-page.1 to OPAM_VAR_PREFIX/man/man1/a-man-page.1 (executable: false)
+  Creating directory OPAM_VAR_PREFIX/man/man3
+  Copying _build/install/default/man/man3/another-man-page.3 to OPAM_VAR_PREFIX/man/man3/another-man-page.3 (executable: false)
   Removing (if it exists) /OCAMLFIND_DESTDIR/foo/META
   Removing directory (if empty) /OCAMLFIND_DESTDIR/foo
   Removing (if it exists) /OCAMLFIND_DESTDIR/foo/foo$ext_lib
@@ -120,6 +141,21 @@ destdir`:
   Removing (if it exists) OPAM_VAR_PREFIX/bin/exec
   Removing directory (if empty) OPAM_VAR_PREFIX/bin
   Removing directory (if empty) /OCAMLFIND_DESTDIR/foo
+  Removing (if it exists) OPAM_VAR_PREFIX/man/a-man-page-with-no-ext
+  Removing directory (if empty) OPAM_VAR_PREFIX/man
+  Removing directory (if empty) OPAM_VAR_PREFIX/bin
+  Removing directory (if empty) /OCAMLFIND_DESTDIR/foo
+  Removing (if it exists) OPAM_VAR_PREFIX/man/man1/a-man-page.1
+  Removing directory (if empty) OPAM_VAR_PREFIX/man/man1
+  Removing directory (if empty) OPAM_VAR_PREFIX/man
+  Removing directory (if empty) OPAM_VAR_PREFIX/bin
+  Removing directory (if empty) /OCAMLFIND_DESTDIR/foo
+  Removing (if it exists) OPAM_VAR_PREFIX/man/man3/another-man-page.3
+  Removing directory (if empty) OPAM_VAR_PREFIX/man/man3
+  Removing directory (if empty) OPAM_VAR_PREFIX/man/man1
+  Removing directory (if empty) OPAM_VAR_PREFIX/man
+  Removing directory (if empty) OPAM_VAR_PREFIX/bin
+  Removing directory (if empty) /OCAMLFIND_DESTDIR/foo
 
 If only libdir is passed, binaries are installed under prefix/bin and libraries
 in libdir:
@@ -137,6 +173,9 @@ in libdir:
   Installing /LIBDIR/foo/foo.ml
   Installing /LIBDIR/foo/opam
   Installing OPAM_VAR_PREFIX/bin/exec
+  Installing OPAM_VAR_PREFIX/man/a-man-page-with-no-ext
+  Installing OPAM_VAR_PREFIX/man/man1/a-man-page.1
+  Installing OPAM_VAR_PREFIX/man/man3/another-man-page.3
   Creating directory /LIBDIR/foo
   Copying _build/install/default/lib/foo/META to /LIBDIR/foo/META (executable: false)
   Creating directory /LIBDIR/foo
@@ -161,6 +200,12 @@ in libdir:
   Copying _build/install/default/lib/foo/opam to /LIBDIR/foo/opam (executable: false)
   Creating directory OPAM_VAR_PREFIX/bin
   Copying _build/install/default/bin/exec to OPAM_VAR_PREFIX/bin/exec (executable: true)
+  Creating directory OPAM_VAR_PREFIX/man
+  Copying _build/install/default/man/a-man-page-with-no-ext to OPAM_VAR_PREFIX/man/a-man-page-with-no-ext (executable: false)
+  Creating directory OPAM_VAR_PREFIX/man/man1
+  Copying _build/install/default/man/man1/a-man-page.1 to OPAM_VAR_PREFIX/man/man1/a-man-page.1 (executable: false)
+  Creating directory OPAM_VAR_PREFIX/man/man3
+  Copying _build/install/default/man/man3/another-man-page.3 to OPAM_VAR_PREFIX/man/man3/another-man-page.3 (executable: false)
   Removing (if it exists) /LIBDIR/foo/META
   Removing directory (if empty) /LIBDIR/foo
   Removing (if it exists) /LIBDIR/foo/foo$ext_lib
@@ -186,6 +231,21 @@ in libdir:
   Removing (if it exists) OPAM_VAR_PREFIX/bin/exec
   Removing directory (if empty) OPAM_VAR_PREFIX/bin
   Removing directory (if empty) /LIBDIR/foo
+  Removing (if it exists) OPAM_VAR_PREFIX/man/a-man-page-with-no-ext
+  Removing directory (if empty) OPAM_VAR_PREFIX/man
+  Removing directory (if empty) OPAM_VAR_PREFIX/bin
+  Removing directory (if empty) /LIBDIR/foo
+  Removing (if it exists) OPAM_VAR_PREFIX/man/man1/a-man-page.1
+  Removing directory (if empty) OPAM_VAR_PREFIX/man/man1
+  Removing directory (if empty) OPAM_VAR_PREFIX/man
+  Removing directory (if empty) OPAM_VAR_PREFIX/bin
+  Removing directory (if empty) /LIBDIR/foo
+  Removing (if it exists) OPAM_VAR_PREFIX/man/man3/another-man-page.3
+  Removing directory (if empty) OPAM_VAR_PREFIX/man/man3
+  Removing directory (if empty) OPAM_VAR_PREFIX/man/man1
+  Removing directory (if empty) OPAM_VAR_PREFIX/man
+  Removing directory (if empty) OPAM_VAR_PREFIX/bin
+  Removing directory (if empty) /LIBDIR/foo
 
 The DESTDIR var is supported. When set, it is prepended to the prefix.
 This is the case when the prefix is implicit:
@@ -203,6 +263,9 @@ This is the case when the prefix is implicit:
   Installing DESTDIR/OPAM_VAR_PREFIX/lib/foo/foo.ml
   Installing DESTDIR/OPAM_VAR_PREFIX/lib/foo/opam
   Installing DESTDIR/OPAM_VAR_PREFIX/bin/exec
+  Installing DESTDIR/OPAM_VAR_PREFIX/man/a-man-page-with-no-ext
+  Installing DESTDIR/OPAM_VAR_PREFIX/man/man1/a-man-page.1
+  Installing DESTDIR/OPAM_VAR_PREFIX/man/man3/another-man-page.3
   Creating directory DESTDIR/OPAM_VAR_PREFIX/lib/foo
   Copying _build/install/default/lib/foo/META to DESTDIR/OPAM_VAR_PREFIX/lib/foo/META (executable: false)
   Creating directory DESTDIR/OPAM_VAR_PREFIX/lib/foo
@@ -227,6 +290,12 @@ This is the case when the prefix is implicit:
   Copying _build/install/default/lib/foo/opam to DESTDIR/OPAM_VAR_PREFIX/lib/foo/opam (executable: false)
   Creating directory DESTDIR/OPAM_VAR_PREFIX/bin
   Copying _build/install/default/bin/exec to DESTDIR/OPAM_VAR_PREFIX/bin/exec (executable: true)
+  Creating directory DESTDIR/OPAM_VAR_PREFIX/man
+  Copying _build/install/default/man/a-man-page-with-no-ext to DESTDIR/OPAM_VAR_PREFIX/man/a-man-page-with-no-ext (executable: false)
+  Creating directory DESTDIR/OPAM_VAR_PREFIX/man/man1
+  Copying _build/install/default/man/man1/a-man-page.1 to DESTDIR/OPAM_VAR_PREFIX/man/man1/a-man-page.1 (executable: false)
+  Creating directory DESTDIR/OPAM_VAR_PREFIX/man/man3
+  Copying _build/install/default/man/man3/another-man-page.3 to DESTDIR/OPAM_VAR_PREFIX/man/man3/another-man-page.3 (executable: false)
 
 But also when the prefix is explicit:
 
@@ -243,6 +312,9 @@ But also when the prefix is explicit:
   Installing DESTDIR/prefix/lib/foo/foo.ml
   Installing DESTDIR/prefix/lib/foo/opam
   Installing DESTDIR/prefix/bin/exec
+  Installing DESTDIR/prefix/man/a-man-page-with-no-ext
+  Installing DESTDIR/prefix/man/man1/a-man-page.1
+  Installing DESTDIR/prefix/man/man3/another-man-page.3
   Creating directory DESTDIR/prefix/lib/foo
   Copying _build/install/default/lib/foo/META to DESTDIR/prefix/lib/foo/META (executable: false)
   Creating directory DESTDIR/prefix/lib/foo
@@ -267,6 +339,12 @@ But also when the prefix is explicit:
   Copying _build/install/default/lib/foo/opam to DESTDIR/prefix/lib/foo/opam (executable: false)
   Creating directory DESTDIR/prefix/bin
   Copying _build/install/default/bin/exec to DESTDIR/prefix/bin/exec (executable: true)
+  Creating directory DESTDIR/prefix/man
+  Copying _build/install/default/man/a-man-page-with-no-ext to DESTDIR/prefix/man/a-man-page-with-no-ext (executable: false)
+  Creating directory DESTDIR/prefix/man/man1
+  Copying _build/install/default/man/man1/a-man-page.1 to DESTDIR/prefix/man/man1/a-man-page.1 (executable: false)
+  Creating directory DESTDIR/prefix/man/man3
+  Copying _build/install/default/man/man3/another-man-page.3 to DESTDIR/prefix/man/man3/another-man-page.3 (executable: false)
 
 DESTDIR can also be passed as a command line flag.
 
@@ -283,6 +361,9 @@ DESTDIR can also be passed as a command line flag.
   Installing DESTDIR/prefix/lib/foo/foo.ml
   Installing DESTDIR/prefix/lib/foo/opam
   Installing DESTDIR/prefix/bin/exec
+  Installing DESTDIR/prefix/man/a-man-page-with-no-ext
+  Installing DESTDIR/prefix/man/man1/a-man-page.1
+  Installing DESTDIR/prefix/man/man3/another-man-page.3
   Creating directory DESTDIR/prefix/lib/foo
   Copying _build/install/default/lib/foo/META to DESTDIR/prefix/lib/foo/META (executable: false)
   Creating directory DESTDIR/prefix/lib/foo
@@ -307,3 +388,9 @@ DESTDIR can also be passed as a command line flag.
   Copying _build/install/default/lib/foo/opam to DESTDIR/prefix/lib/foo/opam (executable: false)
   Creating directory DESTDIR/prefix/bin
   Copying _build/install/default/bin/exec to DESTDIR/prefix/bin/exec (executable: true)
+  Creating directory DESTDIR/prefix/man
+  Copying _build/install/default/man/a-man-page-with-no-ext to DESTDIR/prefix/man/a-man-page-with-no-ext (executable: false)
+  Creating directory DESTDIR/prefix/man/man1
+  Copying _build/install/default/man/man1/a-man-page.1 to DESTDIR/prefix/man/man1/a-man-page.1 (executable: false)
+  Creating directory DESTDIR/prefix/man/man3
+  Copying _build/install/default/man/man3/another-man-page.3 to DESTDIR/prefix/man/man3/another-man-page.3 (executable: false)

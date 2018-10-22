@@ -51,7 +51,7 @@ module Section : sig
       -> unit
       -> t
 
-    val get : t -> section -> Path.t
+    val install_path : t -> section -> string -> Path.t
   end with type section := t
 end
 

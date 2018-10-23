@@ -202,3 +202,24 @@ Implementations may refer to virtual library's modules
           test alias default
   bar from vlib
   Foo.run implemented
+
+Implementations may have private modules that have overlapping names with the
+virtual lib
+  $ dune build --root private-modules-overlapping-names
+  Entering directory 'private-modules-overlapping-names'
+           foo alias default
+  impl's own Priv.run
+  implementation of foo
+
+Implementations may not provide a library interface module unless it is virtual.
+There should be an error message that clarifies this.
+  $ dune build --root impl-lib-interface-module @all
+  Entering directory 'impl-lib-interface-module'
+  File "impl/dune", line 1, characters 0-41:
+  1 | (library
+  2 |  (name impl)
+  3 |  (implements vlib))
+  Error: The following modules aren't part of the virtual library's interface:
+  - Vlib
+  They must be marked as private using the (private_modules ..) field
+  [1]

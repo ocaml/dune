@@ -10,14 +10,10 @@ module Implementation = struct
 
   let vlib_modules t = t.vlib_modules
 
-  let dep_graph ({ vlib ; vlib_modules = _ ; impl = _ } as t)
-        (impl_graph : Ocamldep.Dep_graphs.t) =
+  let vlib_dep_graph ({ vlib ; vlib_modules = _ ; impl = _ } as t) =
     let modules = Lib_modules.modules t.vlib_modules in
     let obj_dir = Lib.obj_dir vlib in
-    let vlib_graph =
-      Ocamldep.graph_of_remote_lib ~obj_dir ~modules in
-    Ocamldep.Dep_graphs.merge_for_impl ~vlib:vlib_graph ~impl:impl_graph
-
+    Ocamldep.graph_of_remote_lib ~obj_dir ~modules
 end
 
 module Gen (P : sig val sctx : Super_context.t end) = struct
@@ -29,27 +25,37 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
 
   let setup_copy_rules_for_impl ~dir
         ({ Implementation.vlib ; impl ; vlib_modules }) =
-    let copy_to_obj_dir =
-      let obj_dir = Utils.library_object_directory ~dir (snd impl.name) in
-      fun file ->
-        let dst = Path.relative obj_dir (Path.basename file) in
-        Super_context.add_rule ~loc:(Loc.of_pos __POS__)
-          sctx (Build.symlink ~src:file ~dst)
+    let lib_name = snd impl.name in
+    let target_obj_dir =
+      let obj_dir = Utils.library_object_directory ~dir lib_name in
+      let private_obj_dir = Utils.library_private_obj_dir ~obj_dir in
+      fun m ->
+        if Module.is_public m then
+          obj_dir
+        else
+          private_obj_dir
+    in
+    let copy_to_obj_dir ~obj_dir file =
+      let dst = Path.relative obj_dir (Path.basename file) in
+      Super_context.add_rule ~loc:(Loc.of_pos __POS__)
+        sctx (Build.symlink ~src:file ~dst)
     in
     let obj_dir = Lib.obj_dir vlib in
     let modes =
       Dune_file.Mode_conf.Set.eval impl.modes
         ~has_native:(Option.is_some ctx.ocamlopt) in
     let copy_obj_file m ext =
-      copy_to_obj_dir (Module.obj_file m ~obj_dir ~ext) in
+      let source = Module.obj_file m ~obj_dir ~ext in
+      copy_to_obj_dir ~obj_dir:(target_obj_dir m) source in
     let copy_module m =
       copy_obj_file m (Cm_kind.ext Cmi);
-      List.iter [Intf; Impl] ~f:(fun kind ->
-        Module.file m kind
-        |> Option.iter ~f:(fun f ->
-          Path.relative obj_dir (Path.basename f ^ ".all-deps")
-          |> copy_to_obj_dir)
-      );
+      if Module.is_public m then
+        List.iter [Intf; Impl] ~f:(fun kind ->
+          Module.file m kind
+          |> Option.iter ~f:(fun f ->
+            Path.relative obj_dir (Path.basename f ^ ".all-deps")
+            |> copy_to_obj_dir ~obj_dir:(target_obj_dir m))
+        );
       if Module.has_impl m then begin
         if modes.byte then
           copy_obj_file m (Cm_kind.ext Cmo);
@@ -61,7 +67,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
       copy_obj_file m (Cm_kind.ext Cmi);
       List.iter [Intf; Impl] ~f:(fun kind ->
         Module.file m kind
-        |> Option.iter ~f:(copy_to_obj_dir)
+        |> Option.iter ~f:(copy_to_obj_dir ~obj_dir:(target_obj_dir m))
       );
       if modes.byte then
         copy_obj_file m (Cm_kind.ext Cmo);

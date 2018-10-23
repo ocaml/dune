@@ -22,19 +22,42 @@ let add_diff sctx loc alias ~dir input output =
        ~targets:[]
        action)
 
+let rec subdirs_until_root dir =
+  match Path.parent dir with
+  | None -> [dir]
+  | Some d -> dir :: subdirs_until_root d
+
+let depend_on_existing_paths paths =
+  let open Build.O in
+  let build_id = Build.arr (fun x -> x) in
+  List.fold_left
+    ~f:(fun acc path ->
+      Build.if_file_exists
+        path
+        ~then_:(Build.path path)
+        ~else_:build_id
+      >>>
+      acc)
+    ~init:build_id
+    paths
+
+let depend_on_files ~named dir =
+  subdirs_until_root dir
+  |> List.map ~f:(fun dir -> Path.relative dir named)
+  |> depend_on_existing_paths
+
 let gen_rules sctx (config : Dune_file.Auto_format.t) ~dir =
   let loc = config.loc in
-  let files =
-    File_tree.files_of
-      (Super_context.file_tree sctx)
-      (Path.drop_build_context_exn dir)
-  in
+  let source_dir = Path.drop_build_context_exn dir in
+  let files = File_tree.files_of (Super_context.file_tree sctx) source_dir in
   let subdir = ".formatted" in
   let output_dir = Path.relative dir subdir in
   let alias = Build_system.Alias.make "fmt" ~dir in
   let alias_formatted = Build_system.Alias.make "fmt" ~dir:output_dir in
   let resolve_program = Super_context.resolve_program sctx ~loc:(Some loc) in
-  let setup_formatting file (arrows_acc, extra_deps_acc) =
+  let ocamlformat_deps = depend_on_files ~named:".ocamlformat" source_dir in
+  let setup_formatting file =
+    let open Build.O in
     let input_basename = Path.basename file in
     let input = Path.relative dir input_basename in
     let output = Path.relative output_dir input_basename in
@@ -52,7 +75,7 @@ let gen_rules sctx (config : Dune_file.Auto_format.t) ~dir =
           ; Target output
           ]
         in
-        Some (Build.run ~dir exe args)
+        Some (ocamlformat_deps >>> Build.run ~dir exe args)
       else
         None
     in
@@ -69,32 +92,16 @@ let gen_rules sctx (config : Dune_file.Auto_format.t) ~dir =
       | _ -> None
     in
 
-    let new_extra_deps_acc =
-      if String.equal input_basename ".ocamlformat" then
-        input::extra_deps_acc
-      else
-        extra_deps_acc
-    in
-
-    let new_arrows_acc =
-      match formatter with
-      | None -> arrows_acc
-      | Some arr -> (arr, input, output)::arrows_acc
-    in
-
-    (new_arrows_acc, new_extra_deps_acc)
+    Option.iter
+      formatter
+      ~f:(fun arr ->
+          Super_context.add_rule sctx ~mode:Standard ~loc arr;
+          add_diff sctx loc alias_formatted ~dir input output)
   in
-  Super_context.on_load_dir sctx ~dir:output_dir ~f:(fun () ->
-    let arrows, extra_deps =
-      Path.Set.fold files ~init:([], []) ~f:setup_formatting
-    in
-    List.iter
-      arrows
-      ~f:(fun (format_arr, input, output) ->
-        let open Build.O in
-        let arr = Build.paths extra_deps >>> format_arr in
-        Super_context.add_rule sctx ~mode:Standard ~loc arr;
-        add_diff sctx loc alias_formatted ~dir input output));
+  Super_context.on_load_dir
+    sctx
+    ~dir:output_dir
+    ~f:(fun () -> Path.Set.iter files ~f:setup_formatting);
   Super_context.add_alias_deps sctx alias
     (Path.Set.singleton (Build_system.Alias.stamp_file alias_formatted));
   Super_context.add_alias_deps sctx alias_formatted Path.Set.empty

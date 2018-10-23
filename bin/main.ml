@@ -644,7 +644,7 @@ let install_uninstall ~what =
                let dst =
                  dst
                  |> Option.value ~default:(Path.basename src)
-                 |> Path.relative (Install.Section.Paths.get paths section)
+                 |> Install.Section.Paths.install_path paths section
                  |> interpret_destdir ~destdir
                in
                let dir = Path.parent_exn dst in

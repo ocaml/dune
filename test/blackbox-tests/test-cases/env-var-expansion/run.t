@@ -34,14 +34,21 @@ incrementality works properly, that (setenv ...) is taken into account, etc.
   Entering directory 'correct'
   true
 
+This test is broken because previous/new values should differ in these tests. In
+the dune file, the environment variable ends up being set locally, but this
+isn't reflected on a per action basis.
   $ dune build --root correct @echo2
   Entering directory 'correct'
-  true
+  previous env: unset
+  new env:unset
   $ DUNE_ENV_VAR=true dune build --root correct @echo2
   Entering directory 'correct'
+  previous env: true
+  new env:true
   $ DUNE_ENV_VAR=false dune build --root correct @echo2
   Entering directory 'correct'
-  false
+  previous env: false
+  new env:false
 
   $ dune build --root correct @enabled
   Entering directory 'correct'

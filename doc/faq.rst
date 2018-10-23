@@ -60,3 +60,27 @@ Street as well.
 .. _topkg-jbuilder: https://github.com/samoht/topkg-jbuilder
 .. _dune-release: https://github.com/samoht/dune-release
 .. _jenga: https://github.com/janestreet/jenga
+
+How to make warnings non-fatal?
+===============================
+
+``jbuilder`` used to display warnings, but most of them would not stop the
+build. But ``dune`` makes all warnings fatal by default. This can be a
+challenge when porting a codebase to ``dune``. There are two ways to warnings
+non-fatal:
+
+- the ``jbuilder`` compatibility executable works even with ``dune`` files. You
+  can use it while some warnings remain, and then switch over to the ``dune``
+  executable. This is the recommended way to handle the situation.
+- you can pass ``--profile release`` to ``dune``. It will set up different
+  compilation options that usually make sense for release builds, including
+  making warnings non-fatal. This is done by default when installing packages
+  from opam.
+- you can change the flags that are used by the ``dev`` profile by adding the
+  following stanza to a ``dune`` file:
+
+.. code:: scheme
+
+  (env
+    (dev
+      (flags (:standard -warn-error -A))))

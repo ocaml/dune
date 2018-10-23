@@ -23,6 +23,10 @@ module Dep_graph = struct
         ; "module", Module.Name.to_sexp name
         ]
 
+  let pp_cycle fmt cycle =
+    (Fmt.list ~pp_sep:Fmt.nl (Fmt.prefix (Fmt.string "-> ") Module.Name.pp))
+      fmt (List.map cycle ~f:Module.name)
+
   let top_closed t modules =
     Module.Name.Map.to_list t.per_module
     |> List.map ~f:(fun (unit, (_module, deps)) ->
@@ -42,8 +46,7 @@ module Dep_graph = struct
     | Error cycle ->
       die "dependency cycle between modules in %s:\n   %a"
         (Path.to_string t.dir)
-        (Fmt.list ~pp_sep:Fmt.nl (Fmt.prefix (Fmt.string "-> ") Module.Name.pp))
-        (List.map cycle ~f:Module.name)
+        pp_cycle cycle
 
   module Multi = struct
     let top_closed_multi (ts : t list) modules =
@@ -58,9 +61,7 @@ module Dep_graph = struct
       | Ok modules -> modules
       | Error cycle ->
         die "dependency cycle between modules\n   %a"
-          (Fmt.list ~pp_sep:Fmt.nl
-             (Fmt.prefix (Fmt.string "-> ") Module.Name.pp))
-          (List.map cycle ~f:Module.name)
+          pp_cycle cycle
   end
 
   let make_top_closed_implementations ~name ~f ts modules =

@@ -362,6 +362,68 @@ module Gen (P : Install_rules.Params) = struct
          Path.relative dir (header ^ ".h"))
        |> Path.Set.of_list)
 
+  let setup_build_archives (lib : Dune_file.Library.t)
+        ~wrapped_compat ~cctx ~(dep_graphs : Ocamldep.Dep_graphs.t)
+        ~vlib_dep_graphs =
+    let dir = Compilation_context.dir cctx in
+    let obj_dir = Compilation_context.obj_dir cctx in
+    let scope = Compilation_context.scope cctx in
+    let flags = Compilation_context.flags cctx in
+    let modules = Compilation_context.modules cctx in
+    let js_of_ocaml = lib.buildable.js_of_ocaml in
+    let modules_of_vilb = Compilation_context.modules_of_vlib cctx in
+    let modules =
+      match lib.stdlib with
+      | Some { exit_module = Some name; _ } -> begin
+          match Module.Name.Map.find modules name with
+          | None -> modules
+          | Some m ->
+            (* These files needs to be alongside stdlib.cma as the
+               compiler implicitly adds this module. *)
+            List.iter [".cmx"; ".cmo"; ctx.ext_obj] ~f:(fun ext ->
+              let src = Module.obj_file m ~obj_dir ~ext in
+              let dst = Module.obj_file m ~obj_dir:dir ~ext in
+              SC.add_rule sctx (Build.copy ~src ~dst));
+            Module.Name.Map.remove modules name
+        end
+      | _ ->
+        modules
+    in
+    let modules = List.rev_append
+                    (Module.Name_map.impl_only modules)
+                    (Module.Name_map.impl_only modules_of_vilb) in
+    let wrapped_compat = Module.Name.Map.values wrapped_compat in
+    (* Compatibility modules have implementations so we can just append them.
+       We append the modules at the end as no library modules depend on
+       them. *)
+    let top_sorted_modules =
+      match vlib_dep_graphs with
+      | None ->
+        Ocamldep.Dep_graph.top_closed_implementations dep_graphs.impl modules
+        >>^ fun modules -> modules @ wrapped_compat
+      | Some (vlib_dep_graphs : Ocamldep.Dep_graphs.t) ->
+        Ocamldep.Dep_graph.top_closed_multi_implementations
+          [ vlib_dep_graphs.impl
+          ; dep_graphs.impl
+          ]
+          modules
+    in
+    (let modules = modules @ wrapped_compat in
+     List.iter Mode.all ~f:(fun mode ->
+       build_lib lib ~scope ~flags ~dir ~obj_dir ~mode ~top_sorted_modules
+         ~modules));
+    (* Build *.cma.js *)
+    SC.add_rules sctx (
+      let src =
+        Library.archive lib ~dir
+          ~ext:(Mode.compiled_lib_ext Mode.Byte) in
+      let target =
+        Path.relative obj_dir (Path.basename src)
+        |> Path.extend_basename ~suffix:".js" in
+      Js_of_ocaml_rules.build_cm cctx ~js_of_ocaml ~src ~target);
+    if Dynlink_supported.By_the_os.get ctx.natdynlink_supported then
+        build_shared lib ~dir ~flags ~ctx
+
   let library_rules (lib : Library.t) ~dir_contents ~dir ~scope
         ~compile_info ~dir_kind =
     let obj_dir = Utils.library_object_directory ~dir (snd lib.name) in
@@ -433,11 +495,16 @@ module Gen (P : Install_rules.Params) = struct
     build_wrapped_compat_modules lib cctx ~dynlink ~js_of_ocaml
       ~modules ~wrapped_compat;
 
-    let dep_graphs =
+    let (vlib_dep_graphs, dep_graphs) =
       let dep_graphs = Ocamldep.rules cctx in
       match impl with
-      | None -> dep_graphs
-      | Some impl -> Virtual_rules.Implementation.dep_graph impl dep_graphs
+      | None ->
+        (None, dep_graphs)
+      | Some impl ->
+        let vlib = Virtual_rules.Implementation.vlib_dep_graph impl in
+        ( Some vlib
+        , Ocamldep.Dep_graphs.merge_for_impl ~vlib ~impl:dep_graphs
+        )
     in
 
     Module_compilation.build_modules cctx ~js_of_ocaml ~dynlink ~dep_graphs;
@@ -466,58 +533,9 @@ module Gen (P : Install_rules.Params) = struct
         | None -> Module.Name.Map.empty
         | Some modules -> Lib_modules.for_compilation modules);
 
-    if not (Library.is_virtual lib) then begin
-      let modules =
-        match lib.stdlib with
-        | Some { exit_module = Some name; _ } -> begin
-            match Module.Name.Map.find modules name with
-            | None -> modules
-            | Some m ->
-              (* These files needs to be alongside stdlib.cma as the
-                 compiler implicitly adds this module. *)
-              List.iter [".cmx"; ".cmo"; ctx.ext_obj] ~f:(fun ext ->
-                let src = Module.obj_file m ~obj_dir ~ext in
-                let dst = Module.obj_file m ~obj_dir:dir ~ext in
-                SC.add_rule sctx (Build.copy ~src ~dst));
-              Module.Name.Map.remove modules name
-          end
-        | _ ->
-          modules
-      in
-      let modules = Module.Name_map.impl_only modules in
-      let modules =
-        match vlib_modules with
-        | None -> modules
-        | Some vlib_modules ->
-          Lib_modules.modules vlib_modules
-          |> Module.Name_map.impl_only
-          |> List.rev_append modules
-      in
-      let wrapped_compat = Module.Name.Map.values wrapped_compat in
-      (* Compatibility modules have implementations so we can just append them.
-         We append the modules at the end as no library modules depend on
-         them. *)
-      let top_sorted_modules =
-        Ocamldep.Dep_graph.top_closed_implementations dep_graphs.impl modules
-        >>^ fun modules -> modules @ wrapped_compat
-      in
-      (let modules = modules @ wrapped_compat in
-       List.iter Mode.all ~f:(fun mode ->
-         build_lib lib ~scope ~flags ~dir ~obj_dir ~mode ~top_sorted_modules
-           ~modules));
-      (* Build *.cma.js *)
-      SC.add_rules sctx (
-        let src =
-          Library.archive lib ~dir
-            ~ext:(Mode.compiled_lib_ext Mode.Byte) in
-        let target =
-          Path.relative obj_dir (Path.basename src)
-          |> Path.extend_basename ~suffix:".js" in
-        Js_of_ocaml_rules.build_cm cctx ~js_of_ocaml ~src ~target);
-
-      if Dynlink_supported.By_the_os.get ctx.natdynlink_supported then
-        build_shared lib ~dir ~flags ~ctx;
-    end;
+    if not (Library.is_virtual lib) then
+      setup_build_archives lib ~wrapped_compat ~cctx ~dep_graphs
+        ~vlib_dep_graphs;
 
     Odoc.setup_library_odoc_rules lib ~requires ~modules ~dep_graphs ~scope;
 

@@ -73,6 +73,8 @@ val cmt_file  : t -> obj_dir:Path.t -> Ml_kind.t -> Path.t option
 
 val obj_file : t -> obj_dir:Path.t -> ext:string -> Path.t
 
+val obj_name : t -> string
+
 val src_dir : t -> Path.t option
 
 (** Same as [cm_file] but doesn't raise if [cm_kind] is [Cmo] or [Cmx]
@@ -88,6 +90,8 @@ val iter : t -> f:(Ml_kind.t -> File.t -> unit) -> unit
 
 val has_impl : t -> bool
 val has_intf : t -> bool
+val impl_only : t -> bool
+val intf_only : t -> bool
 
 (** Prefix the object name with the library name. *)
 val with_wrapper : t -> main_module_name:Name.t -> t
@@ -112,6 +116,16 @@ module Name_map : sig
   val of_list_exn : module_ list -> t
 
   val add : t -> module_ -> t
+end with type module_ := t
+
+module Obj_map : sig
+  type module_
+  include Map.S with type key = module_
+
+  val top_closure
+    :  module_ list t
+    -> module_ list
+    -> (module_ list, module_ list) Result.result
 end with type module_ := t
 
 val is_public : t -> bool

@@ -26,20 +26,80 @@ let make_unwrapped ~modules ~virtual_modules ~main_module_name =
   ; implements = false
   }
 
+let make_alias_module ~dir ~lib ~main_module_name ~modules =
+  let implements = Dune_file.Library.is_impl lib in
+  let alias_prefix =
+    String.uncapitalize (Module.Name.to_string main_module_name) in
+  if implements then
+    let alias_prefix =
+      sprintf "%s__%s__" alias_prefix
+        (Lib_name.Local.to_string (snd lib.name)) in
+    let name = Module.Name.of_string alias_prefix in
+    Some
+      (Module.make name
+         ~visibility:Public
+         ~impl:(Module.File.make OCaml
+                  (Path.relative dir (sprintf "%s.ml-gen" alias_prefix)))
+         ~obj_name:alias_prefix)
+  else if Module.Name.Map.cardinal modules = 1 &&
+          Module.Name.Map.mem modules main_module_name ||
+          Option.is_some lib.stdlib then
+    None
+  else if Module.Name.Map.mem modules main_module_name then
+    (* This module needs an implementation for non-dune
+       users of the library:
+
+       https://github.com/ocaml/dune/issues/567 *)
+    Some
+      (Module.make (Module.Name.add_suffix main_module_name "__")
+         ~visibility:Public
+         ~impl:(Module.File.make OCaml
+                  (Path.relative dir (sprintf "%s__.ml-gen" alias_prefix)))
+         ~obj_name:(alias_prefix ^ "__"))
+  else
+    Some
+      (Module.make main_module_name
+         ~visibility:Public
+         ~impl:(Module.File.make OCaml
+                  (Path.relative dir (alias_prefix ^ ".ml-gen")))
+         ~obj_name:alias_prefix)
+
+let wrap_modules ~modules ~lib ~main_module_name =
+  let open Module.Name.Infix in
+  let prefix =
+    if not (Dune_file.Library.is_impl lib) then
+      fun _ -> main_module_name
+    else
+      (* for implementations we need to pick a different prefix for private
+         modules. This is to guarantee that the private modules will never
+         collide with the names of modules in the virtual library. *)
+      let private_module_prefix =
+        if Dune_file.Library.is_impl lib then
+          Module.Name.of_string
+            (sprintf "%s__%s"
+               (Module.Name.to_string main_module_name)
+               (Lib_name.Local.to_string (snd lib.name)))
+        else
+          main_module_name
+      in
+      fun m ->
+        if Module.is_private m then
+          private_module_prefix
+        else
+          main_module_name
+  in
+  Module.Name.Map.map modules ~f:(fun (m : Module.t) ->
+    if Module.name m = main_module_name ||
+       Dune_file.Library.special_compiler_module lib m then
+      m
+    else
+      Module.with_wrapper m ~main_module_name:(prefix m))
+
 let make_wrapped ~(lib : Dune_file.Library.t) ~dir ~transition ~modules
       ~virtual_modules ~main_module_name =
-  let wrap_modules modules =
-    let open Module.Name.Infix in
-    Module.Name.Map.map modules ~f:(fun (m : Module.t) ->
-      if Module.name m = main_module_name  ||
-         Dune_file.Library.special_compiler_module lib m then
-        m
-      else
-        Module.with_wrapper m ~main_module_name)
-  in
   let (modules, wrapped_compat) =
     if transition then
-      ( wrap_modules modules
+      ( wrap_modules ~modules ~main_module_name ~lib
       , Module.Name.Map.remove modules main_module_name
         |> Module.Name.Map.filter_map ~f:(fun m ->
           if Module.is_public m then
@@ -48,45 +108,9 @@ let make_wrapped ~(lib : Dune_file.Library.t) ~dir ~transition ~modules
             None)
       )
     else
-      wrap_modules modules, Module.Name.Map.empty
+      (wrap_modules ~modules ~main_module_name ~lib, Module.Name.Map.empty)
   in
-  let implements = Dune_file.Library.is_impl lib in
-  let alias_module =
-    let alias_prefix =
-      String.uncapitalize (Module.Name.to_string main_module_name) in
-    if implements then
-      let alias_prefix =
-        sprintf "%s__%s__" alias_prefix
-          (Lib_name.Local.to_string (snd lib.name)) in
-      let name = Module.Name.of_string alias_prefix in
-      Some
-        (Module.make name
-           ~visibility:Public
-           ~impl:(Module.File.make OCaml
-                    (Path.relative dir (sprintf "%s.ml-gen" alias_prefix)))
-           ~obj_name:alias_prefix)
-    else if Module.Name.Map.cardinal modules = 1 &&
-       Module.Name.Map.mem modules main_module_name ||
-       Option.is_some lib.stdlib then
-      None
-    else if Module.Name.Map.mem modules main_module_name then
-      (* This module needs an implementation for non-dune
-         users of the library:
-
-         https://github.com/ocaml/dune/issues/567 *)
-      Some
-        (Module.make (Module.Name.add_suffix main_module_name "__")
-           ~visibility:Public
-           ~impl:(Module.File.make OCaml
-                    (Path.relative dir (sprintf "%s__.ml-gen" alias_prefix)))
-           ~obj_name:(alias_prefix ^ "__"))
-    else
-      Some
-        (Module.make main_module_name 
-           ~visibility:Public
-           ~impl:(Module.File.make OCaml
-                    (Path.relative dir (alias_prefix ^ ".ml-gen")))
-           ~obj_name:alias_prefix)
+  let alias_module = make_alias_module ~main_module_name ~dir ~lib ~modules
   in
   { modules
   ; alias_module
@@ -172,6 +196,9 @@ let for_compilation t =
 
 let has_private_modules t =
   Module.Name.Map.exists t.modules ~f:Module.is_private
+
+let public_modules t =
+  Module.Name.Map.filter ~f:Module.is_public t.modules
 
 let have_artifacts t =
   let base =

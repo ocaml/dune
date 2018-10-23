@@ -318,7 +318,7 @@ end = struct
         | Macro (Dep, s) -> Some (path_exp (Path.relative dir s))
         | Macro (Bin, s) -> begin
             let sctx = host sctx in
-            match Artifacts.binary ~loc:None (artifacts sctx) s with
+            match Artifacts.binary ~loc:(Some loc) (artifacts sctx) s with
             | Ok path -> Some (path_exp path)
             | Error e ->
               Resolved_forms.add_fail acc

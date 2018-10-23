@@ -61,21 +61,21 @@ module Dep_graph = struct
           (Fmt.list ~pp_sep:Fmt.nl
              (Fmt.prefix (Fmt.string "-> ") Module.Name.pp))
           (List.map cycle ~f:Module.name)
-
-    let top_closed_implementations ts modules =
-      Build.memoize "top sorted mutli implementations" (
-        let filter_out_intf_only = List.filter ~f:Module.has_impl in
-        top_closed_multi ts (filter_out_intf_only modules)
-        >>^ filter_out_intf_only)
   end
 
-  let top_closed_multi_implementations = Multi.top_closed_implementations
-
-  let top_closed_implementations t modules =
-    Build.memoize "top sorted implementations" (
+  let make_top_closed_implementations ~name ~f ts modules =
+    Build.memoize name (
       let filter_out_intf_only = List.filter ~f:Module.has_impl in
-      top_closed t (filter_out_intf_only modules)
+      f ts (filter_out_intf_only modules)
       >>^ filter_out_intf_only)
+
+  let top_closed_multi_implementations =
+    make_top_closed_implementations
+      ~name:"top sorted multi implementations" ~f:Multi.top_closed_multi
+
+  let top_closed_implementations =
+    make_top_closed_implementations
+      ~name:"top sorted implementations" ~f:top_closed
 
   let dummy (m : Module.t) =
     { dir = Path.root

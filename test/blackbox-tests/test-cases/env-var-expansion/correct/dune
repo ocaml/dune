@@ -4,8 +4,11 @@
 
 (alias
  (name echo2)
- (action (setenv DUNE_ENV_VAR false
-          (echo %{env:DUNE_ENV_VAR=true}))))
+ (action
+  (progn
+   (echo "previous env: %{env:DUNE_ENV_VAR=unset}\n")
+   (setenv DUNE_ENV_VAR false
+    (echo "new env:%{env:DUNE_ENV_VAR=unset}")))))
 
 (alias
  (name enabled)

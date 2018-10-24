@@ -28,9 +28,11 @@ module Stanza = struct
     "env-vars"
       ~default:Env.empty
       (Syntax.since Stanza.syntax (1, 5) >>>
-       list (pair string string) >>| fun pairs ->
-       let vars = Env.Map.of_list_exn pairs in
-       Env.extend Env.empty ~vars)
+       located (list (pair string string)) >>| fun (loc, pairs) ->
+       match Env.Map.of_list pairs with
+       | Ok vars -> Env.extend Env.empty ~vars
+       | Error (k, _, _) ->
+         Errors.fail loc "Variable %s is specified several times" k)
 
   let config =
     let%map flags = field_oslu "flags"

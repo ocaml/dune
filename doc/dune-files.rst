@@ -788,8 +788,13 @@ The first form ``(<profile> <settings>)`` that correspond to the
 selected build profile will be used to modify the environment in this
 directory. You can use ``_`` to match any build profile.
 
-Currently ``<settings>`` can be any OCaml flags field, see `OCaml
-flags`_ for more details.
+Fields supported in ``<settings>`` are:
+
+- any OCaml flags field, see `OCaml flags`_ for more details.
+- ``(env-vars (<var1> <val1>) .. (<varN> <valN>))``. This will add the
+  corresponding variables to the environment in which the build commands are
+  executed, and under which ``dune exec`` runs. At the moment, this mechanism is
+  only supported in ``dune-workspace`` files.
 
 .. _dune-ignored_subdirs:
 

@@ -24,6 +24,19 @@ module Env_nodes = struct
     { context: Dune_env.Stanza.t option
     ; workspace: Dune_env.Stanza.t option
     }
+
+  let extra_env ~profile env_nodes =
+    let make_env l =
+      let open Option.O in
+      Option.value
+        ~default:Env.empty
+        (l >>= fun stanza ->
+         Dune_env.Stanza.find stanza ~profile >>| fun env ->
+         env.env_vars)
+    in
+    Env.extend_env
+      (make_env env_nodes.context)
+      (make_env env_nodes.workspace)
 end
 
 type t =
@@ -387,6 +400,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
         Option.value ~default:Env.empty
           (Option.map findlib_config ~f:Findlib.Config.env)
       )
+    |> Env.extend_env (Env_nodes.extra_env ~profile env_nodes)
     in
     let stdlib_dir = Path.of_string (Ocaml_config.standard_library ocfg) in
     let natdynlink_supported = Ocaml_config.natdynlink_supported ocfg in

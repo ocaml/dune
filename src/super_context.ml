@@ -502,17 +502,14 @@ end = struct
       match node.ocaml_flags with
       | Some x -> x
       | None ->
+        let profile = profile t in
         let default =
           match node.inherit_from with
-          | None -> Ocaml_flags.default ~profile:(profile t)
+          | None -> Ocaml_flags.default ~profile
           | Some (lazy node) -> loop t node
         in
         let flags =
-          match List.find_map node.config.rules ~f:(fun (pat, cfg) ->
-            match (pat : Dune_env.Stanza.pattern), profile t with
-            | Any, _ -> Some cfg
-            | Profile a, b -> Option.some_if (a = b) cfg)
-          with
+          match Dune_env.Stanza.find node.config ~profile with
           | None -> default
           | Some cfg ->
             Ocaml_flags.make

@@ -31,8 +31,8 @@ module Env_nodes = struct
       Option.value
         ~default:Env.Map.empty
         (l >>= fun stanza ->
-         Dune_env.Stanza.find stanza ~profile >>| fun {env_vars; _} ->
-         Env.Map.of_list_exn env_vars)
+         Dune_env.Stanza.find stanza ~profile >>| fun env ->
+         env.env_vars)
     in
     Env.Map.superpose
       (make_map env_nodes.context)

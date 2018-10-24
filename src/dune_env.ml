@@ -11,7 +11,7 @@ module Stanza = struct
     { flags          : Ordered_set_lang.Unexpanded.t
     ; ocamlc_flags   : Ordered_set_lang.Unexpanded.t
     ; ocamlopt_flags : Ordered_set_lang.Unexpanded.t
-    ; env_vars       : (string * string) list
+    ; env_vars       : string Env.Map.t
     }
 
   type pattern =
@@ -26,9 +26,10 @@ module Stanza = struct
   let env_vars_field =
     field
     "env-vars"
-      ~default:[]
+      ~default:Env.Map.empty
       (Syntax.since Stanza.syntax (1, 5) >>>
-      list (pair string string))
+       list (pair string string) >>|
+       Env.Map.of_list_exn)
 
   let config =
     let%map flags = field_oslu "flags"

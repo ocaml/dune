@@ -7,7 +7,7 @@ module Stanza : sig
     { flags          : Ordered_set_lang.Unexpanded.t
     ; ocamlc_flags   : Ordered_set_lang.Unexpanded.t
     ; ocamlopt_flags : Ordered_set_lang.Unexpanded.t
-    ; env_vars       : (string * string) list
+    ; env_vars       : string Env.Map.t
     }
 
   type pattern =

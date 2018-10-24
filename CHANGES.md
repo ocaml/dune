@@ -32,6 +32,9 @@ next
 
 - Install man pages in the correct subdirectory (#1483, fixes #1441, @emillon)
 
+- Fix version syntax check for `test` stanza's `action` field. Only emits a warning for
+  retro-compatibility (#1474, fixes #1471, @NathanReb)
+
 1.4.0 (10/10/2018)
 ------------------
 

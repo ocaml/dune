@@ -77,10 +77,15 @@ type t =
   ; supported_versions : Supported_versions.t
   }
 
+module Error_msg = struct
+  let since t ver ~what =
+    Printf.sprintf "%s is only available since version %s of %s"
+      what (Version.to_string ver) t.desc
+end
+
 module Error = struct
   let since loc t ver ~what =
-    Errors.fail loc "%s is only available since version %s of %s"
-      what (Version.to_string ver) t.desc
+    Errors.fail loc "%s" @@ Error_msg.since t ver ~what
 
   let renamed_in loc t ver ~what ~to_ =
     Errors.fail loc "%s was renamed to '%s' in the %s version of %s"
@@ -170,12 +175,14 @@ let renamed_in t ver ~to_ =
     Error.renamed_in loc t ver ~what ~to_
   end
 
-let since t ver =
+let since ?(fatal=true) t ver =
   let open Version.Infix in
   get_exn t >>= fun current_ver ->
   if current_ver >= ver then
     return ()
-  else begin
-    desc () >>= fun (loc, what) ->
-    Error.since loc t ver ~what
-  end
+  else
+    desc () >>= function
+    | (loc, what) when fatal -> Error.since loc t ver ~what
+    | (loc, what) ->
+      Errors.warn loc "%s" @@ Error_msg.since t ver ~what;
+      return ()

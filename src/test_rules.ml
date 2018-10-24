@@ -50,7 +50,7 @@ let rules (t : Dune_file.Tests.t) ~sctx ~dir ~scope ~dir_contents ~dir_kind =
       let rule =
         { Dune_file.Rule.
           targets = Infer
-        ; deps = Dune_file.Bindings.empty
+        ; deps = Bindings.empty
         ; action =
             (loc, Action.Unexpanded.Redirect (Stdout, diff.file2, run_action))
         ; mode = Standard

@@ -472,7 +472,7 @@ let lint_module sctx ~dir ~dep_kind ~lint ~lib_name ~scope ~dir_kind =
                let bindings = Pform.Map.input_file src.path in
                add_alias src.path ~loc:(Some loc)
                  (Build.path src.path
-                  >>^ (fun _ -> Dune_file.Bindings.empty)
+                  >>^ (fun _ -> Bindings.empty)
                   >>> SC.Action.run sctx
                         action
                         ~loc
@@ -555,7 +555,7 @@ let make sctx ~dir ~dep_kind ~lint ~preprocess
                (preprocessor_deps
                 >>>
                 Build.path src
-                >>^ (fun _ -> Dune_file.Bindings.empty)
+                >>^ (fun _ -> Bindings.empty)
                 >>>
                 SC.Action.run sctx
                   (Redirect

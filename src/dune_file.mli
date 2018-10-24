@@ -76,30 +76,6 @@ module Lib_deps : sig
   val info : t -> kind:Lib_deps_info.Kind.t -> Lib_deps_info.t
 end
 
-module Bindings : sig
-  type 'a one =
-    | Unnamed of 'a
-    | Named of string * 'a list
-
-  type 'a t = 'a one list
-
-  val map : 'a t -> f:('a -> 'b) -> 'b t
-
-  val find : 'a t -> string -> 'a list option
-
-  val fold : 'a t -> f:('a one -> 'acc -> 'acc) -> init:'acc -> 'acc
-
-  val empty : 'a t
-
-  val to_list : 'a t -> 'a list
-
-  val singleton : 'a -> 'a t
-
-  val encode : 'a Dune_lang.Encoder.t -> 'a t Dune_lang.Encoder.t
-
-  val to_sexp : 'a Sexp.Encoder.t -> 'a t Sexp.Encoder.t
-end
-
 module Dep_conf : sig
   type t =
     | File of String_with_vars.t

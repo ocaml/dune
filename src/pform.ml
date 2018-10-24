@@ -220,7 +220,7 @@ module Map = struct
 
   let of_bindings bindings =
     { vars =
-        Dune_file.Bindings.fold bindings ~init:String.Map.empty ~f:(fun x acc ->
+        Bindings.fold bindings ~init:String.Map.empty ~f:(fun x acc ->
           match x with
           | Unnamed _ -> acc
           | Named (s, _) -> String.Map.add acc s (No_info Var.Named_local))

@@ -774,12 +774,12 @@ module Deps = struct
 
   let interpret_named t ~scope ~dir bindings =
     List.map bindings ~f:(function
-      | Dune_file.Bindings.Unnamed p ->
+      | Bindings.Unnamed p ->
         dep t ~scope ~dir p >>^ fun l ->
-        List.map l ~f:(fun x -> Dune_file.Bindings.Unnamed x)
+        List.map l ~f:(fun x -> Bindings.Unnamed x)
       | Named (s, ps) ->
         Build.all (List.map ps ~f:(dep t ~scope ~dir)) >>^ fun l ->
-        [Dune_file.Bindings.Named (s, List.concat l)])
+        [Bindings.Named (s, List.concat l)])
     |> Build.all
     >>^ List.concat
 end
@@ -819,7 +819,7 @@ module Action = struct
         | _ -> exe
 
   let expand_ddeps_and_bindings ~expander ~dynamic_expansions
-        ~(deps_written_by_user : Path.t Dune_file.Bindings.t)
+        ~(deps_written_by_user : Path.t Bindings.t)
         ~map_exe t =
     let ectx = Expander.ectx expander in
     U.Partial.expand t ~ectx ~map_exe ~f:(fun pform syntax_version ->
@@ -835,18 +835,18 @@ module Action = struct
           | Error pform -> pform)
         |> Option.map ~f:(function
           | Pform.Expansion.Var Named_local ->
-            begin match Dune_file.Bindings.find deps_written_by_user key with
+            begin match Bindings.find deps_written_by_user key with
             | None ->
               Exn.code_error "Local named variable not present in named deps"
                 [ "pform", String_with_vars.Var.to_sexp pform
                 ; "deps_written_by_user",
-                  Dune_file.Bindings.to_sexp Path.to_sexp deps_written_by_user
+                  Bindings.to_sexp Path.to_sexp deps_written_by_user
                 ]
             | Some x -> Value.L.paths x
             end
           | Var Deps ->
             deps_written_by_user
-            |> Dune_file.Bindings.to_list
+            |> Bindings.to_list
             |> Value.L.paths
           | Var First_dep ->
             begin match deps_written_by_user with

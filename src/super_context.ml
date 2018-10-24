@@ -31,6 +31,7 @@ module Env_node = struct
     ; scope               : Scope.t
     ; config              : Dune_env.Stanza.t
     ; mutable ocaml_flags : Ocaml_flags.t option
+    ; mutable external_   : Env.t option
     }
 end
 
@@ -450,6 +451,8 @@ module External_env = Env
 
 module Env : sig
   val ocaml_flags : t -> dir:Path.t -> Ocaml_flags.t
+
+  val external_ : t -> dir:Path.t -> External_env.t
 end = struct
   open Env_node
 
@@ -481,6 +484,7 @@ end = struct
           ; scope        = scope
           ; config       = config
           ; ocaml_flags  = None
+          ; external_    = None
           }
       in
       Hashtbl.add t.env dir node;
@@ -496,6 +500,27 @@ end = struct
       with Exit ->
         Exn.code_error "Super_context.Env.get called on invalid directory"
           [ "dir", Path.to_sexp dir ]
+
+  let external_ t ~dir =
+    let rec loop t node =
+      match node.external_ with
+      | Some x -> x
+      | None ->
+        let profile = profile t in
+        let default =
+          match node.inherit_from with
+          | None -> t.context.env
+          | Some (lazy node) -> loop t node
+        in
+        let flags =
+          match Dune_env.Stanza.find node.config ~profile with
+          | None -> default
+          | Some cfg -> cfg.env_vars
+        in
+        node.external_ <- Some flags;
+        flags
+    in
+    loop t (get t ~dir)
 
   let ocaml_flags t ~dir =
     let rec loop t node =
@@ -645,6 +670,7 @@ let create
     let make ~inherit_from ~config =
       { Env_node.
         dir = context.build_dir
+      ; external_ = None
       ; scope = Scope.DB.find_by_dir scopes context.build_dir
       ; ocaml_flags = None
       ; inherit_from
@@ -887,7 +913,10 @@ module Action = struct
           "Aliases must not have targets, this target will be ignored.\n\
            This will become an error in the future.";
     end;
-    let ectx = { Action.Unexpanded.dir; env = External_env.initial } in
+    let ectx =
+      { Action.Unexpanded.dir
+      ; env = Env.external_ sctx ~dir
+      } in
     let t, forms =
       Expander.partial_expand sctx ~ectx ~dep_kind ~scope
         ~targets_written_by_user ~map_exe ~bindings t

@@ -834,12 +834,7 @@ module Action = struct
           Path.append host.context.build_dir exe
         | _ -> exe
 
-  let expand_step1 sctx ~ectx ~dep_kind ~scope ~targets_written_by_user
-        ~map_exe ~bindings t =
-    Expander.partial_expand sctx ~ectx ~dep_kind ~scope
-      ~targets_written_by_user ~map_exe ~bindings t
-
-  let expand_step2 ~ectx ~dynamic_expansions ~bindings
+  let expand_ddeps_and_bindings ~ectx ~dynamic_expansions ~bindings
         ~(deps_written_by_user : Path.t Dune_file.Bindings.t)
         ~map_exe t =
     U.Partial.expand t ~ectx ~map_exe ~f:(fun pform syntax_version ->
@@ -897,8 +892,8 @@ module Action = struct
     end;
     let ectx = { Action.Unexpanded.dir; env = External_env.initial } in
     let t, forms =
-      expand_step1 sctx t ~ectx ~dep_kind ~scope
-        ~targets_written_by_user ~map_exe ~bindings
+      Expander.partial_expand sctx ~ectx ~dep_kind ~scope
+        ~targets_written_by_user ~map_exe ~bindings t
     in
     let { Action.Infer.Outcome. deps; targets } =
       match targets_written_by_user with
@@ -939,8 +934,8 @@ module Action = struct
             ~f:(fun acc (var, _) value -> String.Map.add acc var value)
         in
         let unresolved =
-          expand_step2 t ~ectx ~dynamic_expansions ~deps_written_by_user
-            ~map_exe ~bindings
+          expand_ddeps_and_bindings t ~ectx ~dynamic_expansions
+            ~deps_written_by_user ~map_exe ~bindings
         in
         Action.Unresolved.resolve unresolved ~f:(fun loc prog ->
           let sctx = host sctx in

@@ -96,4 +96,5 @@ let gen_rules sctx (config : Dune_file.Auto_format.t) ~dir =
         Super_context.add_rule sctx ~mode:Standard ~loc arr;
         add_diff sctx loc alias_formatted ~dir input output));
   Super_context.add_alias_deps sctx alias
-    (Path.Set.singleton (Build_system.Alias.stamp_file alias_formatted))
+    (Path.Set.singleton (Build_system.Alias.stamp_file alias_formatted));
+  Super_context.add_alias_deps sctx alias_formatted Path.Set.empty

@@ -1,7 +1,7 @@
 open Stdune
 open Action
 
-include module type of Action_dune_lang with type t = Action_dune_lang.t
+include module type of struct include Action_dune_lang end
 
 module Partial : sig
   include Action_intf.Ast

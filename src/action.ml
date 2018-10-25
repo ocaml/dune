@@ -1,8 +1,6 @@
 open! Stdune
 open Import
 
-open Action_ast
-
 module Outputs = Action_ast.Outputs
 module Diff_mode = Action_ast.Diff_mode
 
@@ -88,7 +86,7 @@ module String_with_sexp = struct
   let encode = Dune_lang.Encoder.string
 end
 
-include Make_ast(Prog)(Path_dune_lang)(String_with_sexp)(Ast)
+include Action_ast.Make(Prog)(Path_dune_lang)(String_with_sexp)(Ast)
 type program = Prog.t
 type path = Path.t
 type string = String.t
@@ -100,7 +98,7 @@ module For_shell = struct
     with type string  = string
   module rec Ast : Ast = Ast
 
-  include Make_ast
+  include Action_ast.Make
       (String_with_sexp)
       (String_with_sexp)
       (String_with_sexp)

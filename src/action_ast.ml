@@ -14,7 +14,7 @@ module Outputs = struct
 end
 module Diff_mode = Action_intf.Diff_mode
 
-module Make_ast
+module Make
     (Program : Dune_lang.Conv)
     (Path    : Dune_lang.Conv)
     (String  : Dune_lang.Conv)

@@ -5,7 +5,7 @@ module type Uast = Action_intf.Ast
   with type path    = String_with_vars.t
   with type string  = String_with_vars.t
 module rec Uast : Uast = Uast
-include Action_ast.Make_ast(String_with_vars)(String_with_vars)(String_with_vars)(Uast)
+include Action_ast.Make(String_with_vars)(String_with_vars)(String_with_vars)(Uast)
 
 
 open Dune_lang.Decoder

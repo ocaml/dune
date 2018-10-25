@@ -39,12 +39,15 @@ let set_env t ~var ~value =
 let set_dir t ~dir =
   { t with dir }
 
-let update t ~dir ~scope ~env ~add_bindings =
+let set_scope t ~scope =
+  { t with scope }
+
+let add_env t ~env =
+  { t with env = Env.extend_env t.env env }
+
+let add_bindings t ~bindings =
   { t with
-    dir
-  ; env
-  ; scope
-  ; bindings = Pform.Map.superpose t.bindings add_bindings
+    bindings = Pform.Map.superpose t.bindings bindings
   }
 
 let expand_ocaml_config ocaml_config pform name =

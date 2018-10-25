@@ -430,7 +430,7 @@ module Gen (P : Install_rules.Params) = struct
     let dep_kind =
       if lib.optional then Lib_deps_info.Kind.Optional else Required
     in
-    let flags = SC.ocaml_flags sctx ~scope ~dir lib.buildable in
+    let flags = SC.ocaml_flags sctx ~dir lib.buildable in
     let lib_modules =
       Dir_contents.modules_of_library dir_contents ~name:(Library.best_name lib)
     in

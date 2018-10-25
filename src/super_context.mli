@@ -70,7 +70,6 @@ val internal_lib_names : t -> Lib_name.Set.t
 val ocaml_flags
   :  t
   -> dir:Path.t
-  -> scope:Scope.t
   -> Buildable.t
   -> Ocaml_flags.t
 

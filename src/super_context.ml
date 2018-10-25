@@ -130,28 +130,6 @@ let source_files t ~src_path =
   | None -> String.Set.empty
   | Some dir -> File_tree.Dir.files dir
 
-let expand_vars t ~mode ~scope ~dir ?(bindings=Pform.Map.empty) template =
-  Expander.update t.expander ~env:Env.initial ~scope ~dir ~add_bindings:bindings
-  |> Expander.expand ~mode ~template
-
-let expand_vars_string t ~scope ~dir ?bindings s =
-  expand_vars t ~mode:Single ~scope ~dir ?bindings s
-  |> Value.to_string ~dir
-
-let expand_vars_path t ~scope ~dir ?bindings s =
-  expand_vars t ~mode:Single ~scope ~dir ?bindings s
-  |> Value.to_path ~error_loc:(String_with_vars.loc s) ~dir
-
-let eval_blang t blang ~scope ~dir =
-  match blang with
-  | Blang.Const x -> x (* common case *)
-  | _ ->
-    let expander =
-      Expander.update t.expander ~env:Env.initial ~scope ~dir
-        ~add_bindings:Pform.Map.empty
-    in
-    Blang.eval blang ~dir ~f:(Expander.expand_var_exn expander)
-
 module Pkg_version = struct
   open Build.O
 
@@ -186,13 +164,17 @@ let partial_expand sctx ~dep_kind ~targets_written_by_user ~map_exe
   let partial = Action_unexpanded.partial_expand t ~expander ~map_exe in
   (partial, acc)
 
-let expand_and_eval_set t ~scope ~dir ?bindings set ~standard =
+let expand_and_eval_set set ~expander ~standard =
   let open Build.O in
+  let dir = Expander.dir expander in
   let parse ~loc:_ s = s in
   let (syntax, files) =
-    let f = expand_vars_path t ~scope ~dir ?bindings in
+    let f template =
+      Expander.expand expander ~mode:Single ~template
+      |> Value.to_path ~dir
+    in
     Ordered_set_lang.Unexpanded.files set ~f in
-  let f = expand_vars t ~mode:Many ~scope ~dir ?bindings in
+  let f template = Expander.expand expander ~mode:Many ~template in
   match Path.Set.to_list files with
   | [] ->
     let set =
@@ -213,6 +195,7 @@ module External_env = Env
 
 module Env : sig
   val ocaml_flags : t -> dir:Path.t -> Ocaml_flags.t
+  val expander : t -> dir:Path.t -> Expander.t
 end = struct
   open Env_node
 
@@ -261,6 +244,34 @@ end = struct
         Exn.code_error "Super_context.Env.get called on invalid directory"
           [ "dir", Path.to_sexp dir ]
 
+  let external_ t ~dir =
+    let rec loop t node =
+      match node.external_ with
+      | Some x -> x
+      | None ->
+        let profile = profile t in
+        let default =
+          match node.inherit_from with
+          | None -> t.context.env
+          | Some (lazy node) -> loop t node
+        in
+        let flags =
+          match Dune_env.Stanza.find node.config ~profile with
+          | None -> default
+          | Some cfg -> cfg.env_vars
+        in
+        node.external_ <- Some flags;
+        flags
+    in
+    loop t (get t ~dir)
+
+  let expander t ~dir =
+    let node = get t ~dir in
+    let external_ = external_ t ~dir in
+    Expander.add_env t.expander ~env:external_
+    |> Expander.set_scope ~scope:node.scope
+    |> Expander.set_dir ~dir
+
   let ocaml_flags t ~dir =
     let rec loop t node =
       let dir = node.dir in
@@ -277,28 +288,29 @@ end = struct
           match Dune_env.Stanza.find node.config ~profile with
           | None -> default
           | Some cfg ->
+            let expander = expander t ~dir in
             Ocaml_flags.make
               ~flags:cfg.flags
               ~ocamlc_flags:cfg.ocamlc_flags
               ~ocamlopt_flags:cfg.ocamlopt_flags
               ~default
-              ~eval:(expand_and_eval_set t ~scope:node.scope ~dir ?bindings:None)
+              ~eval:(expand_and_eval_set ~expander)
         in
         node.ocaml_flags <- Some flags;
         flags
     in
     loop t (get t ~dir)
-
 end
 
 
-let ocaml_flags t ~dir ~scope (x : Buildable.t) =
+let ocaml_flags t ~dir (x : Buildable.t) =
+  let expander = Env.expander t ~dir in
   Ocaml_flags.make
     ~flags:x.flags
     ~ocamlc_flags:x.ocamlc_flags
     ~ocamlopt_flags:x.ocamlopt_flags
     ~default:(Env.ocaml_flags t ~dir)
-    ~eval:(expand_and_eval_set t ~scope ~dir ?bindings:None)
+    ~eval:(expand_and_eval_set ~expander)
 
 let dump_env t ~dir =
   Ocaml_flags.dump (Env.ocaml_flags t ~dir)
@@ -497,6 +509,27 @@ module Libs = struct
     prefix_rules t prefix ~f
 end
 
+let expand_vars t ~mode ~scope ~dir ?(bindings=Pform.Map.empty) template =
+  Env.expander t ~dir
+  |> Expander.add_bindings ~bindings
+  |> Expander.set_scope ~scope
+  |> Expander.expand ~mode ~template
+
+let expand_vars_string t ~scope ~dir ?bindings s =
+  expand_vars t ~mode:Single ~scope ~dir ?bindings s
+  |> Value.to_string ~dir
+
+let expand_vars_path t ~scope ~dir ?bindings s =
+  expand_vars t ~mode:Single ~scope ~dir ?bindings s
+  |> Value.to_path ~error_loc:(String_with_vars.loc s) ~dir
+
+let eval_blang t blang ~scope ~dir =
+  match blang with
+  | Blang.Const x -> x (* common case *)
+  | _ ->
+    let expander = Expander.set_scope (Env.expander t ~dir) ~scope in
+    Blang.eval blang ~dir ~f:(Expander.expand_var_exn expander)
+
 module Deps = struct
   open Build.O
   open Dep_conf
@@ -593,9 +626,9 @@ module Action = struct
         ~targets:targets_written_by_user ~targets_dir ~scope t
     : (Path.t Bindings.t, Action.t) Build.t =
     let expander =
-      Expander.update ~dir ~scope ~add_bindings:bindings
-        ~env:External_env.initial
-        sctx.expander
+      Env.expander sctx ~dir
+      |> Expander.add_bindings ~bindings
+      |> Expander.set_scope ~scope
     in
     let map_exe = map_exe sctx in
     if targets_written_by_user = Expander.Alias then begin
@@ -677,3 +710,12 @@ end
 let opaque t =
   t.context.profile = "dev"
   && Ocaml_version.supports_opaque_for_mli t.context.version
+
+let expand_and_eval_set sctx ~scope ~dir ?bindings set ~standard =
+  let expander = Expander.set_scope ~scope (Env.expander sctx ~dir) in
+  let expander =
+    match bindings with
+    | None -> expander
+    | Some bindings -> Expander.add_bindings expander ~bindings
+  in
+  expand_and_eval_set ~expander ~standard set

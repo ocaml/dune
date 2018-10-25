@@ -213,8 +213,6 @@ module External_env = Env
 
 module Env : sig
   val ocaml_flags : t -> dir:Path.t -> Ocaml_flags.t
-
-  val _external_ : t -> dir:Path.t -> External_env.t
 end = struct
   open Env_node
 
@@ -262,27 +260,6 @@ end = struct
       with Exit ->
         Exn.code_error "Super_context.Env.get called on invalid directory"
           [ "dir", Path.to_sexp dir ]
-
-  let _external_ t ~dir =
-    let rec loop t node =
-      match node.external_ with
-      | Some x -> x
-      | None ->
-        let profile = profile t in
-        let default =
-          match node.inherit_from with
-          | None -> t.context.env
-          | Some (lazy node) -> loop t node
-        in
-        let flags =
-          match Dune_env.Stanza.find node.config ~profile with
-          | None -> default
-          | Some cfg -> cfg.env_vars
-        in
-        node.external_ <- Some flags;
-        flags
-    in
-    loop t (get t ~dir)
 
   let ocaml_flags t ~dir =
     let rec loop t node =

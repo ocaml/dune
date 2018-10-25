@@ -1,5 +1,9 @@
 open! Stdune
 
+type program = String_with_vars.t
+type string = String_with_vars.t
+type path = String_with_vars.t
+
 module type Uast = Action_intf.Ast
   with type program = String_with_vars.t
   with type path    = String_with_vars.t

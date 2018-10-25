@@ -5,7 +5,7 @@ include Action_dune_lang
 
 module Unresolved = Action.Unresolved
 
-module Mapper = Action.Make_mapper(Uast)(Uast)
+module Mapper = Action.Make_mapper(Action_dune_lang)(Action_dune_lang)
 
 let ignore_loc k ~loc:_ = k
 
@@ -31,7 +31,7 @@ module Partial = struct
   module type Past = Action_intf.Ast
     with type program = (Program.t, String_with_vars.t) either
     with type path    = (Path.t   , String_with_vars.t) either
-    with type string  = (string   , String_with_vars.t) either
+    with type string  = (String.t , String_with_vars.t) either
   module rec Past : Past = Past
 
   include Past
@@ -383,7 +383,7 @@ module Infer = struct
       }
   end
 
-  module Unexp = Make(Uast)(S_unexp)(Outcome_unexp)(struct
+  module Unexp = Make(Action_dune_lang)(S_unexp)(Outcome_unexp)(struct
       open Outcome_unexp
       let ( +@ ) acc fn =
         if String_with_vars.is_var fn ~name:"null" then

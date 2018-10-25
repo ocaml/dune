@@ -42,7 +42,7 @@ let set_dir t ~dir =
 let set_scope t ~scope =
   { t with scope }
 
-let add_env t ~env =
+let extend_env t ~env =
   { t with env = Env.extend_env t.env env }
 
 let add_bindings t ~bindings =
@@ -169,7 +169,7 @@ let expand_and_record_deps acc ~dir ~read_package ~dep_kind
   let scope = scope t in
   let open Build.O in
   let res =
-    expand_var pform syntax_version
+    expand_var t pform syntax_version
     |> Option.bind ~f:(function
       | Ok s -> Some s
       | Error (expansion : Pform.Expansion.t) ->
@@ -292,18 +292,18 @@ let with_record_deps t resolved_forms ~read_package ~dep_kind
          foo %{exe:bar}). This should lookup ./bar rather than ./foo/bar *)
       ~dir:t.dir
       resolved_forms ~read_package ~dep_kind
-      ~expand_var:(t.expand_var t) ~targets_written_by_user ~map_exe in
+      ~expand_var:t.expand_var ~targets_written_by_user ~map_exe in
   { t with expand_var }
 
 let expand_ddeps_and_bindings ~(dynamic_expansions : Value.t list String.Map.t)
       ~(deps_written_by_user : Path.t Bindings.t) ~expand_var
-      _t pform syntax_version =
+      t pform syntax_version =
   let key = String_with_vars.Var.full_name pform in
   let loc = String_with_vars.Var.loc pform in
   match String.Map.find dynamic_expansions key with
   | Some v -> Some (Ok v)
   | None ->
-    expand_var pform syntax_version
+    expand_var t pform syntax_version
     |> Option.map ~f:(function
       | Ok _ -> assert false
       (* we already expanded this stuff in the partial phase *)
@@ -344,6 +344,6 @@ let expand_ddeps_and_bindings ~(dynamic_expansions : Value.t list String.Map.t)
 let add_ddeps_and_bindings t ~dynamic_expansions ~deps_written_by_user =
   let expand_var =
     expand_ddeps_and_bindings ~dynamic_expansions ~deps_written_by_user
-      ~expand_var:(t.expand_var t)
+      ~expand_var:t.expand_var
   in
   { t with expand_var }

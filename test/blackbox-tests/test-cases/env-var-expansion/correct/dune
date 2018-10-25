@@ -7,8 +7,8 @@
  (action
   (progn
    (echo "previous env: %{env:DUNE_ENV_VAR=unset}\n")
-   (setenv DUNE_ENV_VAR false
-    (echo "new env:%{env:DUNE_ENV_VAR=unset}")))))
+   (setenv DUNE_ENV_VAR "set by setenv"
+    (echo "new env:%{env:DUNE_ENV_VAR=unset-by-env}")))))
 
 (alias
  (name enabled)

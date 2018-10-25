@@ -40,15 +40,15 @@ isn't reflected on a per action basis.
   $ dune build --root correct @echo2
   Entering directory 'correct'
   previous env: unset
-  new env:unset
+  new env:set by setenv
   $ DUNE_ENV_VAR=true dune build --root correct @echo2
   Entering directory 'correct'
   previous env: true
-  new env:true
+  new env:set by setenv
   $ DUNE_ENV_VAR=false dune build --root correct @echo2
   Entering directory 'correct'
   previous env: false
-  new env:false
+  new env:set by setenv
 
   $ dune build --root correct @enabled
   Entering directory 'correct'

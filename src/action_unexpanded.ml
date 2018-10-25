@@ -198,8 +198,22 @@ let rec partial_expand t ~map_exe ~expander : Partial.t =
            This is not allowed by dune"
     end
   | Setenv (var, value, t) ->
-    Setenv (E.string ~expander var, E.string ~expander value,
-            partial_expand t ~expander ~map_exe)
+    let var =
+      match E.string ~expander var with
+      | Left l -> l
+      | Right sw ->
+        Errors.fail (String_with_vars.loc sw)
+          "environment variable names must be static"
+    in
+    let value =
+      match E.string ~expander value with
+      | Left l -> l
+      | Right sw ->
+        Errors.fail (String_with_vars.loc sw)
+          "environment variable values must be static"
+    in
+    let expander = Expander.set_env expander ~var ~value in
+    Setenv (Left var, Left value, partial_expand t ~expander ~map_exe)
   | Redirect (outputs, fn, t) ->
     Redirect (outputs, E.path ~expander fn, partial_expand t ~expander ~map_exe)
   | Ignore (outputs, t) ->

@@ -79,3 +79,5 @@ let of_string_map m =
 
 let iter t =
   Map.iteri t.vars
+
+let pp fmt t = Sexp.pp fmt (to_sexp t)

@@ -31,7 +31,7 @@ val set_scope : t -> scope:Scope.t -> t
 
 val add_bindings : t -> bindings:Pform.Map.t -> t
 
-val add_env : t -> env:Env.t -> t
+val extend_env : t -> env:Env.t -> t
 
 type var_expander =
   (Value.t list, Pform.Expansion.t) result option String_with_vars.expander

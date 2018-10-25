@@ -31,3 +31,5 @@ val to_sexp : t -> Sexp.t
 val of_string_map : string String.Map.t -> t
 
 val iter : t -> f:(string -> string -> unit) -> unit
+
+val pp : Format.formatter -> t -> unit

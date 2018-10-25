@@ -268,7 +268,7 @@ end = struct
   let expander t ~dir =
     let node = get t ~dir in
     let external_ = external_ t ~dir in
-    Expander.add_env t.expander ~env:external_
+    Expander.extend_env t.expander ~env:external_
     |> Expander.set_scope ~scope:node.scope
     |> Expander.set_dir ~dir
 

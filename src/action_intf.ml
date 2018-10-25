@@ -81,5 +81,5 @@ module type Helpers = sig
   val remove_tree : path -> t
   val mkdir : path -> t
   val digest_files : path list -> t
-  val diff : ?optional:bool -> ?mode:Diff_mode.t -> Path.t -> Path.t -> t
+  val diff : ?optional:bool -> ?mode:Diff_mode.t -> path -> path -> t
 end

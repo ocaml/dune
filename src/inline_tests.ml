@@ -15,7 +15,7 @@ module Backend = struct
         { loc              : Loc.t
         ; runner_libraries : (Loc.t * Lib_name.t) list
         ; flags            : Ordered_set_lang.Unexpanded.t
-        ; generate_runner  : (Loc.t * Action.Unexpanded.t) option
+        ; generate_runner  : (Loc.t * Action_unexpanded.t) option
         ; extends          : (Loc.t * Lib_name.t) list
         }
 
@@ -38,7 +38,7 @@ module Backend = struct
           (let%map loc = loc
            and runner_libraries = field "runner_libraries" (list (located Lib_name.decode)) ~default:[]
            and flags = Ordered_set_lang.Unexpanded.field "flags"
-           and generate_runner = field_o "generate_runner" (located Action.Unexpanded.decode)
+           and generate_runner = field_o "generate_runner" (located Action_dune_lang.decode)
            and extends = field "extends" (list (located Lib_name.decode)) ~default:[]
            in
            { loc
@@ -88,7 +88,7 @@ module Backend = struct
          [ field "runner_libraries" (list lib)
              (Result.ok_exn t.runner_libraries)
          ; field "flags" Ordered_set_lang.Unexpanded.encode t.info.flags
-         ; field_o "generate_runner" Action.Unexpanded.encode
+         ; field_o "generate_runner" Action_dune_lang.encode
              (Option.map t.info.generate_runner ~f:snd)
          ; field "extends" (list f) (Result.ok_exn t.extends) ~default:[]
          ])

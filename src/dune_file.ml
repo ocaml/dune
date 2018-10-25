@@ -187,85 +187,6 @@ module Pps_and_flags = struct
       ~dune:Dune_syntax.decode
 end
 
-module Bindings = struct
-  type 'a one =
-    | Unnamed of 'a
-    | Named of string * 'a list
-
-  type 'a t = 'a one list
-
-  let fold t ~f ~init = List.fold_left ~f:(fun acc x -> f x acc) ~init t
-
-  let map t ~f =
-    List.map t ~f:(function
-      | Unnamed a -> Unnamed (f a)
-      | Named (s, xs) -> Named (s, List.map ~f xs))
-
-  let to_list =
-    List.concat_map ~f:(function
-      | Unnamed x -> [x]
-      | Named (_, xs) -> xs)
-
-  let find t k =
-    List.find_map t ~f:(function
-      | Unnamed _ -> None
-      | Named (k', x) -> Option.some_if (k = k') x)
-
-  let empty = []
-
-  let singleton x = [Unnamed x]
-
-  let jbuild elem =
-    list (elem >>| fun x -> Unnamed x)
-
-  let dune elem =
-    parens_removed_in_dune (
-      let%map l =
-        repeat
-          (if_paren_colon_form
-             ~then_:(
-               let%map values = repeat elem in
-               fun (loc, name) ->
-                 Left (loc, name, values))
-             ~else_:(elem >>| fun x -> Right x))
-      in
-      let rec loop vars acc = function
-        | [] -> List.rev acc
-        | Right x :: l -> loop vars (Unnamed x :: acc) l
-        | Left (loc, name, values) :: l ->
-          let vars =
-            if not (String.Set.mem vars name) then
-              String.Set.add vars name
-            else
-              of_sexp_errorf loc "Variable %s is defined for the second time."
-                name
-          in
-          loop vars (Named (name, values) :: acc) l
-      in
-      loop String.Set.empty [] l)
-
-  let decode elem =
-    switch_file_kind
-      ~jbuild:(jbuild elem)
-      ~dune:(dune elem)
-
-  let encode encode bindings =
-    Dune_lang.List (
-      List.map bindings ~f:(function
-        | Unnamed a -> encode a
-        | Named (name, bindings) ->
-          Dune_lang.List (Dune_lang.atom (":" ^ name) :: List.map ~f:encode bindings))
-    )
-
-  let to_sexp sexp_of_a bindings =
-    Sexp.List (
-      List.map bindings ~f:(function
-        | Unnamed a -> sexp_of_a a
-        | Named (name, bindings) ->
-          Sexp.List (Sexp.Encoder.string (":" ^ name) :: List.map ~f:sexp_of_a bindings))
-    )
-end
-
 module Dep_conf = struct
   type t =
     | File of String_with_vars.t
@@ -351,14 +272,14 @@ module Preprocess = struct
     }
   type t =
     | No_preprocessing
-    | Action of Loc.t * Action.Unexpanded.t
+    | Action of Loc.t * Action_dune_lang.t
     | Pps    of pps
 
   let decode =
     sum
       [ "no_preprocessing", return No_preprocessing
       ; "action",
-        (located Action.Unexpanded.decode >>| fun (loc, x) ->
+        (located Action_dune_lang.decode >>| fun (loc, x) ->
          Action (loc, x))
       ; "pps",
         (let%map loc = loc
@@ -1541,7 +1462,7 @@ module Rule = struct
   type t =
     { targets  : Targets.t
     ; deps     : Dep_conf.t Bindings.t
-    ; action   : Loc.t * Action.Unexpanded.t
+    ; action   : Loc.t * Action_dune_lang.t
     ; mode     : Mode.t
     ; locks    : String_with_vars.t list
     ; loc      : Loc.t
@@ -1581,7 +1502,7 @@ module Rule = struct
       ]
 
   let short_form =
-    located Action.Unexpanded.decode >>| fun (loc, action) ->
+    located Action_dune_lang.decode >>| fun (loc, action) ->
     { targets  = Infer
     ; deps     = Bindings.empty
     ; action   = (loc, action)
@@ -1593,7 +1514,7 @@ module Rule = struct
 
   let long_form =
     let%map loc = loc
-    and action = field "action" (located Action.Unexpanded.decode)
+    and action = field "action" (located Action_dune_lang.decode)
     and targets = field "targets" Targets.decode_static
     and deps =
       field "deps" (Bindings.decode Dep_conf.decode) ~default:Bindings.empty
@@ -1820,7 +1741,7 @@ module Alias_conf = struct
   type t =
     { name    : string
     ; deps    : Dep_conf.t Bindings.t
-    ; action  : (Loc.t * Action.Unexpanded.t) option
+    ; action  : (Loc.t * Action_dune_lang.t) option
     ; locks   : String_with_vars.t list
     ; package : Package.t option
     ; enabled_if : Blang.t
@@ -1839,7 +1760,7 @@ module Alias_conf = struct
       (let%map name = field "name" alias_name
        and loc = loc
        and package = field_o "package" Pkg.decode
-       and action = field_o "action" (located Action.Unexpanded.decode)
+       and action = field_o "action" (located Action_dune_lang.decode)
        and locks = field "locks" (list String_with_vars.decode) ~default:[]
        and deps = field "deps" (Bindings.decode Dep_conf.decode) ~default:Bindings.empty
        and enabled_if = field "enabled_if" Blang.decode ~default:Blang.true_
@@ -1861,7 +1782,7 @@ module Tests = struct
     ; package    : Package.t option
     ; deps       : Dep_conf.t Bindings.t
     ; enabled_if : Blang.t
-    ; action     : Action.Unexpanded.t option
+    ; action     : Action_dune_lang.t option
     }
 
   let gen_parse names =
@@ -1879,7 +1800,7 @@ module Tests = struct
        and action =
          field_o
            "action"
-           (Syntax.since ~fatal:false Stanza.syntax (1, 2) >>> Action.Unexpanded.decode)
+           (Syntax.since ~fatal:false Stanza.syntax (1, 2) >>> Action_dune_lang.decode)
        in
        { exes =
            { Executables.

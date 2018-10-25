@@ -13,7 +13,7 @@ module Preprocess : sig
 
   type t =
     | No_preprocessing
-    | Action of Loc.t * Action.Unexpanded.t
+    | Action of Loc.t * Action_dune_lang.t
     | Pps    of pps
 end
 
@@ -74,30 +74,6 @@ module Lib_deps : sig
   type t = Lib_dep.t list
   val of_pps : Lib_name.t list -> t
   val info : t -> kind:Lib_deps_info.Kind.t -> Lib_deps_info.t
-end
-
-module Bindings : sig
-  type 'a one =
-    | Unnamed of 'a
-    | Named of string * 'a list
-
-  type 'a t = 'a one list
-
-  val map : 'a t -> f:('a -> 'b) -> 'b t
-
-  val find : 'a t -> string -> 'a list option
-
-  val fold : 'a t -> f:('a one -> 'acc -> 'acc) -> init:'acc -> 'acc
-
-  val empty : 'a t
-
-  val to_list : 'a t -> 'a list
-
-  val singleton : 'a -> 'a t
-
-  val encode : 'a Dune_lang.Encoder.t -> 'a t Dune_lang.Encoder.t
-
-  val to_sexp : 'a Sexp.Encoder.t -> 'a t Sexp.Encoder.t
 end
 
 module Dep_conf : sig
@@ -379,7 +355,7 @@ module Rule : sig
   type t =
     { targets  : Targets.t
     ; deps     : Dep_conf.t Bindings.t
-    ; action   : Loc.t * Action.Unexpanded.t
+    ; action   : Loc.t * Action_dune_lang.t
     ; mode     : Mode.t
     ; locks    : String_with_vars.t list
     ; loc      : Loc.t
@@ -405,7 +381,7 @@ module Alias_conf : sig
   type t =
     { name    : string
     ; deps    : Dep_conf.t Bindings.t
-    ; action  : (Loc.t * Action.Unexpanded.t) option
+    ; action  : (Loc.t * Action_dune_lang.t) option
     ; locks   : String_with_vars.t list
     ; package : Package.t option
     ; enabled_if : Blang.t
@@ -436,7 +412,7 @@ module Tests : sig
     ; package    : Package.t option
     ; deps       : Dep_conf.t Bindings.t
     ; enabled_if : Blang.t
-    ; action     : Action.Unexpanded.t option
+    ; action     : Action_dune_lang.t option
     }
 end
 

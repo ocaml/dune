@@ -467,12 +467,13 @@ let lint_module sctx ~dir ~dep_kind ~lint ~lib_name ~scope ~dir_kind =
           (fun ~source:_ ~ast:_ -> ())
         | Action (loc, action) ->
           (fun ~source ~ast:_ ->
-             let action = Action.Unexpanded.Chdir (workspace_root_var, action) in
+             let action = Action_unexpanded.Chdir
+                            (workspace_root_var, action) in
              Module.iter source ~f:(fun _ (src : Module.File.t) ->
                let bindings = Pform.Map.input_file src.path in
                add_alias src.path ~loc:(Some loc)
                  (Build.path src.path
-                  >>^ (fun _ -> Dune_file.Bindings.empty)
+                  >>^ (fun _ -> Bindings.empty)
                   >>> SC.Action.run sctx
                         action
                         ~loc
@@ -555,7 +556,7 @@ let make sctx ~dir ~dep_kind ~lint ~preprocess
                (preprocessor_deps
                 >>>
                 Build.path src
-                >>^ (fun _ -> Dune_file.Bindings.empty)
+                >>^ (fun _ -> Bindings.empty)
                 >>>
                 SC.Action.run sctx
                   (Redirect

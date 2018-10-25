@@ -4,6 +4,16 @@ open! Import
 module Outputs : module type of struct include Action_intf.Outputs end
 module Diff_mode : module type of struct include Action_intf.Diff_mode end
 
+module Make_mapper (Src : Action_intf.Ast) (Dst : Action_intf.Ast) : sig
+  val map
+    : Src.t
+    -> dir:Src.path
+    -> f_program:(dir:Src.path -> Src.program -> Dst.program)
+    -> f_string:(dir:Src.path -> Src.string -> Dst.string)
+    -> f_path:(dir:Src.path -> Src.path -> Dst.path)
+    -> Dst.t
+end
+
 (** result of the lookup of a program, the path to it or information about the
     failure and possibly a hint how to fix it *)
 module Prog : sig
@@ -22,9 +32,9 @@ module Prog : sig
 end
 
 include Action_intf.Ast
-  with type program := Prog.t
-  with type path    := Path.t
-  with type string  := string
+  with type program = Prog.t
+  with type path    = Path.t
+  with type string  = string
 
 include Action_intf.Helpers
   with type program := Prog.t
@@ -57,6 +67,8 @@ module Unresolved : sig
     type t =
       | This   of Path.t
       | Search of Loc.t option * string
+
+    val of_string : dir:Path.t -> loc:Loc.t option -> string -> t
   end
 
   include Action_intf.Ast
@@ -66,65 +78,6 @@ module Unresolved : sig
 
   val resolve : t -> f:(Loc.t option -> string -> Path.t) -> action
 end with type action := t
-
-module Unexpanded : sig
-  include Action_intf.Ast
-    with type program := String_with_vars.t
-    with type path    := String_with_vars.t
-    with type string  := String_with_vars.t
-
-  include Dune_lang.Conv with type t := t
-
-  type expansion_context = {
-    dir: Path.t;
-    env: Env.t;
-  }
-
-  module Partial : sig
-    include Action_intf.Ast
-      with type program = (Unresolved.Program.t, String_with_vars.t) either
-      with type path    = (Path.t              , String_with_vars.t) either
-      with type string  = (string              , String_with_vars.t) either
-
-    val expand
-      :  t
-      -> ectx:expansion_context
-      -> map_exe:(Path.t -> Path.t)
-      -> f:(Value.t list option String_with_vars.expander)
-      -> Unresolved.t
-  end
-
-  val partial_expand
-    :  t
-    -> ectx:expansion_context
-    -> map_exe:(Path.t -> Path.t)
-    -> f:(Value.t list option String_with_vars.expander)
-    -> Partial.t
-
-  val remove_locs : t -> t
-end
-
-(** Infer dependencies and targets.
-
-    This currently doesn't support well (rename ...) and (remove-tree ...). However these
-    are not exposed in the DSL.
-*)
-module Infer : sig
-  module Outcome : sig
-    type t =
-      { deps    : Path.Set.t
-      ; targets : Path.Set.t
-      }
-  end
-
-  val infer : t -> Outcome.t
-
-  (** If [all_targets] is [true] and a target cannot be determined statically, fail *)
-  val partial : all_targets:bool -> Unexpanded.Partial.t -> Outcome.t
-
-  (** Return the list of targets of an unexpanded action. *)
-  val unexpanded_targets : Unexpanded.t -> String_with_vars.t list
-end
 
 (** Return a sandboxed version of an action *)
 val sandbox

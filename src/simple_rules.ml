@@ -17,7 +17,7 @@ let dep_bindings ~extra_bindings deps =
 
 let user_rule sctx ?extra_bindings ~dir ~scope (rule : Rule.t) =
   if SC.eval_blang sctx rule.enabled_if ~dir ~scope then begin
-    let targets : SC.Action.targets =
+    let targets : Expander.targets =
       match rule.targets with
       | Infer -> Infer
       | Static fns ->
@@ -114,7 +114,7 @@ let alias sctx ?extra_bindings ~dir ~scope (alias_conf : Alias_conf.t) =
     ( "user-alias"
     , Bindings.map
         ~f:Dune_file.Dep_conf.remove_locs alias_conf.deps
-    , Option.map ~f:(fun (_loc, a) -> Action.Unexpanded.remove_locs a)
+    , Option.map ~f:(fun (_loc, a) -> Action_unexpanded.remove_locs a)
         alias_conf.action
     , Option.map extra_bindings ~f:Pform.Map.to_stamp
     )

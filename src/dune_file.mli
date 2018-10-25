@@ -13,7 +13,7 @@ module Preprocess : sig
 
   type t =
     | No_preprocessing
-    | Action of Loc.t * Action.Unexpanded.t
+    | Action of Loc.t * Action_dune_lang.t
     | Pps    of pps
 end
 
@@ -355,7 +355,7 @@ module Rule : sig
   type t =
     { targets  : Targets.t
     ; deps     : Dep_conf.t Bindings.t
-    ; action   : Loc.t * Action.Unexpanded.t
+    ; action   : Loc.t * Action_dune_lang.t
     ; mode     : Mode.t
     ; locks    : String_with_vars.t list
     ; loc      : Loc.t
@@ -381,7 +381,7 @@ module Alias_conf : sig
   type t =
     { name    : string
     ; deps    : Dep_conf.t Bindings.t
-    ; action  : (Loc.t * Action.Unexpanded.t) option
+    ; action  : (Loc.t * Action_dune_lang.t) option
     ; locks   : String_with_vars.t list
     ; package : Package.t option
     ; enabled_if : Blang.t
@@ -412,7 +412,7 @@ module Tests : sig
     ; package    : Package.t option
     ; deps       : Dep_conf.t Bindings.t
     ; enabled_if : Blang.t
-    ; action     : Action.Unexpanded.t option
+    ; action     : Action_dune_lang.t option
     }
 end
 

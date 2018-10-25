@@ -7,7 +7,7 @@ let rules (t : Dune_file.Tests.t) ~sctx ~dir ~scope ~dir_contents ~dir_kind =
     let expected_basename = name ^ ".expected" in
     if String.Set.mem files expected_basename then
       `Expect
-        { Action.Unexpanded.Diff.
+        { Action_unexpanded.Diff.
           file1 = String_with_vars.make_text loc expected_basename
         ; file2 = String_with_vars.make_text loc (name ^ ".output")
         ; optional = false
@@ -21,7 +21,7 @@ let rules (t : Dune_file.Tests.t) ~sctx ~dir ~scope ~dir_contents ~dir_kind =
     let run_action =
       match t.action with
       | Some a -> a
-      | None -> Action.Unexpanded.Run (
+      | None -> Action_unexpanded.Run (
         String_with_vars.make_var loc test_var_name, [])
     in
     let extra_bindings =
@@ -52,7 +52,7 @@ let rules (t : Dune_file.Tests.t) ~sctx ~dir ~scope ~dir_contents ~dir_kind =
           targets = Infer
         ; deps = Bindings.empty
         ; action =
-            (loc, Action.Unexpanded.Redirect (Stdout, diff.file2, run_action))
+            (loc, Action_unexpanded.Redirect (Stdout, diff.file2, run_action))
         ; mode = Standard
         ; locks = t.locks
         ; loc

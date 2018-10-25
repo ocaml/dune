@@ -224,11 +224,6 @@ end
 
 (** Interpret action written in jbuild files *)
 module Action : sig
-  type targets =
-    | Static of Path.t list
-    | Infer
-    | Alias (** This action is for an alias *)
-
   (** The arrow takes as input the list of actual dependencies *)
   val run
     :  t
@@ -236,10 +231,10 @@ module Action : sig
     -> bindings:Pform.Map.t
     -> dir:Path.t
     -> dep_kind:Lib_deps_info.Kind.t
-    -> targets:targets
+    -> targets:Expander.targets
     -> targets_dir:Path.t
     -> scope:Scope.t
-    -> Action.Unexpanded.t
+    -> Action_unexpanded.t
     -> (Path.t Bindings.t, Action.t) Build.t
 
   val map_exe : t -> Path.t -> Path.t

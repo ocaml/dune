@@ -55,7 +55,9 @@ let gen_rules sctx (config : Dune_file.Auto_format.t) ~dir =
   let alias = Build_system.Alias.make "fmt" ~dir in
   let alias_formatted = Build_system.Alias.make "fmt" ~dir:output_dir in
   let resolve_program = Super_context.resolve_program sctx ~loc:(Some loc) in
-  let ocamlformat_deps = depend_on_files ~named:".ocamlformat" source_dir in
+  let ocamlformat_deps =
+    lazy (depend_on_files ~named:".ocamlformat" source_dir)
+  in
   let setup_formatting file =
     let open Build.O in
     let input_basename = Path.basename file in
@@ -75,7 +77,7 @@ let gen_rules sctx (config : Dune_file.Auto_format.t) ~dir =
           ; Target output
           ]
         in
-        Some (ocamlformat_deps >>> Build.run ~dir exe args)
+        Some (Lazy.force ocamlformat_deps >>> Build.run ~dir exe args)
       else
         None
     in

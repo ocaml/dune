@@ -1,3 +1,12 @@
+(** An expander is able to expand any dune template.
+    It has two modes of expansion:
+
+    1. Static. In this mode it will only expand variables that do not introduce
+       dependncies
+
+    2. Dynamic. In this mode, the expander will record dependencies that are
+       introduced by forms it has failed to expand. Later, these dependenceis
+       can be filled for a full expansion.*)
 open Stdune
 
 type t
@@ -67,7 +76,7 @@ val with_record_deps
   -> map_exe:(Path.t -> Path.t)
   -> t
 
-val expand_ddeps_and_bindings
+val add_ddeps_and_bindings
   :  t
   -> dynamic_expansions:Value.t list String.Map.t
   -> deps_written_by_user:Path.t Bindings.t

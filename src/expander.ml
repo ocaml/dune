@@ -338,7 +338,7 @@ let expand_ddeps_and_bindings ~(dynamic_expansions : Value.t list String.Map.t)
           ["var", String_with_vars.Var.to_sexp pform])
     |> Option.map ~f:Result.ok
 
-let expand_ddeps_and_bindings t ~dynamic_expansions ~deps_written_by_user =
+let add_ddeps_and_bindings t ~dynamic_expansions ~deps_written_by_user =
   let expand_var =
     expand_ddeps_and_bindings ~dynamic_expansions ~deps_written_by_user
       ~expand_var:(t.expand_var t)

@@ -650,7 +650,7 @@ module Action = struct
         in
         let unresolved =
           let expander =
-            Expander.expand_ddeps_and_bindings expander ~dynamic_expansions
+            Expander.add_ddeps_and_bindings expander ~dynamic_expansions
               ~deps_written_by_user in
           U.Partial.expand t ~expander ~map_exe
         in

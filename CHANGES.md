@@ -45,6 +45,9 @@ next
   help Windows builds where paths are limited in length (#1511, fixes
   #1497, @diml)
 
+- Fix interpretation of environment variables under `setenv`. Also forbid
+  dynamic environment names or values (#1503, @rgrinberg).
+
 1.4.0 (10/10/2018)
 ------------------
 

@@ -4,9 +4,7 @@ module Menhir_rules = Menhir
 open Dune_file
 open! No_io
 
-(* +-----------------------------------------------------------------+
-   | Utils                                                           |
-   +-----------------------------------------------------------------+ *)
+(* Utils *)
 
 let stanza_package = function
   | Library { public = Some { package; _ }; _ }
@@ -73,9 +71,7 @@ module Gen(P : Install_rules.Params) = struct
     | Some config ->
       Format_rules.gen_rules sctx config ~dir
 
-  (* +-----------------------------------------------------------------+
-     | Stanza                                                          |
-     +-----------------------------------------------------------------+ *)
+  (* Stanza *)
 
   let gen_rules dir_contents cctxs
         { SC.Dir_with_dune. src_dir; ctx_dir; stanzas; scope; kind = dir_kind } =

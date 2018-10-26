@@ -19,9 +19,7 @@ module Gen (P : Install_rules.Params) = struct
 
   module Virtual = Virtual_rules.Gen(P)
 
-  (* +-----------------------------------------------------------------+
-     | Library stuff                                                   |
-     +-----------------------------------------------------------------+ *)
+  (* Library stuff *)
 
   let msvc_hack_cclibs =
     List.map ~f:(fun lib ->

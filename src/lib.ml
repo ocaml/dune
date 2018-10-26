@@ -2,9 +2,7 @@ open Import
 open! Stdune
 open Result.O
 
-(* +-----------------------------------------------------------------+
-   | Types                                                           |
-   +-----------------------------------------------------------------+ *)
+(* Types *)
 
 module Error = struct
   module Library_not_available = struct
@@ -165,9 +163,7 @@ let not_available ~loc reason fmt =
     Errors.fail loc "%s %a" s
       Error.Library_not_available.Reason.pp reason)
 
-(* +-----------------------------------------------------------------+
-   | Generals                                                        |
-   +-----------------------------------------------------------------+ *)
+(* Generals *)
 
 let name t = t.name
 
@@ -312,9 +308,7 @@ module Lib_and_module = struct
 
 end
 
-(* +-----------------------------------------------------------------+
-   | Sub-systems                                                     |
-   +-----------------------------------------------------------------+ *)
+(* Sub-systems *)
 
 module Sub_system = struct
   type t = sub_system = ..
@@ -380,9 +374,7 @@ module Sub_system = struct
       Option.map ~f:(fun f -> f t) M.encode)
 end
 
-(* +-----------------------------------------------------------------+
-   | Library name resolution and transitive closure                  |
-   +-----------------------------------------------------------------+ *)
+(* Library name resolution and transitive closure *)
 
 let gen_unique_id =
   let next = ref 0 in
@@ -906,9 +898,7 @@ module Compile = struct
       M.T t)
 end
 
-(* +-----------------------------------------------------------------+
-   | Databases                                                       |
-   +-----------------------------------------------------------------+ *)
+(* Databases *)
 
 module DB = struct
   module Resolve_result = struct
@@ -1056,9 +1046,7 @@ module DB = struct
     | _ -> l
 end
 
-(* +-----------------------------------------------------------------+
-   | META files                                                      |
-   +-----------------------------------------------------------------+ *)
+(* META files *)
 
 module Meta = struct
   let to_names ts =
@@ -1083,9 +1071,7 @@ module Meta = struct
   let ppx_runtime_deps t = to_names (ppx_runtime_deps_exn t)
 end
 
-(* +-----------------------------------------------------------------+
-   | Error reporting                                                 |
-   +-----------------------------------------------------------------+ *)
+(* Error reporting *)
 
 let report_lib_error ppf (e : Error.t) =
   let dep_path ppf dp =

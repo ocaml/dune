@@ -261,9 +261,7 @@ Different
   dune = Error "unknown escape sequence"}
 |}]
 
-(* +-----------------------------------------------------------------+
-   | Printing tests                                                  |
-   +-----------------------------------------------------------------+ *)
+(* Printing tests *)
 
 let loc = Loc.none
 let a = Dune_lang.atom

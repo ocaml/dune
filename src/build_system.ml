@@ -1542,9 +1542,7 @@ let package_deps t pkg files =
      have been filled *)
   Path.Set.fold files ~init:Package.Name.Set.empty ~f:loop_deps
 
-(* +-----------------------------------------------------------------+
-   | Adding rules to the system                                      |
-   +-----------------------------------------------------------------+ *)
+(* Adding rules to the system *)
 
 let rec add_build_dir_to_keep t ~dir =
   if not (Path.Set.mem t.build_dirs_to_keep dir) then begin

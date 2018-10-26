@@ -51,9 +51,7 @@ Findlib.Package.requires pkg;;
 - : Lib_name.t list = ["baz"]
 |}]
 
-(* +-----------------------------------------------------------------+
-   | Meta parsing/simplification                                     |
-   +-----------------------------------------------------------------+ *)
+(* Meta parsing/simplification *)
 
 open Meta
 #install_printer Simplified.pp;;

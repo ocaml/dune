@@ -359,6 +359,7 @@ module Dir_status = struct
     ; action : (unit, Action.t) Build.t
     ; locks  : Path.t list
     ; context : Context.t
+    ; env : Env.t option
     ; loc : Loc.t option
     }
 
@@ -753,6 +754,7 @@ let parallel_iter_deps deps ~f =
 let rec compile_rule t ?(copy_source=false) pre_rule =
   let { Pre_rule.
         context
+      ; env
       ; build
       ; targets = target_specs
       ; sandbox
@@ -792,9 +794,10 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
     let all_deps = Deps.union static_deps dyn_deps in
     let targets_as_list  = Path.Set.to_list targets  in
     let env =
-      match context with
-      | None -> Env.empty
-      | Some c -> c.env
+      match context, env with
+      | _, Some e -> e
+      | None, None -> Env.empty
+      | Some c, None -> c.env
     in
     let head_target = List.hd targets_as_list in
     let prev_trace = Path.Table.find t.trace head_target in
@@ -849,7 +852,8 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
         in
         make_local_dirs t (Action.chdirs action);
         with_locks locks ~f:(fun () ->
-          Action_exec.exec ~context ~targets action) >>| fun () ->
+          Action_exec.exec ~context ~env:(Some env) ~targets action)
+        >>| fun () ->
         Option.iter sandbox_dir ~f:Path.rm_rf;
         (* All went well, these targets are no longer pending *)
         pending_targets := Path.Set.diff !pending_targets targets;
@@ -906,7 +910,8 @@ and setup_copy_rules t ~ctx_dir ~non_target_source_files =
 
        This allows to keep generated files in tarballs. Maybe we
        should allow it on a case-by-case basis though. *)
-    compile_rule t (Pre_rule.make build ~context:None) ~copy_source:true)
+    compile_rule t (Pre_rule.make build ~context:None ~env:None)
+      ~copy_source:true)
 
 and load_dir   t ~dir = ignore (load_dir_and_get_targets t ~dir : Path.Set.t)
 and targets_of t ~dir =         load_dir_and_get_targets t ~dir
@@ -998,13 +1003,13 @@ and load_dir_step2_exn t ~dir ~collector ~lazy_generators =
         let rules, deps =
           List.fold_left actions ~init:(rules, deps)
             ~f:(fun (rules, deps)
-                 { Dir_status. stamp; action; locks ; context ; loc } ->
+                 { Dir_status. stamp; action; locks ; context ; loc ; env } ->
                  let path =
                    Path.extend_basename base_path
                      ~suffix:("-" ^ Digest.to_hex stamp)
                  in
                  let rule =
-                   Pre_rule.make ~locks ~context:(Some context) ?loc
+                   Pre_rule.make ~locks ~context:(Some context) ~env ?loc
                      (Build.progn [ action; Build.create_file path ])
                  in
                  (rule :: rules, Path.Set.add deps path))
@@ -1012,6 +1017,7 @@ and load_dir_step2_exn t ~dir ~collector ~lazy_generators =
         let path = Path.extend_basename base_path ~suffix:Alias0.suffix in
         (Pre_rule.make
            ~context:None
+           ~env:None
            (Build.path_set deps >>>
             dyn_deps >>>
             Build.dyn_path_set (Build.arr (fun x -> x))
@@ -1227,6 +1233,7 @@ let stamp_file_for_files_of t ~dir ~ext =
     compile_rule t
       (let open Build.O in
        Pre_rule.make
+         ~env:None
          ~context:None
          (Build.paths files >>>
           Build.action ~targets:[stamp_file]
@@ -1652,13 +1659,14 @@ module Alias = struct
         Build.fanout def.dyn_deps build >>^ fun (a, b) ->
         Path.Set.union a b
 
-  let add_action build_system t ~context ~loc ?(locks=[]) ~stamp action =
+  let add_action build_system t ~context ~env ~loc ?(locks=[]) ~stamp action =
     let def = get_alias_def build_system t in
     def.actions <- { stamp = Digest.string (Marshal.to_string stamp [])
                    ; action
                    ; locks
                    ; context
                    ; loc
+                   ; env
                    } :: def.actions
 end
 

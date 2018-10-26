@@ -150,7 +150,7 @@ let setup_separate_compilation_rules sctx components =
           in
           let dir = in_build_dir ~ctx [lib_name] in
           let spec = Arg_spec.Dep src in
-          SC.add_rule sctx
+          SC.add_rule sctx ~dir
             (Build.return (standard sctx)
              >>>
              js_of_ocaml_rule sctx ~dir ~flags:(fun flags ->

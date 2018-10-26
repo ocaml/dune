@@ -95,10 +95,10 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
         (* Symlink the object files in the original directory for
            backward compatibility *)
         let old_dst = Module.cm_file_unsafe m ~obj_dir:dir cm_kind in
-        SC.add_rule sctx (Build.symlink ~src:dst ~dst:old_dst) ;
+        SC.add_rule sctx ~dir (Build.symlink ~src:dst ~dst:old_dst);
         List.iter2 hidden_targets other_targets ~f:(fun in_obj_dir target ->
           let in_dir = Target.file dir target in
-          SC.add_rule sctx (Build.symlink ~src:in_obj_dir ~dst:in_dir))
+          SC.add_rule sctx ~dir (Build.symlink ~src:in_obj_dir ~dst:in_dir))
       end;
       let opaque_arg =
         let intf_only = cm_kind = Cmi && not (Module.has_impl m) in
@@ -125,7 +125,7 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
           Build.fanout flags pp >>^ fun (flags, pp_flags) ->
           flags @ pp_flags
       in
-      SC.add_rule sctx ?sandbox
+      SC.add_rule sctx ?sandbox ~dir
         (Build.paths extra_deps >>>
          other_cm_files >>>
          flags
@@ -175,9 +175,10 @@ let build_module ?sandbox ?js_of_ocaml ?dynlink ~dep_graphs cctx m =
     (* Build *.cmo.js *)
     let sctx     = CC.super_context cctx in
     let obj_dir  = CC.obj_dir       cctx in
+    let dir      = CC.dir           cctx in
     let src = Module.cm_file_unsafe m ~obj_dir Cm_kind.Cmo in
     let target = Path.extend_basename src ~suffix:".js" in
-    SC.add_rules sctx
+    SC.add_rules sctx ~dir
       (Js_of_ocaml_rules.build_cm cctx ~js_of_ocaml ~src ~target))
 
 let build_modules ?sandbox ?js_of_ocaml ?dynlink ~dep_graphs cctx =
@@ -191,6 +192,7 @@ let build_modules ?sandbox ?js_of_ocaml ?dynlink ~dep_graphs cctx =
 let ocamlc_i ?sandbox ?(flags=[]) ~dep_graphs cctx (m : Module.t) ~output =
   let sctx     = CC.super_context cctx in
   let obj_dir  = CC.obj_dir       cctx in
+  let dir      = CC.dir           cctx in
   let ctx      = SC.context       sctx in
   let src = Option.value_exn (Module.file m Impl) in
   let dep_graph = Ml_kind.Dict.get dep_graphs Impl in
@@ -200,7 +202,7 @@ let ocamlc_i ?sandbox ?(flags=[]) ~dep_graphs cctx (m : Module.t) ~output =
        List.concat_map deps
          ~f:(fun m -> [Module.cm_file_unsafe m ~obj_dir Cmi]))
   in
-  SC.add_rule sctx ?sandbox
+  SC.add_rule sctx ?sandbox ~dir
     (cm_deps >>>
      Ocaml_flags.get_for_cm (CC.flags cctx) ~cm_kind:Cmo >>>
      Build.run (Ok ctx.ocamlc) ~dir:ctx.build_dir

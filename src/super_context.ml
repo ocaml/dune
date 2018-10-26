@@ -96,74 +96,6 @@ let find_scope_by_name t name = Scope.DB.find_by_name t.scopes name
 let prefix_rules t prefix ~f =
   Build_system.prefix_rules t.build_system prefix ~f
 
-let add_rule t ?sandbox ?mode ?locks ?loc build =
-  let build = Build.O.(>>>) build t.chdir in
-  Build_system.add_rule t.build_system
-    (Build_interpret.Rule.make ?sandbox ?mode ?locks ?loc
-       ~context:(Some t.context) build)
-
-let add_rule_get_targets t ?sandbox ?mode ?locks ?loc build =
-  let build = Build.O.(>>>) build t.chdir in
-  let rule =
-    Build_interpret.Rule.make ?sandbox ?mode ?locks ?loc
-      ~context:(Some t.context) build
-  in
-  Build_system.add_rule t.build_system rule;
-  List.map rule.targets ~f:Build_interpret.Target.path
-
-let add_rules t ?sandbox builds =
-  List.iter builds ~f:(add_rule t ?sandbox)
-
-let add_alias_deps t alias ?dyn_deps deps =
-  Alias.add_deps t.build_system alias ?dyn_deps deps
-
-let add_alias_action t alias ~loc ?locks ~stamp action =
-  Alias.add_action t.build_system ~context:t.context alias ~loc ?locks
-    ~stamp action
-
-let eval_glob t ~dir re = Build_system.eval_glob t.build_system ~dir re
-let load_dir t ~dir = Build_system.load_dir t.build_system ~dir
-let on_load_dir t ~dir ~f = Build_system.on_load_dir t.build_system ~dir ~f
-
-let source_files t ~src_path =
-  match File_tree.find_dir t.file_tree src_path with
-  | None -> String.Set.empty
-  | Some dir -> File_tree.Dir.files dir
-
-module Pkg_version = struct
-  open Build.O
-
-  module V = Vfile_kind.Make(struct
-      type t = string option
-      let encode = Dune_lang.Encoder.(option string)
-      let name = "Pkg_version"
-    end)
-
-  let spec sctx (p : Package.t) =
-    let fn =
-      Path.relative (Path.append sctx.context.build_dir p.path)
-        (sprintf "%s.version.sexp" (Package.Name.to_string p.name))
-    in
-    Build.Vspec.T (fn, (module V))
-
-  let read sctx p = Build.vpath (spec sctx p)
-
-  let set sctx p get =
-    let spec = spec sctx p in
-    add_rule sctx (get >>> Build.store_vfile spec);
-    Build.vpath spec
-end
-
-let partial_expand sctx ~dep_kind ~targets_written_by_user ~map_exe
-      ~expander t =
-  let acc = Expander.Resolved_forms.empty () in
-  let read_package = Pkg_version.read sctx in
-  let expander =
-    Expander.with_record_deps expander  acc ~dep_kind ~targets_written_by_user
-      ~map_exe ~read_package in
-  let partial = Action_unexpanded.partial_expand t ~expander ~map_exe in
-  (partial, acc)
-
 let expand_and_eval_set set ~expander ~standard =
   let open Build.O in
   let dir = Expander.dir expander in
@@ -195,6 +127,7 @@ module External_env = Env
 
 module Env : sig
   val ocaml_flags : t -> dir:Path.t -> Ocaml_flags.t
+  val external_ : t -> dir:Path.t -> External_env.t
   val expander : t -> dir:Path.t -> Expander.t
 end = struct
   open Env_node
@@ -301,6 +234,79 @@ end = struct
     in
     loop t (get t ~dir)
 end
+
+
+let add_rule t ?sandbox ?mode ?locks ?loc ~dir build =
+  let build = Build.O.(>>>) build t.chdir in
+  let env = Env.external_ t ~dir in
+  Build_system.add_rule t.build_system
+    (Build_interpret.Rule.make ?sandbox ?mode ?locks ?loc
+       ~context:(Some t.context) ~env:(Some env) build)
+
+let add_rule_get_targets t ?sandbox ?mode ?locks ?loc ~dir build =
+  let build = Build.O.(>>>) build t.chdir in
+  let env = Env.external_ t ~dir in
+  let rule =
+    Build_interpret.Rule.make ?sandbox ?mode ?locks ?loc
+      ~context:(Some t.context) ~env:(Some env) build
+  in
+  Build_system.add_rule t.build_system rule;
+  List.map rule.targets ~f:Build_interpret.Target.path
+
+let add_rules t ?sandbox ~dir builds =
+  List.iter builds ~f:(add_rule t ?sandbox ~dir)
+
+let add_alias_deps t alias ?dyn_deps deps =
+  Alias.add_deps t.build_system alias ?dyn_deps deps
+
+let add_alias_action t alias ~dir ~loc ?locks ~stamp action =
+  let env = Some (Env.external_ t ~dir) in
+  Alias.add_action t.build_system ~context:t.context ~env alias ~loc ?locks
+    ~stamp action
+
+let eval_glob t ~dir re = Build_system.eval_glob t.build_system ~dir re
+let load_dir t ~dir = Build_system.load_dir t.build_system ~dir
+let on_load_dir t ~dir ~f = Build_system.on_load_dir t.build_system ~dir ~f
+
+let source_files t ~src_path =
+  match File_tree.find_dir t.file_tree src_path with
+  | None -> String.Set.empty
+  | Some dir -> File_tree.Dir.files dir
+
+module Pkg_version = struct
+  open Build.O
+
+  module V = Vfile_kind.Make(struct
+      type t = string option
+      let encode = Dune_lang.Encoder.(option string)
+      let name = "Pkg_version"
+    end)
+
+  let spec sctx (p : Package.t) =
+    let fn =
+      Path.relative (Path.append sctx.context.build_dir p.path)
+        (sprintf "%s.version.sexp" (Package.Name.to_string p.name))
+    in
+    Build.Vspec.T (fn, (module V))
+
+  let read sctx p = Build.vpath (spec sctx p)
+
+  let set sctx p get =
+    let spec = spec sctx p in
+    add_rule sctx ~dir:(build_dir sctx)
+      (get >>> Build.store_vfile spec);
+    Build.vpath spec
+end
+
+let partial_expand sctx ~dep_kind ~targets_written_by_user ~map_exe
+      ~expander t =
+  let acc = Expander.Resolved_forms.empty () in
+  let read_package = Pkg_version.read sctx in
+  let expander =
+    Expander.with_record_deps expander  acc ~dep_kind ~targets_written_by_user
+      ~map_exe ~read_package in
+  let partial = Action_unexpanded.partial_expand t ~expander ~map_exe in
+  (partial, acc)
 
 
 let ocaml_flags t ~dir (x : Buildable.t) =
@@ -478,6 +484,7 @@ module Libs = struct
       let { Lib.Compile.Resolved_select.dst_fn; src_fn } = rs in
       let dst = Path.relative dir dst_fn in
       add_rule t
+        ~dir
         (match src_fn with
          | Ok src_fn ->
            let src = Path.relative dir src_fn in

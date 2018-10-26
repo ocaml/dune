@@ -7,10 +7,10 @@ env vars intepreted in various fields, such as flags
   $ dune build --force --root flag-field
   Entering directory 'flag-field'
   var visible from dune: -principal         foo alias default
-  DUNE_FOO: <not found>
+  DUNE_FOO: -principal
 
 global vars are overriden
   $ DUNE_FOO=blarg dune build --force --root flag-field
   Entering directory 'flag-field'
   var visible from dune: -principal         foo alias default
-  DUNE_FOO: blarg
+  DUNE_FOO: -principal

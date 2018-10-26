@@ -127,13 +127,13 @@ let dot_merlin sctx ~dir ~more_src_dirs ~scope ~dir_kind
 
        Currently dune doesn't support declaring a dependency only
        on the existence of a file, so we have to use this trick. *)
-    SC.add_rule sctx
+    SC.add_rule sctx ~dir
       (Build.path merlin_file
        >>>
        Build.create_file (Path.relative dir ".merlin-exists"));
     Path.Set.singleton merlin_file
     |> SC.add_alias_deps sctx (Build_system.Alias.check ~dir);
-    SC.add_rule sctx ~mode:Promote_but_delete_on_clean (
+    SC.add_rule sctx ~dir ~mode:Promote_but_delete_on_clean (
       flags
       >>^ (fun flags ->
         let (src_dirs, obj_dirs) =

@@ -39,6 +39,8 @@ module Gen (S : sig val sctx : SC.t end) = struct
   let context = SC.context sctx
   let stanzas = SC.stanzas sctx
 
+  let add_rule = Super_context.add_rule sctx ~dir:(Super_context.build_dir sctx)
+
   module Paths = struct
     let root = context.Context.build_dir ++ "_doc"
 
@@ -120,7 +122,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
   let compile_module (m : Module.t) ~obj_dir ~includes:(file_deps, iflags)
         ~dep_graphs ~doc_dir ~pkg_or_lnu =
     let odoc_file = Module.odoc_file m ~doc_dir in
-    SC.add_rule sctx
+    add_rule
       (file_deps
        >>>
        module_deps m ~doc_dir ~dep_graphs
@@ -137,7 +139,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
 
   let compile_mld (m : Mld.t) ~includes ~doc_dir ~pkg =
     let odoc_file = Mld.odoc_file m ~doc_dir in
-    SC.add_rule sctx
+    add_rule
       (includes
        >>>
        Build.run ~dir:doc_dir odoc
@@ -172,7 +174,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
           Build.create_file (odoc_file.html_dir ++ Config.dune_keep_fname) in
         odoc_file.html_dir, [dune_keep]
     in
-    SC.add_rule sctx
+    add_rule
       (deps
        >>>
        Build.progn (
@@ -212,7 +214,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
                               |> Path.Set.of_list)
 
   let setup_css_rule () =
-    SC.add_rule sctx
+    add_rule
       (Build.run
          ~dir:context.build_dir
          odoc
@@ -260,7 +262,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
   </body>
 </html>|} list_items
     in
-    SC.add_rule sctx @@ Build.write_file toplevel_index html
+    add_rule (Build.write_file toplevel_index html)
 
   let libs_of_pkg ~pkg =
     match Package.Name.Map.find (SC.libs_by_package sctx) pkg with
@@ -458,9 +460,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
       else
         let entry_modules = entry_modules ~pkg in
         let gen_mld = Paths.gen_mld_dir pkg ++ "index.mld" in
-        SC.add_rule sctx (
-          Build.write_file gen_mld (default_index entry_modules)
-        );
+        add_rule (Build.write_file gen_mld (default_index entry_modules));
         String.Map.add mlds "index" gen_mld in
     let odocs = List.map (String.Map.values mlds) ~f:(fun mld ->
       compile_mld

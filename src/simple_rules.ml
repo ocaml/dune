@@ -46,7 +46,7 @@ let user_rule sctx ?extra_bindings ~dir ~scope (rule : Rule.t) =
         Static (List.concat_map ~f fns)
     in
     let bindings = dep_bindings ~extra_bindings rule.deps in
-    SC.add_rule_get_targets sctx ~mode:rule.mode ~loc:rule.loc
+    SC.add_rule_get_targets sctx ~dir ~mode:rule.mode ~loc:rule.loc
       ~locks:(interpret_locks sctx ~dir ~scope rule.locks)
       (SC.Deps.interpret_named sctx ~scope ~dir rule.deps
        >>>
@@ -97,7 +97,7 @@ let copy_files sctx ~dir ~scope ~src_dir (def: Copy_files.t) =
   List.map files ~f:(fun basename ->
     let file_src = Path.relative src_in_build basename in
     let file_dst = Path.relative dir basename in
-    SC.add_rule sctx ~loc
+    SC.add_rule sctx ~loc ~dir
       ((if def.add_line_directive
         then Build.copy_and_add_line_directive
         else Build.copy)
@@ -107,7 +107,7 @@ let copy_files sctx ~dir ~scope ~src_dir (def: Copy_files.t) =
 
 let add_alias sctx ~dir ~name ~stamp ~loc ?(locks=[]) build =
   let alias = Build_system.Alias.make name ~dir in
-  SC.add_alias_action sctx alias ~loc ~locks ~stamp build
+  SC.add_alias_action sctx alias ~dir ~loc ~locks ~stamp build
 
 let alias sctx ?extra_bindings ~dir ~scope (alias_conf : Alias_conf.t) =
   let stamp =

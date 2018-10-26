@@ -132,6 +132,7 @@ val add_rule
   -> ?mode:Dune_file.Rule.Mode.t
   -> ?locks:Path.t list
   -> ?loc:Loc.t
+  -> dir:Path.t
   -> (unit, Action.t) Build.t
   -> unit
 val add_rule_get_targets
@@ -140,11 +141,13 @@ val add_rule_get_targets
   -> ?mode:Dune_file.Rule.Mode.t
   -> ?locks:Path.t list
   -> ?loc:Loc.t
+  -> dir:Path.t
   -> (unit, Action.t) Build.t
   -> Path.t list
 val add_rules
   :  t
   -> ?sandbox:bool
+  -> dir:Path.t
   -> (unit, Action.t) Build.t list
   -> unit
 val add_alias_deps
@@ -156,6 +159,7 @@ val add_alias_deps
 val add_alias_action
   :  t
   -> Build_system.Alias.t
+  -> dir:Path.t
   -> loc:Loc.t option
   -> ?locks:Path.t list
   -> stamp:_

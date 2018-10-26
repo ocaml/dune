@@ -180,6 +180,7 @@ module Alias : sig
     :  build_system
     -> t
     -> context:Context.t
+    -> env:Env.t option
     -> loc:Loc.t option
     -> ?locks:Path.t list
     -> stamp:_

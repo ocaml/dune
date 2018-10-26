@@ -194,6 +194,7 @@ let targets =
 module Rule = struct
   type t =
     { context  : Context.t option
+    ; env      : Env.t option
     ; build    : (unit, Action.t) Build.t
     ; targets  : Target.t list
     ; sandbox  : bool
@@ -204,7 +205,7 @@ module Rule = struct
     }
 
   let make ?(sandbox=false) ?(mode=Dune_file.Rule.Mode.Not_a_rule_stanza)
-        ~context ?(locks=[]) ?loc build =
+        ~context ~env ?(locks=[]) ?loc build =
     let targets = targets build in
     let dir =
       match targets with
@@ -234,6 +235,7 @@ module Rule = struct
         dir
     in
     { context
+    ; env
     ; build
     ; targets
     ; sandbox

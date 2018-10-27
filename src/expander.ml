@@ -5,7 +5,7 @@ type t =
   ; env : Env.t
   ; artifacts : Artifacts.t
   ; artifacts_host : Artifacts.t
-  ; ocaml_config : Value.t list String.Map.t
+  ; ocaml_config : Value.t list String.Map.t Lazy.t
   ; bindings : Pform.Map.t
   ; scope : Scope.t
   ; expand_var :
@@ -79,7 +79,7 @@ let expand_var_exn t var syn =
 
 let make ~scope ~(context : Context.t) ~artifacts
       ~artifacts_host ~cxx_flags =
-  let ocaml_config = make_ocaml_config context.ocaml_config in
+  let ocaml_config = lazy (make_ocaml_config context.ocaml_config) in
   let dir = context.build_dir in
   let bindings = Pform.Map.create ~context ~cxx_flags in
   let env = context.env in
@@ -91,7 +91,7 @@ let make ~scope ~(context : Context.t) ~artifacts
     |> Option.map ~f:(function
       | Pform.Expansion.Var (Values l) -> Ok l
       | Macro (Ocaml_config, s) ->
-        Ok (expand_ocaml_config ocaml_config var s)
+        Ok (expand_ocaml_config (Lazy.force ocaml_config) var s)
       | Macro (Env, s) -> Ok (expand_env ~env var s)
       | Var Project_root -> Ok [Value.Dir (Scope.root scope)]
       | expansion ->

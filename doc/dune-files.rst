@@ -962,6 +962,8 @@ Dune supports the following variables:
   ``ocamlc -config``. In particular, variables added in new versions
   of OCaml needs to be registered in dune before they can be used
 - ``profile`` the profile selected via ``--profile``
+- ``context_name`` the name of the context (``default`` or defined in the
+  workspace file)
 
 In addition, ``(action ...)`` fields support the following special variables:
 

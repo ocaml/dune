@@ -22,6 +22,8 @@ used.
   Entering directory 'precedence'
   VARIABLE_FROM_BOTH=from_workspace
 
+  $ dune exec env
+
 When a variable is repeated, an error message is displayed:
 
   $ dune build --root duplicate

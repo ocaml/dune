@@ -41,6 +41,10 @@ next
 
 - Add `context_name` expansion variable (#1507, @rgrinberg)
 
+- Use shorter paths for generated on-demand ppx drivers. This is to
+  help Windows builds where paths are limited in length (#1511, fixes
+  #1497, @diml)
+
 1.4.0 (10/10/2018)
 ------------------
 

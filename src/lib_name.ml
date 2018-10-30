@@ -117,9 +117,3 @@ let package_name t =
   Package.Name.of_string (root_lib t)
 
 let nest x y = sprintf "%s.%s" x y
-
-module L = struct
-  let to_key = function
-    | [] -> "+none+"
-    | names  -> String.concat ~sep:"+" names
-end

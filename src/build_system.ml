@@ -793,15 +793,15 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
     make_local_dir t dir;
     let all_deps = Deps.union static_deps dyn_deps in
     let targets_as_list  = Path.Set.to_list targets  in
-    let env =
-      match context, env with
-      | _, Some e -> e
-      | None, None -> Env.empty
-      | Some c, None -> c.env
-    in
     let head_target = List.hd targets_as_list in
     let prev_trace = Path.Table.find t.trace head_target in
     let rule_digest =
+      let env =
+        match env, context with
+        | None, None -> Env.initial
+        | Some e, _ -> e
+        | None, Some c -> c.env
+      in
       let trace =
         ( Deps.trace all_deps env,
           List.map targets_as_list ~f:Path.to_string,
@@ -852,7 +852,7 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
         in
         make_local_dirs t (Action.chdirs action);
         with_locks locks ~f:(fun () ->
-          Action_exec.exec ~context ~env:(Some env) ~targets action)
+          Action_exec.exec ~context ~env ~targets action)
         >>| fun () ->
         Option.iter sandbox_dir ~f:Path.rm_rf;
         (* All went well, these targets are no longer pending *)

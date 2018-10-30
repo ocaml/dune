@@ -188,13 +188,13 @@ end = struct
           | None -> t.context.env
           | Some (lazy node) -> loop t node
         in
-        let flags =
+        let env =
           match Dune_env.Stanza.find node.config ~profile with
           | None -> default
-          | Some cfg -> cfg.env_vars
+          | Some cfg -> Env.extend_env default cfg.env_vars
         in
-        node.external_ <- Some flags;
-        flags
+        node.external_ <- Some env;
+        env
     in
     loop t (get t ~dir)
 

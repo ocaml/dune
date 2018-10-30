@@ -35,6 +35,8 @@ next
 - Fix version syntax check for `test` stanza's `action` field. Only emits a warning for
   retro-compatibility (#1474, fixes #1471, @NathanReb)
 
+- Add `context_name` expansion variable (#1507, @rgrinberg)
+
 1.4.0 (10/10/2018)
 ------------------
 

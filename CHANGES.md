@@ -39,6 +39,8 @@ next
 
 - Fix interpretation of paths in `env` stanzas (#1509, fixes #1508, @diml)
 
+- Add `context_name` expansion variable (#1507, @rgrinberg)
+
 1.4.0 (10/10/2018)
 ------------------
 

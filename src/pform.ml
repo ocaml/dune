@@ -140,6 +140,7 @@ module Map = struct
       ; "ext_exe"        , string context.ext_exe
       ; "profile"        , string context.profile
       ; "workspace_root" , values [Value.Dir context.build_dir]
+      ; "context_name"   , string (Context.name context)
       ; "ROOT"           , renamed_in ~version:(1, 0) ~new_name:"workspace_root"
       ]
     in

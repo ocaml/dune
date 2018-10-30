@@ -14,3 +14,9 @@ global vars are overriden
   Entering directory 'flag-field'
   var visible from dune: -principal         foo alias default
   DUNE_FOO: -principal
+
+proper inhertiance chain of env stanzas
+  $ dune build --root inheritance
+  Entering directory 'inheritance'
+  DUNE_FOO: foo-sub
+  DUNE_BAR: bar-parent

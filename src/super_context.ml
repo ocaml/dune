@@ -263,6 +263,7 @@ end = struct
 
   let ocaml_flags t ~dir =
     let rec loop t node =
+      let dir = node.dir in
       match node.ocaml_flags with
       | Some x -> x
       | None ->

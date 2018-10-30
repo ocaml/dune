@@ -27,13 +27,17 @@ next
 - Respect `OCAMLFIND_TOOLCHAIN` and add a `toolchain` option to contexts in the
   workspace file. (#1449, fix #1413, @rgrinberg)
 
-- Fix error message when using `copy_files` stanza to copy files from a non sub directory
-  with lang set to dune < 1.3 (#1486, fixes #1485, @NathanReb)
+- Fix error message when using `copy_files` stanza to copy files from
+  a non sub directory with lang set to dune < 1.3 (#1486, fixes #1485,
+  @NathanReb)
 
 - Install man pages in the correct subdirectory (#1483, fixes #1441, @emillon)
 
-- Fix version syntax check for `test` stanza's `action` field. Only emits a warning for
-  retro-compatibility (#1474, fixes #1471, @NathanReb)
+- Fix version syntax check for `test` stanza's `action` field. Only
+  emits a warning for retro-compatibility (#1474, fixes #1471,
+  @NathanReb)
+
+- Fix interpretation of paths in `env` stanzas (#1509, fixes #1508, @diml)
 
 - Add `context_name` expansion variable (#1507, @rgrinberg)
 

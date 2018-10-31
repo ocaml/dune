@@ -1,7 +1,7 @@
   $ dune build --display short bin/technologic.bc.js @install
         ocamlc lib/stubs$ext_obj
     ocamlmklib lib/dllx_stubs$ext_dll,lib/libx_stubs$ext_lib
-      ocamlopt .ppx/js_of_ocaml-ppx/ppx.exe
+      ocamlopt .ppx/a8f6e02cd408c15255989a8e8e17529e/ppx.exe
            ppx lib/x.pp.ml
       ocamldep lib/.x.objs/x.pp.ml.d
         ocamlc lib/.x.objs/x__.{cmi,cmo,cmt}

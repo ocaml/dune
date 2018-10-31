@@ -58,7 +58,3 @@ end
 val to_sexp : t Sexp.Encoder.t
 
 val nest : t -> t -> t
-
-module L : sig
-  val to_key : t list -> string
-end

@@ -5,6 +5,87 @@ open Dune_file
 
 module SC = Super_context
 
+(* Encoded representation of a set of library names *)
+module Key : sig
+  val encode
+    :  dir_kind:File_tree.Dune_file.Kind.t
+    -> Lib.t list
+    -> Digest.t
+
+  (* [decode s] fails if there hasn't been a previous call to [encode]
+     such that [encode ~dir_kind l = s]. *)
+  val decode : Digest.t -> Lib.t list
+end = struct
+
+  let reverse_table = Hashtbl.create 128
+
+  let encode ~dir_kind libs =
+    let libs =
+      let compare a b = Lib_name.compare (Lib.name a) (Lib.name b) in
+      match (dir_kind : File_tree.Dune_file.Kind.t) with
+      | Dune -> List.sort libs ~compare
+      | Jbuild ->
+        match libs with
+        | last :: others -> List.sort others ~compare @ [last]
+        | [] -> []
+    in
+    let scope_for_key =
+      List.fold_left libs ~init:None ~f:(fun acc lib ->
+        let scope_for_key =
+          match Lib.status lib with
+          | Private scope_name   -> Some scope_name
+          | Public _ | Installed -> None
+        in
+        let open Dune_project.Name.Infix in
+        match acc, scope_for_key with
+        | Some a, Some b -> assert (a = b); acc
+        | Some _, None   -> acc
+        | None  , Some _ -> scope_for_key
+      | None  , None   -> None)
+    in
+    let scope_key =
+      match scope_for_key with
+      | None -> ""
+      | Some name ->
+        match Dune_project.Name.to_encoded_string name with
+        | "" -> assert false
+        | s -> s
+    in
+    let key =
+      (scope_key
+       :: List.map libs ~f:(fun lib -> Lib.name lib |> Lib_name.to_string))
+      |> String.concat ~sep:"\000"
+      |> Digest.string
+    in
+    begin
+      match Hashtbl.find reverse_table key with
+      | None ->
+        Hashtbl.add reverse_table key libs
+      | Some libs' ->
+        match List.compare libs libs' ~compare:(fun a b ->
+          Int.compare (Lib.unique_id a) (Lib.unique_id b)) with
+        | Eq -> ()
+        | _ ->
+          let string_of_libs libs =
+            String.concat ~sep:", " (List.map libs ~f:(fun lib ->
+              Lib_name.to_string (Lib.name lib)))
+          in
+          die "Hash collision between set of ppx drivers:\n\
+               - %s\n\
+               - %s"
+            (string_of_libs libs)
+            (string_of_libs libs')
+    end;
+    key
+
+  let decode key =
+    match Hashtbl.find reverse_table key with
+    | Some libs -> libs
+    | None ->
+      die "I don't know what ppx rewriters set %s correspond to."
+        (Digest.to_hex key)
+end
+
 let pped_path path ~suffix =
   (* We need to insert the suffix before the extension as some tools
      inspect the extension *)
@@ -236,17 +317,17 @@ module Jbuild_driver = struct
     snd (Lazy.force driver)
 
   (* For building the driver *)
-  let analyse_pps pps =
+  let analyse_pps pps ~get_name =
     let driver, rev_others =
       match List.rev pps with
       | [] -> (omp, [])
       | pp :: rev_rest as rev_pps ->
-        match List.assoc drivers pp with
+        match List.assoc drivers (get_name pp) with
         | None        -> (omp   , rev_pps )
         | Some driver -> (driver, rev_rest)
     in
-    let driver_pp, driver = Lazy.force driver in
-    (driver, List.rev (driver_pp :: rev_others))
+    let driver_name, driver = Lazy.force driver in
+    (driver, driver_name, rev_others)
 end
 
 let ppx_exe sctx ~key ~dir_kind =
@@ -256,34 +337,49 @@ let ppx_exe sctx ~key ~dir_kind =
   | Jbuild ->
     Path.relative (SC.build_dir sctx) (".ppx/jbuild/" ^ key ^ "/ppx.exe")
 
-let build_ppx_driver sctx ~lib_db ~dep_kind ~target ~dir_kind pps =
+let build_ppx_driver sctx ~dep_kind ~target ~dir_kind ~pps ~pp_names =
   let ctx = SC.context sctx in
   let mode = Context.best_mode ctx in
   let compiler = Option.value_exn (Context.compiler ctx mode) in
-  let jbuild_driver, pps =
+  let jbuild_driver, pps, pp_names =
     match (dir_kind : File_tree.Dune_file.Kind.t) with
-    | Dune -> (None, pps)
+    | Dune -> (None, pps, pp_names)
     | Jbuild ->
-      let driver, pps = Jbuild_driver.analyse_pps pps in
-      (Some driver, pps)
+      match pps with
+      | Error _ ->
+        let driver, driver_name, pp_names =
+          Jbuild_driver.analyse_pps pp_names ~get_name:(fun x -> x)
+        in
+        (Some driver, pps, driver_name :: pp_names)
+      | Ok pps ->
+        let driver, driver_name, pps =
+          Jbuild_driver.analyse_pps pps ~get_name:Lib.name
+        in
+        let pp_names = driver_name :: List.map pps ~f:Lib.name in
+        let pps =
+          let open Result.O in
+          Lib.DB.resolve_pps (SC.public_libs sctx) [(Loc.none, driver_name)]
+          >>| fun driver ->
+          driver @ pps
+        in
+        (Some driver, pps, pp_names)
   in
   let driver_and_libs =
     let open Result.O in
     Result.map_error ~f:(fun e ->
       (* Extend the dependency stack as we don't have locations at
          this point *)
-      Dep_path.prepend_exn e (Preprocess pps))
-      (Lib.DB.resolve_pps lib_db
-         (List.map pps ~f:(fun x -> (Loc.none, x)))
+      Dep_path.prepend_exn e (Preprocess pp_names))
+      (pps
        >>= Lib.closure ~linking:true
-       >>= fun resolved_pps ->
+       >>= fun pps ->
        match jbuild_driver with
        | None ->
-         Driver.select resolved_pps ~loc:(Dot_ppx (target, pps))
+         Driver.select pps ~loc:(Dot_ppx (target, pp_names))
          >>| fun driver ->
-         (driver, resolved_pps)
+         (driver, pps)
        | Some driver ->
-         Ok (driver, resolved_pps))
+         Ok (driver, pps))
   in
   (* CR-someday diml: what we should do is build the .cmx/.cmo once
      and for all at the point where the driver is defined. *)
@@ -295,7 +391,7 @@ let build_ppx_driver sctx ~lib_db ~dep_kind ~target ~dir_kind pps =
      Build.write_file_dyn ml);
   SC.add_rule sctx
     (Build.record_lib_deps
-       (Lib_deps.info ~kind:dep_kind (Lib_deps.of_pps pps))
+       (Lib_deps.info ~kind:dep_kind (Lib_deps.of_pps pp_names))
      >>>
      Build.of_result_map driver_and_libs ~f:(fun (_, libs) ->
        Build.paths (Lib.L.archive_files libs ~mode))
@@ -312,19 +408,31 @@ let build_ppx_driver sctx ~lib_db ~dep_kind ~target ~dir_kind pps =
 
 let get_rules sctx key ~dir_kind =
   let exe = ppx_exe sctx ~key ~dir_kind in
-  let (key, lib_db) = SC.Scope_key.of_string sctx key in
-  let names =
-    match key with
-    | "+none+" -> []
-    | _ -> String.split key ~on:'+'
+  let pps, pp_names =
+    match Digest.from_hex key with
+    | key ->
+      let pps = Key.decode key in
+      (Ok pps, List.map pps ~f:Lib.name)
+    | exception _ ->
+      (* Still support the old scheme for backward compatibility *)
+      let (key, lib_db) = SC.Scope_key.of_string sctx key in
+      let names =
+        match key with
+        | "+none+" -> []
+        | _ -> String.split key ~on:'+'
+      in
+      let names =
+        match List.rev names with
+        | [] -> []
+        | driver :: rest -> List.sort rest ~compare:String.compare @ [driver]
+      in
+      let names = List.map names ~f:(Lib_name.of_string_exn ~loc:None) in
+      let pps =
+        Lib.DB.resolve_pps lib_db (List.map names ~f:(fun x -> (Loc.none, x)))
+      in
+      (pps, names)
   in
-  let names =
-    match List.rev names with
-    | [] -> []
-    | driver :: rest -> List.sort rest ~compare:String.compare @ [driver]
-  in
-  let pps = List.map names ~f:(Lib_name.of_string_exn ~loc:None) in
-  build_ppx_driver sctx pps ~lib_db ~dep_kind:Required ~target:exe ~dir_kind
+  build_ppx_driver sctx ~pps ~pp_names ~dep_kind:Required ~target:exe ~dir_kind
 
 let gen_rules sctx components =
   match components with
@@ -333,35 +441,7 @@ let gen_rules sctx components =
   | _ -> ()
 
 let ppx_driver_exe sctx libs ~dir_kind =
-  let names =
-    let names = List.rev_map libs ~f:Lib.name in
-    match (dir_kind : File_tree.Dune_file.Kind.t) with
-    | Dune -> List.sort names ~compare:Lib_name.compare
-    | Jbuild ->
-      match names with
-      | last :: others -> List.sort others ~compare:Lib_name.compare @ [last]
-      | [] -> []
-  in
-  let scope_for_key =
-    List.fold_left libs ~init:None ~f:(fun acc lib ->
-      let scope_for_key =
-        match Lib.status lib with
-        | Private scope_name   -> Some scope_name
-        | Public _ | Installed -> None
-      in
-      let open Dune_project.Name.Infix in
-      match acc, scope_for_key with
-      | Some a, Some b -> assert (a = b); acc
-      | Some _, None   -> acc
-      | None  , Some _ -> scope_for_key
-      | None  , None   -> None)
-  in
-  let key = Lib_name.L.to_key names in
-  let key =
-    match scope_for_key with
-    | None            -> key
-    | Some scope_name -> SC.Scope_key.to_string key scope_name
-  in
+  let key = Digest.to_hex (Key.encode ~dir_kind libs) in
   ppx_exe sctx ~key ~dir_kind
 
 module Compat_ppx_exe_kind = struct

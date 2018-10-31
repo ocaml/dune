@@ -33,9 +33,16 @@ module DB = struct
             [ "dir"    , Path.to_sexp dir
             ; "context", Sexp.Encoder.string t.context
             ];
-        let scope = loop (Path.parent_exn d) in
-        Hashtbl.add t.by_dir d scope;
-        scope
+        match Path.parent d with
+        | None ->
+          Exn.code_error "find_by_dir: invalid directory"
+            [ "d", Path.to_sexp d
+            ; "dir", Path.to_sexp dir
+            ]
+        | Some d ->
+          let scope = loop d in
+          Hashtbl.add t.by_dir d scope;
+          scope
     in
     loop dir
 

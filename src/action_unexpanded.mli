@@ -3,10 +3,7 @@ open Stdune
 include module type of struct include Action_dune_lang end
 
 module Partial : sig
-  include Action_intf.Ast
-    with type program = (Action.Unresolved.Program.t, String_with_vars.t) either
-    with type path    = (Path.t                     , String_with_vars.t) either
-    with type string  = (String.t                   , String_with_vars.t) either
+  type t
 
   val expand
     :  t

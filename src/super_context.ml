@@ -177,7 +177,7 @@ end = struct
         Exn.code_error "Super_context.Env.get called on invalid directory"
           [ "dir", Path.to_sexp dir ]
 
-  let external_ t ~dir =
+  let external_ =
     let rec loop t node =
       match node.external_ with
       | Some x -> x
@@ -196,7 +196,7 @@ end = struct
         node.external_ <- Some env;
         env
     in
-    loop t (get t ~dir)
+    fun t ~dir -> loop t (get t ~dir)
 
   let expander t ~dir =
     let node = get t ~dir in
@@ -205,7 +205,7 @@ end = struct
     |> Expander.set_scope ~scope:node.scope
     |> Expander.set_dir ~dir
 
-  let ocaml_flags t ~dir =
+  let ocaml_flags =
     let rec loop t node =
       let dir = node.dir in
       match node.ocaml_flags with
@@ -232,7 +232,7 @@ end = struct
         node.ocaml_flags <- Some flags;
         flags
     in
-    loop t (get t ~dir)
+    fun t ~dir -> loop t (get t ~dir)
 end
 
 

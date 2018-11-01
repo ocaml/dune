@@ -1,11 +1,15 @@
 module Var = struct
-  type t = string
-  let compare =
-    if Sys.win32 then (
-      fun a b -> String.compare (String.lowercase a) (String.lowercase b)
-    ) else (
-      String.compare
-    )
+  module T = struct
+    type t = string
+    let compare =
+      if Sys.win32 then (
+        fun a b -> String.compare (String.lowercase a) (String.lowercase b)
+      ) else (
+        String.compare
+      )
+  end
+  module Set = Set.Make(T)
+  include T
 end
 
 module Map = Map.Make(Var)
@@ -21,6 +25,8 @@ let make vars =
   }
 
 let empty = make Map.empty
+
+let vars t = Var.Set.of_list (Map.keys t.vars)
 
 let get t k = Map.find t.vars k
 

@@ -209,7 +209,7 @@ let rec partial_expand t ~map_exe ~expander : Partial.t =
     let expander =
       match value with
       | Left value -> Expander.set_env expander ~var ~value
-      | Right _ -> Expander.unset_env expander ~var
+      | Right _ -> Expander.hide_env expander ~var
     in
     Setenv (Left var, value, partial_expand t ~expander ~map_exe)
   | Redirect (outputs, fn, t) ->

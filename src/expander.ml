@@ -2,6 +2,7 @@ open Stdune
 
 type t =
   { dir : Path.t
+  ; hidden_env : Env.Var.Set.t
   ; env : Env.t
   ; artifacts : Artifacts.t
   ; artifacts_host : Artifacts.t
@@ -34,10 +35,13 @@ let make_ocaml_config ocaml_config =
   |> String.Map.of_list_exn
 
 let set_env t ~var ~value =
-  { t with env = Env.add t.env ~var ~value }
+  { t with
+    env = Env.add t.env ~var ~value
+  ; hidden_env = Env.Var.Set.remove t.hidden_env var
+  }
 
-let unset_env t ~var =
-  { t with env = Env.remove t.env ~var }
+let hide_env t ~var =
+  { t with hidden_env = Env.Var.Set.add t.hidden_env var }
 
 let set_dir t ~dir =
   { t with dir }
@@ -46,7 +50,10 @@ let set_scope t ~scope =
   { t with scope }
 
 let extend_env t ~env =
-  { t with env = Env.extend_env t.env env }
+  { t with
+    env = Env.extend_env t.env env
+  ; hidden_env = Env.Var.Set.diff t.hidden_env (Env.vars env)
+  }
 
 let add_bindings t ~bindings =
   { t with
@@ -61,7 +68,7 @@ let expand_ocaml_config ocaml_config pform name =
       "Unknown ocaml configuration variable %S"
       name
 
-let expand_env ~env pform s : Value.t list =
+let expand_env t pform s : Value.t list option =
   match String.rsplit2 s ~on:'=' with
   | None ->
     Errors.fail (String_with_vars.Var.loc pform)
@@ -69,7 +76,10 @@ let expand_env ~env pform s : Value.t list =
        Hint: the syntax is %%{env:VAR=DEFAULT-VALUE}"
       (String_with_vars.Var.describe pform)
   | Some (var, default) ->
-    [String (Option.value ~default (Env.get env var))]
+    if Env.Var.Set.mem t.hidden_env var then
+      None
+    else
+      Some [String (Option.value ~default (Env.get t.env var))]
 
 let expand_var_exn t var syn =
   t.expand_var t var syn
@@ -82,25 +92,26 @@ let expand_var_exn t var syn =
 
 let make ~scope ~(context : Context.t) ~artifacts
       ~artifacts_host ~cxx_flags =
+  let expand_var ({ bindings; ocaml_config; env = _; scope
+                  ; hidden_env = _
+                  ; dir = _ ; artifacts = _; expand_var = _
+                  ; artifacts_host = _ } as t)
+        var syntax_version =
+    Pform.Map.expand bindings var syntax_version
+    |> Option.bind ~f:(function
+      | Pform.Expansion.Var (Values l) -> Some (Ok l)
+      | Macro (Ocaml_config, s) ->
+        Some (Ok (expand_ocaml_config (Lazy.force ocaml_config) var s))
+      | Macro (Env, s) -> Option.map ~f:Result.ok (expand_env t var s)
+      | Var Project_root -> Some (Ok [Value.Dir (Scope.root scope)])
+      | expansion -> Some (Error expansion))
+  in
   let ocaml_config = lazy (make_ocaml_config context.ocaml_config) in
   let dir = context.build_dir in
   let bindings = Pform.Map.create ~context ~cxx_flags in
   let env = context.env in
-  let expand_var { bindings; ocaml_config; env; scope
-                 ; dir = _ ; artifacts = _; expand_var = _
-                 ; artifacts_host = _ }
-        var syntax_version =
-    Pform.Map.expand bindings var syntax_version
-    |> Option.map ~f:(function
-      | Pform.Expansion.Var (Values l) -> Ok l
-      | Macro (Ocaml_config, s) ->
-        Ok (expand_ocaml_config (Lazy.force ocaml_config) var s)
-      | Macro (Env, s) -> Ok (expand_env ~env var s)
-      | Var Project_root -> Ok [Value.Dir (Scope.root scope)]
-      | expansion ->
-        Error expansion)
-  in
   { dir
+  ; hidden_env = Env.Var.Set.empty
   ; env
   ; ocaml_config
   ; bindings
@@ -298,51 +309,56 @@ let with_record_deps t resolved_forms ~read_package ~dep_kind
       ~expand_var:t.expand_var ~targets_written_by_user ~map_exe in
   { t with expand_var }
 
+let expand_special_vars ~deps_written_by_user ~var expansion =
+  let key = String_with_vars.Var.full_name var in
+  let loc = String_with_vars.Var.loc var in
+  match expansion with
+  | Ok v -> v (* in some cases we'll expand %{env} here *)
+  | Error pform ->
+    begin match pform with
+    | Pform.Expansion.Var Named_local ->
+      begin match Bindings.find deps_written_by_user key with
+      | None ->
+        Exn.code_error "Local named variable not present in named deps"
+          [ "pform", String_with_vars.Var.to_sexp var
+          ; "deps_written_by_user",
+            Bindings.to_sexp Path.to_sexp deps_written_by_user
+          ]
+      | Some x -> Value.L.paths x
+      end
+    | Var Deps ->
+      deps_written_by_user
+      |> Bindings.to_list
+      |> Value.L.paths
+    | Var First_dep ->
+      begin match deps_written_by_user with
+      | Named _ :: _ ->
+        (* This case is not possible: ${<} only exist in jbuild
+           files and named dependencies are not available in
+           jbuild files *)
+        assert false
+      | Unnamed v :: _ -> [Path v]
+      | [] ->
+        Errors.warn loc "Variable '%s' used with no explicit \
+                         dependencies@." key;
+        [Value.String ""]
+      end
+    | _ ->
+      Exn.code_error "Unexpected variable in step2"
+        ["var", String_with_vars.Var.to_sexp var]
+    end
+
 let expand_ddeps_and_bindings ~(dynamic_expansions : Value.t list String.Map.t)
       ~(deps_written_by_user : Path.t Bindings.t) ~expand_var
-      t pform syntax_version =
-  let key = String_with_vars.Var.full_name pform in
-  let loc = String_with_vars.Var.loc pform in
+      t var syntax_version =
+  let key = String_with_vars.Var.full_name var in
   match String.Map.find dynamic_expansions key with
   | Some v -> Some (Ok v)
   | None ->
-    expand_var t pform syntax_version
-    |> Option.map ~f:(function
-      | Ok _ -> assert false
-      (* we already expanded this stuff in the partial phase *)
-      | Error pform -> pform)
-    |> Option.map ~f:(function
-      | Pform.Expansion.Var Named_local ->
-        begin match Bindings.find deps_written_by_user key with
-        | None ->
-          Exn.code_error "Local named variable not present in named deps"
-            [ "pform", String_with_vars.Var.to_sexp pform
-            ; "deps_written_by_user",
-              Bindings.to_sexp Path.to_sexp deps_written_by_user
-            ]
-        | Some x -> Value.L.paths x
-        end
-      | Var Deps ->
-        deps_written_by_user
-        |> Bindings.to_list
-        |> Value.L.paths
-      | Var First_dep ->
-        begin match deps_written_by_user with
-        | Named _ :: _ ->
-          (* This case is not possible: ${<} only exist in jbuild
-             files and named dependencies are not available in
-             jbuild files *)
-          assert false
-        | Unnamed v :: _ -> [Path v]
-        | [] ->
-          Errors.warn loc "Variable '%s' used with no explicit \
-                           dependencies@." key;
-          [Value.String ""]
-        end
-      | _ ->
-        Exn.code_error "Unexpected variable in step2"
-          ["var", String_with_vars.Var.to_sexp pform])
-    |> Option.map ~f:Result.ok
+    begin match expand_var t var syntax_version with
+    | None -> None
+    | Some v -> Some (Ok (expand_special_vars ~deps_written_by_user ~var v))
+    end
 
 let add_ddeps_and_bindings t ~dynamic_expansions ~deps_written_by_user =
   let expand_var =

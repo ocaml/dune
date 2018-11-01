@@ -1,6 +1,8 @@
 module Var : sig
   type t = string
   val compare : t -> t -> Ordering.t
+
+  module Set : Set.S with type elt = t
 end
 
 type t
@@ -8,6 +10,8 @@ type t
 module Map : Map.S with type key = Var.t
 
 val empty : t
+
+val vars : t -> Var.Set.t
 
 (** The environment when the process started *)
 val initial : t

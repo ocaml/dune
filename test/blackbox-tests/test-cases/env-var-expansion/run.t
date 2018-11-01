@@ -70,4 +70,4 @@ isn't reflected on a per action basis.
   Entering directory 'nesting'
   Initial value of unset
   Now set: XXXX
-  From bar: unset
+  From bar: from bar

@@ -1,5 +1,5 @@
-next
-----
+1.5.0 (1/11/2018)
+-----------------
 
 - Filter out empty paths from `OCAMLPATH` and `PATH` (#1436, @rgrinberg)
 

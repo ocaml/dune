@@ -25,7 +25,7 @@ end = struct
       match (dir_kind : File_tree.Dune_file.Kind.t) with
       | Dune -> List.sort libs ~compare
       | Jbuild ->
-        match libs with
+        match List.rev libs with
         | last :: others -> List.sort others ~compare @ [last]
         | [] -> []
     in

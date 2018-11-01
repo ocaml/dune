@@ -66,3 +66,10 @@ isn't reflected on a per action basis.
   $ DUNE_ENV_VAR=false dune build --root correct @disabled
   Entering directory 'correct'
 
+  $ dune build --root nesting
+  Entering directory 'nesting'
+  File "dune", line 9, characters 20-31:
+  9 |    (setenv DUNE_FOO %{read:bar} (echo "From bar: %{env:DUNE_FOO=unset}\n")))))
+                          ^^^^^^^^^^^
+  Error: environment variable values must be static
+  [1]

@@ -36,7 +36,7 @@ let add_module_rules sctx ~dir lib_requires =
         Buffer.contents b))
     >>> Build.write_file_dyn path
   in
-  Super_context.add_rule sctx utop_ml
+  Super_context.add_rule sctx ~dir utop_ml
 
 let utop_dir_basename = ".utop"
 

@@ -384,12 +384,13 @@ let build_ppx_driver sctx ~dep_kind ~target ~dir_kind ~pps ~pp_names =
   (* CR-someday diml: what we should do is build the .cmx/.cmo once
      and for all at the point where the driver is defined. *)
   let ml = Path.relative (Option.value_exn (Path.parent target)) "ppx.ml" in
-  SC.add_rule sctx
+  let add_rule = SC.add_rule sctx ~dir:(Super_context.build_dir sctx) in
+  add_rule
     (Build.of_result_map driver_and_libs ~f:(fun (driver, _) ->
        Build.return (sprintf "let () = %s ()\n" driver.info.main))
      >>>
      Build.write_file_dyn ml);
-  SC.add_rule sctx
+  add_rule
     (Build.record_lib_deps
        (Lib_deps.info ~kind:dep_kind (Lib_deps.of_pps pp_names))
      >>>
@@ -522,7 +523,7 @@ let setup_reason_rules sctx (m : Module.t) =
         Path.extend_basename base ~suffix
       in
       let ml = Module.File.make OCaml path in
-      SC.add_rule sctx (rule f.path ml.path);
+      SC.add_rule sctx ~dir:ctx.build_dir (rule f.path ml.path);
       ml)
 
 let promote_correction fn build ~suffix =
@@ -538,7 +539,7 @@ let lint_module sctx ~dir ~dep_kind ~lint ~lib_name ~scope ~dir_kind =
   Staged.stage (
     let alias = Build_system.Alias.lint ~dir in
     let add_alias fn build =
-      SC.add_alias_action sctx alias build
+      SC.add_alias_action sctx alias build ~dir
         ~stamp:("lint", lib_name, fn)
     in
     let lint =
@@ -632,7 +633,7 @@ let make sctx ~dir ~dep_kind ~lint ~preprocess
          let ast =
            pped_module m ~f:(fun _kind src dst ->
              let bindings = Pform.Map.input_file src in
-             SC.add_rule sctx ~loc
+             SC.add_rule sctx ~loc ~dir
                (preprocessor_deps
                 >>>
                 Build.path src
@@ -681,7 +682,7 @@ let make sctx ~dir ~dep_kind ~lint ~preprocess
            let ast = setup_reason_rules sctx m in
            if lint then lint_module ~ast ~source:m;
            pped_module ast ~f:(fun kind src dst ->
-             SC.add_rule sctx ~loc
+             SC.add_rule sctx ~loc ~dir
                (promote_correction ~suffix:corrected_suffix
                   (Option.value_exn (Module.file m kind))
                   (preprocessor_deps >>^ ignore

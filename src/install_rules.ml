@@ -69,7 +69,7 @@ module Gen(P : Params) = struct
   let init_meta () =
     SC.libs_by_package sctx
     |> Package.Name.Map.iter ~f:(fun ((pkg : Package.t), libs) ->
-        Lib.Set.iter libs ~f:gen_lib_dune_file;
+        Lib.Set.iter libs ~f:(gen_lib_dune_file ~dir:ctx.build_dir);
       let path = Path.append ctx.build_dir pkg.path in
       SC.on_load_dir sctx ~dir:path ~f:(fun () ->
         let meta = Path.append ctx.build_dir (Package.meta_file pkg) in
@@ -92,7 +92,7 @@ module Gen(P : Params) = struct
             ~version
             (Lib.Set.to_list libs)
         in
-        SC.add_rule sctx
+        SC.add_rule sctx ~dir:ctx.build_dir
           (Build.fanout meta_contents template
            >>^ (fun ((meta : Meta.t), template) ->
              let buf = Buffer.create 1024 in
@@ -217,7 +217,7 @@ module Gen(P : Params) = struct
           (Install.Entry.relative_installed_path entry ~paths:install_paths)
       in
       Build_system.set_package (SC.build_system sctx) entry.src package;
-      SC.add_rule sctx (Build.symlink ~src:entry.src ~dst);
+      SC.add_rule sctx ~dir:ctx.build_dir (Build.symlink ~src:entry.src ~dst);
       Install.Entry.set_src entry dst)
 
   let promote_install_file =
@@ -265,7 +265,7 @@ module Gen(P : Params) = struct
            Build_system.Alias.package_install ~context:ctx ~pkg
            |> Build_system.Alias.stamp_file)
          |> Path.Set.of_list);
-    SC.add_rule sctx
+    SC.add_rule sctx ~dir:((Path.append ctx.build_dir package.path))
       ~mode:(if promote_install_file then
                Promote_but_delete_on_clean
              else

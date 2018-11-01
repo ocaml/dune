@@ -14,7 +14,7 @@ let add_diff sctx loc alias ~dir input output =
   let module SC = Super_context in
   let open Build.O in
   let action = Action.diff input output in
-  SC.add_alias_action sctx alias ~loc:(Some loc) ~locks:[] ~stamp:input
+  SC.add_alias_action sctx alias ~dir ~loc:(Some loc) ~locks:[] ~stamp:input
     (Build.paths [input; output]
      >>>
      Build.action
@@ -97,7 +97,7 @@ let gen_rules sctx (config : Dune_file.Auto_format.t) ~dir =
     Option.iter
       formatter
       ~f:(fun arr ->
-          Super_context.add_rule sctx ~mode:Standard ~loc arr;
+          Super_context.add_rule sctx ~mode:Standard ~loc ~dir arr;
           add_diff sctx loc alias_formatted ~dir input output)
   in
   Super_context.on_load_dir

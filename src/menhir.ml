@@ -121,7 +121,7 @@ module Run (P : PARAMS) : sig end = struct
     Build.run ~dir menhir_binary args
 
   let rule : (unit, Action.t) Build.t -> unit =
-    SC.add_rule sctx ~mode:stanza.mode ~loc:stanza.loc
+    SC.add_rule sctx ~dir ~mode:stanza.mode ~loc:stanza.loc
 
   let expand_flags flags =
     Super_context.expand_and_eval_set sctx

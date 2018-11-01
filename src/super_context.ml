@@ -96,103 +96,17 @@ let find_scope_by_name t name = Scope.DB.find_by_name t.scopes name
 let prefix_rules t prefix ~f =
   Build_system.prefix_rules t.build_system prefix ~f
 
-let add_rule t ?sandbox ?mode ?locks ?loc build =
-  let build = Build.O.(>>>) build t.chdir in
-  Build_system.add_rule t.build_system
-    (Build_interpret.Rule.make ?sandbox ?mode ?locks ?loc
-       ~context:(Some t.context) build)
-
-let add_rule_get_targets t ?sandbox ?mode ?locks ?loc build =
-  let build = Build.O.(>>>) build t.chdir in
-  let rule =
-    Build_interpret.Rule.make ?sandbox ?mode ?locks ?loc
-      ~context:(Some t.context) build
-  in
-  Build_system.add_rule t.build_system rule;
-  List.map rule.targets ~f:Build_interpret.Target.path
-
-let add_rules t ?sandbox builds =
-  List.iter builds ~f:(add_rule t ?sandbox)
-
-let add_alias_deps t alias ?dyn_deps deps =
-  Alias.add_deps t.build_system alias ?dyn_deps deps
-
-let add_alias_action t alias ~loc ?locks ~stamp action =
-  Alias.add_action t.build_system ~context:t.context alias ~loc ?locks
-    ~stamp action
-
-let eval_glob t ~dir re = Build_system.eval_glob t.build_system ~dir re
-let load_dir t ~dir = Build_system.load_dir t.build_system ~dir
-let on_load_dir t ~dir ~f = Build_system.on_load_dir t.build_system ~dir ~f
-
-let source_files t ~src_path =
-  match File_tree.find_dir t.file_tree src_path with
-  | None -> String.Set.empty
-  | Some dir -> File_tree.Dir.files dir
-
-let expand_vars t ~mode ~scope ~dir ?(bindings=Pform.Map.empty) template =
-  Expander.update t.expander ~env:Env.initial ~scope ~dir ~add_bindings:bindings
-  |> Expander.expand ~mode ~template
-
-let expand_vars_string t ~scope ~dir ?bindings s =
-  expand_vars t ~mode:Single ~scope ~dir ?bindings s
-  |> Value.to_string ~dir
-
-let expand_vars_path t ~scope ~dir ?bindings s =
-  expand_vars t ~mode:Single ~scope ~dir ?bindings s
-  |> Value.to_path ~error_loc:(String_with_vars.loc s) ~dir
-
-let eval_blang t blang ~scope ~dir =
-  match blang with
-  | Blang.Const x -> x (* common case *)
-  | _ ->
-    let expander =
-      Expander.update t.expander ~env:Env.initial ~scope ~dir
-        ~add_bindings:Pform.Map.empty
-    in
-    Blang.eval blang ~dir ~f:(Expander.expand_var_exn expander)
-
-module Pkg_version = struct
-  open Build.O
-
-  module V = Vfile_kind.Make(struct
-      type t = string option
-      let encode = Dune_lang.Encoder.(option string)
-      let name = "Pkg_version"
-    end)
-
-  let spec sctx (p : Package.t) =
-    let fn =
-      Path.relative (Path.append sctx.context.build_dir p.path)
-        (sprintf "%s.version.sexp" (Package.Name.to_string p.name))
-    in
-    Build.Vspec.T (fn, (module V))
-
-  let read sctx p = Build.vpath (spec sctx p)
-
-  let set sctx p get =
-    let spec = spec sctx p in
-    add_rule sctx (get >>> Build.store_vfile spec);
-    Build.vpath spec
-end
-
-let partial_expand sctx ~dep_kind ~targets_written_by_user ~map_exe
-      ~expander t =
-  let acc = Expander.Resolved_forms.empty () in
-  let read_package = Pkg_version.read sctx in
-  let expander =
-    Expander.with_record_deps expander  acc ~dep_kind ~targets_written_by_user
-      ~map_exe ~read_package in
-  let partial = Action_unexpanded.partial_expand t ~expander ~map_exe in
-  (partial, acc)
-
-let expand_and_eval_set t ~scope ~dir ?bindings set ~standard =
+let expand_and_eval_set set ~expander ~standard =
   let open Build.O in
+  let dir = Expander.dir expander in
   let parse ~loc:_ s = s in
   let (syntax, files) =
-    let f = expand_vars_path t ~scope ~dir ?bindings in
+    let f template =
+      Expander.expand expander ~mode:Single ~template
+      |> Value.to_path ~dir
+    in
     Ordered_set_lang.Unexpanded.files set ~f in
-  let f = expand_vars t ~mode:Many ~scope ~dir ?bindings in
+  let f template = Expander.expand expander ~mode:Many ~template in
   match Path.Set.to_list files with
   | [] ->
     let set =
@@ -213,6 +127,8 @@ module External_env = Env
 
 module Env : sig
   val ocaml_flags : t -> dir:Path.t -> Ocaml_flags.t
+  val external_ : t -> dir:Path.t -> External_env.t
+  val expander : t -> dir:Path.t -> Expander.t
 end = struct
   open Env_node
 
@@ -261,7 +177,35 @@ end = struct
         Exn.code_error "Super_context.Env.get called on invalid directory"
           [ "dir", Path.to_sexp dir ]
 
-  let ocaml_flags t ~dir =
+  let external_ =
+    let rec loop t node =
+      match node.external_ with
+      | Some x -> x
+      | None ->
+        let profile = profile t in
+        let default =
+          match node.inherit_from with
+          | None -> t.context.env
+          | Some (lazy node) -> loop t node
+        in
+        let env =
+          match Dune_env.Stanza.find node.config ~profile with
+          | None -> default
+          | Some cfg -> Env.extend_env default cfg.env_vars
+        in
+        node.external_ <- Some env;
+        env
+    in
+    fun t ~dir -> loop t (get t ~dir)
+
+  let expander t ~dir =
+    let node = get t ~dir in
+    let external_ = external_ t ~dir in
+    Expander.extend_env t.expander ~env:external_
+    |> Expander.set_scope ~scope:node.scope
+    |> Expander.set_dir ~dir
+
+  let ocaml_flags =
     let rec loop t node =
       let dir = node.dir in
       match node.ocaml_flags with
@@ -277,28 +221,102 @@ end = struct
           match Dune_env.Stanza.find node.config ~profile with
           | None -> default
           | Some cfg ->
+            let expander = expander t ~dir in
             Ocaml_flags.make
               ~flags:cfg.flags
               ~ocamlc_flags:cfg.ocamlc_flags
               ~ocamlopt_flags:cfg.ocamlopt_flags
               ~default
-              ~eval:(expand_and_eval_set t ~scope:node.scope ~dir ?bindings:None)
+              ~eval:(expand_and_eval_set ~expander)
         in
         node.ocaml_flags <- Some flags;
         flags
     in
-    loop t (get t ~dir)
-
+    fun t ~dir -> loop t (get t ~dir)
 end
 
 
-let ocaml_flags t ~dir ~scope (x : Buildable.t) =
+let add_rule t ?sandbox ?mode ?locks ?loc ~dir build =
+  let build = Build.O.(>>>) build t.chdir in
+  let env = Env.external_ t ~dir in
+  Build_system.add_rule t.build_system
+    (Build_interpret.Rule.make ?sandbox ?mode ?locks ?loc
+       ~context:(Some t.context) ~env:(Some env) build)
+
+let add_rule_get_targets t ?sandbox ?mode ?locks ?loc ~dir build =
+  let build = Build.O.(>>>) build t.chdir in
+  let env = Env.external_ t ~dir in
+  let rule =
+    Build_interpret.Rule.make ?sandbox ?mode ?locks ?loc
+      ~context:(Some t.context) ~env:(Some env) build
+  in
+  Build_system.add_rule t.build_system rule;
+  List.map rule.targets ~f:Build_interpret.Target.path
+
+let add_rules t ?sandbox ~dir builds =
+  List.iter builds ~f:(add_rule t ?sandbox ~dir)
+
+let add_alias_deps t alias ?dyn_deps deps =
+  Alias.add_deps t.build_system alias ?dyn_deps deps
+
+let add_alias_action t alias ~dir ~loc ?locks ~stamp action =
+  let env = Some (Env.external_ t ~dir) in
+  Alias.add_action t.build_system ~context:t.context ~env alias ~loc ?locks
+    ~stamp action
+
+let eval_glob t ~dir re = Build_system.eval_glob t.build_system ~dir re
+let load_dir t ~dir = Build_system.load_dir t.build_system ~dir
+let on_load_dir t ~dir ~f = Build_system.on_load_dir t.build_system ~dir ~f
+
+let source_files t ~src_path =
+  match File_tree.find_dir t.file_tree src_path with
+  | None -> String.Set.empty
+  | Some dir -> File_tree.Dir.files dir
+
+module Pkg_version = struct
+  open Build.O
+
+  module V = Vfile_kind.Make(struct
+      type t = string option
+      let encode = Dune_lang.Encoder.(option string)
+      let name = "Pkg_version"
+    end)
+
+  let spec sctx (p : Package.t) =
+    let fn =
+      Path.relative (Path.append sctx.context.build_dir p.path)
+        (sprintf "%s.version.sexp" (Package.Name.to_string p.name))
+    in
+    Build.Vspec.T (fn, (module V))
+
+  let read sctx p = Build.vpath (spec sctx p)
+
+  let set sctx p get =
+    let spec = spec sctx p in
+    add_rule sctx ~dir:(build_dir sctx)
+      (get >>> Build.store_vfile spec);
+    Build.vpath spec
+end
+
+let partial_expand sctx ~dep_kind ~targets_written_by_user ~map_exe
+      ~expander t =
+  let acc = Expander.Resolved_forms.empty () in
+  let read_package = Pkg_version.read sctx in
+  let expander =
+    Expander.with_record_deps expander  acc ~dep_kind ~targets_written_by_user
+      ~map_exe ~read_package in
+  let partial = Action_unexpanded.partial_expand t ~expander ~map_exe in
+  (partial, acc)
+
+
+let ocaml_flags t ~dir (x : Buildable.t) =
+  let expander = Env.expander t ~dir in
   Ocaml_flags.make
     ~flags:x.flags
     ~ocamlc_flags:x.ocamlc_flags
     ~ocamlopt_flags:x.ocamlopt_flags
     ~default:(Env.ocaml_flags t ~dir)
-    ~eval:(expand_and_eval_set t ~scope ~dir ?bindings:None)
+    ~eval:(expand_and_eval_set ~expander)
 
 let dump_env t ~dir =
   Ocaml_flags.dump (Env.ocaml_flags t ~dir)
@@ -466,6 +484,7 @@ module Libs = struct
       let { Lib.Compile.Resolved_select.dst_fn; src_fn } = rs in
       let dst = Path.relative dir dst_fn in
       add_rule t
+        ~dir
         (match src_fn with
          | Ok src_fn ->
            let src = Path.relative dir src_fn in
@@ -496,6 +515,27 @@ module Libs = struct
     in
     prefix_rules t prefix ~f
 end
+
+let expand_vars t ~mode ~scope ~dir ?(bindings=Pform.Map.empty) template =
+  Env.expander t ~dir
+  |> Expander.add_bindings ~bindings
+  |> Expander.set_scope ~scope
+  |> Expander.expand ~mode ~template
+
+let expand_vars_string t ~scope ~dir ?bindings s =
+  expand_vars t ~mode:Single ~scope ~dir ?bindings s
+  |> Value.to_string ~dir
+
+let expand_vars_path t ~scope ~dir ?bindings s =
+  expand_vars t ~mode:Single ~scope ~dir ?bindings s
+  |> Value.to_path ~error_loc:(String_with_vars.loc s) ~dir
+
+let eval_blang t blang ~scope ~dir =
+  match blang with
+  | Blang.Const x -> x (* common case *)
+  | _ ->
+    let expander = Expander.set_scope (Env.expander t ~dir) ~scope in
+    Blang.eval blang ~dir ~f:(Expander.expand_var_exn expander)
 
 module Deps = struct
   open Build.O
@@ -593,9 +633,9 @@ module Action = struct
         ~targets:targets_written_by_user ~targets_dir ~scope t
     : (Path.t Bindings.t, Action.t) Build.t =
     let expander =
-      Expander.update ~dir ~scope ~add_bindings:bindings
-        ~env:External_env.initial
-        sctx.expander
+      Env.expander sctx ~dir
+      |> Expander.add_bindings ~bindings
+      |> Expander.set_scope ~scope
     in
     let map_exe = map_exe sctx in
     if targets_written_by_user = Expander.Alias then begin
@@ -677,3 +717,12 @@ end
 let opaque t =
   t.context.profile = "dev"
   && Ocaml_version.supports_opaque_for_mli t.context.version
+
+let expand_and_eval_set sctx ~scope ~dir ?bindings set ~standard =
+  let expander = Expander.set_scope ~scope (Env.expander sctx ~dir) in
+  let expander =
+    match bindings with
+    | None -> expander
+    | Some bindings -> Expander.add_bindings expander ~bindings
+  in
+  expand_and_eval_set ~expander ~standard set

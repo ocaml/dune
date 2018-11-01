@@ -1,11 +1,15 @@
 module Var = struct
-  type t = string
-  let compare =
-    if Sys.win32 then (
-      fun a b -> String.compare (String.lowercase a) (String.lowercase b)
-    ) else (
-      String.compare
-    )
+  module T = struct
+    type t = string
+    let compare =
+      if Sys.win32 then (
+        fun a b -> String.compare (String.lowercase a) (String.lowercase b)
+      ) else (
+        String.compare
+      )
+  end
+  module Set = Set.Make(T)
+  include T
 end
 
 module Map = Map.Make(Var)
@@ -21,6 +25,8 @@ let make vars =
   }
 
 let empty = make Map.empty
+
+let vars t = Var.Set.of_list (Map.keys t.vars)
 
 let get t k = Map.find t.vars k
 
@@ -54,6 +60,9 @@ let initial = make (of_unix (Unix.environment ()))
 let add t ~var ~value =
   make (Map.add t.vars var value)
 
+let remove t ~var =
+  make (Map.remove t.vars var)
+
 let extend t ~vars =
   make (Map.union t.vars vars ~f:(fun _ _ v -> Some v))
 
@@ -79,3 +88,5 @@ let of_string_map m =
 
 let iter t =
   Map.iteri t.vars
+
+let pp fmt t = Sexp.pp fmt (to_sexp t)

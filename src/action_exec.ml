@@ -216,11 +216,12 @@ and exec_list l ~ectx ~dir ~env ~stdout_to ~stderr_to =
     exec t ~ectx ~dir ~env ~stdout_to ~stderr_to >>= fun () ->
     exec_list rest ~ectx ~dir ~env ~stdout_to ~stderr_to
 
-let exec ~targets ~context t =
+let exec ~targets ~context ~env t =
   let env =
-    match (context : Context.t option) with
-    | None   -> Env.initial
-    | Some c -> c.env
+    match (context : Context.t option), env with
+    | _ , Some e -> e
+    | None, None   -> Env.initial
+    | Some c, None -> c.env
   in
   let purpose = Process.Build_job targets in
   let ectx = { purpose; context } in

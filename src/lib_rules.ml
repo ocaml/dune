@@ -63,7 +63,7 @@ module Gen (P : Install_rules.Params) = struct
           obj_deps >>>
           Build.paths (artifacts modules ~ext:ctx.ext_obj)
       in
-      SC.add_rule sctx ~loc:lib.buildable.loc
+      SC.add_rule ~dir sctx ~loc:lib.buildable.loc
         (obj_deps
          >>>
          Build.fanout4
@@ -97,7 +97,7 @@ module Gen (P : Install_rules.Params) = struct
     Ocaml_version.always_reads_alias_cmi ctx.version
 
   let build_alias_module { Lib_modules.Alias_module.main_module_name
-                         ; alias_module }
+                         ; alias_module } ~dir
         ~modules ~modules_of_vlib ~cctx ~dynlink ~js_of_ocaml =
     let file =
       match Module.impl alias_module with
@@ -115,7 +115,7 @@ module Gen (P : Install_rules.Params) = struct
           | _, Some vlib -> Option.some_if (Module.is_public vlib) vlib
         )
     in
-    SC.add_rule sctx
+    SC.add_rule sctx ~dir
       (Build.return
          (Module.Name.Map.values
             (Module.Name.Map.remove modules (Module.name alias_module))
@@ -164,7 +164,7 @@ module Gen (P : Install_rules.Params) = struct
       let source_path = Option.value_exn (Module.file m Impl) in
       Build.return contents
       >>> Build.write_file_dyn source_path
-      |> SC.add_rule sctx
+      |> SC.add_rule sctx ~dir:(Compilation_context.dir cctx)
     );
     let dep_graphs =
       Ocamldep.Dep_graphs.wrapped_compat ~modules ~wrapped_compat
@@ -173,7 +173,7 @@ module Gen (P : Install_rules.Params) = struct
     Module_compilation.build_modules cctx ~js_of_ocaml ~dynlink ~dep_graphs
 
   let build_c_file (lib : Library.t) ~scope ~dir ~includes (loc, src, dst) =
-    SC.add_rule sctx ~loc
+    SC.add_rule sctx ~loc ~dir
       (SC.expand_and_eval_set sctx ~scope ~dir lib.c_flags
          ~standard:(Build.return (Context.cc_g ctx))
        >>>
@@ -198,7 +198,7 @@ module Gen (P : Install_rules.Params) = struct
       else
         [A "-o"; Target dst]
     in
-    SC.add_rule sctx ~loc
+    SC.add_rule sctx ~loc ~dir
       (SC.expand_and_eval_set sctx ~scope ~dir lib.cxx_flags
          ~standard:(Build.return (Context.cc_g ctx))
        >>>
@@ -218,7 +218,7 @@ module Gen (P : Install_rules.Params) = struct
 
   let ocamlmklib (lib : Library.t) ~dir ~scope ~o_files ~sandbox ~custom
         ~targets =
-    SC.add_rule sctx ~sandbox
+    SC.add_rule sctx ~sandbox ~dir
       ~loc:lib.buildable.loc
       (SC.expand_and_eval_set sctx ~scope ~dir
          lib.c_library_flags ~standard:(Build.return [])
@@ -340,7 +340,7 @@ module Gen (P : Install_rules.Params) = struct
         else
           build
       in
-      SC.add_rule sctx build)
+      SC.add_rule sctx build ~dir)
 
   let setup_file_deps lib ~dir ~obj_dir ~modules ~modules_of_vlib =
     let add_cms ~cm_kind ~init = Module.Name.Map.fold ~init ~f:(fun m acc ->
@@ -381,7 +381,7 @@ module Gen (P : Install_rules.Params) = struct
             List.iter [".cmx"; ".cmo"; ctx.ext_obj] ~f:(fun ext ->
               let src = Module.obj_file m ~obj_dir ~ext in
               let dst = Module.obj_file m ~obj_dir:dir ~ext in
-              SC.add_rule sctx (Build.copy ~src ~dst));
+              SC.add_rule sctx ~dir (Build.copy ~src ~dst));
             Module.Name.Map.remove modules name
         end
       | _ ->
@@ -411,7 +411,7 @@ module Gen (P : Install_rules.Params) = struct
        build_lib lib ~scope ~flags ~dir ~obj_dir ~mode ~top_sorted_modules
          ~modules));
     (* Build *.cma.js *)
-    SC.add_rules sctx (
+    SC.add_rules sctx ~dir (
       let src =
         Library.archive lib ~dir
           ~ext:(Mode.compiled_lib_ext Mode.Byte) in
@@ -430,7 +430,7 @@ module Gen (P : Install_rules.Params) = struct
     let dep_kind =
       if lib.optional then Lib_deps_info.Kind.Optional else Required
     in
-    let flags = SC.ocaml_flags sctx ~scope ~dir lib.buildable in
+    let flags = SC.ocaml_flags sctx ~dir lib.buildable in
     let lib_modules =
       Dir_contents.modules_of_library dir_contents ~name:(Library.best_name lib)
     in
@@ -512,7 +512,7 @@ module Gen (P : Install_rules.Params) = struct
 
     if Option.is_none lib.stdlib then
       Option.iter (Lib_modules.alias lib_modules)
-        ~f:(build_alias_module ~modules:source_modules ~cctx ~dynlink
+        ~f:(build_alias_module ~dir ~modules:source_modules ~cctx ~dynlink
               ~js_of_ocaml
               ~modules_of_vlib:(Option.map vlib_modules ~f:Lib_modules.modules));
 

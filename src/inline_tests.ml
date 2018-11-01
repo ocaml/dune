@@ -197,7 +197,7 @@ include Sub_system.Register_end_point(
       in
 
       (* Generate the runner file *)
-      SC.add_rule sctx ~loc (
+      SC.add_rule sctx ~dir ~loc (
         let target = Path.relative inline_test_dir main_module_filename in
         let source_modules = Module.Name.Map.values source_modules in
         let files ml_kind =
@@ -259,7 +259,7 @@ include Sub_system.Register_end_point(
         >>^ List.concat
       in
 
-      SC.add_alias_action sctx
+      SC.add_alias_action sctx ~dir
         ~loc:(Some info.loc)
         (Build_system.Alias.runtest ~dir)
         ~stamp:("ppx-runner", name)

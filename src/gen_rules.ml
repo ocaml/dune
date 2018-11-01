@@ -167,7 +167,7 @@ module Gen(P : Install_rules.Params) = struct
           let targets =
             List.map (Menhir_rules.targets m) ~f:(Path.relative ctx_dir)
           in
-          SC.add_rule sctx
+          SC.add_rule sctx ~dir:ctx_dir
             (Build.fail ~targets
                { fail = fun () ->
                    Errors.fail m.loc

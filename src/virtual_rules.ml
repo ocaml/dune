@@ -37,7 +37,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
     in
     let copy_to_obj_dir ~obj_dir file =
       let dst = Path.relative obj_dir (Path.basename file) in
-      Super_context.add_rule ~loc:(Loc.of_pos __POS__)
+      Super_context.add_rule ~dir ~loc:(Loc.of_pos __POS__)
         sctx (Build.symlink ~src:file ~dst)
     in
     let obj_dir = Lib.obj_dir vlib in

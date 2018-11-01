@@ -72,7 +72,7 @@ let executables_rules ~sctx ~dir ~dir_kind
       l
   in
 
-  let flags = SC.ocaml_flags sctx ~scope ~dir exes.buildable in
+  let flags = SC.ocaml_flags sctx ~dir exes.buildable in
   let link_deps =
     SC.Deps.interpret sctx ~scope ~dir exes.link_deps
   in

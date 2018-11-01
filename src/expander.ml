@@ -366,3 +366,31 @@ let add_ddeps_and_bindings t ~dynamic_expansions ~deps_written_by_user =
       ~expand_var:t.expand_var
   in
   { t with expand_var }
+
+let expand_and_eval_set t set ~standard =
+  let open Build.O in
+  let dir = dir t in
+  let parse ~loc:_ s = s in
+  let (syntax, files) =
+    let f template =
+      expand t ~mode:Single ~template
+      |> Value.to_path ~dir
+    in
+    Ordered_set_lang.Unexpanded.files set ~f in
+  let f template = expand t ~mode:Many ~template in
+  match Path.Set.to_list files with
+  | [] ->
+    let set =
+      Ordered_set_lang.Unexpanded.expand set ~dir
+        ~files_contents:Path.Map.empty ~f
+    in
+    standard >>^ fun standard ->
+    Ordered_set_lang.String.eval set ~standard ~parse
+  | paths ->
+    Build.fanout standard (Build.all (List.map paths ~f:(fun f ->
+      Build.read_sexp f syntax)))
+    >>^ fun (standard, sexps) ->
+    let files_contents = List.combine paths sexps |> Path.Map.of_list_exn in
+    let set = Ordered_set_lang.Unexpanded.expand set ~dir ~files_contents ~f in
+    Ordered_set_lang.String.eval set ~standard ~parse
+

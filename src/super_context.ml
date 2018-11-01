@@ -96,33 +96,6 @@ let find_scope_by_name t name = Scope.DB.find_by_name t.scopes name
 let prefix_rules t prefix ~f =
   Build_system.prefix_rules t.build_system prefix ~f
 
-let expand_and_eval_set set ~expander ~standard =
-  let open Build.O in
-  let dir = Expander.dir expander in
-  let parse ~loc:_ s = s in
-  let (syntax, files) =
-    let f template =
-      Expander.expand expander ~mode:Single ~template
-      |> Value.to_path ~dir
-    in
-    Ordered_set_lang.Unexpanded.files set ~f in
-  let f template = Expander.expand expander ~mode:Many ~template in
-  match Path.Set.to_list files with
-  | [] ->
-    let set =
-      Ordered_set_lang.Unexpanded.expand set ~dir
-        ~files_contents:Path.Map.empty ~f
-    in
-    standard >>^ fun standard ->
-    Ordered_set_lang.String.eval set ~standard ~parse
-  | paths ->
-    Build.fanout standard (Build.all (List.map paths ~f:(fun f ->
-      Build.read_sexp f syntax)))
-    >>^ fun (standard, sexps) ->
-    let files_contents = List.combine paths sexps |> Path.Map.of_list_exn in
-    let set = Ordered_set_lang.Unexpanded.expand set ~dir ~files_contents ~f in
-    Ordered_set_lang.String.eval set ~standard ~parse
-
 module External_env = Env
 
 module Env : sig
@@ -227,7 +200,7 @@ end = struct
               ~ocamlc_flags:cfg.ocamlc_flags
               ~ocamlopt_flags:cfg.ocamlopt_flags
               ~default
-              ~eval:(expand_and_eval_set ~expander)
+              ~eval:(Expander.expand_and_eval_set expander)
         in
         node.ocaml_flags <- Some flags;
         flags
@@ -316,7 +289,7 @@ let ocaml_flags t ~dir (x : Buildable.t) =
     ~ocamlc_flags:x.ocamlc_flags
     ~ocamlopt_flags:x.ocamlopt_flags
     ~default:(Env.ocaml_flags t ~dir)
-    ~eval:(expand_and_eval_set ~expander)
+    ~eval:(Expander.expand_and_eval_set expander)
 
 let dump_env t ~dir =
   Ocaml_flags.dump (Env.ocaml_flags t ~dir)
@@ -721,4 +694,4 @@ let expand_and_eval_set sctx ~scope ~dir ?bindings set ~standard =
     | None -> expander
     | Some bindings -> Expander.add_bindings expander ~bindings
   in
-  expand_and_eval_set ~expander ~standard set
+  Expander.expand_and_eval_set expander ~standard set

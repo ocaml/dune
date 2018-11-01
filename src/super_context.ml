@@ -497,13 +497,9 @@ module Libs = struct
 
   let with_lib_deps t compile_info ~dir ~f =
     let prefix =
-      Build.record_lib_deps
-        (Dune_file.Lib_deps.info
-           (Lib.Compile.user_written_deps compile_info)
-           ~kind:(if Lib.Compile.optional compile_info then
-                    Optional
-                  else
-                    Required))
+      Lib.Compile.user_written_deps compile_info
+      |> Dune_file.Lib_deps.info ~kind:(Lib.Compile.optional compile_info)
+      |> Build.record_lib_deps
     in
     let prefix =
       if t.context.merlin then

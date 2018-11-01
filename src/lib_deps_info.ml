@@ -9,6 +9,8 @@ module Kind = struct
     match a, b with
     | Optional, Optional -> Optional
     | _ -> Required
+
+  let of_optional b = if b then Optional else Required
 end
 
 type t = Kind.t Lib_name.Map.t

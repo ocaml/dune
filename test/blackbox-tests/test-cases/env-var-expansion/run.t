@@ -68,8 +68,6 @@ isn't reflected on a per action basis.
 
   $ dune build --root nesting
   Entering directory 'nesting'
-  File "dune", line 9, characters 20-31:
-  9 |    (setenv DUNE_FOO %{read:bar} (echo "From bar: %{env:DUNE_FOO=unset}\n")))))
-                          ^^^^^^^^^^^
-  Error: environment variable values must be static
-  [1]
+  Initial value of unset
+  Now set: XXXX
+  From bar: unset

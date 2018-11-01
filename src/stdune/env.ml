@@ -54,6 +54,9 @@ let initial = make (of_unix (Unix.environment ()))
 let add t ~var ~value =
   make (Map.add t.vars var value)
 
+let remove t ~var =
+  make (Map.remove t.vars var)
+
 let extend t ~vars =
   make (Map.union t.vars vars ~f:(fun _ _ v -> Some v))
 

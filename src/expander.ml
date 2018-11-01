@@ -36,6 +36,9 @@ let make_ocaml_config ocaml_config =
 let set_env t ~var ~value =
   { t with env = Env.add t.env ~var ~value }
 
+let unset_env t ~var =
+  { t with env = Env.remove t.env ~var }
+
 let set_dir t ~dir =
   { t with dir }
 

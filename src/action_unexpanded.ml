@@ -205,15 +205,13 @@ let rec partial_expand t ~map_exe ~expander : Partial.t =
         Errors.fail (String_with_vars.loc sw)
           "environment variable names must be static"
     in
-    let value =
-      match E.string ~expander value with
-      | Left l -> l
-      | Right sw ->
-        Errors.fail (String_with_vars.loc sw)
-          "environment variable values must be static"
+    let value = E.string ~expander value in
+    let expander =
+      match value with
+      | Left value -> Expander.set_env expander ~var ~value
+      | Right _ -> Expander.unset_env expander ~var
     in
-    let expander = Expander.set_env expander ~var ~value in
-    Setenv (Left var, Left value, partial_expand t ~expander ~map_exe)
+    Setenv (Left var, value, partial_expand t ~expander ~map_exe)
   | Redirect (outputs, fn, t) ->
     Redirect (outputs, E.path ~expander fn, partial_expand t ~expander ~map_exe)
   | Ignore (outputs, t) ->

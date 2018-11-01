@@ -22,6 +22,8 @@ val extend_env : t -> t -> t
 
 val add : t -> var:Var.t -> value:string -> t
 
+val remove : t -> var:Var.t -> t
+
 val diff : t -> t -> t
 
 val update : t -> var:string -> f:(string option -> string option) -> t

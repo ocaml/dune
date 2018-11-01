@@ -25,6 +25,8 @@ val make
 
 val set_env : t -> var:string -> value:string -> t
 
+val unset_env : t -> var:string -> t
+
 val set_dir : t -> dir:Path.t -> t
 
 val set_scope : t -> scope:Scope.t -> t

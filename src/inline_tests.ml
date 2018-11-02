@@ -278,7 +278,7 @@ include Sub_system.Register_end_point(
                   [ Module.file m Impl
                   ; Module.file m Intf
                   ])
-                |> List.filter_map ~f:(fun x -> x)
+                |> List.filter_opt
                 |> List.map ~f:(fun fn ->
                   A.diff ~optional:true
                     fn (Path.extend_basename fn ~suffix:".corrected"))))))

@@ -507,7 +507,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
         ~findlib_toolchain:(Some findlib_toolchain)
       >>| fun x -> Some x)
   >>| fun others ->
-  native :: List.filter_map others ~f:(fun x -> x)
+  native :: List.filter_opt others
 
 let opam_config_var t var =
   opam_config_var ~env:t.env ~cache:t.opam_var_cache var

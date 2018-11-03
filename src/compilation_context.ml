@@ -48,7 +48,7 @@ type t =
   { super_context        : Super_context.t
   ; scope                : Scope.t
   ; dir                  : Path.t
-  ; dir_kind             : File_tree.Dune_file.Kind.t
+  ; dir_kind             : Dune_lang.Syntax.t
   ; obj_dir              : Path.t
   ; private_obj_dir      : Path.t option
   ; modules              : Module.t Module.Name.Map.t
@@ -86,7 +86,7 @@ let context              t = Super_context.context t.super_context
 
 let create ~super_context ~scope ~dir ?private_obj_dir
       ?(modules_of_vlib=Module.Name.Map.empty)
-      ?(dir_kind=File_tree.Dune_file.Kind.Dune)
+      ?(dir_kind=Dune_lang.Syntax.Dune)
       ?(obj_dir=dir) ~modules ?alias_module ?lib_interface_module ~flags
       ~requires ?(preprocessing=Preprocessing.dummy) ?(no_keep_locs=false)
       ~opaque ?stdlib () =

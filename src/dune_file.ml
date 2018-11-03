@@ -2001,7 +2001,7 @@ module Stanzas = struct
   let parse ~file ~kind (project : Dune_project.t) sexps =
     let (stanza_parser, lexer) =
       let (parser, lexer) =
-        match (kind : File_tree.Dune_file.Kind.t) with
+        match (kind : Dune_lang.Syntax.t) with
         | Jbuild -> (jbuild_parser, Dune_lang.Lexer.jbuild_token)
         | Dune   -> (Dune_project.stanza_parser project, Dune_lang.Lexer.token)
       in

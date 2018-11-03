@@ -139,7 +139,7 @@ let read_sexp p syntax =
   contents p
   >>^ fun s ->
   Dune_lang.parse_string s
-    ~lexer:(File_tree.Dune_file.Kind.lexer syntax)
+    ~lexer:(Dune_lang.Lexer.of_syntax syntax)
     ~fname:(Path.to_string p) ~mode:Single
 
 let if_file_exists p ~then_ ~else_ =

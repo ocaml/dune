@@ -2,8 +2,9 @@ open! Stdune
 
 module Atom = Atom
 module Template = Template
+module Syntax = Syntax
 
-type syntax = Atom.syntax = Jbuild | Dune
+type syntax = Syntax.t = Jbuild | Dune
 
 type t =
   | Atom of Atom.t
@@ -77,7 +78,7 @@ let pp_print_quoted_string ppf s =
     Format.pp_print_string ppf (Escape.quoted ~syntax s)
 
 let rec pp_split_strings ppf = function
-  | Atom s -> Format.pp_print_string ppf (Atom.print s Atom.Dune)
+  | Atom s -> Format.pp_print_string ppf (Atom.print s Syntax.Dune)
   | Quoted_string s -> pp_print_quoted_string ppf s
   | List [] ->
     Format.pp_print_string ppf "()"

@@ -8,7 +8,7 @@ let var_enclosers = function
   | Dollar_paren -> "$(", ")"
 
 module Pp : sig
-  val to_string : t -> syntax:Atom.syntax -> string
+  val to_string : t -> syntax:Syntax.t -> string
 end = struct
   let buf = Buffer.create 16
 
@@ -68,7 +68,7 @@ let pp syntax ppf t =
   Format.pp_print_string ppf (Pp.to_string ~syntax t)
 
 let pp_split_strings ppf (t : t) =
-  let syntax = Atom.Dune in
+  let syntax = Syntax.Dune in
   if t.quoted || List.exists t.parts ~f:(function
     | Text s -> String.contains s '\n'
     | Var _ -> false) then begin

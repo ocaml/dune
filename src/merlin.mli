@@ -25,6 +25,6 @@ val add_rules
   -> dir:Path.t
   -> more_src_dirs:Path.t list
   -> scope:Scope.t
-  -> dir_kind:File_tree.Dune_file.Kind.t
+  -> dir_kind:Dune_lang.Syntax.t
   -> t
   -> unit

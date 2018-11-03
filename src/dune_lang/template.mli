@@ -22,10 +22,10 @@ type t = Types.Template.t =
   ; loc: Loc.t
   }
 
-val to_string : t -> syntax:Atom.syntax -> string
+val to_string : t -> syntax:Syntax.t -> string
 val string_of_var : var -> string
 
-val pp : Atom.syntax -> Format.formatter -> t -> unit
+val pp : Syntax.t -> Format.formatter -> t -> unit
 
 val pp_split_strings : Format.formatter -> t -> unit
 

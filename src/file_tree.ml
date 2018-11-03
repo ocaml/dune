@@ -2,19 +2,6 @@ open! Stdune
 open! Import
 
 module Dune_file = struct
-  module Kind = struct
-    type t = Dune_lang.syntax = Jbuild | Dune
-
-    let of_basename = function
-      | "dune"   -> Dune
-      | "jbuild" -> Jbuild
-      | _ -> assert false
-
-    let lexer = function
-      | Dune   -> Dune_lang.Lexer.token
-      | Jbuild -> Dune_lang.Lexer.jbuild_token
-  end
-
   module Plain = struct
     type t =
       { path          : Path.t
@@ -30,7 +17,7 @@ module Dune_file = struct
 
   type t =
     { contents : Contents.t
-    ; kind     : Kind.t
+    ; kind     : Dune_lang.Syntax.t
     }
 
   let path t =

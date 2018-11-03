@@ -119,7 +119,7 @@ module Gen(P : Params) = struct
     | Normal | Ppx_deriver -> []
     | Ppx_rewriter ->
       let name = Dune_file.Library.best_name lib in
-      match (dir_kind : File_tree.Dune_file.Kind.t) with
+      match (dir_kind : Dune_lang.Syntax.t) with
       | Dune ->
         [Preprocessing.get_compat_ppx_exe sctx ~name ~kind:Dune]
       | Jbuild ->

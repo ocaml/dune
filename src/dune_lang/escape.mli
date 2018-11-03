@@ -1,4 +1,4 @@
 
-val escaped : string -> syntax:Atom.syntax -> string
+val escaped : string -> syntax:Syntax.t -> string
 
-val quoted : string -> syntax:Atom.syntax -> string
+val quoted : string -> syntax:Syntax.t -> string

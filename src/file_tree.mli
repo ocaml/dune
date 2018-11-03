@@ -4,12 +4,6 @@ open! Stdune
 open! Import
 
 module Dune_file : sig
-  module Kind : sig
-    type t = Dune_lang.syntax = Jbuild | Dune
-
-    val lexer : t -> Dune_lang.Lexer.t
-  end
-
   module Plain : sig
     (** [sexps] is mutable as we get rid of the S-expressions once
         they have been parsed, in order to release the memory as soon
@@ -28,7 +22,7 @@ module Dune_file : sig
 
   type t = private
     { contents : Contents.t
-    ; kind     : Kind.t
+    ; kind     : Dune_lang.Syntax.t
     }
 
   val path : t -> Path.t

@@ -438,7 +438,7 @@ module Stanzas : sig
 
   val parse
     :  file:Path.t
-    -> kind:File_tree.Dune_file.Kind.t
+    -> kind:Dune_lang.Syntax.t
     -> Dune_project.t
     -> Dune_lang.Ast.t list
     -> t

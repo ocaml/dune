@@ -11,7 +11,7 @@ module Dir_with_dune = struct
     ; ctx_dir : Path.t
     ; stanzas : Stanzas.t
     ; scope   : Scope.t
-    ; kind    : File_tree.Dune_file.Kind.t
+    ; kind    : Dune_lang.Syntax.t
     }
 end
 
@@ -20,7 +20,7 @@ module Installable = struct
     { dir    : Path.t
     ; scope  : Scope.t
     ; stanza : Stanza.t
-    ; kind   : File_tree.Dune_file.Kind.t
+    ; kind   : Dune_lang.Syntax.t
     }
 end
 

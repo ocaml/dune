@@ -21,12 +21,12 @@ module Dune_file : sig
   end
 
   module Contents : sig
-    type t =
+    type t = private
       | Plain of Plain.t
       | Ocaml_script of Path.t
   end
 
-  type t =
+  type t = private
     { contents : Contents.t
     ; kind     : Kind.t
     }

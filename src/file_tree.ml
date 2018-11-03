@@ -26,46 +26,67 @@ module Dune_file = struct
     | Ocaml_script  p -> p
 
   let extract_ignored_subdirs =
-    let stanza =
+    let no_osl =
       let open Dune_lang.Decoder in
-      let sub_dir =
-        plain_string (fun ~loc dn ->
-          if Filename.dirname dn <> Filename.current_dir_name ||
-             match dn with
-             | "" | "." | ".." -> true
-             | _ -> false
-          then
-            of_sexp_errorf loc "Invalid sub-directory name %S" dn
-          else
-            dn)
-      in
-      sum
-        [ "ignored_subdirs", list sub_dir >>| String.Set.of_list
-        ]
+      plain_string (fun ~loc dn ->
+        if Filename.dirname dn <> Filename.current_dir_name ||
+           match dn with
+           | "" | "." | ".." -> true
+           | _ -> false
+        then
+          of_sexp_errorf loc "Invalid sub-directory name %S" dn
+        else
+          dn)
+      |> list
+      >>| String.Set.of_list
     in
-    fun sexps ->
+    let osl ~sub_dirs =
+      let open Dune_lang.Decoder in
+      Ordered_set_lang.decode >>| fun osl ->
+      Ordered_set_lang.String.eval osl
+        ~parse:(fun ~loc:_ s -> s)
+        ~standard:(Lazy.force sub_dirs)
+      |> String.Set.of_list
+    in
+    let stanza ~sub_dirs =
+      let open Dune_lang.Decoder in
+      Syntax.get_exn Stanza.syntax >>= fun v ->
+      let subdirs =
+        if Syntax.Version.Infix.(v >= (1, 6)) then
+          osl ~sub_dirs
+        else
+          no_osl
+      in
+      sum ["ignored_subdirs", subdirs]
+    in
+    fun ~project ~sub_dirs sexps ->
       let ignored_subdirs, sexps =
         List.partition_map sexps ~f:(fun sexp ->
           match (sexp : Dune_lang.Ast.t) with
           | List (_, (Atom (_, A "ignored_subdirs") :: _)) ->
+            let stanza =
+              Dune_project.set_parsing_context project (stanza ~sub_dirs) in
             Left (Dune_lang.Decoder.parse stanza Univ_map.empty sexp)
           | _ -> Right sexp)
       in
       let ignored_subdirs =
-        List.fold_left ignored_subdirs ~init:String.Set.empty ~f:String.Set.union
+        List.fold_left ignored_subdirs ~init:String.Set.empty
+          ~f:String.Set.union
       in
       (ignored_subdirs, sexps)
 
-  let load file ~kind =
+  let load file ~project ~sub_dirs ~kind =
     Io.with_lexbuf_from_file file ~f:(fun lb ->
       let contents, ignored_subdirs =
         if Dune_lexer.is_script lb then
           (Contents.Ocaml_script file, String.Set.empty)
         else
           let sexps =
-            Dune_lang.Parser.parse lb ~lexer:(Kind.lexer kind) ~mode:Many
+            Dune_lang.Parser.parse lb
+              ~lexer:(Dune_lang.Lexer.of_syntax kind) ~mode:Many
           in
-          let ignored_subdirs, sexps = extract_ignored_subdirs sexps in
+          let ignored_subdirs, sexps =
+            extract_ignored_subdirs ~project ~sub_dirs sexps in
           (Plain { path = file; sexps }, ignored_subdirs)
       in
       ({ contents; kind }, ignored_subdirs))
@@ -210,7 +231,9 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) path =
                 Dune_project.ensure_project_file_exists project;
               let dune_file, ignored_subdirs =
                 Dune_file.load (Path.relative path fn)
-                  ~kind:(Dune_file.Kind.of_basename fn)
+                  ~project
+                  ~sub_dirs:(lazy (List.map sub_dirs ~f:(fun (a, _, _) -> a)))
+                  ~kind:(Option.value_exn (Dune_lang.Syntax.of_basename fn))
               in
               (Some dune_file, ignored_subdirs)
             | _ ->

@@ -5,4 +5,6 @@ type file =
 
 type t = file list
 
+val empty : t
+
 val decode : t Stanza.Decoder.t

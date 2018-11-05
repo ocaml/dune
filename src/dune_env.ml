@@ -12,6 +12,7 @@ module Stanza = struct
     ; ocamlc_flags   : Ordered_set_lang.Unexpanded.t
     ; ocamlopt_flags : Ordered_set_lang.Unexpanded.t
     ; env_vars       : Env.t
+    ; bins           : File_bindings.t
     }
 
   type pattern =
@@ -39,8 +40,15 @@ module Stanza = struct
     and ocamlc_flags = field_oslu "ocamlc_flags"
     and ocamlopt_flags = field_oslu "ocamlopt_flags"
     and env_vars = env_vars_field
+    and bins = field ~default:File_bindings.empty "bins"
+                 (Syntax.since Stanza.syntax (1, 6) >>> File_bindings.decode)
     in
-    { flags; ocamlc_flags; ocamlopt_flags; env_vars }
+    { flags
+    ; ocamlc_flags
+    ; ocamlopt_flags
+    ; env_vars
+    ; bins
+    }
 
   let rule =
     enter

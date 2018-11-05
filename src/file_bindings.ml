@@ -7,6 +7,8 @@ type file =
 
 type t = file list
 
+let empty = []
+
 let decode_file =
   let open Stanza.Decoder in
   let decode =

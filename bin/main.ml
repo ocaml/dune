@@ -868,11 +868,14 @@ let utop =
     ] in
   let term =
     let%map common = Common.term
-    and dir = Arg.(value & pos 0 dir "" & Arg.info [] ~docv:"DIR")
+    and dir = Arg.(value & pos 0 string "" & Arg.info [] ~docv:"DIR")
     and ctx_name = context_arg ~doc:{|Select context where to build/run utop.|}
     and args = Arg.(value & pos_right 0 string [] (Arg.info [] ~docv:"ARGS"))
     in
     Common.set_dirs common;
+    if not (Path.is_directory
+              (Path.of_string (Common.prefix_target common dir))) then
+      die "cannot find directory: %s" (String.maybe_quoted dir);
     let utop_target = Filename.concat dir Utop.utop_exe in
     Common.set_common_other common ~targets:[utop_target];
     let log = Log.create common in

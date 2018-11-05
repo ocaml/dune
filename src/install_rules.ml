@@ -242,7 +242,7 @@ module Gen(P : Params) = struct
         ~f:(fun { SC.Installable. dir; stanza; scope; _} ->
           match stanza with
           | Install { section; files; package}->
-            let f { Install_conf. src; dst } =
+            let f { File_bindings. src; dst } =
               let path_expander = SC.expand_vars_string sctx ~scope in
               let src = path_expander ~dir src in
               let dst = Option.map ~f:(path_expander ~dir) dst in
@@ -339,7 +339,7 @@ module Gen(P : Params) = struct
         ~f:(fun { SC.Installable. dir; stanza; kind = dir_kind; scope } ->
           match stanza with
           | Install { section; files; package}->
-            let f { Install_conf. src; dst } =
+            let f { File_bindings. src; dst } =
               let path_expander = SC.expand_vars_string sctx ~scope in
               let src = path_expander ~dir src in
               let dst = Option.map ~f:(path_expander ~dir) dst in

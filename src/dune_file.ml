@@ -1088,45 +1088,16 @@ module Library = struct
 end
 
 module Install_conf = struct
-  type file =
-    { src : String_with_vars.t
-    ; dst : String_with_vars.t option
-    }
-
-  let file =
-    let decode = 
-      let%map is_atom = peek_exn >>| function Atom _ -> true | _ -> false
-      and s = String_with_vars.decode
-      and version = Syntax.get_exn Stanza.syntax in
-      if not is_atom && version < (1, 6) then
-        Syntax.Error.since (String_with_vars.loc s) Stanza.syntax (1, 6)
-          ~what:(sprintf "Using %s here" (if String_with_vars.has_vars s then "variables" else "quoted strings"));
-      s
-    in
-    peek_exn >>= function
-    | Atom _ | Quoted_string _ | Template _ ->
-      decode >>| fun src ->
-      { src; dst = None }
-    | List (_, [_; Atom (_, A "as"); _]) ->
-      enter
-        (decode >>= fun src ->
-         keyword "as" >>>
-         decode >>= fun dst ->
-         return { src; dst = Some dst })
-    | sexp ->
-      of_sexp_error (Dune_lang.Ast.loc sexp)
-        "invalid format, <name> or (<name> as <install-as>) expected"
-
   type t =
     { section : Install.Section.t
-    ; files   : file list
+    ; files   : File_bindings.t
     ; package : Package.t
     }
 
   let decode =
     record
       (let%map section = field "section" Install.Section.decode
-       and files = field "files" (list file)
+       and files = field "files" File_bindings.decode
        and package = Pkg.field "install"
        in
        { section
@@ -1348,7 +1319,7 @@ module Executables = struct
           List.map2 names public_names
             ~f:(fun (locn, name) (locp, pub) ->
               Option.map pub ~f:(fun pub ->
-                { Install_conf.
+                { File_bindings.
                   src = String_with_vars.make_text locn (name ^ ext)
                 ; dst = Some (String_with_vars.make_text locp pub)
                 }))

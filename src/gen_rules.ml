@@ -129,7 +129,7 @@ module Gen(P : Install_rules.Params) = struct
         ; js = None
         }
       | Install { Install_conf. section = _; files; package = _ } ->
-        List.map files ~f:(fun { Install_conf. src; dst = _ } ->
+        List.map files ~f:(fun { File_bindings. src; dst = _ } ->
           let src_expanded = SC.expand_vars_string sctx ~dir src ~scope in
           Path.relative ctx_dir src_expanded)
         |> Path.Set.of_list

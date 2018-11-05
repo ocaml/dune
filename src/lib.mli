@@ -199,7 +199,7 @@ module Compile : sig
   (** Transitive closure of all used ppx rewriters *)
   val pps : t -> L.t Or_exn.t
 
-  val optional          : t -> bool
+  val optional          : t -> Lib_deps_info.Kind.t
   val user_written_deps : t -> Dune_file.Lib_deps.t
 
   (** Sub-systems used in this compilation context *)

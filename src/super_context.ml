@@ -24,17 +24,6 @@ module Installable = struct
     }
 end
 
-module Env_node = struct
-  type t =
-    { dir                 : Path.t
-    ; inherit_from        : t Lazy.t option
-    ; scope               : Scope.t
-    ; config              : Dune_env.Stanza.t
-    ; mutable ocaml_flags : Ocaml_flags.t option
-    ; mutable external_   : Env.t option
-    }
-end
-
 type t =
   { context                          : Context.t
   ; build_system                     : Build_system.t
@@ -96,33 +85,6 @@ let find_scope_by_name t name = Scope.DB.find_by_name t.scopes name
 let prefix_rules t prefix ~f =
   Build_system.prefix_rules t.build_system prefix ~f
 
-let expand_and_eval_set set ~expander ~standard =
-  let open Build.O in
-  let dir = Expander.dir expander in
-  let parse ~loc:_ s = s in
-  let (syntax, files) =
-    let f template =
-      Expander.expand expander ~mode:Single ~template
-      |> Value.to_path ~dir
-    in
-    Ordered_set_lang.Unexpanded.files set ~f in
-  let f template = Expander.expand expander ~mode:Many ~template in
-  match Path.Set.to_list files with
-  | [] ->
-    let set =
-      Ordered_set_lang.Unexpanded.expand set ~dir
-        ~files_contents:Path.Map.empty ~f
-    in
-    standard >>^ fun standard ->
-    Ordered_set_lang.String.eval set ~standard ~parse
-  | paths ->
-    Build.fanout standard (Build.all (List.map paths ~f:(fun f ->
-      Build.read_sexp f syntax)))
-    >>^ fun (standard, sexps) ->
-    let files_contents = List.combine paths sexps |> Path.Map.of_list_exn in
-    let set = Ordered_set_lang.Unexpanded.expand set ~dir ~files_contents ~f in
-    Ordered_set_lang.String.eval set ~standard ~parse
-
 module External_env = Env
 
 module Env : sig
@@ -130,8 +92,6 @@ module Env : sig
   val external_ : t -> dir:Path.t -> External_env.t
   val expander : t -> dir:Path.t -> Expander.t
 end = struct
-  open Env_node
-
   let get_env_stanza t ~dir =
     let open Option.O in
     stanzas_in t ~dir >>= fun x ->
@@ -155,13 +115,8 @@ end = struct
         match get_env_stanza t ~dir with
         | None -> Lazy.force inherit_from
         | Some config ->
-          { dir          = dir
-          ; inherit_from = Some inherit_from
-          ; scope        = scope
-          ; config       = config
-          ; ocaml_flags  = None
-          ; external_    = None
-          }
+          Env_node.make ~dir ~scope ~config ~inherit_from:(Some inherit_from)
+            ~env:None
       in
       Hashtbl.add t.env dir node;
       node
@@ -177,62 +132,19 @@ end = struct
         Exn.code_error "Super_context.Env.get called on invalid directory"
           [ "dir", Path.to_sexp dir ]
 
-  let external_ =
-    let rec loop t node =
-      match node.external_ with
-      | Some x -> x
-      | None ->
-        let profile = profile t in
-        let default =
-          match node.inherit_from with
-          | None -> t.context.env
-          | Some (lazy node) -> loop t node
-        in
-        let env =
-          match Dune_env.Stanza.find node.config ~profile with
-          | None -> default
-          | Some cfg -> Env.extend_env default cfg.env_vars
-        in
-        node.external_ <- Some env;
-        env
-    in
-    fun t ~dir -> loop t (get t ~dir)
+  let external_ t  ~dir =
+    Env_node.external_ (get t ~dir) ~profile:(profile t) ~default:t.context.env
 
   let expander t ~dir =
     let node = get t ~dir in
     let external_ = external_ t ~dir in
     Expander.extend_env t.expander ~env:external_
-    |> Expander.set_scope ~scope:node.scope
+    |> Expander.set_scope ~scope:(Env_node.scope node)
     |> Expander.set_dir ~dir
 
-  let ocaml_flags =
-    let rec loop t node =
-      let dir = node.dir in
-      match node.ocaml_flags with
-      | Some x -> x
-      | None ->
-        let profile = profile t in
-        let default =
-          match node.inherit_from with
-          | None -> Ocaml_flags.default ~profile
-          | Some (lazy node) -> loop t node
-        in
-        let flags =
-          match Dune_env.Stanza.find node.config ~profile with
-          | None -> default
-          | Some cfg ->
-            let expander = expander t ~dir in
-            Ocaml_flags.make
-              ~flags:cfg.flags
-              ~ocamlc_flags:cfg.ocamlc_flags
-              ~ocamlopt_flags:cfg.ocamlopt_flags
-              ~default
-              ~eval:(expand_and_eval_set ~expander)
-        in
-        node.ocaml_flags <- Some flags;
-        flags
-    in
-    fun t ~dir -> loop t (get t ~dir)
+  let ocaml_flags t ~dir =
+    Env_node.ocaml_flags (get t ~dir)
+      ~profile:(profile t) ~expander:(expander t ~dir)
 end
 
 
@@ -316,7 +228,7 @@ let ocaml_flags t ~dir (x : Buildable.t) =
     ~ocamlc_flags:x.ocamlc_flags
     ~ocamlopt_flags:x.ocamlopt_flags
     ~default:(Env.ocaml_flags t ~dir)
-    ~eval:(expand_and_eval_set ~expander)
+    ~eval:(Expander.expand_and_eval_set expander)
 
 let dump_env t ~dir =
   Ocaml_flags.dump (Env.ocaml_flags t ~dir)
@@ -412,14 +324,12 @@ let create
   in
   let default_env = lazy (
     let make ~inherit_from ~config =
-      { Env_node.
-        dir = context.build_dir
-      ; external_ = None
-      ; scope = Scope.DB.find_by_dir scopes context.build_dir
-      ; ocaml_flags = None
-      ; inherit_from
-      ; config
-      }
+      Env_node.make
+        ~dir:context.build_dir
+        ~env:None
+        ~scope:(Scope.DB.find_by_dir scopes context.build_dir)
+        ~inherit_from
+        ~config
     in
     match context.env_nodes with
     | { context = None; workspace = None } ->
@@ -497,13 +407,9 @@ module Libs = struct
 
   let with_lib_deps t compile_info ~dir ~f =
     let prefix =
-      Build.record_lib_deps
-        (Dune_file.Lib_deps.info
-           (Lib.Compile.user_written_deps compile_info)
-           ~kind:(if Lib.Compile.optional compile_info then
-                    Optional
-                  else
-                    Required))
+      Lib.Compile.user_written_deps compile_info
+      |> Dune_file.Lib_deps.info ~kind:(Lib.Compile.optional compile_info)
+      |> Build.record_lib_deps
     in
     let prefix =
       if t.context.merlin then
@@ -725,4 +631,4 @@ let expand_and_eval_set sctx ~scope ~dir ?bindings set ~standard =
     | None -> expander
     | Some bindings -> Expander.add_bindings expander ~bindings
   in
-  expand_and_eval_set ~expander ~standard set
+  Expander.expand_and_eval_set expander ~standard set

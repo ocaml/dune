@@ -1,9 +1,12 @@
+(** An environment node represents an evaluated (env ..) stanza in a
+    directory. *)
+
 open Stdune
 
 type t
 
 val make
-  : dir:Path.t
+  :  dir:Path.t
   -> inherit_from:t Lazy.t option
   -> scope:Scope.t
   -> config:Dune_env.Stanza.t

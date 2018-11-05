@@ -49,6 +49,9 @@ let set_dir t ~dir =
 let set_scope t ~scope =
   { t with scope }
 
+let set_artifacts t ~artifacts =
+  { t with artifacts }
+
 let extend_env t ~env =
   { t with
     env = Env.extend_env t.env env

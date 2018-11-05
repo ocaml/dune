@@ -49,6 +49,22 @@ let binary t ?hint ~loc name =
           ; loc
           }
 
+let add_binaries t ~dir = function
+  | [] -> t
+  | bindings ->
+    let local_bins =
+      List.fold_left bindings ~init:t.local_bins
+        ~f:(fun acc ({ File_bindings. src ; dst }) ->
+          let path = Path.relative dir src in
+          let dst =
+            match dst with
+            | Some dst -> dst
+            | None -> Path.basename path
+          in
+          String.Map.add acc dst path)
+    in
+    { t with local_bins }
+
 let file_of_lib t ~loc ~lib ~file =
   match Lib.DB.find t.public_libs lib with
   | Error reason ->

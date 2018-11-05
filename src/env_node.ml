@@ -7,6 +7,7 @@ type t =
   ; config              : Dune_env.Stanza.t
   ; mutable ocaml_flags : Ocaml_flags.t option
   ; mutable external_   : Env.t option
+  ; mutable artifacts   : Artifacts.t option
   }
 
 let scope t = t.scope
@@ -18,6 +19,7 @@ let make ~dir ~inherit_from ~scope ~config ~env =
   ; config
   ; ocaml_flags = None
   ; external_ = env
+  ; artifacts = None
   }
 
 let rec external_ t ~profile ~default =
@@ -36,6 +38,23 @@ let rec external_ t ~profile ~default =
     in
     t.external_ <- Some env;
     env
+
+let rec artifacts t ~profile ~default =
+  match t.artifacts with
+  | Some x -> x
+  | None ->
+    let default =
+      match t.inherit_from with
+      | None -> default
+      | Some (lazy t) -> artifacts t ~default ~profile
+    in
+    let artifacts =
+      match Dune_env.Stanza.find t.config ~profile with
+      | None -> default
+      | Some cfg -> Artifacts.add_binaries default ~dir:t.dir cfg.bins
+    in
+    t.artifacts <- Some artifacts;
+    artifacts
 
 let rec ocaml_flags t ~profile ~expander =
   match t.ocaml_flags with

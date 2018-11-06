@@ -222,7 +222,7 @@ module Library : sig
       ; exit_module : Module.Name.t option
       (** Modules that's implicitely added by the compiler at the
           end when linking an executable *)
-      ; internal_modules : Re.re
+      ; internal_modules : Glob.t
       (** Module names that are hardcoded in the compiler and so
           cannot be wrapped *)
       }

@@ -801,17 +801,36 @@ Fields supported in ``<settings>`` are:
 ignored_subdirs
 ---------------
 
-The ``ignored_subdirs`` stanza allows to tell Dune to ignore one or
-more sub-directories. The syntax is as follow:
+The ``ignored_subdirs`` stanza allows to tell Dune to ignore one or more
+sub-directories. The syntax is based on dune's predicate language and allows the
+user the following operations:
+
+- The special value ``:standard`` which refers to the default set of ignored
+  directories. These are the directories that start with ``.`` or ``_``.
+
+- Set operations. Differences are expressed with backslash: ``* \ bar``, unions
+  are done by listing multiple items.
+
+- Sets can be defined using globs.
+
+Examples:
+
+.. code:: scheme
+
+   (ignored_subdirs *) ;; ignore all directories
+   (ignored_subdirs * \ ocaml) ;; ignore all directories except ocaml
+   (ignored_subdirs test* foo*) ;; ignore all directories that start with test or foo
+
+A directory that is ignored will not be eagerly scanned by Dune. Any ``dune`` or
+other special files in it won't be interpreted either and will be treated as raw
+data. It is however possible to depend on files inside ignored sub-directories.
+
+Note that the above rich syntax is only available since dune 1.6. Pre 1.6, the
+syntax is a simple list of directories:
 
 .. code:: scheme
 
      (ignored_subdirs (<sub-dir1> <sub-dir2> ...))
-
-A directory that is ignored will not be eagerly scanned by Dune. Any
-``dune`` or other special files in it won't be interpreted either and
-will be treated as raw data. It is however possible to depend on files
-inside ignored sub-directories.
 
 .. _include_subdirs:
 

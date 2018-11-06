@@ -17,3 +17,5 @@ let test t = Re.execp t
 let filter t = List.filter ~f:(test t)
 
 let empty = Re.compile Re.empty
+
+let of_re t = Re.compile (Re.seq [Re.bos; t; Re.eos])

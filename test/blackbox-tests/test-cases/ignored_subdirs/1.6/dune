@@ -1,1 +1,1 @@
-(ignored_subdirs :standard \ real)
+(ignored_subdirs * \ real)

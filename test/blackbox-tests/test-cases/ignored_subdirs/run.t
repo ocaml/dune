@@ -5,3 +5,6 @@
   $ dune build --root 1.6 @runtest
   Entering directory '1.6'
   real dir
+  $ dune build --root glob @runtest
+  Entering directory 'glob'
+  real dir

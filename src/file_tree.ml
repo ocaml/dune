@@ -1,6 +1,15 @@
 open! Stdune
 open! Import
 
+let standard_ignore_dirs =
+  let open Re in
+  [ empty
+  ; seq [set "._"; rep any]
+  ]
+  |> alt
+  |> Glob.of_re
+  |> Predicate_lang.of_glob
+
 module Dune_file = struct
   module Plain = struct
     type t =
@@ -38,55 +47,45 @@ module Dune_file = struct
         else
           dn)
       |> list
-      >>| String.Set.of_list
+      >>| (fun l -> Predicate_lang.of_string_set (String.Set.of_list l))
     in
-    let osl ~sub_dirs =
-      let open Dune_lang.Decoder in
-      Ordered_set_lang.decode >>| fun osl ->
-      Ordered_set_lang.String.eval osl
-        ~parse:(fun ~loc:_ s -> s)
-        ~standard:(Lazy.force sub_dirs)
-      |> String.Set.of_list
-    in
-    let stanza ~sub_dirs =
+    let osl = Predicate_lang.decode in
+    let stanza =
       let open Dune_lang.Decoder in
       Syntax.get_exn Stanza.syntax >>= fun v ->
       let subdirs =
         if Syntax.Version.Infix.(v >= (1, 6)) then
-          osl ~sub_dirs
+          osl
         else
           no_osl
       in
       sum ["ignored_subdirs", subdirs]
     in
-    fun ~project ~sub_dirs sexps ->
+    fun ~project sexps ->
       let ignored_subdirs, sexps =
         List.partition_map sexps ~f:(fun sexp ->
           match (sexp : Dune_lang.Ast.t) with
           | List (_, (Atom (_, A "ignored_subdirs") :: _)) ->
             let stanza =
-              Dune_project.set_parsing_context project (stanza ~sub_dirs) in
+              Dune_project.set_parsing_context project stanza in
             Left (Dune_lang.Decoder.parse stanza Univ_map.empty sexp)
           | _ -> Right sexp)
       in
-      let ignored_subdirs =
-        List.fold_left ignored_subdirs ~init:String.Set.empty
-          ~f:String.Set.union
-      in
+      let ignored_subdirs = Predicate_lang.union ignored_subdirs in
       (ignored_subdirs, sexps)
 
-  let load file ~project ~sub_dirs ~kind =
+  let load file ~project ~kind =
     Io.with_lexbuf_from_file file ~f:(fun lb ->
       let contents, ignored_subdirs =
         if Dune_lexer.is_script lb then
-          (Contents.Ocaml_script file, String.Set.empty)
+          (Contents.Ocaml_script file, standard_ignore_dirs)
         else
           let sexps =
             Dune_lang.Parser.parse lb
               ~lexer:(Dune_lang.Lexer.of_syntax kind) ~mode:Many
           in
           let ignored_subdirs, sexps =
-            extract_ignored_subdirs ~project ~sub_dirs sexps in
+            extract_ignored_subdirs ~project sexps in
           (Plain { path = file; sexps }, ignored_subdirs)
       in
       ({ contents; kind }, ignored_subdirs))
@@ -106,6 +105,7 @@ let load_jbuild_ignore path =
       false
     end)
   |> String.Set.of_list
+  |> Predicate_lang.of_string_set
 
 module Dir = struct
   type t =
@@ -158,11 +158,6 @@ type t =
 
 let root t = t.root
 
-let ignore_file fn ~is_directory =
-  fn = "" || fn = "." ||
-  (is_directory && (fn.[0] = '.' || fn.[0] = '_')) ||
-  (fn.[0] = '.' && fn.[1] = '#')
-
 module File = struct
   type t =
     { ino : int
@@ -184,6 +179,11 @@ end
 
 module File_map = Map.Make(File)
 
+let is_temp_file fn =
+  String.is_prefix fn ~prefix:".#"
+  || String.is_suffix fn ~suffix:".swp"
+  || String.is_suffix fn ~suffix:"~"
+
 let load ?(extra_ignored_subtrees=Path.Set.empty) path =
   let rec walk path ~dirs_visited ~project ~ignored : Dir.t =
     let contents = lazy (
@@ -202,10 +202,10 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) path =
               | _ ->
                 (false, File.dummy)
             in
-            if ignore_file fn ~is_directory then
-              Skip
-            else if is_directory then
+            if is_directory then
               Right (fn, path, file)
+            else if is_temp_file fn then
+              Skip
             else
               Left fn
           end)
@@ -218,21 +218,20 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) path =
       in
       let project, dune_file, ignored_subdirs =
         if ignored then
-          (project, None, String.Set.empty)
+          (project, None, standard_ignore_dirs)
         else
           let project =
             Option.value (Dune_project.load ~dir:path ~files) ~default:project
           in
           let dune_file, ignored_subdirs =
             match List.filter ["dune"; "jbuild"] ~f:(String.Set.mem files) with
-            | [] -> (None, String.Set.empty)
+            | [] -> (None, standard_ignore_dirs )
             | [fn] ->
               if fn = "dune" then
                 Dune_project.ensure_project_file_exists project;
               let dune_file, ignored_subdirs =
                 Dune_file.load (Path.relative path fn)
                   ~project
-                  ~sub_dirs:(lazy (List.map sub_dirs ~f:(fun (a, _, _) -> a)))
                   ~kind:(Option.value_exn (Dune_lang.Syntax.of_basename fn))
               in
               (Some dune_file, ignored_subdirs)
@@ -243,12 +242,23 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) path =
           in
           let ignored_subdirs =
             if String.Set.mem files "jbuild-ignore" then
-              String.Set.union ignored_subdirs
-                (load_jbuild_ignore (Path.relative path "jbuild-ignore"))
+              Predicate_lang.union
+                [ ignored_subdirs
+                ; load_jbuild_ignore (Path.relative path "jbuild-ignore")
+                ]
             else
               ignored_subdirs
           in
           (project, dune_file, ignored_subdirs)
+      in
+      let is_ignored =
+        let ignored = lazy (
+          lazy (List.map sub_dirs ~f:(fun (a, _, _) -> a))
+          |> Predicate_lang.filter ignored_subdirs
+               ~standard:standard_ignore_dirs
+          |> String.Set.of_list
+        ) in
+        String.Set.mem (Lazy.force ignored)
       in
       let sub_dirs =
         List.fold_left sub_dirs ~init:String.Map.empty
@@ -267,7 +277,7 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) path =
             in
             let ignored =
               ignored
-              || String.Set.mem ignored_subdirs fn
+              || is_ignored fn
               || Path.Set.mem extra_ignored_subtrees path
             in
             String.Map.add acc fn

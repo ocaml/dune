@@ -1,0 +1,12 @@
+(env
+ (_
+  (bins
+    ../priv/priv.exe
+    (../priv/priv.exe as priv-renamed.exe))))
+
+(alias
+ (name runtest)
+ (action
+  (progn
+   (run priv.exe)
+   (run priv-renamed.exe))))

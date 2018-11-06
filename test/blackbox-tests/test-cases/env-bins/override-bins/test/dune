@@ -1,0 +1,7 @@
+(env
+ (_
+  (bins (../priv/priv.exe as foo))))
+
+(alias
+ (name runtest)
+ (action (run foo)))

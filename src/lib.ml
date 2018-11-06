@@ -890,7 +890,7 @@ module Compile = struct
   let requires          t = t.requires
   let resolved_selects  t = t.resolved_selects
   let pps               t = t.pps
-  let optional          t = t.optional
+  let optional          t = Lib_deps_info.Kind.of_optional t.optional
   let user_written_deps t = t.user_written_deps
   let sub_systems t =
     Sub_system_name.Map.values t.sub_systems

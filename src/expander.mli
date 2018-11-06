@@ -83,3 +83,9 @@ val add_ddeps_and_bindings
   -> t
 
 val expand_var_exn : t -> Value.t list option String_with_vars.expander
+
+val expand_and_eval_set
+  :  t
+  -> Ordered_set_lang.Unexpanded.t
+  -> standard:(unit, string list) Build.t
+  -> (unit, string list) Build.t

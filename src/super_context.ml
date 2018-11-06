@@ -90,7 +90,7 @@ module External_env = Env
 module Env : sig
   val ocaml_flags : t -> dir:Path.t -> Ocaml_flags.t
   val external_ : t -> dir:Path.t -> External_env.t
-  val artifacts : t -> dir:Path.t -> Artifacts.t
+  val artifacts_host : t -> dir:Path.t -> Artifacts.t
   val expander : t -> dir:Path.t -> Expander.t
 end = struct
   let get_env_stanza t ~dir =
@@ -136,17 +136,26 @@ end = struct
   let external_ t  ~dir =
     Env_node.external_ (get t ~dir) ~profile:(profile t) ~default:t.context.env
 
-  let artifacts t  ~dir =
+  let artifacts t ~dir =
     Env_node.artifacts (get t ~dir) ~profile:(profile t) ~default:t.artifacts
+
+  let artifacts_host t ~dir =
+    match t.host with
+    | None -> artifacts t ~dir
+    | Some host ->
+      let dir =
+        Path.append host.context.build_dir (Path.drop_build_context_exn dir) in
+      artifacts host ~dir
 
   let expander t ~dir =
     let node = get t ~dir in
     let external_ = external_ t ~dir in
     let artifacts = artifacts t ~dir in
+    let artifacts_host = artifacts_host t ~dir in
     Expander.extend_env t.expander ~env:external_
     |> Expander.set_scope ~scope:(Env_node.scope node)
     |> Expander.set_dir ~dir
-    |> Expander.set_artifacts ~artifacts
+    |> Expander.set_artifacts ~artifacts ~artifacts_host
 
   let ocaml_flags t ~dir =
     Env_node.ocaml_flags (get t ~dir)
@@ -240,7 +249,7 @@ let dump_env t ~dir =
   Ocaml_flags.dump (Env.ocaml_flags t ~dir)
 
 let resolve_program t ~dir ?hint ~loc bin =
-  let artifacts = Env.artifacts t ~dir in
+  let artifacts = Env.artifacts_host t ~dir in
   Artifacts.binary ?hint ~loc artifacts bin
 
 let create
@@ -607,15 +616,7 @@ module Action = struct
               ~deps_written_by_user in
           U.Partial.expand t ~expander ~map_exe
         in
-        let artifacts =
-          match sctx.host with
-          | None -> Env.artifacts sctx ~dir
-          | Some host ->
-            let dir =
-              Path.append host.context.build_dir
-                (Path.drop_build_context_exn dir) in
-            Env.artifacts host ~dir
-        in
+        let artifacts = Env.artifacts_host sctx ~dir in
         Action.Unresolved.resolve unresolved ~f:(fun loc prog ->
           match Artifacts.binary ~loc artifacts prog with
           | Ok path    -> path

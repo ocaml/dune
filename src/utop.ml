@@ -42,13 +42,12 @@ let utop_dir_basename = ".utop"
 
 let utop_exe_dir ~dir = Path.relative dir utop_dir_basename
 
-let utop_exe dir =
-  Path.relative (utop_exe_dir ~dir) exe_name
+let utop_exe =
   (* Use the [.exe] version. As the utop executable is declared with
      [(modes (byte))], the [.exe] correspond the bytecode linked in
      custom mode. We do that so that it works without hassle when
      generating a utop for a library with C stubs. *)
-  |> Path.extend_basename ~suffix:(Mode.exe_ext Mode.Native)
+  Filename.concat utop_dir_basename (exe_name ^ Mode.exe_ext Mode.Native)
 
 let is_utop_dir dir = Path.basename dir = utop_dir_basename
 

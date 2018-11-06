@@ -2,9 +2,9 @@
 
 open! Stdune
 
-val utop_exe : Path.t -> Path.t
-(** Return the path of the utop bytecode binary inside a directory where
-    some libraries are defined. *)
+val utop_exe : string
+(** Return the name of the utop target inside a directory where some
+    libraries are defined. *)
 
 val is_utop_dir : Path.t -> bool
 

@@ -868,15 +868,15 @@ let utop =
     ] in
   let term =
     let%map common = Common.term
-    and dir = Arg.(value & pos 0 string "" & Arg.info [] ~docv:"PATH")
+    and dir = Arg.(value & pos 0 string "" & Arg.info [] ~docv:"DIR")
     and ctx_name = context_arg ~doc:{|Select context where to build/run utop.|}
     and args = Arg.(value & pos_right 0 string [] (Arg.info [] ~docv:"ARGS"))
     in
     Common.set_dirs common;
-    let dir = Path.of_string dir in
-    if not (Path.is_directory dir) then
-      die "cannot find directory: %a" Path.pp dir;
-    let utop_target = dir |> Utop.utop_exe |> Path.to_string in
+    if not (Path.is_directory
+              (Path.of_string (Common.prefix_target common dir))) then
+      die "cannot find directory: %s" (String.maybe_quoted dir);
+    let utop_target = Filename.concat dir Utop.utop_exe in
     Common.set_common_other common ~targets:[utop_target];
     let log = Log.create common in
     let (build_system, context, utop_path) =
@@ -885,7 +885,8 @@ let utop =
        let setup = { setup with contexts = [context] } in
        let target =
          match Target.resolve_target common ~setup utop_target with
-         | Error _ -> die "no library is defined in %a" Path.pp dir
+         | Error _ ->
+           die "no library is defined in %s" (String.maybe_quoted dir)
          | Ok [File target] -> target
          | Ok _ -> assert false
        in

@@ -18,6 +18,7 @@ module Key : sig
 end = struct
 
   let reverse_table = Hashtbl.create 128
+  let () = Hooks.End_of_build.always (fun () -> Hashtbl.reset reverse_table)
 
   let encode ~dir_kind libs =
     let libs =

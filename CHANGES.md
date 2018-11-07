@@ -4,6 +4,9 @@ next
 - Fix `dune utop <dir>` when invoked from a sub-directory of the
   project (#1520, fix #1518, @diml)
 
+- Fix bad interaction between on-demand ppx rewriters and polling mode
+  (#1525, fix #1524, @diml)
+
 1.5.0 (1/11/2018)
 -----------------
 

@@ -2,8 +2,6 @@ type t = A of string [@@unboxed]
 
 let invalid_argf fmt = Printf.ksprintf invalid_arg fmt
 
-type syntax = Jbuild | Dune
-
 let is_valid_dune =
   let rec loop s i len =
     i = len ||
@@ -39,7 +37,7 @@ let of_string s = A s
 let to_string (A s) = s
 
 let is_valid (A t) = function
-  | Jbuild -> is_valid_jbuild t
+  | Syntax.Jbuild -> is_valid_jbuild t
   | Dune   -> is_valid_dune t
 
 let print ((A s) as t) syntax =

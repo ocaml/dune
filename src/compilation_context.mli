@@ -19,7 +19,7 @@ val create
   -> dir                   : Path.t
   -> ?private_obj_dir      : Path.t
   -> ?modules_of_vlib      : Module.Name_map.t
-  -> ?dir_kind             : File_tree.Dune_file.Kind.t
+  -> ?dir_kind             : Dune_lang.Syntax.t
   -> ?obj_dir              : Path.t
   -> modules               : Module.t Module.Name.Map.t
   -> ?alias_module         : Module.t
@@ -40,7 +40,7 @@ val super_context        : t -> Super_context.t
 val context              : t -> Context.t
 val scope                : t -> Scope.t
 val dir                  : t -> Path.t
-val dir_kind             : t -> File_tree.Dune_file.Kind.t
+val dir_kind             : t -> Dune_lang.Syntax.t
 val obj_dir              : t -> Path.t
 val private_obj_dir      : t -> Path.t option
 val modules              : t -> Module.t Module.Name.Map.t

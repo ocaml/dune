@@ -108,3 +108,5 @@ val get_exn : unit -> (t, 'k) Dune_lang.Decoder.parser
 (** Find arguments passed to (using). [None] means that the extension was not
     written in dune-project. *)
 val find_extension_args : t -> 'a Extension.t -> 'a option
+
+val set_parsing_context : t -> 'a Dune_lang.Decoder.t -> 'a Dune_lang.Decoder.t

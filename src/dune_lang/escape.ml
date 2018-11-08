@@ -7,7 +7,7 @@ let quote_length s ~syntax =
     n := !n + (match String.unsafe_get s i with
       | '\"' | '\\' | '\n' | '\t' | '\r' | '\b' -> 2
       | '%' ->
-        if syntax = Atom.Dune && i + 1 < len && s.[i+1] = '{' then 2 else 1
+        if syntax = Syntax.Dune && i + 1 < len && s.[i+1] = '{' then 2 else 1
       | ' ' .. '~' -> 1
       | _ -> 4)
   done;
@@ -28,7 +28,7 @@ let escape_to s ~dst:s' ~ofs ~syntax =
       Bytes.unsafe_set s' !n '\\'; incr n; Bytes.unsafe_set s' !n 'r'
     | '\b' ->
       Bytes.unsafe_set s' !n '\\'; incr n; Bytes.unsafe_set s' !n 'b'
-    | '%' when syntax = Atom.Dune && i + 1 < len && s.[i + 1] = '{' ->
+    | '%' when syntax = Syntax.Dune && i + 1 < len && s.[i + 1] = '{' ->
       Bytes.unsafe_set s' !n '\\'; incr n; Bytes.unsafe_set s' !n '%'
     | (' ' .. '~') as c -> Bytes.unsafe_set s' !n c
     | c ->

@@ -1,14 +1,12 @@
 type t = private A of string [@@unboxed]
 
-type syntax = Jbuild | Dune
-
 val is_valid_dune : string -> bool
-val is_valid : t -> syntax -> bool
+val is_valid : t -> Syntax.t -> bool
 
 val of_string : string -> t
 val to_string : t -> string
 
-val print : t -> syntax -> string
+val print : t -> Syntax.t -> string
 
 val of_int : int -> t
 val of_float : float -> t

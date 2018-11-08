@@ -836,7 +836,7 @@ module Library = struct
     type t =
       { modules_before_stdlib : Module.Name.Set.t
       ; exit_module : Module.Name.t option
-      ; internal_modules : Re.re
+      ; internal_modules : Glob.t
       }
 
     let syntax =
@@ -849,14 +849,6 @@ module Library = struct
         syntax (Dune_lang.Decoder.return []);
       syntax
 
-    let glob =
-      plain_string (fun ~loc str ->
-        match Glob_lexer.parse_string str with
-        | Ok re ->
-          Re.compile re
-        | Error (_pos, msg) ->
-          Errors.fail loc "invalid glob: %s" msg)
-
     let decode =
       fields
         (let%map modules_before_stdlib =
@@ -864,7 +856,7 @@ module Library = struct
          and exit_module =
            field_o "exit_module" module_name
          and internal_modules =
-           field "internal_modules" glob ~default:(Re.compile Re.empty)
+           field "internal_modules" Glob.decode ~default:Glob.empty
          in
          { modules_before_stdlib = Module.Name.Set.of_list modules_before_stdlib
          ; exit_module
@@ -1089,7 +1081,7 @@ module Library = struct
     | None -> false
     | Some stdlib ->
       let name = Module.name m in
-      Re.execp stdlib.internal_modules (Module.Name.to_string name) ||
+      Glob.test stdlib.internal_modules (Module.Name.to_string name) ||
       match stdlib.exit_module with
       | None -> false
       | Some n -> n = name
@@ -2001,7 +1993,7 @@ module Stanzas = struct
   let parse ~file ~kind (project : Dune_project.t) sexps =
     let (stanza_parser, lexer) =
       let (parser, lexer) =
-        match (kind : File_tree.Dune_file.Kind.t) with
+        match (kind : Dune_lang.Syntax.t) with
         | Jbuild -> (jbuild_parser, Dune_lang.Lexer.jbuild_token)
         | Dune   -> (Dune_project.stanza_parser project, Dune_lang.Lexer.token)
       in

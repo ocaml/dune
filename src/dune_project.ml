@@ -141,14 +141,15 @@ module Project_file = struct
 end
 
 type t =
-  { kind          : Kind.t
-  ; name          : Name.t
-  ; root          : Path.Local.t
-  ; version       : string option
-  ; packages      : Package.t Package.Name.Map.t
-  ; stanza_parser : Stanza.t list Dune_lang.Decoder.t
-  ; project_file  : Project_file.t
-  ; extension_args : Univ_map.t
+  { kind            : Kind.t
+  ; name            : Name.t
+  ; root            : Path.Local.t
+  ; version         : string option
+  ; packages        : Package.t Package.Name.Map.t
+  ; stanza_parser   : Stanza.t list Dune_lang.Decoder.t
+  ; project_file    : Project_file.t
+  ; extension_args  : Univ_map.t
+  ; parsing_context : Univ_map.t
   }
 
 let packages t = t.packages
@@ -316,13 +317,15 @@ let make_parsing_context ~(lang : Lang.Instance.t) ~extensions =
 let key =
   Univ_map.Key.create ~name:"dune-project"
     (fun { name; root; version; project_file; kind
-         ; stanza_parser = _; packages = _ ; extension_args = _ } ->
+         ; stanza_parser = _; packages = _ ; extension_args = _
+         ; parsing_context } ->
       Sexp.Encoder.record
         [ "name", Name.to_sexp name
         ; "root", Path.Local.to_sexp root
         ; "version", Sexp.Encoder.(option string) version
         ; "project_file", Project_file.to_sexp project_file
         ; "kind", Kind.to_sexp kind
+        ; "parsing_context", Univ_map.to_sexp parsing_context
         ])
 
 let set t = Dune_lang.Decoder.set key t
@@ -352,6 +355,7 @@ let anonymous = lazy (
       Dune_lang.Decoder.(set_many parsing_context (sum lang.data))
   ; project_file  = { file = Path.relative Path.root filename; exists = false }
   ; extension_args = Univ_map.empty
+  ; parsing_context
   })
 
 let default_name ~dir ~packages =
@@ -443,6 +447,7 @@ let parse ~dir ~lang ~packages ~file =
        ; stanza_parser = Dune_lang.Decoder.(set_many parsing_context (sum stanzas))
        ; project_file
        ; extension_args
+       ; parsing_context
        })
 
 let load_dune_project ~dir packages =
@@ -461,6 +466,7 @@ let make_jbuilder_project ~dir packages =
       Dune_lang.Decoder.(set_many parsing_context (sum lang.data))
   ; project_file = { file = Path.relative dir filename; exists = false }
   ; extension_args = Univ_map.empty
+  ; parsing_context
   }
 
 let read_name file =
@@ -498,3 +504,6 @@ let load ~dir ~files =
     Some (make_jbuilder_project ~dir packages)
   else
     None
+
+let set_parsing_context t parser =
+  Dune_lang.Decoder.set_many t.parsing_context parser

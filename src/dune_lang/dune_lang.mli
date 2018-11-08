@@ -3,12 +3,10 @@ open! Stdune
 
     This library is internal to dune and guarantees no API stability.*)
 
-type syntax = Jbuild | Dune
-
 module Atom : sig
   type t = private A of string [@@unboxed]
 
-  val is_valid : t -> syntax -> bool
+  val is_valid : t -> Syntax.t -> bool
 
   val of_string : string -> t
   val to_string : t -> string
@@ -19,6 +17,14 @@ module Atom : sig
   val of_int64 : Int64.t -> t
   val of_digest : Digest.t -> t
 end
+
+module Syntax : sig
+  type t = Jbuild | Dune
+
+  val of_basename : string -> t option
+end
+
+type syntax = Syntax.t = Jbuild | Dune
 
 module Template : sig
   type var_syntax = Dollar_brace | Dollar_paren | Percent
@@ -125,6 +131,8 @@ module Lexer : sig
 
   val token : t
   val jbuild_token : t
+
+  val of_syntax : syntax -> t
 end
 
 module Parser : sig

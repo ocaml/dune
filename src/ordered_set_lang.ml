@@ -33,7 +33,7 @@ module Parse = struct
 
   let generic ~inc ~elt =
     let open Stanza.Decoder in
-    let rec one (kind : Stanza.File_kind.t) =
+    let rec one (kind : Dune_lang.Syntax.t) =
       peek_exn >>= function
       | Atom (loc, A "\\") -> Errors.fail loc "unexpected \\"
       | (Atom (_, A "") | Quoted_string (_, _)) | Template _ ->
@@ -300,7 +300,7 @@ module Unexpanded = struct
     in
     let syntax =
       match Univ_map.find t.context (Syntax.key Stanza.syntax) with
-      | Some (0, _)-> File_tree.Dune_file.Kind.Jbuild
+      | Some (0, _)-> Dune_lang.Syntax.Jbuild
       | None | Some (_, _) -> Dune
     in
     (syntax, loop Path.Set.empty t.ast)

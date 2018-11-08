@@ -7,6 +7,8 @@
 - Fix bad interaction between on-demand ppx rewriters and polling mode
   (#1525, fix #1524, @diml)
 
+- Expand variables in `install` stanzas (#1354, @mseri)
+
 1.5.0 (1/11/2018)
 -----------------
 

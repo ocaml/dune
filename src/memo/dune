@@ -1,4 +1,4 @@
 (library
  (name memo)
- (libraries stdune dag fiber)
+ (libraries stdune dune_lang dag fiber)
  (synopsis "Function memoizer"))

@@ -5,8 +5,14 @@ open Stdune;;
 open Fiber.O;;
 open Memo;;
 
-module String_fn = Memo.Make(String)
-module Int_fn = Memo.Make(Int)
+module String_fn = Memo.Make(struct
+    include String
+    let decode = Dune_lang.Decoder.string
+  end)
+module Int_fn = Memo.Make(struct
+    include Int
+    let decode = Dune_lang.Decoder.int
+  end)
 [%%ignore]
 
 (* to run a computation *)

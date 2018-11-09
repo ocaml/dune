@@ -33,6 +33,9 @@ unreleased
 - Get the correct environment node for multi project workspaces (#1648,
   @rgrinberg)
 
+- Add `dune compute` to call internal memoized functions (#1528,
+  @rudihorn, @diml)
+
 1.6.2 (05/12/2018)
 ------------------
 

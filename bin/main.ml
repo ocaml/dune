@@ -363,6 +363,71 @@ let external_lib_deps =
   in
   (term, Term.info "external-lib-deps" ~doc ~man)
 
+let compute =
+  let doc = "Compute internal function." in
+  let man =
+    [ `S "DESCRIPTION"
+    ; `P {|Run a registered memoize function with the given input and
+           print the output. |}
+    ; `P {|This should only be used for debugging dune.|}
+    ; `Blocks Common.help_secs
+    ]
+  in
+  let term =
+    let%map common = Common.term
+    and fn =
+      Arg.(required
+           & pos 0 (some string) None
+           & info [] ~docv:"FUNCTION"
+               ~doc:"Compute $(docv) for a given input.")
+    and inp =
+      Arg.(required
+           & pos 1 (some string) None
+           & info [] ~docv:"INPUT"
+               ~doc:"Use $(docv) as the input to the function.")
+    in
+    Common.set_common common ~targets:[];
+    let log = Log.create common in
+    let res =
+      Scheduler.go ~log ~common
+        (Main.setup ~log common ~external_lib_deps_mode:true
+         >>= fun _setup ->
+         let sexp =
+           Dune_lang.parse_string
+             ~fname:"<command-line>"
+             ~mode:Dune_lang.Parser.Mode.Single inp
+         in
+         Memo.call fn sexp)
+    in
+    Format.printf "%a\n%!" Sexp.pp res
+  in
+  (term, Term.info "compute" ~doc ~man)
+
+let list_functions =
+  let doc = "List internal functions." in
+  let man =
+    [ `S "DESCRIPTION"
+    ; `P {|Print the list of internal functions that can be used with
+           $(b,dune compute).|}
+    ; `Blocks Common.help_secs
+    ]
+  in
+  let term =
+    let%map common = Common.term in
+    Common.set_common common ~targets:[];
+    let log = Log.create common in
+    let _setup =
+      Scheduler.go ~log ~common
+        (Main.setup ~log common ~external_lib_deps_mode:true)
+    in
+    let fns = Memo.registered_functions () in
+    let longest = String.longest_map fns ~f:(fun info -> info.name) in
+    List.iter fns ~f:(fun { Memo.Function_info.name; doc } ->
+      Printf.printf "%-*s : %s\n" longest name doc);
+    flush stdout
+  in
+  (term, Term.info "list-functions" ~doc ~man)
+
 let rules =
   let doc = "Dump internal rules." in
   let man =
@@ -1187,6 +1252,8 @@ let all =
   ; printenv
   ; Help.help
   ; fmt
+  ; compute
+  ; list_functions
   ]
 
 let default =

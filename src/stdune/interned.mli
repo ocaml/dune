@@ -12,6 +12,9 @@ module type S = sig
       registered with [make] previously. *)
   val get : string -> t option
 
+  (** Return the list of all existing [t]s. *)
+  val all : unit -> t list
+
   module Set : sig
     include Set.S with type elt = t
 

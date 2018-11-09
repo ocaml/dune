@@ -153,6 +153,8 @@ let line_directive ~filename:fn ~line_number =
   in
   sprintf "#%s %d %S\n" directive line_number fn
 
+let local_bin p = Path.relative p ".bin"
+
 module type Persistent_desc = sig
   type t
   val name : string

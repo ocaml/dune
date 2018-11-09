@@ -58,6 +58,8 @@ val install_file
 (** Produce a line directive *)
 val line_directive : filename:string -> line_number:int -> string
 
+val local_bin : Path.t -> Path.t
+
 module type Persistent_desc = sig
   type t
   val name : string

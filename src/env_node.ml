@@ -25,24 +25,19 @@ let make ~dir ~inherit_from ~scope ~config ~env =
   }
 
 let file_bindings t ~profile ~expander =
-  let file_bindings =
-    match t.file_bindings with
-    | Some x -> x
-    | None ->
-      let file_bindings =
-        match Dune_env.Stanza.find t.config ~profile with
-        | None -> []
-        | Some cfg ->
-          File_bindings.map cfg.bins ~f:(fun template ->
-            Expander.expand expander ~mode:Single ~template
-            |> Value.to_string ~dir:t.dir)
-      in
-      t.file_bindings <- Some file_bindings;
-      file_bindings
-  in
-  match file_bindings with
-  | [] -> None
-  | xs -> Some xs
+  match t.file_bindings with
+  | Some x -> x
+  | None ->
+    let file_bindings =
+      match Dune_env.Stanza.find t.config ~profile with
+      | None -> []
+      | Some cfg ->
+        File_bindings.map cfg.bins ~f:(fun template ->
+          Expander.expand expander ~mode:Single ~template
+          |> Value.to_string ~dir:t.dir)
+    in
+    t.file_bindings <- Some file_bindings;
+    file_bindings
 
 let rec external_ t ~profile ~default =
   match t.external_ with
@@ -78,10 +73,8 @@ let rec artifacts t ~profile ~default ~expander =
       | Some (lazy t) -> artifacts t ~default ~profile ~expander
     in
     let artifacts =
-      match file_bindings t ~profile ~expander with
-      | None -> default
-      | Some file_bindings ->
-        Artifacts.add_binaries default ~dir:t.dir file_bindings
+      file_bindings t ~profile ~expander
+      |> Artifacts.add_binaries default ~dir:t.dir
     in
     t.artifacts <- Some artifacts;
     artifacts

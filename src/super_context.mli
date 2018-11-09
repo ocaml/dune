@@ -73,6 +73,8 @@ val ocaml_flags
   -> Buildable.t
   -> Ocaml_flags.t
 
+val file_bindings : t -> dir:Path.t -> string File_bindings.t
+
 (** Dump a directory environment in a readable form *)
 val dump_env : t -> dir:Path.t -> (unit, Dune_lang.t list) Build.t
 

@@ -23,7 +23,7 @@ val file_bindings
   :  t
   -> profile:string
   -> expander:Expander.t
-  -> string File_bindings.t option
+  -> string File_bindings.t
 
 val artifacts
   :  t

@@ -56,12 +56,12 @@ let add_binaries t ~dir = function
       lazy (
         List.fold_left bindings ~init:(Lazy.force t.local_bins)
           ~f:(fun acc ({ File_bindings. src ; dst }) ->
-            let path = Path.relative dir src in
             let dst =
               match dst with
               | Some dst -> dst
-              | None -> Path.basename path
+              | None -> Filename.basename src
             in
+            let path = Path.relative (Utils.local_bin dir) dst in
             String.Map.add acc dst path))
     in
     { t with local_bins }

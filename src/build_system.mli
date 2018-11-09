@@ -127,6 +127,7 @@ module Alias : sig
   val lint        : dir:Path.t -> t
   val all         : dir:Path.t -> t
   val check       : dir:Path.t -> t
+  val fmt         : dir:Path.t -> t
 
   (** Alias for all the files in [_build/install] that belong to this
       package *)

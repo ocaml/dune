@@ -19,6 +19,12 @@ val external_ : t -> profile:string -> default:Env.t -> Env.t
 
 val ocaml_flags : t -> profile:string -> expander:Expander.t -> Ocaml_flags.t
 
+val file_bindings
+  :  t
+  -> profile:string
+  -> expander:Expander.t
+  -> string File_bindings.t option
+
 val artifacts
   :  t
   -> profile:string

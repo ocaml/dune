@@ -1,13 +1,14 @@
 open Stdune
 
 type t =
-  { dir                 : Path.t
-  ; inherit_from        : t Lazy.t option
-  ; scope               : Scope.t
-  ; config              : Dune_env.Stanza.t
-  ; mutable ocaml_flags : Ocaml_flags.t option
-  ; mutable external_   : Env.t option
-  ; mutable artifacts   : Artifacts.t option
+  { dir                   : Path.t
+  ; inherit_from          : t Lazy.t option
+  ; scope                 : Scope.t
+  ; config                : Dune_env.Stanza.t
+  ; mutable file_bindings : string File_bindings.t option
+  ; mutable ocaml_flags   : Ocaml_flags.t option
+  ; mutable external_     : Env.t option
+  ; mutable artifacts     : Artifacts.t option
   }
 
 let scope t = t.scope
@@ -20,7 +21,28 @@ let make ~dir ~inherit_from ~scope ~config ~env =
   ; ocaml_flags = None
   ; external_ = env
   ; artifacts = None
+  ; file_bindings = None
   }
+
+let file_bindings t ~profile ~expander =
+  let file_bindings =
+    match t.file_bindings with
+    | Some x -> x
+    | None ->
+      let file_bindings =
+        match Dune_env.Stanza.find t.config ~profile with
+        | None -> []
+        | Some cfg ->
+          File_bindings.map cfg.bins ~f:(fun template ->
+            Expander.expand expander ~mode:Single ~template
+            |> Value.to_string ~dir:t.dir)
+      in
+      t.file_bindings <- Some file_bindings;
+      file_bindings
+  in
+  match file_bindings with
+  | [] -> None
+  | xs -> Some xs
 
 let rec external_ t ~profile ~default =
   match t.external_ with
@@ -56,13 +78,10 @@ let rec artifacts t ~profile ~default ~expander =
       | Some (lazy t) -> artifacts t ~default ~profile ~expander
     in
     let artifacts =
-      match Dune_env.Stanza.find t.config ~profile with
+      match file_bindings t ~profile ~expander with
       | None -> default
-      | Some cfg ->
-        File_bindings.map cfg.bins ~f:(fun template ->
-          Expander.expand expander ~mode:Single ~template
-          |> Value.to_string ~dir:t.dir)
-        |> Artifacts.add_binaries default ~dir:t.dir
+      | Some file_bindings ->
+        Artifacts.add_binaries default ~dir:t.dir file_bindings
     in
     t.artifacts <- Some artifacts;
     artifacts

@@ -1090,14 +1090,14 @@ end
 module Install_conf = struct
   type t =
     { section : Install.Section.t
-    ; files   : File_bindings.t
+    ; files   : File_bindings.Unexpanded.t
     ; package : Package.t
     }
 
   let decode =
     record
       (let%map section = field "section" Install.Section.decode
-       and files = field "files" File_bindings.decode
+       and files = field "files" File_bindings.Unexpanded.decode
        and package = Pkg.field "install"
        in
        { section

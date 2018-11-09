@@ -136,8 +136,17 @@ end = struct
   let external_ t  ~dir =
     Env_node.external_ (get t ~dir) ~profile:(profile t) ~default:t.context.env
 
+  let expander_for_artifacts t ~dir =
+    let node = get t ~dir in
+    let external_ = external_ t ~dir in
+    Expander.extend_env t.expander ~env:external_
+    |> Expander.set_scope ~scope:(Env_node.scope node)
+    |> Expander.set_dir ~dir
+
   let artifacts t ~dir =
+    let expander = expander_for_artifacts t ~dir in
     Env_node.artifacts (get t ~dir) ~profile:(profile t) ~default:t.artifacts
+      ~expander
 
   let artifacts_host t ~dir =
     match t.host with
@@ -148,14 +157,10 @@ end = struct
       artifacts host ~dir
 
   let expander t ~dir =
-    let node = get t ~dir in
-    let external_ = external_ t ~dir in
+    let expander = expander_for_artifacts t ~dir in
     let artifacts = artifacts t ~dir in
     let artifacts_host = artifacts_host t ~dir in
-    Expander.extend_env t.expander ~env:external_
-    |> Expander.set_scope ~scope:(Env_node.scope node)
-    |> Expander.set_dir ~dir
-    |> Expander.set_artifacts ~artifacts ~artifacts_host
+    Expander.set_artifacts expander ~artifacts ~artifacts_host
 
   let ocaml_flags t ~dir =
     Env_node.ocaml_flags (get t ~dir)

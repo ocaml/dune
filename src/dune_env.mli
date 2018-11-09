@@ -8,7 +8,7 @@ module Stanza : sig
     ; ocamlc_flags   : Ordered_set_lang.Unexpanded.t
     ; ocamlopt_flags : Ordered_set_lang.Unexpanded.t
     ; env_vars       : Env.t
-    ; bins           : File_bindings.t
+    ; bins           : File_bindings.Unexpanded.t
     }
 
   type pattern =

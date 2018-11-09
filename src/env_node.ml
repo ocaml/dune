@@ -39,19 +39,23 @@ let rec external_ t ~profile ~default =
     t.external_ <- Some env;
     env
 
-let rec artifacts t ~profile ~default =
+let rec artifacts t ~profile ~default ~expander =
   match t.artifacts with
   | Some x -> x
   | None ->
     let default =
       match t.inherit_from with
       | None -> default
-      | Some (lazy t) -> artifacts t ~default ~profile
+      | Some (lazy t) -> artifacts t ~default ~profile ~expander
     in
     let artifacts =
       match Dune_env.Stanza.find t.config ~profile with
       | None -> default
-      | Some cfg -> Artifacts.add_binaries default ~dir:t.dir cfg.bins
+      | Some cfg ->
+        File_bindings.map cfg.bins ~f:(fun template ->
+          Expander.expand expander ~mode:Single ~template
+          |> Value.to_string ~dir:t.dir)
+        |> Artifacts.add_binaries default ~dir:t.dir
     in
     t.artifacts <- Some artifacts;
     artifacts

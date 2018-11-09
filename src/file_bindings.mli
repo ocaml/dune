@@ -1,10 +1,15 @@
-type file =
-  { src : String_with_vars.t
-  ; dst : String_with_vars.t option
+type 'a file =
+  { src : 'a
+  ; dst : 'a option
   }
 
-type t = file list
+type 'a t = 'a file list
 
-val empty : t
+val map : 'a t -> f:('a -> 'b) -> 'b t
 
-val decode : t Stanza.Decoder.t
+val empty : 'a t
+
+module Unexpanded : sig
+  type nonrec t = String_with_vars.t t
+  val decode : t Stanza.Decoder.t
+end

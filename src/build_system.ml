@@ -89,6 +89,11 @@ module Internal_rule = struct
 
   let loc ~file_tree ~dir t  = rule_loc ~file_tree ~dir ~loc:t.loc
 
+  let decode : t Dune_lang.Decoder.t =
+    let open Dune_lang.Decoder in
+    loc >>= fun loc ->
+    Errors.fail loc "<not-implemented>"
+
   let to_sexp t : Sexp.t =
     Sexp.Encoder.record
       [ "id", Id.to_sexp t.id
@@ -382,7 +387,10 @@ module Action_and_deps = struct
 end
 
 module Rule_fn = Memo.Make(Internal_rule)
-module Path_fn = Memo.Make(Path)
+module Path_fn = Memo.Make(struct
+    include Path
+    let decode = Path_dune_lang.decode
+  end)
 
 type t =
   { (* File specification by targets *)
@@ -1354,15 +1362,18 @@ let create ~contexts ~file_tree ~hook =
   in
   Fdecl.set t.prepare_rule_def
     (Rule_fn.create "prepare-rule" (module Action_and_deps) (prepare_rule t)
+       ~doc:"Evaluate the build arrow part of a rule."
      |> Rule_fn.exec);
   Fdecl.set t.build_rule_def
-    (Rule_fn.create "build-rule" (module Action_and_deps) (build_rule t));
+    (Rule_fn.create "build-rule" (module Action_and_deps) (build_rule t)
+       ~doc:"Execute a rule.");
   Fdecl.set t.build_rule_internal_def
     (Rule_fn.create "build-rule-internal" (module Unit)
-       (build_rule_internal t)
+       (build_rule_internal t) ~doc:"-"
      |> Rule_fn.exec);
   Fdecl.set t.build_file_def
-    (Path_fn.create "build-file" (module Unit) (build_file t));
+    (Path_fn.create "build-file" (module Unit) (build_file t)
+       ~doc:"Build a file.");
   Hooks.End_of_build.once (fun () -> finalize t);
   t
 

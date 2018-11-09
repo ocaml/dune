@@ -18,6 +18,15 @@
  (files   dune-clean.1))
 
 (rule
+ (with-stdout-to dune-compute.1
+  (run dune compute --help=groff)))
+
+(install
+ (section man)
+ (package dune)
+ (files   dune-compute.1))
+
+(rule
  (with-stdout-to dune-exec.1
   (run dune exec --help=groff)))
 
@@ -61,6 +70,15 @@
  (section man)
  (package dune)
  (files   dune-installed-libraries.1))
+
+(rule
+ (with-stdout-to dune-list-functions.1
+  (run dune list-functions --help=groff)))
+
+(install
+ (section man)
+ (package dune)
+ (files   dune-list-functions.1))
 
 (rule
  (with-stdout-to dune-printenv.1

@@ -9,6 +9,16 @@ module Var = struct
     | Deps
     | Targets
     | Named_local
+
+  let to_sexp =
+    let open Sexp.Encoder in
+    function
+    | Values values -> constr "Values" [list Value.to_sexp values]
+    | Project_root -> string "Project_root"
+    | First_dep -> string "First_dep"
+    | Deps -> string "Deps"
+    | Targets -> string "Targets"
+    | Named_local -> string "Named_local"
 end
 
 module Macro = struct
@@ -26,12 +36,35 @@ module Macro = struct
     | Path_no_dep
     | Ocaml_config
     | Env
+
+  let to_sexp =
+    let open Sexp.Encoder in
+    function
+    | Exe -> string "Exe"
+    | Dep -> string "Dep"
+    | Bin -> string "Bin"
+    | Lib -> string "Lib"
+    | Libexec -> string "Libexec"
+    | Lib_available -> string "Lib_available"
+    | Version -> string "Version"
+    | Read -> string "Read"
+    | Read_strings -> string "Read_strings"
+    | Read_lines -> string "Read_lines"
+    | Path_no_dep -> string "Path_no_dep"
+    | Ocaml_config -> string "Ocaml_config"
+    | Env -> string "Env"
 end
 
 module Expansion = struct
   type t =
     | Var   of Var.t
     | Macro of Macro.t * string
+
+  let to_sexp e =
+    let open Sexp.Encoder in
+    match e with
+    | Var v -> pair string Var.to_sexp ("Var", v)
+    | Macro (m, s) -> triple string Macro.to_sexp string ("Macro", m, s)
 end
 
 type 'a t =

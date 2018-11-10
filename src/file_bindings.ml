@@ -36,7 +36,10 @@ module Unexpanded = struct
       and version = Syntax.get_exn Stanza.syntax in
       if not is_atom && version < (1, 6) then
         let what =
-          (if String_with_vars.has_vars s then "variables" else "quoted strings")
+          (if String_with_vars.has_vars s then
+             "variables"
+           else
+             "quoted strings")
           |> sprintf "Using %s here"
         in
         Syntax.Error.since (String_with_vars.loc s) Stanza.syntax (1, 6) ~what;

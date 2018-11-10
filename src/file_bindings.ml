@@ -12,16 +12,15 @@ let map t ~f =
 
 let empty = []
 
-let path_map t ~dir =
-  List.fold_left t ~init:String.Map.empty
-    ~f:(fun acc ({ src ; dst }) ->
-      let path = Path.relative dir src in
-      let dst =
-        match dst with
-        | Some dst -> dst
-        | None -> Path.basename path
-      in
-      String.Map.add acc dst path)
+let src_path { src; _ } ~dir = Path.relative dir src
+
+let dst_basename { src; dst } =
+  match dst with
+  | None -> Filename.basename src
+  | Some dst -> dst
+
+let dst_path t ~dir =
+  Path.relative dir (dst_basename t)
 
 module Unexpanded = struct
   type nonrec t = String_with_vars.t t

@@ -202,13 +202,15 @@ module Gen(P : Install_rules.Params) = struct
      | "_doc" :: rest -> Lib_rules.Odoc.gen_rules rest ~dir
      | ".ppx"  :: rest -> Preprocessing.gen_rules sctx rest
      | comps ->
-       if List.last comps = Some ".bin" then begin
+       begin match List.last comps with
+       | Some ".bin" ->
+         let src_dir = Path.parent_exn dir in
          Super_context.file_bindings sctx ~dir
-         |> File_bindings.path_map ~dir:(Path.parent_exn dir)
-         |> String.Map.iteri ~f:(fun fname src ->
-           Super_context.add_rule sctx ~dir
-             (Build.symlink ~src ~dst:(Path.relative dir fname)))
-       end else
+         |> List.iter ~f:(fun t ->
+           let src = File_bindings.src_path t ~dir:src_dir in
+           let dst = File_bindings.dst_path t ~dir in
+           Super_context.add_rule sctx ~dir (Build.symlink ~src ~dst))
+       | _ ->
          match
            File_tree.find_dir (SC.file_tree sctx)
              (Path.drop_build_context_exn dir)
@@ -232,7 +234,8 @@ module Gen(P : Install_rules.Params) = struct
              let cctxs = gen_rules dir_contents [] ~dir in
              List.iter subs ~f:(fun dc ->
                ignore (gen_rules dir_contents cctxs ~dir:(Dir_contents.dir dc)
-                       : _ list)));
+                       : _ list))
+       end);
     match components with
     | [] -> These (String.Set.of_list [".js"; "_doc"; ".ppx"])
     | [(".js"|"_doc"|".ppx")] -> All

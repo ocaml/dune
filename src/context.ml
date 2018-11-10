@@ -130,7 +130,7 @@ let to_sexp t =
 
 let compare a b = compare a.name b.name
 
-let opam = lazy (Bin.which "opam")
+let opam = lazy (Bin.which ~path:(Env.path Env.initial) "opam")
 
 let opam_config_var ~env ~cache var =
   match Hashtbl.find cache var with
@@ -513,7 +513,8 @@ let opam_config_var t var =
   opam_config_var ~env:t.env ~cache:t.opam_var_cache var
 
 let default ~merlin ~env_nodes ~env ~targets =
-  create ~kind:Default ~path:Bin.path ~env ~env_nodes ~name:"default"
+  let path = Env.path Env.initial in
+  create ~kind:Default ~path ~env ~env_nodes ~name:"default"
     ~merlin ~targets
 
 let opam_version =
@@ -577,7 +578,7 @@ let create_for_opam ~root ~env ~env_nodes ~targets ~profile
   in
   let path =
     match Env.Map.find vars "PATH" with
-    | None   -> Bin.path
+    | None   -> Env.path Env.initial
     | Some s -> Bin.parse_path s
   in
   let env = Env.extend env ~vars in

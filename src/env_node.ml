@@ -53,13 +53,7 @@ let rec external_ t ~profile ~default =
       | None -> default
       | Some cfg -> Env.extend_env default cfg.env_vars
     in
-    let env =
-      let local_bin =
-        Path.to_absolute_filename (Utils.local_bin t.dir) in
-      Env.update env ~var:"PATH" ~f:(function
-        | None -> Some local_bin
-        | Some p -> Some (local_bin ^ ":" ^ p))
-    in
+    let env = Env.cons_path env ~dir:(Utils.local_bin t.dir) in
     t.external_ <- Some env;
     env
 

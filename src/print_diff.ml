@@ -21,7 +21,7 @@ let print ?(skip_trailing_cr=Sys.win32) path1 path2 =
       (Path.to_string_maybe_quoted path2)
   in
   let normal_diff () =
-    match Bin.which "diff" with
+    match Bin.which ~path:(Env.path Env.initial) "diff" with
     | None -> fallback ()
     | Some prog ->
       Format.eprintf "%a@?" Errors.print loc;
@@ -52,7 +52,7 @@ let print ?(skip_trailing_cr=Sys.win32) path1 path2 =
     if Config.inside_dune then
       fallback ()
     else
-      match Bin.which "patdiff" with
+      match Bin.which ~path:(Env.path Env.initial) "patdiff" with
       | None -> normal_diff ()
       | Some prog ->
         Process.run ~dir ~env:Env.initial Strict prog

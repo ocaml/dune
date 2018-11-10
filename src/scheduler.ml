@@ -194,7 +194,7 @@ end = struct
                      ]
       in
       let path = Path.to_string_maybe_quoted Path.root in
-      match Bin.which "inotifywait" with
+      match Bin.which ~path:(Env.path Env.initial) "inotifywait" with
       | Some inotifywait ->
         (* On Linux, use inotifywait. *)
         let excludes = String.concat ~sep:"|" excludes in
@@ -209,7 +209,7 @@ end = struct
         (* On all other platforms, try to use fswatch. fswatch's event
            filtering is not reliable (at least on Linux), so don't try to
            use it, instead act on all events. *)
-        (match Bin.which "fswatch" with
+        (match Bin.which ~path:(Env.path Env.initial) "fswatch" with
          | Some fswatch ->
            let excludes =
              List.concat_map excludes ~f:(fun x -> ["--exclude"; x])

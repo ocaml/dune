@@ -165,7 +165,7 @@ let auto_concurrency =
          let rec loop = function
            | [] -> Fiber.return 1
            | (prog, args) :: rest ->
-             match Bin.which prog with
+             match Bin.which ~path:(Env.path Env.initial) prog with
              | None -> loop rest
              | Some prog ->
                Process.run_capture (Accept All) prog args ~env:Env.initial

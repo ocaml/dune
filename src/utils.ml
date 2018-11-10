@@ -8,7 +8,7 @@ let system_shell_exn =
     else
       ("sh", "-c", "")
   in
-  let bin = lazy (Bin.which cmd) in
+  let bin = lazy (Bin.which ~path:(Env.path Env.initial) cmd) in
   fun ~needed_to ->
     match Lazy.force bin with
     | Some path -> (path, arg)
@@ -18,7 +18,7 @@ let system_shell_exn =
         cmd needed_to cmd os
 
 let bash_exn =
-  let bin = lazy (Bin.which "bash") in
+  let bin = lazy (Bin.which ~path:(Env.path Env.initial) "bash") in
   fun ~needed_to ->
     match Lazy.force bin with
     | Some path -> path

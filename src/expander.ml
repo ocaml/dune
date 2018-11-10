@@ -390,10 +390,11 @@ let expand_and_eval_set t set ~standard =
     standard >>^ fun standard ->
     Ordered_set_lang.String.eval set ~standard ~parse
   | paths ->
-    Build.fanout standard (Build.all (List.map paths ~f:(fun f ->
-      Build.read_sexp f syntax)))
+    List.map paths ~f:(fun f -> Build.read_sexp f syntax)
+    |> Build.all
+    |> Build.fanout standard
     >>^ fun (standard, sexps) ->
     let files_contents = List.combine paths sexps |> Path.Map.of_list_exn in
-    let set = Ordered_set_lang.Unexpanded.expand set ~dir ~files_contents ~f in
-    Ordered_set_lang.String.eval set ~standard ~parse
+    Ordered_set_lang.Unexpanded.expand set ~dir ~files_contents ~f
+    |> Ordered_set_lang.String.eval ~standard ~parse
 

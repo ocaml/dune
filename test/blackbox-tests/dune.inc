@@ -128,6 +128,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name deps-conf-vars)
+ (deps (package dune) (source_tree test-cases/deps-conf-vars))
+ (action
+  (chdir
+   test-cases/deps-conf-vars
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name dev-flag-1103)
  (deps (package dune) (source_tree test-cases/dev-flag-1103))
  (action
@@ -1129,6 +1137,7 @@
   (alias custom-build-dir)
   (alias dep-vars)
   (alias depend-on-the-universe)
+  (alias deps-conf-vars)
   (alias dev-flag-1103)
   (alias dune-build-dir-exec-1101)
   (alias dune-jbuild-var-case)
@@ -1267,6 +1276,7 @@
   (alias custom-build-dir)
   (alias dep-vars)
   (alias depend-on-the-universe)
+  (alias deps-conf-vars)
   (alias dev-flag-1103)
   (alias dune-build-dir-exec-1101)
   (alias dune-jbuild-var-case)

@@ -50,6 +50,10 @@ val expand
   -> template:String_with_vars.t
   -> 'a
 
+val expand_path : t -> String_with_vars.t -> Path.t
+
+val expand_str : t -> String_with_vars.t -> string
+
 module Resolved_forms : sig
   type t
 
@@ -79,6 +83,13 @@ val with_record_deps
   -> read_package:(Package.t -> (unit, string option) Build.t)
   -> dep_kind:Lib_deps_info.Kind.t
   -> targets_written_by_user:targets
+  -> map_exe:(Path.t -> Path.t)
+  -> t
+
+val with_record_no_read_deps
+  :  t
+  -> Resolved_forms.t
+  -> dep_kind:Lib_deps_info.Kind.t
   -> map_exe:(Path.t -> Path.t)
   -> t
 

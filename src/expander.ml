@@ -128,6 +128,14 @@ let expand t ~mode ~template =
   String_with_vars.expand ~dir:t.dir ~mode template ~f:(fun var syn ->
     expand_var_exn t var syn)
 
+let expand_path t sw =
+  expand t ~mode:Single ~template:sw
+  |> Value.to_path ~error_loc:(String_with_vars.loc sw) ~dir:t.dir
+
+let expand_str t sw =
+  expand t ~mode:Single ~template:sw
+  |> Value.to_string ~dir:t.dir
+
 module Resolved_forms = struct
   type t =
     { (* Failed resolutions *)
@@ -156,8 +164,7 @@ module Resolved_forms = struct
     acc.lib_deps <- Lib_name.Map.add acc.lib_deps lib kind
 
   let add_fail acc fail =
-    acc.failures <- fail :: acc.failures;
-    None
+    acc.failures <- fail :: acc.failures
 
   let add_ddep acc ~key dep =
     acc.ddeps <- String.Map.add acc.ddeps key dep
@@ -177,39 +184,20 @@ let parse_lib_file ~loc s =
     Errors.fail loc "invalid %%{lib:...} form: %s" s
   | Some (lib, f) -> (Lib_name.of_string_exn ~loc:(Some loc) lib, f)
 
-let expand_and_record_static acc ~map_exe ~dir ~read_package ~pform t expansion =
+let expand_and_record_static acc ~map_exe ~dir ~pform t expansion =
   let loc = String_with_vars.Var.loc pform in
-  let key = String_with_vars.Var.full_name pform in
-  let scope = scope t in
+  let relative = Path.relative ~error_loc:loc in
   match (expansion : Pform.Expansion.t) with
-  | Macro (Path_no_dep, s) -> Some [Value.Dir (Path.relative dir s)]
-  | Macro (Exe, s) -> Some (path_exp (map_exe (Path.relative dir s)))
-  | Macro (Dep, s) -> Some (path_exp (Path.relative dir s))
+  | Macro (Path_no_dep, s) -> Some [Value.Dir (relative dir s)]
+  | Macro (Exe, s) -> Some (path_exp (map_exe (relative dir s)))
+  | Macro (Dep, s) -> Some (path_exp (relative dir s))
   | Macro (Bin, s) -> begin
       match Artifacts.binary ~loc:(Some loc) t.artifacts_host s with
       | Ok path -> Some (path_exp path)
       | Error e ->
         Resolved_forms.add_fail acc
-          ({ fail = fun () -> Action.Prog.Not_found.raise e })
-    end
-  | Macro (Version, s) -> begin
-      match Package.Name.Map.find
-              (Dune_project.packages (Scope.project scope))
-              (Package.Name.of_string s) with
-      | Some p ->
-        let open Build.O in
-        let x =
-          read_package p >>^ function
-          | None   -> [Value.String ""]
-          | Some s -> [String s]
-        in
-        Resolved_forms.add_ddep acc ~key x;
+          ({ fail = fun () -> Action.Prog.Not_found.raise e });
         None
-      | None ->
-        Resolved_forms.add_fail acc { fail = fun () ->
-          Errors.fail loc
-            "Package %S doesn't exist in the current project." s
-        }
     end
   | _ -> None
 
@@ -226,7 +214,7 @@ let expand_and_record_lib_deps acc ~dep_kind ~pform t expansion =
         Artifacts.file_of_lib t.artifacts ~loc ~lib:lib_dep ~file
       with
       | Ok path -> Some (path_exp path)
-      | Error fail -> Resolved_forms.add_fail acc fail
+      | Error fail -> Resolved_forms.add_fail acc fail; None
     end
   | Macro (Libexec, s) -> begin
       let lib_dep, file = parse_lib_file ~loc s in
@@ -234,7 +222,7 @@ let expand_and_record_lib_deps acc ~dep_kind ~pform t expansion =
       match
         Artifacts.file_of_lib t.artifacts ~loc ~lib:lib_dep ~file
       with
-      | Error fail -> Resolved_forms.add_fail acc fail
+      | Error fail -> Resolved_forms.add_fail acc fail; None
       | Ok path ->
         if not Sys.win32 || Filename.extension s = ".exe" then begin
           Some (path_exp path)
@@ -259,12 +247,14 @@ let expand_and_record_lib_deps acc ~dep_kind ~pform t expansion =
     end
   | _ -> None
 
-let expand_and_record_ddeps acc ~dir ~pform expansion =
+let expand_and_record_ddeps acc ~dir ~scope ~read_package ~pform expansion =
   let key = String_with_vars.Var.full_name pform in
+  let loc = String_with_vars.Var.loc pform in
+  let relative = Path.relative ~error_loc:loc in
   let open Build.O in
   match (expansion : Pform.Expansion.t) with
   | Macro (Read, s) -> begin
-      let path = Path.relative dir s in
+      let path = relative dir s in
       let data =
         Build.contents path
         >>^ fun s -> [Value.String s]
@@ -272,7 +262,7 @@ let expand_and_record_ddeps acc ~dir ~pform expansion =
       Resolved_forms.add_ddep acc ~key data
     end
   | Macro (Read_lines, s) -> begin
-      let path = Path.relative dir s in
+      let path = relative dir s in
       let data =
         Build.lines_of path
         >>^ Value.L.strings
@@ -280,12 +270,30 @@ let expand_and_record_ddeps acc ~dir ~pform expansion =
       Resolved_forms.add_ddep acc ~key data
     end
   | Macro (Read_strings, s) -> begin
-      let path = Path.relative dir s in
+      let path = relative dir s in
       let data =
         Build.strings path
         >>^ Value.L.strings
       in
       Resolved_forms.add_ddep acc ~key data
+    end
+  | Macro (Version, s) -> begin
+      match Package.Name.Map.find
+              (Dune_project.packages (Scope.project scope))
+              (Package.Name.of_string s) with
+      | Some p ->
+        let open Build.O in
+        let x =
+          read_package p >>^ function
+          | None   -> [Value.String ""]
+          | Some s -> [String s]
+        in
+        Resolved_forms.add_ddep acc ~key x
+      | None ->
+        Resolved_forms.add_fail acc { fail = fun () ->
+          Errors.fail loc
+            "Package %S doesn't exist in the current project." s
+        }
     end
   | _ -> ()
 
@@ -297,11 +305,11 @@ let expand_and_record_deps acc ~dir ~read_package ~dep_kind
     |> Option.bind ~f:(function
       | Ok s -> Some s
       | Error (expansion : Pform.Expansion.t) ->
-        expand_and_record_ddeps acc ~dir ~pform expansion;
+        expand_and_record_ddeps acc ~dir ~scope:t.scope ~read_package ~pform expansion;
         match expand_and_record_lib_deps acc ~dep_kind ~pform t expansion with
         | Some s -> Some s
         | None ->
-          match expand_and_record_static acc ~map_exe ~dir ~read_package
+          match expand_and_record_static acc ~map_exe ~dir
                   ~pform t expansion with
           | Some s -> Some s
           | None ->
@@ -330,6 +338,39 @@ let expand_and_record_deps acc ~dir ~read_package ~dep_kind
   );
   Option.map res ~f:Result.ok
 
+let expand_no_read acc ~dir ~dep_kind ~map_exe ~expand_var
+      t pform syntax_version =
+  let res =
+    let not_allowed pform =
+      let loc = String_with_vars.Var.loc pform in
+      Errors.fail loc "You cannot use %s in this position"
+        (String_with_vars.Var.describe pform)
+    in
+    expand_var t pform syntax_version
+    |> Option.bind ~f:(function
+      | Ok s -> Some s
+      | Error (expansion : Pform.Expansion.t) ->
+        match expand_and_record_lib_deps acc ~dep_kind ~pform t expansion with
+        | Some s -> Some s
+        | None ->
+          match expand_and_record_static acc ~map_exe ~dir
+                  ~pform t expansion with
+          | Some s -> Some s
+          | None ->
+            match expansion with
+            | Var (Project_root | Values _)
+            | Macro ((Ocaml_config | Env), _) ->
+              assert false (* these have been expanded statically *)
+            | Var (First_dep | Deps | Named_local)
+            | Var Targets -> not_allowed pform
+            | _ -> None)
+  in
+  Option.iter res ~f:(fun v ->
+    acc.sdeps <- Path.Set.union
+                   (Path.Set.of_list (Value.L.deps_only v)) acc.sdeps
+  );
+  Option.map res ~f:Result.ok
+
 let with_record_deps t resolved_forms ~read_package ~dep_kind
       ~targets_written_by_user ~map_exe =
   let expand_var =
@@ -339,6 +380,16 @@ let with_record_deps t resolved_forms ~read_package ~dep_kind
       ~dir:t.dir
       resolved_forms ~read_package ~dep_kind
       ~expand_var:t.expand_var ~targets_written_by_user ~map_exe in
+  { t with expand_var }
+
+let with_record_no_read_deps t resolved_forms ~dep_kind
+      ~map_exe =
+  let expand_var =
+    expand_no_read
+      (* we keep the dir constant here to replicate the old behavior of: (chdir
+         foo %{exe:bar}). This should lookup ./bar rather than ./foo/bar *)
+      ~dir:t.dir resolved_forms ~dep_kind ~expand_var:t.expand_var ~map_exe
+  in
   { t with expand_var }
 
 let expand_special_vars ~deps_written_by_user ~var expansion =
@@ -406,7 +457,7 @@ let expand_and_eval_set t set ~standard =
   let (syntax, files) =
     let f template =
       expand t ~mode:Single ~template
-      |> Value.to_path ~dir
+      |> Value.to_path ~error_loc:(String_with_vars.loc template) ~dir
     in
     Ordered_set_lang.Unexpanded.files set ~f in
   let f template = expand t ~mode:Many ~template in

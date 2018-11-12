@@ -48,12 +48,20 @@ let rec external_ t ~profile ~default =
       | None -> default
       | Some (lazy t) -> external_ t ~default ~profile
     in
-    let env =
+    let (env, have_binaries) =
       match Dune_env.Stanza.find t.config ~profile with
-      | None -> default
-      | Some cfg -> Env.extend_env default cfg.env_vars
+      | None -> (default, false)
+      | Some cfg ->
+        ( Env.extend_env default cfg.env_vars
+        , not (File_bindings.is_empty cfg.binaries)
+        )
     in
-    let env = Env.cons_path env ~dir:(Utils.local_bin t.dir) in
+    let env =
+      if have_binaries then
+        Env.cons_path env ~dir:(Utils.local_bin t.dir)
+      else
+        env
+    in
     t.external_ <- Some env;
     env
 

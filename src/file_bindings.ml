@@ -63,3 +63,5 @@ module Unexpanded = struct
   let decode =
     let open Stanza.Decoder in list decode_file
 end
+
+let is_empty xs = List.is_empty xs

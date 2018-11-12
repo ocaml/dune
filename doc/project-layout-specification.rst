@@ -182,7 +182,8 @@ Additionally, they can contains the following stanzas.
 name
 ----
 
-Sets the name of the project:
+Sets the name of the project. This is used by :ref:`dune subst <dune-subst>`
+and error messages.
 
 .. code:: scheme
 

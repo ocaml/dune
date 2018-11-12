@@ -521,6 +521,8 @@ publishing releases. However they might still want to substitute the
 watermarks when the package is pinned by the user. To help with this,
 dune provides the ``subst`` sub-command.
 
+.. _dune-subst:
+
 dune subst
 ==========
 

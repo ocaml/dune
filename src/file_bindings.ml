@@ -16,8 +16,11 @@ let src_path { src; _ } ~dir = Path.relative dir src
 
 let dst_basename { src; dst } =
   match dst with
-  | None -> Filename.basename src
   | Some dst -> dst
+  | None ->
+    let basename = Filename.basename src in
+    String.drop_suffix basename ~suffix:".exe"
+    |> Option.value ~default:basename
 
 let dst_path t ~dir =
   Path.relative dir (dst_basename t)

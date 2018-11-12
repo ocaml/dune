@@ -2,11 +2,11 @@
  (_
   (binaries
     ../priv/priv.exe
-    (../priv/priv.exe as priv-renamed.exe))))
+    (../priv/priv.exe as priv-renamed))))
 
 (alias
  (name runtest)
  (action
   (progn
-   (run priv.exe)
-   (run priv-renamed.exe))))
+   (run priv)
+   (run priv-renamed))))

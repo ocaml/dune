@@ -125,8 +125,8 @@ let make ~scope ~(context : Context.t) ~artifacts
   }
 
 let expand t ~mode ~template =
-  String_with_vars.expand ~dir:t.dir ~mode template ~f:(fun var syn ->
-    expand_var_exn t var syn)
+  String_with_vars.expand ~dir:t.dir ~mode template
+    ~f:(expand_var_exn t)
 
 let expand_path t sw =
   expand t ~mode:Single ~template:sw
@@ -204,7 +204,6 @@ let expand_and_record_static acc ~map_exe ~dir ~pform t expansion =
 let expand_and_record_lib_deps acc ~dep_kind ~pform t expansion =
   let loc = String_with_vars.Var.loc pform in
   let key = String_with_vars.Var.full_name pform in
-  let scope = scope t in
   let open Build.O in
   match (expansion : Pform.Expansion.t) with
   | Macro (Lib, s) -> begin
@@ -242,8 +241,10 @@ let expand_and_record_lib_deps acc ~dep_kind ~pform t expansion =
   | Macro (Lib_available, s) -> begin
       let lib = Lib_name.of_string_exn ~loc:(Some loc) s in
       Resolved_forms.add_lib_dep acc lib Optional;
-      Some (str_exp (string_of_bool (
-        Lib.DB.available (Scope.libs scope) lib)))
+      Lib.DB.available (Scope.libs t.scope) lib
+      |> string_of_bool
+      |> str_exp
+      |> Option.some
     end
   | _ -> None
 
@@ -392,56 +393,53 @@ let with_record_no_read_deps t resolved_forms ~dep_kind
   in
   { t with expand_var }
 
-let expand_special_vars ~deps_written_by_user ~var expansion =
+let expand_special_vars ~deps_written_by_user ~var pform =
   let key = String_with_vars.Var.full_name var in
   let loc = String_with_vars.Var.loc var in
-  match expansion with
-  | Ok v -> v (* in some cases we'll expand %{env} here *)
-  | Error pform ->
-    begin match pform with
-    | Pform.Expansion.Var Named_local ->
-      begin match Bindings.find deps_written_by_user key with
-      | None ->
-        Exn.code_error "Local named variable not present in named deps"
-          [ "pform", String_with_vars.Var.to_sexp var
-          ; "deps_written_by_user",
-            Bindings.to_sexp Path.to_sexp deps_written_by_user
-          ]
-      | Some x -> Value.L.paths x
-      end
-    | Var Deps ->
-      deps_written_by_user
-      |> Bindings.to_list
-      |> Value.L.paths
-    | Var First_dep ->
-      begin match deps_written_by_user with
-      | Named _ :: _ ->
-        (* This case is not possible: ${<} only exist in jbuild
-           files and named dependencies are not available in
-           jbuild files *)
-        assert false
-      | Unnamed v :: _ -> [Path v]
-      | [] ->
-        Errors.warn loc "Variable '%s' used with no explicit \
-                         dependencies@." key;
-        [Value.String ""]
-      end
-    | _ ->
-      Exn.code_error "Unexpected variable in step2"
-        ["var", String_with_vars.Var.to_sexp var]
+  match pform with
+  | Pform.Expansion.Var Named_local ->
+    begin match Bindings.find deps_written_by_user key with
+    | None ->
+      Exn.code_error "Local named variable not present in named deps"
+        [ "pform", String_with_vars.Var.to_sexp var
+        ; "deps_written_by_user",
+          Bindings.to_sexp Path.to_sexp deps_written_by_user
+        ]
+    | Some x -> Value.L.paths x
     end
+  | Var Deps ->
+    deps_written_by_user
+    |> Bindings.to_list
+    |> Value.L.paths
+  | Var First_dep ->
+    begin match deps_written_by_user with
+    | Named _ :: _ ->
+      (* This case is not possible: ${<} only exist in jbuild
+         files and named dependencies are not available in
+         jbuild files *)
+      assert false
+    | Unnamed v :: _ -> [Path v]
+    | [] ->
+      Errors.warn loc "Variable '%s' used with no explicit \
+                       dependencies@." key;
+      [Value.String ""]
+    end
+  | _ ->
+    Exn.code_error "Unexpected variable in step2"
+      ["var", String_with_vars.Var.to_sexp var]
 
 let expand_ddeps_and_bindings ~(dynamic_expansions : Value.t list String.Map.t)
       ~(deps_written_by_user : Path.t Bindings.t) ~expand_var
       t var syntax_version =
   let key = String_with_vars.Var.full_name var in
-  match String.Map.find dynamic_expansions key with
-  | Some v -> Some (Ok v)
-  | None ->
-    begin match expand_var t var syntax_version with
-    | None -> None
-    | Some v -> Some (Ok (expand_special_vars ~deps_written_by_user ~var v))
-    end
+  (match String.Map.find dynamic_expansions key with
+   | Some v -> Some v
+   | None ->
+     expand_var t var syntax_version
+     |> Option.map ~f:(function
+       | Error v -> expand_special_vars ~deps_written_by_user ~var v
+       | Ok v -> v))
+  |> Option.map ~f:Result.ok
 
 let add_ddeps_and_bindings t ~dynamic_expansions ~deps_written_by_user =
   let expand_var =

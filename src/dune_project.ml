@@ -301,11 +301,59 @@ module Extension = struct
         acc)
 end
 
-let make_parsing_context ~(lang : Lang.Instance.t) ~extensions =
-  let acc = Univ_map.singleton (Syntax.key lang.syntax) lang.version in
-  List.fold_left extensions ~init:acc
-    ~f:(fun acc ((ext : Extension.instance), _) ->
-      Univ_map.add acc (Syntax.key (Extension.syntax ext.extension)) ext.version)
+let interpret_lang_and_extensions ~(lang : Lang.Instance.t)
+      ~explicit_extensions ~project_file =
+  match
+    String.Map.of_list
+      (List.map explicit_extensions ~f:(fun (e : Extension.instance) ->
+           (Syntax.name (Extension.syntax e.extension), e.loc)))
+  with
+  | Error (name, _, loc) ->
+     Errors.fail loc "Extension %S specified for the second time." name
+  | Ok map ->
+     let implicit_extensions =
+       Extension.automatic ~project_file
+         ~f:(fun name -> not (String.Map.mem map name))
+     in
+     let extensions =
+       List.map ~f:(fun e -> (e, true)) explicit_extensions @
+       List.map ~f:(fun e -> (e, false)) implicit_extensions
+     in
+     let acc = Univ_map.singleton (Syntax.key lang.syntax) lang.version in
+     let parsing_context =
+       List.fold_left extensions ~init:acc
+         ~f:(fun acc ((ext : Extension.instance), _) ->
+           Univ_map.add acc (Syntax.key (Extension.syntax ext.extension))
+             ext.version)
+     in
+     let extension_args, extension_stanzas =
+       List.fold_left
+         extensions
+         ~init:(Univ_map.empty, [])
+         ~f:(fun (args_acc, stanzas_acc)
+              ((instance : Extension.instance), is_explicit) ->
+              let extension = instance.extension in
+              let Extension.Extension e = extension in
+              let args =
+                let%map (arg, stanzas) =
+                  Dune_lang.Decoder.set_many parsing_context e.stanzas
+                in
+                let new_args_acc =
+                  if is_explicit then
+                    Univ_map.add args_acc e.key arg
+                  else
+                    args_acc
+                in
+                (new_args_acc, stanzas)
+              in
+              let (new_args_acc, stanzas) = instance.parse_args args in
+              (new_args_acc, stanzas::stanzas_acc))
+     in
+     let stanzas = List.concat (lang.data :: extension_stanzas) in
+     let stanza_parser =
+       Dune_lang.Decoder.(set_many parsing_context (sum stanzas))
+     in
+     (parsing_context, stanza_parser, extension_args)
 
 let key =
   Univ_map.Key.create ~name:"dune-project"
@@ -337,15 +385,19 @@ let get_local_path p =
 
 let anonymous = lazy (
   let lang = Lang.get_exn "dune" in
-  let parsing_context = make_parsing_context ~lang ~extensions:[] in
+  let project_file =
+    { Project_file.file = Path.relative Path.root filename; exists = false }
+  in
+  let parsing_context, stanza_parser, extension_args =
+    interpret_lang_and_extensions ~lang ~explicit_extensions:[] ~project_file
+  in
   { name          = Name.anonymous_root
   ; packages      = Package.Name.Map.empty
   ; root          = get_local_path Path.root
   ; version       = None
-  ; stanza_parser =
-      Dune_lang.Decoder.(set_many parsing_context (sum lang.data))
-  ; project_file  = { file = Path.relative Path.root filename; exists = false }
-  ; extension_args = Univ_map.empty
+  ; stanza_parser
+  ; project_file
+  ; extension_args
   ; parsing_context
   })
 
@@ -391,54 +443,19 @@ let parse ~dir ~lang ~packages ~file =
           Extension.instantiate ~loc ~parse_args name ver)
      and () = Versioned_file.no_more_lang
      in
-     match
-       String.Map.of_list
-         (List.map explicit_extensions ~f:(fun (e : Extension.instance) ->
-            (Syntax.name (Extension.syntax e.extension), e.loc)))
-     with
-     | Error (name, _, loc) ->
-       Errors.fail loc "Extension %S specified for the second time." name
-     | Ok map ->
-       let project_file : Project_file.t = { file; exists = true } in
-       let implicit_extensions =
-         Extension.automatic ~project_file
-           ~f:(fun name -> not (String.Map.mem map name))
-       in
-       let extensions =
-         List.map ~f:(fun e -> (e, true)) explicit_extensions @
-         List.map ~f:(fun e -> (e, false)) implicit_extensions
-       in
-       let parsing_context = make_parsing_context ~lang ~extensions in
-       let extension_args, extension_stanzas =
-         List.fold_left
-           extensions
-           ~init:(Univ_map.empty, [])
-           ~f:(fun (args_acc, stanzas_acc) ((instance : Extension.instance), is_explicit) ->
-             let extension = instance.extension in
-             let Extension.Extension e = extension in
-             let args =
-               let%map (arg, stanzas) = Dune_lang.Decoder.set_many parsing_context e.stanzas in
-               let new_args_acc =
-                 if is_explicit then
-                   Univ_map.add args_acc e.key arg
-                 else
-                   args_acc
-               in
-               (new_args_acc, stanzas)
-             in
-             let (new_args_acc, stanzas) = instance.parse_args args in
-             (new_args_acc, stanzas::stanzas_acc))
-       in
-       let stanzas = List.concat (lang.data :: extension_stanzas) in
-       { name
-       ; root = get_local_path dir
-       ; version
-       ; packages
-       ; stanza_parser = Dune_lang.Decoder.(set_many parsing_context (sum stanzas))
-       ; project_file
-       ; extension_args
-       ; parsing_context
-       })
+     let project_file : Project_file.t = { file; exists = true } in
+     let parsing_context, stanza_parser, extension_args =
+       interpret_lang_and_extensions ~lang ~explicit_extensions ~project_file
+     in
+     { name
+     ; root = get_local_path dir
+     ; version
+     ; packages
+     ; stanza_parser
+     ; project_file
+     ; extension_args
+     ; parsing_context
+     })
 
 let load_dune_project ~dir packages =
   let file = Path.relative dir filename in
@@ -446,15 +463,19 @@ let load_dune_project ~dir packages =
 
 let make_jbuilder_project ~dir packages =
   let lang = Lang.get_exn "dune" in
-  let parsing_context = make_parsing_context ~lang ~extensions:[] in
+  let project_file =
+    { Project_file.file = Path.relative dir filename; exists = false }
+  in
+  let parsing_context, stanza_parser, extension_args =
+    interpret_lang_and_extensions ~lang ~explicit_extensions:[] ~project_file
+  in
   { name = default_name ~dir ~packages
   ; root = get_local_path dir
   ; version = None
   ; packages
-  ; stanza_parser =
-      Dune_lang.Decoder.(set_many parsing_context (sum lang.data))
-  ; project_file = { file = Path.relative dir filename; exists = false }
-  ; extension_args = Univ_map.empty
+  ; stanza_parser
+  ; project_file
+  ; extension_args
   ; parsing_context
   }
 

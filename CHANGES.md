@@ -11,6 +11,9 @@ next
 - Add `binaries` field to the `(env ..)` stanza. This field sets and overrides
   binaries for rules defined in a directory. (#1521, @rgrinberg)
 
+- Fix a crash caused by using an extension in a project without
+  dune-project file (#...., fix #1529, @diml)
+
 1.5.1 (7/11/2018)
 -----------------
 

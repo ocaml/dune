@@ -39,3 +39,7 @@ val of_string_map : string String.Map.t -> t
 val iter : t -> f:(string -> string -> unit) -> unit
 
 val pp : Format.formatter -> t -> unit
+
+val cons_path : t -> dir:Path.t -> t
+
+val path : t -> Path.t list

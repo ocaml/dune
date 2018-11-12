@@ -87,7 +87,9 @@ module Gen (S : sig val sctx : SC.t end) = struct
     let setup_deps m files = SC.add_alias_deps sctx (alias m) files
   end
 
-  let odoc = lazy (SC.resolve_program sctx "odoc" ~hint:"try: opam install odoc" ~loc:None)
+  let odoc = lazy (
+    SC.resolve_program sctx ~dir:(Super_context.build_dir sctx) "odoc"
+      ~loc:None ~hint:"try: opam install odoc")
   let odoc_ext = ".odoc"
 
   module Mld : sig

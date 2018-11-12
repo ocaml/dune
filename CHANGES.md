@@ -8,6 +8,9 @@ next
   directories. For example: `(ignore_subdirs * \ lib*)` ignores all directories
   except those that start with `lib`. (#1517, @rgrinberg)
 
+- Add `binaries` field to the `(env ..)` stanza. This field sets and overrides
+  binaries for rules defined in a directory. (#1521, @rgrinberg)
+
 1.5.1 (7/11/2018)
 -----------------
 

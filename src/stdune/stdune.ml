@@ -31,6 +31,7 @@ module Env        = Env
 module Proc       = Proc
 module Type_eq    = Type_eq
 module Nothing    = Nothing
+module Bin        = Bin
 
 external reraise : exn -> _ = "%reraise"
 

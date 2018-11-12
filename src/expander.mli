@@ -31,6 +31,12 @@ val set_dir : t -> dir:Path.t -> t
 
 val set_scope : t -> scope:Scope.t -> t
 
+val set_artifacts
+  :  t
+  -> artifacts:Artifacts.t
+  -> artifacts_host:Artifacts.t
+  -> t
+
 val add_bindings : t -> bindings:Pform.Map.t -> t
 
 val extend_env : t -> env:Env.t -> t

@@ -283,14 +283,9 @@ module Library : sig
 end
 
 module Install_conf : sig
-  type file =
-    { src : String_with_vars.t
-    ; dst : String_with_vars.t option
-    }
-
   type t =
     { section : Install.Section.t
-    ; files   : file list
+    ; files   : File_bindings.Unexpanded.t
     ; package : Package.t
     }
 end

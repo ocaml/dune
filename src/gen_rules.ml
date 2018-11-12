@@ -129,7 +129,7 @@ module Gen(P : Install_rules.Params) = struct
         ; js = None
         }
       | Install { Install_conf. section = _; files; package = _ } ->
-        List.map files ~f:(fun { Install_conf. src; dst = _ } ->
+        List.map files ~f:(fun { File_bindings. src; dst = _ } ->
           let src_expanded = SC.expand_vars_string sctx ~dir src ~scope in
           Path.relative ctx_dir src_expanded)
         |> Path.Set.of_list
@@ -201,31 +201,41 @@ module Gen(P : Install_rules.Params) = struct
                            sctx rest
      | "_doc" :: rest -> Lib_rules.Odoc.gen_rules rest ~dir
      | ".ppx"  :: rest -> Preprocessing.gen_rules sctx rest
-     | _ ->
-       match
-         File_tree.find_dir (SC.file_tree sctx)
-           (Path.drop_build_context_exn dir)
-       with
-       | None ->
-         (* We get here when [dir] is a generated directory, such as
-            [.utop] or [.foo.objs]. *)
-         if Utop.is_utop_dir dir then
-           Utop.setup sctx ~dir:(Path.parent_exn dir)
-         else if components <> [] then
-           SC.load_dir sctx ~dir:(Path.parent_exn dir)
-       | Some _ ->
-         (* This interprets "rule" and "copy_files" stanzas. *)
-         let dir_contents = Dir_contents.get sctx ~dir in
-         match Dir_contents.kind dir_contents with
-         | Standalone ->
-           ignore (gen_rules dir_contents [] ~dir : _ list)
-         | Group_part root ->
-           SC.load_dir sctx ~dir:(Dir_contents.dir root)
-         | Group_root (lazy subs) ->
-           let cctxs = gen_rules dir_contents [] ~dir in
-           List.iter subs ~f:(fun dc ->
-             ignore (gen_rules dir_contents cctxs ~dir:(Dir_contents.dir dc)
-                     : _ list)));
+     | comps ->
+       begin match List.last comps with
+       | Some ".bin" ->
+         let src_dir = Path.parent_exn dir in
+         Super_context.file_bindings sctx ~dir
+         |> List.iter ~f:(fun t ->
+           let src = File_bindings.src_path t ~dir:src_dir in
+           let dst = File_bindings.dst_path t ~dir in
+           Super_context.add_rule sctx ~dir (Build.symlink ~src ~dst))
+       | _ ->
+         match
+           File_tree.find_dir (SC.file_tree sctx)
+             (Path.drop_build_context_exn dir)
+         with
+         | None ->
+           (* We get here when [dir] is a generated directory, such as
+              [.utop] or [.foo.objs]. *)
+           if Utop.is_utop_dir dir then
+             Utop.setup sctx ~dir:(Path.parent_exn dir)
+           else if components <> [] then
+             SC.load_dir sctx ~dir:(Path.parent_exn dir)
+         | Some _ ->
+           (* This interprets "rule" and "copy_files" stanzas. *)
+           let dir_contents = Dir_contents.get sctx ~dir in
+           match Dir_contents.kind dir_contents with
+           | Standalone ->
+             ignore (gen_rules dir_contents [] ~dir : _ list)
+           | Group_part root ->
+             SC.load_dir sctx ~dir:(Dir_contents.dir root)
+           | Group_root (lazy subs) ->
+             let cctxs = gen_rules dir_contents [] ~dir in
+             List.iter subs ~f:(fun dc ->
+               ignore (gen_rules dir_contents cctxs ~dir:(Dir_contents.dir dc)
+                       : _ list))
+       end);
     match components with
     | [] -> These (String.Set.of_list [".js"; "_doc"; ".ppx"])
     | [(".js"|"_doc"|".ppx")] -> All

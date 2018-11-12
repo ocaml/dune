@@ -116,14 +116,15 @@ let flag_set = ref false;;
 let never_raised = ref false;;
 
 let forking_fiber () =
+  let which = Bin.which ~path:(Env.path Env.initial) in
   Fiber.parallel_map [1;2;3;4;5]
     ~f:(fun x ->
       Fiber.yield ()
       >>= fun () ->
       if x mod 2 = 1 then
-        Process.run Process.Strict ~env:Env.initial (Option.value_exn (Bin.which "true")) []
+        Process.run Process.Strict ~env:Env.initial (Option.value_exn (which "true")) []
       else
-        Process.run Process.Strict ~env:Env.initial (Option.value_exn (Bin.which "false")) [])
+        Process.run Process.Strict ~env:Env.initial (Option.value_exn (which "false")) [])
 in
 try
   Fiber.run (

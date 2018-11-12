@@ -103,7 +103,7 @@ module Map = struct
     let string s = values [Value.String s] in
     let path p = values [Value.Path p] in
     let make =
-      match Bin.make with
+      match Bin.make ~path:(Env.path context.env) with
       | None   -> string "make"
       | Some p -> path p
     in

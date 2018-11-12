@@ -49,6 +49,18 @@ let binary t ?hint ~loc name =
           ; loc
           }
 
+let add_binaries t ~dir = function
+  | [] -> t
+  | bindings ->
+    let local_bins =
+      lazy (
+        List.fold_left bindings ~init:(Lazy.force t.local_bins)
+          ~f:(fun acc fb ->
+            let path = File_bindings.dst_path fb ~dir:(Utils.local_bin dir) in
+            String.Map.add acc (Path.basename path) path))
+    in
+    { t with local_bins }
+
 let file_of_lib t ~loc ~lib ~file =
   match Lib.DB.find t.public_libs lib with
   | Error reason ->

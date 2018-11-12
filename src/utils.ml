@@ -8,7 +8,7 @@ let system_shell_exn =
     else
       ("sh", "-c", "")
   in
-  let bin = lazy (Bin.which cmd) in
+  let bin = lazy (Bin.which ~path:(Env.path Env.initial) cmd) in
   fun ~needed_to ->
     match Lazy.force bin with
     | Some path -> (path, arg)
@@ -18,7 +18,7 @@ let system_shell_exn =
         cmd needed_to cmd os
 
 let bash_exn =
-  let bin = lazy (Bin.which "bash") in
+  let bin = lazy (Bin.which ~path:(Env.path Env.initial) "bash") in
   fun ~needed_to ->
     match Lazy.force bin with
     | Some path -> path
@@ -152,6 +152,8 @@ let line_directive ~filename:fn ~line_number =
     | _ -> ""
   in
   sprintf "#%s %d %S\n" directive line_number fn
+
+let local_bin p = Path.relative p ".bin"
 
 module type Persistent_desc = sig
   type t

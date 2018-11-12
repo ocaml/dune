@@ -229,7 +229,7 @@ let get_name ~files ?name () =
 let subst_git ?name () =
   let rev = "HEAD" in
   let git =
-    match Bin.which "git" with
+    match Bin.which ~path:(Env.path Env.initial) "git" with
     | Some x -> x
     | None -> Utils.program_not_found "git" ~loc:None
   in

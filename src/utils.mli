@@ -58,6 +58,8 @@ val install_file
 (** Produce a line directive *)
 val line_directive : filename:string -> line_number:int -> string
 
+(** [local_bin dir] The directory which contains the local binaries viewed by
+    rules defined in [dir] *)
 val local_bin : Path.t -> Path.t
 
 module type Persistent_desc = sig

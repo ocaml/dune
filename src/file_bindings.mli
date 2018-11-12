@@ -1,3 +1,5 @@
+(** Represents list of filenames that can possibly be renamed by setting the
+    [dst] field *)
 open Stdune
 
 type 'a file =

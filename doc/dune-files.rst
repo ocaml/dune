@@ -791,10 +791,16 @@ directory. You can use ``_`` to match any build profile.
 Fields supported in ``<settings>`` are:
 
 - any OCaml flags field, see `OCaml flags`_ for more details.
+
 - ``(env-vars (<var1> <val1>) .. (<varN> <valN>))``. This will add the
   corresponding variables to the environment in which the build commands are
   executed, and under which ``dune exec`` runs. At the moment, this mechanism is
   only supported in ``dune-workspace`` files.
+
+- ``(binaries <filepath> (<filepath> as <name>))``. This will make the binary at
+  ``<filepath>`` as ``<name>``. If the ``<name>`` isn't provided, then it will
+  be inferred from the basename of ``<filepath>`` by dropping the ``.exe``
+  suffix if it exists.
 
 .. _dune-ignored_subdirs:
 

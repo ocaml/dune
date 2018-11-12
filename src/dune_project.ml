@@ -6,12 +6,6 @@ module Kind = struct
   type t =
     | Dune
     | Jbuilder
-
-  let to_sexp t =
-    Sexp.Atom
-      (match t with
-       | Dune -> "dune"
-       | Jbuilder -> "jbuilder")
 end
 
 module Name : sig
@@ -141,8 +135,7 @@ module Project_file = struct
 end
 
 type t =
-  { kind            : Kind.t
-  ; name            : Name.t
+  { name            : Name.t
   ; root            : Path.Local.t
   ; version         : string option
   ; packages        : Package.t Package.Name.Map.t
@@ -316,7 +309,7 @@ let make_parsing_context ~(lang : Lang.Instance.t) ~extensions =
 
 let key =
   Univ_map.Key.create ~name:"dune-project"
-    (fun { name; root; version; project_file; kind
+    (fun { name; root; version; project_file
          ; stanza_parser = _; packages = _ ; extension_args = _
          ; parsing_context } ->
       Sexp.Encoder.record
@@ -324,7 +317,6 @@ let key =
         ; "root", Path.Local.to_sexp root
         ; "version", Sexp.Encoder.(option string) version
         ; "project_file", Project_file.to_sexp project_file
-        ; "kind", Kind.to_sexp kind
         ; "parsing_context", Univ_map.to_sexp parsing_context
         ])
 
@@ -346,8 +338,7 @@ let get_local_path p =
 let anonymous = lazy (
   let lang = Lang.get_exn "dune" in
   let parsing_context = make_parsing_context ~lang ~extensions:[] in
-  { kind          = Dune
-  ; name          = Name.anonymous_root
+  { name          = Name.anonymous_root
   ; packages      = Package.Name.Map.empty
   ; root          = get_local_path Path.root
   ; version       = None
@@ -439,8 +430,7 @@ let parse ~dir ~lang ~packages ~file =
              (new_args_acc, stanzas::stanzas_acc))
        in
        let stanzas = List.concat (lang.data :: extension_stanzas) in
-       { kind = Dune
-       ; name
+       { name
        ; root = get_local_path dir
        ; version
        ; packages
@@ -457,8 +447,7 @@ let load_dune_project ~dir packages =
 let make_jbuilder_project ~dir packages =
   let lang = Lang.get_exn "dune" in
   let parsing_context = make_parsing_context ~lang ~extensions:[] in
-  { kind = Jbuilder
-  ; name = default_name ~dir ~packages
+  { name = default_name ~dir ~packages
   ; root = get_local_path dir
   ; version = None
   ; packages

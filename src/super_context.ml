@@ -519,7 +519,7 @@ module Deps = struct
       Build.env_var var
       >>^ fun () -> []
 
-  let interpret t ~scope ~dir l =
+  let make_interpreter ~f t ~scope ~dir l =
     let forms = Expander.Resolved_forms.empty () in
     let expander =
       Env.expander t ~dir
@@ -531,7 +531,7 @@ module Deps = struct
         ~dep_kind:Optional ~map_exe:(fun x -> x)
     in
     let deps =
-      List.map l ~f:(dep t expander)
+      List.map l ~f:(f t expander)
       |> Build.all
       >>^ List.concat in
     Build.fanout4
@@ -542,35 +542,16 @@ module Deps = struct
       (Build.path_set (Expander.Resolved_forms.sdeps forms))
     >>^ (fun (deps, _, _, _) -> deps)
 
-  let interpret_named t ~scope ~dir bindings =
-    let forms = Expander.Resolved_forms.empty () in
-    let expander =
-      Env.expander t ~dir
-      |> Expander.set_scope ~scope
-      |> Expander.set_dir ~dir
-    in
-    let expander =
-      Expander.with_record_no_read_deps expander forms
-        ~dep_kind:Optional ~map_exe:(fun x -> x)
-    in
-    let deps =
-      List.map bindings ~f:(function
-        | Bindings.Unnamed p ->
-          dep t expander p >>^ fun l ->
-          List.map l ~f:(fun x -> Bindings.Unnamed x)
-        | Named (s, ps) ->
-          Build.all (List.map ps ~f:(dep t expander)) >>^ fun l ->
-          [Bindings.Named (s, List.concat l)])
-      |> Build.all
-      >>^ List.concat
-    in
-    Build.fanout4
-      deps
-      (Build.record_lib_deps (Expander.Resolved_forms.lib_deps forms))
-      (let ddeps = String.Map.to_list (Expander.Resolved_forms.ddeps forms) in
-       Build.all (List.map ddeps ~f:snd))
-      (Build.path_set (Expander.Resolved_forms.sdeps forms))
-    >>^ (fun (deps, _, _, _) -> deps)
+  let interpret = make_interpreter ~f:dep
+
+  let interpret_named =
+    make_interpreter ~f:(fun t expander -> function
+      | Bindings.Unnamed p ->
+        dep t expander p >>^ fun l ->
+        List.map l ~f:(fun x -> Bindings.Unnamed x)
+      | Named (s, ps) ->
+        Build.all (List.map ps ~f:(dep t expander)) >>^ fun l ->
+        [Bindings.Named (s, List.concat l)])
 end
 
 module Scope_key = struct

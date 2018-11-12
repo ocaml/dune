@@ -32,7 +32,7 @@ let file_bindings t ~profile ~expander =
       match Dune_env.Stanza.find t.config ~profile with
       | None -> []
       | Some cfg ->
-        File_bindings.map cfg.bins ~f:(fun template ->
+        File_bindings.map cfg.binaries ~f:(fun template ->
           Expander.expand expander ~mode:Single ~template
           |> Value.to_string ~dir:t.dir)
     in

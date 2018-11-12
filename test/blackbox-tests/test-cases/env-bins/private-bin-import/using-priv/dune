@@ -1,6 +1,6 @@
 (env
  (_
-  (bins
+  (binaries
     ../priv/priv.exe
     (../priv/priv.exe as priv-renamed.exe))))
 

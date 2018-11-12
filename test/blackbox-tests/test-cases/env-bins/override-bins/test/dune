@@ -1,6 +1,6 @@
 (env
  (_
-  (bins (../priv/priv.exe as foo))))
+  (binaries (../priv/priv.exe as foo))))
 
 (alias
  (name runtest)

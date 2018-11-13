@@ -86,7 +86,7 @@ val with_record_deps
   -> map_exe:(Path.t -> Path.t)
   -> t
 
-val with_record_no_read_deps
+val with_record_no_ddeps
   :  t
   -> Resolved_forms.t
   -> dep_kind:Lib_deps_info.Kind.t

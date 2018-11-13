@@ -383,7 +383,7 @@ let with_record_deps t resolved_forms ~read_package ~dep_kind
       ~expand_var:t.expand_var ~targets_written_by_user ~map_exe in
   { t with expand_var }
 
-let with_record_no_read_deps t resolved_forms ~dep_kind
+let with_record_no_ddeps t resolved_forms ~dep_kind
       ~map_exe =
   let expand_var =
     expand_no_read

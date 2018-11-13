@@ -527,7 +527,7 @@ module Deps = struct
       |> Expander.set_dir ~dir
     in
     let expander =
-      Expander.with_record_no_read_deps expander forms
+      Expander.with_record_no_ddeps expander forms
         ~dep_kind:Optional ~map_exe:(fun x -> x)
     in
     let deps =

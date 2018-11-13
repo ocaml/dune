@@ -475,25 +475,26 @@ module Deps = struct
   open Build.O
   open Dep_conf
 
-  let make_alias t ~scope ~dir s =
+  let make_alias expander s =
     let loc = String_with_vars.loc s in
-    Alias.of_user_written_path ~loc (expand_vars_path t ~scope ~dir s)
+    Expander.expand_path expander s
+    |> Alias.of_user_written_path ~loc
 
-  let dep t ~scope ~dir = function
-    | File  s ->
-      let path = expand_vars_path t ~scope ~dir s in
+  let dep t expander = function
+    | File s ->
+      let path = Expander.expand_path expander s in
       Build.path path
       >>^ fun () -> [path]
     | Alias s ->
-      Alias.dep (make_alias t ~scope ~dir s)
+      Alias.dep (make_alias expander s)
       >>^ fun () -> []
     | Alias_rec s ->
       Alias.dep_rec ~loc:(String_with_vars.loc s) ~file_tree:t.file_tree
-        (make_alias t ~scope ~dir s)
+        (make_alias expander s)
       >>^ fun () -> []
     | Glob_files s -> begin
         let loc = String_with_vars.loc s in
-        let path = expand_vars_path t ~scope ~dir s in
+        let path = Expander.expand_path expander s in
         match Glob_lexer.parse_string (Path.basename path) with
         | Ok re ->
           let dir = Path.parent_exn path in
@@ -503,36 +504,54 @@ module Deps = struct
           Errors.fail (String_with_vars.loc s) "invalid glob: %s" msg
       end
     | Source_tree s ->
-      let path = expand_vars_path t ~scope ~dir s in
+      let path = Expander.expand_path expander s in
       Build.source_tree ~dir:path ~file_tree:t.file_tree
       >>^ Path.Set.to_list
     | Package p ->
-      let pkg = Package.Name.of_string (expand_vars_string t ~scope ~dir p) in
+      let pkg = Package.Name.of_string (Expander.expand_str expander p) in
       Alias.dep (Alias.package_install ~context:t.context ~pkg)
       >>^ fun () -> []
     | Universe ->
       Build.path Build_system.universe_file
       >>^ fun () -> []
     | Env_var var_sw ->
-      let var = expand_vars_string t ~scope ~dir var_sw in
+      let var = Expander.expand_str expander var_sw in
       Build.env_var var
       >>^ fun () -> []
 
-  let interpret t ~scope ~dir l =
-    List.map l ~f:(dep t ~scope ~dir)
-    |> Build.all
-    >>^ List.concat
+  let make_interpreter ~f t ~scope ~dir l =
+    let forms = Expander.Resolved_forms.empty () in
+    let expander =
+      Env.expander t ~dir
+      |> Expander.set_scope ~scope
+      |> Expander.set_dir ~dir
+    in
+    let expander =
+      Expander.with_record_no_ddeps expander forms
+        ~dep_kind:Optional ~map_exe:(fun x -> x)
+    in
+    let deps =
+      List.map l ~f:(f t expander)
+      |> Build.all
+      >>^ List.concat in
+    Build.fanout4
+      deps
+      (Build.record_lib_deps (Expander.Resolved_forms.lib_deps forms))
+      (let ddeps = String.Map.to_list (Expander.Resolved_forms.ddeps forms) in
+       Build.all (List.map ddeps ~f:snd))
+      (Build.path_set (Expander.Resolved_forms.sdeps forms))
+    >>^ (fun (deps, _, _, _) -> deps)
 
-  let interpret_named t ~scope ~dir bindings =
-    List.map bindings ~f:(function
+  let interpret = make_interpreter ~f:dep
+
+  let interpret_named =
+    make_interpreter ~f:(fun t expander -> function
       | Bindings.Unnamed p ->
-        dep t ~scope ~dir p >>^ fun l ->
+        dep t expander p >>^ fun l ->
         List.map l ~f:(fun x -> Bindings.Unnamed x)
       | Named (s, ps) ->
-        Build.all (List.map ps ~f:(dep t ~scope ~dir)) >>^ fun l ->
+        Build.all (List.map ps ~f:(dep t expander)) >>^ fun l ->
         [Bindings.Named (s, List.concat l)])
-    |> Build.all
-    >>^ List.concat
 end
 
 module Scope_key = struct

@@ -30,6 +30,10 @@ module Encoder = struct
     List (List.map l ~f:(fun (n, v) -> List [Atom n; v]))
 
   let unknown _ = Atom "<unknown>"
+
+  let constr name = function
+    | [] -> Atom name
+    | args -> List (Atom name :: args)
 end
 
 let rec to_string = function

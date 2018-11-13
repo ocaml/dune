@@ -31,6 +31,8 @@ module Expansion : sig
   type t =
     | Var   of Var.t
     | Macro of Macro.t * string
+
+  val to_sexp : t -> Sexp.t
 end
 
 module Map : sig

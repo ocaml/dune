@@ -9,6 +9,8 @@ module Encoder : sig
   val record : (string * sexp) list -> sexp
 
   val unknown : _ t
+
+  val constr : string -> sexp list -> sexp
 end with type sexp := t
 
 val to_string : t -> string

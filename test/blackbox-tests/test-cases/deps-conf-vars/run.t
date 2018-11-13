@@ -8,3 +8,7 @@
                ^^^^^^^^^
   Error: %{read:..} cannot be used in this position
   [1]
+
+  $ dune build --root alias-lib-file
+  Entering directory 'alias-lib-file'
+  deps: ../install/default/lib/foo/theories/a

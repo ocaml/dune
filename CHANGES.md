@@ -14,6 +14,9 @@ next
 - Fix a crash caused by using an extension in a project without
   dune-project file (#...., fix #1529, @diml)
 
+- Allow `%{bin:..}`, `%{exe:..}`, and other static expansions in the `deps`
+  field. (#1155, fix #1531, @rgrinberg)
+
 1.5.1 (7/11/2018)
 -----------------
 

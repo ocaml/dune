@@ -6,5 +6,5 @@
   File "dune", line 3, characters 9-18:
   3 |  (deps %{read:foo}))
                ^^^^^^^^^
-  Error: Unknown macro %{read:..}
+  Error: %{read:..} cannot be used in this position
   [1]

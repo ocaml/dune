@@ -164,10 +164,12 @@ module Resolved_forms = struct
     acc.lib_deps <- Lib_name.Map.add acc.lib_deps lib kind
 
   let add_fail acc fail =
-    acc.failures <- fail :: acc.failures
+    acc.failures <- fail :: acc.failures;
+    None
 
   let add_ddep acc ~key dep =
-    acc.ddeps <- String.Map.add acc.ddeps key dep
+    acc.ddeps <- String.Map.add acc.ddeps key dep;
+    None
 end
 
 type targets =
@@ -184,10 +186,39 @@ let parse_lib_file ~loc s =
     Errors.fail loc "invalid %%{lib:...} form: %s" s
   | Some (lib, f) -> (Lib_name.of_string_exn ~loc:(Some loc) lib, f)
 
-let expand_and_record_static acc ~map_exe ~dir ~pform t expansion =
+type dynamic =
+  { read_package : Package.t -> (unit, string option) Build.t
+  }
+
+let error_expansion_kind =
+  { read_package = fun _ -> assert false
+  }
+
+type expansion_kind =
+  | Dynamic of dynamic
+  | Static
+
+let expand_and_record acc ~map_exe ~dep_kind ~scope
+      ~expansion_kind ~dir ~pform t expansion =
+  let key = String_with_vars.Var.full_name pform in
   let loc = String_with_vars.Var.loc pform in
   let relative = Path.relative ~error_loc:loc in
+  let add_ddep =
+    match expansion_kind with
+    | Static -> fun _ ->
+      Errors.fail loc "%s cannot be used in this position"
+        (String_with_vars.Var.describe pform)
+    | Dynamic _ -> Resolved_forms.add_ddep acc ~key
+  in
+  let { read_package } =
+    match expansion_kind with
+    | Static -> error_expansion_kind
+    | Dynamic d -> d
+  in
+  let open Build.O in
   match (expansion : Pform.Expansion.t) with
+  | Var (Project_root | First_dep | Deps | Targets | Named_local | Values _)
+  | Macro ((Ocaml_config | Env ), _) -> assert false
   | Macro (Path_no_dep, s) -> Some [Value.Dir (relative dir s)]
   | Macro (Exe, s) -> Some (path_exp (map_exe (relative dir s)))
   | Macro (Dep, s) -> Some (path_exp (relative dir s))
@@ -196,16 +227,8 @@ let expand_and_record_static acc ~map_exe ~dir ~pform t expansion =
       | Ok path -> Some (path_exp path)
       | Error e ->
         Resolved_forms.add_fail acc
-          ({ fail = fun () -> Action.Prog.Not_found.raise e });
-        None
+          ({ fail = fun () -> Action.Prog.Not_found.raise e })
     end
-  | _ -> None
-
-let expand_and_record_lib_deps acc ~dep_kind ~pform t expansion =
-  let loc = String_with_vars.Var.loc pform in
-  let key = String_with_vars.Var.full_name pform in
-  let open Build.O in
-  match (expansion : Pform.Expansion.t) with
   | Macro (Lib, s) -> begin
       let lib_dep, file = parse_lib_file ~loc s in
       Resolved_forms.add_lib_dep acc lib_dep dep_kind;
@@ -213,7 +236,7 @@ let expand_and_record_lib_deps acc ~dep_kind ~pform t expansion =
         Artifacts.file_of_lib t.artifacts ~loc ~lib:lib_dep ~file
       with
       | Ok path -> Some (path_exp path)
-      | Error fail -> Resolved_forms.add_fail acc fail; None
+      | Error fail -> Resolved_forms.add_fail acc fail
     end
   | Macro (Libexec, s) -> begin
       let lib_dep, file = parse_lib_file ~loc s in
@@ -221,7 +244,7 @@ let expand_and_record_lib_deps acc ~dep_kind ~pform t expansion =
       match
         Artifacts.file_of_lib t.artifacts ~loc ~lib:lib_dep ~file
       with
-      | Error fail -> Resolved_forms.add_fail acc fail; None
+      | Error fail -> Resolved_forms.add_fail acc fail
       | Ok path ->
         if not Sys.win32 || Filename.extension s = ".exe" then begin
           Some (path_exp path)
@@ -234,8 +257,7 @@ let expand_and_record_lib_deps acc ~dep_kind ~pform t expansion =
               ~else_:(Build.path path >>^ fun _ ->
                       path_exp path)
           in
-          Resolved_forms.add_ddep acc ~key dep;
-          None
+          add_ddep dep
         end
     end
   | Macro (Lib_available, s) -> begin
@@ -246,21 +268,13 @@ let expand_and_record_lib_deps acc ~dep_kind ~pform t expansion =
       |> str_exp
       |> Option.some
     end
-  | _ -> None
-
-let expand_and_record_ddeps acc ~dir ~scope ~read_package ~pform expansion =
-  let key = String_with_vars.Var.full_name pform in
-  let loc = String_with_vars.Var.loc pform in
-  let relative = Path.relative ~error_loc:loc in
-  let open Build.O in
-  match (expansion : Pform.Expansion.t) with
   | Macro (Read, s) -> begin
       let path = relative dir s in
       let data =
         Build.contents path
         >>^ fun s -> [Value.String s]
       in
-      Resolved_forms.add_ddep acc ~key data
+      add_ddep data
     end
   | Macro (Read_lines, s) -> begin
       let path = relative dir s in
@@ -268,7 +282,7 @@ let expand_and_record_ddeps acc ~dir ~scope ~read_package ~pform expansion =
         Build.lines_of path
         >>^ Value.L.strings
       in
-      Resolved_forms.add_ddep acc ~key data
+      add_ddep data
     end
   | Macro (Read_strings, s) -> begin
       let path = relative dir s in
@@ -276,7 +290,7 @@ let expand_and_record_ddeps acc ~dir ~scope ~read_package ~pform expansion =
         Build.strings path
         >>^ Value.L.strings
       in
-      Resolved_forms.add_ddep acc ~key data
+      add_ddep data
     end
   | Macro (Version, s) -> begin
       match Package.Name.Map.find
@@ -289,14 +303,13 @@ let expand_and_record_ddeps acc ~dir ~scope ~read_package ~pform expansion =
           | None   -> [Value.String ""]
           | Some s -> [String s]
         in
-        Resolved_forms.add_ddep acc ~key x
+        add_ddep x
       | None ->
         Resolved_forms.add_fail acc { fail = fun () ->
           Errors.fail loc
             "Package %S doesn't exist in the current project." s
         }
     end
-  | _ -> ()
 
 let expand_and_record_deps acc ~dir ~read_package ~dep_kind
       ~targets_written_by_user ~map_exe ~expand_var
@@ -306,32 +319,27 @@ let expand_and_record_deps acc ~dir ~read_package ~dep_kind
     |> Option.bind ~f:(function
       | Ok s -> Some s
       | Error (expansion : Pform.Expansion.t) ->
-        expand_and_record_ddeps acc ~dir ~scope:t.scope ~read_package ~pform expansion;
-        match expand_and_record_lib_deps acc ~dep_kind ~pform t expansion with
-        | Some s -> Some s
-        | None ->
-          match expand_and_record_static acc ~map_exe ~dir
-                  ~pform t expansion with
-          | Some s -> Some s
-          | None ->
-            match expansion with
-            | Var (Project_root | Values _)
-            | Macro ((Ocaml_config | Env), _) ->
-              assert false (* these have been expanded statically *)
-            | Var (First_dep | Deps | Named_local) -> None
-            | Var Targets ->
-              let loc = String_with_vars.Var.loc pform in
-              begin match targets_written_by_user with
-              | Infer ->
-                Errors.fail loc "You cannot use %s with inferred rules."
-                  (String_with_vars.Var.describe pform)
-              | Alias ->
-                Errors.fail loc "You cannot use %s in aliases."
-                  (String_with_vars.Var.describe pform)
-              | Static l ->
-                Some (Value.L.dirs l) (* XXX hack to signal no dep *)
-              end
-            | _ -> None)
+        match expansion with
+        | Var (Project_root | Values _)
+        | Macro ((Ocaml_config | Env), _) ->
+          assert false (* these have been expanded statically *)
+        | Var (First_dep | Deps | Named_local) -> None
+        | Var Targets ->
+          let loc = String_with_vars.Var.loc pform in
+          begin match targets_written_by_user with
+          | Infer ->
+            Errors.fail loc "You cannot use %s with inferred rules."
+              (String_with_vars.Var.describe pform)
+          | Alias ->
+            Errors.fail loc "You cannot use %s in aliases."
+              (String_with_vars.Var.describe pform)
+          | Static l ->
+            Some (Value.L.dirs l) (* XXX hack to signal no dep *)
+          end
+        | _ ->
+          expand_and_record acc ~map_exe ~dep_kind ~scope:t.scope
+            ~expansion_kind:(Dynamic { read_package }) ~dir ~pform t expansion
+    )
   in
   Option.iter res ~f:(fun v ->
     acc.sdeps <- Path.Set.union
@@ -342,29 +350,12 @@ let expand_and_record_deps acc ~dir ~read_package ~dep_kind
 let expand_no_read acc ~dir ~dep_kind ~map_exe ~expand_var
       t pform syntax_version =
   let res =
-    let not_allowed pform =
-      let loc = String_with_vars.Var.loc pform in
-      Errors.fail loc "You cannot use %s in this position"
-        (String_with_vars.Var.describe pform)
-    in
     expand_var t pform syntax_version
     |> Option.bind ~f:(function
       | Ok s -> Some s
       | Error (expansion : Pform.Expansion.t) ->
-        match expand_and_record_lib_deps acc ~dep_kind ~pform t expansion with
-        | Some s -> Some s
-        | None ->
-          match expand_and_record_static acc ~map_exe ~dir
-                  ~pform t expansion with
-          | Some s -> Some s
-          | None ->
-            match expansion with
-            | Var (Project_root | Values _)
-            | Macro ((Ocaml_config | Env), _) ->
-              assert false (* these have been expanded statically *)
-            | Var (First_dep | Deps | Named_local)
-            | Var Targets -> not_allowed pform
-            | _ -> None)
+        expand_and_record acc ~map_exe ~dep_kind ~scope:t.scope
+          ~expansion_kind:Static ~dir ~pform t expansion)
   in
   Option.iter res ~f:(fun v ->
     acc.sdeps <- Path.Set.union

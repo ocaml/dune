@@ -65,6 +65,8 @@ next
   emits a warning for retro-compatibility (#1474, fixes #1471,
   @NathanReb)
 
+- Interpret the `DESTDIR` environment variable (#1475, @emillon)
+
 - Fix interpretation of paths in `env` stanzas (#1509, fixes #1508, @diml)
 
 - Add `context_name` expansion variable (#1507, @rgrinberg)

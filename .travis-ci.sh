@@ -3,6 +3,43 @@
 PATH=~/ocaml/bin:$PATH; export PATH
 OPAMYES="true"; export OPAMYES
 
+has-label () {
+    local label="$1"
+    local API_URL=https://api.github.com/repos/$TRAVIS_REPO_SLUG/issues/$TRAVIS_PULL_REQUEST/labels
+    test -n "$(curl $API_URL | grep $label)"
+}
+
+file-has-changed () {
+    local file="$1"
+    if git diff $TRAVIS_MERGE_BASE..$TRAVIS_PR_HEAD --name-only --exit-code \
+           "$file" > /dev/null; then
+        false
+    else
+        true
+    fi
+}
+
+if [[ $CI_KIND == changes -a $TRAVIS_EVENT_TYPE == pull_request ]]; then
+  cat<<EOF
+------------------------------------------------------------------------
+This test checks that the CHANGES.md file has been modified by the
+pull request. Most contributions should come with a message in the
+CHANGES.md.
+
+Some very minor changes (typo fixes for example) may not need a
+Changes entry. In this case, you may explicitly disable this test by
+by using the "no-change-entry-needed" label on the github pull
+request.
+------------------------------------------------------------------------
+EOF
+  # check that CHANGES.md has been modified
+  if file-has-changed CHANGES.md || has-label no-change-entry-needed; then
+      echo pass
+  else
+      exit 1
+  fi
+fi
+
 TARGET="$1"; shift
 
 case "$TARGET" in

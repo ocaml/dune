@@ -347,7 +347,7 @@ let expand_and_record_deps acc ~dir ~read_package ~dep_kind
   );
   Option.map res ~f:Result.ok
 
-let expand_no_read acc ~dir ~dep_kind ~map_exe ~expand_var
+let expand_no_ddeps acc ~dir ~dep_kind ~map_exe ~expand_var
       t pform syntax_version =
   let res =
     expand_var t pform syntax_version
@@ -377,7 +377,7 @@ let with_record_deps t resolved_forms ~read_package ~dep_kind
 let with_record_no_ddeps t resolved_forms ~dep_kind
       ~map_exe =
   let expand_var =
-    expand_no_read
+    expand_no_ddeps
       (* we keep the dir constant here to replicate the old behavior of: (chdir
          foo %{exe:bar}). This should lookup ./bar rather than ./foo/bar *)
       ~dir:t.dir resolved_forms ~dep_kind ~expand_var:t.expand_var ~map_exe

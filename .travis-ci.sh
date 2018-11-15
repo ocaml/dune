@@ -11,7 +11,7 @@ has-label () {
 
 file-has-changed () {
     local file="$1"
-    if git diff $TRAVIS_MERGE_BASE..$TRAVIS_PR_HEAD --name-only --exit-code \
+    if git diff --name-only --exit-code $TRAVIS_MERGE_BASE..$TRAVIS_PR_HEAD \
            "$file" > /dev/null; then
         false
     else
@@ -35,6 +35,7 @@ EOF
   # check that CHANGES.md has been modified
   if file-has-changed CHANGES.md || has-label no-change-entry-needed; then
       echo pass
+      exit 0
   else
       exit 1
   fi

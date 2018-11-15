@@ -11,7 +11,10 @@ has-label () {
 
 file-has-changed () {
     local file="$1"
-    if git diff --name-only --exit-code $TRAVIS_MERGE_BASE..$TRAVIS_PR_HEAD \
+    local cur_head=${TRAVIS_COMMIT_RANGE%%...*}
+    local pr_head=${TRAVIS_COMMIT_RANGE##*...}
+    local merge_base=$(git merge-base $cur_head $pr_head)
+    if git diff --name-only --exit-code $merge_base..$pr_head \
            "$file" > /dev/null; then
         false
     else

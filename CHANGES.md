@@ -17,6 +17,9 @@ next
 - Allow `%{bin:..}`, `%{exe:..}`, and other static expansions in the `deps`
   field. (#1155, fix #1531, @rgrinberg)
 
+- Fix bad interaction between on-demand ppx rewriters and using
+  multiple build contexts (#1545, @diml)
+
 1.5.1 (7/11/2018)
 -----------------
 

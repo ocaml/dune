@@ -23,6 +23,8 @@ next
 - Fix handling of installed .dune files when the backend is declared
   via a `dune` file (#1551, fixes #1549, @diml)
 
+- Add a `--stats` command line option to record resource usage (#1543, @diml)
+
 1.5.1 (7/11/2018)
 -----------------
 

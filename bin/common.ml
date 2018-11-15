@@ -23,6 +23,7 @@ type t =
   ; default_target        : string
   (* For build & runtest only *)
   ; watch : bool
+  ; stats : bool
   }
 
 let prefix_target common s = common.target_prefix ^ s
@@ -47,7 +48,8 @@ let set_common_other c ~targets =
       [ ["dune"; "external-lib-deps"; "--missing"]
       ; c.orig_args
       ; targets
-      ]
+      ];
+  if c.stats then Stats.enable ()
 
 let set_common c ~targets =
   set_dirs c;
@@ -346,6 +348,12 @@ let term =
          & info ["diff-command"] ~docs
              ~doc:"Shell command to use to diff files.
                    Use - to disable printing the diff.")
+  and stats =
+    Arg.(value
+         & flag
+         & info ["stats"] ~docs
+             ~doc:{|Record and print statistics about Dune resource usage.
+                   |})
   in
   let build_dir = Option.value ~default:"_build" build_dir in
   let root, to_cwd =
@@ -405,4 +413,5 @@ let term =
   ; build_dir
   ; default_target
   ; watch
+  ; stats
   }

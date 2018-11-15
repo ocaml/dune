@@ -36,7 +36,7 @@ request.
 ------------------------------------------------------------------------
 EOF
   # check that CHANGES.md has been modified
-  if file-has-changed CHANGES.md || has-label no-change-entry-needed; then
+  if file-has-changed CHANGES.md || has-label no-change-entry-required; then
       echo pass
       exit 0
   else

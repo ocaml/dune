@@ -19,7 +19,7 @@ file-has-changed () {
     fi
 }
 
-if [[ $CI_KIND == changes -a $TRAVIS_EVENT_TYPE == pull_request ]]; then
+if [[ "$CI_KIND" == changes && "$TRAVIS_EVENT_TYPE" == pull_request ]]; then
   cat<<EOF
 ------------------------------------------------------------------------
 This test checks that the CHANGES.md file has been modified by the

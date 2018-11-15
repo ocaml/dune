@@ -22,8 +22,9 @@ file-has-changed () {
     fi
 }
 
-if [[ "$CI_KIND" == changes && "$TRAVIS_EVENT_TYPE" == pull_request ]]; then
-  cat<<EOF
+if [[ "$CI_KIND" == changes ]]; then
+    if [[ "$TRAVIS_EVENT_TYPE" == pull_request ]]; then
+        cat<<EOF
 ------------------------------------------------------------------------
 This test checks that the CHANGES.md file has been modified by the
 pull request. Most contributions should come with a message in the
@@ -35,13 +36,14 @@ by using the "no-change-entry-needed" label on the github pull
 request.
 ------------------------------------------------------------------------
 EOF
-  # check that CHANGES.md has been modified
-  if file-has-changed CHANGES.md || has-label no-change-entry-required; then
-      echo pass
-      exit 0
-  else
-      exit 1
-  fi
+        # check that CHANGES.md has been modified
+        if file-has-changed CHANGES.md || has-label no-change-entry-required; then
+            echo pass
+        else
+            exit 1
+        fi
+    fi
+    exit 0
 fi
 
 TARGET="$1"; shift

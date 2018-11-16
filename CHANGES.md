@@ -17,6 +17,8 @@ next
 - Allow `%{bin:..}`, `%{exe:..}`, and other static expansions in the `deps`
   field. (#1155, fix #1531, @rgrinberg)
 
+- Allow targets to be directories, which Dune will treat opaquely.
+
 1.5.1 (7/11/2018)
 -----------------
 

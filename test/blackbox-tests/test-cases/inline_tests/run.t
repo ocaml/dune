@@ -29,7 +29,7 @@
    2
    ((inline_tests.backend
      1.0
-     ((runner_libraries (str))
+     ((runner_libraries str)
       (flags
        (inline-test-runner
         %{library-name}

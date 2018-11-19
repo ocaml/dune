@@ -112,6 +112,7 @@ module Driver = struct
         ; lint_flags   : Ordered_set_lang.Unexpanded.t
         ; main         : string
         ; replaces     : (Loc.t * Lib_name.t) list
+        ; file_kind    : Stanza.File_kind.t
         }
 
       type Dune_file.Sub_system_info.t += T of t
@@ -141,6 +142,7 @@ module Driver = struct
            and main = field "main" string
            and replaces =
              field "replaces" (list (located (Lib_name.decode))) ~default:[]
+           and file_kind = Stanza.file_kind ()
            in
            { loc
            ; flags
@@ -148,6 +150,7 @@ module Driver = struct
            ; lint_flags
            ; main
            ; replaces
+           ; file_kind
            })
     end
 
@@ -187,13 +190,13 @@ module Driver = struct
       let open Dune_lang.Encoder in
       let f x = Lib_name.encode (Lib.name (Lazy.force x.lib)) in
       ((1, 0),
-       record
-         [ "flags"            , Ordered_set_lang.Unexpanded.encode
-                                  t.info.flags
-         ; "lint_flags"       , Ordered_set_lang.Unexpanded.encode
-                                  t.info.lint_flags
-         ; "main"             , string t.info.main
-         ; "replaces"         , list f (Result.ok_exn t.replaces)
+       record_fields t.info.file_kind
+         [ field "flags" Ordered_set_lang.Unexpanded.encode
+             t.info.flags
+         ; field "lint_flags" Ordered_set_lang.Unexpanded.encode
+             t.info.lint_flags
+         ; field "main" string t.info.main
+         ; field_l "replaces" f (Result.ok_exn t.replaces)
          ])
   end
   include M

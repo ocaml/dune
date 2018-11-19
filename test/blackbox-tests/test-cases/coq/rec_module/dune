@@ -1,0 +1,7 @@
+(coqlib
+ (name rec_module)
+ ; (public_name dune.test.basic)
+ (modules :standard)
+ (synopsis "Test Coq library"))
+
+(include_subdirs qualified)

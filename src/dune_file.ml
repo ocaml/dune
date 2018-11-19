@@ -1819,6 +1819,60 @@ module Menhir = struct
        })
 end
 
+module Coq = struct
+
+  type t =
+    (* ; public     : Public_lib.t option *\) *)
+    { name       : Loc.t * string
+    (* TODO: validate name *)
+    ; synopsis   : string option
+    ; modules    : Ordered_set_lang.t
+    ; flags      : Ordered_set_lang.Unexpanded.t
+    ; libraries  : Lib_dep.t list
+    (** ocaml libraries *)
+    ; loc        : Loc.t
+    ; enabled_if : Blang.t
+    }
+
+  let syntax =
+    Syntax.create
+      ~name:"coq"
+      ~desc:"the coq extension (experimental)"
+      [ 0, 1 ]
+
+  let decode =
+    record
+      (* let_map name = field_o "name" Lib_name.Local.decode_loc
+       * and public = Public_lib.public_name_field *)
+      (let+ name = field "name" (located string)
+       and+ loc = loc
+       and+ synopsis = field_o "synopsis" string
+       and+ flags = field_oslu "flags"
+       and+ modules = modules_field "modules"
+       and+ libraries = field "libraries" Lib_deps.decode ~default:[]
+       and+ enabled_if = enabled_if
+       in
+       (* { name
+        * ; public *)
+       { name
+       ; synopsis
+       ; modules
+       ; flags
+       ; libraries
+       ; loc
+       ; enabled_if
+       })
+
+  type Stanza.t += T of t
+
+  let () =
+    Dune_project.Extension.register_simple
+      syntax
+      (return [ "coqlib", decode >>| fun x -> [T x] ])
+
+end
+
+
 module Alias_conf = struct
   type t =
     { name    : string

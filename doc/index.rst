@@ -24,6 +24,7 @@ Welcome to dune's documentation!
    jsoo
    variants
    formatting
+   coq
    faq
    known-issues
    migration

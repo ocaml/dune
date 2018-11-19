@@ -183,6 +183,11 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
         | Some cctx ->
           Menhir_rules.gen_rules cctx m ~dir:ctx_dir
         end
+      | Coq.T m when Expander.eval_blang expander m.enabled_if ->
+        (* Format.eprintf "[coq] gen_rules called @\n%!"; *)
+        let dir = ctx_dir in
+        let coq_rules = Coq_rules.setup_rules ~sctx ~dir ~dir_contents m in
+        SC.add_rules ~dir:ctx_dir sctx coq_rules
       | _ -> ());
     let dyn_deps =
       let pred =

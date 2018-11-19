@@ -283,9 +283,9 @@ module Library : sig
 end
 
 module Install_conf : sig
-  type t =
+  type 'file t =
     { section : Install.Section.t
-    ; files   : File_bindings.Unexpanded.t
+    ; files   : 'file File_bindings.t
     ; package : Package.t
     }
 end
@@ -419,12 +419,14 @@ type Stanza.t +=
   | Library         of Library.t
   | Executables     of Executables.t
   | Rule            of Rule.t
-  | Install         of Install_conf.t
+  | Install         of String_with_vars.t Install_conf.t
   | Alias           of Alias_conf.t
   | Copy_files      of Copy_files.t
   | Documentation   of Documentation.t
   | Tests           of Tests.t
   | Include_subdirs of Loc.t * Include_subdirs.t
+
+val stanza_package : Stanza.t -> Package.t option
 
 module Stanzas : sig
   type t = Stanza.t list

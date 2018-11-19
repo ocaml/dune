@@ -16,10 +16,10 @@ module Dir_with_dune = struct
 end
 
 module Installable = struct
-  type t =
+  type 'data t =
     { dir    : Path.t
     ; scope  : Scope.t
-    ; stanza : Stanza.t
+    ; data  : 'data
     ; kind   : Dune_lang.Syntax.t
     }
 end
@@ -35,7 +35,7 @@ type t =
   ; packages                         : Package.t Package.Name.Map.t
   ; file_tree                        : File_tree.t
   ; artifacts                        : Artifacts.t
-  ; stanzas_to_consider_for_install  : Installable.t list
+  ; stanzas_to_consider_for_install  : Stanza.t Installable.t list
   ; cxx_flags                        : string list
   ; expander                         : Expander.t
   ; chdir                            : (Action.t, Action.t) Build.t
@@ -329,7 +329,7 @@ let create
             Option.some_if keep { Installable.
                                   dir = ctx_dir
                                 ; scope
-                                ; stanza
+                                ; data = stanza
                                 ; kind
                                 }))
     else
@@ -339,7 +339,7 @@ let create
             { Installable.
               dir = ctx_dir
             ; scope
-            ; stanza
+            ; data = stanza
             ; kind
             }))
   in

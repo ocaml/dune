@@ -21,10 +21,10 @@ module Dir_with_dune : sig
 end
 
 module Installable : sig
-  type t =
+  type 'data t =
     { dir    : Path.t
     ; scope  : Scope.t
-    ; stanza : Stanza.t
+    ; data   : 'data
     ; kind   : Dune_lang.Syntax.t
     }
 end
@@ -49,7 +49,7 @@ val packages  : t -> Package.t Package.Name.Map.t
 val libs_by_package : t -> (Package.t * Lib.Set.t) Package.Name.Map.t
 val file_tree : t -> File_tree.t
 val artifacts : t -> Artifacts.t
-val stanzas_to_consider_for_install : t -> Installable.t list
+val stanzas_to_consider_for_install : t -> Stanza.t Installable.t list
 val cxx_flags : t -> string list
 val build_dir : t -> Path.t
 val profile   : t -> string

@@ -481,13 +481,31 @@ module Pkg_config = struct
   let brew_pc_path ~prefix ~package =
     sprintf "%s/opt/%s/lib/pkgconfig" (quote prefix) package
 
-  let pkg_config_paths c ~package =
+  let macos_paths c ~package =
     match ocaml_config_var c "system" with
     | Some "macosx" ->
       Option.map
         (brew_prefix c)
         ~f:(fun prefix -> [brew_pc_path ~prefix ~package])
     | _ -> None
+
+  let opam_paths () =
+    match Sys.getenv "OPAM_SWITCH_PREFIX" with
+    | opam_prefix -> Some [opam_prefix ^/ "lib" ^/ "pkgconfig"]
+    | exception Not_found -> None
+
+  let concat_pc_paths a b =
+    match a, b with
+    | None, None -> None
+    | (Some _ as sa), None -> sa
+    | None, (Some _ as sb) -> sb
+    | Some sa, Some sb ->
+        Some (sa @ sb)
+
+  let pkg_config_paths c ~package =
+    concat_pc_paths
+      (macos_paths c ~package)
+      (opam_paths ())
 
   let pc_paths_to_cmdline = function
     | None -> ""

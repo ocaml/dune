@@ -1,0 +1,6 @@
+(library
+ (name simple_tests)
+ (public_name dune_inline_tests)
+ (inline_tests.backend
+  (generate_runner (run sed "s/(\\*TEST:\\(.*\\)\\*)/let () = \\1;;/" %{impl-files}))
+  ))

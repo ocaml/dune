@@ -3,8 +3,11 @@ open! Stdune
 let parse_sub_systems ~parsing_context sexps =
   List.filter_map sexps ~f:(fun sexp ->
     let name, ver, data =
-      Dune_lang.Decoder.(parse (triple string (located Syntax.Version.decode) raw)
-                       parsing_context) sexp
+      Dune_lang.Decoder.(
+        parse
+          (triple string (located Syntax.Version.decode) raw)
+          parsing_context)
+        sexp
     in
     (* We ignore sub-systems that are not internally known. These
        correspond to plugins that are not in use in the current
@@ -19,18 +22,20 @@ let parse_sub_systems ~parsing_context sexps =
   |> Sub_system_name.Map.mapi ~f:(fun name (_, version, data) ->
     let (module M) = Dune_file.Sub_system_info.get name in
     Syntax.check_supported M.syntax version;
-    let parsing_context =
+    let parsing_context, parse =
       (* We set the syntax to the version used when generating this subsystem.
          We cannot do this for jbuild defined subsystems however since those use
          1.0 as the version. Which would correspond to the dune syntax (because
          subsystems share the syntax of the dune lang) *)
       match Univ_map.find_exn parsing_context (Syntax.key Stanza.syntax) with
       | (0, 0) ->
-        parsing_context
+        parsing_context, M.parse
       | (_, _) ->
-        Univ_map.add parsing_context (Syntax.key M.syntax) (snd version)
+        (Univ_map.add parsing_context (Syntax.key M.syntax) (snd version),
+         Dune_lang.Decoder.enter M.parse)
     in
-    M.T (Dune_lang.Decoder.parse M.parse parsing_context data))
+    (* We generate too many parentheses in dune files at the moment *)
+    M.T (Dune_lang.Decoder.parse parse parsing_context data))
 
 let of_sexp =
   let open Dune_lang.Decoder in
@@ -89,9 +94,9 @@ let gen ~(dune_version : Syntax.Version.t) confs =
     |> List.map ~f:(fun (name, (ver, conf)) ->
       let (module M) = Dune_file.Sub_system_info.get name in
       Dune_lang.List [ Dune_lang.atom (Sub_system_name.to_string name)
-                ; Syntax.Version.encode ver
-                ; conf
-                ])
+                     ; Syntax.Version.encode ver
+                     ; List conf
+                     ])
   in
   Dune_lang.List
     [ Dune_lang.unsafe_atom_of_string "dune"

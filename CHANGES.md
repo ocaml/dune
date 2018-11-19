@@ -20,6 +20,9 @@ next
 - Fix bad interaction between on-demand ppx rewriters and using
   multiple build contexts (#1545, @diml)
 
+- Fix handling of installed .dune files when the backend is declared
+  via a `dune` file (#1551, fixes #1549, @diml)
+
 1.5.1 (7/11/2018)
 -----------------
 

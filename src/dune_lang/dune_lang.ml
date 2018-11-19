@@ -284,21 +284,39 @@ module Encoder = struct
   let record l =
     List (List.map l ~f:(fun (n, v) -> List [Atom(Atom.of_string n); v]))
 
-  type field = string * dune_lang option
+  type field =
+    | Absent
+    | Normal of string * dune_lang
+    | Inlined_list of string * dune_lang list
 
   let field name f ?(equal=(=)) ?default v =
     match default with
-    | None -> (name, Some (f v))
+    | None -> Normal (name, f v)
     | Some d ->
       if equal d v then
-        (name, None)
+        Absent
       else
-        (name, Some (f v))
-  let field_o name f v = (name, Option.map ~f v)
+        Normal (name, f v)
+  let field_o name f v =
+    match v with
+    | None -> Absent
+    | Some v -> Normal (name, f v)
 
-  let record_fields (l : field list) =
-    List (List.filter_map l ~f:(fun (k, v) ->
-      Option.map v ~f:(fun v -> List[Atom (Atom.of_string k); v])))
+  let field_l name f l =
+    match l with
+    | [] -> Absent
+    | _ -> Inlined_list (name, List.map l ~f)
+
+  let record_fields (syntax : Syntax.t) (l : field list) =
+    List.filter_map l ~f:(function
+      | Absent -> None
+      | Normal (name, v) ->
+        Some (List [Atom (Atom.of_string name); v])
+      | Inlined_list (name, l) ->
+        Some (List (Atom (Atom.of_string name) ::
+                    match syntax with
+                    | Dune -> l
+                    | Jbuild -> [List l])))
 
   let unknown _ = unsafe_atom_of_string "<unknown>"
 end

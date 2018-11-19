@@ -226,13 +226,10 @@ module Gen(P : Params) = struct
     | Default -> true
     | Opam _  -> false
 
-  let process_entries (package : Package.t) entries install_paths =
-    local_install_rules entries ~package:package.name ~install_paths
-
   let bin_entries, other_stanzas, install_paths_per_package =
     let bin_stanzas, other_stanzas =
       List.partition_map (SC.stanzas_to_consider_for_install sctx)
-        ~f:(fun installable -> 
+        ~f:(fun installable ->
           match installable.stanza with
           | Install { section = Bin; _ } -> Either.Left installable
           | _ -> Either.Right installable)
@@ -255,45 +252,46 @@ module Gen(P : Params) = struct
     in
     let install_paths_per_package =
       Package.Name.Map.map (SC.packages sctx)
-        ~f:(fun (pkg : Package.t) -> 
+        ~f:(fun (pkg : Package.t) ->
           Install.Section.Paths.make ~package:pkg.name ~destdir:Path.root ()
         )
-    in 
-    let bin_entries = 
+    in
+    let bin_entries =
       Package.Name.Map.map (SC.packages sctx)
         ~f:(fun (pkg : Package.t) ->
           let stanzas =
-            Option.value (Package.Name.Map.find bin_entries_per_package pkg.name)
-              ~default:[]
-          in
+            Package.Name.Map.find bin_entries_per_package pkg.name
+            |> Option.value ~default:[] in
           let install_paths =
-            Option.value_exn (Package.Name.Map.find install_paths_per_package pkg.name)
+            Package.Name.Map.find install_paths_per_package pkg.name
+            |> Option.value_exn
           in
-          process_entries pkg stanzas install_paths)
+          local_install_rules ~package:pkg.name stanzas ~install_paths)
     in
     (bin_entries, other_stanzas, install_paths_per_package)
 
-  (* entries have to be preliminary processed with [process_entries] *)
   let install_file (package : Package.t) entries =
     let install_paths =
-      Option.value_exn (Package.Name.Map.find install_paths_per_package package.name)
+      Package.Name.Map.find install_paths_per_package package.name
+      |> Option.value_exn
     in
     let opam = Package.opam_file package in
     let meta = Path.append ctx.build_dir (Package.meta_file package) in
-    let extra_entries = 
-      let files = SC.source_files sctx ~src_path:Path.root in
-      String.Set.fold files ~init:[] ~f:(fun fn acc ->
-        if is_odig_doc_file fn then
-          Install.Entry.make Doc (Path.relative ctx.build_dir fn) :: acc
-        else
-          acc)
-      |> fun entries ->
-      (Install.Entry.make Lib opam ~dst:"opam") ::
-      (Install.Entry.make Lib meta ~dst:"META") ::
-      entries
-      |> local_install_rules ~package:package.name ~install_paths
+    let entries =
+      let docs =
+        let files = SC.source_files sctx ~src_path:Path.root in
+        String.Set.fold files ~init:[] ~f:(fun fn acc ->
+          if is_odig_doc_file fn then
+            Install.Entry.make Doc (Path.relative ctx.build_dir fn) :: acc
+          else
+            acc)
+      in
+      local_install_rules ~package:package.name ~install_paths (
+        Install.Entry.make Lib opam ~dst:"opam"
+        :: Install.Entry.make Lib meta ~dst:"META"
+        :: docs)
+      |> List.rev_append entries
     in
-    let entries = List.rev_append extra_entries entries in
     let fn =
       Path.relative (Path.append ctx.build_dir package.path)
         (Utils.install_file ~package:package.name
@@ -367,13 +365,14 @@ module Gen(P : Params) = struct
     let other_entries =
       Package.Name.Map.map (SC.packages sctx) ~f:(fun (pkg : Package.t) ->
         let stanzas =
-          Option.value (Package.Name.Map.find other_entries_per_package pkg.name)
-            ~default:[]
+          Package.Name.Map.find other_entries_per_package pkg.name
+          |> Option.value ~default:[]
         in
         let install_paths =
-          Option.value_exn (Package.Name.Map.find install_paths_per_package pkg.name)
+          Package.Name.Map.find install_paths_per_package pkg.name
+          |> Option.value_exn
         in
-        process_entries pkg stanzas install_paths)
+        local_install_rules ~package:pkg.name stanzas ~install_paths)
     in
     Package.Name.Map.iter (SC.packages sctx) ~f:(fun (pkg : Package.t) ->
       let stanzas =

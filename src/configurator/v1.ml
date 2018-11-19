@@ -470,34 +470,61 @@ module Pkg_config = struct
     ; cflags : string list
     }
 
+  let brew_prefix c =
+    Option.map
+      (find_in_path c "brew")
+      ~f:(fun brew ->
+        command_line brew ["--prefix"]
+        |> run_capture_exn c ~dir:c.dest_dir
+        |> String.trim)
+
+  let brew_pc_path ~prefix ~package =
+    sprintf "%s/opt/%s/lib/pkgconfig" (quote prefix) package
+
+  let pkg_config_paths c ~package =
+    match ocaml_config_var c "system" with
+    | Some "macosx" ->
+      Option.map
+        (brew_prefix c)
+        ~f:(fun prefix -> [brew_pc_path ~prefix ~package])
+    | _ -> None
+
+  let pc_paths_to_cmdline = function
+    | None -> ""
+    | Some ps ->
+        sprintf
+          "env PKG_CONFIG_PATH=%s "
+          (String.concat ~sep:":" (ps@["$PKG_CONFIG_PATH"]))
+
+  let pc_command_line ~pc_paths ~pkg_config ~package what =
+    let arg =
+      match what with
+      | Some flag -> sprintf "%s " flag
+      | None -> ""
+    in
+    sprintf
+      "%s%s %s%s"
+      (pc_paths_to_cmdline pc_paths)
+      pkg_config
+      arg
+      package
+
+  let trim_and_split str =
+    match String.trim str with
+    | "" -> []
+    | s  -> String.split s ~on:' '
+
   let query t ~package =
     let package = quote package in
     let pkg_config = quote t.pkg_config in
     let c = t.configurator in
     let dir = c.dest_dir in
-    let env =
-      match ocaml_config_var c "system" with
-      | Some "macosx" -> begin
-          match find_in_path c "brew" with
-          | Some brew ->
-            let prefix =
-              String.trim (run_capture_exn c ~dir (command_line brew ["--prefix"]))
-            in
-            sprintf "env PKG_CONFIG_PATH=%s/opt/%s/lib/pkgconfig:$PKG_CONFIG_PATH "
-              (quote prefix) package
-          | None ->
-            ""
-        end
-      | _ -> ""
-    in
-    if run_ok c ~dir (sprintf "%s%s %s" env pkg_config package) then
+    let pc_paths = pkg_config_paths c ~package in
+    if run_ok c ~dir (pc_command_line ~pc_paths ~pkg_config ~package None) then
       let run what =
-        match
-          String.trim
-            (run_capture_exn c ~dir (sprintf "%s%s %s %s" env pkg_config what package))
-        with
-        | "" -> []
-        | s  -> String.split s ~on:' '
+        pc_command_line ~pc_paths ~pkg_config ~package (Some what)
+        |> run_capture_exn c ~dir
+        |> trim_and_split
       in
       Some
         { libs   = run "--libs"

@@ -105,6 +105,7 @@ end = struct
          && Signal.Set.is_empty !signals)
 
   let next () =
+    Stats.record ();
     Mutex.lock mutex;
     let rec loop () =
       while not (available ()) do Condition.wait cond mutex done;

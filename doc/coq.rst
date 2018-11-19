@@ -28,20 +28,25 @@ The basic form for defining Coq libraries is very similar to the OCaml form:
 
     (coqlib
      (name <module_prefix>)
+     (public_name <package.lib_name>)
      (synopsis <text>)
      (modules <ordered_set_lang>)
      (flags <coq_flags>))
 
 The stanza will build all `.v` files on the given directory.
 The semantics of fields is:
-- ``<module_prefix>>`` will be used as the default Coq library prefix
-  ``-R``
+
+- ``<module_prefix>>`` will be used as the default Coq library prefix ``-R``,
 - the ``modules`` field does allow to constraint the set of modules
-  included in the library, similarly to its OCaml counterpart
+  included in the library, similarly to its OCaml counterpart,
+- ``public_name`` will make Dune generate install rules for the `.vo`
+  files; files will be installed in
+  ``lib/coq/user-contrib/<module_prefix>``, as customary in the
+  make-based Coq package eco-system,
 - ``<coq_flags>`` will be passed to ``coqc``.
 
 Library Composition and Handling
-===================
+================================
 
 The ``coqlib`` stanza does not yet support composition of Coq
 libraries. In the 0.1 version of the language, libraries are located
@@ -51,11 +56,12 @@ to the installed version of a particular library.
 This will be fixed in the future.
 
 Recursive modules
-===================
+=================
 
 Adding:
 
 .. code:: scheme
+
     (include_subdirs qualified)
 
 to the ``dune`` file will make Dune to consider all the modules in the

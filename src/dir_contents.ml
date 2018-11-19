@@ -180,7 +180,7 @@ type t =
   ; modules : Modules.t Memo.Lazy.t
   ; c_sources : C_sources.t Memo.Lazy.t
   ; mlds : (Dune_file.Documentation.t * Path.t list) list Memo.Lazy.t
-  ; coq_modules : Coq_module.t list String.Map.t Memo.Lazy.t
+  ; coq_modules : Coq_module.t list Lib_name.Map.t Memo.Lazy.t
   }
 
 and kind =
@@ -242,12 +242,12 @@ let mlds t (doc : Documentation.t) =
 
 let coq_modules_of_library t ~name =
   let map = Memo.Lazy.force t.coq_modules in
-  match String.Map.find map name with
+  match Lib_name.Map.find map name with
   | Some x -> x
   | None ->
     Exn.code_error "Dir_contents.coq_modules_of_library"
-      [ "name", Sexp.Encoder.string name
-      ; "available", Sexp.Encoder.(list string) (String.Map.keys map)
+      [ "name", Lib_name.to_sexp name
+      ; "available", Sexp.Encoder.(list Lib_name.to_sexp) (Lib_name.Map.keys map)
       ]
 
 (* As a side-effect, setup user rules and copy_files rules. *)
@@ -370,11 +370,11 @@ let coq_modules_of_files ~subdirs =
  * In Coq all libs are "wrapped" so including a module twice is not so bad.
  *)
 let build_coq_modules_map (d : _ Dir_with_dune.t) ~dir ~modules =
-  List.fold_left d.data ~init:String.Map.empty ~f:(fun map -> function
+  List.fold_left d.data ~init:Lib_name.Map.empty ~f:(fun map -> function
     | Coq.T coq ->
       let modules = Coq_module.Eval.eval coq.modules
         ~parse:(Coq_module.parse ~dir) ~standard:modules in
-      String.Map.add map (snd coq.name) modules
+      Lib_name.Map.add map (Dune_file.Coq.best_name coq) modules
     | _ -> map)
 
 type result0_here = {
@@ -446,7 +446,7 @@ let get0_impl (sctx, dir) : result0 =
              ; modules = Memo.Lazy.of_val Modules.empty
              ; mlds = Memo.Lazy.of_val []
              ; c_sources = Memo.Lazy.of_val C_sources.empty
-             ; coq_modules = Memo.Lazy.of_val String.Map.empty
+             ; coq_modules = Memo.Lazy.of_val Lib_name.Map.empty
              };
          rules = None;
          subdirs = Path.Map.empty;

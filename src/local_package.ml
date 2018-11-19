@@ -9,6 +9,7 @@ type t =
   ; installs : (Loc.t * string) Dune_file.Install_conf.t Dir_with_dune.t list
   ; docs : Dune_file.Documentation.t Dir_with_dune.t list
   ; mlds : Path.t list Lazy.t
+  ; coqlibs : Dune_file.Coq.t Dir_with_dune.t list
   ; pkg : Package.t
   ; libs : Lib.Set.t
   ; virtual_lib : Lib.t option Lazy.t
@@ -50,6 +51,10 @@ let add_stanzas t ~sctx =
            { t with
              docs = { d with data = l } :: t.docs
            }
+         | Coq.T l ->
+           { t with
+             coqlibs = { d with data = l } :: t.coqlibs
+           }
          | _ -> t)
 
 let stanzas_to_consider_for_install
@@ -66,6 +71,7 @@ let stanzas_to_consider_for_install
                    (Dune_file.Library.best_name lib)
                | Dune_file.Documentation _
                | Dune_file.Install _ -> true
+               | Dune_file.Coq.T d -> Option.is_some d.public
                | _ -> false
              in
              Option.some_if keep { d with data = stanza }))
@@ -138,6 +144,7 @@ module Of_sctx = struct
             ; lib_stanzas = []
             ; docs = []
             ; installs = []
+            ; coqlibs = []
             ; pkg
             ; ctx_build_dir = ctx.build_dir
             ; libs
@@ -175,6 +182,8 @@ let name t = t.pkg.name
 let dune_package_file t =
   Path.relative (build_dir t)
     (Package.Name.to_string (name t) ^ ".dune-package")
+
+let coqlibs t = t.coqlibs
 
 let install_paths t =
   Install.Section.Paths.make ~package:t.pkg.name ~destdir:Path.root ()

@@ -12,3 +12,9 @@ val setup_rules
   -> dir_contents:Dir_contents.t
   -> Dune_file.Coq.t
   -> (unit, Action.t) Build.t list
+
+val install_rules
+  :  sctx:Super_context.t
+  -> dir:Path.t
+  -> Dune_file.Coq.t
+  -> (Loc.t option * Install.Entry.t) list

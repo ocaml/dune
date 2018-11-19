@@ -35,7 +35,7 @@ val lookup_module : t -> Module.Name.t -> Dune_file.Buildable.t option
 val mlds : t -> Dune_file.Documentation.t -> Path.t list
 
 (** Coq modules of library [name] is the Coq library name.  *)
-val coq_modules_of_library : t -> name:string -> Coq_module.t list
+val coq_modules_of_library : t -> name:Lib_name.t -> Coq_module.t list
 
 type get_result =
   | Standalone_or_root of t

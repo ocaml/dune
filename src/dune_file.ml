@@ -1822,9 +1822,9 @@ end
 module Coq = struct
 
   type t =
-    (* ; public     : Public_lib.t option *\) *)
-    { name       : Loc.t * string
+    { name       : Loc.t * Lib_name.Local.t
     (* TODO: validate name *)
+    ; public     : Public_lib.t option
     ; synopsis   : string option
     ; modules    : Ordered_set_lang.t
     ; flags      : Ordered_set_lang.Unexpanded.t
@@ -1842,19 +1842,21 @@ module Coq = struct
 
   let decode =
     record
-      (* let_map name = field_o "name" Lib_name.Local.decode_loc
-       * and public = Public_lib.public_name_field *)
-      (let+ name = field "name" (located string)
+      (let+ name = field "name" Lib_name.Local.decode_loc
        and+ loc = loc
+       and+ public = Public_lib.public_name_field
        and+ synopsis = field_o "synopsis" string
        and+ flags = field_oslu "flags"
        and+ modules = modules_field "modules"
        and+ libraries = field "libraries" Lib_deps.decode ~default:[]
        and+ enabled_if = enabled_if
        in
-       (* { name
-        * ; public *)
+       let name =
+         let (loc, res) = name in
+         (loc, Lib_name.Local.validate (loc, res) ~wrapped:None)
+       in
        { name
+       ; public
        ; synopsis
        ; modules
        ; flags
@@ -1862,6 +1864,11 @@ module Coq = struct
        ; loc
        ; enabled_if
        })
+
+  let best_name t =
+    match t.public with
+    | None -> Lib_name.of_local t.name
+    | Some p -> snd p.name
 
   type Stanza.t += T of t
 
@@ -2210,5 +2217,7 @@ let stanza_package = function
   | Install { package; _ }
   | Documentation { package; _ }
   | Tests { package = Some package; _} ->
+    Some package
+  | Coq.T { public = Some { package; _ }; _ } ->
     Some package
   | _ -> None

@@ -3,8 +3,8 @@ open Stdune
 type t =
   { odig_files : Path.t list
   ; ctx_build_dir : Path.t
-  ; lib_stanzas : Dune_file.Library.t Super_context.Installable.t list
-  ; installs : string Dune_file.Install_conf.t Super_context.Installable.t list
+  ; lib_stanzas : Dune_file.Library.t Installable.t list
+  ; installs : string Dune_file.Install_conf.t Installable.t list
   ; docs : Dune_file.Documentation.t list
   ; mlds : Path.t list
   ; pkg : Package.t
@@ -17,7 +17,7 @@ let is_odig_doc_file fn =
 
 let add_stanzas t ~sctx =
   List.fold_left ~init:t
-    ~f:(fun t (installable : Stanza.t Super_context.Installable.t) ->
+    ~f:(fun t (installable : Stanza.t Installable.t) ->
       let path_expander =
         Super_context.expand_vars_string sctx
           ~scope:installable.scope ~dir:installable.dir
@@ -48,7 +48,7 @@ let of_sctx (sctx : Super_context.t) =
   let stanzas = Super_context.stanzas_to_consider_for_install sctx in
   let stanzas_per_package =
     List.filter_map stanzas
-      ~f:(fun (installable : Stanza.t Super_context.Installable.t) ->
+      ~f:(fun (installable : Stanza.t Installable.t) ->
         match Dune_file.stanza_package installable.data with
         | None -> None
         | Some p -> Some (p.name, installable))

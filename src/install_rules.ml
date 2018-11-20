@@ -283,7 +283,7 @@ module Gen(P : Params) = struct
     let installs =
       Local_package.installs package
       |> List.concat_map
-           ~f:(fun ({ Super_context.Installable.
+           ~f:(fun ({ Installable.
                       data = { Install_conf. section; files; package = _ }
                     ; dir
                     ; scope = _
@@ -301,7 +301,7 @@ module Gen(P : Params) = struct
     let lib_install_files =
       Local_package.lib_stanzas package
       |> List.concat_map
-           ~f:(fun { Super_context.Installable.
+           ~f:(fun { Installable.
                      data = (lib : Dune_file.Library.t)
                    ; scope
                    ; dir

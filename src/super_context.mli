@@ -20,15 +20,6 @@ module Dir_with_dune : sig
     }
 end
 
-module Installable : sig
-  type 'data t =
-    { dir    : Path.t
-    ; scope  : Scope.t
-    ; data   : 'data
-    ; kind   : Dune_lang.Syntax.t
-    }
-end
-
 type t
 
 val create

@@ -15,15 +15,6 @@ module Dir_with_dune = struct
     }
 end
 
-module Installable = struct
-  type 'data t =
-    { dir    : Path.t
-    ; scope  : Scope.t
-    ; data  : 'data
-    ; kind   : Dune_lang.Syntax.t
-    }
-end
-
 type t =
   { context                          : Context.t
   ; build_system                     : Build_system.t

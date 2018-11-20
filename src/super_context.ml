@@ -5,24 +5,14 @@ open Dune_file
 module A = Action
 module Alias = Build_system.Alias
 
-module Dir_with_dune = struct
-  type t =
-    { src_dir : Path.t
-    ; ctx_dir : Path.t
-    ; stanzas : Stanzas.t
-    ; scope   : Scope.t
-    ; kind    : Dune_lang.Syntax.t
-    }
-end
-
 type t =
   { context                          : Context.t
   ; build_system                     : Build_system.t
   ; scopes                           : Scope.DB.t
   ; public_libs                      : Lib.DB.t
   ; installed_libs                   : Lib.DB.t
-  ; stanzas                          : Dir_with_dune.t list
-  ; stanzas_per_dir                  : Dir_with_dune.t Path.Map.t
+  ; stanzas                          : Stanzas.t Dir_with_dune.t list
+  ; stanzas_per_dir                  : Stanzas.t Dir_with_dune.t Path.Map.t
   ; packages                         : Package.t Package.Name.Map.t
   ; file_tree                        : File_tree.t
   ; artifacts                        : Artifacts.t
@@ -56,7 +46,7 @@ let host t = Option.value t.host ~default:t
 
 let internal_lib_names t =
   List.fold_left t.stanzas ~init:Lib_name.Set.empty
-    ~f:(fun acc { Dir_with_dune. stanzas; _ } ->
+    ~f:(fun acc { Dir_with_dune. data = stanzas; _ } ->
       List.fold_left stanzas ~init:acc ~f:(fun acc -> function
         | Library lib ->
           Lib_name.Set.add
@@ -88,7 +78,7 @@ end = struct
   let get_env_stanza t ~dir =
     let open Option.O in
     stanzas_in t ~dir >>= fun x ->
-    List.find_map x.stanzas ~f:(function
+    List.find_map x.data ~f:(function
       | Dune_env.T config -> Some config
       | _ -> None)
 
@@ -294,7 +284,7 @@ let create
         { Dir_with_dune.
           src_dir = dir
         ; ctx_dir
-        ; stanzas
+        ; data = stanzas
         ; scope = Scope.DB.find_by_name scopes (Dune_project.name project)
         ; kind
         })

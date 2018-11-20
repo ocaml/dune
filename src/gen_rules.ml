@@ -67,7 +67,7 @@ module Gen(P : Install_rules.Params) = struct
   (* Stanza *)
 
   let gen_rules dir_contents cctxs
-        { SC.Dir_with_dune. src_dir; ctx_dir; stanzas; scope; kind = dir_kind } =
+        { Dir_with_dune. src_dir; ctx_dir; data = stanzas; scope; kind = dir_kind } =
     let for_stanza ~dir = function
       | Library lib ->
         let cctx, merlin =

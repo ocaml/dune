@@ -40,12 +40,12 @@ val packages  : t -> Package.t Package.Name.Map.t
 val libs_by_package : t -> (Package.t * Lib.Set.t) Package.Name.Map.t
 val file_tree : t -> File_tree.t
 val artifacts : t -> Artifacts.t
-val stanzas_to_consider_for_install : t -> Stanza.t Installable.t list
 val cxx_flags : t -> string list
 val build_dir : t -> Path.t
 val profile   : t -> string
 val host : t -> t
 val build_system : t -> Build_system.t
+val external_lib_deps_mode : t -> bool
 
 (** All public libraries of the workspace *)
 val public_libs : t -> Lib.DB.t

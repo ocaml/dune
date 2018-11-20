@@ -43,9 +43,45 @@ let add_stanzas t ~sctx =
         }
       | _ -> t)
 
+let stanzas_to_consider_for_install stanzas ~external_lib_deps_mode =
+  if not external_lib_deps_mode then
+    List.concat_map stanzas
+      ~f:(fun { Super_context.Dir_with_dune.ctx_dir; stanzas; scope; kind ; src_dir = _ } ->
+        List.filter_map stanzas ~f:(fun stanza ->
+          let keep =
+            match (stanza : Stanza.t) with
+            | Dune_file.Library lib ->
+              Lib.DB.available (Scope.libs scope)
+                (Dune_file.Library.best_name lib)
+            | Dune_file.Documentation _
+            | Dune_file.Install _ -> true
+            | _ -> false
+          in
+          Option.some_if keep { Installable.
+                                dir = ctx_dir
+                              ; scope
+                              ; data = stanza
+                              ; kind
+                              }))
+  else
+    List.concat_map stanzas
+      ~f:(fun { ctx_dir; stanzas; scope; kind ; src_dir = _ } ->
+        List.map stanzas ~f:(fun stanza ->
+          { Installable.
+            dir = ctx_dir
+          ; scope
+          ; data = stanza
+          ; kind
+          }))
+
 let of_sctx (sctx : Super_context.t) =
   let ctx = Super_context.context sctx in
-  let stanzas = Super_context.stanzas_to_consider_for_install sctx in
+  let stanzas =
+    let stanzas = Super_context.stanzas sctx in
+    let external_lib_deps_mode =
+      Super_context.external_lib_deps_mode sctx in
+    stanzas_to_consider_for_install stanzas ~external_lib_deps_mode
+  in
   let stanzas_per_package =
     List.filter_map stanzas
       ~f:(fun (installable : Stanza.t Installable.t) ->

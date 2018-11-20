@@ -26,13 +26,13 @@ type t =
   ; packages                         : Package.t Package.Name.Map.t
   ; file_tree                        : File_tree.t
   ; artifacts                        : Artifacts.t
-  ; stanzas_to_consider_for_install  : Stanza.t Installable.t list
   ; cxx_flags                        : string list
   ; expander                         : Expander.t
   ; chdir                            : (Action.t, Action.t) Build.t
   ; host                             : t option
   ; libs_by_package : (Package.t * Lib.Set.t) Package.Name.Map.t
   ; env                              : (Path.t, Env_node.t) Hashtbl.t
+  ; external_lib_deps_mode           : bool
   ; (* Env node that represent the environment configured for the
        workspace. It is used as default at the root of every project
        in the workspace. *)
@@ -46,11 +46,11 @@ let packages t = t.packages
 let libs_by_package t = t.libs_by_package
 let artifacts t = t.artifacts
 let file_tree t = t.file_tree
-let stanzas_to_consider_for_install t = t.stanzas_to_consider_for_install
 let cxx_flags t = t.cxx_flags
 let build_dir t = t.context.build_dir
 let profile t = t.context.profile
 let build_system t = t.build_system
+let external_lib_deps_mode t = t.external_lib_deps_mode
 
 let host t = Option.value t.host ~default:t
 
@@ -304,36 +304,6 @@ let create
       (stanzas.Dir_with_dune.ctx_dir, stanzas))
     |> Path.Map.of_list_exn
   in
-  let stanzas_to_consider_for_install =
-    if not external_lib_deps_mode then
-      List.concat_map stanzas
-        ~f:(fun { ctx_dir; stanzas; scope; kind ; src_dir = _ } ->
-          List.filter_map stanzas ~f:(fun stanza ->
-            let keep =
-              match (stanza : Stanza.t) with
-              | Library lib ->
-                Lib.DB.available (Scope.libs scope) (Library.best_name lib)
-              | Documentation _
-              | Install _   -> true
-              | _           -> false
-            in
-            Option.some_if keep { Installable.
-                                  dir = ctx_dir
-                                ; scope
-                                ; data = stanza
-                                ; kind
-                                }))
-    else
-      List.concat_map stanzas
-        ~f:(fun { ctx_dir; stanzas; scope; kind ; src_dir = _ } ->
-          List.map stanzas ~f:(fun stanza ->
-            { Installable.
-              dir = ctx_dir
-            ; scope
-            ; data = stanza
-            ; kind
-            }))
-  in
   let artifacts =
     Artifacts.create context ~public_libs ~build_system
   in
@@ -384,7 +354,6 @@ let create
   ; stanzas_per_dir
   ; packages
   ; file_tree
-  ; stanzas_to_consider_for_install
   ; artifacts
   ; cxx_flags
   ; chdir = Build.arr (fun (action : Action.t) ->
@@ -403,6 +372,7 @@ let create
         Some (pkg, Lib.Set.of_list libs))
   ; env = Hashtbl.create 128
   ; default_env
+  ; external_lib_deps_mode
   }
 
 module Libs = struct

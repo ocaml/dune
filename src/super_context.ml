@@ -601,12 +601,3 @@ end
 let opaque t =
   t.context.profile = "dev"
   && Ocaml_version.supports_opaque_for_mli t.context.version
-
-let expand_and_eval_set sctx ~scope ~dir ?bindings set ~standard =
-  let expander = Expander.set_scope ~scope (Env.expander sctx ~dir) in
-  let expander =
-    match bindings with
-    | None -> expander
-    | Some bindings -> Expander.add_bindings expander ~bindings
-  in
-  Expander.expand_and_eval_set expander ~standard set

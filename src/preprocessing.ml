@@ -542,7 +542,7 @@ let promote_correction fn build ~suffix =
            (Path.extend_basename fn ~suffix))
     ]
 
-let lint_module sctx ~dir ~dep_kind ~lint ~lib_name ~scope ~dir_kind =
+let lint_module sctx ~dir ~expander ~dep_kind ~lint ~lib_name ~scope ~dir_kind =
   Staged.stage (
     let alias = Build_system.Alias.lint ~dir in
     let add_alias fn build =
@@ -590,11 +590,9 @@ let lint_module sctx ~dir ~dep_kind ~lint ~lib_name ~scope ~dir_kind =
                Pform.Map.singleton "corrected-suffix"
                  (Values [String corrected_suffix])
              in
+             let expander = Expander.add_bindings expander ~bindings in
              Build.memoize "ppx flags"
-               (SC.expand_and_eval_set sctx driver.info.lint_flags
-                  ~scope
-                  ~dir
-                  ~bindings
+               (Expander.expand_and_eval_set expander driver.info.lint_flags
                   ~standard:(Build.return [])))
           in
           (fun ~source ~ast ->
@@ -620,14 +618,14 @@ type t = (Module.t -> lint:bool -> Module.t) Per_module.t
 
 let dummy = Per_module.for_all (fun m ~lint:_ -> m)
 
-let make sctx ~dir ~dep_kind ~lint ~preprocess
+let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess
       ~preprocessor_deps ~lib_name ~scope ~dir_kind =
   let preprocessor_deps =
     Build.memoize "preprocessor deps" preprocessor_deps
   in
   let lint_module =
-    Staged.unstage (lint_module sctx ~dir ~dep_kind ~lint ~lib_name ~scope
-                      ~dir_kind)
+    Staged.unstage (lint_module sctx ~dir ~expander ~dep_kind ~lint ~lib_name
+                      ~scope ~dir_kind)
   in
   Per_module.map preprocess ~f:(function
     | Preprocess.No_preprocessing ->
@@ -678,11 +676,9 @@ let make sctx ~dir ~dep_kind ~lint ~preprocess
              Pform.Map.singleton "corrected-suffix"
                (Values [String corrected_suffix])
            in
+           let expander = Expander.add_bindings expander ~bindings in
            Build.memoize "ppx flags"
-             (SC.expand_and_eval_set sctx driver.info.flags
-                ~scope
-                ~dir
-                ~bindings
+             (Expander.expand_and_eval_set expander driver.info.flags
                 ~standard:(Build.return ["--as-ppx"])))
         in
         (fun m ~lint ->
@@ -715,9 +711,7 @@ let make sctx ~dir ~dep_kind ~lint ~preprocess
              >>>
              preprocessor_deps >>^ ignore
              >>>
-             SC.expand_and_eval_set sctx driver.info.as_ppx_flags
-               ~scope
-               ~dir
+             Expander.expand_and_eval_set expander driver.info.as_ppx_flags
                ~standard:(Build.return [])
              >>^ fun flags ->
              let command =

@@ -75,7 +75,7 @@ module Gen(P : Install_rules.Params) = struct
       match stanza with
       | Library lib ->
         let cctx, merlin =
-          Lib_rules.rules lib ~dir ~scope ~dir_contents ~dir_kind in
+          Lib_rules.rules lib ~dir ~scope ~dir_contents ~expander ~dir_kind in
         { For_stanza.
           merlin = Some merlin
         ; cctx = Some (lib.buildable.loc, cctx)
@@ -84,7 +84,7 @@ module Gen(P : Install_rules.Params) = struct
       | Executables exes ->
         let cctx, merlin =
           Exe_rules.rules exes
-            ~sctx ~dir ~scope
+            ~sctx ~dir ~scope ~expander
             ~dir_contents ~dir_kind
         in
         { For_stanza.

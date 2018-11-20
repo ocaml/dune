@@ -251,13 +251,13 @@ include Sub_system.Register_end_point(
           List.map backends ~f:(fun backend ->
             backend.Backend.info.flags) @ [info.flags]
         in
-        Build.all (
-          List.map flags ~f:(fun flags ->
-            Super_context.expand_and_eval_set sctx flags
-              ~scope
-              ~dir
-              ~bindings
-              ~standard:(Build.return [])))
+        let expander =
+          Super_context.expander sctx ~dir
+          |> Expander.add_bindings ~bindings
+        in
+        List.map flags ~f:(
+          Expander.expand_and_eval_set expander ~standard:(Build.return []))
+        |> Build.all
         >>^ List.concat
       in
 

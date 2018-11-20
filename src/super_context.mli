@@ -61,15 +61,6 @@ val dump_env : t -> dir:Path.t -> (unit, Dune_lang.t list) Build.t
 val find_scope_by_dir  : t -> Path.t              -> Scope.t
 val find_scope_by_name : t -> Dune_project.Name.t -> Scope.t
 
-val expand_and_eval_set
-  :  t
-  -> scope:Scope.t
-  -> dir:Path.t
-  -> ?bindings:Pform.Map.t
-  -> Ordered_set_lang.Unexpanded.t
-  -> standard:(unit, string list) Build.t
-  -> (unit, string list) Build.t
-
 val prefix_rules
   :  t
   -> (unit, unit) Build.t

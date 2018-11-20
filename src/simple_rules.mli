@@ -9,7 +9,7 @@ val user_rule
   :  Super_context.t
   -> ?extra_bindings:Pform.Map.t
   -> dir:Path.t
-  -> scope:Scope.t
+  -> expander:Expander.t
   -> Rule.t
   -> Path.t list
 
@@ -17,7 +17,7 @@ val user_rule
 val copy_files
   :  Super_context.t
   -> dir:Path.t
-  -> scope:Scope.t
+  -> expander:Expander.t
   -> src_dir:Path.t
   -> Copy_files.t
   -> Path.t list
@@ -27,6 +27,6 @@ val alias
   :  Super_context.t
   -> ?extra_bindings:Pform.Map.t
   -> dir:Path.t
-  -> scope:Scope.t
+  -> expander:Expander.t
   -> Alias_conf.t
   -> unit

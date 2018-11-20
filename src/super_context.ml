@@ -154,6 +154,7 @@ end = struct
       ~profile:(profile t) ~expander:(expander t ~dir)
 end
 
+let expander = Env.expander
 
 let add_rule t ?sandbox ?mode ?locks ?loc ~dir build =
   let build = Build.O.(>>>) build t.chdir in
@@ -410,17 +411,6 @@ let expand_vars t ~mode ~scope ~dir ?(bindings=Pform.Map.empty) template =
 let expand_vars_string t ~scope ~dir ?bindings s =
   expand_vars t ~mode:Single ~scope ~dir ?bindings s
   |> Value.to_string ~dir
-
-let expand_vars_path t ~scope ~dir ?bindings s =
-  expand_vars t ~mode:Single ~scope ~dir ?bindings s
-  |> Value.to_path ~error_loc:(String_with_vars.loc s) ~dir
-
-let eval_blang t blang ~scope ~dir =
-  match blang with
-  | Blang.Const x -> x (* common case *)
-  | _ ->
-    let expander = Expander.set_scope (Env.expander t ~dir) ~scope in
-    Blang.eval blang ~dir ~f:(Expander.expand_var_exn expander)
 
 module Deps = struct
   open Build.O

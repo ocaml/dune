@@ -61,15 +61,6 @@ val dump_env : t -> dir:Path.t -> (unit, Dune_lang.t list) Build.t
 val find_scope_by_dir  : t -> Path.t              -> Scope.t
 val find_scope_by_name : t -> Dune_project.Name.t -> Scope.t
 
-val expand_vars
-  :  t
-  -> mode:'a String_with_vars.Mode.t
-  -> scope:Scope.t
-  -> dir:Path.t
-  -> ?bindings:Pform.Map.t
-  -> String_with_vars.t
-  -> 'a
-
 val expand_vars_string
   :  t
   -> scope:Scope.t
@@ -77,14 +68,6 @@ val expand_vars_string
   -> ?bindings:Pform.Map.t
   -> String_with_vars.t
   -> string
-
-val expand_vars_path
-  :  t
-  -> scope:Scope.t
-  -> dir:Path.t
-  -> ?bindings:Pform.Map.t
-  -> String_with_vars.t
-  -> Path.t
 
 val expand_and_eval_set
   :  t
@@ -94,13 +77,6 @@ val expand_and_eval_set
   -> Ordered_set_lang.Unexpanded.t
   -> standard:(unit, string list) Build.t
   -> (unit, string list) Build.t
-
-val eval_blang
-  :  t
-  -> Blang.t
-  -> scope:Scope.t
-  -> dir:Path.t
-  -> bool
 
 val prefix_rules
   :  t
@@ -237,3 +213,5 @@ module Scope_key : sig
 end
 
 val opaque : t -> bool
+
+val expander : t -> dir:Path.t -> Expander.t

@@ -1,7 +1,8 @@
 open Import
 open! No_io
 
-let rules (t : Dune_file.Tests.t) ~sctx ~dir ~scope ~dir_contents ~dir_kind =
+let rules (t : Dune_file.Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents
+      ~dir_kind =
   let test_kind (loc, name) =
     let files = Dir_contents.text_files dir_contents in
     let expected_basename = name ^ ".expected" in
@@ -41,7 +42,7 @@ let rules (t : Dune_file.Tests.t) ~sctx ~dir ~scope ~dir_contents ~dir_kind =
         ; loc
         }
       in
-      Simple_rules.alias sctx ~extra_bindings ~dir ~scope alias
+      Simple_rules.alias sctx ~extra_bindings ~dir ~expander alias
     in
     match test_kind (loc, s) with
     | `Regular ->
@@ -59,6 +60,6 @@ let rules (t : Dune_file.Tests.t) ~sctx ~dir ~scope ~dir_contents ~dir_kind =
         ; enabled_if = t.enabled_if
         } in
       add_alias ~loc ~action:(Diff diff) ~locks:t.locks;
-      ignore (Simple_rules.user_rule sctx rule ~extra_bindings ~dir ~scope
+      ignore (Simple_rules.user_rule sctx rule ~extra_bindings ~dir ~expander
               : Path.t list));
   Exe_rules.rules t.exes ~sctx ~dir ~scope ~dir_kind ~dir_contents

@@ -152,7 +152,8 @@ let modules_of_files ~dir ~files =
   Module.Name.Map.merge impls intfs ~f:(fun name impl intf ->
     Some (Module.make name ~visibility:Public ?impl ?intf))
 
-let build_modules_map (d : _ Dir_with_dune.t) ~scope ~modules =
+let build_modules_map (d : _ Dir_with_dune.t) ~modules =
+  let scope = d.scope in
   let libs, exes =
     List.filter_partition_map d.data ~f:(fun stanza ->
       match (stanza : Stanza.t) with
@@ -330,7 +331,7 @@ let rec get sctx ~dir =
           { kind = Standalone
           ; dir
           ; text_files = files
-          ; modules = lazy (build_modules_map d ~scope:d.scope
+          ; modules = lazy (build_modules_map d
                               ~modules:(modules_of_files ~dir:d.ctx_dir ~files))
           ; mlds = lazy (build_mlds_map d ~files)
           }
@@ -394,7 +395,7 @@ let rec get sctx ~dir =
                   (Fmt.optional Path.pp) (Module.src_dir x)
                   (Fmt.optional Path.pp) (Module.src_dir y)))
         in
-        build_modules_map d ~scope:d.scope ~modules)
+        build_modules_map d ~modules)
       in
       let t =
         { kind = Group_root

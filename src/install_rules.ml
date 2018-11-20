@@ -66,53 +66,54 @@ module Gen(P : Params) = struct
         ; File "VERSION"
         ]
 
-  let init_meta () =
-    SC.libs_by_package sctx
-    |> Package.Name.Map.iter ~f:(fun ((pkg : Package.t), libs) ->
-      Lib.Set.iter libs ~f:(gen_lib_dune_file ~dir:ctx.build_dir);
-      let path = Path.append ctx.build_dir pkg.path in
-      SC.on_load_dir sctx ~dir:path ~f:(fun () ->
-        let meta = Path.append ctx.build_dir (Package.meta_file pkg) in
-        let meta_template = Path.extend_basename meta ~suffix:".template" in
+  let init_meta (pkg : Local_package.t) =
+    let libs = Local_package.libs pkg in
+    Lib.Set.iter libs ~f:(gen_lib_dune_file ~dir:ctx.build_dir);
+    let path = Local_package.build_dir pkg in
+    let pkg_name = Local_package.name pkg in
+    let meta = Local_package.meta_file pkg in
+    let pkg = Local_package.package pkg in
+    SC.on_load_dir sctx ~dir:path ~f:(fun () ->
+      let meta_template = Path.extend_basename meta ~suffix:".template" in
 
-        let version =
-          let get = pkg_version ~pkg path in
-          Super_context.Pkg_version.set sctx pkg get
-        in
+      let version =
+        let get = pkg_version ~pkg path in
+        Super_context.Pkg_version.set sctx pkg get
+      in
 
-        let template =
-          Build.if_file_exists meta_template
-            ~then_:(Build.lines_of meta_template)
-            ~else_:(Build.return ["# DUNE_GEN"])
-        in
-        let meta_contents =
-          version >>^ fun version ->
-          Gen_meta.gen
-            ~package:(Package.Name.to_string pkg.name)
-            ~version
-            (Lib.Set.to_list libs)
-        in
-        SC.add_rule sctx ~dir:ctx.build_dir
-          (Build.fanout meta_contents template
-           >>^ (fun ((meta : Meta.t), template) ->
-             let buf = Buffer.create 1024 in
-             let ppf = Format.formatter_of_buffer buf in
-             Format.pp_open_vbox ppf 0;
-             List.iter template ~f:(fun s ->
-               if String.is_prefix s ~prefix:"#" then
-                 match
-                   String.extract_blank_separated_words (String.drop s 1)
-                 with
-                 | ["JBUILDER_GEN" | "DUNE_GEN"] ->
-                   Format.fprintf ppf "%a@," Meta.pp meta.entries
-                 | _ -> Format.fprintf ppf "%s@," s
-               else
-                 Format.fprintf ppf "%s@," s);
-             Format.pp_close_box ppf ();
-             Format.pp_print_flush ppf ();
-             Buffer.contents buf)
-           >>>
-           Build.write_file_dyn meta)))
+      let template =
+        Build.if_file_exists meta_template
+          ~then_:(Build.lines_of meta_template)
+          ~else_:(Build.return ["# DUNE_GEN"])
+      in
+      let meta_contents =
+        version >>^ fun version ->
+        Gen_meta.gen
+          ~package:(Package.Name.to_string pkg_name)
+          ~version
+          (Lib.Set.to_list libs)
+      in
+      SC.add_rule sctx ~dir:ctx.build_dir
+        (Build.fanout meta_contents template
+         >>^ (fun ((meta : Meta.t), template) ->
+           let buf = Buffer.create 1024 in
+           let ppf = Format.formatter_of_buffer buf in
+           Format.pp_open_vbox ppf 0;
+           List.iter template ~f:(fun s ->
+             if String.is_prefix s ~prefix:"#" then
+               match
+                 String.extract_blank_separated_words (String.drop s 1)
+               with
+               | ["JBUILDER_GEN" | "DUNE_GEN"] ->
+                 Format.fprintf ppf "%a@," Meta.pp meta.entries
+               | _ -> Format.fprintf ppf "%s@," s
+             else
+               Format.fprintf ppf "%s@," s);
+           Format.pp_close_box ppf ();
+           Format.pp_print_flush ppf ();
+           Buffer.contents buf)
+         >>>
+         Build.write_file_dyn meta))
 
   let lib_ppxs ~(lib : Dune_file.Library.t) ~scope ~dir_kind =
     match lib.kind with
@@ -204,10 +205,6 @@ module Gen(P : Params) = struct
                            ~name:(Dune_file.Library.best_name lib))]
       ]
 
-  let is_odig_doc_file fn =
-    List.exists [ "README"; "LICENSE"; "CHANGE"; "HISTORY"]
-      ~f:(fun prefix -> String.is_prefix fn ~prefix)
-
   let local_install_rules (entries : Install.Entry.t list)
         ~install_paths ~package =
     let install_dir = Config.local_install_dir ~context:ctx.name in
@@ -226,90 +223,41 @@ module Gen(P : Params) = struct
     | Default -> true
     | Opam _  -> false
 
-  let bin_entries, other_stanzas, install_paths_per_package =
-    let bin_stanzas, other_stanzas =
-      List.partition_map (SC.stanzas_to_consider_for_install sctx)
-        ~f:(fun installable ->
-          match installable.stanza with
-          | Install { section = Bin; _ } -> Either.Left installable
-          | _ -> Either.Right installable)
-    in
-    let bin_entries_per_package =
-      List.concat_map bin_stanzas
-        ~f:(fun { SC.Installable. dir; stanza; scope; _} ->
-          match stanza with
-          | Install { section; files; package}->
-            let f { File_bindings. src; dst } =
-              let path_expander = SC.expand_vars_string sctx ~scope in
-              let src = path_expander ~dir src in
-              let dst = Option.map ~f:(path_expander ~dir) dst in
-              (package.name,
-               Install.Entry.make section (Path.relative dir src) ?dst)
-            in
-            List.map ~f files
-          | _ -> [])
-      |> Package.Name.Map.of_list_multi
-    in
-    let install_paths_per_package =
-      Package.Name.Map.map (SC.packages sctx)
-        ~f:(fun (pkg : Package.t) ->
-          Install.Section.Paths.make ~package:pkg.name ~destdir:Path.root ()
-        )
-    in
-    let bin_entries =
-      Package.Name.Map.map (SC.packages sctx)
-        ~f:(fun (pkg : Package.t) ->
-          let stanzas =
-            Package.Name.Map.find bin_entries_per_package pkg.name
-            |> Option.value ~default:[] in
-          let install_paths =
-            Package.Name.Map.find install_paths_per_package pkg.name
-            |> Option.value_exn
-          in
-          local_install_rules ~package:pkg.name stanzas ~install_paths)
-    in
-    (bin_entries, other_stanzas, install_paths_per_package)
-
-  let install_file (package : Package.t) entries =
-    let install_paths =
-      Package.Name.Map.find install_paths_per_package package.name
-      |> Option.value_exn
-    in
-    let opam = Package.opam_file package in
-    let meta = Path.append ctx.build_dir (Package.meta_file package) in
+  let install_file (package : Local_package.t) entries =
+    let opam = Local_package.opam_file package in
+    let meta = Local_package.meta_file package in
+    let package_name = Local_package.name package in
+    let pkg_build_dir = Local_package.build_dir package in
+    let install_paths = Local_package.install_paths package in
     let entries =
       let docs =
-        let files = SC.source_files sctx ~src_path:Path.root in
-        String.Set.fold files ~init:[] ~f:(fun fn acc ->
-          if is_odig_doc_file fn then
-            Install.Entry.make Doc (Path.relative ctx.build_dir fn) :: acc
-          else
-            acc)
+        Local_package.odig_files package
+        |> List.map ~f:(fun doc -> Install.Entry.make Doc doc)
       in
-      local_install_rules ~package:package.name ~install_paths (
+      local_install_rules ~package:package_name ~install_paths (
         Install.Entry.make Lib opam ~dst:"opam"
         :: Install.Entry.make Lib meta ~dst:"META"
         :: docs)
       |> List.rev_append entries
     in
     let fn =
-      Path.relative (Path.append ctx.build_dir package.path)
-        (Utils.install_file ~package:package.name
+      Path.relative pkg_build_dir
+        (Utils.install_file ~package:package_name
            ~findlib_toolchain:ctx.findlib_toolchain)
     in
     let files = Install.files entries in
     SC.add_alias_deps sctx
-      (Alias.package_install ~context:ctx ~pkg:package.name)
+      (Alias.package_install ~context:ctx ~pkg:package_name)
       files
       ~dyn_deps:
-        (Build_system.package_deps (SC.build_system sctx) package.name files
+        (Build_system.package_deps (SC.build_system sctx) package_name files
          >>^ fun packages ->
          Package.Name.Set.to_list packages
          |> List.map ~f:(fun pkg ->
            Build_system.Alias.package_install ~context:ctx ~pkg
            |> Build_system.Alias.stamp_file)
          |> Path.Set.of_list);
-    SC.add_rule sctx ~dir:((Path.append ctx.build_dir package.path))
+    SC.add_rule sctx ~dir:pkg_build_dir
       ~mode:(if promote_install_file then
                Promote_but_delete_on_clean
              else
@@ -331,73 +279,66 @@ module Gen(P : Params) = struct
        >>>
        Build.write_file_dyn fn)
 
-  let init_install () =
-    let other_entries_per_package =
-      List.concat_map other_stanzas
-        ~f:(fun { SC.Installable. dir; stanza; kind = dir_kind; scope } ->
-          match stanza with
-          | Install { section; files; package}->
-            let f { File_bindings. src; dst } =
-              let path_expander = SC.expand_vars_string sctx ~scope in
-              let src = path_expander ~dir src in
-              let dst = Option.map ~f:(path_expander ~dir) dst in
-              (package.name,
-               Install.Entry.make section (Path.relative dir src) ?dst)
-            in
-            List.map ~f files
-          | Library ({ public = Some { package; sub_dir; name = _}
-                     ; _ } as lib) ->
-            let dir_contents = Dir_contents.get sctx ~dir in
-            List.map (lib_install_files ~dir ~sub_dir lib ~scope
-                        ~dir_kind ~dir_contents)
-              ~f:(fun x -> package.name, x)
-          | Documentation ({ package; _ } as d) ->
-            let dir_contents = Dir_contents.get sctx ~dir in
-            List.map ~f:(fun mld ->
-              (package.name,
-               (Install.Entry.make
-                  ~dst:(sprintf "odoc-pages/%s" (Path.basename mld))
-                  Install.Section.Doc mld))
-            ) (Dir_contents.mlds dir_contents d)
-          | _ -> [])
-      |> Package.Name.Map.of_list_multi
+  let init_install (package : Local_package.t) =
+    let installs =
+      Local_package.installs package
+      |> List.concat_map
+           ~f:(fun ({ Dir_with_dune.
+                      data = { Install_conf. section; files; package = _ }
+                    ; ctx_dir = dir
+                    ; src_dir = _
+                    ; scope = _
+                    ; kind = _ }) ->
+                List.map files ~f:(fun {File_bindings. src; dst } ->
+                  Install.Entry.make section (Path.relative dir src) ?dst))
     in
-    let other_entries =
-      Package.Name.Map.map (SC.packages sctx) ~f:(fun (pkg : Package.t) ->
-        let stanzas =
-          Package.Name.Map.find other_entries_per_package pkg.name
-          |> Option.value ~default:[]
-        in
-        let install_paths =
-          Package.Name.Map.find install_paths_per_package pkg.name
-          |> Option.value_exn
-        in
-        local_install_rules ~package:pkg.name stanzas ~install_paths)
+    let docs =
+      Local_package.mlds package
+      |> List.map ~f:(fun mld ->
+        (Install.Entry.make
+           ~dst:(sprintf "odoc-pages/%s" (Path.basename mld))
+           Install.Section.Doc mld))
     in
-    Package.Name.Map.iter (SC.packages sctx) ~f:(fun (pkg : Package.t) ->
-      let stanzas =
-        List.concat_map [bin_entries; other_entries]
-          ~f:(fun entries ->
-            Option.value (Package.Name.Map.find entries pkg.name) ~default:[])
-      in
-      install_file pkg stanzas)
+    let lib_install_files =
+      Local_package.lib_stanzas package
+      |> List.concat_map
+           ~f:(fun { Dir_with_dune.
+                     data = (lib : Dune_file.Library.t)
+                   ; scope
+                   ; ctx_dir = dir
+                   ; src_dir = _
+                   ; kind = dir_kind
+                   } ->
+                let sub_dir =
+                  (Option.value_exn lib.public).sub_dir in
+                let dir_contents = Dir_contents.get sctx ~dir in
+                lib_install_files ~dir ~sub_dir lib ~scope
+                  ~dir_kind ~dir_contents)
+    in
+    let package_name = Local_package.name package in
+    let install_paths = Local_package.install_paths package in
+    let entries =
+      local_install_rules ~package:package_name ~install_paths
+        (installs @ docs @ lib_install_files)
+    in
+    install_file package entries
 
-  let init_install_files () =
+  let init_install_files (package : Local_package.t) =
     if not ctx.implicit then
-      Package.Name.Map.iteri (SC.packages sctx)
-        ~f:(fun pkg { Package.path = src_path; _ } ->
           let install_fn =
-            Utils.install_file ~package:pkg
+            Utils.install_file ~package:(Local_package.name package)
               ~findlib_toolchain:ctx.findlib_toolchain
           in
 
-          let path = Path.append ctx.build_dir src_path in
+          let path = Local_package.build_dir package in
           let install_alias = Alias.install ~dir:path in
           let install_file = Path.relative path install_fn in
-          SC.add_alias_deps sctx install_alias (Path.Set.singleton install_file))
+          SC.add_alias_deps sctx install_alias (Path.Set.singleton install_file)
 
   let init () =
-    init_meta ();
-    init_install ();
-    init_install_files ()
+    Local_package.of_sctx sctx
+    |> Package.Name.Map.iter ~f:(fun pkg ->
+      init_meta pkg;
+      init_install pkg;
+      init_install_files pkg)
 end

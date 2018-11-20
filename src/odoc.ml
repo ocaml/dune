@@ -478,8 +478,8 @@ module Gen (S : sig val sctx : SC.t end) = struct
     let mlds_by_package =
       let map = lazy (
         stanzas
-        |> List.concat_map ~f:(fun (w : SC.Dir_with_dune.t) ->
-          List.filter_map w.stanzas ~f:(function
+        |> List.concat_map ~f:(fun (w : _ Dir_with_dune.t) ->
+          List.filter_map w.data ~f:(function
             | Documentation d ->
               let dc = Dir_contents.get sctx ~dir:w.ctx_dir in
               let mlds = Dir_contents.mlds dc d in
@@ -510,8 +510,8 @@ module Gen (S : sig val sctx : SC.t end) = struct
       sctx
       (Build_system.Alias.private_doc ~dir:context.build_dir)
       (stanzas
-       |> List.concat_map ~f:(fun (w : SC.Dir_with_dune.t) ->
-         List.filter_map w.stanzas ~f:(function
+       |> List.concat_map ~f:(fun (w : _ Dir_with_dune.t) ->
+         List.filter_map w.data ~f:(function
            | Dune_file.Library (l : Dune_file.Library.t) ->
              begin match l.public with
              | Some _ -> None

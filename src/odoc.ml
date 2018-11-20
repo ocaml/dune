@@ -193,6 +193,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
          :: dune_keep))
 
   let css_file = Paths.html_root ++ "odoc.css"
+  let highlight_pack_js = Paths.html_root ++ "highlight.pack.js"
 
   let toplevel_index = Paths.html_root ++ "index.html"
 
@@ -220,8 +221,8 @@ module Gen (S : sig val sctx : SC.t end) = struct
       (Build.run
          ~dir:context.build_dir
          (Lazy.force odoc)
-         [ A "css"; A "-o"; Path Paths.html_root
-         ; Hidden_targets [css_file]
+         [ A "support-files"; A "-o"; Path Paths.html_root
+         ; Hidden_targets [css_file; highlight_pack_js]
          ])
 
   let sp = Printf.sprintf
@@ -305,7 +306,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
       ; source = Mld
       }
 
-  let static_html = [ css_file; toplevel_index ]
+  let static_html = [ css_file; highlight_pack_js; toplevel_index ]
 
   let odocs =
     let odoc_glob =

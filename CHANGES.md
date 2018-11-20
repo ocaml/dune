@@ -25,6 +25,9 @@ next
 
 - Add a `--stats` command line option to record resource usage (#1543, @diml)
 
+- Fix `dune build @doc` deleting `highlight.pack.js` on rebuilds, after the
+  first build (#1557, @aantron).
+
 1.5.1 (7/11/2018)
 -----------------
 

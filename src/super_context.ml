@@ -402,16 +402,6 @@ module Libs = struct
     prefix_rules t prefix ~f
 end
 
-let expand_vars t ~mode ~scope ~dir ?(bindings=Pform.Map.empty) template =
-  Env.expander t ~dir
-  |> Expander.add_bindings ~bindings
-  |> Expander.set_scope ~scope
-  |> Expander.expand ~mode ~template
-
-let expand_vars_string t ~scope ~dir ?bindings s =
-  expand_vars t ~mode:Single ~scope ~dir ?bindings s
-  |> Value.to_string ~dir
-
 module Deps = struct
   open Build.O
   open Dep_conf

@@ -1,6 +1,6 @@
-type 'a t = 'a list
-
 include ListLabels
+
+type 'a t = 'a list
 
 let map ~f t = rev (rev_map ~f t)
 

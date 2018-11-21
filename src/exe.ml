@@ -126,6 +126,7 @@ let link_exe
   let dir      = CC.dir           cctx in
   let obj_dir  = CC.obj_dir       cctx in
   let requires = CC.requires      cctx in
+  let expander = Super_context.expander sctx ~dir in
   let mode = linkage.mode in
   let exe = Path.relative dir (name ^ linkage.ext) in
   let compiler = Option.value_exn (Context.compiler ctx mode) in
@@ -175,7 +176,7 @@ let link_exe
     let cm_and_flags =
       Build.fanout
         (modules_and_cm_files >>^ snd)
-        (SC.expand_and_eval_set sctx ~scope:(CC.scope cctx) ~dir
+        (Expander.expand_and_eval_set expander
            js_of_ocaml.flags
            ~standard:(Build.return (Js_of_ocaml_rules.standard sctx)))
     in

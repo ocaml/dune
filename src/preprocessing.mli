@@ -11,6 +11,7 @@ val dummy : t
 val make
   :  Super_context.t
   -> dir:Path.t
+  -> expander:Expander.t
   -> dep_kind:Lib_deps_info.Kind.t
   -> lint:Dune_file.Preprocess_map.t
   -> preprocess:Dune_file.Preprocess_map.t

@@ -6,8 +6,8 @@ open! No_io
 
 module SC = Super_context
 
-let interpret_locks sctx ~dir ~scope locks =
-  List.map locks ~f:(SC.expand_vars_path sctx ~dir ~scope)
+let interpret_locks ~expander =
+  List.map ~f:(Expander.expand_path expander)
 
 let dep_bindings ~extra_bindings deps =
   let base = Pform.Map.of_bindings deps in
@@ -15,8 +15,8 @@ let dep_bindings ~extra_bindings deps =
   | Some bindings -> Pform.Map.superpose base bindings
   | None -> base
 
-let user_rule sctx ?extra_bindings ~dir ~scope (rule : Rule.t) =
-  if SC.eval_blang sctx rule.enabled_if ~dir ~scope then begin
+let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
+  if Expander.eval_blang expander rule.enabled_if then begin
     let targets : Expander.targets =
       match rule.targets with
       | Infer -> Infer
@@ -28,7 +28,8 @@ let user_rule sctx ?extra_bindings ~dir ~scope (rule : Rule.t) =
               "%s does not denote a file in the current directory" s;
           in
           let error_loc = String_with_vars.loc fn in
-          List.map ~f:(function
+          Expander.expand expander ~mode:Many ~template:fn
+          |> List.map ~f:(function
             | Value.String ("." | "..") ->
               Errors.fail error_loc "'.' and '..' are not valid filenames"
             | String s ->
@@ -40,33 +41,32 @@ let user_rule sctx ?extra_bindings ~dir ~scope (rule : Rule.t) =
                 not_in_dir ~error_loc (Path.to_string p);
               p
             | Dir p ->
-              not_in_dir ~error_loc (Path.to_string p)
-          ) (SC.expand_vars sctx ~mode:Many ~scope ~dir fn)
+              not_in_dir ~error_loc (Path.to_string p))
         in
         Static (List.concat_map ~f fns)
     in
     let bindings = dep_bindings ~extra_bindings rule.deps in
+    let expander = Expander.add_bindings expander ~bindings in
     SC.add_rule_get_targets sctx ~dir ~mode:rule.mode ~loc:rule.loc
-      ~locks:(interpret_locks sctx ~dir ~scope rule.locks)
-      (SC.Deps.interpret_named sctx ~scope ~dir rule.deps
+      ~locks:(interpret_locks ~expander rule.locks)
+      (SC.Deps.interpret_named sctx ~expander rule.deps
        >>>
        SC.Action.run
          sctx
          (snd rule.action)
          ~loc:(fst rule.action)
          ~dir
-         ~bindings
+         ~expander
          ~dep_kind:Required
          ~targets
-         ~targets_dir:dir
-         ~scope)
+         ~targets_dir:dir)
   end else
     []
 
-let copy_files sctx ~dir ~scope ~src_dir (def: Copy_files.t) =
+let copy_files sctx ~dir ~expander ~src_dir (def: Copy_files.t) =
   let loc = String_with_vars.loc def.glob in
   let glob_in_src =
-    let src_glob = SC.expand_vars_string sctx ~dir def.glob ~scope in
+    let src_glob = Expander.expand_str expander def.glob in
     Path.relative src_dir src_glob ~error_loc:loc
   in
   let since = (1, 3) in
@@ -109,7 +109,7 @@ let add_alias sctx ~dir ~name ~stamp ~loc ?(locks=[]) build =
   let alias = Build_system.Alias.make name ~dir in
   SC.add_alias_action sctx alias ~dir ~loc ~locks ~stamp build
 
-let alias sctx ?extra_bindings ~dir ~scope (alias_conf : Alias_conf.t) =
+let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
   let stamp =
     ( "user-alias"
     , Bindings.map
@@ -120,29 +120,29 @@ let alias sctx ?extra_bindings ~dir ~scope (alias_conf : Alias_conf.t) =
     )
   in
   let loc = Some alias_conf.loc in
-  if SC.eval_blang sctx alias_conf.enabled_if ~dir ~scope then
+  if Expander.eval_blang expander alias_conf.enabled_if then
     add_alias sctx
       ~dir
       ~loc
       ~name:alias_conf.name
       ~stamp
-      ~locks:(interpret_locks sctx ~dir ~scope alias_conf.locks)
-      (SC.Deps.interpret_named sctx ~scope ~dir alias_conf.deps
+      ~locks:(interpret_locks ~expander alias_conf.locks)
+      (SC.Deps.interpret_named sctx ~expander alias_conf.deps
        >>>
        match alias_conf.action with
        | None -> Build.progn []
        | Some (loc, action) ->
          let bindings = dep_bindings ~extra_bindings alias_conf.deps in
+         let expander = Expander.add_bindings expander ~bindings in
          SC.Action.run
            sctx
            action
            ~loc
            ~dir
+           ~expander
            ~dep_kind:Required
-           ~bindings
            ~targets:Alias
-           ~targets_dir:dir
-           ~scope)
+           ~targets_dir:dir)
   else
     add_alias sctx
       ~loc

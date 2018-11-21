@@ -60,6 +60,9 @@ module Run (P : PARAMS) : sig end = struct
   let sctx =
     Compilation_context.super_context cctx
 
+  let expander =
+    Super_context.expander sctx ~dir
+
   (* ------------------------------------------------------------------------ *)
 
   (* Naming conventions. *)
@@ -125,9 +128,7 @@ module Run (P : PARAMS) : sig end = struct
     SC.add_rule sctx ~dir ~mode:stanza.mode ~loc:stanza.loc
 
   let expand_flags flags =
-    Super_context.expand_and_eval_set sctx
-      ~scope:(Compilation_context.scope cctx)
-      ~dir
+    Expander.expand_and_eval_set expander
       ~standard:(Build.return [])
       flags
 

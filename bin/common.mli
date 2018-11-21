@@ -22,6 +22,7 @@ type t =
   ; default_target        : string
   (* For build & runtest only *)
   ; watch : bool
+  ; stats : bool
   }
 
 val prefix_target : t -> string -> string

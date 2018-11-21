@@ -17,7 +17,20 @@ next
 - Allow `%{bin:..}`, `%{exe:..}`, and other static expansions in the `deps`
   field. (#1155, fix #1531, @rgrinberg)
 
-- Allow targets to be directories, which Dune will treat opaquely.
+- Fix bad interaction between on-demand ppx rewriters and using
+  multiple build contexts (#1545, @diml)
+
+- Fix handling of installed .dune files when the backend is declared
+  via a `dune` file (#1551, fixes #1549, @diml)
+
+- Add a `--stats` command line option to record resource usage (#1543, @diml)
+
+- Fix `dune build @doc` deleting `highlight.pack.js` on rebuilds, after the
+  first build (#1557, @aantron).
+
+- Allow targets to be directories, which Dune will treat opaquely
+  (#1547, @jordwalke)
+
 
 1.5.1 (7/11/2018)
 -----------------

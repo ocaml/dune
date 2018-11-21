@@ -1,0 +1,3 @@
+(library
+  (name example)
+  (inline_tests (backend dune_inline_tests)))

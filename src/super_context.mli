@@ -9,26 +9,6 @@ open! Stdune
 open Import
 open Dune_file
 
-(** A directory with a jbuild *)
-module Dir_with_dune : sig
-  type t =
-    { src_dir : Path.t
-    ; ctx_dir : Path.t (** [_build/context-name/src_dir] *)
-    ; stanzas : Stanzas.t
-    ; scope   : Scope.t
-    ; kind    : Dune_lang.Syntax.t
-    }
-end
-
-module Installable : sig
-  type t =
-    { dir    : Path.t
-    ; scope  : Scope.t
-    ; stanza : Stanza.t
-    ; kind   : Dune_lang.Syntax.t
-    }
-end
-
 type t
 
 val create
@@ -43,18 +23,18 @@ val create
   -> t
 
 val context   : t -> Context.t
-val stanzas   : t -> Dir_with_dune.t list
-val stanzas_in : t -> dir:Path.t -> Dir_with_dune.t option
+val stanzas   : t -> Stanzas.t Dir_with_dune.t list
+val stanzas_in : t -> dir:Path.t -> Stanzas.t Dir_with_dune.t option
 val packages  : t -> Package.t Package.Name.Map.t
 val libs_by_package : t -> (Package.t * Lib.Set.t) Package.Name.Map.t
 val file_tree : t -> File_tree.t
 val artifacts : t -> Artifacts.t
-val stanzas_to_consider_for_install : t -> Installable.t list
 val cxx_flags : t -> string list
 val build_dir : t -> Path.t
 val profile   : t -> string
 val host : t -> t
 val build_system : t -> Build_system.t
+val external_lib_deps_mode : t -> bool
 
 (** All public libraries of the workspace *)
 val public_libs : t -> Lib.DB.t

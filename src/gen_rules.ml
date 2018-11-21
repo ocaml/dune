@@ -4,17 +4,6 @@ module Menhir_rules = Menhir
 open Dune_file
 open! No_io
 
-(* Utils *)
-
-let stanza_package = function
-  | Library { public = Some { package; _ }; _ }
-  | Alias { package = Some package ;  _ }
-  | Install { package; _ }
-  | Documentation { package; _ }
-  | Tests { package = Some package; _} ->
-    Some package
-  | _ -> None
-
 module For_stanza = struct
   type ('merlin, 'cctx, 'js) t =
     { merlin : 'merlin
@@ -78,7 +67,7 @@ module Gen(P : Install_rules.Params) = struct
   (* Stanza *)
 
   let gen_rules dir_contents cctxs
-        { SC.Dir_with_dune. src_dir; ctx_dir; stanzas; scope; kind = dir_kind } =
+        { Dir_with_dune. src_dir; ctx_dir; data = stanzas; scope; kind = dir_kind } =
     let for_stanza ~dir = function
       | Library lib ->
         let cctx, merlin =
@@ -257,7 +246,7 @@ end
 
 let relevant_stanzas pkgs stanzas =
   List.filter stanzas ~f:(fun stanza ->
-    match stanza_package stanza with
+    match Dune_file.stanza_package stanza with
     | Some package -> Package.Name.Set.mem pkgs package.name
     | None -> true)
 

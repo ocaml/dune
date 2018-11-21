@@ -85,11 +85,11 @@ let mlds t (doc : Documentation.t) =
 
 (* As a side-effect, setup user rules and copy_files rules. *)
 let load_text_files sctx ft_dir
-      { Super_context.Dir_with_dune.
+      { Dir_with_dune.
         ctx_dir = dir
       ; src_dir
       ; scope
-      ; stanzas
+      ; data = stanzas
       ; kind = _
       } =
   (* Interpret a few stanzas in order to determine the list of
@@ -152,9 +152,10 @@ let modules_of_files ~dir ~files =
   Module.Name.Map.merge impls intfs ~f:(fun name impl intf ->
     Some (Module.make name ~visibility:Public ?impl ?intf))
 
-let build_modules_map (d : Super_context.Dir_with_dune.t) ~scope ~modules =
+let build_modules_map (d : _ Dir_with_dune.t) ~modules =
+  let scope = d.scope in
   let libs, exes =
-    List.filter_partition_map d.stanzas ~f:(fun stanza ->
+    List.filter_partition_map d.data ~f:(fun stanza ->
       match (stanza : Stanza.t) with
       | Library lib ->
         let { Modules_field_evaluator.
@@ -282,7 +283,7 @@ let build_modules_map (d : Super_context.Dir_with_dune.t) ~scope ~modules =
   in
   { libraries; executables; rev_map }
 
-let build_mlds_map (d : Super_context.Dir_with_dune.t) ~files =
+let build_mlds_map (d : _ Dir_with_dune.t) ~files =
   let dir = d.ctx_dir in
   let mlds = lazy (
     String.Set.fold files ~init:String.Map.empty ~f:(fun fn acc ->
@@ -290,7 +291,7 @@ let build_mlds_map (d : Super_context.Dir_with_dune.t) ~files =
       | Some (s, "mld") -> String.Map.add acc s fn
       | _ -> acc))
   in
-  List.filter_map d.stanzas ~f:(function
+  List.filter_map d.data ~f:(function
     | Documentation doc ->
       let mlds =
         let mlds = Lazy.force mlds in
@@ -330,7 +331,7 @@ let rec get sctx ~dir =
           { kind = Standalone
           ; dir
           ; text_files = files
-          ; modules = lazy (build_modules_map d ~scope:d.scope
+          ; modules = lazy (build_modules_map d
                               ~modules:(modules_of_files ~dir:d.ctx_dir ~files))
           ; mlds = lazy (build_mlds_map d ~files)
           }
@@ -394,7 +395,7 @@ let rec get sctx ~dir =
                   (Fmt.optional Path.pp) (Module.src_dir x)
                   (Fmt.optional Path.pp) (Module.src_dir y)))
         in
-        build_modules_map d ~scope:d.scope ~modules)
+        build_modules_map d ~modules)
       in
       let t =
         { kind = Group_root

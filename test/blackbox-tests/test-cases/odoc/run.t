@@ -5,7 +5,7 @@
           odoc _doc/_html/bar/Bar/.dune-keep,_doc/_html/bar/Bar/index.html
           odoc _doc/_odoc/pkg/bar/page-index.odoc
           odoc _doc/_html/bar/index.html
-          odoc _doc/_html/odoc.css
+          odoc _doc/_html/highlight.pack.js,_doc/_html/odoc.css
       ocamldep .foo_byte.objs/foo_byte.ml.d
         ocamlc .foo_byte.objs/foo_byte.{cmi,cmo,cmt}
           odoc _doc/_odoc/lib/foo.byte/foo_byte.odoc

@@ -193,6 +193,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
          :: dune_keep))
 
   let css_file = Paths.html_root ++ "odoc.css"
+  let highlight_pack_js = Paths.html_root ++ "highlight.pack.js"
 
   let toplevel_index = Paths.html_root ++ "index.html"
 
@@ -220,8 +221,8 @@ module Gen (S : sig val sctx : SC.t end) = struct
       (Build.run
          ~dir:context.build_dir
          (Lazy.force odoc)
-         [ A "css"; A "-o"; Path Paths.html_root
-         ; Hidden_targets [css_file]
+         [ A "support-files"; A "-o"; Path Paths.html_root
+         ; Hidden_targets [css_file; highlight_pack_js]
          ])
 
   let sp = Printf.sprintf
@@ -305,7 +306,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
       ; source = Mld
       }
 
-  let static_html = [ css_file; toplevel_index ]
+  let static_html = [ css_file; highlight_pack_js; toplevel_index ]
 
   let odocs =
     let odoc_glob =
@@ -477,8 +478,8 @@ module Gen (S : sig val sctx : SC.t end) = struct
     let mlds_by_package =
       let map = lazy (
         stanzas
-        |> List.concat_map ~f:(fun (w : SC.Dir_with_dune.t) ->
-          List.filter_map w.stanzas ~f:(function
+        |> List.concat_map ~f:(fun (w : _ Dir_with_dune.t) ->
+          List.filter_map w.data ~f:(function
             | Documentation d ->
               let dc = Dir_contents.get sctx ~dir:w.ctx_dir in
               let mlds = Dir_contents.mlds dc d in
@@ -509,8 +510,8 @@ module Gen (S : sig val sctx : SC.t end) = struct
       sctx
       (Build_system.Alias.private_doc ~dir:context.build_dir)
       (stanzas
-       |> List.concat_map ~f:(fun (w : SC.Dir_with_dune.t) ->
-         List.filter_map w.stanzas ~f:(function
+       |> List.concat_map ~f:(fun (w : _ Dir_with_dune.t) ->
+         List.filter_map w.data ~f:(function
            | Dune_file.Library (l : Dune_file.Library.t) ->
              begin match l.public with
              | Some _ -> None

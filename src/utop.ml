@@ -61,8 +61,8 @@ let libs_under_dir sctx ~db ~dir =
           Path.append (Super_context.build_dir sctx) (File_tree.Dir.path dir) in
         match Super_context.stanzas_in sctx ~dir with
         | None -> acc
-        | Some (d : Super_context.Dir_with_dune.t) ->
-          List.fold_left d.stanzas ~init:acc ~f:(fun acc -> function
+        | Some (d : _ Dir_with_dune.t) ->
+          List.fold_left d.data ~init:acc ~f:(fun acc -> function
             | Dune_file.Library l ->
               begin match Lib.DB.find_even_when_hidden db
                             (Library.best_name l) with

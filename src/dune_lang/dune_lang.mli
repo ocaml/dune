@@ -174,7 +174,10 @@ module Encoder : sig
     -> field
   val field_o : string -> 'a t-> 'a option -> field
 
-  val record_fields : field list t
+  (** Field with inlined list as value *)
+  val field_l : string -> 'a t -> 'a list -> field
+
+  val record_fields : Syntax.t -> field list -> sexp list
 
   val unknown : _ t
 end with type sexp := t

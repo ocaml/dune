@@ -1088,9 +1088,9 @@ module Library = struct
 end
 
 module Install_conf = struct
-  type t =
+  type 'file t =
     { section : Install.Section.t
-    ; files   : File_bindings.Unexpanded.t
+    ; files   : 'file File_bindings.t
     ; package : Package.t
     }
 
@@ -1842,7 +1842,7 @@ type Stanza.t +=
   | Library         of Library.t
   | Executables     of Executables.t
   | Rule            of Rule.t
-  | Install         of Install_conf.t
+  | Install         of String_with_vars.t Install_conf.t
   | Alias           of Alias_conf.t
   | Copy_files      of Copy_files.t
   | Documentation   of Documentation.t
@@ -2001,3 +2001,12 @@ module Stanzas = struct
       Errors.fail e.loc "The 'env' stanza cannot appear more than once"
     | _ -> stanzas
 end
+
+let stanza_package = function
+  | Library { public = Some { package; _ }; _ }
+  | Alias { package = Some package ;  _ }
+  | Install { package; _ }
+  | Documentation { package; _ }
+  | Tests { package = Some package; _} ->
+    Some package
+  | _ -> None

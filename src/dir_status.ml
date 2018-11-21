@@ -3,17 +3,17 @@ open Dune_file
 
 type t =
   | Standalone of
-      (File_tree.Dir.t * Super_context.Dir_with_dune.t option) option
+      (File_tree.Dir.t * Stanza.t list Dir_with_dune.t option) option
   (* Directory not part of a multi-directory group. The argument is
      [None] for directory that are not from the source tree, such as
      generated ones. *)
 
   | Group_root of File_tree.Dir.t
-                  * Super_context.Dir_with_dune.t
+                  * Stanza.t list Dir_with_dune.t
   (* Directory with [(include_subdirs x)] where [x] is not [no] *)
 
   | Is_component_of_a_group_but_not_the_root of
-      Super_context.Dir_with_dune.t option
+      Stanza.t list Dir_with_dune.t option
   (* Sub-directory of a [Group_root _] *)
 
 let is_standalone = function
@@ -74,7 +74,7 @@ let rec get sctx ~dir =
           else
             Is_component_of_a_group_but_not_the_root None
         | Some d ->
-          match get_include_subdirs d.stanzas with
+          match get_include_subdirs d.data with
           | Some Unqualified ->
             Group_root (ft_dir, d)
           | Some No ->
@@ -83,7 +83,7 @@ let rec get sctx ~dir =
             if dir <> project_root &&
                not (is_standalone (get sctx ~dir:(Path.parent_exn dir)))
             then begin
-              check_no_module_consumer d.stanzas;
+              check_no_module_consumer d.data;
               Is_component_of_a_group_but_not_the_root (Some d)
             end else
               Standalone (Some (ft_dir, Some d))
@@ -99,13 +99,13 @@ let get_assuming_parent_is_part_of_group sctx ~dir ft_dir =
       match Super_context.stanzas_in sctx ~dir with
       | None -> Is_component_of_a_group_but_not_the_root None
       | Some d ->
-        match get_include_subdirs d.stanzas with
+        match get_include_subdirs d.data with
         | Some Unqualified ->
           Group_root (ft_dir, d)
         | Some No ->
           Standalone (Some (ft_dir, Some d))
         | None ->
-          check_no_module_consumer d.stanzas;
+          check_no_module_consumer d.data;
           Is_component_of_a_group_but_not_the_root (Some d)
     in
     Hashtbl.add cache dir t;

@@ -8,19 +8,20 @@ module SC = Super_context
 (* Encoded representation of a set of library names *)
 module Key : sig
   val encode
-    :  dir_kind:Dune_lang.Syntax.t
+    :  Context.t
+    -> dir_kind:Dune_lang.Syntax.t
     -> Lib.t list
     -> Digest.t
 
   (* [decode s] fails if there hasn't been a previous call to [encode]
      such that [encode ~dir_kind l = s]. *)
-  val decode : Digest.t -> Lib.t list
+  val decode : Context.t -> Digest.t -> Lib.t list
 end = struct
 
   let reverse_table = Hashtbl.create 128
   let () = Hooks.End_of_build.always (fun () -> Hashtbl.reset reverse_table)
 
-  let encode ~dir_kind libs =
+  let encode (ctx : Context.t) ~dir_kind libs =
     let libs =
       let compare a b = Lib_name.compare (Lib.name a) (Lib.name b) in
       match (dir_kind : Dune_lang.Syntax.t) with
@@ -58,10 +59,11 @@ end = struct
       |> String.concat ~sep:"\000"
       |> Digest.string
     in
+    let full_key = (ctx.name, key) in
     begin
-      match Hashtbl.find reverse_table key with
+      match Hashtbl.find reverse_table full_key with
       | None ->
-        Hashtbl.add reverse_table key libs
+        Hashtbl.add reverse_table full_key libs
       | Some libs' ->
         match List.compare libs libs' ~compare:(fun a b ->
           Int.compare (Lib.unique_id a) (Lib.unique_id b)) with
@@ -79,8 +81,8 @@ end = struct
     end;
     key
 
-  let decode key =
-    match Hashtbl.find reverse_table key with
+  let decode (ctx : Context.t) key =
+    match Hashtbl.find reverse_table (ctx.name, key) with
     | Some libs -> libs
     | None ->
       die "I don't know what ppx rewriters set %s correspond to."
@@ -110,6 +112,7 @@ module Driver = struct
         ; lint_flags   : Ordered_set_lang.Unexpanded.t
         ; main         : string
         ; replaces     : (Loc.t * Lib_name.t) list
+        ; file_kind    : Stanza.File_kind.t
         }
 
       type Dune_file.Sub_system_info.t += T of t
@@ -139,6 +142,7 @@ module Driver = struct
            and main = field "main" string
            and replaces =
              field "replaces" (list (located (Lib_name.decode))) ~default:[]
+           and file_kind = Stanza.file_kind ()
            in
            { loc
            ; flags
@@ -146,6 +150,7 @@ module Driver = struct
            ; lint_flags
            ; main
            ; replaces
+           ; file_kind
            })
     end
 
@@ -185,13 +190,13 @@ module Driver = struct
       let open Dune_lang.Encoder in
       let f x = Lib_name.encode (Lib.name (Lazy.force x.lib)) in
       ((1, 0),
-       record
-         [ "flags"            , Ordered_set_lang.Unexpanded.encode
-                                  t.info.flags
-         ; "lint_flags"       , Ordered_set_lang.Unexpanded.encode
-                                  t.info.lint_flags
-         ; "main"             , string t.info.main
-         ; "replaces"         , list f (Result.ok_exn t.replaces)
+       record_fields t.info.file_kind
+         [ field "flags" Ordered_set_lang.Unexpanded.encode
+             t.info.flags
+         ; field "lint_flags" Ordered_set_lang.Unexpanded.encode
+             t.info.lint_flags
+         ; field "main" string t.info.main
+         ; field_l "replaces" f (Result.ok_exn t.replaces)
          ])
   end
   include M
@@ -413,7 +418,7 @@ let get_rules sctx key ~dir_kind =
   let pps, pp_names =
     match Digest.from_hex key with
     | key ->
-      let pps = Key.decode key in
+      let pps = Key.decode (SC.context sctx) key in
       (Ok pps, List.map pps ~f:Lib.name)
     | exception _ ->
       (* Still support the old scheme for backward compatibility *)
@@ -443,7 +448,7 @@ let gen_rules sctx components =
   | _ -> ()
 
 let ppx_driver_exe sctx libs ~dir_kind =
-  let key = Digest.to_hex (Key.encode ~dir_kind libs) in
+  let key = Digest.to_hex (Key.encode (SC.context sctx) ~dir_kind libs) in
   ppx_exe sctx ~key ~dir_kind
 
 module Compat_ppx_exe_kind = struct

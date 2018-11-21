@@ -279,7 +279,7 @@ module Gen(P : Params) = struct
        >>>
        Build.write_file_dyn fn)
 
-  let init_artifacts (package : Local_package.t) =
+  let init_binary_artifacts (package : Local_package.t) =
     let installs =
       Local_package.installs package
       |> List.concat_map
@@ -291,6 +291,18 @@ module Gen(P : Params) = struct
                     ; kind = _ }) ->
                 List.map files ~f:(fun {File_bindings. src; dst } ->
                   Install.Entry.make section (Path.relative dir src) ?dst))
+    in
+    let install_paths = Local_package.install_paths package in
+    let package = Local_package.name package in
+    local_install_rules ~package ~install_paths installs
+
+  let init_install (package : Local_package.t) entries =
+    let docs =
+      Local_package.mlds package
+      |> List.map ~f:(fun mld ->
+        (Install.Entry.make
+           ~dst:(sprintf "odoc-pages/%s" (Path.basename mld))
+           Install.Section.Doc mld))
     in
     let lib_install_files =
       Local_package.lib_stanzas package
@@ -308,23 +320,13 @@ module Gen(P : Params) = struct
                 lib_install_files ~dir ~sub_dir lib ~scope
                   ~dir_kind ~dir_contents)
     in
-    let package_name = Local_package.name package in
-    let install_paths = Local_package.install_paths package in
-    local_install_rules ~package:package_name ~install_paths
-      (installs @ lib_install_files)
-
-  let init_install (package : Local_package.t) entries =
-    let docs =
-      Local_package.mlds package
-      |> List.map ~f:(fun mld ->
-        (Install.Entry.make
-           ~dst:(sprintf "odoc-pages/%s" (Path.basename mld))
-           Install.Section.Doc mld))
-    in
     let entries =
       let install_paths = Local_package.install_paths package in
       let package = Local_package.name package in
-      entries @ local_install_rules ~package ~install_paths docs in
+      List.rev_append docs lib_install_files
+      |> local_install_rules ~package ~install_paths
+      |> List.rev_append entries
+    in
     install_file package entries
 
   let init_install_files (package : Local_package.t) =
@@ -341,7 +343,7 @@ module Gen(P : Params) = struct
   let init () =
     let packages = Local_package.of_sctx sctx in
     let artifacts_per_package =
-      Package.Name.Map.map packages ~f:init_artifacts in
+      Package.Name.Map.map packages ~f:init_binary_artifacts in
     Package.Name.Map.iter packages ~f:(fun pkg ->
       Local_package.name pkg
       |> Package.Name.Map.find artifacts_per_package

@@ -186,6 +186,8 @@ include Sub_system.Register_end_point(
           (Values [String (Lib_name.Local.to_string (snd lib.name))])
       in
 
+      let expander = Super_context.expander sctx ~dir in
+
       let runner_libs =
         let open Result.O in
         Result.List.concat_map backends
@@ -213,18 +215,18 @@ include Sub_system.Register_end_point(
             ; "intf-files", files Intf
             ]
         in
+        let expander = Expander.add_bindings expander ~bindings in
         Build.return Bindings.empty
         >>>
         Build.all
           (List.filter_map backends ~f:(fun (backend : Backend.t) ->
              Option.map backend.info.generate_runner ~f:(fun (loc, action) ->
                SC.Action.run sctx action ~loc
-                 ~bindings
                  ~dir
+                 ~expander
                  ~dep_kind:Required
                  ~targets:Alias
-                 ~targets_dir:dir
-                 ~scope)))
+                 ~targets_dir:dir)))
         >>^ (fun actions ->
           Action.with_stdout_to target
             (Action.progn actions))
@@ -251,13 +253,10 @@ include Sub_system.Register_end_point(
           List.map backends ~f:(fun backend ->
             backend.Backend.info.flags) @ [info.flags]
         in
-        Build.all (
-          List.map flags ~f:(fun flags ->
-            Super_context.expand_and_eval_set sctx flags
-              ~scope
-              ~dir
-              ~bindings
-              ~standard:(Build.return [])))
+        let expander = Expander.add_bindings expander ~bindings in
+        List.map flags ~f:(
+          Expander.expand_and_eval_set expander ~standard:(Build.return []))
+        |> Build.all
         >>^ List.concat
       in
 
@@ -269,7 +268,7 @@ include Sub_system.Register_end_point(
          let exe = Path.relative inline_test_dir (name ^ ".exe") in
          Build.path exe >>>
          Build.fanout
-           (Super_context.Deps.interpret sctx info.deps ~dir ~scope)
+           (Super_context.Deps.interpret sctx info.deps ~expander)
            flags
          >>^ fun (_deps, flags) ->
          A.chdir dir

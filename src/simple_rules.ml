@@ -16,8 +16,6 @@ let dep_bindings ~extra_bindings deps =
   | None -> base
 
 let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
-  (* TODO remove users of this scope also take expanders *)
-  let scope = Expander.scope expander in
   if Expander.eval_blang expander rule.enabled_if then begin
     let targets : Expander.targets =
       match rule.targets with
@@ -48,6 +46,7 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
         Static (List.concat_map ~f fns)
     in
     let bindings = dep_bindings ~extra_bindings rule.deps in
+    let expander = Expander.add_bindings expander ~bindings in
     SC.add_rule_get_targets sctx ~dir ~mode:rule.mode ~loc:rule.loc
       ~locks:(interpret_locks ~expander rule.locks)
       (SC.Deps.interpret_named sctx ~expander rule.deps
@@ -57,11 +56,10 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
          (snd rule.action)
          ~loc:(fst rule.action)
          ~dir
-         ~bindings
+         ~expander
          ~dep_kind:Required
          ~targets
-         ~targets_dir:dir
-         ~scope)
+         ~targets_dir:dir)
   end else
     []
 
@@ -112,7 +110,6 @@ let add_alias sctx ~dir ~name ~stamp ~loc ?(locks=[]) build =
   SC.add_alias_action sctx alias ~dir ~loc ~locks ~stamp build
 
 let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
-  let scope = Expander.scope expander in
   let stamp =
     ( "user-alias"
     , Bindings.map
@@ -136,16 +133,16 @@ let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
        | None -> Build.progn []
        | Some (loc, action) ->
          let bindings = dep_bindings ~extra_bindings alias_conf.deps in
+         let expander = Expander.add_bindings expander ~bindings in
          SC.Action.run
            sctx
            action
            ~loc
            ~dir
+           ~expander
            ~dep_kind:Required
-           ~bindings
            ~targets:Alias
-           ~targets_dir:dir
-           ~scope)
+           ~targets_dir:dir)
   else
     add_alias sctx
       ~loc

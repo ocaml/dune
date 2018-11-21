@@ -508,14 +508,9 @@ module Action = struct
           Path.append host.context.build_dir exe
         | _ -> exe
 
-  let run sctx ~loc ~bindings ~dir ~dep_kind
-        ~targets:targets_written_by_user ~targets_dir ~scope t
+  let run sctx ~loc ~dir ~expander ~dep_kind
+        ~targets:targets_written_by_user ~targets_dir t
     : (Path.t Bindings.t, Action.t) Build.t =
-    let expander =
-      Env.expander sctx ~dir
-      |> Expander.add_bindings ~bindings
-      |> Expander.set_scope ~scope
-    in
     let map_exe = map_exe sctx in
     if targets_written_by_user = Expander.Alias then begin
       match U.Infer.unexpanded_targets t with

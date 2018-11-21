@@ -186,6 +186,8 @@ include Sub_system.Register_end_point(
           (Values [String (Lib_name.Local.to_string (snd lib.name))])
       in
 
+      let expander = Super_context.expander sctx ~dir in
+
       let runner_libs =
         let open Result.O in
         Result.List.concat_map backends
@@ -213,18 +215,18 @@ include Sub_system.Register_end_point(
             ; "intf-files", files Intf
             ]
         in
+        let expander = Expander.add_bindings expander ~bindings in
         Build.return Bindings.empty
         >>>
         Build.all
           (List.filter_map backends ~f:(fun (backend : Backend.t) ->
              Option.map backend.info.generate_runner ~f:(fun (loc, action) ->
                SC.Action.run sctx action ~loc
-                 ~bindings
                  ~dir
+                 ~expander
                  ~dep_kind:Required
                  ~targets:Alias
-                 ~targets_dir:dir
-                 ~scope)))
+                 ~targets_dir:dir)))
         >>^ (fun actions ->
           Action.with_stdout_to target
             (Action.progn actions))
@@ -246,7 +248,6 @@ include Sub_system.Register_end_point(
         ~linkages:[Exe.Linkage.native_or_custom (SC.context sctx)]
         ~link_flags:(Build.return ["-linkall"]);
 
-      let expander = Super_context.expander sctx ~dir in
       let flags =
         let flags =
           List.map backends ~f:(fun backend ->

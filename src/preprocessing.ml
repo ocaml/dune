@@ -559,6 +559,7 @@ let lint_module sctx ~dir ~expander ~dep_kind ~lint ~lib_name ~scope ~dir_kind =
                             (workspace_root_var, action) in
              Module.iter source ~f:(fun _ (src : Module.File.t) ->
                let bindings = Pform.Map.input_file src.path in
+               let expander = Expander.add_bindings expander ~bindings in
                add_alias src.path ~loc:(Some loc)
                  (Build.path src.path
                   >>^ (fun _ -> Bindings.empty)
@@ -566,11 +567,10 @@ let lint_module sctx ~dir ~expander ~dep_kind ~lint ~lib_name ~scope ~dir_kind =
                         action
                         ~loc
                         ~dir
+                        ~expander
                         ~dep_kind
-                        ~bindings
                         ~targets:(Static [])
-                        ~targets_dir:dir
-                        ~scope)))
+                        ~targets_dir:dir)))
         | Pps { loc; pps; flags; staged } ->
           if staged then
             Errors.fail loc
@@ -638,6 +638,7 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess
          let ast =
            pped_module m ~f:(fun _kind src dst ->
              let bindings = Pform.Map.input_file src in
+             let expander = Expander.add_bindings expander ~bindings in
              SC.add_rule sctx ~loc ~dir
                (preprocessor_deps
                 >>>
@@ -652,11 +653,10 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess
                              action)))
                   ~loc
                   ~dir
+                  ~expander
                   ~dep_kind
-                  ~bindings
                   ~targets:(Static [dst])
-                  ~targets_dir:dir
-                  ~scope))
+                  ~targets_dir:dir))
            |> setup_reason_rules sctx in
          if lint then lint_module ~ast ~source:m;
          ast)

@@ -154,15 +154,13 @@ module Deps : sig
   (** Evaluates to the actual list of dependencies, ignoring aliases *)
   val interpret
     :  t
-    -> scope:Scope.t
-    -> dir:Path.t
+    -> expander:Expander.t
     -> Dep_conf.t list
     -> (unit, Path.t list) Build.t
 
   val interpret_named
     :  t
-    -> scope:Scope.t
-    -> dir:Path.t
+    -> expander:Expander.t
     -> Dep_conf.t Bindings.t
     -> (unit, Path.t Bindings.t) Build.t
 end

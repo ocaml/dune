@@ -50,7 +50,7 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
     let bindings = dep_bindings ~extra_bindings rule.deps in
     SC.add_rule_get_targets sctx ~dir ~mode:rule.mode ~loc:rule.loc
       ~locks:(interpret_locks ~expander rule.locks)
-      (SC.Deps.interpret_named sctx ~scope ~dir rule.deps
+      (SC.Deps.interpret_named sctx ~expander rule.deps
        >>>
        SC.Action.run
          sctx
@@ -130,7 +130,7 @@ let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
       ~name:alias_conf.name
       ~stamp
       ~locks:(interpret_locks ~expander alias_conf.locks)
-      (SC.Deps.interpret_named sctx ~scope ~dir alias_conf.deps
+      (SC.Deps.interpret_named sctx ~expander alias_conf.deps
        >>>
        match alias_conf.action with
        | None -> Build.progn []

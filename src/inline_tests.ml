@@ -246,15 +246,13 @@ include Sub_system.Register_end_point(
         ~linkages:[Exe.Linkage.native_or_custom (SC.context sctx)]
         ~link_flags:(Build.return ["-linkall"]);
 
+      let expander = Super_context.expander sctx ~dir in
       let flags =
         let flags =
           List.map backends ~f:(fun backend ->
             backend.Backend.info.flags) @ [info.flags]
         in
-        let expander =
-          Super_context.expander sctx ~dir
-          |> Expander.add_bindings ~bindings
-        in
+        let expander = Expander.add_bindings expander ~bindings in
         List.map flags ~f:(
           Expander.expand_and_eval_set expander ~standard:(Build.return []))
         |> Build.all
@@ -269,7 +267,7 @@ include Sub_system.Register_end_point(
          let exe = Path.relative inline_test_dir (name ^ ".exe") in
          Build.path exe >>>
          Build.fanout
-           (Super_context.Deps.interpret sctx info.deps ~dir ~scope)
+           (Super_context.Deps.interpret sctx info.deps ~expander)
            flags
          >>^ fun (_deps, flags) ->
          A.chdir dir

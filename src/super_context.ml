@@ -450,13 +450,8 @@ module Deps = struct
       Build.env_var var
       >>^ fun () -> []
 
-  let make_interpreter ~f t ~scope ~dir l =
+  let make_interpreter ~f t ~expander l =
     let forms = Expander.Resolved_forms.empty () in
-    let expander =
-      Env.expander t ~dir
-      |> Expander.set_scope ~scope
-      |> Expander.set_dir ~dir
-    in
     let expander =
       Expander.with_record_no_ddeps expander forms
         ~dep_kind:Optional ~map_exe:(fun x -> x)

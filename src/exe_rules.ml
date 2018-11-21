@@ -19,8 +19,7 @@ let executables_rules ~sctx ~dir ~dir_kind ~expander
   in
 
   let preprocessor_deps =
-    SC.Deps.interpret sctx exes.buildable.preprocessor_deps
-      ~scope ~dir
+    SC.Deps.interpret sctx exes.buildable.preprocessor_deps ~expander
   in
   let pp =
     Preprocessing.make sctx ~dir ~dep_kind:Required
@@ -75,7 +74,7 @@ let executables_rules ~sctx ~dir ~dir_kind ~expander
 
   let flags = SC.ocaml_flags sctx ~dir exes.buildable in
   let link_deps =
-    SC.Deps.interpret sctx ~scope ~dir exes.link_deps
+    SC.Deps.interpret sctx ~expander exes.link_deps
   in
   let link_flags =
     link_deps >>^ ignore >>>

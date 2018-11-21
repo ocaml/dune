@@ -447,8 +447,7 @@ module Gen (P : Install_rules.Params) = struct
         ~preprocess:lib.buildable.preprocess
         ~expander
         ~preprocessor_deps:
-          (SC.Deps.interpret sctx ~scope ~dir
-             lib.buildable.preprocessor_deps)
+          (SC.Deps.interpret sctx ~expander lib.buildable.preprocessor_deps)
         ~lint:lib.buildable.lint
         ~lib_name:(Some (snd lib.name))
         ~dir_kind

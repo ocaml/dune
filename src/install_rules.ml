@@ -279,7 +279,7 @@ module Gen(P : Params) = struct
        >>>
        Build.write_file_dyn fn)
 
-  let init_install (package : Local_package.t) =
+  let init_artifacts (package : Local_package.t) =
     let installs =
       Local_package.installs package
       |> List.concat_map
@@ -291,13 +291,6 @@ module Gen(P : Params) = struct
                     ; kind = _ }) ->
                 List.map files ~f:(fun {File_bindings. src; dst } ->
                   Install.Entry.make section (Path.relative dir src) ?dst))
-    in
-    let docs =
-      Local_package.mlds package
-      |> List.map ~f:(fun mld ->
-        (Install.Entry.make
-           ~dst:(sprintf "odoc-pages/%s" (Path.basename mld))
-           Install.Section.Doc mld))
     in
     let lib_install_files =
       Local_package.lib_stanzas package
@@ -317,10 +310,21 @@ module Gen(P : Params) = struct
     in
     let package_name = Local_package.name package in
     let install_paths = Local_package.install_paths package in
-    let entries =
-      local_install_rules ~package:package_name ~install_paths
-        (installs @ docs @ lib_install_files)
+    local_install_rules ~package:package_name ~install_paths
+      (installs @ lib_install_files)
+
+  let init_install (package : Local_package.t) entries =
+    let docs =
+      Local_package.mlds package
+      |> List.map ~f:(fun mld ->
+        (Install.Entry.make
+           ~dst:(sprintf "odoc-pages/%s" (Path.basename mld))
+           Install.Section.Doc mld))
     in
+    let entries =
+      let install_paths = Local_package.install_paths package in
+      let package = Local_package.name package in
+      entries @ local_install_rules ~package ~install_paths docs in
     install_file package entries
 
   let init_install_files (package : Local_package.t) =
@@ -336,8 +340,13 @@ module Gen(P : Params) = struct
 
   let init () =
     let packages = Local_package.of_sctx sctx in
-    Package.Name.Map.iter packages ~f:init_install;
+    let artifacts_per_package =
+      Package.Name.Map.map packages ~f:init_artifacts in
     Package.Name.Map.iter packages ~f:(fun pkg ->
-      init_meta pkg;
-      init_install_files pkg)
+      Local_package.name pkg
+      |> Package.Name.Map.find artifacts_per_package
+      |> Option.value_exn
+      |> init_install pkg;
+      init_install_files pkg;
+      init_meta pkg)
 end

@@ -705,21 +705,21 @@ let remove_old_artifacts t ~dir ~subdirs_to_keep =
     | files ->
       List.iter files ~f:(fun fn ->
         let path = Path.relative dir fn in
-        match Unix.lstat (Path.to_string path) with
-        | { st_kind = S_DIR; _ } -> begin
-            match subdirs_to_keep with
-            | All -> ()
-            | These set ->
-              if String.Set.mem set fn ||
-                 Path.Set.mem t.build_dirs_to_keep path then
-                ()
-              else
-                Path.rm_rf path
-          end
-        | exception _ ->
-          if not (Path.Table.mem t.files path) then Path.unlink path
-        | _ ->
-          if not (Path.Table.mem t.files path) then Path.unlink path)
+        let path_is_a_target = Path.Table.mem t.files path in
+        if path_is_a_target then ()
+        else
+          match Unix.lstat (Path.to_string path) with
+          | { st_kind = S_DIR; _ } -> begin
+              match subdirs_to_keep with
+              | All -> ()
+              | These set ->
+                if String.Set.mem set fn ||
+                  Path.Set.mem t.build_dirs_to_keep path then ()
+                else
+                  Path.rm_rf path
+            end
+          | exception _ -> Path.unlink path
+          | _ -> Path.unlink path)
 
 let no_rule_found =
   let fail fn ~loc =

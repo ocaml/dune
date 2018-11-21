@@ -9,8 +9,6 @@ val build_dir : t -> Path.t
 
 val lib_stanzas : t -> Dune_file.Library.t Dir_with_dune.t list
 
-val docs : t -> Dune_file.Documentation.t list
-
 val mlds : t -> Path.t list
 
 val installs

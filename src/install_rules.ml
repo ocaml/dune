@@ -325,20 +325,19 @@ module Gen(P : Params) = struct
 
   let init_install_files (package : Local_package.t) =
     if not ctx.implicit then
-          let install_fn =
-            Utils.install_file ~package:(Local_package.name package)
-              ~findlib_toolchain:ctx.findlib_toolchain
-          in
-
-          let path = Local_package.build_dir package in
-          let install_alias = Alias.install ~dir:path in
-          let install_file = Path.relative path install_fn in
-          SC.add_alias_deps sctx install_alias (Path.Set.singleton install_file)
+      let install_fn =
+        Utils.install_file ~package:(Local_package.name package)
+          ~findlib_toolchain:ctx.findlib_toolchain
+      in
+      let path = Local_package.build_dir package in
+      let install_alias = Alias.install ~dir:path in
+      let install_file = Path.relative path install_fn in
+      SC.add_alias_deps sctx install_alias (Path.Set.singleton install_file)
 
   let init () =
-    Local_package.of_sctx sctx
-    |> Package.Name.Map.iter ~f:(fun pkg ->
+    let packages = Local_package.of_sctx sctx in
+    Package.Name.Map.iter packages ~f:init_install;
+    Package.Name.Map.iter packages ~f:(fun pkg ->
       init_meta pkg;
-      init_install pkg;
       init_install_files pkg)
 end

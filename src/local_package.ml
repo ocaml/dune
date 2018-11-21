@@ -5,8 +5,8 @@ type t =
   ; ctx_build_dir : Path.t
   ; lib_stanzas : Dune_file.Library.t Dir_with_dune.t list
   ; installs : string Dune_file.Install_conf.t Dir_with_dune.t list
-  ; docs : Dune_file.Documentation.t list
-  ; mlds : Path.t list
+  ; docs : Dune_file.Documentation.t Dir_with_dune.t list
+  ; mlds : Path.t list Lazy.t
   ; pkg : Package.t
   ; libs : Lib.Set.t
   }
@@ -34,11 +34,7 @@ let add_stanzas t ~sctx =
         }
       | Documentation l ->
         { t with
-          docs = l :: t.docs
-        ; mlds =
-            let dir_contents = Dir_contents.get sctx ~dir in
-            List.rev_append (Dir_contents.mlds dir_contents l)
-              t.mlds
+          docs = { d with data = l } :: t.docs
         }
       | _ -> t)
 
@@ -63,6 +59,11 @@ let stanzas_to_consider_for_install stanzas ~external_lib_deps_mode =
       ~f:(fun d ->
         List.map d.data ~f:(fun stanza ->
           { d with data = stanza}))
+
+let make_mlds sctx =
+  List.concat_map ~f:(fun (doc :  _ Dir_with_dune.t) ->
+    let dir_contents = Dir_contents.get sctx ~dir:doc.ctx_dir in
+    Dir_contents.mlds dir_contents doc.data)
 
 let of_sctx (sctx : Super_context.t) =
   let ctx = Super_context.context sctx in
@@ -108,20 +109,19 @@ let of_sctx (sctx : Super_context.t) =
         ; pkg
         ; ctx_build_dir = ctx.build_dir
         ; libs
-        ; mlds = []
+        ; mlds = lazy (assert false)
         }
         (Package.Name.Map.find stanzas_per_package pkg.name
          |> Option.value ~default:[])
     in
-    t
+    { t with mlds = lazy (make_mlds sctx t.docs) }
   )
 
 let odig_files t = t.odig_files
 let libs t = t.libs
-let docs t = t.docs
 let installs t = t.installs
 let lib_stanzas t = t.lib_stanzas
-let mlds t = t.mlds
+let mlds t = Lazy.force t.mlds
 
 let package t = t.pkg
 let opam_file t = Path.append t.ctx_build_dir (Package.opam_file t.pkg)

@@ -28,6 +28,11 @@ next
 - Fix `dune build @doc` deleting `highlight.pack.js` on rebuilds, after the
   first build (#1557, @aantron).
 
+- Allow targets to be directories, which Dune will treat opaquely
+  (#1547, @jordwalke)
+
+- Support for OCaml 4.08: `List.t` is now provided by OCaml (#1561 @ejgallego)
+
 1.5.1 (7/11/2018)
 -----------------
 

@@ -1,6 +1,9 @@
-type 'a t = 'a list
-
 include module type of struct include ListLabels end
+
+(* ocaml/ocaml#1892 "Allow shadowing of items coming from an include"
+   helps making this work in 4.08, as OCaml now includes a `List.t`
+   type. *)
+type 'a t = 'a list
 
 val is_empty : _ t -> bool
 

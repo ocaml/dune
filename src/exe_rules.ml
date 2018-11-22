@@ -3,7 +3,7 @@ open! No_io
 open Build.O
 module SC = Super_context
 
-let executables_rules ~sctx ~dir ~dir_kind
+let executables_rules ~sctx ~dir ~dir_kind ~expander
       ~dir_contents ~scope ~compile_info
       (exes : Dune_file.Executables.t) =
   (* Use "eobjs" rather than "objs" to avoid a potential conflict
@@ -19,12 +19,12 @@ let executables_rules ~sctx ~dir ~dir_kind
   in
 
   let preprocessor_deps =
-    SC.Deps.interpret sctx exes.buildable.preprocessor_deps
-      ~scope ~dir
+    SC.Deps.interpret sctx exes.buildable.preprocessor_deps ~expander
   in
   let pp =
     Preprocessing.make sctx ~dir ~dep_kind:Required
       ~scope
+      ~expander
       ~preprocess:exes.buildable.preprocess
       ~preprocessor_deps
       ~lint:exes.buildable.lint
@@ -74,13 +74,11 @@ let executables_rules ~sctx ~dir ~dir_kind
 
   let flags = SC.ocaml_flags sctx ~dir exes.buildable in
   let link_deps =
-    SC.Deps.interpret sctx ~scope ~dir exes.link_deps
+    SC.Deps.interpret sctx ~expander exes.link_deps
   in
   let link_flags =
     link_deps >>^ ignore >>>
-    SC.expand_and_eval_set sctx exes.link_flags
-      ~scope
-      ~dir
+    Expander.expand_and_eval_set expander exes.link_flags
       ~standard:(Build.return [])
   in
 
@@ -111,7 +109,7 @@ let executables_rules ~sctx ~dir ~dir_kind
      ~preprocess:(Dune_file.Buildable.single_preprocess exes.buildable)
      ~objs_dirs:(Path.Set.singleton obj_dir))
 
-let rules ~sctx ~dir ~dir_contents ~scope ~dir_kind
+let rules ~sctx ~dir ~dir_contents ~scope ~expander ~dir_kind
       (exes : Dune_file.Executables.t) =
   let compile_info =
     Lib.DB.resolve_user_written_deps_for_exes (Scope.libs scope)
@@ -123,4 +121,4 @@ let rules ~sctx ~dir ~dir_contents ~scope ~dir_kind
   SC.Libs.with_lib_deps sctx compile_info ~dir
     ~f:(fun () ->
       executables_rules exes ~sctx ~dir
-        ~dir_contents ~scope ~compile_info ~dir_kind)
+        ~dir_contents ~scope ~expander ~compile_info ~dir_kind)

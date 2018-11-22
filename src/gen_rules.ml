@@ -67,11 +67,15 @@ module Gen(P : Install_rules.Params) = struct
   (* Stanza *)
 
   let gen_rules dir_contents cctxs
-        { Dir_with_dune. src_dir; ctx_dir; data = stanzas; scope; kind = dir_kind } =
-    let for_stanza ~dir = function
+        { Dir_with_dune. src_dir; ctx_dir; data = stanzas
+        ; scope; kind = dir_kind } =
+    let expander = Super_context.expander sctx ~dir:ctx_dir in
+    let for_stanza stanza =
+      let dir = ctx_dir in
+      match stanza with
       | Library lib ->
         let cctx, merlin =
-          Lib_rules.rules lib ~dir ~scope ~dir_contents ~dir_kind in
+          Lib_rules.rules lib ~dir ~scope ~dir_contents ~expander ~dir_kind in
         { For_stanza.
           merlin = Some merlin
         ; cctx = Some (lib.buildable.loc, cctx)
@@ -80,7 +84,7 @@ module Gen(P : Install_rules.Params) = struct
       | Executables exes ->
         let cctx, merlin =
           Exe_rules.rules exes
-            ~sctx ~dir ~scope
+            ~sctx ~dir ~scope ~expander
             ~dir_contents ~dir_kind
         in
         { For_stanza.
@@ -93,11 +97,12 @@ module Gen(P : Install_rules.Params) = struct
                 ~f:(Path.relative ctx_dir)))
         }
       | Alias alias ->
-        Simple_rules.alias sctx alias ~dir ~scope;
+        Simple_rules.alias sctx alias ~dir ~expander;
         For_stanza.empty_none
       | Tests tests ->
         let cctx, merlin =
-          Test_rules.rules tests ~sctx ~dir ~scope ~dir_contents ~dir_kind
+          Test_rules.rules tests ~sctx ~dir ~scope ~expander ~dir_contents
+            ~dir_kind
         in
         { For_stanza.
           merlin = Some merlin
@@ -107,7 +112,7 @@ module Gen(P : Install_rules.Params) = struct
       | Copy_files { glob; _ } ->
         let source_dirs =
           let loc = String_with_vars.loc glob in
-          let src_glob = SC.expand_vars_string sctx ~dir glob ~scope in
+          let src_glob = Expander.expand_str expander glob in
           Path.relative src_dir src_glob ~error_loc:loc
           |> Path.parent_exn
           |> Path.Set.singleton
@@ -119,7 +124,7 @@ module Gen(P : Install_rules.Params) = struct
         }
       | Install { Install_conf. section = _; files; package = _ } ->
         List.map files ~f:(fun { File_bindings. src; dst = _ } ->
-          let src_expanded = SC.expand_vars_string sctx ~dir src ~scope in
+          let src_expanded = Expander.expand_str expander src in
           Path.relative ctx_dir src_expanded)
         |> Path.Set.of_list
         |> Super_context.add_alias_deps sctx
@@ -134,7 +139,7 @@ module Gen(P : Install_rules.Params) = struct
         ; js = js_targets
         } = List.fold_left stanzas
               ~init:{ For_stanza.empty_list with cctx = cctxs }
-              ~f:(fun acc a -> For_stanza.cons acc (for_stanza ~dir:ctx_dir a))
+              ~f:(fun acc a -> For_stanza.cons acc (for_stanza a))
             |> For_stanza.rev
     in
     Option.iter (Merlin.merge_all merlins) ~f:(fun m ->
@@ -146,7 +151,7 @@ module Gen(P : Install_rules.Params) = struct
         (Merlin.add_source_dir m src_dir));
     List.iter stanzas ~f:(fun stanza ->
       match (stanza : Stanza.t) with
-      | Menhir.T m when SC.eval_blang sctx m.enabled_if ~dir:ctx_dir ~scope ->
+      | Menhir.T m when Expander.eval_blang expander m.enabled_if ->
         begin match
           List.find_map (Menhir_rules.module_names m)
             ~f:(fun name ->

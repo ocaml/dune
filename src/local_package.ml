@@ -17,9 +17,10 @@ let is_odig_doc_file fn =
 
 let add_stanzas t ~sctx =
   List.fold_left ~init:t
-    ~f:(fun t ({ Dir_with_dune. ctx_dir = dir ; scope ; data
+    ~f:(fun t ({ Dir_with_dune. ctx_dir = dir ; scope = _ ; data
                ; src_dir = _ ; kind = _} as d) ->
-      let path_expander = Super_context.expand_vars_string sctx ~scope ~dir in
+         let expander = Super_context.expander sctx ~dir in
+      let path_expander = Expander.expand_str expander in
       let open Dune_file in
       match data with
       | Install i ->

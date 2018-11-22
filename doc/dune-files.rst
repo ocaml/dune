@@ -1240,8 +1240,8 @@ module-by-module basis by using the following syntax:
  .. code:: scheme
 
     (preprocess (per_module
-                   (<spec1> (<module-list1>))
-                   (<spec2> (<module-list2>))
+                   (<spec1> <module-list1>)
+                   (<spec2> <module-list2>)
                    ...))
 
 Where ``<spec1>``, ``<spec2>``, ... are preprocessing specifications
@@ -1253,8 +1253,8 @@ For instance:
  .. code:: scheme
 
     (preprocess (per_module
-                   (((action (run ./pp.sh X=1 %{input-file})) (foo bar)))
-                   (((action (run ./pp.sh X=2 %{input-file})) (baz)))))
+                   (((action (run ./pp.sh X=1 %{input-file})) foo bar))
+                   (((action (run ./pp.sh X=2 %{input-file})) baz))))
 
 .. _deps-field:
 

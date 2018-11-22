@@ -203,13 +203,26 @@ module Cached_digest = struct
     ; table       = Hashtbl.create 1024
     }
 
+  let dir_digest stat =
+    let ints = stat.Unix.st_size + stat.st_perm in
+    (string_of_int ints ^
+     string_of_float stat.st_mtime ^
+     string_of_float stat.st_ctime)
+
+  let path_stat_digest fn stat =
+    if stat.Unix.st_kind = Unix.S_DIR then
+      dir_digest stat
+    else Digest.file (Path.to_string fn)
+
   let refresh fn =
-    let digest = Digest.file (Path.to_string fn) in
+    let path = Path.to_string fn in
+    let stat = Unix.stat path in
+    let digest = path_stat_digest fn stat in
     Hashtbl.replace cache.table ~key:fn
       ~data:{ digest
-            ; timestamp = (Unix.stat (Path.to_string fn)).st_mtime
+            ; timestamp = stat.st_mtime
             ; timestamp_checked = cache.checked_key
-            };
+      };
     digest
 
   let file fn =
@@ -218,9 +231,10 @@ module Cached_digest = struct
       if x.timestamp_checked = cache.checked_key then
         x.digest
       else begin
-        let mtime = (Unix.stat (Path.to_string fn)).st_mtime in
+        let stat = Unix.stat (Path.to_string fn) in
+        let mtime = stat.st_mtime in
         if mtime <> x.timestamp then begin
-          let digest = Digest.file (Path.to_string fn) in
+          let digest = path_stat_digest fn stat in
           x.digest    <- digest;
           x.timestamp <- mtime;
         end;

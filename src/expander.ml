@@ -467,3 +467,6 @@ let expand_and_eval_set t set ~standard =
     Ordered_set_lang.Unexpanded.expand set ~dir ~files_contents ~f
     |> Ordered_set_lang.String.eval ~standard ~parse
 
+let eval_blang t = function
+  | Blang.Const x -> x (* common case *)
+  | blang -> Blang.eval blang ~dir:t.dir ~f:(expand_var_exn t)

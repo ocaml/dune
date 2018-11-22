@@ -154,6 +154,7 @@ end = struct
       ~profile:(profile t) ~expander:(expander t ~dir)
 end
 
+let expander = Env.expander
 
 let add_rule t ?sandbox ?mode ?locks ?loc ~dir build =
   let build = Build.O.(>>>) build t.chdir in
@@ -401,27 +402,6 @@ module Libs = struct
     prefix_rules t prefix ~f
 end
 
-let expand_vars t ~mode ~scope ~dir ?(bindings=Pform.Map.empty) template =
-  Env.expander t ~dir
-  |> Expander.add_bindings ~bindings
-  |> Expander.set_scope ~scope
-  |> Expander.expand ~mode ~template
-
-let expand_vars_string t ~scope ~dir ?bindings s =
-  expand_vars t ~mode:Single ~scope ~dir ?bindings s
-  |> Value.to_string ~dir
-
-let expand_vars_path t ~scope ~dir ?bindings s =
-  expand_vars t ~mode:Single ~scope ~dir ?bindings s
-  |> Value.to_path ~error_loc:(String_with_vars.loc s) ~dir
-
-let eval_blang t blang ~scope ~dir =
-  match blang with
-  | Blang.Const x -> x (* common case *)
-  | _ ->
-    let expander = Expander.set_scope (Env.expander t ~dir) ~scope in
-    Blang.eval blang ~dir ~f:(Expander.expand_var_exn expander)
-
 module Deps = struct
   open Build.O
   open Dep_conf
@@ -470,13 +450,8 @@ module Deps = struct
       Build.env_var var
       >>^ fun () -> []
 
-  let make_interpreter ~f t ~scope ~dir l =
+  let make_interpreter ~f t ~expander l =
     let forms = Expander.Resolved_forms.empty () in
-    let expander =
-      Env.expander t ~dir
-      |> Expander.set_scope ~scope
-      |> Expander.set_dir ~dir
-    in
     let expander =
       Expander.with_record_no_ddeps expander forms
         ~dep_kind:Optional ~map_exe:(fun x -> x)
@@ -533,14 +508,9 @@ module Action = struct
           Path.append host.context.build_dir exe
         | _ -> exe
 
-  let run sctx ~loc ~bindings ~dir ~dep_kind
-        ~targets:targets_written_by_user ~targets_dir ~scope t
+  let run sctx ~loc ~dir ~expander ~dep_kind
+        ~targets:targets_written_by_user ~targets_dir t
     : (Path.t Bindings.t, Action.t) Build.t =
-    let expander =
-      Env.expander sctx ~dir
-      |> Expander.add_bindings ~bindings
-      |> Expander.set_scope ~scope
-    in
     let map_exe = map_exe sctx in
     if targets_written_by_user = Expander.Alias then begin
       match U.Infer.unexpanded_targets t with
@@ -621,12 +591,3 @@ end
 let opaque t =
   t.context.profile = "dev"
   && Ocaml_version.supports_opaque_for_mli t.context.version
-
-let expand_and_eval_set sctx ~scope ~dir ?bindings set ~standard =
-  let expander = Expander.set_scope ~scope (Env.expander sctx ~dir) in
-  let expander =
-    match bindings with
-    | None -> expander
-    | Some bindings -> Expander.add_bindings expander ~bindings
-  in
-  Expander.expand_and_eval_set expander ~standard set

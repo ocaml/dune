@@ -346,6 +346,8 @@ let ppx_exe sctx ~key ~dir_kind =
 let build_ppx_driver sctx ~dep_kind ~target ~dir_kind ~pps ~pp_names =
   let ctx = SC.context sctx in
   let mode = Context.best_mode ctx in
+  let rctx =
+    Super_context.rule_context sctx ~dir:(Super_context.build_dir sctx) in
   let compiler = Option.value_exn (Context.compiler ctx mode) in
   let jbuild_driver, pps, pp_names =
     match (dir_kind : Dune_lang.Syntax.t) with
@@ -390,7 +392,7 @@ let build_ppx_driver sctx ~dep_kind ~target ~dir_kind ~pps ~pp_names =
   (* CR-someday diml: what we should do is build the .cmx/.cmo once
      and for all at the point where the driver is defined. *)
   let ml = Path.relative (Option.value_exn (Path.parent target)) "ppx.ml" in
-  let add_rule = SC.add_rule sctx ~dir:(Super_context.build_dir sctx) in
+  let add_rule = Rule_context.add_rule rctx in
   add_rule
     (Build.of_result_map driver_and_libs ~f:(fun (driver, _) ->
        Build.return (sprintf "let () = %s ()\n" driver.info.main))
@@ -498,7 +500,8 @@ let cookie_library_name lib_name =
 (* Generate rules for the reason modules in [modules] and return a
    a new module with only OCaml sources *)
 let setup_reason_rules sctx (m : Module.t) =
-  let ctx = SC.context sctx in
+  let rctx = SC.rule_context sctx ~dir:(Super_context.build_dir sctx) in
+  let ctx = Rule_context.context rctx in
   let refmt =
     SC.resolve_program sctx ~loc:None ~dir:ctx.build_dir
       "refmt" ~hint:"try: opam install reason" in
@@ -530,7 +533,7 @@ let setup_reason_rules sctx (m : Module.t) =
         Path.extend_basename base ~suffix
       in
       let ml = Module.File.make OCaml path in
-      SC.add_rule sctx ~dir:ctx.build_dir (rule f.path ml.path);
+      Rule_context.add_rule rctx (rule f.path ml.path);
       ml)
 
 let promote_correction fn build ~suffix =
@@ -542,11 +545,12 @@ let promote_correction fn build ~suffix =
            (Path.extend_basename fn ~suffix))
     ]
 
-let lint_module sctx ~dir ~expander ~dep_kind ~lint ~lib_name ~scope ~dir_kind =
+let lint_module sctx ~rctx ~dir ~expander ~dep_kind ~lint ~lib_name ~scope
+      ~dir_kind =
   Staged.stage (
     let alias = Build_system.Alias.lint ~dir in
     let add_alias fn build =
-      SC.add_alias_action sctx alias build ~dir
+      Rule_context.add_alias_action rctx alias build
         ~stamp:("lint", lib_name, fn)
     in
     let lint =
@@ -618,15 +622,16 @@ type t = (Module.t -> lint:bool -> Module.t) Per_module.t
 
 let dummy = Per_module.for_all (fun m ~lint:_ -> m)
 
-let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess
+let make sctx ~rctx ~dir ~expander ~dep_kind ~lint ~preprocess
       ~preprocessor_deps ~lib_name ~scope ~dir_kind =
   let preprocessor_deps =
     Build.memoize "preprocessor deps" preprocessor_deps
   in
   let lint_module =
-    Staged.unstage (lint_module sctx ~dir ~expander ~dep_kind ~lint ~lib_name
-                      ~scope ~dir_kind)
+    Staged.unstage (lint_module sctx ~rctx ~dir ~expander ~dep_kind ~lint
+                      ~lib_name ~scope ~dir_kind)
   in
+  let context = Rule_context.context rctx in
   Per_module.map preprocess ~f:(function
     | Preprocess.No_preprocessing ->
       (fun m ~lint ->
@@ -639,7 +644,7 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess
            pped_module m ~f:(fun _kind src dst ->
              let bindings = Pform.Map.input_file src in
              let expander = Expander.add_bindings expander ~bindings in
-             SC.add_rule sctx ~loc ~dir
+             Rule_context.add_rule rctx ~loc
                (preprocessor_deps
                 >>>
                 Build.path src
@@ -685,7 +690,7 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess
            let ast = setup_reason_rules sctx m in
            if lint then lint_module ~ast ~source:m;
            pped_module ast ~f:(fun kind src dst ->
-             SC.add_rule sctx ~loc ~dir
+             Rule_context.add_rule rctx ~loc
                (promote_correction ~suffix:corrected_suffix
                   (Option.value_exn (Module.file m kind))
                   (preprocessor_deps >>^ ignore
@@ -695,7 +700,7 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess
                      ~f:(fun (exe, flags) ->
                        flags
                        >>>
-                       Build.run ~dir:(SC.context sctx).build_dir
+                       Build.run ~dir:context.build_dir
                          (Ok exe)
                          [ args
                          ; A "-o"; Target dst

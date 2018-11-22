@@ -61,51 +61,7 @@ val dump_env : t -> dir:Path.t -> (unit, Dune_lang.t list) Build.t
 val find_scope_by_dir  : t -> Path.t              -> Scope.t
 val find_scope_by_name : t -> Dune_project.Name.t -> Scope.t
 
-val prefix_rules
-  :  t
-  -> (unit, unit) Build.t
-  -> f:(unit -> 'a)
-  -> 'a
-
-val add_rule
-  :  t
-  -> ?sandbox:bool
-  -> ?mode:Dune_file.Rule.Mode.t
-  -> ?locks:Path.t list
-  -> ?loc:Loc.t
-  -> dir:Path.t
-  -> (unit, Action.t) Build.t
-  -> unit
-val add_rule_get_targets
-  :  t
-  -> ?sandbox:bool
-  -> ?mode:Dune_file.Rule.Mode.t
-  -> ?locks:Path.t list
-  -> ?loc:Loc.t
-  -> dir:Path.t
-  -> (unit, Action.t) Build.t
-  -> Path.t list
-val add_rules
-  :  t
-  -> ?sandbox:bool
-  -> dir:Path.t
-  -> (unit, Action.t) Build.t list
-  -> unit
-val add_alias_deps
-  :  t
-  -> Build_system.Alias.t
-  -> ?dyn_deps:(unit, Path.Set.t) Build.t
-  -> Path.Set.t
-  -> unit
-val add_alias_action
-  :  t
-  -> Build_system.Alias.t
-  -> dir:Path.t
-  -> loc:Loc.t option
-  -> ?locks:Path.t list
-  -> stamp:_
-  -> (unit, Action.t) Build.t
-  -> unit
+val rule_context : t -> dir:Path.t -> Rule_context.t
 
 (** See [Build_system for details] *)
 val eval_glob : t -> dir:Path.t -> Re.re -> string list
@@ -128,42 +84,6 @@ val resolve_program
   -> loc:Loc.t option
   -> string
   -> Action.Prog.t
-
-module Libs : sig
-  (** Make sure all rules produces by [f] record the library dependencies for
-      [dune external-lib-deps] and depend on the generation of the .merlin file.
-
-      /!\ WARNING /!\: make sure the last function call inside [f] is
-      fully applied, otherwise the function might end up being executed
-      after this function has returned. Consider addin a type
-      annotation to make sure this doesn't happen by mistake.
-  *)
-  val with_lib_deps
-    :  t
-    -> Lib.Compile.t
-    -> dir:Path.t
-    -> f:(unit -> 'a)
-    -> 'a
-
-  (** Generate the rules for the [(select ...)] forms in library dependencies *)
-  val gen_select_rules : t -> dir:Path.t -> Lib.Compile.t -> unit
-end
-
-(** Interpret dependencies written in jbuild files *)
-module Deps : sig
-  (** Evaluates to the actual list of dependencies, ignoring aliases *)
-  val interpret
-    :  t
-    -> expander:Expander.t
-    -> Dep_conf.t list
-    -> (unit, Path.t list) Build.t
-
-  val interpret_named
-    :  t
-    -> expander:Expander.t
-    -> Dep_conf.t Bindings.t
-    -> (unit, Path.t Bindings.t) Build.t
-end
 
 (** Interpret action written in jbuild files *)
 module Action : sig

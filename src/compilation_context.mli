@@ -15,6 +15,7 @@ type t
 (** Create a compilation context. *)
 val create
   :  super_context         : Super_context.t
+  -> rctx                  : Rule_context.t
   -> scope                 : Scope.t
   -> dir                   : Path.t
   -> ?private_obj_dir      : Path.t
@@ -37,6 +38,7 @@ val create
 val for_alias_module : t -> t
 
 val super_context        : t -> Super_context.t
+val rule_context         : t -> Rule_context.t
 val context              : t -> Context.t
 val scope                : t -> Scope.t
 val dir                  : t -> Path.t

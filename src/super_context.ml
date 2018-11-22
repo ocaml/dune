@@ -63,9 +63,6 @@ let installed_libs t = t.installed_libs
 let find_scope_by_dir  t dir  = Scope.DB.find_by_dir  t.scopes dir
 let find_scope_by_name t name = Scope.DB.find_by_name t.scopes name
 
-let prefix_rules t prefix ~f =
-  Build_system.prefix_rules t.build_system prefix ~f
-
 module External_env = Env
 
 module Env : sig
@@ -159,25 +156,7 @@ let expander = Env.expander
 let rule_context t ~dir =
   let env = Env.external_ t ~dir in
   Rule_context.make ~env ~build_system:t.build_system ~chdir:t.chdir
-    ~context:t.context
-
-let add_rule t ?sandbox ?mode ?locks ?loc ~dir =
-  Rule_context.add_rule ?sandbox ?mode ?locks ?loc (rule_context t ~dir)
-
-let add_rule_get_targets t ?sandbox ?mode ?locks ?loc ~dir =
-  Rule_context.add_rule_get_targets ?sandbox ?mode ?locks ?loc
-    (rule_context t ~dir)
-
-let add_rules t ?sandbox ~dir =
-  Rule_context.add_rules ?sandbox (rule_context t ~dir)
-
-let add_alias_deps t alias ?dyn_deps =
-  Rule_context.add_alias_deps ?dyn_deps
-    (rule_context t ~dir:t.context.build_dir) alias
-
-let add_alias_action t alias ~dir ~loc ?locks ~stamp action =
-  Rule_context.add_alias_action ~loc ?locks ~stamp
-    (rule_context t ~dir) alias action
+    ~context:t.context ~file_tree:t.file_tree
 
 let eval_glob t ~dir re = Build_system.eval_glob t.build_system ~dir re
 let load_dir t ~dir = Build_system.load_dir t.build_system ~dir
@@ -197,19 +176,24 @@ module Pkg_version = struct
       let name = "Pkg_version"
     end)
 
-  let spec sctx (p : Package.t) =
+  let spec rctx (p : Package.t) =
+    let context = Rule_context.context rctx in
     let fn =
-      Path.relative (Path.append sctx.context.build_dir p.path)
+      Path.relative (Path.append context.build_dir p.path)
         (sprintf "%s.version.sexp" (Package.Name.to_string p.name))
     in
     Build.Vspec.T (fn, (module V))
 
-  let read sctx p = Build.vpath (spec sctx p)
+  let read sctx p =
+    let dir = build_dir sctx in
+    let rctx = rule_context sctx ~dir in
+    Build.vpath (spec rctx p)
 
   let set sctx p get =
-    let spec = spec sctx p in
-    add_rule sctx ~dir:(build_dir sctx)
-      (get >>> Build.store_vfile spec);
+    let dir = build_dir sctx in
+    let rctx = rule_context sctx ~dir in
+    let spec = spec rctx p in
+    Rule_context.add_rule rctx (get >>> Build.store_vfile spec);
     Build.vpath spec
 end
 
@@ -360,120 +344,6 @@ let create
   ; default_env
   ; external_lib_deps_mode
   }
-
-module Libs = struct
-  open Build.O
-
-  let gen_select_rules t ~dir compile_info =
-    List.iter (Lib.Compile.resolved_selects compile_info) ~f:(fun rs ->
-      let { Lib.Compile.Resolved_select.dst_fn; src_fn } = rs in
-      let dst = Path.relative dir dst_fn in
-      add_rule t
-        ~dir
-        (match src_fn with
-         | Ok src_fn ->
-           let src = Path.relative dir src_fn in
-           Build.copy_and_add_line_directive ~src ~dst
-         | Error e ->
-           Build.fail ~targets:[dst]
-             { fail = fun () ->
-                 raise (Lib.Error (No_solution_found_for_select e))
-             }))
-
-  let with_lib_deps t compile_info ~dir ~f =
-    let prefix =
-      Lib.Compile.user_written_deps compile_info
-      |> Dune_file.Lib_deps.info ~kind:(Lib.Compile.optional compile_info)
-      |> Build.record_lib_deps
-    in
-    let prefix =
-      if t.context.merlin then
-        Build.path (Path.relative dir ".merlin-exists")
-        >>>
-        prefix
-      else
-        prefix
-    in
-    prefix_rules t prefix ~f
-end
-
-module Deps = struct
-  open Build.O
-  open Dep_conf
-
-  let make_alias expander s =
-    let loc = String_with_vars.loc s in
-    Expander.expand_path expander s
-    |> Alias.of_user_written_path ~loc
-
-  let dep t expander = function
-    | File s ->
-      let path = Expander.expand_path expander s in
-      Build.path path
-      >>^ fun () -> [path]
-    | Alias s ->
-      Alias.dep (make_alias expander s)
-      >>^ fun () -> []
-    | Alias_rec s ->
-      Alias.dep_rec ~loc:(String_with_vars.loc s) ~file_tree:t.file_tree
-        (make_alias expander s)
-      >>^ fun () -> []
-    | Glob_files s -> begin
-        let loc = String_with_vars.loc s in
-        let path = Expander.expand_path expander s in
-        match Glob_lexer.parse_string (Path.basename path) with
-        | Ok re ->
-          let dir = Path.parent_exn path in
-          Build.paths_glob ~loc ~dir (Re.compile re)
-          >>^ Path.Set.to_list
-        | Error (_pos, msg) ->
-          Errors.fail (String_with_vars.loc s) "invalid glob: %s" msg
-      end
-    | Source_tree s ->
-      let path = Expander.expand_path expander s in
-      Build.source_tree ~dir:path ~file_tree:t.file_tree
-      >>^ Path.Set.to_list
-    | Package p ->
-      let pkg = Package.Name.of_string (Expander.expand_str expander p) in
-      Alias.dep (Alias.package_install ~context:t.context ~pkg)
-      >>^ fun () -> []
-    | Universe ->
-      Build.path Build_system.universe_file
-      >>^ fun () -> []
-    | Env_var var_sw ->
-      let var = Expander.expand_str expander var_sw in
-      Build.env_var var
-      >>^ fun () -> []
-
-  let make_interpreter ~f t ~expander l =
-    let forms = Expander.Resolved_forms.empty () in
-    let expander =
-      Expander.with_record_no_ddeps expander forms
-        ~dep_kind:Optional ~map_exe:(fun x -> x)
-    in
-    let deps =
-      List.map l ~f:(f t expander)
-      |> Build.all
-      >>^ List.concat in
-    Build.fanout4
-      deps
-      (Build.record_lib_deps (Expander.Resolved_forms.lib_deps forms))
-      (let ddeps = String.Map.to_list (Expander.Resolved_forms.ddeps forms) in
-       Build.all (List.map ddeps ~f:snd))
-      (Build.path_set (Expander.Resolved_forms.sdeps forms))
-    >>^ (fun (deps, _, _, _) -> deps)
-
-  let interpret = make_interpreter ~f:dep
-
-  let interpret_named =
-    make_interpreter ~f:(fun t expander -> function
-      | Bindings.Unnamed p ->
-        dep t expander p >>^ fun l ->
-        List.map l ~f:(fun x -> Bindings.Unnamed x)
-      | Named (s, ps) ->
-        Build.all (List.map ps ~f:(dep t expander)) >>^ fun l ->
-        [Bindings.Named (s, List.concat l)])
-end
 
 module Scope_key = struct
   let of_string sctx key =

@@ -18,8 +18,8 @@ module Gen(P : Params) = struct
   let lib_dune_file ~dir ~name =
     Path.relative dir ((Lib_name.to_string name) ^ ".dune")
 
-  let gen_lib_dune_file lib =
-    SC.add_rule sctx
+  let gen_lib_dune_file rctx lib =
+    Rule_context.add_rule rctx
       (Build.arr (fun () ->
          let dune_version = Option.value_exn (Lib.dune_version lib) in
          Format.asprintf "%a@."
@@ -68,8 +68,9 @@ module Gen(P : Params) = struct
 
   let init_meta (pkg : Local_package.t) =
     let libs = Local_package.libs pkg in
-    Lib.Set.iter libs ~f:(gen_lib_dune_file ~dir:ctx.build_dir);
     let path = Local_package.build_dir pkg in
+    let rctx = Super_context.rule_context sctx ~dir:path in
+    Lib.Set.iter libs ~f:(gen_lib_dune_file rctx);
     let pkg_name = Local_package.name pkg in
     let meta = Local_package.meta_file pkg in
     let pkg = Local_package.package pkg in
@@ -93,7 +94,7 @@ module Gen(P : Params) = struct
           ~version
           (Lib.Set.to_list libs)
       in
-      SC.add_rule sctx ~dir:ctx.build_dir
+      Rule_context.add_rule rctx
         (Build.fanout meta_contents template
          >>^ (fun ((meta : Meta.t), template) ->
            let buf = Buffer.create 1024 in
@@ -208,13 +209,14 @@ module Gen(P : Params) = struct
   let local_install_rules (entries : Install.Entry.t list)
         ~install_paths ~package =
     let install_dir = Config.local_install_dir ~context:ctx.name in
+    let rctx = Super_context.rule_context sctx ~dir:ctx.build_dir in
     List.map entries ~f:(fun entry ->
       let dst =
         Path.append install_dir
           (Install.Entry.relative_installed_path entry ~paths:install_paths)
       in
       Build_system.set_package (SC.build_system sctx) entry.src package;
-      SC.add_rule sctx ~dir:ctx.build_dir (Build.symlink ~src:entry.src ~dst);
+      Rule_context.add_rule rctx (Build.symlink ~src:entry.src ~dst);
       Install.Entry.set_src entry dst)
 
   let promote_install_file =
@@ -228,6 +230,7 @@ module Gen(P : Params) = struct
     let meta = Local_package.meta_file package in
     let package_name = Local_package.name package in
     let pkg_build_dir = Local_package.build_dir package in
+    let rctx = Super_context.rule_context sctx ~dir:pkg_build_dir in
     let install_paths = Local_package.install_paths package in
     let entries =
       let docs =
@@ -246,7 +249,7 @@ module Gen(P : Params) = struct
            ~findlib_toolchain:ctx.findlib_toolchain)
     in
     let files = Install.files entries in
-    SC.add_alias_deps sctx
+    Rule_context.add_alias_deps rctx
       (Alias.package_install ~context:ctx ~pkg:package_name)
       files
       ~dyn_deps:
@@ -257,7 +260,7 @@ module Gen(P : Params) = struct
            Build_system.Alias.package_install ~context:ctx ~pkg
            |> Build_system.Alias.stamp_file)
          |> Path.Set.of_list);
-    SC.add_rule sctx ~dir:pkg_build_dir
+    Rule_context.add_rule rctx
       ~mode:(if promote_install_file then
                Promote_but_delete_on_clean
              else
@@ -336,9 +339,11 @@ module Gen(P : Params) = struct
           ~findlib_toolchain:ctx.findlib_toolchain
       in
       let path = Local_package.build_dir package in
+      let rctx = Super_context.rule_context sctx ~dir:path in
       let install_alias = Alias.install ~dir:path in
       let install_file = Path.relative path install_fn in
-      SC.add_alias_deps sctx install_alias (Path.Set.singleton install_file)
+      Path.Set.singleton install_file
+      |> Rule_context.add_alias_deps rctx install_alias
 
   let init () =
     let packages = Local_package.of_sctx sctx in

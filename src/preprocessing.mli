@@ -10,6 +10,7 @@ val dummy : t
 
 val make
   :  Super_context.t
+  -> rctx:Rule_context.t
   -> dir:Path.t
   -> expander:Expander.t
   -> dep_kind:Lib_deps_info.Kind.t

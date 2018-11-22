@@ -126,6 +126,7 @@ let link_exe
   let dir      = CC.dir           cctx in
   let obj_dir  = CC.obj_dir       cctx in
   let requires = CC.requires      cctx in
+  let rctx     = CC.rule_context  cctx in
   let expander = Super_context.expander sctx ~dir in
   let mode = linkage.mode in
   let exe = Path.relative dir (name ^ linkage.ext) in
@@ -151,7 +152,7 @@ let link_exe
     Lazy.force (Mode.Dict.get arg_spec_for_requires mode)
   in
   (* The rule *)
-  SC.add_rule sctx ~loc ~dir
+  Rule_context.add_rule rctx ~loc
     (Build.fanout3
        (register_native_objs_deps modules_and_cm_files >>^ snd)
        (Ocaml_flags.get (CC.flags cctx) mode)
@@ -180,7 +181,7 @@ let link_exe
            js_of_ocaml.flags
            ~standard:(Build.return (Js_of_ocaml_rules.standard sctx)))
     in
-    SC.add_rules ~dir sctx (List.map rules ~f:(fun r -> cm_and_flags >>> r))
+    Rule_context.add_rules rctx (List.map rules ~f:(fun r -> cm_and_flags >>> r))
 
 let build_and_link_many
       ~programs

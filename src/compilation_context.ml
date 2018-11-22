@@ -46,6 +46,7 @@ end
 
 type t =
   { super_context        : Super_context.t
+  ; rule_context         : Rule_context.t
   ; scope                : Scope.t
   ; dir                  : Path.t
   ; dir_kind             : Dune_lang.Syntax.t
@@ -65,6 +66,7 @@ type t =
   }
 
 let super_context        t = t.super_context
+let rule_context         t = t.rule_context
 let scope                t = t.scope
 let dir                  t = t.dir
 let dir_kind             t = t.dir_kind
@@ -84,13 +86,14 @@ let modules_of_vlib      t = t.modules_of_vlib
 
 let context              t = Super_context.context t.super_context
 
-let create ~super_context ~scope ~dir ?private_obj_dir
+let create ~super_context ~rctx ~scope ~dir ?private_obj_dir
       ?(modules_of_vlib=Module.Name.Map.empty)
       ?(dir_kind=Dune_lang.Syntax.Dune)
       ?(obj_dir=dir) ~modules ?alias_module ?lib_interface_module ~flags
       ~requires ?(preprocessing=Preprocessing.dummy) ?(no_keep_locs=false)
       ~opaque ?stdlib () =
   { super_context
+  ; rule_context = rctx
   ; scope
   ; dir
   ; dir_kind

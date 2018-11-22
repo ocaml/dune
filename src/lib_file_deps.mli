@@ -15,7 +15,7 @@ end
 (** Setup the alias that depends on all files with a given extension for a
     library *)
 val setup_file_deps_alias
-  :  Super_context.t
+  :  Rule_context.t
   -> dir:Path.t
   -> exts:string list
   -> Dune_file.Library.t
@@ -24,7 +24,7 @@ val setup_file_deps_alias
 
 (** Setup an alias that depend on all files with the given extensions.*)
 val setup_file_deps_group_alias
-  :  Super_context.t
+  :  Rule_context.t
   -> dir:Path.t
   -> exts:string list
   -> Dune_file.Library.t

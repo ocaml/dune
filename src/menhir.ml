@@ -60,6 +60,9 @@ module Run (P : PARAMS) : sig end = struct
   let sctx =
     Compilation_context.super_context cctx
 
+  let rctx =
+    Compilation_context.rule_context cctx
+
   let expander =
     Super_context.expander sctx ~dir
 
@@ -125,7 +128,7 @@ module Run (P : PARAMS) : sig end = struct
     Build.run ~dir menhir_binary args
 
   let rule : (unit, Action.t) Build.t -> unit =
-    SC.add_rule sctx ~dir ~mode:stanza.mode ~loc:stanza.loc
+    Rule_context.add_rule rctx ~mode:stanza.mode ~loc:stanza.loc
 
   let expand_flags flags =
     Expander.expand_and_eval_set expander

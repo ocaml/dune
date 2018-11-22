@@ -19,13 +19,13 @@ let pp_ml fmt include_dirs =
     pp_include include_dirs;
   Format.fprintf fmt "@.UTop_main.main ();@."
 
-let add_module_rules sctx ~dir lib_requires =
+let add_module_rules rctx ~dir lib_requires =
   let path = Path.relative dir main_module_filename in
   let utop_ml =
     Build.of_result_map lib_requires ~f:(fun libs ->
       Build.arr (fun () ->
         let include_paths =
-          let ctx = Super_context.context sctx in
+          let ctx = Rule_context.context rctx in
           Path.Set.to_list
             (Lib.L.include_paths libs ~stdlib_dir:ctx.stdlib_dir)
         in
@@ -36,7 +36,7 @@ let add_module_rules sctx ~dir lib_requires =
         Buffer.contents b))
     >>> Build.write_file_dyn path
   in
-  Super_context.add_rule sctx ~dir utop_ml
+  Rule_context.add_rule rctx utop_ml
 
 let utop_dir_basename = ".utop"
 
@@ -81,6 +81,7 @@ let libs_under_dir sctx ~db ~dir =
 
 let setup sctx ~dir =
   let scope = Super_context.find_scope_by_dir sctx dir in
+  let rctx = Super_context.rule_context sctx ~dir in
   let utop_exe_dir = utop_exe_dir ~dir in
   let db = Scope.libs scope in
   let libs = libs_under_dir sctx ~db ~dir in
@@ -104,6 +105,7 @@ let setup sctx ~dir =
   let cctx =
     Compilation_context.create ()
       ~super_context:sctx
+      ~rctx
       ~scope
       ~dir:utop_exe_dir
       ~modules
@@ -117,4 +119,4 @@ let setup sctx ~dir =
     ~program:{ name = exe_name ; main_module_name ; loc }
     ~linkages:[Exe.Linkage.custom]
     ~link_flags:(Build.return ["-linkall"; "-warn-error"; "-31"]);
-  add_module_rules sctx ~dir:utop_exe_dir requires
+  add_module_rules rctx ~dir:utop_exe_dir requires

@@ -152,8 +152,9 @@ let setup_separate_compilation_rules sctx components =
             in_build_dir ~ctx [lib_name ; sprintf "%s.js" name]
           in
           let dir = in_build_dir ~ctx [lib_name] in
+          let rctx = Super_context.rule_context sctx ~dir in
           let spec = Arg_spec.Dep src in
-          SC.add_rule sctx ~dir
+          Rule_context.add_rule rctx
             (Build.return (standard sctx)
              >>>
              js_of_ocaml_rule sctx ~dir ~flags:(fun flags ->

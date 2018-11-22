@@ -126,6 +126,7 @@ module Register_end_point(M : End_point) = struct
   include Dune_file.Sub_system_info.Register(M.Info)
 
   let gen info (c : Library_compilation_context.t) =
+    let rctx = Super_context.rule_context c.super_context ~dir:c.dir in
     let open Result.O in
     let backends =
       Lib.Compile.direct_requires c.compile_info >>= fun deps ->
@@ -152,7 +153,7 @@ module Register_end_point(M : End_point) = struct
     match fail with
     | None -> M.gen_rules c ~info ~backends
     | Some fail ->
-      Super_context.prefix_rules c.super_context (Build.fail fail)
+      Rule_context.prefix_rules rctx (Build.fail fail)
         ~f:(fun () -> M.gen_rules c ~info ~backends)
 
   include

@@ -9,7 +9,7 @@ let lib_files_alias ~dir ~name ~exts =
                 (Lib_name.to_string name) (string_of_exts exts)) ~dir
 
 let setup_file_deps_alias t ~dir ~exts lib files =
-  Super_context.add_alias_deps t
+  Rule_context.add_alias_deps t
     (lib_files_alias ~dir ~name:(Library.best_name lib) ~exts) files
 
 let setup_file_deps_group_alias t ~dir ~exts lib =

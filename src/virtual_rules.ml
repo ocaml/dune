@@ -23,7 +23,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
   let vlib_stubs_o_files { Implementation.vlib ; _ } =
     Lib.foreign_objects vlib
 
-  let setup_copy_rules_for_impl ~dir
+  let setup_copy_rules_for_impl ~rctx ~dir
         ({ Implementation.vlib ; impl ; vlib_modules }) =
     let lib_name = snd impl.name in
     let target_obj_dir =
@@ -37,8 +37,8 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
     in
     let copy_to_obj_dir ~obj_dir file =
       let dst = Path.relative obj_dir (Path.basename file) in
-      Super_context.add_rule ~dir ~loc:(Loc.of_pos __POS__)
-        sctx (Build.symlink ~src:file ~dst)
+      Rule_context.add_rule rctx ~loc:(Loc.of_pos __POS__)
+        (Build.symlink ~src:file ~dst)
     in
     let obj_dir = Lib.obj_dir vlib in
     let modes =

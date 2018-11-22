@@ -7,10 +7,10 @@ let dev_files p =
   | ".cmi" -> true
   | _ -> false
 
-let add_obj_dir sctx ~dir ~obj_dir =
+let add_obj_dir sctx ~rctx ~dir ~obj_dir =
   if (Super_context.context sctx).merlin then
-    Super_context.add_alias_deps
-      sctx
+    Rule_context.add_alias_deps
+      rctx
       (Build_system.Alias.check ~dir)
       ~dyn_deps:(Build.paths_matching ~loc:Loc.none ~dir:obj_dir dev_files)
       Path.Set.empty

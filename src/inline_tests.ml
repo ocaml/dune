@@ -4,8 +4,6 @@ open Dune_file
 open Build.O
 open! No_io
 
-module SC = Super_context
-
 module Backend = struct
   module M = struct
     module Info = struct
@@ -187,6 +185,8 @@ include Sub_system.Register_end_point(
       in
 
       let expander = Super_context.expander sctx ~dir in
+      let rctx = Super_context.rule_context sctx ~dir in
+      let context = Rule_context.context rctx in
 
       let runner_libs =
         let open Result.O in
@@ -201,7 +201,7 @@ include Sub_system.Register_end_point(
       in
 
       (* Generate the runner file *)
-      SC.add_rule sctx ~dir ~loc (
+      Rule_context.add_rule rctx ~loc (
         let target = Path.relative inline_test_dir main_module_filename in
         let source_modules = Module.Name.Map.values source_modules in
         let files ml_kind =
@@ -221,7 +221,7 @@ include Sub_system.Register_end_point(
         Build.all
           (List.filter_map backends ~f:(fun (backend : Backend.t) ->
              Option.map backend.info.generate_runner ~f:(fun (loc, action) ->
-               SC.Action.run sctx action ~loc
+               Super_context.Action.run sctx action ~loc
                  ~dir
                  ~expander
                  ~dep_kind:Required
@@ -236,6 +236,7 @@ include Sub_system.Register_end_point(
       let cctx =
         Compilation_context.create ()
           ~super_context:sctx
+          ~rctx
           ~scope
           ~dir:inline_test_dir
           ~modules
@@ -245,7 +246,7 @@ include Sub_system.Register_end_point(
       in
       Exe.build_and_link cctx
         ~program:{ name; main_module_name ; loc }
-        ~linkages:[Exe.Linkage.native_or_custom (SC.context sctx)]
+        ~linkages:[Exe.Linkage.native_or_custom context]
         ~link_flags:(Build.return ["-linkall"]);
 
       let flags =
@@ -260,7 +261,7 @@ include Sub_system.Register_end_point(
         >>^ List.concat
       in
 
-      SC.add_alias_action sctx ~dir
+      Rule_context.add_alias_action rctx
         ~loc:(Some info.loc)
         (Build_system.Alias.runtest ~dir)
         ~stamp:("ppx-runner", name)
@@ -268,7 +269,7 @@ include Sub_system.Register_end_point(
          let exe = Path.relative inline_test_dir (name ^ ".exe") in
          Build.path exe >>>
          Build.fanout
-           (Super_context.Deps.interpret sctx info.deps ~expander)
+           (Rule_context.Deps.interpret rctx info.deps ~expander)
            flags
          >>^ fun (_deps, flags) ->
          A.chdir dir

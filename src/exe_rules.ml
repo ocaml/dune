@@ -3,7 +3,7 @@ open! No_io
 open Build.O
 module SC = Super_context
 
-let executables_rules ~sctx ~dir ~dir_kind ~expander
+let executables_rules ~sctx ~rctx ~dir ~dir_kind ~expander
       ~dir_contents ~scope ~compile_info
       (exes : Dune_file.Executables.t) =
   (* Use "eobjs" rather than "objs" to avoid a potential conflict
@@ -11,7 +11,7 @@ let executables_rules ~sctx ~dir ~dir_kind ~expander
   let obj_dir =
     Utils.executable_object_directory ~dir (List.hd exes.names |> snd)
   in
-  Check_rules.add_obj_dir sctx ~dir ~obj_dir;
+  Check_rules.add_obj_dir sctx ~rctx ~dir ~obj_dir;
   let requires = Lib.Compile.requires compile_info in
   let modules =
     Dir_contents.modules_of_executables dir_contents
@@ -19,10 +19,10 @@ let executables_rules ~sctx ~dir ~dir_kind ~expander
   in
 
   let preprocessor_deps =
-    SC.Deps.interpret sctx exes.buildable.preprocessor_deps ~expander
+    Rule_context.Deps.interpret rctx exes.buildable.preprocessor_deps ~expander
   in
   let pp =
-    Preprocessing.make sctx ~dir ~dep_kind:Required
+    Preprocessing.make sctx ~rctx ~dir ~dep_kind:Required
       ~scope
       ~expander
       ~preprocess:exes.buildable.preprocess
@@ -74,7 +74,7 @@ let executables_rules ~sctx ~dir ~dir_kind ~expander
 
   let flags = SC.ocaml_flags sctx ~dir exes.buildable in
   let link_deps =
-    SC.Deps.interpret sctx ~expander exes.link_deps
+    Rule_context.Deps.interpret rctx ~expander exes.link_deps
   in
   let link_flags =
     link_deps >>^ ignore >>>
@@ -85,6 +85,7 @@ let executables_rules ~sctx ~dir ~dir_kind ~expander
   let cctx =
     Compilation_context.create ()
       ~super_context:sctx
+      ~rctx
       ~scope
       ~dir
       ~dir_kind
@@ -109,7 +110,7 @@ let executables_rules ~sctx ~dir ~dir_kind ~expander
      ~preprocess:(Dune_file.Buildable.single_preprocess exes.buildable)
      ~objs_dirs:(Path.Set.singleton obj_dir))
 
-let rules ~sctx ~dir ~dir_contents ~scope ~expander ~dir_kind
+let rules ~sctx ~rctx ~dir ~dir_contents ~scope ~expander ~dir_kind
       (exes : Dune_file.Executables.t) =
   let compile_info =
     Lib.DB.resolve_user_written_deps_for_exes (Scope.libs scope)
@@ -117,8 +118,8 @@ let rules ~sctx ~dir ~dir_contents ~scope ~expander ~dir_kind
       ~pps:(Dune_file.Preprocess_map.pps exes.buildable.preprocess)
       ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
   in
-  SC.Libs.gen_select_rules sctx compile_info ~dir;
-  SC.Libs.with_lib_deps sctx compile_info ~dir
+  Lib_db_rules.gen_select_rules rctx compile_info ~dir;
+  Lib_db_rules.with_lib_deps rctx compile_info ~dir
     ~f:(fun () ->
-      executables_rules exes ~sctx ~dir
+      executables_rules exes ~sctx ~rctx ~dir
         ~dir_contents ~scope ~expander ~compile_info ~dir_kind)

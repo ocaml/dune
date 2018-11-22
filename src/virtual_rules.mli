@@ -12,7 +12,8 @@ module Gen (S : sig val sctx : Super_context.t end) : sig
   val vlib_stubs_o_files : Implementation.t -> Path.t list
 
   val setup_copy_rules_for_impl
-    :  dir:Path.t
+    :  rctx:Rule_context.t
+    -> dir:Path.t
     -> Implementation.t
     -> unit
 

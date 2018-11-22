@@ -9,7 +9,8 @@ module Gen (S : sig val sctx : Super_context.t end) : sig
   end
 
   val rules
-    : Library.t
+    :  Library.t
+    -> rctx:Rule_context.t
     -> dir_contents:Dir_contents.t
     -> dir:Path.t
     -> expander:Expander.t

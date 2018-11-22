@@ -39,7 +39,9 @@ module Gen (S : sig val sctx : SC.t end) = struct
   let context = SC.context sctx
   let stanzas = SC.stanzas sctx
 
-  let add_rule = Super_context.add_rule sctx ~dir:(Super_context.build_dir sctx)
+  let root_rctx = Super_context.rule_context sctx ~dir:context.Context.build_dir
+
+  let add_rule = Rule_context.add_rule root_rctx
 
   module Paths = struct
     let root = context.Context.build_dir ++ "_doc"
@@ -84,7 +86,8 @@ module Gen (S : sig val sctx : SC.t end) = struct
 
     (* let static_deps t lib = Build_system.Alias.dep (alias t lib) *)
 
-    let setup_deps m files = SC.add_alias_deps sctx (alias m) files
+    let setup_deps m files =
+      Rule_context.add_alias_deps root_rctx (alias m) files
   end
 
   let odoc = lazy (
@@ -324,7 +327,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
         let odocs = odocs (Lib lib) in
         List.iter odocs ~f:(setup_html ~requires);
         let html_files = List.map ~f:(fun o -> o.html_file) odocs in
-        SC.add_alias_deps sctx (Dep.html_alias (Lib lib))
+        Rule_context.add_alias_deps root_rctx (Dep.html_alias (Lib lib))
           (Path.Set.of_list (List.rev_append static_html html_files));
       end
 
@@ -343,7 +346,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
             :: (List.map libs ~f:(fun lib -> odocs (Lib lib)))
           ) in
         let html_files = List.map ~f:(fun o -> o.html_file) odocs in
-        SC.add_alias_deps sctx (Dep.html_alias (Pkg pkg))
+        Rule_context.add_alias_deps root_rctx (Dep.html_alias (Pkg pkg))
           (Path.Set.of_list (List.rev_append static_html html_files))
       end
 
@@ -391,7 +394,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
       Build_system.Alias.doc ~dir:(
         Path.append context.build_dir pkg.Package.path
       ) in
-    SC.add_alias_deps sctx alias (
+    Rule_context.add_alias_deps root_rctx alias (
       Dep.html_alias (Pkg pkg.name)
       :: (libs_of_pkg ~pkg:pkg.name
           |> Lib.Set.to_list
@@ -506,8 +509,8 @@ module Gen (S : sig val sctx : SC.t end) = struct
       (* setup @doc to build the correct html for the package *)
       setup_package_aliases pkg;
     );
-    Super_context.add_alias_deps
-      sctx
+    Rule_context.add_alias_deps
+      root_rctx
       (Build_system.Alias.private_doc ~dir:context.build_dir)
       (stanzas
        |> List.concat_map ~f:(fun (w : _ Dir_with_dune.t) ->

@@ -16,7 +16,7 @@ let libraries_link ~name ~loc ~mode cctx libs =
   let sctx       = CC.super_context cctx in
   let ctx        = SC.context       sctx in
   let obj_dir    = CC.obj_dir       cctx in
-  let dir        = CC.dir           cctx in
+  let rctx       = CC.rule_context  cctx in
   let stdlib_dir = ctx.stdlib_dir in
   match cut_after_libs [] ~pkg_name:findlib_dynload libs with
   | Some (before, after) ->
@@ -38,13 +38,14 @@ let libraries_link ~name ~loc ~mode cctx libs =
     in
     let basename = Format.asprintf "%s_findlib_initl_%a" name Mode.pp mode in
     let ml  = Path.relative obj_dir (basename ^ ".ml") in
-    SC.add_rule ~dir sctx (Build.write_file ml s);
+    Rule_context.add_rule rctx (Build.write_file ml s);
     let impl = Module.File.make OCaml ml in
     let name = Module.Name.of_string basename in
     let module_ = Module.make ~impl name ~visibility:Public in
     let cctx = Compilation_context.(
       create
         ~super_context:sctx
+        ~rctx
         ~scope:(scope cctx)
         ~dir:(dir cctx)
         ~dir_kind:(dir_kind cctx)

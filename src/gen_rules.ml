@@ -56,13 +56,12 @@ module Gen(P : Install_rules.Params) = struct
 
   let sctx = P.sctx
 
-  let gen_format_rules sctx ~dir =
+  let gen_format_rules sctx ~rctx ~dir =
     let scope = SC.find_scope_by_dir sctx dir in
     let project = Scope.project scope in
     match Dune_project.find_extension_args project Auto_format.key with
     | None -> ()
-    | Some config ->
-      Format_rules.gen_rules sctx config ~dir
+    | Some config -> Format_rules.gen_rules sctx ~rctx config ~dir
 
   (* Stanza *)
 
@@ -70,12 +69,14 @@ module Gen(P : Install_rules.Params) = struct
         { Dir_with_dune. src_dir; ctx_dir; data = stanzas
         ; scope; kind = dir_kind } =
     let expander = Super_context.expander sctx ~dir:ctx_dir in
+    let rctx = Super_context.rule_context sctx ~dir:ctx_dir in
     let for_stanza stanza =
       let dir = ctx_dir in
       match stanza with
       | Library lib ->
         let cctx, merlin =
-          Lib_rules.rules lib ~dir ~scope ~dir_contents ~expander ~dir_kind in
+          Lib_rules.rules lib ~dir ~rctx ~scope ~dir_contents ~expander
+            ~dir_kind in
         { For_stanza.
           merlin = Some merlin
         ; cctx = Some (lib.buildable.loc, cctx)
@@ -83,7 +84,7 @@ module Gen(P : Install_rules.Params) = struct
         }
       | Executables exes ->
         let cctx, merlin =
-          Exe_rules.rules exes
+          Exe_rules.rules exes ~rctx
             ~sctx ~dir ~scope ~expander
             ~dir_contents ~dir_kind
         in
@@ -97,11 +98,11 @@ module Gen(P : Install_rules.Params) = struct
                 ~f:(Path.relative ctx_dir)))
         }
       | Alias alias ->
-        Simple_rules.alias sctx alias ~dir ~expander;
+        Simple_rules.alias sctx ~rctx alias ~dir ~expander;
         For_stanza.empty_none
       | Tests tests ->
         let cctx, merlin =
-          Test_rules.rules tests ~sctx ~dir ~scope ~expander ~dir_contents
+          Test_rules.rules tests ~sctx ~rctx ~dir ~scope ~expander ~dir_contents
             ~dir_kind
         in
         { For_stanza.
@@ -127,7 +128,7 @@ module Gen(P : Install_rules.Params) = struct
           let src_expanded = Expander.expand_str expander src in
           Path.relative ctx_dir src_expanded)
         |> Path.Set.of_list
-        |> Super_context.add_alias_deps sctx
+        |> Rule_context.add_alias_deps rctx
              (Build_system.Alias.all ~dir:ctx_dir);
         For_stanza.empty_none
       | _ ->
@@ -147,7 +148,7 @@ module Gen(P : Install_rules.Params) = struct
         List.map (Dir_contents.dirs dir_contents) ~f:(fun dc ->
           Path.drop_optional_build_context (Dir_contents.dir dc))
       in
-      Merlin.add_rules sctx ~dir:ctx_dir ~more_src_dirs ~scope ~dir_kind
+      Merlin.add_rules sctx ~dir:ctx_dir ~rctx ~more_src_dirs ~scope ~dir_kind
         (Merlin.add_source_dir m src_dir));
     List.iter stanzas ~f:(fun stanza ->
       match (stanza : Stanza.t) with
@@ -166,7 +167,7 @@ module Gen(P : Install_rules.Params) = struct
           let targets =
             List.map (Menhir_rules.targets m) ~f:(Path.relative ctx_dir)
           in
-          SC.add_rule sctx ~dir:ctx_dir
+          Rule_context.add_rule rctx
             (Build.fail ~targets
                { fail = fun () ->
                    Errors.fail m.loc
@@ -177,14 +178,15 @@ module Gen(P : Install_rules.Params) = struct
           Menhir_rules.gen_rules cctx m ~dir:ctx_dir
         end
       | _ -> ());
-    Super_context.add_alias_deps sctx
+    Rule_context.add_alias_deps rctx
       ~dyn_deps:(Build.paths_matching ~dir:ctx_dir ~loc:Loc.none (fun p ->
         not (List.exists js_targets ~f:(Path.equal p))))
       (Build_system.Alias.all ~dir:ctx_dir) Path.Set.empty;
     cctxs
 
   let gen_rules dir_contents cctxs ~dir : (Loc.t * Compilation_context.t) list =
-    gen_format_rules sctx ~dir;
+    let rctx = Super_context.rule_context sctx ~dir in
+    gen_format_rules sctx ~rctx ~dir;
     match SC.stanzas_in sctx ~dir with
     | None -> []
     | Some d -> gen_rules dir_contents cctxs d
@@ -199,11 +201,12 @@ module Gen(P : Install_rules.Params) = struct
        begin match List.last comps with
        | Some ".bin" ->
          let src_dir = Path.parent_exn dir in
+         let rctx = Super_context.rule_context sctx ~dir in
          Super_context.file_bindings sctx ~dir
          |> List.iter ~f:(fun t ->
            let src = File_bindings.src_path t ~dir:src_dir in
            let dst = File_bindings.dst_path t ~dir in
-           Super_context.add_rule sctx ~dir (Build.symlink ~src ~dst))
+           Rule_context.add_rule rctx (Build.symlink ~src ~dst))
        | _ ->
          match
            File_tree.find_dir (SC.file_tree sctx)

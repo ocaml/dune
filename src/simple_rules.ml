@@ -15,7 +15,7 @@ let dep_bindings ~extra_bindings deps =
   | Some bindings -> Pform.Map.superpose base bindings
   | None -> base
 
-let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
+let user_rule sctx ~rctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
   if Expander.eval_blang expander rule.enabled_if then begin
     let targets : Expander.targets =
       match rule.targets with
@@ -47,9 +47,9 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
     in
     let bindings = dep_bindings ~extra_bindings rule.deps in
     let expander = Expander.add_bindings expander ~bindings in
-    SC.add_rule_get_targets sctx ~dir ~mode:rule.mode ~loc:rule.loc
+    Rule_context.add_rule_get_targets rctx ~mode:rule.mode ~loc:rule.loc
       ~locks:(interpret_locks ~expander rule.locks)
-      (SC.Deps.interpret_named sctx ~expander rule.deps
+      (Rule_context.Deps.interpret_named rctx ~expander rule.deps
        >>>
        SC.Action.run
          sctx
@@ -63,7 +63,7 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
   end else
     []
 
-let copy_files sctx ~dir ~expander ~src_dir (def: Copy_files.t) =
+let copy_files sctx ~rctx ~dir ~expander ~src_dir (def: Copy_files.t) =
   let loc = String_with_vars.loc def.glob in
   let glob_in_src =
     let src_glob = Expander.expand_str expander def.glob in
@@ -97,7 +97,7 @@ let copy_files sctx ~dir ~expander ~src_dir (def: Copy_files.t) =
   List.map files ~f:(fun basename ->
     let file_src = Path.relative src_in_build basename in
     let file_dst = Path.relative dir basename in
-    SC.add_rule sctx ~loc ~dir
+    Rule_context.add_rule rctx ~loc
       ((if def.add_line_directive
         then Build.copy_and_add_line_directive
         else Build.copy)
@@ -105,11 +105,11 @@ let copy_files sctx ~dir ~expander ~src_dir (def: Copy_files.t) =
          ~dst:file_dst);
     file_dst)
 
-let add_alias sctx ~dir ~name ~stamp ~loc ?(locks=[]) build =
+let add_alias rctx ~dir ~name ~stamp ~loc ?(locks=[]) build =
   let alias = Build_system.Alias.make name ~dir in
-  SC.add_alias_action sctx alias ~dir ~loc ~locks ~stamp build
+  Rule_context.add_alias_action rctx alias ~loc ~locks ~stamp build
 
-let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
+let alias sctx ~rctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
   let stamp =
     ( "user-alias"
     , Bindings.map
@@ -121,13 +121,13 @@ let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
   in
   let loc = Some alias_conf.loc in
   if Expander.eval_blang expander alias_conf.enabled_if then
-    add_alias sctx
+    add_alias rctx
       ~dir
       ~loc
       ~name:alias_conf.name
       ~stamp
       ~locks:(interpret_locks ~expander alias_conf.locks)
-      (SC.Deps.interpret_named sctx ~expander alias_conf.deps
+      (Rule_context.Deps.interpret_named rctx ~expander alias_conf.deps
        >>>
        match alias_conf.action with
        | None -> Build.progn []
@@ -144,7 +144,7 @@ let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
            ~targets:Alias
            ~targets_dir:dir)
   else
-    add_alias sctx
+    add_alias rctx
       ~loc
       ~dir
       ~name:alias_conf.name

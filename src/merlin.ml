@@ -113,7 +113,7 @@ let ppx_flags sctx ~dir:_ ~scope ~dir_kind { preprocess; libname; _ } =
   end
   | Other -> []
 
-let dot_merlin sctx ~dir ~more_src_dirs ~scope ~dir_kind
+let dot_merlin sctx ~rctx ~dir ~more_src_dirs ~scope ~dir_kind
       ({ requires; flags; _ } as t) =
   match Path.drop_build_context dir with
   | None -> ()
@@ -127,13 +127,13 @@ let dot_merlin sctx ~dir ~more_src_dirs ~scope ~dir_kind
 
        Currently dune doesn't support declaring a dependency only
        on the existence of a file, so we have to use this trick. *)
-    SC.add_rule sctx ~dir
+    Rule_context.add_rule rctx
       (Build.path merlin_file
        >>>
        Build.create_file (Path.relative dir ".merlin-exists"));
     Path.Set.singleton merlin_file
-    |> SC.add_alias_deps sctx (Build_system.Alias.check ~dir);
-    SC.add_rule sctx ~dir ~mode:Promote_but_delete_on_clean (
+    |> Rule_context.add_alias_deps rctx (Build_system.Alias.check ~dir);
+    Rule_context.add_rule rctx ~mode:Promote_but_delete_on_clean (
       flags
       >>^ (fun flags ->
         let (src_dirs, obj_dirs) =
@@ -177,6 +177,6 @@ let merge_all = function
   | [] -> None
   | init::ts -> Some (List.fold_left ~init ~f:merge_two ts)
 
-let add_rules sctx ~dir ~more_src_dirs ~scope ~dir_kind merlin =
+let add_rules sctx ~rctx ~dir ~more_src_dirs ~scope ~dir_kind merlin =
   if (SC.context sctx).merlin then
-    dot_merlin sctx ~dir ~more_src_dirs ~scope ~dir_kind merlin
+    dot_merlin sctx ~rctx ~dir ~more_src_dirs ~scope ~dir_kind merlin

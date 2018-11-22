@@ -279,7 +279,7 @@ module Gen(P : Params) = struct
        >>>
        Build.write_file_dyn fn)
 
-  let init_install (package : Local_package.t) =
+  let init_binary_artifacts (package : Local_package.t) =
     let installs =
       Local_package.installs package
       |> List.concat_map
@@ -292,6 +292,11 @@ module Gen(P : Params) = struct
                 List.map files ~f:(fun {File_bindings. src; dst } ->
                   Install.Entry.make section (Path.relative dir src) ?dst))
     in
+    let install_paths = Local_package.install_paths package in
+    let package = Local_package.name package in
+    local_install_rules ~package ~install_paths installs
+
+  let init_install (package : Local_package.t) entries =
     let docs =
       Local_package.mlds package
       |> List.map ~f:(fun mld ->
@@ -315,30 +320,35 @@ module Gen(P : Params) = struct
                 lib_install_files ~dir ~sub_dir lib ~scope
                   ~dir_kind ~dir_contents)
     in
-    let package_name = Local_package.name package in
-    let install_paths = Local_package.install_paths package in
     let entries =
-      local_install_rules ~package:package_name ~install_paths
-        (installs @ docs @ lib_install_files)
+      let install_paths = Local_package.install_paths package in
+      let package = Local_package.name package in
+      List.rev_append docs lib_install_files
+      |> local_install_rules ~package ~install_paths
+      |> List.rev_append entries
     in
     install_file package entries
 
   let init_install_files (package : Local_package.t) =
     if not ctx.implicit then
-          let install_fn =
-            Utils.install_file ~package:(Local_package.name package)
-              ~findlib_toolchain:ctx.findlib_toolchain
-          in
-
-          let path = Local_package.build_dir package in
-          let install_alias = Alias.install ~dir:path in
-          let install_file = Path.relative path install_fn in
-          SC.add_alias_deps sctx install_alias (Path.Set.singleton install_file)
+      let install_fn =
+        Utils.install_file ~package:(Local_package.name package)
+          ~findlib_toolchain:ctx.findlib_toolchain
+      in
+      let path = Local_package.build_dir package in
+      let install_alias = Alias.install ~dir:path in
+      let install_file = Path.relative path install_fn in
+      SC.add_alias_deps sctx install_alias (Path.Set.singleton install_file)
 
   let init () =
-    Local_package.of_sctx sctx
-    |> Package.Name.Map.iter ~f:(fun pkg ->
-      init_meta pkg;
-      init_install pkg;
-      init_install_files pkg)
+    let packages = Local_package.of_sctx sctx in
+    let artifacts_per_package =
+      Package.Name.Map.map packages ~f:init_binary_artifacts in
+    Package.Name.Map.iter packages ~f:(fun pkg ->
+      Local_package.name pkg
+      |> Package.Name.Map.find artifacts_per_package
+      |> Option.value_exn
+      |> init_install pkg;
+      init_install_files pkg;
+      init_meta pkg)
 end

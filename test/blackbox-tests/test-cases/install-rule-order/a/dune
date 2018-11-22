@@ -1,0 +1,12 @@
+(library
+ (public_name a.lib)
+ (modules a_lib)
+ (name a_lib))
+
+(executable
+ (libraries a.lib)
+ (modules foo)
+ (public_name foo)
+ (package a))
+
+(rule (with-stdout-to a_lib.ml (run %{bin:gen})))

@@ -61,7 +61,7 @@ module Run (P : PARAMS) : sig end = struct
     Compilation_context.super_context cctx
 
   let expander =
-    Super_context.expander sctx ~dir
+    Compilation_context.expander cctx
 
   (* ------------------------------------------------------------------------ *)
 

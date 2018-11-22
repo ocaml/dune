@@ -111,7 +111,7 @@ let link_rule cc ~runtime ~target =
 let build_cm cctx ~(js_of_ocaml:Dune_file.Js_of_ocaml.t) ~src ~target =
   let sctx = Compilation_context.super_context cctx in
   let dir = Compilation_context.dir cctx in
-  let expander = Super_context.expander sctx ~dir in
+  let expander = Compilation_context.expander cctx in
   if separate_compilation_enabled sctx
   then
     let spec = Arg_spec.Dep src in

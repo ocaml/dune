@@ -126,7 +126,7 @@ let link_exe
   let dir      = CC.dir           cctx in
   let obj_dir  = CC.obj_dir       cctx in
   let requires = CC.requires      cctx in
-  let expander = Super_context.expander sctx ~dir in
+  let expander = CC.expander      cctx in
   let mode = linkage.mode in
   let exe = Path.relative dir (name ^ linkage.ext) in
   let compiler = Option.value_exn (Context.compiler ctx mode) in

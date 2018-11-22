@@ -236,6 +236,7 @@ include Sub_system.Register_end_point(
       let cctx =
         Compilation_context.create ()
           ~super_context:sctx
+          ~expander
           ~scope
           ~dir:inline_test_dir
           ~modules

@@ -24,6 +24,36 @@ module Dune_file = struct
       | Ocaml_script of Path.t
   end
 
+  module Subdirs_stanza = struct
+    type t = Predicate_lang.t
+
+    let decode : t Dune_lang.Decoder.t =
+      let no_osl =
+        let open Dune_lang.Decoder in
+        plain_string (fun ~loc dn ->
+          if Filename.dirname dn <> Filename.current_dir_name ||
+             match dn with
+             | "" | "." | ".." -> true
+             | _ -> false
+          then
+            of_sexp_errorf loc "Invalid sub-directory name %S" dn
+          else
+            dn)
+        |> list
+        >>| (fun l -> Predicate_lang.of_string_set (String.Set.of_list l))
+      in
+      let osl = Predicate_lang.decode in
+      let open Dune_lang.Decoder in
+      Syntax.get_exn Stanza.syntax >>= fun v ->
+      let subdirs =
+        if Syntax.Version.Infix.(v >= (1, 6)) then
+          osl
+        else
+          no_osl
+      in
+      sum ["ignored_subdirs", subdirs]
+  end
+
   type t =
     { contents : Contents.t
     ; kind     : Dune_lang.Syntax.t
@@ -34,45 +64,18 @@ module Dune_file = struct
     | Plain         x -> x.path
     | Ocaml_script  p -> p
 
-  let extract_ignored_subdirs =
-    let no_osl =
-      let open Dune_lang.Decoder in
-      plain_string (fun ~loc dn ->
-        if Filename.dirname dn <> Filename.current_dir_name ||
-           match dn with
-           | "" | "." | ".." -> true
-           | _ -> false
-        then
-          of_sexp_errorf loc "Invalid sub-directory name %S" dn
-        else
-          dn)
-      |> list
-      >>| (fun l -> Predicate_lang.of_string_set (String.Set.of_list l))
+  let extract_ignored_subdirs ~project sexps =
+    let ignored_subdirs, sexps =
+      List.partition_map sexps ~f:(fun sexp ->
+        match (sexp : Dune_lang.Ast.t) with
+        | List (_, (Atom (_, A "ignored_subdirs") :: _)) ->
+          let stanza =
+            Dune_project.set_parsing_context project Subdirs_stanza.decode in
+          Left (Dune_lang.Decoder.parse stanza Univ_map.empty sexp)
+        | _ -> Right sexp)
     in
-    let osl = Predicate_lang.decode in
-    let stanza =
-      let open Dune_lang.Decoder in
-      Syntax.get_exn Stanza.syntax >>= fun v ->
-      let subdirs =
-        if Syntax.Version.Infix.(v >= (1, 6)) then
-          osl
-        else
-          no_osl
-      in
-      sum ["ignored_subdirs", subdirs]
-    in
-    fun ~project sexps ->
-      let ignored_subdirs, sexps =
-        List.partition_map sexps ~f:(fun sexp ->
-          match (sexp : Dune_lang.Ast.t) with
-          | List (_, (Atom (_, A "ignored_subdirs") :: _)) ->
-            let stanza =
-              Dune_project.set_parsing_context project stanza in
-            Left (Dune_lang.Decoder.parse stanza Univ_map.empty sexp)
-          | _ -> Right sexp)
-      in
-      let ignored_subdirs = Predicate_lang.union ignored_subdirs in
-      (ignored_subdirs, sexps)
+    let ignored_subdirs = Predicate_lang.union ignored_subdirs in
+    (ignored_subdirs, sexps)
 
   let load file ~project ~kind =
     Io.with_lexbuf_from_file file ~f:(fun lb ->

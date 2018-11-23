@@ -1,7 +1,7 @@
 open! Stdune
 open! Import
 
-let standard_ignore_dirs =
+let standard_dirs =
   let open Re in
   [ empty
   ; seq [set "._"; rep any]
@@ -9,6 +9,7 @@ let standard_ignore_dirs =
   |> alt
   |> Glob.of_re
   |> Predicate_lang.of_glob
+  |> Predicate_lang.compl
 
 module Dune_file = struct
   module Plain = struct
@@ -25,10 +26,12 @@ module Dune_file = struct
   end
 
   module Subdirs_stanza = struct
-    type t = Predicate_lang.t
+    type t =
+      | Ignore_subdirs of Predicate_lang.t
+      | Subdirs of Predicate_lang.t
 
     let decode : t Dune_lang.Decoder.t =
-      let no_osl =
+      let ignore_subdirs =
         let open Dune_lang.Decoder in
         plain_string (fun ~loc dn ->
           if Filename.dirname dn <> Filename.current_dir_name ||
@@ -40,18 +43,21 @@ module Dune_file = struct
           else
             dn)
         |> list
-        >>| (fun l -> Predicate_lang.of_string_set (String.Set.of_list l))
+        >>| (fun l ->
+          Ignore_subdirs (Predicate_lang.of_string_set (String.Set.of_list l)))
       in
-      let osl = Predicate_lang.decode in
       let open Dune_lang.Decoder in
-      Syntax.get_exn Stanza.syntax >>= fun v ->
       let subdirs =
-        if Syntax.Version.Infix.(v >= (1, 6)) then
-          osl
-        else
-          no_osl
+        Syntax.since Stanza.syntax (1, 6) >>>
+        Predicate_lang.decode >>| fun plang ->
+        Subdirs plang
       in
-      sum ["ignored_subdirs", subdirs]
+      sum [ "ignored_subdirs", ignore_subdirs
+          ; "subdirs", subdirs
+          ]
+
+    let reduce ~subdirs ~ignored_subdirs =
+      Predicate_lang.(diff subdirs ignored_subdirs)
   end
 
   type t =
@@ -64,32 +70,46 @@ module Dune_file = struct
     | Plain         x -> x.path
     | Ocaml_script  p -> p
 
-  let extract_ignored_subdirs ~project sexps =
-    let ignored_subdirs, sexps =
-      List.partition_map sexps ~f:(fun sexp ->
+  let extract_subdirs ~project sexps =
+    let subdirs, ignored_subdirs, sexps =
+      List.fold_left sexps ~init:(None, [], [])
+        ~f:(fun (subdirs, ignored, sexps) sexp ->
         match (sexp : Dune_lang.Ast.t) with
-        | List (_, (Atom (_, A "ignored_subdirs") :: _)) ->
+        | List (loc, (Atom (_, A ("ignored_subdirs" | "subdirs")) :: _)) ->
           let stanza =
             Dune_project.set_parsing_context project Subdirs_stanza.decode in
-          Left (Dune_lang.Decoder.parse stanza Univ_map.empty sexp)
-        | _ -> Right sexp)
+          let subdir = Dune_lang.Decoder.parse stanza Univ_map.empty sexp in
+          begin match subdir, subdirs, ignored with
+          | Ignore_subdirs i, None, is -> (subdirs, i :: is, sexps)
+          | Subdirs x, None, [] -> (Some x, [], sexps)
+          | Subdirs _, Some _, _ ->
+            Errors.fail loc "More than one subdirs stanza is not allowed"
+          | Ignore_subdirs _, Some _, _
+          | Subdirs _, _, _::_ ->
+            Errors.fail loc "Cannot have both subdirs and ignored_subdirs \
+                             stanza in a dune file. "
+          end
+        | _ -> subdirs, ignored, sexp :: sexps)
     in
-    let ignored_subdirs = Predicate_lang.union ignored_subdirs in
-    (ignored_subdirs, sexps)
+    let sexps = List.rev sexps in
+    let subdirs =
+      let ignored_subdirs = Predicate_lang.union ignored_subdirs in
+      let subdirs = Option.value subdirs ~default:standard_dirs in
+      Subdirs_stanza.reduce ~subdirs ~ignored_subdirs in
+    (subdirs, sexps)
 
   let load file ~project ~kind =
     Io.with_lexbuf_from_file file ~f:(fun lb ->
       let contents, ignored_subdirs =
         if Dune_lexer.is_script lb then
-          (Contents.Ocaml_script file, standard_ignore_dirs)
+          (Contents.Ocaml_script file, standard_dirs)
         else
           let sexps =
             Dune_lang.Parser.parse lb
               ~lexer:(Dune_lang.Lexer.of_syntax kind) ~mode:Many
           in
-          let ignored_subdirs, sexps =
-            extract_ignored_subdirs ~project sexps in
-          (Plain { path = file; sexps }, ignored_subdirs)
+          let subdirs, sexps = extract_subdirs ~project sexps in
+          (Plain { path = file; sexps }, subdirs)
       in
       ({ contents; kind }, ignored_subdirs))
 end
@@ -219,49 +239,46 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) path =
           ~compare:(fun (a, _, _) (b, _, _) -> String.compare a b)
           sub_dirs
       in
-      let project, dune_file, ignored_subdirs =
+      let project, dune_file, subdirs =
         if ignored then
-          (project, None, standard_ignore_dirs)
+          (project, None, standard_dirs)
         else
           let project =
             Option.value (Dune_project.load ~dir:path ~files) ~default:project
           in
-          let dune_file, ignored_subdirs =
+          let dune_file, subdirs =
             match List.filter ["dune"; "jbuild"] ~f:(String.Set.mem files) with
-            | [] -> (None, standard_ignore_dirs )
+            | [] -> (None, standard_dirs)
             | [fn] ->
               if fn = "dune" then
                 Dune_project.ensure_project_file_exists project;
-              let dune_file, ignored_subdirs =
+              let dune_file, subdirs =
                 Dune_file.load (Path.relative path fn)
                   ~project
                   ~kind:(Option.value_exn (Dune_lang.Syntax.of_basename fn))
               in
-              (Some dune_file, ignored_subdirs)
+              (Some dune_file, subdirs)
             | _ ->
               die "Directory %s has both a 'dune' and 'jbuild' file.\n\
                    This is not allowed"
                 (Path.to_string_maybe_quoted path)
           in
-          let ignored_subdirs =
+          let subdirs =
             if String.Set.mem files "jbuild-ignore" then
-              Predicate_lang.union
-                [ ignored_subdirs
-                ; load_jbuild_ignore (Path.relative path "jbuild-ignore")
-                ]
+              Dune_file.Subdirs_stanza.reduce ~subdirs
+                ~ignored_subdirs:(load_jbuild_ignore (Path.relative path "jbuild-ignore"))
             else
-              ignored_subdirs
+              subdirs
           in
-          (project, dune_file, ignored_subdirs)
+          (project, dune_file, subdirs)
       in
-      let is_ignored =
-        let ignored = lazy (
+      let is_subdir =
+        let subdir = lazy (
           lazy (List.map sub_dirs ~f:(fun (a, _, _) -> a))
-          |> Predicate_lang.filter ignored_subdirs
-               ~standard:standard_ignore_dirs
+          |> Predicate_lang.filter subdirs ~standard:standard_dirs
           |> String.Set.of_list
         ) in
-        String.Set.mem (Lazy.force ignored)
+        String.Set.mem (Lazy.force subdir)
       in
       let sub_dirs =
         List.fold_left sub_dirs ~init:String.Map.empty
@@ -280,7 +297,7 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) path =
             in
             let ignored =
               ignored
-              || is_ignored fn
+              || not (is_subdir fn)
               || Path.Set.mem extra_ignored_subtrees path
             in
             String.Map.add acc fn

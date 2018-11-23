@@ -3,6 +3,7 @@ open Stdune
 module Ast = struct
   type 'a t =
     | Element of 'a
+    | Compl of 'a t
     | Standard
     | Union of 'a t list
     | Diff of 'a t * 'a t
@@ -63,6 +64,7 @@ let empty = Ast.Union []
 
 let rec mem t ~standard ~elem =
   match (t : _ Ast.t) with
+  | Compl t -> not (mem t ~standard ~elem)
   | Element f -> f elem
   | Union xs -> List.exists ~f:(mem ~standard ~elem) xs
   | Diff (l, r) ->
@@ -81,3 +83,7 @@ let union t = Ast.Union t
 let of_glob g = Ast.Element (Glob.test g)
 
 let of_string_set s = Ast.Element (String.Set.mem s)
+
+let compl t = Ast.Compl t
+
+let diff x y = Ast.Diff (x, y)

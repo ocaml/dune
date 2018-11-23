@@ -10,6 +10,10 @@ val filter : t -> standard:t -> string list Lazy.t -> string list
 
 val of_glob : Glob.t -> t
 
+val compl : t -> t
+
 val union : t list -> t
+
+val diff : t -> t -> t
 
 val of_string_set : String.Set.t -> t

@@ -3,10 +3,11 @@ next
 
 - Expand variables in `install` stanzas (#1354, @mseri)
 
-- Add predicate language support for ignoring sub directories. This allows the
-  use globs, set operations, and special values in specifying the ignore sub
-  directories. For example: `(ignore_subdirs * \ lib*)` ignores all directories
-  except those that start with `lib`. (#1517, @rgrinberg)
+- Add predicate language support for specifying sub directories. This allows the
+  use globs, set operations, and special values in specifying the sub
+  directories used for the build. For example: `(subdirs :standard \ lib*)` will
+  use all directories except those that start with `lib`. (#1517, #1568,
+  @rgrinberg)
 
 - Add `binaries` field to the `(env ..)` stanza. This field sets and overrides
   binaries for rules defined in a directory. (#1521, @rgrinberg)

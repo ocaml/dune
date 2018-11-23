@@ -1,1 +1,1 @@
-(ignored_subdirs garbage*)
+(subdirs (:standard \ garbage*))

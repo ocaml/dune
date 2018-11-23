@@ -13,18 +13,13 @@ Testing in presence of an empty `dune` file:
 
   $ echo > dune
   $ dune build
-  File ".git/dune", line 1, characters 0-7:
-  1 | invalid dune file
-      ^^^^^^^
-  Error: Unknown constructor invalid
-  [1]
 
 Testing in presence of an `ignored_subdirs` stanza:
 
   $ echo '(ignored_subdirs blah)' > dune
   $ dune build
-  File ".git/dune", line 1, characters 0-7:
-  1 | invalid dune file
-      ^^^^^^^
-  Error: Unknown constructor invalid
+  File "dune", line 1, characters 17-21:
+  1 | (ignored_subdirs blah)
+                       ^^^^
+  Error: List expected
   [1]

@@ -31,6 +31,9 @@ test-js:
 test-all:
 	$(BIN) build @runtest @runtest-js
 
+check:
+	$(BIN) build @check
+
 promote:
 	$(BIN) promote
 
@@ -68,7 +71,7 @@ dune: $(BIN)
 	$(BIN) $(RUN_ARGS)
 
 .PHONY: default install uninstall reinstall clean test doc
-.PHONY: promote accept-corrections opam-release dune
+.PHONY: promote accept-corrections opam-release dune check
 
 opam-release:
 	dune-release distrib --skip-build --skip-lint --skip-tests

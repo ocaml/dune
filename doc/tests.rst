@@ -57,7 +57,7 @@ follow:
           let%test _ = fact 5 = 120
 
 The file has to be preprocessed with the ppx_inline_test ppx rewriter,
-so for instance the ``jbuild`` file might look like this:
+so for instance the ``dune`` file might look like this:
 
 .. code:: scheme
 
@@ -86,7 +86,7 @@ instance, if we make the test fail by replacing ``120`` by ``0`` we get:
 
           FAILED 1 / 1 tests
 
-Note that in this case Jbuild knew how to build and run the tests
+Note that in this case Dune knew how to build and run the tests
 without any special configuration. This is because ppx_inline_test
 defines an inline tests backend and it is used by the library. Some
 other frameworks, such as qtest_ don't have any special library or ppx
@@ -98,7 +98,10 @@ field:
 
           (library
            (name foo)
-           (inline_tests (backend qtest)))
+           (inline_tests (backend qtest.lib)))
+           
+In the example above, the name `qtest.lib` comes from the `public_name` field
+in `qtest`'s own `dune` file.
 
 
 Inline expectation tests
@@ -322,7 +325,7 @@ We said in `Running tests`_ that to run tests dune simply builds
 the ``runtest`` alias. As a result, to define cutsom tests, you simply
 need to add an action to this alias in any directory. For instance if
 you have a binary ``tests.exe`` that you want to run as part of
-running your testsuite, simply add this to a jbuild file:
+running your testsuite, simply add this to a dune file:
 
 .. code:: scheme
 

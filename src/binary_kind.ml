@@ -5,6 +5,7 @@ type t =
   | Exe
   | Object
   | Shared_object
+  | Plugin
 
 let decode =
   let open Dune_lang.Decoder in
@@ -13,6 +14,7 @@ let decode =
     ; "exe"           , return Exe
     ; "object"        , return Object
     ; "shared_object" , return Shared_object
+    ; "plugin"        , return Plugin
     ]
 
 let to_string = function
@@ -20,6 +22,7 @@ let to_string = function
   | Exe -> "exe"
   | Object -> "object"
   | Shared_object -> "shared_object"
+  | Plugin -> "plugin"
 
 let pp fmt t =
   Format.pp_print_string fmt (to_string t)
@@ -27,4 +30,4 @@ let pp fmt t =
 let encode t =
   Dune_lang.unsafe_atom_of_string (to_string t)
 
-let all = [C; Exe; Object; Shared_object]
+let all = [C; Exe; Object; Shared_object; Plugin]

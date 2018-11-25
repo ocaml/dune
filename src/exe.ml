@@ -38,6 +38,12 @@ module Linkage = struct
     ; flags = ["-custom"]
     }
 
+  let plugin =
+    { mode  = Native
+    ; ext   = ".cmxs"
+    ; flags = []
+    }
+
   let native_or_custom (context : Context.t) =
     match context.ocamlopt with
     | None   -> custom
@@ -77,6 +83,8 @@ module Linkage = struct
       | Native , Object        -> ".exe" ^ ctx.ext_obj
       | Byte   , Shared_object -> ".bc"  ^ ctx.ext_dll
       | Native , Shared_object ->          ctx.ext_dll
+      | Native , Plugin        -> ".cmxs"
+      | Byte   , Plugin        -> Errors.fail m.loc "Plugin generation only supported native-code!"
     in
     let flags =
       match m.kind with
@@ -95,7 +103,7 @@ module Linkage = struct
           else
             so_flags_unix
         in
-        match real_mode with
+        begin match real_mode with
         | Native ->
           (* The compiler doesn't pass these flags in native mode. This
              looks like a bug in the compiler. *)
@@ -104,6 +112,9 @@ module Linkage = struct
           @ so_flags
         | Byte ->
           so_flags
+        end
+      | Plugin ->
+        ["-shared"]
     in
     { ext
     ; mode = real_mode

@@ -21,6 +21,9 @@ module Linkage : sig
   (** Byte compilation, link with [-custom], extension [.exe] *)
   val custom : t
 
+  (** Native compilation, extension [.cmxs] *)
+  val plugin : t
+
   (** [native] if supported, [custom] if not *)
   val native_or_custom : Context.t -> t
 

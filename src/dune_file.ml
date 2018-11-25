@@ -1138,6 +1138,7 @@ module Executables = struct
     let native_exe           = make Native Exe
     let native_object        = make Native Object
     let native_shared_object = make Native Shared_object
+    let native_plugin        = make Native Plugin
 
     let byte   = byte_exe
     let native = native_exe
@@ -1149,6 +1150,7 @@ module Executables = struct
       [ "exe"           , exe
       ; "object"        , object_
       ; "shared_object" , shared_object
+      ; "cmxs"          , native_plugin
       ; "byte"          , byte
       ; "native"        , native
       ]

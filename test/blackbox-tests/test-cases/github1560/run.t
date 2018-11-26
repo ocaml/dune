@@ -16,10 +16,5 @@ Testing in presence of an empty `dune` file:
 
 Testing in presence of an `ignored_subdirs` stanza:
 
-  $ echo '(ignored_subdirs blah)' > dune
+  $ echo '(ignored_subdirs (blah))' > dune
   $ dune build
-  File "dune", line 1, characters 17-21:
-  1 | (ignored_subdirs blah)
-                       ^^^^
-  Error: List expected
-  [1]

@@ -11,10 +11,10 @@ let config_includes (config : Dune_file.Auto_format.t) s =
   | Only set -> List.mem s ~set
 
 let add_diff sctx loc alias ~dir input output =
-  let module SC = Super_context in
   let open Build.O in
   let action = Action.diff input output in
-  SC.add_alias_action sctx alias ~dir ~loc:(Some loc) ~locks:[] ~stamp:input
+  Super_context.add_alias_action sctx alias ~dir ~loc:(Some loc) ~locks:[]
+    ~stamp:input
     (Build.paths [input; output]
      >>>
      Build.action
@@ -49,7 +49,6 @@ let depend_on_files ~named dir =
 let gen_rules sctx (config : Dune_file.Auto_format.t) ~dir =
   let loc = config.loc in
   let source_dir = Path.drop_build_context_exn dir in
-  let files = File_tree.files_of (Super_context.file_tree sctx) source_dir in
   let subdir = ".formatted" in
   let output_dir = Path.relative dir subdir in
   let alias = Build_system.Alias.fmt ~dir in
@@ -98,13 +97,15 @@ let gen_rules sctx (config : Dune_file.Auto_format.t) ~dir =
     Option.iter
       formatter
       ~f:(fun arr ->
-          Super_context.add_rule sctx ~mode:Standard ~loc ~dir arr;
-          add_diff sctx loc alias_formatted ~dir input output)
+        Super_context.add_rule sctx ~mode:Standard ~loc ~dir arr;
+        add_diff sctx loc alias_formatted ~dir input output)
   in
   Super_context.on_load_dir
     sctx
     ~dir:output_dir
-    ~f:(fun () -> Path.Set.iter files ~f:setup_formatting);
+    ~f:(fun () ->
+      File_tree.files_of (Super_context.file_tree sctx) source_dir
+      |> Path.Set.iter ~f:setup_formatting);
   Super_context.add_alias_deps sctx alias
     (Path.Set.singleton (Build_system.Alias.stamp_file alias_formatted));
   Super_context.add_alias_deps sctx alias_formatted Path.Set.empty

@@ -14,6 +14,8 @@ module Make(Key : Comparable.S) : S with type key = Key.t = struct
       | x -> Some x
       | exception Not_found -> None
 
+    let find_exn t key = Option.value_exn (find_opt key t)
+
     let to_opt f t =
       match f t with
       | x -> Some x

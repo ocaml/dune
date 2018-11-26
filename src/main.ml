@@ -127,7 +127,7 @@ let external_lib_deps ?log ~packages () =
          | Ok path -> Path.append context.build_dir path
          | Error () -> die "Unknown package %S" (Package.Name.to_string pkg))
      in
-     let sctx = Option.value_exn (String.Map.find setup.scontexts "default") in
+     let sctx = String.Map.find_exn setup.scontexts "default" in
      let internals = Super_context.internal_lib_names sctx in
      Path.Map.map
        (Build_system.all_lib_deps setup.build_system

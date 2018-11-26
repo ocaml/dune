@@ -389,7 +389,7 @@ let build_ppx_driver sctx ~dep_kind ~target ~dir_kind ~pps ~pp_names =
   in
   (* CR-someday diml: what we should do is build the .cmx/.cmo once
      and for all at the point where the driver is defined. *)
-  let ml = Path.relative (Option.value_exn (Path.parent target)) "ppx.ml" in
+  let ml = Path.relative (Path.parent_exn target) "ppx.ml" in
   let add_rule = SC.add_rule sctx ~dir:(Super_context.build_dir sctx) in
   add_rule
     (Build.of_result_map driver_and_libs ~f:(fun (driver, _) ->

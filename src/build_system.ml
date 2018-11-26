@@ -969,7 +969,7 @@ and load_dir_step2_exn t ~dir ~collector ~lazy_generators =
     if context_name = "install" then
       These String.Set.empty
     else
-      let gen_rules = Option.value_exn (String.Map.find t.gen_rules context_name) in
+      let gen_rules = String.Map.find_exn t.gen_rules context_name in
       gen_rules ~dir (Option.value_exn (Path.explode sub_dir))
   in
   let rules = collector.rules in

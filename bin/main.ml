@@ -966,9 +966,7 @@ let printenv =
         Build.all (
           match Path.extract_build_context dir with
           | Some (ctx, _) ->
-            let sctx =
-              String.Map.find setup.scontexts ctx |> Option.value_exn
-            in
+            let sctx = String.Map.find_exn setup.scontexts ctx in
             [dump sctx ~dir]
           | None ->
             String.Map.values setup.scontexts

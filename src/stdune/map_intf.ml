@@ -72,6 +72,7 @@ module type S = sig
 
   val split: 'a t -> key -> 'a t * 'a option * 'a t
   val find : 'a t -> key -> 'a option
+  val find_exn : 'a t -> key -> 'a
 
   val map  : 'a t -> f:(       'a -> 'b) -> 'b t
   val mapi : 'a t -> f:(key -> 'a -> 'b) -> 'b t

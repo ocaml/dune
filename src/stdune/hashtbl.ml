@@ -7,6 +7,8 @@ include struct
     match MoreLabels.Hashtbl.find t key with
     | x -> Some x
     | exception Not_found -> None
+
+  let find_exn t key = Option.value_exn (find_opt t key)
 end
 
 module Make(H : Hashable.S) = struct
@@ -23,6 +25,7 @@ module Make(H : Hashable.S) = struct
 
   include struct
     let find = find_opt
+    let find_exn t key = Option.value_exn (find_opt t key)
     let add t key data = add t ~key ~data
 
     let find_or_add t key ~f =

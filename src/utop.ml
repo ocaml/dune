@@ -80,6 +80,7 @@ let libs_under_dir sctx ~db ~dir =
   |> Option.value ~default:[]
 
 let setup sctx ~dir =
+  let expander = Super_context.expander sctx ~dir in
   let scope = Super_context.find_scope_by_dir sctx dir in
   let utop_exe_dir = utop_exe_dir ~dir in
   let db = Scope.libs scope in
@@ -104,6 +105,7 @@ let setup sctx ~dir =
   let cctx =
     Compilation_context.create ()
       ~super_context:sctx
+      ~expander
       ~scope
       ~dir:utop_exe_dir
       ~modules

@@ -45,6 +45,7 @@ let libraries_link ~name ~loc ~mode cctx libs =
     let cctx = Compilation_context.(
       create
         ~super_context:sctx
+        ~expander:(expander cctx)
         ~scope:(scope cctx)
         ~dir:(dir cctx)
         ~dir_kind:(dir_kind cctx)

@@ -16,6 +16,7 @@ type t
 val create
   :  super_context         : Super_context.t
   -> scope                 : Scope.t
+  -> expander              : Expander.t
   -> dir                   : Path.t
   -> ?private_obj_dir      : Path.t
   -> ?modules_of_vlib      : Module.Name_map.t
@@ -37,6 +38,7 @@ val create
 val for_alias_module : t -> t
 
 val super_context        : t -> Super_context.t
+val expander             : t -> Expander.t
 val context              : t -> Context.t
 val scope                : t -> Scope.t
 val dir                  : t -> Path.t

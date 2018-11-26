@@ -464,6 +464,7 @@ module Gen (P : Install_rules.Params) = struct
     let cctx =
       Compilation_context.create ()
         ~super_context:sctx
+        ~expander
         ?modules_of_vlib:(
           Option.map impl ~f:(fun impl ->
             Virtual_rules.Implementation.vlib_modules impl

@@ -85,6 +85,7 @@ let executables_rules ~sctx ~dir ~dir_kind ~expander
   let cctx =
     Compilation_context.create ()
       ~super_context:sctx
+      ~expander
       ~scope
       ~dir
       ~dir_kind

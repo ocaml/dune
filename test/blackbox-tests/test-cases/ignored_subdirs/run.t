@@ -8,3 +8,5 @@
   $ dune build --root glob @runtest
   Entering directory 'glob'
   real dir
+  $ dune build --root logical @runtest
+  Entering directory 'logical'

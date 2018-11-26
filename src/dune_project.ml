@@ -29,6 +29,8 @@ module Name : sig
   val anonymous_root : t
 
   module Infix : Comparable.OPS with type t = t
+
+  module Map : Map.S with type key = t
 end = struct
   module T = struct
     type t =
@@ -44,6 +46,8 @@ end = struct
   end
 
   include T
+
+  module Map = Map.Make(T)
 
   module Infix = Comparable.Operators(T)
 

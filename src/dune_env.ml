@@ -11,7 +11,7 @@ module Stanza = struct
     { flags          : Ordered_set_lang.Unexpanded.t
     ; ocamlc_flags   : Ordered_set_lang.Unexpanded.t
     ; ocamlopt_flags : Ordered_set_lang.Unexpanded.t
-    ; env_vars       : Env.t
+    ; env_vars       : String_with_vars.t String.Map.t
     ; binaries       : File_bindings.Unexpanded.t
     }
 
@@ -27,11 +27,12 @@ module Stanza = struct
   let env_vars_field =
     field
     "env-vars"
-      ~default:Env.empty
+      ~default:String.Map.empty
       (Syntax.since Stanza.syntax (1, 5) >>>
-       located (list (pair string string)) >>| fun (loc, pairs) ->
-       match Env.Map.of_list pairs with
-       | Ok vars -> Env.extend Env.empty ~vars
+       located (list (pair string String_with_vars.decode))
+       >>| fun (loc, pairs) ->
+       match String.Map.of_list pairs with
+       | Ok vars -> vars
        | Error (k, _, _) ->
          Errors.fail loc "Variable %s is specified several times" k)
 

@@ -19,20 +19,39 @@ module Kind = struct
                            ])
 end
 
-module Env_nodes = struct
+module Env_nodes : sig
+  type t = private
+    { context: Dune_env.Stanza.t option
+    ; workspace: Dune_env.Stanza.t option
+    }
+
+  val make
+    :  context:Dune_env.Stanza.t option
+    -> workspace:Dune_env.Stanza.t option
+    -> t
+
+  val extra_env : profile:string -> dir:Path.t -> t -> Env.t
+end = struct
   type t =
     { context: Dune_env.Stanza.t option
     ; workspace: Dune_env.Stanza.t option
     }
 
-  let extra_env ~profile env_nodes =
+  let make ~context ~workspace = { context; workspace }
+
+  let extra_env ~profile ~dir env_nodes =
     let make_env l =
       let open Option.O in
       Option.value
         ~default:Env.empty
         (l >>= fun stanza ->
          Dune_env.Stanza.find stanza ~profile >>| fun env ->
-         env.env_vars)
+         env.env_vars
+         |> String.Map.map ~f:(fun sw ->
+           String_with_vars.expand sw ~mode:Single ~dir ~f:(fun _ _ -> None)
+           |> Value.to_string ~dir)
+         |> Env.of_string_map
+        )
     in
     Env.extend_env
       (make_env env_nodes.context)
@@ -400,7 +419,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
         Option.value ~default:Env.empty
           (Option.map findlib_config ~f:Findlib.Config.env)
       )
-    |> Env.extend_env (Env_nodes.extra_env ~profile env_nodes)
+    |> Env.extend_env (Env_nodes.extra_env ~profile ~dir:build_dir env_nodes)
     in
     let stdlib_dir = Path.of_string (Ocaml_config.standard_library ocfg) in
     let natdynlink_supported = Ocaml_config.natdynlink_supported ocfg in
@@ -586,12 +605,7 @@ let create_for_opam ~root ~env ~env_nodes ~targets ~profile
     ~name ~merlin ~host_toolchain
 
 let create ~env (workspace : Workspace.t) =
-  let env_nodes context =
-    { Env_nodes.
-      context
-    ; workspace = workspace.env
-    }
-  in
+  let env_nodes context = Env_nodes.make ~workspace:workspace.env ~context in
   Fiber.parallel_map workspace.contexts ~f:(fun def ->
     match def with
     | Default { targets; profile; env = env_node ; toolchain ; loc = _ } ->

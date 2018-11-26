@@ -32,7 +32,7 @@ module Kind : sig
 end
 
 module Env_nodes : sig
-  type t =
+  type t = private
     { context: Dune_env.Stanza.t option
     ; workspace: Dune_env.Stanza.t option
     }

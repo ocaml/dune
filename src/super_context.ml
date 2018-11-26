@@ -115,10 +115,11 @@ end = struct
         Exn.code_error "Super_context.Env.get called on invalid directory"
           [ "dir", Path.to_sexp dir ]
 
-  let external_ t  ~dir =
-    Env_node.external_ (get t ~dir) ~profile:(profile t) ~default:t.context.env
+  let rec external_ t ~dir =
+    Env_node.external_ (get t ~dir) ~profile:(profile t)
+      ~default:t.context.env ~expander:(expander_for_artifacts t)
 
-  let expander_for_artifacts t ~dir =
+  and expander_for_artifacts t ~dir =
     let node = get t ~dir in
     let external_ = external_ t ~dir in
     Expander.extend_env t.expander ~env:external_
@@ -542,12 +543,16 @@ module Action = struct
     in
     let targets = Path.Set.to_list targets in
     List.iter targets ~f:(fun target ->
-      if Path.parent_exn target <> targets_dir then
+      let target_dir = Path.parent_exn target in
+      if target_dir <> targets_dir then
         Errors.fail loc
           "This action has targets in a different directory than the current \
            one, this is not allowed by dune at the moment:\n%s"
           (List.map targets ~f:(fun target ->
-             sprintf "- %s" (Utils.describe_target target))
+             sprintf "- %s (directory: %s <> %s)"
+               (Utils.describe_target target)
+               (Path.to_string_maybe_quoted target_dir)
+               (Path.to_string_maybe_quoted targets_dir))
            |> String.concat ~sep:"\n"));
     let build =
       Build.record_lib_deps (Expander.Resolved_forms.lib_deps forms)

@@ -39,20 +39,25 @@ let file_bindings t ~profile ~expander =
     t.file_bindings <- Some file_bindings;
     file_bindings
 
-let rec external_ t ~profile ~default =
+let rec external_ t ~profile ~default ~expander =
   match t.external_ with
   | Some x -> x
   | None ->
     let default =
       match t.inherit_from with
       | None -> default
-      | Some (lazy t) -> external_ t ~default ~profile
+      | Some (lazy t) -> external_ t ~default ~profile ~expander
     in
     let (env, have_binaries) =
       match Dune_env.Stanza.find t.config ~profile with
       | None -> (default, false)
       | Some cfg ->
-        ( Env.extend_env default cfg.env_vars
+        let env_vars =
+          let expander = expander ~dir:(Path.parent_exn t.dir) in
+          String.Map.map cfg.env_vars ~f:(Expander.expand_str expander)
+          |> Env.of_string_map
+        in
+        ( Env.extend_env default env_vars
         , not (File_bindings.is_empty cfg.binaries)
         )
     in

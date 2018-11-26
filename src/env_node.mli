@@ -15,7 +15,12 @@ val make
 
 val scope : t -> Scope.t
 
-val external_ : t -> profile:string -> default:Env.t -> Env.t
+val external_
+  :  t
+  -> profile:string
+  -> default:Env.t
+  -> expander:(dir:Path.t -> Expander.t)
+  -> Env.t
 
 val ocaml_flags : t -> profile:string -> expander:Expander.t -> Ocaml_flags.t
 

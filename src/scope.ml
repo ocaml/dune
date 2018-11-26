@@ -111,9 +111,8 @@ module DB = struct
           | None -> Not_found
           | Some project ->
             let scope =
-              Option.value_exn
-                (Dune_project.Name.Map.find !by_name_cell (Dune_project.name project))
-            in
+              Dune_project.Name.Map.find_exn !by_name_cell
+                (Dune_project.name project) in
             Redirect (Some scope.db, name))
         ~all:(fun () -> Lib_name.Map.keys public_libs)
     in

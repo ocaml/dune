@@ -68,7 +68,7 @@ module Make(Data : sig type t end) = struct
         }
 
     let get_exn name : Instance.t =
-      let t = Option.value_exn (Hashtbl.find langs name) in
+      let t = Hashtbl.find_exn langs name in
       { syntax  = t.syntax
       ; data    = t.data
       ; version = Syntax.greatest_supported_version t.syntax

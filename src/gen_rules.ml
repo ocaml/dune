@@ -275,7 +275,7 @@ let gen ~contexts ~build_system
       match context.for_host with
       | None -> Fiber.return None
       | Some h ->
-        Fiber.Ivar.read (Option.value_exn (Hashtbl.find sctxs h.name))
+        Fiber.Ivar.read (Hashtbl.find_exn sctxs h.name)
         >>| fun x -> Some x
     in
     let stanzas () =
@@ -302,7 +302,7 @@ let gen ~contexts ~build_system
     in
     let module P = struct let sctx = sctx end in
     let module M = Gen(P) in
-    Fiber.Ivar.fill (Option.value_exn (Hashtbl.find sctxs context.name)) sctx
+    Fiber.Ivar.fill (Hashtbl.find_exn sctxs context.name) sctx
     >>| fun () ->
     (context.name, (module M : Gen))
   in

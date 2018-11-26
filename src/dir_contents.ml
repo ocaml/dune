@@ -353,7 +353,7 @@ let rec get sctx ~dir =
         | None ->
           ignore (get sctx ~dir:(Path.parent_exn dir) : t);
           (* Filled while scanning the group root *)
-          Option.value_exn (Hashtbl.find cache dir)
+          Hashtbl.find_exn cache dir
       end
     | Group_root (ft_dir, d) ->
       let rec walk ft_dir ~dir acc =

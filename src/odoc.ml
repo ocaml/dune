@@ -476,21 +476,11 @@ module Gen (S : sig val sctx : SC.t end) = struct
 
   let init () =
     let mlds_by_package =
-      let map = lazy (
-        stanzas
-        |> List.concat_map ~f:(fun (w : _ Dir_with_dune.t) ->
-          List.filter_map w.data ~f:(function
-            | Documentation d ->
-              let dc = Dir_contents.get sctx ~dir:w.ctx_dir in
-              let mlds = Dir_contents.mlds dc d in
-              Some (d.package.name, mlds)
-            | _ ->
-              None
-          ))
-        |> Package.Name.Map.of_list_reduce ~f:List.rev_append
-      ) in
+      let map = lazy (Local_package.of_sctx sctx) in
       fun (p : Package.t) ->
-        Option.value (Package.Name.Map.find (Lazy.force map) p.name) ~default:[]
+        match (Package.Name.Map.find (Lazy.force map) p.name) with
+        | None -> []
+        | Some p -> Local_package.mlds p
     in
     SC.packages sctx
     |> Package.Name.Map.iter ~f:(fun (pkg : Package.t) ->

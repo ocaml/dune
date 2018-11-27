@@ -1,11 +1,11 @@
-opam-version: "1.2"
+opam-version: "2.0"
 version: "1.0"
 maintainer: "bob@sponge.com"
 authors: ["SpongeBob"]
 homepage: "https://github.com/SpongeBob/hello_world"
 bug-reports: "https://github.com/SpongeCob/hello_world/issues"
-dev-repo: "https://github.com/SpongeBob/hello_world.git"
+dev-repo: "git+https://github.com/SpongeBob/hello_world.git"
 license: "Apache-2.0"
 build: [
-  ["jbuilder" "build" "--only" "hello_world" "--root" "." "-j" jobs "@install"]
+  ["dune" "build" "-p" name "-j" jobs]
 ]

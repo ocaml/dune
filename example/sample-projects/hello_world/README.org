@@ -5,18 +5,18 @@ The library is defined in =lib= and the executable in =bin=. It also
 defines a test in =test=.
 
 At the toplevel of the project, there is a =hello_world.opam=
-file. This file is required so that =jbuilder= knows that this is the
+file. This file is required so that =dune= knows that this is the
 =hello_world= project.
 
 To build everything that is meant to be installed in this project,
 type:
 
 #+begin_src
-$ jbuilder build @install
+$ dune build @install
 #+end_src
 
 To run the tests, type:
 
 #+begin_src
-$ jbuilder runtest
+$ dune runtest
 #+end_src

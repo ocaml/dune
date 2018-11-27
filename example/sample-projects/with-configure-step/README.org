@@ -1,5 +1,5 @@
 This project shows how to add a configure step to a project using
-jbuilder.
+dune.
 
 In order to keep things composable, it offers several way to configure
 the project:
@@ -27,10 +27,10 @@ Technically this is how it works:
 =config.full= is what is used by the rest of the build.
 
 Now in order to support (2) and (3), we setup the following rules in
-the toplevel =jbuild=:
+the toplevel =dune= file:
 - a rule to produce =config= by copying =config.default=
 - a rule to produce =config.full= by running =real_configure.ml=
 
-The reason it all work as described is because if Jbuilder knows how
+The reason it all work as described is because if Dune knows how
 to build a file and this file is already present in the source tree,
 it will always prefer the file that's already there

@@ -33,6 +33,8 @@ next
 
 - Support for OCaml 4.08: `List.t` is now provided by OCaml (#1561 @ejgallego)
 
+- Document virtual libraries (experimental) (#1580, @rgrinberg)
+
 1.5.1 (7/11/2018)
 -----------------
 

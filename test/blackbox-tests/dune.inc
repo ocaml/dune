@@ -855,6 +855,14 @@
     (diff? run.t run.t.corrected)))))
 
 (alias
+ (name old-dune-subsystem)
+ (deps (package dune) (source_tree test-cases/old-dune-subsystem))
+ (action
+  (chdir
+   test-cases/old-dune-subsystem
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name optional)
  (deps (package dune) (source_tree test-cases/optional))
  (action
@@ -1256,6 +1264,7 @@
   (alias ocamllex-jbuild)
   (alias odoc)
   (alias odoc-unique-mlds)
+  (alias old-dune-subsystem)
   (alias optional)
   (alias output-obj)
   (alias package-dep)
@@ -1391,6 +1400,7 @@
   (alias ocaml-syntax)
   (alias ocamldep-multi-stanzas)
   (alias ocamllex-jbuild)
+  (alias old-dune-subsystem)
   (alias optional)
   (alias output-obj)
   (alias package-dep)

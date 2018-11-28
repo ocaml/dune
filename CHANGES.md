@@ -35,6 +35,9 @@ next
 
 - Document virtual libraries (experimental) (#1580, @rgrinberg)
 
+- Exclude the local esy directory (`_esy`) from the list of watched
+  directories (#1578, @andreypopp)
+
 1.5.1 (7/11/2018)
 -----------------
 

@@ -92,55 +92,32 @@ end
 module Error : sig
   module Library_not_available : sig
     module Reason : sig
-      module Hidden : sig
-        type t =
-          { name   : Lib_name.t
-          ; path   : Path.t
-          ; reason : string
-          }
-      end
-
-      type t =
-        | Not_found
-        | Hidden of Hidden.t
+      type t
 
       val to_string : t -> string
       val pp : Format.formatter -> t -> unit
     end
 
-    type nonrec t =
-      { loc    : Loc.t (** For names coming from Jbuild files *)
-      ; name   : Lib_name.t
-      ; reason : Reason.t
-      }
+    type t
   end
 
   module No_solution_found_for_select : sig
-    type t = { loc : Loc.t }
+    type t
   end
 
   module Conflict : sig
     (** When two libraries in a transitive closure conflict *)
-    type t =
-      { lib1 : Lib_info.t * Dep_path.Entry.t list
-      ; lib2 : Lib_info.t * Dep_path.Entry.t list
-      }
+    type t
   end
 
   module Overlap : sig
     (** A conflict that doesn't prevent compilation, but that we still
         consider as an error to avoid surprises. *)
-    type t =
-      { in_workspace : Lib_info.t
-      ; installed    : Lib_info.t * Dep_path.Entry.t list
-      }
+    type t
   end
 
   module Private_deps_not_allowed : sig
-    type t =
-      { private_dep : Lib_info.t
-      ; loc         : Loc.t
-      }
+    type t
   end
 
   module Double_implementation : sig
@@ -148,6 +125,10 @@ module Error : sig
   end
 
   module No_implementation : sig
+    type t
+  end
+
+  module Not_virtual_lib : sig
     type t
   end
 
@@ -160,6 +141,7 @@ module Error : sig
     | Private_deps_not_allowed     of Private_deps_not_allowed.t
     | Double_implementation        of Double_implementation.t
     | No_implementation            of No_implementation.t
+    | Not_virtual_lib              of Not_virtual_lib.t
 end
 
 exception Error of Error.t

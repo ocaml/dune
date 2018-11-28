@@ -1,0 +1,7 @@
+(library
+ (name foo)
+ (implements foobar12312414))
+
+(alias
+ (name default)
+ (deps (alias_rec all)))

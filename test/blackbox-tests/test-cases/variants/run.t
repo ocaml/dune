@@ -223,3 +223,49 @@ There should be an error message that clarifies this.
   - Vlib
   They must be marked as private using the (private_modules ..) field
   [1]
+
+Test that implementing vlibs that aren't present is impossible
+  $ dune build --root no-vlib-present
+  Entering directory 'no-vlib-present'
+  File "dune", line 3, characters 13-27:
+  3 |  (implements foobar12312414))
+                   ^^^^^^^^^^^^^^
+  Error: Library "foobar12312414" not found.
+  Hint: try: dune external-lib-deps --missing --root no-vlib-present @@default
+  [1]
+
+Test that trying to implement libraries that aren't virtual results in an
+appropriate error message.
+  $ dune build --root impl-not-virtual
+  Entering directory 'impl-not-virtual'
+  File "impl/dune", line 3, characters 13-16:
+  3 |  (implements lib))
+                   ^^^
+  Error: Library "lib" is not virtual. It cannot be implemented by "impl".
+  [1]
+
+Test that trying to implement external libraries that aren't virtual results in
+an appropriate error message.
+  $ dune build --root impl-not-virtual-external
+  Entering directory 'impl-not-virtual-external'
+  File "dune", line 7, characters 13-30:
+  7 |  (implements dune.configurator))
+                   ^^^^^^^^^^^^^^^^^
+  Error: Library "dune.configurator" is not virtual. It cannot be implemented by "foobar".
+  [1]
+
+Test that we can implement external libraries.
+
+First we create an external library
+  $ dune build --root implements-external/vlib @install
+  Entering directory 'implements-external/vlib'
+
+Then we make sure that we can implement it
+  $ env OCAMLPATH=implements-external/vlib/_build/install/default/lib dune build --root implements-external/impl
+  Entering directory 'implements-external/impl'
+  File "impl-lib/dune", line 3, characters 13-17:
+  3 |  (implements vlib))
+                   ^^^^
+  Error: Library "vlib" is not virtual. It cannot be implemented by "impl".
+  -> required by library "impl" in _build/default/impl-lib
+  [1]

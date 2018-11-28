@@ -44,6 +44,7 @@ module Dot_file = struct
   let to_string ~obj_dirs ~src_dirs ~flags ~ppx ~remaindir =
     let serialize_path = Path.reach ~from:remaindir in
     Buffer.clear b;
+    print "EXCLUDE_QUERY_DIR\n";
     Path.Set.iter obj_dirs ~f:(fun p ->
       printf "B %s\n" (serialize_path p));
     Path.Set.iter src_dirs ~f:(fun p ->

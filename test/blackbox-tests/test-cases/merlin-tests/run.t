@@ -5,6 +5,7 @@
       ocamlopt sanitize-dot-merlin/sanitize_dot_merlin.exe
   sanitize_dot_merlin alias print-merlins
   # Processing exe/.merlin
+  EXCLUDE_QUERY_DIR
   B $LIB_PREFIX/lib/bytes
   B $LIB_PREFIX/lib/findlib
   B $LIB_PREFIX/lib/ocaml
@@ -18,6 +19,7 @@
   S ../lib
   FLG -w -40
   # Processing lib/.merlin
+  EXCLUDE_QUERY_DIR
   B $LIB_PREFIX/lib/bytes
   B $LIB_PREFIX/lib/findlib
   B $LIB_PREFIX/lib/ocaml

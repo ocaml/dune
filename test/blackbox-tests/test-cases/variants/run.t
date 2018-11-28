@@ -223,3 +223,39 @@ There should be an error message that clarifies this.
   - Vlib
   They must be marked as private using the (private_modules ..) field
   [1]
+
+Test that we can implement external libraries.
+
+First we create an external library
+  $ dune build --root implements-external/vlib @install
+  Entering directory 'implements-external/vlib'
+
+Then we make sure that we can implement it
+  $ env OCAMLPATH=implements-external/vlib/_build/install/default/lib dune build --root implements-external/impl
+  Entering directory 'implements-external/impl'
+  File "src/lib.ml", line 519, characters 16-22: Assertion failed
+  Backtrace:
+  Raised at file "src/lib.ml", line 519, characters 16-28
+  Called from file "src/lib.ml", line 573, characters 4-42
+  Called from file "src/lib.ml", line 1019, characters 6-115
+  Called from file "src/exe_rules.ml", line 116, characters 4-231
+  Called from file "src/gen_rules.ml", line 86, characters 10-106
+  Called from file "src/gen_rules.ml", line 142, characters 51-65
+  Called from file "list.ml", line 111, characters 24-34
+  Called from file "src/gen_rules.ml", line 140, characters 12-165
+  Called from file "src/gen_rules.ml", line 224, characters 21-51
+  Called from file "src/build_system.ml", line 973, characters 6-62
+  Called from file "src/build_system.ml", line 949, characters 6-59
+  Re-raised at file "src/build_system.ml", line 960, characters 6-17
+  Called from file "src/build_system.ml" (inlined), line 917, characters 32-63
+  Called from file "src/build_system.ml", line 927, characters 4-24
+  Called from file "src/build_system.ml" (inlined), line 917, characters 32-63
+  Called from file "src/build_system.ml", line 1172, characters 6-21
+  Called from file "src/fiber/fiber.ml", line 160, characters 6-169
+  
+  I must not segfault.  Uncertainty is the mind-killer.  Exceptions are
+  the little-death that brings total obliteration.  I will fully express
+  my cases.  Execution will pass over me and through me.  And when it
+  has gone past, I will unwind the stack along its path.  Where the
+  cases are handled there will be nothing.  Only I will remain.
+  [1]

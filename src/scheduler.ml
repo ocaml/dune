@@ -188,6 +188,7 @@ end = struct
     lazy (
       let excludes = [ {|/_build|}
                      ; {|/_opam|}
+                     ; {|/_esy|}
                      ; {|/\..+|}
                      ; {|~$|}
                      ; {|/#[^#]*#$|}

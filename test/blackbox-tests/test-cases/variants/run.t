@@ -224,6 +224,16 @@ There should be an error message that clarifies this.
   They must be marked as private using the (private_modules ..) field
   [1]
 
+Test that implementing vlibs that aren't present is impossible
+  $ dune build --root no-vlib-present
+  Entering directory 'no-vlib-present'
+  File "dune", line 3, characters 13-27:
+  3 |  (implements foobar12312414))
+                   ^^^^^^^^^^^^^^
+  Error: Library "foobar12312414" not found.
+  Hint: try: dune external-lib-deps --missing --root no-vlib-present @@default
+  [1]
+
 Test that we can implement external libraries.
 
 First we create an external library

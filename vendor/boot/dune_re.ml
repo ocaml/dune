@@ -1,7 +1,7 @@
 type t = unit
 type re = unit
 let compile () = ()
-let execp _ _ = false
+let execp _ _ = failwith "evaluating regex in bootstrap is not allowed"
 let str _ = ()
 let empty = ()
 let seq _ = ()

@@ -9,14 +9,9 @@ module Sub_dirs = struct
 
   let default =
     let standard_dirs =
-      let open Re in
-      [ empty
-      ; seq [set "._"; rep any]
-      ]
-      |> alt
-      |> Glob.of_re
-      |> Predicate_lang.of_glob
-      |> Predicate_lang.compl
+      Predicate_lang.of_pred (function
+        | "" -> false
+        | s -> s.[0] <> '.' && s.[0] <> '_')
     in
     { sub_dirs = standard_dirs
     ; data_only = Predicate_lang.empty
@@ -28,7 +23,7 @@ module Sub_dirs = struct
       let sub_dirs = Option.value sub_dirs ~default:default.sub_dirs in
       Predicate_lang.diff sub_dirs ignored_sub_dirs
     in
-    let data_only = Option.value data_only ~default:default.sub_dirs in
+    let data_only = Option.value data_only ~default:default.data_only in
     { sub_dirs ; data_only }
 
   let ignore_dirs t ~dirs =
@@ -343,7 +338,7 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) path =
                 | Ignored -> (false, data_only)
                 | Data_only -> (true, true)
             in
-            if is_subdir then
+            if not is_subdir then
               acc
             else
               let dirs_visited =

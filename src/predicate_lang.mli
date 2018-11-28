@@ -12,6 +12,8 @@ val filter : t -> standard:t -> string list -> string list
 
 val of_glob : Glob.t -> t
 
+val of_pred : (string -> bool) -> t
+
 val compl : t -> t
 
 val union : t list -> t

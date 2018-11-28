@@ -109,6 +109,8 @@ let union t = Ast.Union t
 
 let of_glob g = Ast.Element (Glob.test g)
 
+let of_pred p = Ast.Element p
+
 let of_string_set s = Ast.Element (String.Set.mem s)
 
 let compl t = Ast.Compl t

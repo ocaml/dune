@@ -1,0 +1,7 @@
+(alias
+ (name default)
+ (deps (alias_rec all)))
+
+(library
+ (name foobar)
+ (implements dune.configurator))

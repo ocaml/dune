@@ -90,7 +90,7 @@ let filter (t : t) ~standard elems =
   match t with
   | Union [] -> []
   | _ ->
-    (List.filter (Lazy.force elems)
+    (List.filter elems
        ~f:(fun elem -> mem t ~standard:standard ~elem))
 
 let union t = Ast.Union t

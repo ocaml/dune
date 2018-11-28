@@ -6,7 +6,7 @@ val decode : t Stanza.Decoder.t
 
 val empty : t
 
-val filter : t -> standard:t -> string list Lazy.t -> string list
+val filter : t -> standard:t -> string list -> string list
 
 val of_glob : Glob.t -> t
 

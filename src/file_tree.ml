@@ -1,15 +1,63 @@
 open! Stdune
 open! Import
 
-let standard_dirs =
-  let open Re in
-  [ empty
-  ; seq [set "._"; rep any]
-  ]
-  |> alt
-  |> Glob.of_re
-  |> Predicate_lang.of_glob
-  |> Predicate_lang.compl
+module Sub_dirs = struct
+  type 'set t =
+    { sub_dirs : 'set
+    ; data_only : 'set
+    }
+
+  let default =
+    let standard_dirs =
+      let open Re in
+      [ empty
+      ; seq [set "._"; rep any]
+      ]
+      |> alt
+      |> Glob.of_re
+      |> Predicate_lang.of_glob
+      |> Predicate_lang.compl
+    in
+    { sub_dirs = standard_dirs
+    ; data_only = Predicate_lang.empty
+    }
+
+  let make ~sub_dirs ~ignored_sub_dirs ~data_only =
+    let sub_dirs =
+      let ignored_sub_dirs = Predicate_lang.union ignored_sub_dirs in
+      let sub_dirs = Option.value sub_dirs ~default:default.sub_dirs in
+      Predicate_lang.diff sub_dirs ignored_sub_dirs
+    in
+    let data_only = Option.value data_only ~default:default.sub_dirs in
+    { sub_dirs ; data_only }
+
+  let ignore_dirs t ~dirs =
+    { t with sub_dirs = Predicate_lang.diff t.sub_dirs dirs }
+
+  let eval t ~dirs =
+    let sub_dirs =
+      Predicate_lang.filter t.sub_dirs ~standard:default.sub_dirs dirs
+    in
+    let data_only =
+      Predicate_lang.filter t.data_only ~standard:default.data_only sub_dirs
+      |> String.Set.of_list
+    in
+    let sub_dirs = String.Set.of_list sub_dirs in
+    { sub_dirs
+    ; data_only
+    }
+
+  type status = Ignored | Data_only | Normal
+
+  let status t ~dir =
+    match String.Set.mem t.sub_dirs dir
+        , String.Set.mem t.data_only dir
+    with
+    | true, false  -> Normal
+    | true, true   -> Data_only
+    | false, false -> Ignored
+    | false, true  -> assert false
+end
 
 module Dune_file = struct
   module Plain = struct
@@ -25,13 +73,14 @@ module Dune_file = struct
       | Ocaml_script of Path.t
   end
 
-  module Subdirs_stanza = struct
+  module Sub_dirs_stanza = struct
     type t =
-      | Ignore_subdirs of Predicate_lang.t
-      | Subdirs of Predicate_lang.t
+      | Ignore_sub_dirs of Predicate_lang.t
+      | Sub_dirs of Predicate_lang.t
+      | Data_only of Predicate_lang.t
 
     let decode : t Dune_lang.Decoder.t =
-      let ignore_subdirs =
+      let ignore_sub_dirs =
         let open Dune_lang.Decoder in
         plain_string (fun ~loc dn ->
           if Filename.dirname dn <> Filename.current_dir_name ||
@@ -44,20 +93,23 @@ module Dune_file = struct
             dn)
         |> list
         >>| (fun l ->
-          Ignore_subdirs (Predicate_lang.of_string_set (String.Set.of_list l)))
+          Ignore_sub_dirs (Predicate_lang.of_string_set (String.Set.of_list l)))
       in
       let open Dune_lang.Decoder in
-      let subdirs =
+      let sub_dirs =
         Syntax.since Stanza.syntax (1, 6) >>>
         Predicate_lang.decode >>| fun plang ->
-        Subdirs plang
+        Sub_dirs plang
       in
-      sum [ "ignored_subdirs", ignore_subdirs
-          ; "subdirs", subdirs
+      let data_only =
+        Syntax.since Stanza.syntax (1, 6) >>>
+        Predicate_lang.decode >>| fun plang ->
+        Data_only plang
+      in
+      sum [ "ignored_subdirs", ignore_sub_dirs
+          ; "subdirs", sub_dirs
+          ; "data_only", data_only
           ]
-
-    let reduce ~subdirs ~ignored_subdirs =
-      Predicate_lang.(diff subdirs ignored_subdirs)
   end
 
   type t =
@@ -70,48 +122,52 @@ module Dune_file = struct
     | Plain         x -> x.path
     | Ocaml_script  p -> p
 
-  let extract_subdirs ~project sexps =
-    let subdirs, ignored_subdirs, sexps =
-      List.fold_left sexps ~init:(None, [], [])
-        ~f:(fun (subdirs, ignored, sexps) sexp ->
-        match (sexp : Dune_lang.Ast.t) with
-        | List (loc, (Atom (_, A ("ignored_subdirs" | "subdirs")) :: _)) ->
-          let stanza =
-            Dune_project.set_parsing_context project Subdirs_stanza.decode in
-          let subdir = Dune_lang.Decoder.parse stanza Univ_map.empty sexp in
-          begin match subdir, subdirs, ignored with
-          | Ignore_subdirs i, None, is -> (subdirs, i :: is, sexps)
-          | Subdirs x, None, [] -> (Some x, [], sexps)
-          | Subdirs _, Some _, _ ->
-            Errors.fail loc "More than one subdirs stanza is not allowed"
-          | Ignore_subdirs _, Some _, _
-          | Subdirs _, _, _::_ ->
-            Errors.fail loc "Cannot have both subdirs and ignored_subdirs \
-                             stanza in a dune file. "
-          end
-        | _ -> subdirs, ignored, sexp :: sexps)
+  let extract_sub_dirs ~project sexps =
+    let (sub_dirs, ignored_sub_dirs, data_only), sexps =
+      List.fold_left sexps ~init:((None, [], None), [])
+        ~f:(fun ((sub_dirs, ignored, data_only) as stanzas, sexps) sexp ->
+          match (sexp : Dune_lang.Ast.t) with
+          | List ( loc , (Atom (_ , A ("ignored_subdirs"
+                                      | "subdirs" | "data_only")) :: _)) ->
+            let stanza =
+              Dune_project.set_parsing_context project Sub_dirs_stanza.decode in
+            let stanza = Dune_lang.Decoder.parse stanza Univ_map.empty sexp in
+            let stanzas =
+              match stanza, sub_dirs, data_only, ignored with
+              | Ignore_sub_dirs i, None, _, _ ->
+                (sub_dirs, i :: ignored, data_only)
+              | Data_only x, _, None, _ -> (sub_dirs, ignored, Some x)
+              | Sub_dirs x, None, _, [] -> (Some x, [], data_only)
+              | Sub_dirs _, Some _, _, _ ->
+                Errors.fail loc "More than one sub_dirs stanza is not allowed"
+              | Ignore_sub_dirs _, Some _, _, _
+              | Sub_dirs _, _, _, _::_ ->
+                Errors.fail loc
+                  "Cannot have both sub_dirs and ignored_sub_dirs \
+                   stanza in a dune file. "
+              | Data_only _, _, Some _, _ ->
+                Errors.fail loc "More than one data_only stanza is not allowed"
+            in
+            (stanzas, sexps)
+          | _ -> stanzas, sexp :: sexps)
     in
     let sexps = List.rev sexps in
-    let subdirs =
-      let ignored_subdirs = Predicate_lang.union ignored_subdirs in
-      let subdirs = Option.value subdirs ~default:standard_dirs in
-      Subdirs_stanza.reduce ~subdirs ~ignored_subdirs in
-    (subdirs, sexps)
+    (Sub_dirs.make ~sub_dirs ~data_only ~ignored_sub_dirs, sexps)
 
   let load file ~project ~kind =
     Io.with_lexbuf_from_file file ~f:(fun lb ->
-      let contents, ignored_subdirs =
+      let contents, sub_dirs =
         if Dune_lexer.is_script lb then
-          (Contents.Ocaml_script file, standard_dirs)
+          (Contents.Ocaml_script file, Sub_dirs.default)
         else
           let sexps =
             Dune_lang.Parser.parse lb
               ~lexer:(Dune_lang.Lexer.of_syntax kind) ~mode:Many
           in
-          let subdirs, sexps = extract_subdirs ~project sexps in
-          (Plain { path = file; sexps }, subdirs)
+          let sub_dirs, sexps = extract_sub_dirs ~project sexps in
+          (Plain { path = file; sexps }, sub_dirs)
       in
-      ({ contents; kind }, ignored_subdirs))
+      ({ contents; kind }, sub_dirs))
 end
 
 let load_jbuild_ignore path =
@@ -208,9 +264,9 @@ let is_temp_file fn =
   || String.is_suffix fn ~suffix:"~"
 
 let load ?(extra_ignored_subtrees=Path.Set.empty) path =
-  let rec walk path ~dirs_visited ~project ~ignored : Dir.t =
+  let rec walk path ~dirs_visited ~project ~data_only : Dir.t =
     let contents = lazy (
-      let files, sub_dirs =
+      let files, unfiltered_sub_dirs =
         Path.readdir_unsorted path
         |> List.filter_partition_map ~f:(fun fn ->
           let path = Path.relative path fn in
@@ -234,54 +290,49 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) path =
           end)
       in
       let files = String.Set.of_list files in
-      let sub_dirs =
+      let unfiltered_sub_dirs =
         List.sort
           ~compare:(fun (a, _, _) (b, _, _) -> String.compare a b)
-          sub_dirs
+          unfiltered_sub_dirs
       in
-      let project, dune_file, subdirs =
-        if ignored then
-          (project, None, standard_dirs)
+      let project, dune_file, sub_dirs =
+        if data_only then
+          (project, None, Sub_dirs.default)
         else
           let project =
             Option.value (Dune_project.load ~dir:path ~files) ~default:project
           in
-          let dune_file, subdirs =
+          let dune_file, sub_dirs =
             match List.filter ["dune"; "jbuild"] ~f:(String.Set.mem files) with
-            | [] -> (None, standard_dirs)
+            | [] -> (None, Sub_dirs.default)
             | [fn] ->
               if fn = "dune" then
                 Dune_project.ensure_project_file_exists project;
-              let dune_file, subdirs =
+              let dune_file, sub_dirs =
                 Dune_file.load (Path.relative path fn)
                   ~project
                   ~kind:(Option.value_exn (Dune_lang.Syntax.of_basename fn))
               in
-              (Some dune_file, subdirs)
+              (Some dune_file, sub_dirs)
             | _ ->
               die "Directory %s has both a 'dune' and 'jbuild' file.\n\
                    This is not allowed"
                 (Path.to_string_maybe_quoted path)
           in
-          let subdirs =
+          let sub_dirs =
             if String.Set.mem files "jbuild-ignore" then
-              Dune_file.Subdirs_stanza.reduce ~subdirs
-                ~ignored_subdirs:(load_jbuild_ignore (Path.relative path "jbuild-ignore"))
+              Sub_dirs.ignore_dirs sub_dirs
+                ~dirs:(load_jbuild_ignore (Path.relative path "jbuild-ignore"))
             else
-              subdirs
+              sub_dirs
           in
-          (project, dune_file, subdirs)
-      in
-      let is_subdir =
-        let subdir = lazy (
-          lazy (List.map sub_dirs ~f:(fun (a, _, _) -> a))
-          |> Predicate_lang.filter subdirs ~standard:standard_dirs
-          |> String.Set.of_list
-        ) in
-        String.Set.mem (Lazy.force subdir)
+          (project, dune_file, sub_dirs)
       in
       let sub_dirs =
-        List.fold_left sub_dirs ~init:String.Map.empty
+        Sub_dirs.eval sub_dirs
+          ~dirs:(List.map ~f:(fun (a, _, _) -> a) unfiltered_sub_dirs) in
+      let sub_dirs =
+        List.fold_left unfiltered_sub_dirs ~init:String.Map.empty
           ~f:(fun acc (fn, path, file) ->
             let dirs_visited =
               if Sys.win32 then
@@ -295,19 +346,25 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) path =
                     (Path.to_string_maybe_quoted first_path)
                     (Path.to_string_maybe_quoted path)
             in
-            let ignored =
-              ignored
-              || not (is_subdir fn)
-              || Path.Set.mem extra_ignored_subtrees path
+            let ignored, data_only =
+              if Path.Set.mem extra_ignored_subtrees path then
+                (true, false)
+              else
+                match Sub_dirs.status sub_dirs ~dir:fn with
+                | Sub_dirs.Normal -> (false, data_only)
+                | Ignored -> (true, data_only)
+                | Data_only -> (false, true)
             in
-            String.Map.add acc fn
-              (walk path ~dirs_visited ~project ~ignored))
+            if ignored then
+              acc
+            else
+              String.Map.add acc fn (walk path ~dirs_visited ~project ~data_only))
       in
       { Dir. files; sub_dirs; dune_file; project })
     in
     { path
     ; contents
-    ; ignored
+    ; ignored = data_only
     }
   in
   let root =
@@ -315,7 +372,7 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) path =
       ~dirs_visited:(File_map.singleton
                        (File.of_stats (Unix.stat (Path.to_string path)))
                        path)
-      ~ignored:false
+      ~data_only:false
       ~project:(Lazy.force Dune_project.anonymous)
   in
   let dirs = Hashtbl.create 1024      in

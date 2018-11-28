@@ -234,6 +234,17 @@ Test that implementing vlibs that aren't present is impossible
   Hint: try: dune external-lib-deps --missing --root no-vlib-present @@default
   [1]
 
+Test that trying to implement libraries that aren't virtual results in an
+appropriate error message.
+  $ dune build --root impl-not-virtual
+  Entering directory 'impl-not-virtual'
+  File "impl/dune", line 1, characters 0-40:
+  1 | (library
+  2 |  (name impl)
+  3 |  (implements lib))
+  Error: Library lib isn't virtual and cannot be implemented
+  [1]
+
 Test that we can implement external libraries.
 
 First we create an external library

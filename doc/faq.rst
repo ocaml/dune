@@ -41,7 +41,7 @@ However, the dune-release_ project is specifically designed for releasing dune
 projects to opam. We recommend using tool for publishing dune packages.
 
 Where can I find some examples of projects using dune?
-=====================================================
+======================================================
 
 The dune-universe_ repository contains a snapshot of the latest versions of all
 opam packages depending on dune. It is therefore a useful reference to

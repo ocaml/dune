@@ -32,6 +32,8 @@ jbuild_version
 Deprecated. This stanza is no longer used and will be removed in the
 future.
 
+.. _library:
+
 library
 -------
 
@@ -314,7 +316,7 @@ compilation is not available.
 
 ``<binary-kind>`` is one of:
 
-= ``c`` for producing OCaml bytecode embedded in a C file
+- ``c`` for producing OCaml bytecode embedded in a C file
 - ``exe`` for normal executables
 - ``object`` for producing static object files that can be manually
   linked into C applications
@@ -609,6 +611,8 @@ from the opam file using a ``build-test`` field, then all your ``runtest`` alias
 stanzas should have a ``(package ...)`` field in order to partition the set of
 tests.
 
+.. _install:
+
 install
 -------
 
@@ -802,7 +806,7 @@ Fields supported in ``<settings>`` are:
   be inferred from the basename of ``<filepath>`` by dropping the ``.exe``
   suffix if it exists.
 
-.. dune-subdirs:
+.. _dune-subdirs:
 
 subdirs (since 1.6)
 -------------------

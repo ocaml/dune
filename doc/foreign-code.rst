@@ -74,16 +74,18 @@ build. Note that this method can be used to build other things, not
 just C libraries.
 
 To do that, follow the following procedure:
+
 - put all the foreign code in a sub-directory
 - tell Dune not to interpret configuration files in this directory via
   an :ref:`ignored_subdirs <dune-ignored_subdirs>` stanza
 - write a custom rule that:
-  + depend on this directory recursively via :ref:`source_tree`
-  + invoke the external build system
-  + copy the C archive files (``.a``, ``.so``, ...) in main library
+
+  - depend on this directory recursively via :ref:`source_tree <source_tree>`
+  - invoke the external build system
+  - copy the C archive files (``.a``, ``.so``, ...) in main library
     directory with a specific names (see bellow)
 - *attach* the C archive files to an OCaml library via the
-  :ref:`self_build_stubs_archive` field
+  :ref:`self_build_stubs_archive <self_build_stubs_archive>` field
 
 For instance, let's assume that you want to build a C library
 ``libfoo`` using ``libfoo``'s own build system and attach it to an

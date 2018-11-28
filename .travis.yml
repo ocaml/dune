@@ -11,9 +11,6 @@ script: bash -ex .travis-ci.sh build
 
 matrix:
   include:
-  - os: none
-    env: CI_KIND=changes
-    stage: General
   - os: linux
     env: OCAML_VERSION=4.02 OCAML_RELEASE=3 WITH_OPAM=0
     stage: Build
@@ -57,3 +54,6 @@ matrix:
   - os: osx
     env: OCAML_VERSION=4.07 OCAML_RELEASE=0 WITH_OPAM=0
     stage: Build_macOS
+  - os: none
+    env: CI_KIND=changes
+    stage: General

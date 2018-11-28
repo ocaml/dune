@@ -238,50 +238,20 @@ Test that trying to implement libraries that aren't virtual results in an
 appropriate error message.
   $ dune build --root impl-not-virtual
   Entering directory 'impl-not-virtual'
-  File "impl/dune", line 1, characters 0-40:
-  1 | (library
-  2 |  (name impl)
+  File "impl/dune", line 3, characters 13-16:
   3 |  (implements lib))
-  Error: Library lib isn't virtual and cannot be implemented
+                   ^^^
+  Error: Library "lib" is not virtual. It cannot be implemented by "impl".
   [1]
 
 Test that trying to implement external libraries that aren't virtual results in
 an appropriate error message.
   $ dune build --root impl-not-virtual-external
   Entering directory 'impl-not-virtual-external'
-  File "src/lib_modules.ml", line 130, characters 4-10: Assertion failed
-  Backtrace:
-  Raised at file "src/lib_modules.ml", line 130, characters 4-16
-  Called from file "src/dir_contents.ml", line 182, characters 15-110
-  Called from file "src/stdune/list.ml", line 66, characters 12-15
-  Called from file "src/stdune/list.ml" (inlined), line 71, characters 14-29
-  Called from file "src/stdune/list.ml", line 74, characters 13-42
-  Called from file "src/dir_contents.ml", line 159, characters 4-1023
-  Called from file "camlinternalLazy.ml", line 27, characters 17-27
-  Re-raised at file "camlinternalLazy.ml", line 34, characters 4-11
-  Called from file "src/dir_contents.ml", line 50, characters 12-34
-  Called from file "src/lib_rules.ml", line 435, characters 6-80
-  Called from file "src/stdune/exn.ml", line 21, characters 8-11
-  Re-raised at file "src/stdune/exn.ml", line 23, characters 30-37
-  Called from file "src/gen_rules.ml", line 78, characters 10-75
-  Called from file "src/gen_rules.ml", line 142, characters 51-65
-  Called from file "list.ml", line 111, characters 24-34
-  Called from file "src/gen_rules.ml", line 140, characters 12-165
-  Called from file "src/gen_rules.ml", line 224, characters 21-51
-  Called from file "src/build_system.ml", line 973, characters 6-62
-  Called from file "src/build_system.ml", line 949, characters 6-59
-  Re-raised at file "src/build_system.ml", line 960, characters 6-17
-  Called from file "src/build_system.ml" (inlined), line 917, characters 32-63
-  Called from file "src/build_system.ml", line 927, characters 4-24
-  Called from file "src/build_system.ml" (inlined), line 917, characters 32-63
-  Called from file "src/build_system.ml", line 1172, characters 6-21
-  Called from file "src/fiber/fiber.ml", line 160, characters 6-169
-  
-  I must not segfault.  Uncertainty is the mind-killer.  Exceptions are
-  the little-death that brings total obliteration.  I will fully express
-  my cases.  Execution will pass over me and through me.  And when it
-  has gone past, I will unwind the stack along its path.  Where the
-  cases are handled there will be nothing.  Only I will remain.
+  File "dune", line 7, characters 13-30:
+  7 |  (implements dune.configurator))
+                   ^^^^^^^^^^^^^^^^^
+  Error: Library "dune.configurator" is not virtual. It cannot be implemented by "foobar".
   [1]
 
 Test that we can implement external libraries.

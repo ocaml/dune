@@ -1,11 +1,35 @@
-* @diml @rgrinberg @emillon
+src/dag/* @diml
+src/fiber/* @diml
+src/let_syntax/* @diml
+src/memo/* @diml
+src/xdg/* @diml
+
+src/scheduler.* @diml
+src/build_system.* @diml
+src/build.* @diml
+
+bootstrap.ml @diml
+
+src/ocaml-config/* @diml @rgrinberg @dra27
+
+src/stdune/* @diml @rgrinberg @emillon
+
+src/which_program/* @diml @rgrinberg
+
+src/dune_lang/* @diml @rgrinberg
 
 src/menhir.* @fpottier
 
-src/odoc.* @rginberg
+src/odoc.* @rginberg @antron
+
+src/merlin.* @trefis
 
 src/configurator/* @rgrinberg
+
+src/format_rules.* @emillon
 
 src/js_of_ocaml* @hhugo
 
 editor_integration/emacs/* @Chris00
+
+doc/* @emillon @rgrinberg

@@ -1,4 +1,4 @@
-(ignored_subdirs (test-cases))
+(data_only test-cases)
 
 (executable
  (name cram)

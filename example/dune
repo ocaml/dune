@@ -1,4 +1,4 @@
-(ignored_subdirs (sample-projects))
+(data_only sample-projects)
 
 (alias
  (name runtest)

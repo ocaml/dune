@@ -2,6 +2,8 @@ open! Stdune
 
 type t
 
+val pp : t Fmt.t
+
 val decode : t Stanza.Decoder.t
 
 val empty : t

@@ -74,6 +74,14 @@ module Error = struct
       }
   end
 
+  module Not_virtual_lib = struct
+    type t =
+      { impl : Lib_info.t
+      ; loc : Loc.t
+      ; not_vlib : Lib_info.t
+      }
+  end
+
   type t =
     | Library_not_available        of Library_not_available.t
     | No_solution_found_for_select of No_solution_found_for_select.t
@@ -83,6 +91,7 @@ module Error = struct
     | Private_deps_not_allowed     of Private_deps_not_allowed.t
     | Double_implementation        of Double_implementation.t
     | No_implementation            of No_implementation.t
+    | Not_virtual_lib              of Not_virtual_lib.t
 end
 
 exception Error of Error.t
@@ -595,7 +604,15 @@ let rec instantiate db name (info : Lib_info.t) ~stack ~hidden =
   let resolve (loc, name) =
     resolve_dep db (name : Lib_name.t) ~allow_private_deps ~loc ~stack in
 
-  let implements = Option.map info.implements ~f:resolve in
+  let implements =
+    Option.map info.implements ~f:(fun ((loc,  _) as name) ->
+      resolve name >>= fun vlib ->
+      match vlib.info.virtual_ with
+      | Some _ -> Ok vlib
+      | None ->
+        Error (Error (Error.Not_virtual_lib
+                        { impl = info ; loc ; not_vlib = vlib.info })))
+  in
 
   let requires, pps, resolved_selects =
     resolve_user_deps db info.requires ~allow_private_deps ~pps:info.pps ~stack
@@ -1144,6 +1161,13 @@ let report_lib_error ppf (e : Error.t) =
        a public library.\nYou need to give %a a public name.\n"
       Lib_name.pp_quoted t.private_dep.name
       Lib_name.pp_quoted t.private_dep.name
+  | Not_virtual_lib { impl ; loc ; not_vlib } ->
+    Format.fprintf ppf
+      "%a@{<error>Error@}: Library %a is not virtual. \
+       It cannot be implemented by %a.\n"
+      Errors.print loc
+      Lib_name.pp_quoted not_vlib.name
+      Lib_name.pp_quoted impl.name
 
 let () =
   Report_error.register (fun exn ->

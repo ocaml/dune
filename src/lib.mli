@@ -151,6 +151,10 @@ module Error : sig
     type t
   end
 
+  module Not_virtual_lib : sig
+    type t
+  end
+
   type t =
     | Library_not_available        of Library_not_available.t
     | No_solution_found_for_select of No_solution_found_for_select.t
@@ -160,6 +164,7 @@ module Error : sig
     | Private_deps_not_allowed     of Private_deps_not_allowed.t
     | Double_implementation        of Double_implementation.t
     | No_implementation            of No_implementation.t
+    | Not_virtual_lib              of Not_virtual_lib.t
 end
 
 exception Error of Error.t

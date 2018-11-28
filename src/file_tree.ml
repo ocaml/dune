@@ -334,31 +334,32 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) path =
       let sub_dirs =
         List.fold_left unfiltered_sub_dirs ~init:String.Map.empty
           ~f:(fun acc (fn, path, file) ->
-            let dirs_visited =
-              if Sys.win32 then
-                dirs_visited
-              else
-                match File_map.find dirs_visited file with
-                | None -> File_map.add dirs_visited file path
-                | Some first_path ->
-                  die "Path %s has already been scanned. \
-                       Cannot scan it again through symlink %s"
-                    (Path.to_string_maybe_quoted first_path)
-                    (Path.to_string_maybe_quoted path)
-            in
-            let ignored, data_only =
+            let is_subdir, data_only =
               if Path.Set.mem extra_ignored_subtrees path then
-                (true, false)
+                (false, false)
               else
                 match Sub_dirs.status sub_dirs ~dir:fn with
-                | Sub_dirs.Normal -> (false, data_only)
-                | Ignored -> (true, data_only)
-                | Data_only -> (false, true)
+                | Sub_dirs.Normal -> (true, data_only)
+                | Ignored -> (false, data_only)
+                | Data_only -> (true, true)
             in
-            if ignored then
+            if is_subdir then
               acc
             else
-              String.Map.add acc fn (walk path ~dirs_visited ~project ~data_only))
+              let dirs_visited =
+                if Sys.win32 then
+                  dirs_visited
+                else
+                  match File_map.find dirs_visited file with
+                  | None -> File_map.add dirs_visited file path
+                  | Some first_path ->
+                    die "Path %s has already been scanned. \
+                         Cannot scan it again through symlink %s"
+                      (Path.to_string_maybe_quoted first_path)
+                      (Path.to_string_maybe_quoted path)
+              in
+              walk path ~dirs_visited ~project ~data_only
+              |> String.Map.add acc fn)
       in
       { Dir. files; sub_dirs; dune_file; project })
     in

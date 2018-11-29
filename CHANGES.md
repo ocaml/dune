@@ -39,6 +39,9 @@ next
 
 - Fix the output of `dune external-lib-deps` (#1594, @diml)
 
+- Introduce `data_only_dirs` to replace `ignored_subdirs`. `ignored_subdirs` is
+  deprecated since 1.6. (#1590, @rgrinberg)
+
 1.5.1 (7/11/2018)
 -----------------
 

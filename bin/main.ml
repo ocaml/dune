@@ -253,75 +253,75 @@ let external_lib_deps =
     in
     Common.set_common common ~targets:[];
     let log = Log.create common in
-    Scheduler.go ~log ~common
-      (Main.setup ~log common ~external_lib_deps_mode:true
-       >>= fun setup ->
-       let targets = Target.resolve_targets_exn ~log common setup targets in
-       let request = Target.request setup targets in
-       let failure =
-         String.Map.foldi ~init:false
-           (Build_system.all_lib_deps_by_context setup.build_system ~request)
-           ~f:(fun context_name lib_deps acc ->
-             let internals =
-               Super_context.internal_lib_names
-                 (match String.Map.find setup.Main.scontexts context_name with
-                  | None -> assert false
-                  | Some x -> x)
-             in
-             let externals =
-               Lib_name.Map.filteri lib_deps ~f:(fun name _ ->
-                 not (Lib_name.Set.mem internals name))
-             in
-             if only_missing then begin
-               let context =
-                 List.find_exn setup.contexts ~f:(fun c -> c.name = context_name)
-               in
-               let missing =
-                 Lib_name.Map.filteri externals ~f:(fun name _ ->
-                   not (Findlib.available context.findlib name))
-               in
-               if Lib_name.Map.is_empty missing then
-                 acc
-               else if Lib_name.Map.for_alli missing
-                         ~f:(fun _ kind -> kind = Lib_deps_info.Kind.Optional)
-               then begin
-                 Format.eprintf
-                   "@{<error>Error@}: The following libraries are missing \
-                    in the %s context:\n\
-                    %s@."
-                   context_name
-                   (format_external_libs missing);
-                 false
-               end else begin
-                 Format.eprintf
-                   "@{<error>Error@}: The following libraries are missing \
-                    in the %s context:\n\
-                    %s\n\
-                    Hint: try: opam install %s@."
-                   context_name
-                   (format_external_libs missing)
-                   (Lib_name.Map.to_list missing
-                    |> List.filter_map ~f:(fun (name, kind) ->
-                      match (kind : Lib_deps_info.Kind.t) with
-                      | Optional -> None
-                      | Required -> Some (Lib_name.package_name name))
-                    |> Package.Name.Set.of_list
-                    |> Package.Name.Set.to_list
-                    |> List.map ~f:Package.Name.to_string
-                    |> String.concat ~sep:" ");
-                 true
-               end
-             end else begin
-               Printf.printf
-                 "These are the external library dependencies in the %s context:\n\
-                  %s\n%!"
-                 context_name
-                 (format_external_libs externals);
-               acc
-             end)
-       in
-       if failure then raise Already_reported;
-       Fiber.return ())
+    let setup =
+      Scheduler.go ~log ~common
+        (Main.setup ~log common ~external_lib_deps_mode:true)
+    in
+    let targets = Target.resolve_targets_exn ~log common setup targets in
+    let request = Target.request setup targets in
+    let failure =
+      String.Map.foldi ~init:false
+        (Build_system.all_lib_deps_by_context setup.build_system ~request)
+        ~f:(fun context_name lib_deps acc ->
+          let internals =
+            Super_context.internal_lib_names
+              (match String.Map.find setup.Main.scontexts context_name with
+               | None -> assert false
+               | Some x -> x)
+          in
+          let externals =
+            Lib_name.Map.filteri lib_deps ~f:(fun name _ ->
+              not (Lib_name.Set.mem internals name))
+          in
+          if only_missing then begin
+            let context =
+              List.find_exn setup.contexts ~f:(fun c -> c.name = context_name)
+            in
+            let missing =
+              Lib_name.Map.filteri externals ~f:(fun name _ ->
+                not (Findlib.available context.findlib name))
+            in
+            if Lib_name.Map.is_empty missing then
+              acc
+            else if Lib_name.Map.for_alli missing
+                      ~f:(fun _ kind -> kind = Lib_deps_info.Kind.Optional)
+            then begin
+              Format.eprintf
+                "@{<error>Error@}: The following libraries are missing \
+                 in the %s context:\n\
+                 %s@."
+                context_name
+                (format_external_libs missing);
+              false
+            end else begin
+              Format.eprintf
+                "@{<error>Error@}: The following libraries are missing \
+                 in the %s context:\n\
+                 %s\n\
+                 Hint: try: opam install %s@."
+                context_name
+                (format_external_libs missing)
+                (Lib_name.Map.to_list missing
+                 |> List.filter_map ~f:(fun (name, kind) ->
+                   match (kind : Lib_deps_info.Kind.t) with
+                   | Optional -> None
+                   | Required -> Some (Lib_name.package_name name))
+                 |> Package.Name.Set.of_list
+                 |> Package.Name.Set.to_list
+                 |> List.map ~f:Package.Name.to_string
+                 |> String.concat ~sep:" ");
+              true
+            end
+          end else begin
+            Printf.printf
+              "These are the external library dependencies in the %s context:\n\
+               %s\n%!"
+              context_name
+              (format_external_libs externals);
+            acc
+          end)
+    in
+    if failure then raise Already_reported
   in
   (term, Term.info "external-lib-deps" ~doc ~man)
 

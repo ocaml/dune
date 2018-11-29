@@ -9,6 +9,8 @@ module Alias_module : sig
     }
 end
 
+val is_alias_module : t -> Module.t -> bool
+
 val alias : t -> Alias_module.t option
 
 val alias_module : t -> Module.t option

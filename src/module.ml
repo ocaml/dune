@@ -29,6 +29,8 @@ module Name = struct
   module Top_closure = Top_closure.String
   module Infix = Comparable.Operators(T)
 
+  let equal = Infix.(=)
+
   let of_local_lib_name s =
     of_string (Lib_name.Local.to_string s)
 end

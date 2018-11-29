@@ -145,6 +145,11 @@ module Alias_module = struct
     }
 end
 
+let is_alias_module t m =
+  match t.alias_module with
+  | None -> false
+  | Some m' -> Module.Name.equal (Module.name m') (Module.name m)
+
 let alias t =
   match t.alias_module, t.main_module_name with
   | None, None -> None

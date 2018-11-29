@@ -168,6 +168,7 @@ Install files for implemenations and virtual libs have all the artifacts:
   lib: [
     "_build/install/default/lib/vlib/META" {"META"}
     "_build/install/default/lib/vlib/foo.mli" {"foo.mli"}
+    "_build/install/default/lib/vlib/foo.mli.all-deps" {"foo.mli.all-deps"}
     "_build/install/default/lib/vlib/opam" {"opam"}
     "_build/install/default/lib/vlib/vlib.cmi" {"vlib.cmi"}
     "_build/install/default/lib/vlib/vlib.cmt" {"vlib.cmt"}

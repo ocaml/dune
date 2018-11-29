@@ -15,6 +15,8 @@ module Name : sig
 
   val uncapitalize : t -> string
 
+  val equal : t -> t -> bool
+
   val pp : Format.formatter -> t -> unit
   val pp_quote : Format.formatter -> t -> unit
 

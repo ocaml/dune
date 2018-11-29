@@ -160,11 +160,10 @@ module Gen(P : Params) = struct
           | None -> dst
           | Some dir -> sprintf "%s/%s" dir dst)
     in
-    let installable_modules =
+    let lib_modules =
       Dir_contents.modules_of_library dir_contents
-        ~name:(Library.best_name lib)
-      |> Lib_modules.installable_modules
-    in
+        ~name:(Library.best_name lib) in
+    let installable_modules = Lib_modules.installable_modules lib_modules in
     let sources =
       List.concat_map installable_modules ~f:(fun m ->
         List.map (Module.sources m) ~f:(fun source ->
@@ -190,6 +189,12 @@ module Gen(P : Params) = struct
               [ Module.cm_file_unsafe m ~obj_dir Cmx ]
           ; if_ (native && Module.has_impl m && virtual_library)
               [ Module.obj_file m ~obj_dir ~ext:ctx.ext_obj ]
+          ; if_ (virtual_library && Module.is_public m
+                 && not (Lib_modules.is_alias_module lib_modules m))
+              (List.filter_map [Ml_kind.Intf; Impl] ~f:(fun kind ->
+                 Module.file m kind
+                 |> Option.map ~f:(fun f ->
+                   Path.relative obj_dir (Path.basename f ^ ".all-deps"))))
           ; List.filter_map Ml_kind.all ~f:(Module.cmt_file m ~obj_dir)
           ])
     in

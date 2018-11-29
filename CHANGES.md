@@ -1,5 +1,5 @@
-next
-----
+1.6.0 (29/11/2018)
+------------------
 
 - Expand variables in `install` stanzas (#1354, @mseri)
 

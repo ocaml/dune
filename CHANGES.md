@@ -13,7 +13,7 @@ next
   binaries for rules defined in a directory. (#1521, @rgrinberg)
 
 - Fix a crash caused by using an extension in a project without
-  dune-project file (#...., fix #1529, @diml)
+  dune-project file (#1535, fix #1529, @diml)
 
 - Allow `%{bin:..}`, `%{exe:..}`, and other static expansions in the `deps`
   field. (#1155, fix #1531, @rgrinberg)

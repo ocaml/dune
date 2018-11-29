@@ -408,6 +408,8 @@ module Decoder : sig
       message. *)
   val field_present_too_many_times : Univ_map.t -> string -> Ast.t list -> _
 
+  val leftover_fields : Ast.t list fields_parser
+
   module Let_syntax : sig
     val ( $ ) : ('a -> 'b, 'k) parser -> ('a, 'k) parser -> ('b, 'k) parser
     val const : 'a -> ('a, _) parser

@@ -366,6 +366,19 @@ module Decoder = struct
     ; known    : string list
     }
 
+  let unparsed_ast { unparsed ; _ } =
+    let rec loop acc = function
+      | [] -> acc
+      | x :: xs ->
+        begin match x.prev with
+        | None -> loop (x.entry :: acc) xs
+        | Some p -> loop (x.entry :: acc) (p :: xs)
+        end
+    in
+    loop [] (Name_map.values unparsed)
+    |> List.sort ~compare:(fun a b ->
+      Int.compare (Ast.loc a).start.pos_cnum (Ast.loc b).start.pos_cnum)
+
   (* Arguments are:
 
      - the location of the whole list
@@ -847,6 +860,13 @@ module Decoder = struct
     let ctx = Fields (loc, cstr, uc) in
     let x = result ctx (t ctx { unparsed; known = [] }) in
     (x, [])
+
+  let leftover_fields (Fields (_, _, _)) state =
+    ( unparsed_ast state
+    , { known = state.known @ Name_map.keys state.unparsed
+      ; unparsed = Name_map.empty
+      }
+    )
 
   let record t = enter (fields t)
 

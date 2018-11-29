@@ -343,41 +343,56 @@ module Decoder = struct
     Printf.ksprintf (fun msg ->
       of_sexp_error loc ?hint ("No variables allowed " ^ msg)) fmt
 
-  type unparsed_field =
-    { values : Ast.t list
-    ; entry  : Ast.t
-    ; prev   : unparsed_field option (* Previous occurrence of this field *)
-    }
-
   module Name = struct
-    type t = string
-    let compare a b =
-      let alen = String.length a and blen = String.length b in
-      match Int.compare alen blen with
-      | Eq -> String.compare a b
-      | ne -> ne
+    module T = struct
+      type t = string
+      let compare a b =
+        let alen = String.length a and blen = String.length b in
+        match Int.compare alen blen with
+        | Eq -> String.compare a b
+        | ne -> ne
+    end
+    include T
+    module Map = Map.Make(T)
   end
 
-  module Name_map = Map.Make(Name)
+  module Fields = struct
+    module Unparsed = struct
+      type t =
+        { values : Ast.t list
+        ; entry  : Ast.t
+        ; prev   : t option (* Previous occurrence of this field *)
+        }
+    end
+    type t =
+      { unparsed : Unparsed.t Name.Map.t
+      ; known    : string list
+      }
 
+    let consume name state =
+      { unparsed = Name.Map.remove state.unparsed name
+      ; known    = name :: state.known
+      }
+
+    let add_known name state =
+      { state with known = name :: state.known }
+
+    let unparsed_ast { unparsed ; _ } =
+      let rec loop acc = function
+        | [] -> acc
+        | x :: xs ->
+          begin match x.Unparsed.prev with
+          | None -> loop (x.entry :: acc) xs
+          | Some p -> loop (x.entry :: acc) (p :: xs)
+          end
+      in
+      loop [] (Name.Map.values unparsed)
+      |> List.sort ~compare:(fun a b ->
+        Int.compare (Ast.loc a).start.pos_cnum (Ast.loc b).start.pos_cnum)
+  end
+
+  type fields = Fields.t
   type values = Ast.t list
-  type fields =
-    { unparsed : unparsed_field Name_map.t
-    ; known    : string list
-    }
-
-  let unparsed_ast { unparsed ; _ } =
-    let rec loop acc = function
-      | [] -> acc
-      | x :: xs ->
-        begin match x.prev with
-        | None -> loop (x.entry :: acc) xs
-        | Some p -> loop (x.entry :: acc) (p :: xs)
-        end
-    in
-    loop [] (Name_map.values unparsed)
-    |> List.sort ~compare:(fun a b ->
-      Int.compare (Ast.loc a).start.pos_cnum (Ast.loc b).start.pos_cnum)
 
   (* Arguments are:
 
@@ -387,12 +402,12 @@ module Decoder = struct
   *)
   type 'kind context =
     | Values : Loc.t * string option * Univ_map.t -> values context
-    | Fields : Loc.t * string option * Univ_map.t -> fields context
+    | Fields : Loc.t * string option * Univ_map.t -> Fields.t context
 
   type ('a, 'kind) parser =  'kind context -> 'kind -> 'a * 'kind
 
   type 'a t             = ('a, values) parser
-  type 'a fields_parser = ('a, fields) parser
+  type 'a fields_parser = ('a, Fields.t) parser
 
   let return x _ctx state = (x, state)
   let (>>=) t f ctx state =
@@ -443,7 +458,7 @@ module Decoder = struct
   let at_eos : type k. k context -> k -> bool = fun ctx state ->
     match ctx with
     | Values _ -> state = []
-    | Fields _ -> Name_map.is_empty state.unparsed
+    | Fields _ -> Name.Map.is_empty state.unparsed
 
   let eos ctx state = (at_eos ctx state, state)
 
@@ -477,7 +492,7 @@ module Decoder = struct
               of_sexp_errorf (Ast.loc sexp) "Too many argument for %s" s
         end
       | Fields _ -> begin
-          match Name_map.choose state.unparsed with
+          match Name.Map.choose state.unparsed with
           | None -> v
           | Some (name, { entry; _ }) ->
             let name_loc =
@@ -537,7 +552,7 @@ module Decoder = struct
   let junk_everything : type k. (unit, k) parser = fun ctx state ->
     match ctx with
     | Values _ -> ((), [])
-    | Fields _ -> ((), { state with unparsed = Name_map.empty })
+    | Fields _ -> ((), { state with unparsed = Name.Map.empty })
 
   let keyword kwd =
     next (function
@@ -629,15 +644,15 @@ module Decoder = struct
         end
       | Fields _ ->
         let parsed =
-          Name_map.merge state1.unparsed state2.unparsed
+          Name.Map.merge state1.unparsed state2.unparsed
             ~f:(fun _key before after ->
               match before, after with
               | Some _, None -> before
               | _ -> None)
         in
         match
-          Name_map.values parsed
-          |> List.map ~f:(fun f -> Ast.loc f.entry)
+          Name.Map.values parsed
+          |> List.map ~f:(fun f -> Ast.loc f.Fields.Unparsed.entry)
           |> List.sort ~compare:(fun a b ->
             Int.compare a.Loc.start.pos_cnum b.start.pos_cnum)
         with
@@ -751,14 +766,6 @@ module Decoder = struct
 
   let bool = enum [ ("true", true); ("false", false) ]
 
-  let consume name state =
-    { unparsed = Name_map.remove state.unparsed name
-    ; known    = name :: state.known
-    }
-
-  let add_known name state =
-    { state with known = name :: state.known }
-
   let map_validate t ~f ctx state1 =
     let x, state2 = t ctx state1 in
     match f x with
@@ -779,7 +786,7 @@ module Decoder = struct
     | _ -> assert false
 
   let multiple_occurrences ?(on_dup=field_present_too_many_times) uc name last =
-    let rec collect acc x =
+    let rec collect acc (x : Fields.Unparsed.t) =
       let acc = x.entry :: acc in
       match x.prev with
       | None -> acc
@@ -788,8 +795,8 @@ module Decoder = struct
     on_dup uc name (collect [] last)
   [@@inline never]
 
-  let find_single ?on_dup uc state name =
-    let res = Name_map.find state.unparsed name in
+  let find_single ?on_dup uc (state : Fields.t) name =
+    let res = Name.Map.find state.unparsed name in
     (match res with
      | Some ({ prev = Some _; _ } as last) ->
        multiple_occurrences uc name last ?on_dup
@@ -801,10 +808,10 @@ module Decoder = struct
     | Some { values; entry; _ } ->
       let ctx = Values (Ast.loc entry, Some name, uc) in
       let x = result ctx (t ctx values) in
-      (x, consume name state)
+      (x, Fields.consume name state)
     | None ->
       match default with
-      | Some v -> (v, add_known name state)
+      | Some v -> (v, Fields.add_known name state)
       | None -> field_missing loc name
 
   let field_o name ?on_dup t (Fields (_, _, uc)) state =
@@ -812,9 +819,9 @@ module Decoder = struct
     | Some { values; entry; _ } ->
       let ctx = Values (Ast.loc entry, Some name, uc) in
       let x = result ctx (t ctx values) in
-      (Some x, consume name state)
+      (Some x, Fields.consume name state)
     | None ->
-      (None, add_known name state)
+      (None, Fields.add_known name state)
 
   let field_b_gen field_gen ?check ?on_dup name =
     field_gen name ?on_dup
@@ -826,8 +833,8 @@ module Decoder = struct
   let field_b = field_b_gen (field ~default:false)
   let field_o_b = field_b_gen field_o
 
-  let multi_field name t (Fields (_, _, uc)) state =
-    let rec loop acc field =
+  let multi_field name t (Fields (_, _, uc)) (state : Fields.t) =
+    let rec loop acc (field : Fields.Unparsed.t option) =
       match field with
       | None -> acc
       | Some { values; prev; entry } ->
@@ -835,20 +842,21 @@ module Decoder = struct
         let x = result ctx (t ctx values) in
         loop (x :: acc) prev
     in
-    let res = loop [] (Name_map.find state.unparsed name) in
-    (res, consume name state)
+    let res = loop [] (Name.Map.find state.unparsed name) in
+    (res, Fields.consume name state)
 
   let fields t (Values (loc, cstr, uc)) sexps =
     let unparsed =
-      List.fold_left sexps ~init:Name_map.empty ~f:(fun acc sexp ->
+      List.fold_left sexps ~init:Name.Map.empty ~f:(fun acc sexp ->
         match sexp with
         | List (_, name_sexp :: values) -> begin
             match name_sexp with
             | Atom (_, A name) ->
-              Name_map.add acc name
-                { values
+              Name.Map.add acc name
+                { Fields.Unparsed.
+                  values
                 ; entry = sexp
-                ; prev  = Name_map.find acc name
+                ; prev  = Name.Map.find acc name
                 }
             | List (loc, _) | Quoted_string (loc, _) | Template { loc; _ } ->
               of_sexp_error loc "Atom expected"
@@ -858,13 +866,14 @@ module Decoder = struct
             "S-expression of the form (<name> <values>...) expected")
     in
     let ctx = Fields (loc, cstr, uc) in
-    let x = result ctx (t ctx { unparsed; known = [] }) in
+    let x = result ctx (t ctx { Fields. unparsed; known = [] }) in
     (x, [])
 
   let leftover_fields (Fields (_, _, _)) state =
-    ( unparsed_ast state
-    , { known = state.known @ Name_map.keys state.unparsed
-      ; unparsed = Name_map.empty
+    ( Fields.unparsed_ast state
+    , { Fields.
+        known = state.known @ Name.Map.keys state.unparsed
+      ; unparsed = Name.Map.empty
       }
     )
 

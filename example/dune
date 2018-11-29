@@ -1,4 +1,4 @@
-(data_only sample-projects)
+(data_only_dirs sample-projects)
 
 (alias
  (name runtest)

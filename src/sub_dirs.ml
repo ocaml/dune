@@ -88,7 +88,7 @@ module Stanza = struct
     in
     sum [ "ignored_subdirs", ignore_sub_dirs
         ; "subdirs", sub_dirs
-        ; "data_only", data_only
+        ; "data_only_dirs", data_only
         ]
 
   let extract ~project sexps =
@@ -96,8 +96,9 @@ module Stanza = struct
       List.fold_left sexps ~init:((None, [], None), [])
         ~f:(fun ((sub_dirs, ignored, data_only) as stanzas, sexps) sexp ->
           match (sexp : Dune_lang.Ast.t) with
-          | List ( loc , (Atom (_ , A ("ignored_subdirs"
-                                      | "subdirs" | "data_only")) :: _)) ->
+          | List ( loc ,
+                   (Atom (_ , A ("ignored_subdirs"
+                                | "subdirs" | "data_only_dirs")) :: _)) ->
             let stanza =
               Dune_project.set_parsing_context project decode in
             let stanza = Dune_lang.Decoder.parse stanza Univ_map.empty sexp in

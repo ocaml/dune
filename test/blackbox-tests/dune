@@ -1,4 +1,4 @@
-(data_only test-cases)
+(data_only_dirs test-cases)
 
 (executable
  (name cram)

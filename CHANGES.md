@@ -18,11 +18,11 @@ next
 - Allow `%{bin:..}`, `%{exe:..}`, and other static expansions in the `deps`
   field. (#1155, fix #1531, @rgrinberg)
 
-- Fix bad interaction between on-demand ppx rewriters and using
-  multiple build contexts (#1545, @diml)
+- Fix bad interaction between on-demand ppx rewriters and using multiple build
+  contexts (#1545, @diml)
 
-- Fix handling of installed .dune files when the backend is declared
-  via a `dune` file (#1551, fixes #1549, @diml)
+- Fix handling of installed .dune files when the backend is declared via a
+  `dune` file (#1551, fixes #1549, @diml)
 
 - Add a `--stats` command line option to record resource usage (#1543, @diml)
 
@@ -32,12 +32,10 @@ next
 - Allow targets to be directories, which Dune will treat opaquely
   (#1547, @jordwalke)
 
-- Support for OCaml 4.08: `List.t` is now provided by OCaml (#1561 @ejgallego)
+- Support for OCaml 4.08: `List.t` is now provided by OCaml (#1561, @ejgallego)
 
-- Document virtual libraries (experimental) (#1580, @rgrinberg)
-
-- Exclude the local esy directory (`_esy`) from the list of watched
-  directories (#1578, @andreypopp)
+- Exclude the local esy directory (`_esy`) from the list of watched directories
+  (#1578, @andreypopp)
 
 1.5.1 (7/11/2018)
 -----------------

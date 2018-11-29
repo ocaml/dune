@@ -57,18 +57,30 @@ let decode =
   let open Stanza.Decoder in
   let ignored_sub_dirs =
     let open Dune_lang.Decoder in
-    plain_string (fun ~loc dn ->
-      if Filename.dirname dn <> Filename.current_dir_name ||
-         match dn with
-         | "" | "." | ".." -> true
-         | _ -> false
-      then
-        of_sexp_errorf loc "Invalid sub-directory name %S" dn
-      else
-        dn)
-    |> list
-    >>| (fun l ->
-      Predicate_lang.of_string_set (String.Set.of_list l))
+    let ignored =
+      plain_string (fun ~loc dn ->
+        if Filename.dirname dn <> Filename.current_dir_name ||
+           match dn with
+           | "" | "." | ".." -> true
+           | _ -> false
+        then
+          of_sexp_errorf loc "Invalid sub-directory name %S" dn
+        else
+          dn)
+      |> list
+      >>| (fun l ->
+        Predicate_lang.of_string_set (String.Set.of_list l))
+    in
+    let%map version = Syntax.get_exn Stanza.syntax
+    and (loc, ignored) = located ignored
+    in
+    if version >= (1, 6) then begin
+      Errors.warn loc
+        "ignored_subdirs is deprecated in 1.6.Use subdirs to specify \
+         visibile directories or data_only_dirs for ignoring only dune \
+         files."
+    end;
+    ignored
   in
   let plang =
     Syntax.since Stanza.syntax (1, 6) >>>

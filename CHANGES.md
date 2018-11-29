@@ -37,6 +37,8 @@ next
 - Exclude the local esy directory (`_esy`) from the list of watched directories
   (#1578, @andreypopp)
 
+- Fix the output of `dune external-lib-deps` (#1594, @diml)
+
 1.5.1 (7/11/2018)
 -----------------
 

@@ -1,16 +1,6 @@
 open! Stdune
 open Import
 
-let map_fname = ref (fun x -> x)
-
-let map_pos (pos : Lexing.position) =
-  { pos with pos_fname = !map_fname pos.pos_fname }
-
-let map_loc (loc : Loc.t) : Loc.t =
-  { start = map_pos loc.start
-  ; stop  = map_pos loc.stop
-  }
-
 type printer =
   { loc       : Loc.t option
   ; pp        : Format.formatter -> unit
@@ -19,7 +9,6 @@ type printer =
   }
 
 let make_printer ?(backtrace=false) ?hint ?loc pp =
-  let loc = Option.map ~f:map_loc loc in
   { loc
   ; pp
   ; hint

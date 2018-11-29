@@ -208,18 +208,11 @@ val universe_file : Path.t
 val is_target : t -> Path.t -> bool
 
 (** Return all the library dependencies (as written by the user)
-   needed to build this request *)
+    needed to build this request, by context name *)
 val all_lib_deps
   :  t
   -> request:(unit, unit) Build.t
-  -> Lib_deps_info.t Path.Map.t
-
-(** Return all the library dependencies required to build this
-   request, by context name *)
-val all_lib_deps_by_context
-  :  t
-  -> request:(unit, unit) Build.t
-  -> Lib_deps_info.t String.Map.t
+  -> Lib_deps_info.t Path.Map.t String.Map.t
 
 (** List of all buildable targets *)
 val all_targets : t -> Path.t list

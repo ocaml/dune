@@ -1363,35 +1363,18 @@ let static_deps_of_request t request =
 
 let all_lib_deps t ~request =
   let targets = static_deps_of_request t request in
-  List.fold_left (rules_for_targets t targets) ~init:Path.Map.empty
+  List.fold_left (rules_for_targets t targets) ~init:[]
     ~f:(fun acc rule ->
       let deps = Internal_rule.lib_deps rule in
       if Lib_name.Map.is_empty deps then
         acc
       else
-        let deps =
-          match Path.Map.find acc rule.dir with
-          | None -> deps
-          | Some deps' -> Lib_deps_info.merge deps deps'
-        in
-        Path.Map.add acc rule.dir deps)
-
-let all_lib_deps_by_context t ~request =
-  let targets = static_deps_of_request t request in
-  let rules = rules_for_targets t targets in
-  List.fold_left rules ~init:[] ~f:(fun acc rule ->
-    let deps = Internal_rule.lib_deps rule in
-    if Lib_name.Map.is_empty deps then
-      acc
-    else
-      match Path.extract_build_context rule.dir with
-      | None -> acc
-      | Some (context, _) -> (context, deps) :: acc)
+        match Path.extract_build_context rule.dir with
+        | None -> acc
+        | Some (context, p) -> (context, (p, deps)) :: acc)
   |> String.Map.of_list_multi
   |> String.Map.filteri ~f:(fun ctx _ -> String.Map.mem t.contexts ctx)
-  |> String.Map.map ~f:(function
-    | [] -> Lib_name.Map.empty
-    | x :: l -> List.fold_left l ~init:x ~f:Lib_deps_info.merge)
+  |> String.Map.map ~f:(Path.Map.of_list_reduce ~f:Lib_deps_info.merge)
 
 module Rule = struct
   module Id = Internal_rule.Id

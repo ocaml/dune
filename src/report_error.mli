@@ -29,9 +29,3 @@ val register : (exn -> printer option) -> unit
 
 (** Find an error printer *)
 val find_printer : exn -> printer option
-
-(**/**)
-
-(** Used internally at Jane Street.
-  See https://github.com/ocaml/dune/pull/1368 *)
-val map_fname : (string -> string) ref

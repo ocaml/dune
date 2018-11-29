@@ -73,8 +73,8 @@ let decode =
     in
     if version >= (1, 6) then begin
       Errors.warn loc
-        "ignored_subdirs is deprecated in 1.6.Use subdirs to specify \
-         visibile directories or data_only_dirs for ignoring only dune \
+        "ignored_subdirs is deprecated in 1.6. Use dirs to specify \
+         visible directories or data_only_dirs for ignoring only dune \
          files."
     end;
     ignored

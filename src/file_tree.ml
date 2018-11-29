@@ -209,19 +209,16 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) path =
       let sub_dirs =
         List.fold_left unfiltered_sub_dirs ~init:String.Map.empty
           ~f:(fun acc (fn, path, file) ->
-            let is_subdir, data_only =
+            let status =
               if Path.Set.mem extra_ignored_subtrees path then
-                (false, false)
+                Sub_dirs.Status.Ignored
               else
-                match (Sub_dirs.status sub_dirs ~dir:fn : Sub_dirs.Status.t)
-                with
-                | Normal -> (true, data_only)
-                | Ignored -> (false, data_only)
-                | Data_only -> (true, true)
+                Sub_dirs.status sub_dirs ~dir:fn
             in
-            if not is_subdir then
-              acc
-            else
+            match status with
+            | Ignored -> acc
+            | Normal | Data_only ->
+              let data_only = data_only || status = Data_only in
               let dirs_visited =
                 if Sys.win32 then
                   dirs_visited

@@ -5,7 +5,7 @@ next
 
 - Add predicate language support for specifying sub directories. This allows the
   use globs, set operations, and special values in specifying the sub
-  directories used for the build. For example: `(subdirs :standard \ lib*)` will
+  directories used for the build. For example: `(dirs :standard \ lib*)` will
   use all directories except those that start with `lib`. (#1517, #1568,
   @rgrinberg)
 

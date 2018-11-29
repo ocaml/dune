@@ -808,7 +808,7 @@ Fields supported in ``<settings>`` are:
 
 .. _dune-subdirs:
 
-subdirs (since 1.6)
+dirs (since 1.6)
 -------------------
 
 The ``subdirs`` stanza allows to tell specify the sub-directories dune will
@@ -877,7 +877,7 @@ instead of this stanza. For example:
 
 .. code:: scheme
 
-  (subdirs :standard \ <sub-dir1> <sub-dir2> ...)
+  (dirs :standard \ <sub-dir1> <sub-dir2> ...)
 
 .. _include_subdirs:
 

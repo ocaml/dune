@@ -1,7 +1,7 @@
 open Stdune
 
 type 'set t = private
-  { sub_dirs : 'set
+  { dirs : 'set
   ; data_only : 'set
   }
 

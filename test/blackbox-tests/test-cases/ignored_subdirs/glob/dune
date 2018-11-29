@@ -1,1 +1,1 @@
-(subdirs (:standard \ garbage*))
+(dirs (:standard \ garbage*))

@@ -203,16 +203,20 @@ module Cached_digest = struct
     ; table       = Hashtbl.create 1024
     }
 
-  let dir_digest stat =
-    let ints = stat.Unix.st_size + stat.st_perm in
-    (string_of_int ints ^
-     string_of_float stat.st_mtime ^
-     string_of_float stat.st_ctime)
+  let dir_digest (stat : Unix.stats) =
+    Marshal.to_string
+      ( stat.st_size
+      , stat.st_perm
+      , stat.st_mtime
+      , stat.st_ctime
+      ) []
+    |> Digest.string
 
   let path_stat_digest fn stat =
     if stat.Unix.st_kind = Unix.S_DIR then
       dir_digest stat
-    else Digest.file (Path.to_string fn)
+    else
+      Digest.file (Path.to_string fn)
 
   let refresh fn =
     let path = Path.to_string fn in

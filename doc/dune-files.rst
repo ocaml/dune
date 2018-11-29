@@ -836,13 +836,36 @@ Dune. Any ``dune`` or other special files in it won't be interpreted either and
 will be treated as raw data. It is however possible to depend on files inside
 ignored sub-directories.
 
+.. _dune-data_only_dirs:
+
+data_only_dirs (since 1.6)
+--------------------------
+
+Dune allows the user to treat directories as *data only*. Dune files in these
+directories will not be evaluated for their rules, but the contents of these
+directories will still be usable as dependencies for other rules.
+
+The syntax is the same as for the ``subdirs`` stanza except that ``:standard``
+is by default empty.
+
+Example:
+
+.. code:: scheme
+
+   ;; dune files in fixtures_* dirs are ignored
+   (data_only_dirs fixtures_*)
+
 .. _dune-ignored_subdirs:
 
-ignored_subdirs
----------------
+ignored_subdirs (deprecated in 1.6)
+-----------------------------------
 
-Dune allows the user to specify a list of sub directories to ignore. The syntax
-of the stanaza is as follows:
+One may also specify *data only* directories using the ``ignored_subdirs``
+stanza. The meaning is the same as ``data_only_dirs`` but the syntax isn't as
+flexible and only accepts a list of directory names. It is advised to switch to
+the new ``data_only_dirs`` stanza.
+
+Example:
 
 .. code:: scheme
 

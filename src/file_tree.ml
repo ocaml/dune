@@ -59,7 +59,6 @@ let load_jbuild_ignore path =
       false
     end)
   |> String.Set.of_list
-  |> Predicate_lang.of_string_set
 
 module Dir = struct
   type t =

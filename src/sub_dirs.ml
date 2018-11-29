@@ -15,17 +15,19 @@ let default =
   ; data_only = Predicate_lang.empty
   }
 
-let make ~sub_dirs ~ignored_sub_dirs ~data_only =
+let make ~sub_dirs ~data_only ~ignored_sub_dirs =
   let sub_dirs =
-    let ignored_subdirs = Predicate_lang.union ignored_sub_dirs in
-    let sub_dirs = Option.value sub_dirs ~default:default.sub_dirs in
-    Predicate_lang.diff sub_dirs ignored_subdirs
+    Option.value sub_dirs ~default:default.sub_dirs in
+  let data_only =
+    let data_only = Option.value data_only ~default:default.data_only in
+    Predicate_lang.union (data_only :: ignored_sub_dirs)
   in
-  let data_only = Option.value data_only ~default:default.data_only in
   { sub_dirs ; data_only }
 
 let add_data_only_dirs t ~dirs =
-  { t with data_only = Predicate_lang.union [t.data_only; dirs] }
+  { t with data_only =
+             Predicate_lang.union
+               [t.data_only; (Predicate_lang.of_string_set dirs)] }
 
 let eval t ~dirs =
   let sub_dirs =

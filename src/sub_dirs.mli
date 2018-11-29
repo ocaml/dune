@@ -11,15 +11,9 @@ end
 
 val default : Predicate_lang.t t
 
-val make
-  :  sub_dirs:Predicate_lang.t option
-  -> ignored_sub_dirs:Predicate_lang.t list
-  -> data_only:Predicate_lang.t option
-  -> Predicate_lang.t t
-
 val add_data_only_dirs
   :  Predicate_lang.t t
-  -> dirs:Predicate_lang.t
+  -> dirs:String.Set.t
   -> Predicate_lang.t t
 
 val eval : Predicate_lang.t t -> dirs:string list -> String.Set.t t

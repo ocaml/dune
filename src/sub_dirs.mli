@@ -26,9 +26,4 @@ val eval : Predicate_lang.t t -> dirs:string list -> String.Set.t t
 
 val status : String.Set.t t -> dir:string -> Status.t
 
-module Stanza : sig
-  val extract
-    :  project:Dune_project.t
-    -> Dune_lang.Ast.t list
-    -> Predicate_lang.t t * Dune_lang.Ast.t list
-end
+val decode : (Predicate_lang.t t * Dune_lang.Ast.t list) Stanza.Decoder.t

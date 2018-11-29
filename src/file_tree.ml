@@ -35,7 +35,11 @@ module Dune_file = struct
             Dune_lang.Parser.parse lb
               ~lexer:(Dune_lang.Lexer.of_syntax kind) ~mode:Many
           in
-          let sub_dirs, sexps = Sub_dirs.Stanza.extract ~project sexps in
+          let decoder =
+            Dune_project.set_parsing_context project Sub_dirs.decode in
+          let sub_dirs, sexps =
+            Dune_lang.Decoder.parse decoder
+              Univ_map.empty (Dune_lang.Ast.List (Loc.none, sexps)) in
           (Plain { path = file; sexps }, sub_dirs)
       in
       ({ contents; kind }, sub_dirs))

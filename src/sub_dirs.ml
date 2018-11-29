@@ -17,9 +17,9 @@ let default =
 
 let make ~sub_dirs ~ignored_sub_dirs ~data_only =
   let sub_dirs =
-    let ignored_sub_dirs = Predicate_lang.union ignored_sub_dirs in
+    let ignored_subdirs = Predicate_lang.union ignored_sub_dirs in
     let sub_dirs = Option.value sub_dirs ~default:default.sub_dirs in
-    Predicate_lang.diff sub_dirs ignored_sub_dirs
+    Predicate_lang.diff sub_dirs ignored_subdirs
   in
   let data_only = Option.value data_only ~default:default.data_only in
   { sub_dirs ; data_only }
@@ -53,74 +53,48 @@ let status t ~dir =
   | false, false -> Ignored
   | false, true  -> assert false
 
-module Stanza = struct
-  type t =
-    | Ignore_sub_dirs of Predicate_lang.t
-    | Sub_dirs of Predicate_lang.t
-    | Data_only of Predicate_lang.t
-
-  let decode : t Dune_lang.Decoder.t =
-    let ignore_sub_dirs =
-      let open Dune_lang.Decoder in
-      plain_string (fun ~loc dn ->
-        if Filename.dirname dn <> Filename.current_dir_name ||
-           match dn with
-           | "" | "." | ".." -> true
-           | _ -> false
-        then
-          of_sexp_errorf loc "Invalid sub-directory name %S" dn
-        else
-          dn)
-      |> list
-      >>| (fun l ->
-        Ignore_sub_dirs (Predicate_lang.of_string_set (String.Set.of_list l)))
-    in
+let decode =
+  let open Stanza.Decoder in
+  let ignored_sub_dirs =
     let open Dune_lang.Decoder in
-    let sub_dirs =
-      Syntax.since Stanza.syntax (1, 6) >>>
-      Predicate_lang.decode >>| fun plang ->
-      Sub_dirs plang
+    plain_string (fun ~loc dn ->
+      if Filename.dirname dn <> Filename.current_dir_name ||
+         match dn with
+         | "" | "." | ".." -> true
+         | _ -> false
+      then
+        of_sexp_errorf loc "Invalid sub-directory name %S" dn
+      else
+        dn)
+    |> list
+    >>| (fun l ->
+      Predicate_lang.of_string_set (String.Set.of_list l))
+  in
+  let plang =
+    Syntax.since Stanza.syntax (1, 6) >>>
+    Predicate_lang.decode
+  in
+  let decode =
+    let%map ignored_sub_dirs =
+      multi_field "ignored_subdirs" ignored_sub_dirs
+    and data_only = field_o "data_only_dirs" (located plang)
+    and sub_dirs = field_o "subdirs" (located plang)
+    and rest = leftover_fields
     in
-    let data_only =
-      Syntax.since Stanza.syntax (1, 6) >>>
-      Predicate_lang.decode >>| fun plang ->
-      Data_only plang
-    in
-    sum [ "ignored_subdirs", ignore_sub_dirs
-        ; "subdirs", sub_dirs
-        ; "data_only_dirs", data_only
-        ]
-
-  let extract ~project sexps =
-    let (sub_dirs, ignored_sub_dirs, data_only), sexps =
-      List.fold_left sexps ~init:((None, [], None), [])
-        ~f:(fun ((sub_dirs, ignored, data_only) as stanzas, sexps) sexp ->
-          match (sexp : Dune_lang.Ast.t) with
-          | List ( loc ,
-                   (Atom (_ , A ("ignored_subdirs"
-                                | "subdirs" | "data_only_dirs")) :: _)) ->
-            let stanza =
-              Dune_project.set_parsing_context project decode in
-            let stanza = Dune_lang.Decoder.parse stanza Univ_map.empty sexp in
-            let stanzas =
-              match stanza, sub_dirs, data_only, ignored with
-              | Ignore_sub_dirs i, None, _, _ ->
-                (sub_dirs, i :: ignored, data_only)
-              | Data_only x, _, None, _ -> (sub_dirs, ignored, Some x)
-              | Sub_dirs x, None, _, [] -> (Some x, [], data_only)
-              | Sub_dirs _, Some _, _, _ ->
-                Errors.fail loc "More than one sub_dirs stanza is not allowed"
-              | Ignore_sub_dirs _, Some _, _, _
-              | Sub_dirs _, _, _, _::_ ->
-                Errors.fail loc
-                  "Cannot have both sub_dirs and ignored_sub_dirs \
-                   stanza in a dune file. "
-              | Data_only _, _, Some _, _ ->
-                Errors.fail loc "More than one data_only stanza is not allowed"
-            in
-            (stanzas, sexps)
-          | _ -> stanzas, sexp :: sexps)
-    in
-    let sexps = List.rev sexps in
-    (make ~sub_dirs ~data_only ~ignored_sub_dirs, sexps)
-end
+    match data_only, sub_dirs, ignored_sub_dirs with
+    | None, Some (loc, _), _::_ ->
+      Errors.fail loc
+        "Cannot have both sub_dirs and ignored_subdirs \
+         stanza in a dune file. "
+    | Some (loc, _), None, _::_ ->
+      Errors.fail loc
+        "Cannot have both data_only_dirs and ignored_subdirs \
+         stanza in a dune file. "
+    | _ ->
+      let sub_dirs = Option.map ~f:snd sub_dirs in
+      let data_only = Option.map ~f:snd data_only in
+      ( make ~sub_dirs ~data_only ~ignored_sub_dirs
+      , rest
+      )
+  in
+  enter (fields decode)

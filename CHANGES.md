@@ -5,7 +5,7 @@ next
 
 - Add predicate language support for specifying sub directories. This allows the
   use globs, set operations, and special values in specifying the sub
-  directories used for the build. For example: `(subdirs :standard \ lib*)` will
+  directories used for the build. For example: `(dirs :standard \ lib*)` will
   use all directories except those that start with `lib`. (#1517, #1568,
   @rgrinberg)
 
@@ -38,6 +38,9 @@ next
   (#1578, @andreypopp)
 
 - Fix the output of `dune external-lib-deps` (#1594, @diml)
+
+- Introduce `data_only_dirs` to replace `ignored_subdirs`. `ignored_subdirs` is
+  deprecated since 1.6. (#1590, @rgrinberg)
 
 1.5.1 (7/11/2018)
 -----------------

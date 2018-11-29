@@ -18,3 +18,7 @@ Testing in presence of an `ignored_subdirs` stanza:
 
   $ echo '(ignored_subdirs (blah))' > dune
   $ dune build
+  File "dune", line 1, characters 17-23:
+  1 | (ignored_subdirs (blah))
+                       ^^^^^^
+  Warning: ignored_subdirs is deprecated in 1.6.Use subdirs to specify visibile directories or data_only_dirs for ignoring only dune files.

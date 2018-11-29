@@ -2,13 +2,17 @@ open! Stdune
 
 type t
 
+val pp : t Fmt.t
+
 val decode : t Stanza.Decoder.t
 
 val empty : t
 
-val filter : t -> standard:t -> string list Lazy.t -> string list
+val filter : t -> standard:t -> string list -> string list
 
 val of_glob : Glob.t -> t
+
+val of_pred : (string -> bool) -> t
 
 val compl : t -> t
 

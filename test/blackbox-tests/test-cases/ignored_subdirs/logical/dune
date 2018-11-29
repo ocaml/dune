@@ -1,1 +1,1 @@
-(subdirs (and :standard (or foo bar)))
+(dirs (and :standard (or foo bar)))

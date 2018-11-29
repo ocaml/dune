@@ -4,8 +4,6 @@
   [1]
   $ jbuilder build --root pre-1.6 old-style/data/dune
   Entering directory 'pre-1.6'
-  Don't know how to build old-style/data/dune
-  [1]
   $ dune build --root 1.6 @runtest
   Entering directory '1.6'
   real dir

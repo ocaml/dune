@@ -192,7 +192,7 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) path =
           in
           let sub_dirs =
             if String.Set.mem files "jbuild-ignore" then
-              Sub_dirs.ignore_dirs sub_dirs
+              Sub_dirs.add_data_only_dirs sub_dirs
                 ~dirs:(load_jbuild_ignore (Path.relative path "jbuild-ignore"))
             else
               sub_dirs

@@ -17,7 +17,7 @@ val make
   -> data_only:Predicate_lang.t option
   -> Predicate_lang.t t
 
-val ignore_dirs
+val add_data_only_dirs
   :  Predicate_lang.t t
   -> dirs:Predicate_lang.t
   -> Predicate_lang.t t

@@ -24,8 +24,8 @@ let make ~sub_dirs ~ignored_sub_dirs ~data_only =
   let data_only = Option.value data_only ~default:default.data_only in
   { sub_dirs ; data_only }
 
-let ignore_dirs t ~dirs =
-  { t with sub_dirs = Predicate_lang.diff t.sub_dirs dirs }
+let add_data_only_dirs t ~dirs =
+  { t with data_only = Predicate_lang.union [t.data_only; dirs] }
 
 let eval t ~dirs =
   let sub_dirs =

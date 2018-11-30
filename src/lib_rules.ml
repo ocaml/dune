@@ -461,14 +461,15 @@ module Gen (P : Install_rules.Params) = struct
     let alias_module = Lib_modules.alias_module lib_modules in
     let modules = Lib_modules.for_compilation lib_modules in
 
+    let vlib_modules =
+      Option.map ~f:Virtual_rules.Implementation.vlib_modules impl in
+
     let cctx =
       Compilation_context.create ()
         ~super_context:sctx
         ~expander
         ?modules_of_vlib:(
-          Option.map impl ~f:(fun impl ->
-            Virtual_rules.Implementation.vlib_modules impl
-            |> Lib_modules.modules ))
+          Option.map vlib_modules ~f:(Lib_modules.modules))
         ~scope
         ~dir
         ~dir_kind
@@ -507,9 +508,6 @@ module Gen (P : Install_rules.Params) = struct
     in
 
     Module_compilation.build_modules cctx ~js_of_ocaml ~dynlink ~dep_graphs;
-
-    let vlib_modules =
-      Option.map ~f:Virtual_rules.Implementation.vlib_modules impl in
 
     if Option.is_none lib.stdlib then
       Option.iter (Lib_modules.alias lib_modules)

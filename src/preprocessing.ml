@@ -43,7 +43,7 @@ end = struct
         | Some a, Some b -> assert (a = b); acc
         | Some _, None   -> acc
         | None  , Some _ -> scope_for_key
-      | None  , None   -> None)
+        | None  , None   -> None)
     in
     let scope_key =
       match scope_for_key with
@@ -71,13 +71,17 @@ end = struct
         | _ ->
           let string_of_libs libs =
             String.concat ~sep:", " (List.map libs ~f:(fun lib ->
-              Lib_name.to_string (Lib.name lib)))
+              sprintf "%s (in %s)"
+                (Lib_name.to_string (Lib.name lib))
+                (Path.to_string_maybe_quoted (Lib.src_dir lib))))
           in
           die "Hash collision between set of ppx drivers:\n\
-               - %s\n\
-               - %s"
+               - cache : %s\n\
+               - fetch : %s\n\
+               context: %s"
             (string_of_libs libs)
             (string_of_libs libs')
+            ctx.name
     end;
     key
 

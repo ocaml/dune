@@ -313,15 +313,9 @@ let rules_for_auxiliary_module cctx (m : Module.t) =
 
 let graph_of_remote_lib ~obj_dir ~modules =
   let deps_of unit ~ml_kind =
-    match Module.file unit ml_kind with
+    match Module.all_deps unit ~obj_dir ml_kind with
     | None -> Build.return []
-    | Some file ->
-      let file_in_obj_dir ~suffix file =
-        let base = Path.basename file in
-        Path.relative obj_dir (base ^ suffix)
-      in
-      let all_deps_path file = file_in_obj_dir file ~suffix:".all-deps" in
-      let all_deps_file = all_deps_path file in
+    | Some all_deps_file ->
       Build.memoize (Path.to_string all_deps_file)
         (Build.lines_of all_deps_file
          >>^ parse_module_names ~unit ~modules

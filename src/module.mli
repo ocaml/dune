@@ -72,6 +72,7 @@ val file      : t -> Ml_kind.t -> Path.t option
 val cm_source : t -> Cm_kind.t -> Path.t option
 val cm_file   : t -> obj_dir:Path.t -> Cm_kind.t -> Path.t option
 val cmt_file  : t -> obj_dir:Path.t -> Ml_kind.t -> Path.t option
+val all_deps  : t -> obj_dir:Path.t -> Ml_kind.t -> Path.t option
 
 val obj_file : t -> obj_dir:Path.t -> ext:string -> Path.t
 

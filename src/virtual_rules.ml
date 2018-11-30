@@ -51,10 +51,8 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
       copy_obj_file m (Cm_kind.ext Cmi);
       if Module.is_public m then
         List.iter [Intf; Impl] ~f:(fun kind ->
-          Module.file m kind
-          |> Option.iter ~f:(fun f ->
-            Path.relative obj_dir (Path.basename f ^ ".all-deps")
-            |> copy_to_obj_dir ~obj_dir:(target_obj_dir m))
+          Module.all_deps m ~obj_dir kind
+          |> Option.iter ~f:(copy_to_obj_dir ~obj_dir:(target_obj_dir m))
         );
       if Module.has_impl m then begin
         if modes.byte then

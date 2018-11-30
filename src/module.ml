@@ -171,6 +171,10 @@ let cmt_file t ~obj_dir (kind : Ml_kind.t) =
   | Impl -> Option.map t.impl ~f:(fun _ -> obj_file t ~obj_dir ~ext:".cmt" )
   | Intf -> Option.map t.intf ~f:(fun _ -> obj_file t ~obj_dir ~ext:".cmti")
 
+let all_deps t ~obj_dir (kind : Ml_kind.t) =
+  Option.map (file t kind) ~f:(fun f ->
+    Path.relative obj_dir (Path.basename f ^ ".all-deps"))
+
 let odoc_file t ~doc_dir = obj_file t ~obj_dir:doc_dir~ext:".odoc"
 
 let cmti_file t ~obj_dir =

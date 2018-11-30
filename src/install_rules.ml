@@ -191,10 +191,8 @@ module Gen(P : Params) = struct
               [ Module.obj_file m ~obj_dir ~ext:ctx.ext_obj ]
           ; if_ (virtual_library && Module.is_public m
                  && not (Lib_modules.is_alias_module lib_modules m))
-              (List.filter_map [Ml_kind.Intf; Impl] ~f:(fun kind ->
-                 Module.file m kind
-                 |> Option.map ~f:(fun f ->
-                   Path.relative obj_dir (Path.basename f ^ ".all-deps"))))
+              (List.filter_map [Ml_kind.Intf; Impl]
+                 ~f:(Module.all_deps m ~obj_dir))
           ; List.filter_map Ml_kind.all ~f:(Module.cmt_file m ~obj_dir)
           ])
     in

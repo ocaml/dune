@@ -1,30 +1,12 @@
 open Import
 open! No_io
 
-module Implementation = struct
-  type t =
-    { vlib            : Lib.t
-    ; impl            : Dune_file.Library.t
-    ; vlib_modules    : Lib_modules.t
-    }
-
-  let vlib_modules t = t.vlib_modules
-
-  let vlib_dep_graph ({ vlib ; vlib_modules = _ ; impl = _ } as t) =
-    let modules = Lib_modules.modules t.vlib_modules in
-    let obj_dir = Lib.obj_dir vlib in
-    Ocamldep.graph_of_remote_lib ~obj_dir ~modules
-end
-
 module Gen (P : sig val sctx : Super_context.t end) = struct
   open P
   let ctx = Super_context.context sctx
 
-  let vlib_stubs_o_files { Implementation.vlib ; _ } =
-    Lib.foreign_objects vlib
-
   let setup_copy_rules_for_impl ~dir
-        ({ Implementation.vlib ; impl ; vlib_modules }) =
+        ({ Vimpl.vlib ; impl ; vlib_modules ; vlib_dep_graph = _ }) =
     let lib_name = snd impl.name in
     let target_obj_dir =
       let obj_dir = Utils.library_object_directory ~dir lib_name in
@@ -165,10 +147,16 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
         in
         let virtual_modules = Lib_modules.virtual_modules vlib_modules in
         check_module_fields ~lib ~virtual_modules ~modules ~implements;
-        { Implementation.
+        let vlib_dep_graph =
+          let modules = Lib_modules.modules vlib_modules in
+          let obj_dir = Lib.obj_dir vlib in
+          Ocamldep.graph_of_remote_lib ~obj_dir ~modules
+        in
+        { Vimpl.
           impl = lib
         ; vlib
         ; vlib_modules
+        ; vlib_dep_graph
         }
     end
 end

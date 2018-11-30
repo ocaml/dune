@@ -5,165 +5,27 @@ open Build.O
 module CC = Compilation_context
 module SC = Super_context
 
-module Dep_graph = struct
-  type t =
-    { dir        : Path.t
-    ; per_module : (Module.t * (unit, Module.t list) Build.t) Module.Name.Map.t
-    }
-
-  let deps_of t (m : Module.t) =
-    let name = Module.name m in
-    match Module.Name.Map.find t.per_module name with
-    | Some (_, x) -> x
-    | None ->
-      Exn.code_error "Ocamldep.Dep_graph.deps_of"
-        [ "dir", Path.to_sexp t.dir
-        ; "modules", Sexp.Encoder.(list Module.Name.to_sexp)
-                       (Module.Name.Map.keys t.per_module)
-        ; "module", Module.Name.to_sexp name
-        ]
-
-  let pp_cycle fmt cycle =
-    (Fmt.list ~pp_sep:Fmt.nl (Fmt.prefix (Fmt.string "-> ") Module.Name.pp))
-      fmt (List.map cycle ~f:Module.name)
-
-  let top_closed t modules =
-    Module.Name.Map.to_list t.per_module
-    |> List.map ~f:(fun (unit, (_module, deps)) ->
-      deps >>^ fun deps -> (unit, deps))
-    |> Build.all
-    >>^ fun per_module ->
-    let per_module = Module.Name.Map.of_list_exn per_module in
-    match
-      Module.Name.Top_closure.top_closure modules
-        ~key:Module.name
-        ~deps:(fun m ->
-          Module.name m
-          |> Module.Name.Map.find per_module
-          |> Option.value_exn)
-    with
-    | Ok modules -> modules
-    | Error cycle ->
-      die "dependency cycle between modules in %s:\n   %a"
-        (Path.to_string t.dir)
-        pp_cycle cycle
-
-  module Multi = struct
-    let top_closed_multi (ts : t list) modules =
-      List.concat_map ts ~f:(fun t ->
-        Module.Name.Map.to_list t.per_module
-        |> List.map ~f:(fun (_name, (unit, deps)) ->
-          deps >>^ fun deps -> (unit, deps)))
-      |> Build.all >>^ fun per_module ->
-      let per_obj =
-        Module.Obj_map.of_list_reduce per_module ~f:List.rev_append in
-      match Module.Obj_map.top_closure per_obj modules with
-      | Ok modules -> modules
-      | Error cycle ->
-        die "dependency cycle between modules\n   %a"
-          pp_cycle cycle
-  end
-
-  let make_top_closed_implementations ~name ~f ts modules =
-    Build.memoize name (
-      let filter_out_intf_only = List.filter ~f:Module.has_impl in
-      f ts (filter_out_intf_only modules)
-      >>^ filter_out_intf_only)
-
-  let top_closed_multi_implementations =
-    make_top_closed_implementations
-      ~name:"top sorted multi implementations" ~f:Multi.top_closed_multi
-
-  let top_closed_implementations =
-    make_top_closed_implementations
-      ~name:"top sorted implementations" ~f:top_closed
-
-  let dummy (m : Module.t) =
-    { dir = Path.root
-    ; per_module =
-        Module.Name.Map.singleton (Module.name m) (m, (Build.return []))
-    }
-
-  let wrapped_compat ~modules ~wrapped_compat =
-    { dir = Path.root
-    ; per_module = Module.Name.Map.merge wrapped_compat modules ~f:(fun _ d m ->
-        match d, m with
-        | None, None -> assert false
-        | Some wrapped_compat, None ->
-          Exn.code_error "deprecated module needs counterpart"
-            [ "deprecated", Module.to_sexp wrapped_compat
-            ]
-        | None, Some _ -> None
-        | Some _, Some m -> Some (m, (Build.return [m]))
-      )
-    }
-end
-
-module Dep_graphs = struct
-  type t = Dep_graph.t Ml_kind.Dict.t
-
-  let dummy m =
-    Ml_kind.Dict.make_both (Dep_graph.dummy m)
-
-  let wrapped_compat ~modules ~wrapped_compat =
-    Ml_kind.Dict.make_both (Dep_graph.wrapped_compat ~modules ~wrapped_compat)
-
-  let merge_impl ~(ml_kind : Ml_kind.t) _ vlib impl =
-    match vlib, impl with
-    | None, None -> assert false
-    | Some _, None -> None (* we don't care about internal vlib deps *)
-    | None, Some d -> Some d
-    | Some (mv, _), Some (mi, i) ->
-      if Module.obj_name mv = Module.obj_name mi
-      && Module.intf_only mv
-      && Module.impl_only mi then
-        match ml_kind with
-        | Impl -> Some (mi, i)
-        | Intf -> None
-      else if Module.is_private mv || Module.is_private mi then
-        Some (mi, i)
-      else
-        let open Sexp.Encoder in
-        Exn.code_error "merge_impl: unexpected dep graph"
-          [ "ml_kind", string (Ml_kind.to_string ml_kind)
-          ; "mv", Module.to_sexp mv
-          ; "mi", Module.to_sexp mi
-          ]
-
-  let merge_for_impl ~(vlib : t) ~(impl : t) =
-    Ml_kind.Dict.of_func (fun ~ml_kind ->
-      let impl = Ml_kind.Dict.get impl ml_kind in
-      { impl with
-        per_module =
-          Module.Name.Map.merge ~f:(merge_impl ~ml_kind)
-            (Ml_kind.Dict.get vlib ml_kind).per_module
-            impl.per_module
-      })
-end
-
 let is_alias_module cctx (m : Module.t) =
   let open Module.Name.Infix in
   match CC.alias_module cctx with
   | None -> false
   | Some alias -> Module.name alias = Module.name m
 
-let parse_module_names ~(unit : Module.t) ~modules ~modules_of_vlib words =
+let parse_module_names ~(unit : Module.t) ~modules words =
   let open Module.Name.Infix in
   List.filter_map words ~f:(fun m ->
     let m = Module.Name.of_string m in
     if m = Module.name unit then
       None
     else
-      match Module.Name.Map.find modules m with
-      | Some _ as m -> m
-      | None -> Module.Name.Map.find modules_of_vlib m)
+      Module.Name.Map.find modules m)
 
 let parse_deps cctx ~file ~unit lines =
   let dir                  = CC.dir                  cctx in
   let alias_module         = CC.alias_module         cctx in
   let lib_interface_module = CC.lib_interface_module cctx in
   let modules              = CC.modules              cctx in
-  let modules_of_vlib      = CC.modules_of_vlib      cctx in
+  let vimpl                = CC.vimpl                cctx in
   let invalid () =
     die "ocamldep returned unexpected output for %s:\n\
          %s"
@@ -180,8 +42,9 @@ let parse_deps cctx ~file ~unit lines =
       let basename = Filename.basename basename in
       if basename <> Path.basename file then invalid ();
       let deps =
+        let modules = Vimpl.add_vlib_modules vimpl modules in
         String.extract_blank_separated_words deps
-        |> parse_module_names ~unit ~modules ~modules_of_vlib
+        |> parse_module_names ~unit ~modules
       in
       let stdlib = CC.stdlib cctx in
       let deps =
@@ -243,7 +106,11 @@ let deps_of cctx ~ml_kind unit =
       in
       let all_deps_path file = file_in_obj_dir file ~suffix:".all-deps" in
       let context = SC.context sctx in
-      let modules_of_vlib = Compilation_context.modules_of_vlib cctx in
+      let vimpl = Compilation_context.vimpl cctx in
+      let parse_module_names =
+        let modules = Vimpl.add_vlib_modules vimpl (CC.modules cctx) in
+        parse_module_names ~modules
+      in
       let all_deps_file = all_deps_path file in
       let ocamldep_output = file_in_obj_dir file ~suffix:".d" in
       SC.add_rule sctx ~dir:(Compilation_context.dir cctx)
@@ -272,10 +139,7 @@ let deps_of cctx ~ml_kind unit =
           let module_file_ =
             match file_path m with
             | Some v -> Some v
-            | None ->
-              Module.name m
-              |> Module.Name.Map.find modules_of_vlib
-              |> Option.bind ~f:file_path
+            | None -> Option.bind ~f:file_path(Vimpl.find_module vimpl m)
           in
           Option.map ~f:all_deps_path module_file_
         in
@@ -292,8 +156,7 @@ let deps_of cctx ~ml_kind unit =
           >>> Build.merge_files_dyn ~target:all_deps_file);
       Build.memoize (Path.to_string all_deps_file)
         ( Build.lines_of all_deps_file
-          >>^ parse_module_names
-                ~modules_of_vlib ~unit ~modules:(CC.modules cctx))
+          >>^ parse_module_names ~unit)
 
 let rules_generic cctx ~modules =
   Ml_kind.Dict.of_func
@@ -301,10 +164,7 @@ let rules_generic cctx ~modules =
        let per_module =
          Module.Name.Map.map modules ~f:(fun m -> (m, deps_of cctx ~ml_kind m))
        in
-       { Dep_graph.
-         dir = CC.dir cctx
-       ; per_module
-       })
+       Dep_graph.make ~dir:(CC.dir cctx) ~per_module)
 
 let rules cctx = rules_generic cctx ~modules:(CC.modules cctx)
 
@@ -324,13 +184,9 @@ let graph_of_remote_lib ~obj_dir ~modules =
       let all_deps_file = all_deps_path file in
       Build.memoize (Path.to_string all_deps_file)
         (Build.lines_of all_deps_file
-         >>^ parse_module_names ~unit ~modules
-               ~modules_of_vlib:Module.Name.Map.empty)
+         >>^ parse_module_names ~unit ~modules)
   in
   Ml_kind.Dict.of_func (fun ~ml_kind ->
     let per_module =
       Module.Name.Map.map modules ~f:(fun m -> (m, deps_of ~ml_kind m)) in
-    { Dep_graph.
-      dir = obj_dir
-    ; per_module
-    })
+    Dep_graph.make ~dir:obj_dir ~per_module)

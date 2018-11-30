@@ -98,23 +98,14 @@ module Gen (P : Install_rules.Params) = struct
 
   let build_alias_module { Lib_modules.Alias_module.main_module_name
                          ; alias_module } ~dir
-        ~modules ~modules_of_vlib ~cctx ~dynlink ~js_of_ocaml =
+        ~modules ~cctx ~dynlink ~js_of_ocaml =
+    let vimpl = Compilation_context.vimpl cctx in
     let file =
       match Module.impl alias_module with
       | Some f -> f
       | None -> Option.value_exn (Module.intf alias_module)
     in
-    let modules =
-      match modules_of_vlib with
-      | None -> modules
-      | Some vlib ->
-        Module.Name.Map.merge modules vlib ~f:(fun _ impl vlib ->
-          match impl, vlib with
-          | None, None -> assert false
-          | Some _, (None | Some _) -> impl
-          | _, Some vlib -> Option.some_if (Module.is_public vlib) vlib
-        )
-    in
+    let modules = Vimpl.aliased_modules vimpl modules in
     SC.add_rule sctx ~dir
       (Build.return
          (Module.Name.Map.values
@@ -135,7 +126,7 @@ module Gen (P : Install_rules.Params) = struct
       ~js_of_ocaml
       ~dynlink
       ~sandbox:alias_module_build_sandbox
-      ~dep_graphs:(Ocamldep.Dep_graphs.dummy alias_module)
+      ~dep_graphs:(Dep_graph.Ml_kind.dummy alias_module)
 
   let build_wrapped_compat_modules (lib : Library.t)
         cctx
@@ -167,7 +158,7 @@ module Gen (P : Install_rules.Params) = struct
       |> SC.add_rule sctx ~dir:(Compilation_context.dir cctx)
     );
     let dep_graphs =
-      Ocamldep.Dep_graphs.wrapped_compat ~modules ~wrapped_compat
+      Dep_graph.Ml_kind.wrapped_compat ~modules ~wrapped_compat
     in
     let cctx = Compilation_context.for_wrapped_compat cctx wrapped_compat in
     Module_compilation.build_modules cctx ~js_of_ocaml ~dynlink ~dep_graphs
@@ -342,15 +333,14 @@ module Gen (P : Install_rules.Params) = struct
       in
       SC.add_rule sctx build ~dir)
 
-  let setup_file_deps lib ~dir ~obj_dir ~modules ~modules_of_vlib =
-    let add_cms ~cm_kind ~init = Module.Name.Map.fold ~init ~f:(fun m acc ->
+  let setup_file_deps lib ~dir ~obj_dir ~modules =
+    let add_cms ~cm_kind ~init = List.fold_left ~init ~f:(fun acc m ->
       match Module.cm_file m ~obj_dir cm_kind with
       | None -> acc
       | Some fn -> Path.Set.add acc fn)
     in
     List.iter Cm_kind.all ~f:(fun cm_kind ->
       let files = add_cms ~cm_kind ~init:Path.Set.empty modules in
-      let files = add_cms ~cm_kind ~init:files modules_of_vlib in
       Lib_file_deps.setup_file_deps_alias sctx ~dir lib ~exts:[Cm_kind.ext cm_kind]
         files);
 
@@ -361,7 +351,7 @@ module Gen (P : Install_rules.Params) = struct
        |> Path.Set.of_list)
 
   let setup_build_archives (lib : Dune_file.Library.t)
-        ~wrapped_compat ~cctx ~(dep_graphs : Ocamldep.Dep_graphs.t)
+        ~wrapped_compat ~cctx ~(dep_graphs : Dep_graph.Ml_kind.t)
         ~expander
         ~vlib_dep_graphs =
     let dir = Compilation_context.dir cctx in
@@ -369,7 +359,7 @@ module Gen (P : Install_rules.Params) = struct
     let flags = Compilation_context.flags cctx in
     let modules = Compilation_context.modules cctx in
     let js_of_ocaml = lib.buildable.js_of_ocaml in
-    let modules_of_vilb = Compilation_context.modules_of_vlib cctx in
+    let vimpl = Compilation_context.vimpl cctx in
     let modules =
       match lib.stdlib with
       | Some { exit_module = Some name; _ } -> begin
@@ -389,7 +379,7 @@ module Gen (P : Install_rules.Params) = struct
     in
     let modules = List.rev_append
                     (Module.Name_map.impl_only modules)
-                    (Module.Name_map.impl_only modules_of_vilb) in
+                    (Vimpl.impl_only vimpl) in
     let wrapped_compat = Module.Name.Map.values wrapped_compat in
     (* Compatibility modules have implementations so we can just append them.
        We append the modules at the end as no library modules depend on
@@ -397,10 +387,10 @@ module Gen (P : Install_rules.Params) = struct
     let top_sorted_modules =
       match vlib_dep_graphs with
       | None ->
-        Ocamldep.Dep_graph.top_closed_implementations dep_graphs.impl modules
+        Dep_graph.top_closed_implementations dep_graphs.impl modules
         >>^ fun modules -> modules @ wrapped_compat
-      | Some (vlib_dep_graphs : Ocamldep.Dep_graphs.t) ->
-        Ocamldep.Dep_graph.top_closed_multi_implementations
+      | Some (vlib_dep_graphs : Dep_graph.Ml_kind.t) ->
+        Dep_graph.top_closed_multi_implementations
           [ vlib_dep_graphs.impl
           ; dep_graphs.impl
           ]
@@ -438,8 +428,8 @@ module Gen (P : Install_rules.Params) = struct
     if Lib_modules.has_private_modules lib_modules then
       Check_rules.add_obj_dir sctx ~dir ~obj_dir:private_obj_dir;
     let source_modules = Lib_modules.modules lib_modules in
-    let impl = Virtual.impl ~lib ~scope ~modules:source_modules in
-    Option.iter impl ~f:(Virtual.setup_copy_rules_for_impl ~dir);
+    let vimpl = Virtual.impl ~lib ~scope ~modules:source_modules in
+    Option.iter vimpl ~f:(Virtual.setup_copy_rules_for_impl ~dir);
     (* Preprocess before adding the alias module as it doesn't need
        preprocessing *)
     let pp =
@@ -461,15 +451,11 @@ module Gen (P : Install_rules.Params) = struct
     let alias_module = Lib_modules.alias_module lib_modules in
     let modules = Lib_modules.for_compilation lib_modules in
 
-    let vlib_modules =
-      Option.map ~f:Virtual_rules.Implementation.vlib_modules impl in
-
     let cctx =
       Compilation_context.create ()
         ~super_context:sctx
         ~expander
-        ?modules_of_vlib:(
-          Option.map vlib_modules ~f:(Lib_modules.modules))
+        ?vimpl
         ~scope
         ~dir
         ~dir_kind
@@ -497,13 +483,13 @@ module Gen (P : Install_rules.Params) = struct
 
     let (vlib_dep_graphs, dep_graphs) =
       let dep_graphs = Ocamldep.rules cctx in
-      match impl with
+      match vimpl with
       | None ->
         (None, dep_graphs)
       | Some impl ->
-        let vlib = Virtual_rules.Implementation.vlib_dep_graph impl in
+        let vlib = Vimpl.vlib_dep_graph impl in
         ( Some vlib
-        , Ocamldep.Dep_graphs.merge_for_impl ~vlib ~impl:dep_graphs
+        , Dep_graph.Ml_kind.merge_for_impl ~vlib ~impl:dep_graphs
         )
     in
 
@@ -512,25 +498,18 @@ module Gen (P : Install_rules.Params) = struct
     if Option.is_none lib.stdlib then
       Option.iter (Lib_modules.alias lib_modules)
         ~f:(build_alias_module ~dir ~modules:source_modules ~cctx ~dynlink
-              ~js_of_ocaml
-              ~modules_of_vlib:(Option.map vlib_modules ~f:Lib_modules.modules));
+              ~js_of_ocaml);
 
     let expander = Super_context.expander sctx ~dir in
 
-    let vlib_stubs_o_files =
-      match impl with
-      | None -> []
-      | Some impl -> Virtual.vlib_stubs_o_files impl
-    in
+    let vlib_stubs_o_files = Vimpl.vlib_stubs_o_files vimpl in
     if Library.has_stubs lib || not (List.is_empty vlib_stubs_o_files) then
       build_stubs lib ~dir ~expander ~requires ~dir_contents ~vlib_stubs_o_files;
 
     setup_file_deps lib ~dir ~obj_dir
-      ~modules:(Lib_modules.have_artifacts lib_modules)
-      ~modules_of_vlib:(
-        match vlib_modules with
-        | None -> Module.Name.Map.empty
-        | Some modules -> Lib_modules.for_compilation modules);
+      ~modules:(Lib_modules.have_artifacts lib_modules
+                |> Module.Name.Map.values
+                |> Vimpl.for_file_deps vimpl);
 
     if not (Library.is_virtual lib) then
       setup_build_archives lib ~wrapped_compat ~cctx ~dep_graphs

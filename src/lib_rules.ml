@@ -17,8 +17,6 @@ module Gen (P : Install_rules.Params) = struct
 
   let opaque = SC.opaque sctx
 
-  module Virtual = Virtual_rules.Gen(P)
-
   (* Library stuff *)
 
   let msvc_hack_cclibs =
@@ -428,8 +426,8 @@ module Gen (P : Install_rules.Params) = struct
     if Lib_modules.has_private_modules lib_modules then
       Check_rules.add_obj_dir sctx ~dir ~obj_dir:private_obj_dir;
     let source_modules = Lib_modules.modules lib_modules in
-    let vimpl = Virtual.impl ~lib ~scope ~modules:source_modules in
-    Option.iter vimpl ~f:(Virtual.setup_copy_rules_for_impl ~dir);
+    let vimpl = Virtual_rules.impl sctx ~lib ~scope ~modules:source_modules in
+    Option.iter vimpl ~f:(Virtual_rules.setup_copy_rules_for_impl ~sctx ~dir);
     (* Preprocess before adding the alias module as it doesn't need
        preprocessing *)
     let pp =

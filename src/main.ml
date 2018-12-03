@@ -110,31 +110,6 @@ let setup ?(log=Log.no_log)
     ; env
     }
 
-let find_context_exn t ~name =
-  match List.find t.contexts ~f:(fun c -> c.name = name) with
-  | Some ctx -> ctx
-  | None ->
-    die "@{<Error>Error@}: Context %S not found!@." name
-
-let external_lib_deps ?log ~packages () =
-  Scheduler.go ?log
-    (setup () ~external_lib_deps_mode:true
-     >>| fun setup ->
-     let context = find_context_exn setup ~name:"default" in
-     let install_files =
-       List.map packages ~f:(fun pkg ->
-         match package_install_file setup pkg with
-         | Ok path -> Path.append context.build_dir path
-         | Error () -> die "Unknown package %S" (Package.Name.to_string pkg))
-     in
-     let sctx = String.Map.find_exn setup.scontexts "default" in
-     let internals = Super_context.internal_lib_names sctx in
-     Path.Map.map
-       (Build_system.all_lib_deps setup.build_system
-          ~request:(Build.paths install_files))
-       ~f:(Lib_name.Map.filteri ~f:(fun name _ ->
-         not (Lib_name.Set.mem internals name))))
-
 let ignored_during_bootstrap =
   Path.Set.of_list
     (List.map ~f:Path.in_source

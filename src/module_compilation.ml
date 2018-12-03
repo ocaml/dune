@@ -39,20 +39,16 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
   let ctx      = SC.context       sctx in
   let stdlib   = CC.stdlib        cctx in
   let private_obj_dir = CC.private_obj_dir cctx in
-  let modules_of_vlib = CC.modules_of_vlib cctx in
+  let vimpl    = CC.vimpl cctx in
   Mode.of_cm_kind cm_kind
   |> Context.compiler ctx
   |> Option.iter ~f:(fun compiler ->
     Option.iter (Module.cm_source m cm_kind) ~f:(fun src ->
       let ml_kind = Cm_kind.source cm_kind in
       let dst = Module.cm_file_unsafe m ~obj_dir cm_kind in
-      let public_vlib_module =
-        match Module.Name.Map.find modules_of_vlib (Module.name m) with
-        | None -> false
-        | Some m -> Module.is_public m
-      in
       let extra_args, extra_deps, other_targets =
-        match cm_kind, Module.intf m, public_vlib_module with
+        match cm_kind, Module.intf m
+              , Vimpl.is_public_vlib_module vimpl m with
         (* If there is no mli, [ocamlY -c file.ml] produces both the
            .cmY and .cmi. We choose to use ocamlc to produce the cmi
            and to produce the cmx we have to wait to avoid race
@@ -74,7 +70,7 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
       let opaque = CC.opaque cctx in
       let other_cm_files =
         Build.dyn_paths
-          (Ocamldep.Dep_graph.deps_of dep_graph m >>^ fun deps ->
+          (Dep_graph.deps_of dep_graph m >>^ fun deps ->
            List.concat_map deps
              ~f:(fun m ->
                let deps = [Module.cm_file_unsafe m ~obj_dir Cmi] in
@@ -198,7 +194,7 @@ let ocamlc_i ?sandbox ?(flags=[]) ~dep_graphs cctx (m : Module.t) ~output =
   let dep_graph = Ml_kind.Dict.get dep_graphs Impl in
   let cm_deps =
     Build.dyn_paths
-      (Ocamldep.Dep_graph.deps_of dep_graph m >>^ fun deps ->
+      (Dep_graph.deps_of dep_graph m >>^ fun deps ->
        List.concat_map deps
          ~f:(fun m -> [Module.cm_file_unsafe m ~obj_dir Cmi]))
   in

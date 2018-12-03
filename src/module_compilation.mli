@@ -11,7 +11,7 @@ val build_module
   :  ?sandbox:bool
   -> ?js_of_ocaml:Dune_file.Js_of_ocaml.t
   -> ?dynlink:bool
-  -> dep_graphs:Ocamldep.Dep_graphs.t
+  -> dep_graphs:Dep_graph.Ml_kind.t
   -> Compilation_context.t
   -> Module.t
   -> unit
@@ -21,14 +21,14 @@ val build_modules
   :  ?sandbox:bool
   -> ?js_of_ocaml:Dune_file.Js_of_ocaml.t
   -> ?dynlink:bool
-  -> dep_graphs:Ocamldep.Dep_graphs.t
+  -> dep_graphs:Dep_graph.Ml_kind.t
   -> Compilation_context.t
   -> unit
 
 val ocamlc_i
   :  ?sandbox:bool
   -> ?flags:string list
-  -> dep_graphs:Ocamldep.Dep_graphs.t
+  -> dep_graphs:Dep_graph.Ml_kind.t
   -> Compilation_context.t
   -> Module.t
   -> output:Path.t

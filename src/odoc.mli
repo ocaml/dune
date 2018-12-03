@@ -11,7 +11,7 @@ module Gen (S : sig val sctx : Super_context.t end) : sig
     -> scope:Scope.t
     -> modules:Module.t Module.Name.Map.t
     -> requires:Lib.t list Or_exn.t
-    -> dep_graphs:Ocamldep.Dep_graphs.t
+    -> dep_graphs:Dep_graph.Ml_kind.t
     -> unit
 
   val init : unit -> unit

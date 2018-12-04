@@ -120,17 +120,15 @@ let impl sctx ~(lib : Dune_file.Library.t) ~scope ~modules =
         "Cannot implement %a as that library isn't available"
         Lib_name.pp implements
     | Ok vlib ->
-      let virtual_modules =
-        Option.map (Lib.virtual_ vlib) ~f:(fun (v : Lib_info.Virtual.t) ->
-          v.modules)
-      in
       let vlib_modules =
-        match virtual_modules with
+        match Lib.virtual_ vlib with
         | None ->
           Errors.fail lib.buildable.loc
             "Library %a isn't virtual and cannot be implemented"
             Lib_name.pp implements
-        | Some Unexpanded ->
+        | Some (External _) ->
+          Errors.fail loc "It's not possible to implement extern libraries yet"
+        | Some Local ->
           let dir_contents =
             Dir_contents.get sctx ~dir:(Lib.src_dir vlib) in
           Dir_contents.modules_of_library dir_contents

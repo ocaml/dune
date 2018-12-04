@@ -38,6 +38,8 @@ val virtual_ : t -> Lib_info.Virtual.t option
 
 val dune_version : t -> Syntax.Version.t option
 
+val dune_file : t -> Path.t
+
 (** A unique integer identifier. It is only unique for the duration of
     the process *)
 val unique_id : t -> int
@@ -246,7 +248,11 @@ module DB : sig
 
   (** Retrieve the compile information for the given library. Works
       for libraries that are optional and not available as well. *)
-  val get_compile_info : t -> ?allow_overlaps:bool -> Lib_name.t -> Compile.t
+  val get_compile_info
+    :  t
+    -> ?allow_overlaps:bool
+    -> Lib_name.t
+    -> (lib * Compile.t)
 
   val resolve : t -> Loc.t * Lib_name.t -> lib Or_exn.t
 

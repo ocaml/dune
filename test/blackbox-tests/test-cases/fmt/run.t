@@ -58,3 +58,10 @@ and files are not removed when there is an error:
   Parse error: unclosed parenthesis at end of input
   $ cat dune_temp
   (a
+
+When a list is indented, there is no extra space at the end.
+
+  $ echo ' (a (b (c d)))' | dune unstable-fmt
+  (a
+   (b
+    (c d) ))

@@ -3,16 +3,22 @@
 
 open Stdune
 
-type t =
-  { vlib            : Lib.t
-  ; impl            : Dune_file.Library.t
-  ; vlib_modules    : Lib_modules.t
-  ; vlib_dep_graph  : Dep_graph.Ml_kind.t
-  }
+type t
 
-val vlib_dep_graph : t -> Dep_graph.Ml_kind.t
+val make
+  :  vlib:Lib.t
+  -> impl:Dune_file.Library.t
+  -> vlib_modules:Lib_modules.t
+  -> vlib_dep_graph:Dep_graph.Ml_kind.t
+  -> t
+
+val impl : t -> Dune_file.Library.t
 
 val vlib_modules : t -> Lib_modules.t
+
+val vlib : t -> Lib.t
+
+val vlib_dep_graph : t -> Dep_graph.Ml_kind.t
 
 val is_public_vlib_module : t option -> Module.t -> bool
 

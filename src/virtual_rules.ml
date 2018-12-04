@@ -1,9 +1,11 @@
 open Import
 open! No_io
 
-let setup_copy_rules_for_impl ~sctx ~dir
-      ({ Vimpl.vlib ; impl ; vlib_modules ; vlib_dep_graph = _ }) =
+let setup_copy_rules_for_impl ~sctx ~dir vimpl =
   let ctx = Super_context.context sctx in
+  let vlib = Vimpl.vlib vimpl in
+  let impl = Vimpl.impl vimpl in
+  let vlib_modules = Vimpl.vlib_modules vimpl in
   let lib_name = snd impl.name in
   let target_obj_dir =
     let obj_dir = Utils.library_object_directory ~dir lib_name in
@@ -149,10 +151,5 @@ let impl sctx ~(lib : Dune_file.Library.t) ~scope ~modules =
         let obj_dir = Lib.obj_dir vlib in
         Ocamldep.graph_of_remote_lib ~obj_dir ~modules
       in
-      { Vimpl.
-        impl = lib
-      ; vlib
-      ; vlib_modules
-      ; vlib_dep_graph
-      }
+      Vimpl.make ~impl:lib ~vlib ~vlib_modules ~vlib_dep_graph
   end

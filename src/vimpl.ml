@@ -8,8 +8,16 @@ type t =
   }
 
 let vlib_modules t = t.vlib_modules
-
+let vlib t = t.vlib
+let impl t = t.impl
 let vlib_dep_graph t = t.vlib_dep_graph
+
+let make ~vlib ~impl ~vlib_modules ~vlib_dep_graph =
+  { impl
+  ; vlib
+  ; vlib_modules
+  ; vlib_dep_graph
+  }
 
 let add_vlib_modules t modules =
   match t with

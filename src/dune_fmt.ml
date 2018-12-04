@@ -32,70 +32,44 @@ let can_be_displayed_wrapped =
       false
   )
 
-let pp_indent fmt indent =
-  Format.pp_print_string fmt @@ String.make indent ' '
-
-let print_wrapped_list fmt indent =
-  Format.fprintf fmt "%a(@[<hov 1>%a@])"
-    pp_indent indent
+let print_wrapped_list fmt =
+  Format.fprintf fmt "(@[<hov 1>%a@])"
     (Fmt.list
       ~pp_sep:(fun fmt () -> Format.fprintf fmt "@ ")
       (Dune_lang.pp Dune_lang.Dune)
     )
 
-let rec pp_sexp indent fmt =
+let rec pp_sexp fmt =
   function
     ( Dune_lang.Atom _
     | Dune_lang.Quoted_string _
     | Dune_lang.Template _
     ) as sexp
     ->
-    Format.fprintf fmt "%a%a"
-      pp_indent indent
+    Format.fprintf fmt "%a"
       (Dune_lang.pp Dune_lang.Dune) sexp
   | Dune_lang.List sexps
     ->
-    if can_be_displayed_wrapped sexps then
-      print_wrapped_list fmt indent sexps
-    else
-      pp_sexp_list indent fmt sexps
+    Format.fprintf fmt "@[<v 1>%a@]"
+      (if can_be_displayed_wrapped sexps then
+         print_wrapped_list
+       else
+         pp_sexp_list)
+      sexps
 
-and pp_sexp_list indent fmt sexps =
-    begin
-      Format.fprintf fmt "@[<v>%a(" pp_indent indent;
-      let first = ref true in
-      let pp_sep fmt () = Format.fprintf fmt "@," in
-      Fmt.list
-        ~pp_sep
-        (fun fmt sexp ->
-          let indent =
-            if !first then
-              begin
-                first := false;
-                0
-              end
-            else
-              indent + 1
-          in
-          pp_sexp indent fmt sexp
-        )
-        fmt
-        sexps;
-      Format.fprintf fmt ")@]"
-    end
+and pp_sexp_list fmt =
+  let pp_sep fmt () = Format.fprintf fmt "@," in
+  Format.fprintf fmt "(%a)"
+    (Fmt.list ~pp_sep pp_sexp)
 
 let pp_top_sexp fmt sexp =
-  Format.fprintf fmt "%a\n" (pp_sexp 0) sexp
+  Format.fprintf fmt "%a\n" pp_sexp sexp
 
-let pp_top_sexps fmt sexps =
-  let first = ref true in
-  List.iter sexps ~f:(fun sexp ->
-    if !first then
-      first := false
-    else
-      Format.pp_print_string fmt "\n";
-    pp_top_sexp fmt (Dune_lang.Ast.remove_locs sexp);
-  )
+let pp_top_sexps =
+  Fmt.list
+    ~pp_sep:Fmt.nl
+    (fun fmt sexp ->
+      pp_top_sexp fmt (Dune_lang.Ast.remove_locs sexp))
 
 let with_output path_opt k =
   match path_opt with

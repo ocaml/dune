@@ -19,7 +19,7 @@ val create
   -> expander              : Expander.t
   -> dir                   : Path.t
   -> ?private_obj_dir      : Path.t
-  -> ?modules_of_vlib      : Module.Name_map.t
+  -> ?vimpl                : Vimpl.t
   -> ?dir_kind             : Dune_lang.Syntax.t
   -> ?obj_dir              : Path.t
   -> modules               : Module.t Module.Name.Map.t
@@ -56,8 +56,7 @@ val no_keep_locs         : t -> bool
 val opaque               : t -> bool
 val stdlib               : t -> Dune_file.Library.Stdlib.t option
 
-(** Modules of the virtual library. Non-empty only for implementations of
-    virtual libs *)
-val modules_of_vlib      : t -> Module.Name_map.t
+(** Information for implementation of virtual libraries. *)
+val vimpl                : t -> Vimpl.t option
 
 val for_wrapped_compat : t -> Module.t Module.Name.Map.t -> t

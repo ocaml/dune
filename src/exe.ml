@@ -198,7 +198,7 @@ let build_and_link_many
     let top_sorted_modules =
       let main = Option.value_exn
                    (Module.Name.Map.find (CC.modules cctx) main_module_name) in
-      Ocamldep.Dep_graph.top_closed_implementations dep_graphs.impl
+      Dep_graph.top_closed_implementations dep_graphs.impl
         [main]
     in
     let arg_spec_for_requires =

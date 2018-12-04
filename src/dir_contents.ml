@@ -315,8 +315,7 @@ let build_mlds_map (d : _ Dir_with_dune.t) ~files =
 let cache = Hashtbl.create 32
 
 let clear_cache () =
-  Hashtbl.reset cache;
-  Dir_status.clear_cache ()
+  Hashtbl.reset cache
 
 let () = Hooks.End_of_build.always clear_cache
 
@@ -324,7 +323,8 @@ let rec get sctx ~dir =
   match Hashtbl.find cache dir with
   | Some t -> t
   | None ->
-    match Dir_status.get sctx ~dir with
+    let dir_status_db = Super_context.dir_status_db sctx in
+    match Dir_status.DB.get dir_status_db ~dir with
     | Standalone x ->
       let t =
         match x with
@@ -359,7 +359,8 @@ let rec get sctx ~dir =
     | Group_root (ft_dir, d) ->
       let rec walk ft_dir ~dir acc =
         match
-          Dir_status.get_assuming_parent_is_part_of_group sctx ft_dir ~dir
+          Dir_status.DB.get_assuming_parent_is_part_of_group dir_status_db
+            ft_dir ~dir
         with
         | Is_component_of_a_group_but_not_the_root d ->
           let files =

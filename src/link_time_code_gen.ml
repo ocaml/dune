@@ -58,7 +58,7 @@ let libraries_link ~name ~loc ~mode cctx libs =
         ())
     in
     Module_compilation.build_module
-      ~dep_graphs:(Ocamldep.Dep_graphs.dummy module_)
+      ~dep_graphs:(Dep_graph.Ml_kind.dummy module_)
       cctx
       module_;
     let lm = (of_libs before)@[Lib.Lib_and_module.Module (module_,obj_dir)]@(of_libs after) in

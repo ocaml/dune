@@ -22,6 +22,7 @@ type t =
   ; host                             : t option
   ; libs_by_package : (Package.t * Lib.Set.t) Package.Name.Map.t
   ; env                              : (Path.t, Env_node.t) Hashtbl.t
+  ; dir_status_db                    : Dir_status.DB.t
   ; external_lib_deps_mode           : bool
   ; (* Env node that represent the environment configured for the
        workspace. It is used as default at the root of every project
@@ -334,6 +335,7 @@ let create
       ~artifacts_host
       ~cxx_flags
   in
+  let dir_status_db = Dir_status.DB.make file_tree ~stanzas_per_dir in
   { context
   ; expander
   ; host
@@ -364,6 +366,7 @@ let create
   ; env = Hashtbl.create 128
   ; default_env
   ; external_lib_deps_mode
+  ; dir_status_db
   }
 
 module Libs = struct
@@ -591,3 +594,5 @@ end
 let opaque t =
   t.context.profile = "dev"
   && Ocaml_version.supports_opaque_for_mli t.context.version
+
+let dir_status_db t = t.dir_status_db

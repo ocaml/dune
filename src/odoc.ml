@@ -112,12 +112,12 @@ module Gen (S : sig val sctx : SC.t end) = struct
     let odoc_input t = t
   end
 
-  let module_deps (m : Module.t) ~doc_dir ~(dep_graphs:Ocamldep.Dep_graphs.t) =
+  let module_deps (m : Module.t) ~doc_dir ~(dep_graphs:Dep_graph.Ml_kind.t) =
     (if Module.has_intf m then
-       Ocamldep.Dep_graph.deps_of dep_graphs.intf m
+       Dep_graph.deps_of dep_graphs.intf m
      else
        (* When a module has no .mli, use the dependencies for the .ml *)
-       Ocamldep.Dep_graph.deps_of dep_graphs.impl m)
+       Dep_graph.deps_of dep_graphs.impl m)
     >>^ List.map ~f:(Module.odoc_file ~doc_dir)
     |> Build.dyn_paths
 
@@ -198,7 +198,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
   let toplevel_index = Paths.html_root ++ "index.html"
 
   let setup_library_odoc_rules (library : Library.t) ~scope ~modules
-        ~requires ~(dep_graphs:Ocamldep.Dep_graph.t Ml_kind.Dict.t) =
+        ~requires ~(dep_graphs:Dep_graph.Ml_kind.t) =
     let lib =
       Option.value_exn (Lib.DB.find_even_when_hidden (Scope.libs scope)
                           (Library.best_name library)) in

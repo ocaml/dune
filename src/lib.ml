@@ -890,19 +890,29 @@ module Compile = struct
     ; requires          : t list Or_exn.t
     ; pps               : t list Or_exn.t
     ; resolved_selects  : Resolved_select.t list
-    ; optional          : bool
-    ; user_written_deps : Dune_file.Lib_deps.t
+    ; lib_deps_info     : Lib_deps_info.t
     ; sub_systems       : Sub_system0.Instance.t Lazy.t Sub_system_name.Map.t
     }
 
+  let make_lib_deps_info ~user_written_deps ~pps ~kind =
+    Lib_deps_info.merge
+      (Dune_file.Lib_deps.info user_written_deps ~kind)
+      (List.map pps ~f:(fun (_, pp) -> (pp, kind))
+       |> Lib_name.Map.of_list_reduce ~f:Lib_deps_info.Kind.merge)
+
   let for_lib db (t : lib) =
+    let lib_deps_info =
+      make_lib_deps_info
+        ~user_written_deps:(Lib_info.user_written_deps t.info)
+        ~pps:t.info.pps
+        ~kind:(Lib_deps_info.Kind.of_optional t.info.optional)
+    in
     { direct_requires   = t.requires
     ; requires          =
         t.requires >>= closure_with_overlap_checks db ~linking:false
     ; resolved_selects  = t.resolved_selects
     ; pps               = t.pps
-    ; optional          = t.info.optional
-    ; user_written_deps = t.user_written_deps
+    ; lib_deps_info
     ; sub_systems       = t.sub_systems
     }
 
@@ -910,8 +920,7 @@ module Compile = struct
   let requires          t = t.requires
   let resolved_selects  t = t.resolved_selects
   let pps               t = t.pps
-  let optional          t = Lib_deps_info.Kind.of_optional t.optional
-  let user_written_deps t = t.user_written_deps
+  let lib_deps_info     t = t.lib_deps_info
   let sub_systems t =
     Sub_system_name.Map.values t.sub_systems
     |> List.map ~f:(fun (lazy (Sub_system0.Instance.T ((module M), t))) ->
@@ -1031,6 +1040,12 @@ module DB = struct
       (lib, Compile.for_lib t lib)
 
   let resolve_user_written_deps_for_exes t ?(allow_overlaps=false) deps ~pps =
+    let lib_deps_info =
+      Compile.make_lib_deps_info
+        ~user_written_deps:deps
+        ~pps
+        ~kind:Required
+    in
     let res, pps, resolved_selects =
       resolve_user_deps t (Lib_info.Deps.of_lib_deps deps) ~pps
         ~stack:Dep_stack.empty ~allow_private_deps:true
@@ -1046,9 +1061,8 @@ module DB = struct
     ; requires
     ; pps
     ; resolved_selects
-    ; optional          = false
-    ; user_written_deps = deps
-    ; sub_systems       = Sub_system_name.Map.empty
+    ; lib_deps_info
+    ; sub_systems = Sub_system_name.Map.empty
     }
 
   let resolve_pps t pps =

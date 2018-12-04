@@ -113,6 +113,8 @@ end
 
 open O
 
+let map t ~f = t >>| f
+
 let both a b =
   a >>= fun x ->
   b >>= fun y ->

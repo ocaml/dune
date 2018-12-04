@@ -4,6 +4,9 @@
 - Fix hash collision for on-demand ppx rewriters once and for all
   (#1602, fixes #1524, @diml)
 
+- Add `dune external-lib-deps --sexp --unstable-by-dir` so that the output can
+  be easily processed by a machine (#1599, @diml)
+
 1.6.0 (29/11/2018)
 ------------------
 
@@ -47,9 +50,6 @@
 
 - Introduce `data_only_dirs` to replace `ignored_subdirs`. `ignored_subdirs` is
   deprecated since 1.6. (#1590, @rgrinberg)
-
-- Add `dune external-lib-deps --sexp --unstable-by-dir` so that the output can
-  be easily processed by a machine (#1599, @diml)
 
 1.5.1 (7/11/2018)
 -----------------

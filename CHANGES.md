@@ -1,5 +1,5 @@
-next
-----
+1.6.1 (04/12/2018)
+------------------
 
 - Fix hash collision for on-demand ppx rewriters once and for all
   (#1602, fixes #1524, @diml)

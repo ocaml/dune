@@ -17,8 +17,7 @@ Other lists are displayed one element per line:
   $ echo '(a (b c d) e)' | dune unstable-fmt
   (a
    (b c d)
-   e
-  )
+   e)
 
 When there are several s-expressions, they are printed with an empty line
 between them:
@@ -39,8 +38,7 @@ A file can be fixed in place:
   $ dune unstable-fmt --inplace dune_temp
   $ cat dune_temp
   (a
-   (b c)
-  )
+   (b c))
 
 The --inplace flag requires a file name:
 

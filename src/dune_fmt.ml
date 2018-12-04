@@ -68,22 +68,23 @@ and pp_sexp_list indent fmt sexps =
     begin
       Format.fprintf fmt "%a(" pp_indent indent;
       let first = ref true in
-      List.iter sexps ~f:(fun sexp ->
-        let indent =
-          if !first then
-            begin
-              first := false;
-              0
-            end
-          else
-            indent + 1
-        in
-        pp_sexp
-          indent
-          fmt
-          sexp;
-        Format.pp_print_string fmt "\n";
-      );
+      let pp_sep fmt () = Format.pp_print_char fmt '\n' in
+      Fmt.list
+        ~pp_sep
+        (fun fmt sexp ->
+          let indent =
+            if !first then
+              begin
+                first := false;
+                0
+              end
+            else
+              indent + 1
+          in
+          pp_sexp indent fmt sexp
+        )
+        fmt
+        sexps;
       Format.fprintf fmt "%a)" pp_indent indent;
     end
 

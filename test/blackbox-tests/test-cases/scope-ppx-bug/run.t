@@ -11,7 +11,7 @@
         ocamlc a/kernel/a_kernel.cma
       ocamlopt .ppx/jbuild/a.kernel/ppx.exe
       ocamlopt .ppx/jbuild/a/ppx.exe
-      ocamlopt .ppx/jbuild/760f753576f2955b0074758acb4d5fa6/ppx.exe
+      ocamlopt .ppx/jbuild/631b31a68eb10e1850cf7721d41e5b84/ppx.exe
            ppx b/b.pp.ml
       ocamldep b/.b.objs/b.pp.ml.d
         ocamlc b/.b.objs/b.{cmi,cmo,cmt}

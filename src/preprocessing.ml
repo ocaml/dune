@@ -5,33 +5,43 @@ open Dune_file
 
 module SC = Super_context
 
-(* Encoded representation of a set of library names *)
+(* Encoded representation of a set of library names + scope *)
 module Key : sig
-  val encode
-    :  Context.t
-    -> dir_kind:Dune_lang.Syntax.t
-    -> Lib.t list
-    -> Digest.t
+  (* This module implements a bi-directional function between
+     [encoded] and [decoded] *)
+  type encoded = Digest.t
+  type decoded =
+    { pps   : Lib_name.t list
+    ; scope : Dune_project.Name.t option
+    }
 
-  (* [decode s] fails if there hasn't been a previous call to [encode]
-     such that [encode ~dir_kind l = s]. *)
-  val decode : Context.t -> Digest.t -> Lib.t list
+  val of_libs : dir_kind:Dune_lang.Syntax.t -> Lib.t list -> decoded
+
+  (* [decode y] fails if there hasn't been a previous call to [encode]
+     such that [encode x = y]. *)
+  val encode : decoded -> encoded
+  val decode : encoded -> decoded
 end = struct
+  type encoded = Digest.t
+  type decoded =
+    { pps   : Lib_name.t list
+    ; scope : Dune_project.Name.t option
+    }
 
-  let reverse_table = Hashtbl.create 128
-  let () = Hooks.End_of_build.always (fun () -> Hashtbl.reset reverse_table)
+  let reverse_table : (encoded, decoded) Hashtbl.t = Hashtbl.create 128
 
-  let encode (ctx : Context.t) ~dir_kind libs =
-    let libs =
-      let compare a b = Lib_name.compare (Lib.name a) (Lib.name b) in
-      match (dir_kind : Dune_lang.Syntax.t) with
-      | Dune -> List.sort libs ~compare
-      | Jbuild ->
-        match List.rev libs with
-        | last :: others -> List.sort others ~compare @ [last]
-        | [] -> []
+  let of_libs ~dir_kind libs =
+    let pps =
+      (let compare a b = Lib_name.compare (Lib.name a) (Lib.name b) in
+       match (dir_kind : Dune_lang.Syntax.t) with
+       | Dune -> List.sort libs ~compare
+       | Jbuild ->
+         match List.rev libs with
+         | last :: others -> List.sort others ~compare @ [last]
+         | [] -> [])
+      |> List.map ~f:Lib.name
     in
-    let scope_for_key =
+    let scope =
       List.fold_left libs ~init:None ~f:(fun acc lib ->
         let scope_for_key =
           match Lib.status lib with
@@ -45,52 +55,39 @@ end = struct
         | None  , Some _ -> scope_for_key
         | None  , None   -> None)
     in
-    let scope_key =
-      match scope_for_key with
-      | None -> ""
-      | Some name ->
-        match Dune_project.Name.to_encoded_string name with
-        | "" -> assert false
-        | s -> s
-    in
-    let key =
-      (scope_key
-       :: List.map libs ~f:(fun lib -> Lib.name lib |> Lib_name.to_string))
-      |> String.concat ~sep:"\000"
-      |> Digest.string
-    in
-    let full_key = (ctx.name, key) in
-    begin
-      match Hashtbl.find reverse_table full_key with
-      | None ->
-        Hashtbl.add reverse_table full_key libs
-      | Some libs' ->
-        match List.compare libs libs' ~compare:(fun a b ->
-          Int.compare (Lib.unique_id a) (Lib.unique_id b)) with
-        | Eq -> ()
-        | _ ->
-          let string_of_libs libs =
-            String.concat ~sep:", " (List.map libs ~f:(fun lib ->
-              sprintf "%s (in %s)"
-                (Lib_name.to_string (Lib.name lib))
-                (Path.to_string_maybe_quoted (Lib.src_dir lib))))
-          in
-          die "Hash collision between set of ppx drivers:\n\
-               - cache : %s\n\
-               - fetch : %s\n\
-               context: %s"
-            (string_of_libs libs)
-            (string_of_libs libs')
-            ctx.name
-    end;
-    key
+    { pps; scope }
 
-  let decode (ctx : Context.t) key =
-    match Hashtbl.find reverse_table (ctx.name, key) with
-    | Some libs -> libs
+  let encode x =
+    let y = Digest.string (Marshal.to_string x []) in
+    match Hashtbl.find reverse_table y with
+    | None ->
+      Hashtbl.add reverse_table y x;
+      y
+    | Some x' ->
+      if x = x' then
+        y
+      else begin
+        let to_string { pps; scope } =
+          let s = String.enumerate_and (List.map pps ~f:Lib_name.to_string) in
+          match scope with
+          | None -> s
+          | Some scope ->
+            sprintf "%s (in project: %s)" s
+              (Dune_project.Name.to_string_hum scope)
+        in
+        die "Hash collision between set of ppx drivers:\n\
+             - cache : %s\n\
+             - fetch : %s"
+          (to_string x')
+          (to_string x)
+      end
+
+  let decode y =
+    match Hashtbl.find reverse_table y with
+    | Some x -> x
     | None ->
       die "I don't know what ppx rewriters set %s correspond to."
-        (Digest.to_hex key)
+        (Digest.to_hex y)
 end
 
 let pped_path path ~suffix =
@@ -420,28 +417,36 @@ let build_ppx_driver sctx ~dep_kind ~target ~dir_kind ~pps ~pp_names =
 let get_rules sctx key ~dir_kind =
   let exe = ppx_exe sctx ~key ~dir_kind in
   let pps, pp_names =
-    match Digest.from_hex key with
-    | key ->
-      let pps = Key.decode (SC.context sctx) key in
-      (Ok pps, List.map pps ~f:Lib.name)
-    | exception _ ->
-      (* Still support the old scheme for backward compatibility *)
-      let (key, lib_db) = SC.Scope_key.of_string sctx key in
-      let names =
-        match key with
-        | "+none+" -> []
-        | _ -> String.split key ~on:'+'
-      in
-      let names =
-        match List.rev names with
-        | [] -> []
-        | driver :: rest -> List.sort rest ~compare:String.compare @ [driver]
-      in
-      let names = List.map names ~f:(Lib_name.of_string_exn ~loc:None) in
-      let pps =
-        Lib.DB.resolve_pps lib_db (List.map names ~f:(fun x -> (Loc.none, x)))
-      in
-      (pps, names)
+    let names, lib_db =
+      match Digest.from_hex key with
+      | key ->
+        let { Key.pps; scope } = Key.decode key in
+        let lib_db =
+          match scope with
+          | None -> SC.public_libs sctx
+          | Some name -> Scope.libs (SC.find_scope_by_name sctx name)
+        in
+        (pps, lib_db)
+      | exception _ ->
+        (* Still support the old scheme for backward compatibility *)
+        let (key, lib_db) = SC.Scope_key.of_string sctx key in
+        let names =
+          match key with
+          | "+none+" -> []
+          | _ -> String.split key ~on:'+'
+        in
+        let names =
+          match List.rev names with
+          | [] -> []
+          | driver :: rest -> List.sort rest ~compare:String.compare @ [driver]
+        in
+        let names = List.map names ~f:(Lib_name.of_string_exn ~loc:None) in
+        (names, lib_db)
+    in
+    let pps =
+      Lib.DB.resolve_pps lib_db (List.map names ~f:(fun x -> (Loc.none, x)))
+    in
+    (pps, names)
   in
   build_ppx_driver sctx ~pps ~pp_names ~dep_kind:Required ~target:exe ~dir_kind
 
@@ -452,7 +457,7 @@ let gen_rules sctx components =
   | _ -> ()
 
 let ppx_driver_exe sctx libs ~dir_kind =
-  let key = Digest.to_hex (Key.encode (SC.context sctx) ~dir_kind libs) in
+  let key = Digest.to_hex (Key.of_libs ~dir_kind libs |> Key.encode) in
   ppx_exe sctx ~key ~dir_kind
 
 module Compat_ppx_exe_kind = struct

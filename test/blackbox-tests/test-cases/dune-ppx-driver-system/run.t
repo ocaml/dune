@@ -48,7 +48,7 @@ Test the argument syntax
 
   $ dune build test_ppx_args.cma
            ppx test_ppx_args.pp.ml
-  .ppx/69cada8dd199103fc89e225db10f626e/ppx.exe
+  .ppx/eb9468425030036114a3b9ffa4c89e4d/ppx.exe
   -arg1
   -arg2
   -foo

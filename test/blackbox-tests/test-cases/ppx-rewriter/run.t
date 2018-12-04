@@ -3,7 +3,7 @@
         ocamlc ppx/.fooppx.objs/fooppx.{cmi,cmo,cmt}
       ocamlopt ppx/.fooppx.objs/fooppx.{cmx,o}
       ocamlopt ppx/fooppx.{a,cmxa}
-      ocamlopt .ppx/jbuild/f659d13f55bdcc8a6ad052ed2f063a39/ppx.exe
+      ocamlopt .ppx/jbuild/a0597253d899c1b15660d5431f244d21/ppx.exe
            ppx w_omp_driver.pp.ml
       ocamldep .w_omp_driver.eobjs/w_omp_driver.pp.ml.d
         ocamlc .w_omp_driver.eobjs/w_omp_driver.{cmi,cmo,cmt}

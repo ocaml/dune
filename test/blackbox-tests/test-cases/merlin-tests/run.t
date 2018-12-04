@@ -30,7 +30,7 @@
   S $LIB_PREFIX/lib/ocaml
   S .
   S subdir
-  FLG -ppx '$PPX/2bf184f0d30fb809b587a965d82ab3a5/ppx.exe --as-ppx --cookie '\''library-name="foo"'\'''
+  FLG -ppx '$PPX/828e4b66a2fd80eb3721c549ea6f718d/ppx.exe --as-ppx --cookie '\''library-name="foo"'\'''
   FLG -open Foo -w -40 -open Bar -w -40
 
 Make sure a ppx directive is generated

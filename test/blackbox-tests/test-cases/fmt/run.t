@@ -79,3 +79,9 @@ it gets wrapped.
     (action
      (run %{project_root}/src/let-syntax/pp.exe %{input-file}))))
 
+In multi-line strings, newlines are escaped.
+
+  $ dune unstable-fmt < multi-line-strings
+  (echo "multi\nline\nstring\n")
+  
+  (echo "multi\nline\nstring\n")

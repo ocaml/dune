@@ -1,3 +1,9 @@
+next
+----
+
+- Fix `dune external-lib-deps` when preprocessors are not installed
+  (#1607, @diml)
+
 1.6.1 (04/12/2018)
 ------------------
 

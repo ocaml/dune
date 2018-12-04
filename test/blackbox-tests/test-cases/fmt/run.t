@@ -64,4 +64,4 @@ When a list is indented, there is no extra space at the end.
   $ echo ' (a (b (c d)))' | dune unstable-fmt
   (a
    (b
-    (c d) ))
+    (c d)))

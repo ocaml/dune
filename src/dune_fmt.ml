@@ -85,7 +85,7 @@ and pp_sexp_list indent fmt sexps =
         )
         fmt
         sexps;
-      Format.fprintf fmt "%a)" pp_indent indent;
+      Format.pp_print_char fmt ')'
     end
 
 let pp_top_sexp fmt sexp =

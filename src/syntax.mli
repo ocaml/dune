@@ -16,6 +16,8 @@ module Version : sig
 
   val to_string : t -> string
 
+  val pp : t Fmt.t
+
   (** Whether the parser can read the data or not *)
   val can_read : parser_version:t -> data_version:t -> bool
 

@@ -91,17 +91,17 @@ let pp_debug_pform pp fmt = function
     Format.fprintf fmt "No_info (%a)"
       pp x
   | Since (x, v) ->
-    Format.fprintf fmt "Since (%a, %s)"
+    Format.fprintf fmt "Since (%a, %a)"
       pp x
-      (Syntax.Version.to_string v)
+      Syntax.Version.pp v
   | Deleted_in (x, v, so) ->
-    Format.fprintf fmt "Deleted_in (%a, %s, %a)"
+    Format.fprintf fmt "Deleted_in (%a, %a, %a)"
       pp x
-      (Syntax.Version.to_string v)
+      Syntax.Version.pp v
       (Fmt.optional Fmt.text) so
   | Renamed_in (v, s) ->
-    Format.fprintf fmt "Renamed_in (%s, %s)"
-      (Syntax.Version.to_string v)
+    Format.fprintf fmt "Renamed_in (%a, %s)"
+      Syntax.Version.pp v
       s
 
 module Map = struct

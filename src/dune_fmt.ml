@@ -19,7 +19,7 @@ let parse_file path_opt =
     ~mode:Dune_lang.Parser.Mode.Many
     contents
 
-let can_be_displayed_inline =
+let can_be_displayed_wrapped =
   List.for_all ~f:(function
     | Dune_lang.Atom _
     | Dune_lang.Quoted_string _
@@ -35,17 +35,13 @@ let can_be_displayed_inline =
 let pp_indent fmt indent =
   Format.pp_print_string fmt @@ String.make indent ' '
 
-let print_inline_list fmt indent sexps =
-  Format.fprintf fmt "%a(" pp_indent indent;
-  let first = ref true in
-  List.iter sexps ~f:(fun sexp ->
-    if !first then
-      first := false
-    else
-      Format.pp_print_string fmt " ";
-    Dune_lang.pp Dune_lang.Dune fmt sexp
-  );
-  Format.pp_print_string fmt ")"
+let print_wrapped_list fmt indent =
+  Format.fprintf fmt "%a(@[<hov 1>%a@])"
+    pp_indent indent
+    (Fmt.list
+      ~pp_sep:(fun fmt () -> Format.fprintf fmt "@ ")
+      (Dune_lang.pp Dune_lang.Dune)
+    )
 
 let rec pp_sexp indent fmt =
   function
@@ -59,16 +55,16 @@ let rec pp_sexp indent fmt =
       (Dune_lang.pp Dune_lang.Dune) sexp
   | Dune_lang.List sexps
     ->
-    if can_be_displayed_inline sexps then
-      print_inline_list fmt indent sexps
+    if can_be_displayed_wrapped sexps then
+      print_wrapped_list fmt indent sexps
     else
       pp_sexp_list indent fmt sexps
 
 and pp_sexp_list indent fmt sexps =
     begin
-      Format.fprintf fmt "%a(" pp_indent indent;
+      Format.fprintf fmt "@[<v>%a(" pp_indent indent;
       let first = ref true in
-      let pp_sep fmt () = Format.pp_print_char fmt '\n' in
+      let pp_sep fmt () = Format.fprintf fmt "@," in
       Fmt.list
         ~pp_sep
         (fun fmt sexp ->
@@ -85,7 +81,7 @@ and pp_sexp_list indent fmt sexps =
         )
         fmt
         sexps;
-      Format.pp_print_char fmt ')'
+      Format.fprintf fmt ")@]"
     end
 
 let pp_top_sexp fmt sexp =

@@ -192,6 +192,9 @@ let src_dir t = t.info.src_dir
 let obj_dir t = t.info.obj_dir
 let private_obj_dir t = t.info.private_obj_dir
 
+let dune_file t =
+  Path.relative (src_dir t) (Lib_name.to_string t.name ^ ".dune")
+
 let is_local t = Path.is_managed t.info.obj_dir
 
 let status t = t.info.status
@@ -1025,7 +1028,7 @@ module DB = struct
         [ "name", Lib_name.to_sexp name ]
     | Some lib ->
       let t = Option.some_if (not allow_overlaps) t in
-      Compile.for_lib t lib
+      (lib, Compile.for_lib t lib)
 
   let resolve_user_written_deps_for_exes t ?(allow_overlaps=false) deps ~pps =
     let res, pps, resolved_selects =

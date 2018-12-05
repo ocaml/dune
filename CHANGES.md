@@ -1,3 +1,10 @@
+next
+----
+
+- Fix regression introduced by #1554 reported in:
+  https://github.com/ocaml/dune/issues/734#issuecomment-444177134 (#1612,
+  @rgrinberg)
+
 1.6.1 (04/12/2018)
 ------------------
 

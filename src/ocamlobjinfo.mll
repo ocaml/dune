@@ -20,8 +20,8 @@ let add_impl (t : t) i =
 
 let newline = '\r'? '\n'
 let ws = [' ' '\t']+
-let hash = ['0'-'9' 'a'-'z']+
-let name = ['A'-'Z'] ['a'-'z' '0'-'9' '_']*
+let hash = ['0'-'9' 'a'-'z' '-']+
+let name = ['A'-'Z'] ['A'-'Z' 'a'-'z' '0'-'9' '_']*
 
 rule ocamlobjinfo acc = parse
   | "Interfaces imported:" newline { intfs acc lexbuf }
@@ -37,6 +37,8 @@ and impls acc = parse
   | _ | eof { acc }
 
 {
+let parse s = ocamlobjinfo empty (Lexing.from_string s)
+
 let load ~ocamlobjinfo:bin ~unit =
   ["-no-approx"; "-no-code"; Path.to_absolute_filename unit]
   |> Process.run_capture ~env:Env.empty Process.Strict bin

@@ -22,6 +22,8 @@ module Dict : sig
     ; intf : 'a
     }
 
+  val pp : 'a Fmt.t -> 'a t Fmt.t
+
   val get : 'a t -> kind -> 'a
 
   val of_func : (ml_kind:kind -> 'a) -> 'a t

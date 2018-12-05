@@ -3,6 +3,9 @@ open Stdune
 
 type t = Module.Name.Set.t Ml_kind.Dict.t
 
+let pp =
+  Ml_kind.Dict.pp Module.Name.Set.pp
+
 let empty =
   { Ml_kind.Dict.
     intf = Module.Name.Set.empty

@@ -15,6 +15,10 @@ module External : sig
   val initial_cwd : t
 
   val cwd : unit -> t
+
+  val relative : t -> string -> t
+
+  val mkdir_p : t -> unit
 end
 
 module Kind : sig
@@ -163,7 +167,7 @@ val in_source : string -> t
 
 val of_local : Local.t -> t
 
-(** Set the workspace root. Can onyl be called once and the path must be
+(** Set the workspace root. Can only be called once and the path must be
     absolute *)
 val set_root : External.t -> unit
 

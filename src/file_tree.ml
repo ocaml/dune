@@ -104,12 +104,9 @@ module Dir = struct
         fold t ~traverse_ignored_dirs ~init:acc ~f)
 end
 
-type t =
-  { root : Dir.t
-  ; dirs : (Path.t, Dir.t) Hashtbl.t
-  }
+type t = Dir.t
 
-let root t = t.root
+let root t = t
 
 module File = struct
   type t =
@@ -240,43 +237,34 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) path =
     ; ignored = data_only
     }
   in
-  let root =
-    walk path
-      ~dirs_visited:(File_map.singleton
-                       (File.of_stats (Unix.stat (Path.to_string path)))
-                       path)
-      ~data_only:false
-      ~project:(Lazy.force Dune_project.anonymous)
-  in
-  let dirs = Hashtbl.create 1024      in
-  Hashtbl.add dirs Path.root root;
-  { root; dirs }
+  walk path
+    ~dirs_visited:(File_map.singleton
+                     (File.of_stats (Unix.stat (Path.to_string path)))
+                     path)
+    ~data_only:false
+    ~project:(Lazy.force Dune_project.anonymous)
 
-let fold t ~traverse_ignored_dirs ~init ~f =
-  Dir.fold t.root ~traverse_ignored_dirs ~init ~f
+let fold = Dir.fold
 
 let rec find_dir t path =
   if not (Path.is_managed path) then
     None
+  else if Path.equal (Dir.path t) path then
+    Some t
   else
-    match Hashtbl.find t.dirs path with
+    match
+      let open Option.O in
+      Path.parent path
+      >>= find_dir t
+      >>= fun parent ->
+      String.Map.find (Dir.sub_dirs parent) (Path.basename path)
+    with
     | Some _ as res -> res
     | None ->
-      match
-        let open Option.O in
-        Path.parent path
-        >>= find_dir t
-        >>= fun parent ->
-        String.Map.find (Dir.sub_dirs parent) (Path.basename path)
-      with
-      | Some dir as res ->
-        Hashtbl.add t.dirs path dir;
-        res
-      | None ->
-        (* We don't cache failures in [t.dirs]. The expectation is
-           that these only happen when the user writes an invalid path
-           in a jbuild file, so there is no need to cache them. *)
-        None
+      (* We don't cache failures in [t.dirs]. The expectation is
+         that these only happen when the user writes an invalid path
+         in a jbuild file, so there is no need to cache them. *)
+      None
 
 let files_of t path =
   match find_dir t path with

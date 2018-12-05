@@ -1,3 +1,5 @@
+open Stdune
+
 type t = Impl | Intf
 
 let all = [Impl; Intf]
@@ -34,4 +36,10 @@ module Dict = struct
   let make_both x = { impl = x; intf = x }
 
   let map t ~f = { impl = f t.impl; intf = f t.intf }
+
+  let pp f fmt { impl; intf } =
+    Fmt.record fmt
+      [ "impl", Fmt.const f impl
+      ; "intf", Fmt.const f intf
+      ]
 end

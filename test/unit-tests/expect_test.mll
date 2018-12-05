@@ -4,6 +4,8 @@ open StdLabels
 type kind = Ignore | Expect
 }
 
+let newline = eof | '\r'? '\n'
+
 rule code txt start = parse
   | "[%%ignore]\n" {
     let pos = start.Lexing.pos_cnum in
@@ -37,7 +39,7 @@ rule code txt start = parse
   }
 
 and expectation txt = parse
-  | "|}]\n" {
+  | "|}]" newline {
       Lexing.new_line lexbuf;
       code txt lexbuf.lex_curr_p lexbuf
     }

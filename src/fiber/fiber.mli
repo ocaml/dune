@@ -30,6 +30,8 @@ module O : sig
   val (>>|) : 'a t -> ('a -> 'b) -> 'b t
 end
 
+val map : 'a t -> f:('a -> 'b) -> 'b t
+
 (** {1 Forking execution} *)
 
 module Future : sig

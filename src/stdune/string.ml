@@ -224,7 +224,14 @@ let maybe_quoted s =
   else
     Printf.sprintf {|"%s"|} escaped
 
-module Set = Set.Make(T)
+module Set = struct
+  include Set.Make(T)
+  let pp fmt t =
+    Format.fprintf fmt "Set (@[%a@])"
+      (Format.pp_print_list Format.pp_print_string
+         ~pp_sep:(fun fmt () -> Format.fprintf fmt "@ "))
+      (to_list t)
+end
 
 module Map = struct
   include Map.Make(T)

@@ -1,4 +1,4 @@
-Expected: a b c d e f
+Expected: a, b, c, d, e, f (required) and optional (optional)
 
   $ dune external-lib-deps @all
   These are the external library dependencies in the default context:
@@ -8,3 +8,4 @@ Expected: a b c d e f
   - d
   - e
   - f
+  - optional (optional)

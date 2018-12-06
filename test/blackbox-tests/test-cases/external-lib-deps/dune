@@ -2,3 +2,7 @@
  (name foo)
  (libraries a b c)
  (preprocess (pps d e f)))
+
+(rule
+ (with-stdout-to file.ml
+  (echo %{lib-available:optional})))

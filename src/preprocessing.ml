@@ -116,7 +116,7 @@ module Driver = struct
         ; file_kind    : Stanza.File_kind.t
         }
 
-      type Dune_file.Sub_system_info.t += T of t
+      type Sub_system_info.t += T of t
 
       let loc t = t.loc
 

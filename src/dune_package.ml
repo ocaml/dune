@@ -117,32 +117,24 @@ module Lib = struct
     let mode_paths name (xs : Path.t Mode.Dict.List.t) =
       field_l name (fun x -> x) (Mode.Dict.List.encode path xs) in
     let libs name = field_l name (no_loc Lib_name.encode) in
-    record_fields Dune
-      [ field "name" Lib_name.encode name
-      ; field "kind" Kind.encode kind
-      ; field_o "synopsis" string synopsis
-      ; mode_paths "archives" archives
-      ; mode_paths "plugins" plugins
-      ; paths "foreign_objects" foreign_objects
-      ; mode_paths "foreign_archives" foreign_archives
-      ; paths "jsoo_runtime" jsoo_runtime
-      ; libs "requires" requires
-      ; libs "ppx_runtime_deps" ppx_runtime_deps
-      ; libs "pps" pps
-      ; field_o "implements" (no_loc Lib_name.encode) implements
-      ; field_o "main_module_name" Module.Name.encode main_module_name
-      ; field_o "virtual" Virtual.encode virtual_
-      ; field_l "sub_systems" sexp (
-          Sub_system_name.Map.to_list sub_systems
-          |> List.map ~f:(fun (name, (ver, sexp)) ->
-            Dune_lang.List
-              [ Dune_lang.atom (Sub_system_name.to_string name)
-              ; Syntax.Version.encode ver
-              ; List sexp
-              ]
-          )
-        )
-      ]
+    record_fields Dune @@
+    [ field "name" Lib_name.encode name
+    ; field "kind" Kind.encode kind
+    ; field_o "synopsis" string synopsis
+    ; mode_paths "archives" archives
+    ; mode_paths "plugins" plugins
+    ; paths "foreign_objects" foreign_objects
+    ; mode_paths "foreign_archives" foreign_archives
+    ; paths "jsoo_runtime" jsoo_runtime
+    ; libs "requires" requires
+    ; libs "ppx_runtime_deps" ppx_runtime_deps
+    ; libs "pps" pps
+    ; field_o "implements" (no_loc Lib_name.encode) implements
+    ; field_o "main_module_name" Module.Name.encode main_module_name
+    ; field_o "virtual" Virtual.encode virtual_
+    ] @ (Sub_system_name.Map.to_list sub_systems
+         |> List.map ~f:(fun (name, (_ver, sexps)) ->
+           field_l (Sub_system_name.to_string name) (fun x -> x) sexps))
 
   let decode ~base =
     let open Stanza.Decoder in
@@ -168,22 +160,8 @@ module Lib = struct
       and pps = libs "pps"
       and main_module_name = field_o "main_module_name" Module.Name.decode
       and virtual_ = field_o "virtual" Virtual.decode
-      and sub_systems =
-        field_l "sub_systems"
-          (triple (located string) (located Syntax.Version.decode) raw)
       and implements = field_o "implements" (located Lib_name.decode)
-      in
-      let sub_systems =
-        sub_systems
-        |> List.filter_map ~f:(fun ((loc, name), ver, raw) ->
-          Option.map (Sub_system_name.get name) ~f:(fun name ->
-            (name, (loc, ver, raw))))
-        |> Sub_system_name.Map.of_list
-        |> (function
-          | Ok x -> x
-          | Error (name, _, (loc, _, _)) ->
-            Errors.fail loc "%S present twice" (Sub_system_name.to_string name))
-        |> Sub_system_name.Map.map ~f:(fun (_, ver, data) -> (ver, data))
+      and sub_systems = Sub_system_info.record_parser ()
       in
       { kind
       ; name

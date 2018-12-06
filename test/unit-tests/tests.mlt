@@ -41,7 +41,7 @@ let pkg =
   | Error _ -> assert false;;
 
 [%%expect{|
-val pkg : Dune_file.Sub_system_info.t Dune_package.Lib.t = <package:foo>
+val pkg : Sub_system_info.t Dune_package.Lib.t = <package:foo>
 |}]
 
 (* "foo" should depend on "baz" *)

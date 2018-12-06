@@ -78,4 +78,4 @@ val gen
   -> (Syntax.Version.t * Dune_lang.t list) t
   -> Dune_lang.t list
 
-val load : Path.t -> ((Loc.t * Syntax.Version.t) * Dune_lang.Decoder.ast) t
+val load : Path_dune_lang.t -> Sub_system_info.t t

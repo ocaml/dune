@@ -34,23 +34,21 @@
    (plugins (byte foo.cma) (native foo.cmxs))
    (foreign_archives (native foo$ext_lib))
    (main_module_name Foo)
-   (sub_systems
-    (inline_tests.backend
-     1.0
-     ((runner_libraries str)
-      (flags
-       (inline-test-runner
-        %{library-name}
-        -source-tree-root
-        %{workspace_root}
-        -diff-cmd
-        -))
-      (generate_runner
-       (progn
-        (echo "let () = print_int 41")
-        (echo "\n")
-        (echo "let () = print_int 42")
-        (echo "\n")
-        (echo "let () = print_int 43;;")))))))
+   (inline_tests.backend
+    (runner_libraries str)
+    (flags
+     (inline-test-runner
+      %{library-name}
+      -source-tree-root
+      %{workspace_root}
+      -diff-cmd
+      -))
+    (generate_runner
+     (progn
+      (echo "let () = print_int 41")
+      (echo "\n")
+      (echo "let () = print_int 42")
+      (echo "\n")
+      (echo "let () = print_int 43;;")))))
            run alias dune-file/runtest
   414243

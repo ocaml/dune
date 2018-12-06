@@ -69,7 +69,7 @@ type t =
   ; optional         : bool
   ; virtual_deps     : (Loc.t * Lib_name.t) list
   ; dune_version     : Syntax.Version.t option
-  ; sub_systems      : Dune_file.Sub_system_info.t Sub_system_name.Map.t
+  ; sub_systems      : Sub_system_info.t Sub_system_name.Map.t
   ; virtual_         : Virtual.t option
   ; implements       : (Loc.t * Lib_name.t) option
   ; main_module_name : Dune_file.Library.Main_module_name.t

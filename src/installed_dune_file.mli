@@ -4,6 +4,6 @@ open! Stdune
 
 val dune_lib_parse_sub_systems
   : ((Loc.t * Syntax.Version.t) * Dune_lang.Ast.t) Sub_system_name.Map.t
-  -> Dune_file.Sub_system_info.t Sub_system_name.Map.t
+  -> Sub_system_info.t Sub_system_name.Map.t
 
-val load : Path.t -> Dune_file.Sub_system_info.t Sub_system_name.Map.t
+val load : Path.t -> Sub_system_info.t Sub_system_name.Map.t

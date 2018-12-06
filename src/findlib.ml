@@ -213,7 +213,7 @@ end
 module Unavailable_reason = struct
   type t =
     | Not_found
-    | Hidden of Dune_file.Sub_system_info.t Dune_package.Lib.t
+    | Hidden of Sub_system_info.t Dune_package.Lib.t
 
   let to_string = function
     | Not_found  -> "not found"
@@ -229,7 +229,7 @@ type t =
   ; paths      : Path.t list
   ; builtins   : Meta.Simplified.t Lib_name.Map.t
   ; packages   : ( Lib_name.t
-                 , ( Dune_file.Sub_system_info.t Dune_package.Lib.t
+                 , ( Sub_system_info.t Dune_package.Lib.t
                    , Unavailable_reason.t) result
                  ) Hashtbl.t
   }
@@ -331,7 +331,7 @@ type findlib =
   }
 
 type pkg =
-  | Dune of ((Loc.t * Syntax.Version.t) * Dune_lang.Decoder.ast) Dune_package.t
+  | Dune of Sub_system_info.t Dune_package.t
   | Findlib of findlib
 
 (* Search for a <package>/META file in the findlib search path, parse
@@ -373,12 +373,8 @@ let find_and_acknowledge_meta t ~fq_name =
   | Some (Findlib { meta ; meta_file ; dir }) ->
     parse_and_acknowledge_meta t meta ~meta_file ~dir
   | Some (Dune pkg) ->
-    List.iter pkg.libs ~f:(fun (lib : _ Dune_package.Lib.t) ->
-      Dune_package.Lib.sub_systems lib
-      |> Installed_dune_file.dune_lib_parse_sub_systems
-      |> Dune_package.Lib.set_subsystems lib
-      |> Result.ok
-      |> Hashtbl.add t.packages (Dune_package.Lib.name lib))
+    List.iter pkg.libs ~f:(fun lib ->
+      Hashtbl.add t.packages (Dune_package.Lib.name lib) (Ok lib))
 
 let find t name =
   match Hashtbl.find t.packages name with

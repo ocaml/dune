@@ -321,7 +321,7 @@ module Sub_system = struct
   type t = sub_system = ..
 
   module type S = sig
-    module Info : Dune_file.Sub_system_info.S
+    module Info : Sub_system_info.S
     type t
     type sub_system += T of t
     val instantiate

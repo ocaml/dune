@@ -1,7 +1,7 @@
 open! Stdune
 
 let parse_sub_system ~parsing_context ~name ~version ~data =
-  let (module M) = Dune_file.Sub_system_info.get name in
+  let (module M) = Sub_system_info.get name in
   Syntax.check_supported M.syntax version;
   let parsing_context, parse =
     (* We set the syntax to the version used when generating this subsystem.
@@ -20,7 +20,7 @@ let parse_sub_system ~parsing_context ~name ~version ~data =
 
 let dune_lib_parse_sub_systems =
   Sub_system_name.Map.mapi ~f:(fun name (version, data) ->
-    let (module M) = Dune_file.Sub_system_info.get name in
+    let (module M) = Sub_system_info.get name in
     let parsing_context =
       Univ_map.singleton (Syntax.key M.syntax) (snd version) in
     parse_sub_system ~parsing_context ~name ~version ~data)

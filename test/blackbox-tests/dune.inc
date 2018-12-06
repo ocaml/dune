@@ -160,6 +160,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name dune-package)
+ (deps (package dune) (source_tree test-cases/dune-package))
+ (action
+  (chdir
+   test-cases/dune-package
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name dune-ppx-driver-system)
  (deps (package dune) (source_tree test-cases/dune-ppx-driver-system))
  (action
@@ -1181,6 +1189,7 @@
   (alias dev-flag-1103)
   (alias dune-build-dir-exec-1101)
   (alias dune-jbuild-var-case)
+  (alias dune-package)
   (alias dune-ppx-driver-system)
   (alias dune-project-edition)
   (alias dup-fields)
@@ -1325,6 +1334,7 @@
   (alias dev-flag-1103)
   (alias dune-build-dir-exec-1101)
   (alias dune-jbuild-var-case)
+  (alias dune-package)
   (alias dune-ppx-driver-system)
   (alias dune-project-edition)
   (alias dup-fields)

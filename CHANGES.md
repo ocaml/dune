@@ -1,3 +1,13 @@
+1.6.2 (05/12/2018)
+------------------
+
+- Fix regression introduced by #1554 reported in:
+  https://github.com/ocaml/dune/issues/734#issuecomment-444177134 (#1612,
+  @rgrinberg)
+
+- Fix `dune external-lib-deps` when preprocessors are not installed
+  (#1607, @diml)
+
 1.6.1 (04/12/2018)
 ------------------
 

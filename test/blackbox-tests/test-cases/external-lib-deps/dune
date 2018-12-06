@@ -1,0 +1,4 @@
+(library
+ (name foo)
+ (libraries a b c)
+ (preprocess (pps d e f)))

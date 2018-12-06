@@ -17,7 +17,15 @@ module Gen (P : Install_rules.Params) = struct
 
   let opaque = SC.opaque sctx
 
-  (* Library stuff *)
+  let gen_lib_dune_file ~dir lib =
+    Build.arr (fun () ->
+      let dune_version = Option.value_exn (Lib.dune_version lib) in
+      Format.asprintf "%a@."
+        (Dune_lang.pp (Stanza.File_kind.of_syntax dune_version))
+        (Lib.Sub_system.dump_config lib
+         |> Installed_dune_file.gen ~dune_version))
+    >>> Build.write_file_dyn (Lib.dune_file lib)
+    |> Super_context.add_rule ~dir sctx
 
   let msvc_hack_cclibs =
     List.map ~f:(fun lib ->
@@ -543,13 +551,14 @@ module Gen (P : Install_rules.Params) = struct
 
   let rules (lib : Library.t) ~dir_contents ~dir ~expander ~scope
         ~dir_kind : Compilation_context.t * Merlin.t =
-    let compile_info =
+    let (db_lib, compile_info) =
       Lib.DB.get_compile_info (Scope.libs scope) (Library.best_name lib)
         ~allow_overlaps:lib.buildable.allow_overlapping_dependencies
     in
     SC.Libs.gen_select_rules sctx compile_info ~dir;
     SC.Libs.with_lib_deps sctx compile_info ~dir
       ~f:(fun () ->
+        gen_lib_dune_file ~dir db_lib;
         library_rules lib ~dir_contents ~dir ~scope ~expander ~compile_info
           ~dir_kind)
 

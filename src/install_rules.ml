@@ -15,20 +15,6 @@ module Gen(P : Params) = struct
 
   let ctx = Super_context.context sctx
 
-  let lib_dune_file ~dir ~name =
-    Path.relative dir ((Lib_name.to_string name) ^ ".dune")
-
-  let gen_lib_dune_file lib =
-    SC.add_rule sctx
-      (Build.arr (fun () ->
-         let dune_version = Option.value_exn (Lib.dune_version lib) in
-         Format.asprintf "%a@."
-           (Dune_lang.pp (Stanza.File_kind.of_syntax dune_version))
-           (Lib.Sub_system.dump_config lib
-            |> Installed_dune_file.gen ~dune_version))
-       >>> Build.write_file_dyn
-             (lib_dune_file ~dir:(Lib.src_dir lib) ~name:(Lib.name lib)))
-
   let version_from_dune_project (pkg : Package.t) =
     let dir = Path.append (SC.build_dir sctx) pkg.path in
     let project = Scope.project (SC.find_scope_by_dir sctx dir) in
@@ -68,7 +54,6 @@ module Gen(P : Params) = struct
 
   let init_meta (pkg : Local_package.t) =
     let libs = Local_package.libs pkg in
-    Lib.Set.iter libs ~f:(gen_lib_dune_file ~dir:ctx.build_dir);
     let path = Local_package.build_dir pkg in
     let pkg_name = Local_package.name pkg in
     let meta = Local_package.meta_file pkg in
@@ -201,8 +186,12 @@ module Gen(P : Params) = struct
       ; List.map (Lib_archives.files archives) ~f:(make_entry Lib)
       ; List.map execs ~f:(make_entry Libexec)
       ; List.map (Lib_archives.dlls archives) ~f:(Install.Entry.make Stublibs)
-      ; [make_entry Lib (lib_dune_file ~dir
-                           ~name:(Dune_file.Library.best_name lib))]
+      ; [ Library.best_name lib
+          |> Lib.DB.find_even_when_hidden (Scope.libs scope)
+          |> Option.value_exn
+          |> Lib.dune_file
+          |> make_entry Lib
+        ]
       ]
 
   let local_install_rules (entries : Install.Entry.t list)

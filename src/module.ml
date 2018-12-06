@@ -24,7 +24,9 @@ module Name = struct
   let pp = Format.pp_print_string
   let pp_quote fmt x = Format.fprintf fmt "%S" x
 
-  module Set = String.Set
+  module Set = struct
+    include String.Set
+  end
   module Map = String.Map
   module Top_closure = Top_closure.String
   module Infix = Comparable.Operators(T)

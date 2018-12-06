@@ -288,6 +288,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name external-lib-deps)
+ (deps (package dune) (source_tree test-cases/external-lib-deps))
+ (action
+  (chdir
+   test-cases/external-lib-deps
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name extra-lang-line)
  (deps (package dune) (source_tree test-cases/extra-lang-line))
  (action
@@ -1180,6 +1188,7 @@
   (alias exclude-missing-module)
   (alias exec-cmd)
   (alias exec-missing)
+  (alias external-lib-deps)
   (alias extra-lang-line)
   (alias fallback-dune)
   (alias findlib)
@@ -1322,6 +1331,7 @@
   (alias exclude-missing-module)
   (alias exec-cmd)
   (alias exec-missing)
+  (alias external-lib-deps)
   (alias extra-lang-line)
   (alias fallback-dune)
   (alias findlib)

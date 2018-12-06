@@ -14,7 +14,7 @@
  (preprocess  (action
                (run %{project_root}/src/let-syntax/pp.exe %{input-file}))))
 
-(ocamllex meta_lexer glob_lexer dune_lexer)
+(ocamllex meta_lexer glob_lexer dune_lexer ocamlobjinfo)
 
 (rule
  (targets setup.ml)

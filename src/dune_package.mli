@@ -60,7 +60,6 @@ module Lib : sig
     -> virtual_:Virtual.t option
     -> implements:(Loc.t * Lib_name.t) option
     -> version:string option
-    -> map_paths:(Path.t -> Path.t)
     -> dir:Path.t
     -> 'a t
 
@@ -71,6 +70,7 @@ type 'sub_system t =
   { libs         : 'sub_system Lib.t list
   ; name         : Package.Name.t
   ; version      : string option
+  ; dir          : Path.t
   }
 
 val gen

@@ -207,7 +207,6 @@ module Package = struct
       ~virtual_:None
       ~implements:None
       ~version:(version t)
-      ~map_paths:(fun x -> x)
       ~dir:t.dir
 end
 

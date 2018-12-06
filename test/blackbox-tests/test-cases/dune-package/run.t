@@ -12,7 +12,7 @@
   (library
    (name a.b.c)
    (kind normal)
-   (archives (byte c.cma) (native c.cmxa))
-   (plugins (byte c.cma) (native c.cmxs))
+   (archives (byte b/c/c.cma) (native b/c/c.cmxa))
+   (plugins (byte b/c/c.cma) (native b/c/c.cmxs))
    (foreign_archives (native b/c/c$ext_lib))
    (main_module_name C))

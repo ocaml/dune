@@ -21,25 +21,24 @@ module Gen(P : Params) = struct
     version >>^ (fun version ->
       let dune_version = Syntax.greatest_supported_version Stanza.syntax in
       let dune_package =
+        let pkg_root =
+          Config.local_install_lib_dir ~context:ctx.name ~package:name
+        in
+        let lib_root lib =
+          let (_, subdir) = Lib_name.split (Lib.name lib) in
+          Path.L.relative pkg_root subdir
+        in
         let libs =
-          let pkg_root =
-            Config.local_install_lib_dir ~context:ctx.name ~package:name
-          in
-          let lib_root lib =
-            let (_, subdir) = Lib_name.split (Lib.name lib) in
-            Path.L.relative pkg_root subdir
-          in
           Local_package.libs pkg
           |> Lib.Set.to_list
           |> List.map ~f:(fun lib ->
-            let lib_root = lib_root lib in
-            let map_paths p = Path.relative lib_root (Path.basename p) in
-            Lib.to_dune_lib ~root:pkg_root ~map_paths lib)
+            Lib.to_dune_lib lib ~dir:(lib_root lib))
         in
         { Dune_package.
           version
         ; name
         ; libs
+        ; dir = pkg_root
         }
         |> Dune_package.gen ~dune_version
       in

@@ -314,6 +314,5 @@ end
 
 val to_dune_lib
   :  t
-  -> root:Path.t
-  -> map_paths:(Path.t -> Path.t)
+  -> dir:Path.t
   -> (Syntax.Version.t * Dune_lang.t list) Dune_package.Lib.t

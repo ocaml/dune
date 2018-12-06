@@ -1202,12 +1202,12 @@ let () =
       Some (Report_error.make_printer ?loc ?hint pp)
     | _ -> None)
 
-let to_dune_lib ({ name ; info ; _ } as lib) ~root ~map_paths =
+let to_dune_lib ({ name ; info ; _ } as lib) ~dir =
   let add_loc = List.map ~f:(fun x -> (info.loc, x.name)) in
-  Dune_package.Lib.make ~map_paths
+  Dune_package.Lib.make
+    ~dir
     ~name
     ~loc:info.loc
-    ~dir:root
     ~kind:info.kind
     ~synopsis:info.synopsis
     ~version:info.version

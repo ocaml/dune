@@ -71,8 +71,9 @@ module Lib = struct
   let make ~loc ~kind ~name ~synopsis ~archives ~plugins ~foreign_objects
         ~foreign_archives ~jsoo_runtime ~main_module_name ~sub_systems
         ~requires ~pps ~ppx_runtime_deps ~virtual_ ~implements
-        ~version ~(map_paths : Path.t -> Path.t) ~dir =
-    let map_list = List.map ~f:map_paths in
+        ~version ~dir =
+    let map_path p = Path.relative dir (Path.basename p) in
+    let map_list = List.map ~f:map_path in
     let map_mode = Mode.Dict.map ~f:map_list in
     { loc
     ; kind
@@ -103,15 +104,15 @@ module Lib = struct
     let (_, components) = Lib_name.split name in
     Path.Local.L.relative Path.Local.root components
 
-  let encode
+  let encode ~package_root
         { loc = _ ; kind ; synopsis ; name ; archives ; plugins
         ; foreign_objects ; foreign_archives ; jsoo_runtime ; requires
         ; ppx_runtime_deps ; pps ; sub_systems ; virtual_
-        ; implements ; main_module_name ; version = _; dir
+        ; implements ; main_module_name ; version = _; dir = _
         } =
     let open Dune_lang.Encoder in
     let no_loc f (_loc, x) = f x in
-    let path = Path_dune_lang.Local.encode ~dir in
+    let path = Path_dune_lang.Local.encode ~dir:package_root in
     let paths name f = field_l name path f in
     let mode_paths name (xs : Path.t Mode.Dict.List.t) =
       field_l name (fun x -> x) (Mode.Dict.List.encode path xs) in
@@ -227,12 +228,13 @@ module Lib = struct
 end
 
 type 'sub_system t =
-  { libs         : 'sub_system Lib.t list
-  ; name         : Package.Name.t
-  ; version      : string option
+  { libs     : 'sub_system Lib.t list
+  ; name     : Package.Name.t
+  ; version  : string option
+  ; dir      : Path.t
   }
 
-let gen ~dune_version { libs ; name ; version } =
+let gen ~dune_version { libs ; name ; version; dir } =
   let open Dune_lang.Encoder in
   let list s = Dune_lang.List s in
   let sexp =
@@ -250,7 +252,7 @@ let gen ~dune_version { libs ; name ; version } =
   in
   let libs =
     List.map libs ~f:(fun lib ->
-      list (Dune_lang.atom "library" :: Lib.encode lib))
+      list (Dune_lang.atom "library" :: Lib.encode lib ~package_root:dir))
   in
   sexp @ libs
 
@@ -264,6 +266,7 @@ let decode ~dir =
     { name
     ; version
     ; libs = List.map libs ~f:(fun (lib : _ Lib.t) -> { lib with version })
+    ; dir
     }
   )
 

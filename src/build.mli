@@ -153,6 +153,13 @@ val run
   -> 'a Arg_spec.t list
   -> ('a, Action.t) t
 
+(** Like [run] but the program is passed in the arrow. *)
+val run_dyn
+  :  dir:Path.t
+  -> ?stdout_to:Path.t
+  -> 'a Arg_spec.t list
+  -> (Action.Prog.t * 'a, Action.t) t
+
 val action
   :  ?dir:Path.t
   -> targets:Path.t list

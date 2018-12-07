@@ -183,35 +183,56 @@ let source_tree ~dir ~file_tree =
 
 let store_vfile spec = Store_vfile spec
 
+let get_prog_paths =
+  dyn_paths (arr (function Error _ -> [] | Ok x -> [x]))
+
 let get_prog = function
   | Ok p -> path p >>> arr (fun _ -> Ok p)
   | Error f ->
     arr (fun _ -> Error f)
-    >>> dyn_paths (arr (function Error _ -> [] | Ok x -> [x]))
+    >>> get_prog_paths
 
-let prog_and_args ?(dir=Path.root) prog args =
+let add_args_deps ~dir args =
+  arr (Arg_spec.expand ~dir args)
+  >>>
+  dyn_path_set (arr (fun (_args, deps) -> deps))
+  >>>
+  arr fst
+
+let prog_and_args ~dir prog args =
   Paths (Arg_spec.add_deps args Path.Set.empty)
   >>>
-  (get_prog prog &&&
-   (arr (Arg_spec.expand ~dir args)
-    >>>
-    dyn_path_set (arr (fun (_args, deps) -> deps))
-    >>>
-    arr fst))
+  (get_prog prog &&& add_args_deps ~dir args)
+
+let just_args ~dir args =
+  Paths (Arg_spec.add_deps args Path.Set.empty)
+  >>>
+  add_args_deps ~dir args
+
+let run_raw ~dir ~stdout_to (prog, args) =
+  let action = Action.Run (prog, args) in
+  let action =
+    match stdout_to with
+    | None      -> action
+    | Some path -> Redirect (Stdout, path, action)
+  in
+  Action.Chdir (dir, action)
 
 let run ~dir ?stdout_to prog args =
   let targets = Arg_spec.add_targets args (Option.to_list stdout_to) in
   prog_and_args ~dir prog args
   >>>
   Targets targets
-  >>^ (fun (prog, args) ->
-    let action : Action.t = Run (prog, args) in
-    let action =
-      match stdout_to with
-      | None      -> action
-      | Some path -> Redirect (Stdout, path, action)
-    in
-    Action.Chdir (dir, action))
+  >>^
+  run_raw ~dir ~stdout_to
+
+let run_dyn ~dir ?stdout_to args =
+  let targets = Arg_spec.add_targets args (Option.to_list stdout_to) in
+  (get_prog_paths *** just_args ~dir args)
+  >>>
+  Targets targets
+  >>^
+  run_raw ~dir ~stdout_to
 
 let action ?dir ~targets action =
   Targets targets

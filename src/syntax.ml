@@ -17,6 +17,8 @@ module Version = struct
 
   let to_string (a, b) = sprintf "%u.%u" a b
 
+  let pp fmt t = Format.fprintf fmt "%s" (to_string t)
+
   let to_sexp t = Sexp.Atom (to_string t)
 
   let encode t = Dune_lang.Encoder.string (to_string t)

@@ -19,6 +19,9 @@ module Var = struct
     | Deps -> string "Deps"
     | Targets -> string "Targets"
     | Named_local -> string "Named_local"
+
+  let pp_debug fmt t =
+    Sexp.pp fmt (to_sexp t)
 end
 
 module Macro = struct
@@ -53,6 +56,9 @@ module Macro = struct
     | Path_no_dep -> string "Path_no_dep"
     | Ocaml_config -> string "Ocaml_config"
     | Env -> string "Env"
+
+  let pp_debug fmt t =
+    Sexp.pp fmt (to_sexp t)
 end
 
 module Expansion = struct
@@ -80,8 +86,29 @@ let since ~version v               = Since (v, version)
 
 type 'a pform = 'a t
 
+let pp_debug_pform pp fmt = function
+  | No_info x ->
+    Format.fprintf fmt "No_info (%a)"
+      pp x
+  | Since (x, v) ->
+    Format.fprintf fmt "Since (%a, %a)"
+      pp x
+      Syntax.Version.pp v
+  | Deleted_in (x, v, so) ->
+    Format.fprintf fmt "Deleted_in (%a, %a, %a)"
+      pp x
+      Syntax.Version.pp v
+      (Fmt.optional Fmt.text) so
+  | Renamed_in (v, s) ->
+    Format.fprintf fmt "Renamed_in (%a, %s)"
+      Syntax.Version.pp v
+      s
+
 module Map = struct
   type 'a map = 'a t String.Map.t
+
+  let pp_map pp =
+    String.Map.pp (pp_debug_pform pp)
 
   type t =
     { vars   : Var.t   map
@@ -279,4 +306,10 @@ module Map = struct
     ( String.Map.to_list vars
     , String.Map.to_list macros
     )
+
+  let pp_debug fmt { vars; macros } =
+    Fmt.record fmt
+      [ "vars", Fmt.const (pp_map Var.pp_debug) vars
+      ; "macros", Fmt.const (pp_map Macro.pp_debug) macros
+      ]
 end

@@ -58,4 +58,6 @@ module Map : sig
   type stamp
 
   val to_stamp : t -> stamp
+
+  val pp_debug : t Fmt.t
 end

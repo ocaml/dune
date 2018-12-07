@@ -200,12 +200,12 @@ let add_args_deps ~dir args =
   arr fst
 
 let prog_and_args ~dir prog args =
-  Paths (Arg_spec.add_deps args Path.Set.empty)
+  Paths (Arg_spec.deps args)
   >>>
   (get_prog prog &&& add_args_deps ~dir args)
 
 let just_args ~dir args =
-  Paths (Arg_spec.add_deps args Path.Set.empty)
+  Paths (Arg_spec.deps args)
   >>>
   add_args_deps ~dir args
 
@@ -219,7 +219,7 @@ let run_raw ~dir ~stdout_to (prog, args) =
   Action.Chdir (dir, action)
 
 let run ~dir ?stdout_to prog args =
-  let targets = Arg_spec.add_targets args (Option.to_list stdout_to) in
+  let targets = Arg_spec.add_target args stdout_to in
   prog_and_args ~dir prog args
   >>>
   Targets targets
@@ -227,7 +227,7 @@ let run ~dir ?stdout_to prog args =
   run_raw ~dir ~stdout_to
 
 let run_dyn ~dir ?stdout_to args =
-  let targets = Arg_spec.add_targets args (Option.to_list stdout_to) in
+  let targets = Arg_spec.add_target args stdout_to in
   (get_prog_paths *** just_args ~dir args)
   >>>
   Targets targets

@@ -25,6 +25,9 @@ let rec add_deps ts set =
     | Concat (_, ts) -> add_deps ts set
     | _ -> set)
 
+let deps ts =
+  add_deps ts Path.Set.empty
+
 let rec add_targets ts acc =
   List.fold_left ts ~init:acc ~f:(fun acc t ->
     match t with
@@ -33,6 +36,9 @@ let rec add_targets ts acc =
     | S ts
     | Concat (_, ts) -> add_targets ts acc
     | _ -> acc)
+
+let add_target ts opt =
+  add_targets ts (Option.to_list opt)
 
 let expand ~dir ts x =
   let dyn_deps = ref Path.Set.empty in

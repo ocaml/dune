@@ -116,12 +116,16 @@ val on_load_dir : t -> dir:Path.t -> f:(unit -> unit) -> unit
 
 val source_files : t -> src_path:Path.t -> String.Set.t
 
-(** [prog_spec t ?hint name] resolve a program. [name] is looked up in the
-    workspace, if it is not found in the tree is is looked up in the PATH. If it
-    is not found at all, the resulting [Prog_spec.t] will either return the
-    resolved path or a record with details about the error and possibly a hint.
+(** [resolve_program t ?hint ~dir ~loc name] resolves a program. [name] is
+    looked up in the workspace, if it is not found in the tree is is looked up
+    in the PATH. If it is not found at all, the resulting value will either
+    return the resolved path or a record with details about the error and
+    possibly a hint.
 
     [hint] should tell the user what to install when the program is not found.
+
+    This is returned in the build arrow. For convenience, it will pass a value
+    through. This is used for passing arguments to [Build.run_dyn].
 *)
 val resolve_program
   :  t
@@ -129,7 +133,7 @@ val resolve_program
   -> ?hint:string
   -> loc:Loc.t option
   -> string
-  -> Action.Prog.t
+  -> ('a, Action.Prog.t * 'a) Build.t
 
 module Libs : sig
   (** Make sure all rules produces by [f] record the library dependencies for

@@ -87,9 +87,10 @@ module Gen (S : sig val sctx : SC.t end) = struct
     let setup_deps m files = SC.add_alias_deps sctx (alias m) files
   end
 
-  let odoc = lazy (
+  let odoc () =
     SC.resolve_program sctx ~dir:(Super_context.build_dir sctx) "odoc"
-      ~loc:None ~hint:"try: opam install odoc")
+      ~loc:None ~hint:"try: opam install odoc"
+
   let odoc_ext = ".odoc"
 
   module Mld : sig
@@ -129,7 +130,9 @@ module Gen (S : sig val sctx : SC.t end) = struct
        >>>
        module_deps m ~doc_dir ~dep_graphs
        >>>
-       Build.run ~dir:doc_dir (Lazy.force odoc)
+       odoc ()
+       >>>
+       Build.run_dyn ~dir:doc_dir
          [ A "compile"
          ; A "-I"; Path doc_dir
          ; iflags
@@ -144,7 +147,9 @@ module Gen (S : sig val sctx : SC.t end) = struct
     add_rule
       (includes
        >>>
-       Build.run ~dir:doc_dir (Lazy.force odoc)
+       odoc ()
+       >>>
+       Build.run_dyn ~dir:doc_dir
          [ A "compile"
          ; Dyn (fun x -> x)
          ; As ["--pkg"; Package.Name.to_string pkg]
@@ -182,14 +187,17 @@ module Gen (S : sig val sctx : SC.t end) = struct
        Build.progn (
          Build.remove_tree to_remove
          :: Build.mkdir odoc_file.html_dir
-         :: Build.run ~dir:Paths.html_root
-              (Lazy.force odoc)
+         :: (
+           odoc ()
+           >>>
+            Build.run_dyn ~dir:Paths.html_root
               [ A "html"
               ; odoc_include_flags requires
               ; A "-o"; Path Paths.html_root
               ; Dep odoc_file.odoc_input
               ; Hidden_targets [odoc_file.html_file]
               ]
+          )
          :: dune_keep))
 
   let css_file = Paths.html_root ++ "odoc.css"
@@ -218,12 +226,14 @@ module Gen (S : sig val sctx : SC.t end) = struct
 
   let setup_css_rule () =
     add_rule
-      (Build.run
+      ( odoc ()
+        >>>
+        Build.run_dyn
          ~dir:context.build_dir
-         (Lazy.force odoc)
          [ A "support-files"; A "-o"; Path Paths.html_root
          ; Hidden_targets [css_file; highlight_pack_js]
-         ])
+         ]
+      )
 
   let sp = Printf.sprintf
 

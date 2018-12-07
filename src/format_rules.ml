@@ -66,7 +66,6 @@ let gen_rules sctx (config : Dune_file.Auto_format.t) ~dir =
 
     let ocaml kind =
       if config_includes config Ocaml then
-        let exe = resolve_program "ocamlformat" in
         let args =
           let open Arg_spec in
           [ A (flag_of_kind kind)
@@ -77,7 +76,14 @@ let gen_rules sctx (config : Dune_file.Auto_format.t) ~dir =
           ; Target output
           ]
         in
-        Some (Lazy.force ocamlformat_deps >>> Build.run ~dir exe args)
+        Some
+          (
+            Lazy.force ocamlformat_deps
+            >>>
+            resolve_program "ocamlformat"
+            >>>
+            Build.run_dyn ~dir args
+          )
       else
         None
     in
@@ -88,9 +94,12 @@ let gen_rules sctx (config : Dune_file.Auto_format.t) ~dir =
       | ".mli" -> ocaml Intf
       | ".re"
       | ".rei" when config_includes config Reason ->
-        let exe = resolve_program "refmt" in
         let args = [Arg_spec.Dep input] in
-        Some (Build.run ~dir ~stdout_to:output exe args)
+        Some (
+          resolve_program "refmt"
+          >>>
+          Build.run_dyn ~dir ~stdout_to:output args
+        )
       | _ -> None
     in
 

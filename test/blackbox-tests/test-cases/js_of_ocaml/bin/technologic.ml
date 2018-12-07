@@ -1,3 +1,4 @@
+module Js = Js_of_ocaml.Js
 
 let _ =
   print_endline X.buy_it;

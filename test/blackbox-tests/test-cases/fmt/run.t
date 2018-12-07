@@ -17,8 +17,7 @@ Other lists are displayed one element per line:
   $ echo '(a (b c d) e)' | dune unstable-fmt
   (a
    (b c d)
-   e
-  )
+   e)
 
 When there are several s-expressions, they are printed with an empty line
 between them:
@@ -39,8 +38,7 @@ A file can be fixed in place:
   $ dune unstable-fmt --inplace dune_temp
   $ cat dune_temp
   (a
-   (b c)
-  )
+   (b c))
 
 The --inplace flag requires a file name:
 
@@ -60,3 +58,30 @@ and files are not removed when there is an error:
   Parse error: unclosed parenthesis at end of input
   $ cat dune_temp
   (a
+
+When a list is indented, there is no extra space at the end.
+
+  $ echo ' (a (b (c d)))' | dune unstable-fmt
+  (a
+   (b
+    (c d)))
+
+When there is a long list of atoms, quoted strings, templates and singletons,
+it gets wrapped.
+
+  $ echo '(library (name dune) (libraries unix stdune fiber xdg dune_re threads opam_file_format dune_lang ocaml_config which_program) (synopsis "Internal Dune library, do not use!") (preprocess  (action (run %{project_root}/src/let-syntax/pp.exe %{input-file}))))' | dune unstable-fmt
+  (library
+   (name dune)
+   (libraries unix stdune fiber xdg dune_re threads opam_file_format dune_lang
+     ocaml_config which_program)
+   (synopsis "Internal Dune library, do not use!")
+   (preprocess
+    (action
+     (run %{project_root}/src/let-syntax/pp.exe %{input-file}))))
+
+In multi-line strings, newlines are escaped.
+
+  $ dune unstable-fmt < multi-line-strings
+  (echo "multi\nline\nstring\n")
+  
+  (echo "multi\nline\nstring\n")

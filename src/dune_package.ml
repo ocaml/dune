@@ -1,5 +1,8 @@
 open! Stdune
 
+(* HACK Otherwise ocamldep doesn't detect this module in bootstrap *)
+let () = let module M = Sub_system_info in ()
+
 module Lib = struct
   module Virtual = struct
     type t =

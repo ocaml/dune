@@ -1,0 +1,10 @@
+(echo "\> multi
+      "\> line
+      "\> string
+)
+
+(echo "\
+multi
+line
+string
+")

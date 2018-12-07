@@ -1,3 +1,9 @@
+unreleased
+----------
+
+- unstable-fmt: use boxes to wrap some lists (#1608, fix #1153, @emillon,
+  thanks to @rgrinberg)
+
 1.6.2 (05/12/2018)
 ------------------
 

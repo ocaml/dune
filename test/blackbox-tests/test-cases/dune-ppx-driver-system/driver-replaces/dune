@@ -1,0 +1,7 @@
+(library
+ (public_name replacesdriver)
+ (libraries compiler-libs.common)
+ (modules ())
+ (ppx.driver
+  (main "(fun () -> print_endline \"replacesdriver\"; Array.iter print_endline Sys.argv)")
+  (replaces testdriver)))

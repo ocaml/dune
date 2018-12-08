@@ -1,0 +1,5 @@
+(rule (with-stdout-to driveruser.ml (echo "")))
+
+(library
+ (name driveruser)
+ (preprocess (pps -arg1 replacesdriver -arg2 -- -foo bar)))

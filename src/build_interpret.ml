@@ -68,20 +68,21 @@ let static_deps t ~all_targets ~file_tree =
         match !state with
         | G_evaluated l ->
           Static_deps.add_action_paths acc l
-        | G_unevaluated (loc, dir, f) ->
+        | G_unevaluated (loc, dir, f, dir_missing) ->
           let targets = all_targets ~dir in
           let result = Path.Set.filter targets ~f in
           if Path.Set.is_empty result then begin
-            match inspect_path file_tree dir with
-            | None ->
+            match inspect_path file_tree dir, dir_missing with
+            | None, Warn ->
               Errors.warn loc "Directory %s doesn't exist."
                 (Path.to_string_maybe_quoted
                    (Path.drop_optional_build_context dir))
-            | Some Reg ->
+            | Some Reg, _ ->
               Errors.warn loc "%s is not a directory."
                 (Path.to_string_maybe_quoted
                    (Path.drop_optional_build_context dir))
-            | Some Dir ->
+            | None, Ignore -> ()
+            | Some Dir, _ ->
               (* diml: we should probably warn in this case as well *)
               ()
           end;

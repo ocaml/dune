@@ -289,7 +289,7 @@ module Gen (P : Install_rules.Params) = struct
         [ Hidden_deps h_files
         ; Arg_spec.of_result_map requires ~f:(fun libs ->
             S [ Lib.L.c_include_flags libs ~stdlib_dir:ctx.stdlib_dir
-              ; Hidden_deps (Lib_file_deps.L.file_deps sctx libs ~exts:[".h"])
+              ; Hidden_glob_deps (Lib_file_deps.L.headers libs)
               ])
         ]
     in
@@ -338,23 +338,6 @@ module Gen (P : Install_rules.Params) = struct
           build
       in
       SC.add_rule sctx build ~dir)
-
-  let setup_file_deps lib ~dir ~obj_dir ~modules =
-    let add_cms ~cm_kind ~init = List.fold_left ~init ~f:(fun acc m ->
-      match Module.cm_file m ~obj_dir cm_kind with
-      | None -> acc
-      | Some fn -> Path.Set.add acc fn)
-    in
-    List.iter Cm_kind.all ~f:(fun cm_kind ->
-      let files = add_cms ~cm_kind ~init:Path.Set.empty modules in
-      Lib_file_deps.setup_file_deps_alias sctx ~dir lib ~exts:[Cm_kind.ext cm_kind]
-        files);
-
-    Lib_file_deps.setup_file_deps_group_alias sctx ~dir lib ~exts:[".cmi"; ".cmx"];
-    Lib_file_deps.setup_file_deps_alias sctx ~dir lib ~exts:[".h"]
-      (List.map lib.install_c_headers ~f:(fun header ->
-         Path.relative dir (header ^ ".h"))
-       |> Path.Set.of_list)
 
   let setup_build_archives (lib : Dune_file.Library.t)
         ~wrapped_compat ~cctx ~(dep_graphs : Dep_graph.Ml_kind.t)
@@ -511,11 +494,6 @@ module Gen (P : Install_rules.Params) = struct
     let vlib_stubs_o_files = Vimpl.vlib_stubs_o_files vimpl in
     if Library.has_stubs lib || not (List.is_empty vlib_stubs_o_files) then
       build_stubs lib ~dir ~expander ~requires ~dir_contents ~vlib_stubs_o_files;
-
-    setup_file_deps lib ~dir ~obj_dir
-      ~modules:(Lib_modules.have_artifacts lib_modules
-                |> Module.Name.Map.values
-                |> Vimpl.for_file_deps vimpl);
 
     if not (Library.is_virtual lib) then
       setup_build_archives lib ~wrapped_compat ~cctx ~dep_graphs

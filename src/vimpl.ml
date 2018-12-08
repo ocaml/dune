@@ -61,11 +61,3 @@ let find_module t m =
 let vlib_stubs_o_files = function
   | None -> []
   | Some t -> Lib.foreign_objects t.vlib
-
-let for_file_deps t modules =
-  match t with
-  | None -> modules
-  | Some t ->
-    Lib_modules.for_compilation t.vlib_modules
-    |> Module.Name.Map.values
-    |> List.rev_append modules

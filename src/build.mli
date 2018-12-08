@@ -227,8 +227,12 @@ module Repr : sig
     | Decided   of bool * ('a, 'b) t
 
   and glob_state =
-    | G_unevaluated of Loc.t * Path.t * (Path.t -> bool)
+    | G_unevaluated of Loc.t * Path.t * (Path.t -> bool) * dir_missing
     | G_evaluated   of Path.Set.t
+
+  and dir_missing =
+    | Warn
+    | Ignore
 
   val get_if_file_exists_exn : ('a, 'b) if_file_exists_state ref -> ('a, 'b) t
   val get_glob_result_exn : glob_state ref -> Path.Set.t

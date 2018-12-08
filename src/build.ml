@@ -47,8 +47,12 @@ module Repr = struct
     | Decided   of bool * ('a, 'b) t
 
   and glob_state =
-    | G_unevaluated of Loc.t * Path.t * (Path.t -> bool)
+    | G_unevaluated of Loc.t * Path.t * (Path.t -> bool) * dir_missing
     | G_evaluated   of Path.Set.t
+
+  and dir_missing =
+    | Warn
+    | Ignore
 
   let get_if_file_exists_exn state =
     match !state with
@@ -59,7 +63,7 @@ module Repr = struct
   let get_glob_result_exn state =
     match !state with
     | G_evaluated l -> l
-    | G_unevaluated (loc, path, _) ->
+    | G_unevaluated (loc, path, _, _) ->
       Exn.code_error "Build.get_glob_result_exn: got unevaluated"
         [ "loc", Loc.to_sexp loc
         ; "path", Path.to_sexp path ]
@@ -115,9 +119,11 @@ let paths ps = Paths (Path.Set.of_list ps)
 let path_set ps = Paths ps
 let paths_glob ~loc ~dir re =
   let predicate p = Re.execp re (Path.basename p) in
-  Paths_glob (ref (G_unevaluated (loc, dir, predicate)))
+  Paths_glob (ref (G_unevaluated (loc, dir, predicate, Warn)))
 let paths_matching ~loc ~dir f =
-  Paths_glob (ref (G_unevaluated (loc, dir, f)))
+  Paths_glob (ref (G_unevaluated (loc, dir, f, Warn)))
+let paths_matching_ignore ~dir f =
+  Paths_glob (ref (G_unevaluated (Loc.none, dir, f, Ignore)))
 let vpath vp = Vpath vp
 let dyn_paths t = Dyn_paths (t >>^ Path.Set.of_list)
 let dyn_path_set t = Dyn_paths t
@@ -189,15 +195,26 @@ let get_prog = function
     arr (fun _ -> Error f)
     >>> dyn_paths (arr (function Error _ -> [] | Ok x -> [x]))
 
-let prog_and_args ?(dir=Path.root) prog args =
-  Paths (Arg_spec.add_deps args Path.Set.empty)
-  >>>
-  (get_prog prog &&&
-   (arr (Arg_spec.expand ~dir args)
+let prog_and_args =
+  let make_globs globs =
+    List.map globs ~f:(fun { Arg_spec. exts ; dir } ->
+      paths_matching_ignore ~dir (fun p ->
+        List.mem (Path.extension p) ~set:exts))
+    |> all
+    >>^ List.fold_left ~init:Path.Set.empty ~f:Path.Set.union
+  in
+  fun ?(dir=Path.root) prog args ->
+    let (paths, globs) = Arg_spec.add_deps args Path.Set.empty in
+    let globs = make_globs globs in
+    Paths paths &&& globs
+    >>^ fst
     >>>
-    dyn_path_set (arr (fun (_args, deps) -> deps))
-    >>>
-    arr fst))
+    (get_prog prog &&&
+     (arr (Arg_spec.expand ~dir args)
+      >>>
+      dyn_path_set (arr (fun (_args, deps, _globs) -> deps))
+      >>>
+      arr (fun (args, _, _) -> args)))
 
 let run ~dir ?stdout_to prog args =
   let targets = Arg_spec.add_targets args (Option.to_list stdout_to) in

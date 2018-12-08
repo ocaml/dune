@@ -1,6 +1,11 @@
 open! Stdune
 open Import
 
+type glob =
+  { dir : Path.t
+  ; exts : string list
+  }
+
 type 'a t =
   | A        of string
   | As       of string list
@@ -11,19 +16,24 @@ type 'a t =
   | Target   of Path.t
   | Path     of Path.t
   | Paths    of Path.t list
+  | Hidden_glob_deps of glob list
   | Hidden_deps    of Path.t list
   | Hidden_targets of Path.t list
   | Dyn      of ('a -> Nothing.t t)
 
-let rec add_deps ts set =
-  List.fold_left ts ~init:set ~f:(fun set t ->
-    match t with
-    | Dep fn -> Path.Set.add set fn
-    | Deps        fns
-    | Hidden_deps fns -> Path.Set.union set (Path.Set.of_list fns)
-    | S ts
-    | Concat (_, ts) -> add_deps ts set
-    | _ -> set)
+let add_deps =
+  let rec loop ~init =
+    List.fold_left ~init ~f:(fun ((set, globs) as acc) t ->
+      match t with
+      | Dep fn -> (Path.Set.add set fn, globs)
+      | Deps        fns
+      | Hidden_deps fns -> (Path.Set.union set (Path.Set.of_list fns), globs)
+      | Hidden_glob_deps globs' -> (set, List.rev_append globs' globs)
+      | S ts
+      | Concat (_, ts) -> loop ~init:acc ts
+      | _ -> acc)
+  in
+  fun t set -> loop ~init:(set, []) t
 
 let rec add_targets ts acc =
   List.fold_left ts ~init:acc ~f:(fun acc t ->
@@ -37,6 +47,7 @@ let rec add_targets ts acc =
 let expand ~dir ts x =
   let dyn_deps = ref Path.Set.empty in
   let add_dep path = dyn_deps := Path.Set.add !dyn_deps path in
+  let globs = ref [] in
   let rec loop_dyn : Nothing.t t -> string list = function
     | A s  -> [s]
     | As l -> l
@@ -54,6 +65,9 @@ let expand ~dir ts x =
     | Concat (sep, ts) -> [String.concat ~sep (loop_dyn (S ts))]
     | Target _ | Hidden_targets _ -> die "Target not allowed under Dyn"
     | Dyn _ -> assert false
+    | Hidden_glob_deps gs ->
+      globs := List.rev_append gs !globs;
+      []
     | Hidden_deps l ->
       dyn_deps := Path.Set.union !dyn_deps (Path.Set.of_list l);
       []
@@ -67,10 +81,11 @@ let expand ~dir ts x =
     | Concat (sep, ts) -> [String.concat ~sep (loop (S ts))]
     | Target fn -> [Path.reach fn ~from:dir]
     | Dyn f -> loop_dyn (f x)
+    | Hidden_glob_deps _
     | Hidden_deps _ | Hidden_targets _ -> []
   in
   let l = List.concat_map ts ~f:loop in
-  (l, !dyn_deps)
+  (l, !dyn_deps, !globs)
 
 let quote_args =
   let rec loop quote = function

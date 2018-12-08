@@ -15,23 +15,21 @@ module Includes = struct
       in
       let cmi_includes =
         Arg_spec.S [ iflags
-                   ; Hidden_deps
-                       (Lib_file_deps.L.file_deps sctx libs ~exts:[".cmi"])
+                   ; Hidden_glob_deps (Lib_file_deps.L.cmi libs)
                    ]
       in
       let cmx_includes =
         Arg_spec.S
           [ iflags
-          ; Hidden_deps
+          ; Hidden_glob_deps
               ( if opaque then
                   List.map libs ~f:(fun lib ->
-                    (lib, if Lib.is_local lib then
-                       [".cmi"]
-                     else
-                       [".cmi"; ".cmx"]))
-                  |> Lib_file_deps.L.file_deps_with_exts sctx
+                    if Lib.is_local lib then
+                      Lib_file_deps.cmi lib
+                    else
+                      Lib_file_deps.cmi_and_cmx lib)
                 else
-                  Lib_file_deps.L.file_deps sctx libs ~exts:[".cmi"; ".cmx"]
+                  Lib_file_deps.L.cmi_and_cmx libs
               )
           ]
       in

@@ -29,6 +29,12 @@ open! Import
     where the command is executed. For instance [Path (Path.of_string
     "src/foo.ml")] will translate to "../src/foo.ml" if the command is
     started from the "test" directory.  *)
+
+type glob =
+  { dir : Path.t
+  ; exts : string list
+  }
+
 type 'a t =
   | A        of string
   | As       of string list
@@ -39,14 +45,20 @@ type 'a t =
   | Target   of Path.t
   | Path     of Path.t
   | Paths    of Path.t list
+  | Hidden_glob_deps of glob list
   | Hidden_deps    of Path.t list
   | Hidden_targets of Path.t list
   (** Register dependencies but produce no argument *)
   | Dyn      of ('a -> Nothing.t t)
 
-val add_deps    : _ t list -> Path.Set.t -> Path.Set.t
+val add_deps    : _ t list -> Path.Set.t -> Path.Set.t * glob list
 val add_targets : _ t list -> Path.t list -> Path.t list
-val expand      : dir:Path.t -> 'a t list -> 'a -> string list * Path.Set.t
+
+val expand
+  :  dir:Path.t
+  -> 'a t list
+  -> 'a
+  -> string list * Path.Set.t * glob list
 
 (** [quote_args quote args] is [As \[quote; arg1; quote; arg2; ...\]] *)
 val quote_args : string -> string list -> _ t

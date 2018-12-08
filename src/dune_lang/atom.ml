@@ -1,3 +1,5 @@
+open Stdune
+
 type t = A of string [@@unboxed]
 
 let invalid_argf fmt = Printf.ksprintf invalid_arg fmt

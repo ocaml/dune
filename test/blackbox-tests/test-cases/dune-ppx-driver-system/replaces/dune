@@ -1,0 +1,13 @@
+(rule (with-stdout-to driveruser.ml (echo "")))
+
+(library
+ (public_name replacesdriver)
+ (libraries compiler-libs.common)
+ (modules ())
+ (ppx.driver
+  (main "(fun () -> print_endline \"replacesdriver\"; Array.iter print_endline Sys.argv)")
+  (replaces testdriver)))
+
+(library
+ (name driveruser)
+ (preprocess (pps -arg1 replacesdriver -arg2 -- -foo bar)))

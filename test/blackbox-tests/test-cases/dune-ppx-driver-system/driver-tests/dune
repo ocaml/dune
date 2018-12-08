@@ -69,6 +69,7 @@
 
 (library
  (name driver_print_tool)
+ (public_name foo.driver_print_tool)
  (modules ())
  (libraries compiler-libs.common)
  (ppx.driver (main "\| (fun () ->

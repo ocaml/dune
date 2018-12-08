@@ -1,0 +1,4 @@
+(library
+ (public_name testdriver)
+ (libraries compiler-libs.common)
+ (ppx.driver (main "(fun () -> Array.iter print_endline Sys.argv)")))

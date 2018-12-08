@@ -103,3 +103,23 @@ Test using installed drivers
   Error: Rule failed to generate the following targets:
   - driveruser.pp.ml
   [1]
+
+  $ OCAMLPATH=driver/_build/install/default/lib dune build --root replaces driveruser.cma
+  Entering directory 'replaces'
+           ppx driveruser.pp.ml
+  replacesdriver
+  .ppx/97c3bec0ca445d915914eed462990a46/ppx.exe
+  -arg1
+  -arg2
+  -foo
+  bar
+  --cookie
+  library-name="driveruser"
+  -o
+  driveruser.pp.ml
+  --impl
+  driveruser.ml
+  --as-ppx
+  Error: Rule failed to generate the following targets:
+  - driveruser.pp.ml
+  [1]

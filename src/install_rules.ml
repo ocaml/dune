@@ -100,7 +100,7 @@ module Gen(P : Params) = struct
         Super_context.Pkg_version.set sctx pkg get
       in
 
-      gen_dune_package ~version:(Build.return None) ~pkg;
+      gen_dune_package ~version ~pkg;
 
       let template =
         Build.if_file_exists meta_template

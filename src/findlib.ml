@@ -148,7 +148,6 @@ module Package = struct
 
   let loc  t = Loc.in_dir (Path.to_string t.meta_file)
   let name t = t.name
-  let dir  t = t.dir
 
   let preds = Ps.of_list [P.ppx_driver; P.mt; P.mt_posix]
 
@@ -179,18 +178,48 @@ module Package = struct
     let fn = Path.relative t.dir
                (sprintf "%s.dune" (Lib_name.to_string t.name)) in
     Option.some_if (Path.exists fn) fn
+
+  let to_dune t =
+    let loc = loc t in
+    let add_loc x = (loc, x) in
+    let sub_systems =
+      match dune_file t with
+      | None -> Sub_system_name.Map.empty
+      | Some p -> Installed_dune_file.load p
+    in
+    Dune_package.Lib.make
+      ~loc
+      ~kind:Normal
+      ~name:(name t)
+      ~synopsis:(description t)
+      ~archives:(archives t)
+      ~plugins:(plugins t)
+      ~foreign_objects:[]
+      ~foreign_archives:(Mode.Dict.make_both [])
+      ~jsoo_runtime:(jsoo_runtime t)
+      (* Technically not accurate, but it doesn't matter as we can't findlib
+         modules don't work with virtual libraries *)
+      ~main_module_name:None
+      ~sub_systems
+      ~requires:(List.map ~f:add_loc (requires t))
+      ~pps:[]
+      ~ppx_runtime_deps:(List.map ~f:add_loc (ppx_runtime_deps t))
+      ~virtual_:None
+      ~implements:None
+      ~version:(version t)
+      ~dir:t.dir
 end
 
 module Unavailable_reason = struct
   type t =
     | Not_found
-    | Hidden of Package.t
+    | Hidden of Sub_system_info.t Dune_package.Lib.t
 
   let to_string = function
     | Not_found  -> "not found"
     | Hidden pkg ->
       sprintf "in %s is hidden (unsatisfied 'exist_if')"
-        (Path.to_string_maybe_quoted (Package.dir pkg))
+        (Path.to_string_maybe_quoted (Dune_package.Lib.dir pkg))
 
   let pp ppf t = Format.pp_print_string ppf (to_string t)
 end
@@ -199,7 +228,10 @@ type t =
   { stdlib_dir : Path.t
   ; paths      : Path.t list
   ; builtins   : Meta.Simplified.t Lib_name.Map.t
-  ; packages   : (Lib_name.t, (Package.t, Unavailable_reason.t) result) Hashtbl.t
+  ; packages   : ( Lib_name.t
+                 , ( Sub_system_info.t Dune_package.Lib.t
+                   , Unavailable_reason.t) result
+                 ) Hashtbl.t
   }
 
 let paths t = t.paths
@@ -219,6 +251,7 @@ let dummy_package t ~name =
   ; dir       = dir
   ; vars      = String.Map.empty
   }
+  |> Package.to_dune
 
 (* Parse a single package from a META file *)
 let parse_package t ~meta_file ~name ~parent_dir ~vars =
@@ -265,6 +298,7 @@ let parse_package t ~meta_file ~name ~parent_dir ~vars =
         | { byte; native } -> List.exists (byte @ native) ~f:Path.exists
   in
   let res =
+    let pkg = Package.to_dune pkg in
     if exists then
       Ok pkg
     else
@@ -290,38 +324,57 @@ let parse_and_acknowledge_meta t ~dir ~meta_file (meta : Meta.Simplified.t) =
   in
   loop ~dir ~full_name:(Option.value_exn meta.name) meta
 
+type findlib =
+  { dir       : Path.t
+  ; meta_file : Path.t
+  ; meta      : Meta.Simplified.t
+  }
+
+type pkg =
+  | Dune of Sub_system_info.t Dune_package.t
+  | Findlib of findlib
+
 (* Search for a <package>/META file in the findlib search path, parse
    it and add its contents to [t.packages] *)
 let find_and_acknowledge_meta t ~fq_name =
   let root_name = Lib_name.root_lib fq_name in
-  let rec loop dirs : (Path.t * Path.t * Meta.Simplified.t) option =
+  let rec loop dirs : pkg option =
     match dirs with
     | [] ->
       Lib_name.Map.find t.builtins root_name
       |> Option.map ~f:(fun meta ->
-        (t.stdlib_dir, Path.of_string "<internal>", meta))
+        Findlib
+          { dir = t.stdlib_dir
+          ; meta_file = Path.of_string "<internal>"
+          ; meta
+          })
     | dir :: dirs ->
       let sub_dir = Path.relative dir (Lib_name.to_string root_name) in
-      let fn = Path.relative sub_dir "META" in
-      if Path.exists fn then
-        Some (sub_dir,
-              fn,
-              Meta.load ~name:(Some root_name) fn)
+      let dune = Path.relative sub_dir "dune-package" in
+      let meta_file = Path.relative sub_dir "META" in
+      if Path.exists dune then
+        Some (Dune (Dune_package.load dune))
+      else if Path.exists meta_file then
+        let meta = Meta.load meta_file ~name:(Some root_name) in
+        Some (Findlib {dir = sub_dir; meta; meta_file})
       else
         (* Alternative layout *)
-        let fn = Path.relative dir ("META." ^ (Lib_name.to_string root_name)) in
-        if Path.exists fn then
-          Some (dir,
-                fn,
-                Meta.load fn ~name:(Some root_name))
+        let meta_file =
+          Path.relative dir ("META." ^ (Lib_name.to_string root_name)) in
+        if Path.exists meta_file then
+          let meta = Meta.load meta_file ~name:(Some root_name) in
+          Some (Findlib {dir; meta_file; meta})
         else
           loop dirs
   in
   match loop t.paths with
   | None ->
     Hashtbl.add t.packages root_name (Error Not_found)
-  | Some (dir, meta_file, meta) ->
+  | Some (Findlib { meta ; meta_file ; dir }) ->
     parse_and_acknowledge_meta t meta ~meta_file ~dir
+  | Some (Dune pkg) ->
+    List.iter pkg.libs ~f:(fun lib ->
+      Hashtbl.add t.packages (Dune_package.Lib.name lib) (Ok lib))
 
 let find t name =
   match Hashtbl.find t.packages name with
@@ -360,9 +413,9 @@ let all_packages t =
   load_all_packages t;
   Hashtbl.fold t.packages ~init:[] ~f:(fun x acc ->
     match x with
-    | Ok    p -> p :: acc
+    | Ok p    -> p :: acc
     | Error _ -> acc)
-  |> List.sort ~compare:(fun (a : Package.t) b -> Lib_name.compare a.name b.name)
+  |> List.sort ~compare:Dune_package.Lib.compare_name
 
 let create ~stdlib_dir ~paths ~version =
   { stdlib_dir

@@ -539,7 +539,6 @@ module Lib_deps = struct
   let of_pps pps =
     List.map pps ~f:(fun pp -> Lib_dep.of_lib_name (Loc.none, pp))
 
-
   let info t ~kind =
     List.concat_map t ~f:(function
       | Lib_dep.Direct (_, s) -> [(s, kind)]
@@ -694,49 +693,6 @@ module Public_lib = struct
           | Error _ as e -> e)
 end
 
-module Sub_system_info = struct
-  type t = ..
-  type sub_system = t = ..
-
-  module type S = sig
-    type t
-    type sub_system += T of t
-    val name   : Sub_system_name.t
-    val loc    : t -> Loc.t
-    val syntax : Syntax.t
-    val parse  : t Dune_lang.Decoder.t
-  end
-
-  let all = Sub_system_name.Table.create ~default_value:None
-
-  (* For parsing config files in the workspace *)
-  let record_parser = ref return
-
-  module Register(M : S) : sig end = struct
-    open M
-
-    let () =
-      match Sub_system_name.Table.get all name with
-      | Some _ ->
-        Exn.code_error "Sub_system_info.register: already registered"
-          [ "name", Sexp.Encoder.string (Sub_system_name.to_string name) ];
-      | None ->
-        Sub_system_name.Table.set all ~key:name ~data:(Some (module M : S));
-        let p = !record_parser in
-        let name_s = Sub_system_name.to_string name in
-        record_parser := (fun acc ->
-          field_o name_s parse >>= function
-          | None   -> p acc
-          | Some x ->
-            let acc = Sub_system_name.Map.add acc name (T x) in
-            p acc)
-  end
-
-  let record_parser () = !record_parser Sub_system_name.Map.empty
-
-  let get name = Option.value_exn (Sub_system_name.Table.get all name)
-end
-
 module Mode_conf = struct
   module T = struct
     type t =
@@ -781,20 +737,6 @@ module Mode_conf = struct
 end
 
 module Library = struct
-  module Kind = struct
-    type t =
-      | Normal
-      | Ppx_deriver
-      | Ppx_rewriter
-
-    let decode =
-      enum
-        [ "normal"       , Normal
-        ; "ppx_deriver"  , Ppx_deriver
-        ; "ppx_rewriter" , Ppx_rewriter
-        ]
-  end
-
   module Variants = struct
     let syntax =
       let syntax =
@@ -871,7 +813,7 @@ module Library = struct
     ; install_c_headers        : string list
     ; ppx_runtime_libraries    : (Loc.t * Lib_name.t) list
     ; modes                    : Mode_conf.Set.t
-    ; kind                     : Kind.t
+    ; kind                     : Dune_package.Lib.Kind.t
     ; c_flags                  : Ordered_set_lang.Unexpanded.t
     ; c_names                  : (Loc.t * string) list
     ; cxx_flags                : Ordered_set_lang.Unexpanded.t
@@ -914,7 +856,8 @@ module Library = struct
        and virtual_deps =
          field "virtual_deps" (list (located Lib_name.decode)) ~default:[]
        and modes = field "modes" Mode_conf.Set.decode ~default:Mode_conf.Set.default
-       and kind = field "kind" Kind.decode ~default:Kind.Normal
+       and kind = field "kind" Dune_package.Lib.Kind.decode
+                    ~default:Dune_package.Lib.Kind.Normal
        and wrapped = Wrapped.field
        and optional = field_b "optional"
        and self_build_stubs_archive =

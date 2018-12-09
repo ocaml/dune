@@ -12,7 +12,7 @@ let () =
 
 let print_pkg ppf pkg =
   Format.fprintf ppf "<package:%s>"
-    (Lib_name.to_string (Findlib.Package.name pkg))
+    (Lib_name.to_string (Dune_package.Lib.name pkg))
 ;;
 
 #install_printer Lib_name.pp_quoted;;
@@ -20,7 +20,7 @@ let print_pkg ppf pkg =
 #install_printer String.Map.pp;;
 
 [%%expect{|
-val print_pkg : Format.formatter -> Findlib.Package.t -> unit = <fun>
+val print_pkg : Format.formatter -> 'a Dune_package.Lib.t -> unit = <fun>
 |}]
 
 let findlib =
@@ -41,14 +41,14 @@ let pkg =
   | Error _ -> assert false;;
 
 [%%expect{|
-val pkg : Findlib.Package.t = <package:foo>
+val pkg : Sub_system_info.t Dune_package.Lib.t = <package:foo>
 |}]
 
 (* "foo" should depend on "baz" *)
-Findlib.Package.requires pkg;;
+Dune_package.Lib.requires pkg;;
 
 [%%expect{|
-- : Lib_name.t list = ["baz"]
+- : (Loc.t * Lib_name.t) list = [({start = <abstr>; stop = <abstr>}, "baz")]
 |}]
 
 (* Meta parsing/simplification *)

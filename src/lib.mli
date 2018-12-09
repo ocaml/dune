@@ -24,7 +24,7 @@ val private_obj_dir : t -> Path.t option
 val is_local : t -> bool
 
 val synopsis     : t -> string option
-val kind         : t -> Dune_file.Library.Kind.t
+val kind         : t -> Dune_package.Lib.Kind.t
 val archives     : t -> Path.t list Mode.Dict.t
 val plugins      : t -> Path.t list Mode.Dict.t
 val jsoo_runtime : t -> Path.t list
@@ -35,10 +35,6 @@ val foreign_objects : t -> Path.t list
 val main_module_name : t -> Module.Name.t option Or_exn.t
 
 val virtual_ : t -> Lib_info.Virtual.t option
-
-val dune_version : t -> Syntax.Version.t option
-
-val dune_file : t -> Path.t
 
 (** A unique integer identifier. It is only unique for the duration of
     the process *)
@@ -247,11 +243,7 @@ module DB : sig
 
   (** Retrieve the compile information for the given library. Works
       for libraries that are optional and not available as well. *)
-  val get_compile_info
-    :  t
-    -> ?allow_overlaps:bool
-    -> Lib_name.t
-    -> (lib * Compile.t)
+  val get_compile_info : t -> ?allow_overlaps:bool -> Lib_name.t -> Compile.t
 
   val resolve : t -> Loc.t * Lib_name.t -> lib Or_exn.t
 
@@ -290,7 +282,7 @@ module Sub_system : sig
   type t = sub_system = ..
 
   module type S = sig
-    module Info : Dune_file.Sub_system_info.S
+    module Info : Sub_system_info.S
     type t
     type sub_system += T of t
     val instantiate
@@ -319,3 +311,8 @@ module Meta : sig
   val ppx_runtime_deps                       : t -> Lib_name.Set.t
   val ppx_runtime_deps_for_deprecated_method : t -> Lib_name.Set.t
 end
+
+val to_dune_lib
+  :  t
+  -> dir:Path.t
+  -> (Syntax.Version.t * Dune_lang.t list) Dune_package.Lib.t

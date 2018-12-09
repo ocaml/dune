@@ -1,7 +1,7 @@
 open! Stdune
 open! Import
 
-module type Info = Dune_file.Sub_system_info.S
+module type Info = Sub_system_info.S
 
 module type S = sig
   module Info : Info

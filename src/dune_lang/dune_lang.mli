@@ -161,6 +161,8 @@ module Encoder : sig
   type sexp = t
   include Sexp_intf.Combinators with type 'a t = 'a -> t
 
+  val sexp : sexp t
+
   val record : (string * sexp) list -> sexp
 
   type field
@@ -172,7 +174,7 @@ module Encoder : sig
     -> ?default:'a
     -> 'a
     -> field
-  val field_o : string -> 'a t-> 'a option -> field
+  val field_o : string -> 'a t -> 'a option -> field
 
   (** Field with inlined list as value *)
   val field_l : string -> 'a t -> 'a list -> field

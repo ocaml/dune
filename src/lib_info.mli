@@ -22,26 +22,15 @@ module Deps : sig
 end
 
 module Virtual : sig
-  module Modules : sig
-    type t = private
-      | Unexpanded
-  end
-
-  module Dep_graph : sig
-    type t = private
-      | Local
-  end
-
-  type t = private
-    { modules   : Modules.t
-    ; dep_graph : Dep_graph.t
-    }
+  type t =
+    | Local
+    | External of Dune_package.Lib.Virtual.t
 end
 
 type t = private
   { loc              : Loc.t
   ; name             : Lib_name.t
-  ; kind             : Dune_file.Library.Kind.t
+  ; kind             : Dune_package.Lib.Kind.t
   ; status           : Status.t
   ; src_dir          : Path.t
   ; obj_dir          : Path.t
@@ -59,8 +48,8 @@ type t = private
   ; pps              : (Loc.t * Lib_name.t) list
   ; optional         : bool
   ; virtual_deps     : (Loc.t * Lib_name.t) list
-  ; dune_version : Syntax.Version.t option
-  ; sub_systems      : Dune_file.Sub_system_info.t Sub_system_name.Map.t
+  ; dune_version     : Syntax.Version.t option
+  ; sub_systems      : Sub_system_info.t Sub_system_name.Map.t
   ; virtual_         : Virtual.t option
   ; implements       : (Loc.t * Lib_name.t) option
   ; main_module_name : Dune_file.Library.Main_module_name.t
@@ -73,6 +62,8 @@ val of_library_stanza
   -> Dune_file.Library.t
   -> t
 
-val of_findlib_package : Findlib.Package.t -> t
-
 val user_written_deps : t -> Dune_file.Lib_deps.t
+
+val of_dune_lib
+  :  Sub_system_info.t Dune_package.Lib.t
+  -> t

@@ -160,6 +160,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name dune-package)
+ (deps (package dune) (source_tree test-cases/dune-package))
+ (action
+  (chdir
+   test-cases/dune-package
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name dune-ppx-driver-system)
  (deps (package dune) (source_tree test-cases/dune-ppx-driver-system))
  (action
@@ -855,6 +863,14 @@
     (diff? run.t run.t.corrected)))))
 
 (alias
+ (name old-dune-subsystem)
+ (deps (package dune) (source_tree test-cases/old-dune-subsystem))
+ (action
+  (chdir
+   test-cases/old-dune-subsystem
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name optional)
  (deps (package dune) (source_tree test-cases/optional))
  (action
@@ -1173,6 +1189,7 @@
   (alias dev-flag-1103)
   (alias dune-build-dir-exec-1101)
   (alias dune-jbuild-var-case)
+  (alias dune-package)
   (alias dune-ppx-driver-system)
   (alias dune-project-edition)
   (alias dup-fields)
@@ -1256,6 +1273,7 @@
   (alias ocamllex-jbuild)
   (alias odoc)
   (alias odoc-unique-mlds)
+  (alias old-dune-subsystem)
   (alias optional)
   (alias output-obj)
   (alias package-dep)
@@ -1316,6 +1334,7 @@
   (alias dev-flag-1103)
   (alias dune-build-dir-exec-1101)
   (alias dune-jbuild-var-case)
+  (alias dune-package)
   (alias dune-ppx-driver-system)
   (alias dune-project-edition)
   (alias dup-fields)
@@ -1391,6 +1410,7 @@
   (alias ocaml-syntax)
   (alias ocamldep-multi-stanzas)
   (alias ocamllex-jbuild)
+  (alias old-dune-subsystem)
   (alias optional)
   (alias output-obj)
   (alias package-dep)

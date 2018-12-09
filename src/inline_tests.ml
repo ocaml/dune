@@ -20,7 +20,7 @@ module Backend = struct
         ; file_kind        : Stanza.File_kind.t
         }
 
-      type Dune_file.Sub_system_info.t += T of t
+      type Sub_system_info.t += T of t
 
       let loc t = t.loc
 
@@ -87,7 +87,7 @@ module Backend = struct
       let lib x = Lib_name.encode (Lib.name x) in
       let f x = Lib_name.encode (Lib.name x.lib) in
       ((1, 0),
-       record_fields t.info.file_kind
+       record_fields Dune @@
          [ field_l "runner_libraries" lib (Result.ok_exn t.runner_libraries)
          ; field "flags" Ordered_set_lang.Unexpanded.encode t.info.flags
          ; field_o "generate_runner" Action_dune_lang.encode
@@ -114,7 +114,7 @@ include Sub_system.Register_end_point(
         ; libraries : (Loc.t * Lib_name.t) list
         }
 
-      type Dune_file.Sub_system_info.t += T of t
+      type Sub_system_info.t += T of t
 
       let empty loc =
         { loc

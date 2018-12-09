@@ -186,14 +186,9 @@ let unique_id    t = t.unique_id
 
 let virtual_     t = t.info.virtual_
 
-let dune_version t = t.info.dune_version
-
 let src_dir t = t.info.src_dir
 let obj_dir t = t.info.obj_dir
 let private_obj_dir t = t.info.private_obj_dir
-
-let dune_file t =
-  Path.relative (src_dir t) (Lib_name.to_string t.name ^ ".dune")
 
 let is_local t = Path.is_managed t.info.obj_dir
 
@@ -326,7 +321,7 @@ module Sub_system = struct
   type t = sub_system = ..
 
   module type S = sig
-    module Info : Dune_file.Sub_system_info.S
+    module Info : Sub_system_info.S
     type t
     type sub_system += T of t
     val instantiate
@@ -995,22 +990,20 @@ module DB = struct
     create ()
       ~resolve:(fun name ->
         match Findlib.find findlib name with
-        | Ok pkg -> Found (Lib_info.of_findlib_package pkg)
+        | Ok pkg -> Found (Lib_info.of_dune_lib pkg)
         | Error e ->
           match e with
           | Not_found ->
             if external_lib_deps_mode then
-              Found
-                (Lib_info.of_findlib_package
-                   (Findlib.dummy_package findlib ~name))
+              let pkg = Findlib.dummy_package findlib ~name in
+              Found (Lib_info.of_dune_lib pkg)
             else
               Not_found
           | Hidden pkg ->
-            Hidden (Lib_info.of_findlib_package pkg,
-                    "unsatisfied 'exist_if'"))
+            Hidden (Lib_info.of_dune_lib pkg, "unsatisfied 'exist_if'"))
       ~all:(fun () ->
         Findlib.all_packages findlib
-        |> List.map ~f:Findlib.Package.name)
+        |> List.map ~f:Dune_package.Lib.name)
 
   let find = find
   let find_even_when_hidden = find_even_when_hidden
@@ -1037,7 +1030,7 @@ module DB = struct
         [ "name", Lib_name.to_sexp name ]
     | Some lib ->
       let t = Option.some_if (not allow_overlaps) t in
-      (lib, Compile.for_lib t lib)
+      Compile.for_lib t lib
 
   let resolve_user_written_deps_for_exes t ?(allow_overlaps=false) deps ~pps =
     let lib_deps_info =
@@ -1208,3 +1201,25 @@ let () =
       let pp ppf = report_lib_error ppf e in
       Some (Report_error.make_printer ?loc ?hint pp)
     | _ -> None)
+
+let to_dune_lib ({ name ; info ; _ } as lib) ~dir =
+  let add_loc = List.map ~f:(fun x -> (info.loc, x.name)) in
+  Dune_package.Lib.make
+    ~dir
+    ~name
+    ~loc:info.loc
+    ~kind:info.kind
+    ~synopsis:info.synopsis
+    ~version:info.version
+    ~archives:info.archives
+    ~plugins:info.plugins
+    ~foreign_archives:info.foreign_archives
+    ~foreign_objects:info.foreign_objects
+    ~jsoo_runtime:info.jsoo_runtime
+    ~pps:info.pps
+    ~requires:(add_loc (requires_exn lib))
+    ~ppx_runtime_deps:(add_loc (ppx_runtime_deps_exn lib))
+    ~implements:info.implements
+    ~virtual_:None
+    ~main_module_name:(to_exn (main_module_name lib))
+    ~sub_systems:(Sub_system.dump_config lib)

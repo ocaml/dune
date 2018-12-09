@@ -1,0 +1,11 @@
+(library
+ (public_name a)
+ (modules x))
+
+(library
+ (name c)
+ (public_name a.b.c)
+ (modules y))
+
+(rule (with-stdout-to x.ml (echo "")))
+(rule (with-stdout-to y.ml (echo "")))

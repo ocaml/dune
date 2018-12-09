@@ -1,9 +1,15 @@
 (** In the current workspace (anything under the current project root) *)
 module Local : sig
   type t
+  val root : t
+
   val to_sexp : t -> Sexp.t
   val equal : t -> t -> bool
   val to_string : t -> string
+
+  module L : sig
+    val relative : ?error_loc:Loc.t -> t -> string list -> t
+  end
 end
 
 (** In the outside world *)

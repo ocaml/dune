@@ -2,8 +2,8 @@
 
 open! Stdune
 
-val load : Path.t -> Dune_file.Sub_system_info.t Sub_system_name.Map.t
-val gen
-  : dune_version:Syntax.Version.t
-  -> (Syntax.Version.t * Dune_lang.t list) Sub_system_name.Map.t
-  -> Dune_lang.t
+val dune_lib_parse_sub_systems
+  : ((Loc.t * Syntax.Version.t) * Dune_lang.Ast.t) Sub_system_name.Map.t
+  -> Sub_system_info.t Sub_system_name.Map.t
+
+val load : Path.t -> Sub_system_info.t Sub_system_name.Map.t

@@ -105,15 +105,15 @@ let installed_libraries =
          Fiber.return ()
        end else begin
          let pkgs = Findlib.all_packages findlib in
-         let max_len = String.longest_map pkgs ~f:(fun n ->
-           Findlib.Package.name n
-           |> Lib_name.to_string) in
-         List.iter pkgs ~f:(fun pkg ->
+         let max_len =
+           String.longest_map pkgs ~f:(fun (n : _ Dune_package.Lib.t) ->
+             Lib_name.to_string (Dune_package.Lib.name n)) in
+         List.iter pkgs ~f:(fun (pkg : _ Dune_package.Lib.t) ->
            let ver =
-             Option.value (Findlib.Package.version pkg) ~default:"n/a"
+             Option.value (Dune_package.Lib.version pkg) ~default:"n/a"
            in
            Printf.printf "%-*s (version: %s)\n" max_len
-             (Lib_name.to_string (Findlib.Package.name pkg)) ver);
+             (Lib_name.to_string (Dune_package.Lib.name pkg)) ver);
          Fiber.return ()
        end)
   in

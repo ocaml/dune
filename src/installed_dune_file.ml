@@ -1,5 +1,30 @@
 open! Stdune
 
+let parse_sub_system ~parsing_context ~name ~version ~data =
+  let (module M) = Sub_system_info.get name in
+  Syntax.check_supported M.syntax version;
+  let parsing_context, parse =
+    (* We set the syntax to the version used when generating this subsystem.
+       We cannot do this for jbuild defined subsystems however since those use
+       1.0 as the version. Which would correspond to the dune syntax (because
+       subsystems share the syntax of the dune lang) *)
+    match Univ_map.find_exn parsing_context (Syntax.key Stanza.syntax) with
+    | (0, 0) ->
+      parsing_context, M.parse
+    | (_, _) ->
+      (Univ_map.add parsing_context (Syntax.key M.syntax) (snd version),
+       Dune_lang.Decoder.enter M.parse)
+  in
+  (* We generate too many parentheses in dune files at the moment *)
+  M.T (Dune_lang.Decoder.parse parse parsing_context data)
+
+let dune_lib_parse_sub_systems =
+  Sub_system_name.Map.mapi ~f:(fun name (version, data) ->
+    let (module M) = Sub_system_info.get name in
+    let parsing_context =
+      Univ_map.singleton (Syntax.key M.syntax) (snd version) in
+    parse_sub_system ~parsing_context ~name ~version ~data)
+
 let parse_sub_systems ~parsing_context sexps =
   List.filter_map sexps ~f:(fun sexp ->
     let name, ver, data =
@@ -20,22 +45,7 @@ let parse_sub_systems ~parsing_context sexps =
     | Error (name, _, (loc, _, _)) ->
       Errors.fail loc "%S present twice" (Sub_system_name.to_string name))
   |> Sub_system_name.Map.mapi ~f:(fun name (_, version, data) ->
-    let (module M) = Dune_file.Sub_system_info.get name in
-    Syntax.check_supported M.syntax version;
-    let parsing_context, parse =
-      (* We set the syntax to the version used when generating this subsystem.
-         We cannot do this for jbuild defined subsystems however since those use
-         1.0 as the version. Which would correspond to the dune syntax (because
-         subsystems share the syntax of the dune lang) *)
-      match Univ_map.find_exn parsing_context (Syntax.key Stanza.syntax) with
-      | (0, 0) ->
-        parsing_context, M.parse
-      | (_, _) ->
-        (Univ_map.add parsing_context (Syntax.key M.syntax) (snd version),
-         Dune_lang.Decoder.enter M.parse)
-    in
-    (* We generate too many parentheses in dune files at the moment *)
-    M.T (Dune_lang.Decoder.parse parse parsing_context data))
+    parse_sub_system ~parsing_context ~name ~version ~data)
 
 let of_sexp =
   let open Dune_lang.Decoder in
@@ -87,25 +97,3 @@ let load fname =
     in
     Dune_lang.Decoder.parse of_sexp Univ_map.empty
       (Dune_lang.Parser.parse ~lexer ~mode:Single lexbuf))
-
-let gen ~(dune_version : Syntax.Version.t) confs =
-  let sexps =
-    Sub_system_name.Map.to_list confs
-    |> List.map ~f:(fun (name, (ver, conf)) ->
-      let (module M) = Dune_file.Sub_system_info.get name in
-      Dune_lang.List [ Dune_lang.atom (Sub_system_name.to_string name)
-                     ; Syntax.Version.encode ver
-                     ; List conf
-                     ])
-  in
-  Dune_lang.List
-    [ Dune_lang.unsafe_atom_of_string "dune"
-    ; Dune_lang.unsafe_atom_of_string
-        (match dune_version with
-         | (0, 0) -> "1"
-         | (x, _) when x >= 1 -> "2"
-         | (_, _) ->
-           Exn.code_error "Cannot generate dune with unknown version"
-             ["dune_version", Syntax.Version.to_sexp dune_version])
-    ; List sexps
-    ]

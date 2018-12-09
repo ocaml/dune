@@ -4,6 +4,9 @@
 - skip directories when looking up programs in the PATH (#1628, fixes
   #1616, @diml)
 
+- Fix preprocessing for libraries with `(include_subdirs ..)` (#1624, fix #1626,
+  @nojb, @rgrinberg)
+
 1.6.2 (05/12/2018)
 ------------------
 

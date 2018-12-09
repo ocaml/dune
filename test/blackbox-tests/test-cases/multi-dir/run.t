@@ -55,9 +55,3 @@ Test for (include_subdir unqualified) with (preprocess (action ...))
 
   $ dune build --root test4
   Entering directory 'test4'
-  File "dune", line 7, characters 21-45:
-  7 |  (preprocess (action (run main %{input-file})))
-                           ^^^^^^^^^^^^^^^^^^^^^^^^
-  Error: This action has targets in a different directory than the current one, this is not allowed by dune at the moment:
-  - sub/foo.pp.ml
-  [1]

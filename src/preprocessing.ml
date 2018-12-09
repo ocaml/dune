@@ -665,7 +665,7 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess
                   ~expander
                   ~dep_kind
                   ~targets:(Static [dst])
-                  ~targets_dir:dir))
+                  ~targets_dir:(Path.parent_exn dst)))
            |> setup_reason_rules sctx in
          if lint then lint_module ~ast ~source:m;
          ast)

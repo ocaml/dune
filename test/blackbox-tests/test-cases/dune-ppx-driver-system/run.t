@@ -145,3 +145,19 @@ Test using installed drivers
   Error: Rule failed to generate the following targets:
   - driveruser.pp.ml
   [1]
+
+  $ dune build --display short --root jbuild-driver @all
+  Entering directory 'jbuild-driver'
+        ocamlc .testdriver.objs/testdriver.{cmi,cmo,cmt}
+      ocamlopt .testdriver.objs/testdriver.{cmx,o}
+      ocamlopt testdriver.{a,cmxa}
+      ocamlopt .ppx/jbuild/631757a4a4789e0bd29628f7a73480f7/ppx.exe
+           ppx test_ppx_args.pp.ml
+      ocamldep .test_ppx_args.objs/test_ppx_args.pp.ml.d
+        ocamlc .test_ppx_args.objs/test_ppx_args.{cmi,cmo,cmt}
+      ocamlopt .test_ppx_args.objs/test_ppx_args.{cmx,o}
+      ocamlopt test_ppx_args.{a,cmxa}
+      ocamlopt test_ppx_args.cmxs
+        ocamlc testdriver.cma
+      ocamlopt testdriver.cmxs
+        ocamlc test_ppx_args.cma

@@ -1,2 +1,2 @@
 let () =
-  print_endline Sys.argv.(1)
+  print_endline "print_endline \"foo\""

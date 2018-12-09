@@ -1,0 +1,10 @@
+(executable
+ (name main)
+ (modules main))
+
+(library
+ (name foo)
+ (preprocess (action (run main %{input-file})))
+ (modules foo))
+
+(include_subdirs unqualified)

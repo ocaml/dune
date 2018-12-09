@@ -161,3 +161,24 @@ Test using installed drivers
         ocamlc testdriver.cma
       ocamlopt testdriver.cmxs
         ocamlc test_ppx_args.cma
+
+  $ dune build --display short --root jbuild-driver @install
+  Entering directory 'jbuild-driver'
+  $ OCAMLPATH=jbuild-driver/_build/install/default/lib dune build --root use-external-driver driveruser.cma
+  Entering directory 'use-external-driver'
+           ppx driveruser.pp.ml
+  .ppx/631757a4a4789e0bd29628f7a73480f7/ppx.exe
+  -arg1
+  -arg2
+  -foo
+  bar
+  --cookie
+  library-name="driveruser"
+  -o
+  driveruser.pp.ml
+  --impl
+  driveruser.ml
+  --as-ppx
+  Error: Rule failed to generate the following targets:
+  - driveruser.pp.ml
+  [1]

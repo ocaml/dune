@@ -191,7 +191,7 @@ module Driver = struct
       let open Dune_lang.Encoder in
       let f x = Lib_name.encode (Lib.name (Lazy.force x.lib)) in
       ((1, 0),
-       record_fields t.info.file_kind
+       record_fields Dune @@
          [ field "flags" Ordered_set_lang.Unexpanded.encode
              t.info.flags
          ; field "lint_flags" Ordered_set_lang.Unexpanded.encode

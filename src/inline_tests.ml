@@ -87,7 +87,7 @@ module Backend = struct
       let lib x = Lib_name.encode (Lib.name x) in
       let f x = Lib_name.encode (Lib.name x.lib) in
       ((1, 0),
-       record_fields t.info.file_kind
+       record_fields Dune @@
          [ field_l "runner_libraries" lib (Result.ok_exn t.runner_libraries)
          ; field "flags" Ordered_set_lang.Unexpanded.encode t.info.flags
          ; field_o "generate_runner" Action_dune_lang.encode

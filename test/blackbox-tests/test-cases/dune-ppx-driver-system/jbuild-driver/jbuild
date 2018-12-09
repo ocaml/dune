@@ -1,0 +1,13 @@
+(library
+ ((name testdriver)
+  (public_name testdriver)
+  (modules ())
+  (ppx.driver
+   ((main "(fun () -> Array.iter print_endline Sys.argv)")))))
+
+(rule (with-stdout-to test_ppx_args.ml (echo "")))
+
+(library
+ ((name test_ppx_args)
+  (modules (test_ppx_args))
+  (preprocess (pps (testdriver)))))

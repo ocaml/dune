@@ -16,3 +16,6 @@ When using ppxlib, it is possible to define and promote corrections:
   Promoting _build/default/correct/add.ml.lint-corrected to correct/add.ml.
   $ cat correct/add.ml
   let () = Printf.printf "%d\n" @@ 3
+
+
+  $ ./_build/default/.ppx/6d75c4ca276fcac46c7d8bcae4c17f1d/ppx.exe -impl correct/add.ml.orig

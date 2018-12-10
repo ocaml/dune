@@ -18,6 +18,9 @@ unreleased
 - Delay opening redirected output files until executing commands (#1633,
   @jonludlam)
 
+- Do not generate targets for archive that don't match the `modes` field.
+  (#1632, fix #1617, @rgrinberg)
+
 1.6.2 (05/12/2018)
 ------------------
 

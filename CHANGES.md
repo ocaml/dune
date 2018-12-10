@@ -1,3 +1,9 @@
+1.6.3
+----------
+
+- skip directories when looking up programs in the PATH (#1628, fixes
+  #1616, @diml)
+
 1.6.2 (05/12/2018)
 ------------------
 

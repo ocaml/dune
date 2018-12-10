@@ -14,6 +14,7 @@ When using ppxlib, it is possible to define and promote corrections:
   File "correct/add.ml", line 1, characters 0-0:
   Files _build/default/correct/add.ml and _build/default/correct/add.ml.lint-corrected differ.
   [1]
+  $ ls _build/default/correct
   $ dune promote correct/add.ml
   Promoting _build/default/correct/add.ml.lint-corrected to correct/add.ml.
   $ cat correct/add.ml

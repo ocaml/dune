@@ -4,6 +4,9 @@ unreleased
 - unstable-fmt: use boxes to wrap some lists (#1608, fix #1153, @emillon,
   thanks to @rgrinberg)
 
+- skip directories when looking up programs in the PATH (#1628, fixes
+  #1616, @diml)
+
 1.6.2 (05/12/2018)
 ------------------
 

@@ -402,20 +402,27 @@ module Gen (P : Install_rules.Params) = struct
           ]
           modules
     in
+
+    let modes =
+      Mode_conf.Set.eval lib.modes
+        ~has_native:(Option.is_some ctx.ocamlopt) in
     (let modules = modules @ wrapped_compat in
-     List.iter Mode.all ~f:(fun mode ->
+     Mode.Dict.Set.to_list modes
+     |> List.iter ~f:(fun mode ->
        build_lib lib ~expander ~flags ~dir ~obj_dir ~mode ~top_sorted_modules
          ~modules));
     (* Build *.cma.js *)
-    SC.add_rules sctx ~dir (
-      let src =
-        Library.archive lib ~dir
-          ~ext:(Mode.compiled_lib_ext Mode.Byte) in
-      let target =
-        Path.relative obj_dir (Path.basename src)
-        |> Path.extend_basename ~suffix:".js" in
-      Js_of_ocaml_rules.build_cm cctx ~js_of_ocaml ~src ~target);
-    if Dynlink_supported.By_the_os.get ctx.natdynlink_supported then
+    if modes.byte then
+      SC.add_rules sctx ~dir (
+        let src =
+          Library.archive lib ~dir
+            ~ext:(Mode.compiled_lib_ext Mode.Byte) in
+        let target =
+          Path.relative obj_dir (Path.basename src)
+          |> Path.extend_basename ~suffix:".js" in
+        Js_of_ocaml_rules.build_cm cctx ~js_of_ocaml ~src ~target);
+    if Dynlink_supported.By_the_os.get ctx.natdynlink_supported
+    && modes.native then
         build_shared lib ~dir ~flags ~ctx
 
   let library_rules (lib : Library.t) ~dir_contents ~dir ~expander ~scope

@@ -15,6 +15,9 @@
   opened by Dune (#1635, #1643, fixes #1633, @jonludlam, @rgrinberg,
   @diml)
 
+- Do not generate targets for archive that don't match the `modes` field.
+  (#1632, fix #1617, @rgrinberg)
+
 1.6.2 (05/12/2018)
 ------------------
 

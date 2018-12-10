@@ -14,7 +14,7 @@ let trace_var env var =
   let value =
     match Env.get env var with
     | None -> "unset"
-    | Some v -> Digest.string v |> Digest.to_hex
+    | Some v -> Digest.string v |> Digest.to_string
   in
   (var, value)
 

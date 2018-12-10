@@ -4,7 +4,7 @@ module Set : Set.S with type elt = t
 
 val compare : t -> t -> Ordering.t
 
-val to_hex : t -> string
+val to_string : t -> string
 
 val from_hex : string -> t
 

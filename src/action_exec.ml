@@ -149,7 +149,7 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to =
       Digest.string
         (Marshal.to_string data [])
     in
-    exec_echo stdout_to (Digest.to_string s)
+    exec_echo stdout_to (Digest.to_string_raw s)
   | Diff { optional; file1; file2; mode } ->
     let compare_files =
       match mode with

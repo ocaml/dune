@@ -8,7 +8,7 @@ type t =
 let paths t = t.paths
 
 let trace_path fn =
-  (Path.to_string fn, Utils.Cached_digest.file fn |> Digest.to_string)
+  (Path.to_string fn, Utils.Cached_digest.file fn |> Digest.to_string_raw)
 
 let trace_var env var =
   let value =

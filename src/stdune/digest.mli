@@ -12,4 +12,4 @@ val file : Path.t -> t
 
 val string : string -> t
 
-val to_string : t -> string
+val to_string_raw : t -> string

@@ -18,13 +18,19 @@ let cons_path p ~_PATH =
 
 let exe = if Sys.win32 then ".exe" else ""
 
+let exists fn =
+  match Unix.stat (Path.to_string fn) with
+  | { st_kind = S_DIR; _ } -> false
+  | exception (Unix.Unix_error _) -> false
+  | _ -> true
+
 let best_prog dir prog =
   let fn = Path.relative dir (prog ^ ".opt" ^ exe) in
-  if Path.exists fn then
+  if exists fn then
     Some fn
   else
     let fn = Path.relative dir (prog ^ exe) in
-    if Path.exists fn then
+    if exists fn then
       Some fn
     else
       None

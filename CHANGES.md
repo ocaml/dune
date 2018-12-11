@@ -7,8 +7,9 @@
 - Fix preprocessing for libraries with `(include_subdirs ..)` (#1624, fix #1626,
   @nojb, @rgrinberg)
 
-- Delay opening redirected output files until executing commands (#1633,
-  @jonludlam)
+- Delay opening redirected output files until executing commands in
+  order to reduce the number of maximum number of open file
+  descriptors (#1635, fixes #1633, @jonludlam)
 
 1.6.2 (05/12/2018)
 ------------------

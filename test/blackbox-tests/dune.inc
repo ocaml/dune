@@ -112,6 +112,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name default-targets)
+ (deps (package dune) (source_tree test-cases/default-targets))
+ (action
+  (chdir
+   test-cases/default-targets
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name dep-vars)
  (deps (package dune) (source_tree test-cases/dep-vars))
  (action
@@ -1199,6 +1207,7 @@
   (alias copy_files)
   (alias cross-compilation)
   (alias custom-build-dir)
+  (alias default-targets)
   (alias dep-vars)
   (alias depend-on-the-universe)
   (alias deps-conf-vars)
@@ -1346,6 +1355,7 @@
   (alias copy_files)
   (alias cross-compilation)
   (alias custom-build-dir)
+  (alias default-targets)
   (alias dep-vars)
   (alias depend-on-the-universe)
   (alias deps-conf-vars)

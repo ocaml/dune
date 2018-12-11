@@ -137,8 +137,6 @@ Status
 ------
 
 Dune is now fairly stable and is used by the majority of packages on
-opam. The package is still in beta version as we are waiting for the
-renaming from Jbuilder to dune before releasing version 1.0.0. Note
-that dune will have backward compatibility with Jbuilder, in particular
-existing Jbuilder projects will continue to be buildable with
-dune.
+opam. Note that dune retains backward compatibility with Jbuilder, and
+in particular existing Jbuilder projects will continue to be buildable
+with dune.

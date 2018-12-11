@@ -24,13 +24,13 @@ matrix:
     env: OCAML_VERSION=4.05 OCAML_RELEASE=0 WITH_OPAM=0
     stage: Build
   - os: linux
-    env: OCAML_VERSION=4.06 OCAML_RELEASE=0 WITH_OPAM=0
+    env: OCAML_VERSION=4.06 OCAML_RELEASE=1 WITH_OPAM=0
     stage: Build
   - os: linux
-    env: OCAML_VERSION=4.07 OCAML_RELEASE=0 WITH_OPAM=0
+    env: OCAML_VERSION=4.07 OCAML_RELEASE=1 WITH_OPAM=0
     stage: Build
   - os: linux
-    env: OCAML_VERSION=4.06 OCAML_RELEASE=0 WITH_OPAM=1
+    env: OCAML_VERSION=4.07 OCAML_RELEASE=1 WITH_OPAM=1
     stage: Test
     addons:
       apt:
@@ -49,10 +49,10 @@ matrix:
     env: OCAML_VERSION=4.05 OCAML_RELEASE=0 WITH_OPAM=0
     stage: Build_macOS
   - os: osx
-    env: OCAML_VERSION=4.06 OCAML_RELEASE=0 WITH_OPAM=0
+    env: OCAML_VERSION=4.06 OCAML_RELEASE=1 WITH_OPAM=0
     stage: Build_macOS
   - os: osx
-    env: OCAML_VERSION=4.07 OCAML_RELEASE=0 WITH_OPAM=0
+    env: OCAML_VERSION=4.07 OCAML_RELEASE=1 WITH_OPAM=0
     stage: Build_macOS
   - os: none
     env: CI_KIND=changes

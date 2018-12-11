@@ -51,7 +51,7 @@ let set_common_other c ~targets =
       ; targets
       ];
   if c.stats then Stats.enable ();
-  Option.iter ~f:Stats.Catapult.enable c.catapult_trace_file
+  Option.iter ~f:Stats.enable_catapult c.catapult_trace_file
 
 let set_common c ~targets =
   set_dirs c;

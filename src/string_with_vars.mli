@@ -82,3 +82,5 @@ val partial_expand
   -> 'a Partial.t
 
 val remove_locs : t -> t
+
+val rename_vars : t -> f:(string -> string) -> t

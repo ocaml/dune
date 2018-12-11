@@ -1,11 +1,9 @@
 open Stdune
 
-type active_state = Pervasives.out_channel * Format.formatter
-
 type state =
   | Disabled
   | Path of string
-  | Active of active_state
+  | Active of Pervasives.out_channel
 
 type t =
   { mutable state : state
@@ -18,31 +16,28 @@ let make () =
 let close t = match t.state with
   | Disabled -> ()
   | Path _ -> ()
-  | Active (channel, _) ->
-    Pervasives.output_string channel "]\n";
-    Pervasives.flush channel;
+  | Active channel ->
+    Printf.fprintf channel "]\n";
     Pervasives.close_out channel
 
 let enable t path =
   t.state <- Path path
 
-let fmt t =
+let printf t format_string =
+  let print_on channel =
+    Printf.fprintf channel (format_string ^^ "\n%!")
+  in
   match t.state with
-  | Disabled -> None
-  | Active (_, fmt) ->
-    Format.pp_print_string fmt ",";
-    Some fmt
+  | Disabled ->
+    Printf.ifprintf stderr format_string
+  | Active channel ->
+    Printf.fprintf channel ",";
+    print_on channel
   | Path p ->
     let channel = Pervasives.open_out_gen [Open_append; Open_creat] 0o666 p in
-    let fmt = Format.formatter_of_out_channel channel in
-    Format.pp_print_string fmt "[";
-    t.state <- Active (channel, fmt);
-    Some fmt
-
-let printf t format_string =
-  match fmt t with
-  | Some fmt -> Format.fprintf fmt (format_string ^^ "\n%!")
-  | None -> Format.ifprintf Format.std_formatter format_string
+    t.state <- Active channel;
+    Printf.fprintf channel "[";
+    print_on channel
 
 let color_of_name = function
   | "ocamlc.opt" -> "thread_state_uninterruptible"
@@ -66,13 +61,15 @@ let color_of_name = function
   | "bash" -> "thread_state_iowait"
   | _ -> "generic_work"
 
-let pp_args fmt l =
-  let pp_sep fmt () = Format.pp_print_string fmt "," in
-  Format.fprintf fmt "[%a]" (Fmt.list ~pp_sep Fmt.quoted) l
+let pp_args channel l =
+  l
+  |> List.map ~f:(Printf.sprintf "%S")
+  |> String.concat ~sep:","
+  |> Printf.fprintf channel "[%s]"
 
-let pp_time fmt f =
+let pp_time channel f =
   let n = int_of_float @@ f *. 1_000_000. in
-  Format.pp_print_int fmt n
+  Printf.fprintf channel "%d" n
 
 type event =
   { start_time : float

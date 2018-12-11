@@ -321,7 +321,7 @@ let remove_locs t =
 let rename_vars t ~f =
   let rename_part = function
     | Text _ as s -> s
-    | Var v -> Var { v with name = f v.name }
+    | Var v -> Var { v with name = f ~loc:v.loc v.name  }
   in
   let rename t =
     { t with parts = List.map ~f:rename_part t.parts }
@@ -329,7 +329,7 @@ let rename_vars t ~f =
   { t with template = rename t.template }
 
 let upgrade_to_dune =
-  let f = function
+  let f ~loc = function
     | "@" -> "targets"
     | "^" -> "deps"
     | "file" -> "dep"
@@ -344,6 +344,11 @@ let upgrade_to_dune =
     | "OCAMLOPT" -> "ocamlopt"
     | "ARCH_SIXTYFOUR" -> "arch_sixtyfour"
     | "MAKE" -> "make"
+    | "path-no-dep" ->
+      Errors.fail loc "path-no-dep is not supported in dune files"
+    | "<" ->
+      Errors.fail loc
+        "${<} is not supported in dune files. Use a named binding instead."
     | s -> s
   in
   fun t ->

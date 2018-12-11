@@ -83,6 +83,4 @@ val partial_expand
 
 val remove_locs : t -> t
 
-val rename_vars : t -> f:(string -> string) -> t
-
 val upgrade_to_dune : t -> t

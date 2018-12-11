@@ -9,6 +9,12 @@ unreleased
 
 - Use `lsof` on macOS to implement `--stats` (#1636, fixes #1634, @xclerc)
 
+- Generate `dune-package` files for every package. These files are installed and
+  read instead of `META` files whenever they are available (#1329, @rgrinberg)
+
+- Fix preprocessing for libraries with `(include_subdirs ..)` (#1624, fix #1626,
+  @nojb, @rgrinberg)
+
 1.6.2 (05/12/2018)
 ------------------
 

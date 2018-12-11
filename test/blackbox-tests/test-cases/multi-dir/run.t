@@ -49,3 +49,21 @@ Test some error cases
   Error: This stanza is not allowed in a sub-directory of directory with (include_subdirs unqualified).
   Hint: add (include_subdirs no) to this file.
   [1]
+
+Test for (include_subdir unqualified) with (preprocess (action ...))
+--------------------------------------------------------------------
+
+  $ dune build --display short --root test4 @all
+  Entering directory 'test4'
+      ocamldep .main.eobjs/main.ml.d
+        ocamlc .main.eobjs/main.{cmi,cmo,cmt}
+      ocamlopt .main.eobjs/main.{cmx,o}
+      ocamlopt main.exe
+          main sub/foo.pp.ml
+      ocamldep .foo.objs/foo.pp.ml.d
+        ocamlc .foo.objs/foo.{cmi,cmo,cmt}
+      ocamlopt .foo.objs/foo.{cmx,o}
+      ocamlopt foo.{a,cmxa}
+      ocamlopt foo.cmxs
+        ocamlc main.bc
+        ocamlc foo.cma

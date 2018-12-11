@@ -1,3 +1,5 @@
+open Stdune
+
 type t = A of string [@@unboxed]
 
 let invalid_argf fmt = Printf.ksprintf invalid_arg fmt
@@ -51,5 +53,5 @@ let print ((A s) as t) syntax =
 let of_int i = of_string (string_of_int i)
 let of_float x = of_string (string_of_float x)
 let of_bool x = of_string (string_of_bool x)
-let of_digest d = of_string (Digest.to_hex d)
+let of_digest d = of_string (Digest.to_string d)
 let of_int64 i = of_string (Int64.to_string i)

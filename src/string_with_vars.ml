@@ -8,13 +8,15 @@ type t =
   ; syntax_version : Syntax.Version.t
   }
 
+let make_syntax = (1, 0)
+
 let make ?(quoted=false) loc part =
   { template =
       { parts = [part]
       ; quoted
       ; loc
       }
-  ; syntax_version = (1, 0)
+  ; syntax_version = make_syntax
   }
 
 let make_text ?quoted loc s =
@@ -137,11 +139,9 @@ let loc t = t.template.loc
 
 let syntax_version t = t.syntax_version
 
-let virt_syntax = (1, 0)
-
 let virt ?(quoted=false) pos s =
   let template = Jbuild.parse ~quoted ~loc:(Loc.of_pos pos) s in
-  {template; syntax_version = virt_syntax}
+  {template; syntax_version = make_syntax}
 
 let virt_var ?(quoted=false) pos s =
   assert (String.for_all s ~f:(function ':' -> false | _ -> true));
@@ -157,11 +157,11 @@ let virt_var ?(quoted=false) pos s =
     ; quoted
     }
   in
-  {template; syntax_version = virt_syntax}
+  {template; syntax_version = make_syntax}
 
 let virt_text pos s =
   let template = { parts = [Text s];  loc = Loc.of_pos pos;  quoted = true } in
-  {template; syntax_version = virt_syntax}
+  {template; syntax_version = make_syntax}
 
 let concat_rev = function
   | [] -> ""

@@ -6,6 +6,8 @@ module Fd_count = struct
   type t = Unknown | This of int
 
   let try_to_use_lsof () =
+    (* note: we do not use the Process module here, because it would
+       create a circular dependency *)
     let temp = Filename.temp_file "dune" ".lsof" in
     let stdout =
       Unix.openfile temp [O_WRONLY; O_CREAT; O_TRUNC; O_SHARE_DELETE] 0o666

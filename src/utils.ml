@@ -216,7 +216,7 @@ module Cached_digest = struct
     if stat.Unix.st_kind = Unix.S_DIR then
       dir_digest stat
     else
-      Digest.file (Path.to_string fn)
+      Digest.file fn
 
   let refresh fn =
     let path = Path.to_string fn in

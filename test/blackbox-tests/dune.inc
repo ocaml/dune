@@ -456,6 +456,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name github1616)
+ (deps (package dune) (source_tree test-cases/github1616))
+ (action
+  (chdir
+   test-cases/github1616
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name github20)
  (deps (package dune) (source_tree test-cases/github20))
  (action
@@ -1225,6 +1233,7 @@
   (alias github1529)
   (alias github1549)
   (alias github1560)
+  (alias github1616)
   (alias github20)
   (alias github24)
   (alias github25)
@@ -1253,7 +1262,6 @@
   (alias lib-available)
   (alias lib-errors)
   (alias link-deps)
-  (alias lint)
   (alias loop)
   (alias macro-expand-error)
   (alias menhir)
@@ -1368,6 +1376,7 @@
   (alias github1529)
   (alias github1549)
   (alias github1560)
+  (alias github1616)
   (alias github20)
   (alias github24)
   (alias github25)
@@ -1394,7 +1403,6 @@
   (alias lib-available)
   (alias lib-errors)
   (alias link-deps)
-  (alias lint)
   (alias loop)
   (alias macro-expand-error)
   (alias merlin-tests)
@@ -1443,6 +1451,6 @@
   (alias wrapped-false-main-module-name)
   (alias wrapped-transition)))
 
-(alias (name runtest-disabled) (deps (alias envs-and-contexts)))
+(alias (name runtest-disabled) (deps (alias envs-and-contexts) (alias lint)))
 
 (alias (name runtest-js) (deps (alias js_of_ocaml)))

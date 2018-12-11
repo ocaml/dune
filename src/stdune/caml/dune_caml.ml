@@ -7,6 +7,7 @@ module Char     = Char
 module Result   = Result
 module Hashtbl  = MoreLabels.Hashtbl
 module Lexing   = Lexing
+module Digest   = Digest
 
 type ('a, 'error) result = ('a, 'error) Result.t =
   | Ok    of 'a

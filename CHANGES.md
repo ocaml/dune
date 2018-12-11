@@ -4,6 +4,23 @@ unreleased
 - unstable-fmt: use boxes to wrap some lists (#1608, fix #1153, @emillon,
   thanks to @rgrinberg)
 
+- skip directories when looking up programs in the PATH (#1628, fixes
+  #1616, @diml)
+
+- Use `lsof` on macOS to implement `--stats` (#1636, fixes #1634, @xclerc)
+
+- Generate `dune-package` files for every package. These files are installed and
+  read instead of `META` files whenever they are available (#1329, @rgrinberg)
+
+- Fix preprocessing for libraries with `(include_subdirs ..)` (#1624, fix #1626,
+  @nojb, @rgrinberg)
+
+- Delay opening redirected output files until executing commands (#1633,
+  @jonludlam)
+
+- Do not generate targets for archive that don't match the `modes` field.
+  (#1632, fix #1617, @rgrinberg)
+
 1.6.2 (05/12/2018)
 ------------------
 

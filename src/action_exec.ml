@@ -8,12 +8,8 @@ type exec_context =
   }
 
 let get_std_output : _ -> Process.std_output_to = function
-  | None          -> Terminal
-  | Some (fn, oc) ->
-    Opened_file { filename = fn
-                ; tail = false
-                ; desc = Channel oc }
-
+  | None    -> Terminal
+  | Some fn -> File fn
 
 let exec_run_direct ~ectx ~dir ~env ~stdout_to ~stderr_to prog args =
   begin match ectx.context with
@@ -44,7 +40,7 @@ let exec_echo stdout_to str =
   Fiber.return
     (match stdout_to with
      | None -> print_string str; flush stdout
-     | Some (_, oc) -> output_string oc str)
+     | Some fn -> Io.write_file fn str)
 
 let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to =
   match (t : Action.t) with
@@ -60,15 +56,6 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to =
   | Redirect (Stdout, fn, Echo s) ->
     Io.write_file fn (String.concat s ~sep:" ");
     Fiber.return ()
-  | Redirect (outputs, fn, Run (Ok prog, args)) ->
-    let out = Process.File fn in
-    let stdout_to, stderr_to =
-      match outputs with
-      | Stdout -> (out, get_std_output stderr_to)
-      | Stderr -> (get_std_output stdout_to, out)
-      | Outputs -> (out, out)
-    in
-    exec_run_direct ~ectx ~dir ~env ~stdout_to ~stderr_to prog args
   | Redirect (outputs, fn, t) ->
     redirect ~ectx ~dir outputs fn t ~env ~stdout_to ~stderr_to
   | Ignore (outputs, t) ->
@@ -78,12 +65,9 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to =
   | Echo strs -> exec_echo stdout_to (String.concat strs ~sep:" ")
   | Cat fn ->
     Io.with_file_in fn ~f:(fun ic ->
-      let oc =
-        match stdout_to with
-        | None -> stdout
-        | Some (_, oc) -> oc
-      in
-      Io.copy_channels ic oc);
+      match stdout_to with
+        | None -> Io.copy_channels ic stdout
+        | Some fn -> Io.with_file_out fn ~f:(fun oc -> Io.copy_channels ic oc));
     Fiber.return ()
   | Copy (src, dst) ->
     Io.copy_file ~src ~dst ();
@@ -149,7 +133,7 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to =
       Digest.string
         (Marshal.to_string data [])
     in
-    exec_echo stdout_to s
+    exec_echo stdout_to (Digest.to_string_raw s)
   | Diff { optional; file1; file2; mode } ->
     let compare_files =
       match mode with
@@ -195,16 +179,16 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to =
     Fiber.return ()
 
 and redirect outputs fn t ~ectx ~dir ~env ~stdout_to ~stderr_to =
-  let oc = Io.open_out fn in
-  let out = Some (fn, oc) in
+  (* We resolve the path to an absolute one here to ensure no 
+     Chdir actions change the eventual path of the file *)
+  let out = Some (Path.to_absolute fn) in
   let stdout_to, stderr_to =
     match outputs with
     | Stdout -> (out, stderr_to)
     | Stderr -> (stdout_to, out)
     | Outputs -> (out, out)
   in
-  exec t ~ectx ~dir ~env ~stdout_to ~stderr_to >>| fun () ->
-  close_out oc
+  exec t ~ectx ~dir ~env ~stdout_to ~stderr_to
 
 and exec_list l ~ectx ~dir ~env ~stdout_to ~stderr_to =
   match l with

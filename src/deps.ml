@@ -10,11 +10,13 @@ let paths t = t.paths
 let trace_path fn =
   (Path.to_string fn, Utils.Cached_digest.file fn)
 
+let unset = lazy (Digest.string "unset")
+
 let trace_var env var =
   let value =
     match Env.get env var with
-    | None -> "unset"
-    | Some v -> Digest.string v |> Digest.to_hex
+    | None -> Lazy.force unset
+    | Some v -> Digest.string v
   in
   (var, value)
 

@@ -87,7 +87,7 @@ end = struct
     | Some x -> x
     | None ->
       die "I don't know what ppx rewriters set %s correspond to."
-        (Digest.to_hex y)
+        (Digest.to_string y)
 end
 
 let pped_path path ~suffix =
@@ -457,7 +457,7 @@ let gen_rules sctx components =
   | _ -> ()
 
 let ppx_driver_exe sctx libs ~dir_kind =
-  let key = Digest.to_hex (Key.of_libs ~dir_kind libs |> Key.encode) in
+  let key = Digest.to_string (Key.of_libs ~dir_kind libs |> Key.encode) in
   ppx_exe sctx ~key ~dir_kind
 
 module Compat_ppx_exe_kind = struct

@@ -1,3 +1,5 @@
+open Stdune
+
 type t = private A of string [@@unboxed]
 
 val is_valid_dune : string -> bool

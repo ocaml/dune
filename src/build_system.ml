@@ -818,7 +818,7 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
     in
     let sandbox_dir =
       if sandbox then
-        Some (Path.relative sandbox_dir (Digest.to_hex rule_digest))
+        Some (Path.relative sandbox_dir (Digest.to_string rule_digest))
       else
         None
     in
@@ -1007,7 +1007,7 @@ and load_dir_step2_exn t ~dir ~collector ~lazy_generators =
                  { Dir_status. stamp; action; locks ; context ; loc ; env } ->
                  let path =
                    Path.extend_basename base_path
-                     ~suffix:("-" ^ Digest.to_hex stamp)
+                     ~suffix:("-" ^ Digest.to_string stamp)
                  in
                  let rule =
                    Pre_rule.make ~locks ~context:(Some context) ~env ?loc
@@ -1218,7 +1218,7 @@ let stamp_file_for_files_of t ~dir ~ext =
         |> String.Map.of_list_multi
       in
       { files_by_ext
-      ; dir_hash = Path.to_string dir |> Digest.string |> Digest.to_hex
+      ; dir_hash = Path.to_string dir |> Digest.string |> Digest.to_string
       ; stamps = String.Map.empty
       })
   in

@@ -144,6 +144,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name double-echo)
+ (deps (package dune) (source_tree test-cases/double-echo))
+ (action
+  (chdir
+   test-cases/double-echo
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name dune-build-dir-exec-1101)
  (deps (package dune) (source_tree test-cases/dune-build-dir-exec-1101))
  (action
@@ -1195,6 +1203,7 @@
   (alias depend-on-the-universe)
   (alias deps-conf-vars)
   (alias dev-flag-1103)
+  (alias double-echo)
   (alias dune-build-dir-exec-1101)
   (alias dune-jbuild-var-case)
   (alias dune-package)
@@ -1341,6 +1350,7 @@
   (alias depend-on-the-universe)
   (alias deps-conf-vars)
   (alias dev-flag-1103)
+  (alias double-echo)
   (alias dune-build-dir-exec-1101)
   (alias dune-jbuild-var-case)
   (alias dune-package)

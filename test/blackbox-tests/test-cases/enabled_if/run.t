@@ -15,4 +15,6 @@ This rule is disabled, trying to build a should fail:
 
 This one is enabled:
   $ dune build b
-  Building file b
+  Building file bError: Rule failed to generate the following targets:
+  - b
+  [1]

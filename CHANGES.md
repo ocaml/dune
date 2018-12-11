@@ -7,6 +7,8 @@ unreleased
 - skip directories when looking up programs in the PATH (#1628, fixes
   #1616, @diml)
 
+- Use `lsof` on macOS to implement `--stats` (#1636, fixes #1634, @xclerc)
+
 - Generate `dune-package` files for every package. These files are installed and
   read instead of `META` files whenever they are available (#1329, @rgrinberg)
 

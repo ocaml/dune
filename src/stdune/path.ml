@@ -626,6 +626,8 @@ let of_filename_relative_to_initial_cwd fn =
 
 let to_absolute_filename t = Kind.to_absolute_filename (kind t)
 
+let to_absolute t = external_ (External.of_string (to_absolute_filename t))
+
 let external_of_local x ~root =
   External.to_string (External.relative root (Local.to_string x))
 

@@ -18,12 +18,12 @@ module Name : sig
     | Named     of string
     | Anonymous of Path.t
 
+  val to_dyn : t -> Dyn.t
+
   val compare : t -> t -> Ordering.t
 
   (** Convert to a string that is suitable for human readable messages *)
   val to_string_hum : t -> string
-
-  val to_sexp : t Sexp.Encoder.t
 
   (** Convert to/from an encoded string that is suitable to use in filenames *)
   val to_encoded_string : t -> string
@@ -36,14 +36,66 @@ end
 
 module Project_file : sig
   type t
+  val to_dyn : t -> Dyn.t
 end
 
+module Source_kind : sig
+  type t =
+    | Github of string * string
+    | Url of string
+
+  val pp : t Fmt.t
+
+  val to_dyn : t -> Dyn.t
+end
+
+module Opam : sig
+
+  module Dependency : sig
+    type t
+
+    val opam_depend : t -> OpamParserTypes.value
+
+    val to_dyn : t -> Dyn.t
+  end
+
+  module Package : sig
+    type t = private
+      { name: Package.Name.t
+      ; synopsis: string
+      ; description: string
+      ; depends: Dependency.t list
+      ; conflicts: Dependency.t list
+      }
+    val to_dyn : t -> Dyn.t
+  end
+
+  type t = private
+    { tags : string list
+    ; depends: Dependency.t list
+    ; conflicts: Dependency.t list
+    ; packages: Package.t list
+    }
+
+  type package_name
+
+  val to_dyn : t -> Dyn.t
+
+  val find : t -> package_name -> Package.t option
+end with type package_name := Package.Name.t
+
 type t
+
+val to_dyn : t -> Dyn.t
 
 val packages : t -> Package.t Package.Name.Map.t
 val version : t -> string option
 val name : t -> Name.t
 val root : t -> Path.Source.t
+val source: t -> Source_kind.t option
+val opam : t -> Opam.t option
+val license : t -> string option
+val authors : t -> string list
 val stanza_parser : t -> Stanza.t list Dune_lang.Decoder.t
 val allow_approx_merlin : t -> bool
 
@@ -133,5 +185,3 @@ val set_parsing_context : t -> 'a Dune_lang.Decoder.t -> 'a Dune_lang.Decoder.t
 val implicit_transitive_deps : t -> bool
 
 val dune_version : t -> Syntax.Version.t
-
-val pp : t Fmt.t

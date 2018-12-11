@@ -11,7 +11,7 @@
 
 type relop = [ `Eq | `Neq | `Geq | `Gt | `Leq | `Lt ]
 type logop = [ `And | `Or ]
-type pfxop = [ `Not ]
+type pfxop = [ `Not | `Defined ]
 
 type file_name = string
 

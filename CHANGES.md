@@ -15,10 +15,6 @@ unreleased
 - Fix preprocessing for libraries with `(include_subdirs ..)` (#1624, fix #1626,
   @nojb, @rgrinberg)
 
-- Delay opening redirected output files until executing commands in
-  order to reduce the number of maximum number of open file
-  descriptors (#1635, fixes #1633, @jonludlam)
-
 - Do not generate targets for archive that don't match the `modes` field.
   (#1632, fix #1617, @rgrinberg)
 

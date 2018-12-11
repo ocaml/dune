@@ -33,6 +33,17 @@ let map_result
 type std_output_to =
   | Terminal
   | File        of Path.t
+  | Opened_file of opened_file
+
+and opened_file =
+  { filename : Path.t
+  ; desc     : opened_file_desc
+  ; tail     : bool
+  }
+
+and opened_file_desc =
+  | Fd      of Unix.file_descr
+  | Channel of out_channel
 
 type purpose =
   | Internal_job
@@ -114,18 +125,19 @@ module Fancy = struct
       | Some dir -> sprintf "(cd %s && %s)" (Path.to_string dir) s
     in
     match stdout_to, stderr_to with
-    | File fn1, File fn2 when Path.equal fn1 fn2 ->
+    | (File fn1 | Opened_file { filename = fn1; _ }),
+      (File fn2 | Opened_file { filename = fn2; _ }) when Path.equal fn1 fn2 ->
       sprintf "%s &> %s" s (Path.to_string fn1)
     | _ ->
       let s =
         match stdout_to with
         | Terminal -> s
-        | File fn ->
+        | File fn | Opened_file { filename = fn; _ } ->
           sprintf "%s > %s" s (Path.to_string fn)
       in
       match stderr_to with
       | Terminal -> s
-      | File fn ->
+      | File fn | Opened_file { filename = fn; _ } ->
         sprintf "%s 2> %s" s (Path.to_string fn)
 
   let pp_purpose ppf = function
@@ -184,11 +196,19 @@ let get_std_output ~default = function
   | File fn ->
     let fd = Unix.openfile (Path.to_string fn)
                [O_WRONLY; O_CREAT; O_TRUNC; O_SHARE_DELETE] 0o666 in
-    (fd, Some fd)
+    (fd, Some (Fd fd))
+  | Opened_file { desc; tail; _ } ->
+    let fd =
+      match desc with
+      | Fd      fd -> fd
+      | Channel oc -> flush oc; Unix.descr_of_out_channel oc
+    in
+    (fd, Option.some_if tail desc)
 
 let close_std_output = function
   | None -> ()
-  | Some fd -> Unix.close fd
+  | Some (Fd      fd) -> Unix.close fd
+  | Some (Channel oc) -> close_out  oc
 
 let gen_id =
   let next = ref (-1) in

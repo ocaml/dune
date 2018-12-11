@@ -51,4 +51,4 @@
       (echo "\n")
       (echo "let () = print_int 43;;")))))
            run alias dune-file/runtest
-  43
+  414243

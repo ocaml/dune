@@ -18,6 +18,18 @@ type ('a, 'b) failure_mode =
 type std_output_to =
   | Terminal
   | File        of Path.t
+  | Opened_file of opened_file
+
+and opened_file =
+  { filename : Path.t
+  ; desc     : opened_file_desc
+  ; tail     : bool
+  (** If [true], the descriptor is closed after starting the command *)
+  }
+
+and opened_file_desc =
+  | Fd      of Unix.file_descr
+  | Channel of out_channel
 
 (** Why a Fiber.t was run *)
 type purpose =

@@ -7,6 +7,8 @@ unreleased
 - skip directories when looking up programs in the PATH (#1628, fixes
   #1616, @diml)
 
+- Use `lsof` on macOS to implement `--stats` (#1636, fixes #1634, @xclerc)
+
 1.6.2 (05/12/2018)
 ------------------
 

@@ -7,12 +7,32 @@ type exec_context =
   ; purpose : Process.purpose
   }
 
+type tail =
+  | Non_tail
+  | Tail of bool ref
+
+type output =
+  { filename : Path.t
+  ; channel : out_channel
+  ; tail : tail
+  }
+
+let set_no_tail = function
+  | None -> None
+  | Some out -> Some { out with tail = Non_tail }
+
 let get_std_output : _ -> Process.std_output_to = function
   | None          -> Terminal
-  | Some (fn, oc) ->
-    Opened_file { filename = fn
-                ; tail = false
-                ; desc = Channel oc }
+  | Some { filename; channel; tail } ->
+    let tail =
+      match tail with
+      | Non_tail -> false
+      | Tail b -> b := true; true
+    in
+    Opened_file { filename
+                ; tail
+                ; desc = Channel channel
+                }
 
 
 let exec_run_direct ~ectx ~dir ~env ~stdout_to ~stderr_to prog args =
@@ -44,7 +64,7 @@ let exec_echo stdout_to str =
   Fiber.return
     (match stdout_to with
      | None -> print_string str; flush stdout
-     | Some (_, oc) -> output_string oc str)
+     | Some { channel ; _ } -> output_string channel str)
 
 let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to =
   match (t : Action.t) with
@@ -60,15 +80,6 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to =
   | Redirect (Stdout, fn, Echo s) ->
     Io.write_file fn (String.concat s ~sep:" ");
     Fiber.return ()
-  | Redirect (outputs, fn, Run (Ok prog, args)) ->
-    let out = Process.File fn in
-    let stdout_to, stderr_to =
-      match outputs with
-      | Stdout -> (out, get_std_output stderr_to)
-      | Stderr -> (get_std_output stdout_to, out)
-      | Outputs -> (out, out)
-    in
-    exec_run_direct ~ectx ~dir ~env ~stdout_to ~stderr_to prog args
   | Redirect (outputs, fn, t) ->
     redirect ~ectx ~dir outputs fn t ~env ~stdout_to ~stderr_to
   | Ignore (outputs, t) ->
@@ -81,7 +92,7 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to =
       let oc =
         match stdout_to with
         | None -> stdout
-        | Some (_, oc) -> oc
+        | Some {channel; _} -> channel
       in
       Io.copy_channels ic oc);
     Fiber.return ()
@@ -196,15 +207,23 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to =
 
 and redirect outputs fn t ~ectx ~dir ~env ~stdout_to ~stderr_to =
   let oc = Io.open_out fn in
-  let out = Some (fn, oc) in
+  let closed = ref false in
+  let out =
+    { filename = fn
+    ; channel = oc
+    ; tail = Tail closed
+    }
+  in
   let stdout_to, stderr_to =
+    let out = Some out in
     match outputs with
     | Stdout -> (out, stderr_to)
     | Stderr -> (stdout_to, out)
     | Outputs -> (out, out)
   in
   exec t ~ectx ~dir ~env ~stdout_to ~stderr_to >>| fun () ->
-  close_out oc
+  if not !closed then
+    close_out oc
 
 and exec_list l ~ectx ~dir ~env ~stdout_to ~stderr_to =
   match l with
@@ -213,7 +232,9 @@ and exec_list l ~ectx ~dir ~env ~stdout_to ~stderr_to =
   | [t] ->
     exec t ~ectx ~dir ~env ~stdout_to ~stderr_to
   | t :: rest ->
-    exec t ~ectx ~dir ~env ~stdout_to ~stderr_to >>= fun () ->
+    (let stdout_to = set_no_tail stdout_to in
+     let stderr_to = set_no_tail stderr_to in
+     exec t ~ectx ~dir ~env ~stdout_to ~stderr_to) >>= fun () ->
     exec_list rest ~ectx ~dir ~env ~stdout_to ~stderr_to
 
 let exec ~targets ~context ~env t =

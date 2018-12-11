@@ -21,21 +21,22 @@ let set_no_tail = function
   | None -> None
   | Some out -> Some { out with tail = Non_tail }
 
-let get_std_output : _ -> Process.std_output_to = function
-  | None          -> Terminal
-  | Some { filename; channel; tail } ->
-    let tail =
-      match tail with
+let exec_run ~ectx ~dir ~env ~stdout_to ~stderr_to prog args =
+  let get_std_output : _ -> Process.std_output_to = function
+    | None          -> Terminal
+    | Some { filename; channel; tail } ->
+      let tail =
+        match tail with
       | Non_tail -> false
       | Tail b -> b := true; true
-    in
-    Opened_file { filename
-                ; tail
-                ; desc = Channel channel
-                }
-
-
-let exec_run_direct ~ectx ~dir ~env ~stdout_to ~stderr_to prog args =
+      in
+      Opened_file { filename
+                  ; tail
+                  ; desc = Channel channel
+                  }
+  in
+  let stdout_to = get_std_output stdout_to in
+  let stderr_to = get_std_output stderr_to in
   begin match ectx.context with
   | None
   | Some { Context.for_host = None; _ } -> ()
@@ -54,11 +55,6 @@ let exec_run_direct ~ectx ~dir ~env ~stdout_to ~stderr_to prog args =
     ~stdout_to ~stderr_to
     ~purpose:ectx.purpose
     prog args
-
-let exec_run ~stdout_to ~stderr_to =
-  let stdout_to = get_std_output stdout_to in
-  let stderr_to = get_std_output stderr_to in
-  exec_run_direct ~stdout_to ~stderr_to
 
 let exec_echo stdout_to str =
   Fiber.return

@@ -327,3 +327,27 @@ let rename_vars t ~f =
     { t with parts = List.map ~f:rename_part t.parts }
   in
   { t with template = rename t.template }
+
+let upgrade_to_dune =
+  let f = function
+    | "@" -> "targets"
+    | "^" -> "deps"
+    | "file" -> "dep"
+    | "SCOPE_ROOT" -> "project_root"
+    | "ROOT" -> "workspace_root"
+    | "findlib" -> "lib"
+    | "CPP" -> "cpp"
+    | "CC" -> "cc"
+    | "CXX" -> "cxx"
+    | "OCAML" -> "ocaml"
+    | "OCAMLC" -> "ocamlc"
+    | "OCAMLOPT" -> "ocamlopt"
+    | "ARCH_SIXTYFOUR" -> "arch_sixtyfour"
+    | "MAKE" -> "make"
+    | s -> s
+  in
+  fun t ->
+    if t.syntax_version >= make_syntax then
+      t
+    else
+      { (rename_vars t ~f) with syntax_version = make_syntax }

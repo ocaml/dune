@@ -33,8 +33,8 @@ let printf t format_string =
   | Active channel ->
     Printf.fprintf channel ",";
     print_on channel
-  | Path p ->
-    let channel = Pervasives.open_out_gen [Open_append; Open_creat] 0o666 p in
+  | Path path ->
+    let channel = Pervasives.open_out path in
     t.state <- Active channel;
     Printf.fprintf channel "[";
     print_on channel

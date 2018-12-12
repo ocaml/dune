@@ -7,44 +7,7 @@ open Memo;;
 
 module String_fn = Memo.Make(String)
 module Int_fn = Memo.Make(Int)
-[%%expect{|
-module String_fn :
-  sig
-    type 'a t = 'a Memo.Make(Stdune.String).t
-    val create :
-      string ->
-      ?allow_cutoff:bool ->
-      (module Memo__.Memo_intf.Data with type t = 'a) ->
-      (string -> 'a Fiber.t) -> 'a t
-    val exec : 'a t -> string -> 'a Fiber.t
-    val peek : 'a t -> string -> 'a option
-    val peek_exn : 'a t -> string -> 'a
-    val get_deps : 'a t -> string -> (string * Sexp.t) list option
-    module Stack_frame :
-      sig
-        val instance_of : Stack_frame.t -> of_:'a t -> bool
-        val input : Stack_frame.t -> string option
-      end
-  end
-module Int_fn :
-  sig
-    type 'a t = 'a Memo.Make(Stdune.Int).t
-    val create :
-      string ->
-      ?allow_cutoff:bool ->
-      (module Memo__.Memo_intf.Data with type t = 'a) ->
-      (int -> 'a Fiber.t) -> 'a t
-    val exec : 'a t -> int -> 'a Fiber.t
-    val peek : 'a t -> int -> 'a option
-    val peek_exn : 'a t -> int -> 'a
-    val get_deps : 'a t -> int -> (string * Sexp.t) list option
-    module Stack_frame :
-      sig
-        val instance_of : Stack_frame.t -> of_:'a t -> bool
-        val input : Stack_frame.t -> int option
-      end
-  end
-|}]
+[%%ignore]
 
 (* to run a computation *)
 let run exec f v =
@@ -71,17 +34,7 @@ let mcompdep2 = String_fn.create "another" (module String) compdep;;
 run mcompdep1 "a";;
 run mcompdep2 "a";;
 
-[%%expect{|
-val run : ('a -> 'b -> 'c Fiber.t) -> 'a -> 'b -> 'c = <fun>
-val run_int : 'a Int_fn.t -> int -> 'a = <fun>
-val run_string : 'a String_fn.t -> string -> 'a = <fun>
-val run : 'a String_fn.t -> string -> 'a = <fun>
-val compdep : string -> string Fiber.t = <fun>
-val mcompdep1 : string String_fn.t = <abstr>
-val mcompdep2 : string String_fn.t = <abstr>
-- : string = "aa"
-- : string = "aa"
-|}]
+[%%ignore]
 
 (* define a counter so we can track how often our computation
    has been run *)
@@ -98,11 +51,7 @@ let comp x =
 
 let mcomp = String_fn.create "test" (module String) comp;;
 
-[%%expect{|
-val counter : int ref = {contents = 0}
-val comp : string -> string Fiber.t = <fun>
-val mcomp : string String_fn.t = <abstr>
-|}]
+[%%ignore]
 
 (* running it the first time should increase the counter,
    running it again should not, but should still return the

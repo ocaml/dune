@@ -200,6 +200,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name embed-jbuild)
+ (deps (package dune) (source_tree test-cases/embed-jbuild))
+ (action
+  (chdir
+   test-cases/embed-jbuild
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name enabled_if)
  (deps (package dune) (source_tree test-cases/enabled_if))
  (action
@@ -1202,6 +1210,7 @@
   (alias dune-project-edition)
   (alias dup-fields)
   (alias duplicate-target-no-loc)
+  (alias embed-jbuild)
   (alias enabled_if)
   (alias env)
   (alias env-and-flags-include)
@@ -1347,6 +1356,7 @@
   (alias dune-project-edition)
   (alias dup-fields)
   (alias duplicate-target-no-loc)
+  (alias embed-jbuild)
   (alias enabled_if)
   (alias env)
   (alias env-and-flags-include)

@@ -318,18 +318,8 @@ let remove_locs t =
   { t with template = Dune_lang.Template.remove_locs t.template
   }
 
-let rename_vars t ~f =
-  let rename_part = function
-    | Text _ as s -> s
-    | Var v -> Var { v with name = f ~loc:v.loc v.name  }
-  in
-  let rename t =
-    { t with parts = List.map ~f:rename_part t.parts }
-  in
-  { t with template = rename t.template }
-
 let upgrade_to_dune =
-  let f ~loc = function
+  let map_var ~loc = function
     | "@" -> "targets"
     | "^" -> "deps"
     | "file" -> "dep"
@@ -351,8 +341,19 @@ let upgrade_to_dune =
         "${<} is not supported in dune files. Use a named binding instead."
     | s -> s
   in
+  let map_part = function
+    | Text _ as part -> part
+    | Var v ->
+      Var { v with
+            name = map_var ~loc:v.loc v.name
+          ; syntax = Percent
+          }
+  in
   fun t ->
     if t.syntax_version >= make_syntax then
       t
     else
-      { (rename_vars t ~f) with syntax_version = make_syntax }
+      { syntax_version = make_syntax
+      ; template =
+          { t.template with parts = List.map t.template.parts ~f:map_part }
+      }

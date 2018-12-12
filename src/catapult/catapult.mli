@@ -10,6 +10,11 @@ type t
     no trace file is written. *)
 val make : unit -> t
 
+(** Return a fake reporter that reads time in a reference and writes JSON
+    objects to a buffer. Note that in this case, the output is not valid JSON
+    since there is no leading '['. *)
+val fake : float ref -> Buffer.t -> t
+
 (** Output trailing data to make the underlying file valid JSON, and close it. *)
 val close : t -> unit
 

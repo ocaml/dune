@@ -3,6 +3,8 @@ open Stdune
 type ops =
   { print : string -> unit
   ; close : unit -> unit
+  ; get_time : unit -> float
+  ; gc_stat : unit -> Gc.stat
   }
 
 type state =
@@ -18,10 +20,43 @@ let make () =
   { state = Disabled
   }
 
+let fake_gc_stat =
+  { Gc.minor_words = 0.
+  ; promoted_words = 0.
+  ; major_words = 0.
+  ; minor_collections = 0
+  ; major_collections = 0
+  ; heap_words = 0
+  ; heap_chunks = 0
+  ; live_words = 0
+  ; live_blocks = 0
+  ; free_words = 0
+  ; free_blocks = 0
+  ; largest_free = 0
+  ; fragments = 0
+  ; compactions = 0
+  ; top_heap_words = 0
+  ; stack_size = 0
+  }
+
+let fake time_ref buf =
+  let print s = Buffer.add_string buf s in
+  let close () = () in
+  let get_time () = !time_ref in
+  let gc_stat () = fake_gc_stat in
+  { state =
+      Using
+        { print
+        ; close
+        ; get_time
+        ; gc_stat
+        }
+  }
+
 let close t = match t.state with
   | Disabled -> ()
   | Path _ -> ()
-  | Using {print; close} ->
+  | Using {print; close; _} ->
     print "]\n";
     close ()
 
@@ -32,7 +67,9 @@ let make_reporter path =
   let channel = Pervasives.open_out path in
   let print s = Pervasives.output_string channel s in
   let close () = Pervasives.close_out channel in
-  {print; close}
+  let get_time () = Unix.gettimeofday () in
+  let gc_stat () = Gc.stat () in
+  {print; close; get_time; gc_stat}
 
 let printf t format_string =
   match t.state with
@@ -110,11 +147,19 @@ let emit_counters t ~time (stat: Gc.stat) =
   emit_counter t ~time "stack_size" stat.stack_size
 
 let get_time t = match t.state with
-  | Disabled -> 0.
+  | Disabled
   | Path _
-  | Using _
+    -> 0.
+  | Using {get_time; _}
     ->
-    Unix.gettimeofday ()
+    get_time ()
+
+let gc_stat t = match t.state with
+  | Disabled
+  | Path _
+    -> fake_gc_stat
+  | Using {gc_stat; _} ->
+    gc_stat ()
 
 let on_process_start t ~program ~args =
   { start_time = get_time t
@@ -125,5 +170,5 @@ let on_process_start t ~program ~args =
 let on_process_end t event =
   let time = get_time t in
   emit_process t event ~time;
-  let stat = Gc.stat () in
+  let stat = gc_stat t in
   emit_counters t stat ~time

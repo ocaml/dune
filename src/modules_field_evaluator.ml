@@ -7,6 +7,7 @@ type t =
   ; virtual_modules : Module.Name_map.t
   }
 
+
 let eval =
   let module Value = struct
     type t = (Module.t, Module.Name.t) result
@@ -36,6 +37,8 @@ let eval =
         match m with
         | Ok m -> Some (loc, m)
         | Error s ->
+          (* We are going to fail only if the module appear in the final set,
+             foo \ bar  doesn't fail if bar doesn't exists (for jbuild file compatibility) *)
           Errors.fail loc "Module %a doesn't exist." Module.Name.pp s)
     )
 
@@ -176,36 +179,35 @@ let check_invalid_module_listing ~(buildable : Buildable.t) ~intf_only
 let eval ~modules:(all_modules : Module.Name_map.t)
       ~buildable:(conf : Buildable.t) ~virtual_modules
       ~private_modules =
-  let (fake_modules, modules) =
+  (* fake modules are modules that doesn't exists but it doesn't
+     matter because they are only removed from a set (for jbuild file
+     compatibility) *)
+  let fake_modules = ref Module.Name.Map.empty in
+  let add_fake_modules (fake_modules', a) =
+    fake_modules := Module.Name.Map.superpose fake_modules' !fake_modules;
+    a
+  in
+  let modules =
+    add_fake_modules @@
     eval ~standard:all_modules ~all_modules conf.modules in
-  let (fake_modules, intf_only) =
-    let (fake_modules', intf_only) =
-      eval ~standard:Module.Name.Map.empty ~all_modules
-        conf.modules_without_implementation in
-    ( Module.Name.Map.superpose fake_modules' fake_modules
-    , intf_only
-    )
+  let intf_only =
+    add_fake_modules @@
+    eval ~standard:Module.Name.Map.empty ~all_modules
+      conf.modules_without_implementation
   in
-  let (fake_modules, virtual_modules) =
+  let virtual_modules =
     match virtual_modules with
-    | None -> (fake_modules, Module.Name.Map.empty)
+    | None -> Module.Name.Map.empty
     | Some virtual_modules ->
-      let (fake_modules', virtual_modules) =
-        eval ~standard:Module.Name.Map.empty ~all_modules
-          virtual_modules in
-      ( Module.Name.Map.superpose fake_modules' fake_modules
-      , virtual_modules
-      )
+      add_fake_modules @@
+      eval ~standard:Module.Name.Map.empty ~all_modules
+        virtual_modules
   in
-  let (fake_modules, private_modules) =
-    let (fake_modules', private_modules) =
-      eval ~standard:Module.Name.Map.empty ~all_modules private_modules
-    in
-    ( Module.Name.Map.superpose fake_modules' fake_modules
-    , private_modules
-    )
+  let private_modules =
+    add_fake_modules @@
+    eval ~standard:Module.Name.Map.empty ~all_modules private_modules
   in
-  Module.Name.Map.iteri fake_modules ~f:(fun m loc ->
+  Module.Name.Map.iteri !fake_modules ~f:(fun m loc ->
     Errors.warn loc "Module %a is excluded but it doesn't exist."
       Module.Name.pp m
   );

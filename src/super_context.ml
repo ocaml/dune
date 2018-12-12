@@ -96,11 +96,9 @@ end = struct
             | None -> raise_notrace Exit
             | Some parent -> lazy (get t ~dir:parent ~scope)
         in
-        match get_env_stanza t ~dir with
-        | None -> Lazy.force inherit_from
-        | Some config ->
-          Env_node.make ~dir ~scope ~config ~inherit_from:(Some inherit_from)
-            ~env:None
+        let config = get_env_stanza t ~dir in
+        Env_node.make ~dir ~scope ~config ~inherit_from:(Some inherit_from)
+          ~env:None
       in
       Hashtbl.add t.env dir node;
       node
@@ -314,13 +312,14 @@ let create
     in
     match context.env_nodes with
     | { context = None; workspace = None } ->
-      make ~config:{ loc = Loc.none; rules = [] } ~inherit_from:None
-    | { context = Some config; workspace = None }
-    | { context = None; workspace = Some config } ->
+      make ~config:(Some { loc = Loc.none; rules = [] }) ~inherit_from:None
+    | { context = Some _ as config; workspace = None }
+    | { context = None; workspace = Some _ as config } ->
       make ~config ~inherit_from:None
-    | { context = Some context ; workspace = Some workspace } ->
+    | { context = Some _ as context ; workspace = Some _ as workspace } ->
       make ~config:context
-        ~inherit_from:(Some (lazy (make ~inherit_from:None ~config:workspace)))
+        ~inherit_from:(Some (lazy (make ~inherit_from:None
+                                     ~config:workspace)))
   ) in
   let expander =
     let artifacts_host =

@@ -66,9 +66,6 @@ val of_filename_relative_to_initial_cwd : string -> t
     root has been set. [root] is the root directory of local paths *)
 val to_absolute_filename : t -> string
 
-(** Convert any path to an absolute path *)
-val to_absolute : t -> t
-
 val reach : t -> from:t -> string
 
 (** [from] defaults to [Path.root] *)

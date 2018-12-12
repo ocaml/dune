@@ -30,6 +30,9 @@ unreleased
   one from [this paper](https://doi.org/10.1145/2756553) (#1489,
   @rudihorn)
 
+- Get the correct environment node for multi project workspaces (#1648,
+  @rgrinberg)
+
 1.6.2 (05/12/2018)
 ------------------
 

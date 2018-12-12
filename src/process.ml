@@ -299,6 +299,9 @@ let run_internal ?dir ?(stdout_to=Output.stdout) ?(stderr_to=Output.stderr)
       (None, stdout_to, stderr_to)
   in
   let run =
+    (* Output.fd might create the file with Unix.openfile. We need to
+       make sure to call it before doing the chdir as the path might
+       be relative. *)
     let stdout = Output.fd stdout_to in
     let stderr = Output.fd stderr_to in
     fun () ->

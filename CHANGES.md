@@ -15,12 +15,13 @@ unreleased
 - Fix preprocessing for libraries with `(include_subdirs ..)` (#1624, fix #1626,
   @nojb, @rgrinberg)
 
-- Delay opening redirected output files until executing commands in
-  order to reduce the number of maximum number of open file
-  descriptors (#1635, fixes #1633, @jonludlam)
-
 - Do not generate targets for archive that don't match the `modes` field.
   (#1632, fix #1617, @rgrinberg)
+
+- When executing actions, open files lazily and close them as soon as
+  possible in order to reduce the maximum number of file descriptors
+  opened by Dune (#1635, #1643, fixes #1633, @jonludlam, @rgrinberg,
+  @diml)
 
 1.6.2 (05/12/2018)
 ------------------

@@ -1,0 +1,9 @@
+(rule
+ (with-stdout-to foobar
+  (progn
+   (echo "foo")
+   (echo "bar"))))
+
+(alias
+ (name default)
+ (action (echo %{read:foobar})))

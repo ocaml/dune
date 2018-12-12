@@ -83,15 +83,13 @@ let printf t format_string =
     Printf.ksprintf reporter.print ("[" ^^ format_string ^^ "\n")
 
 let color_of_name = function
-  | "ocamlc.opt" -> "thread_state_uninterruptible"
-  | "ocamlopt.opt" -> "thread_state_running"
-  | "ocamldep.opt" -> "thread_state_runnable"
-  | "ocamlmklib.opt" -> "thread_state_unknown"
-  | "ocamllex.opt" -> "thread_state_sleeping"
+  | "ocamlc" | "ocamlc.opt" -> "thread_state_uninterruptible"
+  | "ocamlopt" | "ocamlopt.opt" -> "thread_state_running"
+  | "ocamldep" | "ocamldep.opt" -> "thread_state_runnable"
+  | "ocamlmklib" | "ocamlmklib.opt" -> "thread_state_unknown"
+  | "ocamllex" | "ocamllex.opt" -> "thread_state_sleeping"
   | "ocamlfind" -> "terrible"
   | "ocaml" -> "bad"
-  | "ocamlc" -> "black"
-  | "ocamldep" -> "grey"
   | "odoc" -> "white"
   | "pp.exe"
   | "ppx.exe" -> "yellow"

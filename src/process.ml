@@ -30,20 +30,67 @@ let map_result
       | 0 -> Ok (f ())
       | n -> Error n
 
-type std_output_to =
-  | Terminal
-  | File        of Path.t
-  | Opened_file of opened_file
+module Output = struct
+  type t =
+    { kind     : kind
+    ; fd       : Unix.file_descr Lazy.t
+    ; channel  : out_channel Lazy.t
+    ; mutable status : status
+    }
 
-and opened_file =
-  { filename : Path.t
-  ; desc     : opened_file_desc
-  ; tail     : bool
-  }
+  and kind =
+    | File of Path.t
+    | Terminal
 
-and opened_file_desc =
-  | Fd      of Unix.file_descr
-  | Channel of out_channel
+  and status =
+    | Keep_open
+    | Close_after_exec
+    | Closed
+
+  let terminal oc =
+    let fd = Unix.descr_of_out_channel oc in
+    { kind = Terminal
+    ; fd = lazy fd
+    ; channel = lazy stdout
+    ; status = Keep_open
+    }
+  let stdout = terminal stdout
+  let stderr = terminal stderr
+
+  let file fn =
+    let fd =
+      lazy (Unix.openfile (Path.to_string fn)
+              [O_WRONLY; O_CREAT; O_TRUNC; O_SHARE_DELETE] 0o666)
+    in
+    { kind = File fn
+    ; fd
+    ; channel = lazy (Unix.out_channel_of_descr (Lazy.force fd))
+    ; status = Close_after_exec
+    }
+
+  let flush t =
+    if Lazy.is_val t.channel then flush (Lazy.force t.channel)
+
+  let fd t =
+    flush t;
+    Lazy.force t.fd
+
+  let channel t = Lazy.force t.channel
+
+  let release t =
+    match t.status with
+    | Closed -> ()
+    | Keep_open -> flush t
+    | Close_after_exec ->
+      t.status <- Closed;
+      if Lazy.is_val t.channel then
+        close_out (Lazy.force t.channel)
+      else
+        Unix.close (Lazy.force t.fd)
+
+  let multi_use t =
+    { t with status = Keep_open }
+end
 
 type purpose =
   | Internal_job
@@ -112,7 +159,8 @@ module Fancy = struct
       "-o" :: Colors.(apply_string output_filename) fn :: colorize_args rest
     | x :: rest -> x :: colorize_args rest
 
-  let command_line ~prog ~args ~dir ~stdout_to ~stderr_to =
+  let command_line ~prog ~args ~dir
+        ~(stdout_to:Output.t) ~(stderr_to:Output.t) =
     let prog = Path.reach_for_running ?from:dir prog in
     let quote = quote_for_shell in
     let prog = colorize_prog (quote prog) in
@@ -124,20 +172,19 @@ module Fancy = struct
       | None -> s
       | Some dir -> sprintf "(cd %s && %s)" (Path.to_string dir) s
     in
-    match stdout_to, stderr_to with
-    | (File fn1 | Opened_file { filename = fn1; _ }),
-      (File fn2 | Opened_file { filename = fn2; _ }) when Path.equal fn1 fn2 ->
+    match stdout_to.kind, stderr_to.kind with
+    | File fn1, File fn2 when Path.equal fn1 fn2 ->
       sprintf "%s &> %s" s (Path.to_string fn1)
     | _ ->
       let s =
-        match stdout_to with
+        match stdout_to.kind with
         | Terminal -> s
-        | File fn | Opened_file { filename = fn; _ } ->
+        | File fn ->
           sprintf "%s > %s" s (Path.to_string fn)
       in
-      match stderr_to with
+      match stderr_to.kind with
       | Terminal -> s
-      | File fn | Opened_file { filename = fn; _ } ->
+      | File fn ->
         sprintf "%s 2> %s" s (Path.to_string fn)
 
   let pp_purpose ppf = function
@@ -191,25 +238,6 @@ module Fancy = struct
         contexts;
 end
 
-let get_std_output ~default = function
-  | Terminal -> (default, None)
-  | File fn ->
-    let fd = Unix.openfile (Path.to_string fn)
-               [O_WRONLY; O_CREAT; O_TRUNC; O_SHARE_DELETE] 0o666 in
-    (fd, Some (Fd fd))
-  | Opened_file { desc; tail; _ } ->
-    let fd =
-      match desc with
-      | Fd      fd -> fd
-      | Channel oc -> flush oc; Unix.descr_of_out_channel oc
-    in
-    (fd, Option.some_if tail desc)
-
-let close_std_output = function
-  | None -> ()
-  | Some (Fd      fd) -> Unix.close fd
-  | Some (Channel oc) -> close_out  oc
-
 let gen_id =
   let next = ref (-1) in
   fun () -> incr next; !next
@@ -218,8 +246,8 @@ let cmdline_approximate_length prog args =
   List.fold_left args ~init:(String.length prog) ~f:(fun acc arg ->
     acc + String.length arg)
 
-let run_internal ?dir ?(stdout_to=Terminal) ?(stderr_to=Terminal) ~env ~purpose
-      fail_mode prog args =
+let run_internal ?dir ?(stdout_to=Output.stdout) ?(stderr_to=Output.stderr)
+      ~env ~purpose fail_mode prog args =
   Scheduler.wait_for_available_job ()
   >>= fun scheduler ->
   let display = Scheduler.display scheduler in
@@ -254,33 +282,43 @@ let run_internal ?dir ?(stdout_to=Terminal) ?(stderr_to=Terminal) ~env ~purpose
       (args, None)
   in
   let argv = prog_str :: args in
-  let output_filename, stdout_fd, stderr_fd, to_close =
-    match stdout_to, stderr_to with
+  let output_filename, stdout_to, stderr_to =
+    match stdout_to.kind, stderr_to.kind with
     | (Terminal, _ | _, Terminal) when !Clflags.capture_outputs ->
       let fn = Temp.create "dune" ".output" in
-      let fd = Unix.openfile (Path.to_string fn) [O_WRONLY; O_SHARE_DELETE] 0 in
-      (Some fn, fd, fd, Some fd)
+      let terminal = Output.file fn in
+      let get (out : Output.t) =
+        if out.kind = Terminal then begin
+          Output.flush out;
+          terminal
+        end else
+          out
+      in
+      (Some fn, get stdout_to, get stderr_to)
     | _ ->
-      (None, Unix.stdout, Unix.stderr, None)
+      (None, stdout_to, stderr_to)
   in
-  let stdout, close_stdout = get_std_output stdout_to ~default:stdout_fd in
-  let stderr, close_stderr = get_std_output stderr_to ~default:stderr_fd in
-  let run () =
-    Spawn.spawn ()
-      ~prog:prog_str
-      ~argv
-      ~env:(Spawn.Env.of_array (Env.to_unix env))
-      ~stdout
-      ~stderr
+  let run =
+    (* Output.fd might create the file with Unix.openfile. We need to
+       make sure to call it before doing the chdir as the path might
+       be relative. *)
+    let stdout = Output.fd stdout_to in
+    let stderr = Output.fd stderr_to in
+    fun () ->
+      Spawn.spawn ()
+        ~prog:prog_str
+        ~argv
+        ~env:(Spawn.Env.of_array (Env.to_unix env))
+        ~stdout
+        ~stderr
   in
   let pid =
     match dir with
     | None -> run ()
     | Some dir -> Scheduler.with_chdir scheduler ~dir ~f:run
   in
-  Option.iter to_close ~f:Unix.close;
-  close_std_output close_stdout;
-  close_std_output close_stderr;
+  Output.release stdout_to;
+  Output.release stderr_to;
   Scheduler.wait_for_process pid
   >>| fun exit_status ->
   Option.iter response_file ~f:Path.unlink;
@@ -354,7 +392,7 @@ let run_capture_gen ?dir ?stderr_to ~env ?(purpose=Internal_job) fail_mode
       prog args ~f =
   let fn = Temp.create "dune" ".output" in
   map_result fail_mode
-    (run_internal ?dir ~stdout_to:(File fn) ?stderr_to
+    (run_internal ?dir ~stdout_to:(Output.file fn) ?stderr_to
        ~env ~purpose fail_mode prog args)
     ~f:(fun () ->
       let x = f fn in

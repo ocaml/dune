@@ -112,6 +112,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name default-targets)
+ (deps (package dune) (source_tree test-cases/default-targets))
+ (action
+  (chdir
+   test-cases/default-targets
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name dep-vars)
  (deps (package dune) (source_tree test-cases/dep-vars))
  (action
@@ -141,6 +149,14 @@
  (action
   (chdir
    test-cases/dev-flag-1103
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
+ (name double-echo)
+ (deps (package dune) (source_tree test-cases/double-echo))
+ (action
+  (chdir
+   test-cases/double-echo
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
@@ -1199,10 +1215,12 @@
   (alias copy_files)
   (alias cross-compilation)
   (alias custom-build-dir)
+  (alias default-targets)
   (alias dep-vars)
   (alias depend-on-the-universe)
   (alias deps-conf-vars)
   (alias dev-flag-1103)
+  (alias double-echo)
   (alias dune-build-dir-exec-1101)
   (alias dune-jbuild-var-case)
   (alias dune-package)
@@ -1271,6 +1289,7 @@
   (alias lib-available)
   (alias lib-errors)
   (alias link-deps)
+  (alias lint)
   (alias loop)
   (alias macro-expand-error)
   (alias menhir)
@@ -1345,10 +1364,12 @@
   (alias copy_files)
   (alias cross-compilation)
   (alias custom-build-dir)
+  (alias default-targets)
   (alias dep-vars)
   (alias depend-on-the-universe)
   (alias deps-conf-vars)
   (alias dev-flag-1103)
+  (alias double-echo)
   (alias dune-build-dir-exec-1101)
   (alias dune-jbuild-var-case)
   (alias dune-package)
@@ -1413,6 +1434,7 @@
   (alias lib-available)
   (alias lib-errors)
   (alias link-deps)
+  (alias lint)
   (alias loop)
   (alias macro-expand-error)
   (alias merlin-tests)
@@ -1461,6 +1483,6 @@
   (alias wrapped-false-main-module-name)
   (alias wrapped-transition)))
 
-(alias (name runtest-disabled) (deps (alias envs-and-contexts) (alias lint)))
+(alias (name runtest-disabled) (deps (alias envs-and-contexts)))
 
 (alias (name runtest-js) (deps (alias js_of_ocaml)))

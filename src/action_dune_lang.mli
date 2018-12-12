@@ -7,9 +7,10 @@ include Action_intf.Ast
 
 include Dune_lang.Conv with type t := t
 
+val encode_and_upgrade : t Dune_lang.Encoder.t
+
 include Action_intf.Helpers
   with type t := t and
   type program = String_with_vars.t and
   type string = String_with_vars.t and
   type path = String_with_vars.t
-

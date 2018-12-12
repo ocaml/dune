@@ -1,0 +1,10 @@
+(library
+ (name byteonly)
+ (modes byte))
+
+(library
+ (name nativeonly)
+ (modes native))
+
+(library
+ (name byteandnative))

@@ -33,7 +33,7 @@ let map_result
 module Output = struct
   type t =
     { kind     : kind
-    ; fd       : Unix.file_descr
+    ; fd       : Unix.file_descr Lazy.t
     ; channel  : out_channel Lazy.t
     ; mutable status : status
     }
@@ -47,28 +47,24 @@ module Output = struct
     | Close_after_exec
     | Closed
 
-  let stdout =
+  let terminal oc =
+    let fd = Unix.descr_of_out_channel oc in
     { kind = Terminal
-    ; fd = Unix.stdout
+    ; fd = lazy fd
     ; channel = lazy stdout
     ; status = Keep_open
     }
-
-  let stderr =
-    { kind = Terminal
-    ; fd = Unix.stderr
-    ; channel = lazy stderr
-    ; status = Keep_open
-    }
+  let stdout = terminal stdout
+  let stderr = terminal stderr
 
   let file fn =
     let fd =
-      Unix.openfile (Path.to_string fn)
-        [O_WRONLY; O_CREAT; O_TRUNC; O_SHARE_DELETE] 0o666
+      lazy (Unix.openfile (Path.to_string fn)
+              [O_WRONLY; O_CREAT; O_TRUNC; O_SHARE_DELETE] 0o666)
     in
     { kind = File fn
     ; fd
-    ; channel = lazy (Unix.out_channel_of_descr fd)
+    ; channel = lazy (Unix.out_channel_of_descr (Lazy.force fd))
     ; status = Close_after_exec
     }
 
@@ -77,7 +73,7 @@ module Output = struct
 
   let fd t =
     flush t;
-    t.fd
+    Lazy.force t.fd
 
   let channel t = Lazy.force t.channel
 
@@ -90,7 +86,7 @@ module Output = struct
       if Lazy.is_val t.channel then
         close_out (Lazy.force t.channel)
       else
-        Unix.close t.fd
+        Unix.close (Lazy.force t.fd)
 
   let multi_use t =
     { t with status = Keep_open }
@@ -302,13 +298,16 @@ let run_internal ?dir ?(stdout_to=Output.stdout) ?(stderr_to=Output.stderr)
     | _ ->
       (None, stdout_to, stderr_to)
   in
-  let run () =
-    Spawn.spawn ()
-      ~prog:prog_str
-      ~argv
-      ~env:(Spawn.Env.of_array (Env.to_unix env))
-      ~stdout:(Output.fd stdout_to)
-      ~stderr:(Output.fd stderr_to)
+  let run =
+    let stdout = Output.fd stdout_to in
+    let stderr = Output.fd stderr_to in
+    fun () ->
+      Spawn.spawn ()
+        ~prog:prog_str
+        ~argv
+        ~env:(Spawn.Env.of_array (Env.to_unix env))
+        ~stdout
+        ~stderr
   in
   let pid =
     match dir with

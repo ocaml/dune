@@ -53,7 +53,9 @@ val ocaml_flags
   -> Buildable.t
   -> Ocaml_flags.t
 
-val file_bindings : t -> dir:Path.t -> string File_bindings.t
+(** Binaries that are symlinked in local .bin directories. [dir]
+    should point to such a [.bin] directory, such as [foo/bar/.bin]. *)
+val local_binaries : t -> dir:Path.t -> string File_bindings.t
 
 (** Dump a directory environment in a readable form *)
 val dump_env : t -> dir:Path.t -> (unit, Dune_lang.t list) Build.t

@@ -1,0 +1,17 @@
+(rule (with-stdout-to bytecodeonly.ml (echo "")))
+(rule (with-stdout-to nativeonly.ml (echo "")))
+(rule (with-stdout-to byteandnative.ml (echo "")))
+
+(executable
+ (name byteandnative)
+ (modules byteandnative))
+
+(executable
+ (name bytecodeonly)
+ (modules bytecodeonly)
+ (modes byte))
+
+(executable
+ (name nativeonly)
+ (modules nativeonly)
+ (modes native))

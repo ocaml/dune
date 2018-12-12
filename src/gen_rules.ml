@@ -199,7 +199,7 @@ module Gen(P : Install_rules.Params) = struct
        begin match List.last comps with
        | Some ".bin" ->
          let src_dir = Path.parent_exn dir in
-         Super_context.local_binaries sctx ~dir
+         Super_context.local_binaries sctx ~dir:src_dir
          |> List.iter ~f:(fun t ->
            let src = File_bindings.src_path t ~dir:src_dir in
            let dst = File_bindings.dst_path t ~dir in

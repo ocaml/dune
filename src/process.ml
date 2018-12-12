@@ -319,7 +319,9 @@ let run_internal ?dir ?(stdout_to=Output.stdout) ?(stderr_to=Output.stderr)
   in
   Output.release stdout_to;
   Output.release stderr_to;
-  let stats_event = Catapult.on_process_start ~program:prog_str ~args in
+  let stats_event =
+    Catapult.on_process_start Stats.catapult ~program:prog_str ~args
+  in
   Scheduler.wait_for_process pid
   >>| fun exit_status ->
   Catapult.on_process_end Stats.catapult stats_event;

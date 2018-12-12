@@ -103,14 +103,20 @@ let emit_counters t ~time (stat: Gc.stat) =
   emit_counter t ~time "free_words" stat.free_words;
   emit_counter t ~time "stack_size" stat.stack_size
 
-let on_process_start ~program ~args =
-  { start_time = Unix.gettimeofday ()
+let get_time t = match t.state with
+  | Disabled -> 0.
+  | Path _
+  | Active _ ->
+    Unix.gettimeofday ()
+
+let on_process_start t ~program ~args =
+  { start_time = get_time t
   ; program
   ; args
   }
 
 let on_process_end t event =
-  let time = Unix.gettimeofday () in
+  let time = get_time t in
   emit_process t event ~time;
   let stat = Gc.stat () in
   emit_counters t stat ~time

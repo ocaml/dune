@@ -1,9 +1,14 @@
 open Stdune
 
+type ops =
+  { print : string -> unit
+  ; close : unit -> unit
+  }
+
 type state =
   | Disabled
   | Path of string
-  | Active of Pervasives.out_channel
+  | Using of ops
 
 type t =
   { mutable state : state
@@ -16,28 +21,29 @@ let make () =
 let close t = match t.state with
   | Disabled -> ()
   | Path _ -> ()
-  | Active channel ->
-    Printf.fprintf channel "]\n";
-    Pervasives.close_out channel
+  | Using {print; close} ->
+    print "]\n";
+    close ()
 
 let enable t path =
   t.state <- Path path
 
+let make_reporter path =
+  let channel = Pervasives.open_out path in
+  let print s = Pervasives.output_string channel s in
+  let close () = Pervasives.close_out channel in
+  {print; close}
+
 let printf t format_string =
-  let print_on channel =
-    Printf.fprintf channel (format_string ^^ "\n%!")
-  in
   match t.state with
   | Disabled ->
-    Printf.ifprintf stderr format_string
-  | Active channel ->
-    Printf.fprintf channel ",";
-    print_on channel
+    Printf.ifprintf () format_string
+  | Using {print; _} ->
+    Printf.ksprintf print ("," ^^ format_string ^^ "\n")
   | Path path ->
-    let channel = Pervasives.open_out path in
-    t.state <- Active channel;
-    Printf.fprintf channel "[";
-    print_on channel
+    let reporter = make_reporter path in
+    t.state <- Using reporter;
+    Printf.ksprintf reporter.print ("[" ^^ format_string ^^ "\n")
 
 let color_of_name = function
   | "ocamlc.opt" -> "thread_state_uninterruptible"
@@ -61,15 +67,15 @@ let color_of_name = function
   | "bash" -> "thread_state_iowait"
   | _ -> "generic_work"
 
-let pp_args channel l =
+let pp_args l =
   l
   |> List.map ~f:(Printf.sprintf "%S")
   |> String.concat ~sep:","
-  |> Printf.fprintf channel "[%s]"
+  |> Printf.sprintf "[%s]"
 
-let pp_time channel f =
+let pp_time f =
   let n = int_of_float @@ f *. 1_000_000. in
-  Printf.fprintf channel "%d" n
+  Printf.sprintf "%d" n
 
 type event =
   { start_time : float
@@ -82,19 +88,19 @@ let emit_process t {start_time; program; args} ~time =
   let name = Filename.basename program in
   printf
     t
-    {|{"name": %S, "pid": 0, "tid": 0, "ph": "X", "dur": %a, "ts": %a, "color": %S, "args": %a}|}
+    {|{"name": %S, "pid": 0, "tid": 0, "ph": "X", "dur": %s, "ts": %s, "color": %S, "args": %s}|}
     name
-    pp_time dur
-    pp_time time
+    (pp_time dur)
+    (pp_time time)
     (color_of_name name)
-    pp_args args
+    (pp_args args)
 
 let emit_counter t ~time key value =
   printf
     t
-    {|{"name": %S, "pid": 0, "tid": 0, "ph": "C", "ts": %a, "args": {%S: %d}}|}
+    {|{"name": %S, "pid": 0, "tid": 0, "ph": "C", "ts": %s, "args": {%S: %d}}|}
     key
-    pp_time time
+    (pp_time time)
     "value"
     value
 
@@ -106,7 +112,8 @@ let emit_counters t ~time (stat: Gc.stat) =
 let get_time t = match t.state with
   | Disabled -> 0.
   | Path _
-  | Active _ ->
+  | Using _
+    ->
     Unix.gettimeofday ()
 
 let on_process_start t ~program ~args =

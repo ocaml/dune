@@ -9,7 +9,7 @@ val make
   :  dir:Path.t
   -> inherit_from:t Lazy.t option
   -> scope:Scope.t
-  -> config:Dune_env.Stanza.t
+  -> config:Dune_env.Stanza.t option
   -> env:Env.t option
   -> t
 

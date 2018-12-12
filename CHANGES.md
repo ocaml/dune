@@ -18,6 +18,9 @@
 - Do not generate targets for archive that don't match the `modes` field.
   (#1632, fix #1617, @rgrinberg)
 
+- Get the correct environment node for multi project workspaces (#1648,
+  @rgrinberg)
+
 1.6.2 (05/12/2018)
 ------------------
 

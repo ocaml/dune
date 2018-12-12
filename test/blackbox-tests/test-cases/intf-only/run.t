@@ -56,5 +56,6 @@ Errors:
   File "dune", line 3, characters 33-34:
   3 |  (modules_without_implementation x))
                                        ^
-  Error: Module X has an implementation, it cannot be listed here
+  Error: The following modules have an implementation, they cannot be said to be without interface:
+  - X
   [1]

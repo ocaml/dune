@@ -24,6 +24,8 @@ type t =
   ; version_from_opam_file : string option
   }
 
+val pp : Format.formatter -> t -> unit
+
 val opam_file : t -> Path.t
 
 val meta_file : t -> Path.t

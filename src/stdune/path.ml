@@ -154,6 +154,7 @@ module Local : sig
   val extension : t -> string
   val is_suffix : t -> suffix:string -> bool
   val split_extension : t -> t * string
+  val pp : Format.formatter -> t -> unit
 
   module L : sig
     val relative : ?error_loc:Loc.t -> t -> string list -> t
@@ -178,6 +179,8 @@ end = struct
       let resize_policy = Interned.Greedy
       let order = Interned.Natural
     end)()
+
+  let pp ppf s = Format.pp_print_string ppf (to_string s)
 
   let compare_val x y = String.compare (to_string x) (to_string y)
 

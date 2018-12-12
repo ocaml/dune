@@ -6,7 +6,7 @@ module Local : sig
   val to_sexp : t -> Sexp.t
   val equal : t -> t -> bool
   val to_string : t -> string
-
+  val pp : Format.formatter -> t -> unit
   module L : sig
     val relative : ?error_loc:Loc.t -> t -> string list -> t
   end

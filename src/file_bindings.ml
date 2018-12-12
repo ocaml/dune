@@ -68,3 +68,11 @@ module Unexpanded = struct
 end
 
 let is_empty xs = List.is_empty xs
+
+let pp f =
+  Fmt.ocaml_list
+    (fun fmt { src; dst } ->
+       Fmt.record fmt
+         [ "src", Fmt.const f src
+         ; "dst", Fmt.const (Fmt.optional f) dst
+         ])

@@ -22,3 +22,5 @@ module Unexpanded : sig
 end
 
 val is_empty : _ t -> bool
+
+val pp : 'a Fmt.t -> 'a t Fmt.t

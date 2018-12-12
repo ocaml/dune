@@ -74,7 +74,7 @@ module Env : sig
   val external_ : t -> dir:Path.t -> External_env.t
   val artifacts_host : t -> dir:Path.t -> Artifacts.t
   val expander : t -> dir:Path.t -> Expander.t
-  val file_bindings : t -> dir:Path.t -> string File_bindings.t
+  val local_binaries : t -> dir:Path.t -> string File_bindings.t
 end = struct
   let get_env_stanza t ~dir =
     let open Option.O in
@@ -126,10 +126,10 @@ end = struct
     |> Expander.set_scope ~scope:(Env_node.scope node)
     |> Expander.set_dir ~dir
 
-  let file_bindings t ~dir =
+  let local_binaries t ~dir =
     let node = get t ~dir in
     let expander = expander_for_artifacts t ~dir in
-    Env_node.file_bindings node ~profile:(profile t) ~expander
+    Env_node.local_binaries node ~profile:(profile t) ~expander
 
   let artifacts t ~dir =
     let expander = expander_for_artifacts t ~dir in
@@ -239,7 +239,7 @@ let ocaml_flags t ~dir (x : Buildable.t) =
     ~default:(Env.ocaml_flags t ~dir)
     ~eval:(Expander.expand_and_eval_set expander)
 
-let file_bindings t ~dir = Env.file_bindings t ~dir
+let local_binaries t ~dir = Env.local_binaries t ~dir
 
 let dump_env t ~dir =
   Ocaml_flags.dump (Env.ocaml_flags t ~dir)

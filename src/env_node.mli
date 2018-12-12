@@ -19,7 +19,7 @@ val external_ : t -> profile:string -> default:Env.t -> Env.t
 
 val ocaml_flags : t -> profile:string -> expander:Expander.t -> Ocaml_flags.t
 
-val file_bindings
+val local_binaries
   :  t
   -> profile:string
   -> expander:Expander.t

@@ -53,8 +53,8 @@ val ocaml_flags
   -> Buildable.t
   -> Ocaml_flags.t
 
-(** Binaries that are symlinked in local .bin directories. [dir]
-    should point to such a [.bin] directory, such as [foo/bar/.bin]. *)
+(** Binaries that are symlinked in the associated .bin directory of [dir]. This
+    associated directory is [Path.relative dir ".bin"] *)
 val local_binaries : t -> dir:Path.t -> string File_bindings.t
 
 (** Dump a directory environment in a readable form *)

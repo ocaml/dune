@@ -37,7 +37,7 @@ let buffer_lines () =
 buffer_lines ();;
 [%%expect{|
 - : string list =
-[",{\"name\": \"program\", \"pid\": 0, \"tid\": 0, \"ph\": \"X\", \"dur\": 20000000, \"ts\": 30000000, \"color\": \"generic_work\", \"args\": [\"arg1\",\"arg2\"]}";
+["[{\"name\": \"program\", \"pid\": 0, \"tid\": 0, \"ph\": \"X\", \"dur\": 20000000, \"ts\": 30000000, \"color\": \"generic_work\", \"args\": [\"arg1\",\"arg2\"]}";
  ",{\"name\": \"live_words\", \"pid\": 0, \"tid\": 0, \"ph\": \"C\", \"ts\": 30000000, \"args\": {\"value\": 0}}";
  ",{\"name\": \"free_words\", \"pid\": 0, \"tid\": 0, \"ph\": \"C\", \"ts\": 30000000, \"args\": {\"value\": 0}}";
  ",{\"name\": \"stack_size\", \"pid\": 0, \"tid\": 0, \"ph\": \"C\", \"ts\": 30000000, \"args\": {\"value\": 0}}";

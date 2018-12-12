@@ -11,16 +11,14 @@ type t
 val make : unit -> t
 
 (** Return a fake reporter that reads time in a reference and writes JSON
-    objects to a buffer. Note that in this case, the output is not valid JSON
-    since there is no leading '['. *)
+    objects to a buffer. *)
 val fake : float ref -> Buffer.t -> t
 
 (** Output trailing data to make the underlying file valid JSON, and close it. *)
 val close : t -> unit
 
 (** Enable tracing: open a trace file and further events will be logged into it.
-    The file is only created when the first event is logged. It is necessary to
-    call [close] on the reporter to make the file valid. *)
+    It is necessary to call [close] on the reporter to make the file valid. *)
 val enable : t -> string -> unit
 
 type event

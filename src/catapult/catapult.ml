@@ -7,17 +7,18 @@ type ops =
   ; gc_stat : unit -> Gc.stat
   }
 
-type state =
+type mode =
   | Disabled
-  | Path of string
   | Using of ops
 
 type t =
-  { mutable state : state
+  { mutable mode : mode
+  ; mutable after_first_event : bool
   }
 
 let make () =
-  { state = Disabled
+  { mode = Disabled
+  ; after_first_event = false
   }
 
 let fake_gc_stat =
@@ -44,26 +45,23 @@ let fake time_ref buf =
   let close () = () in
   let get_time () = !time_ref in
   let gc_stat () = fake_gc_stat in
-  { state =
+  { mode =
       Using
         { print
         ; close
         ; get_time
         ; gc_stat
         }
+  ; after_first_event = false
   }
 
-let close t = match t.state with
+let close t = match t.mode with
   | Disabled -> ()
-  | Path _ -> ()
   | Using {print; close; _} ->
     print "]\n";
     close ()
 
-let enable t path =
-  t.state <- Path path
-
-let make_reporter path =
+let path_ops path =
   let channel = Pervasives.open_out path in
   let print s = Pervasives.output_string channel s in
   let close () = Pervasives.close_out channel in
@@ -71,16 +69,23 @@ let make_reporter path =
   let gc_stat () = Gc.stat () in
   {print; close; get_time; gc_stat}
 
+let enable t path =
+  t.mode <- Using (path_ops path)
+
+let next_leading_char t =
+  match t.after_first_event with
+  | true -> ','
+  | false ->
+    t.after_first_event <- true;
+    '['
+
 let printf t format_string =
-  match t.state with
+  match t.mode with
   | Disabled ->
     Printf.ifprintf () format_string
   | Using {print; _} ->
-    Printf.ksprintf print ("," ^^ format_string ^^ "\n")
-  | Path path ->
-    let reporter = make_reporter path in
-    t.state <- Using reporter;
-    Printf.ksprintf reporter.print ("[" ^^ format_string ^^ "\n")
+    let c = next_leading_char t in
+    Printf.ksprintf print ("%c" ^^ format_string ^^ "\n") c
 
 let color_of_name = function
   | "ocamlc" | "ocamlc.opt" -> "thread_state_uninterruptible"
@@ -144,20 +149,13 @@ let emit_counters t ~time (stat: Gc.stat) =
   emit_counter t ~time "free_words" stat.free_words;
   emit_counter t ~time "stack_size" stat.stack_size
 
-let get_time t = match t.state with
-  | Disabled
-  | Path _
-    -> 0.
-  | Using {get_time; _}
-    ->
-    get_time ()
+let get_time t = match t.mode with
+  | Disabled -> 0.
+  | Using {get_time; _} -> get_time ()
 
-let gc_stat t = match t.state with
-  | Disabled
-  | Path _
-    -> fake_gc_stat
-  | Using {gc_stat; _} ->
-    gc_stat ()
+let gc_stat t = match t.mode with
+  | Disabled -> fake_gc_stat
+  | Using {gc_stat; _} -> gc_stat ()
 
 let on_process_start t ~program ~args =
   { start_time = get_time t

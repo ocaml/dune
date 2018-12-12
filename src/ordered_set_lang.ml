@@ -232,6 +232,11 @@ let standard =
   ; context = Univ_map.empty
   }
 
+let dune_kind t =
+  match Univ_map.find t.context (Syntax.key Stanza.syntax) with
+  | Some (0, _)-> Dune_lang.Syntax.Jbuild
+  | None | Some (_, _) -> Dune
+
 let field ?(default=standard) ?check name =
   let decode =
     match check with
@@ -256,6 +261,17 @@ module Unexpanded = struct
     ; context
     }
 
+  let map t ~f : t =
+    let rec map_ast : ast -> ast =
+      let open Ast in function
+      | Element sw -> Element (f sw)
+      | Include sw -> Include (f sw)
+      | Union xs -> Union (List.map ~f:map_ast xs)
+      | Diff (x, y) -> Diff (map_ast x, map_ast y)
+      | Standard as t -> t
+    in
+    { t with ast = map_ast t.ast }
+
   let encode t =
     let open Ast in
     let rec loop = function
@@ -269,6 +285,13 @@ module Unexpanded = struct
              ]
     in
     loop t.ast
+
+  let upgrade_to_dune t =
+    match dune_kind t with
+    | Dune -> t
+    | Jbuild -> map ~f:String_with_vars.upgrade_to_dune t
+
+  let encode_and_upgrade t = encode (upgrade_to_dune t)
 
   let standard = standard
 
@@ -298,11 +321,7 @@ module Unexpanded = struct
       | Diff (l, r) ->
         loop (loop acc l) r
     in
-    let syntax =
-      match Univ_map.find t.context (Syntax.key Stanza.syntax) with
-      | Some (0, _)-> Dune_lang.Syntax.Jbuild
-      | None | Some (_, _) -> Dune
-    in
+    let syntax = dune_kind t in
     (syntax, loop Path.Set.empty t.ast)
 
   let has_special_forms t =

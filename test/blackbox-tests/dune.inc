@@ -1262,6 +1262,7 @@
   (alias lib-available)
   (alias lib-errors)
   (alias link-deps)
+  (alias lint)
   (alias loop)
   (alias macro-expand-error)
   (alias menhir)
@@ -1403,6 +1404,7 @@
   (alias lib-available)
   (alias lib-errors)
   (alias link-deps)
+  (alias lint)
   (alias loop)
   (alias macro-expand-error)
   (alias merlin-tests)
@@ -1451,6 +1453,6 @@
   (alias wrapped-false-main-module-name)
   (alias wrapped-transition)))
 
-(alias (name runtest-disabled) (deps (alias envs-and-contexts) (alias lint)))
+(alias (name runtest-disabled) (deps (alias envs-and-contexts)))
 
 (alias (name runtest-js) (deps (alias js_of_ocaml)))

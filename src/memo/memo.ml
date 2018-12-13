@@ -3,6 +3,7 @@ open Fiber.O
 
 module type Input = Memo_intf.Input
 module type Output = Memo_intf.Output
+module type Decoder = Memo_intf.Decoder
 
 module Function_name = Interned.Make(struct
     let initial_size = 1024
@@ -18,6 +19,7 @@ module Spec = struct
     ; allow_cutoff : bool
     ; input : (module Input with type t = 'a)
     ; output : (module Output with type t = 'b)
+    ; decode : 'a Dune_lang.Decoder.t
     ; witness : 'a witness
     ; f : 'a -> 'b Fiber.t
     ; doc : string
@@ -222,7 +224,22 @@ let dump_stack v =
   )
   >>| (fun _ -> v)
 
-module Make(Input : Input) : S with type input := Input.t = struct
+module Visibility = struct
+  type t =
+    | Public (* available via [dune compute] *)
+    | Private (* not available via [dune compute] *)
+end
+module type Visibility = sig
+  val visibility : Visibility.t
+end
+module Public = struct let visibility = Visibility.Public end
+module Private = struct let visibility = Visibility.Private end
+
+module Make_gen
+    (Visibility : Visibility)
+    (Input : Input)
+    (Decoder : Decoder with type t := Input.t)
+  : S with type input := Input.t = struct
   module Table = Hashtbl.Make(Input)
 
   type 'a t =
@@ -259,14 +276,18 @@ module Make(Input : Input) : S with type input := Input.t = struct
     let spec =
       { Spec.
         name
-      ; input = (module Input); output
+      ; input = (module Input)
+      ; output
+      ; decode = Decoder.decode
       ; allow_cutoff
       ; witness = W
       ; f
       ; doc
       }
     in
-    Spec.register spec;
+    (match Visibility.visibility with
+     | Public -> Spec.register spec
+     | Private -> ());
     { cache = Table.create 1024
     ; spec
     }
@@ -359,6 +380,17 @@ module Make(Input : Input) : S with type input := Input.t = struct
   end
 end
 
+module Make(Input : Input)(Decoder : Decoder with type t := Input.t) =
+  Make_gen(Public)(Input)(Decoder)
+
+module Make_hidden(Input : Input) =
+  Make_gen(Private)(Input)(struct
+    let decode : Input.t Dune_lang.Decoder.t =
+      let open Dune_lang.Decoder in
+      loc >>= fun loc ->
+      Exn.fatalf ~loc "<not-implemented>"
+  end)
+
 let call name input =
   match
     let open Option.O in
@@ -366,9 +398,8 @@ let call name input =
   with
   | None -> Exn.fatalf "@{<error>Error@}: function %s doesn't exist!" name
   | Some (Spec.T spec) ->
-    let (module Input : Input with type t = _) = spec.input in
     let (module Output : Output with type t = _) = spec.output in
-    let input = Dune_lang.Decoder.parse Input.decode Univ_map.empty input in
+    let input = Dune_lang.Decoder.parse spec.decode Univ_map.empty input in
     spec.f input >>| fun output ->
     Output.to_sexp output
 

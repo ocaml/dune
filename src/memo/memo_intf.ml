@@ -7,12 +7,13 @@ module type Data = sig
   val to_sexp : t -> Sexp.t
 end
 
-module type Input = sig
-  include Data
+module type Input = Data
+module type Output = Data
+
+module type Decoder = sig
+  type t
   val decode : t Dune_lang.Decoder.t
 end
-
-module type Output = Data
 
 module type S = sig
   type input

@@ -1,6 +1,8 @@
 unreleased
 ----------
 
+- Fix merlin handling of private module visibility (#1653 @bobot)
+
 - unstable-fmt: use boxes to wrap some lists (#1608, fix #1153, @emillon,
   thanks to @rgrinberg)
 

@@ -89,11 +89,6 @@ module Internal_rule = struct
 
   let loc ~file_tree ~dir t  = rule_loc ~file_tree ~dir ~loc:t.loc
 
-  let decode : t Dune_lang.Decoder.t =
-    let open Dune_lang.Decoder in
-    loc >>= fun loc ->
-    Errors.fail loc "<not-implemented>"
-
   let to_sexp t : Sexp.t =
     Sexp.Encoder.record
       [ "id", Id.to_sexp t.id
@@ -386,11 +381,8 @@ module Action_and_deps = struct
       ]
 end
 
-module Rule_fn = Memo.Make(Internal_rule)
-module Path_fn = Memo.Make(struct
-    include Path
-    let decode = Path_dune_lang.decode
-  end)
+module Rule_fn = Memo.Make_hidden(Internal_rule)
+module Path_fn = Memo.Make(Path)(Path_dune_lang)
 
 type t =
   { (* File specification by targets *)

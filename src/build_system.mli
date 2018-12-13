@@ -13,11 +13,9 @@ type hook =
   | Rule_started
   | Rule_completed
 
-(** Create a new build system. [file_tree] represent the source
-    tree. *)
+(** Create a new build system. *)
 val create
   :  contexts:Context.t list
-  -> file_tree:File_tree.t
   -> hook:(hook -> unit)
   -> t
 
@@ -143,7 +141,6 @@ module Alias : sig
   val dep_multi_contexts
     :  dir:Path.t
     -> name:string
-    -> file_tree:File_tree.t
     -> contexts:string list
     -> (unit, unit) Build.t
 
@@ -151,14 +148,12 @@ module Alias : sig
   val dep_rec
     :  t
     -> loc:Loc.t
-    -> file_tree:File_tree.t
     -> (unit, unit) Build.t
 
   (** Implements [@alias] on the command line *)
   val dep_rec_multi_contexts
     :  dir:Path.t
     -> name:string
-    -> file_tree:File_tree.t
     -> contexts:string list
     -> (unit, unit) Build.t
 

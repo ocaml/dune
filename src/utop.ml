@@ -54,7 +54,7 @@ let is_utop_dir dir = Path.basename dir = utop_dir_basename
 let libs_under_dir sctx ~db ~dir =
   let open Option.O in
   (Path.drop_build_context dir >>= fun dir ->
-   File_tree.find_dir (Super_context.file_tree sctx) dir >>|
+   File_tree.find_dir dir >>|
    (File_tree.Dir.fold ~traverse_ignored_dirs:true
       ~init:[] ~f:(fun dir acc ->
         let dir =

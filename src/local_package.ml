@@ -91,7 +91,7 @@ let of_sctx (sctx : Super_context.t) =
   Super_context.packages sctx
   |> Package.Name.Map.map ~f:(fun (pkg : Package.t) ->
     let odig_files =
-      let files = Super_context.source_files sctx ~src_path:Path.root in
+      let files = File_tree.Dir.files File_tree.root in
       String.Set.fold files ~init:[] ~f:(fun fn acc ->
         if is_odig_doc_file fn then
           Path.relative ctx.build_dir fn :: acc

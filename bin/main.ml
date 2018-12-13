@@ -65,7 +65,7 @@ end
 
 let do_build (setup : Main.setup) targets =
   Build_system.do_build setup.build_system
-    ~request:(Target.request setup targets)
+    ~request:(Target.request targets)
 
 let installed_libraries =
   let doc = "Print out libraries installed on the system." in
@@ -268,7 +268,7 @@ let external_lib_deps =
       Scheduler.go ~log ~common
         (Main.setup ~log common ~external_lib_deps_mode:true >>= fun setup ->
          let targets = Target.resolve_targets_exn ~log common setup targets in
-         let request = Target.request setup targets in
+         let request = Target.request targets in
          Build_system.all_lib_deps setup.build_system ~request >>| fun deps ->
          (setup, deps))
     in
@@ -490,7 +490,7 @@ let rules =
          | [] -> Build.paths (Build_system.all_targets setup.build_system)
          | _  ->
            Target.resolve_targets_exn ~log common setup targets
-           |> Target.request setup
+           |> Target.request
        in
        Build_system.build_rules setup.build_system ~request ~recursive >>= fun rules ->
        let sexp_of_action action =

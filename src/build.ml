@@ -172,13 +172,13 @@ let of_result_map ?targets res ~f =
 let memoize name t =
   Memo { name; t; state = Unevaluated }
 
-let source_tree ~dir ~file_tree =
+let source_tree ~dir =
   let prefix_with, dir =
     match Path.extract_build_context_dir dir with
     | None -> (Path.root, dir)
     | Some (ctx_dir, src_dir) -> (ctx_dir, src_dir)
   in
-  let paths = File_tree.files_recursively_in file_tree dir ~prefix_with in
+  let paths = File_tree.files_recursively_in dir ~prefix_with in
   path_set paths >>^ fun _ -> paths
 
 let store_vfile spec = Store_vfile spec

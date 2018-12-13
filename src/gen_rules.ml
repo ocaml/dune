@@ -206,8 +206,7 @@ module Gen(P : Install_rules.Params) = struct
            Super_context.add_rule sctx ~dir (Build.symlink ~src ~dst))
        | _ ->
          match
-           File_tree.find_dir (SC.file_tree sctx)
-             (Path.drop_build_context_exn dir)
+           File_tree.find_dir (Path.drop_build_context_exn dir)
          with
          | None ->
            (* We get here when [dir] is a generated directory, such as
@@ -259,7 +258,7 @@ let gen ~contexts ~build_system
       ?(external_lib_deps_mode=false)
       ?only_packages conf =
   let open Fiber.O in
-  let { Dune_load. file_tree; dune_files; packages; projects } = conf in
+  let { Dune_load. dune_files; packages; projects } = conf in
   let packages =
     match only_packages with
     | None -> packages
@@ -295,7 +294,6 @@ let gen ~contexts ~build_system
         ~build_system
         ~context
         ~projects
-        ~file_tree
         ~packages
         ~external_lib_deps_mode
         ~stanzas

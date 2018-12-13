@@ -19,14 +19,12 @@ module Dune_files : sig
 end
 
 type conf = private
-  { file_tree  : File_tree.t
-  ; dune_files : Dune_files.t
+  { dune_files : Dune_files.t
   ; packages   : Package.t Package.Name.Map.t
   ; projects   : Dune_project.t list
   }
 
 val load
-  :  ?extra_ignored_subtrees:Path.Set.t
-  -> ?ignore_promoted_rules:bool
+  :  ?ignore_promoted_rules:bool
   -> unit
   -> conf

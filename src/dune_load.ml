@@ -216,8 +216,7 @@ end
 end
 
 type conf =
-  { file_tree  : File_tree.t
-  ; dune_files : Dune_files.t
+  { dune_files : Dune_files.t
   ; packages   : Package.t Package.Name.Map.t
   ; projects   : Dune_project.t list
   }
@@ -238,10 +237,9 @@ let interpret ~dir ~project ~ignore_promoted_rules
   | Ocaml_script file ->
     Script { dir; project; file; kind = dune_file.kind }
 
-let load ?extra_ignored_subtrees ?(ignore_promoted_rules=false) () =
-  let ftree = File_tree.load Path.root ?extra_ignored_subtrees in
+let load ?(ignore_promoted_rules=false) () =
   let projects =
-    File_tree.fold ftree ~traverse_ignored_dirs:false ~init:[]
+    File_tree.fold ~traverse_ignored_dirs:false ~init:[]
       ~f:(fun dir acc ->
         let p = File_tree.Dir.project dir in
         match Path.kind (File_tree.Dir.path dir) with
@@ -282,9 +280,8 @@ let load ?extra_ignored_subtrees ?(ignore_promoted_rules=false) () =
       String.Map.fold sub_dirs ~init:dune_files ~f:walk
     end
   in
-  let dune_files = walk (File_tree.root ftree) [] in
-  { file_tree = ftree
-  ; dune_files = { dune_files; ignore_promoted_rules }
+  let dune_files = walk File_tree.root [] in
+  { dune_files = { dune_files; ignore_promoted_rules }
   ; packages
   ; projects
   }

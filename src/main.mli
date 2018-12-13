@@ -6,7 +6,6 @@ type setup =
   ; contexts     : Context.t list
   ; scontexts    : Super_context.t String.Map.t
   ; packages     : Package.t Package.Name.Map.t
-  ; file_tree    : File_tree.t
   ; env          : Env.t
   }
 

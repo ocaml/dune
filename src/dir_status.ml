@@ -44,13 +44,11 @@ let check_no_module_consumer stanzas =
 module DB = struct
   type nonrec t =
     { cache : (Path.t, t) Hashtbl.t
-    ; file_tree : File_tree.t
     ; stanzas_per_dir : Dune_file.Stanzas.t Dir_with_dune.t Path.Map.t
     }
 
-  let make file_tree ~stanzas_per_dir =
+  let make ~stanzas_per_dir =
     { cache = Hashtbl.create 32
-    ; file_tree
     ; stanzas_per_dir
     }
 
@@ -64,7 +62,7 @@ module DB = struct
       let t =
         match
           Option.bind (Path.drop_build_context dir)
-            ~f:(File_tree.find_dir db.file_tree)
+            ~f:File_tree.find_dir
         with
         | None -> begin
             match Path.parent dir with

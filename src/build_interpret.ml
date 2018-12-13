@@ -20,7 +20,7 @@ end
 
 type file_kind = Reg | Dir
 
-let inspect_path file_tree path =
+let inspect_path path =
   match Path.drop_build_context path with
   | None ->
     if not (Path.exists path) then
@@ -30,13 +30,13 @@ let inspect_path file_tree path =
     else
       Some Reg
   | Some path ->
-    match File_tree.find_dir file_tree path with
+    match File_tree.find_dir path with
     | Some _ ->
       Some Dir
     | None ->
       if Path.is_root path then
         Some Dir
-      else if File_tree.file_exists file_tree
+      else if File_tree.file_exists
                 (Path.parent_exn path)
                 (Path.basename path) then
         Some Reg
@@ -48,7 +48,7 @@ let no_targets_allowed () =
                   or [Build.if_file_exists]" []
 [@@inline never]
 
-let static_deps t ~all_targets ~file_tree =
+let static_deps t ~all_targets =
   let rec loop : type a b. (a, b) t -> Static_deps.t -> bool -> Static_deps.t
     = fun t acc targets_allowed ->
     match t with
@@ -72,7 +72,7 @@ let static_deps t ~all_targets ~file_tree =
           let targets = all_targets ~dir in
           let result = Path.Set.filter targets ~f in
           if Path.Set.is_empty result then begin
-            match inspect_path file_tree dir with
+            match inspect_path dir with
             | None ->
               Errors.warn loc "Directory %s doesn't exist."
                 (Path.to_string_maybe_quoted

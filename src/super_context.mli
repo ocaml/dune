@@ -15,7 +15,6 @@ val create
   :  context:Context.t
   -> ?host:t
   -> projects:Dune_project.t list
-  -> file_tree:File_tree.t
   -> packages:Package.t Package.Name.Map.t
   -> stanzas:Dune_load.Dune_file.t list
   -> external_lib_deps_mode:bool
@@ -27,7 +26,6 @@ val stanzas   : t -> Stanzas.t Dir_with_dune.t list
 val stanzas_in : t -> dir:Path.t -> Stanzas.t Dir_with_dune.t option
 val packages  : t -> Package.t Package.Name.Map.t
 val libs_by_package : t -> (Package.t * Lib.Set.t) Package.Name.Map.t
-val file_tree : t -> File_tree.t
 val artifacts : t -> Artifacts.t
 val cxx_flags : t -> string list
 val build_dir : t -> Path.t
@@ -113,8 +111,6 @@ val add_alias_action
 val eval_glob : t -> dir:Path.t -> Re.re -> string list
 val load_dir : t -> dir:Path.t -> unit
 val on_load_dir : t -> dir:Path.t -> f:(unit -> unit) -> unit
-
-val source_files : t -> src_path:Path.t -> String.Set.t
 
 (** [prog_spec t ?hint name] resolve a program. [name] is looked up in the
     workspace, if it is not found in the tree is is looked up in the PATH. If it

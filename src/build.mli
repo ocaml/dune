@@ -83,7 +83,6 @@ val env_var : string -> ('a, 'a) t
     starting at [dir] and record them as dependencies. *)
 val source_tree
   :  dir:Path.t
-  -> file_tree:File_tree.t
   -> ('a, Path.Set.t) t
 
 (** Record dynamic dependencies *)

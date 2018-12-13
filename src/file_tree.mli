@@ -1,6 +1,6 @@
-open! Stdune
 (** Dune representation of the source tree *)
 
+open! Stdune
 open! Import
 
 module Dune_file : sig
@@ -56,37 +56,28 @@ module Dir : sig
   val project : t -> Dune_project.t
 end
 
-(** A [t] value represent a view of the source tree. It is lazily
-    constructed by scanning the file system and interpreting [.dune-fs]
-    files, as well as [jbuild-ignore] files for backward
-    compatibility. *)
-type t
-
-val load : ?extra_ignored_subtrees:Path.Set.t -> Path.t -> t
-
 (** Passing [~traverse_ignored_dirs:true] to this functions causes the
     whole source tree to be deeply scanned, including ignored
     sub-trees. *)
 val fold
-  :  t
-  -> traverse_ignored_dirs:bool
+  :  traverse_ignored_dirs:bool
   -> init:'a
   -> f:(Dir.t -> 'a -> 'a)
   -> 'a
 
-val root : t -> Dir.t
+val root : Dir.t
 
-val find_dir : t -> Path.t -> Dir.t option
+val find_dir : Path.t -> Dir.t option
 
-val files_of : t -> Path.t -> Path.Set.t
+val files_of : Path.t -> Path.Set.t
 
 (** [true] iff the path is either a directory or a file *)
-val exists : t -> Path.t -> bool
+val exists : Path.t -> bool
 
 (** [true] iff the path is a directory *)
-val dir_exists : t -> Path.t -> bool
+val dir_exists : Path.t -> bool
 
 (** [true] iff the path is a file *)
-val file_exists : t -> Path.t -> string -> bool
+val file_exists : Path.t -> string -> bool
 
-val files_recursively_in : t -> ?prefix_with:Path.t -> Path.t -> Path.Set.t
+val files_recursively_in : ?prefix_with:Path.t -> Path.t -> Path.Set.t

@@ -104,7 +104,7 @@ let gen_rules sctx (config : Dune_file.Auto_format.t) ~dir =
     sctx
     ~dir:output_dir
     ~f:(fun () ->
-      File_tree.files_of (Super_context.file_tree sctx) source_dir
+      File_tree.files_of source_dir
       |> Path.Set.iter ~f:setup_formatting);
   Super_context.add_alias_deps sctx alias
     (Path.Set.singleton (Build_system.Alias.stamp_file alias_formatted));

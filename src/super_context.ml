@@ -14,7 +14,6 @@ type t =
   ; stanzas                          : Stanzas.t Dir_with_dune.t list
   ; stanzas_per_dir                  : Stanzas.t Dir_with_dune.t Path.Map.t
   ; packages                         : Package.t Package.Name.Map.t
-  ; file_tree                        : File_tree.t
   ; artifacts                        : Artifacts.t
   ; cxx_flags                        : string list
   ; expander                         : Expander.t
@@ -36,7 +35,6 @@ let stanzas_in t ~dir = Path.Map.find t.stanzas_per_dir dir
 let packages t = t.packages
 let libs_by_package t = t.libs_by_package
 let artifacts t = t.artifacts
-let file_tree t = t.file_tree
 let cxx_flags t = t.cxx_flags
 let build_dir t = t.context.build_dir
 let profile t = t.context.profile
@@ -187,11 +185,6 @@ let eval_glob t ~dir re = Build_system.eval_glob t.build_system ~dir re
 let load_dir t ~dir = Build_system.load_dir t.build_system ~dir
 let on_load_dir t ~dir ~f = Build_system.on_load_dir t.build_system ~dir ~f
 
-let source_files t ~src_path =
-  match File_tree.find_dir t.file_tree src_path with
-  | None -> String.Set.empty
-  | Some dir -> File_tree.Dir.files dir
-
 module Pkg_version = struct
   open Build.O
 
@@ -250,7 +243,6 @@ let create
       ~(context:Context.t)
       ?host
       ~projects
-      ~file_tree
       ~packages
       ~stanzas
       ~external_lib_deps_mode
@@ -334,7 +326,7 @@ let create
       ~artifacts_host
       ~cxx_flags
   in
-  let dir_status_db = Dir_status.DB.make file_tree ~stanzas_per_dir in
+  let dir_status_db = Dir_status.DB.make ~stanzas_per_dir in
   { context
   ; expander
   ; host
@@ -345,7 +337,6 @@ let create
   ; stanzas
   ; stanzas_per_dir
   ; packages
-  ; file_tree
   ; artifacts
   ; cxx_flags
   ; chdir = Build.arr (fun (action : Action.t) ->
@@ -420,7 +411,7 @@ module Deps = struct
       Alias.dep (make_alias expander s)
       >>^ fun () -> []
     | Alias_rec s ->
-      Alias.dep_rec ~loc:(String_with_vars.loc s) ~file_tree:t.file_tree
+      Alias.dep_rec ~loc:(String_with_vars.loc s)
         (make_alias expander s)
       >>^ fun () -> []
     | Glob_files s -> begin
@@ -436,7 +427,7 @@ module Deps = struct
       end
     | Source_tree s ->
       let path = Expander.expand_path expander s in
-      Build.source_tree ~dir:path ~file_tree:t.file_tree
+      Build.source_tree ~dir:path
       >>^ Path.Set.to_list
     | Package p ->
       let pkg = Package.Name.of_string (Expander.expand_str expander p) in

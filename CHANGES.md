@@ -1,6 +1,8 @@
 1.6.3
 ----------
 
+- Fix merlin handling of private module visibility (#1653 @bobot)
+
 - skip directories when looking up programs in the PATH (#1628, fixes
   #1616, @diml)
 

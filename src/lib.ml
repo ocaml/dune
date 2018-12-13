@@ -1216,7 +1216,6 @@ let to_dune_lib ({ name ; info ; _ } as lib) ~dir =
     ~foreign_archives:info.foreign_archives
     ~foreign_objects:info.foreign_objects
     ~jsoo_runtime:info.jsoo_runtime
-    ~pps:info.pps
     ~requires:(add_loc (requires_exn lib))
     ~ppx_runtime_deps:(add_loc (ppx_runtime_deps_exn lib))
     ~implements:info.implements

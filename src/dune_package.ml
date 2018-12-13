@@ -62,7 +62,6 @@ module Lib = struct
     ; foreign_archives : Path.t list Mode.Dict.t
     ; jsoo_runtime     : Path.t list
     ; ppx_runtime_deps : (Loc.t * Lib_name.t) list
-    ; pps              : (Loc.t * Lib_name.t) list
     ; sub_systems      : 'sub_system Sub_system_name.Map.t
     ; virtual_         : Virtual.t option
     ; implements       : (Loc.t * Lib_name.t) option
@@ -73,7 +72,7 @@ module Lib = struct
 
   let make ~loc ~kind ~name ~synopsis ~archives ~plugins ~foreign_objects
         ~foreign_archives ~jsoo_runtime ~main_module_name ~sub_systems
-        ~requires ~pps ~ppx_runtime_deps ~virtual_ ~implements
+        ~requires ~ppx_runtime_deps ~virtual_ ~implements
         ~version ~dir =
     let map_path p = Path.relative dir (Path.basename p) in
     let map_list = List.map ~f:map_path in
@@ -90,7 +89,6 @@ module Lib = struct
     ; main_module_name
     ; sub_systems
     ; requires
-    ; pps
     ; ppx_runtime_deps
     ; virtual_
     ; implements
@@ -110,7 +108,7 @@ module Lib = struct
   let encode ~package_root
         { loc = _ ; kind ; synopsis ; name ; archives ; plugins
         ; foreign_objects ; foreign_archives ; jsoo_runtime ; requires
-        ; ppx_runtime_deps ; pps ; sub_systems ; virtual_
+        ; ppx_runtime_deps ; sub_systems ; virtual_
         ; implements ; main_module_name ; version = _; dir = _
         } =
     let open Dune_lang.Encoder in
@@ -131,7 +129,6 @@ module Lib = struct
     ; paths "jsoo_runtime" jsoo_runtime
     ; libs "requires" requires
     ; libs "ppx_runtime_deps" ppx_runtime_deps
-    ; libs "pps" pps
     ; field_o "implements" (no_loc Lib_name.encode) implements
     ; field_o "main_module_name" Module.Name.encode main_module_name
     ; field_o "virtual" Virtual.encode virtual_
@@ -160,7 +157,6 @@ module Lib = struct
       and jsoo_runtime = paths "jsoo_runtime"
       and requires = libs "requires"
       and ppx_runtime_deps = libs "ppx_runtime_deps"
-      and pps = libs "pps"
       and main_module_name = field_o "main_module_name" Module.Name.decode
       and virtual_ = field_o "virtual" Virtual.decode
       and implements = field_o "implements" (located Lib_name.decode)
@@ -177,7 +173,6 @@ module Lib = struct
       ; jsoo_runtime
       ; requires
       ; ppx_runtime_deps
-      ; pps
       ; implements
       ; sub_systems
       ; main_module_name
@@ -201,7 +196,6 @@ module Lib = struct
   let plugins t = t.plugins
   let jsoo_runtime t = t.jsoo_runtime
   let foreign_archives t = t.foreign_archives
-  let pps t = t.pps
   let requires t = t.requires
   let implements t = t.implements
 

@@ -1183,6 +1183,13 @@ let report_lib_error ppf (e : Error.t) =
       Lib_name.pp_quoted impl.name
 
 let () =
+  Printexc.register_printer
+    (function
+      | Error e ->
+        Some (Format.asprintf "%a" report_lib_error e)
+      | _ -> None)
+
+let () =
   Report_error.register (fun exn ->
     match exn with
     | Error e ->

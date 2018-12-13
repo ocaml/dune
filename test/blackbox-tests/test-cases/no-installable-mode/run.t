@@ -2,6 +2,7 @@ When a public executable is built in shared_object mode, a specific error
 message is displayed:
 
   $ dune build --root=public --display=short
+  Entering directory 'public'
   File "jbuild", line 4, characters 2-74:
   4 |   (
   5 |    (name mylib)

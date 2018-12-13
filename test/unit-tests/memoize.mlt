@@ -112,7 +112,10 @@ run mcomp "hello";;
 
 let stack = ref [];;
 let dump_stack v =
-  get_call_stack >>| (fun s -> stack := s; v);;
+  let s = get_call_stack () in
+  stack := s;
+  Fiber.return v
+;;
 
 let mcompcycle =
   let mcompcycle = Fdecl.create () in

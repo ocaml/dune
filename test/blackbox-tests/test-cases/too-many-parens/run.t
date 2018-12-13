@@ -2,6 +2,7 @@ Check that the error messages produced when using too many parentheses
 are readable.
 
   $ dune build --root a
+  Entering directory 'a'
   File "dune", line 1, characters 12-72:
   1 | (executable (
   2 |   (name hello)
@@ -14,6 +15,7 @@ are readable.
   [1]
 
   $ dune build --root b
+  Entering directory 'b'
   File "dune", line 4, characters 12-17:
   4 |  (libraries (lib)))
                   ^^^^^
@@ -23,6 +25,7 @@ are readable.
   [1]
 
   $ dune build --root c
+  Entering directory 'c'
   File "dune", line 3, characters 7-14:
   3 |  (deps (x y z)))
              ^^^^^^^
@@ -33,6 +36,7 @@ are readable.
 
 Checking that extra long stanzas (over 10 lines) are truncated in the middle, and the two blocks are aligned.
   $ dune build --root d
+  Entering directory 'd'
   File "dune", line 3, characters 13-192:
    3 |   (libraries (a
    4 |               b
@@ -49,6 +53,7 @@ Checking that extra long stanzas (over 10 lines) are truncated in the middle, an
 When the inner syntax is wrong, do not warn about the parens:
 
   $ dune build --root e
+  Entering directory 'e'
   File "dune", line 3, characters 7-15:
   3 |  (deps (glob *)) ; this form doesn't exist
              ^^^^^^^^

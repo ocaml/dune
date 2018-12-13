@@ -4,6 +4,7 @@ the name field can be omitted for libraries when public_name is present
 
 this isn't possible for older syntax <= (1, 0)
   $ dune build --root no-name-lib-syntax-1-0
+  Entering directory 'no-name-lib-syntax-1-0'
   File "dune", line 1, characters 22-25:
   1 | (library (public_name foo))
                             ^^^
@@ -16,6 +17,7 @@ executable(s) stanza works the same way
   Entering directory 'no-name-exes'
 
   $ dune build --root no-name-exes-syntax-1-0
+  Entering directory 'no-name-exes-syntax-1-0'
   File "dune", line 1, characters 0-36:
   1 | (executables (public_names foo bar))
       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -25,6 +27,7 @@ executable(s) stanza works the same way
 there's only a public name but it's invalid as a name
 
   $ dune build --root public-name-invalid-name
+  Entering directory 'public-name-invalid-name'
   File "dune", line 1, characters 22-28:
   1 | (library (public_name c.find))
                             ^^^^^^
@@ -37,6 +40,7 @@ there's only a public name which is invalid, but sine the library is unwrapped,
 it's just a warning
 
   $ dune build --root public-name-invalid-wrapped-false
+  Entering directory 'public-name-invalid-wrapped-false'
   File "dune", line 3, characters 14-21:
   3 |  (public_name foo.bar))
                     ^^^^^^^

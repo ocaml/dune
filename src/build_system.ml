@@ -1170,7 +1170,7 @@ and get_file_spec t path =
       match Path.Table.find t.files path with
       | Some _ as some -> Fiber.return some
       | None ->
-        Memo.get_call_stack >>| fun stack ->
+        let stack = Memo.get_call_stack () in
         let loc =
           List.find_map stack ~f:Rule_fn.Stack_frame.input
           |> Option.bind ~f:(fun rule -> rule.Internal_rule.loc)

@@ -212,7 +212,7 @@ val is_target : t -> Path.t -> bool
 val all_lib_deps
   :  t
   -> request:(unit, unit) Build.t
-  -> Lib_deps_info.t Path.Map.t String.Map.t
+  -> Lib_deps_info.t Path.Map.t String.Map.t Fiber.t
 
 (** List of all buildable targets *)
 val all_targets : t -> Path.t list

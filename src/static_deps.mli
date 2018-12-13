@@ -1,7 +1,11 @@
 open! Import
 
-(** A simple wrapper around [Deps.t], where some dependencies are recorded as
-    "rule deps" and other as "action deps". *)
+(** A simple wrapper around [Deps.t], where some dependencies are
+    recorded as "rule deps" and other as "action deps". Action
+    Dependencies are dependencies the external commands are expected to
+    access while rule dependencies are dependencies needed in order to
+    compute the action to execute and its dependencies *)
+
 type t
 
 (** {1} Constructors *)
@@ -29,5 +33,5 @@ val rule_deps : t -> Deps.t
 (** Return the action deps. *)
 val action_deps : t -> Deps.t
 
-(** Return the paths deps, both for the rule deps and the action deps . *)
+(** Return the paths deps, both for the rule deps and the action deps. *)
 val paths : t -> Path.Set.t

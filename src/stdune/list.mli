@@ -50,3 +50,5 @@ val singleton : 'a -> 'a t
 val nth : 'a t -> int -> 'a option
 
 val physically_equal : 'a t -> 'a t -> bool
+
+val init : int -> f:(int -> 'a) -> 'a list

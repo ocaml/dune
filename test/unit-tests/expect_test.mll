@@ -92,6 +92,8 @@ let main () =
       [ "src/dune_lang/.dune_lang.objs"
       ; "src/stdune/.stdune.objs"
       ; "src/fiber/.fiber.objs"
+      ; "src/dag/.dag.objs"
+      ; "src/memo/.memo.objs"
       ; "src/.dune.objs"
       ]
       ~f:Topdirs.dir_directory;
@@ -116,6 +118,11 @@ let main () =
           in
           ignore (Toploop.execute_phrase true ppf phr : bool)
         with exn ->
+          let ppf =
+            match kind with
+            | Expect -> ppf
+            | Ignore -> Format.err_formatter
+          in
           Location.report_exception ppf exn
       );
       begin match kind with

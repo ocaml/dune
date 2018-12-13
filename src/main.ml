@@ -144,7 +144,7 @@ let auto_concurrency =
              | None -> loop rest
              | Some prog ->
                Process.run_capture (Accept All) prog args ~env:Env.initial
-                 ~stderr_to:(File Config.dev_null)
+                 ~stderr_to:(Process.Output.file Config.dev_null)
                >>= function
                | Error _ -> loop rest
                | Ok s ->

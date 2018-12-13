@@ -74,7 +74,7 @@ module Env : sig
   val external_ : t -> dir:Path.t -> External_env.t
   val artifacts_host : t -> dir:Path.t -> Artifacts.t
   val expander : t -> dir:Path.t -> Expander.t
-  val file_bindings : t -> dir:Path.t -> string File_bindings.t
+  val local_binaries : t -> dir:Path.t -> string File_bindings.t
 end = struct
   let get_env_stanza t ~dir =
     let open Option.O in
@@ -96,11 +96,9 @@ end = struct
             | None -> raise_notrace Exit
             | Some parent -> lazy (get t ~dir:parent ~scope)
         in
-        match get_env_stanza t ~dir with
-        | None -> Lazy.force inherit_from
-        | Some config ->
-          Env_node.make ~dir ~scope ~config ~inherit_from:(Some inherit_from)
-            ~env:None
+        let config = get_env_stanza t ~dir in
+        Env_node.make ~dir ~scope ~config ~inherit_from:(Some inherit_from)
+          ~env:None
       in
       Hashtbl.add t.env dir node;
       node
@@ -126,10 +124,10 @@ end = struct
     |> Expander.set_scope ~scope:(Env_node.scope node)
     |> Expander.set_dir ~dir
 
-  let file_bindings t ~dir =
+  let local_binaries t ~dir =
     let node = get t ~dir in
     let expander = expander_for_artifacts t ~dir in
-    Env_node.file_bindings node ~profile:(profile t) ~expander
+    Env_node.local_binaries node ~profile:(profile t) ~expander
 
   let artifacts t ~dir =
     let expander = expander_for_artifacts t ~dir in
@@ -239,7 +237,7 @@ let ocaml_flags t ~dir (x : Buildable.t) =
     ~default:(Env.ocaml_flags t ~dir)
     ~eval:(Expander.expand_and_eval_set expander)
 
-let file_bindings t ~dir = Env.file_bindings t ~dir
+let local_binaries t ~dir = Env.local_binaries t ~dir
 
 let dump_env t ~dir =
   Ocaml_flags.dump (Env.ocaml_flags t ~dir)
@@ -314,13 +312,14 @@ let create
     in
     match context.env_nodes with
     | { context = None; workspace = None } ->
-      make ~config:{ loc = Loc.none; rules = [] } ~inherit_from:None
-    | { context = Some config; workspace = None }
-    | { context = None; workspace = Some config } ->
+      make ~config:(Some { loc = Loc.none; rules = [] }) ~inherit_from:None
+    | { context = Some _ as config; workspace = None }
+    | { context = None; workspace = Some _ as config } ->
       make ~config ~inherit_from:None
-    | { context = Some context ; workspace = Some workspace } ->
+    | { context = Some _ as context ; workspace = Some _ as workspace } ->
       make ~config:context
-        ~inherit_from:(Some (lazy (make ~inherit_from:None ~config:workspace)))
+        ~inherit_from:(Some (lazy (make ~inherit_from:None
+                                     ~config:workspace)))
   ) in
   let expander =
     let artifacts_host =

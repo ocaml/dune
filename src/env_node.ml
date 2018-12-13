@@ -4,8 +4,8 @@ type t =
   { dir                   : Path.t
   ; inherit_from          : t Lazy.t option
   ; scope                 : Scope.t
-  ; config                : Dune_env.Stanza.t
-  ; mutable file_bindings : string File_bindings.t option
+  ; config                : Dune_env.Stanza.t option
+  ; mutable local_binaries : string File_bindings.t option
   ; mutable ocaml_flags   : Ocaml_flags.t option
   ; mutable external_     : Env.t option
   ; mutable artifacts     : Artifacts.t option
@@ -21,23 +21,28 @@ let make ~dir ~inherit_from ~scope ~config ~env =
   ; ocaml_flags = None
   ; external_ = env
   ; artifacts = None
-  ; file_bindings = None
+  ; local_binaries = None
   }
 
-let file_bindings t ~profile ~expander =
-  match t.file_bindings with
+let find_config t ~profile =
+  let open Option.O in
+  t.config >>= fun config ->
+  Dune_env.Stanza.find config ~profile
+
+let local_binaries t ~profile ~expander =
+  match t.local_binaries with
   | Some x -> x
   | None ->
-    let file_bindings =
-      match Dune_env.Stanza.find t.config ~profile with
+    let local_binaries =
+      match find_config t ~profile with
       | None -> []
       | Some cfg ->
         File_bindings.map cfg.binaries ~f:(fun template ->
           Expander.expand expander ~mode:Single ~template
           |> Value.to_string ~dir:t.dir)
     in
-    t.file_bindings <- Some file_bindings;
-    file_bindings
+    t.local_binaries <- Some local_binaries;
+    local_binaries
 
 let rec external_ t ~profile ~default =
   match t.external_ with
@@ -49,7 +54,7 @@ let rec external_ t ~profile ~default =
       | Some (lazy t) -> external_ t ~default ~profile
     in
     let (env, have_binaries) =
-      match Dune_env.Stanza.find t.config ~profile with
+      match find_config t ~profile with
       | None -> (default, false)
       | Some cfg ->
         ( Env.extend_env default cfg.env_vars
@@ -75,7 +80,7 @@ let rec artifacts t ~profile ~default ~expander =
       | Some (lazy t) -> artifacts t ~default ~profile ~expander
     in
     let artifacts =
-      file_bindings t ~profile ~expander
+      local_binaries t ~profile ~expander
       |> Artifacts.add_binaries default ~dir:t.dir
     in
     t.artifacts <- Some artifacts;
@@ -91,7 +96,7 @@ let rec ocaml_flags t ~profile ~expander =
       | Some (lazy t) -> ocaml_flags t ~profile ~expander
     in
     let flags =
-      match Dune_env.Stanza.find t.config ~profile with
+      match find_config t ~profile with
       | None -> default
       | Some cfg ->
         let expander = Expander.set_dir expander ~dir:t.dir in

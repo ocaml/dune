@@ -154,6 +154,7 @@ module Local : sig
   val extension : t -> string
   val is_suffix : t -> suffix:string -> bool
   val split_extension : t -> t * string
+  val pp : Format.formatter -> t -> unit
 
   module L : sig
     val relative : ?error_loc:Loc.t -> t -> string list -> t
@@ -178,6 +179,8 @@ end = struct
       let resize_policy = Interned.Greedy
       let order = Interned.Natural
     end)()
+
+  let pp ppf s = Format.pp_print_string ppf (to_string s)
 
   let compare_val x y = String.compare (to_string x) (to_string y)
 
@@ -562,6 +565,8 @@ end
 
 include T
 
+let hash (t : t) = Hashtbl.hash t
+
 let build_dir = in_build_dir Local.root
 
 let is_root = function
@@ -642,8 +647,6 @@ let of_filename_relative_to_initial_cwd fn =
   )
 
 let to_absolute_filename t = Kind.to_absolute_filename (kind t)
-
-let to_absolute t = external_ (External.of_string (to_absolute_filename t))
 
 let external_of_local x ~root =
   External.to_string (External.relative root (Local.to_string x))

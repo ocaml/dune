@@ -322,7 +322,7 @@ Custom tests
 ============
 
 We said in `Running tests`_ that to run tests dune simply builds
-the ``runtest`` alias. As a result, to define cutsom tests, you simply
+the ``runtest`` alias. As a result, to define custom tests, you simply
 need to add an action to this alias in any directory. For instance if
 you have a binary ``tests.exe`` that you want to run as part of
 running your testsuite, simply add this to a dune file:

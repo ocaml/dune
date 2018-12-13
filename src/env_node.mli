@@ -9,7 +9,7 @@ val make
   :  dir:Path.t
   -> inherit_from:t Lazy.t option
   -> scope:Scope.t
-  -> config:Dune_env.Stanza.t
+  -> config:Dune_env.Stanza.t option
   -> env:Env.t option
   -> t
 
@@ -19,7 +19,7 @@ val external_ : t -> profile:string -> default:Env.t -> Env.t
 
 val ocaml_flags : t -> profile:string -> expander:Expander.t -> Ocaml_flags.t
 
-val file_bindings
+val local_binaries
   :  t
   -> profile:string
   -> expander:Expander.t

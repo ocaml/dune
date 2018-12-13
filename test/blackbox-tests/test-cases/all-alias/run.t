@@ -14,10 +14,10 @@
   Entering directory 'private-lib'
       ocamldep .bar.objs/bar.ml.d
         ocamlc .bar.objs/bar.{cmi,cmo,cmt}
+        ocamlc bar.cma
       ocamlopt .bar.objs/bar.{cmx,o}
       ocamlopt bar.{a,cmxa}
       ocamlopt bar.cmxs
-        ocamlc bar.cma
 
 @all builds custom install stanzas
 

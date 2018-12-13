@@ -21,6 +21,10 @@ module T = struct
   let hash (s : t) = Hashtbl.hash s
 end
 
+let equal : string -> string -> bool = (=)
+let hash = Hashtbl.hash
+let to_sexp = Sexp.Encoder.string
+
 let capitalize   = capitalize_ascii
 let uncapitalize = uncapitalize_ascii
 let uppercase    = uppercase_ascii

@@ -9,7 +9,7 @@ are readable.
   4 |   (libraries (lib))
   5 | ))
   Error: Atom expected
-  Hint: dune files require less parentheses than jbuild files.
+  Hint: dune files require fewer parentheses than jbuild files.
   If you just converted this file from a jbuild file, try removing these parentheses.
   [1]
 
@@ -18,7 +18,7 @@ are readable.
   4 |  (libraries (lib)))
                   ^^^^^
   Error: 'select' expected
-  Hint: dune files require less parentheses than jbuild files.
+  Hint: dune files require fewer parentheses than jbuild files.
   If you just converted this file from a jbuild file, try removing these parentheses.
   [1]
 
@@ -27,7 +27,7 @@ are readable.
   3 |  (deps (x y z)))
              ^^^^^^^
   Error: Unknown constructor x
-  Hint: dune files require less parentheses than jbuild files.
+  Hint: dune files require fewer parentheses than jbuild files.
   If you just converted this file from a jbuild file, try removing these parentheses.
   [1]
 
@@ -42,7 +42,7 @@ Checking that extra long stanzas (over 10 lines) are truncated in the middle, an
   13 |               k
   14 |               l)
   Error: 'select' expected
-  Hint: dune files require less parentheses than jbuild files.
+  Hint: dune files require fewer parentheses than jbuild files.
   If you just converted this file from a jbuild file, try removing these parentheses.
   [1]
 
@@ -53,6 +53,6 @@ When the inner syntax is wrong, do not warn about the parens:
   3 |  (deps (glob *)) ; this form doesn't exist
              ^^^^^^^^
   Error: Unknown constructor glob
-  Hint: dune files require less parentheses than jbuild files.
+  Hint: dune files require fewer parentheses than jbuild files.
   If you just converted this file from a jbuild file, try removing these parentheses.
   [1]

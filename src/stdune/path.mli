@@ -6,7 +6,7 @@ module Local : sig
   val to_sexp : t -> Sexp.t
   val equal : t -> t -> bool
   val to_string : t -> string
-
+  val pp : Format.formatter -> t -> unit
   module L : sig
     val relative : ?error_loc:Loc.t -> t -> string list -> t
   end
@@ -44,6 +44,8 @@ val compare : t -> t -> Ordering.t
 
 val equal : t -> t -> bool
 
+val hash : t -> int
+
 module Set : sig
   include Set.S with type elt = t
   val to_sexp : t Sexp.Encoder.t
@@ -75,9 +77,6 @@ val of_filename_relative_to_initial_cwd : string -> t
 (** Convert a path to an absolute filename. Must be called after the workspace
     root has been set. [root] is the root directory of local paths *)
 val to_absolute_filename : t -> string
-
-(** Convert any path to an absolute path *)
-val to_absolute : t -> t
 
 val reach : t -> from:t -> string
 

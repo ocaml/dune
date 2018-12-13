@@ -10,41 +10,49 @@ end
 
 module type S = sig
   type key
+  type 'a monad
   val top_closure
     :  key:('a -> key)
-    -> deps:('a -> 'a list)
+    -> deps:('a -> 'a list monad)
     -> 'a list
-    -> ('a list, 'a list) result
+    -> ('a list, 'a list) result monad
 end
 
-module Make(Keys : Keys) = struct
+module Make(Keys : Keys)(Monad : Monad.S) = struct
+  open Monad
+
   let top_closure ~key ~deps elements =
     let visited = ref Keys.empty in
     let res = ref [] in
     let rec loop elt ~temporarily_marked =
       let key = key elt in
       if Keys.mem temporarily_marked key then
-        Error [elt]
+        return (Error [elt])
       else if not (Keys.mem !visited key) then begin
         visited := Keys.add !visited key;
         let temporarily_marked = Keys.add temporarily_marked key in
-        match iter_elts (deps elt) ~temporarily_marked with
-        | Ok () -> res := elt :: !res; Ok ()
-        | Error l -> Error (elt :: l)
+        deps elt
+        >>= iter_elts ~temporarily_marked
+        >>= function
+        | Ok () -> res := elt :: !res; return (Ok ())
+        | Error l -> return (Error (elt :: l))
       end else
-        Ok ()
+        return (Ok ())
     and iter_elts elts ~temporarily_marked =
-      match elts with
-      | [] -> Ok ()
+      return elts
+      >>= function
+      | [] -> return (Ok ())
       | elt :: elts ->
-        match loop elt ~temporarily_marked with
-        | Error _ as result -> result
+        loop elt ~temporarily_marked
+        >>= function
+        | Error _ as result -> return result
         | Ok () -> iter_elts elts ~temporarily_marked
     in
-    match iter_elts elements ~temporarily_marked:Keys.empty with
-    | Ok () -> Ok (List.rev !res)
-    | Error elts -> Error elts
-end
+    iter_elts elements ~temporarily_marked:Keys.empty
+    >>= function
+    | Ok () -> return (Ok (List.rev !res))
+    | Error elts -> return (Error elts)
+end [@@inlined always]
 
-module Int    = Make(Int.Set)
-module String = Make(String.Set)
+module Int    = Make(Int.Set)(Monad.Id)
+module String = Make(String.Set)(Monad.Id)

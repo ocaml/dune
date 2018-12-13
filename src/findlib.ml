@@ -202,7 +202,6 @@ module Package = struct
       ~main_module_name:None
       ~sub_systems
       ~requires:(List.map ~f:add_loc (requires t))
-      ~pps:[]
       ~ppx_runtime_deps:(List.map ~f:add_loc (ppx_runtime_deps t))
       ~virtual_:None
       ~implements:None

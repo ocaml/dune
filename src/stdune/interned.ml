@@ -5,6 +5,7 @@ module type S = sig
   val pp: t Fmt.t
   val make : string -> t
   val get : string -> t option
+  val all : unit -> t list
   module Set : sig
     include Set.S with type elt = t
     val make : string list -> t
@@ -89,6 +90,8 @@ module Make(R : Settings)()
 
   let to_string t = Table.get names t
 
+  let all () = List.init !next ~f:(fun t -> t)
+
   module T = struct
     type nonrec t = int
 
@@ -122,6 +125,7 @@ module No_interning(R : Settings)() = struct
   let to_string s = s
   let pp fmt s = Format.fprintf fmt "%S" (to_string s)
   let get s = Some s
+  let all () = assert false
 
   module Set = struct
     include String.Set

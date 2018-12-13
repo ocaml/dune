@@ -13,6 +13,8 @@ module Name : sig
     | Named     of string
     | Anonymous of Path.t
 
+  val pp : t Fmt.t
+
   val compare : t -> t -> Ordering.t
 
   val to_string_hum : t -> string
@@ -52,6 +54,12 @@ end = struct
   module Infix = Comparable.Operators(T)
 
   let anonymous_root = Anonymous Path.root
+
+  let pp fmt = function
+    | Named n ->
+      Format.fprintf fmt "Named %S" n
+    | Anonymous p ->
+      Format.fprintf fmt "Anonymous %s" (Path.to_string_maybe_quoted p)
 
   let to_string_hum = function
     | Named     s -> s
@@ -130,6 +138,12 @@ module Project_file = struct
     ; mutable exists : bool
     }
 
+  let pp fmt { file ; exists } =
+    Fmt.record fmt
+      [ "file", Fmt.const Path.pp file
+      ; "exists", Fmt.const Format.pp_print_bool exists
+      ]
+
   let to_sexp { file; exists } =
     Sexp.Encoder.(
       record
@@ -154,6 +168,19 @@ let version t = t.version
 let name t = t.name
 let root t = t.root
 let stanza_parser t = t.stanza_parser
+
+let pp fmt { name ; root ; version ; project_file ; parsing_context = _
+           ; extension_args = _; stanza_parser = _ ; packages } =
+  Fmt.record fmt
+    [ "name", Fmt.const Name.pp name
+    ; "root", Fmt.const Path.Local.pp root
+    ; "version", Fmt.const (Fmt.optional Format.pp_print_string) version
+    ; "project_file", Fmt.const Project_file.pp project_file
+    ; "packages",
+      Fmt.const
+        (Fmt.ocaml_list (Fmt.tuple Package.Name.pp Package.pp))
+        (Package.Name.Map.to_list packages)
+    ]
 
 let find_extension_args t key =
   Univ_map.find t.extension_args key

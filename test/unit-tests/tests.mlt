@@ -45,10 +45,10 @@ val pkg : Sub_system_info.t Dune_package.Lib.t = <package:foo>
 |}]
 
 (* "foo" should depend on "baz" *)
-Dune_package.Lib.requires pkg;;
+Dune_package.Lib.requires pkg |> List.map ~f:snd;;
 
 [%%expect{|
-- : (Loc.t * Lib_name.t) list = [({start = <abstr>; stop = <abstr>}, "baz")]
+- : Lib_name.t list = ["baz"]
 |}]
 
 (* Meta parsing/simplification *)

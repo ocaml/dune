@@ -34,6 +34,9 @@
    (plugins (byte foo.cma) (native foo.cmxs))
    (foreign_archives (native foo$ext_lib))
    (main_module_name Foo)
+   (modules
+    (alias_module (name Foo) (obj_name foo) (visibility public) (impl))
+    (main_module_name Foo))
    (inline_tests.backend
     (runner_libraries str)
     (flags

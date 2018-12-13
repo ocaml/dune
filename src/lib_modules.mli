@@ -44,3 +44,15 @@ val set_modules : t -> Module.Name_map.t -> t
 val for_compilation : t -> Module.Name_map.t
 
 val have_artifacts : t -> Module.Name_map.t
+
+module Virtual : sig
+  val encode : t -> Dune_lang.t list
+  val decode
+    :  main_module_name:Module.Name.t
+    -> dir:Path.t
+    -> t Dune_lang.Decoder.t
+end
+
+val encode : t -> Dune_lang.t list
+
+val decode : implements:bool -> dir:Path.t -> t Dune_lang.Decoder.t

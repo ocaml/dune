@@ -1202,8 +1202,9 @@ let () =
       Some (Report_error.make_printer ?loc ?hint pp)
     | _ -> None)
 
-let to_dune_lib ({ name ; info ; _ } as lib) ~dir =
+let to_dune_lib ({ name ; info ; _ } as lib) ~lib_modules ~dir =
   let add_loc = List.map ~f:(fun x -> (info.loc, x.name)) in
+  let virtual_ = Option.is_some info.virtual_ in
   Dune_package.Lib.make
     ~dir
     ~name
@@ -1219,6 +1220,7 @@ let to_dune_lib ({ name ; info ; _ } as lib) ~dir =
     ~requires:(add_loc (requires_exn lib))
     ~ppx_runtime_deps:(add_loc (ppx_runtime_deps_exn lib))
     ~implements:info.implements
-    ~virtual_:None
+    ~virtual_
+    ~modules:(Some lib_modules)
     ~main_module_name:(to_exn (main_module_name lib))
     ~sub_systems:(Sub_system.dump_config lib)

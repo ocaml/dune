@@ -8,11 +8,19 @@
    (archives (byte a.cma) (native a.cmxa))
    (plugins (byte a.cma) (native a.cmxs))
    (foreign_archives (native a$ext_lib))
-   (main_module_name A))
+   (main_module_name A)
+   (modules
+    (alias_module (name A) (obj_name a) (visibility public) (impl))
+    (main_module_name A)
+    (modules ((name X) (obj_name a__X) (visibility public) (impl)))))
   (library
    (name a.b.c)
    (kind normal)
    (archives (byte b/c/c.cma) (native b/c/c.cmxa))
    (plugins (byte b/c/c.cma) (native b/c/c.cmxs))
    (foreign_archives (native b/c/c$ext_lib))
-   (main_module_name C))
+   (main_module_name C)
+   (modules
+    (alias_module (name C) (obj_name c) (visibility public) (impl))
+    (main_module_name C)
+    (modules ((name Y) (obj_name c__Y) (visibility public) (impl)))))

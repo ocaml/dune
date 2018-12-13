@@ -176,6 +176,8 @@ module Encoder : sig
     -> field
   val field_o : string -> 'a t -> 'a option -> field
 
+  val field_o_b : string -> bool -> field
+
   (** Field with inlined list as value *)
   val field_l : string -> 'a t -> 'a list -> field
 

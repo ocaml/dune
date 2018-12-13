@@ -44,13 +44,13 @@ end
 module Virtual = struct
   type t =
     | Local
-    | External of Dune_package.Lib.Virtual.t
+    | External of Lib_modules.t
 end
 
 type t =
   { loc              : Loc.t
   ; name             : Lib_name.t
-  ; kind             : Dune_package.Lib.Kind.t
+  ; kind             : Lib_kind.t
   ; status           : Status.t
   ; src_dir          : Path.t
   ; obj_dir          : Path.t
@@ -180,8 +180,10 @@ let of_dune_lib dp =
   let module Lib = Dune_package.Lib in
   let src_dir = Lib.dir dp in
   let virtual_ =
-    Lib.virtual_ dp
-    |> Option.map ~f:(fun v -> Virtual.External v)
+    if Lib.virtual_ dp then
+      Some (Virtual.External (Option.value_exn (Lib.modules dp)))
+    else
+      None
   in
   { loc = Lib.loc dp
   ; name = Lib.name dp

@@ -1,0 +1,4 @@
+(library
+ (name vlib)
+ (public_name foo.vlib)
+ (virtual_modules vmod))

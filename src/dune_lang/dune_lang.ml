@@ -303,6 +303,12 @@ module Encoder = struct
     | None -> Absent
     | Some v -> Normal (name, f v)
 
+  let field_o_b name v =
+    if v then
+      Inlined_list (name, [])
+    else
+      Absent
+
   let field_l name f l =
     match l with
     | [] -> Absent

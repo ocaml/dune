@@ -24,13 +24,13 @@ end
 module Virtual : sig
   type t =
     | Local
-    | External of Dune_package.Lib.Virtual.t
+    | External of Lib_modules.t
 end
 
 type t = private
   { loc              : Loc.t
   ; name             : Lib_name.t
-  ; kind             : Dune_package.Lib.Kind.t
+  ; kind             : Lib_kind.t
   ; status           : Status.t
   ; src_dir          : Path.t
   ; obj_dir          : Path.t

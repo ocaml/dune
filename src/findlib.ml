@@ -197,14 +197,13 @@ module Package = struct
       ~foreign_objects:[]
       ~foreign_archives:(Mode.Dict.make_both [])
       ~jsoo_runtime:(jsoo_runtime t)
-      (* Technically not accurate, but it doesn't matter as we can't findlib
-         modules don't work with virtual libraries *)
-      ~main_module_name:None
       ~sub_systems
       ~requires:(List.map ~f:add_loc (requires t))
       ~ppx_runtime_deps:(List.map ~f:add_loc (ppx_runtime_deps t))
-      ~virtual_:None
+      ~virtual_:false
       ~implements:None
+      ~modules:None
+      ~main_module_name:None (* XXX remove *)
       ~version:(version t)
       ~dir:t.dir
 end

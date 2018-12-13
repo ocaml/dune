@@ -198,7 +198,7 @@ module Library : sig
     ; install_c_headers        : string list
     ; ppx_runtime_libraries    : (Loc.t * Lib_name.t) list
     ; modes                    : Mode_conf.Set.t
-    ; kind                     : Dune_package.Lib.Kind.t
+    ; kind                     : Lib_kind.t
     ; c_flags                  : Ordered_set_lang.Unexpanded.t
     ; c_names                  : (Loc.t * string) list
     ; cxx_flags                : Ordered_set_lang.Unexpanded.t

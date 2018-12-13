@@ -32,6 +32,8 @@ module Name : sig
   module Infix : Comparable.OPS with type t = t
 
   val of_local_lib_name : Lib_name.Local.t -> t
+
+  val to_local_lib_name : t -> Lib_name.Local.t
 end
 
 module Syntax : sig
@@ -49,6 +51,8 @@ end
 
 module Visibility : sig
   type t = Public | Private
+
+  include Dune_lang.Conv with type t := t
 end
 
 type t
@@ -142,3 +146,9 @@ val set_private : t -> t
 val remove_files : t -> t
 
 val sources : t -> Path.t list
+
+val visibility : t -> Visibility.t
+
+val encode : t -> Dune_lang.t list
+
+val decode : dir:Path.t -> t Dune_lang.Decoder.t

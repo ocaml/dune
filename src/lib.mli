@@ -24,7 +24,7 @@ val private_obj_dir : t -> Path.t option
 val is_local : t -> bool
 
 val synopsis     : t -> string option
-val kind         : t -> Dune_package.Lib.Kind.t
+val kind         : t -> Lib_kind.t
 val archives     : t -> Path.t list Mode.Dict.t
 val plugins      : t -> Path.t list Mode.Dict.t
 val jsoo_runtime : t -> Path.t list
@@ -314,5 +314,6 @@ end
 
 val to_dune_lib
   :  t
+  -> lib_modules:Lib_modules.t
   -> dir:Path.t
   -> (Syntax.Version.t * Dune_lang.t list) Dune_package.Lib.t

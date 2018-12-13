@@ -266,6 +266,39 @@ Then we make sure that we can implement it
   File "impl-lib/dune", line 3, characters 13-17:
   3 |  (implements vlib))
                    ^^^^
-  Error: Library "vlib" is not virtual. It cannot be implemented by "impl".
-  -> required by library "impl" in _build/default/impl-lib
+  Error: It's not possible to implement external libraries yet
   [1]
+
+Include variants and implementation information in dune-package
+  $ dune build --root dune-package-info
+  Entering directory 'dune-package-info'
+  (lang dune 1.6)
+  (name foo)
+  (library
+   (name foo.impl)
+   (kind normal)
+   (archives (byte impl/impl.cma) (native impl/impl.cmxa))
+   (plugins (byte impl/impl.cma) (native impl/impl.cmxs))
+   (foreign_archives (native impl/impl$ext_lib))
+   (requires foo.vlib)
+   (implements vlib)
+   (main_module_name Vlib)
+   (modules
+    (alias_module
+     (name Vlib__impl__)
+     (obj_name vlib__impl__)
+     (visibility public)
+     (impl))
+    (main_module_name Vlib)
+    (modules ((name Vmod) (obj_name vlib__Vmod) (visibility public) (impl)))))
+  (library
+   (name foo.vlib)
+   (kind normal)
+   (virtual)
+   (foreign_archives (native vlib/vlib$ext_lib))
+   (main_module_name Vlib)
+   (modules
+    (alias_module (name Vlib) (obj_name vlib) (visibility public) (impl))
+    (main_module_name Vlib)
+    (modules ((name Vmod) (obj_name vlib__Vmod) (visibility public) (intf)))
+    (virtual_modules Vmod)))

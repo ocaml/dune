@@ -538,13 +538,19 @@ module Gen (P : Install_rules.Params) = struct
       ; compile_info
       };
 
+    let objs_dirs = Path.Set.singleton obj_dir in
+    let objs_dirs = if Lib_modules.has_private_modules lib_modules then
+        Path.Set.add objs_dirs private_obj_dir
+      else objs_dirs in
+
     (cctx,
      Merlin.make ()
        ~requires:(Lib.Compile.requires compile_info)
        ~flags
        ~preprocess:(Buildable.single_preprocess lib.buildable)
        ~libname:(snd lib.name)
-       ~objs_dirs:(Path.Set.singleton obj_dir))
+       ~objs_dirs
+    )
 
   let rules (lib : Library.t) ~dir_contents ~dir ~expander ~scope
         ~dir_kind : Compilation_context.t * Merlin.t =

@@ -1,6 +1,8 @@
 unreleased
 ----------
 
+- Fix merlin handling of private module visibility (#1653 @bobot)
+
 - unstable-fmt: use boxes to wrap some lists (#1608, fix #1153, @emillon,
   thanks to @rgrinberg)
 
@@ -32,6 +34,9 @@ unreleased
 
 - Get the correct environment node for multi project workspaces (#1648,
   @rgrinberg)
+
+- Add `dune compute` to call internal memoized functions (#1528,
+  @rudihorn, @diml)
 
 1.6.2 (05/12/2018)
 ------------------

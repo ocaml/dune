@@ -5,8 +5,12 @@ open Stdune;;
 open Fiber.O;;
 open Memo;;
 
-module String_fn = Memo.Make(String)
-module Int_fn = Memo.Make(Int)
+module String_fn = Memo.Make(String)(struct
+    let decode = Dune_lang.Decoder.string
+  end)
+module Int_fn = Memo.Make(Int)(struct
+    let decode = Dune_lang.Decoder.int
+  end)
 [%%ignore]
 
 (* to run a computation *)
@@ -26,8 +30,8 @@ let run = run_string
 let compdep x = Fiber.return (x ^ x);;
 
 (* our two dependencies are called some and another *)
-let mcompdep1 = String_fn.create "some" (module String) compdep;;
-let mcompdep2 = String_fn.create "another" (module String) compdep;;
+let mcompdep1 = String_fn.create "some" (module String) compdep ~doc:"";;
+let mcompdep2 = String_fn.create "another" (module String) compdep ~doc:"";;
 
 (* compute the dependencies once so they are present in the
    global hash table *)
@@ -49,7 +53,7 @@ let comp x =
   String_fn.exec mcompdep2 >>=
   (fun a -> counter := !counter + 1; String.sub a 0 (String.length a |> min 3) |> Fiber.return);;
 
-let mcomp = String_fn.create "test" (module String) comp;;
+let mcomp = String_fn.create "test" (module String) comp ~doc:"";;
 
 [%%ignore]
 
@@ -122,7 +126,7 @@ let mcompcycle =
           else
             failwith "cycle"
         ) in
-  let fn = Int_fn.create "cycle" (module String) compcycle in
+  let fn = Int_fn.create "cycle" (module String) compcycle ~doc:"" in
   Fdecl.set mcompcycle fn;
   fn;;
 
@@ -166,7 +170,7 @@ let mfib =
       >>= (fun r1 ->
         mfib (x - 2)
         >>| fun r2 -> r1 + r2) in
-  let fn = Int_fn.create "fib" (module Int) compfib in
+  let fn = Int_fn.create "fib" (module Int) compfib ~doc:"" in
   Fdecl.set mfib fn;
   fn;;
 

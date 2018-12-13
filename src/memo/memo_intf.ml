@@ -7,6 +7,14 @@ module type Data = sig
   val to_sexp : t -> Sexp.t
 end
 
+module type Input = Data
+module type Output = Data
+
+module type Decoder = sig
+  type t
+  val decode : t Dune_lang.Decoder.t
+end
+
 module type S = sig
   type input
 
@@ -27,7 +35,8 @@ module type S = sig
   val create
     :  string
     -> ?allow_cutoff:bool
-    -> (module Data with type t = 'a)
+    -> doc:string
+    -> (module Output with type t = 'a)
     -> (input -> 'a Fiber.t)
     -> 'a t
 

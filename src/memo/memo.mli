@@ -28,11 +28,22 @@ end
 val reset : unit -> unit
 
 module type S = Memo_intf.S with type stack_frame := Stack_frame.t
-module type Data = Memo_intf.Data
+module type Input = Memo_intf.Input
+module type Output = Memo_intf.Output
+module type Decoder = Memo_intf.Decoder
 
-module Make(Input : Data) : S with type input := Input.t
+module Make(Input : Input)(Decoder : Decoder with type t := Input.t)
+  : S with type input := Input.t
 
-(** Print the memoized call stack during execution. This is useful for debugging purposes.
+(** Same as [Make] except that registered functions won't be available
+    through [dune compute]. In particular, it is not necessary to
+    provide a decoder for the input. *)
+module Make_hidden(Input : Input)
+  : S with type input := Input.t
+
+(** Print the memoized call stack during execution. This is useful for
+    debugging purposes.
+
     Example code:
 
     {[
@@ -45,3 +56,19 @@ val dump_stack : 'a -> 'a Fiber.t
 
 (** Get the memoized call stack during the execution of a memoized function. *)
 val get_call_stack : Stack_frame.t list Fiber.t
+
+(** Call a memoized function by name *)
+val call : string -> Dune_lang.Ast.t -> Sexp.t Fiber.t
+
+module Function_info : sig
+  type t =
+    { name : string
+    ; doc  : string
+    }
+end
+
+(** Return the list of registered functions *)
+val registered_functions : unit -> Function_info.t list
+
+(** Lookup function's info *)
+val function_info : string -> Function_info.t

@@ -21,14 +21,12 @@ val go
     even if Fiber.Never was encountered.
 
     If any source files change in the middle of iteration, it gets
-    canceled, and [canceled] is called instead of [finally].
-*)
+    canceled. *)
 val poll
   :  ?log:Log.t
   -> ?config:Config.t
   -> once:(unit -> unit Fiber.t)
   -> finally:(unit -> unit)
-  -> canceled:(unit -> unit)
   -> unit
   -> 'a
 

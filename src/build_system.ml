@@ -23,16 +23,26 @@ module Promoted_to_delete = struct
 
   let fn = Path.relative Path.build_dir ".to-delete-in-source-tree"
 
-  let add p = db := Path.Set.add !db p
+  let needs_dumping = ref false
+
+  let add p =
+    if not (Path.Set.mem !db p) then begin
+      needs_dumping := true;
+      db := Path.Set.add !db p
+    end
 
   let load () =
     Option.value ~default:Path.Set.empty (P.load fn)
 
   let dump () =
-    if Path.build_dir_exists () then
+    if !needs_dumping && Path.build_dir_exists () then begin
+      needs_dumping := false;
       load ()
       |> Path.Set.union !db
       |> P.dump fn
+    end
+
+  let () = Hooks.End_of_build.always dump
 end
 
 let files_in_source_tree_to_delete () =
@@ -362,14 +372,18 @@ end = struct
       let version = 2
     end)
 
+  let needs_dumping = ref false
+
   let t = lazy (
     match P.load file with
     | Some t -> t
     | None -> Path.Table.create 1024)
 
   let dump () =
-    if Lazy.is_val t && Path.build_dir_exists () then
+    if !needs_dumping && Path.build_dir_exists () then begin
+      needs_dumping := false;
       P.dump file (Lazy.force t)
+    end
 
   let () = Hooks.End_of_build.always dump
 
@@ -379,6 +393,7 @@ end = struct
 
   let set path e =
     let t = Lazy.force t in
+    needs_dumping := true;
     Path.Table.replace t ~key:path ~data:e
 end
 
@@ -1209,13 +1224,6 @@ let all_targets t =
           ~dir:(Path.append ctx.Context.build_dir (File_tree.Dir.path dir))));
   Path.Table.foldi t.files ~init:[] ~f:(fun key _ acc -> key :: acc)
 
-let finalize _t =
-  (* Promotion must be handled before dumping the digest cache, as it
-     might delete some entries. *)
-  Promotion.finalize ();
-  Promoted_to_delete.dump ();
-  Utils.Cached_digest.dump ()
-
 let universe_file = Path.relative Path.build_dir ".universe-state"
 
 let update_universe t =
@@ -1331,6 +1339,7 @@ let process_memcycle t exn =
         |> String.concat ~sep:"\n--> "))
 
 let do_build (t : t) ~request =
+  Hooks.End_of_build.once Promotion.finalize;
   update_universe t; (* ? *)
   (fun () -> build_request t false ~request:request)
   |> Fiber.with_error_handler ~on_error:(fun exn ->
@@ -1342,7 +1351,6 @@ let do_build (t : t) ~request =
   >>| (fun (res,_) -> res)
 
 let create ~contexts ~file_tree ~hook =
-  Utils.Cached_digest.load ();
   let contexts =
     List.map contexts ~f:(fun c -> (c.Context.name, c))
     |> String.Map.of_list_exn
@@ -1381,7 +1389,6 @@ let create ~contexts ~file_tree ~hook =
   Fdecl.set t.build_file_def
     (Path_fn.create "build-file" (module Unit) (build_file t)
        ~doc:"Build a file.");
-  Hooks.End_of_build.once (fun () -> finalize t);
   t
 
 module Ir_set = Set.Make(Internal_rule)

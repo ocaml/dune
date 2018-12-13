@@ -27,12 +27,4 @@ module End_of_build = struct
   include Hooks_manager
 end
 
-module End_of_build_not_canceled = struct
-  include Hooks_manager
-
-  let clear () =
-    one_off_hooks := []
-end
-
 let () = at_exit End_of_build.run
-let () = at_exit End_of_build_not_canceled.run

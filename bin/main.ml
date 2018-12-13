@@ -135,18 +135,14 @@ let run_build_command ~log ~common ~targets =
     >>= fun setup ->
     do_build setup (targets setup)
   in
-  let finally () =
-    Hooks.End_of_build.run ();
-    Hooks.End_of_build_not_canceled.run ()
-  in
-  let canceled () =
-    Hooks.End_of_build.run ();
-    Hooks.End_of_build_not_canceled.clear ()
-  in
   if common.watch then begin
-    Scheduler.poll ~log ~common ~once ~finally ~canceled ()
-  end
-  else Scheduler.go ~log ~common (once ())
+    let once () =
+      Utils.Cached_digest.invalidate_cached_timestamps ();
+      once ()
+    in
+    Scheduler.poll ~log ~common ~once ~finally:Hooks.End_of_build.run ()
+  end else
+    Scheduler.go ~log ~common (once ())
 
 let build_targets =
   let doc = "Build the given targets, or all installable targets if none are given." in
@@ -861,7 +857,7 @@ let exec =
         | [] -> ()
         | targets ->
           Scheduler.go ~log ~common (do_build setup targets);
-          Build_system.finalize setup.build_system
+          Hooks.End_of_build.run ();
       end;
       match prog_where with
       | `Search prog ->
@@ -881,17 +877,14 @@ let exec =
     | None, true ->
       begin match Lazy.force targets with
       | [] ->
-        Format.eprintf "@{<Error>Error@}: Program %S not found!@." prog;
-        raise Already_reported
+        die "@{<Error>Error@}: Program %S not found!" prog
       | _::_ ->
-        Format.eprintf "@{<Error>Error@}: Program %S isn't built yet \
-                        you need to build it first or remove the \
-                        --no-build option.@." prog;
-        raise Already_reported
+        die "@{<Error>Error@}: Program %S isn't built yet \
+             you need to build it first or remove the \
+             --no-build option." prog
       end
     | None, false ->
-      Format.eprintf "@{<Error>Error@}: Program %S not found!@." prog;
-      raise Already_reported
+      die "@{<Error>Error@}: Program %S not found!" prog
     | Some real_prog, _ ->
       let real_prog = Path.to_string real_prog     in
       let argv      = prog :: args in
@@ -991,7 +984,7 @@ let utop =
     let utop_target = Filename.concat dir Utop.utop_exe in
     Common.set_common_other common ~targets:[utop_target];
     let log = Log.create common in
-    let (build_system, context, utop_path) =
+    let (context, utop_path) =
       (Main.setup ~log common >>= fun setup ->
        let context = Main.find_context_exn setup ~name:ctx_name in
        let setup = { setup with contexts = [context] } in
@@ -1003,9 +996,9 @@ let utop =
          | Ok _ -> assert false
        in
        do_build setup [File target] >>| fun () ->
-       (setup.build_system, context, Path.to_string target)
+       (context, Path.to_string target)
       ) |> Scheduler.go ~log ~common in
-    Build_system.finalize build_system;
+    Hooks.End_of_build.run ();
     restore_cwd_and_execve common utop_path (utop_path :: args)
       context.env
   in
@@ -1031,9 +1024,6 @@ let promote =
       Arg.(value & pos_all Cmdliner.Arg.file [] & info [] ~docv:"FILE")
     in
     Common.set_common common ~targets:[];
-    (* We load and restore the digest cache as we need to clear the
-       cache for promoted files, due to issues on OSX. *)
-    Utils.Cached_digest.load ();
     Promotion.promote_files_registered_in_last_run
       (match files with
        | [] -> All
@@ -1046,8 +1036,7 @@ let promote =
            Format.eprintf "@{<warning>Warning@}: Nothing to promote for %a.@."
              Path.pp fn
          in
-         These (files, on_missing));
-    Utils.Cached_digest.dump ()
+         These (files, on_missing))
   in
   (term, Term.info "promote" ~doc ~man )
 

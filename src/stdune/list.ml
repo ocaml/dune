@@ -127,3 +127,12 @@ let rec nth t i =
   | _ :: xs, i -> nth xs (i - 1)
 
 let physically_equal = Pervasives.(==)
+
+let init =
+  let rec loop acc i n f =
+    if i = n then
+      rev acc
+    else
+      loop (f i :: acc) (i + 1) n f
+  in
+  fun n ~f -> loop [] 0 n f

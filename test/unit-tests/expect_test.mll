@@ -118,6 +118,11 @@ let main () =
           in
           ignore (Toploop.execute_phrase true ppf phr : bool)
         with exn ->
+          let ppf =
+            match kind with
+            | Expect -> ppf
+            | Ignore -> Format.err_formatter
+          in
           Location.report_exception ppf exn
       );
       begin match kind with

@@ -1,7 +1,7 @@
 (*---------------------------------------------------------------------------
    Copyright (c) 2011 Daniel C. Bünzli. All rights reserved.
    Distributed under the ISC license, see terms at the end of the file.
-   cmdliner v1.0.0
+   cmdliner v1.0.2-18-gac44bb7
   ---------------------------------------------------------------------------*)
 
 (** Declarative definition of command line interfaces.
@@ -22,11 +22,9 @@
     use. Open the module to use it, it defines only three modules in
     your scope.
 
-    {e v1.0.0 — {{:http://erratique.ch/software/cmdliner }homepage}} *)
+    {e v1.0.2-18-gac44bb7 — {{:http://erratique.ch/software/cmdliner }homepage}} *)
 
 (** {1:top Interface} *)
-
-open Result
 
 (** Man page specification.
 
@@ -166,11 +164,10 @@ module Manpage : sig
   val print :
     ?errs:Format.formatter ->
     ?subst:(string -> string option) -> format -> Format.formatter -> t -> unit
-  (** [print ~errs ~subst fmt ppf page] prints [page] on [ppf] in the format
-      [fmt]. [subst] can be used to perform variable
-      substitution, see {!Buffer.add_substitute} (defaults to the
-      identity). [errs] is used to print formatting errors, it defaults
-      to {!Format.err_formatter}. *)
+  (** [print ~errs ~subst fmt ppf page] prints [page] on [ppf] in the
+      format [fmt]. [subst] can be used to perform variable
+      substitution,(defaults to the identity). [errs] is used to print
+      formatting errors, it defaults to {!Format.err_formatter}. *)
 end
 
 (** Terms.
@@ -244,6 +241,11 @@ module Term : sig
   val choice_names : string list t
   (** [choice_names] is a term that evaluates to the names of the terms
       to choose from. *)
+
+  val with_used_args : 'a t -> ('a * string list) t
+  (** [with_used_args t] is a term that evaluates to [t] tupled
+      with the arguments from the command line that where used to
+      evaluate [t]. *)
 
   (** {1:tinfo Term information}
 
@@ -992,7 +994,7 @@ that have multiple commands each with their own syntax:
 A command is defined by coupling a term with {{!Term.tinfo}term
 information}. The term information defines the command name and its
 man page. Given a list of commands the function {!Term.eval_choice}
-will execute the term corresponding to the [COMMAND] argument or or a
+will execute the term corresponding to the [COMMAND] argument or a
 specific "main" term if there is no [COMMAND] argument.
 
 {2:doclang Documentation markup language}
@@ -1212,7 +1214,7 @@ let prompt_str = function
 | Always -> "always" | Once -> "once" | Never -> "never"
 
 let rm prompt recurse files =
-  Printf.printf "prompt = %s\nrecurse = %b\nfiles = %s\n"
+  Printf.printf "prompt = %s\nrecurse = %B\nfiles = %s\n"
     (prompt_str prompt) recurse (String.concat ", " files)
 
 (* Command line interface *)
@@ -1253,7 +1255,7 @@ let cmd =
     `S Manpage.s_see_also; `P "$(b,rmdir)(1), $(b,unlink)(2)" ]
   in
   Term.(const rm $ prompt $ recursive $ files),
-  Term.info "rm" ~version:"v1.0.0" ~doc ~exits:Term.default_exits ~man
+  Term.info "rm" ~version:"v1.0.2-18-gac44bb7" ~doc ~exits:Term.default_exits ~man
 
 let () = Term.(exit @@ eval cmd)
 ]}
@@ -1283,7 +1285,7 @@ let cp verbose recurse force srcs dest =
     `Error (false, dest ^ " is not a directory")
   else
     `Ok (Printf.printf
-     "verbose = %b\nrecurse = %b\nforce = %b\nsrcs = %s\ndest = %s\n"
+     "verbose = %B\nrecurse = %B\nforce = %B\nsrcs = %s\ndest = %s\n"
       verbose recurse force (String.concat ", " srcs) dest)
 
 (* Command line interface *)
@@ -1323,7 +1325,7 @@ let cmd =
       `P "Email them to <hehey at example.org>."; ]
   in
   Term.(ret (const cp $ verbose $ recurse $ force $ srcs $ dest)),
-  Term.info "cp" ~version:"v1.0.0" ~doc ~exits ~man ~man_xrefs
+  Term.info "cp" ~version:"v1.0.2-18-gac44bb7" ~doc ~exits ~man ~man_xrefs
 
 let () = Term.(exit @@ eval cmd)
 ]}
@@ -1371,7 +1373,6 @@ let tail lines follow verb pid files =
 
 (* Command line interface *)
 
-open Result
 open Cmdliner
 
 let lines =
@@ -1452,7 +1453,7 @@ use of {!Term.ret} on the lifted [help] function.
 
 If the program is invoked without a command we just want to show the
 help of the program as printed by [Cmdliner] with [--help]. This is
-done by the [no_cmd] term.
+done by the [default_cmd] term.
 
 {[
 (* Implementations, just print the args. *)
@@ -1467,14 +1468,14 @@ let verb_str = function
   | Normal -> "normal" | Quiet -> "quiet" | Verbose -> "verbose"
 
 let pr_copts oc copts = Printf.fprintf oc
-    "debug = %b\nverbosity = %s\nprehook = %s\n"
+    "debug = %B\nverbosity = %s\nprehook = %s\n"
     copts.debug (verb_str copts.verb) (opt_str_str copts.prehook)
 
 let initialize copts repodir = Printf.printf
     "%arepodir = %s\n" pr_copts copts repodir
 
 let record copts name email all ask_deps files = Printf.printf
-    "%aname = %s\nemail = %s\nall = %b\nask-deps = %b\nfiles = %s\n"
+    "%aname = %s\nemail = %s\nall = %B\nask-deps = %B\nfiles = %s\n"
     pr_copts copts (opt_str_str name) (opt_str_str email) all ask_deps
     (String.concat ", " files)
 
@@ -1597,7 +1598,7 @@ let default_cmd =
   let exits = Term.default_exits in
   let man = help_secs in
   Term.(ret (const (fun _ -> `Help (`Pager, None)) $ copts_t)),
-  Term.info "darcs" ~version:"v1.0.0" ~doc ~sdocs ~exits ~man
+  Term.info "darcs" ~version:"v1.0.2-18-gac44bb7" ~doc ~sdocs ~exits ~man
 
 let cmds = [initialize_cmd; record_cmd; help_cmd]
 

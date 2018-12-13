@@ -47,7 +47,10 @@
  (action (chdir %{project_root}
           (progn
            (run %{exe:expect_test.exe} %{t})
-           (diff? %{t} %{t}.corrected)))))
+           (diff? %{t} %{t}.corrected))))
+ (enabled_if (>= %{ocaml_version} "4.07.0"))
+ ;Raise not found under ocaml 4.05.0
+)
 
 (alias
  (name runtest)
@@ -129,7 +132,10 @@
  (action (chdir %{project_root}
           (progn
            (run %{exe:expect_test.exe} %{t})
-           (diff? %{t} %{t}.corrected)))))
+           (diff? %{t} %{t}.corrected))))
+ (enabled_if (>= %{ocaml_version} "4.07.0"))
+ ;different output under ocaml 4.05.0
+)
 (alias
  (name runtest)
  (deps (alias runtestmem)))

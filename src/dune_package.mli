@@ -21,7 +21,6 @@ module Lib : sig
 
   val dir : _ t -> Path.t
   val requires : _ t -> (Loc.t * Lib_name.t) list
-  val pps : _ t -> (Loc.t * Lib_name.t) list
   val name : _ t -> Lib_name.t
   val version : _ t -> string option
   val kind : _ t -> Kind.t
@@ -55,7 +54,6 @@ module Lib : sig
     -> main_module_name:Module.Name.t option
     -> sub_systems:'a Sub_system_name.Map.t
     -> requires:(Loc.t * Lib_name.t) list
-    -> pps:(Loc.t * Lib_name.t) list
     -> ppx_runtime_deps:(Loc.t * Lib_name.t) list
     -> virtual_:Virtual.t option
     -> implements:(Loc.t * Lib_name.t) option

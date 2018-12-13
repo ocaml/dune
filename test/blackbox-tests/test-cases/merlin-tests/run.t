@@ -11,7 +11,6 @@
   B $LIB_PREFIX/lib/ocaml
   B ../_build/default/exe/.x.eobjs
   B ../_build/default/lib/.foo.objs
-  B ../_build/default/lib/.foo.objs/.private
   S $LIB_PREFIX/lib/bytes
   S $LIB_PREFIX/lib/findlib
   S $LIB_PREFIX/lib/ocaml
@@ -25,6 +24,7 @@
   B $LIB_PREFIX/lib/ocaml
   B ../_build/default/lib/.bar.objs
   B ../_build/default/lib/.foo.objs
+  B ../_build/default/lib/.foo.objs/.private
   S $LIB_PREFIX/lib/bytes
   S $LIB_PREFIX/lib/findlib
   S $LIB_PREFIX/lib/ocaml

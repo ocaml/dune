@@ -333,7 +333,17 @@ module Files_of = struct
     }
 end
 
-module Trace = struct
+module Trace : sig
+  module Entry : sig
+    type t =
+      { rule_digest    : Digest.t
+      ; targets_digest : Digest.t
+      }
+  end
+
+  val get : Path.t -> Entry.t option
+  val set : Path.t -> Entry.t -> unit
+end = struct
   module Entry = struct
     type t =
       { rule_digest    : Digest.t
@@ -352,13 +362,24 @@ module Trace = struct
       let version = 2
     end)
 
-  let dump t =
-    if Path.build_dir_exists () then P.dump file t
-
-  let load () =
+  let t = lazy (
     match P.load file with
     | Some t -> t
-    | None -> Path.Table.create 1024
+    | None -> Path.Table.create 1024)
+
+  let dump () =
+    if Lazy.is_val t && Path.build_dir_exists () then
+      P.dump file (Lazy.force t)
+
+  let () = Hooks.End_of_build.always dump
+
+  let get path =
+    let t = Lazy.force t in
+    Path.Table.find t path
+
+  let set path e =
+    let t = Lazy.force t in
+    Path.Table.replace t ~key:path ~data:e
 end
 
 type extra_sub_directories_to_keep =
@@ -388,9 +409,6 @@ type t =
   { (* File specification by targets *)
     files       : File_spec.packed Path.Table.t
   ; contexts    : Context.t String.Map.t
-  ; (* Table from target to digest of
-       [(deps (filename + contents), targets (filename only), action)] *)
-    trace       : Trace.t
   ; file_tree   : File_tree.t
   ; mutable local_mkdirs : Path.Set.t
   ; mutable dirs : Dir_status.t Path.Table.t
@@ -768,7 +786,7 @@ and run_rule  t rule action deps =
   make_local_dir t dir;
   let targets_as_list  = Path.Set.to_list targets  in
   let head_target = List.hd targets_as_list in
-  let prev_trace = Path.Table.find t.trace head_target in
+  let prev_trace = Trace.get head_target in
   let rule_digest =
     let env =
       match env, context with
@@ -834,8 +852,7 @@ and run_rule  t rule action deps =
       let targets_digest =
         compute_targets_digest_after_rule_execution targets_as_list
       in
-      Path.Table.replace t.trace ~key:head_target
-        ~data:{ rule_digest; targets_digest }
+      Trace.set head_target { rule_digest; targets_digest }
     end else
       Fiber.return ()
   end >>| fun () ->
@@ -1192,13 +1209,12 @@ let all_targets t =
           ~dir:(Path.append ctx.Context.build_dir (File_tree.Dir.path dir))));
   Path.Table.foldi t.files ~init:[] ~f:(fun key _ acc -> key :: acc)
 
-let finalize t =
+let finalize _t =
   (* Promotion must be handled before dumping the digest cache, as it
      might delete some entries. *)
   Promotion.finalize ();
   Promoted_to_delete.dump ();
-  Utils.Cached_digest.dump ();
-  Trace.dump t.trace
+  Utils.Cached_digest.dump ()
 
 let universe_file = Path.relative Path.build_dir ".universe-state"
 
@@ -1335,7 +1351,6 @@ let create ~contexts ~file_tree ~hook =
     { contexts
     ; files      = Path.Table.create 1024
     ; packages   = Path.Table.create 1024
-    ; trace      = Trace.load ()
     ; local_mkdirs = Path.Set.empty
     ; dirs       = Path.Table.create 1024
     ; load_dir_stack = []

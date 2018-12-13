@@ -708,7 +708,7 @@ let go ?log ?config ?gen_status_line fiber =
 type exit_or_continue = Exit | Continue
 type got_signal = Got_signal
 
-let poll ?log ?config ~once ~finally ~canceled () =
+let poll ?log ?config ~once ~finally () =
   let t = prepare ?log ?config () in
   let watcher = File_watcher.create () in
   let once () =
@@ -775,7 +775,7 @@ let poll ?log ?config ~once ~finally ~canceled () =
       | Exit ->
         Fiber.return Got_signal
       | Continue ->
-        canceled ();
+        finally ();
         main_loop ()
     end
   in

@@ -251,8 +251,3 @@ val build_rules
   -> t
   -> request:(unit, unit) Build.t
   -> Rule.t list Fiber.t
-
-(** {1 Misc} *)
-
-(** Dump various databases on disk *)
-val finalize : t -> unit

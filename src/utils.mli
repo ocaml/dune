@@ -86,7 +86,6 @@ module Cached_digest : sig
   (** Same as {!file} but forces the digest to be recomputed *)
   val refresh : Path.t -> Digest.t
 
-  (** Dump/load the cache to/from the disk *)
-  val dump : unit -> unit
-  val load : unit -> unit
+  (** Invalidate cached timestamp *)
+  val invalidate_cached_timestamps : unit -> unit
 end

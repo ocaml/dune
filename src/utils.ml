@@ -195,13 +195,42 @@ module Cached_digest = struct
 
   type t =
     { mutable checked_key : int
-    ; mutable table       : (Path.t, file) Hashtbl.t
+    ; table               : (Path.t, file) Hashtbl.t
     }
 
-  let cache =
-    { checked_key = 0
-    ; table       = Hashtbl.create 1024
-    }
+  let db_file = Path.relative Path.build_dir ".digest-db"
+
+  module P = Persistent(struct
+      type nonrec t = t
+      let name = "DIGEST-DB"
+      let version = 1
+    end)
+
+  let needs_dumping = ref false
+
+  let cache = lazy (
+    match P.load db_file with
+    | None ->
+      { checked_key = 0
+      ; table = Hashtbl.create 1024
+      }
+    | Some cache ->
+      cache.checked_key <- cache.checked_key + 1;
+      cache)
+
+  let dump () =
+    if !needs_dumping && Path.build_dir_exists () then begin
+      needs_dumping := false;
+      P.dump db_file (Lazy.force cache)
+    end
+
+  let () = Hooks.End_of_build.always dump
+
+  let invalidate_cached_timestamps () =
+    if Lazy.is_val cache then begin
+      let cache = Lazy.force cache in
+      cache.checked_key <- cache.checked_key + 1
+    end
 
   let dir_digest (stat : Unix.stats) =
     Marshal.to_string
@@ -219,9 +248,11 @@ module Cached_digest = struct
       Digest.file fn
 
   let refresh fn =
+    let cache = Lazy.force cache in
     let path = Path.to_string fn in
     let stat = Unix.stat path in
     let digest = path_stat_digest fn stat in
+    needs_dumping := true;
     Hashtbl.replace cache.table ~key:fn
       ~data:{ digest
             ; timestamp = stat.st_mtime
@@ -230,11 +261,13 @@ module Cached_digest = struct
     digest
 
   let file fn =
+    let cache = Lazy.force cache in
     match Hashtbl.find cache.table fn with
     | Some x ->
       if x.timestamp_checked = cache.checked_key then
         x.digest
       else begin
+        needs_dumping := true;
         let stat = Unix.stat (Path.to_string fn) in
         let mtime = stat.st_mtime in
         if mtime <> x.timestamp then begin
@@ -248,23 +281,8 @@ module Cached_digest = struct
     | None ->
       refresh fn
 
-  let remove fn = Hashtbl.remove cache.table fn
-
-  let db_file = Path.relative Path.build_dir ".digest-db"
-
-  module P = Persistent(struct
-      type nonrec t = t
-      let name = "DIGEST-DB"
-      let version = 1
-    end)
-
-  let dump () =
-    if Path.build_dir_exists () then P.dump db_file cache
-
-  let load () =
-    match P.load db_file with
-    | None -> ()
-    | Some c ->
-      cache.checked_key <- c.checked_key + 1;
-      cache.table <- c.table
+  let remove fn =
+    let cache = Lazy.force cache in
+    needs_dumping := true;
+    Hashtbl.remove cache.table fn
 end

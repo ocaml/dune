@@ -15,13 +15,3 @@ end
 (** Every time a build ends, which includes every iteration in watch mode,
     including cancellation of build because of file changes. *)
 module End_of_build : S
-
-(** Same as End_of_build, but not signalized if build was canceled in
-    watch mode. *)
-module End_of_build_not_canceled : sig
-  include S
-
-  (** Signalize that current build was canceled and hooks registered with [once]
-      should be removed. *)
-  val clear : unit -> unit
-end

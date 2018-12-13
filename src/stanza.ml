@@ -34,7 +34,7 @@ module Decoder = struct
       (function
         | Parens_no_longer_necessary (loc, exn) ->
           let hint =
-            "dune files require less parentheses than jbuild files.\n\
+            "dune files require fewer parentheses than jbuild files.\n\
              If you just converted this file from a jbuild file, try removing these parentheses."
           in
           Option.map (Report_error.find_printer exn)

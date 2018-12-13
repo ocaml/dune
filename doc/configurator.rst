@@ -55,7 +55,7 @@ example:
       let has_clock_gettime = C.c_test c clock_gettime_code ~link_flags:["-lrt"] in
 
       C.C_define.gen_header_file c ~fname:"config.h"
-        [ "HAS_CKOCK_GETTIME", Switch has_ckock_gettime ]);
+        [ "HAS_CLOCK_GETTIME", Switch has_clock_gettime ]);
 
 Usually, the module above would be named ``discover.ml``. The next step is to
 invoke it as an executable and tell dune about the targets that it produces:

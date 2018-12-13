@@ -56,7 +56,7 @@ Installing header files
 -----------------------
 
 It is sometimes desirable to install header files with the
-library. For that you have two choices: install them explicitely with
+library. For that you have two choices: install them explicitly with
 an :ref:`install` stanza or use the ``install_c_headers`` field of the
 :ref:`library` stanza. This field takes a list of header files names
 without the ``.h`` extension. When a library install header files,

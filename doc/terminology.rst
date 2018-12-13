@@ -9,7 +9,7 @@ Terminology
    packages
 
 -  **root**: the root is the directory from where dune can build
-   things. Dune knows how to build targets that are descendents of
+   things. Dune knows how to build targets that are descendants of
    the root. Anything outside of the tree starting from the root is
    considered part of the **installed world**. How the root is
    determined is explained in :ref:`finding-root`.

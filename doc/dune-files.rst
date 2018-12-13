@@ -372,7 +372,7 @@ on Unix ``%{ext_obj}`` is usually ``.o`` and ``%{ext_dll}`` is usually
 is ``.dll``.
 
 Note that when ``(byte exe)`` is specified but neither ``(best exe)``
-nor ``(native exe)`` are specified, Jbuilkd still knows how to build
+nor ``(native exe)`` are specified, Jbuild still knows how to build
 an executable with the extension ``.exe``. In such case, the ``.exe``
 version is the same as the ``.bc`` one except that it is linked with
 the ``-custom`` option of the compiler. You should always use the
@@ -872,7 +872,7 @@ Example:
      (ignored_subdirs (<sub-dir1> <sub-dir2> ...))
 
 All of the specified ``<sub-dirn>`` will be ignored by dune. Note that users
-should rely on the ``subdirs`` stanza along with the approrpriate set operations
+should rely on the ``subdirs`` stanza along with the appropriate set operations
 instead of this stanza. For example:
 
 .. code:: scheme
@@ -1214,7 +1214,7 @@ analysis and compilation phases. However, some specific code
 generators or preprocessors require feedback from the compilation
 phase. As a result they must be applied in stages as follows:
 
-- first stage of code geneneration
+- first stage of code generation
 - dependency analysis
 - second step of code generation in parallel with compilation
 
@@ -1361,7 +1361,7 @@ example of an imaginary bundle command:
 
 Note that such named dependency list can also include unnamed
 dependencies (like ``index.html`` in the example above). Also, such
-user defined names wil shadow built in variables. So
+user defined names will shadow built in variables. So
 ``(:workspace_root x)`` will shadow the built in ``%{workspace_root}``
 variable.
 

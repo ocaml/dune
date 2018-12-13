@@ -178,7 +178,7 @@ There's a few aliases that dune automatically creates for the user
   target isn't specified, i.e. ``$ dune build``. By default, this is set to the
   ``install`` alias.
 
-* ``runtest`` - this is the alias to run al the tests, building them if
+* ``runtest`` - this is the alias to run all the tests, building them if
   necessary.
 
 * ``install`` - build all public artifacts - those that will be installed.
@@ -208,7 +208,7 @@ determined as follow:
 
 #. if the ``ocamlfind`` is present in the ``PATH`` of the context, use each line
    in the output of ``ocamlfind printconf path`` as a search path
-#. otherwise, if ``opam`` is present in the ``PATH``, use the outout of ``opam
+#. otherwise, if ``opam`` is present in the ``PATH``, use the output of ``opam
    config var lib``
 #. otherwise, take the directory where ``ocamlc`` was found, and append
    ``../lib`` to it. For instance if ``ocamlc`` is found in ``/usr/bin``, use
@@ -276,7 +276,7 @@ the ``--only-packages`` option:
     $ dune build --only-packages pkg1,pkg2,... @install
 
 This option acts as if you went through all the dune files and
-commented out the stanzas refering to a package that is not in the list
+commented out the stanzas referring to a package that is not in the list
 given to ``dune``.
 
 Invocation from opam

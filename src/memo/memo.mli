@@ -69,3 +69,6 @@ end
 
 (** Return the list of registered functions *)
 val registered_functions : unit -> Function_info.t list
+
+(** Lookup function's info *)
+val function_info : string -> Function_info.t

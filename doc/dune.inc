@@ -72,15 +72,6 @@
  (files   dune-installed-libraries.1))
 
 (rule
- (with-stdout-to dune-list-functions.1
-  (run dune list-functions --help=groff)))
-
-(install
- (section man)
- (package dune)
- (files   dune-list-functions.1))
-
-(rule
  (with-stdout-to dune-printenv.1
   (run dune printenv --help=groff)))
 

@@ -391,17 +391,20 @@ module Make_hidden(Input : Input) =
       Exn.fatalf ~loc "<not-implemented>"
   end)
 
-let call name input =
+let get_func name =
   match
     let open Option.O in
     Function_name.get name >>= Spec.find
   with
   | None -> Exn.fatalf "@{<error>Error@}: function %s doesn't exist!" name
-  | Some (Spec.T spec) ->
-    let (module Output : Output with type t = _) = spec.output in
-    let input = Dune_lang.Decoder.parse spec.decode Univ_map.empty input in
-    spec.f input >>| fun output ->
-    Output.to_sexp output
+  | Some spec -> spec
+
+let call name input =
+  let (Spec.T spec) = get_func name in
+  let (module Output : Output with type t = _) = spec.output in
+  let input = Dune_lang.Decoder.parse spec.decode Univ_map.empty input in
+  spec.f input >>| fun output ->
+  Output.to_sexp output
 
 module Function_info = struct
   type t =
@@ -421,3 +424,6 @@ let registered_functions () =
   |> List.map ~f:Function_info.of_spec
   |> List.sort ~compare:(fun a b ->
     String.compare a.Function_info.name b.Function_info.name)
+
+let function_info name =
+  get_func name |> Function_info.of_spec

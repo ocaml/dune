@@ -8,6 +8,7 @@ val setup_copy_rules_for_impl
 
 val impl
   :  Super_context.t
+  -> dir:Path.t
   -> lib:Dune_file.Library.t
   -> scope:Scope.t
   -> modules:Module.Name_map.t

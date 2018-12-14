@@ -68,12 +68,13 @@ type t =
     toplevel_path : Path.t option
 
   ; (** Ocaml bin directory with all ocaml tools *)
-    ocaml_bin  : Path.t
-  ; ocaml      : Path.t
-  ; ocamlc     : Path.t
-  ; ocamlopt   : Path.t option
-  ; ocamldep   : Path.t
-  ; ocamlmklib : Path.t
+    ocaml_bin    : Path.t
+  ; ocaml        : Path.t
+  ; ocamlc       : Path.t
+  ; ocamlopt     : Path.t option
+  ; ocamldep     : Path.t
+  ; ocamlmklib   : Path.t
+  ; ocamlobjinfo : Path.t option
 
   ; (** Environment variables *)
     env : Env.t

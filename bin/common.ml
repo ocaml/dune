@@ -20,6 +20,7 @@ type t =
   ; force                 : bool
   ; ignore_promoted_rules : bool
   ; build_dir             : string
+  ; no_print_directory    : bool
   ; (* Original arguments for the external-lib-deps hint *)
     orig_args             : string list
   ; config                : Config.t
@@ -47,6 +48,7 @@ let set_common_other c ~targets =
   Clflags.auto_promote := c.auto_promote;
   Clflags.force := c.force;
   Clflags.watch := c.watch;
+  Clflags.no_print_directory := c.no_print_directory;
   Clflags.external_lib_deps_hint :=
     List.concat
       [ ["dune"; "external-lib-deps"; "--missing"]
@@ -341,6 +343,11 @@ let term =
          & info ["trace-file"] ~docs ~docv:"FILE"
              ~doc:"Output trace data in catapult format
                    (compatible with chrome://tracing)")
+  and no_print_directory =
+    Arg.(value
+         & flag
+         & info ["no-print-directory"] ~docs
+             ~doc:"Suppress \"Entering directory\" messages")
   in
   let build_dir = Option.value ~default:"_build" build_dir in
   let root, to_cwd =
@@ -392,6 +399,7 @@ let term =
   ; x
   ; config
   ; build_dir
+  ; no_print_directory
   ; default_target
   ; watch
   ; stats

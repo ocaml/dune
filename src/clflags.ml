@@ -7,3 +7,4 @@ let diff_command = ref None
 let auto_promote = ref false
 let force = ref false
 let watch = ref false
+let no_print_directory = ref false

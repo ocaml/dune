@@ -1,23 +1,11 @@
 open Stdune
 
-type ops =
+type t =
   { print : string -> unit
   ; close : unit -> unit
   ; get_time : unit -> float
   ; gc_stat : unit -> Gc.stat
   ; mutable after_first_event : bool
-  }
-
-type mode =
-  | Disabled
-  | Using of ops
-
-type t =
-  { mutable mode : mode
-  }
-
-let make () =
-  { mode = Disabled
   }
 
 let fake_gc_stat =
@@ -44,32 +32,24 @@ let fake time_ref buf =
   let close () = () in
   let get_time () = !time_ref in
   let gc_stat () = fake_gc_stat in
-  { mode =
-      Using
-        { print
-        ; close
-        ; get_time
-        ; gc_stat
-        ; after_first_event = false
-        }
+  { print
+  ; close
+  ; get_time
+  ; gc_stat
+  ; after_first_event = false
   }
 
-let close t = match t.mode with
-  | Disabled -> ()
-  | Using {print; close; _} ->
-    print "]\n";
-    close ()
+let close {print; close; _} =
+  print "]\n";
+  close ()
 
-let path_ops path =
+let make path =
   let channel = Pervasives.open_out path in
   let print s = Pervasives.output_string channel s in
   let close () = Pervasives.close_out channel in
   let get_time () = Unix.gettimeofday () in
   let gc_stat () = Gc.stat () in
   {print; close; get_time; gc_stat; after_first_event = false}
-
-let enable t path =
-  t.mode <- Using (path_ops path)
 
 let next_leading_char t =
   match t.after_first_event with
@@ -78,9 +58,9 @@ let next_leading_char t =
     t.after_first_event <- true;
     '['
 
-let printf ops format_string =
-  let c = next_leading_char ops in
-  Printf.ksprintf ops.print ("%c" ^^ format_string ^^ "\n") c
+let printf t format_string =
+  let c = next_leading_char t in
+  Printf.ksprintf t.print ("%c" ^^ format_string ^^ "\n") c
 
 let color_of_name = function
   | "ocamlc" | "ocamlc.opt" -> "thread_state_uninterruptible"
@@ -118,12 +98,12 @@ type event =
   ; args : string list
   }
 
-let on_process_end_ops ops {start_time; program; args} =
-  let time = ops.get_time () in
+let on_process_end t {start_time; program; args} =
+  let time = t.get_time () in
   let dur = time -. start_time in
   let name = Filename.basename program in
   printf
-    ops
+    t
     {|{"name": %S, "pid": 0, "tid": 0, "ph": "X", "dur": %s, "ts": %s, "color": %S, "args": %s}|}
     name
     (pp_time dur)
@@ -131,46 +111,24 @@ let on_process_end_ops ops {start_time; program; args} =
     (color_of_name name)
     (pp_args args)
 
-let on_process_end t event =
-  match t.mode with
-  | Disabled -> ()
-  | Using ops -> on_process_end_ops ops event
-
-let emit_counter_ops ops key value =
-  let time = ops.get_time () in
+let emit_counter t key value =
+  let time = t.get_time () in
   printf
-    ops
+    t
     {|{"name": %S, "pid": 0, "tid": 0, "ph": "C", "ts": %s, "args": {%S: %d}}|}
     key
     (pp_time time)
     "value"
     value
 
-let emit_counter t key value =
-  match t.mode with
-  | Disabled -> ()
-  | Using ops -> emit_counter_ops ops key value
-
 let emit_gc_counters t =
-  match t.mode with
-  | Disabled -> ()
-  | Using ops ->
-    begin
-      let stat = ops.gc_stat () in
-      emit_counter_ops ops "live_words" stat.live_words;
-      emit_counter_ops ops "free_words" stat.free_words;
-      emit_counter_ops ops "stack_size" stat.stack_size
-    end
+  let stat = t.gc_stat () in
+  emit_counter t "live_words" stat.live_words;
+  emit_counter t "free_words" stat.free_words;
+  emit_counter t "stack_size" stat.stack_size
 
 let on_process_start t ~program ~args =
-  match t.mode with
-  | Disabled ->
-    { start_time = 0.
-    ; program
-    ; args
-    }
-  | Using t ->
-    { start_time = t.get_time ()
-    ; program
-    ; args
-    }
+  { start_time = t.get_time ()
+  ; program
+  ; args
+  }

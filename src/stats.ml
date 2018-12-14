@@ -51,10 +51,10 @@ let observed_max =
   { fds = Unknown
   }
 
-let catapult = Catapult.make ()
+let catapult = ref None
 
 let record () =
-  Catapult.emit_gc_counters catapult;
+  Option.iter !catapult ~f:Catapult.emit_gc_counters;
   if !enabled then begin
     let fds = Fd_count.get () in
     observed_max.fds <- Fd_count.max fds observed_max.fds
@@ -71,12 +71,16 @@ let enable () =
   at_exit dump
 
 let enable_catapult path =
-  Catapult.enable catapult path;
-  at_exit (fun () -> Catapult.close catapult)
+  let reporter = Catapult.make path in
+  catapult := Some reporter;
+  at_exit (fun () -> Catapult.close reporter)
 
 let with_process ~program ~args fiber =
-  let open Fiber.O in
-  let event = Catapult.on_process_start catapult ~program ~args in
-  fiber >>| fun result ->
-  Catapult.on_process_end catapult event;
-  result
+  match !catapult with
+  | None -> fiber
+  | Some reporter ->
+    let open Fiber.O in
+    let event = Catapult.on_process_start reporter ~program ~args in
+    fiber >>| fun result ->
+    Catapult.on_process_end reporter event;
+    result

@@ -5,10 +5,10 @@
     It is basically an output channel. *)
 type t
 
-(** Create a new reporter.
-    Initially, the reporter is in a disabled state where events are ignored and
-    no trace file is written. *)
-val make : unit -> t
+(** Create a reporter: open a trace file and further events will be logged into
+    it. It is necessary to call [close] on the reporter to make the file valid.
+*)
+val make : string -> t
 
 (** Return a fake reporter that reads time in a reference and writes JSON
     objects to a buffer. *)
@@ -16,10 +16,6 @@ val fake : float ref -> Buffer.t -> t
 
 (** Output trailing data to make the underlying file valid JSON, and close it. *)
 val close : t -> unit
-
-(** Enable tracing: open a trace file and further events will be logged into it.
-    It is necessary to call [close] on the reporter to make the file valid. *)
-val enable : t -> string -> unit
 
 type event
 

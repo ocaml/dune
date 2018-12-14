@@ -133,9 +133,9 @@ case "$TARGET" in
     ./boot.exe
     echo -en "travis_fold:end:dune.boot\r"
     if [ $WITH_OPAM -eq 1 ] ; then
-      _build/install/default/bin/dune runtest && \
-      _build/install/default/bin/dune build @test/blackbox-tests/runtest-js && \
-      ! _build/install/default/bin/dune build @test/fail-with-background-jobs-running
+      _build_bootstrap/install/default/bin/dune runtest && \
+      _build_bootstrap/install/default/bin/dune build @test/blackbox-tests/runtest-js && \
+      ! _build_bootstrap/install/default/bin/dune build @test/fail-with-background-jobs-running
       RESULT=$?
       if [ $UPDATE_OPAM -eq 0 ] ; then
         rm -rf ~/.opam

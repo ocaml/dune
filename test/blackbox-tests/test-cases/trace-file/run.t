@@ -12,6 +12,7 @@ This captures the commands that are being run:
 As well as data about the garbage collector:
 
   $ <trace.json grep '"C"' | cut -c 2- | sed -E 's/ [0-9]+/ .../g' | sort -u
+  {"name": "fds", "pid": ..., "tid": ..., "ph": "C", "ts": ..., "args": {"value": ...}}
   {"name": "free_words", "pid": ..., "tid": ..., "ph": "C", "ts": ..., "args": {"value": ...}}
   {"name": "live_words", "pid": ..., "tid": ..., "ph": "C", "ts": ..., "args": {"value": ...}}
   {"name": "stack_size", "pid": ..., "tid": ..., "ph": "C", "ts": ..., "args": {"value": ...}}

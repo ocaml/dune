@@ -22,8 +22,7 @@ type t =
   ; default_target        : string
   (* For build & runtest only *)
   ; watch : bool
-  ; stats : bool
-  ; catapult_trace_file : string option
+  ; stats_trace_file : string option
   }
 
 val prefix_target : t -> string -> string

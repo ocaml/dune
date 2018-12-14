@@ -51,7 +51,10 @@ let observed_max =
   { fds = Unknown
   }
 
+let catapult = Catapult.make ()
+
 let record () =
+  Catapult.emit_gc_counters catapult;
   if !enabled then begin
     let fds = Fd_count.get () in
     observed_max.fds <- Fd_count.max fds observed_max.fds
@@ -66,8 +69,6 @@ let dump () =
 let enable () =
   enabled := true;
   at_exit dump
-
-let catapult = Catapult.make ()
 
 let enable_catapult path =
   Catapult.enable catapult path;

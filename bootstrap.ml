@@ -37,6 +37,7 @@ let dirs =
   ; "src/dag"                , Some "Dag"
   ; "src/memo"               , Some "Memo"
   ; "src/ocaml-config"       , Some "Ocaml_config"
+  ; "src/catapult"           , Some "Catapult"
   ; "vendor/boot"            , None
   ; "src/dune_lang"              , Some "Dune_lang"
   ; "src"                    , None

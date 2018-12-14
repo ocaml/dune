@@ -238,8 +238,8 @@ let interpret ~dir ~project ~ignore_promoted_rules
   | Ocaml_script file ->
     Script { dir; project; file; kind = dune_file.kind }
 
-let load ?extra_ignored_subtrees ?(ignore_promoted_rules=false) () =
-  let ftree = File_tree.load Path.root ?extra_ignored_subtrees in
+let load ?(ignore_promoted_rules=false) () =
+  let ftree = File_tree.load Path.root in
   let projects =
     File_tree.fold ftree ~traverse_ignored_dirs:false ~init:[]
       ~f:(fun dir acc ->

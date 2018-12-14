@@ -209,16 +209,37 @@ type 'sub_system t =
   ; dir      : Path.t
   }
 
-let gen ~dune_version { libs ; name ; version; dir } =
+let decode ~dir =
+  let open Dune_lang.Decoder in
+  let%map name = field "name" Package.Name.decode
+  and version = field_o "version" string
+  and libs = multi_field "library" (Lib.decode ~base:dir)
+  in
+  { name
+  ; version
+  ; libs = List.map libs ~f:(fun (lib : _ Lib.t) -> { lib with version })
+  ; dir
+  }
+
+
+module Vfile = Versioned_file.Make(struct type t = unit end)
+
+let () = Vfile.Lang.register Stanza.syntax ()
+
+let prepend_version ~dune_version sexps =
   let open Dune_lang.Encoder in
   let list s = Dune_lang.List s in
+  [ list [ Dune_lang.atom "lang"
+         ; string (Syntax.name Stanza.syntax)
+         ; Syntax.Version.encode dune_version
+         ]
+  ]
+  @ sexps
+
+let encode ~dune_version { libs ; name ; version; dir } =
+  let list s = Dune_lang.List s in
   let sexp =
-    [ list [ Dune_lang.atom "lang"
-           ; string (Syntax.name Stanza.syntax)
-           ; Syntax.Version.encode dune_version
-           ]
-    ; list [ Dune_lang.atom "name"; Package.Name.encode name ]
-    ] in
+    [list [ Dune_lang.atom "name"; Package.Name.encode name ]] in
   let sexp =
     match version with
     | None -> sexp
@@ -229,24 +250,25 @@ let gen ~dune_version { libs ; name ; version; dir } =
     List.map libs ~f:(fun lib ->
       list (Dune_lang.atom "library" :: Lib.encode lib ~package_root:dir))
   in
-  sexp @ libs
+  prepend_version ~dune_version (sexp @ libs)
 
-let decode ~dir =
-  let open Dune_lang.Decoder in
-  fields (
-    let%map name = field "name" Package.Name.decode
-    and version = field_o "version" string
-    and libs = multi_field "library" (Lib.decode ~base:dir)
-    in
-    { name
-    ; version
-    ; libs = List.map libs ~f:(fun (lib : _ Lib.t) -> { lib with version })
-    ; dir
-    }
-  )
+module Or_meta = struct
+  type nonrec 'sub_system t =
+    | Use_meta
+    | Dune_package of 'sub_system t
 
-module Vfile = Versioned_file.Make(struct type t = unit end)
+  let encode ~dune_version = function
+    | Use_meta ->
+      prepend_version ~dune_version [Dune_lang.(List [atom "use_meta"])]
+    | Dune_package p -> encode ~dune_version p
 
-let () = Vfile.Lang.register Stanza.syntax ()
+  let decode ~dir =
+    let open Dune_lang.Decoder in
+    (* fields @@ *)
+    fields
+      (field_b "use_meta" >>= function
+       | true -> return Use_meta
+       | false -> decode ~dir >>| fun p -> Dune_package p)
 
-let load p = Vfile.load p ~f:(fun _ -> decode ~dir:(Path.parent_exn p))
+  let load p = Vfile.load p ~f:(fun _ -> decode ~dir:(Path.parent_exn p))
+end

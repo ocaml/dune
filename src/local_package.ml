@@ -9,6 +9,7 @@ type t =
   ; mlds : Path.t list Lazy.t
   ; pkg : Package.t
   ; libs : Lib.Set.t
+  ; virtual_lib : Lib.t option Lazy.t
   }
 
 let is_odig_doc_file fn =
@@ -99,6 +100,9 @@ let of_sctx (sctx : Super_context.t) =
           acc)
     in
     let libs = libs_of pkg in
+    let virtual_lib = lazy (
+      Lib.Set.find libs ~f:(fun l -> Option.is_some (Lib.virtual_ l))
+    ) in
     let t =
       add_stanzas
         ~sctx
@@ -110,6 +114,7 @@ let of_sctx (sctx : Super_context.t) =
         ; ctx_build_dir = ctx.build_dir
         ; libs
         ; mlds = lazy (assert false)
+        ; virtual_lib
         }
         (Package.Name.Map.find stanzas_per_package pkg.name
          |> Option.value ~default:[])
@@ -134,3 +139,8 @@ let dune_package_file t =
 
 let install_paths t =
   Install.Section.Paths.make ~package:t.pkg.name ~destdir:Path.root ()
+
+let virtual_lib t = Lazy.force t.virtual_lib
+
+let meta_template t =
+  Path.extend_basename (meta_file t) ~suffix:".template"

@@ -38,6 +38,8 @@ unreleased
 - Add `dune compute` to call internal memoized functions (#1528,
   @rudihorn, @diml)
 
+- Add `--trace-file` option to trace dune internals (#1639, fix #1180, @emillon)
+
 1.6.2 (05/12/2018)
 ------------------
 

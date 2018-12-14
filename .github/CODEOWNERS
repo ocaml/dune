@@ -3,6 +3,7 @@ src/fiber/* @diml
 src/let_syntax/* @diml
 src/memo/* @diml
 src/xdg/* @diml
+src/catapult/* @emillon
 
 src/scheduler.* @diml
 src/build_system.* @diml

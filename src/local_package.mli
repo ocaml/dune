@@ -32,3 +32,7 @@ val install_paths : t -> Install.Section.Paths.t
 val libs : t -> Lib.Set.t
 
 val package : t -> Package.t
+
+val virtual_lib : t -> Lib.t option
+
+val meta_template : t -> Path.t

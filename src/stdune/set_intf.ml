@@ -28,4 +28,5 @@ module type S = sig
   val split          : t -> elt -> t * bool * t
   val of_list        : elt list -> t
   val to_list        : t -> elt list
+  val find           : t -> f:(elt -> bool) -> elt option
 end

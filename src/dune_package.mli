@@ -71,9 +71,15 @@ type 'sub_system t =
   ; dir          : Path.t
   }
 
-val gen
-  :  dune_version:Syntax.Version.t
-  -> (Syntax.Version.t * Dune_lang.t list) t
-  -> Dune_lang.t list
+module Or_meta : sig
+  type nonrec 'sub_system t =
+    | Use_meta
+    | Dune_package of 'sub_system t
 
-val load : Path_dune_lang.t -> Sub_system_info.t t
+  val encode
+    :  dune_version:Syntax.Version.t
+    -> (Syntax.Version.t * Dune_lang.t list) t
+    -> Dune_lang.t list
+
+  val load : Path_dune_lang.t -> Sub_system_info.t t
+end

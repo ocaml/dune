@@ -4,11 +4,11 @@
     ocamlmklib q/dllq_stubs$ext_dll,q/libq_stubs$ext_lib
       ocamldep q/.q.objs/q.ml.d
       ocamldep q/.q.objs/q.mli.d
-        ocamlc q/.q.objs/q.{cmi,cmti}
-      ocamlopt q/.q.objs/q.{cmx,o}
+        ocamlc q/.q.objs/byte/q.{cmi,cmti}
+      ocamlopt q/.q.objs/native/q.{cmx,o}
       ocamlopt q/q.{a,cmxa}
-        ocamlc qnativerun/.run.eobjs/run.{cmi,cmo,cmt}
-      ocamlopt qnativerun/.run.eobjs/run.{cmx,o}
+        ocamlc qnativerun/.run.eobjs/byte/run.{cmi,cmo,cmt}
+      ocamlopt qnativerun/.run.eobjs/native/run.{cmx,o}
       ocamlopt qnativerun/run.exe
   42
 #  $ dune exec ./qbyterun/run.bc --display short

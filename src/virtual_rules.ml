@@ -22,6 +22,12 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
   let copy_objs src =
     let dst = Module.set_obj_dir ~obj_dir:impl_obj_dir src in
     copy_obj_file ~src ~dst Cmi;
+    if Module.is_public dst && Obj_dir.has_public_cmi_dir impl_obj_dir
+    then begin
+      let src = Module.cm_public_file_unsafe src Cmi in
+      let dst = Module.cm_public_file_unsafe dst Cmi in
+      copy_to_obj_dir ~src ~dst
+    end;
     if Module.has_impl src then begin
       if modes.byte then
         copy_obj_file ~src ~dst Cmo;
@@ -40,12 +46,12 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
             Module.file m kind
             |> Option.iter ~f:(fun f ->
               copy_to_obj_dir
-                ~src:(all_deps ~obj_dir:vlib_obj_dir.public_dir f)
-                ~dst:(all_deps ~obj_dir:impl_obj_dir.public_dir f))
+                ~src:(all_deps ~obj_dir:(Obj_dir.obj_dir vlib_obj_dir) f)
+                ~dst:(all_deps ~obj_dir:(Obj_dir.obj_dir impl_obj_dir) f))
           );
     else
-    (* we only need to copy the .all-deps files for local libraries. for remote
-       libraries, we just use ocamlobjinfo *)
+      (* we only need to copy the .all-deps files for local libraries. for
+         remote libraries, we just use ocamlobjinfo *)
       let vlib_dep_graph = Vimpl.vlib_dep_graph vimpl in
       fun m ->
         List.iter [Intf; Impl] ~f:(fun kind ->
@@ -58,7 +64,8 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
               |> List.map ~f:(fun m -> Module.Name.to_string (Module.name m))
               |> String.concat ~sep:"\n")
             >>>
-            Build.write_file_dyn (all_deps ~obj_dir:impl_obj_dir.public_dir f)
+            Build.write_file_dyn
+              (all_deps ~obj_dir:(Obj_dir.obj_dir impl_obj_dir) f)
             |> Super_context.add_rule sctx ~dir))
   in
   Option.iter (Lib_modules.alias_module vlib_modules) ~f:copy_objs;
@@ -195,7 +202,8 @@ let impl sctx ~dir ~(lib : Dune_file.Library.t) ~scope ~modules =
         let modules = Lib_modules.modules vlib_modules in
         match virtual_ with
         | Local ->
-          Ocamldep.graph_of_remote_lib ~obj_dir:vlib_obj_dir.public_dir ~modules
+          Ocamldep.graph_of_remote_lib
+            ~obj_dir:(Obj_dir.obj_dir vlib_obj_dir) ~modules
         | External _ ->
           let impl_obj_dir =
             Utils.library_object_directory ~dir (snd lib.name) in

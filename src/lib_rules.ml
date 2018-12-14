@@ -28,6 +28,7 @@ module Gen (P : Install_rules.Params) = struct
 
   let build_lib (lib : Library.t) ~expander ~flags ~dir ~mode
         ~top_sorted_modules ~modules =
+    let kind = Mode.cm_kind mode in
     Option.iter (Context.compiler ctx mode) ~f:(fun compiler ->
       let target = Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext mode) in
       let stubs_flags =
@@ -47,10 +48,10 @@ module Gen (P : Install_rules.Params) = struct
           Fn.id
       in
       let artifacts ~ext modules =
-        List.map modules ~f:(Module.obj_file ~ext)
+        List.map modules ~f:(Module.obj_file ~mode ~ext)
       in
       let obj_deps =
-        Build.paths (artifacts modules ~ext:(Cm_kind.ext (Mode.cm_kind mode)))
+        Build.paths (artifacts modules ~ext:(Cm_kind.ext kind))
       in
       let obj_deps =
         match mode with
@@ -63,7 +64,7 @@ module Gen (P : Install_rules.Params) = struct
         (obj_deps
          >>>
          Build.fanout4
-           (top_sorted_modules >>^artifacts ~ext:(Cm_kind.ext (Mode.cm_kind mode)))
+           (top_sorted_modules >>^artifacts ~ext:(Cm_kind.ext kind))
            (Expander.expand_and_eval_set expander lib.c_library_flags
               ~standard:(Build.return []))
            (Ocaml_flags.get flags mode)
@@ -333,7 +334,7 @@ module Gen (P : Install_rules.Params) = struct
 
   let setup_file_deps lib ~dir ~modules =
     let add_cms ~cm_kind ~init = List.fold_left ~init ~f:(fun acc m ->
-      match Module.cm_file m cm_kind with
+      match Module.cm_public_file m cm_kind with
       | None -> acc
       | Some fn -> Path.Set.add acc fn)
     in
@@ -366,8 +367,8 @@ module Gen (P : Install_rules.Params) = struct
           | Some m ->
             (* These files needs to be alongside stdlib.cma as the
                compiler implicitly adds this module. *)
-            List.iter [".cmx"; ".cmo"; ctx.ext_obj] ~f:(fun ext ->
-              let src = Module.obj_file m ~ext in
+            List.iter [Mode.Native,".cmx"; Byte,".cmo"; Native,ctx.ext_obj] ~f:(fun (mode,ext) ->
+              let src = Module.obj_file m ~mode ~ext in
               let dst = Path.relative dir ((Module.obj_name m) ^ ext) in
               SC.add_rule sctx ~dir (Build.copy ~src ~dst));
             Module.Name.Map.remove modules name
@@ -410,7 +411,7 @@ module Gen (P : Install_rules.Params) = struct
           Library.archive lib ~dir
             ~ext:(Mode.compiled_lib_ext Mode.Byte) in
         let target =
-          Path.relative obj_dir.public_dir (Path.basename src)
+          Path.relative (Obj_dir.obj_dir obj_dir) (Path.basename src)
           |> Path.extend_basename ~suffix:".js" in
         Js_of_ocaml_rules.build_cm cctx ~js_of_ocaml ~src ~target);
     if Dynlink_supported.By_the_os.get ctx.natdynlink_supported
@@ -536,7 +537,7 @@ module Gen (P : Install_rules.Params) = struct
       ; compile_info
       };
 
-    let objs_dirs = Path.Set.of_list (Obj_dir.all_objs_dir obj_dir) in
+    let objs_dirs = Path.Set.singleton (Obj_dir.byte_dir obj_dir) in
 
     (cctx,
      Merlin.make ()

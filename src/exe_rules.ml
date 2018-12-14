@@ -8,8 +8,7 @@ let executables_rules ~sctx ~dir ~dir_kind ~expander
       (exes : Dune_file.Executables.t) =
   (* Use "eobjs" rather than "objs" to avoid a potential conflict
      with a library of the same name *)
-  let obj_dir = Obj_dir.make_exe ~dir (List.hd exes.names |> snd)
-  in
+  let obj_dir = Obj_dir.make_exe ~dir ~name:(snd (List.hd exes.names)) in
   Check_rules.add_obj_dir sctx ~obj_dir;
   let requires = Lib.Compile.requires compile_info in
   let modules =
@@ -107,7 +106,7 @@ let executables_rules ~sctx ~dir ~dir_kind ~expander
      ~flags:(Ocaml_flags.common flags)
      ~preprocess:(Dune_file.Buildable.single_preprocess exes.buildable)
      (* only public_dir? *)
-     ~objs_dirs:(Path.Set.singleton obj_dir.Obj_dir.public_dir))
+     ~objs_dirs:(Path.Set.singleton (Obj_dir.public_cmi_dir obj_dir)))
 
 let rules ~sctx ~dir ~dir_contents ~scope ~expander ~dir_kind
       (exes : Dune_file.Executables.t) =

@@ -190,7 +190,11 @@ let virtual_     t = t.info.virtual_
 let src_dir t = t.info.src_dir
 let obj_dir t = t.info.obj_dir
 
-let is_local t = Path.is_managed t.info.obj_dir.public_dir
+let is_local t = Path.is_managed (Obj_dir.byte_dir t.info.obj_dir)
+
+let public_cmi_dir t = Obj_dir.public_cmi_dir t.info.obj_dir
+
+let native_dir t = Obj_dir.native_dir t.info.obj_dir
 
 let status t = t.info.status
 
@@ -253,7 +257,8 @@ module L = struct
   let include_paths ts ~stdlib_dir =
     let dirs =
       List.fold_left ts ~init:Path.Set.empty ~f:(fun acc t ->
-        Path.Set.add acc (obj_dir t).public_dir)
+        List.fold_left ~f:Path.Set.add ~init:acc
+          [public_cmi_dir t ; native_dir t])
     in
     Path.Set.remove dirs stdlib_dir
 

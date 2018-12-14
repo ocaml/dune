@@ -9,11 +9,10 @@ let dev_files p =
 
 let add_obj_dir sctx ~obj_dir =
   if (Super_context.context sctx).merlin then
-    let f dir =
-      Super_context.add_alias_deps
-        sctx
-        (Build_system.Alias.check ~dir:obj_dir.Obj_dir.dir)
-        ~dyn_deps:(Build.paths_matching ~loc:Loc.none ~dir dev_files)
-        Path.Set.empty
-    in
-    List.iter ~f (Obj_dir.all_objs_dir obj_dir)
+    Super_context.add_alias_deps
+      sctx
+      (Build_system.Alias.check ~dir:(Obj_dir.dir obj_dir))
+      ~dyn_deps:(Build.paths_matching
+                   ~loc:(Loc.of_pos __POS__)
+                   ~dir:(Obj_dir.byte_dir obj_dir) dev_files)
+      Path.Set.empty

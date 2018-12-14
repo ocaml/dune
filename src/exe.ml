@@ -129,14 +129,15 @@ let link_exe
   let mode = linkage.mode in
   let exe = Path.relative dir (name ^ linkage.ext) in
   let compiler = Option.value_exn (Context.compiler ctx mode) in
+  let kind = Mode.cm_kind mode in
   let artifacts ~ext modules =
-    List.map modules ~f:(Module.obj_file ~ext)
+    List.map modules ~f:(Module.obj_file ~mode ~ext)
   in
   let modules_and_cm_files =
     Build.memoize "cm files"
       (top_sorted_modules >>^ fun modules ->
        (modules,
-        artifacts modules ~ext:(Cm_kind.ext (Mode.cm_kind mode))))
+        artifacts modules ~ext:(Cm_kind.ext kind)))
   in
   let register_native_objs_deps build =
     match mode with

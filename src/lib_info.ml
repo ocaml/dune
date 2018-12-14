@@ -117,7 +117,7 @@ let of_library_stanza ~dir ~has_native ~ext_lib ~ext_obj
          :: stubs
      }
     , List.map (conf.c_names @ conf.cxx_names) ~f:(fun (_, name) ->
-        Path.relative obj_dir.public_dir (name ^ ext_obj))
+        Path.relative (Obj_dir.obj_dir obj_dir) (name ^ ext_obj))
     )
   in
   let foreign_archives =
@@ -135,7 +135,8 @@ let of_library_stanza ~dir ~has_native ~ext_lib ~ext_obj
       }
     | _ -> foreign_archives
   in
-  let jsoo_archive = Some (gen_archive_file ~dir:obj_dir.public_dir ".cma.js") in
+  let jsoo_archive =
+    Some (gen_archive_file ~dir:(Obj_dir.obj_dir obj_dir) ".cma.js") in
   let virtual_ = Option.map conf.virtual_modules ~f:(fun _ -> Virtual.Local) in
   let (archives, plugins) =
     if virtual_library then

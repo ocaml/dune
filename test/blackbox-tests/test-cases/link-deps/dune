@@ -1,6 +1,6 @@
 (alias
   (name message)
-  (deps .link_deps.eobjs/link_deps.cmo)
+  (deps .link_deps.eobjs/.byte_objs/link_deps.cmo)
   (action (echo "link\n"))
   )
 

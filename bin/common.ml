@@ -26,8 +26,7 @@ type t =
   ; default_target        : string
   (* For build & runtest only *)
   ; watch : bool
-  ; stats : bool
-  ; catapult_trace_file : string option
+  ; stats_trace_file : string option
   }
 
 let prefix_target common s = common.target_prefix ^ s
@@ -53,8 +52,7 @@ let set_common_other c ~targets =
       ; c.orig_args
       ; targets
       ];
-  if c.stats then Stats.enable ();
-  Option.iter ~f:Stats.enable_catapult c.catapult_trace_file
+  Option.iter ~f:Stats.enable c.stats_trace_file
 
 let set_common c ~targets =
   set_dirs c;
@@ -329,13 +327,7 @@ let term =
          & info ["diff-command"] ~docs
              ~doc:"Shell command to use to diff files.
                    Use - to disable printing the diff.")
-  and stats =
-    Arg.(value
-         & flag
-         & info ["stats"] ~docs
-             ~doc:{|Record and print statistics about Dune resource usage.
-                   |})
-  and catapult_trace_file =
+  and stats_trace_file =
     Arg.(value
          & opt (some string) None
          & info ["trace-file"] ~docs ~docv:"FILE"
@@ -394,8 +386,7 @@ let term =
   ; build_dir
   ; default_target
   ; watch
-  ; stats
-  ; catapult_trace_file
+  ; stats_trace_file
   }
 
 let term =

@@ -1,7 +1,5 @@
 open Stdune
 
-let enabled = ref false
-
 module Fd_count = struct
   type t = Unknown | This of int
 
@@ -30,45 +28,30 @@ module Fd_count = struct
       | value -> value
       end
     | files -> This (Array.length files - 1 (* -1 for the dirfd *))
-
-  let map2 ~f a b =
-    match a, b with
-    | Unknown, x | x, Unknown -> x
-    | This a, This b -> This (f a b)
-
-  let max = map2 ~f:max
-
-  let to_string = function
-    | Unknown -> "unknown"
-    | This n -> string_of_int n
 end
 
-type t =
-  { mutable fds : Fd_count.t
-  }
-
-let observed_max =
-  { fds = Unknown
-  }
+let catapult = ref None
 
 let record () =
-  if !enabled then begin
-    let fds = Fd_count.get () in
-    observed_max.fds <- Fd_count.max fds observed_max.fds
-  end
+  Option.iter !catapult ~f:(fun reporter ->
+    Catapult.emit_gc_counters reporter;
+    match Fd_count.get () with
+    | This fds ->
+      Catapult.emit_counter reporter "fds" fds
+    | Unknown -> ()
+  )
 
-let dump () =
-  let pr fmt = Printf.eprintf (fmt ^^ "\n") in
-  pr "Stats:";
-  pr "max opened fds: %s" (Fd_count.to_string observed_max.fds);
-  flush stderr
+let enable path =
+  let reporter = Catapult.make path in
+  catapult := Some reporter;
+  at_exit (fun () -> Catapult.close reporter)
 
-let enable () =
-  enabled := true;
-  at_exit dump
-
-let catapult = Catapult.make ()
-
-let enable_catapult path =
-  Catapult.enable catapult path;
-  at_exit (fun () -> Catapult.close catapult)
+let with_process ~program ~args fiber =
+  match !catapult with
+  | None -> fiber
+  | Some reporter ->
+    let open Fiber.O in
+    let event = Catapult.on_process_start reporter ~program ~args in
+    fiber >>| fun result ->
+    Catapult.on_process_end reporter event;
+    result

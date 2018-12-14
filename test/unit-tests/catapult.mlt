@@ -26,6 +26,9 @@ time := 30.;;
 Catapult.on_process_end c e;;
 [%%ignore]
 
+Catapult.emit_gc_counters c;;
+[%%ignore]
+
 Catapult.close c;;
 [%%ignore]
 

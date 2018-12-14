@@ -351,20 +351,26 @@ let find_and_acknowledge_meta t ~fq_name =
       let sub_dir = Path.relative dir (Lib_name.to_string root_name) in
       let dune = Path.relative sub_dir "dune-package" in
       let meta_file = Path.relative sub_dir "META" in
-      if Path.exists dune then
-        Some (Dune (Dune_package.load dune))
-      else if Path.exists meta_file then
-        let meta = Meta.load meta_file ~name:(Some root_name) in
-        Some (Findlib {dir = sub_dir; meta; meta_file})
-      else
-        (* Alternative layout *)
-        let meta_file =
-          Path.relative dir ("META." ^ (Lib_name.to_string root_name)) in
+      match
+        (if Path.exists dune then
+           Dune_package.Or_meta.load dune
+         else
+           Dune_package.Or_meta.Use_meta)
+      with
+      | Dune_package p -> Some (Dune p)
+      | Use_meta ->
         if Path.exists meta_file then
           let meta = Meta.load meta_file ~name:(Some root_name) in
-          Some (Findlib {dir; meta_file; meta})
+          Some (Findlib {dir = sub_dir; meta; meta_file})
         else
-          loop dirs
+          (* Alternative layout *)
+          let meta_file =
+            Path.relative dir ("META." ^ (Lib_name.to_string root_name)) in
+          if Path.exists meta_file then
+            let meta = Meta.load meta_file ~name:(Some root_name) in
+            Some (Findlib {dir; meta_file; meta})
+          else
+            loop dirs
   in
   match loop t.paths with
   | None ->

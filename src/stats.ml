@@ -72,3 +72,10 @@ let catapult = Catapult.make ()
 let enable_catapult path =
   Catapult.enable catapult path;
   at_exit (fun () -> Catapult.close catapult)
+
+let with_process ~program ~args fiber =
+  let open Fiber.O in
+  let event = Catapult.on_process_start catapult ~program ~args in
+  fiber >>| fun result ->
+  Catapult.on_process_end catapult event;
+  result

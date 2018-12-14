@@ -1,10 +1,8 @@
 (*---------------------------------------------------------------------------
    Copyright (c) 2011 Daniel C. Bünzli. All rights reserved.
    Distributed under the ISC license, see terms at the end of the file.
-   cmdliner v1.0.0
+   cmdliner v1.0.2-18-gac44bb7
   ---------------------------------------------------------------------------*)
-
-open Result
 
 module Manpage = Cmdliner_manpage
 module Arg = Cmdliner_arg
@@ -50,6 +48,18 @@ module Term = struct
     let choice_name t = Cmdliner_info.term_name t in
     Cmdliner_info.Args.empty,
     (fun ei _ -> Ok (List.rev_map choice_name (Cmdliner_info.eval_choices ei)))
+
+  let with_used_args (al, v) : (_ * string list) t =
+    al, fun ei cl ->
+      match v ei cl with
+      | Ok x ->
+          let actual_args arg_info acc =
+            let args = Cmdliner_cline.actual_args cl arg_info in
+            List.rev_append args acc
+          in
+          let used = List.rev (Cmdliner_info.Args.fold actual_args al []) in
+          Ok (x, used)
+      | Error _ as e -> e
 
   (* Term information *)
 
@@ -101,7 +111,7 @@ module Term = struct
     ('a, [ term_escape
          | `Exn of exn * Printexc.raw_backtrace
          | `Parse of string
-         | `Std_help of Manpage.format | `Std_version ]) Result.result
+         | `Std_help of Manpage.format | `Std_version ]) Dune_caml.result
 
   let run ~catch ei cl f = try (f ei cl :> 'a eval_result) with
   | exn when catch ->

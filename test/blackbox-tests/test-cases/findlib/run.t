@@ -21,7 +21,7 @@ When passing --dev, the profile should be displayed only once (#1106):
   4 |  (libraries   a b c))
                     ^
   Error: Library "a" not found.
-  Hint: try: dune external-lib-deps --missing --profile dev @install
+  Hint: try: dune external-lib-deps --missing --dev @install
   [1]
 
 With dune and an explicit profile, it is the same:

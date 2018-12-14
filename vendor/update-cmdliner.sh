@@ -1,6 +1,6 @@
 #!/bin/bash
 
-version=1.0.0
+version=ac44bb7d73d0f2e56b110099b529458d8302bf15
 
 set -e -o pipefail
 
@@ -10,12 +10,19 @@ trap "rm -rf $TMP" EXIT
 rm -rf cmdliner
 mkdir -p cmdliner/src
 
-(cd $TMP && opam source cmdliner.$version)
+(
+    cd $TMP
+    git clone https://github.com/dbuenzli/cmdliner.git
+    cd cmdliner
+    dune subst
+    cd src
+    sed -i.bak 's/Pervasives.result/Dune_caml.result/g' *.{ml,mli}
+)
 
-SRC=$TMP/cmdliner.$version
+SRC=$TMP/cmdliner
 
 cp -v $SRC/LICENSE.md cmdliner
 cp -v $SRC/src/*.{ml,mli} cmdliner/src
 
-git checkout cmdliner/src/jbuild
+git checkout cmdliner/src/dune
 git add -A .

@@ -1,5 +1,8 @@
 open Stdune
 open Dune
+module Term = Cmdliner.Term
+module Manpage = Cmdliner.Manpage
+module Let_syntax = Term
 
 type t =
   { debug_dep_path        : bool
@@ -83,14 +86,6 @@ let term =
             sprintf
               "Cannot use %s and %s simultaneously"
               a b)
-  in
-  let module Let_syntax = Cmdliner.Term in
-  let module Term = Cmdliner.Term in
-  let module Manpage = Cmdliner.Manpage in
-  let dump_opt name value =
-    match value with
-    | None -> []
-    | Some s -> [name; s]
   in
   let docs = copts_sect in
   let%map concurrency =
@@ -187,8 +182,7 @@ let term =
       ignore_promoted_rules,
       config_file,
       profile,
-      default_target,
-      orig =
+      default_target =
     let default_target_default =
       match Which_program.t with
       | Dune     -> "@@default"
@@ -307,8 +301,7 @@ let term =
            true,
            No_config,
            Some "release",
-           "@install",
-           ["-p"; pkgs]
+           "@install"
           )
     | None, _, _, _, _, _, _ ->
       `Ok (root,
@@ -316,21 +309,7 @@ let term =
            ignore_promoted_rules,
            config_file,
            profile,
-           Option.value default_target ~default:default_target_default,
-           List.concat
-             [ dump_opt "--root" root
-             ; dump_opt "--only-packages" only_packages
-             ; dump_opt "--profile" profile
-             ; dump_opt "--default-target" default_target
-             ; if ignore_promoted_rules then
-                 ["--ignore-promoted-rules"]
-               else
-                 []
-             ; (match config_file with
-                | This fn   -> ["--config-file"; Path.to_string fn]
-                | No_config -> ["--no-config"]
-                | Default   -> [])
-             ]
+           Option.value default_target ~default:default_target_default
           )
   and x =
     Arg.(value
@@ -373,12 +352,6 @@ let term =
       else
         Util.find_root ()
   in
-  let orig_args =
-    List.concat
-      [ dump_opt "--workspace" (Option.map ~f:Arg.Path.arg workspace_file)
-      ; orig
-      ]
-  in
   let config =
     match config_file with
     | No_config  -> Config.default
@@ -406,7 +379,7 @@ let term =
   ; capture_outputs = not no_buffer
   ; workspace_file
   ; root
-  ; orig_args
+  ; orig_args = []
   ; target_prefix = String.concat ~sep:"" (List.map to_cwd ~f:(sprintf "%s/"))
   ; diff_command
   ; auto_promote
@@ -424,3 +397,7 @@ let term =
   ; stats
   ; catapult_trace_file
   }
+
+let term =
+  let%map t, orig_args = Term.with_used_args term in
+  { t with orig_args }

@@ -5,6 +5,7 @@ type ops =
   ; close : unit -> unit
   ; get_time : unit -> float
   ; gc_stat : unit -> Gc.stat
+  ; mutable after_first_event : bool
   }
 
 type mode =
@@ -13,12 +14,10 @@ type mode =
 
 type t =
   { mutable mode : mode
-  ; mutable after_first_event : bool
   }
 
 let make () =
   { mode = Disabled
-  ; after_first_event = false
   }
 
 let fake_gc_stat =
@@ -51,8 +50,8 @@ let fake time_ref buf =
         ; close
         ; get_time
         ; gc_stat
+        ; after_first_event = false
         }
-  ; after_first_event = false
   }
 
 let close t = match t.mode with
@@ -67,7 +66,7 @@ let path_ops path =
   let close () = Pervasives.close_out channel in
   let get_time () = Unix.gettimeofday () in
   let gc_stat () = Gc.stat () in
-  {print; close; get_time; gc_stat}
+  {print; close; get_time; gc_stat; after_first_event = false}
 
 let enable t path =
   t.mode <- Using (path_ops path)
@@ -80,12 +79,8 @@ let next_leading_char t =
     '['
 
 let printf t format_string =
-  match t.mode with
-  | Disabled ->
-    Printf.ifprintf () format_string
-  | Using {print; _} ->
-    let c = next_leading_char t in
-    Printf.ksprintf print ("%c" ^^ format_string ^^ "\n") c
+  let c = next_leading_char t in
+  Printf.ksprintf t.print ("%c" ^^ format_string ^^ "\n") c
 
 let color_of_name = function
   | "ocamlc" | "ocamlc.opt" -> "thread_state_uninterruptible"
@@ -149,22 +144,24 @@ let emit_counters t ~time (stat: Gc.stat) =
   emit_counter t ~time "free_words" stat.free_words;
   emit_counter t ~time "stack_size" stat.stack_size
 
-let get_time t = match t.mode with
-  | Disabled -> 0.
-  | Using {get_time; _} -> get_time ()
-
-let gc_stat t = match t.mode with
-  | Disabled -> fake_gc_stat
-  | Using {gc_stat; _} -> gc_stat ()
-
 let on_process_start t ~program ~args =
-  { start_time = get_time t
-  ; program
-  ; args
-  }
+  match t.mode with
+  | Disabled ->
+    { start_time = 0.
+    ; program
+    ; args
+    }
+  | Using t ->
+    { start_time = t.get_time ()
+    ; program
+    ; args
+    }
 
 let on_process_end t event =
-  let time = get_time t in
-  emit_process t event ~time;
-  let stat = gc_stat t in
-  emit_counters t stat ~time
+  match t.mode with
+  | Disabled -> ()
+  | Using t ->
+    let time = t.get_time () in
+    emit_process t event ~time;
+    let stat = t.gc_stat () in
+    emit_counters t stat ~time

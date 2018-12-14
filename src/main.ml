@@ -33,7 +33,6 @@ let setup ?(log=Log.no_log)
       ?external_lib_deps_mode
       ?workspace ?workspace_file
       ?only_packages
-      ?extra_ignored_subtrees
       ?x
       ?ignore_promoted_rules
       ?(capture_outputs=true)
@@ -41,7 +40,7 @@ let setup ?(log=Log.no_log)
       () =
   let env = setup_env ~capture_outputs in
   let conf =
-    Dune_load.load ?extra_ignored_subtrees ?ignore_promoted_rules ()
+    Dune_load.load ?ignore_promoted_rules ()
   in
   Option.iter only_packages ~f:(fun set ->
     Package.Name.Set.iter set ~f:(fun pkg ->
@@ -109,13 +108,6 @@ let setup ?(log=Log.no_log)
     ; file_tree = conf.file_tree
     ; env
     }
-
-let ignored_during_bootstrap =
-  Path.Set.of_list
-    (List.map ~f:Path.in_source
-       [ "test"
-       ; "example"
-       ])
 
 let auto_concurrency =
   let v = ref None in
@@ -234,7 +226,6 @@ let bootstrap () =
        >>= fun () ->
        setup ~log ~workspace:(Workspace.default ?profile:!profile ())
          ?profile:!profile
-         ~extra_ignored_subtrees:ignored_during_bootstrap
          ()
        >>= fun { build_system = bs; _ } ->
        Build_system.do_build bs
@@ -248,8 +239,6 @@ let bootstrap () =
   | exn ->
     Report_error.report exn;
     exit 1
-
-let setup = setup ~extra_ignored_subtrees:Path.Set.empty
 
 let find_context_exn t ~name =
   match List.find t.contexts ~f:(fun c -> c.name = name) with

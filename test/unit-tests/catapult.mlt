@@ -1,0 +1,65 @@
+#warnings "-40";;
+
+Topdirs.dir_directory "src/catapult/.catapult.objs";;
+[%%ignore]
+
+open Catapult;;
+
+let buf = Buffer.create 0;;
+[%%ignore]
+
+let time = ref 0.;;
+[%%ignore]
+
+let c = Catapult.fake time buf;;
+[%%ignore]
+
+time := 10.;;
+[%%ignore]
+
+let e = Catapult.on_process_start c ~program:"/path/to/program" ~args:["arg1"; "arg2"];;
+[%%ignore]
+
+time := 30.;;
+[%%ignore]
+
+Catapult.on_process_end c e;;
+[%%ignore]
+
+Catapult.close c;;
+[%%ignore]
+
+let buffer_lines () =
+  String.split_on_char '\n' (Buffer.contents buf)
+;;
+[%%ignore]
+
+buffer_lines ();;
+[%%expect{|
+- : string list =
+["[{\"name\": \"program\", \"pid\": 0, \"tid\": 0, \"ph\": \"X\", \"dur\": 20000000, \"ts\": 30000000, \"color\": \"generic_work\", \"args\": [\"arg1\",\"arg2\"]}";
+ ",{\"name\": \"live_words\", \"pid\": 0, \"tid\": 0, \"ph\": \"C\", \"ts\": 30000000, \"args\": {\"value\": 0}}";
+ ",{\"name\": \"free_words\", \"pid\": 0, \"tid\": 0, \"ph\": \"C\", \"ts\": 30000000, \"args\": {\"value\": 0}}";
+ ",{\"name\": \"stack_size\", \"pid\": 0, \"tid\": 0, \"ph\": \"C\", \"ts\": 30000000, \"args\": {\"value\": 0}}";
+ "]"; ""]
+|}]
+
+let get_program_line program =
+  Buffer.clear buf;
+  let e = Catapult.on_process_start c ~program ~args:[] in
+  Catapult.on_process_end c e;
+  List.hd (buffer_lines ())
+;;
+[%%ignore]
+
+(* opt compilers and non-opt have the same color *)
+get_program_line "ocamlc.opt";;
+[%%expect{|
+- : string =
+",{\"name\": \"ocamlc.opt\", \"pid\": 0, \"tid\": 0, \"ph\": \"X\", \"dur\": 0, \"ts\": 30000000, \"color\": \"thread_state_uninterruptible\", \"args\": []}"
+|}]
+get_program_line "ocamlc";;
+[%%expect{|
+- : string =
+",{\"name\": \"ocamlc\", \"pid\": 0, \"tid\": 0, \"ph\": \"X\", \"dur\": 0, \"ts\": 30000000, \"color\": \"thread_state_uninterruptible\", \"args\": []}"
+|}]

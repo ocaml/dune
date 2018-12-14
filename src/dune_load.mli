@@ -26,7 +26,6 @@ type conf = private
   }
 
 val load
-  :  ?extra_ignored_subtrees:Path.Set.t
-  -> ?ignore_promoted_rules:bool
+  :  ?ignore_promoted_rules:bool
   -> unit
   -> conf

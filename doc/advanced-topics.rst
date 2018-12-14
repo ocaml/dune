@@ -222,3 +222,15 @@ composed using Findlib. Even though this is useful to run some (usually old)
 ppx's which don't support drivers, dune does not support preprocessing with
 ppx this way. but a workaround exists using the `ppxfind
 <https://github.com/diml/ppxfind>`_ tool.
+
+Profiling dune
+==============
+
+If ``--trace-file FILE`` is passed, dune will write detailed data about internal
+operations, such as the timing of commands that are run by dune.
+
+The format is compatible with `Catapult trace-viewer`_. In particular, these
+files can be loaded into Chromium's ``chrome://tracing``. Note that the exact
+format is subject to change between versions.
+
+.. _Catapult trace-viewer: https://github.com/catapult-project/catapult/blob/master/tracing/README.md

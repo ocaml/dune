@@ -44,6 +44,18 @@ module Make(Elt : Comparable.S) : S with type elt = Elt.t = struct
   let max_elt = max_elt_opt
   let choose = choose_opt
   let split x t = split t x
+
+  exception Found of elt
+  let find t ~f =
+    match
+      iter t ~f:(fun e ->
+        if f e then
+          raise_notrace (Found e)
+        else
+          ())
+    with
+    | () -> None
+    | exception (Found e) -> Some e
 end
 
 let to_sexp to_list f t =

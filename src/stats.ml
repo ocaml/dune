@@ -66,3 +66,9 @@ let dump () =
 let enable () =
   enabled := true;
   at_exit dump
+
+let catapult = Catapult.make ()
+
+let enable_catapult path =
+  Catapult.enable catapult path;
+  at_exit (fun () -> Catapult.close catapult)

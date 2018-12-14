@@ -134,7 +134,7 @@ let is_temp_file fn =
   || String.is_suffix fn ~suffix:".swp"
   || String.is_suffix fn ~suffix:"~"
 
-let load ?(extra_ignored_subtrees=Path.Set.empty) path =
+let load path =
   let rec walk path ~dirs_visited ~project ~data_only : Dir.t =
     let contents = lazy (
       let files, unfiltered_sub_dirs =
@@ -206,7 +206,7 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) path =
         List.fold_left unfiltered_sub_dirs ~init:String.Map.empty
           ~f:(fun acc (fn, path, file) ->
             let status =
-              if Path.Set.mem extra_ignored_subtrees path then
+              if Bootstrap.data_only_path path then
                 Sub_dirs.Status.Ignored
               else
                 Sub_dirs.status sub_dirs ~dir:fn

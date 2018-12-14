@@ -17,7 +17,7 @@ let go ~jobs fiber =
 
 let%bench_fun "single" = Lazy.force setup; fun () -> go (run ()) ~jobs:1
 
-let l = List.init ~len:100 ~f:ignore
+let l = List.init 100 ~f:ignore
 
 let%bench_fun "many" [@indexed jobs = [1; 2; 4; 8]] =
   Lazy.force setup;

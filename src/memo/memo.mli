@@ -42,20 +42,11 @@ module Make_hidden(Input : Input)
   : S with type input := Input.t
 
 (** Print the memoized call stack during execution. This is useful for
-    debugging purposes.
-
-    Example code:
-
-    {[
-      some_fiber_computation
-      >>= dump_stack
-      >>= some_more_computation
-    ]}
-*)
-val dump_stack : 'a -> 'a Fiber.t
+    debugging purposes. *)
+val dump_stack : unit -> unit
 
 (** Get the memoized call stack during the execution of a memoized function. *)
-val get_call_stack : Stack_frame.t list Fiber.t
+val get_call_stack : unit -> Stack_frame.t list
 
 (** Call a memoized function by name *)
 val call : string -> Dune_lang.Ast.t -> Sexp.t Fiber.t

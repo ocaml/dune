@@ -1,6 +1,7 @@
 jbuild still discovers workspaces as usual
 
   $ jbuilder build --root jbuilder-default-name
+  Entering directory 'jbuilder-default-name'
   File "jbuild-workspace", line 1, characters 10-24:
   1 | (context (does-not-exist))
                 ^^^^^^^^^^^^^^
@@ -15,6 +16,7 @@ and dune ignores this file:
 dune uses a versioned file. If the version is missing, then we get an error.
 
   $ dune build --root dune-no-version
+  Entering directory 'dune-no-version'
   File "dune-workspace", line 1, characters 0-19:
   1 | (context (default))
       ^^^^^^^^^^^^^^^^^^^

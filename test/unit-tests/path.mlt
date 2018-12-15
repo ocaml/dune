@@ -130,10 +130,9 @@ Path.(descendant (relative build_dir "foo") ~of_:root)
 - : Path.t option = Some (In_source_tree "_build/foo")
 |}]
 
-Path.(descendant (relative build_dir "foo") ~of_:(absolute "/foo/bar"))
+Path.(descendant (relative build_dir "foo") ~of_:(Path.of_string "/foo/bar"))
 [%%expect{|
-File "test/unit-tests/path.mlt", line 133, characters 50-58:
-Error: Unbound value absolute
+- : Path.t option = None
 |}]
 
 Path.(descendant (relative build_dir "foo/bar") ~of_:build_dir)
@@ -151,10 +150,9 @@ Path.(descendant (relative build_dir "foo/bar") ~of_:(relative build_dir "foo"))
 - : Path.t option = Some (In_source_tree "bar")
 |}]
 
-Path.(descendant (absolute "/foo/bar") ~of_:(absolute "/foo"))
+Path.(descendant (Path.of_string "/foo/bar") ~of_:(Path.of_string "/foo"))
 [%%expect{|
-File "test/unit-tests/path.mlt", line 154, characters 18-26:
-Error: Unbound value absolute
+- : Path.t option = None
 |}]
 
 Path.explode (Path.of_string "a/b/c");

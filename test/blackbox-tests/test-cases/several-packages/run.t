@@ -4,6 +4,7 @@ displayed. This can happen for:
 - (executable)
 
   $ dune build --root executable
+  Entering directory 'executable'
   File "dune", line 1, characters 0-43:
   1 | (executable
   2 |   (public_name an_executable)
@@ -18,6 +19,7 @@ displayed. This can happen for:
 - (documentation)
 
   $ dune build --root documentation
+  Entering directory 'documentation'
   File "dune", line 1, characters 0-15:
   1 | (documentation)
       ^^^^^^^^^^^^^^^
@@ -31,6 +33,7 @@ displayed. This can happen for:
 - (install)
 
   $ dune build --root install
+  Entering directory 'install'
   File "dune", line 1, characters 0-44:
   1 | (install
   2 |  (section etc)

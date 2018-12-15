@@ -28,6 +28,7 @@ The targets should only be interpreted as a single path when quoted
   lines: foo bar baz
 
   $ dune build @quoted --root filename-space
+  Entering directory 'filename-space'
   File "dune", line 4, characters 17-18:
   4 |  (action (echo %{read:foo bar.txt})))
                        ^
@@ -35,6 +36,7 @@ The targets should only be interpreted as a single path when quoted
   [1]
 
   $ dune build @unquoted --root filename-space
+  Entering directory 'filename-space'
   File "dune", line 4, characters 17-18:
   4 |  (action (echo %{read:foo bar.txt})))
                        ^

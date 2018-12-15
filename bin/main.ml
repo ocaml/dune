@@ -46,13 +46,11 @@ end
 module Scheduler = struct
   include Dune.Scheduler
 
-  let go ?log ~(common : Common.t) fiber =
-    let fiber =
-      Main.set_concurrency ?log common.config
-      >>= fun () ->
-      fiber
+  let go ?log ~(common : Common.t) f =
+    let f () =
+      Main.set_concurrency ?log common.config >>= f
     in
-    Scheduler.go ?log ~config:common.config fiber
+    Scheduler.go ?log ~config:common.config f
 
   let poll ?log ~(common : Common.t) ~once ~finally () =
     let once () =
@@ -79,43 +77,43 @@ let installed_libraries =
     in
     Common.set_common common ~targets:[];
     let env = Main.setup_env ~capture_outputs:common.capture_outputs in
-    Scheduler.go ~log:(Log.create common) ~common
-      (Context.create ~env
-         { merlin_context = Some "default"
-         ; contexts = [Default { loc = Loc.of_pos __POS__
-                               ; targets   = [Native]
-                               ; profile   = Config.default_build_profile
-                               ; env       = None
-                               ; toolchain = None
-                               }]
-         ; env = None
-         }
-       >>= fun ctxs ->
-       let ctx = List.hd ctxs in
-       let findlib = ctx.findlib in
-       if na then begin
-         let pkgs = Findlib.all_unavailable_packages findlib in
-         let longest =
-           String.longest_map pkgs ~f:(fun (n, _) -> Lib_name.to_string n) in
-         let ppf = Format.std_formatter in
-         List.iter pkgs ~f:(fun (n, r) ->
-           Format.fprintf ppf "%-*s -> %a@\n" longest (Lib_name.to_string n)
-             Findlib.Unavailable_reason.pp r);
-         Format.pp_print_flush ppf ();
-         Fiber.return ()
-       end else begin
-         let pkgs = Findlib.all_packages findlib in
-         let max_len =
-           String.longest_map pkgs ~f:(fun (n : _ Dune_package.Lib.t) ->
-             Lib_name.to_string (Dune_package.Lib.name n)) in
-         List.iter pkgs ~f:(fun (pkg : _ Dune_package.Lib.t) ->
-           let ver =
-             Option.value (Dune_package.Lib.version pkg) ~default:"n/a"
-           in
-           Printf.printf "%-*s (version: %s)\n" max_len
-             (Lib_name.to_string (Dune_package.Lib.name pkg)) ver);
-         Fiber.return ()
-       end)
+    Scheduler.go ~log:(Log.create common) ~common (fun () ->
+      Context.create ~env
+        { merlin_context = Some "default"
+        ; contexts = [Default { loc = Loc.of_pos __POS__
+                              ; targets   = [Native]
+                              ; profile   = Config.default_build_profile
+                              ; env       = None
+                              ; toolchain = None
+                              }]
+        ; env = None
+        }
+      >>= fun ctxs ->
+      let ctx = List.hd ctxs in
+      let findlib = ctx.findlib in
+      if na then begin
+        let pkgs = Findlib.all_unavailable_packages findlib in
+        let longest =
+          String.longest_map pkgs ~f:(fun (n, _) -> Lib_name.to_string n) in
+        let ppf = Format.std_formatter in
+        List.iter pkgs ~f:(fun (n, r) ->
+          Format.fprintf ppf "%-*s -> %a@\n" longest (Lib_name.to_string n)
+            Findlib.Unavailable_reason.pp r);
+        Format.pp_print_flush ppf ();
+        Fiber.return ()
+      end else begin
+        let pkgs = Findlib.all_packages findlib in
+        let max_len =
+          String.longest_map pkgs ~f:(fun (n : _ Dune_package.Lib.t) ->
+            Lib_name.to_string (Dune_package.Lib.name n)) in
+        List.iter pkgs ~f:(fun (pkg : _ Dune_package.Lib.t) ->
+          let ver =
+            Option.value (Dune_package.Lib.version pkg) ~default:"n/a"
+          in
+          Printf.printf "%-*s (version: %s)\n" max_len
+            (Lib_name.to_string (Dune_package.Lib.name pkg)) ver);
+        Fiber.return ()
+      end)
   in
   (term, Term.info "installed-libraries" ~doc)
 
@@ -142,7 +140,7 @@ let run_build_command ~log ~common ~targets =
     in
     Scheduler.poll ~log ~common ~once ~finally:Hooks.End_of_build.run ()
   end else
-    Scheduler.go ~log ~common (once ())
+    Scheduler.go ~log ~common once
 
 let build_targets =
   let doc = "Build the given targets, or all installable targets if none are given." in
@@ -261,12 +259,12 @@ let external_lib_deps =
     Common.set_common common ~targets:[];
     let log = Log.create common in
     let setup, lib_deps =
-      Scheduler.go ~log ~common
-        (Main.setup ~log common ~external_lib_deps_mode:true >>= fun setup ->
-         let targets = Target.resolve_targets_exn ~log common setup targets in
-         let request = Target.request setup targets in
-         Build_system.all_lib_deps setup.build_system ~request >>| fun deps ->
-         (setup, deps))
+      Scheduler.go ~log ~common (fun () ->
+        Main.setup ~log common ~external_lib_deps_mode:true >>= fun setup ->
+        let targets = Target.resolve_targets_exn ~log common setup targets in
+        let request = Target.request setup targets in
+        Build_system.all_lib_deps setup.build_system ~request >>| fun deps ->
+        (setup, deps))
     in
     let failure =
       String.Map.foldi lib_deps ~init:false
@@ -386,27 +384,27 @@ let compute =
     Common.set_common common ~targets:[];
     let log = Log.create common in
     let action =
-      Scheduler.go ~log ~common
-        (Main.setup ~log common ~external_lib_deps_mode:true
-         >>= fun _setup ->
-         match fn, inp with
-         | "list", None ->
-           Fiber.return `List
-         | "list", Some _ ->
-           Fiber.return (`Error "'list' doesn't take an argument")
-         | "help", Some fn ->
-           Fiber.return (`Show_doc fn)
-         | fn, Some inp ->
-           let sexp =
-             Dune_lang.parse_string
-               ~fname:"<command-line>"
-               ~mode:Dune_lang.Parser.Mode.Single inp
-           in
-           Memo.call fn sexp >>| fun res ->
-           `Result res
-         | fn, None ->
-           Fiber.return (`Error (sprintf "argument missing for '%s'" fn))
-        )
+      Scheduler.go ~log ~common (fun () ->
+        Main.setup ~log common ~external_lib_deps_mode:true
+        >>= fun _setup ->
+        match fn, inp with
+        | "list", None ->
+          Fiber.return `List
+        | "list", Some _ ->
+          Fiber.return (`Error "'list' doesn't take an argument")
+        | "help", Some fn ->
+          Fiber.return (`Show_doc fn)
+        | fn, Some inp ->
+          let sexp =
+            Dune_lang.parse_string
+              ~fname:"<command-line>"
+              ~mode:Dune_lang.Parser.Mode.Single inp
+          in
+          Memo.call fn sexp >>| fun res ->
+          `Result res
+        | fn, None ->
+          Fiber.return (`Error (sprintf "argument missing for '%s'" fn))
+      )
     in
     match action with
     | `Error msg ->
@@ -478,68 +476,68 @@ let rules =
     let out = Option.map ~f:Path.of_string out in
     Common.set_common common ~targets;
     let log = Log.create common in
-    Scheduler.go ~log ~common
-      (Main.setup ~log common ~external_lib_deps_mode:true
-       >>= fun setup ->
-       let request =
-         match targets with
-         | [] -> Build.paths (Build_system.all_targets setup.build_system)
-         | _  ->
-           Target.resolve_targets_exn ~log common setup targets
-           |> Target.request setup
-       in
-       Build_system.build_rules setup.build_system ~request ~recursive >>= fun rules ->
-       let sexp_of_action action =
-         Action.for_shell action |> Action.For_shell.encode
-       in
-       let print oc =
-         let ppf = Format.formatter_of_out_channel oc in
-         Dune_lang.prepare_formatter ppf;
-         Format.pp_open_vbox ppf 0;
-         if makefile_syntax then begin
-           List.iter rules ~f:(fun (rule : Build_system.Rule.t) ->
-             let action =
-               Action.For_shell.Progn
-                 [ Mkdir (Path.to_string rule.dir)
-                 ; Action.for_shell rule.action
-                 ]
-             in
-             Format.fprintf ppf
-               "@[<hov 2>@{<makefile-stuff>%a:%t@}@]@,\
-                @<0>\t@{<makefile-action>%a@}@,@,"
-               (Format.pp_print_list ~pp_sep:Format.pp_print_space (fun ppf p ->
-                  Format.pp_print_string ppf (Path.to_string p)))
-               (Path.Set.to_list rule.targets)
-               (fun ppf ->
-                  Path.Set.iter (Deps.paths rule.deps) ~f:(fun dep ->
-                    Format.fprintf ppf "@ %s" (Path.to_string dep)))
-               Pp.pp
-               (Action_to_sh.pp action))
-         end else begin
-           List.iter rules ~f:(fun (rule : Build_system.Rule.t) ->
-             let sexp =
-               let paths ps =
-                 Dune_lang.Encoder.list Path_dune_lang.encode (Path.Set.to_list ps)
-               in
-               Dune_lang.Encoder.record (
-                 List.concat
-                   [ [ "deps"   , Deps.to_sexp rule.deps
-                     ; "targets", paths rule.targets ]
-                   ; (match rule.context with
-                      | None -> []
-                      | Some c -> ["context",
-                                   Dune_lang.atom_or_quoted_string c.name])
-                   ; [ "action" , sexp_of_action rule.action ]
-                   ])
-             in
-             Format.fprintf ppf "%a@," Dune_lang.pp_split_strings sexp)
-         end;
-         Format.pp_print_flush ppf ();
-         Fiber.return ()
-       in
-       match out with
-       | None -> print stdout
-       | Some fn -> Io.with_file_out fn ~f:print)
+    Scheduler.go ~log ~common (fun () ->
+      Main.setup ~log common ~external_lib_deps_mode:true
+      >>= fun setup ->
+      let request =
+        match targets with
+        | [] -> Build.paths (Build_system.all_targets setup.build_system)
+        | _  ->
+          Target.resolve_targets_exn ~log common setup targets
+          |> Target.request setup
+      in
+      Build_system.build_rules setup.build_system ~request ~recursive >>= fun rules ->
+      let sexp_of_action action =
+        Action.for_shell action |> Action.For_shell.encode
+      in
+      let print oc =
+        let ppf = Format.formatter_of_out_channel oc in
+        Dune_lang.prepare_formatter ppf;
+        Format.pp_open_vbox ppf 0;
+        if makefile_syntax then begin
+          List.iter rules ~f:(fun (rule : Build_system.Rule.t) ->
+            let action =
+              Action.For_shell.Progn
+                [ Mkdir (Path.to_string rule.dir)
+                ; Action.for_shell rule.action
+                ]
+            in
+            Format.fprintf ppf
+              "@[<hov 2>@{<makefile-stuff>%a:%t@}@]@,\
+               @<0>\t@{<makefile-action>%a@}@,@,"
+              (Format.pp_print_list ~pp_sep:Format.pp_print_space (fun ppf p ->
+                 Format.pp_print_string ppf (Path.to_string p)))
+              (Path.Set.to_list rule.targets)
+              (fun ppf ->
+                 Path.Set.iter (Deps.paths rule.deps) ~f:(fun dep ->
+                   Format.fprintf ppf "@ %s" (Path.to_string dep)))
+              Pp.pp
+              (Action_to_sh.pp action))
+        end else begin
+          List.iter rules ~f:(fun (rule : Build_system.Rule.t) ->
+            let sexp =
+              let paths ps =
+                Dune_lang.Encoder.list Path_dune_lang.encode (Path.Set.to_list ps)
+              in
+              Dune_lang.Encoder.record (
+                List.concat
+                  [ [ "deps"   , Deps.to_sexp rule.deps
+                    ; "targets", paths rule.targets ]
+                  ; (match rule.context with
+                     | None -> []
+                     | Some c -> ["context",
+                                  Dune_lang.atom_or_quoted_string c.name])
+                  ; [ "action" , sexp_of_action rule.action ]
+                  ])
+            in
+            Format.fprintf ppf "%a@," Dune_lang.pp_split_strings sexp)
+        end;
+        Format.pp_print_flush ppf ();
+        Fiber.return ()
+      in
+      match out with
+      | None -> print stdout
+      | Some fn -> Io.with_file_out fn ~f:print)
   in
   (term, Term.info "rules" ~doc ~man)
 
@@ -696,83 +694,83 @@ let install_uninstall ~what =
     in
     Common.set_common common ~targets:[];
     let log = Log.create common in
-    Scheduler.go ~log ~common
-      (Main.setup ~log common >>= fun setup ->
-       let pkgs =
-         match pkgs with
-         | [] -> Package.Name.Map.keys setup.packages
-         | l  -> l
-       in
-       let install_files, missing_install_files =
-         List.concat_map pkgs ~f:(fun pkg ->
-           let fn = resolve_package_install setup pkg in
-           List.map setup.contexts ~f:(fun ctx ->
-             let fn = Path.append ctx.Context.build_dir fn in
-             if Path.exists fn then
-               Left (ctx, (pkg, fn))
-             else
-               Right fn))
-         |> List.partition_map ~f:(fun x -> x)
-       in
-       if missing_install_files <> [] then begin
-         die "The following <package>.install are missing:\n\
-              %s\n\
-              You need to run: dune build @install"
-           (String.concat ~sep:"\n"
-              (List.map missing_install_files
-                 ~f:(fun p -> sprintf "- %s" (Path.to_string p))))
-       end;
-       (match
-          setup.contexts, prefix_from_command_line, libdir_from_command_line
-        with
-        | _ :: _ :: _, Some _, _ | _ :: _ :: _, _, Some _ ->
-          die "Cannot specify --prefix or --libdir when installing \
-               into multiple contexts!"
-        | _ -> ());
-       let module CMap = Map.Make(Context) in
-       let install_files_by_context =
-         CMap.of_list_multi install_files |> CMap.to_list
-       in
-       let (module Ops) = file_operations ~dry_run in
-       Fiber.parallel_iter install_files_by_context
-         ~f:(fun (context, install_files) ->
-           get_dirs context ~prefix_from_command_line ~libdir_from_command_line
-           >>| fun (prefix, libdir) ->
-           List.iter install_files ~f:(fun (package, path) ->
-             let entries = Install.load_install_file path in
-             let paths =
-               Install.Section.Paths.make
-                 ~package
-                 ~destdir:prefix
-                 ?libdir
-                 ()
-             in
-             let files_deleted_in = ref Path.Set.empty in
-             List.iter entries ~f:(fun { Install.Entry. src; dst; section } ->
-               let dst =
-                 dst
-                 |> Option.value ~default:(Path.basename src)
-                 |> Install.Section.Paths.install_path paths section
-                 |> interpret_destdir ~destdir
-               in
-               let dir = Path.parent_exn dst in
-               if what = "install" then begin
-                 Printf.eprintf "Installing %s\n%!"
-                   (Path.to_string_maybe_quoted dst);
-                 Ops.mkdir_p dir;
-                 let executable =
-                   Install.Section.should_set_executable_bit section
-                 in
-                 Ops.copy_file ~src ~dst ~executable
-               end else begin
-                 Ops.remove_if_exists dst;
-                 files_deleted_in := Path.Set.add !files_deleted_in dir;
-               end;
-               Path.Set.to_list !files_deleted_in
-               (* This [List.rev] is to ensure we process children
-                  directories before their parents *)
-               |> List.rev
-               |> List.iter ~f:Ops.remove_dir_if_empty))))
+    Scheduler.go ~log ~common (fun () ->
+      Main.setup ~log common >>= fun setup ->
+      let pkgs =
+        match pkgs with
+        | [] -> Package.Name.Map.keys setup.packages
+        | l  -> l
+      in
+      let install_files, missing_install_files =
+        List.concat_map pkgs ~f:(fun pkg ->
+          let fn = resolve_package_install setup pkg in
+          List.map setup.contexts ~f:(fun ctx ->
+            let fn = Path.append ctx.Context.build_dir fn in
+            if Path.exists fn then
+              Left (ctx, (pkg, fn))
+            else
+              Right fn))
+        |> List.partition_map ~f:(fun x -> x)
+      in
+      if missing_install_files <> [] then begin
+        die "The following <package>.install are missing:\n\
+             %s\n\
+             You need to run: dune build @install"
+          (String.concat ~sep:"\n"
+             (List.map missing_install_files
+                ~f:(fun p -> sprintf "- %s" (Path.to_string p))))
+      end;
+      (match
+         setup.contexts, prefix_from_command_line, libdir_from_command_line
+       with
+       | _ :: _ :: _, Some _, _ | _ :: _ :: _, _, Some _ ->
+         die "Cannot specify --prefix or --libdir when installing \
+              into multiple contexts!"
+       | _ -> ());
+      let module CMap = Map.Make(Context) in
+      let install_files_by_context =
+        CMap.of_list_multi install_files |> CMap.to_list
+      in
+      let (module Ops) = file_operations ~dry_run in
+      Fiber.parallel_iter install_files_by_context
+        ~f:(fun (context, install_files) ->
+          get_dirs context ~prefix_from_command_line ~libdir_from_command_line
+          >>| fun (prefix, libdir) ->
+          List.iter install_files ~f:(fun (package, path) ->
+            let entries = Install.load_install_file path in
+            let paths =
+              Install.Section.Paths.make
+                ~package
+                ~destdir:prefix
+                ?libdir
+                ()
+            in
+            let files_deleted_in = ref Path.Set.empty in
+            List.iter entries ~f:(fun { Install.Entry. src; dst; section } ->
+              let dst =
+                dst
+                |> Option.value ~default:(Path.basename src)
+                |> Install.Section.Paths.install_path paths section
+                |> interpret_destdir ~destdir
+              in
+              let dir = Path.parent_exn dst in
+              if what = "install" then begin
+                Printf.eprintf "Installing %s\n%!"
+                  (Path.to_string_maybe_quoted dst);
+                Ops.mkdir_p dir;
+                let executable =
+                  Install.Section.should_set_executable_bit section
+                in
+                Ops.copy_file ~src ~dst ~executable
+              end else begin
+                Ops.remove_if_exists dst;
+                files_deleted_in := Path.Set.add !files_deleted_in dir;
+              end;
+              Path.Set.to_list !files_deleted_in
+              (* This [List.rev] is to ensure we process children
+                 directories before their parents *)
+              |> List.rev
+              |> List.iter ~f:Ops.remove_dir_if_empty))))
   in
   (term, Term.info what ~doc ~man:Common.help_secs)
 
@@ -822,7 +820,7 @@ let exec =
     in
     Common.set_common common ~targets:[prog];
     let log = Log.create common in
-    let setup = Scheduler.go ~log ~common (Main.setup ~log common) in
+    let setup = Scheduler.go ~log ~common (fun () -> Main.setup ~log common) in
     let context = Main.find_context_exn setup ~name:context in
     let prog_where =
       match Filename.analyze_program_name prog with
@@ -856,7 +854,7 @@ let exec =
         match Lazy.force targets with
         | [] -> ()
         | targets ->
-          Scheduler.go ~log ~common (do_build setup targets);
+          Scheduler.go ~log ~common (fun () -> do_build setup targets);
           Hooks.End_of_build.run ();
       end;
       match prog_where with
@@ -951,7 +949,7 @@ let subst =
                  ~doc:"Use this project name instead of detecting it.")
       in
       Common.set_common common ~targets:[];
-      Scheduler.go ~common (Watermarks.subst ?name ())
+      Scheduler.go ~common (Watermarks.subst ?name)
     | Dune ->
       let%map () = Term.const () in
       let config : Config.t =
@@ -960,7 +958,7 @@ let subst =
         }
       in
       Path.set_root (Path.External.cwd ());
-      Dune.Scheduler.go ~config (Watermarks.subst ())
+      Dune.Scheduler.go ~config Watermarks.subst
   in
   (term, Term.info "subst" ~doc ~man)
 
@@ -985,19 +983,20 @@ let utop =
     Common.set_common_other common ~targets:[utop_target];
     let log = Log.create common in
     let (context, utop_path) =
-      (Main.setup ~log common >>= fun setup ->
-       let context = Main.find_context_exn setup ~name:ctx_name in
-       let setup = { setup with contexts = [context] } in
-       let target =
-         match Target.resolve_target common ~setup utop_target with
-         | Error _ ->
-           die "no library is defined in %s" (String.maybe_quoted dir)
-         | Ok [File target] -> target
-         | Ok _ -> assert false
-       in
-       do_build setup [File target] >>| fun () ->
-       (context, Path.to_string target)
-      ) |> Scheduler.go ~log ~common in
+      Scheduler.go ~log ~common (fun () ->
+        Main.setup ~log common >>= fun setup ->
+        let context = Main.find_context_exn setup ~name:ctx_name in
+        let setup = { setup with contexts = [context] } in
+        let target =
+          match Target.resolve_target common ~setup utop_target with
+          | Error _ ->
+            die "no library is defined in %s" (String.maybe_quoted dir)
+          | Ok [File target] -> target
+          | Ok _ -> assert false
+        in
+        do_build setup [File target] >>| fun () ->
+        (context, Path.to_string target))
+    in
     Hooks.End_of_build.run ();
     restore_cwd_and_execve common utop_path (utop_path :: args)
       context.env
@@ -1053,7 +1052,7 @@ let printenv =
     in
     Common.set_common common ~targets:[];
     let log = Log.create common in
-    Scheduler.go ~log ~common (
+    Scheduler.go ~log ~common (fun () ->
       Main.setup ~log common >>= fun setup ->
       let dir = Path.of_string dir in
       Util.check_path setup.contexts dir;

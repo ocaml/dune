@@ -25,6 +25,7 @@ used.
 When a variable is repeated, an error message is displayed:
 
   $ dune build --root duplicate
+  Entering directory 'duplicate'
   File "dune-workspace", line 4, characters 4-43:
   4 |     (VARIABLE value1)
   5 |     (VARIABLE value2)

@@ -26,3 +26,6 @@ val force : bool ref
 
 (** Instead of terminating build after completion, watch for changes *)
 val watch : bool ref
+
+(** Do not print "Entering directory" messages *)
+val no_print_directory : bool ref

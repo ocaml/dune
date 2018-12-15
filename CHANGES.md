@@ -40,6 +40,9 @@ unreleased
 
 - Add `--trace-file` option to trace dune internals (#1639, fix #1180, @emillon)
 
+- Add `--no-print-directory` (borrowed from GNU make) to suppress
+  `Entering directory` messages. (#1668, @dra27)
+
 - Remove `--stats` and track fd usage in `--trace-file` (#1667, @emillon)
 
 1.6.2 (05/12/2018)

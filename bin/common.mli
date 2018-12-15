@@ -16,6 +16,7 @@ type t =
   ; force                 : bool
   ; ignore_promoted_rules : bool
   ; build_dir             : string
+  ; no_print_directory    : bool
   ; (* Original arguments for the external-lib-deps hint *)
     orig_args             : string list
   ; config                : Config.t

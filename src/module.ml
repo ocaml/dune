@@ -33,6 +33,9 @@ module Name = struct
 
   let of_local_lib_name s =
     of_string (Lib_name.Local.to_string s)
+
+  let to_local_lib_name s =
+    Lib_name.Local.of_string_exn s
 end
 
 module Syntax = struct
@@ -79,6 +82,20 @@ module Visibility = struct
   let pp fmt t = Format.pp_print_string fmt (to_string t)
 
   let to_sexp t = Sexp.Encoder.string (to_string t)
+
+  let encode =
+    let open Dune_lang.Encoder in
+    function
+    | Public -> string "public"
+    | Private -> string "private"
+
+  let decode =
+    let open Dune_lang.Decoder in
+    plain_string (fun ~loc -> function
+      | "public" -> Public
+      | "private" -> Private
+      | _ -> Errors.fail loc
+               "Not a valid visibility. Valid visibility is public or private")
 
   let is_public = function
     | Public -> true
@@ -266,6 +283,8 @@ let is_private t = Visibility.is_private t.visibility
 let set_private t =
   { t with visibility = Private }
 
+let visibility t = t.visibility
+
 let remove_files t =
   { t with
     intf = None
@@ -294,3 +313,41 @@ module Obj_map = struct
             ; "t", (Sexp.Encoder.list to_sexp) (keys t)
             ])
 end
+
+let encode
+      ({ name
+       ; impl = _
+       ; intf = _
+       ; obj_name
+       ; pp = _
+       ; visibility
+       } as t) =
+  let open Dune_lang.Encoder in
+  record_fields Dune
+    [ field "name" Name.encode name
+    ; field "obj_name" string obj_name
+    ; field "visibility" Visibility.encode visibility
+    ; field_o_b "impl" (has_impl t)
+    ; field_o_b "intf" (has_intf t)
+    ]
+
+let decode ~dir =
+  let open Dune_lang.Decoder in
+  fields (
+    let%map name = field "name" Name.decode
+    and obj_name = field "obj_name" string
+    and visibility = field "visibility" Visibility.decode
+    and impl = field_b "impl"
+    and intf = field_b "intf"
+    in
+    let file exists ext =
+      if exists then
+        Some (File.make Syntax.OCaml
+                (Path.L.relative dir [Name.to_string name; ext]))
+      else
+        None
+    in
+    let intf = file intf ".mli" in
+    let impl = file impl ".ml" in
+    make ~obj_name ~visibility ?impl ?intf name
+  )

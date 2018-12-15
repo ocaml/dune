@@ -44,13 +44,13 @@ end
 module Virtual = struct
   type t =
     | Local
-    | External of Dune_package.Lib.Virtual.t
+    | External of Lib_modules.t
 end
 
 type t =
   { loc              : Loc.t
   ; name             : Lib_name.t
-  ; kind             : Dune_package.Lib.Kind.t
+  ; kind             : Lib_kind.t
   ; status           : Status.t
   ; src_dir          : Path.t
   ; obj_dir          : Path.t
@@ -73,6 +73,7 @@ type t =
   ; virtual_         : Virtual.t option
   ; implements       : (Loc.t * Lib_name.t) option
   ; main_module_name : Dune_file.Library.Main_module_name.t
+  ; modes            : Mode.Dict.Set.t
   }
 
 let user_written_deps t =
@@ -80,7 +81,8 @@ let user_written_deps t =
     ~init:(Deps.to_lib_deps t.requires)
     ~f:(fun acc s -> Dune_file.Lib_dep.Direct s :: acc)
 
-let of_library_stanza ~dir ~ext_lib ~ext_obj (conf : Dune_file.Library.t) =
+let of_library_stanza ~dir ~has_native ~ext_lib ~ext_obj
+      (conf : Dune_file.Library.t) =
   let (_loc, lib_name) = conf.name in
   let obj_dir = Utils.library_object_directory ~dir lib_name in
   let gen_archive_file ~dir ext =
@@ -149,6 +151,7 @@ let of_library_stanza ~dir ~ext_lib ~ext_obj (conf : Dune_file.Library.t) =
   in
   let main_module_name = Dune_file.Library.main_module_name conf in
   let name = Dune_file.Library.best_name conf in
+  let modes = Dune_file.Mode_conf.Set.eval ~has_native conf.modes in
   { loc = conf.buildable.loc
   ; name
   ; kind     = conf.kind
@@ -174,14 +177,17 @@ let of_library_stanza ~dir ~ext_lib ~ext_obj (conf : Dune_file.Library.t) =
   ; implements = conf.implements
   ; main_module_name
   ; private_obj_dir
+  ; modes
   }
 
 let of_dune_lib dp =
   let module Lib = Dune_package.Lib in
   let src_dir = Lib.dir dp in
   let virtual_ =
-    Lib.virtual_ dp
-    |> Option.map ~f:(fun v -> Virtual.External v)
+    if Lib.virtual_ dp then
+      Some (Virtual.External (Option.value_exn (Lib.modules dp)))
+    else
+      None
   in
   { loc = Lib.loc dp
   ; name = Lib.name dp
@@ -208,4 +214,5 @@ let of_dune_lib dp =
   ; sub_systems = Lib.sub_systems dp
   ; virtual_
   ; implements = Lib.implements dp
+  ; modes = Lib.modes dp
   }

@@ -36,7 +36,11 @@ module Gen(P : Params) = struct
               Local_package.libs pkg
               |> Lib.Set.to_list
               |> List.map ~f:(fun lib ->
-                Lib.to_dune_lib lib ~dir:(lib_root lib))
+                let lib_modules =
+                  let dir = Dir_contents.get sctx ~dir:(Lib.src_dir lib) in
+                  Dir_contents.modules_of_library dir ~name:(Lib.name lib)
+                in
+                Lib.to_dune_lib lib ~dir:(lib_root lib) ~lib_modules)
             in
             Dune_package.Or_meta.Dune_package
               { Dune_package.

@@ -12,7 +12,11 @@ let decode =
     ; "native" , Native
     ]
 
-let mode_decode = decode
+let encode =
+  let open Dune_lang.Encoder in
+  function
+  | Byte -> string "byte"
+  | Native -> string "native"
 
 let pp fmt = function
   | Byte -> Format.pp_print_string fmt "byte"
@@ -93,7 +97,7 @@ module Dict = struct
       ; native = List.mem Native ~set:l
       }
 
-    let decode = Dune_lang.Decoder.(map (list mode_decode) ~f:of_list)
+    let encode t = List.map ~f:encode (to_list t)
 
     let is_empty t = not (t.byte || t.native)
 

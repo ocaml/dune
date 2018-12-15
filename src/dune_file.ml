@@ -813,7 +813,7 @@ module Library = struct
     ; install_c_headers        : string list
     ; ppx_runtime_libraries    : (Loc.t * Lib_name.t) list
     ; modes                    : Mode_conf.Set.t
-    ; kind                     : Dune_package.Lib.Kind.t
+    ; kind                     : Lib_kind.t
     ; c_flags                  : Ordered_set_lang.Unexpanded.t
     ; c_names                  : (Loc.t * string) list
     ; cxx_flags                : Ordered_set_lang.Unexpanded.t
@@ -856,8 +856,7 @@ module Library = struct
        and virtual_deps =
          field "virtual_deps" (list (located Lib_name.decode)) ~default:[]
        and modes = field "modes" Mode_conf.Set.decode ~default:Mode_conf.Set.default
-       and kind = field "kind" Dune_package.Lib.Kind.decode
-                    ~default:Dune_package.Lib.Kind.Normal
+       and kind = field "kind" Lib_kind.decode ~default:Lib_kind.Normal
        and wrapped = Wrapped.field
        and optional = field_b "optional"
        and self_build_stubs_archive =

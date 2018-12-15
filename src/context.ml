@@ -649,3 +649,5 @@ let cc_g (ctx : t) =
     []
 
 let name t = t.name
+
+let has_native t = Option.is_some t.ocamlopt

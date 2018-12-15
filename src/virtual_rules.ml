@@ -127,7 +127,8 @@ let impl sctx ~(lib : Dune_file.Library.t) ~scope ~modules =
             "Library %a isn't virtual and cannot be implemented"
             Lib_name.pp implements
         | Some (External _) ->
-          Errors.fail loc "It's not possible to implement extern libraries yet"
+          Errors.fail loc
+            "It's not possible to implement external libraries yet"
         | Some Local ->
           let dir_contents =
             Dir_contents.get sctx ~dir:(Lib.src_dir vlib) in

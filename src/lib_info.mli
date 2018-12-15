@@ -24,13 +24,13 @@ end
 module Virtual : sig
   type t =
     | Local
-    | External of Dune_package.Lib.Virtual.t
+    | External of Lib_modules.t
 end
 
 type t = private
   { loc              : Loc.t
   ; name             : Lib_name.t
-  ; kind             : Dune_package.Lib.Kind.t
+  ; kind             : Lib_kind.t
   ; status           : Status.t
   ; src_dir          : Path.t
   ; obj_dir          : Path.t
@@ -53,10 +53,12 @@ type t = private
   ; virtual_         : Virtual.t option
   ; implements       : (Loc.t * Lib_name.t) option
   ; main_module_name : Dune_file.Library.Main_module_name.t
+  ; modes            : Mode.Dict.Set.t
   }
 
 val of_library_stanza
-  : dir:Path.t
+  :  dir:Path.t
+  -> has_native:bool
   -> ext_lib:string
   -> ext_obj:string
   -> Dune_file.Library.t

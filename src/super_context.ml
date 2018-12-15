@@ -273,6 +273,7 @@ let create
       ~projects
       ~context:context.name
       ~installed_libs
+      ~has_native:(Context.has_native context)
       ~ext_lib:context.ext_lib
       ~ext_obj:context.ext_obj
       internal_libs

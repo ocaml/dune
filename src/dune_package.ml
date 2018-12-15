@@ -4,57 +4,11 @@ open! Stdune
 let () = let module M = Sub_system_info in ()
 
 module Lib = struct
-  module Virtual = struct
-    type t =
-      { modules   : Module.Name.t list
-      ; dep_graph : unit
-      }
-
-    let encode { modules; dep_graph } =
-      let open Dune_lang.Encoder in
-      record
-        [ "modules", (list Module.Name.encode) modules
-        ; "dep_graph", unit dep_graph
-        ]
-
-    let decode =
-      let open Stanza.Decoder in
-      record (
-        let%map modules = field "modules" (list Module.Name.decode)
-        in
-        { dep_graph = ()
-        ; modules
-        }
-      )
-  end
-
-  module Kind = struct
-    type t =
-      | Normal
-      | Ppx_deriver
-      | Ppx_rewriter
-
-    let decode =
-      let open Dune_lang.Decoder in
-      enum
-        [ "normal"       , Normal
-        ; "ppx_deriver"  , Ppx_deriver
-        ; "ppx_rewriter" , Ppx_rewriter
-        ]
-
-    let encode t =
-      Dune_lang.Encoder.string (
-        match t with
-        | Normal -> "normal"
-        | Ppx_deriver -> "ppx_deriver"
-        | Ppx_rewriter -> "ppx_rewriter")
-  end
-
   type 'sub_system t =
     { loc              : Loc.t
     ; name             : Lib_name.t
     ; dir              : Path.t
-    ; kind             : Kind.t
+    ; kind             : Lib_kind.t
     ; synopsis         : string option
     ; archives         : Path.t list Mode.Dict.t
     ; plugins          : Path.t list Mode.Dict.t
@@ -63,16 +17,18 @@ module Lib = struct
     ; jsoo_runtime     : Path.t list
     ; ppx_runtime_deps : (Loc.t * Lib_name.t) list
     ; sub_systems      : 'sub_system Sub_system_name.Map.t
-    ; virtual_         : Virtual.t option
+    ; virtual_         : bool
     ; implements       : (Loc.t * Lib_name.t) option
+    ; modules          : Lib_modules.t option
     ; main_module_name : Module.Name.t option
     ; requires         : (Loc.t * Lib_name.t) list
     ; version          : string option
+    ; modes            : Mode.Dict.Set.t
     }
 
   let make ~loc ~kind ~name ~synopsis ~archives ~plugins ~foreign_objects
         ~foreign_archives ~jsoo_runtime ~main_module_name ~sub_systems
-        ~requires ~ppx_runtime_deps ~virtual_ ~implements
+        ~requires ~ppx_runtime_deps ~implements ~virtual_ ~modules ~modes
         ~version ~dir =
     let map_path p = Path.relative dir (Path.basename p) in
     let map_list = List.map ~f:map_path in
@@ -90,10 +46,12 @@ module Lib = struct
     ; sub_systems
     ; requires
     ; ppx_runtime_deps
-    ; virtual_
     ; implements
     ; version
     ; dir
+    ; virtual_
+    ; modules
+    ; modes
     }
 
   let dir t = t.dir
@@ -110,6 +68,7 @@ module Lib = struct
         ; foreign_objects ; foreign_archives ; jsoo_runtime ; requires
         ; ppx_runtime_deps ; sub_systems ; virtual_
         ; implements ; main_module_name ; version = _; dir = _
+        ; modules ; modes
         } =
     let open Dune_lang.Encoder in
     let no_loc f (_loc, x) = f x in
@@ -120,7 +79,8 @@ module Lib = struct
     let libs name = field_l name (no_loc Lib_name.encode) in
     record_fields Dune @@
     [ field "name" Lib_name.encode name
-    ; field "kind" Kind.encode kind
+    ; field "kind" Lib_kind.encode kind
+    ; field_o_b "virtual" virtual_
     ; field_o "synopsis" string synopsis
     ; mode_paths "archives" archives
     ; mode_paths "plugins" plugins
@@ -131,7 +91,11 @@ module Lib = struct
     ; libs "ppx_runtime_deps" ppx_runtime_deps
     ; field_o "implements" (no_loc Lib_name.encode) implements
     ; field_o "main_module_name" Module.Name.encode main_module_name
-    ; field_o "virtual" Virtual.encode virtual_
+    ; field_l "modes" (fun x -> x) (Mode.Dict.Set.encode modes)
+    ; field_l "modules" (fun x -> x)
+        (match modules with
+         | None -> []
+         | Some modules -> Lib_modules.encode modules)
     ] @ (Sub_system_name.Map.to_list sub_systems
          |> List.map ~f:(fun (name, (_ver, sexps)) ->
            field_l (Sub_system_name.to_string name) (fun x -> x) sexps))
@@ -146,10 +110,13 @@ module Lib = struct
       field ~default:Mode.Dict.List.empty
         name (Mode.Dict.List.decode path) in
     record (
-      let%map loc = loc
+      field_o "main_module_name" Module.Name.decode >>= fun main_module_name ->
+      field_o "implements" (located Lib_name.decode) >>= fun implements ->
+      let%map synopsis = field_o "synopsis" string
+      and loc = loc
       and name = field "name" Lib_name.decode
-      and synopsis = field_o "synopsis" string
-      and kind = field "kind" Kind.decode
+      and modes = field_l "modes" Mode.decode
+      and kind = field "kind" Lib_kind.decode
       and archives = mode_paths "archives"
       and plugins = mode_paths "plugins"
       and foreign_objects = paths "foreign_objects"
@@ -157,11 +124,12 @@ module Lib = struct
       and jsoo_runtime = paths "jsoo_runtime"
       and requires = libs "requires"
       and ppx_runtime_deps = libs "ppx_runtime_deps"
-      and main_module_name = field_o "main_module_name" Module.Name.decode
-      and virtual_ = field_o "virtual" Virtual.decode
-      and implements = field_o "implements" (located Lib_name.decode)
+      and virtual_ = field_b "virtual"
       and sub_systems = Sub_system_info.record_parser ()
+      and modules = field_o "modules" (Lib_modules.decode
+                         ~implements:(Option.is_some implements) ~dir:base)
       in
+      let modes = Mode.Dict.Set.of_list modes in
       { kind
       ; name
       ; synopsis
@@ -179,6 +147,8 @@ module Lib = struct
       ; virtual_
       ; version = None
       ; dir = Path.append_local base (dir_of_name name)
+      ; modules
+      ; modes
       }
     )
 
@@ -187,6 +157,7 @@ module Lib = struct
   let kind t = t.kind
   let loc t = t.loc
   let virtual_ t = t.virtual_
+  let modules t = t.modules
   let sub_systems t = t.sub_systems
   let synopsis t = t.synopsis
   let main_module_name t = t.main_module_name
@@ -198,6 +169,7 @@ module Lib = struct
   let foreign_archives t = t.foreign_archives
   let requires t = t.requires
   let implements t = t.implements
+  let modes t = t.modes
 
   let compare_name x y = Lib_name.compare x.name y.name
 end

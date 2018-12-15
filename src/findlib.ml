@@ -187,25 +187,28 @@ module Package = struct
       | None -> Sub_system_name.Map.empty
       | Some p -> Installed_dune_file.load p
     in
+    let archives = archives t in
+    let modes : Mode.Dict.Set.t =
+      Mode.Dict.map ~f:(fun x -> not (List.is_empty x)) archives in
     Dune_package.Lib.make
       ~loc
       ~kind:Normal
       ~name:(name t)
       ~synopsis:(description t)
-      ~archives:(archives t)
+      ~archives
       ~plugins:(plugins t)
       ~foreign_objects:[]
       ~foreign_archives:(Mode.Dict.make_both [])
       ~jsoo_runtime:(jsoo_runtime t)
-      (* Technically not accurate, but it doesn't matter as we can't findlib
-         modules don't work with virtual libraries *)
-      ~main_module_name:None
       ~sub_systems
       ~requires:(List.map ~f:add_loc (requires t))
       ~ppx_runtime_deps:(List.map ~f:add_loc (ppx_runtime_deps t))
-      ~virtual_:None
+      ~virtual_:false
       ~implements:None
+      ~modules:None
+      ~main_module_name:None (* XXX remove *)
       ~version:(version t)
+      ~modes
       ~dir:t.dir
 end
 

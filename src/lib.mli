@@ -24,7 +24,7 @@ val private_obj_dir : t -> Path.t option
 val is_local : t -> bool
 
 val synopsis     : t -> string option
-val kind         : t -> Dune_package.Lib.Kind.t
+val kind         : t -> Lib_kind.t
 val archives     : t -> Path.t list Mode.Dict.t
 val plugins      : t -> Path.t list Mode.Dict.t
 val jsoo_runtime : t -> Path.t list
@@ -220,6 +220,7 @@ module DB : sig
   (** Create a database from a list of library stanzas *)
   val create_from_library_stanzas
     :  ?parent:t
+    -> has_native:bool
     -> ext_lib:string
     -> ext_obj:string
     -> (Path.t * Dune_file.Library.t) list
@@ -314,5 +315,6 @@ end
 
 val to_dune_lib
   :  t
+  -> lib_modules:Lib_modules.t
   -> dir:Path.t
   -> (Syntax.Version.t * Dune_lang.t list) Dune_package.Lib.t

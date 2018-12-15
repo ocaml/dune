@@ -27,7 +27,7 @@ let build_targets =
   in
   let name_ = Arg.info [] ~docv:"TARGET" in
   let default_target =
-    match Which_program.t with
+    match Wp.t with
     | Dune     -> "@@default"
     | Jbuilder -> "@install"
   in

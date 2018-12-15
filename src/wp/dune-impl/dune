@@ -1,0 +1,4 @@
+(library
+ (name        wp_dune)
+ (public_name dune._wp.dune)
+ (implements wp))

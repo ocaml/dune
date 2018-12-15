@@ -29,7 +29,7 @@ end
 
 (* Directories with library names *)
 let dirs =
-  [ "src/which_program"      , Some "Which_program"
+  [ "src/wp"                 , Some "Wp"
   ; "src/stdune/caml"        , Some "Dune_caml"
   ; "src/stdune"             , Some "Stdune"
   ; "src/fiber"              , Some "Fiber"

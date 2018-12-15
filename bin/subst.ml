@@ -50,7 +50,7 @@ let man =
 let info = Term.info "subst" ~doc ~man
 
 let term =
-  match Which_program.t with
+  match Wp.t with
   | Jbuilder ->
     let%map common = Common.term
     and name =

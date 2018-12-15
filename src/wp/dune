@@ -1,0 +1,5 @@
+(library
+ (name        wp)
+ (public_name dune._wp)
+ (synopsis    "[Internal] Standard library of Dune")
+ (virtual_modules wp))

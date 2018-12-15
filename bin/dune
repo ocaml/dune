@@ -1,7 +1,7 @@
 (library
  (name      main)
  (modules   (:standard \ main_dune main_jbuilder))
- (libraries memo dune_lang which_program fiber stdune unix dune cmdliner)
+ (libraries memo dune_lang wp fiber stdune unix dune cmdliner)
  (preprocess (action (run src/let-syntax/pp.exe %{input-file}))))
 
 (executable
@@ -9,7 +9,7 @@
  (public_name dune)
  (package     dune)
  (modules     main_dune)
- (libraries   which_program_dune main)
+ (libraries   wp_dune main)
  (preprocess  no_preprocessing))
 
 (executable
@@ -17,5 +17,5 @@
  (public_name jbuilder)
  (package     dune)
  (modules     main_jbuilder)
- (libraries   which_program_jbuilder main)
+ (libraries   wp_jbuilder main)
  (preprocess  no_preprocessing))

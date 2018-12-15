@@ -37,14 +37,20 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
         List.iter [Cm_kind.ext Cmx; ctx.ext_obj] ~f:(copy_obj_file m)
     end
   in
-  let copy_all_deps m =
-    if Module.is_public m then
-      List.iter [Intf; Impl] ~f:(fun kind ->
-        Module.file m kind
-        |> Option.iter ~f:(fun f ->
-          Path.relative obj_dir (Path.basename f ^ ".all-deps")
-          |> copy_to_obj_dir ~obj_dir:(target_obj_dir m))
-      );
+  let copy_all_deps =
+    (* we only need to copy the .all-deps files for local libraries. for remote
+       libraries, we just use ocamlobjinfo *)
+    if not (Lib.is_local vlib) then
+      fun _ -> ()
+    else
+      fun m ->
+        if Module.is_public m then
+          List.iter [Intf; Impl] ~f:(fun kind ->
+            Module.file m kind
+            |> Option.iter ~f:(fun f ->
+              Path.relative obj_dir (Path.basename f ^ ".all-deps")
+              |> copy_to_obj_dir ~obj_dir:(target_obj_dir m))
+          );
   in
   Option.iter (Lib_modules.alias_module vlib_modules) ~f:copy_objs;
   Module.Name.Map.iter (Lib_modules.modules vlib_modules)

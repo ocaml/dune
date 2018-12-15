@@ -56,6 +56,7 @@ type t =
   ; ocamlopt                : Path.t option
   ; ocamldep                : Path.t
   ; ocamlmklib              : Path.t
+  ; ocamlobjinfo            : Path.t option
   ; env                     : Env.t
   ; findlib                 : Findlib.t
   ; findlib_toolchain       : string option
@@ -427,9 +428,10 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
           | Some p -> p
           | None -> prog_not_found_in_path "ocaml")
       ; ocamlc
-      ; ocamlopt   = get_ocaml_tool     "ocamlopt"
-      ; ocamldep   = get_ocaml_tool_exn "ocamldep"
-      ; ocamlmklib = get_ocaml_tool_exn "ocamlmklib"
+      ; ocamlopt     = get_ocaml_tool     "ocamlopt"
+      ; ocamldep     = get_ocaml_tool_exn "ocamldep"
+      ; ocamlmklib   = get_ocaml_tool_exn "ocamlmklib"
+      ; ocamlobjinfo = which "ocamlobjinfo"
 
       ; env
       ; findlib = Findlib.create ~stdlib_dir ~paths:findlib_paths ~version

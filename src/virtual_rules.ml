@@ -37,14 +37,34 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
         List.iter [Cm_kind.ext Cmx; ctx.ext_obj] ~f:(copy_obj_file m)
     end
   in
-  let copy_all_deps m =
-    if Module.is_public m then
-      List.iter [Intf; Impl] ~f:(fun kind ->
-        Module.file m kind
-        |> Option.iter ~f:(fun f ->
-          Path.relative obj_dir (Path.basename f ^ ".all-deps")
-          |> copy_to_obj_dir ~obj_dir:(target_obj_dir m))
-      );
+  let copy_all_deps =
+    let all_deps ~obj_dir f =
+      Path.relative obj_dir (Path.basename f ^ ".all-deps") in
+    (* we only need to copy the .all-deps files for local libraries. for remote
+       libraries, we just use ocamlobjinfo *)
+    if not (Lib.is_local vlib) then
+      let vlib_dep_graph = Vimpl.vlib_dep_graph vimpl in
+      fun m ->
+        List.iter [Intf; Impl] ~f:(fun kind ->
+          let dep_graph = Ml_kind.Dict.get vlib_dep_graph kind in
+          let deps = Dep_graph.deps_of dep_graph m in
+          Module.file m kind |> Option.iter ~f:(fun f ->
+            let open Build.O in
+            deps >>^ (fun modules ->
+              modules
+              |> List.map ~f:(fun m -> Module.Name.to_string (Module.name m))
+              |> String.concat ~sep:"\n")
+            >>>
+            Build.write_file_dyn (all_deps ~obj_dir:(target_obj_dir m) f)
+            |> Super_context.add_rule sctx ~dir))
+    else
+      fun m ->
+        if Module.is_public m then
+          List.iter [Intf; Impl] ~f:(fun kind ->
+            Module.file m kind
+            |> Option.iter ~f:(fun f ->
+              copy_to_obj_dir (all_deps ~obj_dir f) ~obj_dir:(target_obj_dir m))
+          );
   in
   Option.iter (Lib_modules.alias_module vlib_modules) ~f:copy_objs;
   Module.Name.Map.iter (Lib_modules.modules vlib_modules)
@@ -112,7 +132,36 @@ let check_module_fields ~(lib : Dune_file.Library.t) ~virtual_modules
       (module_list impl_modules_with_intf)
   end
 
-let impl sctx ~(lib : Dune_file.Library.t) ~scope ~modules =
+let external_dep_graph sctx ~impl_cm_kind ~vlib_obj_dir ~impl_obj_dir ~modules =
+  let ocamlobjinfo =
+    let ctx = Super_context.context sctx in
+    fun m cm_kind ->
+      let unit = Module.cm_file_unsafe m ~obj_dir:vlib_obj_dir cm_kind in
+      Ocamlobjinfo.rules ~dir:impl_obj_dir ~ctx ~unit
+  in
+  Ml_kind.Dict.of_func (fun ~ml_kind ->
+    let cm_kind =
+      match ml_kind with
+      | Impl -> impl_cm_kind
+      | Intf -> Cm_kind.Cmi
+    in
+    Dep_graph.make ~dir:impl_obj_dir
+      ~per_module:(Module.Name.Map.map modules ~f:(fun m ->
+        if (ml_kind = Intf && not (Module.has_intf m))
+        || (ml_kind = Impl) && not (Module.has_impl m)
+        then
+          (m, Build.return [])
+        else
+          let (write, read) = ocamlobjinfo m cm_kind in
+          Super_context.add_rule sctx ~dir:impl_obj_dir write;
+          let open Build.O in
+          ( m
+          , Build.memoize "ocamlobjinfo" @@
+            read >>^ fun dict ->
+            Module.Name.Set.to_list dict.intf
+            |> List.filter_map ~f:(Module.Name.Map.find modules)))))
+
+let impl sctx ~dir ~(lib : Dune_file.Library.t) ~scope ~modules =
   Option.map lib.implements ~f:begin fun (loc, implements) ->
     match Lib.DB.find (Scope.libs scope) implements with
     | Error _ ->
@@ -120,16 +169,18 @@ let impl sctx ~(lib : Dune_file.Library.t) ~scope ~modules =
         "Cannot implement %a as that library isn't available"
         Lib_name.pp implements
     | Ok vlib ->
-      let vlib_modules =
+      let virtual_ =
         match Lib.virtual_ vlib with
         | None ->
           Errors.fail lib.buildable.loc
             "Library %a isn't virtual and cannot be implemented"
             Lib_name.pp implements
-        | Some (External _) ->
-          Errors.fail loc
-            "It's not possible to implement external libraries yet"
-        | Some Local ->
+        | Some v -> v
+      in
+      let vlib_modules =
+        match virtual_ with
+        | External lib_modules -> lib_modules
+        | Local ->
           let dir_contents =
             Dir_contents.get sctx ~dir:(Lib.src_dir vlib) in
           Dir_contents.modules_of_library dir_contents
@@ -138,9 +189,23 @@ let impl sctx ~(lib : Dune_file.Library.t) ~scope ~modules =
       let virtual_modules = Lib_modules.virtual_modules vlib_modules in
       check_module_fields ~lib ~virtual_modules ~modules ~implements;
       let vlib_dep_graph =
+        let vlib_obj_dir = Lib.obj_dir vlib in
         let modules = Lib_modules.modules vlib_modules in
-        let obj_dir = Lib.obj_dir vlib in
-        Ocamldep.graph_of_remote_lib ~obj_dir ~modules
+        match virtual_ with
+        | Local ->
+          Ocamldep.graph_of_remote_lib ~obj_dir:vlib_obj_dir ~modules
+        | External _ ->
+          let impl_obj_dir =
+            Utils.library_object_directory ~dir (snd lib.name) in
+          let impl_cm_kind =
+            let { Mode.Dict. byte; native = _ } = Lib.modes vlib in
+            if byte then
+              Mode.cm_kind Byte
+            else
+              Mode.cm_kind Native
+          in
+          external_dep_graph sctx ~impl_cm_kind ~vlib_obj_dir ~impl_obj_dir
+            ~modules
       in
       Vimpl.make ~impl:lib ~vlib ~vlib_modules ~vlib_dep_graph
   end

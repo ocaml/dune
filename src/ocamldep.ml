@@ -139,7 +139,7 @@ let deps_of cctx ~ml_kind unit =
           let module_file_ =
             match file_path m with
             | Some v -> Some v
-            | None -> Option.bind ~f:file_path(Vimpl.find_module vimpl m)
+            | None -> Option.bind ~f:file_path (Vimpl.find_module vimpl m)
           in
           Option.map ~f:all_deps_path module_file_
         in

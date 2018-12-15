@@ -1,6 +1,18 @@
 open! Stdune
 open Import
 
+module Syntax = struct
+  type t = OCaml | Reason
+
+  let to_string = function
+    | OCaml -> "ocaml"
+    | Reason -> "reason"
+
+  let pp fmt t = Format.pp_print_string fmt (to_string t)
+
+  let to_sexp t = Sexp.Encoder.string (to_string t)
+end
+
 module Name = struct
   module T = struct
     type t = string
@@ -36,18 +48,16 @@ module Name = struct
 
   let to_local_lib_name s =
     Lib_name.Local.of_string_exn s
-end
 
-module Syntax = struct
-  type t = OCaml | Reason
-
-  let to_string = function
-    | OCaml -> "ocaml"
-    | Reason -> "reason"
-
-  let pp fmt t = Format.pp_print_string fmt (to_string t)
-
-  let to_sexp t = Sexp.Encoder.string (to_string t)
+  let basename n ~(ml_kind : Ml_kind.t) ~(syntax : Syntax.t) =
+    let ext =
+      match syntax, ml_kind with
+      | Reason, Intf -> ".rei"
+      | Reason, Impl -> ".re"
+      | OCaml, Intf -> ".mli"
+      | OCaml, Impl -> ".ml"
+    in
+    String.lowercase n ^ ext
 end
 
 module File = struct
@@ -340,14 +350,14 @@ let decode ~dir =
     and impl = field_b "impl"
     and intf = field_b "intf"
     in
-    let file exists ext =
+    let file exists ml_kind =
       if exists then
-        Some (File.make Syntax.OCaml
-                (Path.L.relative dir [Name.to_string name; ext]))
+        let basename = Name.basename name ~ml_kind ~syntax:OCaml in
+        Some (File.make Syntax.OCaml (Path.relative dir basename))
       else
         None
     in
-    let intf = file intf ".mli" in
-    let impl = file impl ".ml" in
+    let intf = file intf Intf in
+    let impl = file impl Impl in
     make ~obj_name ~visibility ?impl ?intf name
   )

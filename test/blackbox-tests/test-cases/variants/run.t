@@ -171,6 +171,7 @@ Install files for implemenations and virtual libs have all the artifacts:
     "_build/install/default/lib/vlib/foo.mli" {"foo.mli"}
     "_build/install/default/lib/vlib/opam" {"opam"}
     "_build/install/default/lib/vlib/vlib.cmi" {"vlib.cmi"}
+    "_build/install/default/lib/vlib/vlib.cmo" {"vlib.cmo"}
     "_build/install/default/lib/vlib/vlib.cmt" {"vlib.cmt"}
     "_build/install/default/lib/vlib/vlib.cmx" {"vlib.cmx"}
     "_build/install/default/lib/vlib/vlib.ml" {"vlib.ml"}
@@ -261,13 +262,11 @@ First we create an external library
   Entering directory 'implements-external/vlib'
 
 Then we make sure that we can implement it
-  $ env OCAMLPATH=implements-external/vlib/_build/install/default/lib dune build --root implements-external/impl
+  $ env OCAMLPATH=implements-external/vlib/_build/install/default/lib dune build --root implements-external/impl --debug-dependency-path
   Entering directory 'implements-external/impl'
-  File "impl-lib/dune", line 3, characters 13-17:
-  3 |  (implements vlib))
-                   ^^^^
-  Error: It's not possible to implement external libraries yet
-  [1]
+          test alias default
+  bar from vlib
+  Foo.run implemented
 
 Include variants and implementation information in dune-package
   $ dune build --root dune-package-info

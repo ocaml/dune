@@ -51,7 +51,7 @@ module Dict : sig
   module Set : sig
 
     type nonrec t = bool t
-    val decode : t Dune_lang.Decoder.t
+    val encode : t -> Dune_lang.t list
     val all : t
     val is_empty : t -> bool
     val to_list : t -> mode list

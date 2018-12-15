@@ -23,11 +23,12 @@ module Lib = struct
     ; main_module_name : Module.Name.t option
     ; requires         : (Loc.t * Lib_name.t) list
     ; version          : string option
+    ; modes            : Mode.Dict.Set.t
     }
 
   let make ~loc ~kind ~name ~synopsis ~archives ~plugins ~foreign_objects
         ~foreign_archives ~jsoo_runtime ~main_module_name ~sub_systems
-        ~requires ~ppx_runtime_deps ~implements ~virtual_ ~modules
+        ~requires ~ppx_runtime_deps ~implements ~virtual_ ~modules ~modes
         ~version ~dir =
     let map_path p = Path.relative dir (Path.basename p) in
     let map_list = List.map ~f:map_path in
@@ -50,6 +51,7 @@ module Lib = struct
     ; dir
     ; virtual_
     ; modules
+    ; modes
     }
 
   let dir t = t.dir
@@ -66,7 +68,7 @@ module Lib = struct
         ; foreign_objects ; foreign_archives ; jsoo_runtime ; requires
         ; ppx_runtime_deps ; sub_systems ; virtual_
         ; implements ; main_module_name ; version = _; dir = _
-        ; modules
+        ; modules ; modes
         } =
     let open Dune_lang.Encoder in
     let no_loc f (_loc, x) = f x in
@@ -89,6 +91,7 @@ module Lib = struct
     ; libs "ppx_runtime_deps" ppx_runtime_deps
     ; field_o "implements" (no_loc Lib_name.encode) implements
     ; field_o "main_module_name" Module.Name.encode main_module_name
+    ; field_l "modes" (fun x -> x) (Mode.Dict.Set.encode modes)
     ; field_l "modules" (fun x -> x)
         (match modules with
          | None -> []
@@ -112,6 +115,7 @@ module Lib = struct
       let%map synopsis = field_o "synopsis" string
       and loc = loc
       and name = field "name" Lib_name.decode
+      and modes = field_l "modes" Mode.decode
       and kind = field "kind" Lib_kind.decode
       and archives = mode_paths "archives"
       and plugins = mode_paths "plugins"
@@ -125,6 +129,7 @@ module Lib = struct
       and modules = field_o "modules" (Lib_modules.decode
                          ~implements:(Option.is_some implements) ~dir:base)
       in
+      let modes = Mode.Dict.Set.of_list modes in
       { kind
       ; name
       ; synopsis
@@ -143,6 +148,7 @@ module Lib = struct
       ; version = None
       ; dir = Path.append_local base (dir_of_name name)
       ; modules
+      ; modes
       }
     )
 
@@ -163,6 +169,7 @@ module Lib = struct
   let foreign_archives t = t.foreign_archives
   let requires t = t.requires
   let implements t = t.implements
+  let modes t = t.modes
 
   let compare_name x y = Lib_name.compare x.name y.name
 end

@@ -152,3 +152,5 @@ val best_mode : t -> Mode.t
 val cc_g : t -> string list
 
 val name : t -> string
+
+val has_native : t -> bool

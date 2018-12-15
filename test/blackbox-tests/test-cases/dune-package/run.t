@@ -9,6 +9,7 @@
    (plugins (byte a.cma) (native a.cmxs))
    (foreign_archives (native a$ext_lib))
    (main_module_name A)
+   (modes byte native)
    (modules
     (alias_module (name A) (obj_name a) (visibility public) (impl))
     (main_module_name A)
@@ -20,6 +21,7 @@
    (plugins (byte b/c/c.cma) (native b/c/c.cmxs))
    (foreign_archives (native b/c/c$ext_lib))
    (main_module_name C)
+   (modes byte native)
    (modules
     (alias_module (name C) (obj_name c) (visibility public) (impl))
     (main_module_name C)

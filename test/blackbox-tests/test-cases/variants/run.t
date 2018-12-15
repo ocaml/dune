@@ -283,6 +283,7 @@ Include variants and implementation information in dune-package
    (requires foo.vlib)
    (implements vlib)
    (main_module_name Vlib)
+   (modes byte native)
    (modules
     (alias_module
      (name Vlib__impl__)
@@ -297,6 +298,7 @@ Include variants and implementation information in dune-package
    (virtual)
    (foreign_archives (native vlib/vlib$ext_lib))
    (main_module_name Vlib)
+   (modes byte native)
    (modules
     (alias_module (name Vlib) (obj_name vlib) (visibility public) (impl))
     (main_module_name Vlib)

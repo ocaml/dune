@@ -73,6 +73,7 @@ type t =
   ; virtual_         : Virtual.t option
   ; implements       : (Loc.t * Lib_name.t) option
   ; main_module_name : Dune_file.Library.Main_module_name.t
+  ; modes            : Mode.Dict.Set.t
   }
 
 let user_written_deps t =
@@ -80,7 +81,8 @@ let user_written_deps t =
     ~init:(Deps.to_lib_deps t.requires)
     ~f:(fun acc s -> Dune_file.Lib_dep.Direct s :: acc)
 
-let of_library_stanza ~dir ~ext_lib ~ext_obj (conf : Dune_file.Library.t) =
+let of_library_stanza ~dir ~has_native ~ext_lib ~ext_obj
+      (conf : Dune_file.Library.t) =
   let (_loc, lib_name) = conf.name in
   let obj_dir = Utils.library_object_directory ~dir lib_name in
   let gen_archive_file ~dir ext =
@@ -149,6 +151,7 @@ let of_library_stanza ~dir ~ext_lib ~ext_obj (conf : Dune_file.Library.t) =
   in
   let main_module_name = Dune_file.Library.main_module_name conf in
   let name = Dune_file.Library.best_name conf in
+  let modes = Dune_file.Mode_conf.Set.eval ~has_native conf.modes in
   { loc = conf.buildable.loc
   ; name
   ; kind     = conf.kind
@@ -174,6 +177,7 @@ let of_library_stanza ~dir ~ext_lib ~ext_obj (conf : Dune_file.Library.t) =
   ; implements = conf.implements
   ; main_module_name
   ; private_obj_dir
+  ; modes
   }
 
 let of_dune_lib dp =
@@ -210,4 +214,5 @@ let of_dune_lib dp =
   ; sub_systems = Lib.sub_systems dp
   ; virtual_
   ; implements = Lib.implements dp
+  ; modes = Lib.modes dp
   }

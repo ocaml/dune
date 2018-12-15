@@ -942,10 +942,12 @@ module DB = struct
     ; all    = Lazy.from_fun all
     }
 
-  let create_from_library_stanzas ?parent ~ext_lib ~ext_obj stanzas =
+  let create_from_library_stanzas ?parent ~has_native ~ext_lib ~ext_obj
+        stanzas =
     let map =
       List.concat_map stanzas ~f:(fun (dir, (conf : Dune_file.Library.t)) ->
-        let info = Lib_info.of_library_stanza ~dir ~ext_lib ~ext_obj conf in
+        let info =
+          Lib_info.of_library_stanza ~dir ~has_native ~ext_lib ~ext_obj conf in
         match conf.public with
         | None ->
           [Dune_file.Library.best_name conf, Resolve_result.Found info]
@@ -1219,6 +1221,7 @@ let to_dune_lib ({ name ; info ; _ } as lib) ~lib_modules ~dir =
     ~jsoo_runtime:info.jsoo_runtime
     ~requires:(add_loc (requires_exn lib))
     ~ppx_runtime_deps:(add_loc (ppx_runtime_deps_exn lib))
+    ~modes:info.modes
     ~implements:info.implements
     ~virtual_
     ~modules:(Some lib_modules)

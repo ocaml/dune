@@ -26,6 +26,8 @@ module Lib : sig
 
   val compare_name : _ t -> _ t -> Ordering.t
 
+  val modes : _ t -> Mode.Dict.Set.t
+
   val make
     :  loc:Loc.t
     -> kind:Lib_kind.t
@@ -43,6 +45,7 @@ module Lib : sig
     -> implements:(Loc.t * Lib_name.t) option
     -> virtual_:bool
     -> modules:Lib_modules.t option
+    -> modes:Mode.Dict.Set.t
     -> version:string option
     -> dir:Path.t
     -> 'a t

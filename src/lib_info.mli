@@ -53,10 +53,12 @@ type t = private
   ; virtual_         : Virtual.t option
   ; implements       : (Loc.t * Lib_name.t) option
   ; main_module_name : Dune_file.Library.Main_module_name.t
+  ; modes            : Mode.Dict.Set.t
   }
 
 val of_library_stanza
-  : dir:Path.t
+  :  dir:Path.t
+  -> has_native:bool
   -> ext_lib:string
   -> ext_obj:string
   -> Dune_file.Library.t

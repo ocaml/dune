@@ -187,12 +187,15 @@ module Package = struct
       | None -> Sub_system_name.Map.empty
       | Some p -> Installed_dune_file.load p
     in
+    let archives = archives t in
+    let modes : Mode.Dict.Set.t =
+      Mode.Dict.map ~f:(fun x -> not (List.is_empty x)) archives in
     Dune_package.Lib.make
       ~loc
       ~kind:Normal
       ~name:(name t)
       ~synopsis:(description t)
-      ~archives:(archives t)
+      ~archives
       ~plugins:(plugins t)
       ~foreign_objects:[]
       ~foreign_archives:(Mode.Dict.make_both [])
@@ -205,6 +208,7 @@ module Package = struct
       ~modules:None
       ~main_module_name:None (* XXX remove *)
       ~version:(version t)
+      ~modes
       ~dir:t.dir
 end
 

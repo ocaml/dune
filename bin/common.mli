@@ -16,14 +16,14 @@ type t =
   ; force                 : bool
   ; ignore_promoted_rules : bool
   ; build_dir             : string
+  ; no_print_directory    : bool
   ; (* Original arguments for the external-lib-deps hint *)
     orig_args             : string list
   ; config                : Config.t
   ; default_target        : string
   (* For build & runtest only *)
   ; watch : bool
-  ; stats : bool
-  ; catapult_trace_file : string option
+  ; stats_trace_file : string option
   }
 
 val prefix_target : t -> string -> string

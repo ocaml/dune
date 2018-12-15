@@ -1,23 +1,12 @@
 open Stdune
 
-type ops =
+type t =
   { print : string -> unit
   ; close : unit -> unit
   ; get_time : unit -> float
   ; gc_stat : unit -> Gc.stat
   ; mutable after_first_event : bool
-  }
-
-type mode =
-  | Disabled
-  | Using of ops
-
-type t =
-  { mutable mode : mode
-  }
-
-let make () =
-  { mode = Disabled
+  ; mutable next_id : int
   }
 
 let fake_gc_stat =
@@ -44,32 +33,25 @@ let fake time_ref buf =
   let close () = () in
   let get_time () = !time_ref in
   let gc_stat () = fake_gc_stat in
-  { mode =
-      Using
-        { print
-        ; close
-        ; get_time
-        ; gc_stat
-        ; after_first_event = false
-        }
+  { print
+  ; close
+  ; get_time
+  ; gc_stat
+  ; after_first_event = false
+  ; next_id = 0
   }
 
-let close t = match t.mode with
-  | Disabled -> ()
-  | Using {print; close; _} ->
-    print "]\n";
-    close ()
+let close {print; close; _} =
+  print "]\n";
+  close ()
 
-let path_ops path =
+let make path =
   let channel = Pervasives.open_out path in
   let print s = Pervasives.output_string channel s in
   let close () = Pervasives.close_out channel in
   let get_time () = Unix.gettimeofday () in
   let gc_stat () = Gc.stat () in
-  {print; close; get_time; gc_stat; after_first_event = false}
-
-let enable t path =
-  t.mode <- Using (path_ops path)
+  {print; close; get_time; gc_stat; after_first_event = false; next_id = 0}
 
 let next_leading_char t =
   match t.after_first_event with
@@ -82,26 +64,6 @@ let printf t format_string =
   let c = next_leading_char t in
   Printf.ksprintf t.print ("%c" ^^ format_string ^^ "\n") c
 
-let color_of_name = function
-  | "ocamlc" | "ocamlc.opt" -> "thread_state_uninterruptible"
-  | "ocamlopt" | "ocamlopt.opt" -> "thread_state_running"
-  | "ocamldep" | "ocamldep.opt" -> "thread_state_runnable"
-  | "ocamlmklib" | "ocamlmklib.opt" -> "thread_state_unknown"
-  | "ocamllex" | "ocamllex.opt" -> "thread_state_sleeping"
-  | "ocamlfind" -> "terrible"
-  | "ocaml" -> "bad"
-  | "odoc" -> "white"
-  | "pp.exe"
-  | "ppx.exe" -> "yellow"
-  | "menhir" -> "olive"
-  | "gcc" -> "rail_response"
-  | "git" -> "rail_animation"
-  | "refmt" -> "rail_idle"
-  | "ocamlyacc" -> "rail_load"
-  | "sh"
-  | "bash" -> "thread_state_iowait"
-  | _ -> "generic_work"
-
 let pp_args l =
   l
   |> List.map ~f:(Printf.sprintf "%S")
@@ -112,25 +74,19 @@ let pp_time f =
   let n = int_of_float @@ f *. 1_000_000. in
   Printf.sprintf "%d" n
 
-type event =
-  { start_time : float
-  ; program : string
-  ; args : string list
-  }
+type event = int * string
 
-let emit_process t {start_time; program; args} ~time =
-  let dur = time -. start_time in
-  let name = Filename.basename program in
+let on_process_end t (id, name) =
+  let time = t.get_time () in
   printf
     t
-    {|{"name": %S, "pid": 0, "tid": 0, "ph": "X", "dur": %s, "ts": %s, "color": %S, "args": %s}|}
+    {|{"cat": "process", "name": %S, "id": %d, "pid": 0, "ph": "e", "ts": %s}|}
     name
-    (pp_time dur)
+    id
     (pp_time time)
-    (color_of_name name)
-    (pp_args args)
 
-let emit_counter t ~time key value =
+let emit_counter t key value =
+  let time = t.get_time () in
   printf
     t
     {|{"name": %S, "pid": 0, "tid": 0, "ph": "C", "ts": %s, "args": {%S: %d}}|}
@@ -139,29 +95,26 @@ let emit_counter t ~time key value =
     "value"
     value
 
-let emit_counters t ~time (stat: Gc.stat) =
-  emit_counter t ~time "live_words" stat.live_words;
-  emit_counter t ~time "free_words" stat.free_words;
-  emit_counter t ~time "stack_size" stat.stack_size
+let emit_gc_counters t =
+  let stat = t.gc_stat () in
+  emit_counter t "live_words" stat.live_words;
+  emit_counter t "free_words" stat.free_words;
+  emit_counter t "stack_size" stat.stack_size
+
+let next_id t =
+  let r = t.next_id in
+  t.next_id <- r + 1;
+  r
 
 let on_process_start t ~program ~args =
-  match t.mode with
-  | Disabled ->
-    { start_time = 0.
-    ; program
-    ; args
-    }
-  | Using t ->
-    { start_time = t.get_time ()
-    ; program
-    ; args
-    }
-
-let on_process_end t event =
-  match t.mode with
-  | Disabled -> ()
-  | Using t ->
-    let time = t.get_time () in
-    emit_process t event ~time;
-    let stat = t.gc_stat () in
-    emit_counters t stat ~time
+  let name = Filename.basename program in
+  let id = next_id t in
+  let time = t.get_time () in
+  printf
+    t
+    {|{"cat": "process", "name": %S, "id": %d, "pid": 0, "ph": "b", "ts": %s, "args": %s}|}
+    name
+    id
+    (pp_time time)
+    (pp_args args);
+  (id, name)

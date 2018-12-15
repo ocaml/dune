@@ -48,6 +48,9 @@ to setup the configuration of the workspace unless the ``--workspace``
 command line option is used. See the section `Workspace
 configuration`_ for the syntax of this file.
 
+The ``Entering directory`` message can be suppressed with the
+``--no-print-directory`` command line option (as in GNU make).
+
 Current directory
 -----------------
 

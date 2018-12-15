@@ -389,7 +389,8 @@ let decode ~implements ~dir =
       |> Module.Name.Map.of_list_exn
     in
     let virtual_modules =
-      List.map virtual_modules ~f:(fun m -> (m, Module.Name.Map.find_exn modules m))
+      List.map virtual_modules ~f:(fun m ->
+        (m, Module.Name.Map.find_exn modules m))
       |> Module.Name.Map.of_list_exn
     in
     { modules

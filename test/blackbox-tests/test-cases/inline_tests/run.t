@@ -25,7 +25,7 @@
   backend_mbc1
 
   $ dune runtest dune-file
-  (lang dune 1.6)
+  (lang dune 1.7)
   (name foo)
   (library
    (name foo)

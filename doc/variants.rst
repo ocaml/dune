@@ -1,10 +1,6 @@
-*******************************************
-Virtual Libraries & Variants (experimental)
-*******************************************
-
-.. attention::
-    This feature is experimental. It is expected to land in dune in a next
-    release, but the precise syntax and semantics are not yet defined.
+****************************
+Virtual Libraries & Variants
+****************************
 
 Virtual libraries correspond to dune's ability to compile parameterized
 libraries and delay the selection of concrete implementations until linking an

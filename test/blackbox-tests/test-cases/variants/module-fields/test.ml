@@ -45,8 +45,7 @@ let gen_test ~impl ~modules_without_implementation ~virtual_modules
   let _ = Sys.command (sprintf "mkdir -p %s" dir) in
   chdir dir ~f:(fun () ->
     write_file ~file:"dune-project"
-      ~contents:"(lang dune 1.2)\n\
-                 (using in_development_do_not_use_variants 0.1)";
+      ~contents:"(lang dune 1.7)\n";
     write_file ~file:"m.mli" ~contents:"";
     if impl then
       write_file ~file:"m.ml" ~contents:"";

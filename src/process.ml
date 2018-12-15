@@ -246,12 +246,6 @@ let cmdline_approximate_length prog args =
   List.fold_left args ~init:(String.length prog) ~f:(fun acc arg ->
     acc + String.length arg)
 
-let with_process ~program ~args fiber =
-  let event = Catapult.on_process_start Stats.catapult ~program ~args in
-  fiber >>| fun result ->
-  Catapult.on_process_end Stats.catapult event;
-  result
-
 let run_internal ?dir ?(stdout_to=Output.stdout) ?(stderr_to=Output.stderr)
       ~env ~purpose fail_mode prog args =
   Scheduler.wait_for_available_job ()
@@ -325,7 +319,7 @@ let run_internal ?dir ?(stdout_to=Output.stdout) ?(stderr_to=Output.stderr)
   in
   Output.release stdout_to;
   Output.release stderr_to;
-  with_process ~program:prog_str ~args (Scheduler.wait_for_process pid)
+  Stats.with_process ~program:prog_str ~args (Scheduler.wait_for_process pid)
   >>| fun exit_status ->
   Option.iter response_file ~f:Path.unlink;
   let output =

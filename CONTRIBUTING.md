@@ -70,3 +70,9 @@ your commit automatically with `git commit -s`.
 
 [dco]: http://developercertificate.org/
 [ocl]: http://ocamllabs.io/
+
+Coding style
+------------
+
+- wrap lines at 80 characters,
+- use `[Ss]nake_case` over `[Pp]ascalCase`.

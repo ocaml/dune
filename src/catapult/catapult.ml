@@ -1,23 +1,11 @@
 open Stdune
 
-type ops =
+type t =
   { print : string -> unit
   ; close : unit -> unit
   ; get_time : unit -> float
   ; gc_stat : unit -> Gc.stat
   ; mutable after_first_event : bool
-  }
-
-type mode =
-  | Disabled
-  | Using of ops
-
-type t =
-  { mutable mode : mode
-  }
-
-let make () =
-  { mode = Disabled
   }
 
 let fake_gc_stat =
@@ -44,32 +32,24 @@ let fake time_ref buf =
   let close () = () in
   let get_time () = !time_ref in
   let gc_stat () = fake_gc_stat in
-  { mode =
-      Using
-        { print
-        ; close
-        ; get_time
-        ; gc_stat
-        ; after_first_event = false
-        }
+  { print
+  ; close
+  ; get_time
+  ; gc_stat
+  ; after_first_event = false
   }
 
-let close t = match t.mode with
-  | Disabled -> ()
-  | Using {print; close; _} ->
-    print "]\n";
-    close ()
+let close {print; close; _} =
+  print "]\n";
+  close ()
 
-let path_ops path =
+let make path =
   let channel = Pervasives.open_out path in
   let print s = Pervasives.output_string channel s in
   let close () = Pervasives.close_out channel in
   let get_time () = Unix.gettimeofday () in
   let gc_stat () = Gc.stat () in
   {print; close; get_time; gc_stat; after_first_event = false}
-
-let enable t path =
-  t.mode <- Using (path_ops path)
 
 let next_leading_char t =
   match t.after_first_event with
@@ -118,7 +98,8 @@ type event =
   ; args : string list
   }
 
-let emit_process t {start_time; program; args} ~time =
+let on_process_end t {start_time; program; args} =
+  let time = t.get_time () in
   let dur = time -. start_time in
   let name = Filename.basename program in
   printf
@@ -130,7 +111,8 @@ let emit_process t {start_time; program; args} ~time =
     (color_of_name name)
     (pp_args args)
 
-let emit_counter t ~time key value =
+let emit_counter t key value =
+  let time = t.get_time () in
   printf
     t
     {|{"name": %S, "pid": 0, "tid": 0, "ph": "C", "ts": %s, "args": {%S: %d}}|}
@@ -139,29 +121,14 @@ let emit_counter t ~time key value =
     "value"
     value
 
-let emit_counters t ~time (stat: Gc.stat) =
-  emit_counter t ~time "live_words" stat.live_words;
-  emit_counter t ~time "free_words" stat.free_words;
-  emit_counter t ~time "stack_size" stat.stack_size
+let emit_gc_counters t =
+  let stat = t.gc_stat () in
+  emit_counter t "live_words" stat.live_words;
+  emit_counter t "free_words" stat.free_words;
+  emit_counter t "stack_size" stat.stack_size
 
 let on_process_start t ~program ~args =
-  match t.mode with
-  | Disabled ->
-    { start_time = 0.
-    ; program
-    ; args
-    }
-  | Using t ->
-    { start_time = t.get_time ()
-    ; program
-    ; args
-    }
-
-let on_process_end t event =
-  match t.mode with
-  | Disabled -> ()
-  | Using t ->
-    let time = t.get_time () in
-    emit_process t event ~time;
-    let stat = t.gc_stat () in
-    emit_counters t stat ~time
+  { start_time = t.get_time ()
+  ; program
+  ; args
+  }

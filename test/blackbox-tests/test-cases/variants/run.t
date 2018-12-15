@@ -264,14 +264,9 @@ First we create an external library
 Then we make sure that we can implement it
   $ env OCAMLPATH=implements-external/vlib/_build/install/default/lib dune build --root implements-external/impl --debug-dependency-path
   Entering directory 'implements-external/impl'
-  No rule found for impl-lib/.impl.objs/.ml.all-deps
-  -> required by impl-lib/.impl.objs/.ml.all-deps
-  -> required by impl-lib/.impl.objs/foo.ml.all-deps
-  -> required by impl-lib/impl$ext_lib
-  -> required by test.exe
-  -> required by alias default
-  -> required by alias default
-  [1]
+          test alias default
+  bar from vlib
+  Foo.run implemented
 
 Include variants and implementation information in dune-package
   $ dune build --root dune-package-info

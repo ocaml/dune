@@ -38,18 +38,32 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
     end
   in
   let copy_all_deps =
+    let all_deps ~obj_dir f =
+      Path.relative obj_dir (Path.basename f ^ ".all-deps") in
     (* we only need to copy the .all-deps files for local libraries. for remote
        libraries, we just use ocamlobjinfo *)
     if not (Lib.is_local vlib) then
-      fun _ -> ()
+      let vlib_dep_graph = Vimpl.vlib_dep_graph vimpl in
+      fun m ->
+        List.iter [Intf; Impl] ~f:(fun kind ->
+          let dep_graph = Ml_kind.Dict.get vlib_dep_graph kind in
+          let deps = Dep_graph.deps_of dep_graph m in
+          Module.file m kind |> Option.iter ~f:(fun f ->
+            let open Build.O in
+            deps >>^ (fun modules ->
+              modules
+              |> List.map ~f:(fun m -> Module.Name.to_string (Module.name m))
+              |> String.concat ~sep:"\n")
+            >>>
+            Build.write_file_dyn (all_deps ~obj_dir:(target_obj_dir m) f)
+            |> Super_context.add_rule sctx ~dir))
     else
       fun m ->
         if Module.is_public m then
           List.iter [Intf; Impl] ~f:(fun kind ->
             Module.file m kind
             |> Option.iter ~f:(fun f ->
-              Path.relative obj_dir (Path.basename f ^ ".all-deps")
-              |> copy_to_obj_dir ~obj_dir:(target_obj_dir m))
+              copy_to_obj_dir (all_deps ~obj_dir f) ~obj_dir:(target_obj_dir m))
           );
   in
   Option.iter (Lib_modules.alias_module vlib_modules) ~f:copy_objs;

@@ -183,6 +183,7 @@ let plugins      t = t.info.plugins
 let jsoo_runtime t = t.info.jsoo_runtime
 let jsoo_archive t = t.info.jsoo_archive
 let unique_id    t = t.unique_id
+let modes        t = t.info.modes
 
 let virtual_     t = t.info.virtual_
 

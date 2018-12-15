@@ -132,7 +132,7 @@ let check_module_fields ~(lib : Dune_file.Library.t) ~virtual_modules
       (module_list impl_modules_with_intf)
   end
 
-let external_dep_graph sctx ~vlib_obj_dir ~impl_obj_dir ~modules =
+let external_dep_graph sctx ~impl_cm_kind ~vlib_obj_dir ~impl_obj_dir ~modules =
   let ocamlobjinfo =
     let ctx = Super_context.context sctx in
     fun m cm_kind ->
@@ -142,8 +142,8 @@ let external_dep_graph sctx ~vlib_obj_dir ~impl_obj_dir ~modules =
   Ml_kind.Dict.of_func (fun ~ml_kind ->
     let cm_kind =
       match ml_kind with
-      | Impl -> Cm_kind.Cmo (* XXX doesn't always work *)
-      | Intf -> Cmi
+      | Impl -> impl_cm_kind
+      | Intf -> Cm_kind.Cmi
     in
     Dep_graph.make ~dir:impl_obj_dir
       ~per_module:(Module.Name.Map.map modules ~f:(fun m ->
@@ -197,7 +197,15 @@ let impl sctx ~dir ~(lib : Dune_file.Library.t) ~scope ~modules =
         | External _ ->
           let impl_obj_dir =
             Utils.library_object_directory ~dir (snd lib.name) in
-          external_dep_graph sctx ~vlib_obj_dir ~impl_obj_dir ~modules
+          let impl_cm_kind =
+            let { Mode.Dict. byte; native = _ } = Lib.modes vlib in
+            if byte then
+              Mode.cm_kind Byte
+            else
+              Mode.cm_kind Native
+          in
+          external_dep_graph sctx ~impl_cm_kind ~vlib_obj_dir ~impl_obj_dir
+            ~modules
       in
       Vimpl.make ~impl:lib ~vlib ~vlib_modules ~vlib_dep_graph
   end

@@ -88,8 +88,9 @@ module Gen (S : sig val sctx : SC.t end) = struct
   end
 
   let odoc () =
-    SC.resolve_program sctx ~dir:(Super_context.build_dir sctx) "odoc"
-      ~loc:None ~hint:"try: opam install odoc"
+    Build.pass_right
+      (SC.resolve_program sctx ~dir:(Super_context.build_dir sctx) "odoc"
+      ~loc:None ~hint:"try: opam install odoc")
 
   let odoc_ext = ".odoc"
 

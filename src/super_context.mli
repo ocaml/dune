@@ -123,9 +123,6 @@ val source_files : t -> src_path:Path.t -> String.Set.t
     possibly a hint.
 
     [hint] should tell the user what to install when the program is not found.
-
-    This is returned in the build arrow. For convenience, it will pass a value
-    through. This is used for passing arguments to [Build.run_dyn].
 *)
 val resolve_program
   :  t
@@ -133,7 +130,7 @@ val resolve_program
   -> ?hint:string
   -> loc:Loc.t option
   -> string
-  -> ('a, Action.Prog.t * 'a) Build.t
+  -> (unit, Action.Prog.t) Build.t
 
 module Libs : sig
   (** Make sure all rules produces by [f] record the library dependencies for

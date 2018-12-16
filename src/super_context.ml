@@ -243,12 +243,9 @@ let dump_env t ~dir =
   Ocaml_flags.dump (Env.ocaml_flags t ~dir)
 
 let resolve_program t ~dir ?hint ~loc bin =
-  Build.arr
-    (fun args ->
-       let artifacts = Env.artifacts_host t ~dir in
-       let prog = Artifacts.binary ?hint ~loc artifacts bin in
-       (prog, args)
-    )
+  Build.arr (fun () ->
+    let artifacts = Env.artifacts_host t ~dir in
+    Artifacts.binary ?hint ~loc artifacts bin)
 
 let create
       ~(context:Context.t)

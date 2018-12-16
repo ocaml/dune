@@ -108,6 +108,10 @@ let rec all = function
     >>>
     arr (fun (x, y) -> x :: y)
 
+let pass_right a =
+  (arr ignore >>> a)
+  &&& arr (fun x -> x)
+
 let lazy_no_targets t = Lazy_no_targets t
 
 let path p = Paths (Path.Set.singleton p)

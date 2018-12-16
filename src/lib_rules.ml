@@ -189,7 +189,8 @@ module Gen (P : Install_rules.Params) = struct
       (Expander.expand_and_eval_set expander lib.cxx_flags
          ~standard:(Build.return (Context.cc_g ctx))
        >>>
-       SC.resolve_program ~loc:None ~dir sctx ctx.c_compiler
+       Build.pass_right
+         (SC.resolve_program ~loc:None ~dir sctx ctx.c_compiler)
        >>>
        Build.run_dyn
          (* We have to execute the rule in the library directory as

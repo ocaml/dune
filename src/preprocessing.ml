@@ -509,8 +509,9 @@ let cookie_library_name lib_name =
 let setup_reason_rules sctx (m : Module.t) =
   let ctx = SC.context sctx in
   let rule src target =
-    SC.resolve_program sctx ~loc:None ~dir:ctx.build_dir
-      "refmt" ~hint:"try: opam install reason"
+    Build.pass_right
+      (SC.resolve_program sctx ~loc:None ~dir:ctx.build_dir
+         "refmt" ~hint:"try: opam install reason")
     >>>
     Build.run_dyn
       ~dir:ctx.build_dir

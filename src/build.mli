@@ -35,6 +35,9 @@ val fanout4 : ('a, 'b) t -> ('a, 'c) t -> ('a, 'd) t -> ('a, 'e) t -> ('a, 'b * 
 
 val all : ('a, 'b) t list -> ('a, 'b list) t
 
+(** Pass an argument through. *)
+val pass_right : (unit, 'a) t -> ('b, 'a * 'b) t
+
 (** Optimization to avoiding eagerly computing a [Build.t] value,
     assume it contains no targets. *)
 val lazy_no_targets : ('a, 'b) t Lazy.t -> ('a, 'b) t

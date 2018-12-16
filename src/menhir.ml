@@ -122,7 +122,7 @@ module Run (P : PARAMS) : sig end = struct
   (* [menhir args] generates a Menhir command line (a build action). *)
 
   let menhir (args : args) : (string list, Action.t) Build.t =
-    menhir_binary
+    Build.pass_right menhir_binary
     >>>
     Build.run_dyn ~dir args
 

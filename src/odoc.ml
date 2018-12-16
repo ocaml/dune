@@ -87,10 +87,10 @@ module Gen (S : sig val sctx : SC.t end) = struct
     let setup_deps m files = SC.add_alias_deps sctx (alias m) files
   end
 
-  let odoc () =
-    Build.pass_right
-      (SC.resolve_program sctx ~dir:(Super_context.build_dir sctx) "odoc"
-      ~loc:None ~hint:"try: opam install odoc")
+  let odoc =
+    lazy (
+      SC.resolve_program sctx ~dir:(Super_context.build_dir sctx) "odoc"
+        ~loc:None ~hint:"try: opam install odoc")
 
   let odoc_ext = ".odoc"
 
@@ -131,7 +131,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
        >>>
        module_deps m ~doc_dir ~dep_graphs
        >>>
-       odoc ()
+       Build.pass_right (Lazy.force odoc)
        >>>
        Build.run_dyn ~dir:doc_dir
          [ A "compile"
@@ -148,7 +148,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
     add_rule
       (includes
        >>>
-       odoc ()
+       Build.pass_right (Lazy.force odoc)
        >>>
        Build.run_dyn ~dir:doc_dir
          [ A "compile"
@@ -189,7 +189,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
          Build.remove_tree to_remove
          :: Build.mkdir odoc_file.html_dir
          :: (
-           odoc ()
+           Build.pass_right (Lazy.force odoc)
            >>>
             Build.run_dyn ~dir:Paths.html_root
               [ A "html"
@@ -227,7 +227,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
 
   let setup_css_rule () =
     add_rule
-      ( odoc ()
+      ( Build.pass_right (Lazy.force odoc)
         >>>
         Build.run_dyn
          ~dir:context.build_dir

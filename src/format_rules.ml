@@ -76,14 +76,13 @@ let gen_rules sctx (config : Dune_file.Auto_format.t) ~dir =
           ; Target output
           ]
         in
-        Some
-          (
-            Lazy.force ocamlformat_deps
-            >>>
-            resolve_program "ocamlformat"
-            >>>
-            Build.run_dyn ~dir args
-          )
+        Some (
+          Lazy.force ocamlformat_deps
+          >>>
+          resolve_program "ocamlformat"
+          >>>
+          Build.run_dyn ~dir args
+        )
       else
         None
     in

@@ -303,7 +303,7 @@ module Encoder = struct
     | None -> Absent
     | Some v -> Normal (name, f v)
 
-  let field_o_b name v =
+  let field_b name v =
     if v then
       Inlined_list (name, [])
     else
@@ -314,16 +314,13 @@ module Encoder = struct
     | [] -> Absent
     | _ -> Inlined_list (name, List.map l ~f)
 
-  let record_fields (syntax : Syntax.t) (l : field list) =
+  let record_fields (l : field list) =
     List.filter_map l ~f:(function
       | Absent -> None
       | Normal (name, v) ->
         Some (List [Atom (Atom.of_string name); v])
       | Inlined_list (name, l) ->
-        Some (List (Atom (Atom.of_string name) ::
-                    match syntax with
-                    | Dune -> l
-                    | Jbuild -> [List l])))
+        Some (List (Atom (Atom.of_string name) :: l)))
 
   let unknown _ = unsafe_atom_of_string "<unknown>"
 end

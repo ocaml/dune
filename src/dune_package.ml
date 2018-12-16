@@ -77,10 +77,10 @@ module Lib = struct
     let mode_paths name (xs : Path.t Mode.Dict.List.t) =
       field_l name (fun x -> x) (Mode.Dict.List.encode path xs) in
     let libs name = field_l name (no_loc Lib_name.encode) in
-    record_fields Dune @@
+    record_fields @@
     [ field "name" Lib_name.encode name
     ; field "kind" Lib_kind.encode kind
-    ; field_o_b "virtual" virtual_
+    ; field_b "virtual" virtual_
     ; field_o "synopsis" string synopsis
     ; mode_paths "archives" archives
     ; mode_paths "plugins" plugins

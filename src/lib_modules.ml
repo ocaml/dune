@@ -284,7 +284,7 @@ module Virtual = struct
     let encode { name ; kind } =
       let open Dune_lang.Encoder in
       list (fun x -> x) (
-        record_fields Dune
+        record_fields
           [ field "name" Module.Name.encode name
           ; field "kind" Kind.encode kind
           ])
@@ -361,7 +361,7 @@ let encode
       ; implements = _
       } =
   let open Dune_lang.Encoder in
-  record_fields Dune
+  record_fields
     [ field_l "alias_module" (fun x -> x)
         (match alias_module with
          | None -> []

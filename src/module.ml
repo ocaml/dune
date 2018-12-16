@@ -333,12 +333,12 @@ let encode
        ; visibility
        } as t) =
   let open Dune_lang.Encoder in
-  record_fields Dune
+  record_fields
     [ field "name" Name.encode name
     ; field "obj_name" string obj_name
     ; field "visibility" Visibility.encode visibility
-    ; field_o_b "impl" (has_impl t)
-    ; field_o_b "intf" (has_intf t)
+    ; field_b "impl" (has_impl t)
+    ; field_b "intf" (has_intf t)
     ]
 
 let decode ~dir =

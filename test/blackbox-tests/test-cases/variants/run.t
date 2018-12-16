@@ -262,6 +262,20 @@ Make sure that we can also implement native only variants
            run alias default
   implement virtual module
 
+We can implement external variants with mli only modules
+  $ env OCAMLPATH=implements-external/vlib/_build/install/default/lib dune build --root implements-external/impl-intf-only --debug-dependency-path
+  Entering directory 'implements-external/impl-intf-only'
+      ocamlopt .impl_intf_only.objs/vlib_intfonly.{cmx,o} (exit 2)
+  (cd _build/default && /Users/rgrinberg/.opam/4.06.1/bin/ocamlopt.opt -w @a-4-29-40-41-42-44-45-48-58-59-60-40 -strict-sequence -strict-formats -short-paths -keep-locs -g -I .impl_intf_only.objs -I .impl_intf_only.objs/.private -I /Users/rgrinberg/reps/dune/_build/default/test/blackbox-tests/test-cases/variants/implements-external/vlib/_build/install/default/lib/vlib/intfonly -intf-suffix .ml -no-alias-deps -opaque -open Vlib_intfonly__impl_intf_only__ -o .impl_intf_only.objs/vlib_intfonly.cmx -c -impl vlib_intfonly.ml)
+  File "vlib_intfonly.ml", line 1, characters 11-30:
+  Error: The module Vlib_intfonly is an alias for module Vlib_intfonly, which is missing
+  -> required by .impl_intf_only.objs/vlib_intfonly.cmx
+  -> required by impl_intf_only$ext_lib
+  -> required by run.exe
+  -> required by alias default
+  -> required by alias default
+  [1]
+
 Include variants and implementation information in dune-package
   $ dune build --root dune-package-info
   Entering directory 'dune-package-info'

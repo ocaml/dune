@@ -1,0 +1,5 @@
+(library
+ (name vlib_intfonly)
+ (public_name vlib.intfonly)
+ (modules_without_implementation foo)
+ (virtual_modules vlib_intfonly))

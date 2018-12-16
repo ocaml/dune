@@ -2,15 +2,6 @@ open Stdune
 
 type t
 
-module Alias_module : sig
-  type t = private
-    { main_module_name : Module.Name.t
-    ; alias_module : Module.t
-    }
-end
-
-val alias : t -> Alias_module.t option
-
 val alias_module : t -> Module.t option
 
 val modules : t -> Module.Name_map.t
@@ -45,6 +36,8 @@ val for_compilation : t -> Module.Name_map.t
 
 val have_artifacts : t -> Module.Name_map.t
 
+val for_alias : t -> Module.Name_map.t
+
 module Virtual : sig
   val encode : t -> Dune_lang.t list
   val decode
@@ -56,3 +49,5 @@ end
 val encode : t -> Dune_lang.t list
 
 val decode : implements:bool -> dir:Path.t -> t Dune_lang.Decoder.t
+
+val wrapped : t -> bool

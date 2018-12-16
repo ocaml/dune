@@ -92,31 +92,34 @@ module Gen (P : Install_rules.Params) = struct
   let alias_module_build_sandbox =
     Ocaml_version.always_reads_alias_cmi ctx.version
 
-  let build_alias_module { Lib_modules.Alias_module.main_module_name
-                         ; alias_module } ~dir
-        ~modules ~cctx ~dynlink ~js_of_ocaml =
+  let build_alias_module ~lib_modules ~dir ~cctx ~dynlink ~js_of_ocaml =
     let vimpl = Compilation_context.vimpl cctx in
+    let alias_module =
+      Option.value_exn (Lib_modules.alias_module lib_modules) in
     let file =
       match Module.impl alias_module with
       | Some f -> f
       | None -> Option.value_exn (Module.intf alias_module)
     in
-    let modules = Vimpl.aliased_modules vimpl modules in
-    SC.add_rule sctx ~dir
-      (Build.return
-         (Module.Name.Map.values
-            (Module.Name.Map.remove modules (Module.name alias_module))
-          |> List.map ~f:(fun (m : Module.t) ->
-            let name = Module.Name.to_string (Module.name m) in
-            sprintf "(** @canonical %s.%s *)\n\
-                     module %s = %s\n"
-              (Module.Name.to_string main_module_name)
-              name
-              name
-              (Module.Name.to_string (Module.real_unit_name m))
-          )
-          |> String.concat ~sep:"\n")
-       >>> Build.write_file_dyn file.path);
+    let alias_file () =
+      let main_module_name =
+        Option.value_exn (Lib_modules.main_module_name lib_modules)
+      in
+      Vimpl.aliased_modules vimpl lib_modules
+      |> Module.Name.Map.values
+      |> List.map ~f:(fun (m : Module.t) ->
+        let name = Module.Name.to_string (Module.name m) in
+        sprintf "(** @canonical %s.%s *)\n\
+                module %s = %s\n"
+          (Module.Name.to_string main_module_name)
+          name
+          name
+          (Module.Name.to_string (Module.real_unit_name m)))
+      |> String.concat ~sep:"\n"
+    in
+    SC.add_rule sctx ~dir (
+      Build.arr alias_file >>> Build.write_file_dyn file.path
+    );
     let cctx = Compilation_context.for_alias_module cctx in
     Module_compilation.build_module cctx alias_module
       ~js_of_ocaml
@@ -499,10 +502,8 @@ module Gen (P : Install_rules.Params) = struct
 
     Module_compilation.build_modules cctx ~js_of_ocaml ~dynlink ~dep_graphs;
 
-    if Option.is_none lib.stdlib then
-      Option.iter (Lib_modules.alias lib_modules)
-        ~f:(build_alias_module ~dir ~modules:source_modules ~cctx ~dynlink
-              ~js_of_ocaml);
+    if Option.is_none lib.stdlib && Lib_modules.wrapped lib_modules then
+      build_alias_module ~dir ~lib_modules ~cctx ~dynlink ~js_of_ocaml;
 
     let expander = Super_context.expander sctx ~dir in
 

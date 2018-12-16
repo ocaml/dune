@@ -42,14 +42,15 @@ let impl_only = function
 
 let aliased_modules t modules =
   match t with
-  | None -> modules
+  | None -> Lib_modules.for_alias modules
   | Some t ->
-    let vlib_modules = Lib_modules.modules t.vlib_modules in
-    Module.Name.Map.merge modules vlib_modules ~f:(fun _ impl vlib ->
-      match impl, vlib with
-      | None, None -> assert false
-      | Some _, (None | Some _) -> impl
-      | _, Some vlib -> Option.some_if (Module.is_public vlib) vlib)
+    Module.Name.Map.merge
+      (Lib_modules.for_alias modules)
+      (Lib_modules.for_alias t.vlib_modules) ~f:(fun _ impl vlib ->
+        match impl, vlib with
+        | None, None -> assert false
+        | Some _, _ -> impl
+        | _, Some vlib -> Option.some_if (Module.is_public vlib) vlib)
 
 let find_module t m =
   match t with

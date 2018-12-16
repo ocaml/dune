@@ -1,4 +1,4 @@
-module X : Vlib_intfonly.Foo.S = struct
+module X : Foo.S = struct
   let mli_only = print_endline
 end
 

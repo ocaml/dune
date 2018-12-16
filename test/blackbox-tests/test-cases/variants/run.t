@@ -295,6 +295,30 @@ We can implement external variants with mli only modules
   implemented mli only
   magic number: 42
 
+Implement external virtual libraries with private modules
+  $ env OCAMLPATH=implements-external/vlib/_build/install/default/lib dune build --root implements-external/impl-private-module --debug-dependency-path
+  Entering directory 'implements-external/impl-private-module'
+  Invalid module name: "buffer"
+  -> required by .impl_privatemodule.objs/vlib_privatemodule__Privatemodule.cmo.ooi-deps
+  -> required by impl_privatemodule$ext_lib
+  -> required by run.exe
+  -> required by alias default
+  -> required by alias default
+      ocamlopt .impl_privatemodule.objs/native/vlib_privatemodule__Virt_module.{cmx,o} (exit 2)
+  (cd _build/default && /Users/rgrinberg/.opam/4.07.1/bin/ocamlopt.opt -w @a-4-29-40-41-42-44-45-48-58-59-60-40 -strict-sequence -strict-formats -short-paths -keep-locs -g -I .impl_privatemodule.objs/byte -I .impl_privatemodule.objs/native -I /Users/rgrinberg/reps/dune/_build/default/test/blackbox-tests/test-cases/variants/implements-external/vlib/_build/install/default/lib/vlib/privatemodule -intf-suffix .ml -no-alias-deps -opaque -open Vlib_privatemodule__impl_privatemodule__ -o .impl_privatemodule.objs/native/vlib_privatemodule__Virt_module.cmx -c -impl virt_module.ml)
+  File "virt_module.ml", line 1:
+  Error: The implementation virt_module.ml
+         does not match the interface .impl_privatemodule.objs/byte/vlib_privatemodule__Virt_module.cmi:
+         The value `name' is required but not provided
+         File "privatemodule/virt_module.mli", line 1, characters 0-17:
+           Expected declaration
+  -> required by .impl_privatemodule.objs/native/vlib_privatemodule__Virt_module.cmx
+  -> required by impl_privatemodule$ext_lib
+  -> required by run.exe
+  -> required by alias default
+  -> required by alias default
+  [1]
+
 Include variants and implementation information in dune-package
   $ dune build --root dune-package-info
   Entering directory 'dune-package-info'

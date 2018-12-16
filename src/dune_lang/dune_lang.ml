@@ -314,6 +314,11 @@ module Encoder = struct
     | [] -> Absent
     | _ -> Inlined_list (name, List.map l ~f)
 
+  let field_i name f x =
+    match f x with
+    | [] -> Absent
+    | l -> Inlined_list (name, l)
+
   let record_fields (l : field list) =
     List.filter_map l ~f:(function
       | Absent -> None

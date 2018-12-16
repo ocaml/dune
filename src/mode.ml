@@ -113,7 +113,7 @@ module Dict = struct
 
     let encode f { byte ; native } =
       let open Dune_lang.Encoder in
-      record_fields Dune
+      record_fields
         [ field_l "byte" f byte
         ; field_l "native" f native
         ]

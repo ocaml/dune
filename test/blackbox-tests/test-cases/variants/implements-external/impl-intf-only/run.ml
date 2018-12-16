@@ -1,2 +1,2 @@
 let () =
-  Vlib_intfonly.implme ()
+  Printf.printf "magic number: %d\n" (Vlib_intfonly.implme ())

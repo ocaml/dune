@@ -192,9 +192,9 @@ module Driver = struct
       let f x = Lib_name.encode (Lib.name (Lazy.force x.lib)) in
       ((1, 0),
        record_fields @@
-         [ field "flags" Ordered_set_lang.Unexpanded.encode_and_upgrade
+         [ field_i "flags" Ordered_set_lang.Unexpanded.encode_and_upgrade
              t.info.flags
-         ; field "lint_flags" Ordered_set_lang.Unexpanded.encode_and_upgrade
+         ; field_i "lint_flags" Ordered_set_lang.Unexpanded.encode_and_upgrade
              t.info.lint_flags
          ; field "main" string t.info.main
          ; field_l "replaces" f (Result.ok_exn t.replaces)

@@ -41,12 +41,12 @@
    (inline_tests.backend
     (runner_libraries str)
     (flags
-     (inline-test-runner
-      %{library-name}
-      -source-tree-root
-      %{workspace_root}
-      -diff-cmd
-      -))
+     inline-test-runner
+     %{library-name}
+     -source-tree-root
+     %{workspace_root}
+     -diff-cmd
+     -)
     (generate_runner
      (progn
       (echo "let () = print_int 41")
@@ -74,8 +74,5 @@ Make sure we can read generated dune-package files:
 
   $ export OCAMLPATH=$PWD/install/lib; dune runtest --root dune-file-user
   Entering directory 'dune-file-user'
-  File "/home/dim/code/dune/_build/default/test/blackbox-tests/test-cases/inline_tests/install/lib/foo/dune-package", line 17, characters 4-22:
-  17 |    (inline-test-runner
-           ^^^^^^^^^^^^^^^^^^
-  Error: This atom must be quoted because it is the first element of a list and doesn't start with - or :
-  [1]
+           run alias runtest
+  414243

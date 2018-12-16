@@ -89,7 +89,7 @@ module Backend = struct
       ((1, 0),
        record_fields @@
          [ field_l "runner_libraries" lib (Result.ok_exn t.runner_libraries)
-         ; field "flags" Ordered_set_lang.Unexpanded.encode_and_upgrade
+         ; field_i "flags" Ordered_set_lang.Unexpanded.encode_and_upgrade
              t.info.flags
          ; field_o "generate_runner" Action_dune_lang.encode_and_upgrade
              (Option.map t.info.generate_runner ~f:snd)

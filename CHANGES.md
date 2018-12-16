@@ -48,6 +48,8 @@ unreleased
 - Add virtual libraries feature and enable it by default (#1430 fixes #921,
   @rgrinberg)
 
+- Fix handling of Control+C in watch mode (#1678, fixes #1671, @diml)
+
 1.6.2 (05/12/2018)
 ------------------
 

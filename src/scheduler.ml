@@ -723,7 +723,7 @@ let poll ?log ?config ~once ~finally () =
       got_signal t signal;
       Exit
   in
-  let wait msg =
+  let rec wait msg =
     let old_generator = t.gen_status_line in
     set_status_line_generator
       (fun () ->
@@ -732,25 +732,19 @@ let poll ?log ?config ~once ~finally () =
          });
     let res = block_waiting_for_changes () in
     set_status_line_generator old_generator;
-    Fiber.return res
-  in
-  let wait_success () = wait "Success" in
-  let wait_failure () = wait "Had errors" in
-  let rec main_loop () =
+    match res with
+    | Exit -> Fiber.return Got_signal
+    | Continue -> main_loop ()
+  and main_loop () =
     once ()
     >>= fun _ ->
     finally ();
-    wait_success ()
-    >>= function
-    | Exit -> Fiber.return Got_signal
-    | Continue -> main_loop ()
+    wait "Success"
   in
   let continue_on_error () =
     if not t.cur_build_canceled then begin
       finally ();
-      wait_failure ()
-      >>= fun _ ->
-      main_loop ()
+      wait "Had errors"
     end else begin
       set_status_line_generator
         (fun () ->

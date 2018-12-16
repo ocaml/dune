@@ -256,6 +256,12 @@ Then we make sure that we can implement it
   bar from vlib
   Foo.run implemented
 
+Make sure that we can also implement native only variants
+  $ env OCAMLPATH=implements-external/vlib/_build/install/default/lib dune build --root implements-external/impl-native-only --debug-dependency-path
+  Entering directory 'implements-external/impl-native-only'
+           run alias default
+  implement virtual module
+
 Include variants and implementation information in dune-package
   $ dune build --root dune-package-info
   Entering directory 'dune-package-info'

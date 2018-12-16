@@ -1,0 +1,3 @@
+(library
+ (name foo_tests)
+ (inline_tests (backend foo)))

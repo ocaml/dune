@@ -56,3 +56,26 @@
       (echo "let () = print_int 43;;")))))
            run alias dune-file/runtest
   414243
+
+  $ dune build dune-file/foo.install && dune install foo --prefix install
+  Installing install/lib/foo/META
+  Installing install/lib/foo/dune-package
+  Installing install/lib/foo/foo$ext_lib
+  Installing install/lib/foo/foo.cma
+  Installing install/lib/foo/foo.cmi
+  Installing install/lib/foo/foo.cmt
+  Installing install/lib/foo/foo.cmx
+  Installing install/lib/foo/foo.cmxa
+  Installing install/lib/foo/foo.cmxs
+  Installing install/lib/foo/foo.ml
+  Installing install/lib/foo/opam
+
+Make sure we can read generated dune-package files:
+
+  $ export OCAMLPATH=$PWD/install/lib; dune runtest --root dune-file-user
+  Entering directory 'dune-file-user'
+  File "/home/dim/code/dune/_build/default/test/blackbox-tests/test-cases/inline_tests/install/lib/foo/dune-package", line 17, characters 4-22:
+  17 |    (inline-test-runner
+           ^^^^^^^^^^^^^^^^^^
+  Error: This atom must be quoted because it is the first element of a list and doesn't start with - or :
+  [1]

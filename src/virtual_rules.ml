@@ -160,6 +160,7 @@ let external_dep_graph sctx ~impl_cm_kind ~vlib_obj_dir ~impl_obj_dir ~modules =
             read >>^ fun dict ->
             Module.Name.Set.to_list dict.intf
             |> List.filter_map ~f:(fun dep ->
+              let dep = Module.Name.strip_alias_prefix dep in
               if Module.name m = dep then
                 None
               else

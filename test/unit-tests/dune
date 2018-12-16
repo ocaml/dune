@@ -84,6 +84,16 @@
 
 (alias
  (name runtest)
+ (deps (:t modules.mlt)
+  (glob_files %{project_root}/src/.dune.objs/*.cmi)
+  (glob_files %{project_root}/src/stdune/.stdune.objs/*.cmi))
+ (action (chdir %{project_root}
+          (progn
+           (run %{exe:expect_test.exe} %{t})
+           (diff? %{t} %{t}.corrected)))))
+
+(alias
+ (name runtest)
  (deps (:t sexp.mlt)
   (glob_files %{project_root}/src/.dune.objs/*.cmi)
   (glob_files %{project_root}/src/stdune/.stdune.objs/*.cmi))

@@ -1,0 +1,16 @@
+(* -*- tuareg -*- *)
+open! Stdune;;
+
+open Dune;;
+
+#install_printer Module.Name.pp;;
+
+Module.Name.strip_alias_prefix (Module.Name.of_string "Foo__Bar")
+[%%expect{|
+- : Module.Name.t = Bar
+|}]
+
+Module.Name.strip_alias_prefix (Module.Name.of_string "Foo")
+[%%expect{|
+- : Module.Name.t = Foo
+|}]

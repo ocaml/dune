@@ -26,7 +26,7 @@ val add_vlib_modules : t option -> Module.Name_map.t -> Module.Name_map.t
 
 val impl_only : t option -> Module.t list
 
-val aliased_modules : t option -> Module.Name_map.t -> Module.Name_map.t
+val aliased_modules : t option -> Lib_modules.t -> Module.Name_map.t
 
 val find_module : t option -> Module.t -> Module.t option
 

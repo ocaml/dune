@@ -1,0 +1,13 @@
+(library
+ (name impl_intf_only)
+ (modules :standard \ run)
+ (implements vlib.intfonly))
+
+(executable
+ (name run)
+ (libraries impl_intf_only)
+ (modules run))
+
+(alias
+ (name default)
+ (action (run ./run.exe)))

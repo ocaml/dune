@@ -58,6 +58,22 @@ module Name = struct
       | OCaml, Impl -> ".ml"
     in
     String.lowercase n ^ ext
+
+  let strip_alias_prefix t =
+    let len = String.length t in
+    let rec loop t i =
+      if i <= 2 then
+        t
+      else if t.[i - 2] = '_' && t.[i - 1] = '_' then
+        String.sub t ~pos:i ~len:(len - i)
+      else
+        loop t (i - 1)
+    in
+    let name = loop t (len - 1) in
+    if Char.uppercase_ascii name.[0] = name.[0] then
+      name
+    else
+      die "Invalid module name: %S" name
 end
 
 module File = struct

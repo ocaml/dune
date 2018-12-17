@@ -1,0 +1,13 @@
+(library
+ (name impl_native_only)
+ (modules :standard \ run)
+ (implements vlib.nativeonly))
+
+(executable
+ (name run)
+ (libraries impl_native_only)
+ (modules run))
+
+(alias
+ (name default)
+ (action (run ./run.exe)))

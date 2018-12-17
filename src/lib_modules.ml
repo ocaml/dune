@@ -146,24 +146,7 @@ let make (lib : Dune_file.Library.t) ~dir (modules : Module.Name_map.t)
     make_wrapped ~transition ~modules ~virtual_modules ~dir ~main_module_name
       ~lib
 
-module Alias_module = struct
-  type t =
-    { main_module_name : Module.Name.t
-    ; alias_module : Module.t
-    }
-end
-
-let alias t =
-  match t.alias_module, t.main_module_name with
-  | None, None -> None
-  | None, Some _ -> None
-  | Some _, None -> assert false
-  | Some alias_module, Some main_module_name ->
-    Some
-      { Alias_module.
-        main_module_name
-      ; alias_module
-      }
+let wrapped t = Option.is_some t.alias_module
 
 let installable_modules t =
   let modules =
@@ -401,3 +384,8 @@ let decode ~implements ~dir =
     ; main_module_name
     }
   )
+
+let for_alias t =
+  match t.main_module_name with
+  | None -> t.modules
+  | Some m -> Module.Name.Map.remove t.modules m

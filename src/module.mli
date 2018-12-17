@@ -15,6 +15,9 @@ module Name : sig
 
   val uncapitalize : t -> string
 
+  (** Strip all parts that come after the __ *)
+  val strip_alias_prefix : t -> t
+
   val pp : Format.formatter -> t -> unit
   val pp_quote : Format.formatter -> t -> unit
 

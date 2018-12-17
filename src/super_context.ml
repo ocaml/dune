@@ -217,13 +217,13 @@ module Pkg_version = struct
     Build.vpath spec
 end
 
-let partial_expand sctx ~dep_kind ~targets_written_by_user ~map_exe
+let partial_expand sctx ~dir ~dep_kind ~targets_written_by_user ~map_exe
       ~expander t =
   let acc = Expander.Resolved_forms.empty () in
   let read_package = Pkg_version.read sctx in
   let expander =
-    Expander.with_record_deps expander  acc ~dep_kind ~targets_written_by_user
-      ~map_exe ~read_package in
+    Expander.with_record_deps expander acc ~dep_kind ~targets_written_by_user
+      ~map_exe ~read_package ~ocaml_flags:(Env.ocaml_flags sctx ~dir) in
   let partial = Action_unexpanded.partial_expand t ~expander ~map_exe in
   (partial, acc)
 
@@ -455,7 +455,7 @@ module Deps = struct
     let forms = Expander.Resolved_forms.empty () in
     let expander =
       Expander.with_record_no_ddeps expander forms
-        ~dep_kind:Optional ~map_exe:(fun x -> x)
+        ~dep_kind:Optional ~map_exe:(fun x -> x) ~ocaml_flags:Ocaml_flags.empty
     in
     let deps =
       List.map l ~f:(f t expander)
@@ -523,7 +523,7 @@ module Action = struct
            This will become an error in the future.";
     end;
     let t, forms =
-      partial_expand sctx ~expander ~dep_kind
+      partial_expand sctx ~dir ~expander ~dep_kind
         ~targets_written_by_user ~map_exe t
     in
     let { U.Infer.Outcome. deps; targets } =

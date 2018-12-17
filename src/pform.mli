@@ -26,6 +26,7 @@ module Macro : sig
     | Ocaml_config
     | Env
     | Link_flags
+    | Ocaml_flags
 end
 
 module Expansion : sig

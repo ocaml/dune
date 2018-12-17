@@ -84,6 +84,7 @@ val with_record_deps
   -> dep_kind:Lib_deps_info.Kind.t
   -> targets_written_by_user:targets
   -> map_exe:(Path.t -> Path.t)
+  -> ocaml_flags:Ocaml_flags.t
   -> t
 
 val with_record_no_ddeps
@@ -91,6 +92,7 @@ val with_record_no_ddeps
   -> Resolved_forms.t
   -> dep_kind:Lib_deps_info.Kind.t
   -> map_exe:(Path.t -> Path.t)
+  -> ocaml_flags:Ocaml_flags.t
   -> t
 
 val add_ddeps_and_bindings

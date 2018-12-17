@@ -202,7 +202,7 @@ type expansion_kind =
   | Static
 
 let expand_and_record acc ~map_exe ~dep_kind ~scope
-      ~expansion_kind ~dir ~pform t expansion =
+      ~expansion_kind ~dir ~pform ~ocaml_flags t expansion =
   let key = String_with_vars.Var.full_name pform in
   let loc = String_with_vars.Var.loc pform in
   let relative = Path.relative ~error_loc:loc in
@@ -347,9 +347,18 @@ let expand_and_record acc ~map_exe ~dep_kind ~scope
             "Package %S doesn't exist in the current project." s
         }
     end
+  | Macro (Ocaml_flags, mode) ->
+    begin match Mode.of_string mode with
+    | Some mode ->
+      add_ddep (Ocaml_flags.get ocaml_flags mode >>^ Value.L.strings)
+    | None ->
+      Resolved_forms.add_fail acc { fail = fun () ->
+        Errors.fail loc "Unrecognized mode %S." mode
+      }
+    end
 
 let expand_and_record_deps acc ~dir ~read_package ~dep_kind
-      ~targets_written_by_user ~map_exe ~expand_var
+      ~targets_written_by_user ~map_exe ~expand_var ~ocaml_flags
       t pform syntax_version =
   let res =
     expand_var t pform syntax_version
@@ -375,7 +384,8 @@ let expand_and_record_deps acc ~dir ~read_package ~dep_kind
           end
         | _ ->
           expand_and_record acc ~map_exe ~dep_kind ~scope:t.scope
-            ~expansion_kind:(Dynamic { read_package }) ~dir ~pform t expansion
+            ~expansion_kind:(Dynamic { read_package }) ~dir ~pform
+            ~ocaml_flags t expansion
     )
   in
   Option.iter res ~f:(fun v ->
@@ -384,7 +394,7 @@ let expand_and_record_deps acc ~dir ~read_package ~dep_kind
   );
   Option.map res ~f:Result.ok
 
-let expand_no_ddeps acc ~dir ~dep_kind ~map_exe ~expand_var
+let expand_no_ddeps acc ~dir ~dep_kind ~map_exe ~expand_var ~ocaml_flags
       t pform syntax_version =
   let res =
     expand_var t pform syntax_version
@@ -392,7 +402,7 @@ let expand_no_ddeps acc ~dir ~dep_kind ~map_exe ~expand_var
       | Ok s -> Some s
       | Error (expansion : Pform.Expansion.t) ->
         expand_and_record acc ~map_exe ~dep_kind ~scope:t.scope
-          ~expansion_kind:Static ~dir ~pform t expansion)
+          ~expansion_kind:Static ~dir ~pform ~ocaml_flags t expansion)
   in
   Option.iter res ~f:(fun v ->
     acc.sdeps <- Path.Set.union
@@ -401,23 +411,24 @@ let expand_no_ddeps acc ~dir ~dep_kind ~map_exe ~expand_var
   Option.map res ~f:Result.ok
 
 let with_record_deps t resolved_forms ~read_package ~dep_kind
-      ~targets_written_by_user ~map_exe =
+      ~targets_written_by_user ~map_exe ~ocaml_flags =
   let expand_var =
     expand_and_record_deps
       (* we keep the dir constant here to replicate the old behavior of: (chdir
          foo %{exe:bar}). This should lookup ./bar rather than ./foo/bar *)
       ~dir:t.dir
       resolved_forms ~read_package ~dep_kind
-      ~expand_var:t.expand_var ~targets_written_by_user ~map_exe in
+      ~expand_var:t.expand_var ~targets_written_by_user ~map_exe ~ocaml_flags in
   { t with expand_var }
 
 let with_record_no_ddeps t resolved_forms ~dep_kind
-      ~map_exe =
+      ~map_exe ~ocaml_flags =
   let expand_var =
     expand_no_ddeps
       (* we keep the dir constant here to replicate the old behavior of: (chdir
          foo %{exe:bar}). This should lookup ./bar rather than ./foo/bar *)
       ~dir:t.dir resolved_forms ~dep_kind ~expand_var:t.expand_var ~map_exe
+      ~ocaml_flags
   in
   { t with expand_var }
 

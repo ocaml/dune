@@ -148,7 +148,7 @@ let external_dep_graph sctx ~impl_cm_kind ~vlib_obj_dir ~impl_obj_dir ~modules =
     Dep_graph.make ~dir:impl_obj_dir
       ~per_module:(Module.Name.Map.map modules ~f:(fun m ->
         if (ml_kind = Intf && not (Module.has_intf m))
-        || (ml_kind = Impl) && not (Module.has_impl m)
+        || (ml_kind = Impl && not (Module.has_impl m))
         then
           (m, Build.return [])
         else

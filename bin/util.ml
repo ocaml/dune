@@ -1,6 +1,11 @@
 open! Stdune
-open Dune
-open Import
+
+module Context = Dune.Context
+module Workspace = Dune.Workspace
+module Dune_project = Dune.Dune_project
+
+let die = Dune.Import.die
+let hint = Dune.Import.hint
 
 let check_path contexts =
   let contexts =

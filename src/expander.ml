@@ -12,6 +12,7 @@ type t =
   ; expand_var :
       t -> (Value.t list, Pform.Expansion.t)
              result option String_with_vars.expander
+  ; stdlib_dir : Path.t
   }
 
 type var_expander =
@@ -98,7 +99,7 @@ let make ~scope ~(context : Context.t) ~artifacts
   let expand_var ({ bindings; ocaml_config; env = _; scope
                   ; hidden_env = _
                   ; dir = _ ; artifacts = _; expand_var = _
-                  ; artifacts_host = _ } as t)
+                  ; artifacts_host = _; stdlib_dir = _ } as t)
         var syntax_version =
     Pform.Map.expand bindings var syntax_version
     |> Option.bind ~f:(function
@@ -113,6 +114,7 @@ let make ~scope ~(context : Context.t) ~artifacts
   let dir = context.build_dir in
   let bindings = Pform.Map.create ~context ~cxx_flags in
   let env = context.env in
+  let stdlib_dir = context.stdlib_dir in
   { dir
   ; hidden_env = Env.Var.Set.empty
   ; env
@@ -122,6 +124,7 @@ let make ~scope ~(context : Context.t) ~artifacts
   ; artifacts
   ; artifacts_host
   ; expand_var
+  ; stdlib_dir
   }
 
 let expand t ~mode ~template =
@@ -259,6 +262,40 @@ let expand_and_record acc ~map_exe ~dep_kind ~scope
           in
           add_ddep dep
         end
+    end
+  | Macro (Link_flags, s) ->
+    let err s = Errors.fail loc "invalid %%{link_flags:...} form: %s" s in
+    let mode, lib_names = match String.lsplit2 s ~on:':' with
+      | Some (mode, lib_names) ->
+        begin match Mode.of_string mode with
+        | Some mode -> mode, lib_names
+        | None -> err mode
+        end
+      | None -> err s
+    in
+    let lib_names = String.split lib_names ~on:',' in
+    let libs =
+      Lib.DB.find_many (Scope.libs t.scope) ~loc
+        (List.map ~f:(fun lib_name -> Lib_name.of_string_exn ~loc:(Some loc)
+                                        lib_name) lib_names)
+    in
+    begin match libs with
+    | Ok libs ->
+      List.iter ~f:(fun lib -> Resolved_forms.add_lib_dep acc (Lib.name lib) dep_kind) libs;
+      begin match Lib.closure libs ~linking:true with
+      | Ok libs ->
+        let c_include_flags =
+          Lib.L.c_include_paths libs ~stdlib_dir:t.stdlib_dir |>
+          Path.Set.to_list |>
+          List.map ~f:(fun path -> [Value.String "-I"; Value.Dir path]) |> List.flatten
+        in
+        let archive_files = Value.L.paths (Lib.L.archive_files libs ~mode) in
+        Some (c_include_flags @ archive_files)
+      | Error exn ->
+        Resolved_forms.add_fail acc { fail = fun () -> raise exn }
+      end
+    | Error exn ->
+      Resolved_forms.add_fail acc { fail = fun () -> raise exn }
     end
   | Macro (Lib_available, s) -> begin
       let lib = Lib_name.of_string_exn ~loc:(Some loc) s in

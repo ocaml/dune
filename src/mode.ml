@@ -3,6 +3,11 @@ open! Import
 
 type t = Byte | Native
 
+let of_string = function
+  | "byte" -> Some Byte
+  | "native" -> Some Native
+  | _ -> None
+
 let all = [Byte; Native]
 
 let decode =

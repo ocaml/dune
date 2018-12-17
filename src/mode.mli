@@ -2,6 +2,8 @@ open! Import
 
 type t = Byte | Native
 
+val of_string : string -> t option
+
 val decode : t Dune_lang.Decoder.t
 
 val all : t list

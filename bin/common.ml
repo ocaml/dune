@@ -1,5 +1,10 @@
 open Stdune
-open Dune
+
+module Config = Dune.Config
+module Colors = Dune.Colors
+module Clflags = Dune.Clflags
+module Package = Dune.Package
+
 module Term = Cmdliner.Term
 module Manpage = Cmdliner.Manpage
 module Let_syntax = Term
@@ -12,7 +17,7 @@ type t =
   ; workspace_file        : Arg.Path.t option
   ; root                  : string
   ; target_prefix         : string
-  ; only_packages         : Package.Name.Set.t option
+  ; only_packages         : Dune.Package.Name.Set.t option
   ; capture_outputs       : bool
   ; x                     : string option
   ; diff_command          : string option
@@ -23,7 +28,7 @@ type t =
   ; no_print_directory    : bool
   ; (* Original arguments for the external-lib-deps hint *)
     orig_args             : string list
-  ; config                : Config.t
+  ; config                : Dune.Config.t
   ; default_target        : string
   (* For build & runtest only *)
   ; watch : bool
@@ -54,7 +59,7 @@ let set_common_other c ~targets =
       ; c.orig_args
       ; targets
       ];
-  Option.iter ~f:Stats.enable c.stats_trace_file
+  Option.iter ~f:Dune.Stats.enable c.stats_trace_file
 
 let set_common c ~targets =
   set_dirs c;
@@ -92,10 +97,10 @@ let term =
     let arg =
       Arg.conv
         ((fun s ->
-           Result.map_error (Config.Concurrency.of_string s)
+           Result.map_error (Dune.Config.Concurrency.of_string s)
              ~f:(fun s -> `Msg s)),
          fun pp x ->
-           Format.pp_print_string pp (Config.Concurrency.to_string x))
+           Format.pp_print_string pp (Dune.Config.Concurrency.to_string x))
     in
     Arg.(value
          & opt (some arg) None
@@ -400,3 +405,8 @@ let term =
 let term =
   let%map t, orig_args = Term.with_used_args term in
   { t with orig_args }
+
+let context_arg ~doc =
+  Arg.(value
+       & opt string "default"
+       & info ["context"] ~docv:"CONTEXT" ~doc)

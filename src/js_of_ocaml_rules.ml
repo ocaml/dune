@@ -30,25 +30,33 @@ let runtime_file ~dir ~sctx file =
       ~lib:(Lib_name.of_string_exn ~loc:None "js_of_ocaml-compiler") ~file
   with
   | Error _ ->
-    begin match jsoo ~dir sctx with
-    | Ok path when Path.exists (Path.relative path file) ->
-      Arg_spec.Dep path
-    | _ ->
-      Arg_spec.Dyn (fun _ ->
+    let fail =
+      let fail () =
         Utils.library_not_found ~context:(SC.context sctx).name
           ~hint:install_jsoo_hint
-          "js_of_ocaml-compiler")
+          "js_of_ocaml-compiler"
+      in
+      Build.fail {fail}
+    in
+    begin match jsoo ~dir sctx with
+    | Ok path ->
+      let path = Path.relative (Path.parent_exn path) file in
+      Build.if_file_exists path ~then_:(Build.arr (fun _ -> path)) ~else_:fail
+    | _ ->
+      fail
     end
-  | Ok f -> Arg_spec.Dep f
+  | Ok f ->
+    Build.arr (fun _ -> f)
 
 let js_of_ocaml_rule sctx ~dir ~flags ~spec ~target =
   let jsoo = jsoo ~dir sctx in
-  let runtime = runtime_file ~dir ~sctx "runtime.js" in
+  (Build.arr (fun x -> x) &&& runtime_file ~dir ~sctx "runtime.js") >>>
   Build.run ~dir
     jsoo
-    [ Arg_spec.Dyn flags
+    [ Arg_spec.Dyn (fun (x, _) -> flags x)
     ; Arg_spec.A "-o"; Target target
-    ; Arg_spec.A "--no-runtime"; runtime
+    ; Arg_spec.A "--no-runtime"
+    ; Arg_spec.Dyn (fun (_, runtime) -> Dep runtime)
     ; spec
     ]
 

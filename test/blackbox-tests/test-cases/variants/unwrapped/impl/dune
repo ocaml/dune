@@ -1,3 +1,4 @@
 (library
  (name impl)
- (implements vlib))
+ (public_name impl_wrapped)
+ (implements vlib_wrapped))

@@ -1,0 +1,7 @@
+(executable
+ (name foo)
+ (libraries impl_wrapped))
+
+(alias
+ (name default)
+ (action (run ./foo.exe)))

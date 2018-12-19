@@ -207,6 +207,15 @@ Unwrapped virtual library
   Running from vlib_more
   running implementation
 
+Unwrapped virtual library
+  $ dune build @install --root unwrapped/vlib
+  Entering directory 'unwrapped/vlib'
+  $ env OCAMLPATH=unwrapped/vlib/_build/install/default/lib dune build --root unwrapped/impl --debug-dependency-path
+  Entering directory 'unwrapped/impl'
+           foo alias default
+  Running from vlib_more
+  running implementation
+
 Implementations may not provide a library interface module unless it is virtual.
 There should be an error message that clarifies this.
   $ dune build --root impl-lib-interface-module @all

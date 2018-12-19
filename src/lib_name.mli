@@ -17,7 +17,7 @@ module Local : sig
 
   val encode : t Dune_lang.Encoder.t
   val decode_loc : (Loc.t * result) Dune_lang.Decoder.t
-  val validate : (Loc.t * result) -> wrapped:bool -> t
+  val validate : (Loc.t * result) -> wrapped:bool option -> t
 
   val to_sexp : t Sexp.Encoder.t
 

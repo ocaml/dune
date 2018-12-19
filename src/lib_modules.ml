@@ -7,6 +7,7 @@ type t =
   ; main_module_name : Module.Name.t option
   ; wrapped_compat   : Module.Name_map.t
   ; implements       : bool
+  ; wrapped          : Dune_file.Library.Wrapped.t
   }
 
 let virtual_modules t = t.virtual_modules
@@ -14,16 +15,18 @@ let alias_module t = t.alias_module
 let wrapped_compat t = t.wrapped_compat
 let modules t = t.modules
 let main_module_name t = t.main_module_name
+let wrapped t = t.wrapped
+let is_wrapped t = Dune_file.Library.Wrapped.to_bool (wrapped t)
 
 let make_unwrapped ~modules ~virtual_modules ~main_module_name =
-  assert (Module.Name.Map.is_empty virtual_modules);
   assert (main_module_name = None);
   { modules
   ; alias_module = None
   ; main_module_name = None
   ; wrapped_compat = Module.Name.Map.empty
-  ; virtual_modules = Module.Name.Map.empty
+  ; virtual_modules
   ; implements = false
+  ; wrapped = Simple false
   }
 
 let make_alias_module ~dir ~implements ~lib_name ~stdlib
@@ -126,12 +129,14 @@ let make_wrapped ~(lib : Dune_file.Library.t) ~dir ~transition ~modules
   ; wrapped_compat
   ; virtual_modules
   ; implements = Dune_file.Library.is_impl lib
+  ; wrapped = Simple true
   }
 
 
 let make (lib : Dune_file.Library.t) ~dir (modules : Module.Name_map.t)
-      ~virtual_modules ~main_module_name =
-  match lib.wrapped, main_module_name with
+      ~virtual_modules ~main_module_name
+      ~(wrapped : Dune_file.Library.Wrapped.t) =
+  match wrapped, main_module_name with
   | Simple false, _ ->
     make_unwrapped ~modules ~virtual_modules ~main_module_name
   | (Yes_with_transition _ | Simple true), None ->
@@ -146,7 +151,7 @@ let make (lib : Dune_file.Library.t) ~dir (modules : Module.Name_map.t)
     make_wrapped ~transition ~modules ~virtual_modules ~dir ~main_module_name
       ~lib
 
-let wrapped t = Option.is_some t.alias_module
+let needs_alias_module t = Option.is_some t.alias_module
 
 let installable_modules t =
   let modules =
@@ -198,143 +203,6 @@ let have_artifacts t =
   | None -> base
   | Some alias_module -> Module.Name_map.add base alias_module
 
-module Virtual = struct
-  module M = struct
-    module Kind = struct
-      type t =
-        | Intf_only
-        | Virtual
-        | Private
-        | Public
-
-      let encode =
-        let open Dune_lang.Encoder in
-        function
-        | Intf_only -> string "intf_only"
-        | Virtual -> string "virtual"
-        | Private -> string "private"
-        | Public -> string "public"
-
-      let decode =
-        let open Stanza.Decoder in
-        enum
-          [ "intf_only", Intf_only
-          ; "virtual", Virtual
-          ; "private", Private
-          ; "public", Public
-          ]
-
-      let of_module ~virtual_modules m =
-        match Module.Name.Map.mem virtual_modules (Module.name m)
-            , Module.is_private m
-            , Module.has_impl m with
-        | true, false, false -> Some Virtual
-        | false, false, true -> Some Public
-        | false, false, false -> Some Intf_only
-        | false, true, true -> Some Private
-        | false, true, false -> None (* we don't need these modules *)
-        | true, true, _ (* no private virtual modules*)
-        | true, false, true (* virtual modules don't have impls *)
-          -> assert false
-
-      let has_impl = function
-        | Private
-        | Public -> true
-        | Intf_only
-        | Virtual -> false
-
-      let has_intf = function
-        | Private -> false
-        | Public
-        | Intf_only
-        | Virtual -> true
-
-      let visibility = function
-        | Private -> Module.Visibility.Private
-        | Virtual
-        | Intf_only
-        | Public -> Module.Visibility.Public
-
-      let is_virtual = function
-        | Virtual -> true
-        | _ -> false
-    end
-    type t =
-      { name : Module.Name.t
-      ; kind : Kind.t
-      }
-
-    let encode { name ; kind } =
-      let open Dune_lang.Encoder in
-      list (fun x -> x) (
-        record_fields
-          [ field "name" Module.Name.encode name
-          ; field "kind" Kind.encode kind
-          ])
-
-    let decode =
-      let open Stanza.Decoder in
-      enter @@ record (
-        let%map name = field "name" Module.Name.decode
-        and kind = field "kind" Kind.decode
-        in
-        { name
-        ; kind
-        }
-      )
-  end
-
-  let encode t =
-    Module.Name.Map.values t.modules
-    |> List.filter_map ~f:(fun m ->
-      M.Kind.of_module ~virtual_modules:t.virtual_modules m
-      |> Option.map ~f:(fun kind ->
-        let name = Module.name m in
-        { M. name ; kind }
-        |> M.encode))
-
-  let decode ~main_module_name ~dir =
-    let file ext m =
-      Module.File.make Module.Syntax.OCaml
-        (Path.L.relative dir [Module.Name.to_string m; ext])
-    in
-    let impl = file ".ml" in
-    let intf = file ".mli" in
-    let open Stanza.Decoder in
-    repeat (located M.decode) >>| fun ms ->
-    let modules =
-      Module.Name.Map.of_list_map ms
-        ~f:(fun (loc, { M. kind ; name }) ->
-          let intf = if M.Kind.has_intf kind then Some (intf name) else None in
-          let impl = if M.Kind.has_impl kind then Some (impl name) else None in
-          let visibility = M.Kind.visibility kind in
-          let module_ = Module.make name ~visibility ?intf ?impl in
-          (name, (loc, module_)))
-      |> (function
-        | Result.Ok m -> m
-        | Error (name, (_, _), (loc, _)) ->
-          Errors.fail loc "module named %a is listed twice" Module.Name.pp name)
-      |> Module.Name.Map.map ~f:snd
-    in
-    let virtual_modules =
-      Module.Name.Map.filter modules ~f:(fun m ->
-        List.exists ~f:(fun (_loc, (m' : M.t)) ->
-          Module.name m = m'.name && M.Kind.is_virtual m'.kind) ms
-      ) in
-    let alias_module =
-      let lib_name = Module.Name.to_local_lib_name main_module_name in
-      make_alias_module ~dir ~main_module_name ~modules
-        ~stdlib:false ~implements:false ~lib_name
-    in
-    { modules
-    ; virtual_modules
-    ; alias_module
-    ; main_module_name = Some main_module_name
-    ; wrapped_compat = Module.Name.Map.empty
-    ; implements = false
-    }
-end
-
 let encode
       { modules
       ; virtual_modules
@@ -342,6 +210,7 @@ let encode
       ; main_module_name
       ; wrapped_compat = _
       ; implements = _
+      ; wrapped
       } =
   let open Dune_lang.Encoder in
   record_fields
@@ -354,6 +223,7 @@ let encode
         (Module.Name.Map.values modules)
     ; field_l "virtual_modules" Module.Name.encode
         (Module.Name.Map.keys virtual_modules)
+    ; field "wrapped" Dune_file.Library.Wrapped.encode wrapped
     ]
 
 let decode ~implements ~dir =
@@ -365,6 +235,7 @@ let decode ~implements ~dir =
       field ~default:[] "modules" (list (enter (Module.decode ~dir)))
     and virtual_modules =
       field ~default:[] "virtual_modules" (list Module.Name.decode)
+    and wrapped = field "wrapped" Dune_file.Library.Wrapped.decode
     in
     let modules =
       modules
@@ -382,6 +253,7 @@ let decode ~implements ~dir =
     ; implements
     ; wrapped_compat = Module.Name.Map.empty
     ; main_module_name
+    ; wrapped
     }
   )
 

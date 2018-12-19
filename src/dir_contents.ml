@@ -179,9 +179,15 @@ let build_modules_map (d : _ Dir_with_dune.t) ~modules =
             |> Result.bind ~f:Lib.main_module_name
             |> Result.ok_exn
         in
+        let wrapped =
+          match lib.wrapped, main_module_name with
+          | This w, _ -> w
+          | From _, Some _ -> Simple true
+          | From _, None -> Simple false
+        in
         Left ( lib
              , Lib_modules.make lib ~dir:d.ctx_dir modules ~virtual_modules
-                 ~main_module_name
+                 ~main_module_name ~wrapped
              )
       | Executables exes
       | Tests { exes; _} ->

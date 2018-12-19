@@ -129,12 +129,13 @@ module Gen (P : Install_rules.Params) = struct
 
   let build_wrapped_compat_modules (lib : Library.t)
         cctx
+        ~wrapped
         ~js_of_ocaml
         ~dynlink
         ~modules
         ~wrapped_compat =
     let transition_message =
-      match lib.wrapped with
+      match (wrapped : Library.Wrapped.t) with
       | Simple _ -> "" (* will never be accessed anyway *)
       | Yes_with_transition r -> r
     in
@@ -484,9 +485,11 @@ module Gen (P : Install_rules.Params) = struct
     in
     let js_of_ocaml = lib.buildable.js_of_ocaml in
 
+    let wrapped = Lib_modules.wrapped lib_modules in
+
     let wrapped_compat = Lib_modules.wrapped_compat lib_modules in
     build_wrapped_compat_modules lib cctx ~dynlink ~js_of_ocaml
-      ~modules ~wrapped_compat;
+      ~modules ~wrapped_compat ~wrapped;
 
     let (vlib_dep_graphs, dep_graphs) =
       let dep_graphs = Ocamldep.rules cctx in
@@ -502,7 +505,8 @@ module Gen (P : Install_rules.Params) = struct
 
     Module_compilation.build_modules cctx ~js_of_ocaml ~dynlink ~dep_graphs;
 
-    if Option.is_none lib.stdlib && Lib_modules.wrapped lib_modules then
+    if Option.is_none lib.stdlib
+    && Lib_modules.needs_alias_module lib_modules then
       build_alias_module ~dir ~lib_modules ~cctx ~dynlink ~js_of_ocaml;
 
     let expander = Super_context.expander sctx ~dir in

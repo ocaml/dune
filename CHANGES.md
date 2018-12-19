@@ -50,6 +50,9 @@ unreleased
 
 - Fix handling of Control+C in watch mode (#1678, fixes #1671, @diml)
 
+- Look for jsoo runtime in the same dir as the `js_of_ocaml` binary
+  when the ocamlfind package is not available (#1467, @nobj)
+
 1.6.2 (05/12/2018)
 ------------------
 

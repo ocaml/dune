@@ -200,6 +200,15 @@ virtual lib
   impl's own Priv.run
   implementation of foo
 
+Unwrapped virtual library
+  $ dune build --root unwrapped
+  Entering directory 'unwrapped'
+  File "vlib/dune", line 3, characters 10-15:
+  3 |  (wrapped false)
+                ^^^^^
+  Error: A virtual library must be wrapped
+  [1]
+
 Implementations may not provide a library interface module unless it is virtual.
 There should be an error message that clarifies this.
   $ dune build --root impl-lib-interface-module @all

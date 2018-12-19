@@ -24,7 +24,7 @@ val add_rules
   : Super_context.t
   -> dir:Path.t
   -> more_src_dirs:Path.t list
-  -> scope:Scope.t
+  -> expander:Expander.t
   -> dir_kind:Dune_lang.Syntax.t
   -> t
   -> unit

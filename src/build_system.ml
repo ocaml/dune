@@ -787,17 +787,21 @@ and start_rule t _rule =
   t.hook Rule_started
 
 and run_rule  t rule action deps =
-  let {
-    Internal_rule.
-    dir;
-    targets;
-    env;
-    context;
-    mode;
-    sandbox;
-    locks;
-    _
-  } = rule in
+  let { Internal_rule.
+        dir
+      ; targets
+      ; env
+      ; context
+      ; mode
+      ; sandbox
+      ; locks
+      ; id = _
+      ; static_deps = _
+      ; build = _
+      ; loc = _
+      ; transitive_rev_deps = _
+      ; rev_deps = _
+      } = rule in
   make_local_dir t dir;
   let targets_as_list  = Path.Set.to_list targets  in
   let head_target = List.hd targets_as_list in
@@ -878,7 +882,7 @@ and run_rule  t rule action deps =
       Path.Set.iter targets ~f:(fun path ->
         let in_source_tree = Option.value_exn (Path.drop_build_context path) in
         if not (Path.exists in_source_tree) ||
-            (Utils.Cached_digest.file path <>
+           (Utils.Cached_digest.file path <>
             Utils.Cached_digest.file in_source_tree) then begin
           if mode = Promote_but_delete_on_clean then
             Promoted_to_delete.add in_source_tree;

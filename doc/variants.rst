@@ -85,10 +85,6 @@ Some of these are temporary.
 * It is not possible to link more than one implementation for the same
   virtual library in one executable.
 
-* It is not possible to define virtual libraries and implementations in the
-  ``(wrapped false)`` mode. It is possible to lift this restriction, but there
-  are no plans to do so. Everyone is encouraged to migrate to ``(wrapped true)``.
-
 * It is not possible for implementations to introduce new public modules. That
   is, modules that aren't a part of the virtual library's cmi. Consequently, a
   module in an implementation either implements a virtual module or is private.

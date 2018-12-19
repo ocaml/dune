@@ -200,11 +200,11 @@ let foreign_objects t = t.info.foreign_objects
 let main_module_name t =
   match t.info.main_module_name with
   | This mmn -> Ok mmn
-  | Inherited_from _ ->
+  | From _ ->
     Option.value_exn t.implements >>| fun vlib ->
     match vlib.info.main_module_name with
     | This x -> x
-    | Inherited_from _ -> assert false
+    | From _ -> assert false
 
 let package t =
   match t.info.status with

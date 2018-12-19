@@ -165,6 +165,12 @@ module Mode_conf : sig
 end
 
 module Library : sig
+  module Inherited : sig
+    type 'a t =
+      | This of 'a
+      | From of (Loc.t * Lib_name.t)
+  end
+
   module Wrapped : sig
     type t =
       | Simple of bool
@@ -232,10 +238,9 @@ module Library : sig
   val is_impl : t -> bool
 
   module Main_module_name : sig
-    type t =
-      | This of Module.Name.t option
-      | Inherited_from of (Loc.t * Lib_name.t)
+    type t = Module.Name.t option Inherited.t
   end
+
   val main_module_name : t -> Main_module_name.t
 
   (** Returns [true] is a special module, i.e. one whose compilation

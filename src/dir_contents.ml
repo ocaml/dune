@@ -173,7 +173,7 @@ let build_modules_map (d : _ Dir_with_dune.t) ~modules =
         let main_module_name =
           match Library.main_module_name lib with
           | This mmn -> mmn
-          | Inherited_from _ ->
+          | From _ ->
             let name = (fst lib.name, Library.best_name lib) in
             Lib.DB.resolve (Scope.libs scope) name
             |> Result.bind ~f:Lib.main_module_name

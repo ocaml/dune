@@ -737,6 +737,12 @@ module Mode_conf = struct
 end
 
 module Library = struct
+  module Inherited = struct
+    type 'a t =
+      | This of 'a
+      | From of (Loc.t * Lib_name.t)
+  end
+
   module Wrapped = struct
     type t =
       | Simple of bool
@@ -994,14 +1000,12 @@ module Library = struct
   let is_impl t = Option.is_some t.implements
 
   module Main_module_name = struct
-    type t =
-      | This of Module.Name.t option
-      | Inherited_from of (Loc.t * Lib_name.t)
+    type t = Module.Name.t option Inherited.t
   end
 
   let main_module_name t : Main_module_name.t =
     match t.implements, Wrapped.to_bool t.wrapped with
-    | Some x, true -> Inherited_from x
+    | Some x, true -> From x
     | Some _, false -> assert false
     | None, false -> This None
     | None, true -> This (Some (Module.Name.of_local_lib_name (snd t.name)))

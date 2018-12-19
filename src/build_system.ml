@@ -74,26 +74,32 @@ module Internal_rule = struct
     module Top_closure = Top_closure.Make(Set)(Monad.Id)
   end
 
-  type t =
-    { id               : Id.t
-    ; static_deps      : Static_deps.t Fiber.Once.t
-    ; targets          : Path.Set.t
-    ; context          : Context.t option
-    ; build            : (unit, Action.t) Build.t
-    ; mode             : Dune_file.Rule.Mode.t
-    ; loc              : Loc.t option
-    ; dir              : Path.t
-    ; env              : Env.t option
-    ; sandbox          : bool
-    ; locks            : Path.t list
-    ; (* Reverse dependencies discovered so far, labelled by the
-         requested target *)
-      mutable rev_deps : (Path.t * t) list
-    ; (* Transitive reverse dependencies discovered so far. *)
-      mutable transitive_rev_deps : Id.Set.t
-    }
+  module T = struct
+    type t =
+      { id               : Id.t
+      ; static_deps      : Static_deps.t Fiber.Once.t
+      ; targets          : Path.Set.t
+      ; context          : Context.t option
+      ; build            : (unit, Action.t) Build.t
+      ; mode             : Dune_file.Rule.Mode.t
+      ; loc              : Loc.t option
+      ; dir              : Path.t
+      ; env              : Env.t option
+      ; sandbox          : bool
+      ; locks            : Path.t list
+      ; (* Reverse dependencies discovered so far, labelled by the
+          requested target *)
+        mutable rev_deps : (Path.t * t) list
+      ; (* Transitive reverse dependencies discovered so far. *)
+        mutable transitive_rev_deps : Id.Set.t
+      }
 
-  let compare a b = Id.compare a.id b.id
+    let compare a b = Id.compare a.id b.id
+  end
+  include T
+
+  module Set = Set.Make(T)
+
   let equal a b = Id.equal a.id b.id
   let hash t = Id.hash t.id
 
@@ -1395,8 +1401,6 @@ let create ~contexts ~file_tree ~hook =
        ~doc:"Build a file.");
   t
 
-module Ir_set = Set.Make(Internal_rule)
-
 let rules_for_files t paths =
   Path.Set.fold paths ~init:[] ~f:(fun path acc ->
     if Path.is_in_build_dir path then
@@ -1404,8 +1408,8 @@ let rules_for_files t paths =
     match Path.Table.find t.files path with
     | None -> acc
     | Some (File_spec.T { rule; _ }) -> rule :: acc)
-  |> Ir_set.of_list
-  |> Ir_set.to_list
+  |> Internal_rule.Set.of_list
+  |> Internal_rule.Set.to_list
 
 let rules_for_targets t targets =
   Internal_rule.Id.Top_closure_f.top_closure

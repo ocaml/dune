@@ -71,6 +71,8 @@ module External_env = Env
 
 module Env : sig
   val ocaml_flags : t -> dir:Path.t -> Ocaml_flags.t
+  val c_flags : t -> dir:Path.t -> (unit, string list) Build.t
+  val cxx_flags : t -> dir:Path.t -> (unit, string list) Build.t
   val external_ : t -> dir:Path.t -> External_env.t
   val artifacts_host : t -> dir:Path.t -> Artifacts.t
   val expander : t -> dir:Path.t -> Expander.t
@@ -150,6 +152,14 @@ end = struct
 
   let ocaml_flags t ~dir =
     Env_node.ocaml_flags (get t ~dir)
+      ~profile:(profile t) ~expander:(expander t ~dir)
+
+  let c_flags t ~dir =
+    Env_node.c_flags (get t ~dir)
+      ~profile:(profile t) ~expander:(expander t ~dir)
+
+  let cxx_flags t ~dir =
+    Env_node.cxx_flags (get t ~dir)
       ~profile:(profile t) ~expander:(expander t ~dir)
 end
 
@@ -236,6 +246,35 @@ let ocaml_flags t ~dir (x : Buildable.t) =
     ~ocamlopt_flags:x.ocamlopt_flags
     ~default:(Env.ocaml_flags t ~dir)
     ~eval:(Expander.expand_and_eval_set expander)
+
+let c_flags t ~dir ~(lib : Library.t) ccg =
+  let expander = Env.expander t ~dir in
+  let eval = Expander.expand_and_eval_set expander in
+  let flags = lib.c_flags in
+  let default = Env.c_flags t ~dir in
+  Build.memoize "c flags"
+    begin
+    if Ordered_set_lang.Unexpanded.has_special_forms flags then
+      let c = eval flags ~standard:default in
+      let open Build.O in (c >>^ fun l -> l @ ccg)
+    else
+      eval flags ~standard:(Build.return ccg)
+  end
+
+
+let cxx_flags_gather t ~dir ~(lib : Library.t) ccg =
+  let expander = Env.expander t ~dir in
+  let eval = Expander.expand_and_eval_set expander in
+  let flags = lib.cxx_flags in
+  let default = Env.cxx_flags t ~dir in
+  Build.memoize "c flags"
+    begin
+    if Ordered_set_lang.Unexpanded.has_special_forms flags then
+      let c = eval flags ~standard:default in
+      let open Build.O in (c >>^ fun l -> l @ ccg)
+    else
+      eval flags ~standard:(Build.return ccg)
+  end
 
 let local_binaries t ~dir = Env.local_binaries t ~dir
 

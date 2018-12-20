@@ -53,6 +53,20 @@ val ocaml_flags
   -> Buildable.t
   -> Ocaml_flags.t
 
+val c_flags
+  :  t
+  -> dir:Path.t
+  -> lib:Library.t
+  -> string list
+  -> (unit, string list) Build.t
+
+val cxx_flags_gather
+  :  t
+  -> dir:Path.t
+  -> lib:Library.t
+  -> string list
+  -> (unit, string list) Build.t
+
 (** Binaries that are symlinked in the associated .bin directory of [dir]. This
     associated directory is [Path.relative dir ".bin"] *)
 val local_binaries : t -> dir:Path.t -> string File_bindings.t

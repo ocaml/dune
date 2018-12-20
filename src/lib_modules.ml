@@ -7,7 +7,7 @@ type t =
   ; main_module_name : Module.Name.t option
   ; wrapped_compat   : Module.Name_map.t
   ; implements       : bool
-  ; wrapped          : Dune_file.Library.Wrapped.t
+  ; wrapped          : Wrapped.t
   }
 
 let virtual_modules t = t.virtual_modules
@@ -16,7 +16,7 @@ let wrapped_compat t = t.wrapped_compat
 let modules t = t.modules
 let main_module_name t = t.main_module_name
 let wrapped t = t.wrapped
-let is_wrapped t = Dune_file.Library.Wrapped.to_bool (wrapped t)
+let is_wrapped t = Wrapped.to_bool (wrapped t)
 
 let make_unwrapped ~modules ~virtual_modules ~main_module_name =
   assert (main_module_name = None);
@@ -135,7 +135,7 @@ let make_wrapped ~(lib : Dune_file.Library.t) ~dir ~transition ~modules
 
 let make (lib : Dune_file.Library.t) ~dir (modules : Module.Name_map.t)
       ~virtual_modules ~main_module_name
-      ~(wrapped : Dune_file.Library.Wrapped.t) =
+      ~(wrapped : Wrapped.t) =
   match wrapped, main_module_name with
   | Simple false, _ ->
     make_unwrapped ~modules ~virtual_modules ~main_module_name
@@ -223,7 +223,7 @@ let encode
         (Module.Name.Map.values modules)
     ; field_l "virtual_modules" Module.Name.encode
         (Module.Name.Map.keys virtual_modules)
-    ; field "wrapped" Dune_file.Library.Wrapped.encode wrapped
+    ; field "wrapped" Wrapped.encode wrapped
     ]
 
 let decode ~implements ~dir =
@@ -235,7 +235,7 @@ let decode ~implements ~dir =
       field ~default:[] "modules" (list (enter (Module.decode ~dir)))
     and virtual_modules =
       field ~default:[] "virtual_modules" (list Module.Name.decode)
-    and wrapped = field "wrapped" Dune_file.Library.Wrapped.decode
+    and wrapped = field "wrapped" Wrapped.decode
     in
     let modules =
       modules

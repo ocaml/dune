@@ -28,7 +28,7 @@ val make
   -> Module.Name_map.t
   -> virtual_modules:Module.Name_map.t
   -> main_module_name:Module.Name.t option
-  -> wrapped:Dune_file.Library.Wrapped.t
+  -> wrapped:Wrapped.t
   -> t
 
 val set_modules : t -> Module.Name_map.t -> t
@@ -45,6 +45,6 @@ val decode : implements:bool -> dir:Path.t -> t Dune_lang.Decoder.t
 
 val is_wrapped : t -> bool
 
-val wrapped : t -> Dune_file.Library.Wrapped.t
+val wrapped : t -> Wrapped.t
 
 val needs_alias_module : t -> bool

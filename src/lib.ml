@@ -206,6 +206,17 @@ let main_module_name t =
     | This x -> x
     | From _ -> assert false
 
+let wrapped t =
+  match t.info.wrapped with
+  | None -> Ok None
+  | Some (This wrapped) -> Ok (Some wrapped)
+  | Some (From _) ->
+    Option.value_exn t.implements >>| fun vlib ->
+    match vlib.info.wrapped with
+    | Some (From _) (* can't inherit this value in virtual libs *)
+    | None -> assert false (* will always be specified in dune package *)
+    | Some (This x) -> Some x
+
 let package t =
   match t.info.status with
   | Installed -> Some (Lib_name.package_name t.name)

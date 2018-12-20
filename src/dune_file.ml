@@ -743,49 +743,6 @@ module Library = struct
       | From of (Loc.t * Lib_name.t)
   end
 
-  module Wrapped = struct
-    type t =
-      | Simple of bool
-      | Yes_with_transition of string
-
-    let decode =
-      sum
-        [ "true", return (Simple true)
-        ; "false", return (Simple false)
-        ; "transition",
-          Syntax.since Stanza.syntax (1, 2) >>= fun () ->
-          string >>| fun x -> Yes_with_transition x
-        ]
-
-    let encode =
-      let open Dune_lang.Encoder in
-      function
-      | Simple b -> bool b
-      | Yes_with_transition m -> pair string string ("transition", m)
-
-    let field = field_o "wrapped" (located decode)
-
-    let to_bool = function
-      | Simple b -> b
-      | Yes_with_transition _ -> true
-
-    let value = function
-      | Inherited.From _ -> None
-      | This s -> Some (to_bool s)
-
-    let default = Simple true
-
-    let make ~wrapped ~implements : t Inherited.t =
-      match wrapped, implements with
-      | None, None -> This default
-      | None, Some w -> From w
-      | Some (_loc, w), None -> This w
-      | Some (loc, _), Some _ ->
-        of_sexp_error loc
-          "Wrapped cannot be set for implementations. \
-           It is inherited from the virtual library."
-  end
-
   module Stdlib = struct
     type t =
       { modules_before_stdlib : Module.Name.Set.t
@@ -816,6 +773,28 @@ module Library = struct
          ; exit_module
          ; internal_modules
          })
+  end
+
+  module Wrapped = struct
+    include Wrapped
+
+    let value = function
+      | Inherited.From _ -> None
+      | This s -> Some (to_bool s)
+
+    let default = Simple true
+
+    let make ~wrapped ~implements : t Inherited.t =
+      match wrapped, implements with
+      | None, None -> This default
+      | None, Some w -> From w
+      | Some (_loc, w), None -> This w
+      | Some (loc, _), Some _ ->
+        of_sexp_error loc
+          "Wrapped cannot be set for implementations. \
+           It is inherited from the virtual library."
+
+    let field = field_o "wrapped" (located decode)
   end
 
   type t =

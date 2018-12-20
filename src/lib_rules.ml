@@ -135,7 +135,7 @@ module Gen (P : Install_rules.Params) = struct
         ~modules
         ~wrapped_compat =
     let transition_message =
-      match (wrapped : Library.Wrapped.t) with
+      match (wrapped : Wrapped.t) with
       | Simple _ -> "" (* will never be accessed anyway *)
       | Yes_with_transition r -> r
     in

@@ -172,6 +172,7 @@ module Lib = struct
   let modes t = t.modes
 
   let compare_name x y = Lib_name.compare x.name y.name
+  let wrapped t = Option.map t.modules ~f:Lib_modules.wrapped
 end
 
 type 'sub_system t =

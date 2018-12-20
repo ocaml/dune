@@ -171,16 +171,6 @@ module Library : sig
       | From of (Loc.t * Lib_name.t)
   end
 
-  module Wrapped : sig
-    type t =
-      | Simple of bool
-      | Yes_with_transition of string
-
-    include Dune_lang.Conv with type t := t
-
-    val to_bool : t -> bool
-  end
-
   module Stdlib : sig
     (** Extra information for the OCaml stdlib. Note: contrary to
         normal libraries, the library interface of the stdlib (the

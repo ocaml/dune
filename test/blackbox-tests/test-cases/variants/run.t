@@ -5,27 +5,33 @@ virtual libraries may not implement their virtual modules
   File "dune", line 3, characters 18-21:
   3 |  (virtual_modules foo bar))
                         ^^^
-  Error: Module Foo has an implementation, it cannot be listed here
+  Error: The following modules have an implementation, they cannot be said to be virtual:
+  - Foo
   [1]
 
   $ cd module-fields && ocaml test.ml
   impl: true. modules_without_implementation: true. virtual_modules: true. private_modules: true
-  File "dune", line 3, characters 33-34:
-  3 |  (modules_without_implementation m)
-                                       ^
-  Error: Module M has an implementation, it cannot be listed here
+  File "dune", line 4, characters 18-19:
+  4 |  (virtual_modules m)
+                        ^
+  Error: The following modules are declared as virtual and private:
+  - M
+  This is not possible.
   -------------------------
   impl: true. modules_without_implementation: true. virtual_modules: false. private_modules: true
   File "dune", line 3, characters 33-34:
   3 |  (modules_without_implementation m)
                                        ^
-  Error: Module M has an implementation, it cannot be listed here
+  Error: The following modules have an implementation, they cannot be said to be without interface:
+  - M
   -------------------------
   impl: true. modules_without_implementation: false. virtual_modules: true. private_modules: true
   File "dune", line 3, characters 18-19:
   3 |  (virtual_modules m)
                         ^
-  Error: Module M has an implementation, it cannot be listed here
+  Error: The following modules are declared as virtual and private:
+  - M
+  This is not possible.
   -------------------------
   impl: true. modules_without_implementation: false. virtual_modules: false. private_modules: true
   -------------------------
@@ -33,7 +39,7 @@ virtual libraries may not implement their virtual modules
   File "dune", line 4, characters 18-19:
   4 |  (virtual_modules m)
                         ^
-  Error: These modules appear in the virtual_libraries and modules_without_implementation fields: 
+  Error: The following modules are declared as virtual and private:
   - M
   This is not possible.
   -------------------------
@@ -43,7 +49,7 @@ virtual libraries may not implement their virtual modules
   File "dune", line 3, characters 18-19:
   3 |  (virtual_modules m)
                         ^
-  Error: The following modules are declared as virtual and private: 
+  Error: The following modules are declared as virtual and private:
   - M
   This is not possible.
   -------------------------
@@ -60,22 +66,26 @@ virtual libraries may not implement their virtual modules
   This will become an error in the future.
   -------------------------
   impl: true. modules_without_implementation: true. virtual_modules: true. private_modules: false
-  File "dune", line 3, characters 33-34:
-  3 |  (modules_without_implementation m)
-                                       ^
-  Error: Module M has an implementation, it cannot be listed here
+  File "dune", line 4, characters 18-19:
+  4 |  (virtual_modules m))
+                        ^
+  Error: These modules appear in the virtual_libraries and modules_without_implementation fields:
+  - M
+  This is not possible.
   -------------------------
   impl: true. modules_without_implementation: true. virtual_modules: false. private_modules: false
   File "dune", line 3, characters 33-34:
   3 |  (modules_without_implementation m))
                                        ^
-  Error: Module M has an implementation, it cannot be listed here
+  Error: The following modules have an implementation, they cannot be said to be without interface:
+  - M
   -------------------------
   impl: true. modules_without_implementation: false. virtual_modules: true. private_modules: false
   File "dune", line 3, characters 18-19:
   3 |  (virtual_modules m))
                         ^
-  Error: Module M has an implementation, it cannot be listed here
+  Error: The following modules have an implementation, they cannot be said to be virtual:
+  - M
   -------------------------
   impl: true. modules_without_implementation: false. virtual_modules: false. private_modules: false
   -------------------------
@@ -83,7 +93,7 @@ virtual libraries may not implement their virtual modules
   File "dune", line 4, characters 18-19:
   4 |  (virtual_modules m))
                         ^
-  Error: These modules appear in the virtual_libraries and modules_without_implementation fields: 
+  Error: These modules appear in the virtual_libraries and modules_without_implementation fields:
   - M
   This is not possible.
   -------------------------

@@ -329,6 +329,10 @@ Include variants and implementation information in dune-package
    (modules
     (alias_module (name Vlib) (obj_name vlib) (visibility public) (impl))
     (main_module_name Vlib)
-    (modules ((name Vmod) (obj_name vlib__Vmod) (visibility public) (intf)))
-    (virtual_modules Vmod)
+    (modules
+     ((name Vmod)
+      (obj_name vlib__Vmod)
+      (visibility public)
+      (kind virtual)
+      (intf)))
     (wrapped true)))

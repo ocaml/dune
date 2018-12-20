@@ -2,7 +2,6 @@ open Stdune
 
 type t =
   { modules          : Module.Name_map.t
-  ; virtual_modules  : Module.Name_map.t
   ; alias_module     : Module.t option
   ; main_module_name : Module.Name.t option
   ; wrapped_compat   : Module.Name_map.t
@@ -10,7 +9,7 @@ type t =
   ; wrapped          : Wrapped.t
   }
 
-let virtual_modules t = t.virtual_modules
+let virtual_modules t = Module.Name.Map.filter ~f:Module.is_virtual t.modules
 let alias_module t = t.alias_module
 let wrapped_compat t = t.wrapped_compat
 let modules t = t.modules
@@ -18,13 +17,12 @@ let main_module_name t = t.main_module_name
 let wrapped t = t.wrapped
 let is_wrapped t = Wrapped.to_bool (wrapped t)
 
-let make_unwrapped ~modules ~virtual_modules ~main_module_name =
+let make_unwrapped ~modules ~main_module_name =
   assert (main_module_name = None);
   { modules
   ; alias_module = None
   ; main_module_name = None
   ; wrapped_compat = Module.Name.Map.empty
-  ; virtual_modules
   ; implements = false
   ; wrapped = Simple false
   }
@@ -42,6 +40,7 @@ let make_alias_module ~(obj_dir:Obj_dir.t) ~implements ~lib_name ~stdlib
     Some
       (Module.make name
          ~visibility:Public
+         ~kind:Impl
          ~impl:(Module.File.make OCaml
                   (Path.relative dir (sprintf "%s.ml-gen" alias_prefix)))
          ~obj_name:alias_prefix
@@ -58,6 +57,7 @@ let make_alias_module ~(obj_dir:Obj_dir.t) ~implements ~lib_name ~stdlib
     Some
       (Module.make (Module.Name.add_suffix main_module_name "__")
          ~visibility:Public
+         ~kind:Impl
          ~impl:(Module.File.make OCaml
                   (Path.relative dir (sprintf "%s__.ml-gen" alias_prefix)))
          ~obj_name:(alias_prefix ^ "__")
@@ -66,6 +66,7 @@ let make_alias_module ~(obj_dir:Obj_dir.t) ~implements ~lib_name ~stdlib
     Some
       (Module.make main_module_name
          ~visibility:Public
+         ~kind:Impl
          ~impl:(Module.File.make OCaml
                   (Path.relative dir (alias_prefix ^ ".ml-gen")))
          ~obj_name:alias_prefix
@@ -110,7 +111,7 @@ let wrap_modules ~modules ~lib ~main_module_name =
       Module.with_wrapper m ~main_module_name:(prefix m))
 
 let make_wrapped ~(lib : Dune_file.Library.t) ~obj_dir ~wrapped ~modules
-      ~virtual_modules ~main_module_name =
+      ~main_module_name =
   let (modules, wrapped_compat) =
     match (wrapped : Wrapped.t) with
     | Simple false -> assert false
@@ -133,21 +134,19 @@ let make_wrapped ~(lib : Dune_file.Library.t) ~obj_dir ~wrapped ~modules
   ; alias_module
   ; main_module_name = Some main_module_name
   ; wrapped_compat
-  ; virtual_modules
   ; implements = Dune_file.Library.is_impl lib
   ; wrapped
   }
 
 let make (lib : Dune_file.Library.t) ~obj_dir (modules : Module.Name_map.t)
-      ~virtual_modules ~main_module_name
-      ~(wrapped : Wrapped.t) =
+      ~main_module_name ~(wrapped : Wrapped.t) =
   match wrapped, main_module_name with
   | Simple false, _ ->
-    make_unwrapped ~modules ~virtual_modules ~main_module_name
+    make_unwrapped ~modules ~main_module_name
   | (Yes_with_transition _ | Simple true), None ->
     assert false
   | wrapped, Some main_module_name ->
-    make_wrapped ~wrapped ~modules ~virtual_modules ~obj_dir ~main_module_name ~lib
+    make_wrapped ~wrapped ~modules ~obj_dir ~main_module_name ~lib
 
 let needs_alias_module t = Option.is_some t.alias_module
 
@@ -210,7 +209,6 @@ let have_artifacts t =
 
 let encode
       { modules
-      ; virtual_modules
       ; alias_module
       ; main_module_name
       ; wrapped_compat = _
@@ -226,8 +224,6 @@ let encode
     ; field_o "main_module_name" Module.Name.encode main_module_name
     ; field_l "modules" (fun x -> Dune_lang.List (Module.encode x))
         (Module.Name.Map.values modules)
-    ; field_l "virtual_modules" Module.Name.encode
-        (Module.Name.Map.keys virtual_modules)
     ; field "wrapped" Wrapped.encode wrapped
     ]
 
@@ -238,8 +234,6 @@ let decode ~implements ~dir =
     and main_module_name = field_o "main_module_name" Module.Name.decode
     and modules =
       field ~default:[] "modules" (list (enter (Module.decode ~dir)))
-    and virtual_modules =
-      field ~default:[] "virtual_modules" (list Module.Name.decode)
     and wrapped = field "wrapped" Wrapped.decode
     in
     let modules =
@@ -247,13 +241,7 @@ let decode ~implements ~dir =
       |> List.map ~f:(fun m -> (Module.name m, m))
       |> Module.Name.Map.of_list_exn
     in
-    let virtual_modules =
-      List.map virtual_modules ~f:(fun m ->
-        (m, Module.Name.Map.find_exn modules m))
-      |> Module.Name.Map.of_list_exn
-    in
     { modules
-    ; virtual_modules
     ; alias_module
     ; implements
     ; wrapped_compat = Module.Name.Map.empty

@@ -41,7 +41,7 @@ let libraries_link ~name ~loc ~mode cctx libs =
     SC.add_rule ~dir sctx (Build.write_file ml s);
     let impl = Module.File.make OCaml ml in
     let name = Module.Name.of_string basename in
-    let module_ = Module.make ~impl name ~visibility:Public ~obj_dir in
+    let module_ = Module.make ~impl name ~visibility:Public ~obj_dir ~kind:Impl in
     let cctx = Compilation_context.(
       create
         ~super_context:sctx

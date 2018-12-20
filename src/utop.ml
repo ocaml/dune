@@ -95,6 +95,7 @@ let setup sctx ~dir =
                ; syntax = Module.Syntax.OCaml
                }
          ~obj_name:exe_name
+         ~kind:Impl
          ~obj_dir)
   in
   let loc = Loc.in_dir dir in

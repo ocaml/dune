@@ -9,6 +9,8 @@ module Var = struct
     | Deps
     | Targets
     | Named_local
+    | Ocamlopt_flags
+    | Ocamlc_flags
 
   let to_sexp =
     let open Sexp.Encoder in
@@ -19,6 +21,8 @@ module Var = struct
     | Deps -> string "Deps"
     | Targets -> string "Targets"
     | Named_local -> string "Named_local"
+    | Ocamlopt_flags -> string "Ocamlopt_flags"
+    | Ocamlc_flags -> string "Ocamlc_flags"
 
   let pp_debug fmt t =
     Sexp.pp fmt (to_sexp t)
@@ -40,7 +44,6 @@ module Macro = struct
     | Ocaml_config
     | Env
     | Link_flags
-    | Ocaml_flags
 
   let to_sexp =
     let open Sexp.Encoder in
@@ -59,7 +62,6 @@ module Macro = struct
     | Ocaml_config -> string "Ocaml_config"
     | Env -> string "Env"
     | Link_flags -> string "Link_flags"
-    | Ocaml_flags -> string "Ocaml_flags"
 
   let pp_debug fmt t =
     Sexp.pp fmt (to_sexp t)
@@ -133,6 +135,8 @@ module Map = struct
       ; "@", renamed_in ~version:(1, 0) ~new_name:"targets"
       ; "^", renamed_in ~version:(1, 0) ~new_name:"deps"
       ; "SCOPE_ROOT", renamed_in ~version:(1, 0) ~new_name:"project_root"
+      ; "ocamlopt_flags", since ~version:(1, 7) Var.Ocamlopt_flags
+      ; "ocamlc_flags", since ~version:(1, 7) Var.Ocamlc_flags
       ]
 
   let macros =
@@ -158,7 +162,6 @@ module Map = struct
       ; "env", since ~version:(1, 4) Macro.Env
 
       ; "link_flags", macro Link_flags
-      ; "ocaml_flags", macro Ocaml_flags
       ]
 
   let create ~(context : Context.t) ~cxx_flags =

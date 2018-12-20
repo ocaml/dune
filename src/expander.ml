@@ -347,15 +347,10 @@ let expand_and_record acc ~map_exe ~dep_kind ~scope
             "Package %S doesn't exist in the current project." s
         }
     end
-  | Macro (Ocaml_flags, mode) ->
-    begin match Mode.of_string mode with
-    | Some mode ->
-      add_ddep (Ocaml_flags.get ocaml_flags mode >>^ Value.L.strings)
-    | None ->
-      Resolved_forms.add_fail acc { fail = fun () ->
-        Errors.fail loc "Unrecognized mode %S." mode
-      }
-    end
+  | Var Ocamlc_flags ->
+    add_ddep (Ocaml_flags.get ocaml_flags Mode.Byte >>^ Value.L.strings)
+  | Var Ocamlopt_flags ->
+    add_ddep (Ocaml_flags.get ocaml_flags Mode.Native >>^ Value.L.strings)
 
 let expand_and_record_deps acc ~dir ~read_package ~dep_kind
       ~targets_written_by_user ~map_exe ~expand_var ~ocaml_flags

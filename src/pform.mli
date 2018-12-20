@@ -8,6 +8,8 @@ module Var : sig
     | Deps
     | Targets
     | Named_local
+    | Ocamlopt_flags
+    | Ocamlc_flags
 end
 
 module Macro : sig
@@ -26,7 +28,6 @@ module Macro : sig
     | Ocaml_config
     | Env
     | Link_flags
-    | Ocaml_flags
 end
 
 module Expansion : sig

@@ -53,8 +53,7 @@ type t =
   ; kind             : Lib_kind.t
   ; status           : Status.t
   ; src_dir          : Path.t
-  ; obj_dir          : Path.t
-  ; private_obj_dir  : Path.t option
+  ; obj_dir          : Obj_dir.t
   ; version          : string option
   ; synopsis         : string option
   ; archives         : Path.t list Mode.Dict.t
@@ -85,7 +84,9 @@ let user_written_deps t =
 let of_library_stanza ~dir ~has_native ~ext_lib ~ext_obj
       (conf : Dune_file.Library.t) =
   let (_loc, lib_name) = conf.name in
-  let obj_dir = Utils.library_object_directory ~dir lib_name in
+  let obj_dir =
+    Obj_dir.make_local ~dir
+      ~has_private_modules:(conf.private_modules <> None) lib_name in
   let gen_archive_file ~dir ext =
     Path.relative dir (Lib_name.Local.to_string lib_name ^ ext) in
   let archive_file = gen_archive_file ~dir in
@@ -102,10 +103,6 @@ let of_library_stanza ~dir ~has_native ~ext_lib ~ext_obj
     | Some p -> Public p.package
   in
   let virtual_library = Dune_file.Library.is_virtual conf in
-  let private_obj_dir =
-    Option.map conf.private_modules ~f:(fun _ ->
-      Utils.library_private_obj_dir ~obj_dir)
-  in
   let (foreign_archives, foreign_objects) =
     let stubs =
       if Dune_file.Library.has_stubs conf then
@@ -120,7 +117,7 @@ let of_library_stanza ~dir ~has_native ~ext_lib ~ext_obj
          :: stubs
      }
     , List.map (conf.c_names @ conf.cxx_names) ~f:(fun (_, name) ->
-        Path.relative obj_dir (name ^ ext_obj))
+        Path.relative obj_dir.public_dir (name ^ ext_obj))
     )
   in
   let foreign_archives =
@@ -138,7 +135,7 @@ let of_library_stanza ~dir ~has_native ~ext_lib ~ext_obj
       }
     | _ -> foreign_archives
   in
-  let jsoo_archive = Some (gen_archive_file ~dir:obj_dir ".cma.js") in
+  let jsoo_archive = Some (gen_archive_file ~dir:obj_dir.public_dir ".cma.js") in
   let virtual_ = Option.map conf.virtual_modules ~f:(fun _ -> Virtual.Local) in
   let (archives, plugins) =
     if virtual_library then
@@ -177,7 +174,6 @@ let of_library_stanza ~dir ~has_native ~ext_lib ~ext_obj
   ; virtual_
   ; implements = conf.implements
   ; main_module_name
-  ; private_obj_dir
   ; modes
   ; wrapped = Some conf.wrapped
   }
@@ -195,13 +191,13 @@ let of_dune_lib dp =
     Lib.wrapped dp
     |> Option.map ~f:(fun w -> Dune_file.Library.Inherited.This w)
   in
+  let obj_dir = Obj_dir.make_external ~dir:src_dir in
   { loc = Lib.loc dp
   ; name = Lib.name dp
   ; kind = Lib.kind dp
-  ; private_obj_dir = None
   ; status = Installed
   ; src_dir
-  ; obj_dir = src_dir
+  ; obj_dir
   ; version = Lib.version dp
   ; synopsis = Lib.synopsis dp
   ; requires = Simple (Lib.requires dp)

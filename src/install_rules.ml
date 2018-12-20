@@ -218,8 +218,6 @@ module Gen(P : Params) = struct
     in
     let module_files =
       let if_ cond l = if cond then l else [] in
-      let (_loc, lib_name_local) = lib.name in
-      let obj_dir = Utils.library_object_directory ~dir lib_name_local in
       let { Mode.Dict.byte ; native } =
         Dune_file.Mode_conf.Set.eval lib.modes
           ~has_native:(Option.is_some ctx.ocamlopt)
@@ -228,14 +226,14 @@ module Gen(P : Params) = struct
       List.concat_map installable_modules ~f:(fun m ->
         List.concat
           [ if_ (Module.is_public m)
-              [ Module.cm_file_unsafe m ~obj_dir Cmi ]
+              [ Module.cm_file_unsafe m Cmi ]
           ; if_ (native && Module.has_impl m)
-              [ Module.cm_file_unsafe m ~obj_dir Cmx ]
+              [ Module.cm_file_unsafe m Cmx ]
           ; if_ (byte && Module.has_impl m && virtual_library)
-              [ Module.cm_file_unsafe m ~obj_dir Cmo ]
+              [ Module.cm_file_unsafe m Cmo ]
           ; if_ (native && Module.has_impl m && virtual_library)
-              [ Module.obj_file m ~obj_dir ~ext:ctx.ext_obj ]
-          ; List.filter_map Ml_kind.all ~f:(Module.cmt_file m ~obj_dir)
+              [ Module.obj_file m ~ext:ctx.ext_obj ]
+          ; List.filter_map Ml_kind.all ~f:(Module.cmt_file m)
           ])
     in
     let archives = Lib_archives.make ~ctx ~dir lib in

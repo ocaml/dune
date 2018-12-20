@@ -121,7 +121,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
     >>^ List.map ~f:(Module.odoc_file ~doc_dir)
     |> Build.dyn_paths
 
-  let compile_module (m : Module.t) ~obj_dir ~includes:(file_deps, iflags)
+  let compile_module (m : Module.t) ~includes:(file_deps, iflags)
         ~dep_graphs ~doc_dir ~pkg_or_lnu =
     let odoc_file = Module.odoc_file m ~doc_dir in
     add_rule
@@ -135,7 +135,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
          ; iflags
          ; As ["--pkg"; pkg_or_lnu]
          ; A "-o"; Target odoc_file
-         ; Dep (Module.cmti_file m ~obj_dir)
+         ; Dep (Module.cmti_file m)
          ]);
     (m, odoc_file)
 
@@ -206,11 +206,10 @@ module Gen (S : sig val sctx : SC.t end) = struct
        that a package contains only 1 library *)
     let pkg_or_lnu = pkg_or_lnu lib in
     let doc_dir = Paths.odocs (Lib lib) in
-    let obj_dir = Lib.obj_dir lib in
     let includes = (Dep.deps requires, odoc_include_flags requires) in
     let modules_and_odoc_files =
       List.map (Module.Name.Map.values modules) ~f:(
-        compile_module ~obj_dir ~includes ~dep_graphs
+        compile_module ~includes ~dep_graphs
           ~doc_dir ~pkg_or_lnu)
     in
     Dep.setup_deps (Lib lib) (List.map modules_and_odoc_files ~f:snd

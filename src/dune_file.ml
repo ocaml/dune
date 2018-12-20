@@ -986,6 +986,11 @@ module Library = struct
   let is_virtual t = Option.is_some t.virtual_modules
   let is_impl t = Option.is_some t.implements
 
+  let obj_dir ~dir t =
+    Obj_dir.make_local ~dir
+      ~has_private_modules:(t.private_modules <> None)
+      (snd t.name)
+
   module Main_module_name = struct
     type t = Module.Name.t option Inherited.t
   end

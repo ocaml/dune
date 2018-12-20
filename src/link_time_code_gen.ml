@@ -37,19 +37,18 @@ let libraries_link ~name ~loc ~mode cctx libs =
         (Fmt.ocaml_list Variant.pp) (Variant.Set.to_list preds)
     in
     let basename = Format.asprintf "%s_findlib_initl_%a" name Mode.pp mode in
-    let ml  = Path.relative obj_dir (basename ^ ".ml") in
+    let ml  = Path.relative obj_dir.public_dir (basename ^ ".ml") in
     SC.add_rule ~dir sctx (Build.write_file ml s);
     let impl = Module.File.make OCaml ml in
     let name = Module.Name.of_string basename in
-    let module_ = Module.make ~impl name ~visibility:Public in
+    let module_ = Module.make ~impl name ~visibility:Public ~obj_dir in
     let cctx = Compilation_context.(
       create
         ~super_context:sctx
         ~expander:(expander cctx)
         ~scope:(scope cctx)
-        ~dir:(dir cctx)
         ~dir_kind:(dir_kind cctx)
-        ~obj_dir:(obj_dir cctx)
+        ~obj_dir:(CC.obj_dir cctx)
         ~modules:(Module.Name.Map.singleton name module_)
         ~requires:(Lib.DB.find_many ~loc (SC.public_libs sctx)
                      [Lib_name.of_string_exn ~loc:(Some loc) "findlib"])
@@ -61,7 +60,7 @@ let libraries_link ~name ~loc ~mode cctx libs =
       ~dep_graphs:(Dep_graph.Ml_kind.dummy module_)
       cctx
       module_;
-    let lm = (of_libs before)@[Lib.Lib_and_module.Module (module_,obj_dir)]@(of_libs after) in
+    let lm = (of_libs before)@[Lib.Lib_and_module.Module module_]@(of_libs after) in
     Arg_spec.S [A "-linkall"; Lib.Lib_and_module.link_flags lm ~mode ~stdlib_dir]
   | None ->
     Lib.L.link_flags libs ~mode ~stdlib_dir

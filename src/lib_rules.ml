@@ -26,7 +26,7 @@ module Gen (P : Install_rules.Params) = struct
       in
       Option.value ~default:lib (String.drop_prefix ~prefix:"-l" lib))
 
-  let build_lib (lib : Library.t) ~expander ~flags ~dir ~obj_dir ~mode
+  let build_lib (lib : Library.t) ~expander ~flags ~dir ~mode
         ~top_sorted_modules ~modules =
     Option.iter (Context.compiler ctx mode) ~f:(fun compiler ->
       let target = Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext mode) in
@@ -47,7 +47,7 @@ module Gen (P : Install_rules.Params) = struct
           Fn.id
       in
       let artifacts ~ext modules =
-        List.map modules ~f:(Module.obj_file ~obj_dir ~ext)
+        List.map modules ~f:(Module.obj_file ~ext)
       in
       let obj_deps =
         Build.paths (artifacts modules ~ext:(Cm_kind.ext (Mode.cm_kind mode)))
@@ -331,9 +331,9 @@ module Gen (P : Install_rules.Params) = struct
       in
       SC.add_rule sctx build ~dir)
 
-  let setup_file_deps lib ~dir ~obj_dir ~modules =
+  let setup_file_deps lib ~dir ~modules =
     let add_cms ~cm_kind ~init = List.fold_left ~init ~f:(fun acc m ->
-      match Module.cm_file m ~obj_dir cm_kind with
+      match Module.cm_file m cm_kind with
       | None -> acc
       | Some fn -> Path.Set.add acc fn)
     in
@@ -367,8 +367,8 @@ module Gen (P : Install_rules.Params) = struct
             (* These files needs to be alongside stdlib.cma as the
                compiler implicitly adds this module. *)
             List.iter [".cmx"; ".cmo"; ctx.ext_obj] ~f:(fun ext ->
-              let src = Module.obj_file m ~obj_dir ~ext in
-              let dst = Module.obj_file m ~obj_dir:dir ~ext in
+              let src = Module.obj_file m ~ext in
+              let dst = Path.relative dir ((Module.obj_name m) ^ ext) in
               SC.add_rule sctx ~dir (Build.copy ~src ~dst));
             Module.Name.Map.remove modules name
         end
@@ -401,7 +401,7 @@ module Gen (P : Install_rules.Params) = struct
     (let modules = modules @ wrapped_compat in
      Mode.Dict.Set.to_list modes
      |> List.iter ~f:(fun mode ->
-       build_lib lib ~expander ~flags ~dir ~obj_dir ~mode ~top_sorted_modules
+       build_lib lib ~expander ~flags ~dir ~mode ~top_sorted_modules
          ~modules));
     (* Build *.cma.js *)
     if modes.byte then
@@ -410,7 +410,7 @@ module Gen (P : Install_rules.Params) = struct
           Library.archive lib ~dir
             ~ext:(Mode.compiled_lib_ext Mode.Byte) in
         let target =
-          Path.relative obj_dir (Path.basename src)
+          Path.relative obj_dir.public_dir (Path.basename src)
           |> Path.extend_basename ~suffix:".js" in
         Js_of_ocaml_rules.build_cm cctx ~js_of_ocaml ~src ~target);
     if Dynlink_supported.By_the_os.get ctx.natdynlink_supported
@@ -419,8 +419,6 @@ module Gen (P : Install_rules.Params) = struct
 
   let library_rules (lib : Library.t) ~dir_contents ~dir ~expander ~scope
         ~compile_info ~dir_kind =
-    let obj_dir = Utils.library_object_directory ~dir (snd lib.name) in
-    let private_obj_dir = Utils.library_private_obj_dir ~obj_dir in
     let requires = Lib.Compile.requires compile_info in
     let dep_kind =
       if lib.optional then Lib_deps_info.Kind.Optional else Required
@@ -429,9 +427,8 @@ module Gen (P : Install_rules.Params) = struct
     let lib_modules =
       Dir_contents.modules_of_library dir_contents ~name:(Library.best_name lib)
     in
-    Check_rules.add_obj_dir sctx ~dir ~obj_dir;
-    if Lib_modules.has_private_modules lib_modules then
-      Check_rules.add_obj_dir sctx ~dir ~obj_dir:private_obj_dir;
+    let obj_dir = Library.obj_dir ~dir lib in
+    Check_rules.add_obj_dir sctx ~obj_dir;
     let source_modules = Lib_modules.modules lib_modules in
     let vimpl =
       Virtual_rules.impl sctx ~lib ~dir ~scope ~modules:source_modules in
@@ -463,10 +460,8 @@ module Gen (P : Install_rules.Params) = struct
         ~expander
         ?vimpl
         ~scope
-        ~dir
         ~dir_kind
         ~obj_dir
-        ~private_obj_dir
         ~modules
         ?alias_module
         ?lib_interface_module:(Lib_modules.lib_interface_module lib_modules)
@@ -510,7 +505,7 @@ module Gen (P : Install_rules.Params) = struct
       build_stubs lib ~dir ~expander ~requires ~dir_contents
         ~vlib_stubs_o_files;
 
-    setup_file_deps lib ~dir ~obj_dir
+    setup_file_deps lib ~dir
       ~modules:(Lib_modules.have_artifacts lib_modules
                 |> Module.Name.Map.values
                 |> Vimpl.for_file_deps vimpl);
@@ -541,10 +536,7 @@ module Gen (P : Install_rules.Params) = struct
       ; compile_info
       };
 
-    let objs_dirs = Path.Set.singleton obj_dir in
-    let objs_dirs = if Lib_modules.has_private_modules lib_modules then
-        Path.Set.add objs_dirs private_obj_dir
-      else objs_dirs in
+    let objs_dirs = Path.Set.of_list (Obj_dir.all_objs_dir obj_dir) in
 
     (cctx,
      Merlin.make ()

@@ -209,6 +209,7 @@ module Run (P : PARAMS) : sig end = struct
         name
         ~visibility:Public
         ~impl:{ path = mock_ml base; syntax = OCaml }
+        ~obj_dir:(Compilation_context.obj_dir cctx)
     in
 
     (* The following incantation allows the mock [.ml] file to be preprocessed

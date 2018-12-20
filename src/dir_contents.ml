@@ -151,7 +151,7 @@ let modules_of_files ~dir ~files =
   let impls = parse_one_set impl_files in
   let intfs = parse_one_set intf_files in
   Module.Name.Map.merge impls intfs ~f:(fun name impl intf ->
-    Some (Module.make name ~visibility:Public ?impl ?intf))
+    Some (Module.Source.make name ?impl ?intf))
 
 let build_modules_map (d : _ Dir_with_dune.t) ~modules =
   let scope = d.scope in
@@ -159,11 +159,16 @@ let build_modules_map (d : _ Dir_with_dune.t) ~modules =
     List.filter_partition_map d.data ~f:(fun stanza ->
       match (stanza : Stanza.t) with
       | Library lib ->
+        let obj_dir =
+          Obj_dir.make_local ~dir:d.ctx_dir (snd lib.name)
+            ~has_private_modules:(Option.is_some lib.private_modules)
+        in
         let { Modules_field_evaluator.
               all_modules = modules
             ; virtual_modules
             } =
           Modules_field_evaluator.eval ~modules
+            ~obj_dir
             ~buildable:lib.buildable
             ~virtual_modules:lib.virtual_modules
             ~private_modules:(
@@ -189,16 +194,20 @@ let build_modules_map (d : _ Dir_with_dune.t) ~modules =
             )
         in
         Left ( lib
-             , Lib_modules.make lib ~dir:d.ctx_dir modules ~virtual_modules
+             , Lib_modules.make lib ~obj_dir modules ~virtual_modules
                  ~main_module_name ~wrapped
              )
       | Executables exes
       | Tests { exes; _} ->
+        let obj_dir =
+          Obj_dir.make_exe ~dir:d.ctx_dir (List.hd exes.names |> snd)
+        in
         let { Modules_field_evaluator.
               all_modules = modules
             ; virtual_modules = _
             } =
           Modules_field_evaluator.eval ~modules
+            ~obj_dir
             ~buildable:exes.buildable
             ~virtual_modules:None
             ~private_modules:Ordered_set_lang.standard
@@ -404,8 +413,8 @@ let rec get sctx ~dir =
                    @\n- %a\
                    @\n- %a"
                   Module.Name.pp_quote name
-                  (Fmt.optional Path.pp) (Module.src_dir x)
-                  (Fmt.optional Path.pp) (Module.src_dir y)))
+                  (Fmt.optional Path.pp) (Module.Source.src_dir x)
+                  (Fmt.optional Path.pp) (Module.Source.src_dir y)))
         in
         build_modules_map d ~modules)
       in

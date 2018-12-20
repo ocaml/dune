@@ -48,10 +48,8 @@ type t =
   { super_context        : Super_context.t
   ; scope                : Scope.t
   ; expander             : Expander.t
-  ; dir                  : Path.t
+  ; obj_dir              : Obj_dir.t
   ; dir_kind             : Dune_lang.Syntax.t
-  ; obj_dir              : Path.t
-  ; private_obj_dir      : Path.t option
   ; modules              : Module.t Module.Name.Map.t
   ; alias_module         : Module.t option
   ; lib_interface_module : Module.t option
@@ -68,10 +66,9 @@ type t =
 let super_context        t = t.super_context
 let scope                t = t.scope
 let expander             t = t.expander
-let dir                  t = t.dir
+let dir                  t = t.obj_dir.dir
 let dir_kind             t = t.dir_kind
 let obj_dir              t = t.obj_dir
-let private_obj_dir      t = t.private_obj_dir
 let modules              t = t.modules
 let alias_module         t = t.alias_module
 let lib_interface_module t = t.lib_interface_module
@@ -86,19 +83,17 @@ let vimpl                t = t.vimpl
 
 let context              t = Super_context.context t.super_context
 
-let create ~super_context ~scope ~expander ~dir ?private_obj_dir
+let create ~super_context ~scope ~expander ~obj_dir
       ?vimpl
       ?(dir_kind=Dune_lang.Syntax.Dune)
-      ?(obj_dir=dir) ~modules ?alias_module ?lib_interface_module ~flags
+      ~modules ?alias_module ?lib_interface_module ~flags
       ~requires ?(preprocessing=Preprocessing.dummy) ?(no_keep_locs=false)
       ~opaque ?stdlib () =
   { super_context
   ; scope
   ; expander
-  ; dir
-  ; dir_kind
   ; obj_dir
-  ; private_obj_dir
+  ; dir_kind
   ; modules
   ; alias_module
   ; lib_interface_module

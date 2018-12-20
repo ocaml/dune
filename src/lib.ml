@@ -189,9 +189,8 @@ let virtual_     t = t.info.virtual_
 
 let src_dir t = t.info.src_dir
 let obj_dir t = t.info.obj_dir
-let private_obj_dir t = t.info.private_obj_dir
 
-let is_local t = Path.is_managed t.info.obj_dir
+let is_local t = Path.is_managed t.info.obj_dir.public_dir
 
 let status t = t.info.status
 
@@ -254,7 +253,7 @@ module L = struct
   let include_paths ts ~stdlib_dir =
     let dirs =
       List.fold_left ts ~init:Path.Set.empty ~f:(fun acc t ->
-        Path.Set.add acc (obj_dir t))
+        Path.Set.add acc (obj_dir t).public_dir)
     in
     Path.Set.remove dirs stdlib_dir
 
@@ -312,7 +311,7 @@ end
 module Lib_and_module = struct
   type nonrec t =
     | Lib of t
-    | Module of Module.t * Path.t (** obj_dir *)
+    | Module of Module.t
 
   let link_flags ts ~mode ~stdlib_dir =
     let libs = List.filter_map ts ~f:(function Lib lib -> Some lib | Module _ -> None) in
@@ -321,8 +320,8 @@ module Lib_and_module = struct
        List.map ts ~f:(function
          | Lib t ->
            Arg_spec.Deps (Mode.Dict.get t.info.archives mode)
-         | Module (m,obj_dir) ->
-           Dep (Module.cm_file_unsafe m ~obj_dir (Mode.cm_kind mode))
+         | Module m ->
+           Dep (Module.cm_file_unsafe m (Mode.cm_kind mode))
        ))
 
 end
@@ -1227,6 +1226,7 @@ let () =
 let to_dune_lib ({ name ; info ; _ } as lib) ~lib_modules ~dir =
   let add_loc = List.map ~f:(fun x -> (info.loc, x.name)) in
   let virtual_ = Option.is_some info.virtual_ in
+  let lib_modules = Lib_modules.version_installed ~install_dir:dir lib_modules in
   Dune_package.Lib.make
     ~dir
     ~name

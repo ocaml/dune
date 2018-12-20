@@ -105,10 +105,14 @@ let wrap_modules ~modules ~lib ~main_module_name =
     else
       Module.with_wrapper m ~main_module_name:(prefix m))
 
-let make_wrapped ~(lib : Dune_file.Library.t) ~dir ~transition ~modules
+let make_wrapped ~(lib : Dune_file.Library.t) ~dir ~wrapped ~modules
       ~virtual_modules ~main_module_name =
   let (modules, wrapped_compat) =
-    if transition then
+    match (wrapped : Wrapped.t) with
+    | Simple false -> assert false
+    | Simple true ->
+      (wrap_modules ~modules ~main_module_name ~lib, Module.Name.Map.empty)
+    | Yes_with_transition _ ->
       ( wrap_modules ~modules ~main_module_name ~lib
       , Module.Name.Map.remove modules main_module_name
         |> Module.Name.Map.filter_map ~f:(fun m ->
@@ -117,8 +121,6 @@ let make_wrapped ~(lib : Dune_file.Library.t) ~dir ~transition ~modules
           else
             None)
       )
-    else
-      (wrap_modules ~modules ~main_module_name ~lib, Module.Name.Map.empty)
   in
   let alias_module =
     make_alias_module_of_lib ~main_module_name ~dir ~lib ~modules
@@ -129,7 +131,7 @@ let make_wrapped ~(lib : Dune_file.Library.t) ~dir ~transition ~modules
   ; wrapped_compat
   ; virtual_modules
   ; implements = Dune_file.Library.is_impl lib
-  ; wrapped = Simple true
+  ; wrapped
   }
 
 
@@ -142,14 +144,7 @@ let make (lib : Dune_file.Library.t) ~dir (modules : Module.Name_map.t)
   | (Yes_with_transition _ | Simple true), None ->
     assert false
   | wrapped, Some main_module_name ->
-    let transition =
-      match wrapped with
-      | Simple true -> false
-      | Yes_with_transition _ -> true
-      | Simple false -> assert false
-    in
-    make_wrapped ~transition ~modules ~virtual_modules ~dir ~main_module_name
-      ~lib
+    make_wrapped ~wrapped ~modules ~virtual_modules ~dir ~main_module_name ~lib
 
 let needs_alias_module t = Option.is_some t.alias_module
 

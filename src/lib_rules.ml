@@ -134,7 +134,7 @@ module Gen (P : Install_rules.Params) = struct
     let wrapped = Lib_modules.wrapped lib_modules in
     let transition_message = lazy (
         match (wrapped : Wrapped.t) with
-        | Simple _ -> (assert false)
+        | Simple _ -> assert false
         | Yes_with_transition r -> r)
     in
     Module.Name.Map.iteri wrapped_compat ~f:(fun name m ->

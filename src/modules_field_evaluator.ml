@@ -38,7 +38,8 @@ let eval =
         | Ok m -> Some (loc, m)
         | Error s ->
           (* We are going to fail only if the module appear in the final set,
-             foo \ bar  doesn't fail if bar doesn't exists (for jbuild file compatibility) *)
+             foo \ bar doesn't fail if bar doesn't exists (for jbuild file
+             compatibility) *)
           Errors.fail loc "Module %a doesn't exist." Module.Name.pp s)
     )
 
@@ -91,7 +92,7 @@ let find_errors ~modules ~intf_only ~virtual_modules ~private_modules =
   let virt_intf_overlaps       = ref [] in
   let private_virt_modules     = ref [] in
   let missing_intf_only        = ref [] in
-  Module.Name.Map.iteri all ~f:(fun module_name (module_,props) ->
+  Module.Name.Map.iteri all ~f:(fun module_name (module_,  props) ->
     let has_impl = Module.has_impl module_ in
     let (!?) p = Properties.Map.mem props p in
     let (!??) p f = Option.iter ~f (Properties.Map.find props p) in
@@ -151,8 +152,8 @@ let check_invalid_module_listing ~(buildable : Buildable.t) ~intf_only
          \n  %s\
          \n\
          \nThis will become an error in the future."
-        (let tag = Dune_lang.unsafe_atom_of_string
-                     "modules_without_implementation" in
+        (let tag =
+           Dune_lang.unsafe_atom_of_string "modules_without_implementation" in
          let modules =
            errors.missing_intf_only
            |> uncapitalized
@@ -168,9 +169,11 @@ let check_invalid_module_listing ~(buildable : Buildable.t) ~intf_only
         (line_list errors.missing_intf_only)
   end;
   print
-    "The following modules have an implementation, they cannot be said to be without interface:\n%s"
+    "The following modules have an implementation, \
+     they cannot be listed as modules_without_implementation:\n%s"
     errors.spurious_modules_intf;
-  print "The following modules have an implementation, they cannot be said to be virtual:\n%s"
+  print "The following modules have an implementation, \
+         they cannot be listed as virtual:\n%s"
     errors.spurious_modules_virtual
 
 

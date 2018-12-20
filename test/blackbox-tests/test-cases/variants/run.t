@@ -5,7 +5,7 @@ virtual libraries may not implement their virtual modules
   File "dune", line 3, characters 18-21:
   3 |  (virtual_modules foo bar))
                         ^^^
-  Error: The following modules have an implementation, they cannot be said to be virtual:
+  Error: The following modules have an implementation, they cannot be listed as virtual:
   - Foo
   [1]
 
@@ -22,7 +22,7 @@ virtual libraries may not implement their virtual modules
   File "dune", line 3, characters 33-34:
   3 |  (modules_without_implementation m)
                                        ^
-  Error: The following modules have an implementation, they cannot be said to be without interface:
+  Error: The following modules have an implementation, they cannot be listed as modules_without_implementation:
   - M
   -------------------------
   impl: true. modules_without_implementation: false. virtual_modules: true. private_modules: true
@@ -77,14 +77,14 @@ virtual libraries may not implement their virtual modules
   File "dune", line 3, characters 33-34:
   3 |  (modules_without_implementation m))
                                        ^
-  Error: The following modules have an implementation, they cannot be said to be without interface:
+  Error: The following modules have an implementation, they cannot be listed as modules_without_implementation:
   - M
   -------------------------
   impl: true. modules_without_implementation: false. virtual_modules: true. private_modules: false
   File "dune", line 3, characters 18-19:
   3 |  (virtual_modules m))
                         ^
-  Error: The following modules have an implementation, they cannot be said to be virtual:
+  Error: The following modules have an implementation, they cannot be listed as virtual:
   - M
   -------------------------
   impl: true. modules_without_implementation: false. virtual_modules: false. private_modules: false

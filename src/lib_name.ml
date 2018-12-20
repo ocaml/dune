@@ -71,8 +71,9 @@ module Local = struct
   let validate (loc, res) ~wrapped =
     match res, wrapped with
     | Ok s, _ -> s
-    | Warn _, true -> Errors.fail loc "%s" wrapped_message
-    | Warn s, false -> Errors.warn loc "%s" wrapped_message; s
+    | Warn _, None
+    | Warn _, Some true -> Errors.fail loc "%s" wrapped_message
+    | Warn s, Some false -> Errors.warn loc "%s" wrapped_message; s
     | Invalid, _ -> Errors.fail loc "%s" invalid_message
 
   let to_string s = s

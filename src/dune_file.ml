@@ -737,29 +737,10 @@ module Mode_conf = struct
 end
 
 module Library = struct
-  module Wrapped = struct
-    type t =
-      | Simple of bool
-      | Yes_with_transition of string
-
-    let decode =
-      sum
-        [ "true", return (Simple true)
-        ; "false", return (Simple false)
-        ; "transition",
-          Syntax.since Stanza.syntax (1, 2) >>= fun () ->
-          string >>| fun x -> Yes_with_transition x
-        ]
-
-    let field = field_o "wrapped" (located decode)
-
-    let to_bool = function
-      | Simple b -> b
-      | Yes_with_transition _ -> true
-
-    let value = function
-      | None -> Simple true
-      | Some (_loc, w) -> w
+  module Inherited = struct
+    type 'a t =
+      | This of 'a
+      | From of (Loc.t * Lib_name.t)
   end
 
   module Stdlib = struct
@@ -794,6 +775,28 @@ module Library = struct
          })
   end
 
+  module Wrapped = struct
+    include Wrapped
+
+    let value = function
+      | Inherited.From _ -> None
+      | This s -> Some (to_bool s)
+
+    let default = Simple true
+
+    let make ~wrapped ~implements : t Inherited.t =
+      match wrapped, implements with
+      | None, None -> This default
+      | None, Some w -> From w
+      | Some (_loc, w), None -> This w
+      | Some (loc, _), Some _ ->
+        of_sexp_error loc
+          "Wrapped cannot be set for implementations. \
+           It is inherited from the virtual library."
+
+    let field = field_o "wrapped" (located decode)
+  end
+
   type t =
     { name                     : (Loc.t * Lib_name.Local.t)
     ; public                   : Public_lib.t option
@@ -810,7 +813,7 @@ module Library = struct
     ; c_library_flags          : Ordered_set_lang.Unexpanded.t
     ; self_build_stubs_archive : string option
     ; virtual_deps             : (Loc.t * Lib_name.t) list
-    ; wrapped                  : Wrapped.t
+    ; wrapped                  : Wrapped.t Inherited.t
     ; optional                 : bool
     ; buildable                : Buildable.t
     ; dynlink                  : Dynlink_supported.t
@@ -871,11 +874,12 @@ module Library = struct
        and stdlib =
          field_o "stdlib" (Syntax.since Stdlib.syntax (0, 1) >>> Stdlib.decode)
        in
+       let wrapped = Wrapped.make ~wrapped ~implements in
        let name =
          let open Syntax.Version.Infix in
          match name, public with
          | Some (loc, res), _ ->
-           let wrapped = Wrapped.to_bool (Wrapped.value wrapped) in
+           let wrapped = Wrapped.value wrapped in
            (loc, Lib_name.Local.validate (loc, res) ~wrapped)
          | None, Some { name = (loc, name) ; _ }  ->
            if dune_version >= (1, 1) then
@@ -906,15 +910,6 @@ module Library = struct
             |> Option.value_exn)
            "A library cannot be both virtual and implement %s"
            (Lib_name.to_string impl));
-       begin match virtual_modules, wrapped, implements with
-       | Some _, Some (loc, Wrapped.Simple false), _ ->
-         of_sexp_error loc "A virtual library must be wrapped"
-       | _, Some (loc, _), Some _ ->
-         of_sexp_error loc
-           "Wrapped cannot be set for implementations. \
-            It is inherited from the virtual library."
-       | _, _, _ -> ()
-       end;
        let self_build_stubs_archive =
          let loc, self_build_stubs_archive = self_build_stubs_archive in
          let err =
@@ -947,7 +942,7 @@ module Library = struct
        ; c_library_flags
        ; self_build_stubs_archive
        ; virtual_deps
-       ; wrapped = Wrapped.value wrapped
+       ; wrapped
        ; optional
        ; buildable
        ; dynlink = Dynlink_supported.of_bool (not no_dynlink)
@@ -994,17 +989,17 @@ module Library = struct
   let is_impl t = Option.is_some t.implements
 
   module Main_module_name = struct
-    type t =
-      | This of Module.Name.t option
-      | Inherited_from of (Loc.t * Lib_name.t)
+    type t = Module.Name.t option Inherited.t
   end
 
   let main_module_name t : Main_module_name.t =
-    match t.implements, Wrapped.to_bool t.wrapped with
-    | Some x, true -> Inherited_from x
-    | Some _, false -> assert false
-    | None, false -> This None
-    | None, true -> This (Some (Module.Name.of_local_lib_name (snd t.name)))
+    match t.implements, t.wrapped with
+    | Some x, From _ -> From x
+    | Some _, This _ (* cannot specify for wrapped for implements *)
+    | None, From _ -> assert false (* cannot inherit for normal libs *)
+    | None, This (Simple false) -> This None
+    | None, This (Simple true | Yes_with_transition _) ->
+      This (Some (Module.Name.of_local_lib_name (snd t.name)))
 
   let special_compiler_module t (m : Module.t) =
     match t.stdlib with

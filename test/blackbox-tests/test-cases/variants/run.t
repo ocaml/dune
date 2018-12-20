@@ -200,6 +200,22 @@ virtual lib
   impl's own Priv.run
   implementation of foo
 
+Unwrapped virtual library
+  $ dune build --root unwrapped
+  Entering directory 'unwrapped'
+           foo alias default
+  Running from vlib_more
+  running implementation
+
+Unwrapped virtual library
+  $ dune build @install --root unwrapped/vlib
+  Entering directory 'unwrapped/vlib'
+  $ env OCAMLPATH=unwrapped/vlib/_build/install/default/lib dune build --root unwrapped/impl --debug-dependency-path
+  Entering directory 'unwrapped/impl'
+           foo alias default
+  Running from vlib_more
+  running implementation
+
 Implementations may not provide a library interface module unless it is virtual.
 There should be an error message that clarifies this.
   $ dune build --root impl-lib-interface-module @all
@@ -291,7 +307,8 @@ Include variants and implementation information in dune-package
      (visibility public)
      (impl))
     (main_module_name Vlib)
-    (modules ((name Vmod) (obj_name vlib__Vmod) (visibility public) (impl)))))
+    (modules ((name Vmod) (obj_name vlib__Vmod) (visibility public) (impl)))
+    (wrapped true)))
   (library
    (name foo.vlib)
    (kind normal)
@@ -303,4 +320,5 @@ Include variants and implementation information in dune-package
     (alias_module (name Vlib) (obj_name vlib) (visibility public) (impl))
     (main_module_name Vlib)
     (modules ((name Vmod) (obj_name vlib__Vmod) (visibility public) (intf)))
-    (virtual_modules Vmod)))
+    (virtual_modules Vmod)
+    (wrapped true)))

@@ -28,6 +28,8 @@ module Lib : sig
 
   val modes : _ t -> Mode.Dict.Set.t
 
+  val wrapped : _ t -> Wrapped.t option
+
   val make
     :  loc:Loc.t
     -> kind:Lib_kind.t

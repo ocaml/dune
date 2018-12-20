@@ -127,16 +127,15 @@ module Gen (P : Install_rules.Params) = struct
       ~sandbox:alias_module_build_sandbox
       ~dep_graphs:(Dep_graph.Ml_kind.dummy alias_module)
 
-  let build_wrapped_compat_modules (lib : Library.t)
-        cctx
-        ~js_of_ocaml
-        ~dynlink
-        ~modules
-        ~wrapped_compat =
-    let transition_message =
-      match lib.wrapped with
-      | Simple _ -> "" (* will never be accessed anyway *)
-      | Yes_with_transition r -> r
+  let build_wrapped_compat_modules (lib : Library.t) cctx ~js_of_ocaml
+        ~dynlink ~lib_modules =
+    let wrapped_compat = Lib_modules.wrapped_compat lib_modules in
+    let modules = Lib_modules.modules lib_modules in
+    let wrapped = Lib_modules.wrapped lib_modules in
+    let transition_message = lazy (
+        match (wrapped : Wrapped.t) with
+        | Simple _ -> assert false
+        | Yes_with_transition r -> r)
     in
     Module.Name.Map.iteri wrapped_compat ~f:(fun name m ->
       let main_module_name =
@@ -149,7 +148,7 @@ module Gen (P : Install_rules.Params) = struct
         let hidden_name = sprintf "%s__%s" main_module_name name in
         let real_name = sprintf "%s.%s" main_module_name name in
         sprintf {|[@@@deprecated "%s. Use %s instead."] include %s|}
-          transition_message real_name hidden_name
+          (Lazy.force transition_message) real_name hidden_name
       in
       let source_path = Option.value_exn (Module.file m Impl) in
       Build.return contents
@@ -484,9 +483,7 @@ module Gen (P : Install_rules.Params) = struct
     in
     let js_of_ocaml = lib.buildable.js_of_ocaml in
 
-    let wrapped_compat = Lib_modules.wrapped_compat lib_modules in
-    build_wrapped_compat_modules lib cctx ~dynlink ~js_of_ocaml
-      ~modules ~wrapped_compat;
+    build_wrapped_compat_modules lib cctx ~dynlink ~js_of_ocaml ~lib_modules;
 
     let (vlib_dep_graphs, dep_graphs) =
       let dep_graphs = Ocamldep.rules cctx in
@@ -502,23 +499,27 @@ module Gen (P : Install_rules.Params) = struct
 
     Module_compilation.build_modules cctx ~js_of_ocaml ~dynlink ~dep_graphs;
 
-    if Option.is_none lib.stdlib && Lib_modules.wrapped lib_modules then
+    if Option.is_none lib.stdlib
+    && Lib_modules.needs_alias_module lib_modules then
       build_alias_module ~dir ~lib_modules ~cctx ~dynlink ~js_of_ocaml;
 
     let expander = Super_context.expander sctx ~dir in
 
     let vlib_stubs_o_files = Vimpl.vlib_stubs_o_files vimpl in
     if Library.has_stubs lib || not (List.is_empty vlib_stubs_o_files) then
-      build_stubs lib ~dir ~expander ~requires ~dir_contents ~vlib_stubs_o_files;
+      build_stubs lib ~dir ~expander ~requires ~dir_contents
+        ~vlib_stubs_o_files;
 
     setup_file_deps lib ~dir ~obj_dir
       ~modules:(Lib_modules.have_artifacts lib_modules
                 |> Module.Name.Map.values
                 |> Vimpl.for_file_deps vimpl);
 
-    if not (Library.is_virtual lib) then
+    if not (Library.is_virtual lib) then (
+      let wrapped_compat = Lib_modules.wrapped_compat lib_modules in
       setup_build_archives lib ~wrapped_compat ~cctx ~dep_graphs
-        ~vlib_dep_graphs ~expander;
+        ~vlib_dep_graphs ~expander
+    );
 
     Odoc.setup_library_odoc_rules lib ~requires ~modules ~dep_graphs ~scope;
 

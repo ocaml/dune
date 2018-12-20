@@ -37,7 +37,8 @@
    (modes byte native)
    (modules
     (alias_module (name Foo) (obj_name foo) (visibility public) (impl))
-    (main_module_name Foo))
+    (main_module_name Foo)
+    (wrapped true))
    (inline_tests.backend
     (runner_libraries str)
     (flags

@@ -170,18 +170,27 @@ let build_modules_map (d : _ Dir_with_dune.t) ~modules =
               Option.value ~default:Ordered_set_lang.standard
                 lib.private_modules)
         in
-        let main_module_name =
-          match Library.main_module_name lib with
-          | This mmn -> mmn
-          | Inherited_from _ ->
+        let (main_module_name, wrapped) =
+         (* the common case are normal libs where this is all specified so we
+            special case it so that we don't have to resolve anything the db *)
+          match Library.main_module_name lib, lib.wrapped with
+          (* these values are always either inherited together or specified *)
+          | This _, From _
+          | From _, This _ -> assert false
+          | This mmn, This wrapped -> mmn, wrapped
+          | From _, From _ ->
             let name = (fst lib.name, Library.best_name lib) in
-            Lib.DB.resolve (Scope.libs scope) name
-            |> Result.bind ~f:Lib.main_module_name
-            |> Result.ok_exn
+            Result.ok_exn (
+              let open Result.O in
+              Lib.DB.resolve (Scope.libs scope) name >>= fun lib ->
+              Lib.main_module_name lib >>= fun main_module_name ->
+              Lib.wrapped lib >>| fun wrapped ->
+              (main_module_name, Option.value_exn wrapped)
+            )
         in
         Left ( lib
              , Lib_modules.make lib ~dir:d.ctx_dir modules ~virtual_modules
-                 ~main_module_name
+                 ~main_module_name ~wrapped
              )
       | Executables exes
       | Tests { exes; _} ->

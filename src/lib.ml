@@ -200,11 +200,22 @@ let foreign_objects t = t.info.foreign_objects
 let main_module_name t =
   match t.info.main_module_name with
   | This mmn -> Ok mmn
-  | Inherited_from _ ->
+  | From _ ->
     Option.value_exn t.implements >>| fun vlib ->
     match vlib.info.main_module_name with
     | This x -> x
-    | Inherited_from _ -> assert false
+    | From _ -> assert false
+
+let wrapped t =
+  match t.info.wrapped with
+  | None -> Ok None
+  | Some (This wrapped) -> Ok (Some wrapped)
+  | Some (From _) ->
+    Option.value_exn t.implements >>| fun vlib ->
+    match vlib.info.wrapped with
+    | Some (From _) (* can't inherit this value in virtual libs *)
+    | None -> assert false (* will always be specified in dune package *)
+    | Some (This x) -> Some x
 
 let package t =
   match t.info.status with

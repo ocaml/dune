@@ -20,7 +20,8 @@ Reproduction case for #1549: too many parentheses in installed .dune files
      (obj_name simple_tests)
      (visibility public)
      (impl))
-    (main_module_name Simple_tests))
+    (main_module_name Simple_tests)
+    (wrapped true))
    (inline_tests.backend
     (flags :standard)
     (generate_runner

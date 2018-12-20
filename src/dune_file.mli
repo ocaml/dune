@@ -165,12 +165,10 @@ module Mode_conf : sig
 end
 
 module Library : sig
-  module Wrapped : sig
-    type t =
-      | Simple of bool
-      | Yes_with_transition of string
-
-    val to_bool : t -> bool
+  module Inherited : sig
+    type 'a t =
+      | This of 'a
+      | From of (Loc.t * Lib_name.t)
   end
 
   module Stdlib : sig
@@ -207,7 +205,7 @@ module Library : sig
     ; c_library_flags          : Ordered_set_lang.Unexpanded.t
     ; self_build_stubs_archive : string option
     ; virtual_deps             : (Loc.t * Lib_name.t) list
-    ; wrapped                  : Wrapped.t
+    ; wrapped                  : Wrapped.t Inherited.t
     ; optional                 : bool
     ; buildable                : Buildable.t
     ; dynlink                  : Dynlink_supported.t
@@ -232,10 +230,9 @@ module Library : sig
   val is_impl : t -> bool
 
   module Main_module_name : sig
-    type t =
-      | This of Module.Name.t option
-      | Inherited_from of (Loc.t * Lib_name.t)
+    type t = Module.Name.t option Inherited.t
   end
+
   val main_module_name : t -> Main_module_name.t
 
   (** Returns [true] is a special module, i.e. one whose compilation

@@ -72,6 +72,7 @@ type t =
   ; sub_systems      : Sub_system_info.t Sub_system_name.Map.t
   ; virtual_         : Virtual.t option
   ; implements       : (Loc.t * Lib_name.t) option
+  ; wrapped          : Wrapped.t Dune_file.Library.Inherited.t option
   ; main_module_name : Dune_file.Library.Main_module_name.t
   ; modes            : Mode.Dict.Set.t
   }
@@ -178,6 +179,7 @@ let of_library_stanza ~dir ~has_native ~ext_lib ~ext_obj
   ; main_module_name
   ; private_obj_dir
   ; modes
+  ; wrapped = Some conf.wrapped
   }
 
 let of_dune_lib dp =
@@ -188,6 +190,10 @@ let of_dune_lib dp =
       Some (Virtual.External (Option.value_exn (Lib.modules dp)))
     else
       None
+  in
+  let wrapped =
+    Lib.wrapped dp
+    |> Option.map ~f:(fun w -> Dune_file.Library.Inherited.This w)
   in
   { loc = Lib.loc dp
   ; name = Lib.name dp
@@ -215,4 +221,5 @@ let of_dune_lib dp =
   ; virtual_
   ; implements = Lib.implements dp
   ; modes = Lib.modes dp
+  ; wrapped
   }

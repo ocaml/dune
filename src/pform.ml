@@ -154,7 +154,7 @@ module Map = struct
       ; "env", since ~version:(1, 4) Macro.Env
       ]
 
-  let create ~(context : Context.t) ~cxx_flags =
+  let create ~(context : Context.t) =
     let ocamlopt =
       match context.ocamlopt with
       | None -> Path.relative context.ocaml_bin "ocamlopt"
@@ -168,6 +168,8 @@ module Map = struct
       | Some p -> path p
     in
     let cflags = context.ocamlc_cflags in
+    let cxx_flags = List.filter context.ocamlc_cflags
+                      ~f:(fun s -> not (String.is_prefix s ~prefix:"-std=")) in
     let strings s = values (Value.L.strings s) in
     let lowercased =
       [ "cpp"            , strings (context.c_compiler :: cflags @ ["-E"])

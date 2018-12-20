@@ -1,3 +1,5 @@
 (env
  (default
-  (flags "in bin")))
+  (flags "in bin")
+  (c_flags ())
+  (cxx_flags ())))

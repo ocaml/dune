@@ -38,7 +38,7 @@ end
 module Map : sig
   type t
 
-  val create : context:Context.t -> cxx_flags:string list -> t
+  val create : context:Context.t -> t
 
   val superpose : t -> t -> t
 

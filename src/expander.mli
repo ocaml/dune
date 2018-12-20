@@ -20,7 +20,6 @@ val make
   -> context:Context.t
   -> artifacts:Artifacts.t
   -> artifacts_host:Artifacts.t
-  -> cxx_flags:string list
   -> t
 
 val set_env : t -> var:string -> value:string -> t

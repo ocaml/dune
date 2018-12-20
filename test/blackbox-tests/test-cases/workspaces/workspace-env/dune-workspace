@@ -1,8 +1,10 @@
-(lang dune 1.1)
+(lang dune 1.7)
 
 (env
  (default
-  (ocamlc_flags (:standard -verbose))))
+  (ocamlc_flags (:standard -verbose))
+  (c_flags ())
+  (cxx_flags ())))
 
 (context
  (default

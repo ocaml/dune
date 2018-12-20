@@ -279,7 +279,20 @@ let cxx_flags_gather t ~dir ~(lib : Library.t) ccg =
 let local_binaries t ~dir = Env.local_binaries t ~dir
 
 let dump_env t ~dir =
-  Ocaml_flags.dump (Env.ocaml_flags t ~dir)
+  let open Build.O in
+  let o_dump = Ocaml_flags.dump (Env.ocaml_flags t ~dir) in
+  let c_flags = Env.c_flags t ~dir in
+  let cxx_flags = Env.cxx_flags t ~dir in
+  let c_dump =
+    Build.fanout  c_flags cxx_flags
+    >>^ fun (c_flags, cxx_flags) ->
+    List.map ~f:Dune_lang.Encoder.(pair string (list string))
+      [ "c_flags", c_flags
+      ; "cxx_flags", cxx_flags
+      ]
+  in (* combine o_dump and c_dump *)
+  (o_dump &&& c_dump) >>^ (fun (x, y) -> x @ y)
+
 
 let resolve_program t ~dir ?hint ~loc bin =
   let artifacts = Env.artifacts_host t ~dir in

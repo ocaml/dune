@@ -223,7 +223,6 @@ include Sub_system.Register_end_point(
           (List.filter_map backends ~f:(fun (backend : Backend.t) ->
              Option.map backend.info.generate_runner ~f:(fun (loc, action) ->
                SC.Action.run sctx action ~loc
-                 ~dir
                  ~expander
                  ~dep_kind:Required
                  ~targets:Alias

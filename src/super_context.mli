@@ -173,7 +173,6 @@ module Action : sig
   val run
     :  t
     -> loc:Loc.t
-    -> dir:Path.t
     -> expander:Expander.t
     -> dep_kind:Lib_deps_info.Kind.t
     -> targets:Expander.targets

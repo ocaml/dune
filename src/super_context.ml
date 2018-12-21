@@ -509,9 +509,10 @@ module Action = struct
           Path.append host.context.build_dir exe
         | _ -> exe
 
-  let run sctx ~loc ~dir ~expander ~dep_kind
-        ~targets:targets_written_by_user ~targets_dir t
+  let run sctx ~loc ~expander ~dep_kind ~targets:targets_written_by_user
+        ~targets_dir t
     : (Path.t Bindings.t, Action.t) Build.t =
+    let dir = Expander.dir expander in
     let map_exe = map_exe sctx in
     if targets_written_by_user = Expander.Alias then begin
       match U.Infer.unexpanded_targets t with
@@ -570,7 +571,7 @@ module Action = struct
               ~deps_written_by_user in
           U.Partial.expand t ~expander ~map_exe
         in
-        let artifacts = Env.artifacts_host sctx ~dir in
+        let artifacts = Expander.artifacts_host expander in
         Action.Unresolved.resolve unresolved ~f:(fun loc prog ->
           match Artifacts.binary ~loc artifacts prog with
           | Ok path    -> path

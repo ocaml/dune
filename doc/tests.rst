@@ -266,10 +266,10 @@ action produces some OCaml code on its standard output. This code will
 constitute the test runner. The action can use the following
 additional variables:
 
-- ``${library-name}`` which is the name of the library being tested
-- ``${impl-files}`` which is the list of implementation files in the
+- ``%{library-name}`` which is the name of the library being tested
+- ``%{impl-files}`` which is the list of implementation files in the
   library, i.e. all the ``.ml`` and ``.re`` files
-- ``${intf-files}`` which is the list of interface files in the library,
+- ``%{intf-files}`` which is the list of interface files in the library,
   i.e. all the ``.mli`` and ``.rei`` files
 
 The ``runner_libraries`` field specifies what OCaml libraries the test
@@ -279,7 +279,7 @@ should probably put ``my_test_framework`` in the ``runner_libraries``
 field.
 
 If you test runner needs specific flags, you should pass them in the
-``flags`` field. You can use the ``${library-name}`` variable in this
+``flags`` field. You can use the ``%{library-name}`` variable in this
 field.
 
 Finally, a backend can be an extension of another backend. In this

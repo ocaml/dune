@@ -92,7 +92,7 @@ let expand_var_exn t var syn =
         (String_with_vars.Var.describe var))
 
 let make ~scope ~(context : Context.t) ~artifacts
-      ~artifacts_host ~cxx_flags =
+      ~artifacts_host =
   let expand_var ({ bindings; ocaml_config; env = _; scope
                   ; hidden_env = _
                   ; dir = _ ; artifacts = _; expand_var = _
@@ -109,7 +109,7 @@ let make ~scope ~(context : Context.t) ~artifacts
   in
   let ocaml_config = lazy (make_ocaml_config context.ocaml_config) in
   let dir = context.build_dir in
-  let bindings = Pform.Map.create ~context ~cxx_flags in
+  let bindings = Pform.Map.create ~context in
   let env = context.env in
   { dir
   ; hidden_env = Env.Var.Set.empty

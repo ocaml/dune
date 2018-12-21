@@ -16,7 +16,6 @@ type t =
   ; packages                         : Package.t Package.Name.Map.t
   ; file_tree                        : File_tree.t
   ; artifacts                        : Artifacts.t
-  ; cxx_flags_orig                   : string list
   ; expander                         : Expander.t
   ; chdir                            : (Action.t, Action.t) Build.t
   ; host                             : t option
@@ -37,7 +36,6 @@ let packages t = t.packages
 let libs_by_package t = t.libs_by_package
 let artifacts t = t.artifacts
 let file_tree t = t.file_tree
-let cxx_flags_orig t = t.cxx_flags_orig
 let build_dir t = t.context.build_dir
 let profile t = t.context.profile
 let build_system t = t.build_system
@@ -347,10 +345,6 @@ let create
   let artifacts =
     Artifacts.create context ~public_libs ~build_system
   in
-  let cxx_flags_orig =
-    List.filter context.ocamlc_cflags
-      ~f:(fun s -> not (String.is_prefix s ~prefix:"-std="))
-  in
   let default_env = lazy (
     let make ~inherit_from ~config =
       Env_node.make
@@ -382,7 +376,6 @@ let create
       ~context
       ~artifacts
       ~artifacts_host
-      ~cxx_flags:cxx_flags_orig
   in
   let dir_status_db = Dir_status.DB.make file_tree ~stanzas_per_dir in
   { context
@@ -397,7 +390,6 @@ let create
   ; packages
   ; file_tree
   ; artifacts
-  ; cxx_flags_orig
   ; chdir = Build.arr (fun (action : Action.t) ->
       match action with
       | Chdir _ -> action

@@ -188,7 +188,7 @@ module Gen (P : Install_rules.Params) = struct
       else
         [A "-o"; Target dst]
     in
-    let cxx_flags = SC.cxx_flags_gather sctx ~dir ~expander ~lib (Context.cc_g ctx) in
+    let cxx_flags = SC.cxx_flags sctx ~dir ~expander ~lib (Context.cc_g ctx) in
     SC.add_rule sctx ~loc ~dir
       (cxx_flags
        >>>
@@ -198,7 +198,7 @@ module Gen (P : Install_rules.Params) = struct
          ~dir:(Path.parent_exn src)
          (SC.resolve_program ~loc:None ~dir sctx ctx.c_compiler)
          ([ S [A "-I"; Path ctx.stdlib_dir]
-          ; As (SC.cxx_flags sctx)
+          ; As (SC.cxx_flags_orig sctx)
           ; includes
           ; Dyn (fun cxx_flags -> As cxx_flags)
           ] @ output_param @

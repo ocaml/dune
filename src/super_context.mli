@@ -29,7 +29,7 @@ val packages  : t -> Package.t Package.Name.Map.t
 val libs_by_package : t -> (Package.t * Lib.Set.t) Package.Name.Map.t
 val file_tree : t -> File_tree.t
 val artifacts : t -> Artifacts.t
-val cxx_flags : t -> string list
+val cxx_flags_orig : t -> string list
 val build_dir : t -> Path.t
 val profile   : t -> string
 val host : t -> t
@@ -61,7 +61,7 @@ val c_flags
   -> string list
   -> (unit, string list) Build.t
 
-val cxx_flags_gather
+val cxx_flags
   :  t
   -> dir:Path.t
   -> expander:Expander.t

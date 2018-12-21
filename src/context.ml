@@ -507,7 +507,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       let name = sprintf "%s.%s" name findlib_toolchain in
       create_one ~implicit:false ~name ~host:(Some native) ~merlin:false
         ~findlib_toolchain:(Some findlib_toolchain)
-      >>| fun x -> Some x)
+      >>| Option.some)
   >>| fun others ->
   native :: List.filter_opt others
 

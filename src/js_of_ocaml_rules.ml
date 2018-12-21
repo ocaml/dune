@@ -50,7 +50,7 @@ let runtime_file ~dir ~sctx file =
 
 let js_of_ocaml_rule sctx ~dir ~flags ~spec ~target =
   let jsoo = jsoo ~dir sctx in
-  (Build.arr (fun x -> x) &&& runtime_file ~dir ~sctx "runtime.js") >>>
+  (Build.arr Fn.id &&& runtime_file ~dir ~sctx "runtime.js") >>>
   Build.run ~dir
     jsoo
     [ Arg_spec.Dyn (fun (x, _) -> flags x)

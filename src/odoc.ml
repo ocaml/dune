@@ -146,7 +146,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
        >>>
        Build.run ~dir:doc_dir (Lazy.force odoc)
          [ A "compile"
-         ; Dyn (fun x -> x)
+         ; Dyn Fn.id
          ; As ["--pkg"; Package.Name.to_string pkg]
          ; A "-o"; Target odoc_file
          ; Dep (Mld.odoc_input m)

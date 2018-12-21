@@ -355,7 +355,7 @@ let build_ppx_driver sctx ~dep_kind ~target ~dir_kind ~pps ~pp_names =
       match pps with
       | Error _ ->
         let driver, driver_name, pp_names =
-          Jbuild_driver.analyse_pps pp_names ~get_name:(fun x -> x)
+          Jbuild_driver.analyse_pps pp_names ~get_name:Fn.id
         in
         (Some driver, pps, driver_name :: pp_names)
       | Ok pps ->

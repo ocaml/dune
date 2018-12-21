@@ -209,7 +209,7 @@ let encode
       } =
   let open Dune_lang.Encoder in
   record_fields
-    [ field_l "alias_module" (fun x -> x)
+    [ field_l "alias_module" sexp
         (match alias_module with
          | None -> []
          | Some m -> Module.encode m)

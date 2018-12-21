@@ -455,7 +455,7 @@ module Deps = struct
     let forms = Expander.Resolved_forms.empty () in
     let expander =
       Expander.with_record_no_ddeps expander forms
-        ~dep_kind:Optional ~map_exe:(fun x -> x)
+        ~dep_kind:Optional ~map_exe:Fn.id
     in
     let deps =
       List.map l ~f:(f t expander)

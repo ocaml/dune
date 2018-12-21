@@ -156,9 +156,7 @@ module Pps_and_flags = struct
       | List _ -> list string >>| fun l -> Right l
 
     let split l =
-      let pps, flags =
-        List.partition_map l ~f:(fun x -> x)
-      in
+      let pps, flags = List.partition_map l ~f:Fn.id in
       (pps, List.concat flags)
 
     let decode = list item >>| split
@@ -1238,7 +1236,7 @@ module Executables = struct
           in
           let public_names =
             match public_names with
-            | None -> List.map names ~f:(fun _ -> (Loc.none, None))
+            | None -> List.map names ~f:(Fn.const (Loc.none, None))
             | Some pns -> pns
           in
           List.map2 names public_names

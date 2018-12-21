@@ -152,32 +152,6 @@ let opam_config_var ~env ~cache var =
 let which ~cache ~path x =
   Hashtbl.find_or_add cache x ~f:(Bin.which ~path)
 
-let ocamlpath_sep =
-  if Sys.cygwin then
-    (* because that's what ocamlfind expects *)
-    ';'
-  else
-    Bin.path_sep
-
-let ocamlfind_printconf_path ~env ~ocamlfind ~toolchain =
-  let args =
-    let args = ["printconf"; "path"] in
-    match toolchain with
-    | None -> args
-    | Some s -> "-toolchain" :: s :: args
-  in
-  Process.run_capture_lines ~env Strict ocamlfind args
-  >>| fun l ->
-  List.map l ~f:Path.of_filename_relative_to_initial_cwd
-
-let get_tool_using_findlib_config ~which findlib_config prog =
-  let open Option.O in
-  findlib_config >>= fun conf ->
-  Findlib.Config.get conf prog >>= fun s ->
-  match Filename.analyze_program_name s with
-  | In_path | Relative_to_current_dir -> which s
-  | Absolute -> Some (Path.of_filename_relative_to_initial_cwd s)
-
 module Build_environment_kind = struct
   (* Heuristics to detect the current environment *)
 
@@ -207,12 +181,17 @@ module Build_environment_kind = struct
           | Some s -> Opam2_environment s
           | None -> Unknown
 
-  let findlib_paths t ~which ~which_exn ~env ~opam_config_var ~ocamlpath ~dir =
+  let findlib_paths t ~context ~env ~opam_config_var ~ocamlpath ~ocamlfind
+        ~dir =
     match t with
-    | Cross_compilation_using_findlib_toolchain toolchain ->
-      let ocamlfind = which_exn "ocamlfind" in
-      ocamlfind_printconf_path ~env ~ocamlfind ~toolchain:(Some toolchain)
-
+    | Cross_compilation_using_findlib_toolchain _ ->
+      Fiber.return (
+        match ocamlfind with
+        | None ->
+          die "context %s: Could not find ocamlfind in PATH or \
+               an environment variable OCAMLFIND_CONF" context
+        | Some ocamlfind -> Ocamlfind.conf_path ocamlfind
+      )
     | Hardcoded_path l ->
         Fiber.return
           (ocamlpath @ List.map l ~f:Path.of_filename_relative_to_initial_cwd)
@@ -230,13 +209,12 @@ module Build_environment_kind = struct
         end
 
       | Unknown ->
-        match which "ocamlfind" with
-        | Some ocamlfind ->
-          ocamlfind_printconf_path ~env ~ocamlfind ~toolchain:None
-
-        | None ->
-          Fiber.return
-            (ocamlpath @ [ Path.relative (Path.parent_exn dir) "lib" ])
+        Fiber.return (
+          match ocamlfind with
+          | Some ocamlfind -> Ocamlfind.conf_path ocamlfind
+          | None ->
+            ocamlpath @ [ Path.relative (Path.parent_exn dir) "lib" ]
+        )
 end
 
 let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
@@ -252,34 +230,49 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
   in
   let which_cache = Hashtbl.create 128 in
   let which x = which ~cache:which_cache ~path x in
-  let which_exn x =
-    match which x with
-    | None -> prog_not_found_in_path x
-    | Some x -> x
-  in
-  let findlib_config_path = lazy (
-    let fn = which_exn "ocamlfind" in
-    (* When OCAMLFIND_CONF is set, "ocamlfind printconf" does print
-       the contents of the variable, but "ocamlfind printconf conf"
-       still prints the configuration file set at the configuration
-       time of ocamlfind, sigh... *)
-    (match Env.get env "OCAMLFIND_CONF" with
-     | Some s -> Fiber.return s
-     | None -> Process.run_capture_line ~env Strict fn ["printconf"; "conf"])
-    >>| Path.of_filename_relative_to_initial_cwd)
+
+  let env_ocamlpath = Ocamlfind.ocamlpath env in
+  let ocamlpath =
+    (* If we are not in the default context, we can only use the OCAMLPATH
+       variable if it is specific to this build context *)
+    (* CR-someday diml: maybe we should actually clear OCAMLPATH in other build
+       contexts *)
+    let initial_ocamlpath = Ocamlfind.ocamlpath Env.initial in
+    match env_ocamlpath, initial_ocamlpath with
+    | []     , []     -> []
+    | _ :: _ , []     -> env_ocamlpath
+    | []     , _ :: _ -> initial_ocamlpath
+    | _      , _ ->
+      match
+        List.compare ~compare:Path.compare env_ocamlpath initial_ocamlpath
+      with
+      | Eq -> []
+      | _ -> env_ocamlpath
   in
 
   let create_one ~name ~implicit ~findlib_toolchain ~host ~merlin =
-    (match findlib_toolchain with
-     | None -> Fiber.return None
-     | Some toolchain ->
-       Lazy.force findlib_config_path >>| fun path ->
-       Findlib.Config.load path
-       |> Findlib.Config.toolchain ~toolchain
-       |> Option.some)
-    >>= fun findlib_config ->
-    let get_tool_using_findlib_config =
-      get_tool_using_findlib_config findlib_config ~which in
+    let ocamlpath =
+      match kind, findlib_toolchain with
+      | Default, None -> env_ocamlpath
+      | _, _ -> ocamlpath
+    in
+
+    let ocamlfind =
+      match Ocamlfind.discover_from_env ~env ~ocamlpath ~which with
+      | None -> Fiber.return None
+      | Some ocamlfind ->
+        ocamlfind >>| fun ocamlfind ->
+        Some (
+          match findlib_toolchain with
+          | None -> ocamlfind
+          | Some toolchain -> Ocamlfind.set_toolchain ocamlfind ~toolchain
+        )
+    in
+
+    ocamlfind >>= fun ocamlfind ->
+
+    let get_tool_using_findlib_config prog =
+      Option.bind ocamlfind ~f:(Ocamlfind.tool ~prog) in
 
     let ocamlc =
       match get_tool_using_findlib_config "ocamlc" with
@@ -306,33 +299,13 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     in
 
     let build_dir = Path.relative Path.build_dir name in
-    let ocamlpath =
-      match
-        let var = "OCAMLPATH" in
-        match kind, findlib_toolchain with
-        | Default, None -> Env.get env var
-        | _ ->
-          (* If we are not in the default context, we can only use the
-             OCAMLPATH variable if it is specific to this build
-             context *)
-          (* CR-someday diml: maybe we should actually clear OCAMLPATH
-             in other build contexts *)
-          match Env.get env var, Env.get Env.initial var with
-          | None  , None   -> None
-          | Some s, None   -> Some s
-          | None  , Some _ -> None
-          | Some x, Some y -> Option.some_if (x <> y) x
-      with
-      | None -> []
-      | Some s -> Bin.parse_path s ~sep:ocamlpath_sep
-    in
     let findlib_paths () =
       Build_environment_kind.findlib_paths
         (Build_environment_kind.query ~kind ~findlib_toolchain ~env)
-        ~which
-        ~which_exn
+        ~context:name
         ~env
         ~opam_config_var
+        ~ocamlfind
         ~ocamlpath
         ~dir
     in
@@ -392,9 +365,10 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
             (Path.relative
                (Config.local_install_dir ~context:name)
                "lib/stublibs")
-        ; extend_var "OCAMLPATH" ~path_sep:ocamlpath_sep
+        ; extend_var "OCAMLPATH" ~path_sep:Ocamlfind.ocamlpath_sep
             local_lib_path
-        ; extend_var "OCAMLFIND_IGNORE_DUPS_IN" ~path_sep:ocamlpath_sep
+        ; extend_var "OCAMLFIND_IGNORE_DUPS_IN"
+            ~path_sep:Ocamlfind.ocamlpath_sep
             local_lib_path
         ; extend_var "MANPATH"
             (Config.local_install_man_dir ~context:name)
@@ -413,7 +387,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       )
       |> Env.extend_env (
         Option.value ~default:Env.empty
-          (Option.map findlib_config ~f:Findlib.Config.env)
+          (Option.map ocamlfind ~f:Ocamlfind.extra_env)
       )
     |> Env.extend_env (Env_nodes.extra_env ~profile env_nodes)
     in

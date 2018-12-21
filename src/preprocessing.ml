@@ -575,7 +575,6 @@ let lint_module sctx ~dir ~expander ~dep_kind ~lint ~lib_name ~scope ~dir_kind =
                   >>> SC.Action.run sctx
                         action
                         ~loc
-                        ~dir
                         ~expander
                         ~dep_kind
                         ~targets:(Static [])
@@ -661,7 +660,6 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess
                       Chdir (workspace_root_var,
                              action)))
                   ~loc
-                  ~dir
                   ~expander
                   ~dep_kind
                   ~targets:(Static [dst])

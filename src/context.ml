@@ -234,7 +234,9 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
      | None -> Fiber.return None
      | Some toolchain ->
        Lazy.force findlib_config_path >>| fun path ->
-       Some (Findlib.Config.load path ~toolchain ~context:name))
+       Findlib.Config.load path
+       |> Findlib.Config.toolchain ~toolchain
+       |> Option.some)
     >>= fun findlib_config ->
 
     let get_tool_using_findlib_config prog =

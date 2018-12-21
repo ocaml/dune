@@ -247,8 +247,7 @@ let ocaml_flags t ~dir (x : Buildable.t) =
     ~default:(Env.ocaml_flags t ~dir)
     ~eval:(Expander.expand_and_eval_set expander)
 
-let c_flags t ~dir ~(lib : Library.t) ccg =
-  let expander = Env.expander t ~dir in
+let c_flags t ~dir ~expander ~(lib : Library.t) ccg =
   let eval = Expander.expand_and_eval_set expander in
   let flags = lib.c_flags in
   let default = Env.c_flags t ~dir in
@@ -261,9 +260,7 @@ let c_flags t ~dir ~(lib : Library.t) ccg =
       eval flags ~standard:(Build.return ccg)
   end
 
-
-let cxx_flags_gather t ~dir ~(lib : Library.t) ccg =
-  let expander = Env.expander t ~dir in
+let cxx_flags_gather t ~dir ~expander ~(lib : Library.t) ccg =
   let eval = Expander.expand_and_eval_set expander in
   let flags = lib.cxx_flags in
   let default = Env.cxx_flags t ~dir in

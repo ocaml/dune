@@ -56,6 +56,7 @@ val ocaml_flags
 val c_flags
   :  t
   -> dir:Path.t
+  -> expander:Expander.t
   -> lib:Library.t
   -> string list
   -> (unit, string list) Build.t
@@ -63,6 +64,7 @@ val c_flags
 val cxx_flags_gather
   :  t
   -> dir:Path.t
+  -> expander:Expander.t
   -> lib:Library.t
   -> string list
   -> (unit, string list) Build.t

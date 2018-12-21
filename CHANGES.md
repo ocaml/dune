@@ -93,6 +93,8 @@ unreleased
 - Generate `.merlin` files that account for normal preprocessors defined using a
   subset of the `action` language. (#1768, @rgrinberg)
 
+- Add c_flags and cxx_flags to env profile settings (#1700, @gretay-js)
+
 1.6.2 (05/12/2018)
 ------------------
 

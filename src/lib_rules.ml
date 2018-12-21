@@ -162,8 +162,8 @@ module Gen (P : Install_rules.Params) = struct
     let cctx = Compilation_context.for_wrapped_compat cctx wrapped_compat in
     Module_compilation.build_modules cctx ~js_of_ocaml ~dynlink ~dep_graphs
 
-  let build_c_file (lib : Library.t) ~dir ~includes (loc, src, dst) =
-    let c_flags = SC.c_flags sctx ~dir ~lib (Context.cc_g ctx) in
+  let build_c_file (lib : Library.t) ~dir ~expander ~includes (loc, src, dst) =
+    let c_flags = SC.c_flags sctx ~dir ~expander ~lib (Context.cc_g ctx) in
     SC.add_rule sctx ~loc ~dir
       (c_flags
        >>>
@@ -180,7 +180,7 @@ module Gen (P : Install_rules.Params) = struct
          ]);
     dst
 
-  let build_cxx_file (lib : Library.t) ~dir ~includes (loc, src, dst) =
+  let build_cxx_file (lib : Library.t) ~dir ~expander ~includes (loc, src, dst) =
     let open Arg_spec in
     let output_param =
       if ctx.ccomp_type = "msvc" then
@@ -188,7 +188,7 @@ module Gen (P : Install_rules.Params) = struct
       else
         [A "-o"; Target dst]
     in
-    let cxx_flags = SC.cxx_flags_gather sctx ~dir ~lib (Context.cc_g ctx) in
+    let cxx_flags = SC.cxx_flags_gather sctx ~dir ~expander ~lib (Context.cc_g ctx) in
     SC.add_rule sctx ~loc ~dir
       (cxx_flags
        >>>
@@ -253,7 +253,7 @@ module Gen (P : Install_rules.Params) = struct
       ocamlmklib ~sandbox:true ~custom:false ~targets:[dynamic]
     end
 
-  let build_o_files lib ~dir ~requires ~dir_contents =
+  let build_o_files lib ~dir ~expander ~requires ~dir_contents =
     let all_dirs = Dir_contents.dirs dir_contents in
     let h_files =
       List.fold_left all_dirs ~init:[] ~f:(fun acc dc ->
@@ -288,15 +288,15 @@ module Gen (P : Install_rules.Params) = struct
         ]
     in
     List.map lib.c_names ~f:(fun name ->
-      build_c_file   lib ~dir ~includes (resolve_name name ~ext:".c")
+      build_c_file   lib ~dir ~expander ~includes (resolve_name name ~ext:".c")
     ) @ List.map lib.cxx_names ~f:(fun name ->
-      build_cxx_file lib ~dir ~includes (resolve_name name ~ext:".cpp")
+      build_cxx_file lib ~dir ~expander ~includes (resolve_name name ~ext:".cpp")
     )
 
   let build_stubs lib ~dir ~expander ~requires ~dir_contents ~vlib_stubs_o_files =
     let lib_o_files =
       if Library.has_stubs lib then
-        build_o_files lib ~dir ~requires ~dir_contents
+        build_o_files lib ~dir ~expander ~requires ~dir_contents
       else
         []
     in

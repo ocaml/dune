@@ -114,15 +114,13 @@ let rec ocaml_flags t ~profile ~expander =
     t.ocaml_flags <- Some flags;
     flags
 
-
-
 let rec c_flags t ~profile ~expander =
   match t.c_flags with
   | Some x -> x
   | None ->
     let default =
       match t.inherit_from with
-      | None -> Build.return ([])
+      | None -> Build.return []
       | Some (lazy t) -> c_flags t ~profile ~expander
     in
     let flags =
@@ -140,13 +138,14 @@ let rec c_flags t ~profile ~expander =
     t.c_flags <- Some flags;
     flags
 
+
 let rec cxx_flags t ~profile ~expander =
   match t.cxx_flags with
   | Some x -> x
   | None ->
     let default =
       match t.inherit_from with
-      | None -> Build.return ([])
+      | None -> Build.return []
       | Some (lazy t) -> cxx_flags t ~profile ~expander
     in
     let flags =

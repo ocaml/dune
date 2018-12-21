@@ -68,7 +68,7 @@ include Repr
 let repr t = t
 
 let arr f = Arr f
-let return x = Arr (fun () -> x)
+let return x = Arr (fun _ -> x)
 
 let record_lib_deps lib_deps =
   Record_lib_deps lib_deps
@@ -147,13 +147,13 @@ let if_file_exists p ~then_ ~else_ =
 
 let file_exists p =
   if_file_exists p
-    ~then_:(arr (fun _ -> true))
-    ~else_:(arr (fun _ -> false))
+    ~then_:(return true)
+    ~else_:(return false)
 
 let file_exists_opt p t =
   if_file_exists p
-    ~then_:(t >>^ fun x -> Some x)
-    ~else_:(arr (fun _ -> None))
+    ~then_:(t >>^ Option.some)
+    ~else_:(arr (Fn.const None))
 
 let fail ?targets x =
   match targets with

@@ -276,7 +276,7 @@ let gen ~contexts ~build_system
       | None -> Fiber.return None
       | Some h ->
         Fiber.Ivar.read (Hashtbl.find_exn sctxs h.name)
-        >>| fun x -> Some x
+        >>| Option.some
     in
     let stanzas () =
       Dune_load.Dune_files.eval ~context dune_files >>| fun stanzas ->

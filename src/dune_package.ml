@@ -75,7 +75,7 @@ module Lib = struct
     let path = Path_dune_lang.Local.encode ~dir:package_root in
     let paths name f = field_l name path f in
     let mode_paths name (xs : Path.t Mode.Dict.List.t) =
-      field_l name (fun x -> x) (Mode.Dict.List.encode path xs) in
+      field_l name sexp (Mode.Dict.List.encode path xs) in
     let libs name = field_l name (no_loc Lib_name.encode) in
     record_fields @@
     [ field "name" Lib_name.encode name
@@ -91,14 +91,14 @@ module Lib = struct
     ; libs "ppx_runtime_deps" ppx_runtime_deps
     ; field_o "implements" (no_loc Lib_name.encode) implements
     ; field_o "main_module_name" Module.Name.encode main_module_name
-    ; field_l "modes" (fun x -> x) (Mode.Dict.Set.encode modes)
-    ; field_l "modules" (fun x -> x)
+    ; field_l "modes" sexp (Mode.Dict.Set.encode modes)
+    ; field_l "modules" sexp
         (match modules with
          | None -> []
          | Some modules -> Lib_modules.encode modules)
     ] @ (Sub_system_name.Map.to_list sub_systems
          |> List.map ~f:(fun (name, (_ver, sexps)) ->
-           field_l (Sub_system_name.to_string name) (fun x -> x) sexps))
+           field_l (Sub_system_name.to_string name) sexp sexps))
 
   let decode ~base =
     let open Stanza.Decoder in

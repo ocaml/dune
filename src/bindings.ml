@@ -46,9 +46,8 @@ let dune elem =
         (if_paren_colon_form
            ~then_:(
              let%map values = repeat elem in
-             fun (loc, name) ->
-               Left (loc, name, values))
-           ~else_:(elem >>| fun x -> Right x))
+             fun (loc, name) -> Left (loc, name, values))
+           ~else_:(elem >>| Either.right))
     in
     let rec loop vars acc = function
       | [] -> List.rev acc

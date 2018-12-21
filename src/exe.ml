@@ -166,7 +166,7 @@ let link_exe
        ; A "-o"; Target exe
        ; As linkage.flags
        ; Dyn (fun (_, _, link_flags) -> As link_flags)
-       ; Arg_spec.of_result_map arg_spec_for_requires ~f:(fun x -> x)
+       ; Arg_spec.of_result_map arg_spec_for_requires ~f:Fn.id
        ; Dyn (fun (cm_files, _, _) -> Deps cm_files)
        ]);
   if linkage.ext = ".bc" then

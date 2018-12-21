@@ -182,7 +182,7 @@ let install_uninstall ~what =
               Left (ctx, (pkg, fn))
             else
               Right fn))
-        |> List.partition_map ~f:(fun x -> x)
+        |> List.partition_map ~f:Fn.id
       in
       if missing_install_files <> [] then begin
         die "The following <package>.install are missing:\n\

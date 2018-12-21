@@ -676,7 +676,7 @@ module Decoder = struct
     let x, state2 = t ctx state1 in
     ((loc_between_states ctx state1 state2, x), state2)
 
-  let raw = next (fun x -> x)
+  let raw = next Fn.id
 
   let unit =
     next

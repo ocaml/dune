@@ -254,8 +254,8 @@ module Alias0 = struct
           acc
           >>>
           Build.if_file_exists fn
-            ~then_:(Build.path fn >>^ fun _ -> false)
-            ~else_:(Build.arr (fun x -> x)))))
+            ~then_:(Build.path fn >>^ Fn.const false)
+            ~else_:(Build.arr Fn.id))))
 
   let dep_rec t ~loc ~file_tree =
     let ctx_dir, src_dir =
@@ -282,7 +282,7 @@ module Alias0 = struct
       let ctx_dir = Path.(relative build_dir) ctx in
       dep_rec_internal ~name ~dir ~ctx_dir))
     >>^ fun is_empty_list ->
-    let is_empty = List.for_all is_empty_list ~f:(fun x -> x) in
+    let is_empty = List.for_all is_empty_list ~f:Fn.id in
     if is_empty && not (is_standard name) then
       die "From the command line:\n\
            @{<error>Error@}: Alias %S is empty.\n\
@@ -1018,7 +1018,7 @@ and load_dir_step2_exn t ~dir ~collector ~lazy_generators =
            ~env:None
            (Build.path_set deps >>>
             dyn_deps >>>
-            Build.dyn_path_set (Build.arr (fun x -> x))
+            Build.dyn_path_set (Build.arr Fn.id)
             >>^ (fun dyn_deps ->
               let deps = Path.Set.union deps dyn_deps in
               Action.with_stdout_to path

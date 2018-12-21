@@ -131,7 +131,7 @@ module Cached_value = struct
     else begin
       let rec deps_changed acc = function
         | [] ->
-          Fiber.parallel_map acc ~f:(fun x -> x) >>| List.exists ~f:(fun x -> x)
+          Fiber.parallel_map acc ~f:Fn.id >>| List.exists ~f:Fn.id
         | Last_dep.T (node, prev_output) :: deps ->
           match node.state with
           | Running (run, ivar) ->

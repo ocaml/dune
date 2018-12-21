@@ -740,7 +740,7 @@ and available_internal db (name : Lib_name.t) ~stack =
   resolve_dep db name ~allow_private_deps:true ~loc:Loc.none ~stack
   |> Result.is_ok
 
-and resolve_simple_deps db (names : ((Loc.t * Lib_name.t) list)) ~allow_private_deps ~stack =
+and resolve_simple_deps db names ~allow_private_deps ~stack =
   Result.List.map names ~f:(fun (loc, name) ->
     resolve_dep db name ~allow_private_deps ~loc ~stack)
 
@@ -751,7 +751,8 @@ and resolve_complex_deps db deps ~allow_private_deps ~stack =
         match (dep : Dune_file.Lib_dep.t) with
         | Direct (loc, name) ->
           let res =
-            resolve_dep db name ~allow_private_deps ~loc ~stack >>| fun x -> [x]
+            resolve_dep db name ~allow_private_deps ~loc ~stack
+            >>| List.singleton
           in
           (res, acc_selects)
         | Select { result_fn; choices; loc } ->

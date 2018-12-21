@@ -142,7 +142,7 @@ module Make (Path : sig
     let s2 = read_file fn2 in
     String.compare s1 s2
 
-  let copy_file ?(chmod=fun x -> x) ~src ~dst () =
+  let copy_file ?(chmod=Fn.id) ~src ~dst () =
     with_file_in src ~f:(fun ic ->
       let perm = (Unix.fstat (Unix.descr_of_in_channel ic)).st_perm |> chmod in
       Exn.protectx (P.open_out_gen

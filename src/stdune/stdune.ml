@@ -37,6 +37,7 @@ module Digest     = Digest
 module Fdecl      = Fdecl
 module Unit       = Unit
 module Monad      = Monad
+module Fn         = Fn
 
 external reraise : exn -> _ = "%reraise"
 

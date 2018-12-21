@@ -44,7 +44,7 @@ module Gen (P : Install_rules.Params) = struct
         if ctx.ccomp_type = "msvc" then
           msvc_hack_cclibs
         else
-          fun x -> x
+          Fn.id
       in
       let artifacts ~ext modules =
         List.map modules ~f:(Module.obj_file ~obj_dir ~ext)

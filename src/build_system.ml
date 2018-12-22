@@ -1164,11 +1164,7 @@ let get_file_spec_other t fn =
   let dir = Path.parent_exn fn in
   if Path.is_in_build_dir dir then
     load_dir t ~dir;
-  match Path.Table.find t.files fn with
-  | Some file ->
-    Fiber.return (Some file)
-  | None ->
-    Fiber.return None
+  Fiber.return (Path.Table.find t.files fn)
 
 and get_file_spec t path =
   match Path.Table.find t.files path with

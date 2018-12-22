@@ -665,7 +665,7 @@ let () =
     pending_targets := Path.Set.empty;
     Path.Set.iter fns ~f:Path.unlink_no_err)
 
-let compute_targets_digest_after_rule_execution targets =
+let compute_targets_digest_after_rule_execution ~loc targets =
   let good, bad =
     List.partition_map targets ~f:(fun fn ->
       match Utils.Cached_digest.refresh fn with
@@ -675,7 +675,8 @@ let compute_targets_digest_after_rule_execution targets =
   match bad with
   | [] -> Digest.string (Marshal.to_string good [])
   | missing ->
-    die "@{<error>Error@}: Rule failed to generate the following targets:\n%s"
+    Errors.fail_opt loc
+      "@{<error>Error@}: Rule failed to generate the following targets:\n%s"
       (string_of_paths (Path.Set.of_list missing))
 
 let make_local_dir t fn =
@@ -802,7 +803,7 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
 and start_rule t _rule =
   t.hook Rule_started
 
-and run_rule  t rule action deps =
+and run_rule t rule action deps =
   let { Internal_rule.
         dir
       ; targets
@@ -814,7 +815,7 @@ and run_rule  t rule action deps =
       ; id = _
       ; static_deps = _
       ; build = _
-      ; loc = _
+      ; loc
       ; transitive_rev_deps = _
       ; rev_deps = _
       } = rule in
@@ -865,6 +866,8 @@ and run_rule  t rule action deps =
       pending_targets := Path.Set.union targets !pending_targets;
       let action =
         match sandbox_dir with
+        | None ->
+          action
         | Some sandbox_dir ->
           Path.rm_rf sandbox_dir;
           let sandboxed path = Path.sandbox_managed_paths ~sandbox_dir path in
@@ -874,8 +877,6 @@ and run_rule  t rule action deps =
             ~sandboxed
             ~deps:deps
             ~targets:targets_as_list
-        | None ->
-          action
       in
       make_local_dirs t (Action.chdirs action);
       with_locks locks ~f:(fun () ->
@@ -885,7 +886,7 @@ and run_rule  t rule action deps =
       (* All went well, these targets are no longer pending *)
       pending_targets := Path.Set.diff !pending_targets targets;
       let targets_digest =
-        compute_targets_digest_after_rule_execution targets_as_list
+        compute_targets_digest_after_rule_execution ~loc targets_as_list
       in
       Trace.set head_target { rule_digest; targets_digest }
     end else

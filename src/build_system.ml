@@ -423,7 +423,14 @@ module Action_and_deps = struct
       ]
 end
 
-module Rule_fn = Memo.Make_hidden(Internal_rule)
+module Rule_fn = struct
+  include Memo.Make_hidden(Internal_rule)
+
+  let loc () =
+    let stack = Memo.get_call_stack () in
+    List.find_map stack ~f:Stack_frame.input
+    |> Option.bind ~f:(fun rule -> rule.Internal_rule.loc)
+end
 module Path_fn = Memo.Make(Path)(Path_dune_lang)
 
 type t =
@@ -1176,20 +1183,12 @@ and get_file_spec t path =
       match Path.Table.find t.files path with
       | Some _ as some -> Fiber.return some
       | None ->
-        let stack = Memo.get_call_stack () in
-        let loc =
-          List.find_map stack ~f:Rule_fn.Stack_frame.input
-          |> Option.bind ~f:(fun rule -> rule.Internal_rule.loc)
-        in
+        let loc = Rule_fn.loc () in
         no_rule_found t ~loc path
     end else if Path.exists path then
       Fiber.return None
     else
-      let stack = Memo.get_call_stack () in
-      let loc =
-        List.find_map stack ~f:Rule_fn.Stack_frame.input
-        |> Option.bind ~f:(fun rule -> rule.Internal_rule.loc)
-      in
+      let loc = Rule_fn.loc () in
       Errors.fail_opt loc
         "File unavailable: %s" (Path.to_string_maybe_quoted path)
 

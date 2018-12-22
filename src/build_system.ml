@@ -1467,16 +1467,16 @@ module Rule = struct
     }
 
   let compare a b = Id.compare a.id b.id
+
+  module Set = Set.Make(struct type nonrec t = t let compare = compare end)
 end
 
-module Rule_set = Set.Make(Rule)
-
 let rules_for_files rules deps =
-  Path.Set.fold (Deps.paths deps) ~init:Rule_set.empty ~f:(fun path acc ->
+  Path.Set.fold (Deps.paths deps) ~init:Rule.Set.empty ~f:(fun path acc ->
     match Path.Map.find rules path with
     | None -> acc
-    | Some rule -> Rule_set.add acc rule)
-  |> Rule_set.to_list
+    | Some rule -> Rule.Set.add acc rule)
+  |> Rule.Set.to_list
 
 let build_rules_internal ?(recursive=false) t ~request =
   let rules = ref [] in

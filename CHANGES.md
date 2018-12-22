@@ -55,6 +55,10 @@ unreleased
 
 - Make the `seq` package available for OCaml >= 4.07 (#1714, @rgrinberg)
 
+- Add locations to error messages where a rule fails to generate targets and
+  rules that require files outside the build/source directory. (#1708, fixes
+  #848, @rgrinberg)
+
 1.6.2 (05/12/2018)
 ------------------
 

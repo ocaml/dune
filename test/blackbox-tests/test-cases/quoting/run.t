@@ -17,7 +17,7 @@ The targets should only be interpreted as a single path when quoted
   1 | (rule
   2 |  (targets s t)
   3 |  (action (with-stdout-to "%{targets}" (echo foo))))
-  Error: Error: Rule failed to generate the following targets:
+  Error: rule failed to generate the following targets:
   - s
   - t
   [1]

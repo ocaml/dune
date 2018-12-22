@@ -4,7 +4,7 @@ type t =
   { odig_files : Path.t list
   ; ctx_build_dir : Path.t
   ; lib_stanzas : Dune_file.Library.t Dir_with_dune.t list
-  ; installs : string Dune_file.Install_conf.t Dir_with_dune.t list
+  ; installs : (Loc.t * string) Dune_file.Install_conf.t Dir_with_dune.t list
   ; docs : Dune_file.Documentation.t Dir_with_dune.t list
   ; mlds : Path.t list Lazy.t
   ; pkg : Package.t
@@ -21,23 +21,25 @@ let add_stanzas t ~sctx =
     ~f:(fun t ({ Dir_with_dune. ctx_dir = dir ; scope = _ ; data
                ; src_dir = _ ; kind = _} as d) ->
          let expander = Super_context.expander sctx ~dir in
-      let path_expander = Expander.expand_str expander in
-      let open Dune_file in
-      match data with
-      | Install i ->
-        let i = { i with files = File_bindings.map ~f:path_expander i.files } in
-        { t with
-          installs = { d with data = i } :: t.installs
-        }
-      | Library l ->
-        { t with
-          lib_stanzas = { d with data = l } :: t.lib_stanzas
-        }
-      | Documentation l ->
-        { t with
-          docs = { d with data = l } :: t.docs
-        }
-      | _ -> t)
+         let path_expander sw =
+           (String_with_vars.loc sw, Expander.expand_str expander sw) in
+         let open Dune_file in
+         match data with
+         | Install i ->
+           let i =
+             { i with files = File_bindings.map ~f:path_expander i.files } in
+           { t with
+             installs = { d with data = i } :: t.installs
+           }
+         | Library l ->
+           { t with
+             lib_stanzas = { d with data = l } :: t.lib_stanzas
+           }
+         | Documentation l ->
+           { t with
+             docs = { d with data = l } :: t.docs
+           }
+         | _ -> t)
 
 let stanzas_to_consider_for_install stanzas ~external_lib_deps_mode =
   if not external_lib_deps_mode then

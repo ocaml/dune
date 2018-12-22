@@ -655,8 +655,8 @@ let create_file_specs t targets rule ~copy_source =
     | Target.Vfile (Vspec.T (fn, kind)) ->
       add_spec t fn (File_spec.create rule (Sexp_file kind)) ~copy_source)
 
-(* This contains the targets of the actions that are being executed. On exit, we need to
-   delete them as they might contain garbage *)
+(* This contains the targets of the actions that are being executed. On exit, we
+   need to delete them as they might contain garbage *)
 let pending_targets = ref Path.Set.empty
 
 let () =
@@ -676,7 +676,7 @@ let compute_targets_digest_after_rule_execution ~loc targets =
   | [] -> Digest.string (Marshal.to_string good [])
   | missing ->
     Errors.fail_opt loc
-      "@{<error>Error@}: Rule failed to generate the following targets:\n%s"
+      "rule failed to generate the following targets:\n%s"
       (string_of_paths (Path.Set.of_list missing))
 
 let make_local_dir t fn =

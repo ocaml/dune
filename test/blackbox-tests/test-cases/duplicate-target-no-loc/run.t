@@ -4,6 +4,6 @@ us their origin.
 Issue: https://github.com/ocaml/dune/issues/1405
   $ dune build foo.install
   Multiple rules generated for _build/install/default/doc/foo/foo:
-  - <internal location>
-  - <internal location>
+  - dune:3
+  - dune:3
   [1]

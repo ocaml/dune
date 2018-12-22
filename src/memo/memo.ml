@@ -1,4 +1,4 @@
-open !Stdune
+open! Stdune
 open Fiber.O
 
 module type Input = Memo_intf.Input
@@ -212,7 +212,7 @@ let push_stack_frame frame f =
 
 let dump_stack () =
   let stack = get_call_stack () in
-  Printf.printf "Memoized function stack:\n";
+  Printf.eprintf "Memoized function stack:\n";
   List.iter stack ~f:(fun st ->
     Printf.eprintf "   %s %s\n"
       (Stack_frame.name st)

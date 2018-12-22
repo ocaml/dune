@@ -1185,7 +1185,13 @@ and get_file_spec t path =
     end else if Path.exists path then
       Fiber.return None
     else
-      die "File unavailable: %s" (Path.to_string_maybe_quoted path)
+      let stack = Memo.get_call_stack () in
+      let loc =
+        List.find_map stack ~f:Rule_fn.Stack_frame.input
+        |> Option.bind ~f:(fun rule -> rule.Internal_rule.loc)
+      in
+      Errors.fail_opt loc
+        "File unavailable: %s" (Path.to_string_maybe_quoted path)
 
 let stamp_file_for_files_of t ~dir ~ext =
   let files_of_dir =

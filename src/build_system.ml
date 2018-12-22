@@ -510,9 +510,12 @@ let entry_point t ~f =
 module Target = Build_interpret.Target
 module Pre_rule = Build_interpret.Rule
 
-let get_file : type a. t -> Path.t -> a File_kind.t -> a File_spec.t = fun t fn kind ->
+let get_file : type a. t -> Path.t -> a File_kind.t -> a File_spec.t =
+  fun t fn kind ->
   match Path.Table.find t.files fn with
-  | None -> die "no rule found for %s" (Path.to_string fn)
+  | None ->
+    let loc = Rule_fn.loc () in
+    Errors.fail_opt loc "no rule found for %s" (Path.to_string fn)
   | Some (File_spec.T file) ->
     let Type_eq.T = File_kind.eq_exn kind file.kind in
     file

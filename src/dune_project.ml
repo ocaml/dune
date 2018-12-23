@@ -448,7 +448,7 @@ let default_name ~dir ~packages =
     match Name.named name with
     | Some x -> x
     | None ->
-      Errors.fail (Loc.in_file (Path.to_string (Package.opam_file pkg)))
+      Errors.fail (Loc.in_file (Package.opam_file pkg))
         "%S is not a valid opam package name."
         name
 

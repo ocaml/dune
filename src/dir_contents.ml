@@ -251,7 +251,7 @@ let build_modules_map (d : _ Dir_with_dune.t) ~modules =
               Option.some_if (n = name) b.loc)
             |> List.sort ~compare
           in
-          Errors.fail (Loc.in_file (List.hd locs).start.pos_fname)
+          Errors.fail (Loc.drop_position (List.hd locs))
             "Module %a is used in several stanzas:@\n\
              @[<v>%a@]@\n\
              @[%a@]"
@@ -276,7 +276,7 @@ let build_modules_map (d : _ Dir_with_dune.t) ~modules =
             List.sort ~compare
               (b.Buildable.loc :: List.map rest ~f:(fun b -> b.Buildable.loc))
           in
-          Errors.warn (Loc.in_file b.loc.start.pos_fname)
+          Errors.warn (Loc.drop_position b.loc)
             "Module %a is used in several stanzas:@\n\
              @[<v>%a@]@\n\
              @[%a@]@\n\
@@ -394,12 +394,11 @@ let rec get sctx ~dir =
               let modules = modules_of_files ~dir ~files in
               Module.Name.Map.union acc modules ~f:(fun name x y ->
                 Errors.fail (Loc.in_file
-                            (Path.to_string
                                (match File_tree.Dir.dune_file ft_dir with
                                 | None ->
                                   Path.relative (File_tree.Dir.path ft_dir)
                                     "_unknown_"
-                                | Some d -> File_tree.Dune_file.path d)))
+                                | Some d -> File_tree.Dune_file.path d))
                   "Module %a appears in several directories:\
                    @\n- %a\
                    @\n- %a"

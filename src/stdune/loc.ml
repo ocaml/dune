@@ -1,23 +1,31 @@
-type t =
-  { start : Lexing.position
-  ; stop  : Lexing.position
+include Loc0
+
+let none_pos p : Lexing.position =
+  { pos_fname = p
+  ; pos_lnum  = 1
+  ; pos_cnum  = 0
+  ; pos_bol   = 0
   }
 
-let in_file fn =
-  let pos : Lexing.position =
-    { pos_fname = fn
-    ; pos_lnum  = 1
-    ; pos_cnum  = 0
-    ; pos_bol   = 0
-    }
-  in
+let in_file p =
+  let pos = none_pos (Path.to_string p) in
   { start = pos
   ; stop = pos
   }
 
 let in_dir = in_file
 
-let none = in_file "<none>"
+let none =
+  let pos = none_pos "<none>" in
+  { start = pos
+  ; stop = pos
+  }
+
+let drop_position (t : t) =
+  let pos = none_pos t.start.pos_fname in
+  { start = pos
+  ; stop = pos
+  }
 
 let of_lexbuf lexbuf : t =
   { start = Lexing.lexeme_start_p lexbuf

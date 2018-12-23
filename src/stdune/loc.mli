@@ -1,13 +1,12 @@
-type t =
-  { start : Lexing.position
-  ; stop  : Lexing.position
-  }
+include module type of struct include Loc0 end
 
-val in_file : string -> t
+val in_file : Path.t -> t
 
-val in_dir : string -> t
+val in_dir : Path.t -> t
 
 val none : t
+
+val drop_position : t -> t
 
 val of_lexbuf : Lexing.lexbuf -> t
 

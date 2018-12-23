@@ -329,7 +329,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
              %s"
           (Path.to_string ocamlc) msg
       | Error (Makefile_config file, msg) ->
-        Errors.fail (Loc.in_file (Path.to_string file)) "%s" msg
+        Errors.fail (Loc.in_file file) "%s" msg
     in
     Fiber.fork_and_join
       findlib_paths

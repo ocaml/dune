@@ -111,6 +111,9 @@ module Linkage = struct
     }
 end
 
+let exe_path_from_name cctx ~name ~(linkage : Linkage.t) =
+  Path.relative (CC.dir cctx) (name ^ linkage.ext)
+
 let link_exe
       ~loc
       ~name
@@ -127,7 +130,7 @@ let link_exe
   let requires = CC.requires_link cctx in
   let expander = CC.expander      cctx in
   let mode = linkage.mode in
-  let exe = Path.relative dir (name ^ linkage.ext) in
+  let exe = exe_path_from_name cctx ~name ~linkage in
   let compiler = Option.value_exn (Context.compiler ctx mode) in
   let kind = Mode.cm_kind mode in
   let artifacts ~ext modules =
@@ -218,3 +221,6 @@ let build_and_link_many
 
 let build_and_link ~program =
   build_and_link_many ~programs:[program]
+
+let exe_path cctx ~(program : Program.t) ~linkage =
+  exe_path_from_name cctx ~name:program.name ~linkage

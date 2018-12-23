@@ -1728,6 +1728,28 @@ module Tests = struct
   let single = gen_parse (field "name" (located string) >>| List.singleton)
 end
 
+module Toplevel = struct
+  type t =
+    { name : string
+    ; libraries : (Loc.t * Lib_name.t) list
+    ; loc : Loc.t
+    }
+
+  let decode =
+    let open Stanza.Decoder in
+    record (
+      let%map loc = loc
+      and name = field "name" string
+      and libraries =
+        field "libraries" (list (located Lib_name.decode)) ~default:[]
+      in
+      { name
+      ; libraries
+      ; loc
+      }
+    )
+end
+
 module Copy_files = struct
   type t = { add_line_directive : bool
            ; glob : String_with_vars.t
@@ -1776,6 +1798,7 @@ type Stanza.t +=
   | Documentation   of Documentation.t
   | Tests           of Tests.t
   | Include_subdirs of Loc.t * Include_subdirs.t
+  | Toplevel        of Toplevel.t
 
 module Stanzas = struct
   type t = Stanza.t list
@@ -1852,6 +1875,10 @@ module Stanzas = struct
        and t = Include_subdirs.decode
        and loc = loc in
        [Include_subdirs (loc, t)])
+    ; "toplevel",
+      (let%map () = Syntax.since Stanza.syntax (1, 7)
+       and t = Toplevel.decode in
+       [Toplevel t])
     ]
 
   let jbuild_parser =

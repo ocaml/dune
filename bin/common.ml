@@ -162,10 +162,11 @@ let term =
                     $(b,--verbose) as well, to make sure that commands are printed
                     before they are being executed.|})
   and workspace_file =
+    let doc = "Use this specific workspace file instead of looking it up." in
     Arg.(value
          & opt (some path) None
-         & info ["workspace"] ~docs ~docv:"FILE"
-             ~doc:"Use this specific workspace file instead of looking it up.")
+         & info ["workspace"] ~docs ~docv:"FILE" ~doc
+             ~env:(Arg.env_var ~doc "DUNE_WORKSPACE"))
   and auto_promote =
     Arg.(value
          & flag

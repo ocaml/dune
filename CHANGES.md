@@ -7,6 +7,9 @@ unreleased
 
 - Add support for `.cxx` extension for C++ stubs (#1831, @rgrinberg)
 
+- Add `DUNE_WORKSPACE` variable. This variable is equivalent to setting
+  `--workspace` in the command line. (#1711, fix #1503, @rgrinberg)
+
 1.7.1 (13/02/2019)
 ------------------
 

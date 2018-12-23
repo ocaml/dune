@@ -146,18 +146,18 @@ type t =
     mutable sub_systems : Sub_system0.Instance.t Lazy.t Sub_system_name.Map.t
   }
 
-and db =
+type status =
+  | St_initializing of Id.t (* To detect cycles *)
+  | St_found        of t
+  | St_not_found
+  | St_hidden       of t * Error.Library_not_available.Reason.Hidden.t
+
+type db =
   { parent  : db option
   ; resolve : Lib_name.t -> resolve_result
   ; table   : (Lib_name.t, status) Hashtbl.t
   ; all     : Lib_name.t list Lazy.t
   }
-
-and status =
-  | St_initializing of Id.t (* To detect cycles *)
-  | St_found        of t
-  | St_not_found
-  | St_hidden       of t * Error.Library_not_available.Reason.Hidden.t
 
 and resolve_result =
   | Not_found

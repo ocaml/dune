@@ -23,6 +23,71 @@ let man =
 
 let info = Term.info "rules" ~doc ~man
 
+let print_rule_makefile ppf (rule : Build_system.Rule.t) =
+  let action =
+    Action.For_shell.Progn
+      [ Mkdir (Path.to_string rule.dir)
+      ; Action.for_shell rule.action
+      ]
+  in
+  Format.fprintf ppf
+    "@[<hov 2>@{<makefile-stuff>%a:%t@}@]@,\
+     @<0>\t@{<makefile-action>%a@}@,@,"
+    (Format.pp_print_list ~pp_sep:Format.pp_print_space (fun ppf p ->
+       Format.pp_print_string ppf (Path.to_string p)))
+    (Path.Set.to_list rule.targets)
+    (fun ppf ->
+       Path.Set.iter (Deps.paths rule.deps) ~f:(fun dep ->
+         Format.fprintf ppf "@ %s" (Path.to_string dep)))
+    Pp.pp
+    (Action_to_sh.pp action)
+
+let print_rule_sexp ppf (rule : Build_system.Rule.t) =
+  let sexp_of_action action =
+    Action.for_shell action |> Action.For_shell.encode
+  in
+  let paths ps =
+    Dune_lang.Encoder.list Path_dune_lang.encode (Path.Set.to_list ps)
+  in
+  let sexp =
+    Dune_lang.Encoder.record (
+      List.concat
+        [ [ "deps"   , Deps.to_sexp rule.deps
+          ; "targets", paths rule.targets ]
+        ; (match rule.context with
+           | None -> []
+           | Some c -> ["context",
+                        Dune_lang.atom_or_quoted_string c.name])
+        ; [ "action" , sexp_of_action rule.action ]
+        ])
+  in
+  Format.fprintf ppf "%a@," Dune_lang.pp_split_strings sexp
+
+module Syntax = struct
+  type t =
+    | Makefile
+    | Sexp
+
+  let term =
+    let doc = "Output the rules in Makefile syntax." in
+    let%map makefile = Arg.(value & flag & info ["m"; "makefile"] ~doc) in
+    if makefile then
+      Makefile
+    else
+      Sexp
+
+  let print_rule = function
+    | Makefile -> print_rule_makefile
+    | Sexp -> print_rule_sexp
+
+  let print_rules syntax ppf rules =
+    Dune_lang.prepare_formatter ppf;
+    Format.pp_open_vbox ppf 0;
+    Format.pp_print_list (print_rule syntax) ppf rules;
+    Format.pp_print_flush ppf ()
+end
+
+
 let term =
   let%map common = Common.term
   and out =
@@ -36,11 +101,7 @@ let term =
          & info ["r"; "recursive"]
              ~doc:"Print all rules needed to build the transitive \
                    dependencies of the given targets.")
-  and makefile_syntax =
-    Arg.(value
-         & flag
-         & info ["m"; "makefile"]
-             ~doc:"Output the rules in Makefile syntax.")
+  and syntax = Syntax.term
   and targets =
     Arg.(value
          & pos_all string []
@@ -54,58 +115,17 @@ let term =
     >>= fun setup ->
     let request =
       match targets with
-      | [] -> Build.paths (Build_system.all_targets setup.build_system)
+      | [] ->
+        Build.paths (Build_system.all_targets setup.build_system)
       | _  ->
         Target.resolve_targets_exn ~log common setup targets
         |> Target.request setup
     in
-    Build_system.build_rules setup.build_system ~request ~recursive >>= fun rules ->
-    let sexp_of_action action =
-      Action.for_shell action |> Action.For_shell.encode
-    in
+    Build_system.build_rules setup.build_system ~request ~recursive
+    >>= fun rules ->
     let print oc =
       let ppf = Format.formatter_of_out_channel oc in
-      Dune_lang.prepare_formatter ppf;
-      Format.pp_open_vbox ppf 0;
-      if makefile_syntax then begin
-        List.iter rules ~f:(fun (rule : Build_system.Rule.t) ->
-          let action =
-            Action.For_shell.Progn
-              [ Mkdir (Path.to_string rule.dir)
-              ; Action.for_shell rule.action
-              ]
-          in
-          Format.fprintf ppf
-            "@[<hov 2>@{<makefile-stuff>%a:%t@}@]@,\
-             @<0>\t@{<makefile-action>%a@}@,@,"
-            (Format.pp_print_list ~pp_sep:Format.pp_print_space (fun ppf p ->
-               Format.pp_print_string ppf (Path.to_string p)))
-            (Path.Set.to_list rule.targets)
-            (fun ppf ->
-               Path.Set.iter (Deps.paths rule.deps) ~f:(fun dep ->
-                 Format.fprintf ppf "@ %s" (Path.to_string dep)))
-            Pp.pp
-            (Action_to_sh.pp action))
-      end else begin
-        List.iter rules ~f:(fun (rule : Build_system.Rule.t) ->
-          let sexp =
-            let paths ps =
-              Dune_lang.Encoder.list Path_dune_lang.encode (Path.Set.to_list ps)
-            in
-            Dune_lang.Encoder.record (
-              List.concat
-                [ [ "deps"   , Deps.to_sexp rule.deps
-                  ; "targets", paths rule.targets ]
-                ; (match rule.context with
-                   | None -> []
-                   | Some c -> ["context",
-                                Dune_lang.atom_or_quoted_string c.name])
-                ; [ "action" , sexp_of_action rule.action ]
-                ])
-          in
-          Format.fprintf ppf "%a@," Dune_lang.pp_split_strings sexp)
-      end;
-      Format.pp_print_flush ppf ();
+      Syntax.print_rules syntax ppf rules;
       Fiber.return ()
     in
     match out with

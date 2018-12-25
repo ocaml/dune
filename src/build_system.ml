@@ -1480,7 +1480,7 @@ let rules_for_files rules deps =
     | Some rule -> Rule.Set.add acc rule)
   |> Rule.Set.to_list
 
-let build_rules_internal ?(recursive=false) t ~request =
+let build_rules_internal t ~recursive ~request =
   let rules = ref [] in
   let rec run_rule (rule : Internal_rule.t) =
     Fdecl.get t.prepare_rule_def rule
@@ -1540,9 +1540,9 @@ let build_rules_internal ?(recursive=false) t ~request =
          |> String.concat ~sep:"\n-> ")
   )
 
-let build_rules ?recursive t ~request =
+let build_rules t ~recursive ~request =
   entry_point t ~f:(fun () ->
-    build_rules_internal ?recursive t ~request)
+    build_rules_internal t ~recursive ~request)
 
 let set_package t file package =
   Path.Table.add t.packages file package

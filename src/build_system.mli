@@ -247,7 +247,7 @@ end
     [recursive] is [true], return all the rules needed to build the
     given targets and their transitive dependencies. *)
 val build_rules
-  :  ?recursive:bool (* default false *)
-  -> t
+  :  t
+  -> recursive:bool
   -> request:(unit, unit) Build.t
   -> Rule.t list Fiber.t

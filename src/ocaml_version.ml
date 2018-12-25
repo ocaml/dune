@@ -34,3 +34,6 @@ let stdlib_includes_uchar version =
 
 let stdlib_includes_bigarray version =
   version >= (4, 07, 0)
+
+let stdlib_includes_seq version =
+  version >= (4, 07, 0)

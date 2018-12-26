@@ -98,6 +98,12 @@ module Internal_rule = struct
   end
   include T
 
+  let _pp fmt { targets; dir ; _ } =
+    Fmt.record fmt
+      [ "targets", Fmt.const (Fmt.ocaml_list Path.pp) (Path.Set.to_list targets)
+      ; "dir", Fmt.const Path.pp dir
+      ]
+
   module Set = Set.Make(T)
 
   let equal a b = Id.equal a.id b.id
@@ -1353,14 +1359,14 @@ let process_memcycle t exn =
 let do_build (t : t) ~request =
   Hooks.End_of_build.once Promotion.finalize;
   update_universe t; (* ? *)
-  (fun () -> build_request t false ~request:request)
+  (fun () -> build_request t false ~request)
   |> Fiber.with_error_handler ~on_error:(fun exn ->
     Dep_path.map exn ~f:(function
       | Memo.Cycle_error.E exn -> process_memcycle t exn
       | _ as exn -> exn
     ) |> raise
   )
-  >>| (fun (res,_) -> res)
+  >>| fst
 
 let create ~contexts ~file_tree ~hook =
   let contexts =

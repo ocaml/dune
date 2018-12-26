@@ -5,6 +5,12 @@ type t =
   ; vars : String.Set.t
   }
 
+let pp fmt { paths ; vars } =
+  Fmt.record fmt
+    [ "paths", Fmt.const (Fmt.ocaml_list Path.pp) (Path.Set.to_list paths)
+    ; "vars", Fmt.const String.Set.pp vars
+    ]
+
 let paths t = t.paths
 
 let trace_path fn =

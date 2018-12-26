@@ -8,6 +8,7 @@ type t
 val make
   :  vlib:Lib.t
   -> impl:Dune_file.Library.t
+  -> dir:Path.t
   -> vlib_modules:Lib_modules.t
   -> vlib_dep_graph:Dep_graph.Ml_kind.t
   -> t

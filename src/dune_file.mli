@@ -228,6 +228,7 @@ module Library : sig
   val best_name : t -> Lib_name.t
   val is_virtual : t -> bool
   val is_impl : t -> bool
+  val obj_dir : dir:Path.t -> t -> Obj_dir.t
 
   module Main_module_name : sig
     type t = Module.Name.t option Inherited.t

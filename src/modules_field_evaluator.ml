@@ -10,13 +10,13 @@ type t =
 
 let eval =
   let module Value = struct
-    type t = (Module.t, Module.Name.t) result
+    type t = (Module.Source.t, Module.Name.t) result
 
     type key = Module.Name.t
 
     let key = function
       | Error s -> s
-      | Ok m -> Module.name m
+      | Ok m -> m.Module.Source.name
   end in
   let module Eval = Ordered_set_lang.Make_loc(Module.Name)(Value) in
   let parse ~all_modules ~fake_modules ~loc s =
@@ -93,7 +93,7 @@ let find_errors ~modules ~intf_only ~virtual_modules ~private_modules =
   let private_virt_modules     = ref [] in
   let missing_intf_only        = ref [] in
   Module.Name.Map.iteri all ~f:(fun module_name (module_,  props) ->
-    let has_impl = Module.has_impl module_ in
+    let has_impl = Module.Source.has_impl module_ in
     let (!?) p = Properties.Map.mem props p in
     let (!??) p f = Option.iter ~f (Properties.Map.find props p) in
     let add_to stack loc = stack := (loc, module_name) :: !stack in
@@ -176,8 +176,8 @@ let check_invalid_module_listing ~(buildable : Buildable.t) ~intf_only
          they cannot be listed as virtual:\n%s"
     errors.spurious_modules_virtual
 
-
-let eval ~modules:(all_modules : Module.Name_map.t)
+let eval ~modules:(all_modules : Module.Source.t Module.Name.Map.t)
+      ~obj_dir
       ~buildable:(conf : Buildable.t) ~virtual_modules
       ~private_modules =
   (* fake modules are modules that doesn't exists but it doesn't
@@ -214,12 +214,20 @@ let eval ~modules:(all_modules : Module.Name_map.t)
   );
   check_invalid_module_listing ~buildable:conf ~intf_only
     ~modules ~virtual_modules ~private_modules;
-  let drop_locs = Module.Name.Map.map ~f:snd in
-  { all_modules =
-      Module.Name.Map.map modules ~f:(fun (_, m) ->
-        if Module.Name.Map.mem private_modules (Module.name m) then
-          Module.set_private m
-        else
-          m)
-  ; virtual_modules = drop_locs virtual_modules
+  let all_modules =
+    Module.Name.Map.map modules ~f:(fun (_, m) ->
+      let visibility =
+        if Module.Name.Map.mem private_modules m.name
+        then Module.Visibility.Private
+        else Public
+      in
+      Module.make ?impl:m.impl ?intf:m.intf m.name
+        ~visibility
+        ~obj_dir
+    )
+  in
+  { all_modules
+  ; virtual_modules =
+      Module.Name.Map.filteri all_modules
+        ~f:(fun name _ -> Module.Name.Map.mem virtual_modules name)
   }

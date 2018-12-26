@@ -112,9 +112,10 @@ module Lib = struct
     record (
       field_o "main_module_name" Module.Name.decode >>= fun main_module_name ->
       field_o "implements" (located Lib_name.decode) >>= fun implements ->
+      field "name" Lib_name.decode >>= fun name ->
+      let dir = Path.append_local base (dir_of_name name) in
       let%map synopsis = field_o "synopsis" string
       and loc = loc
-      and name = field "name" Lib_name.decode
       and modes = field_l "modes" Mode.decode
       and kind = field "kind" Lib_kind.decode
       and archives = mode_paths "archives"
@@ -127,7 +128,7 @@ module Lib = struct
       and virtual_ = field_b "virtual"
       and sub_systems = Sub_system_info.record_parser ()
       and modules = field_o "modules" (Lib_modules.decode
-                         ~implements:(Option.is_some implements) ~dir:base)
+                         ~implements:(Option.is_some implements) ~dir)
       in
       let modes = Mode.Dict.Set.of_list modes in
       { kind
@@ -146,7 +147,7 @@ module Lib = struct
       ; main_module_name
       ; virtual_
       ; version = None
-      ; dir = Path.append_local base (dir_of_name name)
+      ; dir
       ; modules
       ; modes
       }

@@ -16,9 +16,7 @@ val name : t -> Lib_name.t
 val src_dir : t -> Path.t
 
 (** Directory where the object files for the library are located. *)
-val obj_dir : t -> Path.t
-
-val private_obj_dir : t -> Path.t option
+val obj_dir : t -> Obj_dir.t
 
 (** Same as [Path.is_managed (obj_dir t)] *)
 val is_local : t -> bool
@@ -81,7 +79,7 @@ end
 module Lib_and_module : sig
   type nonrec t =
     | Lib of t
-    | Module of Module.t * Path.t (** obj_dir *)
+    | Module of Module.t
 
   val link_flags : t list -> mode:Mode.t -> stdlib_dir:Path.t -> _ Arg_spec.t
 

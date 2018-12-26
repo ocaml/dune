@@ -164,10 +164,13 @@ include Sub_system.Register_end_point(
 
       let loc = lib.buildable.loc in
 
-      let inline_test_dir =
-        Path.relative dir (sprintf ".%s.inline-tests"
-                             (Lib_name.Local.to_string (snd lib.name)))
+      let inline_test_name =
+        sprintf "%s.inline-tests" (Lib_name.Local.to_string (snd lib.name))
       in
+
+      let inline_test_dir = Path.relative dir ("."^inline_test_name) in
+
+      let obj_dir = Obj_dir.make_exe ~dir:inline_test_dir inline_test_name in
 
       let name = "run" in
       let main_module_filename = name ^ ".ml" in
@@ -179,7 +182,8 @@ include Sub_system.Register_end_point(
                    ; syntax = OCaml
                    }
              ~visibility:Public
-             ~obj_name:name)
+             ~obj_name:name
+             ~obj_dir)
       in
 
       let bindings =
@@ -238,7 +242,7 @@ include Sub_system.Register_end_point(
           ~super_context:sctx
           ~expander
           ~scope
-          ~dir:inline_test_dir
+          ~obj_dir
           ~modules
           ~opaque:false
           ~requires:runner_libs

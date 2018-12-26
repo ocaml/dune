@@ -22,6 +22,11 @@ let iter t ~f =
   | None -> ()
   | Some x -> f x
 
+let forall t ~f =
+  match t with
+  | None -> true
+  | Some t -> f t
+
 let value t ~default =
   match t with
   | Some x -> x

@@ -26,7 +26,7 @@ module L = struct
         (lib_files_alias ~dir:(Lib.src_dir lib) ~name:(Lib.name lib) ~exts)
     else
       Build_system.stamp_file_for_files_of (Super_context.build_system t)
-        ~dir:(Lib.obj_dir lib) ~ext:(string_of_exts exts)
+        ~dir:(Lib.obj_dir lib).public_dir ~ext:(string_of_exts exts)
 
   let file_deps_with_exts t lib_exts =
     List.rev_map lib_exts ~f:(fun (lib, exts) -> file_deps_of_lib t lib ~exts)

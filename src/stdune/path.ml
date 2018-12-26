@@ -140,9 +140,9 @@ module Local : sig
   val compare : t -> t -> Ordering.t
   val compare_val : t -> t -> Ordering.t
   val equal : t -> t -> bool
-  val of_string : ?error_loc:Loc.t -> string -> t
+  val of_string : ?error_loc:Loc0.t -> string -> t
   val to_string : t -> string
-  val relative : ?error_loc:Loc.t -> t -> string -> t
+  val relative : ?error_loc:Loc0.t -> t -> string -> t
   val append : t -> t -> t
   val parent : t -> t
   val mkdir_p : t -> unit
@@ -157,7 +157,7 @@ module Local : sig
   val pp : Format.formatter -> t -> unit
 
   module L : sig
-    val relative : ?error_loc:Loc.t -> t -> string list -> t
+    val relative : ?error_loc:Loc0.t -> t -> string list -> t
   end
   module Set : Set.S with type elt = t
 

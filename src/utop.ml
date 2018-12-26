@@ -97,7 +97,7 @@ let setup sctx ~dir =
          ~obj_name:exe_name
          ~obj_dir)
   in
-  let loc = Loc.in_dir (Path.to_string dir) in
+  let loc = Loc.in_dir dir in
   let requires =
     let open Result.O in
     (loc, Lib_name.of_string_exn ~loc:(Some loc) "utop")

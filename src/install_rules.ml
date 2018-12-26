@@ -119,7 +119,7 @@ module Gen(P : Params) = struct
             match Local_package.virtual_lib pkg with
             | Some lib ->
               Build.fail { fail = fun () ->
-                Errors.fail (Loc.in_file (Path.to_string meta_template))
+                Errors.fail (Loc.in_file meta_template)
                   "Package %a defines virtual library %a and has a META \
                    template. This is not allowed."
                   Package.Name.pp (Local_package.name pkg)

@@ -61,7 +61,7 @@ let rule_loc ~file_tree ~loc ~dir =
       | Some file -> File_tree.Dune_file.path file
       | None      -> Path.relative dir "_unknown_"
     in
-    Loc.in_file (Path.to_string file)
+    Loc.in_file file
 
 module Internal_rule = struct
   module Id = struct

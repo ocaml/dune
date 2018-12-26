@@ -1490,16 +1490,16 @@ let build_rules_internal t ~recursive ~request =
   let rules = ref [] in
   let rec run_rule (rule : Internal_rule.t) =
     Fdecl.get t.prepare_rule_def rule
-    >>= (fun (action,deps) ->
-      let rule = {
-        Rule.
-        id = rule.id;
-        dir = rule.dir;
-        deps = deps;
-        targets = rule.targets;
-        context = rule.context;
-        action = action;
-      } in
+    >>= (fun (action, deps) ->
+      let rule =
+        { Rule.
+          id = rule.id
+        ; dir = rule.dir
+        ; deps
+        ; targets = rule.targets
+        ; context = rule.context
+        ; action
+        } in
       rules := rule :: !rules;
       if recursive then
         Deps.parallel_iter deps ~f:proc_rule

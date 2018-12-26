@@ -1507,25 +1507,26 @@ let build_rules_internal t ~recursive ~request =
         Fiber.return ()
     )
   and proc_rule dep =
-    get_file_spec_other t dep
-    >>= (fun fs ->
-      Option.value_exn fs |> fun (File_spec.T file) ->
-      let rule = file.rule in
-      run_rule rule)
-    >>=
-    Fiber.return in
+    get_file_spec_other t dep >>= function
+    | None -> Fiber.return () (* external files *)
+    | Some (File_spec.T file) -> run_rule file.rule
+  in
   build_request t ~static_only:true ~request
-  >>= (fun (_, deps) ->
-    Deps.parallel_iter deps ~f:proc_rule
-    >>> Fiber.return deps)
-  >>| (fun deps ->
-    let targets = Build_interpret.static_deps
-                    request
-                    ~all_targets:(targets_of t)
-                    ~file_tree:t.file_tree
-                  |> Static_deps.rule_deps
-                  |> Deps.path_diff deps
-                  |> Deps.add_paths Deps.empty in
+  >>= (fun (_, dyn_deps) ->
+    let static_deps =
+      Build_interpret.static_deps
+        request
+        ~all_targets:(targets_of t)
+        ~file_tree:t.file_tree
+    in
+    let targets =
+      Static_deps.rule_deps static_deps
+      |> Deps.path_diff dyn_deps
+      |> Deps.add_paths (Static_deps.action_deps static_deps)
+    in
+    Deps.parallel_iter targets ~f:proc_rule
+    >>> Fiber.return targets)
+  >>| (fun targets ->
     let rules = !rules in
     let rules =
       List.fold_left rules ~init:Path.Map.empty ~f:(fun acc (r : Rule.t) ->

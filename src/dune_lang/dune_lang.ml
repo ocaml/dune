@@ -208,7 +208,8 @@ module Parser = struct
         | Many -> sexps
         | Many_as_one ->
           match sexps with
-          | [] -> List (Loc.in_file lexbuf.lex_curr_p.pos_fname, [])
+          | [] -> List (Loc.in_file
+                          (Path.of_string lexbuf.lex_curr_p.pos_fname), [])
           | x :: l ->
             let last = List.fold_left l ~init:x ~f:(fun _ x -> x) in
             let loc = { (Ast.loc x) with stop = (Ast.loc last).stop } in

@@ -212,7 +212,7 @@ module Driver = struct
     match loc with
     | User_file (loc, _) -> Error (Errors.exnf loc "%a" Fmt.text msg)
     | Dot_ppx (path, pps) ->
-      Error (Errors.exnf (Loc.in_file (Path.to_string path)) "%a" Fmt.text
+      Error (Errors.exnf (Loc.in_file path) "%a" Fmt.text
                (sprintf
                   "Failed to create on-demand ppx rewriter for %s; %s"
                   (String.enumerate_and (List.map pps ~f:Lib_name.to_string))
@@ -531,8 +531,7 @@ let setup_reason_rules sctx (m : Module.t) =
           | ".rei" -> ".re.mli"
           | _     ->
             Errors.fail
-              (Loc.in_file
-                 (Path.to_string (Path.drop_build_context_exn f.path)))
+              (Loc.in_file (Path.drop_build_context_exn f.path))
               "Unknown file extension for reason source file: %S"
               ext
         in

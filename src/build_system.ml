@@ -1317,7 +1317,7 @@ let build_file t path =
     | Some (File_spec.T file) ->
       Fdecl.get t.build_rule_internal_def file.rule)
 
-let build_request t static_only ~request =
+let build_request t ~static_only ~request =
   let result = Fdecl.create () in
   let request =
     let open Build.O in
@@ -1359,7 +1359,7 @@ let process_memcycle t exn =
 let do_build (t : t) ~request =
   Hooks.End_of_build.once Promotion.finalize;
   update_universe t; (* ? *)
-  (fun () -> build_request t false ~request)
+  (fun () -> build_request t ~static_only:false ~request)
   |> Fiber.with_error_handler ~on_error:(fun exn ->
     Dep_path.map exn ~f:(function
       | Memo.Cycle_error.E exn -> process_memcycle t exn
@@ -1514,7 +1514,7 @@ let build_rules_internal t ~recursive ~request =
       run_rule rule)
     >>=
     Fiber.return in
-  build_request t true ~request
+  build_request t ~static_only:true ~request
   >>= (fun (_, deps) ->
     Deps.parallel_iter deps ~f:proc_rule
     >>> Fiber.return deps)

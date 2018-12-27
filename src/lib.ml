@@ -119,18 +119,56 @@ module Sub_system0 = struct
   end
 end
 
-module Id = struct
+module Id : sig
   type t =
     { unique_id : int
     ; path      : Path.t
     ; name      : Lib_name.t
     }
+
+  val compare : t -> t -> Ordering.t
+
+  val make : path:Path.t -> name:Lib_name.t -> t
+
+  module Set : Set.S with type elt = t
+
+  module Top_closure : Top_closure.S
+    with type key := t
+     and type 'a monad := 'a Monad.Id.t
+end = struct
+  type t =
+    { unique_id : int
+    ; path      : Path.t
+    ; name      : Lib_name.t
+    }
+
+  let compare t1 t2 = Int.compare t1.unique_id t2.unique_id
+
+  let gen_unique_id =
+    let next = ref 0 in
+    fun () ->
+      let n = !next in
+      next := n + 1;
+      n
+
+  let make ~path ~name =
+    { unique_id = gen_unique_id ()
+    ; path
+    ; name
+    }
+
+  module Set = Set.Make(struct
+      type nonrec t = t
+      let compare = compare
+    end)
+
+  module Top_closure = Top_closure.Make(Set)(Monad.Id)
 end
 
 type t =
   { info              : Lib_info.t
   ; name              : Lib_name.t
-  ; unique_id         : int
+  ; unique_id         : Id.t
   ; requires          : t list Or_exn.t
   ; ppx_runtime_deps  : t list Or_exn.t
   ; pps               : t list Or_exn.t
@@ -227,11 +265,7 @@ let package t =
   | Private _ ->
     None
 
-let to_id t : Id.t =
-  { unique_id = t.unique_id
-  ; path      = t.info.src_dir
-  ; name      = t.name
-  }
+let to_id t : Id.t = t.unique_id
 
 module Set = Set.Make(
 struct
@@ -305,12 +339,17 @@ module L = struct
       match l with
       | [] -> acc
       | x :: l ->
-        if Int.Set.mem seen x.unique_id then
+        if Id.Set.mem seen x.unique_id then
           loop acc l seen
         else
-          loop (x :: acc) l (Int.Set.add seen x.unique_id)
+          loop (x :: acc) l (Id.Set.add seen x.unique_id)
     in
-    loop [] l Int.Set.empty
+    loop [] l Id.Set.empty
+
+  let top_closure l ~key ~deps =
+    Id.Top_closure.top_closure l
+      ~key:(fun t -> unique_id (key t))
+      ~deps
 end
 
 module Lib_and_module = struct
@@ -399,24 +438,17 @@ end
 
 (* Library name resolution and transitive closure *)
 
-let gen_unique_id =
-  let next = ref 0 in
-  fun () ->
-    let n = !next in
-    next := n + 1;
-    n
-
 (* Dependency stack used while resolving the dependencies of a library
    that was just returned by the [resolve] callback *)
 module Dep_stack = struct
   type t =
     { stack : Id.t list
-    ; seen  : Int.Set.t
+    ; seen  : Id.Set.t
     }
 
   let empty =
     { stack = []
-    ; seen  = Int.Set.empty
+    ; seen  = Id.Set.empty
     }
 
   let to_required_by t ~stop_at =
@@ -433,7 +465,7 @@ module Dep_stack = struct
     loop [] t.stack
 
   let dependency_cycle t (last : Id.t) =
-    assert (Int.Set.mem t.seen last.unique_id);
+    assert (Id.Set.mem t.seen last);
     let rec build_loop acc stack =
       match stack with
       | [] -> assert false
@@ -444,23 +476,22 @@ module Dep_stack = struct
         else
           build_loop acc stack
     in
-    let loop = build_loop [(last.path, last.name)] t.stack in
+    let loop = build_loop [last.path, last.name] t.stack in
     Error (Dependency_cycle loop)
 
   let create_and_push t name path =
-    let unique_id = gen_unique_id () in
-    let init = { Id. unique_id; name; path } in
+    let init = Id.make ~path ~name in
     (init,
      { stack = init :: t.stack
-     ; seen  = Int.Set.add t.seen unique_id
+     ; seen  = Id.Set.add t.seen init
      })
 
   let push t (x : Id.t) : (_, _) result =
-    if Int.Set.mem t.seen x.unique_id then
+    if Id.Set.mem t.seen x then
       Error (dependency_cycle t x)
     else
       Ok { stack = x :: t.stack
-         ; seen  = Int.Set.add t.seen x.unique_id
+         ; seen  = Id.Set.add t.seen x
          }
 end
 
@@ -576,14 +607,14 @@ end = struct
   end
 
   let second_step_closure ts impls =
-    let visited = ref Int.Set.empty in
+    let visited = ref Id.Set.empty in
     let res = ref [] in
     let rec loop t =
       let t = Option.value ~default:t (Map.find impls t) in
-      if Int.Set.mem !visited t.unique_id then
+      if Id.Set.mem !visited t.unique_id then
         Ok ()
       else begin
-        visited := Int.Set.add !visited t.unique_id;
+        visited := Id.Set.add !visited t.unique_id;
         t.requires >>= fun deps ->
         Result.List.iter deps ~f:loop >>| fun () ->
         res := t :: !res
@@ -651,7 +682,7 @@ let rec instantiate db name (info : Lib_info.t) ~stack ~hidden =
   let t =
     { info
     ; name
-    ; unique_id         = id.unique_id
+    ; unique_id         = id
     ; requires
     ; ppx_runtime_deps
     ; pps
@@ -838,10 +869,9 @@ and resolve_user_deps db deps ~allow_private_deps ~pps ~stack =
   in
   (deps, pps, resolved_selects)
 
-and closure_with_overlap_checks db ts ~stack ~linking =
+and closure_with_overlap_checks db ts ~stack:orig_stack ~linking =
   let visited = ref Lib_name.Map.empty in
   let res = ref [] in
-  let orig_stack = stack in
   let rec loop t ~stack =
     match Lib_name.Map.find !visited t.name with
     | Some (t', stack') ->
@@ -877,7 +907,7 @@ and closure_with_overlap_checks db ts ~stack ~linking =
       Result.List.iter deps ~f:(loop ~stack:new_stack) >>| fun () ->
       res := (t, stack) :: !res
   in
-  Result.List.iter ts ~f:(loop ~stack) >>= fun () ->
+  Result.List.iter ts ~f:(loop ~stack:orig_stack) >>= fun () ->
   Virtual_libs.associate (List.rev !res) ~linking ~orig_stack
 
 let closure_with_overlap_checks db l =

@@ -7,6 +7,7 @@ module Entry : sig
     | Path of Path.t
     | Alias of Path.t
     | Library of Path.t * Lib_name.t
+    | Executables of (Loc.t * string) list
     | Preprocess of Lib_name.t list
     | Loc of Loc.t
 

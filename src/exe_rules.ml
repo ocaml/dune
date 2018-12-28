@@ -111,7 +111,9 @@ let executables_rules ~sctx ~dir ~dir_kind ~expander
 let rules ~sctx ~dir ~dir_contents ~scope ~expander ~dir_kind
       (exes : Dune_file.Executables.t) =
   let compile_info =
-    Lib.DB.resolve_user_written_deps_for_exes (Scope.libs scope)
+    Lib.DB.resolve_user_written_deps_for_exes
+      (Scope.libs scope)
+      exes.names
       exes.buildable.libraries
       ~pps:(Dune_file.Preprocess_map.pps exes.buildable.preprocess)
       ~allow_overlaps:exes.buildable.allow_overlapping_dependencies

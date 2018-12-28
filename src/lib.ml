@@ -1081,7 +1081,8 @@ module DB = struct
       let t = Option.some_if (not allow_overlaps) t in
       Compile.for_lib t lib
 
-  let resolve_user_written_deps_for_exes t ?(allow_overlaps=false) deps ~pps =
+  let resolve_user_written_deps_for_exes t exes
+        ?(allow_overlaps=false) deps ~pps =
     let lib_deps_info =
       Compile.make_lib_deps_info
         ~user_written_deps:deps
@@ -1097,6 +1098,8 @@ module DB = struct
       >>=
       closure_with_overlap_checks (Option.some_if (not allow_overlaps) t)
         ~linking:true
+      |> Result.map_error ~f:(fun e ->
+        Dep_path.prepend_exn e (Executables exes))
     in
     { Compile.
       direct_requires = res
@@ -1176,8 +1179,8 @@ let report_lib_error ppf (e : Error.t) =
       lib_and_dep_path impl2
   | No_implementation { for_vlib = (info, dp) } ->
     Format.fprintf ppf
-      "@[<v 3>@{<error>Error@}: \
-       No implementation found for virtual library %a (%a).%a@]"
+      "@[<v>@{<error>Error@}: \
+       No implementation found for virtual library %a (%a).@,%a@]"
       Lib_name.pp_quoted info.name Path.pp info.src_dir
       dep_path dp
   | Library_not_available { loc = _; name; reason } ->

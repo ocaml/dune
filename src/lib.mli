@@ -268,6 +268,7 @@ module DB : sig
       This function is for executables stanzas.  *)
   val resolve_user_written_deps_for_exes
     :  t
+    -> (Loc.t * string) list
     -> ?allow_overlaps:bool
     -> Dune_file.Lib_dep.t list
     -> pps:(Loc.t * Lib_name.t) list

@@ -10,6 +10,7 @@ Cycle detection
   -> "c" in _build/default
   -> "a" in _build/default
   -> required by library "c" in _build/default
+  -> required by executable cycle in dune:16
   [1]
 
 Select with no solution
@@ -20,5 +21,6 @@ Select with no solution
   25 |  (libraries (select x from))
                    ^^^^^^^^^^^^^^^
   Error: No solution found for this select form.
+  -> required by executable select_error in dune:23
   [1]
 

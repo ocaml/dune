@@ -66,7 +66,10 @@ Test the argument syntax
   --impl
   test_ppx_args.ml
   --as-ppx
-  Error: Rule failed to generate the following targets:
+  File "dune", line 68, characters 13-60:
+  68 |  (preprocess (pps -arg1 driver_print_args -arg2 -- -foo bar)))
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  Error: rule failed to generate the following targets:
   - test_ppx_args.pp.ml
   [1]
 
@@ -100,7 +103,10 @@ Test using installed drivers
   --impl
   driveruser.ml
   --as-ppx
-  Error: Rule failed to generate the following targets:
+  File "dune", line 6, characters 13-53:
+  6 |  (preprocess (pps -arg1 testdriver -arg2 -- -foo bar)))
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  Error: rule failed to generate the following targets:
   - driveruser.pp.ml
   [1]
 
@@ -120,7 +126,10 @@ Test using installed drivers
   --impl
   driveruser.ml
   --as-ppx
-  Error: Rule failed to generate the following targets:
+  File "dune", line 13, characters 13-57:
+  13 |  (preprocess (pps -arg1 replacesdriver -arg2 -- -foo bar)))
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  Error: rule failed to generate the following targets:
   - driveruser.pp.ml
   [1]
 
@@ -142,7 +151,10 @@ Test using installed drivers
   --impl
   driveruser.ml
   --as-ppx
-  Error: Rule failed to generate the following targets:
+  File "dune", line 5, characters 13-57:
+  5 |  (preprocess (pps -arg1 replacesdriver -arg2 -- -foo bar)))
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  Error: rule failed to generate the following targets:
   - driveruser.pp.ml
   [1]
 
@@ -179,6 +191,9 @@ Test using installed drivers
   --impl
   driveruser.ml
   --as-ppx
-  Error: Rule failed to generate the following targets:
+  File "dune", line 6, characters 13-53:
+  6 |  (preprocess (pps -arg1 testdriver -arg2 -- -foo bar)))
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  Error: rule failed to generate the following targets:
   - driveruser.pp.ml
   [1]

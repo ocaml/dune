@@ -423,7 +423,14 @@ module Action_and_deps = struct
       ]
 end
 
-module Rule_fn = Memo.Make_hidden(Internal_rule)
+module Rule_fn = struct
+  include Memo.Make_hidden(Internal_rule)
+
+  let loc () =
+    let stack = Memo.get_call_stack () in
+    List.find_map stack ~f:Stack_frame.input
+    |> Option.bind ~f:(fun rule -> rule.Internal_rule.loc)
+end
 module Path_fn = Memo.Make(Path)(Path_dune_lang)
 
 type t =
@@ -503,9 +510,12 @@ let entry_point t ~f =
 module Target = Build_interpret.Target
 module Pre_rule = Build_interpret.Rule
 
-let get_file : type a. t -> Path.t -> a File_kind.t -> a File_spec.t = fun t fn kind ->
+let get_file : type a. t -> Path.t -> a File_kind.t -> a File_spec.t =
+  fun t fn kind ->
   match Path.Table.find t.files fn with
-  | None -> die "no rule found for %s" (Path.to_string fn)
+  | None ->
+    let loc = Rule_fn.loc () in
+    Errors.fail_opt loc "no rule found for %s" (Path.to_string fn)
   | Some (File_spec.T file) ->
     let Type_eq.T = File_kind.eq_exn kind file.kind in
     file
@@ -645,8 +655,8 @@ let create_file_specs t targets rule ~copy_source =
     | Target.Vfile (Vspec.T (fn, kind)) ->
       add_spec t fn (File_spec.create rule (Sexp_file kind)) ~copy_source)
 
-(* This contains the targets of the actions that are being executed. On exit, we need to
-   delete them as they might contain garbage *)
+(* This contains the targets of the actions that are being executed. On exit, we
+   need to delete them as they might contain garbage *)
 let pending_targets = ref Path.Set.empty
 
 let () =
@@ -655,7 +665,7 @@ let () =
     pending_targets := Path.Set.empty;
     Path.Set.iter fns ~f:Path.unlink_no_err)
 
-let compute_targets_digest_after_rule_execution targets =
+let compute_targets_digest_after_rule_execution ~loc targets =
   let good, bad =
     List.partition_map targets ~f:(fun fn ->
       match Utils.Cached_digest.refresh fn with
@@ -665,7 +675,8 @@ let compute_targets_digest_after_rule_execution targets =
   match bad with
   | [] -> Digest.string (Marshal.to_string good [])
   | missing ->
-    die "@{<error>Error@}: Rule failed to generate the following targets:\n%s"
+    Errors.fail_opt loc
+      "rule failed to generate the following targets:\n%s"
       (string_of_paths (Path.Set.of_list missing))
 
 let make_local_dir t fn =
@@ -792,7 +803,7 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
 and start_rule t _rule =
   t.hook Rule_started
 
-and run_rule  t rule action deps =
+and run_rule t rule action deps =
   let { Internal_rule.
         dir
       ; targets
@@ -804,7 +815,7 @@ and run_rule  t rule action deps =
       ; id = _
       ; static_deps = _
       ; build = _
-      ; loc = _
+      ; loc
       ; transitive_rev_deps = _
       ; rev_deps = _
       } = rule in
@@ -855,6 +866,8 @@ and run_rule  t rule action deps =
       pending_targets := Path.Set.union targets !pending_targets;
       let action =
         match sandbox_dir with
+        | None ->
+          action
         | Some sandbox_dir ->
           Path.rm_rf sandbox_dir;
           let sandboxed path = Path.sandbox_managed_paths ~sandbox_dir path in
@@ -864,8 +877,6 @@ and run_rule  t rule action deps =
             ~sandboxed
             ~deps:deps
             ~targets:targets_as_list
-        | None ->
-          action
       in
       make_local_dirs t (Action.chdirs action);
       with_locks locks ~f:(fun () ->
@@ -875,7 +886,7 @@ and run_rule  t rule action deps =
       (* All went well, these targets are no longer pending *)
       pending_targets := Path.Set.diff !pending_targets targets;
       let targets_digest =
-        compute_targets_digest_after_rule_execution targets_as_list
+        compute_targets_digest_after_rule_execution ~loc targets_as_list
       in
       Trace.set head_target { rule_digest; targets_digest }
     end else
@@ -1176,16 +1187,14 @@ and get_file_spec t path =
       match Path.Table.find t.files path with
       | Some _ as some -> Fiber.return some
       | None ->
-        let stack = Memo.get_call_stack () in
-        let loc =
-          List.find_map stack ~f:Rule_fn.Stack_frame.input
-          |> Option.bind ~f:(fun rule -> rule.Internal_rule.loc)
-        in
+        let loc = Rule_fn.loc () in
         no_rule_found t ~loc path
     end else if Path.exists path then
       Fiber.return None
     else
-      die "File unavailable: %s" (Path.to_string_maybe_quoted path)
+      let loc = Rule_fn.loc () in
+      Errors.fail_opt loc
+        "File unavailable: %s" (Path.to_string_maybe_quoted path)
 
 let stamp_file_for_files_of t ~dir ~ext =
   let files_of_dir =

@@ -1,8 +1,9 @@
 open! Stdune
 open Import
-open Dune_file
 open Build.O
 open! No_io
+
+module Library = Dune_file.Library
 
 module type Params = sig
   val sctx : Super_context.t
@@ -169,7 +170,8 @@ module Gen(P : Params) = struct
       | Jbuild ->
         let driver =
           let deps =
-            List.concat_map lib.buildable.libraries ~f:Lib_dep.to_lib_names
+            List.concat_map lib.buildable.libraries
+              ~f:Dune_file.Lib_dep.to_lib_names
           in
           match
             List.filter deps ~f:(fun lib_name ->
@@ -191,17 +193,19 @@ module Gen(P : Params) = struct
 
   let lib_install_files ~dir_contents ~dir ~sub_dir ~scope ~dir_kind
         (lib : Library.t) =
+    let loc = lib.buildable.loc in
     let make_entry section ?dst fn =
-      Install.Entry.make section fn
-        ~dst:(
-          let dst =
-            match dst with
-            | Some s -> s
-            | None   -> Path.basename fn
-          in
-          match sub_dir with
-          | None -> dst
-          | Some dir -> sprintf "%s/%s" dir dst)
+      ( Some loc
+      , Install.Entry.make section fn
+          ~dst:(
+            let dst =
+              match dst with
+              | Some s -> s
+              | None   -> Path.basename fn
+            in
+            match sub_dir with
+            | None -> dst
+            | Some dir -> sprintf "%s/%s" dir dst))
     in
     let installable_modules =
       Dir_contents.modules_of_library dir_contents
@@ -243,19 +247,26 @@ module Gen(P : Params) = struct
       ; List.map module_files ~f:(make_entry Lib)
       ; List.map (Lib_archives.files archives) ~f:(make_entry Lib)
       ; List.map execs ~f:(make_entry Libexec)
-      ; List.map (Lib_archives.dlls archives) ~f:(Install.Entry.make Stublibs)
+      ; List.map (Lib_archives.dlls archives) ~f:(fun a ->
+          (Some loc, Install.Entry.make Stublibs a))
       ]
 
-  let local_install_rules (entries : Install.Entry.t list)
+  let local_install_rules (entries : (Loc.t option * Install.Entry.t) list)
         ~install_paths ~package =
     let install_dir = Config.local_install_dir ~context:ctx.name in
-    List.map entries ~f:(fun entry ->
+    List.map entries ~f:(fun (loc, entry) ->
       let dst =
         Path.append install_dir
           (Install.Entry.relative_installed_path entry ~paths:install_paths)
       in
+      let loc =
+        match loc with
+        | Some l -> l
+        | None -> Loc.in_file entry.src
+      in
       Build_system.set_package (SC.build_system sctx) entry.src package;
-      SC.add_rule sctx ~dir:ctx.build_dir (Build.symlink ~src:entry.src ~dst);
+      SC.add_rule sctx ~loc ~dir:ctx.build_dir
+        (Build.symlink ~src:entry.src ~dst);
       Install.Entry.set_src entry dst)
 
   let promote_install_file =
@@ -274,12 +285,12 @@ module Gen(P : Params) = struct
     let entries =
       let docs =
         Local_package.odig_files package
-        |> List.map ~f:(fun doc -> Install.Entry.make Doc doc)
+        |> List.map ~f:(fun doc -> (None, Install.Entry.make Doc doc))
       in
       local_install_rules ~package:package_name ~install_paths (
-        Install.Entry.make Lib opam ~dst:"opam"
-        :: Install.Entry.make Lib meta ~dst:"META"
-        :: Install.Entry.make Lib dune_package ~dst:"dune-package"
+        (None, Install.Entry.make Lib opam ~dst:"opam")
+        :: (None, Install.Entry.make Lib meta ~dst:"META")
+        :: (None, Install.Entry.make Lib dune_package ~dst:"dune-package")
         :: docs)
       |> List.rev_append entries
     in
@@ -322,18 +333,23 @@ module Gen(P : Params) = struct
        >>>
        Build.write_file_dyn fn)
 
-  let init_binary_artifacts (package : Local_package.t) =
+  let init_binary_artifacts package =
     let installs =
       Local_package.installs package
       |> List.concat_map
            ~f:(fun ({ Dir_with_dune.
-                      data = { Install_conf. section; files; package = _ }
+                      data =
+                        { Dune_file.Install_conf. section; files; package = _ }
                     ; ctx_dir = dir
                     ; src_dir = _
                     ; scope = _
                     ; kind = _ }) ->
-                List.map files ~f:(fun {File_bindings. src; dst } ->
-                  Install.Entry.make section (Path.relative dir src) ?dst))
+                List.map files ~f:(fun { File_bindings. src ; dst } ->
+                  let (loc, src) = src in
+                  let dst = Option.map ~f:snd dst in
+                  ( Some loc
+                  , Install.Entry.make section (Path.relative dir src) ?dst
+                  )))
     in
     let install_paths = Local_package.install_paths package in
     let package = Local_package.name package in
@@ -343,7 +359,8 @@ module Gen(P : Params) = struct
     let docs =
       Local_package.mlds package
       |> List.map ~f:(fun mld ->
-        (Install.Entry.make
+        (None,
+         Install.Entry.make
            ~dst:(sprintf "odoc-pages/%s" (Path.basename mld))
            Install.Section.Doc mld))
     in
@@ -357,8 +374,7 @@ module Gen(P : Params) = struct
                    ; src_dir = _
                    ; kind = dir_kind
                    } ->
-                let sub_dir =
-                  (Option.value_exn lib.public).sub_dir in
+                let sub_dir = (Option.value_exn lib.public).sub_dir in
                 let dir_contents = Dir_contents.get sctx ~dir in
                 lib_install_files ~dir ~sub_dir lib ~scope
                   ~dir_kind ~dir_contents)

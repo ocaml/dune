@@ -35,3 +35,6 @@ val stdlib_includes_uchar : t -> bool
 
 (** Whether the standard library includes the [Bigarray] module *)
 val stdlib_includes_bigarray : t -> bool
+
+(** Whether the standard library includes the [Seq] module *)
+val stdlib_includes_seq : t -> bool

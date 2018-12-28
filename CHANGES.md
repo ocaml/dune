@@ -53,6 +53,8 @@ unreleased
 - Look for jsoo runtime in the same dir as the `js_of_ocaml` binary
   when the ocamlfind package is not available (#1467, @nobj)
 
+- Make the `seq` package available for OCaml >= 4.07 (#1714, @rgrinberg)
+
 1.6.2 (05/12/2018)
 ------------------
 

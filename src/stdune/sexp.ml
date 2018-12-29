@@ -14,6 +14,7 @@ module Encoder = struct
   type 'a t = 'a -> sexp
 
   let unit () = List []
+  let char c = Atom (String.make 1 c)
   let string s = Atom s
   let int i = Atom (string_of_int i)
   let float f = Atom (string_of_float f)

@@ -271,6 +271,7 @@ type dune_lang = t
 module Encoder = struct
   type nonrec 'a t = 'a -> t
   let unit () = List []
+  let char c = atom_or_quoted_string (String.make 1 c)
   let string = atom_or_quoted_string
   let int n = Atom (Atom.of_int n)
   let float f = Atom (Atom.of_float f)
@@ -696,6 +697,13 @@ module Decoder = struct
         | Ok x -> x)
 
   let string = plain_string (fun ~loc:_ x -> x)
+
+  let char = plain_string (fun ~loc x ->
+    if String.length x = 1 then
+      x.[0]
+    else
+      of_sexp_errorf loc "character expected")
+
   let int =
     basic "Integer" (fun s ->
       match int_of_string s with

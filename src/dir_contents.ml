@@ -163,10 +163,7 @@ let build_modules_map (d : _ Dir_with_dune.t) ~modules =
           Obj_dir.make_local ~dir:d.ctx_dir (snd lib.name)
             ~has_private_modules:(Option.is_some lib.private_modules)
         in
-        let { Modules_field_evaluator.
-              all_modules = modules
-            ; virtual_modules
-            } =
+        let modules =
           Modules_field_evaluator.eval ~modules
             ~obj_dir
             ~buildable:lib.buildable
@@ -194,18 +191,14 @@ let build_modules_map (d : _ Dir_with_dune.t) ~modules =
             )
         in
         Left ( lib
-             , Lib_modules.make lib ~obj_dir modules ~virtual_modules
-                 ~main_module_name ~wrapped
+             , Lib_modules.make lib ~obj_dir modules ~main_module_name ~wrapped
              )
       | Executables exes
       | Tests { exes; _} ->
         let obj_dir =
           Obj_dir.make_exe ~dir:d.ctx_dir (List.hd exes.names |> snd)
         in
-        let { Modules_field_evaluator.
-              all_modules = modules
-            ; virtual_modules = _
-            } =
+        let modules =
           Modules_field_evaluator.eval ~modules
             ~obj_dir
             ~buildable:exes.buildable

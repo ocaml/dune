@@ -2,12 +2,6 @@ open Stdune
 
 module Buildable = Dune_file.Buildable
 
-type t =
-  { all_modules : Module.Name_map.t
-  ; virtual_modules : Module.Name_map.t
-  }
-
-
 let eval =
   let module Value = struct
     type t = (Module.Source.t, Module.Name.t) result
@@ -216,18 +210,24 @@ let eval ~modules:(all_modules : Module.Source.t Module.Name.Map.t)
     ~modules ~virtual_modules ~private_modules;
   let all_modules =
     Module.Name.Map.map modules ~f:(fun (_, m) ->
+      let name = Module.Source.name m in
       let visibility =
-        if Module.Name.Map.mem private_modules m.name
-        then Module.Visibility.Private
-        else Public
+        if Module.Name.Map.mem private_modules name then
+          Module.Visibility.Private
+        else
+          Public
+      in
+      let kind =
+        if Module.Name.Map.mem virtual_modules name then
+          Module.Kind.Virtual
+        else if Module.Source.has_impl m then
+          Impl
+        else
+          Intf_only
       in
       Module.make ?impl:m.impl ?intf:m.intf m.name
+        ~kind
         ~visibility
-        ~obj_dir
-    )
+        ~obj_dir)
   in
-  { all_modules
-  ; virtual_modules =
-      Module.Name.Map.filteri all_modules
-        ~f:(fun name _ -> Module.Name.Map.mem virtual_modules name)
-  }
+  all_modules

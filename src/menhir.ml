@@ -208,6 +208,7 @@ module Run (P : PARAMS) : sig end = struct
       Module.make
         name
         ~visibility:Public
+        ~kind:Impl
         ~impl:{ path = mock_ml base; syntax = OCaml }
         ~obj_dir:(Compilation_context.obj_dir cctx)
     in

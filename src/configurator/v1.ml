@@ -321,6 +321,7 @@ module C_define = struct
     type t =
       | Switch
       | Int
+      | Uint
       | String
   end
 
@@ -338,7 +339,7 @@ module C_define = struct
     List.iter includes ~f:(pr "#include <%s>");
     pr "";
     Option.iter prelude ~f:(pr "%s");
-    if has_type Type.Int then (
+    if (has_type Type.Int) || (has_type Type.Uint) then (
       pr {|
 #define D0(x) ('0'+(x/1         )%%10)
 #define D1(x) ('0'+(x/10        )%%10), D0(x)
@@ -353,16 +354,16 @@ module C_define = struct
 |}
     );
     List.iteri vars ~f:(fun i (name, t) ->
+      let c_arr_i () =
+        let b = Buffer.create 8 in
+        let is = string_of_int i in
+        for i=0 to String.length is - 1 do
+          Printf.bprintf b "'%c', " is.[i]
+        done;
+        Buffer.contents b
+      in
       match t with
       | Type.Int ->
-        let c_arr_i =
-          let b = Buffer.create 8 in
-          let is = string_of_int i in
-          for i=0 to String.length is - 1 do
-            Printf.bprintf b "'%c', " is.[i]
-          done;
-          Buffer.contents b
-        in
         pr {|
 const char s%i[] = {
   'B', 'E', 'G', 'I', 'N', '-', %s'-',
@@ -373,7 +374,15 @@ const char s%i[] = {
 #endif
   '-', 'E', 'N', 'D'
 };
-|} i c_arr_i name name name
+|} i (c_arr_i ()) name name name
+      | Type.Uint ->
+        pr {|
+const char s%i[] = {
+  'B', 'E', 'G', 'I', 'N', '-', %s'-',
+  D9((%s)),
+  '-', 'E', 'N', 'D'
+};
+|} i (c_arr_i ()) name
       | String ->
         pr {|const char *s%i = "BEGIN-%i-" %s "-END";|} i i name;
       | Switch ->
@@ -400,7 +409,7 @@ const char *s%i = "BEGIN-%i-false-END";
           | Some v -> v in
         match t with
         | Type.Switch -> Value.Switch (bool_of_string raw_val)
-        | Int -> Int (int_of_string raw_val)
+        | Int | Uint -> Int (int_of_string raw_val)
         | String -> String raw_val in
       (name, value))
 

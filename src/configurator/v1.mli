@@ -25,6 +25,7 @@ module C_define : sig
     type t =
       | Switch (** defined/undefined *)
       | Int
+      | Uint
       | String
   end
 

@@ -68,3 +68,6 @@ let to_sexp {paths; vars} =
     [ ("paths", sexp_paths)
     ; ("vars", sexp_vars)
     ]
+
+let parallel_iter t ~f =
+  Fiber.parallel_iter (Path.Set.to_list (paths t)) ~f

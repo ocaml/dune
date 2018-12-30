@@ -1257,9 +1257,6 @@ let update_universe t =
 let parallel_iter_path_set deps ~f =
   Path.Set.to_list deps |> Fiber.parallel_iter ~f
 
-let parallel_iter_deps deps ~f =
-  Deps.paths deps |> parallel_iter_path_set ~f
-
 let prepare_rule t (rule : Internal_rule.t) : Action_and_deps.t Fiber.t =
   (* get the static dependencies needed before we can call build exec*)
   Fiber.Once.get rule.static_deps
@@ -1267,7 +1264,7 @@ let prepare_rule t (rule : Internal_rule.t) : Action_and_deps.t Fiber.t =
   >>= (fun rule_deps ->
     start_rule t rule; (* legacy for hooks *)
     (* first compute rule dependencies*)
-    parallel_iter_deps rule_deps ~f:(fun f ->
+    Deps.parallel_iter rule_deps ~f:(fun f ->
       Path_fn.exec (Fdecl.get t.build_file_def) f)
     (* then execute the build arrow *)
   )
@@ -1285,7 +1282,7 @@ let build_rule t (rule : Internal_rule.t) =
     Fiber.fork (fun () -> prepare_rule t rule)
     >>= (fun rule_eval ->
       (* now compute the action dependencies *)
-      Fiber.fork (fun () -> parallel_iter_deps action_deps ~f:build_file)
+      Fiber.fork (fun () -> Deps.parallel_iter action_deps ~f:build_file)
       (* wait for action dependencies *)
       >>= Fiber.Future.wait
       (* wait for rule dependencies *)
@@ -1499,7 +1496,7 @@ let build_rules_internal ?(recursive=false) t ~request =
       } in
       rules := rule :: !rules;
       if recursive then
-        parallel_iter_deps deps ~f:proc_rule
+        Deps.parallel_iter deps ~f:proc_rule
       else
         Fiber.return ()
     )
@@ -1513,7 +1510,7 @@ let build_rules_internal ?(recursive=false) t ~request =
     Fiber.return in
   build_request t true ~request
   >>= (fun (_, deps) ->
-    parallel_iter_deps deps ~f:proc_rule
+    Deps.parallel_iter deps ~f:proc_rule
     >>> Fiber.return deps)
   >>| (fun deps ->
     let targets = Build_interpret.static_deps

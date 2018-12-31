@@ -14,6 +14,9 @@ release: boot.exe
 boot.exe: bootstrap.ml
 	ocaml bootstrap.ml
 
+build-install:
+	$(BIN) build @install
+
 install:
 	$(BIN) install $(INSTALL_ARGS) dune
 

@@ -13,8 +13,9 @@ To get the development version bootstrapped and installed, run the following
 while in the project's root directory:
 
 ```sh
-$ make          # create the dune.exe file and bootstrap the dune build
-$ make install  # install the newly built dune
+$ make                # create the dune.exe file and bootstrap the dune build
+$ make build-install  # build dune in preparation for installation
+$ make install        # install the newly built dune in to your environment
 ```
 
 Note that we don't include all of the sources in boot.ml. We skip a

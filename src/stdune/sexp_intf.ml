@@ -1,6 +1,7 @@
 module type Combinators = sig
   type 'a t
   val unit       : unit                      t
+  val char       : char                      t
   val string     : string                    t
   val int        : int                       t
   val float      : float                     t

@@ -55,9 +55,11 @@ val hbox : 'a t list -> 'a t
 val hvbox : ?indent:int -> 'a t list -> 'a t
 val hovbox : ?indent:int -> 'a t list -> 'a t
 
+val bool   : bool   -> _ t
 val int    : int    -> _ t
 val string : string -> _ t
 val char   : char   -> _ t
+val float  : float  -> _ t
 val list   : ?sep:'b t -> 'a list -> f:('a -> 'b t) -> 'b t
 
 val space   : _ t

@@ -38,6 +38,7 @@ module Fdecl      = Fdecl
 module Unit       = Unit
 module Monad      = Monad
 module Fn         = Fn
+module Dyn        = Dyn
 
 external reraise : exn -> _ = "%reraise"
 

@@ -332,23 +332,6 @@ module Gen (P : Install_rules.Params) = struct
       in
       SC.add_rule sctx build ~dir)
 
-  let setup_file_deps lib ~dir ~modules =
-    let add_cms ~cm_kind ~init = List.fold_left ~init ~f:(fun acc m ->
-      match Module.cm_public_file m cm_kind with
-      | None -> acc
-      | Some fn -> Path.Set.add acc fn)
-    in
-    List.iter Cm_kind.all ~f:(fun cm_kind ->
-      let files = add_cms ~cm_kind ~init:Path.Set.empty modules in
-      Lib_file_deps.setup_file_deps_alias sctx ~dir lib ~exts:[Cm_kind.ext cm_kind]
-        files);
-
-    Lib_file_deps.setup_file_deps_group_alias sctx ~dir lib ~exts:[".cmi"; ".cmx"];
-    Lib_file_deps.setup_file_deps_alias sctx ~dir lib ~exts:[".h"]
-      (List.map lib.install_c_headers ~f:(fun header ->
-         Path.relative dir (header ^ ".h"))
-       |> Path.Set.of_list)
-
   let setup_build_archives (lib : Dune_file.Library.t)
         ~wrapped_compat ~cctx ~(dep_graphs : Dep_graph.Ml_kind.t)
         ~expander
@@ -506,7 +489,7 @@ module Gen (P : Install_rules.Params) = struct
       build_stubs lib ~dir ~expander ~requires ~dir_contents
         ~vlib_stubs_o_files;
 
-    setup_file_deps lib ~dir
+    Lib_file_deps.setup_file_deps sctx ~lib ~dir
       ~modules:(Lib_modules.have_artifacts lib_modules
                 |> Module.Name.Map.values
                 |> Vimpl.for_file_deps vimpl);

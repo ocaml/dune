@@ -19,6 +19,23 @@ let setup_file_deps_group_alias t ~dir ~exts lib =
          (lib_files_alias ~dir ~name:(Library.best_name lib) ~exts:[ext]))
      |> Path.Set.of_list)
 
+let setup_file_deps sctx ~dir ~lib ~modules =
+  let add_cms ~cm_kind ~init = List.fold_left ~init ~f:(fun acc m ->
+    match Module.cm_public_file m cm_kind with
+    | None -> acc
+    | Some fn -> Path.Set.add acc fn)
+  in
+  List.iter Cm_kind.all ~f:(fun cm_kind ->
+    let files = add_cms ~cm_kind ~init:Path.Set.empty modules in
+    setup_file_deps_alias sctx ~dir lib ~exts:[Cm_kind.ext cm_kind]
+      files);
+
+  setup_file_deps_group_alias sctx ~dir lib ~exts:[".cmi"; ".cmx"];
+  setup_file_deps_alias sctx ~dir lib ~exts:[".h"]
+    (List.map lib.install_c_headers ~f:(fun header ->
+       Path.relative dir (header ^ ".h"))
+     |> Path.Set.of_list)
+
 module L = struct
   let file_deps_of_lib t (lib : Lib.t) ~exts =
     if Lib.is_local lib then

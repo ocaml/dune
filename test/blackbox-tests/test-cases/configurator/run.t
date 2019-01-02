@@ -12,3 +12,5 @@ Importing #define's from code is successful
   CAML_CONFIG_H=true
   Page_log=12
   CONFIGURATOR_TESTING=foobar
+  NEGATIVE_INT=-345
+  ZERO=0

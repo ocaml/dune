@@ -28,8 +28,8 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
   let ctx      = SC.context       sctx in
   let stdlib   = CC.stdlib        cctx in
   let vimpl    = CC.vimpl cctx in
-  Mode.of_cm_kind cm_kind
-  |> Context.compiler ctx
+  let mode     = Mode.of_cm_kind cm_kind in
+  Context.compiler ctx mode
   |> Option.iter ~f:(fun compiler ->
     Option.iter (Module.cm_source m cm_kind) ~f:(fun src ->
       let ml_kind = Cm_kind.source cm_kind in
@@ -135,7 +135,10 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
            [ Dyn (fun flags -> As flags)
            ; no_keep_locs
            ; cmt_args
-           ; A "-I"; Path (Obj_dir.byte_dir obj_dir)
+           ; S (
+               Obj_dir.all_obj_dirs obj_dir ~mode
+               |> List.concat_map ~f:(fun p -> [Arg_spec.A "-I"; Path p])
+             )
            ; Cm_kind.Dict.get (CC.includes cctx) cm_kind
            ; As extra_args
            ; if dynlink || cm_kind <> Cmx then As [] else A "-nodynlink"

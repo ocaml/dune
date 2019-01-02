@@ -45,8 +45,6 @@
       ocamlopt lib/.x.objs/native/x__.{cmx,o}
       ocamlopt lib/.x.objs/native/x__Y.{cmx,o}
       ocamlopt lib/.x.objs/native/x.{cmx,o}
-  File "_none_", line 1:
-  Warning 58: no cmx file was found in path for module X__Y, and its interface was not compiled with -opaque
       ocamlopt lib/x.{a,cmxa}
       ocamlopt lib/x.cmxs
   $ $NODE ./_build/default/bin/technologic.bc.js

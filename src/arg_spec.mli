@@ -29,27 +29,30 @@ open! Import
     where the command is executed. For instance [Path (Path.of_string
     "src/foo.ml")] will translate to "../src/foo.ml" if the command is
     started from the "test" directory.  *)
-type 'a t =
-  | A        of string
-  | As       of string list
-  | S        of 'a t list
-  | Concat   of string * 'a t list (** Concatenation with a custom separator *)
-  | Dep      of Path.t (** A path that is a dependency *)
-  | Deps     of Path.t list
-  | Target   of Path.t
-  | Path     of Path.t
-  | Paths    of Path.t list
-  | Hidden_deps    of Path.t list
-  | Hidden_targets of Path.t list
-  (** Register dependencies but produce no argument *)
-  | Dyn      of ('a -> Nothing.t t)
+type static = Static
+type dynamic = Dynamic
+
+type ('a, _) t =
+  | A        : string -> ('a, _) t
+  | As       : string list -> ('a, _) t
+  | S        : ('a, 'b) t list -> ('a, 'b) t
+  | Concat   : string * ('a, 'b) t list  -> ('a, 'b) t
+  | Dep      : Path.t -> ('a, _) t
+  | Deps     : Path.t list -> ('a, _) t
+  | Target   : Path.t -> ('a, dynamic) t
+  | Path     : Path.t -> ('a, _) t
+  | Paths    : Path.t list -> ('a, _) t
+  | Hidden_deps    : Path.t list -> ('a, _) t
+  | Hidden_targets : Path.t list -> ('a, dynamic) t
+  | Dyn      : ('a -> (Nothing.t, static) t) -> ('a, dynamic) t
+  | Fail     : fail -> ('a, _) t
 
 val add_deps    : _ t list -> Path.Set.t -> Path.Set.t
-val add_targets : _ t list -> Path.t list -> Path.t list
-val expand      : dir:Path.t -> 'a t list -> 'a -> string list * Path.Set.t
+val add_targets : (_, dynamic) t list -> Path.t list -> Path.t list
+val expand      : dir:Path.t -> ('a, dynamic) t list -> 'a -> string list * Path.Set.t
 
 (** [quote_args quote args] is [As \[quote; arg1; quote; arg2; ...\]] *)
 val quote_args : string -> string list -> _ t
 
-val of_result : 'a t Or_exn.t -> 'a t
-val of_result_map : 'a Or_exn.t -> f:('a -> 'b t) -> 'b t
+val of_result : ('a, 'b) t Or_exn.t -> ('a, 'b) t
+val of_result_map : 'a Or_exn.t -> f:('a -> ('b, 'c) t) -> ('b, 'c) t

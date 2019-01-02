@@ -116,12 +116,12 @@ module Run (P : PARAMS) : sig end = struct
      that are neither dependencies nor targets.
      [Hidden_targets] is for targets that are *not* command line arguments.  *)
 
-  type args =
-    string list Arg_spec.t list
+  type 'a args =
+    (string list, 'a) Arg_spec.t list
 
   (* [menhir args] generates a Menhir command line (a build action). *)
 
-  let menhir (args : args) : (string list, Action.t) Build.t =
+  let menhir (args : 'a args) : (string list, Action.t) Build.t =
     Build.run ~dir menhir_binary args
 
   let rule : (unit, Action.t) Build.t -> unit =

@@ -350,6 +350,7 @@ module C_define = struct
 #define D7(x) ('0'+(x/10000000  )%%10), D6(x)
 #define D8(x) ('0'+(x/100000000 )%%10), D7(x)
 #define D9(x) ('0'+(x/1000000000)%%10), D8(x)
+#define S9(x) D9(x), D9(-x)
 |}
     );
     List.iteri vars ~f:(fun i (name, t) ->
@@ -366,7 +367,7 @@ module C_define = struct
         pr {|
 const char s%i[] = {
   'B', 'E', 'G', 'I', 'N', '-', %s'-',
-  D9((%s)),
+  S9((%s)),
   '-', 'E', 'N', 'D'
 };
 |} i c_arr_i name
@@ -383,6 +384,21 @@ const char *s%i = "BEGIN-%i-false-END";
     );
     Buffer.contents buf
 
+  let is_digit = function
+    | '0'..'9' -> true
+    | _ -> false
+
+  (** The generated string has two parts of equal length: one for x and one for -x.
+      Since digits are computed with ['0' + something % 10], either:
+      - the first part is all digits correct (meaning that the number is positive)
+      - or the second is (meaning that the number is negative). *)
+  let signed_int_of_string s =
+    let pos_part, neg_part = String.split_n s 10 in
+    if String.for_all pos_part ~f:is_digit then
+      int_of_string pos_part
+    else
+      - int_of_string neg_part
+
   let extract_values obj_file vars =
     let values =
       Io.with_lexbuf_from_file obj_file ~f:(Extract_obj.extract [])
@@ -396,7 +412,7 @@ const char *s%i = "BEGIN-%i-false-END";
           | Some v -> v in
         match t with
         | Type.Switch -> Value.Switch (bool_of_string raw_val)
-        | Int -> Int (int_of_string raw_val)
+        | Int -> Int (signed_int_of_string raw_val)
         | String -> String raw_val in
       (name, value))
 

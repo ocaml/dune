@@ -59,6 +59,9 @@ unreleased
   rules that require files outside the build/source directory. (#1708, fixes
   #848, @rgrinberg)
 
+- Let `Configurator` handle `sizeof` (in addition to negative numbers).
+  (#1726, fixes #1723, @Chris00)
+
 1.6.2 (05/12/2018)
 ------------------
 

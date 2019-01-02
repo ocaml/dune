@@ -340,16 +340,18 @@ module C_define = struct
     Option.iter prelude ~f:(pr "%s");
     if has_type Type.Int then (
       pr {|
-#define D0(x) ('0'+(x/1         )%%10)
-#define D1(x) ('0'+(x/10        )%%10), D0(x)
-#define D2(x) ('0'+(x/100       )%%10), D1(x)
-#define D3(x) ('0'+(x/1000      )%%10), D2(x)
-#define D4(x) ('0'+(x/10000     )%%10), D3(x)
-#define D5(x) ('0'+(x/100000    )%%10), D4(x)
-#define D6(x) ('0'+(x/1000000   )%%10), D5(x)
-#define D7(x) ('0'+(x/10000000  )%%10), D6(x)
-#define D8(x) ('0'+(x/100000000 )%%10), D7(x)
-#define D9(x) ('0'+(x/1000000000)%%10), D8(x)
+#define DUNE_ABS(x) ((x >= 0)? x: -(x))
+#define DUNE_D0(x) ('0'+(DUNE_ABS(x)/1         )%%10)
+#define DUNE_D1(x) ('0'+(DUNE_ABS(x)/10        )%%10), DUNE_D0(x)
+#define DUNE_D2(x) ('0'+(DUNE_ABS(x)/100       )%%10), DUNE_D1(x)
+#define DUNE_D3(x) ('0'+(DUNE_ABS(x)/1000      )%%10), DUNE_D2(x)
+#define DUNE_D4(x) ('0'+(DUNE_ABS(x)/10000     )%%10), DUNE_D3(x)
+#define DUNE_D5(x) ('0'+(DUNE_ABS(x)/100000    )%%10), DUNE_D4(x)
+#define DUNE_D6(x) ('0'+(DUNE_ABS(x)/1000000   )%%10), DUNE_D5(x)
+#define DUNE_D7(x) ('0'+(DUNE_ABS(x)/10000000  )%%10), DUNE_D6(x)
+#define DUNE_D8(x) ('0'+(DUNE_ABS(x)/100000000 )%%10), DUNE_D7(x)
+#define DUNE_D9(x) ('0'+(DUNE_ABS(x)/1000000000)%%10), DUNE_D8(x)
+#define DUNE_SIGN(x) ((x >= 0)? '+': '-')
 |}
     );
     List.iteri vars ~f:(fun i (name, t) ->
@@ -366,14 +368,11 @@ module C_define = struct
         pr {|
 const char s%i[] = {
   'B', 'E', 'G', 'I', 'N', '-', %s'-',
-#if %s >= 0
-  D9((%s)),
-#else
-  '-', D9((- %s)),
-#endif
+  DUNE_SIGN((%s)),
+  DUNE_D9((%s)),
   '-', 'E', 'N', 'D'
 };
-|} i c_arr_i name name name
+|} i c_arr_i name name
       | String ->
         pr {|const char *s%i = "BEGIN-%i-" %s "-END";|} i i name;
       | Switch ->

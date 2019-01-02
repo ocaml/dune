@@ -811,7 +811,7 @@ Fields supported in ``<settings>`` are:
 dirs (since 1.6)
 -------------------
 
-The ``subdirs`` stanza allows to tell specify the sub-directories dune will
+The ``dirs`` stanza allows to tell specify the sub-directories dune will
 include in a build. The syntax is based on dune's predicate language and allows
 the user the following operations:
 
@@ -827,9 +827,9 @@ Examples:
 
 .. code:: scheme
 
-   (subdirs *) ;; include all directories
-   (subdirs :standard \ ocaml) ;; include all directories except ocaml
-   (subdirs :standard \ test* foo*) ;; exclude all directories that start with test or foo
+   (dirs *) ;; include all directories
+   (dirs :standard \ ocaml) ;; include all directories except ocaml
+   (dirs :standard \ test* foo*) ;; exclude all directories that start with test or foo
 
 A directory that is not included by this stanza will not be eagerly scanned by
 Dune. Any ``dune`` or other special files in it won't be interpreted either and
@@ -845,7 +845,7 @@ Dune allows the user to treat directories as *data only*. Dune files in these
 directories will not be evaluated for their rules, but the contents of these
 directories will still be usable as dependencies for other rules.
 
-The syntax is the same as for the ``subdirs`` stanza except that ``:standard``
+The syntax is the same as for the ``dirs`` stanza except that ``:standard``
 is by default empty.
 
 Example:
@@ -872,7 +872,7 @@ Example:
      (ignored_subdirs (<sub-dir1> <sub-dir2> ...))
 
 All of the specified ``<sub-dirn>`` will be ignored by dune. Note that users
-should rely on the ``subdirs`` stanza along with the appropriate set operations
+should rely on the ``dirs`` stanza along with the appropriate set operations
 instead of this stanza. For example:
 
 .. code:: scheme

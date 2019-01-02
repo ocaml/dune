@@ -15,6 +15,7 @@ let () =
       ; "CONFIGURATOR_TESTING", C_define.Type.String
       ; "NEGATIVE_INT", C_define.Type.Int
       ; "ZERO", C_define.Type.Int
+      ; "sizeof(char)", C_define.Type.Int
       ]
     |> List.iter (fun (n, v) ->
       Printf.printf "%s=%s\n"

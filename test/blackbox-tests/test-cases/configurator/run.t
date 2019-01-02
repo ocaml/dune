@@ -14,3 +14,4 @@ Importing #define's from code is successful
   CONFIGURATOR_TESTING=foobar
   NEGATIVE_INT=-345
   ZERO=0
+  sizeof(char)=1

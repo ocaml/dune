@@ -59,6 +59,9 @@ unreleased
   rules that require files outside the build/source directory. (#1708, fixes
   #848, @rgrinberg)
 
+- Configurator: fix regression when using C expressions (#1731, fixes #1720,
+  @emillon)
+
 1.6.2 (05/12/2018)
 ------------------
 

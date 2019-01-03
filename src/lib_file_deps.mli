@@ -1,16 +1,24 @@
 open Stdune
 
-module L : sig
-
-  (** [file_deps t libs ~ext] returns a list of path dependencies for all the
-      files with extension [ext] of libraries [libs]. *)
-  val file_deps : Super_context.t -> Lib.L.t -> exts:string list -> Path.t list
-
-  val file_deps_with_exts
-    :  Super_context.t
-    -> (Lib.t * string list) list
-    -> Path.t list
+module Group : sig
+  type t =
+    | Cmi
+    | Cmx
+    | Header
 end
+
+(** [file_deps t libs ~files] returns a list of path dependencies for all the
+    files with extension [files] of libraries [libs]. *)
+val file_deps
+  :  Super_context.t
+  -> Lib.L.t
+  -> groups:Group.t list
+  -> Path.t list
+
+val file_deps_with_exts
+  :  Super_context.t
+  -> (Lib.t * Group.t list) list
+  -> Path.t list
 
 (** Setup alias dependencies for library artifacts grouped by extensions *)
 val setup_file_deps

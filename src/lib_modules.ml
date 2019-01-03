@@ -27,9 +27,9 @@ let make_unwrapped ~modules ~main_module_name =
   ; wrapped = Simple false
   }
 
-let make_alias_module ~(obj_dir:Obj_dir.t) ~implements ~lib_name ~stdlib
+let make_alias_module ~obj_dir ~implements ~lib_name ~stdlib
       ~main_module_name ~modules =
-  let dir = obj_dir.dir in
+  let dir = Obj_dir.dir obj_dir in
   let alias_prefix =
     String.uncapitalize (Module.Name.to_string main_module_name) in
   if implements then

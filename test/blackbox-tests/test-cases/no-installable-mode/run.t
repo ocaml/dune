@@ -21,6 +21,6 @@ However, it is possible to build a private one explicitly.
   $ dune build --root=private --display=short myprivatelib.so
   Entering directory 'private'
       ocamldep .myprivatelib.eobjs/myprivatelib.ml.d
-        ocamlc .myprivatelib.eobjs/myprivatelib.{cmi,cmo,cmt}
-      ocamlopt .myprivatelib.eobjs/myprivatelib.{cmx,o}
+        ocamlc .myprivatelib.eobjs/byte/myprivatelib.{cmi,cmo,cmt}
+      ocamlopt .myprivatelib.eobjs/native/myprivatelib.{cmx,o}
       ocamlopt myprivatelib$ext_dll

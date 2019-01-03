@@ -1,6 +1,10 @@
 unreleased
 ----------
 
+- Change the layout of build artifacts inside _build. The new layout enables
+  optimizations that depend on the presence of `.cmx` files of private modules
+  (#1676 @bobot)
+
 - Fix merlin handling of private module visibility (#1653 @bobot)
 
 - unstable-fmt: use boxes to wrap some lists (#1608, fix #1153, @emillon,

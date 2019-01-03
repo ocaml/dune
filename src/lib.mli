@@ -17,6 +17,7 @@ val src_dir : t -> Path.t
 
 (** Directory where the object files for the library are located. *)
 val obj_dir : t -> Obj_dir.t
+val public_cmi_dir : t -> Path.t
 
 (** Same as [Path.is_managed (obj_dir t)] *)
 val is_local : t -> bool

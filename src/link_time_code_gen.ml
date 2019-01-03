@@ -7,7 +7,8 @@ let of_libs = List.map ~f:(fun l -> Lib.Lib_and_module.Lib l)
 
 let rec cut_after_libs ~pkg_name before = function
   | [] -> None
-  | a::l when Lib_name.compare (Lib.name a) pkg_name = Eq -> Some (List.rev (a::before),l)
+  | a::l when Lib_name.compare (Lib.name a) pkg_name = Eq ->
+    Some (List.rev (a::before),l)
   | a::l -> cut_after_libs (a::before) ~pkg_name l
 
 let findlib_dynload = Lib_name.of_string_exn ~loc:None "findlib.dynload"
@@ -20,8 +21,8 @@ let libraries_link ~name ~loc ~mode cctx libs =
   let stdlib_dir = ctx.stdlib_dir in
   match cut_after_libs [] ~pkg_name:findlib_dynload libs with
   | Some (before, after) ->
-    (* If findlib.dynload is linked, we stores in the binary the packages linked by linking just
-       after findlib.dynload a module containing the info *)
+    (* If findlib.dynload is linked, we stores in the binary the packages linked
+       by linking just after findlib.dynload a module containing the info *)
     let libs =
       List.filter
         ~f:(fun lib -> not (Lib_info.Status.is_private (Lib.status lib)))
@@ -37,11 +38,12 @@ let libraries_link ~name ~loc ~mode cctx libs =
         (Fmt.ocaml_list Variant.pp) (Variant.Set.to_list preds)
     in
     let basename = Format.asprintf "%s_findlib_initl_%a" name Mode.pp mode in
-    let ml  = Path.relative obj_dir.public_dir (basename ^ ".ml") in
+    let ml  = Path.relative (Obj_dir.obj_dir obj_dir) (basename ^ ".ml") in
     SC.add_rule ~dir sctx (Build.write_file ml s);
     let impl = Module.File.make OCaml ml in
     let name = Module.Name.of_string basename in
-    let module_ = Module.make ~impl name ~visibility:Public ~obj_dir ~kind:Impl in
+    let module_ =
+      Module.make ~impl name ~visibility:Public ~obj_dir ~kind:Impl in
     let cctx = Compilation_context.(
       create
         ~super_context:sctx
@@ -60,7 +62,13 @@ let libraries_link ~name ~loc ~mode cctx libs =
       ~dep_graphs:(Dep_graph.Ml_kind.dummy module_)
       cctx
       module_;
-    let lm = (of_libs before)@[Lib.Lib_and_module.Module module_]@(of_libs after) in
-    Arg_spec.S [A "-linkall"; Lib.Lib_and_module.link_flags lm ~mode ~stdlib_dir]
+    let lm =
+      of_libs before
+      @ [Lib.Lib_and_module.Module module_]
+      @ of_libs after
+    in
+    Arg_spec.S [ A "-linkall"
+               ; Lib.Lib_and_module.link_flags lm ~mode ~stdlib_dir
+               ]
   | None ->
     Lib.L.link_flags libs ~mode ~stdlib_dir

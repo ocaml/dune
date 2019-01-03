@@ -88,12 +88,13 @@ val obj_dir : t -> Obj_dir.t
 
 val pp_flags : t -> (unit, string list) Build.t option
 
-val file      : t -> Ml_kind.t -> Path.t option
-val cm_source : t -> Cm_kind.t -> Path.t option
-val cm_file   : t -> Cm_kind.t -> Path.t option
-val cmt_file  : t -> Ml_kind.t -> Path.t option
+val file            : t -> Ml_kind.t -> Path.t option
+val cm_source       : t -> Cm_kind.t -> Path.t option
+val cm_file         : t -> ?ext:string -> Cm_kind.t -> Path.t option
+val cm_public_file  : t -> ?ext:string -> Cm_kind.t -> Path.t option
+val cmt_file        : t -> Ml_kind.t -> Path.t option
 
-val obj_file : t -> ext:string -> Path.t
+val obj_file : t -> mode:Mode.t -> ext:string -> Path.t
 
 val obj_name : t -> string
 
@@ -104,6 +105,7 @@ val src_dir : t -> Path.t option
     If present [ext] replace the extension of the kind
  *)
 val cm_file_unsafe : t -> ?ext:string -> Cm_kind.t -> Path.t
+val cm_public_file_unsafe : t -> ?ext:string -> Cm_kind.t -> Path.t
 
 val odoc_file : t -> doc_dir:Path.t -> Path.t
 

@@ -3,9 +3,9 @@
   $ dune build --display short --root private-exe @all
   Entering directory 'private-exe'
       ocamldep .foo.eobjs/foo.ml.d
-        ocamlc .foo.eobjs/foo.{cmi,cmo,cmt}
+        ocamlc .foo.eobjs/byte/foo.{cmi,cmo,cmt}
         ocamlc foo.bc
-      ocamlopt .foo.eobjs/foo.{cmx,o}
+      ocamlopt .foo.eobjs/native/foo.{cmx,o}
       ocamlopt foo.exe
 
 @all builds private libs
@@ -13,9 +13,9 @@
   $ dune build --display short --root private-lib @all
   Entering directory 'private-lib'
       ocamldep .bar.objs/bar.ml.d
-        ocamlc .bar.objs/bar.{cmi,cmo,cmt}
+        ocamlc .bar.objs/byte/bar.{cmi,cmo,cmt}
         ocamlc bar.cma
-      ocamlopt .bar.objs/bar.{cmx,o}
+      ocamlopt .bar.objs/native/bar.{cmx,o}
       ocamlopt bar.{a,cmxa}
       ocamlopt bar.cmxs
 

@@ -96,12 +96,12 @@ let main () =
 
     Toploop.initialize_toplevel_env ();
     List.iter
-      [ "src/dune_lang/.dune_lang.objs"
-      ; "src/stdune/.stdune.objs"
-      ; "src/fiber/.fiber.objs"
-      ; "src/dag/.dag.objs"
-      ; "src/memo/.memo.objs"
-      ; "src/.dune.objs"
+      [ "src/dune_lang/.dune_lang.objs/byte"
+      ; "src/stdune/.stdune.objs/byte"
+      ; "src/fiber/.fiber.objs/byte"
+      ; "src/dag/.dag.objs/byte"
+      ; "src/memo/.memo.objs/byte"
+      ; "src/.dune.objs/byte"
       ]
       ~f:Topdirs.dir_directory;
 

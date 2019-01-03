@@ -196,7 +196,7 @@ let build_modules_map (d : _ Dir_with_dune.t) ~modules =
       | Executables exes
       | Tests { exes; _} ->
         let obj_dir =
-          Obj_dir.make_exe ~dir:d.ctx_dir (List.hd exes.names |> snd)
+          Obj_dir.make_exe ~dir:d.ctx_dir ~name:(snd (List.hd exes.names))
         in
         let modules =
           Modules_field_evaluator.eval ~modules

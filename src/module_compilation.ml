@@ -17,6 +17,9 @@ module SC = Super_context
 let force_read_cmi source_file =
   [ "-intf-suffix"; Path.extension source_file ]
 
+(* Build the cm* if the corresponding source is present, in the case of cmi if
+   the mli is not present it is added as additional target to the .cmo
+   generation *)
 let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
       ~cm_kind (m : Module.t) =
   let sctx     = CC.super_context cctx in
@@ -25,12 +28,22 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
   let ctx      = SC.context       sctx in
   let stdlib   = CC.stdlib        cctx in
   let vimpl    = CC.vimpl cctx in
-  Mode.of_cm_kind cm_kind
-  |> Context.compiler ctx
+  let mode     = Mode.of_cm_kind cm_kind in
+  Context.compiler ctx mode
   |> Option.iter ~f:(fun compiler ->
     Option.iter (Module.cm_source m cm_kind) ~f:(fun src ->
       let ml_kind = Cm_kind.source cm_kind in
       let dst = Module.cm_file_unsafe m cm_kind in
+      let copy_interface () =
+        (* symlink the .cmi into the public interface directory *)
+        if not (Module.is_private m)
+        && (Obj_dir.has_public_cmi_dir obj_dir) then
+          SC.add_rule sctx ~sandbox:false ~dir
+            (Build.symlink
+               ~src:(Module.cm_file_unsafe m Cmi)
+               ~dst:(Module.cm_public_file_unsafe m Cmi)
+            )
+      in
       let extra_args, extra_deps, other_targets =
         match cm_kind, Module.intf m
               , Vimpl.is_public_vlib_module vimpl m with
@@ -38,17 +51,21 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
            .cmY and .cmi. We choose to use ocamlc to produce the cmi
            and to produce the cmx we have to wait to avoid race
            conditions. *)
-        | Cmo, None, false -> [], [], [Module.cm_file_unsafe m Cmi]
+        | Cmo, None, false ->
+          copy_interface ();
+          [], [], [Module.cm_file_unsafe m Cmi]
         | Cmo, None, true
         | (Cmo | Cmx), _, _ ->
           force_read_cmi src,
           [Module.cm_file_unsafe m Cmi],
           []
-        | Cmi, _, _ -> [], [], []
+        | Cmi, _, _ ->
+          copy_interface ();
+          [], [], []
       in
       let other_targets =
         match cm_kind with
-        | Cmx -> Module.obj_file m ~ext:ctx.ext_obj :: other_targets
+        | Cmx -> Module.obj_file m ~mode:Native ~ext:ctx.ext_obj :: other_targets
         | Cmi | Cmo -> other_targets
       in
       let dep_graph = Ml_kind.Dict.get dep_graphs ml_kind in
@@ -71,7 +88,7 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
           let fn = Option.value_exn (Module.cmt_file m ml_kind) in
           (fn :: other_targets, A "-bin-annot")
       in
-      if CC.dir_kind cctx = Jbuild && obj_dir.public_dir <> dir then begin
+      if CC.dir_kind cctx = Jbuild then begin
         (* Symlink the object files in the original directory for
            backward compatibility *)
         let old_dst = Path.relative dir ((Module.obj_name m) ^ (Cm_kind.ext cm_kind)) in
@@ -89,12 +106,16 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
           As []
       in
       let dir, no_keep_locs =
-        if CC.no_keep_locs cctx && cm_kind = Cmi then begin
-          if Ocaml_version.supports_no_keep_locs ctx.version then
-            (ctx.build_dir, Arg_spec.As ["-no-keep-locs"])
-          else
-            (obj_dir.public_dir, As [])
-        end else
+        match CC.no_keep_locs cctx
+            , cm_kind
+            , Ocaml_version.supports_no_keep_locs ctx.version
+        with
+        | true, Cmi, true ->
+          (ctx.build_dir, Arg_spec.As ["-no-keep-locs"])
+        | true, Cmi, false ->
+          (Obj_dir.byte_dir obj_dir, As []) (* emulated -no-keep-locs *)
+        | true, (Cmo | Cmx), _
+        | false, _, _ ->
           (ctx.build_dir, As [])
       in
       let flags =
@@ -114,10 +135,10 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
            [ Dyn (fun flags -> As flags)
            ; no_keep_locs
            ; cmt_args
-           ; A "-I"; Path obj_dir.public_dir
-           ; (match obj_dir.private_dir with
-              | None -> S []
-              | Some private_obj_dir -> S [A "-I"; Path private_obj_dir])
+           ; S (
+               Obj_dir.all_obj_dirs obj_dir ~mode
+               |> List.concat_map ~f:(fun p -> [Arg_spec.A "-I"; Path p])
+             )
            ; Cm_kind.Dict.get (CC.includes cctx) cm_kind
            ; As extra_args
            ; if dynlink || cm_kind <> Cmx then As [] else A "-nodynlink"
@@ -186,7 +207,7 @@ let ocamlc_i ?sandbox ?(flags=[]) ~dep_graphs cctx (m : Module.t) ~output =
      Ocaml_flags.get_for_cm (CC.flags cctx) ~cm_kind:Cmo >>>
      Build.run (Ok ctx.ocamlc) ~dir:ctx.build_dir
        [ Dyn (fun ocaml_flags -> As ocaml_flags)
-       ; A "-I"; Path obj_dir.public_dir
+       ; A "-I"; Path (Obj_dir.byte_dir obj_dir)
        ; Cm_kind.Dict.get (CC.includes cctx) Cmo
        ; (match CC.alias_module cctx with
           | None -> S []

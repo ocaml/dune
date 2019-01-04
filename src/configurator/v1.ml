@@ -322,6 +322,11 @@ module C_define = struct
       | Switch
       | Int
       | String
+
+    let name = function
+      | Switch -> "bool"
+      | Int -> "int"
+      | String -> "string"
   end
 
   module Value = struct
@@ -329,6 +334,9 @@ module C_define = struct
       | Switch of bool
       | Int    of int
       | String of string
+
+    let switch b = Switch b
+    let int i = Int i
   end
 
   let extract_program ?prelude includes vars =
@@ -392,15 +400,32 @@ const char *s%i = "BEGIN-%i-false-END";
       |> Int.Map.of_list_exn
     in
     List.mapi vars ~f:(fun i (name, t) ->
+      let raw_val =
+        match Int.Map.find values i with
+        | None -> die "Unable to get value for %s" name
+        | Some v -> v
+      in
       let value =
-        let raw_val =
-          match Int.Map.find values i with
-          | None -> die "Unable to get value for %s" name
-          | Some v -> v in
         match t with
-        | Type.Switch -> Value.Switch (bool_of_string raw_val)
-        | Int -> Int (int_of_string raw_val)
-        | String -> String raw_val in
+        | Type.Switch ->
+          Bool.of_string raw_val
+          |> Option.map ~f:Value.switch
+        | Int ->
+          Int.of_string raw_val
+          |> Option.map ~f:Value.int
+        | String -> Some (String raw_val)
+      in
+      let value =
+        match value with
+        | Some v -> v
+        | None ->
+          let msg =
+            sprintf "Unable to read variable %S of type %s. \
+                     Invalid value %S in %s found"
+              name (Type.name t) raw_val obj_file
+          in
+          raise (Fatal_error msg)
+      in
       (name, value))
 
   let import t ?prelude ?c_flags ~includes vars =
@@ -545,4 +570,5 @@ let main ?(args=[]) ~name f =
     | Fatal_error msg ->
       eprintf "Error: %s\n%!" msg;
       exit 1
-    | _ -> Exn.raise_with_backtrace exn bt
+    | _ ->
+      Exn.raise_with_backtrace exn bt

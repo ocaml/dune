@@ -8,3 +8,5 @@ let compare x y =
   | false, true -> Lt
 
 let to_string = string_of_bool
+
+let of_string s = Option.try_with (fun () -> bool_of_string s)

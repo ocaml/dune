@@ -71,3 +71,8 @@ let compare cmp x y =
   | Some _, None -> Gt
   | None, Some _ -> Lt
   | Some x, Some y -> cmp x y
+
+let try_with f =
+  match f () with
+  | exception _ -> None
+  | s -> Some s

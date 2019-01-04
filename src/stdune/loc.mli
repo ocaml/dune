@@ -21,3 +21,5 @@ val of_pos : (string * int * int * int) -> t
 
 val to_file_colon_line : t -> string
 val pp_file_colon_line : Format.formatter -> t -> unit
+
+val print : Format.formatter -> t -> unit

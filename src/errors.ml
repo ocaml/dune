@@ -118,9 +118,8 @@ let print ppf loc =
              print_ellipsis padding_width;
              print_lines last_shown_lines padding_width)
   in
-  Format.fprintf ppf
-    "@{<loc>File \"%s\", line %d, characters %d-%d:@}@\n%a"
-    start.pos_fname start.pos_lnum start_c stop_c
+  Format.fprintf ppf "%a%a"
+    Loc.print loc
     pp_file_excerpt ()
 
 (* This is ugly *)

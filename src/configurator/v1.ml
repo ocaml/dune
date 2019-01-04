@@ -359,7 +359,7 @@ module C_define = struct
 #define DUNE_D7(x) ('0'+(DUNE_ABS(x)/10000000  )%%10), DUNE_D6(x)
 #define DUNE_D8(x) ('0'+(DUNE_ABS(x)/100000000 )%%10), DUNE_D7(x)
 #define DUNE_D9(x) ('0'+(DUNE_ABS(x)/1000000000)%%10), DUNE_D8(x)
-#define DUNE_SIGN(x) ((x >= 0)? '+': '-')
+#define DUNE_SIGN(x) ((x >= 0)? '0': '-')
 |}
     );
     List.iteri vars ~f:(fun i (name, t) ->

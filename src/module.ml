@@ -59,21 +59,25 @@ module Name = struct
     in
     String.lowercase n ^ ext
 
-  let strip_alias_prefix t =
+  (* XXX this will need to be fixed once (include_subdirs qualified) is
+     supported *)
+  let split_alias_prefix t =
     let len = String.length t in
     let rec loop t i =
-      if i <= 2 then
-        t
-      else if t.[i - 2] = '_' && t.[i - 1] = '_' then
-        String.sub t ~pos:i ~len:(len - i)
+      if i >= len - 1 then
+        None
+      else if t.[i] = '_' && t.[i + 1] = '_' then
+        if i = 1 || i = len - 2 then
+          None (* name of the form __Foo or Foo__ *)
+        else
+          Some ( of_string (String.take t i)
+               , of_string (String.drop t (i + 2))
+               )
       else
-        loop t (i - 1)
+        loop t (i + 1)
     in
-    let name = loop t (len - 1) in
-    if Char.uppercase_ascii name.[0] = name.[0] then
-      name
-    else
-      die "Invalid module name: %S" name
+    loop t 0
+
 end
 
 module File = struct

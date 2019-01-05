@@ -135,7 +135,9 @@ let check_module_fields ~(lib : Dune_file.Library.t) ~virtual_modules
       (module_list impl_modules_with_intf)
   end
 
-let external_dep_graph sctx ~impl_cm_kind ~vlib_obj_dir ~impl_obj_dir ~modules =
+let external_dep_graph sctx ~impl_cm_kind ~vlib_obj_dir ~impl_obj_dir
+      ~modules ~vlib_modules =
+  let wrapped = Lib_modules.is_wrapped vlib_modules in
   let ocamlobjinfo =
     let ctx = Super_context.context sctx in
     fun m cm_kind ->
@@ -164,11 +166,23 @@ let external_dep_graph sctx ~impl_cm_kind ~vlib_obj_dir ~impl_obj_dir ~modules =
             read >>^ fun dict ->
             Module.Name.Set.to_list dict.intf
             |> List.filter_map ~f:(fun dep ->
-              let dep = Module.Name.strip_alias_prefix dep in
-              if Module.name m = dep then
-                None
-              else
-                Module.Name.Map.find modules dep)))))
+              match Module.Name.split_alias_prefix dep, wrapped with
+              | Some _, false
+              | None, true -> None
+              | None, false ->
+                if Module.name m = dep then
+                  None
+                else
+                  Module.Name.Map.find modules dep
+              | Some (prefix, name), true ->
+                begin match Lib_modules.main_module_name vlib_modules with
+                | None -> assert false
+                | Some main_module_name ->
+                  if main_module_name <> prefix || Module.name m = name then
+                    None
+                  else
+                    Module.Name.Map.find modules dep
+                end)))))
 
 let impl sctx ~dir ~(lib : Dune_file.Library.t) ~scope ~modules =
   Option.map lib.implements ~f:begin fun (loc, implements) ->
@@ -215,7 +229,7 @@ let impl sctx ~dir ~(lib : Dune_file.Library.t) ~scope ~modules =
               Mode.cm_kind Native
           in
           external_dep_graph sctx ~impl_cm_kind ~vlib_obj_dir ~impl_obj_dir
-            ~modules
+            ~modules ~vlib_modules
       in
       Vimpl.make ~dir ~impl:lib ~vlib ~vlib_modules ~vlib_dep_graph
   end

@@ -298,15 +298,8 @@ We can implement external variants with mli only modules
 Implement external virtual libraries with private modules
   $ env OCAMLPATH=implements-external/vlib/_build/install/default/lib dune build --root implements-external/impl-private-module --debug-dependency-path
   Entering directory 'implements-external/impl-private-module'
-      ocamlopt run.exe (exit 2)
-  (cd _build/default && /Users/rgrinberg/.opam/4.07.1/bin/ocamlopt.opt -w @a-4-29-40-41-42-44-45-48-58-59-60-40 -strict-sequence -strict-formats -short-paths -keep-locs -g -o run.exe -I . impl_privatemodule.cmxa .run.eobjs/native/run.cmx)
-  File "_none_", line 1:
-  Error: No implementations provided for the following modules:
-           Vlib_privatemodule__Privatemodule referenced from impl_privatemodule.cmxa(Vlib_privatemodule)
-  -> required by run.exe
-  -> required by alias default
-  -> required by alias default
-  [1]
+           run alias default
+  Name: implement virtual module. Magic number: 42
 
 Include variants and implementation information in dune-package
   $ dune build --root dune-package-info

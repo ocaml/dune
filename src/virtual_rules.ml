@@ -152,47 +152,52 @@ let external_dep_graph sctx ~impl_cm_kind ~vlib_obj_dir ~impl_obj_dir
       | Impl -> impl_cm_kind
       | Intf -> Cm_kind.Cmi
     in
+    let deps_from_objnfo ~for_module (ocamlobjinfo : Ocamlobjinfo.t) =
+      Module.Name.Set.to_list ocamlobjinfo.intf
+      |> List.filter_map ~f:(fun dep ->
+        match Module.Name.split_alias_prefix dep, wrapped with
+        | Some _, false -> None
+        | None, false ->
+          if Module.name for_module = dep then
+            None
+          else
+            Module.Name.Map.find modules dep
+        | None, true -> (* lib interface module *)
+          if Module.name for_module = dep then
+            None
+          else
+            Lib_modules.main_module_name vlib_modules
+            |> Option.bind ~f:(fun main_module_name ->
+              if main_module_name = Module.name for_module then
+                Module.Name.Map.find modules dep
+              else
+                None)
+        | Some (prefix, name), true ->
+          begin match Lib_modules.main_module_name vlib_modules with
+          | None -> assert false
+          | Some main_module_name ->
+            if main_module_name <> prefix
+            || Module.name for_module = name then
+              None
+            else
+              Module.Name.Map.find modules name
+          end)
+    in
     Dep_graph.make ~dir:impl_obj_dir
       ~per_module:(Module.Name.Map.map modules ~f:(fun m ->
-        if (ml_kind = Intf && not (Module.has_intf m))
-        || (ml_kind = Impl && not (Module.has_impl m))
-        then
-          (m, Build.return [])
-        else
-          let (write, read) = ocamlobjinfo m cm_kind in
-          Super_context.add_rule sctx ~dir:impl_obj_dir write;
-          let open Build.O in
-          ( m
-          , Build.memoize "ocamlobjinfo" @@
-            read >>^ fun dict ->
-            Module.Name.Set.to_list dict.intf
-            |> List.filter_map ~f:(fun dep ->
-              match Module.Name.split_alias_prefix dep, wrapped with
-              | Some _, false -> None
-              | None, false ->
-                if Module.name m = dep then
-                  None
-                else
-                  Module.Name.Map.find modules dep
-              | None, true -> (* lib interface module *)
-                if Module.name m = dep then
-                  None
-                else
-                  Lib_modules.main_module_name vlib_modules
-                  |> Option.bind ~f:(fun main_module_name ->
-                    if main_module_name = Module.name m then
-                      Module.Name.Map.find modules dep
-                    else
-                      None)
-              | Some (prefix, name), true ->
-                begin match Lib_modules.main_module_name vlib_modules with
-                | None -> assert false
-                | Some main_module_name ->
-                  if main_module_name <> prefix || Module.name m = name then
-                    None
-                  else
-                    Module.Name.Map.find modules name
-                end)))))
+        let deps =
+          if (ml_kind = Intf && not (Module.has_intf m))
+          || (ml_kind = Impl && not (Module.has_impl m))
+          then
+            Build.return []
+          else
+            let (write, read) = ocamlobjinfo m cm_kind in
+            Super_context.add_rule sctx ~dir:impl_obj_dir write;
+            let open Build.O in
+            Build.memoize "ocamlobjinfo" @@
+            read >>^ deps_from_objnfo ~for_module:m
+        in
+        m, deps)))
 
 let impl sctx ~dir ~(lib : Dune_file.Library.t) ~scope ~modules =
   Option.map lib.implements ~f:begin fun (loc, implements) ->

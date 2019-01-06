@@ -137,6 +137,8 @@ module Name_map : sig
   type module_
   type t = module_ Name.Map.t
 
+  val pp : t Fmt.t
+
   val impl_only : t -> module_ list
 
   val of_list_exn : module_ list -> t

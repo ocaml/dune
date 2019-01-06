@@ -393,6 +393,9 @@ module Name_map = struct
 
   let add t module_ =
     Name.Map.add t (name module_) module_
+
+  let pp fmt t =
+    Fmt.ocaml_list Name.pp fmt (Name.Map.keys t)
 end
 
 let set_private t =

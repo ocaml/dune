@@ -1,0 +1,13 @@
+(library
+ (name impl_privatemodule)
+ (modules :standard \ run)
+ (implements vlib.privatemodule))
+
+(executable
+ (name run)
+ (libraries impl_privatemodule)
+ (modules run))
+
+(alias
+ (name default)
+ (action (run ./run.exe)))

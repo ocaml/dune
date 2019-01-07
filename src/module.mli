@@ -15,8 +15,8 @@ module Name : sig
 
   val uncapitalize : t -> string
 
-  (** Strip all parts that come after the __ *)
-  val strip_alias_prefix : t -> t
+  (** Split a prefixed module name into its components *)
+  val split_alias_prefix : t -> (t * t) option
 
   val pp : Format.formatter -> t -> unit
   val pp_quote : Format.formatter -> t -> unit
@@ -136,6 +136,8 @@ val wrapped_compat : t -> t
 module Name_map : sig
   type module_
   type t = module_ Name.Map.t
+
+  val pp : t Fmt.t
 
   val impl_only : t -> module_ list
 

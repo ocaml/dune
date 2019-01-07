@@ -351,7 +351,10 @@ module Gen (P : Install_rules.Params) = struct
           | Some m ->
             (* These files needs to be alongside stdlib.cma as the
                compiler implicitly adds this module. *)
-            List.iter [Mode.Native,".cmx"; Byte,".cmo"; Native,ctx.ext_obj] ~f:(fun (mode,ext) ->
+            [ Mode.Native, ".cmx"
+            ; Byte, ".cmo"
+            ; Native, ctx.ext_obj ]
+            |> List.iter ~f:(fun (mode, ext) ->
               let src = Module.obj_file m ~mode ~ext in
               let dst = Path.relative dir ((Module.obj_name m) ^ ext) in
               SC.add_rule sctx ~dir (Build.copy ~src ~dst));

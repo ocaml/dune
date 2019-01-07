@@ -23,3 +23,10 @@ val to_file_colon_line : t -> string
 val pp_file_colon_line : Format.formatter -> t -> unit
 
 val print : Format.formatter -> t -> unit
+
+val pp_file_excerpt
+  : context_lines:int
+  -> max_lines_to_print_in_full:int
+  -> Format.formatter
+  -> t
+  -> unit

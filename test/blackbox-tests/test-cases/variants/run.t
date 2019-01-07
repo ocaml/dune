@@ -295,6 +295,12 @@ We can implement external variants with mli only modules
   implemented mli only
   magic number: 42
 
+Implement external virtual libraries with private modules
+  $ env OCAMLPATH=implements-external/vlib/_build/install/default/lib dune build --root implements-external/impl-private-module --debug-dependency-path
+  Entering directory 'implements-external/impl-private-module'
+           run alias default
+  Name: implement virtual module. Magic number: 42
+
 Include variants and implementation information in dune-package
   $ dune build --root dune-package-info
   Entering directory 'dune-package-info'

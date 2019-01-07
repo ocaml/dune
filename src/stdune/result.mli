@@ -11,6 +11,8 @@ val is_error : _ t -> bool
 
 val ok_exn : ('a, exn) t -> 'a
 
+val try_with : (unit -> 'a) -> ('a, exn) t
+
 module O : sig
   val ( >>| ) : ('a, 'error) t -> ('a -> 'b) -> ('b, 'error) t
   val ( >>= ) : ('a, 'error) t -> ('a -> ('b, 'error) t) -> ('b, 'error) t

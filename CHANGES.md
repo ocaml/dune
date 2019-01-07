@@ -70,6 +70,9 @@ unreleased
   some cases. The fix is to systematically use `-short-paths` when
   calling `ocamlc -i` (#1743, fix #1504, @diml)
 
+- Never raise when printing located errors. The code that would print the
+  location excerpts was prone to raising. (#1744, fix #1736, @rgrinberg)
+
 1.6.2 (05/12/2018)
 ------------------
 

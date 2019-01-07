@@ -66,6 +66,10 @@ unreleased
 - Let `Configurator` handle `sizeof` (in addition to negative numbers).
   (#1726, fixes #1723, @Chris00)
 
+- Fix an issue causing menhir generated parsers to fail to build in
+  some cases. The fix is to systematically use `-short-paths` when
+  calling `ocamlc -i` (#1743, fix #1504, @diml)
+
 1.6.2 (05/12/2018)
 ------------------
 

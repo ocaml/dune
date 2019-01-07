@@ -214,6 +214,7 @@ let ocamlc_i ?sandbox ?(flags=[]) ~dep_graphs cctx (m : Module.t) ~output =
           | Some (m : Module.t) ->
             As ["-open"; Module.Name.to_string (Module.name m)])
        ; As flags
+       ; A "-short-paths"
        ; A "-i"; Ml_kind.flag Impl; Dep src
        ]
      >>^ (fun act -> Action.with_stdout_to output act)

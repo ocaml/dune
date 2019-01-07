@@ -39,7 +39,12 @@ val virtual_ : t -> Lib_info.Virtual.t option
 
 (** A unique integer identifier. It is only unique for the duration of
     the process *)
-val unique_id : t -> int
+module Id : sig
+  type t
+
+  val compare : t -> t -> Ordering.t
+end
+val unique_id : t -> Id.t
 
 module Set : Set.S with type elt = t
 
@@ -51,6 +56,7 @@ val package : t -> Package.Name.t option
 
 (** Operations on list of libraries *)
 module L : sig
+  type lib
   type nonrec t = t list
 
   val include_paths : t -> stdlib_dir:Path.t -> Path.Set.t
@@ -74,7 +80,13 @@ module L : sig
   val jsoo_runtime_files : t -> Path.t list
 
   val remove_dups : t -> t
-end
+
+  val top_closure
+    :  'a list
+    -> key:('a -> lib)
+    -> deps:('a -> 'a list)
+    -> ('a list, 'a list) Result.t
+end with type lib := t
 
 (** Operation on list of libraries and modules *)
 module Lib_and_module : sig
@@ -256,6 +268,7 @@ module DB : sig
       This function is for executables stanzas.  *)
   val resolve_user_written_deps_for_exes
     :  t
+    -> (Loc.t * string) list
     -> ?allow_overlaps:bool
     -> Dune_file.Lib_dep.t list
     -> pps:(Loc.t * Lib_name.t) list

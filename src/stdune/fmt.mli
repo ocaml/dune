@@ -15,6 +15,8 @@ val prefix
 
 val ocaml_list : 'a t -> 'a list t
 
+val break : unit t
+
 val quoted : string t
 
 val const : 'a t -> 'a -> unit t

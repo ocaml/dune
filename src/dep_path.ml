@@ -5,6 +5,7 @@ module Entry = struct
     | Path of Path.t
     | Alias of Path.t
     | Library of Path.t * Lib_name.t
+    | Executables of (Loc.t * string) list
     | Preprocess of Lib_name.t list
     | Loc of Loc.t
 
@@ -14,6 +15,11 @@ module Entry = struct
     | Library (path, lib_name) ->
       Format.asprintf "library %a in %s" Lib_name.pp_quoted lib_name
         (Path.to_string_maybe_quoted path)
+    | Executables names ->
+      let (loc, _) = List.hd names in
+      Format.asprintf "executable %s in %s"
+        (String.enumerate_and (List.map ~f:snd names))
+        (Loc.to_file_colon_line loc)
     | Preprocess l ->
       Sexp.to_string
         (List [ Atom "pps"
@@ -30,7 +36,7 @@ module Entries = struct
 
   let pp ppf t =
     Format.fprintf ppf "@[<v>%a@]"
-      (Format.pp_print_list
+      (Format.pp_print_list ~pp_sep:Fmt.break
          (fun ppf x ->
             Format.fprintf ppf "-> required by %a" Entry.pp x))
       t

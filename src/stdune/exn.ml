@@ -10,6 +10,12 @@ external raise         : exn -> _ = "%raise"
 external raise_notrace : exn -> _ = "%raise_notrace"
 external reraise       : exn -> _ = "%reraise"
 
+let () =
+  Printexc.register_printer (function
+    | Code_error s -> Some (Format.asprintf "%a" Sexp.pp s)
+    | Loc_error (loc, s) -> Some (Format.asprintf "%a%s" Loc0.print loc s)
+    | _ -> None)
+
 let fatalf ?loc fmt =
   Format.ksprintf (fun s ->
     match loc with

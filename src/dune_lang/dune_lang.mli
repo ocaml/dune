@@ -105,6 +105,44 @@ end with type sexp := t
 
 val add_loc : t -> loc:Loc.t -> Ast.t
 
+(** Concrete syntax tree *)
+module Cst : sig
+  module Comment : sig
+    type t =
+      | Lines of string list
+      (** The following comment:
+
+          {v
+            ; abc
+            ; def
+          v}
+
+          is represented as:
+
+          {[
+            Lines [" abc"; " def"]
+          ]}
+      *)
+      | Legacy
+      (** Legacy for jbuild files: either block comments or sexp
+          comments. The programmer is responsible for fetching the
+         comment contents using the location. *)
+    end
+
+  type t =
+    | Atom of Loc.t * Atom.t
+    | Quoted_string of Loc.t * string
+    | Template of Template.t
+    | List of Loc.t * t list
+    | Comment of Loc.t * Comment.t
+
+  val loc : t -> Loc.t
+
+  (** Replace all the [Comment Legacy] by [Comment (Lines _)] by
+      extracting the contents of comments from the original file. *)
+  val fetch_legacy_comments : t -> file_contents:string -> t
+end
+
 module Parse_error : sig
   type t
 
@@ -117,6 +155,7 @@ exception Parse_error of Parse_error.t
 
 module Lexer : sig
   module Token : sig
+
     type t =
       | Atom          of Atom.t
       | Quoted_string of string
@@ -125,9 +164,10 @@ module Lexer : sig
       | Sexp_comment
       | Eof
       | Template of Template.t
+      | Comment of Cst.Comment.t
   end
 
-  type t = Lexing.lexbuf -> Token.t
+  type t = with_comments:bool -> Lexing.lexbuf -> Token.t
 
   val token : t
   val jbuild_token : t
@@ -148,6 +188,11 @@ module Parser : sig
     -> ?lexer:Lexer.t
     -> Lexing.lexbuf
     -> 'a
+
+  val parse_cst
+    :  ?lexer:Lexer.t
+    -> Lexing.lexbuf
+    -> Cst.t list
 end
 
 val parse_string

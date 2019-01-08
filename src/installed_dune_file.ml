@@ -78,8 +78,8 @@ let load fname =
        the file. *)
     let state = ref 0 in
     let lexer = ref Dune_lang.Lexer.token in
-    let lexer lb =
-      let token : Dune_lang.Lexer.Token.t = !lexer lb in
+    let lexer ~with_comments lb =
+      let token : Dune_lang.Lexer.Token.t = !lexer lb ~with_comments in
       (match !state, token with
        | 0, Lparen -> state := 1
        | 1, Atom (A "dune") -> state := 2

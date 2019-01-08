@@ -354,3 +354,58 @@ test Dune (tq [Text "x%"; Text "{"])
 - : sexp * round_trip_result =
 ("x\%{", Did_not_round_trip (Quoted_string "x%{"))
 |}]
+
+(* Check parsing of comments *)
+Dune_lang.Parser.parse_cst (Lexing.from_string {|
+hello
+; comment
+world
+
+; multiline
+; comment
+
+(x ; comment inside list
+ y)
+|})
+[%%expect{|
+- : Dune_lang.Cst.t list =
+[Atom (<loc>, A "hello"); Comment (<loc>, Lines [" comment"]);
+ Atom (<loc>, A "world"); Comment (<loc>, Lines [" multiline"; " comment"]);
+ List (<loc>,
+  [Atom (<loc>, A "x"); Comment (<loc>, Lines [" comment inside list"]);
+   Atom (<loc>, A "y")])]
+|}]
+
+let jbuild_file = {|
+hello
+; comment
+world
+
+; multiline
+; comment
+
+(x ; comment inside list
+ y)
+
+#; (sexp
+comment)
+
+#|old style
+block
+comment|#
+|}
+[%%ignore]
+
+Dune_lang.Parser.parse_cst ~lexer:Dune_lang.Lexer.jbuild_token
+  (Lexing.from_string jbuild_file)
+|> List.map ~f:(Dune_lang.Cst.fetch_legacy_comments ~file_contents:jbuild_file)
+[%%expect{|
+- : Dune_lang.Cst.t list =
+[Atom (<loc>, A "hello"); Comment (<loc>, Lines [" comment"]);
+ Atom (<loc>, A "world"); Comment (<loc>, Lines [" multiline"; " comment"]);
+ List (<loc>,
+  [Atom (<loc>, A "x"); Comment (<loc>, Lines [" comment inside list"]);
+   Atom (<loc>, A "y")]);
+ Comment (<loc>, Lines ["(sexp"; "comment)"]);
+ Comment (<loc>, Lines ["old style"; "block"; "comment"])]
+|}]

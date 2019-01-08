@@ -1,8 +1,8 @@
   $ dune build @install @runtest --display short
-      ocamldep bin/.main.eobjs/main.ml.d
       ocamldep lib/.hello_world.objs/hello_world.ml.d
         ocamlc lib/.hello_world.objs/byte/hello_world.{cmi,cmo,cmt}
         ocamlc lib/hello_world.cma
+      ocamldep bin/.main.eobjs/main.ml.d
       ocamldep test/.test.eobjs/test.ml.d
       ocamlopt lib/.hello_world.objs/native/hello_world.{cmx,o}
       ocamlopt lib/hello_world.{a,cmxa}

@@ -4,11 +4,12 @@ open Import
 module SC = Super_context
 
 module Includes = struct
-  type t = string list Arg_spec.t Cm_kind.Dict.t
+  type t = (string list, Arg_spec.dynamic) Arg_spec.t Cm_kind.Dict.t
 
   let make sctx ~opaque ~requires : _ Cm_kind.Dict.t =
     match requires with
-    | Error exn -> Cm_kind.Dict.make_all (Arg_spec.Dyn (fun _ -> raise exn))
+    | Error exn ->
+      Cm_kind.Dict.make_all (Arg_spec.Fail {fail = fun () -> raise exn})
     | Ok libs ->
       let iflags =
         Lib.L.include_flags libs ~stdlib_dir:(SC.context sctx).stdlib_dir

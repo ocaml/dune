@@ -150,7 +150,7 @@ val run
   :  dir:Path.t
   -> ?stdout_to:Path.t
   -> Action.Prog.t
-  -> 'a Arg_spec.t list
+  -> ('a, Arg_spec.dynamic) Arg_spec.t list
   -> ('a, Action.t) t
 
 val action

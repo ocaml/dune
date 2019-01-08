@@ -460,7 +460,6 @@ type t =
     packages : Package.Name.t Path.Table.t
   (* memoized functions *)
   ; evaluate_action_and_dynamic_deps_def : Action_and_deps.t Rule_fn.t Fdecl.t
-  ; build_rule_def : Action_and_deps.t Rule_fn.t Fdecl.t
   ; build_file_def : unit Path_fn.t Fdecl.t
   ; execute_rule_def : (Internal_rule.t -> unit Fiber.t) Fdecl.t
   }
@@ -1166,10 +1165,34 @@ let evaluate_action_and_dynamic_deps t (rule : Internal_rule.t) : Action_and_dep
   >>| fun () ->
   Build_exec.exec t rule.build ()
 
-let build_rule t (rule : Internal_rule.t) =
-  let build_file = Path_fn.exec (Fdecl.get t.build_file_def) in
+let evaluate_rule t (rule : Internal_rule.t) =
+  Fiber.Once.get rule.static_deps
+  >>= fun static_deps ->
+  Rule_fn.exec (Fdecl.get t.evaluate_action_and_dynamic_deps_def) rule
+  >>| fun (action, dynamic_action_deps) ->
+  let static_action_deps = Static_deps.action_deps static_deps in
+  let action_deps = Deps.union static_action_deps dynamic_action_deps in
+  (action, action_deps)
 
-  (* get the static dependencies needed before we can call build exec*)
+(* Same as the function just bellow, but with less opportunity for
+   parallelism. We keep this dead code here for documentation purposes
+   as it is eaiser to read the one bellow. The reader only has to
+   check that both function do the same thing. *)
+let _evaluate_rule_and_wait_for_dependencies t rule =
+  let build_file = Path_fn.exec (Fdecl.get t.build_file_def) in
+  evaluate_rule t rule
+  >>= fun (action, action_deps) ->
+  Deps.parallel_iter action_deps ~f:build_file
+  >>| fun () ->
+  (action, action_deps)
+
+(* The following function does exactly the same as the function above
+   with the difference that it starts the build of static dependencies
+   before we know the final action and set of dynamic dependencies. We
+   do this to increase opportunities for parallelism.
+*)
+let evaluate_rule_and_wait_for_dependencies t (rule : Internal_rule.t) =
+  let build_file = Path_fn.exec (Fdecl.get t.build_file_def) in
   Fiber.Once.get rule.static_deps >>= fun static_deps ->
   let static_action_deps = Static_deps.action_deps static_deps in
   (* Build the static dependencies in parallel with evaluation the
@@ -1183,15 +1206,6 @@ let build_rule t (rule : Internal_rule.t) =
   >>>
   let action_deps = Deps.union static_action_deps dynamic_action_deps in
   Fiber.return (action, action_deps)
-
-let evaluate_rule t (rule : Internal_rule.t) =
-  Fiber.Once.get rule.static_deps
-  >>= fun static_deps ->
-  Rule_fn.exec (Fdecl.get t.evaluate_action_and_dynamic_deps_def) rule
-  >>| fun (action, dynamic_action_deps) ->
-  let static_action_deps = Static_deps.action_deps static_deps in
-  let action_deps = Deps.union static_action_deps dynamic_action_deps in
-  (action, action_deps)
 
 (* Evaluate and execute a rule *)
 let execute_rule t rule =
@@ -1212,7 +1226,7 @@ let execute_rule t rule =
       } = rule
   in
   start_rule t rule;
-  Rule_fn.exec (Fdecl.get t.build_rule_def) rule
+  evaluate_rule_and_wait_for_dependencies t rule
   >>= fun (action, deps) ->
   make_local_dir t dir;
   let targets_as_list  = Path.Set.to_list targets  in
@@ -1333,7 +1347,7 @@ let build_request t ~request =
     Fdecl.set result res
   in
   let rule = shim_of_build_goal t request in
-  build_rule t rule
+  evaluate_rule_and_wait_for_dependencies t rule
   >>| fun (_act, deps) ->
   (Fdecl.get result, deps)
 
@@ -1386,7 +1400,6 @@ let create ~contexts ~file_tree ~hook =
     ; files_of = Path.Table.create 1024
     ; prefix = None
     ; hook
-    ; build_rule_def = Fdecl.create ()
     ; build_file_def = Fdecl.create ()
     ; execute_rule_def = Fdecl.create ()
     ; evaluate_action_and_dynamic_deps_def = Fdecl.create ()
@@ -1397,9 +1410,6 @@ let create ~contexts ~file_tree ~hook =
        (module Action_and_deps) (evaluate_action_and_dynamic_deps t)
        ~doc:"Evaluate the build arrow part of a rule and return the \
              action and dynamic dependency of the rule.");
-  Fdecl.set t.build_rule_def
-    (Rule_fn.create "build-rule" (module Action_and_deps) (build_rule t)
-       ~doc:"Execute a rule.");
   Fdecl.set t.execute_rule_def
     (Rule_fn.create "execute-rule" (module Unit)
        (execute_rule t) ~doc:"-"

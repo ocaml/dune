@@ -44,6 +44,10 @@ let libraries_link ~name ~loc ~mode cctx libs =
     let name = Module.Name.of_string basename in
     let module_ =
       Module.make ~impl name ~visibility:Public ~obj_dir ~kind:Impl in
+    let requires =
+      Lib.DB.find_many ~loc (SC.public_libs sctx)
+        [Lib_name.of_string_exn ~loc:(Some loc) "findlib"]
+    in
     let cctx = Compilation_context.(
       create
         ~super_context:sctx
@@ -52,8 +56,8 @@ let libraries_link ~name ~loc ~mode cctx libs =
         ~dir_kind:(dir_kind cctx)
         ~obj_dir:(CC.obj_dir cctx)
         ~modules:(Module.Name.Map.singleton name module_)
-        ~requires:(Lib.DB.find_many ~loc (SC.public_libs sctx)
-                     [Lib_name.of_string_exn ~loc:(Some loc) "findlib"])
+        ~requires_link:requires
+        ~requires_compile:requires
         ~flags:Ocaml_flags.empty
         ~opaque:true
         ())

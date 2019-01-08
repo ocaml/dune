@@ -56,7 +56,8 @@ type t =
   ; alias_module         : Module.t option
   ; lib_interface_module : Module.t option
   ; flags                : Ocaml_flags.t
-  ; requires             : Lib.t list Or_exn.t
+  ; requires_compile     : Lib.t list Or_exn.t
+  ; requires_link        : Lib.t list Or_exn.t
   ; includes             : Includes.t
   ; preprocessing        : Preprocessing.t
   ; no_keep_locs         : bool
@@ -75,7 +76,8 @@ let modules              t = t.modules
 let alias_module         t = t.alias_module
 let lib_interface_module t = t.lib_interface_module
 let flags                t = t.flags
-let requires             t = t.requires
+let requires_compile     t = t.requires_compile
+let requires_link        t = t.requires_link
 let includes             t = t.includes
 let preprocessing        t = t.preprocessing
 let no_keep_locs         t = t.no_keep_locs
@@ -89,7 +91,8 @@ let create ~super_context ~scope ~expander ~obj_dir
       ?vimpl
       ?(dir_kind=Dune_lang.Syntax.Dune)
       ~modules ?alias_module ?lib_interface_module ~flags
-      ~requires ?(preprocessing=Preprocessing.dummy) ?(no_keep_locs=false)
+      ~requires_compile ~requires_link
+      ?(preprocessing=Preprocessing.dummy) ?(no_keep_locs=false)
       ~opaque ?stdlib () =
   { super_context
   ; scope
@@ -100,8 +103,9 @@ let create ~super_context ~scope ~expander ~obj_dir
   ; alias_module
   ; lib_interface_module
   ; flags
-  ; requires
-  ; includes = Includes.make super_context ~opaque ~requires
+  ; requires_compile
+  ; requires_link
+  ; includes = Includes.make super_context ~opaque ~requires:requires_compile
   ; preprocessing
   ; no_keep_locs
   ; opaque

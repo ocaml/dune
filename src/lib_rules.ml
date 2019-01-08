@@ -407,7 +407,6 @@ module Gen (P : Install_rules.Params) = struct
 
   let library_rules (lib : Library.t) ~dir_contents ~dir ~expander ~scope
         ~compile_info ~dir_kind =
-    let requires = Lib.Compile.requires compile_info in
     let dep_kind =
       if lib.optional then Lib_deps_info.Kind.Optional else Required
     in
@@ -443,6 +442,8 @@ module Gen (P : Install_rules.Params) = struct
     let modules = Lib_modules.for_compilation lib_modules in
 
     let cctx =
+      let requires_compile = Lib.Compile.requires_compile compile_info in
+      let requires_link    = Lib.Compile.requires_link compile_info in
       Compilation_context.create ()
         ~super_context:sctx
         ~expander
@@ -454,12 +455,15 @@ module Gen (P : Install_rules.Params) = struct
         ?alias_module
         ?lib_interface_module:(Lib_modules.lib_interface_module lib_modules)
         ~flags
-        ~requires
+        ~requires_compile
+        ~requires_link
         ~preprocessing:pp
         ~no_keep_locs:lib.no_keep_locs
         ~opaque
         ?stdlib:lib.stdlib
     in
+
+    let requires_compile = Compilation_context.requires_compile cctx in
 
     let dynlink =
       Dynlink_supported.get lib.dynlink ctx.supports_shared_libraries
@@ -490,8 +494,8 @@ module Gen (P : Install_rules.Params) = struct
 
     let vlib_stubs_o_files = Vimpl.vlib_stubs_o_files vimpl in
     if Library.has_stubs lib || not (List.is_empty vlib_stubs_o_files) then
-      build_stubs lib ~dir ~expander ~requires ~dir_contents
-        ~vlib_stubs_o_files;
+      build_stubs lib ~dir ~expander ~requires:requires_compile
+        ~dir_contents ~vlib_stubs_o_files;
 
     Lib_file_deps.setup_file_deps sctx ~lib ~dir
       ~modules:(Lib_modules.have_artifacts lib_modules
@@ -504,7 +508,8 @@ module Gen (P : Install_rules.Params) = struct
         ~vlib_dep_graphs ~expander
     );
 
-    Odoc.setup_library_odoc_rules lib ~requires ~modules ~dep_graphs ~scope;
+    Odoc.setup_library_odoc_rules lib ~requires:requires_compile
+      ~modules ~dep_graphs ~scope;
 
     let flags =
       match alias_module with
@@ -528,7 +533,7 @@ module Gen (P : Install_rules.Params) = struct
 
     (cctx,
      Merlin.make ()
-       ~requires:(Lib.Compile.requires compile_info)
+       ~requires:requires_compile
        ~flags
        ~preprocess:(Buildable.single_preprocess lib.buildable)
        ~libname:(snd lib.name)

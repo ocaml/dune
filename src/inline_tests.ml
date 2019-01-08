@@ -247,7 +247,8 @@ include Sub_system.Register_end_point(
           ~obj_dir
           ~modules
           ~opaque:false
-          ~requires:runner_libs
+          ~requires_compile:runner_libs
+          ~requires_link:runner_libs
           ~flags:(Ocaml_flags.of_list ["-w"; "-24"]);
       in
       Exe.build_and_link cctx

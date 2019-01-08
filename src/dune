@@ -7,7 +7,7 @@
               memo
               xdg
               dune_re
-              threads
+              threads.posix
               opam_file_format
               dune_lang
               ocaml_config

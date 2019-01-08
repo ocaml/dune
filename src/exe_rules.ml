@@ -10,7 +10,6 @@ let executables_rules ~sctx ~dir ~dir_kind ~expander
      with a library of the same name *)
   let obj_dir = Obj_dir.make_exe ~dir ~name:(snd (List.hd exes.names)) in
   Check_rules.add_obj_dir sctx ~obj_dir;
-  let requires = Lib.Compile.requires compile_info in
   let modules =
     Dir_contents.modules_of_executables dir_contents
       ~first_exe:(snd (List.hd exes.names))
@@ -81,6 +80,8 @@ let executables_rules ~sctx ~dir ~dir_kind ~expander
   in
 
   let cctx =
+    let requires_compile = Lib.Compile.requires_compile compile_info in
+    let requires_link = Lib.Compile.requires_link compile_info in
     Compilation_context.create ()
       ~super_context:sctx
       ~expander
@@ -89,10 +90,13 @@ let executables_rules ~sctx ~dir ~dir_kind ~expander
       ~dir_kind
       ~modules
       ~flags
-      ~requires
+      ~requires_link
+      ~requires_compile
       ~preprocessing:pp
       ~opaque:(SC.opaque sctx)
   in
+
+  let requires_compile = Compilation_context.requires_compile cctx in
 
   Exe.build_and_link_many cctx
     ~programs
@@ -102,7 +106,7 @@ let executables_rules ~sctx ~dir ~dir_kind ~expander
 
   (cctx,
    Merlin.make ()
-     ~requires:(Lib.Compile.requires compile_info)
+     ~requires:requires_compile
      ~flags:(Ocaml_flags.common flags)
      ~preprocess:(Dune_file.Buildable.single_preprocess exes.buildable)
      (* only public_dir? *)

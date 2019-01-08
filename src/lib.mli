@@ -173,8 +173,11 @@ type sub_system = ..
 module Compile : sig
   type t
 
-  (** Return the list of dependencies needed for compiling this library *)
-  val requires : t -> L.t Or_exn.t
+  (** Return the list of dependencies needed for compiling this library/exe *)
+  val requires_compile : t -> L.t Or_exn.t
+
+  (** Return the list of dependencies needed for linking this library/exe *)
+  val requires_link : t -> L.t Or_exn.t
 
   (** Dependencies listed by the user + runtime dependencies from ppx *)
   val direct_requires : t -> L.t Or_exn.t

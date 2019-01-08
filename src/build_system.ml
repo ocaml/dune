@@ -812,112 +812,6 @@ and static_deps t build =
 and start_rule t _rule =
   t.hook Rule_started
 
-and run_rule t rule action deps =
-  let { Internal_rule.
-        dir
-      ; targets
-      ; env
-      ; context
-      ; mode
-      ; sandbox
-      ; locks
-      ; id = _
-      ; static_deps = _
-      ; build = _
-      ; loc
-      ; transitive_rev_deps = _
-      ; rev_deps = _
-      } = rule in
-  make_local_dir t dir;
-  let targets_as_list  = Path.Set.to_list targets  in
-  let head_target = List.hd targets_as_list in
-  let prev_trace = Trace.get head_target in
-  let rule_digest =
-    let env =
-      match env, context with
-      | None, None -> Env.initial
-      | Some e, _ -> e
-      | None, Some c -> c.env
-    in
-    let trace =
-      ( Deps.trace deps env,
-        List.map targets_as_list ~f:Path.to_string,
-        Option.map context ~f:(fun c -> c.name),
-        Action.for_shell action)
-    in
-    Digest.string (Marshal.to_string trace [])
-  in
-  let targets_digest =
-    match List.map targets_as_list ~f:Utils.Cached_digest.file with
-    | l -> Some (Digest.string (Marshal.to_string l []))
-    | exception (Unix.Unix_error _ | Sys_error _) -> None
-  in
-  let sandbox_dir =
-    if sandbox then
-      Some (Path.relative sandbox_dir (Digest.to_string rule_digest))
-    else
-      None
-  in
-  let force =
-    !Clflags.force &&
-    List.exists targets_as_list ~f:Path.is_alias_stamp_file
-  in
-  let something_changed =
-    match prev_trace, targets_digest with
-    | Some prev_trace, Some targets_digest ->
-      prev_trace.rule_digest <> rule_digest ||
-      prev_trace.targets_digest <> targets_digest
-    | _ -> true
-  in
-  begin
-    if force || something_changed then begin
-      List.iter targets_as_list ~f:Path.unlink_no_err;
-      pending_targets := Path.Set.union targets !pending_targets;
-      let action =
-        match sandbox_dir with
-        | None ->
-          action
-        | Some sandbox_dir ->
-          Path.rm_rf sandbox_dir;
-          let sandboxed path = Path.sandbox_managed_paths ~sandbox_dir path in
-          make_local_parent_dirs t (Deps.paths deps) ~map_path:sandboxed;
-          make_local_dir t (sandboxed dir);
-          Action.sandbox action
-            ~sandboxed
-            ~deps:deps
-            ~targets:targets_as_list
-      in
-      make_local_dirs t (Action.chdirs action);
-      with_locks locks ~f:(fun () ->
-        Action_exec.exec ~context ~env ~targets action)
-      >>| fun () ->
-      Option.iter sandbox_dir ~f:Path.rm_rf;
-      (* All went well, these targets are no longer pending *)
-      pending_targets := Path.Set.diff !pending_targets targets;
-      let targets_digest =
-        compute_targets_digest_after_rule_execution ~loc targets_as_list
-      in
-      Trace.set head_target { rule_digest; targets_digest }
-    end else
-      Fiber.return ()
-  end >>| fun () ->
-  begin
-    match mode with
-    | Standard | Fallback | Not_a_rule_stanza | Ignore_source_files -> ()
-    | Promote | Promote_but_delete_on_clean ->
-      Path.Set.iter targets ~f:(fun path ->
-        let in_source_tree = Option.value_exn (Path.drop_build_context path) in
-        if not (Path.exists in_source_tree) ||
-           (Utils.Cached_digest.file path <>
-            Utils.Cached_digest.file in_source_tree) then begin
-          if mode = Promote_but_delete_on_clean then
-            Promoted_to_delete.add in_source_tree;
-          Scheduler.ignore_for_watch in_source_tree;
-          Io.copy_file ~src:path ~dst:in_source_tree ()
-        end)
-  end;
-  t.hook Rule_completed
-
 and setup_copy_rules t ~ctx_dir ~non_target_source_files =
   Path.Set.iter non_target_source_files ~f:(fun path ->
     let ctx_path = Path.append ctx_dir path in
@@ -1298,11 +1192,115 @@ let evaluate_rule t (rule : Internal_rule.t) =
   let action_deps = Deps.union static_action_deps dynamic_action_deps in
   (action, action_deps)
 
-let build_rule_internal t (rule : Internal_rule.t) =
+let build_rule_internal t rule =
+  let { Internal_rule.
+        dir
+      ; targets
+      ; env
+      ; context
+      ; mode
+      ; sandbox
+      ; locks
+      ; id = _
+      ; static_deps = _
+      ; build = _
+      ; loc
+      ; transitive_rev_deps = _
+      ; rev_deps = _
+      } = rule
+  in
   start_rule t rule;
   Rule_fn.exec (Fdecl.get t.build_rule_def) rule
-  >>= fun (action, all_deps) ->
-  run_rule t rule action all_deps
+  >>= fun (action, deps) ->
+  make_local_dir t dir;
+  let targets_as_list  = Path.Set.to_list targets  in
+  let head_target = List.hd targets_as_list in
+  let prev_trace = Trace.get head_target in
+  let rule_digest =
+    let env =
+      match env, context with
+      | None, None -> Env.initial
+      | Some e, _ -> e
+      | None, Some c -> c.env
+    in
+    let trace =
+      ( Deps.trace deps env,
+        List.map targets_as_list ~f:Path.to_string,
+        Option.map context ~f:(fun c -> c.name),
+        Action.for_shell action)
+    in
+    Digest.string (Marshal.to_string trace [])
+  in
+  let targets_digest =
+    match List.map targets_as_list ~f:Utils.Cached_digest.file with
+    | l -> Some (Digest.string (Marshal.to_string l []))
+    | exception (Unix.Unix_error _ | Sys_error _) -> None
+  in
+  let sandbox_dir =
+    if sandbox then
+      Some (Path.relative sandbox_dir (Digest.to_string rule_digest))
+    else
+      None
+  in
+  let force =
+    !Clflags.force &&
+    List.exists targets_as_list ~f:Path.is_alias_stamp_file
+  in
+  let something_changed =
+    match prev_trace, targets_digest with
+    | Some prev_trace, Some targets_digest ->
+      prev_trace.rule_digest <> rule_digest ||
+      prev_trace.targets_digest <> targets_digest
+    | _ -> true
+  in
+  begin
+    if force || something_changed then begin
+      List.iter targets_as_list ~f:Path.unlink_no_err;
+      pending_targets := Path.Set.union targets !pending_targets;
+      let action =
+        match sandbox_dir with
+        | None ->
+          action
+        | Some sandbox_dir ->
+          Path.rm_rf sandbox_dir;
+          let sandboxed path = Path.sandbox_managed_paths ~sandbox_dir path in
+          make_local_parent_dirs t (Deps.paths deps) ~map_path:sandboxed;
+          make_local_dir t (sandboxed dir);
+          Action.sandbox action
+            ~sandboxed
+            ~deps:deps
+            ~targets:targets_as_list
+      in
+      make_local_dirs t (Action.chdirs action);
+      with_locks locks ~f:(fun () ->
+        Action_exec.exec ~context ~env ~targets action)
+      >>| fun () ->
+      Option.iter sandbox_dir ~f:Path.rm_rf;
+      (* All went well, these targets are no longer pending *)
+      pending_targets := Path.Set.diff !pending_targets targets;
+      let targets_digest =
+        compute_targets_digest_after_rule_execution ~loc targets_as_list
+      in
+      Trace.set head_target { rule_digest; targets_digest }
+    end else
+      Fiber.return ()
+  end >>| fun () ->
+  begin
+    match mode with
+    | Standard | Fallback | Not_a_rule_stanza | Ignore_source_files -> ()
+    | Promote | Promote_but_delete_on_clean ->
+      Path.Set.iter targets ~f:(fun path ->
+        let in_source_tree = Option.value_exn (Path.drop_build_context path) in
+        if not (Path.exists in_source_tree) ||
+           (Utils.Cached_digest.file path <>
+            Utils.Cached_digest.file in_source_tree) then begin
+          if mode = Promote_but_delete_on_clean then
+            Promoted_to_delete.add in_source_tree;
+          Scheduler.ignore_for_watch in_source_tree;
+          Io.copy_file ~src:path ~dst:in_source_tree ()
+        end)
+  end;
+  t.hook Rule_completed
 
 (* a rule can have multiple files, but rule.run_rule may only be called once *)
 let build_file t path =

@@ -121,7 +121,7 @@ let term =
         Target.resolve_targets_exn ~log common setup targets
         |> Target.request setup
     in
-    Build_system.build_rules setup.build_system ~request ~recursive
+    Build_system.evaluate_rules setup.build_system ~request ~recursive
     >>= fun rules ->
     let print oc =
       let ppf = Format.formatter_of_out_channel oc in

@@ -142,7 +142,8 @@ module Internal_rule = struct
     ; transitive_rev_deps = Id.Set.empty
     }
 
-  let make_request ~build ~static_deps =
+  (* Create a shim for the main build goal *)
+  let shim_of_build_goal ~build ~static_deps =
     { root with
       id = Id.gen ()
     ; static_deps
@@ -458,7 +459,7 @@ type t =
   ; (* Package files are part of *)
     packages : Package.Name.t Path.Table.t
   (* memoized functions *)
-  ; prepare_rule_def : (Internal_rule.t -> Action_and_deps.t Fiber.t) Fdecl.t
+  ; evaluate_action_and_dynamic_deps_def : (Internal_rule.t -> Action_and_deps.t Fiber.t) Fdecl.t
   ; build_rule_def : Action_and_deps.t Rule_fn.t Fdecl.t
   ; build_file_def : unit Path_fn.t Fdecl.t
   ; build_rule_internal_def : (Internal_rule.t -> unit Fiber.t) Fdecl.t
@@ -780,12 +781,7 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
     pre_rule
   in
   let targets = Target.paths target_specs in
-  let static_deps =
-    Fiber.Once.create (fun () ->
-      Fiber.return
-        (Build_interpret.static_deps build ~all_targets:(targets_of t)
-           ~file_tree:t.file_tree))
-  in
+  let static_deps = static_deps t build in
   let rule =
     let id = Internal_rule.Id.gen () in
     { Internal_rule.
@@ -805,6 +801,13 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
     }
   in
   create_file_specs t target_specs rule ~copy_source
+
+and static_deps t build =
+  Fiber.Once.create (fun () ->
+    Fiber.return
+      (Build_interpret.static_deps build
+         ~all_targets:(targets_of t)
+         ~file_tree:t.file_tree))
 
 and start_rule t _rule =
   t.hook Rule_started
@@ -1260,48 +1263,43 @@ let update_universe t =
   make_local_dirs t (Path.Set.singleton Path.build_dir);
   Io.write_file universe_file (Dune_lang.to_string ~syntax:Dune (Dune_lang.Encoder.int n))
 
-let parallel_iter_path_set deps ~f =
-  Path.Set.to_list deps |> Fiber.parallel_iter ~f
-
-let prepare_rule t (rule : Internal_rule.t) : Action_and_deps.t Fiber.t =
-  (* get the static dependencies needed before we can call build exec*)
+(* Evaluate a rule and return the action and set of dynamic dependencies *)
+let evaluate_action_and_dynamic_deps t (rule : Internal_rule.t) : Action_and_deps.t Fiber.t =
   Fiber.Once.get rule.static_deps
-  >>| Static_deps.rule_deps
-  >>= (fun rule_deps ->
-    start_rule t rule; (* legacy for hooks *)
-    (* first compute rule dependencies*)
-    Deps.parallel_iter rule_deps ~f:(fun f ->
-      Path_fn.exec (Fdecl.get t.build_file_def) f)
-    (* then execute the build arrow *)
-  )
-  >>| Build_exec.exec t rule.build
+  >>= fun static_deps ->
+  let rule_deps = Static_deps.rule_deps static_deps in
+  Deps.parallel_iter rule_deps ~f:(Path_fn.exec (Fdecl.get t.build_file_def))
+  >>| fun () ->
+  Build_exec.exec t rule.build ()
 
 let build_rule t (rule : Internal_rule.t) =
   let build_file = Path_fn.exec (Fdecl.get t.build_file_def) in
 
   (* get the static dependencies needed before we can call build exec*)
-  Fiber.Once.get rule.static_deps
-  >>= (fun deps ->
-    let action_deps = Static_deps.action_deps deps in
-    let rule_deps = Static_deps.rule_deps deps in
+  Fiber.Once.get rule.static_deps >>= fun static_deps ->
+  let static_action_deps = Static_deps.action_deps static_deps in
+  (* Build the static dependencies in parallel with evaluation the
+     action and dynamic dependencies *)
+  Fiber.fork_and_join_unit
+    (fun () -> Deps.parallel_iter static_action_deps ~f:build_file)
+    (fun () -> Fdecl.get t.evaluate_action_and_dynamic_deps_def rule)
+  >>= fun (action, dynamic_action_deps) ->
+  Deps.parallel_iter dynamic_action_deps ~f:build_file
+  >>>
+  let action_deps = Deps.union static_action_deps dynamic_action_deps in
+  Fiber.return (action, action_deps)
 
-    Fiber.fork (fun () -> prepare_rule t rule)
-    >>= (fun rule_eval ->
-      (* now compute the action dependencies *)
-      Fiber.fork (fun () -> Deps.parallel_iter action_deps ~f:build_file)
-      (* wait for action dependencies *)
-      >>= Fiber.Future.wait
-      (* wait for rule dependencies *)
-      >>> Fiber.Future.wait rule_eval
-      (* wait for dynamic dependencies *)
-      >>= fun (action, dyn_deps) ->
-        Deps.path_diff dyn_deps rule_deps
-        |> parallel_iter_path_set ~f:build_file
-      >>> Fiber.return (action, Deps.union action_deps dyn_deps)
-    )
-  )
+let evaluate_rule t (rule : Internal_rule.t) =
+  Fiber.Once.get rule.static_deps
+  >>= fun static_deps ->
+  Fdecl.get t.evaluate_action_and_dynamic_deps_def rule
+  >>| fun (action, dynamic_action_deps) ->
+  let static_action_deps = Static_deps.action_deps static_deps in
+  let action_deps = Deps.union static_action_deps dynamic_action_deps in
+  (action, action_deps)
 
 let build_rule_internal t (rule : Internal_rule.t) =
+  start_rule t rule;
   Rule_fn.exec (Fdecl.get t.build_rule_def) rule
   >>= fun (action, all_deps) ->
   run_rule t rule action all_deps
@@ -1317,24 +1315,25 @@ let build_file t path =
     | Some (File_spec.T file) ->
       Fdecl.get t.build_rule_internal_def file.rule)
 
-let build_request t ~static_only ~request =
+let shim_of_build_goal t request =
+  let request =
+    let open Build.O in
+    request >>^ fun () ->
+    Action.Progn []
+  in
+  Internal_rule.shim_of_build_goal
+    ~build:request
+    ~static_deps:(static_deps t request)
+
+let build_request t ~request =
   let result = Fdecl.create () in
   let request =
     let open Build.O in
     request >>^ fun res ->
-    Fdecl.set result res;
-    Action.Progn []
+    Fdecl.set result res
   in
-  let static_deps =
-    Fiber.Once.create (fun () ->
-      Fiber.return (
-        Build_interpret.static_deps
-          request
-          ~all_targets:(targets_of t)
-          ~file_tree:t.file_tree))
-  in
-  let rule = Internal_rule.make_request ~build:request ~static_deps in
-  (if static_only then prepare_rule else build_rule) t rule
+  let rule = shim_of_build_goal t request in
+  build_rule t rule
   >>| fun (_act, deps) ->
   (Fdecl.get result, deps)
 
@@ -1359,7 +1358,7 @@ let process_memcycle t exn =
 let do_build (t : t) ~request =
   Hooks.End_of_build.once Promotion.finalize;
   update_universe t; (* ? *)
-  (fun () -> build_request t ~static_only:false ~request)
+  (fun () -> build_request t ~request)
   |> Fiber.with_error_handler ~on_error:(fun exn ->
     Dep_path.map exn ~f:(function
       | Memo.Cycle_error.E exn -> process_memcycle t exn
@@ -1390,12 +1389,14 @@ let create ~contexts ~file_tree ~hook =
     ; build_rule_def = Fdecl.create ()
     ; build_file_def = Fdecl.create ()
     ; build_rule_internal_def = Fdecl.create ()
-    ; prepare_rule_def = Fdecl.create ()
+    ; evaluate_action_and_dynamic_deps_def = Fdecl.create ()
     }
   in
-  Fdecl.set t.prepare_rule_def
-    (Rule_fn.create "prepare-rule" (module Action_and_deps) (prepare_rule t)
-       ~doc:"Evaluate the build arrow part of a rule."
+  Fdecl.set t.evaluate_action_and_dynamic_deps_def
+    (Rule_fn.create "evaluate-action-and-dynamic-deps"
+       (module Action_and_deps) (evaluate_action_and_dynamic_deps t)
+       ~doc:"Evaluate the build arrow part of a rule and return the \
+             action and dynamic dependency of the rule."
      |> Rule_fn.exec);
   Fdecl.set t.build_rule_def
     (Rule_fn.create "build-rule" (module Action_and_deps) (build_rule t)
@@ -1486,11 +1487,12 @@ let rules_for_files rules deps =
     | Some rule -> Rule.Set.add acc rule)
   |> Rule.Set.to_list
 
-let build_rules_internal t ~recursive ~request =
-  let rules = ref [] in
-  let rec run_rule (rule : Internal_rule.t) =
-    Fdecl.get t.prepare_rule_def rule
-    >>= (fun (action, deps) ->
+let evaluate_rules t ~recursive ~request =
+  entry_point t ~f:(fun () ->
+    let rules = ref [] in
+    let rec run_rule (rule : Internal_rule.t) =
+      evaluate_rule t rule
+      >>= fun (action, deps) ->
       let rule =
         { Rule.
           id = rule.id
@@ -1505,35 +1507,23 @@ let build_rules_internal t ~recursive ~request =
         Deps.parallel_iter deps ~f:proc_rule
       else
         Fiber.return ()
-    )
-  and proc_rule dep =
-    get_file_spec_other t dep >>= function
-    | None -> Fiber.return () (* external files *)
-    | Some (File_spec.T file) -> run_rule file.rule
-  in
-  build_request t ~static_only:true ~request
-  >>= (fun (_, dyn_deps) ->
-    let static_deps =
-      Build_interpret.static_deps
-        request
-        ~all_targets:(targets_of t)
-        ~file_tree:t.file_tree
+    and proc_rule dep =
+      get_file_spec_other t dep >>= function
+      | None -> Fiber.return () (* external files *)
+      | Some (File_spec.T file) -> run_rule file.rule
     in
-    let targets =
-      Static_deps.rule_deps static_deps
-      |> Deps.path_diff dyn_deps
-      |> Deps.add_paths (Static_deps.action_deps static_deps)
-    in
-    Deps.parallel_iter targets ~f:proc_rule
-    >>> Fiber.return targets)
-  >>| (fun targets ->
+    let rule_shim = shim_of_build_goal t request in
+    evaluate_rule t rule_shim
+    >>= fun (_act, goal) ->
+    Deps.parallel_iter goal ~f:proc_rule
+    >>| fun () ->
     let rules =
       List.fold_left !rules ~init:Path.Map.empty ~f:(fun acc (r : Rule.t) ->
         Path.Set.fold r.targets ~init:acc ~f:(fun fn acc ->
           Path.Map.add acc fn r)) in
     match
       Rule.Id.Top_closure.top_closure
-        (rules_for_files rules targets)
+        (rules_for_files rules goal)
         ~key:(fun (r : Rule.t) -> r.id)
         ~deps:(fun (r : Rule.t) -> rules_for_files rules r.deps)
     with
@@ -1541,13 +1531,9 @@ let build_rules_internal t ~recursive ~request =
     | Error cycle ->
       die "dependency cycle detected:\n   %s"
         (List.map cycle ~f:(fun rule ->
-           Path.to_string (Option.value_exn (Path.Set.choose rule.Rule.targets)))
-         |> String.concat ~sep:"\n-> ")
-  )
-
-let build_rules t ~recursive ~request =
-  entry_point t ~f:(fun () ->
-    build_rules_internal t ~recursive ~request)
+           Path.to_string
+             (Option.value_exn (Path.Set.choose rule.Rule.targets)))
+         |> String.concat ~sep:"\n-> "))
 
 let set_package t file package =
   Path.Table.add t.packages file package

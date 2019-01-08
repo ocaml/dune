@@ -118,4 +118,6 @@ val find_extension_args : t -> 'a Extension.t -> 'a option
 
 val set_parsing_context : t -> 'a Dune_lang.Decoder.t -> 'a Dune_lang.Decoder.t
 
+val implicit_transitive_deps : t -> bool
+
 val pp : t Fmt.t

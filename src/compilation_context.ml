@@ -57,7 +57,7 @@ type t =
   ; lib_interface_module : Module.t option
   ; flags                : Ocaml_flags.t
   ; requires_compile     : Lib.t list Or_exn.t
-  ; requires_link        : Lib.t list Or_exn.t
+  ; requires_link        : Lib.t list Or_exn.t Lazy.t
   ; includes             : Includes.t
   ; preprocessing        : Preprocessing.t
   ; no_keep_locs         : bool
@@ -77,7 +77,7 @@ let alias_module         t = t.alias_module
 let lib_interface_module t = t.lib_interface_module
 let flags                t = t.flags
 let requires_compile     t = t.requires_compile
-let requires_link        t = t.requires_link
+let requires_link        t = Lazy.force t.requires_link
 let includes             t = t.includes
 let preprocessing        t = t.preprocessing
 let no_keep_locs         t = t.no_keep_locs
@@ -94,6 +94,12 @@ let create ~super_context ~scope ~expander ~obj_dir
       ~requires_compile ~requires_link
       ?(preprocessing=Preprocessing.dummy) ?(no_keep_locs=false)
       ~opaque ?stdlib () =
+  let requires_compile =
+    if Dune_project.implicit_transitive_deps (Scope.project scope) then
+      Lazy.force requires_link
+    else
+      requires_compile
+  in
   { super_context
   ; scope
   ; expander

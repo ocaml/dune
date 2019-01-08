@@ -113,7 +113,7 @@ let setup sctx ~dir =
       ~obj_dir
       ~modules
       ~opaque:false
-      ~requires_link:requires
+      ~requires_link:(lazy requires)
       ~requires_compile:requires
       ~flags:(Ocaml_flags.append_common
                 (Ocaml_flags.default ~profile:(Super_context.profile sctx))

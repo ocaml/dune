@@ -234,3 +234,20 @@ files can be loaded into Chromium's ``chrome://tracing``. Note that the exact
 format is subject to change between versions.
 
 .. _Catapult trace-viewer: https://github.com/catapult-project/catapult/blob/master/tracing/README.md
+
+Implicit Transitive Deps
+========================
+
+By default, dune allows transitive dependencies of dependencies to be used
+directly when compiling OCaml. However, this setting can be controlled per
+project. It can be disabled by adding the ``(implicit_transitive_deps false)``
+to the ``dune-project`` file.
+
+Once this setting is added, all dependencies that are directly used by a library
+or an executable must be directly added in the ``libraries`` field. We recommend
+users to experiment with this mode and report any problems. The goal is to make
+this the default mode eventually.
+
+Note that you must use ``threads.posix`` instead of ``threads`` when using this
+mode. This is not an important limitation as ``threads.vm`` are deprecated
+anyways.

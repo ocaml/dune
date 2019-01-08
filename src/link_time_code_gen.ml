@@ -56,8 +56,8 @@ let libraries_link ~name ~loc ~mode cctx libs =
         ~dir_kind:(dir_kind cctx)
         ~obj_dir:(CC.obj_dir cctx)
         ~modules:(Module.Name.Map.singleton name module_)
-        ~requires_link:requires
         ~requires_compile:requires
+        ~requires_link:(lazy requires)
         ~flags:Ocaml_flags.empty
         ~opaque:true
         ())

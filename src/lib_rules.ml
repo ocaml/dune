@@ -442,7 +442,7 @@ module Gen (P : Install_rules.Params) = struct
     let modules = Lib_modules.for_compilation lib_modules in
 
     let cctx =
-      let requires_compile = Lib.Compile.requires_compile compile_info in
+      let requires_compile = Lib.Compile.direct_requires compile_info in
       let requires_link    = Lib.Compile.requires_link compile_info in
       Compilation_context.create ()
         ~super_context:sctx

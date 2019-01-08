@@ -25,7 +25,7 @@ val create
   -> ?lib_interface_module : Module.t
   -> flags                 : Ocaml_flags.t
   -> requires_compile      : Lib.t list Or_exn.t
-  -> requires_link         : Lib.t list Or_exn.t
+  -> requires_link         : Lib.t list Or_exn.t Lazy.t
   -> ?preprocessing        : Preprocessing.t
   -> ?no_keep_locs         : bool
   -> opaque                : bool

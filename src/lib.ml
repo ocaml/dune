@@ -936,8 +936,7 @@ module Compile = struct
 
   type nonrec t =
     { direct_requires   : t list Or_exn.t
-    ; requires_compile  : t list Or_exn.t
-    ; requires_link     : t list Or_exn.t
+    ; requires_link     : t list Or_exn.t Lazy.t
     ; pps               : t list Or_exn.t
     ; resolved_selects  : Resolved_select.t list
     ; lib_deps_info     : Lib_deps_info.t
@@ -957,19 +956,11 @@ module Compile = struct
         ~pps:t.info.pps
         ~kind:(Lib_deps_info.Kind.of_optional t.info.optional)
     in
-    let requires_link =
+    let requires_link = lazy (
       t.requires >>= closure_with_overlap_checks db ~linking:false
-    in
-    let requires_compile =
-      t.requires >>= fun direct_requires ->
-      requires_link >>|
-      List.filter ~f:(fun (lib : lib) ->
-        List.exists direct_requires ~f:(fun (lib' : lib) ->
-          Id.(=) lib.unique_id lib'.unique_id))
-    in
+    ) in
     { direct_requires   = t.requires
     ; requires_link
-    ; requires_compile
     ; resolved_selects  = t.resolved_selects
     ; pps               = t.pps
     ; lib_deps_info
@@ -978,7 +969,6 @@ module Compile = struct
 
   let direct_requires   t = t.direct_requires
   let requires_link     t = t.requires_link
-  let requires_compile  t = t.requires_compile
   let resolved_selects  t = t.resolved_selects
   let pps               t = t.pps
   let lib_deps_info     t = t.lib_deps_info
@@ -1112,24 +1102,16 @@ module DB = struct
       resolve_user_deps t (Lib_info.Deps.of_lib_deps deps) ~pps
         ~stack:Dep_stack.empty ~allow_private_deps:true
     in
-    let requires_link =
+    let requires_link = lazy (
       res
       >>=
       closure_with_overlap_checks (Option.some_if (not allow_overlaps) t)
         ~linking:true
       |> Result.map_error ~f:(fun e ->
         Dep_path.prepend_exn e (Executables exes))
-    in
-    let requires_compile =
-      res >>= fun direct_requires ->
-      requires_link >>|
-      List.filter ~f:(fun (lib : lib) ->
-        List.exists direct_requires ~f:(fun (lib' : lib) ->
-          Id.(=) lib.unique_id lib'.unique_id))
-    in
+    ) in
     { Compile.
       direct_requires = res
-    ; requires_compile
     ; requires_link
     ; pps
     ; resolved_selects

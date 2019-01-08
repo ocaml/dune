@@ -1,0 +1,13 @@
+(library
+ (name foo)
+ (modules foo))
+
+(library
+ (name bar)
+ (modules bar)
+ (libraries foo))
+
+(executable
+ (name run)
+ (modules run)
+ (libraries bar))

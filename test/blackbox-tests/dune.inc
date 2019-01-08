@@ -1143,6 +1143,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name transitive-deps-mode)
+ (deps (package dune) (source_tree test-cases/transitive-deps-mode))
+ (action
+  (chdir
+   test-cases/transitive-deps-mode
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name use-meta)
  (deps (package dune) (source_tree test-cases/use-meta))
  (action
@@ -1349,6 +1357,7 @@
   (alias tests-stanza-action-syntax-version)
   (alias too-many-parens)
   (alias trace-file)
+  (alias transitive-deps-mode)
   (alias use-meta)
   (alias utop)
   (alias utop-default)
@@ -1487,6 +1496,7 @@
   (alias tests-stanza-action-syntax-version)
   (alias too-many-parens)
   (alias trace-file)
+  (alias transitive-deps-mode)
   (alias use-meta)
   (alias utop-default)
   (alias variants)

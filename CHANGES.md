@@ -1,5 +1,5 @@
-1.6.3
-----------
+1.6.3 (08/01/2019)
+------------------
 
 - Fix merlin handling of private module visibility (#1653 @bobot)
 

@@ -459,7 +459,7 @@ type t =
   ; (* Package files are part of *)
     packages : Package.Name.t Path.Table.t
   (* memoized functions *)
-  ; evaluate_action_and_dynamic_deps_def : (Internal_rule.t -> Action_and_deps.t Fiber.t) Fdecl.t
+  ; evaluate_action_and_dynamic_deps_def : Action_and_deps.t Rule_fn.t Fdecl.t
   ; build_rule_def : Action_and_deps.t Rule_fn.t Fdecl.t
   ; build_file_def : unit Path_fn.t Fdecl.t
   ; execute_rule_def : (Internal_rule.t -> unit Fiber.t) Fdecl.t
@@ -1176,7 +1176,8 @@ let build_rule t (rule : Internal_rule.t) =
      action and dynamic dependencies *)
   Fiber.fork_and_join_unit
     (fun () -> Deps.parallel_iter static_action_deps ~f:build_file)
-    (fun () -> Fdecl.get t.evaluate_action_and_dynamic_deps_def rule)
+    (fun () ->
+       Rule_fn.exec (Fdecl.get t.evaluate_action_and_dynamic_deps_def) rule)
   >>= fun (action, dynamic_action_deps) ->
   Deps.parallel_iter dynamic_action_deps ~f:build_file
   >>>
@@ -1186,7 +1187,7 @@ let build_rule t (rule : Internal_rule.t) =
 let evaluate_rule t (rule : Internal_rule.t) =
   Fiber.Once.get rule.static_deps
   >>= fun static_deps ->
-  Fdecl.get t.evaluate_action_and_dynamic_deps_def rule
+  Rule_fn.exec (Fdecl.get t.evaluate_action_and_dynamic_deps_def) rule
   >>| fun (action, dynamic_action_deps) ->
   let static_action_deps = Static_deps.action_deps static_deps in
   let action_deps = Deps.union static_action_deps dynamic_action_deps in
@@ -1395,8 +1396,7 @@ let create ~contexts ~file_tree ~hook =
     (Rule_fn.create "evaluate-action-and-dynamic-deps"
        (module Action_and_deps) (evaluate_action_and_dynamic_deps t)
        ~doc:"Evaluate the build arrow part of a rule and return the \
-             action and dynamic dependency of the rule."
-     |> Rule_fn.exec);
+             action and dynamic dependency of the rule.");
   Fdecl.set t.build_rule_def
     (Rule_fn.create "build-rule" (module Action_and_deps) (build_rule t)
        ~doc:"Execute a rule.");
@@ -1562,17 +1562,19 @@ let package_deps t pkg files =
       else begin
         rules_seen := Rule.Id.Set.add !rules_seen ir.id;
         (* We know that at this point of execution, all the relevant
-           ivars have been filled so the following calsl to
+           ivars have been filled so the following calls to
            [X.peek_exn] cannot raise. *)
         let static_deps = Fiber.Once.peek_exn ir.static_deps in
-        let rule_deps = Static_deps.rule_deps static_deps in
-        let _, deps = Rule_fn.peek_exn (Fdecl.get t.build_rule_def) ir in
-        let dyn_deps = Deps.path_diff deps rule_deps in
-        let action_deps =
-          Static_deps.action_deps static_deps |> Deps.paths
+        let static_action_deps = Static_deps.action_deps static_deps in
+        let _act, dynamic_action_deps =
+          Rule_fn.peek_exn (Fdecl.get t.evaluate_action_and_dynamic_deps_def) ir
         in
-        Path.Set.fold (Path.Set.union action_deps dyn_deps)
-          ~init:acc ~f:loop
+        let action_deps =
+          Path.Set.union
+            (Deps.paths static_action_deps)
+            (Deps.paths dynamic_action_deps)
+        in
+        Path.Set.fold action_deps ~init:acc ~f:loop
       end
   in
   let open Build.O in

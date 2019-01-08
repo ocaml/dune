@@ -626,10 +626,10 @@ let of_string ?error_loc s =
   match s with
   | "" | "." -> in_source_tree Local.root
   | s  ->
-    if not (Filename.is_relative s) then
-      external_ (External.of_string s)
-    else
+    if Filename.is_relative s then
       make_local_path (Local.of_string s ?error_loc)
+    else
+      external_ (External.of_string s)
 
 let to_sexp t =
   let constr f x y = Sexp.Encoder.(pair string f) (x, y) in

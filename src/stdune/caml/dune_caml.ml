@@ -8,6 +8,7 @@ module Result   = Result
 module Hashtbl  = MoreLabels.Hashtbl
 module Lexing   = Lexing
 module Digest   = Digest
+module StringLabels   = StringLabels
 
 type ('a, 'error) result = ('a, 'error) Result.t =
   | Ok    of 'a

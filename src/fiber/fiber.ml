@@ -70,20 +70,8 @@ end = struct
     | None ->
       (* We can't let the exception leak at this point, so we just
          dump the error on stderr and exit *)
-      let bt = Printexc.get_backtrace () in
-      let s =
-        Printf.sprintf "%s\n%s" (Printexc.to_string exn) bt
-        |> String.split_lines
-        |> List.map ~f:(Printf.sprintf "| %s")
-        |> String.concat ~sep:"\n"
-      in
-      let line = String.make 71 '-' in
-      Format.eprintf
-        "/%s\n\
-         | @{<error>Internal error@}: Uncaught exception.\n\
-         %s\n\
-         \\%s@."
-        line s line;
+      let backtrace = Printexc.get_backtrace () in
+      Format.eprintf "%a@.%!" (Exn.pp_uncaught ~backtrace) exn;
       sys_exit 42
     | Some { ctx; run } ->
       current := ctx;

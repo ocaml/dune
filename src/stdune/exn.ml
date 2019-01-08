@@ -37,6 +37,22 @@ let code_error message vars =
              Sexp.List [Atom name; value])))
   |> raise
 
+module String = Dune_caml.StringLabels
+let pp_uncaught ~backtrace fmt exn =
+  let s =
+    Printf.sprintf "%s\n%s" (Printexc.to_string exn) backtrace
+    |> String_split.split_lines
+    |> ListLabels.map ~f:(Printf.sprintf "| %s")
+    |> String.concat ~sep:"\n"
+  in
+  let line = String.make 71 '-' in
+  Format.fprintf fmt
+    "/%s\n\
+     | @{<error>Internal error@}: Uncaught exception.\n\
+     %s\n\
+     \\%s@."
+    line s line;
+
 include
   ((struct
     [@@@warning "-32-3"]

@@ -1527,17 +1527,15 @@ let build_rules_internal t ~recursive ~request =
     Deps.parallel_iter targets ~f:proc_rule
     >>> Fiber.return targets)
   >>| (fun targets ->
-    let rules = !rules in
     let rules =
-      List.fold_left rules ~init:Path.Map.empty ~f:(fun acc (r : Rule.t) ->
+      List.fold_left !rules ~init:Path.Map.empty ~f:(fun acc (r : Rule.t) ->
         Path.Set.fold r.targets ~init:acc ~f:(fun fn acc ->
           Path.Map.add acc fn r)) in
     match
       Rule.Id.Top_closure.top_closure
         (rules_for_files rules targets)
         ~key:(fun (r : Rule.t) -> r.id)
-        ~deps:(fun (r : Rule.t) ->
-          rules_for_files rules r.deps)
+        ~deps:(fun (r : Rule.t) -> rules_for_files rules r.deps)
     with
     | Ok l -> l
     | Error cycle ->

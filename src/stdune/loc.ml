@@ -91,51 +91,71 @@ let pp_file_excerpt ~context_lines ~max_lines_to_print_in_full
       pp { start; stop } =
   let start_c = start.pos_cnum - start.pos_bol in
   let stop_c  = stop.pos_cnum  - start.pos_bol in
-  let num_lines = stop.pos_lnum - start.pos_lnum in
-  let whole_file = start_c = 0 && stop_c = 0 in
-  if not whole_file then
-    let path = Path.of_string start.pos_fname in
-    if Path.exists path then
-      let line_num = start.pos_lnum in
-      let line_num_str = string_of_int line_num in
-      let padding_width = String.length line_num_str in
-      let line = Io.file_line path line_num in
-      if stop_c <= String.length line then
-        let len = stop_c - start_c in
-        Format.fprintf pp "%a%*s\n"
-          (pp_line padding_width) (line_num_str, line)
-          (stop_c + padding_width + 3)
-          (String.make len '^')
+  let file    = start.pos_fname in
+  let pp_file_excerpt () =
+    let line_num = start.pos_lnum in
+    let line_num_str = string_of_int line_num in
+    let padding_width = String.length line_num_str in
+    let open Result.O in
+    Result.try_with (fun () -> Io.String_path.file_line file line_num)
+    >>= fun line ->
+    if stop_c <= String.length line then begin
+      let len = stop_c - start_c in
+      Format.fprintf pp "%a%*s\n"
+        (pp_line padding_width) (line_num_str, line)
+        (stop_c + padding_width + 3)
+        (String.make len '^');
+      Ok ()
+    end else
+      let get_padding lines =
+        let (lnum, _) = Option.value_exn (List.last lines) in
+        String.length lnum
+      in
+      let print_ellipsis padding_width =
+        (* We add 2 to the width of max line to account for the extra space
+           and the `|` character at the end of a line number *)
+        let line = String.make (padding_width + 2) '.' in
+        Format.fprintf pp "%s\n" line
+      in
+      let print_lines lines padding_width =
+        List.iter ~f:(fun (lnum, l) ->
+          pp_line padding_width pp (lnum, l)) lines;
+      in
+      let file_lines ~start ~stop =
+        Result.try_with (fun () ->
+          Io.String_path.file_lines file ~start ~stop) in
+      let num_lines = stop.pos_lnum - start.pos_lnum in
+      if num_lines <= max_lines_to_print_in_full then
+        file_lines ~start:start.pos_lnum ~stop:stop.pos_lnum
+        >>| fun lines ->
+        print_lines lines (get_padding lines)
       else
-        let get_padding lines =
-          let (lnum, _) = Option.value_exn (List.last lines) in
-          String.length lnum
-        in
-        let print_ellipsis padding_width =
-          (* We add 2 to the width of max line to account for the extra space
-             and the `|` character at the end of a line number *)
-          let line = String.make (padding_width + 2) '.' in
-          Format.fprintf pp "%s\n" line
-        in
-        let print_lines lines padding_width =
-          List.iter ~f:(fun (lnum, l) ->
-            pp_line padding_width pp (lnum, l)) lines;
-        in
-        if num_lines <= max_lines_to_print_in_full then
-          let lines =
-            Io.file_lines path ~start:start.pos_lnum ~stop:stop.pos_lnum in
-          print_lines lines (get_padding lines)
+        (* We need to send the padding width from the last four lines so the
+           two blocks of lines align if they have different number of digits
+           in their line numbers *)
+        file_lines ~start:start.pos_lnum
+          ~stop:(start.pos_lnum + context_lines)
+        >>= fun first_shown_lines ->
+        file_lines ~start:(stop.pos_lnum - context_lines)
+          ~stop:(stop.pos_lnum) >>| fun last_shown_lines ->
+        let padding_width = get_padding last_shown_lines in
+        (print_lines first_shown_lines padding_width;
+         print_ellipsis padding_width;
+         print_lines last_shown_lines padding_width)
+  in
+  let whole_file = start_c = 0 && stop_c = 0 in
+  if not whole_file then begin
+    match
+      Result.try_with (fun () -> Sys.file_exists start.pos_fname)
+      |> Result.bind ~f:(fun exists ->
+        if exists then
+          pp_file_excerpt ()
         else
-          (* We need to send the padding width from the last four lines so the
-             two blocks of lines align if they have different number of digits
-             in their line numbers *)
-          let first_shown_lines =
-            Io.file_lines path ~start:(start.pos_lnum)
-              ~stop:(start.pos_lnum + context_lines) in
-          let last_shown_lines =
-            Io.file_lines path ~start:(stop.pos_lnum - context_lines)
-              ~stop:(stop.pos_lnum) in
-          let padding_width = get_padding last_shown_lines in
-          (print_lines first_shown_lines padding_width;
-           print_ellipsis padding_width;
-           print_lines last_shown_lines padding_width)
+          Result.Ok ())
+    with
+    | Error exn ->
+      let backtrace = Printexc.get_backtrace () in
+      Format.eprintf "Raised when trying to print location contents of %s@.%a@."
+        file (Exn.pp_uncaught ~backtrace) exn
+    | Ok () -> ()
+  end

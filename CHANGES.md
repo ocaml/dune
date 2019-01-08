@@ -55,7 +55,7 @@ unreleased
 - Fix handling of Control+C in watch mode (#1678, fixes #1671, @diml)
 
 - Look for jsoo runtime in the same dir as the `js_of_ocaml` binary
-  when the ocamlfind package is not available (#1467, @nobj)
+  when the ocamlfind package is not available (#1467, @nojb)
 
 - Make the `seq` package available for OCaml >= 4.07 (#1714, @rgrinberg)
 

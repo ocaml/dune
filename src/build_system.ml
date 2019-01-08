@@ -462,7 +462,7 @@ type t =
   ; evaluate_action_and_dynamic_deps_def : (Internal_rule.t -> Action_and_deps.t Fiber.t) Fdecl.t
   ; build_rule_def : Action_and_deps.t Rule_fn.t Fdecl.t
   ; build_file_def : unit Path_fn.t Fdecl.t
-  ; build_rule_internal_def : (Internal_rule.t -> unit Fiber.t) Fdecl.t
+  ; execute_rule_def : (Internal_rule.t -> unit Fiber.t) Fdecl.t
   }
 
 let string_of_paths set =
@@ -1192,7 +1192,8 @@ let evaluate_rule t (rule : Internal_rule.t) =
   let action_deps = Deps.union static_action_deps dynamic_action_deps in
   (action, action_deps)
 
-let build_rule_internal t rule =
+(* Evaluate and execute a rule *)
+let execute_rule t rule =
   let { Internal_rule.
         dir
       ; targets
@@ -1311,7 +1312,7 @@ let build_file t path =
       (* file already exists *)
       Fiber.return ()
     | Some (File_spec.T file) ->
-      Fdecl.get t.build_rule_internal_def file.rule)
+      Fdecl.get t.execute_rule_def file.rule)
 
 let shim_of_build_goal t request =
   let request =
@@ -1386,7 +1387,7 @@ let create ~contexts ~file_tree ~hook =
     ; hook
     ; build_rule_def = Fdecl.create ()
     ; build_file_def = Fdecl.create ()
-    ; build_rule_internal_def = Fdecl.create ()
+    ; execute_rule_def = Fdecl.create ()
     ; evaluate_action_and_dynamic_deps_def = Fdecl.create ()
     }
   in
@@ -1399,9 +1400,9 @@ let create ~contexts ~file_tree ~hook =
   Fdecl.set t.build_rule_def
     (Rule_fn.create "build-rule" (module Action_and_deps) (build_rule t)
        ~doc:"Execute a rule.");
-  Fdecl.set t.build_rule_internal_def
-    (Rule_fn.create "build-rule-internal" (module Unit)
-       (build_rule_internal t) ~doc:"-"
+  Fdecl.set t.execute_rule_def
+    (Rule_fn.create "execute-rule" (module Unit)
+       (execute_rule t) ~doc:"-"
      |> Rule_fn.exec);
   Fdecl.set t.build_file_def
     (Path_fn.create "build-file" (module Unit) (build_file t)

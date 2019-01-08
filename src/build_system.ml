@@ -1348,8 +1348,8 @@ let build_request t ~request =
   in
   let rule = shim_of_build_goal t request in
   evaluate_rule_and_wait_for_dependencies t rule
-  >>| fun (_act, deps) ->
-  (Fdecl.get result, deps)
+  >>| fun (_act, _deps) ->
+  Fdecl.get result
 
 let process_memcycle t exn =
   let cycle =
@@ -1379,7 +1379,6 @@ let do_build (t : t) ~request =
       | _ as exn -> exn
     ) |> raise
   )
-  >>| fst
 
 let create ~contexts ~file_tree ~hook =
   let contexts =

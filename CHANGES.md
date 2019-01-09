@@ -73,6 +73,12 @@ unreleased
 - Never raise when printing located errors. The code that would print the
   location excerpts was prone to raising. (#1744, fix #1736, @rgrinberg)
 
+- Add a `dune upgrade` command for upgrading jbuilder projects to Dune
+  (#1749, @diml)
+
+- When automatically creating a `dune-project` file, insert the
+  detected name in it (#1749, @diml)
+
 1.6.2 (05/12/2018)
 ------------------
 

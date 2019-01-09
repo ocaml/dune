@@ -17,7 +17,8 @@ let upgrade_to_dune =
   let id ~dir:_ p = p in
   let dir = String_with_vars.make_text Loc.none "" in
   Mapper.map ~dir ~f_program:id ~f_path:id
-    ~f_string:(fun ~dir:_ -> String_with_vars.upgrade_to_dune)
+    ~f_string:(fun ~dir:_ sw ->
+      String_with_vars.upgrade_to_dune sw ~allow_first_dep_var:false)
 
 let encode_and_upgrade a = encode (upgrade_to_dune a)
 

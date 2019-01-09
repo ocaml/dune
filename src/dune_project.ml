@@ -171,6 +171,7 @@ let version t = t.version
 let name t = t.name
 let root t = t.root
 let stanza_parser t = t.stanza_parser
+let file t = t.project_file.file
 
 let pp fmt { name ; root ; version ; project_file ; parsing_context = _
            ; extension_args = _; stanza_parser = _ ; packages } =
@@ -192,6 +193,8 @@ include Versioned_file.Make(struct
     type t = Stanza.Parser.t list
   end)
 
+type created_or_already_exist = Created | Already_exist
+
 module Project_file_edit = struct
   open Project_file
 
@@ -199,7 +202,9 @@ module Project_file_edit = struct
     kerrf ~f:print_to_console "@{<warning>Info@}: %s\n" s
 
   let ensure_exists t =
-    if not t.exists then begin
+    if t.exists then
+      Already_exist
+    else begin
       let ver = (Lang.get_exn "dune").version in
       let lines =
         [sprintf "(lang dune %s)" (Syntax.Version.to_string ver)]
@@ -218,24 +223,22 @@ module Project_file_edit = struct
            (Path.to_string_maybe_quoted t.file)
            (List.map lines ~f:((^) "| ") |> String.concat ~sep:"\n"));
       Io.write_lines t.file lines ~binary:false;
-      t.exists <- true
+      t.exists <- true;
+      Created
     end
 
-  let get t =
-    ensure_exists t;
-    t.file
-
   let append t str =
-    let file = get t in
-    let prev = Io.read_file file ~binary:false in
+    let what = ensure_exists t in
+    let prev = Io.read_file t.file ~binary:false in
     notify_user
       (sprintf "appending this line to %s: %s"
-         (Path.to_string_maybe_quoted file) str);
-    Io.with_file_out file ~binary:false ~f:(fun oc ->
+         (Path.to_string_maybe_quoted t.file) str);
+    Io.with_file_out t.file ~binary:false ~f:(fun oc ->
       List.iter [prev; str] ~f:(fun s ->
         output_string oc s;
         let len = String.length s in
-        if len > 0 && s.[len - 1] <> '\n' then output_char oc '\n'))
+        if len > 0 && s.[len - 1] <> '\n' then output_char oc '\n'));
+    what
 end
 
 let ensure_project_file_exists t =
@@ -327,12 +330,15 @@ module Extension = struct
                return () >>= fun () ->
                if not !dune_project_edited then begin
                  dune_project_edited := true;
-                 Project_file_edit.append project_file
-                   (Dune_lang.to_string ~syntax:Dune
-                      (List [ Dune_lang.atom "using"
-                            ; Dune_lang.atom name
-                            ; Dune_lang.atom (Syntax.Version.to_string version)
-                            ]))
+                 ignore (
+                   Project_file_edit.append project_file
+                     (Dune_lang.to_string ~syntax:Dune
+                        (List [ Dune_lang.atom "using"
+                              ; Dune_lang.atom name
+                              ; Dune_lang.atom
+                                  (Syntax.Version.to_string version)
+                              ]))
+                   : created_or_already_exist)
                end;
                p))
           in

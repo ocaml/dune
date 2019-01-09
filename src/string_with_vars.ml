@@ -318,42 +318,112 @@ let remove_locs t =
   { t with template = Dune_lang.Template.remove_locs t.template
   }
 
-let upgrade_to_dune =
-  let map_var ~loc = function
-    | "@" -> "targets"
-    | "^" -> "deps"
-    | "file" -> "dep"
-    | "SCOPE_ROOT" -> "project_root"
-    | "ROOT" -> "workspace_root"
-    | "findlib" -> "lib"
-    | "CPP" -> "cpp"
-    | "CC" -> "cc"
-    | "CXX" -> "cxx"
-    | "OCAML" -> "ocaml"
-    | "OCAMLC" -> "ocamlc"
-    | "OCAMLOPT" -> "ocamlopt"
-    | "ARCH_SIXTYFOUR" -> "arch_sixtyfour"
-    | "MAKE" -> "make"
-    | "path-no-dep" ->
-      Errors.fail loc "path-no-dep is not supported in dune files"
-    | "<" ->
-      Errors.fail loc
-        "${<} is not supported in dune files. Use a named binding instead."
-    | s -> s
-  in
-  let map_part = function
-    | Text _ as part -> part
-    | Var v ->
-      Var { v with
-            name = map_var ~loc:v.loc v.name
-          ; syntax = Percent
-          }
-  in
-  fun t ->
-    if t.syntax_version >= make_syntax then
-      t
-    else
-      { syntax_version = make_syntax
-      ; template =
-          { t.template with parts = List.map t.template.parts ~f:map_part }
-      }
+module Upgrade_var = struct
+  type info =
+    | Keep
+    | Deleted of string
+    | Renamed_to of string
+
+  let map =
+    let macros =
+      [ "exe", Keep
+      ; "bin", Keep
+      ; "lib", Keep
+      ; "libexec", Keep
+      ; "lib-available", Keep
+      ; "version", Keep
+      ; "read", Keep
+      ; "read-lines", Keep
+      ; "read-strings", Keep
+      ; "path", Renamed_to "dep"
+      ; "findlib", Renamed_to "lib"
+      ; "path-no-dep", Deleted ""
+      ; "ocaml-config", Keep
+      ]
+    in
+    let static_vars =
+      [ "<", Deleted
+               "Use a named dependency instead:\
+                \n\
+                \n  (deps (:x <dep>) ...)\
+                \n   ... %{x} ..."
+      ; "@", Renamed_to "targets"
+      ; "^", Renamed_to "deps"
+      ; "SCOPE_ROOT", Renamed_to "project_root"
+      ]
+    in
+    let lowercased =
+      [ "cpp"            , Keep
+      ; "pa_cpp"         , Keep
+      ; "cc"             , Keep
+      ; "cxx"            , Keep
+      ; "ocaml"          , Keep
+      ; "ocamlc"         , Keep
+      ; "ocamlopt"       , Keep
+      ; "arch_sixtyfour" , Keep
+      ; "make"           , Keep
+      ]
+    in
+    let uppercased =
+      List.map lowercased ~f:(fun (k, _) ->
+        (String.uppercase k, Renamed_to k))
+    in
+    let other =
+      [ "-verbose"       , Keep
+      ; "ocaml_bin"      , Keep
+      ; "ocaml_version"  , Keep
+      ; "ocaml_where"    , Keep
+      ; "null"           , Keep
+      ; "ext_obj"        , Keep
+      ; "ext_asm"        , Keep
+      ; "ext_lib"        , Keep
+      ; "ext_dll"        , Keep
+      ; "ext_exe"        , Keep
+      ; "profile"        , Keep
+      ; "workspace_root" , Keep
+      ; "context_name"   , Keep
+      ; "ROOT"           , Renamed_to "workspace_root"
+      ]
+    in
+    String.Map.of_list_exn
+      (List.concat
+         [ macros
+         ; static_vars
+         ; lowercased
+         ; uppercased
+         ; other
+         ])
+end
+
+let upgrade_to_dune t ~allow_first_dep_var =
+  if t.syntax_version >= make_syntax then
+    t
+  else begin
+    let map_var (v : Var.t) =
+      match String.Map.find Upgrade_var.map v.name with
+      | None -> None
+      | Some info ->
+        match info with
+        | Deleted repl ->
+          if v.name = "<" && allow_first_dep_var then
+            Some v.name
+          else
+            Errors.fail v.loc "%s is not supported in dune files.%s"
+              (Var.describe v) repl
+        | Keep -> Some v.name
+        | Renamed_to new_name ->
+          Some new_name
+    in
+    let map_part = function
+      | Text _ as part -> part
+      | Var v ->
+        match map_var v with
+        | None -> Text (string_of_var v)
+        | Some name ->
+          Var { v with name; syntax = Percent }
+    in
+    { syntax_version = make_syntax
+    ; template =
+        { t.template with parts = List.map t.template.parts ~f:map_part }
+    }
+  end

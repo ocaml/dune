@@ -135,6 +135,15 @@
  (files   dune-unstable-fmt.1))
 
 (rule
+ (with-stdout-to dune-upgrade.1
+  (run dune upgrade --help=groff)))
+
+(install
+ (section man)
+ (package dune)
+ (files   dune-upgrade.1))
+
+(rule
  (with-stdout-to dune-utop.1
   (run dune utop --help=groff)))
 

@@ -90,3 +90,6 @@ val dir_exists : t -> Path.t -> bool
 val file_exists : t -> Path.t -> string -> bool
 
 val files_recursively_in : t -> ?prefix_with:Path.t -> Path.t -> Path.Set.t
+
+(** Load a [jbuild-ignore] file *)
+val load_jbuild_ignore : Path.t -> String.Set.t

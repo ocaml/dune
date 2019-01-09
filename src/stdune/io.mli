@@ -35,7 +35,7 @@ module type S = sig
   val compare_files : path -> path -> Ordering.t
   val compare_text_files : path -> path -> Ordering.t
 
-  val write_lines : path -> string list -> unit
+  val write_lines : ?binary:bool -> path -> string list -> unit
   val copy_file : ?chmod:(int -> int) -> src:path -> dst:path -> unit -> unit
 
   val file_line : path -> int -> string

@@ -48,7 +48,7 @@ module type S = sig
   val compare_files : path -> path -> Ordering.t
   val compare_text_files : path -> path -> Ordering.t
 
-  val write_lines : path -> string list -> unit
+  val write_lines : ?binary:bool -> path -> string list -> unit
   val copy_file : ?chmod:(int -> int) -> src:path -> dst:path -> unit -> unit
 
   val file_line : path -> int -> string
@@ -98,8 +98,8 @@ module Make (Path : sig
   let write_file ?binary fn data =
     with_file_out ?binary fn ~f:(fun oc -> output_string oc data)
 
-  let write_lines fn lines =
-    with_file_out fn ~f:(fun oc ->
+  let write_lines ?binary fn lines =
+    with_file_out ?binary fn ~f:(fun oc ->
       List.iter ~f:(fun line ->
         output_string oc line;
         output_string oc "\n"

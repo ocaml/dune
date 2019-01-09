@@ -136,19 +136,22 @@ module Project_file = struct
   type t =
     { file           : Path.t
     ; mutable exists : bool
+    ; project_name   : Name.t
     }
 
-  let pp fmt { file ; exists } =
+  let pp fmt { file ; exists; project_name } =
     Fmt.record fmt
       [ "file", Fmt.const Path.pp file
       ; "exists", Fmt.const Format.pp_print_bool exists
+      ; "project_name", (fun fmt () -> Name.pp fmt project_name)
       ]
 
-  let to_sexp { file; exists } =
+  let to_sexp { file; exists; project_name } =
     Sexp.Encoder.(
       record
         [ "file", Path.to_sexp file
         ; "exists", bool exists
+        ; "project_name", Name.to_sexp project_name
         ])
 end
 
@@ -198,11 +201,23 @@ module Project_file_edit = struct
   let ensure_exists t =
     if not t.exists then begin
       let ver = (Lang.get_exn "dune").version in
-      let s = sprintf "(lang dune %s)" (Syntax.Version.to_string ver) in
+      let lines =
+        [sprintf "(lang dune %s)" (Syntax.Version.to_string ver)]
+      in
+      let lines =
+        match t.project_name with
+        | Anonymous _ -> lines
+        | Named s ->
+          lines @ [Dune_lang.to_string ~syntax:Dune
+                     (List [ Dune_lang.atom "name"
+                           ; Dune_lang.atom_or_quoted_string s
+                           ])]
+      in
       notify_user
-        (sprintf "creating file %s with this contents: %s"
-           (Path.to_string_maybe_quoted t.file) s);
-      Io.write_file t.file (s ^ "\n") ~binary:false;
+        (sprintf "creating file %s with this contents:\n%s\n"
+           (Path.to_string_maybe_quoted t.file)
+           (List.map lines ~f:((^) "| ") |> String.concat ~sep:"\n"));
+      Io.write_lines t.file lines ~binary:false;
       t.exists <- true
     end
 
@@ -416,13 +431,18 @@ let get_local_path p =
 
 let anonymous = lazy (
   let lang = Lang.get_exn "dune" in
+  let name = Name.anonymous_root in
   let project_file =
-    { Project_file.file = Path.relative Path.root filename; exists = false }
+    { Project_file.
+      file = Path.relative Path.root filename
+    ; exists = false
+    ; project_name = name
+    }
   in
   let parsing_context, stanza_parser, extension_args =
     interpret_lang_and_extensions ~lang ~explicit_extensions:[] ~project_file
   in
-  { name          = Name.anonymous_root
+  { name          = name
   ; packages      = Package.Name.Map.empty
   ; root          = get_local_path Path.root
   ; version       = None
@@ -474,7 +494,12 @@ let parse ~dir ~lang ~packages ~file =
           Extension.instantiate ~loc ~parse_args name ver)
      and () = Versioned_file.no_more_lang
      in
-     let project_file : Project_file.t = { file; exists = true } in
+     let project_file : Project_file.t =
+       { file
+       ; exists = true
+       ; project_name = name
+       }
+     in
      let parsing_context, stanza_parser, extension_args =
        interpret_lang_and_extensions ~lang ~explicit_extensions ~project_file
      in
@@ -494,13 +519,18 @@ let load_dune_project ~dir packages =
 
 let make_jbuilder_project ~dir packages =
   let lang = Lang.get_exn "dune" in
+  let name = default_name ~dir ~packages in
   let project_file =
-    { Project_file.file = Path.relative dir filename; exists = false }
+    { Project_file.
+      file = Path.relative dir filename
+    ; exists = false
+    ; project_name = name
+    }
   in
   let parsing_context, stanza_parser, extension_args =
     interpret_lang_and_extensions ~lang ~explicit_extensions:[] ~project_file
   in
-  { name = default_name ~dir ~packages
+  { name
   ; root = get_local_path dir
   ; version = None
   ; packages

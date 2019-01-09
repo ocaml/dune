@@ -3,7 +3,9 @@
   $ mkdir src
   $ echo '(alias (name runtest) (action (progn)))' >  src/dune
   $ dune build
-  Info: creating file dune-project with this contents: (lang dune 1.7)
+  Info: creating file dune-project with this contents:
+  | (lang dune 1.7)
+  
   $ cat dune-project
   (lang dune 1.7)
 

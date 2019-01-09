@@ -178,7 +178,8 @@ let load path =
             | [] -> (None, Sub_dirs.default)
             | [fn] ->
               if fn = "dune" then
-                Dune_project.ensure_project_file_exists project;
+                ignore (Dune_project.ensure_project_file_exists project
+                        : Dune_project.created_or_already_exist);
               let dune_file, sub_dirs =
                 Dune_file.load (Path.relative path fn)
                   ~project

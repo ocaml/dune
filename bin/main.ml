@@ -143,6 +143,7 @@ let all =
   ; Help.command
   ; Fmt_cmd.command
   ; Compute.command
+  ; Upgrade.command
   ]
 
 let default =

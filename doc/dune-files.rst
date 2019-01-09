@@ -42,10 +42,9 @@ format of library stanzas is as follows:
 
 .. code:: scheme
 
-    library
-      (name <library-name>
-       <optional-fields>
-      )
+    (library
+     (name <library-name>)
+     <optional-fields>)
 
 ``<library-name>`` is the real name of the library. It determines the
 names of the archive files generated for the library as well as the
@@ -219,9 +218,8 @@ format of executable stanzas is as follows:
 .. code:: scheme
 
     (executable
-      (name <name>)
-      <optional-fields>
-    )
+     (name <name>)
+     <optional-fields>)
 
 ``<name>`` is a module name that contains the main entry point of the
 executable. There can be additional modules in the current directory, you only
@@ -407,9 +405,9 @@ The syntax is as follows:
 .. code:: scheme
 
     (rule
-      (targets <filenames>)
-      (action  <action>)
-      <optional-fields>)
+     (targets <filenames>)
+     (action  <action>)
+     <optional-fields>)
 
 ``<filenames>`` is a list of file names. Note that currently dune only
 support user rules with targets in the current directory.
@@ -516,18 +514,18 @@ ocamllex
 .. code:: scheme
 
     (rule
-      (targets <name>.ml)
-      (deps    <name>.mll)
-      (action  (chdir %{workspace_root}
-                (run %{bin:ocamllex} -q -o %{targets} %{deps}))))
+     (targets <name>.ml)
+     (deps    <name>.mll)
+     (action  (chdir %{workspace_root}
+               (run %{bin:ocamllex} -q -o %{targets} %{deps}))))
 
 To use a different rule mode, use the long form:
 
 .. code:: scheme
 
     (ocamllex
-      (modules <names>)
-      (mode    <mode>))
+     (modules <names>)
+     (mode    <mode>))
 
 ocamlyacc
 ---------
@@ -537,18 +535,18 @@ ocamlyacc
 .. code:: scheme
 
     (rule
-      (targets <name>.ml <name>.mli)
-      (deps    <name>.mly)
-      (action  (chdir %{workspace_root}
-                (run %{bin:ocamlyacc} %{deps}))))
+     (targets <name>.ml <name>.mli)
+     (deps    <name>.mly)
+     (action  (chdir %{workspace_root}
+               (run %{bin:ocamlyacc} %{deps}))))
 
 To use a different rule mode, use the long form:
 
 .. code:: scheme
 
     (ocamlyacc
-      (modules <names>)
-      (mode    <mode>))
+     (modules <names>)
+     (mode    <mode>))
 
 menhir
 ------
@@ -571,7 +569,7 @@ The syntax is as follows:
     (alias
      (name    <alias-name>)
      (deps    <deps-conf list>)
-      <optional-fields>)
+     <optional-fields>)
 
 ``<name>`` is an alias name such as ``runtest``.
 
@@ -628,9 +626,9 @@ The syntax is as follows:
 .. code:: scheme
 
     (install
-      (section <section>)
-       (files   <filenames>)
-       <optional-fields>)
+     (section <section>)
+     (files   <filenames>)
+     <optional-fields>)
 
 ``<section>`` is the installation section, as described in the opam
 manual. The following sections are available:
@@ -1170,9 +1168,9 @@ Select forms are specified as follows:
 .. code:: scheme
 
     (select <target-filename> from
-      (<literals> -> <filename>)
-      (<literals> -> <filename>)
-       ...)
+     (<literals> -> <filename>)
+     (<literals> -> <filename>)
+     ...)
 
 ``<literals>`` are lists of literals, where each literal is one of:
 
@@ -1281,9 +1279,9 @@ module-by-module basis by using the following syntax:
  .. code:: scheme
 
     (preprocess (per_module
-                   (<spec1> <module-list1>)
-                   (<spec2> <module-list2>)
-                   ...))
+                 (<spec1> <module-list1>)
+                 (<spec2> <module-list2>)
+                 ...))
 
 Where ``<spec1>``, ``<spec2>``, ... are preprocessing specifications
 and ``<module-list1>``, ``<module-list2>``, ... are list of module
@@ -1294,8 +1292,8 @@ For instance:
  .. code:: scheme
 
     (preprocess (per_module
-                   (((action (run ./pp.sh X=1 %{input-file})) foo bar))
-                   (((action (run ./pp.sh X=2 %{input-file})) baz))))
+                 (((action (run ./pp.sh X=1 %{input-file})) foo bar))
+                 (((action (run ./pp.sh X=2 %{input-file})) baz))))
 
 .. _deps-field:
 

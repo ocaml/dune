@@ -14,6 +14,7 @@ val name : t -> Lib_name.t
    have multiple source directories because of [copy_files]. *)
 (** Directory where the source files for the library are located. *)
 val src_dir : t -> Path.t
+val orig_src_dir : t -> Path.t
 
 (** Directory where the object files for the library are located. *)
 val obj_dir : t -> Obj_dir.t

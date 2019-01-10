@@ -233,6 +233,7 @@ let modes        t = t.info.modes
 let virtual_     t = t.info.virtual_
 
 let src_dir t = t.info.src_dir
+let orig_src_dir t = Option.value ~default:t.info.src_dir t.info.orig_src_dir
 let obj_dir t = t.info.obj_dir
 
 let is_local t = Path.is_managed (Obj_dir.byte_dir t.info.obj_dir)
@@ -1276,6 +1277,7 @@ let to_dune_lib ({ name ; info ; _ } as lib) ~lib_modules ~dir =
   let lib_modules = Lib_modules.version_installed ~install_dir:dir lib_modules in
   Dune_package.Lib.make
     ~dir
+    ~orig_src_dir:lib.info.orig_src_dir
     ~name
     ~loc:info.loc
     ~kind:info.kind

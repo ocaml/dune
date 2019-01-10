@@ -4,6 +4,7 @@ module Lib : sig
   type 'sub_system t
 
   val dir : _ t -> Path.t
+  val orig_src_dir : _ t -> Path.t option
   val requires : _ t -> (Loc.t * Lib_name.t) list
   val name : _ t -> Lib_name.t
   val version : _ t -> string option
@@ -49,6 +50,7 @@ module Lib : sig
     -> modules:Lib_modules.t option
     -> modes:Mode.Dict.Set.t
     -> version:string option
+    -> orig_src_dir:Path.t option
     -> dir:Path.t
     -> 'a t
 

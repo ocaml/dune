@@ -191,6 +191,7 @@ module Package = struct
     let modes : Mode.Dict.Set.t =
       Mode.Dict.map ~f:(fun x -> not (List.is_empty x)) archives in
     Dune_package.Lib.make
+      ~orig_src_dir:None
       ~loc
       ~kind:Normal
       ~name:(name t)

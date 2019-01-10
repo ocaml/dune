@@ -208,6 +208,22 @@ let all l =
 
 let all_unit l = List.fold_left l ~init:(return ()) ~f:(>>>)
 
+let map_all l ~f =
+  let rec loop l acc =
+    match l with
+    | [] -> return (List.rev acc)
+    | x :: l -> f x >>= fun x -> loop l (x :: acc)
+  in
+  loop l []
+
+let map_all_unit l ~f =
+  let rec loop l =
+    match l with
+    | [] -> return ()
+    | x :: l -> f x >>= fun () -> loop l
+  in
+  loop l
+
 type ('a, 'b) fork_and_join_state =
   | Nothing_yet
   | Got_a of 'a

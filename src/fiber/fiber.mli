@@ -68,6 +68,8 @@ val nfork_map : 'a list -> f:('a -> 'b t) -> 'b Future.t list t
 val both : 'a t -> 'b t -> ('a * 'b) t
 val all : 'a t list -> 'a list t
 val all_unit : unit t list -> unit t
+val map_all : 'a list -> f:('a -> 'b t) -> 'b list t
+val map_all_unit : 'a list -> f:('a -> unit t) -> unit t
 
 (** {1 Forking + joining} *)
 

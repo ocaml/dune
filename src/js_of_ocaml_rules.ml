@@ -63,7 +63,8 @@ let js_of_ocaml_rule sctx ~dir ~flags ~spec ~target =
 let standalone_runtime_rule cc ~javascript_files ~target =
   let spec =
     Arg_spec.S
-      [ Arg_spec.of_result_map (Compilation_context.requires cc) ~f:(fun libs ->
+      [ Arg_spec.of_result_map
+          (Compilation_context.requires_link cc) ~f:(fun libs ->
           Arg_spec.Deps (Lib.L.jsoo_runtime_files libs))
       ; Arg_spec.Deps javascript_files
       ]
@@ -80,7 +81,7 @@ let exe_rule cc ~javascript_files ~src ~target =
   let sctx = Compilation_context.super_context cc in
   let spec =
     Arg_spec.S
-      [ Arg_spec.of_result_map (Compilation_context.requires cc)
+      [ Arg_spec.of_result_map (Compilation_context.requires_link cc)
           ~f:(fun libs -> Arg_spec.Deps (Lib.L.jsoo_runtime_files libs))
       ; Arg_spec.Deps javascript_files
       ; Arg_spec.Dep src
@@ -102,20 +103,22 @@ let link_rule cc ~runtime ~target =
   let sctx = Compilation_context.super_context cc in
   let ctx = Compilation_context.context cc in
   let dir = Compilation_context.dir cc in
+  let requires = Compilation_context.requires_link cc in
   let get_all (cm, _) =
-    Arg_spec.of_result_map (Compilation_context.requires cc) ~f:(fun libs ->
+    Arg_spec.of_result_map requires ~f:(fun libs ->
       let all_libs = List.concat_map libs ~f:(jsoo_archives ~ctx) in
       (* Special case for the stdlib because it is not referenced in the META *)
-      let all_libs = in_build_dir ~ctx ["stdlib"; "stdlib.cma.js"] :: all_libs in
+      let all_libs =
+        in_build_dir ~ctx ["stdlib"; "stdlib.cma.js"] :: all_libs in
       let all_other_modules =
         List.map cm ~f:(fun m -> Path.extend_basename m ~suffix:".js")
       in
-      Arg_spec.Deps (List.concat [all_libs;all_other_modules]))
+      Arg_spec.Deps (List.concat [all_libs; all_other_modules]))
   in
   let jsoo_link =
     SC.resolve_program sctx ~dir ~loc:None
       ~hint:install_jsoo_hint "jsoo_link" in
-  Build.run ~dir:(Compilation_context.dir cc)
+  Build.run ~dir
     jsoo_link
     [ Arg_spec.A "-o"; Target target
     ; Arg_spec.Dep runtime

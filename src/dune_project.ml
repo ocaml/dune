@@ -164,6 +164,7 @@ type t =
   ; project_file    : Project_file.t
   ; extension_args  : Univ_map.t
   ; parsing_context : Univ_map.t
+  ; implicit_transitive_deps : bool
   }
 
 let packages t = t.packages
@@ -172,9 +173,11 @@ let name t = t.name
 let root t = t.root
 let stanza_parser t = t.stanza_parser
 let file t = t.project_file.file
+let implicit_transitive_deps t = t.implicit_transitive_deps
 
 let pp fmt { name ; root ; version ; project_file ; parsing_context = _
-           ; extension_args = _; stanza_parser = _ ; packages } =
+           ; extension_args = _; stanza_parser = _ ; packages
+           ; implicit_transitive_deps } =
   Fmt.record fmt
     [ "name", Fmt.const Name.pp name
     ; "root", Fmt.const Path.Local.pp root
@@ -184,6 +187,8 @@ let pp fmt { name ; root ; version ; project_file ; parsing_context = _
       Fmt.const
         (Fmt.ocaml_list (Fmt.tuple Package.Name.pp Package.pp))
         (Package.Name.Map.to_list packages)
+    ; "implicit_transitive_deps",
+      Fmt.const Format.pp_print_bool implicit_transitive_deps
     ]
 
 let find_extension_args t key =
@@ -411,13 +416,14 @@ let key =
   Univ_map.Key.create ~name:"dune-project"
     (fun { name; root; version; project_file
          ; stanza_parser = _; packages = _ ; extension_args = _
-         ; parsing_context } ->
+         ; parsing_context ; implicit_transitive_deps } ->
       Sexp.Encoder.record
         [ "name", Name.to_sexp name
         ; "root", Path.Local.to_sexp root
         ; "version", Sexp.Encoder.(option string) version
         ; "project_file", Project_file.to_sexp project_file
         ; "parsing_context", Univ_map.to_sexp parsing_context
+        ; "implicit_transitive_deps", Sexp.Encoder.bool implicit_transitive_deps
         ])
 
 let set t = Dune_lang.Decoder.set key t
@@ -452,6 +458,7 @@ let anonymous = lazy (
   ; packages      = Package.Name.Map.empty
   ; root          = get_local_path Path.root
   ; version       = None
+  ; implicit_transitive_deps = false
   ; stanza_parser
   ; project_file
   ; extension_args
@@ -498,6 +505,9 @@ let parse ~dir ~lang ~packages ~file =
           (* We don't parse the arguments quite yet as we want to set
              the version of extensions before parsing them. *)
           Extension.instantiate ~loc ~parse_args name ver)
+     and implicit_transitive_deps =
+       field_o_b "implicit_transitive_deps"
+         ~check:(Syntax.since Stanza.syntax (1, 7))
      and () = Versioned_file.no_more_lang
      in
      let project_file : Project_file.t =
@@ -509,6 +519,9 @@ let parse ~dir ~lang ~packages ~file =
      let parsing_context, stanza_parser, extension_args =
        interpret_lang_and_extensions ~lang ~explicit_extensions ~project_file
      in
+     let implicit_transitive_deps =
+       Option.value implicit_transitive_deps ~default:true
+     in
      { name
      ; root = get_local_path dir
      ; version
@@ -517,6 +530,7 @@ let parse ~dir ~lang ~packages ~file =
      ; project_file
      ; extension_args
      ; parsing_context
+     ; implicit_transitive_deps
      })
 
 let load_dune_project ~dir packages =
@@ -544,6 +558,7 @@ let make_jbuilder_project ~dir packages =
   ; project_file
   ; extension_args
   ; parsing_context
+  ; implicit_transitive_deps = true
   }
 
 let read_name file =

@@ -79,6 +79,10 @@ unreleased
 - When automatically creating a `dune-project` file, insert the
   detected name in it (#1749, @diml)
 
+- Add `(implicit_transitive_deps <bool>)` mode to dune projects. When this mode
+  is turned off, transitive dependencies are not accessible. Only listed
+  dependencies are directly accessible. (#1734, #430, @rgrinberg, @hnrgrgr)
+
 1.6.2 (05/12/2018)
 ------------------
 

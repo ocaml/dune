@@ -1,7 +1,7 @@
 (library
  (name      main)
  (modules   (:standard \ main_dune main_jbuilder))
- (libraries unix dune cmdliner)
+ (libraries memo dune_lang which_program fiber stdune unix dune cmdliner)
  (preprocess (action (run src/let-syntax/pp.exe %{input-file}))))
 
 (executable

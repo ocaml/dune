@@ -128,6 +128,8 @@ module Id : sig
 
   val compare : t -> t -> Ordering.t
 
+  include Comparable.OPS with type t := t
+
   val make : path:Path.t -> name:Lib_name.t -> t
 
   module Set : Set.S with type elt = t
@@ -143,6 +145,11 @@ end = struct
     }
 
   let compare t1 t2 = Int.compare t1.unique_id t2.unique_id
+
+  include (
+    Comparable.Operators(struct type nonrec t = t let compare = compare end)
+    : Comparable.OPS with type t := t
+  )
 
   let gen_unique_id =
     let next = ref 0 in
@@ -929,7 +936,7 @@ module Compile = struct
 
   type nonrec t =
     { direct_requires   : t list Or_exn.t
-    ; requires          : t list Or_exn.t
+    ; requires_link     : t list Or_exn.t Lazy.t
     ; pps               : t list Or_exn.t
     ; resolved_selects  : Resolved_select.t list
     ; lib_deps_info     : Lib_deps_info.t
@@ -949,9 +956,11 @@ module Compile = struct
         ~pps:t.info.pps
         ~kind:(Lib_deps_info.Kind.of_optional t.info.optional)
     in
+    let requires_link = lazy (
+      t.requires >>= closure_with_overlap_checks db ~linking:false
+    ) in
     { direct_requires   = t.requires
-    ; requires          =
-        t.requires >>= closure_with_overlap_checks db ~linking:false
+    ; requires_link
     ; resolved_selects  = t.resolved_selects
     ; pps               = t.pps
     ; lib_deps_info
@@ -959,7 +968,7 @@ module Compile = struct
     }
 
   let direct_requires   t = t.direct_requires
-  let requires          t = t.requires
+  let requires_link     t = t.requires_link
   let resolved_selects  t = t.resolved_selects
   let pps               t = t.pps
   let lib_deps_info     t = t.lib_deps_info
@@ -1093,17 +1102,17 @@ module DB = struct
       resolve_user_deps t (Lib_info.Deps.of_lib_deps deps) ~pps
         ~stack:Dep_stack.empty ~allow_private_deps:true
     in
-    let requires =
+    let requires_link = lazy (
       res
       >>=
       closure_with_overlap_checks (Option.some_if (not allow_overlaps) t)
         ~linking:true
       |> Result.map_error ~f:(fun e ->
         Dep_path.prepend_exn e (Executables exes))
-    in
+    ) in
     { Compile.
       direct_requires = res
-    ; requires
+    ; requires_link
     ; pps
     ; resolved_selects
     ; lib_deps_info

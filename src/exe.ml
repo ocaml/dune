@@ -124,7 +124,7 @@ let link_exe
   let sctx     = CC.super_context cctx in
   let ctx      = SC.context       sctx in
   let dir      = CC.dir           cctx in
-  let requires = CC.requires      cctx in
+  let requires = CC.requires_link cctx in
   let expander = CC.expander      cctx in
   let mode = linkage.mode in
   let exe = Path.relative dir (name ^ linkage.ext) in
@@ -203,7 +203,7 @@ let build_and_link_many
     in
     let arg_spec_for_requires =
       Mode.Dict.of_func (fun ~mode ->
-        lazy (Result.map (CC.requires cctx)
+        lazy (Result.map (CC.requires_link cctx)
                 ~f:(Link_time_code_gen.libraries_link ~loc ~name ~mode cctx)))
     in
     List.iter linkages ~f:(fun linkage ->

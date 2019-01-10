@@ -127,7 +127,7 @@ Path.(descendant (r "foo") ~of_:Path.root)
 
 Path.(descendant (relative build_dir "foo") ~of_:root)
 [%%expect{|
-- : Path.t option = Some (In_source_tree "_build/foo")
+- : Path.t option = None
 |}]
 
 Path.(descendant (relative build_dir "foo") ~of_:(Path.of_string "/foo/bar"))

@@ -682,14 +682,18 @@ let reach_for_running ?(from=root) t =
   | _       -> fn
 
 let descendant t ~of_ =
-  match kind t, kind of_ with
-  | Local t, Local of_ -> Option.map ~f:in_source_tree (Local.descendant t ~of_)
-  | _, _ -> None
+  match t, of_ with
+  | In_source_tree t, In_source_tree of_
+  | In_build_dir t, In_build_dir of_ ->
+    Option.map ~f:in_source_tree (Local.descendant t ~of_)
+  | _ -> None
 
 let is_descendant t ~of_ =
-  match kind t, kind of_ with
-  | Local t, Local of_ -> Local.is_descendant t ~of_
-  | _, _ -> false
+  match t, of_ with
+  | In_source_tree t, In_source_tree of_
+  | In_build_dir t, In_build_dir of_ ->
+    Local.is_descendant t ~of_
+  | _ -> false
 
 let append_local a b =
   match a with

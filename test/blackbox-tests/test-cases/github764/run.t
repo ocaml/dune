@@ -15,7 +15,7 @@
   $ mkdir symlink-outside-root
   $ cd symlink-outside-root && ln -s ../sample-exe sample
   $ cd symlink-outside-root && echo "(lang dune 1.0)" > dune-project
-  $ cd symlink-outside-root && jbuilder exec --root . -- sample/foo.exe
+  $ cd symlink-outside-root && dune exec --root . -- sample/foo.exe
   foo
 
   $ mkdir -p symlink-outside-root2/root

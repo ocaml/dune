@@ -1,4 +1,4 @@
-  $ env OCAMLFIND_CONF=$PWD/etc/findlib.conf jbuilder build --display short -x foo file @install
+  $ env OCAMLFIND_CONF=$PWD/etc/findlib.conf dune build --display short -x foo file @install
       ocamldep lib/.p.objs/p.ml.d [default.foo]
         ocamlc lib/.p.objs/byte/p.{cmi,cmo,cmt} [default.foo]
         ocamlc lib/p.cma [default.foo]

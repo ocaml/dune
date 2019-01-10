@@ -177,11 +177,18 @@ let load path =
             match List.filter ["dune"; "jbuild"] ~f:(String.Set.mem files) with
             | [] -> (None, Sub_dirs.default)
             | [fn] ->
+              let file = Path.relative path fn in
               if fn = "dune" then
                 ignore (Dune_project.ensure_project_file_exists project
-                        : Dune_project.created_or_already_exist);
+                        : Dune_project.created_or_already_exist)
+              else
+                Errors.warn (Loc.in_file file)
+                  "jbuild files are deprecated, please convert this file to \
+                   a dune file instead.\n\
+                   Note: You can use \"dune upgrade\" to convert your \
+                   project to dune.";
               let dune_file, sub_dirs =
-                Dune_file.load (Path.relative path fn)
+                Dune_file.load file
                   ~project
                   ~kind:(Option.value_exn (Dune_lang.Syntax.of_basename fn))
               in

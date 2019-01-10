@@ -160,6 +160,9 @@ Test using installed drivers
 
   $ dune build --display short --root jbuild-driver @all
   Entering directory 'jbuild-driver'
+  File "jbuild", line 1, characters 0-0:
+  Warning: jbuild files are deprecated, please convert this file to a dune file instead.
+  Note: You can use "dune upgrade" to convert your project to dune.
         ocamlc .testdriver.objs/byte/testdriver.{cmi,cmo,cmt}
         ocamlc testdriver.cma
       ocamlopt .testdriver.objs/native/testdriver.{cmx,o}
@@ -176,6 +179,9 @@ Test using installed drivers
 
   $ dune build --display short --root jbuild-driver @install
   Entering directory 'jbuild-driver'
+  File "jbuild", line 1, characters 0-0:
+  Warning: jbuild files are deprecated, please convert this file to a dune file instead.
+  Note: You can use "dune upgrade" to convert your project to dune.
   $ OCAMLPATH=jbuild-driver/_build/install/default/lib dune build --root use-external-driver driveruser.cma
   Entering directory 'use-external-driver'
            ppx driveruser.pp.ml

@@ -2,7 +2,7 @@ This test define an installed "plop" with a "plop.ca-marche-pas"
 sub-package which depend on a library that doesn't exist.
 
 The build itself uses only "plop.ca-marche", which doesn't have this
-problem. So jbuilder shouldn't crash because of "plop.ca-marche-pas"
+problem. So dune shouldn't crash because of "plop.ca-marche-pas"
 
 We need ocamlfind to run this test
 

@@ -1,1 +1,1 @@
-let token _ = failwith "Unused during bootstrap"
+let token ~with_comments:_ _ = failwith "Unused during bootstrap"

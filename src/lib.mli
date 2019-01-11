@@ -332,4 +332,5 @@ val to_dune_lib
   :  t
   -> lib_modules:Lib_modules.t
   -> dir:Path.t
+  -> context:Context.t
   -> (Syntax.Version.t * Dune_lang.t list) Dune_package.Lib.t

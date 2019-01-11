@@ -1271,13 +1271,18 @@ let () =
       Some (Report_error.make_printer ?loc ?hint pp)
     | _ -> None)
 
-let to_dune_lib ({ name ; info ; _ } as lib) ~lib_modules ~dir =
+let to_dune_lib ({ name ; info ; _ } as lib) ~lib_modules ~dir ~context =
   let add_loc = List.map ~f:(fun x -> (info.loc, x.name)) in
   let virtual_ = Option.is_some info.virtual_ in
   let lib_modules = Lib_modules.version_installed ~install_dir:dir lib_modules in
+  let orig_src_dir =
+    match context.Context.profile with
+    | "dev" -> lib.info.orig_src_dir
+    | _ -> None
+  in
   Dune_package.Lib.make
     ~dir
-    ~orig_src_dir:lib.info.orig_src_dir
+    ~orig_src_dir
     ~name
     ~loc:info.loc
     ~kind:info.kind

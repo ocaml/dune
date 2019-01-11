@@ -94,6 +94,10 @@ module Test = struct
                  ; Sexp.parse "%{exe:cram.exe}" ]
                  @ (List.map ~f:Dune_lang.atom_or_quoted_string
                       (skip_version @ ["-test"; "run.t"])))
+            ; Dune_lang.List
+                ([ atom "run"
+                 ; Sexp.parse "%{exe:sanitize.exe}"
+                 ; Dune_lang.atom_or_quoted_string "run.t.corrected"])
             ; Sexp.strings ["diff?"; "run.t"; "run.t.corrected"]
             ]
 

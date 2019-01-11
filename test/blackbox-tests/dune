@@ -5,6 +5,11 @@
  (modules cram)
  (libraries stdune which_program_dune test_common dune configurator))
 
+(executable
+ (name sanitize)
+ (modules sanitize)
+ (libraries str))
+
 (ocamllex cram)
 
 (executable

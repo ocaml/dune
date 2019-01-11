@@ -24,3 +24,24 @@
    (c_flags ("in bin"))
    (cxx_flags ("in bin"))
   )
+
+  $ dune printenv --profile default run
+  (
+   (flags (-w -40))
+   (ocamlc_flags (-g))
+   (ocamlopt_flags (-g))
+   (c_flags (-DTEST_C))
+   (cxx_flags (-DTEST_CPP))
+  )
+  $ dune build --profile default run/foo.exe
+  $ dune build --profile default @runfoo
+           foo alias run/runfoo (exit 1)
+  (cd _build/default/run && ./foo.exe)
+  DTEST_C defined.
+  [1]
+  $ dune build --profile default run/bar.exe
+  $ dune build --profile default @runbar
+           bar alias run/runbar (exit 1)
+  (cd _build/default/run && ./bar.exe)
+  DTEST_CPP defined.
+  [1]

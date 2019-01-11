@@ -30,6 +30,8 @@
   (library
    (name foo)
    (kind normal)
+   (orig_src_dir
+    $TESTCASE_ROOT/dune-file)
    (archives (byte foo.cma) (native foo.cmxa))
    (plugins (byte foo.cma) (native foo.cmxs))
    (foreign_archives (native foo$ext_lib))

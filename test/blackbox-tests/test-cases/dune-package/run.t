@@ -5,6 +5,8 @@
   (library
    (name a)
    (kind normal)
+   (orig_src_dir
+    $TESTCASE_ROOT)
    (archives (byte a.cma) (native a.cmxa))
    (plugins (byte a.cma) (native a.cmxs))
    (foreign_archives (native a$ext_lib))
@@ -18,6 +20,8 @@
   (library
    (name a.b.c)
    (kind normal)
+   (orig_src_dir
+    $TESTCASE_ROOT)
    (archives (byte b/c/c.cma) (native b/c/c.cmxa))
    (plugins (byte b/c/c.cma) (native b/c/c.cmxs))
    (foreign_archives (native b/c/c$ext_lib))

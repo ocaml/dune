@@ -114,14 +114,14 @@ let rec ocaml_flags t ~profile ~expander =
     t.ocaml_flags <- Some flags;
     flags
 
-let rec c_flags t ~profile ~expander =
+let rec c_flags t ~profile ~expander ~default_context_flags =
   match t.c_flags with
   | Some x -> x
   | None ->
     let default =
       match t.inherit_from with
-      | None -> Build.return []
-      | Some (lazy t) -> c_flags t ~profile ~expander
+      | None -> Build.return default_context_flags
+      | Some (lazy t) -> c_flags t ~profile ~expander ~default_context_flags
     in
     let flags =
       match find_config t ~profile with
@@ -139,14 +139,14 @@ let rec c_flags t ~profile ~expander =
     flags
 
 
-let rec cxx_flags t ~profile ~expander =
+let rec cxx_flags t ~profile ~expander ~default_context_flags =
   match t.cxx_flags with
   | Some x -> x
   | None ->
     let default =
       match t.inherit_from with
-      | None -> Build.return []
-      | Some (lazy t) -> cxx_flags t ~profile ~expander
+      | None -> Build.return default_context_flags
+      | Some (lazy t) -> cxx_flags t ~profile ~expander ~default_context_flags
     in
     let flags =
       match find_config t ~profile with

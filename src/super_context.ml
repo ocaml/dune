@@ -153,12 +153,20 @@ end = struct
       ~profile:(profile t) ~expander:(expander t ~dir)
 
   let c_flags t ~dir =
+    let ctx = t.context in
+    let default_context_flags = ctx.ocamlc_cflags in
     Env_node.c_flags (get t ~dir)
       ~profile:(profile t) ~expander:(expander t ~dir)
+      ~default_context_flags
 
   let cxx_flags t ~dir =
+    let ctx = t.context in
+    let default_context_flags =
+    List.filter ctx.ocamlc_cflags
+      ~f:(fun s -> not (String.is_prefix s ~prefix:"-std=")) in
     Env_node.cxx_flags (get t ~dir)
       ~profile:(profile t) ~expander:(expander t ~dir)
+      ~default_context_flags
 end
 
 let expander = Env.expander
@@ -260,7 +268,7 @@ let c_flags t ~dir ~expander ~(lib : Library.t) =
   end
 
 let cxx_flags t ~dir ~expander ~(lib : Library.t) =
-  let ccg =  Context.cc_g t.context in
+  let ccg = Context.cc_g t.context in
   let eval = Expander.expand_and_eval_set expander in
   let flags = lib.cxx_flags in
   let default = Env.cxx_flags t ~dir in

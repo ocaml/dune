@@ -163,7 +163,7 @@ module Gen (P : Install_rules.Params) = struct
     Module_compilation.build_modules cctx ~js_of_ocaml ~dynlink ~dep_graphs
 
   let build_c_file (lib : Library.t) ~dir ~expander ~includes (loc, src, dst) =
-    let c_flags = SC.c_flags sctx ~dir ~expander ~lib (Context.cc_g ctx) in
+    let c_flags = SC.c_flags sctx ~dir ~expander ~lib in
     SC.add_rule sctx ~loc ~dir
       (c_flags
        >>>
@@ -188,7 +188,7 @@ module Gen (P : Install_rules.Params) = struct
       else
         [A "-o"; Target dst]
     in
-    let cxx_flags = SC.cxx_flags sctx ~dir ~expander ~lib (Context.cc_g ctx) in
+    let cxx_flags = SC.cxx_flags sctx ~dir ~expander ~lib in
     SC.add_rule sctx ~loc ~dir
       (cxx_flags
        >>>

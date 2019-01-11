@@ -57,7 +57,6 @@ val c_flags
   -> dir:Path.t
   -> expander:Expander.t
   -> lib:Library.t
-  -> string list
   -> (unit, string list) Build.t
 
 val cxx_flags
@@ -65,7 +64,6 @@ val cxx_flags
   -> dir:Path.t
   -> expander:Expander.t
   -> lib:Library.t
-  -> string list
   -> (unit, string list) Build.t
 
 (** Binaries that are symlinked in the associated .bin directory of [dir]. This

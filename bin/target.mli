@@ -24,3 +24,5 @@ val resolve_targets_mixed :
 
 val resolve_targets_exn :
   Common.t -> Dune.Main.build_system -> Arg.Dep.t list -> t list
+
+val targets_of_path : Dune.Main.build_system -> Path.t -> string list

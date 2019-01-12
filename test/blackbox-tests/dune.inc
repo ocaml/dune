@@ -1557,6 +1557,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name targets)
+ (deps (package dune) (source_tree test-cases/targets))
+ (action
+  (chdir
+   test-cases/targets
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name targets-with-vars)
  (deps (package dune) (source_tree test-cases/targets-with-vars))
  (action
@@ -2034,6 +2042,7 @@
   (alias subst)
   (alias syntax-versioning)
   (alias target-dir-alias)
+  (alias targets)
   (alias targets-with-vars)
   (alias tests-stanza)
   (alias tests-stanza-action)
@@ -2234,6 +2243,7 @@
   (alias subst)
   (alias syntax-versioning)
   (alias target-dir-alias)
+  (alias targets)
   (alias targets-with-vars)
   (alias tests-stanza)
   (alias tests-stanza-action)

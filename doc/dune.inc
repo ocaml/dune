@@ -144,6 +144,15 @@
  (files   dune-subst.1))
 
 (rule
+ (with-stdout-to dune-targets.1
+  (run dune targets --help=groff)))
+
+(install
+ (section man)
+ (package dune)
+ (files   dune-targets.1))
+
+(rule
  (with-stdout-to dune-uninstall.1
   (run dune uninstall --help=groff)))
 

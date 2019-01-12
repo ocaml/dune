@@ -1,0 +1,2 @@
+  $ dune targets
+  run.t

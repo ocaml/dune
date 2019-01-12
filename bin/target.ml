@@ -32,7 +32,7 @@ let log_targets targets =
     | Alias a -> Log.info (Alias.to_log_string a));
   flush stdout
 
-let target_hint (_setup : Dune.Main.build_system) path =
+let targets_of_path (_setup : Dune.Main.build_system) path =
   assert (Path.is_managed path);
   let sub_dir = Option.value ~default:path (Path.parent path) in
   let candidates = Path.Build.Set.to_list (Build_system.all_targets ()) in
@@ -54,7 +54,10 @@ let target_hint (_setup : Dune.Main.build_system) path =
         else
           None)
   in
-  let candidates = String.Set.of_list candidates |> String.Set.to_list in
+  String.Set.of_list candidates |> String.Set.to_list
+
+let target_hint (setup : Dune.Main.build_system) path =
+  let candidates = targets_of_path setup path in
   User_message.did_you_mean (Path.to_string path) ~candidates
 
 let resolve_path path ~(setup : Dune.Main.build_system) =

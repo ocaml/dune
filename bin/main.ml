@@ -155,6 +155,7 @@ let all =
   ; Compute.command
   ; Upgrade.command
   ; Cache_daemon.command
+  ; Print_targets.command
   ]
 
 let default =

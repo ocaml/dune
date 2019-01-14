@@ -94,9 +94,10 @@ unreleased
   subset of the `action` language. (#1768, @rgrinberg)
 
 - Emit `(orig_src_dir <path>)` metadata in `dune-package` for dune packages
-  built with "dev" profile. This is later used to generate `.merlin` with
-  `S`-directives pointed to original source locations and thus allowing merlin
-  to see those.
+  built with `--store-orig-source-dir` command line flag (also controlled by
+  `DUNE_STORE_ORIG_SOURCE_DIR` env variable). This is later used to generate
+  `.merlin` with `S`-directives pointed to original source locations and thus
+  allowing merlin to see those.
 
 1.6.2 (05/12/2018)
 ------------------

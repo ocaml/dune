@@ -1,0 +1,3 @@
+(executable
+ (name myprivatelib)
+ (modes shared_object))

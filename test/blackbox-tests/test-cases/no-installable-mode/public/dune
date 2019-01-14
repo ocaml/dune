@@ -1,0 +1,4 @@
+(executable
+ (name mylib)
+ (public_name mylib)
+ (modes shared_object))

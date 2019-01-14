@@ -8,9 +8,9 @@
       ocamlopt a/ppx/a.cmxs
       ocamlopt a/kernel/.a_kernel.objs/native/a_kernel.{cmx,o}
       ocamlopt a/kernel/a_kernel.{a,cmxa}
-      ocamlopt .ppx/jbuild/a.kernel/ppx.exe
-      ocamlopt .ppx/jbuild/a/ppx.exe
-      ocamlopt .ppx/jbuild/631b31a68eb10e1850cf7721d41e5b84/ppx.exe
+      ocamlopt .ppx/a.kernel/ppx.exe
+      ocamlopt .ppx/a/ppx.exe
+      ocamlopt .ppx/631b31a68eb10e1850cf7721d41e5b84/ppx.exe
            ppx b/b.pp.ml
       ocamldep b/.b.objs/b.pp.ml.d
         ocamlc b/.b.objs/byte/b.{cmi,cmo,cmt}

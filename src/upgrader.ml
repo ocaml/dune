@@ -67,6 +67,18 @@ let upgrade_stanza stanza =
         | Dune_lang.Template.Var { name = "<"; _ } -> true
         | _ -> false)
   in
+  let rec map_var ~f = function
+    | Atom _ | Quoted_string _ as x -> x
+    | List (loc, l) -> List (loc, List.map l ~f:(map_var ~f))
+    | Template x ->
+      Template
+        { x with
+          parts =
+            List.map x.parts ~f:(function
+              | Dune_lang.Template.Var v -> f v
+              | x -> x)
+        }
+  in
   let upgrade_string sexp =
     let loc = Dune_lang.Ast.loc sexp in
     Dune_lang.Decoder.parse String_with_vars.decode
@@ -90,6 +102,15 @@ let upgrade_stanza stanza =
         match l with
         | [Atom _; List (_, [Atom (_, A ":include"); Atom _])] ->
           List.map l ~f:upgrade
+        | Atom (_, A ("preprocess" | "lint")) as field :: rest ->
+          upgrade field ::
+          List.map rest ~f:(fun x ->
+            map_var (upgrade x) ~f:(fun (v : Dune_lang.Template.var) ->
+              Dune_lang.Template.Var
+                (if v.name = "<" then
+                   { v with name = "input-file" }
+                 else
+                   v)))
         | Atom (_, A "per_module") as field :: specs ->
           upgrade field ::
           List.map specs ~f:(function

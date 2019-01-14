@@ -53,3 +53,9 @@ val build_and_link_many
   -> ?js_of_ocaml:Dune_file.Js_of_ocaml.t
   -> Compilation_context.t
   -> unit
+
+val exe_path
+  :  Compilation_context.t
+  -> program:Program.t
+  -> linkage:Linkage.t
+  -> Path.t

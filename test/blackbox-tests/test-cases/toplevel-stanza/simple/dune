@@ -1,0 +1,7 @@
+(library
+ (name foo)
+ (modules (:standard \ init)))
+
+(toplevel
+ (name tt)
+ (libraries foo))

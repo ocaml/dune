@@ -372,6 +372,14 @@ module Tests : sig
     }
 end
 
+module Toplevel : sig
+  type t =
+    { name : string
+    ; libraries : (Loc.t * Lib_name.t) list
+    ; loc : Loc.t
+    }
+end
+
 module Include_subdirs : sig
   type t = No | Unqualified
 end
@@ -386,6 +394,7 @@ type Stanza.t +=
   | Documentation   of Documentation.t
   | Tests           of Tests.t
   | Include_subdirs of Loc.t * Include_subdirs.t
+  | Toplevel        of Toplevel.t
 
 val stanza_package : Stanza.t -> Package.t option
 

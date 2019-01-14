@@ -1159,6 +1159,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name upgrader)
+ (deps (package dune) (source_tree test-cases/upgrader))
+ (action
+  (chdir
+   test-cases/upgrader
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name use-meta)
  (deps (package dune) (source_tree test-cases/use-meta))
  (action
@@ -1367,6 +1375,7 @@
   (alias toplevel-stanza)
   (alias trace-file)
   (alias transitive-deps-mode)
+  (alias upgrader)
   (alias use-meta)
   (alias utop)
   (alias utop-default)
@@ -1507,6 +1516,7 @@
   (alias toplevel-stanza)
   (alias trace-file)
   (alias transitive-deps-mode)
+  (alias upgrader)
   (alias use-meta)
   (alias utop-default)
   (alias variants)

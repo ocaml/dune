@@ -16,6 +16,7 @@ let term =
   let%map common = Common.term in
   Common.set_common common ~targets:[];
   Scheduler.go ~common (fun () ->
-    Dune.Upgrader.upgrade (Dune.File_tree.load Path.root))
+    Dune.Upgrader.upgrade (Dune.File_tree.load Path.root
+                             ~warn_when_seeing_jbuild_file:false))
 
 let command = term, info

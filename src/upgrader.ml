@@ -55,6 +55,10 @@ let upgrade_stanza stanza =
       -> false
     | _ -> true
   in
+  let is_rule_field = function
+    | "targets" | "deps" | "action" | "locks" | "fallback" | "mode" -> true
+    | _ -> false
+  in
   let rec uses_first_dep_var = function
     | Atom _ | Quoted_string _ -> false
     | List (_, l) -> List.exists l ~f:uses_first_dep_var
@@ -84,7 +88,10 @@ let upgrade_stanza stanza =
         | [Atom _; List (_, [Atom (_, A ":include"); Atom _])] ->
           List.map l ~f:upgrade
         | [Atom (_, A field_name) as field; List (_, args)]
-          when simplify_field field_name ->
+          when
+            (match field_name, args with
+             | "rule", Atom (_, A field_name) :: _ -> is_rule_field field_name
+             | _ -> simplify_field field_name) ->
           upgrade field :: List.map args ~f:upgrade
         | _ ->
           List.map l ~f:upgrade

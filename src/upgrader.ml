@@ -90,6 +90,12 @@ let upgrade_stanza stanza =
         match l with
         | [Atom _; List (_, [Atom (_, A ":include"); Atom _])] ->
           List.map l ~f:upgrade
+        | Atom (_, A "per_module") as field :: specs ->
+          upgrade field ::
+          List.map specs ~f:(function
+            | List (loc, [spec; List (_, modules)]) ->
+              List (loc, upgrade spec :: List.map modules ~f:upgrade)
+            | sexp -> upgrade sexp)
         | [Atom (_, A field_name) as field; List (_, args)]
           when
             (match field_name, args with

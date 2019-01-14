@@ -108,6 +108,11 @@ val ensure_project_file_exists : t -> created_or_already_exist
 (** Append the following text to the project file *)
 val append_to_project_file : t -> string -> created_or_already_exist
 
+(** Default language version to use for projects that don't have a
+    [dune-project] file. The default value is the latest version of the
+    dune language. *)
+val default_dune_language_version : Syntax.Version.t ref
+
 (** Set the project we are currently parsing dune files for *)
 val set : t -> ('a, 'k) Dune_lang.Decoder.parser -> ('a, 'k) Dune_lang.Decoder.parser
 val get_exn : unit -> (t, 'k) Dune_lang.Decoder.parser

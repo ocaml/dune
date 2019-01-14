@@ -42,6 +42,7 @@ type rename_and_edit =
 type todo =
   { mutable to_rename_and_edit : rename_and_edit list
   ; mutable to_add : Path.t list
+  ; mutable to_edit : (Path.t * string) list
   }
 
 let upgrade_stanza stanza =
@@ -203,12 +204,123 @@ let upgrade_file todo file sexps ~look_for_jbuild_ignore =
     ; contents
     } :: todo.to_rename_and_edit
 
+(* This was obtained by trial and error. We should improve the opam
+   parsing API to return better locations. *)
+let rec end_offset_of_opam_value : OpamParserTypes.value -> int =
+  function
+  | Bool ((_, _, ofs), b) -> ofs + String.length (string_of_bool b)
+  | Int ((_, _, ofs), x) -> ofs + String.length (string_of_int x)
+  | String ((_, _, ofs), _) -> ofs + 1
+  | Relop (_, _, _, v)
+  | Prefix_relop (_, _, v)
+  | Logop (_, _, _, v)
+  | Pfxop (_, _, v) -> end_offset_of_opam_value v
+  | Ident ((_, _, ofs), x) -> ofs + String.length x
+  | List ((_, _, ofs), _)
+  | Group ((_, _, ofs), _)
+  | Option ((_, _, ofs), _, _) -> ofs (* this is definitely wrong *)
+  | Env_binding ((_, _, ofs), _, _, _) -> ofs (* probably wrong *)
+
+let upgrade_opam_file todo fn =
+  let open OpamParserTypes in
+  let s = Io.read_file fn ~binary:true in
+  let lb = Lexing.from_string s in
+  lb.lex_curr_p <-
+    { pos_fname = Path.to_string fn
+    ; pos_lnum  = 1
+    ; pos_bol   = 0
+    ; pos_cnum  = 0
+    };
+  let t =
+    Opam_file.parse lb
+    |> Opam_file.absolutify_positions ~file_contents:s
+  in
+  let substs = ref [] in
+  let add_subst start stop repl =
+    substs := (start, stop, repl) :: !substs
+  in
+  let replace_string (_, _, ofs) old repl =
+    let len = String.length old in
+    add_subst (ofs - len) ofs repl
+  in
+  let replace_jbuilder pos = replace_string pos "jbuilder" "dune" in
+  let rec scan = function
+    | String (jpos, "jbuilder") -> replace_jbuilder jpos
+    | Option (pos, String (jpos, "jbuilder"), l) ->
+      replace_jbuilder jpos;
+      let _, _, start = pos in
+      let stop = end_offset_of_opam_value (List.last l |> Option.value_exn) in
+      add_subst (start + 1) stop
+        (sprintf "build & >= %S"
+           (Syntax.Version.to_string
+              !Dune_project.default_dune_language_version))
+    | List (_, (String (jpos, "jbuilder")
+                :: String (arg_pos, "subst") :: _ as l)) ->
+      replace_jbuilder jpos;
+      let _, _, start = arg_pos in
+      let stop = end_offset_of_opam_value (List.last l |> Option.value_exn) in
+      let start = start + 1 in
+      if start < stop then add_subst start stop ""
+    | List (_, (String (jpos, "jbuilder")
+                :: String (arg_pos, ("build" | "runtest"))
+                :: _ as l)) ->
+      replace_jbuilder jpos;
+      let _, _, start = arg_pos in
+      let stop = end_offset_of_opam_value (List.last l |> Option.value_exn) in
+      let start = start + 1 in
+      let stop = if start < stop then stop else start in
+      add_subst start stop {| "-p" name "-j" jobs|}
+    | Bool _ | Int _ | String _ | Relop _ | Logop _ | Pfxop _
+    | Ident _ | Prefix_relop _ -> ()
+    | List (_, l) | Group (_, l) ->
+      List.iter l ~f:scan
+    | Option (_, v, l) ->
+      scan v;
+      List.iter l ~f:scan
+    | Env_binding (_, v1, _, v2) ->
+      scan v1;
+      scan v2
+  in
+  let rec scan_item = function
+    | Section (_, s) ->
+      List.iter s.section_items ~f:scan_item
+    | Variable (_, _, v) -> scan v
+  in
+  List.iter t.file_contents ~f:scan_item;
+  let substs = List.sort !substs ~compare in
+  if not (List.is_empty substs) then begin
+    let buf = Buffer.create (String.length s + 128) in
+    let ofs =
+      List.fold_left substs ~init:0 ~f:(fun ofs (start, stop, repl) ->
+        if not (ofs <= start && start <= stop) then
+          Exn.code_error "Invalid text subsitution"
+            [ "ofs", Sexp.Encoder.int ofs
+            ; "start", Sexp.Encoder.int start
+            ; "stop", Sexp.Encoder.int stop
+            ; "repl", Sexp.Encoder.string repl
+            ];
+        Buffer.add_substring buf s ofs (start - ofs);
+        Buffer.add_string buf repl;
+        stop)
+    in
+    Buffer.add_substring buf s ofs (String.length s - ofs);
+    let s' = Buffer.contents buf in
+    if s <> s' then
+      todo.to_edit <- (fn, s') :: todo.to_edit
+  end
+
 let upgrade_dir todo dir =
   let project = File_tree.Dir.project dir in
-  (match Dune_project.ensure_project_file_exists project with
-   | Already_exist -> ()
-   | Created ->
-     todo.to_add <- Dune_project.file project :: todo.to_add);
+  let project_root = Path.of_local (Dune_project.root project) in
+  if project_root = File_tree.Dir.path dir then begin
+    (match Dune_project.ensure_project_file_exists project with
+     | Already_exist -> ()
+     | Created ->
+       todo.to_add <- Dune_project.file project :: todo.to_add);
+    Package.Name.Map.iter (Dune_project.packages project) ~f:(fun pkg ->
+      let fn = Package.opam_file pkg in
+      if Path.exists fn then upgrade_opam_file todo fn)
+  end;
   Option.iter (File_tree.Dir.dune_file dir) ~f:(fun dune_file ->
     match dune_file.kind, dune_file.contents with
     | Dune, _ -> ()
@@ -222,9 +334,11 @@ let upgrade_dir todo dir =
         upgrade_file todo fn sexps ~look_for_jbuild_ignore:(fn = path)))
 
 let upgrade ft =
+  Dune_project.default_dune_language_version := (1, 0);
   let todo =
     { to_rename_and_edit = []
     ; to_add = []
+    ; to_edit = []
     }
   in
   File_tree.fold ft ~traverse_ignored_dirs:false ~init:() ~f:(fun dir () ->
@@ -261,6 +375,9 @@ let upgrade ft =
         ["add"; Path.reach fn ~from:dir]
     | None -> Fiber.return ())
   >>= fun () ->
+  List.iter todo.to_edit ~f:(fun (fn, s) ->
+    log "Upgrading %s...\n" (Path.to_string_maybe_quoted fn);
+    Io.write_file fn s ~binary:true);
   Fiber.map_all_unit todo.to_rename_and_edit ~f:(fun x ->
     let { original_file
         ; new_file

@@ -198,6 +198,12 @@ include Versioned_file.Make(struct
     type t = Stanza.Parser.t list
   end)
 
+let default_dune_language_version =
+  ref (Syntax.greatest_supported_version Stanza.syntax)
+
+let get_dune_lang () =
+  { (Lang.get_exn "dune" ) with version = !default_dune_language_version }
+
 type created_or_already_exist = Created | Already_exist
 
 module Project_file_edit = struct
@@ -210,7 +216,7 @@ module Project_file_edit = struct
     if t.exists then
       Already_exist
     else begin
-      let ver = (Lang.get_exn "dune").version in
+      let ver = !default_dune_language_version in
       let lines =
         [sprintf "(lang dune %s)" (Syntax.Version.to_string ver)]
       in
@@ -442,7 +448,7 @@ let get_local_path p =
   | Local    p -> p
 
 let anonymous = lazy (
-  let lang = Lang.get_exn "dune" in
+  let lang = get_dune_lang () in
   let name = Name.anonymous_root in
   let project_file =
     { Project_file.
@@ -538,7 +544,7 @@ let load_dune_project ~dir packages =
   load file ~f:(fun lang -> parse ~dir ~lang ~packages ~file)
 
 let make_jbuilder_project ~dir packages =
-  let lang = Lang.get_exn "dune" in
+  let lang = get_dune_lang () in
   let name = default_name ~dir ~packages in
   let project_file =
     { Project_file.

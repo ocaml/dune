@@ -62,7 +62,7 @@ end
     compatibility. *)
 type t
 
-val load : Path.t -> t
+val load : ?warn_when_seeing_jbuild_file:bool -> Path.t -> t
 
 (** Passing [~traverse_ignored_dirs:true] to this functions causes the
     whole source tree to be deeply scanned, including ignored

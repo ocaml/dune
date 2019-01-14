@@ -134,7 +134,7 @@ let is_temp_file fn =
   || String.is_suffix fn ~suffix:".swp"
   || String.is_suffix fn ~suffix:"~"
 
-let load path =
+let load ?(warn_when_seeing_jbuild_file=true) path =
   let rec walk path ~dirs_visited ~project ~data_only : Dir.t =
     let contents = lazy (
       let files, unfiltered_sub_dirs =
@@ -181,7 +181,7 @@ let load path =
               if fn = "dune" then
                 ignore (Dune_project.ensure_project_file_exists project
                         : Dune_project.created_or_already_exist)
-              else
+              else if warn_when_seeing_jbuild_file then
                 Errors.warn (Loc.in_file file)
                   "jbuild files are deprecated, please convert this file to \
                    a dune file instead.\n\

@@ -1,0 +1,6 @@
+(rule
+ ((deps (x y z))
+  (targets (z))
+  (action (with-stdout-to z (run echo ${<})))))
+
+(rule (copy x y))

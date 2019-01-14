@@ -4,17 +4,20 @@ open Fiber.O
 
 let () = Inline_tests.linkme
 
-type setup =
-  { build_system : Build_system.t
-  ; contexts     : Context.t list
-  ; scontexts    : Super_context.t String.Map.t
-  ; packages     : Package.t Package.Name.Map.t
-  ; file_tree    : File_tree.t
-  ; env          : Env.t
+type workspace =
+  { contexts : Context.t list
+  ; conf     : Dune_load.conf
+  ; env      : Env.t
   }
 
-let package_install_file { packages; _ } pkg =
-  match Package.Name.Map.find packages pkg with
+type build_system =
+  { workspace    : workspace
+  ; build_system : Build_system.t
+  ; scontexts    : Super_context.t String.Map.t
+  }
+
+let package_install_file w pkg =
+  match Package.Name.Map.find w.conf.packages pkg with
   | None -> Error ()
   | Some p ->
     Ok (Path.relative p.path
@@ -29,10 +32,8 @@ let setup_env ~capture_outputs =
   in
   Env.add env ~var:"INSIDE_DUNE" ~value:"1"
 
-let setup ?(log=Log.no_log)
-      ?external_lib_deps_mode
+let scan_workspace ?(log=Log.no_log)
       ?workspace ?workspace_file
-      ?only_packages
       ?x
       ?ignore_promoted_rules
       ?(capture_outputs=true)
@@ -42,16 +43,6 @@ let setup ?(log=Log.no_log)
   let conf =
     Dune_load.load ?ignore_promoted_rules ()
   in
-  Option.iter only_packages ~f:(fun set ->
-    Package.Name.Set.iter set ~f:(fun pkg ->
-      if not (Package.Name.Map.mem conf.packages pkg) then
-        let pkg_name = Package.Name.to_string pkg in
-        die "@{<error>Error@}: I don't know about package %s \
-             (passed through --only-packages/--release)%s"
-          pkg_name
-          (hint pkg_name
-             (Package.Name.Map.keys conf.packages
-             |> List.map ~f:Package.Name.to_string))));
   let workspace =
     match workspace with
     | Some w -> w
@@ -76,6 +67,23 @@ let setup ?(log=Log.no_log)
   List.iter contexts ~f:(fun (ctx : Context.t) ->
     Log.infof log "@[<1>Dune context:@,%a@]@." Sexp.pp
       (Context.to_sexp ctx));
+  Fiber.return
+    { contexts
+    ; conf
+    ; env
+    }
+
+let init_build_system ?only_packages ?external_lib_deps_mode w =
+  Option.iter only_packages ~f:(fun set ->
+    Package.Name.Set.iter set ~f:(fun pkg ->
+      if not (Package.Name.Map.mem w.conf.packages pkg) then
+        let pkg_name = Package.Name.to_string pkg in
+        die "@{<error>Error@}: I don't know about package %s \
+             (passed through --only-packages/--release)%s"
+          pkg_name
+          (hint pkg_name
+             (Package.Name.Map.keys w.conf.packages
+              |> List.map ~f:Package.Name.to_string))));
   let rule_done  = ref 0 in
   let rule_total = ref 0 in
   let gen_status_line () =
@@ -90,23 +98,16 @@ let setup ?(log=Log.no_log)
     | Rule_completed -> incr rule_done
   in
   let build_system =
-    Build_system.create ~contexts ~file_tree:conf.file_tree ~hook
+    Build_system.create ~contexts:w.contexts ~file_tree:w.conf.file_tree ~hook
   in
-  Gen_rules.gen conf
+  Scheduler.set_status_line_generator gen_status_line;
+  Gen_rules.gen w.conf
     ~build_system
-    ~contexts
+    ~contexts:w.contexts
     ?only_packages
     ?external_lib_deps_mode
-  >>= fun scontexts ->
-  Scheduler.set_status_line_generator gen_status_line;
-  Fiber.return
-    { build_system
-    ; scontexts
-    ; contexts
-    ; packages = conf.packages
-    ; file_tree = conf.file_tree
-    ; env
-    }
+  >>| fun scontexts ->
+  { workspace = w; build_system; scontexts }
 
 let auto_concurrency =
   let v = ref None in
@@ -221,9 +222,10 @@ let bootstrap () =
       (fun () ->
          set_concurrency config
          >>= fun () ->
-         setup ~log ~workspace:(Workspace.default ?profile:!profile ())
+         scan_workspace ~log ~workspace:(Workspace.default ?profile:!profile ())
            ?profile:!profile
            ()
+         >>= init_build_system
          >>= fun { build_system = bs; _ } ->
          Build_system.do_build bs
            ~request:(Build.path (

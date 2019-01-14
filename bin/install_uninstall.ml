@@ -34,7 +34,7 @@ let resolve_package_install setup pkg =
     let pkg = Package.Name.to_string pkg in
     die "Unknown package %s!%s" pkg
       (hint pkg
-         (Package.Name.Map.keys setup.packages
+         (Package.Name.Map.keys setup.conf.packages
           |> List.map ~f:Package.Name.to_string))
 
 let print_unix_error f =
@@ -167,16 +167,16 @@ let install_uninstall ~what =
     Common.set_common common ~targets:[];
     let log = Log.create common in
     Scheduler.go ~log ~common (fun () ->
-      Import.Main.setup ~log common >>= fun setup ->
+      Import.Main.scan_workspace ~log common >>= fun workspace ->
       let pkgs =
         match pkgs with
-        | [] -> Package.Name.Map.keys setup.packages
+        | [] -> Package.Name.Map.keys workspace.conf.packages
         | l  -> l
       in
       let install_files, missing_install_files =
         List.concat_map pkgs ~f:(fun pkg ->
-          let fn = resolve_package_install setup pkg in
-          List.map setup.contexts ~f:(fun ctx ->
+          let fn = resolve_package_install workspace pkg in
+          List.map workspace.contexts ~f:(fun ctx ->
             let fn = Path.append ctx.Context.build_dir fn in
             if Path.exists fn then
               Left (ctx, (pkg, fn))
@@ -193,7 +193,9 @@ let install_uninstall ~what =
                 ~f:(fun p -> sprintf "- %s" (Path.to_string p))))
       end;
       (match
-         setup.contexts, prefix_from_command_line, libdir_from_command_line
+         workspace.contexts,
+         prefix_from_command_line,
+         libdir_from_command_line
        with
        | _ :: _ :: _, Some _, _ | _ :: _ :: _, _, Some _ ->
          die "Cannot specify --prefix or --libdir when installing \

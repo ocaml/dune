@@ -42,7 +42,8 @@ let run ~lib_deps ~by_dir ~setup ~only_missing ~sexp =
           die "@{<error>Error@}: --only-missing cannot be used with \
                --unstable-by-dir or --sexp";
         let context =
-          List.find_exn setup.contexts ~f:(fun c -> c.name = context_name)
+          List.find_exn setup.workspace.contexts
+            ~f:(fun c -> c.name = context_name)
         in
         let missing =
           Lib_name.Map.filteri externals ~f:(fun name _ ->

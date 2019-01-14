@@ -31,8 +31,14 @@ let term =
   let (context, utop_path) =
     Scheduler.go ~log ~common (fun () ->
       Import.Main.setup ~log common >>= fun setup ->
-      let context = Import.Main.find_context_exn setup ~name:ctx_name in
-      let setup = { setup with contexts = [context] } in
+      let context =
+        Import.Main.find_context_exn setup.workspace ~name:ctx_name
+      in
+      let setup =
+        { setup with
+          workspace = { setup.workspace with contexts = [context] }
+        }
+      in
       let target =
         match Target.resolve_target common ~setup utop_target with
         | Error _ ->

@@ -1,0 +1,5 @@
+(executable
+ (name w_omp_driver)
+ (modules w_omp_driver)
+ (preprocess
+  (pps fooppx -- -flag -arg omp)))

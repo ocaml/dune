@@ -67,21 +67,24 @@ let upgrade_stanza stanza =
         | Dune_lang.Template.Var { name = "<"; _ } -> true
         | _ -> false)
   in
+  let upgrade_string sexp =
+    let loc = Dune_lang.Ast.loc sexp in
+    Dune_lang.Decoder.parse String_with_vars.decode
+      (Univ_map.singleton (Syntax.key Stanza.syntax) (0, 0))
+      sexp
+    |> String_with_vars.upgrade_to_dune ~allow_first_dep_var:true
+    |> String_with_vars.encode
+    |> Dune_lang.add_loc ~loc
+  in
   let rec upgrade = function
     | Atom (loc, A s) as x ->
       begin match s with
       | "files_recursively_in" ->
         Atom (loc, Dune_lang.Atom.of_string "source_tree")
-      | _ -> x
+      | _ -> upgrade_string x
       end
     | Template _ as x -> x
-    | Quoted_string (loc, _) as x ->
-      Dune_lang.Decoder.parse String_with_vars.decode
-        (Univ_map.singleton (Syntax.key Stanza.syntax) (0, 0))
-        x
-      |> String_with_vars.upgrade_to_dune ~allow_first_dep_var:true
-      |> String_with_vars.encode
-      |> Dune_lang.add_loc ~loc
+    | Quoted_string _ as x -> upgrade_string x
     | List (loc, l) ->
       let l =
         match l with

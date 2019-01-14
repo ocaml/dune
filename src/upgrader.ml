@@ -96,6 +96,22 @@ let upgrade_stanza stanza =
             | List (loc, [spec; List (_, modules)]) ->
               List (loc, upgrade spec :: List.map modules ~f:upgrade)
             | sexp -> upgrade sexp)
+        | [Atom (_, A "pps") as field; List (_, pps)] ->
+          let pps, args =
+            List.partition_map pps ~f:(function
+              | Atom (_, A s) | Quoted_string (_, s) as sexp when
+                  String.is_prefix s ~prefix:"-" ->
+                Right [sexp]
+              | List (_, l) ->
+                Right l
+              | sexp -> Left sexp)
+          in
+          let args = List.concat args in
+          upgrade field
+          :: pps
+          @ (match args with
+            | [] -> []
+            | _ -> Atom (loc, Dune_lang.Atom.of_string "--") :: args)
         | [Atom (_, A field_name) as field; List (_, args)]
           when
             (match field_name, args with

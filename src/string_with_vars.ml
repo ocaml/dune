@@ -298,10 +298,6 @@ let expand t ~mode ~dir ~f =
 
 let partial_expand t ~mode ~dir ~f = partial_expand t ~mode ~dir ~f
 
-let encode { template; syntax_version = _ } = Dune_lang.Template template
-
-let to_sexp t = Dune_lang.to_sexp (encode t)
-
 let is_var { template; syntax_version = _ } ~name =
   match template.parts with
   | [Var n] -> name = Var.full_name n
@@ -313,6 +309,13 @@ let text_only t =
   | _ -> None
 
 let has_vars t = Option.is_none (text_only t)
+
+let encode t =
+  match text_only t with
+  | Some s -> Dune_lang.atom_or_quoted_string s
+  | None -> Dune_lang.Template t.template
+
+let to_sexp t = Dune_lang.to_sexp (encode t)
 
 let remove_locs t =
   { t with template = Dune_lang.Template.remove_locs t.template

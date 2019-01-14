@@ -15,6 +15,7 @@ type t =
   ; ignore_promoted_rules : bool
   ; build_dir             : string
   ; no_print_directory    : bool
+  ; store_orig_src_dir    : bool
   ; (* Original arguments for the external-lib-deps hint *)
     orig_args             : string list
   ; config                : Dune.Config.t

@@ -29,3 +29,6 @@ val watch : bool ref
 
 (** Do not print "Entering directory" messages *)
 val no_print_directory : bool ref
+
+(** Store original source directory in dune-package metadata *)
+val store_orig_src_dir : bool ref

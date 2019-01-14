@@ -8,3 +8,4 @@ let auto_promote = ref false
 let force = ref false
 let watch = ref false
 let no_print_directory = ref false
+let store_orig_src_dir = ref false

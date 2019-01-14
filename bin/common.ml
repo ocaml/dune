@@ -26,6 +26,7 @@ type t =
   ; ignore_promoted_rules : bool
   ; build_dir             : string
   ; no_print_directory    : bool
+  ; store_orig_src_dir    : bool
   ; (* Original arguments for the external-lib-deps hint *)
     orig_args             : string list
   ; config                : Dune.Config.t
@@ -53,6 +54,7 @@ let set_common_other c ~targets =
   Clflags.force := c.force;
   Clflags.watch := c.watch;
   Clflags.no_print_directory := c.no_print_directory;
+  Clflags.store_orig_src_dir := c.store_orig_src_dir;
   Clflags.external_lib_deps_hint :=
     List.concat
       [ ["dune"; "external-lib-deps"; "--missing"]
@@ -345,6 +347,13 @@ let term =
          & flag
          & info ["no-print-directory"] ~docs
              ~doc:"Suppress \"Entering directory\" messages")
+  and store_orig_src_dir =
+    let doc = "Store original source location in dune-package metadata" in
+    Arg.(value
+         & flag
+         & info ["store-orig-source-dir"] ~docs
+             ~env:(Arg.env_var ~doc "DUNE_STORE_ORIG_SOURCE_DIR")
+             ~doc)
   in
   let build_dir = Option.value ~default:"_build" build_dir in
   let root, to_cwd =
@@ -397,6 +406,7 @@ let term =
   ; config
   ; build_dir
   ; no_print_directory
+  ; store_orig_src_dir
   ; default_target
   ; watch
   ; stats_trace_file

@@ -41,8 +41,7 @@ module Gen(P : Params) = struct
                   let dir = Dir_contents.get sctx ~dir:(Lib.src_dir lib) in
                   Dir_contents.modules_of_library dir ~name:(Lib.name lib)
                 in
-                let context = Super_context.context sctx in
-                Lib.to_dune_lib lib ~dir:(lib_root lib) ~lib_modules ~context)
+                Lib.to_dune_lib lib ~dir:(lib_root lib) ~lib_modules)
             in
             Dune_package.Or_meta.Dune_package
               { Dune_package.

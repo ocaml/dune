@@ -1,4 +1,4 @@
-  $ jbuilder build @foo
+  $ dune build @foo
   File "src/dune", line 4, characters 10-17:
   4 |  (c_names stubs/x))
                 ^^^^^^^

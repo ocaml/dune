@@ -1,6 +1,8 @@
 jbuild still discovers workspaces as usual
 
   $ jbuilder build --root jbuilder-default-name
+  The jbuilder binary is deprecated and will cease to be maintained in July 2019.
+  Please switch to dune instead.
   Entering directory 'jbuilder-default-name'
   File "jbuild-workspace", line 1, characters 10-24:
   1 | (context (does-not-exist))
@@ -26,6 +28,8 @@ dune uses a versioned file. If the version is missing, then we get an error.
 analogously, jbuilder will ignore it
 
   $ jbuilder build --root dune-no-version
+  The jbuilder binary is deprecated and will cease to be maintained in July 2019.
+  Please switch to dune instead.
   Entering directory 'dune-no-version'
 
 specifying the workspace file is possible:

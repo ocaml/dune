@@ -1,6 +1,10 @@
 unreleased
 ----------
 
+- Second step of the deprecation of jbuilder: the `jbuilder` binary
+  now emits a warning on every startup and both `jbuilder` and `dune`
+  emit warnings when encountering `jbuild` files (#...., @diml)
+
 - Change the layout of build artifacts inside _build. The new layout enables
   optimizations that depend on the presence of `.cmx` files of private modules
   (#1676 @bobot)

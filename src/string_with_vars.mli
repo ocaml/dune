@@ -93,6 +93,7 @@ val known_prefix : t -> known_prefix
 val is_suffix : t -> suffix:string -> yes_no_unknown
 
 val is_prefix : t -> prefix:string -> yes_no_unknown
+val fold_vars : t -> init:'a -> f:(Var.t -> 'a -> 'a) -> 'a
 
 type 'a expander = Var.t -> Syntax.Version.t -> 'a
 

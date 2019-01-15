@@ -19,6 +19,8 @@ type t =
 
 val true_ : t
 
+val fold_vars : t -> init:'a -> f:(String_with_vars.Var.t -> 'a -> 'a) -> 'a
+
 val eval
   :  t
   -> dir:Path.t

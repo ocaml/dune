@@ -62,11 +62,11 @@ let runtest =
         | dir when dir.[String.length dir - 1] = '/' -> sprintf "@%sruntest" dir
         | dir -> sprintf "@%s/runtest" dir));
     let log = Log.create common in
-    let targets (setup : Main.setup) =
+    let targets (setup : Main.build_system) =
       List.map dirs ~f:(fun dir ->
         let dir = Path.(relative root) (Common.prefix_target common dir) in
         Target.Alias (Alias.in_dir ~name:"runtest" ~recursive:true
-                        ~contexts:setup.contexts dir))
+                        ~contexts:setup.workspace.contexts dir))
     in
     run_build_command ~log ~common ~targets
   in

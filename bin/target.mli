@@ -5,13 +5,13 @@ type t =
   | Alias     of Alias.t
 
 val request
-  :  Dune.Main.setup
+  :  Dune.Main.build_system
   -> t list
   -> (unit, unit) Dune.Build.t
 
 val resolve_target
   : Common.t
-  -> setup:Dune.Main.setup
+  -> setup:Dune.Main.build_system
   -> string
   -> (t list, Path.t * string) result
 
@@ -22,13 +22,13 @@ type resolve_input =
 val resolve_targets_mixed
   :  log:Dune.Log.t
   -> Common.t
-  -> Dune.Main.setup
+  -> Dune.Main.build_system
   -> resolve_input list
   -> (t list, Path.t * string) result list
 
 val resolve_targets_exn
   :  log:Dune.Log.t
   -> Common.t
-  -> Dune.Main.setup
+  -> Dune.Main.build_system
   -> string list
   -> t list

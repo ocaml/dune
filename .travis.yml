@@ -54,6 +54,3 @@ matrix:
   - os: osx
     env: OCAML_VERSION=4.07 OCAML_RELEASE=1 WITH_OPAM=0
     stage: Build_macOS
-  - os: none
-    env: CI_KIND=changes
-    stage: General

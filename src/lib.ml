@@ -891,12 +891,16 @@ let rec instantiate db name (info : Lib_info.t) ~stack ~hidden =
   let res =
     let hidden =
       match hidden with
-      | None ->
-        Option.some_if
-          (info.optional &&
-           not (Result.is_ok t.requires && Result.is_ok t.ppx_runtime_deps))
-          "optional with unavailable dependencies"
       | Some _ -> hidden
+      | None ->
+        match info.enabled with
+        | Normal -> None
+        | Optional ->
+          Option.some_if
+            (not (Result.is_ok t.requires && Result.is_ok t.ppx_runtime_deps))
+            "optional with unavailable dependencies"
+        | Disabled_because_of_enabled_if ->
+          Some "unsatisfied 'enabled_if'"
     in
     match hidden with
     | None -> St_found t
@@ -1265,7 +1269,9 @@ module Compile = struct
       make_lib_deps_info
         ~user_written_deps:(Lib_info.user_written_deps t.info)
         ~pps:t.info.pps
-        ~kind:(Lib_deps_info.Kind.of_optional t.info.optional)
+        ~kind:(match t.info.enabled with
+          | Normal -> Required
+          | _ -> Optional)
     in
     let requires_link = lazy (
       t.requires >>= closure_with_overlap_checks

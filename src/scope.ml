@@ -130,13 +130,14 @@ module DB = struct
       ~f:(fun _name project libs ->
         let project = Option.value_exn project in
         let libs = Option.value libs ~default:[] in
-        let db = Lib.DB.create_from_library_stanzas libs
-                   ~parent:public_libs ~lib_config in
+        let db = Lib.DB.create_from_library_stanzas libs ~parent:public_libs
+                   ~lib_config in
         let root =
           Path.append_source build_context_dir (Dune_project.root project) in
         Some { project; db; root })
 
-  let create ~projects ~context ~installed_libs ~lib_config internal_libs =
+  let create ~projects ~context ~installed_libs ~lib_config
+        internal_libs =
     let t = Fdecl.create () in
     let public_libs = public_libs t ~installed_libs internal_libs in
     let by_name =

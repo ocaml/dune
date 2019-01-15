@@ -16,3 +16,16 @@ This rule is disabled, trying to build a should fail:
 This one is enabled:
   $ dune build b
   Building file b
+
+Test the enabled_if field for libraries:
+
+  $ dune build main.exe
+  File "dune", line 33, characters 12-15:
+  33 |  (libraries foo))
+                   ^^^
+  Error: Library "foo" in _build/default is hidden (unsatisfied 'enabled_if').
+  Hint: try: dune external-lib-deps --missing main.exe
+  [1]
+
+Ideally, the above message should mention the dependency path between
+the requested target and the unsatisfied `enabled_if`.

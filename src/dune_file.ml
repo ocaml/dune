@@ -361,10 +361,13 @@ module Preprocess = struct
               ]))
 end
 
-
-let enabled_if =
-  field "enabled_if" ~default:Blang.true_
-    (Syntax.since Stanza.syntax (1, 4) >>> Blang.decode)
+let enabled_if ~since =
+  let decode =
+    match since with
+    | None -> Blang.decode
+    | Some since -> Syntax.since Stanza.syntax since >>> Blang.decode
+  in
+  field "enabled_if" ~default:Blang.true_ decode
 
 module Per_module = struct
   include Per_item.Make(Module.Name)
@@ -896,6 +899,7 @@ module Library = struct
     ; private_modules          : Ordered_set_lang.t option
     ; stdlib                   : Stdlib.t option
     ; special_builtin_support  : Special_builtin_support.t option
+    ; enabled_if               : Blang.t
     }
 
   let decode =
@@ -956,7 +960,7 @@ module Library = struct
          field_o "special_builtin_support"
            (Syntax.since Stanza.syntax (1, 10) >>>
             Special_builtin_support.decode)
-       in
+       and+ enabled_if = enabled_if ~since:(Some (1, 10)) in
        let wrapped = Wrapped.make ~wrapped ~implements in
        let name =
          let open Syntax.Version.Infix in
@@ -1021,6 +1025,14 @@ module Library = struct
                  "A library cannot use (self_build_stubs_archive ...) \
                   and (%s ...) simultaneously." name
            in
+           Blang.fold_vars enabled_if ~init:() ~f:(fun var () ->
+             match String_with_vars.Var.name var,
+                   String_with_vars.Var.payload var with
+             | "os_type", None -> ()
+             | _ ->
+               Errors.fail (String_with_vars.Var.loc var)
+                 "Only the 'os_type' variable is allowed in the 'enabled_if' \
+                  field of libraries.");
            { name
            ; public
            ; synopsis
@@ -1050,6 +1062,7 @@ module Library = struct
            ; private_modules
            ; stdlib
            ; special_builtin_support
+           ; enabled_if
            })
 
   let has_stubs t =
@@ -1659,7 +1672,7 @@ module Rule = struct
           | false, Some mode -> Ok mode
           | true, None -> Ok Fallback
           | false, None -> Ok Standard)
-    and+ enabled_if = enabled_if
+    and+ enabled_if = enabled_if ~since:(Some (1, 4))
     in
     { targets
     ; deps
@@ -1732,7 +1745,7 @@ module Rule = struct
             record
               (let+ modules = field "modules" (list string)
                and+ mode = Mode.field
-               and+ enabled_if = enabled_if
+               and+ enabled_if = enabled_if ~since:(Some (1, 4))
                in
                { modules; mode; enabled_if }))
           ~else_:(
@@ -1818,7 +1831,7 @@ module Menhir = struct
        and+ mode = Rule.Mode.field
        and+ infer = field_o_b "infer" ~check:(Syntax.since syntax (2, 0))
        and+ menhir_syntax = Syntax.get_exn syntax
-       and+ enabled_if = enabled_if
+       and+ enabled_if = enabled_if ~since:(Some (1, 4))
        and+ loc = loc
        in
        let infer =
@@ -1911,7 +1924,7 @@ module Coq = struct
        and+ modules = modules_field "modules"
        and+ libraries =
          field "libraries" (list (located Lib_name.decode)) ~default:[]
-       and+ enabled_if = enabled_if
+       and+ enabled_if = enabled_if ~since:None
        in
        let name =
          let (loc, res) = name in
@@ -2016,7 +2029,7 @@ module Tests = struct
                      ~default:Executables.Link_mode.Set.default
        and+ deps =
          field "deps" (Bindings.decode Dep_conf.decode) ~default:Bindings.empty
-       and+ enabled_if = enabled_if
+       and+ enabled_if = enabled_if ~since:(Some (1, 4))
        and+ action =
          field_o
            "action"

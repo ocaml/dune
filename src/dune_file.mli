@@ -235,6 +235,7 @@ module Library : sig
     ; private_modules          : Ordered_set_lang.t option
     ; stdlib                   : Stdlib.t option
     ; special_builtin_support  : Special_builtin_support.t option
+    ; enabled_if               : Blang.t
     }
 
   val has_stubs : t -> bool

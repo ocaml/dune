@@ -83,6 +83,9 @@ unreleased
   is turned off, transitive dependencies are not accessible. Only listed
   dependencies are directly accessible. (#1734, #430, @rgrinberg, @hnrgrgr)
 
+- Add `toplevel` stanza. This stanza is used to define toplevels with libraries
+  already preloaded. (#1713, @rgrinberg)
+
 1.6.2 (05/12/2018)
 ------------------
 

@@ -1135,6 +1135,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name toplevel-stanza)
+ (deps (package dune) (source_tree test-cases/toplevel-stanza))
+ (action
+  (chdir
+   test-cases/toplevel-stanza
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name trace-file)
  (deps (package dune) (source_tree test-cases/trace-file))
  (action
@@ -1356,6 +1364,7 @@
   (alias tests-stanza-action)
   (alias tests-stanza-action-syntax-version)
   (alias too-many-parens)
+  (alias toplevel-stanza)
   (alias trace-file)
   (alias transitive-deps-mode)
   (alias use-meta)
@@ -1495,6 +1504,7 @@
   (alias tests-stanza-action)
   (alias tests-stanza-action-syntax-version)
   (alias too-many-parens)
+  (alias toplevel-stanza)
   (alias trace-file)
   (alias transitive-deps-mode)
   (alias use-meta)

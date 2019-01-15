@@ -1,6 +1,7 @@
 open! Stdune
 open Import
 module Menhir_rules = Menhir
+module Toplevel_rules = Toplevel.Stanza
 open Dune_file
 open! No_io
 
@@ -73,6 +74,9 @@ module Gen(P : Install_rules.Params) = struct
     let for_stanza stanza =
       let dir = ctx_dir in
       match stanza with
+      | Toplevel toplevel ->
+        Toplevel_rules.setup ~sctx ~dir ~toplevel;
+        For_stanza.empty_none
       | Library lib ->
         let cctx, merlin =
           Lib_rules.rules lib ~dir ~scope ~dir_contents ~expander ~dir_kind in

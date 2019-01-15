@@ -65,6 +65,9 @@ unreleased
 - Make `dune subst` add a `(version ...)` field to the `dune-project`
   file (#2148, @diml)
 
+- Add the `%{os_type}` variable, which is a short-hand for
+  `%{ocaml-config:os_type}` (#1764, @diml)
+
 1.9.3 (06/05/2019)
 ------------------
 

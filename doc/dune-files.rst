@@ -1087,6 +1087,8 @@ Dune supports the following variables:
 - ``profile`` the profile selected via ``--profile``
 - ``context_name`` the name of the context (``default`` or defined in the
   workspace file)
+- ``os_type`` is the type of the OS the build is targetting. This is
+  the same as ``ocaml-config:os_type``
 
 In addition, ``(action ...)`` fields support the following special variables:
 

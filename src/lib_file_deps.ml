@@ -2,35 +2,80 @@ open Stdune
 open Dune_file
 open Build_system
 
-let string_of_exts = String.concat ~sep:"-and-"
+module Group = struct
+  type t =
+    | Cmi
+    | Cmx
+    | Header
 
-let lib_files_alias ~dir ~name ~exts =
-  Alias.make (sprintf "lib-%s%s-all"
-                (Lib_name.to_string name) (string_of_exts exts)) ~dir
+  let to_string = function
+    | Cmi -> ".cmi"
+    | Cmx -> ".cmx"
+    | Header -> ".h"
 
-let setup_file_deps_alias t ~dir ~exts lib files =
-  Super_context.add_alias_deps t
-    (lib_files_alias ~dir ~name:(Library.best_name lib) ~exts) files
+  let of_cm_kind = function
+    | Cm_kind.Cmx -> Cmx
+    | Cmi -> Cmi
+    | Cmo -> Exn.code_error "Lib_file_deps.Group.of_cm_kind: Cmo" []
 
-let setup_file_deps_group_alias t ~dir ~exts lib =
-  setup_file_deps_alias t lib ~dir ~exts
-    (List.map exts ~f:(fun ext ->
-       Alias.stamp_file
-         (lib_files_alias ~dir ~name:(Library.best_name lib) ~exts:[ext]))
-     |> Path.Set.of_list)
+  module L = struct
+    let to_string l =
+      List.map l ~f:to_string
+      |> List.sort ~compare:String.compare
+      |> String.concat  ~sep:"-and-"
 
-module L = struct
-  let file_deps_of_lib t (lib : Lib.t) ~exts =
-    if Lib.is_local lib then
-      Alias.stamp_file
-        (lib_files_alias ~dir:(Lib.src_dir lib) ~name:(Lib.name lib) ~exts)
-    else
-      Build_system.stamp_file_for_files_of (Super_context.build_system t)
-        ~dir:(Lib.obj_dir lib) ~ext:(string_of_exts exts)
+    let alias t ~dir ~name =
+      sprintf "lib-%s%s-all" (Lib_name.to_string name) (to_string t)
+      |> Alias.make ~dir
 
-  let file_deps_with_exts t lib_exts =
-    List.rev_map lib_exts ~f:(fun (lib, exts) -> file_deps_of_lib t lib ~exts)
+    let setup_alias t ~sctx ~dir ~lib ~files =
+      Super_context.add_alias_deps
+        sctx
+        (alias t ~dir ~name:(Library.best_name lib))
+        files
 
-  let file_deps t libs ~exts =
-    List.rev_map libs ~f:(file_deps_of_lib t ~exts)
+    let setup_file_deps_group_alias t ~sctx ~dir ~lib =
+      setup_alias t ~sctx ~dir ~lib ~files:(
+        List.map t ~f:(fun t ->
+          Alias.stamp_file (alias [t] ~dir ~name:(Library.best_name lib)))
+        |> Path.Set.of_list
+      )
+  end
 end
+
+let setup_file_deps =
+  let cm_kinds = [Cm_kind.Cmx; Cmi] in
+  let groups = List.map ~f:Group.of_cm_kind cm_kinds in
+  fun sctx ~dir ~lib ~modules ->
+    let add_cms ~cm_kind =
+      List.fold_left ~f:(fun acc m ->
+        match Module.cm_public_file m cm_kind with
+        | None -> acc
+        | Some fn -> Path.Set.add acc fn)
+    in
+    List.iter cm_kinds ~f:(fun cm_kind ->
+      let files = add_cms ~cm_kind ~init:Path.Set.empty modules in
+      let groups = [Group.of_cm_kind cm_kind] in
+      Group.L.setup_alias groups ~sctx ~dir ~lib ~files);
+    Group.L.setup_file_deps_group_alias groups ~sctx ~dir ~lib;
+    Group.L.setup_alias [Header] ~sctx ~dir ~lib ~files:(
+      List.map lib.install_c_headers ~f:(fun header ->
+        Path.relative dir (header ^ ".h"))
+      |> Path.Set.of_list)
+
+let file_deps_of_lib t (lib : Lib.t) ~groups =
+  if Lib.is_local lib then
+    Alias.stamp_file
+      (Group.L.alias groups ~dir:(Lib.src_dir lib) ~name:(Lib.name lib))
+  else
+    (* suppose that all the files of an external lib are at the same place *)
+    Build_system.stamp_file_for_files_of
+      (Super_context.build_system t)
+      ~dir:(Obj_dir.public_cmi_dir (Lib.obj_dir lib))
+      ~ext:(Group.L.to_string groups)
+
+let file_deps_with_exts t =
+  List.rev_map ~f:(fun (lib, groups) -> file_deps_of_lib t lib ~groups)
+
+let file_deps t libs ~groups =
+  List.rev_map libs ~f:(file_deps_of_lib t ~groups)

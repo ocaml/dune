@@ -83,4 +83,7 @@ val partial_expand
 
 val remove_locs : t -> t
 
-val upgrade_to_dune : t -> t
+(** Upgrade the following string with variables coming from a jbuild
+    file to one suitable for a dune file. Fail if the [<] variable is
+    found and [allow_first_dep_var] is [true]. *)
+val upgrade_to_dune : t -> allow_first_dep_var:bool -> t

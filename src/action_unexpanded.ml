@@ -45,13 +45,11 @@ module Partial = struct
             (Expander.expand expander ~template:s ~mode) ~dir)
 
     let string =
-      expand ~mode:Single
-        ~l:(fun x -> x)
+      expand ~mode:Single ~l:Fn.id
         ~r:(ignore_loc Value.to_string)
 
     let strings =
-      expand ~mode:Many
-        ~l:(fun x -> [x])
+      expand ~mode:Many ~l:List.singleton
         ~r:(ignore_loc Value.L.to_strings)
 
     let path e =
@@ -59,15 +57,15 @@ module Partial = struct
         match e with
         | Left _ -> None
         | Right r -> Some (String_with_vars.loc r) in
-      expand ~mode:Single
-        ~l:(fun x -> x)
+      expand ~mode:Single ~l:Fn.id
         ~r:(ignore_loc (Value.(to_path ?error_loc))) e
 
     let prog_and_args_of_values ~loc p ~dir =
       match p with
       | [] -> (Unresolved.Program.Search (loc, ""), [])
       | Value.Dir p :: _ ->
-        die "%s is a directory and cannot be used as an executable"
+        Errors.fail_opt loc
+          "%s is a directory and cannot be used as an executable"
           (Path.to_string_maybe_quoted p)
       | Value.Path p :: xs -> (This p, Value.L.to_strings ~dir xs)
       | String s :: xs ->
@@ -169,13 +167,13 @@ let rec partial_expand t ~map_exe ~expander : Partial.t =
     let args =
       List.concat_map args ~f:(fun arg ->
         match E.strings ~expander arg with
-        | Left args -> List.map args ~f:(fun x -> Left x)
+        | Left args -> List.map args ~f:Either.left
         | Right _ as x -> [x])
     in
     begin
       match E.prog_and_args ~expander prog with
       | Left (prog, more_args) ->
-        let more_args = List.map more_args ~f:(fun x -> Left x) in
+        let more_args = List.map more_args ~f:Either.left in
         let prog =
           match prog with
           | Search _ -> prog

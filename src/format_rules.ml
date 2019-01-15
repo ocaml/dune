@@ -29,7 +29,7 @@ let rec subdirs_until_root dir =
 
 let depend_on_existing_paths paths =
   let open Build.O in
-  let build_id = Build.arr (fun x -> x) in
+  let build_id = Build.arr Fn.id in
   List.fold_left
     ~f:(fun acc path ->
       Build.if_file_exists

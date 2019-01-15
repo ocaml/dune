@@ -1,6 +1,14 @@
 unreleased
 ----------
 
+- Second step of the deprecation of jbuilder: the `jbuilder` binary
+  now emits a warning on every startup and both `jbuilder` and `dune`
+  emit warnings when encountering `jbuild` files (#...., @diml)
+
+- Change the layout of build artifacts inside _build. The new layout enables
+  optimizations that depend on the presence of `.cmx` files of private modules
+  (#1676 @bobot)
+
 - Fix merlin handling of private module visibility (#1653 @bobot)
 
 - unstable-fmt: use boxes to wrap some lists (#1608, fix #1153, @emillon,
@@ -49,6 +57,38 @@ unreleased
   @rgrinberg)
 
 - Fix handling of Control+C in watch mode (#1678, fixes #1671, @diml)
+
+- Look for jsoo runtime in the same dir as the `js_of_ocaml` binary
+  when the ocamlfind package is not available (#1467, @nojb)
+
+- Make the `seq` package available for OCaml >= 4.07 (#1714, @rgrinberg)
+
+- Add locations to error messages where a rule fails to generate targets and
+  rules that require files outside the build/source directory. (#1708, fixes
+  #848, @rgrinberg)
+
+- Let `Configurator` handle `sizeof` (in addition to negative numbers).
+  (#1726, fixes #1723, @Chris00)
+
+- Fix an issue causing menhir generated parsers to fail to build in
+  some cases. The fix is to systematically use `-short-paths` when
+  calling `ocamlc -i` (#1743, fix #1504, @diml)
+
+- Never raise when printing located errors. The code that would print the
+  location excerpts was prone to raising. (#1744, fix #1736, @rgrinberg)
+
+- Add a `dune upgrade` command for upgrading jbuilder projects to Dune
+  (#1749, @diml)
+
+- When automatically creating a `dune-project` file, insert the
+  detected name in it (#1749, @diml)
+
+- Add `(implicit_transitive_deps <bool>)` mode to dune projects. When this mode
+  is turned off, transitive dependencies are not accessible. Only listed
+  dependencies are directly accessible. (#1734, #430, @rgrinberg, @hnrgrgr)
+
+- Add `toplevel` stanza. This stanza is used to define toplevels with libraries
+  already preloaded. (#1713, @rgrinberg)
 
 1.6.2 (05/12/2018)
 ------------------

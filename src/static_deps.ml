@@ -5,6 +5,12 @@ type t =
   ; action_deps : Deps.t
   }
 
+let pp fmt { rule_deps ; action_deps } =
+  Fmt.record fmt
+    [ "rule_deps", Fmt.const Deps.pp rule_deps
+    ; "action_deps", Fmt.const Deps.pp action_deps
+    ]
+
 let action_deps t = t.action_deps
 
 let rule_deps t = t.rule_deps

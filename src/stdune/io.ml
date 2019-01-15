@@ -28,8 +28,16 @@ module type S = sig
   val open_in  : ?binary:bool (* default true *) -> path -> in_channel
   val open_out : ?binary:bool (* default true *) -> path -> out_channel
 
-  val with_file_in  : ?binary:bool (* default true *) -> path -> f:(in_channel -> 'a) -> 'a
-  val with_file_out : ?binary:bool (* default true *) -> path -> f:(out_channel -> 'a) -> 'a
+  val with_file_in
+    : ?binary:bool (* default true *)
+    -> path
+    -> f:(in_channel -> 'a)
+    -> 'a
+  val with_file_out
+    : ?binary:bool (* default true *)
+    -> path
+    -> f:(out_channel -> 'a)
+    -> 'a
 
   val with_lexbuf_from_file : path -> f:(Lexing.lexbuf -> 'a) -> 'a
   val lines_of_file : path -> string list
@@ -40,8 +48,11 @@ module type S = sig
   val compare_files : path -> path -> Ordering.t
   val compare_text_files : path -> path -> Ordering.t
 
-  val write_lines : path -> string list -> unit
+  val write_lines : ?binary:bool -> path -> string list -> unit
   val copy_file : ?chmod:(int -> int) -> src:path -> dst:path -> unit -> unit
+
+  val file_line : path -> int -> string
+  val file_lines : path -> start:int -> stop:int -> (string * string) list
 end
 
 module Make (Path : sig
@@ -87,8 +98,8 @@ module Make (Path : sig
   let write_file ?binary fn data =
     with_file_out ?binary fn ~f:(fun oc -> output_string oc data)
 
-  let write_lines fn lines =
-    with_file_out fn ~f:(fun oc ->
+  let write_lines ?binary fn lines =
+    with_file_out ?binary fn ~f:(fun oc ->
       List.iter ~f:(fun line ->
         output_string oc line;
         output_string oc "\n"
@@ -142,7 +153,7 @@ module Make (Path : sig
     let s2 = read_file fn2 in
     String.compare s1 s2
 
-  let copy_file ?(chmod=fun x -> x) ~src ~dst () =
+  let copy_file ?(chmod=Fn.id) ~src ~dst () =
     with_file_in src ~f:(fun ic ->
       let perm = (Unix.fstat (Unix.descr_of_in_channel ic)).st_perm |> chmod in
       Exn.protectx (P.open_out_gen
@@ -152,6 +163,31 @@ module Make (Path : sig
         ~finally:close_out
         ~f:(fun oc ->
           copy_channels ic oc))
+
+
+  let file_line path n =
+    with_file_in ~binary:false path
+      ~f:(fun ic ->
+        for _ = 1 to n - 1 do
+          ignore (input_line ic)
+        done;
+        input_line ic
+      )
+
+  let file_lines path ~start ~stop =
+    with_file_in ~binary:true path
+      ~f:(fun ic ->
+        let rec aux acc lnum =
+          if lnum > stop then
+            List.rev acc
+          else if lnum < start then
+            (ignore (input_line ic);
+             aux acc (lnum + 1))
+          else
+            let line = input_line ic in
+            aux ((string_of_int lnum, line) :: acc) (lnum + 1)
+        in
+        aux [] 1)
 end
 
 include Make(Path)

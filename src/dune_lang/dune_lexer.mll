@@ -92,7 +92,8 @@ module Template = struct
 end
 }
 
-let comment   = ';' [^ '\n' '\r']*
+let comment_body = [^ '\n' '\r']*
+let comment   = ';' comment_body
 let newline   = '\r'? '\n'
 let blank     = [' ' '\t' '\012']
 let digit     = ['0'-'9']
@@ -101,11 +102,17 @@ let hexdigit  = ['0'-'9' 'a'-'f' 'A'-'F']
 let atom_char = [^ ';' '(' ')' '"' '\000'-'\032' '\127'-'\255']
 let varname_char = atom_char # [ ':' '%' '{' '}' ]
 
-rule token = parse
+rule token with_comments = parse
   | newline
-    { Lexing.new_line lexbuf; token lexbuf }
-  | blank+ | comment
-    { token lexbuf }
+    { Lexing.new_line lexbuf; token with_comments lexbuf }
+  | blank+
+    { token with_comments lexbuf }
+  | comment
+    { if with_comments then
+        comment_trail [String.drop (Lexing.lexeme lexbuf) 1] lexbuf
+      else
+        token with_comments lexbuf
+    }
   | '('
     { Token.Lparen }
   | ')'
@@ -121,6 +128,12 @@ rule token = parse
     { Eof }
   | ""
     { atom [] (Lexing.lexeme_start_p lexbuf) lexbuf }
+
+and comment_trail acc = parse
+  | newline blank* ';' (comment_body as s)
+    { comment_trail (s :: acc) lexbuf }
+  | ""
+    { Token.Comment (Lines (List.rev acc)) }
 
 and atom acc start = parse
   | (atom_char # '%')+ as s
@@ -302,3 +315,7 @@ and template_variable = parse
   | '}' | eof
     { error lexbuf "%{...} forms cannot be empty" }
   | _ { error lexbuf "This character is not allowed inside %{...} forms" }
+
+{
+  let token ~with_comments lexbuf = token with_comments lexbuf
+}

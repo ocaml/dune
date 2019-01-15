@@ -1,15 +1,6 @@
-module Token : sig
-  type t =
-    | Atom          of Atom.t
-    | Quoted_string of string
-    | Lparen
-    | Rparen
-    | Sexp_comment
-    | Eof
-    | Template of Template.t
-end
+module Token = Lexer_shared.Token
 
-type t = Lexing.lexbuf -> Token.t
+type t = with_comments:bool -> Lexing.lexbuf -> Token.t
 
 val token : t
 val jbuild_token : t

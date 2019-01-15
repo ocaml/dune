@@ -27,7 +27,7 @@ let term =
   Scheduler.go ~log ~common (fun () ->
     Import.Main.setup ~log common >>= fun setup ->
     let dir = Path.of_string dir in
-    Util.check_path setup.contexts dir;
+    Util.check_path setup.workspace.contexts dir;
     let request =
       Build.all (
         match Path.extract_build_context dir with

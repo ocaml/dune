@@ -7,9 +7,11 @@ type +'a t =
   | Hbox of 'a t
   | Hvbox of int * 'a t
   | Hovbox of int * 'a t
+  | Bool of bool
   | Int of int
   | String of string
   | Char of char
+  | Float of float
   | List : 'b t * ('a -> 'b t) * 'a list -> 'b t
   | Space
   | Cut
@@ -99,9 +101,11 @@ module Renderer = struct
         pp_open_hovbox ppf indent;
         pp th ppf t;
         pp_close_box ppf ()
+      | Bool   x -> pp_print_bool ppf x
       | Int    x -> pp_print_int ppf x
       | String x -> pp_print_string ppf x
       | Char   x -> pp_print_char ppf x
+      | Float  x -> pp_print_float ppf x
       | List (sep, f, l) ->
         pp_print_list (fun ppf x -> pp th ppf (f x)) ppf l
           ~pp_sep:(fun ppf () -> pp th ppf sep)
@@ -166,9 +170,11 @@ let hbox l = Hbox (Concat l)
 let hvbox ?(indent=0) l = Hvbox (indent, Concat l)
 let hovbox ?(indent=0) l = Hovbox (indent, Concat l)
 
+let bool b = Bool b
 let int x = Int x
 let string x = String x
 let char x = Char x
+let float x = Float x
 let list ?(sep=Cut) l ~f = List (sep, f, l)
 
 let space = Space

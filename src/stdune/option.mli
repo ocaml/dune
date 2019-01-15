@@ -14,6 +14,8 @@ val bind : 'a t -> f:('a -> 'b t) -> 'b t
 
 val iter : 'a t -> f:('a -> unit) -> unit
 
+val forall: 'a t -> f:('a -> bool) -> bool
+
 val value : 'a t -> default:'a -> 'a
 val value_exn : 'a t -> 'a
 
@@ -30,3 +32,5 @@ val to_list : 'a t -> 'a list
 val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
 
 val compare : ('a -> 'a -> Ordering.t) -> 'a t -> 'a t -> Ordering.t
+
+val try_with : (unit -> 'a) -> 'a option

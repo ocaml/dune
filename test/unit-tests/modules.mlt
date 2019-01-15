@@ -5,12 +5,12 @@ open Dune;;
 
 #install_printer Module.Name.pp;;
 
-Module.Name.strip_alias_prefix (Module.Name.of_string "Foo__Bar")
+Module.Name.split_alias_prefix (Module.Name.of_string "Foo__Bar")
 [%%expect{|
-- : Module.Name.t = Bar
+- : (Module.Name.t * Module.Name.t) option = Some (Foo, Bar)
 |}]
 
-Module.Name.strip_alias_prefix (Module.Name.of_string "Foo")
+Module.Name.split_alias_prefix (Module.Name.of_string "Foo")
 [%%expect{|
-- : Module.Name.t = Foo
+- : (Module.Name.t * Module.Name.t) option = None
 |}]

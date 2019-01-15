@@ -3,7 +3,7 @@ open Stdune
 type t = Cmi | Cmo | Cmx
 
 val all : t list
-
+val pp : t Fmt.t
 val ext : t -> string
 val source : t -> Ml_kind.t
 

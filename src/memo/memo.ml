@@ -1,4 +1,4 @@
-open !Stdune
+open! Stdune
 open Fiber.O
 
 module type Input = Memo_intf.Input
@@ -131,7 +131,7 @@ module Cached_value = struct
     else begin
       let rec deps_changed acc = function
         | [] ->
-          Fiber.parallel_map acc ~f:(fun x -> x) >>| List.exists ~f:(fun x -> x)
+          Fiber.parallel_map acc ~f:Fn.id >>| List.exists ~f:Fn.id
         | Last_dep.T (node, prev_output) :: deps ->
           match node.state with
           | Running (run, ivar) ->
@@ -212,7 +212,7 @@ let push_stack_frame frame f =
 
 let dump_stack () =
   let stack = get_call_stack () in
-  Printf.printf "Memoized function stack:\n";
+  Printf.eprintf "Memoized function stack:\n";
   List.iter stack ~f:(fun st ->
     Printf.eprintf "   %s %s\n"
       (Stack_frame.name st)

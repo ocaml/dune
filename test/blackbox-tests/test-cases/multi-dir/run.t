@@ -56,14 +56,14 @@ Test for (include_subdir unqualified) with (preprocess (action ...))
   $ dune build --display short --root test4 @all
   Entering directory 'test4'
       ocamldep .main.eobjs/main.ml.d
-        ocamlc .main.eobjs/main.{cmi,cmo,cmt}
-      ocamlopt .main.eobjs/main.{cmx,o}
+        ocamlc .main.eobjs/byte/main.{cmi,cmo,cmt}
+      ocamlopt .main.eobjs/native/main.{cmx,o}
       ocamlopt main.exe
           main sub/foo.pp.ml
       ocamldep .foo.objs/foo.pp.ml.d
-        ocamlc .foo.objs/foo.{cmi,cmo,cmt}
+        ocamlc .foo.objs/byte/foo.{cmi,cmo,cmt}
         ocamlc foo.cma
         ocamlc main.bc
-      ocamlopt .foo.objs/foo.{cmx,o}
+      ocamlopt .foo.objs/native/foo.{cmx,o}
       ocamlopt foo.{a,cmxa}
       ocamlopt foo.cmxs

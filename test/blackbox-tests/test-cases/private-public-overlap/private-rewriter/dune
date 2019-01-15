@@ -1,0 +1,12 @@
+(library
+ (name ppx_internal)
+ (modules :standard \ mylib)
+ (kind ppx_rewriter)
+ (libraries ocaml-migrate-parsetree))
+
+(library
+ (name mylib)
+ (public_name mylib)
+ (preprocess
+  (pps ppx_internal))
+ (modules mylib))

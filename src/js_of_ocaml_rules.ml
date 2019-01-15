@@ -19,36 +19,52 @@ let install_jsoo_hint = "try: opam install js_of_ocaml-compiler"
 let in_build_dir ~ctx args =
   Path.L.relative ctx.Context.build_dir (".js" :: args)
 
-let runtime_file ~sctx file =
+let jsoo ~dir sctx =
+  SC.resolve_program sctx ~dir ~loc:None ~hint:install_jsoo_hint
+    "js_of_ocaml"
+
+let runtime_file ~dir ~sctx file =
   match
     Artifacts.file_of_lib (SC.artifacts sctx)
       ~loc:Loc.none
       ~lib:(Lib_name.of_string_exn ~loc:None "js_of_ocaml-compiler") ~file
   with
   | Error _ ->
-    Arg_spec.Dyn (fun _ ->
-      Utils.library_not_found ~context:(SC.context sctx).name
-        ~hint:install_jsoo_hint
-        "js_of_ocaml-compiler")
-  | Ok f -> Arg_spec.Dep f
+    let fail =
+      let fail () =
+        Utils.library_not_found ~context:(SC.context sctx).name
+          ~hint:install_jsoo_hint
+          "js_of_ocaml-compiler"
+      in
+      Build.fail {fail}
+    in
+    begin match jsoo ~dir sctx with
+    | Ok path ->
+      let path = Path.relative (Path.parent_exn path) file in
+      Build.if_file_exists path ~then_:(Build.arr (fun _ -> path)) ~else_:fail
+    | _ ->
+      fail
+    end
+  | Ok f ->
+    Build.arr (fun _ -> f)
 
 let js_of_ocaml_rule sctx ~dir ~flags ~spec ~target =
-  let jsoo =
-    SC.resolve_program sctx ~dir ~loc:None ~hint:install_jsoo_hint
-      "js_of_ocaml" in
-  let runtime = runtime_file ~sctx "runtime.js" in
+  let jsoo = jsoo ~dir sctx in
+  (Build.arr Fn.id &&& runtime_file ~dir ~sctx "runtime.js") >>>
   Build.run ~dir
     jsoo
-    [ Arg_spec.Dyn flags
+    [ Arg_spec.Dyn (fun (x, _) -> flags x)
     ; Arg_spec.A "-o"; Target target
-    ; Arg_spec.A "--no-runtime"; runtime
+    ; Arg_spec.A "--no-runtime"
+    ; Arg_spec.Dyn (fun (_, runtime) -> Dep runtime)
     ; spec
     ]
 
 let standalone_runtime_rule cc ~javascript_files ~target =
   let spec =
     Arg_spec.S
-      [ Arg_spec.of_result_map (Compilation_context.requires cc) ~f:(fun libs ->
+      [ Arg_spec.of_result_map
+          (Compilation_context.requires_link cc) ~f:(fun libs ->
           Arg_spec.Deps (Lib.L.jsoo_runtime_files libs))
       ; Arg_spec.Deps javascript_files
       ]
@@ -65,7 +81,7 @@ let exe_rule cc ~javascript_files ~src ~target =
   let sctx = Compilation_context.super_context cc in
   let spec =
     Arg_spec.S
-      [ Arg_spec.of_result_map (Compilation_context.requires cc)
+      [ Arg_spec.of_result_map (Compilation_context.requires_link cc)
           ~f:(fun libs -> Arg_spec.Deps (Lib.L.jsoo_runtime_files libs))
       ; Arg_spec.Deps javascript_files
       ; Arg_spec.Dep src
@@ -87,20 +103,22 @@ let link_rule cc ~runtime ~target =
   let sctx = Compilation_context.super_context cc in
   let ctx = Compilation_context.context cc in
   let dir = Compilation_context.dir cc in
+  let requires = Compilation_context.requires_link cc in
   let get_all (cm, _) =
-    Arg_spec.of_result_map (Compilation_context.requires cc) ~f:(fun libs ->
+    Arg_spec.of_result_map requires ~f:(fun libs ->
       let all_libs = List.concat_map libs ~f:(jsoo_archives ~ctx) in
       (* Special case for the stdlib because it is not referenced in the META *)
-      let all_libs = in_build_dir ~ctx ["stdlib"; "stdlib.cma.js"] :: all_libs in
+      let all_libs =
+        in_build_dir ~ctx ["stdlib"; "stdlib.cma.js"] :: all_libs in
       let all_other_modules =
         List.map cm ~f:(fun m -> Path.extend_basename m ~suffix:".js")
       in
-      Arg_spec.Deps (List.concat [all_libs;all_other_modules]))
+      Arg_spec.Deps (List.concat [all_libs; all_other_modules]))
   in
   let jsoo_link =
     SC.resolve_program sctx ~dir ~loc:None
       ~hint:install_jsoo_hint "jsoo_link" in
-  Build.run ~dir:(Compilation_context.dir cc)
+  Build.run ~dir
     jsoo_link
     [ Arg_spec.A "-o"; Target target
     ; Arg_spec.Dep runtime

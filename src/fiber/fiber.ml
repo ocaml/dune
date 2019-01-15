@@ -70,20 +70,8 @@ end = struct
     | None ->
       (* We can't let the exception leak at this point, so we just
          dump the error on stderr and exit *)
-      let bt = Printexc.get_backtrace () in
-      let s =
-        Printf.sprintf "%s\n%s" (Printexc.to_string exn) bt
-        |> String.split_lines
-        |> List.map ~f:(Printf.sprintf "| %s")
-        |> String.concat ~sep:"\n"
-      in
-      let line = String.make 71 '-' in
-      Format.eprintf
-        "/%s\n\
-         | @{<error>Internal error@}: Uncaught exception.\n\
-         %s\n\
-         \\%s@."
-        line s line;
+      let backtrace = Printexc.get_backtrace () in
+      Format.eprintf "%a@.%!" (Exn.pp_uncaught ~backtrace) exn;
       sys_exit 42
     | Some { ctx; run } ->
       current := ctx;
@@ -219,6 +207,22 @@ let all l =
   loop l []
 
 let all_unit l = List.fold_left l ~init:(return ()) ~f:(>>>)
+
+let map_all l ~f =
+  let rec loop l acc =
+    match l with
+    | [] -> return (List.rev acc)
+    | x :: l -> f x >>= fun x -> loop l (x :: acc)
+  in
+  loop l []
+
+let map_all_unit l ~f =
+  let rec loop l =
+    match l with
+    | [] -> return ()
+    | x :: l -> f x >>= fun () -> loop l
+  in
+  loop l
 
 type ('a, 'b) fork_and_join_state =
   | Nothing_yet

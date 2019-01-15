@@ -20,6 +20,7 @@ type var_expander =
 let scope t = t.scope
 let dir t = t.dir
 let bindings t = t.bindings
+let artifacts_host t = t.artifacts_host
 
 let make_ocaml_config ocaml_config =
   let string s = [Value.String s] in

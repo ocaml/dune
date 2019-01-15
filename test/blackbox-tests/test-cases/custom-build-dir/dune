@@ -1,0 +1,4 @@
+(rule
+ (with-stdout-to
+  foo
+  (echo "foobar")))

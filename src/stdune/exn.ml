@@ -4,11 +4,17 @@ exception Code_error of Sexp.t
 
 exception Fatal_error of string
 
-exception Loc_error of Loc.t * string
+exception Loc_error of Loc0.t * string
 
 external raise         : exn -> _ = "%raise"
 external raise_notrace : exn -> _ = "%raise_notrace"
 external reraise       : exn -> _ = "%reraise"
+
+let () =
+  Printexc.register_printer (function
+    | Code_error s -> Some (Format.asprintf "%a" Sexp.pp s)
+    | Loc_error (loc, s) -> Some (Format.asprintf "%a%s" Loc0.print loc s)
+    | _ -> None)
 
 let fatalf ?loc fmt =
   Format.ksprintf (fun s ->
@@ -30,6 +36,22 @@ let code_error message vars =
            :: List.map vars ~f:(fun (name, value) ->
              Sexp.List [Atom name; value])))
   |> raise
+
+module String = Dune_caml.StringLabels
+let pp_uncaught ~backtrace fmt exn =
+  let s =
+    Printf.sprintf "%s\n%s" (Printexc.to_string exn) backtrace
+    |> String_split.split_lines
+    |> ListLabels.map ~f:(Printf.sprintf "| %s")
+    |> String.concat ~sep:"\n"
+  in
+  let line = String.make 71 '-' in
+  Format.fprintf fmt
+    "/%s\n\
+     | @{<error>Internal error@}: Uncaught exception.\n\
+     %s\n\
+     \\%s@."
+    line s line;
 
 include
   ((struct

@@ -75,7 +75,7 @@ module Lib = struct
     let path = Path_dune_lang.Local.encode ~dir:package_root in
     let paths name f = field_l name path f in
     let mode_paths name (xs : Path.t Mode.Dict.List.t) =
-      field_l name (fun x -> x) (Mode.Dict.List.encode path xs) in
+      field_l name sexp (Mode.Dict.List.encode path xs) in
     let libs name = field_l name (no_loc Lib_name.encode) in
     record_fields @@
     [ field "name" Lib_name.encode name
@@ -91,14 +91,14 @@ module Lib = struct
     ; libs "ppx_runtime_deps" ppx_runtime_deps
     ; field_o "implements" (no_loc Lib_name.encode) implements
     ; field_o "main_module_name" Module.Name.encode main_module_name
-    ; field_l "modes" (fun x -> x) (Mode.Dict.Set.encode modes)
-    ; field_l "modules" (fun x -> x)
+    ; field_l "modes" sexp (Mode.Dict.Set.encode modes)
+    ; field_l "modules" sexp
         (match modules with
          | None -> []
          | Some modules -> Lib_modules.encode modules)
     ] @ (Sub_system_name.Map.to_list sub_systems
          |> List.map ~f:(fun (name, (_ver, sexps)) ->
-           field_l (Sub_system_name.to_string name) (fun x -> x) sexps))
+           field_l (Sub_system_name.to_string name) sexp sexps))
 
   let decode ~base =
     let open Stanza.Decoder in
@@ -112,9 +112,10 @@ module Lib = struct
     record (
       field_o "main_module_name" Module.Name.decode >>= fun main_module_name ->
       field_o "implements" (located Lib_name.decode) >>= fun implements ->
+      field "name" Lib_name.decode >>= fun name ->
+      let dir = Path.append_local base (dir_of_name name) in
       let%map synopsis = field_o "synopsis" string
       and loc = loc
-      and name = field "name" Lib_name.decode
       and modes = field_l "modes" Mode.decode
       and kind = field "kind" Lib_kind.decode
       and archives = mode_paths "archives"
@@ -127,7 +128,7 @@ module Lib = struct
       and virtual_ = field_b "virtual"
       and sub_systems = Sub_system_info.record_parser ()
       and modules = field_o "modules" (Lib_modules.decode
-                         ~implements:(Option.is_some implements) ~dir:base)
+                         ~implements:(Option.is_some implements) ~dir)
       in
       let modes = Mode.Dict.Set.of_list modes in
       { kind
@@ -146,7 +147,7 @@ module Lib = struct
       ; main_module_name
       ; virtual_
       ; version = None
-      ; dir = Path.append_local base (dir_of_name name)
+      ; dir
       ; modules
       ; modes
       }
@@ -172,6 +173,7 @@ module Lib = struct
   let modes t = t.modes
 
   let compare_name x y = Lib_name.compare x.name y.name
+  let wrapped t = Option.map t.modules ~f:Lib_modules.wrapped
 end
 
 type 'sub_system t =

@@ -5,44 +5,53 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
   let ctx = Super_context.context sctx in
   let vlib = Vimpl.vlib vimpl in
   let impl = Vimpl.impl vimpl in
+  let impl_obj_dir = Dune_file.Library.obj_dir ~dir impl in
+  let vlib_obj_dir = Lib.obj_dir vlib in
   let vlib_modules = Vimpl.vlib_modules vimpl in
-  let lib_name = snd impl.name in
-  let target_obj_dir =
-    let obj_dir = Utils.library_object_directory ~dir lib_name in
-    let private_obj_dir = Utils.library_private_obj_dir ~obj_dir in
-    fun m ->
-      if Module.is_public m then
-        obj_dir
-      else
-        private_obj_dir
-  in
-  let copy_to_obj_dir ~obj_dir file =
-    let dst = Path.relative obj_dir (Path.basename file) in
+  let copy_to_obj_dir ~src ~dst =
     Super_context.add_rule ~dir ~loc:(Loc.of_pos __POS__)
-      sctx (Build.symlink ~src:file ~dst)
+      sctx (Build.symlink ~src ~dst)
   in
-  let obj_dir = Lib.obj_dir vlib in
   let modes =
     Dune_file.Mode_conf.Set.eval impl.modes
       ~has_native:(Option.is_some ctx.ocamlopt) in
-  let copy_obj_file m ext =
-    let source = Module.obj_file m ~obj_dir ~ext in
-    copy_to_obj_dir ~obj_dir:(target_obj_dir m) source in
-  let copy_objs m =
-    copy_obj_file m (Cm_kind.ext Cmi);
-    if Module.has_impl m then begin
+  let copy_obj_file ~src ~dst ?ext kind =
+    let src = Module.cm_file_unsafe src ?ext kind in
+    let dst = Module.cm_file_unsafe dst ?ext kind in
+    copy_to_obj_dir ~src ~dst in
+  let copy_objs src =
+    let dst = Module.set_obj_dir ~obj_dir:impl_obj_dir src in
+    copy_obj_file ~src ~dst Cmi;
+    if Module.is_public dst && Obj_dir.has_public_cmi_dir impl_obj_dir
+    then begin
+      let src = Module.cm_public_file_unsafe src Cmi in
+      let dst = Module.cm_public_file_unsafe dst Cmi in
+      copy_to_obj_dir ~src ~dst
+    end;
+    if Module.has_impl src then begin
       if modes.byte then
-        copy_obj_file m (Cm_kind.ext Cmo);
+        copy_obj_file ~src ~dst Cmo;
       if modes.native then
-        List.iter [Cm_kind.ext Cmx; ctx.ext_obj] ~f:(copy_obj_file m)
+        List.iter [Cm_kind.ext Cmx; ctx.ext_obj]
+          ~f:(fun ext -> copy_obj_file ~src ~dst ~ext Cmx)
     end
   in
   let copy_all_deps =
     let all_deps ~obj_dir f =
       Path.relative obj_dir (Path.basename f ^ ".all-deps") in
-    (* we only need to copy the .all-deps files for local libraries. for remote
-       libraries, we just use ocamlobjinfo *)
-    if not (Lib.is_local vlib) then
+    if Lib.is_local vlib then
+      fun m ->
+        if Module.is_public m then
+          List.iter [Intf; Impl] ~f:(fun kind ->
+            Module.file m kind
+            |> Option.iter ~f:(fun f ->
+              copy_to_obj_dir
+                ~src:(all_deps ~obj_dir:(Obj_dir.obj_dir vlib_obj_dir) f)
+                ~dst:(all_deps ~obj_dir:(Obj_dir.obj_dir impl_obj_dir) f))
+          );
+    else
+      (* we only need to copy the .all-deps files for local libraries. for
+         remote libraries, we just use ocamlobjinfo *)
       let vlib_dep_graph = Vimpl.vlib_dep_graph vimpl in
       fun m ->
         List.iter [Intf; Impl] ~f:(fun kind ->
@@ -55,20 +64,14 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
               |> List.map ~f:(fun m -> Module.Name.to_string (Module.name m))
               |> String.concat ~sep:"\n")
             >>>
-            Build.write_file_dyn (all_deps ~obj_dir:(target_obj_dir m) f)
+            Build.write_file_dyn
+              (all_deps ~obj_dir:(Obj_dir.obj_dir impl_obj_dir) f)
             |> Super_context.add_rule sctx ~dir))
-    else
-      fun m ->
-        if Module.is_public m then
-          List.iter [Intf; Impl] ~f:(fun kind ->
-            Module.file m kind
-            |> Option.iter ~f:(fun f ->
-              copy_to_obj_dir (all_deps ~obj_dir f) ~obj_dir:(target_obj_dir m))
-          );
   in
   Option.iter (Lib_modules.alias_module vlib_modules) ~f:copy_objs;
   Module.Name.Map.iter (Lib_modules.modules vlib_modules)
     ~f:(fun m -> copy_objs m; copy_all_deps m)
+
 
 let module_list ms =
   List.map ms ~f:(fun m -> sprintf "- %s" (Module.Name.to_string m))
@@ -132,11 +135,15 @@ let check_module_fields ~(lib : Dune_file.Library.t) ~virtual_modules
       (module_list impl_modules_with_intf)
   end
 
-let external_dep_graph sctx ~impl_cm_kind ~vlib_obj_dir ~impl_obj_dir ~modules =
+let external_dep_graph sctx ~impl_cm_kind ~vlib_obj_dir ~impl_obj_dir
+      ~vlib_modules =
+  let wrapped = Lib_modules.is_wrapped vlib_modules in
+  let modules = Lib_modules.modules vlib_modules in
   let ocamlobjinfo =
     let ctx = Super_context.context sctx in
     fun m cm_kind ->
-      let unit = Module.cm_file_unsafe m ~obj_dir:vlib_obj_dir cm_kind in
+      let m = Module.set_obj_dir ~obj_dir:vlib_obj_dir m in
+      let unit = Module.cm_file_unsafe m cm_kind in
       Ocamlobjinfo.rules ~dir:impl_obj_dir ~ctx ~unit
   in
   Ml_kind.Dict.of_func (fun ~ml_kind ->
@@ -145,26 +152,52 @@ let external_dep_graph sctx ~impl_cm_kind ~vlib_obj_dir ~impl_obj_dir ~modules =
       | Impl -> impl_cm_kind
       | Intf -> Cm_kind.Cmi
     in
+    let deps_from_objnfo ~for_module (ocamlobjinfo : Ocamlobjinfo.t) =
+      Module.Name.Set.to_list ocamlobjinfo.intf
+      |> List.filter_map ~f:(fun dep ->
+        match Module.Name.split_alias_prefix dep, wrapped with
+        | Some _, false -> None
+        | None, false ->
+          if Module.name for_module = dep then
+            None
+          else
+            Module.Name.Map.find modules dep
+        | None, true -> (* lib interface module *)
+          if Module.name for_module = dep then
+            None
+          else
+            Lib_modules.main_module_name vlib_modules
+            |> Option.bind ~f:(fun main_module_name ->
+              if main_module_name = Module.name for_module then
+                Module.Name.Map.find modules dep
+              else
+                None)
+        | Some (prefix, name), true ->
+          begin match Lib_modules.main_module_name vlib_modules with
+          | None -> assert false
+          | Some main_module_name ->
+            if main_module_name <> prefix
+            || Module.name for_module = name then
+              None
+            else
+              Module.Name.Map.find modules name
+          end)
+    in
     Dep_graph.make ~dir:impl_obj_dir
       ~per_module:(Module.Name.Map.map modules ~f:(fun m ->
-        if (ml_kind = Intf && not (Module.has_intf m))
-        || (ml_kind = Impl && not (Module.has_impl m))
-        then
-          (m, Build.return [])
-        else
-          let (write, read) = ocamlobjinfo m cm_kind in
-          Super_context.add_rule sctx ~dir:impl_obj_dir write;
-          let open Build.O in
-          ( m
-          , Build.memoize "ocamlobjinfo" @@
-            read >>^ fun dict ->
-            Module.Name.Set.to_list dict.intf
-            |> List.filter_map ~f:(fun dep ->
-              let dep = Module.Name.strip_alias_prefix dep in
-              if Module.name m = dep then
-                None
-              else
-                Module.Name.Map.find modules dep)))))
+        let deps =
+          if (ml_kind = Intf && not (Module.has_intf m))
+          || (ml_kind = Impl && not (Module.has_impl m))
+          then
+            Build.return []
+          else
+            let (write, read) = ocamlobjinfo m cm_kind in
+            Super_context.add_rule sctx ~dir:impl_obj_dir write;
+            let open Build.O in
+            Build.memoize "ocamlobjinfo" @@
+            read >>^ deps_from_objnfo ~for_module:m
+        in
+        m, deps)))
 
 let impl sctx ~dir ~(lib : Dune_file.Library.t) ~scope ~modules =
   Option.map lib.implements ~f:begin fun (loc, implements) ->
@@ -198,7 +231,8 @@ let impl sctx ~dir ~(lib : Dune_file.Library.t) ~scope ~modules =
         let modules = Lib_modules.modules vlib_modules in
         match virtual_ with
         | Local ->
-          Ocamldep.graph_of_remote_lib ~obj_dir:vlib_obj_dir ~modules
+          Ocamldep.graph_of_remote_lib
+            ~obj_dir:(Obj_dir.obj_dir vlib_obj_dir) ~modules
         | External _ ->
           let impl_obj_dir =
             Utils.library_object_directory ~dir (snd lib.name) in
@@ -210,7 +244,7 @@ let impl sctx ~dir ~(lib : Dune_file.Library.t) ~scope ~modules =
               Mode.cm_kind Native
           in
           external_dep_graph sctx ~impl_cm_kind ~vlib_obj_dir ~impl_obj_dir
-            ~modules
+            ~vlib_modules
       in
-      Vimpl.make ~impl:lib ~vlib ~vlib_modules ~vlib_dep_graph
+      Vimpl.make ~dir ~impl:lib ~vlib ~vlib_modules ~vlib_dep_graph
   end

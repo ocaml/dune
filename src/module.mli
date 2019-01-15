@@ -15,8 +15,8 @@ module Name : sig
 
   val uncapitalize : t -> string
 
-  (** Strip all parts that come after the __ *)
-  val strip_alias_prefix : t -> t
+  (** Split a prefixed module name into its components *)
+  val split_alias_prefix : t -> (t * t) option
 
   val pp : Format.formatter -> t -> unit
   val pp_quote : Format.formatter -> t -> unit
@@ -58,6 +58,12 @@ module Visibility : sig
   include Dune_lang.Conv with type t := t
 end
 
+module Kind : sig
+  type t = Intf_only | Virtual | Impl
+
+  include Dune_lang.Conv with type t := t
+end
+
 type t
 
 (** [obj_name] Object name. It is different from [name] for wrapped modules. *)
@@ -66,6 +72,8 @@ val make
   -> ?intf:File.t
   -> ?obj_name:string
   -> visibility:Visibility.t
+  -> obj_dir:Obj_dir.t
+  -> kind:Kind.t
   -> Name.t
   -> t
 
@@ -76,28 +84,33 @@ val real_unit_name : t -> Name.t
 
 val intf : t -> File.t option
 val impl : t -> File.t option
+val obj_dir : t -> Obj_dir.t
 
 val pp_flags : t -> (unit, string list) Build.t option
 
-val file      : t -> Ml_kind.t -> Path.t option
-val cm_source : t -> Cm_kind.t -> Path.t option
-val cm_file   : t -> obj_dir:Path.t -> Cm_kind.t -> Path.t option
-val cmt_file  : t -> obj_dir:Path.t -> Ml_kind.t -> Path.t option
+val file            : t -> Ml_kind.t -> Path.t option
+val cm_source       : t -> Cm_kind.t -> Path.t option
+val cm_file         : t -> ?ext:string -> Cm_kind.t -> Path.t option
+val cm_public_file  : t -> ?ext:string -> Cm_kind.t -> Path.t option
+val cmt_file        : t -> Ml_kind.t -> Path.t option
 
-val obj_file : t -> obj_dir:Path.t -> ext:string -> Path.t
+val obj_file : t -> mode:Mode.t -> ext:string -> Path.t
 
 val obj_name : t -> string
 
 val src_dir : t -> Path.t option
 
 (** Same as [cm_file] but doesn't raise if [cm_kind] is [Cmo] or [Cmx]
-    and the module has no implementation. *)
-val cm_file_unsafe : t -> obj_dir:Path.t -> Cm_kind.t -> Path.t
+    and the module has no implementation.
+    If present [ext] replace the extension of the kind
+ *)
+val cm_file_unsafe : t -> ?ext:string -> Cm_kind.t -> Path.t
+val cm_public_file_unsafe : t -> ?ext:string -> Cm_kind.t -> Path.t
 
 val odoc_file : t -> doc_dir:Path.t -> Path.t
 
 (** Either the .cmti, or .cmt if the module has no interface *)
-val cmti_file : t -> obj_dir:Path.t -> Path.t
+val cmti_file : t -> Path.t
 
 val iter : t -> f:(Ml_kind.t -> File.t -> unit) -> unit
 
@@ -124,6 +137,8 @@ module Name_map : sig
   type module_
   type t = module_ Name.Map.t
 
+  val pp : t Fmt.t
+
   val impl_only : t -> module_ list
 
   val of_list_exn : module_ list -> t
@@ -143,8 +158,11 @@ end with type module_ := t
 
 val is_public : t -> bool
 val is_private : t -> bool
+val is_virtual : t -> bool
 
 val set_private : t -> t
+val set_obj_dir : t -> obj_dir:Obj_dir.t -> t
+val set_virtual : t -> t
 
 val remove_files : t -> t
 
@@ -155,3 +173,24 @@ val visibility : t -> Visibility.t
 val encode : t -> Dune_lang.t list
 
 val decode : dir:Path.t -> t Dune_lang.Decoder.t
+
+(* Only the source of a module, not yet associated to a library *)
+module Source : sig
+  type t = private
+    { name : Name.t
+    ; impl : File.t option
+    ; intf : File.t option
+    }
+
+  val make
+    :  ?impl:File.t
+    -> ?intf:File.t
+    -> Name.t
+    -> t
+
+  val has_impl: t -> bool
+
+  val src_dir : t -> Path.t option
+
+  val name : t -> Name.t
+end

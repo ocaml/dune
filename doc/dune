@@ -8,7 +8,7 @@
 
 (rule
  (with-stdout-to dune-config.5
-  (run %{bin:jbuilder} help config --man-format=groff)))
+  (run %{bin:dune} help config --man-format=groff)))
 
 (install
  (section man)

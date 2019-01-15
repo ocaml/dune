@@ -46,6 +46,9 @@ val name : t -> Name.t
 val root : t -> Path.Local.t
 val stanza_parser : t -> Stanza.t list Dune_lang.Decoder.t
 
+(** Return the path of the project file. *)
+val file : t -> Path.t
+
 module Lang : sig
   (** [register id stanzas_parser] register a new language. Users will
       select this language by writing:
@@ -97,11 +100,13 @@ val filename : string
     the workspace contains no [dune-project] or [<package>.opam] files. *)
 val anonymous : t Lazy.t
 
+type created_or_already_exist = Created | Already_exist
+
 (** Check that the dune-project file exists and create it otherwise. *)
-val ensure_project_file_exists : t -> unit
+val ensure_project_file_exists : t -> created_or_already_exist
 
 (** Append the following text to the project file *)
-val append_to_project_file : t -> string -> unit
+val append_to_project_file : t -> string -> created_or_already_exist
 
 (** Set the project we are currently parsing dune files for *)
 val set : t -> ('a, 'k) Dune_lang.Decoder.parser -> ('a, 'k) Dune_lang.Decoder.parser
@@ -112,5 +117,7 @@ val get_exn : unit -> (t, 'k) Dune_lang.Decoder.parser
 val find_extension_args : t -> 'a Extension.t -> 'a option
 
 val set_parsing_context : t -> 'a Dune_lang.Decoder.t -> 'a Dune_lang.Decoder.t
+
+val implicit_transitive_deps : t -> bool
 
 val pp : t Fmt.t

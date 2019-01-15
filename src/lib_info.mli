@@ -33,8 +33,7 @@ type t = private
   ; kind             : Lib_kind.t
   ; status           : Status.t
   ; src_dir          : Path.t
-  ; obj_dir          : Path.t
-  ; private_obj_dir  : Path.t option
+  ; obj_dir          : Obj_dir.t
   ; version          : string option
   ; synopsis         : string option
   ; archives         : Path.t list Mode.Dict.t
@@ -52,6 +51,7 @@ type t = private
   ; sub_systems      : Sub_system_info.t Sub_system_name.Map.t
   ; virtual_         : Virtual.t option
   ; implements       : (Loc.t * Lib_name.t) option
+  ; wrapped          : Wrapped.t Dune_file.Library.Inherited.t option
   ; main_module_name : Dune_file.Library.Main_module_name.t
   ; modes            : Mode.Dict.Set.t
   }

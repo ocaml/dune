@@ -8,6 +8,8 @@ open! Import
 
 type t
 
+val pp : t Fmt.t
+
 (** {1} Constructors *)
 
 (** No dependencies. *)

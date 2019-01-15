@@ -3,49 +3,6 @@
 PATH=~/ocaml/bin:$PATH; export PATH
 OPAMYES="true"; export OPAMYES
 
-has-label () {
-    local label="$1"
-    local API_URL=https://api.github.com/repos/$TRAVIS_REPO_SLUG/issues/$TRAVIS_PULL_REQUEST/labels
-    test -n "$(curl $API_URL | grep $label)"
-}
-
-file-has-changed () {
-    local file="$1"
-    local cur_head=${TRAVIS_COMMIT_RANGE%%...*}
-    local pr_head=${TRAVIS_COMMIT_RANGE##*...}
-    local merge_base=$(git merge-base $cur_head $pr_head)
-    if git diff --name-only --exit-code $merge_base..$pr_head \
-           "$file" > /dev/null; then
-        false
-    else
-        true
-    fi
-}
-
-if [[ "$CI_KIND" == changes ]]; then
-    if [[ "$TRAVIS_EVENT_TYPE" == pull_request ]]; then
-        cat<<EOF
-------------------------------------------------------------------------
-This test checks that the CHANGES.md file has been modified by the
-pull request. Most contributions should come with a message in the
-CHANGES.md.
-
-Some very minor changes (typo fixes for example) may not need a
-Changes entry. In this case, you may explicitly disable this test by
-by using the "no-change-entry-needed" label on the github pull
-request.
-------------------------------------------------------------------------
-EOF
-        # check that CHANGES.md has been modified
-        if file-has-changed CHANGES.md || has-label no-change-entry-required; then
-            echo pass
-        else
-            exit 1
-        fi
-    fi
-    exit 0
-fi
-
 TARGET="$1"; shift
 
 case "$TARGET" in
@@ -133,9 +90,9 @@ case "$TARGET" in
     ./boot.exe
     echo -en "travis_fold:end:dune.boot\r"
     if [ $WITH_OPAM -eq 1 ] ; then
-      _build/install/default/bin/dune runtest && \
-      _build/install/default/bin/dune build @test/blackbox-tests/runtest-js && \
-      ! _build/install/default/bin/dune build @test/fail-with-background-jobs-running
+      _build_bootstrap/install/default/bin/dune runtest && \
+      _build_bootstrap/install/default/bin/dune build @test/blackbox-tests/runtest-js && \
+      ! _build_bootstrap/install/default/bin/dune build @test/fail-with-background-jobs-running
       RESULT=$?
       if [ $UPDATE_OPAM -eq 0 ] ; then
         rm -rf ~/.opam

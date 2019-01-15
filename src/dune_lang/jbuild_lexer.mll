@@ -11,7 +11,8 @@ type escape_mode =
   | In_quoted_string
 }
 
-let comment   = ';' [^ '\n' '\r']*
+let comment_body = [^ '\n' '\r']*
+let comment   = ';' comment_body
 let newline   = '\r'? '\n'
 let blank     = [' ' '\t' '\012']
 let digit     = ['0'-'9']
@@ -21,11 +22,17 @@ let atom_char =
   [^ ';' '(' ')' '"' ' ' '\t' '\r' '\n' '\012']
 
 (* rule for jbuild files *)
-rule token = parse
+rule token with_comments = parse
   | newline
-    { Lexing.new_line lexbuf; token lexbuf }
-  | blank+ | comment
-    { token lexbuf }
+    { Lexing.new_line lexbuf; token with_comments lexbuf }
+  | blank+
+    { token with_comments lexbuf }
+  | comment
+    { if with_comments then
+        comment_trail [Stdune.String.drop (Lexing.lexeme lexbuf) 1] lexbuf
+      else
+        token with_comments lexbuf
+    }
   | '('
     { Token.Lparen }
   | ')'
@@ -38,8 +45,13 @@ rule token = parse
       Quoted_string s
     }
   | "#|"
-    { block_comment lexbuf;
-      token lexbuf
+    { let start = Lexing.lexeme_start_p lexbuf in
+      block_comment lexbuf;
+      if with_comments then begin
+        lexbuf.lex_start_p <- start;
+        Comment Legacy
+      end else
+        token false lexbuf
     }
   | "#;"
     { Sexp_comment }
@@ -47,6 +59,12 @@ rule token = parse
     { Eof }
   | ""
     { atom "" (Lexing.lexeme_start_p lexbuf) lexbuf }
+
+and comment_trail acc = parse
+  | newline blank* ';' (comment_body as s)
+    { comment_trail (s :: acc) lexbuf }
+  | ""
+    { Token.Comment (Lines (List.rev acc)) }
 
 and atom acc start = parse
   | '#'+ '|'
@@ -164,3 +182,7 @@ and escape_sequence mode = parse
         error lexbuf "unterminated escape sequence" ~delta:(-1);
       Other
     }
+
+{
+  let token ~with_comments lexbuf = token with_comments lexbuf
+}

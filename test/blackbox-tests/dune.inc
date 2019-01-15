@@ -1135,11 +1135,27 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name toplevel-stanza)
+ (deps (package dune) (source_tree test-cases/toplevel-stanza))
+ (action
+  (chdir
+   test-cases/toplevel-stanza
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name trace-file)
  (deps (package dune) (source_tree test-cases/trace-file))
  (action
   (chdir
    test-cases/trace-file
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
+ (name transitive-deps-mode)
+ (deps (package dune) (source_tree test-cases/transitive-deps-mode))
+ (action
+  (chdir
+   test-cases/transitive-deps-mode
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
@@ -1205,7 +1221,7 @@
   (chdir
    test-cases/wrapped-transition
    (progn
-    (run %{exe:cram.exe} -skip-versions <4.07.0 -test run.t)
+    (run %{exe:cram.exe} -skip-versions <4.06.0 -test run.t)
     (diff? run.t run.t.corrected)))))
 
 (alias
@@ -1348,7 +1364,9 @@
   (alias tests-stanza-action)
   (alias tests-stanza-action-syntax-version)
   (alias too-many-parens)
+  (alias toplevel-stanza)
   (alias trace-file)
+  (alias transitive-deps-mode)
   (alias use-meta)
   (alias utop)
   (alias utop-default)
@@ -1486,7 +1504,9 @@
   (alias tests-stanza-action)
   (alias tests-stanza-action-syntax-version)
   (alias too-many-parens)
+  (alias toplevel-stanza)
   (alias trace-file)
+  (alias transitive-deps-mode)
   (alias use-meta)
   (alias utop-default)
   (alias variants)

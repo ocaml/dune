@@ -111,6 +111,9 @@ module Linkage = struct
     }
 end
 
+let exe_path_from_name cctx ~name ~(linkage : Linkage.t) =
+  Path.relative (CC.dir cctx) (name ^ linkage.ext)
+
 let link_exe
       ~loc
       ~name
@@ -124,20 +127,20 @@ let link_exe
   let sctx     = CC.super_context cctx in
   let ctx      = SC.context       sctx in
   let dir      = CC.dir           cctx in
-  let obj_dir  = CC.obj_dir       cctx in
-  let requires = CC.requires      cctx in
+  let requires = CC.requires_link cctx in
   let expander = CC.expander      cctx in
   let mode = linkage.mode in
-  let exe = Path.relative dir (name ^ linkage.ext) in
+  let exe = exe_path_from_name cctx ~name ~linkage in
   let compiler = Option.value_exn (Context.compiler ctx mode) in
+  let kind = Mode.cm_kind mode in
   let artifacts ~ext modules =
-    List.map modules ~f:(Module.obj_file ~obj_dir ~ext)
+    List.map modules ~f:(Module.obj_file ~mode ~ext)
   in
   let modules_and_cm_files =
     Build.memoize "cm files"
       (top_sorted_modules >>^ fun modules ->
        (modules,
-        artifacts modules ~ext:(Cm_kind.ext (Mode.cm_kind mode))))
+        artifacts modules ~ext:(Cm_kind.ext kind)))
   in
   let register_native_objs_deps build =
     match mode with
@@ -166,7 +169,7 @@ let link_exe
        ; A "-o"; Target exe
        ; As linkage.flags
        ; Dyn (fun (_, _, link_flags) -> As link_flags)
-       ; Arg_spec.of_result_map arg_spec_for_requires ~f:(fun x -> x)
+       ; Arg_spec.of_result_map arg_spec_for_requires ~f:Fn.id
        ; Dyn (fun (cm_files, _, _) -> Deps cm_files)
        ]);
   if linkage.ext = ".bc" then
@@ -203,7 +206,7 @@ let build_and_link_many
     in
     let arg_spec_for_requires =
       Mode.Dict.of_func (fun ~mode ->
-        lazy (Result.map (CC.requires cctx)
+        lazy (Result.map (CC.requires_link cctx)
                 ~f:(Link_time_code_gen.libraries_link ~loc ~name ~mode cctx)))
     in
     List.iter linkages ~f:(fun linkage ->
@@ -218,3 +221,6 @@ let build_and_link_many
 
 let build_and_link ~program =
   build_and_link_many ~programs:[program]
+
+let exe_path cctx ~(program : Program.t) ~linkage =
+  exe_path_from_name cctx ~name:program.name ~linkage

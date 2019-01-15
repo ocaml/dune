@@ -1,6 +1,6 @@
 #warnings "-40";;
 
-Topdirs.dir_directory "src/catapult/.catapult.objs";;
+Topdirs.dir_directory "src/catapult/.catapult.objs/byte/";;
 [%%ignore]
 
 open Catapult;;

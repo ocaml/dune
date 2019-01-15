@@ -27,6 +27,8 @@ let text = Format.pp_print_text
 
 let nl = Format.pp_print_newline
 
+let break fmt () = Format.fprintf fmt "@,"
+
 let prefix f g ppf x = f ppf; g ppf x
 
 let ocaml_list pp fmt = function

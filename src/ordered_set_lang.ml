@@ -292,7 +292,8 @@ module Unexpanded = struct
   let upgrade_to_dune t =
     match dune_kind t with
     | Dune -> t
-    | Jbuild -> map ~f:String_with_vars.upgrade_to_dune t
+    | Jbuild -> map t ~f:(String_with_vars.upgrade_to_dune
+                            ~allow_first_dep_var:false)
 
   let encode_and_upgrade t = encode (upgrade_to_dune t)
 

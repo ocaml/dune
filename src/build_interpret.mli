@@ -35,7 +35,8 @@ module Rule : sig
     -> t
 end
 
-(* must be called first *)
+(** Must be called first before [lib_deps] and [targets] as it updates
+    some of the internal references in the build arrow. *)
 val static_deps
   :  (_, _) Build.t
   -> all_targets:(dir:Path.t -> Path.Set.t)

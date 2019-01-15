@@ -371,9 +371,8 @@ let generate_file_with_all_the_sources () =
   let oc = open_out_bin generated_file in
   let pp = Lexer.create ~oc ~output_fname:generated_file in
   let pr fmt = ksprintf (Lexer.print_endline pp) fmt in
-  let dump fname =
-    Lexer.apply pp ~fname
-  in
+  let dump fname = Lexer.apply pp ~fname in
+  pr "let () = Printexc.record_backtrace true";
   let modules_by_lib =
     List.map topsorted_module_names ~f:(fun m ->
       let info = String_map.find m modules in

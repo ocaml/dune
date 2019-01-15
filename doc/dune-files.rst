@@ -42,10 +42,9 @@ format of library stanzas is as follows:
 
 .. code:: scheme
 
-    library
-      (name <library-name>
-       <optional-fields>
-      )
+    (library
+     (name <library-name>)
+     <optional-fields>)
 
 ``<library-name>`` is the real name of the library. It determines the
 names of the archive files generated for the library as well as the
@@ -219,9 +218,8 @@ format of executable stanzas is as follows:
 .. code:: scheme
 
     (executable
-      (name <name>)
-      <optional-fields>
-    )
+     (name <name>)
+     <optional-fields>)
 
 ``<name>`` is a module name that contains the main entry point of the
 executable. There can be additional modules in the current directory, you only
@@ -407,9 +405,9 @@ The syntax is as follows:
 .. code:: scheme
 
     (rule
-      (targets <filenames>)
-      (action  <action>)
-      <optional-fields>)
+     (targets <filenames>)
+     (action  <action>)
+     <optional-fields>)
 
 ``<filenames>`` is a list of file names. Note that currently dune only
 support user rules with targets in the current directory.
@@ -516,18 +514,18 @@ ocamllex
 .. code:: scheme
 
     (rule
-      (targets <name>.ml)
-      (deps    <name>.mll)
-      (action  (chdir %{workspace_root}
-                (run %{bin:ocamllex} -q -o %{targets} %{deps}))))
+     (targets <name>.ml)
+     (deps    <name>.mll)
+     (action  (chdir %{workspace_root}
+               (run %{bin:ocamllex} -q -o %{targets} %{deps}))))
 
 To use a different rule mode, use the long form:
 
 .. code:: scheme
 
     (ocamllex
-      (modules <names>)
-      (mode    <mode>))
+     (modules <names>)
+     (mode    <mode>))
 
 ocamlyacc
 ---------
@@ -537,18 +535,18 @@ ocamlyacc
 .. code:: scheme
 
     (rule
-      (targets <name>.ml <name>.mli)
-      (deps    <name>.mly)
-      (action  (chdir %{workspace_root}
-                (run %{bin:ocamlyacc} %{deps}))))
+     (targets <name>.ml <name>.mli)
+     (deps    <name>.mly)
+     (action  (chdir %{workspace_root}
+               (run %{bin:ocamlyacc} %{deps}))))
 
 To use a different rule mode, use the long form:
 
 .. code:: scheme
 
     (ocamlyacc
-      (modules <names>)
-      (mode    <mode>))
+     (modules <names>)
+     (mode    <mode>))
 
 menhir
 ------
@@ -571,7 +569,7 @@ The syntax is as follows:
     (alias
      (name    <alias-name>)
      (deps    <deps-conf list>)
-      <optional-fields>)
+     <optional-fields>)
 
 ``<name>`` is an alias name such as ``runtest``.
 
@@ -628,9 +626,9 @@ The syntax is as follows:
 .. code:: scheme
 
     (install
-      (section <section>)
-       (files   <filenames>)
-       <optional-fields>)
+     (section <section>)
+     (files   <filenames>)
+     <optional-fields>)
 
 ``<section>`` is the installation section, as described in the opam
 manual. The following sections are available:
@@ -811,7 +809,7 @@ Fields supported in ``<settings>`` are:
 dirs (since 1.6)
 -------------------
 
-The ``subdirs`` stanza allows to tell specify the sub-directories dune will
+The ``dirs`` stanza allows to tell specify the sub-directories dune will
 include in a build. The syntax is based on dune's predicate language and allows
 the user the following operations:
 
@@ -827,9 +825,9 @@ Examples:
 
 .. code:: scheme
 
-   (subdirs *) ;; include all directories
-   (subdirs :standard \ ocaml) ;; include all directories except ocaml
-   (subdirs :standard \ test* foo*) ;; exclude all directories that start with test or foo
+   (dirs *) ;; include all directories
+   (dirs :standard \ ocaml) ;; include all directories except ocaml
+   (dirs :standard \ test* foo*) ;; exclude all directories that start with test or foo
 
 A directory that is not included by this stanza will not be eagerly scanned by
 Dune. Any ``dune`` or other special files in it won't be interpreted either and
@@ -845,7 +843,7 @@ Dune allows the user to treat directories as *data only*. Dune files in these
 directories will not be evaluated for their rules, but the contents of these
 directories will still be usable as dependencies for other rules.
 
-The syntax is the same as for the ``subdirs`` stanza except that ``:standard``
+The syntax is the same as for the ``dirs`` stanza except that ``:standard``
 is by default empty.
 
 Example:
@@ -872,7 +870,7 @@ Example:
      (ignored_subdirs (<sub-dir1> <sub-dir2> ...))
 
 All of the specified ``<sub-dirn>`` will be ignored by dune. Note that users
-should rely on the ``subdirs`` stanza along with the appropriate set operations
+should rely on the ``dirs`` stanza along with the appropriate set operations
 instead of this stanza. For example:
 
 .. code:: scheme
@@ -917,6 +915,26 @@ where ``<x>`` is not ``no`` to contain one of the following stanzas:
 - ``library``
 - ``executable(s)``
 - ``test(s)``
+
+toplevel
+--------
+
+The ``toplevel`` stanza allows one to define custom toplevels. Custom toplevels
+automatically load a set of specified libraries and are runnable like normal
+executables. Example:
+
+.. code:: scheme
+
+   (toplevel
+    (name tt)
+    (libraries str))
+
+This will create a toplevel with the ``str`` library loaded. We may build and
+run this toplevel with:
+
+.. code:: shell
+
+   $ dune exec ./tt.exe
 
 Common items
 ============
@@ -1170,9 +1188,9 @@ Select forms are specified as follows:
 .. code:: scheme
 
     (select <target-filename> from
-      (<literals> -> <filename>)
-      (<literals> -> <filename>)
-       ...)
+     (<literals> -> <filename>)
+     (<literals> -> <filename>)
+     ...)
 
 ``<literals>`` are lists of literals, where each literal is one of:
 
@@ -1281,9 +1299,9 @@ module-by-module basis by using the following syntax:
  .. code:: scheme
 
     (preprocess (per_module
-                   (<spec1> <module-list1>)
-                   (<spec2> <module-list2>)
-                   ...))
+                 (<spec1> <module-list1>)
+                 (<spec2> <module-list2>)
+                 ...))
 
 Where ``<spec1>``, ``<spec2>``, ... are preprocessing specifications
 and ``<module-list1>``, ``<module-list2>``, ... are list of module
@@ -1294,8 +1312,8 @@ For instance:
  .. code:: scheme
 
     (preprocess (per_module
-                   (((action (run ./pp.sh X=1 %{input-file})) foo bar))
-                   (((action (run ./pp.sh X=2 %{input-file})) baz))))
+                 (((action (run ./pp.sh X=1 %{input-file})) foo bar))
+                 (((action (run ./pp.sh X=2 %{input-file})) baz))))
 
 .. _deps-field:
 

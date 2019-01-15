@@ -13,8 +13,8 @@ module Register_backend(M : Backend) = struct
 
   let top_closure l ~deps =
     match
-      Top_closure.Int.top_closure l
-        ~key:(fun t -> Lib.unique_id (M.lib t))
+      Lib.L.top_closure l
+        ~key:M.lib
         ~deps:(fun t ->
           match deps t with
           | Ok l    -> l
@@ -30,7 +30,7 @@ module Register_backend(M : Backend) = struct
     Set.Make(struct
       type t = M.t
       let compare a b =
-        compare
+        Lib.Id.compare
           (Lib.unique_id (M.lib a))
           (Lib.unique_id (M.lib b))
     end)

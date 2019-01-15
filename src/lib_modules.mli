@@ -24,13 +24,15 @@ val public_modules : t -> Module.Name_map.t
 
 val make
   :  Dune_file.Library.t
-  -> dir:Path.t
+  -> obj_dir:Obj_dir.t
   -> Module.Name_map.t
-  -> virtual_modules:Module.Name_map.t
   -> main_module_name:Module.Name.t option
+  -> wrapped:Wrapped.t
   -> t
 
 val set_modules : t -> Module.Name_map.t -> t
+
+val version_installed : t -> install_dir:Path.t -> t
 
 val for_compilation : t -> Module.Name_map.t
 
@@ -38,16 +40,12 @@ val have_artifacts : t -> Module.Name_map.t
 
 val for_alias : t -> Module.Name_map.t
 
-module Virtual : sig
-  val encode : t -> Dune_lang.t list
-  val decode
-    :  main_module_name:Module.Name.t
-    -> dir:Path.t
-    -> t Dune_lang.Decoder.t
-end
-
 val encode : t -> Dune_lang.t list
 
 val decode : implements:bool -> dir:Path.t -> t Dune_lang.Decoder.t
 
-val wrapped : t -> bool
+val is_wrapped : t -> bool
+
+val wrapped : t -> Wrapped.t
+
+val needs_alias_module : t -> bool

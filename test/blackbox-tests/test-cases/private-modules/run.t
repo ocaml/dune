@@ -5,7 +5,7 @@
 
   $ dune build --root inaccessible-in-deps 2>&1 | grep -v "cd _build"
   Entering directory 'inaccessible-in-deps'
-        ocamlc .foo.eobjs/foo.{cmi,cmo,cmt} (exit 2)
+        ocamlc .foo.eobjs/byte/foo.{cmi,cmo,cmt} (exit 2)
   File "foo.ml", line 1, characters 0-5:
   Error: Unbound module X
 

@@ -4,6 +4,8 @@ open! Import
     variables. *)
 type t
 
+val pp : t Fmt.t
+
 (** {1} Constructors *)
 
 (** No dependencies - neutral element for [union]. *)
@@ -38,3 +40,5 @@ val paths : t -> Path.Set.t
 
 (** Serializer. *)
 val to_sexp : t -> Dune_lang.t
+
+val parallel_iter : t -> f:(Path.t -> unit Fiber.t) -> unit Fiber.t

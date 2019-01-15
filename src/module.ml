@@ -59,21 +59,25 @@ module Name = struct
     in
     String.lowercase n ^ ext
 
-  let strip_alias_prefix t =
+  (* XXX this will need to be fixed once (include_subdirs qualified) is
+     supported *)
+  let split_alias_prefix t =
     let len = String.length t in
     let rec loop t i =
-      if i <= 2 then
-        t
-      else if t.[i - 2] = '_' && t.[i - 1] = '_' then
-        String.sub t ~pos:i ~len:(len - i)
+      if i >= len - 1 then
+        None
+      else if t.[i] = '_' && t.[i + 1] = '_' then
+        if i = 1 || i = len - 2 then
+          None (* name of the form __Foo or Foo__ *)
+        else
+          Some ( of_string (String.take t i)
+               , of_string (String.drop t (i + 2))
+               )
       else
-        loop t (i - 1)
+        loop t (i + 1)
     in
-    let name = loop t (len - 1) in
-    if Char.uppercase_ascii name.[0] = name.[0] then
-      name
-    else
-      die "Invalid module name: %S" name
+    loop t 0
+
 end
 
 module File = struct
@@ -130,6 +134,46 @@ module Visibility = struct
   let is_private t = not (is_public t)
 end
 
+module Kind = struct
+  type t =
+    | Intf_only
+    | Virtual
+    | Impl
+
+  let to_string = function
+    | Intf_only -> "intf_only"
+    | Virtual -> "virtual"
+    | Impl -> "impl"
+
+  let pp fmt t = Format.pp_print_string fmt (to_string t)
+
+  let to_sexp t = Sexp.Encoder.string (to_string t)
+
+  let encode =
+    let open Dune_lang.Encoder in
+    function
+    | Intf_only -> string "intf_only"
+    | Virtual -> string "virtual"
+    | Impl -> string "impl"
+
+  let decode =
+    let open Stanza.Decoder in
+    enum
+      [ "intf_only", Intf_only
+      ; "virtual", Virtual
+      ; "impl", Impl
+      ]
+
+  let has_impl = function
+    | Impl -> true
+    | Intf_only
+    | Virtual -> false
+
+  let is_virtual = function
+    | Virtual -> true
+    | _ -> false
+end
+
 type t =
   { name       : Name.t
   ; impl       : File.t option
@@ -137,14 +181,17 @@ type t =
   ; obj_name   : string
   ; pp         : (unit, string list) Build.t option
   ; visibility : Visibility.t
+  ; obj_dir    : Obj_dir.t
+  ; kind       : Kind.t
   }
 
 let name t = t.name
 let pp_flags t = t.pp
 let intf t = t.intf
 let impl t = t.impl
+let obj_dir t = t.obj_dir
 
-let make ?impl ?intf ?obj_name ~visibility name =
+let make ?impl ?intf ?obj_name ~visibility ~obj_dir ~(kind : Kind.t) name =
   let file : File.t =
     match impl, intf with
     | None, None ->
@@ -156,6 +203,19 @@ let make ?impl ?intf ?obj_name ~visibility name =
     | Some file, _
     | _, Some file -> file
   in
+  begin match kind, impl, intf with
+  | Virtual, Some _, _
+  | Impl, None, _
+  | Intf_only, Some _, _ ->
+    let open Sexp.Encoder in
+    Exn.code_error "Module.make: invalid kind, impl, intf combination"
+      [ "name", Name.to_sexp name
+      ; "kind", Kind.to_sexp kind
+      ; "intf", (option File.to_sexp) intf
+      ; "impl", (option File.to_sexp) impl
+      ]
+  | _, _ , _ -> ()
+  end;
   let obj_name =
     match obj_name with
     | Some s -> s
@@ -171,15 +231,21 @@ let make ?impl ?intf ?obj_name ~visibility name =
   ; obj_name
   ; pp = None
   ; visibility
+  ; obj_dir
+  ; kind
   }
 
 let real_unit_name t = Name.of_string (Filename.basename t.obj_name)
 
-let has_impl t = Option.is_some t.impl
+let has_impl t = Kind.has_impl t.kind
 let has_intf t = Option.is_some t.intf
 
 let impl_only t = has_impl t && not (has_intf t)
 let intf_only t = has_intf t && not (has_impl t)
+
+let is_public t = Visibility.is_public t.visibility
+let is_private t = Visibility.is_private t.visibility
+let is_virtual t = Kind.is_virtual t.kind
 
 let file t (kind : Ml_kind.t) =
   let file =
@@ -189,11 +255,11 @@ let file t (kind : Ml_kind.t) =
   in
   Option.map file ~f:(fun f -> f.path)
 
-let obj_file t ~obj_dir ~ext =
+let obj_file t ~mode ~ext =
   let base =
-    match t.visibility with
-    | Public -> obj_dir
-    | Private -> Utils.library_private_obj_dir ~obj_dir
+    match mode with
+    | Mode.Byte -> Obj_dir.byte_dir t.obj_dir
+    | Native -> Obj_dir.native_dir t.obj_dir
   in
   Path.relative base (t.obj_name ^ ext)
 
@@ -201,25 +267,47 @@ let obj_name t = t.obj_name
 
 let cm_source t kind = file t (Cm_kind.source kind)
 
-let cm_file_unsafe t ~obj_dir kind =
-  obj_file t ~obj_dir ~ext:(Cm_kind.ext kind)
+let cm_file_unsafe t ?ext kind =
+  let mode = match kind with Cm_kind.Cmx -> Mode.Native | Cmo | Cmi -> Byte in
+  let ext = Option.value ext ~default:(Cm_kind.ext kind) in
+  obj_file t ~mode ~ext
 
-let cm_file t ~obj_dir (kind : Cm_kind.t) =
+let cm_file t ?ext (kind : Cm_kind.t) =
   match kind with
   | (Cmx | Cmo) when not (has_impl t) -> None
-  | _ -> Some (cm_file_unsafe t ~obj_dir kind)
+  | _ -> Some (cm_file_unsafe t ?ext kind)
 
-let cmt_file t ~obj_dir (kind : Ml_kind.t) =
+let cm_public_file_unsafe t ?ext kind =
+  let ext = Option.value ext ~default:(Cm_kind.ext kind) in
+  let base = match kind with
+    | Cm_kind.Cmx -> Obj_dir.native_dir t.obj_dir
+    | Cmo -> Obj_dir.byte_dir t.obj_dir
+    | Cmi -> Obj_dir.public_cmi_dir t.obj_dir in
+  Path.relative base (t.obj_name ^ ext)
+
+let cm_public_file t ?ext (kind : Cm_kind.t) =
   match kind with
-  | Impl -> Option.map t.impl ~f:(fun _ -> obj_file t ~obj_dir ~ext:".cmt" )
-  | Intf -> Option.map t.intf ~f:(fun _ -> obj_file t ~obj_dir ~ext:".cmti")
+  | (Cmx | Cmo) when not (has_impl t) -> None
+  |  Cmi when is_private t -> None
+  | _ -> Some (cm_public_file_unsafe t ?ext kind)
 
-let odoc_file t ~doc_dir = obj_file t ~obj_dir:doc_dir~ext:".odoc"
+let cmt_file t (kind : Ml_kind.t) =
+  match kind with
+  | Impl -> Option.map t.impl ~f:(fun _ -> obj_file t ~mode:Byte ~ext:".cmt" )
+  | Intf -> Option.map t.intf ~f:(fun _ -> obj_file t ~mode:Byte ~ext:".cmti")
 
-let cmti_file t ~obj_dir =
+let odoc_file t ~doc_dir =
+  let base =
+    match t.visibility with
+    | Public -> doc_dir
+    | Private -> Utils.library_private_dir ~obj_dir:doc_dir
+  in
+  Path.relative base (t.obj_name ^ ".odoc")
+
+let cmti_file t =
   match t.intf with
-  | None   -> obj_file t ~obj_dir ~ext:".cmt"
-  | Some _ -> obj_file t ~obj_dir ~ext:".cmti"
+  | None   -> obj_file t ~mode:Byte ~ext:".cmt"
+  | Some _ -> obj_file t ~mode:Byte ~ext:".cmti"
 
 let iter t ~f =
   Option.iter t.impl ~f:(f Ml_kind.Impl);
@@ -246,7 +334,7 @@ let src_dir t =
 
 let set_pp t pp = { t with pp }
 
-let to_sexp { name; impl; intf; obj_name ; pp ; visibility } =
+let to_sexp { name; impl; intf; obj_name ; pp ; visibility; obj_dir ; kind } =
   let open Sexp.Encoder in
   record
     [ "name", Name.to_sexp name
@@ -255,15 +343,19 @@ let to_sexp { name; impl; intf; obj_name ; pp ; visibility } =
     ; "intf", (option File.to_sexp) intf
     ; "pp", (option string) (Option.map ~f:(fun _ -> "has pp") pp)
     ; "visibility", Visibility.to_sexp visibility
+    ; "obj_dir", Obj_dir.to_sexp obj_dir
+    ; "kind", Kind.to_sexp kind
     ]
 
-let pp fmt { name; impl; intf; obj_name ; pp = _ ; visibility } =
+let pp fmt { name; impl; intf; obj_name ; pp = _ ; visibility; obj_dir ; kind } =
   Fmt.record fmt
     [ "name", Fmt.const Name.pp name
     ; "impl", Fmt.const (Fmt.optional File.pp) impl
     ; "intf", Fmt.const (Fmt.optional File.pp) intf
     ; "obj_name", Fmt.const Format.pp_print_string obj_name
     ; "visibility", Fmt.const Visibility.pp visibility
+    ; "obj_dir", Fmt.const Obj_dir.pp obj_dir
+    ; "kind", Fmt.const Kind.pp kind
     ]
 
 let wrapped_compat t =
@@ -301,13 +393,20 @@ module Name_map = struct
 
   let add t module_ =
     Name.Map.add t (name module_) module_
-end
 
-let is_public t = Visibility.is_public t.visibility
-let is_private t = Visibility.is_private t.visibility
+  let pp fmt t =
+    Fmt.ocaml_list Name.pp fmt (Name.Map.keys t)
+end
 
 let set_private t =
   { t with visibility = Private }
+
+let set_obj_dir t ~obj_dir =
+  { t with obj_dir }
+
+let set_virtual t =
+  { t with kind = Virtual }
+
 
 let visibility t = t.visibility
 
@@ -347,14 +446,25 @@ let encode
        ; obj_name
        ; pp = _
        ; visibility
+       ; obj_dir
+       ; kind
        } as t) =
   let open Dune_lang.Encoder in
+  let has_impl = (has_impl t) in
+  let kind =
+    match kind with
+    | Kind.Impl when has_impl -> None
+    | Intf_only when not has_impl -> None
+    | Impl | Virtual | Intf_only -> Some kind
+  in
   record_fields
     [ field "name" Name.encode name
     ; field "obj_name" string obj_name
     ; field "visibility" Visibility.encode visibility
-    ; field_b "impl" (has_impl t)
+    ; field_o "kind" Kind.encode kind
+    ; field_b "impl" has_impl
     ; field_b "intf" (has_intf t)
+    ; field_i "obj_dir" Obj_dir.encode obj_dir
     ]
 
 let decode ~dir =
@@ -363,8 +473,10 @@ let decode ~dir =
     let%map name = field "name" Name.decode
     and obj_name = field "obj_name" string
     and visibility = field "visibility" Visibility.decode
+    and kind = field_o "kind" Kind.decode
     and impl = field_b "impl"
     and intf = field_b "intf"
+    and obj_dir = field ~default:(Obj_dir.make_external ~dir) "obj_dir" (Obj_dir.decode ~dir)
     in
     let file exists ml_kind =
       if exists then
@@ -373,7 +485,50 @@ let decode ~dir =
       else
         None
     in
+    let kind = match kind with
+      | Some k -> k
+      | None when impl -> Impl
+      | None -> Intf_only
+    in
     let intf = file intf Intf in
     let impl = file impl Impl in
-    make ~obj_name ~visibility ?impl ?intf name
+    make ~obj_name ~visibility ?impl ?intf ~obj_dir ~kind name
   )
+
+
+(* Only the source of a module, not yet associated to a library *)
+module Source = struct
+  type t =
+    { name : Name.t
+    ; impl : File.t option
+    ; intf : File.t option
+    }
+
+  let make ?impl ?intf name =
+    begin match impl, intf with
+    | None, None ->
+      Exn.code_error "Module.Source.make called with no files"
+        [ "name", Sexp.Encoder.string name
+        ; "impl", Sexp.Encoder.(option unknown) impl
+        ; "intf", Sexp.Encoder.(option unknown) intf
+        ]
+    | Some _, _
+    | _, Some _ -> ()
+    end;
+    { name
+    ; impl
+    ; intf
+    }
+
+  let has_impl t = Option.is_some t.impl
+
+  let name t = t.name
+
+  let src_dir t =
+  match t.intf, t.impl with
+  | None, None -> None
+  | Some x, Some _
+  | Some x, None
+  | None, Some x -> Some (Path.parent_exn x.path)
+
+end

@@ -140,9 +140,9 @@ module Local : sig
   val compare : t -> t -> Ordering.t
   val compare_val : t -> t -> Ordering.t
   val equal : t -> t -> bool
-  val of_string : ?error_loc:Loc.t -> string -> t
+  val of_string : ?error_loc:Loc0.t -> string -> t
   val to_string : t -> string
-  val relative : ?error_loc:Loc.t -> t -> string -> t
+  val relative : ?error_loc:Loc0.t -> t -> string -> t
   val append : t -> t -> t
   val parent : t -> t
   val mkdir_p : t -> unit
@@ -157,7 +157,7 @@ module Local : sig
   val pp : Format.formatter -> t -> unit
 
   module L : sig
-    val relative : ?error_loc:Loc.t -> t -> string list -> t
+    val relative : ?error_loc:Loc0.t -> t -> string list -> t
   end
   module Set : Set.S with type elt = t
 
@@ -626,10 +626,10 @@ let of_string ?error_loc s =
   match s with
   | "" | "." -> in_source_tree Local.root
   | s  ->
-    if not (Filename.is_relative s) then
-      external_ (External.of_string s)
-    else
+    if Filename.is_relative s then
       make_local_path (Local.of_string s ?error_loc)
+    else
+      external_ (External.of_string s)
 
 let to_sexp t =
   let constr f x y = Sexp.Encoder.(pair string f) (x, y) in
@@ -682,14 +682,18 @@ let reach_for_running ?(from=root) t =
   | _       -> fn
 
 let descendant t ~of_ =
-  match kind t, kind of_ with
-  | Local t, Local of_ -> Option.map ~f:in_source_tree (Local.descendant t ~of_)
-  | _, _ -> None
+  match t, of_ with
+  | In_source_tree t, In_source_tree of_
+  | In_build_dir t, In_build_dir of_ ->
+    Option.map ~f:in_source_tree (Local.descendant t ~of_)
+  | _ -> None
 
 let is_descendant t ~of_ =
-  match kind t, kind of_ with
-  | Local t, Local of_ -> Local.is_descendant t ~of_
-  | _, _ -> false
+  match t, of_ with
+  | In_source_tree t, In_source_tree of_
+  | In_build_dir t, In_build_dir of_ ->
+    Local.is_descendant t ~of_
+  | _ -> false
 
 let append_local a b =
   match a with

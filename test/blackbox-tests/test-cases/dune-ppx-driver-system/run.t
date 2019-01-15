@@ -66,7 +66,10 @@ Test the argument syntax
   --impl
   test_ppx_args.ml
   --as-ppx
-  Error: Rule failed to generate the following targets:
+  File "dune", line 68, characters 13-60:
+  68 |  (preprocess (pps -arg1 driver_print_args -arg2 -- -foo bar)))
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  Error: rule failed to generate the following targets:
   - test_ppx_args.pp.ml
   [1]
 
@@ -77,7 +80,7 @@ Test that going throught the -ppx option of the compiler works
       ocamldep .test_ppx_staged.objs/test_ppx_staged.ml.d
   tool name: ocamldep
   args:--as-ppx --cookie library-name="test_ppx_staged"
-        ocamlc .test_ppx_staged.objs/test_ppx_staged.{cmi,cmo,cmt}
+        ocamlc .test_ppx_staged.objs/byte/test_ppx_staged.{cmi,cmo,cmt}
   tool name: ocamlc
   args:--as-ppx --cookie library-name="test_ppx_staged"
 
@@ -100,7 +103,10 @@ Test using installed drivers
   --impl
   driveruser.ml
   --as-ppx
-  Error: Rule failed to generate the following targets:
+  File "dune", line 6, characters 13-53:
+  6 |  (preprocess (pps -arg1 testdriver -arg2 -- -foo bar)))
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  Error: rule failed to generate the following targets:
   - driveruser.pp.ml
   [1]
 
@@ -120,7 +126,10 @@ Test using installed drivers
   --impl
   driveruser.ml
   --as-ppx
-  Error: Rule failed to generate the following targets:
+  File "dune", line 13, characters 13-57:
+  13 |  (preprocess (pps -arg1 replacesdriver -arg2 -- -foo bar)))
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  Error: rule failed to generate the following targets:
   - driveruser.pp.ml
   [1]
 
@@ -142,28 +151,37 @@ Test using installed drivers
   --impl
   driveruser.ml
   --as-ppx
-  Error: Rule failed to generate the following targets:
+  File "dune", line 5, characters 13-57:
+  5 |  (preprocess (pps -arg1 replacesdriver -arg2 -- -foo bar)))
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  Error: rule failed to generate the following targets:
   - driveruser.pp.ml
   [1]
 
   $ dune build --display short --root jbuild-driver @all
   Entering directory 'jbuild-driver'
-        ocamlc .testdriver.objs/testdriver.{cmi,cmo,cmt}
+  File "jbuild", line 1, characters 0-0:
+  Warning: jbuild files are deprecated, please convert this file to a dune file instead.
+  Note: You can use "dune upgrade" to convert your project to dune.
+        ocamlc .testdriver.objs/byte/testdriver.{cmi,cmo,cmt}
         ocamlc testdriver.cma
-      ocamlopt .testdriver.objs/testdriver.{cmx,o}
+      ocamlopt .testdriver.objs/native/testdriver.{cmx,o}
       ocamlopt testdriver.{a,cmxa}
       ocamlopt testdriver.cmxs
       ocamlopt .ppx/jbuild/631757a4a4789e0bd29628f7a73480f7/ppx.exe
            ppx test_ppx_args.pp.ml
       ocamldep .test_ppx_args.objs/test_ppx_args.pp.ml.d
-        ocamlc .test_ppx_args.objs/test_ppx_args.{cmi,cmo,cmt}
+        ocamlc .test_ppx_args.objs/byte/test_ppx_args.{cmi,cmo,cmt}
         ocamlc test_ppx_args.cma
-      ocamlopt .test_ppx_args.objs/test_ppx_args.{cmx,o}
+      ocamlopt .test_ppx_args.objs/native/test_ppx_args.{cmx,o}
       ocamlopt test_ppx_args.{a,cmxa}
       ocamlopt test_ppx_args.cmxs
 
   $ dune build --display short --root jbuild-driver @install
   Entering directory 'jbuild-driver'
+  File "jbuild", line 1, characters 0-0:
+  Warning: jbuild files are deprecated, please convert this file to a dune file instead.
+  Note: You can use "dune upgrade" to convert your project to dune.
   $ OCAMLPATH=jbuild-driver/_build/install/default/lib dune build --root use-external-driver driveruser.cma
   Entering directory 'use-external-driver'
            ppx driveruser.pp.ml
@@ -179,6 +197,9 @@ Test using installed drivers
   --impl
   driveruser.ml
   --as-ppx
-  Error: Rule failed to generate the following targets:
+  File "dune", line 6, characters 13-53:
+  6 |  (preprocess (pps -arg1 testdriver -arg2 -- -foo bar)))
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  Error: rule failed to generate the following targets:
   - driveruser.pp.ml
   [1]

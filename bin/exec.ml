@@ -43,7 +43,7 @@ let term =
   let log = Log.create common in
   let setup =
     Scheduler.go ~log ~common (fun () -> Import.Main.setup ~log common) in
-  let context = Import.Main.find_context_exn setup ~name:context in
+  let context = Import.Main.find_context_exn setup.workspace ~name:context in
   let prog_where =
     match Filename.analyze_program_name prog with
     | Absolute ->

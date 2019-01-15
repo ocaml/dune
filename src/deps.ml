@@ -5,6 +5,12 @@ type t =
   ; vars : String.Set.t
   }
 
+let pp fmt { paths ; vars } =
+  Fmt.record fmt
+    [ "paths", Fmt.const (Fmt.ocaml_list Path.pp) (Path.Set.to_list paths)
+    ; "vars", Fmt.const String.Set.pp vars
+    ]
+
 let paths t = t.paths
 
 let trace_path fn =
@@ -68,3 +74,6 @@ let to_sexp {paths; vars} =
     [ ("paths", sexp_paths)
     ; ("vars", sexp_vars)
     ]
+
+let parallel_iter t ~f =
+  Fiber.parallel_iter (Path.Set.to_list (paths t)) ~f

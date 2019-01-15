@@ -1,0 +1,8 @@
+(library
+ (name impl)
+ (public_name impl_wrapped)
+ (implements vlib_wrapped))
+
+(alias
+ (name default)
+ (action (run ./bin/foo.exe)))

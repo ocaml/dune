@@ -1,6 +1,8 @@
 jbuilder --dev flag is accepted
 
   $ jbuilder build --dev
+  The jbuilder binary is deprecated and will cease to be maintained in July 2019.
+  Please switch to dune instead.
 
 dune --dev flag is rejected
 

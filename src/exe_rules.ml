@@ -8,11 +8,8 @@ let executables_rules ~sctx ~dir ~dir_kind ~expander
       (exes : Dune_file.Executables.t) =
   (* Use "eobjs" rather than "objs" to avoid a potential conflict
      with a library of the same name *)
-  let obj_dir =
-    Utils.executable_object_directory ~dir (List.hd exes.names |> snd)
-  in
-  Check_rules.add_obj_dir sctx ~dir ~obj_dir;
-  let requires = Lib.Compile.requires compile_info in
+  let obj_dir = Obj_dir.make_exe ~dir ~name:(snd (List.hd exes.names)) in
+  Check_rules.add_obj_dir sctx ~obj_dir;
   let modules =
     Dir_contents.modules_of_executables dir_contents
       ~first_exe:(snd (List.hd exes.names))
@@ -83,19 +80,23 @@ let executables_rules ~sctx ~dir ~dir_kind ~expander
   in
 
   let cctx =
+    let requires_compile = Lib.Compile.direct_requires compile_info in
+    let requires_link = Lib.Compile.requires_link compile_info in
     Compilation_context.create ()
       ~super_context:sctx
       ~expander
       ~scope
-      ~dir
-      ~dir_kind
       ~obj_dir
+      ~dir_kind
       ~modules
       ~flags
-      ~requires
+      ~requires_link
+      ~requires_compile
       ~preprocessing:pp
       ~opaque:(SC.opaque sctx)
   in
+
+  let requires_compile = Compilation_context.requires_compile cctx in
 
   Exe.build_and_link_many cctx
     ~programs
@@ -105,15 +106,18 @@ let executables_rules ~sctx ~dir ~dir_kind ~expander
 
   (cctx,
    Merlin.make ()
-     ~requires:(Lib.Compile.requires compile_info)
+     ~requires:requires_compile
      ~flags:(Ocaml_flags.common flags)
      ~preprocess:(Dune_file.Buildable.single_preprocess exes.buildable)
-     ~objs_dirs:(Path.Set.singleton obj_dir))
+     (* only public_dir? *)
+     ~objs_dirs:(Path.Set.singleton (Obj_dir.public_cmi_dir obj_dir)))
 
 let rules ~sctx ~dir ~dir_contents ~scope ~expander ~dir_kind
       (exes : Dune_file.Executables.t) =
   let compile_info =
-    Lib.DB.resolve_user_written_deps_for_exes (Scope.libs scope)
+    Lib.DB.resolve_user_written_deps_for_exes
+      (Scope.libs scope)
+      exes.names
       exes.buildable.libraries
       ~pps:(Dune_file.Preprocess_map.pps exes.buildable.preprocess)
       ~allow_overlaps:exes.buildable.allow_overlapping_dependencies

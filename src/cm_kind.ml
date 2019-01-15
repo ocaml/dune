@@ -11,6 +11,8 @@ let choose cmi cmo cmx = function
 
 let ext = choose ".cmi" ".cmo" ".cmx"
 
+let pp fmt p = Format.pp_print_string fmt (ext p)
+
 let source = choose Ml_kind.Intf Impl Impl
 
 module Dict = struct

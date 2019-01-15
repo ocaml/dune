@@ -119,18 +119,63 @@ module Sub_system0 = struct
   end
 end
 
-module Id = struct
+module Id : sig
   type t =
     { unique_id : int
     ; path      : Path.t
     ; name      : Lib_name.t
     }
+
+  val compare : t -> t -> Ordering.t
+
+  include Comparable.OPS with type t := t
+
+  val make : path:Path.t -> name:Lib_name.t -> t
+
+  module Set : Set.S with type elt = t
+
+  module Top_closure : Top_closure.S
+    with type key := t
+     and type 'a monad := 'a Monad.Id.t
+end = struct
+  type t =
+    { unique_id : int
+    ; path      : Path.t
+    ; name      : Lib_name.t
+    }
+
+  let compare t1 t2 = Int.compare t1.unique_id t2.unique_id
+
+  include (
+    Comparable.Operators(struct type nonrec t = t let compare = compare end)
+    : Comparable.OPS with type t := t
+  )
+
+  let gen_unique_id =
+    let next = ref 0 in
+    fun () ->
+      let n = !next in
+      next := n + 1;
+      n
+
+  let make ~path ~name =
+    { unique_id = gen_unique_id ()
+    ; path
+    ; name
+    }
+
+  module Set = Set.Make(struct
+      type nonrec t = t
+      let compare = compare
+    end)
+
+  module Top_closure = Top_closure.Make(Set)(Monad.Id)
 end
 
 type t =
   { info              : Lib_info.t
   ; name              : Lib_name.t
-  ; unique_id         : int
+  ; unique_id         : Id.t
   ; requires          : t list Or_exn.t
   ; ppx_runtime_deps  : t list Or_exn.t
   ; pps               : t list Or_exn.t
@@ -146,18 +191,18 @@ type t =
     mutable sub_systems : Sub_system0.Instance.t Lazy.t Sub_system_name.Map.t
   }
 
-and db =
+type status =
+  | St_initializing of Id.t (* To detect cycles *)
+  | St_found        of t
+  | St_not_found
+  | St_hidden       of t * Error.Library_not_available.Reason.Hidden.t
+
+type db =
   { parent  : db option
   ; resolve : Lib_name.t -> resolve_result
   ; table   : (Lib_name.t, status) Hashtbl.t
   ; all     : Lib_name.t list Lazy.t
   }
-
-and status =
-  | St_initializing of Id.t (* To detect cycles *)
-  | St_found        of t
-  | St_not_found
-  | St_hidden       of t * Error.Library_not_available.Reason.Hidden.t
 
 and resolve_result =
   | Not_found
@@ -189,9 +234,12 @@ let virtual_     t = t.info.virtual_
 
 let src_dir t = t.info.src_dir
 let obj_dir t = t.info.obj_dir
-let private_obj_dir t = t.info.private_obj_dir
 
-let is_local t = Path.is_managed t.info.obj_dir
+let is_local t = Path.is_managed (Obj_dir.byte_dir t.info.obj_dir)
+
+let public_cmi_dir t = Obj_dir.public_cmi_dir t.info.obj_dir
+
+let native_dir t = Obj_dir.native_dir t.info.obj_dir
 
 let status t = t.info.status
 
@@ -200,11 +248,22 @@ let foreign_objects t = t.info.foreign_objects
 let main_module_name t =
   match t.info.main_module_name with
   | This mmn -> Ok mmn
-  | Inherited_from _ ->
+  | From _ ->
     Option.value_exn t.implements >>| fun vlib ->
     match vlib.info.main_module_name with
     | This x -> x
-    | Inherited_from _ -> assert false
+    | From _ -> assert false
+
+let wrapped t =
+  match t.info.wrapped with
+  | None -> Ok None
+  | Some (This wrapped) -> Ok (Some wrapped)
+  | Some (From _) ->
+    Option.value_exn t.implements >>| fun vlib ->
+    match vlib.info.wrapped with
+    | Some (From _) (* can't inherit this value in virtual libs *)
+    | None -> assert false (* will always be specified in dune package *)
+    | Some (This x) -> Some x
 
 let package t =
   match t.info.status with
@@ -213,11 +272,7 @@ let package t =
   | Private _ ->
     None
 
-let to_id t : Id.t =
-  { unique_id = t.unique_id
-  ; path      = t.info.src_dir
-  ; name      = t.name
-  }
+let to_id t : Id.t = t.unique_id
 
 module Set = Set.Make(
 struct
@@ -243,7 +298,8 @@ module L = struct
   let include_paths ts ~stdlib_dir =
     let dirs =
       List.fold_left ts ~init:Path.Set.empty ~f:(fun acc t ->
-        Path.Set.add acc (obj_dir t))
+        List.fold_left ~f:Path.Set.add ~init:acc
+          [public_cmi_dir t ; native_dir t])
     in
     Path.Set.remove dirs stdlib_dir
 
@@ -290,18 +346,23 @@ module L = struct
       match l with
       | [] -> acc
       | x :: l ->
-        if Int.Set.mem seen x.unique_id then
+        if Id.Set.mem seen x.unique_id then
           loop acc l seen
         else
-          loop (x :: acc) l (Int.Set.add seen x.unique_id)
+          loop (x :: acc) l (Id.Set.add seen x.unique_id)
     in
-    loop [] l Int.Set.empty
+    loop [] l Id.Set.empty
+
+  let top_closure l ~key ~deps =
+    Id.Top_closure.top_closure l
+      ~key:(fun t -> unique_id (key t))
+      ~deps
 end
 
 module Lib_and_module = struct
   type nonrec t =
     | Lib of t
-    | Module of Module.t * Path.t (** obj_dir *)
+    | Module of Module.t
 
   let link_flags ts ~mode ~stdlib_dir =
     let libs = List.filter_map ts ~f:(function Lib lib -> Some lib | Module _ -> None) in
@@ -310,8 +371,8 @@ module Lib_and_module = struct
        List.map ts ~f:(function
          | Lib t ->
            Arg_spec.Deps (Mode.Dict.get t.info.archives mode)
-         | Module (m,obj_dir) ->
-           Dep (Module.cm_file_unsafe m ~obj_dir (Mode.cm_kind mode))
+         | Module m ->
+           Dep (Module.cm_file_unsafe m (Mode.cm_kind mode))
        ))
 
 end
@@ -384,24 +445,17 @@ end
 
 (* Library name resolution and transitive closure *)
 
-let gen_unique_id =
-  let next = ref 0 in
-  fun () ->
-    let n = !next in
-    next := n + 1;
-    n
-
 (* Dependency stack used while resolving the dependencies of a library
    that was just returned by the [resolve] callback *)
 module Dep_stack = struct
   type t =
     { stack : Id.t list
-    ; seen  : Int.Set.t
+    ; seen  : Id.Set.t
     }
 
   let empty =
     { stack = []
-    ; seen  = Int.Set.empty
+    ; seen  = Id.Set.empty
     }
 
   let to_required_by t ~stop_at =
@@ -418,7 +472,7 @@ module Dep_stack = struct
     loop [] t.stack
 
   let dependency_cycle t (last : Id.t) =
-    assert (Int.Set.mem t.seen last.unique_id);
+    assert (Id.Set.mem t.seen last);
     let rec build_loop acc stack =
       match stack with
       | [] -> assert false
@@ -429,23 +483,22 @@ module Dep_stack = struct
         else
           build_loop acc stack
     in
-    let loop = build_loop [(last.path, last.name)] t.stack in
+    let loop = build_loop [last.path, last.name] t.stack in
     Error (Dependency_cycle loop)
 
   let create_and_push t name path =
-    let unique_id = gen_unique_id () in
-    let init = { Id. unique_id; name; path } in
+    let init = Id.make ~path ~name in
     (init,
      { stack = init :: t.stack
-     ; seen  = Int.Set.add t.seen unique_id
+     ; seen  = Id.Set.add t.seen init
      })
 
   let push t (x : Id.t) : (_, _) result =
-    if Int.Set.mem t.seen x.unique_id then
+    if Id.Set.mem t.seen x then
       Error (dependency_cycle t x)
     else
       Ok { stack = x :: t.stack
-         ; seen  = Int.Set.add t.seen x.unique_id
+         ; seen  = Id.Set.add t.seen x
          }
 end
 
@@ -561,14 +614,14 @@ end = struct
   end
 
   let second_step_closure ts impls =
-    let visited = ref Int.Set.empty in
+    let visited = ref Id.Set.empty in
     let res = ref [] in
     let rec loop t =
       let t = Option.value ~default:t (Map.find impls t) in
-      if Int.Set.mem !visited t.unique_id then
+      if Id.Set.mem !visited t.unique_id then
         Ok ()
       else begin
-        visited := Int.Set.add !visited t.unique_id;
+        visited := Id.Set.add !visited t.unique_id;
         t.requires >>= fun deps ->
         Result.List.iter deps ~f:loop >>| fun () ->
         res := t :: !res
@@ -636,7 +689,7 @@ let rec instantiate db name (info : Lib_info.t) ~stack ~hidden =
   let t =
     { info
     ; name
-    ; unique_id         = id.unique_id
+    ; unique_id         = id
     ; requires
     ; ppx_runtime_deps
     ; pps
@@ -729,7 +782,7 @@ and available_internal db (name : Lib_name.t) ~stack =
   resolve_dep db name ~allow_private_deps:true ~loc:Loc.none ~stack
   |> Result.is_ok
 
-and resolve_simple_deps db (names : ((Loc.t * Lib_name.t) list)) ~allow_private_deps ~stack =
+and resolve_simple_deps db names ~allow_private_deps ~stack =
   Result.List.map names ~f:(fun (loc, name) ->
     resolve_dep db name ~allow_private_deps ~loc ~stack)
 
@@ -740,7 +793,8 @@ and resolve_complex_deps db deps ~allow_private_deps ~stack =
         match (dep : Dune_file.Lib_dep.t) with
         | Direct (loc, name) ->
           let res =
-            resolve_dep db name ~allow_private_deps ~loc ~stack >>| fun x -> [x]
+            resolve_dep db name ~allow_private_deps ~loc ~stack
+            >>| List.singleton
           in
           (res, acc_selects)
         | Select { result_fn; choices; loc } ->
@@ -822,10 +876,9 @@ and resolve_user_deps db deps ~allow_private_deps ~pps ~stack =
   in
   (deps, pps, resolved_selects)
 
-and closure_with_overlap_checks db ts ~stack ~linking =
+and closure_with_overlap_checks db ts ~stack:orig_stack ~linking =
   let visited = ref Lib_name.Map.empty in
   let res = ref [] in
-  let orig_stack = stack in
   let rec loop t ~stack =
     match Lib_name.Map.find !visited t.name with
     | Some (t', stack') ->
@@ -861,7 +914,7 @@ and closure_with_overlap_checks db ts ~stack ~linking =
       Result.List.iter deps ~f:(loop ~stack:new_stack) >>| fun () ->
       res := (t, stack) :: !res
   in
-  Result.List.iter ts ~f:(loop ~stack) >>= fun () ->
+  Result.List.iter ts ~f:(loop ~stack:orig_stack) >>= fun () ->
   Virtual_libs.associate (List.rev !res) ~linking ~orig_stack
 
 let closure_with_overlap_checks db l =
@@ -883,7 +936,7 @@ module Compile = struct
 
   type nonrec t =
     { direct_requires   : t list Or_exn.t
-    ; requires          : t list Or_exn.t
+    ; requires_link     : t list Or_exn.t Lazy.t
     ; pps               : t list Or_exn.t
     ; resolved_selects  : Resolved_select.t list
     ; lib_deps_info     : Lib_deps_info.t
@@ -903,9 +956,11 @@ module Compile = struct
         ~pps:t.info.pps
         ~kind:(Lib_deps_info.Kind.of_optional t.info.optional)
     in
+    let requires_link = lazy (
+      t.requires >>= closure_with_overlap_checks db ~linking:false
+    ) in
     { direct_requires   = t.requires
-    ; requires          =
-        t.requires >>= closure_with_overlap_checks db ~linking:false
+    ; requires_link
     ; resolved_selects  = t.resolved_selects
     ; pps               = t.pps
     ; lib_deps_info
@@ -913,7 +968,7 @@ module Compile = struct
     }
 
   let direct_requires   t = t.direct_requires
-  let requires          t = t.requires
+  let requires_link     t = t.requires_link
   let resolved_selects  t = t.resolved_selects
   let pps               t = t.pps
   let lib_deps_info     t = t.lib_deps_info
@@ -1035,7 +1090,8 @@ module DB = struct
       let t = Option.some_if (not allow_overlaps) t in
       Compile.for_lib t lib
 
-  let resolve_user_written_deps_for_exes t ?(allow_overlaps=false) deps ~pps =
+  let resolve_user_written_deps_for_exes t exes
+        ?(allow_overlaps=false) deps ~pps =
     let lib_deps_info =
       Compile.make_lib_deps_info
         ~user_written_deps:deps
@@ -1046,15 +1102,17 @@ module DB = struct
       resolve_user_deps t (Lib_info.Deps.of_lib_deps deps) ~pps
         ~stack:Dep_stack.empty ~allow_private_deps:true
     in
-    let requires =
+    let requires_link = lazy (
       res
       >>=
       closure_with_overlap_checks (Option.some_if (not allow_overlaps) t)
         ~linking:true
-    in
+      |> Result.map_error ~f:(fun e ->
+        Dep_path.prepend_exn e (Executables exes))
+    ) in
     { Compile.
       direct_requires = res
-    ; requires
+    ; requires_link
     ; pps
     ; resolved_selects
     ; lib_deps_info
@@ -1130,8 +1188,8 @@ let report_lib_error ppf (e : Error.t) =
       lib_and_dep_path impl2
   | No_implementation { for_vlib = (info, dp) } ->
     Format.fprintf ppf
-      "@[<v 3>@{<error>Error@}: \
-       No implementation found for virtual library %a (%a).%a@]"
+      "@[<v>@{<error>Error@}: \
+       No implementation found for virtual library %a (%a).@,%a@]"
       Lib_name.pp_quoted info.name Path.pp info.src_dir
       dep_path dp
   | Library_not_available { loc = _; name; reason } ->
@@ -1215,6 +1273,7 @@ let () =
 let to_dune_lib ({ name ; info ; _ } as lib) ~lib_modules ~dir =
   let add_loc = List.map ~f:(fun x -> (info.loc, x.name)) in
   let virtual_ = Option.is_some info.virtual_ in
+  let lib_modules = Lib_modules.version_installed ~install_dir:dir lib_modules in
   Dune_package.Lib.make
     ~dir
     ~name

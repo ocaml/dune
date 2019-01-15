@@ -37,19 +37,25 @@ let die = Dune.Import.die
 let hint = Dune.Import.hint
 
 module Main = struct
+  open Fiber.O
+
   include Dune.Main
 
-  let setup ~log ?external_lib_deps_mode (common : Common.t) =
-    setup
+  let scan_workspace ~log (common : Common.t) =
+    scan_workspace
       ~log
       ?workspace_file:(Option.map ~f:Arg.Path.path common.workspace_file)
-      ?only_packages:common.only_packages
-      ?external_lib_deps_mode
       ?x:common.x
       ?profile:common.profile
       ~ignore_promoted_rules:common.ignore_promoted_rules
       ~capture_outputs:common.capture_outputs
       ()
+
+  let setup ~log ?external_lib_deps_mode (common : Common.t) =
+    scan_workspace ~log common
+    >>= init_build_system
+          ?external_lib_deps_mode
+          ?only_packages:common.only_packages
 end
 
 module Log = struct
@@ -87,6 +93,6 @@ let restore_cwd_and_execve (common : Common.t) prog argv env =
   in
   Proc.restore_cwd_and_execve prog argv ~env
 
-let do_build (setup : Main.setup) targets =
+let do_build (setup : Main.build_system) targets =
   Build_system.do_build setup.build_system
     ~request:(Target.request setup targets)

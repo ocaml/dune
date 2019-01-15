@@ -1,7 +1,7 @@
 PREFIX_ARG := $(if $(PREFIX),--prefix $(PREFIX),)
 LIBDIR_ARG := $(if $(LIBDIR),--libdir $(LIBDIR),)
 INSTALL_ARGS := $(PREFIX_ARG) $(LIBDIR_ARG)
-BIN := ./_build/default/bin/main_dune.exe
+BIN := ./_build_bootstrap/default/bin/main_dune.exe
 
 -include Makefile.dev
 
@@ -15,10 +15,10 @@ boot.exe: bootstrap.ml
 	ocaml bootstrap.ml
 
 install:
-	$(BIN) install $(INSTALL_ARGS) dune
+	$(BIN) install $(INSTALL_ARGS) dune --build-dir _build_bootstrap
 
 uninstall:
-	$(BIN) uninstall $(INSTALL_ARGS) dune
+	$(BIN) uninstall $(INSTALL_ARGS) dune --build-dir _build_bootstrap
 
 reinstall: uninstall reinstall
 
@@ -44,7 +44,8 @@ all-supported-ocaml-versions:
 
 clean:
 	rm -f ./boot.exe $(wildcard ./bootstrap.cmi ./bootstrap.cmo ./bootstrap.exe)
-	$(BIN) clean
+	$(BIN) clean || true
+	rm -rf _build_bootstrap
 
 distclean: clean
 	rm -f src/setup.ml

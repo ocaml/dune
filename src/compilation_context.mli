@@ -17,16 +17,15 @@ val create
   :  super_context         : Super_context.t
   -> scope                 : Scope.t
   -> expander              : Expander.t
-  -> dir                   : Path.t
-  -> ?private_obj_dir      : Path.t
+  -> obj_dir               : Obj_dir.t
   -> ?vimpl                : Vimpl.t
   -> ?dir_kind             : Dune_lang.Syntax.t
-  -> ?obj_dir              : Path.t
   -> modules               : Module.t Module.Name.Map.t
   -> ?alias_module         : Module.t
   -> ?lib_interface_module : Module.t
   -> flags                 : Ocaml_flags.t
-  -> requires              : Lib.t list Or_exn.t
+  -> requires_compile      : Lib.t list Or_exn.t
+  -> requires_link         : Lib.t list Or_exn.t Lazy.t
   -> ?preprocessing        : Preprocessing.t
   -> ?no_keep_locs         : bool
   -> opaque                : bool
@@ -43,14 +42,14 @@ val context              : t -> Context.t
 val scope                : t -> Scope.t
 val dir                  : t -> Path.t
 val dir_kind             : t -> Dune_lang.Syntax.t
-val obj_dir              : t -> Path.t
-val private_obj_dir      : t -> Path.t option
+val obj_dir              : t -> Obj_dir.t
 val modules              : t -> Module.t Module.Name.Map.t
 val alias_module         : t -> Module.t option
 val lib_interface_module : t -> Module.t option
 val flags                : t -> Ocaml_flags.t
-val requires             : t -> Lib.t list Or_exn.t
-val includes             : t -> string list Arg_spec.t Cm_kind.Dict.t
+val requires_link        : t -> Lib.t list Or_exn.t
+val requires_compile     : t -> Lib.t list Or_exn.t
+val includes             : t -> (string list, Arg_spec.dynamic) Arg_spec.t Cm_kind.Dict.t
 val preprocessing        : t -> Preprocessing.t
 val no_keep_locs         : t -> bool
 val opaque               : t -> bool

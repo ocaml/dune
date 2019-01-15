@@ -151,7 +151,7 @@ let modules_of_files ~dir ~files =
   let impls = parse_one_set impl_files in
   let intfs = parse_one_set intf_files in
   Module.Name.Map.merge impls intfs ~f:(fun name impl intf ->
-    Some (Module.make name ~visibility:Public ?impl ?intf))
+    Some (Module.Source.make name ?impl ?intf))
 
 let build_modules_map (d : _ Dir_with_dune.t) ~modules =
   let scope = d.scope in
@@ -159,37 +159,48 @@ let build_modules_map (d : _ Dir_with_dune.t) ~modules =
     List.filter_partition_map d.data ~f:(fun stanza ->
       match (stanza : Stanza.t) with
       | Library lib ->
-        let { Modules_field_evaluator.
-              all_modules = modules
-            ; virtual_modules
-            } =
+        let obj_dir =
+          Obj_dir.make_local ~dir:d.ctx_dir (snd lib.name)
+            ~has_private_modules:(Option.is_some lib.private_modules)
+        in
+        let modules =
           Modules_field_evaluator.eval ~modules
+            ~obj_dir
             ~buildable:lib.buildable
             ~virtual_modules:lib.virtual_modules
             ~private_modules:(
               Option.value ~default:Ordered_set_lang.standard
                 lib.private_modules)
         in
-        let main_module_name =
-          match Library.main_module_name lib with
-          | This mmn -> mmn
-          | Inherited_from _ ->
+        let (main_module_name, wrapped) =
+         (* the common case are normal libs where this is all specified so we
+            special case it so that we don't have to resolve anything the db *)
+          match Library.main_module_name lib, lib.wrapped with
+          (* these values are always either inherited together or specified *)
+          | This _, From _
+          | From _, This _ -> assert false
+          | This mmn, This wrapped -> mmn, wrapped
+          | From _, From _ ->
             let name = (fst lib.name, Library.best_name lib) in
-            Lib.DB.resolve (Scope.libs scope) name
-            |> Result.bind ~f:Lib.main_module_name
-            |> Result.ok_exn
+            Result.ok_exn (
+              let open Result.O in
+              Lib.DB.resolve (Scope.libs scope) name >>= fun lib ->
+              Lib.main_module_name lib >>= fun main_module_name ->
+              Lib.wrapped lib >>| fun wrapped ->
+              (main_module_name, Option.value_exn wrapped)
+            )
         in
         Left ( lib
-             , Lib_modules.make lib ~dir:d.ctx_dir modules ~virtual_modules
-                 ~main_module_name
+             , Lib_modules.make lib ~obj_dir modules ~main_module_name ~wrapped
              )
       | Executables exes
       | Tests { exes; _} ->
-        let { Modules_field_evaluator.
-              all_modules = modules
-            ; virtual_modules = _
-            } =
+        let obj_dir =
+          Obj_dir.make_exe ~dir:d.ctx_dir ~name:(snd (List.hd exes.names))
+        in
+        let modules =
           Modules_field_evaluator.eval ~modules
+            ~obj_dir
             ~buildable:exes.buildable
             ~virtual_modules:None
             ~private_modules:Ordered_set_lang.standard
@@ -242,7 +253,7 @@ let build_modules_map (d : _ Dir_with_dune.t) ~modules =
               Option.some_if (n = name) b.loc)
             |> List.sort ~compare
           in
-          Errors.fail (Loc.in_file (List.hd locs).start.pos_fname)
+          Errors.fail (Loc.drop_position (List.hd locs))
             "Module %a is used in several stanzas:@\n\
              @[<v>%a@]@\n\
              @[%a@]"
@@ -267,7 +278,7 @@ let build_modules_map (d : _ Dir_with_dune.t) ~modules =
             List.sort ~compare
               (b.Buildable.loc :: List.map rest ~f:(fun b -> b.Buildable.loc))
           in
-          Errors.warn (Loc.in_file b.loc.start.pos_fname)
+          Errors.warn (Loc.drop_position b.loc)
             "Module %a is used in several stanzas:@\n\
              @[<v>%a@]@\n\
              @[%a@]@\n\
@@ -385,18 +396,17 @@ let rec get sctx ~dir =
               let modules = modules_of_files ~dir ~files in
               Module.Name.Map.union acc modules ~f:(fun name x y ->
                 Errors.fail (Loc.in_file
-                            (Path.to_string
                                (match File_tree.Dir.dune_file ft_dir with
                                 | None ->
                                   Path.relative (File_tree.Dir.path ft_dir)
                                     "_unknown_"
-                                | Some d -> File_tree.Dune_file.path d)))
+                                | Some d -> File_tree.Dune_file.path d))
                   "Module %a appears in several directories:\
                    @\n- %a\
                    @\n- %a"
                   Module.Name.pp_quote name
-                  (Fmt.optional Path.pp) (Module.src_dir x)
-                  (Fmt.optional Path.pp) (Module.src_dir y)))
+                  (Fmt.optional Path.pp) (Module.Source.src_dir x)
+                  (Fmt.optional Path.pp) (Module.Source.src_dir y)))
         in
         build_modules_map d ~modules)
       in

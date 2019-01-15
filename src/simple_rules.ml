@@ -55,7 +55,6 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
          sctx
          (snd rule.action)
          ~loc:(fst rule.action)
-         ~dir
          ~expander
          ~dep_kind:Required
          ~targets
@@ -138,7 +137,6 @@ let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
            sctx
            action
            ~loc
-           ~dir
            ~expander
            ~dep_kind:Required
            ~targets:Alias

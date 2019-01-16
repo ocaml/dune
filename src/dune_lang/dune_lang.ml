@@ -201,6 +201,19 @@ module Cst = struct
         Comment (loc, Lines (String.split s ~on:'\n'))
     in
     loop t
+
+  let rec abstract : t -> Ast.t option = function
+    | Atom (loc, atom) -> Some (Atom (loc, atom))
+    | Quoted_string (loc, s) -> Some (Quoted_string (loc, s))
+    | Template t -> Some (Template t)
+    | List (loc, l) -> Some (List (loc, List.filter_map ~f:abstract l))
+    | Comment _ -> None
+
+  let rec concrete : Ast.t -> t = function
+    | Atom (loc, atom) -> Atom (loc, atom)
+    | Quoted_string (loc, s) -> Quoted_string (loc, s)
+    | Template t -> Template t
+    | List (loc, l) -> List (loc, List.map ~f:concrete l)
 end
 
 module Parse_error = struct
@@ -334,7 +347,7 @@ module Parser = struct
     |> List.map ~f:cst_of_encoded_ast
 end
 
-let parse_string ~fname ~mode ?lexer str =
+let lexbuf_from_string ~fname str =
   let lb = Lexing.from_string str in
   lb.lex_curr_p <-
     { pos_fname = fname
@@ -342,7 +355,15 @@ let parse_string ~fname ~mode ?lexer str =
     ; pos_bol   = 0
     ; pos_cnum  = 0
     };
+  lb
+
+let parse_string ~fname ~mode ?lexer str =
+  let lb = lexbuf_from_string ~fname str in
   Parser.parse ~mode ?lexer lb
+
+let parse_cst_string ~fname ?lexer str =
+  let lb = lexbuf_from_string ~fname str in
+  Parser.parse_cst ?lexer lb
 
 type dune_lang = t
 

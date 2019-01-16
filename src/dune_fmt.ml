@@ -14,41 +14,61 @@ let parse_file path_opt =
       let contents = String.concat ~sep:"\n" lines in
       ("<stdin>", contents)
   in
-  Dune_lang.parse_string
-    ~fname
-    ~mode:Dune_lang.Parser.Mode.Many
-    contents
+  Dune_lang.parse_cst_string ~fname contents
 
 let can_be_displayed_wrapped =
-  List.for_all ~f:(function
-    | Dune_lang.Atom _
-    | Dune_lang.Quoted_string _
-    | Dune_lang.Template _
-    | Dune_lang.List [_]
+  List.for_all ~f:(fun (c : Dune_lang.Cst.t) ->
+    match c with
+    | Atom _
+    | Quoted_string _
+    | Template _
+    | List (_, [_])
       ->
       true
-    | Dune_lang.List _
+    | List _
+    | Comment _
       ->
       false
   )
+
+let pp_simple fmt t =
+  Dune_lang.Cst.abstract t
+  |> Option.value_exn
+  |> Dune_lang.Ast.remove_locs
+  |> Dune_lang.pp Dune fmt
 
 let print_wrapped_list fmt =
   Format.fprintf fmt "(@[<hov 1>%a@])"
     (Fmt.list
       ~pp_sep:(fun fmt () -> Format.fprintf fmt "@ ")
-      (Dune_lang.pp Dune_lang.Dune)
+      pp_simple
     )
 
-let rec pp_sexp fmt =
+let pp_comment_line last fmt l =
+  Format.fprintf fmt "; %s" l;
+  if last then
+    Format.fprintf fmt "@ "
+
+let pp_comment loc ~last:last_in_list fmt (comment:Dune_lang.Cst.Comment.t) =
+  match comment with
+  | Lines ls ->
+    Fmt.list_special
+      ~pp_sep:(fun fmt () -> Format.fprintf fmt "@ ")
+      (fun ~last -> pp_comment_line (last && last_in_list))
+      fmt
+      ls
+  | Legacy ->
+    Errors.fail loc "Formatting is only supported with the dune syntax"
+
+let rec pp_sexp ~last fmt : Dune_lang.Cst.t -> _ =
   function
-    ( Dune_lang.Atom _
-    | Dune_lang.Quoted_string _
-    | Dune_lang.Template _
+  | ( Atom _
+    | Quoted_string _
+    | Template _
     ) as sexp
     ->
-    Format.fprintf fmt "%a"
-      (Dune_lang.pp Dune_lang.Dune) sexp
-  | Dune_lang.List sexps
+    pp_simple fmt sexp
+  | List (_, sexps)
     ->
     Format.fprintf fmt "@[<v 1>%a@]"
       (if can_be_displayed_wrapped sexps then
@@ -56,20 +76,20 @@ let rec pp_sexp fmt =
        else
          pp_sexp_list)
       sexps
+  | Comment (loc, c)
+    ->
+    pp_comment loc ~last fmt c
 
 and pp_sexp_list fmt =
   let pp_sep fmt () = Format.fprintf fmt "@," in
   Format.fprintf fmt "(%a)"
-    (Fmt.list ~pp_sep pp_sexp)
+    (Fmt.list_special ~pp_sep pp_sexp)
 
 let pp_top_sexp fmt sexp =
-  Format.fprintf fmt "%a\n" pp_sexp sexp
+  Format.fprintf fmt "%a\n" (pp_sexp ~last:false) sexp
 
 let pp_top_sexps =
-  Fmt.list
-    ~pp_sep:Fmt.nl
-    (fun fmt sexp ->
-      pp_top_sexp fmt (Dune_lang.Ast.remove_locs sexp))
+  Fmt.list ~pp_sep:Fmt.nl pp_top_sexp
 
 let with_output path_opt k =
   match path_opt with

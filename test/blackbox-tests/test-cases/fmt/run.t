@@ -85,3 +85,29 @@ In multi-line strings, newlines are escaped.
   (echo "multi\nline\nstring\n")
   
   (echo "multi\nline\nstring\n")
+
+Comments are preserved.
+
+  $ printf '; comment\n(a b;comment\nc;multi\n;line\n;comment\n d)' | dune unstable-fmt
+  ;  comment
+  
+  (a
+   b
+   ; comment
+   c
+   ; multi
+   ; line
+   ; comment
+   d)
+
+When a comment is at the end of a list, the ")" is on a own line.
+
+  $ printf '(a ;comment\n)\n(a ;multiline\n;comment\n)' | dune unstable-fmt
+  (a
+   ; comment
+   )
+  
+  (a
+   ; multiline
+   ; comment
+   )

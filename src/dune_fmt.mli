@@ -7,4 +7,4 @@ val format_file :
   unit
 
 (** Pretty-print a list of toplevel s-expressions *)
-val pp_top_sexps : Format.formatter -> Dune_lang.Ast.t list -> unit
+val pp_top_sexps : Format.formatter -> Dune_lang.Cst.t list -> unit

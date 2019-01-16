@@ -21,6 +21,15 @@ let kstrf f fmt =
 let failwith fmt = kstrf failwith fmt
 
 let list = Format.pp_print_list
+
+let rec list_special ~pp_sep pp fmt = function
+  | [] -> ()
+  | [v] -> pp ~last:true fmt v
+  | v :: vs ->
+    pp ~last:false fmt v;
+    pp_sep fmt ();
+    list_special ~pp_sep pp fmt vs
+
 let string s ppf = Format.pp_print_string ppf s
 
 let text = Format.pp_print_text

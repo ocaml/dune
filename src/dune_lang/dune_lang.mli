@@ -141,6 +141,10 @@ module Cst : sig
   (** Replace all the [Comment Legacy] by [Comment (Lines _)] by
       extracting the contents of comments from the original file. *)
   val fetch_legacy_comments : t -> file_contents:string -> t
+
+  val abstract : t -> Ast.t option
+
+  val concrete : Ast.t -> t
 end
 
 module Parse_error : sig
@@ -201,6 +205,12 @@ val parse_string
   -> ?lexer:Lexer.t
   -> string
   -> 'a
+
+val parse_cst_string
+  :  fname:string
+  -> ?lexer:Lexer.t
+  -> string
+  -> Cst.t list
 
 module Encoder : sig
   type sexp = t

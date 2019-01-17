@@ -3,10 +3,12 @@ open Printf
 let process_line =
   let path_re = Str.regexp {|^\([SB]\) /.+/lib/\(.+\)$|} in
   let ppx_re = Str.regexp {|^FLG -ppx '/.+/\.ppx/\(.+\)$|} in
+  let pp_re = Str.regexp {|^FLG -pp '/.+/merlin-tests/\(.+\)$|} in
   fun line ->
     line
     |> Str.replace_first path_re {|\1 $LIB_PREFIX/lib/\2|}
     |> Str.global_replace ppx_re {|FLG -ppx '$PPX/\1|}
+    |> Str.global_replace pp_re {|FLG -pp '$PP/\1|}
 
 let () =
   let files = ref [] in

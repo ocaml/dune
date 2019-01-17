@@ -16,6 +16,7 @@
   S $LIB_PREFIX/lib/ocaml
   S .
   S ../lib
+  FLG -pp '$PP/_build/default/exe/foo-bar'
   FLG -w -40
   # Processing lib/.merlin
   EXCLUDE_QUERY_DIR

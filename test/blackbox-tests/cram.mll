@@ -6,7 +6,7 @@ open Import
 
 type item =
   | Output  of string
-  | Command of string
+  | Command of string list
   | Comment of string
 }
 
@@ -16,9 +16,21 @@ let ext = '.' ['a'-'z' 'A'-'Z' '0'-'9']+
 
 rule file = parse
  | eof { [] }
- | "  $ " ([^'\n']* as str) eol { Command str :: file lexbuf }
- | "  " ([^'\n']* as str) eol   { Output  str :: file lexbuf }
- | ([^'\n']* as str) eol        { Comment str :: file lexbuf }
+ | "  $ " { command [] lexbuf }
+ | "  " { output lexbuf }
+ | "" { comment lexbuf }
+
+and comment = parse
+ | [^'\n']* as str eol { Comment str :: file lexbuf }
+
+and output = parse
+  | [^'\n']* as str eol { Output str :: file lexbuf }
+
+and command acc = parse
+ | ([^'\n']* as str) "\n  > "
+    { command (str :: acc) lexbuf }
+ | ([^'\n']* as str) eol
+    { Command (List.rev (str :: acc)) :: file lexbuf }
 
 and postprocess tbl b = parse
   | eof { Buffer.contents b }
@@ -130,8 +142,9 @@ and postprocess tbl b = parse
         List.iter items ~f:(function
           | Output _ -> ()
           | Comment s -> Buffer.add_string buf s; Buffer.add_char buf '\n'
-          | Command s ->
-            Printf.bprintf buf "  $ %s\n" s;
+          | Command l ->
+            Printf.bprintf buf "  $ %s\n" (String.concat l ~sep:"\n  > ");
+            let s = String.concat l ~sep:"\n" in
             let fd = Unix.openfile temp_file [O_WRONLY; O_TRUNC] 0 in
             let pid =
               Unix.create_process "sh" [|"sh"; "-c"; s|] Unix.stdin fd fd

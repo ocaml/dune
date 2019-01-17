@@ -14,9 +14,6 @@ type t =
              result option String_with_vars.expander
   }
 
-type var_expander =
-  (Value.t list, Pform.Expansion.t) result option String_with_vars.expander
-
 let scope t = t.scope
 let dir t = t.dir
 let bindings t = t.bindings

@@ -41,9 +41,6 @@ val add_bindings : t -> bindings:Pform.Map.t -> t
 
 val extend_env : t -> env:Env.t -> t
 
-type var_expander =
-  (Value.t list, Pform.Expansion.t) result option String_with_vars.expander
-
 val expand
   :  t
   -> mode:'a String_with_vars.Mode.t

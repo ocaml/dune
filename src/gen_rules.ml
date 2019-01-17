@@ -151,7 +151,7 @@ module Gen(P : Install_rules.Params) = struct
         List.map (Dir_contents.dirs dir_contents) ~f:(fun dc ->
           Path.drop_optional_build_context (Dir_contents.dir dc))
       in
-      Merlin.add_rules sctx ~dir:ctx_dir ~more_src_dirs ~scope ~dir_kind
+      Merlin.add_rules sctx ~dir:ctx_dir ~more_src_dirs ~expander ~dir_kind
         (Merlin.add_source_dir m src_dir));
     List.iter stanzas ~f:(fun stanza ->
       match (stanza : Stanza.t) with

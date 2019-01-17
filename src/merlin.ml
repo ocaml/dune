@@ -6,19 +6,12 @@ open! No_io
 module SC = Super_context
 
 module Preprocess = struct
-  type t =
-    | Pps of Dune_file.Preprocess.pps
-    | Other
-
-  let make : Dune_file.Preprocess.t -> t = function
-    | Pps pps -> Pps pps
-    | _       -> Other
-
-  let merge a b =
+  let merge (a : Dune_file.Preprocess.t) (b : Dune_file.Preprocess.t) =
     match a, b with
-    | Other, Other -> Other
-    | Pps _, Other -> a
-    | Other, Pps _ -> b
+    | No_preprocessing, pp
+    | pp, No_preprocessing -> pp
+    | (Action _ as action), _
+    | _, (Action _ as action) -> action
     | Pps { loc = _; pps = pps1; flags = flags1; staged = s1 },
       Pps { loc = _; pps = pps2; flags = flags2; staged = s2 } ->
       match
@@ -32,7 +25,7 @@ module Preprocess = struct
               Lib_name.compare a b)
       with
       | Eq -> a
-      | _  -> Other
+      | _  -> No_preprocessing
 end
 
 module Dot_file = struct
@@ -41,7 +34,7 @@ module Dot_file = struct
   let printf = Printf.bprintf b
   let print = Buffer.add_string b
 
-  let to_string ~obj_dirs ~src_dirs ~flags ~ppx ~remaindir =
+  let to_string ~obj_dirs ~src_dirs ~flags ~pp ~remaindir =
     let serialize_path = Path.reach ~from:remaindir in
     Buffer.clear b;
     print "EXCLUDE_QUERY_DIR\n";
@@ -49,14 +42,7 @@ module Dot_file = struct
       printf "B %s\n" (serialize_path p));
     Path.Set.iter src_dirs ~f:(fun p ->
       printf "S %s\n" (serialize_path p));
-    begin match ppx with
-    | [] -> ()
-    | ppx ->
-      printf "FLG -ppx %s\n"
-        (List.map ppx ~f:quote_for_shell
-         |> String.concat ~sep:" "
-         |> Filename.quote)
-    end;
+    Option.iter pp ~f:(printf "%s\n");
     begin match flags with
     | [] -> ()
     | flags ->
@@ -70,7 +56,7 @@ end
 type t =
   { requires   : Lib.Set.t
   ; flags      : (unit, string list) Build.t
-  ; preprocess : Preprocess.t
+  ; preprocess : Dune_file.Preprocess.t
   ; libname    : Lib_name.Local.t option
   ; source_dirs: Path.Set.t
   ; objs_dirs  : Path.Set.t
@@ -92,7 +78,7 @@ let make
   in
   { requires
   ; flags      = Build.catch flags    ~on_error:(fun _ -> [])
-  ; preprocess = Preprocess.make preprocess
+  ; preprocess
   ; libname
   ; source_dirs
   ; objs_dirs
@@ -101,20 +87,47 @@ let make
 let add_source_dir t dir =
   { t with source_dirs = Path.Set.add t.source_dirs dir }
 
-let ppx_flags sctx ~dir:_ ~scope ~dir_kind { preprocess; libname; _ } =
+let pp_flags sctx ~expander ~dir_kind { preprocess; libname; _ } =
+  let scope = Expander.scope expander in
   match preprocess with
   | Pps { loc = _; pps; flags; staged = _ } -> begin
     match Preprocessing.get_ppx_driver sctx ~scope ~dir_kind pps with
+    | Error _ -> None
     | Ok exe ->
       (Path.to_absolute_filename exe
        :: "--as-ppx"
        :: Preprocessing.cookie_library_name libname
        @ flags)
-    | Error _ -> []
+      |> List.map ~f:quote_for_shell
+      |> String.concat ~sep:" "
+      |> Filename.quote
+      |> sprintf "FLG -ppx %s"
+      |> Option.some
   end
-  | Other -> []
+  | Action (_, (action : Action_dune_lang.t)) ->
+    begin match action with
+    | Run (exe, args) ->
+      let open Option.O in
+      List.destruct_last args >>= (fun (args, input_file) ->
+        if String_with_vars.is_var input_file ~name:"input-file" then
+          Some args
+        else
+          None)
+      >>= fun args ->
+      let args = List.map ~f:(Expander.expand_str expander) args in
+      let exe = Expander.expand_path expander exe in
+      (Path.to_absolute_filename exe :: args)
+      |> List.map ~f:quote_for_shell
+      |> String.concat ~sep:" "
+      |> Filename.quote
+      |> sprintf "FLG -pp %s"
+      |> Option.some
+    | _ -> None
+    end
+  | No_preprocessing ->
+    None
 
-let dot_merlin sctx ~dir ~more_src_dirs ~scope ~dir_kind
+let dot_merlin sctx ~dir ~more_src_dirs ~expander ~dir_kind
       ({ requires; flags; _ } as t) =
   match Path.drop_build_context dir with
   | None -> ()
@@ -152,7 +165,7 @@ let dot_merlin sctx ~dir ~more_src_dirs ~scope ~dir_kind
         in
         Dot_file.to_string
           ~remaindir
-          ~ppx:(ppx_flags sctx ~dir ~scope ~dir_kind t)
+          ~pp:(pp_flags sctx ~expander ~dir_kind t)
           ~flags
           ~src_dirs
           ~obj_dirs)
@@ -175,6 +188,6 @@ let merge_all = function
   | [] -> None
   | init::ts -> Some (List.fold_left ~init ~f:merge_two ts)
 
-let add_rules sctx ~dir ~more_src_dirs ~scope ~dir_kind merlin =
+let add_rules sctx ~dir ~more_src_dirs ~expander ~dir_kind merlin =
   if (SC.context sctx).merlin then
-    dot_merlin sctx ~dir ~more_src_dirs ~scope ~dir_kind merlin
+    dot_merlin sctx ~dir ~more_src_dirs ~expander ~dir_kind merlin

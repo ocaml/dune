@@ -90,6 +90,9 @@ unreleased
 - Add `toplevel` stanza. This stanza is used to define toplevels with libraries
   already preloaded. (#1713, @rgrinberg)
 
+- Generate `.merlin` files that account for normal preprocessors defined using a
+  subset of the `action` language. (#1768, @rgrinberg)
+
 1.6.2 (05/12/2018)
 ------------------
 

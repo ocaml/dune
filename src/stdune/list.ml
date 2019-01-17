@@ -97,6 +97,14 @@ let rec last = function
   | [x] -> Some x
   | _::xs -> last xs
 
+let destruct_last =
+  let rec loop acc = function
+    | [] -> None
+    | [x] -> Some (rev acc, x)
+    | x :: xs -> loop (x :: acc) xs
+  in
+  fun xs -> loop [] xs
+
 let sort t ~compare =
   sort t ~cmp:(fun a b -> Ordering.to_int (compare a b))
 

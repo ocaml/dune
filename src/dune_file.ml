@@ -1035,6 +1035,181 @@ module Install_conf = struct
 end
 
 module Executables = struct
+  module Names : sig
+    type t
+
+    val names : t -> (Loc.t * string) list
+
+    val has_public_name : t -> bool
+
+    val make
+      :  multi:bool
+      -> stanza:string
+      -> allow_omit_names_version:Syntax.Version.t
+      -> (t, fields) Dune_lang.Decoder.parser
+
+    val install_conf
+      : t
+      -> ext:string
+      -> (String_with_vars.t Install_conf.t, string) Result.t option
+
+    val loc_of_package_field : t -> Loc.t
+  end = struct
+    type t =
+      { names : (Loc.t * string) list
+      ; public_names : (Loc.t * string option) list option
+      ; package : (Loc.t * Package.Name.t) option
+      ; stanza : string
+      ; project : Dune_project.t
+      ; loc : Loc.t
+      ; multi : bool
+      ; file_kind : Dune_lang.syntax
+      }
+
+    let names t = t.names
+
+    let loc_of_package_field t =
+      match t.package with
+      | None -> t.loc
+      | Some (loc, _) -> loc
+
+    let public_name =
+      located string >>| fun (loc, s) ->
+      (loc
+      , match s with
+      | "-" -> None
+      | s   -> Some s)
+
+    let multi_fields =
+      map_validate
+        (let%map names = field_o "names" (list (located string))
+         and pub_names = field_o "public_names" (list public_name) in
+         (names, pub_names))
+        ~f:(fun (names, public_names) ->
+          match names, public_names with
+          | Some names, Some public_names ->
+            if List.length public_names = List.length names then
+              Ok (Some names, Some public_names)
+            else
+              Error "The list of public names must be of the same \
+                     length as the list of names"
+          | names, public_names ->
+            Ok (names, public_names))
+
+    let single_fields =
+      let%map name = field_o "name" (located string)
+      and public_name = field_o "public_name" (located string)
+      in
+      ( Option.map name ~f:List.singleton
+      , Option.map public_name ~f:(fun (loc, s) -> [loc, Some s])
+      )
+
+    let pluralize s ~multi =
+      if multi then
+        s ^ "s"
+      else
+        s
+
+    let make ~multi ~stanza ~allow_omit_names_version =
+      let%map names =
+        if multi then
+          multi_fields
+        else
+          single_fields
+      and loc = loc
+      and dune_syntax = Syntax.get_exn Stanza.syntax
+      and file_kind = Stanza.file_kind ()
+      and package =
+        field_o "package" (let%map loc = loc
+                           and s = Package.Name.decode in
+                           (loc, s))
+      and project = Dune_project.get_exn ()
+      in
+      let (names, public_names) = names in
+      let stanza = pluralize stanza ~multi in
+      let names =
+        let open Syntax.Version.Infix in
+        match names, public_names with
+        | Some names, _ -> names
+        | None, Some public_names ->
+          if dune_syntax >= allow_omit_names_version then
+            List.map public_names ~f:(fun (loc, p) ->
+              match p with
+              | None ->
+                of_sexp_error loc "This executable must have a name field"
+              | Some s -> (loc, s))
+          else
+            of_sexp_errorf loc
+              "%s field may not be omitted before dune version %s"
+              (pluralize ~multi "name")
+              (Syntax.Version.to_string allow_omit_names_version)
+        | None, None ->
+          if dune_syntax >= allow_omit_names_version then
+            of_sexp_errorf loc "either the %s or the %s field must be present"
+              (pluralize ~multi "name")
+              (pluralize ~multi "public_name")
+          else
+            of_sexp_errorf loc "field %s is missing"
+              (pluralize ~multi "name")
+      in
+      { names
+      ; public_names
+      ; package
+      ; project
+      ; stanza
+      ; loc
+      ; multi
+      ; file_kind
+      }
+
+    let has_public_name t =
+      (* user could omit public names by avoiding the field or writing - *)
+      match t.public_names with
+      | None -> false
+      | Some pns -> List.exists ~f:(fun (_, n) -> Option.is_some n) pns
+
+    let package t =
+      match t.package with
+      | None -> (t.loc, Pkg.default t.project t.stanza)
+      | Some (loc, name) -> (loc, Pkg.resolve t.project name)
+
+    let install_conf t ~ext =
+      let files =
+        let public_names =
+          match t.public_names with
+          | None -> List.map t.names ~f:(Fn.const (Loc.none, None))
+          | Some pns -> pns
+        in
+        List.map2 t.names public_names
+          ~f:(fun (locn, name) (locp, pub) ->
+            Option.map pub ~f:(fun pub ->
+              { File_bindings.
+                src = String_with_vars.make_text locn (name ^ ext)
+              ; dst = Some (String_with_vars.make_text locp pub)
+              }))
+        |> List.filter_opt
+      in
+      begin match files, t.package with
+      | [], None -> None
+      | [], Some (loc, _) ->
+        let func =
+          match t.file_kind with
+          | Jbuild -> Errors.warn
+          | Dune   -> Errors.fail
+        in
+        func loc
+          "This field is useless without a (%s ...) field."
+          (pluralize "public_name" ~multi:t.multi);
+        None
+      | files, _ ->
+        Some (
+          let open Result.O in
+          let (_loc, package) = package t in
+          package >>| fun package ->
+          { Install_conf. section = Bin; files; package }
+        )
+      end
+  end
 
   module Link_mode = struct
     module T = struct
@@ -1151,12 +1326,6 @@ module Executables = struct
     ; buildable  : Buildable.t
     }
 
-  let pluralize s ~multi =
-    if multi then
-      s ^ "s"
-    else
-      s
-
   let common =
     let%map buildable = Buildable.decode
     and (_ : bool) = field "link_executables" ~default:true
@@ -1164,62 +1333,27 @@ module Executables = struct
     and link_deps = field "link_deps" (list Dep_conf.decode) ~default:[]
     and link_flags = field_oslu "link_flags"
     and modes = field "modes" Link_mode.Set.decode ~default:Link_mode.Set.default
-    and () = map_validate
-               (field "inline_tests" (repeat junk >>| fun _ -> true) ~default:false)
-               ~f:(function
-                 | false -> Ok ()
-                 | true  ->
-                   Error
-                     "Inline tests are only allowed in libraries.\n\
-                      See https://github.com/ocaml/dune/issues/745 for more details.")
-    and package = field_o "package" (let%map loc = loc
-                                     and s = string in
-                                     (loc, s))
-    and project = Dune_project.get_exn ()
-    and file_kind = Stanza.file_kind ()
-    and dune_syntax = Syntax.get_exn Stanza.syntax
-    and loc = loc
+    and () = map_validate (
+      field "inline_tests" (repeat junk >>| fun _ -> true) ~default:false)
+      ~f:(function
+        | false -> Ok ()
+        | true  ->
+          Error
+            "Inline tests are only allowed in libraries.\n\
+             See https://github.com/ocaml/dune/issues/745 for more details.")
     in
-    fun names public_names ~multi ->
-      let names =
-        let open Syntax.Version.Infix in
-        match names, public_names with
-        | Some names, _ -> names
-        | None, Some public_names ->
-          if dune_syntax >= (1, 1) then
-            List.map public_names ~f:(fun (loc, p) ->
-              match p with
-              | None ->
-                of_sexp_error loc "This executable must have a name field"
-              | Some s -> (loc, s))
-          else
-            of_sexp_errorf loc
-              "%s field may not be omitted before dune version 1.1"
-              (pluralize ~multi "name")
-        | None, None ->
-          if dune_syntax >= (1, 1) then
-            of_sexp_errorf loc "either the %s or the %s field must be present"
-              (pluralize ~multi "name")
-              (pluralize ~multi "public_name")
-          else
-            of_sexp_errorf loc "field %s is missing"
-              (pluralize ~multi "name")
-      in
+    fun names ~multi ->
+      let has_public_name = Names.has_public_name names in
+      let private_names = Names.names names in
       let t =
-        { names
+        { names = private_names
         ; link_flags
         ; link_deps
         ; modes
         ; buildable
         }
       in
-      let has_public_name =
-        (* user could omit public names by avoiding the field or writing - *)
-        match public_names with
-        | None -> false
-        | Some pns -> List.exists ~f:(fun (_, n) -> Option.is_some n) pns
-      in
-      let to_install =
+      let install_conf =
         match Link_mode.Set.best_install_mode t.modes with
         | None when has_public_name ->
           let mode_to_string mode =
@@ -1232,95 +1366,34 @@ module Executables = struct
              %s"
             (if multi then "these executables" else "this executable")
             (String.concat ~sep:"\n" mode_strings)
-        | None -> []
+        | None -> None
         | Some mode ->
           let ext =
             match mode.mode with
             | Native | Best -> ".exe"
             | Byte -> ".bc"
           in
-          let public_names =
-            match public_names with
-            | None -> List.map names ~f:(Fn.const (Loc.none, None))
-            | Some pns -> pns
-          in
-          List.map2 names public_names
-            ~f:(fun (locn, name) (locp, pub) ->
-              Option.map pub ~f:(fun pub ->
-                { File_bindings.
-                  src = String_with_vars.make_text locn (name ^ ext)
-                ; dst = Some (String_with_vars.make_text locp pub)
-                }))
-          |> List.filter_opt
+          Names.install_conf names ~ext
       in
-      match to_install with
-      | [] -> begin
-          match package with
-          | None -> (t, None)
-          | Some (loc, _) ->
-            let func =
-              match file_kind with
-              | Jbuild -> Errors.warn
-              | Dune   -> Errors.fail
-            in
-            func loc
-              "This field is useless without a (public_name%s ...) field."
-              (if multi then "s" else "");
-            (t, None)
-        end
-      | files ->
-        let package =
-          match
-            match package with
-            | None ->
-              let stanza =
-                pluralize ~multi "executable"
-              in
-              (buildable.loc, Pkg.default project stanza)
-            | Some (loc, name) ->
-              (loc, Pkg.resolve project (Package.Name.of_string name))
-          with
-          | (_, Ok x) -> x
-          | (loc, Error msg) ->
-            of_sexp_errorf loc "%s" msg
-        in
-        (t, Some { Install_conf. section = Bin; files; package })
+      match install_conf with
+      | None -> (t, None)
+      | Some (Error msg) ->
+        let loc = Names.loc_of_package_field names in
+        of_sexp_errorf loc "%s" msg
+      | Some (Ok install_conf) ->
+        (t, Some install_conf)
 
-  let public_name =
-    located string >>| fun (loc, s) ->
-    (loc
-    , match s with
-    | "-" -> None
-    | s   -> Some s)
-
-  let multi =
-    record
-      (let%map names, public_names =
-         map_validate
-           (let%map names = field_o "names" (list (located string))
-            and pub_names = field_o "public_names" (list public_name) in
-            (names, pub_names))
-           ~f:(fun (names, public_names) ->
-             match names, public_names with
-             | Some names, Some public_names ->
-               if List.length public_names = List.length names then
-                 Ok (Some names, Some public_names)
-               else
-                 Error "The list of public names must be of the same \
-                        length as the list of names"
-             | names, public_names -> Ok (names, public_names))
-       and f = common in
-       f names public_names ~multi:true)
-
-  let single =
-    record
-      (let%map name = field_o "name" (located string)
-       and public_name = field_o "public_name" (located string)
-       and f = common in
-       f (Option.map name ~f:List.singleton)
-         (Option.map public_name ~f:(fun (loc, s) ->
-            [loc, Some s]))
-         ~multi:false)
+  let (single, multi) =
+    let stanza = "executable" in
+    let make multi =
+      record
+        (let%map names =
+           Names.make ~multi ~stanza ~allow_omit_names_version:(1, 1)
+         and f = common
+         in
+         f names ~multi)
+    in
+    (make false, make true)
 end
 
 module Rule = struct

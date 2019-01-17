@@ -53,6 +53,11 @@ val expand_str : t -> String_with_vars.t -> string
 
 val artifacts_host : t -> Artifacts.t
 
+module Option : sig
+  val expand_path : t -> String_with_vars.t -> Path.t option
+  val expand_str : t -> String_with_vars.t -> string option
+end
+
 module Resolved_forms : sig
   type t
 

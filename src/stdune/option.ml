@@ -76,3 +76,13 @@ let try_with f =
   match f () with
   | exception _ -> None
   | s -> Some s
+
+module List = struct
+  let all =
+    let rec loop acc = function
+      | [] -> Some (List.rev acc)
+      | None :: _ -> None
+      | Some x :: xs -> loop (x :: acc) xs
+    in
+    fun xs -> loop [] xs
+end

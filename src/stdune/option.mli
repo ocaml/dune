@@ -34,3 +34,7 @@ val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
 val compare : ('a -> 'a -> Ordering.t) -> 'a t -> 'a t -> Ordering.t
 
 val try_with : (unit -> 'a) -> 'a option
+
+module List : sig
+  val all : 'a option list -> 'a list option
+end

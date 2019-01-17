@@ -89,7 +89,7 @@ let of_library_stanza ~dir ~has_native ~ext_lib ~ext_obj
     match Path.drop_build_context dir with
     | None -> None
     | Some src_dir ->
-      Some Path.(of_string (to_absolute_filename (in_source (to_string src_dir))))
+      Some Path.(of_string (to_absolute_filename src_dir))
   in
   let obj_dir =
     Obj_dir.make_local ~dir

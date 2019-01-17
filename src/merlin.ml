@@ -114,8 +114,10 @@ let pp_flags sctx ~expander ~dir_kind { preprocess; libname; _ } =
         else
           None)
       >>= fun args ->
-      let args = List.map ~f:(Expander.expand_str expander) args in
-      let exe = Expander.expand_path expander exe in
+      Expander.Option.expand_path expander exe >>= fun exe ->
+      List.map ~f:(Expander.Option.expand_str expander) args
+      |> Option.List.all
+      >>= fun args ->
       (Path.to_absolute_filename exe :: args)
       |> List.map ~f:quote_for_shell
       |> String.concat ~sep:" "

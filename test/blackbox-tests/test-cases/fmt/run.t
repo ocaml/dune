@@ -101,11 +101,11 @@ Comments are preserved.
 
   $ dune unstable-fmt <<EOF
   > ; comment
-  > (;first comment
-  > a b;comment for b
-  > ccc;multi
-  > ;line
-  > ;comment for ccc
+  > (; first comment
+  > a b; comment for b
+  > ccc; multi
+  > ; line
+  > ; comment for ccc
   > d
   > e
   > ; unattached comment
@@ -116,7 +116,7 @@ Comments are preserved.
   > g
   > )
   > EOF
-  ;  comment
+  ; comment
   
   (; first comment
    a
@@ -126,21 +126,21 @@ Comments are preserved.
        ; comment for ccc
    d
    e
-   ;  unattached comment
+   ; unattached comment
    f
-   ;  unattached
-   ;  multi-line
-   ;  comment
+   ; unattached
+   ; multi-line
+   ; comment
    g)
 
 When a comment is at the end of a list, the ")" is on a own line.
 
   $ dune unstable-fmt <<EOF
-  > (a ;comment
+  > (a ; comment
   > )
-  > (a ;multiline
-  > ;comment
-  > )
+  > (a ; multiline
+  > ; comment
+  >  )
   > EOF
   (a
    ; comment

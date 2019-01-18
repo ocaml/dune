@@ -45,7 +45,7 @@ let print_wrapped_list fmt =
     )
 
 let pp_comment_line fmt l =
-  Format.fprintf fmt "; %s" l
+  Format.fprintf fmt ";%s" l
 
 let pp_comment loc fmt (comment:Dune_lang.Cst.Comment.t) =
   match comment with

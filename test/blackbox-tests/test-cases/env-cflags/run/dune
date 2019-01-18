@@ -8,18 +8,8 @@
  (deps foo.c)
  (action (run %{cc} -o %{targets} %{deps})))
 
-(alias
- (name runfoo)
- (action
-  (run ./foo.exe)))
-
-
 (rule
  (targets bar.exe)
  (deps bar.cpp)
  (action (run %{cxx} -o %{targets} %{deps})))
 
-(alias
- (name runbar)
- (action
-  (run ./bar.exe)))

@@ -81,14 +81,32 @@ it gets wrapped.
 
 In multi-line strings, newlines are escaped.
 
-  $ dune unstable-fmt < multi-line-strings
+  $ dune unstable-fmt <<EOF
+  > (echo "\> multi
+  >       "\> line
+  >       "\> string
+  > )
+  > 
+  > (echo "\
+  > multi
+  > line
+  > string
+  > ")
+  > EOF
   (echo "multi\nline\nstring\n")
   
   (echo "multi\nline\nstring\n")
 
 Comments are preserved.
 
-  $ printf '; comment\n(a b;comment\nc;multi\n;line\n;comment\n d)' | dune unstable-fmt
+  $ dune unstable-fmt <<EOF
+  > ; comment
+  > (a b;comment
+  > c;multi
+  > ;line
+  > ;comment
+  > d)
+  > EOF
   ;  comment
   
   (a
@@ -102,7 +120,13 @@ Comments are preserved.
 
 When a comment is at the end of a list, the ")" is on a own line.
 
-  $ printf '(a ;comment\n)\n(a ;multiline\n;comment\n)' | dune unstable-fmt
+  $ dune unstable-fmt <<EOF
+  > (a ;comment
+  > )
+  > (a ;multiline
+  > ;comment
+  > )
+  > EOF
   (a
    ; comment
    )

@@ -30,3 +30,5 @@ val pp_file_excerpt
   -> Format.formatter
   -> t
   -> unit
+
+val on_same_line : t -> t -> bool

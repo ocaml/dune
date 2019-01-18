@@ -2,9 +2,6 @@ type 'a t = Format.formatter -> 'a -> unit
 
 val list : ?pp_sep:unit t -> 'a t -> 'a list t
 
-(** Like [list], but the printer gets an extra argument for the last element *)
-val list_special : pp_sep:unit t -> (last:bool -> 'a t) -> 'a list t
-
 val failwith : ('a, Format.formatter, unit, 'b) format4 -> 'a
 
 val string : string -> Format.formatter -> unit

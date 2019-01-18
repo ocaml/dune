@@ -44,23 +44,42 @@ let print_wrapped_list fmt =
       pp_simple
     )
 
-let pp_comment_line last fmt l =
-  Format.fprintf fmt "; %s" l;
-  if last then
-    Format.fprintf fmt "@ "
+let pp_comment_line fmt l =
+  Format.fprintf fmt "; %s" l
 
-let pp_comment loc ~last:last_in_list fmt (comment:Dune_lang.Cst.Comment.t) =
+let pp_comment loc fmt (comment:Dune_lang.Cst.Comment.t) =
   match comment with
   | Lines ls ->
-    Fmt.list_special
-      ~pp_sep:(fun fmt () -> Format.fprintf fmt "@ ")
-      (fun ~last -> pp_comment_line (last && last_in_list))
-      fmt
+    Format.fprintf fmt "@[<v 0>%a@]"
+      (Fmt.list
+         ~pp_sep:(fun fmt () -> Format.fprintf fmt "@;")
+         pp_comment_line)
       ls
   | Legacy ->
     Errors.fail loc "Formatting is only supported with the dune syntax"
 
-let rec pp_sexp ~last fmt : Dune_lang.Cst.t -> _ =
+let pp_list_with_comments pp_sexp fmt sexps =
+  let rec go fmt (l:Dune_lang.Cst.t list) =
+    match l with
+    | x :: ([Comment _ ] as xs) ->
+      Format.fprintf fmt "%a@,%a" pp_sexp x go xs
+    | x :: ((Comment (loc, c) :: xs) as xs0) ->
+      let attached = Loc.on_same_line (Dune_lang.Cst.loc x) loc in
+      if attached then
+        Format.fprintf fmt "%a %a@,%a" pp_sexp x (pp_comment loc) c go xs
+      else
+        Format.fprintf fmt "%a@,%a" pp_sexp x go xs0
+    | Comment (loc, c)::xs ->
+      Format.fprintf fmt "%a@,%a" (pp_comment loc) c go xs
+    | [x] ->
+      Format.fprintf fmt "%a" pp_sexp x;
+    | x :: xs ->
+      Format.fprintf fmt "%a@,%a" pp_sexp x go xs
+    | [] -> ()
+  in
+  go fmt sexps
+
+let rec pp_sexp fmt : Dune_lang.Cst.t -> _ =
   function
   | ( Atom _
     | Quoted_string _
@@ -78,15 +97,14 @@ let rec pp_sexp ~last fmt : Dune_lang.Cst.t -> _ =
       sexps
   | Comment (loc, c)
     ->
-    pp_comment loc ~last fmt c
+    pp_comment loc fmt c
 
 and pp_sexp_list fmt =
-  let pp_sep fmt () = Format.fprintf fmt "@," in
   Format.fprintf fmt "(%a)"
-    (Fmt.list_special ~pp_sep pp_sexp)
+    (pp_list_with_comments pp_sexp)
 
 let pp_top_sexp fmt sexp =
-  Format.fprintf fmt "%a\n" (pp_sexp ~last:false) sexp
+  Format.fprintf fmt "%a\n" pp_sexp sexp
 
 let pp_top_sexps =
   Fmt.list ~pp_sep:Fmt.nl pp_top_sexp

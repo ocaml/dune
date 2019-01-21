@@ -53,6 +53,7 @@ type t =
   ; kind             : Lib_kind.t
   ; status           : Status.t
   ; src_dir          : Path.t
+  ; orig_src_dir     : Path.t option
   ; obj_dir          : Obj_dir.t
   ; version          : string option
   ; synopsis         : string option
@@ -155,6 +156,7 @@ let of_library_stanza ~dir ~has_native ~ext_lib ~ext_obj
   ; name
   ; kind     = conf.kind
   ; src_dir  = dir
+  ; orig_src_dir = None
   ; obj_dir
   ; version  = None
   ; synopsis = conf.synopsis
@@ -198,6 +200,7 @@ let of_dune_lib dp =
   ; kind = Lib.kind dp
   ; status = Installed
   ; src_dir
+  ; orig_src_dir = Lib.orig_src_dir dp
   ; obj_dir
   ; version = Lib.version dp
   ; synopsis = Lib.synopsis dp

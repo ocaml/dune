@@ -33,6 +33,7 @@ type t = private
   ; kind             : Lib_kind.t
   ; status           : Status.t
   ; src_dir          : Path.t
+  ; orig_src_dir     : Path.t option
   ; obj_dir          : Obj_dir.t
   ; version          : string option
   ; synopsis         : string option

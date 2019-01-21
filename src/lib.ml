@@ -233,6 +233,7 @@ let modes        t = t.info.modes
 let virtual_     t = t.info.virtual_
 
 let src_dir t = t.info.src_dir
+let orig_src_dir t = Option.value ~default:t.info.src_dir t.info.orig_src_dir
 let obj_dir t = t.info.obj_dir
 
 let is_local t = Path.is_managed (Obj_dir.byte_dir t.info.obj_dir)
@@ -1274,8 +1275,21 @@ let to_dune_lib ({ name ; info ; _ } as lib) ~lib_modules ~dir =
   let add_loc = List.map ~f:(fun x -> (info.loc, x.name)) in
   let virtual_ = Option.is_some info.virtual_ in
   let lib_modules = Lib_modules.version_installed ~install_dir:dir lib_modules in
+  let orig_src_dir =
+    if !Clflags.store_orig_src_dir
+    then Some (
+      match info.orig_src_dir with
+      | Some src_dir -> src_dir
+      | None ->
+        match Path.drop_build_context info.src_dir with
+        | None -> info.src_dir
+        | Some src_dir -> Path.(of_string (to_absolute_filename src_dir))
+    )
+    else None
+  in
   Dune_package.Lib.make
     ~dir
+    ~orig_src_dir
     ~name
     ~loc:info.loc
     ~kind:info.kind

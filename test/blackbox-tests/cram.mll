@@ -8,11 +8,15 @@ type item =
   | Output  of string
   | Command of string list
   | Comment of string
+
+let cwd = Sys.getcwd ()
 }
 
 let eol = '\n' | eof
 
 let ext = '.' ['a'-'z' 'A'-'Z' '0'-'9']+
+
+let abs_path = '/' ['a'-'z' 'A'-'Z' '0'-'9' '-' '_' '/']+
 
 rule file = parse
  | eof { [] }
@@ -32,7 +36,19 @@ and command acc = parse
  | ([^'\n']* as str) eol
     { Command (List.rev (str :: acc)) :: file lexbuf }
 
-and postprocess tbl b = parse
+and postprocess_cwd b = parse
+  | eof { Buffer.contents b }
+  | (abs_path as path) {
+      let path =
+        match String.drop_prefix path ~prefix:cwd with
+        | None -> path
+        | Some path -> "$TESTCASE_ROOT" ^ path
+      in
+      Buffer.add_string b path; postprocess_cwd b lexbuf
+    }
+  | _ as c { Buffer.add_char b c; postprocess_cwd b lexbuf }
+
+and postprocess_ext tbl b = parse
   | eof { Buffer.contents b }
   | ([^ '/'] as c) (ext as e)
       { Buffer.add_char b c;
@@ -40,12 +56,16 @@ and postprocess tbl b = parse
         | Some res -> Buffer.add_string b res
         | None     -> Buffer.add_string b e
         end;
-        postprocess tbl b lexbuf
+        postprocess_ext tbl b lexbuf
       }
-  | _ as c { Buffer.add_char b c; postprocess tbl b lexbuf }
+  | _ as c { Buffer.add_char b c; postprocess_ext tbl b lexbuf }
 
 {
   module Configurator = Configurator.V1
+
+  let cwd_replace s =
+    let l = Lexing.from_string s in
+    postprocess_cwd (Buffer.create (String.length s)) l
 
   let make_ext_replace config =
     let tbl =
@@ -73,7 +93,7 @@ and postprocess tbl b = parse
     List.iter tbl ~f:(fun (e, _) -> assert (e <> ""));
     fun s ->
       let l = Lexing.from_string s in
-      postprocess tbl (Buffer.create (String.length s)) l
+      postprocess_ext tbl (Buffer.create (String.length s)) l
 
   type version = int * int * int
 
@@ -159,8 +179,13 @@ and postprocess tbl b = parse
             Path.of_filename_relative_to_initial_cwd temp_file
             |> Io.lines_of_file
             |> List.iter ~f:(fun line ->
-              Printf.bprintf buf "  %s\n"
-                (ext_replace (Ansi_color.strip line)));
+              let line =
+                line
+                |> Ansi_color.strip
+                |> ext_replace
+                |> cwd_replace
+              in
+              Printf.bprintf buf "  %s\n" line);
             if n <> 0 then Printf.bprintf buf "  [%d]\n" n);
         Buffer.contents buf)
     )

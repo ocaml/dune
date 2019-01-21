@@ -8,6 +8,7 @@ module Lib = struct
     { loc              : Loc.t
     ; name             : Lib_name.t
     ; dir              : Path.t
+    ; orig_src_dir     : Path.t option
     ; kind             : Lib_kind.t
     ; synopsis         : string option
     ; archives         : Path.t list Mode.Dict.t
@@ -29,7 +30,7 @@ module Lib = struct
   let make ~loc ~kind ~name ~synopsis ~archives ~plugins ~foreign_objects
         ~foreign_archives ~jsoo_runtime ~main_module_name ~sub_systems
         ~requires ~ppx_runtime_deps ~implements ~virtual_ ~modules ~modes
-        ~version ~dir =
+        ~version ~orig_src_dir ~dir =
     let map_path p = Path.relative dir (Path.basename p) in
     let map_list = List.map ~f:map_path in
     let map_mode = Mode.Dict.map ~f:map_list in
@@ -49,12 +50,14 @@ module Lib = struct
     ; implements
     ; version
     ; dir
+    ; orig_src_dir
     ; virtual_
     ; modules
     ; modes
     }
 
   let dir t = t.dir
+  let orig_src_dir t = t.orig_src_dir
 
   let set_subsystems t sub_systems =
     { t with sub_systems }
@@ -67,7 +70,7 @@ module Lib = struct
         { loc = _ ; kind ; synopsis ; name ; archives ; plugins
         ; foreign_objects ; foreign_archives ; jsoo_runtime ; requires
         ; ppx_runtime_deps ; sub_systems ; virtual_
-        ; implements ; main_module_name ; version = _; dir = _
+        ; implements ; main_module_name ; version = _; dir = _; orig_src_dir
         ; modules ; modes
         } =
     let open Dune_lang.Encoder in
@@ -82,6 +85,7 @@ module Lib = struct
     ; field "kind" Lib_kind.encode kind
     ; field_b "virtual" virtual_
     ; field_o "synopsis" string synopsis
+    ; field_o "orig_src_dir" path orig_src_dir
     ; mode_paths "archives" archives
     ; mode_paths "plugins" plugins
     ; paths "foreign_objects" foreign_objects
@@ -127,6 +131,7 @@ module Lib = struct
       and ppx_runtime_deps = libs "ppx_runtime_deps"
       and virtual_ = field_b "virtual"
       and sub_systems = Sub_system_info.record_parser ()
+      and orig_src_dir = field_o "orig_src_dir" path
       and modules = field_o "modules" (Lib_modules.decode
                          ~implements:(Option.is_some implements) ~dir)
       in
@@ -148,6 +153,7 @@ module Lib = struct
       ; virtual_
       ; version = None
       ; dir
+      ; orig_src_dir
       ; modules
       ; modes
       }

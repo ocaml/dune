@@ -28,3 +28,21 @@
     (main_module_name C)
     (modules ((name Y) (obj_name c__Y) (visibility public) (impl)))
     (wrapped true)))
+
+Build with "--store-orig-source-dir" profile
+  $ dune build --store-orig-source-dir
+  $ cat _build/install/default/lib/a/dune-package | grep -A 1 '(orig_src_dir'
+   (orig_src_dir
+    $TESTCASE_ROOT)
+  --
+   (orig_src_dir
+    $TESTCASE_ROOT)
+
+Build with "DUNE_STORE_ORIG_SOURCE_DIR=true" profile
+  $ DUNE_STORE_ORIG_SOURCE_DIR=true dune build
+  $ cat _build/install/default/lib/a/dune-package | grep -A 1 '(orig_src_dir'
+   (orig_src_dir
+    $TESTCASE_ROOT)
+  --
+   (orig_src_dir
+    $TESTCASE_ROOT)

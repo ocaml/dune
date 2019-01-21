@@ -156,7 +156,7 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander ~dir_kind
           Lib.Set.fold requires ~init:(t.source_dirs, t.objs_dirs)
             ~f:(fun (lib : Lib.t) (src_dirs, obj_dirs) ->
               ( Path.Set.add src_dirs (
-                  Lib.src_dir lib
+                  Lib.orig_src_dir lib
                   |> Path.drop_optional_build_context)
               ,
               Path.Set.add obj_dirs (Lib.public_cmi_dir lib)

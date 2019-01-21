@@ -13,7 +13,6 @@
   B ../_build/default/lib/.foo.objs/public_cmi
   S $LIB_PREFIX/lib/bytes
   S $LIB_PREFIX/lib/findlib
-  S $TESTCASE_ROOT/lib
   S $LIB_PREFIX/lib/ocaml
   S .
   S ../lib

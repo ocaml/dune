@@ -1277,7 +1277,14 @@ let to_dune_lib ({ name ; info ; _ } as lib) ~lib_modules ~dir =
   let lib_modules = Lib_modules.version_installed ~install_dir:dir lib_modules in
   let orig_src_dir =
     if !Clflags.store_orig_src_dir
-    then lib.info.orig_src_dir
+    then Some (
+      match info.orig_src_dir with
+      | Some src_dir -> src_dir
+      | None ->
+        match Path.drop_build_context info.src_dir with
+        | None -> info.src_dir
+        | Some src_dir -> Path.(of_string (to_absolute_filename src_dir))
+    )
     else None
   in
   Dune_package.Lib.make

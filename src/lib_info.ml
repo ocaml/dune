@@ -85,12 +85,6 @@ let user_written_deps t =
 let of_library_stanza ~dir ~has_native ~ext_lib ~ext_obj
       (conf : Dune_file.Library.t) =
   let (_loc, lib_name) = conf.name in
-  let orig_src_dir =
-    match Path.drop_build_context dir with
-    | None -> None
-    | Some src_dir ->
-      Some Path.(of_string (to_absolute_filename src_dir))
-  in
   let obj_dir =
     Obj_dir.make_local ~dir
       ~has_private_modules:(conf.private_modules <> None) lib_name in
@@ -162,7 +156,7 @@ let of_library_stanza ~dir ~has_native ~ext_lib ~ext_obj
   ; name
   ; kind     = conf.kind
   ; src_dir  = dir
-  ; orig_src_dir
+  ; orig_src_dir = None
   ; obj_dir
   ; version  = None
   ; synopsis = conf.synopsis
@@ -190,7 +184,6 @@ let of_library_stanza ~dir ~has_native ~ext_lib ~ext_obj
 let of_dune_lib dp =
   let module Lib = Dune_package.Lib in
   let src_dir = Lib.dir dp in
-  let orig_src_dir = Lib.orig_src_dir dp in
   let virtual_ =
     if Lib.virtual_ dp then
       Some (Virtual.External (Option.value_exn (Lib.modules dp)))
@@ -207,7 +200,7 @@ let of_dune_lib dp =
   ; kind = Lib.kind dp
   ; status = Installed
   ; src_dir
-  ; orig_src_dir
+  ; orig_src_dir = Lib.orig_src_dir dp
   ; obj_dir
   ; version = Lib.version dp
   ; synopsis = Lib.synopsis dp

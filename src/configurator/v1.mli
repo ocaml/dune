@@ -118,6 +118,11 @@ module Flags : sig
       Any blank words are filtered out of the results. *)
 end
 
+val find_in_path : t -> string -> string option
+(** [find_in_path t prog] seek [prog] in the PATH and return the name
+   of the program prefixed with the first path where it is found.
+   Return [None] the the program is not found. *)
+
 (** Typical entry point for configurator programs *)
 val main
   :  ?args:(Arg.key * Arg.spec * Arg.doc) list

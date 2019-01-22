@@ -58,17 +58,24 @@ let pp_comment loc fmt (comment:Dune_lang.Cst.Comment.t) =
   | Legacy ->
     Errors.fail loc "Formatting is only supported with the dune syntax"
 
+let pp_break fmt attached =
+  if attached then
+    Format.fprintf fmt " "
+  else
+    Format.fprintf fmt "@,"
+
 let pp_list_with_comments pp_sexp fmt sexps =
   let rec go fmt (l:Dune_lang.Cst.t list) =
     match l with
-    | x :: ([Comment _ ] as xs) ->
-      Format.fprintf fmt "%a@,%a" pp_sexp x go xs
-    | x :: ((Comment (loc, c) :: xs) as xs0) ->
+    | x :: Comment (loc, c) :: xs ->
       let attached = Loc.on_same_line (Dune_lang.Cst.loc x) loc in
-      if attached then
-        Format.fprintf fmt "%a %a@,%a" pp_sexp x (pp_comment loc) c go xs
-      else
-        Format.fprintf fmt "%a@,%a" pp_sexp x go xs0
+      Format.fprintf
+        fmt
+        "%a%a%a@,%a"
+        pp_sexp x
+        pp_break attached
+        (pp_comment loc) c
+        go xs
     | Comment (loc, c)::xs ->
       Format.fprintf fmt "%a@,%a" (pp_comment loc) c go xs
     | [x] ->

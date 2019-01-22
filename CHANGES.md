@@ -99,6 +99,9 @@ unreleased
   `.merlin` with `S`-directives pointed to original source locations and thus
   allowing merlin to see those.
 
+- Improve the behavior of `dune promote` when the files to be promoted have been
+  deleted. (#1775, fixes #1772, @diml)
+
 - unstable-fmt: preserve comments (#1766, @emillon)
 
 1.6.2 (05/12/2018)

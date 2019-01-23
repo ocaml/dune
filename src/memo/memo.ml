@@ -362,6 +362,10 @@ module Make_gen
 
   let peek_exn t inp = Option.value_exn (peek t inp)
 
+  let fexec t inp = exec (Fdecl.get t) inp
+  let fpeek t inp = peek (Fdecl.get t) inp
+  let fpeek_exn t inp = peek_exn (Fdecl.get t) inp
+
   module Stack_frame = struct
     let input (Dep_node.T dep_node) : Input.t option =
       match dep_node.spec.witness with

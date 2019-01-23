@@ -1166,8 +1166,13 @@ let update_universe t =
   make_local_dirs t (Path.Set.singleton Path.build_dir);
   Io.write_file universe_file (Dune_lang.to_string ~syntax:Dune (Dune_lang.Encoder.int n))
 
-let build_file_def = Fdecl.create ()
-let execute_rule_def = Fdecl.create ()
+let build_file_def =
+  Path_fn.fcreate "build-file" (module Unit) ~doc:"Build a file."
+let build_file = Path_fn.exec build_file_def
+
+let execute_rule_def =
+  Rule_fn.fcreate "execute-rule" (module Unit) ~doc:"-"
+let execute_rule = Rule_fn.exec execute_rule_def
 
 (* Evaluate a rule and return the action and set of dynamic dependencies *)
 let evaluate_action_and_dynamic_deps_def =
@@ -1176,7 +1181,7 @@ let evaluate_action_and_dynamic_deps_def =
     Fiber.Once.get rule.static_deps
     >>= fun static_deps ->
     let rule_deps = Static_deps.rule_deps static_deps in
-    Deps.parallel_iter rule_deps ~f:(Path_fn.exec (Fdecl.get build_file_def))
+    Deps.parallel_iter rule_deps ~f:build_file
     >>| fun () ->
     Build_exec.exec t rule.build ()
   in
@@ -1202,7 +1207,6 @@ let evaluate_rule (rule : Internal_rule.t) =
    as it is eaiser to read the one bellow. The reader only has to
    check that both function do the same thing. *)
 let _evaluate_rule_and_wait_for_dependencies rule =
-  let build_file = Path_fn.fexec build_file_def in
   evaluate_rule rule
   >>= fun (action, action_deps) ->
   Deps.parallel_iter action_deps ~f:build_file
@@ -1215,7 +1219,6 @@ let _evaluate_rule_and_wait_for_dependencies rule =
    do this to increase opportunities for parallelism.
 *)
 let evaluate_rule_and_wait_for_dependencies (rule : Internal_rule.t) =
-  let build_file = Path_fn.fexec build_file_def in
   Fiber.Once.get rule.static_deps >>= fun static_deps ->
   let static_action_deps = Static_deps.action_deps static_deps in
   (* Build the static dependencies in parallel with evaluation the
@@ -1342,8 +1345,7 @@ let () =
     end;
     t.hook Rule_completed
   in
-  Fdecl.set execute_rule_def
-    (Rule_fn.create "execute-rule" (module Unit) execute_rule ~doc:"-")
+  Rule_fn.set_impl execute_rule_def execute_rule
 
 let () =
   (* a rule can have multiple files, but rule.run_rule may only be called once *)
@@ -1355,10 +1357,9 @@ let () =
       | None ->
         (* file already exists *)
         Fiber.return ()
-      | Some (File_spec.T file) -> Rule_fn.fexec execute_rule_def file.rule)
+      | Some (File_spec.T file) -> execute_rule file.rule)
   in
-  Fdecl.set build_file_def
-    (Path_fn.create "build-file" (module Unit) build_file ~doc:"Build a file.")
+  Path_fn.set_impl build_file_def build_file
 
 let shim_of_build_goal t request =
   let request =
@@ -1386,7 +1387,7 @@ let process_memcycle exn =
   let cycle =
     Memo.Cycle_error.get exn
     |> List.filter_map ~f:(fun frame ->
-      if Path_fn.Stack_frame.instance_of frame ~of_:(Fdecl.get build_file_def)
+      if Path_fn.Stack_frame.instance_of frame ~of_:build_file_def
       then
         Path_fn.Stack_frame.input frame
       else

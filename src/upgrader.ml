@@ -196,6 +196,7 @@ let upgrade_file todo file sexps ~look_for_jbuild_ignore =
       (sexps, [jbuild_ignore])
     end
   in
+  let sexps = List.map ~f:Dune_lang.Cst.concrete sexps in
   let contents = Format.asprintf "%a@?" Dune_fmt.pp_top_sexps sexps in
   todo.to_rename_and_edit <-
     { original_file = file

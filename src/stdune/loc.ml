@@ -159,3 +159,10 @@ let pp_file_excerpt ~context_lines ~max_lines_to_print_in_full
         file (Exn.pp_uncaught ~backtrace) exn
     | Ok () -> ()
   end
+
+let on_same_line loc1 loc2 =
+  let start1 = loc1.start in
+  let start2 = loc2.start in
+  let same_file = String.equal start1.pos_fname start2.pos_fname in
+  let same_line = Int.equal start1.pos_lnum start2.pos_lnum in
+  same_file && same_line

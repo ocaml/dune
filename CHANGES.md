@@ -99,6 +99,8 @@ unreleased
   `.merlin` with `S`-directives pointed to original source locations and thus
   allowing merlin to see those.
 
+- unstable-fmt: preserve comments (#1766, @emillon)
+
 1.6.2 (05/12/2018)
 ------------------
 

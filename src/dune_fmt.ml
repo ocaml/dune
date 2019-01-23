@@ -14,41 +14,87 @@ let parse_file path_opt =
       let contents = String.concat ~sep:"\n" lines in
       ("<stdin>", contents)
   in
-  Dune_lang.parse_string
-    ~fname
-    ~mode:Dune_lang.Parser.Mode.Many
-    contents
+  Dune_lang.parse_cst_string ~fname contents
 
 let can_be_displayed_wrapped =
-  List.for_all ~f:(function
-    | Dune_lang.Atom _
-    | Dune_lang.Quoted_string _
-    | Dune_lang.Template _
-    | Dune_lang.List [_]
+  List.for_all ~f:(fun (c : Dune_lang.Cst.t) ->
+    match c with
+    | Atom _
+    | Quoted_string _
+    | Template _
+    | List (_, [_])
       ->
       true
-    | Dune_lang.List _
+    | List _
+    | Comment _
       ->
       false
   )
+
+let pp_simple fmt t =
+  Dune_lang.Cst.abstract t
+  |> Option.value_exn
+  |> Dune_lang.Ast.remove_locs
+  |> Dune_lang.pp Dune fmt
 
 let print_wrapped_list fmt =
   Format.fprintf fmt "(@[<hov 1>%a@])"
     (Fmt.list
       ~pp_sep:(fun fmt () -> Format.fprintf fmt "@ ")
-      (Dune_lang.pp Dune_lang.Dune)
+      pp_simple
     )
 
-let rec pp_sexp fmt =
+let pp_comment_line fmt l =
+  Format.fprintf fmt ";%s" l
+
+let pp_comment loc fmt (comment:Dune_lang.Cst.Comment.t) =
+  match comment with
+  | Lines ls ->
+    Format.fprintf fmt "@[<v 0>%a@]"
+      (Fmt.list
+         ~pp_sep:(fun fmt () -> Format.fprintf fmt "@;")
+         pp_comment_line)
+      ls
+  | Legacy ->
+    Errors.fail loc "Formatting is only supported with the dune syntax"
+
+let pp_break fmt attached =
+  if attached then
+    Format.fprintf fmt " "
+  else
+    Format.fprintf fmt "@,"
+
+let pp_list_with_comments pp_sexp fmt sexps =
+  let rec go fmt (l:Dune_lang.Cst.t list) =
+    match l with
+    | x :: Comment (loc, c) :: xs ->
+      let attached = Loc.on_same_line (Dune_lang.Cst.loc x) loc in
+      Format.fprintf
+        fmt
+        "%a%a%a@,%a"
+        pp_sexp x
+        pp_break attached
+        (pp_comment loc) c
+        go xs
+    | Comment (loc, c)::xs ->
+      Format.fprintf fmt "%a@,%a" (pp_comment loc) c go xs
+    | [x] ->
+      Format.fprintf fmt "%a" pp_sexp x;
+    | x :: xs ->
+      Format.fprintf fmt "%a@,%a" pp_sexp x go xs
+    | [] -> ()
+  in
+  go fmt sexps
+
+let rec pp_sexp fmt : Dune_lang.Cst.t -> _ =
   function
-    ( Dune_lang.Atom _
-    | Dune_lang.Quoted_string _
-    | Dune_lang.Template _
+  | ( Atom _
+    | Quoted_string _
+    | Template _
     ) as sexp
     ->
-    Format.fprintf fmt "%a"
-      (Dune_lang.pp Dune_lang.Dune) sexp
-  | Dune_lang.List sexps
+    pp_simple fmt sexp
+  | List (_, sexps)
     ->
     Format.fprintf fmt "@[<v 1>%a@]"
       (if can_be_displayed_wrapped sexps then
@@ -56,20 +102,19 @@ let rec pp_sexp fmt =
        else
          pp_sexp_list)
       sexps
+  | Comment (loc, c)
+    ->
+    pp_comment loc fmt c
 
 and pp_sexp_list fmt =
-  let pp_sep fmt () = Format.fprintf fmt "@," in
   Format.fprintf fmt "(%a)"
-    (Fmt.list ~pp_sep pp_sexp)
+    (pp_list_with_comments pp_sexp)
 
 let pp_top_sexp fmt sexp =
   Format.fprintf fmt "%a\n" pp_sexp sexp
 
 let pp_top_sexps =
-  Fmt.list
-    ~pp_sep:Fmt.nl
-    (fun fmt sexp ->
-      pp_top_sexp fmt (Dune_lang.Ast.remove_locs sexp))
+  Fmt.list ~pp_sep:Fmt.nl pp_top_sexp
 
 let with_output path_opt k =
   match path_opt with

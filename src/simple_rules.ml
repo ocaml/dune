@@ -92,7 +92,7 @@ let copy_files sctx ~dir ~expander ~src_dir (def: Copy_files.t) =
       Path.pp src_in_src;
   (* add rules *)
   let src_in_build = Path.append (SC.context sctx).build_dir src_in_src in
-  let files = SC.eval_glob sctx ~dir:src_in_build re in
+  let files = Build_system.eval_glob ~dir:src_in_build re in
   List.map files ~f:(fun basename ->
     let file_src = Path.relative src_in_build basename in
     let file_dst = Path.relative dir basename in

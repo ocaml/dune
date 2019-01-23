@@ -464,6 +464,17 @@ type t =
   ; execute_rule_def : (Internal_rule.t -> unit Fiber.t) Fdecl.t
   }
 
+let t = ref None
+let set x =
+  match !t with
+  | None -> t := Some x
+  | Some _ -> Exn.code_error "build system already initialized" []
+let get_build_system () =
+  match !t with
+  | Some t -> t
+  | None -> Exn.code_error "build system not yet initialized" []
+let t = get_build_system
+
 let string_of_paths set =
   Path.Set.to_list set
   |> List.map ~f:(fun p -> sprintf "- %s"
@@ -471,7 +482,8 @@ let string_of_paths set =
                                 (Path.drop_optional_build_context p)))
   |> String.concat ~sep:"\n"
 
-let set_rule_generators t generators =
+let set_rule_generators generators =
+  let t = t () in
   assert (String.Map.keys generators = String.Map.keys t.contexts);
   t.gen_rules <- generators
 
@@ -1098,7 +1110,8 @@ and get_file_spec t path =
       Errors.fail_opt loc
         "File unavailable: %s" (Path.to_string_maybe_quoted path)
 
-let stamp_file_for_files_of t ~dir ~ext =
+let stamp_file_for_files_of ~dir ~ext =
+  let t = t () in
   let files_of_dir =
     Path.Table.find_or_add t.files_of dir ~f:(fun dir ->
       let files_by_ext =
@@ -1133,7 +1146,8 @@ let stamp_file_for_files_of t ~dir ~ext =
     files_of_dir.stamps <- String.Map.add files_of_dir.stamps ext stamp_file;
     stamp_file
 
-let all_targets t =
+let all_targets () =
+  let t = t () in
   String.Map.iter t.contexts ~f:(fun ctx ->
     File_tree.fold t.file_tree ~traverse_ignored_dirs:true ~init:()
       ~f:(fun dir () ->
@@ -1369,7 +1383,8 @@ let process_memcycle t exn =
        (List.map cycle ~f:Path.to_string_maybe_quoted
         |> String.concat ~sep:"\n--> "))
 
-let do_build (t : t) ~request =
+let do_build ~request =
+  let t = t () in
   Hooks.End_of_build.once Promotion.finalize;
   update_universe t; (* ? *)
   (fun () -> build_request t ~request)
@@ -1380,7 +1395,7 @@ let do_build (t : t) ~request =
     ) |> raise
   )
 
-let create ~contexts ~file_tree ~hook =
+let init ~contexts ~file_tree ~hook =
   let contexts =
     List.map contexts ~f:(fun c -> (c.Context.name, c))
     |> String.Map.of_list_exn
@@ -1416,7 +1431,7 @@ let create ~contexts ~file_tree ~hook =
   Fdecl.set t.build_file_def
     (Path_fn.create "build-file" (module Unit) (build_file t)
        ~doc:"Build a file.");
-  t
+  set t
 
 let rules_for_files t paths =
   Path.Set.fold paths ~init:[] ~f:(fun path acc ->
@@ -1452,7 +1467,8 @@ let static_deps_of_request t request =
     ~all_targets:(targets_of t)
     ~file_tree:t.file_tree
 
-let all_lib_deps t ~request =
+let all_lib_deps ~request =
+  let t = t () in
   let targets = static_deps_of_request t request in
   rules_for_targets t targets >>= fun rules ->
   Fiber.parallel_map rules ~f:(fun rule ->
@@ -1495,7 +1511,8 @@ let rules_for_files rules deps =
     | Some rule -> Rule.Set.add acc rule)
   |> Rule.Set.to_list
 
-let evaluate_rules t ~recursive ~request =
+let evaluate_rules ~recursive ~request =
+  let t = t () in
   entry_point t ~f:(fun () ->
     let rules = ref [] in
     let rec run_rule (rule : Internal_rule.t) =
@@ -1543,10 +1560,12 @@ let evaluate_rules t ~recursive ~request =
              (Option.value_exn (Path.Set.choose rule.Rule.targets)))
          |> String.concat ~sep:"\n-> "))
 
-let set_package t file package =
+let set_package file package =
+  let t = t () in
   Path.Table.add t.packages file package
 
-let package_deps t pkg files =
+let package_deps pkg files =
+  let t = t () in
   let rules_seen = ref Rule.Id.Set.empty in
   let rec loop fn acc =
     match Path.Table.find_all t.packages fn with
@@ -1625,7 +1644,8 @@ let get_collector t ~dir =
       ; "load_dir_stack", Sexp.Encoder.list Path.to_sexp t.load_dir_stack
       ]
 
-let add_rule t (rule : Build_interpret.Rule.t) =
+let add_rule (rule : Build_interpret.Rule.t) =
+  let t = t () in
   let rule =
     match t.prefix with
     | None -> rule
@@ -1638,7 +1658,8 @@ let prefix_rules' t prefix ~f =
   t.prefix <- prefix;
   protectx () ~f ~finally:(fun () -> t.prefix <- old_prefix)
 
-let prefix_rules t prefix ~f =
+let prefix_rules prefix ~f =
+  let t = t () in
   begin match Build_interpret.targets prefix with
   | [] -> ()
   | targets ->
@@ -1652,7 +1673,8 @@ let prefix_rules t prefix ~f =
   in
   prefix_rules' t (Some prefix) ~f
 
-let on_load_dir t ~dir ~f =
+let on_load_dir ~dir ~f =
+  let t = t () in
   let collector = get_collector t ~dir in
   let current_prefix = t.prefix in
   let f () = prefix_rules' t current_prefix ~f in
@@ -1666,7 +1688,8 @@ let on_load_dir t ~dir ~f =
       add_build_dir_to_keep t ~dir;
     p.lazy_generators <- f :: lazy_generators
 
-let eval_glob t ~dir re =
+let eval_glob ~dir re =
+  let t = t () in
   Path.Set.fold (targets_of t ~dir) ~init:[] ~f:(fun path acc ->
     let fn = Path.basename path in
     if Re.execp re fn then
@@ -1693,7 +1716,8 @@ module Alias = struct
       x
     | Some x -> x
 
-  let add_deps build_system t ?dyn_deps deps =
+  let add_deps t ?dyn_deps deps =
+    let build_system = get_build_system () in
     let def = get_alias_def build_system t in
     def.deps <- Path.Set.union def.deps deps;
     match dyn_deps with
@@ -1704,7 +1728,8 @@ module Alias = struct
         Build.fanout def.dyn_deps build >>^ fun (a, b) ->
         Path.Set.union a b
 
-  let add_action build_system t ~context ~env ~loc ?(locks=[]) ~stamp action =
+  let add_action t ~context ~env ~loc ?(locks=[]) ~stamp action =
+    let build_system = get_build_system () in
     let def = get_alias_def build_system t in
     def.actions <- { stamp = Digest.string (Marshal.to_string stamp [])
                    ; action
@@ -1715,5 +1740,9 @@ module Alias = struct
                    } :: def.actions
 end
 
-let is_target t file =
-  Path.Set.mem (targets_of t ~dir:(Path.parent_exn file)) file
+let targets_of ~dir = targets_of (t ()) ~dir
+let load_dir ~dir = load_dir (t ()) ~dir
+
+let is_target file =
+  Path.Set.mem (targets_of ~dir:(Path.parent_exn file)) file
+

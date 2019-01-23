@@ -7,7 +7,6 @@ module Alias = Build_system.Alias
 
 type t =
   { context                          : Context.t
-  ; build_system                     : Build_system.t
   ; scopes                           : Scope.DB.t
   ; public_libs                      : Lib.DB.t
   ; installed_libs                   : Lib.DB.t
@@ -40,7 +39,6 @@ let file_tree t = t.file_tree
 let cxx_flags t = t.cxx_flags
 let build_dir t = t.context.build_dir
 let profile t = t.context.profile
-let build_system t = t.build_system
 let external_lib_deps_mode t = t.external_lib_deps_mode
 
 let host t = Option.value t.host ~default:t
@@ -63,9 +61,6 @@ let installed_libs t = t.installed_libs
 
 let find_scope_by_dir  t dir  = Scope.DB.find_by_dir  t.scopes dir
 let find_scope_by_name t name = Scope.DB.find_by_name t.scopes name
-
-let prefix_rules t prefix ~f =
-  Build_system.prefix_rules t.build_system prefix ~f
 
 module External_env = Env
 
@@ -158,7 +153,7 @@ let expander = Env.expander
 let add_rule t ?sandbox ?mode ?locks ?loc ~dir build =
   let build = Build.O.(>>>) build t.chdir in
   let env = Env.external_ t ~dir in
-  Build_system.add_rule t.build_system
+  Build_system.add_rule
     (Build_interpret.Rule.make ?sandbox ?mode ?locks ?loc
        ~context:(Some t.context) ~env:(Some env) build)
 
@@ -169,23 +164,16 @@ let add_rule_get_targets t ?sandbox ?mode ?locks ?loc ~dir build =
     Build_interpret.Rule.make ?sandbox ?mode ?locks ?loc
       ~context:(Some t.context) ~env:(Some env) build
   in
-  Build_system.add_rule t.build_system rule;
+  Build_system.add_rule rule;
   List.map rule.targets ~f:Build_interpret.Target.path
 
 let add_rules t ?sandbox ~dir builds =
   List.iter builds ~f:(add_rule t ?sandbox ~dir)
 
-let add_alias_deps t alias ?dyn_deps deps =
-  Alias.add_deps t.build_system alias ?dyn_deps deps
-
 let add_alias_action t alias ~dir ~loc ?locks ~stamp action =
   let env = Some (Env.external_ t ~dir) in
-  Alias.add_action t.build_system ~context:t.context ~env alias ~loc ?locks
+  Alias.add_action ~context:t.context ~env alias ~loc ?locks
     ~stamp action
-
-let eval_glob t ~dir re = Build_system.eval_glob t.build_system ~dir re
-let load_dir t ~dir = Build_system.load_dir t.build_system ~dir
-let on_load_dir t ~dir ~f = Build_system.on_load_dir t.build_system ~dir ~f
 
 let source_files t ~src_path =
   match File_tree.find_dir t.file_tree src_path with
@@ -254,7 +242,6 @@ let create
       ~packages
       ~stanzas
       ~external_lib_deps_mode
-      ~build_system
   =
   let installed_libs =
     Lib.DB.create_from_findlib context.findlib ~external_lib_deps_mode
@@ -295,9 +282,7 @@ let create
       (stanzas.Dir_with_dune.ctx_dir, stanzas))
     |> Path.Map.of_list_exn
   in
-  let artifacts =
-    Artifacts.create context ~public_libs ~build_system
-  in
+  let artifacts = Artifacts.create context ~public_libs in
   let cxx_flags =
     List.filter context.ocamlc_cflags
       ~f:(fun s -> not (String.is_prefix s ~prefix:"-std="))
@@ -339,7 +324,6 @@ let create
   { context
   ; expander
   ; host
-  ; build_system
   ; scopes
   ; public_libs
   ; installed_libs
@@ -400,7 +384,7 @@ module Libs = struct
       else
         prefix
     in
-    prefix_rules t prefix ~f
+    Build_system.prefix_rules prefix ~f
 end
 
 module Deps = struct

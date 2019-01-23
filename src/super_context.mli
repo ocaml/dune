@@ -19,7 +19,6 @@ val create
   -> packages:Package.t Package.Name.Map.t
   -> stanzas:Dune_load.Dune_file.t list
   -> external_lib_deps_mode:bool
-  -> build_system:Build_system.t
   -> t
 
 val context   : t -> Context.t
@@ -33,7 +32,6 @@ val cxx_flags : t -> string list
 val build_dir : t -> Path.t
 val profile   : t -> string
 val host : t -> t
-val build_system : t -> Build_system.t
 val external_lib_deps_mode : t -> bool
 
 (** All public libraries of the workspace *)
@@ -63,12 +61,6 @@ val dump_env : t -> dir:Path.t -> (unit, Dune_lang.t list) Build.t
 val find_scope_by_dir  : t -> Path.t              -> Scope.t
 val find_scope_by_name : t -> Dune_project.Name.t -> Scope.t
 
-val prefix_rules
-  :  t
-  -> (unit, unit) Build.t
-  -> f:(unit -> 'a)
-  -> 'a
-
 val add_rule
   :  t
   -> ?sandbox:bool
@@ -93,12 +85,6 @@ val add_rules
   -> dir:Path.t
   -> (unit, Action.t) Build.t list
   -> unit
-val add_alias_deps
-  :  t
-  -> Build_system.Alias.t
-  -> ?dyn_deps:(unit, Path.Set.t) Build.t
-  -> Path.Set.t
-  -> unit
 val add_alias_action
   :  t
   -> Build_system.Alias.t
@@ -108,11 +94,6 @@ val add_alias_action
   -> stamp:_
   -> (unit, Action.t) Build.t
   -> unit
-
-(** See [Build_system for details] *)
-val eval_glob : t -> dir:Path.t -> Re.re -> string list
-val load_dir : t -> dir:Path.t -> unit
-val on_load_dir : t -> dir:Path.t -> f:(unit -> unit) -> unit
 
 val source_files : t -> src_path:Path.t -> String.Set.t
 

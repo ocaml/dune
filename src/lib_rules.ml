@@ -282,7 +282,7 @@ module Gen (P : Install_rules.Params) = struct
         [ Hidden_deps h_files
         ; Arg_spec.of_result_map requires ~f:(fun libs ->
             S [ Lib.L.c_include_flags libs ~stdlib_dir:ctx.stdlib_dir
-              ; Hidden_deps (Lib_file_deps.file_deps sctx libs
+              ; Hidden_deps (Lib_file_deps.file_deps libs
                                ~groups:[Lib_file_deps.Group.Header])
               ])
         ]
@@ -497,7 +497,7 @@ module Gen (P : Install_rules.Params) = struct
       build_stubs lib ~dir ~expander ~requires:requires_compile
         ~dir_contents ~vlib_stubs_o_files;
 
-    Lib_file_deps.setup_file_deps sctx ~lib ~dir
+    Lib_file_deps.setup_file_deps ~lib ~dir
       ~modules:(Lib_modules.have_artifacts lib_modules
                 |> Module.Name.Map.values
                 |> Vimpl.for_file_deps vimpl);

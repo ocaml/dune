@@ -152,7 +152,7 @@ module Register_end_point(M : End_point) = struct
     match fail with
     | None -> M.gen_rules c ~info ~backends
     | Some fail ->
-      Super_context.prefix_rules c.super_context (Build.fail fail)
+      Build_system.prefix_rules (Build.fail fail)
         ~f:(fun () -> M.gen_rules c ~info ~backends)
 
   include

@@ -6,7 +6,6 @@ type t
 val create
   :  Context.t
   -> public_libs:Lib.DB.t
-  -> build_system:Build_system.t
   -> t
 
 (** A named artifact that is looked up in the PATH if not found in the tree

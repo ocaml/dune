@@ -9,8 +9,7 @@ let dev_files p =
 
 let add_obj_dir sctx ~obj_dir =
   if (Super_context.context sctx).merlin then
-    Super_context.add_alias_deps
-      sctx
+    Build_system.Alias.add_deps
       (Build_system.Alias.check ~dir:(Obj_dir.dir obj_dir))
       ~dyn_deps:(Build.paths_matching
                    ~loc:(Loc.of_pos __POS__)

@@ -43,9 +43,14 @@ module type S = sig
   (** Execute a memoized function *)
   val exec : 'a t -> input -> 'a Fiber.t
 
+  (** [fexec t x] is [exec (Fdecl.get t) x] *)
+  val fexec : 'a t Fdecl.t -> input -> 'a Fiber.t
+
   (** Check whether we already have a value for the given call *)
   val peek : 'a t -> input -> 'a option
   val peek_exn : 'a t -> input -> 'a
+  val fpeek : 'a t Fdecl.t -> input -> 'a option
+  val fpeek_exn : 'a t Fdecl.t -> input -> 'a
 
   (** After running a memoization function with a given name and
       input, it is possibly to query which dependencies that function

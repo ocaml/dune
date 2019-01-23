@@ -7,19 +7,30 @@
   Upgrading jbuild to dune...
 
   $ cat dune
+  ;old style
+  ;block comment
+  ;
+  
   (rule
    (deps
     (:< x)
     y
-    z)
+    z) ; abc
    (targets z)
+   ; def
    (action
     (with-stdout-to
      z
      (run echo %{<}))))
   
+  ; other
+  ; comment
+  
   (rule
    (copy x y))
+  
+  ;(sexp
+  ;    comment)
 
   $ cat foo.opam
   build: [

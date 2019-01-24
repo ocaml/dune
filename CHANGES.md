@@ -104,6 +104,8 @@ unreleased
 
 - unstable-fmt: preserve comments (#1766, @emillon)
 
+- Pass flags correctly when using `staged_pps` (#1779, fixes #1774, @diml)
+
 1.6.2 (05/12/2018)
 ------------------
 

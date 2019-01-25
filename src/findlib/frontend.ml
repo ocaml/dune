@@ -1866,6 +1866,12 @@ let create_owner_file pkg file =
       exc -> close_out f; raise exc
 ;;
 
+let trim_cr s =
+  let len = String.length s in
+  if len > 0 && String.get s (len-1) = '\r' then
+    String.sub s 0 (len-1)
+  else
+    s
 
 let find_owned_files pkg dir =
   let files = Array.to_list(Sys.readdir dir) in
@@ -1883,7 +1889,7 @@ let find_owned_files pkg dir =
            let f =
              Unix.in_channel_of_descr fd in
            try
-             let line = input_line f in
+             let line = trim_cr (input_line f) in
              let is_my_file = (line = pkg) in
              close_in f;
              is_my_file

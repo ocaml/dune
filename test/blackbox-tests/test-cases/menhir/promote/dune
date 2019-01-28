@@ -1,0 +1,6 @@
+(menhir
+ (modules parser)
+ (mode promote))
+
+(library
+ (name test))

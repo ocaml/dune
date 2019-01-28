@@ -164,3 +164,14 @@ When a comment is at the end of a list, the ")" is on a own line.
    ; final unattached
    ; multiline
    )
+
+Files in OCaml syntax are ignored with a warning.
+
+  $ dune unstable-fmt < ocaml-syntax.dune
+  File "", line 1, characters 0-20:
+  Warning: OCaml syntax is not supported, skipping.
+  $ dune unstable-fmt ocaml-syntax.dune
+  File "$TESTCASE_ROOT/ocaml-syntax.dune", line 1, characters 0-20:
+  1 | (* -*- tuareg -*- *)
+      ^^^^^^^^^^^^^^^^^^^^
+  Warning: OCaml syntax is not supported, skipping.

@@ -97,7 +97,7 @@ unreleased
   built with `--store-orig-source-dir` command line flag (also controlled by
   `DUNE_STORE_ORIG_SOURCE_DIR` env variable). This is later used to generate
   `.merlin` with `S`-directives pointed to original source locations and thus
-  allowing merlin to see those.
+  allowing merlin to see those. (#1750, @andreypopp)
 
 - Improve the behavior of `dune promote` when the files to be promoted have been
   deleted. (#1775, fixes #1772, @diml)

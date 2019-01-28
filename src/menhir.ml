@@ -124,8 +124,8 @@ module Run (P : PARAMS) : sig end = struct
   let menhir (args : 'a args) : (string list, Action.t) Build.t =
     Build.run ~dir menhir_binary args
 
-  let rule : (unit, Action.t) Build.t -> unit =
-    SC.add_rule sctx ~dir ~mode:stanza.mode ~loc:stanza.loc
+  let rule ?(mode=stanza.mode) : (unit, Action.t) Build.t -> unit =
+    SC.add_rule sctx ~dir ~mode ~loc:stanza.loc
 
   let expand_flags flags =
     Expander.expand_and_eval_set expander
@@ -189,7 +189,7 @@ module Run (P : PARAMS) : sig end = struct
 
     (* 1. A first invocation of Menhir creates a mock [.ml] file. *)
 
-    rule (
+    rule ~mode:Standard (
       expanded_flags
       >>>
       menhir

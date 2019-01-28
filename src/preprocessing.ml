@@ -719,11 +719,12 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess
              >>>
              Expander.expand_and_eval_set expander driver.info.as_ppx_flags
                ~standard:(Build.return [])
-             >>^ fun flags ->
+             >>^ fun driver_flags ->
              let command =
                List.map
                  (List.concat
                     [ [Path.reach exe ~from:(SC.context sctx).build_dir]
+                    ; driver_flags
                     ; flags
                     ; cookie_library_name lib_name
                     ])

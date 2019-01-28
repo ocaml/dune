@@ -106,6 +106,10 @@ unreleased
 
 - Pass flags correctly when using `staged_pps` (#1779, fixes #1774, @diml)
 
+- Fix an issue with the use of `(mode promote)` in the menhir
+  stanza. It was previously causing intermediate *mock* files to be
+  promoted (#1783, fixes #1781, @diml)
+
 1.6.2 (05/12/2018)
 ------------------
 

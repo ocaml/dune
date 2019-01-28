@@ -110,6 +110,8 @@ unreleased
   stanza. It was previously causing intermediate *mock* files to be
   promoted (#1783, fixes #1781, @diml)
 
+- unstable-fmt: ignore files using OCaml syntax (#1784, @emillon)
+
 1.6.2 (05/12/2018)
 ------------------
 

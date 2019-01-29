@@ -166,15 +166,27 @@ module Modules = struct
     { libraries; executables; rev_map }
 end
 
-module C_sources = struct
+module C_files = struct
   type t =
-    { c : Path.Set.t
+    { c   : Path.Set.t
     ; cxx : Path.Set.t
     }
 
-  let empty =
+  let _empty =
     { c = Path.Set.empty
     ; cxx = Path.Set.empty
+    }
+end
+
+module C_sources = struct
+  type t =
+    { libraries : C_files.t Lib_name.Map.t
+    ; c_executables : C_files.t Lib_name.Map.t
+    }
+
+  let empty =
+    { libraries = Lib_name.Map.empty
+    ; c_executables = Lib_name.Map.empty
     }
 end
 
@@ -183,7 +195,7 @@ type t =
   ; dir : Path.t
   ; text_files : String.Set.t
   ; modules : Modules.t Lazy.t
-  ; c_sources : C_sources.t
+  ; c_sources : C_sources.t Lazy.t
   ; mlds : (Dune_file.Documentation.t * Path.t list) list Lazy.t
   }
 
@@ -222,6 +234,16 @@ let modules_of_executables t ~first_exe =
     Exn.code_error "Dir_contents.modules_of_executables"
       [ "first_exe", Sexp.Encoder.string first_exe
       ; "available", Sexp.Encoder.(list string) (String.Map.keys map)
+      ]
+
+let c_sources_of_library t ~name =
+  let map = (Lazy.force t.c_sources).libraries in
+  match Lib_name.Map.find map name with
+  | Some m -> m
+  | None ->
+    Exn.code_error "Dir_contents.c_sources_of_library"
+      [ "name", Lib_name.to_sexp name
+      ; "available", Sexp.Encoder.(list Lib_name.to_sexp) (Lib_name.Map.keys map)
       ]
 
 let lookup_module t name =
@@ -363,7 +385,7 @@ let rec get sctx ~dir =
           ; modules = lazy (Modules.make d
                               ~modules:(modules_of_files ~dir:d.ctx_dir ~files))
           ; mlds = lazy (build_mlds_map d ~files)
-          ; c_sources = C_sources.empty
+          ; c_sources = lazy C_sources.empty
           }
         | Some (_, None)
         | None ->
@@ -372,7 +394,7 @@ let rec get sctx ~dir =
           ; text_files = String.Set.empty
           ; modules = lazy Modules.empty
           ; mlds = lazy []
-          ; c_sources = C_sources.empty
+          ; c_sources = lazy C_sources.empty
           }
       in
       Hashtbl.add cache dir t;
@@ -434,7 +456,7 @@ let rec get sctx ~dir =
         ; dir
         ; text_files = files
         ; modules
-        ; c_sources = C_sources.empty
+        ; c_sources = lazy C_sources.empty
         ; mlds = lazy (build_mlds_map d ~files)
         }
       in
@@ -445,7 +467,7 @@ let rec get sctx ~dir =
           ; dir
           ; text_files = files
           ; modules
-          ; c_sources = C_sources.empty
+          ; c_sources = lazy C_sources.empty
           ; mlds = lazy (build_mlds_map d ~files)
           });
       t

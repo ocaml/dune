@@ -1,0 +1,9 @@
+(library
+ (name foo)
+ (modules ())
+ (c_names foo))
+
+(library
+ (name bar)
+ (modules ())
+ (c_names foo))

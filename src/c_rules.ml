@@ -78,6 +78,7 @@ module Gen (P : Install_rules.Params) = struct
               ])
         ]
     in
+
     let build_x_files build_x files =
       String.Map.to_list files
       |> List.map ~f:(fun (obj, (loc, src)) ->

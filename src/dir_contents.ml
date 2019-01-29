@@ -8,24 +8,182 @@ module Executables_modules = struct
   type t = Module.Name_map.t
 end
 
-type modules =
-  { libraries : Lib_modules.t Lib_name.Map.t
-  ; executables : Executables_modules.t String.Map.t
-  ; (* Map from modules to the buildable they are part of *)
-    rev_map : Buildable.t Module.Name.Map.t
-  }
+module Modules = struct
+  type t =
+    { libraries : Lib_modules.t Lib_name.Map.t
+    ; executables : Executables_modules.t String.Map.t
+    ; (* Map from modules to the buildable they are part of *)
+      rev_map : Buildable.t Module.Name.Map.t
+    }
 
-let empty_modules =
-  { libraries = Lib_name.Map.empty
-  ; executables = String.Map.empty
-  ; rev_map = Module.Name.Map.empty
-  }
+  let empty =
+    { libraries = Lib_name.Map.empty
+    ; executables = String.Map.empty
+    ; rev_map = Module.Name.Map.empty
+    }
+
+  let make (d : _ Dir_with_dune.t) ~modules =
+    let scope = d.scope in
+    let libs, exes =
+      List.filter_partition_map d.data ~f:(fun stanza ->
+        match (stanza : Stanza.t) with
+        | Library lib ->
+          let obj_dir =
+            Obj_dir.make_local ~dir:d.ctx_dir (snd lib.name)
+              ~has_private_modules:(Option.is_some lib.private_modules)
+          in
+          let modules =
+            Modules_field_evaluator.eval ~modules
+              ~obj_dir
+              ~buildable:lib.buildable
+              ~virtual_modules:lib.virtual_modules
+              ~private_modules:(
+                Option.value ~default:Ordered_set_lang.standard
+                  lib.private_modules)
+          in
+          let (main_module_name, wrapped) =
+            (* the common case are normal libs where this is all specified so we
+               special case it so that we don't have to resolve anything the db *)
+            match Library.main_module_name lib, lib.wrapped with
+            (* these values are always either inherited together or specified *)
+            | This _, From _
+            | From _, This _ -> assert false
+            | This mmn, This wrapped -> mmn, wrapped
+            | From _, From _ ->
+              let name = (fst lib.name, Library.best_name lib) in
+              Result.ok_exn (
+                let open Result.O in
+                Lib.DB.resolve (Scope.libs scope) name >>= fun lib ->
+                Lib.main_module_name lib >>= fun main_module_name ->
+                Lib.wrapped lib >>| fun wrapped ->
+                (main_module_name, Option.value_exn wrapped)
+              )
+          in
+          Left ( lib
+               , Lib_modules.make lib ~obj_dir modules ~main_module_name ~wrapped
+               )
+        | Executables exes
+        | Tests { exes; _} ->
+          let obj_dir =
+            Obj_dir.make_exe ~dir:d.ctx_dir ~name:(snd (List.hd exes.names))
+          in
+          let modules =
+            Modules_field_evaluator.eval ~modules
+              ~obj_dir
+              ~buildable:exes.buildable
+              ~virtual_modules:None
+              ~private_modules:Ordered_set_lang.standard
+          in
+          Right (exes, modules)
+        | _ -> Skip)
+    in
+    let libraries =
+      match
+        Lib_name.Map.of_list_map libs ~f:(fun (lib, m) -> Library.best_name lib, m)
+      with
+      | Ok x -> x
+      | Error (name, _, (lib2, _)) ->
+        Errors.fail lib2.buildable.loc
+          "Library %a appears for the second time \
+           in this directory"
+          Lib_name.pp_quoted name
+    in
+    let executables =
+      match
+        String.Map.of_list_map exes
+          ~f:(fun (exes, m) -> snd (List.hd exes.names), m)
+      with
+      | Ok x -> x
+      | Error (name, _, (exes2, _)) ->
+        Errors.fail exes2.buildable.loc
+          "Executable %S appears for the second time \
+           in this directory"
+          name
+    in
+    let rev_map =
+      let rev_modules =
+        List.rev_append
+          (List.concat_map libs ~f:(fun (l, m) ->
+             let modules = Lib_modules.modules m in
+             List.map (Module.Name.Map.values modules) ~f:(fun m ->
+               (Module.name m, l.buildable))))
+          (List.concat_map exes ~f:(fun (e, m) ->
+             List.map (Module.Name.Map.values m) ~f:(fun m ->
+               (Module.name m, e.buildable))))
+      in
+      match d.kind with
+      | Dune -> begin
+          match Module.Name.Map.of_list rev_modules with
+          | Ok x -> x
+          | Error (name, _, _) ->
+            let open Module.Name.Infix in
+            let locs =
+              List.filter_map rev_modules ~f:(fun (n, b) ->
+                Option.some_if (n = name) b.loc)
+              |> List.sort ~compare
+            in
+            Errors.fail (Loc.drop_position (List.hd locs))
+              "Module %a is used in several stanzas:@\n\
+               @[<v>%a@]@\n\
+               @[%a@]"
+              Module.Name.pp_quote name
+              (Fmt.list (Fmt.prefix (Fmt.string "- ") Loc.pp_file_colon_line))
+              locs
+              Format.pp_print_text
+              "To fix this error, you must specify an explicit \"modules\" \
+               field in every library, executable, and executables stanzas in \
+               this dune file. Note that each module cannot appear in more \
+               than one \"modules\" field - it must belong to a single library \
+               or executable."
+        end
+      | Jbuild ->
+        Module.Name.Map.of_list_multi rev_modules
+        |> Module.Name.Map.mapi ~f:(fun name buildables ->
+          match buildables with
+          | [] -> assert false
+          | [b] -> b
+          | b :: rest ->
+            let locs =
+              List.sort ~compare
+                (b.Buildable.loc :: List.map rest ~f:(fun b -> b.Buildable.loc))
+            in
+            Errors.warn (Loc.drop_position b.loc)
+              "Module %a is used in several stanzas:@\n\
+               @[<v>%a@]@\n\
+               @[%a@]@\n\
+               This warning will become an error in the future."
+              Module.Name.pp_quote name
+              (Fmt.list (Fmt.prefix (Fmt.string "- ") Loc.pp_file_colon_line))
+              locs
+              Format.pp_print_text
+              "To remove this warning, you must specify an explicit \"modules\" \
+               field in every library, executable, and executables stanzas in \
+               this jbuild file. Note that each module cannot appear in more \
+               than one \"modules\" field - it must belong to a single library \
+               or executable.";
+            b)
+    in
+    { libraries; executables; rev_map }
+end
+
+module C_sources = struct
+  type t =
+    { c : Path.Set.t
+    ; cxx : Path.Set.t
+    }
+
+  let empty =
+    { c = Path.Set.empty
+    ; cxx = Path.Set.empty
+    }
+end
 
 type t =
   { kind : kind
   ; dir : Path.t
   ; text_files : String.Set.t
-  ; modules : modules Lazy.t
+  ; modules : Modules.t Lazy.t
+  ; c_sources : C_sources.t
   ; mlds : (Dune_file.Documentation.t * Path.t list) list Lazy.t
   }
 
@@ -153,148 +311,6 @@ let modules_of_files ~dir ~files =
   Module.Name.Map.merge impls intfs ~f:(fun name impl intf ->
     Some (Module.Source.make name ?impl ?intf))
 
-let build_modules_map (d : _ Dir_with_dune.t) ~modules =
-  let scope = d.scope in
-  let libs, exes =
-    List.filter_partition_map d.data ~f:(fun stanza ->
-      match (stanza : Stanza.t) with
-      | Library lib ->
-        let obj_dir =
-          Obj_dir.make_local ~dir:d.ctx_dir (snd lib.name)
-            ~has_private_modules:(Option.is_some lib.private_modules)
-        in
-        let modules =
-          Modules_field_evaluator.eval ~modules
-            ~obj_dir
-            ~buildable:lib.buildable
-            ~virtual_modules:lib.virtual_modules
-            ~private_modules:(
-              Option.value ~default:Ordered_set_lang.standard
-                lib.private_modules)
-        in
-        let (main_module_name, wrapped) =
-         (* the common case are normal libs where this is all specified so we
-            special case it so that we don't have to resolve anything the db *)
-          match Library.main_module_name lib, lib.wrapped with
-          (* these values are always either inherited together or specified *)
-          | This _, From _
-          | From _, This _ -> assert false
-          | This mmn, This wrapped -> mmn, wrapped
-          | From _, From _ ->
-            let name = (fst lib.name, Library.best_name lib) in
-            Result.ok_exn (
-              let open Result.O in
-              Lib.DB.resolve (Scope.libs scope) name >>= fun lib ->
-              Lib.main_module_name lib >>= fun main_module_name ->
-              Lib.wrapped lib >>| fun wrapped ->
-              (main_module_name, Option.value_exn wrapped)
-            )
-        in
-        Left ( lib
-             , Lib_modules.make lib ~obj_dir modules ~main_module_name ~wrapped
-             )
-      | Executables exes
-      | Tests { exes; _} ->
-        let obj_dir =
-          Obj_dir.make_exe ~dir:d.ctx_dir ~name:(snd (List.hd exes.names))
-        in
-        let modules =
-          Modules_field_evaluator.eval ~modules
-            ~obj_dir
-            ~buildable:exes.buildable
-            ~virtual_modules:None
-            ~private_modules:Ordered_set_lang.standard
-        in
-        Right (exes, modules)
-      | _ -> Skip)
-  in
-  let libraries =
-    match
-      Lib_name.Map.of_list_map libs ~f:(fun (lib, m) -> Library.best_name lib, m)
-    with
-    | Ok x -> x
-    | Error (name, _, (lib2, _)) ->
-      Errors.fail lib2.buildable.loc
-        "Library %a appears for the second time \
-         in this directory"
-        Lib_name.pp_quoted name
-  in
-  let executables =
-    match
-      String.Map.of_list_map exes
-        ~f:(fun (exes, m) -> snd (List.hd exes.names), m)
-    with
-    | Ok x -> x
-    | Error (name, _, (exes2, _)) ->
-      Errors.fail exes2.buildable.loc
-        "Executable %S appears for the second time \
-         in this directory"
-        name
-  in
-  let rev_map =
-    let rev_modules =
-      List.rev_append
-        (List.concat_map libs ~f:(fun (l, m) ->
-           let modules = Lib_modules.modules m in
-           List.map (Module.Name.Map.values modules) ~f:(fun m ->
-             (Module.name m, l.buildable))))
-        (List.concat_map exes ~f:(fun (e, m) ->
-           List.map (Module.Name.Map.values m) ~f:(fun m ->
-             (Module.name m, e.buildable))))
-    in
-    match d.kind with
-    | Dune -> begin
-        match Module.Name.Map.of_list rev_modules with
-        | Ok x -> x
-        | Error (name, _, _) ->
-          let open Module.Name.Infix in
-          let locs =
-            List.filter_map rev_modules ~f:(fun (n, b) ->
-              Option.some_if (n = name) b.loc)
-            |> List.sort ~compare
-          in
-          Errors.fail (Loc.drop_position (List.hd locs))
-            "Module %a is used in several stanzas:@\n\
-             @[<v>%a@]@\n\
-             @[%a@]"
-            Module.Name.pp_quote name
-            (Fmt.list (Fmt.prefix (Fmt.string "- ") Loc.pp_file_colon_line))
-            locs
-            Format.pp_print_text
-            "To fix this error, you must specify an explicit \"modules\" \
-             field in every library, executable, and executables stanzas in \
-             this dune file. Note that each module cannot appear in more \
-             than one \"modules\" field - it must belong to a single library \
-             or executable."
-      end
-    | Jbuild ->
-      Module.Name.Map.of_list_multi rev_modules
-      |> Module.Name.Map.mapi ~f:(fun name buildables ->
-        match buildables with
-        | [] -> assert false
-        | [b] -> b
-        | b :: rest ->
-          let locs =
-            List.sort ~compare
-              (b.Buildable.loc :: List.map rest ~f:(fun b -> b.Buildable.loc))
-          in
-          Errors.warn (Loc.drop_position b.loc)
-            "Module %a is used in several stanzas:@\n\
-             @[<v>%a@]@\n\
-             @[%a@]@\n\
-             This warning will become an error in the future."
-            Module.Name.pp_quote name
-            (Fmt.list (Fmt.prefix (Fmt.string "- ") Loc.pp_file_colon_line))
-            locs
-            Format.pp_print_text
-            "To remove this warning, you must specify an explicit \"modules\" \
-             field in every library, executable, and executables stanzas in \
-             this jbuild file. Note that each module cannot appear in more \
-             than one \"modules\" field - it must belong to a single library \
-             or executable.";
-          b)
-  in
-  { libraries; executables; rev_map }
 
 let build_mlds_map (d : _ Dir_with_dune.t) ~files =
   let dir = d.ctx_dir in
@@ -344,17 +360,19 @@ let rec get sctx ~dir =
           { kind = Standalone
           ; dir
           ; text_files = files
-          ; modules = lazy (build_modules_map d
+          ; modules = lazy (Modules.make d
                               ~modules:(modules_of_files ~dir:d.ctx_dir ~files))
           ; mlds = lazy (build_mlds_map d ~files)
+          ; c_sources = C_sources.empty
           }
         | Some (_, None)
         | None ->
           { kind = Standalone
           ; dir
           ; text_files = String.Set.empty
-          ; modules = lazy empty_modules
+          ; modules = lazy Modules.empty
           ; mlds = lazy []
+          ; c_sources = C_sources.empty
           }
       in
       Hashtbl.add cache dir t;
@@ -408,7 +426,7 @@ let rec get sctx ~dir =
                   (Fmt.optional Path.pp) (Module.Source.src_dir x)
                   (Fmt.optional Path.pp) (Module.Source.src_dir y)))
         in
-        build_modules_map d ~modules)
+        Modules.make d ~modules)
       in
       let t =
         { kind = Group_root
@@ -416,6 +434,7 @@ let rec get sctx ~dir =
         ; dir
         ; text_files = files
         ; modules
+        ; c_sources = C_sources.empty
         ; mlds = lazy (build_mlds_map d ~files)
         }
       in
@@ -426,6 +445,7 @@ let rec get sctx ~dir =
           ; dir
           ; text_files = files
           ; modules
+          ; c_sources = C_sources.empty
           ; mlds = lazy (build_mlds_map d ~files)
           });
       t

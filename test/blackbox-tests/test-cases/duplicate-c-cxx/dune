@@ -1,0 +1,4 @@
+(library
+ (name foo)
+ (c_names foo)
+ (cxx_names foo))

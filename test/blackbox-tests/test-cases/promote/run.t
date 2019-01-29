@@ -60,3 +60,19 @@ Test single file promotion
   $ dune promote x y
   Warning: Nothing to promote for x.
   Warning: Nothing to promote for y.
+
+Reproduction case for #1772
+---------------------------
+
+  $ printf a > x
+  $ printf a > y
+  $ dune build --display short @blah @blah2
+  File "x", line 1, characters 0-0:
+  Files _build/default/x and _build/default/x.gen differ.
+  File "y", line 1, characters 0-0:
+  Files _build/default/y and _build/default/y.gen differ.
+  [1]
+  $ rm -f _build/default/x.gen
+  $ dune promote
+  Skipping promotion of _build/default/x.gen to x as the file is missing.
+  Promoting _build/default/y.gen to y.

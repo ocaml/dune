@@ -361,10 +361,6 @@ let parse_string ~fname ~mode ?lexer str =
   let lb = lexbuf_from_string ~fname str in
   Parser.parse ~mode ?lexer lb
 
-let parse_cst_string ~fname ?lexer str =
-  let lb = lexbuf_from_string ~fname str in
-  Parser.parse_cst ?lexer lb
-
 type dune_lang = t
 
 module Encoder = struct

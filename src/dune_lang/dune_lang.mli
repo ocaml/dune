@@ -206,12 +206,6 @@ val parse_string
   -> string
   -> 'a
 
-val parse_cst_string
-  :  fname:string
-  -> ?lexer:Lexer.t
-  -> string
-  -> Cst.t list
-
 module Encoder : sig
   type sexp = t
   include Sexp_intf.Combinators with type 'a t = 'a -> t

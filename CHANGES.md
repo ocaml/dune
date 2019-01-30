@@ -112,6 +112,9 @@ unreleased
 
 - unstable-fmt: ignore files using OCaml syntax (#1784, @emillon)
 
+- Configurator: Add `which` function to replace the `which` command line utility
+  in a cross platform way. (#1773, fixes #1705, @Chris00)
+
 1.6.2 (05/12/2018)
 ------------------
 

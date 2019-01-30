@@ -13,7 +13,7 @@ let all { files; dlls } =
 
 module Library = Dune_file.Library
 
-let make ~(ctx : Context.t) ~dir (lib : Library.t) =
+let make ~(ctx : Context.t) ~dir ~dir_contents (lib : Library.t) =
   let { Mode.Dict.byte; native } =
     Dune_file.Mode_conf.Set.eval lib.modes
       ~has_native:(Option.is_some ctx.ocamlopt)
@@ -25,8 +25,11 @@ let make ~(ctx : Context.t) ~dir (lib : Library.t) =
       [ if_ (byte && not virtual_library)
           [ Library.archive ~dir lib ~ext:".cma" ]
       ; if virtual_library then (
-          (lib.c_names @ lib.cxx_names)
-          |> List.map ~f:(fun (_, c) -> Path.relative dir (c ^ ctx.ext_obj))
+          let files =
+            Dir_contents.c_sources_of_library dir_contents
+              ~name:(Library.best_name lib)
+          in
+          C_sources.Files.foreign_objects files ~dir ~ext_obj:ctx.ext_obj
         ) else if Library.has_stubs lib then (
           [ Library.stubs_archive ~dir lib ~ext_lib:ctx.ext_lib ]
         ) else

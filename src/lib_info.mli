@@ -21,10 +21,11 @@ module Deps : sig
   val of_lib_deps : Dune_file.Lib_deps.t -> t
 end
 
-module Virtual : sig
-  type t =
+(** For values like modules that need to be evaluated to be fetched *)
+module Source : sig
+  type 'a t =
     | Local
-    | External of Lib_modules.t
+    | External of 'a
 end
 
 type t = private
@@ -39,7 +40,7 @@ type t = private
   ; synopsis         : string option
   ; archives         : Path.t list Mode.Dict.t
   ; plugins          : Path.t list Mode.Dict.t
-  ; foreign_objects  : Path.t list
+  ; foreign_objects  : Path.t list Source.t
   ; foreign_archives : Path.t list Mode.Dict.t (** [.a/.lib/...] files *)
   ; jsoo_runtime     : Path.t list
   ; jsoo_archive     : Path.t option
@@ -50,7 +51,7 @@ type t = private
   ; virtual_deps     : (Loc.t * Lib_name.t) list
   ; dune_version     : Syntax.Version.t option
   ; sub_systems      : Sub_system_info.t Sub_system_name.Map.t
-  ; virtual_         : Virtual.t option
+  ; virtual_         : Lib_modules.t Source.t option
   ; implements       : (Loc.t * Lib_name.t) option
   ; wrapped          : Wrapped.t Dune_file.Library.Inherited.t option
   ; main_module_name : Dune_file.Library.Main_module_name.t

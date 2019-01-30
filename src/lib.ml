@@ -1271,10 +1271,11 @@ let () =
       Some (Report_error.make_printer ?loc ?hint pp)
     | _ -> None)
 
-let to_dune_lib ({ name ; info ; _ } as lib) ~lib_modules ~dir =
+let to_dune_lib ({ name ; info ; _ } as lib) ~lib_modules ~foreign_objects ~dir =
   let add_loc = List.map ~f:(fun x -> (info.loc, x.name)) in
   let virtual_ = Option.is_some info.virtual_ in
-  let lib_modules = Lib_modules.version_installed ~install_dir:dir lib_modules in
+  let lib_modules =
+    Lib_modules.version_installed ~install_dir:dir lib_modules in
   let orig_src_dir =
     if !Clflags.store_orig_src_dir
     then Some (
@@ -1287,6 +1288,11 @@ let to_dune_lib ({ name ; info ; _ } as lib) ~lib_modules ~dir =
     )
     else None
   in
+  let foreign_objects =
+    match info.foreign_objects with
+    | External f -> f
+    | Local -> foreign_objects
+  in
   Dune_package.Lib.make
     ~dir
     ~orig_src_dir
@@ -1298,7 +1304,7 @@ let to_dune_lib ({ name ; info ; _ } as lib) ~lib_modules ~dir =
     ~archives:info.archives
     ~plugins:info.plugins
     ~foreign_archives:info.foreign_archives
-    ~foreign_objects:info.foreign_objects
+    ~foreign_objects
     ~jsoo_runtime:info.jsoo_runtime
     ~requires:(add_loc (requires_exn lib))
     ~ppx_runtime_deps:(add_loc (ppx_runtime_deps_exn lib))

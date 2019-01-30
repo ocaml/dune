@@ -215,14 +215,25 @@ let impl sctx ~dir ~(lib : Dune_file.Library.t) ~scope ~modules =
             Lib_name.pp implements
         | Some v -> v
       in
-      let vlib_modules =
-        match virtual_ with
-        | External lib_modules -> lib_modules
-        | Local ->
+      let (vlib_modules, vlib_foreign_objects) =
+        match virtual_, Lib.foreign_objects vlib with
+        | External _, Local
+        | Local, External _ -> assert false
+        | External lib_modules, External fa -> (lib_modules, fa)
+        | Local, Local ->
+          let name = Lib.name vlib in
           let dir_contents =
             Dir_contents.get sctx ~dir:(Lib.src_dir vlib) in
-          Dir_contents.modules_of_library dir_contents
-            ~name:(Lib.name vlib)
+          let modules =
+            Dir_contents.modules_of_library dir_contents ~name
+          in
+          let foreign_objects =
+            let ext_obj = (Super_context.context sctx).ext_obj in
+            let dir = Obj_dir.obj_dir (Lib.obj_dir vlib) in
+            Dir_contents.c_sources_of_library dir_contents ~name
+            |> C_sources.Files.foreign_objects ~ext_obj ~dir
+          in
+          (modules, foreign_objects)
       in
       let virtual_modules = Lib_modules.virtual_modules vlib_modules in
       check_module_fields ~lib ~virtual_modules ~modules ~implements;
@@ -247,4 +258,5 @@ let impl sctx ~dir ~(lib : Dune_file.Library.t) ~scope ~modules =
             ~vlib_modules
       in
       Vimpl.make ~dir ~impl:lib ~vlib ~vlib_modules ~vlib_dep_graph
+        ~vlib_foreign_objects
   end

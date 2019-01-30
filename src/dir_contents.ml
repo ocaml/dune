@@ -166,30 +166,6 @@ module Modules = struct
     { libraries; executables; rev_map }
 end
 
-module C_files = struct
-  type t =
-    { c   : Path.Set.t
-    ; cxx : Path.Set.t
-    }
-
-  let _empty =
-    { c = Path.Set.empty
-    ; cxx = Path.Set.empty
-    }
-end
-
-module C_sources = struct
-  type t =
-    { libraries : C_files.t Lib_name.Map.t
-    ; c_executables : C_files.t Lib_name.Map.t
-    }
-
-  let empty =
-    { libraries = Lib_name.Map.empty
-    ; c_executables = Lib_name.Map.empty
-    }
-end
-
 type t =
   { kind : kind
   ; dir : Path.t
@@ -237,14 +213,7 @@ let modules_of_executables t ~first_exe =
       ]
 
 let c_sources_of_library t ~name =
-  let map = (Lazy.force t.c_sources).libraries in
-  match Lib_name.Map.find map name with
-  | Some m -> m
-  | None ->
-    Exn.code_error "Dir_contents.c_sources_of_library"
-      [ "name", Lib_name.to_sexp name
-      ; "available", Sexp.Encoder.(list Lib_name.to_sexp) (Lib_name.Map.keys map)
-      ]
+  C_sources.for_lib (Lazy.force t.c_sources) ~dir:t.dir ~name
 
 let lookup_module t name =
   Module.Name.Map.find (Lazy.force t.modules).rev_map name
@@ -385,7 +354,8 @@ let rec get sctx ~dir =
           ; modules = lazy (Modules.make d
                               ~modules:(modules_of_files ~dir:d.ctx_dir ~files))
           ; mlds = lazy (build_mlds_map d ~files)
-          ; c_sources = lazy C_sources.empty
+          ; c_sources =
+              lazy (C_sources.make d ~c_files:(C_sources.Files.make ~files))
           }
         | Some (_, None)
         | None ->
@@ -450,13 +420,16 @@ let rec get sctx ~dir =
         in
         Modules.make d ~modules)
       in
+      let c_sources = lazy (
+        assert false
+      ) in
       let t =
         { kind = Group_root
                    (lazy (List.map subdirs ~f:(fun (dir, _) -> get sctx ~dir)))
         ; dir
         ; text_files = files
         ; modules
-        ; c_sources = lazy C_sources.empty
+        ; c_sources
         ; mlds = lazy (build_mlds_map d ~files)
         }
       in
@@ -467,7 +440,7 @@ let rec get sctx ~dir =
           ; dir
           ; text_files = files
           ; modules
-          ; c_sources = lazy C_sources.empty
+          ; c_sources
           ; mlds = lazy (build_mlds_map d ~files)
           });
       t

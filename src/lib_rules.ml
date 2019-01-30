@@ -253,7 +253,9 @@ module Gen (P : Install_rules.Params) = struct
       ocamlmklib ~sandbox:true ~custom:false ~targets:[dynamic]
     end
 
-  let build_o_files lib ~dir ~expander ~requires ~dir_contents =
+  let build_o_files lib
+        ~(c_sources : (Loc.t * Path.t) String.Map.t C_sources.Files.t)
+        ~dir ~expander ~requires ~dir_contents =
     let all_dirs = Dir_contents.dirs dir_contents in
     let h_files =
       List.fold_left all_dirs ~init:[] ~f:(fun acc dc ->
@@ -263,19 +265,6 @@ module Gen (P : Install_rules.Params) = struct
               Path.relative (Dir_contents.dir dc) fn :: acc
             else
               acc))
-    in
-    let all_dirs = Path.Set.of_list (List.map all_dirs ~f:Dir_contents.dir) in
-    let resolve_name ~ext (loc, fn) =
-      let p = Path.relative dir (fn ^ ext) in
-      if not (match Path.parent p with
-        | None -> false
-        | Some p -> Path.Set.mem all_dirs p) then
-        Errors.fail loc
-          "File %a is not part of the current directory group. \
-           This is not allowed."
-          Path.pp (Path.drop_optional_build_context p)
-      ;
-      (loc, p, Path.relative dir (fn ^ ctx.ext_obj))
     in
     let includes =
       Arg_spec.S
@@ -287,16 +276,22 @@ module Gen (P : Install_rules.Params) = struct
               ])
         ]
     in
-    List.map lib.c_names ~f:(fun name ->
-      build_c_file   lib ~expander ~dir ~includes (resolve_name name ~ext:".c")
-    ) @ List.map lib.cxx_names ~f:(fun name ->
-      build_cxx_file lib ~expander ~dir ~includes (resolve_name name ~ext:".cpp")
-    )
+    let build_x_files build_x files =
+      String.Map.to_list files
+      |> List.map ~f:(fun (fn, (loc, src)) ->
+        let dst = Path.relative dir (fn ^ ctx.ext_obj) in
+        build_x lib ~expander ~dir ~includes (loc, src, dst)
+      )
+    in
+    build_x_files build_c_file c_sources.c
+    @ build_x_files build_cxx_file c_sources.cxx
 
   let build_stubs lib ~dir ~expander ~requires ~dir_contents ~vlib_stubs_o_files =
     let lib_o_files =
       if Library.has_stubs lib then
-        build_o_files lib ~dir ~expander ~requires ~dir_contents
+        let c_sources = Dir_contents.c_sources_of_library
+                          dir_contents ~name:(Library.best_name lib) in
+        build_o_files lib ~dir ~expander ~requires ~dir_contents ~c_sources
       else
         []
     in

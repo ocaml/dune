@@ -112,6 +112,10 @@ unreleased
 
 - unstable-fmt: ignore files using OCaml syntax (#1784, @emillon)
 
+- Make configurator append paths to `$PKG_CONFIG_PATH` on macOS. Previously it
+  was prepending paths and thus `$PKG_CONFIG_PATH` set by users could have been
+  overriden by homebrew installed libraries (#1785, @andreypopp)
+
 1.6.2 (05/12/2018)
 ------------------
 

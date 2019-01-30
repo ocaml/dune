@@ -118,7 +118,7 @@ module Find_in_path = struct
     | None -> prog_not_found prog
     | Some fn -> fn
 
-  let find prog =
+  let which prog =
     List.find_map (get_path ()) ~f:(fun dir ->
       let fn = dir ^/ prog ^ exe in
       Option.some_if (Sys.file_exists fn) fn)
@@ -470,9 +470,9 @@ const char *s%i = "BEGIN-%i-false-END";
     Sys.rename tmp_fname fname
 end
 
-let find_in_path t prog =
-  logf t "find_in_path: %s" prog;
-  let x = Find_in_path.find prog in
+let which t prog =
+  logf t "which: %s" prog;
+  let x = Find_in_path.which prog in
   logf t "-> %s"
     (match x with
      | None -> "not found"
@@ -486,7 +486,7 @@ module Pkg_config = struct
     }
 
   let get c =
-    Option.map (find_in_path c "pkg-config") ~f:(fun pkg_config ->
+    Option.map (which c "pkg-config") ~f:(fun pkg_config ->
       { pkg_config; configurator = c })
 
   type package_conf =
@@ -502,7 +502,7 @@ module Pkg_config = struct
     let env =
       match ocaml_config_var c "system" with
       | Some "macosx" -> begin
-          match find_in_path c "brew" with
+          match which c "brew" with
           | Some brew ->
             let prefix =
               String.trim (run_capture_exn c ~dir (command_line brew ["--prefix"]))

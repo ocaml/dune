@@ -10,7 +10,10 @@ c_names and cxx_names with overlapping names in the same stanza
 c_names with overlapping names in different stanzas
   $ dune build --root diff-stanza @all
   Entering directory 'diff-stanza'
-  Multiple rules generated for _build/default/foo$ext_obj:
-  - dune:9
+  File "dune", line 9, characters 10-13:
+  9 |  (c_names foo))
+                ^^^
+  Error: This c stub is already used in another stanza:
   - dune:4
+  
   [1]

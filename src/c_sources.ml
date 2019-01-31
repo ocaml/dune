@@ -109,5 +109,22 @@ let make (d : _ Dir_with_dune.t)
          in this directory"
         Lib_name.pp_quoted name
   in
+  let () =
+    let rev_map =
+      List.concat_map libs ~f:(fun (_, c_sources) ->
+        String.Map.values c_sources
+        |> List.map ~f:(fun (loc, source) ->
+          (C.Source.path source, loc)))
+      |> Path.Map.of_list
+    in
+    match rev_map with
+    | Ok _ -> ()
+    | Error (_, loc1, loc2) ->
+      Errors.fail loc2
+        "This c stub is already used in another stanza:@\n\
+         @[<v>%a@]@\n"
+        (Fmt.prefix (Fmt.string "- ") Loc.pp_file_colon_line)
+        loc1
+  in
   { libraries
   }

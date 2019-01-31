@@ -19,10 +19,17 @@ module File = struct
   let register t = db := t :: !db
 
   let promote { src; dst } =
-    Errors.print_to_console (Format.sprintf "Promoting %s to %s.@."
-      (Path.to_string_maybe_quoted src)
-      (Path.to_string_maybe_quoted dst));
-    Io.copy_file ~src ~dst ()
+    let src_exists = Path.exists src in
+    Errors.print_to_console
+      (Format.sprintf
+         (if src_exists then
+            "Promoting %s to %s.@."
+          else
+            "Skipping promotion of %s to %s as the file is missing.@.")
+         (Path.to_string_maybe_quoted src)
+         (Path.to_string_maybe_quoted dst));
+    if src_exists then
+      Io.copy_file ~src ~dst ()
 end
 
 let clear_cache () =

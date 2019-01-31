@@ -123,6 +123,35 @@ val which : t -> string -> string option
    of the program prefixed with the first path where it is found.
    Return [None] the the program is not found. *)
 
+
+type run_result =
+  { exit_code : int
+  ; stdout    : string
+  ; stderr    : string
+  }
+
+val run : t -> ?dir:string -> ?env:string list ->
+          string -> string list -> run_result
+(** [run t prog args] runs [prog] with arguments [args] and returns
+   its exit status together with the content of stdout and stderr.
+   The action is logged.
+
+   @param dir change to [dir] before running the command.
+   @param env specify additional environment variables as a list of
+              the form NAME=VALUE. *)
+
+val run_capture_exn : t -> ?dir:string -> ?env:string list ->
+                      string -> string list -> string
+(** [run_capture_exn t prog args] same as [run t prog args] but
+   returns [stdout] and {!die} if the error code is nonzero or there
+   is some output on [stderr].  *)
+
+val run_ok : t -> ?dir:string -> ?env:string list ->
+             string -> string list -> bool
+(** [run_ok t prog args] same as [run t prog args] but only cares
+   whether the execution terminated successfully (i.e., returned an
+   error code of [0]).  *)
+
 (** Typical entry point for configurator programs *)
 val main
   :  ?args:(Arg.key * Arg.spec * Arg.doc) list

@@ -214,6 +214,40 @@ module Cst = struct
     | Quoted_string (loc, s) -> Quoted_string (loc, s)
     | Template t -> Template t
     | List (loc, l) -> List (loc, List.map ~f:concrete l)
+
+  let extract_comments =
+    let rec loop acc = function
+      | Atom _ | Quoted_string _ | Template _ -> acc
+      | List (_, l) -> List.fold_left l ~init:acc ~f:loop
+      | Comment (loc, comment) -> (loc, comment) :: acc
+    in
+    List.fold_left ~init:[] ~f:loop
+
+  let tokenize ts =
+    let tokens = ref [] in
+    let emit loc (token : Lexer.Token.t) =
+      tokens := (loc, token) :: !tokens
+    in
+    let rec iter = function
+      | Atom (loc, s) ->
+        emit loc (Atom s)
+      | Quoted_string (loc, s) ->
+        emit loc (Quoted_string s)
+      | Template ({ loc; _ } as template) ->
+        emit loc (Template template)
+      | Comment (loc, comment) ->
+        emit loc (Comment comment)
+      | List (loc, l) ->
+        emit { loc with
+               stop = { loc.start with pos_cnum = loc.start.pos_cnum + 1 } }
+          Lparen;
+        List.iter l ~f:iter;
+        emit { loc with
+               start = { loc.stop with pos_cnum = loc.stop.pos_cnum - 1 } }
+          Rparen
+    in
+    List.iter ts ~f:iter;
+    List.rev !tokens
 end
 
 module Parse_error = struct
@@ -346,6 +380,43 @@ module Parser = struct
     loop true 0 lexer lexbuf []
     |> List.map ~f:cst_of_encoded_ast
 end
+
+let insert_comments csts comments =
+  (* To insert the comments, we tokenize the csts, reconciliate the
+     token streams and parse the result again. This is not the fastest
+     implementation, but at least it is simple. *)
+  let compare (a, _) (b, _) =
+    Int.compare a.Loc.start.pos_cnum b.Loc.start.pos_cnum
+  in
+  let rec reconciliate acc tokens1 tokens2 =
+    match tokens1, tokens2 with
+    | [], l  | l, [] -> List.rev_append acc l
+    | tok1 :: rest1, tok2 :: rest2 ->
+      match compare tok1 tok2 with
+      | Eq
+      | Lt -> reconciliate (tok1 :: acc) rest1 tokens2
+      | Gt -> reconciliate (tok2 :: acc) tokens1 rest2
+  in
+  let tokens =
+    reconciliate []
+      (Cst.tokenize csts)
+      (List.sort comments ~compare
+       |> List.map ~f:(fun (loc, comment) ->
+         (loc, Lexer.Token.Comment comment)))
+  in
+  let tokens = ref tokens in
+  let lexer ~with_comments:_ (lb : Lexing.lexbuf) =
+    match !tokens with
+    | [] ->
+      lb.lex_curr_p <- lb.lex_start_p;
+      Lexer.Token.Eof
+    | ({ start; stop }, tok) :: rest ->
+      tokens := rest;
+      lb.lex_start_p <- start;
+      lb.lex_curr_p <- stop;
+      tok
+  in
+  Parser.parse_cst (Lexing.from_string "") ~lexer
 
 let lexbuf_from_string ~fname str =
   let lb = Lexing.from_string str in

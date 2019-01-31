@@ -145,7 +145,14 @@ module Cst : sig
   val abstract : t -> Ast.t option
 
   val concrete : Ast.t -> t
+
+  (** Return all the comments contained in a concrete syntax tree *)
+  val extract_comments : t list -> (Loc.t * Comment.t) list
 end
+
+(** Insert comments in a concrete syntax tree. Comments are inserted
+    based on their location. *)
+val insert_comments : Cst.t list -> (Loc.t * Cst.Comment.t) list -> Cst.t list
 
 module Parse_error : sig
   type t

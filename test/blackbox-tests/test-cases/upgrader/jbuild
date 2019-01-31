@@ -1,6 +1,17 @@
+#|old style
+block comment
+|#
+
 (rule
- ((deps (x y z))
+ ((deps (x y z)) ; abc
   (targets (z))
+  ; def
   (action (with-stdout-to z (run echo ${<})))))
 
+; other
+; comment
+
 (rule (copy x y))
+
+#; (sexp
+    comment)

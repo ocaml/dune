@@ -9,6 +9,8 @@ module Kind : sig
 
   val split_extension : string -> (string * t) option
 
+  (** [possible_fns t s] returns the possible filenames given the extension-less
+      basenames [s] *)
   val possible_fns : t -> string -> string list
 
   module Dict : sig

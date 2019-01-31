@@ -23,18 +23,16 @@ let empty =
   }
 
 let c_name, cxx_name =
-  let make what ext ~loc s =
+  let make what ~loc s =
     if match s with
       | "" | "." | ".."  -> true
       | _ -> false then
-      Errors.fail loc
-        "%S is not a valid %s name."
-        s what what ext
+      Errors.fail loc "%S is not a valid %s name." s what
     else
       s
   in
-  ( make "C"   "c"
-  , make "C++" "cpp"
+  ( make "C"
+  , make "C++"
   )
 
 module Eval = struct

@@ -23,10 +23,7 @@ end
 (** Modules attached to a library. [name] is the library best name. *)
 val modules_of_library : t -> name:Lib_name.t -> Lib_modules.t
 
-val c_sources_of_library
-  :  t
-  -> name:Lib_name.t
-  -> (Loc.t * Path.t) String.Map.t C_sources.Files.t
+val c_sources_of_library : t -> name:Lib_name.t -> C.Sources.t
 
 (** Modules attached to a set of executables. *)
 val modules_of_executables : t -> first_exe:string -> Executables_modules.t

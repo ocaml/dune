@@ -354,8 +354,9 @@ let rec get sctx ~dir =
           ; modules = lazy (Modules.make d
                               ~modules:(modules_of_files ~dir:d.ctx_dir ~files))
           ; mlds = lazy (build_mlds_map d ~files)
-          ; c_sources =
-              lazy (C_sources.make d ~c_files:(C_sources.Files.make ~files))
+          ; c_sources = lazy (
+              C_sources.make d
+                ~c_sources:(C_sources.load_sources ~dir:d.ctx_dir ~files))
           }
         | Some (_, None)
         | None ->
@@ -421,7 +422,29 @@ let rec get sctx ~dir =
         Modules.make d ~modules)
       in
       let c_sources = lazy (
-        assert false
+        let init = C.Kind.Dict.make String.Map.empty in
+        let c_sources =
+          List.fold_left ((dir, files) :: subdirs) ~init
+            ~f:(fun acc (dir, files) ->
+              let sources = C_sources.load_sources ~dir ~files in
+              let f acc sources =
+                String.Map.union acc sources ~f:(fun name x y ->
+                  Errors.fail (Loc.in_file
+                                (match File_tree.Dir.dune_file ft_dir with
+                                  | None ->
+                                    Path.relative (File_tree.Dir.path ft_dir)
+                                      "_unknown_"
+                                  | Some d -> File_tree.Dune_file.path d))
+                    "C file %s appears in several directories:\
+                    @\n- %a\
+                    @\n- %a"
+                    name
+                    Path.pp_in_source (C.Source.src_dir x)
+                    Path.pp_in_source (C.Source.src_dir y))
+              in
+              C.Kind.Dict.merge acc sources ~f)
+        in
+        C_sources.make d ~c_sources
       ) in
       let t =
         { kind = Group_root

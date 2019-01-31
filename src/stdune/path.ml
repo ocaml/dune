@@ -953,6 +953,9 @@ let split_extension t =
 
 let pp ppf t = Format.pp_print_string ppf (to_string_maybe_quoted t)
 
+let pp_in_source ppf t =
+  pp ppf (drop_optional_build_context t)
+
 let pp_debug ppf = function
   | In_source_tree s ->
     Format.fprintf ppf "(In_source_tree %S)" (Local.to_string s)

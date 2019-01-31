@@ -231,7 +231,7 @@ let impl sctx ~dir ~(lib : Dune_file.Library.t) ~scope ~modules =
             let ext_obj = (Super_context.context sctx).ext_obj in
             let dir = Obj_dir.obj_dir (Lib.obj_dir vlib) in
             Dir_contents.c_sources_of_library dir_contents ~name
-            |> C_sources.Files.foreign_objects ~ext_obj ~dir
+            |> C.Sources.foreign_objects ~ext_obj ~dir
           in
           (modules, foreign_objects)
       in

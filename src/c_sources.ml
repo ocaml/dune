@@ -3,33 +3,8 @@ open Dune_file
 
 module Library = Dune_file.Library
 
-module Files = struct
-  type 'a t =
-    { c   : 'a
-    ; cxx : 'a
-    }
-
-  let empty =
-    { c = String.Set.empty
-    ; cxx = String.Set.empty
-    }
-
-  let make ~files =
-    String.Set.fold files ~init:empty ~f:(fun fn acc ->
-      match String.lsplit2 fn ~on:'.' with
-      | Some (_, "c") ->
-        { acc with c = String.Set.add acc.c fn }
-      | Some (_, "cpp") ->
-        { acc with cxx = String.Set.add acc.cxx fn }
-      | _ -> acc)
-
-  let foreign_objects { c; cxx } ~dir ~ext_obj =
-    String.Map.(keys c @ keys cxx)
-    |> List.map ~f:(fun c -> Path.relative dir (c ^ ext_obj))
-end
-
 type t =
-  { libraries : (Loc.t * Path.t) String.Map.t Files.t Lib_name.Map.t
+  { libraries : C.Sources.t Lib_name.Map.t
   }
 
 let for_lib t ~dir ~name =
@@ -72,28 +47,55 @@ module Eval = struct
   include Ordered_set_lang.Make_loc(String)(Value)
 end
 
-let make (d : _ Dir_with_dune.t) ~(c_files : String.Set.t Files.t) =
+let load_sources ~dir ~files =
+  let init = C.Kind.Dict.make String.Map.empty in
+  String.Set.fold files ~init ~f:(fun fn acc ->
+    match C.Kind.split_fn fn with
+    | None -> acc
+    | Some (obj, kind) ->
+      let path = Path.relative dir fn in
+      C.Kind.Dict.update acc kind ~f:(fun v ->
+        String.Map.add v obj (C.Source.make ~kind ~path)
+      ))
+
+let make (d : _ Dir_with_dune.t)
+      ~(c_sources : C.Source.t String.Map.t C.Kind.Dict.t) =
   let libs =
     List.filter_map d.data ~f:(fun stanza ->
       match (stanza : Stanza.t) with
       | Library lib ->
-        let eval ext validate (files : String.Set.t) osl =
+        let eval (kind : C.Kind.t) (c_sources : C.Source.t String.Map.t)
+              validate osl =
           Eval.eval_unordered osl
-            ~parse:validate
+            ~parse:(fun ~loc s ->
+              let s = validate ~loc s in
+              let s' = Filename.basename s in
+              if s' <> s then begin
+                Errors.warn loc "relative part of stub are no longer \
+                                 necessary and are ignored."
+              end;
+              s'
+            )
             ~standard:String.Map.empty
           |> String.Map.map ~f:(fun (loc, s) ->
-            let fn = s ^ ext in
-            if String.Set.mem files fn then
-              (loc, Path.relative d.ctx_dir fn)
-            else
-              Errors.fail loc "%s does not exist" fn
+            match String.Map.find c_sources s with
+            | Some source -> (loc, source)
+            | None ->
+              Errors.fail loc "%s does not exist as a C source. \
+                               One of %s must be present"
+                s (String.enumerate_or (C.Kind.possible_fns kind s))
           )
         in
         let names =
           Option.value ~default:Ordered_set_lang.standard in
-        let c = eval ".c" c_name c_files.c (names lib.c_names) in
-        let cxx = eval ".cpp" cxx_name c_files.cxx (names lib.cxx_names) in
-        Some (lib, { Files. c ; cxx })
+        let c = eval C.Kind.C c_sources.c c_name (names lib.c_names) in
+        let cxx = eval C.Kind.Cxx c_sources.cxx cxx_name (names lib.cxx_names) in
+        let all = String.Map.union c cxx ~f:(fun _ (_loc1, c) (loc2, cxx) ->
+          Errors.fail loc2 "%a source file is invalid because %a exists"
+            Path.pp_in_source (C.Source.path cxx)
+            Path.pp_in_source (C.Source.path c)
+        ) in
+        Some (lib, all)
       | _ -> None
     )
   in

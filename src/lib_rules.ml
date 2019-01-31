@@ -163,6 +163,7 @@ module Gen (P : Install_rules.Params) = struct
     Module_compilation.build_modules cctx ~js_of_ocaml ~dynlink ~dep_graphs
 
   let build_c_file (lib : Library.t) ~expander ~dir ~includes (loc, src, dst) =
+    let src = C.Source.path src in
     SC.add_rule sctx ~loc ~dir
       (Expander.expand_and_eval_set expander lib.c_flags
          ~standard:(Build.return (Context.cc_g ctx))
@@ -170,7 +171,7 @@ module Gen (P : Install_rules.Params) = struct
        Build.run
          (* We have to execute the rule in the library directory as
             the .o is produced in the current directory *)
-         ~dir:(Path.parent_exn src)
+         ~dir
          (Ok ctx.ocamlc)
          [ A "-g"
          ; includes
@@ -181,6 +182,7 @@ module Gen (P : Install_rules.Params) = struct
     dst
 
   let build_cxx_file (lib : Library.t) ~expander ~dir ~includes (loc, src, dst) =
+    let src = C.Source.path src in
     let open Arg_spec in
     let output_param =
       if ctx.ccomp_type = "msvc" then
@@ -195,7 +197,7 @@ module Gen (P : Install_rules.Params) = struct
        Build.run
          (* We have to execute the rule in the library directory as
             the .o is produced in the current directory *)
-         ~dir:(Path.parent_exn src)
+         ~dir
          (SC.resolve_program ~loc:None ~dir sctx ctx.c_compiler)
          ([ S [A "-I"; Path ctx.stdlib_dir]
           ; As (SC.cxx_flags sctx)
@@ -253,8 +255,7 @@ module Gen (P : Install_rules.Params) = struct
       ocamlmklib ~sandbox:true ~custom:false ~targets:[dynamic]
     end
 
-  let build_o_files lib
-        ~(c_sources : (Loc.t * Path.t) String.Map.t C_sources.Files.t)
+  let build_o_files lib ~(c_sources : C.Sources.t)
         ~dir ~expander ~requires ~dir_contents =
     let all_dirs = Dir_contents.dirs dir_contents in
     let h_files =
@@ -278,13 +279,14 @@ module Gen (P : Install_rules.Params) = struct
     in
     let build_x_files build_x files =
       String.Map.to_list files
-      |> List.map ~f:(fun (fn, (loc, src)) ->
-        let dst = Path.relative dir (fn ^ ctx.ext_obj) in
+      |> List.map ~f:(fun (obj, (loc, src)) ->
+        let dst = Path.relative dir (obj ^ ctx.ext_obj) in
         build_x lib ~expander ~dir ~includes (loc, src, dst)
       )
     in
-    build_x_files build_c_file c_sources.c
-    @ build_x_files build_cxx_file c_sources.cxx
+    let { C.Kind.Dict. c; cxx } = C.Sources.split_by_kind c_sources in
+    build_x_files build_c_file c
+    @ build_x_files build_cxx_file cxx
 
   let build_stubs lib ~dir ~expander ~requires ~dir_contents ~vlib_stubs_o_files =
     let lib_o_files =

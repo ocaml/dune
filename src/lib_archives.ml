@@ -29,7 +29,7 @@ let make ~(ctx : Context.t) ~dir ~dir_contents (lib : Library.t) =
             Dir_contents.c_sources_of_library dir_contents
               ~name:(Library.best_name lib)
           in
-          C_sources.Files.foreign_objects files ~dir ~ext_obj:ctx.ext_obj
+          C.Sources.foreign_objects files ~dir ~ext_obj:ctx.ext_obj
         ) else if Library.has_stubs lib then (
           [ Library.stubs_archive ~dir lib ~ext_lib:ctx.ext_lib ]
         ) else

@@ -45,7 +45,7 @@ module Gen(P : Params) = struct
                 let foreign_objects =
                   let dir = Obj_dir.obj_dir (Lib.obj_dir lib) in
                   Dir_contents.c_sources_of_library dir_contents ~name
-                  |> C_sources.Files.foreign_objects ~dir ~ext_obj:ctx.ext_obj
+                  |> C.Sources.foreign_objects ~dir ~ext_obj:ctx.ext_obj
                 in
                 Lib.to_dune_lib lib ~dir:(lib_root lib) ~lib_modules
                   ~foreign_objects)

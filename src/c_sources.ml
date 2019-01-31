@@ -50,7 +50,7 @@ end
 let load_sources ~dir ~files =
   let init = C.Kind.Dict.make String.Map.empty in
   String.Set.fold files ~init ~f:(fun fn acc ->
-    match C.Kind.split_fn fn with
+    match C.Kind.split_extension fn with
     | None -> acc
     | Some (obj, kind) ->
       let path = Path.relative dir fn in

@@ -10,7 +10,7 @@ module Kind = struct
     | C -> Format.pp_print_string fmt "c"
     | Cxx -> Format.pp_print_string fmt "cpp"
 
-  let split_fn fn =
+  let split_extension fn =
     match String.lsplit2 fn ~on:'.' with
     | Some (obj, "c") -> Some (obj, C)
     | Some (obj, "cpp") -> Some (obj, Cxx)

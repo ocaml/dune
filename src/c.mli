@@ -7,7 +7,7 @@ module Kind : sig
 
   val pp : t Fmt.t
 
-  val split_fn : string -> (string * t) option
+  val split_extension : string -> (string * t) option
 
   val possible_fns : t -> string -> string list
 

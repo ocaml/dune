@@ -39,7 +39,7 @@ end
 module Sources : sig
   type t = (Loc.t * Source.t) String.Map.t
 
-  val foreign_objects : t -> dir:Path.t -> ext_obj:string -> Path.t list
+  val objects : t -> dir:Path.t -> ext_obj:string -> Path.t list
 
   val split_by_kind : t -> t Kind.Dict.t
 end

@@ -71,7 +71,7 @@ end
 module Sources = struct
   type t = (Loc.t * Source.t) String.Map.t
 
-  let foreign_objects (t : t) ~dir ~ext_obj =
+  let objects (t : t) ~dir ~ext_obj =
     String.Map.keys t
     |> List.map ~f:(fun c -> Path.relative dir (c ^ ext_obj))
 

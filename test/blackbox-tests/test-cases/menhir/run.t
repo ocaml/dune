@@ -75,8 +75,8 @@ Reproduction case for #1781, only the .ml and .mli should be promoted:
   $ dune build @all --root promote
   Entering directory 'promote'
   $ ls -1 promote/_build/default | grep mock
-  parser__mock.mli.inferred
   parser__mock.ml.mock
+  parser__mock.mli.inferred
   $ ls -1 promote | grep mock
   [1]
 Check what is being generated exactly:

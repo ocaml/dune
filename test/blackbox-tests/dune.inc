@@ -216,6 +216,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name duplicate-c-cxx-obj)
+ (deps (package dune) (source_tree test-cases/duplicate-c-cxx-obj))
+ (action
+  (chdir
+   test-cases/duplicate-c-cxx-obj
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name duplicate-target-no-loc)
  (deps (package dune) (source_tree test-cases/duplicate-target-no-loc))
  (action
@@ -1270,6 +1278,7 @@
   (alias dune-project-edition)
   (alias dup-fields)
   (alias duplicate-c-cxx)
+  (alias duplicate-c-cxx-obj)
   (alias duplicate-target-no-loc)
   (alias embed-jbuild)
   (alias enabled_if)
@@ -1424,6 +1433,7 @@
   (alias dune-project-edition)
   (alias dup-fields)
   (alias duplicate-c-cxx)
+  (alias duplicate-c-cxx-obj)
   (alias duplicate-target-no-loc)
   (alias embed-jbuild)
   (alias enabled_if)

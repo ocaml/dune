@@ -210,7 +210,7 @@ See `smie-rules-function' for the meaning of KIND and TOKEN."
     nil)
    (t 1)))
 
-(defun verbose-dune-smie-rules (kind token)
+(defun dune-smie-rules-verbose (kind token)
   "Same as `dune-smie-rules' but echoing information.
 See `smie-rules-function' for the meaning of KIND and TOKEN."
   (let ((value (dune-smie-rules kind token)))
@@ -368,11 +368,11 @@ See `smie-rules-function' for the meaning of KIND and TOKEN."
 (define-derived-mode dune-mode prog-mode "dune"
   "Major mode to edit dune files.
 For customization purposes, use `dune-mode-hook'."
-  (setq-local font-lock-defaults '(dune-font-lock-keywords))
-  (setq-local comment-start ";")
-  (setq-local comment-end "")
+  (set (make-local-variable 'font-lock-defaults) '(dune-font-lock-keywords))
+  (set (make-local-variable 'comment-start) ";")
+  (set (make-local-variable 'comment-end) "")
   (setq indent-tabs-mode nil)
-  (setq-local require-final-newline mode-require-final-newline)
+  (set (make-local-variable 'require-final-newline) mode-require-final-newline)
   (smie-setup dune-smie-grammar #'dune-smie-rules)
   (dune-build-menu))
 

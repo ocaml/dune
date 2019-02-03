@@ -1,6 +1,8 @@
 ;;; dune-flymake.el --- Flymake support for dune files   -*- coding: utf-8 -*-
 
-;; Copyright (C) 2017- Christophe Troestler
+;; Copyright 2017- Christophe Troestler
+;; URL: https://github.com/ocaml/dune
+;; Version: 1.0
 
 ;; This file is not part of GNU Emacs.
 
@@ -32,7 +34,7 @@
   (expand-file-name "dune" temporary-file-directory)
   "Directory where to duplicate the files for flymake.")
 
-(defvar dune-program
+(defvar dune-flymake-program
   (expand-file-name "dune-lint" dune-flymake-temporary-file-directory)
   "Script to use to check the dune file.")
 
@@ -53,7 +55,7 @@ characters \\([0-9]+\\)-\\([0-9]+\\): +\\([^\n]*\\)$"
   "Create the lint script if it does not exist.
 This is nedded as long as https://github.com/ocaml/dune/issues/241
 is not fixed."
-  (unless (file-exists-p dune-program)
+  (unless (file-exists-p dune-flymake-program)
     (let ((dir (file-name-directory dune-program))
           (pgm "#!/usr/bin/env ocaml
 ;;
@@ -111,14 +113,14 @@ let () =
       (set-file-modes dune-program #o777)
       )))
 
-(defun dune--temp-name (absolute-path)
+(defun dune-flymake--temp-name (absolute-path)
   "Return the full path of the copy of ABSOLUTE-PATH in the temp dir.
 The temporary directory is given by `dune-flymake-temporary-file-directory'."
   (let ((slash-pos (string-match "/" absolute-path)))
     (file-truename (expand-file-name (substring absolute-path (1+ slash-pos))
                                      dune-flymake-temporary-file-directory))))
 
-(defun dune--opam-files (dir)
+(defun dune-flymake--opam-files (dir)
   "Return all opam files in the directory DIR."
   (let ((files nil))
     (dolist (f (directory-files-and-attributes dir t ".*\\.opam\\'"))
@@ -126,18 +128,18 @@ The temporary directory is given by `dune-flymake-temporary-file-directory'."
         (push (car f) files)))
     files))
 
-(defun dune--root (filename)
+(defun dune-flymake--root (filename)
   "Return the Dune root for FILENAME.
 Create the temporary copy the necessary context files for dune."
   ;; FIXME: the root depends on dune-project.  If none is found,
   ;; assume the commands are issued from the dir where opam files are found.
   (let* ((dir (locate-dominating-file (file-name-directory filename)
-                                      #'dune--opam-files)))
+                                      #'dune-flymake--opam-files)))
     (when dir
       (setq dir (expand-file-name dir)); In case it is ~/...
-      (make-directory (dune--temp-name dir) t)
-      (dolist (f (dune--opam-files dir))
-        (copy-file f (dune--temp-name f) t)))
+      (make-directory (dune-flymake--temp-name dir) t)
+      (dolist (f (dune-flymake--opam-files dir))
+        (copy-file f (dune-flymake--temp-name f) t)))
     dir))
 
 (defalias 'dune-flymake--safe-delete-file
@@ -145,9 +147,9 @@ Create the temporary copy the necessary context files for dune."
       'flymake-proc--safe-delete-file
     'flymake-safe-delete-file))
 
-(defun dune--delete-opam-files (dir)
+(defun dune-flymake--delete-opam-files (dir)
   "Delete all opam files in the directory DIR."
-  (dolist (f (dune--opam-files dir))
+  (dolist (f (dune-flymake--opam-files dir))
     (dune-flymake--safe-delete-file f)))
 
 (defvaralias 'dune-flymake--temp-source-file-name
@@ -171,7 +173,7 @@ Do not fail on error."
                 (> (length dir) 0))
       (condition-case nil
           (progn
-            (dune--delete-opam-files dir)
+            (dune-flymake--delete-opam-files dir)
             (delete-directory dir)
             (setq dir (file-name-directory (directory-file-name dir))))
         (error ; then top the loop
@@ -187,7 +189,7 @@ Do not fail on error."
   (dune-flymake-create-lint-script)
   (let ((fname (dune-flymake--create-temp-buffer-copy
                 'dune-flymake-create-temp))
-        (root (or (dune--root buffer-file-name) "")))
+        (root (or (dune-flymake--root buffer-file-name) "")))
     (list dune-program (list fname root))))
 
 (defvaralias 'dune-flymake--allowed-file-name-masks
@@ -203,7 +205,8 @@ Do not fail on error."
 (defun dune-flymake-dune-mode-hook ()
   "Hook to add to `dune-mode-hook' to enable lint tests."
   (push dune--allowed-file-name-masks dune-flymake--allowed-file-name-masks)
-  (setq-local dune-flymake--err-line-patterns dune-flymake--err-line-patterns))
+  (setq (make-local-variable 'dune-flymake--err-line-patterns)
+        dune-flymake--err-line-patterns))
 
 (provide 'dune-flymake)
 

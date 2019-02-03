@@ -36,12 +36,12 @@
   (expand-file-name "dune-lint" dune-flymake-temporary-file-directory)
   "Script to use to check the dune file.")
 
-(defvar dune--allowed-file-name-masks
+(defvar dune-flymake--allowed-file-name-masks
   '("\\(?:\\`\\|/\\)dune\\'" dune-flymake-init
     dune-flymake-cleanup)
   "Flymake entry for dune files.  See `flymake-allowed-file-name-masks'.")
 
-(defvar dune--err-line-patterns
+(defvar dune-flymake--err-line-patterns
   ;; Beware that the path from the root will be reported by dune
   ;; but flymake requires it to match the file name.
   '(("File \"[^\"]*\\(dune\\)\", line \\([0-9]+\\), \
@@ -140,18 +140,29 @@ Create the temporary copy the necessary context files for dune."
         (copy-file f (dune--temp-name f) t)))
     dir))
 
+(defalias 'dune-flymake--safe-delete-file
+  (if (fboundp 'flymake-proc--safe-delete-file)
+      'flymake-proc--safe-delete-file
+    'flymake-safe-delete-file))
+
 (defun dune--delete-opam-files (dir)
   "Delete all opam files in the directory DIR."
   (dolist (f (dune--opam-files dir))
-    (flymake-safe-delete-file f)))
+    (dune-flymake--safe-delete-file f)))
+
+(defvaralias 'dune-flymake--temp-source-file-name
+  (if (boundp 'flymake-proc--temp-source-file-name)
+      'flymake-proc--temp-source-file-name
+    'flymake-temp-source-file-name))
 
 (defun dune-flymake-cleanup ()
   "Attempt to delete temp dir created by `dune-flymake-create-temp'.
 Do not fail on error."
+  (let ((dir (file-name-directory dune-flymake--temp-source-file-name))
         (temp-dir (concat (directory-file-name
                            dune-flymake-temporary-file-directory) "/")))
-    (flymake-log 3 "Clean up %s" flymake-temp-source-file-name)
-    (flymake-safe-delete-file flymake-temp-source-file-name)
+    (flymake-log 3 "Clean up %s" dune-flymake--temp-source-file-name)
+    (dune-flymake--safe-delete-file dune-flymake--temp-source-file-name)
     (condition-case nil
         (delete-directory (expand-file-name "_build" dir) t)
       (error nil))
@@ -166,18 +177,33 @@ Do not fail on error."
         (error ; then top the loop
          (setq dir ""))))))
 
+(defalias 'dune-flymake--create-temp-buffer-copy
+  (if (fboundp 'flymake-proc-init-create-temp-buffer-copy)
+      'flymake-proc-init-create-temp-buffer-copy
+    'flymake-init-create-temp-buffer-copy))
+
 (defun dune-flymake-init ()
   "Set up dune-flymake."
   (dune-flymake-create-lint-script)
-  (let ((fname (flymake-init-create-temp-buffer-copy
+  (let ((fname (dune-flymake--create-temp-buffer-copy
                 'dune-flymake-create-temp))
         (root (or (dune--root buffer-file-name) "")))
     (list dune-program (list fname root))))
 
+(defvaralias 'dune-flymake--allowed-file-name-masks
+  (if (boundp 'flymake-proc-allowed-file-name-masks)
+      'flymake-proc-allowed-file-name-masks
+  'flymake-allowed-file-name-masks))
+
+(defvaralias 'dune-flymake--err-line-patterns
+  (if (boundp 'flymake-proc-err-line-patterns)
+      'flymake-proc-err-line-patterns
+    'flymake-err-line-patterns))
+
 (defun dune-flymake-dune-mode-hook ()
-  (push dune--allowed-file-name-masks flymake-allowed-file-name-masks)
-  (setq-local flymake-err-line-patterns dune--err-line-patterns))
   "Hook to add to `dune-mode-hook' to enable lint tests."
+  (push dune--allowed-file-name-masks dune-flymake--allowed-file-name-masks)
+  (setq-local dune-flymake--err-line-patterns dune-flymake--err-line-patterns))
 
 (provide 'dune-flymake)
 

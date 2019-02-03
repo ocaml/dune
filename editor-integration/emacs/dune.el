@@ -35,7 +35,8 @@
 (defgroup dune nil
   "Integration with the dune build system."
   :tag "Dune build system."
-  :version "1.0")
+  :version "1.0"
+  :group 'languages)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;               Syntax highlighting of dune files

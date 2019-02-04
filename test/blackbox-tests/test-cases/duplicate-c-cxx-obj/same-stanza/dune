@@ -1,0 +1,5 @@
+(include_subdirs unqualified)
+
+(library
+ (name foo)
+ (c_names foo sub/foo))

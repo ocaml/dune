@@ -97,12 +97,23 @@ unreleased
   built with `--store-orig-source-dir` command line flag (also controlled by
   `DUNE_STORE_ORIG_SOURCE_DIR` env variable). This is later used to generate
   `.merlin` with `S`-directives pointed to original source locations and thus
-  allowing merlin to see those.
+  allowing merlin to see those. (#1750, @andreypopp)
 
 - Improve the behavior of `dune promote` when the files to be promoted have been
   deleted. (#1775, fixes #1772, @diml)
 
 - unstable-fmt: preserve comments (#1766, @emillon)
+
+- Pass flags correctly when using `staged_pps` (#1779, fixes #1774, @diml)
+
+- Fix an issue with the use of `(mode promote)` in the menhir
+  stanza. It was previously causing intermediate *mock* files to be
+  promoted (#1783, fixes #1781, @diml)
+
+- unstable-fmt: ignore files using OCaml syntax (#1784, @emillon)
+
+- Configurator: Add `which` function to replace the `which` command line utility
+  in a cross platform way. (#1773, fixes #1705, @Chris00)
 
 1.6.2 (05/12/2018)
 ------------------

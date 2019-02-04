@@ -43,7 +43,7 @@ let term =
             dump sctx ~dir)
       )
     in
-    Build_system.do_build setup.build_system ~request
+    Build_system.do_build ~request
     >>| fun l ->
     let pp ppf = Format.fprintf ppf "@[<v1>(@,@[<v>%a@]@]@,)"
                    (Format.pp_print_list (Dune_lang.pp Dune)) in

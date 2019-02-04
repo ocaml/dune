@@ -37,10 +37,10 @@ let log_targets ~log targets =
     | Alias a -> Log.info log (Alias.to_log_string a));
   flush stdout
 
-let target_hint (setup : Dune.Main.build_system) path =
+let target_hint (_setup : Dune.Main.build_system) path =
   assert (Path.is_managed path);
   let sub_dir = Option.value ~default:path (Path.parent path) in
-  let candidates = Build_system.all_targets setup.build_system in
+  let candidates = Build_system.all_targets () in
   let candidates =
     if Path.is_in_build_dir path then
       candidates
@@ -73,7 +73,7 @@ let resolve_path path ~(setup : Dune.Main.build_system) =
   else if not (Path.is_managed path) then
     Ok [File path]
   else if Path.is_in_build_dir path then begin
-    if Build_system.is_target setup.build_system path then
+    if Build_system.is_target path then
       Ok [File path]
     else
       can't_build path
@@ -81,7 +81,7 @@ let resolve_path path ~(setup : Dune.Main.build_system) =
     match
       List.filter_map setup.workspace.contexts ~f:(fun ctx ->
         let path = Path.append ctx.Context.build_dir path in
-        if Build_system.is_target setup.build_system path then
+        if Build_system.is_target path then
           Some (File path)
         else
           None)

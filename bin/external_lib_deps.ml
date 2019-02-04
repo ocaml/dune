@@ -138,7 +138,7 @@ let term =
       Import.Main.setup ~log common ~external_lib_deps_mode:true >>= fun setup ->
       let targets = Target.resolve_targets_exn ~log common setup targets in
       let request = Target.request setup targets in
-      Build_system.all_lib_deps setup.build_system ~request >>| fun deps ->
+      Build_system.all_lib_deps ~request >>| fun deps ->
       (setup, deps))
   in
   let failure = run ~by_dir ~setup ~lib_deps ~sexp ~only_missing in

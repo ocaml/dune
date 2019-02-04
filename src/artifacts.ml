@@ -7,11 +7,11 @@ type t =
   ; public_libs : Lib.DB.t
   }
 
-let create (context : Context.t) ~public_libs ~build_system =
+let create (context : Context.t) ~public_libs =
   let bin_dir = Config.local_install_bin_dir ~context:context.name in
   let local_bins =
     lazy (
-      Build_system.targets_of build_system ~dir:bin_dir
+      Build_system.targets_of ~dir:bin_dir
       |> Path.Set.fold ~init:String.Map.empty ~f:(fun path acc ->
         let name = Filename.basename (Path.to_string path) in
         (* The keys in the map are the executable names

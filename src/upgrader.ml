@@ -8,12 +8,16 @@ let scan_included_files path =
   let files = ref Path.Map.empty in
   let rec iter path =
     if not (Path.Map.mem !files path) then begin
-      let sexps =
-        Dune_lang.Io.load path
+      let s = Io.read_file path in
+      let csts =
+        Dune_lang.parse_cst_string s ~fname:(Path.to_string path)
           ~lexer:Dune_lang.Lexer.jbuild_token
-          ~mode:Many
+        |> List.map ~f:(Dune_lang.Cst.fetch_legacy_comments
+                          ~file_contents:s)
       in
-      files := Path.Map.add !files path sexps;
+      let comments = Dune_lang.Cst.extract_comments csts in
+      let sexps = List.filter_map csts ~f:Dune_lang.Cst.abstract in
+      files := Path.Map.add !files path (sexps, comments);
       List.iter sexps ~f:(function
         | Dune_lang.Ast.List
             (_,
@@ -162,7 +166,7 @@ let upgrade_stanza stanza =
   in
   upgrade stanza
 
-let upgrade_file todo file sexps ~look_for_jbuild_ignore =
+let upgrade_file todo file sexps comments ~look_for_jbuild_ignore =
   let dir = Path.parent_exn file in
   let new_file =
     let base = Path.basename file in
@@ -196,7 +200,11 @@ let upgrade_file todo file sexps ~look_for_jbuild_ignore =
       (sexps, [jbuild_ignore])
     end
   in
-  let sexps = List.map ~f:Dune_lang.Cst.concrete sexps in
+  let sexps =
+    Dune_lang.insert_comments
+      (List.map ~f:Dune_lang.Cst.concrete sexps)
+      comments
+  in
   let contents = Format.asprintf "%a@?" Dune_fmt.pp_top_sexps sexps in
   todo.to_rename_and_edit <-
     { original_file = file
@@ -331,8 +339,9 @@ let upgrade_dir todo dir =
          You need to upgrade it manually."
     | Jbuild, Plain { path; sexps = _ } ->
       let files = scan_included_files path in
-      Path.Map.iteri files ~f:(fun fn sexps ->
-        upgrade_file todo fn sexps ~look_for_jbuild_ignore:(fn = path)))
+      Path.Map.iteri files ~f:(fun fn (sexps, comments) ->
+        upgrade_file todo fn sexps comments
+          ~look_for_jbuild_ignore:(fn = path)))
 
 let upgrade ft =
   Dune_project.default_dune_language_version := (1, 0);

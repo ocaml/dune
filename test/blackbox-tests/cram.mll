@@ -154,6 +154,10 @@ and postprocess_ext tbl b = parse
           test op ocaml_version v') then
           exit 0;
       end;
+      let env =
+        Env.add Env.initial ~var:"LC_ALL" ~value:"C"
+        |> Env.to_unix
+      in
       Test_common.run_expect_test expect_test ~f:(fun file_contents lexbuf ->
         let items = file lexbuf in
         let temp_file = Filename.temp_file "dune-test" ".output" in
@@ -167,7 +171,8 @@ and postprocess_ext tbl b = parse
             let s = String.concat l ~sep:"\n" in
             let fd = Unix.openfile temp_file [O_WRONLY; O_TRUNC] 0 in
             let pid =
-              Unix.create_process "sh" [|"sh"; "-c"; s|] Unix.stdin fd fd
+              Unix.create_process_env "sh" [|"sh"; "-c"; s|]
+                env Unix.stdin fd fd
             in
             Unix.close fd;
             let n =

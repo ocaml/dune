@@ -116,12 +116,12 @@ let term =
     let request =
       match targets with
       | [] ->
-        Build.paths (Build_system.all_targets setup.build_system)
+        Build.paths (Build_system.all_targets ())
       | _  ->
         Target.resolve_targets_exn ~log common setup targets
         |> Target.request setup
     in
-    Build_system.evaluate_rules setup.build_system ~request ~recursive
+    Build_system.evaluate_rules ~request ~recursive
     >>= fun rules ->
     let print oc =
       let ppf = Format.formatter_of_out_channel oc in

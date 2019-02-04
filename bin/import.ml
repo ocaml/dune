@@ -94,5 +94,5 @@ let restore_cwd_and_execve (common : Common.t) prog argv env =
   Proc.restore_cwd_and_execve prog argv ~env
 
 let do_build (setup : Main.build_system) targets =
-  Build_system.do_build setup.build_system
+  Build_system.do_build
     ~request:(Target.request setup targets)

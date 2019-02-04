@@ -12,7 +12,6 @@ type workspace =
 
 type build_system =
   { workspace    : workspace
-  ; build_system : Build_system.t
   ; scontexts    : Super_context.t String.Map.t
   }
 
@@ -97,17 +96,14 @@ let init_build_system ?only_packages ?external_lib_deps_mode w =
     | Rule_started   -> incr rule_total
     | Rule_completed -> incr rule_done
   in
-  let build_system =
-    Build_system.create ~contexts:w.contexts ~file_tree:w.conf.file_tree ~hook
-  in
+  Build_system.init ~contexts:w.contexts ~file_tree:w.conf.file_tree ~hook;
   Scheduler.set_status_line_generator gen_status_line;
   Gen_rules.gen w.conf
-    ~build_system
     ~contexts:w.contexts
     ?only_packages
     ?external_lib_deps_mode
   >>| fun scontexts ->
-  { workspace = w; build_system; scontexts }
+  { workspace = w; scontexts }
 
 let auto_concurrency =
   let v = ref None in
@@ -226,8 +222,8 @@ let bootstrap () =
            ?profile:!profile
            ()
          >>= init_build_system
-         >>= fun { build_system = bs; _ } ->
-         Build_system.do_build bs
+         >>= fun _ ->
+         Build_system.do_build
            ~request:(Build.path (
              Path.relative Path.build_dir "default/dune.install")))
   in

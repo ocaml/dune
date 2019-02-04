@@ -39,4 +39,8 @@ val stdlib_includes_bigarray : t -> bool
 (** Whether the standard library includes the [Seq] module *)
 val stdlib_includes_seq : t -> bool
 
+(** Whether ocamlobjinfo supports -no-approx*)
 val supports_no_approx : t -> bool
+
+(** Whether ocamlobjinfo supports -no-code*)
+val supports_no_code : t -> bool

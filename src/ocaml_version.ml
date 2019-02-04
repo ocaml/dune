@@ -40,3 +40,6 @@ let stdlib_includes_seq version =
 
 let supports_no_approx version =
   version >= (4, 04, 0)
+
+let supports_no_code version =
+  version >= (4, 04, 0)

@@ -119,6 +119,10 @@ unreleased
   was prepending paths and thus `$PKG_CONFIG_PATH` set by users could have been
   overridden by homebrew installed libraries (#1785, @andreypopp)
 
+- Disallow c/cxx sources that share an object file in the same stubs archive.
+  This means that `foo.c` and `foo.cpp` can no longer exist in the same library.
+  (#1788, @rgrinberg)
+
 1.6.2 (05/12/2018)
 ------------------
 

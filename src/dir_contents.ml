@@ -435,9 +435,10 @@ let rec get sctx ~dir =
                                     Path.relative (File_tree.Dir.path ft_dir)
                                       "_unknown_"
                                   | Some d -> File_tree.Dune_file.path d))
-                    "C file %s appears in several directories:\
+                    "%a file %s appears in several directories:\
                     @\n- %a\
                     @\n- %a"
+                    (C.Kind.pp) (C.Source.kind x)
                     name
                     Path.pp_in_source (C.Source.src_dir x)
                     Path.pp_in_source (C.Source.src_dir y))

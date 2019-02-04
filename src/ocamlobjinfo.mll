@@ -57,11 +57,20 @@ let rules ~dir ~(ctx : Context.t) ~unit =
         })
     | Some bin -> Ok bin
   in
+  let no_approx =
+    if Ocaml_version.supports_no_approx ctx.version then
+      [Arg_spec.A "-no-approx"]
+    else
+      []
+  in
   ( Build.run ~dir bin
-      [ A "-no-approx"
-      ; A "-no-code"
-      ; Dep unit
-      ] ~stdout_to:output
+      (List.concat
+         [ no_approx
+         ; [ A "-no-code"
+           ; Dep unit
+           ]
+         ])
+      ~stdout_to:output
   , Build.contents output >>^ parse
   )
 }

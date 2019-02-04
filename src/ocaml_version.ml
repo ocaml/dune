@@ -37,3 +37,6 @@ let stdlib_includes_bigarray version =
 
 let stdlib_includes_seq version =
   version >= (4, 07, 0)
+
+let supports_no_approx version =
+  version >= (4, 02, 0)

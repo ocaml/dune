@@ -127,6 +127,9 @@ unreleased
   preprocessing actions
   (#1812, fixes #1811, @diml)
 
+- Add `DUNE_PROFILE` environment variable to easily set the profile. (#1806,
+  @rgrinberg)
+
 1.6.2 (05/12/2018)
 ------------------
 

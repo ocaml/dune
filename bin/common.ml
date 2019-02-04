@@ -259,9 +259,12 @@ let term =
           `Error
             (true, "--dev is no longer accepted as it is now the default.")
       and profile =
+        let doc =
+          "Build profile. dev if unspecified or release if -p is set." in
         Arg.(value
              & opt (some string) None
              & info ["profile"] ~docs
+                 ~env:(Arg.env_var ~doc "DUNE_PROFILE")
                  ~doc:
                    (sprintf
                       {|Select the build profile, for instance $(b,dev) or

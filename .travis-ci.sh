@@ -3,6 +3,8 @@
 PATH=~/ocaml/bin:$PATH; export PATH
 OPAMYES="true"; export OPAMYES
 
+OPAM_VERSION="2.0.3"
+
 TARGET="$1"; shift
 
 case "$TARGET" in
@@ -35,9 +37,9 @@ case "$TARGET" in
       if [ ! -e ~/ocaml/bin/opam -o ! -e ~/.opam/lock -o "$OPAM_RESET" = "1" ] ; then
         mkdir ~/ocaml/src
         cd ~/ocaml/src
-        wget https://github.com/ocaml/opam/releases/download/2.0.0-rc4/opam-full-2.0.0.tar.gz
-        tar -xzf opam-full-2.0.0.tar.gz
-        cd opam-full-2.0.0
+        wget https://github.com/ocaml/opam/releases/download/$OPAM_VERSION/opam-full-$OPAM_VERSION.tar.gz
+        tar -xzf opam-full-$OPAM_VERSION.tar.gz
+        cd opam-full-$OPAM_VERSION
         ./configure --prefix=$PREFIX/ocaml
         make lib-ext
         make all

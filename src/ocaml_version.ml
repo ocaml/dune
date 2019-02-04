@@ -38,8 +38,8 @@ let stdlib_includes_bigarray version =
 let stdlib_includes_seq version =
   version >= (4, 07, 0)
 
-let supports_no_approx version =
+let ooi_supports_no_approx version =
   version >= (4, 04, 0)
 
-let supports_no_code version =
+let ooi_supports_no_code version =
   version >= (4, 04, 0)

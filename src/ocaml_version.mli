@@ -40,7 +40,7 @@ val stdlib_includes_bigarray : t -> bool
 val stdlib_includes_seq : t -> bool
 
 (** Whether ocamlobjinfo supports -no-approx*)
-val supports_no_approx : t -> bool
+val ooi_supports_no_approx : t -> bool
 
 (** Whether ocamlobjinfo supports -no-code*)
-val supports_no_code : t -> bool
+val ooi_supports_no_code : t -> bool

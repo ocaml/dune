@@ -48,19 +48,23 @@ let libraries_link ~name ~loc ~mode cctx libs =
       Lib.DB.find_many ~loc (SC.public_libs sctx)
         [Lib_name.of_string_exn ~loc:(Some loc) "findlib"]
     in
-    let cctx = Compilation_context.(
-      create
+    let opaque =
+      Ocaml_version.supports_opaque_for_mli
+        (Super_context.context sctx).version
+    in
+    let cctx =
+      Compilation_context.create
         ~super_context:sctx
-        ~expander:(expander cctx)
-        ~scope:(scope cctx)
-        ~dir_kind:(dir_kind cctx)
-        ~obj_dir:(CC.obj_dir cctx)
+        ~expander:(Compilation_context.expander cctx)
+        ~scope:(Compilation_context.scope cctx)
+        ~dir_kind:(Compilation_context.dir_kind cctx)
+        ~obj_dir:(Compilation_context.obj_dir cctx)
         ~modules:(Module.Name.Map.singleton name module_)
         ~requires_compile:requires
         ~requires_link:(lazy requires)
         ~flags:Ocaml_flags.empty
-        ~opaque:true
-        ())
+        ~opaque
+        ()
     in
     Module_compilation.build_module
       ~dep_graphs:(Dep_graph.Ml_kind.dummy module_)

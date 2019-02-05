@@ -16,4 +16,5 @@ user intended.
   Error: c file foo appears in several directories:
   - .
   - sub
+  This is not allowed, please rename one of them.
   [1]

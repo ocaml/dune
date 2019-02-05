@@ -3,6 +3,7 @@ open Import
 open Build.O
 open! No_io
 
+module Library = Dune_file.Library
 module SC = Super_context
 
 module Gen (P : Install_rules.Params) = struct
@@ -10,10 +11,10 @@ module Gen (P : Install_rules.Params) = struct
   let sctx = P.sctx
   let ctx = SC.context sctx
 
-  let build_c_file (lib : Library.t) ~expander ~dir ~includes (loc, src, dst) =
+  let build_c_file ~flags ~expander ~dir ~includes (loc, src, dst) =
     let src = C.Source.path src in
     SC.add_rule sctx ~loc ~dir
-      (Expander.expand_and_eval_set expander lib.c_flags
+      (Expander.expand_and_eval_set expander flags
          ~standard:(Build.return (Context.cc_g ctx))
        >>>
        Build.run
@@ -29,7 +30,7 @@ module Gen (P : Install_rules.Params) = struct
          ]);
     dst
 
-  let build_cxx_file (lib : Library.t) ~expander ~dir ~includes (loc, src, dst) =
+  let build_cxx_file ~flags ~expander ~dir ~includes (loc, src, dst) =
     let src = C.Source.path src in
     let open Arg_spec in
     let output_param =
@@ -39,7 +40,7 @@ module Gen (P : Install_rules.Params) = struct
         [A "-o"; Target dst]
     in
     SC.add_rule sctx ~loc ~dir
-      (Expander.expand_and_eval_set expander lib.cxx_flags
+      (Expander.expand_and_eval_set expander flags
          ~standard:(Build.return (Context.cc_g ctx))
        >>>
        Build.run
@@ -56,7 +57,8 @@ module Gen (P : Install_rules.Params) = struct
           ]));
     dst
 
-  let build_o_files lib ~(c_sources : C.Sources.t)
+  let build_o_files ~(c_sources : C.Sources.t)
+        ~(c_flags : Ordered_set_lang.Unexpanded.t C.Kind.Dict.t)
         ~dir ~expander ~requires ~dir_contents =
     let all_dirs = Dir_contents.dirs dir_contents in
     let h_files =
@@ -79,14 +81,22 @@ module Gen (P : Install_rules.Params) = struct
         ]
     in
 
-    let build_x_files build_x files =
+    let build_x_files (kind : C.Kind.t) files =
+      let flags = C.Kind.Dict.get c_flags kind in
+      let build =
+        match kind with
+        | C -> build_c_file
+        | Cxx -> build_cxx_file
+      in
       String.Map.to_list files
       |> List.map ~f:(fun (obj, (loc, src)) ->
         let dst = Path.relative dir (obj ^ ctx.ext_obj) in
-        build_x lib ~expander ~dir ~includes (loc, src, dst)
+        build ~flags ~expander ~dir ~includes (loc, src, dst)
       )
     in
-    let { C.Kind.Dict. c; cxx } = C.Sources.split_by_kind c_sources in
-    build_x_files build_c_file c
-    @ build_x_files build_cxx_file cxx
+    let { C.Kind.Dict. c ; cxx } =
+      C.Sources.split_by_kind c_sources
+      |> C.Kind.Dict.mapi ~f:build_x_files
+    in
+    c @ cxx
 end

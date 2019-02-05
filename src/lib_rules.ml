@@ -214,10 +214,17 @@ module Gen (P : Install_rules.Params) = struct
         ~vlib_stubs_o_files =
     let lib_o_files =
       if Library.has_stubs lib then
+        let c_flags =
+          { C.Kind.Dict.
+            c = lib.c_flags
+          ; cxx = lib.cxx_flags
+          }
+        in
+        let c_sources = Dir_contents.c_sources_of_library
+                          dir_contents ~name:(Library.best_name lib) in
         C_rules.build_o_files
           ~c_sources
-          ~c_flags:lib.c_flags
-          ~cxx_flags:lib.cxx_flags
+          ~c_flags
           ~dir ~expander ~requires ~dir_contents
       else
         []

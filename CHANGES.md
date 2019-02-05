@@ -11,6 +11,9 @@ unreleased
 
 - Fix glob dependencies on installed directories (#1965, @rgrinberg)
 
+- Add support for library variants and default implementations. (#1900,
+  @TheLortex)
+
 1.8.2 (10/03/2019)
 ------------------
 

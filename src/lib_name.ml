@@ -88,8 +88,6 @@ let pp = Format.pp_print_string
 
 let pp_quoted fmt t = Format.fprintf fmt "%S" t
 
-let compare = String.compare
-
 let to_local = Local.of_string
 
 let to_sexp t = Sexp.Atom t
@@ -103,6 +101,13 @@ let of_string_exn ~loc:_ s = s
 let of_local (_loc, t) = t
 
 type t = string
+
+let compare = String.compare
+
+include (
+  Comparable.Operators(struct type nonrec t = t let compare = compare end)
+  : Comparable.OPS with type t := t
+)
 
 module Map = Map.Make(String)
 module Set = struct

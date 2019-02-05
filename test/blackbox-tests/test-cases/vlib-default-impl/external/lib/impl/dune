@@ -1,0 +1,9 @@
+(library
+ (name vlib_impl)
+ (public_name vlib.impl)
+ (implements vlib))
+
+(rule
+ (with-stdout-to
+  x.ml
+  (echo "let run () = Printf.printf \"hey\"")))

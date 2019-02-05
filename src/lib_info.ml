@@ -72,6 +72,8 @@ type t =
   ; sub_systems      : Sub_system_info.t Sub_system_name.Map.t
   ; virtual_         : Lib_modules.t Source.t option
   ; implements       : (Loc.t * Lib_name.t) option
+  ; variant          : Variant.t option
+  ; default_implementation  : (Loc.t * Lib_name.t) option
   ; wrapped          : Wrapped.t Dune_file.Library.Inherited.t option
   ; main_module_name : Dune_file.Library.Main_module_name.t
   ; modes            : Mode.Dict.Set.t
@@ -174,6 +176,8 @@ let of_library_stanza ~dir ~has_native ~ext_lib ~ext_obj
   ; dune_version = Some conf.dune_version
   ; virtual_
   ; implements = conf.implements
+  ; variant = conf.variant
+  ; default_implementation = conf.default_implementation
   ; main_module_name
   ; modes
   ; wrapped = Some conf.wrapped
@@ -218,6 +222,8 @@ let of_dune_lib dp =
   ; sub_systems = Lib.sub_systems dp
   ; virtual_
   ; implements = Lib.implements dp
+  ; variant = Lib.variant dp
+  ; default_implementation = Lib.default_implementation dp
   ; modes = Lib.modes dp
   ; wrapped
   }

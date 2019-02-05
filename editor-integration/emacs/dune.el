@@ -77,7 +77,7 @@
        "cxx_flags" "c_library_flags" "self_build_stubs_archive"
        "modules_without_implementation" "private_modules"
        ;; + virtual libraries
-       "virtual_modules" "implements"
+       "virtual_modules" "implements" "variant" "default_implementation"
        "allow_overlapping_dependencies"
        ;; + for "executable" and "executables":
        "package" "link_flags" "link_deps" "names" "public_names"

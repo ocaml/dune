@@ -1,0 +1,9 @@
+(executable
+ (name bar)
+ (libraries direct_ocaml variant)
+ (variants c))
+
+(alias
+ (name default)
+ (action
+  (run ./bar.exe)))

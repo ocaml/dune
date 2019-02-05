@@ -79,4 +79,14 @@ module type S = sig
 
   val filter_map  : 'a t -> f:(       'a -> 'b option) -> 'b t
   val filter_mapi : 'a t -> f:(key -> 'a -> 'b option) -> 'b t
+
+  module Multi : sig
+    type nonrec 'a t = 'a list t
+
+    val rev_union : 'a t -> 'a t -> 'a t
+
+    val cons : 'a t -> key -> 'a -> 'a t
+
+    val find : 'a t -> key -> 'a list
+  end
 end

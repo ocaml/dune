@@ -11,4 +11,4 @@ bootstrap.cmo
 bootstrap.exe
 Makefile.dev
 src/setup.ml
-/_build_bootstrap
+/_boot

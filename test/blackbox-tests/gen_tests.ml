@@ -134,7 +134,9 @@ let exclusions =
   ; make "private-public-overlap" ~external_deps:true
   ; make "reason" ~external_deps:true
   ; make "menhir"~external_deps:true
-  ; make "utop"~external_deps:true
+  ; make "utop" ~external_deps:true
+  ; make "utop-default" ~external_deps:true ~skip_ocaml:"<4.05.0"
+  ; make "toplevel-stanza" ~skip_ocaml:"<4.05.0"
   ; make "configurator" ~skip_platforms:[Win]
   ; make "github764" ~skip_platforms:[Win]
   ; make "gen-opam-install-file" ~external_deps:true

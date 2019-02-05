@@ -1156,7 +1156,9 @@
  (action
   (chdir
    test-cases/toplevel-stanza
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} -skip-versions <4.05.0 -test run.t)
+    (diff? run.t run.t.corrected)))))
 
 (alias
  (name trace-file)
@@ -1204,7 +1206,9 @@
  (action
   (chdir
    test-cases/utop-default
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} -skip-versions <4.05.0 -test run.t)
+    (diff? run.t run.t.corrected)))))
 
 (alias
  (name variants)
@@ -1538,7 +1542,6 @@
   (alias transitive-deps-mode)
   (alias upgrader)
   (alias use-meta)
-  (alias utop-default)
   (alias variants)
   (alias windows-diff)
   (alias workspaces)

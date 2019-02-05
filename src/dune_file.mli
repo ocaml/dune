@@ -288,9 +288,9 @@ module C_executables : sig
     { names     : (Loc.t * string) list
     ; libraries : Lib_dep.t list
     ; c_flags   : Ordered_set_lang.Unexpanded.t
-    ; c_names   : (Loc.t * string) list
+    ; c_names   : Ordered_set_lang.t option
     ; cxx_flags : Ordered_set_lang.Unexpanded.t
-    ; cxx_names : (Loc.t * string) list
+    ; cxx_names : Ordered_set_lang.t option
     }
 end
 

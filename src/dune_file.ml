@@ -1386,17 +1386,17 @@ module C_executables = struct
     { names     : (Loc.t * string) list
     ; libraries : Lib_dep.t list
     ; c_flags   : Ordered_set_lang.Unexpanded.t
-    ; c_names   : (Loc.t * string) list
+    ; c_names   : Ordered_set_lang.t option
     ; cxx_flags : Ordered_set_lang.Unexpanded.t
-    ; cxx_names : (Loc.t * string) list
+    ; cxx_names : Ordered_set_lang.t option
     }
 
   let common =
     let%map libraries = field "libraries" Lib_deps.decode ~default:[]
     and c_flags = field_oslu "c_flags"
     and cxx_flags = field_oslu "cxx_flags"
-    and c_names = field "c_names" (list c_name) ~default:[]
-    and cxx_names = field "cxx_names" (list cxx_name) ~default:[]
+    and c_names = field_o "c_names" Ordered_set_lang.decode
+    and cxx_names = field_o "cxx_names" Ordered_set_lang.decode
     in
     fun names ->
       let install_conf = Executables.Names.install_conf names ~ext:".exe" in

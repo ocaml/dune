@@ -47,6 +47,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name c-executables)
+ (deps (package dune) (source_tree test-cases/c-executables))
+ (action
+  (chdir
+   test-cases/c-executables
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name c-stubs)
  (deps (package dune) (source_tree test-cases/c-stubs))
  (action
@@ -1261,6 +1269,7 @@
   (alias bad-alias-error)
   (alias block-strings)
   (alias byte-code-only)
+  (alias c-executables)
   (alias c-stubs)
   (alias check-alias)
   (alias configurator)
@@ -1416,6 +1425,7 @@
   (alias bad-alias-error)
   (alias block-strings)
   (alias byte-code-only)
+  (alias c-executables)
   (alias c-stubs)
   (alias check-alias)
   (alias configurator)

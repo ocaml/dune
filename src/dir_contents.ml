@@ -437,7 +437,8 @@ let rec get sctx ~dir =
                                   | Some d -> File_tree.Dune_file.path d))
                     "%a file %s appears in several directories:\
                     @\n- %a\
-                    @\n- %a"
+                    @\n- %a\
+                    @\nThis is not allowed, please rename one of them."
                     (C.Kind.pp) (C.Source.kind x)
                     name
                     Path.pp_in_source (C.Source.src_dir x)

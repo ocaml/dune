@@ -62,6 +62,9 @@ val enumerate_and : string list -> string
 (** Produces: "x, y or z" *)
 val enumerate_or  : string list -> string
 
+(** Produces: "One of x, y or z" *)
+val enumerate_one_of : t list -> t
+
 module Set : sig
   include Set.S with type elt = t
 

@@ -80,8 +80,8 @@ let make (d : _ Dir_with_dune.t)
             | Some source -> (loc, source)
             | None ->
               Errors.fail loc "%s does not exist as a C source. \
-                               One of %s must be present"
-                s (String.enumerate_or (C.Kind.possible_fns kind s))
+                               %s must be present"
+                s (String.enumerate_one_of (C.Kind.possible_fns kind s))
           )
         in
         let names =
@@ -89,7 +89,8 @@ let make (d : _ Dir_with_dune.t)
         let c = eval C.Kind.C c_sources.c c_name (names lib.c_names) in
         let cxx = eval C.Kind.Cxx c_sources.cxx cxx_name (names lib.cxx_names) in
         let all = String.Map.union c cxx ~f:(fun _ (_loc1, c) (loc2, cxx) ->
-          Errors.fail loc2 "%a source file is invalid because %a exists"
+          Errors.fail loc2 "%a and %a have conflicting names. \
+                            You must rename one of them."
             Path.pp_in_source (C.Source.path cxx)
             Path.pp_in_source (C.Source.path c)
         ) in

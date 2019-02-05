@@ -236,6 +236,9 @@ let enumerate_gen s =
 
 let enumerate_and = enumerate_gen "and"
 let enumerate_or  = enumerate_gen "or"
+let enumerate_one_of = function
+  | [x] -> x
+  | s -> "One of " ^ enumerate_or s
 
 let concat ~sep = function
   | [] -> ""

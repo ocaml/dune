@@ -1930,10 +1930,14 @@ module Stanzas = struct
        [Library x])
     ; "executable" , Executables.single >>| execs (fun e -> Executables e)
     ; "executables", Executables.multi >>| execs (fun e -> Executables e)
-    ; "c_executable"
-    , C_executables.single >>| execs (fun e -> C_executables e)
-    ; "c_executables",
-      C_executables.multi >>| execs (fun e -> C_executables e)
+    ; "c_executable",
+      (let%map () = Syntax.since Stanza.syntax (1, 7)
+       and t = C_executables.single in
+       execs (fun e -> C_executables e) t)
+    ; "c_executable",
+      (let%map () = Syntax.since Stanza.syntax (1, 7)
+       and t = C_executables.multi in
+       execs (fun e -> C_executables e) t)
     ; "rule",
       (let%map loc = loc
        and x = Rule.decode in

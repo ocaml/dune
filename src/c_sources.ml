@@ -80,8 +80,8 @@ let make (d : _ Dir_with_dune.t)
             | Some source -> (loc, source)
             | None ->
               Errors.fail loc "%s does not exist as a C source. \
-                               One of %s must be present"
-                s (String.enumerate_or (C.Kind.possible_fns kind s))
+                               %s must be present"
+                s (String.enumerate_one_of (C.Kind.possible_fns kind s))
           )
         in
         let names =

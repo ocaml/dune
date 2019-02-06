@@ -1934,7 +1934,7 @@ module Stanzas = struct
       (let%map () = Syntax.since Stanza.syntax (1, 7)
        and t = C_executables.single in
        execs (fun e -> C_executables e) t)
-    ; "c_executable",
+    ; "c_executables",
       (let%map () = Syntax.since Stanza.syntax (1, 7)
        and t = C_executables.multi in
        execs (fun e -> C_executables e) t)

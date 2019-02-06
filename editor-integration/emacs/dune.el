@@ -396,9 +396,9 @@ For customization purposes, use `dune-mode-hook'."
   (if (buffer-modified-p)
       (error "Cannot promote as buffer is modified")
     (shell-command
-     (format "%s promote %s"
-             dune-command
-             (file-name-nondirectory (buffer-file-name))))
+     (format
+      "%s promote %s" dune-command
+      (shell-quote-argument (file-name-nondirectory (buffer-file-name)))))
     (revert-buffer nil t)))
 
 ;;;###autoload

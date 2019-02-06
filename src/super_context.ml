@@ -498,14 +498,17 @@ module Action = struct
     : (Path.t Bindings.t, Action.t) Build.t =
     let dir = Expander.dir expander in
     let map_exe = map_exe sctx in
-    if targets_written_by_user = Expander.Alias then begin
-      match U.Infer.unexpanded_targets t with
-      | [] -> ()
-      | x :: _ ->
-        let loc = String_with_vars.loc x in
-        Errors.warn loc
-          "Aliases must not have targets, this target will be ignored.\n\
-           This will become an error in the future.";
+    begin match (targets_written_by_user : Expander.Targets.t) with
+    | Static _ | Infer -> ()
+    | Forbidden context ->
+         match U.Infer.unexpanded_targets t with
+         | [] -> ()
+         | x :: _ ->
+           let loc = String_with_vars.loc x in
+           Errors.warn loc
+             "%s must not have targets, this target will be ignored.\n\
+              This will become an error in the future."
+             (String.capitalize context)
     end;
     let t, forms =
       partial_expand sctx ~expander ~dep_kind
@@ -520,7 +523,7 @@ module Action = struct
           U.Infer.partial t ~all_targets:false
         in
         { deps; targets = Path.Set.union targets targets_written_by_user }
-      | Alias ->
+      | Forbidden _ ->
         let { U.Infer.Outcome. deps; targets = _ } =
           U.Infer.partial t ~all_targets:false
         in

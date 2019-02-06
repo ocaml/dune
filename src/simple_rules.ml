@@ -17,7 +17,7 @@ let dep_bindings ~extra_bindings deps =
 
 let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
   if Expander.eval_blang expander rule.enabled_if then begin
-    let targets : Expander.targets =
+    let targets : Expander.Targets.t =
       match rule.targets with
       | Infer -> Infer
       | Static fns ->
@@ -139,7 +139,7 @@ let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
            ~loc
            ~expander
            ~dep_kind:Required
-           ~targets:Alias
+           ~targets:(Forbidden "aliases")
            ~targets_dir:dir)
   else
     add_alias sctx

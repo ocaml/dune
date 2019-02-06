@@ -123,6 +123,10 @@ unreleased
   This means that `foo.c` and `foo.cpp` can no longer exist in the same library.
   (#1788, @rgrinberg)
 
+- Forbid use of `%{targets}` (or `${@}` in jbuild files) inside
+  preprocessing actions
+  (#1812, fixes #1811, @diml)
+
 1.6.2 (05/12/2018)
 ------------------
 

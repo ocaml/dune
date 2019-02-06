@@ -507,7 +507,7 @@ module Pkg_config = struct
             let prefix =
               String.trim (run_capture_exn c ~dir (command_line brew ["--prefix"]))
             in
-            sprintf "env PKG_CONFIG_PATH=%s/opt/%s/lib/pkgconfig:$PKG_CONFIG_PATH "
+            sprintf "env PKG_CONFIG_PATH=$PKG_CONFIG_PATH:%s/opt/%s/lib/pkgconfig "
               (quote prefix) package
           | None ->
             ""

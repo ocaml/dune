@@ -115,6 +115,14 @@ unreleased
 - Configurator: Add `which` function to replace the `which` command line utility
   in a cross platform way. (#1773, fixes #1705, @Chris00)
 
+- Make configurator append paths to `$PKG_CONFIG_PATH` on macOS. Previously it
+  was prepending paths and thus `$PKG_CONFIG_PATH` set by users could have been
+  overridden by homebrew installed libraries (#1785, @andreypopp)
+
+- Disallow c/cxx sources that share an object file in the same stubs archive.
+  This means that `foo.c` and `foo.cpp` can no longer exist in the same library.
+  (#1788, @rgrinberg)
+
 1.6.2 (05/12/2018)
 ------------------
 

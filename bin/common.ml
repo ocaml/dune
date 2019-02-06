@@ -191,7 +191,7 @@ let term =
       profile,
       default_target =
     let default_target_default =
-      match Which_program.t with
+      match Wp.t with
       | Dune     -> "@@default"
       | Jbuilder -> "@install"
     in
@@ -252,7 +252,7 @@ let term =
                & info ["dev"] ~docs
                    ~doc:{|Same as $(b,--profile dev)|})
         in
-        match dev, Which_program.t with
+        match dev, Wp.t with
         | false, (Dune | Jbuilder) -> `Ok false
         | true, Jbuilder -> `Ok true
         | true, Dune ->

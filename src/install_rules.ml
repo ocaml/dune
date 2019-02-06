@@ -37,11 +37,18 @@ module Gen(P : Params) = struct
               Local_package.libs pkg
               |> Lib.Set.to_list
               |> List.map ~f:(fun lib ->
+                let name = Lib.name lib in
+                let dir_contents =
+                  Dir_contents.get sctx ~dir:(Lib.src_dir lib) in
                 let lib_modules =
-                  let dir = Dir_contents.get sctx ~dir:(Lib.src_dir lib) in
-                  Dir_contents.modules_of_library dir ~name:(Lib.name lib)
+                  Dir_contents.modules_of_library dir_contents ~name in
+                let foreign_objects =
+                  let dir = Obj_dir.obj_dir (Lib.obj_dir lib) in
+                  Dir_contents.c_sources_of_library dir_contents ~name
+                  |> C.Sources.objects ~dir ~ext_obj:ctx.ext_obj
                 in
-                Lib.to_dune_lib lib ~dir:(lib_root lib) ~lib_modules)
+                Lib.to_dune_lib lib ~dir:(lib_root lib) ~lib_modules
+                  ~foreign_objects)
             in
             Dune_package.Or_meta.Dune_package
               { Dune_package.
@@ -240,7 +247,7 @@ module Gen(P : Params) = struct
           ; List.filter_map Ml_kind.all ~f:(Module.cmt_file m)
           ])
     in
-    let archives = Lib_archives.make ~ctx ~dir lib in
+    let archives = Lib_archives.make ~ctx ~dir_contents ~dir lib in
     let execs = lib_ppxs ~lib ~scope ~dir_kind in
     List.concat
       [ sources

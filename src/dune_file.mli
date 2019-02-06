@@ -198,9 +198,9 @@ module Library : sig
     ; modes                    : Mode_conf.Set.t
     ; kind                     : Lib_kind.t
     ; c_flags                  : Ordered_set_lang.Unexpanded.t
-    ; c_names                  : (Loc.t * string) list
+    ; c_names                  : Ordered_set_lang.t option
     ; cxx_flags                : Ordered_set_lang.Unexpanded.t
-    ; cxx_names                : (Loc.t * string) list
+    ; cxx_names                : Ordered_set_lang.t option
     ; library_flags            : Ordered_set_lang.Unexpanded.t
     ; c_library_flags          : Ordered_set_lang.Unexpanded.t
     ; self_build_stubs_archive : string option

@@ -26,7 +26,7 @@ let inside_emacs = Option.is_some (Env.get Env.initial "INSIDE_EMACS")
 let inside_dune  = Option.is_some (Env.get Env.initial "INSIDE_DUNE")
 
 let default_build_profile =
-  match Which_program.t with
+  match Wp.t with
   | Dune     -> "dev"
   | Jbuilder -> "release"
 
@@ -129,7 +129,7 @@ include Versioned_file.Make(struct type t = unit end)
 let () = Lang.register syntax ()
 
 let load_config_file p =
-  match Which_program.t with
+  match Wp.t with
   | Dune -> load p ~f:(fun _lang -> decode)
   | Jbuilder ->
     Io.with_lexbuf_from_file p ~f:(fun lb ->

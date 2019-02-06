@@ -23,7 +23,7 @@
 
 ;; THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
 ;; WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
-;; WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+;; WARRANTIES OF MERCHANTABILITY AND FITNESS.  IN NO EVENT SHALL THE
 ;; AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR
 ;; CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
 ;; LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT,
@@ -35,7 +35,8 @@
 (defgroup dune nil
   "Integration with the dune build system."
   :tag "Dune build system."
-  :version "1.0")
+  :version "1.0"
+  :group 'languages)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;               Syntax highlighting of dune files
@@ -111,11 +112,11 @@
                "universe" "package")
              t)
             "\\(?:\\_>\\|[[:space:]]\\)"))
-  "Builtin sub-fields in dune")
+  "Builtin sub-fields in dune.")
 
 (defconst dune-builtin-labels-regex
   (regexp-opt '("standard" "include") 'words)
-  "Builtin :labels in dune")
+  "Builtin :labels in dune.")
 
 (defvar dune-var-kind-regex
   (eval-when-compile
@@ -127,6 +128,7 @@
   "Optional prefix to variable names.")
 
 (defmacro dune--field-vals (field &rest vals)
+  "Build a `font-lock-keywords' rule for the dune FIELD accepting values VALS."
   `(list (concat "(" ,field "[[:space:]]+" ,(regexp-opt vals t))
          1 font-lock-constant-face))
 
@@ -170,7 +172,7 @@
     (modify-syntax-entry ?\[ "(]" table)
     (modify-syntax-entry ?\] ")[" table)
     table)
-  "dune syntax table.")
+  "Dune syntax table.")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;                             SMIE
@@ -183,6 +185,8 @@
      (smie-bnf->prec2 '()))))
 
 (defun dune-smie-rules (kind token)
+  "Rules for `smie-setup'.
+See `smie-rules-function' for the meaning of KIND and TOKEN."
   (cond
    ((eq kind :close-all) '(column . 0))
    ((and (eq kind :after) (equal token ")"))
@@ -206,7 +210,9 @@
     nil)
    (t 1)))
 
-(defun verbose-dune-smie-rules (kind token)
+(defun dune-smie-rules-verbose (kind token)
+  "Same as `dune-smie-rules' but echoing information.
+See `smie-rules-function' for the meaning of KIND and TOKEN."
   (let ((value (dune-smie-rules kind token)))
     (message
      "%s '%s'; sibling-p:%s parent:%s hanging:%s = %s"
@@ -335,6 +341,7 @@
   "Keymap used in dune mode.")
 
 (defun dune-build-menu ()
+  "Build the menu for `dune-mode'."
   (easy-menu-define
     dune-mode-menu  (list dune-mode-map)
     "dune mode menu."
@@ -361,11 +368,11 @@
 (define-derived-mode dune-mode prog-mode "dune"
   "Major mode to edit dune files.
 For customization purposes, use `dune-mode-hook'."
-  (setq-local font-lock-defaults '(dune-font-lock-keywords))
-  (setq-local comment-start ";")
-  (setq-local comment-end "")
+  (set (make-local-variable 'font-lock-defaults) '(dune-font-lock-keywords))
+  (set (make-local-variable 'comment-start) ";")
+  (set (make-local-variable 'comment-end) "")
   (setq indent-tabs-mode nil)
-  (setq-local require-final-newline mode-require-final-newline)
+  (set (make-local-variable 'require-final-newline) mode-require-final-newline)
   (smie-setup dune-smie-grammar #'dune-smie-rules)
   (dune-build-menu))
 
@@ -389,9 +396,9 @@ For customization purposes, use `dune-mode-hook'."
   (if (buffer-modified-p)
       (error "Cannot promote as buffer is modified")
     (shell-command
-     (format "%s promote %s"
-             dune-command
-             (file-name-nondirectory (buffer-file-name))))
+     (format
+      "%s promote %s" dune-command
+      (shell-quote-argument (file-name-nondirectory (buffer-file-name)))))
     (revert-buffer nil t)))
 
 ;;;###autoload

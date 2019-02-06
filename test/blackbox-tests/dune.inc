@@ -216,6 +216,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name duplicate-c-cxx-obj)
+ (deps (package dune) (source_tree test-cases/duplicate-c-cxx-obj))
+ (action
+  (chdir
+   test-cases/duplicate-c-cxx-obj
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name duplicate-target-no-loc)
  (deps (package dune) (source_tree test-cases/duplicate-target-no-loc))
  (action
@@ -1148,7 +1156,9 @@
  (action
   (chdir
    test-cases/toplevel-stanza
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} -skip-versions <4.05.0 -test run.t)
+    (diff? run.t run.t.corrected)))))
 
 (alias
  (name trace-file)
@@ -1196,7 +1206,9 @@
  (action
   (chdir
    test-cases/utop-default
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} -skip-versions <4.05.0 -test run.t)
+    (diff? run.t run.t.corrected)))))
 
 (alias
  (name variants)
@@ -1270,6 +1282,7 @@
   (alias dune-project-edition)
   (alias dup-fields)
   (alias duplicate-c-cxx)
+  (alias duplicate-c-cxx-obj)
   (alias duplicate-target-no-loc)
   (alias embed-jbuild)
   (alias enabled_if)
@@ -1424,6 +1437,7 @@
   (alias dune-project-edition)
   (alias dup-fields)
   (alias duplicate-c-cxx)
+  (alias duplicate-c-cxx-obj)
   (alias duplicate-target-no-loc)
   (alias embed-jbuild)
   (alias enabled_if)
@@ -1528,7 +1542,6 @@
   (alias transitive-deps-mode)
   (alias upgrader)
   (alias use-meta)
-  (alias utop-default)
   (alias variants)
   (alias windows-diff)
   (alias workspaces)

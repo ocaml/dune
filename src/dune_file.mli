@@ -286,6 +286,7 @@ end
 module C_executables : sig
   type t =
     { names     : (Loc.t * string) list
+    ; loc       : Loc.t
     ; libraries : Lib_dep.t list
     ; c_flags   : Ordered_set_lang.Unexpanded.t
     ; c_names   : Ordered_set_lang.t option

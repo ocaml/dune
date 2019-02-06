@@ -9,4 +9,12 @@ module Gen (S : sig val sctx : Super_context.t end) : sig
     -> requires:Lib.L.t Or_exn.t
     -> dir_contents:Dir_contents.t
     -> Path.t list
+
+  val exe_rules
+    :  dir:Path.t
+    -> dir_contents:Dir_contents.t
+    -> scope:Scope.t
+    -> expander:Expander.t
+    -> Dune_file.C_executables.t
+    -> Compilation_context.t
 end

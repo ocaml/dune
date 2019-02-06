@@ -99,4 +99,25 @@ module Gen (P : Install_rules.Params) = struct
       |> C.Kind.Dict.mapi ~f:build_x_files
     in
     c @ cxx
+
+  let executables_rules ~dir ~expander ~dir_contents ~scope ~compile_info
+        (exes : Dune_file.C_executables.t) =
+    ignore (dir, expander, dir_contents, scope, compile_info, exes);
+    assert false
+
+  let exe_rules ~dir ~dir_contents ~scope ~expander
+        (exes : Dune_file.C_executables.t) =
+    let compile_info =
+      Lib.DB.resolve_user_written_deps_for_exes
+        (Scope.libs scope)
+        exes.names
+        exes.libraries
+        ~pps:[]
+        ~allow_overlaps:false
+    in
+    SC.Libs.gen_select_rules sctx compile_info ~dir;
+    SC.Libs.with_lib_deps sctx compile_info ~dir
+      ~f:(fun () ->
+        executables_rules exes ~dir
+          ~dir_contents ~scope ~expander ~compile_info)
 end

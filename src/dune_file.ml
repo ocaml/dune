@@ -1384,6 +1384,7 @@ end
 module C_executables = struct
   type t =
     { names     : (Loc.t * string) list
+    ; loc       : Loc.t
     ; libraries : Lib_dep.t list
     ; c_flags   : Ordered_set_lang.Unexpanded.t
     ; c_names   : Ordered_set_lang.t option
@@ -1392,7 +1393,8 @@ module C_executables = struct
     }
 
   let common =
-    let%map libraries = field "libraries" Lib_deps.decode ~default:[]
+    let%map loc = loc
+    and libraries = field "libraries" Lib_deps.decode ~default:[]
     and c_flags = field_oslu "c_flags"
     and cxx_flags = field_oslu "cxx_flags"
     and c_names = field_o "c_names" Ordered_set_lang.decode
@@ -1407,6 +1409,7 @@ module C_executables = struct
         ; cxx_flags
         ; c_names
         ; cxx_names
+        ; loc
         }
       in
       match install_conf with

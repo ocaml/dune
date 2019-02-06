@@ -54,6 +54,7 @@ module Gen(P : Install_rules.Params) = struct
    * See: https://github.com/ocaml/dune/pull/1354#issuecomment-427922592 *)
   module Install_rules = Install_rules.Gen(P)
   module Lib_rules = Lib_rules.Gen(P)
+  module C_rules = C_rules.Gen(P)
 
   let sctx = P.sctx
 
@@ -83,6 +84,15 @@ module Gen(P : Install_rules.Params) = struct
         { For_stanza.
           merlin = Some merlin
         ; cctx = Some (lib.buildable.loc, cctx)
+        ; js = None
+        }
+      | C_executables exes ->
+        let cctx =
+          C_rules.exe_rules exes ~dir ~expander ~scope ~dir_contents
+        in
+        { For_stanza.
+          merlin = None
+        ; cctx = Some (exes.loc, cctx)
         ; js = None
         }
       | Executables exes ->

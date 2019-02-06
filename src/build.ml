@@ -221,11 +221,12 @@ let action ?dir ~targets action =
   | Some dir -> Action.Chdir (dir, action)
 
 let action_dyn ?dir ~targets () =
-  Targets targets
-  >>^ fun action ->
   match dir with
-  | None -> action
-  | Some dir -> Action.Chdir (dir, action)
+  | None -> Targets targets
+  | Some dir ->
+    Targets targets
+    >>^ fun action ->
+    Action.Chdir (dir, action)
 
 let write_file fn s =
   action ~targets:[fn] (Write_file (fn, s))

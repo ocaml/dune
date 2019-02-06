@@ -1,4 +1,4 @@
-This file describe how the jbuilder test suite is organized.
+This file describes how the dune test suite is organized.
 
 # Unit testing
 
@@ -20,7 +20,7 @@ enclosed in an `[%%expect]` extension point. For instance:
 # Blackbox testing
 
 The `blackbox-tests` contains blackbox tests. I.e. we are testing the
-fully built `jbuilder` executable on various example projects.
+fully built `dune` executable on various example projects.
 
 The tests are written in [cram](https://bitheap.org/cram/) style. The
 logic is implemented in `blackbox-tests/cram.mll`. It only implements
@@ -29,8 +29,8 @@ is currently not preserved between commands, so you cannot define a
 variable and use it.
 
 Test cases are in `blackbox-tests/test-cases`. Each sub-directory is a
-full blown jbuilder project. Each sub-directory contains a `run.t`
-file, which represents a few invocations of jbuilder along with the
+full blown dune project. Each sub-directory contains a `run.t`
+file, which represents a few invocations of dune along with the
 expected output.
 
 Here is a sample `.t` file:

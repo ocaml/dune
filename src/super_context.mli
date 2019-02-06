@@ -156,7 +156,7 @@ module Action : sig
     -> loc:Loc.t
     -> expander:Expander.t
     -> dep_kind:Lib_deps_info.Kind.t
-    -> targets:Expander.targets
+    -> targets:Expander.Targets.t
     -> targets_dir:Path.t
     -> Action_unexpanded.t
     -> (Path.t Bindings.t, Action.t) Build.t

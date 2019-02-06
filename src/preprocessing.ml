@@ -495,7 +495,6 @@ let get_ppx_driver sctx ~loc ~scope ~dir_kind pps =
   >>| fun driver ->
   (ppx_driver_exe (SC.host sctx) libs ~dir_kind, driver)
 
-let target_var         = String_with_vars.virt_var __POS__ "targets"
 let workspace_root_var = String_with_vars.virt_var __POS__ "workspace_root"
 
 let cookie_library_name lib_name =
@@ -653,16 +652,16 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess
                 >>^ (fun _ -> Bindings.empty)
                 >>>
                 SC.Action.run sctx
-                  (Redirect
-                     (Stdout,
-                      target_var,
-                      Chdir (workspace_root_var,
-                             action)))
+                  (Chdir (workspace_root_var, action))
                   ~loc
                   ~expander
                   ~dep_kind
-                  ~targets:(Static [dst])
-                  ~targets_dir:(Path.parent_exn dst)))
+                  ~targets:(Forbidden "preprocessing actions")
+                  ~targets_dir:(Path.parent_exn dst)
+                >>>
+                Build.action_dyn () ~targets:[dst]
+                >>^ fun action ->
+                Action.with_stdout_to dst action))
            |> setup_reason_rules sctx in
          if lint then lint_module ~ast ~source:m;
          ast)

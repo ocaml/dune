@@ -1,3 +1,5 @@
+(** This module is used to determine the extensions of preprocessed and reason
+    sourced modules. *)
 open! Stdune
 
 type t

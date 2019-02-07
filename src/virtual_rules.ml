@@ -225,7 +225,11 @@ let impl sctx ~dir ~(lib : Dune_file.Library.t) ~scope ~modules =
           let dir_contents =
             Dir_contents.get sctx ~dir:(Lib.src_dir vlib) in
           let modules =
-            Dir_contents.modules_of_library dir_contents ~name
+            let pp_spec = Pp_spec.make lib.buildable.preprocess in
+            let modules = Dir_contents.modules_of_library dir_contents ~name in
+            Lib_modules.modules modules
+            |> Pp_spec.pped_modules pp_spec
+            |> Lib_modules.set_modules modules
           in
           let foreign_objects =
             let ext_obj = (Super_context.context sctx).ext_obj in

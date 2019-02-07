@@ -87,14 +87,8 @@ module Gen(P : Install_rules.Params) = struct
         ; js = None
         }
       | C_executables exes ->
-        let cctx =
-          C_rules.exe_rules exes ~dir ~expander ~scope ~dir_contents
-        in
-        { For_stanza.
-          merlin = None
-        ; cctx = Some (exes.loc, cctx)
-        ; js = None
-        }
+        C_rules.exe_rules exes ~dir ~expander ~scope ~dir_contents;
+        For_stanza.empty_none
       | Executables exes ->
         let cctx, merlin =
           Exe_rules.rules exes

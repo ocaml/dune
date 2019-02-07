@@ -16,5 +16,5 @@ module Gen (S : sig val sctx : Super_context.t end) : sig
     -> scope:Scope.t
     -> expander:Expander.t
     -> Dune_file.C_executables.t
-    -> Compilation_context.t
+    -> unit
 end

@@ -100,10 +100,37 @@ module Gen (P : Install_rules.Params) = struct
     in
     c @ cxx
 
-  let executables_rules ~dir ~expander ~dir_contents ~scope ~compile_info
+  let executables_rules ~dir ~expander ~dir_contents ~compile_info
         (exes : Dune_file.C_executables.t) =
-    ignore (dir, expander, dir_contents, scope, compile_info, exes);
-    assert false
+    let c_sources =
+      Dir_contents.c_sources_of_executables dir_contents
+        ~first_exe:(snd (List.hd exes.names))
+    in
+    let o_files =
+      let requires_compile = Lib.Compile.direct_requires compile_info in
+      let c_flags =
+        { C.Kind.Dict.
+          c = exes.c_flags
+        ; cxx = exes.cxx_flags
+        } in
+      build_o_files ~c_flags ~c_sources ~dir ~expander
+        ~requires:requires_compile ~dir_contents
+    in
+    let c_compiler = Ok (Context.c_compiler ctx) in
+    List.iter exes.names ~f:(fun (loc, exe) ->
+      let o_files = List.filter o_files ~f:(fun obj ->
+        let obj = Path.basename obj in
+        List.for_all exes.names ~f:(fun (_, exe') ->
+          exe = exe' || exe' <> obj))
+      in
+      let target = Path.relative dir (exe ^ ".exe") in
+      Build.run ~dir
+        c_compiler
+        [ A "-o"; Target target
+        ; Deps o_files
+        ]
+      |> Super_context.add_rule sctx ~loc ~dir
+    )
 
   let exe_rules ~dir ~dir_contents ~scope ~expander
         (exes : Dune_file.C_executables.t) =
@@ -119,5 +146,5 @@ module Gen (P : Install_rules.Params) = struct
     SC.Libs.with_lib_deps sctx compile_info ~dir
       ~f:(fun () ->
         executables_rules exes ~dir
-          ~dir_contents ~scope ~expander ~compile_info)
+          ~dir_contents ~expander ~compile_info)
 end

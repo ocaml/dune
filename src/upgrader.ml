@@ -105,6 +105,8 @@ let upgrade_stanza stanza =
     | List (loc, l) ->
       let l =
         match l with
+        | [Atom (loc, A "fallback") as x] ->
+          [Atom (loc, Dune_lang.Atom.of_string "mode"); x]
         | [Atom _; List (_, [Atom (_, A ":include"); Atom _])] ->
           List.map l ~f:upgrade
         | Atom (_, A ("preprocess" | "lint")) as field :: rest ->

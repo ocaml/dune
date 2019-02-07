@@ -6,7 +6,8 @@ block comment
  ((deps (x y z)) ; abc
   (targets (z))
   ; def
-  (action (with-stdout-to z (run echo ${<})))))
+  (action (with-stdout-to z (run echo ${<})))
+  (fallback)))
 
 ; other
 ; comment

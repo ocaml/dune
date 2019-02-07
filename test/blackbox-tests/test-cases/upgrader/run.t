@@ -21,7 +21,8 @@
    (action
     (with-stdout-to
      z
-     (run echo %{<}))))
+     (run echo %{<})))
+   (mode fallback))
   
   ; other
   ; comment

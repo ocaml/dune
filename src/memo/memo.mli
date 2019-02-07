@@ -28,12 +28,16 @@ end
 val reset : unit -> unit
 
 module type S = Memo_intf.S with type stack_frame := Stack_frame.t
+module type S_sync = Memo_intf.S_sync with type stack_frame := Stack_frame.t
 module type Input = Memo_intf.Input
 module type Output = Memo_intf.Output
 module type Decoder = Memo_intf.Decoder
 
 module Make(Input : Input)(Decoder : Decoder with type t := Input.t)
   : S with type input := Input.t
+
+module Make_sync(Input : Input)(Decoder : Decoder with type t := Input.t)
+  : S_sync with type input := Input.t
 
 (** Same as [Make] except that registered functions won't be available
     through [dune compute]. In particular, it is not necessary to

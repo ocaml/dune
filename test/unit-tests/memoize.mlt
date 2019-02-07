@@ -190,3 +190,37 @@ val mfib : int Int_fn.t = <abstr>
 - : int = 3080005411477819488
 - : int = 2001
 |}]
+
+
+module Sync_int_fn = Memo.Make_sync(Int)(struct
+    let decode = Dune_lang.Decoder.int
+  end)
+
+let counter = ref 0
+
+let sync_fib =
+  let mfib = Fdecl.create () in
+  let compfib x =
+    let mfib = Sync_int_fn.exec (Fdecl.get mfib) in
+    counter := !counter + 1;
+    if x <= 1 then
+      x
+    else
+      mfib (x - 1) + mfib (x - 2)
+  in
+  let fn = Sync_int_fn.create "fib" (module Int) compfib ~doc:"" in
+  Fdecl.set mfib fn;
+  fn;;
+[%%ignore]
+
+Sync_int_fn.exec sync_fib 2000;;
+!counter;;
+Sync_int_fn.exec sync_fib 1800;;
+!counter;;
+
+[%%expect{|
+- : int = 2406280077793834213
+- : int = 2001
+- : int = 3080005411477819488
+- : int = 2001
+|}]

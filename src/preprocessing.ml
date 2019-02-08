@@ -90,17 +90,12 @@ end = struct
         (Digest.to_string y)
 end
 
-let pped_path path ~suffix =
-  (* We need to insert the suffix before the extension as some tools
-     inspect the extension *)
-  let base, ext = Path.split_extension path in
-  Path.extend_basename base ~suffix:(suffix ^ ext)
-
 let pped_module m ~f =
-  Module.map_files m ~f:(fun kind file ->
-    let pp_path = pped_path file.path ~suffix:".pp" in
-    f kind file.path pp_path;
-    { file with path = pp_path })
+  let pped = Module.pped m in
+  Module.iter m ~f:(fun kind file ->
+    let pp_path = Option.value_exn (Module.file pped kind) in
+    f kind file.path pp_path);
+  pped
 
 module Driver = struct
   module M = struct
@@ -518,27 +513,15 @@ let setup_reason_rules sctx (m : Module.t) =
       ]
       ~stdout_to:target
   in
-  Module.map_files m ~f:(fun _ f ->
+  let ml = Module.ml_source m in
+  Module.iter m ~f:(fun kind f ->
     match f.syntax with
-    | OCaml  -> f
+    | OCaml  ->
+      ()
     | Reason ->
-      let path =
-        let base, ext = Path.split_extension f.path in
-        let suffix =
-          match ext with
-          | ".re"  -> ".re.ml"
-          | ".rei" -> ".re.mli"
-          | _     ->
-            Errors.fail
-              (Loc.in_file (Path.drop_build_context_exn f.path))
-              "Unknown file extension for reason source file: %S"
-              ext
-        in
-        Path.extend_basename base ~suffix
-      in
-      let ml = Module.File.make OCaml path in
-      SC.add_rule sctx ~dir:ctx.build_dir (rule f.path ml.path);
-      ml)
+      let ml = Option.value_exn (Module.file ml kind) in
+      SC.add_rule sctx ~dir:ctx.build_dir (rule f.path ml));
+  ml
 
 let promote_correction fn build ~suffix =
   Build.progn

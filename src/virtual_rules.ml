@@ -1,6 +1,33 @@
 open Import
 open! No_io
 
+module Pp_spec : sig
+  type t
+
+  val make
+    :  Dune_file.Preprocess.t Dune_file.Per_module.t
+    -> t
+
+  val pped_modules : t -> Module.Name_map.t -> Module.Name_map.t
+end = struct
+  type t = (Module.t -> Module.t) Dune_file.Per_module.t
+
+  let make preprocess =
+    Dune_file.Per_module.map preprocess ~f:(function
+      | Dune_file.Preprocess.No_preprocessing -> Module.ml_source
+      | Action (_, _) ->
+        fun m -> Module.ml_source (Module.pped m)
+      | Pps { loc = _; pps = _; flags = _; staged } ->
+        if staged then
+          Module.ml_source
+        else
+          fun m -> Module.pped (Module.ml_source m))
+
+  let pped_modules (t : t) modules =
+    Module.Name.Map.map modules ~f:(fun (m : Module.t) ->
+      Dune_file.Per_module.get t (Module.name m) m)
+end
+
 let setup_copy_rules_for_impl ~sctx ~dir vimpl =
   let ctx = Super_context.context sctx in
   let vlib = Vimpl.vlib vimpl in
@@ -225,7 +252,11 @@ let impl sctx ~dir ~(lib : Dune_file.Library.t) ~scope ~modules =
           let dir_contents =
             Dir_contents.get sctx ~dir:(Lib.src_dir vlib) in
           let modules =
-            Dir_contents.modules_of_library dir_contents ~name
+            let pp_spec = Pp_spec.make lib.buildable.preprocess in
+            let modules = Dir_contents.modules_of_library dir_contents ~name in
+            Lib_modules.modules modules
+            |> Pp_spec.pped_modules pp_spec
+            |> Lib_modules.set_modules modules
           in
           let foreign_objects =
             let ext_obj = (Super_context.context sctx).ext_obj in

@@ -54,10 +54,3 @@
 virtual libraries in reason
   $ PATH="_build/install/default/bin:$PATH" dune build --root vlib-impl @all
   Entering directory 'vlib-impl'
-  File "impl/dune", line 1, characters 0-81:
-  1 | (library
-  2 |  (name ReproImpl)
-  3 |  (public_name repro.lib-impl)
-  4 |  (implements repro.lib))
-  Error: No rule found for vlib/.Repro.objs/RandomImpl.re.all-deps
-  [1]

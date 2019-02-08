@@ -532,3 +532,35 @@ module Source = struct
   | None, Some x -> Some (Path.parent_exn x.path)
 
 end
+
+let pped =
+  let pped_path path ~suffix =
+    (* We need to insert the suffix before the extension as some tools
+       inspect the extension *)
+    let base, ext = Path.split_extension path in
+    Path.extend_basename base ~suffix:(suffix ^ ext)
+  in
+  map_files ~f:(fun _kind file ->
+    let pp_path = pped_path file.path ~suffix:".pp" in
+    { file with path = pp_path })
+
+let ml_source =
+  map_files ~f:(fun _ f ->
+    match f.syntax with
+    | OCaml  -> f
+    | Reason ->
+      let path =
+        let base, ext = Path.split_extension f.path in
+        let suffix =
+          match ext with
+          | ".re"  -> ".re.ml"
+          | ".rei" -> ".re.mli"
+          | _     ->
+            Errors.fail
+              (Loc.in_file (Path.drop_build_context_exn f.path))
+              "Unknown file extension for reason source file: %S"
+              ext
+        in
+        Path.extend_basename base ~suffix
+      in
+      File.make OCaml path)

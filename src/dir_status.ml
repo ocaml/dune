@@ -1,20 +1,29 @@
 open Stdune
 open Dune_file
 
-type t =
-  | Standalone of
-      (File_tree.Dir.t * Stanza.t list Dir_with_dune.t option) option
-  (* Directory not part of a multi-directory group. The argument is
-     [None] for directory that are not from the source tree, such as
-     generated ones. *)
+module T = struct
+  type t =
+    | Standalone of
+        (File_tree.Dir.t * Stanza.t list Dir_with_dune.t option) option
+    (* Directory not part of a multi-directory group. The argument is
+       [None] for directory that are not from the source tree, such as
+       generated ones. *)
 
-  | Group_root of File_tree.Dir.t
-                  * Stanza.t list Dir_with_dune.t
-  (* Directory with [(include_subdirs x)] where [x] is not [no] *)
+    | Group_root of File_tree.Dir.t
+                    * Stanza.t list Dir_with_dune.t
+    (* Directory with [(include_subdirs x)] where [x] is not [no] *)
 
-  | Is_component_of_a_group_but_not_the_root of
-      Stanza.t list Dir_with_dune.t option
-  (* Sub-directory of a [Group_root _] *)
+    | Is_component_of_a_group_but_not_the_root of
+        Stanza.t list Dir_with_dune.t option
+    (* Sub-directory of a [Group_root _] *)
+
+  let to_sexp _ = Sexp.Atom "<dir-status is opaque>"
+
+  (* CR aalekseyev: this is probably broken *)
+  let hash = Hashtbl.hash
+  let equal = (=)
+end
+include T
 
 let is_standalone = function
   | Standalone _ -> true
@@ -42,86 +51,73 @@ let check_no_module_consumer stanzas =
     | _ -> ())
 
 module DB = struct
-  type nonrec t =
-    { cache : (Path.t, t) Hashtbl.t
-    ; file_tree : File_tree.t
-    ; stanzas_per_dir : Dune_file.Stanzas.t Dir_with_dune.t Path.Map.t
-    }
 
-  let make file_tree ~stanzas_per_dir =
-    { cache = Hashtbl.create 32
-    ; file_tree
-    ; stanzas_per_dir
+  module Path_fn = Memo.Make_sync(Path)(Path_dune_lang)
+
+  type nonrec t =
+    { file_tree : File_tree.t
+    ; stanzas_per_dir : Dune_file.Stanzas.t Dir_with_dune.t Path.Map.t
+    ; fn : t Path_fn.t
     }
 
   let stanzas_in db ~dir =
     Path.Map.find db.stanzas_per_dir dir
 
-  let rec get db ~dir =
-    match Hashtbl.find db.cache dir with
-    | Some t -> t
-    | None ->
-      let t =
-        match
-          Option.bind (Path.drop_build_context dir)
-            ~f:(File_tree.find_dir db.file_tree)
-        with
-        | None -> begin
-            match Path.parent dir with
-            | None -> Standalone None
-            | Some dir ->
-              if is_standalone (get db ~dir) then
-                Standalone None
-              else
-                Is_component_of_a_group_but_not_the_root None
-          end
-        | Some ft_dir ->
-          let project_root =
-            File_tree.Dir.project ft_dir
-            |> Dune_project.root
-            |> Path.of_local in
-          match stanzas_in db ~dir with
-          | None ->
-            if Path.equal dir project_root ||
-               is_standalone (get db ~dir:(Path.parent_exn dir)) then
-              Standalone (Some (ft_dir, None))
-            else
-              Is_component_of_a_group_but_not_the_root None
-          | Some d ->
-            match get_include_subdirs d.data with
-            | Some Unqualified ->
-              Group_root (ft_dir, d)
-            | Some No ->
-              Standalone (Some (ft_dir, Some d))
-            | None ->
-              if dir <> project_root &&
-                 not (is_standalone (get db ~dir:(Path.parent_exn dir)))
-              then begin
-                check_no_module_consumer d.data;
-                Is_component_of_a_group_but_not_the_root (Some d)
-              end else
-                Standalone (Some (ft_dir, Some d))
-      in
-      Hashtbl.add db.cache dir t;
-      t
-
-  let get_assuming_parent_is_part_of_group db ~dir ft_dir =
-    match Hashtbl.find db.cache (File_tree.Dir.path ft_dir) with
-    | Some t -> t
-    | None ->
-      let t =
-        match stanzas_in db ~dir with
-        | None -> Is_component_of_a_group_but_not_the_root None
-        | Some d ->
-          match get_include_subdirs d.data with
-          | Some Unqualified ->
-            Group_root (ft_dir, d)
-          | Some No ->
-            Standalone (Some (ft_dir, Some d))
-          | None ->
+  let get db ~dir =
+    let get ~dir = Path_fn.exec db.fn dir in
+    match
+      Option.bind (Path.drop_build_context dir)
+        ~f:(File_tree.find_dir db.file_tree)
+    with
+    | None -> begin
+        match Path.parent dir with
+        | None -> Standalone None
+        | Some dir ->
+          if is_standalone (get ~dir) then
+            Standalone None
+          else
+            Is_component_of_a_group_but_not_the_root None
+      end
+    | Some ft_dir ->
+      let project_root =
+        File_tree.Dir.project ft_dir
+        |> Dune_project.root
+        |> Path.of_local in
+      match stanzas_in db ~dir with
+      | None ->
+        if Path.equal dir project_root ||
+           is_standalone (get ~dir:(Path.parent_exn dir)) then
+          Standalone (Some (ft_dir, None))
+        else
+          Is_component_of_a_group_but_not_the_root None
+      | Some d ->
+        match get_include_subdirs d.data with
+        | Some Unqualified ->
+          Group_root (ft_dir, d)
+        | Some No ->
+          Standalone (Some (ft_dir, Some d))
+        | None ->
+          if dir <> project_root &&
+             not (is_standalone (get ~dir:(Path.parent_exn dir)))
+          then begin
             check_no_module_consumer d.data;
             Is_component_of_a_group_but_not_the_root (Some d)
-      in
-      Hashtbl.add db.cache dir t;
-      t
+          end else
+            Standalone (Some (ft_dir, Some d))
+
+  let make file_tree ~stanzas_per_dir =
+    let get_decl = Fdecl.create () in
+    let t =
+      { file_tree
+      ; stanzas_per_dir
+      ; fn =
+          Path_fn.create "get-dir-status" (module T) (fun dir -> Fdecl.get get_decl dir)
+            ~doc:"Get a directory status."
+      }
+    in
+    Fdecl.set get_decl (fun dir -> get t ~dir);
+    t
+
+  let get_assuming_parent_is_part_of_group db ~dir _ft_dir =
+    Path_fn.exec db.fn dir
 end

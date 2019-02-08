@@ -160,6 +160,7 @@ val extension : t -> string
 val split_extension : t -> t * string
 
 val pp : Format.formatter -> t -> unit
+val pp_in_source : Format.formatter -> t -> unit
 val pp_debug : Format.formatter -> t -> unit
 
 val build_dir_exists : unit -> bool

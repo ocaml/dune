@@ -231,7 +231,7 @@ include Sub_system.Register_end_point(
                SC.Action.run sctx action ~loc
                  ~expander
                  ~dep_kind:Required
-                 ~targets:Alias
+                 ~targets:(Forbidden "inline test generators")
                  ~targets_dir:dir)))
         >>^ (fun actions ->
           Action.with_stdout_to target

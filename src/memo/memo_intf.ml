@@ -40,6 +40,20 @@ module type S = sig
     -> (input -> 'a Fiber.t)
     -> 'a t
 
+  (** Same as [create] except that the implementation is defined at a
+      latter point of the program. This is useful for creating mutually
+      recursive memoized functions.  *)
+  val fcreate
+    :  string
+    -> ?allow_cutoff:bool
+    -> doc:string
+    -> (module Output with type t = 'a)
+    -> 'a t
+
+  (** Set the implementation of a memoized function created with
+      [fcreate] *)
+  val set_impl : 'a t -> (input -> 'a Fiber.t) -> unit
+
   (** Execute a memoized function *)
   val exec : 'a t -> input -> 'a Fiber.t
 

@@ -1,6 +1,33 @@
 open Import
 open! No_io
 
+module Pp_spec : sig
+  type t
+
+  val make
+    :  Dune_file.Preprocess.t Dune_file.Per_module.t
+    -> t
+
+  val pped_modules : t -> Module.Name_map.t -> Module.Name_map.t
+end = struct
+  type t = (Module.t -> Module.t) Dune_file.Per_module.t
+
+  let make preprocess =
+    Dune_file.Per_module.map preprocess ~f:(function
+      | Dune_file.Preprocess.No_preprocessing -> Module.ml_source
+      | Action (_, _) ->
+        fun m -> Module.ml_source (Module.pped m)
+      | Pps { loc = _; pps = _; flags = _; staged } ->
+        if staged then
+          Module.ml_source
+        else
+          fun m -> Module.pped (Module.ml_source m))
+
+  let pped_modules (t : t) modules =
+    Module.Name.Map.map modules ~f:(fun (m : Module.t) ->
+      Dune_file.Per_module.get t (Module.name m) m)
+end
+
 let setup_copy_rules_for_impl ~sctx ~dir vimpl =
   let ctx = Super_context.context sctx in
   let vlib = Vimpl.vlib vimpl in
@@ -215,14 +242,29 @@ let impl sctx ~dir ~(lib : Dune_file.Library.t) ~scope ~modules =
             Lib_name.pp implements
         | Some v -> v
       in
-      let vlib_modules =
-        match virtual_ with
-        | External lib_modules -> lib_modules
-        | Local ->
+      let (vlib_modules, vlib_foreign_objects) =
+        match virtual_, Lib.foreign_objects vlib with
+        | External _, Local
+        | Local, External _ -> assert false
+        | External lib_modules, External fa -> (lib_modules, fa)
+        | Local, Local ->
+          let name = Lib.name vlib in
           let dir_contents =
             Dir_contents.get sctx ~dir:(Lib.src_dir vlib) in
-          Dir_contents.modules_of_library dir_contents
-            ~name:(Lib.name vlib)
+          let modules =
+            let pp_spec = Pp_spec.make lib.buildable.preprocess in
+            let modules = Dir_contents.modules_of_library dir_contents ~name in
+            Lib_modules.modules modules
+            |> Pp_spec.pped_modules pp_spec
+            |> Lib_modules.set_modules modules
+          in
+          let foreign_objects =
+            let ext_obj = (Super_context.context sctx).ext_obj in
+            let dir = Obj_dir.obj_dir (Lib.obj_dir vlib) in
+            Dir_contents.c_sources_of_library dir_contents ~name
+            |> C.Sources.objects ~ext_obj ~dir
+          in
+          (modules, foreign_objects)
       in
       let virtual_modules = Lib_modules.virtual_modules vlib_modules in
       check_module_fields ~lib ~virtual_modules ~modules ~implements;
@@ -247,4 +289,5 @@ let impl sctx ~dir ~(lib : Dune_file.Library.t) ~scope ~modules =
             ~vlib_modules
       in
       Vimpl.make ~dir ~impl:lib ~vlib ~vlib_modules ~vlib_dep_graph
+        ~vlib_foreign_objects
   end

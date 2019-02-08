@@ -343,3 +343,9 @@ Include variants and implementation information in dune-package
       (kind virtual)
       (intf)))
     (wrapped true)))
+
+Virtual libraries and preprocessed source
+  $ dune build --root preprocess
+  Entering directory 'preprocess'
+          test alias default
+  foo

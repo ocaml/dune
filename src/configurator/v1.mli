@@ -7,12 +7,14 @@ val create
   -> string (** name, such as library name *)
   -> t
 
-(** Return the value associated to a variable in the output of [ocamlc -config] *)
+(** Return the value associated to a variable in the output of
+    [ocamlc -config] *)
 val ocaml_config_var     : t -> string -> string option
 val ocaml_config_var_exn : t -> string -> string
 
-(** [c_test t ?c_flags ?link_flags c_code] try to compile and link the C code given in
-    [c_code]. Return whether compilation was successful. *)
+(** [c_test t ?c_flags ?link_flags c_code] try to compile and link the
+   C code given in [c_code]. Return whether compilation was
+   successful. *)
 val c_test
   :  t
   -> ?c_flags:   string list (** default: [] *)
@@ -38,8 +40,10 @@ module C_define : sig
   (** Import some #define from the given header files. For instance:
 
       {[
-        # C.C_define.import c ~includes:"caml/config.h" ["ARCH_SIXTYFOUR", Switch];;
-        - (string * Configurator.C_define.Value.t) list = ["ARCH_SIXTYFOUR", Switch true]
+        # C.C_define.import c ~includes:"caml/config.h"
+                            ["ARCH_SIXTYFOUR", Switch];;
+        - (string * Configurator.C_define.Value.t) list =
+        ["ARCH_SIXTYFOUR", Switch true]
       ]}
   *)
   val import
@@ -52,8 +56,8 @@ module C_define : sig
     -> (string * Type.t ) list
     -> (string * Value.t) list
 
-  (** Generate a C header file containing the following #define. [protection_var] is used
-      to enclose the file with:
+  (** Generate a C header file containing the following
+      #define. [protection_var] is used to enclose the file with:
 
       {[
         #ifndef BLAH
@@ -114,6 +118,44 @@ module Flags : sig
       Any blank words are filtered out of the results. *)
 end
 
+val which : t -> string -> string option
+(** [which t prog] seek [prog] in the PATH and return the name
+   of the program prefixed with the first path where it is found.
+   Return [None] the the program is not found. *)
+
+
+(** Execute external programs. *)
+module Process : sig
+  type result =
+    { exit_code : int
+    ; stdout    : string
+    ; stderr    : string
+    }
+
+  val run : t -> ?dir:string -> ?env:string list ->
+            string -> string list -> result
+  (** [run t prog args] runs [prog] with arguments [args] and returns
+     its exit status together with the content of stdout and stderr.
+     The action is logged.
+
+     @param dir change to [dir] before running the command.
+     @param env specify additional environment variables as a list of
+     the form NAME=VALUE. *)
+
+  val run_capture_exn : t -> ?dir:string -> ?env:string list ->
+                        string -> string list -> string
+  (** [run_capture_exn t prog args] same as [run t prog args] but
+     returns [stdout] and {!die} if the error code is nonzero or there
+     is some output on [stderr].  *)
+
+  val run_ok : t -> ?dir:string -> ?env:string list ->
+               string -> string list -> bool
+  (** [run_ok t prog args] same as [run t prog args] but only cares
+     whether the execution terminated successfully (i.e., returned an
+     error code of [0]).  *)
+end
+
+
 (** Typical entry point for configurator programs *)
 val main
   :  ?args:(Arg.key * Arg.spec * Arg.doc) list
@@ -121,6 +163,6 @@ val main
   -> (t -> unit)
   -> unit
 
-(** Abort execution. If raised from within [main], the argument of [die] is printed as
-    [Error: <message>]. *)
+(** Abort execution. If raised from within [main], the argument of
+   [die] is printed as [Error: <message>]. *)
 val die : ('a, unit, string, 'b) format4 -> 'a

@@ -194,3 +194,9 @@ module Source : sig
 
   val name : t -> Name.t
 end
+
+(** [pped m] return [m] but with the preprocessed source paths paths *)
+val pped : t -> t
+
+(** [ml_source m] returns [m] but with the OCaml syntax source paths *)
+val ml_source : t -> t

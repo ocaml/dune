@@ -191,7 +191,7 @@ let term =
       profile,
       default_target =
     let default_target_default =
-      match Which_program.t with
+      match Wp.t with
       | Dune     -> "@@default"
       | Jbuilder -> "@install"
     in
@@ -252,16 +252,19 @@ let term =
                & info ["dev"] ~docs
                    ~doc:{|Same as $(b,--profile dev)|})
         in
-        match dev, Which_program.t with
+        match dev, Wp.t with
         | false, (Dune | Jbuilder) -> `Ok false
         | true, Jbuilder -> `Ok true
         | true, Dune ->
           `Error
             (true, "--dev is no longer accepted as it is now the default.")
       and profile =
+        let doc =
+          "Build profile. dev if unspecified or release if -p is set." in
         Arg.(value
              & opt (some string) None
              & info ["profile"] ~docs
+                 ~env:(Arg.env_var ~doc "DUNE_PROFILE")
                  ~doc:
                    (sprintf
                       {|Select the build profile, for instance $(b,dev) or

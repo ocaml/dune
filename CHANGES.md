@@ -3,11 +3,11 @@ unreleased
 
 - Second step of the deprecation of jbuilder: the `jbuilder` binary
   now emits a warning on every startup and both `jbuilder` and `dune`
-  emit warnings when encountering `jbuild` files (#...., @diml)
+  emit warnings when encountering `jbuild` files (#1752, @diml)
 
 - Change the layout of build artifacts inside _build. The new layout enables
   optimizations that depend on the presence of `.cmx` files of private modules
-  (#1676 @bobot)
+  (#1676, @bobot)
 
 - Fix merlin handling of private module visibility (#1653 @bobot)
 
@@ -97,12 +97,38 @@ unreleased
   built with `--store-orig-source-dir` command line flag (also controlled by
   `DUNE_STORE_ORIG_SOURCE_DIR` env variable). This is later used to generate
   `.merlin` with `S`-directives pointed to original source locations and thus
-  allowing merlin to see those.
+  allowing merlin to see those. (#1750, @andreypopp)
 
 - Improve the behavior of `dune promote` when the files to be promoted have been
   deleted. (#1775, fixes #1772, @diml)
 
 - unstable-fmt: preserve comments (#1766, @emillon)
+
+- Pass flags correctly when using `staged_pps` (#1779, fixes #1774, @diml)
+
+- Fix an issue with the use of `(mode promote)` in the menhir
+  stanza. It was previously causing intermediate *mock* files to be
+  promoted (#1783, fixes #1781, @diml)
+
+- unstable-fmt: ignore files using OCaml syntax (#1784, @emillon)
+
+- Configurator: Add `which` function to replace the `which` command line utility
+  in a cross platform way. (#1773, fixes #1705, @Chris00)
+
+- Make configurator append paths to `$PKG_CONFIG_PATH` on macOS. Previously it
+  was prepending paths and thus `$PKG_CONFIG_PATH` set by users could have been
+  overridden by homebrew installed libraries (#1785, @andreypopp)
+
+- Disallow c/cxx sources that share an object file in the same stubs archive.
+  This means that `foo.c` and `foo.cpp` can no longer exist in the same library.
+  (#1788, @rgrinberg)
+
+- Forbid use of `%{targets}` (or `${@}` in jbuild files) inside
+  preprocessing actions
+  (#1812, fixes #1811, @diml)
+
+- Add `DUNE_PROFILE` environment variable to easily set the profile. (#1806,
+  @rgrinberg)
 
 1.6.2 (05/12/2018)
 ------------------

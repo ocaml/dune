@@ -37,11 +37,18 @@ module Gen(P : Params) = struct
               Local_package.libs pkg
               |> Lib.Set.to_list
               |> List.map ~f:(fun lib ->
+                let name = Lib.name lib in
+                let dir_contents =
+                  Dir_contents.get sctx ~dir:(Lib.src_dir lib) in
                 let lib_modules =
-                  let dir = Dir_contents.get sctx ~dir:(Lib.src_dir lib) in
-                  Dir_contents.modules_of_library dir ~name:(Lib.name lib)
+                  Dir_contents.modules_of_library dir_contents ~name in
+                let foreign_objects =
+                  let dir = Obj_dir.obj_dir (Lib.obj_dir lib) in
+                  Dir_contents.c_sources_of_library dir_contents ~name
+                  |> C.Sources.objects ~dir ~ext_obj:ctx.ext_obj
                 in
-                Lib.to_dune_lib lib ~dir:(lib_root lib) ~lib_modules)
+                Lib.to_dune_lib lib ~dir:(lib_root lib) ~lib_modules
+                  ~foreign_objects)
             in
             Dune_package.Or_meta.Dune_package
               { Dune_package.
@@ -104,7 +111,7 @@ module Gen(P : Params) = struct
     let pkg_name = Local_package.name pkg in
     let meta = Local_package.meta_file pkg in
     let meta_template = Local_package.meta_template pkg in
-    SC.on_load_dir sctx ~dir:path ~f:(fun () ->
+    Build_system.on_load_dir ~dir:path ~f:(fun () ->
 
       let version =
         let pkg = Local_package.package pkg in
@@ -240,7 +247,7 @@ module Gen(P : Params) = struct
           ; List.filter_map Ml_kind.all ~f:(Module.cmt_file m)
           ])
     in
-    let archives = Lib_archives.make ~ctx ~dir lib in
+    let archives = Lib_archives.make ~ctx ~dir_contents ~dir lib in
     let execs = lib_ppxs ~lib ~scope ~dir_kind in
     List.concat
       [ sources
@@ -264,7 +271,7 @@ module Gen(P : Params) = struct
         | Some l -> l
         | None -> Loc.in_file entry.src
       in
-      Build_system.set_package (SC.build_system sctx) entry.src package;
+      Build_system.set_package entry.src package;
       SC.add_rule sctx ~loc ~dir:ctx.build_dir
         (Build.symlink ~src:entry.src ~dst);
       Install.Entry.set_src entry dst)
@@ -300,11 +307,11 @@ module Gen(P : Params) = struct
            ~findlib_toolchain:ctx.findlib_toolchain)
     in
     let files = Install.files entries in
-    SC.add_alias_deps sctx
+    Build_system.Alias.add_deps
       (Alias.package_install ~context:ctx ~pkg:package_name)
       files
       ~dyn_deps:
-        (Build_system.package_deps (SC.build_system sctx) package_name files
+        (Build_system.package_deps package_name files
          >>^ fun packages ->
          Package.Name.Set.to_list packages
          |> List.map ~f:(fun pkg ->
@@ -397,7 +404,7 @@ module Gen(P : Params) = struct
       let path = Local_package.build_dir package in
       let install_alias = Alias.install ~dir:path in
       let install_file = Path.relative path install_fn in
-      SC.add_alias_deps sctx install_alias (Path.Set.singleton install_file)
+      Build_system.Alias.add_deps install_alias (Path.Set.singleton install_file)
 
   let init () =
     let packages = Local_package.of_sctx sctx in

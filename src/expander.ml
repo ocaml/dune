@@ -170,10 +170,12 @@ module Resolved_forms = struct
     None
 end
 
-type targets =
-  | Static of Path.t list
-  | Infer
-  | Alias
+module Targets = struct
+  type t =
+    | Static of Path.t list
+    | Infer
+    | Forbidden of string
+end
 
 let path_exp path = [Value.Path path]
 let str_exp  str  = [Value.String str]
@@ -324,13 +326,13 @@ let expand_and_record_deps acc ~dir ~read_package ~dep_kind
         | Var (First_dep | Deps | Named_local) -> None
         | Var Targets ->
           let loc = String_with_vars.Var.loc pform in
-          begin match targets_written_by_user with
+          begin match (targets_written_by_user : Targets.t) with
           | Infer ->
             Errors.fail loc "You cannot use %s with inferred rules."
               (String_with_vars.Var.describe pform)
-          | Alias ->
-            Errors.fail loc "You cannot use %s in aliases."
-              (String_with_vars.Var.describe pform)
+          | Forbidden context ->
+            Errors.fail loc "You cannot use %s in %s."
+              (String_with_vars.Var.describe pform) context
           | Static l ->
             Some (Value.L.dirs l) (* XXX hack to signal no dep *)
           end

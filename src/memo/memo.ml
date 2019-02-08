@@ -482,6 +482,7 @@ module Make_gen
   type 'a t =
     { spec  : (Input.t, 'a) Spec.t
     ; cache : (Input.t, 'a) Dep_node.t Table.t
+    ; mutable fdecl : (Input.t -> 'a Fiber.t) Fdecl.t option
     }
 
   type _ Spec.witness += W : Input.t Spec.witness
@@ -495,7 +496,7 @@ module Make_gen
       Some (List.map cv.deps ~f:(fun (Last_dep.T (n,_u)) ->
         (Function_name.to_string n.spec.name, ser_input n)))
 
-  let create name ?(allow_cutoff=true) ~doc output f =
+  let create_internal name ?(allow_cutoff=true) ~doc output f fdecl =
     let name = Function_name.make name in
     let spec =
       { Spec.
@@ -514,7 +515,21 @@ module Make_gen
      | Private -> ());
     { cache = Table.create 1024
     ; spec
+    ; fdecl
     }
+
+  let create name ?allow_cutoff ~doc output f =
+    create_internal name ?allow_cutoff ~doc output f None
+
+  let fcreate name ?allow_cutoff ~doc output =
+    let f = Fdecl.create () in
+    create_internal name ?allow_cutoff ~doc output (fun x -> Fdecl.get f x)
+      (Some f)
+
+  let set_impl t f =
+    match t.fdecl with
+    | None -> invalid_arg "Memo.set_impl"
+    | Some fdecl -> Fdecl.set fdecl f
 
   let compute t inp ivar dep_node =
     (* define the function to update / double check intermediate result *)

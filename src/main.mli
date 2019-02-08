@@ -9,7 +9,6 @@ type workspace =
 
 type build_system =
   { workspace    : workspace
-  ; build_system : Build_system.t
   ; scontexts    : Super_context.t String.Map.t
   }
 

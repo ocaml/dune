@@ -31,12 +31,12 @@ val jsoo_runtime : t -> Path.t list
 val jsoo_archive : t -> Path.t option
 val modes        : t -> Mode.Dict.Set.t
 
-val foreign_objects : t -> Path.t list
+val foreign_objects : t -> Path.t list Lib_info.Source.t
 
 val main_module_name : t -> Module.Name.t option Or_exn.t
 val wrapped : t -> Wrapped.t option Or_exn.t
 
-val virtual_ : t -> Lib_info.Virtual.t option
+val virtual_ : t -> Lib_modules.t Lib_info.Source.t option
 
 (** A unique integer identifier. It is only unique for the duration of
     the process *)
@@ -331,5 +331,6 @@ end
 val to_dune_lib
   :  t
   -> lib_modules:Lib_modules.t
+  -> foreign_objects:Path.t list
   -> dir:Path.t
   -> (Syntax.Version.t * Dune_lang.t list) Dune_package.Lib.t

@@ -208,6 +208,22 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name duplicate-c-cxx)
+ (deps (package dune) (source_tree test-cases/duplicate-c-cxx))
+ (action
+  (chdir
+   test-cases/duplicate-c-cxx
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
+ (name duplicate-c-cxx-obj)
+ (deps (package dune) (source_tree test-cases/duplicate-c-cxx-obj))
+ (action
+  (chdir
+   test-cases/duplicate-c-cxx-obj
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name duplicate-target-no-loc)
  (deps (package dune) (source_tree test-cases/duplicate-target-no-loc))
  (action
@@ -485,6 +501,14 @@
  (action
   (chdir
    test-cases/github1616
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
+ (name github1811)
+ (deps (package dune) (source_tree test-cases/github1811))
+ (action
+  (chdir
+   test-cases/github1811
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
@@ -1140,7 +1164,9 @@
  (action
   (chdir
    test-cases/toplevel-stanza
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} -skip-versions <4.05.0 -test run.t)
+    (diff? run.t run.t.corrected)))))
 
 (alias
  (name trace-file)
@@ -1188,7 +1214,9 @@
  (action
   (chdir
    test-cases/utop-default
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} -skip-versions <4.05.0 -test run.t)
+    (diff? run.t run.t.corrected)))))
 
 (alias
  (name variants)
@@ -1261,6 +1289,8 @@
   (alias dune-ppx-driver-system)
   (alias dune-project-edition)
   (alias dup-fields)
+  (alias duplicate-c-cxx)
+  (alias duplicate-c-cxx-obj)
   (alias duplicate-target-no-loc)
   (alias embed-jbuild)
   (alias enabled_if)
@@ -1295,6 +1325,7 @@
   (alias github1549)
   (alias github1560)
   (alias github1616)
+  (alias github1811)
   (alias github20)
   (alias github24)
   (alias github25)
@@ -1414,6 +1445,8 @@
   (alias dune-ppx-driver-system)
   (alias dune-project-edition)
   (alias dup-fields)
+  (alias duplicate-c-cxx)
+  (alias duplicate-c-cxx-obj)
   (alias duplicate-target-no-loc)
   (alias embed-jbuild)
   (alias enabled_if)
@@ -1446,6 +1479,7 @@
   (alias github1549)
   (alias github1560)
   (alias github1616)
+  (alias github1811)
   (alias github20)
   (alias github24)
   (alias github25)
@@ -1518,7 +1552,6 @@
   (alias transitive-deps-mode)
   (alias upgrader)
   (alias use-meta)
-  (alias utop-default)
   (alias variants)
   (alias windows-diff)
   (alias workspaces)

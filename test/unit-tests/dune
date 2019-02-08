@@ -3,7 +3,7 @@
  (modules expect_test)
  (link_flags (-linkall))
  (modes byte)
- (libraries which_program_dune unix dune compiler-libs.toplevel test_common dag))
+ (libraries wp_dune unix dune compiler-libs.toplevel test_common dag))
 
 (ocamllex expect_test)
 

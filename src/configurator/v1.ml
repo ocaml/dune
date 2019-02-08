@@ -118,7 +118,7 @@ module Find_in_path = struct
     | None -> prog_not_found prog
     | Some fn -> fn
 
-  let find prog =
+  let which prog =
     List.find_map (get_path ()) ~f:(fun dir ->
       let fn = dir ^/ prog ^ exe in
       Option.some_if (Sys.file_exists fn) fn)
@@ -131,13 +131,7 @@ let gen_id t =
   t.counter <- n + 1;
   n
 
-type run_result =
-  { exit_code : int
-  ; stdout    : string
-  ; stderr    : string
-  }
-
-let quote =
+let quote_if_needed =
   let need_quote = function
     | ' ' | '\"' -> true
     | _          -> false
@@ -147,41 +141,72 @@ let quote =
     then Filename.quote s
     else s
 
-let command_line prog args =
-  String.concat ~sep:" " (List.map (prog :: args) ~f:quote)
 
-let run t ~dir cmd =
-  logf t "run: %s" cmd;
-  let n = gen_id t in
-  let stdout_fn = t.dest_dir ^/ sprintf "stdout-%d" n in
-  let stderr_fn = t.dest_dir ^/ sprintf "stderr-%d" n in
-  let exit_code =
-    Printf.ksprintf
-      Sys.command "cd %s && %s > %s 2> %s"
-      (Filename.quote dir)
-      cmd
-      (Filename.quote stdout_fn)
-      (Filename.quote stderr_fn)
-  in
-  let stdout = Io.read_file stdout_fn in
-  let stderr = Io.read_file stderr_fn in
-  logf t "-> process exited with code %d" exit_code;
-  logf t "-> stdout:";
-  List.iter (String.split_lines stdout) ~f:(logf t " | %s");
-  logf t "-> stderr:";
-  List.iter (String.split_lines stderr) ~f:(logf t " | %s");
-  { exit_code; stdout; stderr }
+module Process = struct
+  type result =
+    { exit_code : int
+    ; stdout    : string
+    ; stderr    : string
+    }
 
-let run_capture_exn t ~dir cmd =
-  let { exit_code; stdout; stderr } = run t ~dir cmd in
-  if exit_code <> 0 then
-    die "command exited with code %d: %s" exit_code cmd
-  else if not (String.is_empty stderr) then
-    die "command has non-empty stderr: %s" cmd
-  else
-    stdout
+  let command_line prog args =
+    String.concat ~sep:" " (List.map (prog :: args) ~f:quote_if_needed)
 
-let run_ok t ~dir cmd = (run t ~dir cmd).exit_code = 0
+(* [cmd] which cannot be quoted (such as [t.c_compiler] which contains
+   some flags) followed by additional arguments. *)
+  let command_args cmd args =
+    String.concat ~sep:" " (cmd :: List.map args ~f:quote_if_needed)
+
+  let run_command t ?dir ?(env=[]) cmd =
+    logf t "run: %s" cmd;
+    let n = gen_id t in
+    let stdout_fn = t.dest_dir ^/ sprintf "stdout-%d" n in
+    let stderr_fn = t.dest_dir ^/ sprintf "stderr-%d" n in
+    let in_dir = match dir with
+      | None -> ""
+      | Some dir -> sprintf "cd %s && " (Filename.quote dir) in
+    let with_env = match env with
+      | [] -> ""
+      | _ -> "env " ^ String.concat ~sep:" " env in
+    let exit_code =
+      Printf.ksprintf
+        Sys.command "%s%s %s > %s 2> %s"
+        in_dir with_env
+        cmd
+        (Filename.quote stdout_fn)
+        (Filename.quote stderr_fn)
+    in
+    let stdout = Io.read_file stdout_fn in
+    let stderr = Io.read_file stderr_fn in
+    logf t "-> process exited with code %d" exit_code;
+    logf t "-> stdout:";
+    List.iter (String.split_lines stdout) ~f:(logf t " | %s");
+    logf t "-> stderr:";
+    List.iter (String.split_lines stderr) ~f:(logf t " | %s");
+    { exit_code; stdout; stderr }
+
+  let run_command_capture_exn t ?dir ?env cmd =
+    let { exit_code; stdout; stderr } = run_command t ?dir ?env cmd in
+    if exit_code <> 0 then
+      die "command exited with code %d: %s" exit_code cmd
+    else if not (String.is_empty stderr) then
+      die "command has non-empty stderr: %s" cmd
+    else
+      stdout
+
+  let run_command_ok t ?dir ?env cmd =
+    (run_command t ?dir ?env cmd).exit_code = 0
+
+  let run t ?dir ?env prog args =
+    run_command t ?dir ?env (command_line prog args)
+
+  let run_capture_exn t ?dir ?env prog args =
+    run_command_capture_exn t ?dir ?env (command_line prog args)
+
+  let run_ok t ?dir ?env prog args =
+    run_command_ok t ?dir ?env (command_line prog args)
+
+end
 
 let get_ocaml_config_var_exn ~ocamlc_config_cmd map var =
   match String.Map.find map var with
@@ -204,7 +229,7 @@ let create ?dest_dir ?ocamlc ?(log=ignore) name =
     | Some fn -> fn
     | None -> Find_in_path.find_ocaml_prog "ocamlc"
   in
-  let ocamlc_config_cmd = command_line ocamlc ["-config"] in
+  let ocamlc_config_cmd = Process.command_line ocamlc ["-config"] in
   let t =
     { name
     ; ocamlc
@@ -221,7 +246,7 @@ let create ?dest_dir ?ocamlc ?(log=ignore) name =
   in
   let ocamlc_config =
     let ocamlc_config_output =
-      run_capture_exn t ~dir:dest_dir ocamlc_config_cmd
+      Process.run_command_capture_exn t ~dir:dest_dir ocamlc_config_cmd
       |> String.split_lines
     in
     match Ocaml_config.Vars.of_lines ocamlc_config_output with
@@ -262,10 +287,7 @@ let compile_and_link_c_prog t ?(c_flags=[]) ?(link_flags=[]) code =
   logf t "compiling c program:";
   List.iter (String.split_lines code) ~f:(logf t " | %s");
   let run_ok args =
-    run_ok t ~dir
-      (String.concat ~sep:" "
-         (t.c_compiler :: List.map args ~f:Filename.quote))
-  in
+    Process.run_command_ok t ~dir (Process.command_args t.c_compiler args) in
   let ok =
     if need_to_compile_and_link_separately t then
       run_ok (c_flags @ ["-I"; t.stdlib_dir; "-c"; c_fname])
@@ -292,19 +314,12 @@ let compile_c_prog t ?(c_flags=[]) code =
   Io.write_file c_fname code;
   logf t "compiling c program:";
   List.iter (String.split_lines code) ~f:(logf t " | %s");
-  let run_ok args =
-    run_ok t ~dir
-      (String.concat ~sep:" "
-         (t.c_compiler :: List.map args ~f:Filename.quote))
-  in
-  let ok =
-    run_ok (List.concat
-              [ c_flags
-              ; [ "-I" ; t.stdlib_dir
-                ; "-o" ; obj_fname
-                ; "-c" ; c_fname
-                ]
-              ])
+  let ok = Process.run_command_ok t ~dir
+             (Process.command_args t.c_compiler (c_flags
+                                                 @ [ "-I" ; t.stdlib_dir
+                                                     ; "-o" ; obj_fname
+                                                     ; "-c" ; c_fname
+                                                   ]))
   in
   if ok then
     Ok obj_fname
@@ -470,13 +485,13 @@ const char *s%i = "BEGIN-%i-false-END";
     Sys.rename tmp_fname fname
 end
 
-let find_in_path t prog =
-  logf t "find_in_path: %s" prog;
-  let x = Find_in_path.find prog in
+let which t prog =
+  logf t "which: %s" prog;
+  let x = Find_in_path.which prog in
   logf t "-> %s"
     (match x with
      | None -> "not found"
-     | Some fn -> "found: " ^ quote fn);
+     | Some fn -> "found: " ^ quote_if_needed fn);
   x
 
 module Pkg_config = struct
@@ -486,7 +501,7 @@ module Pkg_config = struct
     }
 
   let get c =
-    Option.map (find_in_path c "pkg-config") ~f:(fun pkg_config ->
+    Option.map (which c "pkg-config") ~f:(fun pkg_config ->
       { pkg_config; configurator = c })
 
   type package_conf =
@@ -495,30 +510,29 @@ module Pkg_config = struct
     }
 
   let query t ~package =
-    let package = quote package in
-    let pkg_config = quote t.pkg_config in
+    let package = quote_if_needed package in
+    let pkg_config = quote_if_needed t.pkg_config in
     let c = t.configurator in
     let dir = c.dest_dir in
     let env =
       match ocaml_config_var c "system" with
       | Some "macosx" -> begin
-          match find_in_path c "brew" with
+          match which c "brew" with
           | Some brew ->
             let prefix =
-              String.trim (run_capture_exn c ~dir (command_line brew ["--prefix"]))
+              String.trim (Process.run_capture_exn c ~dir brew ["--prefix"])
             in
-            sprintf "env PKG_CONFIG_PATH=%s/opt/%s/lib/pkgconfig:$PKG_CONFIG_PATH "
-              (quote prefix) package
+            [sprintf "PKG_CONFIG_PATH=$PKG_CONFIG_PATH:%s/opt/%s/lib/pkgconfig"
+               (quote_if_needed prefix) package]
           | None ->
-            ""
+            []
         end
-      | _ -> ""
+      | _ -> []
     in
-    if run_ok c ~dir (sprintf "%s%s %s" env pkg_config package) then
+    if Process.run_ok c ~dir ~env pkg_config [package] then
       let run what =
-        match
-          String.trim
-            (run_capture_exn c ~dir (sprintf "%s%s %s %s" env pkg_config what package))
+        match String.trim
+                (Process.run_capture_exn c ~dir ~env pkg_config [what; package])
         with
         | "" -> []
         | s  -> String.split s ~on:' '

@@ -79,10 +79,10 @@ Test that going throught the -ppx option of the compiler works
   Entering directory 'driver-tests'
       ocamldep .test_ppx_staged.objs/test_ppx_staged.ml.d
   tool name: ocamldep
-  args:--as-ppx --cookie library-name="test_ppx_staged"
+  args:--as-ppx -arg1 -arg2 -foo bar --cookie library-name="test_ppx_staged"
         ocamlc .test_ppx_staged.objs/byte/test_ppx_staged.{cmi,cmo,cmt}
   tool name: ocamlc
-  args:--as-ppx --cookie library-name="test_ppx_staged"
+  args:--as-ppx -arg1 -arg2 -foo bar --cookie library-name="test_ppx_staged"
 
 Test using installed drivers
 

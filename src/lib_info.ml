@@ -41,10 +41,10 @@ module Deps = struct
     | Complex l -> l
 end
 
-module Virtual = struct
-  type t =
+module Source = struct
+  type 'a t =
     | Local
-    | External of Lib_modules.t
+    | External of 'a
 end
 
 type t =
@@ -59,7 +59,7 @@ type t =
   ; synopsis         : string option
   ; archives         : Path.t list Mode.Dict.t
   ; plugins          : Path.t list Mode.Dict.t
-  ; foreign_objects  : Path.t list
+  ; foreign_objects  : Path.t list Source.t
   ; foreign_archives : Path.t list Mode.Dict.t
   ; jsoo_runtime     : Path.t list
   ; jsoo_archive     : Path.t option
@@ -70,7 +70,7 @@ type t =
   ; virtual_deps     : (Loc.t * Lib_name.t) list
   ; dune_version     : Syntax.Version.t option
   ; sub_systems      : Sub_system_info.t Sub_system_name.Map.t
-  ; virtual_         : Virtual.t option
+  ; virtual_         : Lib_modules.t Source.t option
   ; implements       : (Loc.t * Lib_name.t) option
   ; wrapped          : Wrapped.t Dune_file.Library.Inherited.t option
   ; main_module_name : Dune_file.Library.Main_module_name.t
@@ -104,22 +104,19 @@ let of_library_stanza ~dir ~has_native ~ext_lib ~ext_obj
     | Some p -> Public p.package
   in
   let virtual_library = Dune_file.Library.is_virtual conf in
-  let (foreign_archives, foreign_objects) =
+  let foreign_archives =
     let stubs =
       if Dune_file.Library.has_stubs conf then
         [Dune_file.Library.stubs_archive conf ~dir ~ext_lib]
       else
         []
     in
-    ({ Mode.Dict.
+    { Mode.Dict.
        byte   = stubs
      ; native =
          Path.relative dir (Lib_name.Local.to_string lib_name ^ ext_lib)
          :: stubs
      }
-    , List.map (conf.c_names @ conf.cxx_names) ~f:(fun (_, name) ->
-        Path.relative (Obj_dir.obj_dir obj_dir) (name ^ ext_obj))
-    )
   in
   let foreign_archives =
     match conf.stdlib with
@@ -138,7 +135,8 @@ let of_library_stanza ~dir ~has_native ~ext_lib ~ext_obj
   in
   let jsoo_archive =
     Some (gen_archive_file ~dir:(Obj_dir.obj_dir obj_dir) ".cma.js") in
-  let virtual_ = Option.map conf.virtual_modules ~f:(fun _ -> Virtual.Local) in
+  let virtual_ = Option.map conf.virtual_modules ~f:(fun _ -> Source.Local) in
+  let foreign_objects = Source.Local in
   let (archives, plugins) =
     if virtual_library then
       ( Mode.Dict.make_both []
@@ -186,7 +184,7 @@ let of_dune_lib dp =
   let src_dir = Lib.dir dp in
   let virtual_ =
     if Lib.virtual_ dp then
-      Some (Virtual.External (Option.value_exn (Lib.modules dp)))
+      Some (Source.External (Option.value_exn (Lib.modules dp)))
     else
       None
   in
@@ -206,7 +204,7 @@ let of_dune_lib dp =
   ; synopsis = Lib.synopsis dp
   ; requires = Simple (Lib.requires dp)
   ; main_module_name = This (Lib.main_module_name dp)
-  ; foreign_objects = Lib.foreign_objects dp
+  ; foreign_objects = Source.External (Lib.foreign_objects dp)
   ; plugins = Lib.plugins dp
   ; archives = Lib.archives dp
   ; ppx_runtime_deps = Lib.ppx_runtime_deps dp

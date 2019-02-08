@@ -1,20 +1,22 @@
 open! Stdune
 open! Import
 
+type dune_file =
+  | OCaml_syntax of Loc.t
+  | Sexps of Dune_lang.Cst.t list
+
+let parse_lexbuf lb =
+  if Dune_lexer.is_script lb then
+    OCaml_syntax (Loc.of_lexbuf lb)
+  else
+    Sexps (Dune_lang.Parser.parse_cst lb)
+
 let parse_file path_opt =
-  let fname, contents =
-    match path_opt with
-    | Some path ->
-      Io.with_file_in path ~f:(fun ic ->
-        let contents = Io.read_all ic in
-        (Path.to_string path, contents)
-      )
-    | None ->
-      let lines = Io.input_lines stdin in
-      let contents = String.concat ~sep:"\n" lines in
-      ("<stdin>", contents)
-  in
-  Dune_lang.parse_cst_string ~fname contents
+  match path_opt with
+  | Some path ->
+    Io.with_lexbuf_from_file path ~f:parse_lexbuf
+  | None ->
+    parse_lexbuf @@ Lexing.from_channel stdin
 
 let can_be_displayed_wrapped =
   List.for_all ~f:(fun (c : Dune_lang.Cst.t) ->
@@ -131,7 +133,9 @@ let format_file ~input ~output =
     Printf.printf
       "Parse error: %s\n"
       (Dune_lang.Parse_error.message e)
-  | sexps ->
+  | OCaml_syntax loc ->
+    Errors.warn loc "OCaml syntax is not supported, skipping."
+  | Sexps sexps ->
     with_output output (fun fmt ->
       pp_top_sexps fmt sexps;
       Format.pp_print_flush fmt ()

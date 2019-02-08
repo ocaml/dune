@@ -163,6 +163,7 @@ module Gen (P : Install_rules.Params) = struct
     Module_compilation.build_modules cctx ~js_of_ocaml ~dynlink ~dep_graphs
 
   let build_c_file (lib : Library.t) ~expander ~dir ~includes (loc, src, dst) =
+    let src = C.Source.path src in
     SC.add_rule sctx ~loc ~dir
       (Expander.expand_and_eval_set expander lib.c_flags
          ~standard:(Build.return (Context.cc_g ctx))
@@ -170,7 +171,7 @@ module Gen (P : Install_rules.Params) = struct
        Build.run
          (* We have to execute the rule in the library directory as
             the .o is produced in the current directory *)
-         ~dir:(Path.parent_exn src)
+         ~dir
          (Ok ctx.ocamlc)
          [ A "-g"
          ; includes
@@ -181,6 +182,7 @@ module Gen (P : Install_rules.Params) = struct
     dst
 
   let build_cxx_file (lib : Library.t) ~expander ~dir ~includes (loc, src, dst) =
+    let src = C.Source.path src in
     let open Arg_spec in
     let output_param =
       if ctx.ccomp_type = "msvc" then
@@ -195,7 +197,7 @@ module Gen (P : Install_rules.Params) = struct
        Build.run
          (* We have to execute the rule in the library directory as
             the .o is produced in the current directory *)
-         ~dir:(Path.parent_exn src)
+         ~dir
          (SC.resolve_program ~loc:None ~dir sctx ctx.c_compiler)
          ([ S [A "-I"; Path ctx.stdlib_dir]
           ; As (SC.cxx_flags sctx)
@@ -253,7 +255,8 @@ module Gen (P : Install_rules.Params) = struct
       ocamlmklib ~sandbox:true ~custom:false ~targets:[dynamic]
     end
 
-  let build_o_files lib ~dir ~expander ~requires ~dir_contents =
+  let build_o_files lib ~(c_sources : C.Sources.t)
+        ~dir ~expander ~requires ~dir_contents =
     let all_dirs = Dir_contents.dirs dir_contents in
     let h_files =
       List.fold_left all_dirs ~init:[] ~f:(fun acc dc ->
@@ -264,39 +267,33 @@ module Gen (P : Install_rules.Params) = struct
             else
               acc))
     in
-    let all_dirs = Path.Set.of_list (List.map all_dirs ~f:Dir_contents.dir) in
-    let resolve_name ~ext (loc, fn) =
-      let p = Path.relative dir (fn ^ ext) in
-      if not (match Path.parent p with
-        | None -> false
-        | Some p -> Path.Set.mem all_dirs p) then
-        Errors.fail loc
-          "File %a is not part of the current directory group. \
-           This is not allowed."
-          Path.pp (Path.drop_optional_build_context p)
-      ;
-      (loc, p, Path.relative dir (fn ^ ctx.ext_obj))
-    in
     let includes =
       Arg_spec.S
         [ Hidden_deps h_files
         ; Arg_spec.of_result_map requires ~f:(fun libs ->
             S [ Lib.L.c_include_flags libs ~stdlib_dir:ctx.stdlib_dir
-              ; Hidden_deps (Lib_file_deps.file_deps sctx libs
+              ; Hidden_deps (Lib_file_deps.file_deps libs
                                ~groups:[Lib_file_deps.Group.Header])
               ])
         ]
     in
-    List.map lib.c_names ~f:(fun name ->
-      build_c_file   lib ~expander ~dir ~includes (resolve_name name ~ext:".c")
-    ) @ List.map lib.cxx_names ~f:(fun name ->
-      build_cxx_file lib ~expander ~dir ~includes (resolve_name name ~ext:".cpp")
-    )
+    let build_x_files build_x files =
+      String.Map.to_list files
+      |> List.map ~f:(fun (obj, (loc, src)) ->
+        let dst = Path.relative dir (obj ^ ctx.ext_obj) in
+        build_x lib ~expander ~dir ~includes (loc, src, dst)
+      )
+    in
+    let { C.Kind.Dict. c; cxx } = C.Sources.split_by_kind c_sources in
+    build_x_files build_c_file c
+    @ build_x_files build_cxx_file cxx
 
   let build_stubs lib ~dir ~expander ~requires ~dir_contents ~vlib_stubs_o_files =
     let lib_o_files =
       if Library.has_stubs lib then
-        build_o_files lib ~dir ~expander ~requires ~dir_contents
+        let c_sources = Dir_contents.c_sources_of_library
+                          dir_contents ~name:(Library.best_name lib) in
+        build_o_files lib ~dir ~expander ~requires ~dir_contents ~c_sources
       else
         []
     in
@@ -497,7 +494,7 @@ module Gen (P : Install_rules.Params) = struct
       build_stubs lib ~dir ~expander ~requires:requires_compile
         ~dir_contents ~vlib_stubs_o_files;
 
-    Lib_file_deps.setup_file_deps sctx ~lib ~dir
+    Lib_file_deps.setup_file_deps ~lib ~dir
       ~modules:(Lib_modules.have_artifacts lib_modules
                 |> Module.Name.Map.values
                 |> Vimpl.for_file_deps vimpl);

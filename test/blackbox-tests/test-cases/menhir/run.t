@@ -69,3 +69,21 @@
       ocamlopt src/.test.eobjs/native/test.{cmx,o}
       ocamlopt src/.test.eobjs/native/lexer2.{cmx,o}
       ocamlopt src/test.exe
+
+Reproduction case for #1781, only the .ml and .mli should be promoted:
+
+  $ dune build @all --root promote
+  Entering directory 'promote'
+  $ ls -1 promote/_build/default | sort | grep mock
+  parser__mock.ml.mock
+  parser__mock.mli.inferred
+  $ ls -1 promote | grep mock
+  [1]
+Check what is being generated exactly:
+  $ ls -1 promote
+  _build
+  dune
+  dune-project
+  parser.ml
+  parser.mli
+  parser.mly

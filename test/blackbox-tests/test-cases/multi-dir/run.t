@@ -19,6 +19,10 @@ Test with C stubs in sub-directories
 
   $ dune runtest --root test3
   Entering directory 'test3'
+  File "dune", line 9, characters 16-25:
+  9 |  (c_names stub1 sub/stub2))
+                      ^^^^^^^^^
+  Warning: relative part of stub are no longer necessary and are ignored.
           main alias runtest
   Hello, world!
 

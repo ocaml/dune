@@ -50,21 +50,6 @@ let relative_file =
     else
       of_sexp_errorf loc "relative filename expected")
 
-let c_name, cxx_name =
-  let make what ext =
-    plain_string (fun ~loc s ->
-      if match s with
-        | "" | "." | ".."  -> true
-        | _ -> false then
-        of_sexp_errorf loc
-          "%S is not a valid %s name."
-          s what what ext
-      else
-        (loc, s))
-  in
-  (make "C"   "c",
-   make "C++" "cpp")
-
 (* Parse and resolve "package" fields *)
 module Pkg = struct
   let listing packages =
@@ -804,9 +789,9 @@ module Library = struct
     ; modes                    : Mode_conf.Set.t
     ; kind                     : Lib_kind.t
     ; c_flags                  : Ordered_set_lang.Unexpanded.t
-    ; c_names                  : (Loc.t * string) list
+    ; c_names                  : Ordered_set_lang.t option
     ; cxx_flags                : Ordered_set_lang.Unexpanded.t
-    ; cxx_names                : (Loc.t * string) list
+    ; cxx_names                : Ordered_set_lang.t option
     ; library_flags            : Ordered_set_lang.Unexpanded.t
     ; c_library_flags          : Ordered_set_lang.Unexpanded.t
     ; self_build_stubs_archive : string option
@@ -838,8 +823,8 @@ module Library = struct
          field "ppx_runtime_libraries" (list (located Lib_name.decode)) ~default:[]
        and c_flags = field_oslu "c_flags"
        and cxx_flags = field_oslu "cxx_flags"
-       and c_names = field "c_names" (list c_name) ~default:[]
-       and cxx_names = field "cxx_names" (list cxx_name) ~default:[]
+       and c_names = field_o "c_names" Ordered_set_lang.decode
+       and cxx_names = field_o "cxx_names" Ordered_set_lang.decode
        and library_flags = field_oslu "library_flags"
        and c_library_flags = field_oslu "c_library_flags"
        and virtual_deps =
@@ -913,9 +898,9 @@ module Library = struct
          let err =
            match c_names, cxx_names, self_build_stubs_archive with
            | _, _, None -> None
-           | (_ :: _), _, Some _ -> Some "c_names"
-           | _, (_ :: _), Some _ -> Some "cxx_names"
-           | [], [], _ -> None
+           | Some _, _, Some _ -> Some "c_names"
+           | _, Some _, Some _ -> Some "cxx_names"
+           | None, None, _ -> None
          in
          match err with
          | None ->
@@ -956,8 +941,8 @@ module Library = struct
 
   let has_stubs t =
     match t.c_names, t.cxx_names, t.self_build_stubs_archive with
-    | [], [], None -> false
-    | _            -> true
+    | None, None, None -> false
+    | _                -> true
 
   let stubs_name t =
     let name =

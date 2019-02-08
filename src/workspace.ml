@@ -220,7 +220,7 @@ let default ?x ?profile () =
 
 let load ?x ?profile p =
   let x = Option.map x ~f:(fun s -> Context.Target.Named s) in
-  match Which_program.t with
+  match Wp.t with
   | Dune ->
     Io.with_lexbuf_from_file p ~f:(fun lb ->
       if Dune_lexer.eof_reached lb then
@@ -242,6 +242,6 @@ let default ?x ?profile () =
   default ?x ?profile ()
 
 let filename =
-  match Which_program.t with
+  match Wp.t with
   | Dune     -> "dune-workspace"
   | Jbuilder -> "jbuild-workspace"

@@ -12,6 +12,14 @@ val create
 val ocaml_config_var     : t -> string -> string option
 val ocaml_config_var_exn : t -> string -> string
 
+module Ocaml_version : sig
+  type t
+  val pp : Format.formatter -> t -> unit
+  val compare : t -> t -> int
+end
+
+val ocaml_version : t -> Ocaml_version.t
+
 (** [c_test t ?c_flags ?link_flags c_code] try to compile and link the
    C code given in [c_code]. Return whether compilation was
    successful. *)

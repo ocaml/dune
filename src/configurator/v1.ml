@@ -4,6 +4,7 @@ open! Stdune
    initialized *)
 module Path = struct end
 module Io = Io.String_path
+module Ocaml_version = Ocaml_version
 
 let sprintf = Printf.sprintf
 let eprintf = Printf.eprintf
@@ -217,6 +218,10 @@ let ocaml_config_var t var = String.Map.find t.ocamlc_config var
 let ocaml_config_var_exn t var =
   get_ocaml_config_var_exn t.ocamlc_config var
     ~ocamlc_config_cmd:t.ocamlc_config_cmd
+
+let ocaml_version t =
+  ocaml_config_var_exn t "version" |>
+  Ocaml_version.of_string_exn
 
 let create ?dest_dir ?ocamlc ?(log=ignore) name =
   let dest_dir =

@@ -184,6 +184,11 @@ module Stack_frame = struct
 
   let equal (T a) (T b) = Id.equal a.id b.id
   let compare (T a) (T b) = Id.compare a.id b.id
+
+  let pp ppf t =
+    Format.fprintf ppf "%s %a"
+      (name t)
+      Sexp.pp (input t)
 end
 
 module Cycle_error = struct
@@ -210,13 +215,16 @@ let push_stack_frame frame f =
   let stack = get_call_stack () in
   Fiber.Var.set call_stack_key (frame :: stack) f
 
-let dump_stack () =
+let pp_stack ppf () =
   let stack = get_call_stack () in
-  Printf.eprintf "Memoized function stack:\n";
-  List.iter stack ~f:(fun st ->
-    Printf.eprintf "   %s %s\n"
-      (Stack_frame.name st)
-      (Stack_frame.input st |> Sexp.to_string))
+  Format.fprintf ppf "Memoized function stack:@\n";
+  Format.pp_print_list ~pp_sep:Fmt.nl
+    (fun ppf t -> Format.fprintf ppf "  %a" Stack_frame.pp t)
+    ppf
+    stack
+
+let dump_stack () =
+  Format.eprintf "%a" pp_stack ()
 
 module Visibility = struct
   type t =

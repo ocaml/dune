@@ -532,6 +532,32 @@ let promote_correction fn build ~suffix =
            (Path.extend_basename fn ~suffix))
     ]
 
+let action_for_pp sctx ~dep_kind ~loc ~expander ~action ~src ~target =
+  let action = Action_unexpanded.Chdir (workspace_root_var, action) in
+  let bindings = Pform.Map.input_file src in
+  let expander = Expander.add_bindings expander ~bindings in
+  let targets = Expander.Targets.Forbidden "preprocessing actions" in
+  let targets_dir =
+    Path.parent_exn (Option.value ~default:src target) in
+  Build.path src
+  >>^ (fun _ -> Bindings.empty)
+  >>>
+  SC.Action.run sctx
+    action
+    ~loc
+    ~expander
+    ~dep_kind
+    ~targets
+    ~targets_dir
+  |> (fun action ->
+    match target with
+    | None -> action
+    | Some dst -> action >>> Build.action_dyn () ~targets:[dst])
+  >>^ fun action ->
+  match target with
+  | None -> action
+  | Some dst -> Action.with_stdout_to dst action
+
 let lint_module sctx ~dir ~expander ~dep_kind ~lint ~lib_name ~scope ~dir_kind =
   Staged.stage (
     let alias = Build_system.Alias.lint ~dir in
@@ -545,21 +571,11 @@ let lint_module sctx ~dir ~expander ~dep_kind ~lint ~lib_name ~scope ~dir_kind =
           (fun ~source:_ ~ast:_ -> ())
         | Action (loc, action) ->
           (fun ~source ~ast:_ ->
-             let action = Action_unexpanded.Chdir
-                            (workspace_root_var, action) in
              Module.iter source ~f:(fun _ (src : Module.File.t) ->
-               let bindings = Pform.Map.input_file src.path in
-               let expander = Expander.add_bindings expander ~bindings in
-               add_alias src.path ~loc:(Some loc)
-                 (Build.path src.path
-                  >>^ (fun _ -> Bindings.empty)
-                  >>> SC.Action.run sctx
-                        action
-                        ~loc
-                        ~expander
-                        ~dep_kind
-                        ~targets:(Static [])
-                        ~targets_dir:dir)))
+               let src = src.path in
+               add_alias src ~loc:(Some loc)
+                 (action_for_pp sctx ~dep_kind ~loc ~expander ~action
+                    ~src ~target:None)))
         | Pps { loc; pps; flags; staged } ->
           if staged then
             Errors.fail loc
@@ -626,26 +642,13 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess
       (fun m ~lint ->
          let ast =
            pped_module m ~f:(fun _kind src dst ->
-             let bindings = Pform.Map.input_file src in
-             let expander = Expander.add_bindings expander ~bindings in
+             let action = action_for_pp sctx ~dep_kind ~loc ~expander
+                            ~action ~src ~target:(Some dst)
+             in
              SC.add_rule sctx ~loc ~dir
-               (preprocessor_deps
-                >>>
-                Build.path src
-                >>^ (fun _ -> Bindings.empty)
-                >>>
-                SC.Action.run sctx
-                  (Chdir (workspace_root_var, action))
-                  ~loc
-                  ~expander
-                  ~dep_kind
-                  ~targets:(Forbidden "preprocessing actions")
-                  ~targets_dir:(Path.parent_exn dst)
-                >>>
-                Build.action_dyn () ~targets:[dst]
-                >>^ fun action ->
-                Action.with_stdout_to dst action))
-           |> setup_reason_rules sctx in
+               (preprocessor_deps >>> action))
+           |> setup_reason_rules sctx
+         in
          if lint then lint_module ~ast ~source:m;
          ast)
     | Pps { loc; pps; flags; staged } ->

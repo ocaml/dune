@@ -3,6 +3,8 @@ module type S = sig
 
   module Set : Set.S with type elt = t
 
+  module Map : Map_intf.S with type key = t
+
   val gen : unit -> t
   val peek : unit -> t
   val to_int : t -> int
@@ -14,6 +16,7 @@ end
 
 module Make () : S = struct
   module Set = Int.Set
+  module Map = Int.Map
 
   type t = int
 

@@ -3,6 +3,8 @@ module type S = sig
 
   module Set : Set_intf.S with type elt = t
 
+  module Map : Map_intf.S with type key = t
+
   (** Generate a new id. *)
   val gen : unit -> t
 

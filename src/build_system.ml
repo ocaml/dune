@@ -1515,24 +1515,28 @@ let rules_for_files rules deps =
 let evaluate_rules ~recursive ~request =
   let t = t () in
   entry_point t ~f:(fun () ->
-    let rules = ref [] in
+    let rules = ref Internal_rule.Id.Map.empty in
     let rec run_rule (rule : Internal_rule.t) =
-      evaluate_rule rule
-      >>= fun (action, deps) ->
-      let rule =
-        { Rule.
-          id = rule.id
-        ; dir = rule.dir
-        ; deps
-        ; targets = rule.targets
-        ; context = rule.context
-        ; action
-        } in
-      rules := rule :: !rules;
-      if recursive then
-        Deps.parallel_iter deps ~f:proc_rule
-      else
+      if Internal_rule.Id.Map.mem !rules rule.id then
         Fiber.return ()
+      else begin
+        evaluate_rule rule
+        >>= fun (action, deps) ->
+        let rule =
+          { Rule.
+            id = rule.id
+          ; dir = rule.dir
+          ; deps
+          ; targets = rule.targets
+          ; context = rule.context
+          ; action
+          } in
+        rules := Internal_rule.Id.Map.add !rules rule.id rule;
+        if recursive then
+          Deps.parallel_iter deps ~f:proc_rule
+        else
+          Fiber.return ()
+      end
     and proc_rule dep =
       get_file_spec_other t dep >>= function
       | None -> Fiber.return () (* external files *)
@@ -1544,9 +1548,10 @@ let evaluate_rules ~recursive ~request =
     Deps.parallel_iter goal ~f:proc_rule
     >>| fun () ->
     let rules =
-      List.fold_left !rules ~init:Path.Map.empty ~f:(fun acc (r : Rule.t) ->
-        Path.Set.fold r.targets ~init:acc ~f:(fun fn acc ->
-          Path.Map.add acc fn r)) in
+      Internal_rule.Id.Map.fold !rules ~init:Path.Map.empty
+        ~f:(fun (r : Rule.t) acc ->
+          Path.Set.fold r.targets ~init:acc ~f:(fun fn acc ->
+            Path.Map.add acc fn r)) in
     match
       Rule.Id.Top_closure.top_closure
         (rules_for_files rules goal)

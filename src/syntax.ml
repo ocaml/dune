@@ -101,6 +101,15 @@ module Error = struct
        | Some s -> ".\n" ^ s)
 end
 
+module Warning = struct
+  let deprecated_in loc t ?repl ver ~what =
+    Errors.warn loc "%s was deprecated in version %s of %s%s"
+      what (Version.to_string ver) t.desc
+      (match repl with
+       | None -> ""
+       | Some s -> ".\n" ^ s)
+end
+
 
 let create ~name ~desc supported_versions =
   { name
@@ -165,6 +174,16 @@ let deleted_in t ver =
   else begin
     desc () >>= fun (loc, what) ->
     Error.deleted_in loc t ver ~what
+  end
+
+let deprecated_in t ver =
+  let open Version.Infix in
+  get_exn t >>= fun current_ver ->
+  if current_ver < ver then
+    return ()
+  else begin
+    desc () >>| fun (loc, what) ->
+    Warning.deprecated_in loc t ver ~what;
   end
 
 let renamed_in t ver ~to_ =

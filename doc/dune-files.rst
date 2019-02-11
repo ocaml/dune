@@ -200,8 +200,9 @@ to use the :ref:`include_subdirs` stanza.
 - ``(allow_overlapping_dependencies)`` allows external dependencies to
   overlap with libraries that are present in the workspace
 
-- ``(no_keep_locs)`` undocumented, it is a necessary hack until this
-  is implemented: https://github.com/ocaml/dune/issues/921
+- ``(no_keep_locs)`` does nothing. It used to be a necessary hack when
+  we were waiting for proper support for virtual libraries. Do not use
+  in new code, it will be deleted in dune 2.0
 
 Note that when binding C libraries, dune doesn't provide special support for
 tools such as ``pkg-config``, however it integrates easily with configurator_ by

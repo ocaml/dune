@@ -1,3 +1,5 @@
+  $ echo '(lang dune 1.0)' > dune-project
+
   $ echo '(jbuild_version 1)' > dune
   $ dune build
   File "dune", line 1, characters 0-18:
@@ -34,4 +36,17 @@
     (deps (:x <dep>) ...)
      ... %{x} ...
   [1]
+  $ rm -f dune
+
+  $ echo '(lang dune 1.7)' > dune-project
+  $ cat > dune <<EOF
+  > (library
+  >  (name foo)
+  >  (no_keep_locs))
+  > EOF
+  $ dune build
+  File "dune", line 3, characters 1-15:
+  3 |  (no_keep_locs))
+       ^^^^^^^^^^^^^^
+  Warning: 'no_keep_locs' was deprecated in version 1.7 of the dune language
   $ rm -f dune

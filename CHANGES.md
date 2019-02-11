@@ -130,6 +130,10 @@ unreleased
 - Add `DUNE_PROFILE` environment variable to easily set the profile. (#1806,
   @rgrinberg)
 
+- Deprecate the undocumented `(no_keep_locs)` field. It was only
+  necessary until virtual libraries were supported (#1822, fix #1816,
+  @diml)
+
 1.6.2 (05/12/2018)
 ------------------
 

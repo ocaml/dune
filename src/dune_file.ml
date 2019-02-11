@@ -611,6 +611,8 @@ module Auto_format = struct
 
   let includes config language =
     List.mem language ~set:(enabled_languages config)
+
+  let loc t = t.loc
 end
 
 module Buildable = struct

@@ -42,7 +42,7 @@ let depend_on_files ~named dir =
   |> depend_on_existing_paths
 
 let gen_rules sctx (config : Dune_file.Auto_format.t) ~dir =
-  let loc = config.loc in
+  let loc = Dune_file.Auto_format.loc config in
   let source_dir = Path.drop_build_context_exn dir in
   let subdir = ".formatted" in
   let output_dir = Path.relative dir subdir in

@@ -99,18 +99,11 @@ module Auto_format : sig
     | Reason
     | Dune
 
-  type enabled_for =
-    | Default of Syntax.Version.t
-    | Only of language list
-
-  type t =
-    { loc : Loc.t
-    ; enabled_for : enabled_for
-    }
-
-  val syntax : Syntax.t
+  type t
 
   val key : t Dune_project.Extension.t
+
+  val loc : t -> Loc.t
 
   val includes : t -> language -> bool
 end

@@ -6,13 +6,11 @@ let doc = "Format dune files"
 
 let man =
   [ `S "DESCRIPTION"
-  ; `P {|$(b,dune unstable-fmt) reads a dune file and outputs a formatted
-           version. This feature is unstable, and its interface or behaviour
-           might change.
-         |}
+  ; `P {|$(b,dune format-dune-file) reads a dune file and outputs a formatted
+           version. |}
   ]
 
-let info = Term.info "unstable-fmt" ~doc ~man
+let info = Term.info "format-dune-file" ~doc ~man
 
 let term =
   let%map path_opt =

@@ -134,6 +134,11 @@ unreleased
   necessary until virtual libraries were supported (#1822, fix #1816,
   @diml)
 
+- Rename `unstable-fmt` to `format-dune-file` and remove its `--inplace` option.
+  (#1821, @emillon).
+
+- Autoformatting: `(using fmt 1.1)` will also format dune files (#1821, @emillon).
+
 1.6.2 (05/12/2018)
 ------------------
 

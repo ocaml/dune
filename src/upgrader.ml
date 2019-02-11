@@ -49,6 +49,11 @@ type todo =
   ; mutable to_edit : (Path.t * string) list
   }
 
+let rename_basename base =
+  match String.drop_prefix base ~prefix:"jbuild" with
+  | None -> base
+  | Some suffix -> "dune" ^ suffix
+
 let upgrade_stanza stanza =
   let open Dune_lang.Ast in
   let simplify_field = function
@@ -107,6 +112,20 @@ let upgrade_stanza stanza =
         match l with
         | [Atom (loc, A "fallback") as x] ->
           [Atom (loc, Dune_lang.Atom.of_string "mode"); x]
+        | [ Atom (_, A "include") as x
+          ; (Atom (loc, A s) | Quoted_string (loc, s)) ] ->
+          let base = Filename.basename s in
+          let is_basename = base = s in
+          let new_base = rename_basename base in
+          let s =
+            if is_basename then
+              new_base
+            else
+              Filename.concat (Filename.dirname s) new_base
+          in
+          [x;
+           Dune_lang.add_loc ~loc
+             (Dune_lang.atom_or_quoted_string s)]
         | [Atom _; List (_, [Atom (_, A ":include"); Atom _])] ->
           List.map l ~f:upgrade
         | Atom (_, A ("preprocess" | "lint")) as field :: rest ->
@@ -172,11 +191,7 @@ let upgrade_file todo file sexps comments ~look_for_jbuild_ignore =
   let dir = Path.parent_exn file in
   let new_file =
     let base = Path.basename file in
-    let new_base =
-      match String.drop_prefix base ~prefix:"jbuild" with
-      | None -> base
-      | Some suffix -> "dune" ^ suffix
-    in
+    let new_base = rename_basename base in
     Path.relative dir new_base
   in
   let sexps =

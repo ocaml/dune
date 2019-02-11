@@ -97,9 +97,10 @@ module Auto_format : sig
   type language =
     | Ocaml
     | Reason
+    | Dune
 
   type enabled_for =
-    | Default
+    | Default of Syntax.Version.t
     | Only of language list
 
   type t =
@@ -110,6 +111,8 @@ module Auto_format : sig
   val syntax : Syntax.t
 
   val key : t Dune_project.Extension.t
+
+  val includes : t -> language -> bool
 end
 
 module Buildable : sig

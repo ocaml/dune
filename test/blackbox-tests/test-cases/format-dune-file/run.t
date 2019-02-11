@@ -32,32 +32,10 @@ It is possible to pass a file name:
   $ dune format-dune-file dune
   (a b)
 
-A file can be fixed in place:
-
-  $ echo '(a (b c))' > dune_temp
-  $ dune format-dune-file --inplace dune_temp
-  $ cat dune_temp
-  (a
-   (b c))
-
-The --inplace flag requires a file name:
-
-  $ dune format-dune-file --inplace
-  --inplace requires a file name
-  [1]
-
 Parse errors are displayed:
 
   $ echo '(' | dune format-dune-file
   Parse error: unclosed parenthesis at end of input
-
-and files are not removed when there is an error:
-
-  $ echo '(a' > dune_temp
-  $ dune format-dune-file --inplace dune_temp
-  Parse error: unclosed parenthesis at end of input
-  $ cat dune_temp
-  (a
 
 When a list is indented, there is no extra space at the end.
 

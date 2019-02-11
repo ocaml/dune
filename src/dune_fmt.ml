@@ -118,16 +118,7 @@ let pp_top_sexp fmt sexp =
 let pp_top_sexps =
   Fmt.list ~pp_sep:Fmt.nl pp_top_sexp
 
-let with_output path_opt k =
-  match path_opt with
-  | None ->
-    k Format.std_formatter
-  | Some path ->
-    Io.with_file_out ~binary:true path ~f:(fun oc ->
-      k @@ Format.formatter_of_out_channel oc
-    )
-
-let format_file ~input ~output =
+let format_file ~input =
   match parse_file input with
   | exception Dune_lang.Parse_error e ->
     Printf.printf
@@ -136,7 +127,4 @@ let format_file ~input ~output =
   | OCaml_syntax loc ->
     Errors.warn loc "OCaml syntax is not supported, skipping."
   | Sexps sexps ->
-    with_output output (fun fmt ->
-      pp_top_sexps fmt sexps;
-      Format.pp_print_flush fmt ()
-    )
+    Format.printf "%a%!" pp_top_sexps sexps

@@ -1,4 +1,5 @@
 open Import
+open Stdune
 
 module Dune_fmt = Dune.Dune_fmt
 
@@ -17,22 +18,8 @@ let term =
     let docv = "FILE" in
     let doc = "Path to the dune file to parse." in
     Arg.(value & pos 0 (some path) None & info [] ~docv ~doc)
-  and inplace =
-    let doc = "Modify the file in place" in
-    Arg.(value & flag & info ["inplace"] ~doc)
   in
-  let (input, output) =
-    match path_opt, inplace with
-    | None, false ->
-      (None, None)
-    | Some path, true ->
-      let path = Arg.Path.path path in
-      (Some path, Some path)
-    | Some path, false ->
-      (Some (Arg.Path.path path), None)
-    | None, true ->
-      die "--inplace requires a file name"
-  in
-  Dune_fmt.format_file ~input ~output
+  let input = Option.map ~f:Arg.Path.path path_opt in
+  Dune_fmt.format_file ~input
 
 let command = term, info

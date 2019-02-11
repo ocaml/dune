@@ -141,7 +141,7 @@ let all =
   ; promote
   ; Printenv.command
   ; Help.command
-  ; Fmt_cmd.command
+  ; Format_dune_file.command
   ; Compute.command
   ; Upgrade.command
   ]

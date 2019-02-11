@@ -384,19 +384,19 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
- (name fmt)
- (deps (package dune) (source_tree test-cases/fmt))
- (action
-  (chdir
-   test-cases/fmt
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
-
-(alias
  (name force-test)
  (deps (package dune) (source_tree test-cases/force-test))
  (action
   (chdir
    test-cases/force-test
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
+ (name format-dune-file)
+ (deps (package dune) (source_tree test-cases/format-dune-file))
+ (action
+  (chdir
+   test-cases/format-dune-file
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
@@ -1310,8 +1310,8 @@
   (alias findlib)
   (alias findlib-dynload)
   (alias findlib-error)
-  (alias fmt)
   (alias force-test)
+  (alias format-dune-file)
   (alias formatting)
   (alias gen-opam-install-file)
   (alias github1019)
@@ -1465,8 +1465,8 @@
   (alias fallback-dune)
   (alias findlib)
   (alias findlib-error)
-  (alias fmt)
   (alias force-test)
+  (alias format-dune-file)
   (alias formatting)
   (alias github1019)
   (alias github1099)

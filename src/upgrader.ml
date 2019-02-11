@@ -222,7 +222,7 @@ let upgrade_file todo file sexps comments ~look_for_jbuild_ignore =
       (List.map ~f:Dune_lang.Cst.concrete sexps)
       comments
   in
-  let contents = Format.asprintf "%a@?" Dune_fmt.pp_top_sexps sexps in
+  let contents = Format.asprintf "%a@?" Format_dune_lang.pp_top_sexps sexps in
   todo.to_rename_and_edit <-
     { original_file = file
     ; new_file

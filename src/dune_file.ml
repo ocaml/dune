@@ -837,6 +837,7 @@ module Library = struct
          located (field "self_build_stubs_archive" (option string) ~default:None)
        and no_dynlink = field_b "no_dynlink"
        and no_keep_locs = field_b "no_keep_locs"
+                            ~check:(Syntax.deprecated_in Stanza.syntax (1, 7))
        and sub_systems =
          return () >>= fun () ->
          Sub_system_info.record_parser ()

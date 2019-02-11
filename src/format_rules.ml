@@ -38,7 +38,7 @@ let depend_on_existing_paths paths =
 
 let depend_on_files ~named dir =
   subdirs_until_root dir
-  |> List.map ~f:(fun dir -> Path.relative dir named)
+  |> List.concat_map ~f:(fun dir -> List.map named ~f:(Path.relative dir))
   |> depend_on_existing_paths
 
 let gen_rules sctx (config : Dune_file.Auto_format.t) ~dir =
@@ -51,7 +51,7 @@ let gen_rules sctx (config : Dune_file.Auto_format.t) ~dir =
   let resolve_program =
     Super_context.resolve_program ~dir sctx ~loc:(Some loc) in
   let ocamlformat_deps =
-    lazy (depend_on_files ~named:".ocamlformat" source_dir)
+    lazy (depend_on_files ~named:[".ocamlformat"; ".ocamlformat-ignore"] source_dir)
   in
   let setup_formatting file =
     let open Build.O in

@@ -139,6 +139,9 @@ unreleased
 
 - Autoformatting: `(using fmt 1.1)` will also format dune files (#1821, @emillon).
 
+- Autoformatting: record dependencies on `.ocamlformat-ignore` files (#1824,
+  fixes #1793, @emillon)
+
 1.6.2 (05/12/2018)
 ------------------
 

@@ -4,6 +4,8 @@ open !Stdune
 module Stack_frame : sig
   type t
 
+  val pp : Format.formatter -> t -> unit
+
   val equal : t -> t -> bool
   val compare : t -> t -> Ordering.t
 
@@ -44,6 +46,8 @@ module Make_hidden(Input : Input)
 (** Print the memoized call stack during execution. This is useful for
     debugging purposes. *)
 val dump_stack : unit -> unit
+
+val pp_stack : Format.formatter -> unit -> unit
 
 (** Get the memoized call stack during the execution of a memoized function. *)
 val get_call_stack : unit -> Stack_frame.t list

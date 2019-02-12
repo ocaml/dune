@@ -122,7 +122,7 @@ Write this ``dune`` file at the root of your project:
       (flags (:standard -O3))))
 
 `dev` and `release` correspond to build profiles. The build profile
-can be selected from the command line with `--profile foo` or from a
+can be selected from the command line with ``--profile foo`` or from a
 `dune-workspace` file by writing:
 
 .. code:: scheme

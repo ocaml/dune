@@ -100,6 +100,7 @@ let deps_of cctx ~ml_kind unit =
     match Module.file unit ml_kind with
     | None -> Build.return []
     | Some file ->
+      let dir = Compilation_context.dir cctx in
       let file_in_obj_dir ~suffix file =
         let base = Path.basename file in
         Path.relative
@@ -115,7 +116,7 @@ let deps_of cctx ~ml_kind unit =
       in
       let all_deps_file = all_deps_path file in
       let ocamldep_output = file_in_obj_dir file ~suffix:".d" in
-      SC.add_rule sctx ~dir:(Compilation_context.dir cctx)
+      SC.add_rule sctx ~dir
         (let flags =
            Option.value (Module.pp_flags unit) ~default:(Build.return []) in
          flags >>>
@@ -147,7 +148,7 @@ let deps_of cctx ~ml_kind unit =
         in
         List.filter_map dependencies ~f:dependency_file_path
       in
-      SC.add_rule sctx ~dir:(Compilation_context.dir cctx)
+      SC.add_rule sctx ~dir
         ( Build.lines_of ocamldep_output
           >>^ parse_deps cctx ~file ~unit
           >>^ (fun modules ->

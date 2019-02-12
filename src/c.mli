@@ -7,11 +7,14 @@ module Kind : sig
 
   val pp : t Fmt.t
 
-  val split_extension : string -> (string * t) option
+  val split_extension
+    :  string
+    -> dune_version:Syntax.Version.t
+    -> (string * t) option
 
   (** [possible_fns t s] returns the possible filenames given the extension-less
       basenames [s] *)
-  val possible_fns : t -> string -> string list
+  val possible_fns : t -> string -> dune_version:Syntax.Version.t -> string list
 
   module Dict : sig
     type kind

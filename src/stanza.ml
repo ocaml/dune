@@ -9,7 +9,7 @@ end
 let syntax =
   Syntax.create ~name:"dune" ~desc:"the dune language"
     [ (0, 0) (* Jbuild syntax *)
-    ; (1, 7)
+    ; (1, 8)
     ]
 
 module File_kind = struct

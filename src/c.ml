@@ -10,17 +10,26 @@ module Kind = struct
     | C -> Format.pp_print_string fmt "c"
     | Cxx -> Format.pp_print_string fmt "cpp"
 
-  let split_extension fn =
+  let split_extension fn ~dune_version =
     match String.lsplit2 fn ~on:'.' with
     | Some (obj, "c") -> Some (obj, C)
-    | Some (obj, "cxx")
     | Some (obj, "cpp") -> Some (obj, Cxx)
+    | Some (obj, "cxx") ->
+      if dune_version >= (1, 8) then
+        Some (obj, Cxx)
+      else
+        None
     | _ -> None
 
-  let possible_fns t fn =
+  let possible_fns t fn ~dune_version =
     match t with
     | C -> [fn ^ ".c"]
-    | Cxx -> [fn ^ ".cpp"; fn ^ ".cxx"]
+    | Cxx ->
+      let cxx = [fn ^ ".cpp"] in
+      if dune_version >= (1, 8) then
+        (fn ^ ".cxx") :: cxx
+      else
+        cxx
 
   module Dict = struct
     type 'a t =

@@ -284,13 +284,10 @@ include Sub_system.Register_end_point(
               (A.run (Ok exe) flags ::
                (Module.Name.Map.values source_modules
                 |> List.concat_map ~f:(fun m ->
-                  [ Module.file m Impl
-                  ; Module.file m Intf
-                  ])
-                |> List.filter_opt
-                |> List.map ~f:(fun fn ->
-                  A.diff ~optional:true
-                    fn (Path.extend_basename fn ~suffix:".corrected"))))))
+                  Module.sources m
+                  |> List.map ~f:(fun fn ->
+                    A.diff ~optional:true
+                      fn (Path.extend_basename fn ~suffix:".corrected")))))))
   end)
 
 let linkme = ()

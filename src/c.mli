@@ -7,10 +7,15 @@ module Kind : sig
 
   val pp : t Fmt.t
 
+  type split =
+    | Unrecognized
+    | Not_allowed_until of Syntax.Version.t
+    | Recognized of string * t
+
   val split_extension
     :  string
     -> dune_version:Syntax.Version.t
-    -> (string * t) option
+    -> split
 
   (** [possible_fns t s] returns the possible filenames given the extension-less
       basenames [s] *)

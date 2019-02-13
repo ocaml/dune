@@ -49,8 +49,14 @@ let load_sources ~dune_version ~dir ~files =
   let init = C.Kind.Dict.make String.Map.empty in
   String.Set.fold files ~init ~f:(fun fn acc ->
     match C.Kind.split_extension fn ~dune_version with
-    | None -> acc
-    | Some (obj, kind) ->
+    | Unrecognized -> acc
+    | Not_allowed_until version ->
+      let loc = Loc.in_dir dir in
+      Errors.warn loc
+        "Source file %s with extension %s is not allowed before version %a"
+        fn (Filename.extension fn) Syntax.Version.pp version;
+      acc
+    | Recognized (obj, kind) ->
       let path = Path.relative dir fn in
       C.Kind.Dict.update acc kind ~f:(fun v ->
         String.Map.add v obj (C.Source.make ~kind ~path)

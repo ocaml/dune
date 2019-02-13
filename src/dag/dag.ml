@@ -3,131 +3,82 @@ open! Stdune
 include Dag_intf
 
 module Make(Value : Value) : S with type value := Value.t = struct
-  type t = {
-    mutable num : int;
-    mutable index : int;
-    mutable arcs : int;
-  }
+  module Raw_graph = struct
+    type mark = int
 
-  type node_info = {
-    id : int;
-    mutable index : int;
-    mutable level : int;
-    mutable deps : node list;
-    mutable rev_deps : node list;
-  }
-
-  and node =
-    { data : Value.t
-    ; info : node_info
+    type t = {
+      mutable fresh_id : int;
+      mutable fresh_mark : int;
     }
+    type graph = t
+
+    type node_info = {
+      id : int; (* only used for printing *)
+      mutable mark : mark;
+      mutable level : int;
+      mutable deps : node list;
+      mutable rev_deps : node list;
+      mutable parent : node option;
+    }
+
+    and node =
+      { data : Value.t
+      ; info : node_info
+      }
+
+    type vertex = node
+
+    let new_mark g =
+      let m = g.fresh_mark in
+      g.fresh_mark <- g.fresh_mark + 1;
+      m
+
+    let vertex_eq v1 v2 = v1 == v2
+    let is_marked _ v m = v.info.mark = m
+    let set_mark _ v m = v.info.mark <- m
+    let get_level _ v = v.info.level
+    let set_level _ v l = v.info.level <- l
+    let get_incoming _ v = v.info.rev_deps
+    let clear_incoming _ v = v.info.rev_deps <- []
+    let add_incoming _ v w = v.info.rev_deps <- w::v.info.rev_deps
+    let get_outgoing _ v = v.info.deps
+    let get_parent _ v =
+      match v.info.parent with None -> assert false | Some v -> v
+    let set_parent _ v p = v.info.parent <- Some p
+    let raw_add_edge _ v w =
+      v.info.deps <- w::v.info.deps;
+      if v.info.level = w.info.level then w.info.rev_deps <- v::w.info.rev_deps
+    let raw_add_vertex _ _ = ()
+  end
+
+  include Raw_graph
+  module IC = Incremental_cycles.Make(Raw_graph)
 
   exception Cycle of node list
 
-  let create () = {
-    num = 0;
-    index = 0;
-    arcs = 0;
-  }
-
-  let gen_index (dag : t) =
-    dag.index <- dag.index - 1;
-    dag.index
-
-  let create_node_info dag =
-    dag.num <- dag.num + 1;
+  let create () =
     {
-      id = dag.num;
-      index = gen_index dag;
+      fresh_id = 1;
+      fresh_mark = 0;
+    }
+
+  let create_node_info g =
+    let id = g.fresh_id in
+    g.fresh_id <- g.fresh_id + 1;
+    {
+      id;
+      mark = -1;
       level = 1;
       deps = [];
       rev_deps = [];
+      parent = None;
     }
 
-  let delta dag =
-    let n = dag.num in
-    let m = dag.arcs in
-    min (float m ** (1.0 /. 2.0)) (float n ** (2.0 /. 3.0)) |> int_of_float
-
-  let add dag v w =
-    let delta = delta dag in
-
-    dag.arcs <- dag.arcs + 1;
-
-    let marked_ids = ref Int.Set.empty in
-    let arcs = ref 0 in
-    let f = ref [] in
-    let b = ref [] in
-
-    let rec bvisit y acc =
-      marked_ids := Int.Set.union !marked_ids (Int.Set.singleton y.info.id);
-      if List.exists y.info.rev_deps ~f:(fun x -> btraverse x y (x :: acc)) |> not then begin
-        b := List.append !b [y];
-        false end
-      else
-        true
-    and btraverse x _y acc =
-      if x.info.id = w.info.id then raise (Cycle acc);
-      arcs := !arcs + 1;
-      if !arcs >= delta then begin
-        w.info.level <- v.info.level + 1;
-        w.info.rev_deps <- [];
-        b := [];
-        true
-      end else begin
-        if Int.Set.mem !marked_ids x.info.id then
-          false
-        else
-          bvisit x acc
-      end in
-
-    let rec reconstruct_b_path  y acc x =
-      if x.info.id = y.info.id then
-        Some (acc)
-      else
-        List.find_map ~f:(reconstruct_b_path y (x :: acc)) x.info.rev_deps in
-
-    let rec fvisit x acc =
-      List.iter x.info.deps ~f:(fun y -> ftraverse x y (y :: acc));
-      f := x :: !f
-    and ftraverse x y acc =
-      if y.info.id = v.info.id || List.exists ~f:(fun n -> n.info.id = y.info.id) !b then begin
-        let path = reconstruct_b_path y [] v |> Option.value_exn in
-        Cycle (List.rev_append path acc) |> raise
-      end;
-      if y.info.level < w.info.level then begin
-        y.info.level <- w.info.level;
-        y.info.rev_deps <- [];
-        fvisit y acc
-      end;
-      if y.info.level = w.info.level then
-        y.info.rev_deps <- x :: y.info.rev_deps in
-
-    (* step 1: test order *)
-    if (v.info.level < w.info.level || (v.info.level = w.info.level && v.info.index < w.info.index)) |> not then
-      begin
-        (* step 2 *)
-        let step2res = bvisit v [v; w] in
-
-        let acc = [w; v] in
-        (* step 3 *)
-        if step2res then
-          fvisit w acc
-        else if w.info.level <> v.info.level then begin
-          w.info.level <- v.info.level;
-          w.info.rev_deps <- [];
-          fvisit w acc
-        end;
-
-        (* step 4 *)
-        let l = List.rev (List.append !b !f) in
-        List.iter ~f:(fun x -> x.info.index <- gen_index dag) l
-      end;
-
-    (* step 5 *)
-    v.info.deps <- w :: v.info.deps;
-    if v.info.level = w.info.level then
-      w.info.rev_deps <- v :: w.info.rev_deps
+  let add g v w =
+    match IC.add_edge_or_detect_cycle g v w with
+    | IC.EdgeAdded -> ()
+    | IC.EdgeCreatesCycle compute_cycle ->
+      raise (Cycle (List.rev (compute_cycle ())))
 
   let children node = node.info.deps
 
@@ -135,8 +86,8 @@ module Make(Value : Value) : S with type value := Value.t = struct
     if depth >= 20 then
       Format.fprintf fmt "..."
     else
-      Format.fprintf fmt "(%d: k=%d, i=%d) (%a) [@[%a@]]"
-        n.info.id n.info.level n.info.index pp_value n.data
+      Format.fprintf fmt "(%d: k=%d) (%a) [@[%a@]]"
+        n.info.id n.info.level pp_value n.data
         (pp_depth (depth + 1) pp_value
          |> Fmt.list ~pp_sep:(fun fmt () -> Format.fprintf fmt ";@, "))
         n.info.deps

@@ -41,11 +41,6 @@ module type S = sig
   (** Pretty print a node. *)
   val pp_node : value Fmt.t -> node Fmt.t
 
-  (** This returns the \Delta value of the given dag. This is a
-      maximum bound on the number of nodes to search and is useful for
-      debugging. *)
-  val delta : t -> int
-
   (** [is_child v w] returns a boolean indicating if an arc going from
       [v] to [w] exists. *)
   val is_child : node -> node -> bool

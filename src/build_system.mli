@@ -18,6 +18,8 @@ val init
   -> hook:(hook -> unit)
   -> unit
 
+val reset : unit -> unit
+
 type extra_sub_directories_to_keep =
   | All
   | These of String.Set.t

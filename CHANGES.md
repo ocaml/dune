@@ -1,3 +1,10 @@
+unreleased
+----------
+
+- Add `${corrected-suffix}` to the list of variables to upgrade. This
+  fixes the support for `[@@deriving_inline]` with older versions of
+  ppxlib (#...., @diml)
+
 1.7.1 (13/02/2019)
 ------------------
 

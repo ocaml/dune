@@ -1,6 +1,6 @@
   $ dune build
   $ cat _build/install/default/lib/a/dune-package
-  (lang dune 1.7)
+  (lang dune 1.8)
   (name a)
   (library
    (name a)

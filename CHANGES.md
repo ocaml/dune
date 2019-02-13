@@ -5,6 +5,8 @@ unreleased
   fixes the support for `[@@deriving_inline]` with older versions of
   ppxlib (#...., @diml)
 
+- Add support for `.cxx` extension for C++ stubs (#1831, @rgrinberg)
+
 1.7.1 (13/02/2019)
 ------------------
 
@@ -15,6 +17,7 @@ unreleased
 
 1.7.0 (12/02/2019)
 ------------------
+
 
 - Second step of the deprecation of jbuilder: the `jbuilder` binary
   now emits a warning on every startup and both `jbuilder` and `dune`

@@ -269,12 +269,14 @@ let create
     List.map stanzas
       ~f:(fun { Dune_load.Dune_file. dir; project; stanzas; kind } ->
         let ctx_dir = Path.append context.build_dir dir in
+        let dune_version = Dune_project.dune_version project in
         { Dir_with_dune.
           src_dir = dir
         ; ctx_dir
         ; data = stanzas
         ; scope = Scope.DB.find_by_name scopes (Dune_project.name project)
         ; kind
+        ; dune_version
         })
   in
   let stanzas_per_dir =

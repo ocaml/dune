@@ -45,12 +45,18 @@ module Eval = struct
   include Ordered_set_lang.Make_loc(String)(Value)
 end
 
-let load_sources ~dir ~files =
+let load_sources ~dune_version ~dir ~files =
   let init = C.Kind.Dict.make String.Map.empty in
   String.Set.fold files ~init ~f:(fun fn acc ->
-    match C.Kind.split_extension fn with
-    | None -> acc
-    | Some (obj, kind) ->
+    match C.Kind.split_extension fn ~dune_version with
+    | Unrecognized -> acc
+    | Not_allowed_until version ->
+      let loc = Loc.in_dir dir in
+      Errors.warn loc
+        "Source file %s with extension %s is not allowed before version %a"
+        fn (Filename.extension fn) Syntax.Version.pp version;
+      acc
+    | Recognized (obj, kind) ->
       let path = Path.relative dir fn in
       C.Kind.Dict.update acc kind ~f:(fun v ->
         String.Map.add v obj (C.Source.make ~kind ~path)
@@ -79,9 +85,11 @@ let make (d : _ Dir_with_dune.t)
             match String.Map.find c_sources s with
             | Some source -> (loc, source)
             | None ->
+              let dune_version = d.dune_version in
               Errors.fail loc "%s does not exist as a C source. \
                                %s must be present"
-                s (String.enumerate_one_of (C.Kind.possible_fns kind s))
+                s (String.enumerate_one_of
+                     (C.Kind.possible_fns kind s ~dune_version))
           )
         in
         let names =

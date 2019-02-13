@@ -510,8 +510,6 @@ module Pkg_config = struct
     }
 
   let query t ~package =
-    let package = quote_if_needed package in
-    let pkg_config = quote_if_needed t.pkg_config in
     let c = t.configurator in
     let dir = c.dest_dir in
     let env =
@@ -529,10 +527,13 @@ module Pkg_config = struct
         end
       | _ -> []
     in
-    if Process.run_ok c ~dir ~env pkg_config [package] then
+    if not (Process.run_ok c ~dir ~env t.pkg_config [package]) then
+      None
+    else
       let run what =
-        match String.trim
-                (Process.run_capture_exn c ~dir ~env pkg_config [what; package])
+        match
+          String.trim
+            (Process.run_capture_exn c ~dir ~env t.pkg_config [what; package])
         with
         | "" -> []
         | s  -> String.split s ~on:' '
@@ -541,8 +542,6 @@ module Pkg_config = struct
         { libs   = run "--libs"
         ; cflags = run "--cflags"
         }
-    else
-      None
 end
 
 let main ?(args=[]) ~name f =

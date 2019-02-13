@@ -96,6 +96,7 @@ let init_build_system ?only_packages ?external_lib_deps_mode w =
     | Rule_started   -> incr rule_total
     | Rule_completed -> incr rule_done
   in
+  Build_system.reset ();
   Build_system.init ~contexts:w.contexts ~file_tree:w.conf.file_tree ~hook;
   Scheduler.set_status_line_generator gen_status_line;
   Gen_rules.gen w.conf

@@ -166,6 +166,16 @@ module Cached_value = struct
         t.calculated_at <- Run.current ();
         Some t.data
     end
+
+  (* We don't use this version of [get] yet as all the dependencies
+     are not yet properly specified. *)
+  let _ = get
+
+  let get t =
+    if Run.is_current t.calculated_at then
+      Fiber.return (Some t.data)
+    else
+      Fiber.return None
 end
 
 let ser_input (type a) (node : (a, _) Dep_node.t) =

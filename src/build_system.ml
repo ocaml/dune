@@ -469,6 +469,7 @@ let get_build_system () =
   match !t with
   | Some t -> t
   | None -> Exn.code_error "build system not yet initialized" []
+let reset () = t := None
 let t = get_build_system
 
 let string_of_paths set =

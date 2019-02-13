@@ -386,6 +386,7 @@ module Upgrade_var = struct
       ; "workspace_root" , Keep
       ; "context_name"   , Keep
       ; "ROOT"           , Renamed_to "workspace_root"
+      ; "corrected-suffix", Keep
       ]
     in
     String.Map.of_list_exn

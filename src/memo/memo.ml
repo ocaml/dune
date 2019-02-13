@@ -63,7 +63,19 @@ end = struct
   let is_current t = !t
 end
 
-let reset = Run.restart
+(* We can get rid of this once we use the memoization system more
+   pervasively and all the dependencies are properly specified *)
+module Caches = struct
+  let cleaners = ref []
+  let register ~clear =
+    cleaners := clear :: !cleaners
+  let clear () =
+    List.iter !cleaners ~f:(fun f -> f ())
+end
+
+let reset () =
+  Caches.clear ();
+  Run.restart ()
 
 module M = struct
   module Generic_dag = Dag
@@ -166,16 +178,6 @@ module Cached_value = struct
         t.calculated_at <- Run.current ();
         Some t.data
     end
-
-  (* We don't use this version of [get] yet as all the dependencies
-     are not yet properly specified. *)
-  let _ = get
-
-  let get t =
-    if Run.is_current t.calculated_at then
-      Fiber.return (Some t.data)
-    else
-      Fiber.return None
 end
 
 let ser_input (type a) (node : (a, _) Dep_node.t) =
@@ -301,7 +303,9 @@ module Make_gen
     (match Visibility.visibility with
      | Public -> Spec.register spec
      | Private -> ());
-    { cache = Table.create 1024
+    let cache = Table.create 1024 in
+    Caches.register ~clear:(fun () -> Table.clear cache);
+    { cache
     ; spec
     ; fdecl
     }

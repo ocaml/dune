@@ -4,6 +4,7 @@
               stdune
               dune_result
               fiber
+              incremental_cycles
               dag
               memo
               xdg

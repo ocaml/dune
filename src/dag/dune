@@ -1,4 +1,4 @@
 (library
  (name dag)
- (libraries stdune)
+ (libraries stdune incremental_cycles)
  (synopsis "Directed Acyclic Graph library"))

@@ -1,4 +1,4 @@
-1.7.0 (12/02/2010)
+1.7.0 (12/02/2019)
 ------------------
 
 - Second step of the deprecation of jbuilder: the `jbuilder` binary

@@ -3,6 +3,9 @@ unreleased
 
 - Fix the watch mode (#1837, fix #1836, @diml)
 
+- Configurator: Fix misquoting when running pkg-config (#1835, fix #1833,
+  @Chris00)
+
 1.7.0 (12/02/2019)
 ------------------
 

@@ -14,7 +14,7 @@ Th  ese tests show how various pkg-config invocations get qouted:
   -> stdout:
    | --libs
    | gtk+-quartz-3.0
-  run: $TESTCASE_ROOT/_build/install/default/bin/pkg-config 'gtk+-quartz-3.0 >= 3.18'
+  run: $TESTCASE_ROOT/_build/install/default/bin/pkg-config gtk+-quartz-3.0 >= 3.18
   -> process exited with code 0
   -> stdout:
    | gtk+-quartz-3.0 >= 3.18
@@ -28,7 +28,7 @@ Th  ese tests show how various pkg-config invocations get qouted:
   -> stdout:
    | --libs
    | gtk+-quartz-3.0 >= 3.18
-  run: $TESTCASE_ROOT/_build/install/default/bin/pkg-config 'gtksourceview-3.0 >= 3.18'
+  run: $TESTCASE_ROOT/_build/install/default/bin/pkg-config gtksourceview-3.0 >= 3.18
   -> process exited with code 0
   -> stdout:
    | gtksourceview-3.0 >= 3.18

@@ -152,6 +152,60 @@ module Process = struct
   let command_line prog args =
     String.concat ~sep:" " (List.map (prog :: args) ~f:quote_if_needed)
 
+  let run_process t ?dir ?env prog args =
+    let args_str = String.concat ~sep:" " args in
+    logf t "run: %s %s" prog args_str;
+    let n = gen_id t in
+    let create_process =
+      let args = Array.of_list (prog :: args) in
+      match env with
+      | None -> Unix.create_process prog args
+      | Some env ->
+        let env = Array.of_list env in
+        Unix.create_process_env prog args env
+    in
+    let stdout_fn = t.dest_dir ^/ sprintf "stdout-%d" n in
+    let stderr_fn = t.dest_dir ^/ sprintf "stderr-%d" n in
+    let status =
+      let run () =
+        let openfile f =
+          Unix.openfile f [O_WRONLY; O_CREAT; O_TRUNC; O_SHARE_DELETE] 0o666
+        in
+        let stdout = openfile stdout_fn in
+        let stderr = openfile stderr_fn in
+        let (stdin, stdin_w) = Unix.pipe () in
+        Unix.close stdin_w;
+        let p = create_process stdin stdout stderr in
+        Unix.close stdin;
+        Unix.close stdout;
+        Unix.close stderr;
+        let (_pid, status) = Unix.waitpid [] p in
+        status
+      in
+      match dir with
+      | None -> run ()
+      | Some d ->
+        let old_dir = Sys.getcwd () in
+        Exn.protect ~f:(fun () ->
+          Sys.chdir d;
+          run ())
+          ~finally:(fun () -> Sys.chdir old_dir)
+    in
+    match status with
+    | Unix.WSIGNALED signal ->
+      die "signal %d killed process: %s %s" signal prog args_str
+    | WSTOPPED signal ->
+      die "signal %d stopped process: %s %s" signal prog args_str
+    | WEXITED exit_code ->
+      logf t "-> process exited with code %d" exit_code;
+      let stdout = Io.read_file stdout_fn in
+      let stderr = Io.read_file stderr_fn in
+      logf t "-> stdout:";
+      List.iter (String.split_lines stdout) ~f:(logf t " | %s");
+      logf t "-> stderr:";
+      List.iter (String.split_lines stderr) ~f:(logf t " | %s");
+      { exit_code; stdout; stderr }
+
   (* [cmd] which cannot be quoted (such as [t.c_compiler] which contains
      some flags) followed by additional arguments. *)
   let command_args cmd args =
@@ -197,6 +251,9 @@ module Process = struct
   let run_command_ok t ?dir ?env cmd =
     (run_command t ?dir ?env cmd).exit_code = 0
 
+  let run_process_ok t ?dir ?env prog args =
+    (run_process t ?dir ?env prog args).exit_code = 0
+
   let run t ?dir ?env prog args =
     run_command t ?dir ?env (command_line prog args)
 
@@ -205,7 +262,6 @@ module Process = struct
 
   let run_ok t ?dir ?env prog args =
     run_command_ok t ?dir ?env (command_line prog args)
-
 end
 
 let get_ocaml_config_var_exn ~ocamlc_config_cmd map var =
@@ -526,14 +582,21 @@ module Pkg_config = struct
               | None -> package
               | Some pos -> String.trim (String.take package pos)
             in
-            [sprintf "PKG_CONFIG_PATH=$PKG_CONFIG_PATH:%s/opt/%s/lib/pkgconfig"
-               (quote_if_needed prefix) package]
+            let _PKG_CONFIG_PATH = "PKG_CONFIG_PATH" in
+            let pkg_config_path =
+              match Sys.getenv _PKG_CONFIG_PATH with
+              | s -> s ^ ":"
+              | exception Not_found -> ""
+            in
+            [sprintf "%s=%s%s/opt/%s/lib/pkgconfig"
+               _PKG_CONFIG_PATH pkg_config_path (quote_if_needed prefix)
+               package]
           | None ->
             []
         end
       | _ -> []
     in
-    if Process.run_ok c ~dir ~env t.pkg_config [package] then
+    if Process.run_process_ok c ~dir ~env t.pkg_config [package] then
       let run what =
         match String.trim (Process.run_capture_exn c ~dir ~env
                              t.pkg_config [what; package])

@@ -520,6 +520,12 @@ module Pkg_config = struct
             let prefix =
               String.trim (Process.run_capture_exn c ~dir brew ["--prefix"])
             in
+            let package =
+              let seps = ['='; '>'; '<'] in
+              match String.findi package ~f:(List.mem ~set:seps) with
+              | None -> package
+              | Some pos -> String.trim (String.take package pos)
+            in
             [sprintf "PKG_CONFIG_PATH=$PKG_CONFIG_PATH:%s/opt/%s/lib/pkgconfig"
                (quote_if_needed prefix) package]
           | None ->

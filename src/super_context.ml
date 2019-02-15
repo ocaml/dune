@@ -169,7 +169,15 @@ end = struct
       ~default_context_flags
 end
 
-let expander = Env.expander
+let expander t ~dir=
+  let strings s = Pform.Var.Values (Value.L.strings s) in
+  let bindings =
+    Pform.Map.of_list_exn
+      [
+        "cc" , strings (t.context.c_compiler :: (Env.c_flags t ~dir))
+      ; "cxx", strings (t.context.c_compiler :: (Env.cxx_flags t ~dir))
+      ]  in
+  Expander.add_bindings (Env.expander t ~dir) ~bindings
 
 let add_rule t ?sandbox ?mode ?locks ?loc ~dir build =
   let build = Build.O.(>>>) build t.chdir in
@@ -245,7 +253,7 @@ let partial_expand sctx ~dep_kind ~targets_written_by_user ~map_exe
 
 
 let ocaml_flags t ~dir (x : Buildable.t) =
-  let expander = Env.expander t ~dir in
+  let expander = expander t ~dir in
   Ocaml_flags.make
     ~flags:x.flags
     ~ocamlc_flags:x.ocamlc_flags

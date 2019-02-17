@@ -7,6 +7,9 @@ unreleased
 
 - Add support for `.cxx` extension for C++ stubs (#1831, @rgrinberg)
 
+- Remove the deprecation warning non fatal in dev profile (#1850, fix #1843,
+  @rgrinberg)
+
 1.7.1 (13/02/2019)
 ------------------
 

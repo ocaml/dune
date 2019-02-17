@@ -9,7 +9,8 @@ let dev_mode_warnings =
   "@a" ^
   String.concat ~sep:""
     (List.map ~f:(sprintf "-%d")
-       [ 4
+       [ 3
+       ; 4
        ; 29
        ; 40
        ; 41

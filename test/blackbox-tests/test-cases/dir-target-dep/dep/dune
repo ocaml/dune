@@ -1,0 +1,4 @@
+(alias
+ (name default)
+ (deps dir)
+ (action (bash "cat %{deps}/*")))

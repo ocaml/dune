@@ -17,6 +17,11 @@ let die fmt =
     raise (Fatal_error s);
   ) fmt
 
+let warn fmt =
+  Printf.ksprintf (fun msg ->
+    prerr_endline ("Warning: " ^ msg))
+    fmt
+
 type t =
   { name              : string
   ; dest_dir          : string
@@ -153,8 +158,8 @@ module Process = struct
     String.concat ~sep:" " (List.map (prog :: args) ~f:quote_if_needed)
 
   let run_process t ?dir ?env prog args =
-    let args_str = String.concat ~sep:" " args in
-    logf t "run: %s %s" prog args_str;
+    let prog_command_line = command_line prog args in
+    logf t "run: %s" prog_command_line;
     let n = gen_id t in
     let create_process =
       let args = Array.of_list (prog :: args) in
@@ -193,9 +198,9 @@ module Process = struct
     in
     match status with
     | Unix.WSIGNALED signal ->
-      die "signal %d killed process: %s %s" signal prog args_str
+      die "signal %d killed process: %s" signal prog_command_line
     | WSTOPPED signal ->
-      die "signal %d stopped process: %s %s" signal prog args_str
+      die "signal %d stopped process: %s" signal prog_command_line
     | WEXITED exit_code ->
       logf t "-> process exited with code %d" exit_code;
       let stdout = Io.read_file stdout_fn in
@@ -565,40 +570,54 @@ module Pkg_config = struct
     ; cflags : string list
     }
 
-  let query t ~package =
+  let gen_query t ~package ~expr =
     let c = t.configurator in
     let dir = c.dest_dir in
+    let expr =
+      match expr with
+      | Some e -> e
+      | None ->
+        begin
+          if String.exists package
+               ~f:(function '=' | '>' | '<' -> true | _ -> false)
+          then
+            warn "Package name %S contains invalid characters. \
+                  Use Pkg_config.query_expr to construct proper queries"
+              package
+        end;
+        package
+    in
     let env =
       match ocaml_config_var c "system" with
       | Some "macosx" -> begin
-          match which c "brew" with
-          | Some brew ->
-            let prefix =
-              String.trim (Process.run_capture_exn c ~dir brew ["--prefix"])
-            in
-            let package =
-              let seps = ['='; '>'; '<'] in
-              match String.findi package ~f:(List.mem ~set:seps) with
-              | None -> package
-              | Some pos -> String.trim (String.take package pos)
-            in
-            let _PKG_CONFIG_PATH = "PKG_CONFIG_PATH" in
-            let pkg_config_path =
-              match Sys.getenv _PKG_CONFIG_PATH with
-              | s -> s ^ ":"
-              | exception Not_found -> ""
-            in
-            [sprintf "%s=%s%s/opt/%s/lib/pkgconfig"
-               _PKG_CONFIG_PATH pkg_config_path (quote_if_needed prefix)
-               package]
-          | None ->
-            []
+          let open Option.O in
+          which c "brew" >>= fun brew ->
+          (let prefix =
+             String.trim (Process.run_capture_exn c ~dir brew ["--prefix"])
+           in
+           let p = sprintf "%s/opt/%s/lib/pkgconfig"
+                     (quote_if_needed prefix) package
+           in
+           Option.some_if (
+             match Sys.is_directory p with
+             | s -> s
+             | exception Sys_error _ -> false)
+             p)
+          >>| fun new_pkg_config_path ->
+          let _PKG_CONFIG_PATH = "PKG_CONFIG_PATH" in
+          let pkg_config_path =
+            match Sys.getenv _PKG_CONFIG_PATH with
+            | s -> s ^ ":"
+            | exception Not_found -> ""
+          in
+          [sprintf "%s=%s%s"
+             _PKG_CONFIG_PATH pkg_config_path new_pkg_config_path]
         end
-      | _ -> []
+      | _ -> None
     in
-    if Process.run_process_ok c ~dir ~env t.pkg_config [package] then
+    if Process.run_process_ok c ~dir ?env t.pkg_config [expr] then
       let run what =
-        match String.trim (Process.run_capture_exn c ~dir ~env
+        match String.trim (Process.run_capture_exn c ~dir ?env
                              t.pkg_config [what; package])
         with
         | "" -> []
@@ -610,6 +629,9 @@ module Pkg_config = struct
         }
     else
       None
+
+  let query t ~package = gen_query t ~package ~expr:None
+  let query_expr t ~package ~expr = gen_query t ~package ~expr:(Some expr)
 end
 
 let main ?(args=[]) ~name f =

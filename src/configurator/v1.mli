@@ -92,6 +92,8 @@ module Pkg_config : sig
   (** [query t ~package] query pkg-config for the [package].  The
      package may contain a version constraint.  For example
      "gtk+-3.0 >= 3.18".  Returns [None] if [package] is not available  *)
+
+  val query_expr : t -> package:string -> expr:string -> package_conf option
 end with type configurator := t
 
 module Flags : sig

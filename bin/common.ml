@@ -87,6 +87,8 @@ type config_file =
   | Default
   | This of Path.t
 
+let default_build_dir = "_build"
+
 let term =
   let incompatible a b =
     `Error (true,
@@ -359,7 +361,7 @@ let term =
              ~env:(Arg.env_var ~doc "DUNE_STORE_ORIG_SOURCE_DIR")
              ~doc)
   in
-  let build_dir = Option.value ~default:"_build" build_dir in
+  let build_dir = Option.value ~default:default_build_dir build_dir in
   let root, to_cwd =
     match root with
     | Some dn -> (dn, [])

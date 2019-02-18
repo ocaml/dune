@@ -11,6 +11,9 @@ unreleased
 - Add `DUNE_WORKSPACE` variable. This variable is equivalent to setting
   `--workspace` in the command line. (#1711, fix #1503, @rgrinberg)
 
+- Fix `$ dune subst` failing because the build directory wasn't set. (#1854, fix
+  #1846, @rgrinberg)
+
 1.7.1 (13/02/2019)
 ------------------
 

@@ -1,9 +1,10 @@
 unreleased
 ----------
 
-- Add `${corrected-suffix}` to the list of variables to upgrade. This
-  fixes the support for `[@@deriving_inline]` with older versions of
-  ppxlib (@diml)
+- Add `${corrected-suffix}`, `${library-name}` and a few other
+  variables to the list of variables to upgrade. This fixes the
+  support for various framework producing corrections (#1840, #1853,
+  @diml)
 
 - Add support for `.cxx` extension for C++ stubs (#1831, @rgrinberg)
 

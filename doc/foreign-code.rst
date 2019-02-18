@@ -146,5 +146,5 @@ Real example
 
 The `re2 project <https://github.com/janestreet/re2>`_ uses this
 method to build the re2 C library. You can look at the file
-``re2/src/re2_c/jbuild`` in this project to see a full working
+``re2/src/re2_c/dune`` in this project to see a full working
 example.

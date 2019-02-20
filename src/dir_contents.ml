@@ -52,11 +52,18 @@ module Modules = struct
             | From _, From _ ->
               let name = (fst lib.name, Library.best_name lib) in
               Result.ok_exn (
-                let open Result.O in
-                Lib.DB.resolve (Scope.libs scope) name >>= fun lib ->
-                Lib.main_module_name lib >>= fun main_module_name ->
-                Lib.wrapped lib >>| fun wrapped ->
-                (main_module_name, Option.value_exn wrapped)
+                match
+                  Lib.DB.find_even_when_hidden (Scope.libs scope) (snd name)
+                with
+                | None ->
+                  (* can't happen because this library is defined using the
+                     current stanza *)
+                  assert false
+                | Some lib ->
+                  let open Result.O in
+                  Lib.main_module_name lib >>= fun main_module_name ->
+                  Lib.wrapped lib >>| fun wrapped ->
+                  (main_module_name, Option.value_exn wrapped)
               )
           in
           Left ( lib

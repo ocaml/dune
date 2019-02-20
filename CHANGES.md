@@ -14,6 +14,10 @@ unreleased
 - Fix `$ dune subst` failing because the build directory wasn't set. (#1854, fix
   #1846, @rgrinberg)
 
+- Configurator: Add warning to `Pkg_config.query` when a full package expression
+  is used. Add `Pkg_config.query_expr` for cases when the full power of
+  pkg-config's querying is needed (#1842, fix #1833, @rgrinberg)
+
 1.7.1 (13/02/2019)
 ------------------
 

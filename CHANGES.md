@@ -18,6 +18,9 @@ unreleased
   is used. Add `Pkg_config.query_expr` for cases when the full power of
   pkg-config's querying is needed (#1842, fix #1833, @rgrinberg)
 
+- Fix unavailable, optional implementations eagerly breaking the build (#1857,
+  fix #1856, @rgrinberg)
+
 1.7.1 (13/02/2019)
 ------------------
 

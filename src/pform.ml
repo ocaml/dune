@@ -9,6 +9,8 @@ module Var = struct
     | Deps
     | Targets
     | Named_local
+    | Cc
+    | Cxx
 
   let to_sexp =
     let open Sexp.Encoder in
@@ -19,6 +21,8 @@ module Var = struct
     | Deps -> string "Deps"
     | Targets -> string "Targets"
     | Named_local -> string "Named_local"
+    | Cc -> string "cc"
+    | Cxx -> string "cxx"
 
   let pp_debug fmt t =
     Sexp.pp fmt (to_sexp t)

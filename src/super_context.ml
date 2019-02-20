@@ -225,12 +225,13 @@ let partial_expand sctx ~dep_kind ~targets_written_by_user ~map_exe
       ~expander t =
   let acc = Expander.Resolved_forms.empty () in
   let read_package = Pkg_version.read sctx in
+  let c_flags = Env.c_flags sctx in
+  let cxx_flags = Env.cxx_flags sctx in
   let expander =
     Expander.with_record_deps expander  acc ~dep_kind ~targets_written_by_user
-      ~map_exe ~read_package in
+      ~map_exe ~read_package ~c_flags ~cxx_flags in
   let partial = Action_unexpanded.partial_expand t ~expander ~map_exe in
   (partial, acc)
-
 
 let ocaml_flags t ~dir (x : Buildable.t) =
   let expander = Env.expander t ~dir in
@@ -490,9 +491,12 @@ module Deps = struct
 
   let make_interpreter ~f t ~expander l =
     let forms = Expander.Resolved_forms.empty () in
+    let c_flags = Env.c_flags t in
+    let cxx_flags = Env.cxx_flags t in
     let expander =
       Expander.with_record_no_ddeps expander forms
         ~dep_kind:Optional ~map_exe:Fn.id
+        ~c_flags ~cxx_flags
     in
     let deps =
       List.map l ~f:(f t expander)

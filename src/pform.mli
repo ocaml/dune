@@ -8,6 +8,8 @@ module Var : sig
     | Deps
     | Targets
     | Named_local
+    | Cc
+    | Cxx
 end
 
 module Macro : sig

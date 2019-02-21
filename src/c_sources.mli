@@ -12,8 +12,7 @@ val for_lib : t -> dir:Path.t -> name:Lib_name.t -> C.Sources.t
     map. The first level will is keyed by C vs. C++ sources. The second level is
     keyed by the object name of the source. *)
 val load_sources
-  :  dune_version:Syntax.Version.t
-  -> dir:Path.t
+  :  dir:Path.t
   -> files:String.Set.t
   -> C.Source.t String.Map.t C.Kind.Dict.t
 

@@ -165,7 +165,6 @@ type t =
   ; extension_args  : Univ_map.t
   ; parsing_context : Univ_map.t
   ; implicit_transitive_deps : bool
-  ; dune_version    : Syntax.Version.t
   }
 
 let packages t = t.packages
@@ -178,7 +177,7 @@ let implicit_transitive_deps t = t.implicit_transitive_deps
 
 let pp fmt { name ; root ; version ; project_file ; parsing_context = _
            ; extension_args = _; stanza_parser = _ ; packages
-           ; implicit_transitive_deps ; dune_version } =
+           ; implicit_transitive_deps } =
   Fmt.record fmt
     [ "name", Fmt.const Name.pp name
     ; "root", Fmt.const Path.Local.pp root
@@ -190,7 +189,6 @@ let pp fmt { name ; root ; version ; project_file ; parsing_context = _
         (Package.Name.Map.to_list packages)
     ; "implicit_transitive_deps",
       Fmt.const Format.pp_print_bool implicit_transitive_deps
-    ; "dune_version", Fmt.const Syntax.Version.pp dune_version
     ]
 
 let find_extension_args t key =
@@ -424,7 +422,7 @@ let key =
   Univ_map.Key.create ~name:"dune-project"
     (fun { name; root; version; project_file
          ; stanza_parser = _; packages = _ ; extension_args = _
-         ; parsing_context ; implicit_transitive_deps ; dune_version } ->
+         ; parsing_context ; implicit_transitive_deps } ->
       Sexp.Encoder.record
         [ "name", Name.to_sexp name
         ; "root", Path.Local.to_sexp root
@@ -432,7 +430,6 @@ let key =
         ; "project_file", Project_file.to_sexp project_file
         ; "parsing_context", Univ_map.to_sexp parsing_context
         ; "implicit_transitive_deps", Sexp.Encoder.bool implicit_transitive_deps
-        ; "dune_version", Syntax.Version.to_sexp dune_version
         ])
 
 let set t = Dune_lang.Decoder.set key t
@@ -472,7 +469,6 @@ let anonymous = lazy (
   ; project_file
   ; extension_args
   ; parsing_context
-  ; dune_version = lang.version
   })
 
 let default_name ~dir ~packages =
@@ -541,7 +537,6 @@ let parse ~dir ~lang ~packages ~file =
      ; extension_args
      ; parsing_context
      ; implicit_transitive_deps
-     ; dune_version = lang.version
      })
 
 let load_dune_project ~dir packages =
@@ -570,7 +565,6 @@ let make_jbuilder_project ~dir packages =
   ; extension_args
   ; parsing_context
   ; implicit_transitive_deps = true
-  ; dune_version = lang.version
   }
 
 let read_name file =
@@ -608,8 +602,6 @@ let load ~dir ~files =
     Some (make_jbuilder_project ~dir packages)
   else
     None
-
-let dune_version t = t.dune_version
 
 let set_parsing_context t parser =
   Dune_lang.Decoder.set_many t.parsing_context parser

@@ -19,7 +19,7 @@ let is_odig_doc_file fn =
 let add_stanzas t ~sctx =
   List.fold_left ~init:t
     ~f:(fun t ({ Dir_with_dune. ctx_dir = dir ; scope = _ ; data
-               ; src_dir = _ ; kind = _; dune_version = _ } as d) ->
+               ; src_dir = _ ; kind = _} as d) ->
          let expander = Super_context.expander sctx ~dir in
          let path_expander sw =
            (String_with_vars.loc sw, Expander.expand_str expander sw) in
@@ -45,7 +45,7 @@ let stanzas_to_consider_for_install stanzas ~external_lib_deps_mode =
   if not external_lib_deps_mode then
     List.concat_map stanzas
       ~f:(fun ({ Dir_with_dune.ctx_dir =  _; data = stanzas
-               ; scope; kind = _ ; src_dir = _ ; dune_version = _ } as d) ->
+               ; scope; kind = _ ; src_dir = _ } as d) ->
            List.filter_map stanzas ~f:(fun stanza ->
              let keep =
                match (stanza : Stanza.t) with

@@ -69,7 +69,7 @@ module Gen(P : Install_rules.Params) = struct
 
   let gen_rules dir_contents cctxs
         { Dir_with_dune. src_dir; ctx_dir; data = stanzas
-        ; scope; kind = dir_kind ; dune_version = _ } =
+        ; scope; kind = dir_kind } =
     let expander = Super_context.expander sctx ~dir:ctx_dir in
     let for_stanza stanza =
       let dir = ctx_dir in

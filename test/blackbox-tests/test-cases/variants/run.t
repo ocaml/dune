@@ -305,7 +305,7 @@ Implement external virtual libraries with private modules
 Include variants and implementation information in dune-package
   $ dune build --root dune-package-info
   Entering directory 'dune-package-info'
-  (lang dune 1.8)
+  (lang dune 1.7)
   (name foo)
   (library
    (name foo.impl)

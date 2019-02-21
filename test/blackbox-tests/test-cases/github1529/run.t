@@ -3,6 +3,6 @@ file is present.
 
   $ dune build
   Info: creating file dune-project with this contents:
-  | (lang dune 1.8)
+  | (lang dune 1.7)
   
   Info: appending this line to dune-project: (using menhir 2.0)

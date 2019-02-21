@@ -347,7 +347,6 @@ module Gen(P : Params) = struct
            ~f:(fun ({ Dir_with_dune.
                       data =
                         { Dune_file.Install_conf. section; files; package = _ }
-                    ; dune_version = _
                     ; ctx_dir = dir
                     ; src_dir = _
                     ; scope = _
@@ -381,7 +380,6 @@ module Gen(P : Params) = struct
                    ; ctx_dir = dir
                    ; src_dir = _
                    ; kind = dir_kind
-                   ; dune_version = _
                    } ->
                 let sub_dir = (Option.value_exn lib.public).sub_dir in
                 let dir_contents = Dir_contents.get sctx ~dir in

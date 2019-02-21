@@ -6,8 +6,6 @@ unreleased
   support for various framework producing corrections (#1840, #1853,
   @diml)
 
-- Add support for `.cxx` extension for C++ stubs (#1831, @rgrinberg)
-
 - Fix `$ dune subst` failing because the build directory wasn't set. (#1854, fix
   #1846, @rgrinberg)
 
@@ -28,7 +26,6 @@ unreleased
 
 1.7.0 (12/02/2019)
 ------------------
-
 
 - Second step of the deprecation of jbuilder: the `jbuilder` binary
   now emits a warning on every startup and both `jbuilder` and `dune`

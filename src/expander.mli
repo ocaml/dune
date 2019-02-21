@@ -86,8 +86,8 @@ val with_record_deps
   :  t
   -> Resolved_forms.t
   -> read_package:(Package.t -> (unit, string option) Build.t)
-  -> dep_kind:Lib_deps_info.Kind.t
   -> targets_written_by_user:Targets.t
+  -> dep_kind:Lib_deps_info.Kind.t
   -> map_exe:(Path.t -> Path.t)
   -> c_flags:(dir:Path.t -> (unit, string list) Build.t)
   -> cxx_flags:(dir:Path.t -> (unit, string list) Build.t)

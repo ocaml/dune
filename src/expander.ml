@@ -379,17 +379,18 @@ let expand_no_ddeps acc ~dir ~dep_kind ~map_exe ~expand_var
   );
   Option.map res ~f:Result.ok
 
-let with_record_deps t resolved_forms ~read_package ~dep_kind
-      ~targets_written_by_user ~map_exe ~c_flags ~cxx_flags =
+let gen_with_record_deps ~expand t resolved_forms ~dep_kind ~map_exe
+      ~c_flags ~cxx_flags =
   let cc = cc_of_c_flags t c_flags in
   let cxx = cxx_of_cxx_flags t cxx_flags in
   let expand_var =
-    expand_and_record_deps
+    expand
       (* we keep the dir constant here to replicate the old behavior of: (chdir
          foo %{exe:bar}). This should lookup ./bar rather than ./foo/bar *)
-      ~dir:t.dir
-      resolved_forms ~read_package ~dep_kind
-      ~expand_var:t.expand_var ~targets_written_by_user ~map_exe ~cc ~cxx in
+      resolved_forms
+      ~dir:t.dir ~dep_kind
+      ~map_exe
+      ~expand_var:t.expand_var ~cc ~cxx in
   let bindings =
     Pform.Map.of_list_exn
       [ "cc", Pform.Var.Cc
@@ -402,27 +403,13 @@ let with_record_deps t resolved_forms ~read_package ~dep_kind
   ; bindings
   }
 
-let with_record_no_ddeps t resolved_forms ~dep_kind ~map_exe
-      ~c_flags ~cxx_flags =
-  let cc = cc_of_c_flags t c_flags in
-  let cxx = cxx_of_cxx_flags t cxx_flags in
-  let expand_var =
-    expand_no_ddeps
-      (* we keep the dir constant here to replicate the old behavior of: (chdir
-         foo %{exe:bar}). This should lookup ./bar rather than ./foo/bar *)
-      ~dir:t.dir resolved_forms ~dep_kind ~expand_var:t.expand_var ~map_exe
-      ~cc ~cxx
-  in
-  let bindings =
-    Pform.Map.of_list_exn
-      [ "cc", Pform.Var.Cc
-      ; "cxx", Pform.Var.Cxx
-      ]
-    |> Pform.Map.superpose t.bindings
-  in
-  { t with expand_var
-  ; bindings
-  }
+let with_record_deps t resolved_forms ~read_package ~targets_written_by_user =
+  let expand =
+    expand_and_record_deps ~read_package ~targets_written_by_user in
+  gen_with_record_deps ~expand t resolved_forms
+
+let with_record_no_ddeps =
+  gen_with_record_deps ~expand:expand_no_ddeps
 
 let expand_special_vars ~deps_written_by_user ~var pform =
   let key = String_with_vars.Var.full_name var in

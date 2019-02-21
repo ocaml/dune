@@ -8,9 +8,6 @@ unreleased
 
 - Add support for `.cxx` extension for C++ stubs (#1831, @rgrinberg)
 
-- Add `DUNE_WORKSPACE` variable. This variable is equivalent to setting
-  `--workspace` in the command line. (#1711, fix #1503, @rgrinberg)
-
 - Fix `$ dune subst` failing because the build directory wasn't set. (#1854, fix
   #1846, @rgrinberg)
 

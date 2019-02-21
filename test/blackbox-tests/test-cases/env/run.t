@@ -34,8 +34,8 @@
 Vendored project without env customization, the global default should
 apply:
 
-  $ ./printenv.sh --profile default vendor/without-env-customization
-  ( (flags (-w -40)) (ocamlc_flags (-g)) (ocamlopt_flags (-g)) (c_flags (STANDARD_C_FLAGS)) (cxx_flags (STANDARD_CXX_FLAGS)) ) 
+  $ dune printenv --profile default vendor/without-env-customization | tr -s "\n" " "
+  ( (flags (-w -40)) (ocamlc_flags (-g)) (ocamlopt_flags (-g)) (c_flags ($flags)) (cxx_flags ($flags)) ) 
 
 Vendored project with env customization, the global default +
 customization of vendored project should apply:

@@ -269,7 +269,9 @@
  (action
   (chdir
    test-cases/env
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} -skip-versions <4.06.0 -test run.t)
+    (diff? run.t run.t.corrected)))))
 
 (alias
  (name env-and-flags-include)
@@ -293,7 +295,9 @@
  (action
   (chdir
    test-cases/env-cflags
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} -skip-versions <4.06.0 -test run.t)
+    (diff? run.t run.t.corrected)))))
 
 (alias
  (name env-dune-file)

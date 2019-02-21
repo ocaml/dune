@@ -13,14 +13,13 @@ module Kind = struct
   let split_extension fn =
     match String.lsplit2 fn ~on:'.' with
     | Some (obj, "c") -> Some (obj, C)
-    | Some (obj, "cxx")
     | Some (obj, "cpp") -> Some (obj, Cxx)
     | _ -> None
 
   let possible_fns t fn =
     match t with
     | C -> [fn ^ ".c"]
-    | Cxx -> [fn ^ ".cpp"; fn ^ ".cxx"]
+    | Cxx -> [fn ^ ".cpp"]
 
   module Dict = struct
     type 'a t =

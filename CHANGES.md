@@ -1,5 +1,5 @@
-unreleased
-----------
+1.7.2 (21/02/2019)
+------------------
 
 - Add `${corrected-suffix}`, `${library-name}` and a few other
   variables to the list of variables to upgrade. This fixes the

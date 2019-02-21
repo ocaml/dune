@@ -754,8 +754,8 @@ to ``expect_test.expected``.
 
 The optional fields that are supported are a subset of the alias and executables
 fields. In particular, all fields except for ``public_names`` are supported from
-the `executables stanza <shared-exe-fields>`_. Alias fields apart from ``name``
-are allowed.
+the :ref:`executables stanza <shared-exe-fields>`. Alias fields apart from
+``name`` are allowed.
 
 test
 ----

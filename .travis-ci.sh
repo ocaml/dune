@@ -79,7 +79,6 @@ case "$TARGET" in
         opam upgrade
       fi
       opam list
-      echo "version: \"1.0+dev$DATE\"" >> dune.opam
       opam pin add dune . --no-action
       opam install ocamlfind utop ppxlib odoc ocaml-migrate-parsetree js_of_ocaml-ppx js_of_ocaml-compiler
       echo -en "travis_fold:end:opam.deps\r"

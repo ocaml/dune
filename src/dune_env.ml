@@ -11,6 +11,8 @@ module Stanza = struct
     { flags          : Ordered_set_lang.Unexpanded.t
     ; ocamlc_flags   : Ordered_set_lang.Unexpanded.t
     ; ocamlopt_flags : Ordered_set_lang.Unexpanded.t
+    ; c_flags        : Ordered_set_lang.Unexpanded.t
+    ; cxx_flags      : Ordered_set_lang.Unexpanded.t
     ; env_vars       : Env.t
     ; binaries       : File_bindings.Unexpanded.t
     }
@@ -39,6 +41,10 @@ module Stanza = struct
     let%map flags = field_oslu "flags"
     and ocamlc_flags = field_oslu "ocamlc_flags"
     and ocamlopt_flags = field_oslu "ocamlopt_flags"
+    and c_flags = Ordered_set_lang.Unexpanded.field "c_flags"
+                    ~check:(Syntax.since Stanza.syntax (1, 7))
+    and cxx_flags = Ordered_set_lang.Unexpanded.field "cxx_flags"
+                    ~check:(Syntax.since Stanza.syntax (1, 7))
     and env_vars = env_vars_field
     and binaries = field ~default:File_bindings.empty "binaries"
                      (Syntax.since Stanza.syntax (1, 6)
@@ -47,6 +53,8 @@ module Stanza = struct
     { flags
     ; ocamlc_flags
     ; ocamlopt_flags
+    ; c_flags
+    ; cxx_flags
     ; env_vars
     ; binaries
     }

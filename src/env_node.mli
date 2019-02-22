@@ -19,6 +19,20 @@ val external_ : t -> profile:string -> default:Env.t -> Env.t
 
 val ocaml_flags : t -> profile:string -> expander:Expander.t -> Ocaml_flags.t
 
+val c_flags
+  : t
+  -> profile:string
+  -> expander:Expander.t
+  -> default_context_flags:string list
+  -> (unit, string list) Build.t
+
+val cxx_flags
+  : t
+  -> profile:string
+  -> expander:Expander.t
+  -> default_context_flags:string list
+  -> (unit, string list) Build.t
+
 val local_binaries
   :  t
   -> profile:string

@@ -7,6 +7,8 @@ type t =
   ; config                : Dune_env.Stanza.t option
   ; mutable local_binaries : string File_bindings.t option
   ; mutable ocaml_flags   : Ocaml_flags.t option
+  ; mutable c_flags       : (unit, string list) Build.t option
+  ; mutable cxx_flags     : (unit, string list) Build.t option
   ; mutable external_     : Env.t option
   ; mutable artifacts     : Artifacts.t option
   }
@@ -19,6 +21,8 @@ let make ~dir ~inherit_from ~scope ~config ~env =
   ; scope
   ; config
   ; ocaml_flags = None
+  ; c_flags = None
+  ; cxx_flags = None
   ; external_ = env
   ; artifacts = None
   ; local_binaries = None
@@ -108,4 +112,53 @@ let rec ocaml_flags t ~profile ~expander =
           ~eval:(Expander.expand_and_eval_set expander)
     in
     t.ocaml_flags <- Some flags;
+    flags
+
+let rec c_flags t ~profile ~expander ~default_context_flags =
+  match t.c_flags with
+  | Some x -> x
+  | None ->
+    let default =
+      match t.inherit_from with
+      | None -> Build.return default_context_flags
+      | Some (lazy t) -> c_flags t ~profile ~expander ~default_context_flags
+    in
+    let flags =
+      match find_config t ~profile with
+      | None -> default
+      | Some cfg ->
+        let expander = Expander.set_dir expander ~dir:t.dir in
+        let eval = Expander.expand_and_eval_set expander in
+        let f = cfg.c_flags in
+        if  Ordered_set_lang.Unexpanded.has_special_forms f then
+          eval f ~standard:default
+        else
+          eval f ~standard:(Build.return [])
+    in
+    t.c_flags <- Some flags;
+    flags
+
+
+let rec cxx_flags t ~profile ~expander ~default_context_flags =
+  match t.cxx_flags with
+  | Some x -> x
+  | None ->
+    let default =
+      match t.inherit_from with
+      | None -> Build.return default_context_flags
+      | Some (lazy t) -> cxx_flags t ~profile ~expander ~default_context_flags
+    in
+    let flags =
+      match find_config t ~profile with
+      | None -> default
+      | Some cfg ->
+        let expander = Expander.set_dir expander ~dir:t.dir in
+        let eval = Expander.expand_and_eval_set expander in
+        let f = cfg.cxx_flags in
+        if  Ordered_set_lang.Unexpanded.has_special_forms f then
+          eval f ~standard:default
+        else
+          eval f ~standard:(Build.return [])
+    in
+    t.cxx_flags <- Some flags;
     flags

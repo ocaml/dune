@@ -269,7 +269,9 @@
  (action
   (chdir
    test-cases/env
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} -skip-versions <4.06.0 -test run.t)
+    (diff? run.t run.t.corrected)))))
 
 (alias
  (name env-and-flags-include)
@@ -286,6 +288,16 @@
   (chdir
    test-cases/env-bins
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
+ (name env-cflags)
+ (deps (package dune) (source_tree test-cases/env-cflags))
+ (action
+  (chdir
+   test-cases/env-cflags
+   (progn
+    (run %{exe:cram.exe} -skip-versions <4.06.0 -test run.t)
+    (diff? run.t run.t.corrected)))))
 
 (alias
  (name env-dune-file)
@@ -1331,6 +1343,7 @@
   (alias env)
   (alias env-and-flags-include)
   (alias env-bins)
+  (alias env-cflags)
   (alias env-dune-file)
   (alias env-tracking)
   (alias env-var-expansion)
@@ -1491,6 +1504,7 @@
   (alias env)
   (alias env-and-flags-include)
   (alias env-bins)
+  (alias env-cflags)
   (alias env-dune-file)
   (alias env-tracking)
   (alias env-var-expansion)

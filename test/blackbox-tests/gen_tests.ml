@@ -145,6 +145,8 @@ let exclusions =
   (* The next test is disabled as it relies on configured opam
      swtiches and it's hard to get that working properly *)
   ; make "envs-and-contexts" ~external_deps:true ~enabled:false
+  ; make "env" ~skip_ocaml:"<4.06.0"
+  ; make "env-cflags" ~skip_ocaml:"<4.06.0"
   ; make "wrapped-transition" ~skip_ocaml:"<4.06.0"
   ]
 

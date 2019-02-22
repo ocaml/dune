@@ -795,6 +795,10 @@ Fields supported in ``<settings>`` are:
 
 - any OCaml flags field, see `OCaml flags`_ for more details.
 
+- ``(c_flags <flags>)`` and ``(cxx_flags <flags>)``
+  to specify compilation flags for C and C++ stubs, respectively.
+  See `library`_ for more details.
+
 - ``(env-vars (<var1> <val1>) .. (<varN> <valN>))``. This will add the
   corresponding variables to the environment in which the build commands are
   executed, and under which ``dune exec`` runs. At the moment, this mechanism is

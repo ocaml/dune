@@ -21,6 +21,9 @@ unreleased
 - Fix unavailable, optional implementations eagerly breaking the build (#1857,
   fix #1856, @rgrinberg)
 
+- Add `c_flags` and `cxx_flags` to env profile settings (#1700 and #1800,
+  @gretay-js)
+
 1.7.1 (13/02/2019)
 ------------------
 

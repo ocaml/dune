@@ -1,15 +1,21 @@
 unreleased
 ----------
 
-- Add `${corrected-suffix}`, `${library-name}` and a few other
-  variables to the list of variables to upgrade. This fixes the
-  support for various framework producing corrections (#1840, #1853,
-  @diml)
-
 - Add support for `.cxx` extension for C++ stubs (#1831, @rgrinberg)
 
 - Add `DUNE_WORKSPACE` variable. This variable is equivalent to setting
   `--workspace` in the command line. (#1711, fix #1503, @rgrinberg)
+
+- Add `c_flags` and `cxx_flags` to env profile settings (#1700 and #1800,
+  @gretay-js)
+
+1.7.2 (21/02/2019)
+------------------
+
+- Add `${corrected-suffix}`, `${library-name}` and a few other
+  variables to the list of variables to upgrade. This fixes the
+  support for various framework producing corrections (#1840, #1853,
+  @diml)
 
 - Fix `$ dune subst` failing because the build directory wasn't set. (#1854, fix
   #1846, @rgrinberg)
@@ -20,9 +26,6 @@ unreleased
 
 - Fix unavailable, optional implementations eagerly breaking the build (#1857,
   fix #1856, @rgrinberg)
-
-- Add `c_flags` and `cxx_flags` to env profile settings (#1700 and #1800,
-  @gretay-js)
 
 1.7.1 (13/02/2019)
 ------------------

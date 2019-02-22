@@ -157,8 +157,8 @@ end = struct
   let cxx_flags t ~dir =
     let ctx = t.context in
     let default_context_flags =
-    List.filter ctx.ocamlc_cflags
-      ~f:(fun s -> not (String.is_prefix s ~prefix:"-std=")) in
+      List.filter ctx.ocamlc_cflags
+        ~f:(fun s -> not (String.is_prefix s ~prefix:"-std=")) in
     Env_node.cxx_flags (get t ~dir)
       ~profile:(profile t) ~expander:(expander t ~dir)
       ~default_context_flags
@@ -249,12 +249,12 @@ let c_flags t ~dir ~expander ~(lib : Library.t) =
   let default = Env.c_flags t ~dir in
   Build.memoize "c flags"
     begin
-    if Ordered_set_lang.Unexpanded.has_special_forms flags then
-      let c = eval flags ~standard:default in
-      let open Build.O in (c >>^ fun l -> l @ ccg)
-    else
-      eval flags ~standard:(Build.return ccg)
-  end
+      if Ordered_set_lang.Unexpanded.has_special_forms flags then
+        let c = eval flags ~standard:default in
+        let open Build.O in (c >>^ fun l -> l @ ccg)
+      else
+        eval flags ~standard:(Build.return ccg)
+    end
 
 let cxx_flags t ~dir ~expander ~(lib : Library.t) =
   let ccg = Context.cc_g t.context in
@@ -263,12 +263,12 @@ let cxx_flags t ~dir ~expander ~(lib : Library.t) =
   let default = Env.cxx_flags t ~dir in
   Build.memoize "cxx flags"
     begin
-    if Ordered_set_lang.Unexpanded.has_special_forms flags then
-      let c = eval flags ~standard:default in
-      let open Build.O in (c >>^ fun l -> l @ ccg)
-    else
-      eval flags ~standard:(Build.return ccg)
-  end
+      if Ordered_set_lang.Unexpanded.has_special_forms flags then
+        let c = eval flags ~standard:default in
+        let open Build.O in (c >>^ fun l -> l @ ccg)
+      else
+        eval flags ~standard:(Build.return ccg)
+    end
 
 let local_binaries t ~dir = Env.local_binaries t ~dir
 
@@ -558,14 +558,14 @@ module Action = struct
     begin match (targets_written_by_user : Expander.Targets.t) with
     | Static _ | Infer -> ()
     | Forbidden context ->
-         match U.Infer.unexpanded_targets t with
-         | [] -> ()
-         | x :: _ ->
-           let loc = String_with_vars.loc x in
-           Errors.warn loc
-             "%s must not have targets, this target will be ignored.\n\
-              This will become an error in the future."
-             (String.capitalize context)
+      match U.Infer.unexpanded_targets t with
+      | [] -> ()
+      | x :: _ ->
+        let loc = String_with_vars.loc x in
+        Errors.warn loc
+          "%s must not have targets, this target will be ignored.\n\
+           This will become an error in the future."
+          (String.capitalize context)
     end;
     let t, forms =
       partial_expand sctx ~expander ~dep_kind

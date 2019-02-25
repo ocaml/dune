@@ -67,9 +67,7 @@ Workspaces also allow you to set the env for a context:
     (ocamlc_flags
      (-g -verbose))
     (ocamlopt_flags (-g))
-    (c_flags
-     ())
-    (cxx_flags
-     ()))
+    (c_flags ())
+    (cxx_flags ()))
   
   

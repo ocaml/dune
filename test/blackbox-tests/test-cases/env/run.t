@@ -4,10 +4,8 @@
      (-w -40 ":standard + in ."))
     (ocamlc_flags (-g))
     (ocamlopt_flags (-g))
-    (c_flags
-     ())
-    (cxx_flags
-     ()))
+    (c_flags ())
+    (cxx_flags ()))
   
   
   $ dune printenv --profile default src
@@ -16,10 +14,8 @@
      (-w -40 ":standard + in ." ":standard + in src"))
     (ocamlc_flags (-g))
     (ocamlopt_flags (-g))
-    (c_flags
-     ())
-    (cxx_flags
-     ()))
+    (c_flags ())
+    (cxx_flags ()))
   
   
   $ dune printenv --profile default bin
@@ -27,10 +23,8 @@
    ((flags ("in bin"))
     (ocamlc_flags (-g))
     (ocamlopt_flags (-g))
-    (c_flags
-     ())
-    (cxx_flags
-     ()))
+    (c_flags ())
+    (cxx_flags ()))
   
   
   $ dune printenv --profile default vendor
@@ -39,10 +33,8 @@
      (-w -40 ":standard + in ."))
     (ocamlc_flags (-g))
     (ocamlopt_flags (-g))
-    (c_flags
-     ())
-    (cxx_flags
-     ()))
+    (c_flags ())
+    (cxx_flags ()))
   
   
 
@@ -61,10 +53,8 @@ customization of vendored project should apply:
      (-w -40 ":standard + in vendor/with-env-customization"))
     (ocamlc_flags (-g))
     (ocamlopt_flags (-g))
-    (c_flags
-     ())
-    (cxx_flags
-     ()))
+    (c_flags ())
+    (cxx_flags ()))
   
   
   $ dune printenv --profile default vendor/with-env-customization/src
@@ -72,10 +62,8 @@ customization of vendored project should apply:
    ((flags ("in vendor/with-env-customization/src"))
     (ocamlc_flags (-g))
     (ocamlopt_flags (-g))
-    (c_flags
-     ())
-    (cxx_flags
-     ()))
+    (c_flags ())
+    (cxx_flags ()))
   
   
 

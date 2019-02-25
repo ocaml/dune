@@ -19,10 +19,11 @@ let dump sctx ~dir =
   ((Super_context.context sctx).name, env)
 
 let pp ppf sexps =
-  sexps
-  |> List.map ~f:(Dune_lang.Ast.add_loc ~loc:Loc.none)
-  |> List.map ~f:Dune_lang.Cst.concrete
-  |> Format.fprintf ppf "@[<v1>(@,@[<v>%a@]@]@,)"
+  Dune_lang.List sexps
+  |> Dune_lang.Ast.add_loc ~loc:Loc.none
+  |> Dune_lang.Cst.concrete
+  |> List.singleton
+  |> Format.fprintf ppf "@[<v1>@,%a@]@,"
        Dune.Format_dune_lang.pp_top_sexps
 
 let term =

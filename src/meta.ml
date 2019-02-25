@@ -321,12 +321,12 @@ let pp_list f ppf l =
 
 let pp_print_text ppf s =
   Format.fprintf ppf "\"@[<hv>";
-  Format.pp_print_text ppf (String.escape_double_quote s);
+  Format.pp_print_text ppf (String.escape_only '"' s);
   Format.fprintf ppf "@]\""
 
 let pp_print_string ppf s =
   Format.fprintf ppf "\"@[<hv>";
-  Format.pp_print_string ppf (String.escape_double_quote s);
+  Format.pp_print_string ppf (String.escape_only '"' s);
   Format.fprintf ppf "@]\""
 
 let pp_quoted_value var =

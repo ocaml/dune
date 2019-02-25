@@ -38,10 +38,10 @@ val rsplit2 : t -> on:char -> (t * t) option
 val split : t -> on:char -> t list
 val split_lines : t -> t list
 
-(** Escace ONLY double quotes. {!escape} also escapes '\n',... and
+(** Escace ONLY one character. {!escape} also escapes '\n',... and
     transforms all chars above '~' into '\xxx' which is not suitable
     for UTF-8 strings. *)
-val escape_double_quote : t -> t
+val escape_only : char -> t -> t
 
 (** Return the length of the longest string in the list *)
 val longest : string list -> int

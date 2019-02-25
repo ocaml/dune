@@ -7,7 +7,6 @@
     (c_flags ())
     (cxx_flags ()))
   
-  
   $ dune printenv --profile default src
   
    ((flags
@@ -17,7 +16,6 @@
     (c_flags ())
     (cxx_flags ()))
   
-  
   $ dune printenv --profile default bin
   
    ((flags ("in bin"))
@@ -25,7 +23,6 @@
     (ocamlopt_flags (-g))
     (c_flags ())
     (cxx_flags ()))
-  
   
   $ dune printenv --profile default vendor
   
@@ -35,7 +32,6 @@
     (ocamlopt_flags (-g))
     (c_flags ())
     (cxx_flags ()))
-  
   
 
 Vendored project without env customization, the global default should
@@ -56,7 +52,6 @@ customization of vendored project should apply:
     (c_flags ())
     (cxx_flags ()))
   
-  
   $ dune printenv --profile default vendor/with-env-customization/src
   
    ((flags ("in vendor/with-env-customization/src"))
@@ -64,6 +59,5 @@ customization of vendored project should apply:
     (ocamlopt_flags (-g))
     (c_flags ())
     (cxx_flags ()))
-  
   
 

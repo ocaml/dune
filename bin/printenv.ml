@@ -20,7 +20,7 @@ let dump sctx ~dir =
 
 let pp ppf sexps =
   Dune_lang.List sexps
-  |> Dune_lang.Ast.add_loc ~loc:Loc.none
+  |> Dune_lang.add_loc ~loc:Loc.none
   |> Dune_lang.Cst.concrete
   |> List.singleton
   |> Format.fprintf ppf "@[<v1>@,%a@]@,"

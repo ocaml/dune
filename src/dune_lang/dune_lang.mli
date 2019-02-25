@@ -101,8 +101,6 @@ module Ast : sig
   val loc : t -> Loc.t
 
   val remove_locs : t -> sexp
-
-  val add_loc : sexp -> loc:Loc.t -> t
 end with type sexp := t
 
 val add_loc : t -> loc:Loc.t -> Ast.t

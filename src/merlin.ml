@@ -28,6 +28,21 @@ module Preprocess = struct
       | _  -> No_preprocessing
 end
 
+let quote_for_merlin s =
+  let s =
+    if Sys.win32 then
+      (* We need this hack because merlin unescapes backslashes (except when
+         protected by single quotes). It is only a problem on windows
+         because Filename.quote is using double quotes. *)
+      String.escape_only '\\' s
+    else
+      s
+  in
+  if need_quoting s then
+    Filename.quote s
+  else
+    s
+
 module Dot_file = struct
   let b = Buffer.create 256
 
@@ -47,7 +62,7 @@ module Dot_file = struct
     | [] -> ()
     | flags ->
       print "FLG";
-      List.iter flags ~f:(fun f -> printf " %s" (quote_for_shell f));
+      List.iter flags ~f:(fun f -> printf " %s" (quote_for_merlin f));
       print "\n"
     end;
     Buffer.contents b
@@ -98,7 +113,7 @@ let pp_flags sctx ~expander ~dir_kind { preprocess; libname; _ } =
        :: "--as-ppx"
        :: Preprocessing.cookie_library_name libname
        @ flags)
-      |> List.map ~f:quote_for_shell
+      |> List.map ~f:quote_for_merlin
       |> String.concat ~sep:" "
       |> Filename.quote
       |> sprintf "FLG -ppx %s"
@@ -119,7 +134,7 @@ let pp_flags sctx ~expander ~dir_kind { preprocess; libname; _ } =
       |> Option.List.all
       >>= fun args ->
       (Path.to_absolute_filename exe :: args)
-      |> List.map ~f:quote_for_shell
+      |> List.map ~f:quote_for_merlin
       |> String.concat ~sep:" "
       |> Filename.quote
       |> sprintf "FLG -pp %s"

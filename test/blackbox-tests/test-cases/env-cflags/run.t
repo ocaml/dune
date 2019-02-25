@@ -6,19 +6,31 @@
 
   $ dune printenv --profile default bin
   (
-   (flags (-w -40))
-   (ocamlc_flags (-g))
-   (ocamlopt_flags (-g))
-   (c_flags ("in bin"))
-   (cxx_flags ("in bin"))
+   (flags
+    (-w -40))
+  
+  (ocamlc_flags (-g))
+  
+  (ocamlopt_flags (-g))
+  
+  (c_flags ("in bin"))
+  
+  (cxx_flags ("in bin"))
+  
   )
   $ dune printenv --profile default run
   (
-   (flags (-w -40))
-   (ocamlc_flags (-g))
-   (ocamlopt_flags (-g))
-   (c_flags (-DTEST_C))
-   (cxx_flags (-DTEST_CPP))
+   (flags
+    (-w -40))
+  
+  (ocamlc_flags (-g))
+  
+  (ocamlopt_flags (-g))
+  
+  (c_flags (-DTEST_C))
+  
+  (cxx_flags (-DTEST_CPP))
+  
   )
   $ dune exec --profile default ./run/foo.exe
   TEST_C defined.

@@ -162,6 +162,13 @@ module Ast = struct
     | Atom (_, s) -> Atom s
     | Quoted_string (_, s) -> Quoted_string s
     | List (_, l) -> List (List.map l ~f:remove_locs)
+
+  let rec add_loc sexp ~loc =
+    match (sexp : dune_lang) with
+    | Atom a -> Atom (loc, a)
+    | Quoted_string s -> Quoted_string (loc, s)
+    | List l -> List (loc, List.map ~f:(add_loc ~loc) l)
+    | Template t -> Template t
 end
 
 let rec add_loc t ~loc : Ast.t =

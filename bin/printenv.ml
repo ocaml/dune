@@ -18,6 +18,13 @@ let dump sctx ~dir =
   >>^ fun env ->
   ((Super_context.context sctx).name, env)
 
+let pp ppf sexps =
+  sexps
+  |> List.map ~f:(Dune_lang.Ast.add_loc ~loc:Loc.none)
+  |> List.map ~f:Dune_lang.Cst.concrete
+  |> Format.fprintf ppf "@[<v1>(@,@[<v>%a@]@]@,)"
+       Dune.Format_dune_lang.pp_top_sexps
+
 let term =
   let%map common = Common.term
   and dir = Arg.(value & pos 0 dir "" & info [] ~docv:"PATH")
@@ -44,10 +51,7 @@ let term =
       )
     in
     Build_system.do_build ~request
-    >>| fun l ->
-    let pp ppf = Format.fprintf ppf "@[<v1>(@,@[<v>%a@]@]@,)"
-                   (Format.pp_print_list (Dune_lang.pp Dune)) in
-    match l with
+    >>| function
     | [(_, env)] ->
       Format.printf "%a@." pp env
     | l ->

@@ -8,6 +8,9 @@
 - Make errors about menhir stanzas be located (#1881, fix #1876,
   @diml)
 
+- Make errors about menhir stanzas be located (#1881, fix #1876,
+  @diml)
+
 1.7.2 (21/02/2019)
 ------------------
 

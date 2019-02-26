@@ -605,7 +605,7 @@ The typical use of the ``alias`` stanza is to define tests:
 
 See the section about :ref:`running-tests` for details.
 
-Note that if your project contains several packages and you run test the tests
+Note that if your project contains several packages and you run the tests
 from the opam file using a ``build-test`` field, then all your ``runtest`` alias
 stanzas should have a ``(package ...)`` field in order to partition the set of
 tests.

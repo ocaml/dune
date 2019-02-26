@@ -9,6 +9,8 @@ unreleased
 - Add `c_flags` and `cxx_flags` to env profile settings (#1700 and #1800,
   @gretay-js)
 
+- Format `dune printenv` output (#1867, fix #1862, @emillon)
+
 1.7.2 (21/02/2019)
 ------------------
 

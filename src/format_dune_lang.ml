@@ -24,6 +24,7 @@ let can_be_displayed_wrapped =
     | Atom _
     | Quoted_string _
     | Template _
+    | List (_, [])
     | List (_, [_])
       ->
       true

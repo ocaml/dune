@@ -49,6 +49,7 @@ case "$TARGET" in
         rm -rf ~/.opam
         opam init --disable-sandboxing
         eval $(opam config env)
+        _boot/install/default/bin/dune runtest && \
         opam install ocamlfind utop ppxlib odoc menhir ocaml-migrate-parsetree js_of_ocaml-ppx js_of_ocaml-compiler
         opam remove dune jbuilder \
              `opam list --depends-on jbuilder --installed --short` \
@@ -63,6 +64,12 @@ case "$TARGET" in
   ;;
   build)
     UPDATE_OPAM=0
+    echo -en "travis_fold:start:dune.bootstrap\r"
+    ocaml bootstrap.ml
+    echo -en "travis_fold:end:dune.bootstrap\r"
+    ./boot.exe --subst
+    echo -en "travis_fold:start:dune.boot\r"
+    ./boot.exe
     if [ $WITH_OPAM -eq 1 ] ; then
       echo -en "travis_fold:start:opam.deps\r"
       DATE=$(date +%Y%m%d)
@@ -78,17 +85,12 @@ case "$TARGET" in
         UPDATE_OPAM=1
         opam upgrade
       fi
+      ./_boot/install/default/bin/dune build @runtest-no-deps
       opam list
       opam pin add dune . --no-action
       opam install ocamlfind utop ppxlib odoc ocaml-migrate-parsetree js_of_ocaml-ppx js_of_ocaml-compiler
       echo -en "travis_fold:end:opam.deps\r"
     fi
-    echo -en "travis_fold:start:dune.bootstrap\r"
-    ocaml bootstrap.ml
-    echo -en "travis_fold:end:dune.bootstrap\r"
-    ./boot.exe --subst
-    echo -en "travis_fold:start:dune.boot\r"
-    ./boot.exe
     echo -en "travis_fold:end:dune.boot\r"
     if [ $WITH_OPAM -eq 1 ] ; then
       _boot/install/default/bin/dune runtest && \

@@ -1,3 +1,5 @@
+let () = Printexc.record_backtrace false
+
 let dir = Sys.argv.(1)
 
 let write f =

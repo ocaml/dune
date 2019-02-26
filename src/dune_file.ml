@@ -1689,6 +1689,7 @@ module Menhir = struct
        and infer = field_o_b "infer" ~check:(Syntax.since syntax (2, 0))
        and menhir_syntax = Syntax.get_exn syntax
        and enabled_if = enabled_if
+       and loc = loc
        in
        let infer =
          match infer with
@@ -1699,7 +1700,7 @@ module Menhir = struct
        ; flags
        ; modules
        ; mode
-       ; loc = Loc.none
+       ; loc
        ; infer
        ; enabled_if
        })
@@ -1717,12 +1718,14 @@ module Menhir = struct
       (let%map merge_into = field_o "merge_into" string
        and flags = field_oslu "flags"
        and modules = field "modules" (list string)
-       and mode = Rule.Mode.field in
+       and mode = Rule.Mode.field
+       and loc = loc
+       in
        { merge_into
        ; flags
        ; modules
        ; mode
-       ; loc = Loc.none
+       ; loc
        ; infer = false
        ; enabled_if = Blang.true_
        })

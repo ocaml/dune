@@ -12,3 +12,15 @@
   4 |  (action (bash "cat %{deps}/*")))
   Error: No rule found for dir
   [1]
+
+We should not be able to produce a directory in a rule that already exists
+  $ dune build --display=short --root no-overlapping-rules
+  Entering directory 'no-overlapping-rules'
+      ocamldep .foo.eobjs/foo.ml.d
+        ocamlc .foo.eobjs/byte/foo.{cmi,cmo,cmt}
+      ocamlopt .foo.eobjs/native/foo.{cmx,o}
+      ocamlopt foo.exe
+           foo dir (exit 2)
+  (cd _build/default && ./foo.exe dir)
+  Fatal error: exception Unix.Unix_error(Unix.EEXIST, "mkdir", "dir")
+  [1]

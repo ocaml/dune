@@ -282,6 +282,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name env-bin-pform)
+ (deps (package dune) (source_tree test-cases/env-bin-pform))
+ (action
+  (chdir
+   test-cases/env-bin-pform
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name env-bins)
  (deps (package dune) (source_tree test-cases/env-bins))
  (action
@@ -1342,6 +1350,7 @@
   (alias enabled_if)
   (alias env)
   (alias env-and-flags-include)
+  (alias env-bin-pform)
   (alias env-bins)
   (alias env-cflags)
   (alias env-dune-file)
@@ -1503,6 +1512,7 @@
   (alias enabled_if)
   (alias env)
   (alias env-and-flags-include)
+  (alias env-bin-pform)
   (alias env-bins)
   (alias env-cflags)
   (alias env-dune-file)

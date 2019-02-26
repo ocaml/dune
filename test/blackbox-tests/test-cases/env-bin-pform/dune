@@ -1,0 +1,11 @@
+(env
+ (_
+  (binaries ./foo/foo.exe)))
+
+(alias
+ (name default)
+ (action (run %{exe:foo.exe})))
+
+(alias
+ (name default)
+ (action (run %{bin:foo})))

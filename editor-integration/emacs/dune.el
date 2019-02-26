@@ -59,7 +59,7 @@
 (defconst dune-stanzas-regex
   (eval-when-compile
     (concat (regexp-opt
-             '("library" "executable" "executables" "rule"
+             '("library" "executable" "executables" "rule" "toplevel"
                "ocamllex" "ocamlyacc" "menhir" "alias" "install"
                "copy_files" "copy_files#" "include" "tests" "test"
                "env" "ignored_subdirs" "include_subdirs")
@@ -76,6 +76,8 @@
        "ocamlc_flags" "ocamlopt_flags" "library_flags" "c_flags"
        "cxx_flags" "c_library_flags" "self_build_stubs_archive"
        "modules_without_implementation" "private_modules"
+       ;; + virtual libraries
+       "virtual_modules" "implements"
        "allow_overlapping_dependencies"
        ;; + for "executable" and "executables":
        "package" "link_flags" "link_deps" "names" "public_names"
@@ -85,6 +87,8 @@
        "merge_into"
        ;; + for "alias"
        "enabled_if"
+       ;; + for env
+       "binaries"
        ;; + for "install"
        "section" "files")
      'symbols))

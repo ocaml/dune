@@ -1,3 +1,4 @@
+open Stdune
 #warnings "-40";;
 
 Topdirs.dir_directory "src/catapult/.catapult.objs/byte/";;
@@ -32,8 +33,7 @@ Catapult.emit_gc_counters c;;
 Catapult.close c;;
 [%%ignore]
 
-let buffer_lines () =
-  String.split_on_char '\n' (Buffer.contents buf)
+let buffer_lines () = String.split_lines (Buffer.contents buf)
 ;;
 [%%ignore]
 
@@ -45,5 +45,5 @@ buffer_lines ();;
  ",{\"name\": \"live_words\", \"pid\": 0, \"tid\": 0, \"ph\": \"C\", \"ts\": 30000000, \"args\": {\"value\": 0}}";
  ",{\"name\": \"free_words\", \"pid\": 0, \"tid\": 0, \"ph\": \"C\", \"ts\": 30000000, \"args\": {\"value\": 0}}";
  ",{\"name\": \"stack_size\", \"pid\": 0, \"tid\": 0, \"ph\": \"C\", \"ts\": 30000000, \"args\": {\"value\": 0}}";
- "]"; ""]
+ "]"]
 |}]

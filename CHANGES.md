@@ -11,6 +11,9 @@ unreleased
 
 - Format `dune printenv` output (#1867, fix #1862, @emillon)
 
+- Make errors about menhir stanzas be located (#1881, fix #1876,
+  @diml)
+
 1.7.2 (21/02/2019)
 ------------------
 

@@ -64,6 +64,7 @@ case "$TARGET" in
   ;;
   build)
     UPDATE_OPAM=0
+    RUNTEST_NO_DEPS=runtest-no-deps.out
     echo -en "travis_fold:start:dune.bootstrap\r"
     ocaml bootstrap.ml
     echo -en "travis_fold:end:dune.bootstrap\r"
@@ -85,7 +86,7 @@ case "$TARGET" in
         UPDATE_OPAM=1
         opam upgrade
       fi
-      ./_boot/install/default/bin/dune build @runtest-no-deps
+      ./_boot/install/default/bin/dune build @runtest-no-deps &> $RUNTEST_NO_DEPS
       opam list
       opam pin add dune . --no-action
       opam install ocamlfind utop ppxlib odoc ocaml-migrate-parsetree js_of_ocaml-ppx js_of_ocaml-compiler
@@ -93,6 +94,7 @@ case "$TARGET" in
     fi
     echo -en "travis_fold:end:dune.boot\r"
     if [ $WITH_OPAM -eq 1 ] ; then
+      cat $RUNTEST_NO_DEPS;
       _boot/install/default/bin/dune runtest && \
       _boot/install/default/bin/dune build @test/blackbox-tests/runtest-js && \
       ! _boot/install/default/bin/dune build @test/fail-with-background-jobs-running

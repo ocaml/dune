@@ -23,15 +23,13 @@ module Signal = struct
     | Quit -> Sys.sigquit
     | Term -> Sys.sigterm
 
-  let _of_int =
+  let of_int =
     List.map all ~f:(fun t -> to_int t, t)
     |> Int.Map.of_list_reduce ~f:(fun _ t -> t)
     |> Int.Map.find
 
   let name t = Utils.signal_name (to_int t)
 end
-
-module Thread = struct end
 
 type status_line_config =
   { message   : string option
@@ -284,11 +282,13 @@ end = struct
       | _ -> None)
 end
 
-(*
+
 module Signal_watcher : sig
   val init : unit -> unit
+  val events : unit -> Ev_select.event list
+  val signals_received : Ev_select.event list -> Signal.t list
 end = struct
-
+(*
   let signos = List.map Signal.all ~f:Signal.to_int
 
   let warning = {|
@@ -300,21 +300,6 @@ end = struct
 |}
 
   external sys_exit : int -> _ = "caml_sys_exit"
-
-  let signal_waiter () =
-    if Sys.win32 then begin
-      let r, w = Unix.pipe () in
-      let buf = Bytes.create 1 in
-      Sys.set_signal Sys.sigint
-        (Signal_handle (fun _ -> assert (Unix.write w buf 0 1 = 1)));
-      Staged.stage (fun () ->
-        assert (Unix.read r buf 0 1 = 1);
-        Signal.Int)
-    end else
-      Staged.stage (fun () ->
-        Thread.wait_signal signos
-        |> Signal.of_int
-        |> Option.value_exn)
 
   let run () =
     let last_exit_signals = Queue.create () in
@@ -336,12 +321,22 @@ end = struct
         if n = 2 then prerr_endline warning;
         if n = 3 then sys_exit 1
     done
-
-  let init = lazy (ignore (Thread.create run () : Thread.t))
-
-  let init () = Lazy.force init
-end
 *)
+  let init () =
+    List.iter Signal.all ~f:(fun s ->
+      Ev_select.enable_signal_event (Signal.to_int s))
+
+  let events () =
+    List.map Signal.all ~f:(fun s ->
+      Ev_select.Ev_signal (Signal.to_int s))
+
+  let signals_received evs =
+    List.filter_map evs ~f:(function
+      | Ev_select.Ev_signal s -> Signal.of_int s
+      | _ -> None)
+
+end
+
 
 (** The event queue *)
 module Event : sig
@@ -390,6 +385,7 @@ end = struct
     (* FIXME signals *)
     let events =
       Process_watcher.events ()
+      @ Signal_watcher.events ()
       @ (match file_watcher with
          | None -> []
          | Some fw -> File_watcher.events fw) in
@@ -397,8 +393,9 @@ end = struct
     let events = Ev_select.select events in
     assert (events <> []);
     List.iter (Process_watcher.processes_terminated events) ~f:(fun p ->
-        Queue.push p jobs_completed);
-    (* FIXME signals *)
+      Queue.push p jobs_completed);
+    List.iter (Signal_watcher.signals_received events) ~f:(fun s ->
+      signals := Signal.Set.add !signals s);
     (* FIXME file change debouncing *)
     begin match file_watcher with
     | None -> ()
@@ -576,6 +573,7 @@ let prepare ?(log=Log.no_log) ?(config=Config.default)
       ?(gen_status_line=fun () -> { message = None; show_jobs = false }) () =
   Log.infof log "Workspace root: %s"
     (Path.to_absolute_filename Path.root |> String.maybe_quoted);
+  Signal_watcher.init ();
   let cwd = Sys.getcwd () in
   if cwd <> initial_cwd && not !Clflags.no_print_directory then
     Printf.eprintf "Entering directory '%s'\n%!"

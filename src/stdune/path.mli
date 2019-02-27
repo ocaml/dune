@@ -159,6 +159,8 @@ val mkdir_p : t -> unit
 val extension : t -> string
 val split_extension : t -> t * string
 
+val test_extension : t -> ext:string -> bool
+
 val pp : Format.formatter -> t -> unit
 val pp_in_source : Format.formatter -> t -> unit
 val pp_debug : Format.formatter -> t -> unit

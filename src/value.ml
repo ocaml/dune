@@ -59,4 +59,6 @@ module L = struct
   let paths = List.map ~f:(fun x -> Path x)
 
   let dirs = List.map ~f:(fun x -> Dir x)
+
+  let of_paths_set set = paths (Path.Set.to_list set)
 end

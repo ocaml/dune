@@ -36,6 +36,7 @@ module Macro = struct
     | Lib
     | Libexec
     | Lib_available
+    | Lib_intf
     | Version
     | Read
     | Read_strings
@@ -53,6 +54,7 @@ module Macro = struct
     | Lib -> string "Lib"
     | Libexec -> string "Libexec"
     | Lib_available -> string "Lib_available"
+    | Lib_intf -> string "Lib_intf"
     | Version -> string "Version"
     | Read -> string "Read"
     | Read_strings -> string "Read_strings"
@@ -143,6 +145,7 @@ module Map = struct
       ; "lib", macro Lib
       ; "libexec", macro Libexec
       ; "lib-available", macro Lib_available
+      ; "intf", since ~version:(1, 8) Macro.Lib_intf
       ; "version", macro Version
       ; "read", macro Read
       ; "read-lines", macro Read_lines

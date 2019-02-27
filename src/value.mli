@@ -33,4 +33,6 @@ module L : sig
   val concat : t list -> dir:Path.t -> string
 
   val to_strings : t list -> dir:Path.t -> string list
+
+  val of_paths_set : Path.Set.t -> t list
 end

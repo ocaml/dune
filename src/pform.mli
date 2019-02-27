@@ -20,6 +20,7 @@ module Macro : sig
     | Lib
     | Libexec
     | Lib_available
+    | Lib_intf
     | Version
     | Read
     | Read_strings

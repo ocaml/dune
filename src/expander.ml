@@ -281,6 +281,35 @@ let expand_and_record acc ~map_exe ~dep_kind ~scope
       |> str_exp
       |> Option.some
     end
+  | Macro (Lib_intf, s) ->
+    let lib_name =
+      match String.lsplit2 s ~on:':' with
+      | None -> Errors.fail loc "Invalid intf form %s" key
+      | Some (lib_name, "public") ->
+        Lib_name.of_string_exn ~loc:(Some loc) lib_name
+      | Some (_, s) ->
+        Errors.fail loc
+          "Invalid intf form %s. \
+          Only public %%{intf:%s:public is supported}"
+          key s
+    in
+    Resolved_forms.add_lib_dep acc lib_name dep_kind;
+    let db = Scope.libs scope in
+    begin match Lib.DB.find db lib_name with
+    | Error reason ->
+      Resolved_forms.add_fail acc (
+        { fail = fun () ->
+          Lib.not_available ~loc reason
+            "Public library %a" Lib_name.pp_quoted lib_name }
+      )
+    | Ok lib ->
+      let dir = Lib.public_cmi_dir lib in
+      let cmis =
+        Build.paths_matching ~loc ~dir (Path.test_extension ~ext:".cmi")
+        >>^ Value.L.of_paths_set
+      in
+      add_ddep cmis
+    end
   | Macro (Read, s) -> begin
       let path = relative dir s in
       let data =

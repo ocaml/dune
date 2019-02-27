@@ -322,9 +322,11 @@ end = struct
         if n = 3 then sys_exit 1
     done
 *)
-  let init () =
+  let init = lazy (
     List.iter Signal.all ~f:(fun s ->
-      Ev_select.enable_signal_event (Signal.to_int s))
+      Ev_select.enable_signal_event (Signal.to_int s)))
+
+  let init () = Lazy.force init
 
   let events () =
     List.map Signal.all ~f:(fun s ->

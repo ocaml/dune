@@ -31,7 +31,12 @@ module Lib = struct
         ~foreign_archives ~jsoo_runtime ~main_module_name ~sub_systems
         ~requires ~ppx_runtime_deps ~implements ~virtual_ ~modules ~modes
         ~version ~orig_src_dir ~dir =
-    let map_path p = Path.relative dir (Path.basename p) in
+    let map_path p =
+      if Path.is_managed p then
+        Path.relative dir (Path.basename p)
+      else
+        p
+    in
     let map_list = List.map ~f:map_path in
     let map_mode = Mode.Dict.map ~f:map_list in
     { loc

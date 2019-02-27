@@ -36,6 +36,10 @@ let map_error x ~f =
   | Ok _ as res -> res
   | Error x -> Error (f x)
 
+let to_option = function
+  | Ok p -> Some p
+  | Error _ -> None
+
 let errorf fmt =
   Printf.ksprintf (fun x -> Error x) fmt
 

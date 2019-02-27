@@ -256,9 +256,6 @@ module Process = struct
   let run_command_ok t ?dir ?env cmd =
     (run_command t ?dir ?env cmd).exit_code = 0
 
-  let run_process_ok t ?dir ?env prog args =
-    (run_process t ?dir ?env prog args).exit_code = 0
-
   let run t ?dir ?env prog args =
     run_command t ?dir ?env (command_line prog args)
 
@@ -615,7 +612,10 @@ module Pkg_config = struct
         end
       | _ -> None
     in
-    if Process.run_process_ok c ~dir ?env t.pkg_config [expr] then
+    let pc_flags = "--print-errors" in
+    let { Process.exit_code; stderr; _ } =
+      Process.run_process c ~dir ?env t.pkg_config [pc_flags; expr] in
+    if exit_code = 0 then
       let run what =
         match String.trim (Process.run_capture_exn c ~dir ?env
                              t.pkg_config [what; package])
@@ -623,15 +623,19 @@ module Pkg_config = struct
         | "" -> []
         | s  -> String.split s ~on:' '
       in
-      Some
+      Ok
         { libs   = run "--libs"
         ; cflags = run "--cflags"
         }
     else
-      None
+      Error stderr
 
-  let query t ~package = gen_query t ~package ~expr:None
-  let query_expr t ~package ~expr = gen_query t ~package ~expr:(Some expr)
+  let query t ~package = Result.to_option @@ gen_query t ~package ~expr:None
+
+  let query_expr t ~package ~expr =
+    Result.to_option @@ gen_query t ~package ~expr:(Some expr)
+
+  let query_expr_err t ~package ~expr = gen_query t ~package ~expr:(Some expr)
 end
 
 let main ?(args=[]) ~name f =

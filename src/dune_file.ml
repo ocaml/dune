@@ -1431,20 +1431,32 @@ module Rule = struct
 
 
   module Mode = struct
+    module Promotion_lifetime = struct
+      type t =
+        | Unlimited
+        | Until_clean
+    end
+
     type t =
       | Standard
       | Fallback
-      | Promote
-      | Promote_but_delete_on_clean
+      | Promote of Promotion_lifetime.t * (Loc.t * string) option
       | Not_a_rule_stanza
       | Ignore_source_files
 
     let decode =
-      enum
-        [ "standard"           , Standard
-        ; "fallback"           , Fallback
-        ; "promote"            , Promote
-        ; "promote-until-clean", Promote_but_delete_on_clean
+      let promote_into lifetime =
+        let%map () = Syntax.since Stanza.syntax (1, 8)
+        and x = located relative_file in
+        Promote (lifetime, Some x)
+      in
+      sum
+        [ "standard"           , return Standard
+        ; "fallback"           , return Fallback
+        ; "promote"            , return (Promote (Unlimited, None))
+        ; "promote-until-clean", return (Promote (Until_clean, None))
+        ; "promote-into"       , promote_into Unlimited
+        ; "promote-until-clean-into", promote_into Until_clean
         ]
 
     let field = field "mode" decode ~default:Standard

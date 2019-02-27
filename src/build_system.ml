@@ -959,7 +959,7 @@ and load_dir_step2_exn t ~dir ~collector ~lazy_generators =
         let targets = Build_interpret.Target.paths targets in
         (Path.Set.union targets acc_targets,
          match mode with
-         | Promote | Promote_but_delete_on_clean | Ignore_source_files ->
+         | Promote _ | Ignore_source_files ->
            Path.Set.union targets acc_ignored
          | _ ->
            acc_ignored))
@@ -1012,7 +1012,7 @@ and load_dir_step2_exn t ~dir ~collector ~lazy_generators =
     | Some (_, to_copy) ->
       List.filter rules ~f:(fun (rule : Build_interpret.Rule.t) ->
         match rule.mode with
-        | Standard | Promote | Promote_but_delete_on_clean
+        | Standard | Promote _
         | Not_a_rule_stanza | Ignore_source_files -> true
         | Fallback ->
           let source_files_for_targtes =
@@ -1332,13 +1332,24 @@ let () =
     begin
       match mode with
       | Standard | Fallback | Not_a_rule_stanza | Ignore_source_files -> ()
-      | Promote | Promote_but_delete_on_clean ->
+      | Promote (lifetime, into) ->
         Path.Set.iter targets ~f:(fun path ->
-          let in_source_tree = Option.value_exn (Path.drop_build_context path) in
+          let in_source_tree =
+            Option.value_exn (Path.drop_build_context path)
+          in
+          let in_source_tree =
+            match into with
+            | None -> in_source_tree
+            | Some (loc, dir) ->
+              Path.relative
+                (Path.relative (Path.parent_exn in_source_tree) dir
+                   ~error_loc:loc)
+                (Path.basename in_source_tree)
+          in
           if not (Path.exists in_source_tree) ||
              (Utils.Cached_digest.file path <>
               Utils.Cached_digest.file in_source_tree) then begin
-            if mode = Promote_but_delete_on_clean then
+            if lifetime = Until_clean then
               Promoted_to_delete.add in_source_tree;
             Scheduler.ignore_for_watch in_source_tree;
             Io.copy_file ~src:path ~dst:in_source_tree ()

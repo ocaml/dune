@@ -9,3 +9,8 @@
 (alias
  (name blah2)
  (action (diff y y.gen)))
+
+(rule
+ (targets promoted)
+ (action (with-stdout-to promoted (echo "Hello, world!")))
+ (mode (promote-into subdir)))

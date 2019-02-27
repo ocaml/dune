@@ -2,7 +2,7 @@ open! Stdune
 open Fiber.O
 
 module type Input = Memo_intf.Input
-module type Output = Memo_intf.Output
+module type Data = Memo_intf.Data
 module type Decoder = Memo_intf.Decoder
 
 module Function_name = Interned.Make(struct
@@ -24,7 +24,7 @@ module Spec = struct
     { name : Function_name.t
     ; allow_cutoff : bool
     ; input : (module Input with type t = 'a)
-    ; output : (module Output with type t = 'b)
+    ; output : (module Data with type t = 'b)
     ; decode : 'a Dune_lang.Decoder.t
     ; witness : 'a witness
     ; f : ('a, 'b) Function.t
@@ -128,7 +128,7 @@ module Cached_value = struct
 
   let dep_changed (type a) (node : (_, a) Dep_node.t) prev_output curr_output =
     if node.spec.allow_cutoff then
-      let (module Output : Output with type t = a) = node.spec.output in
+      let (module Output : Data with type t = a) = node.spec.output in
       not (Output.equal prev_output curr_output)
     else
       true
@@ -358,6 +358,7 @@ module Make_gen_sync
   type 'a t =
     { spec  : (Input.t, 'a) Spec.t
     ; cache : (Input.t, 'a) Dep_node.t Table.t
+    ; fdecl : (Input.t -> 'a) Fdecl.t option
     }
 
   type _ Spec.witness += W : Input.t Spec.witness
@@ -368,7 +369,7 @@ module Make_gen_sync
     | None -> None
     | Some node -> get_deps node
 
-  let create name ?(allow_cutoff=true) ~doc output f =
+  let create_internal name ?(allow_cutoff=true) ~doc output f fdecl =
     let name = Function_name.make name in
     let spec =
       { Spec.
@@ -387,7 +388,21 @@ module Make_gen_sync
      | Private -> ());
     { cache = Table.create 1024
     ; spec
+    ; fdecl
     }
+
+  let create name ?allow_cutoff ~doc output f =
+    create_internal name ?allow_cutoff ~doc output f None
+
+  let fcreate name ?allow_cutoff ~doc output =
+    let f = Fdecl.create () in
+    create_internal name ?allow_cutoff ~doc output (fun x -> Fdecl.get f x)
+      (Some f)
+
+  let set_impl t f =
+    match t.fdecl with
+    | None -> invalid_arg "Memo.set_impl"
+    | Some fdecl -> Fdecl.set fdecl f
 
   let compute t inp dep_node =
     (* define the function to update / double check intermediate result *)
@@ -482,7 +497,7 @@ module Make_gen
   type 'a t =
     { spec  : (Input.t, 'a) Spec.t
     ; cache : (Input.t, 'a) Dep_node.t Table.t
-    ; mutable fdecl : (Input.t -> 'a Fiber.t) Fdecl.t option
+    ; fdecl : (Input.t -> 'a Fiber.t) Fdecl.t option
     }
 
   type _ Spec.witness += W : Input.t Spec.witness
@@ -641,7 +656,7 @@ let get_func name =
 
 let call name input =
   let (Spec.T spec) = get_func name in
-  let (module Output : Output with type t = _) = spec.output in
+  let (module Output : Data with type t = _) = spec.output in
   let input = Dune_lang.Decoder.parse spec.decode Univ_map.empty input in
   (match spec.f with
    | Async f -> f

@@ -106,16 +106,15 @@ module DB = struct
             Standalone (Some (ft_dir, Some d))
 
   let make file_tree ~stanzas_per_dir =
-    let get_decl = Fdecl.create () in
     let t =
       { file_tree
       ; stanzas_per_dir
       ; fn =
-          Path_fn.create "get-dir-status" (module T) (fun dir -> Fdecl.get get_decl dir)
+          Path_fn.fcreate "get-dir-status" (module T)
             ~doc:"Get a directory status."
       }
     in
-    Fdecl.set get_decl (fun dir -> get t ~dir);
+    Path_fn.set_impl t.fn (fun dir -> get t ~dir);
     t
 
   let get_assuming_parent_is_part_of_group db ~dir _ft_dir =

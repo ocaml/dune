@@ -8,7 +8,6 @@ module type Data = sig
 end
 
 module type Input = Data
-module type Output = Data
 
 module type Decoder = sig
   type t
@@ -36,9 +35,10 @@ module type S = sig
     :  string
     -> ?allow_cutoff:bool
     -> doc:string
-    -> (module Output with type t = 'a)
-    -> (input -> 'a Fiber.t)
-    -> 'a t
+    -> (module Data with type t = 'output)
+    -> (input -> 'output Fiber.t)
+    -> 'output t
+
 
   (** Same as [create] except that the implementation is defined at a
       latter point of the program. This is useful for creating mutually
@@ -47,8 +47,8 @@ module type S = sig
     :  string
     -> ?allow_cutoff:bool
     -> doc:string
-    -> (module Output with type t = 'a)
-    -> 'a t
+    -> (module Data with type t = 'output)
+    -> 'output t
 
   (** Set the implementation of a memoized function created with
       [fcreate] *)
@@ -96,9 +96,20 @@ module type S_sync = sig
     :  string
     -> ?allow_cutoff:bool
     -> doc:string
-    -> (module Output with type t = 'a)
-    -> (input -> 'a)
-    -> 'a t
+    -> (module Data with type t = 'output)
+    -> (input -> 'output)
+    -> 'output t
+
+  val fcreate
+    :  string
+    -> ?allow_cutoff:bool
+    -> doc:string
+    -> (module Data with type t = 'output)
+    -> 'output t
+
+  (** Set the implementation of a memoized function created with
+      [fcreate] *)
+  val set_impl : 'a t -> (input -> 'a) -> unit
 
   (** Execute a memoized function *)
   val exec : 'a t -> input -> 'a

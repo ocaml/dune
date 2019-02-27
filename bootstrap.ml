@@ -439,7 +439,7 @@ let cleanup ~keep_ml_file =
 
 let () =
   let n =
-    try exec "%s -g -w -40 -o boot.exe unix.cma threads.cma -I +threads %s"
+    try exec "%s -g -w -40 -o boot.exe unix.cma %s"
           (Filename.quote compiler) generated_file
     with e -> cleanup ~keep_ml_file:true; raise e
   in

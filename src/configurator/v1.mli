@@ -1,3 +1,5 @@
+open! Dune_result
+
 type t
 
 val create
@@ -93,7 +95,20 @@ module Pkg_config : sig
      package may contain a version constraint.  For example
      "gtk+-3.0 >= 3.18".  Returns [None] if [package] is not available  *)
 
-  val query_expr : t -> package:string -> expr:string -> package_conf option
+  val query_expr : t
+    -> package:string
+    -> expr:string
+    -> package_conf option
+  [@@ocaml.deprecated "please use [query_expr_err]"]
+
+  val query_expr_err : t
+    -> package:string
+    -> expr:string
+    -> (package_conf, string) Result.t
+  (** [query_expr_err t ~package ~expr] query pkg-config for the
+     [package]. [expr] may contain a version constraint, for example
+     "gtk+-3.0 >= 3.18". [package] should be just the name of the
+     package. Returns [Error error_msg] if [package] is not available *)
 end with type configurator := t
 
 module Flags : sig

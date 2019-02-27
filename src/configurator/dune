@@ -3,5 +3,5 @@
 (library
  (name        configurator)
  (public_name dune.configurator)
- (libraries   stdune ocaml_config dune_lang)
+ (libraries   stdune ocaml_config dune_lang dune_caml dune._result)
  (flags       (:standard -safe-string (:include flags/flags.sexp))))

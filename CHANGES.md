@@ -1,3 +1,13 @@
+1.7.3 (unreleased)
+------------------
+
+- Fix interpretation of `META` files containing archives with `/` in
+  the filename. For instance, this was causing llvm to be unusable
+  with dune (#1889, fix #1885, @diml)
+
+- Make errors about menhir stanzas be located (#1881, fix #1876,
+  @diml)
+
 1.7.2 (21/02/2019)
 ------------------
 

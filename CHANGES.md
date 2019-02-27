@@ -11,6 +11,13 @@ unreleased
 
 - Format `dune printenv` output (#1867, fix #1862, @emillon)
 
+1.7.3 (unreleased)
+------------------
+
+- Fix interpretation of `META` files containing archives with `/` in
+  the filename. For instance, this was causing llvm to be unusable
+  with dune (#1889, fix #1885, @diml)
+
 - Make errors about menhir stanzas be located (#1881, fix #1876,
   @diml)
 

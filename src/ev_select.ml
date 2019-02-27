@@ -5,10 +5,9 @@ let nsig = 128
 
 type signal_handler_info =
   | Signal_event_disabled
-  | Signal_event_enabled of {
-    pipe_rd : Unix.file_descr;
-    pipe_wr : Unix.file_descr;
-  }
+  | Signal_event_enabled of
+    (* pipe_rd : *) Unix.file_descr *
+    (* pipe_wr : *) Unix.file_descr
 
 let signal_handlers = Array.make nsig Signal_event_disabled
 
@@ -21,14 +20,14 @@ let make_sig_info () =
   Unix.set_nonblock pipe_rd;
   Unix.set_close_on_exec pipe_wr;
   Unix.set_nonblock pipe_wr;
-  (Signal_event_enabled { pipe_rd; pipe_wr })
+  Signal_event_enabled (pipe_rd, pipe_wr)
 
 let byte = Bytes.make 1 '!'
 let handle_signal s =
   match get_sig_info s with
   | Signal_event_disabled ->
      failwith "internal error: signal received when handler disabled"
-  | Signal_event_enabled { pipe_wr; _ } ->
+  | Signal_event_enabled (_, pipe_wr) ->
      match Unix.single_write pipe_wr byte 0 1 with
      | 1 -> ()
      | _ -> failwith "please return your operating system for a refund"
@@ -56,7 +55,7 @@ let disable_signal_event s =
   match get_sig_info s with
   | Signal_event_disabled ->
      raise (Invalid_argument ("Signal events already disabled for signal " ^ string_of_int s))
-  | Signal_event_enabled { pipe_rd; pipe_wr } ->
+  | Signal_event_enabled (pipe_rd, pipe_wr) ->
      Sys.set_signal s Sys.Signal_default;
      Unix.close pipe_rd;
      Unix.close pipe_wr;
@@ -78,7 +77,7 @@ let acknowledge_signal s =
   match get_sig_info s with
   | Signal_event_disabled ->
      raise (Invalid_argument ("Signal " ^ string_of_int s ^ " does not have events enabled"))
-  | Signal_event_enabled { pipe_rd; _ } ->
+  | Signal_event_enabled (pipe_rd, _) ->
      if not (drain_pipe pipe_rd) then
        raise (Invalid_argument ("Signal " ^ string_of_int s ^ " was not pending, so should not have been acknowledged"))
 
@@ -144,7 +143,7 @@ let select ?(timeout = (-1.0)) events =
               let sigchld_fd =
                 match get_sig_info Sys.sigchld with
                 | Signal_event_disabled -> assert false
-                | Signal_event_enabled { pipe_rd; _ } -> pipe_rd in
+                | Signal_event_enabled (pipe_rd, _) -> pipe_rd in
               if not (List.mem sigchld_fd read_other) then
                 read_other, []
               else
@@ -179,7 +178,7 @@ let select ?(timeout = (-1.0)) events =
        begin match get_sig_info s with
        | Signal_event_disabled ->
           raise (Invalid_argument ("Signal " ^ string_of_int s ^ " must have events enabled before using select"))
-       | Signal_event_enabled { pipe_rd; _ } ->
+       | Signal_event_enabled (pipe_rd, _) ->
           go timeout (pipe_rd :: read) write urgent ((pipe_rd, s) :: sigs) pids pids_terminated rest
        end
     | Ev_child_process pid :: rest ->
@@ -197,11 +196,11 @@ let select ?(timeout = (-1.0)) events =
            | Signal_event_disabled ->
               (match make_sig_info () with
               | Signal_event_disabled -> assert false
-              | Signal_event_enabled {pipe_rd; _} as si ->
+              | Signal_event_enabled (pipe_rd, _) as si ->
                  set_sig_info Sys.sigchld si;
                  Sys.set_signal Sys.sigchld (Sys.Signal_handle handle_signal);
                 pipe_rd)
-           | Signal_event_enabled { pipe_rd; _ } -> pipe_rd in
+           | Signal_event_enabled (pipe_rd, _ ) -> pipe_rd in
          go timeout (sigchld_rd :: read) write urgent sigs (pid :: pids) pids_terminated rest in
   match events with
   | [] when timeout < 0. ->

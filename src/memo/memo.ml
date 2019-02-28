@@ -370,15 +370,6 @@ let add_rev_dep dep_node =
         cycle = List.map cycle ~f:(fun node -> node.Dag.data)
       })
 
-let get_deps (node : (_, _) Dep_node.t) =
-  match node with
-  |  { state = Running_async _; _ } -> None
-  |  { state = Running_sync _; _ } ->
-    None
-  |  { state = Done cv; _ } ->
-    Some (List.map cv.deps ~f:(fun (Last_dep.T (n,_u)) ->
-      (Function_name.to_string n.spec.name, ser_input n)))
-
 let get_deps_from_graph_exn dep_node =
   Dag.children (dag_node dep_node)
   |> List.map ~f:(fun { Dag.data = Dep_node.T node; _ } ->
@@ -420,11 +411,6 @@ module Make_gen_sync
 
   type 'a t = (Input.t, 'a) t_sync
 
-  let get_deps t inp =
-    match Table.find t.cache inp with
-    | None -> None
-    | Some node -> get_deps node
-
   let create_internal name ?(allow_cutoff=true) ~doc output f fdecl =
     let name = Function_name.make name in
     let spec =
@@ -454,11 +440,6 @@ module Make_gen_sync
     let f = Fdecl.create () in
     create_internal name ?allow_cutoff ~doc output (fun x -> Fdecl.get f x)
       (Some f)
-
-  let set_impl t f =
-    match t.fdecl with
-    | None -> invalid_arg "Memo.set_impl"
-    | Some fdecl -> Fdecl.set fdecl f
 
   let compute t inp dep_node =
     (* define the function to update / double check intermediate result *)
@@ -515,22 +496,6 @@ module Make_gen_sync
         Cached_value.get_sync cv |> function
         | Some v -> v
         | None -> recompute t inp dep_node
-
-  let peek t inp =
-    match Table.find t.cache inp with
-    | None -> None
-    | Some dep_node ->
-      add_rev_dep (dag_node dep_node);
-      match dep_node.state with
-      | Running_sync _ -> failwith "dependency cycle"
-      | Running_async _ -> assert false
-      | Done cv ->
-        if Run.is_current cv.calculated_at then
-          Some cv.data
-        else
-          None
-
-  let peek_exn t inp = Option.value_exn (peek t inp)
 end
 
 module Make_gen
@@ -542,15 +507,6 @@ module Make_gen
 = struct
 
   type 'a t = (Input.t, 'a) t_async
-
-  let get_deps t inp =
-    match Table.find t.cache inp with
-    | None | Some { state = Running_async _; _ } -> None
-    | Some { state = Running_sync _; _ } ->
-      None
-    | Some { state = Done cv; _ } ->
-      Some (List.map cv.deps ~f:(fun (Last_dep.T (n,_u)) ->
-        (Function_name.to_string n.spec.name, ser_input n)))
 
   let create_internal name ?(allow_cutoff=true) ~doc output f fdecl =
     let name = Function_name.make name in
@@ -581,11 +537,6 @@ module Make_gen
     let f = Fdecl.create () in
     create_internal name ?allow_cutoff ~doc output (fun x -> Fdecl.get f x)
       (Some f)
-
-  let set_impl t f =
-    match t.fdecl with
-    | None -> invalid_arg "Memo.set_impl"
-    | Some fdecl -> Fdecl.set fdecl f
 
   let compute t inp ivar dep_node =
     (* define the function to update / double check intermediate result *)
@@ -646,22 +597,37 @@ module Make_gen
         | Some v -> Fiber.return v
         | None -> recompute t inp dep_node
 
-  let peek t inp =
-    match Table.find t.cache inp with
-    | None -> None
-    | Some dep_node ->
-      add_rev_dep (dag_node dep_node);
-      match dep_node.state with
-      | Running_sync _ -> assert false
-      | Running_async _ -> None
-      | Done cv ->
-        if Run.is_current cv.calculated_at then
-          Some cv.data
-        else
-          None
-
-  let peek_exn t inp = Option.value_exn (peek t inp)
 end
+
+let peek t inp =
+  match Table.find t.cache inp with
+  | None -> None
+  | Some dep_node ->
+    add_rev_dep (dag_node dep_node);
+    match dep_node.state with
+    | Running_sync _ -> None
+    | Running_async _ -> None
+    | Done cv ->
+      if Run.is_current cv.calculated_at then
+        Some cv.data
+      else
+        None
+
+let peek_exn t inp = Option.value_exn (peek t inp)
+
+let set_impl t f =
+  match t.fdecl with
+  | None -> invalid_arg "Memo.set_impl"
+  | Some fdecl -> Fdecl.set fdecl f
+
+let get_deps t inp =
+  match Table.find t.cache inp with
+  | None | Some { state = Running_async _; _ } -> None
+  | Some { state = Running_sync _; _ } ->
+    None
+  | Some { state = Done cv; _ } ->
+    Some (List.map cv.deps ~f:(fun (Last_dep.T (n,_u)) ->
+      (Function_name.to_string n.spec.name, ser_input n)))
 
 module Make(Input : Input)(Decoder : Decoder with type t := Input.t) =
   Make_gen(Public)(Input)(Decoder)

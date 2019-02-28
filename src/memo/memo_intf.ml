@@ -50,22 +50,8 @@ module type S = sig
     -> (module Data with type t = 'output)
     -> 'output t
 
-  (** Set the implementation of a memoized function created with
-      [fcreate] *)
-  val set_impl : 'a t -> (input -> 'a Fiber.t) -> unit
-
   (** Execute a memoized function *)
   val exec : 'a t -> input -> 'a Fiber.t
-
-  (** Check whether we already have a value for the given call *)
-  val peek : 'a t -> input -> 'a option
-  val peek_exn : 'a t -> input -> 'a
-
-  (** After running a memoization function with a given name and
-      input, it is possible to query which dependencies that function
-      used during execution by calling [get_deps] with the name and
-      input used during execution. *)
-  val get_deps : _ t -> input -> (string * Sexp.t) list option
 end
 
 module type S_sync = sig
@@ -100,20 +86,6 @@ module type S_sync = sig
     -> (module Data with type t = 'output)
     -> 'output t
 
-  (** Set the implementation of a memoized function created with
-      [fcreate] *)
-  val set_impl : 'a t -> (input -> 'a) -> unit
-
   (** Execute a memoized function *)
   val exec : 'a t -> input -> 'a
-
-  (** Check whether we already have a value for the given call *)
-  val peek : 'a t -> input -> 'a option
-  val peek_exn : 'a t -> input -> 'a
-
-  (** After running a memoization function with a given name and
-      input, it is possible to query which dependencies that function
-      used during execution by calling [get_deps] with the name and
-      input used during execution. *)
-  val get_deps : _ t -> input -> (string * Sexp.t) list option
 end

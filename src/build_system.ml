@@ -1354,7 +1354,7 @@ let () =
     end;
     t.hook Rule_completed
   in
-  Rule_fn.set_impl execute_rule_def execute_rule
+  Memo.set_impl execute_rule_def execute_rule
 
 let () =
   (* a rule can have multiple files, but rule.run_rule may only be called once *)
@@ -1368,7 +1368,7 @@ let () =
         Fiber.return ()
       | Some (File_spec.T file) -> execute_rule file.rule)
   in
-  Path_fn.set_impl build_file_def build_file
+  Memo.set_impl build_file_def build_file
 
 let shim_of_build_goal t request =
   let request =
@@ -1600,7 +1600,7 @@ let package_deps pkg files =
         let static_deps = Fiber.Once.peek_exn ir.static_deps in
         let static_action_deps = Static_deps.action_deps static_deps in
         let _act, dynamic_action_deps =
-          Rule_fn.peek_exn evaluate_action_and_dynamic_deps_def ir
+          Memo.peek_exn evaluate_action_and_dynamic_deps_def ir
         in
         let action_deps =
           Path.Set.union

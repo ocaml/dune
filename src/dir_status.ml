@@ -114,7 +114,7 @@ module DB = struct
             ~doc:"Get a directory status."
       }
     in
-    Path_fn.set_impl t.fn (fun dir -> get t ~dir);
+    Memo.set_impl t.fn (fun dir -> get t ~dir);
     t
 
   let get_assuming_parent_is_part_of_group db ~dir _ft_dir =

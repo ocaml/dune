@@ -54,6 +54,19 @@ module Make_hidden(Input : Input)
   : S with type input := Input.t
        and type 'a t = (Input.t, 'a, (Input.t -> 'a Fiber.t)) t
 
+(** Set the implementation of a memoized function created with
+    [fcreate] *)
+val set_impl : (_, _, 'f) t -> 'f -> unit
+
+(** Check whether we already have a value for the given call *)
+val peek : ('i, 'o, _) t -> 'i -> 'o option
+val peek_exn : ('i, 'o, _) t -> 'i -> 'o
+
+(** After running a memoization function with a given name and
+    input, it is possible to query which dependencies that function
+    used during execution by calling [get_deps] with the name and
+    input used during execution. *)
+val get_deps : ('i, _, _) t -> 'i -> (string * Sexp.t) list option
 
 (** Print the memoized call stack during execution. This is useful for
     debugging purposes. *)

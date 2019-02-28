@@ -30,6 +30,7 @@ end
 (* Directories with library names *)
 let dirs =
   [ "src/wp"                 , Some "Wp"
+  ; "src/stdune/result"      , Some "Dune_result"
   ; "src/stdune/caml"        , Some "Dune_caml"
   ; "src/stdune"             , Some "Stdune"
   ; "src/fiber"              , Some "Fiber"
@@ -38,7 +39,7 @@ let dirs =
   ; "src/memo"               , Some "Memo"
   ; "src/ocaml-config"       , Some "Ocaml_config"
   ; "vendor/boot"            , None
-  ; "src/dune_lang"              , Some "Dune_lang"
+  ; "src/dune_lang"          , Some "Dune_lang"
   ; "src"                    , None
   ]
 

@@ -446,7 +446,7 @@ type t =
   ; contexts    : Context.t String.Map.t
   ; file_tree   : File_tree.t
   ; mutable local_mkdirs : Path.Set.t
-  ; mutable dirs : Dir_status.t Path.Table.t
+  ; dirs : Dir_status.t Path.Table.t
   ; mutable gen_rules :
       (dir:Path.t -> string list -> extra_sub_directories_to_keep) String.Map.t
   ; mutable load_dir_stack : Path.t list

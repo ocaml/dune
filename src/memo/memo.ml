@@ -12,9 +12,9 @@ module Function_name = Interned.Make(struct
   end) ()
 
 module Function = struct
-  type ('a, 'b) t =
-    | Sync of ('a -> 'b)
-    | Async of ('a -> 'b Fiber.t)
+  type ('a, 'b, 'f) t =
+    | Sync : ('a -> 'b) -> ('a, 'b, ('a -> 'b)) t
+    | Async : ('a -> 'b Fiber.t) -> ('a, 'b, ('a -> 'b Fiber.t)) t
 end
 
 module Witness : sig
@@ -53,18 +53,18 @@ end
 
 module Spec = struct
 
-  type ('a, 'b) t =
+  type ('a, 'b, 'f) t =
     { name : Function_name.t
     ; allow_cutoff : bool
     ; input : (module Input with type t = 'a)
     ; output : (module Data with type t = 'b)
     ; decode : 'a Dune_lang.Decoder.t
     ; witness : 'a Witness.t
-    ; f : ('a, 'b) Function.t
+    ; f : ('a, 'b, 'f) Function.t
     ; doc : string
     }
 
-  type packed = T : (_, _) t -> packed [@@unboxed]
+  type packed = T : (_, _, _) t -> packed [@@unboxed]
 
   let by_name = Function_name.Table.create ~default_value:None
 
@@ -126,19 +126,19 @@ module M = struct
   end = State
 
   and Dep_node : sig
-    type ('a, 'b) t = {
-      spec : ('a, 'b) Spec.t;
+    type ('a, 'b, 'f) t = {
+      spec : ('a, 'b, 'f) Spec.t;
       input : 'a;
       id : Id.t;
       mutable dag_node : Dag.node Lazy.t;
       mutable state : 'b State.t;
     }
 
-    type packed = T : (_, _) t -> packed [@@unboxed]
+    type packed = T : (_, _, _) t -> packed [@@unboxed]
   end = Dep_node
 
   and Last_dep : sig
-    type t = T : ('a, 'b) Dep_node.t * 'b -> t
+    type t = T : ('a, 'b, 'f) Dep_node.t * 'b -> t
   end = Last_dep
 
   and Dag : Generic_dag.S with type value := Dep_node.packed
@@ -159,7 +159,7 @@ module Cached_value = struct
     ; calculated_at = Run.current ()
     }
 
-  let dep_changed (type a) (node : (_, a) Dep_node.t) prev_output curr_output =
+  let dep_changed (type a) (node : (_, a, _) Dep_node.t) prev_output curr_output =
     if node.spec.allow_cutoff then
       let (module Output : Data with type t = a) = node.spec.output in
       not (Output.equal prev_output curr_output)
@@ -247,7 +247,7 @@ module Cached_value = struct
 
 end
 
-let ser_input (type a) (node : (a, _) Dep_node.t) =
+let ser_input (type a) (node : (a, _, _) Dep_node.t) =
   let (module Input : Input with type t = a) = node.spec.input in
   Input.to_sexp node.input
 
@@ -380,8 +380,8 @@ let get_deps_from_graph_exn dep_node =
       Last_dep.T (node, res.data))
 
 type ('input, 'output, 'f) t =
-  { spec  : ('input, 'output) Spec.t
-  ; cache : ('input, ('input, 'output) Dep_node.t) Table.t
+  { spec  : ('input, 'output, 'f) Spec.t
+  ; cache : ('input, ('input, 'output, 'f) Dep_node.t) Table.t
   ; fdecl : 'f Fdecl.t option
   }
 
@@ -445,8 +445,7 @@ module Make_gen_sync
     (* define the function to update / double check intermediate result *)
     (* set context of computation then run it *)
     let res = Call_stack.push_sync_frame (T dep_node) (fun () -> match t.spec.f with
-      | Sync f -> f inp
-      | Async _ -> failwith "expected a synchronous function, got an asynchronous one")
+      | Sync f -> f inp)
     in
     (* update the output cache with the correct value *)
     let deps =
@@ -542,9 +541,7 @@ module Make_gen
     (* define the function to update / double check intermediate result *)
     (* set context of computation then run it *)
     Call_stack.push_async_frame (T dep_node) (fun () -> match t.spec.f with
-      | Async f -> f inp
-      | Sync _ -> failwith "expected an asynchronous function, got a synchronous one"
-    ) >>= fun res ->
+      | Async f -> f inp) >>= fun res ->
     (* update the output cache with the correct value *)
     let deps =
       get_deps_from_graph_exn dep_node

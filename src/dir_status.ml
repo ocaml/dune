@@ -18,10 +18,6 @@ module T = struct
     (* Sub-directory of a [Group_root _] *)
 
   let to_sexp _ = Sexp.Atom "<dir-status is opaque>"
-
-  (* CR aalekseyev: this is probably broken *)
-  let hash = Hashtbl.hash
-  let equal = (=)
 end
 include T
 
@@ -52,12 +48,10 @@ let check_no_module_consumer stanzas =
 
 module DB = struct
 
-  module Path_fn = Memo.Make_sync(Path)(Path_dune_lang)
-
   type nonrec t =
     { file_tree : File_tree.t
     ; stanzas_per_dir : Dune_file.Stanzas.t Dir_with_dune.t Path.Map.t
-    ; fn : t Path_fn.t
+    ; fn : (Path.t, t) Memo.Sync.t
     }
 
   let stanzas_in db ~dir =
@@ -110,8 +104,14 @@ module DB = struct
       { file_tree
       ; stanzas_per_dir
       ; fn =
-          Path_fn.fcreate "get-dir-status" (module T)
+          Memo.create
+            "get-dir-status"
+            ~input:(module Path)
+            ~visibility:(Public Path_dune_lang.decode)
+            ~output:(Simple (module T))
             ~doc:"Get a directory status."
+            Sync
+            None
       }
     in
     Memo.set_impl t.fn (fun dir -> get t ~dir);

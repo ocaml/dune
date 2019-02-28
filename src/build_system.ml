@@ -431,13 +431,10 @@ module Action_and_deps = struct
 end
 
 module Rule_fn = struct
-  include Memo.Make_hidden(Internal_rule)
-
   let loc_decl = Fdecl.create ()
 
   let loc () = Fdecl.get loc_decl ()
 end
-module Path_fn = Memo.Make(Path)(Path_dune_lang)
 
 type t =
   { (* File specification by targets *)
@@ -1166,11 +1163,27 @@ let update_universe t =
   Io.write_file universe_file (Dune_lang.to_string ~syntax:Dune (Dune_lang.Encoder.int n))
 
 let build_file_def =
-  Path_fn.fcreate "build-file" (module Unit) ~doc:"Build a file."
+  Memo.create
+    "build-file"
+    ~output:(Allow_cutoff (module Unit))
+    ~doc:"Build a file."
+    ~input:(module Path)
+    ~visibility:(Public Path_dune_lang.decode)
+    Async
+    None
+
 let build_file = Memo.exec build_file_def
 
 let execute_rule_def =
-  Rule_fn.fcreate "execute-rule" (module Unit) ~doc:"-"
+  Memo.create
+    "execute-rule"
+    ~output:(Allow_cutoff (module Unit))
+    ~doc:"-"
+    ~input:(module Internal_rule)
+    ~visibility:Hidden
+    Async
+    None
+
 let execute_rule = Memo.exec execute_rule_def
 
 (* Evaluate a rule and return the action and set of dynamic dependencies *)
@@ -1184,10 +1197,15 @@ let evaluate_action_and_dynamic_deps_def =
     >>| fun () ->
     Build_exec.exec t rule.build ()
   in
-  Rule_fn.create "evaluate-action-and-dynamic-deps"
-    (module Action_and_deps) f
+  Memo.create
+    "evaluate-action-and-dynamic-deps"
+    ~output:(Allow_cutoff (module Action_and_deps))
     ~doc:"Evaluate the build arrow part of a rule and return the \
           action and dynamic dependency of the rule."
+    ~input:(module Internal_rule)
+    ~visibility:Hidden
+    Async
+    (Some f)
 
 let evaluate_action_and_dynamic_deps =
   Memo.exec evaluate_action_and_dynamic_deps_def

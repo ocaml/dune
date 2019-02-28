@@ -2,6 +2,14 @@ open !Stdune
 
 type ('input, 'output, 'fdecl) t
 
+module Sync : sig
+  type nonrec ('i, 'o) t = ('i, 'o, 'i -> 'o) t
+end
+
+module Async : sig
+  type nonrec ('i, 'o) t = ('i, 'o, 'i -> 'o Fiber.t) t
+end
+
 (** A stack frame within a computation. *)
 module Stack_frame : sig
 
@@ -34,11 +42,8 @@ end
     are forgotten, pending computations are cancelled. *)
 val reset : unit -> unit
 
-module type S = Memo_intf.S
-module type S_sync = Memo_intf.S_sync
 module type Input = Memo_intf.Input
 module type Data = Memo_intf.Data
-module type Decoder = Memo_intf.Decoder
 
 module Function : sig
   type ('a, 'b, 'f) t =
@@ -64,7 +69,7 @@ module Visibility : sig
     | Public of 'i Dune_lang.Decoder.t
 end
 
-val create_gen
+val create
   :  string
   -> doc:string
   -> input:(module Data with type t = 'i)
@@ -73,20 +78,6 @@ val create_gen
   -> ('i, 'o, 'f) Function_type.t
   -> 'f option
   -> ('i, 'o, 'f) t
-
-module Make(Input : Input)(Decoder : Decoder with type t := Input.t)
-  : S with type input := Input.t and type 'a t = (Input.t, 'a, (Input.t -> 'a Fiber.t)) t
-
-module Make_sync(Input : Input)(Decoder : Decoder with type t := Input.t)
-  : S_sync with type input := Input.t
-            and type 'a t = (Input.t, 'a, (Input.t -> 'a)) t
-
-(** Same as [Make] except that registered functions won't be available
-    through [dune compute]. In particular, it is not necessary to
-    provide a decoder for the input. *)
-module Make_hidden(Input : Input)
-  : S with type input := Input.t
-       and type 'a t = (Input.t, 'a, (Input.t -> 'a Fiber.t)) t
 
 (** Set the implementation of a memoized function created with
     [fcreate] *)

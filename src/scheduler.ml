@@ -16,7 +16,11 @@ module Signal = struct
       let compare = compare
     end)
 
-  let all = [Int; Quit; Term]
+  let all =
+    if Sys.win32 then
+      [Int]
+    else
+      [Int; Quit; Term]
 
   let to_int = function
     | Int -> Sys.sigint

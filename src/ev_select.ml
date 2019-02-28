@@ -17,9 +17,9 @@ let set_sig_info s i = signal_handlers.(-s-1) <- i
 let make_sig_info () =
   let pipe_rd, pipe_wr = Unix.pipe () in
   Unix.set_close_on_exec pipe_rd;
-  Unix.set_nonblock pipe_rd;
+  (try Unix.set_nonblock pipe_rd with Unix.Unix_error _ -> ());
   Unix.set_close_on_exec pipe_wr;
-  Unix.set_nonblock pipe_wr;
+  (try Unix.set_nonblock pipe_wr with Unix.Unix_error _ -> ());
   Signal_event_enabled (pipe_rd, pipe_wr)
 
 let byte = Bytes.make 1 '!'
@@ -124,12 +124,27 @@ let rec retry_on_eintr f =
   try f ()
   with Unix.Unix_error (Unix.EINTR, _, _) -> retry_on_eintr f
 
+let win32_select timeout read write urgent pids =
+  let start = Unix.gettimeofday () in
+  let rec loop () =
+    if List.exists child_terminated pids then handle_signal Sys.sigchld;
+    match Unix.select read write urgent (min timeout 0.001) with
+    | [], [], []
+         when timeout > 0. && start +. timeout < Unix.gettimeofday () ->
+       loop ()
+    | res -> res in
+  loop ()
+
 let select ?(timeout = (-1.0)) events =
   let rec go timeout read write urgent sigs pids pids_terminated = function
     | [] ->
        let events =
          let read, write, urgent =
-           retry_on_eintr (fun () -> Unix.select read write urgent timeout) in
+           retry_on_eintr (fun () ->
+             if Sys.win32 then
+               win32_select timeout read write urgent pids
+             else
+               Unix.select read write urgent timeout) in
          let read_sig_fd, read_other =
            List.partition (fun fd -> List.mem_assoc fd sigs) read in
          (* This is O(n^2), but n is the number of active signal handlers
@@ -198,7 +213,7 @@ let select ?(timeout = (-1.0)) events =
               | Signal_event_disabled -> assert false
               | Signal_event_enabled (pipe_rd, _) as si ->
                  set_sig_info Sys.sigchld si;
-                 Sys.set_signal Sys.sigchld (Sys.Signal_handle handle_signal);
+                 if not Sys.win32 then Sys.set_signal Sys.sigchld (Sys.Signal_handle handle_signal);
                 pipe_rd)
            | Signal_event_enabled (pipe_rd, _ ) -> pipe_rd in
          go timeout (sigchld_rd :: read) write urgent sigs (pid :: pids) pids_terminated rest in

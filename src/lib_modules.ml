@@ -200,13 +200,6 @@ let has_private_modules t =
 let public_modules t =
   Module.Name.Map.filter ~f:Module.is_public t.modules
 
-let have_artifacts t =
-  let base =
-    Module.Name.Map.superpose t.modules t.wrapped_compat in
-  match t.alias_module with
-  | None -> base
-  | Some alias_module -> Module.Name_map.add base alias_module
-
 let encode
       { modules
       ; alias_module

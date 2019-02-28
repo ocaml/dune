@@ -17,10 +17,3 @@ val file_deps
 val file_deps_with_exts
   :  (Lib.t * Group.t list) list
   -> Path.t list
-
-(** Setup alias dependencies for library artifacts grouped by extensions *)
-val setup_file_deps
-  :  dir:Path.t
-  -> lib:Dune_file.Library.t
-  -> modules:Module.t list
-  -> unit

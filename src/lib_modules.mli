@@ -36,8 +36,6 @@ val version_installed : t -> install_dir:Path.t -> t
 
 val for_compilation : t -> Module.Name_map.t
 
-val have_artifacts : t -> Module.Name_map.t
-
 val for_alias : t -> Module.Name_map.t
 
 val encode : t -> Dune_lang.t list

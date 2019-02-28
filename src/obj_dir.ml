@@ -17,6 +17,7 @@ let public_cmi_dir t =
 let dir t = t.dir
 let obj_dir t = t.obj_dir
 let byte_dir t = t.byte_dir
+let all_cmis_dir = byte_dir
 let native_dir t = t.native_dir
 
 let all_obj_dirs t ~(mode : Mode.t) =

@@ -14,6 +14,9 @@ val native_dir : t -> Path.t
 (** The private compiled byte file directory, and all cmi *)
 val byte_dir : t -> Path.t
 
+(** Alias for [byte_dir] that describes the intention better *)
+val all_cmis_dir:  t -> Path.t
+
 (** The public compiled cmi file directory *)
 val public_cmi_dir: t -> Path.t
 

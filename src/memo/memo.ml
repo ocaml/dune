@@ -3,6 +3,7 @@ open Fiber.O
 
 module type Input = Memo_intf.Input
 module type Data = Memo_intf.Data
+module type Sexpable = Memo_intf.Sexpable
 module type Decoder = Memo_intf.Decoder
 
 module Function_name = Interned.Make(struct
@@ -11,10 +12,21 @@ module Function_name = Interned.Make(struct
     let order = Interned.Fast
   end) ()
 
+module Function_type = struct
+  type ('a, 'b, 'f) t =
+    | Sync : ('a, 'b, ('a -> 'b)) t
+    | Async : ('a, 'b, ('a -> 'b Fiber.t)) t
+end
+
 module Function = struct
   type ('a, 'b, 'f) t =
     | Sync : ('a -> 'b) -> ('a, 'b, ('a -> 'b)) t
     | Async : ('a -> 'b Fiber.t) -> ('a, 'b, ('a -> 'b Fiber.t)) t
+
+  let of_type (type a b f) (t : (a, b, f) Function_type.t) (f : f) : (a, b, f) t =
+    match t with
+    | Sync -> Sync f
+    | Async -> Async f
 end
 
 module Witness : sig
@@ -51,13 +63,19 @@ end = struct
 
 end
 
+module Allow_cutoff = struct
+  type 'o t =
+    | No
+    | Yes of (module Data with type t = 'o)
+end
+
 module Spec = struct
 
   type ('a, 'b, 'f) t =
     { name : Function_name.t
-    ; allow_cutoff : bool
     ; input : (module Input with type t = 'a)
-    ; output : (module Data with type t = 'b)
+    ; output : (module Sexpable with type t = 'b)
+    ; allow_cutoff : 'b Allow_cutoff.t
     ; decode : 'a Dune_lang.Decoder.t
     ; witness : 'a Witness.t
     ; f : ('a, 'b, 'f) Function.t
@@ -160,10 +178,10 @@ module Cached_value = struct
     }
 
   let dep_changed (type a) (node : (_, a, _) Dep_node.t) prev_output curr_output =
-    if node.spec.allow_cutoff then
-      let (module Output : Data with type t = a) = node.spec.output in
+    match node.spec.allow_cutoff with
+    | Yes (module Output : Data with type t = a) ->
       not (Output.equal prev_output curr_output)
-    else
+    | No ->
       true
 
   (* Check if a cached value is up to date. If yes, return it *)
@@ -343,16 +361,16 @@ let dump_stack () =
       (Stack_frame.name st)
       (Stack_frame.input st |> Sexp.to_string))
 
-module Visibility = struct
+module Visibility_simple = struct
   type t =
     | Public (* available via [dune compute] *)
     | Private (* not available via [dune compute] *)
 end
-module type Visibility = sig
-  val visibility : Visibility.t
+module type Visibility_simple = sig
+  val visibility : Visibility_simple.t
 end
-module Public = struct let visibility = Visibility.Public end
-module Private = struct let visibility = Visibility.Private end
+module Public = struct let visibility = Visibility_simple.Public end
+module Private = struct let visibility = Visibility_simple.Private end
 
 let add_rev_dep dep_node =
   match Call_stack.get_call_stack_tip () with
@@ -401,8 +419,78 @@ module Stack_frame = struct
     | None -> None
 end
 
+module Visibility = struct
+  type 'i t =
+    | Hidden
+    | Public of 'i Dune_lang.Decoder.t
+end
+
+module Output = struct
+  type 'o t =
+    | Simple of (module Memo_intf.Sexpable with type t = 'o)
+    | Allow_cutoff of (module Data with type t = 'o)
+end
+
+let create_gen (type i o f)
+      name
+      ~doc
+      ~input:(module Input : Input with type t = i)
+      ~visibility
+      ~(output : o Output.t)
+      (typ : (i, o, f) Function_type.t)
+      (body : f option)
+  =
+  let name = Function_name.make name in
+  let fdecl, f =
+    match body with
+    | None ->
+      let decl_and_get () =
+        let f = Fdecl.create () in
+        Some f, (fun x -> Fdecl.get f x)
+      in
+      ((match typ with
+       | Sync -> decl_and_get ()
+       | Async -> decl_and_get ()) : f Fdecl.t option * f)
+    | Some f ->
+      None, f
+  in
+  let decode : i Dune_lang.Decoder.t =
+    match visibility with
+    | Visibility.Hidden ->
+      let open Dune_lang.Decoder in
+      loc >>= fun loc ->
+      Exn.fatalf ~loc "<not-implemented>"
+    | Public decode -> decode
+  in
+  let (output : (module Sexpable with type t = o)), allow_cutoff =
+    match output with
+    | Simple (module Output) ->
+      (module Output), Allow_cutoff.No
+    | Allow_cutoff (module Output) ->
+      (module Output), (Yes (module Output))
+  in
+  let spec =
+    { Spec.
+      name
+    ; input = (module Input)
+    ; output
+    ; allow_cutoff
+    ; decode
+    ; witness = Witness.create ()
+    ; f = Function.of_type typ f
+    ; doc
+    }
+  in
+  (match visibility with
+   | Public _ -> Spec.register spec
+   | Hidden -> ());
+  { cache = Table.create (module Input) 1024
+  ; spec
+  ; fdecl
+  }
+
 module Make_gen_sync
-    (Visibility : Visibility)
+    (Visibility : Visibility_simple)
     (Input : Input)
     (Decoder : Decoder with type t := Input.t)
   : S_sync with type input := Input.t
@@ -411,35 +499,24 @@ module Make_gen_sync
 
   type 'a t = (Input.t, 'a) t_sync
 
-  let create_internal name ?(allow_cutoff=true) ~doc output f fdecl =
-    let name = Function_name.make name in
-    let spec =
-      { Spec.
-        name
-      ; input = (module Input)
-      ; output
-      ; decode = Decoder.decode
-      ; allow_cutoff
-      ; witness = Witness.create ()
-      ; f = Sync f
-      ; doc
-      }
-    in
-    (match Visibility.visibility with
-     | Public -> Spec.register spec
-     | Private -> ());
-    { cache = Table.create (module Input) 1024
-    ; spec
-    ; fdecl
-    }
+  let create_internal
+        (type o) name ?(allow_cutoff=true) ~doc
+        (module Output : Data with type t = o) body =
+    create_gen name ~doc ~input:(module Input)
+      ~visibility:(match Visibility.visibility with
+        | Private -> Hidden
+        | Public -> Public Decoder.decode)
+      ~output:(match allow_cutoff with
+        | false -> Simple (module Output)
+        | true -> Allow_cutoff (module Output))
+      Function_type.Sync
+      body
 
   let create name ?allow_cutoff ~doc output f =
-    create_internal name ?allow_cutoff ~doc output f None
+    create_internal name ?allow_cutoff ~doc output (Some f)
 
   let fcreate name ?allow_cutoff ~doc output =
-    let f = Fdecl.create () in
-    create_internal name ?allow_cutoff ~doc output (fun x -> Fdecl.get f x)
-      (Some f)
+    create_internal name ?allow_cutoff ~doc output None
 
   let compute t inp dep_node =
     (* define the function to update / double check intermediate result *)
@@ -498,7 +575,7 @@ module Make_gen_sync
 end
 
 module Make_gen
-    (Visibility : Visibility)
+    (Visibility : Visibility_simple)
     (Input : Input)
     (Decoder : Decoder with type t := Input.t)
   : S with type input := Input.t
@@ -507,35 +584,25 @@ module Make_gen
 
   type 'a t = (Input.t, 'a) t_async
 
-  let create_internal name ?(allow_cutoff=true) ~doc output f fdecl =
-    let name = Function_name.make name in
-    let spec =
-      { Spec.
-        name
-      ; input = (module Input)
-      ; output
-      ; decode = Decoder.decode
-      ; allow_cutoff
-      ; witness = Witness.create ()
-      ; f = Async f
-      ; doc
-      }
-    in
-    (match Visibility.visibility with
-     | Public -> Spec.register spec
-     | Private -> ());
-    { cache = Table.create (module Input) 1024
-    ; spec
-    ; fdecl
-    }
+  let create_internal
+        (type o) name ?(allow_cutoff=true) ~doc
+        (module Output : Data with type t = o) body =
+    create_gen name ~doc ~input:(module Input)
+      ~visibility:(match Visibility.visibility with
+        | Private -> Hidden
+        | Public -> Public Decoder.decode)
+      ~output:(match allow_cutoff with
+        | false -> Simple (module Output)
+        | true -> Allow_cutoff (module Output))
+      Function_type.Async
+      body
+
 
   let create name ?allow_cutoff ~doc output f =
-    create_internal name ?allow_cutoff ~doc output f None
+    create_internal name ?allow_cutoff ~doc output (Some f)
 
   let fcreate name ?allow_cutoff ~doc output =
-    let f = Fdecl.create () in
-    create_internal name ?allow_cutoff ~doc output (fun x -> Fdecl.get f x)
-      (Some f)
+    create_internal name ?allow_cutoff ~doc output None
 
   let compute t inp ivar dep_node =
     (* define the function to update / double check intermediate result *)
@@ -650,7 +717,7 @@ let get_func name =
 
 let call name input =
   let (Spec.T spec) = get_func name in
-  let (module Output : Data with type t = _) = spec.output in
+  let (module Output : Sexpable with type t = _) = spec.output in
   let input = Dune_lang.Decoder.parse spec.decode Univ_map.empty input in
   (match spec.f with
    | Async f -> f

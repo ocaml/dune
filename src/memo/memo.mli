@@ -40,6 +40,40 @@ module type Input = Memo_intf.Input
 module type Data = Memo_intf.Data
 module type Decoder = Memo_intf.Decoder
 
+module Function : sig
+  type ('a, 'b, 'f) t =
+    | Sync : ('a -> 'b) -> ('a, 'b, ('a -> 'b)) t
+    | Async : ('a -> 'b Fiber.t) -> ('a, 'b, ('a -> 'b Fiber.t)) t
+end
+
+module Function_type : sig
+  type ('a, 'b, 'f) t =
+    | Sync : ('a, 'b, ('a -> 'b)) t
+    | Async : ('a, 'b, ('a -> 'b Fiber.t)) t
+end
+
+module Output : sig
+  type 'o t =
+    | Simple of (module Memo_intf.Sexpable with type t = 'o)
+    | Allow_cutoff of (module Data with type t = 'o)
+end
+
+module Visibility : sig
+  type 'i t =
+    | Hidden
+    | Public of 'i Dune_lang.Decoder.t
+end
+
+val create_gen
+  :  string
+  -> doc:string
+  -> input:(module Data with type t = 'i)
+  -> visibility:'i Visibility.t
+  -> output:('o Output.t)
+  -> ('i, 'o, 'f) Function_type.t
+  -> 'f option
+  -> ('i, 'o, 'f) t
+
 module Make(Input : Input)(Decoder : Decoder with type t := Input.t)
   : S with type input := Input.t and type 'a t = (Input.t, 'a, (Input.t -> 'a Fiber.t)) t
 

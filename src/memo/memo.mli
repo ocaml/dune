@@ -1,7 +1,12 @@
 open !Stdune
 
+type ('input, 'output, 'fdecl) t
+
 (** A stack frame within a computation. *)
 module Stack_frame : sig
+
+  type ('input, 'output, 'fdecl) memo = ('input, 'output, 'fdecl) t
+
   type t
 
   val equal : t -> t -> bool
@@ -9,6 +14,8 @@ module Stack_frame : sig
 
   val name : t -> string
   val input : t -> Sexp.t
+
+  val as_instance_of : t -> of_:('input, _, _) memo -> 'input option
 end
 
 module Cycle_error : sig
@@ -27,23 +34,26 @@ end
     are forgotten, pending computations are cancelled. *)
 val reset : unit -> unit
 
-module type S = Memo_intf.S with type stack_frame := Stack_frame.t
-module type S_sync = Memo_intf.S_sync with type stack_frame := Stack_frame.t
+module type S = Memo_intf.S
+module type S_sync = Memo_intf.S_sync
 module type Input = Memo_intf.Input
 module type Data = Memo_intf.Data
 module type Decoder = Memo_intf.Decoder
 
 module Make(Input : Input)(Decoder : Decoder with type t := Input.t)
-  : S with type input := Input.t
+  : S with type input := Input.t and type 'a t = (Input.t, 'a, (Input.t -> 'a Fiber.t)) t
 
 module Make_sync(Input : Input)(Decoder : Decoder with type t := Input.t)
   : S_sync with type input := Input.t
+            and type 'a t = (Input.t, 'a, (Input.t -> 'a)) t
 
 (** Same as [Make] except that registered functions won't be available
     through [dune compute]. In particular, it is not necessary to
     provide a decoder for the input. *)
 module Make_hidden(Input : Input)
   : S with type input := Input.t
+       and type 'a t = (Input.t, 'a, (Input.t -> 'a Fiber.t)) t
+
 
 (** Print the memoized call stack during execution. This is useful for
     debugging purposes. *)

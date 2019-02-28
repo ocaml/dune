@@ -66,13 +66,6 @@ module type S = sig
       used during execution by calling [get_deps] with the name and
       input used during execution. *)
   val get_deps : _ t -> input -> (string * Sexp.t) list option
-
-  type stack_frame
-
-  module Stack_frame : sig
-    val instance_of : stack_frame -> of_:_ t -> bool
-    val input : stack_frame -> input option
-  end
 end
 
 module type S_sync = sig
@@ -123,11 +116,4 @@ module type S_sync = sig
       used during execution by calling [get_deps] with the name and
       input used during execution. *)
   val get_deps : _ t -> input -> (string * Sexp.t) list option
-
-  type stack_frame
-
-  module Stack_frame : sig
-    val instance_of : stack_frame -> of_:_ t -> bool
-    val input : stack_frame -> input option
-  end
 end

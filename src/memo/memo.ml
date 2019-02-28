@@ -17,8 +17,41 @@ module Function = struct
     | Async of ('a -> 'b Fiber.t)
 end
 
+module Witness : sig
+  type 'a t
+
+  val create : unit -> 'a t
+
+  val same : 'a t -> 'b t -> ('a, 'b) Type_eq.t option
+end = struct
+
+  type _ w = ..
+
+  type 'a t = {
+    w : 'a w;
+    same : 'b . 'b w -> ('a, 'b) Type_eq.t option
+  }
+
+  let create (type a) () =
+    let module M = struct
+      type _ w += W : a w
+
+      let same (type b) (w : b w) : (a, b) Type_eq.t option = match w with
+        | W -> Some Type_eq.T
+        | _ -> None
+    end
+    in
+    {
+      w = M.W;
+      same = M.same
+    }
+
+  let same { w = _; same = same1 } { w = w2; same = _ } =
+    same1 w2
+
+end
+
 module Spec = struct
-  type _ witness = ..
 
   type ('a, 'b) t =
     { name : Function_name.t
@@ -26,7 +59,7 @@ module Spec = struct
     ; input : (module Input with type t = 'a)
     ; output : (module Data with type t = 'b)
     ; decode : 'a Dune_lang.Decoder.t
-    ; witness : 'a witness
+    ; witness : 'a Witness.t
     ; f : ('a, 'b) Function.t
     ; doc : string
     }
@@ -220,7 +253,8 @@ let ser_input (type a) (node : (a, _) Dep_node.t) =
 
 let dag_node (dep_node : _ Dep_node.t) = Lazy.force dep_node.dag_node
 
-module Stack_frame = struct
+module Stack_frame0 = struct
+
   open Dep_node
 
   type t = packed
@@ -231,6 +265,12 @@ module Stack_frame = struct
   let equal (T a) (T b) = Id.equal a.id b.id
   let compare (T a) (T b) = Id.compare a.id b.id
 end
+
+module To_open = struct
+  module Stack_frame = Stack_frame0
+end
+open To_open
+
 
 module Cycle_error = struct
   type t =
@@ -244,8 +284,8 @@ module Cycle_error = struct
   let stack t = t.stack
 end
 
-module type S = Memo_intf.S with type stack_frame := Stack_frame.t
-module type S_sync = Memo_intf.S_sync with type stack_frame := Stack_frame.t
+module type S = Memo_intf.S
+module type S_sync = Memo_intf.S_sync
 
 let global_dep_dag = Dag.create ()
 
@@ -348,22 +388,37 @@ let get_deps_from_graph_exn dep_node =
     | Done res ->
       Last_dep.T (node, res.data))
 
-type ('input, 'output) t_sync =
+type ('input, 'output, 'f) t =
   { spec  : ('input, 'output) Spec.t
   ; cache : ('input, ('input, 'output) Dep_node.t) Table.t
-  ; fdecl : ('input -> 'output) Fdecl.t option
+  ; fdecl : 'f Fdecl.t option
   }
+
+type ('input, 'output) t_sync = ('input, 'output, ('input -> 'output)) t
+type ('input, 'output) t_async = ('input, 'output, ('input -> 'output Fiber.t)) t
+
+
+module Stack_frame = struct
+  type ('input, 'output, 'fdecl) memo = ('input, 'output, 'fdecl) t
+
+  include Stack_frame0
+
+  let as_instance_of (type i) (Dep_node.T t) ~of_:(memo : (i, _, _) memo) : i option =
+    match Witness.same memo.spec.witness t.spec.witness with
+    | Some T ->
+      Some t.input
+    | None -> None
+end
 
 module Make_gen_sync
     (Visibility : Visibility)
     (Input : Input)
     (Decoder : Decoder with type t := Input.t)
-  : S_sync with type input := Input.t = struct
+  : S_sync with type input := Input.t
+    with type 'a t = (Input.t, 'a, (Input.t -> 'a)) t
+= struct
 
   type 'a t = (Input.t, 'a) t_sync
-
-  type _ Spec.witness += W : Input.t Spec.witness
-
 
   let get_deps t inp =
     match Table.find t.cache inp with
@@ -379,7 +434,7 @@ module Make_gen_sync
       ; output
       ; decode = Decoder.decode
       ; allow_cutoff
-      ; witness = W
+      ; witness = Witness.create ()
       ; f = Sync f
       ; doc
       }
@@ -476,33 +531,17 @@ module Make_gen_sync
           None
 
   let peek_exn t inp = Option.value_exn (peek t inp)
-
-  module Stack_frame = struct
-    let input (Dep_node.T dep_node) : Input.t option =
-      match dep_node.spec.witness with
-      | W -> Some dep_node.input
-      | _ -> None
-
-    let instance_of (Dep_node.T dep_node) ~of_ =
-      dep_node.spec.name = of_.spec.name
-  end
 end
-
-type ('input, 'output) t_async =
-  { spec  : ('input, 'output) Spec.t
-  ; cache : ('input, ('input, 'output) Dep_node.t) Table.t
-  ; fdecl : ('input -> 'output Fiber.t) Fdecl.t option
-  }
 
 module Make_gen
     (Visibility : Visibility)
     (Input : Input)
     (Decoder : Decoder with type t := Input.t)
-  : S with type input := Input.t = struct
+  : S with type input := Input.t
+    with type 'a t = (Input.t, 'a, (Input.t -> 'a Fiber.t)) t
+= struct
 
   type 'a t = (Input.t, 'a) t_async
-
-  type _ Spec.witness += W : Input.t Spec.witness
 
   let get_deps t inp =
     match Table.find t.cache inp with
@@ -522,7 +561,7 @@ module Make_gen
       ; output
       ; decode = Decoder.decode
       ; allow_cutoff
-      ; witness = W
+      ; witness = Witness.create ()
       ; f = Async f
       ; doc
       }
@@ -622,16 +661,6 @@ module Make_gen
           None
 
   let peek_exn t inp = Option.value_exn (peek t inp)
-
-  module Stack_frame = struct
-    let input (Dep_node.T dep_node) : Input.t option =
-      match dep_node.spec.witness with
-      | W -> Some dep_node.input
-      | _ -> None
-
-    let instance_of (Dep_node.T dep_node) ~of_ =
-      dep_node.spec.name = of_.spec.name
-  end
 end
 
 module Make(Input : Input)(Decoder : Decoder with type t := Input.t) =

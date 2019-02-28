@@ -433,10 +433,9 @@ end
 module Rule_fn = struct
   include Memo.Make_hidden(Internal_rule)
 
-  let loc () =
-    let stack = Memo.get_call_stack () in
-    List.find_map stack ~f:Stack_frame.input
-    |> Option.bind ~f:(fun rule -> rule.Internal_rule.loc)
+  let loc_decl = Fdecl.create ()
+
+  let loc () = Fdecl.get loc_decl ()
 end
 module Path_fn = Memo.Make(Path)(Path_dune_lang)
 
@@ -1193,6 +1192,16 @@ let evaluate_action_and_dynamic_deps_def =
 let evaluate_action_and_dynamic_deps =
   Rule_fn.exec evaluate_action_and_dynamic_deps_def
 
+let () =
+  Fdecl.set Rule_fn.loc_decl (fun () ->
+    let stack = Memo.get_call_stack () in
+    List.find_map stack ~f:(fun frame ->
+      match Memo.Stack_frame.as_instance_of frame ~of_:execute_rule_def with
+      | Some input -> Some input
+      | None ->
+        Memo.Stack_frame.as_instance_of frame ~of_:evaluate_action_and_dynamic_deps_def)
+    |> Option.bind ~f:(fun rule -> rule.Internal_rule.loc))
+
 let evaluate_rule (rule : Internal_rule.t) =
   Fiber.Once.get rule.static_deps
   >>= fun static_deps ->
@@ -1386,12 +1395,7 @@ let build_request t ~request =
 let process_memcycle exn =
   let cycle =
     Memo.Cycle_error.get exn
-    |> List.filter_map ~f:(fun frame ->
-      if Path_fn.Stack_frame.instance_of frame ~of_:build_file_def
-      then
-        Path_fn.Stack_frame.input frame
-      else
-        None)
+    |> List.filter_map ~f:(Memo.Stack_frame.as_instance_of ~of_:build_file_def)
   in
   let last = List.last cycle |> Option.value_exn in
   let first = List.hd cycle in

@@ -348,18 +348,19 @@ let get_deps_from_graph_exn dep_node =
     | Done res ->
       Last_dep.T (node, res.data))
 
+type ('input, 'output) t_sync =
+  { spec  : ('input, 'output) Spec.t
+  ; cache : ('input, ('input, 'output) Dep_node.t) Table.t
+  ; fdecl : ('input -> 'output) Fdecl.t option
+  }
+
 module Make_gen_sync
     (Visibility : Visibility)
     (Input : Input)
     (Decoder : Decoder with type t := Input.t)
   : S_sync with type input := Input.t = struct
-  module Table = Hashtbl.Make(Input)
 
-  type 'a t =
-    { spec  : (Input.t, 'a) Spec.t
-    ; cache : (Input.t, 'a) Dep_node.t Table.t
-    ; fdecl : (Input.t -> 'a) Fdecl.t option
-    }
+  type 'a t = (Input.t, 'a) t_sync
 
   type _ Spec.witness += W : Input.t Spec.witness
 
@@ -386,7 +387,7 @@ module Make_gen_sync
     (match Visibility.visibility with
      | Public -> Spec.register spec
      | Private -> ());
-    { cache = Table.create 1024
+    { cache = Table.create (module Input) 1024
     ; spec
     ; fdecl
     }
@@ -487,18 +488,19 @@ module Make_gen_sync
   end
 end
 
+type ('input, 'output) t_async =
+  { spec  : ('input, 'output) Spec.t
+  ; cache : ('input, ('input, 'output) Dep_node.t) Table.t
+  ; fdecl : ('input -> 'output Fiber.t) Fdecl.t option
+  }
+
 module Make_gen
     (Visibility : Visibility)
     (Input : Input)
     (Decoder : Decoder with type t := Input.t)
   : S with type input := Input.t = struct
-  module Table = Hashtbl.Make(Input)
 
-  type 'a t =
-    { spec  : (Input.t, 'a) Spec.t
-    ; cache : (Input.t, 'a) Dep_node.t Table.t
-    ; fdecl : (Input.t -> 'a Fiber.t) Fdecl.t option
-    }
+  type 'a t = (Input.t, 'a) t_async
 
   type _ Spec.witness += W : Input.t Spec.witness
 
@@ -528,7 +530,7 @@ module Make_gen
     (match Visibility.visibility with
      | Public -> Spec.register spec
      | Private -> ());
-    { cache = Table.create 1024
+    { cache = Table.create (module Input) 1024
     ; spec
     ; fdecl
     }

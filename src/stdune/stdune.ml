@@ -6,6 +6,7 @@ module Either     = Either
 module Exn        = Exn
 module Filename   = Filename
 module Hashtbl    = Hashtbl
+module Table      = Table
 module Int        = Int
 module Id         = Id
 module Io         = Io

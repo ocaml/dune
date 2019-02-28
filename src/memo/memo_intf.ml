@@ -54,9 +54,6 @@ module type S = sig
     -> doc:string
     -> (module Data with type t = 'output)
     -> 'output t
-
-  (** Execute a memoized function *)
-  val exec : 'a t -> input -> 'a Fiber.t
 end
 
 module type S_sync = sig
@@ -90,7 +87,4 @@ module type S_sync = sig
     -> doc:string
     -> (module Data with type t = 'output)
     -> 'output t
-
-  (** Execute a memoized function *)
-  val exec : 'a t -> input -> 'a
 end

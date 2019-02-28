@@ -664,6 +664,11 @@ module Exec_async = struct
         | None -> recompute t inp dep_node
 end
 
+let exec (type i o f) (t : (i, o, f) t) =
+  match t.spec.f with
+  | Async _ -> (Exec_async.exec t : f)
+  | Sync _ -> (Exec_sync.exec t : f)
+
 let peek t inp =
   match Table.find t.cache inp with
   | None -> None

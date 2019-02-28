@@ -96,6 +96,9 @@ val set_impl : (_, _, 'f) t -> 'f -> unit
 val peek : ('i, 'o, _) t -> 'i -> 'o option
 val peek_exn : ('i, 'o, _) t -> 'i -> 'o
 
+(** Execute a memoized function *)
+val exec : (_, _, 'f) t -> 'f
+
 (** After running a memoization function with a given name and
     input, it is possible to query which dependencies that function
     used during execution by calling [get_deps] with the name and

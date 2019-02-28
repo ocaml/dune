@@ -1167,11 +1167,11 @@ let update_universe t =
 
 let build_file_def =
   Path_fn.fcreate "build-file" (module Unit) ~doc:"Build a file."
-let build_file = Path_fn.exec build_file_def
+let build_file = Memo.exec build_file_def
 
 let execute_rule_def =
   Rule_fn.fcreate "execute-rule" (module Unit) ~doc:"-"
-let execute_rule = Rule_fn.exec execute_rule_def
+let execute_rule = Memo.exec execute_rule_def
 
 (* Evaluate a rule and return the action and set of dynamic dependencies *)
 let evaluate_action_and_dynamic_deps_def =
@@ -1190,7 +1190,7 @@ let evaluate_action_and_dynamic_deps_def =
           action and dynamic dependency of the rule."
 
 let evaluate_action_and_dynamic_deps =
-  Rule_fn.exec evaluate_action_and_dynamic_deps_def
+  Memo.exec evaluate_action_and_dynamic_deps_def
 
 let () =
   Fdecl.set Rule_fn.loc_decl (fun () ->

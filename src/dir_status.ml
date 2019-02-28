@@ -64,7 +64,7 @@ module DB = struct
     Path.Map.find db.stanzas_per_dir dir
 
   let get db ~dir =
-    let get ~dir = Path_fn.exec db.fn dir in
+    let get ~dir = Memo.exec db.fn dir in
     match
       Option.bind (Path.drop_build_context dir)
         ~f:(File_tree.find_dir db.file_tree)
@@ -118,5 +118,5 @@ module DB = struct
     t
 
   let get_assuming_parent_is_part_of_group db ~dir _ft_dir =
-    Path_fn.exec db.fn dir
+    Memo.exec db.fn dir
 end

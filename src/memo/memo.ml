@@ -493,8 +493,6 @@ module Make_gen_sync
     (Visibility : Visibility_simple)
     (Input : Input)
     (Decoder : Decoder with type t := Input.t)
-  : S_sync with type input := Input.t
-    with type 'a t = (Input.t, 'a, (Input.t -> 'a)) t
 = struct
 
   type 'a t = (Input.t, 'a) t_sync
@@ -518,7 +516,10 @@ module Make_gen_sync
   let fcreate name ?allow_cutoff ~doc output =
     create_internal name ?allow_cutoff ~doc output None
 
-  let compute t inp dep_node =
+end
+
+module Exec_sync = struct
+    let compute t inp dep_node =
     (* define the function to update / double check intermediate result *)
     (* set context of computation then run it *)
     let res = Call_stack.push_sync_frame (T dep_node) (fun () -> match t.spec.f with
@@ -572,14 +573,13 @@ module Make_gen_sync
         Cached_value.get_sync cv |> function
         | Some v -> v
         | None -> recompute t inp dep_node
+
 end
 
 module Make_gen
     (Visibility : Visibility_simple)
     (Input : Input)
     (Decoder : Decoder with type t := Input.t)
-  : S with type input := Input.t
-    with type 'a t = (Input.t, 'a, (Input.t -> 'a Fiber.t)) t
 = struct
 
   type 'a t = (Input.t, 'a) t_async
@@ -603,7 +603,9 @@ module Make_gen
 
   let fcreate name ?allow_cutoff ~doc output =
     create_internal name ?allow_cutoff ~doc output None
+end
 
+module Exec_async = struct
   let compute t inp ivar dep_node =
     (* define the function to update / double check intermediate result *)
     (* set context of computation then run it *)
@@ -660,7 +662,6 @@ module Make_gen
         Cached_value.get_async cv >>= function
         | Some v -> Fiber.return v
         | None -> recompute t inp dep_node
-
 end
 
 let peek t inp =
@@ -693,19 +694,25 @@ let get_deps t inp =
     Some (List.map cv.deps ~f:(fun (Last_dep.T (n,_u)) ->
       (Function_name.to_string n.spec.name, ser_input n)))
 
-module Make(Input : Input)(Decoder : Decoder with type t := Input.t) =
-  Make_gen(Public)(Input)(Decoder)
+module Make(Input : Input)(Decoder : Decoder with type t := Input.t) = struct
+  include Make_gen(Public)(Input)(Decoder)
+  include Exec_async
+end
 
-module Make_sync(Input : Input)(Decoder : Decoder with type t := Input.t) =
-  Make_gen_sync(Public)(Input)(Decoder)
+module Make_sync(Input : Input)(Decoder : Decoder with type t := Input.t) = struct
+  include Make_gen_sync(Public)(Input)(Decoder)
+  include Exec_sync
+end
 
-module Make_hidden(Input : Input) =
-  Make_gen(Private)(Input)(struct
+module Make_hidden(Input : Input) = struct
+  include Make_gen(Private)(Input)(struct
     let decode : Input.t Dune_lang.Decoder.t =
       let open Dune_lang.Decoder in
       loc >>= fun loc ->
       Exn.fatalf ~loc "<not-implemented>"
   end)
+  include Exec_async
+end
 
 let get_func name =
   match

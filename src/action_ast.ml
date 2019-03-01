@@ -30,34 +30,34 @@ struct
     Dune_lang.Decoder.fix (fun t ->
       sum
         [ "run",
-          (let%map prog = Program.decode
-           and args = repeat String.decode
+          (let+ prog = Program.decode
+           and+ args = repeat String.decode
            in
            Run (prog, args))
         ; "chdir",
-          (let%map dn = path
-           and t = t
+          (let+ dn = path
+           and+ t = t
            in
            Chdir (dn, t))
         ; "setenv",
-          (let%map k = string
-           and v = string
-           and t = t
+          (let+ k = string
+           and+ v = string
+           and+ t = t
            in
            Setenv (k, v, t))
         ; "with-stdout-to",
-          (let%map fn = path
-           and t = t
+          (let+ fn = path
+           and+ t = t
            in
            Redirect (Stdout, fn, t))
         ; "with-stderr-to",
-          (let%map fn = path
-           and t = t
+          (let+ fn = path
+           and+ t = t
            in
            Redirect (Stderr, fn, t))
         ; "with-outputs-to",
-          (let%map fn = path
-           and t = t
+          (let+ fn = path
+           and+ t = t
            in
            Redirect (Outputs, fn, t))
         ; "ignore-stdout",
@@ -69,25 +69,25 @@ struct
         ; "progn",
           (repeat t >>| fun l -> Progn l)
         ; "echo",
-          (let%map x = string
-           and xs = repeat string
+          (let+ x = string
+           and+ xs = repeat string
            in
            Echo (x :: xs))
         ; "cat",
           (path >>| fun x -> Cat x)
         ; "copy",
-          (let%map src = path
-           and dst = path
+          (let+ src = path
+           and+ dst = path
            in
            Copy (src, dst))
         ; "copy#",
-          (let%map src = path
-           and dst = path
+          (let+ src = path
+           and+ dst = path
            in
            Copy_and_add_line_directive (src, dst))
         ; "copy-and-add-line-directive",
-          (let%map src = path
-           and dst = path
+          (let+ src = path
+           and+ dst = path
            in
            Copy_and_add_line_directive (src, dst))
         ; "system",
@@ -95,14 +95,14 @@ struct
         ; "bash",
           (string >>| fun cmd -> Bash cmd)
         ; "write-file",
-          (let%map fn = path
-           and s = string
+          (let+ fn = path
+           and+ s = string
            in
            Write_file (fn, s))
         ; "diff",
-          (let%map file1 = path
-           and file2 = path
-           and kind = Stanza.file_kind ()
+          (let+ file1 = path
+           and+ file2 = path
+           and+ kind = Stanza.file_kind ()
            in
            let mode =
              match kind with
@@ -111,9 +111,9 @@ struct
            in
            Diff { optional = false; file1; file2; mode })
         ; "diff?",
-          (let%map file1 = path
-           and file2 = path
-           and kind = Stanza.file_kind ()
+          (let+ file1 = path
+           and+ file2 = path
+           and+ kind = Stanza.file_kind ()
            in
            let mode =
              match kind with
@@ -122,9 +122,9 @@ struct
            in
            Diff { optional = true; file1; file2; mode })
         ; "cmp",
-          (let%map () = Syntax.since Stanza.syntax (1, 0)
-           and file1 = path
-           and file2 = path
+          (let+ () = Syntax.since Stanza.syntax (1, 0)
+           and+ file1 = path
+           and+ file2 = path
            in
            Diff { optional = false; file1; file2; mode = Binary })
         ])

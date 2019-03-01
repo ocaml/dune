@@ -45,3 +45,11 @@ val term : t Cmdliner.Term.t
 val context_arg : doc:string -> string Cmdliner.Term.t
 
 val default_build_dir : string
+
+module Let_syntax : sig
+  val ( let+ ) : 'a Cmdliner.Term.t -> ('a -> 'b) -> 'b Cmdliner.Term.t
+  val ( and+ )
+   :  'a Cmdliner.Term.t
+   -> 'b Cmdliner.Term.t
+   -> ('a * 'b) Cmdliner.Term.t
+end

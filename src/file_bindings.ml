@@ -31,12 +31,12 @@ module Unexpanded = struct
   let decode_file =
     let open Stanza.Decoder in
     let decode =
-      let%map is_atom =
+      let+ is_atom =
         peek_exn >>| function
         | Atom _ -> true
         | _ -> false
-      and s = String_with_vars.decode
-      and version = Syntax.get_exn Stanza.syntax in
+      and+ s = String_with_vars.decode
+      and+ version = Syntax.get_exn Stanza.syntax in
       if not is_atom && version < (1, 6) then
         let what =
           (if String_with_vars.has_vars s then

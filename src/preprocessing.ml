@@ -127,18 +127,18 @@ module Driver = struct
 
       let parse =
         record
-          (let%map loc = loc
-           and flags = Ordered_set_lang.Unexpanded.field "flags"
-           and as_ppx_flags =
+          (let+ loc = loc
+           and+ flags = Ordered_set_lang.Unexpanded.field "flags"
+           and+ as_ppx_flags =
              Ordered_set_lang.Unexpanded.field "as_ppx_flags"
                ~check:(Syntax.since syntax (1, 2))
                ~default:(Ordered_set_lang.Unexpanded.of_strings ["--as-ppx"]
                            ~pos:__POS__)
-           and lint_flags = Ordered_set_lang.Unexpanded.field "lint_flags"
-           and main = field "main" string
-           and replaces =
+           and+ lint_flags = Ordered_set_lang.Unexpanded.field "lint_flags"
+           and+ main = field "main" string
+           and+ replaces =
              field "replaces" (list (located (Lib_name.decode))) ~default:[]
-           and file_kind = Stanza.file_kind ()
+           and+ file_kind = Stanza.file_kind ()
            in
            { loc
            ; flags

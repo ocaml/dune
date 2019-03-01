@@ -61,8 +61,8 @@ let of_sexp =
     [ "dune",
       (version >>= fun version ->
        set (Syntax.key Stanza.syntax) version
-         (let%map parsing_context = get_all
-          and sub_systems = list raw
+         (let+ parsing_context = get_all
+          and+ sub_systems = list raw
           in
           parse_sub_systems ~parsing_context sub_systems))
     ]

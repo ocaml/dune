@@ -125,8 +125,8 @@ let install_uninstall ~what =
   in
   let name_ = Arg.info [] ~docv:"PACKAGE" in
   let term =
-    let%map common = Common.term
-    and prefix_from_command_line =
+    let+ common = Common.term
+    and+ prefix_from_command_line =
       Arg.(value
            & opt (some string) None
            & info ["prefix"]
@@ -136,7 +136,7 @@ let install_uninstall ~what =
                      $(i,\\$prefix/lib), etc... It defaults to the current opam \
                      prefix if opam is available and configured, otherwise it uses \
                      the same prefix as the ocaml compiler.")
-    and libdir_from_command_line =
+    and+ libdir_from_command_line =
       Arg.(value
            & opt (some string) None
            & info ["libdir"]
@@ -146,7 +146,7 @@ let install_uninstall ~what =
                      is specified the default is $(i,\\$prefix/lib), otherwise \
                      it is the output of $(b,ocamlfind printconf destdir)"
           )
-    and destdir =
+    and+ destdir =
       Arg.(value
            & opt (some string) None
            & info ["destdir"]
@@ -155,13 +155,13 @@ let install_uninstall ~what =
                ~doc:"When passed, this directory is prepended to all \
                      installed paths."
           )
-    and dry_run =
+    and+ dry_run =
       Arg.(value
            & flag
            & info ["dry-run"]
                ~doc:"Only display the file operations that would be performed."
           )
-    and pkgs =
+    and+ pkgs =
       Arg.(value & pos_all package_name [] name_)
     in
     Common.set_common common ~targets:[];

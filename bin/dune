@@ -2,7 +2,7 @@
  (name      main)
  (modules   (:standard \ main_dune main_jbuilder))
  (libraries memo dune_lang wp fiber stdune unix dune cmdliner)
- (preprocess (action (run src/let-syntax/pp.exe %{input-file}))))
+ (preprocess compat))
 
 (executable
  (name        main_dune)

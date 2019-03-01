@@ -32,8 +32,8 @@ let build_targets =
     | Jbuilder -> "@install"
   in
   let term =
-    let%map common = Common.term
-    and targets = Arg.(value & pos_all string [default_target] name_)
+    let+ common = Common.term
+    and+ targets = Arg.(value & pos_all string [default_target] name_)
     in
     Common.set_common common ~targets;
     let log = Log.create common in
@@ -53,8 +53,8 @@ let runtest =
   in
   let name_ = Arg.info [] ~docv:"DIR" in
   let term =
-    let%map common = Common.term
-    and dirs = Arg.(value & pos_all string ["."] name_)
+    let+ common = Common.term
+    and+ dirs = Arg.(value & pos_all string ["."] name_)
     in
     Common.set_common common
       ~targets:(List.map dirs ~f:(function
@@ -81,8 +81,7 @@ let clean =
     ]
   in
   let term =
-    let%map common = Common.term
-    in
+    let+ common = Common.term in
     Common.set_common common ~targets:[];
     Build_system.files_in_source_tree_to_delete ()
     |> Path.Set.iter ~f:Path.unlink_no_err;
@@ -105,8 +104,8 @@ let promote =
     ; `Blocks Common.help_secs
     ] in
   let term =
-    let%map common = Common.term
-    and files =
+    let+ common = Common.term
+    and+ files =
       Arg.(value & pos_all Cmdliner.Arg.file [] & info [] ~docv:"FILE")
     in
     Common.set_common common ~targets:[];
@@ -150,7 +149,7 @@ let default =
   let doc = "composable build system for OCaml" in
   let term =
     Term.ret @@
-    let%map _ = Common.term in
+    let+ _ = Common.term in
     `Help (`Pager, None)
   in
   (term,

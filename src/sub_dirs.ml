@@ -68,8 +68,8 @@ let decode =
       >>| (fun l ->
         Predicate_lang.of_string_set (String.Set.of_list l))
     in
-    let%map version = Syntax.get_exn Stanza.syntax
-    and (loc, ignored) = located ignored
+    let+ version = Syntax.get_exn Stanza.syntax
+    and+ (loc, ignored) = located ignored
     in
     if version >= (1, 6) then begin
       Errors.warn loc
@@ -84,10 +84,10 @@ let decode =
     Predicate_lang.decode
   in
   let decode =
-    let%map dirs = field_o "dirs" (located plang)
-    and data_only = field_o "data_only_dirs" (located plang)
-    and ignored_sub_dirs = multi_field "ignored_subdirs" ignored_sub_dirs
-    and rest = leftover_fields
+    let+ dirs = field_o "dirs" (located plang)
+    and+ data_only = field_o "data_only_dirs" (located plang)
+    and+ ignored_sub_dirs = multi_field "ignored_subdirs" ignored_sub_dirs
+    and+ rest = leftover_fields
     in
     match data_only, dirs, ignored_sub_dirs with
     | None, Some (loc, _), _::_ ->

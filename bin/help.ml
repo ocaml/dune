@@ -82,8 +82,8 @@ let info = Term.info "help" ~doc ~man
 
 let term =
   Term.ret @@
-  let%map man_format = Arg.man_format
-  and what =
+  let+ man_format = Arg.man_format
+  and+ what =
     Arg.(value
          & pos 0 (some (enum commands)) None
          & info [] ~docv:"TOPIC")

@@ -25,17 +25,17 @@ let man =
 let info = Term.info "exec" ~doc ~man
 
 let term =
-  let%map common = Common.term
-  and context =
+  let+ common = Common.term
+  and+ context =
     Common.context_arg ~doc:{|Run the command in this build context.|}
-  and prog =
+  and+ prog =
     Arg.(required
          & pos 0 (some string) None (Arg.info [] ~docv:"PROG"))
-  and no_rebuild =
+  and+ no_rebuild =
     Arg.(value & flag
          & info ["no-build"]
              ~doc:"don't rebuild target before executing")
-  and args =
+  and+ args =
     Arg.(value
          & pos_right 0 string [] (Arg.info [] ~docv:"ARGS"))
   in

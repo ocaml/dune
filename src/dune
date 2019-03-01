@@ -15,8 +15,7 @@
               wp
               catapult)
  (synopsis    "Internal Dune library, do not use!")
- (preprocess  (action
-               (run %{project_root}/src/let-syntax/pp.exe %{input-file}))))
+ (preprocess  compat))
 
 (ocamllex meta_lexer glob_lexer dune_lexer ocamlobjinfo)
 

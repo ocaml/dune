@@ -70,7 +70,7 @@ module Syntax = struct
 
   let term =
     let doc = "Output the rules in Makefile syntax." in
-    let%map makefile = Arg.(value & flag & info ["m"; "makefile"] ~doc) in
+    let+ makefile = Arg.(value & flag & info ["m"; "makefile"] ~doc) in
     if makefile then
       Makefile
     else
@@ -89,20 +89,20 @@ end
 
 
 let term =
-  let%map common = Common.term
-  and out =
+  let+ common = Common.term
+  and+ out =
     Arg.(value
          & opt (some string) None
          & info ["o"] ~docv:"FILE"
              ~doc:"Output to a file instead of stdout.")
-  and recursive =
+  and+ recursive =
     Arg.(value
          & flag
          & info ["r"; "recursive"]
              ~doc:"Print all rules needed to build the transitive \
                    dependencies of the given targets.")
-  and syntax = Syntax.term
-  and targets =
+  and+ syntax = Syntax.term
+  and+ targets =
     Arg.(value
          & pos_all string []
          & Arg.info [] ~docv:"TARGET")

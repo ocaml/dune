@@ -16,7 +16,7 @@ let man =
 let info = Term.info "format-dune-file" ~doc ~man
 
 let term =
-  let%map path_opt =
+  let+ path_opt =
     let docv = "FILE" in
     let doc = "Path to the dune file to parse." in
     Arg.(value & pos 0 (some path) None & info [] ~docv ~doc)

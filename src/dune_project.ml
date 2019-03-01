@@ -297,7 +297,7 @@ module Extension = struct
 
   let register_simple ?experimental syntax stanzas =
     let unit_stanzas =
-      let%map r = stanzas in
+      let+ r = stanzas in
       ((), r)
     in
     let unit_to_sexp () = Sexp.List [] in
@@ -400,7 +400,7 @@ let interpret_lang_and_extensions ~(lang : Lang.Instance.t)
               let extension = instance.extension in
               let Extension.Extension e = extension in
               let args =
-                let%map (arg, stanzas) =
+                let+ (arg, stanzas) =
                   Dune_lang.Decoder.set_many parsing_context e.stanzas
                 in
                 let new_args_acc =
@@ -496,29 +496,29 @@ let default_name ~dir ~packages =
         name
 
 let name_field ~dir ~packages =
-    let%map name = field_o "name" Name.decode in
+    let+ name = field_o "name" Name.decode in
     match name with
     | Some x -> x
     | None   -> default_name ~dir ~packages
 
 let parse ~dir ~lang ~packages ~file =
   fields
-    (let%map name = name_field ~dir ~packages
-     and version = field_o "version" string
-     and explicit_extensions =
+    (let+ name = name_field ~dir ~packages
+     and+ version = field_o "version" string
+     and+ explicit_extensions =
        multi_field "using"
-         (let%map loc = loc
-          and name = located string
-          and ver = located Syntax.Version.decode
-          and parse_args = capture
+         (let+ loc = loc
+          and+ name = located string
+          and+ ver = located Syntax.Version.decode
+          and+ parse_args = capture
           in
           (* We don't parse the arguments quite yet as we want to set
              the version of extensions before parsing them. *)
           Extension.instantiate ~loc ~parse_args name ver)
-     and implicit_transitive_deps =
+     and+ implicit_transitive_deps =
        field_o_b "implicit_transitive_deps"
          ~check:(Syntax.since Stanza.syntax (1, 7))
-     and () = Versioned_file.no_more_lang
+     and+ () = Versioned_file.no_more_lang
      in
      let project_file : Project_file.t =
        { file
@@ -576,8 +576,8 @@ let make_jbuilder_project ~dir packages =
 let read_name file =
   load file ~f:(fun _lang ->
     fields
-      (let%map name = field_o "name" (located string)
-       and () = junk_everything
+      (let+ name = field_o "name" (located string)
+       and+ () = junk_everything
        in
        name))
 

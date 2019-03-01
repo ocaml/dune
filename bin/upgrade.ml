@@ -13,7 +13,7 @@ let man =
 let info = Term.info "upgrade" ~doc ~man
 
 let term =
-  let%map common = Common.term in
+  let+ common = Common.term in
   Common.set_common common ~targets:[];
   Scheduler.go ~common (fun () ->
     Dune.Upgrader.upgrade (Dune.File_tree.load Path.root

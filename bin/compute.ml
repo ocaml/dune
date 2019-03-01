@@ -16,13 +16,13 @@ let info = Term.info "compute" ~doc ~man
 
 let term =
   Term.ret @@
-  let%map common = Common.term
-  and fn =
+  let+ common = Common.term
+  and+ fn =
     Arg.(required
          & pos 0 (some string) None
          & info [] ~docv:"FUNCTION"
              ~doc:"Compute $(docv) for a given input.")
-  and inp =
+  and+ inp =
     Arg.(value
          & pos 1 (some string) None
          & info [] ~docv:"INPUT"

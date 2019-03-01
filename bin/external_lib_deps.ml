@@ -109,23 +109,23 @@ let run ~lib_deps ~by_dir ~setup ~only_missing ~sexp =
       end)
 
 let term =
-  let%map common = Common.term
-  and only_missing =
+  let+ common = Common.term
+  and+ only_missing =
     Arg.(value
          & flag
          & info ["missing"]
              ~doc:{|Only print out missing dependencies|})
-  and targets =
+  and+ targets =
     Arg.(non_empty
          & pos_all string []
          & Arg.info [] ~docv:"TARGET")
-  and by_dir =
+  and+ by_dir =
     Arg.(value
          & flag
          & info ["unstable-by-dir"]
              ~doc:{|Print dependencies per directory
                     (this feature is currently unstable)|})
-  and sexp =
+  and+ sexp =
     Arg.(value
          & flag
          & info ["sexp"]

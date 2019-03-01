@@ -44,7 +44,7 @@ module Local = struct
 
   let decode ~dir =
     let open Dune_lang.Decoder in
-    let%map (error_loc, path) = located string
+    let+ (error_loc, path) = located string
     in
     Path.relative ~error_loc dir path
 end

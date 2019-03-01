@@ -36,12 +36,12 @@ module Backend = struct
 
       let parse =
         record
-          (let%map loc = loc
-           and runner_libraries = field "runner_libraries" (list (located Lib_name.decode)) ~default:[]
-           and flags = Ordered_set_lang.Unexpanded.field "flags"
-           and generate_runner = field_o "generate_runner" (located Action_dune_lang.decode)
-           and extends = field "extends" (list (located Lib_name.decode)) ~default:[]
-           and file_kind = Stanza.file_kind ()
+          (let+ loc = loc
+           and+ runner_libraries = field "runner_libraries" (list (located Lib_name.decode)) ~default:[]
+           and+ flags = Ordered_set_lang.Unexpanded.field "flags"
+           and+ generate_runner = field_o "generate_runner" (located Action_dune_lang.decode)
+           and+ extends = field "extends" (list (located Lib_name.decode)) ~default:[]
+           and+ file_kind = Stanza.file_kind ()
            in
            { loc
            ; runner_libraries
@@ -137,11 +137,11 @@ include Sub_system.Register_end_point(
           ~then_:(loc >>| empty)
           ~else_:
             (record
-               (let%map loc = loc
-                and deps = field "deps" (list Dep_conf.decode) ~default:[]
-                and flags = Ordered_set_lang.Unexpanded.field "flags"
-                and backend = field_o "backend" (located Lib_name.decode)
-                and libraries = field "libraries" (list (located Lib_name.decode)) ~default:[]
+               (let+ loc = loc
+                and+ deps = field "deps" (list Dep_conf.decode) ~default:[]
+                and+ flags = Ordered_set_lang.Unexpanded.field "flags"
+                and+ backend = field_o "backend" (located Lib_name.decode)
+                and+ libraries = field "libraries" (list (located Lib_name.decode)) ~default:[]
                 in
                 { loc
                 ; deps

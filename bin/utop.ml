@@ -15,11 +15,11 @@ let man =
  let info = Term.info "utop" ~doc ~man
 
 let term =
-  let%map common = Common.term
-  and dir = Arg.(value & pos 0 string "" & Arg.info [] ~docv:"DIR")
-  and ctx_name =
+  let+ common = Common.term
+  and+ dir = Arg.(value & pos 0 string "" & Arg.info [] ~docv:"DIR")
+  and+ ctx_name =
     Common.context_arg ~doc:{|Select context where to build/run utop.|}
-  and args = Arg.(value & pos_right 0 string [] (Arg.info [] ~docv:"ARGS"))
+  and+ args = Arg.(value & pos_right 0 string [] (Arg.info [] ~docv:"ARGS"))
   in
   Common.set_dirs common;
   if not (Path.is_directory

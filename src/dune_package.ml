@@ -123,21 +123,21 @@ module Lib = struct
       field_o "implements" (located Lib_name.decode) >>= fun implements ->
       field "name" Lib_name.decode >>= fun name ->
       let dir = Path.append_local base (dir_of_name name) in
-      let%map synopsis = field_o "synopsis" string
-      and loc = loc
-      and modes = field_l "modes" Mode.decode
-      and kind = field "kind" Lib_kind.decode
-      and archives = mode_paths "archives"
-      and plugins = mode_paths "plugins"
-      and foreign_objects = paths "foreign_objects"
-      and foreign_archives = mode_paths "foreign_archives"
-      and jsoo_runtime = paths "jsoo_runtime"
-      and requires = libs "requires"
-      and ppx_runtime_deps = libs "ppx_runtime_deps"
-      and virtual_ = field_b "virtual"
-      and sub_systems = Sub_system_info.record_parser ()
-      and orig_src_dir = field_o "orig_src_dir" path
-      and modules = field_o "modules" (Lib_modules.decode
+      let+ synopsis = field_o "synopsis" string
+      and+ loc = loc
+      and+ modes = field_l "modes" Mode.decode
+      and+ kind = field "kind" Lib_kind.decode
+      and+ archives = mode_paths "archives"
+      and+ plugins = mode_paths "plugins"
+      and+ foreign_objects = paths "foreign_objects"
+      and+ foreign_archives = mode_paths "foreign_archives"
+      and+ jsoo_runtime = paths "jsoo_runtime"
+      and+ requires = libs "requires"
+      and+ ppx_runtime_deps = libs "ppx_runtime_deps"
+      and+ virtual_ = field_b "virtual"
+      and+ sub_systems = Sub_system_info.record_parser ()
+      and+ orig_src_dir = field_o "orig_src_dir" path
+      and+ modules = field_o "modules" (Lib_modules.decode
                          ~implements:(Option.is_some implements) ~dir)
       in
       let modes = Mode.Dict.Set.of_list modes in
@@ -196,9 +196,9 @@ type 'sub_system t =
 
 let decode ~dir =
   let open Dune_lang.Decoder in
-  let%map name = field "name" Package.Name.decode
-  and version = field_o "version" string
-  and libs = multi_field "library" (Lib.decode ~base:dir)
+  let+ name = field "name" Package.Name.decode
+  and+ version = field_o "version" string
+  and+ libs = multi_field "library" (Lib.decode ~base:dir)
   in
   { name
   ; version

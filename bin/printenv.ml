@@ -27,8 +27,8 @@ let pp ppf sexps =
        Dune.Format_dune_lang.pp_top_sexps
 
 let term =
-  let%map common = Common.term
-  and dir = Arg.(value & pos 0 dir "" & info [] ~docv:"PATH")
+  let+ common = Common.term
+  and+ dir = Arg.(value & pos 0 dir "" & info [] ~docv:"PATH")
   in
   Common.set_common common ~targets:[];
   let log = Log.create common in

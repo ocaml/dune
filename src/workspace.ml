@@ -55,12 +55,12 @@ module Context = struct
       }
 
     let t ~profile =
-      let%map env = env_field
-      and targets = field "targets" (list Target.t) ~default:[Target.Native]
-      and profile = field "profile" string ~default:profile
-      and toolchain =
+      let+ env = env_field
+      and+ targets = field "targets" (list Target.t) ~default:[Target.Native]
+      and+ profile = field "profile" string ~default:profile
+      and+ toolchain =
         field_o "toolchain" (Syntax.since syntax (1, 5) >>= fun () -> string)
-      and loc = loc
+      and+ loc = loc
       in
       { targets
       ; profile
@@ -80,11 +80,11 @@ module Context = struct
       }
 
     let t ~profile ~x =
-      let%map base = Common.t ~profile
-      and switch = field "switch" string
-      and name = field_o "name" Name.t
-      and root = field_o "root" string
-      and merlin = field_b "merlin"
+      let+ base = Common.t ~profile
+      and+ switch = field "switch" string
+      and+ name = field_o "name" Name.t
+      and+ root = field_o "root" string
+      and+ merlin = field_b "merlin"
       in
       let name = Option.value ~default:switch name in
       let base = { base with targets = Target.add base.targets x } in

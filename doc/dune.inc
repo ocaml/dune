@@ -45,6 +45,15 @@
  (files   dune-external-lib-deps.1))
 
 (rule
+ (with-stdout-to dune-format-dune-file.1
+  (run dune format-dune-file --help=groff)))
+
+(install
+ (section man)
+ (package dune)
+ (files   dune-format-dune-file.1))
+
+(rule
  (with-stdout-to dune-help.1
   (run dune help --help=groff)))
 
@@ -124,15 +133,6 @@
  (section man)
  (package dune)
  (files   dune-uninstall.1))
-
-(rule
- (with-stdout-to dune-unstable-fmt.1
-  (run dune unstable-fmt --help=groff)))
-
-(install
- (section man)
- (package dune)
- (files   dune-unstable-fmt.1))
 
 (rule
  (with-stdout-to dune-upgrade.1

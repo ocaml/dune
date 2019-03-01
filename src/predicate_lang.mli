@@ -1,3 +1,6 @@
+(** DSL to define sets that are defined by a membership : 'a -> bool
+    function. *)
+
 open! Stdune
 
 type t

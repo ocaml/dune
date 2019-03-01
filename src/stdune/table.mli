@@ -7,3 +7,5 @@ val create : (module Key with type t = 'k) -> int -> ('k, 'v) t
 val find : ('k, 'v) t -> 'k -> 'v option
 
 val add : ('k, 'v) t -> 'k -> 'v -> unit
+
+val clear : ('k, 'v) t -> unit

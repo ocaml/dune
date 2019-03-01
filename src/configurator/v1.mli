@@ -79,16 +79,21 @@ module Pkg_config : sig
   type configurator = t
   type t
 
-  (** Returns [None] if pkg-config is not installed *)
   val get : configurator -> t option
+  (** Search pkg-config in the PATH.  Returns [None] if pkg-config is
+     not found. *)
 
   type package_conf =
     { libs   : string list
     ; cflags : string list
     }
 
-  (** Returns [None] if [package] is not available *)
   val query : t -> package:string -> package_conf option
+  (** [query t ~package] query pkg-config for the [package].  The
+     package may contain a version constraint.  For example
+     "gtk+-3.0 >= 3.18".  Returns [None] if [package] is not available  *)
+
+  val query_expr : t -> package:string -> expr:string -> package_conf option
 end with type configurator := t
 
 module Flags : sig

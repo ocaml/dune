@@ -67,6 +67,49 @@ and postprocess_ext tbl b = parse
     let l = Lexing.from_string s in
     postprocess_cwd (Buffer.create (String.length s)) l
 
+  let remove_std_arg =
+    let spacem, space = Re.mark (Re.rep Re.space) in
+    let re =
+      [ space
+      ; Re.str "-std="
+      ; Re.rep1 (Re.compl [Re.space])
+      ; space
+      ]
+      |> Re.seq
+      |> Re.compile
+    in
+    fun s -> Re.replace re s ~f:(fun g ->
+      if Re.Mark.test g spacem then
+        " "
+      else
+        "")
+
+  let config_var_replace config : string -> string =
+    let vars =
+      [ "ocamlc_cflags"
+      ; "ocamlc_cppflags"
+      ]
+    in
+    let vars =
+      List.filter_map vars ~f:(fun k ->
+        Configurator.ocaml_config_var config k
+        |> Option.map ~f:(fun v -> (k, v)))
+    in
+    (* we filter out stuff like -std=gnu99 to get the list of C++ flags *)
+    let vars =
+      match List.assoc vars "ocamlc_cflags" with
+      | None -> vars
+      | Some v -> ("cxx_flags", remove_std_arg v) :: vars
+    in
+    let values =
+      List.filter_map vars ~f:(fun (_, v) ->
+        match String.trim v with
+        | "" -> None
+        | v -> Some (Re.str v))
+    in
+    let re = Re.compile (Re.alt values) in
+    fun s -> Re.replace re ~f:(fun _ -> "$flags") s
+
   let make_ext_replace config =
     let tbl =
       let var = Configurator.ocaml_config_var_exn config in
@@ -189,6 +232,7 @@ and postprocess_ext tbl b = parse
                 |> Ansi_color.strip
                 |> ext_replace
                 |> cwd_replace
+                |> config_var_replace configurator
               in
               Printf.bprintf buf "  %s\n" line);
             if n <> 0 then Printf.bprintf buf "  [%d]\n" n);

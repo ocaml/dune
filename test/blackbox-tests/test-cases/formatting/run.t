@@ -2,6 +2,7 @@ Formatting can be checked using the @fmt target:
 
   $ cp enabled/ocaml_file.ml.orig enabled/ocaml_file.ml
   $ cp enabled/reason_file.re.orig enabled/reason_file.re
+  $ cp enabled/dune.orig enabled/dune
   $ dune build --display short @fmt
       ocamldep fake-tools/.ocamlformat.eobjs/ocamlformat.ml.d
       ocamldep fake-tools/.ocamlformat.eobjs/refmt.ml.d
@@ -11,6 +12,12 @@ Formatting can be checked using the @fmt target:
    ocamlformat enabled/.formatted/ocaml_file.ml
   File "enabled/ocaml_file.ml", line 1, characters 0-0:
   Files _build/default/enabled/ocaml_file.ml and _build/default/enabled/.formatted/ocaml_file.ml differ.
+          dune enabled/.formatted/dune
+  File "enabled/dune", line 1, characters 0-0:
+  Files _build/default/enabled/dune and _build/default/enabled/.formatted/dune differ.
+          dune enabled/subdir/.formatted/dune
+  File "enabled/subdir/dune", line 1, characters 0-0:
+  Files _build/default/enabled/subdir/dune and _build/default/enabled/subdir/.formatted/dune differ.
         ocamlc fake-tools/.ocamlformat.eobjs/byte/refmt.{cmi,cmo,cmt}
       ocamlopt fake-tools/.ocamlformat.eobjs/native/refmt.{cmx,o}
       ocamlopt fake-tools/refmt.exe
@@ -39,6 +46,10 @@ Configuration files are taken into account for this action:
   Files _build/default/enabled/reason_file.re and _build/default/enabled/.formatted/reason_file.re differ.
   File "enabled/reason_file.rei", line 1, characters 0-0:
   Files _build/default/enabled/reason_file.rei and _build/default/enabled/.formatted/reason_file.rei differ.
+  File "enabled/dune", line 1, characters 0-0:
+  Files _build/default/enabled/dune and _build/default/enabled/.formatted/dune differ.
+  File "enabled/subdir/dune", line 1, characters 0-0:
+  Files _build/default/enabled/subdir/dune and _build/default/enabled/subdir/.formatted/dune differ.
   File "partial/a.ml", line 1, characters 0-0:
   Files _build/default/partial/a.ml and _build/default/partial/.formatted/a.ml differ.
    ocamlformat enabled/.formatted/ocaml_file.mli
@@ -54,7 +65,8 @@ Configuration files are taken into account for this action:
 
 And fixable files can be promoted:
 
-  $ dune promote enabled/ocaml_file.ml enabled/reason_file.re
+  $ dune promote enabled/ocaml_file.ml enabled/reason_file.re enabled/dune
+  Promoting _build/default/enabled/.formatted/dune to enabled/dune.
   Promoting _build/default/enabled/.formatted/ocaml_file.ml to enabled/ocaml_file.ml.
   Promoting _build/default/enabled/.formatted/reason_file.re to enabled/reason_file.re.
   $ cat enabled/ocaml_file.ml
@@ -63,6 +75,9 @@ And fixable files can be promoted:
   $ cat enabled/reason_file.re
   Sys.argv: ../../install/default/bin/refmt reason_file.re
   refmt output
+  $ cat enabled/dune
+  (library
+   (name lib_reason))
 
 All .ocamlformat files are considered dependencies:
 
@@ -70,11 +85,14 @@ All .ocamlformat files are considered dependencies:
   $ dune build --display short @fmt
   File "enabled/reason_file.rei", line 1, characters 0-0:
   Files _build/default/enabled/reason_file.rei and _build/default/enabled/.formatted/reason_file.rei differ.
+  File "enabled/subdir/dune", line 1, characters 0-0:
+  Files _build/default/enabled/subdir/dune and _build/default/enabled/subdir/.formatted/dune differ.
          refmt enabled/.formatted/reason_file.re
    ocamlformat enabled/.formatted/ocaml_file.mli
   File "enabled/ocaml_file.mli", line 1, characters 0-0:
   Files _build/default/enabled/ocaml_file.mli and _build/default/enabled/.formatted/ocaml_file.mli differ.
    ocamlformat enabled/.formatted/ocaml_file.ml
+          dune enabled/.formatted/dune
    ocamlformat enabled/subdir/.formatted/lib.ml
   File "enabled/subdir/lib.ml", line 1, characters 0-0:
   Files _build/default/enabled/subdir/lib.ml and _build/default/enabled/subdir/.formatted/lib.ml differ.

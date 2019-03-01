@@ -20,7 +20,6 @@ val make
   -> context:Context.t
   -> artifacts:Artifacts.t
   -> artifacts_host:Artifacts.t
-  -> cxx_flags:string list
   -> t
 
 val set_env : t -> var:string -> value:string -> t
@@ -87,9 +86,11 @@ val with_record_deps
   :  t
   -> Resolved_forms.t
   -> read_package:(Package.t -> (unit, string option) Build.t)
-  -> dep_kind:Lib_deps_info.Kind.t
   -> targets_written_by_user:Targets.t
+  -> dep_kind:Lib_deps_info.Kind.t
   -> map_exe:(Path.t -> Path.t)
+  -> c_flags:(dir:Path.t -> (unit, string list) Build.t)
+  -> cxx_flags:(dir:Path.t -> (unit, string list) Build.t)
   -> t
 
 val with_record_no_ddeps
@@ -97,6 +98,8 @@ val with_record_no_ddeps
   -> Resolved_forms.t
   -> dep_kind:Lib_deps_info.Kind.t
   -> map_exe:(Path.t -> Path.t)
+  -> c_flags:(dir:Path.t -> (unit, string list) Build.t)
+  -> cxx_flags:(dir:Path.t -> (unit, string list) Build.t)
   -> t
 
 val add_ddeps_and_bindings

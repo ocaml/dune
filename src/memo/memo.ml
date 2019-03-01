@@ -115,7 +115,19 @@ end = struct
   let is_current t = !t
 end
 
-let reset = Run.restart
+(* We can get rid of this once we use the memoization system more
+   pervasively and all the dependencies are properly specified *)
+module Caches = struct
+  let cleaners = ref []
+  let register ~clear =
+    cleaners := clear :: !cleaners
+  let clear () =
+    List.iter !cleaners ~f:(fun f -> f ())
+end
+
+let reset () =
+  Caches.clear ();
+  Run.restart ()
 
 module M = struct
   module Generic_dag = Dag
@@ -277,6 +289,11 @@ module Stack_frame0 = struct
 
   let equal (T a) (T b) = Id.equal a.id b.id
   let compare (T a) (T b) = Id.compare a.id b.id
+
+  let pp ppf t =
+    Format.fprintf ppf "%s %a"
+      (name t)
+      Sexp.pp (input t)
 end
 
 module To_open = struct
@@ -345,13 +362,16 @@ module Call_stack = struct
 
 end
 
-let dump_stack () =
+let pp_stack ppf () =
   let stack = Call_stack.get_call_stack () in
-  Printf.eprintf "Memoized function stack:\n";
-  List.iter stack ~f:(fun st ->
-    Printf.eprintf "   %s %s\n"
-      (Stack_frame.name st)
-      (Stack_frame.input st |> Sexp.to_string))
+  Format.fprintf ppf "Memoized function stack:@\n";
+  Format.pp_print_list ~pp_sep:Fmt.nl
+    (fun ppf t -> Format.fprintf ppf "  %a" Stack_frame.pp t)
+    ppf
+    stack
+
+let dump_stack () =
+  Format.eprintf "%a" pp_stack ()
 
 let add_rev_dep dep_node =
   match Call_stack.get_call_stack_tip () with
@@ -461,7 +481,9 @@ let create (type i o f)
   (match visibility with
    | Public _ -> Spec.register spec
    | Hidden -> ());
-  { cache = Table.create (module Input) 1024
+  let cache = Table.create (module Input) 1024 in
+  Caches.register ~clear:(fun () -> Table.clear cache);
+  { cache
   ; spec
   ; fdecl
   }

@@ -5,11 +5,6 @@ let flag_of_kind : Ml_kind.t -> _ =
   | Impl -> "--impl"
   | Intf -> "--intf"
 
-let config_includes (config : Dune_file.Auto_format.t) s =
-  match config.enabled_for with
-  | Default -> true
-  | Only set -> List.mem s ~set
-
 let add_diff sctx loc alias ~dir input output =
   let open Build.O in
   let action = Action.diff input output in
@@ -43,11 +38,11 @@ let depend_on_existing_paths paths =
 
 let depend_on_files ~named dir =
   subdirs_until_root dir
-  |> List.map ~f:(fun dir -> Path.relative dir named)
+  |> List.concat_map ~f:(fun dir -> List.map named ~f:(Path.relative dir))
   |> depend_on_existing_paths
 
 let gen_rules sctx (config : Dune_file.Auto_format.t) ~dir =
-  let loc = config.loc in
+  let loc = Dune_file.Auto_format.loc config in
   let source_dir = Path.drop_build_context_exn dir in
   let subdir = ".formatted" in
   let output_dir = Path.relative dir subdir in
@@ -56,7 +51,7 @@ let gen_rules sctx (config : Dune_file.Auto_format.t) ~dir =
   let resolve_program =
     Super_context.resolve_program ~dir sctx ~loc:(Some loc) in
   let ocamlformat_deps =
-    lazy (depend_on_files ~named:".ocamlformat" source_dir)
+    lazy (depend_on_files ~named:[".ocamlformat"; ".ocamlformat-ignore"] source_dir)
   in
   let setup_formatting file =
     let open Build.O in
@@ -65,7 +60,7 @@ let gen_rules sctx (config : Dune_file.Auto_format.t) ~dir =
     let output = Path.relative output_dir input_basename in
 
     let ocaml kind =
-      if config_includes config Ocaml then
+      if Dune_file.Auto_format.includes config Ocaml then
         let exe = resolve_program "ocamlformat" in
         let args =
           let open Arg_spec in
@@ -83,13 +78,17 @@ let gen_rules sctx (config : Dune_file.Auto_format.t) ~dir =
     in
 
     let formatter =
-      match Path.extension file with
-      | ".ml" -> ocaml Impl
-      | ".mli" -> ocaml Intf
-      | ".re"
-      | ".rei" when config_includes config Reason ->
+      match Path.basename file, Path.extension file with
+      | _, ".ml" -> ocaml Impl
+      | _, ".mli" -> ocaml Intf
+      | _, ".re"
+      | _, ".rei" when Dune_file.Auto_format.includes config Reason ->
         let exe = resolve_program "refmt" in
         let args = [Arg_spec.Dep input] in
+        Some (Build.run ~dir ~stdout_to:output exe args)
+      | "dune", _ when Dune_file.Auto_format.includes config Dune ->
+        let exe = resolve_program "dune" in
+        let args = [Arg_spec.A "format-dune-file"; Dep input] in
         Some (Build.run ~dir ~stdout_to:output exe args)
       | _ -> None
     in

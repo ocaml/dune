@@ -87,6 +87,8 @@ type config_file =
   | Default
   | This of Path.t
 
+let default_build_dir = "_build"
+
 let term =
   let incompatible a b =
     `Error (true,
@@ -162,10 +164,11 @@ let term =
                     $(b,--verbose) as well, to make sure that commands are printed
                     before they are being executed.|})
   and workspace_file =
+    let doc = "Use this specific workspace file instead of looking it up." in
     Arg.(value
          & opt (some path) None
-         & info ["workspace"] ~docs ~docv:"FILE"
-             ~doc:"Use this specific workspace file instead of looking it up.")
+         & info ["workspace"] ~docs ~docv:"FILE" ~doc
+             ~env:(Arg.env_var ~doc "DUNE_WORKSPACE"))
   and auto_promote =
     Arg.(value
          & flag
@@ -358,7 +361,7 @@ let term =
              ~env:(Arg.env_var ~doc "DUNE_STORE_ORIG_SOURCE_DIR")
              ~doc)
   in
-  let build_dir = Option.value ~default:"_build" build_dir in
+  let build_dir = Option.value ~default:default_build_dir build_dir in
   let root, to_cwd =
     match root with
     | Some dn -> (dn, [])

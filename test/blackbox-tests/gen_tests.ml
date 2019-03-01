@@ -129,6 +129,15 @@ let exclusions =
   ; odoc "github717-odoc-index"
   ; odoc "multiple-private-libs"
   ; make "ppx-rewriter" ~skip_ocaml:"4.02.3" ~external_deps:true
+  ; make "cross-compilation" ~external_deps:true
+  ; make "dune-ppx-driver-system" ~external_deps:true
+  ; make "github1372" ~external_deps:true
+  ; make "install-dry-run" ~external_deps:true
+  ; make "install-libdir" ~external_deps:true
+  ; make "lint" ~external_deps:true
+  ; make "package-dep" ~external_deps:true
+  ; make "merlin-tests" ~external_deps:true
+  ; make "use-meta" ~external_deps:true
   ; make "output-obj" ~skip_platforms:[Mac; Win] ~skip_ocaml:"<4.06.0"
   ; make "github644" ~external_deps:true
   ; make "private-public-overlap" ~external_deps:true
@@ -145,6 +154,8 @@ let exclusions =
   (* The next test is disabled as it relies on configured opam
      swtiches and it's hard to get that working properly *)
   ; make "envs-and-contexts" ~external_deps:true ~enabled:false
+  ; make "env" ~skip_ocaml:"<4.06.0"
+  ; make "env-cflags" ~skip_ocaml:"<4.06.0"
   ; make "wrapped-transition" ~skip_ocaml:"<4.06.0"
   ]
 

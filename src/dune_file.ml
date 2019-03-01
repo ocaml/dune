@@ -538,35 +538,42 @@ module Auto_format = struct
   let syntax =
     Syntax.create ~name:"fmt"
       ~desc:"integration with automatic formatters"
-      [ (1, 0) ]
+      [ (1, 1) ]
 
   type language =
     | Ocaml
     | Reason
+    | Dune
 
   let language_to_sexp = function
     | Ocaml -> Sexp.Atom "ocaml"
     | Reason -> Sexp.Atom "reason"
+    | Dune -> Sexp.Atom "dune"
 
   let language =
     sum
       [ ("ocaml", return Ocaml)
       ; ("reason", return Reason)
+      ; ("dune",
+         let%map () = Syntax.since syntax (1, 1) in
+         Dune)
       ]
 
   type enabled_for =
-    | Default
+    | Default of Syntax.Version.t
     | Only of language list
 
   let enabled_for_field =
-    let%map r = field_o "enabled_for" (repeat language) in
+    let%map r = field_o "enabled_for" (repeat language)
+    and version = Syntax.get_exn syntax
+    in
     match r with
     | Some l -> Only l
-    | None -> Default
+    | None -> Default version
 
   let enabled_for_to_sexp =
     function
-    | Default -> Sexp.Atom "default"
+    | Default v -> Sexp.List [Atom "default"; Syntax.Version.to_sexp v]
     | Only l -> List [Atom "only"; List (List.map ~f:language_to_sexp l)]
 
   type t =
@@ -587,6 +594,25 @@ module Auto_format = struct
 
   let key =
     Dune_project.Extension.register syntax dparse_args to_sexp
+
+  let enabled_languages config =
+    match config.enabled_for with
+    | Default ver ->
+      let in_1_0 =
+        [Ocaml; Reason]
+      in
+      let extra =
+        match Syntax.Version.compare ver (1, 1) with
+        | Lt -> []
+        | Eq | Gt -> [Dune]
+      in
+      in_1_0 @ extra
+    | Only l -> l
+
+  let includes config language =
+    List.mem language ~set:(enabled_languages config)
+
+  let loc t = t.loc
 end
 
 module Buildable = struct
@@ -837,6 +863,7 @@ module Library = struct
          located (field "self_build_stubs_archive" (option string) ~default:None)
        and no_dynlink = field_b "no_dynlink"
        and no_keep_locs = field_b "no_keep_locs"
+                            ~check:(Syntax.deprecated_in Stanza.syntax (1, 7))
        and sub_systems =
          return () >>= fun () ->
          Sub_system_info.record_parser ()
@@ -1662,6 +1689,7 @@ module Menhir = struct
        and infer = field_o_b "infer" ~check:(Syntax.since syntax (2, 0))
        and menhir_syntax = Syntax.get_exn syntax
        and enabled_if = enabled_if
+       and loc = loc
        in
        let infer =
          match infer with
@@ -1672,7 +1700,7 @@ module Menhir = struct
        ; flags
        ; modules
        ; mode
-       ; loc = Loc.none
+       ; loc
        ; infer
        ; enabled_if
        })
@@ -1690,12 +1718,14 @@ module Menhir = struct
       (let%map merge_into = field_o "merge_into" string
        and flags = field_oslu "flags"
        and modules = field "modules" (list string)
-       and mode = Rule.Mode.field in
+       and mode = Rule.Mode.field
+       and loc = loc
+       in
        { merge_into
        ; flags
        ; modules
        ; mode
-       ; loc = Loc.none
+       ; loc
        ; infer = false
        ; enabled_if = Blang.true_
        })

@@ -258,3 +258,14 @@ let split_n s n =
   ( sub s ~pos:0 ~len:n
   , sub s ~pos:n ~len:(len - n)
   )
+
+let findi =
+  let rec loop s len ~f i =
+    if i >= len then
+      None
+    else if f (String.unsafe_get s i) then
+      Some i
+    else
+      loop s len ~f (i + 1)
+  in
+  fun s ~f -> loop s (String.length s) ~f 0

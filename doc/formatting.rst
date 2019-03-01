@@ -19,7 +19,7 @@ This feature is enabled by adding the following to the ``dune-project`` file:
 
 .. code:: scheme
 
-    (using fmt 1.0)
+    (using fmt 1.1)
 
 Formatting a project
 ====================
@@ -63,4 +63,17 @@ the languages that are considered for formatting.
 
 .. code:: scheme
 
-    (using fmt 1.0 (enabled_for reason))
+    (using fmt 1.1 (enabled_for reason))
+
+Version history
+===============
+
+1.1
+---
+
+* Format Dune files.
+
+1.0
+---
+
+* Format OCaml (using ocamlformat_) and Reason (using refmt_) source code.

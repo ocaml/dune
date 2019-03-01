@@ -2,6 +2,7 @@
  (name        dune)
  (libraries   unix
               stdune
+              dune_result
               fiber
               dag
               memo

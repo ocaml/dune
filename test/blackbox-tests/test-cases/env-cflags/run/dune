@@ -1,0 +1,15 @@
+(env
+ (default
+  (c_flags "-DTEST_C")
+  (cxx_flags "-DTEST_CPP")))
+
+(rule
+ (targets foo.exe)
+ (deps foo.c)
+ (action (run %{cc} -o %{targets} %{deps})))
+
+(rule
+ (targets bar.exe)
+ (deps bar.cpp)
+ (action (run %{cxx} -o %{targets} %{deps})))
+

@@ -112,6 +112,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name cxx-extension)
+ (deps (package dune) (source_tree test-cases/cxx-extension))
+ (action
+  (chdir
+   test-cases/cxx-extension
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name default-targets)
  (deps (package dune) (source_tree test-cases/default-targets))
  (action
@@ -149,6 +157,14 @@
  (action
   (chdir
    test-cases/dev-flag-1103
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
+ (name dir-target-dep)
+ (deps (package dune) (source_tree test-cases/dir-target-dep))
+ (action
+  (chdir
+   test-cases/dir-target-dep
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
@@ -253,7 +269,9 @@
  (action
   (chdir
    test-cases/env
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} -skip-versions <4.06.0 -test run.t)
+    (diff? run.t run.t.corrected)))))
 
 (alias
  (name env-and-flags-include)
@@ -264,12 +282,30 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name env-bin-pform)
+ (deps (package dune) (source_tree test-cases/env-bin-pform))
+ (action
+  (chdir
+   test-cases/env-bin-pform
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name env-bins)
  (deps (package dune) (source_tree test-cases/env-bins))
  (action
   (chdir
    test-cases/env-bins
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
+ (name env-cflags)
+ (deps (package dune) (source_tree test-cases/env-cflags))
+ (action
+  (chdir
+   test-cases/env-cflags
+   (progn
+    (run %{exe:cram.exe} -skip-versions <4.06.0 -test run.t)
+    (diff? run.t run.t.corrected)))))
 
 (alias
  (name env-dune-file)
@@ -384,19 +420,19 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
- (name fmt)
- (deps (package dune) (source_tree test-cases/fmt))
- (action
-  (chdir
-   test-cases/fmt
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
-
-(alias
  (name force-test)
  (deps (package dune) (source_tree test-cases/force-test))
  (action
   (chdir
    test-cases/force-test
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
+ (name format-dune-file)
+ (deps (package dune) (source_tree test-cases/format-dune-file))
+ (action
+  (chdir
+   test-cases/format-dune-file
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
@@ -509,6 +545,14 @@
  (action
   (chdir
    test-cases/github1811
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
+ (name github1856)
+ (deps (package dune) (source_tree test-cases/github1856))
+ (action
+  (chdir
+   test-cases/github1856
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
@@ -963,6 +1007,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name pkg-config-quoting)
+ (deps (package dune) (source_tree test-cases/pkg-config-quoting))
+ (action
+  (chdir
+   test-cases/pkg-config-quoting
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name ppx-rewriter)
  (deps (package dune) (source_tree test-cases/ppx-rewriter))
  (action
@@ -1277,11 +1329,13 @@
   (alias copy_files)
   (alias cross-compilation)
   (alias custom-build-dir)
+  (alias cxx-extension)
   (alias default-targets)
   (alias dep-vars)
   (alias depend-on-the-universe)
   (alias deps-conf-vars)
   (alias dev-flag-1103)
+  (alias dir-target-dep)
   (alias double-echo)
   (alias dune-build-dir-exec-1101)
   (alias dune-jbuild-var-case)
@@ -1296,7 +1350,9 @@
   (alias enabled_if)
   (alias env)
   (alias env-and-flags-include)
+  (alias env-bin-pform)
   (alias env-bins)
+  (alias env-cflags)
   (alias env-dune-file)
   (alias env-tracking)
   (alias env-var-expansion)
@@ -1310,8 +1366,8 @@
   (alias findlib)
   (alias findlib-dynload)
   (alias findlib-error)
-  (alias fmt)
   (alias force-test)
+  (alias format-dune-file)
   (alias formatting)
   (alias gen-opam-install-file)
   (alias github1019)
@@ -1326,6 +1382,7 @@
   (alias github1560)
   (alias github1616)
   (alias github1811)
+  (alias github1856)
   (alias github20)
   (alias github24)
   (alias github25)
@@ -1379,6 +1436,7 @@
   (alias output-obj)
   (alias package-dep)
   (alias path-variables)
+  (alias pkg-config-quoting)
   (alias ppx-rewriter)
   (alias preprocess-with-action)
   (alias private-modules)
@@ -1431,18 +1489,18 @@
   (alias configurator-gh1166)
   (alias copy-files-non-sub-dir-error)
   (alias copy_files)
-  (alias cross-compilation)
   (alias custom-build-dir)
+  (alias cxx-extension)
   (alias default-targets)
   (alias dep-vars)
   (alias depend-on-the-universe)
   (alias deps-conf-vars)
   (alias dev-flag-1103)
+  (alias dir-target-dep)
   (alias double-echo)
   (alias dune-build-dir-exec-1101)
   (alias dune-jbuild-var-case)
   (alias dune-package)
-  (alias dune-ppx-driver-system)
   (alias dune-project-edition)
   (alias dup-fields)
   (alias duplicate-c-cxx)
@@ -1452,7 +1510,9 @@
   (alias enabled_if)
   (alias env)
   (alias env-and-flags-include)
+  (alias env-bin-pform)
   (alias env-bins)
+  (alias env-cflags)
   (alias env-dune-file)
   (alias env-tracking)
   (alias env-var-expansion)
@@ -1465,21 +1525,21 @@
   (alias fallback-dune)
   (alias findlib)
   (alias findlib-error)
-  (alias fmt)
   (alias force-test)
+  (alias format-dune-file)
   (alias formatting)
   (alias github1019)
   (alias github1099)
   (alias github1231)
   (alias github1306)
   (alias github1342)
-  (alias github1372)
   (alias github1395)
   (alias github1529)
   (alias github1549)
   (alias github1560)
   (alias github1616)
   (alias github1811)
+  (alias github1856)
   (alias github20)
   (alias github24)
   (alias github25)
@@ -1497,8 +1557,6 @@
   (alias ignored_subdirs)
   (alias include-loop)
   (alias inline_tests)
-  (alias install-dry-run)
-  (alias install-libdir)
   (alias install-rule-order)
   (alias install-with-var)
   (alias installable-dup-private-libs)
@@ -1506,10 +1564,8 @@
   (alias lib-available)
   (alias lib-errors)
   (alias link-deps)
-  (alias lint)
   (alias loop)
   (alias macro-expand-error)
-  (alias merlin-tests)
   (alias meta-gen)
   (alias misc)
   (alias missing-loc-run)
@@ -1525,8 +1581,8 @@
   (alias old-dune-subsystem)
   (alias optional)
   (alias output-obj)
-  (alias package-dep)
   (alias path-variables)
+  (alias pkg-config-quoting)
   (alias preprocess-with-action)
   (alias private-modules)
   (alias project-root)
@@ -1551,7 +1607,6 @@
   (alias trace-file)
   (alias transitive-deps-mode)
   (alias upgrader)
-  (alias use-meta)
   (alias variants)
   (alias windows-diff)
   (alias workspaces)

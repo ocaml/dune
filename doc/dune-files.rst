@@ -200,8 +200,9 @@ to use the :ref:`include_subdirs` stanza.
 - ``(allow_overlapping_dependencies)`` allows external dependencies to
   overlap with libraries that are present in the workspace
 
-- ``(no_keep_locs)`` undocumented, it is a necessary hack until this
-  is implemented: https://github.com/ocaml/dune/issues/921
+- ``(no_keep_locs)`` does nothing. It used to be a necessary hack when
+  we were waiting for proper support for virtual libraries. Do not use
+  in new code, it will be deleted in dune 2.0
 
 Note that when binding C libraries, dune doesn't provide special support for
 tools such as ``pkg-config``, however it integrates easily with configurator_ by
@@ -604,7 +605,7 @@ The typical use of the ``alias`` stanza is to define tests:
 
 See the section about :ref:`running-tests` for details.
 
-Note that if your project contains several packages and you run test the tests
+Note that if your project contains several packages and you run the tests
 from the opam file using a ``build-test`` field, then all your ``runtest`` alias
 stanzas should have a ``(package ...)`` field in order to partition the set of
 tests.
@@ -753,8 +754,8 @@ to ``expect_test.expected``.
 
 The optional fields that are supported are a subset of the alias and executables
 fields. In particular, all fields except for ``public_names`` are supported from
-the `executables stanza <shared-exe-fields>`_. Alias fields apart from ``name``
-are allowed.
+the :ref:`executables stanza <shared-exe-fields>`. Alias fields apart from
+``name`` are allowed.
 
 test
 ----
@@ -793,6 +794,10 @@ directory. You can use ``_`` to match any build profile.
 Fields supported in ``<settings>`` are:
 
 - any OCaml flags field, see `OCaml flags`_ for more details.
+
+- ``(c_flags <flags>)`` and ``(cxx_flags <flags>)``
+  to specify compilation flags for C and C++ stubs, respectively.
+  See `library`_ for more details.
 
 - ``(env-vars (<var1> <val1>) .. (<varN> <valN>))``. This will add the
   corresponding variables to the environment in which the build commands are

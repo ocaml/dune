@@ -97,19 +97,15 @@ module Auto_format : sig
   type language =
     | Ocaml
     | Reason
+    | Dune
 
-  type enabled_for =
-    | Default
-    | Only of language list
-
-  type t =
-    { loc : Loc.t
-    ; enabled_for : enabled_for
-    }
-
-  val syntax : Syntax.t
+  type t
 
   val key : t Dune_project.Extension.t
+
+  val loc : t -> Loc.t
+
+  val includes : t -> language -> bool
 end
 
 module Buildable : sig

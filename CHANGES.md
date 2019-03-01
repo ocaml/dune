@@ -1,6 +1,56 @@
 unreleased
 ----------
 
+- Add support for `.cxx` extension for C++ stubs (#1831, @rgrinberg)
+
+- Add `DUNE_WORKSPACE` variable. This variable is equivalent to setting
+  `--workspace` in the command line. (#1711, fix #1503, @rgrinberg)
+
+- Add `c_flags` and `cxx_flags` to env profile settings (#1700 and #1800,
+  @gretay-js)
+
+- Format `dune printenv` output (#1867, fix #1862, @emillon)
+
+1.7.3 (unreleased)
+------------------
+
+- Fix interpretation of `META` files containing archives with `/` in
+  the filename. For instance, this was causing llvm to be unusable
+  with dune (#1889, fix #1885, @diml)
+
+- Make errors about menhir stanzas be located (#1881, fix #1876,
+  @diml)
+
+1.7.2 (21/02/2019)
+------------------
+
+- Add `${corrected-suffix}`, `${library-name}` and a few other
+  variables to the list of variables to upgrade. This fixes the
+  support for various framework producing corrections (#1840, #1853,
+  @diml)
+
+- Fix `$ dune subst` failing because the build directory wasn't set. (#1854, fix
+  #1846, @rgrinberg)
+
+- Configurator: Add warning to `Pkg_config.query` when a full package expression
+  is used. Add `Pkg_config.query_expr` for cases when the full power of
+  pkg-config's querying is needed (#1842, fix #1833, @rgrinberg)
+
+- Fix unavailable, optional implementations eagerly breaking the build (#1857,
+  fix #1856, @rgrinberg)
+
+1.7.1 (13/02/2019)
+------------------
+
+- Fix the watch mode (#1837, #1839, fix #1836, @diml)
+
+- Configurator: Fix misquoting when running pkg-config (#1835, fix #1833,
+  @Chris00)
+
+1.7.0 (12/02/2019)
+------------------
+
+
 - Second step of the deprecation of jbuilder: the `jbuilder` binary
   now emits a warning on every startup and both `jbuilder` and `dune`
   emit warnings when encountering `jbuild` files (#1752, @diml)
@@ -129,6 +179,18 @@ unreleased
 
 - Add `DUNE_PROFILE` environment variable to easily set the profile. (#1806,
   @rgrinberg)
+
+- Deprecate the undocumented `(no_keep_locs)` field. It was only
+  necessary until virtual libraries were supported (#1822, fix #1816,
+  @diml)
+
+- Rename `unstable-fmt` to `format-dune-file` and remove its `--inplace` option.
+  (#1821, @emillon).
+
+- Autoformatting: `(using fmt 1.1)` will also format dune files (#1821, @emillon).
+
+- Autoformatting: record dependencies on `.ocamlformat-ignore` files (#1824,
+  fixes #1793, @emillon)
 
 1.6.2 (05/12/2018)
 ------------------

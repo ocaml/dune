@@ -9,6 +9,7 @@ type t =
   ; ocaml_config : Value.t list String.Map.t Lazy.t
   ; bindings : Pform.Map.t
   ; scope : Scope.t
+  ; c_compiler : string
   ; expand_var :
       t -> (Value.t list, Pform.Expansion.t)
              result option String_with_vars.expander
@@ -92,11 +93,11 @@ let expand_var_exn t var syn =
         (String_with_vars.Var.describe var))
 
 let make ~scope ~(context : Context.t) ~artifacts
-      ~artifacts_host ~cxx_flags =
+      ~artifacts_host =
   let expand_var ({ bindings; ocaml_config; env = _; scope
                   ; hidden_env = _
                   ; dir = _ ; artifacts = _; expand_var = _
-                  ; artifacts_host = _ } as t)
+                  ; artifacts_host = _; c_compiler = _ } as t)
         var syntax_version =
     Pform.Map.expand bindings var syntax_version
     |> Option.bind ~f:(function
@@ -109,8 +110,9 @@ let make ~scope ~(context : Context.t) ~artifacts
   in
   let ocaml_config = lazy (make_ocaml_config context.ocaml_config) in
   let dir = context.build_dir in
-  let bindings = Pform.Map.create ~context ~cxx_flags in
+  let bindings = Pform.Map.create ~context in
   let env = context.env in
+  let c_compiler = context.c_compiler in
   { dir
   ; hidden_env = Env.Var.Set.empty
   ; env
@@ -120,6 +122,7 @@ let make ~scope ~(context : Context.t) ~artifacts
   ; artifacts
   ; artifacts_host
   ; expand_var
+  ; c_compiler
   }
 
 let expand t ~mode ~template =
@@ -198,8 +201,16 @@ type expansion_kind =
   | Dynamic of dynamic
   | Static
 
+let cc_of_c_flags t cc ~dir =
+  let open Build.O in
+  cc ~dir >>^ fun flags ->
+  Value.L.strings (t.c_compiler :: flags)
+
+let cxx_of_cxx_flags = cc_of_c_flags
+
 let expand_and_record acc ~map_exe ~dep_kind ~scope
-      ~expansion_kind ~dir ~pform t expansion =
+      ~expansion_kind ~dir ~pform t expansion
+      ~cxx ~cc =
   let key = String_with_vars.Var.full_name pform in
   let loc = String_with_vars.Var.loc pform in
   let relative = Path.relative ~error_loc:loc in
@@ -219,6 +230,8 @@ let expand_and_record acc ~map_exe ~dep_kind ~scope
   match (expansion : Pform.Expansion.t) with
   | Var (Project_root | First_dep | Deps | Targets | Named_local | Values _)
   | Macro ((Ocaml_config | Env ), _) -> assert false
+  | Var Cc -> add_ddep (cc ~dir)
+  | Var Cxx -> add_ddep (cxx ~dir)
   | Macro (Path_no_dep, s) -> Some [Value.Dir (relative dir s)]
   | Macro (Exe, s) -> Some (path_exp (map_exe (relative dir s)))
   | Macro (Dep, s) -> Some (path_exp (relative dir s))
@@ -312,7 +325,7 @@ let expand_and_record acc ~map_exe ~dep_kind ~scope
     end
 
 let expand_and_record_deps acc ~dir ~read_package ~dep_kind
-      ~targets_written_by_user ~map_exe ~expand_var
+      ~targets_written_by_user ~map_exe ~expand_var ~cc ~cxx
       t pform syntax_version =
   let res =
     expand_var t pform syntax_version
@@ -338,7 +351,9 @@ let expand_and_record_deps acc ~dir ~read_package ~dep_kind
           end
         | _ ->
           expand_and_record acc ~map_exe ~dep_kind ~scope:t.scope
-            ~expansion_kind:(Dynamic { read_package }) ~dir ~pform t expansion
+            ~expansion_kind:(Dynamic { read_package }) ~dir ~pform
+            ~cc ~cxx
+            t expansion
     )
   in
   Option.iter res ~f:(fun v ->
@@ -348,6 +363,7 @@ let expand_and_record_deps acc ~dir ~read_package ~dep_kind
   Option.map res ~f:Result.ok
 
 let expand_no_ddeps acc ~dir ~dep_kind ~map_exe ~expand_var
+      ~cc ~cxx
       t pform syntax_version =
   let res =
     expand_var t pform syntax_version
@@ -355,7 +371,7 @@ let expand_no_ddeps acc ~dir ~dep_kind ~map_exe ~expand_var
       | Ok s -> Some s
       | Error (expansion : Pform.Expansion.t) ->
         expand_and_record acc ~map_exe ~dep_kind ~scope:t.scope
-          ~expansion_kind:Static ~dir ~pform t expansion)
+          ~cc ~cxx ~expansion_kind:Static ~dir ~pform t expansion)
   in
   Option.iter res ~f:(fun v ->
     acc.sdeps <- Path.Set.union
@@ -363,26 +379,37 @@ let expand_no_ddeps acc ~dir ~dep_kind ~map_exe ~expand_var
   );
   Option.map res ~f:Result.ok
 
-let with_record_deps t resolved_forms ~read_package ~dep_kind
-      ~targets_written_by_user ~map_exe =
+let gen_with_record_deps ~expand t resolved_forms ~dep_kind ~map_exe
+      ~c_flags ~cxx_flags =
+  let cc = cc_of_c_flags t c_flags in
+  let cxx = cxx_of_cxx_flags t cxx_flags in
   let expand_var =
-    expand_and_record_deps
+    expand
       (* we keep the dir constant here to replicate the old behavior of: (chdir
          foo %{exe:bar}). This should lookup ./bar rather than ./foo/bar *)
-      ~dir:t.dir
-      resolved_forms ~read_package ~dep_kind
-      ~expand_var:t.expand_var ~targets_written_by_user ~map_exe in
-  { t with expand_var }
-
-let with_record_no_ddeps t resolved_forms ~dep_kind
-      ~map_exe =
-  let expand_var =
-    expand_no_ddeps
-      (* we keep the dir constant here to replicate the old behavior of: (chdir
-         foo %{exe:bar}). This should lookup ./bar rather than ./foo/bar *)
-      ~dir:t.dir resolved_forms ~dep_kind ~expand_var:t.expand_var ~map_exe
+      resolved_forms
+      ~dir:t.dir ~dep_kind
+      ~map_exe
+      ~expand_var:t.expand_var ~cc ~cxx in
+  let bindings =
+    Pform.Map.of_list_exn
+      [ "cc", Pform.Var.Cc
+      ; "cxx", Pform.Var.Cxx
+      ]
+    |> Pform.Map.superpose t.bindings
   in
-  { t with expand_var }
+  { t with
+    expand_var
+  ; bindings
+  }
+
+let with_record_deps t resolved_forms ~read_package ~targets_written_by_user =
+  let expand =
+    expand_and_record_deps ~read_package ~targets_written_by_user in
+  gen_with_record_deps ~expand t resolved_forms
+
+let with_record_no_ddeps =
+  gen_with_record_deps ~expand:expand_no_ddeps
 
 let expand_special_vars ~deps_written_by_user ~var pform =
   let key = String_with_vars.Var.full_name var in

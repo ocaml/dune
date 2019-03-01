@@ -24,3 +24,6 @@ let find (type input output) ((module T) : (input, output) t) x =
 
 let add (type input output) ((module T) : (input, output) t) k v =
   T.H.add T.value k v
+
+let clear (type input output) ((module T) : (input, output) t) =
+  T.H.clear T.value

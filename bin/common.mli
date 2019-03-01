@@ -43,3 +43,5 @@ val footer : [> `Blocks of [> `P of string | `S of string ] list ]
 val term : t Cmdliner.Term.t
 
 val context_arg : doc:string -> string Cmdliner.Term.t
+
+val default_build_dir : string

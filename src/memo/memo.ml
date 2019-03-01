@@ -24,8 +24,8 @@ module Function = struct
 
   let of_type (type a b f) (t : (a, b, f) Function_type.t) (f : f) : (a, b, f) t =
     match t with
-    | Sync -> Sync f
-    | Async -> Async f
+    | Function_type.Sync -> Sync f
+    | Function_type.Async -> Async f
 end
 
 module Witness : sig

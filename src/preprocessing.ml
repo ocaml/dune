@@ -569,6 +569,9 @@ let lint_module sctx ~dir ~expander ~dep_kind ~lint ~lib_name ~scope ~dir_kind =
       Per_module.map lint ~f:(function
         | Preprocess.No_preprocessing ->
           (fun ~source:_ ~ast:_ -> ())
+        | Compat loc ->
+          Errors.fail loc
+            "'compat' cannot be used as a linter"
         | Action (loc, action) ->
           (fun ~source ~ast:_ ->
              Module.iter source ~f:(fun _ (src : Module.File.t) ->
@@ -632,8 +635,11 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess
     Staged.unstage (lint_module sctx ~dir ~expander ~dep_kind ~lint ~lib_name
                       ~scope ~dir_kind)
   in
-  Per_module.map preprocess ~f:(function
-    | Preprocess.No_preprocessing ->
+  Per_module.map preprocess ~f:(fun pp ->
+    match Dune_file.Preprocess.remove_compat pp
+            (Super_context.context sctx).version
+    with
+    | No_preprocessing ->
       (fun m ~lint ->
          let ast = setup_reason_rules sctx m in
          if lint then lint_module ~ast ~source:m;

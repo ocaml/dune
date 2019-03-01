@@ -6,15 +6,17 @@ module Pp_spec : sig
 
   val make
     :  Dune_file.Preprocess.t Dune_file.Per_module.t
+    -> Ocaml_version.t
     -> t
 
   val pped_modules : t -> Module.Name_map.t -> Module.Name_map.t
 end = struct
   type t = (Module.t -> Module.t) Dune_file.Per_module.t
 
-  let make preprocess =
-    Dune_file.Per_module.map preprocess ~f:(function
-      | Dune_file.Preprocess.No_preprocessing -> Module.ml_source
+  let make preprocess v =
+    Dune_file.Per_module.map preprocess ~f:(fun pp ->
+      match Dune_file.Preprocess.remove_compat pp v with
+      | No_preprocessing -> Module.ml_source
       | Action (_, _) ->
         fun m -> Module.ml_source (Module.pped m)
       | Pps { loc = _; pps = _; flags = _; staged } ->
@@ -252,7 +254,10 @@ let impl sctx ~dir ~(lib : Dune_file.Library.t) ~scope ~modules =
           let dir_contents =
             Dir_contents.get sctx ~dir:(Lib.src_dir vlib) in
           let modules =
-            let pp_spec = Pp_spec.make lib.buildable.preprocess in
+            let pp_spec =
+              Pp_spec.make lib.buildable.preprocess
+                (Super_context.context sctx).version
+            in
             let modules = Dir_contents.modules_of_library dir_contents ~name in
             Lib_modules.modules modules
             |> Pp_spec.pped_modules pp_spec

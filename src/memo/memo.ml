@@ -22,7 +22,8 @@ module Function = struct
     | Sync : ('a -> 'b) -> ('a, 'b, ('a -> 'b)) t
     | Async : ('a -> 'b Fiber.t) -> ('a, 'b, ('a -> 'b Fiber.t)) t
 
-  let of_type (type a b f) (t : (a, b, f) Function_type.t) (f : f) : (a, b, f) t =
+  let of_type
+        (type a) (type b) (type f) (t : (a, b, f) Function_type.t) (f : f) : (a, b, f) t =
     match t with
     | Function_type.Sync -> Sync f
     | Function_type.Async -> Async f
@@ -51,7 +52,7 @@ end = struct
       type _ w += W : a w
     end) : a t)
 
-  let same (type a b) ((module M1) : a t) ((module M2) : b t) =
+  let same (type a) (type b) ((module M1) : a t) ((module M2) : b t) =
     match M1.W with
     | M2.W -> Some (Type_eq.T : (a, b) Type_eq.t)
     | _ -> None
@@ -223,9 +224,9 @@ module Cached_value = struct
             end else
               let changed =
                 (match node.spec.f with
-                 | Sync _ ->
+                 | Function.Sync _ ->
                    Fiber.return (get_sync t')
-                 | Async _ ->
+                 | Function.Async _ ->
                    get_async t') >>| function
                 | None -> true
                 | Some curr_output ->
@@ -411,7 +412,7 @@ module Stack_frame = struct
 
   let as_instance_of (type i) (Dep_node.T t) ~of_:(memo : (i, _, _) memo) : i option =
     match Witness.same memo.spec.witness t.spec.witness with
-    | Some T ->
+    | Some Type_eq.T ->
       Some t.input
     | None -> None
 end
@@ -428,7 +429,7 @@ module Output = struct
     | Allow_cutoff of (module Data with type t = 'o)
 end
 
-let create (type i o f)
+let create (type i) (type o) (type f)
       name
       ~doc
       ~input:(module Input : Input with type t = i)
@@ -446,8 +447,8 @@ let create (type i o f)
         Some f, (fun x -> Fdecl.get f x)
       in
       ((match typ with
-       | Sync -> decl_and_get ()
-       | Async -> decl_and_get ()) : f Fdecl.t option * f)
+       | Function_type.Sync -> decl_and_get ()
+       | Function_type.Async -> decl_and_get ()) : f Fdecl.t option * f)
     | Some f ->
       None, f
   in
@@ -493,7 +494,7 @@ module Exec_sync = struct
     (* define the function to update / double check intermediate result *)
     (* set context of computation then run it *)
     let res = Call_stack.push_sync_frame (T dep_node) (fun () -> match t.spec.f with
-      | Sync f -> f inp)
+      | Function.Sync f -> f inp)
     in
     (* update the output cache with the correct value *)
     let deps =
@@ -551,7 +552,7 @@ module Exec_async = struct
     (* define the function to update / double check intermediate result *)
     (* set context of computation then run it *)
     Call_stack.push_async_frame (T dep_node) (fun () -> match t.spec.f with
-      | Async f -> f inp) >>= fun res ->
+      | Function.Async f -> f inp) >>= fun res ->
     (* update the output cache with the correct value *)
     let deps =
       get_deps_from_graph_exn dep_node
@@ -605,10 +606,10 @@ module Exec_async = struct
         | None -> recompute t inp dep_node
 end
 
-let exec (type i o f) (t : (i, o, f) t) =
+let exec (type i) (type o) (type f) (t : (i, o, f) t) =
   match t.spec.f with
-  | Async _ -> (Exec_async.exec t : f)
-  | Sync _ -> (Exec_sync.exec t : f)
+  | Function.Async _ -> (Exec_async.exec t : f)
+  | Function.Sync _ -> (Exec_sync.exec t : f)
 
 let peek t inp =
   match Table.find t.cache inp with
@@ -653,8 +654,8 @@ let call name input =
   let (module Output : Sexpable with type t = _) = spec.output in
   let input = Dune_lang.Decoder.parse spec.decode Univ_map.empty input in
   (match spec.f with
-   | Async f -> f
-   | Sync f -> (fun x -> Fiber.return (f x))) input >>| fun output ->
+   | Function.Async f -> f
+   | Function.Sync f -> (fun x -> Fiber.return (f x))) input >>| fun output ->
   Output.to_sexp output
 
 module Function_info = struct

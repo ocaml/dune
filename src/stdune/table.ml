@@ -11,7 +11,8 @@ type ('input, 'output) t =
 
 module type Key = sig type t val equal : t -> t -> bool val hash : t -> int end
 
-let create (type key value) (module Key : Key with type t = key) size : (key, value) t =
+let create (type key) (type value)
+      (module Key : Key with type t = key) size : (key, value) t =
   (module struct
     module Key = Key
     module H = Hashtbl.Make(Key)
@@ -19,11 +20,11 @@ let create (type key value) (module Key : Key with type t = key) size : (key, va
     let value = H.create size
   end)
 
-let find (type input output) ((module T) : (input, output) t) x =
+let find (type input) (type output) ((module T) : (input, output) t) x =
   T.H.find T.value x
 
-let add (type input output) ((module T) : (input, output) t) k v =
+let add (type input) (type output) ((module T) : (input, output) t) k v =
   T.H.add T.value k v
 
-let clear (type input output) ((module T) : (input, output) t) =
+let clear (type input) (type output) ((module T) : (input, output) t) =
   T.H.clear T.value

@@ -43,3 +43,6 @@ let ooi_supports_no_approx version =
 
 let ooi_supports_no_code version =
   version >= (4, 05, 0)
+
+let supports_let_syntax version =
+  version >= (4, 08, 0)

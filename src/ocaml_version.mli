@@ -44,3 +44,6 @@ val ooi_supports_no_approx : t -> bool
 
 (** Whether ocamlobjinfo supports -no-code*)
 val ooi_supports_no_code : t -> bool
+
+(** Whether the language supports custom let operators *)
+val supports_let_syntax : t -> bool

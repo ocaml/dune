@@ -22,11 +22,11 @@ let make ?(quoted=false) loc part =
 let make_text ?quoted loc s =
   make ?quoted loc (Text s)
 
-let make_var ?quoted loc name =
+let make_var ?quoted loc ?payload name =
   let var =
     { loc
     ; name
-    ; payload = None
+    ; payload
     ; syntax = Percent
   }
   in

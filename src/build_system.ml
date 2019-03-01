@@ -855,7 +855,7 @@ and load_dir_and_get_targets t ~dir =
       | Loading ->
         die "recursive dependency between directories:\n    %s"
           (String.concat ~sep:"\n--> "
-             (List.map t.load_dir_stack ~f:Utils.describe_target))
+             (List.map (dir :: t.load_dir_stack) ~f:Utils.describe_target))
       | Pending { lazy_generators } ->
         collector.stage <- Loading;
         lazy_generators

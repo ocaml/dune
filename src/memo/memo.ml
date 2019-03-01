@@ -38,27 +38,23 @@ end = struct
 
   type _ w = ..
 
-  type 'a t = {
-    w : 'a w;
-    same : 'b . 'b w -> ('a, 'b) Type_eq.t option
-  }
+  module type T = sig
+    type a
+    type _ w += W : a w
+  end
+
+  type 'a t = (module T with type a = 'a)
 
   let create (type a) () =
-    let module M = struct
+    ((module struct
+      type nonrec a = a
       type _ w += W : a w
+    end) : a t)
 
-      let same (type b) (w : b w) : (a, b) Type_eq.t option = match w with
-        | W -> Some Type_eq.T
-        | _ -> None
-    end
-    in
-    {
-      w = M.W;
-      same = M.same
-    }
-
-  let same { w = _; same = same1 } { w = w2; same = _ } =
-    same1 w2
+  let same (type a b) ((module M1) : a t) ((module M2) : b t) =
+    match M1.W with
+    | M2.W -> Some (Type_eq.T : (a, b) Type_eq.t)
+    | _ -> None
 
 end
 

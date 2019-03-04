@@ -21,6 +21,9 @@ unreleased
 
 - Add more GC counters to catapult traces (fix908, @rgrinberg)
 
+- Add a preprocessor shim for the `let+` syntax of OCaml 4.08 (#1899,
+  implements #1891, @diml)
+
 1.7.3 (unreleased)
 ------------------
 

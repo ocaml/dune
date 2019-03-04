@@ -76,3 +76,11 @@ Reproduction case for #1772
   $ dune promote
   Skipping promotion of _build/default/x.gen to x as the file is missing.
   Promoting _build/default/y.gen to y.
+
+Tests for promote-into
+----------------------
+
+  $ mkdir -p subdir
+  $ dune build promoted
+  $ cat subdir/promoted
+  Hello, world!

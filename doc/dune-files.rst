@@ -458,6 +458,10 @@ field. The following modes are available:
   ``dune clean`` will remove the promoted files from the source
   tree
 
+- ``(promote-into <dir>)`` (resp. ``(promote-until-clean-into
+  <dir>)``) is the same as ``promote`` (resp. ``promote-until-clean``)
+  except that the files are promoted in ``<dir>`` instead of the
+  current directory. This feature is available since Dune 1.8.
 
 There are two use cases for promote rules. The first one is when the
 generated code is easier to review than the generator, so it's easier

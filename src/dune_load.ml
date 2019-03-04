@@ -15,7 +15,7 @@ module Dune_file = struct
     let stanzas =
       if ignore_promoted_rules then
         List.filter stanzas ~f:(function
-          | Rule { mode = Promote; _ } -> false
+          | Rule { mode = Promote _; _ } -> false
           | _ -> true)
       else
         stanzas

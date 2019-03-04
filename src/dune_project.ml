@@ -576,7 +576,7 @@ let make_jbuilder_project ~dir packages =
 let read_name file =
   load file ~f:(fun _lang ->
     fields
-      (let%map name = field_o "name" string
+      (let%map name = field_o "name" (located string)
        and () = junk_everything
        in
        name))

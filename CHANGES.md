@@ -11,6 +11,14 @@ unreleased
 
 - Format `dune printenv` output (#1867, fix #1862, @emillon)
 
+- Add the `(promote-into <dir>)` and `(promote-until-clean-into
+  <dir>)` modes for `(rule ...)` stanzas, so that files can be
+  promoted in another directory than the current one. For instance,
+  this is used in merlin to promote menhir generated files in a
+  directory that depends on the version of the compiler (#1890, @diml)
+
+- Improve error message when `dune subst` fails (#1898, fix #1897, @rgrinberg)
+
 1.7.3 (unreleased)
 ------------------
 

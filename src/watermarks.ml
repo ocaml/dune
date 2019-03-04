@@ -177,7 +177,7 @@ let get_name ~files ?name () =
   in
   if package_names = [] then
     die "@{<error>Error@}: no <package>.opam files found.";
-  let name =
+  let (loc, name) =
     match Wp.t with
     | Dune -> begin
         assert (Option.is_none name);
@@ -193,7 +193,7 @@ let get_name ~files ?name () =
       end
     | Jbuilder ->
       match name with
-      | Some name -> name
+      | Some name -> (Loc.none, name)
       | None ->
         match
           if List.mem ~set:files Dune_project.filename then
@@ -217,13 +217,20 @@ let get_name ~files ?name () =
               | None, (Some _ as p) -> p
           in
           match name with
-          | Some name -> name
+          | Some name -> (Loc.none, name)
           | None ->
             die "@{<error>Error@}: cannot determine name automatically.\n\
                  You must pass a [--name] command line argument."
   in
-  if not (List.mem name ~set:package_names) then
-    die "@{<error>Error@}: file %s.opam doesn't exist." name;
+  if not (List.mem name ~set:package_names) then begin
+    if Loc.is_none loc then
+      die "@{<error>Error@}: file %s.opam doesn't exist." name
+    else
+      Errors.fail loc
+        "file %s.opam doesn't exist. \
+         It is inferred from the name in the dune-project file"
+        name
+  end;
   name
 
 let subst_git ?name () =

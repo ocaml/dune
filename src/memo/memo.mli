@@ -69,6 +69,20 @@ module type Data = sig
   include Sexpable with type t := t
 end
 
+(**
+   When we recompute the function and find that its output is the same as what we
+   computed before, we can sometimes skip recomputing the values that depend on it.
+
+   [Allow_cutoff] specifies how to compare the output values for that purpose.
+
+   Note that currently Dune wipes all memoization caches on every run, so
+   cutoff is not effective.
+
+   (* CR-someday aalekseyev:
+   Not sure why the type is so complicated.
+   Couldn't we just pass an equality function as an extra optional argument to [create]?
+   We don't use hash anywhere, I think. *)
+*)
 module Output : sig
   type 'o t =
     | Simple of (module Sexpable with type t = 'o)

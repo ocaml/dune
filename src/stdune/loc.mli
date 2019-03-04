@@ -6,6 +6,8 @@ val in_dir : Path.t -> t
 
 val none : t
 
+val is_none : t -> bool
+
 val drop_position : t -> t
 
 val of_lexbuf : Lexing.lexbuf -> t

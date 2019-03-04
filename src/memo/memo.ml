@@ -210,7 +210,7 @@ module Cached_value = struct
         | Last_dep.T (node, prev_output) :: deps ->
           match node.state with
           | Running_sync _ ->
-            failwith "Synchronous function called [Cached_value.get_async]"
+            Exn.code_error "Synchronous function called [Cached_value.get_async]" []
           | Running_async (run, ivar) ->
             if not (Run.is_current run) then
               Fiber.return true
@@ -255,15 +255,14 @@ module Cached_value = struct
         | Last_dep.T (node, prev_output) ->
           match node.state with
           | Running_sync run ->
-            if not (Run.is_current run)
-            then
-              true
+            if Run.is_current run then
+              Exn.code_error "dependency_cycle" []
             else
-              failwith "dependency cycle: "
+              true
           | Running_async _ ->
-            failwith
+            Exn.code_error
               "Synchronous function depends on an asynchronous one. That is not allowed. \
-               (in fact this case should be unreachable)"
+               (in fact this case should be unreachable)" []
           | Done t' ->
             get_sync t' |> function
             | None -> true
@@ -544,7 +543,9 @@ module Exec_sync = struct
         assert false
       | Running_sync run ->
         if Run.is_current run then
-          failwith "dependency cycle"
+          (* hopefully this branch should be unreachable and [add_rev_dep]
+             reports a cycle above instead *)
+          Exn.code_error "dependency_cycle" []
         else
           recompute t inp dep_node
       | Done cv ->

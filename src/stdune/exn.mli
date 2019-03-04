@@ -1,7 +1,7 @@
 (** Exceptions *)
 
 (** An programming error, that should be reported upstream. The error message
-    shouldn't try to be developer friendly rather than user friendly. *)
+    should try to be developer friendly rather than user friendly. *)
 exception Code_error of Sexp.t
 
 

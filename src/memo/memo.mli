@@ -46,12 +46,6 @@ end
     are forgotten, pending computations are cancelled. *)
 val reset : unit -> unit
 
-module Function : sig
-  type ('a, 'b, 'f) t =
-    | Sync : ('a -> 'b) -> ('a, 'b, ('a -> 'b)) t
-    | Async : ('a -> 'b Fiber.t) -> ('a, 'b, ('a -> 'b Fiber.t)) t
-end
-
 module Function_type : sig
   type ('a, 'b, 'f) t =
     | Sync : ('a, 'b, ('a -> 'b)) t

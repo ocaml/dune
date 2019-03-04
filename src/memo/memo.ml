@@ -1,9 +1,16 @@
 open! Stdune
 open Fiber.O
 
-module type Input = Memo_intf.Input
-module type Data = Memo_intf.Data
-module type Sexpable = Memo_intf.Sexpable
+module type Sexpable = sig
+  type t
+  val to_sexp : t -> Sexp.t
+end
+
+module type Data = sig
+  type t
+  include Table.Key with type t := t
+  include Sexpable with type t := t
+end
 
 module Function_name = Interned.Make(struct
     let initial_size = 1024
@@ -69,7 +76,7 @@ module Spec = struct
 
   type ('a, 'b, 'f) t =
     { name : Function_name.t
-    ; input : (module Input with type t = 'a)
+    ; input : (module Data with type t = 'a)
     ; output : (module Sexpable with type t = 'b)
     ; allow_cutoff : 'b Allow_cutoff.t
     ; decode : 'a Dune_lang.Decoder.t
@@ -274,7 +281,7 @@ module Cached_value = struct
 end
 
 let ser_input (type a) (node : (a, _, _) Dep_node.t) =
-  let (module Input : Input with type t = a) = node.spec.input in
+  let (module Input : Data with type t = a) = node.spec.input in
   Input.to_sexp node.input
 
 let dag_node (dep_node : _ Dep_node.t) = Lazy.force dep_node.dag_node
@@ -425,14 +432,14 @@ end
 
 module Output = struct
   type 'o t =
-    | Simple of (module Memo_intf.Sexpable with type t = 'o)
+    | Simple of (module Sexpable with type t = 'o)
     | Allow_cutoff of (module Data with type t = 'o)
 end
 
 let create (type i) (type o) (type f)
       name
       ~doc
-      ~input:(module Input : Input with type t = i)
+      ~input:(module Input : Data with type t = i)
       ~visibility
       ~(output : o Output.t)
       (typ : (i, o, f) Function_type.t)

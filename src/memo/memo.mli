@@ -46,9 +46,6 @@ end
     are forgotten, pending computations are cancelled. *)
 val reset : unit -> unit
 
-module type Input = Memo_intf.Input
-module type Data = Memo_intf.Data
-
 module Function : sig
   type ('a, 'b, 'f) t =
     | Sync : ('a -> 'b) -> ('a, 'b, ('a -> 'b)) t
@@ -61,9 +58,20 @@ module Function_type : sig
     | Async : ('a, 'b, ('a -> 'b Fiber.t)) t
 end
 
+module type Sexpable = sig
+  type t
+  val to_sexp : t -> Sexp.t
+end
+
+module type Data = sig
+  type t
+  include Table.Key with type t := t
+  include Sexpable with type t := t
+end
+
 module Output : sig
   type 'o t =
-    | Simple of (module Memo_intf.Sexpable with type t = 'o)
+    | Simple of (module Sexpable with type t = 'o)
     | Allow_cutoff of (module Data with type t = 'o)
 end
 

@@ -1,6 +1,7 @@
 _build
 *.install
 boot.exe
+boot-pp.exe
 .merlin
 boot.ml
 *.corrected

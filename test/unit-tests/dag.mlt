@@ -227,11 +227,7 @@ cycle_test `a
 ;;
 
 [%%expect{|
-Exception: Failure "bad edge in cycle: (21, 20)\n".
-Raised at file "stdlib.ml", line 33, characters 22-33
-Called from file "list.ml", line 106, characters 12-15
-Called from file "test/unit-tests/dag.mlt", line 209, characters 4-252
-Called from file "toplevel/toploop.ml", line 180, characters 17-56
+- : int list = [23; 22; 21; 20; 14; 13; 12; 11; 23]
 |}]
 ;;
 cycle_test `b

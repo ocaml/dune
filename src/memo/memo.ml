@@ -329,16 +329,12 @@ module Call_stack = struct
 
   let synchronous_call_stack = ref []
 
-  let list_first = function
-    | [] -> None
-    | x :: _ -> Some x
-
   (* fiber context variable keys *)
   let call_stack_key = Fiber.Var.create ()
   let get_call_stack_tip () =
     match !synchronous_call_stack with
     | [] ->
-      list_first (Fiber.Var.get call_stack_key |> Option.value ~default:[])
+      List.hd_opt (Fiber.Var.get call_stack_key |> Option.value ~default:[])
     | tip :: _ -> Some tip
 
   let get_call_stack () =

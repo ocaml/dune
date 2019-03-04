@@ -78,6 +78,8 @@ let of_pos (fname, lnum, cnum, enum) =
   ; stop  = { pos with pos_cnum = enum }
   }
 
+let is_none = equal none
+
 let to_file_colon_line t =
   Printf.sprintf "%s:%d" t.start.pos_fname t.start.pos_lnum
 

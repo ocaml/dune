@@ -25,6 +25,8 @@ module Stack_frame : sig
   val name : t -> string
   val input : t -> Sexp.t
 
+  (** Checks if the stack frame is a frame of the given memoized function
+      and if so, returns [Some i] where [i] is the argument of the function. *)
   val as_instance_of : t -> of_:('input, _, _) memo -> 'input option
 end
 

@@ -71,11 +71,6 @@ end
 
    Note that currently Dune wipes all memoization caches on every run, so
    cutoff is not effective.
-
-   (* CR-someday aalekseyev:
-   Not sure why the type is so complicated.
-   Couldn't we just pass an equality function as an extra optional argument to [create]?
-   We don't use hash anywhere, I think. *)
 *)
 module Output : sig
   type 'o t =

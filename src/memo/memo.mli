@@ -89,6 +89,25 @@ module Visibility : sig
     | Public of 'i Dune_lang.Decoder.t
 end
 
+(** [create name ~doc ~input ~visibility ~output f_type f] creates a memoized version
+    of [f]. The result of [f] for a given input is cached, so that
+    the second time [exec t x] is called, the previous result is
+    re-used if possible.
+    [exec t x] tracks what calls to other memoized function [f x]
+    performs. When the result of such dependent call changes, [exec t x] will
+    automatically recompute [f x].
+    Running the computation may raise [Memo.Cycle_error.E] if a cycle is
+    detected.
+
+    Both simple functions (synchronous) and functions returning fibers (asynchronous ones)
+    can be memoized, and the flavor is selected by [f_type].
+
+    The function implementation can be [None]. If it is not given, then it must be
+    set later with [set_impl].
+
+    [visibility] determines whether the function is user-facing or internal and if it's
+    user-facing then how to parse the values written by the user.
+*)
 val create
   :  string
   -> doc:string
@@ -99,8 +118,8 @@ val create
   -> 'f option
   -> ('i, 'o, 'f) t
 
-(** Set the implementation of a memoized function created with
-    [fcreate] *)
+(** Set the implementation of a memoized function whose implementation was omitted
+    when calling [create]. *)
 val set_impl : (_, _, 'f) t -> 'f -> unit
 
 (** Check whether we already have a value for the given call *)

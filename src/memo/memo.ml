@@ -506,10 +506,7 @@ module Exec_sync = struct
     dep_node.state <- Done (Cached_value.create res ~deps);
     res
 
-  (* the computation that force computes the fiber *)
   let recompute t inp (dep_node : _ Dep_node.t) =
-    (* create an ivar so other threads can wait for the computation to
-       finish *)
     dep_node.state <- Running_sync (Run.current ());
     compute t inp dep_node
 

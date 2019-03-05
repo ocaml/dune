@@ -36,7 +36,6 @@ let build_targets =
     and targets = Arg.(value & pos_all string [default_target] name_)
     in
     Common.set_common common ~targets;
-    Dune.Console.init common.config.display;
     let log = Log.create common in
     let targets setup = Target.resolve_targets_exn ~log common setup targets in
     run_build_command ~log ~common ~targets

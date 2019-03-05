@@ -199,6 +199,35 @@ module Cached_value = struct
     | No ->
       true
 
+  let rec get_sync : type a. a t -> a option = fun t ->
+    if Run.is_current t.calculated_at then
+      Some t.data
+    else begin
+      let dep_changed = function
+        | Last_dep.T (node, prev_output) ->
+          match node.state with
+          | Running_sync run ->
+            if Run.is_current run then
+              Exn.code_error "dependency_cycle" []
+            else
+              true
+          | Running_async _ ->
+            Exn.code_error
+              "Synchronous function depends on an asynchronous one. That is not allowed. \
+               (in fact this case should be unreachable)" []
+          | Done t' ->
+            get_sync t' |> function
+            | None -> true
+            | Some curr_output ->
+              dep_changed node prev_output curr_output
+      in
+      match List.exists ~f:dep_changed t.deps with
+      | true -> None
+      | false ->
+        t.calculated_at <- Run.current ();
+        Some t.data
+    end
+
   (* Check if a cached value is up to date. If yes, return it *)
   let rec get_async : type a. a t -> a option Fiber.t = fun t ->
     if Run.is_current t.calculated_at then
@@ -242,34 +271,6 @@ module Cached_value = struct
               deps_changed (changed :: acc) deps
       in
       deps_changed [] t.deps >>| function
-      | true -> None
-      | false ->
-        t.calculated_at <- Run.current ();
-        Some t.data
-    end
-  and get_sync : type a. a t -> a option = fun t ->
-    if Run.is_current t.calculated_at then
-      Some t.data
-    else begin
-      let dep_changed = function
-        | Last_dep.T (node, prev_output) ->
-          match node.state with
-          | Running_sync run ->
-            if Run.is_current run then
-              Exn.code_error "dependency_cycle" []
-            else
-              true
-          | Running_async _ ->
-            Exn.code_error
-              "Synchronous function depends on an asynchronous one. That is not allowed. \
-               (in fact this case should be unreachable)" []
-          | Done t' ->
-            get_sync t' |> function
-            | None -> true
-            | Some curr_output ->
-              dep_changed node prev_output curr_output
-      in
-      match List.exists ~f:dep_changed t.deps with
       | true -> None
       | false ->
         t.calculated_at <- Run.current ();

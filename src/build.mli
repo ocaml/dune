@@ -220,7 +220,7 @@ module Repr : sig
   and 'a memo_state =
     | Unevaluated
     | Evaluating
-    | Evaluated of 'a * Deps.t (* dynamic dependencies *)
+    | Evaluated of 'a * Dep.Set.t (* dynamic dependencies *)
 
   and ('a, 'b) if_file_exists_state =
     | Undecided of ('a, 'b) t * ('a, 'b) t

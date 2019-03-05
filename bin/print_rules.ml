@@ -37,7 +37,7 @@ let print_rule_makefile ppf (rule : Build_system.Rule.t) =
        Format.pp_print_string ppf (Path.to_string p)))
     (Path.Set.to_list rule.targets)
     (fun ppf ->
-       Path.Set.iter (Deps.paths rule.deps) ~f:(fun dep ->
+       Path.Set.iter (Dep.Set.paths rule.deps) ~f:(fun dep ->
          Format.fprintf ppf "@ %s" (Path.to_string dep)))
     Pp.pp
     (Action_to_sh.pp action)
@@ -52,7 +52,7 @@ let print_rule_sexp ppf (rule : Build_system.Rule.t) =
   let sexp =
     Dune_lang.Encoder.record (
       List.concat
-        [ [ "deps"   , Deps.to_sexp rule.deps
+        [ [ "deps"   , Dep.Set.encode rule.deps
           ; "targets", paths rule.targets ]
         ; (match rule.context with
            | None -> []

@@ -6,6 +6,7 @@ module Either     = Either
 module Exn        = Exn
 module Filename   = Filename
 module Hashtbl    = Hashtbl
+module Table      = Table
 module Int        = Int
 module Id         = Id
 module Io         = Io
@@ -39,6 +40,7 @@ module Unit       = Unit
 module Monad      = Monad
 module Fn         = Fn
 module Dyn        = Dyn
+module Float      = Float
 
 external reraise : exn -> _ = "%reraise"
 

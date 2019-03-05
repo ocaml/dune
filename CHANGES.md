@@ -19,6 +19,8 @@ unreleased
 
 - Improve error message when `dune subst` fails (#1898, fix #1897, @rgrinberg)
 
+- Add more GC counters to catapult traces (fix908, @rgrinberg)
+
 1.7.3 (unreleased)
 ------------------
 

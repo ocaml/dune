@@ -391,8 +391,7 @@ let rec get sctx ~dir =
     | Group_root (ft_dir, d) ->
       let rec walk ft_dir ~dir acc =
         match
-          Dir_status.DB.get_assuming_parent_is_part_of_group dir_status_db
-            ft_dir ~dir
+          Dir_status.DB.get dir_status_db ~dir
         with
         | Is_component_of_a_group_but_not_the_root d ->
           let files =

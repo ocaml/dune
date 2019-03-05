@@ -15,16 +15,16 @@ module Preprocess : sig
     | No_preprocessing
     | Action of Loc.t * Action_dune_lang.t
     | Pps    of pps
-    | Compat of Loc.t
+    | Future_syntax of Loc.t
 
-  module Without_compat : sig
+  module Without_future_syntax : sig
     type t =
       | No_preprocessing
       | Action of Loc.t * Action_dune_lang.t
       | Pps    of pps
   end
 
-  val remove_compat : t -> Ocaml_version.t -> Without_compat.t
+  val remove_future_syntax : t -> Ocaml_version.t -> Without_future_syntax.t
 end
 
 module Per_module : Per_item.S with type key = Module.Name.t

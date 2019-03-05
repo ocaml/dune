@@ -569,7 +569,7 @@ let lint_module sctx ~dir ~expander ~dep_kind ~lint ~lib_name ~scope ~dir_kind =
       Per_module.map lint ~f:(function
         | Preprocess.No_preprocessing ->
           (fun ~source:_ ~ast:_ -> ())
-        | Compat loc ->
+        | Future_syntax loc ->
           Errors.fail loc
             "'compat' cannot be used as a linter"
         | Action (loc, action) ->
@@ -636,7 +636,7 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess
                       ~scope ~dir_kind)
   in
   Per_module.map preprocess ~f:(fun pp ->
-    match Dune_file.Preprocess.remove_compat pp
+    match Dune_file.Preprocess.remove_future_syntax pp
             (Super_context.context sctx).version
     with
     | No_preprocessing ->

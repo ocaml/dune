@@ -40,6 +40,7 @@ module Unit       = Unit
 module Monad      = Monad
 module Fn         = Fn
 module Dyn        = Dyn
+module Float      = Float
 
 external reraise : exn -> _ = "%reraise"
 

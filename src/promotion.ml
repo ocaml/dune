@@ -20,7 +20,7 @@ module File = struct
 
   let promote { src; dst } =
     let src_exists = Path.exists src in
-    Errors.print_to_console
+    Console.print
       (Format.sprintf
          (if src_exists then
             "Promoting %s to %s.@."

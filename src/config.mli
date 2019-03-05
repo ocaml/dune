@@ -26,7 +26,7 @@ val default_build_profile : string
 (** Dune configuration *)
 
 module Display : sig
-  type t =
+  type t = Config0.Display.t =
     | Progress (** Single interactive status line *)
     | Short    (** One line per command           *)
     | Verbose  (** Display all commands fully     *)

@@ -58,7 +58,7 @@ end
 module Allow_cutoff = struct
   type 'o t =
     | No
-    | Yes of { equal : 'o -> 'o -> bool }
+    | Yes of ('o -> 'o -> bool)
 end
 
 module type Output_simple = sig
@@ -200,7 +200,7 @@ module Cached_value = struct
 
   let dep_changed (type a) (node : (_, a, _) Dep_node.t) prev_output curr_output =
     match node.spec.allow_cutoff with
-    | Yes { equal } ->
+    | Yes equal ->
       not (equal prev_output curr_output)
     | No ->
       true
@@ -466,7 +466,7 @@ let create (type i) (type o) (type f)
     | Simple (module Output) ->
       (module Output), Allow_cutoff.No
     | Allow_cutoff (module Output) ->
-      (module Output), (Yes { equal = Output.equal })
+      (module Output), (Yes Output.equal)
   in
   let spec =
     { Spec.

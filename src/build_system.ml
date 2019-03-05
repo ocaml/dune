@@ -420,8 +420,6 @@ type hook =
 
 module Action_and_deps = struct
   type t = Action.t * Deps.t
-  let equal = (=)
-  let hash = Hashtbl.hash
   let to_sexp (action, deps) =
     Sexp.Encoder.record
       [ "action", Dune_lang.to_sexp
@@ -1200,7 +1198,7 @@ let evaluate_action_and_dynamic_deps_def =
   in
   Memo.create
     "evaluate-action-and-dynamic-deps"
-    ~output:(Allow_cutoff (module Action_and_deps))
+    ~output:(Simple (module Action_and_deps))
     ~doc:"Evaluate the build arrow part of a rule and return the \
           action and dynamic dependency of the rule."
     ~input:(module Internal_rule)

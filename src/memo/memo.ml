@@ -1,17 +1,6 @@
 open! Stdune
 open Fiber.O
 
-module type Sexpable = sig
-  type t
-  val to_sexp : t -> Sexp.t
-end
-
-module type Data = sig
-  type t
-  include Table.Key with type t := t
-  include Sexpable with type t := t
-end
-
 module Function_name = Interned.Make(struct
     let initial_size = 1024
     let resize_policy = Interned.Greedy
@@ -69,15 +58,32 @@ end
 module Allow_cutoff = struct
   type 'o t =
     | No
-    | Yes of (module Data with type t = 'o)
+    | Yes of { equal : 'o -> 'o -> bool }
+end
+
+module type Output_simple = sig
+  type t
+  val to_sexp : t -> Sexp.t
+end
+
+module type Output_allow_cutoff = sig
+  type t
+  val to_sexp : t -> Sexp.t
+  val equal : t -> t -> bool
+end
+
+module type Input = sig
+  type t
+  val to_sexp : t -> Sexp.t
+  include Table.Key with type t := t
 end
 
 module Spec = struct
 
   type ('a, 'b, 'f) t =
     { name : Function_name.t
-    ; input : (module Data with type t = 'a)
-    ; output : (module Sexpable with type t = 'b)
+    ; input : (module Input with type t = 'a)
+    ; output : (module Output_simple with type t = 'b)
     ; allow_cutoff : 'b Allow_cutoff.t
     ; decode : 'a Dune_lang.Decoder.t
     ; witness : 'a Witness.t
@@ -194,8 +200,8 @@ module Cached_value = struct
 
   let dep_changed (type a) (node : (_, a, _) Dep_node.t) prev_output curr_output =
     match node.spec.allow_cutoff with
-    | Yes (module Output : Data with type t = a) ->
-      not (Output.equal prev_output curr_output)
+    | Yes { equal } ->
+      not (equal prev_output curr_output)
     | No ->
       true
 
@@ -281,7 +287,7 @@ module Cached_value = struct
 end
 
 let ser_input (type a) (node : (a, _, _) Dep_node.t) =
-  let (module Input : Data with type t = a) = node.spec.input in
+  let (module Input : Input with type t = a) = node.spec.input in
   Input.to_sexp node.input
 
 let dag_node (dep_node : _ Dep_node.t) = Lazy.force dep_node.dag_node
@@ -420,14 +426,14 @@ end
 
 module Output = struct
   type 'o t =
-    | Simple of (module Sexpable with type t = 'o)
-    | Allow_cutoff of (module Data with type t = 'o)
+    | Simple of (module Output_simple with type t = 'o)
+    | Allow_cutoff of (module Output_allow_cutoff with type t = 'o)
 end
 
 let create (type i) (type o) (type f)
       name
       ~doc
-      ~input:(module Input : Data with type t = i)
+      ~input:(module Input : Input with type t = i)
       ~visibility
       ~(output : o Output.t)
       (typ : (i, o, f) Function_type.t)
@@ -455,12 +461,12 @@ let create (type i) (type o) (type f)
       Exn.fatalf ~loc "<not-implemented>"
     | Public decode -> decode
   in
-  let (output : (module Sexpable with type t = o)), allow_cutoff =
+  let (output : (module Output_simple with type t = o)), allow_cutoff =
     match output with
     | Simple (module Output) ->
       (module Output), Allow_cutoff.No
     | Allow_cutoff (module Output) ->
-      (module Output), (Yes (module Output))
+      (module Output), (Yes { equal = Output.equal })
   in
   let spec =
     { Spec.
@@ -645,7 +651,7 @@ let get_func name =
 
 let call name input =
   let (Spec.T spec) = get_func name in
-  let (module Output : Sexpable with type t = _) = spec.output in
+  let (module Output : Output_simple with type t = _) = spec.output in
   let input = Dune_lang.Decoder.parse spec.decode Univ_map.empty input in
   (match spec.f with
    | Function.Async f -> f

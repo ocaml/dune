@@ -52,15 +52,15 @@ module Function_type : sig
     | Async : ('a, 'b, ('a -> 'b Fiber.t)) t
 end
 
-module type Sexpable = sig
+module type Output_simple = sig
   type t
   val to_sexp : t -> Sexp.t
 end
 
-module type Data = sig
+module type Output_allow_cutoff = sig
   type t
-  include Table.Key with type t := t
-  include Sexpable with type t := t
+  val to_sexp : t -> Sexp.t
+  val equal : t -> t -> bool
 end
 
 (**
@@ -79,8 +79,14 @@ end
 *)
 module Output : sig
   type 'o t =
-    | Simple of (module Sexpable with type t = 'o)
-    | Allow_cutoff of (module Data with type t = 'o)
+    | Simple of (module Output_simple with type t = 'o)
+    | Allow_cutoff of (module Output_allow_cutoff with type t = 'o)
+end
+
+module type Input = sig
+  type t
+  val to_sexp : t -> Sexp.t
+  include Table.Key with type t := t
 end
 
 module Visibility : sig
@@ -111,7 +117,7 @@ end
 val create
   :  string
   -> doc:string
-  -> input:(module Data with type t = 'i)
+  -> input:(module Input with type t = 'i)
   -> visibility:'i Visibility.t
   -> output:('o Output.t)
   -> ('i, 'o, 'f) Function_type.t

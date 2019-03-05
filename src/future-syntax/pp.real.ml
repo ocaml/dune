@@ -133,7 +133,7 @@ module Map_ast = struct
                         "Custom 'and' operator expected, \
                          got stantard 'and' keyword"
                   in
-                  (patt, (op, expr)))
+                  (patt, (loc, op, expr)))
                 |> List.split
               in
               let patt =
@@ -143,21 +143,40 @@ module Map_ast = struct
                     let loc = patt.ppat_loc in
                     Pat.tuple ~loc [acc; patt])
               in
+              let vars =
+                List.mapi exprs ~f:(fun i _ ->
+                  Printf.sprintf "__future_syntax__%d__" i)
+              in
+              let pvars =
+                List.map2 vars patts ~f:(fun v p ->
+                  let loc = { p.ppat_loc with loc_ghost = true } in
+                  Pat.var ~loc { txt = v; loc })
+              in
+              let evars =
+                List.map2 vars exprs ~f:(fun v (_, _, e) ->
+                  let loc = { e.pexp_loc with loc_ghost = true } in
+                  Exp.ident ~loc { txt = Lident v; loc })
+              in
               let expr =
-                List.fold_left (List.tl exprs)
-                  ~init:(snd (List.hd exprs))
-                  ~f:(fun acc (op, expr) ->
-                    let loc = expr.pexp_loc in
+                List.fold_left2 (List.tl evars) (List.tl exprs)
+                  ~init:(List.hd evars)
+                  ~f:(fun acc var (loc, op, _) ->
                     Exp.apply ~loc op
                       [ nolabel, acc
-                      ; nolabel, expr
+                      ; nolabel, var
                       ])
               in
-              let loc = expr.pexp_loc in
-              Exp.apply ~loc op
-                [ nolabel, expr
-                ; nolabel, Exp.fun_ ~loc nolabel None patt body
-                ]
+              let body =
+                let loc = expr.pexp_loc in
+                Exp.apply ~loc op
+                  [ nolabel, expr
+                  ; nolabel, Exp.fun_ ~loc nolabel None patt body
+                  ]
+              in
+              List.fold_right2 pvars exprs ~init:body
+                ~f:(fun var (loc, _, expr) acc ->
+                  Exp.let_ Nonrecursive ~loc
+                    [Vb.mk ~loc var expr] acc)
           end
         | _ -> expr
       in

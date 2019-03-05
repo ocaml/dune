@@ -1227,9 +1227,9 @@ Dune accepts three kinds of preprocessing:
 - ``(staged_pps <ppx-rewriters-and-flags>)`` is similar to ``(pps ...)``
   but behave slightly differently and is needed for certain ppx rewriters
   (see below for details)
-- ``compat`` is a special value that brings some of the newer OCaml
-  syntaxes to older compiler. See :ref:`Compat preprocessor
-  <compat-pp>` for more details
+- ``future_syntax`` is a special value that brings some of the newer
+  OCaml syntaxes to older compiler. See :ref:`Future syntax
+  <future-syntax>` for more details
 
 Dune normally assumes that the compilation pipeline is sequenced as
 follow:
@@ -1327,13 +1327,13 @@ For instance:
                  (((action (run ./pp.sh X=1 %{input-file})) foo bar))
                  (((action (run ./pp.sh X=2 %{input-file})) baz))))
 
-.. _compat-pp:
+.. _future-syntax:
 
-Compat preprocessor
-~~~~~~~~~~~~~~~~~~~
+Future syntax
+~~~~~~~~~~~~~
 
-The ``compat`` preprocessing specification is equivalent to
-``no_preprocessing`` when using a recent versions of the
+The ``future_syntax`` preprocessing specification is equivalent to
+``no_preprocessing`` when using one of the most recent versions of the
 compiler. When using an older one, it is a shim preprocessor that
 backports some of the newer syntaxes. This allows you to use some of
 the new OCaml features while keeping compatibility with older

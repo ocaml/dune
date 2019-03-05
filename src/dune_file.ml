@@ -257,7 +257,7 @@ module Preprocess = struct
     | No_preprocessing
     | Action of Loc.t * Action_dune_lang.t
     | Pps    of pps
-    | Compat of Loc.t
+    | Future_syntax of Loc.t
 
   let decode =
     sum
@@ -274,30 +274,30 @@ module Preprocess = struct
          and+ loc = loc
          and+ pps, flags = Pps_and_flags.decode in
          Pps { loc; pps; flags; staged = true })
-      ; "compat",
+      ; "future_syntax",
         (let+ () = Syntax.since Stanza.syntax (1, 8)
          and+ loc = loc
          in
-         Compat loc)
+         Future_syntax loc)
       ]
 
   let pps = function
     | Pps { pps; _ } -> pps
     | _ -> []
 
-  module Without_compat = struct
+  module Without_future_syntax = struct
     type t =
       | No_preprocessing
       | Action of Loc.t * Action_dune_lang.t
       | Pps    of pps
   end
 
-  let remove_compat t v : Without_compat.t =
+  let remove_future_syntax t v : Without_future_syntax.t =
     match t with
     | No_preprocessing -> No_preprocessing
     | Action (loc, action) -> Action (loc, action)
     | Pps pps -> Pps pps
-    | Compat loc ->
+    | Future_syntax loc ->
       if Ocaml_version.supports_let_syntax v then
         No_preprocessing
       else
@@ -305,7 +305,7 @@ module Preprocess = struct
           (loc,
            Run
              (String_with_vars.make_var loc "libexec"
-                ~payload:"dune.configurator:../compat-pp.exe",
+                ~payload:"dune.configurator:../future-syntax.exe",
               [ String_with_vars.make_text loc "-dump-ast"
               ; String_with_vars.make_var loc "input-file"
               ]))

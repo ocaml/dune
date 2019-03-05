@@ -12,8 +12,8 @@ module Preprocess = struct
     | pp, No_preprocessing -> pp
     | (Action _ as action), _
     | _, (Action _ as action) -> action
-    | (Compat _ as compat), _
-    | _, (Compat _ as compat) -> compat
+    | (Future_syntax _ as future_syntax), _
+    | _, (Future_syntax _ as future_syntax) -> future_syntax
     | Pps { loc = _; pps = pps1; flags = flags1; staged = s1 },
       Pps { loc = _; pps = pps2; flags = flags2; staged = s2 } ->
       match
@@ -91,7 +91,7 @@ let add_source_dir t dir =
 
 let pp_flags sctx ~expander ~dir_kind { preprocess; libname; _ } =
   let scope = Expander.scope expander in
-  match Dune_file.Preprocess.remove_compat preprocess
+  match Dune_file.Preprocess.remove_future_syntax preprocess
           (Super_context.context sctx).version
   with
   | Pps { loc = _; pps; flags; staged = _ } -> begin

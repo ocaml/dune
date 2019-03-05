@@ -495,7 +495,7 @@ let compile ~dirs ~generated_file ~exe ~main ~flags ~pp =
   cleanup ~keep_ml_file:(n <> 0);
   if n <> 0 then exit n
 
-(* Shims to reuse the selection scripts in src/compat-pp *)
+(* Shims to reuse the selection scripts in src/future-syntax *)
 
 module Sys = struct
   include Sys
@@ -512,9 +512,9 @@ let get () =
   | None -> assert false
   | Some s -> cell := None; s
 ;;
-#use "src/compat-pp/select-impl";;
+#use "src/future-syntax/select-impl";;
 let impl = get ();;
-#use "src/compat-pp/select-shims";;
+#use "src/future-syntax/select-shims";;
 let shims = get ();;
 let print_string = real_print_string
 
@@ -522,13 +522,15 @@ let print_string = real_print_string
 
 let pp =
   if impl = "real" then begin
-    copy (sprintf "src/compat-pp/pp.%s.ml" impl) "src/compat-pp/pp.ml";
-    copy (sprintf "src/compat-pp/shims.%s.ml" shims) "src/compat-pp/shims.ml";
+    copy (sprintf "src/future-syntax/pp.%s.ml" impl)
+      "src/future-syntax/pp.ml";
+    copy (sprintf "src/future-syntax/shims.%s.ml" shims)
+      "src/future-syntax/shims.ml";
     compile
       ~generated_file:"boot_pp.ml"
       ~exe:"boot-pp.exe"
       ~main:"let () = ()"
-      ~dirs:["src/compat-pp", None]
+      ~dirs:["src/future-syntax", None]
       ~flags:"-I +compiler-libs ocamlcommon.cma"
       ~pp:None;
     add_to_delete "boot-pp.exe";

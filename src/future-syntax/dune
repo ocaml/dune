@@ -6,7 +6,7 @@
 
 (install
  (section libexec)
- (files (pp.exe as compat-pp.exe)))
+ (files (pp.exe as future-syntax.exe)))
 
 (rule
  (with-stdout-to impl (run ocaml %{dep:select-impl} %{ocaml_version})))

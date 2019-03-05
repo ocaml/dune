@@ -144,3 +144,7 @@ let init =
       loop (f i :: acc) (i + 1) n f
   in
   fun n ~f -> loop [] 0 n f
+
+let hd_opt = function
+  | [] -> None
+  | x :: _ -> Some x

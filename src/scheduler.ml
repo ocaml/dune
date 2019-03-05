@@ -521,10 +521,10 @@ let with_chdir t ~dir ~f =
 let t_var : t Fiber.Var.t = Fiber.Var.create ()
 
 let update_status_line () =
-  Console.update_status_line ~pending_jobs:(Event.pending_jobs ())
+  Console.update_status_line ~running_jobs:(Event.pending_jobs ())
 
 let set_status_line_generator gen =
-  Console.set_status_line_generator ~pending_jobs:(Event.pending_jobs ()) gen
+  Console.set_status_line_generator ~running_jobs:(Event.pending_jobs ()) gen
 
 let set_concurrency n =
   let t = Fiber.Var.get_exn t_var in

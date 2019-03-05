@@ -20,7 +20,7 @@ module T = struct
   let show_status_line s =
     prerr_string s
 
-  let update_status_line t ~pending_jobs =
+  let update_status_line t ~running_jobs =
     if t.display = Progress then begin
       match t.gen_status_line () with
       | { message = None; _ } ->
@@ -31,7 +31,7 @@ module T = struct
       | { message = Some status_line; show_jobs } ->
         let status_line =
           if show_jobs then
-            sprintf "%s (jobs: %u)" status_line pending_jobs
+            sprintf "%s (jobs: %u)" status_line running_jobs
           else
             status_line
         in
@@ -52,9 +52,9 @@ module T = struct
     hide_status_line t.status_line;
     flush stderr
 
-  let set_status_line_generator t f ~pending_jobs =
+  let set_status_line_generator t f ~running_jobs =
     t.gen_status_line <- f;
-    update_status_line t ~pending_jobs
+    update_status_line t ~running_jobs
 
 end
 
@@ -73,9 +73,9 @@ let t () =
 let display () = (t ()).display
 
 let get_status_line_generator () = (t ()).gen_status_line
-let set_status_line_generator f ~pending_jobs =
-  T.set_status_line_generator (t ()) f ~pending_jobs
-let update_status_line ~pending_jobs = T.update_status_line (t ()) ~pending_jobs
+let set_status_line_generator f ~running_jobs =
+  T.set_status_line_generator (t ()) f ~running_jobs
+let update_status_line ~running_jobs = T.update_status_line (t ()) ~running_jobs
 let hide_status_line () = T.hide_status_line (t ())
 let print msg =
   match !t_var with

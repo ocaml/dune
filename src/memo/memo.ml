@@ -348,19 +348,11 @@ module Call_stack = struct
     let stack = get_call_stack () in
     Fiber.Var.set call_stack_key (frame :: stack) f
 
-  let protect f ~finally = match f () with
-    | res ->
-      finally ();
-      res
-    | exception exn ->
-      finally ();
-      reraise exn
-
   let push_sync_frame frame f =
     let old = !synchronous_call_stack in
     let new_ = frame :: old in
     synchronous_call_stack := new_;
-    protect f ~finally:(fun () ->
+    Exn.protect ~f ~finally:(fun () ->
       assert ((==) !synchronous_call_stack new_);
       synchronous_call_stack := old)
 

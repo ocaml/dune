@@ -61,8 +61,7 @@ let set_common_other c ~targets =
       ; c.orig_args
       ; targets
       ];
-  Option.iter ~f:Dune.Stats.enable c.stats_trace_file;
-  Dune.Console.init c.config.display
+  Option.iter ~f:Dune.Stats.enable c.stats_trace_file
 
 let set_common c ~targets =
   set_dirs c;

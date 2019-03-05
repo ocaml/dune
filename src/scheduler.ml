@@ -590,6 +590,7 @@ let go_rec t =
   go_rec t
 
 let prepare ?(log=Log.no_log) ?(config=Config.default) () =
+  Console.init config.Config.display;
   Log.infof log "Workspace root: %s"
     (Path.to_absolute_filename Path.root |> String.maybe_quoted);
   (* The signal watcher must be initialized first so that signals are

@@ -419,12 +419,13 @@ type hook =
   | Rule_completed
 
 module Action_and_deps = struct
-  type t = Action.t * Deps.t
+  type t = Action.t * Dep.Set.t
+
   let to_sexp (action, deps) =
     Sexp.Encoder.record
       [ "action", Dune_lang.to_sexp
                     (Action.For_shell.encode (Action.for_shell action))
-       ; "deps", Dune_lang.to_sexp (Deps.to_sexp deps)
+       ; "deps", Dune_lang.to_sexp (Dep.Set.encode deps)
       ]
 end
 
@@ -537,9 +538,9 @@ type bs = t
 module Build_exec = struct
   open Build.Repr
 
-  let exec (bs : bs) (t : ('a, 'b) Build.t) (x : 'a) : 'b * Deps.t =
+  let exec (bs : bs) (t : ('a, 'b) Build.t) (x : 'a) : 'b * Dep.Set.t =
     let rec exec
-      : type a b. Deps.t ref -> (a, b) t -> a -> b = fun dyn_deps t x ->
+      : type a b. Dep.Set.t ref -> (a, b) t -> a -> b = fun dyn_deps t x ->
       match t with
       | Arr f -> f x
       | Targets _ -> x
@@ -574,7 +575,7 @@ module Build_exec = struct
         Option.value_exn file.data
       | Dyn_paths t ->
         let fns = exec dyn_deps t x in
-        dyn_deps := Deps.add_paths !dyn_deps fns;
+        dyn_deps := Dep.Set.add_paths !dyn_deps fns;
         x
       | Record_lib_deps _ -> x
       | Fail { fail } -> fail ()
@@ -593,23 +594,23 @@ module Build_exec = struct
       | Memo m ->
         match m.state with
         | Evaluated (x, deps) ->
-          dyn_deps := Deps.union !dyn_deps deps;
+          dyn_deps := Dep.Set.union !dyn_deps deps;
           x
         | Evaluating ->
           die "Dependency cycle evaluating memoized build arrow %s" m.name
         | Unevaluated ->
           m.state <- Evaluating;
-          let dyn_deps' = ref Deps.empty in
+          let dyn_deps' = ref Dep.Set.empty in
           match exec dyn_deps' m.t x with
           | x ->
             m.state <- Evaluated (x, !dyn_deps');
-            dyn_deps := Deps.union !dyn_deps !dyn_deps';
+            dyn_deps := Dep.Set.union !dyn_deps !dyn_deps';
             x
           | exception exn ->
             m.state <- Unevaluated;
             reraise exn
     in
-    let dyn_deps = ref Deps.empty in
+    let dyn_deps = ref Dep.Set.empty in
     let result = exec dyn_deps (Build.repr t) x in
     (result, !dyn_deps)
 end
@@ -1192,7 +1193,7 @@ let evaluate_action_and_dynamic_deps_def =
     Fiber.Once.get rule.static_deps
     >>= fun static_deps ->
     let rule_deps = Static_deps.rule_deps static_deps in
-    Deps.parallel_iter rule_deps ~f:build_file
+    Dep.Set.parallel_iter rule_deps ~f:build_file
     >>| fun () ->
     Build_exec.exec t rule.build ()
   in
@@ -1225,7 +1226,7 @@ let evaluate_rule (rule : Internal_rule.t) =
   evaluate_action_and_dynamic_deps rule
   >>| fun (action, dynamic_action_deps) ->
   let static_action_deps = Static_deps.action_deps static_deps in
-  let action_deps = Deps.union static_action_deps dynamic_action_deps in
+  let action_deps = Dep.Set.union static_action_deps dynamic_action_deps in
   (action, action_deps)
 
 (* Same as the function just bellow, but with less opportunity for
@@ -1235,7 +1236,7 @@ let evaluate_rule (rule : Internal_rule.t) =
 let _evaluate_rule_and_wait_for_dependencies rule =
   evaluate_rule rule
   >>= fun (action, action_deps) ->
-  Deps.parallel_iter action_deps ~f:build_file
+  Dep.Set.parallel_iter action_deps ~f:build_file
   >>| fun () ->
   (action, action_deps)
 
@@ -1250,12 +1251,12 @@ let evaluate_rule_and_wait_for_dependencies (rule : Internal_rule.t) =
   (* Build the static dependencies in parallel with evaluation the
      action and dynamic dependencies *)
   Fiber.fork_and_join_unit
-    (fun () -> Deps.parallel_iter static_action_deps ~f:build_file)
+    (fun () -> Dep.Set.parallel_iter static_action_deps ~f:build_file)
     (fun () -> evaluate_action_and_dynamic_deps rule)
   >>= fun (action, dynamic_action_deps) ->
-  Deps.parallel_iter dynamic_action_deps ~f:build_file
+  Dep.Set.parallel_iter dynamic_action_deps ~f:build_file
   >>>
-  let action_deps = Deps.union static_action_deps dynamic_action_deps in
+  let action_deps = Dep.Set.union static_action_deps dynamic_action_deps in
   Fiber.return (action, action_deps)
 
 let () =
@@ -1293,7 +1294,7 @@ let () =
         | None, Some c -> c.env
       in
       let trace =
-        ( Deps.trace deps env,
+        ( Dep.Set.trace deps ~env,
           List.map targets_as_list ~f:Path.to_string,
           Option.map context ~f:(fun c -> c.name),
           Action.for_shell action)
@@ -1333,7 +1334,7 @@ let () =
           | Some sandbox_dir ->
             Path.rm_rf sandbox_dir;
             let sandboxed path = Path.sandbox_managed_paths ~sandbox_dir path in
-            make_local_parent_dirs t (Deps.paths deps) ~map_path:sandboxed;
+            make_local_parent_dirs t (Dep.Set.paths deps) ~map_path:sandboxed;
             make_local_dir t (sandboxed dir);
             Action.sandbox action
               ~sandboxed
@@ -1526,7 +1527,7 @@ module Rule = struct
   type t =
     { id      : Id.t
     ; dir     : Path.t
-    ; deps    : Deps.t
+    ; deps    : Dep.Set.t
     ; targets : Path.Set.t
     ; context : Context.t option
     ; action  : Action.t
@@ -1538,7 +1539,7 @@ module Rule = struct
 end
 
 let rules_for_files rules deps =
-  Path.Set.fold (Deps.paths deps) ~init:Rule.Set.empty ~f:(fun path acc ->
+  Path.Set.fold (Dep.Set.paths deps) ~init:Rule.Set.empty ~f:(fun path acc ->
     match Path.Map.find rules path with
     | None -> acc
     | Some rule -> Rule.Set.add acc rule)
@@ -1565,7 +1566,7 @@ let evaluate_rules ~recursive ~request =
           } in
         rules := Internal_rule.Id.Map.add !rules rule.id rule;
         if recursive then
-          Deps.parallel_iter deps ~f:proc_rule
+          Dep.Set.parallel_iter deps ~f:proc_rule
         else
           Fiber.return ()
       end
@@ -1577,7 +1578,7 @@ let evaluate_rules ~recursive ~request =
     let rule_shim = shim_of_build_goal t request in
     evaluate_rule rule_shim
     >>= fun (_act, goal) ->
-    Deps.parallel_iter goal ~f:proc_rule
+    Dep.Set.parallel_iter goal ~f:proc_rule
     >>| fun () ->
     let rules =
       Internal_rule.Id.Map.fold !rules ~init:Path.Map.empty
@@ -1637,8 +1638,8 @@ let package_deps pkg files =
         in
         let action_deps =
           Path.Set.union
-            (Deps.paths static_action_deps)
-            (Deps.paths dynamic_action_deps)
+            (Dep.Set.paths static_action_deps)
+            (Dep.Set.paths dynamic_action_deps)
         in
         Path.Set.fold action_deps ~init:acc ~f:loop
       end

@@ -125,9 +125,9 @@ module File = struct
     { ino = st.st_ino
     ; dev = st.st_dev
     }
-end
 
-module File_map = Map.Make(File)
+  module Map = Map.Make(struct type nonrec t = t let compare = compare end)
+end
 
 let is_temp_file fn =
   String.is_prefix fn ~prefix:".#"
@@ -227,8 +227,8 @@ let load ?(warn_when_seeing_jbuild_file=true) path =
                 if Sys.win32 then
                   dirs_visited
                 else
-                  match File_map.find dirs_visited file with
-                  | None -> File_map.add dirs_visited file path
+                  match File.Map.find dirs_visited file with
+                  | None -> File.Map.add dirs_visited file path
                   | Some first_path ->
                     die "Path %s has already been scanned. \
                          Cannot scan it again through symlink %s"
@@ -246,7 +246,7 @@ let load ?(warn_when_seeing_jbuild_file=true) path =
     }
   in
   walk path
-    ~dirs_visited:(File_map.singleton
+    ~dirs_visited:(File.Map.singleton
                      (File.of_stats (Unix.stat (Path.to_string path)))
                      path)
     ~data_only:false

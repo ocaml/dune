@@ -509,7 +509,6 @@ type t =
   ; original_cwd               : string
   ; mutable concurrency        : int
   ; waiting_for_available_job  : t Fiber.Ivar.t Queue.t
-  ; mutable cur_build_canceled : bool
   }
 
 let log t = t.log
@@ -567,7 +566,7 @@ let go_rec t =
     let count = Event.pending_jobs () in
     if count = 0 then begin
       Console.hide_status_line ();
-      Fiber.return ()
+      Fiber.return `Done
     end else begin
       update_status_line ();
       begin
@@ -579,11 +578,10 @@ let go_rec t =
           >>= fun () ->
           go_rec t
         | Files_changed ->
-          t.cur_build_canceled <- true;
-          Fiber.return ()
+          Fiber.return `Files_changed
         | Signal signal ->
           got_signal t signal;
-          Fiber.return ()
+          Fiber.return `Got_signal
       end
     end
   in
@@ -628,7 +626,6 @@ let prepare ?(log=Log.no_log) ?(config=Config.default) () =
     ; original_cwd = cwd
     ; concurrency  = (match config.concurrency with Auto -> 1 | Fixed n -> n)
     ; waiting_for_available_job = Queue.create ()
-    ; cur_build_canceled = false
     }
   in
   t
@@ -638,10 +635,23 @@ let run t f =
     Fiber.Var.set t_var t
       (fun () -> Fiber.with_error_handler f ~on_error:Report_error.report)
   in
-  Fiber.run
-    (Fiber.fork_and_join_unit
-       (fun () -> go_rec t)
-       (fun () -> fiber))
+  match Fiber.run
+          (Fiber.fork (fun () -> fiber)
+           >>= fun user_action_result ->
+           go_rec t
+           >>= fun go_rec_result ->
+           Fiber.return (go_rec_result, user_action_result)) with
+  | exception Fiber.Never ->
+    Exn.code_error "[Scheduler.go_rec] got stuck somehow" []
+  | (a, b) ->
+    let b = Fiber.Future.peek b in
+    match (a, b) with
+    | `Done, None ->
+      Error `Never
+    | `Done, Some res ->
+      Ok res
+    | `Got_signal, _ -> Error `Got_signal
+    | `Files_changed, _ -> Error `Files_changed
 
 let kill_and_wait_for_all_processes () =
   Process_watcher.killall Sys.sigkill;
@@ -651,9 +661,24 @@ let kill_and_wait_for_all_processes () =
 
 let go ?log ?config f =
   let t = prepare ?log ?config () in
-  try
+  match
     run t f
-  with exn ->
+  with
+  | Ok res ->
+    res
+  | Error e ->
+    kill_and_wait_for_all_processes ();
+    (
+      match e with
+      | `Got_signal ->
+        raise Already_reported
+      | `Never ->
+        raise Fiber.Never
+      | `Files_changed ->
+        Exn.code_error
+          "Scheduler.go: files changed even though we're running without filesystem watcher"
+          [])
+  | exception exn ->
     kill_and_wait_for_all_processes ();
     raise exn
 
@@ -663,11 +688,11 @@ type got_signal = Got_signal
 let poll ?log ?config ~once ~finally () =
   let t = prepare ?log ?config () in
   let watcher = File_watcher.create () in
-  let once () =
-    t.cur_build_canceled <- false;
-    once ()
-  in
   let block_waiting_for_changes () =
+    (* CR-someday aalekseyev:
+       We run this in the middle of a fiber, concurrently with [go_rec] and whatnot.
+       It seems weird to access [Event.next] from here. It would be nicer to move this
+       out of a fiber. *)
     match Event.next () with
     | Job_completed _ -> assert false
     | Files_changed -> Continue
@@ -679,7 +704,7 @@ let poll ?log ?config ~once ~finally () =
     let old_generator = Console.get_status_line_generator () in
     set_status_line_generator
       (fun () ->
-         { message = Some (msg ^ ".\nWaiting for filesystem changes...")
+         { message = Some (msg ^ ", waiting for filesystem changes...")
          ; show_jobs = false
          });
     let res = block_waiting_for_changes () in
@@ -689,18 +714,21 @@ let poll ?log ?config ~once ~finally () =
     | Continue -> main_loop ()
   and main_loop () =
     once ()
-    >>= fun _ ->
+    >>= fun () ->
     finally ();
     wait "Success"
   in
-  let continue_on_error () =
-    if not t.cur_build_canceled then begin
-      finally ();
-      wait "Had errors"
-    end else begin
+  let continue_on_error ~why =
+    match why with
+    | `Never ->  begin
+      `Fiber (fun () ->
+        finally ();
+        wait "Had errors")
+    end
+    | `Files_changed -> begin
       set_status_line_generator
         (fun () ->
-           { message = Some "Had errors.\nKilling current build..."
+           { message = Some "Had errors, killing current build..."
            ; show_jobs = false
            });
       Queue.clear t.waiting_for_available_job;
@@ -718,16 +746,25 @@ let poll ?log ?config ~once ~finally () =
       in
       match loop () with
       | Exit ->
-        Fiber.return Got_signal
+        `Got_signal
       | Continue ->
-        finally ();
-        main_loop ()
+        `Fiber (fun () ->
+          finally ();
+          main_loop ())
     end
   in
   let rec loop f =
     match run t f with
-    | Got_signal -> (Fiber.Never, None)
-    | exception Fiber.Never -> loop continue_on_error
+    | Ok Got_signal ->
+      (Already_reported, None)
+    | Error `Got_signal ->
+      (Fiber.Never, None)
+    | Error (`Never | `Files_changed as why) ->
+      (match continue_on_error ~why with
+       | `Got_signal ->
+         (Already_reported, None)
+       | `Fiber f ->
+         loop f)
     | exception exn -> (exn, Some (Printexc.get_raw_backtrace ()))
   in
   let exn, bt = loop main_loop in

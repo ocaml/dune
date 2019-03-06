@@ -305,16 +305,20 @@ let (f2_def, f2) =
 ;;
 [%%ignore]
 
-(f1 "foo", f2 "bar");;
+(f1 "foo", f2 "foo");;
 
 [%%expect{|
-- : string * string = ("f1: lazy: foo", "f2: lazy: bar")
+- : string * string = ("f1: lazy: foo", "f2: lazy: foo")
 |}]
 
-(get_deps f1_def "foo", get_deps f2_def "bar");;
+(get_deps f1_def "foo", get_deps f2_def "foo");;
 
+(* CR-someday aalekseyev:
+   Bug: dependency on [lazy] is only registered by one of the dependants. We should
+   introduce a replacement for [lazy] and call it [Memo.lazy] (as it stands
+   [Memo.create ~input:(module Unit)] could probably be used. *)
 [%%expect{|
 - : (string * Sexp.t) list option * (string * Sexp.t) list option =
-(Some [("id", Atom "lazy: foo"); ("lazy_memo", Atom "foo")],
- Some [("id", Atom "lazy: bar"); ("lazy_memo", Atom "bar")])
+(Some [("lazy_memo", Atom "foo")],
+ Some [("id", Atom "lazy: foo"); ("lazy_memo", Atom "foo")])
 |}]

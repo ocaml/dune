@@ -716,16 +716,11 @@ let go ?log ?config f =
       []
 
 type exit_or_continue = Exit | Continue
-type got_signal = Got_signal
 
 let poll ?log ?config ~once ~finally () =
   let t = prepare ?log ?config () in
   let watcher = File_watcher.create () in
   let block_waiting_for_changes () =
-    (* CR-someday aalekseyev:
-       We run this in the middle of a fiber, concurrently with [go_rec] and whatnot.
-       It seems weird to access [Event.next] from here. It would be nicer to move this
-       out of a fiber (it might also make the signal handling simpler). *)
     match Event.next () with
     | Job_completed _ -> assert false
     | Files_changed -> Continue
@@ -733,7 +728,7 @@ let poll ?log ?config ~once ~finally () =
       got_signal t signal;
       Exit
   in
-  let rec wait msg =
+  let wait msg =
     let old_generator = Console.get_status_line_generator () in
     set_status_line_generator
       (fun () ->
@@ -742,30 +737,27 @@ let poll ?log ?config ~once ~finally () =
          });
     let res = block_waiting_for_changes () in
     set_status_line_generator old_generator;
-    match res with
-    | Exit -> Fiber.return Got_signal
-    | Continue -> main_loop ()
-  and main_loop () =
-    once ()
-    >>= fun () ->
-    finally ();
-    wait "Success"
+    res
   in
-  let rec loop f =
-    let res = run_and_cleanup t f in
+  let rec loop () =
+    let res = run_and_cleanup t once in
     finally ();
     match res with
-    | Ok (Ok Got_signal) ->
-      (Already_reported, None)
+    | Ok (Ok ()) ->
+      wait "Success" |> after_wait
     | Ok (Error Got_signal) ->
-      (Fiber.Never, None)
+      (Already_reported, None)
     | Ok (Error Never) ->
-      loop (fun () -> wait "Had errors")
+      wait "Had errors" |> after_wait
     | Ok (Error Files_changed) ->
-      loop (fun () -> main_loop ())
+      loop ()
     | Error exn -> (exn, Some (Printexc.get_raw_backtrace ()))
+  and
+    after_wait = function
+    | Exit -> (Already_reported, None)
+    | Continue -> loop ()
   in
-  let exn, bt = loop main_loop in
+  let exn, bt = loop () in
   ignore (wait_for_process (File_watcher.pid watcher) : _ Fiber.t);
   ignore (kill_and_wait_for_all_processes t () : saw_signal);
   match bt with

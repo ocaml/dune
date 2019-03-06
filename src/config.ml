@@ -37,19 +37,7 @@ open Stanza.Decoder
 let syntax = Stanza.syntax
 
 module Display = struct
-  type t =
-    | Progress
-    | Short
-    | Verbose
-    | Quiet
-
-  let all =
-      [ "progress" , Progress
-      ; "verbose"  , Verbose
-      ; "short"    , Short
-      ; "quiet"    , Quiet
-      ]
-
+  include Config0.Display
   let decode = enum all
 end
 

@@ -166,11 +166,6 @@ end
 
 let ignore_for_watch = Event.ignore_next_file_change_event
 
-type status_line_config =
-  { message   : string option
-  ; show_jobs : bool
-  }
-
 module File_watcher : sig
   type t
 
@@ -512,62 +507,24 @@ end
 type t =
   { log                        : Log.t
   ; original_cwd               : string
-  ; display                    : Config.Display.t
   ; mutable concurrency        : int
   ; waiting_for_available_job  : t Fiber.Ivar.t Queue.t
-  ; mutable status_line        : string
-  ; mutable gen_status_line    : unit -> status_line_config
   ; mutable cur_build_canceled : bool
   }
 
 let log t = t.log
-let display t = t.display
 
 let with_chdir t ~dir ~f =
   Sys.chdir (Path.to_string dir);
   protectx () ~finally:(fun () -> Sys.chdir t.original_cwd) ~f
 
-let hide_status_line s =
-  let len = String.length s in
-  if len > 0 then Printf.eprintf "\r%*s\r" len ""
-
-let show_status_line s =
-  prerr_string s
-
-let print t msg =
-  let s = t.status_line in
-  hide_status_line s;
-  prerr_string msg;
-  show_status_line s;
-  flush stderr
-
 let t_var : t Fiber.Var.t = Fiber.Var.create ()
 
-let update_status_line t =
-  if t.display = Progress then begin
-    match t.gen_status_line () with
-    | { message = None; _ } ->
-      if t.status_line <> "" then begin
-        hide_status_line t.status_line;
-        flush stderr
-      end
-    | { message = Some status_line; show_jobs } ->
-      let status_line =
-        if show_jobs then
-          sprintf "%s (jobs: %u)" status_line (Event.pending_jobs ())
-        else
-          status_line
-      in
-      hide_status_line t.status_line;
-      show_status_line   status_line;
-      flush stderr;
-      t.status_line <- status_line;
-  end
+let update_status_line () =
+  Console.update_status_line ~running_jobs:(Event.pending_jobs ())
 
-let set_status_line_generator f =
-  let t = Fiber.Var.get_exn t_var in
-  t.gen_status_line <- f;
-  update_status_line t
+let set_status_line_generator gen =
+  Console.set_status_line_generator ~running_jobs:(Event.pending_jobs ()) gen
 
 let set_concurrency n =
   let t = Fiber.Var.get_exn t_var in
@@ -600,7 +557,7 @@ let rec restart_waiting_for_available_job t =
   end
 
 let got_signal t signal =
-  if t.display = Verbose then
+  if Console.display () = Verbose then
     Log.infof t.log "Got signal %s, exiting." (Signal.name signal)
 
 let go_rec t =
@@ -609,11 +566,10 @@ let go_rec t =
     >>= fun () ->
     let count = Event.pending_jobs () in
     if count = 0 then begin
-      hide_status_line t.status_line;
-      flush stderr;
+      Console.hide_status_line ();
       Fiber.return ()
     end else begin
-      update_status_line t;
+      update_status_line ();
       begin
         match Event.next () with
         | Job_completed (job, status) ->
@@ -633,8 +589,8 @@ let go_rec t =
   in
   go_rec t
 
-let prepare ?(log=Log.no_log) ?(config=Config.default)
-      ?(gen_status_line=fun () -> { message = None; show_jobs = false }) () =
+let prepare ?(log=Log.no_log) ?(config=Config.default) () =
+  Console.init config.Config.display;
   Log.infof log "Workspace root: %s"
     (Path.to_absolute_filename Path.root |> String.maybe_quoted);
   (* The signal watcher must be initialized first so that signals are
@@ -669,16 +625,12 @@ let prepare ?(log=Log.no_log) ?(config=Config.default)
          cwd);
   let t =
     { log
-    ; gen_status_line
     ; original_cwd = cwd
-    ; display      = config.Config.display
     ; concurrency  = (match config.concurrency with Auto -> 1 | Fixed n -> n)
-    ; status_line  = ""
     ; waiting_for_available_job = Queue.create ()
     ; cur_build_canceled = false
     }
   in
-  Errors.printer := print t;
   t
 
 let run t f =
@@ -697,8 +649,8 @@ let kill_and_wait_for_all_processes () =
     ignore (Event.next () : Event.t)
   done
 
-let go ?log ?config ?gen_status_line f =
-  let t = prepare ?log ?config ?gen_status_line () in
+let go ?log ?config f =
+  let t = prepare ?log ?config () in
   try
     run t f
   with exn ->
@@ -724,7 +676,7 @@ let poll ?log ?config ~once ~finally () =
       Exit
   in
   let rec wait msg =
-    let old_generator = t.gen_status_line in
+    let old_generator = Console.get_status_line_generator () in
     set_status_line_generator
       (fun () ->
          { message = Some (msg ^ ".\nWaiting for filesystem changes...")

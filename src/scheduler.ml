@@ -568,7 +568,7 @@ type saw_signal =
   | Ok
   | Got_signal
 
-let kill_and_wait_for_all_processes () =
+let kill_and_wait_for_all_processes t () =
   Queue.clear t.waiting_for_available_job;
   Process_watcher.killall Sys.sigkill;
   let saw_signal = ref Ok in
@@ -580,9 +580,6 @@ let kill_and_wait_for_all_processes () =
     | _ -> ()
   done;
   !saw_signal
-
-let kill_and_wait_for_all_processes_ignore_further_signals () =
-  (ignore (kill_and_wait_for_all_processes () : saw_signal))
 
 let go_rec t =
   let rec go_rec t =
@@ -606,7 +603,7 @@ let go_rec t =
           Fiber.return Files_changed
         | Signal signal ->
           got_signal t signal;
-          Fiber.return Got_signal
+          Fiber.return (Got_signal : go_rec_result)
       end
     end
   in
@@ -683,28 +680,40 @@ let run t f =
     | Got_signal, _ -> Error Got_signal
     | Files_changed, _ -> Error Files_changed
 
+(* run the build and clean up after it (kill any stray processes etc) *)
+let run_and_cleanup t f =
+  let res =
+    Result.try_with (fun () -> run t f)
+  in
+  (match res with
+   | Ok (Error Files_changed) ->
+     set_status_line_generator
+       (fun () ->
+          { message = Some "Had errors, killing current build..."
+          ; show_jobs = false
+          })
+   | _ -> ());
+  match kill_and_wait_for_all_processes t () with
+  | Got_signal ->
+    Result.Ok (Error Got_signal)
+  | Ok ->
+    res
+
 let go ?log ?config f =
   let t = prepare ?log ?config () in
   match
-    run t f
+    Result.ok_exn (run_and_cleanup t f)
   with
   | Ok res ->
     res
-  | Error e ->
-    ignore (kill_and_wait_for_all_processes () : saw_signal);
-    (
-      match e with
-      | Got_signal ->
-        raise Already_reported
-      | Never ->
-        raise Fiber.Never
-      | Files_changed ->
-        Exn.code_error
-          "Scheduler.go: files changed even though we're running without filesystem watcher"
-          [])
-  | exception exn ->
-    ignore (kill_and_wait_for_all_processes () : saw_signal);
-    raise exn
+  | Error Got_signal ->
+    raise Already_reported
+  | Error Never ->
+    raise Fiber.Never
+  | Error Files_changed ->
+    Exn.code_error
+      "Scheduler.go: files changed even though we're running without filesystem watcher"
+      []
 
 type exit_or_continue = Exit | Continue
 type got_signal = Got_signal
@@ -742,61 +751,23 @@ let poll ?log ?config ~once ~finally () =
     finally ();
     wait "Success"
   in
-  let module Continue_on_error_reason = struct
-    type t =
-      | Files_changed
-      | Main_loop_stuck
-  end
-  in
-  let module Continue_on_error_result = struct
-    type t =
-      | Got_signal
-      | Fiber of (unit -> got_signal Fiber.t)
-  end
-  in
-  let continue_on_error ~why =
-    match (why : Continue_on_error_reason.t) with
-    | Main_loop_stuck ->  begin
-      Continue_on_error_result.Fiber (fun () ->
-        finally ();
-        wait "Had errors")
-    end
-    | Files_changed -> begin
-        set_status_line_generator
-        (fun () ->
-           { message = Some "Had errors, killing current build..."
-           ; show_jobs = false
-           });
-        match kill_and_wait_for_all_processes () with
-        | Got_signal -> Continue_on_error_result.Got_signal
-        | Ok ->
-          Continue_on_error_result.Fiber (fun () ->
-            finally ();
-            main_loop ())
-    end
-  in
   let rec loop f =
-    let k why =
-      match continue_on_error ~why with
-      | Got_signal ->
-        (Already_reported, None)
-      | Fiber f ->
-        loop f
-    in
-    match run t f with
-    | Ok Got_signal ->
+    let res = run_and_cleanup t f in
+    finally ();
+    match res with
+    | Ok (Ok Got_signal) ->
       (Already_reported, None)
-    | Error Got_signal ->
+    | Ok (Error Got_signal) ->
       (Fiber.Never, None)
-    | Error Never ->
-      k Main_loop_stuck
-    | Error Files_changed ->
-      k Files_changed
-    | exception exn -> (exn, Some (Printexc.get_raw_backtrace ()))
+    | Ok (Error Never) ->
+      loop (fun () -> wait "Had errors")
+    | Ok (Error Files_changed) ->
+      loop (fun () -> main_loop ())
+    | Error exn -> (exn, Some (Printexc.get_raw_backtrace ()))
   in
   let exn, bt = loop main_loop in
   ignore (wait_for_process (File_watcher.pid watcher) : _ Fiber.t);
-  ignore (kill_and_wait_for_all_processes () : saw_signal);
+  ignore (kill_and_wait_for_all_processes t () : saw_signal);
   match bt with
   | None -> Exn.raise exn
   | Some bt -> Exn.raise_with_backtrace exn bt

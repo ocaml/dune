@@ -1228,7 +1228,7 @@ Dune accepts three kinds of preprocessing:
   but behave slightly differently and is needed for certain ppx rewriters
   (see below for details)
 - ``future_syntax`` is a special value that brings some of the newer
-  OCaml syntaxes to older compiler. See :ref:`Future syntax
+  OCaml syntaxes to older compilers. See :ref:`Future syntax
   <future-syntax>` for more details
 
 Dune normally assumes that the compilation pipeline is sequenced as
@@ -1335,7 +1335,7 @@ Future syntax
 The ``future_syntax`` preprocessing specification is equivalent to
 ``no_preprocessing`` when using one of the most recent versions of the
 compiler. When using an older one, it is a shim preprocessor that
-backports some of the newer syntaxes. This allows you to use some of
+backports some of the newer syntax elements. This allows you to use some of
 the new OCaml features while keeping compatibility with older
 compilers.
 

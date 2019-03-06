@@ -153,7 +153,7 @@ let is_temp_file fn =
   || String.is_suffix fn ~suffix:".swp"
   || String.is_suffix fn ~suffix:"~"
 
-let load ~warn_when_seeing_jbuild_file path =
+let load ?(warn_when_seeing_jbuild_file=true) path =
   let rec walk path ~dirs_visited ~project ~data_only : Dir.t =
     let contents = lazy (
       let files, unfiltered_sub_dirs =
@@ -270,26 +270,6 @@ let load ~warn_when_seeing_jbuild_file path =
                      path)
     ~data_only:false
     ~project:(Lazy.force Dune_project.anonymous)
-
-let load_def =
-  let module Input = struct
-    type t = bool * Path.t
-    let equal (x1, y1) (x2, y2) = x1 = x2 && Path.equal y1 y2
-    let hash = Hashtbl.hash
-    let to_sexp (x, y) = Dyn.to_sexp (Tuple [Bool x; Path.to_dyn y])
-  end in
-  Memo.create
-    "file-tree-load"
-    ~input:(module Input)
-    ~output:(Simple (module Dir))
-    ~doc:"Load directory tree"
-    ~visibility:Hidden
-    Sync
-    (Some (fun (warn_when_seeing_jbuild_file, path) ->
-       load ~warn_when_seeing_jbuild_file path))
-
-let load ?(warn_when_seeing_jbuild_file=true) t =
-  Memo.exec load_def (warn_when_seeing_jbuild_file, t)
 
 let fold = Dir.fold
 

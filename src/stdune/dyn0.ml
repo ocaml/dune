@@ -12,3 +12,5 @@ type t =
   | Tuple of t list
   | Record of (string * t) list
   | Variant of string * t list
+  | Map of (t * t) list
+  | Set of t list

@@ -22,6 +22,26 @@ let rec pp = function
       ; Pp.list ~sep:(Pp.seq (Pp.char ';') Pp.space) (Array.to_list a) ~f:pp
       ; Pp.string "|]"
       ]
+  | Set xs ->
+    Pp.box
+      [ Pp.string "set {"
+      ; Pp.list ~sep:(Pp.seq (Pp.char ';') Pp.space) xs ~f:pp
+      ; Pp.string "}"
+      ]
+  | Map xs ->
+    Pp.box
+      [ Pp.string "map {"
+      ; Pp.list ~sep:(Pp.seq (Pp.char ';') Pp.space) xs ~f:(fun (k, v) ->
+          Pp.box
+            [ pp k
+            ; Pp.space
+            ; Pp.string ":"
+            ; Pp.space
+            ; pp v
+            ]
+        )
+      ; Pp.string "}"
+      ]
   | Tuple x ->
     Pp.box
       [ Pp.char '('
@@ -65,6 +85,8 @@ let rec to_sexp =
   | Option o -> option to_sexp o
   | List l -> list to_sexp l
   | Array a -> array to_sexp a
+  | Map xs -> list (pair to_sexp to_sexp) xs
+  | Set xs -> list to_sexp xs
   | Tuple t -> list to_sexp t
   | Record fields ->
     List.map fields ~f:(fun (field, f) -> (field, to_sexp f))

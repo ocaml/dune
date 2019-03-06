@@ -217,10 +217,7 @@ module Set = struct
 
   let to_dyn t =
     let open Dyn in
-    Variant
-      ("Set"
-      , List.map (to_list t) ~f:(fun x -> Dyn.String x)
-      )
+    Set (List.map (to_list t) ~f:(fun x -> Dyn.String x))
 end
 
 module Map = struct
@@ -232,11 +229,10 @@ module Map = struct
 
   let to_dyn f t =
     let open Dyn in
-    let bindings =
+    Map (
       to_list t
-      |> List.map ~f:(fun (k ,v) -> Tuple [String k; f v])
-    in
-    Variant ("Map", bindings)
+      |> List.map ~f:(fun (k ,v) -> (String k, f v))
+    )
 end
 module Table = Hashtbl.Make(T)
 

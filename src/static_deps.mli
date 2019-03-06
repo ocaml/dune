@@ -30,10 +30,10 @@ val add_action_env_var : t -> string -> t
 (** {1} Deconstructors *)
 
 (** Return the rule deps. *)
-val rule_deps : t -> Deps.t
+val rule_deps : t -> Dep.Set.t
 
 (** Return the action deps. *)
-val action_deps : t -> Deps.t
+val action_deps : t -> Dep.Set.t
 
 (** Return the paths deps, both for the rule deps and the action deps. *)
 val paths : t -> Path.Set.t

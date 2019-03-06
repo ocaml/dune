@@ -83,6 +83,6 @@ end with type action := t
 val sandbox
   :  t
   -> sandboxed:(Path.t -> Path.t)
-  -> deps:Deps.t
+  -> deps:Dep.Set.t
   -> targets:Path.t list
   -> t

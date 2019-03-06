@@ -564,6 +564,26 @@ type go_rec_result =
   | Got_signal
   | Files_changed
 
+type saw_signal =
+  | Ok
+  | Got_signal
+
+let kill_and_wait_for_all_processes () =
+  Queue.clear t.waiting_for_available_job;
+  Process_watcher.killall Sys.sigkill;
+  let saw_signal = ref Ok in
+  while Event.pending_jobs () > 0 do
+    match Event.next () with
+    | Signal signal ->
+      got_signal t signal;
+      saw_signal := Got_signal;
+    | _ -> ()
+  done;
+  !saw_signal
+
+let kill_and_wait_for_all_processes_ignore_further_signals () =
+  (ignore (kill_and_wait_for_all_processes () : saw_signal))
+
 let go_rec t =
   let rec go_rec t =
     Fiber.yield ()
@@ -663,12 +683,6 @@ let run t f =
     | Got_signal, _ -> Error Got_signal
     | Files_changed, _ -> Error Files_changed
 
-let kill_and_wait_for_all_processes () =
-  Process_watcher.killall Sys.sigkill;
-  while Event.pending_jobs () > 0 do
-    ignore (Event.next () : Event.t)
-  done
-
 let go ?log ?config f =
   let t = prepare ?log ?config () in
   match
@@ -677,7 +691,7 @@ let go ?log ?config f =
   | Ok res ->
     res
   | Error e ->
-    kill_and_wait_for_all_processes ();
+    ignore (kill_and_wait_for_all_processes () : saw_signal);
     (
       match e with
       | Got_signal ->
@@ -689,7 +703,7 @@ let go ?log ?config f =
           "Scheduler.go: files changed even though we're running without filesystem watcher"
           [])
   | exception exn ->
-    kill_and_wait_for_all_processes ();
+    ignore (kill_and_wait_for_all_processes () : saw_signal);
     raise exn
 
 type exit_or_continue = Exit | Continue
@@ -748,31 +762,17 @@ let poll ?log ?config ~once ~finally () =
         wait "Had errors")
     end
     | Files_changed -> begin
-      set_status_line_generator
+        set_status_line_generator
         (fun () ->
            { message = Some "Had errors, killing current build..."
            ; show_jobs = false
            });
-      Queue.clear t.waiting_for_available_job;
-      Process_watcher.killall Sys.sigkill;
-      let rec loop () =
-        if Event.pending_jobs () = 0 then
-          Continue
-        else
-          match Event.next () with
-          | Files_changed -> loop ()
-          | Job_completed _ -> loop ()
-          | Signal signal ->
-            got_signal t signal;
-            Exit
-      in
-      match loop () with
-      | Exit ->
-        Continue_on_error_result.Got_signal
-      | Continue ->
-        Continue_on_error_result.Fiber (fun () ->
-          finally ();
-          main_loop ())
+        match kill_and_wait_for_all_processes () with
+        | Got_signal -> Continue_on_error_result.Got_signal
+        | Ok ->
+          Continue_on_error_result.Fiber (fun () ->
+            finally ();
+            main_loop ())
     end
   in
   let rec loop f =
@@ -796,7 +796,7 @@ let poll ?log ?config ~once ~finally () =
   in
   let exn, bt = loop main_loop in
   ignore (wait_for_process (File_watcher.pid watcher) : _ Fiber.t);
-  kill_and_wait_for_all_processes ();
+  ignore (kill_and_wait_for_all_processes () : saw_signal);
   match bt with
   | None -> Exn.raise exn
   | Some bt -> Exn.raise_with_backtrace exn bt

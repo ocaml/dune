@@ -170,10 +170,12 @@ let get_prog dir prog =
   | None -> prog_not_found prog
   | Some fn -> fn
 
-let bin_dir, compiler =
+let bin_dir, ocamlc =
   match find_prog "ocamlc" with
   | None -> prog_not_found "ocamlc"
   | Some x -> x
+
+let ocamlopt = best_prog bin_dir "ocamlopt"
 
 let to_delete = ref []
 let add_to_delete fn =
@@ -230,7 +232,8 @@ let cleanup ~keep_ml_file =
   with _ ->
     ()
 
-let compile ~dirs ~generated_file ~exe ~main ~flags ~pp =
+let compile ~dirs ~generated_file ~exe ~main ~flags ~byte_flags ~native_flags
+      ~pp =
   (* Map from module names to ml/mli filenames *)
   let modules =
     let files_of (dir, libname) =
@@ -483,12 +486,19 @@ let compile ~dirs ~generated_file ~exe ~main ~flags ~pp =
   in
   generate_file_with_all_the_sources ();
 
+  let compiler, backend_specific_flags =
+    match ocamlopt, native_flags with
+    | Some x, Some y -> (x, y)
+    | _ -> ocamlc, byte_flags
+  in
+
   let n =
-    try exec "%s -g -w -40 -o %s%s %s %s"
+    try exec "%s -g -w -40 -o %s%s %s %s %s"
           compiler
           exe
           pp
           flags
+          backend_specific_flags
           generated_file
     with e -> cleanup ~keep_ml_file:true; raise e
   in
@@ -531,7 +541,9 @@ let pp =
       ~exe:"boot-pp.exe"
       ~main:"let () = ()"
       ~dirs:["src/future-syntax", None]
-      ~flags:"-I +compiler-libs ocamlcommon.cma"
+      ~flags:"-I +compiler-libs"
+      ~byte_flags:"ocamlcommon.cma"
+      ~native_flags:(Some "ocamlcommon.cmxa")
       ~pp:None;
     add_to_delete "boot-pp.exe";
     Some (sprintf "%s -dump-ast" (Filename.concat "." "boot-pp.exe"))
@@ -546,5 +558,7 @@ let () =
     ~exe:"boot.exe"
     ~main:"let () = Main.bootstrap ()"
     ~dirs
-    ~flags:"unix.cma threads.cma -I +threads"
+    ~flags:"-I +threads"
+    ~byte_flags:"unix.cma threads.cma"
+    ~native_flags:None
     ~pp

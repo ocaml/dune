@@ -39,6 +39,8 @@ type t
 
 val to_sexp : t Sexp.Encoder.t
 
+val to_dyn : t -> Dyn.t
+
 val compare : t -> t -> Ordering.t
 (** a directory is smaller than its descendants *)
 

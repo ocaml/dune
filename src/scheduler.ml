@@ -559,6 +559,11 @@ let got_signal t signal =
   if Console.display () = Verbose then
     Log.infof t.log "Got signal %s, exiting." (Signal.name signal)
 
+type go_rec_result =
+  | Done
+  | Got_signal
+  | Files_changed
+
 let go_rec t =
   let rec go_rec t =
     Fiber.yield ()
@@ -566,7 +571,7 @@ let go_rec t =
     let count = Event.pending_jobs () in
     if count = 0 then begin
       Console.hide_status_line ();
-      Fiber.return `Done
+      Fiber.return Done
     end else begin
       update_status_line ();
       begin
@@ -578,10 +583,10 @@ let go_rec t =
           >>= fun () ->
           go_rec t
         | Files_changed ->
-          Fiber.return `Files_changed
+          Fiber.return Files_changed
         | Signal signal ->
           got_signal t signal;
-          Fiber.return `Got_signal
+          Fiber.return Got_signal
       end
     end
   in
@@ -630,6 +635,11 @@ let prepare ?(log=Log.no_log) ?(config=Config.default) () =
   in
   t
 
+type run_error =
+  | Got_signal
+  | Files_changed
+  | Never
+
 let run t f =
   let fiber =
     Fiber.Var.set t_var t
@@ -646,12 +656,12 @@ let run t f =
   | (a, b) ->
     let b = Fiber.Future.peek b in
     match (a, b) with
-    | `Done, None ->
-      Error `Never
-    | `Done, Some res ->
+    | Done, None ->
+      Error Never
+    | Done, Some res ->
       Ok res
-    | `Got_signal, _ -> Error `Got_signal
-    | `Files_changed, _ -> Error `Files_changed
+    | Got_signal, _ -> Error Got_signal
+    | Files_changed, _ -> Error Files_changed
 
 let kill_and_wait_for_all_processes () =
   Process_watcher.killall Sys.sigkill;
@@ -670,11 +680,11 @@ let go ?log ?config f =
     kill_and_wait_for_all_processes ();
     (
       match e with
-      | `Got_signal ->
+      | Got_signal ->
         raise Already_reported
-      | `Never ->
+      | Never ->
         raise Fiber.Never
-      | `Files_changed ->
+      | Files_changed ->
         Exn.code_error
           "Scheduler.go: files changed even though we're running without filesystem watcher"
           [])
@@ -692,7 +702,7 @@ let poll ?log ?config ~once ~finally () =
     (* CR-someday aalekseyev:
        We run this in the middle of a fiber, concurrently with [go_rec] and whatnot.
        It seems weird to access [Event.next] from here. It would be nicer to move this
-       out of a fiber. *)
+       out of a fiber (it might also make the signal handling simpler). *)
     match Event.next () with
     | Job_completed _ -> assert false
     | Files_changed -> Continue
@@ -718,14 +728,26 @@ let poll ?log ?config ~once ~finally () =
     finally ();
     wait "Success"
   in
+  let module Continue_on_error_reason = struct
+    type t =
+      | Files_changed
+      | Main_loop_stuck
+  end
+  in
+  let module Continue_on_error_result = struct
+    type t =
+      | Got_signal
+      | Fiber of (unit -> got_signal Fiber.t)
+  end
+  in
   let continue_on_error ~why =
-    match why with
-    | `Never ->  begin
-      `Fiber (fun () ->
+    match (why : Continue_on_error_reason.t) with
+    | Main_loop_stuck ->  begin
+      Continue_on_error_result.Fiber (fun () ->
         finally ();
         wait "Had errors")
     end
-    | `Files_changed -> begin
+    | Files_changed -> begin
       set_status_line_generator
         (fun () ->
            { message = Some "Had errors, killing current build..."
@@ -746,25 +768,30 @@ let poll ?log ?config ~once ~finally () =
       in
       match loop () with
       | Exit ->
-        `Got_signal
+        Continue_on_error_result.Got_signal
       | Continue ->
-        `Fiber (fun () ->
+        Continue_on_error_result.Fiber (fun () ->
           finally ();
           main_loop ())
     end
   in
   let rec loop f =
+    let k why =
+      match continue_on_error ~why with
+      | Got_signal ->
+        (Already_reported, None)
+      | Fiber f ->
+        loop f
+    in
     match run t f with
     | Ok Got_signal ->
       (Already_reported, None)
-    | Error `Got_signal ->
+    | Error Got_signal ->
       (Fiber.Never, None)
-    | Error (`Never | `Files_changed as why) ->
-      (match continue_on_error ~why with
-       | `Got_signal ->
-         (Already_reported, None)
-       | `Fiber f ->
-         loop f)
+    | Error Never ->
+      k Main_loop_stuck
+    | Error Files_changed ->
+      k Files_changed
     | exception exn -> (exn, Some (Printexc.get_raw_backtrace ()))
   in
   let exn, bt = loop main_loop in

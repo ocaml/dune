@@ -93,7 +93,7 @@ module Make(Value : Value) : S with type value := Value.t = struct
     and ftraverse x y acc =
       if y.info.id = v.info.id || List.exists ~f:(fun n -> n.info.id = y.info.id) !b then begin
         let path = reconstruct_b_path y [] v |> Option.value_exn in
-        Cycle (List.append path acc) |> raise
+        Cycle (List.rev_append path acc) |> raise
       end;
       if y.info.level < w.info.level then begin
         y.info.level <- w.info.level;

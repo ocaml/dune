@@ -506,17 +506,6 @@ let get_dir_status t ~dir =
           }
     end)
 
-let entry_point t ~f =
-  (match t.load_dir_stack with
-   | [] ->
-     ()
-   | stack ->
-     Exn.code_error
-       "Build_system.entry_point: called inside the rule generator callback"
-       ["stack", Sexp.Encoder.list Path.to_sexp stack]
-  );
-  f ()
-
 module Target = Build_interpret.Target
 module Pre_rule = Build_interpret.Rule
 
@@ -1467,60 +1456,6 @@ let init ~contexts ~file_tree ~hook =
     ; hook
     }
 
-let rules_for_files t paths =
-  Path.Set.fold paths ~init:[] ~f:(fun path acc ->
-    if Path.is_in_build_dir path then
-      load_dir t ~dir:(Path.parent_exn path);
-    match Path.Table.find t.files path with
-    | None -> acc
-    | Some (File_spec.T { rule; _ }) -> rule :: acc)
-  |> Internal_rule.Set.of_list
-  |> Internal_rule.Set.to_list
-
-let rules_for_targets t targets =
-  Internal_rule.Id.Top_closure_f.top_closure
-    (rules_for_files t targets)
-    ~key:(fun (r : Internal_rule.t) -> r.id)
-    ~deps:(fun (r : Internal_rule.t) ->
-      Fiber.Once.get r.static_deps
-      >>| Static_deps.paths
-      >>| rules_for_files t)
-  >>| function
-  | Ok l -> l
-  | Error cycle ->
-    die "dependency cycle detected:\n   %s"
-      (List.map cycle ~f:(fun rule ->
-         Path.to_string (Option.value_exn
-                           (Path.Set.choose rule.Internal_rule.targets)))
-       |> String.concat ~sep:"\n-> ")
-
-let static_deps_of_request t request =
-  Static_deps.paths @@
-  Build_interpret.static_deps
-    request
-    ~all_targets:(targets_of t)
-    ~file_tree:t.file_tree
-
-let all_lib_deps ~request =
-  let t = t () in
-  let targets = static_deps_of_request t request in
-  rules_for_targets t targets >>= fun rules ->
-  Fiber.parallel_map rules ~f:(fun rule ->
-    Internal_rule.lib_deps rule >>| fun deps ->
-    (rule, deps))
-  >>| fun lib_deps ->
-  List.fold_left lib_deps ~init:[]
-    ~f:(fun acc (rule, deps) ->
-      if Lib_name.Map.is_empty deps then
-        acc
-      else
-      match Path.extract_build_context rule.Internal_rule.dir with
-      | None -> acc
-      | Some (context, p) -> ((context, (p, deps)) :: acc))
-  |> String.Map.of_list_multi
-  |> String.Map.filteri ~f:(fun ctx _ -> String.Map.mem t.contexts ctx)
-  |> String.Map.map ~f:(Path.Map.of_list_reduce ~f:Lib_deps_info.merge)
-
 module Rule = struct
   module Id = Internal_rule.Id
 
@@ -1537,67 +1472,6 @@ module Rule = struct
 
   module Set = Set.Make(struct type nonrec t = t let compare = compare end)
 end
-
-let rules_for_files rules deps =
-  Path.Set.fold (Dep.Set.paths deps) ~init:Rule.Set.empty ~f:(fun path acc ->
-    match Path.Map.find rules path with
-    | None -> acc
-    | Some rule -> Rule.Set.add acc rule)
-  |> Rule.Set.to_list
-
-let evaluate_rules ~recursive ~request =
-  let t = t () in
-  entry_point t ~f:(fun () ->
-    let rules = ref Internal_rule.Id.Map.empty in
-    let rec run_rule (rule : Internal_rule.t) =
-      if Internal_rule.Id.Map.mem !rules rule.id then
-        Fiber.return ()
-      else begin
-        evaluate_rule rule
-        >>= fun (action, deps) ->
-        let rule =
-          { Rule.
-            id = rule.id
-          ; dir = rule.dir
-          ; deps
-          ; targets = rule.targets
-          ; context = rule.context
-          ; action
-          } in
-        rules := Internal_rule.Id.Map.add !rules rule.id rule;
-        if recursive then
-          Dep.Set.parallel_iter deps ~f:proc_rule
-        else
-          Fiber.return ()
-      end
-    and proc_rule dep =
-      get_file_spec_other t dep >>= function
-      | None -> Fiber.return () (* external files *)
-      | Some (File_spec.T file) -> run_rule file.rule
-    in
-    let rule_shim = shim_of_build_goal t request in
-    evaluate_rule rule_shim
-    >>= fun (_act, goal) ->
-    Dep.Set.parallel_iter goal ~f:proc_rule
-    >>| fun () ->
-    let rules =
-      Internal_rule.Id.Map.fold !rules ~init:Path.Map.empty
-        ~f:(fun (r : Rule.t) acc ->
-          Path.Set.fold r.targets ~init:acc ~f:(fun fn acc ->
-            Path.Map.add acc fn r)) in
-    match
-      Rule.Id.Top_closure.top_closure
-        (rules_for_files rules goal)
-        ~key:(fun (r : Rule.t) -> r.id)
-        ~deps:(fun (r : Rule.t) -> rules_for_files rules r.deps)
-    with
-    | Ok l -> l
-    | Error cycle ->
-      die "dependency cycle detected:\n   %s"
-        (List.map cycle ~f:(fun rule ->
-           Path.to_string
-             (Option.value_exn (Path.Set.choose rule.Rule.targets)))
-         |> String.concat ~sep:"\n-> "))
 
 let set_package file package =
   let t = t () in
@@ -1784,3 +1658,146 @@ let load_dir ~dir = load_dir (t ()) ~dir
 
 let is_target file =
   Path.Set.mem (targets_of ~dir:(Path.parent_exn file)) file
+
+module Print_rules : sig
+  val evaluate_rules
+    :  recursive:bool
+    -> request:(unit, unit) Build.t
+    -> Rule.t list Fiber.t
+end = struct
+  let rules_for_files rules deps =
+    Path.Set.fold (Dep.Set.paths deps) ~init:Rule.Set.empty ~f:(fun path acc ->
+      match Path.Map.find rules path with
+      | None -> acc
+      | Some rule -> Rule.Set.add acc rule)
+    |> Rule.Set.to_list
+
+  let entry_point t ~f =
+    (match t.load_dir_stack with
+     | [] ->
+       ()
+     | stack ->
+       Exn.code_error
+         "Build_system.entry_point: called inside the rule generator callback"
+         ["stack", Sexp.Encoder.list Path.to_sexp stack]
+    );
+    f ()
+
+  let evaluate_rules ~recursive ~request =
+    let t = t () in
+    entry_point t ~f:(fun () ->
+      let rules = ref Internal_rule.Id.Map.empty in
+      let rec run_rule (rule : Internal_rule.t) =
+        if Internal_rule.Id.Map.mem !rules rule.id then
+          Fiber.return ()
+        else begin
+          evaluate_rule rule
+          >>= fun (action, deps) ->
+          let rule =
+            { Rule.
+              id = rule.id
+            ; dir = rule.dir
+            ; deps
+            ; targets = rule.targets
+            ; context = rule.context
+            ; action
+            } in
+          rules := Internal_rule.Id.Map.add !rules rule.id rule;
+          if recursive then
+            Dep.Set.parallel_iter deps ~f:proc_rule
+          else
+            Fiber.return ()
+        end
+      and proc_rule dep =
+        get_file_spec_other t dep >>= function
+        | None -> Fiber.return () (* external files *)
+        | Some (File_spec.T file) -> run_rule file.rule
+      in
+      let rule_shim = shim_of_build_goal t request in
+      evaluate_rule rule_shim
+      >>= fun (_act, goal) ->
+      Dep.Set.parallel_iter goal ~f:proc_rule
+      >>| fun () ->
+      let rules =
+        Internal_rule.Id.Map.fold !rules ~init:Path.Map.empty
+          ~f:(fun (r : Rule.t) acc ->
+            Path.Set.fold r.targets ~init:acc ~f:(fun fn acc ->
+              Path.Map.add acc fn r)) in
+      match
+        Rule.Id.Top_closure.top_closure
+          (rules_for_files rules goal)
+          ~key:(fun (r : Rule.t) -> r.id)
+          ~deps:(fun (r : Rule.t) -> rules_for_files rules r.deps)
+      with
+      | Ok l -> l
+      | Error cycle ->
+        die "dependency cycle detected:\n   %s"
+          (List.map cycle ~f:(fun rule ->
+            Path.to_string
+              (Option.value_exn (Path.Set.choose rule.Rule.targets)))
+          |> String.concat ~sep:"\n-> "))
+end
+
+include Print_rules
+
+module All_lib_deps : sig
+  val all_lib_deps
+    :  request:(unit, unit) Build.t
+    -> Lib_deps_info.t Path.Map.t String.Map.t Fiber.t
+end = struct
+  let static_deps_of_request t request =
+    Static_deps.paths @@
+    Build_interpret.static_deps
+      request
+      ~all_targets:targets_of
+      ~file_tree:t.file_tree
+
+  let rules_for_files t paths =
+    Path.Set.fold paths ~init:[] ~f:(fun path acc ->
+      if Path.is_in_build_dir path then
+        load_dir ~dir:(Path.parent_exn path);
+      match Path.Table.find t.files path with
+      | None -> acc
+      | Some (File_spec.T { rule; _ }) -> rule :: acc)
+    |> Internal_rule.Set.of_list
+    |> Internal_rule.Set.to_list
+
+  let rules_for_targets t targets =
+    Internal_rule.Id.Top_closure_f.top_closure
+      (rules_for_files t targets)
+      ~key:(fun (r : Internal_rule.t) -> r.id)
+      ~deps:(fun (r : Internal_rule.t) ->
+        Fiber.Once.get r.static_deps
+        >>| Static_deps.paths
+        >>| rules_for_files t)
+    >>| function
+    | Ok l -> l
+    | Error cycle ->
+      die "dependency cycle detected:\n   %s"
+        (List.map cycle ~f:(fun rule ->
+           Path.to_string (Option.value_exn
+                             (Path.Set.choose rule.Internal_rule.targets)))
+         |> String.concat ~sep:"\n-> ")
+
+  let all_lib_deps ~request =
+    let t = t () in
+    let targets = static_deps_of_request t request in
+    rules_for_targets t targets >>= fun rules ->
+    Fiber.parallel_map rules ~f:(fun rule ->
+      Internal_rule.lib_deps rule >>| fun deps ->
+      (rule, deps))
+    >>| fun lib_deps ->
+    List.fold_left lib_deps ~init:[]
+      ~f:(fun acc (rule, deps) ->
+        if Lib_name.Map.is_empty deps then
+          acc
+        else
+          match Path.extract_build_context rule.Internal_rule.dir with
+          | None -> acc
+          | Some (context, p) -> ((context, (p, deps)) :: acc))
+    |> String.Map.of_list_multi
+    |> String.Map.filteri ~f:(fun ctx _ -> String.Map.mem t.contexts ctx)
+    |> String.Map.map ~f:(Path.Map.of_list_reduce ~f:Lib_deps_info.merge)
+end
+
+include All_lib_deps

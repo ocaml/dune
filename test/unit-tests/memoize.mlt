@@ -240,3 +240,81 @@ Memo.exec sync_fib 1800;;
 - : int = 3080005411477819488
 - : int = 2001
 |}]
+
+let make_f =
+  fun name f ~input ~output ->
+    Memo.create name
+      ~input
+      ~visibility:Hidden
+      ~output:(Allow_cutoff output)
+      ~doc:""
+      Sync
+      (Some f)
+
+let id =
+  let f =
+    make_f "id"
+      (fun s -> s)
+      ~input:(module String)
+      ~output:(module String)
+  in
+  Memo.exec f
+;;
+
+module Lazy_string = struct
+  type t = string Lazy.t
+
+  let to_sexp (lazy s) = Sexp.Encoder.string "opaque"
+  let equal (lazy x) (lazy y) = String.equal x y
+  let hash (lazy s) = String.hash s
+end
+[%%ignore]
+
+let lazy_memo =
+  let f =
+    make_f
+      "lazy_memo"
+      (fun s -> lazy (id ("lazy: " ^ s)))
+      ~input:(module String)
+      ~output:(module Lazy_string)
+  in
+  Memo.exec f
+;;
+[%%ignore]
+
+
+let (f1_def, f1) =
+  let f =
+    make_f "f1"
+      (fun s -> "f1: " ^ (Lazy.force (lazy_memo s)))
+      ~input:(module String)
+      ~output:(module String)
+  in
+  (f, Memo.exec f)
+;;
+[%%ignore]
+
+let (f2_def, f2) =
+  let f =
+    make_f "f2"
+      (fun s -> "f2: " ^ (Lazy.force (lazy_memo s)))
+      ~input:(module String)
+      ~output:(module String)
+  in
+  (f, Memo.exec f)
+;;
+[%%ignore]
+
+(f1 "foo", f2 "bar");;
+
+[%%expect{|
+- : string * string = ("f1: lazy: foo", "f2: lazy: bar")
+|}]
+
+(get_deps f1_def "foo", get_deps f2_def "bar");;
+
+[%%expect{|
+- : (string * Sexp.t) list option * (string * Sexp.t) list option =
+(Some [("id", Atom "lazy: foo"); ("lazy_memo", Atom "foo")],
+ Some [("id", Atom "lazy: bar"); ("lazy_memo", Atom "bar")])
+|}]

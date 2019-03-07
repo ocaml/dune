@@ -122,9 +122,10 @@ let pp_top_sexps =
 let format_file ~input =
   match parse_file input with
   | exception Dune_lang.Parse_error e ->
-    Printf.printf
+    Printf.eprintf
       "Parse error: %s\n"
-      (Dune_lang.Parse_error.message e)
+      (Dune_lang.Parse_error.message e);
+    exit 1
   | OCaml_syntax loc ->
     Errors.warn loc "OCaml syntax is not supported, skipping."
   | Sexps sexps ->

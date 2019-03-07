@@ -39,6 +39,9 @@
 - Configurator: deprecated `query_expr` and introduced `query_expr_err` which is
   the same but with a better error in case it fails. (#1886, @ejgallego)
 
+- Make sure `(menhir (mode promote) ...)` stanzas are ignored when
+  using `--ignore-promoted-rules` or `-p` (#1917, @diml)
+
 1.7.3 (27/02/2019)
 ------------------
 

@@ -661,7 +661,7 @@ end = struct
           Fiber.return Files_changed
         | Signal signal ->
           got_signal t signal;
-          Fiber.return (Got_signal : pump_events_result)
+          Fiber.return Got_signal
       end
     end
 

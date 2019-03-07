@@ -1480,7 +1480,14 @@ let set_package file package =
 
 let package_deps pkg files =
   let t = t () in
-  let rules_seen = ref Rule.Id.Set.empty in
+  let rules_seen = ref Internal_rule.Set.empty in
+  let add_package acc p =
+    let open Package.Name.Infix in
+    if p = pkg then
+      acc
+    else
+      Package.Name.Set.add acc p
+  in
   let rec loop fn acc =
     match Path.Table.find_all t.packages fn with
     | [] -> loop_deps fn acc
@@ -1489,20 +1496,14 @@ let package_deps pkg files =
         loop_deps fn acc
       else
         List.fold_left pkgs ~init:acc ~f:add_package
-  and add_package acc p =
-    let open Package.Name.Infix in
-    if p = pkg then
-      acc
-    else
-      Package.Name.Set.add acc p
   and loop_deps fn acc =
     match Path.Table.find t.files fn with
     | None -> acc
     | Some (File_spec.T { rule = ir; _ }) ->
-      if Rule.Id.Set.mem !rules_seen ir.id then
+      if Internal_rule.Set.mem !rules_seen ir then
         acc
       else begin
-        rules_seen := Rule.Id.Set.add !rules_seen ir.id;
+        rules_seen := Internal_rule.Set.add !rules_seen ir;
         (* We know that at this point of execution, all the relevant
            ivars have been filled so the following calls to
            [X.peek_exn] cannot raise. *)

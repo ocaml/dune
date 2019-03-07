@@ -559,11 +559,6 @@ let got_signal t signal =
   if Console.display () = Verbose then
     Log.infof t.log "Got signal %s, exiting." (Signal.name signal)
 
-type go_rec_result =
-  | Done
-  | Got_signal
-  | Files_changed
-
 type saw_signal =
   | Ok
   | Got_signal
@@ -580,34 +575,6 @@ let kill_and_wait_for_all_processes t () =
     | _ -> ()
   done;
   !saw_signal
-
-let go_rec t =
-  let rec go_rec t =
-    Fiber.yield ()
-    >>= fun () ->
-    let count = Event.pending_jobs () in
-    if count = 0 then begin
-      Console.hide_status_line ();
-      Fiber.return Done
-    end else begin
-      update_status_line ();
-      begin
-        match Event.next () with
-        | Job_completed (job, status) ->
-          Fiber.Ivar.fill job.ivar status
-          >>= fun () ->
-          restart_waiting_for_available_job t
-          >>= fun () ->
-          go_rec t
-        | Files_changed ->
-          Fiber.return Files_changed
-        | Signal signal ->
-          got_signal t signal;
-          Fiber.return (Got_signal : go_rec_result)
-      end
-    end
-  in
-  go_rec t
 
 let prepare ?(log=Log.no_log) ?(config=Config.default) () =
   Console.init config.Config.display;
@@ -652,57 +619,102 @@ let prepare ?(log=Log.no_log) ?(config=Config.default) () =
   in
   t
 
-type run_error =
-  | Got_signal
-  | Files_changed
-  | Never
+module Run_once : sig
 
-let run t f =
-  let fiber =
-    Fiber.Var.set t_var t
-      (fun () -> Fiber.with_error_handler f ~on_error:Report_error.report)
-  in
-  match Fiber.run
-          (Fiber.fork (fun () -> fiber)
-           >>= fun user_action_result ->
-           go_rec t
-           >>= fun go_rec_result ->
-           Fiber.return (go_rec_result, user_action_result)) with
-  | exception Fiber.Never ->
-    Exn.code_error "[Scheduler.go_rec] got stuck somehow" []
-  | (a, b) ->
-    let b = Fiber.Future.peek b in
-    match (a, b) with
-    | Done, None ->
-      Error Never
-    | Done, Some res ->
-      Ok res
-    | Got_signal, _ -> Error Got_signal
-    | Files_changed, _ -> Error Files_changed
+  type run_error =
+    | Got_signal
+    | Files_changed
+    | Never
 
-(* run the build and clean up after it (kill any stray processes etc) *)
-let run_and_cleanup t f =
-  let res =
-    Result.try_with (fun () -> run t f)
-  in
-  (match res with
-   | Ok (Error Files_changed) ->
-     set_status_line_generator
-       (fun () ->
-          { message = Some "Had errors, killing current build..."
-          ; show_jobs = false
-          })
-   | _ -> ());
-  match kill_and_wait_for_all_processes t () with
-  | Got_signal ->
-    Result.Ok (Error Got_signal)
-  | Ok ->
-    res
+  (** Run the build and clean up after it (kill any stray processes etc). *)
+  val run_and_cleanup :
+    t ->
+    (unit -> 'a Fiber.t) ->
+    (('a, run_error) Result.t, exn) Result.t
+
+end = struct
+
+  type pump_events_result =
+    | Done
+    | Got_signal
+    | Files_changed
+
+  let rec pump_events t =
+    Fiber.yield ()
+    >>= fun () ->
+    let count = Event.pending_jobs () in
+    if count = 0 then begin
+      Console.hide_status_line ();
+      Fiber.return Done
+    end else begin
+      update_status_line ();
+      begin
+        match Event.next () with
+        | Job_completed (job, status) ->
+          Fiber.Ivar.fill job.ivar status
+          >>= fun () ->
+          restart_waiting_for_available_job t
+          >>= fun () ->
+          pump_events t
+        | Files_changed ->
+          Fiber.return Files_changed
+        | Signal signal ->
+          got_signal t signal;
+          Fiber.return (Got_signal : pump_events_result)
+      end
+    end
+
+  type run_error =
+    | Got_signal
+    | Files_changed
+    | Never
+
+  let run t f =
+    let fiber =
+      Fiber.Var.set t_var t
+        (fun () -> Fiber.with_error_handler f ~on_error:Report_error.report)
+    in
+    match Fiber.run
+            (Fiber.fork (fun () -> fiber)
+             >>= fun user_action_result ->
+             pump_events t
+             >>= fun pump_events_result ->
+             Fiber.return (pump_events_result, user_action_result)) with
+    | exception Fiber.Never ->
+      Exn.code_error "[Scheduler.pump_events] got stuck somehow" []
+    | (a, b) ->
+      let b = Fiber.Future.peek b in
+      match (a, b) with
+      | Done, None ->
+        Error Never
+      | Done, Some res ->
+        Ok res
+      | Got_signal, _ -> Error Got_signal
+      | Files_changed, _ -> Error Files_changed
+
+  let run_and_cleanup t f =
+    let res =
+      Result.try_with (fun () -> run t f)
+    in
+    (match res with
+     | Ok (Error Files_changed) ->
+       set_status_line_generator
+         (fun () ->
+            { message = Some "Had errors, killing current build..."
+            ; show_jobs = false
+            })
+     | _ -> ());
+    match kill_and_wait_for_all_processes t () with
+    | Got_signal ->
+      Result.Ok (Error Got_signal)
+    | Ok ->
+      res
+end
 
 let go ?log ?config f =
   let t = prepare ?log ?config () in
   match
-    Result.ok_exn (run_and_cleanup t f)
+    Result.ok_exn (Run_once.run_and_cleanup t f)
   with
   | Ok res ->
     res
@@ -740,7 +752,7 @@ let poll ?log ?config ~once ~finally () =
     res
   in
   let rec loop () =
-    let res = run_and_cleanup t once in
+    let res = Run_once.run_and_cleanup t once in
     finally ();
     match res with
     | Ok (Ok ()) ->

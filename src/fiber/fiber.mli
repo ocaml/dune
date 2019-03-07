@@ -281,9 +281,9 @@ end with type 'a fiber := 'a t
 (** Wait for one iteration of the scheduler *)
 val yield : unit -> unit t
 
-(** [run t] runs a fiber until it yield a result. If it becomes clear
-    that the execution of the fiber will never terminate, raise
-    [Never]. *)
+(** [run t] runs a fiber until it (and all the fibers it forked) terminate.
+    Returns the result if it's determined in the end, otherwise
+    raises [Never].  *)
 val run : 'a t -> 'a
 
 exception Never

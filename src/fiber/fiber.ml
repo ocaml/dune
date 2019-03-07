@@ -472,14 +472,16 @@ let run t =
   let result = ref None in
   EC.apply (fun () -> t) () (fun x -> result := Some x);
   let rec loop () =
-    match !result with
-    | Some x -> x
-    | None ->
-      match List.rev !suspended with
-      | [] -> raise Never
-      | to_run ->
-        suspended := [];
-        K.run_list to_run ();
-        loop ()
+    match List.rev !suspended with
+    | [] ->
+      (match !result with
+       | None -> raise Never
+       | Some x -> x)
+    | to_run ->
+      suspended := [];
+      K.run_list to_run ();
+      loop ()
   in
   loop ()
+
+

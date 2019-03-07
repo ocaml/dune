@@ -2,9 +2,7 @@
 
 open! Stdune
 
-(** [go ?log ?config ?gen_status_line fiber] runs the following fiber until it
-    terminates. [gen_status_line] is used to print a status line when [config.display =
-    Progress]. *)
+(** [go ?log ?config fiber] runs the fiber until it terminates. *)
 val go
   :  ?log:Log.t
   -> ?config:Config.t

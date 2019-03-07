@@ -625,12 +625,13 @@ module Run_once : sig
     | Got_signal
     | Files_changed
     | Never
+    | Exn of Exn.t * Printexc.raw_backtrace
 
   (** Run the build and clean up after it (kill any stray processes etc). *)
   val run_and_cleanup :
     t ->
     (unit -> 'a Fiber.t) ->
-    (('a, run_error) Result.t, exn) Result.t
+    ('a, run_error) Result.t
 
 end = struct
 
@@ -668,6 +669,7 @@ end = struct
     | Got_signal
     | Files_changed
     | Never
+    | Exn of Exn.t * Printexc.raw_backtrace
 
   let run t f =
     let fiber =
@@ -682,6 +684,8 @@ end = struct
              Fiber.return (pump_events_result, user_action_result)) with
     | exception Fiber.Never ->
       Exn.code_error "[Scheduler.pump_events] got stuck somehow" []
+    | exception exn ->
+      Error (Exn (exn, (Printexc.get_raw_backtrace ())))
     | (a, b) ->
       let b = Fiber.Future.peek b in
       match (a, b) with
@@ -693,11 +697,9 @@ end = struct
       | Files_changed, _ -> Error Files_changed
 
   let run_and_cleanup t f =
-    let res =
-      Result.try_with (fun () -> run t f)
-    in
+    let res = run t f in
     (match res with
-     | Ok (Error Files_changed) ->
+     | Error Files_changed ->
        set_status_line_generator
          (fun () ->
             { message = Some "Had errors, killing current build..."
@@ -706,7 +708,7 @@ end = struct
      | _ -> ());
     match kill_and_wait_for_all_processes t () with
     | Got_signal ->
-      Result.Ok (Error Got_signal)
+      Error Got_signal
     | Ok ->
       res
 end
@@ -714,8 +716,10 @@ end
 let go ?log ?config f =
   let t = prepare ?log ?config () in
   match
-    Result.ok_exn (Run_once.run_and_cleanup t f)
+    Run_once.run_and_cleanup t f
   with
+  | Error (Exn (exn, bt)) ->
+    Exn.raise_with_backtrace exn bt
   | Ok res ->
     res
   | Error Got_signal ->
@@ -755,15 +759,15 @@ let poll ?log ?config ~once ~finally () =
     let res = Run_once.run_and_cleanup t once in
     finally ();
     match res with
-    | Ok (Ok ()) ->
+    | Ok () ->
       wait "Success" |> after_wait
-    | Ok (Error Got_signal) ->
+    | Error Got_signal ->
       (Already_reported, None)
-    | Ok (Error Never) ->
+    | Error Never ->
       wait "Had errors" |> after_wait
-    | Ok (Error Files_changed) ->
+    | Error Files_changed ->
       loop ()
-    | Error exn -> (exn, Some (Printexc.get_raw_backtrace ()))
+    | Error (Exn (exn, bt)) -> (exn, Some bt)
   and
     after_wait = function
     | Exit -> (Already_reported, None)

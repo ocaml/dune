@@ -687,13 +687,14 @@ let make_local_dir t fn =
 let make_local_dirs t paths =
   Path.Set.iter paths ~f:(make_local_dir t)
 
-let make_local_parent_dirs_for t ~map_path path =
-  let path = map_path path in
+let make_local_parent_dirs_for t path =
   if Path.is_managed path then
     Option.iter (Path.parent path) ~f:(make_local_dir t)
 
 let make_local_parent_dirs t paths ~map_path =
-  Path.Set.iter paths ~f:(make_local_parent_dirs_for t ~map_path)
+  Path.Set.iter paths ~f:(fun path ->
+    map_path path
+    |> make_local_parent_dirs_for t)
 
 let sandbox_dir = Path.relative Path.build_dir ".sandbox"
 

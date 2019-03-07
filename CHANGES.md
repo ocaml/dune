@@ -1,5 +1,5 @@
-unreleased
-----------
+1.8.0 (07/03/2019)
+------------------
 
 - Clean up watch mode polling loop: improves signal handling and error handling
   during polling (#1912, fix #1907, fix #1671, @aalekseyev)
@@ -39,7 +39,7 @@ unreleased
 - Configurator: deprecated `query_expr` and introduced `query_expr_err` which is
   the same but with a better error in case it fails. (#1886, @ejgallego)
 
-1.7.3 (unreleased)
+1.7.3 (27/02/2019)
 ------------------
 
 - Fix interpretation of `META` files containing archives with `/` in

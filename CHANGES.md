@@ -2,10 +2,10 @@ unreleased
 ----------
 
 - Clean up watch mode polling loop: improves signal handling and error handling
-during polling (#1912, fix #1907, fix #1671, @aalekseyev)
+  during polling (#1912, fix #1907, fix #1671, @aalekseyev)
 
-- Change status messages during polling to be one-line, so that the messages are 
-correctly erased by ^K. (#1912, @aalekseyev)
+- Change status messages during polling to be one-line, so that the messages are
+  correctly erased by ^K. (#1912, @aalekseyev)
 
 - Add support for `.cxx` extension for C++ stubs (#1831, @rgrinberg)
 
@@ -35,6 +35,9 @@ correctly erased by ^K. (#1912, @aalekseyev)
 
 - Fix 0 error code when `$ dune format-dune-file` fails. (#1915, fix #1914,
   @rgrinberg)
+
+- Configurator: deprecated `query_expr` and introduced `query_expr_err` which is
+  the same but with a better error in case it fails. (#1886, @ejgallego)
 
 1.7.3 (unreleased)
 ------------------

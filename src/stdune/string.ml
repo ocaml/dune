@@ -1,5 +1,6 @@
 (* Because other the syntax s.[x] causes trouble *)
 module String = Dune_caml.String
+module Dyn = Dyn0
 
 include struct
   [@@@warning "-32-3"]
@@ -140,18 +141,18 @@ let split s ~on =
 
 include String_split
 
-let escape_double_quote s =
+let escape_only c s =
   let n = ref 0 in
   let len = length s in
   for i = 0 to len - 1 do
-    if unsafe_get s i = '"' then incr n;
+    if unsafe_get s i = c then incr n;
   done;
   if !n = 0 then s
   else (
     let b = Bytes.create (len + !n) in
     n := 0;
     for i = 0 to len - 1 do
-      if unsafe_get s i = '"' then (
+      if unsafe_get s i = c then (
         Bytes.unsafe_set b !n '\\';
         incr n;
       );
@@ -213,6 +214,10 @@ module Set = struct
       (Format.pp_print_list Format.pp_print_string
          ~pp_sep:(fun fmt () -> Format.fprintf fmt "@ "))
       (to_list t)
+
+  let to_dyn t =
+    let open Dyn in
+    Set (List.map (to_list t) ~f:(fun x -> Dyn.String x))
 end
 
 module Map = struct
@@ -221,6 +226,13 @@ module Map = struct
     Format.pp_print_list (fun fmt (k, v) ->
       Format.fprintf fmt "@[<hov 2>(%s@ =@ %a)@]" k f v
     ) fmt (to_list t)
+
+  let to_dyn f t =
+    let open Dyn in
+    Map (
+      to_list t
+      |> List.map ~f:(fun (k ,v) -> (String k, f v))
+    )
 end
 module Table = Hashtbl.Make(T)
 

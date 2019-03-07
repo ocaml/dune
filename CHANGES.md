@@ -30,6 +30,9 @@ correctly erased by ^K. (#1912, @aalekseyev)
 - Add a preprocessor shim for the `let+` syntax of OCaml 4.08 (#1899,
   implements #1891, @diml)
 
+- Fix generation of `.merlin` files on Windows. `\` characters needed
+  to be escaped (#1869, @mlasson)
+
 1.7.3 (unreleased)
 ------------------
 

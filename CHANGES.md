@@ -1,6 +1,12 @@
 unreleased
 ----------
 
+- Clean up watch mode polling loop: improves signal handling and error handling
+during polling (#1912, fix #1907, fix #1671, @aalekseyev)
+
+- Change status messages during polling to be one-line, so that the messages are 
+correctly erased by ^K. (#1912, @aalekseyev)
+
 - Add support for `.cxx` extension for C++ stubs (#1831, @rgrinberg)
 
 - Add `DUNE_WORKSPACE` variable. This variable is equivalent to setting

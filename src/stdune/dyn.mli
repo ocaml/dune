@@ -1,4 +1,4 @@
-type t =
+type t = Dyn0.t =
   | Unit
   | Int of int
   | Bool of bool
@@ -12,7 +12,13 @@ type t =
   | Tuple of t list
   | Record of (string * t) list
   | Variant of string * t list
+  | Map of (t * t) list
+  | Set of t list
 
-val pp : t Fmt.t
+val pp : Format.formatter -> t -> unit
+
+val opaque : t
 
 val to_sexp : t Sexp.Encoder.t
+
+val option : ('a -> t) -> 'a option -> t

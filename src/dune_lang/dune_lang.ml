@@ -1077,13 +1077,11 @@ module Decoder = struct
       | Values (loc, cstr, _) -> (Values (loc, cstr), state)
       | Fields (loc, cstr, _) -> (Fields (loc, cstr), state)
 
-  module Let_syntax = struct
-    let ( $ ) f t =
-      f >>= fun f ->
-      t >>| fun t ->
-      f t
-    let const = return
-  end
+  let ( let+ ) = ( >>| )
+  let ( and+ ) a b ctx state =
+    let a, state = a ctx state in
+    let b, state = b ctx state in
+    ((a, b), state)
 end
 
 module type Conv = sig

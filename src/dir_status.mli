@@ -26,9 +26,4 @@ module DB : sig
 
   val get : t -> dir:Path.t -> status
 
-  val get_assuming_parent_is_part_of_group
-    :  t
-    -> dir:Path.t
-    -> File_tree.Dir.t
-    -> status
 end with type status := t

@@ -37,19 +37,7 @@ open Stanza.Decoder
 let syntax = Stanza.syntax
 
 module Display = struct
-  type t =
-    | Progress
-    | Short
-    | Verbose
-    | Quiet
-
-  let all =
-      [ "progress" , Progress
-      ; "verbose"  , Verbose
-      ; "short"    , Short
-      ; "quiet"    , Quiet
-      ]
-
+  include Config0.Display
   let decode = enum all
 end
 
@@ -111,9 +99,9 @@ let default =
   }
 
 let decode =
-  let%map display = field "display" Display.decode ~default:default.display
-  and concurrency = field "jobs" Concurrency.decode ~default:default.concurrency
-  and () = Versioned_file.no_more_lang
+  let+ display = field "display" Display.decode ~default:default.display
+  and+ concurrency = field "jobs" Concurrency.decode ~default:default.concurrency
+  and+ () = Versioned_file.no_more_lang
   in
   { display
   ; concurrency

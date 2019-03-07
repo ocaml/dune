@@ -11,6 +11,29 @@ unreleased
 
 - Format `dune printenv` output (#1867, fix #1862, @emillon)
 
+- Add the `(promote-into <dir>)` and `(promote-until-clean-into
+  <dir>)` modes for `(rule ...)` stanzas, so that files can be
+  promoted in another directory than the current one. For instance,
+  this is used in merlin to promote menhir generated files in a
+  directory that depends on the version of the compiler (#1890, @diml)
+
+- Improve error message when `dune subst` fails (#1898, fix #1897, @rgrinberg)
+
+- Add more GC counters to catapult traces (fix908, @rgrinberg)
+
+- Add a preprocessor shim for the `let+` syntax of OCaml 4.08 (#1899,
+  implements #1891, @diml)
+
+1.7.3 (unreleased)
+------------------
+
+- Fix interpretation of `META` files containing archives with `/` in
+  the filename. For instance, this was causing llvm to be unusable
+  with dune (#1889, fix #1885, @diml)
+
+- Make errors about menhir stanzas be located (#1881, fix #1876,
+  @diml)
+
 1.7.2 (21/02/2019)
 ------------------
 

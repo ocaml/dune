@@ -470,13 +470,13 @@ let encode
 let decode ~dir =
   let open Dune_lang.Decoder in
   fields (
-    let%map name = field "name" Name.decode
-    and obj_name = field "obj_name" string
-    and visibility = field "visibility" Visibility.decode
-    and kind = field_o "kind" Kind.decode
-    and impl = field_b "impl"
-    and intf = field_b "intf"
-    and obj_dir = field ~default:(Obj_dir.make_external ~dir) "obj_dir" (Obj_dir.decode ~dir)
+    let+ name = field "name" Name.decode
+    and+ obj_name = field "obj_name" string
+    and+ visibility = field "visibility" Visibility.decode
+    and+ kind = field_o "kind" Kind.decode
+    and+ impl = field_b "impl"
+    and+ intf = field_b "intf"
+    and+ obj_dir = field ~default:(Obj_dir.make_external ~dir) "obj_dir" (Obj_dir.decode ~dir)
     in
     let file exists ml_kind =
       if exists then

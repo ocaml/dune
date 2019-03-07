@@ -320,7 +320,7 @@ module Gen(P : Params) = struct
          |> Path.Set.of_list);
     SC.add_rule sctx ~dir:pkg_build_dir
       ~mode:(if promote_install_file then
-               Promote_but_delete_on_clean
+               Promote (Until_clean, None)
              else
                (* We must ignore the source file since it might be
                   copied to the source tree by another context. *)

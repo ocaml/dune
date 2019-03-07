@@ -90,10 +90,10 @@ end
 
 let no_more_lang =
   let open Dune_lang.Decoder in
-  let%map (_ : _ list) =
+  let+ (_ : _ list) =
     multi_field "lang"
-      (let%map loc = loc
-       and _ = repeat raw
+      (let+ loc = loc
+       and+ _ = repeat raw
        in
        Errors.fail loc
          "The (lang ..) line cannot appear more than once.")

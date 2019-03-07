@@ -42,10 +42,6 @@ let print ppf loc =
   Format.fprintf ppf "%a%a" Loc.print loc
     (Loc.pp_file_excerpt ~context_lines ~max_lines_to_print_in_full) loc
 
-(* This is ugly *)
-let printer = ref (Printf.eprintf "%s%!")
-let print_to_console s = !printer s
-
 let warn t fmt =
-  kerrf ~f:print_to_console
+  kerrf ~f:Console.print
     ("%a@{<warning>Warning@}: " ^^ fmt ^^ "@.") print t

@@ -33,7 +33,3 @@ val print : Format.formatter -> Loc.t -> unit
 
 (** Prints a warning *)
 val warn : Loc.t -> ('a, Format.formatter, unit) format -> 'a
-
-val print_to_console : string -> unit
-
-val printer : (string -> unit) ref

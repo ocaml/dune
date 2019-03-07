@@ -7,7 +7,6 @@ let () = Import.suggest_function := Cmdliner_suggest.value
 
 module Term       = Cmdliner.Term
 module Manpage    = Cmdliner.Manpage
-module Let_syntax = Cmdliner.Term
 
 module Super_context  = Dune.Super_context
 module Context        = Dune.Context
@@ -22,7 +21,7 @@ module Utils          = Dune.Utils
 module Hooks          = Dune.Hooks
 module Build          = Dune.Build
 module Action         = Dune.Action
-module Deps           = Dune.Deps
+module Dep            = Dune.Dep
 module Action_to_sh   = Dune.Action_to_sh
 module Path_dune_lang = Dune.Path_dune_lang
 module Install        = Dune.Install
@@ -32,6 +31,8 @@ module Colors         = Dune.Colors
 module Report_error   = Dune.Report_error
 module Dune_project   = Dune.Dune_project
 module Workspace      = Dune.Workspace
+
+include Common.Let_syntax
 
 let die = Dune.Import.die
 let hint = Dune.Import.hint

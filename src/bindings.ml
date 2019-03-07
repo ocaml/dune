@@ -41,11 +41,11 @@ let jbuild elem =
 
 let dune elem =
   parens_removed_in_dune (
-    let%map l =
+    let+ l =
       repeat
         (if_paren_colon_form
            ~then_:(
-             let%map values = repeat elem in
+             let+ values = repeat elem in
              fun (loc, name) -> Left (loc, name, values))
            ~else_:(elem >>| Either.right))
     in

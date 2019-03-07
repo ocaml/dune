@@ -200,7 +200,7 @@ let chdirs =
 
 let symlink_managed_paths sandboxed deps =
   let steps =
-    Path.Set.fold (Deps.paths deps)
+    Path.Set.fold (Dep.Set.paths deps)
       ~init:[]
       ~f:(fun path acc ->
         if Path.is_managed path then

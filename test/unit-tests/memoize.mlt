@@ -5,33 +5,41 @@ open Stdune;;
 open Fiber.O;;
 open Memo;;
 
-module String_fn = Memo.Make(String)(struct
-    let decode = Dune_lang.Decoder.string
-  end)
-module Int_fn = Memo.Make(Int)(struct
-    let decode = Dune_lang.Decoder.int
-  end)
+let string_fn_create =
+  fun name ->
+    Memo.create
+      name
+      ~input:(module String)
+      ~visibility:(Public Dune_lang.Decoder.string)
+      Async
+
+let int_fn_create =
+  fun name ->
+    Memo.create
+      name
+      ~input:(module Int)
+      ~visibility:(Public Dune_lang.Decoder.int)
+      Async
 [%%ignore]
 
 (* to run a computation *)
-let run exec f v =
+let run f v =
   let exn = ref None in
   try
     Fiber.run
-      (Fiber.with_error_handler (fun () -> exec f v)
+      (Fiber.with_error_handler (fun () -> Memo.exec f v)
          ~on_error:(fun e -> exn := Some e))
   with Fiber.Never ->
     raise (Option.value ~default:Fiber.Never !exn);;
-let run_int f v = run Int_fn.exec f v
-let run_string f v = run String_fn.exec f v
-let run = run_string
 
 (* the trivial dependencies are simply the identity function *)
 let compdep x = Fiber.return (x ^ x);;
 
 (* our two dependencies are called some and another *)
-let mcompdep1 = String_fn.create "some" (module String) compdep ~doc:"";;
-let mcompdep2 = String_fn.create "another" (module String) compdep ~doc:"";;
+let mcompdep1 =
+  string_fn_create "some" ~output:(Allow_cutoff (module String)) (Some compdep) ~doc:"";;
+let mcompdep2 =
+  string_fn_create "another" ~output:(Allow_cutoff (module String)) (Some compdep) ~doc:"";;
 
 (* compute the dependencies once so they are present in the
    global hash table *)
@@ -49,11 +57,11 @@ let counter = ref 0;;
    the input by two *)
 let comp x =
   Fiber.return x >>=
-  String_fn.exec mcompdep1 >>=
-  String_fn.exec mcompdep2 >>=
+  Memo.exec mcompdep1 >>=
+  Memo.exec mcompdep2 >>=
   (fun a -> counter := !counter + 1; String.sub a 0 (String.length a |> min 3) |> Fiber.return);;
 
-let mcomp = String_fn.create "test" (module String) comp ~doc:"";;
+let mcomp = string_fn_create "test" ~output:(Allow_cutoff (module String)) (Some comp) ~doc:"";;
 
 [%%ignore]
 
@@ -74,7 +82,7 @@ run mcomp "a";;
 - : int = 1
 |}]
 
-String_fn.get_deps mcomp "a";;
+Memo.get_deps mcomp "a";;
 
 [%%expect{|
 - : (string * Sexp.t) list option =
@@ -125,29 +133,31 @@ let mcompcycle =
     >>= (fun x ->
           counter := !counter + 1;
           if !counter < 20 then
-            ((x + 1) mod 3) |> Int_fn.exec (Fdecl.get mcompcycle)
+            ((x + 1) mod 3) |> Memo.exec (Fdecl.get mcompcycle)
           else
             failwith "cycle"
         ) in
-  let fn = Int_fn.create "cycle" (module String) compcycle ~doc:"" in
+  let fn =
+    int_fn_create "cycle"
+      ~output:(Allow_cutoff (module String)) (Some compcycle) ~doc:"" in
   Fdecl.set mcompcycle fn;
   fn;;
 
 [%%expect{|
 val stack : '_weak1 list ref = {contents = []}
 val dump_stack : 'a -> 'a Fiber.t = <fun>
-val mcompcycle : string Int_fn.t = <abstr>
+val mcompcycle : (int, string, int -> string Fiber.t) t = <abstr>
 |}]
 
 counter := 0;
 try
- run_int mcompcycle 5 |> ignore;
+ run mcompcycle 5 |> ignore;
  None
 with
  | Cycle_error.E err ->
    let cycle =
      Cycle_error.get err
-     |> List.filter_map ~f:Int_fn.Stack_frame.input
+     |> List.filter_map ~f:(Memo.Stack_frame.as_instance_of ~of_:mcompcycle)
    in
    Some cycle;;
 !counter;;
@@ -164,7 +174,7 @@ with
 let mfib =
   let mfib = Fdecl.create () in
   let compfib x =
-    let mfib = Int_fn.exec (Fdecl.get mfib) in
+    let mfib = Memo.exec (Fdecl.get mfib) in
     counter := !counter + 1;
     if x <= 1 then
       Fiber.return x
@@ -173,20 +183,142 @@ let mfib =
       >>= (fun r1 ->
         mfib (x - 2)
         >>| fun r2 -> r1 + r2) in
-  let fn = Int_fn.create "fib" (module Int) compfib ~doc:"" in
+  let fn =
+    int_fn_create "fib" ~output:(Allow_cutoff (module Int)) (Some compfib) ~doc:""
+  in
   Fdecl.set mfib fn;
   fn;;
 
 counter := 0;
-run_int mfib 2000;;
+run mfib 2000;;
 !counter;;
-run_int mfib 1800;;
+run mfib 1800;;
 !counter;;
 
 [%%expect{|
-val mfib : int Int_fn.t = <abstr>
+val mfib : (int, int, int -> int Fiber.t) t = <abstr>
 - : int = 2406280077793834213
 - : int = 2001
 - : int = 3080005411477819488
 - : int = 2001
+|}]
+
+
+let sync_int_fn_create =
+  fun name ->
+    Memo.create
+      name
+      ~input:(module Int)
+      ~visibility:(Public Dune_lang.Decoder.int)
+      Sync
+
+let counter = ref 0
+
+let sync_fib =
+  let mfib = Fdecl.create () in
+  let compfib x =
+    let mfib = Memo.exec (Fdecl.get mfib) in
+    counter := !counter + 1;
+    if x <= 1 then
+      x
+    else
+      mfib (x - 1) + mfib (x - 2)
+  in
+  let fn = sync_int_fn_create "fib" ~output:(Allow_cutoff (module Int)) (Some compfib) ~doc:"" in
+  Fdecl.set mfib fn;
+  fn;;
+[%%ignore]
+
+Memo.exec sync_fib 2000;;
+!counter;;
+Memo.exec sync_fib 1800;;
+!counter;;
+
+[%%expect{|
+- : int = 2406280077793834213
+- : int = 2001
+- : int = 3080005411477819488
+- : int = 2001
+|}]
+
+let make_f =
+  fun name f ~input ~output ->
+    Memo.create name
+      ~input
+      ~visibility:Hidden
+      ~output:(Allow_cutoff output)
+      ~doc:""
+      Sync
+      (Some f)
+
+let id =
+  let f =
+    make_f "id"
+      (fun s -> s)
+      ~input:(module String)
+      ~output:(module String)
+  in
+  Memo.exec f
+;;
+
+module Lazy_string = struct
+  type t = string Lazy.t
+
+  let to_sexp (lazy s) = Sexp.Encoder.string "opaque"
+  let equal (lazy x) (lazy y) = String.equal x y
+  let hash (lazy s) = String.hash s
+end
+[%%ignore]
+
+let lazy_memo =
+  let f =
+    make_f
+      "lazy_memo"
+      (fun s -> lazy (id ("lazy: " ^ s)))
+      ~input:(module String)
+      ~output:(module Lazy_string)
+  in
+  Memo.exec f
+;;
+[%%ignore]
+
+
+let (f1_def, f1) =
+  let f =
+    make_f "f1"
+      (fun s -> "f1: " ^ (Lazy.force (lazy_memo s)))
+      ~input:(module String)
+      ~output:(module String)
+  in
+  (f, Memo.exec f)
+;;
+[%%ignore]
+
+let (f2_def, f2) =
+  let f =
+    make_f "f2"
+      (fun s -> "f2: " ^ (Lazy.force (lazy_memo s)))
+      ~input:(module String)
+      ~output:(module String)
+  in
+  (f, Memo.exec f)
+;;
+[%%ignore]
+
+(f1 "foo", f2 "foo");;
+
+[%%expect{|
+- : string * string = ("f1: lazy: foo", "f2: lazy: foo")
+|}]
+
+(get_deps f1_def "foo", get_deps f2_def "foo");;
+
+(* CR-someday aalekseyev:
+   Bug: dependency on [lazy] is only registered by one of the dependants. We should
+   introduce a replacement for [lazy] and call it [Memo.lazy] (as it stands
+   [Memo.create ~input:(module Unit)] could probably be used. *)
+[%%expect{|
+- : (string * Sexp.t) list option * (string * Sexp.t) list option =
+(Some [("lazy_memo", Atom "foo")],
+ Some [("id", Atom "lazy: foo"); ("lazy_memo", Atom "foo")])
 |}]

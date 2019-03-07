@@ -7,7 +7,13 @@ module Package = Dune.Package
 
 module Term = Cmdliner.Term
 module Manpage = Cmdliner.Manpage
-module Let_syntax = Term
+module Let_syntax = struct
+  let ( let+ ) t f =
+    Term.(const f $ t)
+  let ( and+ ) a b =
+    Term.(const (fun x y -> x, y) $ a $ b)
+end
+open Let_syntax
 
 type t =
   { debug_dep_path        : bool
@@ -97,7 +103,7 @@ let term =
               a b)
   in
   let docs = copts_sect in
-  let%map concurrency =
+  let+ concurrency =
     let arg =
       Arg.conv
         ((fun s ->
@@ -111,31 +117,31 @@ let term =
          & info ["j"] ~docs ~docv:"JOBS"
              ~doc:{|Run no more than $(i,JOBS) commands simultaneously.|}
         )
-  and debug_dep_path =
+  and+ debug_dep_path =
     Arg.(value
          & flag
          & info ["debug-dependency-path"] ~docs
              ~doc:{|In case of error, print the dependency path from
                     the targets on the command line to the rule that failed.
                   |})
-  and debug_findlib =
+  and+ debug_findlib =
     Arg.(value
          & flag
          & info ["debug-findlib"] ~docs
              ~doc:{|Debug the findlib sub-system.|})
-  and debug_backtraces =
+  and+ debug_backtraces =
     Arg.(value
          & flag
          & info ["debug-backtraces"] ~docs
              ~doc:{|Always print exception backtraces.|})
-  and display =
+  and+ display =
     Term.ret @@
-    let%map verbose =
+    let+ verbose =
       Arg.(value
            & flag
            & info ["verbose"] ~docs
                ~doc:"Same as $(b,--display verbose)")
-    and display =
+    and+ display =
       Arg.(value
            & opt (some (enum Config.Display.all)) None
            & info ["display"] ~docs ~docv:"MODE"
@@ -147,7 +153,7 @@ let term =
     | false , Some x -> `Ok (Some x)
     | true  , None   -> `Ok (Some Config.Display.Verbose)
     | true  , Some _ -> incompatible "--display" "--verbose"
-  and no_buffer =
+  and+ no_buffer =
     Arg.(value
          & flag
          & info ["no-buffer"] ~docs ~docv:"DIR"
@@ -163,31 +169,31 @@ let term =
                     to avoid interleaving. Additionally you should use
                     $(b,--verbose) as well, to make sure that commands are printed
                     before they are being executed.|})
-  and workspace_file =
+  and+ workspace_file =
     let doc = "Use this specific workspace file instead of looking it up." in
     Arg.(value
          & opt (some path) None
          & info ["workspace"] ~docs ~docv:"FILE" ~doc
              ~env:(Arg.env_var ~doc "DUNE_WORKSPACE"))
-  and auto_promote =
+  and+ auto_promote =
     Arg.(value
          & flag
          & info ["auto-promote"] ~docs
              ~doc:"Automatically promote files. This is similar to running
                    $(b,dune promote) after the build.")
-  and force =
+  and+ force =
     Arg.(value
          & flag
          & info ["force"; "f"]
              ~doc:"Force actions associated to aliases to be re-executed even
                    if their dependencies haven't changed.")
-  and watch =
+  and+ watch =
     Arg.(value
          & flag
          & info ["watch"; "w"]
              ~doc:"Instead of terminating build after completion, wait continuously
               for file changes.")
-  and root,
+  and+ root,
       only_packages,
       ignore_promoted_rules,
       config_file,
@@ -200,7 +206,7 @@ let term =
     in
     let for_release = "for-release-of-packages" in
     Term.ret @@
-    let%map root =
+    let+ root =
       Arg.(value
            & opt (some dir) None
            & info ["root"] ~docs ~docv:"DIR"
@@ -208,7 +214,7 @@ let term =
                       guessing it. Note that this option doesn't change
                       the interpretation of targets given on the command
                       line. It is only intended for scripts.|})
-    and only_packages =
+    and+ only_packages =
       Arg.(value
            & opt (some string) None
            & info ["only-packages"] ~docs ~docv:"PACKAGES"
@@ -220,20 +226,20 @@ let term =
                       it is likely that what you want instead is to
                       build a particular $(b,<package>.install) target.|}
           )
-    and ignore_promoted_rules =
+    and+ ignore_promoted_rules =
       Arg.(value
            & flag
            & info ["ignore-promoted-rules"] ~docs
                ~doc:"Ignore rules with (mode promote)")
-    and (config_file_opt, config_file) =
+    and+ (config_file_opt, config_file) =
       Term.ret @@
-      let%map config_file =
+      let+ config_file =
         Arg.(value
              & opt (some path) None
              & info ["config-file"] ~docs ~docv:"FILE"
                  ~doc:"Load this configuration file instead of \
                        the default one.")
-      and no_config =
+      and+ no_config =
         Arg.(value
              & flag
              & info ["no-config"] ~docs
@@ -245,11 +251,11 @@ let term =
                                This (Arg.Path.path fn))
       | None   , true  -> `Ok (Some "--no-config"  , No_config)
       | Some _ , true  -> incompatible "--no-config" "--config-file"
-    and profile =
+    and+ profile =
       Term.ret @@
-      let%map dev =
+      let+ dev =
         Term.ret @@
-        let%map dev =
+        let+ dev =
           Arg.(value
                & flag
                & info ["dev"] ~docs
@@ -261,7 +267,7 @@ let term =
         | true, Dune ->
           `Error
             (true, "--dev is no longer accepted as it is now the default.")
-      and profile =
+      and+ profile =
         let doc =
           "Build profile. dev if unspecified or release if -p is set." in
         Arg.(value
@@ -280,7 +286,7 @@ let term =
       | true , Some _ ->
         `Error (true,
                 "Cannot use --dev and --profile simultaneously")
-    and default_target =
+    and+ default_target =
       Arg.(value
            & opt (some string) None
            & info ["default-target"] ~docs ~docv:"TARGET"
@@ -288,7 +294,7 @@ let term =
                        {|Set the default target that when none is specified to
                          $(b,dune build). It defaults to %s.|}
                        default_target_default))
-    and frop =
+    and+ frop =
       Arg.(value
            & opt (some string) None
            & info ["p"; for_release] ~docs ~docv:"PACKAGES"
@@ -324,36 +330,36 @@ let term =
            profile,
            Option.value default_target ~default:default_target_default
           )
-  and x =
+  and+ x =
     Arg.(value
          & opt (some string) None
          & info ["x"] ~docs
              ~doc:{|Cross-compile using this toolchain.|})
-  and build_dir =
+  and+ build_dir =
     let doc = "Specified build directory. _build if unspecified" in
     Arg.(value
          & opt (some string) None
          & info ["build-dir"] ~docs ~docv:"FILE"
              ~env:(Arg.env_var ~doc "DUNE_BUILD_DIR")
              ~doc)
-  and diff_command =
+  and+ diff_command =
     Arg.(value
          & opt (some string) None
          & info ["diff-command"] ~docs
              ~doc:"Shell command to use to diff files.
                    Use - to disable printing the diff.")
-  and stats_trace_file =
+  and+ stats_trace_file =
     Arg.(value
          & opt (some string) None
          & info ["trace-file"] ~docs ~docv:"FILE"
              ~doc:"Output trace data in catapult format
                    (compatible with chrome://tracing)")
-  and no_print_directory =
+  and+ no_print_directory =
     Arg.(value
          & flag
          & info ["no-print-directory"] ~docs
              ~doc:"Suppress \"Entering directory\" messages")
-  and store_orig_src_dir =
+  and+ store_orig_src_dir =
     let doc = "Store original source location in dune-package metadata" in
     Arg.(value
          & flag
@@ -419,7 +425,7 @@ let term =
   }
 
 let term =
-  let%map t, orig_args = Term.with_used_args term in
+  let+ t, orig_args = Term.with_used_args term in
   { t with orig_args }
 
 let context_arg ~doc =

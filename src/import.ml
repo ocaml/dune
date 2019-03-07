@@ -87,4 +87,4 @@ module No_io = struct
   module Io = struct end
 end
 
-let print_to_console = Errors.print_to_console
+let print_to_console = Console.print

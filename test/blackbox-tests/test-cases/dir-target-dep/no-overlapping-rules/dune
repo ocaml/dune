@@ -1,0 +1,11 @@
+(executable
+ (name foo)
+ (libraries unix))
+
+(rule
+ (targets dir)
+ (action (run ./foo.exe dir)))
+
+(alias
+ (name default)
+ (deps dir dir/foo))

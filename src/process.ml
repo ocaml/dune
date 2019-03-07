@@ -250,7 +250,7 @@ let run_internal ?dir ?(stdout_to=Output.stdout) ?(stderr_to=Output.stderr)
       ~env ~purpose fail_mode prog args =
   Scheduler.wait_for_available_job ()
   >>= fun scheduler ->
-  let display = Scheduler.display scheduler in
+  let display = Console.display () in
   let dir =
     match dir with
     | Some p ->
@@ -336,7 +336,7 @@ let run_internal ?dir ?(stdout_to=Output.stdout) ?(stderr_to=Output.stderr)
   in
   Log.command (Scheduler.log scheduler) ~command_line ~output ~exit_status;
   let _, progname, _ = Fancy.split_prog prog_str in
-  let print fmt = Errors.kerrf ~f:(Scheduler.print scheduler) fmt in
+  let print fmt = Errors.kerrf ~f:Console.print fmt in
   match exit_status with
   | WEXITED n when code_is_ok ok_codes n ->
     if display = Verbose then begin

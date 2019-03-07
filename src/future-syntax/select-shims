@@ -1,0 +1,13 @@
+(* -*- tuareg -*- *)
+
+let v = Scanf.sscanf Sys.argv.(1) "%d.%d" (fun a b -> a, b) in
+print_string (
+  if v < (4, 03) then
+    "402"
+  else if v < (4, 06) then
+    "403"
+  else if v < (4, 08) then
+    "406"
+  else
+    "nop"
+)

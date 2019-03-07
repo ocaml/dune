@@ -479,10 +479,8 @@ module Decoder : sig
 
   val leftover_fields : Ast.t list fields_parser
 
-  module Let_syntax : sig
-    val ( $ ) : ('a -> 'b, 'k) parser -> ('a, 'k) parser -> ('b, 'k) parser
-    val const : 'a -> ('a, _) parser
-  end
+  val ( let+ ) : ('a, 'k) parser -> ('a -> 'b) -> ('b, 'k) parser
+  val ( and+ ) : ('a, 'k) parser -> ('b, 'k) parser -> ('a * 'b, 'k) parser
 end
 
 module type Conv = sig

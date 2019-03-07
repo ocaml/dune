@@ -12,6 +12,8 @@ module Preprocess = struct
     | pp, No_preprocessing -> pp
     | (Action _ as action), _
     | _, (Action _ as action) -> action
+    | (Future_syntax _ as future_syntax), _
+    | _, (Future_syntax _ as future_syntax) -> future_syntax
     | Pps { loc = _; pps = pps1; flags = flags1; staged = s1 },
       Pps { loc = _; pps = pps2; flags = flags2; staged = s2 } ->
       match
@@ -104,7 +106,9 @@ let add_source_dir t dir =
 
 let pp_flags sctx ~expander ~dir_kind { preprocess; libname; _ } =
   let scope = Expander.scope expander in
-  match preprocess with
+  match Dune_file.Preprocess.remove_future_syntax preprocess
+          (Super_context.context sctx).version
+  with
   | Pps { loc = _; pps; flags; staged = _ } -> begin
     match Preprocessing.get_ppx_driver sctx ~scope ~dir_kind pps with
     | Error _ -> None
@@ -164,7 +168,7 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander ~dir_kind
        Build.create_file (Path.relative dir ".merlin-exists"));
     Path.Set.singleton merlin_file
     |> Build_system.Alias.add_deps (Build_system.Alias.check ~dir);
-    SC.add_rule sctx ~dir ~mode:Promote_but_delete_on_clean (
+    SC.add_rule sctx ~dir ~mode:(Promote (Until_clean, None)) (
       flags
       >>^ (fun flags ->
         let (src_dirs, obj_dirs) =

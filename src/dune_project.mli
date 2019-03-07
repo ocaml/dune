@@ -91,7 +91,7 @@ end
 val load : dir:Path.t -> files:String.Set.t -> t option
 
 (** Read the [name] file from a dune-project file *)
-val read_name : Path.t -> string option
+val read_name : Path.t -> (Loc.t * string) option
 
 (** "dune-project" *)
 val filename : string

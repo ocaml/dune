@@ -282,6 +282,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name env-bin-pform)
+ (deps (package dune) (source_tree test-cases/env-bin-pform))
+ (action
+  (chdir
+   test-cases/env-bin-pform
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name env-bins)
  (deps (package dune) (source_tree test-cases/env-bins))
  (action
@@ -1342,6 +1350,7 @@
   (alias enabled_if)
   (alias env)
   (alias env-and-flags-include)
+  (alias env-bin-pform)
   (alias env-bins)
   (alias env-cflags)
   (alias env-dune-file)
@@ -1480,7 +1489,6 @@
   (alias configurator-gh1166)
   (alias copy-files-non-sub-dir-error)
   (alias copy_files)
-  (alias cross-compilation)
   (alias custom-build-dir)
   (alias cxx-extension)
   (alias default-targets)
@@ -1493,7 +1501,6 @@
   (alias dune-build-dir-exec-1101)
   (alias dune-jbuild-var-case)
   (alias dune-package)
-  (alias dune-ppx-driver-system)
   (alias dune-project-edition)
   (alias dup-fields)
   (alias duplicate-c-cxx)
@@ -1503,6 +1510,7 @@
   (alias enabled_if)
   (alias env)
   (alias env-and-flags-include)
+  (alias env-bin-pform)
   (alias env-bins)
   (alias env-cflags)
   (alias env-dune-file)
@@ -1525,7 +1533,6 @@
   (alias github1231)
   (alias github1306)
   (alias github1342)
-  (alias github1372)
   (alias github1395)
   (alias github1529)
   (alias github1549)
@@ -1550,8 +1557,6 @@
   (alias ignored_subdirs)
   (alias include-loop)
   (alias inline_tests)
-  (alias install-dry-run)
-  (alias install-libdir)
   (alias install-rule-order)
   (alias install-with-var)
   (alias installable-dup-private-libs)
@@ -1559,10 +1564,8 @@
   (alias lib-available)
   (alias lib-errors)
   (alias link-deps)
-  (alias lint)
   (alias loop)
   (alias macro-expand-error)
-  (alias merlin-tests)
   (alias meta-gen)
   (alias misc)
   (alias missing-loc-run)
@@ -1578,7 +1581,6 @@
   (alias old-dune-subsystem)
   (alias optional)
   (alias output-obj)
-  (alias package-dep)
   (alias path-variables)
   (alias pkg-config-quoting)
   (alias preprocess-with-action)
@@ -1605,7 +1607,6 @@
   (alias trace-file)
   (alias transitive-deps-mode)
   (alias upgrader)
-  (alias use-meta)
   (alias variants)
   (alias windows-diff)
   (alias workspaces)

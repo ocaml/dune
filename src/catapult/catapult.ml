@@ -85,21 +85,38 @@ let on_process_end t (id, name) =
     id
     (pp_time time)
 
-let emit_counter t key value =
+let gen_emit_counter t key pvalue value =
   let time = t.get_time () in
   printf
     t
-    {|{"name": %S, "pid": 0, "tid": 0, "ph": "C", "ts": %s, "args": {%S: %d}}|}
+    {|{"name": %S, "pid": 0, "tid": 0, "ph": "C", "ts": %s, "args": {%S: %a}}|}
     key
     (pp_time time)
     "value"
+    pvalue
     value
+
+let emit_counter t key value =
+  gen_emit_counter t key (Fn.const Int.to_string) value
+
+let emit_counter_float =
+  let float () f = Printf.sprintf "%.2f" f in
+  fun t key value ->
+    gen_emit_counter t key float value
 
 let emit_gc_counters t =
   let stat = t.gc_stat () in
   emit_counter t "live_words" stat.live_words;
   emit_counter t "free_words" stat.free_words;
-  emit_counter t "stack_size" stat.stack_size
+  emit_counter t "stack_size" stat.stack_size;
+  emit_counter t "heap_words" stat.heap_words;
+  emit_counter t "top_heap_words" stat.top_heap_words;
+  emit_counter_float t "minor_words" stat.minor_words;
+  emit_counter_float t "major_words" stat.major_words;
+  emit_counter_float t "promoted_words" stat.promoted_words;
+  emit_counter t "compactions" stat.compactions;
+  emit_counter t "major_collections" stat.major_collections;
+  emit_counter t "minor_collections" stat.minor_collections
 
 let next_id t =
   let r = t.next_id in

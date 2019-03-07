@@ -121,8 +121,8 @@ module Dict = struct
     let decode f =
       let open Stanza.Decoder in
       record (
-        let%map byte = field ~default:[] "byte" (list f)
-        and native = field ~default:[] "native" (list f)
+        let+ byte = field ~default:[] "byte" (list f)
+        and+ native = field ~default:[] "native" (list f)
         in
         { byte
         ; native

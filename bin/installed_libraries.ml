@@ -7,8 +7,8 @@ let doc = "Print out libraries installed on the system."
 let info = Term.info "installed-libraries" ~doc
 
 let term =
-  let%map common = Common.term
-  and na =
+  let+ common = Common.term
+  and+ na =
     Arg.(value
          & flag
          & info ["na"; "not-available"]

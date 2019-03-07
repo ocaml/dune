@@ -114,10 +114,10 @@ let encode
 let decode ~dir =
   let open Dune_lang.Decoder in
   fields (
-    let%map obj_dir = field ~default:"." "obj_dir" string
-    and native_dir = field ~default:"." "native_dir" string
-    and byte_dir = field ~default:"." "byte_dir" string
-    and public_cmi_dir = field_o "public_cmi_dir" string
+    let+ obj_dir = field ~default:"." "obj_dir" string
+    and+ native_dir = field ~default:"." "native_dir" string
+    and+ byte_dir = field ~default:"." "byte_dir" string
+    and+ public_cmi_dir = field_o "public_cmi_dir" string
     in
     make ~dir
       ~obj_dir:(Path.relative dir obj_dir)

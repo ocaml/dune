@@ -1,0 +1,4 @@
+(library
+ (name dune_result)
+ (public_name dune._result)
+ (synopsis "[internal] Compatibility layer for the result type"))

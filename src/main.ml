@@ -86,7 +86,7 @@ let init_build_system ?only_packages ?external_lib_deps_mode w =
   let rule_done  = ref 0 in
   let rule_total = ref 0 in
   let gen_status_line () =
-    { Scheduler.
+    { Console.
       message = Some (sprintf "Done: %u/%u" !rule_done !rule_total)
     ; show_jobs = true
     }

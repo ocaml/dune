@@ -684,17 +684,17 @@ let make_local_dir t fn =
     t.local_mkdirs <- Path.Set.add t.local_mkdirs fn
   end
 
-let make_local_dirs t paths =
-  Path.Set.iter paths ~f:(make_local_dir t)
+let make_local_dirs t ~dirs =
+  Path.Set.iter dirs ~f:(make_local_dir t)
 
-let make_local_parent_dirs_for t path =
+let make_local_managed_dir t path =
   if Path.is_managed path then
-    Option.iter (Path.parent path) ~f:(make_local_dir t)
+    make_local_dir t path
 
-let make_local_parent_dirs t paths ~map_path =
-  Path.Set.iter paths ~f:(fun path ->
-    map_path path
-    |> make_local_parent_dirs_for t)
+let make_local_dirs_map t ~dirs ~map_path =
+  Path.Set.iter dirs ~f:(fun dir ->
+    map_path dir
+    |> make_local_managed_dir t)
 
 let sandbox_dir = Path.relative Path.build_dir ".sandbox"
 
@@ -1149,7 +1149,7 @@ let update_universe t =
     else
       0
   in
-  make_local_dirs t (Path.Set.singleton Path.build_dir);
+  make_local_dirs t ~dirs:(Path.Set.singleton Path.build_dir);
   Io.write_file universe_file (Dune_lang.to_string ~syntax:Dune (Dune_lang.Encoder.int n))
 
 let build_file_def =
@@ -1324,14 +1324,14 @@ let () =
           | Some sandbox_dir ->
             Path.rm_rf sandbox_dir;
             let sandboxed path = Path.sandbox_managed_paths ~sandbox_dir path in
-            make_local_parent_dirs t (Dep.Set.paths deps) ~map_path:sandboxed;
+            make_local_dirs_map t ~dirs:(Dep.Set.dirs deps) ~map_path:sandboxed;
             make_local_dir t (sandboxed dir);
             Action.sandbox action
               ~sandboxed
               ~deps:deps
               ~targets:targets_as_list
         in
-        make_local_dirs t (Action.chdirs action);
+        make_local_dirs t ~dirs:(Action.chdirs action);
         with_locks locks ~f:(fun () ->
           Action_exec.exec ~context ~env ~targets action)
         >>| fun () ->

@@ -33,6 +33,9 @@ correctly erased by ^K. (#1912, @aalekseyev)
 - Fix generation of `.merlin` files on Windows. `\` characters needed
   to be escaped (#1869, @mlasson)
 
+- Fix 0 error code when `$ dune format-dune-file` fails. (#1915, fix #1914,
+  @rgrinberg)
+
 1.7.3 (unreleased)
 ------------------
 

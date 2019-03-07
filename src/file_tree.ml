@@ -102,6 +102,25 @@ module Dir = struct
       let acc = f t acc in
       String.Map.fold (sub_dirs t) ~init:acc ~f:(fun t acc ->
         fold t ~traverse_ignored_dirs ~init:acc ~f)
+
+  let rec dyn_of_contents { files; sub_dirs; dune_file; project = _ } =
+    let open Dyn in
+    Record
+      [ "files", String.Set.to_dyn files
+      ; "sub_dirs", String.Map.to_dyn to_dyn sub_dirs
+      ; "dune_file", Dyn.option (fun _ -> Dyn.opaque) dune_file
+      ; "project", Dyn.opaque
+      ]
+
+  and to_dyn { path ; ignored ; contents } =
+    let open Dyn in
+    Record
+      [ "path", Path.to_dyn path
+      ; "ignored", Bool ignored
+      ; "contents", dyn_of_contents (Lazy.force contents)
+      ]
+
+  let to_sexp t = Dyn.to_sexp (to_dyn t)
 end
 
 type t = Dir.t

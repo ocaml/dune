@@ -54,6 +54,9 @@ module Dir : sig
 
   (** Return the project this directory is part of *)
   val project : t -> Dune_project.t
+
+  val to_dyn : t -> Dyn.t
+  val to_sexp : t -> Sexp.t
 end
 
 (** A [t] value represent a view of the source tree. It is lazily

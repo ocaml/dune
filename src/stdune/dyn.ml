@@ -1,17 +1,4 @@
-type t =
-  | Unit
-  | Int of int
-  | Bool of bool
-  | String of string
-  | Bytes of bytes
-  | Char of char
-  | Float of float
-  | Option of t option
-  | List of t list
-  | Array of t array
-  | Tuple of t list
-  | Record of (string * t) list
-  | Variant of string * t list
+include Dyn0
 
 let rec pp = function
   | Unit -> Pp.string "()"
@@ -34,6 +21,26 @@ let rec pp = function
       [ Pp.string "[|"
       ; Pp.list ~sep:(Pp.seq (Pp.char ';') Pp.space) (Array.to_list a) ~f:pp
       ; Pp.string "|]"
+      ]
+  | Set xs ->
+    Pp.box
+      [ Pp.string "set {"
+      ; Pp.list ~sep:(Pp.seq (Pp.char ';') Pp.space) xs ~f:pp
+      ; Pp.string "}"
+      ]
+  | Map xs ->
+    Pp.box
+      [ Pp.string "map {"
+      ; Pp.list ~sep:(Pp.seq (Pp.char ';') Pp.space) xs ~f:(fun (k, v) ->
+          Pp.box
+            [ pp k
+            ; Pp.space
+            ; Pp.string ":"
+            ; Pp.space
+            ; pp v
+            ]
+        )
+      ; Pp.string "}"
       ]
   | Tuple x ->
     Pp.box
@@ -78,9 +85,20 @@ let rec to_sexp =
   | Option o -> option to_sexp o
   | List l -> list to_sexp l
   | Array a -> array to_sexp a
+  | Map xs -> list (pair to_sexp to_sexp) xs
+  | Set xs -> list to_sexp xs
   | Tuple t -> list to_sexp t
   | Record fields ->
     List.map fields ~f:(fun (field, f) -> (field, to_sexp f))
     |> record
   | Variant (s, []) -> string s
   | Variant (s, xs) -> constr s (List.map xs ~f:to_sexp)
+
+let option f t =
+  Option (
+    match t with
+    | None -> None
+    | Some s -> Some (f s)
+  )
+
+let opaque = String "<opaque>"

@@ -1,3 +1,9 @@
+1.8.1 (08/03/2019)
+------------------
+
+- Correctly write `dune-package` when version is empty string (#1919, fix #1918,
+  @rgrinberg)
+
 1.8.0 (07/03/2019)
 ------------------
 

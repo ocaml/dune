@@ -2,8 +2,6 @@ open Stdune
 
 type t = A of string [@@unboxed]
 
-let invalid_argf fmt = Printf.ksprintf invalid_arg fmt
-
 let is_valid_dune =
   let rec loop s i len =
     i = len ||
@@ -42,13 +40,17 @@ let is_valid (A t) = function
   | Syntax.Jbuild -> is_valid_jbuild t
   | Dune   -> is_valid_dune t
 
-let print ((A s) as t) syntax =
+let print ((A atom) as t) syntax =
   if is_valid t syntax then
-    s
+    atom
   else
     match syntax with
-    | Jbuild -> invalid_argf "atom '%s' cannot be printed in jbuild syntax" s
-    | Dune -> invalid_argf "atom '%s' cannot be in dune syntax" s
+    | Jbuild ->
+      Exn.code_error "atom cannot be printed in jbuild syntax"
+        ["atom", Sexp.Atom atom]
+    | Dune ->
+      Exn.code_error "atom cannot be printed in dune syntax"
+        ["atom", Sexp.Atom atom]
 
 let of_int i = of_string (string_of_int i)
 let of_float x = of_string (string_of_float x)

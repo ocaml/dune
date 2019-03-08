@@ -1218,9 +1218,9 @@ let evaluate_rule (rule : Internal_rule.t) =
   let action_deps = Dep.Set.union static_action_deps dynamic_action_deps in
   (action, action_deps)
 
-(* Same as the function just bellow, but with less opportunity for
+(* Same as the function just below, but with less opportunity for
    parallelism. We keep this dead code here for documentation purposes
-   as it is eaiser to read the one bellow. The reader only has to
+   as it is easier to read the one below. The reader only has to
    check that both function do the same thing. *)
 let _evaluate_rule_and_wait_for_dependencies rule =
   evaluate_rule rule

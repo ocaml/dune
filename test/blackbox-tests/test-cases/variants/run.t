@@ -161,7 +161,7 @@ Executable that tries to use two implementations for the same virtual lib
   This cannot work.-> required by executable foo in dune:2
   [1]
 
-Install files for implemenations and virtual libs have all the artifacts:
+Install files for implementations and virtual libs have all the artifacts:
   $ dune build --root install-file
   Entering directory 'install-file'
   lib: [

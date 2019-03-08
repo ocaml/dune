@@ -73,7 +73,7 @@ Test the argument syntax
   - test_ppx_args.pp.ml
   [1]
 
-Test that going throught the -ppx option of the compiler works
+Test that going through the -ppx option of the compiler works
 
   $ dune build --root driver-tests test_ppx_staged.cma
   Entering directory 'driver-tests'

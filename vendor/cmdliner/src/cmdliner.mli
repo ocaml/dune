@@ -1014,14 +1014,14 @@ markup language.
    mandatory only in markup directives. Escaping ( is only here for
    your symmetric pleasure. Any other sequence of characters starting
    with a \ is an illegal character sequence.}
-{- Refering to unknown markup directives or variables will generate
+{- Referring to unknown markup directives or variables will generate
    errors on standard error during documentation generation.}}
 
 {2:manual Manual}
 
 Man page sections for a term are printed in the order specified by the
-term manual as given to {!Term.info}. Unless specified explicitely in
-the term's manual the following sections are automaticaly created and
+term manual as given to {!Term.info}. Unless specified explicitly in
+the term's manual the following sections are automatically created and
 populated for you:
 
 {ul
@@ -1051,7 +1051,7 @@ If the created section is:
 {- {{!Manpage.standard_sections}standard}, it
     is inserted at the right place in the order specified
     {{!Manpage.standard_sections}here}, but after a possible non-standard
-    section explicitely specified by the term since the latter get the
+    section explicitly specified by the term since the latter get the
     order number of the last previously specified standard section
     or the order of {!Manpage.s_synopsis} if there is no such section.}
 {-  non-standard, it is inserted before the {!Manpage.s_commands}

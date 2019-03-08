@@ -82,7 +82,7 @@ val pp_quoted : Format.formatter -> t -> unit
     must have been prepared with [prepare_formatter]. *)
 val pp_split_strings : Format.formatter -> t -> unit
 
-(** Prepare a formatter for [pp_split_strings]. Additionaly the
+(** Prepare a formatter for [pp_split_strings]. Additionally the
     formatter escape newlines when the tags "makefile-action" or
     "makefile-stuff" are active. *)
 val prepare_formatter : Format.formatter -> unit
@@ -355,7 +355,7 @@ module Decoder : sig
     -> ('a list * 'b option) t
 
   (** What is currently being parsed. The second argument is the atom
-      at the beginnig of the list when inside a [sum ...] or [field
+      at the beginning of the list when inside a [sum ...] or [field
       ...]. *)
   type kind =
     | Values of Loc.t * string option

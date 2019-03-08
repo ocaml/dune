@@ -2,7 +2,7 @@
     It has two modes of expansion:
 
     1. Static. In this mode it will only expand variables that do not introduce
-       dependncies
+       dependencies
 
     2. Dynamic. In this mode, the expander will record dependencies that are
        introduced by forms it has failed to expand. Later, these dependenceis

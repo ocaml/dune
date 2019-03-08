@@ -187,7 +187,7 @@ module Library : sig
       { modules_before_stdlib : Module.Name.Set.t
       (** Modules that the Stdlib module depend on. *)
       ; exit_module : Module.Name.t option
-      (** Modules that's implicitely added by the compiler at the
+      (** Modules that's implicitly added by the compiler at the
           end when linking an executable *)
       ; internal_modules : Glob.t
       (** Module names that are hardcoded in the compiler and so

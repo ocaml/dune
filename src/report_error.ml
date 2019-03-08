@@ -90,7 +90,7 @@ let exn_printer exn =
   in
   make_printer ~backtrace:true pp
 
-(* Firt return value is [true] if the backtrace was printed *)
+(* First return value is [true] if the backtrace was printed *)
 let report_with_backtrace exn =
   match find_printer exn with
   | Some p -> p

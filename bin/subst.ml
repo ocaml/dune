@@ -24,7 +24,7 @@ let man =
             supported and the version is obtained from the output of:|})
   ; `Pre {|  \$ git describe --always --dirty|}
   ; `P {|$(b,dune subst) substitutes the variables that topkg substitutes with
-          the defatult configuration:|}
+          the default configuration:|}
   ; var "NAME" "the name of the project (from the dune-project file)"
   ; var "VERSION" "output of $(b,git describe --always --dirty)"
   ; var "VERSION_NUM" ("same as $(b," ^ literal_version ^

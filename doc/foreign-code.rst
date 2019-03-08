@@ -41,7 +41,7 @@ source files. They have to be ``.c`` and ``.cpp``. If you have source
 files that that do not follow this extension and you want to build
 them with Dune, you need to rename them first. Alternatively, you can
 use the :ref:`foreign build sandboxing <foreign-sandboxing>` method
-described bellow.
+described below.
 
 Header files
 ------------
@@ -83,7 +83,7 @@ To do that, follow the following procedure:
   - depend on this directory recursively via :ref:`source_tree <source_tree>`
   - invoke the external build system
   - copy the C archive files (``.a``, ``.so``, ...) in main library
-    directory with a specific names (see bellow)
+    directory with a specific names (see below)
 - *attach* the C archive files to an OCaml library via the
   :ref:`self_build_stubs_archive <self_build_stubs_archive>` field
 

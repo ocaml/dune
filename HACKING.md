@@ -73,7 +73,7 @@ the test.
 An example `run.t` file:
 
 ```
-A description of the test. The command running the tests is preceeded by
+A description of the test. The command running the tests is preceded by
 two spaces and a $. The expected output of the command is also indented by
 two spaces and is right below the command (note the absence of a $)
 

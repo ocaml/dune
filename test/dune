@@ -80,7 +80,7 @@ Printf.fprintf (open_out Sys.argv.(2)) \"%g\n%!\" (Sys.time ())
 
 ;; Control the list of public libraries
 ;;
-;; This test is to make sure we don't accidently publicize internal
+;; This test is to make sure we don't accidentally publicize internal
 ;; libraries for which we are not ready to commit to a stable API
 
 (rule

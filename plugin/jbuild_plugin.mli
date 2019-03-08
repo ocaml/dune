@@ -4,7 +4,7 @@ module V1 : sig
   (** Current build context *)
   val context : string
 
-  (** OCaml version for the current buid context. It might not be the
+  (** OCaml version for the current build context. It might not be the
       same as [Sys.ocaml_version] *)
   val ocaml_version : string
 

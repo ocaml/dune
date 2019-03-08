@@ -229,7 +229,10 @@ let encode ~dune_version { libs ; name ; version; dir } =
     match version with
     | None -> sexp
     | Some version ->
-      sexp @ [List [Dune_lang.atom "version"; Dune_lang.atom version]]
+      sexp @ [ List [ Dune_lang.atom "version"
+                    ; Dune_lang.atom_or_quoted_string version
+                    ]
+             ]
   in
   let libs =
     List.map libs ~f:(fun lib ->

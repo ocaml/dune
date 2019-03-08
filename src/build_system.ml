@@ -1174,6 +1174,8 @@ let execute_rule_def =
 
 let execute_rule = Memo.exec execute_rule_def
 
+let build_deps = Dep.Set.parallel_iter ~f:build_file
+
 (* Evaluate a rule and return the action and set of dynamic dependencies *)
 let evaluate_action_and_dynamic_deps_def =
   let f (rule : Internal_rule.t) =
@@ -1181,7 +1183,7 @@ let evaluate_action_and_dynamic_deps_def =
     Fiber.Once.get rule.static_deps
     >>= fun static_deps ->
     let rule_deps = Static_deps.rule_deps static_deps in
-    Dep.Set.parallel_iter rule_deps ~f:build_file
+    build_deps rule_deps
     >>| fun () ->
     Build_exec.exec t rule.build ()
   in
@@ -1219,12 +1221,12 @@ let evaluate_rule (rule : Internal_rule.t) =
 
 (* Same as the function just bellow, but with less opportunity for
    parallelism. We keep this dead code here for documentation purposes
-   as it is eaiser to read the one bellow. The reader only has to
+   as it is easier to read the one bellow. The reader only has to
    check that both function do the same thing. *)
 let _evaluate_rule_and_wait_for_dependencies rule =
   evaluate_rule rule
   >>= fun (action, action_deps) ->
-  Dep.Set.parallel_iter action_deps ~f:build_file
+  build_deps action_deps
   >>| fun () ->
   (action, action_deps)
 
@@ -1239,10 +1241,10 @@ let evaluate_rule_and_wait_for_dependencies (rule : Internal_rule.t) =
   (* Build the static dependencies in parallel with evaluation the
      action and dynamic dependencies *)
   Fiber.fork_and_join_unit
-    (fun () -> Dep.Set.parallel_iter static_action_deps ~f:build_file)
+    (fun () -> build_deps static_action_deps)
     (fun () -> evaluate_action_and_dynamic_deps rule)
   >>= fun (action, dynamic_action_deps) ->
-  Dep.Set.parallel_iter dynamic_action_deps ~f:build_file
+  build_deps dynamic_action_deps
   >>>
   let action_deps = Dep.Set.union static_action_deps dynamic_action_deps in
   Fiber.return (action, action_deps)

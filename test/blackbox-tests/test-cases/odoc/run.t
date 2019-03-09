@@ -17,8 +17,6 @@
           odoc _doc/_odoc/lib/foo/foo2.odoc
           odoc _doc/_html/foo/Foo2/.dune-keep,_doc/_html/foo/Foo2/index.html
           odoc _doc/_odoc/pkg/foo/page-index.odoc
-  File "../../../_mlds/foo/index.mld", line 3, characters 0-20:
-  '{2': heading level should be lower than top heading level '2'.
           odoc _doc/_html/foo/index.html
           odoc _doc/_html/foo/Foo_byte/.dune-keep,_doc/_html/foo/Foo_byte/index.html
           odoc _doc/_html/foo/Foo/.dune-keep,_doc/_html/foo/Foo/index.html
@@ -45,14 +43,16 @@
   </html>
 
   $ dune build @foo-mld --display short
-  {2 Library foo}
+  {0 foo index}
+  {1 Library foo}
   This library exposes the following toplevel modules:
   {!modules:Foo Foo2}
-  {2 Library foo.byte}
+  {1 Library foo.byte}
   The entry point of this library is the module:
   {!module-Foo_byte}.
 
   $ dune build @bar-mld --display short
-  {2 Library bar}
+  {0 bar index}
+  {1 Library bar}
   The entry point of this library is the module:
   {!module-Bar}.

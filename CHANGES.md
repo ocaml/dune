@@ -1,3 +1,9 @@
+1.8.2 (10/03/2019)
+------------------
+
+- Fix auto-generated `index.mld`. Use correct headings for the listing. (#1925,
+  @rgrinberg, @aantron)
+
 1.8.1 (08/03/2019)
 ------------------
 

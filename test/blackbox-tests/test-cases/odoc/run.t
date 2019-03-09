@@ -17,6 +17,8 @@
           odoc _doc/_odoc/lib/foo/foo2.odoc
           odoc _doc/_html/foo/Foo2/.dune-keep,_doc/_html/foo/Foo2/index.html
           odoc _doc/_odoc/pkg/foo/page-index.odoc
+  File "../../../_mlds/foo/index.mld", line 3, characters 0-20:
+  '{2': heading level should be lower than top heading level '2'.
           odoc _doc/_html/foo/index.html
           odoc _doc/_html/foo/Foo_byte/.dune-keep,_doc/_html/foo/Foo_byte/index.html
           odoc _doc/_html/foo/Foo/.dune-keep,_doc/_html/foo/Foo/index.html

@@ -8,6 +8,8 @@ Duplicate mld's in the same scope
           odoc _doc/_odoc/lib/root.lib2/root_lib2.odoc
           odoc _doc/_html/root/Root_lib2/.dune-keep,_doc/_html/root/Root_lib2/index.html
           odoc _doc/_odoc/pkg/root/page-index.odoc
+  File "../../../_mlds/root/index.mld", line 3, characters 0-21:
+  '{2': heading level should be lower than top heading level '2'.
           odoc _doc/_html/root/index.html
           odoc _doc/_html/root/Root_lib1/.dune-keep,_doc/_html/root/Root_lib1/index.html
 

@@ -201,12 +201,11 @@ Then create a ``config`` subdirectory and write this ``dune`` file:
 
     (executable
      (name discover)
-     (libraries base stdio configurator))
+     (libraries dune.configurator))
 
 as well as this ``discover.ml`` file:
 
 .. code:: ocaml
-
 
     module C = Configurator.V1
 

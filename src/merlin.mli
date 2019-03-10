@@ -21,7 +21,7 @@ val merge_all : t list -> t option
 
 (** Add rules for generating the .merlin in a directory *)
 val add_rules
-  : Super_context.t
+  :  Super_context.t
   -> dir:Path.t
   -> more_src_dirs:Path.t list
   -> expander:Expander.t

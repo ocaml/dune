@@ -88,7 +88,10 @@ case "$TARGET" in
         UPDATE_OPAM=1
         opam upgrade
       fi
-      ./_boot/install/default/bin/dune build @runtest-no-deps &> $RUNTEST_NO_DEPS
+      if ! ./_boot/install/default/bin/dune build @runtest-no-deps &> $RUNTEST_NO_DEPS ; then
+        cat $RUNTEST_NO_DEPS;
+        exit 1;
+      fi
       opam list
       opam pin add dune . --no-action
       opam install ocamlfind utop ppxlib $ODOC ocaml-migrate-parsetree js_of_ocaml-ppx js_of_ocaml-compiler

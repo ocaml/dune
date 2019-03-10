@@ -187,11 +187,15 @@ module O = struct
 
   let (>>|) t f k =
     t (fun x -> k (f x))
+
+  let ( let+ ) = ( >>| )
+  let ( let* ) = ( >>= )
 end
 
 open O
 
 let map t ~f = t >>| f
+let bind t ~f = t >>= f
 
 let both a b =
   a >>= fun x ->

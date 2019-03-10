@@ -1,6 +1,5 @@
 open Stdune
 open Import
-open Fiber.O
 
 let doc = "Dump internal rules."
 
@@ -111,6 +110,7 @@ let term =
   Common.set_common common ~targets;
   let log = Log.create common in
   Scheduler.go ~log ~common (fun () ->
+    let open Fiber.O in
     Import.Main.setup ~log common ~external_lib_deps_mode:true
     >>= fun setup ->
     let request =

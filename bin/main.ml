@@ -1,9 +1,9 @@
 open! Stdune
 open Import
-open Fiber.O
 
 let run_build_command ~log ~common ~targets =
   let once () =
+    let open Fiber.O in
     Main.setup ~log common
     >>= fun setup ->
     do_build setup (targets setup)

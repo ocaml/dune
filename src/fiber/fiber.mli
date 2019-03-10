@@ -28,9 +28,14 @@ module O : sig
   (** [t >>| f] is the same as [t >>= fun x -> return (f x)] but
       slightly more efficient. *)
   val (>>|) : 'a t -> ('a -> 'b) -> 'b t
+
+  val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
+  val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
 end
 
 val map : 'a t -> f:('a -> 'b) -> 'b t
+
+val bind : 'a t -> f:('a -> 'b t) -> 'b t
 
 (** {1 Forking execution} *)
 

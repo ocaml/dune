@@ -248,8 +248,7 @@ let cmdline_approximate_length prog args =
 
 let run_internal ?dir ?(stdout_to=Output.stdout) ?(stderr_to=Output.stderr)
       ~env ~purpose fail_mode prog args =
-  Scheduler.wait_for_available_job ()
-  >>= fun scheduler ->
+  let* scheduler = Scheduler.wait_for_available_job () in
   let display = Console.display () in
   let dir =
     match dir with
@@ -319,8 +318,9 @@ let run_internal ?dir ?(stdout_to=Output.stdout) ?(stderr_to=Output.stderr)
   in
   Output.release stdout_to;
   Output.release stderr_to;
-  Stats.with_process ~program:prog_str ~args (Scheduler.wait_for_process pid)
-  >>| fun exit_status ->
+  let+ exit_status =
+    Stats.with_process ~program:prog_str ~args (Scheduler.wait_for_process pid)
+  in
   Option.iter response_file ~f:Path.unlink;
   let output =
     match output_filename with

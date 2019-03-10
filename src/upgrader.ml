@@ -394,6 +394,7 @@ let upgrade ft =
   let log fmt =
     Printf.ksprintf print_to_console fmt
   in
+  let* () =
   Fiber.map_all_unit todo.to_add ~f:(fun fn ->
     match has_git (Path.parent_exn fn) with
     | Some dir ->
@@ -401,7 +402,7 @@ let upgrade ft =
         (Lazy.force git)
         ["add"; Path.reach fn ~from:dir]
     | None -> Fiber.return ())
-  >>= fun () ->
+  in
   List.iter todo.to_edit ~f:(fun (fn, s) ->
     log "Upgrading %s...\n" (Path.to_string_maybe_quoted fn);
     Io.write_file fn s ~binary:true);

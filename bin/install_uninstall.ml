@@ -1,6 +1,5 @@
 open Stdune
 open Import
-open Fiber.O
 
 let interpret_destdir ~destdir path =
   match destdir with
@@ -18,13 +17,14 @@ let get_dirs context ~prefix_from_command_line ~libdir_from_command_line =
     let dir = Option.value ~default:"lib" libdir_from_command_line in
     Fiber.return (prefix, Some (Path.relative prefix dir))
   | None ->
-    Context.install_prefix context >>= fun prefix ->
+    let open Fiber.O in
+    let* prefix = Context.install_prefix context in
     let libdir =
       match libdir_from_command_line with
       | None -> Context.install_ocaml_libdir context
       | Some l -> Fiber.return (Some (Path.relative prefix l))
     in
-    libdir >>| fun libdir ->
+    let+ libdir = libdir in
     (prefix, libdir)
 
 let resolve_package_install setup pkg =
@@ -167,6 +167,7 @@ let install_uninstall ~what =
     Common.set_common common ~targets:[];
     let log = Log.create common in
     Scheduler.go ~log ~common (fun () ->
+      let open Fiber.O in
       Import.Main.scan_workspace ~log common >>= fun workspace ->
       let pkgs =
         match pkgs with

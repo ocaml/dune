@@ -230,13 +230,13 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
   in
 
   let create_one ~name ~implicit ~findlib_toolchain ~host ~merlin =
-    (match findlib_toolchain with
-     | None -> Fiber.return None
-     | Some toolchain ->
-       Lazy.force findlib_config_path >>| fun path ->
-       Some (Findlib.Config.load path ~toolchain ~context:name))
-    >>= fun findlib_config ->
-
+    let* findlib_config =
+      match findlib_toolchain with
+      | None -> Fiber.return None
+      | Some toolchain ->
+        Lazy.force findlib_config_path >>| fun path ->
+        Some (Findlib.Config.load path ~toolchain ~context:name)
+    in
     let get_tool_using_findlib_config prog =
       let open Option.O in
       findlib_config >>= fun conf ->

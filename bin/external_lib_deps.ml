@@ -1,6 +1,5 @@
 open Stdune
 open Import
-open Fiber.O
 
 let format_external_libs libs =
   Lib_name.Map.to_list libs
@@ -135,6 +134,7 @@ let term =
   let log = Log.create common in
   let setup, lib_deps =
     Scheduler.go ~log ~common (fun () ->
+      let open Fiber.O in
       Import.Main.setup ~log common ~external_lib_deps_mode:true >>= fun setup ->
       let targets = Target.resolve_targets_exn ~log common setup targets in
       let request = Target.request setup targets in

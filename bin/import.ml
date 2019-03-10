@@ -38,7 +38,6 @@ let die = Dune.Import.die
 let hint = Dune.Import.hint
 
 module Main = struct
-  open Fiber.O
 
   include Dune.Main
 
@@ -53,6 +52,7 @@ module Main = struct
       ()
 
   let setup ~log ?external_lib_deps_mode (common : Common.t) =
+    let open Fiber.O in
     scan_workspace ~log common
     >>= init_build_system
           ?external_lib_deps_mode
@@ -78,8 +78,7 @@ module Scheduler = struct
 
   let poll ?log ~(common : Common.t) ~once ~finally () =
     let once () =
-      Main.set_concurrency ?log common.config
-      >>= fun () ->
+      let* () = Main.set_concurrency ?log common.config in
       once ()
     in
     Scheduler.poll ?log ~config:common.config ~once ~finally ()

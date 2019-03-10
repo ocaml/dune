@@ -3,7 +3,9 @@ open Import
 
 let config =
   ("dune-config", 5, "", "Dune", "Dune manual"),
-  [ `S Manpage.s_synopsis
+  [ `S Manpage.s_name
+  ; `P {|dune-config - configuring the dune build system|}
+  ; `S Manpage.s_synopsis
   ; `Pre "~/.config/dune/config"
   ; `S Manpage.s_description
   ; `P {|Unless $(b,--no-config) or $(b,-p) is passed, Dune will read a

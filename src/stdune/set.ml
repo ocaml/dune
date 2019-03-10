@@ -56,6 +56,12 @@ module Make(Elt : Comparable.S) : S with type elt = Elt.t = struct
     with
     | () -> None
     | exception (Found e) -> Some e
+
+  let choose_exn t =
+    match choose t with
+    | Some e -> e
+    | None ->
+      Exn.code_error "Set.choose_exn" []
 end
 
 let to_sexp to_list f t =

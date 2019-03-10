@@ -265,9 +265,7 @@ module Alias0 = struct
             ~else_:(Build.arr Fn.id))))
 
   let dep_rec t ~loc ~file_tree =
-    let ctx_dir, src_dir =
-      Path.extract_build_context_dir t.dir |> Option.value_exn
-    in
+    let ctx_dir, src_dir = Path.extract_build_context_dir_exn t.dir in
     match File_tree.find_dir file_tree src_dir with
     | None ->
       Build.fail { fail = fun () ->
@@ -493,7 +491,7 @@ let get_dir_status t ~dir =
          | files ->
            Path.Set.of_list (List.map files ~f:(Path.relative dir)))
     else begin
-      let (ctx, sub_dir) = Option.value_exn (Path.extract_build_context dir) in
+      let (ctx, sub_dir) = Path.extract_build_context_exn dir in
       if ctx = ".aliases" then
         Forward (Path.(append build_dir) sub_dir)
       else if ctx <> "install" && not (String.Map.mem t.contexts ctx) then
@@ -866,7 +864,7 @@ and load_dir_and_get_targets t ~dir =
 and load_dir_step2_exn t ~dir ~collector ~lazy_generators =
   List.iter lazy_generators ~f:(fun f -> f ());
 
-  let context_name, sub_dir = Option.value_exn (Path.extract_build_context dir) in
+  let context_name, sub_dir = Path.extract_build_context_exn dir in
 
   (* Load all the rules *)
   let extra_subdirs_to_keep =
@@ -874,7 +872,7 @@ and load_dir_step2_exn t ~dir ~collector ~lazy_generators =
       These String.Set.empty
     else
       let gen_rules = String.Map.find_exn t.gen_rules context_name in
-      gen_rules ~dir (Option.value_exn (Path.explode sub_dir))
+      gen_rules ~dir (Path.explode_exn sub_dir)
   in
   let rules = collector.rules in
 
@@ -1733,8 +1731,7 @@ end = struct
       | Error cycle ->
         die "dependency cycle detected:\n   %s"
           (List.map cycle ~f:(fun rule ->
-             Path.to_string
-               (Option.value_exn (Path.Set.choose rule.Rule.targets)))
+             Path.to_string (Path.Set.choose_exn rule.Rule.targets))
            |> String.concat ~sep:"\n-> "))
 end
 
@@ -1775,8 +1772,7 @@ end = struct
     | Error cycle ->
       die "dependency cycle detected:\n   %s"
         (List.map cycle ~f:(fun rule ->
-           Path.to_string (Option.value_exn
-                             (Path.Set.choose rule.Internal_rule.targets)))
+           Path.to_string (Path.Set.choose_exn rule.Internal_rule.targets))
          |> String.concat ~sep:"\n-> ")
 
   let all_lib_deps ~request =

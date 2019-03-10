@@ -415,13 +415,15 @@ module Gen (S : sig val sctx : SC.t end) = struct
       ))
     |> Lib.Map.of_list_exn
 
-  let default_index entry_modules =
+  let default_index ~(pkg : Package.t) entry_modules =
     let b = Buffer.create 512 in
+    Printf.bprintf b "{0 %s index}\n"
+      (Package.Name.to_string pkg.name);
     Lib.Map.to_list entry_modules
     |> List.sort ~compare:(fun (x, _) (y, _) ->
       Lib_name.compare (Lib.name x) (Lib.name y))
     |> List.iter ~f:(fun (lib, modules) ->
-      Printf.bprintf b "{2 Library %s}\n" (Lib_name.to_string (Lib.name lib));
+      Printf.bprintf b "{1 Library %s}\n" (Lib_name.to_string (Lib.name lib));
       Buffer.add_string b (
         match modules with
         | [ x ] ->
@@ -462,7 +464,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
       else
         let entry_modules = entry_modules ~pkg in
         let gen_mld = Paths.gen_mld_dir pkg ++ "index.mld" in
-        add_rule (Build.write_file gen_mld (default_index entry_modules));
+        add_rule (Build.write_file gen_mld (default_index ~pkg entry_modules));
         String.Map.add mlds "index" gen_mld in
     let odocs = List.map (String.Map.values mlds) ~f:(fun mld ->
       compile_mld

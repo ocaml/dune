@@ -16,6 +16,9 @@ val try_with : (unit -> 'a) -> ('a, exn) t
 module O : sig
   val ( >>| ) : ('a, 'error) t -> ('a -> 'b) -> ('b, 'error) t
   val ( >>= ) : ('a, 'error) t -> ('a -> ('b, 'error) t) -> ('b, 'error) t
+
+  val (let*) : ('a, 'error) t -> ('a -> ('b, 'error) t) -> ('b, 'error) t
+  val (let+) : ('a, 'error) t -> ('a -> 'b) -> ('b, 'error) t
 end
 
 val map  : ('a, 'error) t -> f:('a -> 'b) -> ('b, 'error) t

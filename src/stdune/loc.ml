@@ -99,8 +99,8 @@ let pp_file_excerpt ~context_lines ~max_lines_to_print_in_full
     let line_num_str = string_of_int line_num in
     let padding_width = String.length line_num_str in
     let open Result.O in
-    Result.try_with (fun () -> Io.String_path.file_line file line_num)
-    >>= fun line ->
+    let* line =
+      Result.try_with (fun () -> Io.String_path.file_line file line_num) in
     if stop_c <= String.length line then begin
       let len = stop_c - start_c in
       Format.fprintf pp "%a%*s\n"
@@ -128,18 +128,19 @@ let pp_file_excerpt ~context_lines ~max_lines_to_print_in_full
           Io.String_path.file_lines file ~start ~stop) in
       let num_lines = stop.pos_lnum - start.pos_lnum in
       if num_lines <= max_lines_to_print_in_full then
-        file_lines ~start:start.pos_lnum ~stop:stop.pos_lnum
-        >>| fun lines ->
+        let+ lines =
+          file_lines ~start:start.pos_lnum ~stop:stop.pos_lnum in
         print_lines lines (get_padding lines)
       else
         (* We need to send the padding width from the last four lines so the
            two blocks of lines align if they have different number of digits
            in their line numbers *)
-        file_lines ~start:start.pos_lnum
-          ~stop:(start.pos_lnum + context_lines)
-        >>= fun first_shown_lines ->
-        file_lines ~start:(stop.pos_lnum - context_lines)
-          ~stop:(stop.pos_lnum) >>| fun last_shown_lines ->
+        let* first_shown_lines =
+          file_lines ~start:start.pos_lnum
+            ~stop:(start.pos_lnum + context_lines) in
+        let+ last_shown_lines =
+          file_lines ~start:(stop.pos_lnum - context_lines)
+            ~stop:(stop.pos_lnum) in
         let padding_width = get_padding last_shown_lines in
         (print_lines first_shown_lines padding_width;
          print_ellipsis padding_width;
@@ -148,12 +149,13 @@ let pp_file_excerpt ~context_lines ~max_lines_to_print_in_full
   let whole_file = start_c = 0 && stop_c = 0 in
   if not whole_file then begin
     match
-      Result.try_with (fun () -> Sys.file_exists start.pos_fname)
-      |> Result.bind ~f:(fun exists ->
-        if exists then
-          pp_file_excerpt ()
-        else
-          Result.Ok ())
+      let open Result.O in
+      let* exists =
+        Result.try_with (fun () -> Sys.file_exists start.pos_fname) in
+      if exists then
+        pp_file_excerpt ()
+      else
+        Result.Ok ()
     with
     | Error exn ->
       let backtrace = Printexc.get_backtrace () in

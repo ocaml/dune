@@ -168,7 +168,7 @@ let install_uninstall ~what =
     let log = Log.create common in
     Scheduler.go ~log ~common (fun () ->
       let open Fiber.O in
-      Import.Main.scan_workspace ~log common >>= fun workspace ->
+      let* workspace = Import.Main.scan_workspace ~log common in
       let pkgs =
         match pkgs with
         | [] -> Package.Name.Map.keys workspace.conf.packages
@@ -209,8 +209,9 @@ let install_uninstall ~what =
       let (module Ops) = file_operations ~dry_run in
       Fiber.parallel_iter install_files_by_context
         ~f:(fun (context, install_files) ->
-          get_dirs context ~prefix_from_command_line ~libdir_from_command_line
-          >>| fun (prefix, libdir) ->
+          let+ (prefix, libdir) =
+            get_dirs context ~prefix_from_command_line ~libdir_from_command_line
+          in
           List.iter install_files ~f:(fun (package, path) ->
             let entries = Install.load_install_file path in
             let paths =

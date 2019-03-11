@@ -135,10 +135,10 @@ let term =
   let setup, lib_deps =
     Scheduler.go ~log ~common (fun () ->
       let open Fiber.O in
-      Import.Main.setup ~log common ~external_lib_deps_mode:true >>= fun setup ->
+      let* setup = Import.Main.setup ~log common ~external_lib_deps_mode:true in
       let targets = Target.resolve_targets_exn ~log common setup targets in
       let request = Target.request setup targets in
-      Build_system.all_lib_deps ~request >>| fun deps ->
+      let+ deps = Build_system.all_lib_deps ~request in
       (setup, deps))
   in
   let failure = run ~by_dir ~setup ~lib_deps ~sexp ~only_missing in

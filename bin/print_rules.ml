@@ -111,8 +111,8 @@ let term =
   let log = Log.create common in
   Scheduler.go ~log ~common (fun () ->
     let open Fiber.O in
-    Import.Main.setup ~log common ~external_lib_deps_mode:true
-    >>= fun setup ->
+    let* setup =
+      Import.Main.setup ~log common ~external_lib_deps_mode:true in
     let request =
       match targets with
       | [] ->
@@ -121,8 +121,7 @@ let term =
         Target.resolve_targets_exn ~log common setup targets
         |> Target.request setup
     in
-    Build_system.evaluate_rules ~request ~recursive
-    >>= fun rules ->
+    let* rules = Build_system.evaluate_rules ~request ~recursive in
     let print oc =
       let ppf = Format.formatter_of_out_channel oc in
       Syntax.print_rules syntax ppf rules;

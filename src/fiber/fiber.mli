@@ -187,7 +187,7 @@ end with type 'a fiber := 'a t
     [on_error] will never be called.  *)
 val with_error_handler
   :  (unit -> 'a t)
-  -> on_error:(exn -> unit)
+  -> on_error:((exn * Printexc.raw_backtrace) -> unit)
   -> 'a t
 
 (** If [f ()] completes without raising, then [wait_errors f] is the same
@@ -228,7 +228,7 @@ val wait_errors : (unit -> 'a t) -> ('a, unit) Result.t t
 val fold_errors
   :  (unit -> 'a t)
   -> init:'b
-  -> on_error:(exn -> 'b -> 'b)
+  -> on_error:((exn * Printexc.raw_backtrace) -> 'b -> 'b)
   -> ('a, 'b) Result.t t
 
 (** [collect_errors f] is:
@@ -241,7 +241,7 @@ val fold_errors
 *)
 val collect_errors
   :  (unit -> 'a t)
-  -> ('a, exn list) Result.t t
+  -> ('a, (exn * Printexc.raw_backtrace) list) Result.t t
 
 (** [finalize f ~finally] runs [finally] after [f ()] has terminated,
     whether it fails or succeeds. *)

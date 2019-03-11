@@ -34,13 +34,14 @@ module Execution_context : sig
 
   (* Set the current error handler. [on_error] is called in the
      current execution context. *)
-  val set_error_handler : on_error:(exn -> unit) -> ('a -> 'b t) -> 'a -> 'b t
+  val set_error_handler :
+    on_error:(exn * Printexc.raw_backtrace -> unit) -> ('a -> 'b t) -> 'a -> 'b t
 
   val vars : unit -> Univ_map.t
   val set_vars : Univ_map.t -> ('a -> 'b t) -> 'a -> 'b t
 end = struct
   type t =
-    { on_error : exn k option (* This handler must never raise *)
+    { on_error : (exn * Printexc.raw_backtrace) k option (* This handler must never raise *)
     ; fibers   : int ref (* Number of fibers running in this execution
                             context *)
     ; vars     : Univ_map.t
@@ -65,7 +66,7 @@ end = struct
 
   external sys_exit : int -> _ = "caml_sys_exit"
 
-  let rec forward_error t exn =
+  let rec forward_error t (exn, bt) =
     match t.on_error with
     | None ->
       (* We can't let the exception leak at this point, so we just
@@ -76,9 +77,9 @@ end = struct
     | Some { ctx; run } ->
       current := ctx;
       try
-        run exn
+        run (exn, bt)
       with exn ->
-        forward_error ctx exn
+        forward_error ctx (exn, bt)
 
   let rec deref t =
     let n = !(t.fibers) - 1 in
@@ -94,7 +95,7 @@ end = struct
     try
       k.run x
     with exn ->
-      forward_error k.ctx exn;
+      forward_error k.ctx (exn, (Printexc.get_raw_backtrace ()));
       deref k.ctx
 
   let exec_in ~parent ~child f x k =
@@ -106,7 +107,7 @@ end = struct
     (try
        f x k
      with exn ->
-       forward_error child exn;
+       forward_error child (exn, (Printexc.get_raw_backtrace ()));
        deref child);
     current := parent
 
@@ -144,7 +145,7 @@ end = struct
       (try
          run x
        with exn ->
-         forward_error ctx exn;
+         forward_error ctx (exn, Printexc.get_raw_backtrace ());
          deref ctx);
       current := backup
 
@@ -164,7 +165,7 @@ end = struct
     try
       f x k
     with exn ->
-      forward_error t exn;
+      forward_error t (exn, Printexc.get_raw_backtrace ());
       deref t;
       current := t
 

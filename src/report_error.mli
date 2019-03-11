@@ -1,7 +1,7 @@
 open! Stdune
 (** Error reporting *)
 
-(** Captures the backtrace and report an error.
+(** Reports an error.
 
     Because dune doesn't stop at the first error, it might end up
     reporting the same error twice about missing libraries for
@@ -9,7 +9,7 @@ open! Stdune
     ignore errors that have already been reported.
 
     We cache what is actually printed to the screen.  *)
-val report : exn -> unit
+val report : (exn * Printexc.raw_backtrace) -> unit
 
 type printer
 

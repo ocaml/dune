@@ -12,6 +12,8 @@ module O = struct
     match t with
     | None   -> None
     | Some a -> f a
+
+  let (let*) = (>>=)
 end
 
 let map  t ~f = O.(>>|) t f

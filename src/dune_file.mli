@@ -304,14 +304,21 @@ module Rule : sig
         | Until_clean
     end
 
+    module Into : sig
+      type t =
+        { loc : Loc.t
+        ; dir : string
+        }
+    end
+
     type t =
       | Standard
       (** Only use this rule if  the source files don't exist. *)
       | Fallback
-      (** Silently promote the targets to the source tree. If the
-          argument is [Some (_, dir)], promote them into [dir] rather
-          than the current directory. *)
-      | Promote of Promotion_lifetime.t * (Loc.t * string) option
+      (** Silently promote the targets to the source tree. If the argument is
+          [Some { dir ; _ }], promote them into [dir] rather than the current
+          directory. *)
+      | Promote of Promotion_lifetime.t * Into.t option
       (** Same as [Standard] however this is not a rule stanza, so it
           is not possible to add a [(fallback)] field to the rule. *)
       | Not_a_rule_stanza

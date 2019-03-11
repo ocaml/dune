@@ -1355,7 +1355,7 @@ let () =
           let in_source_tree =
             match into with
             | None -> in_source_tree
-            | Some (loc, dir) ->
+            | Some { loc; dir } ->
               Path.relative
                 (Path.relative (Path.parent_exn in_source_tree) dir
                    ~error_loc:loc)

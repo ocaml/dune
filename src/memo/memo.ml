@@ -251,7 +251,7 @@ module Cached_value = struct
               Fiber.return true
             else
               let changed =
-                Fiber.Ivar.read ivar >>| fun curr_output ->
+                let+ curr_output = Fiber.Ivar.read ivar in
                 dep_changed node prev_output curr_output
               in
               deps_changed (changed :: acc) deps
@@ -457,7 +457,7 @@ let create (type i) (type o) (type f)
     match visibility with
     | Visibility.Hidden ->
       let open Dune_lang.Decoder in
-      loc >>= fun loc ->
+      let+ loc = loc in
       Exn.fatalf ~loc "<not-implemented>"
     | Public decode -> decode
   in
@@ -551,8 +551,11 @@ module Exec_async = struct
   let compute t inp ivar dep_node =
     (* define the function to update / double check intermediate result *)
     (* set context of computation then run it *)
-    Call_stack.push_async_frame (T dep_node) (fun () -> match t.spec.f with
-      | Function.Async f -> f inp) >>= fun res ->
+    let* res =
+      Call_stack.push_async_frame (T dep_node) (fun () ->
+        match t.spec.f with
+        | Function.Async f -> f inp)
+    in
     (* update the output cache with the correct value *)
     let deps =
       get_deps_from_graph_exn dep_node
@@ -653,9 +656,11 @@ let call name input =
   let (Spec.T spec) = get_func name in
   let (module Output : Output_simple with type t = _) = spec.output in
   let input = Dune_lang.Decoder.parse spec.decode Univ_map.empty input in
-  (match spec.f with
-   | Function.Async f -> f
-   | Function.Sync f -> (fun x -> Fiber.return (f x))) input >>| fun output ->
+  let+ output =
+    (match spec.f with
+     | Function.Async f -> f
+     | Function.Sync f -> (fun x -> Fiber.return (f x))) input
+  in
   Output.to_sexp output
 
 module Function_info = struct

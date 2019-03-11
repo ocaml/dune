@@ -173,7 +173,7 @@ module Driver = struct
       ; replaces =
           let open Result.O in
           Result.List.map info.replaces ~f:(fun ((loc, name) as x) ->
-            resolve x >>= fun lib ->
+            let* lib = resolve x in
             match get ~loc lib with
             | None ->
               Error (Errors.exnf loc "%a is not a %s"
@@ -360,8 +360,9 @@ let build_ppx_driver sctx ~dep_kind ~target ~dir_kind ~pps ~pp_names =
         let pp_names = driver_name :: List.map pps ~f:Lib.name in
         let pps =
           let open Result.O in
-          Lib.DB.resolve_pps (SC.public_libs sctx) [(Loc.none, driver_name)]
-          >>| fun driver ->
+          let+ driver =
+            Lib.DB.resolve_pps (SC.public_libs sctx) [(Loc.none, driver_name)]
+          in
           driver @ pps
         in
         (Some driver, pps, pp_names)
@@ -377,8 +378,9 @@ let build_ppx_driver sctx ~dep_kind ~target ~dir_kind ~pps ~pp_names =
        >>= fun pps ->
        match jbuild_driver with
        | None ->
-         Driver.select pps ~loc:(Dot_ppx (target, pp_names))
-         >>| fun driver ->
+         let+ driver =
+          Driver.select pps ~loc:(Dot_ppx (target, pp_names))
+         in
          (driver, pps)
        | Some driver ->
          Ok (driver, pps))
@@ -478,16 +480,16 @@ let get_compat_ppx_exe sctx ~name ~kind =
 
 let get_ppx_driver sctx ~loc ~scope ~dir_kind pps =
   let open Result.O in
-  Lib.DB.resolve_pps (Scope.libs scope) pps
-  >>= fun libs ->
-  (match (dir_kind : Dune_lang.Syntax.t) with
-   | Dune ->
-     Lib.closure libs ~linking:true
-     >>=
-     Driver.select ~loc:(User_file (loc, pps))
-   | Jbuild ->
-     Ok (Jbuild_driver.get_driver pps))
-  >>| fun driver ->
+  let* libs = Lib.DB.resolve_pps (Scope.libs scope) pps in
+  let+ driver =
+    match (dir_kind : Dune_lang.Syntax.t) with
+    | Dune ->
+      Lib.closure libs ~linking:true
+      >>=
+      Driver.select ~loc:(User_file (loc, pps))
+    | Jbuild ->
+      Ok (Jbuild_driver.get_driver pps)
+  in
   (ppx_driver_exe (SC.host sctx) libs ~dir_kind, driver)
 
 let workspace_root_var = String_with_vars.virt_var __POS__ "workspace_root"
@@ -591,8 +593,8 @@ let lint_module sctx ~dir ~expander ~dep_kind ~lint ~lib_name ~scope ~dir_kind =
           let corrected_suffix = ".lint-corrected" in
           let driver_and_flags =
             let open Result.O in
-            get_ppx_driver sctx ~loc ~scope ~dir_kind pps
-            >>| fun (exe, driver) ->
+            let+ (exe, driver) =
+              get_ppx_driver sctx ~loc ~scope ~dir_kind pps in
             (exe,
              let bindings =
                Pform.Map.singleton "corrected-suffix"
@@ -667,7 +669,7 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess
         let corrected_suffix = ".ppx-corrected" in
         let driver_and_flags =
           let open Result.O in
-          get_ppx_driver sctx ~loc ~scope ~dir_kind pps >>| fun (exe, driver) ->
+          let+ (exe, driver) = get_ppx_driver sctx ~loc ~scope ~dir_kind pps in
           (exe,
            let bindings =
              Pform.Map.singleton "corrected-suffix"
@@ -702,7 +704,8 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess
       end else begin
         let pp_flags = Build.of_result (
           let open Result.O in
-          get_ppx_driver sctx ~loc ~scope ~dir_kind pps >>| fun (exe, driver) ->
+          let+ (exe, driver) =
+            get_ppx_driver sctx ~loc ~scope ~dir_kind pps in
           Build.memoize "ppx command"
             (Build.path exe
              >>>
@@ -740,7 +743,6 @@ let pp_module_as t ?(lint=true) name m =
 
 let get_ppx_driver sctx ~scope ~dir_kind pps =
   let open Result.O in
-  Lib.DB.resolve_pps (Scope.libs scope) pps
-  >>| fun libs ->
+  let+ libs = Lib.DB.resolve_pps (Scope.libs scope) pps in
   let sctx = SC.host sctx in
   ppx_driver_exe sctx libs ~dir_kind

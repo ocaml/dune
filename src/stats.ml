@@ -52,6 +52,6 @@ let with_process ~program ~args fiber =
   | Some reporter ->
     let open Fiber.O in
     let event = Catapult.on_process_start reporter ~program ~args in
-    fiber >>| fun result ->
+    let+ result = fiber in
     Catapult.on_process_end reporter event;
     result

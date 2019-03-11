@@ -283,7 +283,7 @@ let gen ~contexts
         >>| Option.some
     in
     let stanzas () =
-      Dune_load.Dune_files.eval ~context dune_files >>| fun stanzas ->
+      let+ stanzas = Dune_load.Dune_files.eval ~context dune_files in
       match only_packages with
       | None -> stanzas
       | Some pkgs ->
@@ -292,7 +292,7 @@ let gen ~contexts
             stanzas = relevant_stanzas pkgs dir_conf.stanzas
           })
     in
-    Fiber.fork_and_join host stanzas >>= fun (host, stanzas) ->
+    let* (host, stanzas) = Fiber.fork_and_join host stanzas in
     let sctx =
       Super_context.create
         ?host
@@ -305,12 +305,12 @@ let gen ~contexts
     in
     let module P = struct let sctx = sctx end in
     let module M = Gen(P) in
-    Fiber.Ivar.fill (Hashtbl.find_exn sctxs context.name) sctx
-    >>| fun () ->
+    let+ () =
+      Fiber.Ivar.fill (Hashtbl.find_exn sctxs context.name) sctx in
     (context.name, (module M : Gen))
   in
-  Fiber.parallel_map contexts ~f:make_sctx >>| fun l ->
-  let map = String.Map.of_list_exn l in
+  let+ contexts = Fiber.parallel_map contexts ~f:make_sctx in
+  let map = String.Map.of_list_exn contexts in
   Build_system.set_rule_generators
     (String.Map.map map ~f:(fun (module M : Gen) -> M.gen_rules));
   String.Map.iter map ~f:(fun (module M : Gen) -> M.init ());

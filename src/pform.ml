@@ -231,7 +231,7 @@ module Map = struct
     let open Option.O in
     let open Syntax.Version.Infix in
     let name = String_with_vars.Var.name pform in
-    String.Map.find map name >>= fun v ->
+    let* v = String.Map.find map name in
     let describe = String_with_vars.Var.describe in
     match v with
     | No_info v -> Some v

@@ -151,7 +151,7 @@ let get_exn t =
   get t.key >>= function
   | Some x -> return x
   | None ->
-    get_all >>| fun context ->
+    let+ context = get_all in
     Exn.code_error "Syntax identifier is unset"
       [ "name", Sexp.Encoder.string t.name
       ; "supported_versions", Supported_versions.to_sexp t.supported_versions
@@ -159,7 +159,7 @@ let get_exn t =
       ]
 
 let desc () =
-  kind >>| fun kind ->
+  let+ kind = kind in
   match kind with
   | Values (loc, None) -> (loc, "This syntax")
   | Fields (loc, None) -> (loc, "This field")
@@ -182,7 +182,7 @@ let deprecated_in t ver =
   if current_ver < ver then
     return ()
   else begin
-    desc () >>| fun (loc, what) ->
+    let+ (loc, what) = desc () in
     Warning.deprecated_in loc t ver ~what;
   end
 

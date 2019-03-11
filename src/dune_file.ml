@@ -360,10 +360,11 @@ module Per_module = struct
     peek_exn >>= function
     | List (loc, Atom (_, A "per_module") :: _) ->
       sum [ "per_module",
-            repeat
-              (pair a (list module_name) >>| fun (pp, names) ->
-               (names, pp))
-            >>| fun x ->
+            let+ x =
+              repeat
+                (let+ (pp, names) = pair a (list module_name) in
+                (names, pp))
+            in
             of_mapping x ~default
             |> function
             | Ok t -> t
@@ -1549,7 +1550,7 @@ module Rule = struct
       ]
 
   let short_form =
-    located Action_dune_lang.decode >>| fun (loc, action) ->
+    let+ (loc, action) = located Action_dune_lang.decode in
     { targets  = Infer
     ; deps     = Bindings.empty
     ; action   = (loc, action)
@@ -1632,7 +1633,7 @@ module Rule = struct
     peek_exn >>= function
     | List (_, Atom (_, _) :: _) ->
       enter (
-        repeat string >>| fun modules ->
+        let+ modules = repeat string in
         { modules
         ; mode  = Standard
         ; enabled_if = Blang.true_

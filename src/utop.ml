@@ -23,31 +23,31 @@ let source ~dir =
 let is_utop_dir dir = Path.basename dir = utop_dir_basename
 
 let libs_under_dir sctx ~db ~dir =
-  let open Option.O in
-  (Path.drop_build_context dir >>= fun dir ->
-   File_tree.find_dir (Super_context.file_tree sctx) dir >>|
-   (File_tree.Dir.fold ~traverse_ignored_dirs:true
-      ~init:[] ~f:(fun dir acc ->
-        let dir =
-          Path.append (Super_context.build_dir sctx) (File_tree.Dir.path dir) in
-        match Super_context.stanzas_in sctx ~dir with
-        | None -> acc
-        | Some (d : _ Dir_with_dune.t) ->
-          List.fold_left d.data ~init:acc ~f:(fun acc -> function
-            | Dune_file.Library l ->
-              begin match Lib.DB.find_even_when_hidden db
-                            (Dune_file.Library.best_name l) with
-              | None -> acc (* library is defined but outside our scope *)
-              | Some lib ->
-                (* still need to make sure that it's not coming from an external
-                   source *)
-                if Path.is_descendant ~of_:dir (Lib.src_dir lib) then
-                  lib :: acc
-                else
-                  acc (* external lib with a name matching our private name *)
-              end
-            | _ ->
-              acc))))
+  (let open Option.O in
+   let* dir = Path.drop_build_context dir in
+   let+ dir = File_tree.find_dir (Super_context.file_tree sctx) dir in
+   File_tree.Dir.fold dir ~traverse_ignored_dirs:true
+     ~init:[] ~f:(fun dir acc ->
+       let dir =
+         Path.append (Super_context.build_dir sctx) (File_tree.Dir.path dir) in
+       match Super_context.stanzas_in sctx ~dir with
+       | None -> acc
+       | Some (d : _ Dir_with_dune.t) ->
+         List.fold_left d.data ~init:acc ~f:(fun acc -> function
+           | Dune_file.Library l ->
+             begin match Lib.DB.find_even_when_hidden db
+                           (Dune_file.Library.best_name l) with
+             | None -> acc (* library is defined but outside our scope *)
+             | Some lib ->
+               (* still need to make sure that it's not coming from an external
+                  source *)
+               if Path.is_descendant ~of_:dir (Lib.src_dir lib) then
+                 lib :: acc
+               else
+                 acc (* external lib with a name matching our private name *)
+             end
+           | _ ->
+             acc)))
   |> Option.value ~default:[]
 
 let setup sctx ~dir =

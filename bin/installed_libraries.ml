@@ -1,6 +1,5 @@
 open Stdune
 open Import
-open Fiber.O
 
 let doc = "Print out libraries installed on the system."
 
@@ -17,6 +16,7 @@ let term =
   Common.set_common common ~targets:[];
   let env = Import.Main.setup_env ~capture_outputs:common.capture_outputs in
   Scheduler.go ~log:(Log.create common) ~common (fun () ->
+    let open Fiber.O in
     Context.create ~env
       { merlin_context = Some "default"
       ; contexts = [Default { loc = Loc.of_pos __POS__

@@ -1,6 +1,5 @@
 open Stdune
 open Import
-open Fiber.O
 
 module Utop = Dune.Utop
 
@@ -30,6 +29,7 @@ let term =
   let log = Log.create common in
   let (context, utop_path) =
     Scheduler.go ~log ~common (fun () ->
+      let open Fiber.O in
       Import.Main.setup ~log common >>= fun setup ->
       let context =
         Import.Main.find_context_exn setup.workspace ~name:ctx_name

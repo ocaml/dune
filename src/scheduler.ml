@@ -550,8 +550,7 @@ let rec restart_waiting_for_available_job t =
     Fiber.return ()
   else begin
     let ivar = Queue.pop t.waiting_for_available_job in
-    Fiber.Ivar.fill ivar t
-    >>= fun () ->
+    let* () = Fiber.Ivar.fill ivar t in
     restart_waiting_for_available_job t
   end
 
@@ -641,8 +640,7 @@ end = struct
     | Files_changed
 
   let rec pump_events t =
-    Fiber.yield ()
-    >>= fun () ->
+    let* () = Fiber.yield () in
     let count = Event.pending_jobs () in
     if count = 0 then begin
       Console.hide_status_line ();
@@ -652,10 +650,8 @@ end = struct
       begin
         match Event.next () with
         | Job_completed (job, status) ->
-          Fiber.Ivar.fill job.ivar status
-          >>= fun () ->
-          restart_waiting_for_available_job t
-          >>= fun () ->
+          let* () = Fiber.Ivar.fill job.ivar status in
+          let* () = restart_waiting_for_available_job t in
           pump_events t
         | Files_changed ->
           Fiber.return Files_changed
@@ -677,10 +673,8 @@ end = struct
         (fun () -> Fiber.with_error_handler f ~on_error:Report_error.report)
     in
     match Fiber.run
-            (Fiber.fork (fun () -> fiber)
-             >>= fun user_action_result ->
-             pump_events t
-             >>= fun pump_events_result ->
+            (let* user_action_result = Fiber.fork (fun () -> fiber) in
+             let* pump_events_result = pump_events t in
              Fiber.return (pump_events_result, user_action_result)) with
     | exception Fiber.Never ->
       Exn.code_error "[Scheduler.pump_events] got stuck somehow" []

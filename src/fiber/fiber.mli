@@ -13,6 +13,12 @@ type 'a t
 (** Create a fiber that has already terminated. *)
 val return : 'a -> 'a t
 
+(** Converts a thunk to a fiber, making sure the thunk runs in the context of the fiber
+    (rather than applied in the current context).
+
+    Equivalent to [(>>=) (return ())], but more explicit. *)
+val of_thunk : (unit -> 'a t) -> 'a t
+
 (** Fiber that never completes. *)
 val never : 'a t
 
@@ -157,7 +163,7 @@ module Var : sig
   (** Create a new variable *)
   val create : unit -> 'a t
 
-  (** [get var] is a fiber that reads the value of [var] *)
+  (** [get var] reads the value of [var]. *)
   val get : 'a t -> 'a option
 
   (** Same as [get] but raises if [var] is unset. *)
@@ -173,6 +179,8 @@ module Var : sig
       ]}
  *)
   val set : 'a t -> 'a -> (unit -> 'b fiber) -> 'b fiber
+  val set_sync : 'a t -> 'a -> (unit -> 'b) -> 'b
+
 end with type 'a fiber := 'a t
 
 (** {1 Error handling} *)

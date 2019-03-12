@@ -4,6 +4,7 @@ module Bytes      = Bytes
 module Comparable = Comparable
 module Either     = Either
 module Exn        = Exn
+module Exn_with_backtrace = Exn_with_backtrace
 module Filename   = Filename
 module Hashtbl    = Hashtbl
 module Table      = Table

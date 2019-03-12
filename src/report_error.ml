@@ -103,7 +103,7 @@ let clear_cache () =
 
 let () = Hooks.End_of_build.always clear_cache
 
-let report (exn, backtrace) =
+let report { Exn_with_backtrace. exn; backtrace } =
   let exn, dependency_path = Dep_path.unwrap_exn exn in
   match exn with
   | Already_reported -> ()

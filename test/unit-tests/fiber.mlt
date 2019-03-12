@@ -33,14 +33,14 @@ val never_fiber : unit -> 'a t = <fun>
 
 Fiber.run (Fiber.collect_errors failing_fiber)
 [%%expect{|
-- : (unit, (exn * Printexc.raw_backtrace) list) Stdune.result =
-Error [(Exit, <abstr>)]
+- : (unit, Exn_with_backtrace.t list) Stdune.result =
+Error [{exn = Exit; backtrace = <abstr>}]
 |}]
 
 try
   ignore
     (Fiber.run (Fiber.collect_errors never_fiber) :
-       (unit, (exn * Printexc.raw_backtrace) list) Result.t);
+       (unit, Exn_with_backtrace.t list) Result.t);
   Result.Error "should not reach here"
 with Fiber.Never ->
   Result.ok ()
@@ -56,14 +56,14 @@ Fiber.run (
     failing_fiber ())))
 ;;
 [%%expect{|
-- : (unit, (exn * Printexc.raw_backtrace) list) Stdune.result =
-Error [(Exit, <abstr>)]
+- : (unit, Exn_with_backtrace.t list) Stdune.result =
+Error [{exn = Exit; backtrace = <abstr>}]
 |}]
 
 Fiber.run (
   Fiber.collect_errors (fun () -> Fiber.with_error_handler failing_fiber ~on_error:ignore))
 [%%expect{|
-- : (unit, (exn * Printexc.raw_backtrace) list) Stdune.result = Error []
+- : (unit, Exn_with_backtrace.t list) Stdune.result = Error []
 |}]
 
 Fiber.run (
@@ -77,8 +77,8 @@ Fiber.run (
   Fiber.collect_errors
     (fun () -> Fiber.fork_and_join failing_fiber long_running_fiber))
 [%%expect{|
-- : (unit * unit, (exn * Printexc.raw_backtrace) list) Stdune.result =
-Error [(Exit, <abstr>)]
+- : (unit * unit, Exn_with_backtrace.t list) Stdune.result =
+Error [{exn = Exit; backtrace = <abstr>}]
 |}]
 
 Fiber.run (

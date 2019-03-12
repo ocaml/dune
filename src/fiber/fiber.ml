@@ -35,13 +35,13 @@ module Execution_context : sig
   (* Set the current error handler. [on_error] is called in the
      current execution context. *)
   val set_error_handler :
-    on_error:(exn * Printexc.raw_backtrace -> unit) -> ('a -> 'b t) -> 'a -> 'b t
+    on_error:(Exn_with_backtrace.t -> unit) -> ('a -> 'b t) -> 'a -> 'b t
 
   val vars : unit -> Univ_map.t
   val set_vars : Univ_map.t -> ('a -> 'b t) -> 'a -> 'b t
 end = struct
   type t =
-    { on_error : (exn * Printexc.raw_backtrace) k option (* This handler must never raise *)
+    { on_error : Exn_with_backtrace.t k option (* This handler must never raise *)
     ; fibers   : int ref (* Number of fibers running in this execution
                             context *)
     ; vars     : Univ_map.t
@@ -66,20 +66,20 @@ end = struct
 
   external sys_exit : int -> _ = "caml_sys_exit"
 
-  let rec forward_error t (exn, bt) =
+  let rec forward_error t exn =
     match t.on_error with
     | None ->
       (* We can't let the exception leak at this point, so we just
          dump the error on stderr and exit *)
-      let backtrace = Printexc.get_backtrace () in
-      Format.eprintf "%a@.%!" (Exn.pp_uncaught ~backtrace) exn;
+      Format.eprintf "%a@.%!" Exn_with_backtrace.pp_uncaught exn;
       sys_exit 42
     | Some { ctx; run } ->
       current := ctx;
       try
-        run (exn, bt)
+        run exn
       with exn ->
-        forward_error ctx (exn, bt)
+        let exn = Exn_with_backtrace.capture exn in
+        forward_error ctx exn
 
   let rec deref t =
     let n = !(t.fibers) - 1 in
@@ -95,7 +95,8 @@ end = struct
     try
       k.run x
     with exn ->
-      forward_error k.ctx (exn, (Printexc.get_raw_backtrace ()));
+      let exn = Exn_with_backtrace.capture exn in
+      forward_error k.ctx exn;
       deref k.ctx
 
   let exec_in ~parent ~child f x k =
@@ -107,7 +108,8 @@ end = struct
     (try
        f x k
      with exn ->
-       forward_error child (exn, (Printexc.get_raw_backtrace ()));
+       let exn = Exn_with_backtrace.capture exn in
+       forward_error child exn;
        deref child);
     current := parent
 
@@ -145,7 +147,8 @@ end = struct
       (try
          run x
        with exn ->
-         forward_error ctx (exn, Printexc.get_raw_backtrace ());
+         let exn = Exn_with_backtrace.capture exn in
+         forward_error ctx exn;
          deref ctx);
       current := backup
 
@@ -165,7 +168,8 @@ end = struct
     try
       f x k
     with exn ->
-      forward_error t (exn, Printexc.get_raw_backtrace ());
+      let exn = Exn_with_backtrace.capture exn in
+      forward_error t exn;
       deref t;
       current := t
 

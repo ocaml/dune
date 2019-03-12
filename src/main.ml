@@ -236,7 +236,8 @@ let bootstrap () =
   with
   | Fiber.Never -> exit 1
   | exn ->
-    Report_error.report (exn, Printexc.get_raw_backtrace ());
+    let exn = Exn_with_backtrace.capture exn in
+    Report_error.report exn;
     exit 1
 
 let find_context_exn t ~name =

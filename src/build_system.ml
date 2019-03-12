@@ -1378,7 +1378,7 @@ let () =
   (* a rule can have multiple files, but rule.run_rule may only be called once *)
   let build_file path =
     let t = t () in
-    let on_error (exn, bt) = Dep_path.reraise (exn, bt) (Path path) in
+    let on_error exn = Dep_path.reraise exn (Path path) in
     Fiber.with_error_handler ~on_error (fun () ->
       get_file_spec t path >>= function
       | None ->
@@ -1428,14 +1428,12 @@ let do_build ~request =
   Hooks.End_of_build.once Promotion.finalize;
   update_universe t; (* ? *)
   (fun () -> build_request t ~request)
-  |> Fiber.with_error_handler ~on_error:(fun (exn, bt) ->
-    Dep_path.map exn ~f:(function
-      | Memo.Cycle_error.E exn -> process_memcycle exn
-      | _ as exn -> exn
-    ) |> (fun exn ->
-      Exn.raise_with_backtrace exn bt
-    )
-  )
+  |> Fiber.with_error_handler ~on_error:(
+    Exn_with_backtrace.map_and_reraise
+      ~f:(Dep_path.map ~f:(function
+        | Memo.Cycle_error.E exn -> process_memcycle exn
+        | _ as exn -> exn
+      )))
 
 let init ~contexts ~file_tree ~hook =
   let contexts =

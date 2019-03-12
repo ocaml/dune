@@ -9,7 +9,7 @@ open! Stdune
     ignore errors that have already been reported.
 
     We cache what is actually printed to the screen.  *)
-val report : (exn * Printexc.raw_backtrace) -> unit
+val report : Exn_with_backtrace.t -> unit
 
 type printer
 

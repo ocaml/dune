@@ -23,7 +23,7 @@ end
 
 (** Re-raise an exception and augment it's dependency path with the
     given entry. The raised exception will be wrapped. *)
-val reraise : (exn * Printexc.raw_backtrace) -> Entry.t -> _
+val reraise : Exn_with_backtrace.t -> Entry.t -> _
 
 (** Extend the required_by stack of an exception *)
 val prepend_exn : exn -> Entry.t -> exn

@@ -31,8 +31,8 @@ let run f v =
          ~on_error:(fun e -> exn := Some e))
   with Fiber.Never ->
     (match !exn with
-     | Some (exn, bt) ->
-       Exn.raise_with_backtrace exn bt
+     | Some exn ->
+       Exn_with_backtrace.reraise exn
      | None ->
        raise Fiber.Never);;
 

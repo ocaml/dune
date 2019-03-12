@@ -34,13 +34,14 @@ module Execution_context : sig
 
   (* Set the current error handler. [on_error] is called in the
      current execution context. *)
-  val set_error_handler : on_error:(exn -> unit) -> ('a -> 'b t) -> 'a -> 'b t
+  val set_error_handler :
+    on_error:(Exn_with_backtrace.t -> unit) -> ('a -> 'b t) -> 'a -> 'b t
 
   val vars : unit -> Univ_map.t
   val set_vars : Univ_map.t -> ('a -> 'b t) -> 'a -> 'b t
 end = struct
   type t =
-    { on_error : exn k option (* This handler must never raise *)
+    { on_error : Exn_with_backtrace.t k option (* This handler must never raise *)
     ; fibers   : int ref (* Number of fibers running in this execution
                             context *)
     ; vars     : Univ_map.t
@@ -70,14 +71,14 @@ end = struct
     | None ->
       (* We can't let the exception leak at this point, so we just
          dump the error on stderr and exit *)
-      let backtrace = Printexc.get_backtrace () in
-      Format.eprintf "%a@.%!" (Exn.pp_uncaught ~backtrace) exn;
+      Format.eprintf "%a@.%!" Exn_with_backtrace.pp_uncaught exn;
       sys_exit 42
     | Some { ctx; run } ->
       current := ctx;
       try
         run exn
       with exn ->
+        let exn = Exn_with_backtrace.capture exn in
         forward_error ctx exn
 
   let rec deref t =
@@ -94,6 +95,7 @@ end = struct
     try
       k.run x
     with exn ->
+      let exn = Exn_with_backtrace.capture exn in
       forward_error k.ctx exn;
       deref k.ctx
 
@@ -106,6 +108,7 @@ end = struct
     (try
        f x k
      with exn ->
+       let exn = Exn_with_backtrace.capture exn in
        forward_error child exn;
        deref child);
     current := parent
@@ -144,6 +147,7 @@ end = struct
       (try
          run x
        with exn ->
+         let exn = Exn_with_backtrace.capture exn in
          forward_error ctx exn;
          deref ctx);
       current := backup
@@ -164,6 +168,7 @@ end = struct
     try
       f x k
     with exn ->
+      let exn = Exn_with_backtrace.capture exn in
       forward_error t exn;
       deref t;
       current := t

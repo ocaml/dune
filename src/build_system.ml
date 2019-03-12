@@ -1419,12 +1419,12 @@ let do_build ~request =
   Hooks.End_of_build.once Promotion.finalize;
   update_universe t; (* ? *)
   (fun () -> build_request t ~request)
-  |> Fiber.with_error_handler ~on_error:(fun exn ->
-    Dep_path.map exn ~f:(function
-      | Memo.Cycle_error.E exn -> process_memcycle exn
-      | _ as exn -> exn
-    ) |> raise
-  )
+  |> Fiber.with_error_handler ~on_error:(
+    Exn_with_backtrace.map_and_reraise
+      ~f:(Dep_path.map ~f:(function
+        | Memo.Cycle_error.E exn -> process_memcycle exn
+        | _ as exn -> exn
+      )))
 
 let init ~contexts ~file_tree ~hook =
   let contexts =

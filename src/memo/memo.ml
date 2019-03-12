@@ -334,33 +334,22 @@ let global_dep_dag = Dag.create ()
    context variable and synchronous call stack on top of that managed with an explicit ref *)
 module Call_stack = struct
 
-  let synchronous_call_stack = ref []
-
   (* fiber context variable keys *)
   let call_stack_key = Fiber.Var.create ()
-  let get_call_stack_tip () =
-    match !synchronous_call_stack with
-    | [] ->
-      List.hd_opt (Fiber.Var.get call_stack_key |> Option.value ~default:[])
-    | tip :: _ -> Some tip
 
   let get_call_stack () =
-    let async = Fiber.Var.get call_stack_key |> Option.value ~default:[] in
-    let sync = !synchronous_call_stack in
-    sync @ async
+    Fiber.Var.get call_stack_key |> Option.value ~default:[]
+
+  let get_call_stack_tip () =
+    List.hd_opt (get_call_stack ())
 
   let push_async_frame frame f =
-    assert (List.is_empty !synchronous_call_stack);
     let stack = get_call_stack () in
     Fiber.Var.set call_stack_key (frame :: stack) f
 
   let push_sync_frame frame f =
-    let old = !synchronous_call_stack in
-    let new_ = frame :: old in
-    synchronous_call_stack := new_;
-    Exn.protect ~f ~finally:(fun () ->
-      assert ((==) !synchronous_call_stack new_);
-      synchronous_call_stack := old)
+    let stack = get_call_stack () in
+    Fiber.Var.set_sync call_stack_key (frame :: stack) f
 
 end
 

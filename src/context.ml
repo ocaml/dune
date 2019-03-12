@@ -30,8 +30,9 @@ module Env_nodes = struct
       let open Option.O in
       Option.value
         ~default:Env.empty
-        (l >>= fun stanza ->
-         Dune_env.Stanza.find stanza ~profile >>| fun env ->
+        (let* stanza = l in
+         let+ env = Dune_env.Stanza.find stanza ~profile
+         in
          env.env_vars)
     in
     Env.extend_env
@@ -196,8 +197,7 @@ let ocamlfind_printconf_path ~env ~ocamlfind ~toolchain =
     | None -> args
     | Some s -> "-toolchain" :: s :: args
   in
-  Process.run_capture_lines ~env Strict ocamlfind args
-  >>| fun l ->
+  let+ l = Process.run_capture_lines ~env Strict ocamlfind args in
   List.map l ~f:Path.of_filename_relative_to_initial_cwd
 
 let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
@@ -234,7 +234,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       match findlib_toolchain with
       | None -> Fiber.return None
       | Some toolchain ->
-        Lazy.force findlib_config_path >>| fun path ->
+        let+ path = Lazy.force findlib_config_path in
         Some (Findlib.Config.load path ~toolchain ~context:name)
     in
     let get_tool_using_findlib_config prog =
@@ -331,16 +331,17 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       | Error (Makefile_config file, msg) ->
         Errors.fail (Loc.in_file file) "%s" msg
     in
-    Fiber.fork_and_join
-      findlib_paths
-      (fun () ->
-         Process.run_capture_lines ~env Strict ocamlc ["-config"]
-         >>| fun lines ->
-         ocaml_config_ok_exn
-           (match Ocaml_config.Vars.of_lines lines with
-            | Ok vars -> Ocaml_config.make vars
-            | Error msg -> Error (Ocamlc_config, msg)))
-    >>= fun (findlib_paths, ocfg) ->
+    let* (findlib_paths, ocfg) =
+      Fiber.fork_and_join
+        findlib_paths
+        (fun () ->
+          let+ lines =
+            Process.run_capture_lines ~env Strict ocamlc ["-config"] in
+          ocaml_config_ok_exn
+            (match Ocaml_config.Vars.of_lines lines with
+              | Ok vars -> Ocaml_config.make vars
+              | Error msg -> Error (Ocamlc_config, msg)))
+    in
     let version = Ocaml_version.of_ocaml_config ocfg in
     let env =
       (* See comment in ansi_color.ml for setup_env_for_colors.
@@ -499,16 +500,19 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
   in
 
   let implicit = not (List.mem ~set:targets Workspace.Context.Target.Native) in
-  create_one ~host:None ~findlib_toolchain:host_toolchain ~implicit ~name ~merlin
-  >>= fun native ->
-  Fiber.parallel_map targets ~f:(function
-    | Native -> Fiber.return None
-    | Named findlib_toolchain ->
-      let name = sprintf "%s.%s" name findlib_toolchain in
-      create_one ~implicit:false ~name ~host:(Some native) ~merlin:false
-        ~findlib_toolchain:(Some findlib_toolchain)
-      >>| Option.some)
-  >>| fun others ->
+  let* native =
+    create_one ~host:None ~findlib_toolchain:host_toolchain
+      ~implicit ~name ~merlin
+  in
+  let+ others =
+    Fiber.parallel_map targets ~f:(function
+      | Native -> Fiber.return None
+      | Named findlib_toolchain ->
+        let name = sprintf "%s.%s" name findlib_toolchain in
+        create_one ~implicit:false ~name ~host:(Some native) ~merlin:false
+          ~findlib_toolchain:(Some findlib_toolchain)
+        >>| Option.some)
+  in
   native :: List.filter_opt others
 
 let opam_config_var t var =
@@ -525,16 +529,18 @@ let opam_version =
     match !res with
     | Some future -> Fiber.Future.wait future
     | None ->
-      Fiber.fork (fun () ->
-        Process.run_capture_line Strict ~env opam ["--version"]
-        >>| fun s ->
-        try
-          Scanf.sscanf s "%d.%d.%d" (fun a b c -> a, b, c)
-        with _ ->
-          die "@{<error>Error@}: `%a config --version' \
-               returned invalid output:\n%s"
-            Path.pp opam s)
-      >>= fun future ->
+      let* future =
+        Fiber.fork (fun () ->
+          let+ version =
+            Process.run_capture_line Strict ~env opam ["--version"]
+          in
+          try
+            Scanf.sscanf version "%d.%d.%d" (fun a b c -> a, b, c)
+          with _ ->
+            die "@{<error>Error@}: `%a config --version' \
+                 returned invalid output:\n%s"
+              Path.pp opam version)
+      in
       res := Some future;
       Fiber.Future.wait future
 
@@ -628,9 +634,10 @@ let install_ocaml_libdir t =
     (* If ocamlfind is present, it has precedence over everything else. *)
     match which t "ocamlfind" with
     | Some fn ->
-      (Process.run_capture_line ~env:t.env Strict fn ["printconf"; "destdir"]
-       >>| fun s ->
-       Some (Path.of_filename_relative_to_initial_cwd s))
+      let+ s =
+        Process.run_capture_line ~env:t.env Strict fn ["printconf"; "destdir"]
+      in
+      Some (Path.of_filename_relative_to_initial_cwd s)
     | None ->
       Fiber.return None
 

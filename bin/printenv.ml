@@ -33,7 +33,7 @@ let term =
   let log = Log.create common in
   Scheduler.go ~log ~common (fun () ->
     let open Fiber.O in
-    Import.Main.setup ~log common >>= fun setup ->
+    let* setup = Import.Main.setup ~log common in
     let dir = Path.of_string dir in
     Util.check_path setup.workspace.contexts dir;
     let request =

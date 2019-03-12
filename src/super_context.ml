@@ -73,8 +73,8 @@ module Env : sig
 end = struct
   let get_env_stanza t ~dir =
     let open Option.O in
-    stanzas_in t ~dir >>= fun x ->
-    List.find_map x.data ~f:(function
+    let* stanza = stanzas_in t ~dir in
+    List.find_map stanza.data ~f:(function
       | Dune_env.T config -> Some config
       | _ -> None)
 

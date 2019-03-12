@@ -30,8 +30,7 @@ let make ~dir ~inherit_from ~scope ~config ~env =
 
 let find_config t ~profile =
   let open Option.O in
-  t.config >>= fun config ->
-  Dune_env.Stanza.find config ~profile
+  t.config >>= Dune_env.Stanza.find ~profile
 
 let local_binaries t ~profile ~expander =
   match t.local_binaries with

@@ -61,8 +61,8 @@ module Modules = struct
                   assert false
                 | Some lib ->
                   let open Result.O in
-                  Lib.main_module_name lib >>= fun main_module_name ->
-                  Lib.wrapped lib >>| fun wrapped ->
+                  let* main_module_name = Lib.main_module_name lib in
+                  let+ wrapped = Lib.wrapped lib in
                   (main_module_name, Option.value_exn wrapped)
               )
           in

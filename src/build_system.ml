@@ -579,7 +579,7 @@ module Build_exec = struct
       | Env_var _ ->
         x
       | Memo m ->
-        match m.state with
+        begin match m.state with
         | Evaluated (x, deps) ->
           dyn_deps := Dep.Set.union !dyn_deps deps;
           x
@@ -596,6 +596,8 @@ module Build_exec = struct
           | exception exn ->
             m.state <- Unevaluated;
             reraise exn
+        end
+      | Universe -> x
     in
     let dyn_deps = ref Dep.Set.empty in
     let result = exec dyn_deps (Build.repr t) x in
@@ -1131,23 +1133,6 @@ let all_targets () =
           ~dir:(Path.append ctx.Context.build_dir (File_tree.Dir.path dir))));
   Path.Table.foldi t.files ~init:[] ~f:(fun key _ acc -> key :: acc)
 
-let universe_file = Path.relative Path.build_dir ".universe-state"
-
-let update_universe t =
-  (* To workaround the fact that [mtime] is not precise enough on OSX *)
-  Utils.Cached_digest.remove universe_file;
-  let n =
-    if Path.exists universe_file then
-      Dune_lang.Decoder.(parse int) Univ_map.empty
-        (Dune_lang.Io.load ~mode:Single universe_file) + 1
-    else
-      0
-  in
-  make_local_dirs t ~dirs:(Path.Set.singleton Path.build_dir);
-  Dune_lang.Encoder.int n
-  |> Dune_lang.to_string ~syntax:Dune
-  |> Io.write_file universe_file
-
 let build_file_def =
   Memo.create
     "build-file"
@@ -1276,10 +1261,11 @@ let () =
         | None, Some c -> c.env
       in
       let trace =
-        ( Dep.Set.trace deps ~env,
-          List.map targets_as_list ~f:Path.to_string,
-          Option.map context ~f:(fun c -> c.name),
-          Action.for_shell action)
+        ( Dep.Set.trace deps ~env
+        , List.map targets_as_list ~f:Path.to_string
+        , Option.map context ~f:(fun c -> c.name)
+        , Action.for_shell action
+        )
       in
       Digest.string (Marshal.to_string trace [])
     in
@@ -1290,7 +1276,8 @@ let () =
     in
     let sandbox_dir =
       if sandbox then
-        Some (Path.relative sandbox_dir (Digest.to_string rule_digest))
+        let digest = Digest.to_string rule_digest in
+        Some (Path.relative sandbox_dir digest)
       else
         None
     in
@@ -1299,8 +1286,8 @@ let () =
       List.exists targets_as_list ~f:Path.is_alias_stamp_file
     in
     let something_changed =
-      match prev_trace, targets_digest with
-      | Some prev_trace, Some targets_digest ->
+      match prev_trace, targets_digest, Dep.Set.has_universe deps with
+      | Some prev_trace, Some targets_digest, false ->
         prev_trace.rule_digest <> rule_digest ||
         prev_trace.targets_digest <> targets_digest
       | _ -> true
@@ -1417,7 +1404,6 @@ let process_memcycle exn =
 let do_build ~request =
   let t = t () in
   Hooks.End_of_build.once Promotion.finalize;
-  update_universe t; (* ? *)
   (fun () -> build_request t ~request)
   |> Fiber.with_error_handler ~on_error:(
     Exn_with_backtrace.map_and_reraise

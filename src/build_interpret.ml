@@ -114,6 +114,7 @@ let static_deps t ~all_targets ~file_tree =
     | Lazy_no_targets t -> loop (Lazy.force t) acc false
     | Env_var var ->
       Static_deps.add_action_env_var acc var
+    | Universe -> Static_deps.add_action_dep acc Dep.universe
   in
   loop (Build.repr t) Static_deps.empty true
 
@@ -143,6 +144,7 @@ let lib_deps =
       | Memo m -> loop m.t acc
       | Catch (t, _) -> loop t acc
       | Lazy_no_targets t -> loop (Lazy.force t) acc
+      | Universe -> acc
       | Env_var _ -> acc
   in
   fun t -> loop (Build.repr t) Lib_name.Map.empty
@@ -187,6 +189,7 @@ let targets =
     | Memo m -> loop m.t acc
     | Catch (t, _) -> loop t acc
     | Lazy_no_targets _ -> acc
+    | Universe -> acc
     | Env_var _ -> acc
   in
   fun t -> loop (Build.repr t) []

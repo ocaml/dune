@@ -27,6 +27,9 @@ val add_action_paths : t -> Path.Set.t -> t
 (** Add an environment variable as an action dep. *)
 val add_action_env_var : t -> string -> t
 
+(** Add a dependency to action deps. *)
+val add_action_dep : t -> Dep.t -> t
+
 (** {1} Deconstructors *)
 
 (** Return the rule deps. *)

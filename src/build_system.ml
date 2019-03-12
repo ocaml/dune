@@ -120,8 +120,8 @@ module Internal_rule = struct
   let lib_deps t =
     (* Forcing this lazy ensures that the various globs and
        [if_file_exists] are resolved inside the [Build.t] value. *)
-    Fiber.Once.get t.static_deps
-    >>| (fun _ -> Build_interpret.lib_deps t.build)
+    let+ _ = Fiber.Once.get t.static_deps in
+    Build_interpret.lib_deps t.build
 
   (* Represent the build goal given by the user. This rule is never
      actually executed and is only used starting point of all
@@ -1178,11 +1178,9 @@ let build_deps = Dep.Set.parallel_iter ~f:build_file
 let evaluate_action_and_dynamic_deps_def =
   let f (rule : Internal_rule.t) =
     let t = t () in
-    Fiber.Once.get rule.static_deps
-    >>= fun static_deps ->
+    let* static_deps = Fiber.Once.get rule.static_deps in
     let rule_deps = Static_deps.rule_deps static_deps in
-    build_deps rule_deps
-    >>| fun () ->
+    let+ () = build_deps rule_deps in
     Build_exec.exec t rule.build ()
   in
   Memo.create
@@ -1209,10 +1207,8 @@ let () =
     |> Option.bind ~f:(fun rule -> rule.Internal_rule.loc))
 
 let evaluate_rule (rule : Internal_rule.t) =
-  Fiber.Once.get rule.static_deps
-  >>= fun static_deps ->
-  evaluate_action_and_dynamic_deps rule
-  >>| fun (action, dynamic_action_deps) ->
+  let* static_deps = Fiber.Once.get rule.static_deps in
+  let+ (action, dynamic_action_deps) = evaluate_action_and_dynamic_deps rule in
   let static_action_deps = Static_deps.action_deps static_deps in
   let action_deps = Dep.Set.union static_action_deps dynamic_action_deps in
   (action, action_deps)
@@ -1222,10 +1218,8 @@ let evaluate_rule (rule : Internal_rule.t) =
    as it is easier to read the one bellow. The reader only has to
    check that both function do the same thing. *)
 let _evaluate_rule_and_wait_for_dependencies rule =
-  evaluate_rule rule
-  >>= fun (action, action_deps) ->
-  build_deps action_deps
-  >>| fun () ->
+  let* (action, action_deps) = evaluate_rule rule in
+  let+ () = build_deps action_deps in
   (action, action_deps)
 
 (* The following function does exactly the same as the function above
@@ -1234,14 +1228,15 @@ let _evaluate_rule_and_wait_for_dependencies rule =
    do this to increase opportunities for parallelism.
 *)
 let evaluate_rule_and_wait_for_dependencies (rule : Internal_rule.t) =
-  Fiber.Once.get rule.static_deps >>= fun static_deps ->
+  let* static_deps = Fiber.Once.get rule.static_deps in
   let static_action_deps = Static_deps.action_deps static_deps in
   (* Build the static dependencies in parallel with evaluation the
      action and dynamic dependencies *)
-  Fiber.fork_and_join_unit
-    (fun () -> build_deps static_action_deps)
-    (fun () -> evaluate_action_and_dynamic_deps rule)
-  >>= fun (action, dynamic_action_deps) ->
+  let* (action, dynamic_action_deps) =
+    Fiber.fork_and_join_unit
+      (fun () -> build_deps static_action_deps)
+      (fun () -> evaluate_action_and_dynamic_deps rule)
+  in
   build_deps dynamic_action_deps
   >>>
   let action_deps = Dep.Set.union static_action_deps dynamic_action_deps in
@@ -1268,8 +1263,7 @@ let () =
         } = rule
     in
     start_rule t rule;
-    evaluate_rule_and_wait_for_dependencies rule
-    >>= fun (action, deps) ->
+    let* (action, deps) = evaluate_rule_and_wait_for_dependencies rule in
     make_local_dir t dir;
     let targets_as_list  = Path.Set.to_list targets  in
     let head_target = List.hd targets_as_list in
@@ -1330,9 +1324,10 @@ let () =
               ~targets:targets_as_list
         in
         make_local_dirs t ~dirs:(Action.chdirs action);
-        with_locks locks ~f:(fun () ->
-          Action_exec.exec ~context ~env ~targets action)
-        >>| fun () ->
+        let+ () =
+          with_locks locks ~f:(fun () ->
+            Action_exec.exec ~context ~env ~targets action)
+        in
         Option.iter sandbox_dir ~f:Path.rm_rf;
         (* All went well, these targets are no longer pending *)
         pending_targets := Path.Set.diff !pending_targets targets;
@@ -1403,8 +1398,7 @@ let build_request t ~request =
     Fdecl.set result res
   in
   let rule = shim_of_build_goal t request in
-  evaluate_rule_and_wait_for_dependencies rule
-  >>| fun (_act, _deps) ->
+  let+ (_act, _deps) = evaluate_rule_and_wait_for_dependencies rule in
   Fdecl.get result
 
 let process_memcycle exn =
@@ -1689,8 +1683,7 @@ end = struct
         if Internal_rule.Id.Map.mem !rules rule.id then
           Fiber.return ()
         else begin
-          evaluate_rule rule
-          >>= fun (action, deps) ->
+          let* (action, deps) = evaluate_rule rule in
           let rule =
             { Rule.
               id = rule.id
@@ -1712,10 +1705,8 @@ end = struct
         | Some (File_spec.T file) -> run_rule file.rule
       in
       let rule_shim = shim_of_build_goal t request in
-      evaluate_rule rule_shim
-      >>= fun (_act, goal) ->
-      Dep.Set.parallel_iter goal ~f:proc_rule
-      >>| fun () ->
+      let* (_act, goal) = evaluate_rule rule_shim in
+      let+ () = Dep.Set.parallel_iter goal ~f:proc_rule in
       let rules =
         Internal_rule.Id.Map.fold !rules ~init:Path.Map.empty
           ~f:(fun (r : Rule.t) acc ->
@@ -1778,11 +1769,12 @@ end = struct
   let all_lib_deps ~request =
     let t = t () in
     let targets = static_deps_of_request t request in
-    rules_for_targets t targets >>= fun rules ->
-    Fiber.parallel_map rules ~f:(fun rule ->
-      Internal_rule.lib_deps rule >>| fun deps ->
-      (rule, deps))
-    >>| fun lib_deps ->
+    let* rules= rules_for_targets t targets in
+    let+ lib_deps =
+      Fiber.parallel_map rules ~f:(fun rule ->
+        let+ deps = Internal_rule.lib_deps rule in
+        (rule, deps))
+    in
     List.fold_left lib_deps ~init:[]
       ~f:(fun acc (rule, deps) ->
         if Lib_name.Map.is_empty deps then

@@ -30,7 +30,7 @@ let term =
   let (context, utop_path) =
     Scheduler.go ~log ~common (fun () ->
       let open Fiber.O in
-      Import.Main.setup ~log common >>= fun setup ->
+      let* setup = Import.Main.setup ~log common in
       let context =
         Import.Main.find_context_exn setup.workspace ~name:ctx_name
       in
@@ -46,7 +46,7 @@ let term =
         | Ok [File target] -> target
         | Ok _ -> assert false
       in
-      do_build setup [File target] >>| fun () ->
+      let+ () = do_build setup [File target] in
       (context, Path.to_string target))
   in
   Hooks.End_of_build.run ();

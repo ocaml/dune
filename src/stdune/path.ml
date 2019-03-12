@@ -781,6 +781,13 @@ let extract_build_context = function
           |> in_source_tree )
     end
 
+let extract_build_context_exn t =
+  match extract_build_context t with
+  | Some t -> t
+  | None -> Exn.code_error "Path.extract_build_context_exn"
+              ["t", to_sexp t]
+
+
 let extract_build_context_dir = function
   | In_source_tree _
   | External _ -> None
@@ -796,6 +803,12 @@ let extract_build_context_dir = function
           |> in_source_tree
         )
     end
+
+let extract_build_context_dir_exn t =
+  match extract_build_context_dir t with
+  | Some t -> t
+  | None -> Exn.code_error "Path.extract_build_context_dir_exn"
+              ["t", to_sexp t]
 
 let drop_build_context t =
   Option.map (extract_build_context t) ~f:snd

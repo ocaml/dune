@@ -588,19 +588,20 @@ module Pkg_config = struct
       match ocaml_config_var c "system" with
       | Some "macosx" -> begin
           let open Option.O in
-          which c "brew" >>= fun brew ->
-          (let prefix =
-             String.trim (Process.run_capture_exn c ~dir brew ["--prefix"])
-           in
-           let p = sprintf "%s/opt/%s/lib/pkgconfig"
-                     (quote_if_needed prefix) package
-           in
-           Option.some_if (
-             match Sys.is_directory p with
-             | s -> s
-             | exception Sys_error _ -> false)
-             p)
-          >>| fun new_pkg_config_path ->
+          let* brew = which c "brew" in
+          let+ new_pkg_config_path =
+            let prefix =
+              String.trim (Process.run_capture_exn c ~dir brew ["--prefix"])
+            in
+            let p = sprintf "%s/opt/%s/lib/pkgconfig"
+                      (quote_if_needed prefix) package
+            in
+            Option.some_if (
+              match Sys.is_directory p with
+              | s -> s
+              | exception Sys_error _ -> false)
+              p
+          in
           let _PKG_CONFIG_PATH = "PKG_CONFIG_PATH" in
           let pkg_config_path =
             match Sys.getenv _PKG_CONFIG_PATH with

@@ -65,4 +65,10 @@ module Set = struct
   let paths t = Path.Set.of_list (file_list t)
 
   let parallel_iter t ~f = Fiber.parallel_iter ~f (file_list t)
+
+  let dirs t =
+    fold t ~init:Path.Set.empty ~f:(fun f acc ->
+      match f with
+      | File f -> Path.Set.add acc (Path.parent_exn f)
+      | Env _ -> acc)
 end

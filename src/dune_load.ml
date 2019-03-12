@@ -201,9 +201,8 @@ end
            in
          ]}
       *)
-      Process.run Strict ~dir ~env:context.env context.ocaml
-        args
-      >>= fun () ->
+      let* () =
+        Process.run Strict ~dir ~env:context.env context.ocaml args in
       if not (Path.exists generated_dune_file) then
         die "@{<error>Error:@} %s failed to produce a valid dune_file file.\n\
              Did you forgot to call [Jbuild_plugin.V*.send]?"

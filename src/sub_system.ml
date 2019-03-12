@@ -37,7 +37,7 @@ module Register_backend(M : Backend) = struct
 
   let resolve db (loc, name) =
     let open Result.O in
-    Lib.DB.resolve db (loc, name) >>= fun lib ->
+    let* lib = Lib.DB.resolve db (loc, name) in
     match get lib with
     | None ->
       Error (Errors.exnf loc "%a is not %s %s" Lib_name.pp_quoted name
@@ -90,10 +90,8 @@ module Register_backend(M : Backend) = struct
 
   let select_extensible_backends ?written_by_user ~extends to_scan =
     let open Result.O in
-    written_by_user_or_scan ~written_by_user ~to_scan
-    >>= fun backends ->
-    wrap (top_closure backends ~deps:extends)
-    >>= fun backends ->
+    let* backends = written_by_user_or_scan ~written_by_user ~to_scan in
+    let* backends = wrap (top_closure backends ~deps:extends) in
     let roots =
       let all = Set.of_list backends in
       List.fold_left backends ~init:all ~f:(fun acc t ->
@@ -107,10 +105,9 @@ module Register_backend(M : Backend) = struct
 
   let select_replaceable_backend ?written_by_user ~replaces to_scan =
     let open Result.O in
-    written_by_user_or_scan ~written_by_user ~to_scan
-    >>= fun backends ->
-    wrap (Result.List.concat_map backends ~f:replaces)
-    >>= fun replaced_backends ->
+    let* backends = written_by_user_or_scan ~written_by_user ~to_scan in
+    let* replaced_backends =
+      wrap (Result.List.concat_map backends ~f:replaces) in
     match
       Set.diff (Set.of_list backends) (Set.of_list replaced_backends)
       |> Set.to_list

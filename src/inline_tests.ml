@@ -73,7 +73,7 @@ module Backend = struct
       ; extends =
           let open Result.O in
           Result.List.map info.extends ~f:(fun ((loc, name) as x) ->
-            resolve x >>= fun lib ->
+            let* lib = resolve x in
             match get ~loc lib with
             | None ->
               Error (Errors.exnf loc "%S is not an %s"
@@ -197,13 +197,17 @@ include Sub_system.Register_end_point(
 
       let runner_libs =
         let open Result.O in
-        Result.List.concat_map backends
-          ~f:(fun (backend : Backend.t) -> backend.runner_libraries)
-        >>= fun libs ->
-        Lib.DB.find_many ~loc (Scope.libs scope) [Dune_file.Library.best_name lib]
-        >>= fun lib ->
-        Result.List.map info.libraries ~f:(Lib.DB.resolve (Scope.libs scope))
-        >>= fun more_libs ->
+        let* libs =
+          Result.List.concat_map backends
+            ~f:(fun (backend : Backend.t) -> backend.runner_libraries)
+        in
+        let* lib =
+          Lib.DB.find_many ~loc
+            (Scope.libs scope) [Dune_file.Library.best_name lib]
+        in
+        let* more_libs =
+          Result.List.map info.libraries ~f:(Lib.DB.resolve (Scope.libs scope))
+        in
         Lib.closure ~linking:true (lib @ libs @ more_libs)
       in
 

@@ -923,14 +923,9 @@ let closure_with_overlap_checks db l =
 
 let closure l = closure_with_overlap_checks None l
 
-let to_exn res =
-  match res with
-  | Ok    x -> x
-  | Error e -> raise e
-
-let requires_exn         t = to_exn t.requires
-let ppx_runtime_deps_exn t = to_exn t.ppx_runtime_deps
-let closure_exn          l ~linking = to_exn (closure l ~linking)
+let requires_exn         t = Result.ok_exn t.requires
+let ppx_runtime_deps_exn t = Result.ok_exn t.ppx_runtime_deps
+let closure_exn          l ~linking = Result.ok_exn (closure l ~linking)
 
 module Compile = struct
   module Resolved_select = Resolved_select
@@ -1312,5 +1307,5 @@ let to_dune_lib ({ name ; info ; _ } as lib) ~lib_modules ~foreign_objects ~dir 
     ~implements:info.implements
     ~virtual_
     ~modules:(Some lib_modules)
-    ~main_module_name:(to_exn (main_module_name lib))
+    ~main_module_name:(Result.ok_exn (main_module_name lib))
     ~sub_systems:(Sub_system.dump_config lib)

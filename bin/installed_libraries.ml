@@ -17,17 +17,18 @@ let term =
   let env = Import.Main.setup_env ~capture_outputs:common.capture_outputs in
   Scheduler.go ~log:(Log.create common) ~common (fun () ->
     let open Fiber.O in
-    Context.create ~env
-      { merlin_context = Some "default"
-      ; contexts = [Default { loc = Loc.of_pos __POS__
-                            ; targets   = [Native]
-                            ; profile   = Config.default_build_profile
-                            ; env       = None
-                            ; toolchain = None
-                            }]
-      ; env = None
-      }
-    >>= fun ctxs ->
+    let* ctxs =
+      Context.create ~env
+        { merlin_context = Some "default"
+        ; contexts = [Default { loc = Loc.of_pos __POS__
+                              ; targets   = [Native]
+                              ; profile   = Config.default_build_profile
+                              ; env       = None
+                              ; toolchain = None
+                              }]
+        ; env = None
+        }
+    in
     let ctx = List.hd ctxs in
     let findlib = ctx.findlib in
     if na then begin

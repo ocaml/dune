@@ -22,4 +22,6 @@ module Set : sig
 
   val parallel_iter : t -> f:(Path.t -> unit Fiber.t) -> unit Fiber.t
   val pp : t Fmt.t
+
+  val dirs : t -> Path.Set.t
 end

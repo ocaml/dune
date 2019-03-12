@@ -25,6 +25,7 @@ module type S = sig
   val min_elt        : t -> elt option
   val max_elt        : t -> elt option
   val choose         : t -> elt option
+  val choose_exn     : t -> elt
   val split          : t -> elt -> t * bool * t
   val of_list        : elt list -> t
   val to_list        : t -> elt list

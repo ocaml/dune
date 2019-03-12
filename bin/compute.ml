@@ -32,8 +32,9 @@ let term =
   let action =
     Scheduler.go ~log ~common (fun () ->
       let open Fiber.O in
-      Import.Main.setup ~log common ~external_lib_deps_mode:true
-      >>= fun _setup ->
+      let* _setup =
+        Import.Main.setup ~log common ~external_lib_deps_mode:true
+      in
       match fn, inp with
       | "list", None ->
         Fiber.return `List
@@ -47,7 +48,7 @@ let term =
             ~fname:"<command-line>"
             ~mode:Dune_lang.Parser.Mode.Single inp
         in
-        Memo.call fn sexp >>| fun res ->
+        let+ res = Memo.call fn sexp in
         `Result res
       | fn, None ->
         Fiber.return (`Error (sprintf "argument missing for '%s'" fn))

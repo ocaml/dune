@@ -6,7 +6,7 @@ type t = {
   backtrace : Printexc.raw_backtrace;
 }
 
-val try_with : ('a -> 'b) -> 'a -> ('b, t) Result.t
+val try_with : (unit -> 'a) -> ('a, t) Result.t
 
 (** This function should be the very first thing called in the exception handler if you
     want it to work correctly. Otherwise it might capture an incorrect backtrace. *)

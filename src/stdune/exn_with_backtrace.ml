@@ -7,8 +7,8 @@ type t = {
 let capture exn =
   { exn; backtrace = Printexc.get_raw_backtrace () }
 
-let try_with f x =
-  match f x with
+let try_with f =
+  match f () with
   | r -> Result.Ok r
   | exception exn ->
     Error (capture exn)

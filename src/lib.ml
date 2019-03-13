@@ -212,6 +212,8 @@ and resolve_result =
 
 type lib = t
 
+let to_dyn t = Lib_name.to_dyn t.name
+
 let not_available ~loc reason fmt =
   Errors.kerrf fmt ~f:(fun s ->
     Errors.fail loc "%s %a" s
@@ -274,6 +276,8 @@ let package t =
     None
 
 let to_id t : Id.t = t.unique_id
+
+let equal l1 l2 = Id.equal (to_id l1) (to_id l2)
 
 module Set = Set.Make(
 struct

@@ -6,6 +6,8 @@ open Import
 (** Representation of a library *)
 type t
 
+val to_dyn : t -> Dyn.t
+
 (** For libraries defined in the workspace, this is the [public_name] if
     present or the [name] if not. *)
 val name : t -> Lib_name.t
@@ -54,6 +56,8 @@ module Map : Map.S with type key = t
 val status : t -> Lib_info.Status.t
 
 val package : t -> Package.Name.t option
+
+val equal : t -> t -> bool
 
 (** Operations on list of libraries *)
 module L : sig

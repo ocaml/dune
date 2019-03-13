@@ -327,24 +327,53 @@ module Gen (S : sig val sctx : SC.t end) = struct
           (Path.Set.of_list (List.rev_append static_html html_files));
       end
 
-  let setup_pkg_html_rules =
-    let loaded = Package.Name.Table.create ~default_value:false in
-    fun ~pkg ~libs ->
-      if not (Package.Name.Table.get loaded pkg) then begin
-        Package.Name.Table.set loaded ~key:pkg ~data:true;
-        let requires = Lib.closure libs ~linking:false in
-        List.iter libs ~f:(setup_lib_html_rules ~requires);
-        let pkg_odocs = odocs (Pkg pkg) in
-        List.iter pkg_odocs ~f:(setup_html ~requires);
-        let odocs =
-          List.concat (
-            pkg_odocs
-            :: (List.map libs ~f:(fun lib -> odocs (Lib lib)))
-          ) in
-        let html_files = List.map ~f:(fun o -> o.html_file) odocs in
-        Build_system.Alias.add_deps (Dep.html_alias (Pkg pkg))
-          (Path.Set.of_list (List.rev_append static_html html_files))
-      end
+  let setup_pkg_html_rules_def =
+    let module Input = struct
+      type t = Package.Name.t * Lib.t list
+
+      let equal (p1, l1) (p2, l2) =
+        Package.Name.equal p1 p2
+        && List.equal Lib.equal l1 l2
+
+      let hash = Hashtbl.hash
+
+      let to_sexp (package, libs) =
+        let open Dyn in
+        Tuple
+          [ Package.Name.to_dyn package
+          ; List (List.map ~f:Lib.to_dyn libs)
+          ]
+        |> Dyn.to_sexp
+    end
+    in
+    Memo.create "setup-package-html-rules"
+      ~output:(Allow_cutoff (module Unit))
+      ~doc:"setup odoc package html rules"
+      ~input:(module Input)
+      ~visibility:Hidden
+      Sync
+      None
+
+  let () =
+    let setup_pkg_html_rules (pkg, libs) =
+      let requires = Lib.closure libs ~linking:false in
+      List.iter libs ~f:(setup_lib_html_rules ~requires);
+      let pkg_odocs = odocs (Pkg pkg) in
+      List.iter pkg_odocs ~f:(setup_html ~requires);
+      let odocs =
+        List.concat (
+          pkg_odocs
+          :: (List.map libs ~f:(fun lib -> odocs (Lib lib)))
+        ) in
+      let html_files = List.map ~f:(fun o -> o.html_file) odocs in
+      Build_system.Alias.add_deps (Dep.html_alias (Pkg pkg))
+        (Path.Set.of_list (List.rev_append static_html html_files))
+    in
+    Memo.set_impl setup_pkg_html_rules_def setup_pkg_html_rules
+
+
+  let setup_pkg_html_rules ~pkg ~libs =
+    Memo.exec setup_pkg_html_rules_def (pkg, libs)
 
   let gen_rules ~dir:_ rest =
     match rest with

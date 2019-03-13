@@ -107,7 +107,6 @@ let main () =
 
     let buf = Buffer.create (String.length file_contents + 1024) in
     let ppf = Format.formatter_of_buffer buf in
-    let null_ppf = Format.make_formatter (fun _ _ _ -> ()) (fun () -> ()) in
     List.iter chunks ~f:(fun (kind, pos, s) ->
       begin match kind with
       | Ignore -> Format.fprintf ppf "%s[%%%%ignore]@." s
@@ -119,12 +118,12 @@ let main () =
       let phrases = !Toploop.parse_use_file lexbuf in
       List.iter phrases ~f:(fun phr ->
         try
-          let ppf =
+          let print_types_and_values =
             match kind with
-            | Expect | Error -> ppf
-            | Ignore -> null_ppf
+            | Expect | Error -> true
+            | Ignore -> false
           in
-          ignore (Toploop.execute_phrase true ppf phr : bool)
+          ignore (Toploop.execute_phrase print_types_and_values ppf phr : bool)
         with exn ->
           let ppf =
             match kind with

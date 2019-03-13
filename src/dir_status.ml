@@ -107,7 +107,7 @@ module DB = struct
           Memo.create
             "get-dir-status"
             ~input:(module Path)
-            ~visibility:(Public Path_dune_lang.decode)
+            ~visibility:Hidden
             ~output:(Simple (module T))
             ~doc:"Get a directory status."
             Sync

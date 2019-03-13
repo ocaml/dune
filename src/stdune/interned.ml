@@ -77,6 +77,7 @@ module Make(R : Settings)() = struct
     let set t ~key ~data =
       if key >= Array.length t.data then resize t;
       t.data.(key) <- data
+
   end
 
   let names = Table.create ~default_value:""

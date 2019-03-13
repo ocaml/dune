@@ -228,7 +228,12 @@ let sync_fib =
     else
       mfib (x - 1) + mfib (x - 2)
   in
-  let fn = sync_int_fn_create "fib" ~output:(Allow_cutoff (module Int)) (Some compfib) ~doc:"" in
+  let fn =
+    sync_int_fn_create
+      "sync-fib"
+      ~output:(Allow_cutoff (module Int))
+      (Some compfib) ~doc:""
+  in
   Fdecl.set mfib fn;
   fn;;
 [%%ignore]

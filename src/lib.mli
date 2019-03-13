@@ -58,6 +58,7 @@ val status : t -> Lib_info.Status.t
 val package : t -> Package.Name.t option
 
 val equal : t -> t -> bool
+val hash : t -> int
 
 (** Operations on list of libraries *)
 module L : sig

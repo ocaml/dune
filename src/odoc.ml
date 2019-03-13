@@ -335,7 +335,8 @@ module Gen (S : sig val sctx : SC.t end) = struct
         Package.Name.equal p1 p2
         && List.equal Lib.equal l1 l2
 
-      let hash = Hashtbl.hash
+      let hash (p, ls) =
+        Hashtbl.hash (Package.Name.hash p, List.hash Lib.hash ls)
 
       let to_sexp (package, libs) =
         let open Dyn in
@@ -489,7 +490,8 @@ module Gen (S : sig val sctx : SC.t end) = struct
     let module Input = struct
       type t = Package.Name.t * Path.t list
 
-      let hash = Hashtbl.hash
+      let hash (p, ps) =
+        Hashtbl.hash (Package.Name.hash p, List.hash Path.hash ps)
 
       let equal (x1, y1) (x2, y2) =
         Package.Name.equal x1 x2 && List.equal Path.equal y1 y2

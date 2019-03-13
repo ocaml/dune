@@ -1,5 +1,6 @@
 module type S = sig
   type t
+  val hash : t -> int
   val equal : t -> t -> bool
   val compare : t -> t -> Ordering.t
   val to_dyn : t -> Dyn.t
@@ -90,6 +91,7 @@ module Make(R : Settings)() = struct
   let get s = Hashtbl.find ids s
 
   let to_string t = Table.get names t
+  let hash t = String.hash (to_string t)
   let to_dyn t = Dyn.String (to_string t)
 
   let all () = List.init !next ~f:(fun t -> t)
@@ -125,6 +127,7 @@ module No_interning(R : Settings)() = struct
   type t = string
 
   let compare = String.compare
+  let hash = String.hash
   let equal = String.equal
   let make s = s
   let to_string s = s

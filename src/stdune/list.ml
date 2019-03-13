@@ -154,3 +154,5 @@ let rec equal eq xs ys =
   | [], [] -> true
   | x :: xs, y :: ys -> eq x y && equal eq xs ys
   | _, _ -> false
+
+let hash f xs = Dune_caml.Hashtbl.hash (map ~f xs)

@@ -95,11 +95,16 @@ module Spec = struct
 
   let by_name = Function_name.Table.create ~default_value:None
 
-  let register t =
-    Function_name.Table.set by_name ~key:t.name ~data:(Some (T t))
-
   let find name =
     Function_name.Table.get by_name name
+
+  let register t =
+    match find t.name with
+    | Some _ ->
+      Exn.code_error "[Spec.register] called twice on the same function" []
+    | None ->
+      Function_name.Table.set by_name ~key:t.name ~data:(Some (T t))
+
 end
 
 module Id = Id.Make()

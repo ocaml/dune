@@ -2,7 +2,9 @@
 
 module type S = sig
   type t
+  val equal : t -> t -> bool
   val compare : t -> t -> Ordering.t
+  val to_dyn : t -> Dyn.t
   val to_string : t -> string
   val pp : t Fmt.t
 

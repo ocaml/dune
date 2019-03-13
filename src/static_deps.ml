@@ -30,6 +30,11 @@ let add_rule_path t fn =
     rule_deps = Dep.Set.add t.rule_deps (Dep.file fn)
   }
 
+let add_action_dep t dep =
+  { t with
+    action_deps = Dep.Set.add t.action_deps dep
+  }
+
 let add_action_paths t fns =
   { t with
     action_deps = Dep.Set.add_paths t.action_deps fns

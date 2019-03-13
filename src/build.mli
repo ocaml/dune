@@ -59,6 +59,8 @@ val lazy_no_targets : ('a, 'b) t Lazy.t -> ('a, 'b) t
     build arrow. *)
 val path  : Path.t -> ('a, 'a) t
 
+val universe : ('a, 'a) t
+
 val paths : Path.t list -> ('a, 'a) t
 val path_set : Path.Set.t -> ('a, 'a) t
 
@@ -210,6 +212,7 @@ module Repr : sig
     | Catch : ('a, 'b) t * (exn -> 'b) -> ('a, 'b) t
     | Lazy_no_targets : ('a, 'b) t Lazy.t -> ('a, 'b) t
     | Env_var : string -> ('a, 'a) t
+    | Universe : ('a, 'a) t
 
   and 'a memo =
     { name          : string

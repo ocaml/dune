@@ -56,13 +56,15 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
 
   let sctx = P.sctx
 
-  let gen_format_rules sctx ~dir =
+  let with_format sctx ~dir ~f =
     let scope = SC.find_scope_by_dir sctx dir in
     let project = Scope.project scope in
-    match Dune_project.find_extension_args project Auto_format.key with
-    | None -> ()
-    | Some config ->
-      Format_rules.gen_rules sctx config ~dir
+    Dune_project.find_extension_args project Auto_format.key
+    |> Option.iter ~f
+
+  let gen_format_rules sctx ~output_dir =
+    with_format sctx ~dir:output_dir
+      ~f:(Format_rules.gen_rules_output sctx ~output_dir)
 
   (* Stanza *)
 
@@ -201,7 +203,7 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
     cctxs
 
   let gen_rules dir_contents cctxs ~dir : (Loc.t * Compilation_context.t) list =
-    gen_format_rules sctx ~dir;
+    with_format sctx ~dir ~f:(fun _ -> Format_rules.gen_rules ~dir);
     match SC.stanzas_in sctx ~dir with
     | None -> []
     | Some d -> gen_rules dir_contents cctxs d
@@ -215,6 +217,7 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
      | ".ppx"  :: rest -> Preprocessing.gen_rules sctx rest
      | comps ->
        begin match List.last comps with
+       | Some ".formatted" -> gen_format_rules sctx ~output_dir:dir
        | Some ".bin" ->
          let src_dir = Path.parent_exn dir in
          Super_context.local_binaries sctx ~dir:src_dir

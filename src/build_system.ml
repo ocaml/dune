@@ -310,9 +310,11 @@ module Alias0 = struct
 end
 
 module Dir_status = struct
+
   type collection_stage =
-    | Loading
     | Pending
+    | Loading
+    | Frozen
 
   type alias_action =
     { stamp  : Digest.t
@@ -323,21 +325,165 @@ module Dir_status = struct
     ; loc : Loc.t option
     }
 
+  module Alias : sig
+    type t
+    type frozen
 
-  type alias =
-    { mutable deps     : Path.Set.t
-    ; mutable dyn_deps : (unit, Path.Set.t) Build.t
-    ; mutable actions  : alias_action list
-    }
+    val create : unit -> t
 
-  type rules_collector =
-    { mutable rules   : Build_interpret.Rule.t list
-    ; mutable aliases : alias String.Map.t
-    ; mutable stage   : collection_stage
-    }
+    type immutable =
+      { deps     : Path.Set.t
+      ; dyn_deps : (unit, Path.Set.t) Build.t
+      ; actions  : alias_action list
+      }
+
+    val _of_immutable : immutable -> frozen
+    val to_immutable : frozen -> immutable
+
+    val freeze : t -> frozen
+    val assert_frozen : t -> frozen
+
+    val add_deps : t -> Path.Set.t -> unit
+    val add_dyn_deps : t -> (unit, Path.Set.t) Build.t -> unit
+    val add_action : t -> alias_action -> unit
+  end = struct
+    type t =
+      { mutable deps     : Path.Set.t
+      ; mutable dyn_deps : (unit, Path.Set.t) Build.t
+      ; mutable actions  : alias_action list
+      ; mutable frozen : bool
+      }
+
+    let create () =
+      { deps     = Path.Set.empty
+      ; dyn_deps = Build.return Path.Set.empty
+      ; actions  = []
+      ; frozen = false
+      }
+
+    type immutable =
+      { deps     : Path.Set.t
+      ; dyn_deps : (unit, Path.Set.t) Build.t
+      ; actions  : alias_action list
+      }
+
+    let _of_immutable { deps; dyn_deps; actions } =
+      { deps; dyn_deps; actions; frozen = true }
+
+    let to_immutable { deps; dyn_deps; actions; frozen } =
+      assert frozen;
+      { deps; dyn_deps; actions }
+
+    type frozen = t
+
+    let freeze t =
+      if t.frozen
+      then Exn.code_error "Alias.freeze called twice" []
+      else (t.frozen <- true; t)
+
+    let assert_frozen t =
+      assert t.frozen;
+      t
+
+    let add_deps (t : t) deps =
+      assert (not t.frozen);
+      t.deps <- Path.Set.union t.deps deps
+
+    let add_dyn_deps (t : t) deps =
+      assert (not t.frozen);
+      t.dyn_deps <-
+        (let open Build.O in
+         Build.fanout t.dyn_deps deps >>^ fun (a, b) ->
+         Path.Set.union a b)
+
+    let add_action (t : t) action =
+      assert (not t.frozen);
+      t.actions <- action :: t.actions
+
+  end
+
+  module Rules_collector : sig
+    type t
+    type frozen
+
+    (** state transition diagram:
+        pending -> loading -> frozen *)
+
+    val create_pending : unit -> t
+    val start_loading :
+      t ->
+      (unit, [`Already_loading]) Result.t
+    val freeze : t -> frozen
+
+    val rules : frozen -> Build_interpret.Rule.t list
+    val aliases : frozen -> Alias.frozen String.Map.t
+
+    val add_rule : t -> Build_interpret.Rule.t -> unit
+    val modify_alias : t -> string -> f:(Alias.t -> unit) -> unit
+  end = struct
+    type t =
+      { mutable rules   : Build_interpret.Rule.t list
+      ; mutable aliases : Alias.t String.Map.t
+      ; mutable stage   : collection_stage
+      }
+    type frozen = t
+
+    let create_pending () =
+      { rules   = []
+      ; aliases = String.Map.empty
+      ; stage   = Pending
+      }
+
+    let rules t = t.rules
+    let aliases t = String.Map.map t.aliases ~f:Alias.assert_frozen
+
+    let assert_not_frozen t why = match t.stage with
+      | Frozen ->
+        Exn.code_error (sprintf "%s called on a frozen Rules_collector" why) []
+      | Pending ->
+        ()
+      | Loading ->
+        ()
+
+    let add_rule t rule =
+      assert_not_frozen t "add_rule";
+      t.rules <- rule :: t.rules
+
+    let modify_alias t name ~f =
+      assert_not_frozen t "modify_alias";
+      let def =
+        match String.Map.find t.aliases name with
+        | None ->
+          let alias = Alias.create () in
+          t.aliases <- String.Map.add t.aliases name alias;
+          alias
+        | Some x -> x
+      in
+      f def
+
+    let start_loading t = match t.stage with
+      | Frozen ->
+        Exn.code_error "start_loading called on a frozen Rules_collector" []
+      | Loading -> Error `Already_loading
+      | Pending ->
+        t.stage <- Loading;
+        (Ok ())
+
+    let freeze t =
+      match t.stage with
+      | Frozen ->
+        Exn.code_error "Rules_collector.freeze called twice" []
+      | Loading ->
+        t.stage <- Frozen;
+        (String.Map.iter t.aliases ~f:(fun x -> ignore (Alias.freeze x));
+         t)
+      | Pending ->
+        Exn.code_error "Rules_collector.freeze called while still Pending" []
+
+  end
 
   type t =
-    | Collecting_rules of rules_collector
+    | Collecting_rules of Rules_collector.t
     | Loaded  of Path.Set.t (* set of targets in the directory *)
     | Forward of Path.t (* Load this directory first       *)
     | Failed_to_load
@@ -487,10 +633,7 @@ let get_dir_status t ~dir =
         Dir_status.Loaded Path.Set.empty
       else
         Collecting_rules
-          { rules   = []
-          ; aliases = String.Map.empty
-          ; stage   = Pending
-          }
+          (Dir_status.Rules_collector.create_pending ())
     end)
 
 module Target = Build_interpret.Target
@@ -826,16 +969,15 @@ and load_dir_and_get_targets t ~dir =
 
   | Collecting_rules collector ->
     let () =
-      match collector.stage with
-      | Loading ->
+      match Dir_status.Rules_collector.start_loading collector with
+      | Error `Already_loading ->
         die "recursive dependency between directories:\n    %s"
           (String.concat ~sep:"\n--> "
              (List.map t.load_dir_stack ~f:Utils.describe_target))
-      | Pending ->
-        collector.stage <- Loading;
+      | Ok () ->
+        ()
     in
 
-    collector.stage <- Loading;
     t.load_dir_stack <- dir :: t.load_dir_stack;
 
     try
@@ -860,19 +1002,22 @@ and load_dir_step2_exn t ~dir ~collector =
     if context_name = "install" then
       These String.Set.empty
     else
-      let gen_rules =
-        String.Map.find_exn (Fdecl.get t.gen_rules) context_name in
+      let gen_rules = String.Map.find_exn (Fdecl.get t.gen_rules) context_name in
       gen_rules ~dir (Path.explode_exn sub_dir)
   in
-  let rules = collector.rules in
+  let collector = Dir_status.Rules_collector.freeze collector in
+  let rules = Dir_status.Rules_collector.rules collector in
 
   (* Compute alias rules *)
   let alias_dir = Path.append (Path.relative alias_dir context_name) sub_dir in
   let alias_rules, alias_stamp_files =
     let open Build.O in
-    let aliases = collector.aliases in
     let aliases =
-      if String.Map.mem collector.aliases "default" then
+      Dir_status.Rules_collector.aliases collector
+      |> String.Map.map ~f:Dir_status.Alias.to_immutable
+    in
+    let aliases =
+      if String.Map.mem aliases "default" then
         aliases
       else
         match Path.extract_build_context_dir dir with
@@ -883,15 +1028,15 @@ and load_dir_step2_exn t ~dir ~collector =
           | Some dir ->
             String.Map.add aliases "default"
               { deps = Path.Set.empty
-              ; dyn_deps =
-                  (Alias0.dep_rec_internal ~name:"install" ~dir ~ctx_dir
-                   >>^ fun (_ : bool) ->
-                   Path.Set.empty)
-              ; actions = []
-              }
+                 ; dyn_deps =
+                     (Alias0.dep_rec_internal ~name:"install" ~dir ~ctx_dir
+                      >>^ fun (_ : bool) ->
+                      Path.Set.empty)
+                 ; actions = []
+                 }
     in
     String.Map.foldi aliases ~init:([], Path.Set.empty)
-      ~f:(fun name { Dir_status. deps; dyn_deps; actions } (rules, alias_stamp_files) ->
+      ~f:(fun name { Dir_status.Alias.deps; dyn_deps; actions } (rules, alias_stamp_files) ->
         let base_path = Path.relative alias_dir name in
         let rules, deps =
           List.fold_left actions ~init:(rules, deps)
@@ -1516,8 +1661,7 @@ let rec add_build_dir_to_keep t ~dir =
 let get_collector t ~dir =
   match get_dir_status t ~dir with
   | Collecting_rules collector ->
-    if collector.rules = [] && String.Map.is_empty collector.aliases then
-      add_build_dir_to_keep t ~dir;
+    add_build_dir_to_keep t ~dir;
     collector
   | Failed_to_load -> raise Already_reported
   | Loaded _ | Forward _ ->
@@ -1541,7 +1685,7 @@ let add_rule (rule : Build_interpret.Rule.t) =
     | None -> rule
     | Some prefix -> { rule with build = Build.O.(>>>) prefix rule.build } in
   let collector = get_collector t ~dir:rule.dir in
-  collector.rules <- rule :: collector.rules
+  Dir_status.Rules_collector.add_rule collector rule
 
 let prefix_rules' t prefix ~f =
   let old_prefix = t.prefix in
@@ -1573,43 +1717,30 @@ let () =
 module Alias = struct
   include Alias0
 
-  let get_alias_def build_system t =
+  let modify_alias build_system t ~f =
     let collector = get_collector build_system ~dir:t.dir in
-    match String.Map.find collector.aliases t.name with
-    | None ->
-      let x =
-        { Dir_status.
-          deps     = Path.Set.empty
-        ; dyn_deps = Build.return Path.Set.empty
-        ; actions  = []
-        }
-      in
-      collector.aliases <- String.Map.add collector.aliases t.name x;
-      x
-    | Some x -> x
+    Dir_status.Rules_collector.modify_alias ~f collector t.name
 
   let add_deps t ?dyn_deps deps =
     let build_system = get_build_system () in
-    let def = get_alias_def build_system t in
-    def.deps <- Path.Set.union def.deps deps;
-    match dyn_deps with
-    | None -> ()
-    | Some build ->
-      let open Build.O in
-      def.dyn_deps <-
-        Build.fanout def.dyn_deps build >>^ fun (a, b) ->
-        Path.Set.union a b
+    modify_alias build_system t ~f:(fun def ->
+      Dir_status.Alias.add_deps def deps;
+      match dyn_deps with
+      | None -> ()
+      | Some build ->
+        Dir_status.Alias.add_dyn_deps def build)
 
   let add_action t ~context ~env ~loc ?(locks=[]) ~stamp action =
     let build_system = get_build_system () in
-    let def = get_alias_def build_system t in
-    def.actions <- { stamp = Digest.string (Marshal.to_string stamp [])
-                   ; action
-                   ; locks
-                   ; context
-                   ; loc
-                   ; env
-                   } :: def.actions
+    modify_alias build_system t ~f:(fun def ->
+      Dir_status.Alias.add_action def
+        { stamp = Digest.string (Marshal.to_string stamp [])
+        ; action
+        ; locks
+        ; context
+        ; loc
+        ; env
+        })
 end
 
 let targets_of ~dir = targets_of (t ()) ~dir

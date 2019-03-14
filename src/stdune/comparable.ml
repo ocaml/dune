@@ -5,6 +5,7 @@ end
 
 module type OPS = sig
   type t
+  val equal : t -> t -> bool
   val (=) : t -> t -> bool
   val (>=) : t -> t -> bool
   val (>) : t -> t -> bool
@@ -19,6 +20,8 @@ module Operators (X : S) = struct
     match X.compare a b with
     | Eq -> true
     | Gt | Lt -> false
+
+  let equal = (=)
 
   let (>=) a b =
     match X.compare a b with

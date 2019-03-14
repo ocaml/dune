@@ -58,3 +58,5 @@ end
 val to_sexp : t Sexp.Encoder.t
 
 val nest : t -> t -> t
+
+val to_dyn : t -> Dyn.t

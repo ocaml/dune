@@ -126,6 +126,8 @@ module Id : sig
     ; name      : Lib_name.t
     }
 
+  val hash : t -> int
+
   val compare : t -> t -> Ordering.t
 
   include Comparable.OPS with type t := t
@@ -157,6 +159,8 @@ end = struct
       let n = !next in
       next := n + 1;
       n
+
+  let hash t = t.unique_id
 
   let make ~path ~name =
     { unique_id = gen_unique_id ()
@@ -211,6 +215,8 @@ and resolve_result =
   | Redirect of db option * Lib_name.t
 
 type lib = t
+
+let to_dyn t = Lib_name.to_dyn t.name
 
 let not_available ~loc reason fmt =
   Errors.kerrf fmt ~f:(fun s ->
@@ -274,6 +280,9 @@ let package t =
     None
 
 let to_id t : Id.t = t.unique_id
+
+let equal l1 l2 = Id.equal (to_id l1) (to_id l2)
+let hash t = Id.hash (to_id t)
 
 module Set = Set.Make(
 struct

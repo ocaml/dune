@@ -148,3 +148,11 @@ let init =
 let hd_opt = function
   | [] -> None
   | x :: _ -> Some x
+
+let rec equal eq xs ys =
+  match xs, ys with
+  | [], [] -> true
+  | x :: xs, y :: ys -> eq x y && equal eq xs ys
+  | _, _ -> false
+
+let hash f xs = Dune_caml.Hashtbl.hash (map ~f xs)

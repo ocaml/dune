@@ -1,0 +1,13 @@
+(library
+ (name usesppx1)
+ (modules ())
+ (preprocess (pps ppx1)))
+
+(library
+ (name usesppx2)
+ (modules ())
+ (preprocess (pps ppx2)))
+
+(alias
+ (name default)
+ (action (echo %{read:.merlin})))

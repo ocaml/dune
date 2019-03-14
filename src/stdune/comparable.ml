@@ -11,6 +11,7 @@ module type OPS = sig
   val (>) : t -> t -> bool
   val (<=) : t -> t -> bool
   val (<) : t -> t -> bool
+  val (<>) : t -> t -> bool
 end
 
 module Operators (X : S) = struct
@@ -22,6 +23,7 @@ module Operators (X : S) = struct
     | Gt | Lt -> false
 
   let equal = (=)
+  let (<>) a b = not (a = b)
 
   let (>=) a b =
     match X.compare a b with

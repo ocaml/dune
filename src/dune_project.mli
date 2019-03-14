@@ -45,6 +45,7 @@ val version : t -> string option
 val name : t -> Name.t
 val root : t -> Path.Local.t
 val stanza_parser : t -> Stanza.t list Dune_lang.Decoder.t
+val allow_approx_merlin : t -> bool
 
 (** Return the path of the project file. *)
 val file : t -> Path.t

@@ -1,3 +1,11 @@
+unreleased
+----------
+
+- Warn when generated `.merlin` does not reflect the preprocessing
+  specification. This occurs when multiple stanzas in the same directory use
+  different preprocessing specifications. This warning can now be disabled with
+  `allow_approx_merlin` (#1947, fix #1946, @rgrinberg)
+
 1.8.2 (10/03/2019)
 ------------------
 

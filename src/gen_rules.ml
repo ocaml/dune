@@ -146,13 +146,17 @@ module Gen(P : Install_rules.Params) = struct
               ~f:(fun acc a -> For_stanza.cons acc (for_stanza a))
             |> For_stanza.rev
     in
-    Option.iter (Merlin.merge_all merlins) ~f:(fun m ->
-      let more_src_dirs =
-        List.map (Dir_contents.dirs dir_contents) ~f:(fun dc ->
-          Path.drop_optional_build_context (Dir_contents.dir dc))
-      in
-      Merlin.add_rules sctx ~dir:ctx_dir ~more_src_dirs ~expander ~dir_kind
-        (Merlin.add_source_dir m src_dir));
+    let allow_approx_merlin =
+      let dune_project = Scope.project scope in
+      Dune_project.allow_approx_merlin dune_project in
+    Option.iter (Merlin.merge_all ~allow_approx_merlin merlins)
+      ~f:(fun m ->
+        let more_src_dirs =
+          List.map (Dir_contents.dirs dir_contents) ~f:(fun dc ->
+            Path.drop_optional_build_context (Dir_contents.dir dc))
+        in
+        Merlin.add_rules sctx ~dir:ctx_dir ~more_src_dirs ~expander ~dir_kind
+          (Merlin.add_source_dir m src_dir));
     List.iter stanzas ~f:(fun stanza ->
       match (stanza : Stanza.t) with
       | Menhir.T m when Expander.eval_blang expander m.enabled_if ->

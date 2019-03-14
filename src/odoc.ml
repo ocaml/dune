@@ -60,8 +60,8 @@ module Gen (S : sig val sctx : SC.t end) = struct
         | Lib lib -> pkg_or_lnu lib
       )
 
-    let gen_mld_dir (pkg : Package.t) =
-      root ++ "_mlds" ++ (Package.Name.to_string pkg.name)
+    let gen_mld_dir pkg =
+      root ++ "_mlds" ++ (Package.Name.to_string pkg)
   end
 
   module Dep = struct
@@ -327,24 +327,54 @@ module Gen (S : sig val sctx : SC.t end) = struct
           (Path.Set.of_list (List.rev_append static_html html_files));
       end
 
-  let setup_pkg_html_rules =
-    let loaded = Package.Name.Table.create ~default_value:false in
-    fun ~pkg ~libs ->
-      if not (Package.Name.Table.get loaded pkg) then begin
-        Package.Name.Table.set loaded ~key:pkg ~data:true;
-        let requires = Lib.closure libs ~linking:false in
-        List.iter libs ~f:(setup_lib_html_rules ~requires);
-        let pkg_odocs = odocs (Pkg pkg) in
-        List.iter pkg_odocs ~f:(setup_html ~requires);
-        let odocs =
-          List.concat (
-            pkg_odocs
-            :: (List.map libs ~f:(fun lib -> odocs (Lib lib)))
-          ) in
-        let html_files = List.map ~f:(fun o -> o.html_file) odocs in
-        Build_system.Alias.add_deps (Dep.html_alias (Pkg pkg))
-          (Path.Set.of_list (List.rev_append static_html html_files))
-      end
+  let setup_pkg_html_rules_def =
+    let module Input = struct
+      type t = Package.Name.t * Lib.t list
+
+      let equal (p1, l1) (p2, l2) =
+        Package.Name.equal p1 p2
+        && List.equal Lib.equal l1 l2
+
+      let hash (p, ls) =
+        Hashtbl.hash (Package.Name.hash p, List.hash Lib.hash ls)
+
+      let to_sexp (package, libs) =
+        let open Dyn in
+        Tuple
+          [ Package.Name.to_dyn package
+          ; List (List.map ~f:Lib.to_dyn libs)
+          ]
+        |> Dyn.to_sexp
+    end
+    in
+    Memo.create "setup-package-html-rules"
+      ~output:(Allow_cutoff (module Unit))
+      ~doc:"setup odoc package html rules"
+      ~input:(module Input)
+      ~visibility:Hidden
+      Sync
+      None
+
+  let () =
+    let setup_pkg_html_rules (pkg, libs) =
+      let requires = Lib.closure libs ~linking:false in
+      List.iter libs ~f:(setup_lib_html_rules ~requires);
+      let pkg_odocs = odocs (Pkg pkg) in
+      List.iter pkg_odocs ~f:(setup_html ~requires);
+      let odocs =
+        List.concat (
+          pkg_odocs
+          :: (List.map libs ~f:(fun lib -> odocs (Lib lib)))
+        ) in
+      let html_files = List.map ~f:(fun o -> o.html_file) odocs in
+      Build_system.Alias.add_deps (Dep.html_alias (Pkg pkg))
+        (Path.Set.of_list (List.rev_append static_html html_files))
+    in
+    Memo.set_impl setup_pkg_html_rules_def setup_pkg_html_rules
+
+
+  let setup_pkg_html_rules ~pkg ~libs =
+    Memo.exec setup_pkg_html_rules_def (pkg, libs)
 
   let gen_rules ~dir:_ rest =
     match rest with
@@ -404,8 +434,8 @@ module Gen (S : sig val sctx : SC.t end) = struct
     |> Dir_contents.modules_of_library ~name:(Lib.name lib)
     |> Lib_modules.entry_modules
 
-  let entry_modules ~(pkg : Package.t) =
-    libs_of_pkg ~pkg:pkg.name
+  let entry_modules ~pkg =
+    libs_of_pkg ~pkg
     |> Lib.Set.to_list
     |> List.filter_map ~f:(fun l ->
       if Lib.is_local l then (
@@ -415,10 +445,10 @@ module Gen (S : sig val sctx : SC.t end) = struct
       ))
     |> Lib.Map.of_list_exn
 
-  let default_index ~(pkg : Package.t) entry_modules =
+  let default_index ~pkg entry_modules =
     let b = Buffer.create 512 in
     Printf.bprintf b "{0 %s index}\n"
-      (Package.Name.to_string pkg.name);
+      (Package.Name.to_string pkg);
     Lib.Map.to_list entry_modules
     |> List.sort ~compare:(fun (x, _) (y, _) ->
       Lib_name.compare (Lib.name x) (Lib.name y))
@@ -452,28 +482,60 @@ module Gen (S : sig val sctx : SC.t end) = struct
     | Ok m -> m
     | Error (_, p1, p2) ->
       die "Package %s has two mld's with the same basename %s, %s"
-        (Package.Name.to_string pkg.Package.name)
+        (Package.Name.to_string pkg)
         (Path.to_string_maybe_quoted p1)
         (Path.to_string_maybe_quoted p2)
 
+  let setup_package_odoc_rules_def =
+    let module Input = struct
+      type t = Package.Name.t * Path.t list
+
+      let hash (p, ps) =
+        Hashtbl.hash (Package.Name.hash p, List.hash Path.hash ps)
+
+      let equal (x1, y1) (x2, y2) =
+        Package.Name.equal x1 x2 && List.equal Path.equal y1 y2
+
+      let to_sexp (name, paths) =
+        Dyn.Tuple
+          [ Package.Name.to_dyn name
+          ; Dyn.List (List.map ~f:Path.to_dyn paths)
+          ]
+        |> Dyn.to_sexp
+    end
+    in
+    Memo.create "setup-package-odoc-rules"
+      ~output:(Allow_cutoff (module Unit))
+      ~doc:"setup odoc package rules"
+      ~input:(module Input)
+      ~visibility:Hidden
+      Sync
+      None
+
+  let () =
+    let setup_package_odoc_rules (pkg, mlds) =
+      let mlds = check_mlds_no_dupes ~pkg ~mlds in
+      let mlds =
+        if String.Map.mem mlds "index" then
+          mlds
+        else
+          let entry_modules = entry_modules ~pkg in
+          let gen_mld = Paths.gen_mld_dir pkg ++ "index.mld" in
+          add_rule (Build.write_file gen_mld (default_index ~pkg entry_modules));
+          String.Map.add mlds "index" gen_mld in
+      let odocs = List.map (String.Map.values mlds) ~f:(fun mld ->
+        compile_mld
+          (Mld.create mld)
+          ~pkg
+          ~doc_dir:(Paths.odocs (Pkg pkg))
+          ~includes:(Build.arr (fun _ -> Arg_spec.As []))
+      ) in
+      Dep.setup_deps (Pkg pkg) (Path.Set.of_list odocs)
+    in
+    Memo.set_impl setup_package_odoc_rules_def setup_package_odoc_rules
+
   let setup_package_odoc_rules ~pkg ~mlds =
-    let mlds = check_mlds_no_dupes ~pkg ~mlds in
-    let mlds =
-      if String.Map.mem mlds "index" then
-        mlds
-      else
-        let entry_modules = entry_modules ~pkg in
-        let gen_mld = Paths.gen_mld_dir pkg ++ "index.mld" in
-        add_rule (Build.write_file gen_mld (default_index ~pkg entry_modules));
-        String.Map.add mlds "index" gen_mld in
-    let odocs = List.map (String.Map.values mlds) ~f:(fun mld ->
-      compile_mld
-        (Mld.create mld)
-        ~pkg:pkg.name
-        ~doc_dir:(Paths.odocs (Pkg pkg.name))
-        ~includes:(Build.arr (fun _ -> Arg_spec.As []))
-    ) in
-    Dep.setup_deps (Pkg pkg.name) (Path.Set.of_list odocs)
+    Memo.exec setup_package_odoc_rules_def (pkg, mlds)
 
   let init () =
     let mlds_by_package =
@@ -495,15 +557,12 @@ module Gen (S : sig val sctx : SC.t end) = struct
     in
     SC.packages sctx
     |> Package.Name.Map.iter ~f:(fun (pkg : Package.t) ->
-      let rules = lazy (
-        setup_package_odoc_rules
-          ~pkg
-          ~mlds:(mlds_by_package pkg)
-      ) in
       List.iter [ Paths.odocs (Pkg pkg.name)
-                ; Paths.gen_mld_dir pkg ]
+                ; Paths.gen_mld_dir pkg.name ]
         ~f:(fun dir ->
-          Build_system.on_load_dir ~dir ~f:(fun () -> Lazy.force rules));
+          Build_system.on_load_dir ~dir ~f:(fun () ->
+            setup_package_odoc_rules ~pkg:pkg.name ~mlds:(mlds_by_package pkg)
+          ));
       (* setup @doc to build the correct html for the package *)
       setup_package_aliases pkg;
     );

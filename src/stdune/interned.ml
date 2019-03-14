@@ -1,6 +1,9 @@
 module type S = sig
   type t
+  val hash : t -> int
+  val equal : t -> t -> bool
   val compare : t -> t -> Ordering.t
+  val to_dyn : t -> Dyn.t
   val to_string : t -> string
   val pp: t Fmt.t
   val make : string -> t
@@ -38,8 +41,7 @@ module type Settings = sig
   val order : order
 end
 
-module Make(R : Settings)()
-= struct
+module Make(R : Settings)() = struct
 
   let ids = Hashtbl.create 1024
   let next = ref 0
@@ -90,6 +92,8 @@ module Make(R : Settings)()
   let get s = Hashtbl.find ids s
 
   let to_string t = Table.get names t
+  let hash t = String.hash (to_string t)
+  let to_dyn t = Dyn.String (to_string t)
 
   let all () = List.init !next ~f:(fun t -> t)
 
@@ -100,6 +104,8 @@ module Make(R : Settings)()
       match R.order with
       | Fast -> Int.compare
       | Natural -> fun x y -> String.compare (to_string x) (to_string y)
+
+    let equal x y = compare x y = Ordering.Eq
   end
 
   include T
@@ -122,11 +128,15 @@ module No_interning(R : Settings)() = struct
   type t = string
 
   let compare = String.compare
+  let hash = String.hash
+  let equal = String.equal
   let make s = s
   let to_string s = s
   let pp fmt s = Format.fprintf fmt "%S" (to_string s)
   let get s = Some s
   let all () = assert false
+
+  let to_dyn t = Dyn.String (to_string t)
 
   module Set = struct
     include String.Set

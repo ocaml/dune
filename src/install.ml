@@ -150,7 +150,7 @@ module Section = struct
       | Doc          -> t.doc
       | Stublibs     -> t.stublibs
       | Man          -> t.man
-      | Misc         -> invalid_arg"Install.Paths.get"
+      | Misc         -> Exn.code_error "Install.Paths.get" []
 
     let man_subdir p =
       match Filename.split_extension_after_dot p with

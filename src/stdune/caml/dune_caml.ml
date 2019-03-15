@@ -8,7 +8,8 @@ module Result   = Dune_result.Result
 module Hashtbl  = MoreLabels.Hashtbl
 module Lexing   = Lexing
 module Digest   = Digest
-module StringLabels   = StringLabels
+module StringLabels = StringLabels
+module ListLabels   = ListLabels
 
 type ('a, 'error) result = ('a, 'error) Result.t =
   | Ok    of 'a

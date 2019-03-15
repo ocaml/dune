@@ -55,7 +55,7 @@ let parse s =
           |> List.map ~f:Dune_lang.Ast.remove_locs)
     with
     | Dune_lang.Parse_error e -> Error (Dune_lang.Parse_error.message e)
-    | Invalid_argument e -> Error e
+    | e -> Error (Printexc.to_string e)
   in
   let jbuild = f ~lexer:Dune_lang.Lexer.jbuild_token in
   let dune   = f ~lexer:Dune_lang.Lexer.token        in
@@ -334,12 +334,18 @@ test Dune (a "toto")
 
 test Dune (t [Text "x%{"])
 [%%expect{|
-Exception: Invalid_argument "Invalid text \"x%{\" in unquoted template".
+Exception:
+Code_error
+ (List
+   [Atom "Invalid text in unquoted template"; List [Atom "s"; Atom "x%{"]]).
 |}]
 
 test Dune (t [Text "x%"; Text "{"])
 [%%expect{|
-Exception: Invalid_argument "Invalid text \"x%{\" in unquoted template".
+Exception:
+Code_error
+ (List
+   [Atom "Invalid text in unquoted template"; List [Atom "s"; Atom "x%{"]]).
 |}]
 
 (* This round trip failure is expected *)

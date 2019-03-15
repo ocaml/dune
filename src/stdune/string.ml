@@ -113,7 +113,11 @@ let lsplit2 s ~on =
 let lsplit2_exn s ~on =
   match lsplit2 s ~on with
   | Some s -> s
-  | None -> invalid_arg "lsplit2_exn"
+  | None ->
+    Exn.code_error "lsplit2_exn"
+      [ "s", Sexp.Encoder.string s
+      ; "on", Sexp.Encoder.char on
+      ]
 
 let rsplit2 s ~on =
   match rindex s on with

@@ -62,7 +62,7 @@ type t =
 
 val atom : string -> t
 (** [atom s] convert the string [s] to an Atom.
-    @raise Invalid_argument if [s] does not satisfy [Atom.is_valid s]. *)
+    @raise Exn.Code_error if [s] does not satisfy [Atom.is_valid s]. *)
 
 val atom_or_quoted_string : string -> t
 

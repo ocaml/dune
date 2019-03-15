@@ -111,7 +111,7 @@ module Make(Key : Comparable.S) : S with type key = Key.t = struct
   let of_list_exn l =
     match of_list l with
     | Ok    x -> x
-    | Error _ -> invalid_arg "Map.of_list_exn"
+    | Error _ -> Exn.code_error "Map.of_list_exn" []
 
   let of_list_reduce l ~f =
     List.fold_left l ~init:empty ~f:(fun acc (key, data) ->

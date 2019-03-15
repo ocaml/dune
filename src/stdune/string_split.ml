@@ -1,3 +1,4 @@
+module List = Dune_caml.ListLabels
 module String = Dune_caml.StringLabels
 open String
 

@@ -626,7 +626,7 @@ let peek_exn t inp = Option.value_exn (peek t inp)
 
 let set_impl t f =
   match t.fdecl with
-  | None -> invalid_arg "Memo.set_impl"
+  | None -> Exn.code_error "Memo.set_impl" []
   | Some fdecl -> Fdecl.set fdecl f
 
 let get_deps t inp =

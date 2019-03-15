@@ -90,7 +90,7 @@ let rec find l ~f =
 let find_exn l ~f =
   match find l ~f with
   | Some x -> x
-  | None -> invalid_arg "List.find_exn"
+  | None -> Exn.code_error "List.find_exn" []
 
 let rec last = function
   | [] -> None

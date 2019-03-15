@@ -11,6 +11,11 @@ open Dune_file
 
 type t
 
+val equal : t -> t -> bool
+val hash : t -> int
+
+val to_sexp : t -> Sexp.t
+
 val create
   :  context:Context.t
   -> ?host:t

@@ -21,6 +21,10 @@ end
 module Syntax : sig
   type t = Jbuild | Dune
 
+  val hash : t -> int
+
+  val equal : t -> t -> bool
+
   val of_basename : string -> t option
 end
 

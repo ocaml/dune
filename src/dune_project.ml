@@ -169,6 +169,9 @@ type t =
   ; allow_approx_merlin : bool
   }
 
+let equal = (==)
+let hash = Hashtbl.hash
+
 let packages t = t.packages
 let version t = t.version
 let name t = t.name

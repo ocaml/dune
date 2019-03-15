@@ -12,6 +12,10 @@ module Version : sig
 
   include Dune_lang.Conv with type t := t
 
+  val hash : t -> int
+
+  val equal : t -> t -> bool
+
   val to_sexp : t Sexp.Encoder.t
 
   val to_string : t -> string

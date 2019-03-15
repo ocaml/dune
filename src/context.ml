@@ -101,6 +101,9 @@ type t =
   ; which_cache             : (string, Path.t option) Hashtbl.t
   }
 
+let equal x y = String.equal x.name y.name
+let hash t = String.hash t.name
+
 let to_sexp t =
   let open Sexp.Encoder in
   let path = Path.to_sexp in

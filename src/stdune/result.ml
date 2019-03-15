@@ -97,3 +97,20 @@ module List = struct
       f init x >>= fun init ->
       fold_left xs ~f ~init
 end
+
+let hash h1 h2 t =
+  Dune_caml.Hashtbl.hash (
+    match t with
+    | Ok s -> h1 s
+    | Error e -> h2 e)
+
+let equal e1 e2 x y =
+  match x, y with
+  | Ok x, Ok y -> e1 x y
+  | Error x, Error y -> e2 x y
+  | _, _ -> false
+
+let iter t ~f =
+  match t with
+  | Error _ -> ()
+  | Ok s -> f s

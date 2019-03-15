@@ -326,30 +326,60 @@ let odocs =
     Build_system.eval_glob ~dir odoc_glob
     |> List.map ~f:(fun d -> create_odoc ctx (Path.relative dir d) ~target)
 
-let setup_lib_html_rules =
-  let loaded = ref Lib.Set.empty in
-  fun sctx lib ~requires ->
-    if not (Lib.Set.mem !loaded lib) then begin
-      loaded := Lib.Set.add !loaded lib;
-      let ctx = Super_context.context sctx in
-      let odocs = odocs ctx (Lib lib) in
-      List.iter odocs ~f:(setup_html sctx ~requires);
-      let html_files = List.map ~f:(fun o -> o.html_file) odocs in
-      let static_html = static_html ctx in
-      Build_system.Alias.add_deps (Dep.html_alias ctx (Lib lib))
-        (Path.Set.of_list (List.rev_append static_html html_files));
-    end
+let setup_lib_html_rules_def =
+  let module Input = struct
+    type t = Super_context.t * Lib.t * Lib.t list Or_exn.t
+
+    let equal (sc1, l1, r1) (sc2, l2, r2) =
+      Super_context.equal sc1 sc2
+      && Lib.equal l1 l2
+      && Or_exn.equal (List.equal Lib.equal) r1 r2
+
+    let hash (sc, l, r) =
+      Hashtbl.hash
+        ( Super_context.hash sc
+        , Lib.hash l
+        , Or_exn.hash (List.hash Lib.hash) r
+        )
+
+    let to_sexp _ = Sexp.Encoder.string "<opaque>"
+  end
+  in
+  let f (sctx, lib, requires) =
+    let ctx = Super_context.context sctx in
+    let odocs = odocs ctx (Lib lib) in
+    List.iter odocs ~f:(setup_html sctx ~requires);
+    let html_files = List.map ~f:(fun o -> o.html_file) odocs in
+    let static_html = static_html ctx in
+    Build_system.Alias.add_deps (Dep.html_alias ctx (Lib lib))
+      (Path.Set.of_list (List.rev_append static_html html_files))
+  in
+  Memo.create "setup-library-html-rules"
+    ~doc:"setup html rules for library"
+    ~input:(module Input)
+    ~output:(Allow_cutoff (module Unit))
+    ~visibility:Hidden
+    Sync
+    (Some f)
+
+let setup_lib_html_rules sctx lib ~requires =
+  Memo.exec setup_lib_html_rules_def (sctx, lib, requires)
 
 let setup_pkg_html_rules_def =
   let module Input = struct
     type t = Super_context.t * Package.Name.t * Lib.t list
 
-    let equal (_, p1, l1) (_, p2, l2) =
+    let equal (s1, p1, l1) (s2, p2, l2) =
       Package.Name.equal p1 p2
       && List.equal Lib.equal l1 l2
+      && Super_context.equal s1 s2
 
-    let hash (_, p, ls) =
-      Hashtbl.hash (Package.Name.hash p, List.hash Lib.hash ls)
+    let hash (sctx, p, ls) =
+      Hashtbl.hash
+        ( Super_context.hash sctx
+        , Package.Name.hash p
+        , List.hash Lib.hash ls
+        )
 
     let to_sexp (_, package, libs) =
       let open Dyn in
@@ -390,46 +420,6 @@ let () =
 
 let setup_pkg_html_rules sctx ~pkg ~libs =
   Memo.exec setup_pkg_html_rules_def (sctx, pkg, libs)
-
-let gen_rules sctx ~dir:_ rest =
-  match rest with
-  | ["_html"] ->
-    setup_css_rule sctx;
-    setup_toplevel_index_rule sctx
-  | "_mlds" :: _pkg :: _
-  | "_odoc" :: "pkg" :: _pkg :: _ ->
-    () (* rules were already setup lazily in gen_rules *)
-  | "_odoc" :: "lib" :: lib :: _ ->
-    let lib, lib_db = SC.Scope_key.of_string sctx lib in
-    let lib = Lib_name.of_string_exn ~loc:None lib in
-    begin match Lib.DB.find lib_db lib with
-    | Error _ -> ()
-    | Ok lib  -> Build_system.load_dir ~dir:(Lib.src_dir lib)
-    end
-  | "_html" :: lib_unique_name_or_pkg :: _ ->
-    (* TODO we can be a better with the error handling in the case where
-       lib_unique_name_or_pkg is neither a valid pkg or lnu *)
-    let lib, lib_db = SC.Scope_key.of_string sctx lib_unique_name_or_pkg in
-    let lib = Lib_name.of_string_exn ~loc:None lib in
-    let setup_pkg_html_rules pkg =
-      setup_pkg_html_rules sctx ~pkg ~libs:(
-        Lib.Set.to_list (load_all_odoc_rules_pkg sctx ~pkg)) in
-    begin match Lib.DB.find lib_db lib with
-    | Error _ -> ()
-    | Ok lib ->
-      begin match Lib.package lib with
-      | None ->
-        setup_lib_html_rules sctx
-          lib ~requires:(Lib.closure ~linking:false [lib])
-      | Some pkg ->
-        setup_pkg_html_rules pkg
-      end
-    end;
-    Option.iter
-      (Package.Name.Map.find (SC.packages sctx)
-         (Package.Name.of_string lib_unique_name_or_pkg))
-      ~f:(fun pkg -> setup_pkg_html_rules pkg.name)
-  | _ -> ()
 
 let setup_package_aliases sctx (pkg : Package.t) =
   let ctx = Super_context.context sctx in
@@ -507,11 +497,17 @@ let setup_package_odoc_rules_def =
   let module Input = struct
     type t = Super_context.t * Package.Name.t * Path.t list
 
-    let hash (_, p, ps) =
-      Hashtbl.hash (Package.Name.hash p, List.hash Path.hash ps)
+    let hash (sctx, p, ps) =
+      Hashtbl.hash
+        ( Super_context.hash sctx
+        , Package.Name.hash p
+        , List.hash Path.hash ps
+        )
 
-    let equal (_, x1, y1) (_, x2, y2) =
-      Package.Name.equal x1 x2 && List.equal Path.equal y1 y2
+    let equal (s1, x1, y1) (s2, x2, y2) =
+      Super_context.equal s1 s2
+      && Package.Name.equal x1 x2
+      && List.equal Path.equal y1 y2
 
     let to_sexp (_, name, paths) =
       Dyn.Tuple
@@ -559,32 +555,9 @@ let setup_package_odoc_rules sctx ~pkg ~mlds =
 
 let init sctx =
   let stanzas = SC.stanzas sctx in
-  let mlds_by_package =
-    let map = lazy (
-      stanzas
-      |> List.concat_map ~f:(fun (w : _ Dir_with_dune.t) ->
-        List.filter_map w.data ~f:(function
-          | Documentation d ->
-            let dc = Dir_contents.get sctx ~dir:w.ctx_dir in
-            let mlds = Dir_contents.mlds dc d in
-            Some (d.package.name, mlds)
-          | _ ->
-            None
-        ))
-      |> Package.Name.Map.of_list_reduce ~f:List.rev_append
-    ) in
-    fun (p : Package.t) ->
-      Option.value (Package.Name.Map.find (Lazy.force map) p.name) ~default:[]
-  in
   let ctx = Super_context.context sctx in
   SC.packages sctx
   |> Package.Name.Map.iter ~f:(fun (pkg : Package.t) ->
-    List.iter [ Paths.odocs ctx (Pkg pkg.name)
-              ; Paths.gen_mld_dir ctx pkg.name ]
-      ~f:(fun dir ->
-        Build_system.on_load_dir ~dir ~f:(fun () ->
-          setup_package_odoc_rules sctx ~pkg:pkg.name ~mlds:(mlds_by_package pkg)
-        ));
     (* setup @doc to build the correct html for the package *)
     setup_package_aliases sctx pkg;
   );
@@ -609,3 +582,46 @@ let init sctx =
        Build_system.Alias.stamp_file (Dep.html_alias ctx (Lib lib)))
      |> Path.Set.of_list
     )
+
+let gen_rules sctx ~dir:_ rest =
+  match rest with
+  | ["_html"] ->
+    setup_css_rule sctx;
+    setup_toplevel_index_rule sctx
+  | "_mlds" :: pkg :: _
+  | "_odoc" :: "pkg" :: pkg :: _ ->
+    let pkg = Package.Name.of_string pkg in
+    let packages = Super_context.packages sctx in
+    Package.Name.Map.find packages pkg
+    |> Option.iter ~f:(fun _ ->
+      let mlds = Packages.mlds sctx pkg in
+      setup_package_odoc_rules sctx ~pkg ~mlds)
+  | "_odoc" :: "lib" :: lib :: _ ->
+    let lib, lib_db = SC.Scope_key.of_string sctx lib in
+    let lib = Lib_name.of_string_exn ~loc:None lib in
+    Lib.DB.find lib_db lib
+    |> Result.iter ~f:(fun lib ->
+      (* TODO instead of this hack, call memoized function that generates the
+         rules for this library *)
+      Build_system.load_dir ~dir:(Lib.src_dir lib))
+  | "_html" :: lib_unique_name_or_pkg :: _ ->
+    (* TODO we can be a better with the error handling in the case where
+       lib_unique_name_or_pkg is neither a valid pkg or lnu *)
+    let lib, lib_db = SC.Scope_key.of_string sctx lib_unique_name_or_pkg in
+    let lib = Lib_name.of_string_exn ~loc:None lib in
+    let setup_pkg_html_rules pkg =
+      setup_pkg_html_rules sctx ~pkg ~libs:(
+        Lib.Set.to_list (load_all_odoc_rules_pkg sctx ~pkg)) in
+    Lib.DB.find lib_db lib
+    |> Result.iter ~f:(fun lib ->
+      match Lib.package lib with
+      | None ->
+        setup_lib_html_rules sctx
+          lib ~requires:(Lib.closure ~linking:false [lib])
+      | Some pkg ->
+        setup_pkg_html_rules pkg);
+    Option.iter
+      (Package.Name.Map.find (SC.packages sctx)
+         (Package.Name.of_string lib_unique_name_or_pkg))
+      ~f:(fun pkg -> setup_pkg_html_rules pkg.name)
+  | _ -> ()

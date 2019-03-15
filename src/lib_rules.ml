@@ -10,8 +10,6 @@ module Mode_conf = Dune_file.Mode_conf
 module SC = Super_context
 
 module Gen (P : Install_rules.Params) = struct
-  module Odoc = Odoc.Gen(P)
-
   let sctx = P.sctx
   let ctx = SC.context sctx
 
@@ -504,7 +502,7 @@ module Gen (P : Install_rules.Params) = struct
         ~vlib_dep_graphs ~expander
     );
 
-    Odoc.setup_library_odoc_rules lib ~requires:requires_compile
+    Odoc.setup_library_odoc_rules sctx lib ~requires:requires_compile
       ~modules ~dep_graphs ~scope;
 
     let flags =

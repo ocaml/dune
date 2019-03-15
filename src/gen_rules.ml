@@ -201,7 +201,7 @@ module Gen(P : Install_rules.Params) = struct
     (match components with
      | ".js"  :: rest -> Js_of_ocaml_rules.setup_separate_compilation_rules
                            sctx rest
-     | "_doc" :: rest -> Lib_rules.Odoc.gen_rules rest ~dir
+     | "_doc" :: rest -> Odoc.gen_rules sctx rest ~dir
      | ".ppx"  :: rest -> Preprocessing.gen_rules sctx rest
      | comps ->
        begin match List.last comps with
@@ -245,7 +245,7 @@ module Gen(P : Install_rules.Params) = struct
 
   let init () =
     Install_rules.init ();
-    Lib_rules.Odoc.init ()
+    Odoc.init sctx
 end
 
 module type Gen = sig

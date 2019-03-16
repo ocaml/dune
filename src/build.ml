@@ -114,9 +114,6 @@ let lazy_no_targets t = Lazy_no_targets t
 let path p = Paths (Path.Set.singleton p)
 let paths ps = Paths (Path.Set.of_list ps)
 let path_set ps = Paths ps
-let paths_glob ~loc ~dir re =
-  let predicate p = Re.execp re (Path.basename p) in
-  Paths_glob (ref (G_unevaluated (loc, dir, predicate)))
 let paths_matching ~loc ~dir f =
   Paths_glob (ref (G_unevaluated (loc, dir, f)))
 let vpath vp = Vpath vp

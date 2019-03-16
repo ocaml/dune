@@ -77,13 +77,7 @@ let copy_files sctx ~dir ~expander ~src_dir (def: Copy_files.t) =
                (Path.to_string_maybe_quoted src_dir));
   let glob = Path.basename glob_in_src in
   let src_in_src = Path.parent_exn glob_in_src in
-  let re =
-    match Glob_lexer.parse_string glob with
-    | Ok re ->
-      Re.compile re
-    | Error (_pos, msg) ->
-      Errors.fail (String_with_vars.loc def.glob) "invalid glob: %s" msg
-  in
+  let glob = Glob.of_string_exn (String_with_vars.loc def.glob) glob in
   let file_tree = Super_context.file_tree sctx in
   if not (File_tree.dir_exists file_tree src_in_src) then
     Errors.fail
@@ -92,7 +86,7 @@ let copy_files sctx ~dir ~expander ~src_dir (def: Copy_files.t) =
       Path.pp src_in_src;
   (* add rules *)
   let src_in_build = Path.append (SC.context sctx).build_dir src_in_src in
-  let files = Build_system.eval_glob ~dir:src_in_build re in
+  let files = Build_system.eval_glob ~dir:src_in_build glob in
   List.map files ~f:(fun basename ->
     let file_src = Path.relative src_in_build basename in
     let file_dst = Path.relative dir basename in

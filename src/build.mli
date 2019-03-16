@@ -64,11 +64,6 @@ val universe : ('a, 'a) t
 val paths : Path.t list -> ('a, 'a) t
 val path_set : Path.Set.t -> ('a, 'a) t
 
-(** Evaluate a glob and record all the matched files as dependencies
-    of the action produced by the build arrow. *)
-val paths_glob : loc:Loc.t -> dir:Path.t -> Re.re -> ('a, Path.Set.t) t
-
-
 (** Evaluate a predicate against all targets and record all the matched files as
     dependencies of the action produced by the build arrow. *)
 val paths_matching

@@ -319,8 +319,7 @@ let static_html ctx =
   ]
 
 let odocs =
-  let odoc_glob =
-    Re.compile (Re.seq [Re.(rep1 any) ; Re.str ".odoc" ; Re.eos]) in
+  let odoc_glob = Glob.of_string_exn (Loc.of_pos __POS__) "*.odoc" in
   fun ctx target ->
     let dir = Paths.odocs ctx target in
     Build_system.eval_glob ~dir odoc_glob

@@ -68,7 +68,8 @@ let static_deps t ~all_targets ~file_tree =
         match !state with
         | G_evaluated l ->
           Static_deps.add_action_paths acc l
-        | G_unevaluated (loc, dir, f) ->
+        | G_unevaluated (loc, dir, pred) ->
+          let f = Predicate.test pred in
           let targets = all_targets ~dir in
           let result = Path.Set.filter targets ~f in
           if Path.Set.is_empty result then begin

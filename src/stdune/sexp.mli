@@ -16,3 +16,9 @@ end with type sexp := t
 val to_string : t -> string
 
 val pp : Format.formatter -> t -> unit
+
+val hash : t -> int
+
+val equal : t -> t -> bool
+
+val to_dyn : t -> Dyn0.t

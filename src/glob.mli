@@ -17,3 +17,5 @@ val filter : t -> string list -> string list
 val empty : t
 
 val of_string_exn : Loc.t -> string -> t
+
+val to_pred : t -> string Predicate.t

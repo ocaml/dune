@@ -319,10 +319,13 @@ let static_html ctx =
   ]
 
 let odocs =
-  let odoc_glob = Glob.of_string_exn (Loc.of_pos __POS__) "*.odoc" in
+  let odoc_pred =
+    Glob.of_string_exn (Loc.of_pos __POS__) "*.odoc"
+    |> Glob.to_pred
+  in
   fun ctx target ->
     let dir = Paths.odocs ctx target in
-    Build_system.eval_glob ~dir odoc_glob
+    Build_system.eval_pred ~dir odoc_pred
     |> List.map ~f:(fun d -> create_odoc ctx (Path.relative dir d) ~target)
 
 let setup_lib_html_rules_def =

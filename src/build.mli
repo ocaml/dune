@@ -69,7 +69,7 @@ val path_set : Path.Set.t -> ('a, 'a) t
 val paths_matching
   :  loc:Loc.t
   -> dir:Path.t
-  -> (Path.t -> bool)
+  -> Path.t Predicate.t
   -> ('a, Path.Set.t) t
 
 (** [env_var v] records [v] as an environment variable that is read by the
@@ -225,7 +225,7 @@ module Repr : sig
     | Decided   of bool * ('a, 'b) t
 
   and glob_state =
-    | G_unevaluated of Loc.t * Path.t * (Path.t -> bool)
+    | G_unevaluated of Loc.t * Path.t * Path.t Predicate.t
     | G_evaluated   of Path.Set.t
 
   val get_if_file_exists_exn : ('a, 'b) if_file_exists_state ref -> ('a, 'b) t

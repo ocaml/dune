@@ -75,9 +75,12 @@ let copy_files sctx ~dir ~expander ~src_dir (def: Copy_files.t) =
       ~what:(sprintf "%s is not a sub-directory of %s. This"
                (Path.to_string_maybe_quoted glob_in_src)
                (Path.to_string_maybe_quoted src_dir));
-  let glob = Path.basename glob_in_src in
   let src_in_src = Path.parent_exn glob_in_src in
-  let glob = Glob.of_string_exn (String_with_vars.loc def.glob) glob in
+  let pred =
+    Path.basename glob_in_src
+    |> Glob.of_string_exn (String_with_vars.loc def.glob)
+    |> Glob.to_pred
+  in
   let file_tree = Super_context.file_tree sctx in
   if not (File_tree.dir_exists file_tree src_in_src) then
     Errors.fail
@@ -86,7 +89,7 @@ let copy_files sctx ~dir ~expander ~src_dir (def: Copy_files.t) =
       Path.pp src_in_src;
   (* add rules *)
   let src_in_build = Path.append (SC.context sctx).build_dir src_in_src in
-  let files = Build_system.eval_glob ~dir:src_in_build glob in
+  let files = Build_system.eval_pred ~dir:src_in_build pred in
   List.map files ~f:(fun basename ->
     let file_src = Path.relative src_in_build basename in
     let file_dst = Path.relative dir basename in

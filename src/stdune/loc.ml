@@ -40,12 +40,28 @@ let sexp_of_position_no_file (p : Lexing.position) =
     ; "pos_cnum", int p.pos_cnum
     ]
 
+let dyn_of_position_no_file (p : Lexing.position) =
+  let open Dyn in
+  Record
+    [ "pos_lnum", Int p.pos_lnum
+    ; "pos_bol", Int p.pos_bol
+    ; "pos_cnum", Int p.pos_cnum
+    ]
+
 let to_sexp t =
   let open Sexp.Encoder in
   record (* TODO handle when pos_fname differs *)
     [ "pos_fname", string t.start.pos_fname
     ; "start", sexp_of_position_no_file t.start
     ; "stop", sexp_of_position_no_file t.stop
+    ]
+
+let to_dyn t =
+  let open Dyn in
+  Record
+    [ "pos_fname", String t.start.pos_fname
+    ; "start", dyn_of_position_no_file t.start
+    ; "stop", dyn_of_position_no_file t.stop
     ]
 
 let equal_position

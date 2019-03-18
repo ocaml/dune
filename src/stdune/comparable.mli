@@ -11,6 +11,7 @@ module type OPS = sig
   val (>) : t -> t -> bool
   val (<=) : t -> t -> bool
   val (<) : t -> t -> bool
+  val (<>) : t -> t -> bool
 end
 
 module Operators (X : S) : OPS with type t = X.t

@@ -354,18 +354,15 @@ ocaml itest-aux/remdir.ml >/dev/null 2>/dev/null || have_remdir=0
 echo "Testing threading model..."
 
 if ocamlc -vmthread >/dev/null 2>/dev/null; then
-    :
+    ocaml_threads="vm"
 else
-    echo "The -vmthread switch is not supported: Your ocaml version is too old!"
-    exit 1
+    ocaml_threads="none"
 fi
 
 if ocamlc -config >/dev/null 2>/dev/null; then
     # Good. ocamlc tells us the threading model.
     if ocamlc -config | grep 'systhread_supported: true'; then
-	ocaml_threads="posix"
-    else
-	ocaml_threads="vm"
+	: #ocaml_threads="posix"
     fi
 else
     # Old ocamlc do not have -config.
@@ -376,8 +373,6 @@ else
 
     if [ -z "$output" ]; then
 	ocaml_threads="posix"
-    else
-	ocaml_threads="vm"
     fi
 fi
 

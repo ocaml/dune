@@ -754,11 +754,11 @@ let poll ?log ?config ~once ~finally () =
     finally ();
     match res with
     | Ok () ->
-      wait "Success" |> after_wait
+      wait (Colors.apply_string Colors.command_success "Success") |> after_wait
     | Error Got_signal ->
       (Already_reported, None)
     | Error Never ->
-      wait "Had errors" |> after_wait
+      wait (Colors.apply_string Colors.command_error "Had errors") |> after_wait
     | Error Files_changed ->
       loop ()
     | Error (Exn (exn, bt)) -> (exn, Some bt)

@@ -114,6 +114,10 @@ let setup_err_formatter_colors () =
 
 let output_filename : styles = [Bold; Fg Green]
 
+let command_success : styles = [Bold; Fg Green]
+
+let command_error : styles = [Bold; Fg Red]
+
 module Render = Pp.Renderer.Make(struct
     type t = Style.t
 

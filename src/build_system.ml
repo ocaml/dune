@@ -12,7 +12,10 @@ let misc_dir = Path.(relative build_dir) ".misc"
 
 let () = Hooks.End_of_build.always Memo.reset
 
-module Promoted_to_delete = struct
+module Promoted_to_delete : sig
+  val add : Path.t -> unit
+  val load : unit -> Path.Set.t
+end = struct
   module P = Utils.Persistent(struct
       type t = Path.Set.t
       let name = "PROMOTED-TO-DELETE"

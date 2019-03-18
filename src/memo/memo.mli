@@ -165,3 +165,21 @@ val registered_functions : unit -> Function_info.t list
 val function_info : string -> Function_info.t
 
 val lazy_ : (unit -> 'a) -> (unit -> 'a)
+
+module With_implicit_output : sig
+
+  type ('i, 'o, 'f) t
+
+  val create
+    :  string
+    -> doc:string
+    -> input:(module Input with type t = 'i)
+    -> visibility:'i Visibility.t
+    -> output:(module Output_simple with type t = 'o)
+    -> implicit_output:('io Implicit_output.t)
+    -> ('i, 'o, 'f) Function_type.t
+    -> 'f
+    -> ('i, 'o, 'f) t
+
+  val exec : (_, _, 'f) t -> 'f
+end

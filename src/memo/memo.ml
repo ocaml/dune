@@ -7,7 +7,12 @@ module Function_name = Interned.Make(struct
     let order = Interned.Fast
   end) ()
 
-module Function_type = struct
+module Function_type : sig
+  type ('a, 'b, 'f) t =
+    | Sync : ('a, 'b, ('a -> 'b)) t
+    | Async : ('a, 'b, ('a -> 'b Fiber.t)) t
+
+end = struct
   type ('a, 'b, 'f) t =
     | Sync : ('a, 'b, ('a -> 'b)) t
     | Async : ('a, 'b, ('a -> 'b Fiber.t)) t
@@ -348,11 +353,13 @@ module Call_stack = struct
 
   let push_async_frame frame f =
     let stack = get_call_stack () in
-    Fiber.Var.set call_stack_key (frame :: stack) f
+    Fiber.Var.set call_stack_key (frame :: stack)
+      (fun () -> Implicit_output.forbid_async f)
 
   let push_sync_frame frame f =
     let stack = get_call_stack () in
-    Fiber.Var.set_sync call_stack_key (frame :: stack) f
+    Fiber.Var.set_sync call_stack_key (frame :: stack)
+      (fun () -> Implicit_output.forbid_sync f)
 
 end
 
@@ -534,8 +541,10 @@ module Exec_sync = struct
           recompute t inp dep_node
       | Done cv ->
         Cached_value.get_sync cv |> function
-        | Some v -> v
-        | None -> recompute t inp dep_node
+        | Some v ->
+          v
+        | None ->
+          recompute t inp dep_node
 
 end
 
@@ -708,3 +717,67 @@ let lazy_ (type a) f =
       (Some f)
   in
   (fun () -> exec memo ())
+
+module With_implicit_output = struct
+
+  type ('i, 'o, 'f) t = 'f
+
+  let create
+        (type i o f)
+        (type io)
+        name
+        ~doc
+        ~input
+        ~visibility
+        ~output:(module O : Output_simple with type t = o)
+        ~implicit_output
+        (typ : (i, o, f) Function_type.t)
+        (impl : f) =
+    let output =
+      (Output.Simple (
+         module struct
+           type t = o * io option
+           let to_sexp ((o, _io) : t) =
+             Sexp.List
+               [ O.to_sexp o;
+                 Sexp.Atom "<implicit output is opaque>" ]
+         end))
+    in
+    match typ with
+    | Function_type.Sync ->
+      let memo =
+        (create
+             name
+             ~doc ~input ~visibility
+             ~output
+             Sync
+             (Some (fun i ->
+                Implicit_output.collect_sync implicit_output (fun () -> impl i))))
+      in
+      ((fun input ->
+         let (res, output) = exec memo input in
+         Implicit_output.produce_opt implicit_output output;
+         res
+       ) : f)
+    | Function_type.Async ->
+      let memo =
+        (create
+             name
+             ~doc ~input ~visibility
+             ~output
+             Async
+             (Some (fun i ->
+                Implicit_output.collect_async implicit_output (fun () -> impl i))))
+      in
+      ((fun input ->
+         Fiber.map
+           (exec memo input)
+           ~f:(fun (res, output) ->
+             Implicit_output.produce_opt implicit_output output;
+             res)
+      ) : f)
+  ;;
+
+  let exec t = t
+
+end

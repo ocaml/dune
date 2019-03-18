@@ -443,8 +443,9 @@ type t =
   ; file_tree   : File_tree.t
   ; mutable local_mkdirs : Path.Set.t
   ; dirs : Dir_status.t Path.Table.t
-  ; mutable gen_rules :
-      (dir:Path.t -> string list -> extra_sub_directories_to_keep) String.Map.t
+  ; gen_rules :
+      (dir:Path.t -> string list -> extra_sub_directories_to_keep)
+        String.Map.t Fdecl.t
   ; mutable load_dir_stack : Path.t list
   ; (* Set of directories under _build that have at least one rule and
        all their ancestors. *)
@@ -478,7 +479,7 @@ let string_of_paths set =
 let set_rule_generators generators =
   let t = t () in
   assert (String.Map.keys generators = String.Map.keys t.contexts);
-  t.gen_rules <- generators
+  Fdecl.set t.gen_rules generators
 
 let get_dir_status t ~dir =
   Path.Table.find_or_add t.dirs dir ~f:(fun _ ->
@@ -876,7 +877,8 @@ and load_dir_step2_exn t ~dir ~collector ~lazy_generators =
     if context_name = "install" then
       These String.Set.empty
     else
-      let gen_rules = String.Map.find_exn t.gen_rules context_name in
+      let gen_rules =
+        String.Map.find_exn (Fdecl.get t.gen_rules) context_name in
       gen_rules ~dir (Path.explode_exn sub_dir)
   in
   let rules = collector.rules in
@@ -1428,8 +1430,7 @@ let init ~contexts ~file_tree ~hook =
     ; dirs       = Path.Table.create 1024
     ; load_dir_stack = []
     ; file_tree
-    ; gen_rules = String.Map.map contexts ~f:(fun _ ~dir:_ ->
-        die "gen_rules called too early")
+    ; gen_rules = Fdecl.create ()
     ; build_dirs_to_keep = Path.Set.empty
     ; files_of = Path.Table.create 1024
     ; prefix = None

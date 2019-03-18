@@ -13,16 +13,16 @@ does show a cycle.
 
   $ dune build --display short result1
   Dependency cycle between the following files:
-      _build/default/result2
-  --> _build/default/input
+      _build/default/input
   --> _build/default/result2
+  --> _build/default/input
   [1]
 
   $ dune build --display short result1 --debug-dependency-path
   Dependency cycle between the following files:
-      _build/default/result2
-  --> _build/default/input
+      _build/default/input
   --> _build/default/result2
+  --> _build/default/input
   -> required by result2
   -> required by input
   -> required by result1

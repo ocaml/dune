@@ -30,7 +30,6 @@ module Dag :
     val add : t -> node -> node -> unit
     val children : node -> node list
     val pp_node : mynode Fmt.t -> node Fmt.t
-    val delta : t -> int
     val is_child : node -> node -> bool
     val node : t -> mynode -> node
   end
@@ -64,7 +63,6 @@ let node41 = Dag.node dag { name = "child 4 1" };;
 Dag.add dag node31 node41;;
 
 node;;
-Dag.delta dag;;
 
 let name node = node.data.name in
 try
@@ -92,28 +90,23 @@ val node31 : node = {data = {name = "child 3 1"}; info = <abstr>}
 val pp_mynode : Format.formatter -> mynode -> unit = <fun>
 val dag_pp_mynode : node Fmt.t = <fun>
 - : node =
-(1: k=1, i=-6) (root) [(3: k=1, i=-3) (child 1 2) [(4: k=2, i=-9) (child 2 1) [
-                                                   (5: k=2, i=-8) (child 3 1) [
-                                                   ]]];
-                        (2: k=1, i=-2) (child 1 1) []]
-val node41 : node = (6: k=1, i=-10) (child 4 1) []
+(1: k=1) (root) [(3: k=1) (child 1 2) [(4: k=1) (child 2 1) [(5: k=2) (child 3 1) [
+                                                             ]]];
+                  (2: k=1) (child 1 1) []]
+val node41 : node = (6: k=1) (child 4 1) []
 - : unit = ()
 - : node =
-(1: k=1, i=-6) (root) [(3: k=1, i=-3) (child 1 2) [(4: k=2, i=-13) (child 2 1) [
-                                                   (5: k=2, i=-12) (child 3 1) [
-                                                   (6: k=2, i=-11) (child 4 1) [
-                                                   ]]]];
-                        (2: k=1, i=-2) (child 1 1) []]
-- : int = 2
+(1: k=1) (root) [(3: k=1) (child 1 2) [(4: k=1) (child 2 1) [(5: k=2) (child 3 1) [
+                                                             (6: k=2) (child 4 1) [
+                                                             ]]]];
+                  (2: k=1) (child 1 1) []]
 - : string list option =
-Some
- ["child 4 1"; "child 3 1"; "child 2 1"; "child 1 2"; "root"; "child 4 1"]
+Some ["child 4 1"; "child 3 1"; "child 2 1"; "child 1 2"; "root"]
 - : node =
-(1: k=3, i=-6) (root) [(3: k=3, i=-3) (child 1 2) [(4: k=3, i=-13) (child 2 1) [
-                                                   (5: k=3, i=-12) (child 3 1) [
-                                                   (6: k=2, i=-11) (child 4 1) [
-                                                   ]]]];
-                        (2: k=1, i=-2) (child 1 1) []]
+(1: k=2) (root) [(3: k=2) (child 1 2) [(4: k=2) (child 2 1) [(5: k=2) (child 3 1) [
+                                                             (6: k=2) (child 4 1) [
+                                                             ]]]];
+                  (2: k=2) (child 1 1) []]
 |}]
 
 
@@ -227,11 +220,11 @@ cycle_test `a
 ;;
 
 [%%expect{|
-- : int list = [23; 22; 21; 20; 14; 13; 12; 11; 23]
+- : int list = [23; 22; 21; 20; 14; 13; 12; 11]
 |}]
 ;;
 cycle_test `b
 ;;
 [%%expect{|
-- : int list = [23; 22; 21; 20; 14; 13; 12; 11; 23]
+- : int list = [23; 22; 21; 20; 14; 13; 12; 11]
 |}]

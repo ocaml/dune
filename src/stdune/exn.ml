@@ -63,3 +63,6 @@ include
   end) : (sig
      val raise_with_backtrace: exn -> Printexc.raw_backtrace -> _
    end))
+
+let equal = (=)
+let hash = Dune_caml.Hashtbl.hash

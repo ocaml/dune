@@ -129,6 +129,9 @@ type t =
   ; which_cache             : (string, Path.t option) Hashtbl.t
   }
 
+val equal : t -> t -> bool
+val hash : t -> int
+
 val to_sexp : t -> Sexp.t
 
 (** Compare the context names *)

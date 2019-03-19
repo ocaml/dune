@@ -41,7 +41,8 @@ let add_stanzas t ~sctx =
            }
          | _ -> t)
 
-let stanzas_to_consider_for_install stanzas ~external_lib_deps_mode =
+let stanzas_to_consider_for_install
+      (stanzas : Stanza.t list Dir_with_dune.t list) ~external_lib_deps_mode =
   if not external_lib_deps_mode then
     List.concat_map stanzas
       ~f:(fun ({ Dir_with_dune.ctx_dir =  _; data = stanzas
@@ -62,11 +63,6 @@ let stanzas_to_consider_for_install stanzas ~external_lib_deps_mode =
       ~f:(fun d ->
         List.map d.data ~f:(fun stanza ->
           { d with data = stanza}))
-
-let make_mlds sctx =
-  List.concat_map ~f:(fun (doc :  _ Dir_with_dune.t) ->
-    let dir_contents = Dir_contents.get sctx ~dir:doc.ctx_dir in
-    Dir_contents.mlds dir_contents doc.data)
 
 let of_sctx (sctx : Super_context.t) =
   let ctx = Super_context.context sctx in
@@ -121,7 +117,7 @@ let of_sctx (sctx : Super_context.t) =
         (Package.Name.Map.find stanzas_per_package pkg.name
          |> Option.value ~default:[])
     in
-    { t with mlds = lazy (make_mlds sctx t.docs) }
+    { t with mlds = lazy (Packages.mlds sctx pkg.name) }
   )
 
 let odig_files t = t.odig_files

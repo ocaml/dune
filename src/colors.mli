@@ -18,6 +18,10 @@ type styles
 
 val output_filename : styles
 
+val command_success : styles
+
+val command_error : styles
+
 val apply_string : styles -> string -> string
 
 module Style : sig

@@ -362,7 +362,7 @@ fi
 if ocamlc -config >/dev/null 2>/dev/null; then
     # Good. ocamlc tells us the threading model.
     if ocamlc -config | grep 'systhread_supported: true'; then
-	: #ocaml_threads="posix"
+	ocaml_threads="posix"
     fi
 else
     # Old ocamlc do not have -config.

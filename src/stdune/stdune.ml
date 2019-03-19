@@ -1,3 +1,4 @@
+module Appendable_list = Appendable_list
 module Ansi_color = Ansi_color
 module Array      = Array
 module Bytes      = Bytes

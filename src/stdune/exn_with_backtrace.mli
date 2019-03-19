@@ -19,3 +19,5 @@ val pp_uncaught : Format.formatter -> t -> unit
 val map : t -> f:(exn -> exn) -> t
 
 val map_and_reraise  : t -> f:(exn -> exn) -> 'a
+
+val to_sexp : t -> Sexp.t

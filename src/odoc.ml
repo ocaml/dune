@@ -358,16 +358,17 @@ let setup_lib_html_rules_def =
     Build_system.Alias.add_deps (Dep.html_alias ctx (Lib lib))
       (Path.Set.of_list (List.rev_append static_html html_files))
   in
-  Memo.create "setup-library-html-rules"
+  Memo.With_implicit_output.create "setup-library-html-rules"
     ~doc:"setup html rules for library"
+    ~implicit_output:Build_system.rule_collection_implicit_output
     ~input:(module Input)
-    ~output:(Allow_cutoff (module Unit))
+    ~output:(module Unit)
     ~visibility:Hidden
     Sync
-    (Some f)
+    f
 
 let setup_lib_html_rules sctx lib ~requires =
-  Memo.exec setup_lib_html_rules_def (sctx, lib, requires)
+  Memo.With_implicit_output.exec setup_lib_html_rules_def (sctx, lib, requires)
 
 let setup_pkg_html_rules_def =
   let module Input = struct
@@ -394,36 +395,31 @@ let setup_pkg_html_rules_def =
       |> Dyn.to_sexp
   end
   in
-  Memo.create "setup-package-html-rules"
-    ~output:(Allow_cutoff (module Unit))
+  Memo.With_implicit_output.create "setup-package-html-rules"
+    ~output:(module Unit)
+    ~implicit_output:Build_system.rule_collection_implicit_output
     ~doc:"setup odoc package html rules"
     ~input:(module Input)
     ~visibility:Hidden
     Sync
-    None
-
-let () =
-  let setup_pkg_html_rules (sctx, pkg, libs) =
-    let requires = Lib.closure libs ~linking:false in
-    let ctx = Super_context.context sctx in
-    List.iter libs ~f:(setup_lib_html_rules sctx ~requires);
-    let pkg_odocs = odocs ctx (Pkg pkg) in
-    List.iter pkg_odocs ~f:(setup_html sctx ~requires);
-    let odocs =
-      List.concat (
-        pkg_odocs
-        :: (List.map libs ~f:(fun lib -> odocs ctx (Lib lib)))
-      ) in
-    let html_files = List.map ~f:(fun o -> o.html_file) odocs in
-    let static_html = static_html ctx in
-    Build_system.Alias.add_deps (Dep.html_alias ctx (Pkg pkg))
-      (Path.Set.of_list (List.rev_append static_html html_files))
-  in
-  Memo.set_impl setup_pkg_html_rules_def setup_pkg_html_rules
-
+    (fun (sctx, pkg, libs) ->
+       let requires = Lib.closure libs ~linking:false in
+       let ctx = Super_context.context sctx in
+       List.iter libs ~f:(setup_lib_html_rules sctx ~requires);
+       let pkg_odocs = odocs ctx (Pkg pkg) in
+       List.iter pkg_odocs ~f:(setup_html sctx ~requires);
+       let odocs =
+         List.concat (
+           pkg_odocs
+           :: (List.map libs ~f:(fun lib -> odocs ctx (Lib lib)))
+         ) in
+       let html_files = List.map ~f:(fun o -> o.html_file) odocs in
+       let static_html = static_html ctx in
+       Build_system.Alias.add_deps (Dep.html_alias ctx (Pkg pkg))
+         (Path.Set.of_list (List.rev_append static_html html_files)))
 
 let setup_pkg_html_rules sctx ~pkg ~libs =
-  Memo.exec setup_pkg_html_rules_def (sctx, pkg, libs)
+  Memo.With_implicit_output.exec setup_pkg_html_rules_def (sctx, pkg, libs)
 
 let setup_package_aliases sctx (pkg : Package.t) =
   let ctx = Super_context.context sctx in
@@ -521,41 +517,37 @@ let setup_package_odoc_rules_def =
       |> Dyn.to_sexp
   end
   in
-  Memo.create "setup-package-odoc-rules"
-    ~output:(Allow_cutoff (module Unit))
+  Memo.With_implicit_output.create "setup-package-odoc-rules"
+    ~output:(module Unit)
+    ~implicit_output:Build_system.rule_collection_implicit_output
     ~doc:"setup odoc package rules"
     ~input:(module Input)
     ~visibility:Hidden
     Sync
-    None
-
-let () =
-  let setup_package_odoc_rules (sctx, pkg, mlds) =
-    let mlds = check_mlds_no_dupes ~pkg ~mlds in
-    let ctx = Super_context.context sctx in
-    let mlds =
-      if String.Map.mem mlds "index" then
-        mlds
-      else
-        let entry_modules = entry_modules ~pkg in
-        let gen_mld = Paths.gen_mld_dir ctx pkg ++ "index.mld" in
-        let entry_modules = entry_modules sctx in
-        add_rule sctx
-          (Build.write_file gen_mld (default_index ~pkg entry_modules));
-        String.Map.add mlds "index" gen_mld in
-    let odocs = List.map (String.Map.values mlds) ~f:(fun mld ->
-      compile_mld sctx
-        (Mld.create mld)
-        ~pkg
-        ~doc_dir:(Paths.odocs ctx (Pkg pkg))
-        ~includes:(Build.arr (fun _ -> Arg_spec.As []))
-    ) in
-    Dep.setup_deps ctx (Pkg pkg) (Path.Set.of_list odocs)
-  in
-  Memo.set_impl setup_package_odoc_rules_def setup_package_odoc_rules
+    (fun (sctx, pkg, mlds) ->
+       let mlds = check_mlds_no_dupes ~pkg ~mlds in
+       let ctx = Super_context.context sctx in
+       let mlds =
+         if String.Map.mem mlds "index" then
+           mlds
+         else
+           let entry_modules = entry_modules ~pkg in
+           let gen_mld = Paths.gen_mld_dir ctx pkg ++ "index.mld" in
+           let entry_modules = entry_modules sctx in
+           add_rule sctx
+             (Build.write_file gen_mld (default_index ~pkg entry_modules));
+           String.Map.add mlds "index" gen_mld in
+       let odocs = List.map (String.Map.values mlds) ~f:(fun mld ->
+         compile_mld sctx
+           (Mld.create mld)
+           ~pkg
+           ~doc_dir:(Paths.odocs ctx (Pkg pkg))
+           ~includes:(Build.arr (fun _ -> Arg_spec.As []))
+       ) in
+       Dep.setup_deps ctx (Pkg pkg) (Path.Set.of_list odocs))
 
 let setup_package_odoc_rules sctx ~pkg ~mlds =
-  Memo.exec setup_package_odoc_rules_def (sctx, pkg, mlds)
+  Memo.With_implicit_output.exec setup_package_odoc_rules_def (sctx, pkg, mlds)
 
 let init sctx =
   let stanzas = SC.stanzas sctx in

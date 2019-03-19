@@ -183,3 +183,5 @@ module With_implicit_output : sig
 
   val exec : (_, _, 'f) t -> 'f
 end
+
+module Implicit_output = Implicit_output

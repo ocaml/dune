@@ -258,7 +258,8 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
 
   let init () =
     Install_rules.init sctx;
-    Odoc.init sctx
+    Build_system.handle_add_rule_effects (fun () ->
+      Odoc.init sctx)
 end
 
 module type Gen = sig
@@ -332,3 +333,4 @@ let gen ~contexts
     (String.Map.map map ~f:(fun (module M : Gen) -> M.gen_rules));
   String.Map.iter map ~f:(fun (module M : Gen) -> M.init ());
   String.Map.map map ~f:(fun (module M : Gen) -> M.sctx)
+

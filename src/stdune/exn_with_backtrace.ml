@@ -23,3 +23,9 @@ let map { exn; backtrace } ~f =
   { exn = f exn; backtrace }
 
 let map_and_reraise t ~f = reraise (map ~f t)
+
+let to_sexp { exn; backtrace } =
+  Sexp.List [
+    Atom (Printexc.to_string exn);
+    Atom (Printexc.raw_backtrace_to_string backtrace)
+  ]

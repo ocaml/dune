@@ -723,7 +723,7 @@ module With_implicit_output = struct
   type ('i, 'o, 'f) t = 'f
 
   let create
-        (type i o f)
+        (type i) (type o) (type f)
         (type io)
         name
         ~doc
@@ -781,3 +781,4 @@ module With_implicit_output = struct
   let exec t = t
 
 end
+module Implicit_output = Implicit_output

@@ -408,10 +408,13 @@ let init sctx =
   let packages = Local_package.of_sctx sctx in
   let ctx = Super_context.context sctx in
   let artifacts_per_package =
-    Package.Name.Map.map packages ~f:(init_binary_artifacts sctx) in
-  Package.Name.Map.iter packages ~f:(fun pkg ->
-    Local_package.name pkg
-    |> Package.Name.Map.find artifacts_per_package
-    |> Option.value_exn
-    |> init_install sctx pkg;
-    init_install_files ctx pkg)
+    Build_system.handle_add_rule_effects (fun () ->
+      Package.Name.Map.map packages ~f:(init_binary_artifacts sctx))
+  in
+  Build_system.handle_add_rule_effects (fun () ->
+    Package.Name.Map.iter packages ~f:(fun pkg ->
+      Local_package.name pkg
+      |> Package.Name.Map.find artifacts_per_package
+      |> Option.value_exn
+      |> init_install sctx pkg;
+      init_install_files ctx pkg))

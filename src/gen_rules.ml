@@ -348,8 +348,11 @@ let gen ~contexts
   in
   let+ contexts = Fiber.parallel_map contexts ~f:make_sctx in
   let map = String.Map.of_list_exn contexts in
+  let generators = (String.Map.map map ~f:(fun (module M : Gen) -> M.gen_rules)) in
   Build_system.set_rule_generators
-    (String.Map.map map ~f:(fun (module M : Gen) -> M.gen_rules));
+    (function
+      | Install _ctx -> Some (fun ~dir:_ _path -> These String.Set.empty)
+      | Context ctx -> String.Map.find generators ctx);
   String.Map.iter map ~f:(fun (module M : Gen) -> M.init ());
   String.Map.map map ~f:(fun (module M : Gen) -> M.sctx);
 

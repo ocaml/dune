@@ -24,11 +24,19 @@ type extra_sub_directories_to_keep =
   | All
   | These of String.Set.t
 
+module Context_or_install : sig
+  type t =
+    | Install of string
+    | Context of string
+
+  val to_sexp : t -> Sexp.t
+end
+
 (** Set the rule generators callback. There must be one callback per
     build context name.
 
     Each callback is used to generate the rules for a given directory
-    in the corresponding build context. It receive the directory for
+    in the corresponding build context. It receives the directory for
     which to generate the rules and the split part of the path after
     the build context. It must return an additional list of
     sub-directories to keep. This is in addition to the ones that are
@@ -37,8 +45,9 @@ type extra_sub_directories_to_keep =
     It is expected that [f] only generate rules whose targets are
     descendant of [dir]. *)
 val set_rule_generators
-  :  (dir:Path.t -> string list -> extra_sub_directories_to_keep)
-       String.Map.t -> unit
+  :  (Context_or_install.t ->
+      (dir:Path.t -> string list -> extra_sub_directories_to_keep) option)
+  -> unit
 
 (** All other functions in this section must be called inside the rule generator
     callback. *)

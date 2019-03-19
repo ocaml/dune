@@ -68,30 +68,36 @@ let signal_name =
 type target_kind =
   | Regular of string * Path.Source.t
   | Alias   of string * Path.Source.t
+  | Install of string * Path.Source.t
   | Other of Path.t
 
 let analyse_target (fn as original_fn) =
   match Path.extract_build_dir_first_component fn with
-  | Some (".aliases", sub) -> begin
-      match Path.Relative.split_first_component sub with
-      | None -> Other fn
-      | Some (ctx, fn) ->
-        if Path.Relative.is_root fn then
-          Other original_fn
-        else
-          let basename =
-            match String.rsplit2 (Path.Relative.basename fn) ~on:'-' with
-            | None -> assert false
-            | Some (name, digest) ->
-              assert (String.length digest = 32);
-              name
-          in
-          Alias (ctx,
-                 Path.Source.of_relative
-                   (Path.Relative.relative (Path.Relative.parent_exn fn) basename))
-    end
-  | Some ("install", _) -> Other fn
-  | Some (ctx, sub) -> Regular (ctx, Path.Source.of_relative sub)
+  | Some (".aliases", sub) ->
+    (match Path.Relative.split_first_component sub with
+    | None -> Other fn
+    | Some (ctx, fn) ->
+      if Path.Relative.is_root fn then
+        Other original_fn
+      else
+        let basename =
+          match String.rsplit2 (Path.Relative.basename fn) ~on:'-' with
+          | None -> assert false
+          | Some (name, digest) ->
+            assert (String.length digest = 32);
+            name
+        in
+        Alias (ctx,
+               Path.Source.relative
+                 (Path.Source.of_relative (Path.Relative.parent_exn fn))
+                 basename))
+  | Some ("install", sub) ->
+    (match Path.Relative.split_first_component sub with
+    | None -> Other fn
+    | Some (ctx, fn) ->
+      Install (ctx, Path.Source.of_relative fn))
+  | Some (ctx, sub) ->
+    Regular (ctx, Path.Source.of_relative sub)
   | None ->
     Other fn
 
@@ -103,6 +109,8 @@ let describe_target fn =
   match analyse_target fn with
   | Alias (ctx, p) ->
     sprintf "alias %s%s" (Path.Source.to_string_maybe_quoted p) (ctx_suffix ctx)
+  | Install (ctx, p) ->
+    sprintf "install %s%s" (Path.Source.to_string_maybe_quoted p) (ctx_suffix ctx)
   | Regular (ctx, fn) ->
     sprintf "%s%s" (Path.Source.to_string_maybe_quoted fn) (ctx_suffix ctx)
   | Other fn ->

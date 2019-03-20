@@ -104,6 +104,9 @@ let gen_rules sctx (config : Dune_file.Auto_format.t) ~dir =
     ~f:(fun () ->
       File_tree.files_of (Super_context.file_tree sctx) source_dir
       |> Path.Set.iter ~f:setup_formatting);
+  let dyn_deps =
+    let open Build.O in
+    Build.alias alias_formatted >>^ fun _ -> Path.Set.empty in
   Build_system.Alias.add_deps alias
-    (Path.Set.singleton (Build_system.Alias.stamp_file alias_formatted));
+    ~dyn_deps Path.Set.empty;
   Build_system.Alias.add_deps alias_formatted Path.Set.empty

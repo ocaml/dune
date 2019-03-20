@@ -182,52 +182,7 @@ module File_spec = struct
 end
 
 module Alias0 = struct
-  module T : sig
-    type t = private
-      { dir : Path.t
-      ; name : string
-      }
-    val make : string -> dir:Path.t -> t
-    val of_user_written_path : loc:Loc.t -> Path.t -> t
-  end = struct
-    type t =
-      { dir : Path.t
-      ; name : string
-      }
-
-    let make name ~dir =
-      if not (Path.is_in_build_dir dir) || String.contains name '/' then
-        Exn.code_error "Alias0.make: Invalid alias"
-          [ "name", Sexp.Encoder.string name
-          ; "dir", Path.to_sexp dir
-          ];
-      { dir; name }
-
-    let of_user_written_path ~loc path =
-      if not (Path.is_in_build_dir path) then
-        Errors.fail loc "Invalid alias!\n\
-                         Tried to reference path outside build dir: %S"
-          (Path.to_string_maybe_quoted path);
-      { dir = Path.parent_exn path
-      ; name = Path.basename path
-      }
-  end
-  include T
-
-  let pp fmt t = Path.pp fmt (Path.relative t.dir t.name)
-
-  let suffix = "-" ^ String.make 32 '0'
-
-  let name t = t.name
-  let dir  t = t.dir
-
-  let fully_qualified_name t = Path.relative t.dir t.name
-
-  let stamp_file t =
-    Path.relative (Path.insert_after_build_dir_exn t.dir ".aliases")
-      (t.name ^ suffix)
-
-  let dep t = Build.path (stamp_file t)
+  include Alias
 
   let find_dir_specified_on_command_line ~dir ~file_tree =
     match File_tree.find_dir file_tree dir with
@@ -268,20 +223,21 @@ module Alias0 = struct
             ~else_:(Build.arr Fn.id))))
 
   let dep_rec t ~loc ~file_tree =
-    let ctx_dir, src_dir = Path.extract_build_context_dir_exn t.dir in
+    let ctx_dir, src_dir = Path.extract_build_context_dir_exn (Alias.dir t) in
     match File_tree.find_dir file_tree src_dir with
     | None ->
       Build.fail { fail = fun () ->
         Errors.fail loc "Don't know about directory %s!"
           (Path.to_string_maybe_quoted src_dir) }
     | Some dir ->
-      dep_rec_internal ~name:t.name ~dir ~ctx_dir
+      let name = Alias.name t in
+      dep_rec_internal ~name ~dir ~ctx_dir
       >>^ fun is_empty ->
-      if is_empty && not (is_standard t.name) then
+      if is_empty && not (is_standard name) then
         Errors.fail loc
           "This alias is empty.\n\
            Alias %S is not defined in %s or any of its descendants."
-          t.name (Path.to_string_maybe_quoted src_dir)
+          name (Path.to_string_maybe_quoted src_dir)
 
   let dep_rec_multi_contexts ~dir:src_dir ~name ~file_tree ~contexts =
     let open Build.O in
@@ -601,6 +557,7 @@ module Build_exec = struct
             m.state <- Unevaluated;
             reraise exn
         end
+      | Alias _ -> x
       | Universe -> x
     in
     let dyn_deps = ref Dep.Set.empty in
@@ -1597,8 +1554,11 @@ module Alias = struct
   include Alias0
 
   let get_alias_def build_system t =
-    let collector = get_collector build_system ~dir:t.dir in
-    match String.Map.find collector.aliases t.name with
+    let name = Alias.name t in
+    let collector =
+      let dir = Alias.dir t in
+      get_collector build_system ~dir in
+    match String.Map.find collector.aliases name with
     | None ->
       let x =
         { Dir_status.
@@ -1607,7 +1567,7 @@ module Alias = struct
         ; actions  = []
         }
       in
-      collector.aliases <- String.Map.add collector.aliases t.name x;
+      collector.aliases <- String.Map.add collector.aliases name x;
       x
     | Some x -> x
 

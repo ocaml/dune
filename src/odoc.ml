@@ -73,13 +73,14 @@ module Dep = struct
 
   let deps ctx requires =
     Build.of_result_map requires ~f:(fun libs ->
-      Build.path_set (
-        List.fold_left libs ~init:Path.Set.empty ~f:(fun acc (lib : Lib.t) ->
-          if Lib.is_local lib then
-            let dir = Paths.odocs ctx (Lib lib) in
-            Path.Set.add acc (Build_system.Alias.stamp_file (alias ~dir))
-          else
-            acc)))
+      List.filter_map libs ~f:(fun lib ->
+        if Lib.is_local lib then
+          let dir = Paths.odocs ctx (Lib lib) in
+          Some (Build.alias (alias ~dir))
+        else
+          None)
+      |> Build.all)
+    >>^ fun _ -> ()
 
   let alias ctx m = alias ~dir:(Paths.odocs ctx m)
 

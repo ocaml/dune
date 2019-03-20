@@ -96,7 +96,7 @@ val package_deps
 (** {2 Aliases} *)
 
 module Alias : sig
-  type t
+  type t = Alias.t
 
   val pp : t Fmt.t
 
@@ -131,9 +131,6 @@ module Alias : sig
 
   (** Return the underlying stamp file *)
   val stamp_file : t -> Path.t
-
-  (** [dep t = Build.path (stamp_file t)] *)
-  val dep : t -> ('a, 'a) Build.t
 
   (** Implements [@@alias] on the command line *)
   val dep_multi_contexts

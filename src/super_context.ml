@@ -460,7 +460,7 @@ module Deps = struct
       Build.path path
       >>^ fun () -> [path]
     | Alias s ->
-      Alias.dep (make_alias expander s)
+      Build.alias (make_alias expander s)
       >>^ fun () -> []
     | Alias_rec s ->
       Alias.dep_rec ~loc:(String_with_vars.loc s) ~file_tree:t.file_tree
@@ -483,7 +483,7 @@ module Deps = struct
       >>^ Path.Set.to_list
     | Package p ->
       let pkg = Package.Name.of_string (Expander.expand_str expander p) in
-      Alias.dep (Alias.package_install ~context:t.context ~pkg)
+      Build.alias (Alias.package_install ~context:t.context ~pkg)
       >>^ fun () -> []
     | Universe ->
       Build.universe

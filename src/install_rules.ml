@@ -307,17 +307,18 @@ module Gen(P : Params) = struct
            ~findlib_toolchain:ctx.findlib_toolchain)
     in
     let files = Install.files entries in
+    let dyn_deps =
+      Build_system.package_deps package_name files
+      >>^ fun packages ->
+      Package.Name.Set.to_list packages
+      |> List.map ~f:(fun pkg ->
+        Build_system.Alias.package_install ~context:ctx ~pkg
+        |> Alias.stamp_file)
+      |> Path.Set.of_list
+    in
     Build_system.Alias.add_deps
       (Alias.package_install ~context:ctx ~pkg:package_name)
-      files
-      ~dyn_deps:
-        (Build_system.package_deps package_name files
-         >>^ fun packages ->
-         Package.Name.Set.to_list packages
-         |> List.map ~f:(fun pkg ->
-           Build_system.Alias.package_install ~context:ctx ~pkg
-           |> Build_system.Alias.stamp_file)
-         |> Path.Set.of_list);
+      files ~dyn_deps;
     SC.add_rule sctx ~dir:pkg_build_dir
       ~mode:(if promote_install_file then
                Promote (Until_clean, None)

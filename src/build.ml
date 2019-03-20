@@ -31,6 +31,7 @@ module Repr = struct
     | Lazy_no_targets : ('a, 'b) t Lazy.t -> ('a, 'b) t
     | Env_var : string -> ('a, 'a) t
     | Universe : ('a, 'a) t
+    | Alias : Alias.t -> ('a, 'a) t
 
   and 'a memo =
     { name          : string
@@ -124,6 +125,7 @@ let dyn_paths t = Dyn_paths (t >>^ Path.Set.of_list)
 let dyn_path_set t = Dyn_paths t
 let paths_for_rule ps = Paths_for_rule ps
 let universe = Universe
+let alias a = Alias a
 let env_var s = Env_var s
 
 let catch t ~on_error = Catch (t, on_error)

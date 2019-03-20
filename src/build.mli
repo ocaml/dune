@@ -61,6 +61,8 @@ val path  : Path.t -> ('a, 'a) t
 
 val universe : ('a, 'a) t
 
+val alias : Alias.t -> ('a, 'a) t
+
 val paths : Path.t list -> ('a, 'a) t
 val path_set : Path.Set.t -> ('a, 'a) t
 
@@ -213,6 +215,7 @@ module Repr : sig
     | Lazy_no_targets : ('a, 'b) t Lazy.t -> ('a, 'b) t
     | Env_var : string -> ('a, 'a) t
     | Universe : ('a, 'a) t
+    | Alias : Alias.t -> ('a, 'a) t
 
   and 'a memo =
     { name          : string

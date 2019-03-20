@@ -9,7 +9,7 @@ module Mode_conf = Dune_file.Mode_conf
 
 module SC = Super_context
 
-module Gen (P : Install_rules.Params) = struct
+module Gen (P : sig val sctx : Super_context.t end) = struct
   let sctx = P.sctx
   let ctx = SC.context sctx
 

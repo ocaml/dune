@@ -185,9 +185,19 @@ module Gen(P : Install_rules.Params) = struct
           Menhir_rules.gen_rules cctx m ~dir:ctx_dir
         end
       | _ -> ());
+    let dyn_deps =
+      let pred =
+        let id = lazy (
+          let open Sexp.Encoder in
+          constr "exclude" (List.map ~f:Path.to_sexp js_targets)
+        ) in
+        Predicate.create ~id ~f:(fun p ->
+          not (List.exists js_targets ~f:(Path.equal p)))
+      in
+      Build.paths_matching ~dir:ctx_dir ~loc:Loc.none pred
+    in
     Build_system.Alias.add_deps
-      ~dyn_deps:(Build.paths_matching ~dir:ctx_dir ~loc:Loc.none (fun p ->
-        not (List.exists js_targets ~f:(Path.equal p))))
+      ~dyn_deps
       (Build_system.Alias.all ~dir:ctx_dir) Path.Set.empty;
     cctxs
 

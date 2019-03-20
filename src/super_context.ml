@@ -469,13 +469,14 @@ module Deps = struct
     | Glob_files s -> begin
         let loc = String_with_vars.loc s in
         let path = Expander.expand_path expander s in
-        match Glob_lexer.parse_string (Path.basename path) with
-        | Ok re ->
-          let dir = Path.parent_exn path in
-          Build.paths_glob ~loc ~dir (Re.compile re)
-          >>^ Path.Set.to_list
-        | Error (_pos, msg) ->
-          Errors.fail (String_with_vars.loc s) "invalid glob: %s" msg
+        let pred =
+          Glob.of_string_exn loc (Path.basename path)
+          |> Glob.to_pred
+          |> Predicate.contramap ~f:Path.basename ~map_id:Fn.id
+        in
+        let dir = Path.parent_exn path in
+        Build.paths_matching ~loc ~dir pred
+        >>^ Path.Set.to_list
       end
     | Source_tree s ->
       let path = Expander.expand_path expander s in

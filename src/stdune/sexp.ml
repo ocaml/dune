@@ -60,3 +60,24 @@ let rec pp ppf = function
     Format.pp_close_box ppf ();
     Format.pp_print_string ppf ")";
     Format.pp_close_box ppf ()
+
+let hash = Dune_caml.Hashtbl.hash
+
+let string_equal (x : string) (y : string) = Pervasives.(=) x y
+
+let rec equal x y =
+  match x, y with
+  | Atom x, Atom y -> string_equal x y
+  | List x, List y -> equal_list x y
+  | _, _ -> false
+and equal_list xs ys = (* replicating List.equal to avoid circular deps *)
+  match xs, ys with
+  | [], [] -> true
+  | x :: xs, y :: ys -> equal x y && equal_list xs ys
+  | _, _ -> false
+
+let rec to_dyn =
+  let open Dyn0 in
+  function
+  | Atom s -> Variant ("Atom", [String s])
+  | List xs -> Variant ("List", List.map ~f:to_dyn xs)

@@ -1583,11 +1583,11 @@ let on_load_dir ~dir ~f =
       add_build_dir_to_keep t ~dir;
     p.lazy_generators <- f :: lazy_generators
 
-let eval_glob ~dir re =
+let eval_pred ~dir pred =
   let t = t () in
   Path.Set.fold (targets_of t ~dir) ~init:[] ~f:(fun path acc ->
     let fn = Path.basename path in
-    if Re.execp re fn then
+    if Predicate.test pred fn then
       fn :: acc
     else
       acc)

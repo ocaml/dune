@@ -5,6 +5,8 @@ open Stdune
 
 type t
 
+val to_sexp : t Sexp.Encoder.t
+
 val build_dir : t -> Path.t
 
 val lib_stanzas : t -> Dune_file.Library.t Dir_with_dune.t list
@@ -36,3 +38,5 @@ val package : t -> Package.t
 val virtual_lib : t -> Lib.t option
 
 val meta_template : t -> Path.t
+
+val defined_in : Super_context.t -> dir:Path.t -> t list

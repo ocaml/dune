@@ -45,14 +45,13 @@ module For_stanza = struct
     }
 end
 
-module Gen(P : Install_rules.Params) = struct
+module Gen(P : sig val sctx : Super_context.t end) = struct
   module Alias = Build_system.Alias
   module CC = Compilation_context
   module SC = Super_context
   (* We need to instantiate Install_rules earlier to avoid issues whenever
    * Super_context is used too soon.
    * See: https://github.com/ocaml/dune/pull/1354#issuecomment-427922592 *)
-  module Install_rules = Install_rules.Gen(P)
   module Lib_rules = Lib_rules.Gen(P)
 
   let sctx = P.sctx
@@ -208,6 +207,7 @@ module Gen(P : Install_rules.Params) = struct
     | Some d -> gen_rules dir_contents cctxs d
 
   let gen_rules ~dir components : Build_system.extra_sub_directories_to_keep =
+    Install_rules.init_meta sctx ~dir;
     (match components with
      | ".js"  :: rest -> Js_of_ocaml_rules.setup_separate_compilation_rules
                            sctx rest
@@ -254,7 +254,7 @@ module Gen(P : Install_rules.Params) = struct
     | _  -> These String.Set.empty
 
   let init () =
-    Install_rules.init ();
+    Install_rules.init sctx;
     Odoc.init sctx
 end
 

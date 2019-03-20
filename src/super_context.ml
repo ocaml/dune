@@ -39,7 +39,7 @@ let build_dir t = t.context.build_dir
 let profile t = t.context.profile
 let external_lib_deps_mode t = t.external_lib_deps_mode
 
-let equal x y = Context.equal x.context y.context
+let equal = ((==) : t -> t -> bool)
 let hash t = Context.hash t.context
 let to_sexp t = Context.to_sexp t.context
 

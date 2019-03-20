@@ -5,10 +5,6 @@ open Stdune
 
 type t
 
-val equal : t -> t -> bool
-
-val hash : t -> int
-
 val to_sexp : t Sexp.Encoder.t
 
 val build_dir : t -> Path.t
@@ -42,3 +38,5 @@ val package : t -> Package.t
 val virtual_lib : t -> Lib.t option
 
 val meta_template : t -> Path.t
+
+val defined_in : Super_context.t -> dir:Path.t -> t list

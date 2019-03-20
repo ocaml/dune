@@ -207,6 +207,7 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
     | Some d -> gen_rules dir_contents cctxs d
 
   let gen_rules ~dir components : Build_system.extra_sub_directories_to_keep =
+    Install_rules.init_meta sctx ~dir;
     (match components with
      | ".js"  :: rest -> Js_of_ocaml_rules.setup_separate_compilation_rules
                            sctx rest

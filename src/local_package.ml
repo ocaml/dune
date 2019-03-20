@@ -12,21 +12,11 @@ type t =
   ; pkg : Package.t
   ; libs : Lib.Set.t
   ; virtual_lib : Lib.t option Lazy.t
-  ; id : Id.t
   }
 
-let to_dyn t =
-  let open Dyn in
-  Record
-    [ "pkg", Package.to_dyn t.pkg
-    ; "id", Id.to_dyn t.id
-    ]
+let to_dyn t = Package.to_dyn t.pkg
 
 let to_sexp t = Dyn.to_sexp (to_dyn t)
-
-let equal x y = Id.equal x.id y.id
-
-let hash t = Id.hash t.id
 
 let is_odig_doc_file fn =
   List.exists [ "README"; "LICENSE"; "CHANGE"; "HISTORY"]
@@ -130,7 +120,6 @@ let of_sctx_def =
           ; libs
           ; mlds = lazy (assert false)
           ; virtual_lib
-          ; id = Id.gen ()
           }
           (Package.Name.Map.find stanzas_per_package pkg.name
            |> Option.value ~default:[])
@@ -141,7 +130,7 @@ let of_sctx_def =
   let module Output = struct
     type nonrec t = t Package.Name.Map.t
 
-    let equal = Package.Name.Map.equal ~equal
+    let equal = Package.Name.Map.equal ~equal:(==)
 
     let to_sexp t =
       Dyn.Map (
@@ -182,3 +171,15 @@ let virtual_lib t = Lazy.force t.virtual_lib
 
 let meta_template t =
   Path.extend_basename (meta_file t) ~suffix:".template"
+
+let defined_in sctx ~dir =
+  let local_packages = of_sctx sctx in
+  let by_build_dir =
+    Package.Name.Map.values local_packages
+    |> List.map ~f:(fun pkg ->
+      let build_dir = build_dir pkg in
+      (build_dir, pkg))
+    |> Path.Map.of_list_multi
+  in
+  Path.Map.find by_build_dir dir
+  |> Option.value ~default:[]

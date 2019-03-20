@@ -97,14 +97,14 @@ let pkg_version sctx ~path ~(pkg : Package.t) =
       ; File "VERSION"
       ]
 
-let init_meta sctx (pkg : Local_package.t) =
-  let libs = Local_package.libs pkg in
-  let path = Local_package.build_dir pkg in
-  let pkg_name = Local_package.name pkg in
-  let meta = Local_package.meta_file pkg in
-  let meta_template = Local_package.meta_template pkg in
-  Build_system.on_load_dir ~dir:path ~f:(fun () ->
-
+let init_meta sctx ~dir =
+  Local_package.defined_in sctx ~dir
+  |> List.iter ~f:(fun pkg ->
+    let libs = Local_package.libs pkg in
+    let path = Local_package.build_dir pkg in
+    let pkg_name = Local_package.name pkg in
+    let meta = Local_package.meta_file pkg in
+    let meta_template = Local_package.meta_template pkg in
     let version =
       let pkg = Local_package.package pkg in
       let get = pkg_version sctx ~pkg ~path in
@@ -414,5 +414,4 @@ let init sctx =
     |> Package.Name.Map.find artifacts_per_package
     |> Option.value_exn
     |> init_install sctx pkg;
-    init_install_files ctx pkg;
-    init_meta sctx pkg)
+    init_install_files ctx pkg)

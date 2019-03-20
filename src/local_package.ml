@@ -1,5 +1,7 @@
 open Stdune
 
+module Id = Id.Make ()
+
 type t =
   { odig_files : Path.t list
   ; ctx_build_dir : Path.t
@@ -10,7 +12,21 @@ type t =
   ; pkg : Package.t
   ; libs : Lib.Set.t
   ; virtual_lib : Lib.t option Lazy.t
+  ; id : Id.t
   }
+
+let to_dyn t =
+  let open Dyn in
+  Record
+    [ "pkg", Package.to_dyn t.pkg
+    ; "id", Id.to_dyn t.id
+    ]
+
+let to_sexp t = Dyn.to_sexp (to_dyn t)
+
+let equal x y = Id.equal x.id y.id
+
+let hash t = Id.hash t.id
 
 let is_odig_doc_file fn =
   List.exists [ "README"; "LICENSE"; "CHANGE"; "HISTORY"]
@@ -64,61 +80,85 @@ let stanzas_to_consider_for_install
         List.map d.data ~f:(fun stanza ->
           { d with data = stanza}))
 
-let of_sctx (sctx : Super_context.t) =
-  let ctx = Super_context.context sctx in
-  let stanzas =
-    let stanzas = Super_context.stanzas sctx in
-    let external_lib_deps_mode =
-      Super_context.external_lib_deps_mode sctx in
-    stanzas_to_consider_for_install stanzas ~external_lib_deps_mode
-  in
-  let stanzas_per_package =
-    List.filter_map stanzas
-      ~f:(fun (installable : Stanza.t Dir_with_dune.t) ->
-        match Dune_file.stanza_package installable.data with
-        | None -> None
-        | Some p -> Some (p.name, installable))
-    |> Package.Name.Map.of_list_multi
-  in
-  let libs_of =
-    let libs = Super_context.libs_by_package sctx in
-    fun (pkg : Package.t) ->
-      match Package.Name.Map.find libs pkg.name with
-      | Some (_, libs) -> libs
-      | None -> Lib.Set.empty
-  in
-  Super_context.packages sctx
-  |> Package.Name.Map.map ~f:(fun (pkg : Package.t) ->
-    let odig_files =
-      let files = Super_context.source_files sctx ~src_path:Path.root in
-      String.Set.fold files ~init:[] ~f:(fun fn acc ->
-        if is_odig_doc_file fn then
-          Path.relative ctx.build_dir fn :: acc
-        else
-          acc)
+let of_sctx_def =
+  let f sctx =
+    let ctx = Super_context.context sctx in
+    let stanzas =
+      let stanzas = Super_context.stanzas sctx in
+      let external_lib_deps_mode =
+        Super_context.external_lib_deps_mode sctx in
+      stanzas_to_consider_for_install stanzas ~external_lib_deps_mode
     in
-    let libs = libs_of pkg in
-    let virtual_lib = lazy (
-      Lib.Set.find libs ~f:(fun l -> Option.is_some (Lib.virtual_ l))
-    ) in
-    let t =
-      add_stanzas
-        ~sctx
-        { odig_files
-        ; lib_stanzas = []
-        ; docs = []
-        ; installs = []
-        ; pkg
-        ; ctx_build_dir = ctx.build_dir
-        ; libs
-        ; mlds = lazy (assert false)
-        ; virtual_lib
-        }
-        (Package.Name.Map.find stanzas_per_package pkg.name
-         |> Option.value ~default:[])
+    let stanzas_per_package =
+      List.filter_map stanzas
+        ~f:(fun (installable : Stanza.t Dir_with_dune.t) ->
+          match Dune_file.stanza_package installable.data with
+          | None -> None
+          | Some p -> Some (p.name, installable))
+      |> Package.Name.Map.of_list_multi
     in
-    { t with mlds = lazy (Packages.mlds sctx pkg.name) }
-  )
+    let libs_of =
+      let libs = Super_context.libs_by_package sctx in
+      fun (pkg : Package.t) ->
+        match Package.Name.Map.find libs pkg.name with
+        | Some (_, libs) -> libs
+        | None -> Lib.Set.empty
+    in
+    Super_context.packages sctx
+    |> Package.Name.Map.map ~f:(fun (pkg : Package.t) ->
+      let odig_files =
+        let files = Super_context.source_files sctx ~src_path:Path.root in
+        String.Set.fold files ~init:[] ~f:(fun fn acc ->
+          if is_odig_doc_file fn then
+            Path.relative ctx.build_dir fn :: acc
+          else
+            acc)
+      in
+      let libs = libs_of pkg in
+      let virtual_lib = lazy (
+        Lib.Set.find libs ~f:(fun l -> Option.is_some (Lib.virtual_ l))
+      ) in
+      let t =
+        add_stanzas
+          ~sctx
+          { odig_files
+          ; lib_stanzas = []
+          ; docs = []
+          ; installs = []
+          ; pkg
+          ; ctx_build_dir = ctx.build_dir
+          ; libs
+          ; mlds = lazy (assert false)
+          ; virtual_lib
+          ; id = Id.gen ()
+          }
+          (Package.Name.Map.find stanzas_per_package pkg.name
+           |> Option.value ~default:[])
+      in
+      { t with mlds = lazy (Packages.mlds sctx pkg.name) }
+    )
+  in
+  let module Output = struct
+    type nonrec t = t Package.Name.Map.t
+
+    let equal = Package.Name.Map.equal ~equal
+
+    let to_sexp t =
+      Dyn.Map (
+        Package.Name.Map.to_list t
+        |> List.map ~f:(fun (k, v) -> (Package.Name.to_dyn k, to_dyn v)))
+      |> Dyn.to_sexp
+  end
+  in
+  Memo.create "of-sctx-def"
+    ~doc:"mapping from package names to local packages"
+    ~input:(module Super_context)
+    ~output:(Allow_cutoff (module Output))
+    ~visibility:Hidden
+    Sync
+    (Some f)
+
+let of_sctx sctx = Memo.exec of_sctx_def sctx
 
 let odig_files t = t.odig_files
 let libs t = t.libs

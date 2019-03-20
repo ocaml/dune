@@ -5,6 +5,12 @@ open Stdune
 
 type t
 
+val equal : t -> t -> bool
+
+val hash : t -> int
+
+val to_sexp : t Sexp.Encoder.t
+
 val build_dir : t -> Path.t
 
 val lib_stanzas : t -> Dune_file.Library.t Dir_with_dune.t list

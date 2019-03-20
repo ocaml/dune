@@ -33,12 +33,16 @@ type t =
   ; version_from_opam_file : string option
   }
 
-let pp fmt { name; path; version_from_opam_file } =
-  Fmt.record fmt
-    [ "name", Fmt.const Name.pp name
-    ; "path", Fmt.const Path.pp path
-    ; "version_from_opam_file", Fmt.const (Fmt.optional Format.pp_print_string) version_from_opam_file
+let to_dyn { name; path; version_from_opam_file } =
+  let open Dyn in
+  Record
+    [ "name", Name.to_dyn name
+    ; "path", Path.to_dyn path
+    ; "version_from_opam_file"
+    , Option (Option.map ~f:(fun s -> String s) version_from_opam_file)
     ]
+
+let pp fmt t = Dyn.pp fmt (to_dyn t)
 
 let opam_file t = Path.relative t.path (Name.opam_fn t.name)
 

@@ -313,12 +313,9 @@ module Alias0 = struct
 end
 
 module Dir_status = struct
-  type waiting_for_load_dir =
-    { mutable lazy_generators : (unit -> unit) list }
-
   type collection_stage =
     | Loading
-    | Pending of waiting_for_load_dir
+    | Pending
 
   type alias_action =
     { stamp  : Digest.t
@@ -504,7 +501,7 @@ let get_dir_status t ~dir =
         Collecting_rules
           { rules   = []
           ; aliases = String.Map.empty
-          ; stage   = Pending { lazy_generators = [] }
+          ; stage   = Pending
           }
     end)
 
@@ -839,22 +836,21 @@ and load_dir_and_get_targets t ~dir =
     end
 
   | Collecting_rules collector ->
-    let lazy_generators =
+    let () =
       match collector.stage with
       | Loading ->
         die "recursive dependency between directories:\n    %s"
           (String.concat ~sep:"\n--> "
              (List.map t.load_dir_stack ~f:Utils.describe_target))
-      | Pending { lazy_generators } ->
+      | Pending ->
         collector.stage <- Loading;
-        lazy_generators
     in
 
     collector.stage <- Loading;
     t.load_dir_stack <- dir :: t.load_dir_stack;
 
     try
-      load_dir_step2_exn t ~dir ~collector ~lazy_generators
+      load_dir_step2_exn t ~dir ~collector
     with exn ->
       (match Path.Table.find t.dirs dir with
        | Some (Loaded _) -> ()
@@ -867,9 +863,7 @@ and load_dir_and_get_targets t ~dir =
       Path.Table.replace t.dirs ~key:dir ~data:Failed_to_load;
       reraise exn
 
-and load_dir_step2_exn t ~dir ~collector ~lazy_generators =
-  List.iter lazy_generators ~f:(fun f -> f ());
-
+and load_dir_step2_exn t ~dir ~collector =
   let context_name, sub_dir = Path.extract_build_context_exn dir in
 
   (* Load all the rules *)
@@ -1567,21 +1561,6 @@ let prefix_rules prefix ~f =
     | Some p -> Build.O.(>>>) p prefix
   in
   prefix_rules' t (Some prefix) ~f
-
-let on_load_dir ~dir ~f =
-  let t = t () in
-  let collector = get_collector t ~dir in
-  let current_prefix = t.prefix in
-  let f () = prefix_rules' t current_prefix ~f in
-  match collector.stage with
-  | Loading -> f ()
-  | Pending p ->
-    let lazy_generators = p.lazy_generators in
-    if lazy_generators = [] &&
-       collector.rules = [] &&
-       String.Map.is_empty collector.aliases then
-      add_build_dir_to_keep t ~dir;
-    p.lazy_generators <- f :: lazy_generators
 
 let eval_pred ~dir pred =
   let t = t () in

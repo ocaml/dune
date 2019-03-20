@@ -89,3 +89,7 @@ module List = struct
     in
     fun xs -> loop [] xs
 end
+
+let hash f = function
+  | None -> Dune_caml.Hashtbl.hash None
+  | Some s -> Dune_caml.Hashtbl.hash (f s)

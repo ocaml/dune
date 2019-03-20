@@ -33,6 +33,13 @@ type t =
   ; version_from_opam_file : string option
   }
 
+let hash { name; path; version_from_opam_file } =
+  Hashtbl.hash
+    ( Name.hash name
+    , Path.hash path
+    , Option.hash String.hash version_from_opam_file
+    )
+
 let to_dyn { name; path; version_from_opam_file } =
   let open Dyn in
   Record

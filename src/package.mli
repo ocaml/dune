@@ -31,3 +31,5 @@ val opam_file : t -> Path.t
 val meta_file : t -> Path.t
 
 val to_dyn : t -> Dyn.t
+
+val hash : t -> int

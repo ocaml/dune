@@ -34,6 +34,8 @@ val to_list : 'a t -> 'a list
 
 val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
 
+val hash : ('a -> int) -> 'a t -> int
+
 val compare : ('a -> 'a -> Ordering.t) -> 'a t -> 'a t -> Ordering.t
 
 val try_with : (unit -> 'a) -> 'a option

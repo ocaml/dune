@@ -76,6 +76,8 @@ and equal_list xs ys = (* replicating List.equal to avoid circular deps *)
   | x :: xs, y :: ys -> equal x y && equal_list xs ys
   | _, _ -> false
 
+let compare x y = Ordering.of_int (compare x y)
+
 let rec to_dyn =
   let open Dyn0 in
   function

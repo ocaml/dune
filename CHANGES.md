@@ -9,6 +9,8 @@ unreleased
 - Watch mode: display "Success" in green and "Had errors" in red (#1956,
   @emillon)
 
+- Fix glob dependencies on installed directories (#1965, @rgrinberg)
+
 1.8.2 (10/03/2019)
 ------------------
 

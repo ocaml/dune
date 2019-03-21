@@ -74,8 +74,8 @@ val targets_of : dir:Path.t -> Path.Set.t
 (** Load the rules for this directory. *)
 val load_dir : dir:Path.t -> unit
 
-(** Stamp file that depends on all files of [dir] with extension [ext]. *)
-val stamp_file_for_files_of : dir:Path.t -> ext:string -> Path.t
+(** Stamp files that depends on all files of [dir] with extensions [exts]. *)
+val stamp_files_for_files_of : dir:Path.t -> exts:string list -> Path.t list
 
 (** Sets the package this file is part of *)
 val set_package : Path.t -> Package.Name.t -> unit

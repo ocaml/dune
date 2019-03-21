@@ -1562,15 +1562,47 @@ let prefix_rules prefix ~f =
   in
   prefix_rules' t (Some prefix) ~f
 
-let eval_pred ~dir pred =
-  let t = t () in
-  Path.Set.fold (targets_of t ~dir) ~init:[] ~f:(fun path acc ->
-    let fn = Path.basename path in
-    if Predicate.test pred fn then
-      fn :: acc
-    else
-      acc)
-  |> List.rev
+let eval_pred_def =
+  let module Input = struct
+    type t = Path.t * string Predicate.t
+
+    let to_dyn (path, pred) =
+      Dyn.Tuple [Path.to_dyn path; Predicate.to_dyn pred]
+
+    let to_sexp t = Dyn.to_sexp (to_dyn t)
+    let equal = Tuple.T2.equal Path.equal Predicate.equal
+    let hash = Tuple.T2.hash Path.hash Predicate.hash
+  end
+  in
+  let module Output = struct
+    type t = string list
+    let to_sexp = let open Sexp.Encoder in list string
+    let equal = List.equal String.equal
+  end
+  in
+  Memo.create "eval-pred"
+    ~doc:"Evaluate a predicate in a directory"
+    ~input:(module Input)
+    ~output:(Allow_cutoff (module Output))
+    ~visibility:Hidden
+    Sync
+    None
+
+let () =
+  let f (dir, pred) =
+    let t = t () in
+    Path.Set.fold (targets_of t ~dir) ~init:[] ~f:(fun path acc ->
+      let fn = Path.basename path in
+      if Predicate.test pred fn then
+        fn :: acc
+      else
+        acc)
+    |> List.rev
+  in
+  Memo.set_impl eval_pred_def f
+
+
+let eval_pred ~dir pred = Memo.exec eval_pred_def (dir, pred)
 
 module Alias = struct
   include Alias0

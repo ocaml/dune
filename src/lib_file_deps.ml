@@ -64,16 +64,16 @@ let setup_file_deps =
 
 let file_deps_of_lib (lib : Lib.t) ~groups =
   if Lib.is_local lib then
-    Alias.stamp_file
-      (Group.L.alias groups ~dir:(Lib.src_dir lib) ~name:(Lib.name lib))
+    [Alias.stamp_file
+       (Group.L.alias groups ~dir:(Lib.src_dir lib) ~name:(Lib.name lib))]
   else
     (* suppose that all the files of an external lib are at the same place *)
-    Build_system.stamp_file_for_files_of
+    Build_system.stamp_files_for_files_of
       ~dir:(Obj_dir.public_cmi_dir (Lib.obj_dir lib))
-      ~ext:(Group.L.to_string groups)
+      ~exts:(List.map ~f:Group.to_string groups)
 
 let file_deps_with_exts =
-  List.rev_map ~f:(fun (lib, groups) -> file_deps_of_lib lib ~groups)
+  List.concat_map ~f:(fun (lib, groups) -> file_deps_of_lib lib ~groups)
 
 let file_deps libs ~groups =
-  List.rev_map libs ~f:(file_deps_of_lib ~groups)
+  List.concat_map libs ~f:(file_deps_of_lib ~groups)

@@ -12,6 +12,8 @@ val hash : _ t -> int
 
 val to_sexp : _ t Sexp.Encoder.t
 
+val to_dyn : _ t -> Dyn.t
+
 (**[create id ~f] creates a predicate defined by [f] identified uniquely with
    [id]. [id] is used to safely compare predicates for equality for
    memoization *)

@@ -10,6 +10,12 @@ let hash t = Sexp.hash (Lazy.force t.id)
 
 let to_sexp t = Sexp.Encoder.constr "Predicate" [Lazy.force t.id]
 
+let to_dyn t =
+  let open Dyn in
+  Record
+    [ "id", Sexp.to_dyn (Lazy.force t.id)
+    ]
+
 let create ~id ~f =
   { id
   ; f

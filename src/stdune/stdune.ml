@@ -42,6 +42,7 @@ module Monad      = Monad
 module Fn         = Fn
 module Dyn        = Dyn
 module Float      = Float
+module Tuple      = Tuple
 
 external reraise : exn -> _ = "%reraise"
 

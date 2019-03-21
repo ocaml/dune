@@ -335,8 +335,6 @@ end
 
 let global_dep_dag = Dag.create ()
 
-(* call stack consists of two components: asynchronous call stack managed with a fiber
-   context variable and synchronous call stack on top of that managed with an explicit ref *)
 module Call_stack = struct
 
   (* fiber context variable keys *)

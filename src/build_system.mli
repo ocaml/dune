@@ -74,10 +74,6 @@ val targets_of : dir:Path.t -> Path.Set.t
 (** Load the rules for this directory. *)
 val load_dir : dir:Path.t -> unit
 
-(** [on_load_dir ~dir ~f] remembers to run [f] when loading the rules
-    for [dir]. *)
-val on_load_dir : dir:Path.t -> f:(unit -> unit) -> unit
-
 (** Stamp file that depends on all files of [dir] with extension [ext]. *)
 val stamp_file_for_files_of : dir:Path.t -> ext:string -> Path.t
 

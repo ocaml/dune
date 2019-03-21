@@ -5,7 +5,7 @@ let flag_of_kind : Ml_kind.t -> _ =
   | Impl -> "--impl"
   | Intf -> "--intf"
 
-let add_diff sctx loc alias ~dir input output =
+let add_diff sctx loc alias ~dir ~input ~output =
   let open Build.O in
   let action = Action.diff input output in
   Super_context.add_alias_action sctx alias ~dir ~loc:(Some loc) ~locks:[]
@@ -41,18 +41,19 @@ let depend_on_files ~named dir =
   |> List.concat_map ~f:(fun dir -> List.map named ~f:(Path.relative dir))
   |> depend_on_existing_paths
 
-let gen_rules sctx (config : Dune_file.Auto_format.t) ~dir =
+let formatted = ".formatted"
+
+let gen_rules_output sctx (config : Dune_file.Auto_format.t) ~output_dir =
+  assert (formatted = Path.basename output_dir);
   let loc = Dune_file.Auto_format.loc config in
+  let dir = Path.parent_exn output_dir in
   let source_dir = Path.drop_build_context_exn dir in
-  let subdir = ".formatted" in
-  let output_dir = Path.relative dir subdir in
-  let alias = Build_system.Alias.fmt ~dir in
   let alias_formatted = Build_system.Alias.fmt ~dir:output_dir in
   let resolve_program =
     Super_context.resolve_program ~dir sctx ~loc:(Some loc) in
-  let ocamlformat_deps =
-    lazy (depend_on_files ~named:[".ocamlformat"; ".ocamlformat-ignore"] source_dir)
-  in
+  let ocamlformat_deps = lazy (
+    depend_on_files ~named:[".ocamlformat"; ".ocamlformat-ignore"] source_dir
+  ) in
   let setup_formatting file =
     let open Build.O in
     let input_basename = Path.basename file in
@@ -93,17 +94,19 @@ let gen_rules sctx (config : Dune_file.Auto_format.t) ~dir =
       | _ -> None
     in
 
-    Option.iter
-      formatter
-      ~f:(fun arr ->
-        Super_context.add_rule sctx ~mode:Standard ~loc ~dir arr;
-        add_diff sctx loc alias_formatted ~dir input output)
+    Option.iter formatter ~f:(fun arr ->
+      Super_context.add_rule sctx ~mode:Standard ~loc ~dir arr;
+      add_diff sctx loc alias_formatted ~dir ~input ~output)
   in
-  Build_system.on_load_dir
-    ~dir:output_dir
-    ~f:(fun () ->
-      File_tree.files_of (Super_context.file_tree sctx) source_dir
-      |> Path.Set.iter ~f:setup_formatting);
-  Build_system.Alias.add_deps alias
-    (Path.Set.singleton (Build_system.Alias.stamp_file alias_formatted));
+  File_tree.files_of (Super_context.file_tree sctx) source_dir
+  |> Path.Set.iter ~f:setup_formatting;
   Build_system.Alias.add_deps alias_formatted Path.Set.empty
+
+let gen_rules ~dir =
+  let output_dir = Path.relative dir formatted in
+  let alias = Build_system.Alias.fmt ~dir in
+  let alias_formatted = Build_system.Alias.fmt ~dir:output_dir in
+  Build_system.Alias.add_deps alias_formatted Path.Set.empty;
+  Build_system.Alias.stamp_file alias_formatted
+  |> Path.Set.singleton
+  |> Build_system.Alias.add_deps alias

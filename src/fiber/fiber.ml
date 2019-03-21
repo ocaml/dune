@@ -330,6 +330,12 @@ module Var = struct
   let set var x f k =
     EC.set_vars (Univ_map.add (EC.vars ()) var x) f () k
 
+  let unset_sync var f =
+    EC.set_vars_sync (Univ_map.remove (EC.vars ()) var) f ()
+
+  let unset var f k =
+    EC.set_vars (Univ_map.remove (EC.vars ()) var) f () k
+
   let create () =
     create ~name:"var" (fun _ -> Sexp.Encoder.string "var")
 end

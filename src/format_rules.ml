@@ -106,7 +106,6 @@ let gen_rules ~dir =
   let output_dir = Path.relative dir formatted in
   let alias = Build_system.Alias.fmt ~dir in
   let alias_formatted = Build_system.Alias.fmt ~dir:output_dir in
-  Build_system.Alias.add_deps alias_formatted Path.Set.empty;
   Build_system.Alias.stamp_file alias_formatted
   |> Path.Set.singleton
   |> Build_system.Alias.add_deps alias

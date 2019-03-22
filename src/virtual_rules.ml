@@ -252,7 +252,7 @@ let impl sctx ~dir ~(lib : Dune_file.Library.t) ~scope ~modules =
         | Local, Local ->
           let name = Lib.name vlib in
           let dir_contents =
-            Dir_contents.get sctx ~dir:(Lib.src_dir vlib) in
+            Dir_contents.get_without_rules sctx ~dir:(Lib.src_dir vlib) in
           let modules =
             let pp_spec =
               Pp_spec.make lib.buildable.preprocess

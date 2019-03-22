@@ -31,7 +31,7 @@ let gen_dune_package sctx ~version ~(pkg : Local_package.t) =
             |> List.map ~f:(fun lib ->
               let name = Lib.name lib in
               let dir_contents =
-                Dir_contents.get sctx ~dir:(Lib.src_dir lib) in
+                Dir_contents.get_without_rules sctx ~dir:(Lib.src_dir lib) in
               let lib_modules =
                 Dir_contents.modules_of_library dir_contents ~name in
               let foreign_objects =
@@ -380,7 +380,7 @@ let init_install sctx (package : Local_package.t) entries =
                  ; dune_version = _
                  } ->
               let sub_dir = (Option.value_exn lib.public).sub_dir in
-              let dir_contents = Dir_contents.get sctx ~dir in
+              let dir_contents = Dir_contents.get_without_rules sctx ~dir in
               lib_install_files sctx ~dir ~sub_dir lib ~scope
                 ~dir_kind ~dir_contents)
   in

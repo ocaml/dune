@@ -39,6 +39,8 @@ let empty =
   ; repr = "\000"
   }
 
+let id s = Sexp.List [Atom "Glob"; Atom s]
+
 let to_pred t =
-  let id = lazy (Sexp.List [Atom "Glob"; Atom t.repr]) in
+  let id = lazy (id t.repr) in
   Predicate.create ~id ~f:(test t)

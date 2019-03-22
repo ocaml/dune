@@ -526,7 +526,8 @@ type bs = t
 module Build_exec = struct
   open Build.Repr
 
-  let exec (bs : bs) (t : ('a, 'b) Build.t) (x : 'a) : 'b * Dep.Set.t =
+  let exec (bs : bs) ~(eval_pred : Dep.eval_pred) (t : ('a, 'b) Build.t) (x : 'a)
+    : 'b * Dep.Set.t =
     let rec exec
       : type a b. Dep.Set.t ref -> (a, b) t -> a -> b = fun dyn_deps t x ->
       match t with
@@ -555,7 +556,7 @@ module Build_exec = struct
         (a, b)
       | Paths _ -> x
       | Paths_for_rule _ -> x
-      | Paths_glob state -> get_glob_result_exn state
+      | Paths_glob (dir, pred) -> eval_pred ~dir pred
       | Contents p -> Io.read_file p
       | Lines_of p -> Io.lines_of_file p
       | Vpath (Vspec.T (fn, kind)) ->
@@ -800,8 +801,7 @@ and static_deps t build =
   Fiber.Once.create (fun () ->
     Fiber.return
       (Build_interpret.static_deps build
-         ~all_targets:(targets_of t)
-         ~file_tree:t.file_tree))
+         ~all_targets:(targets_of t)))
 
 and start_rule t _rule =
   t.hook Rule_started
@@ -1206,7 +1206,7 @@ let evaluate_action_and_dynamic_deps_def =
     let* static_deps = Fiber.Once.get rule.static_deps in
     let rule_deps = Static_deps.rule_deps static_deps in
     let+ () = build_deps rule_deps in
-    Build_exec.exec t rule.build ()
+    Build_exec.exec t ~eval_pred rule.build ()
   in
   Memo.create
     "evaluate-action-and-dynamic-deps"
@@ -1750,12 +1750,9 @@ module All_lib_deps : sig
     :  request:(unit, unit) Build.t
     -> Lib_deps_info.t Path.Map.t String.Map.t Fiber.t
 end = struct
-  let static_deps_of_request t request =
+  let static_deps_of_request request =
     Static_deps.paths @@
-    Build_interpret.static_deps
-      request
-      ~all_targets:targets_of
-      ~file_tree:t.file_tree
+    Build_interpret.static_deps request ~all_targets:targets_of
 
   let rules_for_files t paths =
     Path.Set.fold paths ~init:[] ~f:(fun path acc ->
@@ -1785,7 +1782,7 @@ end = struct
 
   let all_lib_deps ~request =
     let t = t () in
-    let targets = static_deps_of_request t request ~eval_pred in
+    let targets = static_deps_of_request request ~eval_pred in
     let* rules= rules_for_targets t targets in
     let+ lib_deps =
       Fiber.parallel_map rules ~f:(fun rule ->

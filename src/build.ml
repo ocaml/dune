@@ -17,7 +17,7 @@ module Repr = struct
     | Fanout : ('a, 'b) t * ('a, 'c) t -> ('a, 'b * 'c) t
     | Paths : Path.Set.t -> ('a, 'a) t
     | Paths_for_rule : Path.Set.t -> ('a, 'a) t
-    | Paths_glob : glob_state ref -> ('a, Path.Set.t) t
+    | Paths_glob : Path.t * Path.t Predicate.t -> ('a, Path.Set.t) t
     (* The reference gets decided in Build_interpret.deps *)
     | If_file_exists : Path.t * ('a, 'b) if_file_exists_state ref -> ('a, 'b) t
     | Contents : Path.t -> ('a, string) t
@@ -114,8 +114,7 @@ let lazy_no_targets t = Lazy_no_targets t
 let path p = Paths (Path.Set.singleton p)
 let paths ps = Paths (Path.Set.of_list ps)
 let path_set ps = Paths ps
-let paths_matching ~loc ~dir pred =
-  Paths_glob (ref (G_unevaluated (loc, dir, pred)))
+let paths_matching ~loc:_ ~dir pred = Paths_glob (dir, pred)
 let vpath vp = Vpath vp
 let dyn_paths t = Dyn_paths (t >>^ Path.Set.of_list)
 let dyn_path_set t = Dyn_paths t

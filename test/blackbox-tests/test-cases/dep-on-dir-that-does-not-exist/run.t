@@ -11,10 +11,6 @@
 # - track the dependency and rerun it when the directory is created.
 
   $ dune build @print-contents-of-dir-that-is-later-created
-  File "dune", line 8, characters 22-53:
-  8 |  (deps    (glob_files dir-that-is-later-created/*.txt))
-                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  Warning: Directory dir-that-is-later-created doesn't exist.
   listing: ERROR
 
 ^ Reasonable

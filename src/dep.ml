@@ -15,19 +15,16 @@ module T = struct
   let compare x y =
     match x, y with
     | Env x, Env y -> Env.Var.compare x y
-    | Env _, File _
-    | Env _, Glob _
-    | Env _, Universe -> Ordering.Lt
+    | Env _, _ -> Lt
+    | _, Env _ -> Gt
     | File x, File y -> Path.compare x y
-    | File _, Glob _
-    | File _, Env _ -> Ordering.Gt
-    | File _, Universe -> Ordering.Lt
+    | File _, _ -> Lt
+    | _, File _ -> Gt
     | Glob (d1, p1), Glob (d2, p2) ->
       Tuple.T2.compare Path.compare Predicate.compare (d1, p1) (d2, p2)
-    | Glob _, (Env _ | File _) -> Ordering.Gt
-    | Glob _, Universe -> Ordering.Lt
+    | Glob _, _ -> Lt
+    | _, Glob _ -> Gt
     | Universe, Universe -> Ordering.Eq
-    | Universe, (Env _ | File _ | Glob _) -> Gt
 
   let unset = lazy (Digest.string "unset")
 

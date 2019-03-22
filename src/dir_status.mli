@@ -1,5 +1,10 @@
 open Stdune
 
+type is_component_of_a_group_but_not_the_root = {
+  group_root : Path.t;
+  stanzas : Stanza.t list Dir_with_dune.t option;
+}
+
 type t =
   | Standalone of
       (File_tree.Dir.t * Stanza.t list Dir_with_dune.t option) option
@@ -11,8 +16,7 @@ type t =
                   * Stanza.t list Dir_with_dune.t
   (* Directory with [(include_subdirs x)] where [x] is not [no] *)
 
-  | Is_component_of_a_group_but_not_the_root of
-      Stanza.t list Dir_with_dune.t option
+  | Is_component_of_a_group_but_not_the_root of is_component_of_a_group_but_not_the_root
   (* Sub-directory of a [Group_root _] *)
 
 module DB : sig

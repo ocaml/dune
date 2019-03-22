@@ -688,3 +688,22 @@ end
 module Async = struct
   type nonrec ('i, 'o) t = ('i, 'o, 'i -> 'o Fiber.t) t
 end
+
+let lazy_ (type a) f =
+  let module Output = struct
+    type t = a
+    let to_sexp _ = Sexp.Atom "<opaque>"
+    let equal = (==)
+  end
+  in
+  let memo =
+    create "lazy"
+      ~doc:("a lazy value constructed at \n" ^
+            Printexc.raw_backtrace_to_string (Printexc.get_callstack 50))
+      ~input:(module Unit)
+      ~visibility:Hidden
+      ~output:(Allow_cutoff (module Output))
+      Sync
+      (Some f)
+  in
+  (fun () -> exec memo ())

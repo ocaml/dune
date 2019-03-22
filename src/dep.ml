@@ -78,6 +78,8 @@ module Set = struct
 
   let has_universe t = mem t Universe
 
+  let of_files = List.fold_left ~init:empty ~f:(fun acc f -> add acc (file f))
+
   let trace t ~env ~eval_pred =
     List.concat_map (to_list t) ~f:(trace ~env ~eval_pred)
 

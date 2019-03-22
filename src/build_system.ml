@@ -566,6 +566,10 @@ module Build_exec = struct
         let fns = exec dyn_deps t x in
         dyn_deps := Dep.Set.add_paths !dyn_deps fns;
         x
+      | Dyn_deps t ->
+        let fns = exec dyn_deps t x in
+        dyn_deps := Dep.Set.union !dyn_deps fns;
+        x
       | Record_lib_deps _ -> x
       | Fail { fail } -> fail ()
       | If_file_exists (_, state) ->

@@ -24,6 +24,7 @@ module Repr = struct
     | Lines_of : Path.t -> ('a, string list) t
     | Vpath : 'a Vspec.t -> (unit, 'a) t
     | Dyn_paths : ('a, Path.Set.t) t -> ('a, 'a) t
+    | Dyn_deps : ('a, Dep.Set.t) t -> ('a, 'a) t
     | Record_lib_deps : Lib_deps_info.t -> ('a, 'a) t
     | Fail : fail -> (_, _) t
     | Memo : 'a memo -> (unit, 'a) t
@@ -118,9 +119,19 @@ let paths_matching ~loc:_ ~dir pred = Paths_glob (dir, pred)
 let vpath vp = Vpath vp
 let dyn_paths t = Dyn_paths (t >>^ Path.Set.of_list)
 let dyn_path_set t = Dyn_paths t
+let dyn_deps t = Dyn_deps t
 let paths_for_rule ps = Paths_for_rule ps
 let universe = Universe
 let env_var s = Env_var s
+
+let of_deps (type a) (d : Dep.Set.t) : (a, a) t =
+  let init = arr Fn.id in
+  Dep.Set.fold d ~init ~f:(fun d acc ->
+    match d with
+    | Env v -> (Env_var v &&& acc) >>^ snd
+    | File p -> (path p &&& acc) >>^ snd
+    | Glob (dir, pred) -> (Paths_glob (dir, pred) &&& acc) >>^ snd
+    | Universe -> (universe &&& acc) >>^ snd)
 
 let catch t ~on_error = Catch (t, on_error)
 
@@ -187,12 +198,13 @@ let get_prog = function
     >>> dyn_paths (arr (function Error _ -> [] | Ok x -> [x]))
 
 let prog_and_args ?(dir=Path.root) prog args =
-  Paths (Arg_spec.static_deps args)
+  of_deps (Arg_spec.static_deps args) &&& arr (fun x -> x)
+  >>^ snd
   >>>
   (get_prog prog &&&
    (arr (Arg_spec.expand ~dir args)
     >>>
-    dyn_path_set (arr (fun (_args, deps) -> deps))
+    dyn_deps (arr (fun (_args, deps) -> deps))
     >>>
     arr fst))
 

@@ -22,6 +22,8 @@ module Set : sig
 
   val has_universe : t -> bool
 
+  val of_files : Path.t list -> t
+
   val paths :  t -> eval_pred:eval_pred -> Path.Set.t
 
   val encode : t -> Dune_lang.t

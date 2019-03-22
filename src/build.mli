@@ -201,6 +201,7 @@ module Repr : sig
     | Lines_of : Path.t -> ('a, string list) t
     | Vpath : 'a Vspec.t -> (unit, 'a) t
     | Dyn_paths : ('a, Path.Set.t) t -> ('a, 'a) t
+    | Dyn_deps : ('a, Dep.Set.t) t -> ('a, 'a) t
     | Record_lib_deps : Lib_deps_info.t -> ('a, 'a) t
     | Fail : fail -> (_, _) t
     | Memo : 'a memo -> (unit, 'a) t

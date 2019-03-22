@@ -8,6 +8,8 @@ module Group = struct
     | Cmx
     | Header
 
+  let all = [Cmi; Cmx; Header]
+
   let to_string = function
     | Cmi -> ".cmi"
     | Cmx -> ".cmx"
@@ -17,6 +19,21 @@ module Group = struct
     | Cm_kind.Cmx -> Cmx
     | Cmi -> Cmi
     | Cmo -> Exn.code_error "Lib_file_deps.Group.of_cm_kind: Cmo" []
+
+  let to_predicate =
+    let preds = List.map all ~f:(fun g ->
+      let ext = to_string g in
+      (* we cannot use globs because of bootstrapping. *)
+      let id = lazy (
+        let open Sexp.Encoder in
+        constr "Lib_file_deps" [Atom ext]
+      ) in
+      let pred = Predicate.create ~id ~f:(fun p ->
+        String.equal (Path.extension p) ext)
+      in
+      (g, pred))
+    in
+    fun g -> Option.value_exn (List.assoc preds g)
 
   module L = struct
     let to_string l =
@@ -62,18 +79,24 @@ let setup_file_deps =
         Path.relative dir (header ^ ".h"))
       |> Path.Set.of_list)
 
-let file_deps_of_lib (lib : Lib.t) ~groups =
+let deps_of_lib (lib : Lib.t) ~groups =
   if Lib.is_local lib then
-    [Alias.stamp_file
-       (Group.L.alias groups ~dir:(Lib.src_dir lib) ~name:(Lib.name lib))]
+    Group.L.alias groups ~dir:(Lib.src_dir lib) ~name:(Lib.name lib)
+    |> Alias.stamp_file
+    |> Dep.file
+    |> Dep.Set.singleton
   else
     (* suppose that all the files of an external lib are at the same place *)
-    Build_system.stamp_files_for_files_of
-      ~dir:(Obj_dir.public_cmi_dir (Lib.obj_dir lib))
-      ~exts:(List.map ~f:Group.to_string groups)
+    let dir = Obj_dir.public_cmi_dir (Lib.obj_dir lib) in
+    List.map groups ~f:(fun g -> Dep.glob ~dir (Group.to_predicate g))
+    |> Dep.Set.of_list
 
-let file_deps_with_exts =
-  List.concat_map ~f:(fun (lib, groups) -> file_deps_of_lib lib ~groups)
+let deps_with_exts =
+  List.fold_left ~init:Dep.Set.empty ~f:(fun acc (lib, groups) ->
+    let deps = deps_of_lib lib ~groups in
+    Dep.Set.union acc deps)
 
-let file_deps libs ~groups =
-  List.concat_map libs ~f:(file_deps_of_lib ~groups)
+let deps libs ~groups =
+  List.fold_left ~init:Dep.Set.empty libs ~f:(fun acc lib ->
+    let deps = deps_of_lib lib ~groups in
+    Dep.Set.union acc deps)

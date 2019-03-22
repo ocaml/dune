@@ -56,6 +56,7 @@ let static_deps t ~all_targets =
           end
       end
     | Dyn_paths t -> loop t acc targets_allowed
+    | Dyn_deps t -> loop t acc targets_allowed
     | Vpath (Vspec.T (p, _)) ->
       Static_deps.add_rule_path acc p
     | Contents p -> Static_deps.add_rule_path acc p
@@ -88,6 +89,7 @@ let lib_deps =
       | Vpath _ -> acc
       | Paths_glob _ -> acc
       | Dyn_paths t -> loop t acc
+      | Dyn_deps t -> loop t acc
       | Contents _ -> acc
       | Lines_of _ -> acc
       | Record_lib_deps deps -> Lib_deps_info.merge deps acc
@@ -119,6 +121,7 @@ let targets =
     | Vpath _ -> acc
     | Paths_glob _ -> acc
     | Dyn_paths t -> loop t acc
+    | Dyn_deps t -> loop t acc
     | Contents _ -> acc
     | Lines_of _ -> acc
     | Record_lib_deps _ -> acc

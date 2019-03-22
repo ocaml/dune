@@ -187,7 +187,7 @@ let get_prog = function
     >>> dyn_paths (arr (function Error _ -> [] | Ok x -> [x]))
 
 let prog_and_args ?(dir=Path.root) prog args =
-  Paths (Arg_spec.add_deps args Path.Set.empty)
+  Paths (Arg_spec.static_deps args)
   >>>
   (get_prog prog &&&
    (arr (Arg_spec.expand ~dir args)

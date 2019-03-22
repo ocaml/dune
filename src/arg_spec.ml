@@ -19,15 +19,18 @@ type ('a, _) t =
   | Dyn      : ('a -> (Nothing.t, static) t) -> ('a, dynamic) t
   | Fail     : fail -> ('a, _) t
 
-let rec add_deps ts set =
-  List.fold_left ts ~init:set ~f:(fun set t ->
-    match t with
-    | Dep fn -> Path.Set.add set fn
-    | Deps        fns
-    | Hidden_deps fns -> Path.Set.union set (Path.Set.of_list fns)
-    | S ts
-    | Concat (_, ts) -> add_deps ts set
-    | _ -> set)
+let static_deps =
+  let rec add_deps ts set =
+    List.fold_left ts ~init:set ~f:(fun set t ->
+      match t with
+      | Dep fn -> Path.Set.add set fn
+      | Deps        fns
+      | Hidden_deps fns -> Path.Set.union set (Path.Set.of_list fns)
+      | S ts
+      | Concat (_, ts) -> add_deps ts set
+      | _ -> set)
+  in
+  fun ts -> add_deps ts Path.Set.empty
 
 let rec add_targets ts acc =
   List.fold_left ts ~init:acc ~f:(fun acc t ->

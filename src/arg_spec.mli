@@ -47,7 +47,7 @@ type ('a, _) t =
   | Dyn      : ('a -> (Nothing.t, static) t) -> ('a, dynamic) t
   | Fail     : fail -> ('a, _) t
 
-val add_deps    : _ t list -> Path.Set.t -> Path.Set.t
+val static_deps    : _ t list -> Path.Set.t
 val add_targets : (_, dynamic) t list -> Path.t list -> Path.t list
 val expand      : dir:Path.t -> ('a, dynamic) t list -> 'a -> string list * Path.Set.t
 

@@ -4,7 +4,7 @@ module T = struct
   type t =
     | Env of Env.Var.t
     | File of Path.t
-    | Glob of Path.t * string Predicate.t
+    | Glob of Path.t * Path.t Predicate.t
     | Universe
 
   let env e = Env e
@@ -39,7 +39,8 @@ module T = struct
     | File fn -> [trace_file fn]
     | Glob (dir, pred) ->
       eval_pred ~dir pred
-      |> List.map ~f:(fun f -> trace_file (Path.relative dir f))
+      |> Path.Set.to_list
+      |> List.map ~f:trace_file
     | Env var ->
       let value =
         begin match Env.get env var with
@@ -88,22 +89,20 @@ module Set = struct
 
   let encode t = Dune_lang.Encoder.list encode (to_list t)
 
-  let file_list t ~eval_pred =
-    to_list t
-    |> List.concat_map ~f:(function
-      | File f -> [f]
-      | Glob (dir, pred) ->
-        eval_pred ~dir pred
-        |> List.map ~f:(Path.relative dir)
+  let paths t ~eval_pred =
+    fold t ~init:Path.Set.empty ~f:(fun d acc ->
+      match d with
+      | File f -> Path.Set.add acc f
+      | Glob (dir, pred) -> Path.Set.union acc (eval_pred ~dir pred)
       | Universe
-      | Env _ -> [])
-
-  let paths t ~eval_pred = Path.Set.of_list (file_list t ~eval_pred)
+      | Env _ -> acc)
 
   let parallel_iter t ~f = Fiber.parallel_iter ~f (to_list t)
 
   let parallel_iter_files t ~f ~eval_pred =
-    Fiber.parallel_iter ~f (file_list t ~eval_pred)
+    paths t ~eval_pred
+    |> Path.Set.to_list
+    |> Fiber.parallel_iter ~f
 
   let dirs t =
     fold t ~init:Path.Set.empty ~f:(fun f acc ->
@@ -113,3 +112,5 @@ module Set = struct
       | Universe
       | Env _ -> acc)
 end
+
+type eval_pred = dir:Path.t -> Path.t Predicate.t -> Path.Set.t

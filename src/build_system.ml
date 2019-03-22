@@ -1157,7 +1157,7 @@ let execute_rule_def =
 
 module Pred = struct
   module Input = struct
-    type t = Path.t * string Predicate.t
+    type t = Path.t * Path.t Predicate.t
 
     let to_dyn (path, pred) =
       Dyn.Tuple [Path.to_dyn path; Predicate.to_dyn pred]
@@ -1168,16 +1168,10 @@ module Pred = struct
   end
 
   let eval_def =
-    let module Output = struct
-      type t = string list
-      let to_sexp = let open Sexp.Encoder in list string
-      let equal = List.equal String.equal
-    end
-    in
     Memo.create "eval-pred"
       ~doc:"Evaluate a predicate in a directory"
       ~input:(module Input)
-      ~output:(Allow_cutoff (module Output))
+      ~output:(Allow_cutoff (module Path.Set))
       ~visibility:Hidden
       Sync
       None
@@ -1417,7 +1411,7 @@ let () =
 let () =
   let f (dir, pred) =
     eval_pred ~dir pred
-    |> List.map ~f:(Path.relative dir)
+    |> Path.Set.to_list
     |> Fiber.parallel_iter ~f:build_file
   in
   Memo.set_impl Pred.build_def f
@@ -1621,13 +1615,7 @@ let prefix_rules prefix ~f =
 let () =
   let f (dir, pred) =
     let t = t () in
-    Path.Set.fold (targets_of t ~dir) ~init:[] ~f:(fun path acc ->
-      let fn = Path.basename path in
-      if Predicate.test pred fn then
-        fn :: acc
-      else
-        acc)
-    |> List.rev
+    Path.Set.filter (targets_of t ~dir) ~f:(Predicate.test pred)
   in
   Memo.set_impl Pred.eval_def f
 

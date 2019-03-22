@@ -41,5 +41,5 @@ val action_deps : t -> Dep.Set.t
 (** Return the paths deps, both for the rule deps and the action deps. *)
 val paths
   : t
-  -> eval_pred:(dir:Path.t -> string Predicate.t -> string list)
+  -> eval_pred:Dep.eval_pred
   -> Path.Set.t

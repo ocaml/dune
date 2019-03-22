@@ -66,7 +66,7 @@ val prefix_rules : (unit, unit) Build.t -> f:(unit -> 'a) -> 'a
 
 (** [eval_pred t ~dir pred ~f] returns the list of files in [dir] that matches
     [pred] to [f]. The list of files includes the list of targets. *)
-val eval_pred : dir:Path.t -> string Predicate.t -> string list
+val eval_pred : dir:Path.t -> Path.t Predicate.t -> Path.Set.t
 
 (** Returns the set of targets in the given directory. *)
 val targets_of : dir:Path.t -> Path.Set.t

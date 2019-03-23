@@ -181,7 +181,7 @@ let external_dep_graph sctx ~impl_cm_kind ~vlib_obj_dir ~impl_obj_dir
       | Impl -> impl_cm_kind
       | Intf -> Cm_kind.Cmi
     in
-    let deps_from_objnfo ~for_module (ocamlobjinfo : Ocamlobjinfo.t) =
+    let deps_from_objinfo ~for_module (ocamlobjinfo : Ocamlobjinfo.t) =
       Module.Name.Set.to_list ocamlobjinfo.intf
       |> List.filter_map ~f:(fun dep ->
         match Module.Name.split_alias_prefix dep, wrapped with
@@ -224,7 +224,7 @@ let external_dep_graph sctx ~impl_cm_kind ~vlib_obj_dir ~impl_obj_dir
             Super_context.add_rule sctx ~dir:impl_obj_dir write;
             let open Build.O in
             Build.memoize "ocamlobjinfo" @@
-            read >>^ deps_from_objnfo ~for_module:m
+            read >>^ deps_from_objinfo ~for_module:m
         in
         m, deps)))
 

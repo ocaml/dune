@@ -931,6 +931,9 @@ let ocamlc which () =
       | _       -> `None
   in
   let threads = ref `None in
+  let support_threads() =
+    if threads_default = `None then
+      failwith "threading is not supported on this platform" in
 
   let add_switch name =
     Arg.Unit (fun () ->
@@ -1027,10 +1030,10 @@ let ocamlc which () =
 	      Arg.String (fun s -> pp_specified := true; add_spec_fn "-pp" s);
 	      
 	      "-thread", 
-	      Arg.Unit (fun _ -> threads := threads_default);
+              Arg.Unit (fun _ -> support_threads(); threads := threads_default);
             
 	      "-vmthread", 
-	      Arg.Unit (fun _ -> threads := `VM_threads);
+              Arg.Unit (fun _ -> support_threads(); threads := `VM_threads);
               
 	      "-", 
 	      Arg.String (fun s -> pass_files := !pass_files @  [ Pass s ]);

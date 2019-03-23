@@ -2461,7 +2461,7 @@ let print_configuration() =
 	  (Findlib.ocaml_ldconf());
 	flush stdout
     | Some "conf" ->
-	print_endline Findlib_config.config_file
+	print_endline (Findlib.config_file())
     | Some "path" ->
 	List.iter print_endline (Findlib.search_path())
     | Some "destdir" ->

@@ -110,6 +110,11 @@ configuration files, and library routines in detail.</p>
     <ul>
 
     <li>
+      <p><em>git master:</em> Adapted to upcoming ocaml-4.09.</p>
+      <p>New API Findlib.list_packages' can specify a package prefix.</p>
+    </li>
+
+    <li>
       <p><em>1.8.0:</em> Fix reinstallation of "num" for OCaml-4.06.
       </p>
       <p>Fix build with OCaml-4.07.</p>

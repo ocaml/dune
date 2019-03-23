@@ -739,6 +739,7 @@ let poll ?log ?config ~once ~finally () =
       Exit
   in
   let wait msg =
+    Format.fprintf Format.err_formatter "@.DUNE Finish building@.";
     let old_generator = Console.get_status_line_generator () in
     set_status_line_generator
       (fun () ->
@@ -750,6 +751,7 @@ let poll ?log ?config ~once ~finally () =
     res
   in
   let rec loop () =
+    Format.fprintf Format.err_formatter "@.DUNE Start building@.";
     let res = Run_once.run_and_cleanup t once in
     finally ();
     match res with

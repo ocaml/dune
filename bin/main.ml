@@ -169,15 +169,19 @@ let default =
        ; `Blocks Common.help_secs
        ])
 
+let error_exit () = 
+  prerr_endline "DUNE BUILD FAILED";
+  exit 1 
 let main () =
   Colors.setup_err_formatter_colors ();
   try
     match Term.eval_choice default all ~catch:false with
-    | `Error _ -> exit 1
+    | `Error _ ->       
+      error_exit ()
     | _ -> exit 0
   with
-  | Fiber.Never -> exit 1
+  | Fiber.Never -> error_exit ()
   | exn ->
     let exn = Exn_with_backtrace.capture exn in
     Report_error.report exn;
-    exit 1
+    error_exit ()

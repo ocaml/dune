@@ -118,16 +118,20 @@ val module_conflict_report : ?identify_dir:(string -> 'a) -> string list -> unit
    * @param identify_dir See [package_conflict_report].
    *)
 
-val load_base : unit -> unit
+val load_base : ?prefix:string -> unit -> unit
   (** Ensures that the complete package graph is loaded into memory.
    * This is a time-consuming operation. Warnings may be printed to
    * stderr.
+   *
+   * @param prefix Limit to the packages that starts with it. Default: unlimited
    *)
 
-val list_packages : unit -> string list
+val list_packages : ?prefix:string -> unit -> string list
   (** Ensures that the complete package graph is loaded into memory
    * (like [load_base]), and returns the (unsorted) list of all
    * packages.
+   *
+   * @param prefix Limit to the packages that starts with it. Default: unlimited
    *)
 
 val package_users : preds:string list -> string list -> string list

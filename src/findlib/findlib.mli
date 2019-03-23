@@ -232,6 +232,12 @@ val list_packages : ?tab:int -> ?descr:bool -> out_channel -> unit
    * @param descr Whether package descriptions are printed. Default: false
    *)
 
+val list_packages' : ?prefix:string -> unit -> string list
+  (** Returns the (unsorted) list of all packages.
+   *
+   * @param prefix Limit to the packages that starts with it. Default: unlimited
+   *)
+
 (** Managing dynamically loaded packages *)
 
 (** This is a registry of packages that are available in-core. This is both

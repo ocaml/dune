@@ -531,11 +531,17 @@ let package_conflict_report ?identify_dir () =
     | Some f -> package_conflict_report_1 f ()
 ;;
 
+let check_prefix ?prefix f =
+  match prefix with
+  | None -> true
+  | Some prefix ->
+    let len = String.length prefix in
+    String.length f >= len && String.sub f 0 len = prefix
 
-let load_base() =
+let load_base ?prefix () =
   (* Ensures that the cache is completely filled with every package
-   * of the system
-   *)
+   * of the system that match prefix
+  *)
   let list_directory d =
     try
       Array.to_list(Sys.readdir d)
@@ -570,9 +576,11 @@ let load_base() =
     match path with
       [] -> ()
     | dir :: path' ->
-	let files = list_directory dir in
+        let files = list_directory dir in
 	List.iter
-	  (fun f ->
+          (fun f ->
+             if check_prefix ?prefix f
+             then
 	     (* If f/META exists: Add package f *)
 	     let package_dir = Filename.concat dir f in
 	     let meta_file_1 = Filename.concat package_dir "META" in
@@ -596,14 +604,16 @@ let load_base() =
 ;;
 
 
-let list_packages() =
-  load_base();
+let list_packages ?prefix () =
+  load_base ?prefix ();
 
   let l = ref [] in
 
   Fl_metastore.iter_up
     (fun m ->
-      l := m.package_name :: !l)
+       if check_prefix ?prefix m.package_name then
+         l := m.package_name :: !l
+    )
     store;
 
   !l

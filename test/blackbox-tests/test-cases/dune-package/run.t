@@ -26,7 +26,7 @@
    (modules
     (alias_module (name C) (obj_name c) (visibility public) (impl))
     (main_module_name C)
-    (modules ((name Y) (obj_name c__Y) (visibility public) (impl)))
+    (modules ((name Y) (obj_name c__Y) (visibility private) (impl) (intf)))
     (wrapped true)))
 
 Build with "--store-orig-source-dir" profile

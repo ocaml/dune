@@ -492,6 +492,11 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
       build_stubs lib ~dir ~expander ~requires:requires_compile
         ~dir_contents ~vlib_stubs_o_files;
 
+    Lib_file_deps.setup_file_deps ~lib ~dir
+      ~modules:(Lib_modules.have_artifacts lib_modules
+                |> Module.Name.Map.values
+                |> Vimpl.for_file_deps vimpl);
+
     if not (Library.is_virtual lib) then (
       let wrapped_compat = Lib_modules.wrapped_compat lib_modules in
       setup_build_archives lib ~wrapped_compat ~cctx ~dep_graphs

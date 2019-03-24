@@ -33,3 +33,5 @@ val aliased_modules : t option -> Lib_modules.t -> Module.Name_map.t
 val find_module : t option -> Module.t -> Module.t option
 
 val vlib_stubs_o_files : t option -> Path.t list
+
+val for_file_deps : t option -> Module.t list -> Module.t list

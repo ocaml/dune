@@ -299,16 +299,8 @@ We can implement external variants with mli only modules
 Implement external virtual libraries with private modules
   $ env OCAMLPATH=implements-external/vlib/_build/install/default/lib dune build --root implements-external/impl-private-module --debug-dependency-path
   Entering directory 'implements-external/impl-private-module'
-  File "src/virtual_rules.ml", line 41, characters 49-56:
-  Error: File unavailable: $TESTCASE_ROOT/implements-external/vlib/_build/install/default/lib/vlib/privatemodule/vlib_privatemodule__Privatemodule.cmi
-  -> required by $TESTCASE_ROOT/implements-external/vlib/_build/install/default/lib/vlib/privatemodule/vlib_privatemodule__Privatemodule.cmi
-  -> required by .impl_privatemodule.objs/byte/vlib_privatemodule__Privatemodule.cmi
-  -> required by .run.eobjs/byte/run.cmi
-  -> required by .run.eobjs/native/run.cmx
-  -> required by run.exe
-  -> required by alias default
-  -> required by alias default
-  [1]
+           run alias default
+  Name: implement virtual module. Magic number: 42
 
 Include variants and implementation information in dune-package
   $ dune build --root dune-package-info

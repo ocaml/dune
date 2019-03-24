@@ -1,3 +1,5 @@
+open Stdune
+
 module Group : sig
   type t =
     | Cmi
@@ -15,3 +17,10 @@ val deps
 val deps_with_exts
   :  (Lib.t * Group.t list) list
   -> Dep.Set.t
+
+(** Setup alias dependencies for library artifacts grouped by extensions *)
+val setup_file_deps
+  :  dir:Path.t
+  -> lib:Dune_file.Library.t
+  -> modules:Module.t list
+  -> unit

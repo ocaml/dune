@@ -92,11 +92,6 @@ let deps_of_lib (lib : Lib.t) ~groups =
     |> Dep.Set.of_list
 
 let deps_with_exts =
-  List.fold_left ~init:Dep.Set.empty ~f:(fun acc (lib, groups) ->
-    let deps = deps_of_lib lib ~groups in
-    Dep.Set.union acc deps)
+  Dep.Set.union_map ~f:(fun (lib, groups) -> deps_of_lib lib ~groups)
 
-let deps libs ~groups =
-  List.fold_left ~init:Dep.Set.empty libs ~f:(fun acc lib ->
-    let deps = deps_of_lib lib ~groups in
-    Dep.Set.union acc deps)
+let deps libs ~groups = Dep.Set.union_map libs ~f:(deps_of_lib ~groups)

@@ -7,9 +7,6 @@ module Vspec = Build.Vspec
 (* Where we store stamp files for aliases *)
 let alias_dir = Path.(relative build_dir) ".aliases"
 
-(* Where we store stamp files for [stamp_file_for_files_of] *)
-let misc_dir = Path.(relative build_dir) ".misc"
-
 let () = Hooks.End_of_build.always Memo.reset
 
 module Promoted_to_delete : sig
@@ -346,14 +343,6 @@ module Dir_status = struct
     | Failed_to_load
 end
 
-module Files_of = struct
-  type t =
-    { files_by_ext   : Path.t list String.Map.t
-    ; dir_hash       : string
-    ; mutable stamps : Path.t String.Map.t
-    }
-end
-
 module Trace : sig
   module Entry : sig
     type t =
@@ -447,7 +436,6 @@ type t =
   ; (* Set of directories under _build that have at least one rule and
        all their ancestors. *)
     mutable build_dirs_to_keep : Path.Set.t
-  ; files_of : Files_of.t Path.Table.t
   ; mutable prefix : (unit, unit) Build.t option
   ; hook : hook -> unit
   ; (* Package files are part of *)
@@ -1091,43 +1079,6 @@ and get_file_spec t path =
       Errors.fail_opt loc
         "File unavailable: %s" (Path.to_string_maybe_quoted path)
 
-let stamp_files_for_files_of ~dir ~exts =
-  let t = t () in
-  let files_of_dir =
-    Path.Table.find_or_add t.files_of dir ~f:(fun dir ->
-      let files_by_ext =
-        targets_of t ~dir
-        |> Path.Set.to_list
-        |> List.map ~f:(fun fn -> Filename.extension (Path.to_string fn), fn)
-        |> String.Map.of_list_multi
-      in
-      { files_by_ext
-      ; dir_hash = Path.to_string dir |> Digest.string |> Digest.to_string
-      ; stamps = String.Map.empty
-      })
-  in
-  List.map exts ~f:(fun ext ->
-    match String.Map.find files_of_dir.stamps ext with
-    | Some fn -> fn
-    | None ->
-      let stamp_file = Path.relative misc_dir (files_of_dir.dir_hash ^ ext) in
-      let files =
-        Option.value
-          (String.Map.find files_of_dir.files_by_ext ext)
-          ~default:[]
-      in
-      compile_rule t
-        (let open Build.O in
-         Pre_rule.make
-           ~env:None
-           ~context:None
-           (Build.paths files >>>
-            Build.action ~targets:[stamp_file]
-              (Action.with_stdout_to stamp_file
-                 (Action.digest_files files))));
-      files_of_dir.stamps <- String.Map.add files_of_dir.stamps ext stamp_file;
-      stamp_file)
-
 let all_targets () =
   let t = t () in
   String.Map.iter t.contexts ~f:(fun ctx ->
@@ -1480,7 +1431,6 @@ let init ~contexts ~file_tree ~hook =
     ; file_tree
     ; gen_rules = Fdecl.create ()
     ; build_dirs_to_keep = Path.Set.empty
-    ; files_of = Path.Table.create 1024
     ; prefix = None
     ; hook
     }

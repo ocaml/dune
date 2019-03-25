@@ -30,4 +30,8 @@ module type S = sig
   val of_list        : elt list -> t
   val to_list        : t -> elt list
   val find           : t -> f:(elt -> bool) -> elt option
+
+  val union_all : t list -> t
+  val union_map : 'a list -> f:('a -> t) -> t
+
 end

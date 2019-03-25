@@ -8,9 +8,13 @@ type 'a t
 
 val equal : 'a t -> 'a t -> bool
 
+val compare : 'a t -> 'a t -> Ordering.t
+
 val hash : _ t -> int
 
 val to_sexp : _ t Sexp.Encoder.t
+
+val encode : _ t Dune_lang.Encoder.t
 
 val to_dyn : _ t -> Dyn.t
 
@@ -24,3 +28,5 @@ val test : 'a t -> 'a -> bool
 (** the user of this function must take care not to break the uniqueness of the
     underlying representation *)
 val contramap : 'a t -> f:('b -> 'a) -> map_id:(Sexp.t -> Sexp.t) -> 'b t
+
+val pp : _ t Fmt.t

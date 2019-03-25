@@ -45,5 +45,5 @@ let add_action_env_var t var =
     action_deps = Dep.Set.add t.action_deps (Dep.env var)
   }
 
-let paths {action_deps; rule_deps} =
-  Dep.Set.paths (Dep.Set.union action_deps rule_deps)
+let paths {action_deps; rule_deps} ~eval_pred =
+  Dep.Set.paths (Dep.Set.union action_deps rule_deps) ~eval_pred

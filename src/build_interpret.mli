@@ -40,7 +40,6 @@ end
 val static_deps
   :  (_, _) Build.t
   -> all_targets:(dir:Path.t -> Path.Set.t)
-  -> file_tree:File_tree.t
   -> Static_deps.t
 
 val lib_deps

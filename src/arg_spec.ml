@@ -14,20 +14,23 @@ type ('a, _) t =
   | Target   : Path.t -> ('a, dynamic) t
   | Path     : Path.t -> ('a, _) t
   | Paths    : Path.t list -> ('a, _) t
-  | Hidden_deps    : Path.t list -> ('a, _) t
+  | Hidden_deps    : Dep.Set.t -> ('a, _) t
   | Hidden_targets : Path.t list -> ('a, dynamic) t
   | Dyn      : ('a -> (Nothing.t, static) t) -> ('a, dynamic) t
   | Fail     : fail -> ('a, _) t
 
-let rec add_deps ts set =
-  List.fold_left ts ~init:set ~f:(fun set t ->
-    match t with
-    | Dep fn -> Path.Set.add set fn
-    | Deps        fns
-    | Hidden_deps fns -> Path.Set.union set (Path.Set.of_list fns)
-    | S ts
-    | Concat (_, ts) -> add_deps ts set
-    | _ -> set)
+let static_deps =
+  let rec add_deps ts set =
+    List.fold_left ts ~init:set ~f:(fun set t ->
+      match t with
+      | Dep fn -> Dep.Set.add set (Dep.file fn)
+      | Deps        fns -> Dep.Set.union set (Dep.Set.of_files fns)
+      | Hidden_deps deps -> Dep.Set.union set deps
+      | S ts
+      | Concat (_, ts) -> add_deps ts set
+      | _ -> set)
+  in
+  fun ts -> add_deps ts Dep.Set.empty
 
 let rec add_targets ts acc =
   List.fold_left ts ~init:acc ~f:(fun acc t ->
@@ -39,8 +42,8 @@ let rec add_targets ts acc =
     | _ -> acc)
 
 let expand ~dir ts x =
-  let dyn_deps = ref Path.Set.empty in
-  let add_dep path = dyn_deps := Path.Set.add !dyn_deps path in
+  let dyn_deps = ref Dep.Set.empty in
+  let add_dep path = dyn_deps := Dep.Set.add !dyn_deps (Dep.file path) in
   let rec loop_dyn : (Nothing.t, static) t -> string list = function
     | A s  -> [s]
     | As l -> l
@@ -57,7 +60,7 @@ let expand ~dir ts x =
     | S ts -> List.concat_map ts ~f:loop_dyn
     | Concat (sep, ts) -> [String.concat ~sep (loop_dyn (S ts))]
     | Hidden_deps l ->
-      dyn_deps := Path.Set.union !dyn_deps (Path.Set.of_list l);
+      dyn_deps := Dep.Set.union !dyn_deps l;
       []
     | Fail f -> f.fail ()
   in

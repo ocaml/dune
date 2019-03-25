@@ -266,11 +266,12 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
     in
     let includes =
       Arg_spec.S
-        [ Hidden_deps h_files
+        [ Hidden_deps (Dep.Set.of_files h_files)
         ; Arg_spec.of_result_map requires ~f:(fun libs ->
             S [ Lib.L.c_include_flags libs ~stdlib_dir:ctx.stdlib_dir
-              ; Hidden_deps (Lib_file_deps.file_deps libs
-                               ~groups:[Lib_file_deps.Group.Header])
+              ; Hidden_deps (
+                  Lib_file_deps.deps libs
+                    ~groups:[Lib_file_deps.Group.Header])
               ])
         ]
     in

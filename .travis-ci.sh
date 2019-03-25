@@ -94,7 +94,7 @@ case "$TARGET" in
       fi
       opam list
       opam pin add dune . --no-action
-      opam install ocamlfind utop ppxlib $ODOC ocaml-migrate-parsetree js_of_ocaml-ppx js_of_ocaml-compiler
+      opam install ocamlfind utop ppxlib $ODOC ocaml-migrate-parsetree js_of_ocaml-ppx js_of_ocaml-compiler coq
       echo -en "travis_fold:end:opam.deps\r"
     fi
     echo -en "travis_fold:end:dune.boot\r"
@@ -102,6 +102,7 @@ case "$TARGET" in
       cat $RUNTEST_NO_DEPS;
       _boot/install/default/bin/dune runtest && \
       _boot/install/default/bin/dune build @test/blackbox-tests/runtest-js && \
+      _boot/install/default/bin/dune build @test/blackbox-tests/runtest-coq && \
       ! _boot/install/default/bin/dune build @test/fail-with-background-jobs-running
       RESULT=$?
       if [ $UPDATE_OPAM -eq 0 ] ; then

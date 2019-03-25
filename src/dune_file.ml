@@ -1865,10 +1865,14 @@ module Coq = struct
 
   type Stanza.t += T of t
 
-  let () =
-    Dune_project.Extension.register_simple
-      syntax
-      (return [ "coqlib", decode >>| fun x -> [T x] ])
+  let unit_to_sexp () = Sexp.List []
+
+  let unit_stanzas =
+    let+ r = return ["coqlib", decode >>| fun x -> [T x]] in
+    ((), r)
+
+  let key =
+    Dune_project.Extension.register syntax unit_stanzas unit_to_sexp
 
 end
 
@@ -2110,8 +2114,12 @@ module Stanzas = struct
       (let+ x = Dune_env.Stanza.decode in
        [Dune_env.T x])
     ; "include_subdirs",
-      (let+ () = Syntax.since Stanza.syntax (1, 1)
-       and+ t = Include_subdirs.decode ~enable_qualified:false
+      (Dune_project.get_exn () >>= fun p ->
+       let+ () = Syntax.since Stanza.syntax (1, 1)
+       and+ t =
+         let enable_qualified =
+           Option.is_some (Dune_project.find_extension_args p Coq.key) in
+         Include_subdirs.decode ~enable_qualified
        and+ loc = loc in
        [Include_subdirs (loc, t)])
     ; "toplevel",

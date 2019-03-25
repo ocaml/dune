@@ -688,3 +688,25 @@ end
 module Async = struct
   type nonrec ('i, 'o) t = ('i, 'o, 'i -> 'o Fiber.t) t
 end
+
+module Lazy_id = Stdune.Id.Make()
+
+let lazy_ (type a) f =
+  let module Output = struct
+    type t = a
+    let to_sexp _ = Sexp.Atom "<opaque>"
+    let equal = (==)
+  end
+  in
+  let id = Lazy_id.gen () in
+  let memo =
+    create
+      (sprintf "lazy-%d" (Lazy_id.to_int id))
+      ~doc:("a lazy value")
+      ~input:(module Unit)
+      ~visibility:Hidden
+      ~output:(Allow_cutoff (module Output))
+      Sync
+      (Some f)
+  in
+  (fun () -> exec memo ())

@@ -163,3 +163,5 @@ val registered_functions : unit -> Function_info.t list
 
 (** Lookup function's info *)
 val function_info : string -> Function_info.t
+
+val lazy_ : (unit -> 'a) -> (unit -> 'a)

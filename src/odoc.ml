@@ -326,7 +326,8 @@ let odocs =
   in
   fun ctx target ->
     let dir = Paths.odocs ctx target in
-    Build_system.eval_pred ~dir odoc_pred
+    File_selector.create ~dir odoc_pred
+    |> Build_system.eval_pred
     |> Path.Set.fold ~init:[] ~f:(fun d acc ->
       create_odoc ctx d ~target :: acc)
 

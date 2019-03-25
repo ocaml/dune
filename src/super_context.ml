@@ -476,7 +476,8 @@ module Deps = struct
           |> Predicate.contramap ~f:Path.basename ~map_id:Fn.id
         in
         let dir = Path.parent_exn path in
-        Build.paths_matching ~loc ~dir pred
+        File_selector.create ~dir pred
+        |> Build.paths_matching ~loc
         >>^ Path.Set.to_list
       end
     | Source_tree s ->

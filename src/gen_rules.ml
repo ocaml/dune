@@ -195,7 +195,8 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
         Predicate.create ~id ~f:(fun p ->
           not (List.exists js_targets ~f:(Path.equal p)))
       in
-      Build.paths_matching ~dir:ctx_dir ~loc:Loc.none pred
+      File_selector.create ~dir:ctx_dir pred
+      |> Build.paths_matching ~loc:Loc.none
     in
     Build_system.Alias.add_deps
       ~dyn_deps

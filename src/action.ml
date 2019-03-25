@@ -198,9 +198,9 @@ let chdirs =
   in
   fun t -> loop Path.Set.empty t
 
-let symlink_managed_paths sandboxed deps =
+let symlink_managed_paths sandboxed deps ~eval_pred =
   let steps =
-    Path.Set.fold (Dep.Set.paths deps)
+    Path.Set.fold (Dep.Set.paths deps ~eval_pred)
       ~init:[]
       ~f:(fun path acc ->
         if Path.is_managed path then
@@ -211,9 +211,9 @@ let symlink_managed_paths sandboxed deps =
   in
   Progn steps
 
-let sandbox t ~sandboxed ~deps ~targets : t =
+let sandbox t ~sandboxed ~deps ~targets ~eval_pred : t =
   Progn
-    [ symlink_managed_paths sandboxed deps
+    [ symlink_managed_paths sandboxed deps ~eval_pred
     ; map t
         ~dir:Path.root
         ~f_string:(fun ~dir:_ x -> x)

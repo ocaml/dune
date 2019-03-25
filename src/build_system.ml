@@ -7,9 +7,6 @@ module Vspec = Build.Vspec
 (* Where we store stamp files for aliases *)
 let alias_dir = Path.(relative build_dir) ".aliases"
 
-(* Where we store stamp files for [stamp_file_for_files_of] *)
-let misc_dir = Path.(relative build_dir) ".misc"
-
 let () = Hooks.End_of_build.always Memo.reset
 
 module Promoted_to_delete : sig
@@ -346,14 +343,6 @@ module Dir_status = struct
     | Failed_to_load
 end
 
-module Files_of = struct
-  type t =
-    { files_by_ext   : Path.t list String.Map.t
-    ; dir_hash       : string
-    ; mutable stamps : Path.t String.Map.t
-    }
-end
-
 module Trace : sig
   module Entry : sig
     type t =
@@ -447,7 +436,6 @@ type t =
   ; (* Set of directories under _build that have at least one rule and
        all their ancestors. *)
     mutable build_dirs_to_keep : Path.Set.t
-  ; files_of : Files_of.t Path.Table.t
   ; mutable prefix : (unit, unit) Build.t option
   ; hook : hook -> unit
   ; (* Package files are part of *)
@@ -526,7 +514,8 @@ type bs = t
 module Build_exec = struct
   open Build.Repr
 
-  let exec (bs : bs) (t : ('a, 'b) Build.t) (x : 'a) : 'b * Dep.Set.t =
+  let exec (bs : bs) ~(eval_pred : Dep.eval_pred) (t : ('a, 'b) Build.t) (x : 'a)
+    : 'b * Dep.Set.t =
     let rec exec
       : type a b. Dep.Set.t ref -> (a, b) t -> a -> b = fun dyn_deps t x ->
       match t with
@@ -555,7 +544,7 @@ module Build_exec = struct
         (a, b)
       | Paths _ -> x
       | Paths_for_rule _ -> x
-      | Paths_glob state -> get_glob_result_exn state
+      | Paths_glob (dir, pred) -> eval_pred ~dir pred
       | Contents p -> Io.read_file p
       | Lines_of p -> Io.lines_of_file p
       | Vpath (Vspec.T (fn, kind)) ->
@@ -564,6 +553,10 @@ module Build_exec = struct
       | Dyn_paths t ->
         let fns = exec dyn_deps t x in
         dyn_deps := Dep.Set.add_paths !dyn_deps fns;
+        x
+      | Dyn_deps t ->
+        let fns = exec dyn_deps t x in
+        dyn_deps := Dep.Set.union !dyn_deps fns;
         x
       | Record_lib_deps _ -> x
       | Fail { fail } -> fail ()
@@ -800,8 +793,7 @@ and static_deps t build =
   Fiber.Once.create (fun () ->
     Fiber.return
       (Build_interpret.static_deps build
-         ~all_targets:(targets_of t)
-         ~file_tree:t.file_tree))
+         ~all_targets:(targets_of t)))
 
 and start_rule t _rule =
   t.hook Rule_started
@@ -1087,43 +1079,6 @@ and get_file_spec t path =
       Errors.fail_opt loc
         "File unavailable: %s" (Path.to_string_maybe_quoted path)
 
-let stamp_files_for_files_of ~dir ~exts =
-  let t = t () in
-  let files_of_dir =
-    Path.Table.find_or_add t.files_of dir ~f:(fun dir ->
-      let files_by_ext =
-        targets_of t ~dir
-        |> Path.Set.to_list
-        |> List.map ~f:(fun fn -> Filename.extension (Path.to_string fn), fn)
-        |> String.Map.of_list_multi
-      in
-      { files_by_ext
-      ; dir_hash = Path.to_string dir |> Digest.string |> Digest.to_string
-      ; stamps = String.Map.empty
-      })
-  in
-  List.map exts ~f:(fun ext ->
-    match String.Map.find files_of_dir.stamps ext with
-    | Some fn -> fn
-    | None ->
-      let stamp_file = Path.relative misc_dir (files_of_dir.dir_hash ^ ext) in
-      let files =
-        Option.value
-          (String.Map.find files_of_dir.files_by_ext ext)
-          ~default:[]
-      in
-      compile_rule t
-        (let open Build.O in
-         Pre_rule.make
-           ~env:None
-           ~context:None
-           (Build.paths files >>>
-            Build.action ~targets:[stamp_file]
-              (Action.with_stdout_to stamp_file
-                 (Action.digest_files files))));
-      files_of_dir.stamps <- String.Map.add files_of_dir.stamps ext stamp_file;
-      stamp_file)
-
 let all_targets () =
   let t = t () in
   String.Map.iter t.contexts ~f:(fun ctx ->
@@ -1155,9 +1110,49 @@ let execute_rule_def =
     Async
     None
 
+module Pred = struct
+  module Input = struct
+    type t = Path.t * Path.t Predicate.t
+
+    let to_dyn (path, pred) =
+      Dyn.Tuple [Path.to_dyn path; Predicate.to_dyn pred]
+
+    let to_sexp t = Dyn.to_sexp (to_dyn t)
+    let equal = Tuple.T2.equal Path.equal Predicate.equal
+    let hash = Tuple.T2.hash Path.hash Predicate.hash
+  end
+
+  let eval_def =
+    Memo.create "eval-pred"
+      ~doc:"Evaluate a predicate in a directory"
+      ~input:(module Input)
+      ~output:(Allow_cutoff (module Path.Set))
+      ~visibility:Hidden
+      Sync
+      None
+
+  let build_def =
+    Memo.create "build-pred"
+      ~doc:"build a predicate"
+      ~input:(module Input)
+      ~output:(Allow_cutoff (module Unit))
+      ~visibility:Hidden
+      Async
+      None
+end
+
+let eval_pred ~dir pred = Memo.exec Pred.eval_def (dir, pred)
+
 let execute_rule = Memo.exec execute_rule_def
 
-let build_deps = Dep.Set.parallel_iter ~f:build_file
+let build_pred ~dir pred = Memo.exec Pred.build_def (dir, pred)
+
+let build_deps =
+  Dep.Set.parallel_iter ~f:(function
+    | File f -> build_file f
+    | Glob (dir, pred) -> build_pred ~dir pred
+    | Universe
+    | Env _ -> Fiber.return ())
 
 (* Evaluate a rule and return the action and set of dynamic dependencies *)
 let evaluate_action_and_dynamic_deps_def =
@@ -1166,7 +1161,7 @@ let evaluate_action_and_dynamic_deps_def =
     let* static_deps = Fiber.Once.get rule.static_deps in
     let rule_deps = Static_deps.rule_deps static_deps in
     let+ () = build_deps rule_deps in
-    Build_exec.exec t rule.build ()
+    Build_exec.exec t ~eval_pred rule.build ()
   in
   Memo.create
     "evaluate-action-and-dynamic-deps"
@@ -1261,7 +1256,7 @@ let () =
         | None, Some c -> c.env
       in
       let trace =
-        ( Dep.Set.trace deps ~env
+        ( Dep.Set.trace deps ~env ~eval_pred
         , List.map targets_as_list ~f:Path.to_string
         , Option.map context ~f:(fun c -> c.name)
         , Action.for_shell action
@@ -1309,6 +1304,7 @@ let () =
               ~sandboxed
               ~deps
               ~targets:targets_as_list
+              ~eval_pred
         in
         make_local_dirs t ~dirs:(Action.chdirs action);
         let+ () =
@@ -1366,6 +1362,14 @@ let () =
       | Some (File_spec.T file) -> execute_rule file.rule)
   in
   Memo.set_impl build_file_def build_file
+
+let () =
+  let f (dir, pred) =
+    eval_pred ~dir pred
+    |> Path.Set.to_list
+    |> Fiber.parallel_iter ~f:build_file
+  in
+  Memo.set_impl Pred.build_def f
 
 let shim_of_build_goal t request =
   let request =
@@ -1427,7 +1431,6 @@ let init ~contexts ~file_tree ~hook =
     ; file_tree
     ; gen_rules = Fdecl.create ()
     ; build_dirs_to_keep = Path.Set.empty
-    ; files_of = Path.Table.create 1024
     ; prefix = None
     ; hook
     }
@@ -1489,8 +1492,8 @@ let package_deps pkg files =
         in
         let action_deps =
           Path.Set.union
-            (Dep.Set.paths static_action_deps)
-            (Dep.Set.paths dynamic_action_deps)
+            (Dep.Set.paths static_action_deps ~eval_pred)
+            (Dep.Set.paths dynamic_action_deps ~eval_pred)
         in
         Path.Set.fold action_deps ~init:acc ~f:loop
       end
@@ -1563,47 +1566,12 @@ let prefix_rules prefix ~f =
   in
   prefix_rules' t (Some prefix) ~f
 
-let eval_pred_def =
-  let module Input = struct
-    type t = Path.t * string Predicate.t
-
-    let to_dyn (path, pred) =
-      Dyn.Tuple [Path.to_dyn path; Predicate.to_dyn pred]
-
-    let to_sexp t = Dyn.to_sexp (to_dyn t)
-    let equal = Tuple.T2.equal Path.equal Predicate.equal
-    let hash = Tuple.T2.hash Path.hash Predicate.hash
-  end
-  in
-  let module Output = struct
-    type t = string list
-    let to_sexp = let open Sexp.Encoder in list string
-    let equal = List.equal String.equal
-  end
-  in
-  Memo.create "eval-pred"
-    ~doc:"Evaluate a predicate in a directory"
-    ~input:(module Input)
-    ~output:(Allow_cutoff (module Output))
-    ~visibility:Hidden
-    Sync
-    None
-
 let () =
   let f (dir, pred) =
     let t = t () in
-    Path.Set.fold (targets_of t ~dir) ~init:[] ~f:(fun path acc ->
-      let fn = Path.basename path in
-      if Predicate.test pred fn then
-        fn :: acc
-      else
-        acc)
-    |> List.rev
+    Path.Set.filter (targets_of t ~dir) ~f:(Predicate.test pred)
   in
-  Memo.set_impl eval_pred_def f
-
-
-let eval_pred ~dir pred = Memo.exec eval_pred_def (dir, pred)
+  Memo.set_impl Pred.eval_def f
 
 module Alias = struct
   include Alias0
@@ -1660,7 +1628,8 @@ module Print_rules : sig
     -> Rule.t list Fiber.t
 end = struct
   let rules_for_files rules deps =
-    Path.Set.fold (Dep.Set.paths deps) ~init:Rule.Set.empty ~f:(fun path acc ->
+    Dep.Set.paths deps ~eval_pred
+    |> Path.Set.fold ~init:Rule.Set.empty ~f:(fun path acc ->
       match Path.Map.find rules path with
       | None -> acc
       | Some rule -> Rule.Set.add acc rule)
@@ -1697,7 +1666,7 @@ end = struct
             } in
           rules := Internal_rule.Id.Map.add !rules rule.id rule;
           if recursive then
-            Dep.Set.parallel_iter deps ~f:proc_rule
+            Dep.Set.parallel_iter_files deps ~f:proc_rule ~eval_pred
           else
             Fiber.return ()
         end
@@ -1708,7 +1677,7 @@ end = struct
       in
       let rule_shim = shim_of_build_goal t request in
       let* (_act, goal) = evaluate_rule rule_shim in
-      let+ () = Dep.Set.parallel_iter goal ~f:proc_rule in
+      let+ () = Dep.Set.parallel_iter_files goal ~f:proc_rule ~eval_pred in
       let rules =
         Internal_rule.Id.Map.fold !rules ~init:Path.Map.empty
           ~f:(fun (r : Rule.t) acc ->
@@ -1735,12 +1704,9 @@ module All_lib_deps : sig
     :  request:(unit, unit) Build.t
     -> Lib_deps_info.t Path.Map.t String.Map.t Fiber.t
 end = struct
-  let static_deps_of_request t request =
+  let static_deps_of_request request =
     Static_deps.paths @@
-    Build_interpret.static_deps
-      request
-      ~all_targets:targets_of
-      ~file_tree:t.file_tree
+    Build_interpret.static_deps request ~all_targets:targets_of
 
   let rules_for_files t paths =
     Path.Set.fold paths ~init:[] ~f:(fun path acc ->
@@ -1758,7 +1724,7 @@ end = struct
       ~key:(fun (r : Internal_rule.t) -> r.id)
       ~deps:(fun (r : Internal_rule.t) ->
         Fiber.Once.get r.static_deps
-        >>| Static_deps.paths
+        >>| Static_deps.paths ~eval_pred
         >>| rules_for_files t)
     >>| function
     | Ok l -> l
@@ -1770,7 +1736,7 @@ end = struct
 
   let all_lib_deps ~request =
     let t = t () in
-    let targets = static_deps_of_request t request in
+    let targets = static_deps_of_request request ~eval_pred in
     let* rules= rules_for_targets t targets in
     let+ lib_deps =
       Fiber.parallel_map rules ~f:(fun rule ->

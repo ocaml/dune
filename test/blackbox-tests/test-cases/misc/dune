@@ -48,3 +48,4 @@
 (alias
  (name runtest)
  (action (ignore-stdout (echo %{ocaml_bin}))))
+ 

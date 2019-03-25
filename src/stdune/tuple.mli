@@ -9,4 +9,11 @@ module T2 : sig
     -> ('a, 'b) t
     -> ('a, 'b) t
     -> bool
+
+  val compare
+    :  ('a -> 'a -> Ordering.t)
+    -> ('b -> 'b -> Ordering.t)
+    -> ('a, 'b) t
+    -> ('a, 'b) t
+    -> Ordering.t
 end

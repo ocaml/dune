@@ -322,11 +322,13 @@ let odocs =
   let odoc_pred =
     Glob.of_string_exn (Loc.of_pos __POS__) "*.odoc"
     |> Glob.to_pred
+    |> Predicate.contramap ~f:Path.basename ~map_id:Fn.id
   in
   fun ctx target ->
     let dir = Paths.odocs ctx target in
     Build_system.eval_pred ~dir odoc_pred
-    |> List.map ~f:(fun d -> create_odoc ctx (Path.relative dir d) ~target)
+    |> Path.Set.fold ~init:[] ~f:(fun d acc ->
+      create_odoc ctx d ~target :: acc)
 
 let setup_lib_html_rules_def =
   let module Input = struct

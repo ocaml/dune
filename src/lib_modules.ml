@@ -163,8 +163,9 @@ let installable_modules t =
 let version_installed t ~install_dir:(dir) =
   let obj_dir = Obj_dir.make_external ~dir in
   let set = Module.set_obj_dir ~obj_dir in
-  { t with alias_module = Option.map ~f:set t.alias_module
-         ; modules = Module.Name.Map.map ~f:set t.modules;
+  { t with
+    alias_module = Option.map ~f:set t.alias_module
+  ; modules = Module.Name.Map.map ~f:set t.modules;
   }
 
 let lib_interface_module t =

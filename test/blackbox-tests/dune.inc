@@ -128,6 +128,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name dep-on-dir-that-does-not-exist)
+ (deps (package dune) (source_tree test-cases/dep-on-dir-that-does-not-exist))
+ (action
+  (chdir
+   test-cases/dep-on-dir-that-does-not-exist
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name dep-vars)
  (deps (package dune) (source_tree test-cases/dep-vars))
  (action
@@ -1339,6 +1347,7 @@
   (alias custom-build-dir)
   (alias cxx-extension)
   (alias default-targets)
+  (alias dep-on-dir-that-does-not-exist)
   (alias dep-vars)
   (alias depend-on-the-universe)
   (alias deps-conf-vars)
@@ -1501,6 +1510,7 @@
   (alias custom-build-dir)
   (alias cxx-extension)
   (alias default-targets)
+  (alias dep-on-dir-that-does-not-exist)
   (alias dep-vars)
   (alias depend-on-the-universe)
   (alias deps-conf-vars)

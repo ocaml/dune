@@ -1,0 +1,11 @@
+(alias
+ (name print-contents-of-dir-that-is-later-created)
+ (deps contents-of-dir-that-is-later-created (universe))
+ (action (echo "%{read:contents-of-dir-that-is-later-created}")))
+
+(rule
+ (targets contents-of-dir-that-is-later-created)
+ (deps    (glob_files dir-that-is-later-created/*.txt))
+ (action
+  (with-stdout-to contents-of-dir-that-is-later-created
+   (system "(printf 'listing: '; ls dir-that-is-later-created 2>/dev/null) || echo 'ERROR'"))))

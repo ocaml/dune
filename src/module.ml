@@ -450,7 +450,8 @@ let encode
        ; kind
        } as t) =
   let open Dune_lang.Encoder in
-  let has_impl = (has_impl t) in
+  let has_impl = has_impl t in
+
   let kind =
     match kind with
     | Kind.Impl when has_impl -> None
@@ -476,7 +477,9 @@ let decode ~dir =
     and+ kind = field_o "kind" Kind.decode
     and+ impl = field_b "impl"
     and+ intf = field_b "intf"
-    and+ obj_dir = field ~default:(Obj_dir.make_external ~dir) "obj_dir" (Obj_dir.decode ~dir)
+    and+ obj_dir =
+      let default = Obj_dir.make_external ~dir in
+      field ~default "obj_dir" (Obj_dir.decode ~dir)
     in
     let file exists ml_kind =
       if exists then

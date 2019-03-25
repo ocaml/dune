@@ -66,16 +66,13 @@ val prefix_rules : (unit, unit) Build.t -> f:(unit -> 'a) -> 'a
 
 (** [eval_pred t ~dir pred ~f] returns the list of files in [dir] that matches
     [pred] to [f]. The list of files includes the list of targets. *)
-val eval_pred : dir:Path.t -> string Predicate.t -> string list
+val eval_pred : dir:Path.t -> Path.t Predicate.t -> Path.Set.t
 
 (** Returns the set of targets in the given directory. *)
 val targets_of : dir:Path.t -> Path.Set.t
 
 (** Load the rules for this directory. *)
 val load_dir : dir:Path.t -> unit
-
-(** Stamp files that depends on all files of [dir] with extensions [exts]. *)
-val stamp_files_for_files_of : dir:Path.t -> exts:string list -> Path.t list
 
 (** Sets the package this file is part of *)
 val set_package : Path.t -> Package.Name.t -> unit

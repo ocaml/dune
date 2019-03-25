@@ -20,7 +20,7 @@ val copy_files
   -> expander:Expander.t
   -> src_dir:Path.t
   -> Copy_files.t
-  -> Path.t list
+  -> Path.Set.t
 
 (** Interpret an [(alias ...)] stanza. *)
 val alias

@@ -4,8 +4,10 @@
 
 (library
  (name c)
+ (private_modules y)
  (public_name a.b.c)
  (modules y))
 
 (rule (with-stdout-to x.ml (echo "")))
 (rule (with-stdout-to y.ml (echo "")))
+(rule (with-stdout-to y.mli (echo "")))

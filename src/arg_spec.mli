@@ -42,14 +42,18 @@ type ('a, _) t =
   | Target   : Path.t -> ('a, dynamic) t
   | Path     : Path.t -> ('a, _) t
   | Paths    : Path.t list -> ('a, _) t
-  | Hidden_deps    : Path.t list -> ('a, _) t
+  | Hidden_deps    : Dep.Set.t -> ('a, _) t
   | Hidden_targets : Path.t list -> ('a, dynamic) t
   | Dyn      : ('a -> (Nothing.t, static) t) -> ('a, dynamic) t
   | Fail     : fail -> ('a, _) t
 
-val add_deps    : _ t list -> Path.Set.t -> Path.Set.t
+val static_deps    : _ t list -> Dep.Set.t
 val add_targets : (_, dynamic) t list -> Path.t list -> Path.t list
-val expand      : dir:Path.t -> ('a, dynamic) t list -> 'a -> string list * Path.Set.t
+val expand
+  :  dir:Path.t
+  -> ('a, dynamic) t list
+  -> 'a
+  -> string list * Dep.Set.t
 
 (** [quote_args quote args] is [As \[quote; arg1; quote; arg2; ...\]] *)
 val quote_args : string -> string list -> _ t

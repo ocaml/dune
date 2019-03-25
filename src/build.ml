@@ -15,7 +15,6 @@ module Repr = struct
     | Second : ('a, 'b) t -> ('c * 'a, 'c * 'b) t
     | Split : ('a, 'b) t * ('c, 'd) t -> ('a * 'c, 'b * 'd) t
     | Fanout : ('a, 'b) t * ('a, 'c) t -> ('a, 'b * 'c) t
-    | Paths : Path.Set.t -> ('a, 'a) t
     | Paths_for_rule : Path.Set.t -> ('a, 'a) t
     | Paths_glob : Path.t * Path.t Predicate.t -> ('a, Path.Set.t) t
     (* The reference gets decided in Build_interpret.deps *)
@@ -30,8 +29,7 @@ module Repr = struct
     | Memo : 'a memo -> (unit, 'a) t
     | Catch : ('a, 'b) t * (exn -> 'b) -> ('a, 'b) t
     | Lazy_no_targets : ('a, 'b) t Lazy.t -> ('a, 'b) t
-    | Env_var : string -> ('a, 'a) t
-    | Universe : ('a, 'a) t
+    | Deps : Dep.Set.t -> ('a, 'a) t
 
   and 'a memo =
     { name          : string
@@ -112,26 +110,17 @@ let rec all = function
 
 let lazy_no_targets t = Lazy_no_targets t
 
-let path p = Paths (Path.Set.singleton p)
-let paths ps = Paths (Path.Set.of_list ps)
-let path_set ps = Paths ps
+let dep d = Deps (Dep.Set.singleton d)
+let path p = Deps (Dep.Set.singleton (Dep.file p))
+let paths ps = Deps (Dep.Set.of_files ps)
+let path_set ps = Deps (Dep.Set.of_files_set ps)
 let paths_matching ~loc:_ ~dir pred = Paths_glob (dir, pred)
 let vpath vp = Vpath vp
 let dyn_paths t = Dyn_paths (t >>^ Path.Set.of_list)
 let dyn_path_set t = Dyn_paths t
 let dyn_deps t = Dyn_deps t
 let paths_for_rule ps = Paths_for_rule ps
-let universe = Universe
-let env_var s = Env_var s
-
-let of_deps (type a) (d : Dep.Set.t) : (a, a) t =
-  let init = arr Fn.id in
-  Dep.Set.fold d ~init ~f:(fun d acc ->
-    match d with
-    | Env v -> (Env_var v &&& acc) >>^ snd
-    | File p -> (path p &&& acc) >>^ snd
-    | Glob (dir, pred) -> (Paths_glob (dir, pred) &&& acc) >>^ snd
-    | Universe -> (universe &&& acc) >>^ snd)
+let env_var s = Deps (Dep.Set.singleton (Dep.env s))
 
 let catch t ~on_error = Catch (t, on_error)
 
@@ -198,7 +187,7 @@ let get_prog = function
     >>> dyn_paths (arr (function Error _ -> [] | Ok x -> [x]))
 
 let prog_and_args ?(dir=Path.root) prog args =
-  of_deps (Arg_spec.static_deps args) &&& arr (fun x -> x)
+  Deps (Arg_spec.static_deps args) &&& arr (fun x -> x)
   >>^ snd
   >>>
   (get_prog prog &&&

@@ -35,6 +35,11 @@ let add_action_dep t dep =
     action_deps = Dep.Set.add t.action_deps dep
   }
 
+let add_action_deps t deps =
+  { t with
+    action_deps = Dep.Set.union t.action_deps deps
+  }
+
 let add_action_paths t fns =
   { t with
     action_deps = Dep.Set.add_paths t.action_deps fns

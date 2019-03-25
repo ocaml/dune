@@ -542,7 +542,7 @@ module Build_exec = struct
         let a = exec dyn_deps a x in
         let b = exec dyn_deps b x in
         (a, b)
-      | Paths _ -> x
+      | Deps _ -> x
       | Paths_for_rule _ -> x
       | Paths_glob (dir, pred) -> eval_pred ~dir pred
       | Contents p -> Io.read_file p
@@ -570,8 +570,6 @@ module Build_exec = struct
         end
       | Lazy_no_targets t ->
         exec dyn_deps (Lazy.force t) x
-      | Env_var _ ->
-        x
       | Memo m ->
         begin match m.state with
         | Evaluated (x, deps) ->
@@ -591,7 +589,6 @@ module Build_exec = struct
             m.state <- Unevaluated;
             reraise exn
         end
-      | Universe -> x
     in
     let dyn_deps = ref Dep.Set.empty in
     let result = exec dyn_deps (Build.repr t) x in

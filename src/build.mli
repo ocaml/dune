@@ -59,7 +59,7 @@ val lazy_no_targets : ('a, 'b) t Lazy.t -> ('a, 'b) t
     build arrow. *)
 val path  : Path.t -> ('a, 'a) t
 
-val universe : ('a, 'a) t
+val dep : Dep.t -> ('a, 'a) t
 
 val paths : Path.t list -> ('a, 'a) t
 val path_set : Path.Set.t -> ('a, 'a) t
@@ -193,7 +193,6 @@ module Repr : sig
     | Second : ('a, 'b) t -> ('c * 'a, 'c * 'b) t
     | Split : ('a, 'b) t * ('c, 'd) t -> ('a * 'c, 'b * 'd) t
     | Fanout : ('a, 'b) t * ('a, 'c) t -> ('a, 'b * 'c) t
-    | Paths : Path.Set.t -> ('a, 'a) t
     | Paths_for_rule : Path.Set.t -> ('a, 'a) t
     | Paths_glob : Path.t * Path.t Predicate.t -> ('a, Path.Set.t) t
     | If_file_exists : Path.t * ('a, 'b) if_file_exists_state ref -> ('a, 'b) t
@@ -207,8 +206,7 @@ module Repr : sig
     | Memo : 'a memo -> (unit, 'a) t
     | Catch : ('a, 'b) t * (exn -> 'b) -> ('a, 'b) t
     | Lazy_no_targets : ('a, 'b) t Lazy.t -> ('a, 'b) t
-    | Env_var : string -> ('a, 'a) t
-    | Universe : ('a, 'a) t
+    | Deps : Dep.Set.t -> ('a, 'a) t
 
   and 'a memo =
     { name          : string

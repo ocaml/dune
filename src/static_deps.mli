@@ -30,6 +30,9 @@ val add_action_env_var : t -> string -> t
 (** Add a dependency to action deps. *)
 val add_action_dep : t -> Dep.t -> t
 
+(** Add dependencies to action deps. *)
+val add_action_deps : t -> Dep.Set.t -> t
+
 (** {1} Deconstructors *)
 
 (** Return the rule deps. *)

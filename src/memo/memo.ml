@@ -689,6 +689,8 @@ module Async = struct
   type nonrec ('i, 'o) t = ('i, 'o, 'i -> 'o Fiber.t) t
 end
 
+module Lazy_id = Stdune.Id.Make()
+
 let lazy_ (type a) f =
   let module Output = struct
     type t = a
@@ -696,10 +698,11 @@ let lazy_ (type a) f =
     let equal = (==)
   end
   in
+  let id = Lazy_id.gen () in
   let memo =
-    create "lazy"
-      ~doc:("a lazy value constructed at \n" ^
-            Printexc.raw_backtrace_to_string (Printexc.get_callstack 50))
+    create
+      (sprintf "lazy-%d" (Lazy_id.to_int id))
+      ~doc:("a lazy value")
       ~input:(module Unit)
       ~visibility:Hidden
       ~output:(Allow_cutoff (module Output))

@@ -60,6 +60,7 @@ val int    : int    -> _ t
 val string : string -> _ t
 val char   : char   -> _ t
 val float  : float  -> _ t
+val sexp  : Sexp0.t  -> _ t
 val list   : ?sep:'b t -> 'a list -> f:('a -> 'b t) -> 'b t
 
 val space   : _ t

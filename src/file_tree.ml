@@ -108,7 +108,7 @@ module Dir = struct
     Record
       [ "files", String.Set.to_dyn files
       ; "sub_dirs", String.Map.to_dyn to_dyn sub_dirs
-      ; "dune_file", Dyn.option (fun _ -> Dyn.opaque) dune_file
+      ; "dune_file", Dyn.Encoder.(option opaque dune_file)
       ; "project", Dyn.opaque
       ]
 

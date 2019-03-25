@@ -12,6 +12,7 @@ type +'a t =
   | String of string
   | Char of char
   | Float of float
+  | Sexp of Sexp0.t
   | List : 'b t * ('a -> 'b t) * 'a list -> 'b t
   | Space
   | Cut
@@ -106,6 +107,7 @@ module Renderer = struct
       | String x -> pp_print_string ppf x
       | Char   x -> pp_print_char ppf x
       | Float  x -> pp_print_float ppf x
+      | Sexp x -> Sexp1.pp ppf x
       | List (sep, f, l) ->
         pp_print_list (fun ppf x -> pp th ppf (f x)) ppf l
           ~pp_sep:(fun ppf () -> pp th ppf sep)
@@ -175,6 +177,7 @@ let int x = Int x
 let string x = String x
 let char x = Char x
 let float x = Float x
+let sexp s = Sexp s
 let list ?(sep=Cut) l ~f = List (sep, f, l)
 
 let space = Space

@@ -133,6 +133,7 @@ val equal : t -> t -> bool
 val hash : t -> int
 
 val to_sexp : t -> Sexp.t
+val to_dyn : t -> Dyn.t
 
 (** Compare the context names *)
 val compare : t -> t -> Ordering.t

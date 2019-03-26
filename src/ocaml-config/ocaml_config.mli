@@ -8,6 +8,7 @@ open! Stdune
     contents of [Makefile.config]. *)
 type t
 
+val to_dyn : t Dyn.Encoder.t
 val to_sexp : t Sexp.Encoder.t
 
 module Prog_and_args : sig

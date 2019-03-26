@@ -17,15 +17,17 @@ module Value = struct
     | Words         of string list
     | Prog_and_args of Prog_and_args.t
 
-  let to_sexp : t -> Sexp.t =
-    let open Sexp.Encoder in
+  let to_dyn : t -> Dyn.t =
+    let open Dyn.Encoder in
     function
-    | Bool   x -> bool x
-    | Int    x -> int x
-    | String x -> string x
+    | Bool   x -> Bool x
+    | Int    x -> Int x
+    | String x -> String x
     | Words  x -> (list string) x
     | Prog_and_args { prog; args } ->
       (list string) (prog :: args)
+
+  let to_sexp t = Dyn.to_sexp (to_dyn t)
 
   let to_string = function
     | Bool   x -> string_of_bool x
@@ -188,14 +190,14 @@ let to_list t : (string * Value.t) list =
   ; "windows_unicode"          , Bool          t.windows_unicode
   ]
 
-let to_sexp t =
-  let open Sexp in
-  List
+let to_dyn t =
+  let open Dyn in
+  Record
     (to_list t
      |> List.map ~f:(fun (k, v) ->
-       List [ Atom k
-            ; Value.to_sexp v
-            ]))
+       k, Value.to_dyn v))
+
+let to_sexp t = Dyn.to_sexp (to_dyn t)
 
 module Origin = struct
   type t =

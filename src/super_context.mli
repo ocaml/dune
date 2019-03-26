@@ -14,6 +14,7 @@ type t
 val equal : t -> t -> bool
 val hash : t -> int
 
+val to_dyn : t -> Dyn.t
 val to_sexp : t -> Sexp.t
 
 val create

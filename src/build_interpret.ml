@@ -35,8 +35,8 @@ let static_deps t ~all_targets =
     | Second t -> loop t acc targets_allowed
     | Split (a, b) -> loop a (loop b acc targets_allowed) targets_allowed
     | Fanout (a, b) -> loop a (loop b acc targets_allowed) targets_allowed
-    | Paths fns ->
-      Static_deps.add_action_paths acc fns
+    | Deps deps ->
+      Static_deps.add_action_deps acc deps
     | Paths_for_rule fns ->
       Static_deps.add_rule_paths acc fns
     | Paths_glob (dir, pred) ->
@@ -66,9 +66,6 @@ let static_deps t ~all_targets =
     | Memo m -> loop m.t acc targets_allowed
     | Catch (t, _) -> loop t acc targets_allowed
     | Lazy_no_targets t -> loop (Lazy.force t) acc false
-    | Env_var var ->
-      Static_deps.add_action_env_var acc var
-    | Universe -> Static_deps.add_action_dep acc Dep.universe
   in
   loop (Build.repr t) Static_deps.empty true
 
@@ -84,10 +81,10 @@ let lib_deps =
       | Second t -> loop t acc
       | Split (a, b) -> loop a (loop b acc)
       | Fanout (a, b) -> loop a (loop b acc)
-      | Paths _ -> acc
       | Paths_for_rule _ -> acc
       | Vpath _ -> acc
       | Paths_glob _ -> acc
+      | Deps _ -> acc
       | Dyn_paths t -> loop t acc
       | Dyn_deps t -> loop t acc
       | Contents _ -> acc
@@ -99,8 +96,6 @@ let lib_deps =
       | Memo m -> loop m.t acc
       | Catch (t, _) -> loop t acc
       | Lazy_no_targets t -> loop (Lazy.force t) acc
-      | Universe -> acc
-      | Env_var _ -> acc
   in
   fun t -> loop (Build.repr t) Lib_name.Map.empty
 
@@ -116,10 +111,10 @@ let targets =
     | Second t -> loop t acc
     | Split (a, b) -> loop a (loop b acc)
     | Fanout (a, b) -> loop a (loop b acc)
-    | Paths _ -> acc
     | Paths_for_rule _ -> acc
     | Vpath _ -> acc
     | Paths_glob _ -> acc
+    | Deps _ -> acc
     | Dyn_paths t -> loop t acc
     | Dyn_deps t -> loop t acc
     | Contents _ -> acc
@@ -145,8 +140,6 @@ let targets =
     | Memo m -> loop m.t acc
     | Catch (t, _) -> loop t acc
     | Lazy_no_targets _ -> acc
-    | Universe -> acc
-    | Env_var _ -> acc
   in
   fun t -> loop (Build.repr t) []
 

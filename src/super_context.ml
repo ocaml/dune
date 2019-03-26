@@ -488,7 +488,7 @@ module Deps = struct
       Alias.dep (Alias.package_install ~context:t.context ~pkg)
       >>^ fun () -> []
     | Universe ->
-      Build.universe
+      Build.dep Dep.universe
       >>^ fun () -> []
     | Env_var var_sw ->
       let var = Expander.expand_str expander var_sw in

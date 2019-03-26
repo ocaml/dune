@@ -1960,13 +1960,17 @@ module Documentation = struct
 end
 
 module Include_subdirs = struct
-  type t = No | Unqualified
 
-  let decode =
-    enum
+  type qualification = Unqualified | Qualified
+  type t = No | Include of qualification
+
+  let decode ~enable_qualified =
+    let opts_list =
       [ "no", No
-      ; "unqualified", Unqualified
-      ]
+      ; "unqualified", Include Unqualified
+      ] @ if enable_qualified then ["qualified", Include Qualified] else []
+    in
+    enum opts_list
 end
 
 type Stanza.t +=
@@ -2053,7 +2057,7 @@ module Stanzas = struct
        [Dune_env.T x])
     ; "include_subdirs",
       (let+ () = Syntax.since Stanza.syntax (1, 1)
-       and+ t = Include_subdirs.decode
+       and+ t = Include_subdirs.decode ~enable_qualified:false
        and+ loc = loc in
        [Include_subdirs (loc, t)])
     ; "toplevel",

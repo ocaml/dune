@@ -1,3 +1,5 @@
+module String = String0
+
 type +'a t =
   | Nop
   | Seq of 'a t * 'a t

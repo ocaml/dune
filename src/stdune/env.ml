@@ -12,6 +12,7 @@ module Var = struct
   include T
 end
 
+let map_to_dyn = Map.to_dyn
 module Map = Map.Make(Var)
 
 type t =
@@ -69,9 +70,12 @@ let extend t ~vars =
 let extend_env x y =
   extend x ~vars:y.vars
 
+let to_dyn t =
+  let open Dyn.Encoder in
+  map_to_dyn Map.to_list string string t.vars
+
 let to_sexp t =
-  let open Sexp.Encoder in
-  (list (pair string string)) (Map.to_list t.vars)
+  Dyn.to_sexp (to_dyn t)
 
 let diff x y =
   Map.merge x.vars y.vars ~f:(fun _k vx vy ->

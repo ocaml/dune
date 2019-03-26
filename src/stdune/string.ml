@@ -264,9 +264,7 @@ let concat ~sep = function
 let take s len =
   sub s ~pos:0 ~len:(min (length s) len)
 
-let drop s n =
-  let len = length s in
-  sub s ~pos:(min n len) ~len:(max (len - n) 0)
+let drop = String0.drop
 
 let split_n s n =
   let len = length s in

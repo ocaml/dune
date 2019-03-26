@@ -146,5 +146,8 @@ module Make(Key : Comparable.S) : S with type key = Key.t = struct
     union a b ~f:(fun _ _ y -> Some y)
 end
 
+let to_dyn to_list f g t =
+  Dyn.Map (List.map ~f:(fun (k, v) -> (f k, g v)) (to_list t))
+
 let to_sexp to_list f g t =
-  Sexp.Encoder.(list (pair f g)) (to_list t)
+  Dyn.to_sexp (to_dyn to_list (Dyn.Encoder.via_sexp f) (Dyn.Encoder.via_sexp g) t)

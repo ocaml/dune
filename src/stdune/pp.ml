@@ -1,4 +1,4 @@
-module String = String0
+module String = Dune_caml.StringLabels
 
 type +'a t =
   | Nop
@@ -77,7 +77,7 @@ module Renderer = struct
 
     let extract_closing_tag s =
       let pos = 2 + get16 s 0 in
-      String.drop s pos
+      String.sub s ~pos ~len:(String.length s - pos)
 
     let rec pp th ppf t =
       match t with

@@ -32,3 +32,4 @@ val mem : ('a, _) t -> 'a -> bool
 val keys : ('a, _) t -> 'a list
 
 val to_sexp : ('a -> Sexp.t) -> ('b -> Sexp.t) -> ('a, 'b) t -> Sexp.t
+val to_dyn : ('a -> Dyn.t) -> ('b -> Dyn.t) -> ('a, 'b) t -> Dyn.t

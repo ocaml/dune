@@ -92,13 +92,16 @@ let iter t ~f = iter ~f t
 
 let keys t = foldi t ~init:[] ~f:(fun key _ acc -> key :: acc)
 
-let to_sexp (type key) f g t =
+let to_dyn (type key) f g t =
   let module M =
     Map.Make(struct
       type t = key
       let compare a b = Ordering.of_int (compare a b)
     end)
   in
-  Map.to_sexp M.to_list f g
+  Map.to_dyn M.to_list f g
     (foldi t ~init:M.empty ~f:(fun key data acc ->
        M.add acc key data))
+
+let to_sexp f g t =
+  Dyn.to_sexp (to_dyn (Dyn.Encoder.via_sexp f) (Dyn.Encoder.via_sexp g) t)

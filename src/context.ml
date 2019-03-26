@@ -11,12 +11,14 @@ module Kind = struct
   end
   type t = Default | Opam of Opam.t
 
-  let to_sexp : t -> Sexp.t = function
-    | Default -> Sexp.Encoder.string "default"
+  let to_dyn : t -> Dyn.t =
+    function
+    | Default -> Dyn.Encoder.string "default"
     | Opam o  ->
-      Sexp.Encoder.(record [ "root"  , option string o.root
-                           ; "switch", string o.switch
-                           ])
+      Dyn.Encoder.(record
+                     [ "root"  , option string o.root
+                     ; "switch", string o.switch
+                     ])
 end
 
 module Env_nodes = struct
@@ -104,15 +106,16 @@ type t =
 let equal x y = String.equal x.name y.name
 let hash t = String.hash t.name
 
-let to_sexp t =
-  let open Sexp.Encoder in
-  let path = Path.to_sexp in
+let to_dyn t : Dyn.t =
+  let open Dyn.Encoder in
+  let path = Path.to_dyn in
   record
-    [ "name", string t.name
-    ; "kind", Kind.to_sexp t.kind
-    ; "profile", string t.profile
-    ; "merlin", bool t.merlin
-    ; "for_host", option string (Option.map t.for_host ~f:(fun t -> t.name))
+    [ "name", String t.name
+    ; "kind", Kind.to_dyn t.kind
+    ; "profile", String t.profile
+    ; "merlin", Bool t.merlin
+    ; "for_host",
+      option string (Option.map t.for_host ~f:(fun t -> t.name))
     ; "build_dir", path t.build_dir
     ; "toplevel_path", option path t.toplevel_path
     ; "ocaml_bin", path t.ocaml_bin
@@ -121,17 +124,19 @@ let to_sexp t =
     ; "ocamlopt", option path t.ocamlopt
     ; "ocamldep", path t.ocamldep
     ; "ocamlmklib", path t.ocamlmklib
-    ; "env", Env.to_sexp (Env.diff t.env Env.initial)
+    ; "env", Env.to_dyn (Env.diff t.env Env.initial)
     ; "findlib_path", list path (Findlib.paths t.findlib)
-    ; "arch_sixtyfour", bool t.arch_sixtyfour
+    ; "arch_sixtyfour", Bool t.arch_sixtyfour
     ; "natdynlink_supported",
-      bool (Dynlink_supported.By_the_os.get t.natdynlink_supported)
+      Bool (Dynlink_supported.By_the_os.get t.natdynlink_supported)
     ; "supports_shared_libraries",
-      bool (Dynlink_supported.By_the_os.get t.supports_shared_libraries)
-    ; "opam_vars", Hashtbl.to_sexp string string t.opam_var_cache
-    ; "ocaml_config", Ocaml_config.to_sexp t.ocaml_config
-    ; "which", Hashtbl.to_sexp string (option path) t.which_cache
+      Bool (Dynlink_supported.By_the_os.get t.supports_shared_libraries)
+    ; "opam_vars", Hashtbl.to_dyn string string t.opam_var_cache
+    ; "ocaml_config", Ocaml_config.to_dyn t.ocaml_config
+    ; "which", Hashtbl.to_dyn string (option path) t.which_cache
     ]
+
+let to_sexp t = Dyn.to_sexp (to_dyn t)
 
 let compare a b = compare a.name b.name
 

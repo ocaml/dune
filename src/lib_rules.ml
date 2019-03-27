@@ -46,7 +46,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
           Fn.id
       in
       let artifacts ~ext modules =
-        List.map modules ~f:(Module.obj_file ~mode ~ext)
+        List.map modules ~f:(Module.obj_file ~kind ~ext)
       in
       let obj_deps =
         Build.paths (artifacts modules ~ext:(Cm_kind.ext kind))
@@ -346,11 +346,11 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
           | Some m ->
             (* These files needs to be alongside stdlib.cma as the
                compiler implicitly adds this module. *)
-            [ Mode.Native, ".cmx"
-            ; Byte, ".cmo"
-            ; Native, ctx.ext_obj ]
-            |> List.iter ~f:(fun (mode, ext) ->
-              let src = Module.obj_file m ~mode ~ext in
+            [ Cm_kind.Cmx, ".cmx"
+            ; Cmo, ".cmo"
+            ; Cmx, ctx.ext_obj ]
+            |> List.iter ~f:(fun (kind, ext) ->
+              let src = Module.obj_file m ~kind ~ext in
               let dst = Path.relative dir ((Module.obj_name m) ^ ext) in
               SC.add_rule sctx ~dir (Build.copy ~src ~dst));
             Module.Name.Map.remove modules name
@@ -524,7 +524,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
       ; compile_info
       };
 
-    let objs_dirs = Path.Set.singleton (Obj_dir.byte_dir obj_dir) in
+    let objs_dirs = Path.Set.of_list (Obj_dir.all_cmis obj_dir) in
 
     (cctx,
      Merlin.make ()

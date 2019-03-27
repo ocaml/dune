@@ -235,7 +235,7 @@ let lib_install_files sctx ~dir_contents ~dir ~sub_dir ~scope ~dir_kind
         ; if_ (byte && Module.has_impl m && virtual_library)
             [ Module.cm_file_unsafe m Cmo ]
         ; if_ (native && Module.has_impl m && virtual_library)
-            [ Module.obj_file m ~mode:Native ~ext:ctx.ext_obj ]
+            [ Module.obj_file m ~kind:Cmx ~ext:ctx.ext_obj ]
         ; List.filter_map Ml_kind.all ~f:(Module.cmt_file m)
         ])
   in

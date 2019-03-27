@@ -102,38 +102,6 @@ module File = struct
       ]
 end
 
-module Visibility = struct
-  type t = Public | Private
-
-  let to_string = function
-    | Public -> "public"
-    | Private -> "private"
-
-  let pp fmt t = Format.pp_print_string fmt (to_string t)
-
-  let to_sexp t = Sexp.Encoder.string (to_string t)
-
-  let encode =
-    let open Dune_lang.Encoder in
-    function
-    | Public -> string "public"
-    | Private -> string "private"
-
-  let decode =
-    let open Dune_lang.Decoder in
-    plain_string (fun ~loc -> function
-      | "public" -> Public
-      | "private" -> Private
-      | _ -> Errors.fail loc
-               "Not a valid visibility. Valid visibility is public or private")
-
-  let is_public = function
-    | Public -> true
-    | Private -> false
-
-  let is_private t = not (is_public t)
-end
-
 module Kind = struct
   type t =
     | Intf_only
@@ -255,12 +223,8 @@ let file t (kind : Ml_kind.t) =
   in
   Option.map file ~f:(fun f -> f.path)
 
-let obj_file t ~mode ~ext =
-  let base =
-    match mode with
-    | Mode.Byte -> Obj_dir.byte_dir t.obj_dir
-    | Native -> Obj_dir.native_dir t.obj_dir
-  in
+let obj_file t ~kind ~ext =
+  let base = Obj_dir.cm_dir t.obj_dir kind t.visibility in
   Path.relative base (t.obj_name ^ ext)
 
 let obj_name t = t.obj_name
@@ -268,9 +232,8 @@ let obj_name t = t.obj_name
 let cm_source t kind = file t (Cm_kind.source kind)
 
 let cm_file_unsafe t ?ext kind =
-  let mode = match kind with Cm_kind.Cmx -> Mode.Native | Cmo | Cmi -> Byte in
   let ext = Option.value ext ~default:(Cm_kind.ext kind) in
-  obj_file t ~mode ~ext
+  obj_file t ~kind ~ext
 
 let cm_file t ?ext (kind : Cm_kind.t) =
   match kind with
@@ -279,10 +242,7 @@ let cm_file t ?ext (kind : Cm_kind.t) =
 
 let cm_public_file_unsafe t ?ext kind =
   let ext = Option.value ext ~default:(Cm_kind.ext kind) in
-  let base = match kind with
-    | Cm_kind.Cmx -> Obj_dir.native_dir t.obj_dir
-    | Cmo -> Obj_dir.byte_dir t.obj_dir
-    | Cmi -> Obj_dir.public_cmi_dir t.obj_dir in
+  let base = Obj_dir.cm_public_dir t.obj_dir kind in
   Path.relative base (t.obj_name ^ ext)
 
 let cm_public_file t ?ext (kind : Cm_kind.t) =
@@ -293,8 +253,8 @@ let cm_public_file t ?ext (kind : Cm_kind.t) =
 
 let cmt_file t (kind : Ml_kind.t) =
   match kind with
-  | Impl -> Option.map t.impl ~f:(fun _ -> obj_file t ~mode:Byte ~ext:".cmt" )
-  | Intf -> Option.map t.intf ~f:(fun _ -> obj_file t ~mode:Byte ~ext:".cmti")
+  | Impl -> Option.map t.impl ~f:(fun _ -> obj_file t ~kind:Cmi ~ext:".cmt" )
+  | Intf -> Option.map t.intf ~f:(fun _ -> obj_file t ~kind:Cmi ~ext:".cmti")
 
 let odoc_file t ~doc_dir =
   let base =
@@ -306,8 +266,8 @@ let odoc_file t ~doc_dir =
 
 let cmti_file t =
   match t.intf with
-  | None   -> obj_file t ~mode:Byte ~ext:".cmt"
-  | Some _ -> obj_file t ~mode:Byte ~ext:".cmti"
+  | None   -> obj_file t ~kind:Cmi ~ext:".cmt"
+  | Some _ -> obj_file t ~kind:Cmi ~ext:".cmti"
 
 let iter t ~f =
   Option.iter t.impl ~f:(f Ml_kind.Impl);

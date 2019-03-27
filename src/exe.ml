@@ -134,7 +134,7 @@ let link_exe
   let compiler = Option.value_exn (Context.compiler ctx mode) in
   let kind = Mode.cm_kind mode in
   let artifacts ~ext modules =
-    List.map modules ~f:(Module.obj_file ~mode ~ext)
+    List.map modules ~f:(Module.obj_file ~kind ~ext)
   in
   let modules_and_cm_files =
     Build.memoize "cm files"

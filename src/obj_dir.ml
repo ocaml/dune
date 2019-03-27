@@ -29,6 +29,16 @@ module External = struct
       ; "private_dir", option Path.to_dyn private_dir
       ]
 
+  let cm_dir t (cm_kind : Cm_kind.t) (visibility : Visibility.t) =
+    match cm_kind, visibility, t.private_dir with
+    | Cmi, Private, Some p -> p
+    | Cmi, Private, None ->
+      Exn.code_error "External.cm_dir"
+        [ "t", Dyn.to_sexp (to_dyn t)
+        ]
+    | Cmi, Public, _
+    | (Cmo | Cmx), _, _ -> t.public_dir
+
   let encode
         { public_dir
         ; private_dir
@@ -63,6 +73,9 @@ module External = struct
 
   let all_obj_dirs t ~mode:_ =
     [t.public_dir]
+
+  let all_cmis {public_dir; private_dir} =
+    List.filter_opt [Some public_dir; private_dir]
 end
 
 module Local = struct
@@ -132,6 +145,11 @@ module Local = struct
       ~native_dir:(Utils.library_native_dir ~obj_dir)
       ~byte_dir:(Utils.library_byte_dir ~obj_dir)
       ~public_cmi_dir:None
+
+  let cm_dir t cm_kind _ =
+    match cm_kind with
+    | Cm_kind.Cmx -> native_dir t
+    | Cmo | Cmi -> byte_dir t
 end
 
 type t =
@@ -206,3 +224,18 @@ let convert_to_external t ~dir =
       [ "dir", Path.to_sexp dir
       ; "obj_dir", Dyn.to_sexp (External.to_dyn obj_dir)
       ]
+
+let all_cmis = function
+  | Local e -> [Local.byte_dir e]
+  | External e -> External.all_cmis e
+
+let cm_dir t cm_kind visibility =
+  match t with
+  | External e -> External.cm_dir e cm_kind visibility
+  | Local e -> Local.cm_dir e cm_kind visibility
+
+let cm_public_dir t (cm_kind : Cm_kind.t) =
+  match cm_kind with
+  | Cmx -> native_dir t
+  | Cmo -> byte_dir t
+  | Cmi -> public_cmi_dir t

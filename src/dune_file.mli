@@ -221,6 +221,8 @@ module Library : sig
     ; dune_version             : Syntax.Version.t
     ; virtual_modules          : Ordered_set_lang.t option
     ; implements               : (Loc.t * Lib_name.t) option
+    ; variant                  : Variant.t option
+    ; default_implementation   : (Loc.t * Lib_name.t) option
     ; private_modules          : Ordered_set_lang.t option
     ; stdlib                   : Stdlib.t option
     }
@@ -286,6 +288,7 @@ module Executables : sig
     ; link_deps  : Dep_conf.t list
     ; modes      : Link_mode.Set.t
     ; buildable  : Buildable.t
+    ; variants   : (Loc.t * Variant.Set.t) option
     }
 end
 
@@ -396,6 +399,7 @@ module Toplevel : sig
   type t =
     { name : string
     ; libraries : (Loc.t * Lib_name.t) list
+    ; variants : (Loc.t * Variant.Set.t) option
     ; loc : Loc.t
     }
 end

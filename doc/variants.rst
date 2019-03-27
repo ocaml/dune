@@ -76,6 +76,47 @@ implementation for every virtual library that we've used:
      clock_unix ;; leaving this dependency will make dune loudly complain
      calendar))
 
+Variants
+========
+
+When building a binary, implementations can be selected using a set of variants
+rather than individually specifying implementations.
+
+An example where this is useful is providing JavaScript implementation. It would
+be tedious to select the JS implementation for every single virtual library.
+Instead, such implementations could select a ``js`` variant. Here's the syntax:
+
+.. code:: scheme
+
+   (executable
+    (name foo)
+    (libraries time filesystem)
+    (variants js))
+
+An implementation can specify which variant it corresponds to using the
+``variant`` option. Say for example that ``time`` is a virtual library. Its JS
+implementation would have the following configuration:
+
+.. code:: scheme
+
+   (library
+    (name time-js)
+    (implements time)
+    (variant js))
+
+Default implementation
+======================
+
+A virtual library may select a default implementation, which is enabled after
+variant resolution, if no suitable implementation has been found.
+
+.. code:: scheme
+
+   (library
+    (name time)
+    (virtual_modules time)
+    (default_implementation time-js))
+
 Limitations
 ===========
 
@@ -103,24 +144,3 @@ Some of these are temporary.
   library. This isn't very useful, but technically, it could be used to create
   partial implementations. It is possible to lift this restriction if there's
   enough demand for this.
-
-Variants
-========
-
-The term variants is commonly mentioned along with virtual libraries. This term
-refers to a *proposed* feature to simplify the selection of implementations. The
-proposal is to mark related implementations with a variant name. When building a
-binary, implementations are selected using a set of variants rather than
-individually specifying implementations.
-
-An example where this is useful is providing JavaScript implementation. It would
-be tedious to select the JS implementation for every single virtual library.
-Instead, such implementations could select a ``js`` variant. Here's a proposed
-syntax:
-
-.. code:: scheme
-
-   (executable
-    (name foo)
-    (libraries time filesystem)
-    (variants js))

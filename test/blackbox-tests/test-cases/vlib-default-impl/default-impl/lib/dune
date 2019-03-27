@@ -1,0 +1,5 @@
+(library
+ (name vlib)
+ (virtual_modules vlib)
+ (wrapped false)
+ (default_implementation lib_default))

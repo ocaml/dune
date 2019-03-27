@@ -1,0 +1,8 @@
+(executable
+ (name bar)
+ (libraries vlib))
+
+(alias
+ (name default)
+ (action
+  (run ./bar.exe)))

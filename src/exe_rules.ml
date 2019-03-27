@@ -121,6 +121,7 @@ let rules ~sctx ~dir ~dir_contents ~scope ~expander ~dir_kind
       exes.buildable.libraries
       ~pps:(Dune_file.Preprocess_map.pps exes.buildable.preprocess)
       ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
+      ~variants:exes.variants
   in
   SC.Libs.gen_select_rules sctx compile_info ~dir;
   SC.Libs.with_lib_deps sctx compile_info ~dir

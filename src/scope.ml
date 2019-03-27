@@ -56,6 +56,25 @@ module DB = struct
             (Dune_project.Name.Map.keys t.by_name)
         ]
 
+  let resolve by_name_cell public_libs name : Lib.DB.Resolve_result.t =
+    match Lib_name.Map.find public_libs name with
+    | None -> Not_found
+    | Some project ->
+      let scope =
+        Dune_project.name project
+        |> Dune_project.Name.Map.find_exn !by_name_cell
+      in
+      Redirect (Some scope.db, name)
+
+  let find_implementations by_name_cell public_libs virt =
+    Lib_name.Map.fold public_libs ~init:Variant.Map.empty ~f:(fun project acc ->
+      let scope =
+        Dune_project.name project
+        |> Dune_project.Name.Map.find_exn !by_name_cell
+      in
+      Lib.DB.find_implementations scope.db virt
+      |> Variant.Map.Multi.rev_union acc)
+
   let create ~projects ~context ~installed_libs ~has_native ~ext_lib ~ext_obj
         internal_libs =
     let projects_by_name =
@@ -104,16 +123,13 @@ module DB = struct
               (Loc.to_file_colon_line loc1)
               (Loc.to_file_colon_line loc2)
       in
+      let resolve = resolve by_name_cell public_libs in
+      let find_implementations =
+        find_implementations by_name_cell public_libs in
       Lib.DB.create ()
         ~parent:installed_libs
-        ~resolve:(fun name ->
-          match Lib_name.Map.find public_libs name with
-          | None -> Not_found
-          | Some project ->
-            let scope =
-              Dune_project.Name.Map.find_exn !by_name_cell
-                (Dune_project.name project) in
-            Redirect (Some scope.db, name))
+        ~resolve
+        ~find_implementations
         ~all:(fun () -> Lib_name.Map.keys public_libs)
     in
     let by_name =

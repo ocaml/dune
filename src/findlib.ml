@@ -230,6 +230,8 @@ module Package = struct
       ~ppx_runtime_deps:(List.map ~f:add_loc (ppx_runtime_deps t))
       ~virtual_:false
       ~implements:None
+      ~variant:None
+      ~default_implementation:None
       ~modules:None
       ~main_module_name:None (* XXX remove *)
       ~version:(version t)

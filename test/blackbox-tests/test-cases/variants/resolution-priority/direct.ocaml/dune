@@ -1,0 +1,4 @@
+(library
+ (name direct_ocaml)
+ (implements direct)
+ (variant ocaml))

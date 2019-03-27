@@ -1,0 +1,8 @@
+(executable
+ (name bar)
+ (libraries async_ocaml clock_c test))
+
+(alias
+ (name default)
+ (action
+  (run ./bar.exe)))

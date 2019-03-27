@@ -1,0 +1,5 @@
+(library
+ (name variant)
+ (virtual_modules variant)
+ (wrapped false)
+ (default_implementation variant_default))

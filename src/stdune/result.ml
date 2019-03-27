@@ -114,3 +114,10 @@ let iter t ~f =
   match t with
   | Error _ -> ()
   | Ok s -> f s
+
+module Option = struct
+  let iter t ~f =
+    match t with
+    | None -> Ok ()
+    | Some x -> x >>= f
+end

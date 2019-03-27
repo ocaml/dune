@@ -50,6 +50,11 @@ let relative_file =
     else
       of_sexp_errorf loc "relative filename expected")
 
+let variants_field =
+  field_o "variants" (
+    Syntax.since Stanza.syntax (1, 9) >>= fun () ->
+    located (list Variant.decode >>| Variant.Set.of_list))
+
 (* Parse and resolve "package" fields *)
 module Pkg = struct
   let listing packages =
@@ -864,6 +869,8 @@ module Library = struct
     ; dune_version             : Syntax.Version.t
     ; virtual_modules          : Ordered_set_lang.t option
     ; implements               : (Loc.t * Lib_name.t) option
+    ; variant                  : Variant.t option
+    ; default_implementation   : (Loc.t * Lib_name.t) option
     ; private_modules          : Ordered_set_lang.t option
     ; stdlib                   : Stdlib.t option
     }
@@ -909,6 +916,14 @@ module Library = struct
          field_o "implements" (
            Syntax.since Stanza.syntax (1, 7)
            >>= fun () -> located Lib_name.decode)
+       and+ variant =
+         field_o "variant" (
+           Syntax.since Stanza.syntax (1, 9)
+           >>= fun () -> located Variant.decode)
+       and+ default_implementation =
+         field_o "default_implementation" (
+           Syntax.since Stanza.syntax (1, 9)
+           >>= fun () -> located Lib_name.decode)
        and+ private_modules =
          field_o "private_modules" (
            Syntax.since Stanza.syntax (1, 2)
@@ -952,51 +967,64 @@ module Library = struct
             |> Option.value_exn)
            "A library cannot be both virtual and implement %s"
            (Lib_name.to_string impl));
-       let self_build_stubs_archive =
-         let loc, self_build_stubs_archive = self_build_stubs_archive in
-         let err =
-           match c_names, cxx_names, self_build_stubs_archive with
-           | _, _, None -> None
-           | Some _, _, Some _ -> Some "c_names"
-           | _, Some _, Some _ -> Some "cxx_names"
-           | None, None, _ -> None
-         in
-         match err with
-         | None ->
-           self_build_stubs_archive
-         | Some name ->
-           of_sexp_errorf loc
-             "A library cannot use (self_build_stubs_archive ...) \
-              and (%s ...) simultaneously." name
-       in
-       { name
-       ; public
-       ; synopsis
-       ; install_c_headers
-       ; ppx_runtime_libraries
-       ; modes
-       ; kind
-       ; c_names
-       ; c_flags
-       ; cxx_names
-       ; cxx_flags
-       ; library_flags
-       ; c_library_flags
-       ; self_build_stubs_archive
-       ; virtual_deps
-       ; wrapped
-       ; optional
-       ; buildable
-       ; dynlink = Dynlink_supported.of_bool (not no_dynlink)
-       ; project
-       ; sub_systems
-       ; no_keep_locs
-       ; dune_version
-       ; virtual_modules
-       ; implements
-       ; private_modules
-       ; stdlib
-       })
+       match virtual_modules, default_implementation with
+       | None, Some (loc, _) ->
+         of_sexp_error loc
+           "Only virtual libraries can specify a default implementation."
+       | _ -> ();
+         match implements, variant with
+         | None, Some (loc, _) ->
+           of_sexp_error loc
+             "Only implementations can specify a variant."
+         | _ -> ();
+           let variant = Option.map variant ~f:(fun (_, v) -> v) in
+           let self_build_stubs_archive =
+             let loc, self_build_stubs_archive = self_build_stubs_archive in
+             let err =
+               match c_names, cxx_names, self_build_stubs_archive with
+               | _, _, None -> None
+               | Some _, _, Some _ -> Some "c_names"
+               | _, Some _, Some _ -> Some "cxx_names"
+               | None, None, _ -> None
+             in
+             match err with
+             | None ->
+               self_build_stubs_archive
+             | Some name ->
+               of_sexp_errorf loc
+                 "A library cannot use (self_build_stubs_archive ...) \
+                  and (%s ...) simultaneously." name
+           in
+           { name
+           ; public
+           ; synopsis
+           ; install_c_headers
+           ; ppx_runtime_libraries
+           ; modes
+           ; kind
+           ; c_names
+           ; c_flags
+           ; cxx_names
+           ; cxx_flags
+           ; library_flags
+           ; c_library_flags
+           ; self_build_stubs_archive
+           ; virtual_deps
+           ; wrapped
+           ; optional
+           ; buildable
+           ; dynlink = Dynlink_supported.of_bool (not no_dynlink)
+           ; project
+           ; sub_systems
+           ; no_keep_locs
+           ; dune_version
+           ; virtual_modules
+           ; implements
+           ; variant
+           ; default_implementation
+           ; private_modules
+           ; stdlib
+           })
 
   let has_stubs t =
     match t.c_names, t.cxx_names, t.self_build_stubs_archive with
@@ -1368,6 +1396,7 @@ module Executables = struct
     ; link_deps  : Dep_conf.t list
     ; modes      : Link_mode.Set.t
     ; buildable  : Buildable.t
+    ; variants   : (Loc.t * Variant.Set.t) option
     }
 
   let common =
@@ -1377,6 +1406,7 @@ module Executables = struct
     and+ link_deps = field "link_deps" (list Dep_conf.decode) ~default:[]
     and+ link_flags = field_oslu "link_flags"
     and+ modes = field "modes" Link_mode.Set.decode ~default:Link_mode.Set.default
+    and+ variants = variants_field
     and+ () = map_validate (
       field "inline_tests" (repeat junk >>| fun _ -> true) ~default:false)
       ~f:(function
@@ -1395,6 +1425,7 @@ module Executables = struct
         ; link_deps
         ; modes
         ; buildable
+        ; variants
         }
       in
       let install_conf =
@@ -1840,6 +1871,7 @@ module Tests = struct
     record
       (let+ buildable = Buildable.decode
        and+ link_flags = field_oslu "link_flags"
+       and+ variants = variants_field
        and+ names = names
        and+ package = field_o "package" Pkg.decode
        and+ locks = field "locks" (list String_with_vars.decode) ~default:[]
@@ -1860,6 +1892,7 @@ module Tests = struct
            ; modes
            ; buildable
            ; names
+           ; variants
            }
        ; locks
        ; package
@@ -1877,6 +1910,7 @@ module Toplevel = struct
   type t =
     { name : string
     ; libraries : (Loc.t * Lib_name.t) list
+    ; variants : (Loc.t * Variant.Set.t) option
     ; loc : Loc.t
     }
 
@@ -1885,12 +1919,14 @@ module Toplevel = struct
     record (
       let+ loc = loc
       and+ name = field "name" string
+      and+ variants = variants_field
       and+ libraries =
         field "libraries" (list (located Lib_name.decode)) ~default:[]
       in
       { name
       ; libraries
       ; loc
+      ; variants
       }
     )
 end

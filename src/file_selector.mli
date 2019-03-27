@@ -7,7 +7,7 @@ type t
 
 val dir : t -> Path.t
 
-val create : dir:Path.t -> Path.t Predicate.t -> t
+val create : dir:Path.t -> string Predicate.t -> t
 
 val equal : t -> t -> bool
 

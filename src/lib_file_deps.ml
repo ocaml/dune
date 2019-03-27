@@ -29,7 +29,7 @@ module Group = struct
         constr "Lib_file_deps" [Atom ext]
       ) in
       let pred = Predicate.create ~id ~f:(fun p ->
-        String.equal (Path.extension p) ext)
+        String.equal (Filename.extension p) ext)
       in
       (g, pred))
     in

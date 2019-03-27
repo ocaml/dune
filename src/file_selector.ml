@@ -2,7 +2,7 @@ open Stdune
 
 type t =
   { dir : Path.t
-  ; predicate : Path.t Predicate.t
+  ; predicate : string Predicate.t
   }
 
 let dir t = t.dir
@@ -36,4 +36,4 @@ let hash { dir; predicate} =
 
 let to_sexp t = Dyn.to_sexp (to_dyn t)
 
-let test t = Predicate.test t.predicate
+let test t path = Predicate.test t.predicate (Path.basename path)

@@ -322,7 +322,6 @@ let odocs =
   let odoc_pred =
     Glob.of_string_exn (Loc.of_pos __POS__) "*.odoc"
     |> Glob.to_pred
-    |> Predicate.contramap ~f:Path.basename ~map_id:Fn.id
   in
   fun ctx target ->
     let dir = Paths.odocs ctx target in

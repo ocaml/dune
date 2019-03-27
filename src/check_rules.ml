@@ -6,7 +6,7 @@ let dev_files =
     constr "dev_files" [string ".cmt"; string ".cmti"; string ".cmi"]
   ) in
   Predicate.create ~id ~f:(fun p ->
-    match Path.extension p with
+    match Filename.extension p with
     | ".cmt"
     | ".cmti"
     | ".cmi" -> true

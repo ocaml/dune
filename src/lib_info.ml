@@ -196,7 +196,7 @@ let of_dune_lib dp =
     Lib.wrapped dp
     |> Option.map ~f:(fun w -> Dune_file.Library.Inherited.This w)
   in
-  let obj_dir = Obj_dir.make_external ~dir:src_dir in
+  let obj_dir = Lib.obj_dir dp in
   { loc = Lib.loc dp
   ; name = Lib.name dp
   ; kind = Lib.kind dp

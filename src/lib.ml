@@ -1604,7 +1604,7 @@ let () =
 let to_dune_lib ({ name ; info ; _ } as lib) ~lib_modules ~foreign_objects ~dir =
   let add_loc = List.map ~f:(fun x -> (info.loc, x.name)) in
   let virtual_ = Option.is_some info.virtual_ in
-  let obj_dir = Obj_dir.make_external ~dir in
+  let obj_dir = Obj_dir.convert_to_external ~dir (obj_dir lib) in
   let lib_modules =
     Lib_modules.version_installed ~install_dir:obj_dir lib_modules in
   let orig_src_dir =

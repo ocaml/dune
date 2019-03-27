@@ -7,6 +7,17 @@ module External = struct
     ; private_dir : Path.t option
     }
 
+  let make ~dir ~has_private_modules =
+    let private_dir =
+      if has_private_modules then
+        Some (Path.relative dir ".private")
+      else
+        None
+    in
+    { public_dir = dir
+    ; private_dir
+    }
+
   let has_public_cmi_dir t = Option.is_some t.private_dir
 
   let public_cmi_dir t = t.public_dir
@@ -147,8 +158,8 @@ let make_exe ~dir ~name = Local (Local.make_exe ~dir ~name)
 let make_lib ~dir ~has_private_modules lib_name =
   Local (Local.make_lib ~dir ~has_private_modules lib_name)
 
-let make_external ~dir =
-  External { External.public_dir = dir; private_dir = None }
+let make_external_no_private ~dir =
+  External (External.make ~dir ~has_private_modules:false)
 
 let all_obj_dirs t ~mode =
   match t with
@@ -183,3 +194,15 @@ let to_dyn =
 
 let to_sexp t = Dyn.to_sexp (to_dyn t)
 let pp fmt t = Dyn.pp fmt (to_dyn t)
+
+let convert_to_external t ~dir =
+  match t with
+  | Local e ->
+    let has_private_modules = Local.has_public_cmi_dir e in
+    External (External.make ~dir ~has_private_modules)
+  | External obj_dir ->
+    Exn.code_error
+      "Obj_dir.convert_to_external: converting already external dir"
+      [ "dir", Path.to_sexp dir
+      ; "obj_dir", Dyn.to_sexp (External.to_dyn obj_dir)
+      ]

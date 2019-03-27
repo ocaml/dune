@@ -141,7 +141,7 @@ module Lib = struct
       let* obj_dir = field_o "obj_dir" (Obj_dir.decode ~dir) in
       let obj_dir =
         match obj_dir with
-        | None -> Obj_dir.make_external ~dir
+        | None -> Obj_dir.make_external_no_private ~dir
         | Some obj_dir -> obj_dir
       in
       let+ synopsis = field_o "synopsis" string

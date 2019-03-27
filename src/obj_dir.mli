@@ -32,7 +32,9 @@ val make_lib
 
 val make_exe: dir:Path.t -> name:string -> t
 
-val make_external: dir:Path.t -> t
+val make_external_no_private : dir:Path.t -> t
 
 val encode : t -> Dune_lang.t list
 val decode : dir:Path.t -> t Dune_lang.Decoder.t
+
+val convert_to_external : t -> dir:Path.t -> t

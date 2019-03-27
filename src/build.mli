@@ -66,11 +66,7 @@ val path_set : Path.Set.t -> ('a, 'a) t
 
 (** Evaluate a predicate against all targets and record all the matched files as
     dependencies of the action produced by the build arrow. *)
-val paths_matching
-  :  loc:Loc.t
-  -> dir:Path.t
-  -> Path.t Predicate.t
-  -> ('a, Path.Set.t) t
+val paths_matching : loc:Loc.t -> File_selector.t -> ('a, Path.Set.t) t
 
 (** [env_var v] records [v] as an environment variable that is read by the
     action produced by the build arrow. *)
@@ -194,7 +190,7 @@ module Repr : sig
     | Split : ('a, 'b) t * ('c, 'd) t -> ('a * 'c, 'b * 'd) t
     | Fanout : ('a, 'b) t * ('a, 'c) t -> ('a, 'b * 'c) t
     | Paths_for_rule : Path.Set.t -> ('a, 'a) t
-    | Paths_glob : Path.t * Path.t Predicate.t -> ('a, Path.Set.t) t
+    | Paths_glob : File_selector.t -> ('a, Path.Set.t) t
     | If_file_exists : Path.t * ('a, 'b) if_file_exists_state ref -> ('a, 'b) t
     | Contents : Path.t -> ('a, string) t
     | Lines_of : Path.t -> ('a, string list) t

@@ -29,7 +29,7 @@ module Group = struct
         constr "Lib_file_deps" [Atom ext]
       ) in
       let pred = Predicate.create ~id ~f:(fun p ->
-        String.equal (Path.extension p) ext)
+        String.equal (Filename.extension p) ext)
       in
       (g, pred))
     in
@@ -88,7 +88,10 @@ let deps_of_lib (lib : Lib.t) ~groups =
   else
     (* suppose that all the files of an external lib are at the same place *)
     let dir = Obj_dir.public_cmi_dir (Lib.obj_dir lib) in
-    List.map groups ~f:(fun g -> Dep.glob ~dir (Group.to_predicate g))
+    List.map groups ~f:(fun g ->
+      Group.to_predicate g
+      |> File_selector.create ~dir
+      |> Dep.glob)
     |> Dep.Set.of_list
 
 let deps_with_exts =

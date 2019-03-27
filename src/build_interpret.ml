@@ -39,8 +39,8 @@ let static_deps t ~all_targets =
       Static_deps.add_action_deps acc deps
     | Paths_for_rule fns ->
       Static_deps.add_rule_paths acc fns
-    | Paths_glob (dir, pred) ->
-      Static_deps.add_action_dep acc (Dep.glob ~dir pred)
+    | Paths_glob g ->
+      Static_deps.add_action_dep acc (Dep.glob g)
     | If_file_exists (p, state) -> begin
         match !state with
         | Decided (_, t) -> loop t acc false

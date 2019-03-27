@@ -4,13 +4,13 @@ module T = struct
   type t =
     | Env of Env.Var.t
     | File of Path.t
-    | Glob of Path.t * Path.t Predicate.t
+    | Glob of File_selector.t
     | Universe
 
   let env e = Env e
   let file f = File f
   let universe = Universe
-  let glob ~dir predicate = Glob (dir, predicate)
+  let glob g = Glob g
 
   let compare x y =
     match x, y with
@@ -20,8 +20,7 @@ module T = struct
     | File x, File y -> Path.compare x y
     | File _, _ -> Lt
     | _, File _ -> Gt
-    | Glob (d1, p1), Glob (d2, p2) ->
-      Tuple.T2.compare Path.compare Predicate.compare (d1, p1) (d2, p2)
+    | Glob x, Glob y -> File_selector.compare x y
     | Glob _, _ -> Lt
     | _, Glob _ -> Gt
     | Universe, Universe -> Ordering.Eq
@@ -34,8 +33,8 @@ module T = struct
     match t with
     | Universe -> ["universe", Digest.string "universe"]
     | File fn -> [trace_file fn]
-    | Glob (dir, pred) ->
-      eval_pred ~dir pred
+    | Glob dir_glob ->
+      eval_pred dir_glob
       |> Path.Set.to_list
       |> List.map ~f:trace_file
     | Env var ->
@@ -50,19 +49,13 @@ module T = struct
   let pp fmt = function
     | Env e -> Format.fprintf fmt "Env %S" e
     | File f -> Format.fprintf fmt "File %a" Path.pp f
-    | Glob (dir, pred) ->
-      Format.fprintf fmt "Glob (%a, %a)"
-        Path.pp dir
-        Predicate.pp pred
+    | Glob g -> Format.fprintf fmt "Glob %a" File_selector.pp g
     | Universe -> Format.fprintf fmt "Universe"
 
   let encode t =
     let open Dune_lang.Encoder in
     match t with
-    | Glob (dir, pred) ->
-      triple
-        string Path_dune_lang.encode Predicate.encode
-        ("glob", dir, pred)
+    | Glob g -> pair string File_selector.encode ("glob", g)
     | Env e -> pair string string ("Env", e)
     | File f -> pair string Path_dune_lang.encode ("File", f)
     | Universe -> string "Universe"
@@ -95,7 +88,7 @@ module Set = struct
     fold t ~init:Path.Set.empty ~f:(fun d acc ->
       match d with
       | File f -> Path.Set.add acc f
-      | Glob (dir, pred) -> Path.Set.union acc (eval_pred ~dir pred)
+      | Glob g -> Path.Set.union acc (eval_pred g)
       | Universe
       | Env _ -> acc)
 
@@ -109,10 +102,10 @@ module Set = struct
   let dirs t =
     fold t ~init:Path.Set.empty ~f:(fun f acc ->
       match f with
-      | Glob (dir, _) -> Path.Set.add acc dir
+      | Glob g -> Path.Set.add acc (File_selector.dir g)
       | File f -> Path.Set.add acc (Path.parent_exn f)
       | Universe
       | Env _ -> acc)
 end
 
-type eval_pred = dir:Path.t -> Path.t Predicate.t -> Path.Set.t
+type eval_pred = File_selector.t -> Path.Set.t

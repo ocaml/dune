@@ -160,9 +160,8 @@ let installable_modules t =
   | None -> modules
   | Some alias -> alias :: modules
 
-let version_installed t ~install_dir:(dir) =
-  let obj_dir = Obj_dir.make_external ~dir in
-  let set = Module.set_obj_dir ~obj_dir in
+let version_installed t ~install_dir =
+  let set = Module.set_obj_dir ~obj_dir:install_dir in
   { t with
     alias_module = Option.map ~f:set t.alias_module
   ; modules = Module.Name.Map.map ~f:set t.modules;

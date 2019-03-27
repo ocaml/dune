@@ -1,4 +1,4 @@
-open Stdune
+open! Stdune
 
 type t
 
@@ -32,7 +32,7 @@ val make
 
 val set_modules : t -> Module.Name_map.t -> t
 
-val version_installed : t -> install_dir:Path.t -> t
+val version_installed : t -> install_dir:Obj_dir.t -> t
 
 val for_compilation : t -> Module.Name_map.t
 

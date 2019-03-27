@@ -133,7 +133,7 @@ let has_public_cmi_dir = function
 
 let encode = function
   | Local obj_dir ->
-    Exn.code_error "Obj_dir.encode: local paths cannot be encoded"
+    Exn.code_error "Obj_dir.encode: local obj_dir cannot be encoded"
       [ "obj_dir", Dyn.to_sexp (Local.to_dyn obj_dir)
       ]
   | External e -> External.encode e

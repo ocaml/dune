@@ -1595,13 +1595,21 @@ let process_memcycle exn =
     Memo.Cycle_error.get exn
     |> List.filter_map ~f:(Memo.Stack_frame.as_instance_of ~of_:build_file_def)
   in
-  let last = List.last cycle |> Option.value_exn in
-  let first = List.hd cycle in
-  let cycle = if last = first then cycle else last :: cycle in
-  Exn.Fatal_error
-    (Format.asprintf "Dependency cycle between the following files:\n    %s"
-       (List.map cycle ~f:Path.to_string_maybe_quoted
-        |> String.concat ~sep:"\n--> "))
+  match List.last cycle with
+  | None ->
+    let frames : string list =
+      Memo.Cycle_error.get exn
+      |> List.map ~f:(Format.asprintf "%a" Memo.Stack_frame.pp)
+    in
+    Exn.code_error "dependency cycle that does not involve any files"
+      ["frames", Sexp.Encoder.(list string) frames]
+  | Some last ->
+    let first = List.hd cycle in
+    let cycle = if last = first then cycle else last :: cycle in
+    Exn.Fatal_error
+      (Format.asprintf "Dependency cycle between the following files:\n    %s"
+         (List.map cycle ~f:Path.to_string_maybe_quoted
+          |> String.concat ~sep:"\n--> "))
 
 let do_build ~request =
   let t = t () in

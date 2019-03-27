@@ -101,7 +101,8 @@ val node41 : node = (6: k=1) (child 4 1) []
                                                              ]]]];
                   (2: k=1) (child 1 1) []]
 - : string list option =
-Some ["child 4 1"; "child 3 1"; "child 2 1"; "child 1 2"; "root"]
+Some
+ ["child 4 1"; "child 3 1"; "child 2 1"; "child 1 2"; "root"; "child 4 1"]
 - : node =
 (1: k=2) (root) [(3: k=2) (child 1 2) [(4: k=2) (child 2 1) [(5: k=2) (child 3 1) [
                                                              (6: k=2) (child 4 1) [
@@ -220,11 +221,11 @@ cycle_test `a
 ;;
 
 [%%expect{|
-- : int list = [23; 22; 21; 20; 14; 13; 12; 11]
+- : int list = [23; 22; 21; 20; 14; 13; 12; 11; 23]
 |}]
 ;;
 cycle_test `b
 ;;
 [%%expect{|
-- : int list = [23; 22; 21; 20; 14; 13; 12; 11]
+- : int list = [23; 22; 21; 20; 14; 13; 12; 11; 23]
 |}]

@@ -78,7 +78,11 @@ module Make(Value : Value) : S with type value := Value.t = struct
     match IC.add_edge_or_detect_cycle g v w with
     | IC.EdgeAdded -> ()
     | IC.EdgeCreatesCycle compute_cycle ->
-      raise (Cycle (List.rev (compute_cycle ())))
+      raise (Cycle (
+        let path = (compute_cycle ()) in
+        assert (List.hd path == w);
+        assert (Option.value_exn (List.last path) == v);
+        List.rev path @ [ v ]))
 
   let children node = node.info.deps
 

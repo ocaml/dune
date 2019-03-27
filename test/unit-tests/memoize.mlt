@@ -168,7 +168,7 @@ with
 !stack |> List.map ~f:(fun st -> Stack_frame.name st, Stack_frame.input st);;
 
 [%%expect{|
-- : int list option = Some [2; 1; 0]
+- : int list option = Some [2; 1; 0; 2]
 - : int = 4
 - : (string * Sexp.t) list =
 [("cycle", Atom "2"); ("cycle", Atom "1"); ("cycle", Atom "0");

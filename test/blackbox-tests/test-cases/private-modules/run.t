@@ -11,6 +11,8 @@
 
   $ dune build --root excluded-from-install-file | grep -i priv
   Entering directory 'excluded-from-install-file'
+    "_build/install/default/lib/lib/.private/lib__Priv.cmi" {".private/lib__Priv.cmi"}
+    "_build/install/default/lib/lib/.private/priv2.cmi" {".private/priv2.cmi"}
     "_build/install/default/lib/lib/foo/priv2.cmt" {"foo/priv2.cmt"}
     "_build/install/default/lib/lib/foo/priv2.cmx" {"foo/priv2.cmx"}
     "_build/install/default/lib/lib/foo/priv2.ml" {"foo/priv2.ml"}

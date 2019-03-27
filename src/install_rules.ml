@@ -189,10 +189,10 @@ let lib_ppxs sctx ~(lib : Dune_file.Library.t) ~scope ~dir_kind =
       in
       [Preprocessing.get_compat_ppx_exe sctx ~name ~kind:(Jbuild driver)]
 
-let lib_install_files sctx ~dir_contents ~dir ~sub_dir ~scope ~dir_kind
-      (lib : Library.t) =
+let lib_install_files sctx ~dir_contents ~dir ~sub_dir:default_subdir
+      ~scope ~dir_kind (lib : Library.t) =
   let loc = lib.buildable.loc in
-  let make_entry section ?dst fn =
+  let make_entry section ?sub_dir ?dst fn =
     ( Some loc
     , Install.Entry.make section fn
         ~dst:(
@@ -200,6 +200,11 @@ let lib_install_files sctx ~dir_contents ~dir ~sub_dir ~scope ~dir_kind
             match dst with
             | Some s -> s
             | None   -> Path.basename fn
+          in
+          let sub_dir =
+            match sub_dir with
+            | Some _ -> sub_dir
+            | None -> default_subdir
           in
           match sub_dir with
           | None -> dst
@@ -227,23 +232,33 @@ let lib_install_files sctx ~dir_contents ~dir ~sub_dir ~scope ~dir_kind
     in
     let virtual_library = Library.is_virtual lib in
     List.concat_map installable_modules ~f:(fun m ->
-      List.concat
-        [ if_ (Module.is_public m)
-            [ Module.cm_public_file_unsafe m Cmi ]
-        ; if_ (native && Module.has_impl m)
+      let cmi_file = (Module.visibility m, Module.cm_file_unsafe m Cmi) in
+      let other_cm_files =
+        [ if_ (native && Module.has_impl m)
             [ Module.cm_file_unsafe m Cmx ]
         ; if_ (byte && Module.has_impl m && virtual_library)
             [ Module.cm_file_unsafe m Cmo ]
         ; if_ (native && Module.has_impl m && virtual_library)
             [ Module.obj_file m ~kind:Cmx ~ext:ctx.ext_obj ]
         ; List.filter_map Ml_kind.all ~f:(Module.cmt_file m)
-        ])
+        ]
+        |> List.concat
+        |> List.map ~f:(fun f -> (Visibility.Public, f))
+      in
+      cmi_file :: other_cm_files
+    )
   in
   let archives = Lib_archives.make ~ctx ~dir_contents ~dir lib in
   let execs = lib_ppxs sctx ~lib ~scope ~dir_kind in
   List.concat
     [ sources
-    ; List.map module_files ~f:(make_entry Lib)
+    ; List.map module_files ~f:(fun (visibility, file) ->
+        let sub_dir =
+          match (visibility : Visibility.t) with
+          | Public -> None
+          | Private -> Some ".private"
+        in
+        make_entry ?sub_dir Lib file)
     ; List.map (Lib_archives.files archives) ~f:(make_entry Lib)
     ; List.map execs ~f:(make_entry Libexec)
     ; List.map (Lib_archives.dlls archives) ~f:(fun a ->

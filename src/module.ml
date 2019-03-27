@@ -446,7 +446,7 @@ let encode
        ; obj_name
        ; pp = _
        ; visibility
-       ; obj_dir
+       ; obj_dir = _
        ; kind
        } as t) =
   let open Dune_lang.Encoder in
@@ -465,11 +465,11 @@ let encode
     ; field_o "kind" Kind.encode kind
     ; field_b "impl" has_impl
     ; field_b "intf" (has_intf t)
-    ; field_i "obj_dir" Obj_dir.encode obj_dir
     ]
 
-let decode ~dir =
+let decode ~obj_dir =
   let open Dune_lang.Decoder in
+  let dir = Obj_dir.dir obj_dir in
   fields (
     let+ name = field "name" Name.decode
     and+ obj_name = field "obj_name" string
@@ -477,9 +477,6 @@ let decode ~dir =
     and+ kind = field_o "kind" Kind.decode
     and+ impl = field_b "impl"
     and+ intf = field_b "intf"
-    and+ obj_dir =
-      let default = Obj_dir.make_external ~dir in
-      field ~default "obj_dir" (Obj_dir.decode ~dir)
     in
     let file exists ml_kind =
       if exists then

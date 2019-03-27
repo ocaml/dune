@@ -24,7 +24,7 @@ val to_sexp: t -> Sexp.t
 
 val all_obj_dirs : t -> mode:Mode.t -> Path.t list
 
-val make_local
+val make_lib
   :  dir:Path.t
   -> has_private_modules:bool
   -> Lib_name.Local.t

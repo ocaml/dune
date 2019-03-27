@@ -135,6 +135,7 @@ module Lib = struct
       >>= fun default_implementation ->
       field "name" Lib_name.decode >>= fun name ->
       let dir = Path.append_local base (dir_of_name name) in
+      let obj_dir = Obj_dir.make_external ~dir in
       let+ synopsis = field_o "synopsis" string
       and+ loc = loc
       and+ modes = field_l "modes" Mode.decode
@@ -150,7 +151,7 @@ module Lib = struct
       and+ sub_systems = Sub_system_info.record_parser ()
       and+ orig_src_dir = field_o "orig_src_dir" path
       and+ modules = field_o "modules" (Lib_modules.decode
-                         ~implements:(Option.is_some implements) ~dir)
+                         ~implements:(Option.is_some implements) ~obj_dir)
       in
       let modes = Mode.Dict.Set.of_list modes in
       { kind

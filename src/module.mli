@@ -172,7 +172,7 @@ val visibility : t -> Visibility.t
 
 val encode : t -> Dune_lang.t list
 
-val decode : dir:Path.t -> t Dune_lang.Decoder.t
+val decode : obj_dir:Obj_dir.t -> t Dune_lang.Decoder.t
 
 (* Only the source of a module, not yet associated to a library *)
 module Source : sig

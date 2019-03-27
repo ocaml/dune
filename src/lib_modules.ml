@@ -228,13 +228,13 @@ let encode
     ; field "wrapped" Wrapped.encode wrapped
     ]
 
-let decode ~implements ~dir =
+let decode ~implements ~obj_dir =
   let open Stanza.Decoder in
   fields (
-    let+ alias_module = field_o "alias_module" (Module.decode ~dir)
+    let+ alias_module = field_o "alias_module" (Module.decode ~obj_dir)
     and+ main_module_name = field_o "main_module_name" Module.Name.decode
     and+ modules =
-      field ~default:[] "modules" (list (enter (Module.decode ~dir)))
+      field ~default:[] "modules" (list (enter (Module.decode ~obj_dir)))
     and+ wrapped = field "wrapped" Wrapped.decode
     in
     let modules =

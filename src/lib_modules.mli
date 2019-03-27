@@ -42,7 +42,7 @@ val for_alias : t -> Module.Name_map.t
 
 val encode : t -> Dune_lang.t list
 
-val decode : implements:bool -> dir:Path.t -> t Dune_lang.Decoder.t
+val decode : implements:bool -> obj_dir:Obj_dir.t -> t Dune_lang.Decoder.t
 
 val is_wrapped : t -> bool
 

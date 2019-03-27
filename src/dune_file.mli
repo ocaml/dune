@@ -444,15 +444,26 @@ module Stanzas : sig
 
   type syntax = OCaml | Plain
 
+  (** [of_ast ~kind project ast] is the list of [Stanza.t]s derived from
+      decoding the [ast] according to the syntax given by [kind] in the context
+      of the [project] *)
+  val of_ast
+    :  kind:Dune_lang.Syntax.t
+    -> Dune_project.t
+    -> Dune_lang.Ast.t
+    -> Stanza.t list
+
   (** [parse ~file ~kind project stanza_exprs] is a list of [Stanza.t]s derived
-      from decoding the [stanza_exprs] from [Dune_lang.Ast.t]s to [Stanza.t]s
-      and combining those with the stanzas parsed from the supplied dune [file].
+      from decoding the [stanza_exprs] from [Dune_lang.Ast.t]s to [Stanza.t]s.
+
+      [file] is used to check for illegal recursive file inclusions and to
+      anchor file includes given as relative paths.
 
       The stanzas are parsed in the context of the dune [project].
 
-      The syntax [kind] determines whether the expected syntax is either the
-      depreciated jbuilder syntax or the version of dune syntax specified in the
-      [project]. *)
+      The syntax [kind] determines whether the expected syntax is the
+      depreciated jbuilder syntax or the version of dune syntax specified by the
+      current [project]. *)
   val parse
     :  file:Path.t
     -> kind:Dune_lang.Syntax.t

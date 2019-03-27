@@ -2143,36 +2143,45 @@ module Stanzas = struct
   let () =
     Dune_project.Lang.register Stanza.syntax stanzas
 
+  let of_ast ~kind (project : Dune_project.t) sexp =
+    let syntax_parser (syntax : Dune_lang.Syntax.t) =
+      match syntax with
+      | Jbuild -> jbuild_parser
+      | Dune   -> Dune_project.stanza_parser project
+    in
+    let parser = syntax_parser kind |> Dune_project.set project in
+    Dune_lang.Decoder.parse parser Univ_map.empty sexp
+
   exception Include_loop of Path.t * (Loc.t * Path.t) list
 
-  let rec parse stanza_parser ~lexer ~current_file ~include_stack sexps =
-    List.concat_map sexps ~f:(Dune_lang.Decoder.parse stanza_parser Univ_map.empty)
-    |> List.concat_map ~f:(function
-      | Include (loc, fn) ->
-        let include_stack = (loc, current_file) :: include_stack in
-        let dir = Path.parent_exn current_file in
-        let current_file = Path.relative dir fn in
-        if not (Path.exists current_file) then
-          Errors.fail loc "File %s doesn't exist."
-            (Path.to_string_maybe_quoted current_file);
-        if List.exists include_stack ~f:(fun (_, f) -> Path.equal f current_file) then
-          raise (Include_loop (current_file, include_stack));
-        let sexps = Dune_lang.Io.load ~lexer current_file ~mode:Many in
-        parse stanza_parser sexps ~lexer ~current_file ~include_stack
-      | stanza -> [stanza])
+  let parse_file_includes ~stanza_parser ~lexer ~current_file ~include_stack sexps =
+    let rec parse current_file include_stack sexps =
+      List.concat_map sexps ~f:stanza_parser
+      |> List.concat_map ~f:(function
+        | Include (loc, fn) ->
+          let include_stack = (loc, current_file) :: include_stack in
+          let dir = Path.parent_exn current_file in
+          let current_file = Path.relative dir fn in
+          if not (Path.exists current_file) then
+            Errors.fail loc "File %s doesn't exist."
+              (Path.to_string_maybe_quoted current_file);
+          if List.exists include_stack ~f:(fun (_, f) -> Path.equal f current_file) then
+            raise (Include_loop (current_file, include_stack));
+          let sexps = Dune_lang.Io.load ~lexer current_file ~mode:Many in
+          parse current_file include_stack sexps
+        | stanza -> [stanza])
+    in parse current_file include_stack sexps
 
   let parse ~file ~kind (project : Dune_project.t) sexps =
-    let (stanza_parser, lexer) =
-      let (parser, lexer) =
-        match (kind : Dune_lang.Syntax.t) with
-        | Jbuild -> (jbuild_parser, Dune_lang.Lexer.jbuild_token)
-        | Dune   -> (Dune_project.stanza_parser project, Dune_lang.Lexer.token)
-      in
-      (Dune_project.set project parser, lexer)
+    let stanza_parser ast = of_ast ~kind project ast in
+    let lexer =
+      match (kind : Dune_lang.Syntax.t) with
+      | Jbuild -> Dune_lang.Lexer.jbuild_token
+      | Dune   -> Dune_lang.Lexer.token
     in
     let stanzas =
       try
-        parse stanza_parser sexps ~lexer ~include_stack:[] ~current_file:file
+        parse_file_includes ~stanza_parser ~lexer ~include_stack:[] ~current_file:file sexps
       with
       | Include_loop (_, []) -> assert false
       | Include_loop (file, last :: rest) ->

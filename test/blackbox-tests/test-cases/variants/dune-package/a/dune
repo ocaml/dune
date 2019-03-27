@@ -1,0 +1,10 @@
+(library
+ (public_name a)
+ (implements b)
+ (variant test)
+ (modules x))
+
+(rule
+ (with-stdout-to
+  x.ml
+  (echo "")))

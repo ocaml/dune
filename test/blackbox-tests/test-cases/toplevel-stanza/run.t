@@ -5,3 +5,12 @@ Simple example to run toplevel
           OCaml version REDACTED
   
   Foo.x = 42
+
+
+Running toplevel with variants
+  $ dune exec --root variants ./tt.exe -- -init variants/init.ml | sed -E 's/[0-9]+\.[0-9]+\.[0-9]+/REDACTED/g'
+  Entering directory 'variants'
+  Entering directory 'variants'
+          OCaml version REDACTED
+  
+  Foo.x = 42

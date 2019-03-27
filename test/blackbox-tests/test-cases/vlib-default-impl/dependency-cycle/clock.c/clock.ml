@@ -1,0 +1,1 @@
+let run () = Printf.printf "hi from clock.c"

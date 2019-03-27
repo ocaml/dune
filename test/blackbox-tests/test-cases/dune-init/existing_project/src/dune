@@ -1,0 +1,5 @@
+; A comment
+
+(library
+ ; Another comment
+ (name test_lib))

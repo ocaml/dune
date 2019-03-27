@@ -1,0 +1,4 @@
+(library
+ (name direct_c)
+ (implements direct)
+ (variant c))

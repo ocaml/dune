@@ -221,6 +221,8 @@ module Library : sig
     ; dune_version             : Syntax.Version.t
     ; virtual_modules          : Ordered_set_lang.t option
     ; implements               : (Loc.t * Lib_name.t) option
+    ; variant                  : Variant.t option
+    ; default_implementation   : (Loc.t * Lib_name.t) option
     ; private_modules          : Ordered_set_lang.t option
     ; stdlib                   : Stdlib.t option
     }
@@ -286,6 +288,7 @@ module Executables : sig
     ; link_deps  : Dep_conf.t list
     ; modes      : Link_mode.Set.t
     ; buildable  : Buildable.t
+    ; variants   : (Loc.t * Variant.Set.t) option
     }
 end
 
@@ -396,6 +399,7 @@ module Toplevel : sig
   type t =
     { name : string
     ; libraries : (Loc.t * Lib_name.t) list
+    ; variants : (Loc.t * Variant.Set.t) option
     ; loc : Loc.t
     }
 end
@@ -423,6 +427,15 @@ module Stanzas : sig
 
   type syntax = OCaml | Plain
 
+  (** [parse ~file ~kind project stanza_exprs] is a list of [Stanza.t]s derived
+      from decoding the [stanza_exprs] from [Dune_lang.Ast.t]s to [Stanza.t]s
+      and combining those with the stanzas parsed from the supplied dune [file].
+
+      The stanzas are parsed in the context of the dune [project].
+
+      The syntax [kind] determines whether the expected syntax is either the
+      depreciated jbuilder syntax or the version of dune syntax specified in the
+      [project]. *)
   val parse
     :  file:Path.t
     -> kind:Dune_lang.Syntax.t

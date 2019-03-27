@@ -1,0 +1,4 @@
+(library
+ (name foo_a)
+ (implements foo)
+ (variant a))

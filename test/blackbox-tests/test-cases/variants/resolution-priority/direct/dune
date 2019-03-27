@@ -1,0 +1,5 @@
+(library
+ (name direct)
+ (virtual_modules direct)
+ (wrapped false)
+ (default_implementation direct_default))

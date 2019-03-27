@@ -4,6 +4,58 @@ Usage
 
 This section describe usage of dune from the shell.
 
+.. _initializing_components:
+
+Initializing components
+=======================
+
+NOTE: The ``dune init`` command is still under development and subject to
+change.
+
+Dune's ``init`` subcommand provides limited support for generating dune file
+stanzas and folder structures to define components. ``dune init`` can be used to
+quickly add new libraries, tests, or executables without having to manually edit
+a dune file, or it can be composed to programmatically generate parts of a
+multi-component project.
+
+For example, to add a new executable to a ``dune`` file in the current directory
+(creating the file if necessary), you can run
+
+.. code:: bash
+
+    $ dune init exe myexe --libs base,containers,notty --ppx ppx_deriving
+
+This will add the following stanza to the ``dune`` file:
+
+.. code:: scheme
+
+    (executable
+     (name main)
+     (libraries base containers notty)
+     (preprocess
+      (pps ppx_deriving)))
+
+Or, to create a new directory ``src``, initialized as a library, you can run:
+
+.. code:: bash
+
+    $ dune init lib mylib src --libs core --inline-tests --public
+
+This will ensure the file ``./src/dune`` contains the following stanza (creating
+the file and directory, if needed):
+
+.. code:: scheme
+
+    (library
+     (public_name mylib)
+     (inline_tests)
+     (name mylib)
+     (libraries core)
+     (preprocess
+      (pps ppx_inline_tests)))
+
+Consult the manual page ``dune init --help`` for more details.
+
 .. _finding-root:
 
 Finding the root
@@ -505,7 +557,7 @@ must be prefixed by the shortest one.
 Watermarking
 ============
 
-One of the feature dune-release provides is watermarking; it replaces
+One of the features dune-release provides is watermarking; it replaces
 various strings of the form ``%%ID%%`` in all files of your project
 before creating a release tarball or when the package is pinned by the
 user using opam.

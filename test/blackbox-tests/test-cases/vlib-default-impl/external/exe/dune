@@ -1,0 +1,13 @@
+(executable
+ (name bar)
+ (libraries vlib))
+
+(alias
+ (name default)
+ (action
+  (run ./bar.exe)))
+
+(rule
+ (with-stdout-to
+  bar.ml
+  (echo "let () = X.run ()")))

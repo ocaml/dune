@@ -6,7 +6,7 @@ let dev_files =
     constr "dev_files" [string ".cmt"; string ".cmti"; string ".cmi"]
   ) in
   Predicate.create ~id ~f:(fun p ->
-    match Path.extension p with
+    match Filename.extension p with
     | ".cmt"
     | ".cmti"
     | ".cmi" -> true
@@ -14,12 +14,10 @@ let dev_files =
 
 let add_obj_dir sctx ~obj_dir =
   if (Super_context.context sctx).merlin then
-    let dyn_deps =
-      Build.paths_matching
-        ~loc:(Loc.of_pos __POS__)
-        ~dir:(Obj_dir.byte_dir obj_dir)
-        dev_files
-    in
+    let dir_glob =
+      let dir = Obj_dir.byte_dir obj_dir in
+      File_selector.create ~dir dev_files in
+    let dyn_deps = Build.paths_matching ~loc:(Loc.of_pos __POS__) dir_glob in
     Build_system.Alias.add_deps
       (Build_system.Alias.check ~dir:(Obj_dir.dir obj_dir))
       ~dyn_deps

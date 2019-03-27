@@ -63,6 +63,15 @@
  (files   dune-help.1))
 
 (rule
+ (with-stdout-to dune-init.1
+  (run dune init --help=groff)))
+
+(install
+ (section man)
+ (package dune)
+ (files   dune-init.1))
+
+(rule
  (with-stdout-to dune-install.1
   (run dune install --help=groff)))
 

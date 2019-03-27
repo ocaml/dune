@@ -130,6 +130,7 @@ module Stanza = struct
                ~f:(fun d -> Dune_file.Lib_dep.Direct d)))
         ~pps:[]
         ~allow_overlaps:false
+        ~variants:toplevel.variants
     in
     let requires_compile = Lib.Compile.direct_requires compile_info in
     let requires_link = Lib.Compile.requires_link compile_info in

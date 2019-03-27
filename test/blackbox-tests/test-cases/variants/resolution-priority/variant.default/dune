@@ -1,0 +1,5 @@
+(library
+ (name variant_default)
+ (implements variant)
+ (libraries test)
+ (variant default))

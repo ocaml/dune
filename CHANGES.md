@@ -14,6 +14,9 @@ unreleased
 - Add support for library variants and default implementations. (#1900,
   @TheLortex)
 
+- Add experimental `$ dune init` command. This command is used to create or
+  update project boilerplate. (#1448, fixes #159, @shonfeder)
+
 1.8.2 (10/03/2019)
 ------------------
 

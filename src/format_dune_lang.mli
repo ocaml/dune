@@ -1,5 +1,15 @@
 open Import
 
+type dune_file =
+  | OCaml_syntax of Loc.t
+  | Sexps of Dune_lang.Cst.t list
+
+(** Read a file into its concrete syntax *)
+val parse_file : Path.t option -> dune_file
+
+(** Write the formatted concrete syntax to the file at [path] *)
+val write_file : path:Path.t -> Dune_lang.Cst.t list -> unit
+
 (** Reformat a dune file. [None] corresponds to stdin. *)
 val format_file : input:Path.t option -> unit
 

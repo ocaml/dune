@@ -222,6 +222,10 @@ module Project_file_edit = struct
   let notify_user s =
     kerrf ~f:print_to_console "@{<warning>Info@}: %s\n" s
 
+  let lang_stanza () =
+    let ver = (Lang.get_exn "dune").version in
+    sprintf "(lang dune %s)" (Syntax.Version.to_string ver)
+
   let ensure_exists t =
     if t.exists then
       Already_exist
@@ -261,6 +265,8 @@ module Project_file_edit = struct
         if len > 0 && s.[len - 1] <> '\n' then output_char oc '\n'));
     what
 end
+
+let lang_stanza = Project_file_edit.lang_stanza
 
 let ensure_project_file_exists t =
   Project_file_edit.ensure_exists t.project_file

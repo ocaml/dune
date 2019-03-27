@@ -215,6 +215,9 @@ module Cst = struct
     | Template t -> Template t
     | List (loc, l) -> List (loc, List.map ~f:concrete l)
 
+  let to_sexp c =
+    abstract c |> Option.map ~f:Ast.remove_locs
+
   let extract_comments =
     let rec loop acc = function
       | Atom _ | Quoted_string _ | Template _ -> acc

@@ -192,6 +192,8 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
           let open Sexp.Encoder in
           constr "exclude" (List.map ~f:Path.to_sexp js_targets)
         ) in
+        List.iter js_targets ~f:(fun js_target ->
+          assert (Path.equal (Path.parent_exn js_target) ctx_dir));
         Predicate.create ~id ~f:(fun basename ->
           not (List.exists js_targets ~f:(fun js_target ->
             String.equal (Path.basename js_target) basename)))

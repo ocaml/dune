@@ -177,14 +177,14 @@ type t =
   { kind : kind
   ; dir : Path.t
   ; text_files : String.Set.t
-  ; modules : unit -> Modules.t
-  ; c_sources : unit -> C_sources.t
-  ; mlds : unit -> (Dune_file.Documentation.t * Path.t list) list
+  ; modules : Modules.t Memo.Lazy.t
+  ; c_sources : C_sources.t Memo.Lazy.t
+  ; mlds : (Dune_file.Documentation.t * Path.t list) list Memo.Lazy.t
   }
 
 and kind =
   | Standalone
-  | Group_root of (unit -> t list)
+  | Group_root of (t list Memo.Lazy.t)
   | Group_part of t
 
 let kind t = t.kind
@@ -194,13 +194,13 @@ let dirs t =
   match t.kind with
   | Standalone -> [t]
   | Group_root l
-  | Group_part { kind = Group_root l; _ } -> t :: l ()
+  | Group_part { kind = Group_root l; _ } -> t :: Memo.Lazy.force l
   | Group_part { kind = _; _ } -> assert false
 
 let text_files t = t.text_files
 
 let modules_of_library t ~name =
-  let map = (t.modules ()).libraries in
+  let map = (Memo.Lazy.force t.modules).libraries in
   match Lib_name.Map.find map name with
   | Some m -> m
   | None ->
@@ -210,7 +210,7 @@ let modules_of_library t ~name =
       ]
 
 let modules_of_executables t ~first_exe =
-  let map = (t.modules ()).executables in
+  let map = (Memo.Lazy.force t.modules).executables in
   match String.Map.find map first_exe with
   | Some m -> m
   | None ->
@@ -220,13 +220,13 @@ let modules_of_executables t ~first_exe =
       ]
 
 let c_sources_of_library t ~name =
-  C_sources.for_lib (t.c_sources ()) ~dir:t.dir ~name
+  C_sources.for_lib (Memo.Lazy.force t.c_sources) ~dir:t.dir ~name
 
 let lookup_module t name =
-  Module.Name.Map.find (t.modules ()).rev_map name
+  Module.Name.Map.find (Memo.Lazy.force t.modules).rev_map name
 
 let mlds t (doc : Documentation.t) =
-  let map = t.mlds () in
+  let map = Memo.Lazy.force t.mlds in
   match
     List.find_map map ~f:(fun (doc', x) ->
       Option.some_if (Loc.equal doc.loc doc'.loc) x)
@@ -323,7 +323,7 @@ let build_mlds_map (d : _ Dir_with_dune.t) ~files =
   List.filter_map d.data ~f:(function
     | Documentation doc ->
       let mlds =
-        let mlds = mlds () in
+        let mlds = Memo.Lazy.force mlds in
         Ordered_set_lang.String.eval_unordered doc.mld_files
           ~parse:(fun ~loc s ->
             match String.Map.find mlds s with
@@ -398,9 +398,9 @@ let get0_impl (sctx, dir) : result0 =
          t = { kind = Standalone
              ; dir
              ; text_files = String.Set.empty
-             ; modules = (fun () -> Modules.empty)
-             ; mlds = (fun () -> [])
-             ; c_sources = (fun () -> C_sources.empty)
+             ; modules = Memo.Lazy.of_val Modules.empty
+             ; mlds = Memo.Lazy.of_val []
+             ; c_sources = Memo.Lazy.of_val C_sources.empty
              };
          rules = None;
          subdirs = Path.Map.empty;

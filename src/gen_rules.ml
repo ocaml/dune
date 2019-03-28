@@ -252,7 +252,7 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
                ignore (gen_rules dir_contents [] ~dir : _ list)
              | Group_root subs ->
                let cctxs = gen_rules dir_contents [] ~dir in
-               let subs = subs () in
+               let subs = Memo.Lazy.force subs in
                List.iter subs ~f:(fun dc ->
                  ignore (gen_rules dir_contents cctxs ~dir:(Dir_contents.dir dc)
                          : _ list))

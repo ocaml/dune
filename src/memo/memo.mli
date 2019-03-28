@@ -164,7 +164,15 @@ val registered_functions : unit -> Function_info.t list
 (** Lookup function's info *)
 val function_info : string -> Function_info.t
 
-val lazy_ : (unit -> 'a) -> (unit -> 'a)
+module Lazy : sig
+  type 'a t
+
+  val create : (unit -> 'a) -> 'a t
+  val of_val : 'a -> 'a t
+  val force : 'a t -> 'a
+end
+
+val lazy_ : (unit -> 'a) -> 'a Lazy.t
 
 module With_implicit_output : sig
 

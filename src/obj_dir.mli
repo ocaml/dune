@@ -19,7 +19,7 @@ val all_cmis: t -> Path.t list
 (** The public compiled cmi file directory *)
 val public_cmi_dir: t -> Path.t
 
-val has_public_cmi_dir : t -> bool
+val need_dedicated_public_dir : t -> bool
 
 val pp: t Fmt.t
 val to_sexp: t -> Sexp.t

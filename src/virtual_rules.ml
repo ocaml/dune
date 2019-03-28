@@ -51,7 +51,7 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
   let copy_objs src =
     let dst = Module.set_obj_dir ~obj_dir:impl_obj_dir src in
     copy_obj_file ~src ~dst Cmi;
-    if Module.is_public dst && Obj_dir.has_public_cmi_dir impl_obj_dir
+    if Module.is_public dst && Obj_dir.need_dedicated_public_dir impl_obj_dir
     then begin
       let src = Module.cm_public_file_unsafe src Cmi in
       let dst = Module.cm_public_file_unsafe dst Cmi in

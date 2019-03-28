@@ -37,7 +37,7 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
       let copy_interface () =
         (* symlink the .cmi into the public interface directory *)
         if not (Module.is_private m)
-        && (Obj_dir.has_public_cmi_dir obj_dir) then
+        && (Obj_dir.need_dedicated_public_dir obj_dir) then
           SC.add_rule sctx ~sandbox:false ~dir
             (Build.symlink
                ~src:(Module.cm_file_unsafe m Cmi)

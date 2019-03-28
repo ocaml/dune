@@ -18,7 +18,7 @@ module External = struct
     ; private_dir
     }
 
-  let has_public_cmi_dir t = Option.is_some t.private_dir
+  let need_dedicated_public_dir t = Option.is_some t.private_dir
 
   let public_cmi_dir t = t.public_dir
 
@@ -105,7 +105,7 @@ module Local = struct
     ; public_cmi_dir
     }
 
-  let has_public_cmi_dir t = Option.is_some t.public_cmi_dir
+  let need_dedicated_public_dir t = Option.is_some t.public_cmi_dir
 
   let public_cmi_dir t =
     Option.value ~default:t.byte_dir t.public_cmi_dir
@@ -156,9 +156,9 @@ type t =
   | External of External.t
   | Local of Local.t
 
-let has_public_cmi_dir = function
-  | External e -> External.has_public_cmi_dir e
-  | Local e -> Local.has_public_cmi_dir e
+let need_dedicated_public_dir = function
+  | External e -> External.need_dedicated_public_dir e
+  | Local e -> Local.need_dedicated_public_dir e
 
 let encode = function
   | Local obj_dir ->
@@ -216,7 +216,7 @@ let pp fmt t = Dyn.pp fmt (to_dyn t)
 let convert_to_external t ~dir =
   match t with
   | Local e ->
-    let has_private_modules = Local.has_public_cmi_dir e in
+    let has_private_modules = Local.need_dedicated_public_dir e in
     External (External.make ~dir ~has_private_modules)
   | External obj_dir ->
     Exn.code_error

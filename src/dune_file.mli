@@ -405,7 +405,8 @@ module Toplevel : sig
 end
 
 module Include_subdirs : sig
-  type t = No | Unqualified
+  type qualification = Unqualified | Qualified
+  type t = No | Include of qualification
 end
 
 type Stanza.t +=

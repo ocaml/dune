@@ -364,6 +364,10 @@ module Key = struct
   let hash = Tuple.T2.hash Super_context.hash Path.hash
 end
 
+let check_no_qualified loc qualif_mode =
+  if qualif_mode = Include_subdirs.Qualified then
+    Errors.fail loc "(include_subdirs qualified) is not supported yet"
+
 let get0_impl (sctx, dir) : result0 =
   let dir_status_db = Super_context.dir_status_db sctx in
   match Dir_status.DB.get dir_status_db ~dir with
@@ -407,8 +411,8 @@ let get0_impl (sctx, dir) : result0 =
        })
   | Is_component_of_a_group_but_not_the_root { group_root; _ } ->
     See_above group_root
-  | Group_root (ft_dir, d) ->
-    let rec walk ft_dir ~dir acc =
+  | Group_root (ft_dir, qualif_mode, d) ->
+    let rec walk ft_dir ~dir ~local acc =
       match
         Dir_status.DB.get dir_status_db ~dir
       with
@@ -418,25 +422,27 @@ let get0_impl (sctx, dir) : result0 =
           | None -> File_tree.Dir.files ft_dir
           | Some d -> load_text_files sctx ft_dir d
         in
-        walk_children ft_dir ~dir ((dir, files) :: acc)
+        walk_children ft_dir ~dir ~local ((dir, List.rev local, files) :: acc)
       | _ -> acc
-    and walk_children ft_dir ~dir acc =
+    and walk_children ft_dir ~dir ~local acc =
       String.Map.foldi (File_tree.Dir.sub_dirs ft_dir) ~init:acc
         ~f:(fun name ft_dir acc ->
           let dir = Path.relative dir name in
-          walk ft_dir ~dir acc)
+          let local = if qualif_mode = Qualified then name :: local else local in
+          walk ft_dir ~dir ~local acc)
     in
     let (files, subdirs), rules =
       Memo.Implicit_output.collect_sync
         Build_system.rule_collection_implicit_output (fun () ->
           let files = load_text_files sctx ft_dir d in
-          let subdirs = walk_children ft_dir ~dir [] in
+          let subdirs = walk_children ft_dir ~dir ~local:[] [] in
           files, subdirs)
     in
     let modules = Memo.lazy_ (fun () ->
+      check_no_qualified Loc.none qualif_mode;
       let modules =
-        List.fold_left ((dir, files) :: subdirs) ~init:Module.Name.Map.empty
-          ~f:(fun acc (dir, files) ->
+        List.fold_left ((dir, [], files) :: subdirs) ~init:Module.Name.Map.empty
+          ~f:(fun acc (dir, _local, files) ->
             let modules = modules_of_files ~dir ~files in
             Module.Name.Map.union acc modules ~f:(fun name x y ->
               Errors.fail (Loc.in_file
@@ -455,11 +461,12 @@ let get0_impl (sctx, dir) : result0 =
       Modules.make d ~modules)
     in
     let c_sources = Memo.lazy_ (fun () ->
+      check_no_qualified Loc.none qualif_mode;
       let dune_version = d.dune_version in
       let init = C.Kind.Dict.make String.Map.empty in
       let c_sources =
-        List.fold_left ((dir, files) :: subdirs) ~init
-          ~f:(fun acc (dir, files) ->
+        List.fold_left ((dir, [], files) :: subdirs) ~init
+          ~f:(fun acc (dir, _local, files) ->
             let sources = C_sources.load_sources ~dir ~dune_version ~files in
             let f acc sources =
               String.Map.union acc sources ~f:(fun name x y ->
@@ -485,7 +492,7 @@ let get0_impl (sctx, dir) : result0 =
     let t =
       { kind = Group_root
                  (Memo.lazy_ (fun () ->
-                    List.map subdirs ~f:(fun (dir, _) ->
+                    List.map subdirs ~f:(fun (dir, _, _) ->
                       Fdecl.get get_without_rules_fdecl (sctx, dir)
                     )))
       ; dir
@@ -497,7 +504,7 @@ let get0_impl (sctx, dir) : result0 =
     in
     let
       subdirs =
-      List.map subdirs ~f:(fun (dir, files) ->
+      List.map subdirs ~f:(fun (dir, _local, files) ->
         dir,
         { kind = Group_part t
         ; dir

@@ -13,6 +13,7 @@ type t =
      generated ones. *)
 
   | Group_root of File_tree.Dir.t
+                  * Dune_file.Include_subdirs.qualification
                   * Stanza.t list Dir_with_dune.t
   (* Directory with [(include_subdirs x)] where [x] is not [no] *)
 

@@ -103,7 +103,7 @@ let copy_files sctx ~dir ~expander ~src_dir (def: Copy_files.t) =
     file_dst)
 
 let add_alias sctx ~dir ~name ~stamp ~loc ?(locks=[]) build =
-  let alias = Build_system.Alias.make name ~dir in
+  let alias = Alias.make name ~dir in
   SC.add_alias_action sctx alias ~dir ~loc ~locks ~stamp build
 
 let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =

@@ -184,7 +184,7 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander ~dir_kind
        >>>
        Build.create_file (Path.relative dir ".merlin-exists"));
     Path.Set.singleton merlin_file
-    |> Build_system.Alias.add_deps (Build_system.Alias.check ~dir);
+    |> Build_system.Alias.add_deps (Alias.check ~dir);
     SC.add_rule sctx ~dir ~mode:(Promote (Until_clean, None)) (
       flags
       >>^ (fun flags ->

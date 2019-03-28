@@ -110,6 +110,7 @@ let rec all = function
 
 let lazy_no_targets t = Lazy_no_targets t
 
+let deps d = Deps d
 let dep d = Deps (Dep.Set.singleton d)
 let path p = Deps (Dep.Set.singleton (Dep.file p))
 let paths ps = Deps (Dep.Set.of_files ps)
@@ -121,6 +122,7 @@ let dyn_path_set t = Dyn_paths t
 let dyn_deps t = Dyn_deps t
 let paths_for_rule ps = Paths_for_rule ps
 let env_var s = Deps (Dep.Set.singleton (Dep.env s))
+let alias a = dep (Dep.alias a)
 
 let catch t ~on_error = Catch (t, on_error)
 

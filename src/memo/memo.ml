@@ -718,6 +718,14 @@ let lazy_ (type a) f =
   in
   (fun () -> exec memo ())
 
+module Lazy = struct
+  type 'a t = unit -> 'a
+
+  let of_val x = fun () -> x
+  let create f = lazy_ f
+  let force f = f ()
+end
+
 module With_implicit_output = struct
 
   type ('i, 'o, 'f) t = 'f

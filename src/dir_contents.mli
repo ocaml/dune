@@ -46,7 +46,7 @@ val get_without_rules : Super_context.t -> dir:Path.t -> t
 
 type kind = private
   | Standalone
-  | Group_root of (unit -> t list) (** Sub-directories part of the group *)
+  | Group_root of t list Memo.Lazy.t (** Sub-directories part of the group *)
   | Group_part of t
 
 val kind : t -> kind

@@ -3,6 +3,7 @@
 open Dune;;
 open Stdune;;
 open Fiber.O;;
+module Caml_lazy = Lazy;;
 open Memo;;
 
 let string_fn_create =
@@ -325,9 +326,8 @@ end
 ;;
 
 module Builtin_lazy = Test_lazy(struct
-    type 'a t = 'a Lazy.t
-    let create f = lazy (f ())
-    let force f = Lazy.force f
+    include Caml_lazy
+    let create = from_fun
   end)
 ;;
 [%%ignore]
@@ -349,11 +349,7 @@ Builtin_lazy.deps ();;
 |}]
 ;;
 
-module Memo_lazy = Test_lazy(struct
-    type 'a t = unit -> 'a
-    let create f = Memo.lazy_ f
-    let force f = f ()
-  end)
+module Memo_lazy = Test_lazy(Memo.Lazy)
 ;;
 [%%ignore]
 ;;

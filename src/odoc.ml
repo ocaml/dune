@@ -67,17 +67,18 @@ end
 
 module Dep = struct
   let html_alias ctx m =
-    Build_system.Alias.doc ~dir:(Paths.html ctx m)
+    Alias.doc ~dir:(Paths.html ctx m)
 
-  let alias = Build_system.Alias.make ".odoc-all"
+  let alias = Alias.make ".odoc-all"
 
   let deps ctx requires =
     Build.of_result_map requires ~f:(fun libs ->
-      Build.path_set (
-        List.fold_left libs ~init:Path.Set.empty ~f:(fun acc (lib : Lib.t) ->
+      Build.deps (
+        List.fold_left libs ~init:Dep.Set.empty ~f:(fun acc (lib : Lib.t) ->
           if Lib.is_local lib then
             let dir = Paths.odocs ctx (Lib lib) in
-            Path.Set.add acc (Build_system.Alias.stamp_file (alias ~dir))
+            let alias = alias ~dir in
+            Dep.Set.add acc (Dep.alias alias)
           else
             acc)))
 
@@ -424,15 +425,15 @@ let setup_pkg_html_rules sctx ~pkg ~libs =
 let setup_package_aliases sctx (pkg : Package.t) =
   let ctx = Super_context.context sctx in
   let alias =
-    Build_system.Alias.doc ~dir:(
-      Path.append ctx.build_dir pkg.Package.path
-    ) in
+    let dir = Path.append ctx.build_dir pkg.Package.path in
+    Alias.doc ~dir
+  in
   Build_system.Alias.add_deps alias (
     Dep.html_alias ctx (Pkg pkg.name)
     :: (libs_of_pkg sctx ~pkg:pkg.name
         |> Lib.Set.to_list
         |> List.map ~f:(fun lib -> Dep.html_alias ctx (Lib lib)))
-    |> List.map ~f:Build_system.Alias.stamp_file
+    |> List.map ~f:Alias.stamp_file
     |> Path.Set.of_list
   )
 
@@ -558,7 +559,7 @@ let init sctx =
     setup_package_aliases sctx pkg;
   );
   Build_system.Alias.add_deps
-    (Build_system.Alias.private_doc ~dir:ctx.build_dir)
+    (Alias.private_doc ~dir:ctx.build_dir)
     (stanzas
      |> List.concat_map ~f:(fun (w : _ Dir_with_dune.t) ->
        List.filter_map w.data ~f:(function
@@ -575,7 +576,7 @@ let init sctx =
          | _ -> None
        ))
      |> List.map ~f:(fun (lib : Lib.t) ->
-       Build_system.Alias.stamp_file (Dep.html_alias ctx (Lib lib)))
+       Alias.stamp_file (Dep.html_alias ctx (Lib lib)))
      |> Path.Set.of_list
     )
 

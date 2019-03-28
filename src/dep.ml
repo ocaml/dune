@@ -4,11 +4,13 @@ module T = struct
   type t =
     | Env of Env.Var.t
     | File of Path.t
+    | Alias of Alias.t
     | Glob of File_selector.t
     | Universe
 
   let env e = Env e
   let file f = File f
+  let alias a = Alias a
   let universe = Universe
   let glob g = Glob g
 
@@ -20,6 +22,9 @@ module T = struct
     | File x, File y -> Path.compare x y
     | File _, _ -> Lt
     | _, File _ -> Gt
+    | Alias x, Alias y -> Alias.compare x y
+    | Alias _, _ -> Lt
+    | _, Alias _ -> Gt
     | Glob x, Glob y -> File_selector.compare x y
     | Glob _, _ -> Lt
     | _, Glob _ -> Gt
@@ -33,6 +38,7 @@ module T = struct
     match t with
     | Universe -> ["universe", Digest.string "universe"]
     | File fn -> [trace_file fn]
+    | Alias a -> [trace_file (Alias.stamp_file a)]
     | Glob dir_glob ->
       eval_pred dir_glob
       |> Path.Set.to_list
@@ -48,6 +54,7 @@ module T = struct
 
   let pp fmt = function
     | Env e -> Format.fprintf fmt "Env %S" e
+    | Alias a -> Format.fprintf fmt "Alias %a" Alias.pp a
     | File f -> Format.fprintf fmt "File %a" Path.pp f
     | Glob g -> Format.fprintf fmt "Glob %a" File_selector.pp g
     | Universe -> Format.fprintf fmt "Universe"
@@ -58,6 +65,7 @@ module T = struct
     | Glob g -> pair string File_selector.encode ("glob", g)
     | Env e -> pair string string ("Env", e)
     | File f -> pair string Path_dune_lang.encode ("File", f)
+    | Alias a -> pair string Alias.encode ("Alias", a)
     | Universe -> string "Universe"
 end
 
@@ -87,6 +95,7 @@ module Set = struct
   let paths t ~eval_pred =
     fold t ~init:Path.Set.empty ~f:(fun d acc ->
       match d with
+      | Alias a -> Path.Set.add acc (Alias.stamp_file a)
       | File f -> Path.Set.add acc f
       | Glob g -> Path.Set.union acc (eval_pred g)
       | Universe
@@ -102,6 +111,7 @@ module Set = struct
   let dirs t =
     fold t ~init:Path.Set.empty ~f:(fun f acc ->
       match f with
+      | Alias a -> Path.Set.add acc (Alias.dir a)
       | Glob g -> Path.Set.add acc (File_selector.dir g)
       | File f -> Path.Set.add acc (Path.parent_exn f)
       | Universe

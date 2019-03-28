@@ -562,7 +562,7 @@ let action_for_pp sctx ~dep_kind ~loc ~expander ~action ~src ~target =
 
 let lint_module sctx ~dir ~expander ~dep_kind ~lint ~lib_name ~scope ~dir_kind =
   Staged.stage (
-    let alias = Build_system.Alias.lint ~dir in
+    let alias = Alias.lint ~dir in
     let add_alias fn build =
       SC.add_alias_action sctx alias build ~dir
         ~stamp:("lint", lib_name, fn)

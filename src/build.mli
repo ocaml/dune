@@ -60,6 +60,7 @@ val lazy_no_targets : ('a, 'b) t Lazy.t -> ('a, 'b) t
 val path  : Path.t -> ('a, 'a) t
 
 val dep : Dep.t -> ('a, 'a) t
+val deps : Dep.Set.t -> ('a, 'a) t
 
 val paths : Path.t list -> ('a, 'a) t
 val path_set : Path.Set.t -> ('a, 'a) t
@@ -71,6 +72,8 @@ val paths_matching : loc:Loc.t -> File_selector.t -> ('a, Path.Set.t) t
 (** [env_var v] records [v] as an environment variable that is read by the
     action produced by the build arrow. *)
 val env_var : string -> ('a, 'a) t
+
+val alias : Alias.t -> ('a, 'a) t
 
 (** Compute the set of source of all files present in the sub-tree
     starting at [dir] and record them as dependencies. *)

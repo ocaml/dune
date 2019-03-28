@@ -179,60 +179,8 @@ module File_spec = struct
 end
 
 module Alias0 = struct
-  module T : sig
-    type t = private
-      { dir : Path.t
-      ; name : string
-      }
-    val make : string -> dir:Path.t -> t
-    val of_user_written_path : loc:Loc.t -> Path.t -> t
-  end = struct
-    type t =
-      { dir : Path.t
-      ; name : string
-      }
-
-    let make name ~dir =
-      if not (Path.is_in_build_dir dir) || String.contains name '/' then
-        Exn.code_error "Alias0.make: Invalid alias"
-          [ "name", Sexp.Encoder.string name
-          ; "dir", Path.to_sexp dir
-          ];
-      { dir; name }
-
-    let of_user_written_path ~loc path =
-      if not (Path.is_in_build_dir path) then
-        Errors.fail loc "Invalid alias!\n\
-                         Tried to reference path outside build dir: %S"
-          (Path.to_string_maybe_quoted path);
-      { dir = Path.parent_exn path
-      ; name = Path.basename path
-      }
-  end
-  include T
-
-  let pp fmt t = Path.pp fmt (Path.relative t.dir t.name)
-
-  let suffix = "-" ^ String.make 32 '0'
-
-  let name t = t.name
-  let dir  t = t.dir
-
-  let fully_qualified_name t = Path.relative t.dir t.name
-
-  let stamp_file t =
-    Path.relative (Path.insert_after_build_dir_exn t.dir ".aliases")
-      (t.name ^ suffix)
-
+  include Alias
   let dep t = Build.path (stamp_file t)
-
-  let find_dir_specified_on_command_line ~dir ~file_tree =
-    match File_tree.find_dir file_tree dir with
-    | None ->
-      die "From the command line:\n\
-           @{<error>Error@}: Don't know about directory %s!"
-        (Path.to_string_maybe_quoted dir)
-    | Some dir -> dir
 
   let dep_multi_contexts ~dir ~name ~file_tree ~contexts =
     ignore
@@ -240,14 +188,6 @@ module Alias0 = struct
     Build.paths (List.map contexts ~f:(fun ctx ->
       let dir = Path.append (Path.(relative build_dir) ctx) dir in
       stamp_file (make ~dir name)))
-
-  let standard_aliases = Hashtbl.create 7
-
-  let is_standard = Hashtbl.mem standard_aliases
-
-  let make_standard name =
-    Hashtbl.add standard_aliases name ();
-    make name
 
   open Build.O
 
@@ -265,20 +205,21 @@ module Alias0 = struct
             ~else_:(Build.arr Fn.id))))
 
   let dep_rec t ~loc ~file_tree =
-    let ctx_dir, src_dir = Path.extract_build_context_dir_exn t.dir in
+    let ctx_dir, src_dir = Path.extract_build_context_dir_exn (Alias.dir t) in
     match File_tree.find_dir file_tree src_dir with
     | None ->
       Build.fail { fail = fun () ->
         Errors.fail loc "Don't know about directory %s!"
           (Path.to_string_maybe_quoted src_dir) }
     | Some dir ->
-      dep_rec_internal ~name:t.name ~dir ~ctx_dir
+      let name = Alias.name t in
+      dep_rec_internal ~name ~dir ~ctx_dir
       >>^ fun is_empty ->
-      if is_empty && not (is_standard t.name) then
+      if is_empty && not (is_standard name) then
         Errors.fail loc
           "This alias is empty.\n\
            Alias %S is not defined in %s or any of its descendants."
-          t.name (Path.to_string_maybe_quoted src_dir)
+          name (Path.to_string_maybe_quoted src_dir)
 
   let dep_rec_multi_contexts ~dir:src_dir ~name ~file_tree ~contexts =
     let open Build.O in
@@ -293,16 +234,6 @@ module Alias0 = struct
            @{<error>Error@}: Alias %S is empty.\n\
            It is not defined in %s or any of its descendants."
         name (Path.to_string_maybe_quoted src_dir)
-
-  let default     = make_standard "default"
-  let runtest     = make_standard "runtest"
-  let install     = make_standard "install"
-  let doc         = make_standard "doc"
-  let private_doc = make_standard "doc-private"
-  let lint        = make_standard "lint"
-  let all         = make_standard "all"
-  let check       = make_standard "check"
-  let fmt         = make_standard "fmt"
 
   let package_install ~(context : Context.t) ~pkg =
     make (sprintf ".%s-files" (Package.Name.to_string pkg))
@@ -1347,6 +1278,7 @@ let build_pred g = Memo.exec Pred.build_def g
 
 let build_deps =
   Dep.Set.parallel_iter ~f:(function
+    | Alias a -> build_file (Alias.stamp_file a)
     | File f -> build_file f
     | Glob g -> build_pred g
     | Universe
@@ -1789,18 +1721,18 @@ module Alias = struct
   include Alias0
 
   let modify_alias build_system t ~f =
-    let collector = get_collector build_system ~dir:t.dir in
+    let collector =
+      let dir = Alias.dir t in
+      get_collector build_system ~dir in
     produce_rule_collection collector (fun () ->
-      Dir_status.Rules_collector.modify_alias ~f collector t.name)
+      let name = Alias.name t in
+      Dir_status.Rules_collector.modify_alias ~f collector name)
 
   let add_deps t ?dyn_deps deps =
     let build_system = get_build_system () in
     modify_alias build_system t ~f:(fun def ->
       Dir_status.Alias.add_deps def deps;
-      match dyn_deps with
-      | None -> ()
-      | Some build ->
-        Dir_status.Alias.add_dyn_deps def build)
+      Option.iter dyn_deps ~f:(Dir_status.Alias.add_dyn_deps def))
 
   let add_action t ~context ~env ~loc ?(locks=[]) ~stamp action =
     let build_system = get_build_system () in

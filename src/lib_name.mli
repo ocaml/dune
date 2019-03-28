@@ -35,6 +35,8 @@ end
 
 val compare : t -> t -> Ordering.t
 
+val equal : t -> t -> bool
+
 val pp : t Fmt.t
 
 val pp_quoted : t Fmt.t

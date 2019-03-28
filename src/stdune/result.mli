@@ -63,3 +63,7 @@ module List : sig
     -> init:'acc
     -> ('acc, 'c) result
 end
+
+module Option : sig
+  val iter : ('a, 'e) t option -> f:('a -> (unit, 'e) t) -> (unit, 'e) t
+end

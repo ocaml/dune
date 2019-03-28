@@ -1,0 +1,4 @@
+(toplevel
+ (name tt)
+ (libraries foo)
+ (variants a))

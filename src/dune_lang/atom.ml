@@ -2,6 +2,8 @@ open Stdune
 
 type t = A of string [@@unboxed]
 
+let equal (A a) (A b) = String.equal a b
+
 let is_valid_dune =
   let rec loop s i len =
     i = len ||

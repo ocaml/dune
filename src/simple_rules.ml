@@ -80,7 +80,6 @@ let copy_files sctx ~dir ~expander ~src_dir (def: Copy_files.t) =
     Path.basename glob_in_src
     |> Glob.of_string_exn (String_with_vars.loc def.glob)
     |> Glob.to_pred
-    |> Predicate.contramap ~f:Path.basename ~map_id:Fn.id
   in
   let file_tree = Super_context.file_tree sctx in
   if not (File_tree.dir_exists file_tree src_in_src) then
@@ -90,7 +89,8 @@ let copy_files sctx ~dir ~expander ~src_dir (def: Copy_files.t) =
       Path.pp src_in_src;
   (* add rules *)
   let src_in_build = Path.append (SC.context sctx).build_dir src_in_src in
-  let files = Build_system.eval_pred ~dir:src_in_build pred in
+  let files =
+    Build_system.eval_pred (File_selector.create ~dir:src_in_build pred) in
   Path.Set.map files ~f:(fun file_src ->
     let basename = Path.basename file_src in
     let file_dst = Path.relative dir basename in

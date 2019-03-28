@@ -1,0 +1,10 @@
+(library
+ (name vlib)
+ (public_name vlib)
+ (wrapped false)
+ (virtual_modules x))
+
+(rule
+ (with-stdout-to
+  x.mli
+  (echo "val run : unit -> unit")))

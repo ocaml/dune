@@ -106,6 +106,9 @@ val anonymous : t Lazy.t
 
 type created_or_already_exist = Created | Already_exist
 
+(** Generate an appropriate project [lang] stanza *)
+val lang_stanza : unit -> string
+
 (** Check that the dune-project file exists and create it otherwise. *)
 val ensure_project_file_exists : t -> created_or_already_exist
 

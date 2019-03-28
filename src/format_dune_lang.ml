@@ -119,6 +119,13 @@ let pp_top_sexp fmt sexp =
 let pp_top_sexps =
   Fmt.list ~pp_sep:Fmt.nl pp_top_sexp
 
+let write_file ~path sexps =
+  let f oc =
+    let fmt = (Format.formatter_of_out_channel oc) in
+    Format.fprintf fmt "%a%!" pp_top_sexps sexps
+  in
+  Io.with_file_out ~binary:true path ~f
+
 let format_file ~input =
   match parse_file input with
   | exception Dune_lang.Parse_error e ->

@@ -1,0 +1,5 @@
+(library
+ (name async)
+ (virtual_modules async)
+ (wrapped false)
+ (default_implementation async_ocaml))

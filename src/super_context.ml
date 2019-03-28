@@ -473,10 +473,10 @@ module Deps = struct
         let pred =
           Glob.of_string_exn loc (Path.basename path)
           |> Glob.to_pred
-          |> Predicate.contramap ~f:Path.basename ~map_id:Fn.id
         in
         let dir = Path.parent_exn path in
-        Build.paths_matching ~loc ~dir pred
+        File_selector.create ~dir pred
+        |> Build.paths_matching ~loc
         >>^ Path.Set.to_list
       end
     | Source_tree s ->

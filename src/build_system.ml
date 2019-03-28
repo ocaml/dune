@@ -736,7 +736,7 @@ module Build_exec = struct
         (a, b)
       | Deps _ -> x
       | Paths_for_rule _ -> x
-      | Paths_glob (dir, pred) -> eval_pred ~dir pred
+      | Paths_glob g -> eval_pred g
       | Contents p -> Io.read_file p
       | Lines_of p -> Io.lines_of_file p
       | Vpath (Vspec.T (fn, kind)) ->
@@ -1320,21 +1320,10 @@ let execute_rule_def =
     None
 
 module Pred = struct
-  module Input = struct
-    type t = Path.t * Path.t Predicate.t
-
-    let to_dyn (path, pred) =
-      Dyn.Tuple [Path.to_dyn path; Predicate.to_dyn pred]
-
-    let to_sexp t = Dyn.to_sexp (to_dyn t)
-    let equal = Tuple.T2.equal Path.equal Predicate.equal
-    let hash = Tuple.T2.hash Path.hash Predicate.hash
-  end
-
   let eval_def =
     Memo.create "eval-pred"
       ~doc:"Evaluate a predicate in a directory"
-      ~input:(module Input)
+      ~input:(module File_selector)
       ~output:(Allow_cutoff (module Path.Set))
       ~visibility:Hidden
       Sync
@@ -1343,23 +1332,23 @@ module Pred = struct
   let build_def =
     Memo.create "build-pred"
       ~doc:"build a predicate"
-      ~input:(module Input)
+      ~input:(module File_selector)
       ~output:(Allow_cutoff (module Unit))
       ~visibility:Hidden
       Async
       None
 end
 
-let eval_pred ~dir pred = Memo.exec Pred.eval_def (dir, pred)
+let eval_pred g = Memo.exec Pred.eval_def g
 
 let execute_rule = Memo.exec execute_rule_def
 
-let build_pred ~dir pred = Memo.exec Pred.build_def (dir, pred)
+let build_pred g = Memo.exec Pred.build_def g
 
 let build_deps =
   Dep.Set.parallel_iter ~f:(function
     | File f -> build_file f
-    | Glob (dir, pred) -> build_pred ~dir pred
+    | Glob g -> build_pred g
     | Universe
     | Env _ -> Fiber.return ())
 
@@ -1573,8 +1562,8 @@ let () =
   Memo.set_impl build_file_def build_file
 
 let () =
-  let f (dir, pred) =
-    eval_pred ~dir pred
+  let f g =
+    eval_pred g
     |> Path.Set.to_list
     |> Fiber.parallel_iter ~f:build_file
   in
@@ -1606,13 +1595,21 @@ let process_memcycle exn =
     Memo.Cycle_error.get exn
     |> List.filter_map ~f:(Memo.Stack_frame.as_instance_of ~of_:build_file_def)
   in
-  let last = List.last cycle |> Option.value_exn in
-  let first = List.hd cycle in
-  let cycle = if last = first then cycle else last :: cycle in
-  Exn.Fatal_error
-    (Format.asprintf "Dependency cycle between the following files:\n    %s"
-       (List.map cycle ~f:Path.to_string_maybe_quoted
-        |> String.concat ~sep:"\n--> "))
+  match List.last cycle with
+  | None ->
+    let frames : string list =
+      Memo.Cycle_error.get exn
+      |> List.map ~f:(Format.asprintf "%a" Memo.Stack_frame.pp)
+    in
+    Exn.code_error "dependency cycle that does not involve any files"
+      ["frames", Sexp.Encoder.(list string) frames]
+  | Some last ->
+    let first = List.hd cycle in
+    let cycle = if last = first then cycle else last :: cycle in
+    Exn.Fatal_error
+      (Format.asprintf "Dependency cycle between the following files:\n    %s"
+         (List.map cycle ~f:Path.to_string_maybe_quoted
+          |> String.concat ~sep:"\n--> "))
 
 let do_build ~request =
   let t = t () in
@@ -1781,9 +1778,10 @@ let prefix_rules prefix ~f =
   prefix_rules' t (Some prefix) ~f
 
 let () =
-  let f (dir, pred) =
+  let f g =
+    let dir = File_selector.dir g in
     let t = t () in
-    Path.Set.filter (targets_of t ~dir) ~f:(Predicate.test pred)
+    Path.Set.filter (targets_of t ~dir) ~f:(File_selector.test g)
   in
   Memo.set_impl Pred.eval_def f
 

@@ -2,6 +2,8 @@ open Stdune
 
 type t = private A of string [@@unboxed]
 
+val equal : t -> t -> bool
+
 val is_valid_dune : string -> bool
 val is_valid : t -> Syntax.t -> bool
 

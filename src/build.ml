@@ -16,7 +16,7 @@ module Repr = struct
     | Split : ('a, 'b) t * ('c, 'd) t -> ('a * 'c, 'b * 'd) t
     | Fanout : ('a, 'b) t * ('a, 'c) t -> ('a, 'b * 'c) t
     | Paths_for_rule : Path.Set.t -> ('a, 'a) t
-    | Paths_glob : Path.t * Path.t Predicate.t -> ('a, Path.Set.t) t
+    | Paths_glob : File_selector.t -> ('a, Path.Set.t) t
     (* The reference gets decided in Build_interpret.deps *)
     | If_file_exists : Path.t * ('a, 'b) if_file_exists_state ref -> ('a, 'b) t
     | Contents : Path.t -> ('a, string) t
@@ -114,7 +114,7 @@ let dep d = Deps (Dep.Set.singleton d)
 let path p = Deps (Dep.Set.singleton (Dep.file p))
 let paths ps = Deps (Dep.Set.of_files ps)
 let path_set ps = Deps (Dep.Set.of_files_set ps)
-let paths_matching ~loc:_ ~dir pred = Paths_glob (dir, pred)
+let paths_matching ~loc:_ dir_glob = Paths_glob dir_glob
 let vpath vp = Vpath vp
 let dyn_paths t = Dyn_paths (t >>^ Path.Set.of_list)
 let dyn_path_set t = Dyn_paths t

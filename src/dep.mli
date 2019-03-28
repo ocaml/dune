@@ -3,6 +3,7 @@ open Stdune
 type t = private
   | Env of Env.Var.t
   | File of Path.t
+  | Alias of Alias.t
   | Glob of File_selector.t
   | Universe
 
@@ -10,6 +11,7 @@ val file : Path.t -> t
 val env : Env.Var.t -> t
 val universe : t
 val glob : File_selector.t -> t
+val alias : Alias.t -> t
 
 val compare : t -> t -> Ordering.t
 

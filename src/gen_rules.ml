@@ -46,7 +46,6 @@ module For_stanza = struct
 end
 
 module Gen(P : sig val sctx : Super_context.t end) = struct
-  module Alias = Build_system.Alias
   module CC = Compilation_context
   module SC = Super_context
   (* We need to instantiate Install_rules earlier to avoid issues whenever
@@ -132,8 +131,7 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
           let src_expanded = Expander.expand_str expander src in
           Path.relative ctx_dir src_expanded)
         |> Path.Set.of_list
-        |> Build_system.Alias.add_deps
-             (Build_system.Alias.all ~dir:ctx_dir);
+        |> Build_system.Alias.add_deps (Alias.all ~dir:ctx_dir);
         For_stanza.empty_none
       | _ ->
         For_stanza.empty_none
@@ -203,7 +201,7 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
     in
     Build_system.Alias.add_deps
       ~dyn_deps
-      (Build_system.Alias.all ~dir:ctx_dir) Path.Set.empty;
+      (Alias.all ~dir:ctx_dir) Path.Set.empty;
     cctxs
 
   let gen_rules dir_contents cctxs ~dir : (Loc.t * Compilation_context.t) list =

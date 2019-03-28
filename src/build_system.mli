@@ -89,41 +89,11 @@ val package_deps
 (** {2 Aliases} *)
 
 module Alias : sig
-  type t
-
-  val pp : t Fmt.t
-
-  val make : string -> dir:Path.t -> t
-
-  val of_user_written_path : loc:Loc.t -> Path.t -> t
-
-  (** The following always holds:
-
-      {[
-        make (name t) ~dir:(dir t) = t
-      ]}
-  *)
-  val name : t -> string
-  val dir  : t -> Path.t
-
-  val fully_qualified_name : t -> Path.t
-
-  val default     : dir:Path.t -> t
-  val runtest     : dir:Path.t -> t
-  val install     : dir:Path.t -> t
-  val doc         : dir:Path.t -> t
-  val private_doc : dir:Path.t -> t
-  val lint        : dir:Path.t -> t
-  val all         : dir:Path.t -> t
-  val check       : dir:Path.t -> t
-  val fmt         : dir:Path.t -> t
+  type t = Alias.t
 
   (** Alias for all the files in [_build/install] that belong to this
       package *)
   val package_install : context:Context.t -> pkg:Package.Name.t -> t
-
-  (** Return the underlying stamp file *)
-  val stamp_file : t -> Path.t
 
   (** [dep t = Build.path (stamp_file t)] *)
   val dep : t -> ('a, 'a) Build.t

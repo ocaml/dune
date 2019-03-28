@@ -5,8 +5,6 @@ open! No_io
 
 module Library = Dune_file.Library
 
-module Alias = Build_system.Alias
-
 let gen_dune_package sctx ~version ~(pkg : Local_package.t) =
   let ctx = Super_context.context sctx in
   let dune_package_file = Local_package.dune_package_file pkg in
@@ -304,7 +302,7 @@ let install_file sctx (package : Local_package.t) entries =
   in
   let files = Install.files entries in
   Build_system.Alias.add_deps
-    (Alias.package_install ~context:ctx ~pkg:package_name)
+    (Build_system.Alias.package_install ~context:ctx ~pkg:package_name)
     files
     ~dyn_deps:
       (Build_system.package_deps package_name files
@@ -312,7 +310,7 @@ let install_file sctx (package : Local_package.t) entries =
        Package.Name.Set.to_list packages
        |> List.map ~f:(fun pkg ->
          Build_system.Alias.package_install ~context:ctx ~pkg
-         |> Build_system.Alias.stamp_file)
+         |> Alias.stamp_file)
        |> Path.Set.of_list);
   Super_context.add_rule sctx ~dir:pkg_build_dir
     ~mode:(if promote_install_file ctx then

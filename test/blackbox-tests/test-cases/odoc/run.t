@@ -6,15 +6,15 @@
           odoc _doc/_odoc/pkg/bar/page-index.odoc
           odoc _doc/_html/bar/index.html
           odoc _doc/_html/highlight.pack.js,_doc/_html/odoc.css
-      ocamldep .foo_byte.objs/foo_byte.ml.d
-        ocamlc .foo_byte.objs/byte/foo_byte.{cmi,cmo,cmt}
-          odoc _doc/_odoc/lib/foo.byte/foo_byte.odoc
       ocamldep .foo.objs/foo.ml.d
         ocamlc .foo.objs/byte/foo.{cmi,cmo,cmt}
           odoc _doc/_odoc/lib/foo/foo.odoc
       ocamldep .foo.objs/foo2.ml.d
         ocamlc .foo.objs/byte/foo2.{cmi,cmo,cmt}
           odoc _doc/_odoc/lib/foo/foo2.odoc
+      ocamldep .foo_byte.objs/foo_byte.ml.d
+        ocamlc .foo_byte.objs/byte/foo_byte.{cmi,cmo,cmt}
+          odoc _doc/_odoc/lib/foo.byte/foo_byte.odoc
           odoc _doc/_html/foo/Foo2/.dune-keep,_doc/_html/foo/Foo2/index.html
           odoc _doc/_odoc/pkg/foo/page-index.odoc
           odoc _doc/_html/foo/index.html

@@ -1,6 +1,5 @@
 open Stdune
 open Dune_file
-open Build_system
 
 module Group = struct
   type t =
@@ -82,8 +81,7 @@ let setup_file_deps =
 let deps_of_lib (lib : Lib.t) ~groups =
   if Lib.is_local lib then
     Group.L.alias groups ~dir:(Lib.src_dir lib) ~name:(Lib.name lib)
-    |> Alias.stamp_file
-    |> Dep.file
+    |> Dep.alias
     |> Dep.Set.singleton
   else
     (* suppose that all the files of an external lib are at the same place *)

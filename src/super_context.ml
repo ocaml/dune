@@ -2,9 +2,6 @@ open! Stdune
 open Import
 open Dune_file
 
-module A = Action
-module Alias = Build_system.Alias
-
 type t =
   { context                          : Context.t
   ; scopes                           : Scope.DB.t
@@ -193,7 +190,7 @@ let add_rules t ?sandbox ~dir builds =
 
 let add_alias_action t alias ~dir ~loc ?locks ~stamp action =
   let env = Some (Env.external_ t ~dir) in
-  Alias.add_action ~context:t.context ~env alias ~loc ?locks
+  Build_system.Alias.add_action ~context:t.context ~env alias ~loc ?locks
     ~stamp action
 
 let source_files t ~src_path =
@@ -461,10 +458,11 @@ module Deps = struct
       Build.path path
       >>^ fun () -> [path]
     | Alias s ->
-      Alias.dep (make_alias expander s)
+      Build.alias (make_alias expander s)
       >>^ fun () -> []
     | Alias_rec s ->
-      Alias.dep_rec ~loc:(String_with_vars.loc s) ~file_tree:t.file_tree
+      Build_system.Alias.dep_rec
+        ~loc:(String_with_vars.loc s) ~file_tree:t.file_tree
         (make_alias expander s)
       >>^ fun () -> []
     | Glob_files s -> begin
@@ -485,7 +483,7 @@ module Deps = struct
       >>^ Path.Set.to_list
     | Package p ->
       let pkg = Package.Name.of_string (Expander.expand_str expander p) in
-      Alias.dep (Alias.package_install ~context:t.context ~pkg)
+      Build.alias (Build_system.Alias.package_install ~context:t.context ~pkg)
       >>^ fun () -> []
     | Universe ->
       Build.dep Dep.universe

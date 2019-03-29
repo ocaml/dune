@@ -189,7 +189,7 @@ let lib_ppxs sctx ~(lib : Dune_file.Library.t) ~scope ~dir_kind =
       in
       [Preprocessing.get_compat_ppx_exe sctx ~name ~kind:(Jbuild driver)]
 
-let lib_install_files sctx ~dir_contents ~dir ~sub_dir:default_subdir
+let lib_install_files sctx ~dir_contents ~dir ~sub_dir:lib_subdir
       ~scope ~dir_kind (lib : Library.t) =
   let loc = lib.buildable.loc in
   let make_entry section ?sub_dir ?dst fn =
@@ -204,7 +204,7 @@ let lib_install_files sctx ~dir_contents ~dir ~sub_dir:default_subdir
           let sub_dir =
             match sub_dir with
             | Some _ -> sub_dir
-            | None -> default_subdir
+            | None -> lib_subdir
           in
           match sub_dir with
           | None -> dst
@@ -254,9 +254,10 @@ let lib_install_files sctx ~dir_contents ~dir ~sub_dir:default_subdir
     [ sources
     ; List.map module_files ~f:(fun (visibility, file) ->
         let sub_dir =
-          match (visibility : Visibility.t) with
-          | Public -> None
-          | Private -> Some ".private"
+          match (visibility : Visibility.t), lib_subdir with
+          | Public, _ -> lib_subdir
+          | Private, None -> Some ".private"
+          | Private, Some dir -> Some (Filename.concat dir ".private")
         in
         make_entry ?sub_dir Lib file)
     ; List.map (Lib_archives.files archives) ~f:(make_entry Lib)

@@ -69,6 +69,10 @@ val path_set : Path.Set.t -> ('a, 'a) t
     dependencies of the action produced by the build arrow. *)
 val paths_matching : loc:Loc.t -> File_selector.t -> ('a, Path.Set.t) t
 
+(** [paths_existing paths] will require as dependencies the files that
+    actually exist, and return true if the all the paths do actually exist. *)
+val paths_existing : Path.t list -> ('a, bool) t
+
 (** [env_var v] records [v] as an environment variable that is read by the
     action produced by the build arrow. *)
 val env_var : string -> ('a, 'a) t

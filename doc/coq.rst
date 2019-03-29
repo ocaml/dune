@@ -31,10 +31,10 @@ The basic form for defining Coq libraries is very similar to the OCaml form:
      (public_name <package.lib_name>)
      (synopsis <text>)
      (modules <ordered_set_lang>)
+     (libraries <ocaml_libraries>)
      (flags <coq_flags>))
 
-The stanza will build all `.v` files on the given directory.
-The semantics of fields is:
+The stanza will build all `.v` files on the given directory. The semantics of fields is:
 
 - ``<module_prefix>>`` will be used as the default Coq library prefix ``-R``,
 - the ``modules`` field does allow to constraint the set of modules
@@ -43,27 +43,30 @@ The semantics of fields is:
   files; files will be installed in
   ``lib/coq/user-contrib/<module_prefix>``, as customary in the
   make-based Coq package eco-system,
-- ``<coq_flags>`` will be passed to ``coqc``.
+- ``<coq_flags>`` will be passed to ``coqc``,
+- the path to installed locations of ``<ocaml_libraries>`` will be passed to
+  ``coqdep`` and ``coqc`` using Coq's ``-I`` flag; this allows for a Coq
+  library to depend on a ML plugin.
 
-Library Composition and Handling
-================================
+Recursive Qualification of Modules
+==================================
 
-The ``coqlib`` stanza does not yet support composition of Coq
-libraries. In the 0.1 version of the language, libraries are located
-using Coq's built-in library management, thus Coq will always resort
-to the installed version of a particular library.
-
-This will be fixed in the future.
-
-Recursive modules
-=================
-
-Adding:
+If you add:
 
 .. code:: scheme
 
     (include_subdirs qualified)
 
-to the ``dune`` file will make Dune to consider all the modules in the
-current directory and sub-directories, qualified in the current Coq
-style.
+to a ``dune`` file, Dune will to consider that all the modules in
+their directory and sub-directories, adding a prefix to the module
+name in the usual Coq style for sub-directories. For example, file ``A/b/C.v`` will be module ``A.b.C``.
+
+Limitations
+===========
+
+- composition and scoping of Coq libraries is still not possible. For now, libraries are located using Coq's built-in library management,
+- .v always depend on the native version of a plugin,
+- a ``foo.mlpack`` file must the present for locally defined plugins to work, this is a limitation of coqdep,
+- Coq plugins are installed into their regular OCaml library path.
+
+

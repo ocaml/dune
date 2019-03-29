@@ -154,6 +154,16 @@ let file_exists_opt p t =
     ~then_:(t >>^ Option.some)
     ~else_:(arr (Fn.const None))
 
+let paths_existing paths =
+  List.fold_left paths
+    ~init:(return true)
+    ~f:(fun acc file ->
+      if_file_exists file
+        ~then_:(path file)
+        ~else_:(arr Fn.id)
+      >>>
+      acc)
+
 let fail ?targets x =
   match targets with
   | None -> Fail x

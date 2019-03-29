@@ -1,0 +1,4 @@
+(library
+ (public_name ml_lib.ml_plugin)
+ (name ml_plugin)
+ (libraries coq.plugins.ltac))

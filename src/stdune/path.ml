@@ -975,6 +975,10 @@ let split_extension t =
     let t, ext = Local.split_extension t in
     (in_source_tree t, ext)
 
+let set_extension t ~ext =
+  let t, _ = split_extension t in
+  of_string (to_string t ^ ext)
+
 let pp ppf t = Format.pp_print_string ppf (to_string_maybe_quoted t)
 
 let pp_in_source ppf t =

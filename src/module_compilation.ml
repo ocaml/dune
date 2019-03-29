@@ -37,7 +37,7 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
       let copy_interface () =
         (* symlink the .cmi into the public interface directory *)
         if not (Module.is_private m)
-        && (Obj_dir.has_public_cmi_dir obj_dir) then
+        && (Obj_dir.need_dedicated_public_dir obj_dir) then
           SC.add_rule sctx ~sandbox:false ~dir
             (Build.symlink
                ~src:(Module.cm_file_unsafe m Cmi)
@@ -65,7 +65,7 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
       in
       let other_targets =
         match cm_kind with
-        | Cmx -> Module.obj_file m ~mode:Native ~ext:ctx.ext_obj :: other_targets
+        | Cmx -> Module.obj_file m ~kind:Cmx ~ext:ctx.ext_obj :: other_targets
         | Cmi | Cmo -> other_targets
       in
       let dep_graph = Ml_kind.Dict.get dep_graphs ml_kind in

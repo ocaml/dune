@@ -52,12 +52,6 @@ module File : sig
   val make : Syntax.t -> Path.t -> t
 end
 
-module Visibility : sig
-  type t = Public | Private
-
-  include Dune_lang.Conv with type t := t
-end
-
 module Kind : sig
   type t = Intf_only | Virtual | Impl
 
@@ -94,7 +88,7 @@ val cm_file         : t -> ?ext:string -> Cm_kind.t -> Path.t option
 val cm_public_file  : t -> ?ext:string -> Cm_kind.t -> Path.t option
 val cmt_file        : t -> Ml_kind.t -> Path.t option
 
-val obj_file : t -> mode:Mode.t -> ext:string -> Path.t
+val obj_file : t -> kind:Cm_kind.t -> ext:string -> Path.t
 
 val obj_name : t -> string
 
@@ -172,7 +166,7 @@ val visibility : t -> Visibility.t
 
 val encode : t -> Dune_lang.t list
 
-val decode : dir:Path.t -> t Dune_lang.Decoder.t
+val decode : obj_dir:Obj_dir.t -> t Dune_lang.Decoder.t
 
 (* Only the source of a module, not yet associated to a library *)
 module Source : sig

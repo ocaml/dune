@@ -212,6 +212,7 @@ module Package = struct
       | Some p -> Installed_dune_file.load p
     in
     let archives = archives t in
+    let obj_dir = Obj_dir.make_external_no_private ~dir:t.dir in
     let modes : Mode.Dict.Set.t =
       Mode.Dict.map ~f:(fun x -> not (List.is_empty x)) archives in
     Dune_package.Lib.make
@@ -236,7 +237,7 @@ module Package = struct
       ~main_module_name:None (* XXX remove *)
       ~version:(version t)
       ~modes
-      ~dir:t.dir
+      ~obj_dir
 
   let parse db ~meta_file ~name ~parent_dir ~vars =
     let pkg_dir = Vars.get vars "directory" Ps.empty in

@@ -23,6 +23,7 @@
    (foreign_archives (native b/c/c$ext_lib))
    (main_module_name C)
    (modes byte native)
+   (obj_dir (private_dir .private))
    (modules
     (alias_module (name C) (obj_name c) (visibility public) (impl))
     (main_module_name C)

@@ -1,4 +1,4 @@
-open Stdune
+open! Stdune
 
 type t
 
@@ -32,7 +32,7 @@ val make
 
 val set_modules : t -> Module.Name_map.t -> t
 
-val version_installed : t -> install_dir:Path.t -> t
+val version_installed : t -> install_dir:Obj_dir.t -> t
 
 val for_compilation : t -> Module.Name_map.t
 
@@ -42,7 +42,7 @@ val for_alias : t -> Module.Name_map.t
 
 val encode : t -> Dune_lang.t list
 
-val decode : implements:bool -> dir:Path.t -> t Dune_lang.Decoder.t
+val decode : implements:bool -> obj_dir:Obj_dir.t -> t Dune_lang.Decoder.t
 
 val is_wrapped : t -> bool
 

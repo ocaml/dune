@@ -7,7 +7,7 @@ module Lib = struct
   type 'sub_system t =
     { loc              : Loc.t
     ; name             : Lib_name.t
-    ; dir              : Path.t
+    ; obj_dir          : Obj_dir.t
     ; orig_src_dir     : Path.t option
     ; kind             : Lib_kind.t
     ; synopsis         : string option
@@ -33,7 +33,8 @@ module Lib = struct
         ~foreign_archives ~jsoo_runtime ~main_module_name ~sub_systems
         ~requires ~ppx_runtime_deps ~implements ~variant
         ~default_implementation ~virtual_ ~modules ~modes
-        ~version ~orig_src_dir ~dir =
+        ~version ~orig_src_dir ~obj_dir =
+    let dir = Obj_dir.dir obj_dir in
     let map_path p =
       if Path.is_managed p then
         Path.relative dir (Path.basename p)
@@ -59,14 +60,15 @@ module Lib = struct
     ; variant
     ; default_implementation
     ; version
-    ; dir
     ; orig_src_dir
     ; virtual_
     ; modules
     ; modes
+    ; obj_dir
     }
 
-  let dir t = t.dir
+  let obj_dir t = t.obj_dir
+  let dir t = Obj_dir.dir t.obj_dir
   let orig_src_dir t = t.orig_src_dir
 
   let set_subsystems t sub_systems =
@@ -81,7 +83,7 @@ module Lib = struct
         ; foreign_objects ; foreign_archives ; jsoo_runtime ; requires
         ; ppx_runtime_deps ; sub_systems ; virtual_
         ; implements ; variant ; default_implementation
-        ; main_module_name ; version = _; dir = _; orig_src_dir
+        ; main_module_name ; version = _; obj_dir ; orig_src_dir
         ; modules ; modes
         } =
     let open Dune_lang.Encoder in
@@ -110,6 +112,7 @@ module Lib = struct
         (no_loc Lib_name.encode) default_implementation
     ; field_o "main_module_name" Module.Name.encode main_module_name
     ; field_l "modes" sexp (Mode.Dict.Set.encode modes)
+    ; field_l "obj_dir" sexp (Obj_dir.encode obj_dir)
     ; field_l "modules" sexp
         (match modules with
          | None -> []
@@ -128,13 +131,19 @@ module Lib = struct
       field ~default:Mode.Dict.List.empty
         name (Mode.Dict.List.decode path) in
     record (
-      field_o "main_module_name" Module.Name.decode >>= fun main_module_name ->
-      field_o "implements" (located Lib_name.decode) >>= fun implements ->
-      field_o "variant" Variant.decode >>= fun variant ->
-      field_o "default_implementation" (located Lib_name.decode)
-      >>= fun default_implementation ->
-      field "name" Lib_name.decode >>= fun name ->
+      let* main_module_name = field_o "main_module_name" Module.Name.decode in
+      let* implements = field_o "implements" (located Lib_name.decode) in
+      let* variant = field_o "variant" Variant.decode in
+      let* default_implementation =
+        field_o "default_implementation" (located Lib_name.decode) in
+      let* name = field "name" Lib_name.decode in
       let dir = Path.append_local base (dir_of_name name) in
+      let* obj_dir = field_o "obj_dir" (Obj_dir.decode ~dir) in
+      let obj_dir =
+        match obj_dir with
+        | None -> Obj_dir.make_external_no_private ~dir
+        | Some obj_dir -> obj_dir
+      in
       let+ synopsis = field_o "synopsis" string
       and+ loc = loc
       and+ modes = field_l "modes" Mode.decode
@@ -150,7 +159,7 @@ module Lib = struct
       and+ sub_systems = Sub_system_info.record_parser ()
       and+ orig_src_dir = field_o "orig_src_dir" path
       and+ modules = field_o "modules" (Lib_modules.decode
-                         ~implements:(Option.is_some implements) ~dir)
+                         ~implements:(Option.is_some implements) ~obj_dir)
       in
       let modes = Mode.Dict.Set.of_list modes in
       { kind
@@ -171,8 +180,8 @@ module Lib = struct
       ; main_module_name
       ; virtual_
       ; version = None
-      ; dir
       ; orig_src_dir
+      ; obj_dir
       ; modules
       ; modes
       }

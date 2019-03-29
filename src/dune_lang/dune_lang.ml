@@ -1080,6 +1080,7 @@ module Decoder = struct
       | Values (loc, cstr, _) -> (Values (loc, cstr), state)
       | Fields (loc, cstr, _) -> (Fields (loc, cstr), state)
 
+  let ( let* ) = ( >>= )
   let ( let+ ) = ( >>| )
   let ( and+ ) a b ctx state =
     let a, state = a ctx state in

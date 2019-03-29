@@ -213,7 +213,7 @@ let eval ~modules:(all_modules : Module.Source.t Module.Name.Map.t)
       let name = Module.Source.name m in
       let visibility =
         if Module.Name.Map.mem private_modules name then
-          Module.Visibility.Private
+          Visibility.Private
         else
           Public
       in

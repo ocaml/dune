@@ -1036,9 +1036,9 @@ and load_dir_step2_exn t ~dir ~collector =
     String.Map.foldi aliases ~init:([], Path.Set.empty)
       ~f:(fun name { Dir_status.Alias.deps; dyn_deps; actions } (rules, alias_stamp_files) ->
         let base_path = Path.relative alias_dir name in
-        let rules, deps =
-          List.fold_left actions ~init:(rules, deps)
-            ~f:(fun (rules, deps)
+        let rules, action_stamp_files =
+          List.fold_left actions ~init:(rules, Path.Set.empty)
+            ~f:(fun (rules, action_stamp_files)
                  { Dir_status. stamp; action; locks ; context ; loc ; env } ->
                  let path =
                    Path.extend_basename base_path
@@ -1048,9 +1048,14 @@ and load_dir_step2_exn t ~dir ~collector =
                    Pre_rule.make ~locks ~context:(Some context) ~env ?loc
                      (Build.progn [ action; Build.create_file path ])
                  in
-                 (rule :: rules, Path.Set.add deps path))
+                 (rule :: rules, Path.Set.add action_stamp_files path))
         in
+        let deps = Path.Set.union deps action_stamp_files in
         let path = Path.extend_basename base_path ~suffix:Alias0.suffix in
+        let targets =
+          Path.Set.add action_stamp_files path
+          |> Path.Set.union alias_stamp_files
+        in
         (Pre_rule.make
            ~context:None
            ~env:None
@@ -1064,7 +1069,7 @@ and load_dir_step2_exn t ~dir ~collector =
             >>>
             Build.action_dyn () ~targets:[path])
          :: rules,
-         Path.Set.add alias_stamp_files path))
+         targets))
   in
   Path.Table.replace t.dirs ~key:alias_dir ~data:(Loaded alias_stamp_files);
 

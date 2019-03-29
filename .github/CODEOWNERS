@@ -34,3 +34,5 @@ src/js_of_ocaml* @hhugo
 editor_integration/emacs/* @Chris00
 
 doc/* @emillon @rgrinberg
+
+src/coq_* @ejgallego

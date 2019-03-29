@@ -666,3 +666,10 @@ let cc_g (ctx : t) =
 let name t = t.name
 
 let has_native t = Option.is_some t.ocamlopt
+
+let lib_config t =
+  { Lib_config.
+    has_native = has_native t
+  ; ext_obj = t.ext_obj
+  ; ext_lib = t.ext_lib
+  }

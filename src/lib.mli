@@ -252,9 +252,7 @@ module DB : sig
   (** Create a database from a list of library stanzas *)
   val create_from_library_stanzas
     :  ?parent:t
-    -> has_native:bool
-    -> ext_lib:string
-    -> ext_obj:string
+    -> lib_config:Lib_config.t
     -> (Path.t * Dune_file.Library.t) list
     -> t
 

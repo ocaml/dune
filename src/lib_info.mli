@@ -62,9 +62,7 @@ type t = private
 
 val of_library_stanza
   :  dir:Path.t
-  -> has_native:bool
-  -> ext_lib:string
-  -> ext_obj:string
+  -> lib_config:Lib_config.t
   -> Dune_file.Library.t
   -> t
 

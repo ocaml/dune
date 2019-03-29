@@ -19,6 +19,9 @@ unreleased
 
 - Experimental Coq support (1466, @ejgallego)
 
+- Install .cmi files of private modules in a `.private` directory (#1983, fix
+  #1973 @rgrinberg)
+
 1.8.2 (10/03/2019)
 ------------------
 

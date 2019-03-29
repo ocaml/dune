@@ -356,6 +356,23 @@ module Menhir : sig
   type Stanza.t += T of t
 end
 
+module Coq : sig
+
+  type t =
+    (* ; public     : Public_lib.t option *\) *)
+    { name       : Loc.t * string
+    ; synopsis   : string option
+    ; modules    : Ordered_set_lang.t
+    ; flags      : Ordered_set_lang.Unexpanded.t
+    ; libraries  : Lib_dep.t list
+    (** ocaml libraries *)
+    ; loc        : Loc.t
+    ; enabled_if : Blang.t
+    }
+
+  type Stanza.t += T of t
+end
+
 module Alias_conf : sig
   type t =
     { name    : string

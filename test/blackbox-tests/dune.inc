@@ -96,6 +96,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name coq)
+ (deps (package dune) (source_tree test-cases/coq))
+ (action
+  (chdir
+   test-cases/coq
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name cross-compilation)
  (deps (package dune) (source_tree test-cases/cross-compilation))
  (action
@@ -1666,3 +1674,5 @@
 (alias (name runtest-disabled) (deps (alias envs-and-contexts)))
 
 (alias (name runtest-js) (deps (alias js_of_ocaml)))
+
+(alias (name runtest-coq) (deps (alias coq)))

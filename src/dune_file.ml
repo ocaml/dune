@@ -1819,6 +1819,64 @@ module Menhir = struct
        })
 end
 
+module Coq = struct
+
+  type t =
+    (* ; public     : Public_lib.t option *\) *)
+    { name       : Loc.t * string
+    (* TODO: validate name *)
+    ; synopsis   : string option
+    ; modules    : Ordered_set_lang.t
+    ; flags      : Ordered_set_lang.Unexpanded.t
+    ; libraries  : Lib_dep.t list
+    (** ocaml libraries *)
+    ; loc        : Loc.t
+    ; enabled_if : Blang.t
+    }
+
+  let syntax =
+    Syntax.create
+      ~name:"coq"
+      ~desc:"the coq extension (experimental)"
+      [ 0, 1 ]
+
+  let decode =
+    record
+      (* let_map name = field_o "name" Lib_name.Local.decode_loc
+       * and public = Public_lib.public_name_field *)
+      (let+ name = field "name" (located string)
+       and+ loc = loc
+       and+ synopsis = field_o "synopsis" string
+       and+ flags = field_oslu "flags"
+       and+ modules = modules_field "modules"
+       and+ libraries = field "libraries" Lib_deps.decode ~default:[]
+       and+ enabled_if = enabled_if
+       in
+       (* { name
+        * ; public *)
+       { name
+       ; synopsis
+       ; modules
+       ; flags
+       ; libraries
+       ; loc
+       ; enabled_if
+       })
+
+  type Stanza.t += T of t
+
+  let unit_to_sexp () = Sexp.List []
+
+  let unit_stanzas =
+    let+ r = return ["coqlib", decode >>| fun x -> [T x]] in
+    ((), r)
+
+  let key =
+    Dune_project.Extension.register syntax unit_stanzas unit_to_sexp
+
+end
+
+
 module Alias_conf = struct
   type t =
     { name    : string
@@ -2056,8 +2114,12 @@ module Stanzas = struct
       (let+ x = Dune_env.Stanza.decode in
        [Dune_env.T x])
     ; "include_subdirs",
-      (let+ () = Syntax.since Stanza.syntax (1, 1)
-       and+ t = Include_subdirs.decode ~enable_qualified:false
+      (Dune_project.get_exn () >>= fun p ->
+       let+ () = Syntax.since Stanza.syntax (1, 1)
+       and+ t =
+         let enable_qualified =
+           Option.is_some (Dune_project.find_extension_args p Coq.key) in
+         Include_subdirs.decode ~enable_qualified
        and+ loc = loc in
        [Include_subdirs (loc, t)])
     ; "toplevel",

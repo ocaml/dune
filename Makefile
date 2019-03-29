@@ -28,8 +28,11 @@ test:
 test-js:
 	$(BIN) build @runtest-js
 
+test-coq:
+	$(BIN) build @runtest-coq
+
 test-all:
-	$(BIN) build @runtest @runtest-js
+	$(BIN) build @runtest @runtest-js @runtest-coq
 
 check:
 	$(BIN) build @check

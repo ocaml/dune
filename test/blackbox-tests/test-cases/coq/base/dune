@@ -1,0 +1,5 @@
+(coqlib
+ (name basic)
+ ; (public_name dune.test.basic)
+ (modules :standard)
+ (synopsis "Test Coq library"))

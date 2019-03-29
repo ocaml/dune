@@ -397,10 +397,21 @@ let init_install sctx (package : Local_package.t) entries =
               lib_install_files sctx ~dir ~sub_dir lib ~scope
                 ~dir_kind ~dir_contents)
   in
+  let coqlib_install_files =
+    Local_package.coqlibs package
+    |> List.concat_map
+         ~f:(fun { Dir_with_dune.
+                   data = coqlib
+                 ; ctx_dir = dir
+                 ; _
+                 } ->
+              Coq_rules.install_rules ~sctx ~dir coqlib)
+  in
   let entries =
     let install_paths = Local_package.install_paths package in
     let package = Local_package.name package in
-    List.rev_append docs lib_install_files
+    List.rev_append coqlib_install_files docs
+    |> List.rev_append lib_install_files
     |> local_install_rules sctx ~package ~install_paths
     |> List.rev_append entries
   in

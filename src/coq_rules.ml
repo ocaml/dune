@@ -43,7 +43,7 @@ let parse_coqdep ~coq_module (lines : string list) =
     then Format.eprintf "deps for %a: %a@\n%!" Path.pp source Fmt.(list text) deps;
     deps
 
-let setup_rule ~expander ~dir ~cc ~source_rule ~name ~cflags coq_module =
+let setup_rule ~expander ~dir ~cc ~source_rule ~wrapper_name ~cflags coq_module =
 
   if coq_debug
   then Format.eprintf "gen_rule coq_module: %a@\n%!" Coq_module.pp coq_module;
@@ -52,7 +52,7 @@ let setup_rule ~expander ~dir ~cc ~source_rule ~name ~cflags coq_module =
   let stdout_to = Coq_module.obj_file ~obj_dir ~ext:".v.d" coq_module in
   let object_to = Coq_module.obj_file ~obj_dir ~ext:".vo"  coq_module in
 
-  let iflags = Arg_spec.As ["-R"; "."; name] in
+  let iflags = Arg_spec.As ["-R"; "."; wrapper_name] in
   let cd_arg = Arg_spec.[ iflags; Dep source ] in
 
   (* coqdep needs the full source to be present :( *)
@@ -90,6 +90,9 @@ let create_ccoq sctx ~dir =
   ; coqpp  = rr "coqpp"
   }
 
+let coqlib_wrapper_name (s : Dune_file.Coq.t) =
+  Lib_name.Local.to_string (snd s.name)
+
 let setup_rules ~sctx ~dir ~dir_contents (s : Dune_file.Coq.t) =
 
   if coq_debug then begin
@@ -99,15 +102,36 @@ let setup_rules ~sctx ~dir ~dir_contents (s : Dune_file.Coq.t) =
   end;
 
   let cc = create_ccoq sctx ~dir in
-  let name = snd s.name in
+  let name = Dune_file.Coq.best_name s in
   let coq_modules = Dir_contents.coq_modules_of_library dir_contents ~name in
 
   (* coqdep requires all the files to be in the tree to produce correct
      dependencies *)
   let source_rule = Build.paths (List.map ~f:Coq_module.source coq_modules) in
-  let cflags = s.Dune_file.Coq.flags in
+  let cflags = s.flags in
   let expander = SC.expander sctx ~dir in
+
+  let wrapper_name = coqlib_wrapper_name s in
   let coq_rules =
     List.concat_map
-      ~f:(setup_rule ~expander ~dir ~cc ~source_rule ~name ~cflags) coq_modules in
+      ~f:(setup_rule ~expander ~dir ~cc ~source_rule ~wrapper_name ~cflags) coq_modules in
   coq_rules
+
+let install_rules ~sctx ~dir s =
+  match s with
+  | { Dune_file.Coq. public = None; _ } ->
+    []
+  | { Dune_file.Coq. public = Some { package = _ ; _ } ; _ } ->
+    let dir_contents = Dir_contents.get_without_rules sctx ~dir in
+    let name = Dune_file.Coq.best_name s in
+    Dir_contents.coq_modules_of_library dir_contents ~name
+    |> List.map ~f:(fun (vfile : Coq_module.t) ->
+      let vofile = Coq_module.obj_file ~obj_dir:dir ~ext:".vo" vfile in
+      (* This is the usual root for now, Coq + Dune will change it! *)
+      let coq_root = "coq/user-contrib" in
+      (* This must match the wrapper prefix for now to remain compatible *)
+      let dst_suffix = coqlib_wrapper_name s in
+      let dst_dir = Path.(relative (of_string coq_root) dst_suffix) in
+      let dst = Coq_module.obj_file ~obj_dir:dst_dir ~ext:".vo" vfile in
+      let dst = Path.to_string dst in
+      None, Install.(Entry.make Section.Lib_root ~dst vofile))

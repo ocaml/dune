@@ -1,7 +1,11 @@
 (coqlib
  (name rec_module)
- ; (public_name dune.test.basic)
+ (public_name rec.module)
  (modules :standard)
  (synopsis "Test Coq library"))
 
 (include_subdirs qualified)
+
+(alias
+ (name default)
+ (action (echo "%{read:rec.install}")))

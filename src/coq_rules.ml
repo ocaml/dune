@@ -118,8 +118,11 @@ let setup_ml_deps ~scope ~loc libs =
    * will omit the cmxs deps *)
   let ml_pack_files lib =
     let plugins = Mode.Dict.get (Lib.plugins lib) Mode.Native in
-    let to_mlpack file = Path.set_extension file ~ext:".mlpack" in
-    List.map plugins ~f:to_mlpack
+    let to_mlpack file =
+      Path.([ set_extension file ~ext:".mlpack"
+            ; set_extension file ~ext:".mllib"
+            ]) in
+    List.concat_map plugins ~f:to_mlpack
   in
 
   (* Pair of include flags and paths to mlpack *)

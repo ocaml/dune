@@ -12,17 +12,11 @@ let coq_debug = false
    file are. This seems to correspond to src_dir. *)
 module Util = struct
 
-  let to_iflags dirs =
-    Arg_spec.S
-      (Path.Set.fold dirs ~init:[] ~f:(fun dir acc ->
-         Arg_spec.Path dir :: A "-I" :: acc)
-       |> List.rev)
-
   let include_paths ts =
     List.fold_left ts ~init:Path.Set.empty ~f:(fun acc t ->
       Path.Set.add acc (Lib.src_dir t))
 
-  let include_flags ts = include_paths ts |> to_iflags
+  let include_flags ts = include_paths ts |> Lib.L.to_iflags
 
 end
 

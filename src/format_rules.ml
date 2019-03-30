@@ -22,24 +22,10 @@ let rec subdirs_until_root dir =
   | None -> [dir]
   | Some d -> dir :: subdirs_until_root d
 
-let depend_on_existing_paths paths =
-  let open Build.O in
-  let build_id = Build.arr Fn.id in
-  List.fold_left
-    ~f:(fun acc path ->
-      Build.if_file_exists
-        path
-        ~then_:(Build.path path)
-        ~else_:build_id
-      >>>
-      acc)
-    ~init:build_id
-    paths
-
 let depend_on_files ~named dir =
   subdirs_until_root dir
   |> List.concat_map ~f:(fun dir -> List.map named ~f:(Path.relative dir))
-  |> depend_on_existing_paths
+  |> Build.paths_existing
 
 let formatted = ".formatted"
 

@@ -16,6 +16,19 @@
           coqc c/ooo.vo
           coqc a/bar.vo
 
+  $ dune build --root ml_lib --display short --debug-dependency-path @all
+  Entering directory 'ml_lib'
+        ocamlc src/.ml_plugin.objs/byte/ml_plugin.{cmi,cmo,cmt}
+      ocamlopt src/.ml_plugin.objs/native/ml_plugin.{cmx,o}
+      ocamldep src/.ml_plugin.objs/simple.ml.d
+        ocamlc src/.ml_plugin.objs/byte/ml_plugin__Simple.{cmi,cmo,cmt}
+        ocamlc src/ml_plugin.cma
+        coqdep theories/a.v.d
+      ocamlopt src/.ml_plugin.objs/native/ml_plugin__Simple.{cmx,o}
+      ocamlopt src/ml_plugin.{a,cmxa}
+      ocamlopt src/ml_plugin.cmxs
+          coqc theories/a.vo
+
   $ dune build --root base --display short --debug-dependency-path @default
   Entering directory 'base'
   lib: [

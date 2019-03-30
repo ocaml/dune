@@ -406,6 +406,10 @@ let check_no_qualified loc qualif_mode =
   if qualif_mode = Include_subdirs.Qualified then
     Errors.fail loc "(include_subdirs qualified) is not supported yet"
 
+let check_no_unqualified loc qualif_mode =
+  if qualif_mode = Include_subdirs.Unqualified then
+    Errors.fail loc "(include_subdirs qualified) is not supported yet"
+
 let get0_impl (sctx, dir) : result0 =
   let dir_status_db = Super_context.dir_status_db sctx in
   match Dir_status.DB.get dir_status_db ~dir with
@@ -532,6 +536,7 @@ let get0_impl (sctx, dir) : result0 =
       C_sources.make d ~c_sources
     ) in
     let coq_modules = Memo.lazy_ (fun () ->
+      check_no_unqualified Loc.none qualif_mode;
       build_coq_modules_map d ~dir:d.ctx_dir
         ~modules:(coq_modules_of_files ~subdirs:((dir,[],files)::subdirs))) in
     let t =

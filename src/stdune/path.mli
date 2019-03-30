@@ -163,6 +163,9 @@ val mkdir_p : t -> unit
 val extension : t -> string
 val split_extension : t -> t * string
 
+(** [set_extension path ~ext] replaces extension of [path] by [ext] *)
+val set_extension : t -> ext:string -> t
+
 val pp : Format.formatter -> t -> unit
 val pp_in_source : Format.formatter -> t -> unit
 val pp_debug : Format.formatter -> t -> unit

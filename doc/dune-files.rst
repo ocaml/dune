@@ -371,7 +371,7 @@ on Unix ``%{ext_obj}`` is usually ``.o`` and ``%{ext_dll}`` is usually
 is ``.dll``.
 
 Note that when ``(byte exe)`` is specified but neither ``(best exe)``
-nor ``(native exe)`` are specified, Jbuild still knows how to build
+nor ``(native exe)`` are specified, Dune still knows how to build
 an executable with the extension ``.exe``. In such case, the ``.exe``
 version is the same as the ``.bc`` one except that it is linked with
 the ``-custom`` option of the compiler. You should always use the

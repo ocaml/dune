@@ -67,6 +67,5 @@ Limitations
 - composition and scoping of Coq libraries is still not possible. For now, libraries are located using Coq's built-in library management,
 - .v always depend on the native version of a plugin,
 - a ``foo.mlpack`` file must the present for locally defined plugins to work, this is a limitation of coqdep,
-- Coq plugins are installed into their regular OCaml library path.
-
+- Coq plugins are installed into their regular OCaml library path, this means Coq < 8.11 won't properly detect them.
 

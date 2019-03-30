@@ -42,7 +42,8 @@ The stanza will build all `.v` files on the given directory. The semantics of fi
 - ``public_name`` will make Dune generate install rules for the `.vo`
   files; files will be installed in
   ``lib/coq/user-contrib/<module_prefix>``, as customary in the
-  make-based Coq package eco-system,
+  make-based Coq package eco-system. For compatibility, we also installs the `.cmxs`
+  files appearing in `<ocaml-librarie>` under the `user-contrib` prefix.
 - ``<coq_flags>`` will be passed to ``coqc``,
 - the path to installed locations of ``<ocaml_libraries>`` will be passed to
   ``coqdep`` and ``coqc`` using Coq's ``-I`` flag; this allows for a Coq
@@ -67,5 +68,3 @@ Limitations
 - composition and scoping of Coq libraries is still not possible. For now, libraries are located using Coq's built-in library management,
 - .v always depend on the native version of a plugin,
 - a ``foo.mlpack`` file must the present for locally defined plugins to work, this is a limitation of coqdep,
-- Coq plugins are installed into their regular OCaml library path, this means Coq < 8.11 won't properly detect them.
-

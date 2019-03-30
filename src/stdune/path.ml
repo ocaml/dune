@@ -51,6 +51,7 @@ module External : sig
   val extension : t -> string
   val is_suffix : t -> suffix:string -> bool
   val split_extension : t -> t * string
+  val set_extension : t -> ext:string -> t
   val as_local : t -> string
 end = struct
   include Interned.No_interning(struct
@@ -124,6 +125,11 @@ end = struct
     let s, ext = Filename.split_extension (to_string t) in
     (make s, ext)
 
+  let set_extension t ~ext =
+    let (base, _) = split_extension t in
+    (to_string base) ^ ext
+    |> make
+
   let cwd () = make (Sys.getcwd ())
   let initial_cwd = cwd ()
 
@@ -158,6 +164,8 @@ module Local : sig
   val is_suffix : t -> suffix:string -> bool
   val split_extension : t -> t * string
   val pp : Format.formatter -> t -> unit
+
+  val set_extension : t -> ext:string -> t
 
   module L : sig
     val relative : ?error_loc:Loc0.t -> t -> string list -> t
@@ -389,6 +397,11 @@ end = struct
   let split_extension t =
     let s, ext = Filename.split_extension (to_string t) in
     (make s, ext)
+
+  let set_extension t ~ext =
+    let (base, _) = split_extension t in
+    (to_string base) ^ ext
+    |> make
 
   module Prefix = struct
     let make_path = make
@@ -976,8 +989,10 @@ let split_extension t =
     (in_source_tree t, ext)
 
 let set_extension t ~ext =
-  let t, _ = split_extension t in
-  of_string (to_string t ^ ext)
+  match t with
+  | External t -> external_ (External.set_extension t ~ext)
+  | In_build_dir t -> in_build_dir (Local.set_extension t ~ext)
+  | In_source_tree t -> in_source_tree (Local.set_extension t ~ext)
 
 let pp ppf t = Format.pp_print_string ppf (to_string_maybe_quoted t)
 

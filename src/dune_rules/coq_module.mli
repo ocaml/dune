@@ -38,13 +38,23 @@ val prefix : t -> string list
 
 val name : t -> Name.t
 
-type obj =
-  | Dep
-  | Aux
-  | Glob
-  | Obj
+val dep_file : t -> obj_dir:Path.Build.t -> Path.Build.t
 
-val obj_file : t -> obj -> obj_dir:Path.Build.t -> Path.Build.t
+(** Some of the object files should not be installed, we control this with the
+    following parameter *)
+type obj_files_mode =
+  | Build
+  | Install
+
+(** This returns a list of pairs [(obj_file, install_path)] due to native files
+    having a different install location *)
+val obj_files :
+     t
+  -> wrapper_name:string
+  -> mode:Coq_mode.t
+  -> obj_dir:Path.Build.t
+  -> obj_files_mode:obj_files_mode
+  -> (Path.Build.t * string) list
 
 val to_dyn : t -> Dyn.t
 

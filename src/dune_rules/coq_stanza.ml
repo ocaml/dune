@@ -21,11 +21,15 @@ end
 
 let coq_syntax =
   Dune_lang.Syntax.create ~name:"coq" ~desc:"the coq extension (experimental)"
-    [ ((0, 1), `Since (1, 9)); ((0, 2), `Since (2, 5)) ]
+    [ ((0, 1), `Since (1, 9))
+    ; ((0, 2), `Since (2, 5))
+    ; ((0, 3), `Since (2, 8))
+    ]
 
 module Buildable = struct
   type t =
     { flags : Ordered_set_lang.Unexpanded.t
+    ; mode : Loc.t * Coq_mode.t
     ; libraries : (Loc.t * Lib_name.t) list  (** ocaml libraries *)
     ; theories : (Loc.t * Coq_lib_name.t) list  (** coq libraries *)
     ; loc : Loc.t
@@ -34,6 +38,10 @@ module Buildable = struct
   let decode =
     let+ loc = loc
     and+ flags = Ordered_set_lang.Unexpanded.field "flags"
+    and+ mode =
+      located
+        (field "mode" ~default:Coq_mode.VoOnly
+           (Dune_lang.Syntax.since coq_syntax (0, 3) >>> Coq_mode.decode))
     and+ libraries =
       field "libraries" (repeat (located Lib_name.decode)) ~default:[]
     and+ theories =
@@ -41,7 +49,7 @@ module Buildable = struct
         (Dune_lang.Syntax.since coq_syntax (0, 2) >>> repeat Coq_lib_name.decode)
         ~default:[]
     in
-    { flags; libraries; theories; loc }
+    { flags; mode; libraries; theories; loc }
 end
 
 module Extraction = struct

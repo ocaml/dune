@@ -2,6 +2,7 @@ open! Dune_engine
 
 (* This file is licensed under The MIT License *)
 (* (c) MINES ParisTech 2018-2019               *)
+(* (c) INRIA 2020                              *)
 (* Written by: Emilio Jesús Gallego Arias *)
 
 open! Stdune
@@ -39,23 +40,44 @@ let name x = x.name
 let build_vo_dir ~obj_dir x =
   List.fold_left x.prefix ~init:obj_dir ~f:Path.Build.relative
 
-type obj =
-  | Dep
-  | Aux
-  | Glob
-  | Obj
+let cmxs_of_mod ~wrapper_name x =
+  let native_base =
+    "N" ^ String.concat ~sep:"_" ((wrapper_name :: x.prefix) @ [ x.name ])
+  in
+  [ native_base ^ ".cmi"; native_base ^ ".cmxs" ]
 
-let fname_of_obj t obj =
-  match obj with
-  | Dep -> t.name ^ ".v.d"
-  | Aux -> "." ^ t.name ^ ".aux"
-  | Glob -> t.name ^ ".glob"
-  | Obj -> t.name ^ ".vo"
+let dep_file x ~obj_dir =
+  let vo_dir = build_vo_dir ~obj_dir x in
+  Path.Build.relative vo_dir (x.name ^ ".v.d")
 
-let obj_file t obj ~obj_dir =
-  let vo_dir = build_vo_dir ~obj_dir t in
-  let fname = fname_of_obj t obj in
-  Path.Build.relative vo_dir fname
+type obj_files_mode =
+  | Build
+  | Install
+
+(* XXX: Remove the install .coq-native hack once rules can output targets in
+   multiple subdirs *)
+let obj_files x ~wrapper_name ~mode ~obj_dir ~obj_files_mode =
+  let vo_dir = build_vo_dir ~obj_dir x in
+  let install_vo_dir = String.concat ~sep:"/" x.prefix in
+  let native_objs =
+    match mode with
+    | Coq_mode.Native ->
+      let cmxs_obj = cmxs_of_mod ~wrapper_name x in
+      List.map
+        ~f:(fun x ->
+          ( Path.Build.relative vo_dir x
+          , Filename.(concat (concat install_vo_dir ".coq-native") x) ))
+        cmxs_obj
+    | VoOnly -> []
+  in
+  let obj_files =
+    match obj_files_mode with
+    | Build -> [ x.name ^ ".vo"; "." ^ x.name ^ ".aux"; x.name ^ ".glob" ]
+    | Install -> [ x.name ^ ".vo" ]
+  in
+  List.map obj_files ~f:(fun fname ->
+      (Path.Build.relative vo_dir fname, Filename.concat install_vo_dir fname))
+  @ native_objs
 
 let to_dyn { source; prefix; name } =
   let open Dyn.Encoder in

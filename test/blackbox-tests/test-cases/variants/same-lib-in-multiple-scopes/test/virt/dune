@@ -1,0 +1,4 @@
+(library
+  (name test)
+  (public_name test)
+  (virtual_modules foo))

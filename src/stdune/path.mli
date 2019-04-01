@@ -154,6 +154,7 @@ val insert_after_build_dir_exn : t -> string -> t
 val exists : t -> bool
 val readdir_unsorted : t -> string list
 val is_directory : t -> bool
+val is_file : t -> bool
 val rmdir : t -> unit
 val unlink : t -> unit
 val unlink_no_err : t -> unit

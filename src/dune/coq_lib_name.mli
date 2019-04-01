@@ -16,7 +16,10 @@ val encode : t Dune_lang.Encoder.t
 val decode : (Loc.t * t) Dune_lang.Decoder.t
 
 (* to be removed in favor of encode / decode *)
-(* val _pp : t -> Pp.t *)
+val to_string : t -> string
+
+val pp : t -> t Pp.t
+
 val to_dyn : t -> Dyn.t
 
 module Map : Map.S with type key = t

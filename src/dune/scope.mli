@@ -15,6 +15,8 @@ val project : t -> Dune_project.t
 (** Return the library database associated to this scope *)
 val libs : t -> Lib.DB.t
 
+val coq_libs : t -> Coq_lib.DB.t
+
 (** Scope databases *)
 module DB : sig
   type scope = t

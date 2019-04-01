@@ -441,6 +441,11 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas
           | Dune_file.External_variant ev -> External_variant ev :: acc
           | Dune_file.Deprecated_library_name d ->
             Deprecated_library_name d :: acc
+          | Dune_file.Coq.T coq_lib ->
+            let ctx_dir =
+              Path.Build.append_source context.build_dir dune_file.dir
+            in
+            Coq_theory (ctx_dir, coq_lib) :: acc
           | _ -> acc)
     in
     Scope.DB.create ~projects ~context:context.name ~installed_libs ~lib_config

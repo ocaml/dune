@@ -1,6 +1,7 @@
 (* This file is licensed under The MIT License *)
 (* (c) MINES ParisTech 2018-2019               *)
-(* Written by: Emilio Jesús Gallego Arias *)
+(* (c) INRIA 2020                              *)
+(* Written by: Emilio Jesús Gallego Arias      *)
 
 open! Stdune
 module SC = Super_context
@@ -17,6 +18,21 @@ module Util = struct
         Path.Set.add acc src_dir)
 
   let include_flags ts = include_paths ts |> Lib.L.to_iflags
+
+  (* coqdep expects an mlpack file next to the sources otherwise it
+   * will omit the cmxs deps *)
+  let ml_pack_files lib =
+    let plugins =
+      let info = Lib.info lib in
+      let plugins = Lib_info.plugins info in
+      Mode.Dict.get plugins Mode.Native
+    in
+    let to_mlpack file =
+      [ Path.set_extension file ~ext:".mlpack"
+      ; Path.set_extension file ~ext:".mllib"
+      ]
+    in
+    List.concat_map plugins ~f:to_mlpack
 end
 
 type coq_context =
@@ -31,11 +47,14 @@ type coq_context =
    when compiling the prelude, in this case we also need to tell Coq not to try
    to load the prelude. *)
 type coq_bootstrap_type =
-  | No_boot
-  | Bootstrap
+  | No_boot  (** Coq's stdlib is installed globally *)
+  | Bootstrap of Coq_lib.t
+      (** Coq's stdlib is in scope of the composed build *)
   | Bootstrap_prelude
+      (** We are compiling the prelude itself
+          [should be replaced with (per_file ...) flags] *)
 
-let parse_coqdep ~boot_type ~coq_module (lines : string list) =
+let parse_coqdep ~dir ~boot_type ~coq_module (lines : string list) =
   if coq_debug then Format.eprintf "Parsing coqdep @\n%!";
   let source = Coq_module.source coq_module in
   let invalid p =
@@ -61,8 +80,8 @@ let parse_coqdep ~boot_type ~coq_module (lines : string list) =
     let ff = List.hd @@ String.extract_blank_separated_words basename in
     let depname, _ = Filename.split_extension ff in
     let modname =
-      Coq_module.(
-        String.concat ~sep:"/" (prefix coq_module @ [ name coq_module ]))
+      String.concat ~sep:"/"
+        Coq_module.(prefix coq_module @ [ name coq_module ])
     in
     if coq_debug then
       Format.eprintf "depname / modname: %s / %s@\n%!" depname modname;
@@ -74,31 +93,35 @@ let parse_coqdep ~boot_type ~coq_module (lines : string list) =
         deps;
     (* Add prelude deps for when stdlib is in scope and we are not actually
        compiling the prelude *)
+    let deps = List.map ~f:(Path.relative (Path.build dir)) deps in
     match boot_type with
     | No_boot
     | Bootstrap_prelude ->
       deps
-    | Bootstrap -> "Init/Prelude.vo" :: deps )
+    | Bootstrap lib ->
+      Path.relative (Path.build (Coq_lib.src_root lib)) "Init/Prelude.vo"
+      :: deps )
 
-let get_bootstrap_type ~boot coq_module =
-  match boot with
-  | false -> No_boot
-  | true -> (
-    (* This is inside as an optimization, TODO; replace with per_file flags *)
+let get_bootstrap_type ~boot_lib ~wrapper_name coq_module =
+  match boot_lib with
+  | None -> No_boot
+  | Some (_loc, lib) -> (
+    (* This is here as an optimization, TODO; replace with per_file flags *)
     let init =
-      Option.equal String.equal
-        (List.nth_opt (Coq_module.prefix coq_module) 0)
-        (Some "Init")
+      String.equal (Coq_lib.wrapper lib) wrapper_name
+      && Option.equal String.equal
+           (List.hd_opt (Coq_module.prefix coq_module))
+           (Some "Init")
     in
     match init with
-    | false -> Bootstrap
+    | false -> Bootstrap lib
     | true -> Bootstrap_prelude )
 
 let flags_of_bootstrap_type ~boot_type =
   let open Command in
   match boot_type with
   | No_boot -> []
-  | Bootstrap -> [ Args.A "-boot" ]
+  | Bootstrap _lib -> [ Args.A "-boot" ]
   | Bootstrap_prelude -> [ Args.As [ "-boot"; "-noinit" ] ]
 
 let deps_of ~dir ~boot_type coq_module =
@@ -106,10 +129,7 @@ let deps_of ~dir ~boot_type coq_module =
   Build.dyn_paths_unit
     (Build.map
        (Build.lines_of (Path.build stdout_to))
-       ~f:(fun x ->
-         List.map
-           ~f:(Path.relative (Path.build dir))
-           (parse_coqdep ~boot_type ~coq_module x)))
+       ~f:(fun x -> parse_coqdep ~dir ~boot_type ~coq_module x))
 
 let coqdep_rule ~dir ~coqdep ~mlpack_rule ~source_rule ~file_flags coq_module =
   (* coqdep needs the full source + plugin's mlpack to be present :( *)
@@ -121,13 +141,15 @@ let coqdep_rule ~dir ~coqdep ~mlpack_rule ~source_rule ~file_flags coq_module =
     ]
   in
   let stdout_to = Coq_module.dep_file ~obj_dir:dir coq_module in
+  (* Coqdep has to be called in the stanza's directory *)
   let dir = Path.build dir in
   let open Build.With_targets.O in
   Build.with_no_targets mlpack_rule
   >>> Build.with_no_targets source_rule
   >>> Command.run ~dir ~stdout_to coqdep file_flags
 
-let coqc_rule ~expander ~dir ~coqc ~coq_flags ~file_flags coq_module =
+let coqc_rule ~build_dir ~expander ~dir ~coqc ~coq_flags ~file_flags coq_module
+    =
   let source = Coq_module.source coq_module in
   let file_flags =
     let object_to = Coq_module.obj_file ~obj_dir:dir coq_module in
@@ -145,17 +167,17 @@ let coqc_rule ~expander ~dir ~coqc ~coq_flags ~file_flags coq_module =
   let coq_flags =
     Expander.expand_and_eval_set expander coq_flags ~standard:(Build.return [])
   in
-  let dir = Path.build dir in
+  let dir = Path.build build_dir in
   Command.run ~dir coqc (Command.Args.dyn coq_flags :: file_flags)
 
-let setup_rule ~expander ~dir ~cc ~source_rule ~coq_flags ~file_flags
-    ~mlpack_rule ~boot coq_module =
+let setup_rule ~build_dir ~dir ~cc ~wrapper_name ~file_flags ~expander
+    ~coq_flags ~source_rule ~mlpack_rule ~boot_lib coq_module =
   let open Build.With_targets.O in
   if coq_debug then
     Format.eprintf "gen_rule coq_module: %a@\n%!" Pp.render_ignore_tags
       (Dyn.pp (Coq_module.to_dyn coq_module));
 
-  let boot_type = get_bootstrap_type ~boot coq_module in
+  let boot_type = get_bootstrap_type ~boot_lib ~wrapper_name coq_module in
   let file_flags =
     [ Command.Args.S (flags_of_bootstrap_type ~boot_type); S file_flags ]
   in
@@ -171,7 +193,8 @@ let setup_rule ~expander ~dir ~cc ~source_rule ~coq_flags ~file_flags
   (* Rules for the files *)
   [ coqdep_rule
   ; Build.with_no_targets deps_of
-    >>> coqc_rule ~expander ~dir ~coqc:cc.coqc ~coq_flags ~file_flags coq_module
+    >>> coqc_rule ~build_dir ~expander ~dir ~coqc:cc.coqc ~coq_flags ~file_flags
+          coq_module
   ]
 
 (* TODO: remove; rgrinberg points out: - resolve program is actually cached, -
@@ -184,74 +207,100 @@ let create_ccoq sctx ~dir =
 
 (* get_libraries from Coq's ML dependencies *)
 let libs_of_coq_deps ~lib_db libs =
-  Result.List.map ~f:(Lib.DB.resolve lib_db) libs |> Result.ok_exn
+  Result.List.map ~f:(Lib.DB.resolve lib_db) libs
 
 (* compute include flags and mlpack rules *)
-let setup_ml_deps ~lib_db libs =
-  (* coqdep expects an mlpack file next to the sources otherwise it
-   * will omit the cmxs deps *)
-  let ml_pack_files lib =
-    let plugins =
-      let info = Lib.info lib in
-      let plugins = Lib_info.plugins info in
-      Mode.Dict.get plugins Mode.Native
-    in
-    let to_mlpack file =
-      [ Path.set_extension file ~ext:".mlpack"
-      ; Path.set_extension file ~ext:".mllib"
-      ]
-    in
-    List.concat_map plugins ~f:to_mlpack
-  in
+let setup_ml_deps ~lib_db libs theories =
   (* Pair of include flags and paths to mlpack *)
-  let ml_iflags, mlpack =
-    let libs =
-      libs_of_coq_deps ~lib_db libs
-      |> Lib.closure ~linking:false |> Result.ok_exn
-    in
-    (Util.include_flags libs, List.concat_map ~f:ml_pack_files libs)
+  let libs =
+    let open Result.O in
+    let* theories = theories in
+    let libs = libs @ List.concat_map ~f:Coq_lib.libraries theories in
+    let* libs = libs_of_coq_deps ~lib_db libs in
+    Lib.closure ~linking:false libs
   in
-  (* If the mlpack files don't exist, don't fail *)
-  (ml_iflags, Build.paths_existing mlpack)
+  ( Command.of_result_map libs ~f:Util.include_flags
+  , Build.of_result_map libs ~f:(fun libs ->
+        (* If the mlpack files don't exist, don't fail *)
+        Build.paths_existing (List.concat_map ~f:Util.ml_pack_files libs)) )
 
-let coqlib_wrapper_name (s : Dune_file.Coq.t) =
-  Coq_lib_name.wrapper (snd s.name)
+let coq_modules_of_theory ~sctx lib =
+  let name = Coq_lib.name lib in
+  let dir = Coq_lib.src_root lib in
+  let dir_contents = Dir_contents.get sctx ~dir in
+  let coq_sources = Dir_contents.coq dir_contents in
+  Coq_sources.library coq_sources ~name
 
-let setup_rules ~sctx ~dir ~dir_contents (s : Dune_file.Coq.t) =
-  let scope = SC.find_scope_by_dir sctx dir in
-  let expander = SC.expander sctx ~dir in
-  if coq_debug then
-    Format.eprintf "[gen_rules] @[dir: %a@\nscope: %a@]@\n%!" Path.Build.pp dir
-      Path.Build.pp (Scope.root scope);
+let setup_theory_flag lib =
+  let wrapper = Coq_lib.wrapper lib in
+  let dir = Coq_lib.src_root lib in
+  [ Command.Args.A "-Q"; Path (Path.build dir); A wrapper ]
+
+let setup_rules ~sctx ~build_dir ~dir ~dir_contents (s : Dune_file.Coq.t) =
   let cc = create_ccoq sctx ~dir in
   let name = snd s.name in
+  let scope = SC.find_scope_by_dir sctx dir in
+  let lib_db = Scope.libs scope in
+  let coq_lib_db = Scope.coq_libs scope in
+  let expander = SC.expander sctx ~dir in
+
+  let theory = Coq_lib.DB.resolve coq_lib_db s.name |> Result.ok_exn in
+
+  (* Coq flags for depending libraries *)
+  let theories_deps = Coq_lib.DB.requires coq_lib_db theory in
+  let theories_flags =
+    Command.of_result_map theories_deps ~f:(fun libs ->
+        Command.Args.S (List.concat_map libs ~f:setup_theory_flag))
+  in
+
+  (* sources for depending libraries coqdep requires all the files to be in the
+     tree to produce correct dependencies, including those of dependencies *)
+  let source_rule =
+    Build.of_result_map theories_deps ~f:(fun theories ->
+        theory :: theories
+        |> List.concat_map ~f:(coq_modules_of_theory ~sctx)
+        |> List.rev_map ~f:(fun m -> Path.build (Coq_module.source m))
+        |> Build.paths)
+  in
+
+  (* ML-level flags for depending libraries *)
+  let ml_flags, mlpack_rule = setup_ml_deps ~lib_db s.libraries theories_deps in
+
+  (* Final flags *)
+  let wrapper_name = Coq_lib.wrapper theory in
+  let file_flags =
+    [ ml_flags
+    ; theories_flags
+    ; Command.Args.A "-R"
+    ; Path (Path.build dir)
+    ; A wrapper_name
+    ]
+  in
+
+  let boot_lib = Coq_lib.DB.boot_library coq_lib_db in
+  let coq_flags = s.flags in
+
+  (* List of modules to compile for this library *)
   let coq_modules =
     let coq = Dir_contents.coq dir_contents in
     Coq_sources.library coq ~name
   in
-  (* coqdep requires all the files to be in the tree to produce correct
-     dependencies *)
-  let source_rule =
-    Build.paths
-      (List.map coq_modules ~f:(fun m -> Path.build (Coq_module.source m)))
-  in
-  let coq_flags = s.flags in
-  let wrapper_name = coqlib_wrapper_name s in
-  let lib_db = Scope.libs scope in
-  let ml_iflags, mlpack_rule = setup_ml_deps ~lib_db s.libraries in
-  let file_flags = [ ml_iflags; Command.Args.As [ "-R"; "."; wrapper_name ] ] in
-  let boot = s.boot in
+
   List.concat_map
     ~f:
-      (setup_rule ~expander ~dir ~cc ~source_rule ~coq_flags ~file_flags
-         ~mlpack_rule ~boot)
+      (setup_rule ~build_dir ~dir ~cc ~expander ~coq_flags ~source_rule
+         ~wrapper_name ~file_flags ~mlpack_rule ~boot_lib)
     coq_modules
+
+(******************************************************************************)
+(* Install rules *)
+(******************************************************************************)
 
 (* This is here for compatibility with Coq < 8.11, which expects plugin files to
    be in the folder containing the `.vo` files *)
 let coq_plugins_install_rules ~scope ~package ~dst_dir (s : Dune_file.Coq.t) =
   let lib_db = Scope.libs scope in
-  let ml_libs = libs_of_coq_deps ~lib_db s.libraries in
+  let ml_libs = libs_of_coq_deps ~lib_db s.libraries |> Result.ok_exn in
   let rules_for_lib lib =
     (* Don't install libraries that don't belong to this package *)
     if
@@ -281,7 +330,7 @@ let install_rules ~sctx ~dir s =
     let dir_contents = Dir_contents.get sctx ~dir in
     let name = snd s.name in
     (* This must match the wrapper prefix for now to remain compatible *)
-    let dst_suffix = coqlib_wrapper_name s in
+    let dst_suffix = Coq_lib_name.wrapper (snd s.name) in
     (* These are the rules for now, coq lang 2.0 will make this uniform *)
     let dst_dir =
       if s.boot then
@@ -291,6 +340,8 @@ let install_rules ~sctx ~dir s =
         let coq_root = Path.Local.of_string "coq/user-contrib" in
         Path.Local.relative coq_root dst_suffix
     in
+    (* Also, stdlib plugins are handled in a hardcoded way, so no compat install
+       is needed *)
     let coq_plugins_install_rules =
       if s.boot then
         []

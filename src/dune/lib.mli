@@ -185,6 +185,7 @@ module DB : sig
       | Library of Path.Build.t * Dune_file.Library.t
       | External_variant of Dune_file.External_variant.t
       | Deprecated_library_name of Dune_file.Deprecated_library_name.t
+      | Coq_theory of Path.Build.t * Dune_file.Coq.t
   end
 
   (** Create a database from a list of library/variants stanzas *)

@@ -79,9 +79,7 @@ and atom acc start = parse
     { atom (if acc = "" then s else acc ^ s) start lexbuf
     }
   | ""
-    { if acc = "" then
-        error lexbuf "Internal error in the S-expression parser, \
-                      please report upstream.";
+    { if acc = "" then invalid_dune_or_jbuild lexbuf;
       lexbuf.lex_start_p <- start;
       Token.Atom (Atom.of_string acc)
     }

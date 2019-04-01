@@ -1,3 +1,5 @@
+open Stdune
+
 module Token = struct
   module Comment = struct
     type t =
@@ -35,6 +37,11 @@ let error ?(delta=0) lexbuf message =
            ; stop  = Lexing.lexeme_end_p   lexbuf
            ; message
            })
+
+let invalid_dune_or_jbuild lexbuf =
+  let start = Lexing.lexeme_start_p lexbuf in
+  let fname = Filename.basename start.pos_fname in
+  error lexbuf (sprintf "Invalid %s file" fname)
 
 let escaped_buf = Buffer.create 256
 

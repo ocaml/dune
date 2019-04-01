@@ -24,8 +24,7 @@ module Template = struct
     lexbuf.lex_start_p <- start;
     match parts with
     | [] | [Text ""] ->
-      error lexbuf "Internal error in the S-expression parser, \
-                    please report upstream."
+      invalid_dune_or_jbuild lexbuf
     | [Text s] ->
       Token.Atom (Atom.of_string s)
     | _ ->

@@ -111,6 +111,9 @@ let sort t ~compare =
 let stable_sort t ~compare =
   stable_sort t ~cmp:(fun a b -> Ordering.to_int (compare a b))
 
+let sort_uniq t ~compare =
+  sort_uniq t ~cmp:(fun a b -> Ordering.to_int (compare a b))
+
 let rec compare a b ~compare:f : Ordering.t =
   match a, b with
   | [], [] -> Eq

@@ -82,12 +82,3 @@ Solving variant ambiguity by specifying a concrete implementation.
 Don't fail when the same library is defined in multiple scopes.
   $ dune build --root same-lib-in-multiple-scopes
   Entering directory 'same-lib-in-multiple-scopes'
-  File "dune", line 3, characters 12-16:
-  3 |   (variants unix)
-                  ^^^^
-  Error: Multiple solutions for the implementation
-  of test  with variants [ "unix" ]
-  -> test-unix ("unix")
-  -> test-unix ("unix")
-  -> required by executable exe in dune:2
-  [1]

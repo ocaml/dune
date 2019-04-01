@@ -187,6 +187,7 @@ val build_dir : t
 
 (** [is_in_build_dir t = is_descendant t ~of:build_dir] *)
 val is_in_build_dir : t -> bool
+val as_in_build_dir_exn : t -> Build.t
 
 (** [is_in_build_dir t = is_managed t && not (is_in_build_dir t)] *)
 val is_in_source_tree : t -> bool

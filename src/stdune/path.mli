@@ -203,3 +203,5 @@ end
     For external paths, it returns a path that is relative to the current
     directory. For example, the local part of [/a/b] is [./a/b]. *)
 val local_part : t -> Local.t
+
+val stat : t -> Unix.stats

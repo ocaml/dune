@@ -2,22 +2,23 @@ open! Stdune
 open Import
 open Fiber.O
 
-let is_a_source_file fn =
-  match Filename.extension fn with
-  | ".flv"
-  | ".gif"
-  | ".ico"
-  | ".jpeg"
-  | ".jpg"
-  | ".mov"
-  | ".mp3"
-  | ".mp4"
-  | ".otf"
-  | ".pdf"
-  | ".png"
-  | ".ttf"
-  | ".woff" -> false
-  | _ -> true
+let is_a_source_file path =
+  (match Path.extension path with
+   | ".flv"
+   | ".gif"
+   | ".ico"
+   | ".jpeg"
+   | ".jpg"
+   | ".mov"
+   | ".mp3"
+   | ".mp4"
+   | ".otf"
+   | ".pdf"
+   | ".png"
+   | ".ttf"
+   | ".woff" -> false
+   | _ -> true)
+  && Path.is_file path
 
 let make_watermark_map ~name ~version ~commit =
   let opam_file = Opam_file.load (Path.in_source (name ^ ".opam")) in
@@ -241,27 +242,28 @@ let subst_git ?name () =
     | None -> Utils.program_not_found "git" ~loc:None
   in
   let env = Env.initial in
-  Fiber.fork_and_join
-    (fun () ->
-       Fiber.fork_and_join
-         (fun () ->
-            Process.run_capture Strict git ["describe"; "--always"; "--dirty"]
-              ~env)
-         (fun () ->
-            Process.run_capture Strict git ["rev-parse"; rev]
-              ~env))
-    (fun () ->
-       Process.run_capture_lines Strict git ["ls-tree"; "-r"; "--name-only"; rev]
-         ~env)
-  >>= fun ((version, commit), files) ->
+  let+ ((version, commit), files) =
+    Fiber.fork_and_join
+      (fun () ->
+        Fiber.fork_and_join
+          (fun () ->
+              Process.run_capture Strict git ["describe"; "--always"; "--dirty"]
+                ~env)
+          (fun () ->
+              Process.run_capture Strict git ["rev-parse"; rev]
+                ~env))
+      (fun () ->
+        Process.run_capture_lines Strict git
+          ["ls-tree"; "-r"; "--name-only"; rev] ~env)
+  in
   let version = String.trim version in
   let commit  = String.trim commit  in
   let name = get_name ~files ?name () in
   let watermarks = make_watermark_map ~name ~version ~commit in
   List.iter files ~f:(fun fn ->
-    if is_a_source_file fn then
-      subst_file (Path.in_source fn) ~map:watermarks);
-  Fiber.return ()
+    let path = Path.in_source fn in
+    if is_a_source_file path then
+      subst_file path ~map:watermarks)
 
 let subst ?name () =
   if Sys.file_exists ".git" then

@@ -879,6 +879,7 @@ let readdir_unsorted t = Sys.readdir (to_string t) |> Array.to_list
 let is_directory t =
   try Sys.is_directory (to_string t)
   with Sys_error _ -> false
+let is_file t = not (is_directory t)
 let rmdir t = Unix.rmdir (to_string t)
 let win32_unlink fn =
   try

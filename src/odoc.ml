@@ -473,6 +473,7 @@ let default_index ~pkg entry_modules =
           "This library exposes the following toplevel modules:\n\
            {!modules:%s}\n"
           (modules
+           |> List.filter ~f:Module.is_public
            |> List.sort ~compare:(fun x y ->
              Module.Name.compare (Module.name x) (Module.name y))
            |> List.map ~f:(fun m -> Module.Name.to_string (Module.name m))

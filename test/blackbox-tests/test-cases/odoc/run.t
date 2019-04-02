@@ -49,7 +49,7 @@
   {0 foo index}
   {1 Library foo}
   This library exposes the following toplevel modules:
-  {!modules:Foo Foo2 Foo3}
+  {!modules:Foo Foo2}
   {1 Library foo.byte}
   The entry point of this library is the module:
   {!module-Foo_byte}.

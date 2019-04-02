@@ -12,6 +12,9 @@
       ocamldep .foo.objs/foo2.ml.d
         ocamlc .foo.objs/byte/foo2.{cmi,cmo,cmt}
           odoc _doc/_odoc/lib/foo/foo2.odoc
+      ocamldep .foo.objs/foo3.ml.d
+        ocamlc .foo.objs/byte/foo3.{cmi,cmo,cmt}
+          odoc _doc/_odoc/lib/foo/private/foo3.odoc
       ocamldep .foo_byte.objs/foo_byte.ml.d
         ocamlc .foo_byte.objs/byte/foo_byte.{cmi,cmo,cmt}
           odoc _doc/_odoc/lib/foo.byte/foo_byte.odoc
@@ -46,7 +49,7 @@
   {0 foo index}
   {1 Library foo}
   This library exposes the following toplevel modules:
-  {!modules:Foo Foo2}
+  {!modules:Foo Foo2 Foo3}
   {1 Library foo.byte}
   The entry point of this library is the module:
   {!module-Foo_byte}.

@@ -28,6 +28,8 @@ end
 
 val error : ?delta:int -> Lexing.lexbuf -> string -> 'a
 
+val invalid_dune_or_jbuild : Lexing.lexbuf -> 'a
+
 val escaped_buf : Buffer.t
 
 exception Error of Error.t

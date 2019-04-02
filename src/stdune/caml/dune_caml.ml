@@ -10,6 +10,7 @@ module Lexing   = Lexing
 module Digest   = Digest
 module StringLabels = StringLabels
 module ListLabels   = ListLabels
+module List   = List
 
 type ('a, 'error) result = ('a, 'error) Result.t =
   | Ok    of 'a

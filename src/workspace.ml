@@ -7,7 +7,7 @@ let syntax = Stanza.syntax
 
 let env_field =
   field_o "env"
-    (Syntax.since syntax (1, 1) >>= fun () ->
+    (Syntax.since syntax (1, 1) >>>
      Dune_env.Stanza.decode)
 
 module Context = struct
@@ -59,7 +59,7 @@ module Context = struct
       and+ targets = field "targets" (list Target.t) ~default:[Target.Native]
       and+ profile = field "profile" string ~default:profile
       and+ toolchain =
-        field_o "toolchain" (Syntax.since syntax (1, 5) >>= fun () -> string)
+        field_o "toolchain" (Syntax.since syntax (1, 5) >>> string)
       and+ loc = loc
       in
       { targets
@@ -165,13 +165,12 @@ include Versioned_file.Make(struct type t = unit end)
 let () = Lang.register syntax ()
 
 let t ?x ?profile:cmdline_profile () =
-  Versioned_file.no_more_lang >>= fun () ->
-  env_field >>= fun env ->
-  field "profile" string ~default:Config.default_build_profile
-  >>= fun profile ->
+  let* () = Versioned_file.no_more_lang in
+  let* env = env_field in
+  let* profile =
+    field "profile" string ~default:Config.default_build_profile in
   let profile = Option.value cmdline_profile ~default:profile in
-  multi_field "context" (Context.t ~profile ~x)
-  >>| fun contexts ->
+  let+ contexts = multi_field "context" (Context.t ~profile ~x) in
   let defined_names = ref String.Set.empty in
   let merlin_context =
     List.fold_left contexts ~init:None ~f:(fun acc ctx ->

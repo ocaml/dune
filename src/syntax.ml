@@ -172,17 +172,17 @@ let desc () =
 
 let deleted_in t ver =
   let open Version.Infix in
-  get_exn t >>= fun current_ver ->
+  let* current_ver = get_exn t in
   if current_ver < ver then
     return ()
   else begin
-    desc () >>= fun (loc, what) ->
+    let* (loc, what) = desc () in
     Error.deleted_in loc t ver ~what
   end
 
 let deprecated_in t ver =
   let open Version.Infix in
-  get_exn t >>= fun current_ver ->
+  let* current_ver = get_exn t in
   if current_ver < ver then
     return ()
   else begin
@@ -192,17 +192,17 @@ let deprecated_in t ver =
 
 let renamed_in t ver ~to_ =
   let open Version.Infix in
-  get_exn t >>= fun current_ver ->
+  let* current_ver = get_exn t in
   if current_ver < ver then
     return ()
   else begin
-    desc () >>= fun (loc, what) ->
+    let+ (loc, what) = desc () in
     Error.renamed_in loc t ver ~what ~to_
   end
 
 let since ?(fatal=true) t ver =
   let open Version.Infix in
-  get_exn t >>= fun current_ver ->
+  let* current_ver = get_exn t in
   if current_ver >= ver then
     return ()
   else

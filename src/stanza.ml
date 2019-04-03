@@ -54,27 +54,28 @@ module Decoder = struct
     switch_file_kind
       ~jbuild:(enter t)
       ~dune:(
-      try_
-        t
-        (function
-          | Parens_no_longer_necessary _ as exn -> raise exn
-          | exn ->
-            try_
-              (enter
-                 (loc >>= fun loc ->
-                  (if is_record then
-                     peek >>= function
-                     | Some (List _) ->
-                       raise (Parens_no_longer_necessary (loc, exn))
-                     | _ -> t
-                   else
-                     t)
-                  >>= fun _ ->
-                  raise (Parens_no_longer_necessary (loc, exn))))
-              (function
-                | Parens_no_longer_necessary _ as exn -> raise exn
-                | _ -> raise exn))
-    )
+        try_
+          t
+          (function
+            | Parens_no_longer_necessary _ as exn -> raise exn
+            | exn ->
+              try_
+                (enter
+                   (let* loc = loc in
+                    let* _ =
+                      if is_record then
+                        peek >>= function
+                        | Some (List _) ->
+                          raise (Parens_no_longer_necessary (loc, exn))
+                        | _ -> t
+                      else
+                        t
+                    in
+                    raise (Parens_no_longer_necessary (loc, exn))))
+                (function
+                  | Parens_no_longer_necessary _ as exn -> raise exn
+                  | _ -> raise exn))
+      )
 
   let record parse =
     parens_removed_in_dune_generic (fields parse) ~is_record:true

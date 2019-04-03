@@ -247,8 +247,8 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     in
     let get_tool_using_findlib_config prog =
       let open Option.O in
-      findlib_config >>= fun conf ->
-      Findlib.Config.get conf prog >>= fun s ->
+      let* conf = findlib_config in
+      let* s = Findlib.Config.get conf prog in
       match Filename.analyze_program_name s with
       | In_path | Relative_to_current_dir -> which s
       | Absolute -> Some (Path.of_filename_relative_to_initial_cwd s)
@@ -559,8 +559,7 @@ let create_for_opam ~root ~env ~env_nodes ~targets ~profile
     | None -> Utils.program_not_found "opam" ~loc:None
     | Some fn -> fn
   in
-  opam_version opam env
-  >>= fun version ->
+  let* version = opam_version opam env in
   let args =
     List.concat
       [ [ "config"; "env" ]
@@ -571,8 +570,7 @@ let create_for_opam ~root ~env ~env_nodes ~targets ~profile
       ; if version < (2, 0, 0) then [] else ["--set-switch"]
       ]
   in
-  Process.run_capture ~env Strict opam args
-  >>= fun s ->
+  let* s = Process.run_capture ~env Strict opam args in
   let vars =
     Dune_lang.parse_string ~fname:"<opam output>" ~mode:Single s
     |> Dune_lang.Decoder.(parse (list (pair string string)) Univ_map.empty)

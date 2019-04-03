@@ -144,16 +144,18 @@ let pp_flags sctx ~expander ~dir_kind { preprocess; libname; _ } =
     begin match action with
     | Run (exe, args) ->
       let open Option.O in
-      List.destruct_last args >>= (fun (args, input_file) ->
+      let* (args, input_file) = List.destruct_last args in
+      let* args =
         if String_with_vars.is_var input_file ~name:"input-file" then
           Some args
         else
-          None)
-      >>= fun args ->
-      Expander.Option.expand_path expander exe >>= fun exe ->
-      List.map ~f:(Expander.Option.expand_str expander) args
-      |> Option.List.all
-      >>= fun args ->
+          None
+      in
+      let* exe = Expander.Option.expand_path expander exe in
+      let* args =
+        List.map ~f:(Expander.Option.expand_str expander) args
+        |> Option.List.all
+      in
       (Path.to_absolute_filename exe :: args)
       |> List.map ~f:quote_for_merlin
       |> String.concat ~sep:" "

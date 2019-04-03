@@ -52,7 +52,7 @@ let relative_file =
 
 let variants_field =
   field_o "variants" (
-    Syntax.since Stanza.syntax (1, 9) >>= fun () ->
+    let* () = Syntax.since Stanza.syntax (1, 9) in
     located (list Variant.decode >>| Variant.Set.of_list))
 
 (* Parse and resolve "package" fields *)
@@ -904,30 +904,30 @@ module Library = struct
        and+ no_keep_locs = field_b "no_keep_locs"
                             ~check:(Syntax.deprecated_in Stanza.syntax (1, 7))
        and+ sub_systems =
-         return () >>= fun () ->
+         let* () = return () in
          Sub_system_info.record_parser ()
        and+ project = Dune_project.get_exn ()
        and+ dune_version = Syntax.get_exn Stanza.syntax
        and+ virtual_modules =
          field_o "virtual_modules" (
-           Syntax.since Stanza.syntax (1, 7)
-           >>= fun () -> Ordered_set_lang.decode)
+           Syntax.since Stanza.syntax (1, 7) >>>
+           Ordered_set_lang.decode)
        and+ implements =
          field_o "implements" (
-           Syntax.since Stanza.syntax (1, 7)
-           >>= fun () -> located Lib_name.decode)
+           Syntax.since Stanza.syntax (1, 7) >>>
+           located Lib_name.decode)
        and+ variant =
          field_o "variant" (
-           Syntax.since Stanza.syntax (1, 9)
-           >>= fun () -> located Variant.decode)
+           Syntax.since Stanza.syntax (1, 9) >>>
+           located Variant.decode)
        and+ default_implementation =
          field_o "default_implementation" (
-           Syntax.since Stanza.syntax (1, 9)
-           >>= fun () -> located Lib_name.decode)
+           Syntax.since Stanza.syntax (1, 9) >>>
+           located Lib_name.decode)
        and+ private_modules =
          field_o "private_modules" (
-           Syntax.since Stanza.syntax (1, 2)
-           >>= fun () -> Ordered_set_lang.decode)
+           let* () = Syntax.since Stanza.syntax (1, 2) in
+           Ordered_set_lang.decode)
        and+ stdlib =
          field_o "stdlib" (Syntax.since Stdlib.syntax (0, 1) >>> Stdlib.decode)
        in
@@ -2121,11 +2121,11 @@ module Stanzas = struct
       (let+ x = Dune_env.Stanza.decode in
        [Dune_env.T x])
     ; "include_subdirs",
-      (Dune_project.get_exn () >>= fun p ->
+      (let* project = Dune_project.get_exn () in
        let+ () = Syntax.since Stanza.syntax (1, 1)
        and+ t =
          let enable_qualified =
-           Option.is_some (Dune_project.find_extension_args p Coq.key) in
+           Option.is_some (Dune_project.find_extension_args project Coq.key) in
          Include_subdirs.decode ~enable_qualified
        and+ loc = loc in
        [Include_subdirs (loc, t)])

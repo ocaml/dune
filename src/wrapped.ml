@@ -10,8 +10,8 @@ let decode =
     [ "true", return (Simple true)
     ; "false", return (Simple false)
     ; "transition",
-      Syntax.since Stanza.syntax (1, 2) >>= fun () ->
-      string >>| fun x -> Yes_with_transition x
+      Syntax.since Stanza.syntax (1, 2) >>>
+      let+ x = string in Yes_with_transition x
     ]
 
 let encode =

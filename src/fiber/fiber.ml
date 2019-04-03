@@ -210,15 +210,17 @@ let map t ~f = t >>| f
 let bind t ~f = t >>= f
 
 let both a b =
-  a >>= fun x ->
-  b >>= fun y ->
+  let* x = a in
+  let* y = b in
   return (x, y)
 
 let all l =
   let rec loop l acc =
     match l with
     | [] -> return (List.rev acc)
-    | t :: l -> t >>= fun x -> loop l (x :: acc)
+    | t :: l ->
+      let* x = t in
+      loop l (x :: acc)
   in
   loop l []
 
@@ -228,7 +230,9 @@ let map_all l ~f =
   let rec loop l acc =
     match l with
     | [] -> return (List.rev acc)
-    | x :: l -> f x >>= fun x -> loop l (x :: acc)
+    | x :: l ->
+      let* x = f x in
+      loop l (x :: acc)
   in
   loop l []
 
@@ -236,7 +240,9 @@ let map_all_unit l ~f =
   let rec loop l =
     match l with
     | [] -> return ()
-    | x :: l -> f x >>= fun () -> loop l
+    | x :: l ->
+      let* () = f x in
+      loop l
   in
   loop l
 
@@ -361,8 +367,8 @@ let collect_errors f =
     ~on_error:(fun e l -> e :: l)
 
 let finalize f ~finally =
-  wait_errors f >>= fun res ->
-  finally () >>= fun () ->
+  let* res = wait_errors f in
+  let* () = finally () in
   match res with
   | Ok x -> return x
   | Error () -> never
@@ -441,7 +447,7 @@ module Once = struct
     | Running fut -> Future.wait fut
     | Not_started f ->
       t.state <- Starting;
-      fork f >>= fun fut ->
+      let* fut = fork f in
       t.state <- Running fut;
       Future.wait fut
     | Starting ->
@@ -478,7 +484,7 @@ module Mutex = struct
     k ()
 
   let with_lock t f =
-    lock t >>= fun () ->
+    let* () = lock t in
     finalize f ~finally:(fun () -> unlock t)
 
   let create () =

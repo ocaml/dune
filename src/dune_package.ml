@@ -277,11 +277,13 @@ module Or_meta = struct
 
   let decode ~dir =
     let open Dune_lang.Decoder in
-    (* fields @@ *)
     fields
-      (field_b "use_meta" >>= function
-       | true -> return Use_meta
-       | false -> decode ~dir >>| fun p -> Dune_package p)
+      (let* use_meta = field_b "use_meta" in
+       if use_meta then
+         return Use_meta
+       else
+         let+ package = decode ~dir in
+         Dune_package package)
 
   let load p = Vfile.load p ~f:(fun _ -> decode ~dir:(Path.parent_exn p))
 end

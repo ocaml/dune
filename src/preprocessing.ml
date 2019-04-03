@@ -373,9 +373,8 @@ let build_ppx_driver sctx ~dep_kind ~target ~dir_kind ~pps ~pp_names =
       (* Extend the dependency stack as we don't have locations at
          this point *)
       Dep_path.prepend_exn e (Preprocess pp_names))
-      (pps
-       >>= Lib.closure ~linking:true
-       >>= fun pps ->
+      (let* pps = pps in
+       let* pps = Lib.closure ~linking:true pps in
        match jbuild_driver with
        | None ->
          let+ driver =

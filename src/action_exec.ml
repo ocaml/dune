@@ -182,9 +182,11 @@ and exec_list l ~ectx ~dir ~env ~stdout_to ~stderr_to =
   | [t] ->
     exec t ~ectx ~dir ~env ~stdout_to ~stderr_to
   | t :: rest ->
-    (let stdout_to = Process.Output.multi_use stdout_to in
-     let stderr_to = Process.Output.multi_use stderr_to in
-     exec t ~ectx ~dir ~env ~stdout_to ~stderr_to) >>= fun () ->
+    let* () =
+      let stdout_to = Process.Output.multi_use stdout_to in
+      let stderr_to = Process.Output.multi_use stderr_to in
+      exec t ~ectx ~dir ~env ~stdout_to ~stderr_to
+    in
     exec_list rest ~ectx ~dir ~env ~stdout_to ~stderr_to
 
 let exec ~targets ~context ~env t =

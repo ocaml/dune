@@ -26,13 +26,14 @@ let print ?(skip_trailing_cr=Sys.win32) path1 path2 =
     | None -> fallback ()
     | Some prog ->
       Format.eprintf "%a@?" Errors.print loc;
-      Process.run ~dir ~env:Env.initial Strict prog
-        (List.concat
-           [ ["-u"]
-           ; if skip_trailing_cr then ["--strip-trailing-cr"] else []
-           ; [ file1; file2 ]
-           ])
-      >>= fun () ->
+      let* () =
+        Process.run ~dir ~env:Env.initial Strict prog
+          (List.concat
+             [ ["-u"]
+             ; if skip_trailing_cr then ["--strip-trailing-cr"] else []
+             ; [ file1; file2 ]
+             ])
+      in
       fallback ()
   in
   match !Clflags.diff_command with
@@ -42,8 +43,7 @@ let print ?(skip_trailing_cr=Sys.win32) path1 path2 =
     let cmd =
       sprintf "%s %s %s" cmd (quote_for_shell file1) (quote_for_shell file2)
     in
-    Process.run ~dir ~env:Env.initial Strict sh [arg; cmd]
-    >>= fun () ->
+    let* () = Process.run ~dir ~env:Env.initial Strict sh [arg; cmd] in
     die "command reported no differences: %s"
       (if Path.is_root dir then
          cmd
@@ -56,16 +56,17 @@ let print ?(skip_trailing_cr=Sys.win32) path1 path2 =
       match Bin.which ~path:(Env.path Env.initial) "patdiff" with
       | None -> normal_diff ()
       | Some prog ->
-        Process.run ~dir ~env:Env.initial Strict prog
-          [ "-keep-whitespace"
-          ; "-location-style"; "omake"
-          ; if Lazy.force Colors.stderr_supports_colors then
-              "-unrefined"
-            else
-              "-ascii"
-          ; file1
-          ; file2
-          ]
-        >>= fun () ->
+        let* () =
+          Process.run ~dir ~env:Env.initial Strict prog
+            [ "-keep-whitespace"
+            ; "-location-style"; "omake"
+            ; if Lazy.force Colors.stderr_supports_colors then
+                "-unrefined"
+              else
+                "-ascii"
+            ; file1
+            ; file2
+            ]
+        in
         (* Use "diff" if "patdiff" reported no differences *)
         normal_diff ()

@@ -20,7 +20,7 @@ module Ast = struct
 
   let decode elt =
     let open Stanza.Decoder in
-    let elt = elt >>| fun e -> Element e in
+    let elt = let+ e = elt in Element e in
     let rec one (kind : Dune_lang.Syntax.t) =
       peek_exn >>= function
       | Atom (loc, A "\\") -> Errors.fail loc "unexpected \\"
@@ -61,10 +61,10 @@ module Ast = struct
         junk >>> many union [] kind >>| fun to_remove ->
         diff (k (List.rev acc)) to_remove
       | Some _ ->
-        one kind >>= fun x ->
+        let* x = one kind in
         many k (x :: acc) kind
     in
-    Stanza.file_kind () >>= fun kind ->
+    let* kind = Stanza.file_kind () in
     match kind with
     | Dune -> many union [] kind
     | Jbuild -> one kind

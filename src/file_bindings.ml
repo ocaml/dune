@@ -55,9 +55,9 @@ module Unexpanded = struct
       { src; dst = None }
     | List (_, [_; Atom (_, A "as"); _]) ->
       enter
-        (decode >>= fun src ->
+        (let* src = decode in
          keyword "as" >>>
-         decode >>= fun dst ->
+         let* dst = decode in
          return { src; dst = Some dst })
     | sexp ->
       of_sexp_error (Dune_lang.Ast.loc sexp)

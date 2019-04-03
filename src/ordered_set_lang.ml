@@ -67,10 +67,10 @@ module Parse = struct
         let+ to_remove = junk >>> many [] kind in
         Diff (Union (List.rev acc), to_remove)
       | Some _ ->
-        one kind >>= fun x ->
+        let* x = one kind in
         many (x :: acc) kind
     in
-    Stanza.file_kind () >>= fun kind ->
+    let* kind = Stanza.file_kind () in
     match kind with
     | Dune -> many [] kind
     | Jbuild -> one kind
@@ -85,7 +85,7 @@ module Parse = struct
   let without_include ~elt =
     generic ~elt ~inc:(
       enter
-        (loc >>= fun loc ->
+        (let* loc = loc in
          Errors.fail loc "(:include ...) is not allowed here"))
 end
 

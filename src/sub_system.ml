@@ -125,14 +125,15 @@ module Register_end_point(M : End_point) = struct
   let gen info (c : Library_compilation_context.t) =
     let open Result.O in
     let backends =
-      Lib.Compile.direct_requires c.compile_info >>= fun deps ->
-      Lib.Compile.pps             c.compile_info >>= fun pps  ->
-      (match M.Info.backends info with
-       | None -> Ok None
-       | Some l ->
-         Result.List.map l ~f:(M.Backend.resolve (Scope.libs c.scope))
-         >>| Option.some)
-      >>= fun written_by_user ->
+      let* deps = Lib.Compile.direct_requires c.compile_info in
+      let* pps = Lib.Compile.pps c.compile_info in
+      let* written_by_user =
+        match M.Info.backends info with
+         | None -> Ok None
+         | Some l ->
+           Result.List.map l ~f:(M.Backend.resolve (Scope.libs c.scope))
+           >>| Option.some
+      in
       M.Backend.Selection_error.or_exn ~loc:(M.Info.loc info)
         (M.Backend.select_extensible_backends
            ?written_by_user

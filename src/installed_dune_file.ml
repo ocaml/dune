@@ -59,7 +59,7 @@ let of_sexp =
   in
   sum
     [ "dune",
-      (version >>= fun version ->
+      (let* version = version in
        set (Syntax.key Stanza.syntax) version
          (let+ parsing_context = get_all
           and+ sub_systems = list raw

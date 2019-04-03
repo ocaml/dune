@@ -43,12 +43,21 @@ let to_option = function
 let errorf fmt =
   Printf.ksprintf (fun x -> Error x) fmt
 
+let both a b =
+  match a with
+  | Error e -> Error e
+  | Ok a ->
+    match b with
+    | Error e -> Error e
+    | Ok b -> Ok (a, b)
+
 module O = struct
   let ( >>= ) t f = bind t ~f
   let ( >>| ) t f = map  t ~f
 
   let (let*) = (>>=)
   let (let+) = (>>|)
+  let (and+) = both
 end
 
 open O

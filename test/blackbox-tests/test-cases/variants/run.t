@@ -78,3 +78,7 @@ Solving variant ambiguity by specifying a concrete implementation.
   Entering directory 'variant-with-concrete-impl'
            bar alias default
   hello from lib2.default
+
+Don't fail when the same library is defined in multiple scopes.
+  $ dune build --root same-lib-in-multiple-scopes
+  Entering directory 'same-lib-in-multiple-scopes'

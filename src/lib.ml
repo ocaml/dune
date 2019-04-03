@@ -762,6 +762,10 @@ let rec find_implementation_for db lib ~variants =
       ~f:(fun variant acc ->
         List.rev_append acc
           (Variant.Map.Multi.find available_implementations variant))
+    |> List.sort_uniq ~compare:(fun (a:Lib_info.t) (b:Lib_info.t) ->
+      match Lib_name.compare a.name b.name with
+      | Eq -> Path.compare a.src_dir b.src_dir
+      | x -> x)
     |> fun x -> match x, db.parent with
     | [], None -> Ok None
     | [], Some db -> find_implementation_for db lib ~variants

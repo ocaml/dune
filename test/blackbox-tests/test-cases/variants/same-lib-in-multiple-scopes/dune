@@ -1,0 +1,9 @@
+(executable
+  (name exe)
+  (variants unix)
+  (libraries test))
+
+(alias
+ (name default)
+ (action
+  (run ./exe.exe)))

@@ -12,6 +12,9 @@
       ocamldep .foo.objs/foo2.ml.d
         ocamlc .foo.objs/byte/foo2.{cmi,cmo,cmt}
           odoc _doc/_odoc/lib/foo/foo2.odoc
+      ocamldep .foo.objs/foo3.ml.d
+        ocamlc .foo.objs/byte/foo3.{cmi,cmo,cmt}
+          odoc _doc/_odoc/lib/foo/private/foo3.odoc
       ocamldep .foo_byte.objs/foo_byte.ml.d
         ocamlc .foo_byte.objs/byte/foo_byte.{cmi,cmo,cmt}
           odoc _doc/_odoc/lib/foo.byte/foo_byte.odoc

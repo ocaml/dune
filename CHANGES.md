@@ -21,8 +21,11 @@ unreleased
 
 - Install .cmi files of private modules in a `.private` directory (#1983, fix
   #1973 @rgrinberg)
-  
+
 - Fix dune subst attempting to sunbstitute on directories. (#2000, fix #1997,
+  @rgrinberg)
+
+- Do not list private modules in the generated index. (#2009, fix #2008,
   @rgrinberg)
 
 1.8.2 (10/03/2019)

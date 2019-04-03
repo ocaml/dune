@@ -4,23 +4,36 @@ open Import
 module Outputs = Action_ast.Outputs
 module Diff_mode = Action_ast.Diff_mode
 
+module Generic = struct
+  type t =
+    { f : unit -> unit Fiber.t
+    ; id : Dune_lang.t Lazy.t
+    }
+
+  let create ~f ~id = { f; id }
+
+  let encode t = Lazy.force t.id
+  let run t = t.f ()
+end
+
 module Make_mapper
     (Src : Action_intf.Ast)
     (Dst : Action_intf.Ast)
 = struct
-  let map_one_step f (t : Src.t) ~dir ~f_program ~f_string ~f_path : Dst.t =
+  let map_one_step f (t : Src.t) ~dir ~f_program ~f_string ~f_path ~f_gen : Dst.t =
+    let f t ~dir = f t ~dir ~f_program ~f_string ~f_path ~f_gen in
     match t with
     | Run (prog, args) ->
       Run (f_program ~dir prog, List.map args ~f:(f_string ~dir))
     | Chdir (fn, t) ->
-      Chdir (f_path ~dir fn, f t ~dir:fn ~f_program ~f_string ~f_path)
+      Chdir (f_path ~dir fn, f t ~dir:fn)
     | Setenv (var, value, t) ->
-      Setenv (f_string ~dir var, f_string ~dir value, f t ~dir ~f_program ~f_string ~f_path)
+      Setenv (f_string ~dir var, f_string ~dir value, f t ~dir)
     | Redirect (outputs, fn, t) ->
-      Redirect (outputs, f_path ~dir fn, f t ~dir ~f_program ~f_string ~f_path)
+      Redirect (outputs, f_path ~dir fn, f t ~dir)
     | Ignore (outputs, t) ->
-      Ignore (outputs, f t ~dir ~f_program ~f_string ~f_path)
-    | Progn l -> Progn (List.map l ~f:(fun t -> f t ~dir ~f_program ~f_string ~f_path))
+      Ignore (outputs, f t ~dir)
+    | Progn l -> Progn (List.map l ~f:(fun t -> f t ~dir))
     | Echo xs -> Echo (List.map xs ~f:(f_string ~dir))
     | Cat x -> Cat (f_path ~dir x)
     | Copy (x, y) -> Copy (f_path ~dir x, f_path ~dir y)
@@ -46,9 +59,10 @@ module Make_mapper
         (List.map sources ~f:(f_path ~dir),
          List.map extras ~f:(f_string ~dir),
          f_path ~dir target)
+    | Generic g -> Generic (f_gen g)
 
-  let rec map t ~dir ~f_program ~f_string ~f_path =
-    map_one_step map t ~dir ~f_program ~f_string ~f_path
+  let rec map t ~dir ~f_program ~f_string ~f_path ~f_gen =
+    map_one_step map t ~dir ~f_program ~f_string ~f_path ~f_gen
 end
 
 module Prog = struct
@@ -78,6 +92,7 @@ module type Ast = Action_intf.Ast
   with type program = Prog.t
   with type path    = Path.t
   with type string  = String.t
+  with type generic = Generic.t
 module rec Ast : Ast = Ast
 
 module String_with_sexp = struct
@@ -86,29 +101,32 @@ module String_with_sexp = struct
   let encode = Dune_lang.Encoder.string
 end
 
-include Action_ast.Make(Prog)(Path_dune_lang)(String_with_sexp)(Ast)
+include Action_ast.Make(Prog)(Path_dune_lang)(String_with_sexp)(Generic)(Ast)
 type program = Prog.t
 type path = Path.t
 type string = String.t
+type generic = Generic.t
 
 module For_shell = struct
   module type Ast = Action_intf.Ast
     with type program = string
     with type path    = string
     with type string  = string
+    with type generic = Dune_lang.t
   module rec Ast : Ast = Ast
 
   include Action_ast.Make
       (String_with_sexp)
       (String_with_sexp)
       (String_with_sexp)
+      (Dune_lang)
       (Ast)
 end
 
 module Relativise = Make_mapper(Ast)(For_shell.Ast)
 
 let for_shell t =
-  let rec loop t ~dir ~f_program ~f_string ~f_path =
+  let rec loop t ~dir ~f_program ~f_string ~f_path ~f_gen =
     match t with
     | Symlink (src, dst) ->
       let src =
@@ -119,7 +137,7 @@ let for_shell t =
       let dst = Path.reach ~from:dir dst in
       For_shell.Symlink (src, dst)
     | t ->
-      Relativise.map_one_step loop t ~dir ~f_program ~f_string ~f_path
+      Relativise.map_one_step loop t ~dir ~f_program ~f_string ~f_path ~f_gen
   in
   loop t
     ~dir:Path.root
@@ -129,6 +147,7 @@ let for_shell t =
       match x with
       | Ok p -> Path.reach p ~from:dir
       | Error e -> e.program)
+    ~f_gen:Generic.encode
 
 module Unresolved = struct
   module Program = struct
@@ -147,6 +166,7 @@ module Unresolved = struct
     with type program = Program.t
     with type path    = Path.t
     with type string  = String.t
+    with type generic = Nothing.t
   module rec Uast : Uast = Uast
   include Uast
 
@@ -160,6 +180,7 @@ module Unresolved = struct
       ~f_program:(fun ~dir:_ -> function
         | This p -> Ok p
         | Search (loc, s) -> Ok (f loc s))
+      ~f_gen:(fun _ -> assert false)
 end
 
 let fold_one_step t ~init:acc ~f =
@@ -183,6 +204,7 @@ let fold_one_step t ~init:acc ~f =
   | Mkdir _
   | Digest_files _
   | Diff _
+  | Generic _
   | Merge_files_into _ -> acc
 
 include Make_mapper(Ast)(Ast)
@@ -219,6 +241,7 @@ let sandbox t ~sandboxed ~deps ~targets ~eval_pred : t =
         ~f_string:(fun ~dir:_ x -> x)
         ~f_path:(fun ~dir:_ p -> sandboxed p)
         ~f_program:(fun ~dir:_ x -> Result.map x ~f:sandboxed)
+        ~f_gen:Fn.id
     ; Progn (List.filter_map targets ~f:(fun path ->
         if Path.is_managed path then
           Some (Rename (sandboxed path, path))

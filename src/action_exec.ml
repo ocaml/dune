@@ -32,6 +32,7 @@ let exec_echo stdout_to str =
 
 let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to =
   match (t : Action.t) with
+  | Generic g -> Action.Generic.run g
   | Run (Error e, _) ->
     Action.Prog.Not_found.raise e
   | Run (Ok prog, args) ->

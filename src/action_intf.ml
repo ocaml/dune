@@ -18,6 +18,7 @@ module type Ast = sig
   type program
   type path
   type string
+  type generic
 
   module Diff : sig
     type file = { src : path; dst : path }
@@ -51,6 +52,7 @@ module type Ast = sig
     | Digest_files   of path list
     | Diff           of Diff.t
     | Merge_files_into of path list * string list * path
+    | Generic        of generic
 end
 
 module type Helpers = sig
@@ -58,6 +60,7 @@ module type Helpers = sig
   type path
   type string
   type t
+  type generic
 
   val run : program -> string list -> t
   val chdir : path -> t -> t
@@ -82,4 +85,5 @@ module type Helpers = sig
   val mkdir : path -> t
   val digest_files : path list -> t
   val diff : ?optional:bool -> ?mode:Diff_mode.t -> path -> path -> t
+  val generic : generic -> t
 end

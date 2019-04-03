@@ -18,10 +18,12 @@ module Make
     (Program : Dune_lang.Conv)
     (Path    : Dune_lang.Conv)
     (String  : Dune_lang.Conv)
+    (Generic : sig type t end)
     (Ast : Action_intf.Ast
      with type program := Program.t
      with type path    := Path.t
-     with type string  := String.t) =
+     with type string  := String.t
+     with type generic := Generic.t) =
 struct
   include Ast
 
@@ -180,6 +182,7 @@ struct
         ; List (List.map ~f:string extras)
         ; path target
         ]
+    | Generic _ -> assert false
 
   let run prog args = Run (prog, args)
   let chdir path t = Chdir (path, t)
@@ -205,4 +208,5 @@ struct
   let digest_files files = Digest_files files
   let diff ?(optional=false) ?(mode=Diff_mode.Text) file1 file2 =
     Diff { optional; file1; file2; mode }
+  let generic g = Generic g
 end

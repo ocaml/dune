@@ -16,6 +16,7 @@ let remove_locs =
       ~f_program:(fun ~dir:_ -> String_with_vars.remove_locs)
       ~f_path:(fun ~dir:_ -> String_with_vars.remove_locs)
       ~f_string:(fun ~dir:_ -> String_with_vars.remove_locs)
+      ~f_gen:Fn.id
 
 let check_mkdir loc path =
   if not (Path.is_managed path) then
@@ -140,6 +141,7 @@ module Partial = struct
         (List.map ~f:(E.path ~expander) sources,
          List.map ~f:(E.string ~expander) extras,
          E.path ~expander target)
+    | Generic _ -> assert false
 end
 
 module E = struct
@@ -249,6 +251,7 @@ let rec partial_expand t ~map_exe ~expander : Partial.t =
       (List.map sources ~f:(E.path ~expander),
        List.map extras ~f:(E.string ~expander),
        E.path ~expander target)
+  | Generic _ -> .
 
 module Infer = struct
   module Outcome = struct
@@ -317,6 +320,7 @@ module Infer = struct
       | System _
       | Bash _
       | Remove_tree _
+      | Generic _
       | Mkdir _ -> acc
 
     let infer t =

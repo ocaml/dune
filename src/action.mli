@@ -1,6 +1,16 @@
 open! Stdune
 open! Import
 
+module Generic : sig
+  type t
+
+  val create : f:(unit -> unit Fiber.t) -> id:Dune_lang.t Lazy.t -> t
+
+  val encode : t -> Dune_lang.t
+
+  val run : t -> unit Fiber.t
+end
+
 module Outputs : module type of struct include Action_intf.Outputs end
 module Diff_mode : module type of struct include Action_intf.Diff_mode end
 
@@ -11,6 +21,7 @@ module Make_mapper (Src : Action_intf.Ast) (Dst : Action_intf.Ast) : sig
     -> f_program:(dir:Src.path -> Src.program -> Dst.program)
     -> f_string:(dir:Src.path -> Src.string -> Dst.string)
     -> f_path:(dir:Src.path -> Src.path -> Dst.path)
+    -> f_gen:(Src.generic -> Dst.generic)
     -> Dst.t
 end
 
@@ -35,11 +46,13 @@ include Action_intf.Ast
   with type program = Prog.t
   with type path    = Path.t
   with type string  = string
+  with type generic = Generic.t
 
 include Action_intf.Helpers
   with type program := Prog.t
   with type path    := Path.t
   with type string  := string
+  with type generic := Generic.t
   with type t       := t
 
 val decode : t Dune_lang.Decoder.t
@@ -49,6 +62,7 @@ module For_shell : sig
     with type program := string
     with type path    := string
     with type string  := string
+    with type generic := Dune_lang.t
 
   val encode : t Dune_lang.Encoder.t
 end

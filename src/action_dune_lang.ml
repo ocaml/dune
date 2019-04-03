@@ -3,13 +3,15 @@ open! Stdune
 type program = String_with_vars.t
 type string = String_with_vars.t
 type path = String_with_vars.t
+type generic = Nothing.t
 
 module type Uast = Action_intf.Ast
   with type program = String_with_vars.t
   with type path    = String_with_vars.t
   with type string  = String_with_vars.t
+  with type generic = Nothing.t
 module rec Uast : Uast = Uast
-include Action_ast.Make(String_with_vars)(String_with_vars)(String_with_vars)(Uast)
+include Action_ast.Make(String_with_vars)(String_with_vars)(String_with_vars)(Nothing)(Uast)
 
 module Mapper = Action.Make_mapper(Uast)(Uast)
 
@@ -17,6 +19,7 @@ let upgrade_to_dune =
   let id ~dir:_ p = p in
   let dir = String_with_vars.make_text Loc.none "" in
   Mapper.map ~dir ~f_program:id ~f_path:id
+    ~f_gen:Fn.id
     ~f_string:(fun ~dir:_ sw ->
       String_with_vars.upgrade_to_dune sw ~allow_first_dep_var:false)
 

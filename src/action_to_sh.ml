@@ -29,6 +29,7 @@ let mkdir p = Run ("mkdir", ["-p"; p])
 let simplify act =
   let rec loop (act : Action.For_shell.t) acc =
     match act with
+    | Generic _ -> assert false
     | Run (prog, args) ->
       Run (prog, args) :: acc
     | Chdir (p, act) ->

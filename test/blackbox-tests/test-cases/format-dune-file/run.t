@@ -144,16 +144,20 @@ When a comment is at the end of a list, the ")" is on a own line.
    ; multiline
    )
 
-Files in OCaml syntax are ignored with a warning.
+Files in OCaml syntax are copied verbatim (but error when passed in stdin).
 
   $ dune format-dune-file < ocaml-syntax.dune
   File "", line 1, characters 0-20:
-  Warning: OCaml syntax is not supported, skipping.
+  Error: OCaml syntax is not supported.
+  [1]
   $ dune format-dune-file ocaml-syntax.dune
-  File "$TESTCASE_ROOT/ocaml-syntax.dune", line 1, characters 0-20:
-  1 | (* -*- tuareg -*- *)
-      ^^^^^^^^^^^^^^^^^^^^
-  Warning: OCaml syntax is not supported, skipping.
+  (* -*- tuareg -*- *)
+  
+  let () = Jbuild_plugin.V1.send {|
+  (alias
+   (name runtest)
+   (action (echo "ocaml syntax")))
+  |}
 
 Non 0 error code:
 

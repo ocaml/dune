@@ -4,6 +4,7 @@ Formatting can be checked using the @fmt target:
   $ cp enabled/reason_file.re.orig enabled/reason_file.re
   $ cp enabled/dune.orig enabled/dune
   $ dune build --display short @fmt
+          dune enabled/dune-ocaml-syntax/.formatted/dune
       ocamldep fake-tools/.ocamlformat.eobjs/ocamlformat.ml.d
       ocamldep fake-tools/.ocamlformat.eobjs/refmt.ml.d
         ocamlc fake-tools/.ocamlformat.eobjs/byte/ocamlformat.{cmi,cmo,cmt}
@@ -42,6 +43,7 @@ Configuration files are taken into account for this action:
 
   $ touch enabled/.ocamlformat
   $ dune build --display short @fmt
+          dune enabled/dune-ocaml-syntax/.formatted/dune
          refmt enabled/.formatted/reason_file.re
   File "enabled/reason_file.re", line 1, characters 0-0:
   Files _build/default/enabled/reason_file.re and _build/default/enabled/.formatted/reason_file.re differ.
@@ -88,6 +90,7 @@ All .ocamlformat files are considered dependencies:
 
   $ echo 'margin = 70' > .ocamlformat
   $ dune build --display short @fmt
+          dune enabled/dune-ocaml-syntax/.formatted/dune
          refmt enabled/.formatted/reason_file.re
          refmt enabled/.formatted/reason_file.rei
   File "enabled/reason_file.rei", line 1, characters 0-0:

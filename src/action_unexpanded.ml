@@ -163,6 +163,9 @@ module E = struct
   let prog_and_args = expand ~mode:Many ~map:Partial.E.prog_and_args_of_values
 end
 
+include (struct
+  (* Generic _ is not possible, but we cannot refute it in 4.02 *)
+[@@@warning "-56"]
 let rec partial_expand t ~map_exe ~expander : Partial.t =
   match t with
   | Run (prog, args) ->
@@ -251,7 +254,8 @@ let rec partial_expand t ~map_exe ~expander : Partial.t =
       (List.map sources ~f:(E.path ~expander),
        List.map extras ~f:(E.string ~expander),
        E.path ~expander target)
-  | Generic _ -> .
+  | Generic _ -> assert false
+end)
 
 module Infer = struct
   module Outcome = struct

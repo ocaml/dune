@@ -993,6 +993,14 @@
     (diff? run.t run.t.corrected)))))
 
 (alias
+ (name odoc-package-mld-link)
+ (deps (package dune) (source_tree test-cases/odoc-package-mld-link))
+ (action
+  (chdir
+   test-cases/odoc-package-mld-link
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name odoc-unique-mlds)
  (deps (package dune) (source_tree test-cases/odoc-unique-mlds))
  (action
@@ -1498,6 +1506,7 @@
   (alias ocamldep-multi-stanzas)
   (alias ocamllex-jbuild)
   (alias odoc)
+  (alias odoc-package-mld-link)
   (alias odoc-unique-mlds)
   (alias old-dune-subsystem)
   (alias optional)
@@ -1653,6 +1662,7 @@
   (alias ocaml-syntax)
   (alias ocamldep-multi-stanzas)
   (alias ocamllex-jbuild)
+  (alias odoc-package-mld-link)
   (alias old-dune-subsystem)
   (alias optional)
   (alias output-obj)

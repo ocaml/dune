@@ -1,13 +1,13 @@
   $ dune build @doc --display short
       ocamldep .bar.objs/bar.ml.d
         ocamlc .bar.objs/byte/bar.{cmi,cmo,cmt}
-          odoc _doc/_odoc/lib/bar/bar.odoc
-          odoc _doc/_html/bar/Bar/.dune-keep,_doc/_html/bar/Bar/index.html
           odoc _doc/_odoc/pkg/bar/page-index.odoc
+          odoc _doc/_odoc/lib/bar/bar.odoc
           odoc _doc/_html/bar/index.html
           odoc _doc/_html/highlight.pack.js,_doc/_html/odoc.css
       ocamldep .foo.objs/foo.ml.d
         ocamlc .foo.objs/byte/foo.{cmi,cmo,cmt}
+          odoc _doc/_odoc/pkg/foo/page-index.odoc
           odoc _doc/_odoc/lib/foo/foo.odoc
       ocamldep .foo.objs/foo2.ml.d
         ocamlc .foo.objs/byte/foo2.{cmi,cmo,cmt}
@@ -19,9 +19,9 @@
         ocamlc .foo_byte.objs/byte/foo_byte.{cmi,cmo,cmt}
           odoc _doc/_odoc/lib/foo.byte/foo_byte.odoc
           odoc _doc/_html/foo/Foo2/.dune-keep,_doc/_html/foo/Foo2/index.html
-          odoc _doc/_odoc/pkg/foo/page-index.odoc
-          odoc _doc/_html/foo/index.html
+          odoc _doc/_html/bar/Bar/.dune-keep,_doc/_html/bar/Bar/index.html
           odoc _doc/_html/foo/Foo_byte/.dune-keep,_doc/_html/foo/Foo_byte/index.html
+          odoc _doc/_html/foo/index.html
           odoc _doc/_html/foo/Foo/.dune-keep,_doc/_html/foo/Foo/index.html
   $ dune runtest --display short
   <!DOCTYPE html>

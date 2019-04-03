@@ -71,10 +71,15 @@ module Dep = struct
 
   let alias = Alias.make ".odoc-all"
 
-  let deps ctx requires =
+  let deps ctx pkg requires =
     Build.of_result_map requires ~f:(fun libs ->
       Build.deps (
-        List.fold_left libs ~init:Dep.Set.empty ~f:(fun acc (lib : Lib.t) ->
+        let init =
+          match pkg with
+          | Some p -> Dep.Set.singleton (Dep.alias (alias ~dir:(Paths.odocs ctx (Pkg p))))
+          | None -> Dep.Set.empty
+        in
+        List.fold_left libs ~init ~f:(fun acc (lib : Lib.t) ->
           if Lib.is_local lib then
             let dir = Paths.odocs ctx (Lib lib) in
             let alias = alias ~dir in
@@ -156,7 +161,7 @@ let compile_mld sctx (m : Mld.t) ~includes ~doc_dir ~pkg =
        ]);
   odoc_file
 
-let odoc_include_flags ctx requires =
+let odoc_include_flags ctx pkg requires =
   Arg_spec.of_result_map requires ~f:(fun libs ->
     let paths =
       libs |> List.fold_left ~f:(fun paths lib ->
@@ -166,12 +171,17 @@ let odoc_include_flags ctx requires =
           paths
         )
       ) ~init:Path.Set.empty in
+    let paths =
+      match pkg with
+      | Some p -> Path.Set.add paths (Paths.odocs ctx (Pkg p))
+      | None -> paths
+    in
     Arg_spec.S (List.concat_map (Path.Set.to_list paths)
                   ~f:(fun dir -> [Arg_spec.A "-I"; Path dir])))
 
-let setup_html sctx (odoc_file : odoc) ~requires =
+let setup_html sctx (odoc_file : odoc) ~pkg ~requires =
   let ctx = Super_context.context sctx in
-  let deps = Dep.deps ctx requires in
+  let deps = Dep.deps ctx pkg requires in
   let to_remove, dune_keep =
     match odoc_file.source with
     | Mld -> odoc_file.html_file, []
@@ -189,7 +199,7 @@ let setup_html sctx (odoc_file : odoc) ~requires =
        :: Build.run ~dir:(Paths.html_root ctx)
             (odoc sctx)
             [ A "html"
-            ; odoc_include_flags ctx requires
+            ; odoc_include_flags ctx pkg requires
             ; A "-o"; Path (Paths.html_root ctx)
             ; Dep odoc_file.odoc_input
             ; Hidden_targets [odoc_file.html_file]
@@ -206,8 +216,8 @@ let setup_library_odoc_rules sctx (library : Library.t) ~scope ~modules
   let pkg_or_lnu = pkg_or_lnu lib in
   let ctx = Super_context.context sctx in
   let doc_dir = Paths.odocs ctx (Lib lib) in
-  let odoc_include_flags = odoc_include_flags ctx requires in
-  let includes = (Dep.deps ctx requires, odoc_include_flags) in
+  let odoc_include_flags = odoc_include_flags ctx (Lib.package lib) requires in
+  let includes = (Dep.deps ctx (Lib.package lib) requires, odoc_include_flags) in
   let modules_and_odoc_files =
     List.map (Module.Name.Map.values modules) ~f:(
       compile_module sctx ~includes ~dep_graphs
@@ -353,7 +363,8 @@ let setup_lib_html_rules_def =
   let f (sctx, lib, requires) =
     let ctx = Super_context.context sctx in
     let odocs = odocs ctx (Lib lib) in
-    List.iter odocs ~f:(setup_html sctx ~requires);
+    let pkg = Lib.package lib in
+    List.iter odocs ~f:(setup_html sctx ~pkg ~requires);
     let html_files = List.map ~f:(fun o -> o.html_file) odocs in
     let static_html = static_html ctx in
     Build_system.Alias.add_deps (Dep.html_alias ctx (Lib lib))
@@ -408,7 +419,7 @@ let setup_pkg_html_rules_def =
        let ctx = Super_context.context sctx in
        List.iter libs ~f:(setup_lib_html_rules sctx ~requires);
        let pkg_odocs = odocs ctx (Pkg pkg) in
-       List.iter pkg_odocs ~f:(setup_html sctx ~requires);
+       List.iter pkg_odocs ~f:(setup_html sctx ~pkg:(Some pkg) ~requires);
        let odocs =
          List.concat (
            pkg_odocs

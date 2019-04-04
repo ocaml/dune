@@ -4,11 +4,19 @@ type stanza = Stanza.t = ..
 
 module Stanza = struct
   open Stanza.Decoder
+  let c_flags ~since =
+    let check =
+      Option.map since ~f:(fun since ->
+        Syntax.since Stanza.syntax since)
+    in
+    let+ c = Ordered_set_lang.Unexpanded.field "c_flags" ?check
+    and+ cxx = Ordered_set_lang.Unexpanded.field "cxx_flags" ?check
+    in
+    C.Kind.Dict.make ~c ~cxx
 
   type config =
     { flags          : Ocaml_flags.Spec.t
-    ; c_flags        : Ordered_set_lang.Unexpanded.t
-    ; cxx_flags      : Ordered_set_lang.Unexpanded.t
+    ; c_flags        : Ordered_set_lang.Unexpanded.t C.Kind.Dict.t
     ; env_vars       : Env.t
     ; binaries       : File_bindings.Unexpanded.t
     }
@@ -35,10 +43,7 @@ module Stanza = struct
 
   let config =
     let+ flags = Ocaml_flags.Spec.decode
-    and+ c_flags = Ordered_set_lang.Unexpanded.field "c_flags"
-                     ~check:(Syntax.since Stanza.syntax (1, 7))
-    and+ cxx_flags = Ordered_set_lang.Unexpanded.field "cxx_flags"
-                       ~check:(Syntax.since Stanza.syntax (1, 7))
+    and+ c_flags = c_flags ~since:(Some (1, 7))
     and+ env_vars = env_vars_field
     and+ binaries = field ~default:File_bindings.empty "binaries"
                       (Syntax.since Stanza.syntax (1, 6)
@@ -46,7 +51,6 @@ module Stanza = struct
     in
     { flags
     ; c_flags
-    ; cxx_flags
     ; env_vars
     ; binaries
     }

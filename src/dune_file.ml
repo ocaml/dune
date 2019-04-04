@@ -845,9 +845,8 @@ module Library = struct
     ; ppx_runtime_libraries    : (Loc.t * Lib_name.t) list
     ; modes                    : Mode_conf.Set.t
     ; kind                     : Lib_kind.t
-    ; c_flags                  : Ordered_set_lang.Unexpanded.t
+    ; c_flags                  : Ordered_set_lang.Unexpanded.t C.Kind.Dict.t
     ; c_names                  : Ordered_set_lang.t option
-    ; cxx_flags                : Ordered_set_lang.Unexpanded.t
     ; cxx_names                : Ordered_set_lang.t option
     ; library_flags            : Ordered_set_lang.Unexpanded.t
     ; c_library_flags          : Ordered_set_lang.Unexpanded.t
@@ -880,8 +879,7 @@ module Library = struct
          field "install_c_headers" (list string) ~default:[]
        and+ ppx_runtime_libraries =
          field "ppx_runtime_libraries" (list (located Lib_name.decode)) ~default:[]
-       and+ c_flags = field_oslu "c_flags"
-       and+ cxx_flags = field_oslu "cxx_flags"
+       and+ c_flags = Dune_env.Stanza.c_flags ~since:None
        and+ c_names = field_o "c_names" Ordered_set_lang.decode
        and+ cxx_names = field_o "cxx_names" Ordered_set_lang.decode
        and+ library_flags = field_oslu "library_flags"
@@ -999,7 +997,6 @@ module Library = struct
            ; c_names
            ; c_flags
            ; cxx_names
-           ; cxx_flags
            ; library_flags
            ; c_library_flags
            ; self_build_stubs_archive

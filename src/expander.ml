@@ -201,16 +201,15 @@ type expansion_kind =
   | Dynamic of dynamic
   | Static
 
-let cc_of_c_flags t cc ~dir =
+let cc_of_c_flags t (cc : (unit, string list) Build.t C.Kind.Dict.t) =
   let open Build.O in
-  cc ~dir >>^ fun flags ->
-  Value.L.strings (t.c_compiler :: flags)
-
-let cxx_of_cxx_flags = cc_of_c_flags
+  C.Kind.Dict.map cc ~f:(fun cc ->
+    cc >>^ fun flags ->
+    Value.L.strings (t.c_compiler :: flags))
 
 let expand_and_record acc ~map_exe ~dep_kind ~scope
       ~expansion_kind ~dir ~pform t expansion
-      ~cxx ~cc =
+      ~(cc : dir:Path.t -> (unit, Value.t list) Build.t C.Kind.Dict.t) =
   let key = String_with_vars.Var.full_name pform in
   let loc = String_with_vars.Var.loc pform in
   let relative = Path.relative ~error_loc:loc in
@@ -230,8 +229,8 @@ let expand_and_record acc ~map_exe ~dep_kind ~scope
   match (expansion : Pform.Expansion.t) with
   | Var (Project_root | First_dep | Deps | Targets | Named_local | Values _)
   | Macro ((Ocaml_config | Env ), _) -> assert false
-  | Var Cc -> add_ddep (cc ~dir)
-  | Var Cxx -> add_ddep (cxx ~dir)
+  | Var Cc -> add_ddep (cc ~dir).c
+  | Var Cxx -> add_ddep (cc ~dir).cxx
   | Macro (Path_no_dep, s) -> Some [Value.Dir (relative dir s)]
   | Macro (Exe, s) -> Some (path_exp (map_exe (relative dir s)))
   | Macro (Dep, s) -> Some (path_exp (relative dir s))
@@ -325,7 +324,7 @@ let expand_and_record acc ~map_exe ~dep_kind ~scope
     end
 
 let expand_and_record_deps acc ~dir ~read_package ~dep_kind
-      ~targets_written_by_user ~map_exe ~expand_var ~cc ~cxx
+      ~targets_written_by_user ~map_exe ~expand_var ~cc
       t pform syntax_version =
   let res =
     expand_var t pform syntax_version
@@ -352,8 +351,7 @@ let expand_and_record_deps acc ~dir ~read_package ~dep_kind
         | _ ->
           expand_and_record acc ~map_exe ~dep_kind ~scope:t.scope
             ~expansion_kind:(Dynamic { read_package }) ~dir ~pform
-            ~cc ~cxx
-            t expansion
+            ~cc t expansion
     )
   in
   Option.iter res ~f:(fun v ->
@@ -363,15 +361,14 @@ let expand_and_record_deps acc ~dir ~read_package ~dep_kind
   Option.map res ~f:Result.ok
 
 let expand_no_ddeps acc ~dir ~dep_kind ~map_exe ~expand_var
-      ~cc ~cxx
-      t pform syntax_version =
+      ~cc t pform syntax_version =
   let res =
     expand_var t pform syntax_version
     |> Option.bind ~f:(function
       | Ok s -> Some s
       | Error (expansion : Pform.Expansion.t) ->
         expand_and_record acc ~map_exe ~dep_kind ~scope:t.scope
-          ~cc ~cxx ~expansion_kind:Static ~dir ~pform t expansion)
+          ~cc ~expansion_kind:Static ~dir ~pform t expansion)
   in
   Option.iter res ~f:(fun v ->
     acc.sdeps <- Path.Set.union
@@ -380,9 +377,8 @@ let expand_no_ddeps acc ~dir ~dep_kind ~map_exe ~expand_var
   Option.map res ~f:Result.ok
 
 let gen_with_record_deps ~expand t resolved_forms ~dep_kind ~map_exe
-      ~c_flags ~cxx_flags =
-  let cc = cc_of_c_flags t c_flags in
-  let cxx = cxx_of_cxx_flags t cxx_flags in
+      ~(c_flags : dir:Path.t -> (unit, string list) Build.t C.Kind.Dict.t) =
+  let cc ~dir = cc_of_c_flags t (c_flags ~dir) in
   let expand_var =
     expand
       (* we keep the dir constant here to replicate the old behavior of: (chdir
@@ -390,7 +386,7 @@ let gen_with_record_deps ~expand t resolved_forms ~dep_kind ~map_exe
       resolved_forms
       ~dir:t.dir ~dep_kind
       ~map_exe
-      ~expand_var:t.expand_var ~cc ~cxx in
+      ~expand_var:t.expand_var ~cc in
   let bindings =
     Pform.Map.of_list_exn
       [ "cc", Pform.Var.Cc

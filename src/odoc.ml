@@ -76,7 +76,9 @@ module Dep = struct
       Build.deps (
         let init =
           match pkg with
-          | Some p -> Dep.Set.singleton (Dep.alias (alias ~dir:(Paths.odocs ctx (Pkg p))))
+          | Some p ->
+            Dep.Set.singleton
+              (Dep.alias (alias ~dir:(Paths.odocs ctx (Pkg p))))
           | None -> Dep.Set.empty
         in
         List.fold_left libs ~init ~f:(fun acc (lib : Lib.t) ->

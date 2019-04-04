@@ -4,10 +4,13 @@ open! Stdune
 
 type t
 
+module Spec : sig
+  type t
+  val decode : t Stanza.Decoder.fields_parser
+end
+
 val make
-  :  flags          : Ordered_set_lang.Unexpanded.t
-  -> ocamlc_flags   : Ordered_set_lang.Unexpanded.t
-  -> ocamlopt_flags : Ordered_set_lang.Unexpanded.t
+  :  spec:Spec.t
   -> default:t
   -> eval:(Ordered_set_lang.Unexpanded.t
            -> standard:(unit, string list) Build.t

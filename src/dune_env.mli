@@ -4,9 +4,7 @@ type stanza = Stanza.t = ..
 
 module Stanza : sig
   type config =
-    { flags          : Ordered_set_lang.Unexpanded.t
-    ; ocamlc_flags   : Ordered_set_lang.Unexpanded.t
-    ; ocamlopt_flags : Ordered_set_lang.Unexpanded.t
+    { flags          : Ocaml_flags.Spec.t
     ; c_flags        : Ordered_set_lang.Unexpanded.t
     ; cxx_flags      : Ordered_set_lang.Unexpanded.t
     ; env_vars       : Env.t

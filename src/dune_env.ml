@@ -5,12 +5,8 @@ type stanza = Stanza.t = ..
 module Stanza = struct
   open Stanza.Decoder
 
-  let field_oslu name = Ordered_set_lang.Unexpanded.field name
-
   type config =
-    { flags          : Ordered_set_lang.Unexpanded.t
-    ; ocamlc_flags   : Ordered_set_lang.Unexpanded.t
-    ; ocamlopt_flags : Ordered_set_lang.Unexpanded.t
+    { flags          : Ocaml_flags.Spec.t
     ; c_flags        : Ordered_set_lang.Unexpanded.t
     ; cxx_flags      : Ordered_set_lang.Unexpanded.t
     ; env_vars       : Env.t
@@ -38,9 +34,7 @@ module Stanza = struct
          Errors.fail loc "Variable %s is specified several times" k)
 
   let config =
-    let+ flags = field_oslu "flags"
-    and+ ocamlc_flags = field_oslu "ocamlc_flags"
-    and+ ocamlopt_flags = field_oslu "ocamlopt_flags"
+    let+ flags = Ocaml_flags.Spec.decode
     and+ c_flags = Ordered_set_lang.Unexpanded.field "c_flags"
                      ~check:(Syntax.since Stanza.syntax (1, 7))
     and+ cxx_flags = Ordered_set_lang.Unexpanded.field "cxx_flags"
@@ -51,8 +45,6 @@ module Stanza = struct
                        >>> File_bindings.Unexpanded.decode)
     in
     { flags
-    ; ocamlc_flags
-    ; ocamlopt_flags
     ; c_flags
     ; cxx_flags
     ; env_vars

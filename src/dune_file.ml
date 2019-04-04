@@ -661,9 +661,7 @@ module Buildable = struct
     ; preprocess               : Preprocess_map.t
     ; preprocessor_deps        : Dep_conf.t list
     ; lint                     : Preprocess_map.t
-    ; flags                    : Ordered_set_lang.Unexpanded.t
-    ; ocamlc_flags             : Ordered_set_lang.Unexpanded.t
-    ; ocamlopt_flags           : Ordered_set_lang.Unexpanded.t
+    ; flags                    : Ocaml_flags.Spec.t
     ; js_of_ocaml              : Js_of_ocaml.t
     ; allow_overlapping_dependencies : bool
     }
@@ -679,9 +677,7 @@ module Buildable = struct
     and+ modules_without_implementation =
       modules_field "modules_without_implementation"
     and+ libraries = field "libraries" Lib_deps.decode ~default:[]
-    and+ flags = field_oslu "flags"
-    and+ ocamlc_flags = field_oslu "ocamlc_flags"
-    and+ ocamlopt_flags = field_oslu "ocamlopt_flags"
+    and+ flags = Ocaml_flags.Spec.decode
     and+ js_of_ocaml =
       field "js_of_ocaml" Js_of_ocaml.decode ~default:Js_of_ocaml.default
     and+ allow_overlapping_dependencies =
@@ -695,8 +691,6 @@ module Buildable = struct
     ; modules_without_implementation
     ; libraries
     ; flags
-    ; ocamlc_flags
-    ; ocamlopt_flags
     ; js_of_ocaml
     ; allow_overlapping_dependencies
     }

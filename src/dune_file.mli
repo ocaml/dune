@@ -127,9 +127,7 @@ module Buildable : sig
     ; preprocess               : Preprocess_map.t
     ; preprocessor_deps        : Dep_conf.t list
     ; lint                     : Lint.t
-    ; flags                    : Ordered_set_lang.Unexpanded.t
-    ; ocamlc_flags             : Ordered_set_lang.Unexpanded.t
-    ; ocamlopt_flags           : Ordered_set_lang.Unexpanded.t
+    ; flags                    : Ocaml_flags.Spec.t
     ; js_of_ocaml              : Js_of_ocaml.t
     ; allow_overlapping_dependencies : bool
     }

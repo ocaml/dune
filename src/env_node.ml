@@ -104,9 +104,7 @@ let rec ocaml_flags t ~profile ~expander =
       | Some cfg ->
         let expander = Expander.set_dir expander ~dir:t.dir in
         Ocaml_flags.make
-          ~flags:cfg.flags
-          ~ocamlc_flags:cfg.ocamlc_flags
-          ~ocamlopt_flags:cfg.ocamlopt_flags
+          ~spec:cfg.flags
           ~default
           ~eval:(Expander.expand_and_eval_set expander)
     in

@@ -238,9 +238,7 @@ let partial_expand sctx ~dep_kind ~targets_written_by_user ~map_exe
 let ocaml_flags t ~dir (x : Buildable.t) =
   let expander = Env.expander t ~dir in
   Ocaml_flags.make
-    ~flags:x.flags
-    ~ocamlc_flags:x.ocamlc_flags
-    ~ocamlopt_flags:x.ocamlopt_flags
+    ~spec:x.flags
     ~default:(Env.ocaml_flags t ~dir)
     ~eval:(Expander.expand_and_eval_set expander)
 

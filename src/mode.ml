@@ -78,6 +78,8 @@ module Dict = struct
     ; native = x
     }
 
+  let make ~byte ~native = { byte ; native }
+
   module Set = struct
     type nonrec t = bool t
 

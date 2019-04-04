@@ -1,3 +1,10 @@
+unreleased
+----------
+
+- Fix invocation of odoc to add previously missing include paths, impacting
+  mld files that are not in directories containing libraries (#2016, fixes
+  #2007, @jonludlam)
+
 1.9.0 (09/04/2019)
 ------------------
 

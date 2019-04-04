@@ -998,7 +998,9 @@
  (action
   (chdir
    test-cases/odoc-package-mld-link
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} -skip-versions 4.02.3 -test run.t)
+    (diff? run.t run.t.corrected)))))
 
 (alias
  (name odoc-unique-mlds)
@@ -1662,7 +1664,6 @@
   (alias ocaml-syntax)
   (alias ocamldep-multi-stanzas)
   (alias ocamllex-jbuild)
-  (alias odoc-package-mld-link)
   (alias old-dune-subsystem)
   (alias optional)
   (alias output-obj)

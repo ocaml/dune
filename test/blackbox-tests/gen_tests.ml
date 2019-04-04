@@ -128,6 +128,7 @@ let exclusions =
   ; make "coq" ~external_deps:true ~coq:true
   ; make "github25" ~env:("OCAMLPATH", Dune_lang.atom "./findlib-packages")
   ; odoc "odoc"
+  ; odoc "odoc-package-mld-link"
   ; odoc "odoc-unique-mlds"
   ; odoc "github717-odoc-index"
   ; odoc "multiple-private-libs"

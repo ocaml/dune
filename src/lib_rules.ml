@@ -162,7 +162,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
 
   let build_c_file (lib : Library.t) ~dir ~expander ~includes (loc, src, dst) =
     let src = C.Source.path src in
-    let c_flags = SC.c_flags sctx ~dir ~expander ~lib in
+    let c_flags = (SC.c_flags sctx ~dir ~expander ~lib).c in
     SC.add_rule sctx ~loc ~dir
       (c_flags
        >>>
@@ -188,7 +188,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
       else
         [A "-o"; Target dst]
     in
-    let cxx_flags = SC.cxx_flags sctx ~dir ~expander ~lib in
+    let cxx_flags = (SC.c_flags sctx ~dir ~expander ~lib).cxx in
     SC.add_rule sctx ~loc ~dir
       (cxx_flags
        >>>

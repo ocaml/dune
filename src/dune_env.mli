@@ -4,11 +4,8 @@ type stanza = Stanza.t = ..
 
 module Stanza : sig
   type config =
-    { flags          : Ordered_set_lang.Unexpanded.t
-    ; ocamlc_flags   : Ordered_set_lang.Unexpanded.t
-    ; ocamlopt_flags : Ordered_set_lang.Unexpanded.t
-    ; c_flags        : Ordered_set_lang.Unexpanded.t
-    ; cxx_flags      : Ordered_set_lang.Unexpanded.t
+    { flags          : Ocaml_flags.Spec.t
+    ; c_flags        : Ordered_set_lang.Unexpanded.t C.Kind.Dict.t
     ; env_vars       : Env.t
     ; binaries       : File_bindings.Unexpanded.t
     }
@@ -21,6 +18,10 @@ module Stanza : sig
     { loc   : Loc.t
     ; rules : (pattern * config) list
     }
+
+  val c_flags
+    :  since:Syntax.Version.t option
+    -> Ordered_set_lang.Unexpanded.t C.Kind.Dict.t Stanza.Decoder.fields_parser
 
   val decode : t Dune_lang.Decoder.t
 

@@ -5,6 +5,8 @@ module Kind : sig
     | C
     | Cxx
 
+  val to_string : t -> string
+
   val pp : t Fmt.t
 
   type split =
@@ -28,11 +30,21 @@ module Kind : sig
       ; cxx : 'a
       }
 
-    val make : 'a -> 'a t
+    val c : 'a t -> 'a
+    val cxx : 'a t -> 'a
+
+    val map : 'a t -> f:('a -> 'b) -> 'b t
+    val mapi : 'a t -> f:(kind:kind -> 'a -> 'b) -> 'b t
+
+    val make_both : 'a -> 'a t
+
+    val make : c:'a -> cxx:'a -> 'a t
 
     val update : 'a t -> kind -> f:('a -> 'a) -> 'a t
 
     val merge : 'a t -> 'b t -> f:('a -> 'b -> 'c) -> 'c t
+
+    val get : 'a t -> kind -> 'a
   end with type kind := t
 end
 

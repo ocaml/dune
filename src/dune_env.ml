@@ -4,15 +4,19 @@ type stanza = Stanza.t = ..
 
 module Stanza = struct
   open Stanza.Decoder
-
-  let field_oslu name = Ordered_set_lang.Unexpanded.field name
+  let c_flags ~since =
+    let check =
+      Option.map since ~f:(fun since ->
+        Syntax.since Stanza.syntax since)
+    in
+    let+ c = Ordered_set_lang.Unexpanded.field "c_flags" ?check
+    and+ cxx = Ordered_set_lang.Unexpanded.field "cxx_flags" ?check
+    in
+    C.Kind.Dict.make ~c ~cxx
 
   type config =
-    { flags          : Ordered_set_lang.Unexpanded.t
-    ; ocamlc_flags   : Ordered_set_lang.Unexpanded.t
-    ; ocamlopt_flags : Ordered_set_lang.Unexpanded.t
-    ; c_flags        : Ordered_set_lang.Unexpanded.t
-    ; cxx_flags      : Ordered_set_lang.Unexpanded.t
+    { flags          : Ocaml_flags.Spec.t
+    ; c_flags        : Ordered_set_lang.Unexpanded.t C.Kind.Dict.t
     ; env_vars       : Env.t
     ; binaries       : File_bindings.Unexpanded.t
     }
@@ -38,23 +42,15 @@ module Stanza = struct
          Errors.fail loc "Variable %s is specified several times" k)
 
   let config =
-    let+ flags = field_oslu "flags"
-    and+ ocamlc_flags = field_oslu "ocamlc_flags"
-    and+ ocamlopt_flags = field_oslu "ocamlopt_flags"
-    and+ c_flags = Ordered_set_lang.Unexpanded.field "c_flags"
-                     ~check:(Syntax.since Stanza.syntax (1, 7))
-    and+ cxx_flags = Ordered_set_lang.Unexpanded.field "cxx_flags"
-                       ~check:(Syntax.since Stanza.syntax (1, 7))
+    let+ flags = Ocaml_flags.Spec.decode
+    and+ c_flags = c_flags ~since:(Some (1, 7))
     and+ env_vars = env_vars_field
     and+ binaries = field ~default:File_bindings.empty "binaries"
                       (Syntax.since Stanza.syntax (1, 6)
                        >>> File_bindings.Unexpanded.decode)
     in
     { flags
-    ; ocamlc_flags
-    ; ocamlopt_flags
     ; c_flags
-    ; cxx_flags
     ; env_vars
     ; binaries
     }

@@ -23,7 +23,7 @@ src/menhir.* @fpottier
 
 src/odoc.* @rginberg @antron
 
-src/merlin.* @trefis
+src/merlin.* @aalekseyev
 
 src/configurator/* @rgrinberg
 

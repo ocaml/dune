@@ -373,7 +373,10 @@ To setup the building and running of tests in opam, add this line to your
 
 ::
 
-    build-test: [["dune" "runtest" "-p" name "-j" jobs]]
+    build: [
+      (* Previous lines here... *)
+      ["dune" "runtest" "-p" name "-j" jobs] {with-test}
+    ]
 
 Installation
 ============

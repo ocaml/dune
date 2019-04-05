@@ -509,7 +509,7 @@ let get0_impl (sctx, dir) : result0 =
     let c_sources = Memo.lazy_ (fun () ->
       check_no_qualified Loc.none qualif_mode;
       let dune_version = d.dune_version in
-      let init = C.Kind.Dict.make String.Map.empty in
+      let init = C.Kind.Dict.make_both String.Map.empty in
       let c_sources =
         List.fold_left ((dir, [], files) :: subdirs) ~init
           ~f:(fun acc (dir, _local, files) ->

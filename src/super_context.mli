@@ -61,14 +61,7 @@ val c_flags
   -> dir:Path.t
   -> expander:Expander.t
   -> lib:Library.t
-  -> (unit, string list) Build.t
-
-val cxx_flags
-  :  t
-  -> dir:Path.t
-  -> expander:Expander.t
-  -> lib:Library.t
-  -> (unit, string list) Build.t
+  -> (unit, string list) Build.t C.Kind.Dict.t
 
 (** Binaries that are symlinked in the associated .bin directory of [dir]. This
     associated directory is [Path.relative dir ".bin"] *)

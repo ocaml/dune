@@ -5,10 +5,11 @@ module Kind = struct
     | C
     | Cxx
 
-  let pp fmt t : unit =
-    match t with
-    | C -> Format.pp_print_string fmt "c"
-    | Cxx -> Format.pp_print_string fmt "cpp"
+  let to_string = function
+    | C -> "c"
+    | Cxx -> "cpp"
+
+  let pp fmt t : unit = Format.pp_print_string fmt (to_string t)
 
   type split =
     | Unrecognized
@@ -42,10 +43,25 @@ module Kind = struct
       ; cxx : 'a
       }
 
-    let make a =
+    let c t = t.c
+    let cxx t = t.cxx
+
+    let map { c ; cxx } ~f =
+      { c = f c
+      ; cxx = f cxx
+      }
+
+    let mapi { c ; cxx } ~f =
+      { c = f ~kind:C c
+      ; cxx = f ~kind:Cxx cxx
+      }
+
+    let make_both a =
       { c = a
       ; cxx = a
       }
+
+    let make ~c ~cxx = { c; cxx }
 
     let get { c; cxx } = function
       | C -> c

@@ -46,7 +46,7 @@ module Eval = struct
 end
 
 let load_sources ~dune_version ~dir ~files =
-  let init = C.Kind.Dict.make String.Map.empty in
+  let init = C.Kind.Dict.make_both String.Map.empty in
   String.Set.fold files ~init ~f:(fun fn acc ->
     match C.Kind.split_extension fn ~dune_version with
     | Unrecognized -> acc

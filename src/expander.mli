@@ -89,8 +89,7 @@ val with_record_deps
   -> targets_written_by_user:Targets.t
   -> dep_kind:Lib_deps_info.Kind.t
   -> map_exe:(Path.t -> Path.t)
-  -> c_flags:(dir:Path.t -> (unit, string list) Build.t)
-  -> cxx_flags:(dir:Path.t -> (unit, string list) Build.t)
+  -> c_flags:(dir:Path.t -> (unit, string list) Build.t C.Kind.Dict.t)
   -> t
 
 val with_record_no_ddeps
@@ -98,8 +97,7 @@ val with_record_no_ddeps
   -> Resolved_forms.t
   -> dep_kind:Lib_deps_info.Kind.t
   -> map_exe:(Path.t -> Path.t)
-  -> c_flags:(dir:Path.t -> (unit, string list) Build.t)
-  -> cxx_flags:(dir:Path.t -> (unit, string list) Build.t)
+  -> c_flags:(dir:Path.t -> (unit, string list) Build.t C.Kind.Dict.t)
   -> t
 
 val add_ddeps_and_bindings

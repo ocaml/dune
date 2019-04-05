@@ -127,9 +127,7 @@ module Buildable : sig
     ; preprocess               : Preprocess_map.t
     ; preprocessor_deps        : Dep_conf.t list
     ; lint                     : Lint.t
-    ; flags                    : Ordered_set_lang.Unexpanded.t
-    ; ocamlc_flags             : Ordered_set_lang.Unexpanded.t
-    ; ocamlopt_flags           : Ordered_set_lang.Unexpanded.t
+    ; flags                    : Ocaml_flags.Spec.t
     ; js_of_ocaml              : Js_of_ocaml.t
     ; allow_overlapping_dependencies : bool
     }
@@ -203,9 +201,8 @@ module Library : sig
     ; ppx_runtime_libraries    : (Loc.t * Lib_name.t) list
     ; modes                    : Mode_conf.Set.t
     ; kind                     : Lib_kind.t
-    ; c_flags                  : Ordered_set_lang.Unexpanded.t
+    ; c_flags                  : Ordered_set_lang.Unexpanded.t C.Kind.Dict.t
     ; c_names                  : Ordered_set_lang.t option
-    ; cxx_flags                : Ordered_set_lang.Unexpanded.t
     ; cxx_names                : Ordered_set_lang.t option
     ; library_flags            : Ordered_set_lang.Unexpanded.t
     ; c_library_flags          : Ordered_set_lang.Unexpanded.t

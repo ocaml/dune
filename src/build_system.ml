@@ -1284,7 +1284,8 @@ let build_pred g = Memo.exec Pred.build_def g
 let build_deps =
   Dep.Set.parallel_iter ~f:(function
     | Alias a -> build_file (Alias.stamp_file a)
-    | File f -> build_file f
+    | File f
+    | Exists f -> build_file f
     | Glob g -> build_pred g
     | Universe
     | Env _ -> Fiber.return ())

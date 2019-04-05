@@ -4,12 +4,14 @@ module T = struct
   type t =
     | Env of Env.Var.t
     | File of Path.t
+    | Exists of Path.t
     | Alias of Alias.t
     | Glob of File_selector.t
     | Universe
 
   let env e = Env e
   let file f = File f
+  let exists f = Exists f
   let alias a = Alias a
   let universe = Universe
   let glob g = Glob g
@@ -28,6 +30,9 @@ module T = struct
     | Glob x, Glob y -> File_selector.compare x y
     | Glob _, _ -> Lt
     | _, Glob _ -> Gt
+    | Exists x, Exists y -> Path.compare x y
+    | Exists _, _ -> Lt
+    | _, Exists _ -> Gt
     | Universe, Universe -> Ordering.Eq
 
   let unset = lazy (Digest.string "unset")
@@ -36,6 +41,8 @@ module T = struct
 
   let trace t ~env ~eval_pred =
     match t with
+    | Exists fn ->
+      [Path.to_string fn, Digest.string (Bool.to_string (Path.exists fn))]
     | Universe -> ["universe", Digest.string "universe"]
     | File fn -> [trace_file fn]
     | Alias a -> [trace_file (Alias.stamp_file a)]
@@ -56,6 +63,7 @@ module T = struct
     | Env e -> Format.fprintf fmt "Env %S" e
     | Alias a -> Format.fprintf fmt "Alias %a" Alias.pp a
     | File f -> Format.fprintf fmt "File %a" Path.pp f
+    | Exists f -> Format.fprintf fmt "Exists %a" Path.pp f
     | Glob g -> Format.fprintf fmt "Glob %a" File_selector.pp g
     | Universe -> Format.fprintf fmt "Universe"
 
@@ -65,6 +73,7 @@ module T = struct
     | Glob g -> pair string File_selector.encode ("glob", g)
     | Env e -> pair string string ("Env", e)
     | File f -> pair string Path_dune_lang.encode ("File", f)
+    | Exists f -> pair string Path_dune_lang.encode ("Exists", f)
     | Alias a -> pair string Alias.encode ("Alias", a)
     | Universe -> string "Universe"
 end
@@ -96,6 +105,7 @@ module Set = struct
     fold t ~init:Path.Set.empty ~f:(fun d acc ->
       match d with
       | Alias a -> Path.Set.add acc (Alias.stamp_file a)
+      | Exists f
       | File f -> Path.Set.add acc f
       | Glob g -> Path.Set.union acc (eval_pred g)
       | Universe
@@ -113,6 +123,7 @@ module Set = struct
       match f with
       | Alias a -> Path.Set.add acc (Alias.dir a)
       | Glob g -> Path.Set.add acc (File_selector.dir g)
+      | Exists f
       | File f -> Path.Set.add acc (Path.parent_exn f)
       | Universe
       | Env _ -> acc)

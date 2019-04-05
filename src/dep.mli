@@ -3,10 +3,12 @@ open Stdune
 type t = private
   | Env of Env.Var.t
   | File of Path.t
+  | Exists of Path.t
   | Alias of Alias.t
   | Glob of File_selector.t
   | Universe
 
+val exists : Path.t -> t
 val file : Path.t -> t
 val env : Env.Var.t -> t
 val universe : t

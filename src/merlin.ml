@@ -173,18 +173,6 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander ~dir_kind
   | None -> ()
   | Some remaindir ->
     let merlin_file = Path.relative dir ".merlin" in
-    (* We make the compilation of .ml/.mli files depend on the
-       existence of .merlin so that they are always generated, however
-       the command themselves don't read the merlin file, so we don't
-       want to declare a dependency on the contents of the .merlin
-       file.
-
-       Currently dune doesn't support declaring a dependency only
-       on the existence of a file, so we have to use this trick. *)
-    SC.add_rule sctx ~dir
-      (Build.path merlin_file
-       >>>
-       Build.create_file (Path.relative dir ".merlin-exists"));
     Path.Set.singleton merlin_file
     |> Build_system.Alias.add_deps (Alias.check ~dir);
     SC.add_rule sctx ~dir ~mode:(Promote (Until_clean, None)) (

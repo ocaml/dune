@@ -415,7 +415,7 @@ module Libs = struct
     in
     let prefix =
       if t.context.merlin then
-        Build.path (Path.relative dir ".merlin-exists")
+        Build.dep (Dep.exists (Path.relative dir ".merlin"))
         >>>
         prefix
       else

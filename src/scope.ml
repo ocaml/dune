@@ -56,22 +56,16 @@ module DB = struct
             (Dune_project.Name.Map.keys t.by_name)
         ]
 
-  let resolve by_name_cell public_libs name : Lib.DB.Resolve_result.t =
+  let resolve t public_libs name : Lib.DB.Resolve_result.t =
     match Lib_name.Map.find public_libs name with
     | None -> Not_found
     | Some project ->
-      let scope =
-        Dune_project.name project
-        |> Dune_project.Name.Map.find_exn !by_name_cell
-      in
+      let scope = find_by_name (Fdecl.get t) (Dune_project.name project) in
       Redirect (Some scope.db, name)
 
-  let find_implementations by_name_cell public_libs virt =
+  let find_implementations t public_libs virt =
     Lib_name.Map.fold public_libs ~init:Variant.Map.empty ~f:(fun project acc ->
-      let scope =
-        Dune_project.name project
-        |> Dune_project.Name.Map.find_exn !by_name_cell
-      in
+      let scope = find_by_name (Fdecl.get t) (Dune_project.name project) in
       Lib.DB.find_implementations scope.db virt
       |> Variant.Map.Multi.rev_union acc)
 
@@ -97,7 +91,7 @@ module DB = struct
         (Dune_project.name lib.project, (dir, lib)))
       |> Dune_project.Name.Map.of_list_multi
     in
-    let by_name_cell = ref Dune_project.Name.Map.empty in
+    let t = Fdecl.create () in
     let public_libs =
       let public_libs =
         List.filter_map internal_libs ~f:(fun (_dir, lib) ->
@@ -122,9 +116,8 @@ module DB = struct
               (Loc.to_file_colon_line loc1)
               (Loc.to_file_colon_line loc2)
       in
-      let resolve = resolve by_name_cell public_libs in
-      let find_implementations =
-        find_implementations by_name_cell public_libs in
+      let resolve = resolve t public_libs in
+      let find_implementations = find_implementations t public_libs in
       Lib.DB.create ()
         ~parent:installed_libs
         ~resolve
@@ -145,9 +138,9 @@ module DB = struct
             Path.append_local build_context_dir (Dune_project.root project) in
           Some { project; db; root })
     in
-    by_name_cell := by_name;
     let by_dir = Hashtbl.create 1024 in
     Dune_project.Name.Map.iter by_name ~f:(fun scope ->
       Hashtbl.add by_dir scope.root scope);
-    ({ by_name; by_dir; context }, public_libs)
+    Fdecl.set t { by_name ; by_dir ; context};
+    (Fdecl.get t, public_libs)
 end

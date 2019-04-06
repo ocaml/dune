@@ -161,13 +161,12 @@ Adding libraries in a single directory
 
 Can add multiple libraries in the same directory
 
-  $ dune init lib test_lib1 ./_test_lib --public
+  $ dune init lib test_lib1 ./_test_lib
   Success: initialized library component named test_lib1
   $ dune init lib test_lib2 ./_test_lib --libs test_lib1
   Success: initialized library component named test_lib2
   $ cat ./_test_lib/dune
   (library
-   (public_name test_lib1)
    (name test_lib1))
   
   (library
@@ -262,7 +261,7 @@ Adding fields to existing stanzas
 # TODO(shonfeder)
 Adding fields to existing stanzas is currently not supported
 
-  $ dune init exe test_bin ./_test_bin --libs test_lib1 --public
+  $ dune init exe test_bin ./_test_bin --libs test_lib1
   Success: initialized executable component named test_bin
   $ dune init exe test_bin ./_test_bin --libs test_lib2
   Updating existing stanzas is not yet supported.
@@ -272,10 +271,9 @@ Adding fields to existing stanzas is currently not supported
   (executable (name main) (libraries test_lib2))
   
   Pre-existing stanza:
-  (executable (public_name test_bin) (name main) (libraries test_lib1))
+  (executable (name main) (libraries test_lib1))
   [1]
   $ cat ./_test_bin/dune
   (executable
-   (public_name test_bin)
    (name main)
    (libraries test_lib1))

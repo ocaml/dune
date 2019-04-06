@@ -55,76 +55,54 @@ module File = struct
   (** Inspection and manipulation of stanzas in a file *)
   module Stanza = struct
 
-    (** Defines uniqueness criteria for stanzas *)
-    module Signature = struct
-
-      (** The uniquely identifying fields of a stanza *)
-      type t =
-        { kind: string
-        ; name: string option
-        ; public_name: string option
-        }
-
-      (* TODO(shonfeder): replace with stanza merging *)
-      (* TODO(shonfeder): replace with a function Cst.t -> Dune_file.Stanza.t *)
-      let of_cst stanza : t option =
-        let open Dune_lang in
-        let open Option.O in
-        let to_atom = function | Atom a -> Some a | _ -> None in
-        let is_field name = function
-          | List (field_name :: _) ->
-            Option.value ~default:false
-              (to_atom field_name >>| Atom.equal (Atom.of_string name))
-          | _ -> false
-        in
-        Cst.to_sexp stanza >>= function
-        | List (component_kind :: fields) ->
-          let find_field_value field_name fields =
-            List.find ~f:(is_field field_name) fields >>= function
-            | List [_; value] -> Some (to_string ~syntax:Dune value)
-            | _ -> None
-          in
-          let kind = to_string ~syntax:Dune component_kind in
-          let name = find_field_value "name" fields in
-          let public_name = find_field_value "public_name" fields in
-          Some {kind; name; public_name}
-        | _ -> None
-
-      let equal a b =
-        (* Like Option.equal but doesn't treat None's as equal *)
-        let strict_equal x y =
-          match x, y with
-          | Some x, Some y -> String.equal x y
-          | _, _ -> false
-        in
-        String.equal a.kind b.kind
-        && strict_equal a.name b.name
-        || strict_equal a.public_name b.public_name
-    end
-
     let pp ppf s =
       Option.iter (Cst.to_sexp s) ~f:(Dune_lang.pp Dune ppf)
 
+    let libraries_conflict (a: Dune_file.Library.t) (b: Dune_file.Library.t) =
+      a.name = b.name
+
+    let executables_conflict (a : Dune_file.Executables.t) (b : Dune_file.Executables.t) =
+      let a_names = List.map ~f:snd a.names |> String.Set.of_list in
+      let b_names = List.map ~f:snd b.names |> String.Set.of_list in
+      String.Set.inter a_names b_names |> String.Set.is_empty |> not
+
+    let tests_conflict (a : Dune_file.Tests.t) (b : Dune_file.Tests.t) =
+      executables_conflict a.exes b.exes
+
+    let stanzas_conflict (a : Stanza.t) (b : Stanza.t) =
+      let open Dune_file in
+      match a, b with
+      | Executables a, Executables b -> executables_conflict a b
+      | Library a, Library b -> libraries_conflict a b
+      | Tests a, Tests b -> tests_conflict a b
+      (* NOTE No other stanza types currently supported *)
+      | _ -> false
+
+    let csts_conflict project (a : Cst.t) (b : Cst.t) =
+      let of_ast = Dune_file.Stanzas.of_ast ~kind:Dune_lang.Dune project in
+      begin
+        let open Option.O in
+        let* a_ast = Cst.abstract a in
+        let+ b_ast = Cst.abstract b in
+        let a_asts = of_ast a_ast in
+        let b_asts = of_ast b_ast in
+        List.exists ~f:(fun x -> List.exists ~f:(stanzas_conflict x) a_asts) b_asts
+      end
+      |> Option.value ~default:false
+
     (* TODO(shonfeder): replace with stanza merging *)
-    let find_conflicting new_stanzas existing_stanzas =
-      let stanzas_conflict a b =
-        (let open Option.O in
-         let* a = Signature.of_cst a in
-         let+ b = Signature.of_cst b in
-         Signature.equal a b)
-        |> Option.value ~default:false
-      in
+    let find_conflicting project new_stanzas existing_stanzas =
       let conflicting_stanza stanza =
-        match List.find ~f:(stanzas_conflict stanza) existing_stanzas with
+        match List.find ~f:(csts_conflict project stanza) existing_stanzas with
         | Some conflict -> Some (stanza, conflict)
         | None -> None
       in
       List.find_map ~f:conflicting_stanza new_stanzas
 
-    let add stanzas = function
+    let add (project : Dune_project.t) stanzas = function
       | Text f -> Text f (* Adding a stanza to a text file isn't meaningful *)
       | Dune f ->
-        match find_conflicting stanzas f.content with
+        match find_conflicting project stanzas f.content with
         | None -> Dune {f with content = f.content @ stanzas}
         | Some (a, b) ->
           die "Updating existing stanzas is not yet supported.@\n\
@@ -299,15 +277,15 @@ module Component = struct
   end
 
   (* TODO Support for merging in changes to an existing stanza *)
-  let add_stanza_to_dune_file ~dir stanza =
+  let add_stanza_to_dune_file ~(project : Dune_project.t) ~dir stanza =
     File.load_dune_file ~path:dir
-    |> File.Stanza.add stanza
+    |> File.Stanza.add project stanza
 
   let bin ({context; common; options} : Options.executable Options.t) =
     let dir = context.dir in
     let bin_dune =
       Stanza_cst.executable common options
-      |> add_stanza_to_dune_file ~dir
+      |> add_stanza_to_dune_file ~project:context.project ~dir
     in
     let bin_ml =
       let name = "main.ml" in
@@ -321,7 +299,7 @@ module Component = struct
     let dir = context.dir in
     let lib_dune =
       Stanza_cst.library common options
-      |> add_stanza_to_dune_file ~dir
+      |> add_stanza_to_dune_file ~project:context.project ~dir
     in
     let files = [lib_dune] in
     {dir; files}
@@ -331,7 +309,7 @@ module Component = struct
     let dir = context.dir in
     let test_dune =
       Stanza_cst.test common options
-      |> add_stanza_to_dune_file ~dir
+      |> add_stanza_to_dune_file ~project:context.project ~dir
     in
     let test_ml =
       let name = sprintf "%s.ml" common.name in

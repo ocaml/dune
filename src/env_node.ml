@@ -30,14 +30,20 @@ let find_config t ~profile =
   let open Option.O in
   t.config >>= Dune_env.Stanza.find ~profile
 
-let local_binaries t ~profile ~expander =
+let rec local_binaries t ~profile ~expander =
   match t.local_binaries with
   | Some x -> x
   | None ->
+    let default =
+      match t.inherit_from with
+      | None -> File_bindings.empty
+      | Some (lazy t) -> local_binaries t ~profile ~expander
+    in
     let local_binaries =
       match find_config t ~profile with
-      | None -> []
+      | None -> default
       | Some cfg ->
+        default @
         File_bindings.map cfg.binaries ~f:(fun template ->
           Expander.expand expander ~mode:Single ~template
           |> Value.to_string ~dir:t.dir)

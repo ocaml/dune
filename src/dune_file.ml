@@ -2174,14 +2174,11 @@ module Stanzas = struct
 
   let parse ~file ~kind (project : Dune_project.t) sexps =
     let stanza_parser ast = of_ast ~kind project ast in
-    let lexer =
-      match (kind : Dune_lang.Syntax.t) with
-      | Jbuild -> Dune_lang.Lexer.jbuild_token
-      | Dune   -> Dune_lang.Lexer.token
-    in
+    let lexer = Dune_lang.Lexer.of_syntax kind in
     let stanzas =
       try
-        parse_file_includes ~stanza_parser ~lexer ~include_stack:[] ~current_file:file sexps
+        parse_file_includes ~stanza_parser ~lexer ~include_stack:[]
+          ~current_file:file sexps
       with
       | Include_loop (_, []) -> assert false
       | Include_loop (file, last :: rest) ->

@@ -17,7 +17,7 @@ unreleased
 - Add experimental `$ dune init` command. This command is used to create or
   update project boilerplate. (#1448, fixes #159, @shonfeder)
 
-- Experimental Coq support (1466, @ejgallego)
+- Experimental Coq support (fix #1466, @ejgallego)
 
 - Install .cmi files of private modules in a `.private` directory (#1983, fix
   #1973 @rgrinberg)

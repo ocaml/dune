@@ -174,23 +174,28 @@ let setup_rules ~sctx ~dir ~dir_contents (s : Dune_file.Coq.t) =
             ~ml_iflags ~mlpack_rule) coq_modules in
   coq_rules
 
-(* This is here for compatibility with Coq < 8.11, which expects the
-   plugin's `.cmxs` files to be in the folder containing the `.vo`
-   files *)
-let coq_cmx_install_rules ~dst_dir libs =
+(* This is here for compatibility with Coq < 8.11, which expects
+   plugin files to be in the folder containing the `.vo` files *)
+let coq_plugins_install_rules ~scope ~package ~dst_dir (s : Dune_file.Coq.t) =
+  let ml_libs = libs_of_coq_deps ~scope ~loc:s.loc s.libraries in
   let rules_for_lib lib =
-    Mode.Dict.get (Lib.plugins lib) Mode.Native |>
-    List.map ~f:(fun plugin_file ->
-      let dst = Path.(to_string (relative dst_dir (basename plugin_file))) in
-      None, Install.(Entry.make Section.Lib_root ~dst plugin_file))
+    (* Don't install libraries that don't belong to this package *)
+    if Option.equal Package.Name.equal
+         (Lib.package lib) (Some (package.Package.name))
+    then
+      Mode.Dict.get (Lib.plugins lib) Mode.Native |>
+      List.map ~f:(fun plugin_file ->
+        let dst = Path.(to_string (relative dst_dir (basename plugin_file))) in
+        None, Install.(Entry.make Section.Lib_root ~dst plugin_file))
+    else []
   in
-  List.concat_map ~f:rules_for_lib libs
+  List.concat_map ~f:rules_for_lib ml_libs
 
 let install_rules ~sctx ~dir s =
   match s with
   | { Dune_file.Coq. public = None; _ } ->
     []
-  | { Dune_file.Coq. public = Some { package = _ ; _ } ; loc; _ } ->
+  | { Dune_file.Coq. public = Some { package; _ } ; _ } ->
     let scope = SC.find_scope_by_dir sctx dir in
     let dir_contents = Dir_contents.get_without_rules sctx ~dir in
     let name = Dune_file.Coq.best_name s in
@@ -199,11 +204,10 @@ let install_rules ~sctx ~dir s =
     (* This must match the wrapper prefix for now to remain compatible *)
     let dst_suffix = coqlib_wrapper_name s in
     let dst_dir = Path.relative coq_root dst_suffix in
-    let ml_libs = libs_of_coq_deps ~scope ~loc s.libraries in
     Dir_contents.coq_modules_of_library dir_contents ~name
     |> List.map ~f:(fun (vfile : Coq_module.t) ->
       let vofile = Coq_module.obj_file ~obj_dir:dir ~ext:".vo" vfile in
       let dst = Coq_module.obj_file ~obj_dir:dst_dir ~ext:".vo" vfile in
       let dst = Path.to_string dst in
       None, Install.(Entry.make Section.Lib_root ~dst vofile))
-    |> List.rev_append (coq_cmx_install_rules ~dst_dir ml_libs)
+    |> List.rev_append (coq_plugins_install_rules ~scope ~package ~dst_dir s)

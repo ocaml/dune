@@ -9,6 +9,24 @@ let alias_dir = Path.(relative build_dir) ".aliases"
 
 let () = Hooks.End_of_build.always Memo.reset
 
+module Mkdir_p : sig
+  val exec : Path.t -> unit
+end = struct
+  let def =
+    Memo.create
+      "mkdir_p"
+      ~doc:"mkdir_p"
+      ~input:(module Path)
+      ~output:(Simple (module Unit))
+      ~visibility:Hidden
+      Sync
+      (Some Path.mkdir_p)
+
+  let exec p =
+    if Path.is_managed p then
+      Memo.exec def p
+end
+
 module Promoted_to_delete : sig
   val add : Path.t -> unit
   val load : unit -> Path.Set.t
@@ -553,7 +571,6 @@ type t =
     files       : File_spec.packed Path.Table.t
   ; contexts    : Context.t String.Map.t
   ; file_tree   : File_tree.t
-  ; mutable local_mkdirs : Path.Set.t
   ; dirs : Dir_status.t Path.Table.t
   ; gen_rules :
       (dir:Path.t -> string list -> extra_sub_directories_to_keep)
@@ -791,24 +808,6 @@ let compute_targets_digest_after_rule_execution ~loc targets =
     Errors.fail_opt loc
       "rule failed to generate the following targets:\n%s"
       (string_of_paths (Path.Set.of_list missing))
-
-let make_local_dir t fn =
-  if not (Path.Set.mem t.local_mkdirs fn) then begin
-    Path.mkdir_p fn;
-    t.local_mkdirs <- Path.Set.add t.local_mkdirs fn
-  end
-
-let make_local_dirs t ~dirs =
-  Path.Set.iter dirs ~f:(make_local_dir t)
-
-let make_local_managed_dir t path =
-  if Path.is_managed path then
-    make_local_dir t path
-
-let make_local_dirs_map t ~dirs ~map_path =
-  Path.Set.iter dirs ~f:(fun dir ->
-    map_path dir
-    |> make_local_managed_dir t)
 
 let sandbox_dir = Path.relative Path.build_dir ".sandbox"
 
@@ -1379,7 +1378,7 @@ let () =
     in
     start_rule t rule;
     let* (action, deps) = evaluate_rule_and_wait_for_dependencies rule in
-    make_local_dir t dir;
+    Mkdir_p.exec dir;
     let targets_as_list  = Path.Set.to_list targets  in
     let head_target = List.hd targets_as_list in
     let prev_trace = Trace.get head_target in
@@ -1433,15 +1432,16 @@ let () =
           | Some sandbox_dir ->
             Path.rm_rf sandbox_dir;
             let sandboxed path = Path.sandbox_managed_paths ~sandbox_dir path in
-            make_local_dirs_map t ~dirs:(Dep.Set.dirs deps) ~map_path:sandboxed;
-            make_local_dir t (sandboxed dir);
+            Dep.Set.dirs deps
+            |> Path.Set.iter ~f:(fun p -> Mkdir_p.exec (sandboxed p));
+            Mkdir_p.exec (sandboxed dir);
             Action.sandbox action
               ~sandboxed
               ~deps
               ~targets:targets_as_list
               ~eval_pred
         in
-        make_local_dirs t ~dirs:(Action.chdirs action);
+        Path.Set.iter (Action.chdirs action) ~f:Mkdir_p.exec;
         let+ () =
           with_locks locks ~f:(fun () ->
             Action_exec.exec ~context ~env ~targets action)
@@ -1568,7 +1568,6 @@ let init ~contexts ~file_tree ~hook =
     { contexts
     ; files      = Path.Table.create 1024
     ; packages   = Path.Table.create 1024
-    ; local_mkdirs = Path.Set.empty
     ; dirs       = Path.Table.create 1024
     ; load_dir_stack = []
     ; file_tree

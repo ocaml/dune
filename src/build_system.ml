@@ -602,7 +602,13 @@ let get_dir_status t ~dir =
     else if not (Path.is_managed dir) then
       Dir_status.Loaded
         (match Path.readdir_unsorted dir with
-         | exception _ -> Path.Set.empty
+         | exception (Sys_error _) -> Path.Set.empty (* dir doesn't exist *)
+         | exception (Unix.Unix_error (m, _, _)) ->
+           Errors.warn Loc.none
+             "Unable to read %a@.Reason: %s@."
+             Path.pp dir
+             (Unix.error_message m);
+           Path.Set.empty
          | files ->
            Path.Set.of_list (List.map files ~f:(Path.relative dir)))
     else begin

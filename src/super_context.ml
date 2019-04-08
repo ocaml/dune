@@ -297,13 +297,12 @@ let create
           | _ -> None))
   in
   let scopes, public_libs =
+    let lib_config = Context.lib_config context in
     Scope.DB.create
       ~projects
       ~context:context.name
       ~installed_libs
-      ~has_native:(Context.has_native context)
-      ~ext_lib:context.ext_lib
-      ~ext_obj:context.ext_obj
+      ~lib_config
       internal_libs
   in
   let stanzas =

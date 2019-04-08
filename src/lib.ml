@@ -1278,17 +1278,15 @@ module DB = struct
       (virtual_lib, Variant.Map.of_list_exn [content]))
     |> Lib_name.Map.of_list_reduce ~f:Variant.Map.Multi.rev_union
 
-  let create_from_library_stanzas ?parent ~has_native ~ext_lib ~ext_obj
-        stanzas =
+  let create_from_library_stanzas ?parent ~lib_config stanzas =
     let variant_map =
       List.map stanzas ~f:(fun (dir, (conf : Dune_file.Library.t)) ->
-        Lib_info.of_library_stanza ~dir ~has_native ~ext_lib ~ext_obj conf)
+        Lib_info.of_library_stanza ~dir ~lib_config conf)
       |> create_variant_map
     in
     let map =
       List.concat_map stanzas ~f:(fun (dir, (conf : Dune_file.Library.t)) ->
-        let info =
-          Lib_info.of_library_stanza ~dir ~has_native ~ext_lib ~ext_obj conf in
+        let info = Lib_info.of_library_stanza ~dir ~lib_config conf in
         match conf.public with
         | None ->
           [Dune_file.Library.best_name conf, Resolve_result.Found info]

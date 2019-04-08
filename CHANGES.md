@@ -28,6 +28,9 @@ unreleased
 - Do not list private modules in the generated index. (#2009, fix #2008,
   @rgrinberg)
 
+- Warn instead of failing if an opam file fails to parse. This opam file can
+  still be used to define scope. (#2023, @rgrinberg)
+
 1.8.2 (10/03/2019)
 ------------------
 

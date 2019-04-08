@@ -44,6 +44,7 @@ module Fn         = Fn
 module Dyn        = Dyn
 module Float      = Float
 module Tuple      = Tuple
+module In_expect_test = In_expect_test
 
 external reraise : exn -> _ = "%reraise"
 

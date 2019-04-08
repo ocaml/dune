@@ -5,7 +5,7 @@ type t =
   ; inherit_from          : t Lazy.t option
   ; scope                 : Scope.t
   ; config                : Dune_env.Stanza.t option
-  ; mutable local_binaries : string File_bindings.t option
+  ; mutable local_binaries : (Loc.t * string) File_bindings.t option
   ; mutable ocaml_flags   : Ocaml_flags.t option
   ; mutable c_flags       : (unit, string list) Build.t C.Kind.Dict.t option
   ; mutable external_     : Env.t option
@@ -45,8 +45,12 @@ let rec local_binaries t ~profile ~expander =
       | Some cfg ->
         default @
         File_bindings.map cfg.binaries ~f:(fun template ->
-          Expander.expand expander ~mode:Single ~template
-          |> Value.to_string ~dir:t.dir)
+          let loc = String_with_vars.loc template in
+          let expanded =
+            Expander.expand expander ~mode:Single ~template
+            |> Value.to_string ~dir:t.dir
+          in
+          (loc, expanded))
     in
     t.local_binaries <- Some local_binaries;
     local_binaries

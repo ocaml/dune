@@ -21,3 +21,6 @@ Override public binary in env
   private binary
            foo alias default
   public binary
+
+Nest env binaries
+  $ dune build --root nested-env

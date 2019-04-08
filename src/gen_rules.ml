@@ -228,10 +228,18 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
        | Some ".bin" ->
          let src_dir = Path.parent_exn dir in
          Super_context.local_binaries sctx ~dir:src_dir
-         |> List.iter ~f:(fun t ->
+         |> List.iter ~f:(fun (t : _ File_bindings.file) ->
+           let (t, loc) =
+             ( { File_bindings.
+                 src = snd t.src
+               ; dst = Option.map ~f:snd t.dst
+               }
+             , fst t.File_bindings.src
+             )
+           in
            let src = File_bindings.src_path t ~dir:src_dir in
            let dst = File_bindings.dst_path t ~dir in
-           Super_context.add_rule sctx ~dir (Build.symlink ~src ~dst))
+           Super_context.add_rule sctx ~loc ~dir (Build.symlink ~src ~dst))
        | _ ->
          match
            File_tree.find_dir (SC.file_tree sctx)

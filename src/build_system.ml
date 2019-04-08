@@ -25,6 +25,10 @@ end = struct
   let exec p =
     if Path.is_managed p then
       Memo.exec def p
+    else
+      Exn.code_error "Mkdir_p.exec: attempted to create unmanaged dir"
+        [ "p", Path.to_sexp p
+        ]
 end
 
 module Promoted_to_delete : sig
@@ -1433,7 +1437,10 @@ let () =
             Path.rm_rf sandbox_dir;
             let sandboxed path = Path.sandbox_managed_paths ~sandbox_dir path in
             Dep.Set.dirs deps
-            |> Path.Set.iter ~f:(fun p -> Mkdir_p.exec (sandboxed p));
+            |> Path.Set.iter ~f:(fun p ->
+              let p = sandboxed p in
+              if Path.is_managed p then
+                Mkdir_p.exec p);
             Mkdir_p.exec (sandboxed dir);
             Action.sandbox action
               ~sandboxed

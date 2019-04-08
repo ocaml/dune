@@ -123,6 +123,7 @@ let main () =
             | Expect | Error -> true
             | Ignore -> false
           in
+          Stdune.In_expect_test.formatter := Some ppf;
           ignore (Toploop.execute_phrase print_types_and_values ppf phr : bool)
         with exn ->
           let ppf =

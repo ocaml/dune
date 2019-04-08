@@ -31,6 +31,9 @@ unreleased
 - Warn instead of failing if an opam file fails to parse. This opam file can
   still be used to define scope. (#2023, @rgrinberg)
 
+- Do not crash if unable to read a directory when traversing to find root
+  (#2024, @rgrinberg)
+
 1.8.2 (10/03/2019)
 ------------------
 

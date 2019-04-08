@@ -6,6 +6,7 @@ module Dune_project = Dune.Dune_project
 
 let die = Dune.Import.die
 let hint = Dune.Import.hint
+let warn = Dune.Errors.warn
 
 let check_path contexts =
   let contexts =
@@ -30,16 +31,26 @@ let check_path contexts =
 let find_root () =
   let cwd = Sys.getcwd () in
   let rec loop counter ~candidates ~to_cwd dir =
-    let files = Sys.readdir dir |> Array.to_list |> String.Set.of_list in
-    if String.Set.mem files Workspace.filename then
-      cont counter ~candidates:((0, dir, to_cwd) :: candidates) dir ~to_cwd
-    else if Wp.t = Jbuilder && String.Set.exists files ~f:(fun fn ->
-      String.is_prefix fn ~prefix:"jbuild-workspace") then
-      cont counter ~candidates:((1, dir, to_cwd) :: candidates) dir ~to_cwd
-    else if String.Set.mem files Dune_project.filename then
-      cont counter ~candidates:((2, dir, to_cwd) :: candidates) dir ~to_cwd
-    else
-      cont counter ~candidates dir ~to_cwd
+    match Sys.readdir dir with
+    | exception (Sys_error msg) ->
+      warn Loc.none
+        "Unable to read directory %s. \
+         Will not look for root in parent directories@.\
+         Reason: %s@.\
+         To remove this warning, set your root explicitly using --root.@."
+        dir msg;
+      candidates
+    | files ->
+      let files = String.Set.of_list (Array.to_list files) in
+      if String.Set.mem files Workspace.filename then
+        cont counter ~candidates:((0, dir, to_cwd) :: candidates) dir ~to_cwd
+      else if Wp.t = Jbuilder && String.Set.exists files ~f:(fun fn ->
+        String.is_prefix fn ~prefix:"jbuild-workspace") then
+        cont counter ~candidates:((1, dir, to_cwd) :: candidates) dir ~to_cwd
+      else if String.Set.mem files Dune_project.filename then
+        cont counter ~candidates:((2, dir, to_cwd) :: candidates) dir ~to_cwd
+      else
+        cont counter ~candidates dir ~to_cwd
   and cont counter ~candidates ~to_cwd dir =
     if counter > String.length cwd then
       candidates

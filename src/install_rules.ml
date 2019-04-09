@@ -362,7 +362,7 @@ let init_binary_artifacts sctx package =
                   ; src_dir = _
                   ; scope = _
                   ; kind = _ }) ->
-              List.map files ~f:(fun { File_bindings. src ; dst } ->
+              List.map files ~f:(fun { File_binding. src ; dst } ->
                 let (loc, src) = src in
                 let dst = Option.map ~f:snd dst in
                 ( Some loc

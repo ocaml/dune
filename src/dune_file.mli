@@ -251,7 +251,7 @@ end
 module Install_conf : sig
   type 'file t =
     { section : Install.Section.t
-    ; files   : 'file File_bindings.t
+    ; files   : 'file File_binding.L.t
     ; package : Package.t
     }
 end

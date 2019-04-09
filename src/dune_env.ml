@@ -18,7 +18,7 @@ module Stanza = struct
     { flags          : Ocaml_flags.Spec.t
     ; c_flags        : Ordered_set_lang.Unexpanded.t C.Kind.Dict.t
     ; env_vars       : Env.t
-    ; binaries       : File_bindings.Unexpanded.t
+    ; binaries       : File_binding.L.Unexpanded.t
     }
 
   type pattern =
@@ -45,9 +45,9 @@ module Stanza = struct
     let+ flags = Ocaml_flags.Spec.decode
     and+ c_flags = c_flags ~since:(Some (1, 7))
     and+ env_vars = env_vars_field
-    and+ binaries = field ~default:File_bindings.empty "binaries"
+    and+ binaries = field ~default:File_binding.L.empty "binaries"
                       (Syntax.since Stanza.syntax (1, 6)
-                       >>> File_bindings.Unexpanded.decode)
+                       >>> File_binding.L.Unexpanded.decode)
     in
     { flags
     ; c_flags

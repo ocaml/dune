@@ -127,7 +127,7 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
         ; js = None
         }
       | Install { Install_conf. section = _; files; package = _ } ->
-        List.map files ~f:(fun { File_bindings. src; dst = _ } ->
+        List.map files ~f:(fun { File_binding. src; dst = _ } ->
           let src_expanded = Expander.expand_str expander src in
           Path.relative ctx_dir src_expanded)
         |> Path.Set.of_list
@@ -228,17 +228,11 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
        | Some ".bin" ->
          let src_dir = Path.parent_exn dir in
          Super_context.local_binaries sctx ~dir:src_dir
-         |> List.iter ~f:(fun (t : _ File_bindings.file) ->
-           let (t, loc) =
-             ( { File_bindings.
-                 src = snd t.src
-               ; dst = Option.map ~f:snd t.dst
-               }
-             , fst t.File_bindings.src
-             )
-           in
-           let src = File_bindings.src_path t ~dir:src_dir in
-           let dst = File_bindings.dst_path t ~dir in
+         |> List.iter ~f:(fun (t : _ File_binding.t) ->
+           let loc = fst t.File_binding.src in
+           let t = File_binding.map ~f:snd t in
+           let src = File_binding.src_path t ~dir:src_dir in
+           let dst = File_binding.dst_path t ~dir in
            Super_context.add_rule sctx ~loc ~dir (Build.symlink ~src ~dst))
        | _ ->
          match

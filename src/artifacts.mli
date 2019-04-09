@@ -18,7 +18,7 @@ val binary
   -> string
   -> Action.Prog.t
 
-val add_binaries : t -> dir:Path.t -> (Loc.t * string) File_bindings.t -> t
+val add_binaries : t -> dir:Path.t -> (Loc.t * string) File_binding.L.t -> t
 
 (** [file_of_lib t ~from ~lib ~file] returns the path to a file in the
     directory of the given library. *)

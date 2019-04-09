@@ -39,7 +39,7 @@ let add_stanzas t ~sctx =
          match data with
          | Install i ->
            let i =
-             { i with files = File_bindings.map ~f:path_expander i.files } in
+             { i with files = File_binding.L.map ~f:path_expander i.files } in
            { t with
              installs = { d with data = i } :: t.installs
            }

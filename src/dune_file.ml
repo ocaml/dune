@@ -1081,14 +1081,14 @@ end
 module Install_conf = struct
   type 'file t =
     { section : Install.Section.t
-    ; files   : 'file File_bindings.t
+    ; files   : 'file File_binding.L.t
     ; package : Package.t
     }
 
   let decode =
     record
       (let+ section = field "section" Install.Section.decode
-       and+ files = field "files" File_bindings.Unexpanded.decode
+       and+ files = field "files" File_binding.L.Unexpanded.decode
        and+ package = Pkg.field "install"
        in
        { section
@@ -1246,7 +1246,7 @@ module Executables = struct
         List.map2 t.names public_names
           ~f:(fun (locn, name) (locp, pub) ->
             Option.map pub ~f:(fun pub ->
-              { File_bindings.
+              { File_binding.
                 src = String_with_vars.make_text locn (name ^ ext)
               ; dst = Some (String_with_vars.make_text locp pub)
               }))

@@ -134,6 +134,14 @@ let format_file ~input =
       (Dune_lang.Parse_error.message e);
     exit 1
   | OCaml_syntax loc ->
-    Errors.warn loc "OCaml syntax is not supported, skipping."
+    begin
+      match input with
+      | Some path ->
+        Io.with_file_in path ~f:(fun ic ->
+          Io.copy_channels ic stdout
+        )
+      | None ->
+        Errors.fail loc "OCaml syntax is not supported."
+    end
   | Sexps sexps ->
     Format.printf "%a%!" pp_top_sexps sexps

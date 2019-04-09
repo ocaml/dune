@@ -43,6 +43,9 @@
 
 - Allow "." in `c_names` and `cxx_names` (#2036, fix #2033, @rgrinberg)
 
+- Format rules: if a dune file uses OCaml syntax, do not format it.
+  (#2014, fix #2012, @emillon)
+
 1.8.2 (10/03/2019)
 ------------------
 

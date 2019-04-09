@@ -25,9 +25,7 @@ module DB : sig
     :  projects:Dune_project.t list
     -> context:string
     -> installed_libs:Lib.DB.t
-    -> has_native:bool
-    -> ext_lib:string
-    -> ext_obj:string
+    -> lib_config:Lib_config.t
     -> (Path.t * Dune_file.Library.t) list
     -> t * Lib.DB.t
 

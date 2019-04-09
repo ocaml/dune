@@ -52,7 +52,10 @@ let pp_uncaught ~backtrace fmt exn =
      | @{<error>Internal error@}: Uncaught exception.\n\
      %s\n\
      \\%s@."
-    line s line;
+    line s line
+
+let pp fmt exn =
+  Format.pp_print_string fmt (Printexc.to_string exn)
 
 include
   ((struct
@@ -66,3 +69,5 @@ include
 
 let equal = (=)
 let hash = Dune_caml.Hashtbl.hash
+
+let to_dyn exn = Dyn0.String (Printexc.to_string exn)

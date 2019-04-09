@@ -84,7 +84,8 @@ let user_written_deps t =
     ~init:(Deps.to_lib_deps t.requires)
     ~f:(fun acc s -> Dune_file.Lib_dep.Direct s :: acc)
 
-let of_library_stanza ~dir ~has_native ~ext_lib ~ext_obj
+let of_library_stanza ~dir
+      ~lib_config:{ Lib_config.has_native; ext_lib; ext_obj}
       (conf : Dune_file.Library.t) =
   let (_loc, lib_name) = conf.name in
   let obj_dir =

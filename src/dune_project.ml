@@ -612,9 +612,21 @@ let load ~dir ~files =
       match Filename.split_extension fn with
       | (pkg, ".opam") when pkg <> "" ->
         let version_from_opam_file =
-          let opam = Opam_file.load (Path.relative dir fn) in
-          match Opam_file.get_field opam "version" with
-          | Some (String (_, s)) -> Some s
+          let open Option.O in
+          let* opam =
+            let opam_file = Path.relative dir fn in
+            match Opam_file.load opam_file with
+            | s -> Some s
+            | exception exn ->
+              Errors.warn (Loc.in_file opam_file)
+                "Unable to read opam file. This package's version field will\
+                 be ignored.@.Reason: %a@."
+                Exn.pp exn;
+              None
+          in
+          let* version = Opam_file.get_field opam "version" in
+          match version with
+          | String (_, s) -> Some s
           | _ -> None
         in
         let name = Package.Name.of_string pkg in

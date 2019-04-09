@@ -1,6 +1,29 @@
 open! Stdune
 open Import
 
+module File = struct
+  type t =
+    { ino : int
+    ; dev : int
+    }
+
+  let compare a b =
+    match Int.compare a.ino b.ino with
+    | Eq -> Int.compare a.dev b.dev
+    | ne -> ne
+
+  let dummy = { ino = 0; dev = 0 }
+
+  let of_stats (st : Unix.stats) =
+    { ino = st.st_ino
+    ; dev = st.st_dev
+    }
+
+  module Map = Map.Make(struct type nonrec t = t let compare = compare end)
+
+  let of_path p = of_stats (Path.stat p)
+end
+
 module Dune_file = struct
   module Plain = struct
     type t =
@@ -65,13 +88,20 @@ module Dir = struct
     { path     : Path.t
     ; ignored  : bool
     ; contents : contents Lazy.t
+    ; project  : Dune_project.t
     }
 
   and contents =
     { files     : String.Set.t
     ; sub_dirs  : t String.Map.t
     ; dune_file : Dune_file.t option
-    ; project   : Dune_project.t
+    }
+
+  let create ~project ~path ~ignored ~contents =
+    { path
+    ; ignored
+    ; contents
+    ; project
     }
 
   let contents t = Lazy.force t.contents
@@ -82,7 +112,8 @@ module Dir = struct
   let files     t = (contents t).files
   let sub_dirs  t = (contents t).sub_dirs
   let dune_file t = (contents t).dune_file
-  let project   t = (contents t).project
+
+  let project t = t.project
 
   let file_paths t =
     Path.Set.of_string_set (files t) ~f:(Path.relative t.path)
@@ -103,7 +134,7 @@ module Dir = struct
       String.Map.fold (sub_dirs t) ~init:acc ~f:(fun t acc ->
         fold t ~traverse_ignored_dirs ~init:acc ~f)
 
-  let rec dyn_of_contents { files; sub_dirs; dune_file; project = _ } =
+  let rec dyn_of_contents { files; sub_dirs; dune_file } =
     let open Dyn in
     Record
       [ "files", String.Set.to_dyn files
@@ -112,12 +143,12 @@ module Dir = struct
       ; "project", Dyn.opaque
       ]
 
-  and to_dyn { path ; ignored ; contents } =
+  and to_dyn { path ; ignored ; contents = lazy contents ; project = _ } =
     let open Dyn in
     Record
       [ "path", Path.to_dyn path
       ; "ignored", Bool ignored
-      ; "contents", dyn_of_contents (Lazy.force contents)
+      ; "contents", dyn_of_contents contents
       ]
 
   let to_sexp t = Dyn.to_sexp (to_dyn t)
@@ -127,71 +158,74 @@ type t = Dir.t
 
 let root t = t
 
-module File = struct
-  type t =
-    { ino : int
-    ; dev : int
-    }
-
-  let compare a b =
-    match Int.compare a.ino b.ino with
-    | Eq -> Int.compare a.dev b.dev
-    | ne -> ne
-
-  let dummy = { ino = 0; dev = 0 }
-
-  let of_stats (st : Unix.stats) =
-    { ino = st.st_ino
-    ; dev = st.st_dev
-    }
-
-  module Map = Map.Make(struct type nonrec t = t let compare = compare end)
-end
-
 let is_temp_file fn =
   String.is_prefix fn ~prefix:".#"
   || String.is_suffix fn ~suffix:".swp"
   || String.is_suffix fn ~suffix:"~"
 
-let load ?(warn_when_seeing_jbuild_file=true) path =
-  let rec walk path ~dirs_visited ~project ~data_only : Dir.t =
-    let contents = lazy (
-      let files, unfiltered_sub_dirs =
-        Path.readdir_unsorted path
-        |> List.filter_partition_map ~f:(fun fn ->
-          let path = Path.relative path fn in
-          if Path.is_in_build_dir path then
-            Skip
-          else begin
-            let is_directory, file =
-              match Unix.stat (Path.to_string path) with
-              | exception _ -> (false, File.dummy)
-              | { st_kind = S_DIR; _ } as st ->
-                (true, File.of_stats st)
-              | _ ->
-                (false, File.dummy)
-            in
-            if is_directory then
-              Right (fn, path, file)
-            else if is_temp_file fn then
-              Skip
-            else
-              Left fn
-          end)
-      in
-      let files = String.Set.of_list files in
-      let unfiltered_sub_dirs =
-        List.sort
-          ~compare:(fun (a, _, _) (b, _, _) -> String.compare a b)
-          unfiltered_sub_dirs
-      in
-      let project, dune_file, sub_dirs =
-        if data_only then
-          (project, None, Sub_dirs.default)
-        else
-          let project =
-            Option.value (Dune_project.load ~dir:path ~files) ~default:project
+type readdir =
+  { files : String.Set.t
+  ; dirs : (string * Path.t * File.t) list
+  }
+
+let readdir path =
+  match Path.readdir_unsorted path with
+  | exception (Sys_error msg) ->
+    Errors.warn Loc.none
+      "Unable to read directory %s. Ignoring.@.\
+       Remove this message by ignoring by adding:@.\
+       (dirs \\ %s)@.\
+       to the dune file: %s@.\
+       Reason: %s@."
+      (Path.to_string_maybe_quoted path)
+      (Path.basename path)
+      (Path.to_string_maybe_quoted (Path.relative (Path.parent_exn path) "dune"))
+      msg;
+    Error msg
+  | unsorted_contents ->
+    let files, dirs =
+      List.filter_partition_map unsorted_contents ~f:(fun fn ->
+        let path = Path.relative path fn in
+        if Path.is_in_build_dir path then
+          Skip
+        else begin
+          let is_directory, file =
+            match Path.stat path with
+            | exception _ -> (false, File.dummy)
+            | { st_kind = S_DIR; _ } as st -> (true, File.of_stats st)
+            | _ -> (false, File.dummy)
           in
+          if is_directory then
+            Right (fn, path, file)
+          else if is_temp_file fn then
+            Skip
+          else
+            Left fn
+        end)
+    in
+    { files = String.Set.of_list files
+    ; dirs =
+        List.sort dirs
+          ~compare:(fun (a, _, _) (b, _, _) -> String.compare a b)
+    }
+    |> Result.ok
+
+let load ?(warn_when_seeing_jbuild_file=true) path =
+  let open Result.O in
+  let rec walk path ~dirs_visited ~project:parent_project ~data_only : (_, _) Result.t =
+    let+ { dirs; files } = readdir path in
+    let project =
+      if data_only then
+        parent_project
+      else
+        Option.value (Dune_project.load ~dir:path ~files)
+          ~default:parent_project
+    in
+    let contents = lazy (
+      let dune_file, sub_dirs =
+        if data_only then
+          (None, Sub_dirs.default)
+        else
           let dune_file, sub_dirs =
             match List.filter ["dune"; "jbuild"] ~f:(String.Set.mem files) with
             | [] -> (None, Sub_dirs.default)
@@ -224,52 +258,56 @@ let load ?(warn_when_seeing_jbuild_file=true) path =
             else
               sub_dirs
           in
-          (project, dune_file, sub_dirs)
+          (dune_file, sub_dirs)
       in
       let sub_dirs =
         Sub_dirs.eval sub_dirs
-          ~dirs:(List.map ~f:(fun (a, _, _) -> a) unfiltered_sub_dirs) in
+          ~dirs:(List.map ~f:(fun (a, _, _) -> a) dirs) in
       let sub_dirs =
-        List.fold_left unfiltered_sub_dirs ~init:String.Map.empty
-          ~f:(fun acc (fn, path, file) ->
-            let status =
-              if Bootstrap.data_only_path path then
-                Sub_dirs.Status.Ignored
+        dirs
+        |> List.fold_left ~init:String.Map.empty ~f:(fun acc (fn, path, file) ->
+          let status =
+            if Bootstrap.data_only_path path then
+              Sub_dirs.Status.Ignored
+            else
+              Sub_dirs.status sub_dirs ~dir:fn
+          in
+          match status with
+          | Ignored -> acc
+          | Normal | Data_only ->
+            let data_only = data_only || status = Data_only in
+            let dirs_visited =
+              if Sys.win32 then
+                dirs_visited
               else
-                Sub_dirs.status sub_dirs ~dir:fn
+                match File.Map.find dirs_visited file with
+                | None -> File.Map.add dirs_visited file path
+                | Some first_path ->
+                  die "Path %s has already been scanned. \
+                       Cannot scan it again through symlink %s"
+                    (Path.to_string_maybe_quoted first_path)
+                    (Path.to_string_maybe_quoted path)
             in
-            match status with
-            | Ignored -> acc
-            | Normal | Data_only ->
-              let data_only = data_only || status = Data_only in
-              let dirs_visited =
-                if Sys.win32 then
-                  dirs_visited
-                else
-                  match File.Map.find dirs_visited file with
-                  | None -> File.Map.add dirs_visited file path
-                  | Some first_path ->
-                    die "Path %s has already been scanned. \
-                         Cannot scan it again through symlink %s"
-                      (Path.to_string_maybe_quoted first_path)
-                      (Path.to_string_maybe_quoted path)
-              in
+            match
               walk path ~dirs_visited ~project ~data_only
-              |> String.Map.add acc fn)
+            with
+            | Ok dir -> String.Map.add acc fn dir
+            | Error _ -> acc)
       in
-      { Dir. files; sub_dirs; dune_file; project })
+      { Dir. files; sub_dirs; dune_file })
     in
-    { path
-    ; contents
-    ; ignored = data_only
-    }
+    Dir.create ~path ~contents ~ignored:data_only ~project
   in
-  walk path
-    ~dirs_visited:(File.Map.singleton
-                     (File.of_stats (Unix.stat (Path.to_string path)))
-                     path)
+  match
+    walk path
+    ~dirs_visited:(File.Map.singleton (File.of_path path) path)
     ~data_only:false
     ~project:(Lazy.force Dune_project.anonymous)
+  with
+  | Ok dir -> dir
+  | Error m ->
+    die "Unable to load source %s.@.Reason:%s@."
+      (Path.to_string_maybe_quoted path) m
 
 let fold = Dir.fold
 

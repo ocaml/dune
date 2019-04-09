@@ -159,3 +159,5 @@ val cc_g : t -> string list
 val name : t -> string
 
 val has_native : t -> bool
+
+val lib_config : t -> Lib_config.t

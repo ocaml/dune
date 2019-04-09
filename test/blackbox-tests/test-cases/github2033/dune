@@ -1,0 +1,3 @@
+(library
+ (name hello_world)
+ (c_names file.xx))

@@ -37,6 +37,10 @@ unreleased
 - Do not exit dune if some source directories are unreadable. Instead, warn the
   user that such directories need to be ignored (#2004, fix #310, @rgrinberg)
 
+- Fix nested `(binaries ..)` fields in the `env` stanza. Previously, parent
+  `binaries` fields would be ignored, but instead they should be combined.
+  (#2029, @rgrinberg)
+
 1.8.2 (10/03/2019)
 ------------------
 

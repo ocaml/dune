@@ -41,6 +41,8 @@ unreleased
   `binaries` fields would be ignored, but instead they should be combined.
   (#2029, @rgrinberg)
 
+- Allow "." in `c_names` and `cxx_names` (#2036, fix #2033, @rgrinberg)
+
 1.8.2 (10/03/2019)
 ------------------
 

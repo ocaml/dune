@@ -1,24 +1,24 @@
 open! Stdune
 
-type 'a t =
-  { src : 'a
-  ; dst : 'a option
+type ('src, 'dst) t =
+  { src : 'src
+  ; dst : 'dst option
   }
 
 module Expanded = struct
-  type nonrec t = (Loc.t * string) t
+  type nonrec t = (Loc.t * Path.t, Loc.t * string) t
 
   let src t = snd t.src
   let dst t = Option.map ~f:snd t.dst
 
   let src_loc t = fst t.src
 
-  let src_path { src = (_, src); _ } ~dir = Path.relative dir src
+  let src_path t = snd t.src
   let dst_basename { src = (_, src); dst } =
     match dst with
     | Some (_, dst) -> dst
     | None ->
-      let basename = Filename.basename src in
+      let basename = Path.basename src in
       String.drop_suffix basename ~suffix:".exe"
       |> Option.value ~default:basename
 
@@ -27,18 +27,22 @@ module Expanded = struct
 end
 
 module Unexpanded = struct
-  type nonrec t = String_with_vars.t t
+  type nonrec t = (String_with_vars.t, String_with_vars.t) t
 
   let make ~src:(locs, src) ~dst:(locd, dst) =
     { src = String_with_vars.make_text locs src
     ; dst = Some (String_with_vars.make_text locd dst)
     }
 
-  let expand_src t ~f = f t.src
+  let expand_src t ~dir ~f = Path.relative dir (f t.src)
 
-  let expand t ~f =
+  let expand t ~dir ~f =
     let f sw = (String_with_vars.loc sw, f sw) in
-    { src = f t.src
+    let src =
+      let (loc, expanded) = f t.src in
+      (loc, Path.relative dir expanded)
+    in
+    { src
     ; dst = Option.map ~f t.dst
     }
 

@@ -358,7 +358,7 @@ let init_binary_artifacts sctx package =
                     data =
                       { Dune_file.Install_conf. section; files; package = _ }
                   ; dune_version = _
-                  ; ctx_dir = dir
+                  ; ctx_dir = _
                   ; src_dir = _
                   ; scope = _
                   ; kind = _ }) ->
@@ -367,7 +367,7 @@ let init_binary_artifacts sctx package =
                 let src = File_binding.Expanded.src fb in
                 let dst = File_binding.Expanded.dst fb in
                 ( Some loc
-                , Install.Entry.make section (Path.relative dir src) ?dst
+                , Install.Entry.make section src ?dst
                 )))
   in
   let install_paths = Local_package.install_paths package in

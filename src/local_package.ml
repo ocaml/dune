@@ -35,7 +35,8 @@ let add_stanzas t ~sctx =
                ; src_dir = _ ; kind = _; dune_version = _ } as d) ->
          let expander = Super_context.expander sctx ~dir in
          let path_expander =
-          File_binding.Unexpanded.expand ~f:(Expander.expand_str expander)
+           File_binding.Unexpanded.expand ~dir
+             ~f:(Expander.expand_str expander)
          in
          let open Dune_file in
          match data with

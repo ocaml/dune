@@ -45,7 +45,7 @@ let rec local_binaries t ~profile ~expander =
       | Some cfg ->
         default @
         List.map cfg.binaries
-          ~f:(File_binding.Unexpanded.expand ~f:(fun template ->
+          ~f:(File_binding.Unexpanded.expand ~dir:t.dir ~f:(fun template ->
             Expander.expand expander ~mode:Single ~template
             |> Value.to_string ~dir:t.dir))
     in

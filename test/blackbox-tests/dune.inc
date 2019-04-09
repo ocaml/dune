@@ -1269,6 +1269,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name unreadable-src)
+ (deps (package dune) (source_tree test-cases/unreadable-src))
+ (action
+  (chdir
+   test-cases/unreadable-src
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name upgrader)
  (deps (package dune) (source_tree test-cases/upgrader))
  (action
@@ -1515,6 +1523,7 @@
   (alias toplevel-stanza)
   (alias trace-file)
   (alias transitive-deps-mode)
+  (alias unreadable-src)
   (alias upgrader)
   (alias use-meta)
   (alias utop)
@@ -1662,6 +1671,7 @@
   (alias toplevel-stanza)
   (alias trace-file)
   (alias transitive-deps-mode)
+  (alias unreadable-src)
   (alias upgrader)
   (alias variants)
   (alias vlib)

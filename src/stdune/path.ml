@@ -1042,3 +1042,5 @@ let local_part = function
   | External e -> Local.of_string (External.as_local e)
   | In_source_tree l -> l
   | In_build_dir l -> l
+
+let stat t = Unix.stat (to_string t)

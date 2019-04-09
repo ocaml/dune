@@ -41,3 +41,5 @@ val raise_with_backtrace: exn -> Printexc.raw_backtrace -> _
 val equal : t -> t -> bool
 
 val hash : t -> int
+
+val to_dyn : t -> Dyn0.t

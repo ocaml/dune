@@ -69,3 +69,5 @@ include
 
 let equal = (=)
 let hash = Dune_caml.Hashtbl.hash
+
+let to_dyn exn = Dyn0.String (Printexc.to_string exn)

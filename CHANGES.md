@@ -1,5 +1,5 @@
-unreleased
-----------
+1.9.0 (09/04/2019)
+------------------
 
 - Warn when generated `.merlin` does not reflect the preprocessing
   specification. This occurs when multiple stanzas in the same directory use

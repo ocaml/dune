@@ -5,7 +5,7 @@ type t =
   ; inherit_from          : t Lazy.t option
   ; scope                 : Scope.t
   ; config                : Dune_env.Stanza.t option
-  ; mutable local_binaries : string File_bindings.t option
+  ; mutable local_binaries : File_binding.Expanded.t list option
   ; mutable ocaml_flags   : Ocaml_flags.t option
   ; mutable c_flags       : (unit, string list) Build.t C.Kind.Dict.t option
   ; mutable external_     : Env.t option
@@ -30,17 +30,24 @@ let find_config t ~profile =
   let open Option.O in
   t.config >>= Dune_env.Stanza.find ~profile
 
-let local_binaries t ~profile ~expander =
+let rec local_binaries t ~profile ~expander =
   match t.local_binaries with
   | Some x -> x
   | None ->
+    let default =
+      match t.inherit_from with
+      | None -> []
+      | Some (lazy t) -> local_binaries t ~profile ~expander
+    in
     let local_binaries =
       match find_config t ~profile with
-      | None -> []
+      | None -> default
       | Some cfg ->
-        File_bindings.map cfg.binaries ~f:(fun template ->
-          Expander.expand expander ~mode:Single ~template
-          |> Value.to_string ~dir:t.dir)
+        default @
+        List.map cfg.binaries
+          ~f:(File_binding.Unexpanded.expand ~dir:t.dir ~f:(fun template ->
+            Expander.expand expander ~mode:Single ~template
+            |> Value.to_string ~dir:t.dir))
     in
     t.local_binaries <- Some local_binaries;
     local_binaries
@@ -59,7 +66,7 @@ let rec external_ t ~profile ~default =
       | None -> (default, false)
       | Some cfg ->
         ( Env.extend_env default cfg.env_vars
-        , not (File_bindings.is_empty cfg.binaries)
+        , not (List.is_empty cfg.binaries)
         )
     in
     let env =

@@ -1081,14 +1081,14 @@ end
 module Install_conf = struct
   type 'file t =
     { section : Install.Section.t
-    ; files   : 'file File_bindings.t
+    ; files   : 'file list
     ; package : Package.t
     }
 
   let decode =
     record
       (let+ section = field "section" Install.Section.decode
-       and+ files = field "files" File_bindings.Unexpanded.decode
+       and+ files = field "files" File_binding.Unexpanded.L.decode
        and+ package = Pkg.field "install"
        in
        { section
@@ -1114,7 +1114,7 @@ module Executables = struct
     val install_conf
       : t
       -> ext:string
-      -> (String_with_vars.t Install_conf.t, string) Result.t option
+      -> (File_binding.Unexpanded.t Install_conf.t, string) Result.t option
 
     val loc_of_package_field : t -> Loc.t
   end = struct
@@ -1246,10 +1246,9 @@ module Executables = struct
         List.map2 t.names public_names
           ~f:(fun (locn, name) (locp, pub) ->
             Option.map pub ~f:(fun pub ->
-              { File_bindings.
-                src = String_with_vars.make_text locn (name ^ ext)
-              ; dst = Some (String_with_vars.make_text locp pub)
-              }))
+              File_binding.Unexpanded.make
+                ~src:(locn, name ^ ext)
+                ~dst:(locp, pub)))
         |> List.filter_opt
       in
       begin match files, t.package with
@@ -2033,7 +2032,7 @@ type Stanza.t +=
   | Library         of Library.t
   | Executables     of Executables.t
   | Rule            of Rule.t
-  | Install         of String_with_vars.t Install_conf.t
+  | Install         of File_binding.Unexpanded.t Install_conf.t
   | Alias           of Alias_conf.t
   | Copy_files      of Copy_files.t
   | Documentation   of Documentation.t

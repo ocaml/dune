@@ -30,7 +30,7 @@ val local_binaries
   :  t
   -> profile:string
   -> expander:Expander.t
-  -> string File_bindings.t
+  -> File_binding.Expanded.t list
 
 val artifacts
   :  t

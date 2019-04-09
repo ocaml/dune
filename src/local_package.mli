@@ -15,7 +15,7 @@ val mlds : t -> Path.t list
 
 val installs
   : t
-  -> (Loc.t * string) Dune_file.Install_conf.t Dir_with_dune.t list
+  -> File_binding.Expanded.t Dune_file.Install_conf.t Dir_with_dune.t list
 
 val odig_files : t -> Path.t list
 

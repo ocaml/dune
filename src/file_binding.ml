@@ -5,40 +5,44 @@ type 'a t =
   ; dst : 'a option
   }
 
-let to_dyn f { src; dst } =
-  let open Dyn.Encoder in
-  record
-    [ "src", f src
-    ; "dst", option f dst
-    ]
+module Expanded = struct
+  type nonrec t = (Loc.t * string) t
 
-let map { src; dst } ~f =
-  { src = f src; dst = Option.map ~f dst }
+  let src t = snd t.src
+  let dst t = Option.map ~f:snd t.dst
 
-let src_path { src; _ } ~dir = Path.relative dir src
+  let src_loc t = fst t.src
 
-let dst_basename { src; dst } =
-  match dst with
-  | Some dst -> dst
-  | None ->
-    let basename = Filename.basename src in
-    String.drop_suffix basename ~suffix:".exe"
-    |> Option.value ~default:basename
+  let src_path { src = (_, src); _ } ~dir = Path.relative dir src
+  let dst_basename { src = (_, src); dst } =
+    match dst with
+    | Some (_, dst) -> dst
+    | None ->
+      let basename = Filename.basename src in
+      String.drop_suffix basename ~suffix:".exe"
+      |> Option.value ~default:basename
 
-let dst_path t ~dir =
-  Path.relative dir (dst_basename t)
+  let dst_path t ~dir =
+    Path.relative dir (dst_basename t)
+end
 
-module L = struct
-  type nonrec 'a t = 'a t list
+module Unexpanded = struct
+  type nonrec t = String_with_vars.t t
 
-  let is_empty xs = List.is_empty xs
+  let make ~src:(locs, src) ~dst:(locd, dst) =
+    { src = String_with_vars.make_text locs src
+    ; dst = Some (String_with_vars.make_text locd dst)
+    }
 
-  let empty = []
+  let expand_src t ~f = f t.src
 
-  let map t ~f = List.map t ~f:(map ~f)
+  let expand t ~f =
+    let f sw = (String_with_vars.loc sw, f sw) in
+    { src = f t.src
+    ; dst = Option.map ~f t.dst
+    }
 
-  module Unexpanded = struct
-    type nonrec t = String_with_vars.t t
+  module L = struct
 
     let decode_file =
       let open Stanza.Decoder in

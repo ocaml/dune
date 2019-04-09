@@ -6,7 +6,8 @@ type t =
   { odig_files : Path.t list
   ; ctx_build_dir : Path.t
   ; lib_stanzas : Dune_file.Library.t Dir_with_dune.t list
-  ; installs : (Loc.t * string) Dune_file.Install_conf.t Dir_with_dune.t list
+  ; installs
+    : File_binding.Expanded.t Dune_file.Install_conf.t Dir_with_dune.t list
   ; docs : Dune_file.Documentation.t Dir_with_dune.t list
   ; mlds : Path.t list Lazy.t
   ; coqlibs : Dune_file.Coq.t Dir_with_dune.t list
@@ -33,13 +34,16 @@ let add_stanzas t ~sctx =
     ~f:(fun t ({ Dir_with_dune. ctx_dir = dir ; scope = _ ; data
                ; src_dir = _ ; kind = _; dune_version = _ } as d) ->
          let expander = Super_context.expander sctx ~dir in
-         let path_expander sw =
-           (String_with_vars.loc sw, Expander.expand_str expander sw) in
+         let path_expander =
+          File_binding.Unexpanded.expand ~f:(Expander.expand_str expander)
+         in
          let open Dune_file in
          match data with
          | Install i ->
            let i =
-             { i with files = File_binding.L.map ~f:path_expander i.files } in
+             let files = List.map ~f:path_expander i.files in
+             { i with files }
+           in
            { t with
              installs = { d with data = i } :: t.installs
            }

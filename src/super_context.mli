@@ -65,7 +65,7 @@ val c_flags
 
 (** Binaries that are symlinked in the associated .bin directory of [dir]. This
     associated directory is [Path.relative dir ".bin"] *)
-val local_binaries : t -> dir:Path.t -> (Loc.t * string) File_binding.L.t
+val local_binaries : t -> dir:Path.t -> File_binding.Expanded.t list
 
 (** Dump a directory environment in a readable form *)
 val dump_env : t -> dir:Path.t -> (unit, Dune_lang.t list) Build.t

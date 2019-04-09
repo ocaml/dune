@@ -7,7 +7,7 @@ module Stanza : sig
     { flags          : Ocaml_flags.Spec.t
     ; c_flags        : Ordered_set_lang.Unexpanded.t C.Kind.Dict.t
     ; env_vars       : Env.t
-    ; binaries       : File_binding.L.Unexpanded.t
+    ; binaries       : File_binding.Unexpanded.t list
     }
 
   type pattern =

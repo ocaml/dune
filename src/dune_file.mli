@@ -251,7 +251,7 @@ end
 module Install_conf : sig
   type 'file t =
     { section : Install.Section.t
-    ; files   : 'file File_binding.L.t
+    ; files   : 'file list
     ; package : Package.t
     }
 end
@@ -429,7 +429,7 @@ type Stanza.t +=
   | Library         of Library.t
   | Executables     of Executables.t
   | Rule            of Rule.t
-  | Install         of String_with_vars.t Install_conf.t
+  | Install         of File_binding.Unexpanded.t Install_conf.t
   | Alias           of Alias_conf.t
   | Copy_files      of Copy_files.t
   | Documentation   of Documentation.t

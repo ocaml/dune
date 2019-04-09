@@ -70,7 +70,7 @@ module Env : sig
   val external_ : t -> dir:Path.t -> External_env.t
   val artifacts_host : t -> dir:Path.t -> Artifacts.t
   val expander : t -> dir:Path.t -> Expander.t
-  val local_binaries : t -> dir:Path.t -> (Loc.t * string) File_binding.L.t
+  val local_binaries : t -> dir:Path.t -> File_binding.Expanded.t list
 end = struct
   let get_env_stanza t ~dir =
     let open Option.O in

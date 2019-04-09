@@ -17,7 +17,7 @@ module Kind = struct
     | Recognized of string * t
 
   let split_extension fn ~dune_version =
-    match String.lsplit2 fn ~on:'.' with
+    match String.rsplit2 fn ~on:'.' with
     | Some (obj, "c") -> Recognized (obj, C)
     | Some (obj, "cpp") -> Recognized (obj, Cxx)
     | Some (obj, "cxx") ->

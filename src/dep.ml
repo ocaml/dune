@@ -1,5 +1,9 @@
 open Stdune
 
+module Trace = struct
+  type t = (string * Digest.t) list
+end
+
 module T = struct
   type t =
     | Env of Env.Var.t

@@ -673,3 +673,26 @@ let lib_config t =
   ; ext_obj = t.ext_obj
   ; ext_lib = t.ext_lib
   }
+
+let db = Fdecl.create ()
+
+let set contexts =
+  List.map contexts ~f:(fun context -> (context.build_dir, context))
+  |> Path.Map.of_list_exn
+  |> Fdecl.set db
+
+let get ~dir:init_dir =
+  let contexts = Fdecl.get db in
+  let rec find dir =
+    match Path.Map.find contexts dir with
+    | Some c -> c
+    | None ->
+      match Path.parent dir with
+      | None ->
+        Exn.code_error "context not defined for this dir"
+          [ "init_dir", Path.to_sexp init_dir
+          ]
+      | Some p -> find p
+  in
+  find init_dir
+

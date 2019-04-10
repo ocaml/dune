@@ -111,7 +111,7 @@ end = struct
           [ "dir", Path.to_sexp dir ]
 
   let external_ t  ~dir =
-    Env_node.external_ (get t ~dir) ~profile:(profile t) ~default:t.context.env
+    Env_node.external_ (get t ~dir) ~default:t.context.env
 
   let expander_for_artifacts t ~dir =
     let node = get t ~dir in
@@ -123,11 +123,11 @@ end = struct
   let local_binaries t ~dir =
     let node = get t ~dir in
     let expander = expander_for_artifacts t ~dir in
-    Env_node.local_binaries node ~profile:(profile t) ~expander
+    Env_node.local_binaries node ~expander
 
   let artifacts t ~dir =
     let expander = expander_for_artifacts t ~dir in
-    Env_node.artifacts (get t ~dir) ~profile:(profile t) ~default:t.artifacts
+    Env_node.artifacts (get t ~dir) ~default:t.artifacts
       ~expander
 
   let artifacts_host t ~dir =
@@ -145,8 +145,7 @@ end = struct
     Expander.set_artifacts expander ~artifacts ~artifacts_host
 
   let ocaml_flags t ~dir =
-    Env_node.ocaml_flags (get t ~dir)
-      ~profile:(profile t) ~expander:(expander t ~dir)
+    Env_node.ocaml_flags (get t ~dir) ~expander:(expander t ~dir)
 
   let default_context_flags (ctx : Context.t) =
     let c = ctx.ocamlc_cflags in
@@ -158,7 +157,7 @@ end = struct
   let c_flags t ~dir =
     let default_context_flags = default_context_flags t.context in
     Env_node.c_flags (get t ~dir)
-      ~profile:(profile t) ~expander:(expander t ~dir)
+      ~expander:(expander t ~dir)
       ~default_context_flags
 end
 

@@ -26,20 +26,23 @@ let make ~dir ~inherit_from ~scope ~config ~env =
   ; local_binaries = None
   }
 
+let profile ~dir = (Context.get ~dir).profile
+
 let find_config t ~profile =
   let open Option.O in
   t.config >>= Dune_env.Stanza.find ~profile
 
-let rec local_binaries t ~profile ~expander =
+let rec local_binaries t ~expander =
   match t.local_binaries with
   | Some x -> x
   | None ->
     let default =
       match t.inherit_from with
       | None -> []
-      | Some (lazy t) -> local_binaries t ~profile ~expander
+      | Some (lazy t) -> local_binaries t ~expander
     in
     let local_binaries =
+      let profile = profile ~dir:t.dir in
       match find_config t ~profile with
       | None -> default
       | Some cfg ->
@@ -52,16 +55,17 @@ let rec local_binaries t ~profile ~expander =
     t.local_binaries <- Some local_binaries;
     local_binaries
 
-let rec external_ t ~profile ~default =
+let rec external_ t ~default =
   match t.external_ with
   | Some x -> x
   | None ->
     let default =
       match t.inherit_from with
       | None -> default
-      | Some (lazy t) -> external_ t ~default ~profile
+      | Some (lazy t) -> external_ t ~default
     in
     let (env, have_binaries) =
+      let profile = profile ~dir:t.dir in
       match find_config t ~profile with
       | None -> (default, false)
       | Some cfg ->
@@ -78,30 +82,31 @@ let rec external_ t ~profile ~default =
     t.external_ <- Some env;
     env
 
-let rec artifacts t ~profile ~default ~expander =
+let rec artifacts t ~default ~expander =
   match t.artifacts with
   | Some x -> x
   | None ->
     let default =
       match t.inherit_from with
       | None -> default
-      | Some (lazy t) -> artifacts t ~default ~profile ~expander
+      | Some (lazy t) -> artifacts t ~default ~expander
     in
     let artifacts =
-      local_binaries t ~profile ~expander
+      local_binaries t ~expander
       |> Artifacts.add_binaries default ~dir:t.dir
     in
     t.artifacts <- Some artifacts;
     artifacts
 
-let rec ocaml_flags t ~profile ~expander =
+let rec ocaml_flags t ~expander =
   match t.ocaml_flags with
   | Some x -> x
   | None ->
+    let profile = profile ~dir:t.dir in
     let default =
       match t.inherit_from with
       | None -> Ocaml_flags.default ~profile
-      | Some (lazy t) -> ocaml_flags t ~profile ~expander
+      | Some (lazy t) -> ocaml_flags t ~expander
     in
     let flags =
       match find_config t ~profile with
@@ -116,16 +121,17 @@ let rec ocaml_flags t ~profile ~expander =
     t.ocaml_flags <- Some flags;
     flags
 
-let rec c_flags t ~profile ~expander ~default_context_flags =
+let rec c_flags t ~expander ~default_context_flags =
   match t.c_flags with
   | Some x -> x
   | None ->
     let default =
       match t.inherit_from with
       | None -> C.Kind.Dict.map ~f:Build.return default_context_flags
-      | Some (lazy t) -> c_flags t ~profile ~expander ~default_context_flags
+      | Some (lazy t) -> c_flags t ~expander ~default_context_flags
     in
     let flags =
+      let profile = profile ~dir:t.dir in
       match find_config t ~profile with
       | None -> default
       | Some cfg ->

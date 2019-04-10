@@ -15,26 +15,23 @@ val make
 
 val scope : t -> Scope.t
 
-val external_ : t -> profile:string -> default:Env.t -> Env.t
+val external_ : t -> default:Env.t -> Env.t
 
-val ocaml_flags : t -> profile:string -> expander:Expander.t -> Ocaml_flags.t
+val ocaml_flags : t -> expander:Expander.t -> Ocaml_flags.t
 
 val c_flags
   : t
-  -> profile:string
   -> expander:Expander.t
   -> default_context_flags:string list C.Kind.Dict.t
   -> (unit, string list) Build.t C.Kind.Dict.t
 
 val local_binaries
   :  t
-  -> profile:string
   -> expander:Expander.t
   -> File_binding.Expanded.t list
 
 val artifacts
   :  t
-  -> profile:string
   -> default:Artifacts.t
   -> expander:Expander.t
   -> Artifacts.t

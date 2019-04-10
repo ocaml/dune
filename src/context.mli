@@ -161,3 +161,7 @@ val name : t -> string
 val has_native : t -> bool
 
 val lib_config : t -> Lib_config.t
+
+val set : t list -> unit
+
+val get : dir:Path.t -> t

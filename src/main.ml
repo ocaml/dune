@@ -71,6 +71,7 @@ let scan_workspace ?(log=Log.no_log)
   }
 
 let init_build_system ?only_packages ?external_lib_deps_mode w =
+  Context.set w.contexts;
   Option.iter only_packages ~f:(fun set ->
     Package.Name.Set.iter set ~f:(fun pkg ->
       if not (Package.Name.Map.mem w.conf.packages pkg) then

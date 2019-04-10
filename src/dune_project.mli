@@ -135,3 +135,5 @@ val implicit_transitive_deps : t -> bool
 val dune_version : t -> Syntax.Version.t
 
 val pp : t Fmt.t
+
+val in_source_root : t -> Path.t

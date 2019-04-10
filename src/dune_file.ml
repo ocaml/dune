@@ -99,8 +99,11 @@ module Pkg = struct
                  "You cannot declare items to be installed without \
                   adding a <package>.opam file at the root of your project.\n\
                   To declare elements to be installed as part of package %S, \
-                  add a %S file at the root of your project."
-                 name_s (Package.Name.opam_fn name))
+                  add a %S file at the root of your project.\nn\
+                 Root of the project as discovered by dune: %s@"
+                 name_s (Package.Name.opam_fn name)
+                 (Path.to_string_maybe_quoted
+                    (Dune_project.in_source_root project)))
       else
         Error (sprintf
                  "The current scope doesn't define package %S.\n\

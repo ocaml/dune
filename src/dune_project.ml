@@ -650,3 +650,6 @@ let dune_version t = t.dune_version
 
 let set_parsing_context t parser =
   Dune_lang.Decoder.set_many t.parsing_context parser
+
+let in_source_root t =
+  Path.append_local Path.root (root t)

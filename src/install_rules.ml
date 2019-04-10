@@ -365,7 +365,8 @@ let init_binary_artifacts sctx package =
               List.map files ~f:(fun fb ->
                 let loc = File_binding.Expanded.src_loc fb in
                 let src = File_binding.Expanded.src fb in
-                let dst = File_binding.Expanded.dst fb in
+                let dst = Option.map ~f:Path.Local.to_string
+                            (File_binding.Expanded.dst fb) in
                 ( Some loc
                 , Install.Entry.make section src ?dst
                 )))

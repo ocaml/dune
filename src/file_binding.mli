@@ -4,7 +4,7 @@ module Expanded : sig
   type t
 
   val src : t -> Path.t
-  val dst : t -> string option
+  val dst : t -> Path.Local.t option
 
   val src_loc : t -> Loc.t
 

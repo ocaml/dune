@@ -19,6 +19,10 @@ val pp : t Fmt.t
 
 type eval_pred = File_selector.t -> Path.Set.t
 
+module Trace : sig
+  type t
+end
+
 module Set : sig
   include Set.S with type elt = t
 
@@ -32,7 +36,7 @@ module Set : sig
 
   val encode : t -> Dune_lang.t
 
-  val trace : t -> env:Env.t -> eval_pred:eval_pred -> (string * Digest.t) list
+  val trace : t -> env:Env.t -> eval_pred:eval_pred -> Trace.t
 
   val add_paths : t -> Path.Set.t -> t
 

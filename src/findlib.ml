@@ -438,12 +438,18 @@ let available t name = Result.is_ok (find t name)
 let root_packages t =
   let pkgs =
     List.concat_map t.paths ~f:(fun dir ->
-      Path.readdir_unsorted dir
-      |> List.filter_map ~f:(fun name ->
-        if Path.exists (Path.relative dir (name ^ "/META")) then
-          Some (Lib_name.of_string_exn ~loc:None name)
-        else
-          None))
+      match Path.readdir_unsorted dir with
+      | Error unix_error ->
+        die
+          "Unable to read directory %s for findlib package@.Reason:%s@."
+          (Path.to_string_maybe_quoted dir)
+          (Unix.error_message unix_error)
+      | Ok listing ->
+        List.filter_map listing ~f:(fun name ->
+          if Path.exists (Path.relative dir (name ^ "/META")) then
+            Some (Lib_name.of_string_exn ~loc:None name)
+          else
+            None))
     |> Lib_name.Set.of_list
   in
   let builtins = Lib_name.Set.of_list (Lib_name.Map.keys t.builtins) in

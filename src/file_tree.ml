@@ -170,7 +170,7 @@ type readdir =
 
 let readdir path =
   match Path.readdir_unsorted path with
-  | exception (Sys_error msg) ->
+  | Error unix_error ->
     Errors.warn Loc.none
       "Unable to read directory %s. Ignoring.@.\
        Remove this message by ignoring by adding:@.\
@@ -180,9 +180,9 @@ let readdir path =
       (Path.to_string_maybe_quoted path)
       (Path.basename path)
       (Path.to_string_maybe_quoted (Path.relative (Path.parent_exn path) "dune"))
-      msg;
-    Error msg
-  | unsorted_contents ->
+      (Unix.error_message unix_error);
+    Error unix_error
+  | Ok unsorted_contents ->
     let files, dirs =
       List.filter_partition_map unsorted_contents ~f:(fun fn ->
         let path = Path.relative path fn in
@@ -307,7 +307,7 @@ let load ?(warn_when_seeing_jbuild_file=true) path =
   | Ok dir -> dir
   | Error m ->
     die "Unable to load source %s.@.Reason:%s@."
-      (Path.to_string_maybe_quoted path) m
+      (Path.to_string_maybe_quoted path) (Unix.error_message m)
 
 let fold = Dir.fold
 

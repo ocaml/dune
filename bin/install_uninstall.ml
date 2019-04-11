@@ -104,10 +104,13 @@ module File_ops_real : FILE_OPERATIONS = struct
   let remove_dir_if_empty dir =
     if Path.exists dir then
       match Path.readdir_unsorted dir with
-      | [] ->
-          Printf.eprintf "Deleting empty directory %s\n%!"
+      | Ok [] ->
+        Printf.eprintf "Deleting empty directory %s\n%!"
           (Path.to_string_maybe_quoted dir);
         print_unix_error (fun () -> Path.rmdir dir)
+      | Error e ->
+        Format.eprintf "@{<error>Error@}: %s@."
+          (Unix.error_message e)
       | _  -> ()
 
   let mkdir_p = Path.mkdir_p

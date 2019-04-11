@@ -859,7 +859,26 @@ let explode_exn t =
 let exists t =
   try Sys.file_exists (to_string t)
   with Sys_error _ -> false
-let readdir_unsorted t = Sys.readdir (to_string t) |> Array.to_list
+let readdir_unsorted =
+  let rec loop dh acc =
+    match Unix.readdir dh with
+    | "."
+    | ".." -> loop dh acc
+    | s -> loop dh (s :: acc)
+    | exception End_of_file -> acc
+  in
+  fun t ->
+    try
+      let dh = Unix.opendir (to_string t) in
+      Exn.protect
+        ~f:(fun () ->
+          match loop dh [] with
+          | exception (Unix.Unix_error (e, _, _)) -> Error e 
+          | s -> Ok s)
+        ~finally:(fun () -> Unix.closedir dh)
+    with
+      Unix.Unix_error (e, _, _) -> Error e
+
 let is_directory t =
   try Sys.is_directory (to_string t)
   with Sys_error _ -> false

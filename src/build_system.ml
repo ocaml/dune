@@ -623,8 +623,14 @@ let get_dir_status t ~dir =
     else if not (Path.is_managed dir) then
       Dir_status.Loaded
         (match Path.readdir_unsorted dir with
-         | exception _ -> Path.Set.empty
-         | files ->
+         | Error Unix.ENOENT -> Path.Set.empty
+         | Error m ->
+           Errors.warn Loc.none
+             "Unable to read %s@.Reason: %s@."
+             (Path.to_string_maybe_quoted dir)
+             (Unix.error_message m);
+           Path.Set.empty
+         | Ok files ->
            Path.Set.of_list (List.map files ~f:(Path.relative dir)))
     else begin
       let (ctx, sub_dir) = Path.extract_build_context_exn dir in
@@ -832,7 +838,8 @@ let remove_old_artifacts t ~dir ~subdirs_to_keep =
   else
     match Path.readdir_unsorted dir with
     | exception _ -> ()
-    | files ->
+    | Error _ -> ()
+    | Ok files ->
       List.iter files ~f:(fun fn ->
         let path = Path.relative dir fn in
         let path_is_a_target = Path.Table.mem t.files path in

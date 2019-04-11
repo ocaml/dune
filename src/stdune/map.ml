@@ -108,6 +108,11 @@ module Make(Key : Comparable.S) : S with type key = Key.t = struct
         | x :: y :: _ -> Error (k, x, y)
         | _ -> assert false
 
+  let of_list_map_exn t ~f =
+    match of_list_map t ~f with
+    | Ok x -> x
+    | Error _ -> Exn.code_error "Map.of_list_map_exn" []
+
   let of_list_exn l =
     match of_list l with
     | Ok    x -> x

@@ -83,6 +83,149 @@ let load_jbuild_ignore path =
     end)
   |> String.Set.of_list
 
+
+module Readdir = struct
+  type t =
+    { files : String.Set.t
+    ; dirs : (string * Path.t * File.t) list
+    }
+
+  let is_temp_file fn =
+    String.is_prefix fn ~prefix:".#"
+    || String.is_suffix fn ~suffix:".swp"
+    || String.is_suffix fn ~suffix:"~"
+
+  let of_path path =
+    match Path.readdir_unsorted path with
+    | exception (Sys_error msg) ->
+      Errors.warn Loc.none
+        "Unable to read directory %s. Ignoring.@.\
+         Remove this message by ignoring by adding:@.\
+         (dirs \\ %s)@.\
+         to the dune file: %s@.\
+         Reason: %s@."
+        (Path.to_string_maybe_quoted path)
+        (Path.basename path)
+        (Path.to_string_maybe_quoted (Path.relative (Path.parent_exn path) "dune"))
+        msg;
+      Error msg
+    | unsorted_contents ->
+      let files, dirs =
+        List.filter_partition_map unsorted_contents ~f:(fun fn ->
+          let path = Path.relative path fn in
+          if Path.is_in_build_dir path then
+            Skip
+          else begin
+            let is_directory, file =
+              match Path.stat path with
+              | exception _ -> (false, File.dummy)
+              | { st_kind = S_DIR; _ } as st -> (true, File.of_stats st)
+              | _ -> (false, File.dummy)
+            in
+            if is_directory then
+              Right (fn, path, file)
+            else if is_temp_file fn then
+              Skip
+            else
+              Left fn
+          end)
+      in
+      { files = String.Set.of_list files
+      ; dirs =
+          List.sort dirs
+            ~compare:(fun (a, _, _) (b, _, _) -> String.compare a b)
+      }
+      |> Result.ok
+end
+
+module Contents = struct
+  let files ~dir =
+    match Readdir.of_path dir with
+    | Error _ -> String.Set.empty
+    | Ok (d : Readdir.t) -> d.files
+
+  let dirs ~dir =
+    match Readdir.of_path dir with
+    | Error _ -> []
+    | Ok (d : Readdir.t) -> d.dirs
+
+  let rec status ~dir =
+    if Bootstrap.data_only_path dir then
+      Sub_dirs.Status.Ignored
+    else
+      match Path.parent dir with
+      | None -> Sub_dirs.Status.Normal
+      | Some parent ->
+        let sub_dirs = sub_dirs ~dir:parent in
+        Sub_dirs.status sub_dirs ~dir:(Path.basename dir)
+
+  and sub_dirs ~dir =
+    let (_, sub_dirs) = dune_file_and_sub_dirs ~dir in
+    let dirs = List.map ~f:(fun (a, _, _) -> a) (dirs ~dir) in
+    Sub_dirs.eval sub_dirs ~dirs
+
+  and data_only ~dir = status ~dir = Data_only
+
+  and parent_project ~dir =
+    match Path.parent dir with
+    | Some dir -> project ~dir
+    | None -> Lazy.force Dune_project.anonymous
+
+  and project ~dir =
+    if data_only ~dir then
+      parent_project ~dir
+    else
+      let files = files ~dir in
+      match Dune_project.load ~dir ~files with
+      | None -> parent_project ~dir
+      | Some p -> p
+
+  and dune_file_and_sub_dirs ~dir =
+    if data_only ~dir then
+      (None, Sub_dirs.default)
+    else
+      let files = files ~dir in
+      match List.filter ["dune"; "jbuild"] ~f:(String.Set.mem files) with
+      | [] -> (None, Sub_dirs.default)
+      | [fn] ->
+        let file = Path.relative dir fn in
+        let project = project ~dir in
+        if fn = "dune" then
+          ignore (Dune_project.ensure_project_file_exists project
+                  : Dune_project.created_or_already_exist)
+        else
+          Errors.warn (Loc.in_file file)
+            "jbuild files are deprecated, please convert this file to \
+             a dune file instead.\n\
+             Note: You can use \"dune upgrade\" to convert your \
+             project to dune.";
+        let dune_file, sub_dirs =
+          Dune_file.load file
+            ~project
+            ~kind:(Option.value_exn (Dune_lang.Syntax.of_basename fn))
+        in
+        let sub_dirs =
+          if String.Set.mem files "jbuild-ignore" then
+            Sub_dirs.add_data_only_dirs sub_dirs
+              ~dirs:(load_jbuild_ignore (Path.relative dir "jbuild-ignore"))
+          else
+            sub_dirs
+        in
+        (Some dune_file, sub_dirs)
+      | _ ->
+        die "Directory %s has both a 'dune' and 'jbuild' file.\n\
+             This is not allowed"
+          (Path.to_string_maybe_quoted dir)
+
+  let _dirs ~dir =
+    dirs ~dir
+    |> List.fold_left ~init:String.Set.empty ~f:(fun acc (fn, dir, _) ->
+      match status ~dir with
+      | Ignored -> acc
+      | Data_only
+      | Normal -> String.Set.add acc fn)
+end
+
 module Dir = struct
   type t =
     { path     : Path.t
@@ -158,62 +301,10 @@ type t = Dir.t
 
 let root t = t
 
-let is_temp_file fn =
-  String.is_prefix fn ~prefix:".#"
-  || String.is_suffix fn ~suffix:".swp"
-  || String.is_suffix fn ~suffix:"~"
-
-type readdir =
-  { files : String.Set.t
-  ; dirs : (string * Path.t * File.t) list
-  }
-
-let readdir path =
-  match Path.readdir_unsorted path with
-  | exception (Sys_error msg) ->
-    Errors.warn Loc.none
-      "Unable to read directory %s. Ignoring.@.\
-       Remove this message by ignoring by adding:@.\
-       (dirs \\ %s)@.\
-       to the dune file: %s@.\
-       Reason: %s@."
-      (Path.to_string_maybe_quoted path)
-      (Path.basename path)
-      (Path.to_string_maybe_quoted (Path.relative (Path.parent_exn path) "dune"))
-      msg;
-    Error msg
-  | unsorted_contents ->
-    let files, dirs =
-      List.filter_partition_map unsorted_contents ~f:(fun fn ->
-        let path = Path.relative path fn in
-        if Path.is_in_build_dir path then
-          Skip
-        else begin
-          let is_directory, file =
-            match Path.stat path with
-            | exception _ -> (false, File.dummy)
-            | { st_kind = S_DIR; _ } as st -> (true, File.of_stats st)
-            | _ -> (false, File.dummy)
-          in
-          if is_directory then
-            Right (fn, path, file)
-          else if is_temp_file fn then
-            Skip
-          else
-            Left fn
-        end)
-    in
-    { files = String.Set.of_list files
-    ; dirs =
-        List.sort dirs
-          ~compare:(fun (a, _, _) (b, _, _) -> String.compare a b)
-    }
-    |> Result.ok
-
 let load ?(warn_when_seeing_jbuild_file=true) path =
   let open Result.O in
   let rec walk path ~dirs_visited ~project:parent_project ~data_only : (_, _) Result.t =
-    let+ { dirs; files } = readdir path in
+    let+ { Readdir. dirs; files } = Readdir.of_path path in
     let project =
       if data_only then
         parent_project
@@ -319,9 +410,7 @@ let rec find_dir t path =
   else
     match
       let open Option.O in
-      Path.parent path
-      >>= find_dir t
-      >>= fun parent ->
+      let* parent = Path.parent path >>= find_dir t in
       String.Map.find (Dir.sub_dirs parent) (Path.basename path)
     with
     | Some _ as res -> res

@@ -674,15 +674,23 @@ let lib_config t =
   ; ext_lib = t.ext_lib
   }
 
-let db = Fdecl.create ()
+let db = ref None
+
+let () = Hooks.End_of_build.always (fun () -> db := None)
 
 let set contexts =
-  List.map contexts ~f:(fun context -> (context.build_dir, context))
-  |> Path.Map.of_list_exn
-  |> Fdecl.set db
+  db :=
+    List.map contexts ~f:(fun context -> (context.build_dir, context))
+    |> Path.Map.of_list_exn
+    |> Option.some
 
 let get ~dir:init_dir =
-  let contexts = Fdecl.get db in
+  let contexts =
+    match !db with
+    | Some m -> m
+    | None -> Exn.code_error "Context.get: contexts not initialized"
+                ["init_dir", Path.to_sexp init_dir]
+  in
   let rec find dir =
     match Path.Map.find contexts dir with
     | Some c -> c

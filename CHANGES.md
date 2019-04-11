@@ -1,5 +1,5 @@
-unreleased
-----------
+1.9.1 (11/04/2019)
+------------------
 
 - Fix invocation of odoc to add previously missing include paths, impacting
   mld files that are not in directories containing libraries (#2016, fixes

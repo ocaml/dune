@@ -1,4 +1,4 @@
-(coqlib
+(coq.theory
  (name Plugin)
  (public_name ml_lib.Plugin)
  (synopsis "Test Plugin")

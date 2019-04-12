@@ -1867,8 +1867,17 @@ module Coq = struct
 
   let unit_to_sexp () = Sexp.List []
 
+  let coqlib_warn x =
+    Errors.warn x.loc
+      "(coqlib ...) is deprecated and will be removed in the Coq \
+       language version 1.0, please use (coq.theory ...) instead";
+    x
+
+  let coqlib_p = "coqlib", decode >>| fun x -> [T (coqlib_warn x)]
+  let coqtheory_p = "coq.theory", decode >>| fun x -> [T x]
+
   let unit_stanzas =
-    let+ r = return ["coqlib", decode >>| fun x -> [T x]] in
+    let+ r = return [coqlib_p; coqtheory_p] in
     ((), r)
 
   let key =

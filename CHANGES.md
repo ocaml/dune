@@ -8,6 +8,10 @@
 
 - Do not fail when a findlib directory doesn't exist (#2101, fix #2099, @diml)
 
+- [coq] Rename `(coqlib ...)` to `(coq.theory ...)`, support for
+  `coqlib` will be dropped in the 1.0 version of the Coq language
+  (#2055, @ejgallego)
+
 1.9.1 (11/04/2019)
 ------------------
 

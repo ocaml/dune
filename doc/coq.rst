@@ -14,9 +14,9 @@ in the ``dune-project`` file. For example:
 
     (using coq 0.1)
 
-This will enable support for the ``coqlib`` stanza in the current project. If the
+This will enable support for the ``coq.theory`` stanza in the current project. If the
 language version is absent, dune will automatically add this line with the
-latest Coq version to the project file once a ``(coqlib ...)`` stanza is used anywhere.
+latest Coq version to the project file once a ``(coq.theory ...)`` stanza is used anywhere.
 
 
 Basic Usage
@@ -26,7 +26,7 @@ The basic form for defining Coq libraries is very similar to the OCaml form:
 
 .. code:: scheme
 
-    (coqlib
+    (coq.theory
      (name <module_prefix>)
      (public_name <package.lib_name>)
      (synopsis <text>)

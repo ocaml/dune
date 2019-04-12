@@ -188,6 +188,10 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
         let dir = ctx_dir in
         let coq_rules = Coq_rules.setup_rules ~sctx ~dir ~dir_contents m in
         SC.add_rules ~dir:ctx_dir sctx coq_rules
+      | Coqpp.T m ->
+        let dir = ctx_dir in
+        let coqpp_rules = Coq_rules.coqpp_rules ~sctx ~dir m in
+        SC.add_rules ~dir:ctx_dir sctx coqpp_rules
       | _ -> ());
     let dyn_deps =
       let pred =

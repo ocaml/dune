@@ -1,4 +1,4 @@
-(coqlib
+(coq.theory
  (name rec_module)
  (public_name rec.module)
  (modules :standard)

@@ -112,14 +112,11 @@ let create_ccoq sctx ~dir =
   }
 
 (* get_libraries from Coq's ML dependencies *)
-let libs_of_coq_deps ~loc ~scope libs =
-  let lib_db = Scope.libs scope in
-  List.concat_map ~f:Dune_file.Lib_dep.to_lib_names libs
-  |> Lib.DB.find_many ~loc lib_db
-  |> Result.ok_exn
+let libs_of_coq_deps ~lib_db libs =
+  Result.List.map ~f:(Lib.DB.resolve lib_db) libs |> Result.ok_exn
 
 (* compute include flags and mlpack rules *)
-let setup_ml_deps ~scope ~loc libs =
+let setup_ml_deps ~lib_db libs =
 
   (* coqdep expects an mlpack file next to the sources otherwise it
    * will omit the cmxs deps *)
@@ -134,7 +131,7 @@ let setup_ml_deps ~scope ~loc libs =
 
   (* Pair of include flags and paths to mlpack *)
   let ml_iflags, mlpack =
-    let libs = libs_of_coq_deps ~loc ~scope libs in
+    let libs = libs_of_coq_deps ~lib_db libs in
     Util.include_flags libs, List.concat_map ~f:ml_pack_files libs
   in
 
@@ -165,8 +162,9 @@ let setup_rules ~sctx ~dir ~dir_contents (s : Dune_file.Coq.t) =
   let expander = SC.expander sctx ~dir in
   let wrapper_name = coqlib_wrapper_name s in
 
+  let lib_db = Scope.libs scope in
   let ml_iflags, mlpack_rule =
-    setup_ml_deps ~scope ~loc:s.loc s.libraries in
+    setup_ml_deps ~lib_db s.libraries in
 
   let coq_rules =
     List.concat_map
@@ -177,7 +175,8 @@ let setup_rules ~sctx ~dir ~dir_contents (s : Dune_file.Coq.t) =
 (* This is here for compatibility with Coq < 8.11, which expects
    plugin files to be in the folder containing the `.vo` files *)
 let coq_plugins_install_rules ~scope ~package ~dst_dir (s : Dune_file.Coq.t) =
-  let ml_libs = libs_of_coq_deps ~scope ~loc:s.loc s.libraries in
+  let lib_db = Scope.libs scope in
+  let ml_libs = libs_of_coq_deps ~lib_db s.libraries in
   let rules_for_lib lib =
     (* Don't install libraries that don't belong to this package *)
     if Option.equal Package.Name.equal

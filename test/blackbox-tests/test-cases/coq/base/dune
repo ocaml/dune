@@ -1,4 +1,4 @@
-(coqlib
+(coq.theory
  (name basic)
  (public_name base.basic)
  (modules :standard)

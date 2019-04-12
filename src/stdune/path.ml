@@ -873,8 +873,8 @@ let readdir_unsorted =
       Exn.protect
         ~f:(fun () ->
           match loop dh [] with
-          | exception (Unix.Unix_error (e, _, _)) -> Error e 
-          | s -> Ok s)
+          | exception (Unix.Unix_error (e, _, _)) -> Error e
+          | s -> Result.Ok s)
         ~finally:(fun () -> Unix.closedir dh)
     with
       Unix.Unix_error (e, _, _) -> Error e

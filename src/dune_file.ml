@@ -1812,6 +1812,25 @@ module Menhir = struct
        })
 end
 
+module Coqpp = struct
+
+  type t =
+    { modules    : string list
+    ; loc        : Loc.t
+    }
+
+  let decode =
+    record
+      (let+ modules = field "modules" (list string)
+       and+ loc = loc in
+       { modules
+       ; loc
+       })
+
+  type Stanza.t += T of t
+
+end
+
 module Coq = struct
 
   type t =
@@ -1867,8 +1886,11 @@ module Coq = struct
 
   let unit_to_sexp () = Sexp.List []
 
+  let coqlib_p = "coqlib", decode >>| fun x -> [T x]
+  let coqpp_p = "coq.pp", Coqpp.(decode >>| fun x -> [T x])
+
   let unit_stanzas =
-    let+ r = return ["coqlib", decode >>| fun x -> [T x]] in
+    let+ r = return [coqlib_p; coqpp_p] in
     ((), r)
 
   let key =

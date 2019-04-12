@@ -1,3 +1,9 @@
+unreleased
+----------
+
+- [coq] Add `coq.pp` stanza to help with pre-processing of grammar
+  files (#2054, @ejgallego, review by @rgrinberg)
+
 1.9.1 (11/04/2019)
 ------------------
 

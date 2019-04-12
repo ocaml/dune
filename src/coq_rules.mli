@@ -18,3 +18,9 @@ val install_rules
   -> dir:Path.t
   -> Dune_file.Coq.t
   -> (Loc.t option * Install.Entry.t) list
+
+val coqpp_rules
+  :  sctx:Super_context.t
+  -> dir:Path.t
+  -> Dune_file.Coqpp.t
+  -> (unit, Action.t) Build.t list

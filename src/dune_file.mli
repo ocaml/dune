@@ -372,6 +372,16 @@ module Coq : sig
   type Stanza.t += T of t
 end
 
+module Coqpp : sig
+
+  type t =
+    { modules    : string list
+    ; loc        : Loc.t
+    }
+
+  type Stanza.t += T of t
+end
+
 module Alias_conf : sig
   type t =
     { name    : string

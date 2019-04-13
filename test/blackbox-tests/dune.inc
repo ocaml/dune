@@ -128,6 +128,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name custom-cross-compilation)
+ (deps (package dune) (source_tree test-cases/custom-cross-compilation))
+ (action
+  (chdir
+   test-cases/custom-cross-compilation
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name cxx-extension)
  (deps (package dune) (source_tree test-cases/cxx-extension))
  (action
@@ -1468,6 +1476,7 @@
   (alias copy_files)
   (alias cross-compilation)
   (alias custom-build-dir)
+  (alias custom-cross-compilation)
   (alias cxx-extension)
   (alias default-targets)
   (alias dep-on-dir-that-does-not-exist)
@@ -1645,6 +1654,7 @@
   (alias copy-files-non-sub-dir-error)
   (alias copy_files)
   (alias custom-build-dir)
+  (alias custom-cross-compilation)
   (alias cxx-extension)
   (alias default-targets)
   (alias dep-on-dir-that-does-not-exist)

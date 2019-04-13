@@ -209,7 +209,7 @@ let ocamlfind_printconf_path ~env ~ocamlfind ~toolchain =
   List.map l ~f:Path.of_filename_relative_to_initial_cwd
 
 let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
-      ~host_toolchain ~profile =
+      ~host_context ~host_toolchain ~profile =
   let opam_var_cache = Hashtbl.create 128 in
   (match kind with
    | Opam { root = Some root; _ } ->
@@ -508,10 +508,9 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     end;
     Fiber.return t
   in
-
   let implicit = not (List.mem ~set:targets Workspace.Context.Target.Native) in
   let* native =
-    create_one ~host:None ~findlib_toolchain:host_toolchain
+    create_one ~host:host_context ~findlib_toolchain:host_toolchain
       ~implicit ~name ~merlin
   in
   let+ others =
@@ -530,8 +529,7 @@ let opam_config_var t var =
 
 let default ~merlin ~env_nodes ~env ~targets =
   let path = Env.path Env.initial in
-  create ~kind:Default ~path ~env ~env_nodes ~name:"default"
-    ~merlin ~targets
+  create ~kind:Default ~path ~env ~env_nodes ~merlin ~targets
 
 let opam_version =
   let res = ref None in
@@ -555,7 +553,7 @@ let opam_version =
       Fiber.Future.wait future
 
 let create_for_opam ~root ~env ~env_nodes ~targets ~profile
-      ~switch ~name ~merlin ~host_toolchain =
+      ~switch ~name ~merlin ~host_context ~host_toolchain =
   let opam =
     match Lazy.force opam with
     | None -> Utils.program_not_found "opam" ~loc:None
@@ -599,32 +597,111 @@ let create_for_opam ~root ~env ~env_nodes ~targets ~profile
   in
   let env = Env.extend env ~vars in
   create ~kind:(Opam { root; switch }) ~profile ~targets ~path ~env ~env_nodes
-    ~name ~merlin ~host_toolchain
+    ~name ~merlin ~host_context ~host_toolchain
 
-let create ~env (workspace : Workspace.t) =
-  let env_nodes context =
+let bad_configuration_check map =
+  let find_exn loc name host =
+    match String.Map.find map host with
+    | Some host_ctx -> host_ctx
+    | None ->
+      Errors.fail
+        loc
+        "Undefined host context '%s' for '%s'."
+        host
+        name
+  in
+  let check elt =
+    Workspace.Context.host_context elt
+    |> Option.iter ~f:(fun host ->
+      let name = Workspace.Context.name elt in
+      let loc = Workspace.Context.loc elt in
+      let host_elt = find_exn loc name host in
+      Workspace.Context.host_context host_elt
+      |> Option.iter ~f:(fun host_of_host ->
+        Errors.fail
+          (Workspace.Context.loc host_elt)
+          "Context '%s' is both a host (for '%s') and a target (for '%s')."
+          host
+          name
+          host_of_host))
+  in
+  String.Map.iter map ~f:check
+
+let top_sort contexts =
+  let key = Workspace.Context.name in
+  let map = String.Map.of_list_map_exn contexts ~f:(fun x -> key x, x) in
+  let deps def =
+    match Workspace.Context.host_context def with
+    | None -> []
+    | Some ctx -> [String.Map.find_exn map ctx]
+  in
+  bad_configuration_check map;
+  match Top_closure.String.top_closure ~key ~deps contexts with
+  | Ok topo_contexts -> topo_contexts
+  | Error _ -> assert false
+
+let separate_independant_contexts topo_contexts =
+  let f (acc, cur) elem =
+    match Workspace.Context.host_context elem, cur with
+    | None, [] -> (acc, [elem])
+    | None, _ -> ((List.rev cur) :: acc, [elem])
+    | Some _, _ -> (acc, elem :: cur)
+  in
+  match List.fold_left ~f ~init:([], []) topo_contexts with
+  | (acc, []) -> acc
+  | (acc, cur) -> (List.rev cur) :: acc
+
+let instantiate_context env (workspace : Workspace.t)
+      (context : Workspace.Context.t) contexts =
+  let env_nodes =
+    let context = Workspace.Context.env context in
     { Env_nodes.
       context
     ; workspace = workspace.env
     }
   in
-  Fiber.parallel_map workspace.contexts ~f:(fun def ->
-    match def with
-    | Default { targets; profile; env = env_node ; toolchain ; loc = _ } ->
-      let merlin =
-        workspace.merlin_context = Some (Workspace.Context.name def)
-      in
-      let host_toolchain =
-        match toolchain, Env.get env "OCAMLFIND_TOOLCHAIN" with
-        | Some t, _ -> Some t
-        | None, default -> default
-      in
-      default ~env ~env_nodes:(env_nodes env_node) ~profile ~targets ~merlin
-        ~host_toolchain
-    | Opam { base = { targets; profile; env = env_node; toolchain; loc = _ }
-           ; name; switch; root; merlin } ->
-      create_for_opam ~root ~env_nodes:(env_nodes env_node) ~env ~profile
-        ~switch ~name ~merlin ~targets ~host_toolchain:toolchain)
+  let host_context =
+    (* The fact that the context list in [Workspace.t] is
+       topologically sorted ensures that this [find_exn] won't fail *)
+    Workspace.Context.host_context context
+    |> Option.map ~f:(String.Map.find_exn contexts)
+  in
+  match context with
+  | Default { targets; name; host_context = _; profile; env = _
+            ; toolchain ; loc = _ } ->
+    let merlin =
+      workspace.merlin_context = Some (Workspace.Context.name context)
+    in
+    let host_toolchain =
+      match toolchain with
+      | Some _ -> toolchain
+      | None -> Env.get env "OCAMLFIND_TOOLCHAIN"
+    in
+    default ~env ~env_nodes ~profile ~targets ~name ~merlin ~host_context
+      ~host_toolchain
+  | Opam { base = { targets; name; host_context = _; profile; env = _
+                  ; toolchain; loc = _ }
+         ; switch; root; merlin } ->
+    create_for_opam ~root ~env_nodes ~env ~profile ~switch ~name ~merlin
+      ~targets ~host_context ~host_toolchain:toolchain
+
+let instantiate_context_group ~env (workspace : Workspace.t) contexts =
+  List.fold_left contexts ~f:(fun contexts context ->
+    let* contexts = contexts in
+    let+ new_contexts = instantiate_context env workspace context contexts in
+    List.fold_left new_contexts
+      ~f:(fun map elem -> String.Map.add map elem.name elem)
+      ~init:contexts)
+    ~init:(Fiber.return String.Map.empty)
+  >>| String.Map.values
+
+let create ~env (workspace : Workspace.t) =
+  let contexts = top_sort workspace.contexts in
+  let independant_contexts = separate_independant_contexts contexts
+  in
+  Fiber.parallel_map
+    independant_contexts
+    ~f:(instantiate_context_group ~env workspace)
   >>| List.concat
 
 let which t s = which ~cache:t.which_cache ~path:t.path s

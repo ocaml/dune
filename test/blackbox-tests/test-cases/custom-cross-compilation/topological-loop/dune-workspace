@@ -1,0 +1,15 @@
+(lang dune 1.10)
+
+(context (default))
+
+(context (default
+ (name cross-1)
+ (host cross-3)))
+
+(context (default
+ (name cross-2)
+ (host cross-1)))
+
+(context (default
+ (name cross-3)
+ (host cross-2)))

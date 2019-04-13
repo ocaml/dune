@@ -22,6 +22,8 @@ let term =
         { merlin_context = Some "default"
         ; contexts = [Default { loc = Loc.of_pos __POS__
                               ; targets   = [Native]
+                              ; name      = "default"
+                              ; host_context = None
                               ; profile   = Config.default_build_profile
                               ; env       = None
                               ; toolchain = None

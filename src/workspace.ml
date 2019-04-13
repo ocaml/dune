@@ -47,25 +47,37 @@ module Context = struct
 
   module Common = struct
     type t =
-      { loc       : Loc.t
-      ; profile   : string
-      ; targets   : Target.t list
-      ; env       : Dune_env.Stanza.t option
-      ; toolchain : string option
+      { loc          : Loc.t
+      ; profile      : string
+      ; targets      : Target.t list
+      ; env          : Dune_env.Stanza.t option
+      ; toolchain    : string option
+      ; name         : string
+      ; host_context : string option
       }
 
     let t ~profile =
       let+ env = env_field
       and+ targets = field "targets" (list Target.t) ~default:[Target.Native]
       and+ profile = field "profile" string ~default:profile
+      and+ host_context =
+        field_o "host" (Syntax.since syntax (1, 10) >>> string)
       and+ toolchain =
         field_o "toolchain" (Syntax.since syntax (1, 5) >>> string)
       and+ loc = loc
       in
+      Option.iter
+        host_context
+        ~f:(fun _ -> match targets with
+            | [Target.Native] -> ()
+            | _ -> (Errors.fail loc "`targets` and `host` options cannot be used in the same context.")
+           );
       { targets
       ; profile
       ; loc
       ; env
+      ; name = "default"
+      ; host_context
       ; toolchain
       }
   end
@@ -73,24 +85,22 @@ module Context = struct
   module Opam = struct
     type t =
       { base    : Common.t
-      ; name    : string
       ; switch  : string
       ; root    : string option
       ; merlin  : bool
       }
 
     let t ~profile ~x =
-      let+ base = Common.t ~profile
-      and+ switch = field "switch" string
+      let+ switch = field "switch" string
       and+ name = field_o "name" Name.t
       and+ root = field_o "root" string
       and+ merlin = field_b "merlin"
+      and+ base = Common.t ~profile
       in
       let name = Option.value ~default:switch name in
-      let base = { base with targets = Target.add base.targets x } in
+      let base = { base with targets = Target.add base.targets x; name } in
       { base
       ; switch
-      ; name
       ; root
       ; merlin
       }
@@ -100,8 +110,12 @@ module Context = struct
     type t = Common.t
 
     let t ~profile ~x =
-      Common.t ~profile >>| fun t ->
-      { t with targets = Target.add t.targets x }
+      let+ common = Common.t ~profile
+      and+ name =
+        field_o "name" (Syntax.since syntax (1, 10) >>= fun () -> Name.t)
+      in
+      let name = Option.value ~default:common.name name in
+      { common with targets = Target.add common.targets x; name }
   end
 
   type t = Default of Default.t | Opam of Opam.t
@@ -109,6 +123,10 @@ module Context = struct
   let loc = function
     | Default x -> x.loc
     | Opam    x -> x.base.loc
+
+  let host_context = function
+    | Default { host_context; _ }
+    | Opam { base = { host_context ; _}; _} -> host_context
 
   let t ~profile ~x =
     sum
@@ -130,9 +148,13 @@ module Context = struct
          | _ -> t ~profile ~x)
       ~dune:(t ~profile ~x)
 
+  let env = function
+    | Default d -> d.env
+    | Opam o -> o.base.env
+
   let name = function
-    | Default _ -> "default"
-    | Opam    o -> o.name
+    | Default d -> d.name
+    | Opam    o -> o.base.name
 
   let targets = function
     | Default x -> x.targets
@@ -150,6 +172,8 @@ module Context = struct
       ; targets = [Option.value x ~default:Target.Native]
       ; profile = Option.value profile
                     ~default:Config.default_build_profile
+      ; name = "default"
+      ; host_context = None
       ; env = None
       ; toolchain = None
       }

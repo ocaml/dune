@@ -55,8 +55,8 @@ let parse_coqdep ~coq_module (lines : string list) =
     then Format.eprintf "deps for %a: %a@\n%!" Path.pp source Fmt.(list text) deps;
     deps
 
-let setup_rule ~expander ~dir ~cc ~source_rule ~wrapper_name
-      ~coq_flags ~ml_iflags ~mlpack_rule coq_module =
+let setup_rule ~expander ~dir ~cc ~source_rule ~coq_flags ~file_flags
+      ~mlpack_rule coq_module =
 
   if coq_debug
   then Format.eprintf "gen_rule coq_module: %a@\n%!" Coq_module.pp coq_module;
@@ -66,9 +66,8 @@ let setup_rule ~expander ~dir ~cc ~source_rule ~wrapper_name
   let stdout_to = Coq_module.obj_file ~obj_dir ~ext:".v.d" coq_module in
   let object_to = Coq_module.obj_file ~obj_dir ~ext:".vo"  coq_module in
 
-  let iflags = Arg_spec.As ["-R"; "."; wrapper_name] in
-  let cd_arg : (string list, _) Arg_spec.t list =
-    Arg_spec.[ As ["-dyndep"; "opt"]; iflags; ml_iflags; Dep source ] in
+  let file_flags = file_flags @ [Arg_spec.Dep source] in
+  let cd_arg = (Arg_spec.As ["-dyndep"; "opt"]) :: file_flags in
 
   (* coqdep needs the full source + plugin's mlpack to be present :( *)
   let coqdep_rule =
@@ -85,12 +84,7 @@ let setup_rule ~expander ~dir ~cc ~source_rule ~wrapper_name
     List.map ~f:(Path.relative dir)
   ) in
 
-  let cc_arg = Arg_spec.[
-    iflags;
-    ml_iflags;
-    Dep source;
-    Hidden_targets [object_to] ]
-  in
+  let cc_arg = (Arg_spec.Hidden_targets [object_to]) :: file_flags in
 
   (* Rules for the files *)
   [coqdep_rule;
@@ -163,14 +157,12 @@ let setup_rules ~sctx ~dir ~dir_contents (s : Dune_file.Coq.t) =
   let wrapper_name = coqlib_wrapper_name s in
 
   let lib_db = Scope.libs scope in
-  let ml_iflags, mlpack_rule =
-    setup_ml_deps ~lib_db s.libraries in
+  let ml_iflags, mlpack_rule = setup_ml_deps ~lib_db s.libraries in
+  let file_flags = [ml_iflags; Arg_spec.As ["-R"; "."; wrapper_name]] in
 
-  let coq_rules =
-    List.concat_map
-      ~f:(setup_rule ~expander ~dir ~cc ~source_rule ~wrapper_name ~coq_flags
-            ~ml_iflags ~mlpack_rule) coq_modules in
-  coq_rules
+  List.concat_map
+    ~f:(setup_rule ~expander ~dir ~cc ~source_rule ~coq_flags ~file_flags
+          ~mlpack_rule) coq_modules
 
 (* This is here for compatibility with Coq < 8.11, which expects
    plugin files to be in the folder containing the `.vo` files *)

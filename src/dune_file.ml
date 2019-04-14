@@ -1840,7 +1840,7 @@ module Coq = struct
     ; synopsis   : string option
     ; modules    : Ordered_set_lang.t
     ; flags      : Ordered_set_lang.Unexpanded.t
-    ; libraries  : Lib_dep.t list
+    ; libraries  : (Loc.t * Lib_name.t) list
     (** ocaml libraries *)
     ; loc        : Loc.t
     ; enabled_if : Blang.t
@@ -1860,7 +1860,8 @@ module Coq = struct
        and+ synopsis = field_o "synopsis" string
        and+ flags = field_oslu "flags"
        and+ modules = modules_field "modules"
-       and+ libraries = field "libraries" Lib_deps.decode ~default:[]
+       and+ libraries =
+         field "libraries" (list (located Lib_name.decode)) ~default:[]
        and+ enabled_if = enabled_if
        in
        let name =

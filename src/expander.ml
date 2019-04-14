@@ -466,6 +466,12 @@ let expand_and_eval_set t set ~standard =
   let open Build.O in
   let dir = dir t in
   let parse ~loc:_ s = s in
+  let standard =
+    if Ordered_set_lang.Unexpanded.has_special_forms set then
+      standard
+    else
+      Build.return []
+  in
   let (syntax, files) =
     let f template =
       expand t ~mode:Single ~template

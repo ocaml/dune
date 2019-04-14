@@ -77,13 +77,7 @@ let default ~profile =
   }
 
 let make ~spec ~default ~eval =
-  let f name x standard =
-    Build.memoize name
-      (if Ordered_set_lang.Unexpanded.has_special_forms x then
-         eval x ~standard
-       else
-         eval x ~standard:(Build.return []))
-  in
+  let f name x standard = Build.memoize name (eval x ~standard) in
   { common = f "common flags" spec.common default.common
   ; specific =
       { byte   = f "ocamlc flags"   spec.specific.byte   default.specific.byte

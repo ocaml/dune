@@ -239,19 +239,16 @@ let ocaml_flags t ~dir (x : Buildable.t) =
 
 let c_flags t ~dir ~expander ~(lib : Library.t) =
   let ccg = Context.cc_g t.context in
-  let eval = Expander.expand_and_eval_set expander in
   let flags = lib.c_flags in
   let default = Env.c_flags t ~dir in
   C.Kind.Dict.mapi flags ~f:(fun ~kind flags ->
     let name = C.Kind.to_string kind in
     Build.memoize (sprintf "%s flags" name)
       begin
-        if Ordered_set_lang.Unexpanded.has_special_forms flags then
-          let default = C.Kind.Dict.get default kind in
-          let c = eval flags ~standard:default in
-          let open Build.O in (c >>^ fun l -> l @ ccg)
-        else
-          eval flags ~standard:(Build.return ccg)
+        let default = C.Kind.Dict.get default kind in
+        let c = Expander.expand_and_eval_set expander
+                  flags ~standard:default in
+        let open Build.O in (c >>^ fun l -> l @ ccg)
       end)
 
 let local_binaries t ~dir = Env.local_binaries t ~dir

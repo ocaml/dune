@@ -1,3 +1,20 @@
+unreleased
+----------
+
+- [coq] Rename `(coqlib ...)` to `(coq.theory ...)`, support for
+  `coqlib` will be dropped in the 1.0 version of the Coq language
+  (#2055, @ejgallego)
+
+- [coq] Add `coq.pp` stanza to help with pre-processing of grammar
+  files (#2054, @ejgallego, review by @rgrinberg)
+
+1.9.1 (11/04/2019)
+------------------
+
+- Fix invocation of odoc to add previously missing include paths, impacting
+  mld files that are not in directories containing libraries (#2016, fixes
+  #2007, @jonludlam)
+
 1.9.0 (09/04/2019)
 ------------------
 

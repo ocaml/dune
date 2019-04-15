@@ -192,20 +192,15 @@ Do not fail on error."
         (root (or (dune-flymake--root buffer-file-name) "")))
     (list dune-program (list fname root))))
 
-(defvaralias 'dune-flymake--allowed-file-name-masks
-  (if (boundp 'flymake-proc-allowed-file-name-masks)
-      'flymake-proc-allowed-file-name-masks
-  'flymake-allowed-file-name-masks))
-
-(defvaralias 'dune-flymake--err-line-patterns
-  (if (boundp 'flymake-proc-err-line-patterns)
-      'flymake-proc-err-line-patterns
-    'flymake-err-line-patterns))
-
 (defun dune-flymake-dune-mode-hook ()
   "Hook to add to `dune-mode-hook' to enable lint tests."
-  (push dune--allowed-file-name-masks dune-flymake--allowed-file-name-masks)
-  (setq (make-local-variable 'dune-flymake--err-line-patterns)
+  (push dune-flymake--allowed-file-name-masks
+        (if (boundp 'flymake-proc-allowed-file-name-masks)
+            flymake-proc-allowed-file-name-masks
+          flymake-allowed-file-name-masks))
+  (setq (make-local-variable (if (boundp 'flymake-proc-err-line-patterns)
+                                 'flymake-proc-err-line-patterns
+                               'flymake-err-line-patterns))
         dune-flymake--err-line-patterns))
 
 (provide 'dune-flymake)

@@ -1,13 +1,9 @@
 (** In the current workspace (anything under the current project root) *)
 module Local : sig
-  type t
+  include Path_intf.S
   val root : t
 
-  val to_sexp : t -> Sexp.t
-  val equal : t -> t -> bool
-  val to_string : t -> string
   val of_string : ?error_loc:Loc0.t -> string -> t
-  val pp : Format.formatter -> t -> unit
   module L : sig
     val relative : ?error_loc:Loc0.t -> t -> string list -> t
   end
@@ -15,10 +11,8 @@ end
 
 (** In the outside world *)
 module External : sig
-  type t
+  include Path_intf.S
 
-  val to_string : t -> string
-  val of_string : string -> t
   val initial_cwd : t
 
   val cwd : unit -> t
@@ -36,16 +30,7 @@ module Kind : sig
   val of_string : string -> t
 end
 
-type t
-
-val to_sexp : t Sexp.Encoder.t
-
-val to_dyn : t -> Dyn.t
-
-val compare : t -> t -> Ordering.t
-(** a directory is smaller than its descendants *)
-
-val equal : t -> t -> bool
+include Path_intf.S
 
 val hash : t -> int
 
@@ -59,7 +44,6 @@ module Map : Map.S with type key = t
 module Table : Hashtbl.S with type key = t
 
 val of_string : ?error_loc:Loc0.t -> string -> t
-val to_string : t -> string
 
 (** [to_string_maybe_quoted t] is [maybe_quoted (to_string t)] *)
 val to_string_maybe_quoted : t -> string
@@ -92,11 +76,8 @@ val is_descendant : t -> of_:t -> bool
 val append : t -> t -> t
 val append_local : t -> Local.t -> t
 
-val basename : t -> string
 val parent : t -> t option
 val parent_exn : t -> t
-
-val is_suffix : t -> suffix:string -> bool
 
 val extend_basename : t -> suffix:string -> t
 
@@ -153,7 +134,7 @@ val split_first_component : t -> (string * t) option
 val insert_after_build_dir_exn : t -> string -> t
 
 val exists : t -> bool
-val readdir_unsorted : t -> string list
+val readdir_unsorted : t -> (string list, Unix.error) Result.t
 val is_directory : t -> bool
 val is_file : t -> bool
 val rmdir : t -> unit
@@ -162,13 +143,6 @@ val unlink_no_err : t -> unit
 val rm_rf : t -> unit
 val mkdir_p : t -> unit
 
-val extension : t -> string
-val split_extension : t -> t * string
-
-(** [set_extension path ~ext] replaces extension of [path] by [ext] *)
-val set_extension : t -> ext:string -> t
-
-val pp : Format.formatter -> t -> unit
 val pp_in_source : Format.formatter -> t -> unit
 val pp_debug : Format.formatter -> t -> unit
 

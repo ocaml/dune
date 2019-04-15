@@ -266,10 +266,8 @@ let load_text_files sctx ft_dir
   let generated_files =
     List.concat_map stanzas ~f:(fun stanza ->
       match (stanza : Stanza.t) with
-      | Coq.T _coq ->
-        (* Format.eprintf "[coq] generated_files called at sctx: %a@\n%!" Path.pp (File_tree.Dir.path ft_dir); *)
-        (* FIXME: Need to generate ml files from mlg ? *)
-        []
+      | Coqpp.T { modules; _ } ->
+        List.map modules ~f:(fun m -> m ^ ".ml")
       | Menhir.T menhir ->
         Menhir_rules.targets menhir
       | Rule rule ->

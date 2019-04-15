@@ -16,31 +16,29 @@ module DB = struct
   type scope = t
 
   type t =
-    { by_dir  : (Path.t, scope) Hashtbl.t
-    ; by_name : scope Dune_project.Name.Map.t
+    { by_name : scope Dune_project.Name.Map.t
+    ; by_dir : scope Path.Map.t
     ; context : string
     }
 
   let find_by_dir t dir =
     let rec loop d =
-      match Hashtbl.find t.by_dir d with
-      | Some scope -> scope
+      if Path.is_root d || not (Path.is_managed d) then
+        Exn.code_error "Scope.DB.find_by_dir got an invalid path"
+          [ "dir"    , Path.to_sexp dir
+          ; "context", Sexp.Encoder.string t.context
+          ];
+      match Path.Map.find t.by_dir d with
+      | Some s -> s
       | None ->
-        if Path.is_root d || not (Path.is_managed d) then
-          Exn.code_error "Scope.DB.find_by_dir got an invalid path"
-            [ "dir"    , Path.to_sexp dir
-            ; "context", Sexp.Encoder.string t.context
-            ];
-        match Path.parent d with
+        begin match Path.parent d with
         | None ->
           Exn.code_error "find_by_dir: invalid directory"
             [ "d", Path.to_sexp d
             ; "dir", Path.to_sexp dir
             ]
-        | Some d ->
-          let scope = loop d in
-          Hashtbl.add t.by_dir d scope;
-          scope
+        | Some d -> loop d
+        end
     in
     loop dir
 
@@ -142,9 +140,9 @@ module DB = struct
     let by_name =
       sccopes_by_name ~context ~projects ~lib_config ~public_libs internal_libs
     in
-    let by_dir = Hashtbl.create 1024 in
-    Dune_project.Name.Map.iter by_name ~f:(fun scope ->
-      Hashtbl.add by_dir scope.root scope);
+    let by_dir =
+      Dune_project.Name.Map.values by_name
+      |> Path.Map.of_list_map_exn ~f:(fun scope -> (scope.root, scope)) in
     Fdecl.set t { by_name ; by_dir ; context};
     (Fdecl.get t, public_libs)
 end

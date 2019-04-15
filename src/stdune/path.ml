@@ -32,26 +32,13 @@ let explode_path =
       | xs -> xs
 
 module External : sig
-  type t
-
-  val to_sexp : t Sexp.Encoder.t
-  val to_dyn : t -> Dyn.t
-
-  val compare : t -> t -> Ordering.t
+  include Path_intf.S
   val compare_val : t -> t -> Ordering.t
-  val to_string : t -> string
-  val of_string : string -> t
   val relative : t -> string -> t
   val mkdir_p : t -> unit
-  val basename : t -> string
   val parent : t -> t
   val initial_cwd : t
   val cwd : unit -> t
-  val extend_basename : t -> suffix:string -> t
-  val extension : t -> string
-  val is_suffix : t -> suffix:string -> bool
-  val split_extension : t -> t * string
-  val set_extension : t -> ext:string -> t
   val as_local : t -> string
 end = struct
   include Interned.No_interning(struct
@@ -136,21 +123,23 @@ end = struct
   let as_local t =
     let s = to_string t in
     "." ^ s
+
+  include (
+    Comparable.Operators(struct
+      type nonrec t = t
+      let compare = compare_val
+    end)
+    : Comparable.OPS with type t := t
+  )
 end
 
 module Local : sig
-  type t
-
-  val to_sexp : t Sexp.Encoder.t
-  val to_dyn : t -> Dyn.t
+  include Path_intf.S
 
   val root : t
   val is_root : t -> bool
-  val compare : t -> t -> Ordering.t
   val compare_val : t -> t -> Ordering.t
-  val equal : t -> t -> bool
   val of_string : ?error_loc:Loc0.t -> string -> t
-  val to_string : t -> string
   val relative : ?error_loc:Loc0.t -> t -> string -> t
   val append : t -> t -> t
   val parent : t -> t
@@ -158,14 +147,6 @@ module Local : sig
   val descendant : t -> of_:t -> t option
   val is_descendant : t -> of_:t -> bool
   val reach : t -> from:t -> string
-  val basename : t -> string
-  val extend_basename : t -> suffix:string -> t
-  val extension : t -> string
-  val is_suffix : t -> suffix:string -> bool
-  val split_extension : t -> t * string
-  val pp : Format.formatter -> t -> unit
-
-  val set_extension : t -> ext:string -> t
 
   module L : sig
     val relative : ?error_loc:Loc0.t -> t -> string list -> t
@@ -194,11 +175,6 @@ end = struct
   let pp ppf s = Format.pp_print_string ppf (to_string s)
 
   let compare_val x y = String.compare (to_string x) (to_string y)
-
-  let equal x y =
-    match compare x y with
-    | Eq -> true
-    | Gt | Lt -> false
 
   let root = make "."
 
@@ -437,6 +413,14 @@ end = struct
       ; path_slash = "/"
       }
   end
+
+  include (
+    Comparable.Operators(struct
+      type nonrec t = t
+      let compare = compare_val
+    end)
+    : Comparable.OPS with type t := t
+  )
 end
 
 let (abs_root, set_root) =
@@ -875,7 +859,26 @@ let explode_exn t =
 let exists t =
   try Sys.file_exists (to_string t)
   with Sys_error _ -> false
-let readdir_unsorted t = Sys.readdir (to_string t) |> Array.to_list
+let readdir_unsorted =
+  let rec loop dh acc =
+    match Unix.readdir dh with
+    | "."
+    | ".." -> loop dh acc
+    | s -> loop dh (s :: acc)
+    | exception End_of_file -> acc
+  in
+  fun t ->
+    try
+      let dh = Unix.opendir (to_string t) in
+      Exn.protect
+        ~f:(fun () ->
+          match loop dh [] with
+          | exception (Unix.Unix_error (e, _, _)) -> Error e
+          | s -> Result.Ok s)
+        ~finally:(fun () -> Unix.closedir dh)
+    with
+      Unix.Unix_error (e, _, _) -> Error e
+
 let is_directory t =
   try Sys.is_directory (to_string t)
   with Sys_error _ -> false
@@ -1044,3 +1047,5 @@ let local_part = function
   | In_build_dir l -> l
 
 let stat t = Unix.stat (to_string t)
+
+include (Comparable.Operators(T) : Comparable.OPS with type t := t)

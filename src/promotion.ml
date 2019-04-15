@@ -70,7 +70,8 @@ let do_promote db files_to_promote =
   let potential_build_contexts =
     match Path.readdir_unsorted Path.build_dir with
     | exception _ -> []
-    | files ->
+    | Error _ -> []
+    | Ok files ->
       List.filter_map files ~f:(fun fn ->
         if fn = "" || fn.[0] = '.' || fn = "install" then
           None

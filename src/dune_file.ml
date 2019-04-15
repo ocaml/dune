@@ -1812,6 +1812,25 @@ module Menhir = struct
        })
 end
 
+module Coqpp = struct
+
+  type t =
+    { modules    : string list
+    ; loc        : Loc.t
+    }
+
+  let decode =
+    record
+      (let+ modules = field "modules" (list string)
+       and+ loc = loc in
+       { modules
+       ; loc
+       })
+
+  type Stanza.t += T of t
+
+end
+
 module Coq = struct
 
   type t =
@@ -1821,7 +1840,7 @@ module Coq = struct
     ; synopsis   : string option
     ; modules    : Ordered_set_lang.t
     ; flags      : Ordered_set_lang.Unexpanded.t
-    ; libraries  : Lib_dep.t list
+    ; libraries  : (Loc.t * Lib_name.t) list
     (** ocaml libraries *)
     ; loc        : Loc.t
     ; enabled_if : Blang.t
@@ -1841,7 +1860,8 @@ module Coq = struct
        and+ synopsis = field_o "synopsis" string
        and+ flags = field_oslu "flags"
        and+ modules = modules_field "modules"
-       and+ libraries = field "libraries" Lib_deps.decode ~default:[]
+       and+ libraries =
+         field "libraries" (list (located Lib_name.decode)) ~default:[]
        and+ enabled_if = enabled_if
        in
        let name =
@@ -1867,8 +1887,18 @@ module Coq = struct
 
   let unit_to_sexp () = Sexp.List []
 
+  let coqlib_warn x =
+    Errors.warn x.loc
+      "(coqlib ...) is deprecated and will be removed in the Coq \
+       language version 1.0, please use (coq.theory ...) instead";
+    x
+
+  let coqlib_p = "coqlib", decode >>| fun x -> [T (coqlib_warn x)]
+  let coqtheory_p = "coq.theory", decode >>| fun x -> [T x]
+  let coqpp_p = "coq.pp", Coqpp.(decode >>| fun x -> [T x])
+
   let unit_stanzas =
-    let+ r = return ["coqlib", decode >>| fun x -> [T x]] in
+    let+ r = return [coqlib_p; coqtheory_p; coqpp_p] in
     ((), r)
 
   let key =

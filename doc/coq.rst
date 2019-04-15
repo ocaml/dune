@@ -14,9 +14,9 @@ in the ``dune-project`` file. For example:
 
     (using coq 0.1)
 
-This will enable support for the ``coqlib`` stanza in the current project. If the
+This will enable support for the ``coq.theory`` stanza in the current project. If the
 language version is absent, dune will automatically add this line with the
-latest Coq version to the project file once a ``(coqlib ...)`` stanza is used anywhere.
+latest Coq version to the project file once a ``(coq.theory ...)`` stanza is used anywhere.
 
 
 Basic Usage
@@ -26,7 +26,7 @@ The basic form for defining Coq libraries is very similar to the OCaml form:
 
 .. code:: scheme
 
-    (coqlib
+    (coq.theory
      (name <module_prefix>)
      (public_name <package.lib_name>)
      (synopsis <text>)
@@ -48,6 +48,26 @@ The stanza will build all `.v` files on the given directory. The semantics of fi
 - the path to installed locations of ``<ocaml_libraries>`` will be passed to
   ``coqdep`` and ``coqc`` using Coq's ``-I`` flag; this allows for a Coq
   library to depend on a ML plugin.
+
+Preprocessing with ``coqpp``
+============================
+
+Coq plugin writers usually need to write ``.mlg`` files to extend Coq
+grammar. Such files are pre-processed with `coqpp`; to help plugin
+writers avoid boilerplate we provide a `(coqpp ...)` stanza:
+
+.. code:: scheme
+
+    (coq.pp (modules <mlg_list>))
+
+which for each ``g_mod`` in ``<mlg_list>```is equivalent to:
+
+.. code:: scheme
+
+    (rule
+     (targets g_mod.ml)
+     (deps (:mlg-file g_mod.mlg))
+     (action (run coqpp %{mlg-file})))
 
 Recursive Qualification of Modules
 ==================================

@@ -18,12 +18,18 @@
 
   $ dune build --root ml_lib --display short --debug-dependency-path @all
   Entering directory 'ml_lib'
+         coqpp src/gram.ml
+      ocamldep src/.ml_plugin.objs/gram.ml.d
         ocamlc src/.ml_plugin.objs/byte/ml_plugin.{cmi,cmo,cmt}
       ocamlopt src/.ml_plugin.objs/native/ml_plugin.{cmx,o}
+      ocamldep src/.ml_plugin.objs/gram.mli.d
+        ocamlc src/.ml_plugin.objs/byte/ml_plugin__Gram.{cmi,cmti}
+        ocamlc src/.ml_plugin.objs/byte/ml_plugin__Gram.{cmo,cmt}
       ocamldep src/.ml_plugin.objs/simple.ml.d
         ocamlc src/.ml_plugin.objs/byte/ml_plugin__Simple.{cmi,cmo,cmt}
         ocamlc src/ml_plugin.cma
         coqdep theories/a.v.d
+      ocamlopt src/.ml_plugin.objs/native/ml_plugin__Gram.{cmx,o}
       ocamlopt src/.ml_plugin.objs/native/ml_plugin__Simple.{cmx,o}
       ocamlopt src/ml_plugin.{a,cmxa}
       ocamlopt src/ml_plugin.cmxs

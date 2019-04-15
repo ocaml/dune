@@ -361,13 +361,23 @@ module Coq : sig
     ; synopsis   : string option
     ; modules    : Ordered_set_lang.t
     ; flags      : Ordered_set_lang.Unexpanded.t
-    ; libraries  : Lib_dep.t list
+    ; libraries  : (Loc.t * Lib_name.t) list
     (** ocaml libraries *)
     ; loc        : Loc.t
     ; enabled_if : Blang.t
     }
 
   val best_name : t -> Lib_name.t
+
+  type Stanza.t += T of t
+end
+
+module Coqpp : sig
+
+  type t =
+    { modules    : string list
+    ; loc        : Loc.t
+    }
 
   type Stanza.t += T of t
 end

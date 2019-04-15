@@ -761,6 +761,18 @@ fields. In particular, all fields except for ``public_names`` are supported from
 the :ref:`executables stanza <shared-exe-fields>`. Alias fields apart from
 ``name`` are allowed.
 
+By default the test binaries are run without options.  The ``action`` field can
+be used to override the test binary invocation, for example if you're using
+alcotest and wish to see all the test failures on the standard output when
+running dune runtest you can use the following stanza:
+
+.. code:: scheme
+
+   (tests
+    (names mytest)
+    (libraries alcotest mylib)
+    (action (run %{test} -e)))
+
 test
 ----
 

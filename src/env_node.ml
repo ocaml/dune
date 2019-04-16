@@ -130,13 +130,9 @@ let rec c_flags t ~profile ~expander ~default_context_flags =
       | None -> default
       | Some cfg ->
         let expander = Expander.set_dir expander ~dir:t.dir in
-        let eval = Expander.expand_and_eval_set expander in
         C.Kind.Dict.mapi cfg.c_flags ~f:(fun ~kind f ->
-          if Ordered_set_lang.Unexpanded.has_special_forms f then
-            let default = C.Kind.Dict.get default kind in
-            eval f ~standard:default
-          else
-            eval f ~standard:(Build.return []))
+          let default = C.Kind.Dict.get default kind in
+          Expander.expand_and_eval_set expander f ~standard:default)
     in
     t.c_flags <- Some flags;
     flags

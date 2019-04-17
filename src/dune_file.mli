@@ -332,6 +332,8 @@ module Rule : sig
           where the targets are promoted only in a specific context,
           such as for .install files. *)
       | Ignore_source_files
+
+    val decode : t Dune_lang.Decoder.t
   end
 
   type t =

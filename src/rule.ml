@@ -24,7 +24,7 @@ type t =
   ; dir      : Path.t
   }
 
-let make ?(sandbox=false) ?(mode=Dune_file.Rule.Mode.Not_a_rule_stanza)
+let make ?(sandbox=false) ?(mode=Dune_file.Rule.Mode.Standard)
       ~context ~env ?(locks=[]) ?(info=Info.Internal) build =
   let targets = Build.targets build in
   let dir =

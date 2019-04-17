@@ -1529,8 +1529,20 @@ module Rule = struct
       sum
         [ "standard"           , return Standard
         ; "fallback"           , return Fallback
-        ; "promote"            , return (Promote { lifetime = Unlimited
-                                                 ; into = None })
+        ; "promote"            ,
+          fields
+            (let+ until_clean =
+               field_b "until-clean"
+                 ~check:(Syntax.since Stanza.syntax (1, 10))
+             and+ into =
+               field_o "into"
+                 (Syntax.since Stanza.syntax (1, 10) >>= fun () ->
+                  Promote.Into.decode)
+             in
+             Promote
+               { lifetime = if until_clean then Until_clean else Unlimited
+               ; into
+               })
         ; "promote-until-clean", return (Promote { lifetime = Until_clean
                                                  ; into = None })
         ; "promote-into"       , promote_into Unlimited

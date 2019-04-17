@@ -32,9 +32,9 @@ val local_binaries
   -> expander:Expander.t
   -> File_binding.Expanded.t list
 
-val artifacts
+val bin_artifacts
   :  t
   -> profile:string
-  -> default:Artifacts.t
+  -> default:Artifacts.Bin.t
   -> expander:Expander.t
-  -> Artifacts.t
+  -> Artifacts.Bin.t

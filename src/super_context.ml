@@ -67,7 +67,7 @@ module Env : sig
   val ocaml_flags : t -> dir:Path.t -> Ocaml_flags.t
   val c_flags : t -> dir:Path.t -> (unit, string list) Build.t C.Kind.Dict.t
   val external_ : t -> dir:Path.t -> External_env.t
-  val artifacts_host : t -> dir:Path.t -> Artifacts.t
+  val bin_artifacts_host : t -> dir:Path.t -> Artifacts.Bin.t
   val expander : t -> dir:Path.t -> Expander.t
   val local_binaries : t -> dir:Path.t -> File_binding.Expanded.t list
 end = struct
@@ -124,24 +124,25 @@ end = struct
     let expander = expander_for_artifacts t ~dir in
     Env_node.local_binaries node ~profile:(profile t) ~expander
 
-  let artifacts t ~dir =
+  let bin_artifacts t ~dir =
     let expander = expander_for_artifacts t ~dir in
-    Env_node.artifacts (get t ~dir) ~profile:(profile t) ~default:t.artifacts
+    Env_node.bin_artifacts
+      (get t ~dir) ~profile:(profile t) ~default:t.artifacts.bin
       ~expander
 
-  let artifacts_host t ~dir =
+  let bin_artifacts_host t ~dir =
     match t.host with
-    | None -> artifacts t ~dir
+    | None -> bin_artifacts t ~dir
     | Some host ->
       let dir =
-        Path.append_source host.context.build_dir (Path.drop_build_context_exn dir) in
-      artifacts host ~dir
+        Path.append_source host.context.build_dir (Path.drop_build_context_exn dir)
+      in
+      bin_artifacts host ~dir
 
   let expander t ~dir =
     let expander = expander_for_artifacts t ~dir in
-    let artifacts = artifacts t ~dir in
-    let artifacts_host = artifacts_host t ~dir in
-    Expander.set_artifacts expander ~artifacts ~artifacts_host
+    let bin_artifacts_host = bin_artifacts_host t ~dir in
+    Expander.set_bin_artifacts expander ~bin_artifacts_host
 
   let ocaml_flags t ~dir =
     Env_node.ocaml_flags (get t ~dir)
@@ -271,14 +272,14 @@ let dump_env t ~dir =
 
 
 let resolve_program t ~dir ?hint ~loc bin =
-  let artifacts = Env.artifacts_host t ~dir in
-  Artifacts.binary ?hint ~loc artifacts bin
+  let bin_artifacts = Env.bin_artifacts_host t ~dir in
+  Artifacts.Bin.binary ?hint ~loc bin_artifacts bin
 
 let create
       ~(context:Context.t)
       ?host
       ~projects
-      ~file_tree
+     ~file_tree
       ~packages
       ~stanzas
       ~external_lib_deps_mode
@@ -353,8 +354,8 @@ let create
     Expander.make
       ~scope:(Scope.DB.find_by_dir scopes context.build_dir)
       ~context
-      ~artifacts
-      ~artifacts_host
+      ~lib_artifacts:artifacts.public_libs
+      ~bin_artifacts_host:artifacts_host.bin
   in
   let dir_status_db = Dir_status.DB.make file_tree ~stanzas_per_dir in
   { context
@@ -596,9 +597,9 @@ module Action = struct
               ~deps_written_by_user in
           U.Partial.expand t ~expander ~map_exe
         in
-        let artifacts = Expander.artifacts_host expander in
+        let bin_artifacts = Expander.bin_artifacts_host expander in
         Action.Unresolved.resolve unresolved ~f:(fun loc prog ->
-          match Artifacts.binary ~loc artifacts prog with
+          match Artifacts.Bin.binary ~loc bin_artifacts prog with
           | Ok path    -> path
           | Error fail -> Action.Prog.Not_found.raise fail))
       >>>

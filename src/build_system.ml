@@ -1328,7 +1328,7 @@ let () =
     begin
       match mode with
       | Standard | Fallback | Not_a_rule_stanza | Ignore_source_files -> ()
-      | Promote (lifetime, into) ->
+      | Promote { lifetime; into } ->
         Path.Set.iter targets ~f:(fun path ->
           let in_source_tree = Path.drop_build_context_exn path in
           let in_source_tree =

@@ -1510,6 +1510,7 @@ module Rule = struct
       type t =
         { lifetime : Lifetime.t
         ; into : Into.t option
+        ; only : Predicate_lang.t option
         }
     end
 
@@ -1524,7 +1525,7 @@ module Rule = struct
       let promote_into lifetime =
         let+ () = Syntax.since Stanza.syntax (1, 8)
         and+ into = Promote.Into.decode in
-        Promote { lifetime; into = Some into }
+        Promote { lifetime; into = Some into; only = None }
       in
       sum
         [ "standard"           , return Standard
@@ -1538,13 +1539,21 @@ module Rule = struct
                field_o "into"
                  (Syntax.since Stanza.syntax (1, 10) >>= fun () ->
                   Promote.Into.decode)
+             and+ only =
+               field_o "only"
+                 (Syntax.since Stanza.syntax (1, 10) >>= fun () ->
+                  Predicate_lang.decode)
              in
              Promote
                { lifetime = if until_clean then Until_clean else Unlimited
                ; into
+               ; only
                })
-        ; "promote-until-clean", return (Promote { lifetime = Until_clean
-                                                 ; into = None })
+        ; "promote-until-clean",
+          return (Promote { lifetime = Until_clean
+                          ; into = None
+                          ; only = None
+                          })
         ; "promote-into"       , promote_into Unlimited
         ; "promote-until-clean-into", promote_into Until_clean
         ]

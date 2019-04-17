@@ -194,11 +194,11 @@ let term =
              ~doc:"Instead of terminating build after completion, wait continuously
               for file changes.")
   and+ root,
-      only_packages,
-      ignore_promoted_rules,
-      config_file,
-      profile,
-      default_target =
+     only_packages,
+     ignore_promoted_rules,
+     config_file,
+     profile,
+     default_target =
     let default_target_default =
       match Wp.t with
       | Dune     -> "@@default"
@@ -230,7 +230,8 @@ let term =
       Arg.(value
            & flag
            & info ["ignore-promoted-rules"] ~docs
-               ~doc:"Ignore rules with (mode promote)")
+               ~doc:"Ignore rules with (mode promote),
+                     except ones with (only ...)")
     and+ (config_file_opt, config_file) =
       Term.ret @@
       let+ config_file =

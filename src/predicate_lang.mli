@@ -11,6 +11,13 @@ val decode : t Stanza.Decoder.t
 
 val empty : t
 
+(** Always return [true] *)
+val true_ : t
+
+(** Always return [false] *)
+val false_ : t
+
+val exec : t -> standard:t -> string -> bool
 val filter : t -> standard:t -> string list -> string list
 
 val of_glob : Glob.t -> t

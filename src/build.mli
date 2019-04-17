@@ -9,12 +9,6 @@ val arr : ('a -> 'b) -> ('a, 'b) t
 
 val return : 'a -> (unit, 'a) t
 
-module Vspec : sig
-  type 'a t = T : Path.t * 'a Vfile_kind.t -> 'a t
-end
-
-val store_vfile : 'a Vspec.t -> ('a, Action.t) t
-
 module O : sig
   val ( >>> ) : ('a, 'b) t -> ('b, 'c) t -> ('a, 'c) t
   val ( ^>> ) : ('a -> 'b) -> ('b, 'c) t -> ('a, 'c) t
@@ -89,8 +83,6 @@ val source_tree
 (** Record dynamic dependencies *)
 val dyn_paths : ('a, Path.t list) t -> ('a, 'a) t
 val dyn_path_set : ('a, Path.Set.t) t -> ('a, 'a) t
-
-val vpath : 'a Vspec.t  -> (unit, 'a) t
 
 (** [catch t ~on_error] evaluates to [on_error exn] if exception [exn] is
     raised during the evaluation of [t]. *)
@@ -189,8 +181,7 @@ val record_lib_deps : Lib_deps_info.t -> ('a, 'a) t
 module Repr : sig
   type ('a, 'b) t =
     | Arr : ('a -> 'b) -> ('a, 'b) t
-    | Targets : Path.t list -> ('a, 'a) t
-    | Store_vfile : 'a Vspec.t -> ('a, Action.t) t
+    | Targets : Path.Set.t -> ('a, 'a) t
     | Compose : ('a, 'b) t * ('b, 'c) t -> ('a, 'c) t
     | First : ('a, 'b) t -> ('a * 'c, 'b * 'c) t
     | Second : ('a, 'b) t -> ('c * 'a, 'c * 'b) t
@@ -201,7 +192,6 @@ module Repr : sig
     | If_file_exists : Path.t * ('a, 'b) if_file_exists_state ref -> ('a, 'b) t
     | Contents : Path.t -> ('a, string) t
     | Lines_of : Path.t -> ('a, string list) t
-    | Vpath : 'a Vspec.t -> (unit, 'a) t
     | Dyn_paths : ('a, Path.Set.t) t -> ('a, 'a) t
     | Dyn_deps : ('a, Dep.Set.t) t -> ('a, 'a) t
     | Record_lib_deps : Lib_deps_info.t -> ('a, 'a) t

@@ -1,21 +1,12 @@
 open! Stdune
 open! Import
 
-module Target : sig
-  type t =
-    | Normal of Path.t
-    | Vfile : _ Build.Vspec.t -> t
-
-  val path : t -> Path.t
-  val paths : t list -> Path.Set.t
-end
-
 module Rule : sig
   type t =
     { context  : Context.t option
     ; env      : Env.t option
     ; build    : (unit, Action.t) Build.t
-    ; targets  : Target.t list
+    ; targets  : Path.Set.t
     ; sandbox  : bool
     ; mode     : Dune_file.Rule.Mode.t
     ; locks    : Path.t list
@@ -48,4 +39,4 @@ val lib_deps
 
 val targets
   :  (_, _) Build.t
-  -> Target.t list
+  -> Path.Set.t

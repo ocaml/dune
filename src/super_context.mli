@@ -90,7 +90,7 @@ val add_rule_get_targets
   -> ?loc:Loc.t
   -> dir:Path.t
   -> (unit, Action.t) Build.t
-  -> Path.t list
+  -> Path.Set.t
 val add_rules
   :  t
   -> ?sandbox:bool
@@ -177,7 +177,11 @@ module Action : sig
 end
 
 module Pkg_version : sig
-  val set : t -> Package.t -> (unit, string option) Build.t -> (unit, string option) Build.t
+  val set
+    :  t
+    -> Package.t
+    -> (unit, string option) Build.t
+    -> (unit, string option) Build.t
 end
 
 module Scope_key : sig

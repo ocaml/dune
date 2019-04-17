@@ -179,7 +179,7 @@ let add_rule_get_targets t ?sandbox ?mode ?locks ?loc ~dir build =
       ~context:(Some t.context) ~env:(Some env) build
   in
   Build_system.add_rule rule;
-  List.map rule.targets ~f:Build_interpret.Target.path
+  rule.targets
 
 let add_rules t ?sandbox ~dir builds =
   List.iter builds ~f:(add_rule t ?sandbox ~dir)
@@ -197,26 +197,27 @@ let source_files t ~src_path =
 module Pkg_version = struct
   open Build.O
 
-  module V = Vfile_kind.Make(struct
-      type t = string option
-      let encode = Dune_lang.Encoder.(option string)
-      let name = "Pkg_version"
-    end)
+  let file sctx (p : Package.t) =
+    Path.relative (Path.append sctx.context.build_dir p.path)
+      (sprintf "%s.version.sexp" (Package.Name.to_string p.name))
 
-  let spec sctx (p : Package.t) =
-    let fn =
-      Path.relative (Path.append sctx.context.build_dir p.path)
-        (sprintf "%s.version.sexp" (Package.Name.to_string p.name))
-    in
-    Build.Vspec.T (fn, (module V))
+  let read_file fn =
+    Build.memoize "package version"
+      (Build.contents fn
+       >>^ fun s ->
+       Dune_lang.Decoder.(parse (option string)) Univ_map.empty
+         (Dune_lang.parse_string ~fname:(Path.to_string fn) ~mode:Single s))
 
-  let read sctx p = Build.vpath (spec sctx p)
+  let read sctx p = read_file (file sctx p)
 
   let set sctx p get =
-    let spec = spec sctx p in
+    let fn = file sctx p in
     add_rule sctx ~dir:(build_dir sctx)
-      (get >>> Build.store_vfile spec);
-    Build.vpath spec
+      ((get >>^ fun v ->
+        (Dune_lang.Encoder.(option string) v
+         |> Dune_lang.to_string ~syntax:Dune))
+       >>> Build.write_file_dyn fn);
+    read_file fn
 end
 
 let partial_expand sctx ~dep_kind ~targets_written_by_user ~map_exe

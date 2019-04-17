@@ -60,7 +60,7 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
          ~targets
          ~targets_dir:dir)
   end else
-    []
+    Path.Set.empty
 
 let copy_files sctx ~dir ~expander ~src_dir (def: Copy_files.t) =
   let loc = String_with_vars.loc def.glob in

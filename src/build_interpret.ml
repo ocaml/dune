@@ -2,22 +2,6 @@ open! Stdune
 open Import
 open Build.Repr
 
-module Vspec = Build.Vspec
-
-module Target = struct
-  type t =
-    | Normal of Path.t
-    | Vfile : _ Vspec.t -> t
-
-  let path = function
-    | Normal p -> p
-    | Vfile (Vspec.T (p, _)) -> p
-
-  let paths ts =
-    List.fold_left ts ~init:Path.Set.empty ~f:(fun acc t ->
-      Path.Set.add acc (path t))
-end
-
 let no_targets_allowed () =
   Exn.code_error "No targets allowed under a [Build.lazy_no_targets] \
                   or [Build.if_file_exists]" []
@@ -29,7 +13,6 @@ let static_deps t ~all_targets =
     match t with
     | Arr _ -> acc
     | Targets _ -> if not targets_allowed then no_targets_allowed (); acc
-    | Store_vfile _ -> if not targets_allowed then no_targets_allowed (); acc
     | Compose (a, b) -> loop a (loop b acc targets_allowed) targets_allowed
     | First t -> loop t acc targets_allowed
     | Second t -> loop t acc targets_allowed
@@ -57,8 +40,6 @@ let static_deps t ~all_targets =
       end
     | Dyn_paths t -> loop t acc targets_allowed
     | Dyn_deps t -> loop t acc targets_allowed
-    | Vpath (Vspec.T (p, _)) ->
-      Static_deps.add_rule_path acc p
     | Contents p -> Static_deps.add_rule_path acc p
     | Lines_of p -> Static_deps.add_rule_path acc p
     | Record_lib_deps _ -> acc
@@ -75,14 +56,12 @@ let lib_deps =
       match t with
       | Arr _ -> acc
       | Targets _ -> acc
-      | Store_vfile _ -> acc
       | Compose (a, b) -> loop a (loop b acc)
       | First t -> loop t acc
       | Second t -> loop t acc
       | Split (a, b) -> loop a (loop b acc)
       | Fanout (a, b) -> loop a (loop b acc)
       | Paths_for_rule _ -> acc
-      | Vpath _ -> acc
       | Paths_glob _ -> acc
       | Deps _ -> acc
       | Dyn_paths t -> loop t acc
@@ -100,19 +79,16 @@ let lib_deps =
   fun t -> loop (Build.repr t) Lib_name.Map.empty
 
 let targets =
-  let rec loop : type a b. (a, b) t -> Target.t list -> Target.t list = fun t acc ->
+  let rec loop : type a b. (a, b) t -> Path.Set.t -> Path.Set.t = fun t acc ->
     match t with
     | Arr _ -> acc
-    | Targets targets ->
-      List.fold_left targets ~init:acc ~f:(fun acc fn -> Target.Normal fn :: acc)
-    | Store_vfile spec -> Vfile spec :: acc
+    | Targets targets -> Path.Set.union targets acc
     | Compose (a, b) -> loop a (loop b acc)
     | First t -> loop t acc
     | Second t -> loop t acc
     | Split (a, b) -> loop a (loop b acc)
     | Fanout (a, b) -> loop a (loop b acc)
     | Paths_for_rule _ -> acc
-    | Vpath _ -> acc
     | Paths_glob _ -> acc
     | Deps _ -> acc
     | Dyn_paths t -> loop t acc
@@ -127,28 +103,30 @@ let targets =
           Exn.code_error "Build_interpret.targets got decided if_file_exists"
             ["exists", Sexp.Encoder.bool v]
         | Undecided (a, b) ->
-          match loop a [], loop b [] with
-          | [], [] -> acc
-          | a, b ->
-            let targets x = Path.Set.to_sexp (Target.paths x) in
+          let a = loop a Path.Set.empty in
+          let b = loop b Path.Set.empty in
+          if Path.Set.is_empty a && Path.Set.is_empty b then
+            acc
+          else begin
             Exn.code_error "Build_interpret.targets: cannot have targets \
                             under a [if_file_exists]"
-              [ "targets-a", targets a
-              ; "targets-b", targets b
+              [ "targets-a", Path.Set.to_sexp a
+              ; "targets-b", Path.Set.to_sexp b
               ]
+          end
       end
     | Memo m -> loop m.t acc
     | Catch (t, _) -> loop t acc
     | Lazy_no_targets _ -> acc
   in
-  fun t -> loop (Build.repr t) []
+  fun t -> loop (Build.repr t) Path.Set.empty
 
 module Rule = struct
   type t =
     { context  : Context.t option
     ; env      : Env.t option
     ; build    : (unit, Action.t) Build.t
-    ; targets  : Target.t list
+    ; targets  : Path.Set.t
     ; sandbox  : bool
     ; mode     : Dune_file.Rule.Mode.t
     ; locks    : Path.t list
@@ -160,30 +138,29 @@ module Rule = struct
         ~context ~env ?(locks=[]) ?loc build =
     let targets = targets build in
     let dir =
-      match targets with
-      | [] ->
-        begin match loc with
-        | Some loc -> Errors.fail loc "Rule has no targets specified"
-        | None -> Exn.code_error "Build_interpret.Rule.make: no targets" []
+      match Path.Set.choose targets with
+      | None -> begin
+          match loc with
+          | Some loc -> Errors.fail loc "Rule has no targets specified"
+          | None -> Exn.code_error "Build_interpret.Rule.make: no targets" []
         end
-      | x :: l ->
-        let dir = Path.parent_exn (Target.path x) in
-        List.iter l ~f:(fun target ->
-          let path = Target.path target in
-          if Path.parent_exn path <> dir then
-            match loc with
-            | None ->
-              Exn.code_error "rule has targets in different directories"
-                [ "targets", Sexp.Encoder.list Path.to_sexp
-                               (List.map targets ~f:Target.path)
-                ]
-            | Some loc ->
-              Errors.fail loc
-                "Rule has targets in different directories.\nTargets:\n%s"
-                (String.concat ~sep:"\n"
-                   (List.map targets ~f:(fun t ->
-                      sprintf "- %s"
-                        (Target.path t |> Path.to_string_maybe_quoted)))));
+      | Some x ->
+        let dir = Path.parent_exn x in
+        if Path.Set.exists targets ~f:(fun path -> Path.parent_exn path <> dir)
+        then begin
+          match loc with
+          | None ->
+            Exn.code_error "rule has targets in different directories"
+              [ "targets", Path.Set.to_sexp targets
+              ]
+          | Some loc ->
+            Errors.fail loc
+              "Rule has targets in different directories.\nTargets:\n%s"
+              (String.concat ~sep:"\n"
+                 (Path.Set.to_list targets |> List.map ~f:(fun p ->
+                    sprintf "- %s"
+                      (Path.to_string_maybe_quoted p))))
+        end;
         dir
     in
     { context

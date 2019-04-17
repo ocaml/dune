@@ -271,8 +271,9 @@ let load_text_files sctx ft_dir
       | Menhir.T menhir ->
         Menhir_rules.targets menhir
       | Rule rule ->
-        List.map (Simple_rules.user_rule sctx rule ~dir ~expander)
-          ~f:Path.basename
+        Simple_rules.user_rule sctx rule ~dir ~expander
+        |> Path.Set.to_list
+        |> List.map ~f:Path.basename
       | Copy_files def ->
         Simple_rules.copy_files sctx def ~src_dir ~dir ~expander
         |> Path.Set.to_list

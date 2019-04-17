@@ -1,0 +1,4 @@
+(rule
+ (progn
+  (with-stdout-to a (echo "GENERATED"))
+  (with-stdout-to b (echo "GENERATED"))))

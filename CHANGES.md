@@ -11,6 +11,20 @@ unreleased
 - [coq] Add `coq.pp` stanza to help with pre-processing of grammar
   files (#2054, @ejgallego, review by @rgrinberg)
 
+- Add a new more generic form for the *promote* mode: `(promote
+  (until-clean) (into <dir>))` (#2068, @diml)
+
+- Allow to promote only a subset of the targets via `(promote (only
+  <pred>))`. For instance: `(promote (only *.mli))` (#2068, @diml)
+
+- Improve the behavior when a strict subset of the targets of a rule
+  is already in the source tree for projects using the dune language < 1.10
+  (#2068, fixes #2061, @diml)
+
+- With lang dune >= 1.10, rules in standard mode are no longer allowed
+  to produce targets that are present in the source tree. This has
+  been a warning for long enough (#2068, @diml)
+
 1.9.1 (11/04/2019)
 ------------------
 

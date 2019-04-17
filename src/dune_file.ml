@@ -1518,7 +1518,6 @@ module Rule = struct
       | Standard
       | Fallback
       | Promote of Promote.t
-      | Not_a_rule_stanza
       | Ignore_source_files
 
     let decode =

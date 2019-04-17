@@ -950,7 +950,7 @@ and load_dir_step2_exn t ~dir ~collector =
         List.map rules ~f:(fun (rule : Pre_rule.t) ->
           match rule.mode with
           | Promote _ | Fallback | Ignore_source_files -> rule
-          | Not_a_rule_stanza | Standard ->
+          | Standard ->
             let inter = Path.Set.inter rule.targets source_files in
             if Path.Set.is_empty inter then
               rule
@@ -1052,8 +1052,7 @@ and load_dir_step2_exn t ~dir ~collector =
     | Some (_, to_copy) ->
       List.filter rules ~f:(fun (rule : Pre_rule.t) ->
         match rule.mode with
-        | Standard | Promote _
-        | Not_a_rule_stanza | Ignore_source_files -> true
+        | Standard | Promote _ | Ignore_source_files -> true
         | Fallback ->
           let source_files_for_targtes =
             (* All targets are in [dir] and we know it correspond to a
@@ -1381,7 +1380,7 @@ let () =
     end >>| fun () ->
     begin
       match mode with
-      | Standard | Fallback | Not_a_rule_stanza | Ignore_source_files -> ()
+      | Standard | Fallback | Ignore_source_files -> ()
       | Promote { lifetime; into; only } ->
         Path.Set.iter targets ~f:(fun path ->
           let consider_for_promotion =

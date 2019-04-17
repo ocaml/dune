@@ -187,7 +187,8 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander ~dir_kind
        Build.create_file (Path.relative dir ".merlin-exists"));
     Path.Set.singleton merlin_file
     |> Build_system.Alias.add_deps (Alias.check ~dir);
-    SC.add_rule sctx ~dir ~mode:(Promote (Until_clean, None)) (
+    SC.add_rule sctx ~dir
+      ~mode:(Promote { lifetime = Until_clean; into = None }) (
       flags
       >>^ (fun flags ->
         let (src_dirs, obj_dirs) =
@@ -196,9 +197,9 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander ~dir_kind
               ( Path.Set.add src_dirs (
                   Lib.orig_src_dir lib
                   |> Path.drop_optional_build_context)
-              ,
-              Path.Set.add obj_dirs (Lib.public_cmi_dir lib)
-            ))
+                ,
+                Path.Set.add obj_dirs (Lib.public_cmi_dir lib)
+              ))
         in
         let src_dirs =
           Path.Set.union src_dirs (Path.Set.of_list more_src_dirs)

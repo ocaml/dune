@@ -330,7 +330,7 @@ let install_file sctx (package : Local_package.t) entries =
        |> Path.Set.of_list);
   Super_context.add_rule sctx ~dir:pkg_build_dir
     ~mode:(if promote_install_file ctx then
-             Promote (Until_clean, None)
+             Promote { lifetime = Until_clean; into = None }
            else
              (* We must ignore the source file since it might be
                 copied to the source tree by another context. *)

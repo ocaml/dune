@@ -40,6 +40,11 @@ module type PARAMS = sig
      is of the form [_build/<context>/src], e.g., [_build/default/src]. *)
   val dir : Path.t
 
+  (* [root_dir] is the base directory of the context, usually where
+     the build is invoked from; we run menhir from this directoy to we
+     get correct error paths. *)
+  val root_dir : Path.t
+
   (* [stanza] is the [(menhir ...)] stanza, as found in the [jbuild] file. *)
 
   val stanza: stanza
@@ -122,7 +127,7 @@ module Run (P : PARAMS) : sig end = struct
   (* [menhir args] generates a Menhir command line (a build action). *)
 
   let menhir (args : 'a args) : (string list, Action.t) Build.t =
-    Build.run ~dir menhir_binary args
+    Build.run ~dir:root_dir menhir_binary args
 
   let rule ?(mode=stanza.mode) : (unit, Action.t) Build.t -> unit =
     SC.add_rule sctx ~dir ~mode ~loc:stanza.loc
@@ -195,7 +200,7 @@ module Run (P : PARAMS) : sig end = struct
       menhir
         [ Dyn (fun flags -> As flags)
         ; Deps (sources stanza.modules)
-        ; As [ "--base" ; base ]
+        ; A "--base" ; Path (Path.relative dir base)
         ; A "--infer-write-query"; Target (mock_ml base)
         ]
     );
@@ -238,7 +243,7 @@ module Run (P : PARAMS) : sig end = struct
       menhir
         [ Dyn (fun flags -> As flags)
         ; Deps (sources stanza.modules)
-        ; As [ "--base" ; base ]
+        ; A "--base" ; Path (Path.relative dir base)
         ; A "--infer-read-reply"; Dep (inferred_mli base)
         ; Hidden_targets (targets base ~cmly)
         ]
@@ -257,7 +262,7 @@ module Run (P : PARAMS) : sig end = struct
       menhir
         [ Dyn (fun flags -> As flags)
         ; Deps (sources stanza.modules)
-        ; As [ "--base" ; base ]
+        ; A "--base" ; Path (Path.relative dir base)
         ; Hidden_targets (targets base ~cmly)
         ]
     )
@@ -322,6 +327,7 @@ let gen_rules ~dir cctx stanza =
     Run (struct
       let cctx = cctx
       let dir = dir
+      let root_dir = Scope.root (Compilation_context.scope cctx)
       let stanza = stanza
     end) in
   ()

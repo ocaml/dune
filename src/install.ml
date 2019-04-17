@@ -267,9 +267,7 @@ module Entry = struct
   let set_src t src = { t with src }
 
   let relative_installed_path t ~paths =
-    let main_dir = Section.Paths.get paths t.section in
-    let dst = Dst.to_string t.dst in
-    Path.relative main_dir dst
+    Section.Paths.install_path paths t.section t.dst
 
   let add_install_prefix t ~paths ~prefix =
     let opam_will_install_in_this_dir = Section.Paths.get paths t.section in

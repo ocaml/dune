@@ -61,5 +61,5 @@ let rules (t : Dune_file.Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents
         } in
       add_alias ~loc ~action:(Diff diff) ~locks:t.locks;
       ignore (Simple_rules.user_rule sctx rule ~extra_bindings ~dir ~expander
-              : Path.t list));
+              : Path.Set.t));
   Exe_rules.rules t.exes ~sctx ~dir ~scope ~expander ~dir_kind ~dir_contents

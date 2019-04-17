@@ -2,8 +2,6 @@ open! Stdune
 open Import
 open Fiber.O
 
-module Vspec = Build.Vspec
-
 (* Where we store stamp files for aliases *)
 let alias_dir = Path.(relative build_dir) ".aliases"
 
@@ -171,33 +169,6 @@ module Internal_rule = struct
     ; static_deps
     ; build
     }
-end
-
-module File_kind = struct
-  type 'a t =
-    | Ignore_contents : unit t
-    | Sexp_file       : 'a Vfile_kind.t -> 'a t
-
-  let eq : type a b. a t -> b t -> (a, b) Type_eq.t option = fun a b ->
-    match a, b with
-    | Ignore_contents, Ignore_contents -> Some Type_eq.T
-    | Sexp_file a    , Sexp_file b     -> Vfile_kind.eq a b
-    | _                                -> None
-
-  let eq_exn a b = Option.value_exn (eq a b)
-end
-
-module File_spec = struct
-  type 'a t =
-    { rule         : Internal_rule.t (* Rule which produces it *)
-    ; mutable kind : 'a File_kind.t
-    ; mutable data : 'a option
-    }
-
-  type packed = T : _ t -> packed
-
-  let create rule kind =
-    T { rule; kind; data = None }
 end
 
 module Alias0 = struct
@@ -572,7 +543,7 @@ end
 
 type t =
   { (* File specification by targets *)
-    files       : File_spec.packed Path.Table.t
+    files       : Internal_rule.t Path.Table.t
   ; contexts    : Context.t String.Map.t
   ; file_tree   : File_tree.t
   ; dirs : Dir_status.t Path.Table.t
@@ -643,38 +614,18 @@ let get_dir_status t ~dir =
           (Dir_status.Rules_collector.create_pending ~info:(Path.to_sexp dir) ())
     end)
 
-module Target = Build_interpret.Target
 module Pre_rule = Build_interpret.Rule
-
-let get_file : type a. t -> Path.t -> a File_kind.t -> a File_spec.t =
-  fun t fn kind ->
-    match Path.Table.find t.files fn with
-    | None ->
-      let loc = Rule_fn.loc () in
-      Errors.fail_opt loc "no rule found for %s" (Path.to_string fn)
-    | Some (File_spec.T file) ->
-      let Type_eq.T = File_kind.eq_exn kind file.kind in
-      file
-
-let vfile_to_string (type a) (module K : Vfile_kind.S with type t = a) _fn x =
-  K.to_string x
-
-type bs = t
 
 module Build_exec = struct
   open Build.Repr
 
-  let exec (bs : bs) ~(eval_pred : Dep.eval_pred) (t : ('a, 'b) Build.t) (x : 'a)
+  let exec ~(eval_pred : Dep.eval_pred) (t : ('a, 'b) Build.t) (x : 'a)
     : 'b * Dep.Set.t =
     let rec exec
       : type a b. Dep.Set.t ref -> (a, b) t -> a -> b = fun dyn_deps t x ->
       match t with
       | Arr f -> f x
       | Targets _ -> x
-      | Store_vfile (Vspec.T (fn, kind)) ->
-        let file = get_file bs fn (Sexp_file kind) in
-        file.data <- Some x;
-        Write_file (fn, vfile_to_string kind fn x)
       | Compose (a, b) ->
         exec dyn_deps a x |> exec dyn_deps b
       | First t ->
@@ -697,9 +648,6 @@ module Build_exec = struct
       | Paths_glob g -> eval_pred g
       | Contents p -> Io.read_file p
       | Lines_of p -> Io.lines_of_file p
-      | Vpath (Vspec.T (fn, kind)) ->
-        let file : b File_spec.t = get_file bs fn (Sexp_file kind) in
-        Option.value_exn file.data
       | Dyn_paths t ->
         let fns = exec dyn_deps t x in
         dyn_deps := Dep.Set.add_paths !dyn_deps fns;
@@ -746,12 +694,12 @@ module Build_exec = struct
 end
 
 (* [copy_source] is [true] for rules copying files from the source directory *)
-let add_spec t fn spec ~copy_source =
+let add_spec t fn rule ~copy_source =
   match Path.Table.find t.files fn with
   | None ->
-    Path.Table.add t.files fn spec
-  | Some (File_spec.T { rule; _ }) ->
-    match copy_source, rule.mode with
+    Path.Table.add t.files fn rule
+  | Some rule' ->
+    match copy_source, rule'.mode with
     | true, (Standard | Not_a_rule_stanza) ->
       Errors.warn (Internal_rule.loc rule ~dir:(Path.parent_exn fn)
                      ~file_tree:t.file_tree)
@@ -761,18 +709,17 @@ let add_spec t fn spec ~copy_source =
          %t"
         (String.maybe_quoted (Path.basename fn))
         (fun ppf ->
-           match rule.mode with
+           match rule'.mode with
            | Not_a_rule_stanza ->
              Format.fprintf ppf "Delete file %s to get rid of this warning."
                (Path.to_string_maybe_quoted (Path.drop_optional_build_context fn))
            | Standard ->
              Format.fprintf ppf
                "To keep the current behavior and get rid of this warning, add a field \
-                (fallback) to the rule."
+                (fallback) to the rule'."
            | _ -> assert false);
-      Path.Table.add t.files fn spec
+      Path.Table.add t.files fn rule
     | _ ->
-      let (File_spec.T { rule = rule2; _ }) = spec in
       let string_of_loc = function
         | None -> "<internal location>"
         | Some { Loc.start; _ } ->
@@ -785,15 +732,8 @@ let add_spec t fn spec ~copy_source =
         (if copy_source then
            "<internal copy rule>"
          else
-           string_of_loc rule.loc)
-        (string_of_loc rule2.loc)
-
-let create_file_specs t targets rule ~copy_source =
-  List.iter targets ~f:(function
-    | Target.Normal fn ->
-      add_spec t fn (File_spec.create rule Ignore_contents) ~copy_source
-    | Target.Vfile (Vspec.T (fn, kind)) ->
-      add_spec t fn (File_spec.create rule (Sexp_file kind)) ~copy_source)
+           string_of_loc rule'.loc)
+        (string_of_loc rule.loc)
 
 (* This contains the targets of the actions that are being executed. On exit, we
    need to delete them as they might contain garbage *)
@@ -905,7 +845,7 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
         context
       ; env
       ; build
-      ; targets = target_specs
+      ; targets
       ; sandbox
       ; mode
       ; locks
@@ -914,7 +854,6 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
       } =
     pre_rule
   in
-  let targets = Target.paths target_specs in
   let static_deps = static_deps t build in
   let rule =
     let id = Internal_rule.Id.gen () in
@@ -934,7 +873,7 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
     ; rev_deps = []
     }
   in
-  create_file_specs t target_specs rule ~copy_source
+  Path.Set.iter targets ~f:(fun fn -> add_spec t fn rule ~copy_source)
 
 and static_deps t build =
   Fiber.Once.create (fun () ->
@@ -1087,7 +1026,6 @@ and load_dir_step2_exn t ~dir ~collector =
   let user_rule_targets, source_files_to_ignore =
     List.fold_left rules ~init:(Path.Set.empty, Path.Set.empty)
       ~f:(fun (acc_targets, acc_ignored) { Pre_rule.targets; mode; _ } ->
-        let targets = Build_interpret.Target.paths targets in
         (Path.Set.union targets acc_targets,
          match mode with
          | Promote _ | Ignore_source_files ->
@@ -1144,15 +1082,10 @@ and load_dir_step2_exn t ~dir ~collector =
         | Not_a_rule_stanza | Ignore_source_files -> true
         | Fallback ->
           let source_files_for_targtes =
-            List.fold_left rule.targets ~init:Path.Set.empty
-              ~f:(fun acc target ->
-                Path.Set.add acc
-                  (Build_interpret.Target.path target
-                   (* All targets are in [dir] and we know it
-                      correspond to a directory of a build context
-                      since there are source files to copy, so this
-                      call can't fail. *)
-                   |> Path.drop_build_context_exn))
+            (* All targets are in [dir] and we know it correspond to a
+               directory of a build context since there are source
+               files to copy, so this call can't fail. *)
+            Path.Set.map rule.targets ~f:Path.drop_build_context_exn
           in
           if Path.Set.is_subset source_files_for_targtes ~of_:to_copy then
             (* All targets are present *)
@@ -1209,13 +1142,13 @@ The following targets are not:
 
   targets
 
-let get_file_spec_other t fn =
+let get_rule_other t fn =
   let dir = Path.parent_exn fn in
   if Path.is_in_build_dir dir then
     load_dir t ~dir;
   Fiber.return (Path.Table.find t.files fn)
 
-and get_file_spec t path =
+and get_rule t path =
   match Path.Table.find t.files path with
   | Some _ as some -> Fiber.return some
   | None ->
@@ -1302,11 +1235,10 @@ let build_deps =
 (* Evaluate a rule and return the action and set of dynamic dependencies *)
 let evaluate_action_and_dynamic_deps_def =
   let f (rule : Internal_rule.t) =
-    let t = t () in
     let* static_deps = Fiber.Once.get rule.static_deps in
     let rule_deps = Static_deps.rule_deps static_deps in
     let+ () = build_deps rule_deps in
-    Build_exec.exec t ~eval_pred rule.build ()
+    Build_exec.exec ~eval_pred rule.build ()
   in
   Memo.create
     "evaluate-action-and-dynamic-deps"
@@ -1504,11 +1436,11 @@ let () =
     let t = t () in
     let on_error exn = Dep_path.reraise exn (Path path) in
     Fiber.with_error_handler ~on_error (fun () ->
-      get_file_spec t path >>= function
+      get_rule t path >>= function
       | None ->
         (* file already exists *)
         Fiber.return ()
-      | Some (File_spec.T file) -> execute_rule file.rule)
+      | Some rule -> execute_rule rule)
   in
   Memo.set_impl build_file_def build_file
 
@@ -1633,7 +1565,7 @@ let package_deps pkg files =
   and loop_deps fn acc =
     match Path.Table.find t.files fn with
     | None -> acc
-    | Some (File_spec.T { rule = ir; _ }) ->
+    | Some ir ->
       if Internal_rule.Set.mem !rules_seen ir then
         acc
       else begin
@@ -1714,12 +1646,10 @@ let prefix_rules' t prefix ~f =
 
 let prefix_rules prefix ~f =
   let t = t () in
-  begin match Build_interpret.targets prefix with
-  | [] -> ()
-  | targets ->
+  let targets = Build_interpret.targets prefix in
+  if not (Path.Set.is_empty targets) then
     Exn.code_error "Build_system.prefix_rules' prefix contains targets"
-      ["targets", Path.Set.to_sexp (Build_interpret.Target.paths targets)]
-  end;
+      ["targets", Path.Set.to_sexp targets];
   let prefix =
     match t.prefix with
     | None -> prefix
@@ -1821,9 +1751,9 @@ end = struct
             Fiber.return ()
         end
       and proc_rule dep =
-        get_file_spec_other t dep >>= function
+        get_rule_other t dep >>= function
         | None -> Fiber.return () (* external files *)
-        | Some (File_spec.T file) -> run_rule file.rule
+        | Some rule -> run_rule rule
       in
       let rule_shim = shim_of_build_goal t request in
       let* (_act, goal) = evaluate_rule rule_shim in
@@ -1864,7 +1794,7 @@ end = struct
         load_dir ~dir:(Path.parent_exn path);
       match Path.Table.find t.files path with
       | None -> acc
-      | Some (File_spec.T { rule; _ }) -> rule :: acc)
+      | Some rule -> rule :: acc)
     |> Internal_rule.Set.of_list
     |> Internal_rule.Set.to_list
 

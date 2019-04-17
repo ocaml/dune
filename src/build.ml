@@ -1,15 +1,10 @@
 open! Stdune
 open Import
 
-module Vspec = struct
-  type 'a t = T : Path.t * 'a Vfile_kind.t -> 'a t
-end
-
 module Repr = struct
   type ('a, 'b) t =
     | Arr : ('a -> 'b) -> ('a, 'b) t
-    | Targets : Path.t list -> ('a, 'a) t
-    | Store_vfile : 'a Vspec.t -> ('a, Action.t) t
+    | Targets : Path.Set.t -> ('a, 'a) t
     | Compose : ('a, 'b) t * ('b, 'c) t -> ('a, 'c) t
     | First : ('a, 'b) t -> ('a * 'c, 'b * 'c) t
     | Second : ('a, 'b) t -> ('c * 'a, 'c * 'b) t
@@ -21,7 +16,6 @@ module Repr = struct
     | If_file_exists : Path.t * ('a, 'b) if_file_exists_state ref -> ('a, 'b) t
     | Contents : Path.t -> ('a, string) t
     | Lines_of : Path.t -> ('a, string list) t
-    | Vpath : 'a Vspec.t -> (unit, 'a) t
     | Dyn_paths : ('a, Path.Set.t) t -> ('a, 'a) t
     | Dyn_deps : ('a, Dep.Set.t) t -> ('a, 'a) t
     | Record_lib_deps : Lib_deps_info.t -> ('a, 'a) t
@@ -116,7 +110,6 @@ let path p = Deps (Dep.Set.singleton (Dep.file p))
 let paths ps = Deps (Dep.Set.of_files ps)
 let path_set ps = Deps (Dep.Set.of_files_set ps)
 let paths_matching ~loc:_ dir_glob = Paths_glob dir_glob
-let vpath vp = Vpath vp
 let dyn_paths t = Dyn_paths (t >>^ Path.Set.of_list)
 let dyn_path_set t = Dyn_paths t
 let dyn_deps t = Dyn_deps t
@@ -167,7 +160,7 @@ let paths_existing paths =
 let fail ?targets x =
   match targets with
   | None -> Fail x
-  | Some l -> Targets l >>> Fail x
+  | Some l -> Targets (Path.Set.of_list l) >>> Fail x
 
 let of_result ?targets = function
   | Ok    x -> x
@@ -190,8 +183,6 @@ let source_tree ~dir ~file_tree =
   let paths = File_tree.files_recursively_in file_tree dir ~prefix_with in
   path_set paths >>^ fun _ -> paths
 
-let store_vfile spec = Store_vfile spec
-
 let get_prog = function
   | Ok p -> path p >>> arr (fun _ -> Ok p)
   | Error f ->
@@ -213,7 +204,7 @@ let run ~dir ?stdout_to prog args =
   let targets = Arg_spec.add_targets args (Option.to_list stdout_to) in
   prog_and_args ~dir prog args
   >>>
-  Targets targets
+  Targets (Path.Set.of_list targets)
   >>^ (fun (prog, args) ->
     let action : Action.t = Run (prog, args) in
     let action =
@@ -224,7 +215,7 @@ let run ~dir ?stdout_to prog args =
     Action.Chdir (dir, action))
 
 let action ?dir ~targets action =
-  Targets targets
+  Targets (Path.Set.of_list targets)
   >>^ fun _ ->
   match dir with
   | None -> action
@@ -232,9 +223,9 @@ let action ?dir ~targets action =
 
 let action_dyn ?dir ~targets () =
   match dir with
-  | None -> Targets targets
+  | None -> Targets (Path.Set.of_list targets)
   | Some dir ->
-    Targets targets
+    Targets (Path.Set.of_list targets)
     >>^ fun action ->
     Action.Chdir (dir, action)
 
@@ -242,7 +233,7 @@ let write_file fn s =
   action ~targets:[fn] (Write_file (fn, s))
 
 let write_file_dyn fn =
-  Targets [fn]
+  Targets (Path.Set.singleton fn)
   >>^ fun s ->
   Action.Write_file (fn, s)
 

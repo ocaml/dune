@@ -84,3 +84,11 @@ Tests for promote-into
   $ dune build promoted
   $ cat subdir/promoted
   Hello, world!
+
+Test for (promote (only ...))
+-----------------------------
+
+Only "only1" should be promoted in the source tree:
+
+  $ dune build only2
+  $ ls -1 only*

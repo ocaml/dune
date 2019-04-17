@@ -90,26 +90,28 @@ let decode : t Dune_lang.Decoder.t =
 
 let empty = Ast.Union []
 
-let rec mem t ~standard ~elem =
+let rec exec t ~standard elem =
   match (t : _ Ast.t) with
-  | Compl t -> not (mem t ~standard ~elem)
+  | Compl t -> not (exec t ~standard elem)
   | Element f -> f elem
-  | Union xs -> List.exists ~f:(mem ~standard ~elem) xs
-  | Inter xs -> List.for_all ~f:(mem ~standard ~elem) xs
-  | Standard -> mem standard ~standard ~elem
+  | Union xs -> List.exists ~f:(fun t -> exec t ~standard elem) xs
+  | Inter xs -> List.for_all ~f:(fun t -> exec t ~standard elem) xs
+  | Standard -> exec standard ~standard elem
 
 let filter (t : t) ~standard elems =
   match t with
   | Inter []
   | Union [] -> []
   | _ ->
-    (List.filter elems ~f:(fun elem -> mem t ~standard ~elem))
+    (List.filter elems ~f:(fun elem -> exec t ~standard elem))
 
 let union t = Ast.Union t
 
 let of_glob g = Ast.Element (Glob.test g)
 
 let of_pred p = Ast.Element p
+let true_ = of_pred (fun _ -> true)
+let false_ = of_pred (fun _ -> false)
 
 let of_string_set s = Ast.Element (String.Set.mem s)
 

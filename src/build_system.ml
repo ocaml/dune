@@ -945,14 +945,22 @@ and load_dir_step2_exn t ~dir ~collector =
   in
   Path.Table.replace t.dirs ~key:alias_dir ~data:(Loaded alias_stamp_files);
 
-  (* Compute the set of targets and the set of source files that must not be copied *)
+  (* Compute the set of targets and the set of source files that must
+     not be copied *)
   let user_rule_targets, source_files_to_ignore =
     List.fold_left rules ~init:(Path.Set.empty, Path.Set.empty)
       ~f:(fun (acc_targets, acc_ignored) { Pre_rule.targets; mode; _ } ->
         (Path.Set.union targets acc_targets,
          match mode with
-         | Promote _ | Ignore_source_files ->
+         | Promote { only = None; _ } | Ignore_source_files ->
            Path.Set.union targets acc_ignored
+         | Promote { only = Some pred; _ } ->
+           let to_ignore =
+             Path.Set.filter targets ~f:(fun target ->
+               Predicate_lang.exec pred (Path.reach target ~from:dir)
+                 ~standard:Predicate_lang.true_)
+           in
+           Path.Set.union to_ignore acc_ignored
          | _ ->
            acc_ignored))
   in
@@ -1328,25 +1336,34 @@ let () =
     begin
       match mode with
       | Standard | Fallback | Not_a_rule_stanza | Ignore_source_files -> ()
-      | Promote { lifetime; into } ->
+      | Promote { lifetime; into; only } ->
         Path.Set.iter targets ~f:(fun path ->
-          let in_source_tree = Path.drop_build_context_exn path in
-          let in_source_tree =
-            match into with
-            | None -> in_source_tree
-            | Some { loc; dir } ->
-              Path.relative
-                (Path.relative (Path.parent_exn in_source_tree) dir
-                   ~error_loc:loc)
-                (Path.basename in_source_tree)
+          let consider_for_promotion =
+            match only with
+            | None -> true
+            | Some pred ->
+              Predicate_lang.exec pred (Path.reach path ~from:dir)
+                ~standard:Predicate_lang.true_
           in
-          if not (Path.exists in_source_tree) ||
-             (Utils.Cached_digest.file path <>
-              Utils.Cached_digest.file in_source_tree) then begin
-            if lifetime = Until_clean then
-              Promoted_to_delete.add in_source_tree;
-            Scheduler.ignore_for_watch in_source_tree;
-            Io.copy_file ~src:path ~dst:in_source_tree ()
+          if consider_for_promotion then begin
+            let in_source_tree = Path.drop_build_context_exn path in
+            let in_source_tree =
+              match into with
+              | None -> in_source_tree
+              | Some { loc; dir } ->
+                Path.relative
+                  (Path.relative (Path.parent_exn in_source_tree) dir
+                     ~error_loc:loc)
+                  (Path.basename in_source_tree)
+            in
+            if not (Path.exists in_source_tree) ||
+               (Utils.Cached_digest.file path <>
+                Utils.Cached_digest.file in_source_tree) then begin
+              if lifetime = Until_clean then
+                Promoted_to_delete.add in_source_tree;
+              Scheduler.ignore_for_watch in_source_tree;
+              Io.copy_file ~src:path ~dst:in_source_tree ()
+            end
           end)
     end;
     t.hook Rule_completed

@@ -188,7 +188,11 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander ~dir_kind
     Path.Set.singleton merlin_file
     |> Build_system.Alias.add_deps (Alias.check ~dir);
     SC.add_rule sctx ~dir
-      ~mode:(Promote { lifetime = Until_clean; into = None }) (
+      ~mode:(Promote
+               { lifetime = Until_clean
+               ; into = None
+               ; only = None
+               }) (
       flags
       >>^ (fun flags ->
         let (src_dirs, obj_dirs) =

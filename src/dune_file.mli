@@ -315,6 +315,7 @@ module Rule : sig
       type t =
         { lifetime : Lifetime.t
         ; into : Into.t option
+        ; only : Predicate_lang.t option
         }
     end
 

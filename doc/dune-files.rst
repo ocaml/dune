@@ -457,9 +457,13 @@ field. The following modes are available:
      The following options are available:
      - ``(until-clean)`` means that ``dune clean`` will remove the
      promoted files from the source tree
-     - ``(into <dir>)`` that the files are promoted in ``<dir>``
+     - ``(into <dir>)`` means that the files are promoted in ``<dir>``
      instead of the current directory. This feature is available since
      Dune 1.8
+     - ``(only <predicate>)`` means that only a subset of the targets
+     should be promoted. The argument is a predicate in a syntax
+     similar to the argument of :ref:`(dirs ...) <dune-subdirs>`. This
+     feature is available since dune 1.10
 
 - ``promote-until-clean`` is the same as ``(promote (until-clean))``
 - ``(promote-into <dir>)`` is the same as ``(promote (into <dir>))``
@@ -476,10 +480,10 @@ There are two use cases for promote rules. The first one is when the
 generated code is easier to review than the generator, so it's easier
 to commit the generated code and review it. The second is to cut down
 dependencies during releases: by passing ``--ignore-promoted-rules``
-to dune, rules will ``(mode promote)`` will be ignored and the
-source files will be used instead. The
-``-p/--for-release-of-packages`` flag implies
-``--ignore-promote-rules``.
+to dune, rules will ``(mode promote)`` will be ignored and the source
+files will be used instead. The ``-p/--for-release-of-packages`` flag
+implies ``--ignore-promote-rules``. However, rules that promotes only
+a subset of their targets via ``(only ...)`` are never ignored.
 
 inferred rules
 ~~~~~~~~~~~~~~

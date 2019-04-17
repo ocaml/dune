@@ -92,3 +92,4 @@ Only "only1" should be promoted in the source tree:
 
   $ dune build only2
   $ ls -1 only*
+  only1

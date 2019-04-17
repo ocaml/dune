@@ -311,25 +311,17 @@ let load ?(warn_when_seeing_jbuild_file=true) path =
 
 let fold = Dir.fold
 
-let rec find_dir t path =
-  if not (Path.is_managed path) then
-    None
-  else if Path.equal (Dir.path t) path then
-    Some t
-  else
-    match
-      let open Option.O in
-      Path.parent path
-      >>= find_dir t
-      >>= fun parent ->
-      String.Map.find (Dir.sub_dirs parent) (Path.basename path)
-    with
-    | Some _ as res -> res
-    | None ->
-      (* We don't cache failures in [t.dirs]. The expectation is
-         that these only happen when the user writes an invalid path
-         in a jbuild file, so there is no need to cache them. *)
-      None
+let rec find_dir t = function
+  | [] -> Some t
+  | comp :: components ->
+    let open Option.O in
+    let* t = String.Map.find (Dir.sub_dirs t) comp in
+    find_dir t components
+
+let find_dir t path =
+  let open Option.O in
+  let* components = Path.explode path in
+  find_dir t components
 
 let files_of t path =
   match find_dir t path with

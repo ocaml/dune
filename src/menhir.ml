@@ -40,10 +40,9 @@ module type PARAMS = sig
      is of the form [_build/<context>/src], e.g., [_build/default/src]. *)
   val dir : Path.t
 
-  (* [root_dir] is the base directory of the context, usually where
-     the build is invoked from; we run menhir from this directoy to we
-     get correct error paths. *)
-  val root_dir : Path.t
+  (* [build_dir] is the base directory of the context; we run menhir
+     from this directoy to we get correct error paths. *)
+  val build_dir : Path.t
 
   (* [stanza] is the [(menhir ...)] stanza, as found in the [jbuild] file. *)
 
@@ -127,7 +126,7 @@ module Run (P : PARAMS) : sig end = struct
   (* [menhir args] generates a Menhir command line (a build action). *)
 
   let menhir (args : 'a args) : (string list, Action.t) Build.t =
-    Build.run ~dir:root_dir menhir_binary args
+    Build.run ~dir:build_dir menhir_binary args
 
   let rule ?(mode=stanza.mode) : (unit, Action.t) Build.t -> unit =
     SC.add_rule sctx ~dir ~mode ~loc:stanza.loc
@@ -322,12 +321,12 @@ let targets (stanza : Dune_file.Menhir.t) : string list =
 let module_names (stanza : Dune_file.Menhir.t) : Module.Name.t list =
   List.map (modules stanza) ~f:Module.Name.of_string
 
-let gen_rules ~dir cctx stanza =
+let gen_rules ~build_dir ~dir cctx stanza =
   let module R =
     Run (struct
       let cctx = cctx
       let dir = dir
-      let root_dir = Scope.root (Compilation_context.scope cctx)
+      let build_dir = build_dir
       let stanza = stanza
     end) in
   ()

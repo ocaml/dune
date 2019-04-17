@@ -1,4 +1,4 @@
-let gen_rules ~dir _ _ = ()
+let gen_rules ~build_dir:_ ~dir:_ _ _ = ()
 
 let targets _ = []
 

@@ -58,5 +58,5 @@ Dune >= 1.10
   $ dune build a
   Multiple rules generated for _build/default/a:
   - dune:1
-  - <internal location>
+  - file present in source tree
   [1]

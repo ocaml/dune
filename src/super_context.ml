@@ -167,14 +167,16 @@ let add_rule t ?sandbox ?mode ?locks ?loc ~dir build =
   let build = Build.O.(>>>) build t.chdir in
   let env = Env.external_ t ~dir in
   Build_system.add_rule
-    (Rule.make ?sandbox ?mode ?locks ?loc
+    (Rule.make ?sandbox ?mode ?locks
+       ~info:(Rule.Info.of_loc_opt loc)
        ~context:(Some t.context) ~env:(Some env) build)
 
 let add_rule_get_targets t ?sandbox ?mode ?locks ?loc ~dir build =
   let build = Build.O.(>>>) build t.chdir in
   let env = Env.external_ t ~dir in
   let rule =
-    Rule.make ?sandbox ?mode ?locks ?loc
+    Rule.make ?sandbox ?mode ?locks
+      ~info:(Rule.Info.of_loc_opt loc)
       ~context:(Some t.context) ~env:(Some env) build
   in
   Build_system.add_rule rule;

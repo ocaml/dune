@@ -631,10 +631,15 @@ let add_spec t fn rule =
     in
     die "Multiple rules generated for %s:\n\
          - %s\n\
-         - %s"
+         - %s%s"
       (Path.to_string_maybe_quoted fn)
       (describe rule')
       (describe rule)
+      (match rule.info, rule'.info with
+       | Source_file_copy, _ | _, Source_file_copy ->
+         "\nHint: rm -f " ^ Path.to_string_maybe_quoted
+                              (Path.drop_optional_build_context fn)
+       | _ -> "")
 
 (* This contains the targets of the actions that are being executed. On exit, we
    need to delete them as they might contain garbage *)

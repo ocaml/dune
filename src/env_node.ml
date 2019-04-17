@@ -9,7 +9,7 @@ type t =
   ; mutable ocaml_flags   : Ocaml_flags.t option
   ; mutable c_flags       : (unit, string list) Build.t C.Kind.Dict.t option
   ; mutable external_     : Env.t option
-  ; mutable artifacts     : Artifacts.t option
+  ; mutable bin_artifacts     : Artifacts.Bin.t option
   }
 
 let scope t = t.scope
@@ -22,7 +22,7 @@ let make ~dir ~inherit_from ~scope ~config ~env =
   ; ocaml_flags = None
   ; c_flags = None
   ; external_ = env
-  ; artifacts = None
+  ; bin_artifacts = None
   ; local_binaries = None
   }
 
@@ -78,21 +78,21 @@ let rec external_ t ~profile ~default =
     t.external_ <- Some env;
     env
 
-let rec artifacts t ~profile ~default ~expander =
-  match t.artifacts with
+let rec bin_artifacts t ~profile ~default ~expander =
+  match t.bin_artifacts with
   | Some x -> x
   | None ->
     let default =
       match t.inherit_from with
       | None -> default
-      | Some (lazy t) -> artifacts t ~default ~profile ~expander
+      | Some (lazy t) -> bin_artifacts t ~default ~profile ~expander
     in
-    let artifacts =
+    let bin_artifacts =
       local_binaries t ~profile ~expander
-      |> Artifacts.add_binaries default ~dir:t.dir
+      |> Artifacts.Bin.add_binaries default ~dir:t.dir
     in
-    t.artifacts <- Some artifacts;
-    artifacts
+    t.bin_artifacts <- Some bin_artifacts;
+    bin_artifacts
 
 let rec ocaml_flags t ~profile ~expander =
   match t.ocaml_flags with

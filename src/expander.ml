@@ -4,8 +4,8 @@ type t =
   { dir : Path.t
   ; hidden_env : Env.Var.Set.t
   ; env : Env.t
-  ; artifacts : Artifacts.t
-  ; artifacts_host : Artifacts.t
+  ; lib_artifacts : Artifacts.Public_libs.t
+  ; bin_artifacts_host : Artifacts.Bin.t
   ; ocaml_config : Value.t list String.Map.t Lazy.t
   ; bindings : Pform.Map.t
   ; scope : Scope.t
@@ -18,7 +18,7 @@ type t =
 let scope t = t.scope
 let dir t = t.dir
 let bindings t = t.bindings
-let artifacts_host t = t.artifacts_host
+let bin_artifacts_host t = t.bin_artifacts_host
 
 let make_ocaml_config ocaml_config =
   let string s = [Value.String s] in
@@ -48,8 +48,10 @@ let set_dir t ~dir =
 let set_scope t ~scope =
   { t with scope }
 
-let set_artifacts t ~artifacts ~artifacts_host =
-  { t with artifacts ; artifacts_host }
+let set_bin_artifacts t ~bin_artifacts_host =
+  { t with
+    bin_artifacts_host;
+  }
 
 let extend_env t ~env =
   { t with
@@ -92,12 +94,12 @@ let expand_var_exn t var syn =
         "%s isn't allowed in this position"
         (String_with_vars.Var.describe var))
 
-let make ~scope ~(context : Context.t) ~artifacts
-      ~artifacts_host =
+let make ~scope ~(context : Context.t) ~lib_artifacts
+      ~bin_artifacts_host =
   let expand_var ({ bindings; ocaml_config; env = _; scope
                   ; hidden_env = _
-                  ; dir = _ ; artifacts = _; expand_var = _
-                  ; artifacts_host = _; c_compiler = _ } as t)
+                  ; dir = _ ; bin_artifacts_host = _; expand_var = _
+                  ; lib_artifacts = _; c_compiler = _ } as t)
         var syntax_version =
     Pform.Map.expand bindings var syntax_version
     |> Option.bind ~f:(function
@@ -119,8 +121,8 @@ let make ~scope ~(context : Context.t) ~artifacts
   ; ocaml_config
   ; bindings
   ; scope
-  ; artifacts
-  ; artifacts_host
+  ; lib_artifacts
+  ; bin_artifacts_host
   ; expand_var
   ; c_compiler
   }
@@ -235,7 +237,7 @@ let expand_and_record acc ~map_exe ~dep_kind ~scope
   | Macro (Exe, s) -> Some (path_exp (map_exe (relative dir s)))
   | Macro (Dep, s) -> Some (path_exp (relative dir s))
   | Macro (Bin, s) -> begin
-      match Artifacts.binary ~loc:(Some loc) t.artifacts_host s with
+      match Artifacts.Bin.binary ~loc:(Some loc) t.bin_artifacts_host s with
       | Ok path -> Some (path_exp path)
       | Error e ->
         Resolved_forms.add_fail acc
@@ -245,7 +247,7 @@ let expand_and_record acc ~map_exe ~dep_kind ~scope
       let lib_dep, file = parse_lib_file ~loc s in
       Resolved_forms.add_lib_dep acc lib_dep dep_kind;
       match
-        Artifacts.file_of_lib t.artifacts ~loc ~lib:lib_dep ~file
+        Artifacts.Public_libs.file_of_lib t.lib_artifacts ~loc ~lib:lib_dep ~file
       with
       | Ok path -> Some (path_exp path)
       | Error fail -> Resolved_forms.add_fail acc fail
@@ -254,7 +256,7 @@ let expand_and_record acc ~map_exe ~dep_kind ~scope
       let lib_dep, file = parse_lib_file ~loc s in
       Resolved_forms.add_lib_dep acc lib_dep dep_kind;
       match
-        Artifacts.file_of_lib t.artifacts ~loc ~lib:lib_dep ~file
+        Artifacts.Public_libs.file_of_lib t.lib_artifacts ~loc ~lib:lib_dep ~file
       with
       | Error fail -> Resolved_forms.add_fail acc fail
       | Ok path ->

@@ -4,7 +4,7 @@ Reproduction case for #1549: too many parentheses in installed .dune files
   Entering directory 'backend'
 
   $ cat backend/_build/install/default/lib/dune_inline_tests/dune-package
-  (lang dune 1.9)
+  (lang dune 1.10)
   (name dune_inline_tests)
   (library
    (name dune_inline_tests)

@@ -49,4 +49,5 @@ Dune >= 1.10
   Multiple rules generated for _build/default/a:
   - dune:1
   - file present in source tree
+  Hint: rm -f a
   [1]

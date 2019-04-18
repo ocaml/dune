@@ -945,7 +945,7 @@ and load_dir_step2_exn t ~dir ~collector =
       let dune_version =
         Dune_project.dune_version (File_tree.Dir.project ftdir)
       in
-      if dune_version >= (1, 10) then
+      if Wp.t = Dune && dune_version >= (1, 10) then
         rules
       else begin
         let source_files =
@@ -984,12 +984,16 @@ and load_dir_step2_exn t ~dir ~collector =
                 (Path.Set.to_list inter
                  |> List.map ~f:Path.drop_optional_build_context)
                 Fmt.text
-                (sprintf "Because your project was written for dune %s, \
-                          I am closing my eyes on this and I am %s. \
-                          However, you should really delete these files \
-                          from your source tree. I will no longer accept \
-                          this once you upgrade your project to dune >= 1.10."
-                   (Syntax.Version.to_string dune_version)
+                (sprintf "Because %s, I am closing my eyes on this and \
+                          I am %s. However, you should really delete \
+                          these files from your source tree. I will no \
+                          longer accept this once you upgrade your \
+                          project to dune >= 1.10."
+                   (match Wp.t with
+                    | Jbuilder -> "you are using the jbuilder binary"
+                    | Dune ->
+                      "your project was written for dune " ^
+                      Syntax.Version.to_string dune_version)
                    behavior);
               { rule with mode }
             end)

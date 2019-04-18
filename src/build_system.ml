@@ -2,6 +2,8 @@ open! Stdune
 open Import
 open Fiber.O
 
+module Pre_rule = Rule
+
 (* Where we store stamp files for aliases *)
 let alias_dir = Path.(relative build_dir) ".aliases"
 
@@ -141,7 +143,7 @@ module Internal_rule = struct
     (* Forcing this lazy ensures that the various globs and
        [if_file_exists] are resolved inside the [Build.t] value. *)
     let+ _ = Fiber.Once.get t.static_deps in
-    Build_interpret.lib_deps t.build
+    Build.lib_deps t.build
 
   (* Represent the build goal given by the user. This rule is never
      actually executed and is only used starting point of all
@@ -363,18 +365,18 @@ module Dir_status = struct
       (unit, [`Already_loading]) Result.t
     val freeze : t -> frozen
 
-    val rules : frozen -> Build_interpret.Rule.t list
+    val rules : frozen -> Pre_rule.t list
     val aliases : frozen -> Alias.immutable String.Map.t
 
     val forbid_freeze_until_thunk_is_forced :
       t -> Thunk_with_backtrace.t -> unit
 
-    val add_rule : t -> Build_interpret.Rule.t -> unit
+    val add_rule : t -> Pre_rule.t -> unit
     val modify_alias : t -> string -> f:(Alias.t -> unit) -> unit
   end = struct
 
     type t =
-      { mutable rules   : Build_interpret.Rule.t list
+      { mutable rules   : Pre_rule.t list
       ; mutable aliases : Alias.t String.Map.t
       ; mutable stage   : collection_stage
       ; mutable thunks : Thunk_with_backtrace.t list
@@ -614,85 +616,6 @@ let get_dir_status t ~dir =
           (Dir_status.Rules_collector.create_pending ~info:(Path.to_sexp dir) ())
     end)
 
-module Pre_rule = Build_interpret.Rule
-
-module Build_exec = struct
-  open Build.Repr
-
-  let exec ~(eval_pred : Dep.eval_pred) (t : ('a, 'b) Build.t) (x : 'a)
-    : 'b * Dep.Set.t =
-    let rec exec
-      : type a b. Dep.Set.t ref -> (a, b) t -> a -> b = fun dyn_deps t x ->
-      match t with
-      | Arr f -> f x
-      | Targets _ -> x
-      | Compose (a, b) ->
-        exec dyn_deps a x |> exec dyn_deps b
-      | First t ->
-        let x, y = x in
-        (exec dyn_deps t x, y)
-      | Second t ->
-        let x, y = x in
-        (x, exec dyn_deps t y)
-      | Split (a, b) ->
-        let x, y = x in
-        let x = exec dyn_deps a x in
-        let y = exec dyn_deps b y in
-        (x, y)
-      | Fanout (a, b) ->
-        let a = exec dyn_deps a x in
-        let b = exec dyn_deps b x in
-        (a, b)
-      | Deps _ -> x
-      | Paths_for_rule _ -> x
-      | Paths_glob g -> eval_pred g
-      | Contents p -> Io.read_file p
-      | Lines_of p -> Io.lines_of_file p
-      | Dyn_paths t ->
-        let fns = exec dyn_deps t x in
-        dyn_deps := Dep.Set.add_paths !dyn_deps fns;
-        x
-      | Dyn_deps t ->
-        let fns = exec dyn_deps t x in
-        dyn_deps := Dep.Set.union !dyn_deps fns;
-        x
-      | Record_lib_deps _ -> x
-      | Fail { fail } -> fail ()
-      | If_file_exists (_, state) ->
-        exec dyn_deps (get_if_file_exists_exn state) x
-      | Catch (t, on_error) -> begin
-          try
-            exec dyn_deps t x
-          with exn ->
-            on_error exn
-        end
-      | Lazy_no_targets t ->
-        exec dyn_deps (Lazy.force t) x
-      | Memo m ->
-        begin match m.state with
-        | Evaluated (x, deps) ->
-          dyn_deps := Dep.Set.union !dyn_deps deps;
-          x
-        | Evaluating ->
-          die "Dependency cycle evaluating memoized build arrow %s" m.name
-        | Unevaluated ->
-          m.state <- Evaluating;
-          let dyn_deps' = ref Dep.Set.empty in
-          match exec dyn_deps' m.t x with
-          | x ->
-            m.state <- Evaluated (x, !dyn_deps');
-            dyn_deps := Dep.Set.union !dyn_deps !dyn_deps';
-            x
-          | exception exn ->
-            m.state <- Unevaluated;
-            reraise exn
-        end
-    in
-    let dyn_deps = ref Dep.Set.empty in
-    let result = exec dyn_deps (Build.repr t) x in
-    (result, !dyn_deps)
-end
-
 (* [copy_source] is [true] for rules copying files from the source directory *)
 let add_spec t fn rule ~copy_source =
   match Path.Table.find t.files fn with
@@ -878,7 +801,7 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
 and static_deps t build =
   Fiber.Once.create (fun () ->
     Fiber.return
-      (Build_interpret.static_deps build
+      (Build.static_deps build
          ~all_targets:(targets_of t)))
 
 and start_rule t _rule =
@@ -1076,7 +999,7 @@ and load_dir_step2_exn t ~dir ~collector =
          automatically kept *)
       rules
     | Some (_, to_copy) ->
-      List.filter rules ~f:(fun (rule : Build_interpret.Rule.t) ->
+      List.filter rules ~f:(fun (rule : Pre_rule.t) ->
         match rule.mode with
         | Standard | Promote _
         | Not_a_rule_stanza | Ignore_source_files -> true
@@ -1238,7 +1161,7 @@ let evaluate_action_and_dynamic_deps_def =
     let* static_deps = Fiber.Once.get rule.static_deps in
     let rule_deps = Static_deps.rule_deps static_deps in
     let+ () = build_deps rule_deps in
-    Build_exec.exec ~eval_pred rule.build ()
+    Build.exec ~eval_pred rule.build ()
   in
   Memo.create
     "evaluate-action-and-dynamic-deps"
@@ -1630,7 +1553,7 @@ let produce_rule_collection collector f =
   Memo.Implicit_output.produce rule_collection_implicit_output (
     Appendable_list.singleton thunk)
 
-let add_rule (rule : Build_interpret.Rule.t) =
+let add_rule (rule : Pre_rule.t) =
   let t = t () in
   let rule =
     match t.prefix with
@@ -1646,7 +1569,7 @@ let prefix_rules' t prefix ~f =
 
 let prefix_rules prefix ~f =
   let t = t () in
-  let targets = Build_interpret.targets prefix in
+  let targets = Build.targets prefix in
   if not (Path.Set.is_empty targets) then
     Exn.code_error "Build_system.prefix_rules' prefix contains targets"
       ["targets", Path.Set.to_sexp targets];
@@ -1786,7 +1709,7 @@ module All_lib_deps : sig
 end = struct
   let static_deps_of_request request =
     Static_deps.paths @@
-    Build_interpret.static_deps request ~all_targets:targets_of
+    Build.static_deps request ~all_targets:targets_of
 
   let rules_for_files t paths =
     Path.Set.fold paths ~init:[] ~f:(fun path acc ->

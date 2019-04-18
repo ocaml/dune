@@ -135,7 +135,7 @@ let setup_ml_deps ~lib_db libs =
 let coqlib_wrapper_name (s : Dune_file.Coq.t) =
   Lib_name.Local.to_string (snd s.name)
 
-let setup_rules ~sctx ~dir ~dir_contents (s : Dune_file.Coq.t) =
+let setup_rules ~sctx ~build_dir:_ ~dir ~dir_contents (s : Dune_file.Coq.t) =
 
   let scope = SC.find_scope_by_dir sctx dir in
 
@@ -203,16 +203,14 @@ let install_rules ~sctx ~dir s =
       None, Install.(Entry.make Section.Lib_root ~dst vofile))
     |> List.rev_append (coq_plugins_install_rules ~scope ~package ~dst_dir s)
 
-let coqpp_rules ~sctx ~dir (s : Dune_file.Coqpp.t) =
+let coqpp_rules ~sctx ~build_dir ~dir (s : Dune_file.Coqpp.t) =
 
-  let scope = SC.find_scope_by_dir sctx dir in
-  let base_dir = Scope.root scope in
   let cc = create_ccoq sctx ~dir in
 
   let mlg_rule m =
     let source = Path.relative dir (m ^ ".mlg") in
     let target = Path.relative dir (m ^ ".ml") in
     let args = Arg_spec.[Dep source; Hidden_targets [target]] in
-    Build.run ~dir:base_dir cc.coqpp args in
+    Build.run ~dir:build_dir cc.coqpp args in
 
   List.map ~f:mlg_rule s.modules

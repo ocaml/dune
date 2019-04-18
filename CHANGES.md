@@ -1,6 +1,9 @@
 unreleased
 ----------
 
+- [menhir] call menhir from context root build_dir (#2067, @ejgallego,
+  review by @diml, @rgrinberg)
+
 - [coq] Rename `(coqlib ...)` to `(coq.theory ...)`, support for
   `coqlib` will be dropped in the 1.0 version of the Coq language
   (#2055, @ejgallego)

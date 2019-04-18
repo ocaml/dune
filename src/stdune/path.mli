@@ -1,4 +1,38 @@
+(** Relative path with unspecified root *)
+module Relative : sig
+  include Path_intf.S
+
+  (** [root] refers to empty relative path, so whatever the path is interpreted
+      relative to. *)
+  val root : t
+
+  val of_string : ?error_loc:Loc0.t -> string -> t
+  module L : sig
+    val relative : ?error_loc:Loc0.t -> t -> string list -> t
+  end
+end
+
 (** In the current workspace (anything under the current project root) *)
+module Source : sig
+  include Path_intf.S
+  val root : t
+
+  val of_string : ?error_loc:Loc0.t -> string -> t
+  module L : sig
+    val relative : ?error_loc:Loc0.t -> t -> string list -> t
+  end
+end
+
+module Build : sig
+  include Path_intf.S
+  val root : t
+
+  val of_string : ?error_loc:Loc0.t -> string -> t
+  module L : sig
+    val relative : ?error_loc:Loc0.t -> t -> string list -> t
+  end
+end
+
 module Local : sig
   include Path_intf.S
   val root : t
@@ -74,6 +108,7 @@ val descendant : t -> of_:t -> t option
 val is_descendant : t -> of_:t -> bool
 
 val append : t -> t -> t
+val append_relative : t -> Relative.t -> t
 val append_local : t -> Local.t -> t
 
 val parent : t -> t option
@@ -177,6 +212,6 @@ end
     this returns the path itself.
     For external paths, it returns a path that is relative to the current
     directory. For example, the local part of [/a/b] is [./a/b]. *)
-val local_part : t -> Local.t
+val local_part : t -> Relative.t
 
 val stat : t -> Unix.stats

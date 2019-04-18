@@ -133,7 +133,7 @@ end = struct
   )
 end
 
-module Local : sig
+module Relative : sig
   include Path_intf.S
 
   val root : t
@@ -164,7 +164,7 @@ module Local : sig
     val invalid : t
   end with type local := t
 end = struct
-  (* either "." for root, either a '/' separated list of components
+  (* either "." for root, or a '/' separated list of components
      other that ".", ".."  and not containing '/'. *)
   include Interned.No_interning(struct
       let initial_size = 512
@@ -423,6 +423,10 @@ end = struct
   )
 end
 
+module Build = Relative
+module Source = Relative
+module Local = Relative
+
 let (abs_root, set_root) =
   let root_dir = ref None in
   let set_root new_root =
@@ -481,7 +485,7 @@ module Kind = struct
     | Local t -> Local.mkdir_p t
     | External t -> External.mkdir_p t
 
-  let append_local x y =
+  let append_relative x y =
     match x with
     | Local x -> Local (Local.append x y)
     | External x -> External (External.relative x (Local.to_string y))
@@ -530,15 +534,15 @@ let (build_dir_kind, build_dir_prefix, set_build_dir) =
 module T : sig
   type t = private
     | External of External.t
-    | In_source_tree of Local.t
-    | In_build_dir of Local.t
+    | In_source_tree of Relative.t
+    | In_build_dir of Relative.t
 
   val compare : t -> t -> Ordering.t
   val equal : t -> t -> bool
   val hash : t -> int
 
-  val in_build_dir : Local.t -> t
-  val in_source_tree : Local.t -> t
+  val in_build_dir : Relative.t -> t
+  val in_source_tree : Relative.t -> t
   val external_ : External.t -> t
 end = struct
   type t =
@@ -578,7 +582,7 @@ let is_root = function
 module Map = Map.Make(T)
 
 let kind = function
-  | In_build_dir p -> Kind.append_local (Lazy.force build_dir_kind) p
+  | In_build_dir p -> Kind.append_relative (Lazy.force build_dir_kind) p
   | In_source_tree s -> Kind.Local s
   | External s -> Kind.External s
 
@@ -703,11 +707,13 @@ let is_descendant t ~of_ =
     Local.is_descendant t ~of_
   | _ -> false
 
-let append_local a b =
+let append_relative a b =
   match a with
-  | In_source_tree a -> in_source_tree (Local.append a b)
-  | In_build_dir a -> in_build_dir (Local.append a b)
-  | External a -> external_ (External.relative a (Local.to_string b))
+  | In_source_tree a -> in_source_tree (Relative.append a b)
+  | In_build_dir a -> in_build_dir (Relative.append a b)
+  | External a -> external_ (External.relative a (Relative.to_string b))
+
+let append_local = append_relative
 
 let append a b =
   match b with
@@ -717,7 +723,7 @@ let append a b =
       [ "a", to_sexp a
       ; "b", to_sexp b
       ]
-  | In_source_tree b -> append_local a b
+  | In_source_tree b -> append_relative a b
 
 let basename t =
   match kind t with
@@ -820,14 +826,14 @@ let drop_optional_build_context t =
   | None -> t
   | Some (_, t) -> t
 
-let local_src   = Local.of_string "src"
-let local_build = Local.of_string "build"
+let local_src   = Relative.of_string "src"
+let local_build = Relative.of_string "build"
 
 let sandbox_managed_paths ~sandbox_dir t =
   match t with
   | External _ -> t
-  | In_source_tree p -> append_local sandbox_dir (Local.append local_src   p)
-  | In_build_dir   p -> append_local sandbox_dir (Local.append local_build p)
+  | In_source_tree p -> append_relative sandbox_dir (Relative.append local_src   p)
+  | In_build_dir   p -> append_relative sandbox_dir (Relative.append local_build p)
 
 let split_first_component t =
   match kind t, is_root t with
@@ -963,7 +969,7 @@ let mkdir_p = function
   | In_source_tree s ->
     Local.mkdir_p s
   | In_build_dir k ->
-    Kind.mkdir_p (Kind.append_local (Lazy.force build_dir_kind) k)
+    Kind.mkdir_p (Kind.append_relative (Lazy.force build_dir_kind) k)
 
 let compare x y =
   match x, y with

@@ -68,12 +68,6 @@ include Path_intf.S
 
 val hash : t -> int
 
-module Set : sig
-  include Set.S with type elt = t
-  val to_sexp : t Sexp.Encoder.t
-  val of_string_set : String.Set.t -> f:(string -> elt) -> t
-end
-
 module Map : Map.S with type key = t
 module Table : Hashtbl.S with type key = t
 

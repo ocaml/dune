@@ -116,7 +116,8 @@ module Dir = struct
   let project t = t.project
 
   let file_paths t =
-    Path.Set.of_string_set (files t) ~f:(Path.relative t.path)
+    Path.Set.of_list
+      (List.map (String.Set.to_list (files t)) ~f:(Path.relative t.path))
 
   let sub_dir_names t =
     String.Map.foldi (sub_dirs t) ~init:String.Set.empty
@@ -327,7 +328,8 @@ let files_of t path =
   match find_dir t path with
   | None -> Path.Set.empty
   | Some dir ->
-    Path.Set.of_string_set (Dir.files dir) ~f:(Path.relative path)
+    Path.Set.of_list (
+      List.map (String.Set.to_list (Dir.files dir)) ~f:(Path.relative path))
 
 let file_exists t path fn =
   match find_dir t path with

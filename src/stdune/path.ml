@@ -151,7 +151,6 @@ module Relative : sig
   module L : sig
     val relative : ?error_loc:Loc0.t -> t -> string list -> t
   end
-  module Set : Set.S with type elt = t
 
   module Prefix : sig
     type local = t
@@ -1019,10 +1018,6 @@ let pp_debug ppf = function
 module Set = struct
   include Set.Make(T)
   let to_sexp t = Sexp.Encoder.(list to_sexp) (to_list t)
-  let of_string_set ss ~f =
-    String.Set.to_list ss
-    |> List.map ~f
-    |> of_list
 end
 
 let in_source s = in_source_tree (Local.of_string s)

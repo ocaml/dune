@@ -24,4 +24,10 @@ module type S = sig
   val basename : t -> string
   val extend_basename : t -> suffix:string -> t
   val is_suffix : t -> suffix:string -> bool
+
+  module Set : sig
+    include Set.S with type elt = t
+    val to_sexp : t Sexp.Encoder.t
+  end
+
 end

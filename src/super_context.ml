@@ -1,14 +1,13 @@
 open! Stdune
 open Import
-open Dune_file
 
 type t =
   { context                          : Context.t
   ; scopes                           : Scope.DB.t
   ; public_libs                      : Lib.DB.t
   ; installed_libs                   : Lib.DB.t
-  ; stanzas                          : Stanzas.t Dir_with_dune.t list
-  ; stanzas_per_dir                  : Stanzas.t Dir_with_dune.t Path.Map.t
+  ; stanzas                          : Dune_file.Stanzas.t Dir_with_dune.t list
+  ; stanzas_per_dir                  : Dune_file.Stanzas.t Dir_with_dune.t Path.Map.t
   ; packages                         : Package.t Package.Name.Map.t
   ; file_tree                        : File_tree.t
   ; artifacts                        : Artifacts.t
@@ -47,7 +46,7 @@ let internal_lib_names t =
   List.fold_left t.stanzas ~init:Lib_name.Set.empty
     ~f:(fun acc { Dir_with_dune. data = stanzas; _ } ->
       List.fold_left stanzas ~init:acc ~f:(fun acc -> function
-        | Library lib ->
+        | Dune_file.Library lib ->
           Lib_name.Set.add
             (match lib.public with
              | None -> acc
@@ -168,14 +167,14 @@ let add_rule t ?sandbox ?mode ?locks ?loc ~dir build =
   let build = Build.O.(>>>) build t.chdir in
   let env = Env.external_ t ~dir in
   Build_system.add_rule
-    (Build_interpret.Rule.make ?sandbox ?mode ?locks ?loc
+    (Rule.make ?sandbox ?mode ?locks ?loc
        ~context:(Some t.context) ~env:(Some env) build)
 
 let add_rule_get_targets t ?sandbox ?mode ?locks ?loc ~dir build =
   let build = Build.O.(>>>) build t.chdir in
   let env = Env.external_ t ~dir in
   let rule =
-    Build_interpret.Rule.make ?sandbox ?mode ?locks ?loc
+    Rule.make ?sandbox ?mode ?locks ?loc
       ~context:(Some t.context) ~env:(Some env) build
   in
   Build_system.add_rule rule;
@@ -231,14 +230,14 @@ let partial_expand sctx ~dep_kind ~targets_written_by_user ~map_exe
   let partial = Action_unexpanded.partial_expand t ~expander ~map_exe in
   (partial, acc)
 
-let ocaml_flags t ~dir (x : Buildable.t) =
+let ocaml_flags t ~dir (x : Dune_file.Buildable.t) =
   let expander = Env.expander t ~dir in
   Ocaml_flags.make
     ~spec:x.flags
     ~default:(Env.ocaml_flags t ~dir)
     ~eval:(Expander.expand_and_eval_set expander)
 
-let c_flags t ~dir ~expander ~(lib : Library.t) =
+let c_flags t ~dir ~expander ~(lib : Dune_file.Library.t) =
   let ccg = Context.cc_g t.context in
   let flags = lib.c_flags in
   let default = Env.c_flags t ~dir in
@@ -291,7 +290,7 @@ let create
         let ctx_dir = Path.append context.build_dir dir in
         List.filter_map stanzas ~f:(fun stanza ->
           match (stanza : Stanza.t) with
-          | Library lib -> Some (ctx_dir, lib)
+          | Dune_file.Library lib -> Some (ctx_dir, lib)
           | _ -> None))
   in
   let scopes, public_libs =
@@ -423,7 +422,7 @@ end
 
 module Deps = struct
   open Build.O
-  open Dep_conf
+  open Dune_file.Dep_conf
 
   let make_alias expander s =
     let loc = String_with_vars.loc s in

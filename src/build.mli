@@ -175,56 +175,28 @@ val progn : ('a, Action.t) t list -> ('a, Action.t) t
 
 val record_lib_deps : Lib_deps_info.t -> ('a, 'a) t
 
-(**/**)
+(** {1 Analysis} *)
 
+(** Must be called first before [lib_deps] and [targets] as it updates
+    some of the internal references in the build arrow. *)
+val static_deps
+  :  (_, _) t
+  -> all_targets:(dir:Path.t -> Path.Set.t)
+  -> Static_deps.t
 
-module Repr : sig
-  type ('a, 'b) t =
-    | Arr : ('a -> 'b) -> ('a, 'b) t
-    | Targets : Path.Set.t -> ('a, 'a) t
-    | Compose : ('a, 'b) t * ('b, 'c) t -> ('a, 'c) t
-    | First : ('a, 'b) t -> ('a * 'c, 'b * 'c) t
-    | Second : ('a, 'b) t -> ('c * 'a, 'c * 'b) t
-    | Split : ('a, 'b) t * ('c, 'd) t -> ('a * 'c, 'b * 'd) t
-    | Fanout : ('a, 'b) t * ('a, 'c) t -> ('a, 'b * 'c) t
-    | Paths_for_rule : Path.Set.t -> ('a, 'a) t
-    | Paths_glob : File_selector.t -> ('a, Path.Set.t) t
-    | If_file_exists : Path.t * ('a, 'b) if_file_exists_state ref -> ('a, 'b) t
-    | Contents : Path.t -> ('a, string) t
-    | Lines_of : Path.t -> ('a, string list) t
-    | Dyn_paths : ('a, Path.Set.t) t -> ('a, 'a) t
-    | Dyn_deps : ('a, Dep.Set.t) t -> ('a, 'a) t
-    | Record_lib_deps : Lib_deps_info.t -> ('a, 'a) t
-    | Fail : fail -> (_, _) t
-    | Memo : 'a memo -> (unit, 'a) t
-    | Catch : ('a, 'b) t * (exn -> 'b) -> ('a, 'b) t
-    | Lazy_no_targets : ('a, 'b) t Lazy.t -> ('a, 'b) t
-    | Deps : Dep.Set.t -> ('a, 'a) t
+val lib_deps
+  :  (_, _) t
+  -> Lib_deps_info.t
 
-  and 'a memo =
-    { name          : string
-    ; t             : (unit, 'a) t
-    ; mutable state : 'a memo_state
-    }
+val targets
+  :  (_, _) t
+  -> Path.Set.t
 
-  and 'a memo_state =
-    | Unevaluated
-    | Evaluating
-    | Evaluated of 'a * Dep.Set.t (* dynamic dependencies *)
+(** {1 Execution} *)
 
-  and ('a, 'b) if_file_exists_state =
-    | Undecided of ('a, 'b) t * ('a, 'b) t
-    | Decided   of bool * ('a, 'b) t
-
-  and glob_state =
-    | G_unevaluated of Loc.t * Path.t * Path.t Predicate.t
-    | G_evaluated   of Path.Set.t
-
-  val get_if_file_exists_exn : ('a, 'b) if_file_exists_state ref -> ('a, 'b) t
-  val get_glob_result_exn : glob_state ref -> Path.Set.t
-end
-
-val repr : ('a, 'b) t -> ('a, 'b) Repr.t
+(** Executes a build arrow. Returns the result and the set of dynamic
+    dependencies discovered during execution. *)
+val exec : eval_pred:Dep.eval_pred -> ('a, 'b) t -> 'a -> 'b * Dep.Set.t
 
 (**/**)
 val paths_for_rule : Path.Set.t -> ('a, 'a) t

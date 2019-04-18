@@ -93,7 +93,6 @@ end = struct
         in
         let config = get_env_stanza t ~dir in
         Env_node.make ~dir ~scope ~config ~inherit_from:(Some inherit_from)
-          ~env:None
       in
       Hashtbl.add t.env dir node;
       node
@@ -329,7 +328,6 @@ let create
     let make ~inherit_from ~config =
       Env_node.make
         ~dir:context.build_dir
-        ~env:None
         ~scope:(Scope.DB.find_by_dir scopes context.build_dir)
         ~inherit_from
         ~config

@@ -10,7 +10,6 @@ val make
   -> inherit_from:t Lazy.t option
   -> scope:Scope.t
   -> config:Dune_env.Stanza.t option
-  -> env:Env.t option
   -> t
 
 val scope : t -> Scope.t

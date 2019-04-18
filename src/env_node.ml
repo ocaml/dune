@@ -14,14 +14,14 @@ type t =
 
 let scope t = t.scope
 
-let make ~dir ~inherit_from ~scope ~config ~env =
+let make ~dir ~inherit_from ~scope ~config =
   { dir
   ; inherit_from
   ; scope
   ; config
   ; ocaml_flags = None
   ; c_flags = None
-  ; external_ = env
+  ; external_ = None
   ; bin_artifacts = None
   ; local_binaries = None
   }

@@ -40,6 +40,10 @@ module type PARAMS = sig
      is of the form [_build/<context>/src], e.g., [_build/default/src]. *)
   val dir : Path.t
 
+  (* [build_dir] is the base directory of the context; we run menhir
+     from this directoy to we get correct error paths. *)
+  val build_dir : Path.t
+
   (* [stanza] is the [(menhir ...)] stanza, as found in the [jbuild] file. *)
 
   val stanza: stanza
@@ -122,7 +126,7 @@ module Run (P : PARAMS) : sig end = struct
   (* [menhir args] generates a Menhir command line (a build action). *)
 
   let menhir (args : 'a args) : (string list, Action.t) Build.t =
-    Build.run ~dir menhir_binary args
+    Build.run ~dir:build_dir menhir_binary args
 
   let rule ?(mode=stanza.mode) : (unit, Action.t) Build.t -> unit =
     SC.add_rule sctx ~dir ~mode ~loc:stanza.loc
@@ -195,7 +199,7 @@ module Run (P : PARAMS) : sig end = struct
       menhir
         [ Dyn (fun flags -> As flags)
         ; Deps (sources stanza.modules)
-        ; As [ "--base" ; base ]
+        ; A "--base" ; Path (Path.relative dir base)
         ; A "--infer-write-query"; Target (mock_ml base)
         ]
     );
@@ -238,7 +242,7 @@ module Run (P : PARAMS) : sig end = struct
       menhir
         [ Dyn (fun flags -> As flags)
         ; Deps (sources stanza.modules)
-        ; As [ "--base" ; base ]
+        ; A "--base" ; Path (Path.relative dir base)
         ; A "--infer-read-reply"; Dep (inferred_mli base)
         ; Hidden_targets (targets base ~cmly)
         ]
@@ -257,7 +261,7 @@ module Run (P : PARAMS) : sig end = struct
       menhir
         [ Dyn (fun flags -> As flags)
         ; Deps (sources stanza.modules)
-        ; As [ "--base" ; base ]
+        ; A "--base" ; Path (Path.relative dir base)
         ; Hidden_targets (targets base ~cmly)
         ]
     )
@@ -317,11 +321,12 @@ let targets (stanza : Dune_file.Menhir.t) : string list =
 let module_names (stanza : Dune_file.Menhir.t) : Module.Name.t list =
   List.map (modules stanza) ~f:Module.Name.of_string
 
-let gen_rules ~dir cctx stanza =
+let gen_rules ~build_dir ~dir cctx stanza =
   let module R =
     Run (struct
       let cctx = cctx
       let dir = dir
+      let build_dir = build_dir
       let stanza = stanza
     end) in
   ()

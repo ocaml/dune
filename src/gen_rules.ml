@@ -70,6 +70,7 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
   let gen_rules dir_contents cctxs
         { Dir_with_dune. src_dir; ctx_dir; data = stanzas
         ; scope; kind = dir_kind ; dune_version = _ } =
+    let build_dir = (SC.context sctx).build_dir in
     let expander = Super_context.expander sctx ~dir:ctx_dir in
     let for_stanza stanza =
       let dir = ctx_dir in
@@ -181,17 +182,14 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
                       produced by this stanza are part of."
                })
         | Some cctx ->
-          Menhir_rules.gen_rules cctx m ~dir:ctx_dir
+          Menhir_rules.gen_rules cctx m ~build_dir ~dir:ctx_dir
         end
       | Coq.T m when Expander.eval_blang expander m.enabled_if ->
-        (* Format.eprintf "[coq] gen_rules called @\n%!"; *)
-        let dir = ctx_dir in
-        let coq_rules = Coq_rules.setup_rules ~sctx ~dir ~dir_contents m in
-        SC.add_rules ~dir:ctx_dir sctx coq_rules
+        Coq_rules.setup_rules ~sctx ~build_dir ~dir:ctx_dir ~dir_contents m
+        |> SC.add_rules ~dir:ctx_dir sctx
       | Coqpp.T m ->
-        let dir = ctx_dir in
-        let coqpp_rules = Coq_rules.coqpp_rules ~sctx ~dir m in
-        SC.add_rules ~dir:ctx_dir sctx coqpp_rules
+        Coq_rules.coqpp_rules ~sctx ~build_dir ~dir:ctx_dir m
+        |> SC.add_rules ~dir:ctx_dir sctx
       | _ -> ());
     let dyn_deps =
       let pred =

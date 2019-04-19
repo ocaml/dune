@@ -134,7 +134,7 @@ end = struct
     | None -> artifacts t ~dir
     | Some host ->
       let dir =
-        Path.append host.context.build_dir (Path.drop_build_context_exn dir) in
+        Path.append_source host.context.build_dir (Path.drop_build_context_exn dir) in
       artifacts host ~dir
 
   let expander t ~dir =
@@ -289,7 +289,7 @@ let create
   let internal_libs =
     List.concat_map stanzas
       ~f:(fun { Dune_load.Dune_file. dir; stanzas; project = _ ; kind = _ } ->
-        let ctx_dir = Path.append context.build_dir dir in
+        let ctx_dir = Path.append_source context.build_dir dir in
         List.filter_map stanzas ~f:(fun stanza ->
           match (stanza : Stanza.t) with
           | Dune_file.Library lib -> Some (ctx_dir, lib)
@@ -307,7 +307,7 @@ let create
   let stanzas =
     List.map stanzas
       ~f:(fun { Dune_load.Dune_file. dir; project; stanzas; kind } ->
-        let ctx_dir = Path.append context.build_dir dir in
+        let ctx_dir = Path.append_source context.build_dir dir in
         let dune_version = Dune_project.dune_version project in
         { Dir_with_dune.
           src_dir = dir
@@ -528,7 +528,7 @@ module Action = struct
       fun exe ->
         match Path.extract_build_context_dir exe with
         | Some (dir, exe) when Path.equal dir sctx.context.build_dir ->
-          Path.append host.context.build_dir exe
+          Path.append_source host.context.build_dir exe
         | _ -> exe
 
   let run sctx ~loc ~expander ~dep_kind ~targets:targets_written_by_user

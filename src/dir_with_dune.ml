@@ -1,7 +1,7 @@
 open Stdune
 
 type 'data t =
-  { src_dir         : Path.t
+  { src_dir         : Path.Source.t
   ; ctx_dir         : Path.t
   ; data            : 'data
   ; scope           : Scope.t

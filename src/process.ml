@@ -199,10 +199,10 @@ module Fancy = struct
           | Other path ->
             split_paths (Path.to_string path :: targets_acc) ctxs_acc rest
           | Regular (ctx, filename) ->
-            split_paths (Path.to_string filename :: targets_acc)
+            split_paths (Path.Source.to_string filename :: targets_acc)
               (add_ctx ctx ctxs_acc) rest
           | Alias (ctx, name) ->
-            split_paths (("alias " ^ Path.to_string name) :: targets_acc)
+            split_paths (("alias " ^ Path.Source.to_string name) :: targets_acc)
               (add_ctx ctx ctxs_acc) rest
       in
       let targets = Path.Set.to_list targets in

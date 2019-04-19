@@ -38,8 +38,8 @@ val executable_object_directory
   -> Path.t
 
 type target_kind =
-  | Regular of string (* build context *) * Path.t
-  | Alias   of string (* build context *) * Path.t
+  | Regular of string (* build context *) * Path.Source.t
+  | Alias   of string (* build context *) * Path.Source.t
   | Other of Path.t
 
 (** Return the name of an alias from its stamp file *)

@@ -338,7 +338,7 @@ let upgrade_opam_file todo fn =
 let upgrade_dir todo dir =
   let project = File_tree.Dir.project dir in
   let project_root = Path.of_local (Dune_project.root project) in
-  if project_root = File_tree.Dir.path dir then begin
+  if project_root = Path.source (File_tree.Dir.path dir) then begin
     (match Dune_project.ensure_project_file_exists project with
      | Already_exist -> ()
      | Created ->
@@ -351,14 +351,14 @@ let upgrade_dir todo dir =
     match dune_file.kind, dune_file.contents with
     | Dune, _ -> ()
     | Jbuild, Ocaml_script fn ->
-      Errors.warn (Loc.in_file fn)
+      Errors.warn (Loc.in_file (Path.source fn))
         "Cannot upgrade this jbuild file as it is using the OCaml syntax.\n\
          You need to upgrade it manually."
     | Jbuild, Plain { path; sexps = _ } ->
-      let files = scan_included_files path in
+      let files = scan_included_files (Path.source path) in
       Path.Map.iteri files ~f:(fun fn (sexps, comments) ->
         upgrade_file todo fn sexps comments
-          ~look_for_jbuild_ignore:(fn = path)))
+          ~look_for_jbuild_ignore:(fn = Path.source path)))
 
 let upgrade ft =
   Dune_project.default_dune_language_version := (1, 0);

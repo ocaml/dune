@@ -3,7 +3,7 @@ open Stdune
 type t = private
   { name : string
   ; recursive : bool
-  ; dir : Path.t
+  ; dir : Path.Source.t
   ; contexts : Dune.Context.t list
   }
 

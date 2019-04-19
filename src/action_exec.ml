@@ -133,7 +133,7 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to =
       let is_copied_from_source_tree file =
         match Path.drop_build_context file with
         | None -> false
-        | Some file -> Path.exists file
+        | Some file -> Path.exists (Path.source file)
       in
       if is_copied_from_source_tree file1 &&
          not (is_copied_from_source_tree file2) then begin

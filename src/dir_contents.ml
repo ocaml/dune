@@ -316,7 +316,7 @@ let modules_of_files ~dir ~files =
            \n- %a\
            \n- %a"
         Module.Name.pp name
-        Path.pp src_dir
+        Path.Source.pp src_dir
         Path.pp f1.path
         Path.pp f2.path
   in
@@ -491,11 +491,11 @@ let get0_impl (sctx, dir) : result0 =
             let modules = modules_of_files ~dir ~files in
             Module.Name.Map.union acc modules ~f:(fun name x y ->
               Errors.fail (Loc.in_file
-                             (match File_tree.Dir.dune_file ft_dir with
+                             (Path.source (match File_tree.Dir.dune_file ft_dir with
                               | None ->
-                                Path.relative (File_tree.Dir.path ft_dir)
+                                Path.Source.relative (File_tree.Dir.path ft_dir)
                                   "_unknown_"
-                              | Some d -> File_tree.Dune_file.path d))
+                              | Some d -> File_tree.Dune_file.path d)))
                 "Module %a appears in several directories:\
                  @\n- %a\
                  @\n- %a"
@@ -516,11 +516,11 @@ let get0_impl (sctx, dir) : result0 =
             let f acc sources =
               String.Map.union acc sources ~f:(fun name x y ->
                 Errors.fail (Loc.in_file
-                               (match File_tree.Dir.dune_file ft_dir with
+                               (Path.source (match File_tree.Dir.dune_file ft_dir with
                                 | None ->
-                                  Path.relative (File_tree.Dir.path ft_dir)
+                                  Path.Source.relative (File_tree.Dir.path ft_dir)
                                     "_unknown_"
-                                | Some d -> File_tree.Dune_file.path d))
+                                | Some d -> File_tree.Dune_file.path d)))
                   "%a file %s appears in several directories:\
                    @\n- %a\
                    @\n- %a\

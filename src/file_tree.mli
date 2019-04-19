@@ -9,7 +9,7 @@ module Dune_file : sig
         they have been parsed, in order to release the memory as soon
         as we don't need them. *)
     type t =
-      { path          : Path.t
+      { path          : Path.Source.t
       ; mutable sexps : Dune_lang.Ast.t list
       }
   end
@@ -17,7 +17,7 @@ module Dune_file : sig
   module Contents : sig
     type t = private
       | Plain of Plain.t
-      | Ocaml_script of Path.t
+      | Ocaml_script of Path.Source.t
   end
 
   type t = private
@@ -25,17 +25,17 @@ module Dune_file : sig
     ; kind     : Dune_lang.Syntax.t
     }
 
-  val path : t -> Path.t
+  val path : t -> Path.Source.t
 end
 
 module Dir : sig
   type t
 
-  val path     : t -> Path.t
+  val path     : t -> Path.Source.t
   val files    : t -> String.Set.t
-  val file_paths    : t -> Path.Set.t
+  val file_paths    : t -> Path.Source.Set.t
   val sub_dirs : t -> t String.Map.t
-  val sub_dir_paths : t -> Path.Set.t
+  val sub_dir_paths : t -> Path.Source.Set.t
   val sub_dir_names : t -> String.Set.t
 
   (** Whether this directory is ignored by an [ignored_subdirs] stanza
@@ -65,7 +65,7 @@ end
     compatibility. *)
 type t
 
-val load : ?warn_when_seeing_jbuild_file:bool -> Path.t -> t
+val load : ?warn_when_seeing_jbuild_file:bool -> Path.Source.t -> t
 
 (** Passing [~traverse_ignored_dirs:true] to this functions causes the
     whole source tree to be deeply scanned, including ignored
@@ -79,20 +79,20 @@ val fold
 
 val root : t -> Dir.t
 
-val find_dir : t -> Path.t -> Dir.t option
+val find_dir : t -> Path.Source.t -> Dir.t option
 
-val files_of : t -> Path.t -> Path.Set.t
+val files_of : t -> Path.Source.t -> Path.Source.Set.t
 
 (** [true] iff the path is either a directory or a file *)
-val exists : t -> Path.t -> bool
+val exists : t -> Path.Source.t -> bool
 
 (** [true] iff the path is a directory *)
-val dir_exists : t -> Path.t -> bool
+val dir_exists : t -> Path.Source.t -> bool
 
 (** [true] iff the path is a file *)
-val file_exists : t -> Path.t -> string -> bool
+val file_exists : t -> Path.Source.t -> string -> bool
 
-val files_recursively_in : t -> ?prefix_with:Path.t -> Path.t -> Path.Set.t
+val files_recursively_in : t -> ?prefix_with:Path.t -> Path.Source.t -> Path.Set.t
 
 (** Load a [jbuild-ignore] file *)
 val load_jbuild_ignore : Path.t -> String.Set.t

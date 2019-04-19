@@ -48,7 +48,7 @@ let target_hint (_setup : Dune.Main.build_system) path =
       List.map candidates ~f:(fun path ->
         match Path.extract_build_context path with
         | None -> path
-        | Some (_, path) -> path)
+        | Some (_, path) -> Path.source path)
   in
   let candidates =
     (* Only suggest hints for the basename, otherwise it's slow when there are
@@ -67,11 +67,15 @@ let resolve_path path ~(setup : Dune.Main.build_system) =
   let can't_build path =
     Error (path, target_hint setup path);
   in
-  if Dune.File_tree.dir_exists setup.workspace.conf.file_tree path then
+  if not (Path.is_managed path) then
+    Ok [File path]
+  else
+  let src_path =
+    Path.drop_optional_build_context_src_exn path
+  in
+  if Dune.File_tree.dir_exists setup.workspace.conf.file_tree src_path then
     Ok [ Alias (Alias.in_dir ~name:"default" ~recursive:true
                   ~contexts:setup.workspace.contexts path) ]
-  else if not (Path.is_managed path) then
-    Ok [File path]
   else if Path.is_in_build_dir path then begin
     if Build_system.is_target path then
       Ok [File path]

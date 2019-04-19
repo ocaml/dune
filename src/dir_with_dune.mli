@@ -2,7 +2,7 @@ open Stdune
 
 (** A directory with a [dune] file *)
 type 'data t =
-  { src_dir         : Path.t
+  { src_dir         : Path.Source.t
   ; ctx_dir         : Path.t  (** [_build/context-name/src_dir] *)
   ; data            : 'data
   ; scope           : Scope.t

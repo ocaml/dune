@@ -131,6 +131,24 @@ end = struct
     end)
     : Comparable.OPS with type t := t
   )
+
+  let to_string_maybe_quoted t =
+    String.maybe_quoted (to_string t)
+
+  let parent_exn t =
+    let res = parent t in
+    if res = t then Exn.code_error "Path.External.parent_exn called on a root path" []
+    else res
+
+  let root = of_string "/"
+
+  let is_root = equal root
+
+  let is_descendant b ~of_:a =
+    if is_root a then true
+    else
+      String.is_prefix ~prefix:(to_string a ^ "/") (to_string b)
+
 end
 
 module Relative : sig
@@ -162,6 +180,11 @@ module Relative : sig
     (* for all local path p, drop (invalid p = None) *)
     val invalid : t
   end with type local := t
+
+  val split_first_component : t -> (string * t) option
+  val explode : t -> string list
+  val of_relative : t -> t
+
 end = struct
   (* either "." for root, or a '/' separated list of components
      other that ".", ".."  and not containing '/'. *)
@@ -420,11 +443,37 @@ end = struct
     end)
     : Comparable.OPS with type t := t
   )
+
+  let split_first_component t =
+    if is_root t then None
+    else
+      let t = (to_string t) in
+      begin match String.lsplit2 t ~on:'/' with
+      | None -> Some (t, root)
+      | Some (before, after) ->
+        Some
+          ( before
+          , after
+            |> of_string)
+      end
+
+  let explode p =
+    if is_root p then []
+    else String.split (to_string p) ~on:'/'
+
+  let to_string_maybe_quoted t =
+    String.maybe_quoted (to_string t)
+
+  let parent_exn = parent
+  let of_relative t = t
 end
 
-module Build = Relative
-module Source = Relative
+module Build = struct
+  include Relative
+  let append_source = append
+end
 module Local = Relative
+module Source0 = Relative
 
 let (abs_root, set_root) =
   let root_dir = ref None in
@@ -713,6 +762,7 @@ let append_relative a b =
   | External a -> external_ (External.relative a (Relative.to_string b))
 
 let append_local = append_relative
+let append_source = append_relative
 
 let append a b =
   match b with
@@ -761,6 +811,11 @@ let is_in_source_tree = function
   | In_build_dir _
   | External _ -> false
 
+let as_in_source_tree = function
+  | In_source_tree s -> Some s
+  | In_build_dir _
+  | External _ -> None
+
 let is_alias_stamp_file = function
   | In_build_dir s -> String.is_prefix (Local.to_string s) ~prefix:".aliases/"
   | In_source_tree _
@@ -769,19 +824,20 @@ let is_alias_stamp_file = function
 let extract_build_context = function
   | In_source_tree _
   | External _ -> None
-  | In_build_dir p when Local.is_root p -> None
+  | In_build_dir p when Relative.is_root p -> None
   | In_build_dir t ->
-    let t = Local.to_string t in
+    let t = Relative.to_string t in
     begin match String.lsplit2 t ~on:'/' with
     | None ->
-      Some (t, in_source_tree Local.root )
+      Some (t, Source0.root)
     | Some (before, after) ->
       Some
         ( before
         , after
-          |> Local.of_string
-          |> in_source_tree )
+          |> Source0.of_string )
     end
+
+let extract_build_dir_first_component = extract_build_context
 
 let extract_build_context_exn t =
   match extract_build_context t with
@@ -796,13 +852,12 @@ let extract_build_context_dir = function
   | In_build_dir t ->
     let t_str = Local.to_string t in
     begin match String.lsplit2 t_str ~on:'/' with
-    | None -> Some (in_build_dir t, in_source_tree Local.root)
+    | None -> Some (in_build_dir t, Source0.root)
     | Some (before, after) ->
       Some
         ( in_build_dir (Local.of_string before)
         , after
-          |> Local.of_string
-          |> in_source_tree
+          |> Source0.of_string
         )
     end
 
@@ -823,7 +878,19 @@ let drop_build_context_exn t =
 let drop_optional_build_context t =
   match extract_build_context t with
   | None -> t
-  | Some (_, t) -> t
+  | Some (_, t) -> in_source_tree t
+
+let drop_optional_build_context_src_exn t =
+  match t with
+  | External _ ->
+    Exn.code_error "drop_optional_build_context_src_exn called on an external path" []
+  | In_build_dir _ ->
+    (match extract_build_context t with
+     | Some (_, s) -> s
+     | None ->
+       Exn.code_error
+         "drop_optional_build_context_src_exn called on a build directory itself" [])
+  | In_source_tree p -> p
 
 let local_src   = Relative.of_string "src"
 let local_build = Relative.of_string "build"
@@ -1021,6 +1088,7 @@ module Set = struct
 end
 
 let in_source s = in_source_tree (Local.of_string s)
+let source s = in_source_tree s
 
 let is_suffix p ~suffix =
   match p with
@@ -1050,3 +1118,12 @@ let local_part = function
 let stat t = Unix.stat (to_string t)
 
 include (Comparable.Operators(T) : Comparable.OPS with type t := t)
+
+module Source = struct
+  include Source0
+
+  let is_in_build_dir s =
+    is_in_build_dir (of_local s)
+
+  let to_local t = t
+end

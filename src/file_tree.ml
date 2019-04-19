@@ -21,13 +21,13 @@ module File = struct
 
   module Map = Map.Make(struct type nonrec t = t let compare = compare end)
 
-  let of_path p = of_stats (Path.stat p)
+  let of_source_path p = of_stats (Path.stat (Path.source p))
 end
 
 module Dune_file = struct
   module Plain = struct
     type t =
-      { path          : Path.t
+      { path          : Path.Source.t
       ; mutable sexps : Dune_lang.Ast.t list
       }
   end
@@ -35,7 +35,7 @@ module Dune_file = struct
   module Contents = struct
     type t =
       | Plain of Plain.t
-      | Ocaml_script of Path.t
+      | Ocaml_script of Path.Source.t
   end
 
   type t =
@@ -49,7 +49,7 @@ module Dune_file = struct
     | Ocaml_script  p -> p
 
   let load file ~project ~kind =
-    Io.with_lexbuf_from_file file ~f:(fun lb ->
+    Io.with_lexbuf_from_file (Path.source file) ~f:(fun lb ->
       let contents, sub_dirs =
         if Dune_lexer.is_script lb then
           (Contents.Ocaml_script file, Sub_dirs.default)
@@ -85,7 +85,7 @@ let load_jbuild_ignore path =
 
 module Dir = struct
   type t =
-    { path     : Path.t
+    { path     : Path.Source.t
     ; ignored  : bool
     ; contents : contents Lazy.t
     ; project  : Dune_project.t
@@ -116,16 +116,16 @@ module Dir = struct
   let project t = t.project
 
   let file_paths t =
-    Path.Set.of_list
-      (List.map (String.Set.to_list (files t)) ~f:(Path.relative t.path))
+    Path.Source.Set.of_list
+      (List.map (String.Set.to_list (files t)) ~f:(Path.Source.relative t.path))
 
   let sub_dir_names t =
     String.Map.foldi (sub_dirs t) ~init:String.Set.empty
       ~f:(fun s _ acc -> String.Set.add acc s)
 
   let sub_dir_paths t =
-    String.Map.foldi (sub_dirs t) ~init:Path.Set.empty
-      ~f:(fun s _ acc -> Path.Set.add acc (Path.relative t.path s))
+    String.Map.foldi (sub_dirs t) ~init:Path.Source.Set.empty
+      ~f:(fun s _ acc -> Path.Source.Set.add acc (Path.Source.relative t.path s))
 
   let rec fold t ~traverse_ignored_dirs ~init:acc ~f =
     if not traverse_ignored_dirs && t.ignored then
@@ -147,7 +147,7 @@ module Dir = struct
   and to_dyn { path ; ignored ; contents = lazy contents ; project = _ } =
     let open Dyn in
     Record
-      [ "path", Path.to_dyn path
+      [ "path", Path.Source.to_dyn path
       ; "ignored", Bool ignored
       ; "contents", dyn_of_contents contents
       ]
@@ -166,11 +166,11 @@ let is_temp_file fn =
 
 type readdir =
   { files : String.Set.t
-  ; dirs : (string * Path.t * File.t) list
+  ; dirs : (string * Path.Source.t * File.t) list
   }
 
 let readdir path =
-  match Path.readdir_unsorted path with
+  match Path.readdir_unsorted (Path.source path) with
   | Error unix_error ->
     Errors.warn Loc.none
       "Unable to read directory %s. Ignoring.@.\
@@ -178,20 +178,21 @@ let readdir path =
        (dirs \\ %s)@.\
        to the dune file: %s@.\
        Reason: %s@."
-      (Path.to_string_maybe_quoted path)
-      (Path.basename path)
-      (Path.to_string_maybe_quoted (Path.relative (Path.parent_exn path) "dune"))
+      (Path.Source.to_string_maybe_quoted path)
+      (Path.Source.basename path)
+      (Path.Source.to_string_maybe_quoted
+         (Path.Source.relative (Path.Source.parent_exn path) "dune"))
       (Unix.error_message unix_error);
     Error unix_error
   | Ok unsorted_contents ->
     let files, dirs =
       List.filter_partition_map unsorted_contents ~f:(fun fn ->
-        let path = Path.relative path fn in
-        if Path.is_in_build_dir path then
+        let path = Path.Source.relative path fn in
+        if Path.Source.is_in_build_dir path then
           Skip
         else begin
           let is_directory, file =
-            match Path.stat path with
+            match Path.stat (Path.source path) with
             | exception _ -> (false, File.dummy)
             | { st_kind = S_DIR; _ } as st -> (true, File.of_stats st)
             | _ -> (false, File.dummy)
@@ -219,7 +220,7 @@ let load ?(warn_when_seeing_jbuild_file=true) path =
       if data_only then
         parent_project
       else
-        Option.value (Dune_project.load ~dir:path ~files)
+        Option.value (Dune_project.load ~dir:(Path.source path) ~files)
           ~default:parent_project
     in
     let contents = lazy (
@@ -231,12 +232,12 @@ let load ?(warn_when_seeing_jbuild_file=true) path =
             match List.filter ["dune"; "jbuild"] ~f:(String.Set.mem files) with
             | [] -> (None, Sub_dirs.default)
             | [fn] ->
-              let file = Path.relative path fn in
+              let file = Path.Source.relative path fn in
               if fn = "dune" then
                 ignore (Dune_project.ensure_project_file_exists project
                         : Dune_project.created_or_already_exist)
               else if warn_when_seeing_jbuild_file then
-                Errors.warn (Loc.in_file file)
+                Errors.warn (Loc.in_file (Path.source file))
                   "jbuild files are deprecated, please convert this file to \
                    a dune file instead.\n\
                    Note: You can use \"dune upgrade\" to convert your \
@@ -250,12 +251,13 @@ let load ?(warn_when_seeing_jbuild_file=true) path =
             | _ ->
               die "Directory %s has both a 'dune' and 'jbuild' file.\n\
                    This is not allowed"
-                (Path.to_string_maybe_quoted path)
+                (Path.Source.to_string_maybe_quoted path)
           in
           let sub_dirs =
             if String.Set.mem files "jbuild-ignore" then
               Sub_dirs.add_data_only_dirs sub_dirs
-                ~dirs:(load_jbuild_ignore (Path.relative path "jbuild-ignore"))
+                ~dirs:(load_jbuild_ignore (
+                  Path.source (Path.Source.relative path "jbuild-ignore")))
             else
               sub_dirs
           in
@@ -268,7 +270,7 @@ let load ?(warn_when_seeing_jbuild_file=true) path =
         dirs
         |> List.fold_left ~init:String.Map.empty ~f:(fun acc (fn, path, file) ->
           let status =
-            if Bootstrap.data_only_path path then
+            if Bootstrap.data_only_path (Path.source path) then
               Sub_dirs.Status.Ignored
             else
               Sub_dirs.status sub_dirs ~dir:fn
@@ -286,8 +288,8 @@ let load ?(warn_when_seeing_jbuild_file=true) path =
                 | Some first_path ->
                   die "Path %s has already been scanned. \
                        Cannot scan it again through symlink %s"
-                    (Path.to_string_maybe_quoted first_path)
-                    (Path.to_string_maybe_quoted path)
+                    (Path.Source.to_string_maybe_quoted first_path)
+                    (Path.Source.to_string_maybe_quoted path)
             in
             match
               walk path ~dirs_visited ~project ~data_only
@@ -301,14 +303,14 @@ let load ?(warn_when_seeing_jbuild_file=true) path =
   in
   match
     walk path
-    ~dirs_visited:(File.Map.singleton (File.of_path path) path)
+    ~dirs_visited:(File.Map.singleton (File.of_source_path path) path)
     ~data_only:false
     ~project:(Lazy.force Dune_project.anonymous)
   with
   | Ok dir -> dir
   | Error m ->
     die "Unable to load source %s.@.Reason:%s@."
-      (Path.to_string_maybe_quoted path) (Unix.error_message m)
+      (Path.Source.to_string_maybe_quoted path) (Unix.error_message m)
 
 let fold = Dir.fold
 
@@ -320,16 +322,15 @@ let rec find_dir t = function
     find_dir t components
 
 let find_dir t path =
-  let open Option.O in
-  let* components = Path.explode path in
+  let components = Path.Source.explode path in
   find_dir t components
 
 let files_of t path =
   match find_dir t path with
-  | None -> Path.Set.empty
+  | None -> Path.Source.Set.empty
   | Some dir ->
-    Path.Set.of_list (
-      List.map (String.Set.to_list (Dir.files dir)) ~f:(Path.relative path))
+    Path.Source.Set.of_list (
+      List.map (String.Set.to_list (Dir.files dir)) ~f:(Path.Source.relative path))
 
 let file_exists t path fn =
   match find_dir t path with
@@ -340,7 +341,7 @@ let dir_exists t path = Option.is_some (find_dir t path)
 
 let exists t path =
   dir_exists t path ||
-  file_exists t (Path.parent_exn path) (Path.basename path)
+  file_exists t (Path.Source.parent_exn path) (Path.Source.basename path)
 
 let files_recursively_in t ?(prefix_with=Path.root) path =
   match find_dir t path with
@@ -348,6 +349,6 @@ let files_recursively_in t ?(prefix_with=Path.root) path =
   | Some dir ->
     Dir.fold dir ~init:Path.Set.empty ~traverse_ignored_dirs:true
       ~f:(fun dir acc ->
-        let path = Path.append prefix_with (Dir.path dir) in
+        let path = Path.append_source prefix_with (Dir.path dir) in
         String.Set.fold (Dir.files dir) ~init:acc ~f:(fun fn acc ->
           Path.Set.add acc (Path.relative path fn)))

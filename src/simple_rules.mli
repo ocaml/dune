@@ -18,7 +18,7 @@ val copy_files
   :  Super_context.t
   -> dir:Path.t
   -> expander:Expander.t
-  -> src_dir:Path.t
+  -> src_dir:Path.Source.t
   -> Copy_files.t
   -> Path.Set.t
 

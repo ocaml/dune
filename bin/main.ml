@@ -114,11 +114,11 @@ let promote =
        | _ ->
          let files =
            List.map files
-             ~f:(fun fn -> Path.of_string (Common.prefix_target common fn))
+             ~f:(fun fn -> Path.Source.of_string (Common.prefix_target common fn))
          in
          let on_missing fn =
            Format.eprintf "@{<warning>Warning@}: Nothing to promote for %a.@."
-             Path.pp fn
+             Path.Source.pp fn
          in
          These (files, on_missing))
   in

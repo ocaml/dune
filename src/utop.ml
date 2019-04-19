@@ -29,7 +29,7 @@ let libs_under_dir sctx ~db ~dir =
    File_tree.Dir.fold dir ~traverse_ignored_dirs:true
      ~init:[] ~f:(fun dir acc ->
        let dir =
-         Path.append (Super_context.build_dir sctx) (File_tree.Dir.path dir) in
+         Path.append_source (Super_context.build_dir sctx) (File_tree.Dir.path dir) in
        match Super_context.stanzas_in sctx ~dir with
        | None -> acc
        | Some (d : _ Dir_with_dune.t) ->

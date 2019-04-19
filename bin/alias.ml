@@ -5,7 +5,7 @@ let die = Dune.Import.die
 type t =
   { name : string
   ; recursive : bool
-  ; dir : Path.t
+  ; dir : Path.Source.t
   ; contexts : Dune.Context.t list
   }
 
@@ -13,14 +13,14 @@ let to_log_string { name ; recursive; dir ; contexts = _ } =
   sprintf "- %s alias %s%s/%s"
     (if recursive then "recursive " else "")
     (if recursive then "@@" else "@")
-    (Path.to_string_maybe_quoted dir)
+    (Path.Source.to_string_maybe_quoted dir)
     name
 
 let in_dir ~name ~recursive ~contexts dir =
   Util.check_path contexts dir;
   match Path.extract_build_context dir with
   | None ->
-    { dir
+    { dir = Option.value_exn (Path.as_in_source_tree dir)
     ; recursive
     ; name
     ; contexts

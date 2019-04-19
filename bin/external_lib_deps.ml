@@ -25,7 +25,7 @@ let run ~lib_deps ~by_dir ~setup ~only_missing ~sexp =
   String.Map.foldi lib_deps ~init:false
     ~f:(fun context_name lib_deps_by_dir acc ->
       let lib_deps =
-        Path.Map.values lib_deps_by_dir
+        Path.Source.Map.values lib_deps_by_dir
         |> List.fold_left ~init:Lib_name.Map.empty ~f:Lib_deps_info.merge
       in
       let internals =
@@ -84,13 +84,13 @@ let run ~lib_deps ~by_dir ~setup ~only_missing ~sexp =
           die "@{<error>Error@}: --sexp requires --unstable-by-dir";
         let lib_deps_by_dir =
           lib_deps_by_dir
-          |> Path.Map.map ~f:(Lib_name.Map.filteri ~f:is_external)
-          |> Path.Map.filter ~f:(fun m -> not (Lib_name.Map.is_empty m))
+          |> Path.Source.Map.map ~f:(Lib_name.Map.filteri ~f:is_external)
+          |> Path.Source.Map.filter ~f:(fun m -> not (Lib_name.Map.is_empty m))
         in
         let sexp =
           Map.to_sexp
-            Path.Map.to_list
-            (fun p -> Atom (Path.to_string p))
+            Path.Source.Map.to_list
+            (fun p -> Atom (Path.Source.to_string p))
             Lib_deps_info.to_sexp
             lib_deps_by_dir
         in

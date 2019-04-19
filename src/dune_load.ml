@@ -245,8 +245,8 @@ let load ?(ignore_promoted_rules=false) () =
     File_tree.fold ftree ~traverse_ignored_dirs:false ~init:[]
       ~f:(fun dir acc ->
         let p = File_tree.Dir.project dir in
-        if Path.Local.equal
-             (Path.Source.to_local (File_tree.Dir.path dir))
+        if Path.Source.equal
+             (File_tree.Dir.path dir)
              (Dune_project.root p)
         then p :: acc
         else acc)
@@ -262,8 +262,8 @@ let load ?(ignore_promoted_rules=false) () =
           | Some a, Some b ->
             die "Too many opam files for package %S:\n- %s\n- %s"
               (Package.Name.to_string name)
-              (Path.to_string_maybe_quoted (Package.opam_file a))
-              (Path.to_string_maybe_quoted (Package.opam_file b))))
+              (Path.Source.to_string_maybe_quoted (Package.opam_file a))
+              (Path.Source.to_string_maybe_quoted (Package.opam_file b))))
   in
 
   let rec walk dir dune_files =

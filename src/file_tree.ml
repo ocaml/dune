@@ -220,7 +220,7 @@ let load ?(warn_when_seeing_jbuild_file=true) path =
       if data_only then
         parent_project
       else
-        Option.value (Dune_project.load ~dir:(Path.source path) ~files)
+        Option.value (Dune_project.load ~dir:path ~files)
           ~default:parent_project
     in
     let contents = lazy (

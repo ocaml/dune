@@ -29,14 +29,14 @@ end
 
 type t =
   { name                   : Name.t
-  ; path                   : Path.t
+  ; path                   : Path.Source.t
   ; version_from_opam_file : string option
   }
 
 let hash { name; path; version_from_opam_file } =
   Hashtbl.hash
     ( Name.hash name
-    , Path.hash path
+    , Path.Source.hash path
     , Option.hash String.hash version_from_opam_file
     )
 
@@ -44,13 +44,13 @@ let to_dyn { name; path; version_from_opam_file } =
   let open Dyn in
   Record
     [ "name", Name.to_dyn name
-    ; "path", Path.to_dyn path
+    ; "path", Path.Source.to_dyn path
     ; "version_from_opam_file"
     , Option (Option.map ~f:(fun s -> String s) version_from_opam_file)
     ]
 
 let pp fmt t = Dyn.pp fmt (to_dyn t)
 
-let opam_file t = Path.relative t.path (Name.opam_fn t.name)
+let opam_file t = Path.Source.relative t.path (Name.opam_fn t.name)
 
-let meta_file t = Path.relative t.path (Name.meta_fn t.name)
+let meta_file t = Path.Source.relative t.path (Name.meta_fn t.name)

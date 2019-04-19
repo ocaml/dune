@@ -180,9 +180,9 @@ let lib_stanzas t = t.lib_stanzas
 let mlds t = Lazy.force t.mlds
 
 let package t = t.pkg
-let opam_file t = Path.append t.ctx_build_dir (Package.opam_file t.pkg)
-let meta_file t = Path.append t.ctx_build_dir (Package.meta_file t.pkg)
-let build_dir t = Path.append t.ctx_build_dir t.pkg.path
+let opam_file t = Path.append_source t.ctx_build_dir (Package.opam_file t.pkg)
+let meta_file t = Path.append_source t.ctx_build_dir (Package.meta_file t.pkg)
+let build_dir t = Path.append_source t.ctx_build_dir t.pkg.path
 let name t = t.pkg.name
 let dune_package_file t =
   Path.relative (build_dir t)

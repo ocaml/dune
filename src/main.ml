@@ -19,7 +19,7 @@ let package_install_file w pkg =
   match Package.Name.Map.find w.conf.packages pkg with
   | None -> Error ()
   | Some p ->
-    Ok (Path.relative p.path
+    Ok (Path.Source.relative p.path
           (Utils.install_file ~package:p.name ~findlib_toolchain:None))
 
 let setup_env ~capture_outputs =

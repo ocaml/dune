@@ -1,6 +1,8 @@
 module type S = sig
   type t
 
+  val hash : t -> int
+
   val to_string : t -> string
   val of_string : string -> t
 

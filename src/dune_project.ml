@@ -134,14 +134,14 @@ end
 
 module Project_file = struct
   type t =
-    { file           : Path.t
+    { file           : Path.Source.t
     ; mutable exists : bool
     ; project_name   : Name.t
     }
 
   let pp fmt { file ; exists; project_name } =
     Fmt.record fmt
-      [ "file", Fmt.const Path.pp file
+      [ "file", Fmt.const Path.Source.pp file
       ; "exists", Fmt.const Format.pp_print_bool exists
       ; "project_name", (fun fmt () -> Name.pp fmt project_name)
       ]
@@ -149,7 +149,7 @@ module Project_file = struct
   let to_sexp { file; exists; project_name } =
     Sexp.Encoder.(
       record
-        [ "file", Path.to_sexp file
+        [ "file", Path.Source.to_sexp file
         ; "exists", bool exists
         ; "project_name", Name.to_sexp project_name
         ])
@@ -157,7 +157,7 @@ end
 
 type t =
   { name            : Name.t
-  ; root            : Path.Local.t
+  ; root            : Path.Source.t
   ; version         : string option
   ; packages        : Package.t Package.Name.Map.t
   ; stanza_parser   : Stanza.t list Dune_lang.Decoder.t
@@ -187,7 +187,7 @@ let pp fmt { name ; root ; version ; project_file ; parsing_context = _
            ; allow_approx_merlin } =
   Fmt.record fmt
     [ "name", Fmt.const Name.pp name
-    ; "root", Fmt.const Path.Local.pp root
+    ; "root", Fmt.const Path.Source.pp root
     ; "version", Fmt.const (Fmt.optional Format.pp_print_string) version
     ; "project_file", Fmt.const Project_file.pp project_file
     ; "packages",
@@ -245,20 +245,20 @@ module Project_file_edit = struct
       in
       notify_user
         (sprintf "creating file %s with this contents:\n%s\n"
-           (Path.to_string_maybe_quoted t.file)
+           (Path.Source.to_string_maybe_quoted t.file)
            (List.map lines ~f:((^) "| ") |> String.concat ~sep:"\n"));
-      Io.write_lines t.file lines ~binary:false;
+      Io.write_lines (Path.source t.file) lines ~binary:false;
       t.exists <- true;
       Created
     end
 
   let append t str =
     let what = ensure_exists t in
-    let prev = Io.read_file t.file ~binary:false in
+    let prev = Io.read_file (Path.source t.file) ~binary:false in
     notify_user
       (sprintf "appending this line to %s: %s"
-         (Path.to_string_maybe_quoted t.file) str);
-    Io.with_file_out t.file ~binary:false ~f:(fun oc ->
+         (Path.Source.to_string_maybe_quoted t.file) str);
+    Io.with_file_out (Path.source t.file) ~binary:false ~f:(fun oc ->
       List.iter [prev; str] ~f:(fun s ->
         output_string oc s;
         let len = String.length s in
@@ -442,7 +442,7 @@ let key =
          ; allow_approx_merlin } ->
       Sexp.Encoder.record
         [ "name", Name.to_sexp name
-        ; "root", Path.Local.to_sexp root
+        ; "root", Path.Source.to_sexp root
         ; "version", Sexp.Encoder.(option string) version
         ; "project_file", Project_file.to_sexp project_file
         ; "parsing_context", Univ_map.to_sexp parsing_context
@@ -462,17 +462,12 @@ let get_exn () =
 
 let filename = "dune-project"
 
-let get_local_path p =
-  match Path.kind p with
-  | External _ -> assert false
-  | Local    p -> p
-
 let anonymous = lazy (
   let lang = get_dune_lang () in
   let name = Name.anonymous_root in
   let project_file =
     { Project_file.
-      file = Path.relative Path.root filename
+      file = Path.Source.relative Path.Source.root filename
     ; exists = false
     ; project_name = name
     }
@@ -482,7 +477,7 @@ let anonymous = lazy (
   in
   { name          = name
   ; packages      = Package.Name.Map.empty
-  ; root          = get_local_path Path.root
+  ; root          = Path.Source.root
   ; version       = None
   ; implicit_transitive_deps = false
   ; stanza_parser
@@ -509,7 +504,7 @@ let default_name ~dir ~packages =
     match Name.named name with
     | Some x -> x
     | None ->
-      Errors.fail (Loc.in_file (Package.opam_file pkg))
+      Errors.fail (Loc.in_file (Path.source (Package.opam_file pkg)))
         "%S is not a valid opam package name."
         name
 
@@ -521,7 +516,7 @@ let name_field ~dir ~packages =
 
 let parse ~dir ~lang ~packages ~file =
   fields
-    (let+ name = name_field ~dir ~packages
+    (let+ name = name_field ~dir:(Path.source dir) ~packages
      and+ version = field_o "version" string
      and+ explicit_extensions =
        multi_field "using"
@@ -556,7 +551,7 @@ let parse ~dir ~lang ~packages ~file =
      let allow_approx_merlin =
        Option.value ~default:false allow_approx_merlin in
      { name
-     ; root = get_local_path dir
+     ; root = dir
      ; version
      ; packages
      ; stanza_parser
@@ -569,15 +564,15 @@ let parse ~dir ~lang ~packages ~file =
      })
 
 let load_dune_project ~dir packages =
-  let file = Path.relative dir filename in
-  load file ~f:(fun lang -> parse ~dir ~lang ~packages ~file)
+  let file = Path.Source.relative dir filename in
+  load (Path.source file) ~f:(fun lang -> parse ~dir ~lang ~packages ~file)
 
 let make_jbuilder_project ~dir packages =
   let lang = get_dune_lang () in
-  let name = default_name ~dir ~packages in
+  let name = default_name ~dir:(Path.source dir) ~packages in
   let project_file =
     { Project_file.
-      file = Path.relative dir filename
+      file = Path.Source.relative dir filename
     ; exists = false
     ; project_name = name
     }
@@ -586,7 +581,7 @@ let make_jbuilder_project ~dir packages =
     interpret_lang_and_extensions ~lang ~explicit_extensions:[] ~project_file
   in
   { name
-  ; root = get_local_path dir
+  ; root = dir
   ; version = None
   ; packages
   ; stanza_parser
@@ -614,11 +609,11 @@ let load ~dir ~files =
         let version_from_opam_file =
           let open Option.O in
           let* opam =
-            let opam_file = Path.relative dir fn in
-            match Opam_file.load opam_file with
+            let opam_file = Path.Source.relative dir fn in
+            match Opam_file.load (Path.source opam_file) with
             | s -> Some s
             | exception exn ->
-              Errors.warn (Loc.in_file opam_file)
+              Errors.warn (Loc.in_file (Path.source opam_file))
                 "Unable to read opam file. This package's version field will\
                  be ignored.@.Reason: %a@."
                 Exn.pp exn;
@@ -650,6 +645,3 @@ let dune_version t = t.dune_version
 
 let set_parsing_context t parser =
   Dune_lang.Decoder.set_many t.parsing_context parser
-
-let in_source_root t =
-  Path.append_local Path.root (root t)

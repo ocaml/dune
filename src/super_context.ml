@@ -199,7 +199,7 @@ module Pkg_version = struct
   open Build.O
 
   let file sctx (p : Package.t) =
-    Path.relative (Path.append sctx.context.build_dir p.path)
+    Path.relative (Path.append_source sctx.context.build_dir p.path)
       (sprintf "%s.version.sexp" (Package.Name.to_string p.name))
 
   let read_file fn =

@@ -66,7 +66,7 @@ module Pkg = struct
       (List.map packages ~f:(fun pkg ->
          sprintf "- %-*s (because of %s)" longest_pkg
            (Package.Name.to_string pkg.Package.name)
-           (Path.to_string (Package.opam_file pkg))))
+           (Path.Source.to_string (Package.opam_file pkg))))
 
   let default (project : Dune_project.t) stanza =
     match Package.Name.Map.values (Dune_project.packages project) with
@@ -102,8 +102,8 @@ module Pkg = struct
                   add a %S file at the root of your project.\nn\
                  Root of the project as discovered by dune: %s@"
                  name_s (Package.Name.opam_fn name)
-                 (Path.to_string_maybe_quoted
-                    (Dune_project.in_source_root project)))
+                 (Path.Source.to_string_maybe_quoted
+                    (Dune_project.root project)))
       else
         Error (sprintf
                  "The current scope doesn't define package %S.\n\

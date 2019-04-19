@@ -70,14 +70,14 @@ type target_kind =
   | Alias   of string * Path.t
   | Other of Path.t
 
-let analyse_target fn =
+let analyse_target (fn as original_fn) =
   match Path.extract_build_context fn with
   | Some (".aliases", sub) -> begin
       match Path.split_first_component sub with
       | None -> Other fn
       | Some (ctx, fn) ->
         if Path.is_root fn then
-          Other fn
+          Other original_fn
         else
           let basename =
             match String.rsplit2 (Path.basename fn) ~on:'-' with

@@ -1487,43 +1487,72 @@ module Rule = struct
 
 
   module Mode = struct
-    module Promotion_lifetime = struct
-      type t =
-        | Unlimited
-        | Until_clean
-    end
+    module Promote = struct
+      module Lifetime = struct
+        type t =
+          | Unlimited
+          | Until_clean
+      end
 
-    module Into = struct
-      type t =
-        { loc : Loc.t
-        ; dir : string
-        }
+      module Into = struct
+        type t =
+          { loc : Loc.t
+          ; dir : string
+          }
 
-      let decode =
-        let+ (loc, dir) = located relative_file in
-        { loc
-        ; dir
+        let decode =
+          let+ (loc, dir) = located relative_file in
+          { loc
+          ; dir
+          }
+      end
+
+      type t =
+        { lifetime : Lifetime.t
+        ; into : Into.t option
+        ; only : Predicate_lang.t option
         }
     end
 
     type t =
       | Standard
       | Fallback
-      | Promote of Promotion_lifetime.t * Into.t option
-      | Not_a_rule_stanza
+      | Promote of Promote.t
       | Ignore_source_files
 
     let decode =
       let promote_into lifetime =
         let+ () = Syntax.since Stanza.syntax (1, 8)
-        and+ into = Into.decode in
-        Promote (lifetime, Some into)
+        and+ into = Promote.Into.decode in
+        Promote { lifetime; into = Some into; only = None }
       in
       sum
         [ "standard"           , return Standard
         ; "fallback"           , return Fallback
-        ; "promote"            , return (Promote (Unlimited, None))
-        ; "promote-until-clean", return (Promote (Until_clean, None))
+        ; "promote"            ,
+          fields
+            (let+ until_clean =
+               field_b "until-clean"
+                 ~check:(Syntax.since Stanza.syntax (1, 10))
+             and+ into =
+               field_o "into"
+                 (Syntax.since Stanza.syntax (1, 10) >>= fun () ->
+                  Promote.Into.decode)
+             and+ only =
+               field_o "only"
+                 (Syntax.since Stanza.syntax (1, 10) >>= fun () ->
+                  Predicate_lang.decode)
+             in
+             Promote
+               { lifetime = if until_clean then Until_clean else Unlimited
+               ; into
+               ; only
+               })
+        ; "promote-until-clean",
+          return (Promote { lifetime = Until_clean
+                          ; into = None
+                          ; only = None
+                          })
         ; "promote-into"       , promote_into Unlimited
         ; "promote-until-clean-into", promote_into Until_clean
         ]

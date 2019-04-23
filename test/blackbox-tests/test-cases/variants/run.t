@@ -42,7 +42,7 @@ Check that variant data is installed in the dune package file.
   $ dune build --root dune-package
   Entering directory 'dune-package'
   $ cat  dune-package/_build/install/default/lib/a/dune-package
-  (lang dune 1.9)
+  (lang dune 1.10)
   (name a)
   (library
    (name a)

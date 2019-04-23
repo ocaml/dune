@@ -3,6 +3,15 @@
 open! Stdune
 open! Import
 
+module Info : sig
+  type t =
+    | From_dune_file of Loc.t
+    | Internal
+    | Source_file_copy
+
+  val of_loc_opt : Loc.t option -> t
+end
+
 type t =
   { context  : Context.t option
   ; env      : Env.t option
@@ -11,7 +20,7 @@ type t =
   ; sandbox  : bool
   ; mode     : Dune_file.Rule.Mode.t
   ; locks    : Path.t list
-  ; loc      : Loc.t option
+  ; info     : Info.t
   ; (** Directory where all the targets are produced *)
     dir      : Path.t
   }
@@ -22,6 +31,6 @@ val make
   -> context:Context.t option
   -> env:Env.t option
   -> ?locks:Path.t list
-  -> ?loc:Loc.t
+  -> ?info:Info.t
   -> (unit, Action.t) Build.t
   -> t

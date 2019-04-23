@@ -14,3 +14,11 @@
  (targets promoted)
  (action (with-stdout-to promoted (echo "Hello, world!")))
  (mode (promote-into subdir)))
+
+(rule
+ (targets only1 only2)
+ (action
+  (progn
+   (with-stdout-to only1 (echo "0"))
+   (with-stdout-to only2 (echo "0"))))
+ (mode (promote (only *1))))

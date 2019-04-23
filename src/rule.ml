@@ -1,6 +1,17 @@
 open! Stdune
 open Import
 
+module Info = struct
+  type t =
+    | From_dune_file of Loc.t
+    | Internal
+    | Source_file_copy
+
+  let of_loc_opt = function
+    | None -> Internal
+    | Some loc -> From_dune_file loc
+end
+
 type t =
   { context  : Context.t option
   ; env      : Env.t option
@@ -9,30 +20,30 @@ type t =
   ; sandbox  : bool
   ; mode     : Dune_file.Rule.Mode.t
   ; locks    : Path.t list
-  ; loc      : Loc.t option
+  ; info     : Info.t
   ; dir      : Path.t
   }
 
-let make ?(sandbox=false) ?(mode=Dune_file.Rule.Mode.Not_a_rule_stanza)
-      ~context ~env ?(locks=[]) ?loc build =
+let make ?(sandbox=false) ?(mode=Dune_file.Rule.Mode.Standard)
+      ~context ~env ?(locks=[]) ?(info=Info.Internal) build =
   let targets = Build.targets build in
   let dir =
     match Path.Set.choose targets with
     | None -> begin
-        match loc with
-        | Some loc -> Errors.fail loc "Rule has no targets specified"
-        | None -> Exn.code_error "Build_interpret.Rule.make: no targets" []
+        match info with
+        | From_dune_file loc -> Errors.fail loc "Rule has no targets specified"
+        | _ -> Exn.code_error "Build_interpret.Rule.make: no targets" []
       end
     | Some x ->
       let dir = Path.parent_exn x in
       if Path.Set.exists targets ~f:(fun path -> Path.parent_exn path <> dir)
       then begin
-        match loc with
-        | None ->
+        match info with
+        | Internal | Source_file_copy ->
           Exn.code_error "rule has targets in different directories"
             [ "targets", Path.Set.to_sexp targets
             ]
-        | Some loc ->
+        | From_dune_file loc ->
           Errors.fail loc
             "Rule has targets in different directories.\nTargets:\n%s"
             (String.concat ~sep:"\n"
@@ -49,6 +60,6 @@ let make ?(sandbox=false) ?(mode=Dune_file.Rule.Mode.Not_a_rule_stanza)
   ; sandbox
   ; mode
   ; locks
-  ; loc
+  ; info
   ; dir
   }

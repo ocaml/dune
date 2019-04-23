@@ -113,7 +113,7 @@
                "extends"
                ;; Dependency specification
                "file" "alias" "alias_rec" "glob_files" "files_recursively_in"
-               "universe" "package")
+               "universe" "package" "source_tree" "env_var")
              t)
             "\\(?:\\_>\\|[[:space:]]\\)"))
   "Builtin sub-fields in dune.")

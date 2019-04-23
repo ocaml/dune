@@ -297,17 +297,25 @@ module Rule : sig
   end
 
   module Mode : sig
-    module Promotion_lifetime : sig
-      type t =
-        | Unlimited
-        (** The promoted file will be deleted by [dune clean] *)
-        | Until_clean
-    end
+    module Promote : sig
+      module Lifetime : sig
+        type t =
+          | Unlimited
+          (** The promoted file will be deleted by [dune clean] *)
+          | Until_clean
+      end
 
-    module Into : sig
+      module Into : sig
+        type t =
+          { loc : Loc.t
+          ; dir : string
+          }
+      end
+
       type t =
-        { loc : Loc.t
-        ; dir : string
+        { lifetime : Lifetime.t
+        ; into : Into.t option
+        ; only : Predicate_lang.t option
         }
     end
 
@@ -315,17 +323,14 @@ module Rule : sig
       | Standard
       (** Only use this rule if  the source files don't exist. *)
       | Fallback
-      (** Silently promote the targets to the source tree. If the argument is
-          [Some { dir ; _ }], promote them into [dir] rather than the current
-          directory. *)
-      | Promote of Promotion_lifetime.t * Into.t option
-      (** Same as [Standard] however this is not a rule stanza, so it
-          is not possible to add a [(fallback)] field to the rule. *)
-      | Not_a_rule_stanza
+      (** Silently promote the targets to the source tree. *)
+      | Promote of Promote.t
       (** Just ignore the source files entirely. This is for cases
           where the targets are promoted only in a specific context,
           such as for .install files. *)
       | Ignore_source_files
+
+    val decode : t Dune_lang.Decoder.t
   end
 
   type t =

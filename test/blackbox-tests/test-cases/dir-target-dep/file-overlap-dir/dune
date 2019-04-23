@@ -1,0 +1,3 @@
+(rule
+ (targets dir)
+ (action (bash "mkdir %{targets}")))

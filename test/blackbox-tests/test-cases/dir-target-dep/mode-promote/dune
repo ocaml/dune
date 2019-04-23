@@ -1,0 +1,4 @@
+(rule
+ (targets dir)
+ (mode promote)
+ (action (bash "mkdir %{targets}")))

@@ -66,7 +66,7 @@ module Pkg = struct
       (List.map packages ~f:(fun pkg ->
          sprintf "- %-*s (because of %s)" longest_pkg
            (Package.Name.to_string pkg.Package.name)
-           (Path.to_string (Package.opam_file pkg))))
+           (Path.Source.to_string (Package.opam_file pkg))))
 
   let default (project : Dune_project.t) stanza =
     match Package.Name.Map.values (Dune_project.packages project) with
@@ -102,8 +102,8 @@ module Pkg = struct
                   add a %S file at the root of your project.\nn\
                  Root of the project as discovered by dune: %s@"
                  name_s (Package.Name.opam_fn name)
-                 (Path.to_string_maybe_quoted
-                    (Dune_project.in_source_root project)))
+                 (Path.Source.to_string_maybe_quoted
+                    (Dune_project.root project)))
       else
         Error (sprintf
                  "The current scope doesn't define package %S.\n\
@@ -2218,7 +2218,7 @@ module Stanzas = struct
     let parser = parser ~kind project in
     parse parser sexp
 
-  exception Include_loop of Path.t * (Loc.t * Path.t) list
+  exception Include_loop of Path.Source.t * (Loc.t * Path.Source.t) list
 
   let rec parse_file_includes ~stanza_parser ~lexer ~current_file
             ~include_stack sexps =
@@ -2226,15 +2226,15 @@ module Stanzas = struct
     |> List.concat_map ~f:(function
       | Include (loc, fn) ->
         let include_stack = (loc, current_file) :: include_stack in
-        let dir = Path.parent_exn current_file in
-        let current_file = Path.relative dir fn in
-        if not (Path.exists current_file) then
+        let dir = Path.Source.parent_exn current_file in
+        let current_file = Path.Source.relative dir fn in
+        if not (Path.exists (Path.source current_file)) then
           Errors.fail loc "File %s doesn't exist."
-            (Path.to_string_maybe_quoted current_file);
+            (Path.Source.to_string_maybe_quoted current_file);
         if List.exists include_stack
-             ~f:(fun (_, f) -> Path.equal f current_file) then
+             ~f:(fun (_, f) -> Path.Source.equal f current_file) then
           raise (Include_loop (current_file, include_stack));
-        let sexps = Dune_lang.Io.load ~lexer current_file ~mode:Many in
+        let sexps = Dune_lang.Io.load ~lexer (Path.source current_file) ~mode:Many in
         parse_file_includes ~stanza_parser ~lexer
           ~current_file ~include_stack sexps
       | stanza -> [stanza])
@@ -2252,13 +2252,13 @@ module Stanzas = struct
         let loc = fst (Option.value (List.last rest) ~default:last) in
         let line_loc (loc, file) =
           sprintf "%s:%d"
-            (Path.to_string_maybe_quoted file)
+            (Path.Source.to_string_maybe_quoted file)
             loc.Loc.start.pos_lnum
         in
         Errors.fail loc
           "Recursive inclusion of jbuild files detected:\n\
            File %s is included from %s%s"
-          (Path.to_string_maybe_quoted file)
+          (Path.Source.to_string_maybe_quoted file)
           (line_loc last)
           (String.concat ~sep:""
              (List.map rest ~f:(fun x ->

@@ -59,7 +59,7 @@ let gen_dune_package sctx ~version ~(pkg : Local_package.t) =
   |> Super_context.add_rule sctx ~dir:ctx.build_dir
 
 let version_from_dune_project sctx ~(pkg : Package.t) =
-  let dir = Path.append (Super_context.build_dir sctx) pkg.path in
+  let dir = Path.append_source (Super_context.build_dir sctx) pkg.path in
   let project = Scope.project (Super_context.find_scope_by_dir sctx dir) in
   Dune_project.version project
 

@@ -118,9 +118,9 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
         let source_dirs =
           let loc = String_with_vars.loc glob in
           let src_glob = Expander.expand_str expander glob in
-          Path.relative src_dir src_glob ~error_loc:loc
-          |> Path.parent_exn
-          |> Path.Set.singleton
+          Path.Source.relative src_dir src_glob ~error_loc:loc
+          |> Path.Source.parent_exn
+          |> Path.Source.Set.singleton
         in
         { For_stanza.
           merlin = Some (Merlin.make ~source_dirs ())
@@ -153,7 +153,7 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
       ~f:(fun m ->
         let more_src_dirs =
           List.map (Dir_contents.dirs dir_contents) ~f:(fun dc ->
-            Path.drop_optional_build_context (Dir_contents.dir dc))
+            Path.drop_optional_build_context_src_exn (Dir_contents.dir dc))
         in
         Merlin.add_rules sctx ~dir:ctx_dir ~more_src_dirs ~expander ~dir_kind
           (Merlin.add_source_dir m src_dir));

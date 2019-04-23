@@ -92,7 +92,7 @@ module DB = struct
       let project_root =
         File_tree.Dir.project ft_dir
         |> Dune_project.root
-        |> Path.of_local in
+        |> Path.source in
       match stanzas_in db ~dir with
       | None ->
         if Path.equal dir project_root  then

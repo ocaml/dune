@@ -69,7 +69,7 @@ module Dot_file = struct
   let print = Buffer.add_string b
 
   let to_string ~obj_dirs ~src_dirs ~flags ~pp ~remaindir =
-    let serialize_path = Path.reach ~from:remaindir in
+    let serialize_path = Path.reach ~from:(Path.source remaindir) in
     Buffer.clear b;
     print "EXCLUDE_QUERY_DIR\n";
     Path.Set.iter obj_dirs ~f:(fun p ->
@@ -92,7 +92,7 @@ type t =
   ; flags      : (unit, string list) Build.t
   ; preprocess : Dune_file.Preprocess.t
   ; libname    : Lib_name.Local.t option
-  ; source_dirs: Path.Set.t
+  ; source_dirs: Path.Source.Set.t
   ; objs_dirs  : Path.Set.t
   }
 
@@ -101,7 +101,7 @@ let make
       ?(flags=Build.return [])
       ?(preprocess=Dune_file.Preprocess.No_preprocessing)
       ?libname
-      ?(source_dirs=Path.Set.empty)
+      ?(source_dirs=Path.Source.Set.empty)
       ?(objs_dirs=Path.Set.empty)
       () =
   (* Merlin shouldn't cause the build to fail, so we just ignore errors *)
@@ -119,7 +119,7 @@ let make
   }
 
 let add_source_dir t dir =
-  { t with source_dirs = Path.Set.add t.source_dirs dir }
+  { t with source_dirs = Path.Source.Set.add t.source_dirs dir }
 
 let pp_flags sctx ~expander ~dir_kind { preprocess; libname; _ } =
   let scope = Expander.scope expander in
@@ -196,7 +196,11 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander ~dir_kind
       flags
       >>^ (fun flags ->
         let (src_dirs, obj_dirs) =
-          Lib.Set.fold requires ~init:(t.source_dirs, t.objs_dirs)
+          Lib.Set.fold requires ~init:(
+            (Path.Source.Set.to_list t.source_dirs
+             |> List.map ~f:Path.source
+             |> Path.Set.of_list)
+          , t.objs_dirs)
             ~f:(fun (lib : Lib.t) (src_dirs, obj_dirs) ->
               ( Path.Set.add src_dirs (
                   Lib.orig_src_dir lib
@@ -206,7 +210,8 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander ~dir_kind
               ))
         in
         let src_dirs =
-          Path.Set.union src_dirs (Path.Set.of_list more_src_dirs)
+          Path.Set.union src_dirs (
+            Path.Set.of_list (List.map ~f:Path.source more_src_dirs))
         in
         Dot_file.to_string
           ~remaindir
@@ -225,7 +230,7 @@ let merge_two ~allow_approx_merlin a b =
       (match a.libname with
        | Some _ as x -> x
        | None -> b.libname)
-  ; source_dirs = Path.Set.union a.source_dirs b.source_dirs
+  ; source_dirs = Path.Source.Set.union a.source_dirs b.source_dirs
   ; objs_dirs = Path.Set.union a.objs_dirs b.objs_dirs
   }
 

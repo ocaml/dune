@@ -1,3 +1,21 @@
+(** Relative path with unspecified root *)
+module Relative : sig
+  include Path_intf.S
+
+  (** [root] refers to empty relative path, so whatever the path is interpreted
+      relative to. *)
+  val root : t
+
+  val of_string : ?error_loc:Loc0.t -> string -> t
+  module L : sig
+    val relative : ?error_loc:Loc0.t -> t -> string list -> t
+  end
+
+  val relative : ?error_loc:Loc0.t -> t -> string -> t
+  val split_first_component : t -> (string * t) option
+  val explode : t -> string list
+end
+
 (** In the current workspace (anything under the current project root) *)
 module Local : sig
   include Path_intf.S
@@ -7,6 +25,49 @@ module Local : sig
   module L : sig
     val relative : ?error_loc:Loc0.t -> t -> string list -> t
   end
+
+  val relative : ?error_loc:Loc0.t -> t -> string -> t
+  val split_first_component : t -> (string * Relative.t) option
+  val explode : t -> string list
+end
+
+(** In the source section of the current workspace. *)
+module Source : sig
+  include Path_intf.S
+  val root : t
+
+  val of_string : ?error_loc:Loc0.t -> string -> t
+  module L : sig
+    val relative : ?error_loc:Loc0.t -> t -> string list -> t
+  end
+
+  val of_relative : Relative.t -> t
+  val relative : ?error_loc:Loc0.t -> t -> string -> t
+  val split_first_component : t -> (string * Relative.t) option
+  val explode : t -> string list
+
+  (** [Source.t] does not statically forbid overlap with build directory,
+      even though having such paths is almost always an error. *)
+  val is_in_build_dir : t -> bool
+
+  val to_local : t -> Local.t
+end
+
+module Build : sig
+  include Path_intf.S
+  val root : t
+
+  val append_source : t -> Source.t -> t
+
+  val of_string : ?error_loc:Loc0.t -> string -> t
+  module L : sig
+    val relative : ?error_loc:Loc0.t -> t -> string list -> t
+  end
+
+  val relative : ?error_loc:Loc0.t -> t -> string -> t
+  val split_first_component : t -> (string * Relative.t) option
+  val explode : t -> string list
+
 end
 
 (** In the outside world *)
@@ -34,13 +95,6 @@ include Path_intf.S
 
 val hash : t -> int
 
-module Set : sig
-  include Set.S with type elt = t
-  val to_sexp : t Sexp.Encoder.t
-  val of_string_set : String.Set.t -> f:(string -> elt) -> t
-end
-
-module Map : Map.S with type key = t
 module Table : Hashtbl.S with type key = t
 
 val of_string : ?error_loc:Loc0.t -> string -> t
@@ -74,7 +128,9 @@ val descendant : t -> of_:t -> t option
 val is_descendant : t -> of_:t -> bool
 
 val append : t -> t -> t
+val append_relative : t -> Relative.t -> t
 val append_local : t -> Local.t -> t
+val append_source : t -> Source.t -> t
 
 val parent : t -> t option
 val parent_exn : t -> t
@@ -86,9 +142,14 @@ val extend_basename : t -> suffix:string -> t
     {[
       extract_build_context "_build/blah/foo/bar" = Some ("blah", "foo/bar")
     ]}
+
+    It doesn't work correctly (doesn't return a sensible source path) for build
+    directories that are not build contexts, e.g. "_build/install" and "_build/.aliases".
 *)
-val extract_build_context     : t -> (string * t) option
-val extract_build_context_exn : t -> (string * t)
+val extract_build_context     : t -> (string * Source.t) option
+val extract_build_context_exn : t -> (string * Source.t)
+
+val extract_build_dir_first_component     : t -> (string * Relative.t) option
 
 (** Same as [extract_build_context] but return the build context as a path:
 
@@ -96,15 +157,19 @@ val extract_build_context_exn : t -> (string * t)
       extract_build_context "_build/blah/foo/bar" = Some ("_build/blah", "foo/bar")
     ]}
 *)
-val extract_build_context_dir     : t -> (t * t) option
-val extract_build_context_dir_exn : t -> (t * t)
+val extract_build_context_dir     : t -> (t * Source.t) option
+val extract_build_context_dir_exn : t -> (t * Source.t)
 
 (** Drop the "_build/blah" prefix *)
-val drop_build_context : t -> t option
-val drop_build_context_exn : t -> t
+val drop_build_context : t -> Source.t option
+val drop_build_context_exn : t -> Source.t
 
 (** Drop the "_build/blah" prefix if present, return [t] otherwise *)
 val drop_optional_build_context : t -> t
+
+(** Drop the "_build/blah" prefix if present, return [t] if it's a source file,
+    otherwise fail. *)
+val drop_optional_build_context_src_exn : t -> Source.t
 
 (** Transform managed paths so that they are descedant of
     [sandbox_dir]. *)
@@ -121,6 +186,7 @@ val is_in_build_dir : t -> bool
 
 (** [is_in_build_dir t = is_managed t && not (is_in_build_dir t)] *)
 val is_in_source_tree : t -> bool
+val as_in_source_tree : t -> Source.t option
 
 val is_alias_stamp_file : t -> bool
 
@@ -154,6 +220,8 @@ val ensure_build_dir_exists : unit -> unit
     paths are converted to strings elsewhere. *)
 val set_build_dir : Kind.t -> unit
 
+val source : Source.t -> t
+
 (** paths guaranteed to be in the source directory *)
 val in_source : string -> t
 
@@ -177,6 +245,6 @@ end
     this returns the path itself.
     For external paths, it returns a path that is relative to the current
     directory. For example, the local part of [/a/b] is [./a/b]. *)
-val local_part : t -> Local.t
+val local_part : t -> Relative.t
 
 val stat : t -> Unix.stats

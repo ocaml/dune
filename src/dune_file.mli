@@ -480,7 +480,7 @@ module Stanzas : sig
       depreciated jbuilder syntax or the version of dune syntax specified by the
       current [project]. *)
   val parse
-    :  file:Path.t
+    :  file:Path.Source.t
     -> kind:Dune_lang.Syntax.t
     -> Dune_project.t
     -> Dune_lang.Ast.t list

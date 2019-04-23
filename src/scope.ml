@@ -111,7 +111,7 @@ module DB = struct
       | Ok x -> x
       | Error (_name, project1, project2) ->
         let to_sexp (project : Dune_project.t) =
-          Sexp.Encoder.(pair Dune_project.Name.to_sexp Path.Local.to_sexp)
+          Sexp.Encoder.(pair Dune_project.Name.to_sexp Path.Source.to_sexp)
             (Dune_project.name project, Dune_project.root project)
         in
         Exn.code_error "Scope.DB.create got two projects with the same name"
@@ -131,7 +131,7 @@ module DB = struct
         let db = Lib.DB.create_from_library_stanzas libs
                    ~parent:public_libs ~lib_config in
         let root =
-          Path.append_local build_context_dir (Dune_project.root project) in
+          Path.append_source build_context_dir (Dune_project.root project) in
         Some { project; db; root })
 
   let create ~projects ~context ~installed_libs ~lib_config internal_libs =

@@ -4,7 +4,7 @@ open Dune_file
 
 module Dune_file = struct
   type t =
-    { dir     : Path.t
+    { dir     : Path.Source.t
     ; project : Dune_project.t
     ; stanzas : Stanzas.t
     ; kind    : Dune_lang.Syntax.t
@@ -30,8 +30,8 @@ end
 
 module Dune_files = struct
   type script =
-    { dir     : Path.t
-    ; file    : Path.t
+    { dir     : Path.Source.t
+    ; file    : Path.Source.t
     ; project : Dune_project.t
     ; kind    : Dune_lang.Syntax.t
     }
@@ -171,12 +171,13 @@ end
     in
     Fiber.parallel_map dynamic ~f:(fun { dir; file; project; kind } ->
       let generated_dune_file =
-        Path.append (Path.relative generated_dune_files_dir context.name) file
+        Path.append_source (Path.relative generated_dune_files_dir context.name) file
       in
       let wrapper = Path.extend_basename generated_dune_file ~suffix:".ml" in
       ensure_parent_dir_exists generated_dune_file;
       let requires =
-        create_plugin_wrapper context ~exec_dir:dir ~plugin:file ~wrapper
+        create_plugin_wrapper context
+          ~exec_dir:(Path.source dir) ~plugin:(Path.source file) ~wrapper
           ~target:generated_dune_file ~kind
       in
       let context = Option.value context.for_host ~default:context in
@@ -202,11 +203,11 @@ end
          ]}
       *)
       let* () =
-        Process.run Strict ~dir ~env:context.env context.ocaml args in
+        Process.run Strict ~dir:(Path.source dir) ~env:context.env context.ocaml args in
       if not (Path.exists generated_dune_file) then
         die "@{<error>Error:@} %s failed to produce a valid dune_file file.\n\
              Did you forgot to call [Jbuild_plugin.V*.send]?"
-          (Path.to_string file);
+          (Path.Source.to_string file);
       Fiber.return
         (Dune_lang.Io.load generated_dune_file ~mode:Many
            ~lexer:(Dune_lang.Lexer.of_syntax kind)
@@ -239,14 +240,16 @@ let interpret ~dir ~project ~ignore_promoted_rules
     Script { dir; project; file; kind = dune_file.kind }
 
 let load ?(ignore_promoted_rules=false) () =
-  let ftree = File_tree.load Path.root in
+  let ftree = File_tree.load Path.Source.root in
   let projects =
     File_tree.fold ftree ~traverse_ignored_dirs:false ~init:[]
       ~f:(fun dir acc ->
         let p = File_tree.Dir.project dir in
-        match Path.kind (File_tree.Dir.path dir) with
-        | Local d when Path.Local.equal d (Dune_project.root p) -> p :: acc
-        | _ -> acc)
+        if Path.Source.equal
+             (File_tree.Dir.path dir)
+             (Dune_project.root p)
+        then p :: acc
+        else acc)
   in
   let packages =
     List.fold_left projects ~init:Package.Name.Map.empty
@@ -259,8 +262,8 @@ let load ?(ignore_promoted_rules=false) () =
           | Some a, Some b ->
             die "Too many opam files for package %S:\n- %s\n- %s"
               (Package.Name.to_string name)
-              (Path.to_string_maybe_quoted (Package.opam_file a))
-              (Path.to_string_maybe_quoted (Package.opam_file b))))
+              (Path.Source.to_string_maybe_quoted (Package.opam_file a))
+              (Path.Source.to_string_maybe_quoted (Package.opam_file b))))
   in
 
   let rec walk dir dune_files =

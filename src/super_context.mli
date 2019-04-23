@@ -107,7 +107,7 @@ val add_alias_action
   -> (unit, Action.t) Build.t
   -> unit
 
-val source_files : t -> src_path:Path.t -> String.Set.t
+val source_files : t -> src_path:Path.Source.t -> String.Set.t
 
 (** [prog_spec t ?hint name] resolve a program. [name] is looked up in the
     workspace, if it is not found in the tree is is looked up in the PATH. If it

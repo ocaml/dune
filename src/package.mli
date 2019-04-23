@@ -20,15 +20,15 @@ end
 
 type t =
   { name                   : Name.t
-  ; path                   : Path.t
+  ; path                   : Path.Source.t
   ; version_from_opam_file : string option
   }
 
 val pp : Format.formatter -> t -> unit
 
-val opam_file : t -> Path.t
+val opam_file : t -> Path.Source.t
 
-val meta_file : t -> Path.t
+val meta_file : t -> Path.Source.t
 
 val to_dyn : t -> Dyn.t
 

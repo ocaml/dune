@@ -45,8 +45,8 @@ type rename_and_edit =
 
 type todo =
   { mutable to_rename_and_edit : rename_and_edit list
-  ; mutable to_add : Path.t list
-  ; mutable to_edit : (Path.t * string) list
+  ; mutable to_add : Path.Source.t list
+  ; mutable to_edit : (Path.Source.t * string) list
   }
 
 let rename_basename base =
@@ -249,10 +249,10 @@ let rec end_offset_of_opam_value : OpamParserTypes.value -> int =
 
 let upgrade_opam_file todo fn =
   let open OpamParserTypes in
-  let s = Io.read_file fn ~binary:true in
+  let s = Io.read_file (Path.source fn) ~binary:true in
   let lb = Lexing.from_string s in
   lb.lex_curr_p <-
-    { pos_fname = Path.to_string fn
+    { pos_fname = Path.Source.to_string fn
     ; pos_lnum  = 1
     ; pos_bol   = 0
     ; pos_cnum  = 0
@@ -337,7 +337,7 @@ let upgrade_opam_file todo fn =
 
 let upgrade_dir todo dir =
   let project = File_tree.Dir.project dir in
-  let project_root = Path.of_local (Dune_project.root project) in
+  let project_root = Dune_project.root project in
   if project_root = File_tree.Dir.path dir then begin
     (match Dune_project.ensure_project_file_exists project with
      | Already_exist -> ()
@@ -345,20 +345,20 @@ let upgrade_dir todo dir =
        todo.to_add <- Dune_project.file project :: todo.to_add);
     Package.Name.Map.iter (Dune_project.packages project) ~f:(fun pkg ->
       let fn = Package.opam_file pkg in
-      if Path.exists fn then upgrade_opam_file todo fn)
+      if Path.exists (Path.source fn) then upgrade_opam_file todo fn)
   end;
   Option.iter (File_tree.Dir.dune_file dir) ~f:(fun dune_file ->
     match dune_file.kind, dune_file.contents with
     | Dune, _ -> ()
     | Jbuild, Ocaml_script fn ->
-      Errors.warn (Loc.in_file fn)
+      Errors.warn (Loc.in_file (Path.source fn))
         "Cannot upgrade this jbuild file as it is using the OCaml syntax.\n\
          You need to upgrade it manually."
     | Jbuild, Plain { path; sexps = _ } ->
-      let files = scan_included_files path in
+      let files = scan_included_files (Path.source path) in
       Path.Map.iteri files ~f:(fun fn (sexps, comments) ->
         upgrade_file todo fn sexps comments
-          ~look_for_jbuild_ignore:(fn = path)))
+          ~look_for_jbuild_ignore:(fn = Path.source path)))
 
 let upgrade ft =
   Dune_project.default_dune_language_version := (1, 0);
@@ -395,17 +395,17 @@ let upgrade ft =
     Printf.ksprintf print_to_console fmt
   in
   let* () =
-  Fiber.map_all_unit todo.to_add ~f:(fun fn ->
-    match has_git (Path.parent_exn fn) with
-    | Some dir ->
-      Process.run Strict ~dir ~env:Env.initial
-        (Lazy.force git)
-        ["add"; Path.reach fn ~from:dir]
-    | None -> Fiber.return ())
+    Fiber.map_all_unit todo.to_add ~f:(fun fn ->
+      match has_git (Path.source (Path.Source.parent_exn fn)) with
+      | Some dir ->
+        Process.run Strict ~dir ~env:Env.initial
+          (Lazy.force git)
+          ["add"; Path.reach (Path.source fn) ~from:dir]
+      | None -> Fiber.return ())
   in
   List.iter todo.to_edit ~f:(fun (fn, s) ->
-    log "Upgrading %s...\n" (Path.to_string_maybe_quoted fn);
-    Io.write_file fn s ~binary:true);
+    log "Upgrading %s...\n" (Path.Source.to_string_maybe_quoted fn);
+    Io.write_file (Path.source fn) s ~binary:true);
   Fiber.map_all_unit todo.to_rename_and_edit ~f:(fun x ->
     let { original_file
         ; new_file

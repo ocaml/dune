@@ -74,16 +74,16 @@ let rule_loc ~file_tree ~info ~dir =
   match (info : Rule.Info.t) with
   | From_dune_file loc -> loc
   | _ ->
-    let dir = Path.drop_optional_build_context dir in
+    let dir = Path.drop_optional_build_context_src_exn dir in
     let file =
       match
         Option.bind (File_tree.find_dir file_tree dir)
           ~f:File_tree.Dir.dune_file
       with
       | Some file -> File_tree.Dune_file.path file
-      | None      -> Path.relative dir "_unknown_"
+      | None      -> Path.Source.relative dir "_unknown_"
     in
-    Loc.in_file file
+    Loc.in_file (Path.source file)
 
 module Internal_rule = struct
   module Id = struct
@@ -182,7 +182,7 @@ module Alias0 = struct
     ignore
       (find_dir_specified_on_command_line ~dir ~file_tree : File_tree.Dir.t);
     Build.paths (List.map contexts ~f:(fun ctx ->
-      let dir = Path.append (Path.(relative build_dir) ctx) dir in
+      let dir = Path.append_source (Path.(relative build_dir) ctx) dir in
       stamp_file (make ~dir name)))
 
   open Build.O
@@ -192,7 +192,7 @@ module Alias0 = struct
       File_tree.Dir.fold dir ~traverse_ignored_dirs:false
         ~init:(Build.return true)
         ~f:(fun dir acc ->
-          let path = Path.append ctx_dir (File_tree.Dir.path dir) in
+          let path = Path.append_source ctx_dir (File_tree.Dir.path dir) in
           let fn = stamp_file (make ~dir:path name) in
           acc
           >>>
@@ -206,7 +206,7 @@ module Alias0 = struct
     | None ->
       Build.fail { fail = fun () ->
         Errors.fail loc "Don't know about directory %s!"
-          (Path.to_string_maybe_quoted src_dir) }
+          (Path.Source.to_string_maybe_quoted src_dir) }
     | Some dir ->
       let name = Alias.name t in
       dep_rec_internal ~name ~dir ~ctx_dir
@@ -215,7 +215,7 @@ module Alias0 = struct
         Errors.fail loc
           "This alias is empty.\n\
            Alias %S is not defined in %s or any of its descendants."
-          name (Path.to_string_maybe_quoted src_dir)
+          name (Path.Source.to_string_maybe_quoted src_dir)
 
   let dep_rec_multi_contexts ~dir:src_dir ~name ~file_tree ~contexts =
     let open Build.O in
@@ -229,7 +229,7 @@ module Alias0 = struct
       die "From the command line:\n\
            @{<error>Error@}: Alias %S is empty.\n\
            It is not defined in %s or any of its descendants."
-        name (Path.to_string_maybe_quoted src_dir)
+        name (Path.Source.to_string_maybe_quoted src_dir)
 
   let package_install ~(context : Context.t) ~pkg =
     make (sprintf ".%s-files" (Package.Name.to_string pkg))
@@ -582,6 +582,12 @@ let string_of_paths set =
                                 (Path.drop_optional_build_context p)))
   |> String.concat ~sep:"\n"
 
+let string_of_source_paths set =
+  Path.Source.Set.to_list set
+  |> List.map ~f:Path.source
+  |> Path.Set.of_list
+  |> string_of_paths
+
 let set_rule_generators generators =
   let t = t () in
   assert (String.Map.keys generators = String.Map.keys t.contexts);
@@ -589,33 +595,38 @@ let set_rule_generators generators =
 
 let get_dir_status t ~dir =
   Path.Table.find_or_add t.dirs dir ~f:(fun _ ->
-    if Path.is_in_source_tree dir then
-      Dir_status.Loaded (File_tree.files_of t.file_tree dir)
-    else if Path.equal dir Path.build_dir then
-      (* Not allowed to look here *)
-      Dir_status.Loaded Path.Set.empty
-    else if not (Path.is_managed dir) then
-      Dir_status.Loaded
-        (match Path.readdir_unsorted dir with
-         | Error Unix.ENOENT -> Path.Set.empty
-         | Error m ->
-           Errors.warn Loc.none
-             "Unable to read %s@.Reason: %s@."
-             (Path.to_string_maybe_quoted dir)
-             (Unix.error_message m);
-           Path.Set.empty
-         | Ok files ->
-           Path.Set.of_list (List.map files ~f:(Path.relative dir)))
-    else begin
-      let (ctx, sub_dir) = Path.extract_build_context_exn dir in
-      if ctx = ".aliases" then
-        Forward (Path.(append build_dir) sub_dir)
-      else if ctx <> "install" && not (String.Map.mem t.contexts ctx) then
+    match Path.as_in_source_tree dir with
+    | Some dir ->
+      Dir_status.Loaded (
+        Path.Source.Set.to_list (File_tree.files_of t.file_tree dir)
+        |> List.map ~f:Path.source
+        |> Path.Set.of_list)
+    | None ->
+      if Path.equal dir Path.build_dir then
+        (* Not allowed to look here *)
         Dir_status.Loaded Path.Set.empty
-      else
-        Collecting_rules
-          (Dir_status.Rules_collector.create_pending ~info:(Path.to_sexp dir) ())
-    end)
+      else if not (Path.is_managed dir) then
+        Dir_status.Loaded
+          (match Path.readdir_unsorted dir with
+           | Error Unix.ENOENT -> Path.Set.empty
+           | Error m ->
+             Errors.warn Loc.none
+               "Unable to read %s@.Reason: %s@."
+               (Path.to_string_maybe_quoted dir)
+               (Unix.error_message m);
+             Path.Set.empty
+           | Ok files ->
+             Path.Set.of_list (List.map files ~f:(Path.relative dir)))
+      else begin
+        let (ctx, sub_dir) = Path.extract_build_context_exn dir in
+        if ctx = ".aliases" then
+          Forward (Path.(append_source build_dir) sub_dir)
+        else if ctx <> "install" && not (String.Map.mem t.contexts ctx) then
+          Dir_status.Loaded Path.Set.empty
+        else
+          Collecting_rules
+            (Dir_status.Rules_collector.create_pending ~info:(Path.to_sexp dir) ())
+      end)
 
 let add_spec t fn rule =
   match Path.Table.find t.files fn with
@@ -726,7 +737,7 @@ let no_rule_found =
       if String.Map.mem t.contexts ctx then
         fail fn ~loc
       else
-        let fn = Path.append (Path.relative Path.build_dir ctx) fn' in
+        let fn = Path.append_source (Path.relative Path.build_dir ctx) fn' in
         die "Trying to build alias %s but build context %s doesn't exist.%s"
           (Path.to_string_maybe_quoted fn)
           ctx
@@ -763,7 +774,9 @@ let fix_up_legacy_fallback_rules t ~file_tree_dir ~dir rules =
     else begin
       let source_files =
         File_tree.Dir.files ftdir
-        |> Path.Set.of_string_set ~f:(Path.relative dir)
+        |> String.Set.to_list
+        |> List.map ~f:(Path.relative dir)
+        |> Path.Set.of_list
       in
       List.map rules ~f:(fun (rule : Pre_rule.t) ->
         match rule.mode with
@@ -857,9 +870,9 @@ and start_rule t _rule =
   t.hook Rule_started
 
 and setup_copy_rules t ~ctx_dir ~non_target_source_files =
-  Path.Set.iter non_target_source_files ~f:(fun path ->
-    let ctx_path = Path.append ctx_dir path in
-    let build = Build.copy ~src:path ~dst:ctx_path in
+  Path.Source.Set.iter non_target_source_files ~f:(fun path ->
+    let ctx_path = Path.append_source ctx_dir path in
+    let build = Build.copy ~src:(Path.source path) ~dst:ctx_path in
     compile_rule t (Pre_rule.make build ~context:None ~env:None
                       ~info:Source_file_copy))
 
@@ -920,13 +933,13 @@ and load_dir_step2_exn t ~dir ~collector =
       let gen_rules = String.Map.find_exn (Fdecl.get t.gen_rules) context_name in
       handle_add_rule_effects
         (fun () ->
-           gen_rules ~dir (Path.explode_exn sub_dir))
+           gen_rules ~dir (Path.Source.explode sub_dir))
   in
   let collector = Dir_status.Rules_collector.freeze collector in
   let rules = Dir_status.Rules_collector.rules collector in
 
   (* Compute alias rules *)
-  let alias_dir = Path.append (Path.relative alias_dir context_name) sub_dir in
+  let alias_dir = Path.append_source (Path.relative alias_dir context_name) sub_dir in
   let alias_rules, alias_stamp_files =
     let open Build.O in
     let aliases =
@@ -1023,7 +1036,10 @@ and load_dir_step2_exn t ~dir ~collector =
            acc_ignored))
   in
   let source_files_to_ignore =
-    Path.Set.map source_files_to_ignore ~f:Path.drop_build_context_exn in
+    Path.Set.to_list source_files_to_ignore
+    |> List.map ~f:Path.drop_build_context_exn
+    |> Path.Source.Set.of_list
+  in
   (* Take into account the source files *)
   let targets, to_copy, subdirs_to_keep =
     if is_install then
@@ -1033,18 +1049,21 @@ and load_dir_step2_exn t ~dir ~collector =
     else
       let files, subdirs =
         match file_tree_dir with
-        | None -> (Path.Set.empty, String.Set.empty)
+        | None -> (Path.Source.Set.empty, String.Set.empty)
         | Some dir ->
           (File_tree.Dir.file_paths    dir,
            File_tree.Dir.sub_dir_names dir)
       in
-      let files = Path.Set.diff files source_files_to_ignore in
-      if Path.Set.is_empty files then
+      let files = Path.Source.Set.diff files source_files_to_ignore in
+      if Path.Source.Set.is_empty files then
         (user_rule_targets, None, subdirs)
       else
         let ctx_path = Path.(relative build_dir) context_name in
         (Path.Set.union user_rule_targets
-           (Path.Set.map files ~f:(Path.append ctx_path)),
+           (Path.Source.Set.to_list files
+            |> List.map ~f:(Path.append_source ctx_path)
+            |> Path.Set.of_list
+           ),
          Some (ctx_path, files),
          subdirs)
   in
@@ -1070,21 +1089,24 @@ and load_dir_step2_exn t ~dir ~collector =
             (* All targets are in [dir] and we know it correspond to a
                directory of a build context since there are source
                files to copy, so this call can't fail. *)
-            Path.Set.map rule.targets ~f:Path.drop_build_context_exn
+            Path.Set.to_list rule.targets
+            |> List.map ~f:Path.drop_build_context_exn
+            |> Path.Source.Set.of_list
           in
-          if Path.Set.is_subset source_files_for_targtes ~of_:to_copy then
+          if Path.Source.Set.is_subset source_files_for_targtes ~of_:to_copy then
             (* All targets are present *)
             false
           else begin
-            if Path.Set.is_empty (Path.Set.inter source_files_for_targtes to_copy) then
+            if Path.Source.Set.is_empty
+                 (Path.Source.Set.inter source_files_for_targtes to_copy) then
               (* No target is present *)
               true
             else begin
               let absent_targets =
-                Path.Set.diff source_files_for_targtes to_copy
+                Path.Source.Set.diff source_files_for_targtes to_copy
               in
               let present_targets =
-                Path.Set.diff source_files_for_targtes absent_targets
+                Path.Source.Set.diff source_files_for_targtes absent_targets
               in
               Errors.fail
                 (rule_loc
@@ -1102,8 +1124,8 @@ The following targets are present:
 The following targets are not:
 %s
 "
-                (string_of_paths present_targets)
-                (string_of_paths absent_targets)
+                (string_of_source_paths present_targets)
+                (string_of_source_paths absent_targets)
             end
           end)
   in
@@ -1158,7 +1180,7 @@ let all_targets () =
     File_tree.fold t.file_tree ~traverse_ignored_dirs:true ~init:()
       ~f:(fun dir () ->
         load_dir t
-          ~dir:(Path.append ctx.Context.build_dir (File_tree.Dir.path dir))));
+          ~dir:(Path.append_source ctx.Context.build_dir (File_tree.Dir.path dir))));
   Path.Table.foldi t.files ~init:[] ~f:(fun key _ acc -> key :: acc)
 
 let build_file_def =
@@ -1408,18 +1430,18 @@ let () =
               match into with
               | None -> in_source_tree
               | Some { loc; dir } ->
-                Path.relative
-                  (Path.relative (Path.parent_exn in_source_tree) dir
+                Path.Source.relative
+                  (Path.Source.relative (Path.Source.parent_exn in_source_tree) dir
                      ~error_loc:loc)
-                  (Path.basename in_source_tree)
+                  (Path.Source.basename in_source_tree)
             in
-            if not (Path.exists in_source_tree) ||
+            if not (Path.exists (Path.source in_source_tree)) ||
                (Utils.Cached_digest.file path <>
-                Utils.Cached_digest.file in_source_tree) then begin
+                Utils.Cached_digest.file (Path.source in_source_tree)) then begin
               if lifetime = Until_clean then
-                Promoted_to_delete.add in_source_tree;
-              Scheduler.ignore_for_watch in_source_tree;
-              Io.copy_file ~src:path ~dst:in_source_tree ()
+                Promoted_to_delete.add (Path.source in_source_tree);
+              Scheduler.ignore_for_watch (Path.source in_source_tree);
+              Io.copy_file ~src:path ~dst:(Path.source in_source_tree) ()
             end
           end)
     end;
@@ -1779,7 +1801,7 @@ include Print_rules
 module All_lib_deps : sig
   val all_lib_deps
     :  request:(unit, unit) Build.t
-    -> Lib_deps_info.t Path.Map.t String.Map.t Fiber.t
+    -> Lib_deps_info.t Path.Source.Map.t String.Map.t Fiber.t
 end = struct
   let static_deps_of_request request =
     Static_deps.paths @@
@@ -1830,7 +1852,7 @@ end = struct
           | Some (context, p) -> ((context, (p, deps)) :: acc))
     |> String.Map.of_list_multi
     |> String.Map.filteri ~f:(fun ctx _ -> String.Map.mem t.contexts ctx)
-    |> String.Map.map ~f:(Path.Map.of_list_reduce ~f:Lib_deps_info.merge)
+    |> String.Map.map ~f:(Path.Source.Map.of_list_reduce ~f:Lib_deps_info.merge)
 end
 
 include All_lib_deps

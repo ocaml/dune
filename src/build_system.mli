@@ -100,7 +100,7 @@ module Alias : sig
 
   (** Implements [@@alias] on the command line *)
   val dep_multi_contexts
-    :  dir:Path.t
+    :  dir:Path.Source.t
     -> name:string
     -> file_tree:File_tree.t
     -> contexts:string list
@@ -115,7 +115,7 @@ module Alias : sig
 
   (** Implements [@alias] on the command line *)
   val dep_rec_multi_contexts
-    :  dir:Path.t
+    :  dir:Path.Source.t
     -> name:string
     -> file_tree:File_tree.t
     -> contexts:string list
@@ -164,7 +164,7 @@ val is_target : Path.t -> bool
     needed to build this request, by context name *)
 val all_lib_deps
   :  request:(unit, unit) Build.t
-  -> Lib_deps_info.t Path.Map.t String.Map.t Fiber.t
+  -> Lib_deps_info.t Path.Source.Map.t String.Map.t Fiber.t
 
 (** List of all buildable targets *)
 val all_targets : unit -> Path.t list

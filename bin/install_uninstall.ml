@@ -6,7 +6,7 @@ let interpret_destdir ~destdir path =
   | None ->
     path
   | Some prefix ->
-    Path.append_local
+    Path.append_relative
       (Path.of_string prefix)
       (Path.local_part path)
 
@@ -181,7 +181,7 @@ let install_uninstall ~what =
         List.concat_map pkgs ~f:(fun pkg ->
           let fn = resolve_package_install workspace pkg in
           List.map workspace.contexts ~f:(fun ctx ->
-            let fn = Path.append ctx.Context.build_dir fn in
+            let fn = Path.append_source ctx.Context.build_dir fn in
             if Path.exists fn then
               Left (ctx, (pkg, fn))
             else

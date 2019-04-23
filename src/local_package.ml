@@ -131,7 +131,7 @@ module Of_sctx = struct
       Super_context.packages sctx
       |> Package.Name.Map.map ~f:(fun (pkg : Package.t) ->
         let odig_files =
-          let files = Super_context.source_files sctx ~src_path:Path.root in
+          let files = Super_context.source_files sctx ~src_path:Path.Source.root in
           String.Set.fold files ~init:[] ~f:(fun fn acc ->
             if is_odig_doc_file fn then
               Path.relative ctx.build_dir fn :: acc
@@ -180,9 +180,9 @@ let lib_stanzas t = t.lib_stanzas
 let mlds t = Lazy.force t.mlds
 
 let package t = t.pkg
-let opam_file t = Path.append t.ctx_build_dir (Package.opam_file t.pkg)
-let meta_file t = Path.append t.ctx_build_dir (Package.meta_file t.pkg)
-let build_dir t = Path.append t.ctx_build_dir t.pkg.path
+let opam_file t = Path.append_source t.ctx_build_dir (Package.opam_file t.pkg)
+let meta_file t = Path.append_source t.ctx_build_dir (Package.meta_file t.pkg)
+let build_dir t = Path.append_source t.ctx_build_dir t.pkg.path
 let name t = t.pkg.name
 let dune_package_file t =
   Path.relative (build_dir t)

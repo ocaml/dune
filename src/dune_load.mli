@@ -2,7 +2,7 @@ open! Stdune
 
 module Dune_file : sig
   type t =
-    { dir     : Path.t
+    { dir     : Path.Source.t
     ; project : Dune_project.t
     ; stanzas : Dune_file.Stanzas.t
     ; kind    : Dune_lang.Syntax.t

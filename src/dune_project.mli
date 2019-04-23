@@ -43,7 +43,7 @@ type t
 val packages : t -> Package.t Package.Name.Map.t
 val version : t -> string option
 val name : t -> Name.t
-val root : t -> Path.Local.t
+val root : t -> Path.Source.t
 val stanza_parser : t -> Stanza.t list Dune_lang.Decoder.t
 val allow_approx_merlin : t -> bool
 
@@ -51,7 +51,7 @@ val equal : t -> t -> bool
 val hash : t -> int
 
 (** Return the path of the project file. *)
-val file : t -> Path.t
+val file : t -> Path.Source.t
 
 module Lang : sig
   (** [register id stanzas_parser] register a new language. Users will
@@ -92,7 +92,7 @@ end
 
 (** Load a project description from the following directory. [files]
     is the set of files in this directory. *)
-val load : dir:Path.t -> files:String.Set.t -> t option
+val load : dir:Path.Source.t -> files:String.Set.t -> t option
 
 (** Read the [name] file from a dune-project file *)
 val read_name : Path.t -> (Loc.t * string) option
@@ -135,5 +135,3 @@ val implicit_transitive_deps : t -> bool
 val dune_version : t -> Syntax.Version.t
 
 val pp : t Fmt.t
-
-val in_source_root : t -> Path.t

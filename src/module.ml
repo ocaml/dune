@@ -517,7 +517,7 @@ let ml_source =
           | ".rei" -> ".re.mli"
           | _     ->
             Errors.fail
-              (Loc.in_file (Path.drop_build_context_exn f.path))
+              (Loc.in_file (Path.source (Path.drop_build_context_exn f.path)))
               "Unknown file extension for reason source file: %S"
               ext
         in

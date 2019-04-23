@@ -438,7 +438,7 @@ let setup_pkg_html_rules sctx ~pkg ~libs =
 let setup_package_aliases sctx (pkg : Package.t) =
   let ctx = Super_context.context sctx in
   let alias =
-    let dir = Path.append ctx.build_dir pkg.Package.path in
+    let dir = Path.append_source ctx.build_dir pkg.Package.path in
     Alias.doc ~dir
   in
   Build_system.Alias.add_deps alias (

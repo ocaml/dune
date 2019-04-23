@@ -297,22 +297,22 @@ Code_error
 
 Path.drop_build_context (Path.relative Path.build_dir "foo/bar")
 [%%expect{|
-- : Path.t option = Some (In_source_tree "bar")
+- : Path.Source.t option = Some <abstr>
 |}]
 
 Path.drop_build_context (Path.of_string "foo/bar")
 [%%expect{|
-- : Path.t option = None
+- : Path.Source.t option = None
 |}]
 
 Path.drop_build_context (e "/foo/bar")
 [%%expect{|
-- : Path.t option = None
+- : Path.Source.t option = None
 |}]
 
 Path.drop_build_context Path.build_dir
 [%%expect{|
-- : Path.t option = None
+- : Path.Source.t option = None
 |}]
 
 Path.is_in_build_dir Path.build_dir
@@ -360,15 +360,15 @@ Path.relative (r "foo") "../_build"
 
 Path.local_part (Path.of_string "/c/d")
 [%%expect{|
-- : Path.Local.t = c/d
+- : Path.Relative.t = <abstr>
 |}]
 
 Path.local_part (Path.insert_after_build_dir_exn Path.build_dir "c/d")
 [%%expect{|
-- : Path.Local.t = c/d
+- : Path.Relative.t = <abstr>
 |}]
 
 Path.local_part (r "c/d")
 [%%expect{|
-- : Path.Local.t = c/d
+- : Path.Relative.t = <abstr>
 |}]

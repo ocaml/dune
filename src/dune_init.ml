@@ -157,7 +157,7 @@ module Init_context = struct
 
   let make path =
     let project =
-      match Dune_project.load ~dir:Path.root ~files:String.Set.empty with
+      match Dune_project.load ~dir:Path.Source.root ~files:String.Set.empty with
       | Some p -> p
       | None   -> Lazy.force Dune_project.anonymous
     in

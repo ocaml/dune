@@ -1617,7 +1617,7 @@ let to_dune_lib ({ name ; info ; _ } as lib) ~lib_modules ~foreign_objects ~dir 
       | None ->
         match Path.drop_build_context info.src_dir with
         | None -> info.src_dir
-        | Some src_dir -> Path.(of_string (to_absolute_filename src_dir))
+        | Some src_dir -> Path.(of_string (to_absolute_filename (Path.source src_dir)))
     )
     else None
   in

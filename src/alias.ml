@@ -70,7 +70,7 @@ let find_dir_specified_on_command_line ~dir ~file_tree =
   | None ->
     die "From the command line:\n\
          @{<error>Error@}: Don't know about directory %s!"
-      (Path.to_string_maybe_quoted dir)
+      (Path.Source.to_string_maybe_quoted dir)
   | Some dir -> dir
 
 let standard_aliases = Hashtbl.create 7

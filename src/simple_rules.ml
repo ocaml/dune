@@ -66,18 +66,18 @@ let copy_files sctx ~dir ~expander ~src_dir (def: Copy_files.t) =
   let loc = String_with_vars.loc def.glob in
   let glob_in_src =
     let src_glob = Expander.expand_str expander def.glob in
-    Path.relative src_dir src_glob ~error_loc:loc
+    Path.Source.relative src_dir src_glob ~error_loc:loc
   in
   let since = (1, 3) in
   if def.syntax_version < since
-  && not (Path.is_descendant glob_in_src ~of_:src_dir) then
+  && not (Path.Source.is_descendant glob_in_src ~of_:src_dir) then
     Syntax.Error.since loc Stanza.syntax since
       ~what:(sprintf "%s is not a sub-directory of %s. This"
-               (Path.to_string_maybe_quoted glob_in_src)
-               (Path.to_string_maybe_quoted src_dir));
-  let src_in_src = Path.parent_exn glob_in_src in
+               (Path.Source.to_string_maybe_quoted glob_in_src)
+               (Path.Source.to_string_maybe_quoted src_dir));
+  let src_in_src = Path.Source.parent_exn glob_in_src in
   let pred =
-    Path.basename glob_in_src
+    Path.Source.basename glob_in_src
     |> Glob.of_string_exn (String_with_vars.loc def.glob)
     |> Glob.to_pred
   in
@@ -86,9 +86,9 @@ let copy_files sctx ~dir ~expander ~src_dir (def: Copy_files.t) =
     Errors.fail
       loc
       "cannot find directory: %a"
-      Path.pp src_in_src;
+      Path.Source.pp src_in_src;
   (* add rules *)
-  let src_in_build = Path.append (SC.context sctx).build_dir src_in_src in
+  let src_in_build = Path.append_source (SC.context sctx).build_dir src_in_src in
   let files =
     Build_system.eval_pred (File_selector.create ~dir:src_in_build pred) in
   Path.Set.map files ~f:(fun file_src ->

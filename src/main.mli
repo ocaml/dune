@@ -13,7 +13,7 @@ type build_system =
   }
 
 (* Returns [Error ()] if [pkg] is unknown *)
-val package_install_file : workspace -> Package.Name.t -> (Path.t, unit) result
+val package_install_file : workspace -> Package.Name.t -> (Path.Source.t, unit) result
 
 (** Scan the source tree and discover the overall layout of the workspace. *)
 val scan_workspace

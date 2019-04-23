@@ -131,9 +131,27 @@ end = struct
     end)
     : Comparable.OPS with type t := t
   )
+
+  let to_string_maybe_quoted t =
+    String.maybe_quoted (to_string t)
+
+  let parent_exn t =
+    let res = parent t in
+    if res = t then Exn.code_error "Path.External.parent_exn called on a root path" []
+    else res
+
+  let root = of_string "/"
+
+  let is_root = equal root
+
+  let is_descendant b ~of_:a =
+    if is_root a then true
+    else
+      String.is_prefix ~prefix:(to_string a ^ "/") (to_string b)
+
 end
 
-module Local : sig
+module Relative : sig
   include Path_intf.S
 
   val root : t
@@ -151,7 +169,6 @@ module Local : sig
   module L : sig
     val relative : ?error_loc:Loc0.t -> t -> string list -> t
   end
-  module Set : Set.S with type elt = t
 
   module Prefix : sig
     type local = t
@@ -163,8 +180,13 @@ module Local : sig
     (* for all local path p, drop (invalid p = None) *)
     val invalid : t
   end with type local := t
+
+  val split_first_component : t -> (string * t) option
+  val explode : t -> string list
+  val of_relative : t -> t
+
 end = struct
-  (* either "." for root, either a '/' separated list of components
+  (* either "." for root, or a '/' separated list of components
      other that ".", ".."  and not containing '/'. *)
   include Interned.No_interning(struct
       let initial_size = 512
@@ -421,7 +443,37 @@ end = struct
     end)
     : Comparable.OPS with type t := t
   )
+
+  let split_first_component t =
+    if is_root t then None
+    else
+      let t = (to_string t) in
+      begin match String.lsplit2 t ~on:'/' with
+      | None -> Some (t, root)
+      | Some (before, after) ->
+        Some
+          ( before
+          , after
+            |> of_string)
+      end
+
+  let explode p =
+    if is_root p then []
+    else String.split (to_string p) ~on:'/'
+
+  let to_string_maybe_quoted t =
+    String.maybe_quoted (to_string t)
+
+  let parent_exn = parent
+  let of_relative t = t
 end
+
+module Build = struct
+  include Relative
+  let append_source = append
+end
+module Local = Relative
+module Source0 = Relative
 
 let (abs_root, set_root) =
   let root_dir = ref None in
@@ -481,7 +533,7 @@ module Kind = struct
     | Local t -> Local.mkdir_p t
     | External t -> External.mkdir_p t
 
-  let append_local x y =
+  let append_relative x y =
     match x with
     | Local x -> Local (Local.append x y)
     | External x -> External (External.relative x (Local.to_string y))
@@ -530,15 +582,15 @@ let (build_dir_kind, build_dir_prefix, set_build_dir) =
 module T : sig
   type t = private
     | External of External.t
-    | In_source_tree of Local.t
-    | In_build_dir of Local.t
+    | In_source_tree of Relative.t
+    | In_build_dir of Relative.t
 
   val compare : t -> t -> Ordering.t
   val equal : t -> t -> bool
   val hash : t -> int
 
-  val in_build_dir : Local.t -> t
-  val in_source_tree : Local.t -> t
+  val in_build_dir : Relative.t -> t
+  val in_source_tree : Relative.t -> t
   val external_ : External.t -> t
 end = struct
   type t =
@@ -578,7 +630,7 @@ let is_root = function
 module Map = Map.Make(T)
 
 let kind = function
-  | In_build_dir p -> Kind.append_local (Lazy.force build_dir_kind) p
+  | In_build_dir p -> Kind.append_relative (Lazy.force build_dir_kind) p
   | In_source_tree s -> Kind.Local s
   | External s -> Kind.External s
 
@@ -703,11 +755,14 @@ let is_descendant t ~of_ =
     Local.is_descendant t ~of_
   | _ -> false
 
-let append_local a b =
+let append_relative a b =
   match a with
-  | In_source_tree a -> in_source_tree (Local.append a b)
-  | In_build_dir a -> in_build_dir (Local.append a b)
-  | External a -> external_ (External.relative a (Local.to_string b))
+  | In_source_tree a -> in_source_tree (Relative.append a b)
+  | In_build_dir a -> in_build_dir (Relative.append a b)
+  | External a -> external_ (External.relative a (Relative.to_string b))
+
+let append_local = append_relative
+let append_source = append_relative
 
 let append a b =
   match b with
@@ -717,7 +772,7 @@ let append a b =
       [ "a", to_sexp a
       ; "b", to_sexp b
       ]
-  | In_source_tree b -> append_local a b
+  | In_source_tree b -> append_relative a b
 
 let basename t =
   match kind t with
@@ -756,6 +811,11 @@ let is_in_source_tree = function
   | In_build_dir _
   | External _ -> false
 
+let as_in_source_tree = function
+  | In_source_tree s -> Some s
+  | In_build_dir _
+  | External _ -> None
+
 let is_alias_stamp_file = function
   | In_build_dir s -> String.is_prefix (Local.to_string s) ~prefix:".aliases/"
   | In_source_tree _
@@ -764,19 +824,20 @@ let is_alias_stamp_file = function
 let extract_build_context = function
   | In_source_tree _
   | External _ -> None
-  | In_build_dir p when Local.is_root p -> None
+  | In_build_dir p when Relative.is_root p -> None
   | In_build_dir t ->
-    let t = Local.to_string t in
+    let t = Relative.to_string t in
     begin match String.lsplit2 t ~on:'/' with
     | None ->
-      Some (t, in_source_tree Local.root )
+      Some (t, Source0.root)
     | Some (before, after) ->
       Some
         ( before
         , after
-          |> Local.of_string
-          |> in_source_tree )
+          |> Source0.of_string )
     end
+
+let extract_build_dir_first_component = extract_build_context
 
 let extract_build_context_exn t =
   match extract_build_context t with
@@ -791,13 +852,12 @@ let extract_build_context_dir = function
   | In_build_dir t ->
     let t_str = Local.to_string t in
     begin match String.lsplit2 t_str ~on:'/' with
-    | None -> Some (in_build_dir t, in_source_tree Local.root)
+    | None -> Some (in_build_dir t, Source0.root)
     | Some (before, after) ->
       Some
         ( in_build_dir (Local.of_string before)
         , after
-          |> Local.of_string
-          |> in_source_tree
+          |> Source0.of_string
         )
     end
 
@@ -818,16 +878,28 @@ let drop_build_context_exn t =
 let drop_optional_build_context t =
   match extract_build_context t with
   | None -> t
-  | Some (_, t) -> t
+  | Some (_, t) -> in_source_tree t
 
-let local_src   = Local.of_string "src"
-let local_build = Local.of_string "build"
+let drop_optional_build_context_src_exn t =
+  match t with
+  | External _ ->
+    Exn.code_error "drop_optional_build_context_src_exn called on an external path" []
+  | In_build_dir _ ->
+    (match extract_build_context t with
+     | Some (_, s) -> s
+     | None ->
+       Exn.code_error
+         "drop_optional_build_context_src_exn called on a build directory itself" [])
+  | In_source_tree p -> p
+
+let local_src   = Relative.of_string "src"
+let local_build = Relative.of_string "build"
 
 let sandbox_managed_paths ~sandbox_dir t =
   match t with
   | External _ -> t
-  | In_source_tree p -> append_local sandbox_dir (Local.append local_src   p)
-  | In_build_dir   p -> append_local sandbox_dir (Local.append local_build p)
+  | In_source_tree p -> append_relative sandbox_dir (Relative.append local_src   p)
+  | In_build_dir   p -> append_relative sandbox_dir (Relative.append local_build p)
 
 let split_first_component t =
   match kind t, is_root t with
@@ -963,7 +1035,7 @@ let mkdir_p = function
   | In_source_tree s ->
     Local.mkdir_p s
   | In_build_dir k ->
-    Kind.mkdir_p (Kind.append_local (Lazy.force build_dir_kind) k)
+    Kind.mkdir_p (Kind.append_relative (Lazy.force build_dir_kind) k)
 
 let compare x y =
   match x, y with
@@ -1013,13 +1085,10 @@ let pp_debug ppf = function
 module Set = struct
   include Set.Make(T)
   let to_sexp t = Sexp.Encoder.(list to_sexp) (to_list t)
-  let of_string_set ss ~f =
-    String.Set.to_list ss
-    |> List.map ~f
-    |> of_list
 end
 
 let in_source s = in_source_tree (Local.of_string s)
+let source s = in_source_tree s
 
 let is_suffix p ~suffix =
   match p with
@@ -1049,3 +1118,12 @@ let local_part = function
 let stat t = Unix.stat (to_string t)
 
 include (Comparable.Operators(T) : Comparable.OPS with type t := t)
+
+module Source = struct
+  include Source0
+
+  let is_in_build_dir s =
+    is_in_build_dir (of_local s)
+
+  let to_local t = t
+end

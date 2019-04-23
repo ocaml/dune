@@ -45,7 +45,7 @@ val fmt         : dir:Path.t -> t
 val stamp_file : t -> Path.t
 
 val find_dir_specified_on_command_line
-  :  dir:Path.t
+  :  dir:Path.Source.t
   -> file_tree:File_tree.t
   -> File_tree.Dir.t
 

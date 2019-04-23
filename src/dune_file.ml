@@ -1129,7 +1129,7 @@ module Executables = struct
       ; project : Dune_project.t
       ; loc : Loc.t
       ; multi : bool
-      ; file_kind : Dune_lang.syntax
+      ; file_kind : Dune_lang.File_syntax.t
       }
 
     let names t = t.names
@@ -2205,7 +2205,7 @@ module Stanzas = struct
     Dune_project.Lang.register Stanza.syntax stanzas
 
   let parser ~kind project =
-    let syntax_parser (syntax : Dune_lang.Syntax.t) =
+    let syntax_parser (syntax : Dune_lang.File_syntax.t) =
       match syntax with
       | Jbuild -> jbuild_parser
       | Dune   -> Dune_project.stanza_parser project

@@ -2,9 +2,7 @@ open! Stdune
 
 module Atom = Atom
 module Template = Template
-module Syntax = Syntax
-
-type syntax = Syntax.t = Jbuild | Dune
+module File_syntax = File_syntax
 
 type t =
   | Atom of Atom.t
@@ -64,7 +62,7 @@ let pp_quoted =
   fun ppf t -> pp Dune ppf (loop t)
 
 let pp_print_quoted_string ppf s =
-  let syntax = Dune in
+  let syntax = File_syntax.Dune in
   if String.contains s '\n' then begin
     match String.split s ~on:'\n' with
     | [] -> Format.pp_print_string ppf (Escape.quoted ~syntax s)
@@ -78,7 +76,7 @@ let pp_print_quoted_string ppf s =
     Format.pp_print_string ppf (Escape.quoted ~syntax s)
 
 let rec pp_split_strings ppf = function
-  | Atom s -> Format.pp_print_string ppf (Atom.print s Syntax.Dune)
+  | Atom s -> Format.pp_print_string ppf (Atom.print s File_syntax.Dune)
   | Quoted_string s -> pp_print_quoted_string ppf s
   | List [] ->
     Format.pp_print_string ppf "()"

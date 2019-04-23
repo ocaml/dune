@@ -463,7 +463,7 @@ module Stanzas : sig
       decoding the [ast] according to the syntax given by [kind] in the context
       of the [project] *)
   val of_ast
-    :  kind:Dune_lang.Syntax.t
+    :  kind:Dune_lang.File_syntax.t
     -> Dune_project.t
     -> Dune_lang.Ast.t
     -> Stanza.t list
@@ -481,7 +481,7 @@ module Stanzas : sig
       current [project]. *)
   val parse
     :  file:Path.Source.t
-    -> kind:Dune_lang.Syntax.t
+    -> kind:Dune_lang.File_syntax.t
     -> Dune_project.t
     -> Dune_lang.Ast.t list
     -> t

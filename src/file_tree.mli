@@ -22,7 +22,7 @@ module Dune_file : sig
 
   type t = private
     { contents : Contents.t
-    ; kind     : Dune_lang.Syntax.t
+    ; kind     : Dune_lang.File_syntax.t
     }
 
   val path : t -> Path.Source.t

@@ -18,7 +18,7 @@ end
 val syntax : Syntax.t
 
 module File_kind : sig
-  type t = Dune_lang.syntax = Jbuild | Dune
+  type t = Dune_lang.File_syntax.t = Jbuild | Dune
 
   val of_syntax : Syntax.Version.t -> t
 end

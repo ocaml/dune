@@ -1,4 +1,4 @@
 
-val escaped : string -> syntax:Syntax.t -> string
+val escaped : string -> syntax:File_syntax.t -> string
 
-val quoted : string -> syntax:Syntax.t -> string
+val quoted : string -> syntax:File_syntax.t -> string

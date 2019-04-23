@@ -5,6 +5,6 @@ type 'data t =
   ; ctx_dir         : Path.t
   ; data            : 'data
   ; scope           : Scope.t
-  ; kind            : Dune_lang.Syntax.t
+  ; kind            : Dune_lang.File_syntax.t
   ; dune_version    : Syntax.Version.t
   }

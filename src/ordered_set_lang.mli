@@ -97,7 +97,7 @@ module Unexpanded : sig
   val files
     : t
     -> f:(String_with_vars.t -> Path.t)
-    -> Dune_lang.syntax * Path.Set.t
+    -> Dune_lang.File_syntax.t * Path.Set.t
 
   (** Expand [t] using with the given file contents. [file_contents] is a map from
       filenames to their parsed contents. Every [(:include fn)] in [t] is replaced by

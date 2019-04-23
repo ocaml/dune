@@ -162,7 +162,7 @@ let lib_ppxs sctx ~(lib : Dune_file.Library.t) ~scope ~dir_kind =
   | Normal | Ppx_deriver -> []
   | Ppx_rewriter ->
     let name = Dune_file.Library.best_name lib in
-    match (dir_kind : Dune_lang.Syntax.t) with
+    match (dir_kind : Dune_lang.File_syntax.t) with
     | Dune ->
       [Preprocessing.get_compat_ppx_exe sctx ~name ~kind:Dune]
     | Jbuild ->

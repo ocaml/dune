@@ -5,7 +5,7 @@ type t = with_comments:bool -> Lexing.lexbuf -> Token.t
 val token : t
 val jbuild_token : t
 
-val of_syntax : Syntax.t -> t
+val of_syntax : File_syntax.t -> t
 
 module Error : sig
   type t =

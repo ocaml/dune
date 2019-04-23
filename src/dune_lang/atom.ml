@@ -39,7 +39,7 @@ let of_string s = A s
 let to_string (A s) = s
 
 let is_valid (A t) = function
-  | Syntax.Jbuild -> is_valid_jbuild t
+  | File_syntax.Jbuild -> is_valid_jbuild t
   | Dune   -> is_valid_dune t
 
 let print ((A atom) as t) syntax =

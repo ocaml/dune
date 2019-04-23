@@ -5,4 +5,4 @@ val rules :
   scope:Scope.t ->
   expander:Expander.t ->
   dir_contents:Dir_contents.t ->
-  dir_kind:Dune_lang.syntax -> Compilation_context.t * Merlin.t
+  dir_kind:Dune_lang.File_syntax.t -> Compilation_context.t * Merlin.t

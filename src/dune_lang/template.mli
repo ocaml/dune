@@ -22,10 +22,10 @@ type t = Types.Template.t =
   ; loc: Loc.t
   }
 
-val to_string : t -> syntax:Syntax.t -> string
+val to_string : t -> syntax:File_syntax.t -> string
 val string_of_var : var -> string
 
-val pp : Syntax.t -> Format.formatter -> t -> unit
+val pp : File_syntax.t -> Format.formatter -> t -> unit
 
 val pp_split_strings : Format.formatter -> t -> unit
 

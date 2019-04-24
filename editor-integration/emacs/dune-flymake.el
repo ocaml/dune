@@ -198,7 +198,7 @@ Do not fail on error."
         (if (boundp 'flymake-proc-allowed-file-name-masks)
             flymake-proc-allowed-file-name-masks
           flymake-allowed-file-name-masks))
-  (setq (make-local-variable (if (boundp 'flymake-proc-err-line-patterns)
+  (set (make-local-variable (if (boundp 'flymake-proc-err-line-patterns)
                                  'flymake-proc-err-line-patterns
                                'flymake-err-line-patterns))
         dune-flymake--err-line-patterns))

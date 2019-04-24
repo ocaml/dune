@@ -7,7 +7,7 @@ module Preprocess : sig
   type pps =
     { loc   : Loc.t
     ; pps   : (Loc.t * Lib_name.t) list
-    ; flags : string list
+    ; flags : String_with_vars.t list
     ; staged : bool
     }
 

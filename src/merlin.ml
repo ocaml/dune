@@ -38,7 +38,7 @@ module Preprocess = struct
     | Pps { loc ; pps = pps1; flags = flags1; staged = s1 },
       Pps { loc = _; pps = pps2; flags = flags2; staged = s2 } ->
       if Bool.(<>) s1 s2
-      || List.compare flags1 flags2 ~compare:String.compare <> Eq
+      || List.compare flags1 flags2 ~compare:String_with_vars.compare_no_loc <> Eq
       || List.compare pps1 pps2 ~compare:(fun (_, x) (_, y) ->
         Lib_name.compare x y) <> Eq
       then
@@ -130,6 +130,7 @@ let pp_flags sctx ~expander ~dir_kind { preprocess; libname; _ } =
     match Preprocessing.get_ppx_driver sctx ~scope ~dir_kind pps with
     | Error _ -> None
     | Ok exe ->
+      let flags = List.map ~f:(Expander.expand_str expander) flags in
       (Path.to_absolute_filename exe
        :: "--as-ppx"
        :: Preprocessing.cookie_library_name libname

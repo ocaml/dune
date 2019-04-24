@@ -142,7 +142,7 @@ module Pps_and_flags = struct
   module Jbuild_syntax = struct
     let of_string ~loc s =
       if String.is_prefix s ~prefix:"-" then
-        Right [s]
+        Right [String_with_vars.make_text loc s]
       else
         Left (loc, Lib_name.of_string_exn ~loc:(Some loc) s)
 
@@ -151,7 +151,10 @@ module Pps_and_flags = struct
       | Template { loc; _ } ->
         no_templates loc "in the preprocessors field"
       | Atom _ | Quoted_string _ -> plain_string of_string
-      | List _ -> list string >>| fun l -> Right l
+      | List _ ->
+         repeat (plain_string (fun ~loc str ->
+           String_with_vars.make_text loc str))
+         >>| (fun x -> Right x)
 
     let split l =
       let pps, flags = List.partition_map l ~f:Fn.id in
@@ -164,17 +167,34 @@ module Pps_and_flags = struct
     let decode =
       let+ l, flags =
         until_keyword "--"
-          ~before:(plain_string (fun ~loc s -> (loc, s)))
-          ~after:(repeat string)
+          ~before:String_with_vars.decode
+          ~after:(repeat String_with_vars.decode)
+      and+ syntax_version = Syntax.get_exn Stanza.syntax
       in
       let pps, more_flags =
-        List.partition_map l ~f:(fun (loc, s) ->
-          if String.is_prefix s ~prefix:"-" then
+        List.partition_map l ~f:(fun s ->
+          if String.is_prefix ~prefix:"-"
+            (String_with_vars.known_prefix s) then
             Right s
           else
-            Left (loc, Lib_name.of_string_exn ~loc:(Some loc) s))
+            let loc = String_with_vars.loc s in
+            match String_with_vars.text_only s with
+            | None -> no_templates loc "in the ppx library names"
+            | Some txt ->
+              Left (loc, Lib_name.of_string_exn ~loc:(Some loc) txt)
+        )
       in
-      (pps, more_flags @ Option.value flags ~default:[])
+      let all_flags = more_flags @ Option.value flags ~default:[] in
+      if syntax_version < (1, 10) then
+        List.iter ~f:
+          (fun flag ->
+            if String_with_vars.has_vars flag then
+              Syntax.Error.since (String_with_vars.loc flag)
+                Stanza.syntax
+                (1, 10)
+                  ~what:"Using variables in pps flags"
+          ) all_flags;
+      (pps, all_flags)
   end
 
   let decode =
@@ -263,7 +283,7 @@ module Preprocess = struct
   type pps =
     { loc : Loc.t
     ; pps : (Loc.t * Lib_name.t) list
-    ; flags : string list
+    ; flags : String_with_vars.t list
     ; staged : bool
     }
   type t =

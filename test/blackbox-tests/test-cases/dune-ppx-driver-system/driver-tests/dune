@@ -82,7 +82,11 @@
 
 (rule (with-stdout-to test_ppx_staged.ml (echo "")))
 
+(env (_ (env-vars (FOO baz))))
+
 (library
  (name test_ppx_staged)
  (modules test_ppx_staged)
- (preprocess (staged_pps -arg1 driver_print_tool -arg2 -- -foo bar)))
+ (preprocess 
+  (staged_pps -arg1 driver_print_tool -arg2 -arg3=%{env:FOO=undefined} --
+    -foo bar %{env:FOO=undefined})))

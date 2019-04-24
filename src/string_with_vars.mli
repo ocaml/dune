@@ -9,6 +9,8 @@ open Import
 type t
 (** A sequence of text and variables. *)
 
+val compare_no_loc: t -> t -> Ordering.t
+
 val loc : t -> Loc.t
 (** [loc t] returns the location of [t] — typically, in the jbuild file. *)
 
@@ -34,6 +36,8 @@ val has_vars : t -> bool
 
 (** If [t] contains no variable, returns the contents of [t]. *)
 val text_only : t -> string option
+
+val known_prefix : t -> string
 
 module Mode : sig
   type _ t =

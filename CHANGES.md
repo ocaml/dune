@@ -25,6 +25,9 @@ unreleased
   to produce targets that are present in the source tree. This has
   been a warning for long enough (#2068, @diml)
 
+- Allow %{...} variables in pps flags (#2076, @mlasson review by @diml and
+  @aalekseyev).
+
 - Add more opam metadata and use it to generate corrections to the .opam files
   in the source. This allows the user to partially specify opam metadata in the
   the dune-project file. (#2017, @avsm, @jonludlam)

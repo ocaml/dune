@@ -584,6 +584,7 @@ let lint_module sctx ~dir ~expander ~dep_kind ~lint ~lib_name ~scope ~dir_kind =
           if staged then
             Errors.fail loc
               "Staged ppx rewriters cannot be used as linters.";
+          let flags = List.map ~f:(Expander.expand_str expander) flags in
           let args : _ Arg_spec.t =
             S [ As flags
               ; As (cookie_library_name lib_name)
@@ -659,6 +660,7 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess
          if lint then lint_module ~ast ~source:m;
          ast)
     | Pps { loc; pps; flags; staged } ->
+      let flags = List.map ~f:(Expander.expand_str expander) flags in
       if not staged then begin
         let args : _ Arg_spec.t =
           S [ As flags

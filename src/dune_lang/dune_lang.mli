@@ -41,6 +41,8 @@ module Template : sig
     ; loc: Loc.t
     }
 
+  val compare_no_loc: t -> t -> Ordering.t
+
   val string_of_var : var -> string
 
   val to_string : t -> syntax:File_syntax.t -> string

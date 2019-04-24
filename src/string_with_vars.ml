@@ -8,6 +8,11 @@ type t =
   ; syntax_version : Syntax.Version.t
   }
 
+let compare_no_loc t1 t2 =
+  match Syntax.Version.compare t1.syntax_version t2.syntax_version with
+  | Ordering.Lt | Gt as a -> a
+  | Eq -> Dune_lang.Template.compare_no_loc t1.template t2.template
+
 let make_syntax = (1, 0)
 
 let make ?(quoted=false) loc part =
@@ -307,6 +312,13 @@ let text_only t =
   match t.template.parts with
   | [Text s] -> Some s
   | _ -> None
+
+let known_prefix =
+  let rec go acc = function
+    | Text s :: rest -> go (s :: acc) rest
+    | _ -> String.concat ~sep:"" (List.rev acc)
+  in
+  fun t -> go [] t.template.parts
 
 let has_vars t = Option.is_none (text_only t)
 

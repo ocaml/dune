@@ -23,6 +23,7 @@ type t = Types.Template.t =
   }
 
 val to_string : t -> syntax:File_syntax.t -> string
+val compare_no_loc : t -> t -> Ordering.t
 val string_of_var : var -> string
 
 val pp : File_syntax.t -> Format.formatter -> t -> unit

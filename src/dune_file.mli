@@ -286,6 +286,7 @@ module Executables : sig
     ; modes      : Link_mode.Set.t
     ; buildable  : Buildable.t
     ; variants   : (Loc.t * Variant.Set.t) option
+    ; package    : Package.t option
     }
 end
 

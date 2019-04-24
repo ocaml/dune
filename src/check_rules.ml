@@ -3,14 +3,15 @@ open Stdune
 let dev_files =
   let id = lazy (
     let open Sexp.Encoder in
-    constr "dev_files" [string ".cmt"; string ".cmti"; string ".cmi"]
+    constr "dev_files"
+      [string ".cmt"; string ".cmti"; string (Cm_kind.ext Cmi)]
   ) in
+  let cmi = Cm_kind.ext Cmi in
   Predicate.create ~id ~f:(fun p ->
     match Filename.extension p with
     | ".cmt"
-    | ".cmti"
-    | ".cmi" -> true
-    | _ -> false)
+    | ".cmti" -> true
+    | ext -> ext = cmi)
 
 let add_obj_dir sctx ~obj_dir =
   if (Super_context.context sctx).merlin then

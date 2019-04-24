@@ -26,7 +26,7 @@ let choose byte native = function
   | Byte   -> byte
   | Native -> native
 
-let compiled_unit_ext = choose ".cmo" ".cmx"
+let compiled_unit_ext = choose (Cm_kind.ext Cmo) (Cm_kind.ext Cmx)
 let compiled_lib_ext = choose ".cma" ".cmxa"
 let plugin_ext = choose ".cma" ".cmxs"
 

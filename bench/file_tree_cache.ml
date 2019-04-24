@@ -11,7 +11,7 @@ let setup = lazy (
   Path.set_root tmp;
   Path.set_build_dir (Path.Kind.of_string "_build");
   let ft = (Dune_load.load ()).file_tree in
-  let path = Path.of_string deep_path in
+  let path = Path.Source.of_string deep_path in
   at_exit (fun () -> Sys.remove "./dune-project");
   (ft, path))
 

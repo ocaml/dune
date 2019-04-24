@@ -127,10 +127,10 @@ let of_library_stanza ~dir
       let obj_name = Path.relative dir (Module.Name.uncapitalize m) in
       { Mode.Dict.
         byte =
-          Path.extend_basename obj_name ~suffix:".cmo" ::
+          Path.extend_basename obj_name ~suffix:(Cm_kind.ext Cmo) ::
           foreign_archives.byte
       ; native =
-          Path.extend_basename obj_name ~suffix:".cmx" ::
+          Path.extend_basename obj_name ~suffix:(Cm_kind.ext Cmx) ::
           Path.extend_basename obj_name ~suffix:ext_obj ::
           foreign_archives.native
       }

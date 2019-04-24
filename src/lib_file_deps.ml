@@ -8,9 +8,9 @@ module Group = struct
 
   let all = [Cmi; Cmx; Header]
 
-  let to_string = function
-    | Cmi -> ".cmi"
-    | Cmx -> ".cmx"
+  let ext = function
+    | Cmi -> Cm_kind.ext Cmi
+    | Cmx -> Cm_kind.ext Cmx
     | Header -> ".h"
 
   let obj_dir t obj_dir =
@@ -21,7 +21,7 @@ module Group = struct
 
   let to_predicate =
     let preds = List.map all ~f:(fun g ->
-      let ext = to_string g in
+      let ext = ext g in
       (* we cannot use globs because of bootstrapping. *)
       let id = lazy (
         let open Sexp.Encoder in

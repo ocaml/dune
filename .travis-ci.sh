@@ -9,6 +9,19 @@ ODOC="odoc.1.4.0"
 
 TARGET="$1"; shift
 
+opam_install_test_deps () {
+    opam install \
+         ocamlfind \
+         utop \
+         ppxlib \
+         $ODOC \
+         menhir \
+         ocaml-migrate-parsetree \
+         js_of_ocaml-ppx \
+         js_of_ocaml-compiler \
+         coq
+}
+
 case "$TARGET" in
   prepare)
     echo -en "travis_fold:start:ocaml\r"
@@ -51,8 +64,9 @@ case "$TARGET" in
         rm -rf ~/.opam
         opam init --disable-sandboxing
         eval $(opam config env)
+
         _boot/install/default/bin/dune runtest && \
-        opam install ocamlfind utop ppxlib $ODOC menhir ocaml-migrate-parsetree js_of_ocaml-ppx js_of_ocaml-compiler
+            opam_install_test_deps
         opam remove dune jbuilder \
              `opam list --depends-on jbuilder --installed --short` \
              `opam list --depends-on dune     --installed --short`
@@ -94,7 +108,7 @@ case "$TARGET" in
       fi
       opam list
       opam pin add dune . --no-action
-      opam install ocamlfind utop ppxlib $ODOC ocaml-migrate-parsetree js_of_ocaml-ppx js_of_ocaml-compiler coq
+      opam_install_test_deps
       echo -en "travis_fold:end:opam.deps\r"
     fi
     echo -en "travis_fold:end:dune.boot\r"

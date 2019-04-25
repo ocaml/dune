@@ -78,37 +78,33 @@ module Pkg = struct
     | [] -> Error No_package
     | _ :: _ :: _ as packages -> Error (Too_many_packages packages)
 
-  let default (project : Dune_project.t) stanza =
-    match gen_default project with
-    | Ok pkg -> Ok pkg
-    | Error No_package ->
-      Error
-        "The current project defines some public elements, \
-         but no opam packages are defined.\n\
-         Please add a <package>.opam file at the project root \
-         so that these elements are installed into it."
-    | Error (Too_many_packages packages) ->
-      Error
-        (sprintf
-           "I can't determine automatically which package this \
-            stanza is for.\nI have the choice between these ones:\n\
-            %s\n\
-            You need to add a (package ...) field to this (%s) stanza."
-           (listing packages)
-           stanza)
-
-  let default_for_tests ~loc (project : Dune_project.t) stanza =
-    match gen_default project with
-    | Ok pkg -> Some pkg
-    | Error No_package -> None
-    | Error (Too_many_packages packages) ->
-      of_sexp_errorf loc
+  let error_message err stanza =
+    match err with
+    | No_package ->
+      "The current project defines some public elements, \
+       but no opam packages are defined.\n\
+       Please add a <package>.opam file at the project root \
+       so that these elements are installed into it."
+    | Too_many_packages packages ->
+      sprintf
         "I can't determine automatically which package this \
          stanza is for.\nI have the choice between these ones:\n\
          %s\n\
          You need to add a (package ...) field to this (%s) stanza."
         (listing packages)
         stanza
+
+  let default (project : Dune_project.t) stanza =
+    match gen_default project with
+    | Ok pkg -> Ok pkg
+    | Error error -> Error (error_message error stanza)
+
+  let default_for_tests ~loc (project : Dune_project.t) stanza =
+    match gen_default project with
+    | Ok pkg -> Some pkg
+    | Error No_package -> None
+    | Error error ->
+      of_sexp_errorf loc "%s" (error_message error stanza)
 
   let resolve (project : Dune_project.t) name =
     let packages = Dune_project.packages project in

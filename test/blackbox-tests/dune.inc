@@ -128,6 +128,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name dangling-tests)
+ (deps (package dune) (source_tree test-cases/dangling-tests))
+ (action
+  (chdir
+   test-cases/dangling-tests
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name default-targets)
  (deps (package dune) (source_tree test-cases/default-targets))
  (action
@@ -1412,6 +1420,7 @@
   (alias cross-compilation)
   (alias custom-build-dir)
   (alias cxx-extension)
+  (alias dangling-tests)
   (alias default-targets)
   (alias dep-on-dir-that-does-not-exist)
   (alias dep-vars)
@@ -1582,6 +1591,7 @@
   (alias copy_files)
   (alias custom-build-dir)
   (alias cxx-extension)
+  (alias dangling-tests)
   (alias default-targets)
   (alias dep-on-dir-that-does-not-exist)
   (alias dep-vars)

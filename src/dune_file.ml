@@ -68,24 +68,47 @@ module Pkg = struct
            (Package.Name.to_string pkg.Package.name)
            (Path.Source.to_string (Package.opam_file pkg))))
 
-  let default (project : Dune_project.t) stanza =
+  type error =
+    | No_package
+    | Too_many_packages of Package.t list
+
+  let gen_default project =
     match Package.Name.Map.values (Dune_project.packages project) with
     | [pkg] -> Ok pkg
-    | [] ->
+    | [] -> Error No_package
+    | _ :: _ :: _ as packages -> Error (Too_many_packages packages)
+
+  let default (project : Dune_project.t) stanza =
+    match gen_default project with
+    | Ok pkg -> Ok pkg
+    | Error No_package ->
       Error
         "The current project defines some public elements, \
          but no opam packages are defined.\n\
          Please add a <package>.opam file at the project root \
          so that these elements are installed into it."
-    | _ :: _ :: _ ->
+    | Error (Too_many_packages packages) ->
       Error
         (sprintf
            "I can't determine automatically which package this \
             stanza is for.\nI have the choice between these ones:\n\
             %s\n\
             You need to add a (package ...) field to this (%s) stanza."
-           (listing (Package.Name.Map.values (Dune_project.packages project)))
+           (listing packages)
            stanza)
+
+  let default_for_tests ~loc (project : Dune_project.t) stanza =
+    match gen_default project with
+    | Ok pkg -> Some pkg
+    | Error No_package -> None
+    | Error (Too_many_packages packages) ->
+      of_sexp_errorf loc
+        "I can't determine automatically which package this \
+         stanza is for.\nI have the choice between these ones:\n\
+         %s\n\
+         You need to add a (package ...) field to this (%s) stanza."
+        (listing packages)
+        stanza
 
   let resolve (project : Dune_project.t) name =
     let packages = Dune_project.packages project in
@@ -122,15 +145,36 @@ module Pkg = struct
     | Ok    x -> x
     | Error e -> Errors.fail loc "%s" e
 
+  let field_loc_o =
+    field_o "package" (
+      let+ loc = loc
+      and+ s = decode
+      in
+      (loc, s))
+
+  let field_o = field_o "package" decode
+
   let field stanza =
     map_validate
       (let+ p = Dune_project.get_exn ()
-       and+ pkg = field_o "package" string in
+       and+ pkg = field_loc_o in
        (p, pkg))
       ~f:(fun (p, pkg) ->
         match pkg with
         | None -> default p stanza
-        | Some name -> resolve p (Package.Name.of_string name))
+        | Some (_loc, pkg) -> Ok pkg)
+
+  let test_field ~stanza_loc stanza =
+    let* syntax_version = Syntax.get_exn Stanza.syntax in
+    if syntax_version < (1, 10) then
+      field_o
+    else
+      let+ p = Dune_project.get_exn ()
+      and+ pkg = field_loc_o
+      in
+      match pkg with
+      | None -> default_for_tests ~loc:stanza_loc p stanza
+      | Some (_loc, pkg) -> Some pkg
 end
 
 module Pps_and_flags = struct
@@ -1124,7 +1168,7 @@ module Executables = struct
     type t =
       { names : (Loc.t * string) list
       ; public_names : (Loc.t * string option) list option
-      ; package : (Loc.t * Package.Name.t) option
+      ; package : (Loc.t * Package.t) option
       ; stanza : string
       ; project : Dune_project.t
       ; loc : Loc.t
@@ -1185,10 +1229,7 @@ module Executables = struct
       and+ loc = loc
       and+ dune_syntax = Syntax.get_exn Stanza.syntax
       and+ file_kind = Stanza.file_kind ()
-      and+ package =
-        field_o "package" (let+ loc = loc
-                           and+ s = Package.Name.decode in
-                           (loc, s))
+      and+ package = Pkg.field_loc_o
       and+ project = Dune_project.get_exn ()
       in
       let (names, public_names) = names in
@@ -1237,7 +1278,7 @@ module Executables = struct
     let package t =
       match t.package with
       | None -> (t.loc, Pkg.default t.project t.stanza)
-      | Some (loc, name) -> (loc, Pkg.resolve t.project name)
+      | Some (loc, pkg) -> (loc, Ok pkg)
 
     let install_conf t ~ext =
       let files =
@@ -1956,9 +1997,14 @@ module Alias_conf = struct
 
   let decode =
     record
-      (let+ name = field "name" alias_name
-       and+ loc = loc
-       and+ package = field_o "package" Pkg.decode
+      (let* loc = loc in
+       let* name = field "name" alias_name in
+       let+ package = (
+         if name = "runtest" then
+           Pkg.test_field ~stanza_loc:loc "alias"
+         else
+           Pkg.field_o
+       )
        and+ action = field_o "action" (located Action_dune_lang.decode)
        and+ locks = field "locks" (list String_with_vars.decode) ~default:[]
        and+ deps = field "deps" (Bindings.decode Dep_conf.decode) ~default:Bindings.empty
@@ -1984,13 +2030,14 @@ module Tests = struct
     ; action     : Action_dune_lang.t option
     }
 
-  let gen_parse names =
+  let gen_parse stanza names =
     record
-      (let+ buildable = Buildable.decode
+      (let* loc = loc in
+       let+ buildable = Buildable.decode
        and+ link_flags = field_oslu "link_flags"
        and+ variants = variants_field
        and+ names = names
-       and+ package = field_o "package" Pkg.decode
+       and+ package = Pkg.test_field stanza ~stanza_loc:loc
        and+ locks = field "locks" (list String_with_vars.decode) ~default:[]
        and+ modes = field "modes" Executables.Link_mode.Set.decode
                      ~default:Executables.Link_mode.Set.default
@@ -2018,9 +2065,13 @@ module Tests = struct
        ; action
        })
 
-  let multi = gen_parse (field "names" (list (located string)))
+  let multi =
+    let stanza = "tests" in
+    gen_parse stanza (field "names" (list (located string)))
 
-  let single = gen_parse (field "name" (located string) >>| List.singleton)
+  let single =
+    let stanza = "test" in
+    gen_parse stanza (field "name" (located string) >>| List.singleton)
 end
 
 module Toplevel = struct

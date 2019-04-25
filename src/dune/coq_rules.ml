@@ -190,16 +190,16 @@ let setup_ml_deps ~lib_db libs =
   (ml_iflags, Build.paths_existing mlpack)
 
 let coqlib_wrapper_name (s : Dune_file.Coq.t) =
-  Lib_name.Local.to_string (snd s.name)
+  Coq_lib_name.wrapper (snd s.name)
 
 let setup_rules ~sctx ~dir ~dir_contents (s : Dune_file.Coq.t) =
   let scope = SC.find_scope_by_dir sctx dir in
-  let cc = create_ccoq sctx ~dir in
   let expander = SC.expander sctx ~dir in
   if coq_debug then
     Format.eprintf "[gen_rules] @[dir: %a@\nscope: %a@]@\n%!" Path.Build.pp dir
       Path.Build.pp (Scope.root scope);
-  let name = Dune_file.Coq.best_name s in
+  let cc = create_ccoq sctx ~dir in
+  let name = snd s.name in
   let coq_modules = Dir_contents.coq_modules_of_library dir_contents ~name in
   (* coqdep requires all the files to be in the tree to produce correct
      dependencies *)
@@ -247,11 +247,11 @@ let coq_plugins_install_rules ~scope ~package ~dst_dir (s : Dune_file.Coq.t) =
 
 let install_rules ~sctx ~dir s =
   match s with
-  | { Dune_file.Coq.public = None; _ } -> []
-  | { Dune_file.Coq.public = Some { package; _ }; _ } ->
+  | { Dune_file.Coq.package = None; _ } -> []
+  | { Dune_file.Coq.package = Some package; _ } ->
     let scope = SC.find_scope_by_dir sctx dir in
     let dir_contents = Dir_contents.get sctx ~dir in
-    let name = Dune_file.Coq.best_name s in
+    let name = snd s.name in
     (* This is the usual root for now, Coq + Dune will change it! *)
     let coq_root = Path.Local.of_string "coq/user-contrib" in
     (* This must match the wrapper prefix for now to remain compatible *)

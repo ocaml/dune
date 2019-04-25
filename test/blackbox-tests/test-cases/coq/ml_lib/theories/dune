@@ -1,6 +1,6 @@
 (coq.theory
  (name Plugin)
- (public_name ml_lib.Plugin)
+ (package ml_lib)
  (synopsis "Test Plugin")
  (libraries ml_lib.ml_plugin_b)
  (modules :standard))

@@ -1949,8 +1949,8 @@ end
 
 module Coq = struct
   type t =
-    { name : Loc.t * Lib_name.Local.t (* TODO: validate name *)
-    ; public : Public_lib.t option
+    { name : Loc.t * Coq_lib_name.t
+    ; package : Package.t option
     ; synopsis : string option
     ; modules : Ordered_set_lang.t
     ; flags : Ordered_set_lang.Unexpanded.t
@@ -1964,11 +1964,47 @@ module Coq = struct
     Dune_lang.Syntax.create ~name:"coq" ~desc:"the coq extension (experimental)"
       [ (0, 1) ]
 
+  let coq_public_decode =
+    map_validate
+      (let+ project = Dune_project.get_exn ()
+       and+ loc_name =
+         field_o "public_name"
+           (Dune_lang.Decoder.plain_string (fun ~loc s -> loc,s)) in
+       (project, loc_name))
+      ~f:(fun (project, loc_name) ->
+        match loc_name with
+        | None -> Ok None
+        | Some (loc, name) ->
+          let pkg =
+            match String.lsplit2 ~on:'.' name with
+            | None -> Package.Name.of_string name
+            | Some (pkg, _) -> Package.Name.of_string pkg
+          in
+          Pkg.resolve project pkg
+          |> Result.map ~f:(fun pkg -> Some (loc, pkg)))
+
+  let select_deprecation ~package ~public =
+    match package, public with
+    | p, None -> p
+    | None, Some (loc,pkg) ->
+      User_warning.emit ~loc
+        [Pp.text
+           "(public_name ...) is deprecated and will be removed in the Coq \
+            language version 1.0, please use (package ...) instead"];
+      Some pkg
+    | Some _, Some (loc,_) ->
+      User_error.raise ~loc
+        [Pp.text
+           "Cannot both use (package ...) and (public_name ...), please \
+            remove the latter as it is deprecated and will be removed in the 1.0 \
+            version of the Coq language"]
+
   let decode =
     fields
-      (let+ name = field "name" Lib_name.Local.decode_loc
+      (let+ name = field "name" Coq_lib_name.decode
        and+ loc = loc
-       and+ public = field_o "public_name" (Public_lib.decode ())
+       and+ package = field_o "package" Pkg.decode
+       and+ public = coq_public_decode
        and+ synopsis = field_o "synopsis" string
        and+ flags = Ordered_set_lang.Unexpanded.field "flags"
        and+ boot = field_b "boot"
@@ -1977,16 +2013,8 @@ module Coq = struct
        and+ libraries =
          field "libraries" (repeat (located Lib_name.decode)) ~default:[]
        and+ enabled_if = enabled_if ~since:None in
-       let name =
-         let loc, res = name in
-         (loc, Lib_name.Local.validate (loc, res))
-       in
-       { name; public; synopsis; modules; flags; boot; libraries; loc; enabled_if })
-
-  let best_name t =
-    match t.public with
-    | None -> Lib_name.of_local t.name
-    | Some p -> snd p.name
+       let package = select_deprecation ~package ~public in
+       { name; package; synopsis; modules; flags; boot; libraries; loc; enabled_if })
 
   type Stanza.t += T of t
 
@@ -2403,5 +2431,5 @@ let stanza_package = function
   | Documentation { package; _ }
   | Tests { package = Some package; _ } ->
     Some package
-  | Coq.T { public = Some { package; _ }; _ } -> Some package
+  | Coq.T { package = Some package; _ } -> Some package
   | _ -> None

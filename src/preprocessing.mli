@@ -18,7 +18,7 @@ val make
   -> preprocessor_deps:(unit, Path.t list) Build.t
   -> lib_name:Lib_name.Local.t option
   -> scope:Scope.t
-  -> dir_kind:Dune_lang.Syntax.t
+  -> dir_kind:Dune_lang.File_syntax.t
   -> t
 
 (** Setup the preprocessing rules for the following modules and
@@ -42,7 +42,7 @@ val pp_module_as
 val get_ppx_driver
   :  Super_context.t
   -> scope:Scope.t
-  -> dir_kind:Dune_lang.Syntax.t
+  -> dir_kind:Dune_lang.File_syntax.t
   -> (Loc.t * Lib_name.t) list
   -> Path.t Or_exn.t
 

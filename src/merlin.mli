@@ -25,6 +25,6 @@ val add_rules
   -> dir:Path.t
   -> more_src_dirs:Path.Source.t list
   -> expander:Expander.t
-  -> dir_kind:Dune_lang.Syntax.t
+  -> dir_kind:Dune_lang.File_syntax.t
   -> t
   -> unit

@@ -8,6 +8,6 @@ module Gen (S : sig val sctx : Super_context.t end) : sig
     -> dir:Path.t
     -> expander:Expander.t
     -> scope:Scope.t
-    -> dir_kind:Dune_lang.syntax
+    -> dir_kind:Dune_lang.File_syntax.t
     -> Compilation_context.t * Merlin.t
 end

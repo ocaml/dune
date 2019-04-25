@@ -15,7 +15,7 @@ module Key : sig
     ; scope : Dune_project.Name.t option
     }
 
-  val of_libs : dir_kind:Dune_lang.Syntax.t -> Lib.t list -> decoded
+  val of_libs : dir_kind:Dune_lang.File_syntax.t -> Lib.t list -> decoded
 
   (* [decode y] fails if there hasn't been a previous call to [encode]
      such that [encode x = y]. *)
@@ -33,7 +33,7 @@ end = struct
   let of_libs ~dir_kind libs =
     let pps =
       (let compare a b = Lib_name.compare (Lib.name a) (Lib.name b) in
-       match (dir_kind : Dune_lang.Syntax.t) with
+       match (dir_kind : Dune_lang.File_syntax.t) with
        | Dune -> List.sort libs ~compare
        | Jbuild ->
          match List.rev libs with
@@ -333,7 +333,7 @@ module Jbuild_driver = struct
 end
 
 let ppx_exe sctx ~key ~dir_kind =
-  match (dir_kind : Dune_lang.Syntax.t) with
+  match (dir_kind : Dune_lang.File_syntax.t) with
   | Dune ->
     Path.relative (SC.build_dir sctx) (".ppx/" ^ key ^ "/ppx.exe")
   | Jbuild ->
@@ -344,7 +344,7 @@ let build_ppx_driver sctx ~dep_kind ~target ~dir_kind ~pps ~pp_names =
   let mode = Context.best_mode ctx in
   let compiler = Option.value_exn (Context.compiler ctx mode) in
   let jbuild_driver, pps, pp_names =
-    match (dir_kind : Dune_lang.Syntax.t) with
+    match (dir_kind : Dune_lang.File_syntax.t) with
     | Dune -> (None, pps, pp_names)
     | Jbuild ->
       match pps with
@@ -481,7 +481,7 @@ let get_ppx_driver sctx ~loc ~scope ~dir_kind pps =
   let open Result.O in
   let* libs = Lib.DB.resolve_pps (Scope.libs scope) pps in
   let+ driver =
-    match (dir_kind : Dune_lang.Syntax.t) with
+    match (dir_kind : Dune_lang.File_syntax.t) with
     | Dune ->
       Lib.closure libs ~linking:true
       >>=

@@ -13,7 +13,7 @@ let syntax =
     ]
 
 module File_kind = struct
-  type t = Dune_lang.syntax = Jbuild | Dune
+  type t = Dune_lang.File_syntax.t = Jbuild | Dune
 
   let of_syntax = function
     | (0, _) -> Jbuild

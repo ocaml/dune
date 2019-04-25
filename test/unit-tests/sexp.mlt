@@ -277,7 +277,7 @@ let var ?(syntax=Dune_lang.Template.Percent) ?payload name =
   ; syntax
   }
 
-type sexp = S of Dune_lang.syntax * Dune_lang.t
+type sexp = S of Dune_lang.File_syntax.t * Dune_lang.t
 
 let print_sexp ppf (S (syntax, sexp)) = Dune_lang.pp syntax ppf sexp;;
 #install_printer print_sexp
@@ -317,13 +317,13 @@ val l : Dune_lang.t list -> Dune_lang.t = <fun>
 val var :
   ?syntax:Dune_lang.Template.var_syntax ->
   ?payload:string -> string -> Dune_lang.Template.var = <fun>
-type sexp = S of Dune_lang.syntax * Dune_lang.t
+type sexp = S of Dune_lang.File_syntax.t * Dune_lang.t
 val print_sexp : Format.formatter -> sexp -> unit = <fun>
 type round_trip_result =
     Round_trip_success
   | Did_not_round_trip of Dune_lang.t
   | Did_not_parse_back of string
-val test : Dune_lang.syntax -> Dune_lang.t -> sexp * round_trip_result =
+val test : Dune_lang.File_syntax.t -> Dune_lang.t -> sexp * round_trip_result =
   <fun>
 |}]
 

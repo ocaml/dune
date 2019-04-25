@@ -49,7 +49,7 @@ type t =
   ; scope                : Scope.t
   ; expander             : Expander.t
   ; obj_dir              : Obj_dir.t
-  ; dir_kind             : Dune_lang.Syntax.t
+  ; dir_kind             : Dune_lang.File_syntax.t
   ; modules              : Module.t Module.Name.Map.t
   ; alias_module         : Module.t option
   ; lib_interface_module : Module.t option
@@ -87,7 +87,7 @@ let context              t = Super_context.context t.super_context
 
 let create ~super_context ~scope ~expander ~obj_dir
       ?vimpl
-      ?(dir_kind=Dune_lang.Syntax.Dune)
+      ?(dir_kind=Dune_lang.File_syntax.Dune)
       ~modules ?alias_module ?lib_interface_module ~flags
       ~requires_compile ~requires_link
       ?(preprocessing=Preprocessing.dummy) ?(no_keep_locs=false)

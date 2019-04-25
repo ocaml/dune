@@ -40,7 +40,7 @@ module Dune_file = struct
 
   type t =
     { contents : Contents.t
-    ; kind     : Dune_lang.Syntax.t
+    ; kind     : Dune_lang.File_syntax.t
     }
 
   let path t =
@@ -245,7 +245,8 @@ let load ?(warn_when_seeing_jbuild_file=true) path =
               let dune_file, sub_dirs =
                 Dune_file.load file
                   ~project
-                  ~kind:(Option.value_exn (Dune_lang.Syntax.of_basename fn))
+                  ~kind:(Option.value_exn
+                           (Dune_lang.File_syntax.of_basename fn))
               in
               (Some dune_file, sub_dirs)
             | _ ->

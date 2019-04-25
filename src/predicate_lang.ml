@@ -21,7 +21,7 @@ module Ast = struct
   let decode elt =
     let open Stanza.Decoder in
     let elt = let+ e = elt in Element e in
-    let rec one (kind : Dune_lang.Syntax.t) =
+    let rec one (kind : Dune_lang.File_syntax.t) =
       peek_exn >>= function
       | Atom (loc, A "\\") -> Errors.fail loc "unexpected \\"
       | (Atom (_, A "") | Quoted_string (_, _)) | Template _ ->

@@ -7,7 +7,7 @@ module Dune_file = struct
     { dir     : Path.Source.t
     ; project : Dune_project.t
     ; stanzas : Stanzas.t
-    ; kind    : Dune_lang.Syntax.t
+    ; kind    : Dune_lang.File_syntax.t
     }
 
   let parse sexps ~dir ~file ~project ~kind ~ignore_promoted_rules =
@@ -33,7 +33,7 @@ module Dune_files = struct
     { dir     : Path.Source.t
     ; file    : Path.Source.t
     ; project : Dune_project.t
-    ; kind    : Dune_lang.Syntax.t
+    ; kind    : Dune_lang.File_syntax.t
     }
 
   type one =
@@ -72,7 +72,7 @@ module Dune_files = struct
               in
               { start; stop = { start with pos_cnum = String.length line } }
             in
-            (match (kind : Dune_lang.Syntax.t) with
+            (match (kind : Dune_lang.File_syntax.t) with
              | Jbuild -> ()
              | Dune ->
                Errors.fail loc

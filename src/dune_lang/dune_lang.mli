@@ -3,10 +3,12 @@ open! Stdune
 
     This library is internal to dune and guarantees no API stability.*)
 
+module File_syntax = File_syntax
+
 module Atom : sig
   type t = private A of string [@@unboxed]
 
-  val is_valid : t -> Syntax.t -> bool
+  val is_valid : t -> File_syntax.t -> bool
   val equal : t -> t -> bool
 
   val of_string : string -> t
@@ -18,18 +20,6 @@ module Atom : sig
   val of_int64 : Int64.t -> t
   val of_digest : Digest.t -> t
 end
-
-module Syntax : sig
-  type t = Jbuild | Dune
-
-  val hash : t -> int
-
-  val equal : t -> t -> bool
-
-  val of_basename : string -> t option
-end
-
-type syntax = Syntax.t = Jbuild | Dune
 
 module Template : sig
   type var_syntax = Dollar_brace | Dollar_paren | Percent
@@ -53,7 +43,7 @@ module Template : sig
 
   val string_of_var : var -> string
 
-  val to_string : t -> syntax:syntax -> string
+  val to_string : t -> syntax:File_syntax.t -> string
 
   val remove_locs : t -> t
 end
@@ -74,10 +64,10 @@ val atom_or_quoted_string : string -> t
 val unsafe_atom_of_string : string -> t
 
 (** Serialize a S-expression *)
-val to_string : t -> syntax:syntax -> string
+val to_string : t -> syntax:File_syntax.t -> string
 
 (** Serialize a S-expression using indentation to improve readability *)
-val pp : syntax -> Format.formatter -> t -> unit
+val pp : File_syntax.t -> Format.formatter -> t -> unit
 
 (** Serialization that never fails because it quotes atoms when necessary
     TODO remove this once we have a proper sexp type *)
@@ -191,7 +181,7 @@ module Lexer : sig
   val token : t
   val jbuild_token : t
 
-  val of_syntax : syntax -> t
+  val of_syntax : File_syntax.t -> t
 end
 
 module Parser : sig

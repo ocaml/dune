@@ -346,8 +346,8 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
           | Some m ->
             (* These files needs to be alongside stdlib.cma as the
                compiler implicitly adds this module. *)
-            [ Cm_kind.Cmx, ".cmx"
-            ; Cmo, ".cmo"
+            [ Cm_kind.Cmx, (Cm_kind.ext Cmx)
+            ; Cmo, (Cm_kind.ext Cmo)
             ; Cmx, ctx.ext_obj ]
             |> List.iter ~f:(fun (kind, ext) ->
               let src = Module.obj_file m ~kind ~ext in

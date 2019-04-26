@@ -18,21 +18,29 @@
 
   $ dune build --root ml_lib --display short --debug-dependency-path @all
   Entering directory 'ml_lib'
-         coqpp src/gram.ml
-      ocamldep src/.ml_plugin.objs/gram.ml.d
-        ocamlc src/.ml_plugin.objs/byte/ml_plugin.{cmi,cmo,cmt}
-      ocamlopt src/.ml_plugin.objs/native/ml_plugin.{cmx,o}
-      ocamldep src/.ml_plugin.objs/gram.mli.d
-        ocamlc src/.ml_plugin.objs/byte/ml_plugin__Gram.{cmi,cmti}
-        ocamlc src/.ml_plugin.objs/byte/ml_plugin__Gram.{cmo,cmt}
-      ocamldep src/.ml_plugin.objs/simple.ml.d
-        ocamlc src/.ml_plugin.objs/byte/ml_plugin__Simple.{cmi,cmo,cmt}
-        ocamlc src/ml_plugin.cma
+         coqpp src_a/gram.ml
+      ocamldep src_a/.ml_plugin_a.objs/gram.ml.d
+        ocamlc src_a/.ml_plugin_a.objs/byte/ml_plugin_a.{cmi,cmo,cmt}
+      ocamlopt src_a/.ml_plugin_a.objs/native/ml_plugin_a.{cmx,o}
+      ocamldep src_a/.ml_plugin_a.objs/gram.mli.d
+        ocamlc src_a/.ml_plugin_a.objs/byte/ml_plugin_a__Gram.{cmi,cmti}
+        ocamlc src_a/.ml_plugin_a.objs/byte/ml_plugin_a__Gram.{cmo,cmt}
+      ocamldep src_a/.ml_plugin_a.objs/simple.ml.d
+        ocamlc src_a/.ml_plugin_a.objs/byte/ml_plugin_a__Simple.{cmi,cmo,cmt}
+        ocamlc src_a/ml_plugin_a.cma
+        ocamlc src_b/.ml_plugin_b.objs/byte/ml_plugin_b.{cmi,cmo,cmt}
+      ocamlopt src_b/.ml_plugin_b.objs/native/ml_plugin_b.{cmx,o}
+      ocamldep src_b/.ml_plugin_b.objs/simple_b.ml.d
+        ocamlc src_b/.ml_plugin_b.objs/byte/ml_plugin_b__Simple_b.{cmi,cmo,cmt}
+        ocamlc src_b/ml_plugin_b.cma
         coqdep theories/a.v.d
-      ocamlopt src/.ml_plugin.objs/native/ml_plugin__Gram.{cmx,o}
-      ocamlopt src/.ml_plugin.objs/native/ml_plugin__Simple.{cmx,o}
-      ocamlopt src/ml_plugin.{a,cmxa}
-      ocamlopt src/ml_plugin.cmxs
+      ocamlopt src_a/.ml_plugin_a.objs/native/ml_plugin_a__Gram.{cmx,o}
+      ocamlopt src_a/.ml_plugin_a.objs/native/ml_plugin_a__Simple.{cmx,o}
+      ocamlopt src_a/ml_plugin_a.{a,cmxa}
+      ocamlopt src_a/ml_plugin_a.cmxs
+      ocamlopt src_b/.ml_plugin_b.objs/native/ml_plugin_b__Simple_b.{cmx,o}
+      ocamlopt src_b/ml_plugin_b.{a,cmxa}
+      ocamlopt src_b/ml_plugin_b.cmxs
           coqc theories/a.vo
 
   $ dune build --root base --display short --debug-dependency-path @default

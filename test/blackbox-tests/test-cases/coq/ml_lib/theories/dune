@@ -2,5 +2,5 @@
  (name Plugin)
  (public_name ml_lib.Plugin)
  (synopsis "Test Plugin")
- (libraries coq.plugins.ltac ml_lib.ml_plugin)
+ (libraries ml_lib.ml_plugin_b)
  (modules :standard))

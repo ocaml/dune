@@ -1,6 +1,6 @@
 (library
- (public_name ml_lib.ml_plugin)
- (name ml_plugin)
+ (public_name ml_lib.ml_plugin_a)
+ (name ml_plugin_a)
  (flags :standard -rectypes)
  (libraries coq.plugins.ltac))
 

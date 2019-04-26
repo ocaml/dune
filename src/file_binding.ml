@@ -38,8 +38,12 @@ module Unexpanded = struct
   let expand_src t ~dir ~f = Path.relative dir (f t.src)
 
   let destination_relative_to_install_path t ~f =
-    match t.dst with
-    | Some dst -> Path.Local.of_string (f dst)
+    let dst = Option.map ~f t.dst in
+    match Install.Entry.adjust_dst_on_windows
+            ~src_basename:(fun () -> Filename.basename (f t.src))
+            ~dst
+    with
+    | Some dst -> Path.Local.of_string dst
     | None -> Path.Local.of_string (Filename.basename (f t.src))
 
   let expand t ~dir ~f =

@@ -235,25 +235,26 @@ module Entry = struct
       else
         Section.compare x.section y.section
 
+  let adjust_dst_on_windows ~src_basename ~dst =
+    if Sys.win32 then
+      let src_basename = src_basename () in
+      let dst' =
+        match dst with
+        | None -> src_basename
+        | Some s -> s
+      in
+      match Filename.extension src_basename with
+      | ".exe" | ".bc" ->
+        if Filename.extension dst' <> ".exe" then
+          Some (dst' ^ ".exe")
+        else
+          dst
+      | _ -> dst
+    else
+      dst
+
   let make section ?dst src =
-    let dst =
-      if Sys.win32 then
-        let src_base = Path.basename src in
-        let dst' =
-          match dst with
-          | None -> src_base
-          | Some s -> s
-        in
-        match Filename.extension src_base with
-        | ".exe" | ".bc" ->
-          if Filename.extension dst' <> ".exe" then
-            Some (dst' ^ ".exe")
-          else
-            dst
-        | _ -> dst
-      else
-        dst
-    in
+    let dst = adjust_dst_on_windows ~src_basename:(fun () -> Path.basename src) ~dst in
     let dst = match dst with
       | None ->
         Dst.infer ~src_basename:(Path.basename src) section

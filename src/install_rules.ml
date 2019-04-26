@@ -274,10 +274,8 @@ let symlink_installed_artifacts_to_build_install
       | Some l -> l
       | None -> Loc.in_file entry.src
     in
-    Rules.file_rule
-      ~rule:(dst, (fun () ->
-        Super_context.add_rule sctx ~loc ~dir:ctx.build_dir
-          (Build.symlink ~src:entry.src ~dst)));
+    Super_context.add_rule sctx ~loc ~dir:ctx.build_dir
+      (Build.symlink ~src:entry.src ~dst);
     Install.Entry.set_src entry dst)
 
 let promote_install_file (ctx : Context.t) =
@@ -409,42 +407,40 @@ let install_rules sctx package =
     Build_system.Alias.package_install ~context:ctx ~pkg:package_name
   in
   let () =
-    Rules.dir_rule (
-      Alias.dir target_alias, (fun () ->
-        Build_system.Alias.add_deps
-          target_alias
-          files
-          ~dyn_deps:
-            (Build_system.package_deps package_name files
-             >>^ fun packages ->
-             Package.Name.Set.to_list packages
-             |> List.map ~f:(fun pkg ->
-               Build_system.Alias.package_install ~context:ctx ~pkg
-               |> Alias.stamp_file)
-             |> Path.Set.of_list)))
+    Rules.Produce.Alias.add_deps
+      target_alias
+      files
+      ~dyn_deps:
+        (* CR aalekseyev: this might need delaying *)
+        (Build_system.package_deps package_name files
+         >>^ fun packages ->
+         Package.Name.Set.to_list packages
+         |> List.map ~f:(fun pkg ->
+           Build_system.Alias.package_install ~context:ctx ~pkg
+           |> Alias.stamp_file)
+         |> Path.Set.of_list)
   in
-  Rules.dir_rule (Path.parent_exn install_file, (fun () ->
-    Super_context.add_rule sctx ~dir:pkg_build_dir
-      ~mode:(if promote_install_file ctx then
-               Promote { lifetime = Until_clean ; into = None; only = None }
-             else
-               (* We must ignore the source file since it might be
-                  copied to the source tree by another context. *)
-               Ignore_source_files)
-      (Build.path_set files
-       >>^ (fun () ->
-         let entries =
-           match ctx.findlib_toolchain with
-           | None -> entries
-           | Some toolchain ->
-             let prefix = Path.of_string (toolchain ^ "-sysroot") in
-             List.map entries
-               ~f:(Install.Entry.add_install_prefix
-                     ~paths:install_paths ~prefix)
-         in
-         Install.gen_install_file entries)
-       >>>
-       Build.write_file_dyn install_file)))
+  Super_context.add_rule sctx ~dir:pkg_build_dir
+    ~mode:(if promote_install_file ctx then
+             Promote { lifetime = Until_clean ; into = None; only = None }
+           else
+             (* We must ignore the source file since it might be
+                copied to the source tree by another context. *)
+             Ignore_source_files)
+    (Build.path_set files
+     >>^ (fun () ->
+       let entries =
+         match ctx.findlib_toolchain with
+         | None -> entries
+         | Some toolchain ->
+           let prefix = Path.of_string (toolchain ^ "-sysroot") in
+           List.map entries
+             ~f:(Install.Entry.add_install_prefix
+                   ~paths:install_paths ~prefix)
+       in
+       Install.gen_install_file entries)
+     >>>
+     Build.write_file_dyn install_file)
 
 let install_alias (ctx : Context.t) (package : Local_package.t) =
   if not ctx.implicit then
@@ -455,9 +451,7 @@ let install_alias (ctx : Context.t) (package : Local_package.t) =
     let path = Path.build (Local_package.build_dir package) in
     let install_alias = Alias.install ~dir:path in
     let install_file = Path.relative path install_fn in
-    Rules.dir_rule (path, (fun () ->
-      Build_system.Alias.add_deps
-        install_alias (Path.Set.singleton install_file)))
+    Rules.Produce.Alias.add_deps install_alias (Path.Set.singleton install_file)
 
 module Scheme' =struct
 
@@ -526,7 +520,7 @@ let gen_rules sctx ~dir =
     Scheme.Evaluated.get_rules (Memo.exec scheme_per_ctx_memo sctx) ~dir
     |> Option.value ~default:Rules.Dir_rules.empty
   in
-  rules ()
+  Rules.produce_dir ~dir rules
 
 let packages =
   let f sctx =

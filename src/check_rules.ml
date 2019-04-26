@@ -19,7 +19,7 @@ let add_obj_dir sctx ~obj_dir =
       let dir = Obj_dir.byte_dir obj_dir in
       File_selector.create ~dir dev_files in
     let dyn_deps = Build.paths_matching ~loc:(Loc.of_pos __POS__) dir_glob in
-    Build_system.Alias.add_deps
+    Rules.Produce.Alias.add_deps
       (Alias.check ~dir:(Obj_dir.dir obj_dir))
       ~dyn_deps
       Path.Set.empty

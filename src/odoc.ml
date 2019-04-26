@@ -93,7 +93,7 @@ module Dep = struct
 
   (* let static_deps t lib = Build_system.Alias.dep (alias t lib) *)
 
-  let setup_deps ctx m files = Build_system.Alias.add_deps (alias ctx m) files
+  let setup_deps ctx m files = Rules.Produce.Alias.add_deps (alias ctx m) files
 end
 
 let odoc_ext = ".odoc"
@@ -369,7 +369,7 @@ let setup_lib_html_rules_def =
     List.iter odocs ~f:(setup_html sctx ~pkg ~requires);
     let html_files = List.map ~f:(fun o -> o.html_file) odocs in
     let static_html = static_html ctx in
-    Build_system.Alias.add_deps (Dep.html_alias ctx (Lib lib))
+    Rules.Produce.Alias.add_deps (Dep.html_alias ctx (Lib lib))
       (Path.Set.of_list (List.rev_append static_html html_files))
   in
   Memo.With_implicit_output.create "setup-library-html-rules"
@@ -429,7 +429,7 @@ let setup_pkg_html_rules_def =
          ) in
        let html_files = List.map ~f:(fun o -> o.html_file) odocs in
        let static_html = static_html ctx in
-       Build_system.Alias.add_deps (Dep.html_alias ctx (Pkg pkg))
+       Rules.Produce.Alias.add_deps (Dep.html_alias ctx (Pkg pkg))
          (Path.Set.of_list (List.rev_append static_html html_files)))
 
 let setup_pkg_html_rules sctx ~pkg ~libs =
@@ -441,7 +441,7 @@ let setup_package_aliases sctx (pkg : Package.t) =
     let dir = Path.append_source ctx.build_dir pkg.Package.path in
     Alias.doc ~dir
   in
-  Build_system.Alias.add_deps alias (
+  Rules.Produce.Alias.add_deps alias (
     Dep.html_alias ctx (Pkg pkg.name)
     :: (libs_of_pkg sctx ~pkg:pkg.name
         |> Lib.Set.to_list
@@ -572,7 +572,7 @@ let init sctx =
     (* setup @doc to build the correct html for the package *)
     setup_package_aliases sctx pkg;
   );
-  Build_system.Alias.add_deps
+  Rules.Produce.Alias.add_deps
     (Alias.private_doc ~dir:ctx.build_dir)
     (stanzas
      |> List.concat_map ~f:(fun (w : _ Dir_with_dune.t) ->

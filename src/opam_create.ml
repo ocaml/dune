@@ -140,7 +140,7 @@ let add_rule sctx ~project ~pkg =
   in
   let deps = Path.Set.singleton opam_path in
   List.iter aliases ~f:(fun alias ->
-    Build_system.Alias.add_deps alias deps)
+    Rules.Produce.Alias.add_deps alias deps)
 
 let add_rules sctx ~dir =
   let project =

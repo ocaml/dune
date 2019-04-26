@@ -86,11 +86,13 @@ let quote_args =
   in
   fun quote args -> As (loop quote args)
 
+let fail e = Fail { fail = fun _ -> raise e }
+
 let of_result = function
   | Ok x -> x
-  | Error e -> Fail {fail = fun _ -> raise e}
+  | Error e -> fail e
 
 let of_result_map res ~f =
   match res with
   | Ok    x -> f x
-  | Error e -> Fail {fail = fun _ -> raise e}
+  | Error e -> fail e

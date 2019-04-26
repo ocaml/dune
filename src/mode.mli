@@ -16,6 +16,8 @@ val of_cm_kind : Cm_kind.t -> t
 
 val variant : t -> Variant.t
 
+val to_string : t -> string
+
 val pp : t Fmt.t
 
 module Dict : sig
@@ -45,6 +47,7 @@ module Dict : sig
   val map2 : 'a t -> 'b t -> f:('a -> 'b -> 'c) -> 'c t
 
   val map : 'a t -> f:('a -> 'b) -> 'b t
+  val mapi : 'a t -> f:(mode -> 'a -> 'b) -> 'b t
 
   val make_both : 'a -> 'a t
 

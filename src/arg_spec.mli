@@ -60,3 +60,4 @@ val quote_args : string -> string list -> _ t
 
 val of_result : ('a, 'b) t Or_exn.t -> ('a, 'b) t
 val of_result_map : 'a Or_exn.t -> f:('a -> ('b, 'c) t) -> ('b, 'c) t
+val fail : exn -> ('a, 'b) t

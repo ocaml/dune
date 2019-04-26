@@ -67,6 +67,9 @@ module Entry : sig
     ; section : Section.t
     }
 
+  val adjust_dst_on_windows :
+    src_basename:(unit -> string) -> dst:string option -> string option
+
   val make : Section.t -> ?dst:string -> Path.t -> t
   val set_src : t -> Path.t -> t
 

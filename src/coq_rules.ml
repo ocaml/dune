@@ -125,7 +125,8 @@ let setup_ml_deps ~lib_db libs =
 
   (* Pair of include flags and paths to mlpack *)
   let ml_iflags, mlpack =
-    let libs = libs_of_coq_deps ~lib_db libs in
+    let libs = libs_of_coq_deps ~lib_db libs
+               |> Lib.closure ~linking:false |> Result.ok_exn in
     Util.include_flags libs, List.concat_map ~f:ml_pack_files libs
   in
 

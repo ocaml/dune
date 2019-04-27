@@ -34,6 +34,9 @@ unreleased
 
 - Do not fail when a findlib directory doesn't exist (#2101, fix #2099, @diml)
 
+- Fix crash when calculating library dependency closure (#2090, fixes #2085,
+  @rgrinberg)
+
 1.9.1 (11/04/2019)
 ------------------
 

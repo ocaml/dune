@@ -22,6 +22,9 @@
   `coqlib` will be dropped in the 1.0 version of the Coq language
   (#2055, @ejgallego)
 
+- Fix crash when calculating library dependency closure (#2090, fixes #2085,
+  @rgrinberg)
+
 1.9.1 (11/04/2019)
 ------------------
 

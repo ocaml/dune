@@ -754,32 +754,32 @@ end
 
 (* Find implementation that matches given variants *)
 let find_implementation_for lib ~variants =
+  assert (Option.is_some lib.info.virtual_);
   match variants with
   | None -> Ok None
   | Some (loc, variants_set) ->
-    begin match lib.implementations with
-    | None -> Ok None (* shouldn't happen and yet it does.. *)
-    | Some (lazy available_implementations) ->
-      let* candidates =
-        Variant.Set.fold variants_set
-          ~init:[]
-          ~f:(fun variant acc ->
-            List.rev_append acc
-              (Variant.Map.Multi.find available_implementations variant))
-        |> Result.List.all
-      in
-      match candidates with
-      | [] -> Ok None
-      | [elem] -> Ok (Some elem)
-      | conflict ->
-        let conflict = List.map conflict ~f:(fun lib -> lib.info) in
-        Error (Error (Multiple_implementations_for_virtual_lib
-                        { lib = lib.info
-                        ; loc
-                        ; given_variants = variants_set
-                        ; conflict
-                        }))
-    end
+    let available_implementations =
+      Lazy.force (Option.value_exn lib.implementations)
+    in
+    let* candidates =
+      Variant.Set.fold variants_set
+        ~init:[]
+        ~f:(fun variant acc ->
+          List.rev_append acc
+            (Variant.Map.Multi.find available_implementations variant))
+      |> Result.List.all
+    in
+    match candidates with
+    | [] -> Ok None
+    | [elem] -> Ok (Some elem)
+    | conflict ->
+      let conflict = List.map conflict ~f:(fun lib -> lib.info) in
+      Error (Error (Multiple_implementations_for_virtual_lib
+                      { lib = lib.info
+                      ; loc
+                      ; given_variants = variants_set
+                      ; conflict
+                      }))
 
 let rec instantiate db name (info : Lib_info.t) ~stack ~hidden =
   let id, stack =
@@ -1106,11 +1106,14 @@ and resolve_default_libraries libraries ~variants =
       in
       (* If the library has an implementation according to variants or default
          impl. *)
-      let* impl = impl_for lib in
-      begin match impl with
-      | None -> Ok ()
-      | Some impl -> visit ~stack:(lib.info :: stack) (Some lib) impl
-      end
+      if Option.is_none lib.info.virtual_ then
+        Ok ()
+      else
+        let* impl = impl_for lib in
+        begin match impl with
+        | None -> Ok ()
+        | Some impl -> visit ~stack:(lib.info :: stack) (Some lib) impl
+        end
     )
   in
   (* For each virtual library we know which vlibs will be implemented when

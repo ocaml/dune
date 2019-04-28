@@ -286,7 +286,7 @@ let promote_install_file (ctx : Context.t) =
 
 let install_file sctx (package : Local_package.t) entries =
   let ctx = Super_context.context sctx in
-  let opam = Local_package.opam_file package in
+  let opam_file = Local_package.opam_file package in
   let meta = Local_package.meta_file package in
   let dune_package = Local_package.dune_package_file package in
   let package_name = Local_package.name package in
@@ -297,12 +297,22 @@ let install_file sctx (package : Local_package.t) entries =
       Local_package.odig_files package
       |> List.map ~f:(fun doc -> (None, Install.Entry.make Doc (Path.build doc)))
     in
-    local_install_rules sctx ~package:package_name ~install_paths (
-      (None, Install.Entry.make Lib (Path.build opam) ~dst:"opam")
-      :: (None, Install.Entry.make Lib (Path.build meta) ~dst:"META")
+    let files =
+      (None, Install.Entry.make Lib (Path.build meta) ~dst:"META")
       :: (None, Install.Entry.make Lib (Path.build dune_package)
                   ~dst:"dune-package")
-      :: docs)
+      :: docs
+    in
+    let files =
+      let package = Local_package.package package in
+      match package.kind with
+      | Dune false -> files
+      | Dune true
+      | Opam ->
+        (None, Install.Entry.make Lib (Path.build opam_file) ~dst:"opam")
+        :: files
+    in
+    local_install_rules sctx ~package:package_name ~install_paths files
     |> List.rev_append entries
   in
   let fn =

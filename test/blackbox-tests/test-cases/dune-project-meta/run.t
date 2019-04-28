@@ -4,18 +4,21 @@ The `dune build` should work.
 
   $ dune build @install --root test-fields --auto-promote
   Entering directory 'test-fields'
-  File "cohttp-async.opam", line 1, characters 0-0:
-  Files _build/default/cohttp-async.opam and _build/default/cohttp-async.opam.expected differ.
-  File "cohttp.opam", line 1, characters 0-0:
-  Files _build/default/cohttp.opam and _build/default/cohttp.opam.expected differ.
-  Promoting _build/default/cohttp-async.opam.expected to cohttp-async.opam.
-  Promoting _build/default/cohttp.opam.expected to cohttp.opam.
-  [1]
   $ cat test-fields/cohttp.opam
   opam-version: "2.0"
-  dev-repo: "git+https://github.com/mirage/ocaml-cohttp.git"
+  build: [
+    ["dune" "subst"] {pinned}
+    ["dune" "build" "-p" name "-j" jobs]
+    ["dune" "runtest" "-p" name "-j" jobs] {with-test}
+    ["dune" "build" "-p" name "@doc"] {with-doc}
+  ]
   authors: ["Anil Madhavapeddy" "Rudi Grinberg"]
+  bug-reports: "https://github.com/mirage/ocaml-cohttp/issues"
+  homepage: "https://github.com/mirage/ocaml-cohttp"
   license: "ISC"
+  dev-repo: "git+https://github.com/mirage/ocaml-cohttp.git"
+  synopsis: "An OCaml library for HTTP clients and servers"
+  description: "A longer description"
   depends: [
     "alcotest" {with-test}
     "dune" {build & > "1.5"}
@@ -24,38 +27,37 @@ The `dune build` should work.
     "uri" {< "2.0.0"}
     "fieldslib" {> "v0.12"}
     "fieldslib" {< "v0.13"}
-    "ocaml" {>= "4.06.0"}
-    "cohttp" {>= "1.0.0"}
   ]
-  description: "A longer description"
-  synopsis: "An OCaml library for HTTP clients and servers"
   $ cat test-fields/cohttp-async.opam
   opam-version: "2.0"
-  dev-repo: "git+https://github.com/mirage/ocaml-cohttp.git"
+  build: [
+    ["dune" "subst"] {pinned}
+    ["dune" "build" "-p" name "-j" jobs]
+    ["dune" "runtest" "-p" name "-j" jobs] {with-test}
+    ["dune" "build" "-p" name "@doc"] {with-doc}
+  ]
   authors: ["Anil Madhavapeddy" "Rudi Grinberg"]
+  bug-reports: "https://github.com/mirage/ocaml-cohttp/issues"
+  homepage: "https://github.com/mirage/ocaml-cohttp"
   license: "ISC"
+  dev-repo: "git+https://github.com/mirage/ocaml-cohttp.git"
+  synopsis: "HTTP client and server for the Async library"
+  description: "A _really_ long description"
   depends: [
     "cohttp" {>= "1.0.2"}
     "conduit-async" {>= "1.0.3"}
     "async" {>= "v0.10.0"}
     "async" {< "v0.12"}
-    "ocaml" {>= "4.06.0"}
-    "cohttp" {>= "1.0.0"}
   ]
-  description: "A _really_ long description"
-  synopsis: "HTTP client and server for the Async library"
 
 
-Fatal error with invalid opam file:
+Fatal error with opam file that is not listed in the dune-project file:
+
   $ dune build @install --root bad-opam-file --auto-promote
   Entering directory 'bad-opam-file'
   File "foo.opam", line 1, characters 0-0:
-  Warning: Unable to read opam file. This package's version field willbe ignored.
-  Reason: File "foo.opam", line 1, characters 7-12:
-  Parse error
-  
-  File "_build/default/foo.opam", line 1, characters 7-12:
-  1 | cannot parse me
-             ^^^^^
-  Error: Parse error
+  Error: This opam file doesn't have a corresponding (package ...) stanza in the
+  dune-project_file. Since you have at least one other (package ...) stanza in
+  your dune-project file, you must a (package ...) stanza for each opam package
+  in your project.
   [1]

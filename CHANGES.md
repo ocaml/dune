@@ -28,9 +28,9 @@ unreleased
 - Allow %{...} variables in pps flags (#2076, @mlasson review by @diml and
   @aalekseyev).
 
-- Add more opam metadata and use it to generate corrections to the .opam files
-  in the source. This allows the user to partially specify opam metadata in the
-  the dune-project file. (#2017, @avsm, @jonludlam)
+- Add more opam metadata and use it to generate `.opam` files. In particular, a
+  `package` field has been added to specify package specific information.
+  (#2017, #2091, @avsm, @jonludlam, @rgrinberg)
 
 - Clean up the special support for `findlib.dynload`. Before, Dune would simply
   match on the library name. Now, we only match on the findlib package name when

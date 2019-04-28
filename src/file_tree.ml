@@ -353,16 +353,12 @@ let files_of t path =
     Path.Source.Set.of_list (
       List.map (String.Set.to_list (Dir.files dir)) ~f:(Path.Source.relative path))
 
-let file_exists t path fn =
-  match find_dir t path with
+let file_exists t path =
+  match find_dir t (Path.Source.parent_exn path) with
   | None -> false
-  | Some dir -> String.Set.mem (Dir.files dir) fn
+  | Some dir -> String.Set.mem (Dir.files dir) (Path.Source.basename path)
 
 let dir_exists t path = Option.is_some (find_dir t path)
-
-let exists t path =
-  dir_exists t path ||
-  file_exists t (Path.Source.parent_exn path) (Path.Source.basename path)
 
 let files_recursively_in t ?(prefix_with=Path.root) path =
   match find_dir t path with

@@ -44,6 +44,7 @@ module Fn         = Fn
 module Dyn        = Dyn
 module Float      = Float
 module Tuple      = Tuple
+module Poly       = Poly
 
 external reraise : exn -> _ = "%reraise"
 

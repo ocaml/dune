@@ -80,73 +80,25 @@ let absolutify_positions ~file_contents t =
 
 let nopos : OpamParserTypes.pos = ("",0,0) (* Null position *)
 
-module Mutator = struct
-  open OpamParserTypes
+let existing_variables t =
+  List.fold_left ~init:String.Set.empty t.file_contents
+    ~f:(fun acc l ->
+      match l with
+      | Section (_, _) -> acc
+      | Variable (_, var, _) -> String.Set.add acc var)
 
-  type t = opamfile_item list -> opamfile_item list
+module Create = struct
+  let string s = String (nopos, s)
+  let list f xs = List (nopos, List.map ~f xs)
+  let string_list xs = list string xs
 
-  let (>>>) : t -> t -> t = fun x y z -> y (x z)
-
-  let fixup : t = List.map ~f:(function
-    | Variable (x,y,String (pos,z)) ->
-      let fixed =
-        if String.length z > 0 && z.[0] = '\n'
-        then String.sub z ~pos:1 ~len:(String.length z - 1)
-        else z
-      in
-      Variable (x,y,String (pos,fixed))
-    | y -> y)
-
-  let _remove_var : string -> t =
-    fun str -> List.filter ~f:(function
-      | Variable (_, v, _) when v=str -> false
-      | _ -> true)
-
-  let add_var : string -> OpamParserTypes.value -> t = fun var value l ->
-    (Variable (nopos, var, value))::l
-
-  let remap x f =
-    List.filter_map ~f:(function
-      | Variable (_, v, y) when v = x -> begin
-        match f (Some y) with
-        | Some y' -> Some (Variable (nopos, v, y'))
-        | None -> None
-        end
-      | z -> Some z)
-
-  let binding_present x =
-    List.exists ~f:(function
-      | Variable (_, v, _) when v = x -> true
-      | _ -> false)
-
-  let _map_var x f zs =
-    if binding_present x zs
-    then remap x f zs
-    else begin
-      match f None with
-      | Some y -> (Variable (nopos, x, y))::zs
-      | None -> zs
-    end
-
-  let set_var x y zs =
-    if binding_present x zs
-    then remap x (fun _ -> Some y) zs
-    else add_var x y zs
-
-  let mkstring x = String (nopos, x)
-  let mklist f xs = List (nopos, List.map ~f xs)
-
-  let set_string x y = set_var x (mkstring y)
-
-  let set_list x conv l = set_var x (mklist conv l)
-  let id x = x
-
-  let opt opt f : t = match opt with | None -> id | Some x -> f x
-  let list l f : t = match l with [] -> id | xs -> f xs
-
-  let apply t opamfile =
-    {
-      opamfile with
-      file_contents = t opamfile.file_contents
+  let of_bindings vars ~file =
+    let file_contents =
+      List.map vars ~f:(fun (var, value) ->
+        Variable (nopos, var, value))
+    in
+    let file_name = Path.to_string file in
+    { file_contents
+    ; file_name
     }
 end

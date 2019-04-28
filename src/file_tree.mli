@@ -89,14 +89,11 @@ val find_dir : t -> Path.Source.t -> Dir.t option
 
 val files_of : t -> Path.Source.t -> Path.Source.Set.t
 
-(** [true] iff the path is either a directory or a file *)
-val exists : t -> Path.Source.t -> bool
-
 (** [true] iff the path is a directory *)
 val dir_exists : t -> Path.Source.t -> bool
 
 (** [true] iff the path is a file *)
-val file_exists : t -> Path.Source.t -> string -> bool
+val file_exists : t -> Path.Source.t -> bool
 
 val files_recursively_in : t -> ?prefix_with:Path.t -> Path.Source.t -> Path.Set.t
 

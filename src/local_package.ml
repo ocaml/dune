@@ -14,6 +14,7 @@ type t =
   ; pkg : Package.t
   ; libs : Lib.Set.t
   ; virtual_lib : Lib.t option Lazy.t
+  ; project : Dune_project.t
   }
 
 let to_dyn t = Package.to_dyn t.pkg
@@ -134,7 +135,8 @@ module Of_sctx = struct
       Super_context.packages sctx
       |> Package.Name.Map.map ~f:(fun (pkg : Package.t) ->
         let odig_files =
-          let files = Super_context.source_files sctx ~src_path:Path.Source.root in
+          let files =
+            Super_context.source_files sctx ~src_path:Path.Source.root in
           String.Set.fold files ~init:[] ~f:(fun fn acc ->
             if is_odig_doc_file fn then
               Path.Build.relative ctx_build_dir fn :: acc
@@ -145,6 +147,11 @@ module Of_sctx = struct
         let virtual_lib = lazy (
           Lib.Set.find libs ~f:(fun l -> Option.is_some (Lib.virtual_ l))
         ) in
+        let project =
+          let dir = Path.append_source ctx.build_dir pkg.path in
+          let scope = Super_context.find_scope_by_dir sctx dir in
+          Scope.project scope
+        in
         let t =
           add_stanzas
             ~sctx
@@ -158,6 +165,7 @@ module Of_sctx = struct
             ; libs
             ; mlds = lazy (assert false)
             ; virtual_lib
+            ; project
             }
             (Package.Name.Map.find stanzas_per_package pkg.name
              |> Option.value ~default:[])
@@ -181,6 +189,7 @@ let libs t = t.libs
 let installs t = t.installs
 let lib_stanzas t = t.lib_stanzas
 let mlds t = Lazy.force t.mlds
+let project t = t.project
 
 let package t = t.pkg
 let opam_file t =

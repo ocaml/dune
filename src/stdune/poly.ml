@@ -1,0 +1,1 @@
+let hash = Hashtbl.hash

@@ -8,21 +8,38 @@
 (*                                                                        *)
 (**************************************************************************)
 
-let main = OpamBaseParser.main
-
-let string str filename =
+(** Generic glue functions *)
+let parse_from_string parse_fun str filename =
   let lexbuf = Lexing.from_string str in
   lexbuf.Lexing.lex_curr_p <-
     { lexbuf.Lexing.lex_curr_p with Lexing.pos_fname = filename };
-  OpamBaseParser.main OpamLexer.token lexbuf filename
+  parse_fun OpamLexer.token lexbuf
 
-let channel ic filename =
+let parse_from_channel parse_fun ic filename =
   let lexbuf = Lexing.from_channel ic in
   lexbuf.Lexing.lex_curr_p <-
     { lexbuf.Lexing.lex_curr_p with Lexing.pos_fname = filename };
-  OpamBaseParser.main OpamLexer.token lexbuf filename
+  parse_fun OpamLexer.token lexbuf
 
-let file filename =
-  let ic = open_in filename in
-  try channel ic filename
+let parse_from_file parse_fun filename =
+  let ic = open_in_bin filename in
+  try
+    let r = parse_from_channel parse_fun ic filename in
+    close_in ic;
+    r
   with e -> close_in ic; raise e
+
+(** raw parser entry points *)
+let main = OpamBaseParser.main
+let value = OpamBaseParser.value
+
+(** file parsers *)
+let main' filename lexer lexbuf = main lexer lexbuf filename
+let string str filename = parse_from_string (main' filename) str filename
+let channel ic filename = parse_from_channel (main' filename) ic filename
+let file filename = parse_from_file (main' filename) filename
+
+(** value parsers *)
+let value_from_string = parse_from_string value
+let value_from_channel = parse_from_channel value
+let value_from_file = parse_from_file value

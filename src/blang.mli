@@ -22,5 +22,9 @@ val true_ : t
 val eval
   :  t
   -> dir:Path.t
-  -> f:Value.t list option  String_with_vars.expander
+  -> f:Value.t list option String_with_vars.expander
   -> bool
+
+val to_dyn : t -> Dyn.t
+
+val decode : t Stanza.Decoder.t

@@ -39,8 +39,8 @@ let get_pos n =
 
 %left COLON
 %left ATOM
-%left AND
 %left OR
+%left AND
 %nonassoc ENVOP
 %nonassoc PFXOP
 %left LBRACE RBRACE

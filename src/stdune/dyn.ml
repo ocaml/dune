@@ -126,3 +126,5 @@ module Encoder = struct
 end
 
 let opaque = String "<opaque>"
+
+type dyn = t

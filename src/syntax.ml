@@ -23,6 +23,10 @@ module Version = struct
 
   let to_sexp t = Sexp.Atom (to_string t)
 
+  let to_dyn t =
+    let open Dyn.Encoder in
+    pair int int t
+
   let hash = Hashtbl.hash
 
   let encode t = Dune_lang.Encoder.string (to_string t)

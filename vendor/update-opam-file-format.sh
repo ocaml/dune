@@ -1,6 +1,6 @@
 #!/bin/bash
 
-version=2.0.0~beta
+version=2.0.0
 
 set -e -o pipefail
 
@@ -16,5 +16,5 @@ SRC=$TMP/opam-file-format.$version
 
 cp -v $SRC/src/*.{ml,mli,mll,mly} opam-file-format/src
 
-git checkout opam-file-format/src/jbuild
+git checkout opam-file-format/src/dune
 git add -A .

@@ -46,11 +46,12 @@ module DB = struct
     match Dune_project.Name.Map.find t.by_name name with
     | Some x -> x
     | None ->
+      let dune_project_sexp p = Dyn.to_sexp (Dune_project.Name.to_dyn p) in
       Exn.code_error "Scope.DB.find_by_name"
-        [ "name"   , Dune_project.Name.to_sexp name
+        [ "name"   , dune_project_sexp name
         ; "context", Sexp.Encoder.string t.context
         ; "names",
-          Sexp.Encoder.(list Dune_project.Name.to_sexp)
+          Sexp.Encoder.(list dune_project_sexp)
             (Dune_project.Name.Map.keys t.by_name)
         ]
 
@@ -111,8 +112,9 @@ module DB = struct
       | Ok x -> x
       | Error (_name, project1, project2) ->
         let to_sexp (project : Dune_project.t) =
-          Sexp.Encoder.(pair Dune_project.Name.to_sexp Path.Source.to_sexp)
+          Dyn.Encoder.(pair Dune_project.Name.to_dyn Path.Source.to_dyn)
             (Dune_project.name project, Dune_project.root project)
+          |> Dyn.to_sexp
         in
         Exn.code_error "Scope.DB.create got two projects with the same name"
           [ "project1", to_sexp project1

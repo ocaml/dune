@@ -219,6 +219,7 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
 
   let gen_rules ~dir components : Build_system.extra_sub_directories_to_keep =
     Install_rules.init_meta sctx ~dir;
+    Opam_create.add_rules sctx ~dir;
     (match components with
      | ".js"  :: rest -> Js_of_ocaml_rules.setup_separate_compilation_rules
                            sctx rest
@@ -346,5 +347,5 @@ let gen ~contexts
   Build_system.set_rule_generators
     (String.Map.map map ~f:(fun (module M : Gen) -> M.gen_rules));
   String.Map.iter map ~f:(fun (module M : Gen) -> M.init ());
-  String.Map.map map ~f:(fun (module M : Gen) -> M.sctx)
+  String.Map.map map ~f:(fun (module M : Gen) -> M.sctx);
 

@@ -48,3 +48,5 @@ val pp : Format.formatter -> t -> unit
 val opaque : t
 
 val to_sexp : t Sexp.Encoder.t
+
+type dyn = t

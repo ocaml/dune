@@ -138,19 +138,22 @@ let expand_str t sw =
   expand t ~mode:Single ~template:sw
   |> Value.to_string ~dir:t.dir
 
+type reduced_var_result =
+  | Unknown
+  | Restricted
+  | Expanded of Value.t list
+
 let expand_with_reduced_var_set ~(context : Context.t) =
   let ocaml_config = lazy (make_ocaml_config context.ocaml_config) in
   let bindings = Pform.Map.create ~context in
   fun var syn ->
     match Pform.Map.expand bindings var syn with
-    | None -> None
-    | Some (Var (Values l)) -> Some l
+    | None -> Unknown
+    | Some (Var (Values l)) -> Expanded l
     | Some (Macro (Ocaml_config, s)) ->
-      Some (expand_ocaml_config (Lazy.force ocaml_config) var s)
+      Expanded (expand_ocaml_config (Lazy.force ocaml_config) var s)
     | Some _ ->
-      Errors.fail (String_with_vars.Var.loc var)
-        "%s isn't allowed in this position"
-        (String_with_vars.Var.describe var)
+      Restricted
 
 module Resolved_forms = struct
   type t =

@@ -4,6 +4,8 @@ open! Stdune
 
 module Dst : sig
   type t
+
+  val to_string : t -> string
 end
 
 module Section : sig
@@ -67,8 +69,11 @@ module Entry : sig
     ; section : Section.t
     }
 
-  val adjust_dst_on_windows :
-    src_basename:(unit -> string) -> dst:string option -> string option
+  val adjust_dst :
+    src:(string String_with_vars.Partial.t)
+    -> dst:string option
+    -> section:Section.t
+    -> Dst.t
 
   val make : Section.t -> ?dst:string -> Path.t -> t
   val set_src : t -> Path.t -> t

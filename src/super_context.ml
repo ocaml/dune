@@ -312,8 +312,24 @@ let get_installed_binaries stanzas ~(context : Context.t) =
   let install_dir = Config.local_install_bin_dir ~context:context.name in
   let expander = Expander.expand_with_reduced_var_set ~context in
   let expand_str ~dir sw =
-    String_with_vars.expand ~dir ~mode:Single ~f:expander sw
+    String_with_vars.expand ~dir ~mode:Single ~f:(fun var ver ->
+      match expander var ver with
+      | Unknown -> None
+      | Expanded x -> Some x
+      | Restricted ->
+        Errors.fail (String_with_vars.Var.loc var)
+          "%s isn't allowed in this position"
+          (String_with_vars.Var.describe var)
+    ) sw
     |> Value.to_string ~dir
+  in
+  let expand_str_partial ~dir sw =
+    String_with_vars.partial_expand ~dir ~mode:Single ~f:(fun var ver ->
+      match expander var ver with
+      | Expander.Unknown | Restricted -> None
+      | Expanded x -> Some x
+    ) sw
+    |> String_with_vars.Partial.map ~f:(Value.to_string ~dir)
   in
   Dir_with_dune.deep_fold stanzas ~init:Path.Set.empty ~f:(fun d stanza acc ->
     match (stanza : Stanza.t) with
@@ -321,10 +337,14 @@ let get_installed_binaries stanzas ~(context : Context.t) =
       List.fold_left files ~init:acc ~f:(fun acc fb ->
         let p =
           File_binding.Unexpanded.destination_relative_to_install_path
-            fb ~f:(expand_str ~dir:d.ctx_dir)
+            fb
+            ~section:Bin
+            ~expand:(expand_str ~dir:d.ctx_dir)
+            ~expand_partial:(expand_str_partial ~dir:d.ctx_dir)
         in
-        if Path.Local.is_root (Path.Local.parent_exn p) then
-          Path.Set.add acc (Path.append_local install_dir p)
+        let p = Path.Relative.of_string (Install.Dst.to_string p) in
+        if Path.Relative.is_root (Path.Relative.parent_exn p) then
+          Path.Set.add acc (Path.append_relative install_dir p)
         else
           acc)
     | _ -> acc)

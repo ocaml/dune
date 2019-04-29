@@ -45,12 +45,6 @@ module Mode : sig
     | Many : Value.t list t
 end
 
-module Partial : sig
-  type nonrec 'a t =
-    | Expanded of 'a
-    | Unexpanded of t
-end
-
 module Var : sig
   type t
 
@@ -68,6 +62,27 @@ module Var : sig
   (** Describe what this variable is *)
   val describe : t -> string
 end
+
+type yes_no_unknown =
+  | Yes | No | Unknown of Var.t
+
+module Partial : sig
+  type nonrec 'a t =
+    | Expanded of 'a
+    | Unexpanded of t
+
+  val to_sexp : ('a -> Sexp.t) -> 'a t -> Sexp.t
+
+  val map : 'a t -> f:('a -> 'b) -> 'b t
+
+  val is_suffix : string t -> suffix:string -> yes_no_unknown
+end
+
+type get_known_suffix =
+  | Full of string
+  | Partial of (Var.t * string)
+
+val get_known_suffix : t -> get_known_suffix
 
 type 'a expander = Var.t -> Syntax.Version.t -> 'a
 

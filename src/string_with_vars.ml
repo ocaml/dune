@@ -194,12 +194,6 @@ module Mode = struct
       | Single, _ -> None
 end
 
-module Partial = struct
-  type nonrec 'a t =
-    | Expanded of 'a
-    | Unexpanded of t
-end
-
 let invalid_multivalue (v : var) x =
   Errors.fail v.loc "Variable %s expands to %d values, \
                    however a single value is expected here. \
@@ -236,7 +230,52 @@ module Var = struct
        | Some _ -> { t with payload = Some ".." })
 end
 
+type get_known_suffix =
+  | Full of string
+  | Partial of (Var.t * string)
+
+let get_known_suffix =
+  let rec go t acc = match t with
+    | Text s :: rest -> go rest (s :: acc)
+    | [] -> Full (String.concat ~sep:"" acc)
+    | Var v :: _ -> Partial (v, String.concat ~sep:"" acc)
+  in
+  fun { template = { parts; _ }; _ } -> go (List.rev parts) []
+
 type 'a expander = Var.t -> Syntax.Version.t -> 'a
+
+type yes_no_unknown =
+  | Yes | No | Unknown of Var.t
+
+module Private = struct
+  module Partial = struct
+    type nonrec 'a t =
+      | Expanded of 'a
+      | Unexpanded of t
+
+    let map t ~f = match t with
+      | Expanded t -> Expanded (f t)
+      | Unexpanded t -> Unexpanded t
+
+    let is_suffix t ~suffix:want_suffix =
+      let full s =
+        if String.is_suffix ~suffix:want_suffix s then Yes else No
+      in
+      match t with
+      | Expanded s ->
+        full s
+      | Unexpanded t -> match get_known_suffix t with
+        | Full s -> full s
+        | Partial (v, have_suffix) ->
+          if String.is_suffix ~suffix:want_suffix have_suffix then Yes
+          else
+          if String.is_suffix ~suffix:have_suffix want_suffix then Unknown v
+          else
+            No
+
+  end
+end
+open Private
 
 let partial_expand
   : 'a.t
@@ -446,3 +485,18 @@ let upgrade_to_dune t ~allow_first_dep_var =
         { t.template with parts = List.map t.template.parts ~f:map_part }
     }
   end
+
+module Partial = struct
+  include Private.Partial
+
+  let to_sexp f t =
+    match t with
+    | Expanded x ->
+      Sexp.List [
+        Sexp.Atom "Expanded"; f x
+      ]
+    | Unexpanded t ->
+      Sexp.List [
+        Sexp.Atom "Unexpanded"; to_sexp t
+      ]
+end

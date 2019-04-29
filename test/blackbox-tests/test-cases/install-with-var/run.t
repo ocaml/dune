@@ -28,8 +28,6 @@
 Some variables are restricted in [dst] of [bin] section because evaluating
 them could cause a dependency cycle (also, most of them make no sense in [dst] anyway).
 
-Currently this still works, but we're about to disallow it.
-
   $ cat > dune <<EOF
   >  (install
   >   (section bin)
@@ -67,6 +65,12 @@ extension of [src]:
   > EOF
 
   $ dune build @install
+  File "dune", line 3, characters 12-31:
+  3 |   (files (%{env:FOO=foobar.txt} as foo.txt))
+                  ^^^^^^^^^^^^^^^^^^^
+  Error: Because this file is installed in the 'bin' section, you
+  cannot use the variable %{env:..} in its basename.
+  [1]
 
 This is fine if the destination extension is already .exe:
 
@@ -103,7 +107,8 @@ Exe basename needs to be fully known if dst is missing though:
   File "dune", line 3, characters 11-26:
   3 |   (files %{env:FOO=foobar}.txt)
                  ^^^^^^^^^^^^^^^
-  Error: %{env:..} isn't allowed in this position
+  Error: Because this file is installed in the 'bin' section, you
+  cannot use the variable %{env:..} in its basename.
   [1]
 
 When basename is fully known, all is well:
@@ -116,8 +121,3 @@ When basename is fully known, all is well:
   > EOF
 
   $ dune build @install
-  File "dune", line 3, characters 11-21:
-  3 |   (files %{env:FOO=.}/foobar.txt)
-                 ^^^^^^^^^^
-  Error: %{env:..} isn't allowed in this position
-  [1]

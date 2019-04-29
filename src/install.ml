@@ -235,32 +235,56 @@ module Entry = struct
       else
         Section.compare x.section y.section
 
-  let adjust_dst_on_windows ~src_basename ~dst =
-    if Sys.win32 then
-      let src_basename = src_basename () in
-      let dst' =
-        match dst with
-        | None -> src_basename
-        | Some s -> s
+  let adjust_dst ~src ~dst ~section =
+    let error var =
+      Errors.fail (String_with_vars.Var.loc var)
+        "Because this file is installed in the 'bin' section, you\n\
+         cannot use the variable %s in its basename."
+        (String_with_vars.Var.describe var)
+    in
+    let is_source_executable () =
+      let has_ext ext =
+        match String_with_vars.Partial.is_suffix ~suffix:ext src with
+        | Unknown var -> error var
+        | Yes ->
+          true
+        | No ->
+          false
       in
-      match Filename.extension src_basename with
-      | ".exe" | ".bc" ->
-        if Filename.extension dst' <> ".exe" then
-          Some (dst' ^ ".exe")
-        else
-          dst
-      | _ -> dst
-    else
-      dst
+      has_ext ".exe" || has_ext ".bc"
+    in
+    let src_basename () =
+      match src with
+      | Expanded e -> Filename.basename e
+      | Unexpanded src ->
+        match (String_with_vars.get_known_suffix src) with
+        | Full _ -> assert false
+        | Partial (var, suffix) ->
+          match String.rsplit2 ~on:'/' suffix with
+          | Some (_, basename) ->
+            basename
+          | None -> error var
+    in
+    match dst with
+    | Some dst' when Filename.extension dst' = ".exe" -> Dst.explicit dst'
+    | _ ->
+      let dst =
+        match dst with
+        | None ->
+          Dst.infer ~src_basename:(src_basename ()) section
+        | Some dst ->
+          Dst.explicit dst
+      in
+      let is_executable = is_source_executable () in
+      if Sys.win32 &&  is_executable && Filename.extension (Dst.to_string dst) <> ".exe"
+      then
+        Dst.explicit (Dst.to_string dst ^ ".exe")
+      else
+        dst
+  ;;
 
   let make section ?dst src =
-    let dst = adjust_dst_on_windows ~src_basename:(fun () -> Path.basename src) ~dst in
-    let dst = match dst with
-      | None ->
-        Dst.infer ~src_basename:(Path.basename src) section
-      | Some s ->
-        Dst.explicit s
-    in
+    let dst = adjust_dst ~src:(Expanded (Path.to_string src)) ~dst ~section in
     { src
     ; dst
     ; section

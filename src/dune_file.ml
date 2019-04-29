@@ -87,6 +87,11 @@ module Pkg = struct
            (listing (Package.Name.Map.values (Dune_project.packages project)))
            stanza)
 
+  let default_exn ~loc project stanza =
+    match default project stanza with
+    | Ok p -> p
+    | Error msg -> Errors.fail loc "%s" msg
+
   let resolve (project : Dune_project.t) name =
     let packages = Dune_project.packages project in
     match Package.Name.Map.find packages name with
@@ -1068,6 +1073,7 @@ module Executables = struct
     type t
 
     val names : t -> (Loc.t * string) list
+    val package : t -> Package.t option
 
     val has_public_name : t -> bool
 
@@ -1080,14 +1086,16 @@ module Executables = struct
     val install_conf
       : t
       -> ext:string
-      -> (File_binding.Unexpanded.t Install_conf.t, string) Result.t option
-
-    val loc_of_package_field : t -> Loc.t
+      -> File_binding.Unexpanded.t Install_conf.t option
   end = struct
+    type public =
+      { public_names : (Loc.t * string option) list
+      ; package : Package.t
+      }
+
     type t =
       { names : (Loc.t * string) list
-      ; public_names : (Loc.t * string option) list option
-      ; package : (Loc.t * Package.Name.t) option
+      ; public : public option
       ; stanza : string
       ; project : Dune_project.t
       ; loc : Loc.t
@@ -1097,10 +1105,9 @@ module Executables = struct
 
     let names t = t.names
 
-    let loc_of_package_field t =
-      match t.package with
-      | None -> t.loc
-      | Some (loc, _) -> loc
+    let package t = Option.map t.public ~f:(fun p -> p.package)
+
+    let has_public_name t = Option.is_some t.public
 
     let public_name =
       located string >>| fun (loc, s) ->
@@ -1148,10 +1155,10 @@ module Executables = struct
       and+ loc = loc
       and+ dune_syntax = Syntax.get_exn Stanza.syntax
       and+ file_kind = Stanza.file_kind ()
-      and+ package =
-        field_o "package" (let+ loc = loc
-                           and+ s = Package.Name.decode in
-                           (loc, s))
+      and+ package = field_o "package"
+                       (let+ loc = loc
+                        and+ pkg = Pkg.decode in
+                        (loc, pkg))
       and+ project = Dune_project.get_exn ()
       in
       let (names, public_names) = names in
@@ -1181,9 +1188,33 @@ module Executables = struct
             of_sexp_errorf loc "field %s is missing"
               (pluralize ~multi "name")
       in
+      let public =
+        match package, public_names with
+        | None, None -> None
+        | Some (_loc, package), Some public_names ->
+          Some { package; public_names }
+        | None, Some public_names ->
+          if List.for_all public_names ~f:(fun (_, x) -> Option.is_none x) then
+            None
+          else
+            Some
+              { public_names
+              ; package =
+                  Pkg.default_exn ~loc project (pluralize "executable" ~multi)
+              }
+        | Some (loc, _), None ->
+          let func =
+            match file_kind with
+            | Jbuild -> Errors.warn
+            | Dune   -> Errors.fail
+          in
+          func loc
+            "This field is useless without a (%s ...) field."
+            (pluralize "public_name" ~multi);
+          None
+      in
       { names
-      ; public_names
-      ; package
+      ; public
       ; project
       ; stanza
       ; loc
@@ -1191,52 +1222,18 @@ module Executables = struct
       ; file_kind
       }
 
-    let has_public_name t =
-      (* user could omit public names by avoiding the field or writing - *)
-      match t.public_names with
-      | None -> false
-      | Some pns -> List.exists ~f:(fun (_, n) -> Option.is_some n) pns
-
-    let package t =
-      match t.package with
-      | None -> (t.loc, Pkg.default t.project t.stanza)
-      | Some (loc, name) -> (loc, Pkg.resolve t.project name)
-
     let install_conf t ~ext =
-      let files =
-        let public_names =
-          match t.public_names with
-          | None -> List.map t.names ~f:(Fn.const (Loc.none, None))
-          | Some pns -> pns
+      Option.map t.public ~f:(fun { package; public_names } ->
+        let files =
+          List.map2 t.names public_names
+            ~f:(fun (locn, name) (locp, pub) ->
+              Option.map pub ~f:(fun pub ->
+                File_binding.Unexpanded.make
+                  ~src:(locn, name ^ ext)
+                  ~dst:(locp, pub)))
+          |> List.filter_opt
         in
-        List.map2 t.names public_names
-          ~f:(fun (locn, name) (locp, pub) ->
-            Option.map pub ~f:(fun pub ->
-              File_binding.Unexpanded.make
-                ~src:(locn, name ^ ext)
-                ~dst:(locp, pub)))
-        |> List.filter_opt
-      in
-      begin match files, t.package with
-      | [], None -> None
-      | [], Some (loc, _) ->
-        let func =
-          match t.file_kind with
-          | Jbuild -> Errors.warn
-          | Dune   -> Errors.fail
-        in
-        func loc
-          "This field is useless without a (%s ...) field."
-          (pluralize "public_name" ~multi:t.multi);
-        None
-      | files, _ ->
-        Some (
-          let open Result.O in
-          let (_loc, package) = package t in
-          package >>| fun package ->
-          { Install_conf. section = Bin; files; package }
-        )
-      end
+        { Install_conf. section = Bin; files; package })
   end
 
   module Link_mode = struct
@@ -1353,6 +1350,7 @@ module Executables = struct
     ; modes      : Link_mode.Set.t
     ; buildable  : Buildable.t
     ; variants   : (Loc.t * Variant.Set.t) option
+    ; package    : Package.t option
     }
 
   let common =
@@ -1382,6 +1380,7 @@ module Executables = struct
         ; modes
         ; buildable
         ; variants
+        ; package = Names.package names
         }
       in
       let install_conf =
@@ -1406,13 +1405,7 @@ module Executables = struct
           in
           Names.install_conf names ~ext
       in
-      match install_conf with
-      | None -> (t, None)
-      | Some (Error msg) ->
-        let loc = Names.loc_of_package_field names in
-        of_sexp_errorf loc "%s" msg
-      | Some (Ok install_conf) ->
-        (t, Some install_conf)
+      (t, install_conf)
 
   let (single, multi) =
     let stanza = "executable" in
@@ -1973,6 +1966,7 @@ module Tests = struct
            ; buildable
            ; names
            ; variants
+           ; package = None
            }
        ; locks
        ; package

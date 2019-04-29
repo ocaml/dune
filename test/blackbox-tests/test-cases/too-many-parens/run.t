@@ -16,8 +16,8 @@ are readable.
 
   $ dune build --root b
   Entering directory 'b'
-  File "dune", line 4, characters 12-17:
-  4 |  (libraries (lib)))
+  File "dune", line 3, characters 12-17:
+  3 |  (libraries (lib)))
                   ^^^^^
   Error: 'select' expected
   Hint: dune files require fewer parentheses than jbuild files.

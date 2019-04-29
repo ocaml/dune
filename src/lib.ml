@@ -781,6 +781,16 @@ let find_implementation_for lib ~variants =
                       ; conflict
                       }))
 
+let find_implementations db name =
+  let rec loop acc db =
+    let implementations = db.find_implementations name in
+    let acc = Variant.Map.Multi.rev_union acc implementations in
+    match db.parent with
+    | None -> acc
+    | Some db -> loop acc db
+  in
+  loop Variant.Map.empty db
+
 let rec instantiate db name (info : Lib_info.t) ~stack ~hidden =
   let id, stack =
     Dep_stack.create_and_push stack name info.src_dir
@@ -808,10 +818,20 @@ let rec instantiate db name (info : Lib_info.t) ~stack ~hidden =
     Option.map info.default_implementation ~f:(fun l -> lazy (resolve l)) in
   let implementations =
     Option.map info.virtual_ ~f:(fun _ -> lazy (
-      let available_implementations = db.find_implementations name in
+      let available_implementations = find_implementations db name in
+      let seen_libs = ref Set.empty in
       Variant.Map.map available_implementations ~f:(
-        List.map ~f:(fun (impl : Lib_info.t) ->
-          resolve (impl.loc, impl.name)))))
+        List.filter_map ~f:(fun (impl : Lib_info.t) ->
+          match resolve (impl.loc, impl.name) with
+          | Error _ as e -> Some e
+          | Ok lib ->
+            if Set.mem !seen_libs lib then
+              None
+            else begin
+              seen_libs := Set.add !seen_libs lib;
+              Some (Ok lib)
+            end
+        ))))
   in
   let requires, pps, resolved_selects =
     resolve_user_deps db info.requires ~allow_private_deps ~pps:info.pps ~stack

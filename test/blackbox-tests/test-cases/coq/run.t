@@ -46,9 +46,9 @@
   $ dune build --root base --display short --debug-dependency-path @default
   Entering directory 'base'
   lib: [
-    "_build/install/default/lib/base/META" {"META"}
-    "_build/install/default/lib/base/dune-package" {"dune-package"}
-    "_build/install/default/lib/base/opam" {"opam"}
+    "_build/install/default/lib/base/META"
+    "_build/install/default/lib/base/dune-package"
+    "_build/install/default/lib/base/opam"
   ]
   lib_root: [
     "_build/install/default/lib/coq/user-contrib/basic/bar.vo" {"coq/user-contrib/basic/bar.vo"}
@@ -58,9 +58,9 @@
   $ dune build --root rec_module --display short --debug-dependency-path @default
   Entering directory 'rec_module'
   lib: [
-    "_build/install/default/lib/rec/META" {"META"}
-    "_build/install/default/lib/rec/dune-package" {"dune-package"}
-    "_build/install/default/lib/rec/opam" {"opam"}
+    "_build/install/default/lib/rec/META"
+    "_build/install/default/lib/rec/dune-package"
+    "_build/install/default/lib/rec/opam"
   ]
   lib_root: [
     "_build/install/default/lib/coq/user-contrib/rec_module/a/bar.vo" {"coq/user-contrib/rec_module/a/bar.vo"}

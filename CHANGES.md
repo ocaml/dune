@@ -25,9 +25,17 @@ unreleased
   to produce targets that are present in the source tree. This has
   been a warning for long enough (#2068, @diml)
 
+- Allow %{...} variables in pps flags (#2076, @mlasson review by @diml and
+  @aalekseyev).
+
 - Add more opam metadata and use it to generate corrections to the .opam files
   in the source. This allows the user to partially specify opam metadata in the
   the dune-project file. (#2017, @avsm, @jonludlam)
+
+- Do not fail when a findlib directory doesn't exist (#2101, fix #2099, @diml)
+
+- Fix crash when calculating library dependency closure (#2090, fixes #2085,
+  @rgrinberg)
 
 1.9.1 (11/04/2019)
 ------------------

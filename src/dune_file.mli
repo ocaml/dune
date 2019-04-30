@@ -7,7 +7,7 @@ module Preprocess : sig
   type pps =
     { loc   : Loc.t
     ; pps   : (Loc.t * Lib_name.t) list
-    ; flags : string list
+    ; flags : String_with_vars.t list
     ; staged : bool
     }
 
@@ -286,6 +286,7 @@ module Executables : sig
     ; modes      : Link_mode.Set.t
     ; buildable  : Buildable.t
     ; variants   : (Loc.t * Variant.Set.t) option
+    ; package    : Package.t option
     }
 end
 

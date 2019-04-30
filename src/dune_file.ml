@@ -173,10 +173,10 @@ module Pps_and_flags = struct
       in
       let pps, more_flags =
         List.partition_map l ~f:(fun s ->
-          if String.is_prefix ~prefix:"-"
-            (String_with_vars.known_prefix s) then
+          match String_with_vars.is_prefix ~prefix:"-" s with
+          | Yes ->
             Right s
-          else
+          | No | Unknown _ ->
             let loc = String_with_vars.loc s in
             match String_with_vars.text_only s with
             | None -> no_templates loc "in the ppx library names"
@@ -188,11 +188,11 @@ module Pps_and_flags = struct
       if syntax_version < (1, 10) then
         List.iter ~f:
           (fun flag ->
-            if String_with_vars.has_vars flag then
-              Syntax.Error.since (String_with_vars.loc flag)
-                Stanza.syntax
-                (1, 10)
-                  ~what:"Using variables in pps flags"
+             if String_with_vars.has_vars flag then
+               Syntax.Error.since (String_with_vars.loc flag)
+                 Stanza.syntax
+                 (1, 10)
+                 ~what:"Using variables in pps flags"
           ) all_flags;
       (pps, all_flags)
   end

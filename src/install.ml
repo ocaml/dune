@@ -255,10 +255,10 @@ module Entry = struct
     in
     let src_basename () =
       match src with
-      | Expanded e -> Filename.basename e
+      | Expanded s -> Filename.basename s
       | Unexpanded src ->
-        match (String_with_vars.get_known_suffix src) with
-        | Full _ -> assert false
+        match String_with_vars.known_suffix src with
+        | Full s -> Filename.basename s
         | Partial (var, suffix) ->
           match String.rsplit2 ~on:'/' suffix with
           | Some (_, basename) ->

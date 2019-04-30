@@ -230,22 +230,54 @@ module Var = struct
        | Some _ -> { t with payload = Some ".." })
 end
 
-type get_known_suffix =
+type known_suffix =
   | Full of string
   | Partial of (Var.t * string)
 
-let get_known_suffix =
+let known_suffix =
   let rec go t acc = match t with
     | Text s :: rest -> go rest (s :: acc)
     | [] -> Full (String.concat ~sep:"" acc)
     | Var v :: _ -> Partial (v, String.concat ~sep:"" acc)
   in
-  fun { template = { parts; _ }; _ } -> go (List.rev parts) []
+  fun t -> go (List.rev t.template.parts) []
+
+type known_prefix =
+  | Full of string
+  | Partial of (string * Var.t)
+
+let known_prefix =
+  let rec go t acc = match t with
+    | Text s :: rest -> go rest (s :: acc)
+    | [] -> Full (String.concat ~sep:"" (List.rev acc))
+    | Var v :: _ -> Partial (String.concat ~sep:"" (List.rev acc), v)
+  in
+  fun t -> go t.template.parts []
 
 type 'a expander = Var.t -> Syntax.Version.t -> 'a
 
 type yes_no_unknown =
   | Yes | No | Unknown of Var.t
+
+let is_suffix t ~suffix:want =
+  match known_suffix t with
+  | Full s -> if String.is_suffix ~suffix:want s then Yes else No
+  | Partial (v, have) ->
+    if String.is_suffix ~suffix:want have then Yes
+    else
+    if String.is_suffix ~suffix:have want then Unknown v
+    else
+      No
+
+let is_prefix t ~prefix:want =
+  match known_prefix t with
+  | Full s -> if String.is_prefix ~prefix:want s then Yes else No
+  | Partial (have, v) ->
+    if String.is_prefix ~prefix:want have then Yes
+    else
+    if String.is_prefix ~prefix:have want then Unknown v
+    else
+      No
 
 module Private = struct
   module Partial = struct
@@ -257,21 +289,19 @@ module Private = struct
       | Expanded t -> Expanded (f t)
       | Unexpanded t -> Unexpanded t
 
-    let is_suffix t ~suffix:want_suffix =
-      let full s =
-        if String.is_suffix ~suffix:want_suffix s then Yes else No
-      in
+    let is_suffix t ~suffix =
       match t with
       | Expanded s ->
-        full s
-      | Unexpanded t -> match get_known_suffix t with
-        | Full s -> full s
-        | Partial (v, have_suffix) ->
-          if String.is_suffix ~suffix:want_suffix have_suffix then Yes
-          else
-          if String.is_suffix ~suffix:have_suffix want_suffix then Unknown v
-          else
-            No
+        if String.is_suffix ~suffix s then Yes else No
+      | Unexpanded t ->
+        is_suffix t ~suffix
+
+    let is_prefix t ~prefix =
+      match t with
+      | Expanded s ->
+        if String.is_prefix ~prefix s then Yes else No
+      | Unexpanded t ->
+        is_prefix t ~prefix
 
   end
 end
@@ -351,13 +381,6 @@ let text_only t =
   match t.template.parts with
   | [Text s] -> Some s
   | _ -> None
-
-let known_prefix =
-  let rec go acc = function
-    | Text s :: rest -> go (s :: acc) rest
-    | _ -> String.concat ~sep:"" (List.rev acc)
-  in
-  fun t -> go [] t.template.parts
 
 let has_vars t = Option.is_none (text_only t)
 

@@ -439,6 +439,7 @@ let root_packages t =
   let pkgs =
     List.concat_map t.paths ~f:(fun dir ->
       match Path.readdir_unsorted dir with
+      | Error ENOENT -> []
       | Error unix_error ->
         die
           "Unable to read directory %s for findlib package@.Reason:%s@."

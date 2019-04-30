@@ -2,6 +2,10 @@
 
 open! Stdune
 
+module Dst : sig
+  type t
+end
+
 module Section : sig
   type t =
     | Lib
@@ -51,14 +55,15 @@ module Section : sig
       -> unit
       -> t
 
-    val install_path : t -> section -> string -> Path.t
+    val install_path : t -> section -> Dst.t -> Path.t
   end with type section := t
 end
 
 module Entry : sig
+
   type t = private
     { src     : Path.t
-    ; dst     : string option
+    ; dst     : Dst.t
     ; section : Section.t
     }
 

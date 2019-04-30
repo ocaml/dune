@@ -228,7 +228,6 @@ let install_uninstall ~what =
             List.iter entries ~f:(fun { Install.Entry. src; dst; section } ->
               let dst =
                 dst
-                |> Option.value ~default:(Path.basename src)
                 |> Install.Section.Paths.install_path paths section
                 |> interpret_destdir ~destdir
               in

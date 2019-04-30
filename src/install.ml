@@ -1,30 +1,100 @@
 open! Stdune
 open Import
 
+module Section0 = struct
+  type t =
+    | Lib
+    | Lib_root
+    | Libexec
+    | Libexec_root
+    | Bin
+    | Sbin
+    | Toplevel
+    | Share
+    | Share_root
+    | Etc
+    | Doc
+    | Stublibs
+    | Man
+    | Misc
+
+  let compare : t -> t -> Ordering.t = compare
+end
+
+(* The path after the man section mangling done by opam-installer.
+   This roughly follows [add_man_section_dir] in [src/format/opamFile.ml] in opam. *)
+module Dst : sig
+  type t
+
+  val to_string : t -> string
+
+  val to_install_file : t -> src_basename:string -> section:Section0.t -> string option
+  val of_install_file : string option -> src_basename:string -> section:Section0.t -> t
+
+  val explicit : string -> t
+  val compare : t -> t -> Ordering.t
+  val infer : src_basename:string -> Section0.t -> t
+end = struct
+
+  type explicitness =
+    | Explicit
+    | Implicit
+
+  type t = string * explicitness
+
+  let to_string (t, _) = t
+  let explicit t = (t, Explicit)
+
+  let compare = compare
+
+  let man_subdir s =
+    let s = match String.drop_suffix ~suffix:".gz" s with
+      | Some s -> s
+      | None -> s
+    in
+    match String.rsplit2 ~on:'.' s with
+    | None -> None
+    | Some (_, "") -> None
+    | Some (_, r) ->
+      match r.[0] with
+      | '1'..'8' as c -> Some (sprintf "man%c" c)
+      | _ ->  None
+
+  let infer ~src_basename:p section =
+    match section with
+    | Section0.Man ->
+      begin
+        match man_subdir p with
+        | Some subdir -> Filename.concat subdir p
+        | None -> p
+      end
+    | _ -> p
+
+  let infer ~src_basename section =
+    infer ~src_basename section, Implicit
+
+  let of_install_file t ~src_basename ~section = match t with
+    | None -> fst (infer ~src_basename section), Implicit
+    | Some s -> s, Explicit
+
+  let to_install_file t ~src_basename ~section =
+    match t with
+    | s, Explicit -> Some s
+    | s, Implicit ->
+      let s', _ = of_install_file ~src_basename ~section None in
+      if String.equal s s'
+      then
+        None
+      else
+        Exn.code_error
+          "bug: generated file destination inconsistent with the source path" []
+
+end
+
 module Section = struct
-  module T = struct
-    type t =
-      | Lib
-      | Lib_root
-      | Libexec
-      | Libexec_root
-      | Bin
-      | Sbin
-      | Toplevel
-      | Share
-      | Share_root
-      | Etc
-      | Doc
-      | Stublibs
-      | Man
-      | Misc
+  include Section0
 
-    let compare : t -> t -> Ordering.t = compare
-  end
-
-  include T
-
-  module Map = Map.Make(T)
+  module Map = Map.Make(Section0)
 
   let to_string = function
     | Lib          -> "lib"
@@ -152,28 +222,15 @@ module Section = struct
       | Man          -> t.man
       | Misc         -> Exn.code_error "Install.Paths.get" []
 
-    let man_subdir p =
-      match Filename.split_extension_after_dot p with
-      | (_, "") -> None
-      | (_, man_section) -> Some ("man" ^ man_section)
-
     let install_path t section p =
-      let section_path = get t section in
-      match section with
-      | Man ->
-          begin
-            match man_subdir p with
-            | Some subdir -> Path.L.relative section_path [subdir; p]
-            | None -> Path.relative section_path p
-          end
-      | _ -> Path.relative section_path p
+      Path.relative (get t section) (Dst.to_string p)
   end
 end
 
 module Entry = struct
   type t =
     { src     : Path.t
-    ; dst     : string option
+    ; dst     : Dst.t
     ; section : Section.t
     }
 
@@ -181,7 +238,7 @@ module Entry = struct
     let c = Path.compare x.src y.src in
     if c <> Eq then c
     else
-      let c = Option.compare String.compare x.dst y.dst in
+      let c = Dst.compare x.dst y.dst in
       if c <> Eq then c
       else
         Section.compare x.section y.section
@@ -205,6 +262,12 @@ module Entry = struct
       else
         dst
     in
+    let dst = match dst with
+      | None ->
+        Dst.infer ~src_basename:(Path.basename src) section
+      | Some s ->
+        Dst.explicit s
+    in
     { src
     ; dst
     ; section
@@ -214,19 +277,7 @@ module Entry = struct
 
   let relative_installed_path t ~paths =
     let main_dir = Section.Paths.get paths t.section in
-    let dst =
-      match t.dst with
-      | Some x -> x
-      | None ->
-        let dst = Path.basename t.src in
-        match t.section with
-        | Man -> begin
-            match String.rsplit2 dst ~on:'.' with
-            | None -> dst
-            | Some (_, sec) -> sprintf "man%s/%s" sec dst
-          end
-        | _ -> dst
-    in
+    let dst = Dst.to_string t.dst in
     Path.relative main_dir dst
 
   let add_install_prefix t ~paths ~prefix =
@@ -238,7 +289,14 @@ module Entry = struct
       Path.reach i_want_to_install_the_file_as
         ~from:opam_will_install_in_this_dir
     in
-    { t with dst = Some dst }
+    { t with dst = Dst.explicit dst }
+
+  let of_install_file ~src ~dst ~section =
+    { src;
+      section;
+      dst = Dst.of_install_file ~section ~src_basename:(Path.basename src) dst;
+    }
+
 end
 
 let files entries =
@@ -257,7 +315,9 @@ let gen_install_file entries =
     List.sort ~compare:Entry.compare entries
     |> List.iter ~f:(fun (e : Entry.t) ->
       let src = Path.to_string e.src in
-      match e.dst with
+      match
+        Dst.to_install_file ~src_basename:(Path.basename e.src) ~section:e.section e.dst
+      with
       | None     -> pr "  %S"      src
       | Some dst -> pr "  %S {%S}" src dst);
     pr "]");
@@ -299,18 +359,12 @@ let load_install_file path =
             | List (_, l) ->
               List.map l ~f:(function
                 | String (_, src) ->
-                  { Entry.
-                    src = Path.of_string src
-                  ; dst = None
-                  ; section
-                  }
+                  let src = Path.of_string src in
+                  Entry.of_install_file ~src ~dst:None ~section
                 | Option (_, String (_, src),
                           [String (_, dst)]) ->
-                  { Entry.
-                    src = Path.of_string src
-                  ; dst = Some dst
-                  ; section
-                  }
+                  let src = Path.of_string src in
+                  Entry.of_install_file ~src ~dst:(Some dst) ~section
                 | v ->
                   fail (pos_of_opam_value v)
                     "Invalid value in .install file")

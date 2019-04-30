@@ -1,6 +1,11 @@
 unreleased
 ----------
 
+- Fix a bug where `dune install` would install man pages to incorrect
+  paths when compared to `opam-installer`. For example dune now
+  installs `(foo.1 as man1/foo.1)` correctly and previously that was
+  installed to `man1/man1/foo.1`. (#2105, @aalekseyev)
+
 - [menhir] call menhir from context root build_dir (#2067, @ejgallego,
   review by @diml, @rgrinberg)
 

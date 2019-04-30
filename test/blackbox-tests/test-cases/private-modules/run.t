@@ -17,6 +17,6 @@ Private modules are not excluded from the install file, but installed in the .pr
     "_build/install/default/lib/lib/foo/priv2.cmt" {"foo/priv2.cmt"}
     "_build/install/default/lib/lib/foo/priv2.cmx" {"foo/priv2.cmx"}
     "_build/install/default/lib/lib/foo/priv2.ml" {"foo/priv2.ml"}
-    "_build/install/default/lib/lib/lib__Priv.cmt" {"lib__Priv.cmt"}
-    "_build/install/default/lib/lib/lib__Priv.cmx" {"lib__Priv.cmx"}
-    "_build/install/default/lib/lib/priv.ml" {"priv.ml"}
+    "_build/install/default/lib/lib/lib__Priv.cmt"
+    "_build/install/default/lib/lib/lib__Priv.cmx"
+    "_build/install/default/lib/lib/priv.ml"

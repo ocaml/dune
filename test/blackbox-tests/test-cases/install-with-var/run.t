@@ -22,5 +22,5 @@
   $ cat foo.install | grep man
   man: [
     "_build/install/default/man/man-page-a.default.1" {"man-page-a.default.1"}
-    "_build/install/default/man/man1/man-page-b.default.1" {"man1/man-page-b.default.1"}
+    "_build/install/default/man/man1/man-page-b.default.1"
     "_build/install/default/man/man3/another-man-page.3"

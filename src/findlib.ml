@@ -438,12 +438,15 @@ let available t name = Result.is_ok (find t name)
 let root_packages t =
   let pkgs =
     List.concat_map t.paths ~f:(fun dir ->
-      Path.readdir_unsorted dir
-      |> List.filter_map ~f:(fun name ->
-        if Path.exists (Path.relative dir (name ^ "/META")) then
-          Some (Lib_name.of_string_exn ~loc:None name)
-        else
-          None))
+      if not (Path.exists dir) then
+        []
+      else
+        Path.readdir_unsorted dir
+        |> List.filter_map ~f:(fun name ->
+          if Path.exists (Path.relative dir (name ^ "/META")) then
+            Some (Lib_name.of_string_exn ~loc:None name)
+          else
+            None))
     |> Lib_name.Set.of_list
   in
   let builtins = Lib_name.Set.of_list (Lib_name.Map.keys t.builtins) in

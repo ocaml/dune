@@ -1,3 +1,8 @@
+1.9.2 (----------)
+------------------
+
+- Do not fail when a findlib directory doesn't exist (#2101, fix #2099, @diml)
+
 1.9.1 (11/04/2019)
 ------------------
 

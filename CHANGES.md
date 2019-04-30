@@ -32,6 +32,8 @@ unreleased
   in the source. This allows the user to partially specify opam metadata in the
   the dune-project file. (#2017, @avsm, @jonludlam)
 
+- Do not fail when a findlib directory doesn't exist (#2101, fix #2099, @diml)
+
 1.9.1 (11/04/2019)
 ------------------
 

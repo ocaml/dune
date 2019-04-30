@@ -36,14 +36,10 @@ module Dst : sig
   val infer : src_basename:string -> Section0.t -> t
 end = struct
 
-  type explicitness =
-    | Explicit
-    | Implicit
+  type t = string
 
-  type t = string * explicitness
-
-  let to_string (t, _) = t
-  let explicit t = (t, Explicit)
+  let to_string t = t
+  let explicit t = t
 
   let compare = compare
 
@@ -70,24 +66,19 @@ end = struct
       end
     | _ -> p
 
-  let infer ~src_basename section =
-    infer ~src_basename section, Implicit
-
   let of_install_file t ~src_basename ~section = match t with
-    | None -> fst (infer ~src_basename section), Implicit
-    | Some s -> s, Explicit
+    | None -> infer ~src_basename section
+    | Some s -> s
 
   let to_install_file t ~src_basename ~section =
     match t with
-    | s, Explicit -> Some s
-    | s, Implicit ->
-      let s', _ = of_install_file ~src_basename ~section None in
+    | s ->
+      let s' = infer ~src_basename section in
       if String.equal s s'
       then
         None
       else
-        Exn.code_error
-          "bug: generated file destination inconsistent with the source path" []
+        Some s
 
 end
 

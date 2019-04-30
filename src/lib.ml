@@ -1349,11 +1349,11 @@ module DB = struct
       ~all:(fun () -> Lib_name.Map.keys map)
 
   let create_from_findlib ?(external_lib_deps_mode=false) findlib =
-    let variant_map =
+    let variant_map = lazy (
       Findlib.all_packages findlib
       |> List.map ~f:Lib_info.of_dune_lib
       |> create_variant_map
-    in
+    ) in
     create ()
       ~resolve:(fun name ->
         match Findlib.find findlib name with
@@ -1369,7 +1369,7 @@ module DB = struct
           | Hidden pkg ->
             Hidden (Lib_info.of_dune_lib pkg, "unsatisfied 'exist_if'"))
       ~find_implementations:(fun virt ->
-        Lib_name.Map.find variant_map virt
+        Lib_name.Map.find (Lazy.force variant_map) virt
         |> Option.value ~default:Variant.Map.empty)
       ~all:(fun () ->
         Findlib.all_packages findlib

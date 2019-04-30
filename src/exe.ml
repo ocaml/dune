@@ -119,7 +119,7 @@ let link_exe
       ~name
       ~(linkage:Linkage.t)
       ~top_sorted_modules
-      ~arg_spec_for_requires
+      ~link_time_code_gen
       ?(link_flags=Build.arr (fun _ -> []))
       ?(js_of_ocaml=Dune_file.Js_of_ocaml.default)
       cctx
@@ -166,7 +166,12 @@ let link_exe
        ; A "-o"; Target exe
        ; As linkage.flags
        ; Dyn (fun (_, _, link_flags) -> As link_flags)
-       ; arg_spec_for_requires
+       ; Arg_spec.of_result_map link_time_code_gen
+           ~f:(fun { Link_time_code_gen.to_link; force_linkall } ->
+             S [ As (if force_linkall then ["-linkall"] else [])
+               ; Lib.Lib_and_module.L.link_flags to_link ~mode
+                   ~stdlib_dir:ctx.stdlib_dir
+               ])
        ; Dyn (fun (cm_files, _, _) -> Deps cm_files)
        ]);
   if linkage.ext = ".bc" then
@@ -194,18 +199,7 @@ let build_and_link_many
   (* CR-someday jdimino: this should probably say [~dynlink:false] *)
   Module_compilation.build_modules cctx ~js_of_ocaml ~dep_graphs;
 
-  let arg_spec_for_requires =
-    let f =
-      Staged.unstage (Link_time_code_gen.libraries_link cctx)
-    in
-    List.map linkages ~f:(fun x -> x.Linkage.mode)
-    |> Mode.Dict.Set.of_list
-    |> Mode.Dict.mapi ~f:(fun mode x ->
-      if x then
-        f mode
-      else
-        Arg_spec.fail Exit)
-  in
+  let link_time_code_gen = Link_time_code_gen.handle_special_libs cctx in
   List.iter programs ~f:(fun { Program.name; main_module_name ; loc } ->
     let top_sorted_modules =
       let main = Option.value_exn
@@ -213,17 +207,14 @@ let build_and_link_many
       Dep_graph.top_closed_implementations dep_graphs.impl
         [main]
     in
-    List.iter linkages ~f:(fun (linkage : Linkage.t) ->
-      let arg_spec_for_requires =
-        Mode.Dict.get arg_spec_for_requires linkage.mode
-      in
+    List.iter linkages ~f:(fun linkage ->
       link_exe cctx
         ~loc
         ~name
         ~linkage
         ~top_sorted_modules
         ~js_of_ocaml
-        ~arg_spec_for_requires
+        ~link_time_code_gen
         ?link_flags))
 
 let build_and_link ~program =

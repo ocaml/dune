@@ -98,13 +98,17 @@ end with type lib := t
 
 (** Operation on list of libraries and modules *)
 module Lib_and_module : sig
-  type nonrec t =
-    | Lib of t
+  type lib = t
+  type t =
+    | Lib of lib
     | Module of Module.t
 
-  val link_flags : t list -> mode:Mode.t -> stdlib_dir:Path.t -> _ Arg_spec.t
-
-end
+  module L : sig
+    type nonrec t = t list
+    val of_libs : lib list -> t
+    val link_flags : t -> mode:Mode.t -> stdlib_dir:Path.t -> _ Arg_spec.t
+  end
+end with type lib := t
 
 (** {1 Errors} *)
 

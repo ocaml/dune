@@ -3,6 +3,11 @@ open Import
 module CC = Compilation_context
 module SC = Super_context
 
+type t =
+  { to_link : Lib.Lib_and_module.t list
+  ; force_linkall : bool
+  }
+
 let generate_and_compile_module cctx ~name:basename ~code ~requires =
   let sctx       = CC.super_context cctx in
   let obj_dir    = CC.obj_dir       cctx in
@@ -43,66 +48,65 @@ let is_findlib_dynload lib =
   | "findlib.dynload" -> true
   | _ -> false
 
-let libraries_link cctx  =
-  match CC.requires_link cctx with
-  | Error exn ->
-    let arg_spec = Arg_spec.fail exn in
-    Staged.stage (fun _mode -> arg_spec)
-  | Ok libs ->
-    let sctx       = CC.super_context cctx in
-    let ctx        = SC.context       sctx in
-    let stdlib_dir = ctx.stdlib_dir in
+let findlib_init_code ~preds ~libs =
+  let public_libs =
+    List.filter
+      ~f:(fun lib -> not (Lib_info.Status.is_private (Lib.status lib)))
+      libs
+  in
+  Format.asprintf "%t@." (fun ppf ->
+    List.iter public_libs ~f:(fun lib ->
+      Format.fprintf ppf "Findlib.record_package Findlib.Record_core %a;;@\n"
+        Lib_name.pp_quoted (Lib.name lib));
+    Format.fprintf ppf "let preds = %a in@\n"
+      (Fmt.ocaml_list Variant.pp)
+      (Variant.Set.to_list preds);
+    Format.fprintf ppf "let preds = (if Dynlink.is_native then \
+                        \"native\" else \"byte\") :: preds in@\n";
+    Format.fprintf ppf "Findlib.record_package_predicates preds;;@\n")
+
+let handle_special_libs cctx  =
+  Result.map (CC.requires_link cctx) ~f:(fun libs ->
+    let sctx = CC.super_context cctx in
     let has_findlib_dynload =
       List.exists libs ~f:is_findlib_dynload
     in
     if not has_findlib_dynload then
-      Staged.stage (fun mode -> Lib.L.link_flags libs ~mode ~stdlib_dir)
+      { force_linkall = false
+      ; to_link = Lib.Lib_and_module.L.of_libs libs
+      }
     else begin
       (* If findlib.dynload is linked, we stores in the binary the
          packages linked by linking just after findlib.dynload a
          module containing the info *)
-      let public_libs =
-        List.filter
-          ~f:(fun lib -> not (Lib_info.Status.is_private (Lib.status lib)))
-          libs
-      in
       let requires =
         (* This shouldn't fail since findlib.dynload depends on
-           findlib. That's why it's ok to use a dummy location. *)
+           dynlink and findlib. That's why it's ok to use a dummy
+           location. *)
         Lib.DB.find_many ~loc:Loc.none (SC.public_libs sctx)
-          [Lib_name.of_string_exn ~loc:None "findlib"]
+          [ Lib_name.of_string_exn ~loc:None "dynlink"
+          ; Lib_name.of_string_exn ~loc:None "findlib"
+          ]
       in
-      Staged.stage (fun mode ->
-        let preds = Variant.Set.add Findlib.Package.preds (Mode.variant mode) in
-        let code =
-          Format.asprintf "%a@\nFindlib.record_package_predicates %a;;@."
-            (Fmt.list ~pp_sep:Fmt.nl (fun fmt lib ->
-               Format.fprintf fmt "Findlib.record_package Findlib.Record_core %a;;"
-                 Lib_name.pp_quoted (Lib.name lib)))
-            public_libs
-            (Fmt.ocaml_list Variant.pp)
-            (Variant.Set.to_list preds)
-        in
-        let module_ =
-          generate_and_compile_module
-            cctx
-            ~name:(Format.sprintf "findlib_initl_%s"
-                     (Mode.to_string mode))
-            ~code
-            ~requires
-        in
+      let code = findlib_init_code ~preds:Findlib.Package.preds ~libs in
+      let module_ =
+        generate_and_compile_module
+          cctx
+          ~name:"findlib_initl"
+          ~code
+          ~requires
+      in
         let rec insert = function
-          | [] -> assert false
-          | lib :: libs ->
-            if is_findlib_dynload lib then
-              Lib.Lib_and_module.Lib lib
-              :: Module module_
-              :: List.map libs ~f:(fun lib -> Lib.Lib_and_module.Lib lib)
-            else
-              Lib lib :: insert libs
-        in
-        Arg_spec.S
-          [ A "-linkall"
-          ; Lib.Lib_and_module.link_flags (insert libs) ~mode ~stdlib_dir
-          ])
-    end
+        | [] -> assert false
+        | lib :: libs ->
+          if is_findlib_dynload lib then
+            Lib.Lib_and_module.Lib lib
+            :: Module module_
+            :: Lib.Lib_and_module.L.of_libs libs
+          else
+            Lib lib :: insert libs
+      in
+      { force_linkall = true
+      ; to_link = insert libs
+      }
+    end)

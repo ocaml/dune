@@ -390,23 +390,28 @@ module L = struct
 end
 
 module Lib_and_module = struct
-  type nonrec t =
-    | Lib of t
+  type t =
+    | Lib of lib
     | Module of Module.t
 
-  let link_flags ts ~mode ~stdlib_dir =
-    let libs = List.filter_map ts ~f:(function
-      | Lib lib -> Some lib
-      | Module _ -> None) in
-    Arg_spec.S
-      (L.c_include_flags libs ~stdlib_dir ::
-       List.map ts ~f:(function
-         | Lib t ->
-           Arg_spec.Deps (Mode.Dict.get t.info.archives mode)
-         | Module m ->
-           Dep (Module.cm_file_unsafe m (Mode.cm_kind mode))
-       ))
+  module L = struct
+    type nonrec t = t list
 
+    let link_flags ts ~mode ~stdlib_dir =
+      let libs = List.filter_map ts ~f:(function
+        | Lib lib -> Some lib
+        | Module _ -> None) in
+      Arg_spec.S
+        (L.c_include_flags libs ~stdlib_dir ::
+         List.map ts ~f:(function
+           | Lib t ->
+             Arg_spec.Deps (Mode.Dict.get t.info.archives mode)
+           | Module m ->
+             Dep (Module.cm_file_unsafe m (Mode.cm_kind mode))
+         ))
+
+    let of_libs l = List.map l ~f:(fun x -> Lib x)
+  end
 end
 
 (* Sub-systems *)

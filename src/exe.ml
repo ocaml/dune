@@ -150,9 +150,6 @@ let link_exe
       Build.dyn_paths (Build.arr (fun (modules, _) ->
         artifacts modules ~ext:ctx.ext_obj))
   in
-  let arg_spec_for_requires =
-    Lazy.force (Mode.Dict.get arg_spec_for_requires mode)
-  in
   (* The rule *)
   SC.add_rule sctx ~loc ~dir
     (Build.fanout3
@@ -169,7 +166,7 @@ let link_exe
        ; A "-o"; Target exe
        ; As linkage.flags
        ; Dyn (fun (_, _, link_flags) -> As link_flags)
-       ; Arg_spec.of_result_map arg_spec_for_requires ~f:Fn.id
+       ; arg_spec_for_requires
        ; Dyn (fun (cm_files, _, _) -> Deps cm_files)
        ]);
   if linkage.ext = ".bc" then
@@ -197,6 +194,18 @@ let build_and_link_many
   (* CR-someday jdimino: this should probably say [~dynlink:false] *)
   Module_compilation.build_modules cctx ~js_of_ocaml ~dep_graphs;
 
+  let arg_spec_for_requires =
+    let f =
+      Staged.unstage (Link_time_code_gen.libraries_link cctx)
+    in
+    List.map linkages ~f:(fun x -> x.Linkage.mode)
+    |> Mode.Dict.Set.of_list
+    |> Mode.Dict.mapi ~f:(fun mode x ->
+      if x then
+        f mode
+      else
+        Arg_spec.fail Exit)
+  in
   List.iter programs ~f:(fun { Program.name; main_module_name ; loc } ->
     let top_sorted_modules =
       let main = Option.value_exn
@@ -204,12 +213,10 @@ let build_and_link_many
       Dep_graph.top_closed_implementations dep_graphs.impl
         [main]
     in
-    let arg_spec_for_requires =
-      Mode.Dict.of_func (fun ~mode ->
-        lazy (Result.map (CC.requires_link cctx)
-                ~f:(Link_time_code_gen.libraries_link ~loc ~name ~mode cctx)))
-    in
-    List.iter linkages ~f:(fun linkage ->
+    List.iter linkages ~f:(fun (linkage : Linkage.t) ->
+      let arg_spec_for_requires =
+        Mode.Dict.get arg_spec_for_requires linkage.mode
+      in
       link_exe cctx
         ~loc
         ~name

@@ -1,0 +1,8 @@
+(include_subdirs qualified)
+
+(library
+ (name foolib)
+ (preprocess
+  (per_module
+   ((action
+     (run cat %{input-file})) bar/ppme))))

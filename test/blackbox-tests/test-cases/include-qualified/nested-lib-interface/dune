@@ -1,0 +1,3 @@
+(alias
+ (name default)
+ (action (run ./exe/test.exe)))

@@ -20,10 +20,14 @@ module Bin : sig
     -> File_binding.Expanded.t list
     -> t
 
+  val create : context:Context.t -> local_bins:Path.Set.t -> t
 end
 
 module Public_libs : sig
-  type t
+  type t = {
+    context : Context.t;
+    public_libs : Lib.DB.t;
+  }
 
   (** [file_of_lib t ~from ~lib ~file] returns the path to a file in the
       directory of the given library. *)
@@ -43,4 +47,5 @@ type t = {
 val create
   :  Context.t
   -> public_libs:Lib.DB.t
+  -> local_bins:Path.Set.t
   -> t

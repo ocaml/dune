@@ -215,6 +215,7 @@ module Section = struct
 
     let install_path t section p =
       Path.relative (get t section) (Dst.to_string p)
+
   end
 end
 

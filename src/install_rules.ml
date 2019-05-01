@@ -343,32 +343,25 @@ let install_file sctx (package : Local_package.t) entries =
      >>>
      Build.write_file_dyn fn)
 
-let init_binary_artifacts sctx package =
-  let installs =
-    Local_package.installs package
-    |> List.concat_map
-         ~f:(fun ({ Dir_with_dune.
-                    data =
-                      { Dune_file.Install_conf. section; files; package = _ }
-                  ; dune_version = _
-                  ; ctx_dir = _
-                  ; src_dir = _
-                  ; scope = _
-                  ; kind = _ }) ->
-              List.map files ~f:(fun fb ->
-                let loc = File_binding.Expanded.src_loc fb in
-                let src = File_binding.Expanded.src fb in
-                let dst = Option.map ~f:Path.Local.to_string
-                            (File_binding.Expanded.dst fb) in
-                ( Some loc
-                , Install.Entry.make section src ?dst
-                )))
-  in
-  let install_paths = Local_package.install_paths package in
-  let package = Local_package.name package in
-  local_install_rules sctx ~package ~install_paths installs
+let get_install_entries package =
+  Local_package.installs package
+  |> List.concat_map ~f:(fun (d : _ Dir_with_dune.t) ->
+    let { Dune_file.Install_conf. section; files; package = _ } =
+      d.data
+    in
+    List.map files ~f:(fun fb ->
+      let loc = File_binding.Expanded.src_loc fb in
+      let src = File_binding.Expanded.src fb in
+      let dst = Option.map ~f:Path.Local.to_string
+                  (File_binding.Expanded.dst fb) in
+      ( Some loc
+      , Install.Entry.make section src ?dst
+      )))
 
-let init_install sctx (package : Local_package.t) entries =
+let init_install sctx package =
+  let installs =
+    get_install_entries package
+  in
   let docs =
     Local_package.mlds package
     |> List.map ~f:(fun mld ->
@@ -408,8 +401,8 @@ let init_install sctx (package : Local_package.t) entries =
     let package = Local_package.name package in
     List.rev_append coqlib_install_files docs
     |> List.rev_append lib_install_files
+    |> List.rev_append installs
     |> local_install_rules sctx ~package ~install_paths
-    |> List.rev_append entries
   in
   install_file sctx package entries
 
@@ -427,14 +420,7 @@ let init_install_files (ctx : Context.t) (package : Local_package.t) =
 let init sctx =
   let packages = Local_package.of_sctx sctx in
   let ctx = Super_context.context sctx in
-  let artifacts_per_package =
-    Build_system.handle_add_rule_effects (fun () ->
-      Package.Name.Map.map packages ~f:(init_binary_artifacts sctx))
-  in
   Build_system.handle_add_rule_effects (fun () ->
     Package.Name.Map.iter packages ~f:(fun pkg ->
-      Local_package.name pkg
-      |> Package.Name.Map.find artifacts_per_package
-      |> Option.value_exn
-      |> init_install sctx pkg;
+      init_install sctx pkg;
       init_install_files ctx pkg))

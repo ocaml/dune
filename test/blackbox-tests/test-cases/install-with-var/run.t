@@ -38,6 +38,11 @@ Currently this still works, but we're about to disallow it.
   > EOF
 
   $ dune build @install
+  File "dune", line 3, characters 27-42:
+  3 |   (files (foobar.txt as "%{env:FOO=foobar}/foo.txt"))
+                                 ^^^^^^^^^^^^^^^
+  Error: %{env:..} isn't allowed in this position
+  [1]
 
 This is not a problem outside of bin section:
 
@@ -95,6 +100,11 @@ Exe basename needs to be fully known if dst is missing though:
   > EOF
 
   $ dune build @install
+  File "dune", line 3, characters 11-26:
+  3 |   (files %{env:FOO=foobar}.txt)
+                 ^^^^^^^^^^^^^^^
+  Error: %{env:..} isn't allowed in this position
+  [1]
 
 When basename is fully known, all is well:
 
@@ -106,3 +116,8 @@ When basename is fully known, all is well:
   > EOF
 
   $ dune build @install
+  File "dune", line 3, characters 11-21:
+  3 |   (files %{env:FOO=.}/foobar.txt)
+                 ^^^^^^^^^^
+  Error: %{env:..} isn't allowed in this position
+  [1]

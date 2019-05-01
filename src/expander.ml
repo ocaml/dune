@@ -18,7 +18,6 @@ type t =
 let scope t = t.scope
 let dir t = t.dir
 let bindings t = t.bindings
-let bin_artifacts_host t = t.bin_artifacts_host
 
 let make_ocaml_config ocaml_config =
   let string s = [Value.String s] in
@@ -209,6 +208,12 @@ let cc_of_c_flags t (cc : (unit, string list) Build.t C.Kind.Dict.t) =
     cc >>^ fun flags ->
     Value.L.strings (t.c_compiler :: flags))
 
+let resolve_binary t ~loc ~prog =
+  match Artifacts.Bin.binary ~loc t.bin_artifacts_host prog with
+  | Ok path -> Ok path
+  | Error e ->
+    Error {Import. fail = fun () -> Action.Prog.Not_found.raise e }
+
 let expand_and_record acc ~map_exe ~dep_kind ~scope
       ~expansion_kind ~dir ~pform t expansion
       ~(cc : dir:Path.t -> (unit, Value.t list) Build.t C.Kind.Dict.t) =
@@ -237,11 +242,9 @@ let expand_and_record acc ~map_exe ~dep_kind ~scope
   | Macro (Exe, s) -> Some (path_exp (map_exe (relative dir s)))
   | Macro (Dep, s) -> Some (path_exp (relative dir s))
   | Macro (Bin, s) -> begin
-      match Artifacts.Bin.binary ~loc:(Some loc) t.bin_artifacts_host s with
+      match resolve_binary ~loc:(Some loc) t ~prog:s with
+      | Error fail -> Resolved_forms.add_fail acc fail
       | Ok path -> Some (path_exp path)
-      | Error e ->
-        Resolved_forms.add_fail acc
-          ({ fail = fun () -> Action.Prog.Not_found.raise e })
     end
   | Macro (Lib, s) -> begin
       let lib_dep, file = parse_lib_file ~loc s in

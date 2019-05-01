@@ -1311,6 +1311,24 @@ module DB = struct
       (virtual_lib, Variant.Map.of_list_exn [content]))
     |> Lib_name.Map.of_list_reduce ~f:Variant.Map.Multi.rev_union
 
+  (* implementations tagged with a variant are only variant when the they
+     implement a virtual library from the same project. *)
+  let check_valid_implementations (libmap : resolve_result Lib_name.Map.t) =
+    Lib_name.Map.iter libmap ~f:(function
+      | Found (lib : Lib_info.t) ->
+        begin match lib.implements, lib.variant with
+        | Some (loc, implements), Some variant ->
+          if not (Lib_name.Map.mem libmap implements) then
+            Errors.fail loc
+              "Library implementation %a for variant %a implements a library \
+               outside the project. This is forbidden."
+              Lib_name.pp implements Variant.pp variant
+        | _, _ -> ()
+        end
+      | Redirect (_, _) (* skip b/c [Found] covers *) -> ()
+      | Hidden (_, _) -> assert false
+      | Not_found -> assert false)
+
   let create_from_library_stanzas ?parent ~lib_config stanzas =
     let variant_map =
       List.map stanzas ~f:(fun (dir, (conf : Dune_file.Library.t)) ->
@@ -1353,6 +1371,7 @@ module DB = struct
             (Loc.to_file_colon_line loc1)
             (Loc.to_file_colon_line loc2)
     in
+    check_valid_implementations map;
     create () ?parent
       ~resolve:(fun name ->
         Lib_name.Map.find map name
@@ -1682,3 +1701,5 @@ let to_dune_lib ({ name ; info ; _ } as lib) ~lib_modules ~foreign_objects ~dir 
     ~modules:(Some lib_modules)
     ~main_module_name:(Result.ok_exn (main_module_name lib))
     ~sub_systems:(Sub_system.dump_config lib)
+
+

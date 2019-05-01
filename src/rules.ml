@@ -115,6 +115,9 @@ let implicit_output = Memo.Implicit_output.add(module T)
 let produce =
   Memo.Implicit_output.produce implicit_output
 
+let produce_opt =
+  Memo.Implicit_output.produce_opt implicit_output
+
 module Produce = struct
 
   let rule rule = produce (singleton_rule rule)
@@ -166,8 +169,11 @@ let produce_dir' ~dir rules =
   let dir = Path.as_in_build_dir_exn dir in
   produce_dir ~dir rules
 
+let collect_opt f =
+  Memo.Implicit_output.collect_sync implicit_output f
+
 let collect f =
-  let result, out = Memo.Implicit_output.collect_sync implicit_output f in
+  let result, out = collect_opt f in
   result, Option.value out ~default:T.empty
 
 let collect_unit f =

@@ -98,6 +98,7 @@ val union : t -> t -> t
 val produce_dir : dir:Path.Build.t -> Dir_rules.t -> unit
 val produce_dir' : dir:Path.t -> Dir_rules.t -> unit
 val produce : t -> unit
+val produce_opt : t option -> unit
 
 val is_subset : t -> of_:t -> bool
 
@@ -105,6 +106,8 @@ val map_rules : t -> f:(Rule.t -> Rule.t) -> t
 
 val collect : (unit -> 'a) -> ('a * t)
 val collect_unit : (unit -> unit) -> t
+
+val collect_opt : (unit -> 'a) -> ('a * t option)
 
 (** returns [Dir_rules.empty] for non-build paths *)
 val find : t -> Path.t -> Dir_rules.t

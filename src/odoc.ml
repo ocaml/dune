@@ -374,7 +374,7 @@ let setup_lib_html_rules_def =
   in
   Memo.With_implicit_output.create "setup-library-html-rules"
     ~doc:"setup html rules for library"
-    ~implicit_output:Build_system.rule_collection_implicit_output
+    ~implicit_output:Rules.implicit_output
     ~input:(module Input)
     ~output:(module Unit)
     ~visibility:Hidden
@@ -411,7 +411,7 @@ let setup_pkg_html_rules_def =
   in
   Memo.With_implicit_output.create "setup-package-html-rules"
     ~output:(module Unit)
-    ~implicit_output:Build_system.rule_collection_implicit_output
+    ~implicit_output:Rules.implicit_output
     ~doc:"setup odoc package html rules"
     ~input:(module Input)
     ~visibility:Hidden
@@ -534,7 +534,7 @@ let setup_package_odoc_rules_def =
   in
   Memo.With_implicit_output.create "setup-package-odoc-rules"
     ~output:(module Unit)
-    ~implicit_output:Build_system.rule_collection_implicit_output
+    ~implicit_output:Rules.implicit_output
     ~doc:"setup odoc package rules"
     ~input:(module Input)
     ~visibility:Hidden

@@ -175,9 +175,3 @@ val evaluate_rules
   :  recursive:bool
   -> request:(unit, unit) Build.t
   -> Rule.t list Fiber.t
-
-type rule_collection_implicit_output
-val rule_collection_implicit_output :
-  rule_collection_implicit_output Memo.Implicit_output.t
-
-val handle_add_rule_effects : (unit -> 'a) -> 'a

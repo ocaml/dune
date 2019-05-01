@@ -357,8 +357,7 @@ let gen ~contexts
   Build_system.set_rule_generators
     ~init:(fun () ->
       String.Map.iter map ~f:(fun (module M : Gen) ->
-        Build_system.handle_add_rule_effects (fun () ->
-          Odoc.init M.sctx)))
+        Odoc.init M.sctx))
     ~gen_rules:
       (function
         | Install ctx ->

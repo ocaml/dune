@@ -611,10 +611,6 @@ let no_rule_found =
           ctx
           (hint ctx (String.Map.keys t.contexts))
 
-type rule_collection_implicit_output = Rules.t
-let rule_collection_implicit_output = Rules.implicit_output
-
-
 let fix_up_legacy_fallback_rules t ~file_tree_dir ~dir rules =
   (* Fix up non promote/fallback rules that have targets in the
      source tree if we are in a dune < 1.10 project *)
@@ -730,13 +726,12 @@ let add_rules_to_collector t ~dir rules =
 let handle_add_rule_effects f =
   let t = t () in
   let res, effects =
-    Memo.Implicit_output.collect_sync rule_collection_implicit_output f
+    Rules.collect f
   in
-  Option.iter effects ~f:(fun l ->
-    Path.Build.Map.iteri (Rules.to_map l)
-      ~f:(fun dir rules ->
-        add_rules_to_collector t ~dir:(Path.build dir) rules
-      ));
+  Path.Build.Map.iteri (Rules.to_map effects)
+    ~f:(fun dir rules ->
+      add_rules_to_collector t ~dir:(Path.build dir) rules
+    );
   res
 
 let rec compile_rule t pre_rule =

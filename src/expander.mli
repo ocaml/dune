@@ -49,7 +49,11 @@ val expand_path : t -> String_with_vars.t -> Path.t
 
 val expand_str : t -> String_with_vars.t -> string
 
-val bin_artifacts_host : t -> Artifacts.Bin.t
+val resolve_binary
+  :  t
+  -> loc:Loc.t option
+  -> prog:string
+  -> (Path.t, Import.fail) Result.t
 
 module Option : sig
   val expand_path : t -> String_with_vars.t -> Path.t option

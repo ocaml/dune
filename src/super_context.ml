@@ -595,11 +595,10 @@ module Action = struct
               ~deps_written_by_user in
           U.Partial.expand t ~expander ~map_exe
         in
-        let bin_artifacts = Expander.bin_artifacts_host expander in
         Action.Unresolved.resolve unresolved ~f:(fun loc prog ->
-          match Artifacts.Bin.binary ~loc bin_artifacts prog with
+          match Expander.resolve_binary ~loc expander ~prog with
           | Ok path    -> path
-          | Error fail -> Action.Prog.Not_found.raise fail))
+          | Error { fail } -> fail ()))
       >>>
       Build.dyn_path_set (Build.arr (fun action ->
         let { U.Infer.Outcome.deps; targets = _ } =

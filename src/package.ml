@@ -26,27 +26,40 @@ module Name = struct
   module Infix = Comparable.Operators(T)
 end
 
+module Version_source = struct
+  type t =
+    | Package
+    | Project
+
+  let to_dyn t =
+    Dyn.Variant
+      ((match t with
+         | Package -> "Package"
+         | Project -> "Project"),
+       [])
+end
 
 type t =
-  { name                   : Name.t
-  ; path                   : Path.Source.t
-  ; version_from_opam_file : string option
+  { name    : Name.t
+  ; path    : Path.Source.t
+  ; version : (string * Version_source.t) option
   }
 
-let hash { name; path; version_from_opam_file } =
+let hash { name; path; version } =
   Hashtbl.hash
     ( Name.hash name
     , Path.Source.hash path
-    , Option.hash String.hash version_from_opam_file
+    , Hashtbl.hash version
     )
 
-let to_dyn { name; path; version_from_opam_file } =
+let to_dyn { name; path; version } =
   let open Dyn in
   Record
     [ "name", Name.to_dyn name
     ; "path", Path.Source.to_dyn path
-    ; "version_from_opam_file"
-    , Option (Option.map ~f:(fun s -> String s) version_from_opam_file)
+    ; "version",
+      Option (Option.map ~f:(fun (v, s) ->
+        Tuple [String v; Version_source.to_dyn s]) version)
     ]
 
 let pp fmt t = Dyn.pp fmt (to_dyn t)

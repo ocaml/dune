@@ -830,6 +830,16 @@ let parse ~dir ~lang ~packages ~file =
      in
      let allow_approx_merlin =
        Option.value ~default:false allow_approx_merlin in
+     let packages =
+       match version with
+       | None -> packages
+       | Some version ->
+         let version = Some (version, Package.Version_source.Project) in
+         Package.Name.Map.map packages ~f:(fun p ->
+           match p.version with
+           | Some _ -> p
+           | None -> { p with version })
+     in
      { name
      ; root = dir
      ; version
@@ -894,7 +904,7 @@ let load ~dir ~files =
     String.Set.fold files ~init:[] ~f:(fun fn acc ->
       match Filename.split_extension fn with
       | (pkg, ".opam") when pkg <> "" ->
-        let version_from_opam_file =
+        let version =
           let open Option.O in
           let* opam =
             let opam_file = Path.Source.relative dir fn in
@@ -909,7 +919,7 @@ let load ~dir ~files =
           in
           let* version = Opam_file.get_field opam "version" in
           match version with
-          | String (_, s) -> Some s
+          | String (_, s) -> Some (s, Package.Version_source.Package)
           | _ -> None
         in
         let name = Package.Name.of_string pkg in
@@ -917,7 +927,7 @@ let load ~dir ~files =
          { Package.
            name
          ; path = dir
-         ; version_from_opam_file
+         ; version
          }) :: acc
       | _ -> acc)
     |> Package.Name.Map.of_list_exn

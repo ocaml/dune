@@ -18,10 +18,18 @@ module Name : sig
   module Infix : Comparable.OPS with type t = t
 end
 
+module Version_source : sig
+  (** Wether this version comes from the project wide version or the
+      package particular version *)
+  type t =
+    | Package
+    | Project
+end
+
 type t =
-  { name                   : Name.t
-  ; path                   : Path.Source.t
-  ; version_from_opam_file : string option
+  { name    : Name.t
+  ; path    : Path.Source.t
+  ; version : (string * Version_source.t) option
   }
 
 val pp : Format.formatter -> t -> unit

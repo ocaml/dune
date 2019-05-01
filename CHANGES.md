@@ -1,6 +1,10 @@
 unreleased
 ----------
 
+- Restricted the set of variables available for expansion in the destination filename
+  of `install` stanza to simplify implementation and avoid dependency
+  cycles. (#2073, @aalekseyev, @diml)
+
 - Fix a bug where `dune install` would install man pages to incorrect
   paths when compared to `opam-installer`. For example dune now
   installs `(foo.1 as man1/foo.1)` correctly and previously that was

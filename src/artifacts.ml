@@ -8,14 +8,14 @@ module Bin = struct
     (* Mapping from executable names to their actual path in the
        workspace. The keys are the executable names without the .exe,
        even on Windows. *)
-    local_bins : Path.t String.Map.t Lazy.t;
+    local_bins : Path.t String.Map.t;
   }
 
   let binary t ?hint ~loc name =
     if not (Filename.is_relative name) then
       Ok (Path.of_filename_relative_to_initial_cwd name)
     else
-      match String.Map.find (Lazy.force t.local_bins) name with
+      match String.Map.find t.local_bins name with
       | Some path -> Ok path
       | None ->
         match Context.which t.context name with
@@ -29,33 +29,28 @@ module Bin = struct
             ; loc
             }
 
-
   let add_binaries t ~dir l =
-    let local_bins = lazy (
-      List.fold_left l ~init:(Lazy.force t.local_bins)
+    let local_bins =
+      List.fold_left l ~init:t.local_bins
         ~f:(fun acc fb ->
           let path = File_binding.Expanded.dst_path fb
                        ~dir:(Utils.local_bin dir) in
-          String.Map.add acc (Path.basename path) path))
+          String.Map.add acc (Path.basename path) path)
     in
     { t with local_bins }
 
-  let create ~(context : Context.t) =
+  let create ~(context : Context.t) ~local_bins =
     let local_bins =
-      let bin_dir = Config.local_install_bin_dir ~context:context.name in
-      lazy (
-        let local_bins = Build_system.targets_of ~dir:bin_dir in
-        Path.Set.fold local_bins ~init:String.Map.empty ~f:(fun path acc ->
-          let name = Filename.basename (Path.to_string path) in
-          let key =
-            if Sys.win32 then
-              Option.value ~default:name
-                (String.drop_suffix name ~suffix:".exe")
-            else
-              name
-          in
-          String.Map.add acc key path)
-      )
+      Path.Set.fold local_bins ~init:String.Map.empty ~f:(fun path acc ->
+        let name = Filename.basename (Path.to_string path) in
+        let key =
+          if Sys.win32 then
+            Option.value ~default:name
+              (String.drop_suffix name ~suffix:".exe")
+          else
+            name
+        in
+        String.Map.add acc key path)
     in
     { context
     ; local_bins
@@ -98,7 +93,8 @@ type t = {
   bin : Bin.t;
 }
 
-let create (context : Context.t) ~public_libs =
-  { public_libs = Public_libs.create ~context ~public_libs;
-    bin = Bin.create ~context;
+let create (context : Context.t) ~public_libs ~local_bins =
+  {
+    public_libs = Public_libs.create ~context ~public_libs;
+    bin = Bin.create ~context ~local_bins;
   }

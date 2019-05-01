@@ -308,6 +308,27 @@ let resolve_program t ~dir ?hint ~loc bin =
   let bin_artifacts = Env.bin_artifacts_host t ~dir in
   Artifacts.Bin.binary ?hint ~loc bin_artifacts bin
 
+let get_installed_binaries stanzas ~(context : Context.t) =
+  let install_dir = Config.local_install_bin_dir ~context:context.name in
+  let expander = Expander.expand_with_reduced_var_set ~context in
+  let expand_str ~dir sw =
+    String_with_vars.expand ~dir ~mode:Single ~f:expander sw
+    |> Value.to_string ~dir
+  in
+  Dir_with_dune.deep_fold stanzas ~init:Path.Set.empty ~f:(fun d stanza acc ->
+    match (stanza : Stanza.t) with
+    | Dune_file.Install { section = Bin; files; _ } ->
+      List.fold_left files ~init:acc ~f:(fun acc fb ->
+        let p =
+          File_binding.Unexpanded.destination_relative_to_install_path
+            fb ~f:(expand_str ~dir:d.ctx_dir)
+        in
+        if Path.Local.is_root (Path.Local.parent_exn p) then
+          Path.Set.add acc (Path.append_local install_dir p)
+        else
+          acc)
+    | _ -> acc)
+
 let create
       ~(context:Context.t)
       ?host
@@ -378,7 +399,22 @@ let create
                                      ~config:workspace)))
   )
   in
-  let artifacts = Artifacts.create context ~public_libs in
+  let artifacts =
+    let public_libs = ({
+      context;
+      public_libs
+    } : Artifacts.Public_libs.t)
+    in
+    { Artifacts.public_libs;
+      bin =
+        Artifacts.Bin.create ~context
+          ~local_bins:(
+            get_installed_binaries
+              ~context
+              stanzas
+          )
+    }
+  in
   let expander =
     let artifacts_host =
       match host with

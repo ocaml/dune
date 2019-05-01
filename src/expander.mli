@@ -55,6 +55,10 @@ val resolve_binary
   -> prog:string
   -> (Path.t, Import.fail) Result.t
 
+val expand_with_reduced_var_set
+  :  context:Context.t
+  -> Value.t list option String_with_vars.expander
+
 module Option : sig
   val expand_path : t -> String_with_vars.t -> Path.t option
   val expand_str : t -> String_with_vars.t -> string option

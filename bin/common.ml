@@ -21,7 +21,7 @@ type t =
   ; debug_backtraces      : bool
   ; profile               : string option
   ; workspace_file        : Arg.Path.t option
-  ; root                  : string
+  ; root                  : Workspace_root.t
   ; target_prefix         : string
   ; only_packages         : Dune.Package.Name.Set.t option
   ; capture_outputs       : bool
@@ -45,8 +45,8 @@ type t =
 let prefix_target common s = common.target_prefix ^ s
 
 let set_dirs c =
-  if c.root <> Filename.current_dir_name then
-    Sys.chdir c.root;
+  if c.root.dir <> Filename.current_dir_name then
+    Sys.chdir c.root.dir;
   Path.set_root (Path.External.cwd ());
   Path.set_build_dir (Path.Kind.of_string c.build_dir)
 
@@ -369,15 +369,7 @@ let term =
              ~doc)
   in
   let build_dir = Option.value ~default:default_build_dir build_dir in
-  let root, to_cwd =
-    match root with
-    | Some dn -> (dn, [])
-    | None ->
-      if Config.inside_dune then
-        (".", [])
-      else
-        Util.find_root ()
-  in
+  let root = Workspace_root.create ~specified_by_user:root in
   let config =
     match config_file with
     | No_config  -> Config.default
@@ -406,7 +398,8 @@ let term =
   ; workspace_file
   ; root
   ; orig_args = []
-  ; target_prefix = String.concat ~sep:"" (List.map to_cwd ~f:(sprintf "%s/"))
+  ; target_prefix =
+      String.concat ~sep:"" (List.map root.to_cwd ~f:(sprintf "%s/"))
   ; diff_command
   ; auto_promote
   ; force

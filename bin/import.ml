@@ -87,7 +87,7 @@ end
 let restore_cwd_and_execve (common : Common.t) prog argv env =
   let prog =
     if Filename.is_relative prog then
-      Filename.concat common.root prog
+      Filename.concat common.root.dir prog
     else
       prog
   in

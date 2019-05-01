@@ -8,5 +8,3 @@ type checked =
   | External of Path.External.t
 
 val check_path : Context.t list -> Path.t -> checked
-
-val find_root : unit -> string * string list

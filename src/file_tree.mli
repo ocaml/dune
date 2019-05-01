@@ -42,6 +42,8 @@ module Dir : sig
      or [jbuild-ignore] file in one of its ancestor directories. *)
   val ignored : t -> bool
 
+  val vcs : t -> Vcs.t option
+
   val fold
     :  t
     -> traverse_ignored_dirs:bool
@@ -65,7 +67,11 @@ end
     compatibility. *)
 type t
 
-val load : ?warn_when_seeing_jbuild_file:bool -> Path.Source.t -> t
+val load
+  :  ?warn_when_seeing_jbuild_file:bool
+  -> Path.Source.t
+  -> ancestor_vcs:Vcs.t option
+  -> t
 
 (** Passing [~traverse_ignored_dirs:true] to this functions causes the
     whole source tree to be deeply scanned, including ignored

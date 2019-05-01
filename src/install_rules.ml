@@ -58,42 +58,35 @@ let gen_dune_package sctx ~version ~(pkg : Local_package.t) =
   Build.write_file_dyn dune_package_file
   |> Super_context.add_rule sctx ~dir:ctx.build_dir
 
-let version_from_dune_project sctx ~(pkg : Package.t) =
-  let dir = Path.append_source (Super_context.build_dir sctx) pkg.path in
-  let project = Scope.project (Super_context.find_scope_by_dir sctx dir) in
-  Dune_project.version project
-
 type version_method =
   | File of string
-  | From_dune_project
+  | From_metadata of Package.Version_source.t
 
-let pkg_version sctx ~path ~(pkg : Package.t) =
-  match pkg.version_from_opam_file with
-  | Some s -> Build.return (Some s)
-  | None ->
-    let rec loop = function
-      | [] -> Build.return None
-      | candidate :: rest ->
-        match candidate with
-        | File fn ->
-          let p = Path.relative path fn in
-          Build.if_file_exists p
-            ~then_:(Build.lines_of p
-                    >>^ function
-                    | ver :: _ -> Some ver
-                    | _ -> Some "")
-            ~else_:(loop rest)
-        | From_dune_project ->
-          match version_from_dune_project sctx ~pkg with
-          | None -> loop rest
-          | Some _ as x -> Build.return x
-    in
-    loop
-      [ File (Package.Name.version_fn pkg.name)
-      ; From_dune_project
-      ; File "version"
-      ; File "VERSION"
-      ]
+let pkg_version ~path ~(pkg : Package.t) =
+  let rec loop = function
+    | [] -> Build.return None
+    | candidate :: rest ->
+      match candidate with
+      | File fn ->
+        let p = Path.relative path fn in
+        Build.if_file_exists p
+          ~then_:(Build.lines_of p
+                  >>^ function
+                  | ver :: _ -> Some ver
+                  | _ -> Some "")
+          ~else_:(loop rest)
+      | From_metadata source ->
+        match pkg.version with
+        | Some (v, source') when source = source' -> Build.return (Some v)
+        | _ -> loop rest
+  in
+  loop
+    [ From_metadata Package
+    ; File (Package.Name.version_fn pkg.name)
+    ; From_metadata Project
+    ; File "version"
+    ; File "VERSION"
+    ]
 
 let init_meta sctx ~dir =
   Local_package.defined_in sctx ~dir
@@ -105,7 +98,7 @@ let init_meta sctx ~dir =
     let meta_template = Local_package.meta_template pkg in
     let version =
       let pkg = Local_package.package pkg in
-      let get = pkg_version sctx ~pkg ~path in
+      let get = pkg_version ~pkg ~path in
       Super_context.Pkg_version.set sctx pkg get
     in
 

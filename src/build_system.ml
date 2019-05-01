@@ -302,11 +302,15 @@ module Dir_status = struct
 
   end
 
+  type loaded = {
+    rules_in_collector : Rules.Dir_rules.t option;
+    rules_produced : Rules.t;
+    targets : Path.Set.t;
+  }
+
   type t =
     | Collecting_rules of Rules_collector.t
-    | Loaded  of
-        Rules.Dir_rules.t option (* rules in a Rules_collector at the point when it was frozen *)
-        * Path.Set.t (* set of targets in the directory *)
+    | Loaded  of loaded
     | Forward of Path.t (* Load this directory first       *)
     | Failed_to_load
 end
@@ -457,32 +461,48 @@ let get_dir_status t ~dir =
   Path.Table.find_or_add t.dirs dir ~f:(fun _ ->
     match Path.as_in_source_tree dir with
     | Some dir ->
-      Dir_status.Loaded (None, (
-        Path.Source.Set.to_list (File_tree.files_of t.file_tree dir)
-        |> List.map ~f:Path.source
-        |> Path.Set.of_list))
+      Dir_status.Loaded {
+        rules_in_collector = None;
+        rules_produced = Rules.empty;
+        targets =
+          (
+            Path.Source.Set.to_list (File_tree.files_of t.file_tree dir)
+            |> List.map ~f:Path.source
+            |> Path.Set.of_list);
+      }
     | None ->
       if Path.equal dir Path.build_dir then
         (* Not allowed to look here *)
-        Dir_status.Loaded (None, Path.Set.empty)
+        Dir_status.Loaded
+          { rules_in_collector = None;
+            rules_produced = Rules.empty;
+            targets = Path.Set.empty
+          }
       else if not (Path.is_managed dir) then
         Dir_status.Loaded
-          (None, match Path.readdir_unsorted dir with
-           | Error Unix.ENOENT -> Path.Set.empty
-           | Error m ->
-             Errors.warn Loc.none
-               "Unable to read %s@.Reason: %s@."
-               (Path.to_string_maybe_quoted dir)
-               (Unix.error_message m);
-             Path.Set.empty
-           | Ok files ->
-             Path.Set.of_list (List.map files ~f:(Path.relative dir)))
+          { rules_in_collector = None;
+            rules_produced = Rules.empty;
+            targets =
+              match Path.readdir_unsorted dir with
+              | Error Unix.ENOENT -> Path.Set.empty
+              | Error m ->
+                Errors.warn Loc.none
+                  "Unable to read %s@.Reason: %s@."
+                  (Path.to_string_maybe_quoted dir)
+                  (Unix.error_message m);
+                Path.Set.empty
+              | Ok files ->
+                Path.Set.of_list (List.map files ~f:(Path.relative dir))
+          }
       else begin
         let (ctx, sub_dir) = Path.extract_build_context_exn dir in
         if ctx = ".aliases" then
           Forward (Path.(append_source build_dir) sub_dir)
         else if ctx <> "install" && not (String.Map.mem t.contexts ctx) then
-          Dir_status.Loaded (None, Path.Set.empty)
+          Dir_status.Loaded {
+            rules_in_collector = None;
+            rules_produced = Rules.empty;
+            targets = Path.Set.empty; }
         else
           Collecting_rules
             (Dir_status.Rules_collector.create_pending ~info:(Path.to_sexp dir) ())
@@ -713,13 +733,13 @@ let add_rules_to_collector t ~dir rules =
     add_build_dir_to_keep t ~dir;
     Dir_status.Rules_collector.add_rules collector rules
   | Failed_to_load -> raise Already_reported
-  | Loaded (Some old_rules, _) ->
+  | Loaded { rules_in_collector = Some old_rules; _ } ->
     if Rules.Dir_rules.is_subset ~of_:old_rules rules
     then
       ()
     else
       fail "Build_system.get_collector called on closed directory"
-  | Loaded (None, _) ->
+  | Loaded { rules_in_collector = None; _ } ->
     error ()
   | Forward _ ->
     error ()
@@ -733,7 +753,7 @@ let handle_add_rule_effects f =
     ~f:(fun dir rules ->
       add_rules_to_collector t ~dir:(Path.build dir) rules
     );
-  res
+  res, effects
 
 let rec compile_rule t pre_rule =
   let { Pre_rule.
@@ -787,18 +807,28 @@ and setup_copy_rules t ~ctx_dir ~non_target_source_files =
                       ~info:Source_file_copy))
 
 and load_dir   t ~dir = ignore (load_dir_and_get_targets t ~dir : Path.Set.t)
+and load_dir_and_produce_its_rules t ~dir =
+  let (rules, (_targets : Path.Set.t)) =
+    (load_dir_and_get_rules_and_targets t ~dir)
+  in
+  Rules.produce rules;
+  ()
+
 and targets_of t ~dir =         load_dir_and_get_targets t ~dir
 
 and load_dir_and_get_targets t ~dir =
+  snd (load_dir_and_get_rules_and_targets t ~dir)
+
+and load_dir_and_get_rules_and_targets t ~dir =
   match get_dir_status t ~dir with
   | Failed_to_load -> raise Already_reported
 
-  | Loaded (_, targets) -> targets
+  | Loaded { targets; rules_produced; _ } -> rules_produced, targets
 
   | Forward dir' ->
     load_dir t ~dir:dir';
     begin match get_dir_status t ~dir with
-    | Loaded (_, targets) -> targets
+    | Loaded { targets; rules_produced; _ } -> rules_produced, targets
     | _ -> assert false
     end
 
@@ -841,7 +871,7 @@ and load_dir_step2_exn t ~dir ~collector =
   in
 
   (* Load all the rules *)
-  let extra_subdirs_to_keep =
+  let extra_subdirs_to_keep, rules_produced =
     let gen_rules =
       match (Fdecl.get t.gen_rules) context_name with
       | None ->
@@ -934,7 +964,10 @@ and load_dir_step2_exn t ~dir ~collector =
              targets))
       in
       Path.Table.replace t.dirs ~key:alias_dir
-        ~data:(Loaded (None, alias_stamp_files));
+        ~data:(Loaded {
+          rules_in_collector = None;
+          rules_produced = Rules.empty;
+          targets = alias_stamp_files });
       Some alias_dir, alias_rules
     | Install _ ->
       None, []
@@ -1070,7 +1103,10 @@ The following targets are not:
   in
 
   (* Set the directory status to loaded *)
-  Path.Table.replace t.dirs ~key:dir ~data:(Loaded (Some rules_in_collector, targets));
+  Path.Table.replace t.dirs ~key:dir ~data:(Loaded {
+    rules_in_collector = Some rules_in_collector;
+    rules_produced;
+    targets });
   (match t.load_dir_stack with
    | [] -> assert false
    | x :: l ->
@@ -1087,7 +1123,7 @@ The following targets are not:
   Option.iter alias_dir ~f:(fun alias_dir ->
     remove_old_artifacts t ~dir:alias_dir ~subdirs_to_keep);
 
-  targets
+  rules_produced, targets
 
 let get_rule_other t fn =
   let dir = Path.parent_exn fn in
@@ -1707,3 +1743,5 @@ end = struct
 end
 
 include All_lib_deps
+
+let load_dir ~dir = load_dir_and_produce_its_rules (t ()) ~dir

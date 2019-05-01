@@ -95,6 +95,7 @@ end
 
 val implicit_output : t Memo.Implicit_output.t
 
+val empty : t
 val union : t -> t -> t
 
 val produce_dir : dir:Path.Build.t -> Dir_rules.t -> unit

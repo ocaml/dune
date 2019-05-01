@@ -89,59 +89,86 @@ module Outcometree_cleaner = struct
     Toploop.print_out_value := (fun ppf v -> print_out_value ppf (value v))
 end
 
-let main () =
-  Clflags.real_paths := false;
-  Test_common.run_expect_test Sys.argv.(1) ~f:(fun file_contents lexbuf ->
-    let chunks = code file_contents lexbuf.lex_curr_p lexbuf in
+let capture_outputs ~f =
+  let temp_file = Filename.temp_file "dune-test" ".output" in
+  at_exit (fun () -> Sys.remove temp_file);
+  let fd = Unix.openfile temp_file [O_WRONLY; O_TRUNC] 0 in
+  let stdout_backup = Unix.dup Unix.stdout in
+  let stderr_backup = Unix.dup Unix.stderr in
+  Unix.dup2 fd Unix.stdout;
+  Unix.dup2 fd Unix.stderr;
+  Unix.close fd;
+  let real_err_formatter =
+    Format.formatter_of_out_channel (Unix.out_channel_of_descr stderr_backup)
+  in
+  let restore () =
+    Unix.dup2 stdout_backup Unix.stdout;
+    Unix.dup2 stderr_backup Unix.stderr;
+    Unix.close stdout_backup;
+    Format.pp_print_flush real_err_formatter ();
+    Unix.close stderr_backup
+  in
+  Stdune.Exn.protect
+    ~f:(fun () -> f real_err_formatter)
+    ~finally:restore;
+  Stdune.Io.String_path.read_file temp_file
 
-    Toploop.initialize_toplevel_env ();
-    List.iter
-      [ "src/dune_lang/.dune_lang.objs/byte"
-      ; "src/stdune/.stdune.objs/byte"
-      ; "src/fiber/.fiber.objs/byte"
-      ; "src/dag/.dag.objs/byte"
-      ; "src/memo/.memo.objs/byte"
-      ; "src/.dune.objs/byte"
-      ]
-      ~f:Topdirs.dir_directory;
+let flush_all () =
+  flush stdout;
+  flush stderr
 
-    let buf = Buffer.create (String.length file_contents + 1024) in
-    let ppf = Format.formatter_of_buffer buf in
-    List.iter chunks ~f:(fun (kind, pos, s) ->
-      begin match kind with
-      | Ignore -> Format.fprintf ppf "%s[%%%%ignore]@." s
-      | Expect -> Format.fprintf ppf "%s[%%%%expect{|@." s
-      | Error -> Format.fprintf ppf "%s[%%%%error{|@." s
+let run real_err_formatter file_contents (lexbuf : Lexing.lexbuf) =
+  let chunks = code file_contents lexbuf.lex_curr_p lexbuf in
+
+  Toploop.initialize_toplevel_env ();
+  List.iter
+    [ "src/dune_lang/.dune_lang.objs/byte"
+    ; "src/stdune/.stdune.objs/byte"
+    ; "src/fiber/.fiber.objs/byte"
+    ; "src/dag/.dag.objs/byte"
+    ; "src/memo/.memo.objs/byte"
+    ; "src/.dune.objs/byte"
+    ]
+    ~f:Topdirs.dir_directory;
+
+  List.iter chunks ~f:(fun (kind, pos, s) ->
+    begin match kind with
+    | Ignore -> Format.printf "%s[%%%%ignore]@." s
+    | Expect -> Format.printf "%s[%%%%expect{|@." s
+    | Error -> Format.printf "%s[%%%%error{|@." s
+    end;
+    let lexbuf = Lexing.from_string s in
+    lexbuf.lex_curr_p <- pos;
+    let phrases = !Toploop.parse_use_file lexbuf in
+    List.iter phrases ~f:(fun phr ->
+      begin try
+        let print_types_and_values =
+          match kind with
+          | Expect | Error -> true
+          | Ignore -> false
+        in
+        ignore (Toploop.execute_phrase print_types_and_values
+                  Format.std_formatter phr : bool)
+      with exn ->
+        let ppf =
+          match kind with
+          | Error -> Format.std_formatter
+          | Ignore | Expect -> real_err_formatter
+        in
+        Location.report_exception ppf exn
       end;
-      let lexbuf = Lexing.from_string s in
-      lexbuf.lex_curr_p <- pos;
-      let phrases = !Toploop.parse_use_file lexbuf in
-      List.iter phrases ~f:(fun phr ->
-        try
-          let print_types_and_values =
-            match kind with
-            | Expect | Error -> true
-            | Ignore -> false
-          in
-          Stdune.In_expect_test.formatter := Some ppf;
-          ignore (Toploop.execute_phrase print_types_and_values ppf phr : bool)
-        with exn ->
-          let ppf =
-            match kind with
-            | Error -> ppf
-            | Ignore | Expect -> Format.err_formatter
-          in
-          Location.report_exception ppf exn
-      );
-      begin match kind with
-      | Ignore -> ()
-      | Expect | Error -> Format.fprintf ppf "@?|}]@."
-      end);
-    Buffer.contents buf)
+      flush_all ()
+    );
+    begin match kind with
+    | Ignore -> ()
+    | Expect | Error -> Format.printf "@?|}]@."
+    end)
 
 let () =
   try
-    main ()
+    Clflags.real_paths := false;
+    Test_common.run_expect_test Sys.argv.(1) ~f:(fun file_contents lexbuf ->
+      capture_outputs ~f:(fun ppf -> run ppf file_contents lexbuf))
   with exn ->
     Location.report_exception Format.err_formatter exn;
     exit 1

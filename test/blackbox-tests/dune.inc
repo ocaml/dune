@@ -1353,6 +1353,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name variants-multi-project)
+ (deps (package dune) (source_tree test-cases/variants-multi-project))
+ (action
+  (chdir
+   test-cases/variants-multi-project
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name vlib)
  (deps (package dune) (source_tree test-cases/vlib))
  (action
@@ -1567,6 +1575,7 @@
   (alias utop)
   (alias utop-default)
   (alias variants)
+  (alias variants-multi-project)
   (alias vlib)
   (alias vlib-default-impl)
   (alias windows-diff)
@@ -1715,6 +1724,7 @@
   (alias unreadable-src)
   (alias upgrader)
   (alias variants)
+  (alias variants-multi-project)
   (alias vlib)
   (alias vlib-default-impl)
   (alias windows-diff)

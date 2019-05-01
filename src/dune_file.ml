@@ -774,6 +774,27 @@ module Library = struct
       | From of (Loc.t * Lib_name.t)
   end
 
+  module Special_builtin_support = struct
+    module T = struct
+      type t =
+        | Findlib_dynload
+      let compare = compare
+    end
+
+    include T
+    module Map = Map.Make(T)
+
+    let decode =
+      enum
+        [ "findlib_dynload", Findlib_dynload
+        ]
+
+    let encode t =
+      Dune_lang.atom
+        (match t with
+         | Findlib_dynload -> "findlib_dynload")
+  end
+
   module Stdlib = struct
     type t =
       { modules_before_stdlib : Module.Name.Set.t
@@ -857,6 +878,7 @@ module Library = struct
     ; default_implementation   : (Loc.t * Lib_name.t) option
     ; private_modules          : Ordered_set_lang.t option
     ; stdlib                   : Stdlib.t option
+    ; special_builtin_support  : Special_builtin_support.t option
     }
 
   let decode =
@@ -913,6 +935,10 @@ module Library = struct
            Ordered_set_lang.decode)
        and+ stdlib =
          field_o "stdlib" (Syntax.since Stdlib.syntax (0, 1) >>> Stdlib.decode)
+       and+ special_builtin_support =
+         field_o "special_builtin_support"
+           (Syntax.since Stanza.syntax (1, 10) >>>
+            Special_builtin_support.decode)
        in
        let wrapped = Wrapped.make ~wrapped ~implements in
        let name =
@@ -1006,6 +1032,7 @@ module Library = struct
            ; default_implementation
            ; private_modules
            ; stdlib
+           ; special_builtin_support
            })
 
   let has_stubs t =

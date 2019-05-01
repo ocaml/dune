@@ -43,11 +43,6 @@ let generate_and_compile_module cctx ~name:basename ~code ~requires =
     module_;
   module_
 
-let is_findlib_dynload lib =
-  match Lib_name.to_string (Lib.name lib) with
-  | "findlib.dynload" -> true
-  | _ -> false
-
 let findlib_init_code ~preds ~libs =
   let public_libs =
     List.filter
@@ -65,15 +60,15 @@ let findlib_init_code ~preds ~libs =
                         \"native\" else \"byte\") :: preds in@\n";
     Format.fprintf ppf "Findlib.record_package_predicates preds;;@\n")
 
-let handle_special_libs cctx  =
+let handle_special_libs cctx =
   Result.map (CC.requires_link cctx) ~f:(fun libs ->
     let sctx = CC.super_context cctx in
-    let has_findlib_dynload =
-      List.exists libs ~f:is_findlib_dynload
-    in
-    if not has_findlib_dynload then
+    let module M = Dune_file.Library.Special_builtin_support.Map in
+    let specials = Lib.L.special_builtin_support libs in
+    let to_link = Lib.Lib_and_module.L.of_libs libs in
+    if not (M.mem specials Findlib_dynload) then
       { force_linkall = false
-      ; to_link = Lib.Lib_and_module.L.of_libs libs
+      ; to_link
       }
     else begin
       (* If findlib.dynload is linked, we stores in the binary the
@@ -96,17 +91,19 @@ let handle_special_libs cctx  =
           ~code
           ~requires
       in
-        let rec insert = function
+      let rec insert = function
         | [] -> assert false
-        | lib :: libs ->
-          if is_findlib_dynload lib then
-            Lib.Lib_and_module.Lib lib
-            :: Module module_
-            :: Lib.Lib_and_module.L.of_libs libs
-          else
-            Lib lib :: insert libs
+        | x :: l ->
+          match x with
+          | Lib.Lib_and_module.Module _ ->
+            x :: insert l
+          | Lib lib ->
+            match Lib.special_builtin_support lib with
+            | Some Findlib_dynload ->
+              x :: Module module_ :: l
+            | _ -> x :: insert l
       in
       { force_linkall = true
-      ; to_link = insert libs
+      ; to_link = insert to_link
       }
     end)

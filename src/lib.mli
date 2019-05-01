@@ -40,6 +40,9 @@ val wrapped : t -> Wrapped.t option Or_exn.t
 
 val virtual_ : t -> Lib_modules.t Lib_info.Source.t option
 
+val special_builtin_support
+  : t -> Dune_file.Library.Special_builtin_support.t option
+
 (** A unique integer identifier. It is only unique for the duration of
     the process *)
 module Id : sig
@@ -94,6 +97,9 @@ module L : sig
     -> key:('a -> lib)
     -> deps:('a -> 'a list)
     -> ('a list, 'a list) Result.t
+
+  val special_builtin_support
+    : t -> lib Dune_file.Library.Special_builtin_support.Map.t
 end with type lib := t
 
 (** Operation on list of libraries and modules *)

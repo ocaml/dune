@@ -1,0 +1,4 @@
+root = true
+
+[*.{ml,mli}]
+max_line_length = 80

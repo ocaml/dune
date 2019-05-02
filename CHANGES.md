@@ -8,6 +8,9 @@ unreleased
   `dune-project` file if they want to use it before the design is
   finalized. (#2116, @diml)
 
+- Forbid to attach a variant to a library that implements a virtual
+  library outside the current project (#2104, @rgrinberg)
+
 - Restricted the set of variables available for expansion in the destination filename
   of `install` stanza to simplify implementation and avoid dependency
   cycles. (#2073, @aalekseyev, @diml)

@@ -163,9 +163,9 @@ module Pps_and_flags = struct
         no_templates loc "in the preprocessors field"
       | Atom _ | Quoted_string _ -> plain_string of_string
       | List _ ->
-         repeat (plain_string (fun ~loc str ->
-           String_with_vars.make_text loc str))
-         >>| (fun x -> Right x)
+        list (plain_string (fun ~loc str ->
+          String_with_vars.make_text loc str))
+        >>| (fun x -> Right x)
 
     let split l =
       let pps, flags = List.partition_map l ~f:Fn.id in

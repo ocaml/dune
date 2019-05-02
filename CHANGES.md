@@ -8,6 +8,9 @@
   `dune-project` file if they want to use it before the design is
   finalized. (#2116, @diml)
 
+- Forbid to attach a variant to a library that implements a virtual
+  library outside the current project (#2104, @rgrinberg)
+
 - Fix a bug where `dune install` would install man pages to incorrect
   paths when compared to `opam-installer`. For example dune now
   installs `(foo.1 as man1/foo.1)` correctly and previously that was

@@ -79,6 +79,10 @@ implementation for every virtual library that we've used:
 Variants
 ========
 
+This feature is still under development and may change with new dune
+releases. You need to write ``(using library_variants 0.1)`` in your
+``dune-project`` file to unlock it.
+
 When building a binary, implementations can be selected using a set of variants
 rather than individually specifying implementations.
 
@@ -106,6 +110,8 @@ implementation would have the following configuration:
 
 Default implementation
 ======================
+
+This feature is also guarded by ``(using library_variants ...)``.
 
 A virtual library may select a default implementation, which is enabled after
 variant resolution, if no suitable implementation has been found.

@@ -31,7 +31,8 @@ let run (vcs : Vcs.t) args =
       else
         Vcs.git, "hg",
         match args with
-        | ["tag"; s] -> ["tag"; "-a"; s; "-m"; s]
+        | ["tag"; s; "-u"; _] -> ["tag"; "-a"; s; "-m"; s]
+        | ["commit"; "-m"; msg; "-u"; _] -> ["commit"; "-m"; msg]
         | _ -> args
   in
   printf "$ %s\n" (List.map (prog_str :: args) ~f:Import.quote_for_shell
@@ -53,7 +54,11 @@ let run_action (vcs : Vcs.t) action =
   match action with
   | Init -> run vcs ["init"]
   | Add fn -> run vcs ["add"; fn]
-  | Commit -> run vcs ["commit"; "-m"; "commit message"]
+  | Commit -> begin
+      match vcs.kind with
+      | Git -> run vcs ["commit"; "-m"; "commit message"]
+      | Hg -> run vcs ["commit"; "-m"; "commit message"; "-u"; "toto"]
+    end
   | Write (fn, s) ->
     printf "$ echo %S > %s\n" s fn;
     Io.write_file (Path.relative temp_dir fn) s;
@@ -94,7 +99,7 @@ let run_action (vcs : Vcs.t) action =
   | Tag s ->
     match vcs.kind with
     | Git -> run vcs ["tag"; "-a"; s; "-m"; s]
-    | Hg -> run vcs ["tag"; s]
+    | Hg -> run vcs ["tag"; s; "-u"; "toto"]
 
 let run kind script =
   Path.rm_rf temp_dir;
@@ -180,7 +185,6 @@ $ git commit -m 'commit message'
 $ git describe [...]
 1.0-2-<commit-id>
 
-
 - : unit = ()
 |}]
 
@@ -190,7 +194,7 @@ run Hg script;;
 $ hg init
 $ echo "-" > a
 $ hg add a
-$ hg commit -m 'commit message'
+$ hg commit -m 'commit message' -u toto
 $ hg describe [...]
 <commit-id>
 
@@ -199,11 +203,11 @@ $ hg add b
 $ hg describe [...]
 <commit-id>-dirty
 
-$ hg commit -m 'commit message'
+$ hg commit -m 'commit message' -u toto
 $ hg describe [...]
 <commit-id>
 
-$ hg tag 1.0
+$ hg tag 1.0 -u toto
 $ hg describe [...]
 1.0
 
@@ -212,7 +216,7 @@ $ hg add c
 $ hg describe [...]
 1.0-dirty
 
-$ hg commit -m 'commit message'
+$ hg commit -m 'commit message' -u toto
 $ hg describe [...]
 1.0-1-<commit-id>
 
@@ -221,10 +225,9 @@ $ hg add d
 $ hg describe [...]
 1.0-1-<commit-id>-dirty
 
-$ hg commit -m 'commit message'
+$ hg commit -m 'commit message' -u toto
 $ hg describe [...]
 1.0-2-<commit-id>
-
 
 - : unit = ()
 |}]

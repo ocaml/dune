@@ -77,6 +77,7 @@ type t =
   ; wrapped          : Wrapped.t Dune_file.Library.Inherited.t option
   ; main_module_name : Dune_file.Library.Main_module_name.t
   ; modes            : Mode.Dict.Set.t
+  ; special_builtin_support : Dune_file.Library.Special_builtin_support.t option
   }
 
 let user_written_deps t =
@@ -182,6 +183,7 @@ let of_library_stanza ~dir
   ; main_module_name
   ; modes
   ; wrapped = Some conf.wrapped
+  ; special_builtin_support = conf.special_builtin_support
   }
 
 let of_dune_lib dp =
@@ -227,4 +229,5 @@ let of_dune_lib dp =
   ; default_implementation = Lib.default_implementation dp
   ; modes = Lib.modes dp
   ; wrapped
+  ; special_builtin_support = Lib.special_builtin_support dp
   }

@@ -27,13 +27,16 @@ module Lib = struct
     ; requires         : (Loc.t * Lib_name.t) list
     ; version          : string option
     ; modes            : Mode.Dict.Set.t
+    ; special_builtin_support :
+        Dune_file.Library.Special_builtin_support.t option
     }
 
   let make ~loc ~kind ~name ~synopsis ~archives ~plugins ~foreign_objects
         ~foreign_archives ~jsoo_runtime ~main_module_name ~sub_systems
         ~requires ~ppx_runtime_deps ~implements ~variant
         ~default_implementation ~virtual_ ~modules ~modes
-        ~version ~orig_src_dir ~obj_dir =
+        ~version ~orig_src_dir ~obj_dir
+        ~special_builtin_support =
     let dir = Obj_dir.dir obj_dir in
     let map_path p =
       if Path.is_managed p then
@@ -65,6 +68,7 @@ module Lib = struct
     ; modules
     ; modes
     ; obj_dir
+    ; special_builtin_support
     }
 
   let obj_dir t = t.obj_dir
@@ -84,7 +88,7 @@ module Lib = struct
         ; ppx_runtime_deps ; sub_systems ; virtual_
         ; implements ; variant ; default_implementation
         ; main_module_name ; version = _; obj_dir ; orig_src_dir
-        ; modules ; modes
+        ; modules ; modes ; special_builtin_support
         } =
     let open Dune_lang.Encoder in
     let no_loc f (_loc, x) = f x in
@@ -117,6 +121,8 @@ module Lib = struct
         (match modules with
          | None -> []
          | Some modules -> Lib_modules.encode modules)
+    ; field_o "special_builtin_support"
+        Dune_file.Library.Special_builtin_support.encode special_builtin_support
     ] @ (Sub_system_name.Map.to_list sub_systems
          |> List.map ~f:(fun (name, (_ver, sexps)) ->
            field_l (Sub_system_name.to_string name) sexp sexps))
@@ -159,7 +165,11 @@ module Lib = struct
       and+ sub_systems = Sub_system_info.record_parser ()
       and+ orig_src_dir = field_o "orig_src_dir" path
       and+ modules = field_o "modules" (Lib_modules.decode
-                         ~implements:(Option.is_some implements) ~obj_dir)
+                                          ~implements:(Option.is_some implements) ~obj_dir)
+       and+ special_builtin_support =
+         field_o "special_builtin_support"
+           (Syntax.since Stanza.syntax (1, 10) >>>
+            Dune_file.Library.Special_builtin_support.decode)
       in
       let modes = Mode.Dict.Set.of_list modes in
       { kind
@@ -184,6 +194,7 @@ module Lib = struct
       ; obj_dir
       ; modules
       ; modes
+      ; special_builtin_support
       }
     )
 
@@ -207,6 +218,7 @@ module Lib = struct
   let variant t = t.variant
   let default_implementation t = t.default_implementation
   let modes t = t.modes
+  let special_builtin_support t = t.special_builtin_support
 
   let compare_name x y = Lib_name.compare x.name y.name
   let wrapped t = Option.map t.modules ~f:Lib_modules.wrapped

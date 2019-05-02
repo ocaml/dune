@@ -193,6 +193,16 @@ module Library : sig
       }
   end
 
+  module Special_builtin_support : sig
+    type t =
+      | Findlib_dynload
+
+    val compare : t -> t -> Ordering.t
+    include Dune_lang.Conv with type t := t
+
+    module Map : Map.S with type key := t
+  end
+
   type t =
     { name                     : (Loc.t * Lib_name.Local.t)
     ; public                   : Public_lib.t option
@@ -222,6 +232,7 @@ module Library : sig
     ; default_implementation   : (Loc.t * Lib_name.t) option
     ; private_modules          : Ordered_set_lang.t option
     ; stdlib                   : Stdlib.t option
+    ; special_builtin_support  : Special_builtin_support.t option
     }
 
   val has_stubs : t -> bool

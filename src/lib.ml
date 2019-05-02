@@ -282,6 +282,8 @@ let status t = t.info.status
 
 let foreign_objects t = t.info.foreign_objects
 
+let special_builtin_support t = t.info.special_builtin_support
+
 let main_module_name t =
   match t.info.main_module_name with
   | This mmn -> Ok mmn
@@ -387,6 +389,13 @@ module L = struct
     Id.Top_closure.top_closure l
       ~key:(fun t -> unique_id (key t))
       ~deps
+
+  let special_builtin_support l =
+    let module M = Dune_file.Library.Special_builtin_support.Map in
+    List.fold_left l ~init:M.empty ~f:(fun acc lib ->
+      match lib.info.special_builtin_support with
+      | None -> acc
+      | Some x -> M.add acc x lib)
 end
 
 module Lib_and_module = struct
@@ -1701,5 +1710,4 @@ let to_dune_lib ({ name ; info ; _ } as lib) ~lib_modules ~foreign_objects ~dir 
     ~modules:(Some lib_modules)
     ~main_module_name:(Result.ok_exn (main_module_name lib))
     ~sub_systems:(Sub_system.dump_config lib)
-
-
+    ~special_builtin_support:info.special_builtin_support

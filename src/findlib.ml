@@ -238,6 +238,12 @@ module Package = struct
       ~version:(version t)
       ~modes
       ~obj_dir
+      ~special_builtin_support:(
+        (* findlib has been around for much longer than dune, so it is
+           acceptable to have a special case in dune for findlib. *)
+        match Lib_name.to_string t.name with
+        | "findlib.dynload" -> Some Findlib_dynload
+        | _ -> None)
 
   let parse db ~meta_file ~name ~parent_dir ~vars =
     let pkg_dir = Vars.get vars "directory" Ps.empty in

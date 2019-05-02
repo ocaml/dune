@@ -58,6 +58,7 @@ type t = private
   ; wrapped          : Wrapped.t Dune_file.Library.Inherited.t option
   ; main_module_name : Dune_file.Library.Main_module_name.t
   ; modes            : Mode.Dict.Set.t
+  ; special_builtin_support : Dune_file.Library.Special_builtin_support.t option
   }
 
 val of_library_stanza

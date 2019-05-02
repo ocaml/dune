@@ -6,7 +6,7 @@ unreleased
   this feature before we are ready to commit to a final version. Users
   will need to write `(using library_variants 0.1)` in their
   `dune-project` file if they want to use it before the design is
-  finalized. (#...., @diml)
+  finalized. (#2116, @diml)
 
 - Restricted the set of variables available for expansion in the destination filename
   of `install` stanza to simplify implementation and avoid dependency

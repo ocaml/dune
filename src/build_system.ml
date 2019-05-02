@@ -730,7 +730,6 @@ let add_rules_to_collector t ~dir rules =
   in
   match get_dir_status t ~dir with
   | Collecting_rules collector ->
-    add_build_dir_to_keep t ~dir;
     Dir_status.Rules_collector.add_rules collector rules
   | Failed_to_load -> raise Already_reported
   | Loaded { rules_in_collector = Some old_rules; _ } ->
@@ -746,21 +745,17 @@ let add_rules_to_collector t ~dir rules =
 
 let handle_add_rule_effects ~dir:main_dir f =
   let t = t () in
-  let res, effects =
+  let res, rules =
     Rules.collect f
   in
-  Path.Build.Map.iteri (Rules.to_map effects)
-    ~f:(fun dir rules ->
-      add_rules_to_collector t ~dir:(Path.build dir)
-        (if Path.build dir = main_dir
-         then rules
-         else
-           (* CR-someday aalekseyev:
-              Adding empty rules rather than no rules causes this to work
-              somehow, which is clearly terrible. *)
-           Rules.Dir_rules.empty)
-    );
-  res, effects
+  (* CR-someday aalekseyev:
+     find a way to do what [add_build_dir_to_keep] without relying
+     on this side-effect so that memoization can be used here. *)
+  Path.Build.Map.iteri (Rules.to_map rules)
+    ~f:(fun dir _rules ->
+      add_build_dir_to_keep t ~dir:(Path.build dir));
+  add_rules_to_collector t ~dir:main_dir (Rules.find rules main_dir);
+  res, rules
 
 let rec compile_rule t pre_rule =
   let { Pre_rule.

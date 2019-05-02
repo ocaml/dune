@@ -85,6 +85,8 @@ module Dir_rules = struct
 
   let is_subset t ~of_ =
     Id.Map.is_subset t ~of_ ~f:(fun _ ~of_:_ -> true)
+
+  let is_empty = Id.Map.is_empty
 end
 
 module T = struct

@@ -36,6 +36,9 @@ module Dir_rules : sig
   val consume : t -> ready
 
   val is_subset : t -> of_:t -> bool
+
+  val is_empty : t -> bool
+
 end
 
 (** A value of type [t] holds a set of rules for multiple directories *)

@@ -744,14 +744,21 @@ let add_rules_to_collector t ~dir rules =
   | Forward _ ->
     error ()
 
-let handle_add_rule_effects f =
+let handle_add_rule_effects ~dir:main_dir f =
   let t = t () in
   let res, effects =
     Rules.collect f
   in
   Path.Build.Map.iteri (Rules.to_map effects)
     ~f:(fun dir rules ->
-      add_rules_to_collector t ~dir:(Path.build dir) rules
+      add_rules_to_collector t ~dir:(Path.build dir)
+        (if Path.build dir = main_dir
+         then rules
+         else
+           (* CR-someday aalekseyev:
+              Adding empty rules rather than no rules causes this to work
+              somehow, which is clearly terrible. *)
+           Rules.Dir_rules.empty)
     );
   res, effects
 
@@ -880,7 +887,8 @@ and load_dir_step2_exn t ~dir ~collector =
       | Some rules ->
         rules
     in
-    handle_add_rule_effects (fun () -> gen_rules ~dir (Path.Source.explode sub_dir))
+    handle_add_rule_effects ~dir
+      (fun () -> gen_rules ~dir (Path.Source.explode sub_dir))
   in
   let rules_in_collector = Dir_status.Rules_collector.freeze collector in
   let rules =

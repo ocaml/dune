@@ -68,8 +68,7 @@ module Make(Rules : sig
            else
              Memo.Lazy.of_val Rules.empty);
         by_child =
-          let dirs_children = Dir_set.children dirs in
-          (match Dir_set.Children.default dirs_children with
+          (match Dir_set.default dirs with
            | true ->
              (* This is forcing the lazy potentially too early if the directory
                 the user is interested in is not actually in the set.  We're not
@@ -81,7 +80,7 @@ module Make(Rules : sig
                      (Dir_set.descend dirs dir)
                      v))
            | false ->
-             String.Map.mapi (Dir_set.Children.exceptions dirs_children)
+             String.Map.mapi (Dir_set.exceptions dirs)
                ~f:(fun dir v ->
                  Memo.lazy_ (fun () ->
                    restrict
@@ -127,7 +126,7 @@ module Make(Rules : sig
                    "outer", (Dir_set.to_sexp env);
                  ])
       else
-        let paths = Dir_set.intersect paths env in
+        let paths = Dir_set.inter paths env in
         Evaluated.restrict paths
           (Memo.lazy_ (fun () -> evaluate ~env:paths rules))
     | Finite rules -> Evaluated.finite rules

@@ -104,7 +104,7 @@ rules:
 let scheme_all_but_foo_bar =
   Dune.Scheme.Approximation (
     Dir_set.negate (
-      Dir_set.of_list [Dir_set.Subtree (Path.of_string "foo/bar")]),
+      Dir_set.subtree (Path.of_string "foo/bar")),
     Thunk (fun () -> Empty))
 
 [%%ignore]

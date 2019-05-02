@@ -251,10 +251,10 @@ let setup_toplevel_index_rule sctx =
       let name = Package.Name.to_string name in
       let link = sp {|<a href="%s/index.html">%s</a>|} name name in
       let version_suffix =
-        match pkg.Package.version_from_opam_file with
+        match pkg.Package.version with
         | None ->
           ""
-        | Some v ->
+        | Some (v, _) ->
           sp {| <span class="version">%s</span>|} v
       in
       Some (sp "<li>%s%s</li>" link version_suffix))

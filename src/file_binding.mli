@@ -26,6 +26,13 @@ module Unexpanded : sig
   val expand_src
     : t -> dir:Path.t -> f:(String_with_vars.t -> string) -> Path.t
 
+  val destination_relative_to_install_path
+    : t
+    -> section:Install.Section.t
+    -> expand:(String_with_vars.t -> string)
+    -> expand_partial:(String_with_vars.t -> string String_with_vars.Partial.t)
+    -> Install.Dst.t
+
   module L : sig
     val decode : t list Stanza.Decoder.t
   end

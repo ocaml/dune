@@ -58,42 +58,35 @@ let gen_dune_package sctx ~version ~(pkg : Local_package.t) =
   Build.write_file_dyn dune_package_file
   |> Super_context.add_rule sctx ~dir:ctx.build_dir
 
-let version_from_dune_project sctx ~(pkg : Package.t) =
-  let dir = Path.append_source (Super_context.build_dir sctx) pkg.path in
-  let project = Scope.project (Super_context.find_scope_by_dir sctx dir) in
-  Dune_project.version project
-
 type version_method =
   | File of string
-  | From_dune_project
+  | From_metadata of Package.Version_source.t
 
-let pkg_version sctx ~path ~(pkg : Package.t) =
-  match pkg.version_from_opam_file with
-  | Some s -> Build.return (Some s)
-  | None ->
-    let rec loop = function
-      | [] -> Build.return None
-      | candidate :: rest ->
-        match candidate with
-        | File fn ->
-          let p = Path.relative path fn in
-          Build.if_file_exists p
-            ~then_:(Build.lines_of p
-                    >>^ function
-                    | ver :: _ -> Some ver
-                    | _ -> Some "")
-            ~else_:(loop rest)
-        | From_dune_project ->
-          match version_from_dune_project sctx ~pkg with
-          | None -> loop rest
-          | Some _ as x -> Build.return x
-    in
-    loop
-      [ File (Package.Name.version_fn pkg.name)
-      ; From_dune_project
-      ; File "version"
-      ; File "VERSION"
-      ]
+let pkg_version ~path ~(pkg : Package.t) =
+  let rec loop = function
+    | [] -> Build.return None
+    | candidate :: rest ->
+      match candidate with
+      | File fn ->
+        let p = Path.relative path fn in
+        Build.if_file_exists p
+          ~then_:(Build.lines_of p
+                  >>^ function
+                  | ver :: _ -> Some ver
+                  | _ -> Some "")
+          ~else_:(loop rest)
+      | From_metadata source ->
+        match pkg.version with
+        | Some (v, source') when source = source' -> Build.return (Some v)
+        | _ -> loop rest
+  in
+  loop
+    [ From_metadata Package
+    ; File (Package.Name.version_fn pkg.name)
+    ; From_metadata Project
+    ; File "version"
+    ; File "VERSION"
+    ]
 
 let init_meta sctx ~dir =
   Local_package.defined_in sctx ~dir
@@ -105,7 +98,7 @@ let init_meta sctx ~dir =
     let meta_template = Local_package.meta_template pkg in
     let version =
       let pkg = Local_package.package pkg in
-      let get = pkg_version sctx ~pkg ~path in
+      let get = pkg_version ~pkg ~path in
       Super_context.Pkg_version.set sctx pkg get
     in
 
@@ -350,32 +343,25 @@ let install_file sctx (package : Local_package.t) entries =
      >>>
      Build.write_file_dyn fn)
 
-let init_binary_artifacts sctx package =
-  let installs =
-    Local_package.installs package
-    |> List.concat_map
-         ~f:(fun ({ Dir_with_dune.
-                    data =
-                      { Dune_file.Install_conf. section; files; package = _ }
-                  ; dune_version = _
-                  ; ctx_dir = _
-                  ; src_dir = _
-                  ; scope = _
-                  ; kind = _ }) ->
-              List.map files ~f:(fun fb ->
-                let loc = File_binding.Expanded.src_loc fb in
-                let src = File_binding.Expanded.src fb in
-                let dst = Option.map ~f:Path.Local.to_string
-                            (File_binding.Expanded.dst fb) in
-                ( Some loc
-                , Install.Entry.make section src ?dst
-                )))
-  in
-  let install_paths = Local_package.install_paths package in
-  let package = Local_package.name package in
-  local_install_rules sctx ~package ~install_paths installs
+let get_install_entries package =
+  Local_package.installs package
+  |> List.concat_map ~f:(fun (d : _ Dir_with_dune.t) ->
+    let { Dune_file.Install_conf. section; files; package = _ } =
+      d.data
+    in
+    List.map files ~f:(fun fb ->
+      let loc = File_binding.Expanded.src_loc fb in
+      let src = File_binding.Expanded.src fb in
+      let dst = Option.map ~f:Path.Local.to_string
+                  (File_binding.Expanded.dst fb) in
+      ( Some loc
+      , Install.Entry.make section src ?dst
+      )))
 
-let init_install sctx (package : Local_package.t) entries =
+let init_install sctx package =
+  let installs =
+    get_install_entries package
+  in
   let docs =
     Local_package.mlds package
     |> List.map ~f:(fun mld ->
@@ -415,8 +401,8 @@ let init_install sctx (package : Local_package.t) entries =
     let package = Local_package.name package in
     List.rev_append coqlib_install_files docs
     |> List.rev_append lib_install_files
+    |> List.rev_append installs
     |> local_install_rules sctx ~package ~install_paths
-    |> List.rev_append entries
   in
   install_file sctx package entries
 
@@ -434,14 +420,7 @@ let init_install_files (ctx : Context.t) (package : Local_package.t) =
 let init sctx =
   let packages = Local_package.of_sctx sctx in
   let ctx = Super_context.context sctx in
-  let artifacts_per_package =
-    Build_system.handle_add_rule_effects (fun () ->
-      Package.Name.Map.map packages ~f:(init_binary_artifacts sctx))
-  in
   Build_system.handle_add_rule_effects (fun () ->
     Package.Name.Map.iter packages ~f:(fun pkg ->
-      Local_package.name pkg
-      |> Package.Name.Map.find artifacts_per_package
-      |> Option.value_exn
-      |> init_install sctx pkg;
+      init_install sctx pkg;
       init_install_files ctx pkg))

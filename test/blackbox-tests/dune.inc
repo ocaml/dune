@@ -80,6 +80,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name contents-depends-on-glob)
+ (deps (package dune) (source_tree test-cases/contents-depends-on-glob))
+ (action
+  (chdir
+   test-cases/contents-depends-on-glob
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name copy-files-non-sub-dir-error)
  (deps (package dune) (source_tree test-cases/copy-files-non-sub-dir-error))
  (action
@@ -762,6 +770,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name include-qualified)
+ (deps (package dune) (source_tree test-cases/include-qualified))
+ (action
+  (chdir
+   test-cases/include-qualified
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name inline_tests)
  (deps (package dune) (source_tree test-cases/inline_tests))
  (action
@@ -1353,6 +1369,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name variants-multi-project)
+ (deps (package dune) (source_tree test-cases/variants-multi-project))
+ (action
+  (chdir
+   test-cases/variants-multi-project
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name vlib)
  (deps (package dune) (source_tree test-cases/vlib))
  (action
@@ -1415,6 +1439,7 @@
   (alias check-alias)
   (alias configurator)
   (alias configurator-gh1166)
+  (alias contents-depends-on-glob)
   (alias copy-files-non-sub-dir-error)
   (alias copy_files)
   (alias cross-compilation)
@@ -1497,6 +1522,7 @@
   (alias glob-deps)
   (alias ignored_subdirs)
   (alias include-loop)
+  (alias include-qualified)
   (alias inline_tests)
   (alias install-dry-run)
   (alias install-libdir)
@@ -1567,6 +1593,7 @@
   (alias utop)
   (alias utop-default)
   (alias variants)
+  (alias variants-multi-project)
   (alias vlib)
   (alias vlib-default-impl)
   (alias windows-diff)
@@ -1587,6 +1614,7 @@
   (alias check-alias)
   (alias configurator)
   (alias configurator-gh1166)
+  (alias contents-depends-on-glob)
   (alias copy-files-non-sub-dir-error)
   (alias copy_files)
   (alias custom-build-dir)
@@ -1662,6 +1690,7 @@
   (alias glob-deps)
   (alias ignored_subdirs)
   (alias include-loop)
+  (alias include-qualified)
   (alias inline_tests)
   (alias install-rule-order)
   (alias install-with-var)
@@ -1715,6 +1744,7 @@
   (alias unreadable-src)
   (alias upgrader)
   (alias variants)
+  (alias variants-multi-project)
   (alias vlib)
   (alias vlib-default-impl)
   (alias windows-diff)

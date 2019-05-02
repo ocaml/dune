@@ -194,12 +194,6 @@ module Mode = struct
       | Single, _ -> None
 end
 
-module Partial = struct
-  type nonrec 'a t =
-    | Expanded of 'a
-    | Unexpanded of t
-end
-
 let invalid_multivalue (v : var) x =
   Errors.fail v.loc "Variable %s expands to %d values, \
                    however a single value is expected here. \
@@ -236,7 +230,82 @@ module Var = struct
        | Some _ -> { t with payload = Some ".." })
 end
 
+type known_suffix =
+  | Full of string
+  | Partial of (Var.t * string)
+
+let known_suffix =
+  let rec go t acc = match t with
+    | Text s :: rest -> go rest (s :: acc)
+    | [] -> Full (String.concat ~sep:"" acc)
+    | Var v :: _ -> Partial (v, String.concat ~sep:"" acc)
+  in
+  fun t -> go (List.rev t.template.parts) []
+
+type known_prefix =
+  | Full of string
+  | Partial of (string * Var.t)
+
+let known_prefix =
+  let rec go t acc = match t with
+    | Text s :: rest -> go rest (s :: acc)
+    | [] -> Full (String.concat ~sep:"" (List.rev acc))
+    | Var v :: _ -> Partial (String.concat ~sep:"" (List.rev acc), v)
+  in
+  fun t -> go t.template.parts []
+
 type 'a expander = Var.t -> Syntax.Version.t -> 'a
+
+type yes_no_unknown =
+  | Yes | No | Unknown of Var.t
+
+let is_suffix t ~suffix:want =
+  match known_suffix t with
+  | Full s -> if String.is_suffix ~suffix:want s then Yes else No
+  | Partial (v, have) ->
+    if String.is_suffix ~suffix:want have then Yes
+    else
+    if String.is_suffix ~suffix:have want then Unknown v
+    else
+      No
+
+let is_prefix t ~prefix:want =
+  match known_prefix t with
+  | Full s -> if String.is_prefix ~prefix:want s then Yes else No
+  | Partial (have, v) ->
+    if String.is_prefix ~prefix:want have then Yes
+    else
+    if String.is_prefix ~prefix:have want then Unknown v
+    else
+      No
+
+module Private = struct
+  module Partial = struct
+    type nonrec 'a t =
+      | Expanded of 'a
+      | Unexpanded of t
+
+    let map t ~f = match t with
+      | Expanded t -> Expanded (f t)
+      | Unexpanded t -> Unexpanded t
+
+    let is_suffix t ~suffix =
+      match t with
+      | Expanded s ->
+        if String.is_suffix ~suffix s then Yes else No
+      | Unexpanded t ->
+        is_suffix t ~suffix
+
+    let is_prefix t ~prefix =
+      match t with
+      | Expanded s ->
+        if String.is_prefix ~prefix s then Yes else No
+      | Unexpanded t ->
+        is_prefix t ~prefix
+
+  end
+end
+open Private
 
 let partial_expand
   : 'a.t
@@ -312,13 +381,6 @@ let text_only t =
   match t.template.parts with
   | [Text s] -> Some s
   | _ -> None
-
-let known_prefix =
-  let rec go acc = function
-    | Text s :: rest -> go (s :: acc) rest
-    | _ -> String.concat ~sep:"" (List.rev acc)
-  in
-  fun t -> go [] t.template.parts
 
 let has_vars t = Option.is_none (text_only t)
 
@@ -446,3 +508,18 @@ let upgrade_to_dune t ~allow_first_dep_var =
         { t.template with parts = List.map t.template.parts ~f:map_part }
     }
   end
+
+module Partial = struct
+  include Private.Partial
+
+  let to_sexp f t =
+    match t with
+    | Expanded x ->
+      Sexp.List [
+        Sexp.Atom "Expanded"; f x
+      ]
+    | Unexpanded t ->
+      Sexp.List [
+        Sexp.Atom "Unexpanded"; to_sexp t
+      ]
+end

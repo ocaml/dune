@@ -1,0 +1,5 @@
+
+(alias
+ (name print-contents-of-x)
+ (deps x (universe))
+ (action (echo "%{read:x}")))

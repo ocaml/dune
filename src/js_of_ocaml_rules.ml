@@ -25,7 +25,7 @@ let jsoo ~dir sctx =
 
 let runtime_file ~dir ~sctx file =
   match
-    Artifacts.file_of_lib (SC.artifacts sctx)
+    Artifacts.Public_libs.file_of_lib (SC.artifacts sctx).public_libs
       ~loc:Loc.none
       ~lib:(Lib_name.of_string_exn ~loc:None "js_of_ocaml-compiler") ~file
   with

@@ -10,7 +10,6 @@ val make
   -> inherit_from:t Lazy.t option
   -> scope:Scope.t
   -> config:Dune_env.Stanza.t option
-  -> env:Env.t option
   -> t
 
 val scope : t -> Scope.t
@@ -32,9 +31,9 @@ val local_binaries
   -> expander:Expander.t
   -> File_binding.Expanded.t list
 
-val artifacts
+val bin_artifacts
   :  t
   -> profile:string
-  -> default:Artifacts.t
+  -> default:Artifacts.Bin.t
   -> expander:Expander.t
-  -> Artifacts.t
+  -> Artifacts.Bin.t

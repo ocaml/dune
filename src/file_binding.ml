@@ -37,6 +37,13 @@ module Unexpanded = struct
 
   let expand_src t ~dir ~f = Path.relative dir (f t.src)
 
+  let destination_relative_to_install_path t ~section ~expand ~expand_partial =
+    let dst = Option.map ~f:expand t.dst in
+    Install.Entry.adjust_dst
+      ~section
+      ~src:(expand_partial t.src)
+      ~dst
+
   let expand t ~dir ~f =
     let f sw = (String_with_vars.loc sw, f sw) in
     let src =

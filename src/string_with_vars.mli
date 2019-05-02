@@ -37,18 +37,10 @@ val has_vars : t -> bool
 (** If [t] contains no variable, returns the contents of [t]. *)
 val text_only : t -> string option
 
-val known_prefix : t -> string
-
 module Mode : sig
   type _ t =
     | Single : Value.t t
     | Many : Value.t list t
-end
-
-module Partial : sig
-  type nonrec 'a t =
-    | Expanded of 'a
-    | Unexpanded of t
 end
 
 module Var : sig
@@ -68,6 +60,39 @@ module Var : sig
   (** Describe what this variable is *)
   val describe : t -> string
 end
+
+type yes_no_unknown =
+  | Yes | No | Unknown of Var.t
+
+module Partial : sig
+  type nonrec 'a t =
+    | Expanded of 'a
+    | Unexpanded of t
+
+  val to_sexp : ('a -> Sexp.t) -> 'a t -> Sexp.t
+
+  val map : 'a t -> f:('a -> 'b) -> 'b t
+
+  val is_suffix : string t -> suffix:string -> yes_no_unknown
+
+  val is_prefix : string t -> prefix:string -> yes_no_unknown
+end
+
+type known_suffix =
+  | Full of string
+  | Partial of (Var.t * string)
+
+type known_prefix =
+  | Full of string
+  | Partial of (string * Var.t)
+
+val known_suffix : t -> known_suffix
+
+val known_prefix : t -> known_prefix
+
+val is_suffix : t -> suffix:string -> yes_no_unknown
+
+val is_prefix : t -> prefix:string -> yes_no_unknown
 
 type 'a expander = Var.t -> Syntax.Version.t -> 'a
 

@@ -215,6 +215,7 @@ module Section = struct
 
     let install_path t section p =
       Path.relative (get t section) (Dst.to_string p)
+
   end
 end
 
@@ -234,31 +235,56 @@ module Entry = struct
       else
         Section.compare x.section y.section
 
-  let make section ?dst src =
-    let dst =
-      if Sys.win32 then
-        let src_base = Path.basename src in
-        let dst' =
-          match dst with
-          | None -> src_base
-          | Some s -> s
-        in
-        match Filename.extension src_base with
-        | ".exe" | ".bc" ->
-          if Filename.extension dst' <> ".exe" then
-            Some (dst' ^ ".exe")
-          else
-            dst
-        | _ -> dst
+  let adjust_dst ~src ~dst ~section =
+    let error var =
+      Errors.fail (String_with_vars.Var.loc var)
+        "Because this file is installed in the 'bin' section, you\n\
+         cannot use the variable %s in its basename."
+        (String_with_vars.Var.describe var)
+    in
+    let is_source_executable () =
+      let has_ext ext =
+        match String_with_vars.Partial.is_suffix ~suffix:ext src with
+        | Unknown var -> error var
+        | Yes ->
+          true
+        | No ->
+          false
+      in
+      has_ext ".exe" || has_ext ".bc"
+    in
+    let src_basename () =
+      match src with
+      | Expanded s -> Filename.basename s
+      | Unexpanded src ->
+        match String_with_vars.known_suffix src with
+        | Full s -> Filename.basename s
+        | Partial (var, suffix) ->
+          match String.rsplit2 ~on:'/' suffix with
+          | Some (_, basename) ->
+            basename
+          | None -> error var
+    in
+    match dst with
+    | Some dst' when Filename.extension dst' = ".exe" -> Dst.explicit dst'
+    | _ ->
+      let dst =
+        match dst with
+        | None ->
+          Dst.infer ~src_basename:(src_basename ()) section
+        | Some dst ->
+          Dst.explicit dst
+      in
+      let is_executable = is_source_executable () in
+      if Sys.win32 &&  is_executable && Filename.extension (Dst.to_string dst) <> ".exe"
+      then
+        Dst.explicit (Dst.to_string dst ^ ".exe")
       else
         dst
-    in
-    let dst = match dst with
-      | None ->
-        Dst.infer ~src_basename:(Path.basename src) section
-      | Some s ->
-        Dst.explicit s
-    in
+  ;;
+
+  let make section ?dst src =
+    let dst = adjust_dst ~src:(Expanded (Path.to_string src)) ~dst ~section in
     { src
     ; dst
     ; section
@@ -267,9 +293,7 @@ module Entry = struct
   let set_src t src = { t with src }
 
   let relative_installed_path t ~paths =
-    let main_dir = Section.Paths.get paths t.section in
-    let dst = Dst.to_string t.dst in
-    Path.relative main_dir dst
+    Section.Paths.install_path paths t.section t.dst
 
   let add_install_prefix t ~paths ~prefix =
     let opam_will_install_in_this_dir = Section.Paths.get paths t.section in

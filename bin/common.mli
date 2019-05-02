@@ -4,7 +4,7 @@ type t =
   ; debug_backtraces      : bool
   ; profile               : string option
   ; workspace_file        : Arg.Path.t option
-  ; root                  : string
+  ; root                  : Workspace_root.t
   ; target_prefix         : string
   ; only_packages         : Dune.Package.Name.Set.t option
   ; capture_outputs       : bool

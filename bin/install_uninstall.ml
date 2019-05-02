@@ -225,10 +225,9 @@ let install_uninstall ~what =
                 ()
             in
             let files_deleted_in = ref Path.Set.empty in
-            List.iter entries ~f:(fun { Install.Entry. src; dst; section } ->
+            List.iter entries ~f:(fun entry ->
               let dst =
-                dst
-                |> Install.Section.Paths.install_path paths section
+                Install.Entry.relative_installed_path entry ~paths
                 |> interpret_destdir ~destdir
               in
               let dir = Path.parent_exn dst in
@@ -237,9 +236,9 @@ let install_uninstall ~what =
                   (Path.to_string_maybe_quoted dst);
                 Ops.mkdir_p dir;
                 let executable =
-                  Install.Section.should_set_executable_bit section
+                  Install.Section.should_set_executable_bit entry.section
                 in
-                Ops.copy_file ~src ~dst ~executable
+                Ops.copy_file ~src:entry.src ~dst ~executable
               end else begin
                 Ops.remove_if_exists dst;
                 files_deleted_in := Path.Set.add !files_deleted_in dir;

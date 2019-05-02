@@ -2,6 +2,8 @@
 open Dune;;
 open! Stdune;;
 
+#warnings "-40";;
+
 let sexp_pp = Dune_lang.pp Dune;;
 #install_printer Dune_file.Mode_conf.pp;;
 #install_printer Binary_kind.pp;;

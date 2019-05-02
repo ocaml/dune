@@ -2,6 +2,8 @@
 open! Stdune;;
 open Dune_lang.Decoder;;
 
+#warnings "-40";;
+
 let print_loc ppf (_ : Loc.t) = Format.pp_print_string ppf "<loc>";;
 #install_printer print_loc;;
 [%%expect{|

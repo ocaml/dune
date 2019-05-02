@@ -1,6 +1,13 @@
 1.9.2 (----------)
 ------------------
 
+- Put back library variants in development mode. We discovered a
+  serious unexpected issue and we might need to adjust the design of
+  this feature before we are ready to commit to a final version. Users
+  will need to write `(using library_variants 0.1)` in their
+  `dune-project` file if they want to use it before the design is
+  finalized. (#2116, @diml)
+
 - Fix a bug where `dune install` would install man pages to incorrect
   paths when compared to `opam-installer`. For example dune now
   installs `(foo.1 as man1/foo.1)` correctly and previously that was

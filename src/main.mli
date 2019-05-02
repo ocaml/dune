@@ -24,6 +24,7 @@ val scan_workspace
   -> ?ignore_promoted_rules:bool
   -> ?capture_outputs:bool
   -> ?profile:string
+  -> ancestor_vcs:Vcs.t option
   -> unit
   -> workspace Fiber.t
 

@@ -239,8 +239,8 @@ let interpret ~dir ~project ~ignore_promoted_rules
   | Ocaml_script file ->
     Script { dir; project; file; kind = dune_file.kind }
 
-let load ?(ignore_promoted_rules=false) () =
-  let ftree = File_tree.load Path.Source.root in
+let load ?(ignore_promoted_rules=false) ~ancestor_vcs () =
+  let ftree = File_tree.load Path.Source.root ~ancestor_vcs in
   let projects =
     File_tree.fold ftree ~traverse_ignored_dirs:false ~init:[]
       ~f:(fun dir acc ->

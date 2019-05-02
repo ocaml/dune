@@ -1,4 +1,4 @@
-1.9.2 (----------)
+1.9.2 (02/05/2019)
 ------------------
 
 - Put back library variants in development mode. We discovered a

@@ -32,12 +32,14 @@ type t =
   { dir : string
   ; to_cwd : string list
   ; kind : Kind.t
+  ; ancestor_vcs : Dune.Vcs.t option
   }
 
 let make kind dir =
   { kind
   ; dir
   ; to_cwd = []
+  ; ancestor_vcs = None
   }
 
 let find () =
@@ -54,12 +56,24 @@ let find () =
       candidate
     | files ->
       let files = String.Set.of_list (Array.to_list files) in
-      let candidate =
+      let new_candidate =
         match Kind.of_dir_contents files with
         | Some kind when Kind.priority kind <= Kind.priority candidate.kind ->
-          { kind; dir; to_cwd }
+          Some { kind; dir; to_cwd; ancestor_vcs = None }
         | _ ->
-          candidate
+          None
+      in
+      let candidate =
+        match new_candidate, candidate.ancestor_vcs with
+        | Some c, _ -> c
+        | None, Some _ -> candidate
+        | None, None ->
+          match Vcs.Kind.of_dir_contents files with
+          | Some kind ->
+            { candidate with
+              ancestor_vcs = Some { kind; root = Path.of_string dir }
+            }
+          | None -> candidate
       in
       cont counter ~candidate dir ~to_cwd
   and cont counter ~candidate ~to_cwd dir =
@@ -74,7 +88,7 @@ let find () =
         loop (counter + 1) parent ~candidate ~to_cwd:(base :: to_cwd)
   in
   loop 0 ~to_cwd:[] cwd
-    ~candidate:{ kind = Cwd; dir = cwd; to_cwd = [] }
+    ~candidate:{ kind = Cwd; dir = cwd; to_cwd = []; ancestor_vcs = None }
 
 let create ~specified_by_user =
   match specified_by_user with

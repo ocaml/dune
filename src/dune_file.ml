@@ -50,9 +50,20 @@ let relative_file =
     else
       of_sexp_errorf loc "relative filename expected")
 
+
+let library_variants =
+  let syntax =
+    Syntax.create ~name:"library_variants"
+      ~desc:"the experimental library variants feature."
+      [ (0, 1) ]
+  in
+  Dune_project.Extension.register_simple ~experimental:true
+    syntax (Dune_lang.Decoder.return []);
+  syntax
+
 let variants_field =
   field_o "variants" (
-    let* () = Syntax.since Stanza.syntax (1, 9) in
+    let* () = Syntax.since library_variants (0, 1) in
     located (list Variant.decode >>| Variant.Set.of_list))
 
 (* Parse and resolve "package" fields *)
@@ -152,9 +163,9 @@ module Pps_and_flags = struct
         no_templates loc "in the preprocessors field"
       | Atom _ | Quoted_string _ -> plain_string of_string
       | List _ ->
-         repeat (plain_string (fun ~loc str ->
-           String_with_vars.make_text loc str))
-         >>| (fun x -> Right x)
+        list (plain_string (fun ~loc str ->
+          String_with_vars.make_text loc str))
+        >>| (fun x -> Right x)
 
     let split l =
       let pps, flags = List.partition_map l ~f:Fn.id in
@@ -923,11 +934,11 @@ module Library = struct
            located Lib_name.decode)
        and+ variant =
          field_o "variant" (
-           Syntax.since Stanza.syntax (1, 9) >>>
+           Syntax.since library_variants (0, 1) >>>
            located Variant.decode)
        and+ default_implementation =
          field_o "default_implementation" (
-           Syntax.since Stanza.syntax (1, 9) >>>
+           Syntax.since library_variants (0, 1) >>>
            located Lib_name.decode)
        and+ private_modules =
          field_o "private_modules" (

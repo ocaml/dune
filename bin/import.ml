@@ -49,6 +49,7 @@ module Main = struct
       ?profile:common.profile
       ~ignore_promoted_rules:common.ignore_promoted_rules
       ~capture_outputs:common.capture_outputs
+      ~ancestor_vcs:common.root.ancestor_vcs
       ()
 
   let setup ~log ?external_lib_deps_mode (common : Common.t) =

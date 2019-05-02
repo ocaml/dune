@@ -37,10 +37,11 @@ let scan_workspace ?(log=Log.no_log)
       ?ignore_promoted_rules
       ?(capture_outputs=true)
       ?profile
+      ~ancestor_vcs
       () =
   let env = setup_env ~capture_outputs in
   let conf =
-    Dune_load.load ?ignore_promoted_rules ()
+    Dune_load.load ?ignore_promoted_rules ~ancestor_vcs ()
   in
   let workspace =
     match workspace with
@@ -223,7 +224,7 @@ let bootstrap () =
          let* () = set_concurrency config in
          let* workspace =
           scan_workspace ~log ~workspace:(Workspace.default ?profile:!profile ())
-            ?profile:!profile
+            ?profile:!profile ~ancestor_vcs:None
             ()
          in
          let* _ = init_build_system workspace in

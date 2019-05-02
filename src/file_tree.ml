@@ -89,6 +89,7 @@ module Dir = struct
     ; ignored  : bool
     ; contents : contents Lazy.t
     ; project  : Dune_project.t
+    ; vcs      : Vcs.t option
     }
 
   and contents =
@@ -97,11 +98,12 @@ module Dir = struct
     ; dune_file : Dune_file.t option
     }
 
-  let create ~project ~path ~ignored ~contents =
+  let create ~project ~path ~ignored ~contents ~vcs =
     { path
     ; ignored
     ; contents
     ; project
+    ; vcs
     }
 
   let contents t = Lazy.force t.contents
@@ -114,6 +116,7 @@ module Dir = struct
   let dune_file t = (contents t).dune_file
 
   let project t = t.project
+  let vcs t = t.vcs
 
   let file_paths t =
     Path.Source.Set.of_list
@@ -144,12 +147,13 @@ module Dir = struct
       ; "project", Dyn.opaque
       ]
 
-  and to_dyn { path ; ignored ; contents = lazy contents ; project = _ } =
+  and to_dyn { path ; ignored ; contents = lazy contents ; project = _; vcs } =
     let open Dyn in
     Record
       [ "path", Path.Source.to_dyn path
       ; "ignored", Bool ignored
       ; "contents", dyn_of_contents contents
+      ; "vcs", Dyn.Encoder.option Vcs.to_dyn vcs
       ]
 
   let to_sexp t = Dyn.to_sexp (to_dyn t)
@@ -212,9 +216,10 @@ let readdir path =
     }
     |> Result.ok
 
-let load ?(warn_when_seeing_jbuild_file=true) path =
+let load ?(warn_when_seeing_jbuild_file=true) path ~ancestor_vcs =
   let open Result.O in
-  let rec walk path ~dirs_visited ~project:parent_project ~data_only : (_, _) Result.t =
+  let rec walk path ~dirs_visited ~project:parent_project ~vcs ~data_only
+    : (_, _) Result.t =
     let+ { dirs; files } = readdir path in
     let project =
       if data_only then
@@ -222,6 +227,20 @@ let load ?(warn_when_seeing_jbuild_file=true) path =
       else
         Option.value (Dune_project.load ~dir:path ~files)
           ~default:parent_project
+    in
+    let vcs =
+      match
+        match
+          List.find_map dirs ~f:(function
+            | (".git", _, _) -> Some Vcs.Kind.Git
+            | (".hg", _, _) -> Some Vcs.Kind.Hg
+            | _ -> None)
+        with
+        | Some kind -> Some kind
+        | None -> Vcs.Kind.of_dir_contents files
+      with
+      | Some kind -> Some { Vcs.kind; root = Path.(append_source root) path }
+      | None -> vcs
     in
     let contents = lazy (
       let dune_file, sub_dirs =
@@ -293,20 +312,21 @@ let load ?(warn_when_seeing_jbuild_file=true) path =
                     (Path.Source.to_string_maybe_quoted path)
             in
             match
-              walk path ~dirs_visited ~project ~data_only
+              walk path ~dirs_visited ~project ~data_only ~vcs
             with
             | Ok dir -> String.Map.add acc fn dir
             | Error _ -> acc)
       in
       { Dir. files; sub_dirs; dune_file })
     in
-    Dir.create ~path ~contents ~ignored:data_only ~project
+    Dir.create ~path ~contents ~ignored:data_only ~project ~vcs
   in
   match
     walk path
-    ~dirs_visited:(File.Map.singleton (File.of_source_path path) path)
-    ~data_only:false
-    ~project:(Lazy.force Dune_project.anonymous)
+      ~dirs_visited:(File.Map.singleton (File.of_source_path path) path)
+      ~data_only:false
+      ~project:(Lazy.force Dune_project.anonymous)
+      ~vcs:ancestor_vcs
   with
   | Ok dir -> dir
   | Error m ->

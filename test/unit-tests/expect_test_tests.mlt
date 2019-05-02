@@ -1,0 +1,12 @@
+1 + 1;;
+
+[%%expect{|
+- : int = 2
+|}]
+
+Printf.printf "Hello, world!\n";;
+
+[%%expect{|
+Hello, world!
+- : unit = ()
+|}]

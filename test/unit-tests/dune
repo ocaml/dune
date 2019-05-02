@@ -18,6 +18,14 @@
 
 (alias
  (name runtest)
+ (deps (:t expect_test_tests.mlt))
+ (action (chdir %{project_root}
+          (progn
+           (run %{exe:expect_test.exe} %{t})
+           (diff? %{t} %{t}.corrected)))))
+
+(alias
+ (name runtest)
  (deps (:t tests.mlt)
   (glob_files %{project_root}/src/.dune.objs/byte/*.cmi)
   (glob_files %{project_root}/src/stdune/.stdune.objs/byte/*.cmi)
@@ -170,6 +178,17 @@
   (glob_files %{project_root}/src/.dune.objs/byte/*.cmi)
   (glob_files %{project_root}/src/stdune/.stdune.objs/byte/*.cmi)
   (glob_files %{project_root}/src/catapult/.catapult.objs/byte/*.cmi))
+ (action (chdir %{project_root}
+          (progn
+           (run %{exe:expect_test.exe} %{t})
+           (diff? %{t} %{t}.corrected)))))
+
+(alias
+ (name runtest)
+ (deps (:t vcs.mlt)
+  (glob_files %{project_root}/src/.dune.objs/byte/*.cmi)
+  (glob_files %{project_root}/src/memo/.memo.objs/byte/*.cmi)
+  (glob_files %{project_root}/src/stdune/.stdune.objs/byte/*.cmi))
  (action (chdir %{project_root}
           (progn
            (run %{exe:expect_test.exe} %{t})

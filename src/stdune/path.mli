@@ -1,10 +1,23 @@
-(** Relative path with unspecified root *)
+(** Relative path without restrictions *)
 module Relative : sig
   include Path_intf.S
 
-  (** [root] refers to empty relative path, so whatever the path is interpreted
-      relative to. *)
+  val of_string : string -> (t, string) Result.t
+  val of_string_exn : string -> t
+
+  module L : sig
+    val relative : t -> string list -> t
+  end
+
+  val relative : t -> string -> t
+end
+
+(** relative path that isn't allowed to escape root *)
+module Local : sig
+  include Path_intf.S
   val root : t
+
+  val is_descendant : t -> of_:t -> bool
 
   val of_string : string -> (t, string) Result.t
   val of_string_exn : string -> t
@@ -20,40 +33,23 @@ module Relative : sig
   val explode : t -> string list
 end
 
-(** In the current workspace (anything under the current project root) *)
-module Local : sig
-  include Path_intf.S
-  val root : t
-
-  val of_string : string -> (t, string) Result.t
-  val of_string_exn : string -> t
-
-  module L : sig
-    val relative : t -> string list -> (t, string) Result.t
-    val relative_exn : t -> string list -> t
-  end
-
-  val relative : t -> string -> (t, string) Result.t
-  val relative_exn : t -> string -> t
-  val split_first_component : t -> (string * Relative.t) option
-  val explode : t -> string list
-end
-
 (** In the source section of the current workspace. *)
 module Source : sig
   include Path_intf.S
   val root : t
 
+  val is_descendant : t -> of_:t -> bool
+
   val of_string : string -> (t, string) Result.t
   val of_string_exn : string -> t
   module L : sig
     val relative : t -> string list -> (t, string) Result.t
   end
 
-  val of_relative : Relative.t -> t
+  val of_local : Local.t -> t
   val relative : t -> string -> (t, string) Result.t
   val relative_exn : t -> string -> t
-  val split_first_component : t -> (string * Relative.t) option
+  val split_first_component : t -> (string * Local.t) option
   val explode : t -> string list
 
   (** [Source.t] does not statically forbid overlap with build directory,
@@ -67,6 +63,8 @@ module Build : sig
   include Path_intf.S
   val root : t
 
+  val is_descendant : t -> of_:t -> bool
+
   val append_source : t -> Source.t -> t
 
   val of_string : string -> (t, string) Result.t
@@ -78,7 +76,7 @@ module Build : sig
   val relative : t -> string -> (t, string) Result.t
   val relative_exn : t -> string -> t
 
-  val split_first_component : t -> (string * Relative.t) option
+  val split_first_component : t -> (string * Local.t) option
   val explode : t -> string list
 
 end
@@ -86,6 +84,8 @@ end
 (** In the outside world *)
 module External : sig
   include Path_intf.S
+  
+  val is_descendant : t -> of_:t -> bool
 
   val initial_cwd : t
 
@@ -144,7 +144,8 @@ val descendant : t -> of_:t -> t option
 val is_descendant : t -> of_:t -> bool
 
 val append : t -> t -> t
-val append_relative : t -> Relative.t -> t
+val append_relative : t -> Relative.t -> (t, string) Result.t
+val append_relative_exn : t -> Relative.t -> t
 val append_local : t -> Local.t -> t
 val append_source : t -> Source.t -> t
 
@@ -165,7 +166,7 @@ val extend_basename : t -> suffix:string -> t
 val extract_build_context     : t -> (string * Source.t) option
 val extract_build_context_exn : t -> (string * Source.t)
 
-val extract_build_dir_first_component     : t -> (string * Relative.t) option
+val extract_build_dir_first_component     : t -> (string * Local.t) option
 
 (** Same as [extract_build_context] but return the build context as a path:
 
@@ -261,6 +262,6 @@ end
     this returns the path itself.
     For external paths, it returns a path that is relative to the current
     directory. For example, the local part of [/a/b] is [./a/b]. *)
-val local_part : t -> Relative.t
+val local_part : t -> Local.t
 
 val stat : t -> Unix.stats

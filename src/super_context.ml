@@ -342,9 +342,9 @@ let get_installed_binaries stanzas ~(context : Context.t) =
             ~expand:(expand_str ~dir:d.ctx_dir)
             ~expand_partial:(expand_str_partial ~dir:d.ctx_dir)
         in
-        let p = Path.Relative.of_string_exn (Install.Dst.to_string p) in
-        if Path.Relative.is_root (Path.Relative.parent_exn p) then
-          Path.Set.add acc (Path.append_relative install_dir p)
+        let p = Path.Local.of_string_exn (Install.Dst.to_string p) in
+        if Path.Local.is_root (Path.Local.parent_exn p) then
+          Path.Set.add acc (Path.append_local install_dir p)
         else
           acc)
     | _ -> acc)

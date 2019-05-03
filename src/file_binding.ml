@@ -6,7 +6,7 @@ type ('src, 'dst) t =
   }
 
 module Expanded = struct
-  type nonrec t = (Loc.t * Path.t, Loc.t * Path.Relative.t) t
+  type nonrec t = (Loc.t * Path.t, Loc.t * Path.Local.t) t
 
   let src t = snd t.src
   let dst t = Option.map ~f:snd t.dst
@@ -21,10 +21,10 @@ module Expanded = struct
       let basename = Path.basename src in
       String.drop_suffix basename ~suffix:".exe"
       |> Option.value ~default:basename
-      |> Path.Relative.of_string_exn
+      |> Path.Local.of_string_exn
 
   let dst_path t ~dir =
-    Path.append_relative dir (dst_basename t)
+    Path.append_local dir (dst_basename t)
 end
 
 module Unexpanded = struct
@@ -54,7 +54,7 @@ module Unexpanded = struct
     ; dst =
         let f sw =
           let (loc, p) = f sw in
-          (loc, Path.Relative.of_string_exn p)
+          (loc, Path.Local.of_string_exn p)
         in
         Option.map ~f t.dst
     }

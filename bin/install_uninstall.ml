@@ -6,7 +6,7 @@ let interpret_destdir ~destdir path =
   | None ->
     path
   | Some prefix ->
-    Path.append_relative
+    Path.append_local
       (Path.of_string_exn prefix)
       (Path.local_part path)
 

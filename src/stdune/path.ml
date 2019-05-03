@@ -156,7 +156,7 @@ end = struct
 
 end
 
-module Relative : sig
+module Local : sig
   include Path_intf.S
 
   val root : t
@@ -484,10 +484,10 @@ end = struct
 end
 
 module Build = struct
-  include Relative
+  include Local
   let append_source = append
 end
-module Local = Relative
+module Relative = Local
 module Source0 = Relative
 
 let (abs_root, set_root) =

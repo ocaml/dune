@@ -18,12 +18,20 @@ end
     failure and possibly a hint how to fix it *)
 module Prog : sig
   module Not_found : sig
-    type t =
+    type t = private
       { context : string
       ; program : string
       ; hint    : string option
       ; loc     : Loc.t option
       }
+
+      val create
+        :  ?hint:string
+        -> context:string
+        -> program:string
+        -> loc:Loc.t option
+        -> unit
+        -> t
 
     val raise : t -> _
   end

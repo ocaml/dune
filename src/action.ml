@@ -60,6 +60,13 @@ module Prog = struct
       ; loc     : Loc.t option
       }
 
+    let create ?hint ~context ~program ~loc () =
+      { hint
+      ; context
+      ; program
+      ; loc
+      }
+
     let raise { context ; program ; hint ; loc } =
       Utils.program_not_found ?hint ~loc ~context program
   end

@@ -13,19 +13,19 @@ let compare_var_syntax x y =
   | Dollar_paren, Dollar_brace -> Ordering.Gt
 
 let compare_var_no_loc v1 v2 =
-   match String.compare v1.name v2.name with
-   | Ordering.Lt | Gt as a -> a
-   | Eq ->
-       match Option.compare String.compare v1.payload v2.payload with
-       | Ordering.Lt | Gt as a -> a
-       | Eq -> compare_var_syntax v1.syntax v2.syntax
+  match String.compare v1.name v2.name with
+  | Ordering.Lt | Gt as a -> a
+  | Eq ->
+    match Option.compare String.compare v1.payload v2.payload with
+    | Ordering.Lt | Gt as a -> a
+    | Eq -> compare_var_syntax v1.syntax v2.syntax
 
 let compare_part p1 p2 =
-   match p1, p2 with
-   | Text s1, Text s2 -> String.compare s1 s2
-   | Var v1, Var v2 -> compare_var_no_loc v1 v2
-   | Text _, Var _ -> Ordering.Lt
-   | Var _, Text _ -> Ordering.Gt
+  match p1, p2 with
+  | Text s1, Text s2 -> String.compare s1 s2
+  | Var v1, Var v2 -> compare_var_no_loc v1 v2
+  | Text _, Var _ -> Ordering.Lt
+  | Var _, Text _ -> Ordering.Gt
 
 let compare_no_loc t1 t2 =
   match List.compare ~compare:compare_part t1.parts t2.parts with

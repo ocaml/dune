@@ -57,7 +57,7 @@ let load_sources ~dune_version ~dir ~files =
         fn (Filename.extension fn) Syntax.Version.pp version;
       acc
     | Recognized (obj, kind) ->
-      let path = Path.relative dir fn in
+      let path = Path.relative_exn dir fn in
       C.Kind.Dict.update acc kind ~f:(fun v ->
         String.Map.add v obj (C.Source.make ~kind ~path)
       ))

@@ -93,14 +93,14 @@ let of_library_stanza ~dir
     Obj_dir.make_lib ~dir
       ~has_private_modules:(conf.private_modules <> None) lib_name in
   let gen_archive_file ~dir ext =
-    Path.relative dir (Lib_name.Local.to_string lib_name ^ ext) in
+    Path.relative_exn dir (Lib_name.Local.to_string lib_name ^ ext) in
   let archive_file = gen_archive_file ~dir in
   let archive_files ~f_ext =
     Mode.Dict.of_func (fun ~mode -> [archive_file (f_ext mode)])
   in
   let jsoo_runtime =
     List.map conf.buildable.js_of_ocaml.javascript_files
-      ~f:(Path.relative dir)
+      ~f:(Path.relative_exn dir)
   in
   let status =
     match conf.public with
@@ -116,16 +116,16 @@ let of_library_stanza ~dir
         []
     in
     { Mode.Dict.
-       byte   = stubs
-     ; native =
-         Path.relative dir (Lib_name.Local.to_string lib_name ^ ext_lib)
-         :: stubs
-     }
+      byte   = stubs
+    ; native =
+        Path.relative_exn dir (Lib_name.Local.to_string lib_name ^ ext_lib)
+        :: stubs
+    }
   in
   let foreign_archives =
     match conf.stdlib with
     | Some { exit_module = Some m; _ } ->
-      let obj_name = Path.relative dir (Module.Name.uncapitalize m) in
+      let obj_name = Path.relative_exn dir (Module.Name.uncapitalize m) in
       { Mode.Dict.
         byte =
           Path.extend_basename obj_name ~suffix:(Cm_kind.ext Cmo) ::

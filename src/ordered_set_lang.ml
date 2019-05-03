@@ -264,11 +264,11 @@ module Unexpanded = struct
   let map t ~f : t =
     let rec map_ast : ast -> ast =
       let open Ast in function
-      | Element sw -> Element (f sw)
-      | Include sw -> Include (f sw)
-      | Union xs -> Union (List.map ~f:map_ast xs)
-      | Diff (x, y) -> Diff (map_ast x, map_ast y)
-      | Standard as t -> t
+        | Element sw -> Element (f sw)
+        | Include sw -> Include (f sw)
+        | Union xs -> Union (List.map ~f:map_ast xs)
+        | Diff (x, y) -> Diff (map_ast x, map_ast y)
+        | Standard as t -> t
     in
     { t with ast = map_ast t.ast }
 

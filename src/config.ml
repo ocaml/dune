@@ -2,18 +2,18 @@ open! Stdune
 open! Import
 
 let local_install_dir =
-  let dir = Path.relative Path.build_dir "install" in
-  fun ~context -> Path.relative dir context
+  let dir = Path.relative_exn Path.build_dir "install" in
+  fun ~context -> Path.relative_exn dir context
 
 let local_install_bin_dir ~context =
-  Path.relative (local_install_dir ~context) "bin"
+  Path.relative_exn (local_install_dir ~context) "bin"
 
 let local_install_man_dir ~context =
-  Path.relative (local_install_dir ~context) "bin"
+  Path.relative_exn (local_install_dir ~context) "bin"
 
 let local_install_lib_dir ~context ~package =
-  Path.relative
-    (Path.relative (local_install_dir ~context) "lib")
+  Path.relative_exn
+    (Path.relative_exn (local_install_dir ~context) "lib")
     (Package.Name.to_string package)
 
 let dev_null =
@@ -110,7 +110,7 @@ let decode =
 let decode = fields decode
 
 let user_config_file =
-  Path.relative (Path.of_filename_relative_to_initial_cwd Xdg.config_dir)
+  Path.relative_exn (Path.of_filename_relative_to_initial_cwd Xdg.config_dir)
     "dune/config"
 
 include Versioned_file.Make(struct type t = unit end)

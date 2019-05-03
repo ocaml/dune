@@ -7,22 +7,22 @@ let interpret_destdir ~destdir path =
     path
   | Some prefix ->
     Path.append_relative
-      (Path.of_string prefix)
+      (Path.of_string_exn prefix)
       (Path.local_part path)
 
 let get_dirs context ~prefix_from_command_line ~libdir_from_command_line =
   match prefix_from_command_line with
   | Some p ->
-    let prefix = Path.of_string p in
+    let prefix = Path.of_string_exn p in
     let dir = Option.value ~default:"lib" libdir_from_command_line in
-    Fiber.return (prefix, Some (Path.relative prefix dir))
+    Fiber.return (prefix, Some (Path.relative_exn prefix dir))
   | None ->
     let open Fiber.O in
     let* prefix = Context.install_prefix context in
     let libdir =
       match libdir_from_command_line with
       | None -> Context.install_ocaml_libdir context
-      | Some l -> Fiber.return (Some (Path.relative prefix l))
+      | Some l -> Fiber.return (Some (Path.relative_exn prefix l))
     in
     let+ libdir = libdir in
     (prefix, libdir)
@@ -88,8 +88,8 @@ module File_ops_real : FILE_OPERATIONS = struct
     let chmod =
       if executable then
         set_executable_bits
-     else
-       clear_executable_bits
+      else
+        clear_executable_bits
     in
     Io.copy_file ~src ~dst ~chmod ()
 

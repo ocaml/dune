@@ -105,7 +105,7 @@ module Temp = struct
       Path.Set.iter fns ~f:Path.unlink_no_err)
 
   let create prefix suffix =
-    let fn = Path.of_string (Filename.temp_file prefix suffix) in
+    let fn = Path.of_string_exn (Filename.temp_file prefix suffix) in
     tmp_files := Path.Set.add !tmp_files fn;
     fn
 

@@ -112,7 +112,7 @@ module Linkage = struct
 end
 
 let exe_path_from_name cctx ~name ~(linkage : Linkage.t) =
-  Path.relative (CC.dir cctx) (name ^ linkage.ext)
+  Path.relative_exn (CC.dir cctx) (name ^ linkage.ext)
 
 let link_exe
       ~loc

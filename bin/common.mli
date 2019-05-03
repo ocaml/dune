@@ -39,7 +39,7 @@ val set_common : t -> targets:string list -> unit
 val set_common_other : t -> targets:string list -> unit
 
 (** [set_dirs common] sets the workspace root and build directories, and makes
- the root the current working directory *)
+    the root the current working directory *)
 val set_dirs : t -> unit
 
 val help_secs
@@ -58,7 +58,7 @@ val default_build_dir : string
 module Let_syntax : sig
   val ( let+ ) : 'a Cmdliner.Term.t -> ('a -> 'b) -> 'b Cmdliner.Term.t
   val ( and+ )
-   :  'a Cmdliner.Term.t
-   -> 'b Cmdliner.Term.t
-   -> ('a * 'b) Cmdliner.Term.t
+:  'a Cmdliner.Term.t
+-> 'b Cmdliner.Term.t
+-> ('a * 'b) Cmdliner.Term.t
 end

@@ -88,13 +88,13 @@ module Backend = struct
       let f x = Lib_name.encode (Lib.name x.lib) in
       ((1, 0),
        record_fields @@
-         [ field_l "runner_libraries" lib (Result.ok_exn t.runner_libraries)
-         ; field_i "flags" Ordered_set_lang.Unexpanded.encode_and_upgrade
-             t.info.flags
-         ; field_o "generate_runner" Action_dune_lang.encode_and_upgrade
-             (Option.map t.info.generate_runner ~f:snd)
-         ; field_l "extends" f (Result.ok_exn t.extends)
-         ])
+       [ field_l "runner_libraries" lib (Result.ok_exn t.runner_libraries)
+       ; field_i "flags" Ordered_set_lang.Unexpanded.encode_and_upgrade
+           t.info.flags
+       ; field_o "generate_runner" Action_dune_lang.encode_and_upgrade
+           (Option.map t.info.generate_runner ~f:snd)
+       ; field_l "extends" f (Result.ok_exn t.extends)
+       ])
   end
   include M
   include Sub_system.Register_backend(M)
@@ -168,7 +168,7 @@ include Sub_system.Register_end_point(
         sprintf "%s.inline-tests" (Lib_name.Local.to_string (snd lib.name))
       in
 
-      let inline_test_dir = Path.relative dir ("." ^ inline_test_name) in
+      let inline_test_dir = Path.relative_exn dir ("." ^ inline_test_name) in
 
       let obj_dir =
         Obj_dir.make_exe ~dir:inline_test_dir ~name:inline_test_name in
@@ -179,7 +179,7 @@ include Sub_system.Register_end_point(
       let modules =
         Module.Name.Map.singleton main_module_name
           (Module.make main_module_name
-             ~impl:{ path   = Path.relative inline_test_dir main_module_filename
+             ~impl:{ path   = Path.relative_exn inline_test_dir main_module_filename
                    ; syntax = OCaml
                    }
              ~kind:Impl
@@ -213,7 +213,7 @@ include Sub_system.Register_end_point(
 
       (* Generate the runner file *)
       SC.add_rule sctx ~dir ~loc (
-        let target = Path.relative inline_test_dir main_module_filename in
+        let target = Path.relative_exn inline_test_dir main_module_filename in
         let source_modules = Module.Name.Map.values source_modules in
         let files ml_kind =
           Pform.Var.Values (Value.L.paths (
@@ -277,7 +277,7 @@ include Sub_system.Register_end_point(
         (Alias.runtest ~dir)
         ~stamp:("ppx-runner", name)
         (let module A = Action in
-         let exe = Path.relative inline_test_dir (name ^ ".exe") in
+         let exe = Path.relative_exn inline_test_dir (name ^ ".exe") in
          Build.path exe >>>
          Build.fanout
            (Super_context.Deps.interpret sctx info.deps ~expander)

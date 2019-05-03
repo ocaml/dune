@@ -9,7 +9,7 @@ let man =
   ; `P {|$(b,dune exec -- COMMAND) should behave in the same way as if you
           do:|}
   ; `Pre "  \\$ dune install\n\
-          \  \\$ COMMAND"
+         \  \\$ COMMAND"
   ; `P {|In particular if you run $(b,dune exec ocaml), you will have
           access to the libraries defined in the workspace using your usual
           directives ($(b,#require) for instance)|}
@@ -47,16 +47,16 @@ let term =
   let prog_where =
     match Filename.analyze_program_name prog with
     | Absolute ->
-      `This_abs (Path.of_string prog)
+      `This_abs (Path.of_string_exn prog)
     | In_path ->
       `Search prog
     | Relative_to_current_dir ->
       let prog = Common.prefix_target common prog in
-      `This_rel (Path.relative context.build_dir prog) in
+      `This_rel (Path.relative_exn context.build_dir prog) in
   let targets = lazy (
     (match prog_where with
      | `Search p ->
-       [Path.relative (Config.local_install_bin_dir ~context:context.name) p]
+       [Path.relative_exn (Config.local_install_bin_dir ~context:context.name) p]
      | `This_rel p when Sys.win32 ->
        [p; Path.extend_basename p ~suffix:Bin.exe]
      | `This_rel p ->

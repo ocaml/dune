@@ -239,7 +239,7 @@ let builtins ~stdlib_dir ~version:ocaml_version =
   let unix = simple "unix" [] ~dir:"+" in
   let bigarray =
     if Ocaml_version.stdlib_includes_bigarray ocaml_version &&
-       not (Path.exists (Path.relative stdlib_dir "bigarray.cma")) then
+       not (Path.exists (Path.relative_exn stdlib_dir "bigarray.cma")) then
       dummy "bigarray"
     else
       simple "bigarray" ["unix"] ~dir:"+"
@@ -293,7 +293,7 @@ let builtins ~stdlib_dir ~version:ocaml_version =
     (* We do not rely on an "exists_if" ocamlfind variable,
        because it would produce an error message mentioning
        a "hidden" package (which could be confusing). *)
-    if Path.exists (Path.relative stdlib_dir "nums.cma") then
+    if Path.exists (Path.relative_exn stdlib_dir "nums.cma") then
       num :: base
     else
       base
@@ -333,9 +333,9 @@ let pp_quoted_value var =
   match var with
   | "archive" | "plugin" | "requires"
   | "ppx_runtime_deps" | "linkopts" | "jsoo_runtime" ->
-     pp_print_text
+    pp_print_text
   | _ ->
-     pp_print_string
+    pp_print_string
 
 let rec pp ppf entries =
   Format.fprintf ppf "@[<v>%a@]" (pp_list pp_entry) entries

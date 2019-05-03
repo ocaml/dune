@@ -40,7 +40,7 @@ let runtime_file ~dir ~sctx file =
     in
     begin match jsoo ~dir sctx with
     | Ok path ->
-      let path = Path.relative (Path.parent_exn path) file in
+      let path = Path.relative_exn (Path.parent_exn path) file in
       Build.if_file_exists path ~then_:(Build.arr (fun _ -> path)) ~else_:fail
     | _ ->
       fail
@@ -65,7 +65,7 @@ let standalone_runtime_rule cc ~javascript_files ~target =
     Arg_spec.S
       [ Arg_spec.of_result_map
           (Compilation_context.requires_link cc) ~f:(fun libs ->
-          Arg_spec.Deps (Lib.L.jsoo_runtime_files libs))
+            Arg_spec.Deps (Lib.L.jsoo_runtime_files libs))
       ; Arg_spec.Deps javascript_files
       ]
   in
@@ -159,12 +159,12 @@ let setup_separate_compilation_rules sctx components =
           (* Special case for the stdlib because it is not referenced
              in the META *)
           match Lib_name.to_string (Lib.name pkg) with
-          | "stdlib" -> Path.relative ctx.stdlib_dir "stdlib.cma" :: archives
+          | "stdlib" -> Path.relative_exn ctx.stdlib_dir "stdlib.cma" :: archives
           | _ -> archives
         in
         List.iter archives ~f:(fun fn ->
           let name = Path.basename fn in
-          let src = Path.relative (Lib.src_dir pkg) name in
+          let src = Path.relative_exn (Lib.src_dir pkg) name in
           let lib_name = Lib_name.to_string (Lib.name pkg) in
           let target =
             in_build_dir ~ctx [lib_name ; sprintf "%s.js" name]
@@ -180,7 +180,7 @@ let setup_separate_compilation_rules sctx components =
 let build_exe cc ~js_of_ocaml ~src =
   let {Dune_file.Js_of_ocaml.javascript_files; _} = js_of_ocaml in
   let javascript_files =
-    List.map javascript_files ~f:(Path.relative (Compilation_context.dir cc)) in
+    List.map javascript_files ~f:(Path.relative_exn (Compilation_context.dir cc)) in
   let mk_target ext = Path.extend_basename src ~suffix:ext in
   let target = mk_target ".js" in
   let standalone_runtime = mk_target ".runtime.js" in

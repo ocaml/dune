@@ -10,7 +10,7 @@ module External = struct
   let make ~dir ~has_private_modules =
     let private_dir =
       if has_private_modules then
-        Some (Path.relative dir ".private")
+        Some (Path.relative_exn dir ".private")
       else
         None
     in
@@ -60,7 +60,7 @@ module External = struct
       let+ private_dir = field_o "private_dir" string
       in
       let public_dir = dir in
-      let private_dir = Option.map ~f:(Path.relative dir) private_dir in
+      let private_dir = Option.map ~f:(Path.relative_exn dir) private_dir in
       { public_dir
       ; private_dir
       }

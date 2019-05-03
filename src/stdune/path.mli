@@ -6,12 +6,16 @@ module Relative : sig
       relative to. *)
   val root : t
 
-  val of_string : ?error_loc:Loc0.t -> string -> t
+  val of_string : string -> (t, string) Result.t
+  val of_string_exn : string -> t
+
   module L : sig
-    val relative : ?error_loc:Loc0.t -> t -> string list -> t
+    val relative : t -> string list -> (t, string) Result.t
+    val relative_exn : t -> string list -> t
   end
 
-  val relative : ?error_loc:Loc0.t -> t -> string -> t
+  val relative : t -> string -> (t, string) Result.t
+  val relative_exn : t -> string -> t
   val split_first_component : t -> (string * t) option
   val explode : t -> string list
 end
@@ -21,12 +25,16 @@ module Local : sig
   include Path_intf.S
   val root : t
 
-  val of_string : ?error_loc:Loc0.t -> string -> t
+  val of_string : string -> (t, string) Result.t
+  val of_string_exn : string -> t
+
   module L : sig
-    val relative : ?error_loc:Loc0.t -> t -> string list -> t
+    val relative : t -> string list -> (t, string) Result.t
+    val relative_exn : t -> string list -> t
   end
 
-  val relative : ?error_loc:Loc0.t -> t -> string -> t
+  val relative : t -> string -> (t, string) Result.t
+  val relative_exn : t -> string -> t
   val split_first_component : t -> (string * Relative.t) option
   val explode : t -> string list
 end
@@ -36,13 +44,15 @@ module Source : sig
   include Path_intf.S
   val root : t
 
-  val of_string : ?error_loc:Loc0.t -> string -> t
+  val of_string : string -> (t, string) Result.t
+  val of_string_exn : string -> t
   module L : sig
-    val relative : ?error_loc:Loc0.t -> t -> string list -> t
+    val relative : t -> string list -> (t, string) Result.t
   end
 
   val of_relative : Relative.t -> t
-  val relative : ?error_loc:Loc0.t -> t -> string -> t
+  val relative : t -> string -> (t, string) Result.t
+  val relative_exn : t -> string -> t
   val split_first_component : t -> (string * Relative.t) option
   val explode : t -> string list
 
@@ -59,12 +69,15 @@ module Build : sig
 
   val append_source : t -> Source.t -> t
 
-  val of_string : ?error_loc:Loc0.t -> string -> t
+  val of_string : string -> (t, string) Result.t
+  val of_string_exn : string -> t
   module L : sig
-    val relative : ?error_loc:Loc0.t -> t -> string list -> t
+    val relative : t -> string list -> (t, string) Result.t
   end
 
-  val relative : ?error_loc:Loc0.t -> t -> string -> t
+  val relative : t -> string -> (t, string) Result.t
+  val relative_exn : t -> string -> t
+
   val split_first_component : t -> (string * Relative.t) option
   val explode : t -> string list
 
@@ -88,7 +101,8 @@ module Kind : sig
     | External of External.t
     | Local    of Local.t
 
-  val of_string : string -> t
+  val of_string : string -> (t, string) Result.t
+  val of_string_exn : string -> t
 end
 
 include Path_intf.S
@@ -97,7 +111,8 @@ val hash : t -> int
 
 module Table : Hashtbl.S with type key = t
 
-val of_string : ?error_loc:Loc0.t -> string -> t
+val of_string : string -> (t, string) Result.t
+val of_string_exn : string -> t
 
 (** [to_string_maybe_quoted t] is [maybe_quoted (to_string t)] *)
 val to_string_maybe_quoted : t -> string
@@ -109,7 +124,8 @@ val is_root : t -> bool
 
 val is_managed : t -> bool
 
-val relative : ?error_loc:Loc0.t -> t -> string -> t
+val relative : t -> string -> (t, string) Result.t
+val relative_exn : t -> string -> t
 
 (** Create an external path. If the argument is relative, assume it is relative
     to the initial directory dune was launched in. *)

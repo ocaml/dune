@@ -3,7 +3,7 @@ open! Stdune
 let pwd = Sys.getcwd ()
 
 let valid_ocaml_config = Printf.sprintf
-{|version: 4.02.3
+                           {|version: 4.02.3
 standard_library_default: %s
 standard_library: %s
 standard_runtime: /usr/bin/ocamlrun
@@ -40,7 +40,7 @@ ast_impl_magic_number: Caml1999M016
 ast_intf_magic_number: Caml1999N015
 cmxs_magic_number: Caml2007D002
 cmt_magic_number: Caml2012T004|}
-pwd pwd
+                           pwd pwd
 
 let () =
   match

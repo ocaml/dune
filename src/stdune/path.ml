@@ -31,6 +31,11 @@ let explode_path =
       | "." :: xs -> xs
       | xs -> xs
 
+open Result.O
+let ok_exn : ('a, string) Result.t -> 'a = function
+  | Ok x -> x
+  | Error s -> Exn.fatalf "%s" s
+
 module External : sig
   include Path_intf.S
   val compare_val : t -> t -> Ordering.t
@@ -68,23 +73,23 @@ end = struct
   let to_dyn t = Dyn.String (to_string t)
 
 (*
-  let rec cd_dot_dot t =
-    match Unix.readlink t with
-    | exception _ -> Filename.dirname t
-    | t -> cd_dot_dot t
+     let rec cd_dot_dot t =
+     match Unix.readlink t with
+     | exception _ -> Filename.dirname t
+     | t -> cd_dot_dot t
 
-  let relative initial_t path =
-    let rec loop t components =
-      match components with
-      | [] | ["." | ".."] ->
-        die "invalid filename concatenation: %s / %s" initial_t path
-      | [fn] -> Filename.concat t fn
-      | "."  :: rest -> loop t rest
-      | ".." :: rest -> loop (cd_dot_dot t) rest
-      | comp :: rest -> loop (Filename.concat t comp) rest
-    in
-    loop initial_t (explode_path path)
-*)
+     let relative initial_t path =
+     let rec loop t components =
+     match components with
+     | [] | ["." | ".."] ->
+     die "invalid filename concatenation: %s / %s" initial_t path
+     | [fn] -> Filename.concat t fn
+     | "."  :: rest -> loop t rest
+     | ".." :: rest -> loop (cd_dot_dot t) rest
+     | comp :: rest -> loop (Filename.concat t comp) rest
+     in
+     loop initial_t (explode_path path)
+  *)
 
   let relative x y =
     match y with
@@ -157,8 +162,10 @@ module Relative : sig
   val root : t
   val is_root : t -> bool
   val compare_val : t -> t -> Ordering.t
-  val of_string : ?error_loc:Loc0.t -> string -> t
-  val relative : ?error_loc:Loc0.t -> t -> string -> t
+  val of_string : string -> (t, string) Result.t
+  val of_string_exn : string -> t
+  val relative : t -> string -> (t, string) Result.t
+  val relative_exn : t -> string -> t
   val append : t -> t -> t
   val parent : t -> t
   val mkdir_p : t -> unit
@@ -167,7 +174,8 @@ module Relative : sig
   val reach : t -> from:t -> string
 
   module L : sig
-    val relative : ?error_loc:Loc0.t -> t -> string list -> t
+    val relative : t -> string list -> (t, string) Result.t
+    val relative_exn : t -> string list -> t
   end
 
   module Prefix : sig
@@ -261,16 +269,19 @@ end = struct
             loop (make (to_string t ^ "/" ^ fn)) rest
       in loop t components
 
-    let relative ?error_loc t components =
+    let relative t components =
       match relative_result t components with
-      | Result.Ok t -> t
+      | Result.Ok t -> Ok t
       | Error () ->
-        Exn.fatalf ?loc:error_loc "path outside the workspace: %s from %s"
-          (String.concat ~sep:"/" components)
-          (to_string t)
+        Error (
+          Printf.sprintf "path outside the workspace: %s from %s"
+            (String.concat ~sep:"/" components)
+            (to_string t))
+
+    let relative_exn t cs = relative t cs |> ok_exn
   end
 
-  let relative ?error_loc t path =
+  let relative t path =
     if not (Filename.is_relative path) then (
       Exn.code_error "Local.relative: received absolute path"
         [ "t", to_sexp t
@@ -278,11 +289,14 @@ end = struct
         ]
     );
     match L.relative_result t (explode_path path) with
-    | Result.Ok t -> t
+    | Result.Ok t -> Ok t
     | Error () ->
-      Exn.fatalf ?loc:error_loc "path outside the workspace: %s from %s"
-        path
-        (to_string t)
+      Error (
+        Printf.sprintf "path outside the workspace: %s from %s"
+          path
+          (to_string t))
+
+  let relative_exn t path = relative t path |> ok_exn
 
   let is_canonicalized =
     let rec before_slash s i =
@@ -320,12 +334,13 @@ end = struct
       let len = String.length s in
       len = 0 || before_slash s (len - 1)
 
-  let of_string ?error_loc s =
+  let of_string s =
     match s with
-    | "" | "." -> root
-    | _ when is_canonicalized s -> make s
-    | _ ->
-      relative root s ?error_loc
+    | "" | "." -> Ok root
+    | _ when is_canonicalized s -> Ok (make s)
+    | _ -> relative root s
+
+  let of_string_exn s = of_string s |> ok_exn
 
   let rec mkdir_p t =
     if is_root t then
@@ -445,7 +460,8 @@ end = struct
   )
 
   let split_first_component t =
-    if is_root t then None
+    if is_root t then
+      None
     else
       let t = (to_string t) in
       begin match String.lsplit2 t ~on:'/' with
@@ -453,8 +469,7 @@ end = struct
       | Some (before, after) ->
         Some
           ( before
-          , after
-            |> of_string)
+          , after |> of_string |> ok_exn)
       end
 
   let explode p =
@@ -515,19 +530,17 @@ module Kind = struct
 
   let of_string s =
     if Filename.is_relative s then
-      Local (Local.of_string s)
+      let+ local = Local.of_string s in
+      Local local
     else
-      External (External.of_string s)
+      Ok (External (External.of_string s))
+
+  let of_string_exn s = of_string s |> ok_exn
 
   let _ =
     let root = Local Local.root in
-    assert (of_string ""  = root);
-    assert (of_string "." = root)
-
-  let _relative ?error_loc t fn =
-    match t with
-    | Local t -> Local (Local.relative ?error_loc t fn)
-    | External t -> External (External.relative t fn)
+    assert (of_string_exn ""  = root);
+    assert (of_string_exn "." = root)
 
   let mkdir_p = function
     | Local t -> Local.mkdir_p t
@@ -663,26 +676,35 @@ let make_local_path p =
   | Some p -> in_build_dir p
 let of_local = make_local_path
 
-let relative ?error_loc t fn =
+let relative t fn =
   match fn with
   | "" | "." ->
-    t
+    Ok t
   | _ when not (Filename.is_relative fn) ->
-    external_ (External.of_string fn)
+    Ok (external_ (External.of_string fn))
   |_ ->
     match t with
-    | In_source_tree p -> make_local_path (Local.relative p fn ?error_loc)
-    | In_build_dir p -> in_build_dir (Local.relative p fn ?error_loc)
-    | External s -> external_ (External.relative s fn)
+    | In_source_tree p ->
+      let+ local = Local.relative p fn in
+      make_local_path local
+    | In_build_dir p ->
+      let+ local = Local.relative p fn in
+      in_build_dir local
+    | External s -> Ok (external_ (External.relative s fn))
 
-let of_string ?error_loc s =
+let relative_exn t fn = relative t fn |> ok_exn
+
+let of_string s =
   match s with
-  | "" | "." -> in_source_tree Local.root
+  | "" | "." -> Ok (in_source_tree Local.root)
   | s  ->
     if Filename.is_relative s then
-      make_local_path (Local.of_string s ?error_loc)
+      let+ local = Local.of_string s in
+      make_local_path local
     else
-      external_ (External.of_string s)
+      Ok (external_ (External.of_string s))
+let of_string_exn s =
+  of_string s |> ok_exn
 
 let to_sexp t =
   let constr f x y = Sexp.Encoder.(pair string f) (x, y) in
@@ -834,7 +856,7 @@ let extract_build_context = function
       Some
         ( before
         , after
-          |> Source0.of_string )
+          |> Source0.of_string_exn )
     end
 
 let extract_build_dir_first_component = extract_build_context
@@ -855,9 +877,9 @@ let extract_build_context_dir = function
     | None -> Some (in_build_dir t, Source0.root)
     | Some (before, after) ->
       Some
-        ( in_build_dir (Local.of_string before)
+        ( in_build_dir (Local.of_string_exn before)
         , after
-          |> Source0.of_string
+          |> Source0.of_string_exn
         )
     end
 
@@ -892,8 +914,8 @@ let drop_optional_build_context_src_exn t =
          "drop_optional_build_context_src_exn called on a build directory itself" [])
   | In_source_tree p -> p
 
-let local_src   = Relative.of_string "src"
-let local_build = Relative.of_string "build"
+let local_src   = Relative.of_string_exn "src"
+let local_build = Relative.of_string_exn "build"
 
 let sandbox_managed_paths ~sandbox_dir t =
   match t with
@@ -911,7 +933,7 @@ let split_first_component t =
       Some
         ( before
         , after
-          |> Local.of_string
+          |> Local.of_string_exn
           |> in_source_tree )
     end
   | _, _ -> None
@@ -960,12 +982,12 @@ let win32_unlink fn =
   try
     Unix.unlink fn
   with Unix.Unix_error (Unix.EACCES, _, _) as e ->
-    (* Try removing the read-only attribute *)
-    try
-      Unix.chmod fn 0o666;
-      Unix.unlink fn
-    with _ ->
-      raise e
+  (* Try removing the read-only attribute *)
+  try
+    Unix.chmod fn 0o666;
+    Unix.unlink fn
+  with _ ->
+    raise e
 let unlink_operation =
   if Sys.win32 then
     win32_unlink
@@ -1007,7 +1029,7 @@ let insert_after_build_dir_exn =
   in
   fun a b ->
     match a with
-    | In_build_dir a -> in_build_dir (Local.append (Local.of_string b) a)
+    | In_build_dir a -> in_build_dir (Local.append (Local.of_string_exn b) a)
     | In_source_tree _
     | External _ -> error a b
 
@@ -1087,7 +1109,7 @@ module Set = struct
   let to_sexp t = Sexp.Encoder.(list to_sexp) (to_list t)
 end
 
-let in_source s = in_source_tree (Local.of_string s)
+let in_source s = in_source_tree (Local.of_string_exn s)
 let source s = in_source_tree s
 
 let is_suffix p ~suffix =
@@ -1107,11 +1129,11 @@ end
 
 module L = struct
   (* TODO more efficient implementation *)
-  let relative t = List.fold_left ~init:t ~f:relative
+  let relative t = List.fold_left ~init:t ~f:relative_exn
 end
 
 let local_part = function
-  | External e -> Local.of_string (External.as_local e)
+  | External e -> Local.of_string_exn (External.as_local e)
   | In_source_tree l -> l
   | In_build_dir l -> l
 

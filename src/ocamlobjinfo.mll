@@ -42,7 +42,7 @@ let parse s = ocamlobjinfo empty (Lexing.from_string s)
 let rules ~dir ~(ctx : Context.t) ~unit =
   let open Build.O in
   let output =
-    Path.relative dir (Path.basename unit)
+    Path.relative_exn dir (Path.basename unit)
     |> Path.extend_basename ~suffix:".ooi-deps"
   in
   let bin =

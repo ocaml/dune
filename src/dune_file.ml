@@ -116,7 +116,7 @@ module Pkg = struct
                   adding a <package>.opam file at the root of your project.\n\
                   To declare elements to be installed as part of package %S, \
                   add a %S file at the root of your project.\nn\
-                 Root of the project as discovered by dune: %s@"
+                  Root of the project as discovered by dune: %s@"
                  name_s (Package.Name.opam_fn name)
                  (Path.Source.to_string_maybe_quoted
                     (Dune_project.root project)))
@@ -370,7 +370,7 @@ module Per_module = struct
             let+ x =
               repeat
                 (let+ (pp, names) = pair a (list module_name) in
-                (names, pp))
+                 (names, pp))
             in
             of_mapping x ~default
             |> function
@@ -918,7 +918,7 @@ module Library = struct
          located (field "self_build_stubs_archive" (option string) ~default:None)
        and+ no_dynlink = field_b "no_dynlink"
        and+ no_keep_locs = field_b "no_keep_locs"
-                            ~check:(Syntax.deprecated_in Stanza.syntax (1, 7))
+                             ~check:(Syntax.deprecated_in Stanza.syntax (1, 7))
        and+ sub_systems =
          let* () = return () in
          Sub_system_info.record_parser ()
@@ -1059,16 +1059,16 @@ module Library = struct
     in
     name ^ "_stubs"
 
-  let stubs t ~dir = Path.relative dir (stubs_name t)
+  let stubs t ~dir = Path.relative_exn dir (stubs_name t)
 
   let stubs_archive t ~dir ~ext_lib =
-    Path.relative dir (sprintf "lib%s%s" (stubs_name t) ext_lib)
+    Path.relative_exn dir (sprintf "lib%s%s" (stubs_name t) ext_lib)
 
   let dll t ~dir ~ext_dll =
-    Path.relative dir (sprintf "dll%s%s" (stubs_name t) ext_dll)
+    Path.relative_exn dir (sprintf "dll%s%s" (stubs_name t) ext_dll)
 
   let archive t ~dir ~ext =
-    Path.relative dir (Lib_name.Local.to_string (snd t.name) ^ ext)
+    Path.relative_exn dir (Lib_name.Local.to_string (snd t.name) ^ ext)
 
   let best_name t =
     match t.public with
@@ -1414,7 +1414,7 @@ module Executables = struct
   let common =
     let+ buildable = Buildable.decode
     and+ (_ : bool) = field "link_executables" ~default:true
-                       (Syntax.deleted_in Stanza.syntax (1, 0) >>> bool)
+                        (Syntax.deleted_in Stanza.syntax (1, 0) >>> bool)
     and+ link_deps = field "link_deps" (list Dep_conf.decode) ~default:[]
     and+ link_flags = field_oslu "link_flags"
     and+ modes = field "modes" Link_mode.Set.decode ~default:Link_mode.Set.default
@@ -2007,7 +2007,7 @@ module Tests = struct
        and+ package = field_o "package" Pkg.decode
        and+ locks = field "locks" (list String_with_vars.decode) ~default:[]
        and+ modes = field "modes" Executables.Link_mode.Set.decode
-                     ~default:Executables.Link_mode.Set.default
+                      ~default:Executables.Link_mode.Set.default
        and+ deps =
          field "deps" (Bindings.decode Dep_conf.decode) ~default:Bindings.empty
        and+ enabled_if = enabled_if
@@ -2242,7 +2242,7 @@ module Stanzas = struct
       | Include (loc, fn) ->
         let include_stack = (loc, current_file) :: include_stack in
         let dir = Path.Source.parent_exn current_file in
-        let current_file = Path.Source.relative dir fn in
+        let current_file = Path.Source.relative_exn dir fn in
         if not (Path.exists (Path.source current_file)) then
           Errors.fail loc "File %s doesn't exist."
             (Path.Source.to_string_maybe_quoted current_file);

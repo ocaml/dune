@@ -5,7 +5,7 @@ open Fiber.O
 module Pre_rule = Rule
 
 (* Where we store stamp files for aliases *)
-let alias_dir = Path.(relative build_dir) ".aliases"
+let alias_dir = Path.(relative_exn build_dir) ".aliases"
 
 let () = Hooks.End_of_build.always Memo.reset
 
@@ -43,7 +43,7 @@ end = struct
 
   let db = ref Path.Set.empty
 
-  let fn = Path.relative Path.build_dir ".to-delete-in-source-tree"
+  let fn = Path.relative_exn Path.build_dir ".to-delete-in-source-tree"
 
   let needs_dumping = ref false
 
@@ -81,7 +81,7 @@ let rule_loc ~file_tree ~info ~dir =
           ~f:File_tree.Dir.dune_file
       with
       | Some file -> File_tree.Dune_file.path file
-      | None      -> Path.Source.relative dir "_unknown_"
+      | None      -> Path.Source.relative_exn dir "_unknown_"
     in
     Loc.in_file (Path.source file)
 
@@ -182,7 +182,7 @@ module Alias0 = struct
     ignore
       (find_dir_specified_on_command_line ~dir ~file_tree : File_tree.Dir.t);
     Build.paths (List.map contexts ~f:(fun ctx ->
-      let dir = Path.append_source (Path.(relative build_dir) ctx) dir in
+      let dir = Path.append_source (Path.(relative_exn build_dir) ctx) dir in
       stamp_file (make ~dir name)))
 
   open Build.O
@@ -221,7 +221,7 @@ module Alias0 = struct
     let open Build.O in
     let dir = find_dir_specified_on_command_line ~dir:src_dir ~file_tree in
     Build.all (List.map contexts ~f:(fun ctx ->
-      let ctx_dir = Path.(relative build_dir) ctx in
+      let ctx_dir = Path.(relative_exn build_dir) ctx in
       dep_rec_internal ~name ~dir ~ctx_dir))
     >>^ fun is_empty_list ->
     let is_empty = List.for_all is_empty_list ~f:Fn.id in
@@ -486,7 +486,7 @@ end = struct
   (* Keyed by the first target *)
   type t = Entry.t Path.Table.t
 
-  let file = Path.relative Path.build_dir ".db"
+  let file = Path.relative_exn Path.build_dir ".db"
 
   module P = Utils.Persistent(struct
       type nonrec t = t
@@ -616,7 +616,7 @@ let get_dir_status t ~dir =
                (Unix.error_message m);
              Path.Set.empty
            | Ok files ->
-             Path.Set.of_list (List.map files ~f:(Path.relative dir)))
+             Path.Set.of_list (List.map files ~f:(Path.relative_exn dir)))
       else begin
         let (ctx, sub_dir) = Path.extract_build_context_exn dir in
         if ctx = ".aliases" then
@@ -679,7 +679,7 @@ let compute_targets_digest_after_rule_execution ~info targets =
       "rule failed to generate the following targets:\n%s"
       (string_of_paths (Path.Set.of_list missing))
 
-let sandbox_dir = Path.relative Path.build_dir ".sandbox"
+let sandbox_dir = Path.relative_exn Path.build_dir ".sandbox"
 
 let locks : (Path.t, Fiber.Mutex.t) Hashtbl.t = Hashtbl.create 32
 
@@ -693,7 +693,7 @@ let rec with_locks mutexes ~f =
 
 let remove_old_artifacts t ~dir ~subdirs_to_keep =
   if not (Path.is_in_build_dir dir) ||
-     Path.Table.mem t.files (Path.relative dir Config.dune_keep_fname) then
+     Path.Table.mem t.files (Path.relative_exn dir Config.dune_keep_fname) then
     ()
   else
     match Path.readdir_unsorted dir with
@@ -701,7 +701,7 @@ let remove_old_artifacts t ~dir ~subdirs_to_keep =
     | Error _ -> ()
     | Ok files ->
       List.iter files ~f:(fun fn ->
-        let path = Path.relative dir fn in
+        let path = Path.relative_exn dir fn in
         let path_is_a_target = Path.Table.mem t.files path in
         if path_is_a_target then ()
         else
@@ -737,7 +737,7 @@ let no_rule_found =
       if String.Map.mem t.contexts ctx then
         fail fn ~loc
       else
-        let fn = Path.append_source (Path.relative Path.build_dir ctx) fn' in
+        let fn = Path.append_source (Path.relative_exn Path.build_dir ctx) fn' in
         die "Trying to build alias %s but build context %s doesn't exist.%s"
           (Path.to_string_maybe_quoted fn)
           ctx
@@ -775,7 +775,7 @@ let fix_up_legacy_fallback_rules t ~file_tree_dir ~dir rules =
       let source_files =
         File_tree.Dir.files ftdir
         |> String.Set.to_list
-        |> List.map ~f:(Path.relative dir)
+        |> List.map ~f:(Path.relative_exn dir)
         |> Path.Set.of_list
       in
       List.map rules ~f:(fun (rule : Pre_rule.t) ->
@@ -798,7 +798,7 @@ let fix_up_legacy_fallback_rules t ~file_tree_dir ~dir rules =
                        Some
                          (Predicate_lang.of_pred
                             (fun s ->
-                               Path.Set.mem inter (Path.relative dir s)))
+                               Path.Set.mem inter (Path.relative_exn dir s)))
                    },
                  "overwriting the source files with the generated one")
             in
@@ -939,7 +939,7 @@ and load_dir_step2_exn t ~dir ~collector =
   let rules = Dir_status.Rules_collector.rules collector in
 
   (* Compute alias rules *)
-  let alias_dir = Path.append_source (Path.relative alias_dir context_name) sub_dir in
+  let alias_dir = Path.append_source (Path.relative_exn alias_dir context_name) sub_dir in
   let alias_rules, alias_stamp_files =
     let open Build.O in
     let aliases =
@@ -966,7 +966,7 @@ and load_dir_step2_exn t ~dir ~collector =
     in
     String.Map.foldi aliases ~init:([], Path.Set.empty)
       ~f:(fun name { Dir_status.Alias.deps; dyn_deps; actions } (rules, alias_stamp_files) ->
-        let base_path = Path.relative alias_dir name in
+        let base_path = Path.relative_exn alias_dir name in
         let rules, action_stamp_files =
           List.fold_left actions ~init:(rules, Path.Set.empty)
             ~f:(fun (rules, action_stamp_files)
@@ -1058,7 +1058,7 @@ and load_dir_step2_exn t ~dir ~collector =
       if Path.Source.Set.is_empty files then
         (user_rule_targets, None, subdirs)
       else
-        let ctx_path = Path.(relative build_dir) context_name in
+        let ctx_path = Path.(relative_exn build_dir) context_name in
         (Path.Set.union user_rule_targets
            (Path.Source.Set.to_list files
             |> List.map ~f:(Path.append_source ctx_path)
@@ -1359,7 +1359,7 @@ let () =
     let sandbox_dir =
       if sandbox then
         let digest = Digest.to_string rule_digest in
-        Some (Path.relative sandbox_dir digest)
+        Some (Path.relative_exn sandbox_dir digest)
       else
         None
     in
@@ -1430,9 +1430,11 @@ let () =
               match into with
               | None -> in_source_tree
               | Some { loc; dir } ->
-                Path.Source.relative
-                  (Path.Source.relative (Path.Source.parent_exn in_source_tree) dir
-                     ~error_loc:loc)
+                Path.Source.relative_exn (
+                  let parent = Path.Source.parent_exn in_source_tree in
+                  match Path.Source.relative parent dir with
+                  | Error e -> Errors.fail loc "%s" e
+                  | Ok p -> p)
                   (Path.Source.basename in_source_tree)
             in
             if not (Path.exists (Path.source in_source_tree)) ||
@@ -1856,3 +1858,4 @@ end = struct
 end
 
 include All_lib_deps
+

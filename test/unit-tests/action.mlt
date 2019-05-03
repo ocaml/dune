@@ -5,9 +5,9 @@
 open Stdune;;
 open Dune;;
 open Action_unexpanded.Infer.Outcome;;
-Stdune.Path.set_build_dir (Path.Kind.of_string "_build");;
+Stdune.Path.set_build_dir (Path.Kind.of_string_exn "_build");;
 
-let p = Path.of_string;;
+let p = Path.of_string_exn;;
 let infer (a : Action.t) =
   let x = Action_unexpanded.Infer.infer a in
   (List.map (Path.Set.to_list x.deps) ~f:Path.to_string,

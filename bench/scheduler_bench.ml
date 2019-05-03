@@ -5,7 +5,7 @@ open Dune
 
 let setup = lazy (
   Path.set_root (Path.External.cwd ());
-  Path.set_build_dir (Path.Kind.of_string "_build"))
+  Path.set_build_dir (Path.Kind.of_string_exn "_build"))
 
 let prog =
   Option.value_exn (Bin.which ~path:(Env.path Env.initial) "true")
@@ -22,4 +22,4 @@ let l = List.init 100 ~f:ignore
 let%bench_fun "many" [@indexed jobs = [1; 2; 4; 8]] =
   Lazy.force setup;
   fun () ->
-  go ~jobs (fun () -> Fiber.parallel_iter l ~f:run)
+    go ~jobs (fun () -> Fiber.parallel_iter l ~f:run)

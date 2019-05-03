@@ -11,7 +11,7 @@ let man =
   ; `Blocks Common.help_secs
   ]
 
- let info = Term.info "utop" ~doc ~man
+let info = Term.info "utop" ~doc ~man
 
 let term =
   let+ common = Common.term
@@ -22,7 +22,7 @@ let term =
   in
   Common.set_dirs common;
   if not (Path.is_directory
-            (Path.of_string (Common.prefix_target common dir))) then
+            (Path.of_string_exn (Common.prefix_target common dir))) then
     die "cannot find directory: %s" (String.maybe_quoted dir);
   let utop_target = Filename.concat dir Utop.utop_exe in
   Common.set_common_other common ~targets:[utop_target];

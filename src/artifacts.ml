@@ -76,11 +76,11 @@ module Public_libs = struct
         let lib_install_dir =
           match rest with
           | [] -> lib_install_dir
-          | _  -> Path.relative lib_install_dir (String.concat rest ~sep:"/")
+          | _  -> Path.relative_exn lib_install_dir (String.concat rest ~sep:"/")
         in
-        Ok (Path.relative lib_install_dir file)
+        Ok (Path.relative_exn lib_install_dir file)
       end else
-        Ok (Path.relative (Lib.src_dir lib) file)
+        Ok (Path.relative_exn (Lib.src_dir lib) file)
 
 end
 

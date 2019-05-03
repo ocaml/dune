@@ -406,7 +406,7 @@ let make vars =
     in
 
     let file =
-      Path.relative (Path.of_string standard_library) "Makefile.config"
+      Path.relative_exn (Path.of_string_exn standard_library) "Makefile.config"
     in
     let vars = Vars.load_makefile_config file in
     let module Getters =

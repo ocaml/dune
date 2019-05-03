@@ -6,7 +6,7 @@ open Import
 
     @param dynlink if false disables the possibility to dynamically
     link. The module can't be in a .cmxs or .so (default true).
- *)
+*)
 val build_module
   :  ?sandbox:bool
   -> ?js_of_ocaml:Dune_file.Js_of_ocaml.t

@@ -98,7 +98,7 @@ val map_all_unit : 'a list -> f:('a -> unit t) -> unit t
         fork f >>= fun a ->
         fork g >>= fun b ->
         both (Future.wait a) (Future.wait b)
-      ]}
+    ]}
 *)
 val fork_and_join : (unit -> 'a t) -> (unit -> 'b t) -> ('a * 'b) t
 
@@ -177,7 +177,7 @@ module Var : sig
       {[
         set v x (get_exn v >>| fun y -> x = y)
       ]}
- *)
+  *)
   val set : 'a t -> 'a -> (unit -> 'b fiber) -> 'b fiber
   val set_sync : 'a t -> 'a -> (unit -> 'b) -> 'b
 

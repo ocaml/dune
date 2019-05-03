@@ -64,6 +64,6 @@ let to_dyn { name; path; version } =
 
 let pp fmt t = Dyn.pp fmt (to_dyn t)
 
-let opam_file t = Path.Source.relative t.path (Name.opam_fn t.name)
+let opam_file t = Path.Source.relative_exn t.path (Name.opam_fn t.name)
 
-let meta_file t = Path.Source.relative t.path (Name.meta_fn t.name)
+let meta_file t = Path.Source.relative_exn t.path (Name.meta_fn t.name)

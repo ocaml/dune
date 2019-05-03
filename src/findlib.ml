@@ -120,7 +120,7 @@ module Config = struct
 
   let load path ~toolchain ~context =
     let path = Path.extend_basename path ~suffix:".d" in
-    let conf_file = Path.relative path (toolchain ^ ".conf") in
+    let conf_file = Path.relative_exn path (toolchain ^ ".conf") in
     if not (Path.exists conf_file) then
       die "@{<error>Error@}: ocamlfind toolchain %s isn't defined in %a \
            (context: %s)" toolchain Path.pp path context;
@@ -176,7 +176,7 @@ module Package = struct
   let preds = Ps.of_list [P.ppx_driver; P.mt; P.mt_posix]
 
   let get_paths t var preds =
-    List.map (Vars.get_words t.vars var preds) ~f:(Path.relative t.dir)
+    List.map (Vars.get_words t.vars var preds) ~f:(Path.relative_exn t.dir)
 
   let make_archives t var preds =
     Mode.Dict.of_func (fun ~mode ->
@@ -199,7 +199,7 @@ module Package = struct
       (make_archives t "plugin" preds)
 
   let dune_file t =
-    let fn = Path.relative t.dir
+    let fn = Path.relative_exn t.dir
                (sprintf "%s.dune" (Lib_name.to_string t.name)) in
     Option.some_if (Path.exists fn) fn
 
@@ -252,9 +252,9 @@ module Package = struct
       | None | Some "" -> parent_dir
       | Some pkg_dir ->
         if pkg_dir.[0] = '+' || pkg_dir.[0] = '^' then
-          Path.relative db.stdlib_dir (String.drop pkg_dir 1)
+          Path.relative_exn db.stdlib_dir (String.drop pkg_dir 1)
         else if Filename.is_relative pkg_dir then
-          Path.relative parent_dir pkg_dir
+          Path.relative_exn parent_dir pkg_dir
         else
           Path.of_filename_relative_to_initial_cwd pkg_dir
     in
@@ -270,7 +270,7 @@ module Package = struct
       match exists_if with
       | _ :: _ ->
         List.for_all exists_if ~f:(fun fn ->
-          Path.exists (Path.relative dir fn))
+          Path.exists (Path.relative_exn dir fn))
       | [] ->
         if not (Lib_name.Map.mem db.builtins (Lib_name.root_lib name)) then
           true
@@ -302,10 +302,10 @@ let dummy_package t ~name =
     | dir :: _ ->
       Lib_name.package_name name
       |> Opam_package.Name.to_string
-      |> Path.relative dir
+      |> Path.relative_exn dir
   in
   { Package.
-    meta_file = Path.relative dir "META"
+    meta_file = Path.relative_exn dir "META"
   ; name
   ; dir
   ; vars      = String.Map.empty
@@ -341,19 +341,19 @@ end = struct
 
   let internal db ~meta =
     { dir = db.stdlib_dir
-    ; meta_file = Path.of_string "<internal>"
+    ; meta_file = Path.of_string_exn "<internal>"
     ; meta
     }
 
   let discover ~dir ~name =
-    let meta_file = Path.relative dir "META" in
+    let meta_file = Path.relative_exn dir "META" in
     if Path.exists meta_file then
       Some (create ~dir ~meta_file ~name)
     else
       (* Alternative layout *)
       let open Option.O in
       let* dir = Path.parent dir in
-      let meta_file = Path.relative dir ("META." ^ (Lib_name.to_string name)) in
+      let meta_file = Path.relative_exn dir ("META." ^ (Lib_name.to_string name)) in
       if Path.exists meta_file then
         Some (create ~dir ~meta_file ~name)
       else
@@ -403,8 +403,8 @@ let find_and_acknowledge_package t ~fq_name =
       |> Option.map ~f:(fun meta ->
         Discovered_package.Findlib (Meta_source.internal t ~meta))
     | dir :: dirs ->
-      let dir = Path.relative dir (Lib_name.to_string root_name) in
-      let dune = Path.relative dir "dune-package" in
+      let dir = Path.relative_exn dir (Lib_name.to_string root_name) in
+      let dune = Path.relative_exn dir "dune-package" in
       match
         (if Path.exists dune then
            Dune_package.Or_meta.load dune
@@ -453,7 +453,7 @@ let root_packages t =
           (Unix.error_message unix_error)
       | Ok listing ->
         List.filter_map listing ~f:(fun name ->
-          if Path.exists (Path.relative dir (name ^ "/META")) then
+          if Path.exists (Path.relative_exn dir (name ^ "/META")) then
             Some (Lib_name.of_string_exn ~loc:None name)
           else
             None))

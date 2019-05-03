@@ -19,7 +19,7 @@ let package_install_file w pkg =
   match Package.Name.Map.find w.conf.packages pkg with
   | None -> Error ()
   | Some p ->
-    Ok (Path.Source.relative p.path
+    Ok (Path.Source.relative_exn p.path
           (Utils.install_file ~package:p.name ~findlib_toolchain:None))
 
 let setup_env ~capture_outputs =
@@ -55,7 +55,7 @@ let scan_workspace ?(log=Log.no_log)
         Workspace.load ?x ?profile p
       | None ->
         match
-          let p = Path.of_string Workspace.filename in
+          let p = Path.of_string_exn Workspace.filename in
           Option.some_if (Path.exists p) p
         with
         | Some p -> Workspace.load ?x ?profile p
@@ -162,7 +162,7 @@ let set_concurrency ?log (config : Config.t) =
 let bootstrap () =
   Colors.setup_err_formatter_colors ();
   Path.set_root Path.External.initial_cwd;
-  Path.set_build_dir (Path.Kind.of_string "_boot");
+  Path.set_build_dir (Path.Kind.of_string_exn "_boot");
   let main () =
     let anon s = raise (Arg.Bad (Printf.sprintf "don't know what to do with %s\n" s)) in
     let subst () =
@@ -223,14 +223,14 @@ let bootstrap () =
       (fun () ->
          let* () = set_concurrency config in
          let* workspace =
-          scan_workspace ~log ~workspace:(Workspace.default ?profile:!profile ())
-            ?profile:!profile ~ancestor_vcs:None
-            ()
+           scan_workspace ~log ~workspace:(Workspace.default ?profile:!profile ())
+             ?profile:!profile ~ancestor_vcs:None
+             ()
          in
          let* _ = init_build_system workspace in
          Build_system.do_build
            ~request:(Build.path (
-             Path.relative Path.build_dir "default/dune.install")))
+             Path.relative_exn Path.build_dir "default/dune.install")))
   in
   try
     main ()

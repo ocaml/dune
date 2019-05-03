@@ -11,8 +11,8 @@ let encode p =
   in
   let make constr =
     Dune_lang.List [ Dune_lang.atom constr
-               ; Dune_lang.atom_or_quoted_string arg
-               ]
+                   ; Dune_lang.atom_or_quoted_string arg
+                   ]
   in
   if is_in_build_dir p then
     make "In_build_dir"
@@ -28,12 +28,14 @@ let decode =
       if Filename.is_relative t then
         Dune_lang.Decoder.of_sexp_errorf loc "Absolute path expected"
       else
-        Path.of_string ~error_loc:loc t
+        match Path.of_string t with
+        | Ok s -> s
+        | Error e -> of_sexp_error loc e
     )
   in
   sum
-    [ "In_build_dir"  , string    >>| Path.(relative build_dir)
-    ; "In_source_tree", string    >>| Path.(relative root)
+    [ "In_build_dir"  , string    >>| Path.(relative_exn build_dir)
+    ; "In_source_tree", string    >>| Path.(relative_exn root)
     ; "External"      , external_
     ]
 
@@ -46,5 +48,7 @@ module Local = struct
     let open Dune_lang.Decoder in
     let+ (error_loc, path) = located string
     in
-    Path.relative ~error_loc dir path
+    match Path.relative dir path with
+    | Ok p -> p
+    | Error e -> of_sexp_error error_loc e
 end

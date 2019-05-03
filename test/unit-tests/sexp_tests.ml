@@ -50,7 +50,7 @@ let () =
         if printed_as_atom && not parser_recognizes_as_atom then begin
           Printf.eprintf
             "Dune_lang.Atom.atom_or_quoted_string error:\n\
-            - syntax = %s\n\
+             - syntax = %s\n\
              - s = %S\n\
              - printed_as_atom = %B\n\
              - parser_recognizes_as_atom = %B\n"

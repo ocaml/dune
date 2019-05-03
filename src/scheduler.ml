@@ -281,7 +281,7 @@ end = struct
         }
       in
       while true do
-        let lines = List.map (read_lines buffer pipe) ~f:Path.of_string in
+        let lines = List.map (read_lines buffer pipe) ~f:Path.of_string_exn in
         Mutex.lock event_mtx;
         files_changed := List.rev_append lines !files_changed;
         Condition.signal event_cv;
@@ -298,10 +298,10 @@ end = struct
        It works as follow:
 
        - when the first event is received, send it to the main thread
-       immediately so that we get a fast response time
+         immediately so that we get a fast response time
 
        - after the first event is received, buffer subsequent events
-       for [buffering_time]
+         for [buffering_time]
     *)
     let rec buffer_thread () =
       Mutex.lock event_mtx;

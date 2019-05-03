@@ -245,16 +245,16 @@ let subst_git ?name () =
   let+ ((version, commit), files) =
     Fiber.fork_and_join
       (fun () ->
-        Fiber.fork_and_join
-          (fun () ->
+         Fiber.fork_and_join
+           (fun () ->
               Process.run_capture Strict git ["describe"; "--always"; "--dirty"]
                 ~env)
-          (fun () ->
+           (fun () ->
               Process.run_capture Strict git ["rev-parse"; rev]
                 ~env))
       (fun () ->
-        Process.run_capture_lines Strict git
-          ["ls-tree"; "-r"; "--name-only"; rev] ~env)
+         Process.run_capture_lines Strict git
+           ["ls-tree"; "-r"; "--name-only"; rev] ~env)
   in
   let version = String.trim version in
   let commit  = String.trim commit  in

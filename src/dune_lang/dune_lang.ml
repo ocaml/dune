@@ -67,11 +67,11 @@ let pp_print_quoted_string ppf s =
     match String.split s ~on:'\n' with
     | [] -> Format.pp_print_string ppf (Escape.quoted ~syntax s)
     | first :: rest ->
-       Format.fprintf ppf "@[<hv 1>\"@{<atom>%s"
-         (Escape.escaped ~syntax first);
-       List.iter rest ~f:(fun s ->
-           Format.fprintf ppf "@,\\n%s" (Escape.escaped ~syntax s));
-       Format.fprintf ppf "@}\"@]"
+      Format.fprintf ppf "@[<hv 1>\"@{<atom>%s"
+        (Escape.escaped ~syntax first);
+      List.iter rest ~f:(fun s ->
+        Format.fprintf ppf "@,\\n%s" (Escape.escaped ~syntax s));
+      Format.fprintf ppf "@}\"@]"
   end else
     Format.pp_print_string ppf (Escape.quoted ~syntax s)
 
@@ -279,17 +279,17 @@ module Parser = struct
       = fun t lexbuf sexps ->
         match t with
         | Single -> begin
-          match sexps with
-          | [sexp] -> sexp
-          | [] -> error (Loc.of_lexbuf lexbuf) "no s-expression found in input"
-          | _ :: sexp :: _ ->
-            error (Ast.loc sexp) "too many s-expressions found in input"
-        end
+            match sexps with
+            | [sexp] -> sexp
+            | [] -> error (Loc.of_lexbuf lexbuf) "no s-expression found in input"
+            | _ :: sexp :: _ ->
+              error (Ast.loc sexp) "too many s-expressions found in input"
+          end
         | Many -> sexps
         | Many_as_one ->
           match sexps with
           | [] -> List (Loc.in_file
-                          (Path.of_string lexbuf.lex_curr_p.pos_fname), [])
+                          (Path.of_string_exn lexbuf.lex_curr_p.pos_fname), [])
           | x :: l ->
             let last = List.fold_left l ~init:x ~f:(fun _ x -> x) in
             let loc = { (Ast.loc x) with stop = (Ast.loc last).stop } in
@@ -662,29 +662,29 @@ module Decoder = struct
 
   let result : type a k. k context -> a * k -> a =
     fun ctx (v, state) ->
-      match ctx with
-      | Values (_, cstr, _) -> begin
-          match state with
-          | [] -> v
-          | sexp :: _ ->
-            match cstr with
-            | None ->
-              of_sexp_errorf (Ast.loc sexp) "This value is unused"
-            | Some s ->
-              of_sexp_errorf (Ast.loc sexp) "Too many argument for %s" s
-        end
-      | Fields _ -> begin
-          match Name.Map.choose state.unparsed with
-          | None -> v
-          | Some (name, { entry; _ }) ->
-            let name_loc =
-              match entry with
-              | List (_, s :: _) -> Ast.loc s
-              | _ -> assert false
-            in
-            of_sexp_errorf ~hint:{ on = name; candidates = state.known }
-              name_loc "Unknown field %s" name
-        end
+    match ctx with
+    | Values (_, cstr, _) -> begin
+        match state with
+        | [] -> v
+        | sexp :: _ ->
+          match cstr with
+          | None ->
+            of_sexp_errorf (Ast.loc sexp) "This value is unused"
+          | Some s ->
+            of_sexp_errorf (Ast.loc sexp) "Too many argument for %s" s
+      end
+    | Fields _ -> begin
+        match Name.Map.choose state.unparsed with
+        | None -> v
+        | Some (name, { entry; _ }) ->
+          let name_loc =
+            match entry with
+            | List (_, s :: _) -> Ast.loc s
+            | _ -> assert false
+          in
+          of_sexp_errorf ~hint:{ on = name; candidates = state.known }
+            name_loc "Unknown field %s" name
+      end
 
   let parse t context sexp =
     let ctx = Values (Ast.loc sexp, None, context) in
@@ -1080,10 +1080,13 @@ module Decoder = struct
 
   let ( let* ) = ( >>= )
   let ( let+ ) = ( >>| )
-  let ( and+ ) a b ctx state =
+
+  let both a b ctx state =
     let a, state = a ctx state in
     let b, state = b ctx state in
     ((a, b), state)
+
+  let ( and+ ) = both
 end
 
 module type Conv = sig

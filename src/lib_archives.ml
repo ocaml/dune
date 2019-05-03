@@ -44,9 +44,9 @@ let make ~(ctx : Context.t) ~dir ~dir_contents (lib : Library.t) =
              files @ [ Library.archive ~dir lib ~ext:".cmxs" ]
            else
              files)
-      ; List.map lib.buildable.js_of_ocaml.javascript_files ~f:(Path.relative dir)
+      ; List.map lib.buildable.js_of_ocaml.javascript_files ~f:(Path.relative_exn dir)
       ; List.map lib.install_c_headers ~f:(fun fn ->
-          Path.relative dir (fn ^ ".h"))
+          Path.relative_exn dir (fn ^ ".h"))
       ]
   in
   let dlls  =

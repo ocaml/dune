@@ -30,7 +30,7 @@ let in_dir ~name ~recursive ~contexts dir =
   | In_install_dir _ ->
     die "Invalid alias: %s.\n\
          There are no aliases in %s."
-      (Path.to_string_maybe_quoted Path.(relative build_dir "install"))
+      (Path.to_string_maybe_quoted Path.(relative_exn build_dir "install"))
       (Path.to_string_maybe_quoted dir)
   | In_build_dir (ctx, dir) ->
     { dir
@@ -51,7 +51,7 @@ let of_string common s ~contexts =
         (1, true)
     in
     let s = String.drop s pos in
-    let path = Path.relative Path.root (Common.prefix_target common s) in
+    let path = Path.relative_exn Path.root (Common.prefix_target common s) in
     if Path.is_root path then
       die "@@ on the command line must be followed by a valid alias name"
     else

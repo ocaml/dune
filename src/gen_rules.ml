@@ -99,7 +99,7 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
             Some (List.concat_map exes.names ~f:(fun (_, exe) ->
               List.map
                 [exe ^ ".bc.js" ; exe ^ ".bc.runtime.js"]
-                ~f:(Path.relative ctx_dir)))
+                ~f:(Path.relative_exn ctx_dir)))
         }
       | Alias alias ->
         Simple_rules.alias sctx alias ~dir ~expander;
@@ -118,7 +118,9 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
         let source_dirs =
           let loc = String_with_vars.loc glob in
           let src_glob = Expander.expand_str expander glob in
-          Path.Source.relative src_dir src_glob ~error_loc:loc
+          (match Path.Source.relative src_dir src_glob with
+           | Ok p -> p
+           | Error e -> Errors.fail loc "%s" e)
           |> Path.Source.parent_exn
           |> Path.Source.Set.singleton
         in
@@ -172,7 +174,7 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
           (* This happens often when passing a [-p ...] option that
              hides a library *)
           let targets =
-            List.map (Menhir_rules.targets m) ~f:(Path.relative ctx_dir)
+            List.map (Menhir_rules.targets m) ~f:(Path.relative_exn ctx_dir)
           in
           SC.add_rule sctx ~dir:ctx_dir
             (Build.fail ~targets

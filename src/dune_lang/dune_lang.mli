@@ -124,8 +124,8 @@ module Cst : sig
       | Legacy
       (** Legacy for jbuild files: either block comments or sexp
           comments. The programmer is responsible for fetching the
-         comment contents using the location. *)
-    end
+          comment contents using the location. *)
+  end
 
   type t =
     | Atom of Loc.t * Atom.t

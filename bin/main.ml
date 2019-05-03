@@ -63,7 +63,7 @@ let runtest =
     let log = Log.create common in
     let targets (setup : Main.build_system) =
       List.map dirs ~f:(fun dir ->
-        let dir = Path.(relative root) (Common.prefix_target common dir) in
+        let dir = Path.(relative_exn root) (Common.prefix_target common dir) in
         Target.Alias (Alias.in_dir ~name:"runtest" ~recursive:true
                         ~contexts:setup.workspace.contexts dir))
     in
@@ -114,7 +114,7 @@ let promote =
        | _ ->
          let files =
            List.map files
-             ~f:(fun fn -> Path.Source.of_string (Common.prefix_target common fn))
+             ~f:(fun fn -> Path.Source.of_string_exn (Common.prefix_target common fn))
          in
          let on_missing fn =
            Format.eprintf "@{<warning>Warning@}: Nothing to promote for %a.@."

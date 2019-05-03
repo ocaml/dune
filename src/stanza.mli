@@ -27,7 +27,7 @@ end
 val file_kind : unit -> (File_kind.t, _) Dune_lang.Decoder.parser
 
 (** Overlay for [Dune_lang.Decoder] where lists and records don't require
-   an extra level of parentheses in Dune files.
+    an extra level of parentheses in Dune files.
 
     Additionally, [field_xxx] functions only warn about duplicated
     fields in jbuild files, for backward compatibility. *)
@@ -66,7 +66,7 @@ module Decoder : sig
       If the syntax version is strictly less than `(1, 0)`, use `jbuild`.
       Otherwise use `dune`. *)
   val switch_file_kind :
-   jbuild:('a, 'b) parser ->
-   dune:('a, 'b) parser ->
-   ('a, 'b) parser
+    jbuild:('a, 'b) parser ->
+    dune:('a, 'b) parser ->
+    ('a, 'b) parser
 end

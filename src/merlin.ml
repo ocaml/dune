@@ -9,8 +9,8 @@ let warn_dropped_pp loc ~allow_approx_merlin ~reason =
   if not allow_approx_merlin then
     Errors.warn loc
       ".merlin generated is inaccurate. %s.\n\
-        Split the stanzas into different directories or silence this warning \
-        by adding (allow_approximate_merlin) to your dune-project."
+       Split the stanzas into different directories or silence this warning \
+       by adding (allow_approximate_merlin) to your dune-project."
       reason
 
 module Preprocess = struct
@@ -127,20 +127,20 @@ let pp_flags sctx ~expander ~dir_kind { preprocess; libname; _ } =
           (Super_context.context sctx).version
   with
   | Pps { loc = _; pps; flags; staged = _ } -> begin
-    match Preprocessing.get_ppx_driver sctx ~scope ~dir_kind pps with
-    | Error _ -> None
-    | Ok exe ->
-      let flags = List.map ~f:(Expander.expand_str expander) flags in
-      (Path.to_absolute_filename exe
-       :: "--as-ppx"
-       :: Preprocessing.cookie_library_name libname
-       @ flags)
-      |> List.map ~f:quote_for_merlin
-      |> String.concat ~sep:" "
-      |> Filename.quote
-      |> sprintf "FLG -ppx %s"
-      |> Option.some
-  end
+      match Preprocessing.get_ppx_driver sctx ~scope ~dir_kind pps with
+      | Error _ -> None
+      | Ok exe ->
+        let flags = List.map ~f:(Expander.expand_str expander) flags in
+        (Path.to_absolute_filename exe
+         :: "--as-ppx"
+         :: Preprocessing.cookie_library_name libname
+         @ flags)
+        |> List.map ~f:quote_for_merlin
+        |> String.concat ~sep:" "
+        |> Filename.quote
+        |> sprintf "FLG -ppx %s"
+        |> Option.some
+    end
   | Action (_, (action : Action_dune_lang.t)) ->
     begin match action with
     | Run (exe, args) ->
@@ -173,7 +173,7 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander ~dir_kind
   match Path.drop_build_context dir with
   | None -> ()
   | Some remaindir ->
-    let merlin_file = Path.relative dir ".merlin" in
+    let merlin_file = Path.relative_exn dir ".merlin" in
     (* We make the compilation of .ml/.mli files depend on the
        existence of .merlin so that they are always generated, however
        the command themselves don't read the merlin file, so we don't
@@ -185,7 +185,7 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander ~dir_kind
     SC.add_rule sctx ~dir
       (Build.path merlin_file
        >>>
-       Build.create_file (Path.relative dir ".merlin-exists"));
+       Build.create_file (Path.relative_exn dir ".merlin-exists"));
     Path.Set.singleton merlin_file
     |> Build_system.Alias.add_deps (Alias.check ~dir);
     SC.add_rule sctx ~dir

@@ -131,8 +131,8 @@ let name t = t.name
 let check_supported t (loc, ver) =
   if not (Supported_versions.is_supported t.supported_versions ver) then
     Errors.fail loc "Version %s of %s is not supported.\n\
-                  Supported versions:\n\
-                  %s"
+                     Supported versions:\n\
+                     %s"
       (Version.to_string ver) t.name
       (String.concat ~sep:"\n"
          (List.map (Supported_versions.supported_ranges t.supported_versions)

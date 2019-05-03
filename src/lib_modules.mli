@@ -16,7 +16,7 @@ val modules : t -> Module.Name_map.t
 val wrapped_compat : t -> Module.Name_map.t
 
 (** Returns the main module name if it exists. It exist for libraries with
-   [(wrapped true)] or one module libraries. *)
+    [(wrapped true)] or one module libraries. *)
 val main_module_name : t -> Module.Name.t option
 
 (** Returns only the virtual modules in the library *)

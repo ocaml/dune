@@ -45,7 +45,7 @@ module Dune_files = struct
     ; ignore_promoted_rules : bool
     }
 
-  let generated_dune_files_dir = Path.relative Path.build_dir ".dune"
+  let generated_dune_files_dir = Path.relative_exn Path.build_dir ".dune"
 
   let ensure_parent_dir_exists path =
     if Path.is_in_build_dir path then
@@ -171,7 +171,7 @@ end
     in
     Fiber.parallel_map dynamic ~f:(fun { dir; file; project; kind } ->
       let generated_dune_file =
-        Path.append_source (Path.relative generated_dune_files_dir context.name) file
+        Path.append_source (Path.relative_exn generated_dune_files_dir context.name) file
       in
       let wrapper = Path.extend_basename generated_dune_file ~suffix:".ml" in
       ensure_parent_dir_exists generated_dune_file;

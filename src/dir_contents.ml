@@ -293,7 +293,7 @@ let load_text_files sctx ft_dir
 let modules_of_files ~dir ~files =
   let make_module syntax base fn =
     (Module.Name.of_string base,
-     Module.File.make syntax (Path.relative dir fn))
+     Module.File.make syntax (Path.relative_exn dir fn))
   in
   let impl_files, intf_files =
     String.Set.to_list files
@@ -350,7 +350,7 @@ let build_mlds_map (d : _ Dir_with_dune.t) ~files =
           )
           ~standard:mlds
       in
-      Some (doc, List.map (String.Map.values mlds) ~f:(Path.relative dir))
+      Some (doc, List.map (String.Map.values mlds) ~f:(Path.relative_exn dir))
     | _ -> None)
 
 let coq_modules_of_files ~subdirs =
@@ -361,18 +361,18 @@ let coq_modules_of_files ~subdirs =
     String.Set.to_list files |> List.map ~f:(fun file ->
       let name, _ = Filename.split_extension file in
       let name = Coq_module.Name.make name in
-      Coq_module.make ~source:(Path.relative dir file) ~prefix ~name) in
+      Coq_module.make ~source:(Path.relative_exn dir file) ~prefix ~name) in
   let modules = List.concat_map ~f:build_mod_dir subdirs in
   modules
 
 (* TODO: Build reverse map and check duplicates, however, are duplicates harmful?
  * In Coq all libs are "wrapped" so including a module twice is not so bad.
- *)
+*)
 let build_coq_modules_map (d : _ Dir_with_dune.t) ~dir ~modules =
   List.fold_left d.data ~init:Lib_name.Map.empty ~f:(fun map -> function
     | Coq.T coq ->
       let modules = Coq_module.Eval.eval coq.modules
-        ~parse:(Coq_module.parse ~dir) ~standard:modules in
+                      ~parse:(Coq_module.parse ~dir) ~standard:modules in
       Lib_name.Map.add map (Dune_file.Coq.best_name coq) modules
     | _ -> map)
 
@@ -472,7 +472,7 @@ let get0_impl (sctx, dir) : result0 =
     and walk_children ft_dir ~dir ~local acc =
       String.Map.foldi (File_tree.Dir.sub_dirs ft_dir) ~init:acc
         ~f:(fun name ft_dir acc ->
-          let dir = Path.relative dir name in
+          let dir = Path.relative_exn dir name in
           let local = if qualif_mode = Qualified then name :: local else local in
           walk ft_dir ~dir ~local acc)
     in
@@ -492,10 +492,10 @@ let get0_impl (sctx, dir) : result0 =
             Module.Name.Map.union acc modules ~f:(fun name x y ->
               Errors.fail (Loc.in_file
                              (Path.source (match File_tree.Dir.dune_file ft_dir with
-                              | None ->
-                                Path.Source.relative (File_tree.Dir.path ft_dir)
-                                  "_unknown_"
-                              | Some d -> File_tree.Dune_file.path d)))
+                                | None ->
+                                  Path.Source.relative_exn (File_tree.Dir.path ft_dir)
+                                    "_unknown_"
+                                | Some d -> File_tree.Dune_file.path d)))
                 "Module %a appears in several directories:\
                  @\n- %a\
                  @\n- %a"
@@ -517,10 +517,10 @@ let get0_impl (sctx, dir) : result0 =
               String.Map.union acc sources ~f:(fun name x y ->
                 Errors.fail (Loc.in_file
                                (Path.source (match File_tree.Dir.dune_file ft_dir with
-                                | None ->
-                                  Path.Source.relative (File_tree.Dir.path ft_dir)
-                                    "_unknown_"
-                                | Some d -> File_tree.Dune_file.path d)))
+                                  | None ->
+                                    Path.Source.relative_exn (File_tree.Dir.path ft_dir)
+                                      "_unknown_"
+                                  | Some d -> File_tree.Dune_file.path d)))
                   "%a file %s appears in several directories:\
                    @\n- %a\
                    @\n- %a\

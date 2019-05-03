@@ -1,11 +1,11 @@
 (* -*- tuareg -*- *)
 open! Stdune;;
 Path.set_root (Path.External.cwd ());
-Path.set_build_dir (Path.Kind.of_string "_build");
+Path.set_build_dir (Path.Kind.of_string_exn "_build");
 
 Printexc.record_backtrace false;;
 
-let r = Path.(relative root);;
+let r = Path.(relative_exn root);;
 let e = Path.of_filename_relative_to_initial_cwd;;
 
 #install_printer Path.pp_debug;;
@@ -15,7 +15,7 @@ let pp_path_local fmt l =
 
 #install_printer pp_path_local;;
 
-Path.(let p = relative root "foo" in descendant p ~of_:p)
+Path.(let p = relative_exn root "foo" in descendant p ~of_:p)
 [%%expect{|
 - : unit = ()
 val r : string -> Path.t = <fun>
@@ -25,7 +25,7 @@ val pp_path_local : Format.formatter -> Path.Local.t -> unit = <fun>
 |}]
 
 (* different strings but same length *)
-Path.(descendant (relative root "foo") ~of_:(relative root "bar"))
+Path.(descendant (relative_exn root "foo") ~of_:(relative_exn root "bar"))
 [%%expect{|
 - : Path.t option = None
 |}]
@@ -125,87 +125,87 @@ Path.(descendant (r "foo") ~of_:Path.root)
 - : Path.t option = Some (In_source_tree "foo")
 |}]
 
-Path.(descendant (relative build_dir "foo") ~of_:root)
+Path.(descendant (relative_exn build_dir "foo") ~of_:root)
 [%%expect{|
 - : Path.t option = None
 |}]
 
-Path.(descendant (relative build_dir "foo") ~of_:(Path.of_string "/foo/bar"))
+Path.(descendant (relative_exn build_dir "foo") ~of_:(Path.of_string_exn "/foo/bar"))
 [%%expect{|
 - : Path.t option = None
 |}]
 
-Path.(descendant (relative build_dir "foo/bar") ~of_:build_dir)
+Path.(descendant (relative_exn build_dir "foo/bar") ~of_:build_dir)
 [%%expect{|
 - : Path.t option = Some (In_source_tree "foo/bar")
 |}]
 
-Path.(descendant (relative build_dir "foo/bar") ~of_:(relative build_dir "foo"))
+Path.(descendant (relative_exn build_dir "foo/bar") ~of_:(relative_exn build_dir "foo"))
 [%%expect{|
 - : Path.t option = Some (In_source_tree "bar")
 |}]
 
-Path.(descendant (relative build_dir "foo/bar") ~of_:(relative build_dir "foo"))
+Path.(descendant (relative_exn build_dir "foo/bar") ~of_:(relative_exn build_dir "foo"))
 [%%expect{|
 - : Path.t option = Some (In_source_tree "bar")
 |}]
 
-Path.(descendant (Path.of_string "/foo/bar") ~of_:(Path.of_string "/foo"))
+Path.(descendant (Path.of_string_exn "/foo/bar") ~of_:(Path.of_string_exn "/foo"))
 [%%expect{|
 - : Path.t option = None
 |}]
 
-Path.explode (Path.of_string "a/b/c");
+Path.explode (Path.of_string_exn "a/b/c");
 [%%expect{|
 - : string list option = Some ["a"; "b"; "c"]
 |}]
 
-Path.explode (Path.of_string "a/b");
+Path.explode (Path.of_string_exn "a/b");
 [%%expect{|
 - : string list option = Some ["a"; "b"]
 |}]
 
-Path.explode (Path.of_string "a");
+Path.explode (Path.of_string_exn "a");
 [%%expect{|
 - : string list option = Some ["a"]
 |}]
 
-Path.explode (Path.of_string "");
+Path.explode (Path.of_string_exn "");
 [%%expect{|
 - : string list option = Some []
 |}]
 
-Path.reach (Path.of_string "/foo/baz") ~from:(Path.of_string "/foo/bar");
+Path.reach (Path.of_string_exn "/foo/baz") ~from:(Path.of_string_exn "/foo/bar");
 [%%expect{|
 - : string = "/foo/baz"
 |}]
 
-Path.reach (Path.of_string "/foo/bar") ~from:(Path.of_string "baz")
+Path.reach (Path.of_string_exn "/foo/bar") ~from:(Path.of_string_exn "baz")
 [%%expect{|
 - : string = "/foo/bar"
 |}]
 
-Path.reach (Path.of_string "bar/foo") ~from:(Path.of_string "bar/baz/y")
+Path.reach (Path.of_string_exn "bar/foo") ~from:(Path.of_string_exn "bar/baz/y")
 [%%expect{|
 - : string = "../../foo"
 |}]
 
-Path.relative (Path.of_string "relative") "/absolute/path"
+Path.relative_exn (Path.of_string_exn "relative") "/absolute/path"
 [%%expect{|
 - : Path.t = (External "/absolute/path")
 |}]
 
-Path.relative (Path.of_string "/abs1") "/abs2"
+Path.relative_exn (Path.of_string_exn "/abs1") "/abs2"
 [%%expect{|
 - : Path.t = (External "/abs2")
 |}]
 
-Path.relative (Path.of_string "/abs1") ""
+Path.relative_exn (Path.of_string_exn "/abs1") ""
 [%%expect{|
 - : Path.t = (External "/abs1")
 |}]
 
-Path.relative Path.root "/absolute/path"
+Path.relative_exn Path.root "/absolute/path"
 [%%expect{|
 - : Path.t = (External "/absolute/path")
 |}]
@@ -235,17 +235,17 @@ Path.insert_after_build_dir_exn Path.build_dir "foobar"
 - : Path.t = (In_build_dir "foobar")
 |}]
 
-Path.insert_after_build_dir_exn (Path.relative Path.build_dir "qux") "foobar"
+Path.insert_after_build_dir_exn (Path.relative_exn Path.build_dir "qux") "foobar"
 [%%expect{|
 - : Path.t = (In_build_dir "foobar/qux")
 |}]
 
-Path.append Path.build_dir (Path.relative Path.root "foo")
+Path.append Path.build_dir (Path.relative_exn Path.root "foo")
 [%%expect{|
 - : Path.t = (In_build_dir "foo")
 |}]
 
-Path.append Path.build_dir (Path.relative Path.build_dir "foo")
+Path.append Path.build_dir (Path.relative_exn Path.build_dir "foo")
 [%%expect{|
 Exception:
 Code_error
@@ -255,7 +255,7 @@ Code_error
     List [Atom "b"; List [Atom "In_build_dir"; Atom "foo"]]]).
 |}]
 
-Path.append Path.root (Path.relative Path.build_dir "foo")
+Path.append Path.root (Path.relative_exn Path.build_dir "foo")
 [%%expect{|
 Exception:
 Code_error
@@ -265,17 +265,17 @@ Code_error
     List [Atom "b"; List [Atom "In_build_dir"; Atom "foo"]]]).
 |}]
 
-Path.append Path.root (Path.relative Path.root "foo")
+Path.append Path.root (Path.relative_exn Path.root "foo")
 [%%expect{|
 - : Path.t = (In_source_tree "foo")
 |}]
 
-Path.append (Path.of_string "/root") (Path.relative Path.root "foo")
+Path.append (Path.of_string_exn "/root") (Path.relative_exn Path.root "foo")
 [%%expect{|
 - : Path.t = (External "/root/foo")
 |}]
 
-Path.append (Path.of_string "/root") (Path.relative Path.build_dir "foo")
+Path.append (Path.of_string_exn "/root") (Path.relative_exn Path.build_dir "foo")
 [%%expect{|
 Exception:
 Code_error
@@ -285,7 +285,7 @@ Code_error
     List [Atom "b"; List [Atom "In_build_dir"; Atom "foo"]]]).
 |}]
 
-Path.rm_rf (Path.of_string "/does/not/exist/foo/bar/baz")
+Path.rm_rf (Path.of_string_exn "/does/not/exist/foo/bar/baz")
 [%%expect{|
 Exception:
 Code_error
@@ -295,12 +295,12 @@ Code_error
      [Atom "t"; List [Atom "External"; Atom "/does/not/exist/foo/bar/baz"]]]).
 |}]
 
-Path.drop_build_context (Path.relative Path.build_dir "foo/bar")
+Path.drop_build_context (Path.relative_exn Path.build_dir "foo/bar")
 [%%expect{|
 - : Path.Source.t option = Some <abstr>
 |}]
 
-Path.drop_build_context (Path.of_string "foo/bar")
+Path.drop_build_context (Path.of_string_exn "foo/bar")
 [%%expect{|
 - : Path.Source.t option = None
 |}]
@@ -330,35 +330,35 @@ Path.reach_for_running Path.build_dir ~from:Path.root
 - : string = "./_build"
 |}]
 
-Path.(reach_for_running (relative build_dir "foo/baz")
-        ~from:(relative build_dir "foo/bar/baz"))
+Path.(reach_for_running (relative_exn build_dir "foo/baz")
+        ~from:(relative_exn build_dir "foo/bar/baz"))
 [%%expect{|
 - : string = "../../baz"
 |}]
 
 Path.(reach_for_running (e "/fake/path")
-        ~from:(relative build_dir "foo/bar/baz"))
+        ~from:(relative_exn build_dir "foo/bar/baz"))
 [%%expect{|
 - : string = "/fake/path"
 |}]
 
-Path.(reach_for_running (relative root "foo") ~from:(Path.relative root "foo"))
+Path.(reach_for_running (relative_exn root "foo") ~from:(Path.relative_exn root "foo"))
 [%%expect{|
 - : string = "./."
 |}]
 
-Path.relative Path.root "_build"
+Path.relative_exn Path.root "_build"
 [%%expect{|
 - : Path.t = (In_build_dir ".")
 |}]
 
 (* This is not right, but kind of annoying to fix :/ *)
-Path.relative (r "foo") "../_build"
+Path.relative_exn (r "foo") "../_build"
 [%%expect{|
 - : Path.t = (In_build_dir ".")
 |}]
 
-Path.local_part (Path.of_string "/c/d")
+Path.local_part (Path.of_string_exn "/c/d")
 [%%expect{|
 - : Path.Relative.t = <abstr>
 |}]

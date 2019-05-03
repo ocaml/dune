@@ -119,7 +119,7 @@ let rec pp = function
               [ Pp.char '{'
               ; Pp.space
               ; Pp.hvbox [Pp.list l ~f:(fun x -> Pp.seq (pp x) (Pp.char ';'))
-                             ~sep:Pp.space]
+                            ~sep:Pp.space]
               ]
           ; Pp.space
           ; Pp.char '}'

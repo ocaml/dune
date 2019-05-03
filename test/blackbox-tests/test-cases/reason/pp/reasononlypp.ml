@@ -28,7 +28,7 @@ let () =
   if Filename.check_suffix fname ".re"
   || Filename.check_suffix fname ".rei" then (
     if !lint && (Filename.check_suffix fname ".pp.re"
-              || Filename.check_suffix fname ".pp.rei") then (
+                 || Filename.check_suffix fname ".pp.rei") then (
       Format.eprintf "reason linter doesn't accept preprocessed file %s" fname;
     );
     let ch = open_in fname in

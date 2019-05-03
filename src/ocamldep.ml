@@ -105,7 +105,7 @@ let deps_of cctx ~ml_kind unit =
       let dir = Compilation_context.dir cctx in
       let file_in_obj_dir ~suffix file =
         let base = Path.basename file in
-        Path.relative
+        Path.relative_exn
           (Obj_dir.obj_dir (Compilation_context.obj_dir cctx))
           (base ^ suffix)
       in
@@ -184,7 +184,7 @@ let graph_of_remote_lib ~obj_dir ~modules =
     | Some file ->
       let file_in_obj_dir ~suffix file =
         let base = Path.basename file in
-        Path.relative obj_dir (base ^ suffix)
+        Path.relative_exn obj_dir (base ^ suffix)
       in
       let all_deps_path file = file_in_obj_dir file ~suffix:".all-deps" in
       let all_deps_file = all_deps_path file in

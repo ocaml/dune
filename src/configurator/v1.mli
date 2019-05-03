@@ -15,8 +15,8 @@ val ocaml_config_var     : t -> string -> string option
 val ocaml_config_var_exn : t -> string -> string
 
 (** [c_test t ?c_flags ?link_flags c_code] try to compile and link the
-   C code given in [c_code]. Return whether compilation was
-   successful. *)
+    C code given in [c_code]. Return whether compilation was
+    successful. *)
 val c_test
   :  t
   -> ?c_flags:   string list (** default: [] *)
@@ -43,7 +43,7 @@ module C_define : sig
 
       {[
         # C.C_define.import c ~includes:"caml/config.h"
-                            ["ARCH_SIXTYFOUR", Switch];;
+          ["ARCH_SIXTYFOUR", Switch];;
         - (string * Configurator.C_define.Value.t) list =
         ["ARCH_SIXTYFOUR", Switch true]
       ]}
@@ -64,7 +64,7 @@ module C_define : sig
       {[
         #ifndef BLAH
         #define BLAH
-        ...
+          ...
         #endif
       ]}
 
@@ -83,7 +83,7 @@ module Pkg_config : sig
 
   val get : configurator -> t option
   (** Search pkg-config in the PATH.  Returns [None] if pkg-config is
-     not found. *)
+      not found. *)
 
   type package_conf =
     { libs   : string list
@@ -92,8 +92,8 @@ module Pkg_config : sig
 
   val query : t -> package:string -> package_conf option
   (** [query t ~package] query pkg-config for the [package].  The
-     package may contain a version constraint.  For example
-     "gtk+-3.0 >= 3.18".  Returns [None] if [package] is not available  *)
+      package may contain a version constraint.  For example
+      "gtk+-3.0 >= 3.18".  Returns [None] if [package] is not available  *)
 
   val query_expr : t
     -> package:string
@@ -105,10 +105,10 @@ module Pkg_config : sig
     -> package:string
     -> expr:string
     -> (package_conf, string) Result.t
-  (** [query_expr_err t ~package ~expr] query pkg-config for the
-     [package]. [expr] may contain a version constraint, for example
-     "gtk+-3.0 >= 3.18". [package] should be just the name of the
-     package. Returns [Error error_msg] if [package] is not available *)
+    (** [query_expr_err t ~package ~expr] query pkg-config for the
+        [package]. [expr] may contain a version constraint, for example
+        "gtk+-3.0 >= 3.18". [package] should be just the name of the
+        package. Returns [Error error_msg] if [package] is not available *)
 end with type configurator := t
 
 module Flags : sig
@@ -140,8 +140,8 @@ end
 
 val which : t -> string -> string option
 (** [which t prog] seek [prog] in the PATH and return the name
-   of the program prefixed with the first path where it is found.
-   Return [None] the the program is not found. *)
+    of the program prefixed with the first path where it is found.
+    Return [None] the the program is not found. *)
 
 
 (** Execute external programs. *)
@@ -152,27 +152,37 @@ module Process : sig
     ; stderr    : string
     }
 
-  val run : t -> ?dir:string -> ?env:string list ->
-            string -> string list -> result
+  val run
+    :  t
+    -> ?dir:string
+    -> ?env:string list
+    -> string
+    -> string list
+    -> result
   (** [run t prog args] runs [prog] with arguments [args] and returns
-     its exit status together with the content of stdout and stderr.
-     The action is logged.
+      its exit status together with the content of stdout and stderr.
+      The action is logged.
 
-     @param dir change to [dir] before running the command.
-     @param env specify additional environment variables as a list of
-     the form NAME=VALUE. *)
+      @param dir change to [dir] before running the command.
+      @param env specify additional environment variables as a list of
+      the form NAME=VALUE. *)
 
-  val run_capture_exn : t -> ?dir:string -> ?env:string list ->
-                        string -> string list -> string
+  val run_capture_exn
+    :  t
+    -> ?dir:string
+    -> ?env:string list
+    -> string
+    -> string list
+    -> string
   (** [run_capture_exn t prog args] same as [run t prog args] but
-     returns [stdout] and {!die} if the error code is nonzero or there
-     is some output on [stderr].  *)
+      returns [stdout] and {!die} if the error code is nonzero or there
+      is some output on [stderr].  *)
 
   val run_ok : t -> ?dir:string -> ?env:string list ->
-               string -> string list -> bool
+    string -> string list -> bool
   (** [run_ok t prog args] same as [run t prog args] but only cares
-     whether the execution terminated successfully (i.e., returned an
-     error code of [0]).  *)
+      whether the execution terminated successfully (i.e., returned an
+      error code of [0]).  *)
 end
 
 
@@ -184,5 +194,5 @@ val main
   -> unit
 
 (** Abort execution. If raised from within [main], the argument of
-   [die] is printed as [Error: <message>]. *)
+    [die] is printed as [Error: <message>]. *)
 val die : ('a, unit, string, 'b) format4 -> 'a

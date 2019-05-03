@@ -145,7 +145,7 @@ module Unresolved = struct
 
     let of_string ~dir ~loc s =
       if String.contains s '/' then
-        This (Path.relative dir s)
+        This (Path.relative_exn dir s)
       else
         Search (loc, s)
   end

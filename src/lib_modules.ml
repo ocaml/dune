@@ -42,7 +42,7 @@ let make_alias_module ~obj_dir ~implements ~lib_name ~stdlib
          ~visibility:Public
          ~kind:Impl
          ~impl:(Module.File.make OCaml
-                  (Path.relative dir (sprintf "%s.ml-gen" alias_prefix)))
+                  (Path.relative_exn dir (sprintf "%s.ml-gen" alias_prefix)))
          ~obj_name:alias_prefix
          ~obj_dir)
   else if Module.Name.Map.cardinal modules = 1 &&
@@ -59,7 +59,7 @@ let make_alias_module ~obj_dir ~implements ~lib_name ~stdlib
          ~visibility:Public
          ~kind:Impl
          ~impl:(Module.File.make OCaml
-                  (Path.relative dir (sprintf "%s__.ml-gen" alias_prefix)))
+                  (Path.relative_exn dir (sprintf "%s__.ml-gen" alias_prefix)))
          ~obj_name:(alias_prefix ^ "__")
          ~obj_dir)
   else
@@ -68,7 +68,7 @@ let make_alias_module ~obj_dir ~implements ~lib_name ~stdlib
          ~visibility:Public
          ~kind:Impl
          ~impl:(Module.File.make OCaml
-                  (Path.relative dir (alias_prefix ^ ".ml-gen")))
+                  (Path.relative_exn dir (alias_prefix ^ ".ml-gen")))
          ~obj_name:alias_prefix
          ~obj_dir)
 

@@ -263,43 +263,43 @@ let no_targets_allowed () =
 let static_deps t ~all_targets =
   let rec loop : type a b. (a, b) t -> Static_deps.t -> bool -> Static_deps.t
     = fun t acc targets_allowed ->
-    match t with
-    | Arr _ -> acc
-    | Targets _ -> if not targets_allowed then no_targets_allowed (); acc
-    | Compose (a, b) -> loop a (loop b acc targets_allowed) targets_allowed
-    | First t -> loop t acc targets_allowed
-    | Second t -> loop t acc targets_allowed
-    | Split (a, b) -> loop a (loop b acc targets_allowed) targets_allowed
-    | Fanout (a, b) -> loop a (loop b acc targets_allowed) targets_allowed
-    | Deps deps ->
-      Static_deps.add_action_deps acc deps
-    | Paths_for_rule fns ->
-      Static_deps.add_rule_paths acc fns
-    | Paths_glob g ->
-      Static_deps.add_action_dep acc (Dep.glob g)
-    | If_file_exists (p, state) -> begin
-        match !state with
-        | Decided (_, t) -> loop t acc false
-        | Undecided (then_, else_) ->
-          let dir = Path.parent_exn p in
-          let targets = all_targets ~dir in
-          if Path.Set.mem targets p then begin
-            state := Decided (true, then_);
-            loop then_ acc false
-          end else begin
-            state := Decided (false, else_);
-            loop else_ acc false
-          end
-      end
-    | Dyn_paths t -> loop t acc targets_allowed
-    | Dyn_deps t -> loop t acc targets_allowed
-    | Contents p -> Static_deps.add_rule_path acc p
-    | Lines_of p -> Static_deps.add_rule_path acc p
-    | Record_lib_deps _ -> acc
-    | Fail _ -> acc
-    | Memo m -> loop m.t acc targets_allowed
-    | Catch (t, _) -> loop t acc targets_allowed
-    | Lazy_no_targets t -> loop (Lazy.force t) acc false
+      match t with
+      | Arr _ -> acc
+      | Targets _ -> if not targets_allowed then no_targets_allowed (); acc
+      | Compose (a, b) -> loop a (loop b acc targets_allowed) targets_allowed
+      | First t -> loop t acc targets_allowed
+      | Second t -> loop t acc targets_allowed
+      | Split (a, b) -> loop a (loop b acc targets_allowed) targets_allowed
+      | Fanout (a, b) -> loop a (loop b acc targets_allowed) targets_allowed
+      | Deps deps ->
+        Static_deps.add_action_deps acc deps
+      | Paths_for_rule fns ->
+        Static_deps.add_rule_paths acc fns
+      | Paths_glob g ->
+        Static_deps.add_action_dep acc (Dep.glob g)
+      | If_file_exists (p, state) -> begin
+          match !state with
+          | Decided (_, t) -> loop t acc false
+          | Undecided (then_, else_) ->
+            let dir = Path.parent_exn p in
+            let targets = all_targets ~dir in
+            if Path.Set.mem targets p then begin
+              state := Decided (true, then_);
+              loop then_ acc false
+            end else begin
+              state := Decided (false, else_);
+              loop else_ acc false
+            end
+        end
+      | Dyn_paths t -> loop t acc targets_allowed
+      | Dyn_deps t -> loop t acc targets_allowed
+      | Contents p -> Static_deps.add_rule_path acc p
+      | Lines_of p -> Static_deps.add_rule_path acc p
+      | Record_lib_deps _ -> acc
+      | Fail _ -> acc
+      | Memo m -> loop m.t acc targets_allowed
+      | Catch (t, _) -> loop t acc targets_allowed
+      | Lazy_no_targets t -> loop (Lazy.force t) acc false
   in
   loop t Static_deps.empty true
 

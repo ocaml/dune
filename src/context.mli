@@ -3,8 +3,8 @@
 (** jbuild supports two different kind of contexts:
 
     - the default context, which correspond to the environment jbuild is run, i.e. it
-    takes [ocamlc] and other tools from the [PATH] and the ocamlfind configuration where
-    it can find it
+      takes [ocamlc] and other tools from the [PATH] and the ocamlfind configuration where
+      it can find it
 
     - opam switch contexts, where one opam switch correspond to one context
 

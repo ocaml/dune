@@ -109,7 +109,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
       |> List.map ~f:(fun (m : Module.t) ->
         let name = Module.Name.to_string (Module.name m) in
         sprintf "(** @canonical %s.%s *)\n\
-                module %s = %s\n"
+                 module %s = %s\n"
           (Module.Name.to_string main_module_name)
           name
           name
@@ -132,9 +132,9 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
     let modules = Lib_modules.modules lib_modules in
     let wrapped = Lib_modules.wrapped lib_modules in
     let transition_message = lazy (
-        match (wrapped : Wrapped.t) with
-        | Simple _ -> assert false
-        | Yes_with_transition r -> r)
+      match (wrapped : Wrapped.t) with
+      | Simple _ -> assert false
+      | Yes_with_transition r -> r)
     in
     Module.Name.Map.iteri wrapped_compat ~f:(fun name m ->
       let main_module_name =
@@ -260,7 +260,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
         String.Set.fold (Dir_contents.text_files dc) ~init:acc
           ~f:(fun fn acc ->
             if String.is_suffix fn ~suffix:".h" then
-              Path.relative (Dir_contents.dir dc) fn :: acc
+              Path.relative_exn (Dir_contents.dir dc) fn :: acc
             else
               acc))
     in
@@ -278,7 +278,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
     let build_x_files build_x files =
       String.Map.to_list files
       |> List.map ~f:(fun (obj, (loc, src)) ->
-        let dst = Path.relative dir (obj ^ ctx.ext_obj) in
+        let dst = Path.relative_exn dir (obj ^ ctx.ext_obj) in
         build_x lib ~dir ~expander ~includes (loc, src, dst)
       )
     in
@@ -351,7 +351,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
             ; Cmx, ctx.ext_obj ]
             |> List.iter ~f:(fun (kind, ext) ->
               let src = Module.obj_file m ~kind ~ext in
-              let dst = Path.relative dir ((Module.obj_name m) ^ ext) in
+              let dst = Path.relative_exn dir ((Module.obj_name m) ^ ext) in
               SC.add_rule sctx ~dir (Build.copy ~src ~dst));
             Module.Name.Map.remove modules name
         end
@@ -393,12 +393,12 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
           Library.archive lib ~dir
             ~ext:(Mode.compiled_lib_ext Mode.Byte) in
         let target =
-          Path.relative (Obj_dir.obj_dir obj_dir) (Path.basename src)
+          Path.relative_exn (Obj_dir.obj_dir obj_dir) (Path.basename src)
           |> Path.extend_basename ~suffix:".js" in
         Js_of_ocaml_rules.build_cm cctx ~js_of_ocaml ~src ~target);
     if Dynlink_supported.By_the_os.get ctx.natdynlink_supported
     && modes.native then
-        build_shared lib ~dir ~flags ~ctx
+      build_shared lib ~dir ~flags ~ctx
 
   let library_rules (lib : Library.t) ~dir_contents ~dir ~expander ~scope
         ~compile_info ~dir_kind =

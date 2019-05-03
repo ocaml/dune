@@ -104,7 +104,7 @@ module Sources = struct
 
   let objects (t : t) ~dir ~ext_obj =
     String.Map.keys t
-    |> List.map ~f:(fun c -> Path.relative dir (c ^ ext_obj))
+    |> List.map ~f:(fun c -> Path.relative_exn dir (c ^ ext_obj))
 
   let split_by_kind t =
     let (c, cxx) =

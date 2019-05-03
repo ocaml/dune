@@ -24,15 +24,15 @@ module Includes = struct
           [ iflags
           ; Hidden_deps
               (if opaque then
-                  List.map libs ~f:(fun lib ->
-                    (lib, if Lib.is_local lib then
-                       [Lib_file_deps.Group.Cmi]
-                     else
-                       [Cmi; Cmx]))
-                  |> Lib_file_deps.deps_with_exts
-                else
-                  Lib_file_deps.deps libs
-                    ~groups:[Lib_file_deps.Group.Cmi; Cmx])
+                 List.map libs ~f:(fun lib ->
+                   (lib, if Lib.is_local lib then
+                      [Lib_file_deps.Group.Cmi]
+                    else
+                      [Cmi; Cmx]))
+                 |> Lib_file_deps.deps_with_exts
+               else
+                 Lib_file_deps.deps libs
+                   ~groups:[Lib_file_deps.Group.Cmi; Cmx])
           ]
       in
       { cmi = cmi_includes

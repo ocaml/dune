@@ -120,7 +120,7 @@ module Dir = struct
 
   let file_paths t =
     Path.Source.Set.of_list
-      (List.map (String.Set.to_list (files t)) ~f:(Path.Source.relative t.path))
+      (List.map (String.Set.to_list (files t)) ~f:(Path.Source.relative_exn t.path))
 
   let sub_dir_names t =
     String.Map.foldi (sub_dirs t) ~init:String.Set.empty
@@ -128,7 +128,7 @@ module Dir = struct
 
   let sub_dir_paths t =
     String.Map.foldi (sub_dirs t) ~init:Path.Source.Set.empty
-      ~f:(fun s _ acc -> Path.Source.Set.add acc (Path.Source.relative t.path s))
+      ~f:(fun s _ acc -> Path.Source.Set.add acc (Path.Source.relative_exn t.path s))
 
   let rec fold t ~traverse_ignored_dirs ~init:acc ~f =
     if not traverse_ignored_dirs && t.ignored then
@@ -185,13 +185,13 @@ let readdir path =
       (Path.Source.to_string_maybe_quoted path)
       (Path.Source.basename path)
       (Path.Source.to_string_maybe_quoted
-         (Path.Source.relative (Path.Source.parent_exn path) "dune"))
+         (Path.Source.relative_exn (Path.Source.parent_exn path) "dune"))
       (Unix.error_message unix_error);
     Error unix_error
   | Ok unsorted_contents ->
     let files, dirs =
       List.filter_partition_map unsorted_contents ~f:(fun fn ->
-        let path = Path.Source.relative path fn in
+        let path = Path.Source.relative_exn path fn in
         if Path.Source.is_in_build_dir path then
           Skip
         else begin
@@ -251,7 +251,7 @@ let load ?(warn_when_seeing_jbuild_file=true) path ~ancestor_vcs =
             match List.filter ["dune"; "jbuild"] ~f:(String.Set.mem files) with
             | [] -> (None, Sub_dirs.default)
             | [fn] ->
-              let file = Path.Source.relative path fn in
+              let file = Path.Source.relative_exn path fn in
               if fn = "dune" then
                 ignore (Dune_project.ensure_project_file_exists project
                         : Dune_project.created_or_already_exist)
@@ -277,7 +277,7 @@ let load ?(warn_when_seeing_jbuild_file=true) path ~ancestor_vcs =
             if String.Set.mem files "jbuild-ignore" then
               Sub_dirs.add_data_only_dirs sub_dirs
                 ~dirs:(load_jbuild_ignore (
-                  Path.source (Path.Source.relative path "jbuild-ignore")))
+                  Path.source (Path.Source.relative_exn path "jbuild-ignore")))
             else
               sub_dirs
           in
@@ -351,7 +351,7 @@ let files_of t path =
   | None -> Path.Source.Set.empty
   | Some dir ->
     Path.Source.Set.of_list (
-      List.map (String.Set.to_list (Dir.files dir)) ~f:(Path.Source.relative path))
+      List.map (String.Set.to_list (Dir.files dir)) ~f:(Path.Source.relative_exn path))
 
 let file_exists t path fn =
   match find_dir t path with
@@ -372,4 +372,4 @@ let files_recursively_in t ?(prefix_with=Path.root) path =
       ~f:(fun dir acc ->
         let path = Path.append_source prefix_with (Dir.path dir) in
         String.Set.fold (Dir.files dir) ~init:acc ~f:(fun fn acc ->
-          Path.Set.add acc (Path.relative path fn)))
+          Path.Set.add acc (Path.relative_exn path fn)))

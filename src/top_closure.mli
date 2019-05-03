@@ -26,4 +26,4 @@ module String : S with type key := string and type 'a monad := 'a Monad.Id.t
 module Make(Keys : Keys)(Monad : Monad.S) : S
   with type key := Keys.elt
    and type 'a monad := 'a Monad.t
-[@@inlined always]
+   [@@inlined always]

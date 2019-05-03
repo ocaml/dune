@@ -34,7 +34,7 @@ let term =
   Scheduler.go ~log ~common (fun () ->
     let open Fiber.O in
     let* setup = Import.Main.setup ~log common in
-    let dir = Path.of_string dir in
+    let dir = Path.of_string_exn dir in
     let checked = Util.check_path setup.workspace.contexts dir in
     let request =
       Build.all (

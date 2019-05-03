@@ -8,7 +8,7 @@ exception Code_error of Sexp.t
 (* CR-soon diml:
    - Rename to [User_error]
    - change the [string] argument to [Loc0.t option * string] and get rid of
-   [Loc.Error]. The two are a bit confusing
+     [Loc.Error]. The two are a bit confusing
    - change [string] to [Colors.Style.t Lib_name.t]
 *)
 (** A fatal error, that should be reported to the user in a nice way *)

@@ -34,7 +34,7 @@ let chdir dir ~f =
   Sys.chdir old_dir
 
 let gen_test ~impl ~modules_without_implementation ~virtual_modules
-  ~private_modules =
+      ~private_modules =
   printf "impl: %b. modules_without_implementation: %b. \
           virtual_modules: %b. private_modules: %b\n%!"
     impl modules_without_implementation virtual_modules private_modules;

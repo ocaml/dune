@@ -5,7 +5,7 @@ open Build.O
 
 module SC = Super_context
 
-let (++) = Path.relative
+let (++) = Path.relative_exn
 
 let lib_unique_name lib =
   let name = Lib.name lib in
@@ -113,7 +113,7 @@ end = struct
 
   let odoc_file ~doc_dir t =
     let t = Filename.chop_extension (Path.basename t) in
-    Path.relative doc_dir (sprintf "page-%s%s" t odoc_ext)
+    Path.relative_exn doc_dir (sprintf "page-%s%s" t odoc_ext)
 
   let odoc_input t = t
 end

@@ -129,10 +129,10 @@ module Register_end_point(M : End_point) = struct
       let* pps = Lib.Compile.pps c.compile_info in
       let* written_by_user =
         match M.Info.backends info with
-         | None -> Ok None
-         | Some l ->
-           Result.List.map l ~f:(M.Backend.resolve (Scope.libs c.scope))
-           >>| Option.some
+        | None -> Ok None
+        | Some l ->
+          Result.List.map l ~f:(M.Backend.resolve (Scope.libs c.scope))
+          >>| Option.some
       in
       M.Backend.Selection_error.or_exn ~loc:(M.Info.loc info)
         (M.Backend.select_extensible_backends

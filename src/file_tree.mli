@@ -39,7 +39,7 @@ module Dir : sig
   val sub_dir_names : t -> String.Set.t
 
   (** Whether this directory is ignored by an [ignored_subdirs] stanza
-     or [jbuild-ignore] file in one of its ancestor directories. *)
+      or [jbuild-ignore] file in one of its ancestor directories. *)
   val ignored : t -> bool
 
   val vcs : t -> Vcs.t option

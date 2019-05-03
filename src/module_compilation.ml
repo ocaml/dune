@@ -91,10 +91,11 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
       if CC.dir_kind cctx = Jbuild then begin
         (* Symlink the object files in the original directory for
            backward compatibility *)
-        let old_dst = Path.relative dir ((Module.obj_name m) ^ (Cm_kind.ext cm_kind)) in
+        let old_dst =
+          Path.relative_exn dir ((Module.obj_name m) ^ (Cm_kind.ext cm_kind)) in
         SC.add_rule sctx ~dir (Build.symlink ~src:dst ~dst:old_dst);
         List.iter other_targets ~f:(fun in_obj_dir ->
-          let in_dir = Path.relative dir (Path.basename in_obj_dir) in
+          let in_dir = Path.relative_exn dir (Path.basename in_obj_dir) in
           SC.add_rule sctx ~dir (Build.symlink ~src:in_obj_dir ~dst:in_dir))
       end;
       let opaque_arg =

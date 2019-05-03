@@ -134,7 +134,7 @@ module Of_sctx = struct
           let files = Super_context.source_files sctx ~src_path:Path.Source.root in
           String.Set.fold files ~init:[] ~f:(fun fn acc ->
             if is_odig_doc_file fn then
-              Path.relative ctx.build_dir fn :: acc
+              Path.relative_exn ctx.build_dir fn :: acc
             else
               acc)
         in
@@ -185,7 +185,7 @@ let meta_file t = Path.append_source t.ctx_build_dir (Package.meta_file t.pkg)
 let build_dir t = Path.append_source t.ctx_build_dir t.pkg.path
 let name t = t.pkg.name
 let dune_package_file t =
-  Path.relative (build_dir t)
+  Path.relative_exn (build_dir t)
     (Package.Name.to_string (name t) ^ ".dune-package")
 
 let coqlibs t = t.coqlibs

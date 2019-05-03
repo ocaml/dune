@@ -21,7 +21,7 @@ module Expanded = struct
       let basename = Path.basename src in
       String.drop_suffix basename ~suffix:".exe"
       |> Option.value ~default:basename
-      |> Path.Relative.of_string
+      |> Path.Relative.of_string_exn
 
   let dst_path t ~dir =
     Path.append_relative dir (dst_basename t)
@@ -35,7 +35,7 @@ module Unexpanded = struct
     ; dst = Some (String_with_vars.make_text locd dst)
     }
 
-  let expand_src t ~dir ~f = Path.relative dir (f t.src)
+  let expand_src t ~dir ~f = Path.relative_exn dir (f t.src)
 
   let destination_relative_to_install_path t ~section ~expand ~expand_partial =
     let dst = Option.map ~f:expand t.dst in
@@ -48,13 +48,13 @@ module Unexpanded = struct
     let f sw = (String_with_vars.loc sw, f sw) in
     let src =
       let (loc, expanded) = f t.src in
-      (loc, Path.relative dir expanded)
+      (loc, Path.relative_exn dir expanded)
     in
     { src
     ; dst =
         let f sw =
           let (loc, p) = f sw in
-          (loc, Path.Relative.of_string p)
+          (loc, Path.Relative.of_string_exn p)
         in
         Option.map ~f t.dst
     }

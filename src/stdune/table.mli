@@ -1,14 +1,14 @@
 (** Hashtable with a simple polymorphic type, but without the polymorphic equality.
 
-   This module re-wraps the hashtable implementation provided by [Hashtbl.Make] under
-   a different interface: we just have a single type [('k, 'v) t], similar to a
-   polymorphic hashtable.
+    This module re-wraps the hashtable implementation provided by [Hashtbl.Make] under
+    a different interface: we just have a single type [('k, 'v) t], similar to a
+    polymorphic hashtable.
 
-   This means that if you want a hash table generic over the type of keys,
-   you don't have to put your type inside a functor.
+    This means that if you want a hash table generic over the type of keys,
+    you don't have to put your type inside a functor.
 
-   Unlike the polymorphich hashtable ([('k, 'v) Hashtbl.t]), this does not use polymorphic
-   hash and polymorphic equality, so this module does respect abstraction boundaries.
+    Unlike the polymorphich hashtable ([('k, 'v) Hashtbl.t]), this does not use polymorphic
+    hash and polymorphic equality, so this module does respect abstraction boundaries.
 *)
 
 type ('k, 'v) t

@@ -34,7 +34,11 @@ let compare_vals ~dir x y =
 
 let to_path ?error_loc t ~dir =
   match t with
-  | String s -> Path.relative ?error_loc dir s
+  | String s ->
+    begin match Path.relative dir s with
+    | Ok s -> s
+    | Error e -> Errors.fail_opt error_loc "%s" e
+    end
   | Dir p
   | Path p -> p
 

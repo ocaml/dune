@@ -113,7 +113,7 @@ end = struct
       | "." -> anonymous_root
       | _ when s.[0] = '.' ->
         let p =
-          Path.of_string
+          Path.of_string_exn
             (String.split s ~on:'.'
              |> List.tl
              |> String.concat ~sep:"/")
@@ -736,7 +736,7 @@ let anonymous = lazy (
   let name = Name.anonymous_root in
   let project_file =
     { Project_file.
-      file = Path.Source.relative Path.Source.root filename
+      file = Path.Source.relative_exn Path.Source.root filename
     ; exists = false
     ; project_name = name
     }
@@ -858,7 +858,7 @@ let parse ~dir ~lang ~packages ~file =
      })
 
 let load_dune_project ~dir packages =
-  let file = Path.Source.relative dir filename in
+  let file = Path.Source.relative_exn dir filename in
   load (Path.source file) ~f:(fun lang -> parse ~dir ~lang ~packages ~file)
 
 let make_jbuilder_project ~dir packages =
@@ -866,7 +866,7 @@ let make_jbuilder_project ~dir packages =
   let name = default_name ~dir:(Path.source dir) ~packages in
   let project_file =
     { Project_file.
-      file = Path.Source.relative dir filename
+      file = Path.Source.relative_exn dir filename
     ; exists = false
     ; project_name = name
     }
@@ -907,7 +907,7 @@ let load ~dir ~files =
         let version =
           let open Option.O in
           let* opam =
-            let opam_file = Path.Source.relative dir fn in
+            let opam_file = Path.Source.relative_exn dir fn in
             match Opam_file.load (Path.source opam_file) with
             | s -> Some s
             | exception exn ->

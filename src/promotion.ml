@@ -43,7 +43,7 @@ module P = Utils.Persistent(struct
     let version = 1
   end)
 
-let db_file = Path.relative Path.build_dir ".to-promote"
+let db_file = Path.relative_exn Path.build_dir ".to-promote"
 
 let dump_db db =
   if Path.build_dir_exists () then begin
@@ -76,7 +76,7 @@ let do_promote db files_to_promote =
         if fn = "" || fn.[0] = '.' || fn = "install" then
           None
         else
-          let path = Path.(relative build_dir) fn in
+          let path = Path.(relative_exn build_dir) fn in
           Option.some_if (Path.is_directory path) path)
   in
   let dirs_to_clear_from_cache = Path.root :: potential_build_contexts in

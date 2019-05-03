@@ -174,26 +174,26 @@ module Section = struct
       ; man          : Path.t
       }
 
-    let make ~package ~destdir ?(libdir=Path.relative destdir "lib") () =
+    let make ~package ~destdir ?(libdir=Path.relative_exn destdir "lib") () =
       let package = Package.Name.to_string package in
       let lib_root     = libdir                        in
       let libexec_root = libdir                        in
-      let share_root   = Path.relative destdir "share" in
-      let etc_root     = Path.relative destdir "etc"   in
-      let doc_root     = Path.relative destdir "doc"   in
+      let share_root   = Path.relative_exn destdir "share" in
+      let etc_root     = Path.relative_exn destdir "etc"   in
+      let doc_root     = Path.relative_exn destdir "doc"   in
       { lib_root
       ; libexec_root
       ; share_root
-      ; bin          = Path.relative destdir "bin"
-      ; sbin         = Path.relative destdir "sbin"
-      ; man          = Path.relative destdir "man"
-      ; toplevel     = Path.relative libdir  "toplevel"
-      ; stublibs     = Path.relative libdir  "stublibs"
-      ; lib          = Path.relative lib_root     package
-      ; libexec      = Path.relative libexec_root package
-      ; share        = Path.relative share_root   package
-      ; etc          = Path.relative etc_root     package
-      ; doc          = Path.relative doc_root     package
+      ; bin          = Path.relative_exn destdir "bin"
+      ; sbin         = Path.relative_exn destdir "sbin"
+      ; man          = Path.relative_exn destdir "man"
+      ; toplevel     = Path.relative_exn libdir  "toplevel"
+      ; stublibs     = Path.relative_exn libdir  "stublibs"
+      ; lib          = Path.relative_exn lib_root     package
+      ; libexec      = Path.relative_exn libexec_root package
+      ; share        = Path.relative_exn share_root   package
+      ; etc          = Path.relative_exn etc_root     package
+      ; doc          = Path.relative_exn doc_root     package
       }
 
     let get t section =
@@ -214,7 +214,7 @@ module Section = struct
       | Misc         -> Exn.code_error "Install.Paths.get" []
 
     let install_path t section p =
-      Path.relative (get t section) (Dst.to_string p)
+      Path.relative_exn (get t section) (Dst.to_string p)
 
   end
 end
@@ -374,11 +374,11 @@ let load_install_file path =
             | List (_, l) ->
               List.map l ~f:(function
                 | String (_, src) ->
-                  let src = Path.of_string src in
+                  let src = Path.of_string_exn src in
                   Entry.of_install_file ~src ~dst:None ~section
                 | Option (_, String (_, src),
                           [String (_, dst)]) ->
-                  let src = Path.of_string src in
+                  let src = Path.of_string_exn src in
                   Entry.of_install_file ~src ~dst:(Some dst) ~section
                 | v ->
                   fail (pos_of_opam_value v)

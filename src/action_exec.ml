@@ -19,8 +19,8 @@ let exec_run ~ectx ~dir ~env ~stdout_to ~stderr_to prog args =
         die "Context %s has a host %s.@.It's not possible to execute binary %a \
              in it.@.@.This is a bug and should be reported upstream."
           target.name host.name Path.pp prog in
-    invalid_prefix (Path.relative Path.build_dir target.name);
-    invalid_prefix (Path.relative Path.build_dir ("install/" ^ target.name));
+    invalid_prefix (Path.relative_exn Path.build_dir target.name);
+    invalid_prefix (Path.relative_exn Path.build_dir ("install/" ^ target.name));
   end;
   Process.run Strict ~dir ~env
     ~stdout_to ~stderr_to

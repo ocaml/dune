@@ -68,7 +68,7 @@ let pkg_version ~path ~(pkg : Package.t) =
     | candidate :: rest ->
       match candidate with
       | File fn ->
-        let p = Path.relative path fn in
+        let p = Path.relative_exn path fn in
         Build.if_file_exists p
           ~then_:(Build.lines_of p
                   >>^ function
@@ -305,7 +305,7 @@ let install_file sctx (package : Local_package.t) entries =
     |> List.rev_append entries
   in
   let fn =
-    Path.relative pkg_build_dir
+    Path.relative_exn pkg_build_dir
       (Utils.install_file ~package:package_name
          ~findlib_toolchain:ctx.findlib_toolchain)
   in
@@ -334,7 +334,7 @@ let install_file sctx (package : Local_package.t) entries =
          match ctx.findlib_toolchain with
          | None -> entries
          | Some toolchain ->
-           let prefix = Path.of_string (toolchain ^ "-sysroot") in
+           let prefix = Path.of_string_exn (toolchain ^ "-sysroot") in
            List.map entries
              ~f:(Install.Entry.add_install_prefix
                    ~paths:install_paths ~prefix)
@@ -414,7 +414,7 @@ let init_install_files (ctx : Context.t) (package : Local_package.t) =
     in
     let path = Local_package.build_dir package in
     let install_alias = Alias.install ~dir:path in
-    let install_file = Path.relative path install_fn in
+    let install_file = Path.relative_exn path install_fn in
     Build_system.Alias.add_deps install_alias (Path.Set.singleton install_file)
 
 let init sctx =

@@ -7,7 +7,7 @@ open Import
 
 let () =
   Path.set_root (Path.External.cwd ());
-  Path.set_build_dir (Path.Kind.of_string "_build")
+  Path.set_build_dir (Path.Kind.of_string_exn "_build")
 ;;
 
 let print_pkg ppf pkg =
@@ -27,7 +27,7 @@ let findlib =
   let cwd = Path.of_filename_relative_to_initial_cwd (Sys.getcwd ()) in
     Findlib.create
     ~stdlib_dir:cwd
-    ~paths:[Path.relative cwd "test/unit-tests/findlib-db"]
+    ~paths:[Path.relative_exn cwd "test/unit-tests/findlib-db"]
     ~version:(Ocaml_version.make (4, 02, 3))
 ;;
 

@@ -76,11 +76,11 @@ module Run (P : PARAMS) : sig end = struct
      that Menhir must build. *)
 
   let source m =
-    Path.relative dir (m ^ ".mly")
+    Path.relative_exn dir (m ^ ".mly")
 
   let targets m ~cmly =
     let base = [m ^ ".ml"; m ^ ".mli"] in
-    List.map ~f:(Path.relative dir) (
+    List.map ~f:(Path.relative_exn dir) (
       if cmly then
         (m ^ ".cmly") :: base
       else
@@ -100,10 +100,10 @@ module Run (P : PARAMS) : sig end = struct
     m ^ "__mock"
 
   let mock_ml m : Path.t =
-    Path.relative dir (mock m ^ ".ml.mock")
+    Path.relative_exn dir (mock m ^ ".ml.mock")
 
   let inferred_mli m : Path.t =
-    Path.relative dir (mock m ^ ".mli.inferred")
+    Path.relative_exn dir (mock m ^ ".mli.inferred")
 
   (* ------------------------------------------------------------------------ *)
 
@@ -199,7 +199,7 @@ module Run (P : PARAMS) : sig end = struct
       menhir
         [ Dyn (fun flags -> As flags)
         ; Deps (sources stanza.modules)
-        ; A "--base" ; Path (Path.relative dir base)
+        ; A "--base" ; Path (Path.relative_exn dir base)
         ; A "--infer-write-query"; Target (mock_ml base)
         ]
     );
@@ -242,7 +242,7 @@ module Run (P : PARAMS) : sig end = struct
       menhir
         [ Dyn (fun flags -> As flags)
         ; Deps (sources stanza.modules)
-        ; A "--base" ; Path (Path.relative dir base)
+        ; A "--base" ; Path (Path.relative_exn dir base)
         ; A "--infer-read-reply"; Dep (inferred_mli base)
         ; Hidden_targets (targets base ~cmly)
         ]
@@ -261,7 +261,7 @@ module Run (P : PARAMS) : sig end = struct
       menhir
         [ Dyn (fun flags -> As flags)
         ; Deps (sources stanza.modules)
-        ; A "--base" ; Path (Path.relative dir base)
+        ; A "--base" ; Path (Path.relative_exn dir base)
         ; Hidden_targets (targets base ~cmly)
         ]
     )

@@ -43,7 +43,7 @@ let equal x y = compare x y = Eq
 let hash { dir ; name } =
   Hashtbl.hash (Path.hash dir, String.hash name)
 
-let pp fmt t = Path.pp fmt (Path.relative t.dir t.name)
+let pp fmt t = Path.pp fmt (Path.relative_exn t.dir t.name)
 
 let to_dyn { dir ; name } =
   let open Dyn in
@@ -59,10 +59,10 @@ let suffix = "-" ^ String.make 32 '0'
 let name t = t.name
 let dir  t = t.dir
 
-let fully_qualified_name t = Path.relative t.dir t.name
+let fully_qualified_name t = Path.relative_exn t.dir t.name
 
 let stamp_file t =
-  Path.relative (Path.insert_after_build_dir_exn t.dir ".aliases")
+  Path.relative_exn (Path.insert_after_build_dir_exn t.dir ".aliases")
     (t.name ^ suffix)
 
 let find_dir_specified_on_command_line ~dir ~file_tree =

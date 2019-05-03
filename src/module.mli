@@ -97,7 +97,7 @@ val src_dir : t -> Path.t option
 (** Same as [cm_file] but doesn't raise if [cm_kind] is [Cmo] or [Cmx]
     and the module has no implementation.
     If present [ext] replace the extension of the kind
- *)
+*)
 val cm_file_unsafe : t -> ?ext:string -> Cm_kind.t -> Path.t
 val cm_public_file_unsafe : t -> ?ext:string -> Cm_kind.t -> Path.t
 

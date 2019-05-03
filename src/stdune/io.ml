@@ -8,7 +8,7 @@ let input_lines =
     match input_line ic with
     | exception End_of_file -> List.rev acc
     | line ->
-       loop ic (line :: acc)
+      loop ic (line :: acc)
   in
   fun ic -> loop ic []
 

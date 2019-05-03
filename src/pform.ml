@@ -161,7 +161,7 @@ module Map = struct
   let create ~(context : Context.t) =
     let ocamlopt =
       match context.ocamlopt with
-      | None -> Path.relative context.ocaml_bin "ocamlopt"
+      | None -> Path.relative_exn context.ocaml_bin "ocamlopt"
       | Some p -> p
     in
     let string s = values [Value.String s] in

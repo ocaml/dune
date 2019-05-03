@@ -108,9 +108,9 @@ module Mutator = struct
   let remap x f =
     List.filter_map ~f:(function
       | Variable (_, v, y) when v = x -> begin
-        match f (Some y) with
-        | Some y' -> Some (Variable (nopos, v, y'))
-        | None -> None
+          match f (Some y) with
+          | Some y' -> Some (Variable (nopos, v, y'))
+          | None -> None
         end
       | z -> Some z)
 

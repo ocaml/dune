@@ -447,8 +447,8 @@ let create (type i) (type o) (type f)
         Some f, (fun x -> Fdecl.get f x)
       in
       ((match typ with
-       | Function_type.Sync -> decl_and_get ()
-       | Function_type.Async -> decl_and_get ()) : f Fdecl.t option * f)
+         | Function_type.Sync -> decl_and_get ()
+         | Function_type.Async -> decl_and_get ()) : f Fdecl.t option * f)
     | Some f ->
       None, f
   in
@@ -490,7 +490,7 @@ let create (type i) (type o) (type f)
   }
 
 module Exec_sync = struct
-    let compute t inp dep_node =
+  let compute t inp dep_node =
     (* define the function to update / double check intermediate result *)
     (* set context of computation then run it *)
     let res = Call_stack.push_sync_frame (T dep_node) (fun () -> match t.spec.f with
@@ -755,12 +755,12 @@ module With_implicit_output = struct
     | Function_type.Sync ->
       let memo =
         (create
-             name
-             ~doc ~input ~visibility
-             ~output
-             Sync
-             (Some (fun i ->
-                Implicit_output.collect_sync implicit_output (fun () -> impl i))))
+           name
+           ~doc ~input ~visibility
+           ~output
+           Sync
+           (Some (fun i ->
+              Implicit_output.collect_sync implicit_output (fun () -> impl i))))
       in
       ((fun input ->
          let (res, output) = exec memo input in
@@ -770,12 +770,12 @@ module With_implicit_output = struct
     | Function_type.Async ->
       let memo =
         (create
-             name
-             ~doc ~input ~visibility
-             ~output
-             Async
-             (Some (fun i ->
-                Implicit_output.collect_async implicit_output (fun () -> impl i))))
+           name
+           ~doc ~input ~visibility
+           ~output
+           Async
+           (Some (fun i ->
+              Implicit_output.collect_async implicit_output (fun () -> impl i))))
       in
       ((fun input ->
          Fiber.map
@@ -783,7 +783,7 @@ module With_implicit_output = struct
            ~f:(fun (res, output) ->
              Implicit_output.produce_opt implicit_output output;
              res)
-      ) : f)
+       ) : f)
   ;;
 
   let exec t = t

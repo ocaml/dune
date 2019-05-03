@@ -28,7 +28,7 @@ module O : sig
 
   val (let*) : ('a, 'error) t -> ('a -> ('b, 'error) t) -> ('b, 'error) t
   val (and+) : ('a, 'error) t -> ('b, 'error) t -> ('a * 'b, 'error) t
-  val (let+) : ('a, 'error) t -> ('a -> 'b) -> ('b, 'error) t
+val (let+) : ('a, 'error) t -> ('a -> 'b) -> ('b, 'error) t
 end
 
 val map  : ('a, 'error) t -> f:('a -> 'b) -> ('b, 'error) t

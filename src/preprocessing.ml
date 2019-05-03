@@ -187,13 +187,13 @@ module Driver = struct
       let f x = Lib_name.encode (Lib.name (Lazy.force x.lib)) in
       ((1, 0),
        record_fields @@
-         [ field_i "flags" Ordered_set_lang.Unexpanded.encode_and_upgrade
-             t.info.flags
-         ; field_i "lint_flags" Ordered_set_lang.Unexpanded.encode_and_upgrade
-             t.info.lint_flags
-         ; field "main" string t.info.main
-         ; field_l "replaces" f (Result.ok_exn t.replaces)
-         ])
+       [ field_i "flags" Ordered_set_lang.Unexpanded.encode_and_upgrade
+           t.info.flags
+       ; field_i "lint_flags" Ordered_set_lang.Unexpanded.encode_and_upgrade
+           t.info.lint_flags
+       ; field "main" string t.info.main
+       ; field_l "replaces" f (Result.ok_exn t.replaces)
+       ])
   end
   include M
   include Sub_system.Register_backend(M)
@@ -335,9 +335,9 @@ end
 let ppx_exe sctx ~key ~dir_kind =
   match (dir_kind : Dune_lang.File_syntax.t) with
   | Dune ->
-    Path.relative (SC.build_dir sctx) (".ppx/" ^ key ^ "/ppx.exe")
+    Path.relative_exn (SC.build_dir sctx) (".ppx/" ^ key ^ "/ppx.exe")
   | Jbuild ->
-    Path.relative (SC.build_dir sctx) (".ppx/jbuild/" ^ key ^ "/ppx.exe")
+    Path.relative_exn (SC.build_dir sctx) (".ppx/jbuild/" ^ key ^ "/ppx.exe")
 
 let build_ppx_driver sctx ~dep_kind ~target ~dir_kind ~pps ~pp_names =
   let ctx = SC.context sctx in
@@ -378,7 +378,7 @@ let build_ppx_driver sctx ~dep_kind ~target ~dir_kind ~pps ~pp_names =
        match jbuild_driver with
        | None ->
          let+ driver =
-          Driver.select pps ~loc:(Dot_ppx (target, pp_names))
+           Driver.select pps ~loc:(Dot_ppx (target, pp_names))
          in
          (driver, pps)
        | Some driver ->
@@ -386,7 +386,7 @@ let build_ppx_driver sctx ~dep_kind ~target ~dir_kind ~pps ~pp_names =
   in
   (* CR-someday diml: what we should do is build the .cmx/.cmo once
      and for all at the point where the driver is defined. *)
-  let ml = Path.relative (Path.parent_exn target) "ppx.ml" in
+  let ml = Path.relative_exn (Path.parent_exn target) "ppx.ml" in
   let add_rule = SC.add_rule sctx ~dir:(Super_context.build_dir sctx) in
   add_rule
     (Build.of_result_map driver_and_libs ~f:(fun (driver, _) ->

@@ -67,7 +67,7 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
   in
   let copy_all_deps =
     let all_deps ~obj_dir f =
-      Path.relative obj_dir (Path.basename f ^ ".all-deps") in
+      Path.relative_exn obj_dir (Path.basename f ^ ".all-deps") in
     if Lib.is_local vlib then
       fun m ->
         if Module.is_public m then

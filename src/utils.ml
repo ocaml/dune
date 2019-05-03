@@ -88,7 +88,7 @@ let analyse_target (fn as original_fn) =
           in
           Alias (ctx,
                  Path.Source.of_relative
-                   (Path.Relative.relative (Path.Relative.parent_exn fn) basename))
+                   (Path.Relative.relative_exn (Path.Relative.parent_exn fn) basename))
     end
   | Some ("install", _) -> Other fn
   | Some (ctx, sub) -> Regular (ctx, Path.Source.of_relative sub)
@@ -109,24 +109,24 @@ let describe_target fn =
     Path.to_string_maybe_quoted fn
 
 let library_object_directory ~dir name =
-  Path.relative dir ("." ^ Lib_name.Local.to_string name ^ ".objs")
+  Path.relative_exn dir ("." ^ Lib_name.Local.to_string name ^ ".objs")
 
 let library_native_dir ~obj_dir =
-  Path.relative obj_dir "native"
+  Path.relative_exn obj_dir "native"
 
 let library_byte_dir ~obj_dir =
-  Path.relative obj_dir "byte"
+  Path.relative_exn obj_dir "byte"
 
 let library_public_cmi_dir ~obj_dir =
-  Path.relative obj_dir "public_cmi"
+  Path.relative_exn obj_dir "public_cmi"
 
 let library_private_dir ~obj_dir =
-  Path.relative obj_dir "private"
+  Path.relative_exn obj_dir "private"
 
 (* Use "eobjs" rather than "objs" to avoid a potential conflict with a
    library of the same name *)
 let executable_object_directory ~dir name =
-  Path.relative dir ("." ^ name ^ ".eobjs")
+  Path.relative_exn dir ("." ^ name ^ ".eobjs")
 
 let program_not_found ?context ?hint ~loc prog =
   Errors.fail_opt loc
@@ -164,7 +164,7 @@ let line_directive ~filename:fn ~line_number =
   in
   sprintf "#%s %d %S\n" directive line_number fn
 
-let local_bin p = Path.relative p ".bin"
+let local_bin p = Path.relative_exn p ".bin"
 
 module type Persistent_desc = sig
   type t
@@ -209,7 +209,7 @@ module Cached_digest = struct
     ; table               : (Path.t, file) Hashtbl.t
     }
 
-  let db_file = Path.relative Path.build_dir ".digest-db"
+  let db_file = Path.relative_exn Path.build_dir ".digest-db"
 
   module P = Persistent(struct
       type nonrec t = t
@@ -268,7 +268,7 @@ module Cached_digest = struct
       ~data:{ digest
             ; timestamp = stat.st_mtime
             ; timestamp_checked = cache.checked_key
-      };
+            };
     digest
 
   let file fn =

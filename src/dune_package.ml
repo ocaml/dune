@@ -40,7 +40,7 @@ module Lib = struct
     let dir = Obj_dir.dir obj_dir in
     let map_path p =
       if Path.is_managed p then
-        Path.relative dir (Path.basename p)
+        Path.relative_exn dir (Path.basename p)
       else
         p
     in
@@ -80,7 +80,7 @@ module Lib = struct
 
   let dir_of_name name =
     let (_, components) = Lib_name.split name in
-    Path.Local.L.relative Path.Local.root components
+    Path.Local.L.relative_exn Path.Local.root components
 
   let encode ~package_root
         { loc = _ ; kind ; synopsis ; name ; archives ; plugins
@@ -166,10 +166,10 @@ module Lib = struct
       and+ orig_src_dir = field_o "orig_src_dir" path
       and+ modules = field_o "modules" (Lib_modules.decode
                                           ~implements:(Option.is_some implements) ~obj_dir)
-       and+ special_builtin_support =
-         field_o "special_builtin_support"
-           (Syntax.since Stanza.syntax (1, 10) >>>
-            Dune_file.Library.Special_builtin_support.decode)
+      and+ special_builtin_support =
+        field_o "special_builtin_support"
+          (Syntax.since Stanza.syntax (1, 10) >>>
+           Dune_file.Library.Special_builtin_support.decode)
       in
       let modes = Mode.Dict.Set.of_list modes in
       { kind

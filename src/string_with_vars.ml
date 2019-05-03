@@ -33,7 +33,7 @@ let make_var ?quoted loc ?payload name =
     ; name
     ; payload
     ; syntax = Percent
-  }
+    }
   in
   make ?quoted loc (Var var)
 
@@ -196,8 +196,8 @@ end
 
 let invalid_multivalue (v : var) x =
   Errors.fail v.loc "Variable %s expands to %d values, \
-                   however a single value is expected here. \
-                   Please quote this atom."
+                     however a single value is expected here. \
+                     Please quote this atom."
     (string_of_var v) (List.length x)
 
 module Var = struct
@@ -309,10 +309,10 @@ open Private
 
 let partial_expand
   : 'a.t
-  -> mode:'a Mode.t
-  -> dir:Path.t
-  -> f:Value.t list option expander
-  -> 'a Partial.t
+    -> mode:'a Mode.t
+    -> dir:Path.t
+    -> f:Value.t list option expander
+    -> 'a Partial.t
   = fun ({template; syntax_version} as t) ~mode ~dir ~f ->
     let commit_text acc_text acc =
       let s = concat_rev acc_text in

@@ -236,7 +236,11 @@ let expand_and_record acc ~map_exe ~dep_kind ~scope
       ~(cc : dir:Path.t -> (unit, Value.t list) Build.t C.Kind.Dict.t) =
   let key = String_with_vars.Var.full_name pform in
   let loc = String_with_vars.Var.loc pform in
-  let relative = Path.relative ~error_loc:loc in
+  let relative t s =
+    match Path.relative t s with
+    | Ok s -> s
+    | Error e -> Errors.fail loc "%s" e
+  in
   let add_ddep =
     match expansion_kind with
     | Static -> fun _ ->

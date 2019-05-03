@@ -179,8 +179,8 @@ end = struct
   let default_context_flags (ctx : Context.t) =
     let c = ctx.ocamlc_cflags in
     let cxx =
-        List.filter ctx.ocamlc_cflags
-          ~f:(fun s -> not (String.is_prefix s ~prefix:"-std=")) in
+      List.filter ctx.ocamlc_cflags
+        ~f:(fun s -> not (String.is_prefix s ~prefix:"-std=")) in
     C.Kind.Dict.make ~c ~cxx
 
   let c_flags t ~dir =
@@ -229,7 +229,7 @@ module Pkg_version = struct
   open Build.O
 
   let file sctx (p : Package.t) =
-    Path.relative (Path.append_source sctx.context.build_dir p.path)
+    Path.relative_exn (Path.append_source sctx.context.build_dir p.path)
       (sprintf "%s.version.sexp" (Package.Name.to_string p.name))
 
   let read_file fn =
@@ -342,7 +342,7 @@ let get_installed_binaries stanzas ~(context : Context.t) =
             ~expand:(expand_str ~dir:d.ctx_dir)
             ~expand_partial:(expand_str_partial ~dir:d.ctx_dir)
         in
-        let p = Path.Relative.of_string (Install.Dst.to_string p) in
+        let p = Path.Relative.of_string_exn (Install.Dst.to_string p) in
         if Path.Relative.is_root (Path.Relative.parent_exn p) then
           Path.Set.add acc (Path.append_relative install_dir p)
         else
@@ -353,7 +353,7 @@ let create
       ~(context:Context.t)
       ?host
       ~projects
-     ~file_tree
+      ~file_tree
       ~packages
       ~stanzas
       ~external_lib_deps_mode
@@ -448,18 +448,18 @@ let create
       ~bin_artifacts_host:artifacts_host.bin
   in
   let env_context = { Env_context.
-    env;
-    profile = context.profile;
-    scopes;
-    context_env = context.env;
-    default_env;
-    stanzas_per_dir;
-    host = Option.map host ~f:(fun x -> x.env_context);
-    build_dir = context.build_dir;
-    context = context;
-    expander = expander;
-    bin_artifacts = artifacts.Artifacts.bin;
-  }
+                      env;
+                      profile = context.profile;
+                      scopes;
+                      context_env = context.env;
+                      default_env;
+                      stanzas_per_dir;
+                      host = Option.map host ~f:(fun x -> x.env_context);
+                      build_dir = context.build_dir;
+                      context = context;
+                      expander = expander;
+                      bin_artifacts = artifacts.Artifacts.bin;
+                    }
   in
   let dir_status_db = Dir_status.DB.make file_tree ~stanzas_per_dir in
   { context
@@ -499,12 +499,12 @@ module Libs = struct
   let gen_select_rules t ~dir compile_info =
     List.iter (Lib.Compile.resolved_selects compile_info) ~f:(fun rs ->
       let { Lib.Compile.Resolved_select.dst_fn; src_fn } = rs in
-      let dst = Path.relative dir dst_fn in
+      let dst = Path.relative_exn dir dst_fn in
       add_rule t
         ~dir
         (match src_fn with
          | Ok src_fn ->
-           let src = Path.relative dir src_fn in
+           let src = Path.relative_exn dir src_fn in
            Build.copy_and_add_line_directive ~src ~dst
          | Error e ->
            Build.fail ~targets:[dst]
@@ -518,7 +518,7 @@ module Libs = struct
     in
     let prefix =
       if t.context.merlin then
-        Build.path (Path.relative dir ".merlin-exists")
+        Build.path (Path.relative_exn dir ".merlin-exists")
         >>>
         prefix
       else

@@ -111,7 +111,7 @@ let resolve_target common ~(setup : Dune.Main.build_system) s =
   match Alias.of_string common s ~contexts:setup.workspace.contexts with
   | Some a -> Ok [Alias a]
   | None ->
-    let path = Path.relative Path.root (Common.prefix_target common s) in
+    let path = Path.relative_exn Path.root (Common.prefix_target common s) in
     resolve_path path ~setup
 
 let resolve_targets_mixed ~log common (setup : Dune.Main.build_system)

@@ -32,7 +32,7 @@ module Stanza = struct
 
   let env_vars_field =
     field
-    "env-vars"
+      "env-vars"
       ~default:Env.empty
       (Syntax.since Stanza.syntax (1, 5) >>>
        located (list (pair string string)) >>| fun (loc, pairs) ->

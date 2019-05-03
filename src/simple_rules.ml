@@ -35,7 +35,10 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
             | String s ->
               if Filename.dirname s <> Filename.current_dir_name then
                 not_in_dir ~error_loc s;
-              Path.relative ~error_loc dir s
+              begin match Path.relative dir s with
+              | Ok s -> s
+              | Error e -> Errors.fail error_loc "%s" e
+              end
             | Path p ->
               if Path.parent p <> Some dir then
                 not_in_dir ~error_loc (Path.to_string p);
@@ -66,7 +69,9 @@ let copy_files sctx ~dir ~expander ~src_dir (def: Copy_files.t) =
   let loc = String_with_vars.loc def.glob in
   let glob_in_src =
     let src_glob = Expander.expand_str expander def.glob in
-    Path.Source.relative src_dir src_glob ~error_loc:loc
+    match Path.Source.relative src_dir src_glob with
+    | Ok s -> s
+    | Error e -> Errors.fail loc "%s" e
   in
   let since = (1, 3) in
   if def.syntax_version < since
@@ -93,7 +98,7 @@ let copy_files sctx ~dir ~expander ~src_dir (def: Copy_files.t) =
     Build_system.eval_pred (File_selector.create ~dir:src_in_build pred) in
   Path.Set.map files ~f:(fun file_src ->
     let basename = Path.basename file_src in
-    let file_dst = Path.relative dir basename in
+    let file_dst = Path.relative_exn dir basename in
     SC.add_rule sctx ~loc ~dir
       ((if def.add_line_directive
         then Build.copy_and_add_line_directive

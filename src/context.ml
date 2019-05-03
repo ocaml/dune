@@ -278,7 +278,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       | Some fn -> fn
     in
 
-    let build_dir = Path.relative Path.build_dir name in
+    let build_dir = Path.relative_exn Path.build_dir name in
     let ocamlpath =
       match
         let var = "OCAMLPATH" in
@@ -311,7 +311,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
 
       | Opam2_environment opam_prefix ->
         let p = Path.of_filename_relative_to_initial_cwd opam_prefix in
-        let p = Path.relative p "lib" in
+        let p = Path.relative_exn p "lib" in
         Fiber.return (ocamlpath @ [p])
 
       | Opam1_environment -> begin
@@ -328,7 +328,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
 
         | None ->
           Fiber.return
-            (ocamlpath @ [ Path.relative (Path.parent_exn dir) "lib" ])
+            (ocamlpath @ [ Path.relative_exn (Path.parent_exn dir) "lib" ])
     in
     let ocaml_config_ok_exn = function
       | Ok x -> x
@@ -343,10 +343,10 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       Fiber.fork_and_join
         findlib_paths
         (fun () ->
-          let+ lines =
-            Process.run_capture_lines ~env Strict ocamlc ["-config"] in
-          ocaml_config_ok_exn
-            (match Ocaml_config.Vars.of_lines lines with
+           let+ lines =
+             Process.run_capture_lines ~env Strict ocamlc ["-config"] in
+           ocaml_config_ok_exn
+             (match Ocaml_config.Vars.of_lines lines with
               | Ok vars -> Ocaml_config.make vars
               | Error msg -> Error (Ocamlc_config, msg)))
     in
@@ -379,12 +379,12 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       in
       let vars =
         let local_lib_path =
-          (Path.relative
+          (Path.relative_exn
              (Config.local_install_dir ~context:name)
              "lib")
         in
         [ extend_var "CAML_LD_LIBRARY_PATH"
-            (Path.relative
+            (Path.relative_exn
                (Config.local_install_dir ~context:name)
                "lib/stublibs")
         ; extend_var "OCAMLPATH" ~path_sep:ocamlpath_sep
@@ -410,9 +410,9 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
         Option.value ~default:Env.empty
           (Option.map findlib_config ~f:Findlib.Config.env)
       )
-    |> Env.extend_env (Env_nodes.extra_env ~profile env_nodes)
+      |> Env.extend_env (Env_nodes.extra_env ~profile env_nodes)
     in
-    let stdlib_dir = Path.of_string (Ocaml_config.standard_library ocfg) in
+    let stdlib_dir = Path.of_string_exn (Ocaml_config.standard_library ocfg) in
     let natdynlink_supported = Ocaml_config.natdynlink_supported ocfg in
     let version_string = Ocaml_config.version_string ocfg in
     let version        = Ocaml_version.of_ocaml_config ocfg in
@@ -434,8 +434,8 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       ; ocaml_bin  = dir
       ; ocaml      =
           (match which "ocaml" with
-          | Some p -> p
-          | None -> prog_not_found_in_path "ocaml")
+           | Some p -> p
+           | None -> prog_not_found_in_path "ocaml")
       ; ocamlc
       ; ocamlopt     = get_ocaml_tool     "ocamlopt"
       ; ocamldep     = get_ocaml_tool_exn "ocamldep"

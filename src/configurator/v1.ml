@@ -375,8 +375,8 @@ let compile_c_prog t ?(c_flags=[]) code =
   let ok = Process.run_command_ok t ~dir
              (Process.command_args t.c_compiler (c_flags
                                                  @ [ "-I" ; t.stdlib_dir
-                                                     ; "-o" ; obj_fname
-                                                     ; "-c" ; c_fname
+                                                   ; "-o" ; obj_fname
+                                                   ; "-c" ; c_fname
                                                    ]))
   in
   if ok then

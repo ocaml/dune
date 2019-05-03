@@ -225,7 +225,7 @@ let file t (kind : Ml_kind.t) =
 
 let obj_file t ~kind ~ext =
   let base = Obj_dir.cm_dir t.obj_dir kind t.visibility in
-  Path.relative base (t.obj_name ^ ext)
+  Path.relative_exn base (t.obj_name ^ ext)
 
 let obj_name t = t.obj_name
 
@@ -243,7 +243,7 @@ let cm_file t ?ext (kind : Cm_kind.t) =
 let cm_public_file_unsafe t ?ext kind =
   let ext = Option.value ext ~default:(Cm_kind.ext kind) in
   let base = Obj_dir.cm_public_dir t.obj_dir kind in
-  Path.relative base (t.obj_name ^ ext)
+  Path.relative_exn base (t.obj_name ^ ext)
 
 let cm_public_file t ?ext (kind : Cm_kind.t) =
   match kind with
@@ -262,7 +262,7 @@ let odoc_file t ~doc_dir =
     | Public -> doc_dir
     | Private -> Utils.library_private_dir ~obj_dir:doc_dir
   in
-  Path.relative base (t.obj_name ^ ".odoc")
+  Path.relative_exn base (t.obj_name ^ ".odoc")
 
 let cmti_file t =
   match t.intf with
@@ -441,7 +441,7 @@ let decode ~obj_dir =
     let file exists ml_kind =
       if exists then
         let basename = Name.basename name ~ml_kind ~syntax:OCaml in
-        Some (File.make Syntax.OCaml (Path.relative dir basename))
+        Some (File.make Syntax.OCaml (Path.relative_exn dir basename))
       else
         None
     in
@@ -485,11 +485,11 @@ module Source = struct
   let name t = t.name
 
   let src_dir t =
-  match t.intf, t.impl with
-  | None, None -> None
-  | Some x, Some _
-  | Some x, None
-  | None, Some x -> Some (Path.parent_exn x.path)
+    match t.intf, t.impl with
+    | None, None -> None
+    | Some x, Some _
+    | Some x, None
+    | None, Some x -> Some (Path.parent_exn x.path)
 
 end
 

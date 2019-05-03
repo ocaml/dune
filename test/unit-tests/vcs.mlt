@@ -8,10 +8,10 @@ let printf = Printf.printf;;
 
 let () =
   Path.set_root (Path.External.cwd ());
-  Path.set_build_dir (Path.Kind.of_string "_build")
+  Path.set_build_dir (Path.Kind.of_string_exn "_build")
 ;;
 
-let temp_dir = Path.of_string "vcs-tests";;
+let temp_dir = Path.of_string_exn "vcs-tests";;
 let () = at_exit (fun () -> Path.rm_rf temp_dir);;
 
 (* When hg is not available, we test with git twice indeed. This is
@@ -61,7 +61,7 @@ let run_action (vcs : Vcs.t) action =
     end
   | Write (fn, s) ->
     printf "$ echo %S > %s\n" s fn;
-    Io.write_file (Path.relative temp_dir fn) s;
+    Io.write_file (Path.relative_exn temp_dir fn) s;
     Fiber.return ()
   | Describe expected ->
     printf "$ %s describe [...]\n"

@@ -6,9 +6,9 @@ module Display = struct
     | Quiet
 
   let all =
-      [ "progress" , Progress
-      ; "verbose"  , Verbose
-      ; "short"    , Short
-      ; "quiet"    , Quiet
-      ]
+    [ "progress" , Progress
+    ; "verbose"  , Verbose
+    ; "short"    , Short
+    ; "quiet"    , Quiet
+    ]
 end

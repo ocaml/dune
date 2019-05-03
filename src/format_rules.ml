@@ -24,7 +24,7 @@ let rec subdirs_until_root dir =
 
 let depend_on_files ~named dir =
   subdirs_until_root dir
-  |> List.concat_map ~f:(fun dir -> List.map named ~f:(Path.relative dir))
+  |> List.concat_map ~f:(fun dir -> List.map named ~f:(Path.relative_exn dir))
   |> Build.paths_existing
 
 let formatted = ".formatted"
@@ -43,8 +43,8 @@ let gen_rules_output sctx (config : Dune_file.Auto_format.t) ~output_dir =
   let setup_formatting file =
     let open Build.O in
     let input_basename = Path.Source.basename file in
-    let input = Path.relative dir input_basename in
-    let output = Path.relative output_dir input_basename in
+    let input = Path.relative_exn dir input_basename in
+    let output = Path.relative_exn output_dir input_basename in
 
     let ocaml kind =
       if Dune_file.Auto_format.includes config Ocaml then
@@ -89,7 +89,7 @@ let gen_rules_output sctx (config : Dune_file.Auto_format.t) ~output_dir =
   Build_system.Alias.add_deps alias_formatted Path.Set.empty
 
 let gen_rules ~dir =
-  let output_dir = Path.relative dir formatted in
+  let output_dir = Path.relative_exn dir formatted in
   let alias = Alias.fmt ~dir in
   let alias_formatted = Alias.fmt ~dir:output_dir in
   Alias.stamp_file alias_formatted

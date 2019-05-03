@@ -41,8 +41,8 @@ end
 
 (** A simple renderer that doesn't take tags *)
 module Render : Renderer.S
-    with type Tag.t         = unit
-    with type Tag.Handler.t = unit
+  with type Tag.t         = unit
+  with type Tag.Handler.t = unit
 
 val pp : Format.formatter -> unit t -> unit
 

@@ -81,7 +81,7 @@ let setup_rule ~expander ~dir ~cc ~source_rule ~coq_flags ~file_flags
   let deps_of = Build.dyn_paths (
     Build.lines_of stdout_to >>^
     parse_coqdep ~coq_module >>^
-    List.map ~f:(Path.relative dir)
+    List.map ~f:(Path.relative_exn dir)
   ) in
 
   let cc_arg = (Arg_spec.Hidden_targets [object_to]) :: file_flags in
@@ -96,7 +96,7 @@ let setup_rule ~expander ~dir ~cc ~source_rule ~coq_flags ~file_flags
 (* TODO: remove; rgrinberg points out:
    - resolve program is actually cached,
    - better just to ask for values that we actually use.
- *)
+*)
 let create_ccoq sctx ~dir =
   let rr prg =
     SC.resolve_program ~dir sctx prg ~loc:None ~hint:"try: opam install coq" in
@@ -177,7 +177,7 @@ let coq_plugins_install_rules ~scope ~package ~dst_dir (s : Dune_file.Coq.t) =
     then
       Mode.Dict.get (Lib.plugins lib) Mode.Native |>
       List.map ~f:(fun plugin_file ->
-        let dst = Path.(to_string (relative dst_dir (basename plugin_file))) in
+        let dst = Path.(to_string (relative_exn dst_dir (basename plugin_file))) in
         None, Install.(Entry.make Section.Lib_root ~dst plugin_file))
     else []
   in
@@ -192,10 +192,10 @@ let install_rules ~sctx ~dir s =
     let dir_contents = Dir_contents.get_without_rules sctx ~dir in
     let name = Dune_file.Coq.best_name s in
     (* This is the usual root for now, Coq + Dune will change it! *)
-    let coq_root = Path.of_string "coq/user-contrib" in
+    let coq_root = Path.of_string_exn "coq/user-contrib" in
     (* This must match the wrapper prefix for now to remain compatible *)
     let dst_suffix = coqlib_wrapper_name s in
-    let dst_dir = Path.relative coq_root dst_suffix in
+    let dst_dir = Path.relative_exn coq_root dst_suffix in
     Dir_contents.coq_modules_of_library dir_contents ~name
     |> List.map ~f:(fun (vfile : Coq_module.t) ->
       let vofile = Coq_module.obj_file ~obj_dir:dir ~ext:".vo" vfile in
@@ -209,8 +209,8 @@ let coqpp_rules ~sctx ~build_dir ~dir (s : Dune_file.Coqpp.t) =
   let cc = create_ccoq sctx ~dir in
 
   let mlg_rule m =
-    let source = Path.relative dir (m ^ ".mlg") in
-    let target = Path.relative dir (m ^ ".ml") in
+    let source = Path.relative_exn dir (m ^ ".mlg") in
+    let target = Path.relative_exn dir (m ^ ".ml") in
     let args = Arg_spec.[Dep source; Hidden_targets [target]] in
     Build.run ~dir:build_dir cc.coqpp args in
 

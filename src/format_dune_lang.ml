@@ -43,8 +43,8 @@ let pp_simple fmt t =
 let print_wrapped_list fmt =
   Format.fprintf fmt "(@[<hov 1>%a@])"
     (Fmt.list
-      ~pp_sep:(fun fmt () -> Format.fprintf fmt "@ ")
-      pp_simple
+       ~pp_sep:(fun fmt () -> Format.fprintf fmt "@ ")
+       pp_simple
     )
 
 let pp_comment_line fmt l =

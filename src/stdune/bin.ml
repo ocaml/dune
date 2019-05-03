@@ -25,11 +25,11 @@ let exists fn =
   | _ -> true
 
 let best_prog dir prog =
-  let fn = Path.relative dir (prog ^ ".opt" ^ exe) in
+  let fn = Path.relative_exn dir (prog ^ ".opt" ^ exe) in
   if exists fn then
     Some fn
   else
-    let fn = Path.relative dir (prog ^ exe) in
+    let fn = Path.relative_exn dir (prog ^ exe) in
     if exists fn then
       Some fn
     else

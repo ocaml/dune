@@ -50,7 +50,7 @@ module File = struct
 
   let full_path = function
     | Dune {path; name; _} | Text {path; name; _} ->
-       Path.relative path name
+      Path.relative_exn path name
 
   (** Inspection and manipulation of stanzas in a file *)
   module Stanza = struct
@@ -122,7 +122,7 @@ module File = struct
 
   let load_dune_file ~path =
     let name = "dune" in
-    let full_path = Path.relative path name in
+    let full_path = Path.relative_exn path name in
     let content =
       if not (Path.exists full_path) then
         []
@@ -136,7 +136,7 @@ module File = struct
     Dune {path; name; content}
 
   let write_dune_file (dune_file : dune) =
-    let path = Path.relative dune_file.path dune_file.name in
+    let path = Path.relative_exn dune_file.path dune_file.name in
     Format_dune_lang.write_file ~path dune_file.content
 
   let write f =
@@ -166,7 +166,7 @@ module Init_context = struct
     let dir =
       match path with
       | None -> Path.root
-      | Some p -> Path.of_string p
+      | Some p -> Path.of_string_exn p
     in
     File.create_dir dir;
     { dir; project }
@@ -325,9 +325,9 @@ module Component = struct
     | Ok _ -> ()
     | Error path ->
       Errors.kerrf ~f:print_to_console
-         "@{<warning>Warning@}: file @{<kwd>%a@} was not created \
-          because it already exists\n"
-         Path.pp path
+        "@{<warning>Warning@}: file @{<kwd>%a@} was not created \
+         because it already exists\n"
+        Path.pp path
 
   let create target =
     File.create_dir target.dir;

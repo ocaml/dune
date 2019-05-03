@@ -12,7 +12,7 @@ module Source = struct
 
   let main_module_name t = Module.Name.of_string t.name
   let main_module_filename t = t.name ^ ".ml"
-  let source_path t = Path.relative t.dir (main_module_filename t)
+  let source_path t = Path.relative_exn t.dir (main_module_filename t)
 
   let obj_dir { dir; name ; _ } =
     Obj_dir.make_exe ~dir ~name
@@ -39,7 +39,7 @@ module Source = struct
     }
 
   let of_stanza ~dir ~(toplevel : Dune_file.Toplevel.t) =
-    { dir = Path.relative dir (toplevel_dir_prefix ^ toplevel.name)
+    { dir = Path.relative_exn dir (toplevel_dir_prefix ^ toplevel.name)
     ; name = toplevel.name
     ; loc = toplevel.loc
     ; main = "Topmain.main ()"
@@ -108,7 +108,7 @@ let setup_rules t =
     ~link_flags:(Build.return ["-linkall"; "-warn-error"; "-31"]);
   let src = Exe.exe_path t.cctx ~program ~linkage in
   let dir = Source.stanza_dir t.source in
-  let dst = Path.relative dir (Path.basename src) in
+  let dst = Path.relative_exn dir (Path.basename src) in
   Super_context.add_rule sctx ~dir ~loc:t.source.loc
     (Build.symlink ~src ~dst);
   setup_module_rules t

@@ -15,7 +15,7 @@ let utop_exe =
 
 let source ~dir =
   Toplevel.Source.make
-    ~dir:(Path.relative dir utop_dir_basename)
+    ~dir:(Path.relative_exn dir utop_dir_basename)
     ~loc:(Loc.in_dir dir)
     ~main:"UTop_main.main ();"
     ~name:exe_name

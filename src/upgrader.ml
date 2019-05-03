@@ -25,7 +25,7 @@ let scan_included_files path =
              ; (Atom (loc, A fn) | Quoted_string (loc, fn))
              ]) ->
           let dir = Path.parent_exn path in
-          let included_file = Path.relative dir fn in
+          let included_file = Path.relative_exn dir fn in
           if not (Path.exists included_file) then
             Errors.fail loc "File %s doesn't exist."
               (Path.to_string_maybe_quoted included_file);
@@ -192,7 +192,7 @@ let upgrade_file todo file sexps comments ~look_for_jbuild_ignore =
   let new_file =
     let base = Path.basename file in
     let new_base = rename_basename base in
-    Path.relative dir new_base
+    Path.relative_exn dir new_base
   in
   let sexps =
     List.filter sexps ~f:(function
@@ -202,7 +202,7 @@ let upgrade_file todo file sexps comments ~look_for_jbuild_ignore =
   let sexps = List.map sexps ~f:upgrade_stanza in
   let sexps, extra_files_to_delete =
     (* Port the jbuild-ignore file if necessary *)
-    let jbuild_ignore = Path.relative dir "jbuild-ignore" in
+    let jbuild_ignore = Path.relative_exn dir "jbuild-ignore" in
     if not (look_for_jbuild_ignore && Path.exists jbuild_ignore) then
       (sexps, [])
     else begin
@@ -380,7 +380,7 @@ let upgrade ft =
     match Hashtbl.find has_git_table path with
     | None ->
       let v =
-        if Path.is_directory (Path.relative path ".git") then
+        if Path.is_directory (Path.relative_exn path ".git") then
           Some path
         else
           match Path.parent path with

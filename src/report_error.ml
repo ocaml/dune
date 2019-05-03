@@ -48,10 +48,10 @@ let builtin_printer = function
     Some (make_printer pp)
   | Stdune.Exn.Code_error sexp ->
     let pp = fun ppf ->
-          Format.fprintf ppf "@{<error>Internal error, please report upstream \
-                              including the contents of _build/log.@}\n\
-                              Description:%a\n"
-            Sexp.pp sexp
+      Format.fprintf ppf "@{<error>Internal error, please report upstream \
+                          including the contents of _build/log.@}\n\
+                          Description:%a\n"
+        Sexp.pp sexp
     in
     Some (make_printer ~backtrace:true pp)
   | Unix.Unix_error (err, func, fname) ->

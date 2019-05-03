@@ -103,7 +103,7 @@ module DB = struct
 
   let sccopes_by_name ~context ~projects ~lib_config ~public_libs
         internal_libs =
-    let build_context_dir = Path.relative Path.build_dir context in
+    let build_context_dir = Path.relative_exn Path.build_dir context in
     let projects_by_name =
       List.map projects ~f:(fun (project : Dune_project.t) ->
         (Dune_project.name project, project))

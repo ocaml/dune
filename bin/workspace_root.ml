@@ -71,7 +71,7 @@ let find () =
           match Vcs.Kind.of_dir_contents files with
           | Some kind ->
             { candidate with
-              ancestor_vcs = Some { kind; root = Path.of_string dir }
+              ancestor_vcs = Some { kind; root = Path.of_string_exn dir }
             }
           | None -> candidate
       in

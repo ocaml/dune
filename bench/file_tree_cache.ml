@@ -10,7 +10,7 @@ let setup = lazy (
   Path.External.mkdir_p (Path.External.relative tmp deep_path);
   Path.set_root tmp;
   Path.set_build_dir (Path.Kind.of_string "_build");
-  let ft = (Dune_load.load ()).file_tree in
+  let ft = (Dune_load.load ~ancestor_vcs:None ()).file_tree in
   let path = Path.Source.of_string deep_path in
   at_exit (fun () -> Sys.remove "./dune-project");
   (ft, path))

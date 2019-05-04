@@ -33,7 +33,7 @@ let explode_path =
 
 open Result.O
 let ok_exn : ('a, string) Result.t -> 'a = function
-  | Ok x -> x
+  | Result.Ok x -> x
   | Error s -> Exn.fatalf "%s" s
 
 module External : sig
@@ -169,12 +169,12 @@ end = struct
   type t = string
   let of_string s =
     if Filename.is_relative s then
-      Ok s
+      Result.Ok s
     else
       Error "path is not relative"
   let of_string_exn s =
     match of_string s with
-    | Ok s -> s
+    | Result.Ok s -> s
     | Error msg ->
       Exn.code_error "Relative.of_string_exn"
         [ "s", Sexp.Encoder.string s
@@ -346,7 +346,7 @@ end = struct
 
     let relative t components =
       match relative_result t components with
-      | Result.Ok t -> Ok t
+      | Result.Ok t -> Result.Ok t
       | Error () ->
         Error (
           Printf.sprintf "path outside the workspace: %s from %s"
@@ -364,7 +364,7 @@ end = struct
         ]
     );
     match L.relative_result t (explode_path path) with
-    | Result.Ok t -> Ok t
+    | Result.Ok t -> Result.Ok t
     | Error () ->
       Error (
         Printf.sprintf "path outside the workspace: %s from %s"
@@ -411,8 +411,8 @@ end = struct
 
   let of_string s =
     match s with
-    | "" | "." -> Ok root
-    | _ when is_canonicalized s -> Ok (make s)
+    | "" | "." -> Result.Ok root
+    | _ when is_canonicalized s -> Result.Ok (make s)
     | _ -> relative root s
 
   let of_string_exn s = of_string s |> ok_exn
@@ -612,7 +612,7 @@ module Kind = struct
       let+ local = Local.of_string s in
       Local local
     else
-      Ok (External (External.of_string s))
+      Result.Ok (External (External.of_string s))
 
   let of_string_exn s = of_string s |> ok_exn
 
@@ -758,9 +758,9 @@ let of_local = make_local_path
 let relative t fn =
   match fn with
   | "" | "." ->
-    Ok t
+    Result.Ok t
   | _ when not (Filename.is_relative fn) ->
-    Ok (external_ (External.of_string fn))
+    Result.Ok (external_ (External.of_string fn))
   |_ ->
     match t with
     | In_source_tree p ->
@@ -769,19 +769,19 @@ let relative t fn =
     | In_build_dir p ->
       let+ local = Local.relative p fn in
       in_build_dir local
-    | External s -> Ok (external_ (External.relative s fn))
+    | External s -> Result.Ok (external_ (External.relative s fn))
 
 let relative_exn t fn = relative t fn |> ok_exn
 
 let of_string s =
   match s with
-  | "" | "." -> Ok (in_source_tree Local.root)
+  | "" | "." -> Result.Ok (in_source_tree Local.root)
   | s  ->
     if Filename.is_relative s then
       let+ local = Local.of_string s in
       make_local_path local
     else
-      Ok (external_ (External.of_string s))
+      Result.Ok (external_ (External.of_string s))
 let of_string_exn s =
   of_string s |> ok_exn
 
@@ -864,7 +864,8 @@ let append_relative a b =
   | In_build_dir a ->
     let+ local = Local.append_relative a b in
     in_build_dir local
-  | External a -> Ok (external_ (External.relative a (Relative.to_string b)))
+  | External a ->
+    Result.Ok (external_ (External.relative a (Relative.to_string b)))
 
 let append_relative_exn a b = append_relative a b |> ok_exn
 

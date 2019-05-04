@@ -1,31 +1,12 @@
 unreleased
 ----------
 
-- Put back library variants in development mode. We discovered a
-  serious unexpected issue and we might need to adjust the design of
-  this feature before we are ready to commit to a final version. Users
-  will need to write `(using library_variants 0.1)` in their
-  `dune-project` file if they want to use it before the design is
-  finalized. (#2116, @diml)
-
-- Forbid to attach a variant to a library that implements a virtual
-  library outside the current project (#2104, @rgrinberg)
-
-- Restricted the set of variables available for expansion in the destination filename
-  of `install` stanza to simplify implementation and avoid dependency
+- Restricted the set of variables available for expansion in the destination
+  filename of `install` stanza to simplify implementation and avoid dependency
   cycles. (#2073, @aalekseyev, @diml)
-
-- Fix a bug where `dune install` would install man pages to incorrect
-  paths when compared to `opam-installer`. For example dune now
-  installs `(foo.1 as man1/foo.1)` correctly and previously that was
-  installed to `man1/man1/foo.1`. (#2105, @aalekseyev)
 
 - [menhir] call menhir from context root build_dir (#2067, @ejgallego,
   review by @diml, @rgrinberg)
-
-- [coq] Rename `(coqlib ...)` to `(coq.theory ...)`, support for
-  `coqlib` will be dropped in the 1.0 version of the Coq language
-  (#2055, @ejgallego)
 
 - [coq] Add `coq.pp` stanza to help with pre-processing of grammar
   files (#2054, @ejgallego, review by @rgrinberg)
@@ -36,13 +17,13 @@ unreleased
 - Allow to promote only a subset of the targets via `(promote (only
   <pred>))`. For instance: `(promote (only *.mli))` (#2068, @diml)
 
-- Improve the behavior when a strict subset of the targets of a rule
-  is already in the source tree for projects using the dune language < 1.10
-  (#2068, fixes #2061, @diml)
+- Improve the behavior when a strict subset of the targets of a rule is already
+  in the source tree for projects using the dune language < 1.10 (#2068, fixes
+  #2061, @diml)
 
-- With lang dune >= 1.10, rules in standard mode are no longer allowed
-  to produce targets that are present in the source tree. This has
-  been a warning for long enough (#2068, @diml)
+- With lang dune >= 1.10, rules in standard mode are no longer allowed to
+  produce targets that are present in the source tree. This has been a warning
+  for long enough (#2068, @diml)
 
 - Allow %{...} variables in pps flags (#2076, @mlasson review by @diml and
   @aalekseyev).
@@ -51,17 +32,38 @@ unreleased
   in the source. This allows the user to partially specify opam metadata in the
   the dune-project file. (#2017, @avsm, @jonludlam)
 
+- Clean up the special support for `findlib.dynload`. Before, Dune would simply
+  match on the library name. Now, we only match on the findlib package name when
+  the library doesn't come from Dune. Someone writing a library called
+  `findlib.dynload` with Dune would have to add `(special_builton_support
+  findlib_dynload)` to trigger the special behavior. (#2115, @diml)
+
+1.9.2 (02/05/2019)
+------------------
+
+- Put back library variants in development mode. We discovered a
+  serious unexpected issue and we might need to adjust the design of
+  this feature before we are ready to commit to a final version. Users
+  will need to write `(using library_variants 0.1)` in their
+  `dune-project` file if they want to use it before the design is
+  finalized. (#2116, @diml)
+
+- Forbid to attach a variant to a library that implements a virtual
+  library outside the current project (#2104, @rgrinberg)
+
+- Fix a bug where `dune install` would install man pages to incorrect
+  paths when compared to `opam-installer`. For example dune now
+  installs `(foo.1 as man1/foo.1)` correctly and previously that was
+  installed to `man1/man1/foo.1`. (#2105, @aalekseyev)
+
 - Do not fail when a findlib directory doesn't exist (#2101, fix #2099, @diml)
+
+- [coq] Rename `(coqlib ...)` to `(coq.theory ...)`, support for
+  `coqlib` will be dropped in the 1.0 version of the Coq language
+  (#2055, @ejgallego)
 
 - Fix crash when calculating library dependency closure (#2090, fixes #2085,
   @rgrinberg)
-
-- Clean up the special support for `findlib.dynload`. Before, Dune
-  would simply match on the library name. Now, we only match on the
-  findlib package name when the library doesn't come from
-  Dune. Someone writing a library called `findlib.dynload` with Dune
-  would have to add `(special_builton_support findlib_dynload)` to
-  trigger the special behavior. (#2115, @diml)
 
 1.9.1 (11/04/2019)
 ------------------

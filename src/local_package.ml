@@ -3,8 +3,8 @@ open Stdune
 module Id = Id.Make ()
 
 type t =
-  { odig_files : Path.t list
-  ; ctx_build_dir : Path.t
+  { odig_files : Path.Build.t list
+  ; ctx_build_dir : Path.Build.t
   ; lib_stanzas : Dune_file.Library.t Dir_with_dune.t list
   ; installs
     : File_binding.Expanded.t Dune_file.Install_conf.t Dir_with_dune.t list
@@ -21,7 +21,7 @@ let to_dyn t = Package.to_dyn t.pkg
 let to_sexp t = Dyn.to_sexp (to_dyn t)
 
 let hash t =
-  ( List.hash Path.hash t.odig_files
+  ( List.hash Path.Build.hash t.odig_files
   , Package.hash t.pkg
   )
 
@@ -128,13 +128,16 @@ module Of_sctx = struct
           | Some (_, libs) -> libs
           | None -> Lib.Set.empty
       in
+      let ctx_build_dir =
+        Path.as_in_build_dir ctx.build_dir |> Option.value_exn
+      in
       Super_context.packages sctx
       |> Package.Name.Map.map ~f:(fun (pkg : Package.t) ->
         let odig_files =
           let files = Super_context.source_files sctx ~src_path:Path.Source.root in
           String.Set.fold files ~init:[] ~f:(fun fn acc ->
             if is_odig_doc_file fn then
-              Path.relative ctx.build_dir fn :: acc
+              Path.Build.relative ctx_build_dir fn :: acc
             else
               acc)
         in
@@ -151,7 +154,7 @@ module Of_sctx = struct
             ; installs = []
             ; coqlibs = []
             ; pkg
-            ; ctx_build_dir = ctx.build_dir
+            ; ctx_build_dir
             ; libs
             ; mlds = lazy (assert false)
             ; virtual_lib
@@ -180,12 +183,16 @@ let lib_stanzas t = t.lib_stanzas
 let mlds t = Lazy.force t.mlds
 
 let package t = t.pkg
-let opam_file t = Path.append_source t.ctx_build_dir (Package.opam_file t.pkg)
-let meta_file t = Path.append_source t.ctx_build_dir (Package.meta_file t.pkg)
-let build_dir t = Path.append_source t.ctx_build_dir t.pkg.path
+let opam_file t =
+  Path.Build.append_source t.ctx_build_dir (Package.opam_file t.pkg)
+let meta_file t =
+  Path.Build.append_source t.ctx_build_dir (Package.meta_file t.pkg)
+let build_dir t =
+  Path.Build.append_source t.ctx_build_dir t.pkg.path
+
 let name t = t.pkg.name
 let dune_package_file t =
-  Path.relative (build_dir t)
+  Path.Build.relative (build_dir t)
     (Package.Name.to_string (name t) ^ ".dune-package")
 
 let coqlibs t = t.coqlibs
@@ -196,21 +203,21 @@ let install_paths t =
 let virtual_lib t = Lazy.force t.virtual_lib
 
 let meta_template t =
-  Path.extend_basename (meta_file t) ~suffix:".template"
+  Path.Build.extend_basename (meta_file t) ~suffix:".template"
 
 let local_packages_by_dir_def =
   let module Output = struct
-    type nonrec t = t list Path.Map.t
+    type nonrec t = t list Path.Build.Map.t
 
-    let equal = Path.Map.equal ~equal:(List.equal (==))
+    let equal = Path.Build.Map.equal ~equal:(List.equal (==))
 
     let to_dyn t =
       let open Dyn in
       Dyn.Map (
-        Path.Map.to_list t
+        Path.Build.Map.to_list t
         |> List.map ~f:(fun (k, v) ->
           let v = List (List.map ~f:to_dyn v) in
-          (Path.to_dyn k, v)))
+          (Path.Build.to_dyn k, v)))
 
     let to_sexp t = Dyn.to_sexp (to_dyn t)
   end
@@ -220,7 +227,7 @@ let local_packages_by_dir_def =
     |> List.map ~f:(fun pkg ->
       let build_dir = build_dir pkg in
       (build_dir, pkg))
-    |> Path.Map.of_list_multi
+    |> Path.Build.Map.of_list_multi
   in
   Memo.create "local-package-by-dir"
     ~doc:"Map from paths to local packages"
@@ -235,5 +242,7 @@ let local_packages_by_dir = Memo.exec local_packages_by_dir_def
 let defined_in sctx ~dir =
   let local_packages = of_sctx sctx in
   let by_build_dir = local_packages_by_dir local_packages in
-  Path.Map.find by_build_dir dir
+  Path.as_in_build_dir dir
+  |> Option.value_exn
+  |> Path.Build.Map.find by_build_dir
   |> Option.value ~default:[]

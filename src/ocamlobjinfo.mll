@@ -49,12 +49,9 @@ let rules ~dir ~(ctx : Context.t) ~unit =
     match ctx.ocamlobjinfo with
     | None ->
       Error (
-        { Action.Prog.Not_found.
-          context = Context.name ctx
-        ; program = "ocamlobjinfo"
-        ; hint = None
-        ; loc = None
-        })
+        let context = Context.name ctx in
+        let program = "ocamlobjinfo" in
+        Action.Prog.Not_found.create ~context ~program ~loc:None ())
     | Some bin -> Ok bin
   in
   let no_approx =

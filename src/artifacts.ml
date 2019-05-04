@@ -21,13 +21,9 @@ module Bin = struct
         match Context.which t.context name with
         | Some p -> Ok p
         | None ->
-          Error
-            { Action.Prog.Not_found.
-              program = name
-            ; hint
-            ; context = t.context.Context.name
-            ; loc
-            }
+          Error (
+            let context = t.context.name in
+            Action.Prog.Not_found.create ~program:name ?hint ~context ~loc ())
 
   let add_binaries t ~dir l =
     let local_bins =

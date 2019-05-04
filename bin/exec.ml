@@ -56,7 +56,10 @@ let term =
   let targets = lazy (
     (match prog_where with
      | `Search p ->
-       [Path.relative (Config.local_install_bin_dir ~context:context.name) p]
+       [Path.Build.relative
+          (Config.local_install_bin_dir ~context:context.name) p
+       |> Path.build
+       ]
      | `This_rel p when Sys.win32 ->
        [p; Path.extend_basename p ~suffix:Bin.exe]
      | `This_rel p ->
@@ -81,7 +84,9 @@ let term =
     end;
     match prog_where with
     | `Search prog ->
-      let path = Config.local_install_bin_dir ~context:context.name :: context.path in
+      let path =
+        Path.build (Config.local_install_bin_dir ~context:context.name)
+        :: context.path in
       Bin.which prog ~path
     | `This_rel prog
     | `This_abs prog ->

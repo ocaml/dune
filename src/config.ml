@@ -2,18 +2,18 @@ open! Stdune
 open! Import
 
 let local_install_dir =
-  let dir = Path.relative Path.build_dir "install" in
-  fun ~context -> Path.relative dir context
+  let dir = Path.Build.relative Path.Build.root "install" in
+  fun ~context -> Path.Build.relative dir context
 
 let local_install_bin_dir ~context =
-  Path.relative (local_install_dir ~context) "bin"
+  Path.Build.relative (local_install_dir ~context) "bin"
 
 let local_install_man_dir ~context =
-  Path.relative (local_install_dir ~context) "bin"
+  Path.Build.relative (local_install_dir ~context) "bin"
 
 let local_install_lib_dir ~context ~package =
-  Path.relative
-    (Path.relative (local_install_dir ~context) "lib")
+  Path.Build.relative
+    (Path.Build.relative (local_install_dir ~context) "lib")
     (Package.Name.to_string package)
 
 let dev_null =

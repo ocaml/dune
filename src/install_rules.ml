@@ -21,7 +21,7 @@ let gen_dune_package sctx ~version ~(pkg : Local_package.t) =
           in
           let lib_root lib =
             let (_, subdir) = Lib_name.split (Lib.name lib) in
-            Path.L.relative pkg_root subdir
+            Path.Build.L.relative pkg_root subdir
           in
           let libs =
             Local_package.libs pkg
@@ -37,7 +37,7 @@ let gen_dune_package sctx ~version ~(pkg : Local_package.t) =
                 Dir_contents.c_sources_of_library dir_contents ~name
                 |> C.Sources.objects ~dir ~ext_obj:ctx.ext_obj
               in
-              Lib.to_dune_lib lib ~dir:(lib_root lib) ~lib_modules
+              Lib.to_dune_lib lib ~dir:(Path.build (lib_root lib)) ~lib_modules
                 ~foreign_objects)
           in
           Dune_package.Or_meta.Dune_package
@@ -45,7 +45,7 @@ let gen_dune_package sctx ~version ~(pkg : Local_package.t) =
               version
             ; name
             ; libs
-            ; dir = pkg_root
+            ; dir = Path.build pkg_root
             }
         in
         dune_package))
@@ -265,7 +265,7 @@ let local_install_rules sctx (entries : (Loc.t option * Install.Entry.t) list)
   let install_dir = Config.local_install_dir ~context:ctx.name in
   List.map entries ~f:(fun (loc, entry) ->
     let dst =
-      Path.append install_dir
+      Path.append (Path.build install_dir)
         (Install.Entry.relative_installed_path entry ~paths:install_paths)
     in
     let loc =

@@ -344,7 +344,7 @@ let get_installed_binaries stanzas ~(context : Context.t) =
         in
         let p = Path.Relative.of_string (Install.Dst.to_string p) in
         if Path.Relative.is_root (Path.Relative.parent_exn p) then
-          Path.Set.add acc (Path.append_relative install_dir p)
+          Path.Set.add acc (Path.append_relative (Path.build install_dir) p)
         else
           acc)
     | _ -> acc)

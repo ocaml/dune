@@ -471,6 +471,8 @@ end
 module Build = struct
   include Relative
   let append_source = append
+  let append_relative = append
+  let append_local = append
 end
 module Local = Relative
 module Source0 = Relative
@@ -816,6 +818,11 @@ let as_in_source_tree = function
   | In_build_dir _
   | External _ -> None
 
+let as_in_build_dir = function
+  | In_build_dir b -> Some b
+  | In_source_tree _
+  | External _ -> None
+
 let is_alias_stamp_file = function
   | In_build_dir s -> String.is_prefix (Local.to_string s) ~prefix:".aliases/"
   | In_source_tree _
@@ -1089,6 +1096,7 @@ end
 
 let in_source s = in_source_tree (Local.of_string s)
 let source s = in_source_tree s
+let build s = in_build_dir s
 
 let is_suffix p ~suffix =
   match p with

@@ -23,6 +23,7 @@ type t =
   (* For build & runtest only *)
   ; watch : bool
   ; stats_trace_file : string option
+  ; always_show_command_line : bool
   }
 
 val prefix_target : t -> string -> string

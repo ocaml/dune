@@ -331,23 +331,24 @@ let get_installed_binaries stanzas ~(context : Context.t) =
     ) sw
     |> String_with_vars.Partial.map ~f:(Value.to_string ~dir)
   in
-  Dir_with_dune.deep_fold stanzas ~init:Path.Set.empty ~f:(fun d stanza acc ->
-    match (stanza : Stanza.t) with
-    | Dune_file.Install { section = Bin; files; _ } ->
-      List.fold_left files ~init:acc ~f:(fun acc fb ->
-        let p =
-          File_binding.Unexpanded.destination_relative_to_install_path
-            fb
-            ~section:Bin
-            ~expand:(expand_str ~dir:d.ctx_dir)
-            ~expand_partial:(expand_str_partial ~dir:d.ctx_dir)
-        in
-        let p = Path.Relative.of_string (Install.Dst.to_string p) in
-        if Path.Relative.is_root (Path.Relative.parent_exn p) then
-          Path.Set.add acc (Path.append_relative (Path.build install_dir) p)
-        else
-          acc)
-    | _ -> acc)
+  Dir_with_dune.deep_fold stanzas ~init:Path.Build.Set.empty
+    ~f:(fun d stanza acc ->
+      match (stanza : Stanza.t) with
+      | Dune_file.Install { section = Bin; files; _ } ->
+        List.fold_left files ~init:acc ~f:(fun acc fb ->
+          let p =
+            File_binding.Unexpanded.destination_relative_to_install_path
+              fb
+              ~section:Bin
+              ~expand:(expand_str ~dir:d.ctx_dir)
+              ~expand_partial:(expand_str_partial ~dir:d.ctx_dir)
+          in
+          let p = Path.Relative.of_string (Install.Dst.to_string p) in
+          if Path.Relative.is_root (Path.Relative.parent_exn p) then
+            Path.Build.Set.add acc (Path.Build.append_relative install_dir p)
+          else
+            acc)
+      | _ -> acc)
 
 let create
       ~(context:Context.t)

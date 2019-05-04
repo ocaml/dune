@@ -16,11 +16,11 @@ module Bin : sig
 
   val add_binaries
     :  t
-    -> dir:Path.t
+    -> dir:Path.Build.t
     -> File_binding.Expanded.t list
     -> t
 
-  val create : context:Context.t -> local_bins:Path.Set.t -> t
+  val create : context:Context.t -> local_bins:Path.Build.Set.t -> t
 end
 
 module Public_libs : sig
@@ -47,5 +47,5 @@ type t = {
 val create
   :  Context.t
   -> public_libs:Lib.DB.t
-  -> local_bins:Path.Set.t
+  -> local_bins:Path.Build.Set.t
   -> t

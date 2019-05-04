@@ -71,7 +71,13 @@ let rec external_ t ~profile ~default =
     in
     let env =
       if have_binaries then
-        Env.cons_path env ~dir:(Utils.local_bin t.dir)
+        let dir =
+          Path.as_in_build_dir t.dir
+          |> Option.value_exn
+          |> Utils.local_bin
+          |> Path.build
+        in
+        Env.cons_path env ~dir
       else
         env
     in
@@ -88,8 +94,9 @@ let rec bin_artifacts t ~profile ~default ~expander =
       | Some (lazy t) -> bin_artifacts t ~default ~profile ~expander
     in
     let bin_artifacts =
+      let dir = Path.as_in_build_dir t.dir |> Option.value_exn in
       local_binaries t ~profile ~expander
-      |> Artifacts.Bin.add_binaries default ~dir:t.dir
+      |> Artifacts.Bin.add_binaries default ~dir
     in
     t.bin_artifacts <- Some bin_artifacts;
     bin_artifacts

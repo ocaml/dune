@@ -114,6 +114,7 @@ end = struct
             | Some parent -> lazy (get t ~dir:parent ~scope)
         in
         let config = get_env_stanza t ~dir in
+        let dir = Path.as_in_build_dir dir |> Option.value_exn in
         Env_node.make ~dir ~scope ~config ~inherit_from:(Some inherit_from)
       in
       Hashtbl.add t.env dir node;
@@ -403,7 +404,7 @@ let create
   let default_env = lazy (
     let make ~inherit_from ~config =
       Env_node.make
-        ~dir:context.build_dir
+        ~dir:(Path.as_in_build_dir context.build_dir |> Option.value_exn)
         ~scope:(Scope.DB.find_by_dir scopes context.build_dir)
         ~inherit_from
         ~config

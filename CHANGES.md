@@ -1,3 +1,8 @@
+1.9.3 (06/05/2019)
+------------------
+
+- Fix `.install` files not being generated (#2124, fixes #2123, @rgrinberg)
+
 1.9.2 (02/05/2019)
 ------------------
 

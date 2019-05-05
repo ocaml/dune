@@ -1,3 +1,3 @@
   $ dune build @install
-  Path outside the workspace: ../pkgconfig/mirage-xen.pc from .
-  [1]
+  $ cat foo.install | grep mirage-xen
+    "_build/install/default/lib/pkgconfig/mirage-xen.pc" {"../pkgconfig/mirage-xen.pc"}

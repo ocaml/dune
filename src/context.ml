@@ -379,20 +379,21 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       in
       let vars =
         let local_lib_path =
-          (Path.relative
+          Path.Build.relative
              (Config.local_install_dir ~context:name)
-             "lib")
+             "lib"
+          |> Path.build
         in
         [ extend_var "CAML_LD_LIBRARY_PATH"
-            (Path.relative
-               (Config.local_install_dir ~context:name)
-               "lib/stublibs")
+            (Path.build (Path.Build.relative
+                           (Config.local_install_dir ~context:name)
+                           "lib/stublibs"))
         ; extend_var "OCAMLPATH" ~path_sep:ocamlpath_sep
             local_lib_path
         ; extend_var "OCAMLFIND_IGNORE_DUPS_IN" ~path_sep:ocamlpath_sep
             local_lib_path
         ; extend_var "MANPATH"
-            (Config.local_install_man_dir ~context:name)
+            (Path.build (Config.local_install_man_dir ~context:name))
         ; "DUNE_CONFIGURATOR", (Path.to_string ocamlc)
         ]
       in
@@ -401,7 +402,8 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
         match host with
         | None ->
           let _key, path =
-            extend_var "PATH" (Config.local_install_bin_dir ~context:name) in
+            Path.build (Config.local_install_bin_dir ~context:name)
+            |> extend_var "PATH" in
           Some path
         | Some host ->
           Env.get host.env "PATH"

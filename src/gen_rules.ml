@@ -234,7 +234,11 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
          |> List.iter ~f:(fun t ->
            let loc = File_binding.Expanded.src_loc t in
            let src = File_binding.Expanded.src_path t in
-           let dst = File_binding.Expanded.dst_path t ~dir in
+           let dst =
+             let dir = Path.as_in_build_dir dir |> Option.value_exn in
+             File_binding.Expanded.dst_path t ~dir
+             |> Path.build
+           in
            Super_context.add_rule sctx ~loc ~dir (Build.symlink ~src ~dst))
        | _ ->
          match

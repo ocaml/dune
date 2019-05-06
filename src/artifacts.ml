@@ -8,7 +8,7 @@ module Bin = struct
     (* Mapping from executable names to their actual path in the
        workspace. The keys are the executable names without the .exe,
        even on Windows. *)
-    local_bins : Path.t String.Map.t;
+    local_bins : Path.Build.t String.Map.t;
   }
 
   let binary t ?hint ~loc name =
@@ -16,7 +16,7 @@ module Bin = struct
       Ok (Path.of_filename_relative_to_initial_cwd name)
     else
       match String.Map.find t.local_bins name with
-      | Some path -> Ok path
+      | Some path -> Ok (Path.build path)
       | None ->
         match Context.which t.context name with
         | Some p -> Ok p
@@ -31,14 +31,14 @@ module Bin = struct
         ~f:(fun acc fb ->
           let path = File_binding.Expanded.dst_path fb
                        ~dir:(Utils.local_bin dir) in
-          String.Map.add acc (Path.basename path) path)
+          String.Map.add acc (Path.Build.basename path) path)
     in
     { t with local_bins }
 
   let create ~(context : Context.t) ~local_bins =
     let local_bins =
-      Path.Set.fold local_bins ~init:String.Map.empty ~f:(fun path acc ->
-        let name = Filename.basename (Path.to_string path) in
+      Path.Build.Set.fold local_bins ~init:String.Map.empty ~f:(fun path acc ->
+        let name = Path.Build.basename path in
         let key =
           if Sys.win32 then
             Option.value ~default:name
@@ -76,9 +76,9 @@ module Public_libs = struct
         let lib_install_dir =
           match rest with
           | [] -> lib_install_dir
-          | _  -> Path.relative lib_install_dir (String.concat rest ~sep:"/")
+          | _  -> Path.Build.relative lib_install_dir (String.concat rest ~sep:"/")
         in
-        Ok (Path.relative lib_install_dir file)
+        Ok (Path.build (Path.Build.relative lib_install_dir file))
       end else
         Ok (Path.relative (Lib.src_dir lib) file)
 

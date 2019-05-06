@@ -59,6 +59,10 @@ module Build : sig
 
   val append_source : t -> Source.t -> t
 
+  val append_relative : t -> Relative.t -> t
+
+  val append_local : t -> Local.t -> t
+
   val of_string : ?error_loc:Loc0.t -> string -> t
   module L : sig
     val relative : ?error_loc:Loc0.t -> t -> string list -> t
@@ -187,6 +191,7 @@ val is_in_build_dir : t -> bool
 (** [is_in_build_dir t = is_managed t && not (is_in_build_dir t)] *)
 val is_in_source_tree : t -> bool
 val as_in_source_tree : t -> Source.t option
+val as_in_build_dir : t -> Build.t option
 
 val is_alias_stamp_file : t -> bool
 
@@ -221,6 +226,7 @@ val ensure_build_dir_exists : unit -> unit
 val set_build_dir : Kind.t -> unit
 
 val source : Source.t -> t
+val build : Build.t -> t
 
 (** paths guaranteed to be in the source directory *)
 val in_source : string -> t

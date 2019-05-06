@@ -1,7 +1,7 @@
 open Stdune
 
 type t =
-  { dir                   : Path.t
+  { dir                   : Path.Build.t
   ; inherit_from          : t Lazy.t option
   ; scope                 : Scope.t
   ; config                : Dune_env.Stanza.t option
@@ -43,11 +43,12 @@ let rec local_binaries t ~profile ~expander =
       match find_config t ~profile with
       | None -> default
       | Some cfg ->
+        let dir = Path.build t.dir in
         default @
         List.map cfg.binaries
-          ~f:(File_binding.Unexpanded.expand ~dir:t.dir ~f:(fun template ->
+          ~f:(File_binding.Unexpanded.expand ~dir ~f:(fun template ->
             Expander.expand expander ~mode:Single ~template
-            |> Value.to_string ~dir:t.dir))
+            |> Value.to_string ~dir))
     in
     t.local_binaries <- Some local_binaries;
     local_binaries
@@ -71,7 +72,11 @@ let rec external_ t ~profile ~default =
     in
     let env =
       if have_binaries then
-        Env.cons_path env ~dir:(Utils.local_bin t.dir)
+        let dir =
+          Utils.local_bin t.dir
+          |> Path.build
+        in
+        Env.cons_path env ~dir
       else
         env
     in
@@ -107,7 +112,8 @@ let rec ocaml_flags t ~profile ~expander =
       match find_config t ~profile with
       | None -> default
       | Some cfg ->
-        let expander = Expander.set_dir expander ~dir:t.dir in
+        let dir = Path.build t.dir in
+        let expander = Expander.set_dir expander ~dir in
         Ocaml_flags.make
           ~spec:cfg.flags
           ~default
@@ -129,7 +135,8 @@ let rec c_flags t ~profile ~expander ~default_context_flags =
       match find_config t ~profile with
       | None -> default
       | Some cfg ->
-        let expander = Expander.set_dir expander ~dir:t.dir in
+        let dir = Path.build t.dir in
+        let expander = Expander.set_dir expander ~dir in
         C.Kind.Dict.mapi cfg.c_flags ~f:(fun ~kind f ->
           let default = C.Kind.Dict.get default kind in
           Expander.expand_and_eval_set expander f ~standard:default)

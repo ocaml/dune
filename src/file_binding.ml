@@ -23,7 +23,7 @@ module Expanded = struct
       |> Option.value ~default:basename
 
   let dst_path t ~dir =
-    Path.relative dir (dst_basename t)
+    Path.Build.relative dir (dst_basename t)
 end
 
 module Unexpanded = struct

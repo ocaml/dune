@@ -37,10 +37,15 @@ let add_rules sctx ~dir ~project =
   Local_package.defined_in sctx ~dir
   |> List.iter ~f:(fun pkg ->
     let opam_path = Local_package.opam_file pkg in
-    let expected_path = Path.extend_basename opam_path ~suffix:".expected" in
+    let expected_path =
+      Path.Build.extend_basename opam_path ~suffix:".expected"
+      |> Path.build
+    in
+    let opam_path = Path.build opam_path in
     let expected_rule =
       Build.contents opam_path >>^ (fun contents ->
-        let opamfile = Opam_file.of_string ~path:opam_path contents in
+        let opamfile =
+          Opam_file.of_string ~path:opam_path contents in
         let package_name = Local_package.name pkg in
         let corrected =
           Opam_file.Mutator.apply (correct project package_name) opamfile in
@@ -58,7 +63,7 @@ let add_rules sctx ~dir ~project =
                   ; mode = Text
                   }
     in
-    let dir = Local_package.build_dir pkg in
+    let dir = Path.build (Local_package.build_dir pkg) in
     Super_context.add_rule sctx ~dir expected_rule;
     let aliases =
       [ Alias.install ~dir

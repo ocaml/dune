@@ -6,7 +6,7 @@ open Stdune
 type t
 
 val make
-  :  dir:Path.t
+  :  dir:Path.Build.t
   -> inherit_from:t Lazy.t option
   -> scope:Scope.t
   -> config:Dune_env.Stanza.t option

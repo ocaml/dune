@@ -8,7 +8,7 @@ module Expanded : sig
 
   val src_loc : t -> Loc.t
 
-  val dst_path : t -> dir:Path.t -> Path.t
+  val dst_path : t -> dir:Path.Build.t -> Path.Build.t
   val src_path : t -> Path.t
 end
 

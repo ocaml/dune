@@ -11,7 +11,7 @@ let gen_dune_package sctx ~version ~(pkg : Local_package.t) =
   let meta_template = Local_package.meta_template pkg in
   let name = Local_package.name pkg in
   let dune_version = Syntax.greatest_supported_version Stanza.syntax in
-  Build.if_file_exists meta_template
+  Build.if_file_exists (Path.build meta_template)
     ~then_:(Build.return Dune_package.Or_meta.Use_meta)
     ~else_:(
       version >>^ (fun version ->
@@ -21,7 +21,7 @@ let gen_dune_package sctx ~version ~(pkg : Local_package.t) =
           in
           let lib_root lib =
             let (_, subdir) = Lib_name.split (Lib.name lib) in
-            Path.L.relative pkg_root subdir
+            Path.Build.L.relative pkg_root subdir
           in
           let libs =
             Local_package.libs pkg
@@ -37,7 +37,7 @@ let gen_dune_package sctx ~version ~(pkg : Local_package.t) =
                 Dir_contents.c_sources_of_library dir_contents ~name
                 |> C.Sources.objects ~dir ~ext_obj:ctx.ext_obj
               in
-              Lib.to_dune_lib lib ~dir:(lib_root lib) ~lib_modules
+              Lib.to_dune_lib lib ~dir:(Path.build (lib_root lib)) ~lib_modules
                 ~foreign_objects)
           in
           Dune_package.Or_meta.Dune_package
@@ -45,7 +45,7 @@ let gen_dune_package sctx ~version ~(pkg : Local_package.t) =
               version
             ; name
             ; libs
-            ; dir = pkg_root
+            ; dir = Path.build pkg_root
             }
         in
         dune_package))
@@ -55,7 +55,7 @@ let gen_dune_package sctx ~version ~(pkg : Local_package.t) =
          (Fmt.list ~pp_sep:Fmt.nl
             (Dune_lang.pp (Stanza.File_kind.of_syntax dune_version))))
   >>>
-  Build.write_file_dyn dune_package_file
+  Build.write_file_dyn (Path.build dune_package_file)
   |> Super_context.add_rule sctx ~dir:ctx.build_dir
 
 type version_method =
@@ -68,7 +68,7 @@ let pkg_version ~path ~(pkg : Package.t) =
     | candidate :: rest ->
       match candidate with
       | File fn ->
-        let p = Path.relative path fn in
+        let p = Path.Build.relative path fn |> Path.build in
         Build.if_file_exists p
           ~then_:(Build.lines_of p
                   >>^ function
@@ -95,7 +95,7 @@ let init_meta sctx ~dir =
     let path = Local_package.build_dir pkg in
     let pkg_name = Local_package.name pkg in
     let meta = Local_package.meta_file pkg in
-    let meta_template = Local_package.meta_template pkg in
+    let meta_template = Path.build (Local_package.meta_template pkg) in
     let version =
       let pkg = Local_package.package pkg in
       let get = pkg_version ~pkg ~path in
@@ -148,7 +148,7 @@ let init_meta sctx ~dir =
          Format.pp_print_flush ppf ();
          Buffer.contents buf)
        >>>
-       Build.write_file_dyn meta))
+       Build.write_file_dyn (Path.build meta)))
 
 let lib_ppxs sctx ~(lib : Dune_file.Library.t) ~scope ~dir_kind =
   match lib.kind with
@@ -265,7 +265,7 @@ let local_install_rules sctx (entries : (Loc.t option * Install.Entry.t) list)
   let install_dir = Config.local_install_dir ~context:ctx.name in
   List.map entries ~f:(fun (loc, entry) ->
     let dst =
-      Path.append install_dir
+      Path.append (Path.build install_dir)
         (Install.Entry.relative_installed_path entry ~paths:install_paths)
     in
     let loc =
@@ -290,17 +290,18 @@ let install_file sctx (package : Local_package.t) entries =
   let meta = Local_package.meta_file package in
   let dune_package = Local_package.dune_package_file package in
   let package_name = Local_package.name package in
-  let pkg_build_dir = Local_package.build_dir package in
+  let pkg_build_dir = Path.build (Local_package.build_dir package) in
   let install_paths = Local_package.install_paths package in
   let entries =
     let docs =
       Local_package.odig_files package
-      |> List.map ~f:(fun doc -> (None, Install.Entry.make Doc doc))
+      |> List.map ~f:(fun doc -> (None, Install.Entry.make Doc (Path.build doc)))
     in
     local_install_rules sctx ~package:package_name ~install_paths (
-      (None, Install.Entry.make Lib opam ~dst:"opam")
-      :: (None, Install.Entry.make Lib meta ~dst:"META")
-      :: (None, Install.Entry.make Lib dune_package ~dst:"dune-package")
+      (None, Install.Entry.make Lib (Path.build opam) ~dst:"opam")
+      :: (None, Install.Entry.make Lib (Path.build meta) ~dst:"META")
+      :: (None, Install.Entry.make Lib (Path.build dune_package)
+                  ~dst:"dune-package")
       :: docs)
     |> List.rev_append entries
   in
@@ -411,7 +412,7 @@ let init_install_files (ctx : Context.t) (package : Local_package.t) =
       Utils.install_file ~package:(Local_package.name package)
         ~findlib_toolchain:ctx.findlib_toolchain
     in
-    let path = Local_package.build_dir package in
+    let path = Path.build (Local_package.build_dir package) in
     let install_alias = Alias.install ~dir:path in
     let install_file = Path.relative path install_fn in
     Build_system.Alias.add_deps install_alias (Path.Set.singleton install_file)

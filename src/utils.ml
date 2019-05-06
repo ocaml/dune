@@ -202,7 +202,7 @@ module Cached_digest = struct
     { mutable digest            : Digest.t
     ; mutable timestamp         : float
     ; mutable permissions       : Unix.file_perm
-    ; mutable timestamp_checked : int
+    ; mutable stats_checked : int
     }
 
   type t =
@@ -269,7 +269,7 @@ module Cached_digest = struct
     Hashtbl.replace cache.table ~key:fn
       ~data:{ digest
             ; timestamp = stat.st_mtime
-            ; timestamp_checked = cache.checked_key
+            ; stats_checked = cache.checked_key
             ; permissions
             };
     digest
@@ -278,7 +278,7 @@ module Cached_digest = struct
     let cache = Lazy.force cache in
     match Hashtbl.find cache.table fn with
     | Some x ->
-      if x.timestamp_checked = cache.checked_key then
+      if x.stats_checked = cache.checked_key then
         x.digest
       else begin
         needs_dumping := true;
@@ -294,7 +294,7 @@ module Cached_digest = struct
         end;
         if !dirty then
           x.digest <- path_stat_digest fn stat;
-        x.timestamp_checked <- cache.checked_key;
+        x.stats_checked <- cache.checked_key;
         x.digest
       end
     | None ->

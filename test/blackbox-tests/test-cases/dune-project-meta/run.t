@@ -61,3 +61,80 @@ Fatal error with opam file that is not listed in the dune-project file:
   your dune-project file, you must a (package ...) stanza for each opam package
   in your project.
   [1]
+
+Version generated in opam and META files
+----------------------------------------
+
+After calling `dune subst`, dune should embed the version inside the
+generated META and opam files.
+
+### With opam files and no package stanzas
+
+  $ mkdir version
+
+  $ cat > version/dune-project <<EOF
+  > (lang dune 1.10)
+  > (name foo)
+  > EOF
+
+  $ cat > version/foo.opam <<EOF
+  > EOF
+
+  $ cat > version/dune <<EOF
+  > (library (public_name foo))
+  > EOF
+
+  $ (cd version
+  >  git init -q
+  >  git add .
+  >  git commit -qm _
+  >  git tag -a 1.0 -m 1.0
+  >  dune subst)
+
+  $ dune build --root version foo.opam META.foo
+  Entering directory 'version'
+
+  $ grep ^version version/foo.opam
+  version: "1.0"
+
+  $ grep ^version version/_build/default/META.foo
+  version = "1.0"
+
+### With package stanzas and generating the opam files
+
+  $ rm -rf version
+  $ mkdir version
+
+  $ cat > version/dune-project <<EOF
+  > (lang dune 1.10)
+  > (name foo)
+  > (generate_opam_files true)
+  > (package (name foo))
+  > EOF
+
+  $ cat > version/foo.opam <<EOF
+  > EOF
+
+  $ cat > version/dune <<EOF
+  > (library (public_name foo))
+  > EOF
+
+  $ (cd version
+  >  git init -q
+  >  git add .
+  >  git commit -qm _
+  >  git tag -a 1.0 -m 1.0
+  >  dune subst)
+
+  $ dune build --root version foo.opam META.foo
+  Entering directory 'version'
+
+The following behavior is wrong, the version should be set in stone
+after running `dune subst`:
+
+  $ grep ^version version/foo.opam
+  [1]
+
+  $ grep ^version version/_build/default/META.foo
+  [1]
+

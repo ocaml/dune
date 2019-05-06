@@ -104,8 +104,6 @@ module Dependency = struct
       | And of t list
       | Or of t list
 
-    let hash = Poly.hash
-
     let decode =
       let open Dune_lang.Decoder in
       let ops =
@@ -145,12 +143,6 @@ module Dependency = struct
     { name : Name.t
     ; constraint_ : Constraint.t option
     }
-
-  let hash { name ; constraint_ } =
-    Poly.hash
-      ( Name.hash name
-      , Option.hash Constraint.hash constraint_
-      )
 
   let decode =
     let open Dune_lang.Decoder in
@@ -209,8 +201,6 @@ module Kind = struct
     | Dune of has_opam
     | Opam
 
-  let hash = Poly.hash
-
   let to_dyn =
     let open Dyn.Encoder in
     function
@@ -232,30 +222,10 @@ type t =
   ; tags                   : string list
   }
 
-let hash { name
-         ; synopsis
-         ; description
-         ; depends
-         ; conflicts
-         ; depopts
-         ; path
-         ; version
-         ; kind
-         ; tags
-         ; loc = _
-         } =
-  Hashtbl.hash
-    ( Name.hash name
-    , Option.hash String.hash synopsis
-    , Option.hash String.hash description
-    , List.hash Dependency.hash depends
-    , List.hash Dependency.hash conflicts
-    , List.hash Dependency.hash depopts
-    , Path.Source.hash path
-    , Hashtbl.hash version
-    , Kind.hash kind
-    , Poly.hash tags
-    )
+(* Package name are globally unique, so we can reasonably expect that
+   there will always be only a single value of type [t] with a given
+   name in memory. That's why we only hash the name. *)
+let hash t = Name.hash t.name
 
 let decode ~dir =
   let open Dune_lang.Decoder in

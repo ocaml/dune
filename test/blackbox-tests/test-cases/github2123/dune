@@ -1,0 +1,3 @@
+(install
+ (section lib)
+ (files (mirage-xen.pc as ../pkgconfig/mirage-xen.pc)))

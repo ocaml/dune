@@ -38,6 +38,8 @@ unreleased
   `findlib.dynload` with Dune would have to add `(special_builtin_support
   findlib_dynload)` to trigger the special behavior. (#2115, @diml)
 
+- Fix `.install` files not being generated (#2124, fixes #2123, @rgrinberg)
+
 1.9.2 (02/05/2019)
 ------------------
 

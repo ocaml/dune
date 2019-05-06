@@ -23,7 +23,7 @@ module Directory_rules = struct
 end
 
 module Scheme = struct
-  include Dune.Scheme.Make(Directory_rules)
+  include Dune.Scheme
 
   (* Calls [print] every time any code embedded in the scheme runs,
      be it a [Thunk] constructor or an [Approximation] function.
@@ -31,7 +31,6 @@ module Scheme = struct
      The argument of [print] identifies which thunk got run (the path
      to that thunk within the [Scheme.t] value).  *)
   let instrument ~print =
-    let open Dune.Scheme.Gen in
     let print path suffix =
       print (String.concat (List.rev path @ [suffix]) ~sep:":")
     in
@@ -60,7 +59,7 @@ module Scheme = struct
      rather than from being declared in the first place.
   *)
   let collect_rules_simple =
-    let rec go (t : t) ~dir =
+    let rec go (t : _ t) ~dir =
       match t with
       | Empty -> Directory_rules.empty
       | Union (a, b) -> Directory_rules.union(go a ~dir) (go b ~dir)
@@ -76,6 +75,12 @@ module Scheme = struct
         go (f ()) ~dir
     in
     go
+
+  let evaluate = evaluate ~union:Directory_rules.union
+
+  let get_rules t ~dir =
+    Option.value (get_rules t ~dir)
+      ~default:Directory_rules.empty
 end
 
 module Dir_set = Dune.Dir_set
@@ -141,7 +146,7 @@ open Dune.Scheme
 
 let () =
   let scheme =
-    Dune.Scheme.Gen.Thunk (fun () -> Dune.Scheme.Gen.Empty)
+    Scheme.Thunk (fun () -> Scheme.Empty)
   in
   print_rules scheme ~dir:(Path.of_string "foo/bar")
 
@@ -153,7 +158,7 @@ rules:
 |}]
 
 let scheme_all_but_foo_bar =
-  Dune.Scheme.Gen.Approximation (
+  Scheme.Approximation (
     Dir_set.negate (
       Dir_set.subtree (Path.of_string "foo/bar")),
     Thunk (fun () -> Empty))

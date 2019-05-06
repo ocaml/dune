@@ -1,20 +1,26 @@
-(** [Rules] represents a collection of rules across a known set of directories. *)
+(** [Rules] represents a collection of rules across a known finite set of
+    directories. *)
 
 open! Stdune
 
-(** [rule] is a function that produces some build system rules
-    such as ([Build_system.add_rule]) in a known directory. *)
-type rule = unit -> unit
+module Dir_rules : sig
+  (** [rule] is a function that produces some build system rules
+      such as ([Build_system.add_rule]) in a known directory. *)
+  type t = unit -> unit
 
-type t = private rule Path.Build.Map.t
+  val empty : t
+  val union : t -> t -> t
+end
 
-val to_map : t -> rule Path.Build.Map.t
+type t = private Dir_rules.t Path.Build.Map.t
+
+val to_map : t -> Dir_rules.t Path.Build.Map.t
 
 (* [Path] must be in build directory *)
-val file_rule : rule:(Path.t * rule) -> unit
+val file_rule : rule:(Path.t * Dir_rules.t) -> unit
 
 (* [Path] must be in build directory *)
-val dir_rule : (Path.t * rule) -> unit
+val dir_rule : (Path.t * Dir_rules.t) -> unit
 
 val union : t -> t -> t
 

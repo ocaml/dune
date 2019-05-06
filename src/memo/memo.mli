@@ -165,7 +165,7 @@ val registered_functions : unit -> Function_info.t list
 val function_info : string -> Function_info.t
 
 module Lazy : sig
-  type 'a t
+  type +'a t
 
   val map2 : 'a t -> 'b t -> f:('a -> 'b -> 'c) -> 'c t
   val bind : 'a t -> f:('a -> 'b t) -> 'b t

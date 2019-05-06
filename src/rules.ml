@@ -1,9 +1,14 @@
 open! Stdune
 
-type rule = unit -> unit
+module Dir_rules = struct
+  type t = unit -> unit
+
+  let empty = (fun () -> ())
+  let union f g () = f (); g ()
+end
 
 module T = struct
-  type t = rule Path.Build.Map.t
+  type t = Dir_rules.t Path.Build.Map.t
 
   let empty = Path.Build.Map.empty
 

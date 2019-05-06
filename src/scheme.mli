@@ -2,22 +2,19 @@
 
 open! Stdune
 
-(** Generic representation of a scheme *)
-module Gen : sig
-  type 'rules t =
-    | Empty
-    | Union of 'rules t * 'rules t
-    | Approximation of Dir_set.t * 'rules t
-    | Finite of 'rules Path.Build.Map.t
-    | Thunk of (unit -> 'rules t)
+type 'rules t =
+  | Empty
+  | Union of 'rules t * 'rules t
+  | Approximation of Dir_set.t * 'rules t
+  | Finite of 'rules Path.Build.Map.t
+  | Thunk of (unit -> 'rules t)
+
+module Evaluated : sig
+  type 'a t
 end
 
-module type S = Scheme_intf.S with module Gen := Gen
+val evaluate : 'a t -> union:('a -> 'a -> 'a) -> 'a Evaluated.t
 
-module Make(Directory_rules : sig
-    type t
-    val empty : t
-    val union : t -> t -> t
-  end) : S with type dir_rules := Directory_rules.t
+val get_rules : 'a Evaluated.t -> dir:Path.Build.t -> 'a option
 
-include S with type dir_rules := Rules.rule
+val all : 'a t list -> 'a t

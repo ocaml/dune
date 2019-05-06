@@ -2,7 +2,7 @@ open! Stdune
 
 module Path = Path.Build
 
-module Gen = struct
+module T = struct
   type 'rules t =
     | Empty
     | Union of 'rules t * 'rules t
@@ -10,106 +10,98 @@ module Gen = struct
     | Finite of 'rules Path.Map.t
     | Thunk of (unit -> 'rules t)
 
-  module Evaluated = struct
-    type 'rules t = {
-      by_child : 'rules t Memo.Lazy.t String.Map.t;
-      rules_here : 'rules Memo.Lazy.t;
-    }
-  end
 end
-open Gen
 
-module type S = Scheme_intf.S with module Gen := Gen
+include T
 
-module Make(Rules : sig
-    type t
-    val empty : t
-    val union : t -> t -> t
-  end) = struct
-  type t = Rules.t Gen.t
+module Evaluated = struct
 
-  module Evaluated = struct
-    type 'rules t_gen = 'rules Evaluated.t = {
-      by_child : 'rules t_gen Memo.Lazy.t String.Map.t;
-      rules_here : 'rules Memo.Lazy.t;
+  type 'rules t = {
+    by_child : 'rules t Memo.Lazy.t String.Map.t;
+    rules_here : 'rules option Memo.Lazy.t;
+  }
+
+  let empty =
+    { by_child = String.Map.empty;
+      rules_here = Memo.Lazy.of_val None;
     }
-    type t = Rules.t t_gen
 
-    let empty =
-      { by_child = String.Map.empty;
-        rules_here = Memo.Lazy.of_val Rules.empty;
-      }
+  let descend t dir =
+    match String.Map.find t.by_child dir with
+    | None -> empty
+    | Some res -> Memo.Lazy.force res
 
-    let descend t dir =
-      match String.Map.find t.by_child dir with
-      | None -> empty
-      | Some res -> Memo.Lazy.force res
+  let union_option ~f a b = match (a, b) with
+    | None, x | x, None -> x
+    | Some x, Some y -> Some (f x y)
 
-    let rec union ~union_rules x y =
-      {
-        by_child =
-          String.Map.union x.by_child y.by_child
-            ~f:(fun _key data1 data2 -> Some (
-              Memo.Lazy.map2 data1 data2
-                ~f:(fun x y -> union ~union_rules x y)));
-        rules_here =
-          Memo.Lazy.map2 x.rules_here y.rules_here ~f:union_rules
-      }
+  let rec union ~union_rules x y =
+    {
+      by_child =
+        String.Map.union x.by_child y.by_child
+          ~f:(fun _key data1 data2 -> Some (
+            Memo.Lazy.map2 data1 data2
+              ~f:(fun x y -> union ~union_rules x y)));
+      rules_here =
+        Memo.Lazy.map2 x.rules_here y.rules_here ~f:(
+          union_option ~f:union_rules)
+    }
 
-    let union = union ~union_rules:Rules.union
+  let rec restrict (dirs : Dir_set.t) t : _ t =
+    {
+      rules_here =
+        (if Dir_set.here dirs then
+           Memo.Lazy.bind t ~f:(fun t -> t.rules_here)
+         else
+           Memo.Lazy.of_val None);
+      by_child =
+        (match Dir_set.default dirs with
+         | true ->
+           (* This is forcing the lazy potentially too early if the directory
+              the user is interested in is not actually in the set.  We're not
+              fully committed to supporting this case though, anyway. *)
+           String.Map.mapi (Memo.Lazy.force t).by_child
+             ~f:(fun dir v ->
+               Memo.lazy_ (fun () ->
+                 restrict
+                   (Dir_set.descend dirs dir)
+                   v))
+         | false ->
+           String.Map.mapi (Dir_set.exceptions dirs)
+             ~f:(fun dir v ->
+               Memo.lazy_ (fun () ->
+                 restrict
+                   v
+                   (Memo.lazy_ (fun () ->
+                      descend (Memo.Lazy.force t) dir)))));
+    }
 
-    let rec restrict (dirs : Dir_set.t) t : t =
-      {
-        rules_here =
-          (if Dir_set.here dirs then
-             Memo.Lazy.bind t ~f:(fun t -> t.rules_here)
-           else
-             Memo.Lazy.of_val Rules.empty);
-        by_child =
-          (match Dir_set.default dirs with
-           | true ->
-             (* This is forcing the lazy potentially too early if the directory
-                the user is interested in is not actually in the set.  We're not
-                fully committed to supporting this case though, anyway. *)
-             String.Map.mapi (Memo.Lazy.force t).by_child
-               ~f:(fun dir v ->
-                 Memo.lazy_ (fun () ->
-                   restrict
-                     (Dir_set.descend dirs dir)
-                     v))
-           | false ->
-             String.Map.mapi (Dir_set.exceptions dirs)
-               ~f:(fun dir v ->
-                 Memo.lazy_ (fun () ->
-                   restrict
-                     v
-                     (Memo.lazy_ (fun () ->
-                        descend (Memo.Lazy.force t) dir)))));
-      }
+  let singleton path rules =
+    let rec go = function
+      | [] ->
+        { by_child = String.Map.empty;
+          rules_here = Memo.Lazy.of_val (Some rules); }
+      | x :: xs ->
+        {
+          by_child = String.Map.singleton x (Memo.Lazy.of_val (go xs));
+          rules_here = Memo.Lazy.of_val None;
+        }
+    in
+    go (Path.explode path)
 
-    let singleton path (rules : Rules.t) =
-      let rec go = function
-        | [] ->
-          { by_child = String.Map.empty; rules_here = Memo.Lazy.of_val rules; }
-        | x :: xs ->
-          {
-            by_child = String.Map.singleton x (Memo.Lazy.of_val (go xs));
-            rules_here = Memo.Lazy.of_val Rules.empty;
-          }
-      in
-      go (Path.explode path)
+  let finite ~union_rules m =
+    Path.Map.to_list m
+    |> List.map ~f:(fun (path, rules) ->
+      singleton path rules)
+    |> List.fold_left ~init:empty ~f:(union ~union_rules)
 
-    let finite m =
-      Path.Map.to_list m
-      |> List.map ~f:(fun (path, rules) ->
-        singleton path rules)
-      |> List.fold_left ~init:empty ~f:union
+end
 
-  end
-
-  let rec evaluate ~env = function
+let evaluate ~union_rules ~env =
+  let rec loop = function
     | Empty -> Evaluated.empty
-    | Union (x, y) -> Evaluated.union (evaluate ~env x) (evaluate ~env y)
+    | Union (x, y) ->
+      Evaluated.union ~union_rules (loop x) (loop y)
     | Approximation (paths, rules) ->
       if
         not (Dir_set.is_subset paths ~of_:env)
@@ -126,26 +118,17 @@ module Make(Rules : sig
       else
         let paths = Dir_set.inter paths env in
         Evaluated.restrict paths
-          (Memo.lazy_ (fun () -> evaluate ~env:paths rules))
-    | Finite rules -> Evaluated.finite rules
-    | Thunk f -> evaluate ~env (f ())
+          (Memo.lazy_ (fun () -> loop rules))
+    | Finite rules -> Evaluated.finite ~union_rules rules
+    | Thunk f -> loop (f ())
+  in
+  fun t -> loop t
 
-  let all l = List.fold_left ~init:Empty ~f:(fun x y -> Union (x, y)) l
+let all l = List.fold_left ~init:Empty ~f:(fun x y -> Union (x, y)) l
 
-  let get_rules : Evaluated.t -> dir:Path.t -> Rules.t =
-    fun t ~dir ->
-      let dir = Path.explode dir in
-      let t = List.fold_left dir ~init:t ~f:Evaluated.descend in
-      Memo.Lazy.force t.rules_here
+let get_rules t ~dir =
+  let dir = Path.explode dir in
+  let t = List.fold_left dir ~init:t ~f:Evaluated.descend in
+  Memo.Lazy.force t.rules_here
 
-  let evaluate = evaluate ~env:Dir_set.universal
-
-end
-
-module Rules_scheme = Make(struct
-    type t = unit -> unit
-    let empty = (fun () -> ())
-    let union f g () = f (); g ()
-  end)
-
-include Rules_scheme
+let evaluate t ~union = evaluate ~union_rules:union ~env:Dir_set.universal t

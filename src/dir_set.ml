@@ -128,11 +128,10 @@ let of_subtree_gen =
   let rec loop subtree = function
     | [] -> subtree
     | component :: rest ->
-      Nontrivial
-        { here = false
-        ; default = false
-        ; exceptions = String.Map.singleton component (loop subtree rest)
-        }
+      create
+        ~here:false
+        ~default:false
+        ~exceptions:(String.Map.singleton component (loop subtree rest))
   in
   fun subtree path -> loop subtree (Path.Build.explode path)
 

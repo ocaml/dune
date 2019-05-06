@@ -40,6 +40,9 @@ unreleased
 
 - Fix `.install` files not being generated (#2124, fixes #2123, @rgrinberg)
 
+- Install the `future_syntax` preprocessor as `ocaml-syntax-shims.exe` (#2125,
+  @rgrinberg)
+
 1.9.2 (02/05/2019)
 ------------------
 

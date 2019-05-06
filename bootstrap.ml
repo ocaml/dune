@@ -506,7 +506,7 @@ let compile ~dirs ~generated_file ~exe ~main ~flags ~byte_flags ~native_flags
   cleanup ~keep_ml_file:(n <> 0);
   if n <> 0 then exit n
 
-(* Shims to reuse the selection scripts in src/future-syntax *)
+(* Shims to reuse the selection scripts in src/ocaml-syntax-shims *)
 
 module Sys = struct
   include Sys
@@ -523,9 +523,9 @@ let get () =
   | None -> assert false
   | Some s -> cell := None; s
 ;;
-#use "src/future-syntax/select-impl";;
+#use "src/ocaml-syntax-shims/select-impl";;
 let impl = get ();;
-#use "src/future-syntax/select-shims";;
+#use "src/ocaml-syntax-shims/select-shims";;
 let shims = get ();;
 let print_string = real_print_string
 
@@ -533,15 +533,15 @@ let print_string = real_print_string
 
 let pp =
   if impl = "real" then begin
-    copy (sprintf "src/future-syntax/pp.%s.ml" impl)
-      "src/future-syntax/pp.ml";
-    copy (sprintf "src/future-syntax/shims.%s.ml" shims)
-      "src/future-syntax/shims.ml";
+    copy (sprintf "src/ocaml-syntax-shims/pp.%s.ml" impl)
+      "src/ocaml-syntax-shims/pp.ml";
+    copy (sprintf "src/ocaml-syntax-shims/shims.%s.ml" shims)
+      "src/ocaml-syntax-shims/shims.ml";
     compile
       ~generated_file:"boot_pp.ml"
       ~exe:"boot-pp.exe"
       ~main:"let () = ()"
-      ~dirs:["src/future-syntax", None]
+      ~dirs:["src/ocaml-syntax-shims", None]
       ~flags:"-I +compiler-libs"
       ~byte_flags:"ocamlcommon.cma"
       ~native_flags:(Some "ocamlcommon.cmxa")

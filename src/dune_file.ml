@@ -348,8 +348,8 @@ module Preprocess = struct
         Action
           (loc,
            Run
-             (String_with_vars.make_var loc "libexec"
-                ~payload:"dune.configurator:../future-syntax.exe",
+             (String_with_vars.make_var loc "bin"
+                ~payload:"ocaml-syntax-shims",
               [ String_with_vars.make_text loc "-dump-ast"
               ; String_with_vars.make_var loc "input-file"
               ]))

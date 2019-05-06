@@ -1,11 +1,15 @@
 open! Stdune
 
-open Scheme_intf
-
 module Path = Path.Build
 
-module Gen' = struct
-  include Gen
+module Gen = struct
+  type 'rules t =
+    | Empty
+    | Union of 'rules t * 'rules t
+    | Approximation of Dir_set.t * 'rules t
+    | Finite of 'rules Path.Map.t
+    | Thunk of (unit -> 'rules t)
+
   module Evaluated = struct
     type 'rules t = {
       by_child : 'rules t Memo.Lazy.t String.Map.t;
@@ -13,21 +17,15 @@ module Gen' = struct
     }
   end
 end
-open Gen'
+open Gen
+
+module type S = Scheme_intf.S with module Gen := Gen
 
 module Make(Rules : sig
     type t
     val empty : t
     val union : t -> t -> t
   end) = struct
-
-  type 'rules t_gen = 'rules Gen.t =
-    | Empty
-    | Union of 'rules t_gen * 'rules t_gen
-    | Approximation of Dir_set.t * 'rules t_gen
-    | Finite of 'rules Path.Map.t
-    | Thunk of (unit -> 'rules t_gen)
-
   type t = Rules.t Gen.t
 
   module Evaluated = struct
@@ -134,36 +132,6 @@ module Make(Rules : sig
 
   let all l = List.fold_left ~init:Empty ~f:(fun x y -> Union (x, y)) l
 
-  module For_tests = struct
-    (* [collect_rules_simple] is oversimplified in two ways:
-       - it does not share the work of scheme flattening, so repeated lookups do
-         repeated work
-       - it does not check that approximations are correct
-
-       If approximations are not correct, it will honor the approximation.
-       So approximations act like views that prevent the rules from being seen
-       rather than from being declared in the first place.
-    *)
-    let collect_rules_simple =
-      let rec go (t : t) ~dir =
-        match t with
-        | Empty -> Rules.empty
-        | Union (a, b) -> Rules.union(go a ~dir) (go b ~dir)
-        | Approximation (dirs, t) ->
-          (match Dir_set.mem dirs dir with
-           | true -> go t ~dir
-           | false -> Rules.empty)
-        | Finite rules ->
-          (match Path.Map.find rules dir with
-           | None -> Rules.empty
-           | Some rule -> rule)
-        | Thunk f ->
-          go (f ()) ~dir
-      in
-      go
-
-  end
-
   let get_rules : Evaluated.t -> dir:Path.t -> Rules.t =
     fun t ~dir ->
       let dir = Path.explode dir in
@@ -181,27 +149,3 @@ module Rules_scheme = Make(struct
   end)
 
 include Rules_scheme
-
-module Gen = struct
-  module For_tests = struct
-
-    let instrument ~print =
-      let print path suffix =
-        print (String.concat (List.rev path @ [suffix]) ~sep:":")
-      in
-      let rec go ~path t = match t with
-        | Gen.Empty -> Gen.Empty
-        | Union (t1, t2) ->
-          Union (go ~path:("l"::path) t1, go ~path:("r"::path) t2)
-        | Approximation (dirs, rules) ->
-          let path = "t" :: path in
-          Approximation (dirs, go ~path rules)
-        | Finite m -> Finite m
-        | Thunk t ->
-          Thunk (fun () ->
-            print path "thunk";
-            t ())
-      in
-      go ~path:[]
-  end
-end

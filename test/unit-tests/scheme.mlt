@@ -23,8 +23,59 @@ module Directory_rules = struct
 end
 
 module Scheme = struct
-  include Dune.Scheme.Gen.For_tests
   include Dune.Scheme.Make(Directory_rules)
+
+  (* Calls [print] every time any code embedded in the scheme runs,
+     be it a [Thunk] constructor or an [Approximation] function.
+
+     The argument of [print] identifies which thunk got run (the path
+     to that thunk within the [Scheme.t] value).  *)
+  let instrument ~print =
+    let open Dune.Scheme.Gen in
+    let print path suffix =
+      print (String.concat (List.rev path @ [suffix]) ~sep:":")
+    in
+    let rec go ~path t = match t with
+      | Empty -> Empty
+      | Union (t1, t2) ->
+        Union (go ~path:("l"::path) t1, go ~path:("r"::path) t2)
+      | Approximation (dirs, rules) ->
+        let path = "t" :: path in
+        Approximation (dirs, go ~path rules)
+      | Finite m -> Finite m
+      | Thunk t ->
+        Thunk (fun () ->
+          print path "thunk";
+          t ())
+    in
+    go ~path:[]
+
+  (* [collect_rules_simple] is oversimplified in two ways:
+     - it does not share the work of scheme flattening, so repeated lookups do
+       repeated work
+     - it does not check that approximations are correct
+
+     If approximations are not correct, it will honor the approximation.
+     So approximations act like views that prevent the rules from being seen
+     rather than from being declared in the first place.
+  *)
+  let collect_rules_simple =
+    let rec go (t : t) ~dir =
+      match t with
+      | Empty -> Directory_rules.empty
+      | Union (a, b) -> Directory_rules.union(go a ~dir) (go b ~dir)
+      | Approximation (dirs, t) ->
+        (match Dune.Dir_set.mem dirs dir with
+         | true -> go t ~dir
+         | false -> Directory_rules.empty)
+      | Finite rules ->
+        (match Path.Build.Map.find rules dir with
+         | None -> Directory_rules.empty
+         | Some rule -> rule)
+      | Thunk f ->
+        go (f ()) ~dir
+    in
+    go
 end
 
 module Dir_set = Dune.Dir_set
@@ -51,7 +102,7 @@ let record_calls scheme ~f =
 
 let print_rules scheme ~dir =
   let res1, calls1 =
-    record_calls scheme ~f:(Scheme.For_tests.collect_rules_simple ~dir)
+    record_calls scheme ~f:(Scheme.collect_rules_simple ~dir)
   in
   let res2, calls2 =
     record_calls scheme ~f:(fun scheme ->
@@ -90,7 +141,7 @@ open Dune.Scheme
 
 let () =
   let scheme =
-    Dune.Scheme.Thunk (fun () -> Dune.Scheme.Empty)
+    Dune.Scheme.Gen.Thunk (fun () -> Dune.Scheme.Gen.Empty)
   in
   print_rules scheme ~dir:(Path.of_string "foo/bar")
 
@@ -102,7 +153,7 @@ rules:
 |}]
 
 let scheme_all_but_foo_bar =
-  Dune.Scheme.Approximation (
+  Dune.Scheme.Gen.Approximation (
     Dir_set.negate (
       Dir_set.subtree (Path.of_string "foo/bar")),
     Thunk (fun () -> Empty))

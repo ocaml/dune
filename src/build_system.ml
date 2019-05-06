@@ -303,7 +303,6 @@ module Dir_status = struct
   end
 
   type loaded = {
-    rules_in_collector : Rules.Dir_rules.t option;
     rules_produced : Rules.t;
     targets : Path.Set.t;
   }
@@ -462,7 +461,6 @@ let get_dir_status t ~dir =
     match Path.as_in_source_tree dir with
     | Some dir ->
       Dir_status.Loaded {
-        rules_in_collector = None;
         rules_produced = Rules.empty;
         targets =
           (
@@ -474,14 +472,12 @@ let get_dir_status t ~dir =
       if Path.equal dir Path.build_dir then
         (* Not allowed to look here *)
         Dir_status.Loaded
-          { rules_in_collector = None;
-            rules_produced = Rules.empty;
+          { rules_produced = Rules.empty;
             targets = Path.Set.empty
           }
       else if not (Path.is_managed dir) then
         Dir_status.Loaded
-          { rules_in_collector = None;
-            rules_produced = Rules.empty;
+          { rules_produced = Rules.empty;
             targets =
               match Path.readdir_unsorted dir with
               | Error Unix.ENOENT -> Path.Set.empty
@@ -500,7 +496,6 @@ let get_dir_status t ~dir =
           Forward (Path.(append_source build_dir) sub_dir)
         else if ctx <> "install" && not (String.Map.mem t.contexts ctx) then
           Dir_status.Loaded {
-            rules_in_collector = None;
             rules_produced = Rules.empty;
             targets = Path.Set.empty; }
         else
@@ -732,13 +727,7 @@ let add_rules_to_collector t ~dir rules =
   | Collecting_rules collector ->
     Dir_status.Rules_collector.add_rules collector rules
   | Failed_to_load -> raise Already_reported
-  | Loaded { rules_in_collector = Some old_rules; _ } ->
-    if Rules.Dir_rules.is_subset ~of_:old_rules rules
-    then
-      ()
-    else
-      fail "Build_system.get_collector called on closed directory"
-  | Loaded { rules_in_collector = None; _ } ->
+  | Loaded _ ->
     error ()
   | Forward _ ->
     error ()
@@ -968,7 +957,6 @@ and load_dir_step2_exn t ~dir ~collector =
       in
       Path.Table.replace t.dirs ~key:alias_dir
         ~data:(Loaded {
-          rules_in_collector = None;
           rules_produced = Rules.empty;
           targets = alias_stamp_files });
       Some alias_dir, alias_rules
@@ -1107,7 +1095,6 @@ The following targets are not:
 
   (* Set the directory status to loaded *)
   Path.Table.replace t.dirs ~key:dir ~data:(Loaded {
-    rules_in_collector = Some rules_in_collector;
     rules_produced;
     targets });
   (match t.load_dir_stack with

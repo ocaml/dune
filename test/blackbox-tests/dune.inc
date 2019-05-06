@@ -548,6 +548,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name github1426)
+ (deps (package dune) (source_tree test-cases/github1426))
+ (action
+  (chdir
+   test-cases/github1426
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name github1529)
  (deps (package dune) (source_tree test-cases/github1529))
  (action
@@ -1503,6 +1511,7 @@
   (alias github1342)
   (alias github1372)
   (alias github1395)
+  (alias github1426)
   (alias github1529)
   (alias github1549)
   (alias github1560)
@@ -1674,6 +1683,7 @@
   (alias github1306)
   (alias github1342)
   (alias github1395)
+  (alias github1426)
   (alias github1529)
   (alias github1549)
   (alias github1560)

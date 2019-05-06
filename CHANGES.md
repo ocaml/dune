@@ -67,6 +67,16 @@ unreleased
 - Fix crash when calculating library dependency closure (#2090, fixes #2085,
   @rgrinberg)
 
+- Clean up the special support for `findlib.dynload`. Before, Dune
+  would simply match on the library name. Now, we only match on the
+  findlib package name when the library doesn't come from
+  Dune. Someone writing a library called `findlib.dynload` with Dune
+  would have to add `(special_builton_support findlib_dynload)` to
+  trigger the special behavior. (#2115, @diml)
+
+- Include permissions in the digest of targets and dependencies (#2121, fix
+  #1426, @rgrinberg, @xclerc)
+
 1.9.1 (11/04/2019)
 ------------------
 

@@ -201,7 +201,8 @@ module Cached_digest = struct
   type file =
     { mutable digest            : Digest.t
     ; mutable timestamp         : float
-    ; mutable timestamp_checked : int
+    ; mutable permissions       : Unix.file_perm
+    ; mutable stats_checked : int
     }
 
   type t =
@@ -256,37 +257,44 @@ module Cached_digest = struct
     if stat.Unix.st_kind = Unix.S_DIR then
       dir_digest stat
     else
-      Digest.file fn
+      Marshal.to_string (Digest.file fn, stat.st_perm) []
+      |> Digest.string
 
   let refresh fn =
     let cache = Lazy.force cache in
-    let path = Path.to_string fn in
-    let stat = Unix.stat path in
+    let stat = Path.stat fn in
+    let permissions = stat.st_perm in
     let digest = path_stat_digest fn stat in
     needs_dumping := true;
     Hashtbl.replace cache.table ~key:fn
       ~data:{ digest
             ; timestamp = stat.st_mtime
-            ; timestamp_checked = cache.checked_key
-      };
+            ; stats_checked = cache.checked_key
+            ; permissions
+            };
     digest
 
   let file fn =
     let cache = Lazy.force cache in
     match Hashtbl.find cache.table fn with
     | Some x ->
-      if x.timestamp_checked = cache.checked_key then
+      if x.stats_checked = cache.checked_key then
         x.digest
       else begin
         needs_dumping := true;
-        let stat = Unix.stat (Path.to_string fn) in
-        let mtime = stat.st_mtime in
-        if mtime <> x.timestamp then begin
-          let digest = path_stat_digest fn stat in
-          x.digest    <- digest;
-          x.timestamp <- mtime;
+        let stat = Path.stat fn in
+        let dirty = ref false in
+        if stat.st_mtime <> x.timestamp then begin
+          dirty := true;
+          x.timestamp <- stat.st_mtime
         end;
-        x.timestamp_checked <- cache.checked_key;
+        if stat.st_perm <> x.permissions then begin
+          dirty := true;
+          x.permissions <- stat.st_perm
+        end;
+        if !dirty then
+          x.digest <- path_stat_digest fn stat;
+        x.stats_checked <- cache.checked_key;
         x.digest
       end
     | None ->

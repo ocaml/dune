@@ -21,8 +21,14 @@ val dune_keep_fname : string
 (** Are we running inside an emacs shell? *)
 val inside_emacs : bool
 
-(** Are we running insinde Dune? *)
+(** Are we running inside Dune? *)
 val inside_dune : bool
+
+(** Are we running in CI?. This checks the CI environment variable which is
+    supported by travis, gitlab.*)
+val inside_ci : bool
+
+val show_full_command_on_error : unit -> bool
 
 val default_build_profile : string
 

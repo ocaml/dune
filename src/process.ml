@@ -337,6 +337,10 @@ let run_internal ?dir ?(stdout_to=Output.stdout) ?(stderr_to=Output.stderr)
   Log.command (Scheduler.log scheduler) ~command_line ~output ~exit_status;
   let _, progname, _ = Fancy.split_prog prog_str in
   let print fmt = Errors.kerrf ~f:Console.print fmt in
+  let show_command =
+    Config.show_full_command_on_error ()
+    || (not (String.is_prefix output ~prefix:"File "))
+  in
   match exit_status with
   | WEXITED n when code_is_ok ok_codes n ->
     if display = Verbose then begin
@@ -349,7 +353,10 @@ let run_internal ?dir ?(stdout_to=Output.stdout) ?(stderr_to=Output.stderr)
     end else if output <> "" ||
                 (display = Short && purpose <> Internal_job) then begin
       let pad = String.make (max 0 (12 - String.length progname)) ' ' in
-      print "%s@{<ok>%s@} %a\n%s" pad progname Fancy.pp_purpose purpose output
+      if show_command then
+        print "%s@{<ok>%s@} %a\n%s" pad progname Fancy.pp_purpose purpose output
+      else
+        print "%s" output
     end;
     n
   | WEXITED n ->
@@ -359,13 +366,15 @@ let run_internal ?dir ?(stdout_to=Output.stdout) ?(stderr_to=Output.stderr)
         id n
         (Colors.strip_colors_for_stderr command_line)
         (Colors.strip_colors_for_stderr output)
-    else
+    else if show_command then
       die "@{<error>%12s@} %a @{<error>(exit %d)@}\n\
            @{<details>%s@}\n\
            %s"
         progname Fancy.pp_purpose purpose n
         (Ansi_color.strip command_line)
         output
+    else
+      die "%s" output
   | WSIGNALED n ->
     if display = Verbose then
       die "\n@{<kwd>Command@} [@{<id>%d@}] got signal %s:\n\

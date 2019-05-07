@@ -32,3 +32,6 @@ val no_print_directory : bool ref
 
 (** Store original source directory in dune-package metadata *)
 val store_orig_src_dir : bool ref
+
+(** Always show full command on error *)
+val always_show_command_line : bool ref

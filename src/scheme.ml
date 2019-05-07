@@ -111,14 +111,14 @@ let evaluate ~union_rules ~env =
         not (Dir_set.is_subset paths ~of_:env)
         && not (Dir_set.is_subset (Dir_set.negate paths) ~of_:env)
       then
-        raise (Exn.code_error
-                 "inner [Approximate] specifies a set such that neither it, \
-                  nor its negation, are a subset of directories specified by \
-                  the outer [Approximate]."
-                 [
-                   "inner", (Dir_set.to_sexp paths);
-                   "outer", (Dir_set.to_sexp env);
-                 ])
+        Exn.code_error
+          "inner [Approximate] specifies a set such that neither it, \
+           nor its negation, are a subset of directories specified by \
+           the outer [Approximate]."
+          [
+            "inner", (Dir_set.to_sexp paths);
+            "outer", (Dir_set.to_sexp env);
+          ]
       else
         let paths = Dir_set.inter paths env in
         Evaluated.restrict paths

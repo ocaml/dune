@@ -1,12 +1,9 @@
 (executable
  (name pp)
+ (public_name ocaml-syntax-shims)
  (libraries compiler-libs.common))
 
 (ocamllex let_trail)
-
-(install
- (section libexec)
- (files (pp.exe as future-syntax.exe)))
 
 (rule
  (with-stdout-to impl (run ocaml %{dep:select-impl} %{ocaml_version})))

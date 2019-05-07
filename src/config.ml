@@ -24,6 +24,10 @@ let dune_keep_fname = ".dune-keep"
 
 let inside_emacs = Option.is_some (Env.get Env.initial "INSIDE_EMACS")
 let inside_dune  = Option.is_some (Env.get Env.initial "INSIDE_DUNE")
+let inside_ci = Option.is_some (Env.get Env.initial "CI")
+
+let show_full_command_on_error () =
+  inside_dune || inside_ci || !Clflags.always_show_command_line
 
 let default_build_profile =
   match Wp.t with

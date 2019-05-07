@@ -525,7 +525,7 @@ let per_ctx_memo =
 
 let gen_rules sctx ~dir =
   let rules =
-    Scheme.get_rules (Memo.exec per_ctx_memo sctx) ~dir
+    Scheme.Evaluated.get_rules (Memo.exec per_ctx_memo sctx) ~dir
     |> Option.value ~default:Rules.Dir_rules.empty
   in
   rules ()

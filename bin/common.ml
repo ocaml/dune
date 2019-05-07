@@ -40,6 +40,7 @@ type t =
   (* For build & runtest only *)
   ; watch : bool
   ; stats_trace_file : string option
+  ; always_show_command_line : bool
   }
 
 let prefix_target common s = common.target_prefix ^ s
@@ -67,6 +68,8 @@ let set_common_other c ~targets =
       ; c.orig_args
       ; targets
       ];
+  Clflags.always_show_command_line :=
+    c.always_show_command_line;
   Option.iter ~f:Dune.Stats.enable c.stats_trace_file
 
 let set_common c ~targets =
@@ -153,6 +156,11 @@ let term =
     | false , Some x -> `Ok (Some x)
     | true  , None   -> `Ok (Some Config.Display.Verbose)
     | true  , Some _ -> incompatible "--display" "--verbose"
+  and+ always_show_command_line =
+    let doc = "Always show the full command lines of programs executed by dune" in
+    Arg.(value
+         & flag
+         & info ["always-show-command-line"] ~docs ~doc)
   and+ no_buffer =
     Arg.(value
          & flag
@@ -416,6 +424,7 @@ let term =
   ; default_target
   ; watch
   ; stats_trace_file
+  ; always_show_command_line
   }
 
 let term =

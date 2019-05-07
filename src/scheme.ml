@@ -123,7 +123,18 @@ let evaluate ~union_rules =
         let paths = Dir_set.inter paths env in
         Evaluated.restrict paths
           (Memo.lazy_ (fun () -> loop ~env:paths rules))
-    | Finite rules -> Evaluated.finite ~union_rules rules
+    | Finite rules ->
+      let violations =
+        List.filter (Path.Map.keys rules) ~f:(fun p -> not (Dir_set.mem env p))
+      in
+      (match violations with
+       | [] -> ()
+       | _ :: _ ->
+         Exn.code_error
+           "Scheme attempted to generate rules in a directory it promised not \
+            to touch"
+           [ "directories", (Sexp.Encoder.list Path.to_sexp) violations ]);
+      Evaluated.finite ~union_rules rules
     | Thunk f -> loop ~env (f ())
   in
   fun t -> loop ~env:Dir_set.universal t

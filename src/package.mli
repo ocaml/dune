@@ -16,6 +16,8 @@ module Name : sig
   include Dune_lang.Conv with type t := t
 
   module Infix : Comparable.OPS with type t = t
+
+  val to_sexp : t -> Sexp.t
 end
 
 module Version_source : sig

@@ -347,19 +347,12 @@ let gen ~contexts
   let sctxs = String.Map.map map ~f:(fun (module M : Gen) -> M.sctx) in
   let generators = (String.Map.map map ~f:(fun (module M : Gen) -> M.gen_rules)) in
   let () =
-    let compute_packages = Memo.lazy_ (fun () ->
-      String.Map.to_list sctxs
-      |> List.concat_map ~f:(fun (_, sctx) ->
-        Install_rules.packages sctx
-        |> Path.Map.to_list)
-      (* [_exn] here relies on the fact that there are no paths that belong to more than
-         one context *)
-      |> Path.Map.of_list_exn)
-    in
     Build_system.set_packages (fun path ->
-      match Path.Map.find (Memo.Lazy.force compute_packages) path with
-      | None -> []
-      | Some pkg -> [ pkg ])
+      let open Option.O in
+      Option.value ~default:[] (
+        let* ctx_name, _ = Path.extract_build_context path in
+        let* sctx = String.Map.find sctxs ctx_name in
+        Path.Map.find (Install_rules.packages sctx) path))
   in
   Build_system.set_rule_generators
     (function

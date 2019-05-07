@@ -530,9 +530,32 @@ let gen_rules sctx ~dir =
   in
   rules ()
 
-let packages sctx =
-  Package.Name.Map.foldi (Local_package.of_sctx sctx)
-    ~init:Path.Map.empty
-    ~f:(fun name pkg acc ->
-      List.fold_left (Memo.Lazy.force (run sctx pkg).files_in_package)
-        ~init:acc ~f:(fun acc path -> Path.Map.add acc path name))
+let packages =
+  let f sctx =
+    Package.Name.Map.foldi (Local_package.of_sctx sctx)
+      ~init:[]
+      ~f:(fun name pkg acc ->
+        List.fold_left (Memo.Lazy.force (run sctx pkg).files_in_package)
+          ~init:acc ~f:(fun acc path -> (path, name) :: acc))
+    |> Path.Map.of_list_multi
+  in
+  let memo =
+    Memo.create "package-map"
+      ~doc:"Return a map assining package to files"
+      ~input:(module Super_context)
+      ~visibility:Hidden
+      ~output:(Allow_cutoff (module struct
+                 type t = Package.Name.t list Path.Map.t
+                 let to_sexp =
+                   Map.to_sexp
+                     Path.Map.to_list
+                     Path.to_sexp
+                     (Sexp.Encoder.list Package.Name.to_sexp)
+                 let equal =
+                   Path.Map.equal
+                     ~equal:(List.equal Package.Name.equal)
+               end))
+      Sync
+      (Some f)
+  in
+  fun sctx -> Memo.exec memo sctx

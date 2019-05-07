@@ -153,7 +153,7 @@ let subst_string s path ~map =
 let subst_file path ~map =
   let s = Io.read_file path in
   let s =
-    if Path.is_root path
+    if Path.is_root (Path.parent_exn path)
     && String.is_suffix (Path.to_string path) ~suffix:".opam" then
       "version: \"%%" ^ "VERSION_NUM" ^ "%%\"\n" ^ s
     else

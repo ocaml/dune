@@ -573,7 +573,7 @@ type t =
   ; mutable prefix : (unit, unit) Build.t option
   ; hook : hook -> unit
   ; (* Package files are part of *)
-    packages : Package.Name.t Path.Table.t
+    packages : (Path.t -> Package.Name.t list) Fdecl.t
   }
 
 let t = ref None
@@ -1571,7 +1571,7 @@ let init ~contexts ~file_tree ~hook =
   set
     { contexts
     ; files      = Path.Table.create 1024
-    ; packages   = Path.Table.create 1024
+    ; packages   = Fdecl.create ()
     ; dirs       = Path.Table.create 1024
     ; load_dir_stack = []
     ; file_tree
@@ -1598,9 +1598,9 @@ module Rule = struct
   module Set = Set.Make(struct type nonrec t = t let compare = compare end)
 end
 
-let set_package file package =
+let set_packages f =
   let t = t () in
-  Path.Table.add t.packages file package
+  Fdecl.set t.packages f
 
 let package_deps pkg files =
   let t = t () in
@@ -1613,7 +1613,7 @@ let package_deps pkg files =
       Package.Name.Set.add acc p
   in
   let rec loop fn acc =
-    match Path.Table.find_all t.packages fn with
+    match Fdecl.get t.packages fn with
     | [] -> loop_deps fn acc
     | pkgs ->
       if List.mem pkg ~set:pkgs then

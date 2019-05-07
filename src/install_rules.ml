@@ -260,7 +260,7 @@ let lib_install_files sctx ~dir_contents ~dir ~sub_dir:lib_subdir
     ]
 
 let local_install_rules sctx (entries : (Loc.t option * Install.Entry.t) list)
-      ~install_paths ~package =
+      ~install_paths =
   let ctx = Super_context.context sctx in
   let install_dir = Config.local_install_dir ~context:ctx.name in
   List.map entries ~f:(fun (loc, entry) ->
@@ -273,10 +273,12 @@ let local_install_rules sctx (entries : (Loc.t option * Install.Entry.t) list)
       | Some l -> l
       | None -> Loc.in_file entry.src
     in
-    Build_system.set_package entry.src package;
-    Super_context.add_rule sctx ~loc ~dir:ctx.build_dir
-      (Build.symlink ~src:entry.src ~dst);
-    Install.Entry.set_src entry dst)
+    let src = entry.src in
+    Rules.file_rule
+      ~rule:(dst, (fun () ->
+        Super_context.add_rule sctx ~loc ~dir:ctx.build_dir
+          (Build.symlink ~src:entry.src ~dst)));
+    (src, Install.Entry.set_src entry dst))
 
 let promote_install_file (ctx : Context.t) =
   not ctx.implicit &&
@@ -312,47 +314,60 @@ let install_file sctx (package : Local_package.t) entries =
         (None, Install.Entry.make Lib (Path.build opam_file) ~dst:"opam")
         :: files
     in
-    local_install_rules sctx ~package:package_name ~install_paths files
+    local_install_rules sctx ~install_paths files
     |> List.rev_append entries
   in
   let fn =
-    Path.relative pkg_build_dir
+    Path.relative
+      pkg_build_dir
       (Utils.install_file ~package:package_name
          ~findlib_toolchain:ctx.findlib_toolchain)
   in
+  let entries, package_source_files =
+    List.map ~f:snd entries, List.map ~f:fst entries
+  in
   let files = Install.files entries in
-  Build_system.Alias.add_deps
-    (Build_system.Alias.package_install ~context:ctx ~pkg:package_name)
-    files
-    ~dyn_deps:
-      (Build_system.package_deps package_name files
-       >>^ fun packages ->
-       Package.Name.Set.to_list packages
-       |> List.map ~f:(fun pkg ->
-         Build_system.Alias.package_install ~context:ctx ~pkg
-         |> Alias.stamp_file)
-       |> Path.Set.of_list);
-  Super_context.add_rule sctx ~dir:pkg_build_dir
-    ~mode:(if promote_install_file ctx then
-             Promote { lifetime = Until_clean; into = None; only = None }
-           else
-             (* We must ignore the source file since it might be
-                copied to the source tree by another context. *)
-             Ignore_source_files)
-    (Build.path_set files
-     >>^ (fun () ->
-       let entries =
-         match ctx.findlib_toolchain with
-         | None -> entries
-         | Some toolchain ->
-           let prefix = Path.of_string (toolchain ^ "-sysroot") in
-           List.map entries
-             ~f:(Install.Entry.add_install_prefix
-                   ~paths:install_paths ~prefix)
-       in
-       Install.gen_install_file entries)
-     >>>
-     Build.write_file_dyn fn)
+  let target_alias =
+    Build_system.Alias.package_install ~context:ctx ~pkg:package_name
+  in
+  let () =
+    Rules.dir_rule (
+      Alias.dir target_alias, (fun () ->
+        Build_system.Alias.add_deps
+          target_alias
+          files
+          ~dyn_deps:
+            (Build_system.package_deps package_name files
+             >>^ fun packages ->
+             Package.Name.Set.to_list packages
+             |> List.map ~f:(fun pkg ->
+               Build_system.Alias.package_install ~context:ctx ~pkg
+               |> Alias.stamp_file)
+             |> Path.Set.of_list)))
+  in
+  Rules.dir_rule (Path.parent_exn fn, (fun () ->
+    Super_context.add_rule sctx ~dir:pkg_build_dir
+      ~mode:(if promote_install_file ctx then
+               Promote { lifetime = Until_clean ; into = None; only = None }
+             else
+               (* We must ignore the source file since it might be
+                  copied to the source tree by another context. *)
+               Ignore_source_files)
+      (Build.path_set files
+       >>^ (fun () ->
+         let entries =
+           match ctx.findlib_toolchain with
+           | None -> entries
+           | Some toolchain ->
+             let prefix = Path.of_string (toolchain ^ "-sysroot") in
+             List.map entries
+               ~f:(Install.Entry.add_install_prefix
+                     ~paths:install_paths ~prefix)
+         in
+         Install.gen_install_file entries)
+       >>>
+       Build.write_file_dyn fn)));
+  package_source_files
 
 let get_install_entries package =
   Local_package.installs package
@@ -408,11 +423,10 @@ let init_install sctx package =
   in
   let entries =
     let install_paths = Local_package.install_paths package in
-    let package = Local_package.name package in
     List.rev_append coqlib_install_files docs
     |> List.rev_append lib_install_files
     |> List.rev_append installs
-    |> local_install_rules sctx ~package ~install_paths
+    |> local_install_rules sctx ~install_paths
   in
   install_file sctx package entries
 
@@ -425,12 +439,106 @@ let init_install_files (ctx : Context.t) (package : Local_package.t) =
     let path = Path.build (Local_package.build_dir package) in
     let install_alias = Alias.install ~dir:path in
     let install_file = Path.relative path install_fn in
-    Build_system.Alias.add_deps install_alias (Path.Set.singleton install_file)
+    Rules.dir_rule (path, (fun () ->
+      Build_system.Alias.add_deps
+        install_alias (Path.Set.singleton install_file)))
 
-let init sctx =
+module Result =struct
+
+  type t = {
+    files_in_package : unit Path.Map.t Memo.Lazy.t;
+    scheme : Rules.Dir_rules.t Scheme.t;
+  }
+
+  let to_sexp _ = Sexp.Atom "<opaque>"
+end
+
+let memo =
+  let module Input = struct
+    type t = Super_context.t * Local_package.t
+
+    let hash (x, y) = Hashtbl.hash (Super_context.hash x, Local_package.hash y)
+    let equal (x1, y1) (x2, y2) = (x1 == x2 && y1 == y2)
+    let to_sexp _ = Sexp.Atom "<opaque>"
+  end
+  in
+  Memo.create
+    ~input:(module Input)
+    ~output:(Simple (module Result))
+    "install-rules-and-pkg-entries"
+    ~doc:"install rules and package entries"
+    ~visibility:Hidden
+    Sync
+    (Some (fun (sctx, pkg) ->
+       let ctx = Super_context.context sctx in
+       let context_name = ctx.name in
+       let files_and_rules = Memo.lazy_ (fun () ->
+         Rules.collect (fun () ->
+           let package_source_files = init_install sctx pkg in
+           init_install_files ctx pkg;
+           package_source_files
+         ))
+       in
+       let files_in_package = Memo.lazy_ (fun () ->
+         let paths = fst (Memo.Lazy.force files_and_rules) in
+         Path.Map.of_list_multi (List.map paths ~f:(fun path -> (path, ())))
+         |> Path.Map.map ~f:(fun (_ : unit list) -> ()))
+       in
+       {
+         files_in_package;
+         scheme = (
+           Approximation (
+             (Dir_set.union_all
+                [
+                  Dir_set.subtree
+                    (Config.local_install_dir ~context:context_name);
+                  Dir_set.singleton (Local_package.build_dir pkg);
+                  Dir_set.singleton (Path.as_in_build_dir_exn ctx.build_dir)
+                ])
+             ,
+             Thunk (fun () -> Finite (
+               Rules.to_map (snd (Memo.Lazy.force files_and_rules))))
+           )
+         );
+       }))
+
+let run sctx pkg = Memo.exec memo (sctx, pkg)
+
+let per_ctx_memo =
+  Memo.create
+    ~input:(module Super_context)
+    ~output:
+      (Simple (module struct
+         type t = Rules.Dir_rules.t Scheme.Evaluated.t
+         let to_sexp _ = Sexp.Atom "<opaque>"
+       end ))
+    "install-rule-scheme"
+    ~doc:"install rules scheme"
+    ~visibility:Hidden
+    Sync
+    (Some (fun sctx ->
+       let packages = Local_package.of_sctx sctx in
+       let scheme =
+         Scheme.all (
+           List.map (Package.Name.Map.to_list packages)
+             ~f:(fun (_, pkg) -> (run sctx pkg).scheme))
+       in
+       Scheme.evaluate ~union:Rules.Dir_rules.union scheme))
+
+let gen_rules sctx ~dir =
+  let rules =
+    Scheme.get_rules (Memo.exec per_ctx_memo sctx) ~dir
+    |> Option.value ~default:Rules.Dir_rules.empty
+  in
+  rules ()
+
+let packages sctx =
   let packages = Local_package.of_sctx sctx in
-  let ctx = Super_context.context sctx in
-  Build_system.handle_add_rule_effects (fun () ->
-    Package.Name.Map.iter packages ~f:(fun pkg ->
-      init_install sctx pkg;
-      init_install_files ctx pkg))
+  List.concat_map
+    (Package.Name.Map.to_list packages)
+    ~f:(fun (_, pkg) ->
+      Path.Map.to_list (Memo.Lazy.force (run sctx pkg).files_in_package)
+      |> List.map ~f:(fun (path, ()) ->
+        (path, Local_package.name pkg))
+    )
+  |> Path.Map.of_list_exn

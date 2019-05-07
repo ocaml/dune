@@ -220,6 +220,7 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
   let gen_rules ~dir components : Build_system.extra_sub_directories_to_keep =
     Install_rules.init_meta sctx ~dir;
     Opam_create.add_rules sctx ~dir;
+    Install_rules.gen_rules sctx ~dir:(Path.as_in_build_dir_exn dir);
     (match components with
      | ".js"  :: rest -> Js_of_ocaml_rules.setup_separate_compilation_rules
                            sctx rest
@@ -275,10 +276,6 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
     | [(".js"|"_doc"|".ppx")] -> All
     | _  -> These String.Set.empty
 
-  let init () =
-    Install_rules.init sctx;
-    Build_system.handle_add_rule_effects (fun () ->
-      Odoc.init sctx)
 end
 
 module type Gen = sig
@@ -286,7 +283,6 @@ module type Gen = sig
     :  dir:Path.t
     -> string list
     -> Build_system.extra_sub_directories_to_keep
-  val init : unit -> unit
   val sctx : Super_context.t
 end
 
@@ -348,11 +344,34 @@ let gen ~contexts
   in
   let+ contexts = Fiber.parallel_map contexts ~f:make_sctx in
   let map = String.Map.of_list_exn contexts in
+  let sctxs = String.Map.map map ~f:(fun (module M : Gen) -> M.sctx) in
   let generators = (String.Map.map map ~f:(fun (module M : Gen) -> M.gen_rules)) in
+  let () =
+    let compute_packages = Memo.lazy_ (fun () ->
+      String.Map.to_list sctxs
+      |> List.concat_map ~f:(fun (_, sctx) ->
+        Install_rules.packages sctx
+        |> Path.Map.to_list)
+      (* [_exn] here relies on the fact that there are no paths that belong to more than
+         one context *)
+      |> Path.Map.of_list_exn)
+    in
+    Build_system.set_packages (fun path ->
+      match Path.Map.find (Memo.Lazy.force compute_packages) path with
+      | None -> []
+      | Some pkg -> [ pkg ])
+  in
   Build_system.set_rule_generators
     (function
-      | Install _ctx -> Some (fun ~dir:_ _path -> These String.Set.empty)
-      | Context ctx -> String.Map.find generators ctx);
-  String.Map.iter map ~f:(fun (module M : Gen) -> M.init ());
-  String.Map.map map ~f:(fun (module M : Gen) -> M.sctx);
+      | Install ctx ->
+        Option.map (String.Map.find sctxs ctx) ~f:(fun sctx ->
+          (fun ~dir _ ->
+             Install_rules.gen_rules sctx ~dir:(Path.as_in_build_dir_exn dir);
+             Build_system.These String.Set.empty))
+      | Context ctx ->
+        String.Map.find generators ctx);
 
+  String.Map.iter map ~f:(fun (module M : Gen) ->
+    Build_system.handle_add_rule_effects (fun () ->
+      Odoc.init M.sctx));
+  sctxs

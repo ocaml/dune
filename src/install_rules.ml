@@ -446,7 +446,7 @@ let init_install_files (ctx : Context.t) (package : Local_package.t) =
 module Result =struct
 
   type t = {
-    files_in_package : unit Path.Map.t Memo.Lazy.t;
+    files_in_package : Path.t list Memo.Lazy.t;
     scheme : Rules.Dir_rules.t Scheme.t;
   }
 
@@ -480,9 +480,7 @@ let memo =
          ))
        in
        let files_in_package = Memo.lazy_ (fun () ->
-         let paths = fst (Memo.Lazy.force files_and_rules) in
-         Path.Map.of_list_multi (List.map paths ~f:(fun path -> (path, ())))
-         |> Path.Map.map ~f:(fun (_ : unit list) -> ()))
+         fst (Memo.Lazy.force files_and_rules))
        in
        {
          files_in_package;
@@ -533,12 +531,8 @@ let gen_rules sctx ~dir =
   rules ()
 
 let packages sctx =
-  let packages = Local_package.of_sctx sctx in
-  List.concat_map
-    (Package.Name.Map.to_list packages)
-    ~f:(fun (_, pkg) ->
-      Path.Map.to_list (Memo.Lazy.force (run sctx pkg).files_in_package)
-      |> List.map ~f:(fun (path, ()) ->
-        (path, Local_package.name pkg))
-    )
-  |> Path.Map.of_list_exn
+  Package.Name.Map.foldi (Local_package.of_sctx sctx)
+    ~init:Path.Map.empty
+    ~f:(fun name pkg acc ->
+      List.fold_left (Memo.Lazy.force (run sctx pkg).files_in_package)
+        ~init:acc ~f:(fun acc path -> Path.Map.add acc path name))

@@ -26,11 +26,65 @@ module Version_source : sig
     | Project
 end
 
+module Dependency : sig
+  module Op : sig
+    type t =
+      | Eq
+      | Gte
+      | Lte
+      | Gt
+      | Lt
+      | Neq
+  end
+
+  module Constraint : sig
+    module Var : sig
+      type t =
+        | QVar of string
+        | Var of string
+    end
+
+    type t =
+      | Bvar of Var.t
+      | Uop of Op.t * Var.t
+      | And of t list
+      | Or of t list
+  end
+
+  type t =
+    { name : Name.t
+    ; constraint_ : Constraint.t option
+    }
+
+  val opam_depend : t -> OpamParserTypes.value
+
+  val to_dyn : t -> Dyn.t
+
+  val decode : t Dune_lang.Decoder.t
+end
+
+module Kind : sig
+  type has_opam = bool
+  type t =
+    | Dune of has_opam
+    | Opam
+end
+
 type t =
-  { name    : Name.t
-  ; path    : Path.Source.t
-  ; version : (string * Version_source.t) option
+  { name                   : Name.t
+  ; loc                    : Loc.t
+  ; synopsis               : string option
+  ; description            : string option
+  ; depends                : Dependency.t list
+  ; conflicts              : Dependency.t list
+  ; depopts                : Dependency.t list
+  ; path                   : Path.Source.t
+  ; version                : (string * Version_source.t) option
+  ; kind                   : Kind.t
+  ; tags                   : string list
   }
+
+val decode : dir:Path.Source.t -> t Dune_lang.Decoder.t
 
 val pp : Format.formatter -> t -> unit
 

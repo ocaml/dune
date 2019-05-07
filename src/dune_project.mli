@@ -16,7 +16,7 @@ module Name : sig
   *)
   type t = private
     | Named     of string
-    | Anonymous of Path.t
+    | Anonymous of Path.Source.t
 
   val to_dyn : t -> Dyn.t
 
@@ -49,41 +49,6 @@ module Source_kind : sig
   val to_dyn : t -> Dyn.t
 end
 
-module Opam : sig
-
-  module Dependency : sig
-    type t
-
-    val opam_depend : t -> OpamParserTypes.value
-
-    val to_dyn : t -> Dyn.t
-  end
-
-  module Package : sig
-    type t = private
-      { name: Package.Name.t
-      ; synopsis: string
-      ; description: string
-      ; depends: Dependency.t list
-      ; conflicts: Dependency.t list
-      }
-    val to_dyn : t -> Dyn.t
-  end
-
-  type t = private
-    { tags : string list
-    ; depends: Dependency.t list
-    ; conflicts: Dependency.t list
-    ; packages: Package.t list
-    }
-
-  type package_name
-
-  val to_dyn : t -> Dyn.t
-
-  val find : t -> package_name -> Package.t option
-end with type package_name := Package.Name.t
-
 type t
 
 val to_dyn : t -> Dyn.t
@@ -93,11 +58,14 @@ val version : t -> string option
 val name : t -> Name.t
 val root : t -> Path.Source.t
 val source: t -> Source_kind.t option
-val opam : t -> Opam.t option
 val license : t -> string option
+val maintainers : t -> string list
+val bug_reports : t -> string option
+val homepage : t -> string option
 val authors : t -> string list
 val stanza_parser : t -> Stanza.t list Dune_lang.Decoder.t
 val allow_approx_merlin : t -> bool
+val generate_opam_files : t -> bool
 
 val equal : t -> t -> bool
 val hash : t -> int

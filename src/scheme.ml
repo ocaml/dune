@@ -101,11 +101,11 @@ module Evaluated = struct
     Memo.Lazy.force t.rules_here
 end
 
-let evaluate ~union_rules ~env =
-  let rec loop = function
+let evaluate ~union_rules =
+  let rec loop ~env = function
     | Empty -> Evaluated.empty
     | Union (x, y) ->
-      Evaluated.union ~union_rules (loop x) (loop y)
+      Evaluated.union ~union_rules (loop ~env x) (loop ~env y)
     | Approximation (paths, rules) ->
       if
         not (Dir_set.is_subset paths ~of_:env)
@@ -122,12 +122,12 @@ let evaluate ~union_rules ~env =
       else
         let paths = Dir_set.inter paths env in
         Evaluated.restrict paths
-          (Memo.lazy_ (fun () -> loop rules))
+          (Memo.lazy_ (fun () -> loop ~env:paths rules))
     | Finite rules -> Evaluated.finite ~union_rules rules
-    | Thunk f -> loop (f ())
+    | Thunk f -> loop ~env (f ())
   in
-  fun t -> loop t
+  fun t -> loop ~env:Dir_set.universal t
 
 let all l = List.fold_left ~init:Empty ~f:(fun x y -> Union (x, y)) l
 
-let evaluate t ~union = evaluate ~union_rules:union ~env:Dir_set.universal t
+let evaluate t ~union = evaluate ~union_rules:union t

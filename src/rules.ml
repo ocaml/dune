@@ -15,8 +15,7 @@ module T = struct
   let union_map a b ~f =
     Path.Build.Map.union a b ~f:(fun _key a b -> Some (f a b))
 
-  let union =
-    union_map ~f:(fun rule1 rule2 -> fun () -> rule1 (); rule2 ())
+  let union = union_map ~f:Dir_rules.union
 
   let name = "Rules"
 end

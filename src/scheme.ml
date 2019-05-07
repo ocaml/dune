@@ -95,6 +95,10 @@ module Evaluated = struct
       singleton path rules)
     |> List.fold_left ~init:empty ~f:(union ~union_rules)
 
+  let get_rules t ~dir =
+    let dir = Path.explode dir in
+    let t = List.fold_left dir ~init:t ~f:descend in
+    Memo.Lazy.force t.rules_here
 end
 
 let evaluate ~union_rules ~env =
@@ -107,14 +111,14 @@ let evaluate ~union_rules ~env =
         not (Dir_set.is_subset paths ~of_:env)
         && not (Dir_set.is_subset (Dir_set.negate paths) ~of_:env)
       then
-        raise (Exn.code_error
-                 "inner [Approximate] specifies a set such that neither it, \
-                  nor its negation, are a subset of directories specified by \
-                  the outer [Approximate]."
-                 [
-                   "inner", (Dir_set.to_sexp paths);
-                   "outer", (Dir_set.to_sexp env);
-                 ])
+        Exn.code_error
+          "inner [Approximate] specifies a set such that neither it, \
+           nor its negation, are a subset of directories specified by \
+           the outer [Approximate]."
+          [
+            "inner", (Dir_set.to_sexp paths);
+            "outer", (Dir_set.to_sexp env);
+          ]
       else
         let paths = Dir_set.inter paths env in
         Evaluated.restrict paths
@@ -125,10 +129,5 @@ let evaluate ~union_rules ~env =
   fun t -> loop t
 
 let all l = List.fold_left ~init:Empty ~f:(fun x y -> Union (x, y)) l
-
-let get_rules t ~dir =
-  let dir = Path.explode dir in
-  let t = List.fold_left dir ~init:t ~f:Evaluated.descend in
-  Memo.Lazy.force t.rules_here
 
 let evaluate t ~union = evaluate ~union_rules:union ~env:Dir_set.universal t

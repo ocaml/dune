@@ -1,3 +1,4 @@
+(* -*- tuareg -*- *)
 open Stdune
 
 let print = Printf.printf "%s\n"

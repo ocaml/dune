@@ -95,6 +95,10 @@ module Evaluated = struct
       singleton path rules)
     |> List.fold_left ~init:empty ~f:(union ~union_rules)
 
+  let get_rules t ~dir =
+    let dir = Path.explode dir in
+    let t = List.fold_left dir ~init:t ~f:descend in
+    Memo.Lazy.force t.rules_here
 end
 
 let evaluate ~union_rules ~env =
@@ -125,10 +129,5 @@ let evaluate ~union_rules ~env =
   fun t -> loop t
 
 let all l = List.fold_left ~init:Empty ~f:(fun x y -> Union (x, y)) l
-
-let get_rules t ~dir =
-  let dir = Path.explode dir in
-  let t = List.fold_left dir ~init:t ~f:Evaluated.descend in
-  Memo.Lazy.force t.rules_here
 
 let evaluate t ~union = evaluate ~union_rules:union ~env:Dir_set.universal t

@@ -11,10 +11,10 @@ type 'rules t =
 
 module Evaluated : sig
   type 'a t
+
+  val get_rules : 'a t -> dir:Path.Build.t -> 'a option
 end
 
 val evaluate : 'a t -> union:('a -> 'a -> 'a) -> 'a Evaluated.t
-
-val get_rules : 'a Evaluated.t -> dir:Path.Build.t -> 'a option
 
 val all : 'a t list -> 'a t

@@ -79,7 +79,7 @@ module Scheme = struct
   let evaluate = evaluate ~union:Directory_rules.union
 
   let get_rules t ~dir =
-    Option.value (get_rules t ~dir)
+    Option.value (Evaluated.get_rules t ~dir)
       ~default:Directory_rules.empty
 end
 

@@ -220,7 +220,8 @@ let process_file fn ~magic ~parse ~print ~map ~mk_ext =
     set_binary_mode_out stdout true;
     output_string stdout magic;
     output_value stdout fn;
-    output_value stdout ast
+    output_value stdout ast;
+    flush stdout
   end else
     Format.printf "%a@?" print ast
 

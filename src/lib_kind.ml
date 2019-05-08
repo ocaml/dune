@@ -9,9 +9,17 @@ module Ppx_args = struct
       let open Stanza.Decoder in
       let* () = Syntax.since Stanza.syntax (1, 10) in
       enter
-        (let+ name = string
-        and+ value = String_with_vars.decode in
-        { name; value })
+        (
+          let+ name = plain_string 
+            (fun loc str ->
+              if String.contains str '=' then 
+                Errors.fail loc "Character '=' is not allowed in cookie names"
+              else 
+                str 
+            )        
+          and+ value = String_with_vars.decode in
+          { name; value }
+        )
 
     let encode { name; value } =
       let open Dune_lang in

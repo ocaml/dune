@@ -245,72 +245,8 @@ end
 
 module Dir_status = struct
 
-  type collection_stage =
-    | Pending
-    | Loading
-    | Frozen
-
-  module Rules_collector : sig
-    type t
-
-    (** state transition diagram:
-        pending -> loading -> Rules.t *)
-
-    val create_pending : info:Sexp.t -> unit -> t
-    val start_loading :
-      t ->
-      (unit, [`Already_loading]) Result.t
-    val freeze : t -> Rules.Dir_rules.t
-
-    val add_rules : t -> Rules.Dir_rules.t -> unit
-  end = struct
-
-    type t =
-      { mutable rules   : Rules.Dir_rules.t
-      ; mutable stage   : collection_stage
-      ; info : Sexp.t
-      }
-
-    let create_pending ~info () =
-      { rules   = Rules.Dir_rules.empty
-      ; stage   = Pending
-      ; info
-      }
-
-    let assert_not_frozen t why = match t.stage with
-      | Frozen ->
-        Exn.code_error (sprintf "%s called on a frozen Rules_collector" why) []
-      | Pending ->
-        ()
-      | Loading ->
-        ()
-
-    let add_rules t rules =
-      assert_not_frozen t "add_rule";
-      t.rules <- Rules.Dir_rules.union rules t.rules
-
-    let start_loading t = match t.stage with
-      | Frozen ->
-        Exn.code_error "start_loading called on a frozen Rules_collector" []
-      | Loading -> Error `Already_loading
-      | Pending ->
-        t.stage <- Loading;
-        (Ok ())
-
-    let freeze t =
-      match t.stage with
-      | Frozen ->
-        Exn.code_error "Rules_collector.freeze called twice" []
-      | Loading ->
-        t.stage <- Frozen;
-        t.rules
-      | Pending ->
-        Exn.code_error "Rules_collector.freeze called while still Pending" []
-
-  end
-
   type t =
-    | Collecting_rules of Rules_collector.t
+    | Collecting_rules
     | Loaded  of Loaded.t
     | Forward of Path.t (* Load this directory first       *)
     | Failed_to_load
@@ -459,51 +395,55 @@ let set_rule_generators ~init ~gen_rules =
   Fdecl.set t.gen_rules gen_rules
 
 let get_dir_status t ~dir =
-  Path.Table.find_or_add t.dirs dir ~f:(fun _ ->
-    match Path.as_in_source_tree dir with
-    | Some dir ->
-      Dir_status.Loaded {
-        rules_produced = Rules.empty;
-        targets =
-          (
-            Path.Source.Set.to_list (File_tree.files_of t.file_tree dir)
-            |> List.map ~f:Path.source
-            |> Path.Set.of_list);
-      }
-    | None ->
-      if Path.equal dir Path.build_dir then
-        (* Not allowed to look here *)
-        Dir_status.Loaded
-          { rules_produced = Rules.empty;
-            targets = Path.Set.empty
-          }
-      else if not (Path.is_managed dir) then
-        Dir_status.Loaded
-          { rules_produced = Rules.empty;
-            targets =
-              match Path.readdir_unsorted dir with
-              | Error Unix.ENOENT -> Path.Set.empty
-              | Error m ->
-                Errors.warn Loc.none
-                  "Unable to read %s@.Reason: %s@."
-                  (Path.to_string_maybe_quoted dir)
-                  (Unix.error_message m);
-                Path.Set.empty
-              | Ok files ->
-                Path.Set.of_list (List.map files ~f:(Path.relative dir))
-          }
-      else begin
-        let (ctx, sub_dir) = Path.extract_build_context_exn dir in
-        if ctx = ".aliases" then
-          Forward (Path.(append_source build_dir) sub_dir)
-        else if ctx <> "install" && not (String.Map.mem t.contexts ctx) then
-          Dir_status.Loaded {
-            rules_produced = Rules.empty;
-            targets = Path.Set.empty; }
-        else
-          Collecting_rules
-            (Dir_status.Rules_collector.create_pending ~info:(Path.to_sexp dir) ())
-      end)
+  let just_started_collecting = ref false in
+  let res =
+    Path.Table.find_or_add t.dirs dir ~f:(fun _ ->
+      match Path.as_in_source_tree dir with
+      | Some dir ->
+        Dir_status.Loaded {
+          rules_produced = Rules.empty;
+          targets =
+            (
+              Path.Source.Set.to_list (File_tree.files_of t.file_tree dir)
+              |> List.map ~f:Path.source
+              |> Path.Set.of_list);
+        }
+      | None ->
+        if Path.equal dir Path.build_dir then
+          (* Not allowed to look here *)
+          Dir_status.Loaded
+            { rules_produced = Rules.empty;
+              targets = Path.Set.empty
+            }
+        else if not (Path.is_managed dir) then
+          Dir_status.Loaded
+            { rules_produced = Rules.empty;
+              targets =
+                match Path.readdir_unsorted dir with
+                | Error Unix.ENOENT -> Path.Set.empty
+                | Error m ->
+                  Errors.warn Loc.none
+                    "Unable to read %s@.Reason: %s@."
+                    (Path.to_string_maybe_quoted dir)
+                    (Unix.error_message m);
+                  Path.Set.empty
+                | Ok files ->
+                  Path.Set.of_list (List.map files ~f:(Path.relative dir))
+            }
+        else begin
+          let (ctx, sub_dir) = Path.extract_build_context_exn dir in
+          if ctx = ".aliases" then
+            Forward (Path.(append_source build_dir) sub_dir)
+          else if ctx <> "install" && not (String.Map.mem t.contexts ctx) then
+            Dir_status.Loaded {
+              rules_produced = Rules.empty;
+              targets = Path.Set.empty; }
+          else
+            (just_started_collecting := true;
+             Collecting_rules)
+        end)
+  in
+  res, !just_started_collecting
 
 let add_spec t fn rule =
   match Path.Table.find t.files fn with
@@ -706,35 +646,7 @@ let rec add_build_dir_to_keep t ~dir =
         add_build_dir_to_keep t ~dir)
   end
 
-let add_rules_to_collector t ~dir rules =
-  let fail msg =
-    Exn.code_error
-      msg
-      [ "dir", Path.to_sexp dir
-      ; "load_dir_stack", Sexp.Encoder.list Path.to_sexp t.load_dir_stack
-      ]
-  in
-  let error () =
-    fail
-      (if Path.is_in_source_tree dir then
-         "Build_system.get_collector called on source directory"
-       else if Path.equal dir Path.build_dir then
-         "Build_system.get_collector called on build_dir"
-       else if not (Path.is_managed dir) then
-         "Build_system.get_collector called on external directory"
-       else
-         "Build_system.get_collector called on closed directory")
-  in
-  match get_dir_status t ~dir with
-  | Collecting_rules collector ->
-    Dir_status.Rules_collector.add_rules collector rules
-  | Failed_to_load -> raise Already_reported
-  | Loaded _ ->
-    error ()
-  | Forward _ ->
-    error ()
-
-let handle_add_rule_effects ~dir:main_dir f =
+let handle_add_rule_effects f =
   let t = t () in
   let res, rules =
     Rules.collect f
@@ -745,7 +657,6 @@ let handle_add_rule_effects ~dir:main_dir f =
   Path.Build.Map.iteri (Rules.to_map rules)
     ~f:(fun dir _rules ->
       add_build_dir_to_keep t ~dir:(Path.build dir));
-  add_rules_to_collector t ~dir:main_dir (Rules.find rules main_dir);
   res, rules
 
 let rec compile_rule t pre_rule =
@@ -811,32 +722,30 @@ and load_dir_and_get_targets t ~dir =
 
 and load_dir_and_get_rules_and_targets t ~dir : Loaded.t =
   match get_dir_status t ~dir with
-  | Failed_to_load -> raise Already_reported
+  | Failed_to_load, _ -> raise Already_reported
 
-  | Loaded res -> res
+  | Loaded res, _ -> res
 
-  | Forward dir' ->
+  | Forward dir', _ ->
     load_dir t ~dir:dir';
     begin match get_dir_status t ~dir with
-    | Loaded res -> res
+    | Loaded res, _ -> res
     | _ -> assert false
     end
 
-  | Collecting_rules collector ->
+  | Collecting_rules, just_started ->
     let () =
-      match Dir_status.Rules_collector.start_loading collector with
-      | Error `Already_loading ->
+      if just_started then ()
+      else
         die "recursive dependency between directories:\n    %s"
           (String.concat ~sep:"\n--> "
              (List.map t.load_dir_stack ~f:Utils.describe_target))
-      | Ok () ->
-        ()
     in
 
     t.load_dir_stack <- dir :: t.load_dir_stack;
 
     try
-      load_dir_step2_exn t ~dir ~collector
+      load_dir_step2_exn t ~dir
     with exn ->
       (match Path.Table.find t.dirs dir with
        | Some (Loaded _) -> ()
@@ -849,7 +758,7 @@ and load_dir_and_get_rules_and_targets t ~dir : Loaded.t =
       Path.Table.replace t.dirs ~key:dir ~data:Failed_to_load;
       reraise exn
 
-and load_dir_step2_exn t ~dir ~collector =
+and load_dir_step2_exn t ~dir =
   let context_name, sub_dir = match Utils.analyse_target dir with
     | Install (ctx, path) ->
       Context_or_install.Install ctx, path
@@ -870,13 +779,12 @@ and load_dir_step2_exn t ~dir ~collector =
       | Some rules ->
         rules
     in
-    handle_add_rule_effects ~dir
+    handle_add_rule_effects
       (fun () -> gen_rules ~dir (Path.Source.explode sub_dir))
   in
-  let rules_in_collector = Dir_status.Rules_collector.freeze collector in
   let rules =
     Rules.Dir_rules.union
-      rules_in_collector
+      (Rules.find rules_produced dir)
       (Rules.find (Fdecl.get t.init_rules) dir)
   in
   let collected = Rules.Dir_rules.consume rules in

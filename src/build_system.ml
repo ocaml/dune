@@ -236,6 +236,13 @@ module Alias0 = struct
       ~dir:context.build_dir
 end
 
+module Loaded = struct
+  type t = {
+    rules_produced : Rules.t;
+    targets : Path.Set.t;
+  }
+end
+
 module Dir_status = struct
 
   type collection_stage =
@@ -302,14 +309,9 @@ module Dir_status = struct
 
   end
 
-  type loaded = {
-    rules_produced : Rules.t;
-    targets : Path.Set.t;
-  }
-
   type t =
     | Collecting_rules of Rules_collector.t
-    | Loaded  of loaded
+    | Loaded  of Loaded.t
     | Forward of Path.t (* Load this directory first       *)
     | Failed_to_load
 end
@@ -799,27 +801,24 @@ and setup_copy_rules t ~ctx_dir ~non_target_source_files =
 
 and load_dir   t ~dir = ignore (load_dir_and_get_targets t ~dir : Path.Set.t)
 and load_dir_and_produce_its_rules t ~dir =
-  let (rules, (_targets : Path.Set.t)) =
-    (load_dir_and_get_rules_and_targets t ~dir)
-  in
-  Rules.produce rules;
-  ()
+  let loaded = load_dir_and_get_rules_and_targets t ~dir in
+  Rules.produce loaded.rules_produced
 
 and targets_of t ~dir =         load_dir_and_get_targets t ~dir
 
 and load_dir_and_get_targets t ~dir =
-  snd (load_dir_and_get_rules_and_targets t ~dir)
+  (load_dir_and_get_rules_and_targets t ~dir).Loaded.targets
 
-and load_dir_and_get_rules_and_targets t ~dir =
+and load_dir_and_get_rules_and_targets t ~dir : Loaded.t =
   match get_dir_status t ~dir with
   | Failed_to_load -> raise Already_reported
 
-  | Loaded { targets; rules_produced; _ } -> rules_produced, targets
+  | Loaded res -> res
 
   | Forward dir' ->
     load_dir t ~dir:dir';
     begin match get_dir_status t ~dir with
-    | Loaded { targets; rules_produced; _ } -> rules_produced, targets
+    | Loaded res -> res
     | _ -> assert false
     end
 
@@ -1113,7 +1112,7 @@ The following targets are not:
   Option.iter alias_dir ~f:(fun alias_dir ->
     remove_old_artifacts t ~dir:alias_dir ~subdirs_to_keep);
 
-  rules_produced, targets
+  { rules_produced; targets }
 
 let get_rule_other t fn =
   let dir = Path.parent_exn fn in

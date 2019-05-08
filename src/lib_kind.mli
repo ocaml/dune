@@ -1,5 +1,5 @@
 module Ppx_args : sig
-  module Cookie = struct
+  module Cookie : sig
     type t =
       { name : string
       ; value : String_with_vars.t
@@ -7,7 +7,7 @@ module Ppx_args : sig
   end
 
   type t =
-    { cookies : Cookies.t list
+    { cookies : Cookie.t list
     }
 end
 

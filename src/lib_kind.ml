@@ -7,32 +7,36 @@ module Ppx_args = struct
 
     let decode =
       let open Stanza.Decoder in
-      let+ name = string
-      and+ value = String_with_vars.decode in
-      return { name; value }
+      let* () = Syntax.since Stanza.syntax (1, 10) in
+      enter
+        (let+ name = string
+        and+ value = String_with_vars.decode in
+        { name; value })
 
     let encode { name; value } =
-      let open Dune_lang.Encoder in
+      let open Dune_lang in
       List
-        [ string name
+        [ Encoder.string name
         ; String_with_vars.encode value
         ]
   end
 
   type t =
-    { cookies : Cookies.t list
+    { cookies : Cookie.t list
     }
 
   let decode =
     let open Stanza.Decoder in
-    fields
-      (let+ cookies = field "cookies" (list Cookie.decode) ~default:[] in
-       { cookies })
+    let args =
+      let+ cookies = field "cookies" (list Cookie.decode) ~default:[] in
+      {cookies}
+    in
+    fields args
 
   let encode { cookies } =
     let open Dune_lang.Encoder in
     record_fields
-      [ field_l "cookies" Cookies.encode cookies ]
+      [ field_l "cookies" Cookie.encode cookies ]
 end
 
 type t =
@@ -42,14 +46,13 @@ type t =
 
 let decode =
   let open Dune_lang.Decoder in
-  enum
-    [ "normal"       , Normal
-    ; "ppx_deriver"  , Ppx_deriver
-    ; "ppx_rewriter" , Ppx_rewriter
+  sum
+    [ "normal"       , return Normal
+    ; "ppx_deriver"  , (let+ args = Ppx_args.decode in Ppx_deriver args)
+    ; "ppx_rewriter" , (let+ args = Ppx_args.decode in Ppx_rewriter args)
     ]
 
 let encode t =
-  let open Dune_lang.Encoder in
   match
     match t with
     | Normal -> Dune_lang.atom "normal"

@@ -152,8 +152,8 @@ let init_meta sctx ~dir =
 
 let lib_ppxs sctx ~(lib : Dune_file.Library.t) ~scope ~dir_kind =
   match lib.kind with
-  | Normal | Ppx_deriver -> []
-  | Ppx_rewriter ->
+  | Normal | Ppx_deriver _ -> []
+  | Ppx_rewriter _ ->
     let name = Dune_file.Library.best_name lib in
     match (dir_kind : Dune_lang.File_syntax.t) with
     | Dune ->

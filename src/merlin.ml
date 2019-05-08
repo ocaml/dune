@@ -127,14 +127,11 @@ let pp_flags sctx ~expander ~dir_kind { preprocess; libname; _ } =
           (Super_context.context sctx).version
   with
   | Pps { loc = _; pps; flags; staged = _ } -> begin
-    match Preprocessing.get_ppx_driver sctx ~scope ~dir_kind pps with
+    match Preprocessing.get_ppx_driver sctx ~expander ~lib_name:libname ~flags ~scope ~dir_kind pps with
     | Error _ -> None
-    | Ok exe ->
-      let flags = List.map ~f:(Expander.expand_str expander) flags in
+    | Ok (exe, flags) ->
       (Path.to_absolute_filename exe
-       :: "--as-ppx"
-       :: Preprocessing.cookie_library_name libname
-       @ flags)
+       :: "--as-ppx" :: flags)
       |> List.map ~f:quote_for_merlin
       |> String.concat ~sep:" "
       |> Filename.quote

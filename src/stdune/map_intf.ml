@@ -66,6 +66,7 @@ module type S = sig
 
   val of_list_multi  : (key * 'a) list -> 'a list t
   val of_list_reduce : (key * 'a) list -> f:('a -> 'a -> 'a) -> 'a t
+  val of_list_reducei : (key * 'a) list -> f:(key -> 'a -> 'a -> 'a) -> 'a t
 
   (** Return a map of [(k, v)] bindings such that:
 

@@ -286,37 +286,89 @@ let promote_install_file (ctx : Context.t) =
   | Default -> true
   | Opam _  -> false
 
-let install_file sctx (package : Local_package.t) entries =
+let get_install_entries package =
+  Local_package.installs package
+  |> List.concat_map ~f:(fun (d : _ Dir_with_dune.t) ->
+    let { Dune_file.Install_conf. section; files; package = _ } =
+      d.data
+    in
+    List.map files ~f:(fun fb ->
+      let loc = File_binding.Expanded.src_loc fb in
+      let src = File_binding.Expanded.src fb in
+      let dst = File_binding.Expanded.dst fb in
+      ( Some loc
+      , Install.Entry.make section src ?dst
+      )))
+
+let init_install sctx package =
+  let installs =
+    get_install_entries package
+  in
+  let docs =
+    (Local_package.mlds package
+     |> List.map ~f:(fun mld ->
+       (None,
+        Install.Entry.make
+          ~dst:(sprintf "odoc-pages/%s" (Path.basename mld))
+          Install.Section.Doc mld)))
+    @
+    (Local_package.odig_files package
+     |> List.map
+          ~f:(fun doc -> (None, Install.Entry.make Doc (Path.build doc))))
+  in
+  let lib_install_files =
+    Local_package.lib_stanzas package
+    |> List.concat_map
+         ~f:(fun { Dir_with_dune.
+                   data = (lib : Dune_file.Library.t)
+                 ; scope
+                 ; ctx_dir = dir
+                 ; src_dir = _
+                 ; kind = dir_kind
+                 ; dune_version = _
+                 } ->
+              let sub_dir = (Option.value_exn lib.public).sub_dir in
+              let dir_contents = Dir_contents.get_without_rules sctx ~dir in
+              lib_install_files sctx ~dir ~sub_dir lib ~scope
+                ~dir_kind ~dir_contents)
+  in
+  let coqlib_install_files =
+    Local_package.coqlibs package
+    |> List.concat_map
+         ~f:(fun { Dir_with_dune.
+                   data = coqlib
+                 ; ctx_dir = dir
+                 ; _
+                 } ->
+              Coq_rules.install_rules ~sctx ~dir coqlib)
+  in
+  let metadata =
+    let meta = Local_package.meta_file package in
+    let dune_package = Local_package.dune_package_file package in
+    let opam_file = Local_package.opam_file package in
+    (None, Install.Entry.make Lib (Path.build meta) ~dst:"META")
+    :: (None, Install.Entry.make Lib (Path.build dune_package)
+                ~dst:"dune-package")
+    :: (let package = Local_package.package package in
+        match package.kind with
+        | Dune false -> []
+        | Dune true
+        | Opam ->
+          [(None, Install.Entry.make Lib (Path.build opam_file) ~dst:"opam")])
+  in
+  let entries =
+    let install_paths = Local_package.install_paths package in
+    coqlib_install_files
+    |> List.rev_append lib_install_files
+    |> List.rev_append installs
+    |> List.rev_append docs
+    |> List.rev_append metadata
+    |> local_install_rules sctx ~install_paths
+  in
   let ctx = Super_context.context sctx in
-  let opam_file = Local_package.opam_file package in
-  let meta = Local_package.meta_file package in
-  let dune_package = Local_package.dune_package_file package in
   let package_name = Local_package.name package in
   let pkg_build_dir = Path.build (Local_package.build_dir package) in
   let install_paths = Local_package.install_paths package in
-  let entries =
-    let docs =
-      Local_package.odig_files package
-      |> List.map ~f:(fun doc -> (None, Install.Entry.make Doc (Path.build doc)))
-    in
-    let files =
-      (None, Install.Entry.make Lib (Path.build meta) ~dst:"META")
-      :: (None, Install.Entry.make Lib (Path.build dune_package)
-                  ~dst:"dune-package")
-      :: docs
-    in
-    let files =
-      let package = Local_package.package package in
-      match package.kind with
-      | Dune false -> files
-      | Dune true
-      | Opam ->
-        (None, Install.Entry.make Lib (Path.build opam_file) ~dst:"opam")
-        :: files
-    in
-    local_install_rules sctx ~install_paths files
-    |> List.rev_append entries
-  in
   let fn =
     Path.relative
       pkg_build_dir
@@ -368,67 +420,6 @@ let install_file sctx (package : Local_package.t) entries =
        >>>
        Build.write_file_dyn fn)));
   package_source_files
-
-let get_install_entries package =
-  Local_package.installs package
-  |> List.concat_map ~f:(fun (d : _ Dir_with_dune.t) ->
-    let { Dune_file.Install_conf. section; files; package = _ } =
-      d.data
-    in
-    List.map files ~f:(fun fb ->
-      let loc = File_binding.Expanded.src_loc fb in
-      let src = File_binding.Expanded.src fb in
-      let dst = File_binding.Expanded.dst fb in
-      ( Some loc
-      , Install.Entry.make section src ?dst
-      )))
-
-let init_install sctx package =
-  let installs =
-    get_install_entries package
-  in
-  let docs =
-    Local_package.mlds package
-    |> List.map ~f:(fun mld ->
-      (None,
-       Install.Entry.make
-         ~dst:(sprintf "odoc-pages/%s" (Path.basename mld))
-         Install.Section.Doc mld))
-  in
-  let lib_install_files =
-    Local_package.lib_stanzas package
-    |> List.concat_map
-         ~f:(fun { Dir_with_dune.
-                   data = (lib : Dune_file.Library.t)
-                 ; scope
-                 ; ctx_dir = dir
-                 ; src_dir = _
-                 ; kind = dir_kind
-                 ; dune_version = _
-                 } ->
-              let sub_dir = (Option.value_exn lib.public).sub_dir in
-              let dir_contents = Dir_contents.get_without_rules sctx ~dir in
-              lib_install_files sctx ~dir ~sub_dir lib ~scope
-                ~dir_kind ~dir_contents)
-  in
-  let coqlib_install_files =
-    Local_package.coqlibs package
-    |> List.concat_map
-         ~f:(fun { Dir_with_dune.
-                   data = coqlib
-                 ; ctx_dir = dir
-                 ; _
-                 } ->
-              Coq_rules.install_rules ~sctx ~dir coqlib)
-  in
-  let entries =
-    let install_paths = Local_package.install_paths package in
-    List.rev_append coqlib_install_files docs
-    |> List.rev_append lib_install_files
-    |> List.rev_append installs
-    |> local_install_rules sctx ~install_paths
-  in
-  install_file sctx package entries
 
 let init_install_files (ctx : Context.t) (package : Local_package.t) =
   if not ctx.implicit then

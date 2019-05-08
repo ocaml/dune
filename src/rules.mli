@@ -25,3 +25,5 @@ val dir_rule : (Path.t * Dir_rules.t) -> unit
 val union : t -> t -> t
 
 val collect : (unit -> 'a) -> ('a * t)
+
+val collect_unit : (unit -> unit) -> t

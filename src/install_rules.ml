@@ -273,12 +273,11 @@ let local_install_rules sctx (entries : (Loc.t option * Install.Entry.t) list)
       | Some l -> l
       | None -> Loc.in_file entry.src
     in
-    let src = entry.src in
     Rules.file_rule
       ~rule:(dst, (fun () ->
         Super_context.add_rule sctx ~loc ~dir:ctx.build_dir
           (Build.symlink ~src:entry.src ~dst)));
-    (src, Install.Entry.set_src entry dst))
+    Install.Entry.set_src entry dst)
 
 let promote_install_file (ctx : Context.t) =
   not ctx.implicit &&
@@ -300,7 +299,15 @@ let get_install_entries package =
       , Install.Entry.make section src ?dst
       )))
 
-let init_install sctx package =
+module Sctx_and_package = struct
+  type t = Super_context.t * Local_package.t
+
+  let hash (x, y) = Hashtbl.hash (Super_context.hash x, Local_package.hash y)
+  let equal (x1, y1) (x2, y2) = (x1 == x2 && y1 == y2)
+  let to_sexp _ = Sexp.Atom "<opaque>"
+end
+
+let install_entries sctx package =
   let installs =
     get_install_entries package
   in
@@ -356,27 +363,48 @@ let init_install sctx package =
         | Opam ->
           [(None, Install.Entry.make Lib (Path.build opam_file) ~dst:"opam")])
   in
+  coqlib_install_files
+  |> List.rev_append lib_install_files
+  |> List.rev_append installs
+  |> List.rev_append docs
+  |> List.rev_append metadata
+
+let install_entries =
+  let memo =
+    Memo.create
+      ~input:(module Sctx_and_package)
+      ~output:(
+        Simple (module struct
+          type t = (Loc.t option * Install.Entry.t) list
+          let to_sexp _ = Sexp.Atom "<opaque>"
+        end))
+      "install-entries"
+      ~doc:"install entries"
+      ~visibility:Hidden
+      Sync
+      (Some (fun (sctx, package) -> install_entries sctx package))
+  in
+  fun sctx package -> Memo.exec memo (sctx, package)
+
+let package_source_files sctx package =
+  List.map
+    ~f:(fun (_loc, entry) -> entry.Install.Entry.src)
+    (install_entries sctx package)
+
+let install_rules sctx package =
+  let install_paths = Local_package.install_paths package in
   let entries =
-    let install_paths = Local_package.install_paths package in
-    coqlib_install_files
-    |> List.rev_append lib_install_files
-    |> List.rev_append installs
-    |> List.rev_append docs
-    |> List.rev_append metadata
+    install_entries sctx package
     |> local_install_rules sctx ~install_paths
   in
   let ctx = Super_context.context sctx in
   let package_name = Local_package.name package in
   let pkg_build_dir = Path.build (Local_package.build_dir package) in
-  let install_paths = Local_package.install_paths package in
   let fn =
     Path.relative
       pkg_build_dir
       (Utils.install_file ~package:package_name
          ~findlib_toolchain:ctx.findlib_toolchain)
-  in
-  let entries, package_source_files =
-    List.map ~f:snd entries, List.map ~f:fst entries
   in
   let files = Install.files entries in
   let target_alias =
@@ -418,10 +446,9 @@ let init_install sctx package =
          in
          Install.gen_install_file entries)
        >>>
-       Build.write_file_dyn fn)));
-  package_source_files
+       Build.write_file_dyn fn)))
 
-let init_install_files (ctx : Context.t) (package : Local_package.t) =
+let install_alias (ctx : Context.t) (package : Local_package.t) =
   if not ctx.implicit then
     let install_fn =
       Utils.install_file ~package:(Local_package.name package)
@@ -434,28 +461,17 @@ let init_install_files (ctx : Context.t) (package : Local_package.t) =
       Build_system.Alias.add_deps
         install_alias (Path.Set.singleton install_file)))
 
-module Result =struct
+module Scheme' =struct
 
-  type t = {
-    files_in_package : Path.t list Memo.Lazy.t;
-    scheme : Rules.Dir_rules.t Scheme.t;
-  }
+  type t = Rules.Dir_rules.t Scheme.t
 
   let to_sexp _ = Sexp.Atom "<opaque>"
 end
 
 let memo =
-  let module Input = struct
-    type t = Super_context.t * Local_package.t
-
-    let hash (x, y) = Hashtbl.hash (Super_context.hash x, Local_package.hash y)
-    let equal (x1, y1) (x2, y2) = (x1 == x2 && y1 == y2)
-    let to_sexp _ = Sexp.Atom "<opaque>"
-  end
-  in
   Memo.create
-    ~input:(module Input)
-    ~output:(Simple (module Result))
+    ~input:(module Sctx_and_package)
+    ~output:(Simple (module Scheme'))
     "install-rules-and-pkg-entries"
     ~doc:"install rules and package entries"
     ~visibility:Hidden
@@ -463,37 +479,30 @@ let memo =
     (Some (fun (sctx, pkg) ->
        let ctx = Super_context.context sctx in
        let context_name = ctx.name in
-       let files_and_rules = Memo.lazy_ (fun () ->
-         Rules.collect (fun () ->
-           let package_source_files = init_install sctx pkg in
-           init_install_files ctx pkg;
-           package_source_files
+       let rules = Memo.lazy_ (fun () ->
+         Rules.collect_unit (fun () ->
+           install_rules sctx pkg;
+           install_alias ctx pkg
          ))
        in
-       let files_in_package = Memo.lazy_ (fun () ->
-         fst (Memo.Lazy.force files_and_rules))
-       in
-       {
-         files_in_package;
-         scheme = (
-           Approximation (
-             (Dir_set.union_all
-                [
-                  Dir_set.subtree
-                    (Config.local_install_dir ~context:context_name);
-                  Dir_set.singleton (Local_package.build_dir pkg);
-                  Dir_set.singleton (Path.as_in_build_dir_exn ctx.build_dir)
-                ])
-             ,
-             Thunk (fun () -> Finite (
-               Rules.to_map (snd (Memo.Lazy.force files_and_rules))))
-           )
-         );
-       }))
+       (
+         Approximation (
+           (Dir_set.union_all
+              [
+                Dir_set.subtree
+                  (Config.local_install_dir ~context:context_name);
+                Dir_set.singleton (Local_package.build_dir pkg);
+                Dir_set.singleton (Path.as_in_build_dir_exn ctx.build_dir)
+              ])
+           ,
+           Thunk (fun () -> Finite (
+             Rules.to_map (Memo.Lazy.force rules)))
+         )
+       )))
 
-let run sctx pkg = Memo.exec memo (sctx, pkg)
+let scheme sctx pkg = Memo.exec memo (sctx, pkg)
 
-let per_ctx_memo =
+let scheme_per_ctx_memo =
   Memo.create
     ~input:(module Super_context)
     ~output:
@@ -510,13 +519,13 @@ let per_ctx_memo =
        let scheme =
          Scheme.all (
            List.map (Package.Name.Map.to_list packages)
-             ~f:(fun (_, pkg) -> (run sctx pkg).scheme))
+             ~f:(fun (_, pkg) -> (scheme sctx pkg)))
        in
        Scheme.evaluate ~union:Rules.Dir_rules.union scheme))
 
 let gen_rules sctx ~dir =
   let rules =
-    Scheme.Evaluated.get_rules (Memo.exec per_ctx_memo sctx) ~dir
+    Scheme.Evaluated.get_rules (Memo.exec scheme_per_ctx_memo sctx) ~dir
     |> Option.value ~default:Rules.Dir_rules.empty
   in
   rules ()
@@ -526,7 +535,7 @@ let packages =
     Package.Name.Map.foldi (Local_package.of_sctx sctx)
       ~init:[]
       ~f:(fun name pkg acc ->
-        List.fold_left (Memo.Lazy.force (run sctx pkg).files_in_package)
+        List.fold_left (package_source_files sctx pkg)
           ~init:acc ~f:(fun acc path -> (path, name) :: acc))
     |> Path.Map.of_list_multi
   in

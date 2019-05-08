@@ -42,4 +42,7 @@ let collect f =
   let result, out = Memo.Implicit_output.collect_sync implicit_output f in
   result, Option.value out ~default:T.empty
 
+let collect_unit f =
+  let (), rules = collect f in rules
+
 let to_map x = x

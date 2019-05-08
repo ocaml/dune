@@ -259,7 +259,8 @@ let lib_install_files sctx ~dir_contents ~dir ~sub_dir:lib_subdir
         (Some loc, Install.Entry.make Stublibs a))
     ]
 
-let local_install_rules sctx (entries : (Loc.t option * Install.Entry.t) list)
+let copy_installed_artifacts_to_build_install
+      sctx (entries : (Loc.t option * Install.Entry.t) list)
       ~install_paths =
   let ctx = Super_context.context sctx in
   let install_dir = Config.local_install_dir ~context:ctx.name in
@@ -395,7 +396,7 @@ let install_rules sctx package =
   let install_paths = Local_package.install_paths package in
   let entries =
     install_entries sctx package
-    |> local_install_rules sctx ~install_paths
+    |> copy_installed_artifacts_to_build_install sctx ~install_paths
   in
   let ctx = Super_context.context sctx in
   let package_name = Local_package.name package in

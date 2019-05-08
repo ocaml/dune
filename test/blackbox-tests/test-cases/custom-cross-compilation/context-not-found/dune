@@ -1,0 +1,5 @@
+(executable
+ (name p)
+ (public_name p))
+
+(rule (with-stdout-to file (run ./p.exe)))

@@ -528,6 +528,9 @@ context or can be the description of an opam switch, as follows:
 
 - ``(toolchain <findlib_coolchain>)`` set findlib toolchain for the context.
 
+- ``(host <host_context>)`` choose a different context to build binaries that
+  are meant to be executed on the host machine, such as preprocessors.
+
 Both ``(default ...)`` and ``(opam ...)`` accept a ``targets`` field in order to
 setup cross compilation. See :ref:`advanced-cross-compilation` for more
 information.

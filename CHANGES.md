@@ -49,6 +49,10 @@ unreleased
   `--always-show-command-line` option to disable this behavior and always show
   the full command.
 
+- In `dune-workspace` files, add the ability to choose the host context and to
+  create duplicates of the default context with different settings. (#2098,
+  @TheLortex, review by @diml, @rgrinberg and @aalekseyev)
+
 1.9.2 (02/05/2019)
 ------------------
 

@@ -188,6 +188,47 @@ type t =
 include Versioned_file.Make(struct type t = unit end)
 let () = Lang.register syntax ()
 
+let bad_configuration_check map =
+  let find_exn loc name host =
+    match String.Map.find map host with
+    | Some host_ctx -> host_ctx
+    | None ->
+      Errors.fail
+        loc
+        "Undefined host context '%s' for '%s'."
+        host
+        name
+  in
+  let check elt =
+    Context.host_context elt
+    |> Option.iter ~f:(fun host ->
+      let name = Context.name elt in
+      let loc = Context.loc elt in
+      let host_elt = find_exn loc name host in
+      Context.host_context host_elt
+      |> Option.iter ~f:(fun host_of_host ->
+        Errors.fail
+          (Context.loc host_elt)
+          "Context '%s' is both a host (for '%s') and a target (for '%s')."
+          host
+          name
+          host_of_host))
+  in
+  String.Map.iter map ~f:check
+
+let top_sort contexts =
+  let key = Context.name in
+  let map = String.Map.of_list_map_exn contexts ~f:(fun x -> key x, x) in
+  let deps def =
+    match Context.host_context def with
+    | None -> []
+    | Some ctx -> [String.Map.find_exn map ctx]
+  in
+  bad_configuration_check map;
+  match Top_closure.String.top_closure ~key ~deps contexts with
+  | Ok topo_contexts -> topo_contexts
+  | Error _ -> assert false
+
 let t ?x ?profile:cmdline_profile () =
   let* () = Versioned_file.no_more_lang in
   let* env = env_field in
@@ -229,7 +270,7 @@ let t ?x ?profile:cmdline_profile () =
         None
   in
   { merlin_context
-  ; contexts = List.rev contexts
+  ; contexts = top_sort (List.rev contexts)
   ; env
   }
 

@@ -44,7 +44,10 @@ module Context : sig
   val host_context : t -> string option
 end
 
-type t =
+(** Representation of a workspace. The list of context is
+    topologically sorted, i.e. a context always comes before the
+    contexts where it is used as host context. *)
+type t = private
   { merlin_context : string option
   ; contexts       : Context.t list
   ; env            : Dune_env.Stanza.t option

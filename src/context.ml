@@ -599,47 +599,6 @@ let create_for_opam ~root ~env ~env_nodes ~targets ~profile
   create ~kind:(Opam { root; switch }) ~profile ~targets ~path ~env ~env_nodes
     ~name ~merlin ~host_context ~host_toolchain
 
-let bad_configuration_check map =
-  let find_exn loc name host =
-    match String.Map.find map host with
-    | Some host_ctx -> host_ctx
-    | None ->
-      Errors.fail
-        loc
-        "Undefined host context '%s' for '%s'."
-        host
-        name
-  in
-  let check elt =
-    Workspace.Context.host_context elt
-    |> Option.iter ~f:(fun host ->
-      let name = Workspace.Context.name elt in
-      let loc = Workspace.Context.loc elt in
-      let host_elt = find_exn loc name host in
-      Workspace.Context.host_context host_elt
-      |> Option.iter ~f:(fun host_of_host ->
-        Errors.fail
-          (Workspace.Context.loc host_elt)
-          "Context '%s' is both a host (for '%s') and a target (for '%s')."
-          host
-          name
-          host_of_host))
-  in
-  String.Map.iter map ~f:check
-
-let top_sort contexts =
-  let key = Workspace.Context.name in
-  let map = String.Map.of_list_map_exn contexts ~f:(fun x -> key x, x) in
-  let deps def =
-    match Workspace.Context.host_context def with
-    | None -> []
-    | Some ctx -> [String.Map.find_exn map ctx]
-  in
-  bad_configuration_check map;
-  match Top_closure.String.top_closure ~key ~deps contexts with
-  | Ok topo_contexts -> topo_contexts
-  | Error _ -> assert false
-
 let separate_independant_contexts topo_contexts =
   let f (acc, cur) elem =
     match Workspace.Context.host_context elem, cur with
@@ -696,8 +655,7 @@ let instantiate_context_group ~env (workspace : Workspace.t) contexts =
   >>| String.Map.values
 
 let create ~env (workspace : Workspace.t) =
-  let contexts = top_sort workspace.contexts in
-  let independant_contexts = separate_independant_contexts contexts
+  let independant_contexts = separate_independant_contexts workspace.contexts
   in
   Fiber.parallel_map
     independant_contexts

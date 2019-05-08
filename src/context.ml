@@ -599,31 +599,14 @@ let create_for_opam ~root ~env ~env_nodes ~targets ~profile
   create ~kind:(Opam { root; switch }) ~profile ~targets ~path ~env ~env_nodes
     ~name ~merlin ~host_context ~host_toolchain
 
-let separate_independant_contexts topo_contexts =
-  let f (acc, cur) elem =
-    match Workspace.Context.host_context elem, cur with
-    | None, [] -> (acc, [elem])
-    | None, _ -> ((List.rev cur) :: acc, [elem])
-    | Some _, _ -> (acc, elem :: cur)
-  in
-  match List.fold_left ~f ~init:([], []) topo_contexts with
-  | (acc, []) -> acc
-  | (acc, cur) -> (List.rev cur) :: acc
-
 let instantiate_context env (workspace : Workspace.t)
-      (context : Workspace.Context.t) contexts =
+      ~(context : Workspace.Context.t) ~host_context =
   let env_nodes =
     let context = Workspace.Context.env context in
     { Env_nodes.
       context
     ; workspace = workspace.env
     }
-  in
-  let host_context =
-    (* The fact that the context list in [Workspace.t] is
-       topologically sorted ensures that this [find_exn] won't fail *)
-    Workspace.Context.host_context context
-    |> Option.map ~f:(String.Map.find_exn contexts)
   in
   match context with
   | Default { targets; name; host_context = _; profile; env = _
@@ -644,23 +627,33 @@ let instantiate_context env (workspace : Workspace.t)
     create_for_opam ~root ~env_nodes ~env ~profile ~switch ~name ~merlin
       ~targets ~host_context ~host_toolchain:toolchain
 
-let instantiate_context_group ~env (workspace : Workspace.t) contexts =
-  List.fold_left contexts ~f:(fun contexts context ->
-    let* contexts = contexts in
-    let+ new_contexts = instantiate_context env workspace context contexts in
-    List.fold_left new_contexts
-      ~f:(fun map elem -> String.Map.add map elem.name elem)
-      ~init:contexts)
-    ~init:(Fiber.return String.Map.empty)
-  >>| String.Map.values
-
 let create ~env (workspace : Workspace.t) =
-  let independant_contexts = separate_independant_contexts workspace.contexts
-  in
-  Fiber.parallel_map
-    independant_contexts
-    ~f:(instantiate_context_group ~env workspace)
-  >>| List.concat
+  let rec contexts : t list Fiber.Once.t String.Map.t Lazy.t = lazy (
+    List.map workspace.contexts ~f:(fun context ->
+      let contexts = Fiber.Once.create (fun () ->
+        let* host_context =
+          match Workspace.Context.host_context context with
+          | None -> Fiber.return None
+          | Some context ->
+            let+ contexts =
+              String.Map.find_exn (Lazy.force contexts) context
+              |> Fiber.Once.get
+            in
+            match contexts with
+            | [x] -> Some x
+            | [] -> assert false (* checked by workspace *)
+            | _ :: _ -> assert false (* target cannot be host *)
+        in
+        instantiate_context env workspace ~context ~host_context
+      ) in
+      let name = Workspace.Context.name context in
+      (name, contexts))
+    |> String.Map.of_list_exn
+  ) in
+  Lazy.force contexts
+  |> String.Map.values
+  |> Fiber.parallel_map ~f:Fiber.Once.get
+  |> Fiber.map ~f:List.concat
 
 let which t s = which ~cache:t.which_cache ~path:t.path s
 

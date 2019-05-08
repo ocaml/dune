@@ -286,20 +286,6 @@ let promote_install_file (ctx : Context.t) =
   | Default -> true
   | Opam _  -> false
 
-let get_install_entries package =
-  Local_package.installs package
-  |> List.concat_map ~f:(fun (d : _ Dir_with_dune.t) ->
-    let { Dune_file.Install_conf. section; files; package = _ } =
-      d.data
-    in
-    List.map files ~f:(fun fb ->
-      let loc = File_binding.Expanded.src_loc fb in
-      let src = File_binding.Expanded.src fb in
-      let dst = File_binding.Expanded.dst fb in
-      ( Some loc
-      , Install.Entry.make section src ?dst
-      )))
-
 module Sctx_and_package = struct
   type t = Super_context.t * Local_package.t
 
@@ -310,7 +296,18 @@ end
 
 let install_entries sctx package =
   let installs =
-    get_install_entries package
+    Local_package.installs package
+    |> List.concat_map ~f:(fun (d : _ Dir_with_dune.t) ->
+      let { Dune_file.Install_conf. section; files; package = _ } =
+        d.data
+      in
+      List.map files ~f:(fun fb ->
+        let loc = File_binding.Expanded.src_loc fb in
+        let src = File_binding.Expanded.src fb in
+        let dst = File_binding.Expanded.dst fb in
+        ( Some loc
+        , Install.Entry.make section src ?dst
+        )))
   in
   let docs =
     (Local_package.mlds package

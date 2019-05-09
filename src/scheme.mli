@@ -18,13 +18,16 @@ type 'rules t =
       rules are just silently ignored. *)
   | Approximation of Dir_set.t * 'rules t
 
-  (** [Finite rules] just produces a fixed set of rules known in advance. *)
+  (** [Finite rules] just produces a fixed set of rules known in advance.
+      The keys in the map are the directory paths. *)
   | Finite of 'rules Path.Build.Map.t
 
   (** [Thunk f] is a "lazy" collection of rules. This is normally used with
       [Approximation (dirs, Thunk f)] such that the work of [f] can be delayed
       (or avoided entirely) until (or unless) the rules for [dirs] become
-      necessary. *)
+      necessary.
+
+      The thunk will be called at most once per [evaluate]. *)
   | Thunk of (unit -> 'rules t)
 
 module Evaluated : sig

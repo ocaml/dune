@@ -126,8 +126,8 @@ let pp_flags sctx ~expander ~dir_kind { preprocess; libname; _ } =
   match Dune_file.Preprocess.remove_future_syntax preprocess
           (Super_context.context sctx).version
   with
-  | Pps { loc = _; pps; flags; staged = _ } -> begin
-    match Preprocessing.get_ppx_driver sctx ~expander ~lib_name:libname ~flags ~scope ~dir_kind pps with
+  | Pps { loc; pps; flags; staged = _ } -> begin
+    match Preprocessing.get_ppx_driver sctx ~loc ~expander ~lib_name:libname ~flags ~scope ~dir_kind pps with
     | Error _ -> None
     | Ok (exe, flags) ->
       (Path.to_absolute_filename exe

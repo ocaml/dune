@@ -142,7 +142,7 @@ to use the :ref:`include_subdirs` stanza.
   ...]`` plugin. The reason why ``ppx_rewriter`` and ``ppx_deriver`` are split
   is historical and hopefully we won't need two options soon. Both ppx kinds
   support an optional field ``(cookies <cookies>)`` where ``<cookies>`` is a
-  list of pairs ``(<name> <value>)`` with ``<name>`` being th cookie name and
+  list of pairs ``(<name> <value>)`` with ``<name>`` being the cookie name and
   ``<value>`` is a string that supports `Variables expansion`_ evaluated
   by each invocation of the preprocessor (note: libraries that share
   cookies with the same name should agree on their expanded value)

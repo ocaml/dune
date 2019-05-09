@@ -41,9 +41,10 @@ val pp_module_as
 (** Get a path to a cached ppx driver with some extra flags for cookies. *)
 val get_ppx_driver
   :  Super_context.t
+  -> loc:Loc.t
   -> expander:Expander.t
   -> scope:Scope.t
-  -> lib_name:Lib_name.Local.t option 
+  -> lib_name:Lib_name.Local.t option
   -> flags:String_with_vars.t list
   -> dir_kind:Dune_lang.File_syntax.t
   -> (Loc.t * Lib_name.t) list

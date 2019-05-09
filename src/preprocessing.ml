@@ -477,30 +477,22 @@ let get_compat_ppx_exe sctx ~name ~kind =
     in
     ppx_exe sctx ~key ~dir_kind:Jbuild
 
-let args_of_cookies cookies =
-  List.map ~f:(fun (name, value) ->
-    ["--cookie"; sprintf "%s=%S" name value]
-  ) cookies |> List.flatten
-
-let library_name_cookie : Lib_kind.Ppx_args.Cookie.t =
-  {
-    name = "library_name";
-    value = String_with_vars.make_var Loc.none "library_name"
-  }
 let get_cookies ~loc ~expander ~lib_name libs =
-  let expander =
+  let expander, library_name_cookie =
     match lib_name with
-    | None -> expander
-    | Some name ->
+    | None -> expander, None
+    | Some lib_name ->
+      let library_name = Lib_name.Local.to_string lib_name in
       let bindings =
         Pform.Map.singleton "library_name"
-          (Values [String (Lib_name.Local.to_string name)])
+          (Values [String library_name])
       in
-      Expander.add_bindings expander ~bindings
+      Expander.add_bindings expander ~bindings,
+      Some ("library_name", (library_name, Lib_name.of_local (loc, lib_name)))
   in
   try
     Ok (libs
-      |> List.map ~f:
+      |> List.concat_map ~f:
         (fun t ->
           match Lib.kind t with
           | Normal -> []
@@ -508,9 +500,13 @@ let get_cookies ~loc ~expander ~lib_name libs =
           | Ppx_deriver {cookies} ->
             List.map ~f:(fun {Lib_kind.Ppx_args.Cookie.name; value} ->
               (name, (Expander.expand_str expander value, Lib.name t)))
-              (if lib_name = None then cookies else library_name_cookie :: cookies)
+              cookies
         )
-      |> List.flatten
+      |> (fun l ->
+        match library_name_cookie with
+        | None -> l
+        | Some cookie -> cookie :: l
+      )
       |> String.Map.of_list_reducei ~f:
         (fun name ((val1, lib1) as res) (val2, lib2) ->
           if String.equal val1 val2 then
@@ -519,28 +515,33 @@ let get_cookies ~loc ~expander ~lib_name libs =
             let lib1 = Lib_name.to_string lib1 in
             let lib2 = Lib_name.to_string lib2 in
             Errors.fail loc "%a" Fmt.text
-             (sprintf "%s and %s have inconsistent requests for cookie \"%s\"; \
-                        %s requests \"%s\" and %s requests \"%s\""
+             (sprintf "%s and %s have inconsistent requests for cookie %S; \
+                       %s requests %S and %s requests %S"
                 lib1 lib2 name
                 lib1 val1
                 lib2 val2)
         )
       |> String.Map.foldi ~init:[]
         ~f:(fun name (value, _) acc -> (name, value) :: acc)
-      |> List.rev)
+      |> List.rev
+      |> List.concat_map ~f:
+        (fun (name, value) ->
+          ["--cookie"; sprintf "%s=%S" name value]
+        )
+      )
   with exn -> Error exn
 
-let ppx_driver_and_flags_internal sctx ~expander ~lib_name ~flags ~dir_kind libs =
+let ppx_driver_and_flags_internal sctx ~loc ~expander ~lib_name ~flags ~dir_kind libs =
   let open Result.O in
   let flags = List.map ~f:(Expander.expand_str expander) flags in
-  let+ cookies = get_cookies ~loc:Loc.none ~lib_name ~expander libs in
+  let+ cookies = get_cookies ~loc ~lib_name ~expander libs in
   let sctx = SC.host sctx in
-  ppx_driver_exe sctx libs ~dir_kind, flags @ args_of_cookies cookies
+  ppx_driver_exe sctx libs ~dir_kind, flags @ cookies
 
 let ppx_driver_and_flags sctx ~lib_name ~expander ~scope ~loc ~dir_kind ~flags pps =
   let open Result.O in
   let* libs = Lib.DB.resolve_pps (Scope.libs scope) pps in
-  let* exe, flags = ppx_driver_and_flags_internal sctx ~expander ~lib_name ~flags ~dir_kind libs in
+  let* exe, flags = ppx_driver_and_flags_internal sctx ~loc ~expander ~lib_name ~flags ~dir_kind libs in
   let+ driver =
     match (dir_kind : Dune_lang.File_syntax.t) with
     | Dune ->
@@ -642,7 +643,7 @@ let lint_module sctx ~dir ~expander ~dep_kind ~lint ~lib_name ~scope ~dir_kind =
             Errors.fail loc
               "Staged ppx rewriters cannot be used as linters.";
           let corrected_suffix = ".lint-corrected" in
-          let driver_flags_and_args =
+          let driver_and_flags =
             let open Result.O in
             let+ (exe, driver, driver_flags) =
               ppx_driver_and_flags sctx ~expander ~loc ~lib_name ~flags ~dir_kind ~scope pps
@@ -666,7 +667,7 @@ let lint_module sctx ~dir ~expander ~dep_kind ~lint ~lib_name ~scope ~dir_kind =
                  ~loc:None
                  (promote_correction ~suffix:corrected_suffix
                     (Option.value_exn (Module.file source kind))
-                    (Build.of_result_map driver_flags_and_args
+                    (Build.of_result_map driver_and_flags
                        ~f:(fun (exe, flags, args) ->
                          flags >>>
                          Build.run ~dir:(SC.context sctx).build_dir
@@ -793,7 +794,7 @@ let pp_modules t ?(lint=true) modules =
 let pp_module_as t ?(lint=true) name m =
   Per_module.get t name m ~lint
 
-let get_ppx_driver sctx ~expander ~scope ~lib_name ~flags ~dir_kind pps =
+let get_ppx_driver sctx ~loc ~expander ~scope ~lib_name ~flags ~dir_kind pps =
   let open Result.O in
   let* libs = Lib.DB.resolve_pps (Scope.libs scope) pps in
-  ppx_driver_and_flags_internal sctx ~expander ~lib_name ~flags ~dir_kind libs
+  ppx_driver_and_flags_internal sctx ~loc ~expander ~lib_name ~flags ~dir_kind libs

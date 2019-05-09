@@ -35,6 +35,9 @@ Incompatible Cookies
 
   $ dune build --root driver-tests foo4.cma
   Entering directory 'driver-tests'
+  File "dune", line 27, characters 13-28:
+  27 |  (preprocess (pps ppx3 ppx4)))
+                    ^^^^^^^^^^^^^^^
   Error: foo.ppx3 and foo.ppx4 have inconsistent requests for cookie "germany";
   foo.ppx3 requests "spritzgeback" and foo.ppx4 requests
   "lebkuchen"
@@ -111,6 +114,8 @@ Test using installed drivers
   -arg2
   -foo
   bar
+  --cookie
+  library_name="driveruser"
   -o
   driveruser.pp.ml
   --impl
@@ -132,6 +137,8 @@ Test using installed drivers
   -arg2
   -foo
   bar
+  --cookie
+  library_name="driveruser"
   -o
   driveruser.pp.ml
   --impl
@@ -155,6 +162,8 @@ Test using installed drivers
   -arg2
   -foo
   bar
+  --cookie
+  library_name="driveruser"
   -o
   driveruser.pp.ml
   --impl
@@ -199,6 +208,8 @@ Test using installed drivers
   -arg2
   -foo
   bar
+  --cookie
+  library_name="driveruser"
   -o
   driveruser.pp.ml
   --impl

@@ -573,7 +573,7 @@ type t =
   ; mutable prefix : (unit, unit) Build.t option
   ; hook : hook -> unit
   ; (* Package files are part of *)
-    packages : (Path.t -> Package.Name.t list) Fdecl.t
+    packages : (Path.t -> Package.Name.Set.t) Fdecl.t
   }
 
 let t = ref None
@@ -1613,13 +1613,14 @@ let package_deps pkg files =
       Package.Name.Set.add acc p
   in
   let rec loop fn acc =
-    match Fdecl.get t.packages fn with
-    | [] -> loop_deps fn acc
-    | pkgs ->
-      if List.mem pkg ~set:pkgs then
+    let pkgs = Fdecl.get t.packages fn in
+    match Package.Name.Set.is_empty pkgs with
+    | true -> loop_deps fn acc
+    | false ->
+      if Package.Name.Set.mem pkgs pkg then
         loop_deps fn acc
       else
-        List.fold_left pkgs ~init:acc ~f:add_package
+        List.fold_left (Package.Name.Set.to_list pkgs) ~init:acc ~f:add_package
   and loop_deps fn acc =
     match Path.Table.find t.files fn with
     | None -> acc

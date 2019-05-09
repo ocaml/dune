@@ -349,7 +349,7 @@ let gen ~contexts
   let () =
     Build_system.set_packages (fun path ->
       let open Option.O in
-      Option.value ~default:[] (
+      Option.value ~default:Package.Name.Set.empty (
         let* ctx_name, _ = Path.extract_build_context path in
         let* sctx = String.Map.find sctxs ctx_name in
         Path.Map.find (Install_rules.packages sctx) path))

@@ -536,6 +536,7 @@ let packages =
         List.fold_left (package_source_files sctx pkg)
           ~init:acc ~f:(fun acc path -> (path, name) :: acc))
     |> Path.Map.of_list_multi
+    |> Path.Map.map ~f:Package.Name.Set.of_list
   in
   let memo =
     Memo.create "package-map"
@@ -543,15 +544,15 @@ let packages =
       ~input:(module Super_context)
       ~visibility:Hidden
       ~output:(Allow_cutoff (module struct
-                 type t = Package.Name.t list Path.Map.t
+                 type t = Package.Name.Set.t Path.Map.t
                  let to_sexp =
                    Map.to_sexp
                      Path.Map.to_list
                      Path.to_sexp
-                     (Sexp.Encoder.list Package.Name.to_sexp)
+                     (Set.to_sexp Package.Name.Set.to_list Package.Name.to_sexp)
                  let equal =
                    Path.Map.equal
-                     ~equal:(List.equal Package.Name.equal)
+                     ~equal:Package.Name.Set.equal
                end))
       Sync
       (Some f)

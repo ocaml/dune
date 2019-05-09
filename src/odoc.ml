@@ -287,7 +287,10 @@ let setup_toplevel_index_rule sctx =
 let libs_of_pkg sctx ~pkg =
   match Package.Name.Map.find (SC.libs_by_package sctx) pkg with
   | None -> Lib.Set.empty
-  | Some (_, libs) -> libs
+  | Some (_, libs) ->
+    (* Filter out all implementations of virtual libraries *)
+    Lib.Set.filter ~f:(fun lib ->
+      not (Lib.is_impl lib)) libs
 
 let load_all_odoc_rules_pkg sctx ~pkg =
   let pkg_libs = libs_of_pkg sctx ~pkg in

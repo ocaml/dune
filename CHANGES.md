@@ -38,8 +38,6 @@ unreleased
   `findlib.dynload` with Dune would have to add `(special_builtin_support
   findlib_dynload)` to trigger the special behavior. (#2115, @diml)
 
-- Fix `.install` files not being generated (#2124, fixes #2123, @rgrinberg)
-
 - Install the `future_syntax` preprocessor as `ocaml-syntax-shims.exe` (#2125,
   @rgrinberg)
 
@@ -52,6 +50,11 @@ unreleased
 - In `dune-workspace` files, add the ability to choose the host context and to
   create duplicates of the default context with different settings. (#2098,
   @TheLortex, review by @diml, @rgrinberg and @aalekseyev)
+
+1.9.3 (06/05/2019)
+------------------
+
+- Fix `.install` files not being generated (#2124, fixes #2123, @rgrinberg)
 
 1.9.2 (02/05/2019)
 ------------------

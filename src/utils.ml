@@ -75,27 +75,27 @@ let analyse_target (fn as original_fn) =
   match Path.extract_build_dir_first_component fn with
   | Some (".aliases", sub) ->
     (match Path.Relative.split_first_component sub with
-    | None -> Other fn
-    | Some (ctx, fn) ->
-      if Path.Relative.is_root fn then
-        Other original_fn
-      else
-        let basename =
-          match String.rsplit2 (Path.Relative.basename fn) ~on:'-' with
-          | None -> assert false
-          | Some (name, digest) ->
-            assert (String.length digest = 32);
-            name
-        in
-        Alias (ctx,
-               Path.Source.relative
-                 (Path.Source.of_relative (Path.Relative.parent_exn fn))
-                 basename))
+     | None -> Other fn
+     | Some (ctx, fn) ->
+       if Path.Relative.is_root fn then
+         Other original_fn
+       else
+         let basename =
+           match String.rsplit2 (Path.Relative.basename fn) ~on:'-' with
+           | None -> assert false
+           | Some (name, digest) ->
+             assert (String.length digest = 32);
+             name
+         in
+         Alias (ctx,
+                Path.Source.relative
+                  (Path.Source.of_relative (Path.Relative.parent_exn fn))
+                  basename))
   | Some ("install", sub) ->
     (match Path.Relative.split_first_component sub with
-    | None -> Other fn
-    | Some (ctx, fn) ->
-      Install (ctx, Path.Source.of_relative fn))
+     | None -> Other fn
+     | Some (ctx, fn) ->
+       Install (ctx, Path.Source.of_relative fn))
   | Some (ctx, sub) ->
     Regular (ctx, Path.Source.of_relative sub)
   | None ->

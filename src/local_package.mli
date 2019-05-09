@@ -5,6 +5,8 @@ open Stdune
 
 type t
 
+val hash : t -> int
+
 val to_sexp : t Sexp.Encoder.t
 
 val build_dir : t -> Path.Build.t

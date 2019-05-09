@@ -22,9 +22,10 @@ let to_dyn t = Package.to_dyn t.pkg
 let to_sexp t = Dyn.to_sexp (to_dyn t)
 
 let hash t =
-  ( List.hash Path.Build.hash t.odig_files
-  , Package.hash t.pkg
-  )
+  Hashtbl.hash
+    ( List.hash Path.Build.hash t.odig_files
+    , Package.hash t.pkg
+    )
 
 let is_odig_doc_file fn =
   List.exists [ "README"; "LICENSE"; "CHANGE"; "HISTORY"]

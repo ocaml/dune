@@ -544,6 +544,19 @@ module Rule_fn = struct
   let loc () = Fdecl.get loc_decl ()
 end
 
+module Context_or_install = struct
+  type t =
+    | Install of string
+    | Context of string
+
+  let to_sexp = function
+    | Install ctx -> Sexp.List [ Sexp.Atom "install"; Sexp.Atom ctx ]
+    | Context s ->
+      assert (not (s = "install"));
+      Sexp.Atom s
+end
+
+
 type t =
   { (* File specification by targets *)
     files       : Internal_rule.t Path.Table.t
@@ -551,8 +564,8 @@ type t =
   ; file_tree   : File_tree.t
   ; dirs : Dir_status.t Path.Table.t
   ; gen_rules :
-      (dir:Path.t -> string list -> extra_sub_directories_to_keep)
-        String.Map.t Fdecl.t
+      (Context_or_install.t ->
+       (dir:Path.t -> string list -> extra_sub_directories_to_keep) option) Fdecl.t
   ; mutable load_dir_stack : Path.t list
   ; (* Set of directories under _build that have at least one rule and
        all their ancestors. *)
@@ -560,7 +573,7 @@ type t =
   ; mutable prefix : (unit, unit) Build.t option
   ; hook : hook -> unit
   ; (* Package files are part of *)
-    packages : Package.Name.t Path.Table.t
+    packages : (Path.t -> Package.Name.Set.t) Fdecl.t
   }
 
 let t = ref None
@@ -590,7 +603,6 @@ let string_of_source_paths set =
 
 let set_rule_generators generators =
   let t = t () in
-  assert (String.Map.keys generators = String.Map.keys t.contexts);
   Fdecl.set t.gen_rules generators
 
 let get_dir_status t ~dir =
@@ -730,6 +742,14 @@ let no_rule_found =
         fail fn ~loc
       else
         die "Trying to build %s but build context %s doesn't exist.%s"
+          (Path.to_string_maybe_quoted fn)
+          ctx
+          (hint ctx (String.Map.keys t.contexts))
+    | Install (ctx, _) ->
+      if String.Map.mem t.contexts ctx then
+        fail fn ~loc
+      else
+        die "Trying to build %s for install but build context %s doesn't exist.%s"
           (Path.to_string_maybe_quoted fn)
           ctx
           (hint ctx (String.Map.keys t.contexts))
@@ -920,95 +940,110 @@ and load_dir_and_get_targets t ~dir =
       reraise exn
 
 and load_dir_step2_exn t ~dir ~collector =
-  let context_name, sub_dir = Path.extract_build_context_exn dir in
-  let is_install = context_name = "install" in
-  (* This condition is [true] because of [get_dir_status] *)
-  assert (is_install || String.Map.mem t.contexts context_name);
+  let context_name, sub_dir = match Utils.analyse_target dir with
+    | Install (ctx, path) ->
+      Context_or_install.Install ctx, path
+    | Regular (ctx, path) ->
+      Context_or_install.Context ctx, path
+    | Alias _ | Other _ ->
+      Exn.code_error "[load_dir_step2_exn] was called on a strange path"
+        ["path", (Path.to_sexp dir)]
+  in
 
   (* Load all the rules *)
   let extra_subdirs_to_keep =
-    if is_install then
-      These String.Set.empty
-    else
-      let gen_rules = String.Map.find_exn (Fdecl.get t.gen_rules) context_name in
-      handle_add_rule_effects
-        (fun () ->
-           gen_rules ~dir (Path.Source.explode sub_dir))
+    let gen_rules =
+      match (Fdecl.get t.gen_rules) context_name with
+      | None ->
+        Exn.code_error "[gen_rules] did not specify rules for the context"
+          ["context_name", (Context_or_install.to_sexp context_name)]
+      | Some rules ->
+        rules
+    in
+    handle_add_rule_effects (fun () -> gen_rules ~dir (Path.Source.explode sub_dir))
   in
   let collector = Dir_status.Rules_collector.freeze collector in
   let rules = Dir_status.Rules_collector.rules collector in
 
   (* Compute alias rules *)
-  let alias_dir = Path.append_source (Path.relative alias_dir context_name) sub_dir in
-  let alias_rules, alias_stamp_files =
-    let open Build.O in
-    let aliases =
-      Dir_status.Rules_collector.aliases collector
-    in
-    let aliases =
-      if String.Map.mem aliases "default" then
-        aliases
-      else
-        match Path.extract_build_context_dir dir with
-        | None -> aliases
-        | Some (ctx_dir, src_dir) ->
-          match File_tree.find_dir t.file_tree src_dir with
-          | None -> aliases
-          | Some dir ->
-            String.Map.add aliases "default"
-              ({ deps = Path.Set.empty
-               ; dyn_deps =
-                   (Alias0.dep_rec_internal ~name:"install" ~dir ~ctx_dir
-                    >>^ fun (_ : bool) ->
-                    Path.Set.empty)
-               ; actions = []
-               } : Dir_status.Alias.immutable)
-    in
-    String.Map.foldi aliases ~init:([], Path.Set.empty)
-      ~f:(fun name { Dir_status.Alias.deps; dyn_deps; actions } (rules, alias_stamp_files) ->
-        let base_path = Path.relative alias_dir name in
-        let rules, action_stamp_files =
-          List.fold_left actions ~init:(rules, Path.Set.empty)
-            ~f:(fun (rules, action_stamp_files)
-                 { Dir_status. stamp; action; locks ; context ; loc ; env } ->
-                 let path =
-                   Path.extend_basename base_path
-                     ~suffix:("-" ^ Digest.to_string stamp)
-                 in
-                 let rule =
-                   Pre_rule.make ~locks ~context:(Some context) ~env
-                     ~info:(Rule.Info.of_loc_opt loc)
-                     (Build.progn [ action; Build.create_file path ])
-                 in
-                 (rule :: rules, Path.Set.add action_stamp_files path))
+  let alias_dir, alias_rules =
+    match context_name with
+    | Context context_name ->
+      let alias_dir = Path.append_source (Path.relative alias_dir context_name) sub_dir in
+      let alias_rules, alias_stamp_files =
+        let open Build.O in
+        let aliases =
+          Dir_status.Rules_collector.aliases collector
         in
-        let deps = Path.Set.union deps action_stamp_files in
-        let path = Path.extend_basename base_path ~suffix:Alias0.suffix in
-        let targets =
-          Path.Set.add action_stamp_files path
-          |> Path.Set.union alias_stamp_files
+        let aliases =
+          if String.Map.mem aliases "default" then
+            aliases
+          else
+            match Path.extract_build_context_dir dir with
+            | None -> aliases
+            | Some (ctx_dir, src_dir) ->
+              match File_tree.find_dir t.file_tree src_dir with
+              | None -> aliases
+              | Some dir ->
+                String.Map.add aliases "default"
+                  { deps = Path.Set.empty
+                  ; dyn_deps =
+                      (Alias0.dep_rec_internal ~name:"install" ~dir ~ctx_dir
+                       >>^ fun (_ : bool) ->
+                       Path.Set.empty)
+                  ; actions = []
+                  }
         in
-        (Pre_rule.make
-           ~context:None
-           ~env:None
-           (Build.path_set deps >>>
-            dyn_deps >>>
-            Build.dyn_path_set (Build.arr Fn.id)
-            >>^ (fun dyn_deps ->
-              let deps = Path.Set.union deps dyn_deps in
-              Action.with_stdout_to path
-                (Action.digest_files (Path.Set.to_list deps)))
-            >>>
-            Build.action_dyn () ~targets:[path])
-         :: rules,
-         targets))
+        String.Map.foldi aliases ~init:([], Path.Set.empty)
+          ~f:(fun name { Dir_status.Alias. deps; dyn_deps; actions } (rules, alias_stamp_files) ->
+            let base_path = Path.relative alias_dir name in
+            let rules, action_stamp_files =
+              List.fold_left actions ~init:(rules, Path.Set.empty)
+                ~f:(fun (rules, action_stamp_files)
+                     { Dir_status. stamp; action; locks ; context ; loc ; env } ->
+                     let path =
+                       Path.extend_basename base_path
+                         ~suffix:("-" ^ Digest.to_string stamp)
+                     in
+                     let rule =
+                       Pre_rule.make ~locks ~context:(Some context) ~env
+                         ~info:(Rule.Info.of_loc_opt loc)
+                         (Build.progn [ action; Build.create_file path ])
+                     in
+                     (rule :: rules, Path.Set.add action_stamp_files path))
+            in
+            let deps = Path.Set.union deps action_stamp_files in
+            let path = Path.extend_basename base_path ~suffix:Alias0.suffix in
+            let targets =
+              Path.Set.add action_stamp_files path
+              |> Path.Set.union alias_stamp_files
+            in
+            (Pre_rule.make
+               ~context:None
+               ~env:None
+               (Build.path_set deps >>>
+                dyn_deps >>>
+                Build.dyn_path_set (Build.arr Fn.id)
+                >>^ (fun dyn_deps ->
+                  let deps = Path.Set.union deps dyn_deps in
+                  Action.with_stdout_to path
+                    (Action.digest_files (Path.Set.to_list deps)))
+                >>>
+                Build.action_dyn () ~targets:[path])
+             :: rules,
+             targets))
+      in
+      Path.Table.replace t.dirs ~key:alias_dir ~data:(Loaded alias_stamp_files);
+      Some alias_dir, alias_rules
+    | Install _ ->
+      None, []
   in
-  Path.Table.replace t.dirs ~key:alias_dir ~data:(Loaded alias_stamp_files);
 
   let file_tree_dir =
-    if is_install then
+    match context_name with
+    | Install _ ->
       None
-    else
+    | Context _ ->
       File_tree.find_dir t.file_tree sub_dir
   in
 
@@ -1042,11 +1077,14 @@ and load_dir_step2_exn t ~dir ~collector =
   in
   (* Take into account the source files *)
   let targets, to_copy, subdirs_to_keep =
-    if is_install then
+    match context_name with
+    | Install _ ->
       (user_rule_targets,
        None,
        String.Set.empty)
-    else
+    | Context context_name ->
+      (* This condition is [true] because of [get_dir_status] *)
+      assert (String.Map.mem t.contexts context_name);
       let files, subdirs =
         match file_tree_dir with
         | None -> (Path.Source.Set.empty, String.Set.empty)
@@ -1145,7 +1183,8 @@ The following targets are not:
   remove_old_artifacts t ~dir ~subdirs_to_keep;
 
   List.iter alias_rules ~f:(compile_rule t);
-  remove_old_artifacts t ~dir:alias_dir ~subdirs_to_keep;
+  Option.iter alias_dir ~f:(fun alias_dir ->
+    remove_old_artifacts t ~dir:alias_dir ~subdirs_to_keep);
 
   targets
 
@@ -1532,7 +1571,7 @@ let init ~contexts ~file_tree ~hook =
   set
     { contexts
     ; files      = Path.Table.create 1024
-    ; packages   = Path.Table.create 1024
+    ; packages   = Fdecl.create ()
     ; dirs       = Path.Table.create 1024
     ; load_dir_stack = []
     ; file_tree
@@ -1559,28 +1598,22 @@ module Rule = struct
   module Set = Set.Make(struct type nonrec t = t let compare = compare end)
 end
 
-let set_package file package =
+let set_packages f =
   let t = t () in
-  Path.Table.add t.packages file package
+  Fdecl.set t.packages f
 
 let package_deps pkg files =
   let t = t () in
   let rules_seen = ref Internal_rule.Set.empty in
-  let add_package acc p =
-    let open Package.Name.Infix in
-    if p = pkg then
-      acc
-    else
-      Package.Name.Set.add acc p
-  in
   let rec loop fn acc =
-    match Path.Table.find_all t.packages fn with
-    | [] -> loop_deps fn acc
-    | pkgs ->
-      if List.mem pkg ~set:pkgs then
+    let pkgs = Fdecl.get t.packages fn in
+    match Package.Name.Set.is_empty pkgs with
+    | true -> loop_deps fn acc
+    | false ->
+      if Package.Name.Set.mem pkgs pkg then
         loop_deps fn acc
       else
-        List.fold_left pkgs ~init:acc ~f:add_package
+        Package.Name.Set.union acc pkgs
   and loop_deps fn acc =
     match Path.Table.find t.files fn with
     | None -> acc

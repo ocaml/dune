@@ -1605,13 +1605,6 @@ let set_packages f =
 let package_deps pkg files =
   let t = t () in
   let rules_seen = ref Internal_rule.Set.empty in
-  let add_package acc p =
-    let open Package.Name.Infix in
-    if p = pkg then
-      acc
-    else
-      Package.Name.Set.add acc p
-  in
   let rec loop fn acc =
     let pkgs = Fdecl.get t.packages fn in
     match Package.Name.Set.is_empty pkgs with
@@ -1620,7 +1613,7 @@ let package_deps pkg files =
       if Package.Name.Set.mem pkgs pkg then
         loop_deps fn acc
       else
-        List.fold_left (Package.Name.Set.to_list pkgs) ~init:acc ~f:add_package
+        Package.Name.Set.union acc pkgs
   and loop_deps fn acc =
     match Path.Table.find t.files fn with
     | None -> acc

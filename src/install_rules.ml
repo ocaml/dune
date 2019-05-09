@@ -398,7 +398,7 @@ let install_rules sctx package =
   let ctx = Super_context.context sctx in
   let package_name = Local_package.name package in
   let pkg_build_dir = Path.build (Local_package.build_dir package) in
-  let fn =
+  let install_file =
     Path.relative
       pkg_build_dir
       (Utils.install_file ~package:package_name
@@ -423,7 +423,7 @@ let install_rules sctx package =
                |> Alias.stamp_file)
              |> Path.Set.of_list)))
   in
-  Rules.dir_rule (Path.parent_exn fn, (fun () ->
+  Rules.dir_rule (Path.parent_exn install_file, (fun () ->
     Super_context.add_rule sctx ~dir:pkg_build_dir
       ~mode:(if promote_install_file ctx then
                Promote { lifetime = Until_clean ; into = None; only = None }
@@ -444,7 +444,7 @@ let install_rules sctx package =
          in
          Install.gen_install_file entries)
        >>>
-       Build.write_file_dyn fn)))
+       Build.write_file_dyn install_file)))
 
 let install_alias (ctx : Context.t) (package : Local_package.t) =
   if not ctx.implicit then

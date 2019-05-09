@@ -9,3 +9,16 @@ let print ppf { start; stop } =
   Format.fprintf ppf
     "@{<loc>File \"%s\", line %d, characters %d-%d:@}@\n"
     start.pos_fname start.pos_lnum start_c stop_c
+
+let none_pos p : Lexing.position =
+  { pos_fname = p
+  ; pos_lnum  = 1
+  ; pos_cnum  = 0
+  ; pos_bol   = 0
+  }
+
+let none =
+  let pos = none_pos "<none>" in
+  { start = pos
+  ; stop = pos
+  }

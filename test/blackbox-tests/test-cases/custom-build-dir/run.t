@@ -22,7 +22,7 @@
 Maybe this case should be supported?
 
   $ cd project && dune build foo --build-dir ../build
-  Path outside the workspace: ../build from .
+  Error: path outside the workspace: ../build from .
   [1]
 
 Test with build directory being an absolute path

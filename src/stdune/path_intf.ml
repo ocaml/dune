@@ -5,6 +5,7 @@ module type S = sig
 
   val to_string : t -> string
   val of_string : string -> t
+  val parse_string_exn : loc:Loc0.t -> string -> t
 
   val pp : Format.formatter -> t -> unit
 

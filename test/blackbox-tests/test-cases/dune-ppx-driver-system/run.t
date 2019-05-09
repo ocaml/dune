@@ -78,7 +78,7 @@ Test the argument syntax
   --cookie
   italy="Biscotti"
   --cookie
-  library_name="test_ppx_args"
+  library-name="test_ppx_args"
   -o
   test_ppx_args.pp.ml
   --impl
@@ -97,10 +97,10 @@ Test that going throught the -ppx option of the compiler works
   Entering directory 'driver-tests'
       ocamldep .test_ppx_staged.objs/test_ppx_staged.ml.d
   tool name: ocamldep
-  args:--as-ppx -arg1 -arg2 -arg3=Oreo -foo bar Snickerdoodle --cookie france="Petit Beurre" --cookie italy="Biscotti" --cookie library_name="test_ppx_staged"
+  args:--as-ppx -arg1 -arg2 -arg3=Oreo -foo bar Snickerdoodle --cookie france="Petit Beurre" --cookie italy="Biscotti" --cookie library-name="test_ppx_staged"
         ocamlc .test_ppx_staged.objs/byte/test_ppx_staged.{cmi,cmo,cmt}
   tool name: ocamlc
-  args:--as-ppx -arg1 -arg2 -arg3=Oreo -foo bar Snickerdoodle --cookie france="Petit Beurre" --cookie italy="Biscotti" --cookie library_name="test_ppx_staged"
+  args:--as-ppx -arg1 -arg2 -arg3=Oreo -foo bar Snickerdoodle --cookie france="Petit Beurre" --cookie italy="Biscotti" --cookie library-name="test_ppx_staged"
 
 Test using installed drivers
 
@@ -115,7 +115,7 @@ Test using installed drivers
   -foo
   bar
   --cookie
-  library_name="driveruser"
+  library-name="driveruser"
   -o
   driveruser.pp.ml
   --impl
@@ -138,7 +138,7 @@ Test using installed drivers
   -foo
   bar
   --cookie
-  library_name="driveruser"
+  library-name="driveruser"
   -o
   driveruser.pp.ml
   --impl
@@ -163,7 +163,7 @@ Test using installed drivers
   -foo
   bar
   --cookie
-  library_name="driveruser"
+  library-name="driveruser"
   -o
   driveruser.pp.ml
   --impl
@@ -209,7 +209,7 @@ Test using installed drivers
   -foo
   bar
   --cookie
-  library_name="driveruser"
+  library-name="driveruser"
   -o
   driveruser.pp.ml
   --impl

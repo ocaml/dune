@@ -488,7 +488,7 @@ let get_cookies ~loc ~expander ~lib_name libs =
           (Values [String library_name])
       in
       Expander.add_bindings expander ~bindings,
-      Some ("library_name", (library_name, Lib_name.of_local (loc, lib_name)))
+      Some ("library-name", (library_name, Lib_name.of_local (loc, lib_name)))
   in
   try
     Ok (libs

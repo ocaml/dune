@@ -57,6 +57,9 @@ unreleased
 
 - Add support for hg in `dune subst` (#2135, @diml)
 
+- Don't build documentation for implementations of virtual libraries (#2141,
+  fixes #2138, @jonludlam)
+
 1.9.3 (06/05/2019)
 ------------------
 

@@ -40,6 +40,11 @@ val wrapped : t -> Wrapped.t option Or_exn.t
 
 val virtual_ : t -> Lib_modules.t Lib_info.Source.t option
 
+(** [is_impl lib] returns [true] if the library is an implementation
+    of a virtual library *)
+val is_impl : t -> bool
+
+
 val special_builtin_support
   : t -> Dune_file.Library.Special_builtin_support.t option
 

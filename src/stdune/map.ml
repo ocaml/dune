@@ -124,6 +124,11 @@ module Make(Key : Comparable.S) : S with type key = Key.t = struct
       | None   -> add acc key data
       | Some x -> add acc key (f x data))
 
+  let of_list_fold l ~init ~f =
+    List.fold_left l ~init:empty ~f:(fun acc (key, data) ->
+      let x = Option.value (find acc key) ~default:init in
+      add acc key (f x data))
+
   let of_list_multi l =
     List.fold_left (List.rev l) ~init:empty ~f:(fun acc (key, data) ->
       add_multi acc key data)

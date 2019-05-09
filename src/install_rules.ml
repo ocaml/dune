@@ -535,8 +535,9 @@ let packages =
       ~f:(fun name pkg acc ->
         List.fold_left (package_source_files sctx pkg)
           ~init:acc ~f:(fun acc path -> (path, name) :: acc))
-    |> Path.Map.of_list_multi
-    |> Path.Map.map ~f:Package.Name.Set.of_list
+    |> Path.Map.of_list_fold
+         ~init:Package.Name.Set.empty
+         ~f:Package.Name.Set.add
   in
   let memo =
     Memo.create "package-map"

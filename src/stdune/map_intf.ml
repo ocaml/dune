@@ -67,6 +67,22 @@ module type S = sig
   val of_list_multi  : (key * 'a) list -> 'a list t
   val of_list_reduce : (key * 'a) list -> f:('a -> 'a -> 'a) -> 'a t
 
+  (** Return a map of [(k, v)] bindings such that:
+
+      {[
+        v = f init @@ f v1 @@ fv2 @@ ... @@ f vn
+      ]}
+
+      where [v1], [v2], ... [vn] are the values associated to [k] in
+      the input list, in the order in which they appear. This is essentially
+      a more efficient version of:
+
+      {[
+        of_list_multi l |> map ~f:(List.fold_left ~init ~f)
+      ]}
+  *)
+  val of_list_fold : (key * 'a) list -> init:'b -> f:('b -> 'a -> 'b) -> 'b t
+
   val keys   : 'a t -> key list
   val values : 'a t -> 'a list
 

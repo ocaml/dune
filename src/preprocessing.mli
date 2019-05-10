@@ -66,3 +66,5 @@ val get_compat_ppx_exe
   -> Path.t
 
 val gen_rules : Super_context.t -> string list -> unit
+
+val chdir : Action_unexpanded.t -> Action_unexpanded.t

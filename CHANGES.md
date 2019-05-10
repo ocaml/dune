@@ -60,6 +60,8 @@ unreleased
 - Don't build documentation for implementations of virtual libraries (#2141,
   fixes #2138, @jonludlam)
 
+- Fix generation of the `-pp` flag in .merlin (#2142, @rgrinberg)
+
 1.9.3 (06/05/2019)
 ------------------
 

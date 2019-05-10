@@ -1,0 +1,5 @@
+(rule (with-stdout-to dummy (echo "-nothing")))
+
+(executable
+ (name foobar)
+ (preprocess (action (run %{exe:../pp/pp.exe} %{read:dummy} %{input-file}))))

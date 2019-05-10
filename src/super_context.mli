@@ -60,7 +60,7 @@ val c_flags
   :  t
   -> dir:Path.t
   -> expander:Expander.t
-  -> lib:Library.t
+  -> flags:Ordered_set_lang.Unexpanded.t C.Kind.Dict.t
   -> (unit, string list) Build.t C.Kind.Dict.t
 
 (** Binaries that are symlinked in the associated .bin directory of [dir]. This
@@ -182,6 +182,8 @@ module Pkg_version : sig
     -> Package.t
     -> (unit, string option) Build.t
     -> (unit, string option) Build.t
+
+  val read : t -> Package.t -> (unit, string option) Build.t
 end
 
 module Scope_key : sig

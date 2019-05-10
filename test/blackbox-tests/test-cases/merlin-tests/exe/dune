@@ -1,4 +1,4 @@
 (executable
  (name x)
- (preprocess (action (run ./foo-bar %{input-file})))
+ (preprocess (action (run pp/pp.exe %{input-file})))
  (libraries foo))

@@ -521,30 +521,3 @@ let expand_and_eval_set t set ~standard =
 let eval_blang t = function
   | Blang.Const x -> x (* common case *)
   | blang -> Blang.eval blang ~dir:t.dir ~f:(expand_var_exn t)
-
-module Option = struct
-  exception Not_found
-
-  let expand_var_exn t var syn =
-    t.expand_var t var syn
-    |> Option.map ~f:(function
-      | Ok s -> s
-      | Error _ -> raise_notrace Not_found)
-
-  let expand t ~mode ~template =
-    match
-      String_with_vars.expand ~dir:t.dir ~mode template
-        ~f:(expand_var_exn t)
-    with
-    | exception Not_found -> None
-    | s -> Some s
-
-  let expand_path t sw =
-    expand t ~mode:Single ~template:sw
-    |> Option.map ~f:(
-      Value.to_path ~error_loc:(String_with_vars.loc sw) ~dir:t.dir)
-
-  let expand_str t sw =
-    expand t ~mode:Single ~template:sw
-    |> Option.map ~f:(Value.to_string ~dir:t.dir)
-end

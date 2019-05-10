@@ -411,7 +411,6 @@ let install_rules sctx package =
       target_alias
       files
       ~dyn_deps:
-        (* CR aalekseyev: this might need delaying *)
         (Build_system.package_deps package_name files
          >>^ fun packages ->
          Package.Name.Set.to_list packages

@@ -43,7 +43,10 @@ end
     present in the source tree and the ones that already contain rules.
 
     It is expected that [f] only generate rules whose targets are
-    descendant of [dir]. *)
+    descendant of [dir].
+
+    [init] can generate rules in any directory, so it's always called.
+*)
 val set_rule_generators
   :
   init:(unit -> unit)

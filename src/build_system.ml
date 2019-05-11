@@ -723,7 +723,8 @@ let remove_old_artifacts t ~dir ~subdirs_to_keep =
               | All -> ()
               | These set ->
                 if String.Set.mem set fn ||
-                   Path.Set.mem t.build_dirs_to_keep path then ()
+                   Path.Set.mem t.build_dirs_to_keep path then
+                  ()
                 else
                   Path.rm_rf path
             end

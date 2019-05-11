@@ -1251,6 +1251,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name stale-artifact-removal)
+ (deps (package dune) (source_tree test-cases/stale-artifact-removal))
+ (action
+  (chdir
+   test-cases/stale-artifact-removal
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name stdlib-compilation)
  (deps (package dune) (source_tree test-cases/stdlib-compilation))
  (action
@@ -1611,6 +1619,7 @@
   (alias select)
   (alias several-packages)
   (alias shadow-bindings)
+  (alias stale-artifact-removal)
   (alias stdlib-compilation)
   (alias subst)
   (alias syntax-versioning)
@@ -1769,6 +1778,7 @@
   (alias select)
   (alias several-packages)
   (alias shadow-bindings)
+  (alias stale-artifact-removal)
   (alias stdlib-compilation)
   (alias subst)
   (alias syntax-versioning)

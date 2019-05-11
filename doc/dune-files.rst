@@ -140,7 +140,12 @@ to use the :ref:`include_subdirs` stanza.
   available choices are ``ppx_rewriter`` and ``ppx_deriver`` and must be set
   when the library is intended to be used as a ppx rewriter or a ``[@@deriving
   ...]`` plugin. The reason why ``ppx_rewriter`` and ``ppx_deriver`` are split
-  is historical and hopefully we won't need two options soon
+  is historical and hopefully we won't need two options soon. Both ppx kinds
+  support an optional field ``(cookies <cookies>)`` where ``<cookies>`` is a
+  list of pairs ``(<name> <value>)`` with ``<name>`` being the cookie name and
+  ``<value>`` is a string that supports `Variables expansion`_ evaluated
+  by each invocation of the preprocessor (note: libraries that share
+  cookies with the same name should agree on their expanded value)
 
 - ``(ppx_runtime_libraries (<library-names>))`` is for when the library is a ppx
   rewriter or a ``[@@deriving ...]`` plugin and has runtime dependencies. You

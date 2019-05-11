@@ -75,7 +75,7 @@ let gen_lib pub_name lib ~version =
   let preds =
     match Lib.kind lib with
     | Normal -> []
-    | Ppx_rewriter | Ppx_deriver -> [Pos "ppx_driver"]
+    | Ppx_rewriter _ | Ppx_deriver _ -> [Pos "ppx_driver"]
   in
   let lib_deps    = Lib.Meta.requires lib in
   let ppx_rt_deps = Lib.Meta.ppx_runtime_deps lib in
@@ -95,7 +95,7 @@ let gen_lib pub_name lib ~version =
         ]
     ; (match Lib.kind lib with
        | Normal -> []
-       | Ppx_rewriter | Ppx_deriver ->
+       | Ppx_rewriter _ | Ppx_deriver _ ->
          (* Deprecated ppx method support *)
          let no_ppx_driver = Neg "ppx_driver" and no_custom_ppx = Neg "custom_ppx" in
          List.concat
@@ -107,10 +107,10 @@ let gen_lib pub_name lib ~version =
              ]
            ; match Lib.kind lib with
            | Normal -> assert false
-           | Ppx_rewriter ->
+           | Ppx_rewriter _ ->
              [ rule "ppx" [no_ppx_driver; no_custom_ppx]
                  Set "./ppx.exe --as-ppx" ]
-           | Ppx_deriver ->
+           | Ppx_deriver _ ->
              [ rule "requires" [no_ppx_driver; no_custom_ppx] Add
                  "ppx_deriving"
              ; rule "ppxopt" [no_ppx_driver; no_custom_ppx] Set

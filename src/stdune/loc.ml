@@ -1,12 +1,5 @@
 include Loc0
 
-let none_pos p : Lexing.position =
-  { pos_fname = p
-  ; pos_lnum  = 1
-  ; pos_cnum  = 0
-  ; pos_bol   = 0
-  }
-
 let in_file p =
   let pos = none_pos (Path.to_string p) in
   { start = pos
@@ -14,12 +7,6 @@ let in_file p =
   }
 
 let in_dir = in_file
-
-let none =
-  let pos = none_pos "<none>" in
-  { start = pos
-  ; stop = pos
-  }
 
 let drop_position (t : t) =
   let pos = none_pos t.start.pos_fname in

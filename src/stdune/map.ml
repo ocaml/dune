@@ -155,6 +155,24 @@ module Make(Key : Comparable.S) : S with type key = Key.t = struct
   let superpose a b =
     union a b ~f:(fun _ _ y -> Some y)
 
+  let is_subset t ~of_ ~f =
+    let not_subset () = raise_notrace Exit in
+    match
+      merge t of_ ~f:(fun _dir t of_ ->
+        match t with
+        | None -> None
+        | Some t ->
+          match of_ with
+          | None -> not_subset ()
+          | Some of_ ->
+            if f t ~of_ then
+              None
+            else
+              not_subset ())
+    with
+    | (_ : _ t) -> true
+    | exception Exit -> false
+
   module Multi = struct
     type nonrec 'a t = 'a list t
 

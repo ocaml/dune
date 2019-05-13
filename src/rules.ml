@@ -83,17 +83,8 @@ module Dir_rules = struct
     let id = Id.gen () in
     Id.Map.singleton id data
 
-
   let is_subset t ~of_ =
-    let not_subset () = raise_notrace Exit in
-    match
-      Id.Map.merge t of_ ~f:(fun _dir t of_ ->
-        match t, of_ with
-        | Some _, None -> not_subset ()
-        | _ -> None)
-    with
-    | (_ : t) -> true
-    | exception Exit -> false
+    Id.Map.is_subset t ~of_ ~f:(fun _ ~of_:_ -> true)
 end
 
 module T = struct
@@ -200,20 +191,7 @@ let map t ~f =
   )
 
 let is_subset t ~of_ =
-  let not_subset () = raise_notrace Exit in
-  match
-    Path.Build.Map.merge t of_ ~f:(fun _dir t of_ ->
-      match t, of_ with
-      | Some t, Some of_ ->
-        if Dir_rules.is_subset t ~of_ then
-          None
-        else
-          not_subset ()
-      | None, _ -> None
-      | Some _, None -> not_subset ())
-  with
-  | (_ : t) -> true
-  | exception Exit -> false
+  Path.Build.Map.is_subset t ~of_ ~f:Dir_rules.is_subset
 
 let map_rules t ~f =
   map t ~f:(function

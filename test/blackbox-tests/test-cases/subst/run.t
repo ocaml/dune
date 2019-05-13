@@ -8,3 +8,7 @@
   let name = "foo"
   let authors = "John Doe <john@doe.com>"
   let version = "1.0"
+  $ cat dune-project
+  (lang dune 1.0)
+  (name foo)
+  (version 1.0)

@@ -163,10 +163,99 @@ let subst_file path ~map =
   | None -> ()
   | Some s -> Io.write_file path s
 
-let read_project_name () =
-  Dune_project.read_name (Path.in_source Dune_project.filename)
+(* Minimal API for dune-project files that makes as little assumption
+   about the contents as possible and keeps enough info for editing
+   the file. *)
+module Dune_project = struct
+  type 'a simple_field =
+    { loc : Loc.t
+    ; loc_of_arg : Loc.t
+    ; arg : 'a
+    }
 
-let get_name ~files ?name () =
+  type t =
+    { contents : string
+    ; name : string simple_field option
+    ; version : string simple_field option
+    }
+
+  let file = Path.in_source Dune_project.filename
+
+  let load file =
+    let s = Io.read_file file in
+    let lb = Lexing.from_string s in
+    lb.lex_curr_p <-
+      { pos_fname = Path.to_string file
+      ; pos_lnum  = 1
+      ; pos_bol   = 0
+      ; pos_cnum  = 0
+      };
+    let sexp = Dune_lang.Parser.parse lb ~mode:Many_as_one in
+    let parser =
+      let open Dune_lang.Decoder in
+      let simple_field name arg =
+        let+ loc, x = located (field_o name (located arg)) in
+        match x with
+        | Some (loc_of_arg, arg) -> Some { loc; loc_of_arg; arg }
+        | None -> None
+      in
+      enter
+        (fields
+           (let+ name = simple_field "name" string
+            and+ version = simple_field "version" string
+            and+ () = junk_everything
+            in
+            { contents = s; name; version }))
+    in
+    Dune_lang.Decoder.parse parser Univ_map.empty sexp
+
+  let subst t ~map ~version =
+    let s =
+      let replace_text start_ofs stop_ofs repl =
+        sprintf "%s%s%s"
+          (String.sub t.contents ~pos:0 ~len:start_ofs)
+          repl
+          (String.sub t.contents ~pos:stop_ofs
+             ~len:(String.length t.contents - stop_ofs))
+      in
+      match t.version with
+      | Some v ->
+        (* There is a [version] field, overwrite its argument *)
+        replace_text v.loc_of_arg.start.pos_cnum v.loc_of_arg.stop.pos_cnum
+          (Dune_lang.to_string (Dune_lang.atom_or_quoted_string version)
+             ~syntax:Dune)
+      | None ->
+        let version_field =
+          Dune_lang.to_string ~syntax:Dune
+            (List [ Dune_lang.atom "version"
+                  ; Dune_lang.atom_or_quoted_string version
+                  ])
+          ^ "\n"
+        in
+        let ofs = ref (
+          match t.name with
+          | Some { loc; _ } ->
+            (* There is no [version] field but there is a [name] one,
+               add the version after it *)
+            loc.stop.pos_cnum
+          | None ->
+            (* If all else fails, add the [version] field after the
+               first line of the file *)
+            0)
+        in
+        let len = String.length t.contents in
+        while !ofs < len && t.contents.[!ofs] <> '\n' do incr ofs done;
+        if !ofs < len && t.contents.[!ofs] = '\n' then begin
+          incr ofs;
+          replace_text !ofs !ofs version_field
+        end else
+          replace_text !ofs !ofs ("\n" ^ version_field)
+    in
+    let s = Option.value (subst_string s ~map file) ~default:s in
+    if s <> t.contents then Io.write_file file s
+end
+
+let get_name ~files ~(dune_project : Dune_project.t option) ?name () =
   let package_names =
     List.filter_map files ~f:(fun fn ->
       match Path.parent fn with
@@ -178,35 +267,29 @@ let get_name ~files ?name () =
       end
       | _ -> None)
   in
-  let dune_project_file = Path.in_source Dune_project.filename in
   if package_names = [] then
     die "@{<error>Error@}: no <package>.opam files found.";
   let (loc, name) =
     match Wp.t with
     | Dune -> begin
         assert (Option.is_none name);
-        if not (List.mem ~set:files dune_project_file) then
+        match dune_project with
+        | None ->
           die "@{<error>Error@}: There is no dune-project file in the current \
                directory, please add one with a (name <name>) field in it.\n\
-               Hint: dune subst must be executed from the root of the project.";
-        match read_project_name () with
-        | None ->
+               Hint: dune subst must be executed from the root of the project."
+        | Some { name = None; _ } ->
           die "@{<error>Error@}: The project name is not defined, please add \
                a (name <name>) field to your dune-project file."
-        | Some name -> name
+        | Some { name = Some n; _ } -> (n.loc_of_arg, n.arg)
       end
     | Jbuilder ->
       match name with
       | Some name -> (Loc.none, name)
       | None ->
-        match
-          if List.mem ~set:files dune_project_file then
-            read_project_name ()
-          else
-            None
-        with
-        | Some name -> name
-        | None ->
+        match dune_project with
+        | Some { name = Some n; _ } -> (n.loc_of_arg, n.arg)
+        | _ ->
           let name =
             let prefix = String.longest_prefix package_names in
             if prefix = "" then
@@ -246,10 +329,17 @@ let subst ?name vcs =
            (fun () -> Vcs.commit_id vcs))
       (fun () -> Vcs.files vcs)
   in
-  let name = get_name ~files ?name () in
+  let dune_project =
+    if List.mem ~set:files Dune_project.file then
+      Some (Dune_project.load Dune_project.file)
+    else
+      None
+  in
+  let name = get_name ~files ~dune_project ?name () in
   let watermarks = make_watermark_map ~name ~version ~commit in
+  Option.iter dune_project ~f:(Dune_project.subst ~map:watermarks ~version);
   List.iter files ~f:(fun path ->
-    if is_a_source_file path then
+    if is_a_source_file path && path <> Dune_project.file then
       subst_file path ~map:watermarks)
 
 let subst ?name () =

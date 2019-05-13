@@ -57,6 +57,9 @@ unreleased
 
 - Add support for hg in `dune subst` (#2135, @diml)
 
+- Make `dune subst` add a `(version ...)` field to the `dune-project`
+  file (#2148, @diml)
+
 1.9.3 (06/05/2019)
 ------------------
 

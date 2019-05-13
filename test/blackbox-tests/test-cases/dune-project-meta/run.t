@@ -133,8 +133,8 @@ The following behavior is wrong, the version should be set in stone
 after running `dune subst`:
 
   $ grep ^version version/foo.opam
-  [1]
+  version: "1.0"
 
   $ grep ^version version/_build/default/META.foo
-  [1]
+  version = "1.0"
 

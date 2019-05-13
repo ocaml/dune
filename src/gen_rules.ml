@@ -132,7 +132,7 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
           File_binding.Unexpanded.expand_src ~dir:ctx_dir
             fb ~f:(Expander.expand_str expander))
         |> Path.Set.of_list
-        |> Build_system.Alias.add_deps (Alias.all ~dir:ctx_dir);
+        |> Rules.Produce.Alias.add_deps (Alias.all ~dir:ctx_dir);
         For_stanza.empty_none
       | _ ->
         For_stanza.empty_none
@@ -206,7 +206,7 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
       File_selector.create ~dir:ctx_dir pred
       |> Build.paths_matching ~loc:Loc.none
     in
-    Build_system.Alias.add_deps
+    Rules.Produce.Alias.add_deps
       ~dyn_deps
       (Alias.all ~dir:ctx_dir) Path.Set.empty;
     cctxs
@@ -355,16 +355,16 @@ let gen ~contexts
         Path.Map.find (Install_rules.packages sctx) path))
   in
   Build_system.set_rule_generators
-    (function
-      | Install ctx ->
-        Option.map (String.Map.find sctxs ctx) ~f:(fun sctx ->
-          (fun ~dir _ ->
-             Install_rules.gen_rules sctx ~dir:(Path.as_in_build_dir_exn dir);
-             Build_system.These String.Set.empty))
-      | Context ctx ->
-        String.Map.find generators ctx);
-
-  String.Map.iter map ~f:(fun (module M : Gen) ->
-    Build_system.handle_add_rule_effects (fun () ->
-      Odoc.init M.sctx));
+    ~init:(fun () ->
+      String.Map.iter map ~f:(fun (module M : Gen) ->
+        Odoc.init M.sctx))
+    ~gen_rules:
+      (function
+        | Install ctx ->
+          Option.map (String.Map.find sctxs ctx) ~f:(fun sctx ->
+            (fun ~dir _ ->
+               Install_rules.gen_rules sctx ~dir:(Path.as_in_build_dir_exn dir);
+               Build_system.These String.Set.empty))
+        | Context ctx ->
+          String.Map.find generators ctx);
   sctxs

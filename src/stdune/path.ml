@@ -823,6 +823,13 @@ let as_in_build_dir = function
   | In_source_tree _
   | External _ -> None
 
+let as_in_build_dir_exn t = match t with
+  | External _ | In_source_tree _  ->
+    Exn.code_error
+      "[as_in_build_dir_exn] called on something not in build dir"
+      ["t", to_sexp t]
+  | In_build_dir p -> p
+
 let is_alias_stamp_file = function
   | In_build_dir s -> String.is_prefix (Local.to_string s) ~prefix:".aliases/"
   | In_source_tree _
@@ -922,13 +929,6 @@ let split_first_component t =
           |> in_source_tree )
     end
   | _, _ -> None
-
-let as_in_build_dir_exn t = match t with
-  | External _ | In_source_tree _  ->
-    Exn.code_error
-      "[as_in_build_dir_exn] called on something not in build dir"
-      ["t", to_sexp t]
-  | In_build_dir p -> p
 
 let explode t =
   match kind t with

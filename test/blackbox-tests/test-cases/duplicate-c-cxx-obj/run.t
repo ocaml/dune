@@ -3,8 +3,8 @@ stubs names, things are still broken if their .o files overlap:
   $ dune build --root diff-stanza @all
   Entering directory 'diff-stanza'
   Multiple rules generated for _build/default/foo$ext_obj:
-  - dune:9
   - dune:4
+  - dune:9
   [1]
 
 Another form of this bug is if the same source is present in different

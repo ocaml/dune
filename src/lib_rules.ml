@@ -77,7 +77,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
            ; Dyn (fun (_, _, _, library_flags) -> As library_flags)
            ; As (match lib.kind with
                | Normal -> []
-               | Ppx_deriver | Ppx_rewriter -> ["-linkall"])
+               | Ppx_deriver _ | Ppx_rewriter _ -> ["-linkall"])
            ; Dyn (fun (cm_files, _, _, _) -> Deps cm_files)
            ; Hidden_targets
                (match mode with

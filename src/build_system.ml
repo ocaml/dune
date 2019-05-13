@@ -395,28 +395,29 @@ let set_rule_generators ~init ~gen_rules =
   Fdecl.set t.gen_rules gen_rules
 
 let get_dir_status t ~dir =
-  let just_started_collecting = ref false in
-  let res =
-    Path.Table.find_or_add t.dirs dir ~f:(fun _ ->
+  match Path.Table.find t.dirs dir with
+  | Some x -> Some x
+  | None ->
+    let res =
       match Path.as_in_source_tree dir with
       | Some dir ->
-        Dir_status.Loaded {
+        Some (Dir_status.Loaded {
           rules_produced = Rules.empty;
           targets =
             (
               Path.Source.Set.to_list (File_tree.files_of t.file_tree dir)
               |> List.map ~f:Path.source
               |> Path.Set.of_list);
-        }
+        })
       | None ->
         if Path.equal dir Path.build_dir then
           (* Not allowed to look here *)
-          Dir_status.Loaded
+          Some (Loaded
             { rules_produced = Rules.empty;
               targets = Path.Set.empty
-            }
+            })
         else if not (Path.is_managed dir) then
-          Dir_status.Loaded
+          Some (Loaded
             { rules_produced = Rules.empty;
               targets =
                 match Path.readdir_unsorted dir with
@@ -429,21 +430,21 @@ let get_dir_status t ~dir =
                   Path.Set.empty
                 | Ok files ->
                   Path.Set.of_list (List.map files ~f:(Path.relative dir))
-            }
+            })
         else begin
           let (ctx, sub_dir) = Path.extract_build_context_exn dir in
           if ctx = ".aliases" then
-            Forward (Path.(append_source build_dir) sub_dir)
+            Some (Forward (Path.(append_source build_dir) sub_dir))
           else if ctx <> "install" && not (String.Map.mem t.contexts ctx) then
-            Dir_status.Loaded {
+            Some (Loaded {
               rules_produced = Rules.empty;
-              targets = Path.Set.empty; }
+              targets = Path.Set.empty; })
           else
-            (just_started_collecting := true;
-             Collecting_rules)
-        end)
-  in
-  res, !just_started_collecting
+            None
+        end
+    in
+    Option.iter res ~f:(Path.Table.add t.dirs dir);
+    res
 
 let add_spec t fn rule =
   match Path.Table.find t.files fn with
@@ -722,26 +723,24 @@ and load_dir_and_get_targets t ~dir =
 
 and load_dir_and_get_rules_and_targets t ~dir : Loaded.t =
   match get_dir_status t ~dir with
-  | Failed_to_load, _ -> raise Already_reported
+  | Some Failed_to_load -> raise Already_reported
 
-  | Loaded res, _ -> res
+  | Some (Loaded res) -> res
 
-  | Forward dir', _ ->
+  | Some (Forward dir') ->
     load_dir t ~dir:dir';
     begin match get_dir_status t ~dir with
-    | Loaded res, _ -> res
+    | Some (Loaded res) -> res
     | _ -> assert false
     end
 
-  | Collecting_rules, just_started ->
-    let () =
-      if just_started then ()
-      else
-        die "recursive dependency between directories:\n    %s"
-          (String.concat ~sep:"\n--> "
-             (List.map t.load_dir_stack ~f:Utils.describe_target))
-    in
+  | Some Collecting_rules ->
+    die "recursive dependency between directories:\n    %s"
+      (String.concat ~sep:"\n--> "
+         (List.map t.load_dir_stack ~f:Utils.describe_target))
 
+  | None ->
+    Path.Table.add t.dirs dir Collecting_rules;
     t.load_dir_stack <- dir :: t.load_dir_stack;
 
     try

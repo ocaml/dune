@@ -36,11 +36,10 @@ module Dir_rules : sig
   val consume : t -> ready
 
   val is_subset : t -> of_:t -> bool
-
 end
 
 (** A value of type [t] holds a set of rules for multiple directories *)
-type t = private Dir_rules.t Path.Build.Map.t
+type t
 
 val to_map : t -> Dir_rules.t Path.Build.Map.t
 

@@ -36,6 +36,9 @@ module Dir_rules : sig
   val consume : t -> ready
 
   val is_subset : t -> of_:t -> bool
+
+  val is_empty : t -> bool
+
 end
 
 (** A value of type [t] holds a set of rules for multiple directories *)
@@ -95,6 +98,7 @@ end
 
 val implicit_output : t Memo.Implicit_output.t
 
+val empty : t
 val union : t -> t -> t
 
 val produce_dir : dir:Path.Build.t -> Dir_rules.t -> unit

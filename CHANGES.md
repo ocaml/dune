@@ -55,6 +55,8 @@ unreleased
   create duplicates of the default context with different settings. (#2098,
   @TheLortex, review by @diml, @rgrinberg and @aalekseyev)
 
+- Add support for hg in `dune subst` (#2135, @diml)
+
 1.9.3 (06/05/2019)
 ------------------
 

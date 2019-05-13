@@ -17,18 +17,46 @@ module Kind = struct
          | Git -> "Git"
          | Hg -> "Hg"),
        [])
+
+  let equal = (=)
+
+  let decode =
+    Stanza.Decoder.enum
+      [ "git", Git
+      ; "hg", Hg
+      ]
 end
 
-type t =
-  { root : Path.t
-  ; kind : Kind.t
-  }
+module T = struct
+  type t =
+    { root : Path.t
+    ; kind : Kind.t
+    }
 
-let to_dyn { root; kind } =
-  Dyn.Encoder.record
-    [ "root", Path.to_dyn root
-    ; "kind", Kind.to_dyn kind
-    ]
+  let to_dyn { root; kind } =
+    Dyn.Encoder.record
+      [ "root", Path.to_dyn root
+      ; "kind", Kind.to_dyn kind
+      ]
+
+  let to_sexp t = Dyn.to_sexp (to_dyn t)
+
+  let equal { root = ra; kind = ka } { root = rb; kind = kb } =
+    Path.equal ra rb && Kind.equal ka kb
+
+  (* No need to hash the kind as there is only only kind per directory *)
+  let hash t = Path.hash t.root
+
+  let decode =
+    let open Stanza.Decoder in
+    record
+      (let+ root = field "root" Path_dune_lang.decode
+       and+ kind = field "kind" Kind.decode
+       in
+       { root; kind })
+end
+
+include T
 
 let git, hg =
   let get prog = lazy (
@@ -38,61 +66,93 @@ let git, hg =
   in
   (get "git", get "hg")
 
-let git_describe =
-  Memo.create
-    "git-describe"
-    ~doc:"Run [git describe] in the following directory"
-    ~input:(module Path)
-    ~output:(Simple (module String))
-    ~visibility:(Public Path_dune_lang.decode)
-    Async
-    (Some (fun dir ->
-       let open Fiber.O in
-       let+ s =
-         Process.run_capture Strict (Lazy.force git)
-           ["describe"; "--always"; "--dirty"] ~env:Env.initial ~dir
-       in
-       String.trim s))
+let select git hg t =
+  match t.kind with
+  | Git -> git t
+  | Hg -> hg t
 
-let hg_describe =
-  let f dir =
-    let open Fiber.O in
-    let hg = Lazy.force hg in
-    let hg args = Process.run_capture Strict hg ~env:Env.initial ~dir args in
-    let* s =
-      hg [ "log"; "--rev"; "."; "-T"; "{latesttag} {latesttagdistance}" ]
-    in
-    let+ id =
-      hg [ "id"; "-i" ]
-    in
-    let s = String.trim s and id = String.trim id in
-    let id, dirty_suffix =
-      match String.drop_suffix id ~suffix:"+" with
-      | Some id -> id, "-dirty"
-      | None -> id, ""
-    in
-    let s =
-      let s, dist = Option.value_exn (String.rsplit2 s ~on:' ') in
-      match s with
-      | "null" -> id
-      | _ ->
-        match int_of_string dist with
-        | 1 -> s
-        | n -> sprintf "%s-%d-%s" s (n - 1) id
-        | exception _ -> sprintf "%s-%s-%s" s dist id
-    in
-    s ^ dirty_suffix
+let prog t =
+  Lazy.force (
+    match t.kind with
+    | Git -> git
+    | Hg -> hg)
+
+let run t args =
+  let open Fiber.O in
+  let+ s =
+    Process.run_capture Strict (prog t) args ~dir:t.root ~env:Env.initial
   in
-  Memo.create
-    "hg-describe"
-    ~doc:"Do something similar to [git describe] with hg"
-    ~input:(module Path)
-    ~output:(Simple (module String))
-    ~visibility:(Public Path_dune_lang.decode)
-    Async
-    (Some f)
+  String.trim s
 
-let describe { root; kind } =
-  match kind with
-  | Git -> Memo.exec git_describe root
-  | Hg -> Memo.exec hg_describe root
+let run_lines t args =
+  Process.run_capture_lines Strict (prog t) args ~dir:t.root ~env:Env.initial
+
+let hg_describe t =
+  let open Fiber.O in
+  let* s =
+    run t [ "log"; "--rev"; "."; "-T"; "{latesttag} {latesttagdistance}" ]
+  in
+  let+ id =
+    run t [ "id"; "-i" ]
+  in
+  let id, dirty_suffix =
+    match String.drop_suffix id ~suffix:"+" with
+    | Some id -> id, "-dirty"
+    | None -> id, ""
+  in
+  let s =
+    let s, dist = Option.value_exn (String.rsplit2 s ~on:' ') in
+    match s with
+    | "null" -> id
+    | _ ->
+      match int_of_string dist with
+      | 1 -> s
+      | n -> sprintf "%s-%d-%s" s (n - 1) id
+      | exception _ -> sprintf "%s-%s-%s" s dist id
+  in
+  s ^ dirty_suffix
+
+let make_fun name ~output ~doc ~git ~hg =
+  let memo =
+    Memo.create
+      name
+      ~doc
+      ~input:(module T)
+      ~output
+      ~visibility:(Public decode)
+      Async
+      (Some (select git hg))
+  in
+  Staged.stage (Memo.exec memo)
+
+let describe =
+  Staged.unstage @@
+  make_fun "vcs-describe"
+    ~doc:"Obtain a nice description of the tip from the vcs"
+    ~output:(Simple (module String))
+    ~git:(fun t -> run t ["describe"; "--always"; "--dirty"])
+    ~hg:hg_describe
+
+let commit_id =
+  Staged.unstage @@
+  make_fun "vcs-commit-id"
+    ~doc:"The hash of the head commit"
+    ~output:(Simple (module String))
+    ~git:(fun t -> run t ["rev-parse"; "HEAD"])
+    ~hg:(fun t -> run t ["id"; "-i"])
+
+let files =
+  let f args t =
+    let open Fiber.O in
+    let+ l = run_lines t args in
+    List.map l ~f:Path.in_source
+  in
+  Staged.unstage @@
+  make_fun "vcs-files"
+    ~doc:"Return the files committed in the repo"
+    ~output:(Simple (module struct
+                type t = Path.t list
+                let to_sexp = Sexp.Encoder.list Path.to_sexp
+              end))
+    ~git:(f ["ls-tree"; "-r"; "--name-only"; "HEAD"])
+    ~hg:(f ["files"])

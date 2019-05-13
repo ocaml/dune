@@ -15,8 +15,14 @@ type t =
 
 val to_dyn : t -> Dyn.t
 
-(** Output of [git describe --dirty --always] or hg equivalent *)
+(** Nice description of the current tip *)
 val describe : t -> string Fiber.t
+
+(** String uniquely identifying the current head commit *)
+val commit_id : t -> string Fiber.t
+
+(** List of files committed in the repo *)
+val files : t -> Path.t list Fiber.t
 
 (** VCS commands *)
 val git : Path.t Lazy.t

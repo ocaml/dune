@@ -86,7 +86,7 @@ let gen_rules_output sctx (config : Dune_file.Auto_format.t) ~output_dir =
   in
   File_tree.files_of (Super_context.file_tree sctx) source_dir
   |> Path.Source.Set.iter ~f:setup_formatting;
-  Build_system.Alias.add_deps alias_formatted Path.Set.empty
+  Rules.Produce.Alias.add_deps alias_formatted Path.Set.empty
 
 let gen_rules ~dir =
   let output_dir = Path.relative dir formatted in
@@ -94,4 +94,4 @@ let gen_rules ~dir =
   let alias_formatted = Alias.fmt ~dir:output_dir in
   Alias.stamp_file alias_formatted
   |> Path.Set.singleton
-  |> Build_system.Alias.add_deps alias
+  |> Rules.Produce.Alias.add_deps alias

@@ -196,7 +196,7 @@ let expander t = Env.expander t.env_context
 let add_rule t ?sandbox ?mode ?locks ?loc ~dir build =
   let build = Build.O.(>>>) build t.chdir in
   let env = Env.external_ t.env_context ~dir in
-  Build_system.add_rule
+  Rules.Produce.rule
     (Rule.make ?sandbox ?mode ?locks
        ~info:(Rule.Info.of_loc_opt loc)
        ~context:(Some t.context) ~env:(Some env) build)
@@ -209,7 +209,7 @@ let add_rule_get_targets t ?sandbox ?mode ?locks ?loc ~dir build =
       ~info:(Rule.Info.of_loc_opt loc)
       ~context:(Some t.context) ~env:(Some env) build
   in
-  Build_system.add_rule rule;
+  Rules.Produce.rule rule;
   rule.targets
 
 let add_rules t ?sandbox ~dir builds =
@@ -218,7 +218,7 @@ let add_rules t ?sandbox ~dir builds =
 let add_alias_action t alias ~dir ~loc ?locks ~stamp action =
   let t = t.env_context in
   let env = Some (Env.external_ t ~dir) in
-  Build_system.Alias.add_action ~context:t.context ~env alias ~loc ?locks
+  Rules.Produce.Alias.add_action ~context:t.context ~env alias ~loc ?locks
     ~stamp action
 
 let source_files t ~src_path =

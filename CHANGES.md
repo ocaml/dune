@@ -28,6 +28,10 @@ unreleased
 - Allow %{...} variables in pps flags (#2076, @mlasson review by @diml and
   @aalekseyev).
 
+- Add a 'cookies' option to ppx_rewriter/deriver flags in library stanzas
+  (#2106, @mlasson @diml). This allow to specify cookie requests from
+  variables expanded at each invocation of the preprocessor. 
+
 - Add more opam metadata and use it to generate `.opam` files. In particular, a
   `package` field has been added to specify package specific information.
   (#2017, #2091, @avsm, @jonludlam, @rgrinberg)
@@ -50,6 +54,8 @@ unreleased
 - In `dune-workspace` files, add the ability to choose the host context and to
   create duplicates of the default context with different settings. (#2098,
   @TheLortex, review by @diml, @rgrinberg and @aalekseyev)
+
+- Add support for hg in `dune subst` (#2135, @diml)
 
 1.9.3 (06/05/2019)
 ------------------

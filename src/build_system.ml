@@ -236,231 +236,18 @@ module Alias0 = struct
       ~dir:context.build_dir
 end
 
-(* The purpose of this module is to detect incorrect use of
-   the thunks that add rules to a rule collector.
-   Once we migrate to the world where the rules collection is done
-   with implicit outputs only, we should get rid of this module (probably along
-   with the rules collector). *)
-module Thunk_with_backtrace = struct
+module Loaded = struct
   type t = {
-    thunk : unit -> unit;
-    ran : unit option ref;
+    rules_produced : Rules.t;
+    targets : Path.Set.t;
   }
-
-  let run t =
-    match !(t.ran) with
-    | Some _last_run ->
-      (* CR-someday aalekseyev: this should probably be disallowed. *)
-      ()
-    | None ->
-      t.ran := Some ();
-      match Exn_with_backtrace.try_with t.thunk with
-      | Error exn ->
-        Exn.code_error "thunk raised"
-          [ "exn", Exn_with_backtrace.to_sexp exn
-          ]
-      | Ok ok ->
-        ok
-
-  let create thunk =
-    { thunk; ran = ref None }
 end
 
 module Dir_status = struct
 
-  type collection_stage =
-    | Pending
-    | Loading
-    | Frozen
-
-  type alias_action =
-    { stamp  : Digest.t
-    ; action : (unit, Action.t) Build.t
-    ; locks  : Path.t list
-    ; context : Context.t
-    ; env : Env.t option
-    ; loc : Loc.t option
-    }
-
-  module Alias : sig
-    type t
-
-    val create : unit -> t
-
-    type immutable =
-      { deps     : Path.Set.t
-      ; dyn_deps : (unit, Path.Set.t) Build.t
-      ; actions  : alias_action list
-      }
-
-    val freeze : t -> immutable
-    val assert_frozen : t -> immutable
-
-    val add_deps : t -> Path.Set.t -> unit
-    val add_dyn_deps : t -> (unit, Path.Set.t) Build.t -> unit
-    val add_action : t -> alias_action -> unit
-  end = struct
-    type t =
-      { mutable deps     : Path.Set.t
-      ; mutable dyn_deps : (unit, Path.Set.t) Build.t
-      ; mutable actions  : alias_action list
-      ; mutable frozen : bool
-      }
-
-    let create () =
-      { deps     = Path.Set.empty
-      ; dyn_deps = Build.return Path.Set.empty
-      ; actions  = []
-      ; frozen = false
-      }
-
-    type immutable =
-      { deps     : Path.Set.t
-      ; dyn_deps : (unit, Path.Set.t) Build.t
-      ; actions  : alias_action list
-      }
-
-    let _of_immutable { deps; dyn_deps; actions } =
-      { deps; dyn_deps; actions; frozen = true }
-
-    let to_immutable { deps; dyn_deps; actions; frozen } =
-      assert frozen;
-      { deps; dyn_deps; actions }
-
-    let freeze t =
-      if t.frozen
-      then Exn.code_error "Alias.freeze called twice" []
-      else (t.frozen <- true; to_immutable t)
-
-    let assert_frozen t =
-      assert t.frozen;
-      to_immutable t
-
-    let add_deps (t : t) deps =
-      assert (not t.frozen);
-      t.deps <- Path.Set.union t.deps deps
-
-    let add_dyn_deps (t : t) deps =
-      assert (not t.frozen);
-      t.dyn_deps <-
-        (let open Build.O in
-         Build.fanout t.dyn_deps deps >>^ fun (a, b) ->
-         Path.Set.union a b)
-
-    let add_action (t : t) action =
-      assert (not t.frozen);
-      t.actions <- action :: t.actions
-
-  end
-
-  module Rules_collector : sig
-    type t
-    type frozen
-
-    (** state transition diagram:
-        pending -> loading -> frozen *)
-
-    val create_pending : info:Sexp.t -> unit -> t
-    val start_loading :
-      t ->
-      (unit, [`Already_loading]) Result.t
-    val freeze : t -> frozen
-
-    val rules : frozen -> Pre_rule.t list
-    val aliases : frozen -> Alias.immutable String.Map.t
-
-    val forbid_freeze_until_thunk_is_forced :
-      t -> Thunk_with_backtrace.t -> unit
-
-    val add_rule : t -> Pre_rule.t -> unit
-    val modify_alias : t -> string -> f:(Alias.t -> unit) -> unit
-  end = struct
-
-    type t =
-      { mutable rules   : Pre_rule.t list
-      ; mutable aliases : Alias.t String.Map.t
-      ; mutable stage   : collection_stage
-      ; mutable thunks : Thunk_with_backtrace.t list
-      ; info : Sexp.t
-      }
-    type frozen = t
-
-    let create_pending ~info () =
-      { rules   = []
-      ; aliases = String.Map.empty
-      ; stage   = Pending
-      ; thunks = []
-      ; info
-      }
-
-    let rules t = t.rules
-    let aliases t = String.Map.map t.aliases ~f:Alias.assert_frozen
-
-    let assert_not_frozen t why = match t.stage with
-      | Frozen ->
-        Exn.code_error (sprintf "%s called on a frozen Rules_collector" why) []
-      | Pending ->
-        ()
-      | Loading ->
-        ()
-
-    let forbid_freeze_until_thunk_is_forced t (thunk : Thunk_with_backtrace.t) =
-      assert_not_frozen t "forbid_freeze";
-      assert (Option.is_none !(thunk.ran));
-      t.thunks <- thunk :: t.thunks
-
-    let add_rule t rule =
-      assert_not_frozen t "add_rule";
-      t.rules <- rule :: t.rules
-
-    let modify_alias t name ~f =
-      assert_not_frozen t "modify_alias";
-      let def =
-        match String.Map.find t.aliases name with
-        | None ->
-          let alias = Alias.create () in
-          t.aliases <- String.Map.add t.aliases name alias;
-          alias
-        | Some x -> x
-      in
-      f def
-
-    let start_loading t = match t.stage with
-      | Frozen ->
-        Exn.code_error "start_loading called on a frozen Rules_collector" []
-      | Loading -> Error `Already_loading
-      | Pending ->
-        t.stage <- Loading;
-        (Ok ())
-
-    let freeze t =
-      match t.stage with
-      | Frozen ->
-        Exn.code_error "Rules_collector.freeze called twice" []
-      | Loading ->
-        List.iter t.thunks ~f:(fun (b : Thunk_with_backtrace.t) ->
-          if Option.is_none !(b.ran) then
-            Exn.code_error
-              "tried to freeze with some pending modifications"
-              ["pending-modifications",
-               (* CR-someday aalekseyev: include information on where the thunk was
-                  constructed. This information is a bit too expensive to capture
-                  unconditionally though. *)
-               Atom ""
-              ; "info", t.info
-              ]
-        );
-        t.stage <- Frozen;
-        (String.Map.iter t.aliases ~f:(fun x -> ignore (Alias.freeze x));
-         t)
-      | Pending ->
-        Exn.code_error "Rules_collector.freeze called while still Pending" []
-
-  end
-
   type t =
-    | Collecting_rules of Rules_collector.t
-    | Loaded  of Path.Set.t (* set of targets in the directory *)
+    | Collecting_rules
+    | Loaded  of Loaded.t
     | Forward of Path.t (* Load this directory first       *)
     | Failed_to_load
 end
@@ -563,6 +350,7 @@ type t =
   ; contexts    : Context.t String.Map.t
   ; file_tree   : File_tree.t
   ; dirs : Dir_status.t Path.Table.t
+  ; init_rules : Rules.t Fdecl.t
   ; gen_rules :
       (Context_or_install.t ->
        (dir:Path.t -> string list -> extra_sub_directories_to_keep) option) Fdecl.t
@@ -570,7 +358,6 @@ type t =
   ; (* Set of directories under _build that have at least one rule and
        all their ancestors. *)
     mutable build_dirs_to_keep : Path.Set.t
-  ; mutable prefix : (unit, unit) Build.t option
   ; hook : hook -> unit
   ; (* Package files are part of *)
     packages : (Path.t -> Package.Name.Set.t) Fdecl.t
@@ -601,44 +388,63 @@ let string_of_source_paths set =
   |> Path.Set.of_list
   |> string_of_paths
 
-let set_rule_generators generators =
+let set_rule_generators ~init ~gen_rules =
   let t = t () in
-  Fdecl.set t.gen_rules generators
+  let ((), init_rules) = Rules.collect (fun () -> init ()) in
+  Fdecl.set t.init_rules init_rules;
+  Fdecl.set t.gen_rules gen_rules
 
 let get_dir_status t ~dir =
-  Path.Table.find_or_add t.dirs dir ~f:(fun _ ->
-    match Path.as_in_source_tree dir with
-    | Some dir ->
-      Dir_status.Loaded (
-        Path.Source.Set.to_list (File_tree.files_of t.file_tree dir)
-        |> List.map ~f:Path.source
-        |> Path.Set.of_list)
-    | None ->
-      if Path.equal dir Path.build_dir then
-        (* Not allowed to look here *)
-        Dir_status.Loaded Path.Set.empty
-      else if not (Path.is_managed dir) then
-        Dir_status.Loaded
-          (match Path.readdir_unsorted dir with
-           | Error Unix.ENOENT -> Path.Set.empty
-           | Error m ->
-             Errors.warn Loc.none
-               "Unable to read %s@.Reason: %s@."
-               (Path.to_string_maybe_quoted dir)
-               (Unix.error_message m);
-             Path.Set.empty
-           | Ok files ->
-             Path.Set.of_list (List.map files ~f:(Path.relative dir)))
-      else begin
-        let (ctx, sub_dir) = Path.extract_build_context_exn dir in
-        if ctx = ".aliases" then
-          Forward (Path.(append_source build_dir) sub_dir)
-        else if ctx <> "install" && not (String.Map.mem t.contexts ctx) then
-          Dir_status.Loaded Path.Set.empty
-        else
-          Collecting_rules
-            (Dir_status.Rules_collector.create_pending ~info:(Path.to_sexp dir) ())
-      end)
+  match Path.Table.find t.dirs dir with
+  | Some x -> Some x
+  | None ->
+    let res =
+      match Path.as_in_source_tree dir with
+      | Some dir ->
+        Some (Dir_status.Loaded {
+          rules_produced = Rules.empty;
+          targets =
+            (
+              Path.Source.Set.to_list (File_tree.files_of t.file_tree dir)
+              |> List.map ~f:Path.source
+              |> Path.Set.of_list);
+        })
+      | None ->
+        if Path.equal dir Path.build_dir then
+          (* Not allowed to look here *)
+          Some (Loaded
+            { rules_produced = Rules.empty;
+              targets = Path.Set.empty
+            })
+        else if not (Path.is_managed dir) then
+          Some (Loaded
+            { rules_produced = Rules.empty;
+              targets =
+                match Path.readdir_unsorted dir with
+                | Error Unix.ENOENT -> Path.Set.empty
+                | Error m ->
+                  Errors.warn Loc.none
+                    "Unable to read %s@.Reason: %s@."
+                    (Path.to_string_maybe_quoted dir)
+                    (Unix.error_message m);
+                  Path.Set.empty
+                | Ok files ->
+                  Path.Set.of_list (List.map files ~f:(Path.relative dir))
+            })
+        else begin
+          let (ctx, sub_dir) = Path.extract_build_context_exn dir in
+          if ctx = ".aliases" then
+            Some (Forward (Path.(append_source build_dir) sub_dir))
+          else if ctx <> "install" && not (String.Map.mem t.contexts ctx) then
+            Some (Loaded {
+              rules_produced = Rules.empty;
+              targets = Path.Set.empty; })
+          else
+            None
+        end
+    in
+    Option.iter res ~f:(Path.Table.add t.dirs dir);
+    res
 
 let add_spec t fn rule =
   match Path.Table.find t.files fn with
@@ -764,23 +570,6 @@ let no_rule_found =
           ctx
           (hint ctx (String.Map.keys t.contexts))
 
-type rule_collection_implicit_output = Thunk_with_backtrace.t Appendable_list.t
-let rule_collection_implicit_output =
-  Memo.Implicit_output.add (module struct
-    type t = rule_collection_implicit_output
-
-    let union x y = Appendable_list.(@) x y
-    let name = "rule collection"
-  end)
-
-let handle_add_rule_effects f =
-  let res, effects =
-    Memo.Implicit_output.collect_sync rule_collection_implicit_output f
-  in
-  Option.iter effects ~f:(fun l ->
-    List.iter (Appendable_list.to_list l) ~f:(Thunk_with_backtrace.run));
-  res
-
 let fix_up_legacy_fallback_rules t ~file_tree_dir ~dir rules =
   (* Fix up non promote/fallback rules that have targets in the
      source tree if we are in a dune < 1.10 project *)
@@ -846,6 +635,31 @@ let fix_up_legacy_fallback_rules t ~file_tree_dir ~dir rules =
           end)
     end
 
+(* +-----------------------------------------------------------------+
+   | Adding rules to the system                                      |
+   +-----------------------------------------------------------------+ *)
+
+let rec add_build_dir_to_keep t ~dir =
+  if not (Path.Set.mem t.build_dirs_to_keep dir) then begin
+    t.build_dirs_to_keep <- Path.Set.add t.build_dirs_to_keep dir;
+    Option.iter (Path.parent dir) ~f:(fun dir ->
+      if not (Path.is_root dir) then
+        add_build_dir_to_keep t ~dir)
+  end
+
+let handle_add_rule_effects f =
+  let t = t () in
+  let res, rules =
+    Rules.collect f
+  in
+  (* CR-someday aalekseyev:
+     find a way to do what [add_build_dir_to_keep] without relying
+     on this side-effect so that memoization can be used here. *)
+  Path.Build.Map.iteri (Rules.to_map rules)
+    ~f:(fun dir _rules ->
+      add_build_dir_to_keep t ~dir:(Path.build dir));
+  res, rules
+
 let rec compile_rule t pre_rule =
   let { Pre_rule.
         context
@@ -898,36 +712,39 @@ and setup_copy_rules t ~ctx_dir ~non_target_source_files =
                       ~info:Source_file_copy))
 
 and load_dir   t ~dir = ignore (load_dir_and_get_targets t ~dir : Path.Set.t)
+and load_dir_and_produce_its_rules t ~dir =
+  let loaded = load_dir_and_get_rules_and_targets t ~dir in
+  Rules.produce loaded.rules_produced
+
 and targets_of t ~dir =         load_dir_and_get_targets t ~dir
 
 and load_dir_and_get_targets t ~dir =
+  (load_dir_and_get_rules_and_targets t ~dir).Loaded.targets
+
+and load_dir_and_get_rules_and_targets t ~dir : Loaded.t =
   match get_dir_status t ~dir with
-  | Failed_to_load -> raise Already_reported
+  | Some Failed_to_load -> raise Already_reported
 
-  | Loaded targets -> targets
+  | Some (Loaded res) -> res
 
-  | Forward dir' ->
+  | Some (Forward dir') ->
     load_dir t ~dir:dir';
     begin match get_dir_status t ~dir with
-    | Loaded targets -> targets
+    | Some (Loaded res) -> res
     | _ -> assert false
     end
 
-  | Collecting_rules collector ->
-    let () =
-      match Dir_status.Rules_collector.start_loading collector with
-      | Error `Already_loading ->
-        die "recursive dependency between directories:\n    %s"
-          (String.concat ~sep:"\n--> "
-             (List.map t.load_dir_stack ~f:Utils.describe_target))
-      | Ok () ->
-        ()
-    in
+  | Some Collecting_rules ->
+    die "recursive dependency between directories:\n    %s"
+      (String.concat ~sep:"\n--> "
+         (List.map t.load_dir_stack ~f:Utils.describe_target))
 
+  | None ->
+    Path.Table.add t.dirs dir Collecting_rules;
     t.load_dir_stack <- dir :: t.load_dir_stack;
 
     try
-      load_dir_step2_exn t ~dir ~collector
+      load_dir_step2_exn t ~dir
     with exn ->
       (match Path.Table.find t.dirs dir with
        | Some (Loaded _) -> ()
@@ -940,7 +757,7 @@ and load_dir_and_get_targets t ~dir =
       Path.Table.replace t.dirs ~key:dir ~data:Failed_to_load;
       reraise exn
 
-and load_dir_step2_exn t ~dir ~collector =
+and load_dir_step2_exn t ~dir =
   let context_name, sub_dir = match Utils.analyse_target dir with
     | Install (ctx, path) ->
       Context_or_install.Install ctx, path
@@ -952,7 +769,7 @@ and load_dir_step2_exn t ~dir ~collector =
   in
 
   (* Load all the rules *)
-  let extra_subdirs_to_keep =
+  let extra_subdirs_to_keep, rules_produced =
     let gen_rules =
       match (Fdecl.get t.gen_rules) context_name with
       | None ->
@@ -961,10 +778,15 @@ and load_dir_step2_exn t ~dir ~collector =
       | Some rules ->
         rules
     in
-    handle_add_rule_effects (fun () -> gen_rules ~dir (Path.Source.explode sub_dir))
+    handle_add_rule_effects
+      (fun () -> gen_rules ~dir (Path.Source.explode sub_dir))
   in
-  let collector = Dir_status.Rules_collector.freeze collector in
-  let rules = Dir_status.Rules_collector.rules collector in
+  let rules =
+    Rules.Dir_rules.union
+      (Rules.find rules_produced dir)
+      (Rules.find (Fdecl.get t.init_rules) dir)
+  in
+  let collected = Rules.Dir_rules.consume rules in
 
   (* Compute alias rules *)
   let alias_dir, alias_rules =
@@ -974,7 +796,7 @@ and load_dir_step2_exn t ~dir ~collector =
       let alias_rules, alias_stamp_files =
         let open Build.O in
         let aliases =
-          Dir_status.Rules_collector.aliases collector
+          collected.aliases
         in
         let aliases =
           if String.Map.mem aliases "default" then
@@ -992,16 +814,21 @@ and load_dir_step2_exn t ~dir ~collector =
                       (Alias0.dep_rec_internal ~name:"install" ~dir ~ctx_dir
                        >>^ fun (_ : bool) ->
                        Path.Set.empty)
-                  ; actions = []
+                  ; actions = Appendable_list.empty
                   }
         in
         String.Map.foldi aliases ~init:([], Path.Set.empty)
-          ~f:(fun name { Dir_status.Alias. deps; dyn_deps; actions } (rules, alias_stamp_files) ->
+          ~f:(fun name
+               { Rules.Dir_rules.Alias_spec. deps; dyn_deps; actions }
+               (rules, alias_stamp_files) ->
             let base_path = Path.relative alias_dir name in
             let rules, action_stamp_files =
-              List.fold_left actions ~init:(rules, Path.Set.empty)
+              List.fold_left
+                (Appendable_list.to_list actions)
+                ~init:(rules, Path.Set.empty)
                 ~f:(fun (rules, action_stamp_files)
-                     { Dir_status. stamp; action; locks ; context ; loc ; env } ->
+                     { Rules.Dir_rules.
+                       stamp; action; locks ; context ; loc ; env } ->
                      let path =
                        Path.extend_basename base_path
                          ~suffix:("-" ^ Digest.to_string stamp)
@@ -1034,7 +861,10 @@ and load_dir_step2_exn t ~dir ~collector =
              :: rules,
              targets))
       in
-      Path.Table.replace t.dirs ~key:alias_dir ~data:(Loaded alias_stamp_files);
+      Path.Table.replace t.dirs ~key:alias_dir
+        ~data:(Loaded {
+          rules_produced = Rules.empty;
+          targets = alias_stamp_files });
       Some alias_dir, alias_rules
     | Install _ ->
       None, []
@@ -1049,7 +879,7 @@ and load_dir_step2_exn t ~dir ~collector =
   in
 
   let rules =
-    fix_up_legacy_fallback_rules t ~file_tree_dir ~dir rules
+    fix_up_legacy_fallback_rules t ~file_tree_dir ~dir collected.rules
   in
 
   (* Compute the set of targets and the set of source files that must
@@ -1170,7 +1000,9 @@ The following targets are not:
   in
 
   (* Set the directory status to loaded *)
-  Path.Table.replace t.dirs ~key:dir ~data:(Loaded targets);
+  Path.Table.replace t.dirs ~key:dir ~data:(Loaded {
+    rules_produced;
+    targets });
   (match t.load_dir_stack with
    | [] -> assert false
    | x :: l ->
@@ -1187,7 +1019,7 @@ The following targets are not:
   Option.iter alias_dir ~f:(fun alias_dir ->
     remove_old_artifacts t ~dir:alias_dir ~subdirs_to_keep);
 
-  targets
+  { rules_produced; targets }
 
 let get_rule_other t fn =
   let dir = Path.parent_exn fn in
@@ -1577,8 +1409,8 @@ let init ~contexts ~file_tree ~hook =
     ; load_dir_stack = []
     ; file_tree
     ; gen_rules = Fdecl.create ()
+    ; init_rules = Fdecl.create ()
     ; build_dirs_to_keep = Path.Set.empty
-    ; prefix = None
     ; hook
     }
 
@@ -1645,70 +1477,17 @@ let package_deps pkg files =
      have been filled *)
   Path.Set.fold files ~init:Package.Name.Set.empty ~f:loop_deps
 
-(* +-----------------------------------------------------------------+
-   | Adding rules to the system                                      |
-   +-----------------------------------------------------------------+ *)
-
-let rec add_build_dir_to_keep t ~dir =
-  if not (Path.Set.mem t.build_dirs_to_keep dir) then begin
-    t.build_dirs_to_keep <- Path.Set.add t.build_dirs_to_keep dir;
-    Option.iter (Path.parent dir) ~f:(fun dir ->
-      if not (Path.is_root dir) then
-        add_build_dir_to_keep t ~dir)
-  end
-
-let get_collector t ~dir =
-  match get_dir_status t ~dir with
-  | Collecting_rules collector ->
-    add_build_dir_to_keep t ~dir;
-    collector
-  | Failed_to_load -> raise Already_reported
-  | Loaded _ | Forward _ ->
-    Exn.code_error
-      (if Path.is_in_source_tree dir then
-         "Build_system.get_collector called on source directory"
-       else if Path.equal dir Path.build_dir then
-         "Build_system.get_collector called on build_dir"
-       else if not (Path.is_managed dir) then
-         "Build_system.get_collector called on external directory"
-       else
-         "Build_system.get_collector called on closed directory")
-      [ "dir", Path.to_sexp dir
-      ; "load_dir_stack", Sexp.Encoder.list Path.to_sexp t.load_dir_stack
-      ]
-
-let produce_rule_collection collector f =
-  let thunk = Thunk_with_backtrace.create f in
-  Dir_status.Rules_collector.forbid_freeze_until_thunk_is_forced collector thunk;
-  Memo.Implicit_output.produce rule_collection_implicit_output (
-    Appendable_list.singleton thunk)
-
-let add_rule (rule : Pre_rule.t) =
-  let t = t () in
-  let rule =
-    match t.prefix with
-    | None -> rule
-    | Some prefix -> { rule with build = Build.O.(>>>) prefix rule.build } in
-  let collector = get_collector t ~dir:rule.dir in
-  produce_rule_collection collector (fun () -> Dir_status.Rules_collector.add_rule collector rule)
-
-let prefix_rules' t prefix ~f =
-  let old_prefix = t.prefix in
-  t.prefix <- prefix;
-  protectx () ~f ~finally:(fun () -> t.prefix <- old_prefix)
-
 let prefix_rules prefix ~f =
-  let t = t () in
   let targets = Build.targets prefix in
   if not (Path.Set.is_empty targets) then
     Exn.code_error "Build_system.prefix_rules' prefix contains targets"
       ["targets", Path.Set.to_sexp targets];
-  let prefix =
-    match t.prefix with
-    | None -> prefix
-    | Some p -> Build.O.(>>>) p prefix
-  in
-  prefix_rules' t (Some prefix) ~f
+  let res, rules = Rules.collect f in
+  Rules.produce (Rules.map_rules rules ~f:(fun rule ->
+    { rule with build = Build.O.(>>>) prefix rule.build }));
+  res
+
+module Alias = Alias0
 
 let () =
   let f g =
@@ -1717,36 +1496,6 @@ let () =
     Path.Set.filter (targets_of t ~dir) ~f:(File_selector.test g)
   in
   Memo.set_impl Pred.eval_def f
-
-module Alias = struct
-  include Alias0
-
-  let modify_alias build_system t ~f =
-    let collector =
-      let dir = Alias.dir t in
-      get_collector build_system ~dir in
-    produce_rule_collection collector (fun () ->
-      let name = Alias.name t in
-      Dir_status.Rules_collector.modify_alias ~f collector name)
-
-  let add_deps t ?dyn_deps deps =
-    let build_system = get_build_system () in
-    modify_alias build_system t ~f:(fun def ->
-      Dir_status.Alias.add_deps def deps;
-      Option.iter dyn_deps ~f:(Dir_status.Alias.add_dyn_deps def))
-
-  let add_action t ~context ~env ~loc ?(locks=[]) ~stamp action =
-    let build_system = get_build_system () in
-    modify_alias build_system t ~f:(fun def ->
-      Dir_status.Alias.add_action def
-        { stamp = Digest.string (Marshal.to_string stamp [])
-        ; action
-        ; locks
-        ; context
-        ; loc
-        ; env
-        })
-end
 
 let targets_of ~dir = targets_of (t ()) ~dir
 let load_dir ~dir = load_dir (t ()) ~dir
@@ -1890,3 +1639,5 @@ end = struct
 end
 
 include All_lib_deps
+
+let load_dir ~dir = load_dir_and_produce_its_rules (t ()) ~dir

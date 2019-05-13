@@ -126,15 +126,12 @@ let pp_flags sctx ~expander ~dir_kind { preprocess; libname; _ } =
   match Dune_file.Preprocess.remove_future_syntax preprocess
           (Super_context.context sctx).version
   with
-  | Pps { loc = _; pps; flags; staged = _ } -> begin
-    match Preprocessing.get_ppx_driver sctx ~scope ~dir_kind pps with
+  | Pps { loc; pps; flags; staged = _ } -> begin
+    match Preprocessing.get_ppx_driver sctx ~loc ~expander ~lib_name:libname ~flags ~scope ~dir_kind pps with
     | Error _ -> None
-    | Ok exe ->
-      let flags = List.map ~f:(Expander.expand_str expander) flags in
+    | Ok (exe, flags) ->
       (Path.to_absolute_filename exe
-       :: "--as-ppx"
-       :: Preprocessing.cookie_library_name libname
-       @ flags)
+       :: "--as-ppx" :: flags)
       |> List.map ~f:quote_for_merlin
       |> String.concat ~sep:" "
       |> Filename.quote
@@ -187,7 +184,7 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander ~dir_kind
        >>>
        Build.create_file (Path.relative dir ".merlin-exists"));
     Path.Set.singleton merlin_file
-    |> Build_system.Alias.add_deps (Alias.check ~dir);
+    |> Rules.Produce.Alias.add_deps (Alias.check ~dir);
     SC.add_rule sctx ~dir
       ~mode:(Promote
                { lifetime = Until_clean

@@ -66,6 +66,7 @@ module type S = sig
 
   val of_list_multi  : (key * 'a) list -> 'a list t
   val of_list_reduce : (key * 'a) list -> f:('a -> 'a -> 'a) -> 'a t
+  val of_list_reducei : (key * 'a) list -> f:(key -> 'a -> 'a -> 'a) -> 'a t
 
   (** Return a map of [(k, v)] bindings such that:
 
@@ -99,6 +100,10 @@ module type S = sig
 
   val filter_map  : 'a t -> f:(       'a -> 'b option) -> 'b t
   val filter_mapi : 'a t -> f:(key -> 'a -> 'b option) -> 'b t
+
+  (** [is_subset t ~of_ ~f] is [true] iff all keys in [t] are in [of_]
+      and [f] is [true] for all keys that are in both. *)
+  val is_subset : 'a t -> of_:'b t -> f:('a -> of_:'b -> bool) -> bool
 
   module Multi : sig
     type nonrec 'a t = 'a list t

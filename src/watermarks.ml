@@ -169,20 +169,23 @@ let read_project_name () =
 let get_name ~files ?name () =
   let package_names =
     List.filter_map files ~f:(fun fn ->
-      if Filename.dirname fn = "." then
+      match Path.parent fn with
+      | Some p when Path.is_root p -> begin
+        let fn = Path.basename fn in
         match Filename.split_extension fn with
         | s, ".opam" -> Some s
         | _ -> None
-      else
-        None)
+      end
+      | _ -> None)
   in
+  let dune_project_file = Path.in_source Dune_project.filename in
   if package_names = [] then
     die "@{<error>Error@}: no <package>.opam files found.";
   let (loc, name) =
     match Wp.t with
     | Dune -> begin
         assert (Option.is_none name);
-        if not (List.mem ~set:files Dune_project.filename) then
+        if not (List.mem ~set:files dune_project_file) then
           die "@{<error>Error@}: There is no dune-project file in the current \
                directory, please add one with a (name <name>) field in it.\n\
                Hint: dune subst must be executed from the root of the project.";
@@ -197,7 +200,7 @@ let get_name ~files ?name () =
       | Some name -> (Loc.none, name)
       | None ->
         match
-          if List.mem ~set:files Dune_project.filename then
+          if List.mem ~set:files dune_project_file then
             read_project_name ()
           else
             None
@@ -234,39 +237,27 @@ let get_name ~files ?name () =
   end;
   name
 
-let subst_git ?name () =
-  let rev = "HEAD" in
-  let git =
-    match Bin.which ~path:(Env.path Env.initial) "git" with
-    | Some x -> x
-    | None -> Utils.program_not_found "git" ~loc:None
-  in
-  let env = Env.initial in
+let subst ?name vcs =
   let+ ((version, commit), files) =
     Fiber.fork_and_join
       (fun () ->
-        Fiber.fork_and_join
-          (fun () ->
-              Process.run_capture Strict git ["describe"; "--always"; "--dirty"]
-                ~env)
-          (fun () ->
-              Process.run_capture Strict git ["rev-parse"; rev]
-                ~env))
-      (fun () ->
-        Process.run_capture_lines Strict git
-          ["ls-tree"; "-r"; "--name-only"; rev] ~env)
+         Fiber.fork_and_join
+           (fun () -> Vcs.describe vcs)
+           (fun () -> Vcs.commit_id vcs))
+      (fun () -> Vcs.files vcs)
   in
-  let version = String.trim version in
-  let commit  = String.trim commit  in
   let name = get_name ~files ?name () in
   let watermarks = make_watermark_map ~name ~version ~commit in
-  List.iter files ~f:(fun fn ->
-    let path = Path.in_source fn in
+  List.iter files ~f:(fun path ->
     if is_a_source_file path then
       subst_file path ~map:watermarks)
 
 let subst ?name () =
-  if Sys.file_exists ".git" then
-    subst_git ?name ()
-  else
-    Fiber.return ()
+  match
+    Sys.readdir "."
+    |> Array.to_list
+    |> String.Set.of_list
+    |> Vcs.Kind.of_dir_contents
+  with
+  | None -> Fiber.return ()
+  | Some kind -> subst ?name { kind; root = Path.root }

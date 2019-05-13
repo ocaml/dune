@@ -145,24 +145,14 @@ let just_the_root =
 let subtree p = of_subtree_gen universal p
 let singleton p = of_subtree_gen just_the_root p
 
-let is_subset =
-  let not_subset () = raise_notrace Exit in
-  let rec loop x y =
-    match x, y with
-    | _, Universal | Empty, _ -> Empty
-    | Universal, _ | _, Empty -> not_subset ()
-    | Nontrivial x, Nontrivial y ->
-      if (x.here    && not y.here   ) ||
-         (x.default && not y.default) then
-        not_subset ();
-      ignore
-        (merge_exceptions x y ~default:false ~f:loop : t String.Map.t);
-      Empty
-  in
-  fun x ~of_ ->
-    match loop x of_ with
-    | (_ : t) -> true
-    | exception Exit -> false
+let rec is_subset t ~of_ =
+  match t, of_ with
+  | _, Universal | Empty, _ -> true
+  | Universal, _ | _, Empty -> false
+  | Nontrivial x, Nontrivial y ->
+    (not x.here    || y.here   ) &&
+    (not x.default || y.default) &&
+    String.Map.is_subset x.exceptions ~of_:y.exceptions ~f:is_subset
 
 let rec to_sexp t = match t with
   | Empty -> Sexp.Atom "Empty"

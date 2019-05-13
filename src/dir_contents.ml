@@ -379,7 +379,7 @@ let build_coq_modules_map (d : _ Dir_with_dune.t) ~dir ~modules =
 type result0_here = {
   t : t;
   (* [rules] includes rules for subdirectories too *)
-  rules : Build_system.rule_collection_implicit_output option;
+  rules : Rules.t option;
   subdirs : t Path.Map.t;
 }
 
@@ -416,9 +416,7 @@ let get0_impl (sctx, dir) : result0 =
     (match x with
      | Some (ft_dir, Some d) ->
        let files, rules =
-         Memo.Implicit_output.collect_sync
-           Build_system.rule_collection_implicit_output
-           (fun () -> load_text_files sctx ft_dir d)
+         Rules.collect_opt (fun () -> load_text_files sctx ft_dir d)
        in
        Here {
          t = { kind = Standalone
@@ -477,11 +475,10 @@ let get0_impl (sctx, dir) : result0 =
           walk ft_dir ~dir ~local acc)
     in
     let (files, subdirs), rules =
-      Memo.Implicit_output.collect_sync
-        Build_system.rule_collection_implicit_output (fun () ->
-          let files = load_text_files sctx ft_dir d in
-          let subdirs = walk_children ft_dir ~dir ~local:[] [] in
-          files, subdirs)
+      Rules.collect_opt (fun () ->
+        let files = load_text_files sctx ft_dir d in
+        let subdirs = walk_children ft_dir ~dir ~local:[] [] in
+        files, subdirs)
     in
     let modules = Memo.lazy_ (fun () ->
       check_no_qualified Loc.none qualif_mode;
@@ -618,7 +615,5 @@ let get_without_rules sctx ~dir = get_without_rules (sctx, dir)
 
 let get sctx ~dir =
   let rules, res = get (sctx, dir) in
-  (Memo.Implicit_output.produce_opt
-     Build_system.rule_collection_implicit_output
-     rules);
+  Rules.produce_opt rules;
   res

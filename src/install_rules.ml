@@ -152,8 +152,8 @@ let init_meta sctx ~dir =
 
 let lib_ppxs sctx ~(lib : Dune_file.Library.t) ~scope ~dir_kind =
   match lib.kind with
-  | Normal | Ppx_deriver -> []
-  | Ppx_rewriter ->
+  | Normal | Ppx_deriver _ -> []
+  | Ppx_rewriter _ ->
     let name = Dune_file.Library.best_name lib in
     match (dir_kind : Dune_lang.File_syntax.t) with
     | Dune ->
@@ -259,8 +259,9 @@ let lib_install_files sctx ~dir_contents ~dir ~sub_dir:lib_subdir
         (Some loc, Install.Entry.make Stublibs a))
     ]
 
-let local_install_rules sctx (entries : (Loc.t option * Install.Entry.t) list)
-      ~install_paths ~package =
+let symlink_installed_artifacts_to_build_install
+      sctx (entries : (Loc.t option * Install.Entry.t) list)
+      ~install_paths =
   let ctx = Super_context.context sctx in
   let install_dir = Config.local_install_dir ~context:ctx.name in
   List.map entries ~f:(fun (loc, entry) ->
@@ -273,7 +274,6 @@ let local_install_rules sctx (entries : (Loc.t option * Install.Entry.t) list)
       | Some l -> l
       | None -> Loc.in_file entry.src
     in
-    Build_system.set_package entry.src package;
     Super_context.add_rule sctx ~loc ~dir:ctx.build_dir
       (Build.symlink ~src:entry.src ~dst);
     Install.Entry.set_src entry dst)
@@ -284,101 +284,40 @@ let promote_install_file (ctx : Context.t) =
   | Default -> true
   | Opam _  -> false
 
-let install_file sctx (package : Local_package.t) entries =
-  let ctx = Super_context.context sctx in
-  let opam_file = Local_package.opam_file package in
-  let meta = Local_package.meta_file package in
-  let dune_package = Local_package.dune_package_file package in
-  let package_name = Local_package.name package in
-  let pkg_build_dir = Path.build (Local_package.build_dir package) in
-  let install_paths = Local_package.install_paths package in
-  let entries =
-    let docs =
-      Local_package.odig_files package
-      |> List.map ~f:(fun doc -> (None, Install.Entry.make Doc (Path.build doc)))
-    in
-    let files =
-      (None, Install.Entry.make Lib (Path.build meta) ~dst:"META")
-      :: (None, Install.Entry.make Lib (Path.build dune_package)
-                  ~dst:"dune-package")
-      :: docs
-    in
-    let files =
-      let package = Local_package.package package in
-      match package.kind with
-      | Dune false -> files
-      | Dune true
-      | Opam ->
-        (None, Install.Entry.make Lib (Path.build opam_file) ~dst:"opam")
-        :: files
-    in
-    local_install_rules sctx ~package:package_name ~install_paths files
-    |> List.rev_append entries
-  in
-  let fn =
-    Path.relative pkg_build_dir
-      (Utils.install_file ~package:package_name
-         ~findlib_toolchain:ctx.findlib_toolchain)
-  in
-  let files = Install.files entries in
-  Build_system.Alias.add_deps
-    (Build_system.Alias.package_install ~context:ctx ~pkg:package_name)
-    files
-    ~dyn_deps:
-      (Build_system.package_deps package_name files
-       >>^ fun packages ->
-       Package.Name.Set.to_list packages
-       |> List.map ~f:(fun pkg ->
-         Build_system.Alias.package_install ~context:ctx ~pkg
-         |> Alias.stamp_file)
-       |> Path.Set.of_list);
-  Super_context.add_rule sctx ~dir:pkg_build_dir
-    ~mode:(if promote_install_file ctx then
-             Promote { lifetime = Until_clean; into = None; only = None }
-           else
-             (* We must ignore the source file since it might be
-                copied to the source tree by another context. *)
-             Ignore_source_files)
-    (Build.path_set files
-     >>^ (fun () ->
-       let entries =
-         match ctx.findlib_toolchain with
-         | None -> entries
-         | Some toolchain ->
-           let prefix = Path.of_string (toolchain ^ "-sysroot") in
-           List.map entries
-             ~f:(Install.Entry.add_install_prefix
-                   ~paths:install_paths ~prefix)
-       in
-       Install.gen_install_file entries)
-     >>>
-     Build.write_file_dyn fn)
+module Sctx_and_package = struct
+  type t = Super_context.t * Local_package.t
 
-let get_install_entries package =
-  Local_package.installs package
-  |> List.concat_map ~f:(fun (d : _ Dir_with_dune.t) ->
-    let { Dune_file.Install_conf. section; files; package = _ } =
-      d.data
-    in
-    List.map files ~f:(fun fb ->
-      let loc = File_binding.Expanded.src_loc fb in
-      let src = File_binding.Expanded.src fb in
-      let dst = File_binding.Expanded.dst fb in
-      ( Some loc
-      , Install.Entry.make section src ?dst
-      )))
+  let hash (x, y) = Hashtbl.hash (Super_context.hash x, Local_package.hash y)
+  let equal (x1, y1) (x2, y2) = (x1 == x2 && y1 == y2)
+  let to_sexp _ = Sexp.Atom "<opaque>"
+end
 
-let init_install sctx package =
+let install_entries sctx package =
   let installs =
-    get_install_entries package
+    Local_package.installs package
+    |> List.concat_map ~f:(fun (d : _ Dir_with_dune.t) ->
+      let { Dune_file.Install_conf. section; files; package = _ } =
+        d.data
+      in
+      List.map files ~f:(fun fb ->
+        let loc = File_binding.Expanded.src_loc fb in
+        let src = File_binding.Expanded.src fb in
+        let dst = File_binding.Expanded.dst fb in
+        ( Some loc
+        , Install.Entry.make section src ?dst
+        )))
   in
   let docs =
-    Local_package.mlds package
-    |> List.map ~f:(fun mld ->
-      (None,
-       Install.Entry.make
-         ~dst:(sprintf "odoc-pages/%s" (Path.basename mld))
-         Install.Section.Doc mld))
+    (Local_package.mlds package
+     |> List.map ~f:(fun mld ->
+       (None,
+        Install.Entry.make
+          ~dst:(sprintf "odoc-pages/%s" (Path.basename mld))
+          Install.Section.Doc mld)))
+    @
+    (Local_package.odig_files package
+     |> List.map
+          ~f:(fun doc -> (None, Install.Entry.make Doc (Path.build doc))))
   in
   let lib_install_files =
     Local_package.lib_stanzas package
@@ -406,17 +345,103 @@ let init_install sctx package =
                  } ->
               Coq_rules.install_rules ~sctx ~dir coqlib)
   in
-  let entries =
-    let install_paths = Local_package.install_paths package in
-    let package = Local_package.name package in
-    List.rev_append coqlib_install_files docs
-    |> List.rev_append lib_install_files
-    |> List.rev_append installs
-    |> local_install_rules sctx ~package ~install_paths
+  let metadata =
+    let meta = Local_package.meta_file package in
+    let dune_package = Local_package.dune_package_file package in
+    let opam_file = Local_package.opam_file package in
+    (None, Install.Entry.make Lib (Path.build meta) ~dst:"META")
+    :: (None, Install.Entry.make Lib (Path.build dune_package)
+                ~dst:"dune-package")
+    :: (let package = Local_package.package package in
+        match package.kind with
+        | Dune false -> []
+        | Dune true
+        | Opam ->
+          [(None, Install.Entry.make Lib (Path.build opam_file) ~dst:"opam")])
   in
-  install_file sctx package entries
+  coqlib_install_files
+  |> List.rev_append lib_install_files
+  |> List.rev_append installs
+  |> List.rev_append docs
+  |> List.rev_append metadata
 
-let init_install_files (ctx : Context.t) (package : Local_package.t) =
+let install_entries =
+  let memo =
+    Memo.create
+      ~input:(module Sctx_and_package)
+      ~output:(
+        Simple (module struct
+          type t = (Loc.t option * Install.Entry.t) list
+          let to_sexp _ = Sexp.Atom "<opaque>"
+        end))
+      "install-entries"
+      ~doc:"install entries"
+      ~visibility:Hidden
+      Sync
+      (Some (fun (sctx, package) -> install_entries sctx package))
+  in
+  fun sctx package -> Memo.exec memo (sctx, package)
+
+let package_source_files sctx package =
+  List.map
+    ~f:(fun (_loc, entry) -> entry.Install.Entry.src)
+    (install_entries sctx package)
+
+let install_rules sctx package =
+  let install_paths = Local_package.install_paths package in
+  let entries =
+    install_entries sctx package
+    |> symlink_installed_artifacts_to_build_install sctx ~install_paths
+  in
+  let ctx = Super_context.context sctx in
+  let package_name = Local_package.name package in
+  let pkg_build_dir = Path.build (Local_package.build_dir package) in
+  let install_file =
+    Path.relative
+      pkg_build_dir
+      (Utils.install_file ~package:package_name
+         ~findlib_toolchain:ctx.findlib_toolchain)
+  in
+  let files = Install.files entries in
+  let target_alias =
+    Build_system.Alias.package_install ~context:ctx ~pkg:package_name
+  in
+  let () =
+    Rules.Produce.Alias.add_deps
+      target_alias
+      files
+      ~dyn_deps:
+        (Build_system.package_deps package_name files
+         >>^ fun packages ->
+         Package.Name.Set.to_list packages
+         |> List.map ~f:(fun pkg ->
+           Build_system.Alias.package_install ~context:ctx ~pkg
+           |> Alias.stamp_file)
+         |> Path.Set.of_list)
+  in
+  Super_context.add_rule sctx ~dir:pkg_build_dir
+    ~mode:(if promote_install_file ctx then
+             Promote { lifetime = Until_clean ; into = None; only = None }
+           else
+             (* We must ignore the source file since it might be
+                copied to the source tree by another context. *)
+             Ignore_source_files)
+    (Build.path_set files
+     >>^ (fun () ->
+       let entries =
+         match ctx.findlib_toolchain with
+         | None -> entries
+         | Some toolchain ->
+           let prefix = Path.of_string (toolchain ^ "-sysroot") in
+           List.map entries
+             ~f:(Install.Entry.add_install_prefix
+                   ~paths:install_paths ~prefix)
+       in
+       Install.gen_install_file entries)
+     >>>
+     Build.write_file_dyn install_file)
+
+let install_alias (ctx : Context.t) (package : Local_package.t) =
   if not ctx.implicit then
     let install_fn =
       Utils.install_file ~package:(Local_package.name package)
@@ -425,12 +450,105 @@ let init_install_files (ctx : Context.t) (package : Local_package.t) =
     let path = Path.build (Local_package.build_dir package) in
     let install_alias = Alias.install ~dir:path in
     let install_file = Path.relative path install_fn in
-    Build_system.Alias.add_deps install_alias (Path.Set.singleton install_file)
+    Rules.Produce.Alias.add_deps install_alias (Path.Set.singleton install_file)
 
-let init sctx =
-  let packages = Local_package.of_sctx sctx in
-  let ctx = Super_context.context sctx in
-  Build_system.handle_add_rule_effects (fun () ->
-    Package.Name.Map.iter packages ~f:(fun pkg ->
-      init_install sctx pkg;
-      init_install_files ctx pkg))
+module Scheme' =struct
+
+  type t = Rules.Dir_rules.t Scheme.t
+
+  let to_sexp _ = Sexp.Atom "<opaque>"
+end
+
+let memo =
+  Memo.create
+    ~input:(module Sctx_and_package)
+    ~output:(Simple (module Scheme'))
+    "install-rules-and-pkg-entries"
+    ~doc:"install rules and package entries"
+    ~visibility:Hidden
+    Sync
+    (Some (fun (sctx, pkg) ->
+       let ctx = Super_context.context sctx in
+       let context_name = ctx.name in
+       let rules = Memo.lazy_ (fun () ->
+         Rules.collect_unit (fun () ->
+           install_rules sctx pkg;
+           install_alias ctx pkg
+         ))
+       in
+       (
+         Approximation (
+           (Dir_set.union_all
+              [
+                Dir_set.subtree
+                  (Config.local_install_dir ~context:context_name);
+                Dir_set.singleton (Local_package.build_dir pkg);
+                Dir_set.singleton (Path.as_in_build_dir_exn ctx.build_dir)
+              ])
+           ,
+           Thunk (fun () -> Finite (
+             Rules.to_map (Memo.Lazy.force rules)))
+         )
+       )))
+
+let scheme sctx pkg = Memo.exec memo (sctx, pkg)
+
+let scheme_per_ctx_memo =
+  Memo.create
+    ~input:(module Super_context)
+    ~output:
+      (Simple (module struct
+         type t = Rules.Dir_rules.t Scheme.Evaluated.t
+         let to_sexp _ = Sexp.Atom "<opaque>"
+       end ))
+    "install-rule-scheme"
+    ~doc:"install rules scheme"
+    ~visibility:Hidden
+    Sync
+    (Some (fun sctx ->
+       let packages = Local_package.of_sctx sctx in
+       let scheme =
+         Scheme.all (
+           List.map (Package.Name.Map.to_list packages)
+             ~f:(fun (_, pkg) -> (scheme sctx pkg)))
+       in
+       Scheme.evaluate ~union:Rules.Dir_rules.union scheme))
+
+let gen_rules sctx ~dir =
+  let rules =
+    Scheme.Evaluated.get_rules (Memo.exec scheme_per_ctx_memo sctx) ~dir
+    |> Option.value ~default:Rules.Dir_rules.empty
+  in
+  Rules.produce_dir ~dir rules
+
+let packages =
+  let f sctx =
+    Package.Name.Map.foldi (Local_package.of_sctx sctx)
+      ~init:[]
+      ~f:(fun name pkg acc ->
+        List.fold_left (package_source_files sctx pkg)
+          ~init:acc ~f:(fun acc path -> (path, name) :: acc))
+    |> Path.Map.of_list_fold
+         ~init:Package.Name.Set.empty
+         ~f:Package.Name.Set.add
+  in
+  let memo =
+    Memo.create "package-map"
+      ~doc:"Return a map assining package to files"
+      ~input:(module Super_context)
+      ~visibility:Hidden
+      ~output:(Allow_cutoff (module struct
+                 type t = Package.Name.Set.t Path.Map.t
+                 let to_sexp =
+                   Map.to_sexp
+                     Path.Map.to_list
+                     Path.to_sexp
+                     (Set.to_sexp Package.Name.Set.to_list Package.Name.to_sexp)
+                 let equal =
+                   Path.Map.equal
+                     ~equal:Package.Name.Set.equal
+               end))
+      Sync
+      (Some f)
+  in
+  fun sctx -> Memo.exec memo sctx

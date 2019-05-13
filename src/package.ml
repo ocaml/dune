@@ -23,6 +23,8 @@ module Name = struct
 
   let encode t = Dune_lang.Encoder.(string (to_string t))
 
+  let to_sexp t = Sexp.Encoder.string (to_string t)
+
   module Infix = Comparable.Operators(T)
 end
 

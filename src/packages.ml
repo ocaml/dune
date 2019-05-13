@@ -10,7 +10,7 @@ let mlds_by_package_def =
   end
   in
   Memo.With_implicit_output.create "mlds by package"
-    ~implicit_output:Build_system.rule_collection_implicit_output
+    ~implicit_output:Rules.implicit_output
     ~doc:"mlds by package"
     ~input:(module Super_context)
     ~output:(module Output)

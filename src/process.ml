@@ -204,6 +204,9 @@ module Fancy = struct
           | Alias (ctx, name) ->
             split_paths (("alias " ^ Path.Source.to_string name) :: targets_acc)
               (add_ctx ctx ctxs_acc) rest
+          | Install (ctx, name) ->
+            split_paths (("install " ^ Path.Source.to_string name) :: targets_acc)
+              (add_ctx ctx ctxs_acc) rest
       in
       let targets = Path.Set.to_list targets in
       let target_names, contexts = split_paths [] [] targets in

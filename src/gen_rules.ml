@@ -132,7 +132,7 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
           File_binding.Unexpanded.expand_src ~dir:ctx_dir
             fb ~f:(Expander.expand_str expander))
         |> Path.Set.of_list
-        |> Build_system.Alias.add_deps (Alias.all ~dir:ctx_dir);
+        |> Rules.Produce.Alias.add_deps (Alias.all ~dir:ctx_dir);
         For_stanza.empty_none
       | _ ->
         For_stanza.empty_none
@@ -206,7 +206,7 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
       File_selector.create ~dir:ctx_dir pred
       |> Build.paths_matching ~loc:Loc.none
     in
-    Build_system.Alias.add_deps
+    Rules.Produce.Alias.add_deps
       ~dyn_deps
       (Alias.all ~dir:ctx_dir) Path.Set.empty;
     cctxs
@@ -220,6 +220,7 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
   let gen_rules ~dir components : Build_system.extra_sub_directories_to_keep =
     Install_rules.init_meta sctx ~dir;
     Opam_create.add_rules sctx ~dir;
+    Install_rules.gen_rules sctx ~dir:(Path.as_in_build_dir_exn dir);
     (match components with
      | ".js"  :: rest -> Js_of_ocaml_rules.setup_separate_compilation_rules
                            sctx rest
@@ -275,10 +276,6 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
     | [(".js"|"_doc"|".ppx")] -> All
     | _  -> These String.Set.empty
 
-  let init () =
-    Install_rules.init sctx;
-    Build_system.handle_add_rule_effects (fun () ->
-      Odoc.init sctx)
 end
 
 module type Gen = sig
@@ -286,7 +283,6 @@ module type Gen = sig
     :  dir:Path.t
     -> string list
     -> Build_system.extra_sub_directories_to_keep
-  val init : unit -> unit
   val sctx : Super_context.t
 end
 
@@ -348,8 +344,27 @@ let gen ~contexts
   in
   let+ contexts = Fiber.parallel_map contexts ~f:make_sctx in
   let map = String.Map.of_list_exn contexts in
+  let sctxs = String.Map.map map ~f:(fun (module M : Gen) -> M.sctx) in
+  let generators = (String.Map.map map ~f:(fun (module M : Gen) -> M.gen_rules)) in
+  let () =
+    Build_system.set_packages (fun path ->
+      let open Option.O in
+      Option.value ~default:Package.Name.Set.empty (
+        let* ctx_name, _ = Path.extract_build_context path in
+        let* sctx = String.Map.find sctxs ctx_name in
+        Path.Map.find (Install_rules.packages sctx) path))
+  in
   Build_system.set_rule_generators
-    (String.Map.map map ~f:(fun (module M : Gen) -> M.gen_rules));
-  String.Map.iter map ~f:(fun (module M : Gen) -> M.init ());
-  String.Map.map map ~f:(fun (module M : Gen) -> M.sctx);
-
+    ~init:(fun () ->
+      String.Map.iter map ~f:(fun (module M : Gen) ->
+        Odoc.init M.sctx))
+    ~gen_rules:
+      (function
+        | Install ctx ->
+          Option.map (String.Map.find sctxs ctx) ~f:(fun sctx ->
+            (fun ~dir _ ->
+               Install_rules.gen_rules sctx ~dir:(Path.as_in_build_dir_exn dir);
+               Build_system.These String.Set.empty))
+        | Context ctx ->
+          String.Map.find generators ctx);
+  sctxs

@@ -15,7 +15,7 @@
   each module cannot appear in more than one "modules" field - it must belong
   to a single library or executable.
   This warning will become an error in the future.
-  Multiple rules generated for _build/default/lib$ext_obj:
+  Multiple rules generated for _build/default/lib.cmo:
   - <internal location>
   - <internal location>
   [1]

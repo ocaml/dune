@@ -1,8 +1,8 @@
-(** [Rules] represents a collection of rules across a known finite set of
-    directories. *)
+(** A collection of rules across a known finite set of directories *)
 
 open! Stdune
 
+(** Represent a set of rules producing files in a given directory *)
 module Dir_rules : sig
   type t
 
@@ -18,6 +18,7 @@ module Dir_rules : sig
     ; loc : Loc.t option
     }
 
+
   module Alias_spec : sig
     type t =
       { deps     : Path.Set.t
@@ -26,6 +27,7 @@ module Dir_rules : sig
       }
   end
 
+  (** A ready to process view of the rules of a directory *)
   type ready = {
     rules : Rule.t list;
     aliases : Alias_spec.t String.Map.t
@@ -37,6 +39,7 @@ module Dir_rules : sig
 
 end
 
+(** A value of type [t] holds a set of rules for multiple directories *)
 type t = private Dir_rules.t Path.Build.Map.t
 
 val to_map : t -> Dir_rules.t Path.Build.Map.t
@@ -50,7 +53,7 @@ module Produce : sig
       same directory.
 
       Assuming that [gen_rules ~dir:a] calls [add_rule r] where [r.dir]
-      is [Some b], one of the following assumption must hold:
+      is [b], one of the following assumption must hold:
 
       - [a] and [b] are the same
       - [gen_rules ~dir:b] calls [load_dir ~dir:a]

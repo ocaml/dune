@@ -1,6 +1,10 @@
 open! Stdune
 open Fiber.O
 
+let on_already_reported = ref Exn_with_backtrace.reraise
+
+let already_reported exn = Nothing.unreachable_code (!on_already_reported exn)
+
 module Function_name = Interned.Make(struct
     let initial_size = 1024
     let resize_policy = Interned.Greedy
@@ -24,7 +28,8 @@ module Function = struct
     | Async : ('a -> 'b Fiber.t) -> ('a, 'b, ('a -> 'b Fiber.t)) t
 
   let of_type
-        (type a) (type b) (type f) (t : (a, b, f) Function_type.t) (f : f) : (a, b, f) t =
+        (type a) (type b) (type f) (t : (a, b, f) Function_type.t)
+        (f : f) : (a, b, f) t =
     match t with
     | Function_type.Sync -> Sync f
     | Function_type.Async -> Async f
@@ -167,10 +172,11 @@ module M = struct
 
   and State : sig
     type 'a t =
-      (* [Running] includes computations that already terminated with an exception
-         or cancelled because we've advanced to the next run. *)
+      (* [Running] includes computations that already terminated with an
+         exception or cancelled because we've advanced to the next run. *)
       | Running_sync of Run.t
       | Running_async of Run.t * 'a Fiber.Ivar.t
+      | Failed of Run.t * Exn_with_backtrace.t
       | Done of 'a Cached_value.t
   end = State
 
@@ -222,6 +228,11 @@ module Cached_value = struct
       let dep_changed = function
         | Last_dep.T (node, prev_output) ->
           match node.state with
+          | Failed (run, exn) ->
+            if Run.is_current run then
+              already_reported exn
+            else
+              true
           | Running_sync run ->
             if Run.is_current run then
               Exn.code_error "dependency_cycle" []
@@ -254,6 +265,11 @@ module Cached_value = struct
           Fiber.parallel_map acc ~f:Fn.id >>| List.exists ~f:Fn.id
         | Last_dep.T (node, prev_output) :: deps ->
           match node.state with
+          | Failed (run, exn) ->
+            if not (Run.is_current run) then
+              Fiber.return true
+            else
+              already_reported exn
           | Running_sync _ ->
             Exn.code_error "Synchronous function called [Cached_value.get_async]" []
           | Running_async (run, ivar) ->
@@ -313,6 +329,8 @@ module Stack_frame0 = struct
 
   let equal (T a) (T b) = Id.equal a.id b.id
   let compare (T a) (T b) = Id.compare a.id b.id
+
+  let to_dyn t = Dyn.Tuple [String (name t); Sexp (input t)]
 
   let pp ppf t =
     Format.fprintf ppf "%s %a"
@@ -394,6 +412,7 @@ let get_deps_from_graph_exn dep_node =
   Dag.children (dag_node dep_node)
   |> List.map ~f:(fun { Dag.data = Dep_node.T node; _ } ->
     match node.state with
+    | Failed _ -> assert false
     | Running_sync _ -> assert false
     | Running_async _ -> assert false
     | Done res ->
@@ -490,11 +509,19 @@ let create (type i) (type o) (type f)
   }
 
 module Exec_sync = struct
-    let compute t inp dep_node =
+  let compute t run inp dep_node =
     (* define the function to update / double check intermediate result *)
     (* set context of computation then run it *)
-    let res = Call_stack.push_sync_frame (T dep_node) (fun () -> match t.spec.f with
-      | Function.Sync f -> f inp)
+    let res =
+      match
+        (Call_stack.push_sync_frame (T dep_node) (fun () -> match t.spec.f with
+           | Function.Sync f -> f inp))
+      with
+      | exception exn ->
+        let exn = Exn_with_backtrace.capture exn in
+        dep_node.state <- Failed (run, exn);
+        Exn_with_backtrace.reraise exn
+      | res -> res
     in
     (* update the output cache with the correct value *)
     let deps =
@@ -504,18 +531,20 @@ module Exec_sync = struct
     res
 
   let recompute t inp (dep_node : _ Dep_node.t) =
-    dep_node.state <- Running_sync (Run.current ());
-    compute t inp dep_node
+    let run = Run.current () in
+    dep_node.state <- Running_sync run;
+    compute t run inp dep_node
 
   let exec t inp =
     match Table.find t.cache inp with
     | None ->
+      let run = Run.current () in
       let dep_node : _ Dep_node.t =
         { id = Id.gen ()
         ; input = inp
         ; spec = t.spec
         ; dag_node = lazy (assert false)
-        ; state = Running_sync (Run.current ())
+        ; state = Running_sync run
         }
       in
       let dag_node : Dag.node =
@@ -526,17 +555,27 @@ module Exec_sync = struct
       dep_node.dag_node <- lazy dag_node;
       Table.add t.cache inp dep_node;
       add_rev_dep dag_node;
-      compute t inp dep_node
+      compute t run inp dep_node
     | Some dep_node ->
       add_rev_dep (dag_node dep_node);
       match dep_node.state with
+      | Failed (run, exn) ->
+        if Run.is_current run then
+          Nothing.unreachable_code (!on_already_reported exn)
+        else
+          recompute t inp dep_node
       | Running_async _ ->
         assert false
       | Running_sync run ->
         if Run.is_current run then
           (* hopefully this branch should be unreachable and [add_rev_dep]
              reports a cycle above instead *)
-          Exn.code_error "dependency_cycle" []
+          Exn.code_error "bug: unreported sync dependency_cycle" [
+            "stack", Dyn.to_sexp (
+              Dyn.Encoder.list
+                Stack_frame.to_dyn (Call_stack.get_call_stack ()));
+            "adding", Dyn.to_sexp (Stack_frame.to_dyn (T dep_node));
+          ]
         else
           recompute t inp dep_node
       | Done cv ->
@@ -561,6 +600,10 @@ module Exec_async = struct
     let deps =
       get_deps_from_graph_exn dep_node
     in
+    (* CR-someday aalekseyev:
+       Set [dep_node.state] to [Failed] if there are errors file running [f].
+       Currently not doing that because sometimes [f] both returns a
+       result and keeps producing errors. Not sure why. *)
     dep_node.state <- Done (Cached_value.create res ~deps);
     (* fill the ivar for any waiting threads *)
     Fiber.Ivar.fill ivar res >>= fun () ->
@@ -598,6 +641,11 @@ module Exec_async = struct
     | Some dep_node ->
       add_rev_dep (dag_node dep_node);
       match dep_node.state with
+      | Failed (run, exn) ->
+        if Run.is_current run then
+          already_reported exn
+        else
+          recompute t inp dep_node
       | Running_sync _ -> assert false
       | Running_async (run, fut) ->
         if Run.is_current run then
@@ -623,6 +671,7 @@ let peek t inp =
     match dep_node.state with
     | Running_sync _ -> None
     | Running_async _ -> None
+    | Failed _ -> None
     | Done cv ->
       if Run.is_current cv.calculated_at then
         Some cv.data
@@ -640,6 +689,8 @@ let get_deps t inp =
   match Table.find t.cache inp with
   | None | Some { state = Running_async _; _ } -> None
   | Some { state = Running_sync _; _ } ->
+    None
+  | Some { state = Failed _; _ } ->
     None
   | Some { state = Done cv; _ } ->
     Some (List.map cv.deps ~f:(fun (Last_dep.T (n,_u)) ->
@@ -797,3 +848,5 @@ module With_implicit_output = struct
 
 end
 module Implicit_output = Implicit_output
+
+let on_already_reported f = on_already_reported := f

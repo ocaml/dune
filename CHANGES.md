@@ -62,6 +62,9 @@ unreleased
 
 - Fix generation of the `-pp` flag in .merlin (#2142, @rgrinberg)
 
+- Make `dune subst` add a `(version ...)` field to the `dune-project`
+  file (#2148, @diml)
+
 1.9.3 (06/05/2019)
 ------------------
 

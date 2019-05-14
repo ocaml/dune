@@ -733,14 +733,6 @@ let make_jbuilder_project ~dir opam_packages =
   ; generate_opam_files = false
   }
 
-let read_name file =
-  load file ~f:(fun _lang ->
-    fields
-      (let+ name = field_o "name" (located string)
-       and+ () = junk_everything
-       in
-       name))
-
 let load ~dir ~files =
   let opam_packages =
     String.Set.fold files ~init:[] ~f:(fun fn acc ->

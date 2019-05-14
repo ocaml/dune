@@ -114,9 +114,6 @@ end
     is the set of files in this directory. *)
 val load : dir:Path.Source.t -> files:String.Set.t -> t option
 
-(** Read the [name] file from a dune-project file *)
-val read_name : Path.t -> (Loc.t * string) option
-
 (** "dune-project" *)
 val filename : string
 

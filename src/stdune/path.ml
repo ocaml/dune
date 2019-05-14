@@ -109,10 +109,16 @@ end = struct
         Unix.mkdir t_s 0o777
 
   let basename t = Filename.basename (to_string t)
+
+  let root = of_string "/"
+
+  let is_root = equal root
+
   let parent t =
-    match Filename.dirname (to_string t) with
-    | "." -> None
-    | s -> Some (make s)
+    if is_root t then
+      None
+    else
+      Some (as_string t ~f:Filename.dirname)
 
   let extension t = Filename.extension (to_string t)
   let split_extension t =
@@ -146,10 +152,6 @@ end = struct
     match parent t with
     | None -> Exn.code_error "Path.External.parent_exn called on a root path" []
     | Some p -> p
-
-  let root = of_string "/"
-
-  let is_root = equal root
 
   let is_descendant b ~of_:a =
     if is_root a then true

@@ -2,6 +2,9 @@ open !Stdune
 
 type ('input, 'output, 'fdecl) t
 
+val on_already_reported :
+  (Exn_with_backtrace.t -> Nothing.t) -> unit
+
 module Sync : sig
   type nonrec ('i, 'o) t = ('i, 'o, 'i -> 'o) t
 end

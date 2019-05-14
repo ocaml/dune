@@ -130,9 +130,6 @@ val append_relative : t -> Relative.t -> t
 val append_local : t -> Local.t -> t
 val append_source : t -> Source.t -> t
 
-val parent : t -> t option
-val parent_exn : t -> t
-
 val extend_basename : t -> suffix:string -> t
 
 (** Extract the build context from a path. For instance, representing paths as strings:

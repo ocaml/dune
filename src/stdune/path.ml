@@ -36,7 +36,6 @@ module External : sig
   val compare_val : t -> t -> Ordering.t
   val relative : t -> string -> t
   val mkdir_p : t -> unit
-  val parent : t -> t
   val initial_cwd : t
   val cwd : unit -> t
   val as_local : t -> string
@@ -110,7 +109,10 @@ end = struct
         Unix.mkdir t_s 0o777
 
   let basename t = Filename.basename (to_string t)
-  let parent t = as_string ~f:Filename.dirname t
+  let parent t =
+    match Filename.dirname (to_string t) with
+    | "." -> None
+    | s -> Some (make s)
 
   let extension t = Filename.extension (to_string t)
   let split_extension t =
@@ -141,9 +143,9 @@ end = struct
     String.maybe_quoted (to_string t)
 
   let parent_exn t =
-    let res = parent t in
-    if res = t then Exn.code_error "Path.External.parent_exn called on a root path" []
-    else res
+    match parent t with
+    | None -> Exn.code_error "Path.External.parent_exn called on a root path" []
+    | Some p -> p
 
   let root = of_string "/"
 
@@ -164,7 +166,6 @@ module Relative : sig
   val compare_val : t -> t -> Ordering.t
   val relative : ?error_loc:Loc0.t -> t -> string -> t
   val append : t -> t -> t
-  val parent : t -> t
   val mkdir_p : t -> unit
   val descendant : t -> of_:t -> t option
   val is_descendant : t -> of_:t -> bool
@@ -227,12 +228,17 @@ end = struct
 
   let parent t =
     if is_root t then
-      Exn.code_error "Path.Local.parent called on the root" []
+      None
     else
       let t = to_string t in
       match String.rindex_from t (String.length t - 1) '/' with
-      | exception Not_found -> root
-      | i -> make (String.take t i)
+      | exception Not_found -> Some root
+      | i -> Some (make (String.take t i))
+
+  let parent_exn t =
+    match parent t with
+    | None -> Exn.code_error "Path.Local.parent called on the root" []
+    | Some t -> t
 
   let basename t =
     if is_root t then
@@ -257,7 +263,10 @@ end = struct
           if is_root t then
             Result.Error ()
           else
-            loop (parent t) rest
+            begin match parent t with
+            | None -> Error ()
+            | Some parent -> loop parent rest
+            end
         | fn :: rest ->
           if is_root t then
             loop (make fn) rest
@@ -341,7 +350,7 @@ end = struct
       with
       | Unix.Unix_error (EEXIST, _, _) -> ()
       | Unix.Unix_error (ENOENT, _, _) as e ->
-        let parent = parent t in
+        let parent = parent_exn t in
         if is_root parent then
           raise e
         else begin
@@ -468,7 +477,12 @@ end = struct
   let to_string_maybe_quoted t =
     String.maybe_quoted (to_string t)
 
-  let parent_exn = parent
+  let parent_exn t =
+    match parent t with
+    | None -> Exn.code_error "Path.Relative.parent:exn t is root"
+                ["t", to_sexp t]
+    | Some parent -> parent
+
   let of_relative t = t
 end
 
@@ -555,7 +569,7 @@ let (build_dir_kind, build_dir_prefix, set_build_dir) =
       (match new_build_dir with
        | External _ -> ()
        | Local p ->
-         if Local.is_root p || Local.parent p <> Local.root then
+         if Local.is_root p || Local.parent_exn p <> Local.root then
            Exn.fatalf
              "@{<error>Error@}: Invalid build directory: %s\n\
               The build directory must be an absolute path or \
@@ -788,15 +802,13 @@ let basename t =
   | External t -> External.basename t
 
 let parent = function
-  | External s ->
-    let parent = External.parent s in
-    if parent = s then
-      None
-    else
-      Some (external_ parent)
-  | In_source_tree p | In_build_dir p when Local.is_root p  -> None
-  | In_source_tree l -> Some (in_source_tree (Local.parent l))
-  | In_build_dir l -> Some (in_build_dir (Local.parent l))
+  | External s -> Option.map (External.parent s) ~f:external_
+  | In_source_tree l ->
+    Local.parent l
+    |> Option.map ~f:in_source_tree
+  | In_build_dir l ->
+    Local.parent l
+    |> Option.map ~f:in_build_dir
 
 let parent_exn t =
   match parent t with

@@ -43,4 +43,5 @@ module type S = sig
 
   val is_root : t -> bool
   val parent_exn : t -> t
+  val parent : t -> t option
 end

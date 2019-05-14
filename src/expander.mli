@@ -64,11 +64,6 @@ val expand_with_reduced_var_set
   :  context:Context.t
   -> reduced_var_result String_with_vars.expander
 
-module Option : sig
-  val expand_path : t -> String_with_vars.t -> Path.t option
-  val expand_str : t -> String_with_vars.t -> string option
-end
-
 module Resolved_forms : sig
   type t
 

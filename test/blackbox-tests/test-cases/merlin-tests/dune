@@ -2,3 +2,8 @@
  (name print-merlins)
  (deps lib/.merlin exe/.merlin)
  (action (run ./sanitize-dot-merlin/sanitize_dot_merlin.exe %{deps})))
+
+(alias
+ (name print-merlins-pp)
+ (deps pp-with-expand/.merlin)
+ (action (run ./sanitize-dot-merlin/sanitize_dot_merlin.exe %{deps})))

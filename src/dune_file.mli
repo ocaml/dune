@@ -24,6 +24,8 @@ module Preprocess : sig
       | Pps    of pps
   end
 
+  val loc : t -> Loc.t option
+
   val remove_future_syntax : t -> Ocaml_version.t -> Without_future_syntax.t
 end
 

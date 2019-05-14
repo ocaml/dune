@@ -45,9 +45,9 @@ unreleased
 - Install the `future_syntax` preprocessor as `ocaml-syntax-shims.exe` (#2125,
   @rgrinberg)
 
-- Hide full command on errors and warnings in CI (detected using the `CI`
-  environment variable) and whenever the failed command outputs a location
-  (detected using the `File ` prefix heuristic). Add an
+- Hide full command on errors and warnings in development and show them in CI.
+  (detected using the `CI` environment variable). Commands for which the
+  invocation might be omitted must output an error prefixed with `File `. Add an
   `--always-show-command-line` option to disable this behavior and always show
   the full command.
 
@@ -56,6 +56,11 @@ unreleased
   @TheLortex, review by @diml, @rgrinberg and @aalekseyev)
 
 - Add support for hg in `dune subst` (#2135, @diml)
+
+- Don't build documentation for implementations of virtual libraries (#2141,
+  fixes #2138, @jonludlam)
+
+- Fix generation of the `-pp` flag in .merlin (#2142, @rgrinberg)
 
 - Make `dune subst` add a `(version ...)` field to the `dune-project`
   file (#2148, @diml)

@@ -268,6 +268,8 @@ let modes        t = t.info.modes
 
 let virtual_     t = t.info.virtual_
 
+let is_impl      t = Option.is_some t.implements
+
 let src_dir t = t.info.src_dir
 let orig_src_dir t = Option.value ~default:t.info.src_dir t.info.orig_src_dir
 let obj_dir t = t.info.obj_dir

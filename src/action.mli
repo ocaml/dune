@@ -2,7 +2,6 @@ open! Stdune
 open! Import
 
 module Outputs : module type of struct include Action_intf.Outputs end
-module Diff_mode : module type of struct include Action_intf.Diff_mode end
 
 module Make_mapper (Src : Action_intf.Ast) (Dst : Action_intf.Ast) : sig
   val map

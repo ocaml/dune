@@ -20,6 +20,7 @@ module Name : sig
 
   val to_dyn : t -> Dyn.t
 
+  val equal : t -> t -> bool
   val compare : t -> t -> Ordering.t
 
   (** Convert to a string that is suitable for human readable messages *)

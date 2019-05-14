@@ -12,13 +12,13 @@ Having multiple implementations of the same library with respect to selected
 variants results in an appropriate error message.
   $ dune build --root multiple-implementations-for-variants
   Entering directory 'multiple-implementations-for-variants'
-  File "dune", line 4, characters 11-18:
-  4 |  (variants default))
-                 ^^^^^^^
+  File "dune", line 4, characters 11-14:
+  4 |  (variants a b))
+                 ^^^
   Error: Multiple solutions for the implementation
-  of vlib  with variants [ "default" ]
-  -> lib2_default ("default")
-  -> lib_default ("default")
+  of vlib  with variants [ "a"; "b" ]
+  -> lib_b ("b")
+  -> lib2_a ("a")
   -> required by executable bar in dune:2
   [1]
 
@@ -52,13 +52,29 @@ Check that variant data is installed in the dune package file.
    (foreign_archives (native a$ext_lib))
    (requires b)
    (implements b)
-   (variant test)
    (main_module_name B)
    (modes byte native)
    (modules
     (alias_module (name B__a__) (obj_name b__a__) (visibility public) (impl))
     (main_module_name B)
     (modules ((name X) (obj_name b__X) (visibility public) (impl)))
+    (wrapped true)))
+  $ cat  dune-package/_build/install/default/lib/b/dune-package
+  (lang dune 1.10)
+  (name b)
+  (library
+   (name b)
+   (kind normal)
+   (virtual)
+   (foreign_archives (native b$ext_lib))
+   (known_implementations (test a))
+   (main_module_name B)
+   (modes byte native)
+   (modules
+    (alias_module (name B) (obj_name b) (visibility public) (impl))
+    (main_module_name B)
+    (modules
+     ((name X) (obj_name b__X) (visibility public) (kind virtual) (intf)))
     (wrapped true)))
 
 Test variants for an external library
@@ -73,11 +89,13 @@ Then we make sure that it works fine.
            bar alias default
   hey
 
-Solving variant ambiguity by specifying a concrete implementation.
+Variant ambiguity is forbidden even if a concrete implementation is provided.
   $ dune build --root variant-with-concrete-impl
   Entering directory 'variant-with-concrete-impl'
-           bar alias default
-  hello from lib2.default
+  Error: Two implementations of vlib have the same variant "default":
+  - lib2_default (lib2.default/dune:1)
+  - lib_default (lib.default/dune:1)
+  [1]
 
 Don't fail when the same library is defined in multiple scopes.
   $ dune build --root same-lib-in-multiple-scopes

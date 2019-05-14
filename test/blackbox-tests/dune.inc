@@ -1441,11 +1441,37 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name variants-external-declaration)
+ (deps (package dune) (source_tree test-cases/variants-external-declaration))
+ (action
+  (chdir
+   test-cases/variants-external-declaration
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
+ (name variants-external-declaration-conflict)
+ (deps
+  (package dune)
+  (source_tree test-cases/variants-external-declaration-conflict))
+ (action
+  (chdir
+   test-cases/variants-external-declaration-conflict
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name variants-multi-project)
  (deps (package dune) (source_tree test-cases/variants-multi-project))
  (action
   (chdir
    test-cases/variants-multi-project
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
+ (name variants-only-package)
+ (deps (package dune) (source_tree test-cases/variants-only-package))
+ (action
+  (chdir
+   test-cases/variants-only-package
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
@@ -1674,7 +1700,10 @@
   (alias utop)
   (alias utop-default)
   (alias variants)
+  (alias variants-external-declaration)
+  (alias variants-external-declaration-conflict)
   (alias variants-multi-project)
+  (alias variants-only-package)
   (alias vlib)
   (alias vlib-default-impl)
   (alias windows-diff)
@@ -1834,7 +1863,10 @@
   (alias unreadable-src)
   (alias upgrader)
   (alias variants)
+  (alias variants-external-declaration)
+  (alias variants-external-declaration-conflict)
   (alias variants-multi-project)
+  (alias variants-only-package)
   (alias vlib)
   (alias vlib-default-impl)
   (alias windows-diff)

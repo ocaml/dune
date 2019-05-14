@@ -62,12 +62,6 @@ module DB = struct
       let scope = find_by_name (Fdecl.get t) (Dune_project.name project) in
       Redirect (Some scope.db, name)
 
-  let find_implementations t public_libs virt =
-    Lib_name.Map.fold public_libs ~init:Variant.Map.empty ~f:(fun project acc ->
-      let scope = find_by_name (Fdecl.get t) (Dune_project.name project) in
-      Lib.DB.find_implementations scope.db virt
-      |> Variant.Map.Multi.rev_union acc)
-
   let public_libs t ~installed_libs internal_libs =
     let public_libs =
       List.filter_map internal_libs
@@ -94,15 +88,13 @@ module DB = struct
             (Loc.to_file_colon_line loc2)
     in
     let resolve = resolve t public_libs in
-    let find_implementations = find_implementations t public_libs in
     Lib.DB.create ()
       ~parent:installed_libs
       ~resolve
-      ~find_implementations
       ~all:(fun () -> Lib_name.Map.keys public_libs)
 
   let sccopes_by_name ~context ~projects ~lib_config ~public_libs
-        internal_libs =
+        internal_libs variant_implementations =
     let build_context_dir = Path.Build.relative Path.Build.root context in
     let projects_by_name =
       List.map projects ~f:(fun (project : Dune_project.t) ->
@@ -126,23 +118,39 @@ module DB = struct
         (Dune_project.name lib.project, (dir, lib)))
       |> Dune_project.Name.Map.of_list_multi
     in
-    Dune_project.Name.Map.merge projects_by_name libs_by_project_name
-      ~f:(fun _name project libs ->
+    let variant_implementations_by_project_name =
+      List.map variant_implementations
+        ~f:(fun (lib : Dune_file.External_variant.t) ->
+          (Dune_project.name lib.project, lib))
+      |> Dune_project.Name.Map.of_list_multi
+    in
+    let libs_variants_by_project_name =
+      Dune_project.Name.Map.merge
+        libs_by_project_name
+        variant_implementations_by_project_name
+        ~f:(fun _name libs variants ->
+          let libs = Option.value libs ~default:[] in
+          let variants = Option.value variants ~default:[] in
+          Some (libs, variants))
+    in
+    Dune_project.Name.Map.merge projects_by_name libs_variants_by_project_name
+      ~f:(fun _name project l_v ->
         let project = Option.value_exn project in
-        let libs = Option.value libs ~default:[] in
-        let db = Lib.DB.create_from_library_stanzas libs ~parent:public_libs
-                   ~lib_config in
+        let libs, variants = Option.value l_v ~default:([], []) in
+        let db = Lib.DB.create_from_library_stanzas libs variants
+                   ~parent:public_libs ~lib_config in
         let root =
           Path.Build.append_source build_context_dir
             (Dune_project.root project) in
         Some { project; db; root })
 
   let create ~projects ~context ~installed_libs ~lib_config
-        internal_libs =
+        internal_libs variant_implementations =
     let t = Fdecl.create () in
     let public_libs = public_libs t ~installed_libs internal_libs in
     let by_name =
-      sccopes_by_name ~context ~projects ~lib_config ~public_libs internal_libs
+      sccopes_by_name ~context ~projects ~lib_config ~public_libs
+        internal_libs variant_implementations
     in
     let by_dir =
       Dune_project.Name.Map.values by_name

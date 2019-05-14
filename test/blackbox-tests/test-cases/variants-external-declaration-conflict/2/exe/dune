@@ -1,0 +1,4 @@
+(executable
+ (name exe)
+ (libraries vlibfoo)
+ (variants somevariant))

@@ -1,7 +1,7 @@
 (executable
  (name bar)
  (libraries vlib)
- (variants default))
+ (variants a b))
 
 (alias
  (name default)

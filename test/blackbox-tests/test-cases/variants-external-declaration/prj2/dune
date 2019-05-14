@@ -1,0 +1,4 @@
+(library
+ (name impl)
+ (public_name impl)
+ (implements vlibfoo-ext))

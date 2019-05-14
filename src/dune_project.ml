@@ -15,6 +15,7 @@ module Name : sig
 
   val to_dyn : t -> Dyn.t
 
+  val equal : t -> t -> bool
   val compare : t -> t -> Ordering.t
 
   val to_string_hum : t -> string
@@ -44,6 +45,8 @@ end = struct
       | Anonymous x, Anonymous y -> Path.Source.compare x y
       | Named     _, Anonymous _ -> Lt
       | Anonymous _, Named     _ -> Gt
+
+    let equal a b = Ordering.is_eq (compare a b)
   end
 
   include T

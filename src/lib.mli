@@ -259,16 +259,16 @@ module DB : sig
   val create
     :  ?parent:t
     -> resolve:(Lib_name.t -> Resolve_result.t)
-    -> find_implementations:(Lib_name.t -> Lib_info.t list Variant.Map.t)
     -> all:(unit -> Lib_name.t list)
     -> unit
     -> t
 
-  (** Create a database from a list of library stanzas *)
+  (** Create a database from a list of library/variants stanzas *)
   val create_from_library_stanzas
     :  ?parent:t
     -> lib_config:Lib_config.t
     -> (Path.Build.t * Dune_file.Library.t) list
+    -> Dune_file.External_variant.t list
     -> t
 
   val create_from_findlib
@@ -290,8 +290,6 @@ module DB : sig
   (** Retrieve the compile information for the given library. Works
       for libraries that are optional and not available as well. *)
   val get_compile_info : t -> ?allow_overlaps:bool -> Lib_name.t -> Compile.t
-
-  val find_implementations : t -> Lib_name.t -> Lib_info.t list Variant.Map.t
 
   val resolve : t -> Loc.t * Lib_name.t -> lib Or_exn.t
 

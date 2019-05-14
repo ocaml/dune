@@ -26,6 +26,18 @@ module Dune_file = struct
     ; stanzas
     ; kind
     }
+
+  let rec fold_stanzas l ~init ~f =
+    match l with
+    | [] -> init
+    | t :: l -> inner_fold t t.stanzas l ~init ~f
+
+  and inner_fold t inner_list l ~init ~f =
+    match inner_list with
+    | [] -> fold_stanzas l ~init ~f
+    | x :: inner_list ->
+      inner_fold t inner_list l ~init:(f t x init) ~f
+
 end
 
 module Dune_files = struct

@@ -23,7 +23,7 @@ module Lib : sig
   val plugins : _ t -> Path.t list Mode.Dict.t
   val jsoo_runtime : _ t -> Path.t list
   val implements : _ t -> (Loc.t * Lib_name.t) option
-  val variant : _ t -> Variant.t option
+  val known_implementations : _ t -> (Loc.t * Lib_name.t) Variant.Map.t
   val default_implementation : _ t -> (Loc.t * Lib_name.t) option
   val special_builtin_support
     : _ t -> Dune_file.Library.Special_builtin_support.t option
@@ -51,9 +51,9 @@ module Lib : sig
     -> requires:(Loc.t * Lib_name.t) list
     -> ppx_runtime_deps:(Loc.t * Lib_name.t) list
     -> implements:(Loc.t * Lib_name.t) option
-    -> variant: (Variant.t) option
     -> default_implementation: (Loc.t * Lib_name.t) option
     -> virtual_:bool
+    -> known_implementations: (Loc.t * Lib_name.t) Variant.Map.t
     -> modules:Lib_modules.t option
     -> modes:Mode.Dict.Set.t
     -> version:string option

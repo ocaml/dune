@@ -6,7 +6,6 @@ module Relative : sig
       relative to. *)
   val root : t
 
-  val of_string : ?error_loc:Loc0.t -> string -> t
   module L : sig
     val relative : ?error_loc:Loc0.t -> t -> string list -> t
   end
@@ -21,7 +20,6 @@ module Local : sig
   include Path_intf.S
   val root : t
 
-  val of_string : ?error_loc:Loc0.t -> string -> t
   module L : sig
     val relative : ?error_loc:Loc0.t -> t -> string list -> t
   end
@@ -36,7 +34,6 @@ module Source : sig
   include Path_intf.S
   val root : t
 
-  val of_string : ?error_loc:Loc0.t -> string -> t
   module L : sig
     val relative : ?error_loc:Loc0.t -> t -> string list -> t
   end
@@ -63,7 +60,6 @@ module Build : sig
 
   val append_local : t -> Local.t -> t
 
-  val of_string : ?error_loc:Loc0.t -> string -> t
   module L : sig
     val relative : ?error_loc:Loc0.t -> t -> string list -> t
   end
@@ -100,8 +96,6 @@ include Path_intf.S
 val hash : t -> int
 
 module Table : Hashtbl.S with type key = t
-
-val of_string : ?error_loc:Loc0.t -> string -> t
 
 (** [to_string_maybe_quoted t] is [maybe_quoted (to_string t)] *)
 val to_string_maybe_quoted : t -> string

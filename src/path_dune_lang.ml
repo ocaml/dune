@@ -28,7 +28,7 @@ let decode =
       if Filename.is_relative t then
         Dune_lang.Decoder.of_sexp_errorf loc "Absolute path expected"
       else
-        Path.of_string ~error_loc:loc t
+        Path.parse_string_exn ~loc t
     )
   in
   sum

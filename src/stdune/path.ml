@@ -64,6 +64,11 @@ end = struct
         [ "t", Sexp.Encoder.string t ];
     make t
 
+  let parse_string_exn ~loc t =
+    if Filename.is_relative t then
+      Exn.fatalf ~loc "path %s is not absolute" t;
+    make t
+
   let to_sexp t = Sexp.Encoder.string (to_string t)
   let to_dyn t = Dyn.String (to_string t)
 
@@ -157,7 +162,6 @@ module Relative : sig
   val root : t
   val is_root : t -> bool
   val compare_val : t -> t -> Ordering.t
-  val of_string : ?error_loc:Loc0.t -> string -> t
   val relative : ?error_loc:Loc0.t -> t -> string -> t
   val append : t -> t -> t
   val parent : t -> t
@@ -320,12 +324,12 @@ end = struct
       let len = String.length s in
       len = 0 || before_slash s (len - 1)
 
-  let of_string ?error_loc s =
+  let parse_string_exn ~loc s =
     match s with
     | "" | "." -> root
     | _ when is_canonicalized s -> make s
-    | _ ->
-      relative root s ?error_loc
+    | _ -> relative root s ~error_loc:loc
+  let of_string s = parse_string_exn ~loc:Loc0.none s
 
   let rec mkdir_p t =
     if is_root t then
@@ -677,14 +681,16 @@ let relative ?error_loc t fn =
     | In_build_dir p -> in_build_dir (Local.relative p fn ?error_loc)
     | External s -> external_ (External.relative s fn)
 
-let of_string ?error_loc s =
+let parse_string_exn ~loc s =
   match s with
   | "" | "." -> in_source_tree Local.root
   | s  ->
     if Filename.is_relative s then
-      make_local_path (Local.of_string s ?error_loc)
+      make_local_path (Local.parse_string_exn ~loc s)
     else
-      external_ (External.of_string s)
+      external_ (External.parse_string_exn ~loc s)
+
+let of_string s = parse_string_exn ~loc:Loc0.none s
 
 let to_sexp t =
   let constr f x y = Sexp.Encoder.(pair string f) (x, y) in

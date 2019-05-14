@@ -8,6 +8,7 @@
 (maintainers "Jane Street Group, LLC <opensource@janestreet.com>")
 (authors "Jane Street Group, LLC <opensource@janestreet.com>")
 (source (github ocaml/dune))
+(documentation "https://dune.readthedocs.io/")
 
 (package
  (name dune)

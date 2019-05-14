@@ -122,6 +122,14 @@ val create
   -> 'f option
   -> ('i, 'o, 'f) t
 
+val create_hidden
+  :  string
+  -> doc:string
+  -> input:(module Input with type t = 'i)
+  -> ('i, 'o, 'f) Function_type.t
+  -> 'f option
+  -> ('i, 'o, 'f) t
+
 (** Set the implementation of a memoized function whose implementation was omitted
     when calling [create]. *)
 val set_impl : (_, _, 'f) t -> 'f -> unit

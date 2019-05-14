@@ -119,8 +119,8 @@ module Dir = struct
   let vcs t = t.vcs
 
   let file_paths t =
-    Path.Source.Set.of_list
-      (List.map (String.Set.to_list (files t)) ~f:(Path.Source.relative t.path))
+    Path.Source.Set.of_listing
+      ~dir:t.path ~filenames:(String.Set.to_list (files t))
 
   let sub_dir_names t =
     String.Map.foldi (sub_dirs t) ~init:String.Set.empty

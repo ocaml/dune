@@ -31,6 +31,7 @@ module type S = sig
   module Set : sig
     include Set.S with type elt = t
     val to_sexp : t Sexp.Encoder.t
+    val of_listing : dir:elt -> filenames:string list -> t
   end
 
   module Map :  Map.S with type key = t

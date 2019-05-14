@@ -246,3 +246,8 @@ end
 val local_part : t -> Relative.t
 
 val stat : t -> Unix.stats
+
+(* it would be nice to call this [Set.of_source_paths], but it's annoying
+   to change the [Set] signature because then we don't comply with [Path_intf.S]
+*)
+val set_of_source_paths : Source.Set.t -> Set.t

@@ -40,11 +40,20 @@ module External : sig
   val cwd : unit -> t
   val as_local : t -> string
 end = struct
-  include Interned.No_interning(struct
+  module T = Interned.No_interning(struct
       let initial_size = 512
       let resize_policy = Interned.Greedy
       let order = Interned.Natural
     end)()
+
+  type t = T.t
+
+  let to_string = T.to_string
+  let make = T.make
+  let equal = T.equal
+  let hash = T.hash
+  let pp = T.pp
+  let compare = T.compare
 
   let compare_val x y = String.compare (to_string x) (to_string y)
 
@@ -158,6 +167,13 @@ end = struct
     else
       String.is_prefix ~prefix:(to_string a ^ "/") (to_string b)
 
+  module Set = struct
+    include T.Set
+    let of_listing ~dir ~filenames =
+      of_list (List.map filenames ~f:(fun f -> relative dir f))
+  end
+
+  module Map = T.Map
 end
 
 module Relative : sig
@@ -195,11 +211,18 @@ module Relative : sig
 end = struct
   (* either "." for root, or a '/' separated list of components
      other that ".", ".."  and not containing '/'. *)
-  include Interned.No_interning(struct
+  module T = Interned.No_interning(struct
       let initial_size = 512
       let resize_policy = Interned.Greedy
       let order = Interned.Natural
     end)()
+
+  type t = T.t
+
+  let to_string = T.to_string
+  let make = T.make
+  let hash = T.hash
+  let compare = T.compare
 
   let pp ppf s = Format.pp_print_string ppf (to_string s)
 
@@ -486,6 +509,14 @@ end = struct
     | Some parent -> parent
 
   let of_relative t = t
+
+  module Set = struct
+    include T.Set
+    let of_listing ~dir ~filenames =
+      of_list (List.map filenames ~f:(fun f -> relative dir f))
+  end
+
+  module Map = T.Map
 end
 
 module Build = struct
@@ -1119,6 +1150,8 @@ let pp_debug ppf = function
 module Set = struct
   include Set.Make(T)
   let to_sexp t = Sexp.Encoder.(list to_sexp) (to_list t)
+  let of_listing ~dir ~filenames =
+    of_list (List.map filenames ~f:(fun f -> relative dir f))
 end
 
 let in_source s = in_source_tree (Local.of_string s)
@@ -1162,3 +1195,8 @@ module Source = struct
 
   let to_local t = t
 end
+
+let set_of_source_paths set =
+  Source.Set.to_list set
+  |> List.map ~f:source
+  |> Set.of_list

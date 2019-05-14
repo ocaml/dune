@@ -330,7 +330,7 @@ let subst ?name vcs =
       (fun () -> Vcs.files vcs)
   in
   let dune_project =
-    if List.mem ~set:files Dune_project.file then
+    if List.exists files ~f:(Path.equal Dune_project.file) then
       Some (Dune_project.load Dune_project.file)
     else
       None
@@ -339,7 +339,7 @@ let subst ?name vcs =
   let watermarks = make_watermark_map ~name ~version ~commit in
   Option.iter dune_project ~f:(Dune_project.subst ~map:watermarks ~version);
   List.iter files ~f:(fun path ->
-    if is_a_source_file path && path <> Dune_project.file then
+    if is_a_source_file path && not (Path.equal path Dune_project.file) then
       subst_file path ~map:watermarks)
 
 let subst ?name () =

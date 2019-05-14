@@ -19,7 +19,8 @@ Dune is able to use metadata specified in the ``dune-project`` file to generate
 Dune uses the following global fields to set the metadata for all packages
 defined in the project:
 
-- ``(license <name>)`` - Specifies the license of the project, ideally as an identifier from the `SPDX License List <https://spdx.org/licenses/>`__
+- ``(license <name>)`` - Specifies the license of the project, ideally as an
+  identifier from the `SPDX License List <https://spdx.org/licenses/>`__
 
 - ``(authors <authors>)`` - A list of authors
 
@@ -28,9 +29,12 @@ defined in the project:
 - ``(source <source>)`` - where the source is specified two ways:
   ``(github <user/repo>)`` or ``(uri <uri>)``
 
-- ``(bug_reports <url>)`` - Where to report bugs. This defaults to the GitHub issue tracker if the source is specified as a GitHub repository
+- ``(bug_reports <url>)`` - Where to report bugs. This defaults to the GitHub
+  issue tracker if the source is specified as a GitHub repository
 
 - ``(homepage <url>)`` - The homepage of the project
+
+- ``(documentation <url>)`` - Where the documentation is hosted
 
 Package specific information is specified in the ``(package <package>)`` stanza.
 It contains the following fields:

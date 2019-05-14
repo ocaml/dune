@@ -61,6 +61,7 @@ val source: t -> Source_kind.t option
 val license : t -> string option
 val maintainers : t -> string list
 val bug_reports : t -> string option
+val documentation : t -> string option
 val homepage : t -> string option
 val authors : t -> string list
 val stanza_parser : t -> Stanza.t list Dune_lang.Decoder.t

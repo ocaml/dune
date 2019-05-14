@@ -56,6 +56,7 @@ let opam_fields project (package : Package.t) =
   let optional_fields =
     [ "bug-reports", Dune_project.bug_reports project
     ; "homepage", Dune_project.homepage project
+    ; "doc", Dune_project.documentation project
     ; "license", Dune_project.license project
     ; "version", Dune_project.version project
     ; "dev-repo",

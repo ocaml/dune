@@ -178,6 +178,7 @@ type t =
   ; authors         : string list
   ; homepage        : string option
   ; bug_reports     : string option
+  ; documentation   : string option
   ; maintainers     : string list
   ; packages        : Package.t Package.Name.Map.t
   ; stanza_parser   : Stanza.t list Dune_lang.Decoder.t
@@ -198,6 +199,7 @@ let version t = t.version
 let source t = t.source
 let license t = t.license
 let homepage t = t.homepage
+let documentation t = t.documentation
 let bug_reports t = t.bug_reports
 let maintainers t = t.maintainers
 let authors t = t.authors
@@ -211,7 +213,7 @@ let generate_opam_files t = t.generate_opam_files
 
 let to_dyn
       { name ; root ; version ; source; license; authors
-      ; homepage ; project_file ; parsing_context = _
+      ; homepage ; documentation ; project_file ; parsing_context = _
       ; bug_reports ; maintainers
       ; extension_args = _; stanza_parser = _ ; packages
       ; implicit_transitive_deps ; dune_version
@@ -224,6 +226,7 @@ let to_dyn
     ; "source", (option Source_kind.to_dyn) source
     ; "license", (option string) license
     ; "homepage", (option string) homepage
+    ; "documentation", (option string) documentation
     ; "bug_reports", (option string) bug_reports
     ; "maintainers", (list string) maintainers
     ; "authors", (list string) authors
@@ -474,7 +477,7 @@ let interpret_lang_and_extensions ~(lang : Lang.Instance.t)
 let key =
   Univ_map.Key.create ~name:"dune-project"
     (fun { name; root; version; project_file; source
-         ; license; authors; homepage ; bug_reports ; maintainers
+         ; license; authors; homepage; documentation ; bug_reports ; maintainers
          ; stanza_parser = _; packages = _ ; extension_args = _
          ; parsing_context ; implicit_transitive_deps ; dune_version
          ; allow_approx_merlin ; generate_opam_files } ->
@@ -487,6 +490,7 @@ let key =
         ; "source", Dyn.to_sexp (Dyn.Encoder.(option Source_kind.to_dyn) source)
         ; "version", (option string) version
         ; "homepage", (option string) homepage
+        ; "documentation", (option string) documentation
         ; "bug_reports", (option string) bug_reports
         ; "maintainers", (list string) maintainers
         ; "project_file", Dyn.to_sexp (Project_file.to_dyn project_file)
@@ -527,6 +531,7 @@ let anonymous = lazy (
   ; license       = None
   ; homepage      = None
   ; bug_reports   = None
+  ; documentation = None
   ; maintainers   = []
   ; authors       = []
   ; version       = None
@@ -573,6 +578,8 @@ let parse ~dir ~lang ~opam_packages ~file =
      and+ license = field_o "license"
                       (Syntax.since Stanza.syntax (1, 9) >>> string)
      and+ homepage = field_o "homepage"
+                       (Syntax.since Stanza.syntax (1, 10) >>> string)
+     and+ documentation = field_o "documentation"
                        (Syntax.since Stanza.syntax (1, 10) >>> string)
      and+ bug_reports = field_o "bug_reports"
                           (Syntax.since Stanza.syntax (1, 10) >>> string)
@@ -680,6 +687,7 @@ in your project.")
      ; license
      ; authors
      ; homepage
+     ; documentation
      ; bug_reports
      ; maintainers
      ; packages
@@ -720,6 +728,7 @@ let make_jbuilder_project ~dir opam_packages =
   ; license = None
   ; homepage = None
   ; bug_reports = None
+  ; documentation = None
   ; maintainers = []
   ; authors = []
   ; packages

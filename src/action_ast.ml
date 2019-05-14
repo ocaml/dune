@@ -12,7 +12,6 @@ module Outputs = struct
     | Stderr -> "stderr"
     | Outputs -> "outputs"
 end
-module Diff_mode = Action_intf.Diff_mode
 
 module Make
     (Program : Dune_lang.Conv)
@@ -100,33 +99,14 @@ struct
            in
            Write_file (fn, s))
         ; "diff",
-          (let+ file1 = path
-           and+ file2 = path
-           and+ kind = Stanza.file_kind ()
-           in
-           let mode =
-             match kind with
-             | Jbuild -> Diff_mode.Text_jbuild
-             | Dune   -> Text
-           in
-           Diff { optional = false; file1; file2; mode })
+          (let+ diff = Diff.decode path ~optional:false in
+           Diff diff)
         ; "diff?",
-          (let+ file1 = path
-           and+ file2 = path
-           and+ kind = Stanza.file_kind ()
-           in
-           let mode =
-             match kind with
-             | Jbuild -> Diff_mode.Text_jbuild
-             | Dune   -> Text
-           in
-           Diff { optional = true; file1; file2; mode })
+          (let+ diff = Diff.decode path ~optional:true in
+           Diff diff)
         ; "cmp",
-          (let+ () = Syntax.since Stanza.syntax (1, 0)
-           and+ file1 = path
-           and+ file2 = path
-           in
-           Diff { optional = false; file1; file2; mode = Binary })
+          (let+ diff = Diff.decode_binary path in
+           Diff diff)
         ])
 
   let rec encode =
@@ -203,6 +183,6 @@ struct
   let remove_tree path = Remove_tree path
   let mkdir path = Mkdir path
   let digest_files files = Digest_files files
-  let diff ?(optional=false) ?(mode=Diff_mode.Text) file1 file2 =
+  let diff ?(optional=false) ?(mode=Diff.Mode.Text) file1 file2 =
     Diff { optional; file1; file2; mode }
 end

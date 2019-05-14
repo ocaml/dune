@@ -2,7 +2,6 @@ open! Stdune
 open Import
 
 module Outputs = Action_ast.Outputs
-module Diff_mode = Action_ast.Diff_mode
 
 module Make_mapper
     (Src : Action_intf.Ast)
@@ -35,11 +34,10 @@ module Make_mapper
     | Remove_tree x -> Remove_tree (f_path ~dir x)
     | Mkdir x -> Mkdir (f_path ~dir x)
     | Digest_files x -> Digest_files (List.map x ~f:(f_path ~dir))
-    | Diff { optional; file1; file2; mode } ->
-      Diff { optional
-           ; file1 = f_path ~dir file1
+    | Diff ({ file1; file2 ; _ } as diff) ->
+      Diff { diff with
+             file1 = f_path ~dir file1
            ; file2 = f_path ~dir file2
-           ; mode
            }
     | Merge_files_into (sources, extras, target) ->
       Merge_files_into

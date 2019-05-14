@@ -45,9 +45,9 @@ unreleased
 - Install the `future_syntax` preprocessor as `ocaml-syntax-shims.exe` (#2125,
   @rgrinberg)
 
-- Hide full command on errors and warnings in CI (detected using the `CI`
-  environment variable) and whenever the failed command outputs a location
-  (detected using the `File ` prefix heuristic). Add an
+- Hide full command on errors and warnings in development and show them in CI.
+  (detected using the `CI` environment variable). Commands for which the
+  invocation might be omitted must output an error prefixed with `File `. Add an
   `--always-show-command-line` option to disable this behavior and always show
   the full command.
 

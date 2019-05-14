@@ -234,9 +234,7 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander ~dir_kind
       >>^ (fun (flags, pp) ->
         let (src_dirs, obj_dirs) =
           Lib.Set.fold requires ~init:(
-            (Path.Source.Set.to_list t.source_dirs
-             |> List.map ~f:Path.source
-             |> Path.Set.of_list)
+            (Path.set_of_source_paths t.source_dirs)
           , t.objs_dirs)
             ~f:(fun (lib : Lib.t) (src_dirs, obj_dirs) ->
               ( Path.Set.add src_dirs (

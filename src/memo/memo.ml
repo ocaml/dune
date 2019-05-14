@@ -235,7 +235,7 @@ module Cached_value = struct
               true
           | Running_sync run ->
             if Run.is_current run then
-              Exn.code_error "dependency_cycle" []
+              Exn.code_error "dependency_cycle 1" []
             else
               true
           | Running_async _ ->
@@ -266,10 +266,10 @@ module Cached_value = struct
         | Last_dep.T (node, prev_output) :: deps ->
           match node.state with
           | Failed (run, exn) ->
-            if not (Run.is_current run) then
-              Fiber.return true
-            else
+            if Run.is_current run then
               already_reported exn
+            else
+              Fiber.return true
           | Running_sync _ ->
             Exn.code_error "Synchronous function called [Cached_value.get_async]" []
           | Running_async (run, ivar) ->
@@ -507,6 +507,17 @@ let create (type i) (type o) (type f)
   ; spec
   ; fdecl
   }
+
+let create_hidden (type output) name ~doc ~input typ impl =
+  let module O =
+  struct
+    type t = output
+    let to_sexp (_ : t) = Sexp.Atom "<opaque>"
+  end
+  in
+  create
+    ~output:(Simple (module O))
+    ~visibility:Hidden name ~doc ~input typ impl
 
 module Exec_sync = struct
   let compute t run inp dep_node =

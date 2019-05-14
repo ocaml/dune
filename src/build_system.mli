@@ -143,7 +143,7 @@ val all_lib_deps
   -> Lib_deps_info.t Path.Source.Map.t String.Map.t Fiber.t
 
 (** List of all buildable targets *)
-val all_targets : unit -> Path.t list
+val all_targets : unit -> Path.Set.t
 
 (** Return the set of files that were created in the source tree and
     needs to be deleted *)

@@ -117,7 +117,7 @@ let term =
     let request =
       match targets with
       | [] ->
-        Build.paths (Build_system.all_targets ())
+        Build.paths (Path.Set.to_list (Build_system.all_targets ()))
       | _  ->
         Target.resolve_targets_exn ~log common setup targets
         |> Target.request setup

@@ -325,6 +325,12 @@ module Preprocess = struct
          Future_syntax loc)
       ]
 
+  let loc = function
+    | No_preprocessing -> None
+    | Action (loc, _)
+    | Pps { loc; _ }
+    | Future_syntax loc -> Some loc
+
   let pps = function
     | Pps { pps; _ } -> pps
     | _ -> []

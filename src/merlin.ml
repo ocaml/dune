@@ -18,10 +18,17 @@ module Preprocess = struct
   let merge ~allow_approx_merlin
         (a : Dune_file.Preprocess.t) (b : Dune_file.Preprocess.t) =
     match a, b with
-    (* the 2 cases below aren't entirely correct as it means that we have merlin
-       preprocess files that don't need to be preprocessed *)
+    | No_preprocessing, No_preprocessing ->
+      Dune_file.Preprocess.No_preprocessing
     | No_preprocessing, pp
-    | pp, No_preprocessing -> pp
+    | pp, No_preprocessing ->
+      let loc =
+        Dune_file.Preprocess.loc pp
+        |> Option.value_exn (* only No_preprocessing has no loc*)
+      in
+      warn_dropped_pp loc ~allow_approx_merlin
+        ~reason:"Cannot mix preprocessed and non preprocessed specificiations";
+      Dune_file.Preprocess.No_preprocessing
     | (Future_syntax _ as future_syntax), _
     | _, (Future_syntax _ as future_syntax) -> future_syntax
     | Action (loc, a1), Action (_, a2) ->
@@ -121,14 +128,67 @@ let make
 let add_source_dir t dir =
   { t with source_dirs = Path.Source.Set.add t.source_dirs dir }
 
-let pp_flags sctx ~expander ~dir_kind { preprocess; libname; _ } =
+let pp_flag_of_action sctx ~expander ~loc ~action
+  : (unit, string option) Build.t =
+  match (action : Action_dune_lang.t) with
+  | Run (exe, args) ->
+    let args =
+      let open Option.O in
+      let* (args, input_file) = List.destruct_last args in
+      if String_with_vars.is_var input_file ~name:"input-file" then
+        Some args
+      else
+        None
+    in
+    begin match args with
+    | None -> Build.return None
+    | Some args ->
+      let action : (Path.t Bindings.t, Action.t) Build.t =
+        let targets_dir = Expander.dir expander in
+        let targets = Expander.Targets.Forbidden "preprocessing actions" in
+        let action = Preprocessing.chdir (Run (exe, args)) in
+        Super_context.Action.run sctx
+          ~loc
+          ~expander
+          ~dep_kind:Optional
+          ~targets
+          ~targets_dir
+          action
+      in
+      let pp_of_action exe args =
+        match exe with
+        | Error _ -> None
+        | Ok exe ->
+          (Path.to_absolute_filename exe :: args)
+          |> List.map ~f:quote_for_merlin
+          |> String.concat ~sep:" "
+          |> Filename.quote
+          |> sprintf "FLG -pp %s"
+          |> Option.some
+      in
+      Build.return Bindings.empty
+      >>>
+      action
+      >>^ begin function
+      | Run (exe, args) -> pp_of_action exe args
+      | Chdir (_, Run (exe, args)) -> pp_of_action exe args
+      | Chdir (_, Chdir (_, Run (exe, args))) -> pp_of_action exe args
+      | _ -> None
+      end
+    end
+  | _ -> Build.return None
+
+let pp_flags sctx ~expander ~dir_kind { preprocess; libname; _ }
+  : (unit, string option) Build.t =
   let scope = Expander.scope expander in
   match Dune_file.Preprocess.remove_future_syntax preprocess
           (Super_context.context sctx).version
   with
   | Pps { loc; pps; flags; staged = _ } -> begin
-    match Preprocessing.get_ppx_driver sctx ~loc ~expander ~lib_name:libname ~flags ~scope ~dir_kind pps with
-    | Error _ -> None
+    match Preprocessing.get_ppx_driver sctx ~loc ~expander ~lib_name:libname
+            ~flags ~scope ~dir_kind pps
+    with
+    | Error _ -> Build.return None
     | Ok (exe, flags) ->
       (Path.to_absolute_filename exe
        :: "--as-ppx" :: flags)
@@ -137,39 +197,17 @@ let pp_flags sctx ~expander ~dir_kind { preprocess; libname; _ } =
       |> Filename.quote
       |> sprintf "FLG -ppx %s"
       |> Option.some
+      |> Build.return
   end
-  | Action (_, (action : Action_dune_lang.t)) ->
-    begin match action with
-    | Run (exe, args) ->
-      let open Option.O in
-      let* (args, input_file) = List.destruct_last args in
-      let* args =
-        if String_with_vars.is_var input_file ~name:"input-file" then
-          Some args
-        else
-          None
-      in
-      let* exe = Expander.Option.expand_path expander exe in
-      let* args =
-        List.map ~f:(Expander.Option.expand_str expander) args
-        |> Option.List.all
-      in
-      (Path.to_absolute_filename exe :: args)
-      |> List.map ~f:quote_for_merlin
-      |> String.concat ~sep:" "
-      |> Filename.quote
-      |> sprintf "FLG -pp %s"
-      |> Option.some
-    | _ -> None
-    end
+  | Action (loc, (action : Action_dune_lang.t)) ->
+    pp_flag_of_action sctx ~expander ~loc ~action
   | No_preprocessing ->
-    None
+    Build.return None
 
 let dot_merlin sctx ~dir ~more_src_dirs ~expander ~dir_kind
       ({ requires; flags; _ } as t) =
-  match Path.drop_build_context dir with
-  | None -> ()
-  | Some remaindir ->
+  Path.drop_build_context dir
+  |> Option.iter ~f:(fun remaindir ->
     let merlin_file = Path.relative dir ".merlin" in
     (* We make the compilation of .ml/.mli files depend on the
        existence of .merlin so that they are always generated, however
@@ -185,14 +223,15 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander ~dir_kind
        Build.create_file (Path.relative dir ".merlin-exists"));
     Path.Set.singleton merlin_file
     |> Rules.Produce.Alias.add_deps (Alias.check ~dir);
+    let pp_flags = pp_flags sctx ~expander ~dir_kind t in
     SC.add_rule sctx ~dir
       ~mode:(Promote
                { lifetime = Until_clean
                ; into = None
                ; only = None
                }) (
-      flags
-      >>^ (fun flags ->
+      flags &&& pp_flags
+      >>^ (fun (flags, pp) ->
         let (src_dirs, obj_dirs) =
           Lib.Set.fold requires ~init:(
             (Path.Source.Set.to_list t.source_dirs
@@ -213,12 +252,12 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander ~dir_kind
         in
         Dot_file.to_string
           ~remaindir
-          ~pp:(pp_flags sctx ~expander ~dir_kind t)
+          ~pp
           ~flags
           ~src_dirs
           ~obj_dirs)
       >>>
-      Build.write_file_dyn merlin_file)
+      Build.write_file_dyn merlin_file))
 
 let merge_two ~allow_approx_merlin a b =
   { requires = Lib.Set.union a.requires b.requires

@@ -271,10 +271,9 @@ let ocaml_flags t ~dir (x : Dune_file.Buildable.t) =
     ~default:(Env.ocaml_flags t ~dir)
     ~eval:(Expander.expand_and_eval_set expander)
 
-let c_flags t ~dir ~expander ~(lib : Dune_file.Library.t) =
+let c_flags t ~dir ~expander ~flags =
   let t = t.env_context in
   let ccg = Context.cc_g t.context in
-  let flags = lib.c_flags in
   let default = Env.c_flags t ~dir in
   C.Kind.Dict.mapi flags ~f:(fun ~kind flags ->
     let name = C.Kind.to_string kind in

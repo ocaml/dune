@@ -591,8 +591,10 @@ let promote_correction fn build ~suffix =
            (Path.extend_basename fn ~suffix))
     ]
 
+let chdir action = Action_unexpanded.Chdir (workspace_root_var, action)
+
 let action_for_pp sctx ~dep_kind ~loc ~expander ~action ~src ~target =
-  let action = Action_unexpanded.Chdir (workspace_root_var, action) in
+  let action = chdir action in
   let bindings = Pform.Map.input_file src in
   let expander = Expander.add_bindings expander ~bindings in
   let targets = Expander.Targets.Forbidden "preprocessing actions" in

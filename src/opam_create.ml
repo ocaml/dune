@@ -64,9 +64,7 @@ let opam_fields project (package : Package.t) =
         (Dune_project.source project)
     ]
     |> List.filter_map ~f:(fun (k, v) ->
-      match v with
-      | None -> None
-      | Some v -> Some (k, string v))
+      Option.map v ~f:(fun v -> (k, string v)))
   in
   let list_fields =
     [ "maintainer", Dune_project.maintainers project

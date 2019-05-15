@@ -1,5 +1,7 @@
 (** Representation of (diff ...) actions *)
 
+open Stdune
+
 module Mode : sig
   type t =
     | Binary      (** no diffing, just raw comparison      *)
@@ -22,3 +24,5 @@ val decode
 val decode_binary
   :  'path Dune_lang.Decoder.t
   -> 'path t Dune_lang.Decoder.t
+
+val eq_files : Path.t t -> bool

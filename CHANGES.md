@@ -30,7 +30,7 @@ unreleased
 
 - Add a 'cookies' option to ppx_rewriter/deriver flags in library stanzas
   (#2106, @mlasson @diml). This allow to specify cookie requests from
-  variables expanded at each invocation of the preprocessor. 
+  variables expanded at each invocation of the preprocessor.
 
 - Add more opam metadata and use it to generate `.opam` files. In particular, a
   `package` field has been added to specify package specific information.

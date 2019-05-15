@@ -120,14 +120,8 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to =
         (Marshal.to_string data [])
     in
     exec_echo stdout_to (Digest.to_string_raw s)
-  | Diff { optional; file1; file2; mode } ->
-    let compare_files =
-      match mode with
-      | Text_jbuild | Binary -> Io.compare_files
-      | Text -> Io.compare_text_files
-    in
-    if (optional && not (Path.exists file1 && Path.exists file2)) ||
-       compare_files file1 file2 = Eq then
+  | Diff ({ optional = _; file1; file2; mode } as diff) ->
+    if Diff.eq_files diff then
       Fiber.return ()
     else begin
       let is_copied_from_source_tree file =

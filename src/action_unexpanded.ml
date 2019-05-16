@@ -187,6 +187,13 @@ let rec partial_expand t ~map_exe ~expander : Partial.t =
       let res = E.path ~expander fn in
       match res with
       | Left dir ->
+        if not (Path.is_in_build_dir dir) then begin
+          let loc = String_with_vars.loc fn in
+          Errors.fail loc
+            "chdir into %a is forbidden because it is outside the build \
+             directory"
+            Path.pp dir
+        end;
         let expander = Expander.set_dir expander ~dir in
         Chdir (res, partial_expand t ~expander ~map_exe)
       | Right fn ->

@@ -93,7 +93,8 @@ let user_written_deps t =
     ~f:(fun acc s -> Dune_file.Lib_dep.Direct s :: acc)
 
 let of_library_stanza ~dir
-      ~lib_config:{ Lib_config.has_native; ext_lib; ext_obj; os_type}
+      ~lib_config:({ Lib_config.has_native; ext_lib; ext_obj; _ }
+                   as lib_config)
       (conf : Dune_file.Library.t) =
   let (_loc, lib_name) = conf.name in
   let obj_dir =
@@ -166,7 +167,9 @@ let of_library_stanza ~dir
       Blang.eval conf.enabled_if ~dir ~f:(fun v _ver ->
         match String_with_vars.Var.name v,
               String_with_vars.Var.payload v with
-        | "os_type", None -> Some [String os_type]
+        | var, None ->
+          let value = Lib_config.get_for_enabled_if lib_config ~var in
+          Some [String value]
         | _ -> None)
     in
     if not enabled_if_result then

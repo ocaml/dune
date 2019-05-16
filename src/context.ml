@@ -85,6 +85,7 @@ type t =
   ; ext_dll                 : string
   ; ext_exe                 : string
   ; os_type                 : string
+  ; model                   : string
   ; default_executable_name : string
   ; host                    : string
   ; target                  : string
@@ -473,6 +474,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       ; ext_dll                 = Ocaml_config.ext_dll                 ocfg
       ; ext_exe                 = Ocaml_config.ext_exe                 ocfg
       ; os_type                 = Ocaml_config.os_type                 ocfg
+      ; model                   = Ocaml_config.model                   ocfg
       ; default_executable_name = Ocaml_config.default_executable_name ocfg
       ; host                    = Ocaml_config.host                    ocfg
       ; target                  = Ocaml_config.target                  ocfg
@@ -703,4 +705,7 @@ let lib_config t =
   ; ext_obj = t.ext_obj
   ; ext_lib = t.ext_lib
   ; os_type = t.os_type
+  ; architecture = t.architecture
+  ; system = t.system
+  ; model = t.model
   }

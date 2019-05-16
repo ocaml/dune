@@ -69,7 +69,8 @@ unreleased
   `%{ocaml-config:os_type}` (#1764, @diml)
 
 - Allow `enabled_if` fields in `library` stanzas, restricted to the
-  `%{os_type}` variable (#1764, @diml)
+  `%{os_type}`, `%{model}`, `%{architecture}`, `%{system}` variables (#1764,
+  #2164 @diml, @rgrinberg)
 
 1.9.3 (06/05/2019)
 ------------------

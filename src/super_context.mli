@@ -146,13 +146,19 @@ end
 
 (** Interpret dependencies written in jbuild files *)
 module Deps : sig
-  (** Evaluates to the actual list of dependencies, ignoring aliases *)
+
+  (** Evaluates to the actual list of dependencies, ignoring aliases,
+      and registers them as the action dependencies. *)
   val interpret
     :  t
     -> expander:Expander.t
     -> Dep_conf.t list
-    -> (unit, Path.t list) Build.t
+    -> (unit, unit) Build.t
 
+  (** Evaluates to the actual list of dependencies, ignoring aliases,
+      and registers them as the action dependencies.
+
+      It returns bindings that are later used for action expansion. *)
   val interpret_named
     :  t
     -> expander:Expander.t
@@ -162,7 +168,10 @@ end
 
 (** Interpret action written in jbuild files *)
 module Action : sig
-  (** The arrow takes as input the list of actual dependencies *)
+
+  (** The arrow takes as input the list of dependencies written by user, which
+      is used for action expansion. These must be registered with the build
+      arrow before calling [run]. *)
   val run
     :  t
     -> loc:Loc.t

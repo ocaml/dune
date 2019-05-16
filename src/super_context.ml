@@ -597,7 +597,9 @@ module Deps = struct
       (Build.path_set (Expander.Resolved_forms.sdeps forms))
     >>^ (fun (deps, _, _, _) -> deps)
 
-  let interpret = make_interpreter ~f:dep
+  let interpret t ~expander l =
+    make_interpreter ~f:dep t ~expander l
+    >>^ (fun _paths -> ())
 
   let interpret_named =
     make_interpreter ~f:(fun t expander -> function

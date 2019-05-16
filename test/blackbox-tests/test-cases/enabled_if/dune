@@ -21,3 +21,22 @@
           (echo "Building file b")
           (with-stdout-to b (progn))))
  (enabled_if true))
+
+(library
+ (name foo)
+ (modules)
+ (enabled_if false))
+
+(library
+ (name bar)
+ (modules)
+ (libraries foo))
+
+(library
+ (name baz)
+ (modules)
+ (libraries bar))
+
+(rule (with-stdout-to main.ml (echo "")))
+
+(executable (name main) (libraries baz))

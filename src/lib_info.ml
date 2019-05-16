@@ -47,6 +47,13 @@ module Source = struct
     | External of 'a
 end
 
+module Enabled_status = struct
+  type t =
+    | Normal
+    | Optional
+    | Disabled_because_of_enabled_if
+end
+
 type t =
   { loc              : Loc.t
   ; name             : Lib_name.t
@@ -66,7 +73,7 @@ type t =
   ; requires         : Deps.t
   ; ppx_runtime_deps : (Loc.t * Lib_name.t) list
   ; pps              : (Loc.t * Lib_name.t) list
-  ; optional         : bool
+  ; enabled          : Enabled_status.t
   ; virtual_deps     : (Loc.t * Lib_name.t) list
   ; dune_version     : Syntax.Version.t option
   ; sub_systems      : Sub_system_info.t Sub_system_name.Map.t
@@ -86,7 +93,7 @@ let user_written_deps t =
     ~f:(fun acc s -> Dune_file.Lib_dep.Direct s :: acc)
 
 let of_library_stanza ~dir
-      ~lib_config:{ Lib_config.has_native; ext_lib; ext_obj}
+      ~lib_config:{ Lib_config.has_native; ext_lib; ext_obj; os_type}
       (conf : Dune_file.Library.t) =
   let (_loc, lib_name) = conf.name in
   let obj_dir =
@@ -154,6 +161,21 @@ let of_library_stanza ~dir
   let main_module_name = Dune_file.Library.main_module_name conf in
   let name = Dune_file.Library.best_name conf in
   let modes = Dune_file.Mode_conf.Set.eval ~has_native conf.modes in
+  let enabled =
+    let enabled_if_result =
+      Blang.eval conf.enabled_if ~dir ~f:(fun v _ver ->
+        match String_with_vars.Var.name v,
+              String_with_vars.Var.payload v with
+        | "os_type", None -> Some [String os_type]
+        | _ -> None)
+    in
+    if not enabled_if_result then
+      Enabled_status.Disabled_because_of_enabled_if
+    else if conf.optional then
+      Optional
+    else
+      Normal
+  in
   { loc = conf.buildable.loc
   ; name
   ; kind     = conf.kind
@@ -164,7 +186,7 @@ let of_library_stanza ~dir
   ; synopsis = conf.synopsis
   ; archives
   ; plugins
-  ; optional = conf.optional
+  ; enabled
   ; foreign_objects
   ; foreign_archives
   ; jsoo_runtime
@@ -219,7 +241,7 @@ let of_dune_lib dp =
   ; jsoo_runtime = Lib.jsoo_runtime dp
   ; jsoo_archive = None
   ; pps = []
-  ; optional = false
+  ; enabled = Normal
   ; virtual_deps = []
   ; dune_version = None
   ; sub_systems = Lib.sub_systems dp

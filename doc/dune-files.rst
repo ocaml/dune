@@ -209,6 +209,14 @@ to use the :ref:`include_subdirs` stanza.
   we were waiting for proper support for virtual libraries. Do not use
   in new code, it will be deleted in dune 2.0
 
+- ``(enabled_if <blang expression>)`` allows to conditionally disable
+  a library. A disabled library cannot be built and will not be
+  installed. The condition is specified using the blang_, and the
+  field allows for the ``%{os_type}`` variable, which is expanded to
+  the type of OS being targeted by the current build. Its value is
+  the same as the value of the ``os_type`` parameter in the output of
+  ``ocamlc -config``
+
 Note that when binding C libraries, dune doesn't provide special support for
 tools such as ``pkg-config``, however it integrates easily with configurator_ by
 using ``(c_flags (:include ...))`` and ``(c_library_flags (:include ...))``.
@@ -1087,6 +1095,8 @@ Dune supports the following variables:
 - ``profile`` the profile selected via ``--profile``
 - ``context_name`` the name of the context (``default`` or defined in the
   workspace file)
+- ``os_type`` is the type of the OS the build is targetting. This is
+  the same as ``ocaml-config:os_type``
 
 In addition, ``(action ...)`` fields support the following special variables:
 

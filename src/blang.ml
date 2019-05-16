@@ -102,3 +102,17 @@ let decode =
   and+ decode = decode
   in
   decode
+
+let rec fold_vars t ~init ~f =
+  match t with
+  | Const _ -> init
+  | Expr sw -> String_with_vars.fold_vars sw ~init ~f
+  | And l | Or l -> fold_vars_list l ~init ~f
+  | Compare (_, x, y) ->
+    String_with_vars.fold_vars y ~f
+      ~init:(String_with_vars.fold_vars x ~f ~init)
+
+and fold_vars_list ts ~init ~f =
+  match ts with
+  | [] -> init
+  | t :: ts -> fold_vars_list ts ~f ~init:(fold_vars t ~init ~f)

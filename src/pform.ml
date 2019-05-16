@@ -208,6 +208,8 @@ module Map = struct
       ; "workspace_root" , values [Value.Dir context.build_dir]
       ; "context_name"   , string (Context.name context)
       ; "ROOT"           , renamed_in ~version:(1, 0) ~new_name:"workspace_root"
+      ; "os_type"        , since ~version:(1, 10)
+                             (Var.Values [String context.os_type])
       ]
     in
     { vars =

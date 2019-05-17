@@ -80,7 +80,12 @@ module Multi = struct
         (List.map ~f:Module.name deps)
     );
     match Module.Obj_map.top_closure per_obj modules with
-    | Ok modules -> modules
+    | Ok modules ->
+      Format.eprintf "Final closure: %a@.%!"
+        (Fmt.ocaml_list Module.Name.pp)
+        (List.map ~f:Module.name modules)
+      ;
+      modules
     | Error cycle ->
       die "dependency cycle between modules\n   %a"
         pp_cycle cycle

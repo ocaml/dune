@@ -371,6 +371,9 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
         Dep_graph.top_closed_implementations dep_graphs.impl modules
         >>^ fun modules -> modules @ wrapped_compat
       | Some (vlib_dep_graphs : Dep_graph.Ml_kind.t) ->
+        Format.eprintf "top closure for %a@.%!"
+          Lib_name.pp
+          (Dune_file.Library.best_name lib);
         Dep_graph.top_closed_multi_implementations
           [ vlib_dep_graphs.impl
           ; dep_graphs.impl

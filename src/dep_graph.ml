@@ -49,7 +49,12 @@ let top_closed t modules =
 module Multi = struct
   let top_closed_multi (ts : t list) modules =
     Format.eprintf "Considering the following modules linking: %a@.%!"
-      (Fmt.ocaml_list Module.Name.pp) (List.map ~f:Module.name modules)
+      (Fmt.ocaml_list (fun fmt m ->
+         Format.fprintf fmt "(%a, %a)"
+           Module.Name.pp (Module.name m)
+           Obj_dir.pp (Module.obj_dir m)
+       ))
+      modules
     ;
     List.concat_map ts ~f:(fun t ->
       let res =

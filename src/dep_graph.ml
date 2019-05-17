@@ -96,7 +96,8 @@ let make_top_closed_implementations ~name ~f ts modules =
       let (modules, dropped) = List.partition ~f:Module.has_impl modules in
       Format.eprintf "dropped: %a@.%!" (Fmt.ocaml_list Module.Name.pp) (List.map ~f:Module.name dropped);
       dropped |> List.iter ~f:(fun m ->
-        Format.eprintf "dropped module %a kind: %s impl: %a@.%!"
+        Format.eprintf "dropped module obj_dir: %a %a kind: %s impl: %a@.%!"
+          Path.pp (Obj_dir.obj_dir (Module.obj_dir m))
           Module.Name.pp (Module.name m)
           (Module.kind m)
           (Fmt.optional Module.File.pp) (Module.impl m)

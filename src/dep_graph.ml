@@ -48,13 +48,37 @@ let top_closed t modules =
 
 module Multi = struct
   let top_closed_multi (ts : t list) modules =
+    Format.eprintf "Considering the following modules linking: %a@.%!"
+      (Fmt.ocaml_list Module.Name.pp) (List.map ~f:Module.name modules)
+    ;
     List.concat_map ts ~f:(fun t ->
-      Module.Name.Map.to_list t.per_module
-      |> List.map ~f:(fun (_name, (unit, deps)) ->
-        deps >>^ fun deps -> (unit, deps)))
+      Format.eprintf
+        "Individual dep graph. (first one is vlib, second is impl)@.%!";
+      let res =
+        Module.Name.Map.to_list t.per_module
+        |> List.map ~f:(fun (_name, (unit, deps)) ->
+          deps >>^ (fun deps ->
+            Format.eprintf "%a: %a@.@."
+              Module.Name.pp (Module.name unit)
+              (Fmt.ocaml_list Module.Name.pp)
+              (List.map ~f:Module.name deps);
+            (unit, deps))
+        )
+      in
+      Format.eprintf "-------@.";
+      res
+    )
     |> Build.all >>^ fun per_module ->
     let per_obj =
       Module.Obj_map.of_list_reduce per_module ~f:List.rev_append in
+    Format.eprintf "Combined dep graph:@.%!";
+    Module.Obj_map.to_list per_obj
+    |> List.iter ~f:(fun (m, deps) ->
+      Format.eprintf "%a: %a@.@.%!"
+        Module.Name.pp (Module.name m)
+        (Fmt.ocaml_list Module.Name.pp)
+        (List.map ~f:Module.name deps)
+    );
     match Module.Obj_map.top_closure per_obj modules with
     | Ok modules -> modules
     | Error cycle ->

@@ -157,6 +157,7 @@ let name t = t.name
 let pp_flags t = t.pp
 let intf t = t.intf
 let impl t = t.impl
+let kind t = Kind.to_string t.kind
 let obj_dir t = t.obj_dir
 
 let make ?impl ?intf ?obj_name ~visibility ~obj_dir ~(kind : Kind.t) name =

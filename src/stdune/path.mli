@@ -168,7 +168,7 @@ val drop_optional_build_context_src_exn : t -> Source.t
 
 (** Transform managed paths so that they are descedant of
     [sandbox_dir]. *)
-val sandbox_managed_paths : sandbox_dir:t -> t -> t
+val sandbox_managed_paths : sandbox_dir:Build.t -> t -> t
 
 val explode : t -> string list option
 val explode_exn : t -> string list

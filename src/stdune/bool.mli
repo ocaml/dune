@@ -7,3 +7,7 @@ include Comparable.OPS with type t := t
 val to_string : t -> string
 
 val of_string : string -> t option
+
+val to_dyn : t -> Dyn0.t
+
+val to_sexp : t -> Sexp0.t

@@ -9,26 +9,40 @@ let alias_dir = Path.(relative build_dir) ".aliases"
 
 let () = Hooks.End_of_build.always Memo.reset
 
-module Mkdir_p : sig
-  val exec : Path.t -> unit
+module Fs : sig
+  val mkdir_p : Path.Build.t -> unit
+  val mkdir_p_or_check_exists : loc:Loc.t -> Path.t -> unit
 end = struct
-  let def =
+  let mkdir_p_def =
+    Memo.create
+      "mkdir_p"
+      ~doc:"mkdir_p"
+      ~input:(module Path.Build)
+      ~output:(Simple (module Unit))
+      ~visibility:Hidden
+      Sync
+      (Some (fun p -> Path.mkdir_p (Path.build p)))
+
+  let mkdir_p = Memo.exec mkdir_p_def
+
+  let assert_exists_def =
     Memo.create
       "mkdir_p"
       ~doc:"mkdir_p"
       ~input:(module Path)
-      ~output:(Simple (module Unit))
+      ~output:(Simple (module Bool))
       ~visibility:Hidden
       Sync
-      (Some Path.mkdir_p)
+      (Some Path.exists)
 
-  let exec p =
-    if Path.is_managed p then
-      Memo.exec def p
-    else
-      Exn.code_error "Mkdir_p.exec: attempted to create unmanaged dir"
-        [ "p", Path.to_sexp p
-        ]
+  let assert_exists ~loc path =
+    if not (Memo.exec assert_exists_def path) then
+      Errors.fail loc "%a does not exist" Path.pp path
+
+  let mkdir_p_or_check_exists ~loc path =
+    match Path.as_in_build_dir path with
+    | None -> assert_exists ~loc path
+    | Some path -> mkdir_p path
 end
 
 module Promoted_to_delete : sig
@@ -496,7 +510,7 @@ let compute_targets_digest_after_rule_execution ~info targets =
       "rule failed to generate the following targets:\n%s"
       (string_of_paths (Path.Set.of_list missing))
 
-let sandbox_dir = Path.relative Path.build_dir ".sandbox"
+let sandbox_dir = Path.Build.relative Path.Build.root ".sandbox"
 
 let locks : (Path.t, Fiber.Mutex.t) Hashtbl.t = Hashtbl.create 32
 
@@ -1228,7 +1242,7 @@ let () =
     in
     start_rule t rule;
     let* (action, deps) = evaluate_rule_and_wait_for_dependencies rule in
-    Mkdir_p.exec dir;
+    Fs.mkdir_p (Path.as_in_build_dir_exn dir);
     let targets_as_list  = Path.Set.to_list targets  in
     let head_target = List.hd targets_as_list in
     let prev_trace = Trace.get head_target in
@@ -1256,7 +1270,7 @@ let () =
     let sandbox_dir =
       if sandbox then
         let digest = Digest.to_string rule_digest in
-        Some (Path.relative sandbox_dir digest)
+        Some (Path.Build.relative sandbox_dir digest)
       else
         None
     in
@@ -1280,26 +1294,26 @@ let () =
           | None ->
             action
           | Some sandbox_dir ->
-            Path.rm_rf sandbox_dir;
+            Path.rm_rf (Path.build sandbox_dir);
             let sandboxed path = Path.sandbox_managed_paths ~sandbox_dir path in
             Dep.Set.dirs deps
             |> Path.Set.iter ~f:(fun p ->
-              let p = sandboxed p in
-              if Path.is_managed p then
-                Mkdir_p.exec p);
-            Mkdir_p.exec (sandboxed dir);
+              sandboxed p
+              |> Fs.mkdir_p_or_check_exists ~loc:Loc.none);
+            Fs.mkdir_p_or_check_exists ~loc:Loc.none (sandboxed dir);
             Action.sandbox action
               ~sandboxed
               ~deps
               ~targets:targets_as_list
               ~eval_pred
         in
-        Path.Set.iter (Action.chdirs action) ~f:Mkdir_p.exec;
+        let chdirs = Action.chdirs action in
+        Path.Set.iter chdirs ~f:Fs.(mkdir_p_or_check_exists ~loc:Loc.none);
         let+ () =
           with_locks locks ~f:(fun () ->
             Action_exec.exec ~context ~env ~targets action)
         in
-        Option.iter sandbox_dir ~f:Path.rm_rf;
+        Option.iter sandbox_dir ~f:(fun p -> Path.rm_rf (Path.build p));
         (* All went well, these targets are no longer pending *)
         pending_targets := Path.Set.diff !pending_targets targets;
         let targets_digest =

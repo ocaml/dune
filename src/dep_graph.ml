@@ -52,13 +52,12 @@ module Multi = struct
       (Fmt.ocaml_list Module.Name.pp) (List.map ~f:Module.name modules)
     ;
     List.concat_map ts ~f:(fun t ->
-      Format.eprintf
-        "Individual dep graph. (first one is vlib, second is impl)@.%!";
       let res =
         Module.Name.Map.to_list t.per_module
         |> List.map ~f:(fun (_name, (unit, deps)) ->
           deps >>^ (fun deps ->
-            Format.eprintf "%a: %a@.@."
+            Format.eprintf "(source: %a) %a: %a@.@."
+              Path.pp t.dir
               Module.Name.pp (Module.name unit)
               (Fmt.ocaml_list Module.Name.pp)
               (List.map ~f:Module.name deps);

@@ -1,0 +1,4 @@
+(library
+ (name vlib)
+ (wrapped false)
+ (virtual_modules v1 v2 v3))

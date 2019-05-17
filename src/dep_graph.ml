@@ -57,7 +57,6 @@ module Multi = struct
       modules
     ;
     List.concat_map ts ~f:(fun t ->
-      let res =
         Module.Name.Map.to_list t.per_module
         |> List.map ~f:(fun (_name, (unit, deps)) ->
           deps >>^ (fun deps ->
@@ -66,11 +65,7 @@ module Multi = struct
               Module.Name.pp (Module.name unit)
               (Fmt.ocaml_list Module.Name.pp)
               (List.map ~f:Module.name deps);
-            (unit, deps))
-        )
-      in
-      Format.eprintf "-------@.";
-      res
+            (unit, deps)))
     )
     |> Build.all >>^ fun per_module ->
     let per_obj =
@@ -97,7 +92,11 @@ end
 
 let make_top_closed_implementations ~name ~f ts modules =
   Build.memoize name (
-    let filter_out_intf_only = List.filter ~f:Module.has_impl in
+    let filter_out_intf_only modules =
+      let (modules, dropped) = List.partition ~f:Module.has_impl modules in
+      Format.eprintf "dropped: %a@.%!" (Fmt.ocaml_list Module.Name.pp) (List.map ~f:Module.name dropped);
+      modules
+    in
     f ts (filter_out_intf_only modules)
     >>^ filter_out_intf_only)
 

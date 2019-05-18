@@ -128,7 +128,7 @@ module Make(Key : Comparable.S) : S with type key = Key.t = struct
     List.fold_left l ~init:empty ~f:(fun acc (key, data) ->
       let x = Option.value (find acc key) ~default:init in
       add acc key (f x data))
-      
+
   let of_list_reducei l ~f =
     List.fold_left l ~init:empty ~f:(fun acc (key, data) ->
       match find acc key with

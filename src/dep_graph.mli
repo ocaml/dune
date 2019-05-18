@@ -19,8 +19,9 @@ val top_closed_implementations
   -> Module.t list
   -> (unit, Module.t list) Build.t
 
-val top_closed_multi_implementations
-  :  t list
+val top_closed_implementations_for_vlib_impl
+  :  vlib:t
+  -> impl:t
   -> Module.t list
   -> (unit, Module.t list) Build.t
 

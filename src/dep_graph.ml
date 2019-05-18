@@ -46,15 +46,81 @@ let top_closed t modules =
       (Path.to_string t.dir)
       pp_cycle cycle
 
-module Multi = struct
-  let top_closed_multi (ts : t list) modules =
-    List.concat_map ts ~f:(fun t ->
-      Module.Name.Map.to_list t.per_module
-      |> List.map ~f:(fun (_name, (unit, deps)) ->
-        deps >>^ fun deps -> (unit, deps)))
-    |> Build.all >>^ fun per_module ->
-    let per_obj =
-      Module.Obj_map.of_list_reduce per_module ~f:List.rev_append in
+module Vlib_impl = struct
+  (* A bit of background information why we need to merge dependency graphs
+     of virtual libraries and implementations.
+
+     Before we added virtual libraries, every library had an archive filed
+     corresponding to libname.cma and libname.cmxa. This archive file was
+     constructed with ocamlopt -a -o libname.cma module1.cmo module2.cmo ...
+     where the modules had to be in top sorted order according to the dependency
+     graph of the module implementations (what we approximate using ocamldep
+     foo.ml).
+
+     Virtual libraries have complicated this situation because they longer have
+     an archive file. However, implementations do have an archive file that must
+     be constructed from the .cm{o,x}'s of the vlib *and the impl. This means
+     that the information required to construct a valid dep graph of all object
+     files comes from both the vlib's and impl's dep graphs. This is where the
+     need for merging the vlib's and impl's dependency graph for .ml files
+     arises.
+
+     The merging procedure must take care to select the correct [Module.t].
+     Every virtual module can be present in both the impl's and vlib's
+     dependency graphs. The vlib's version has kind = Virtual and the impl's has
+     kind = Impl. Clearly, we should be using impl's Module.t as we are trying
+     to create an archive from all the object code. *)
+
+  let to_obj_map (t : t) =
+    Module.Name.Map.to_list t.per_module
+    |> Module.Obj_map.of_list_map_exn ~f:(fun (_name, (m, deps)) ->
+      (m, deps))
+
+  let top_closed ~vlib ~impl modules =
+    let obj_map_of_list =
+      Module.Obj_map.of_list_map_exn ~f:(fun m -> (m, m)) in
+    let replace_virtual_module_by_impl =
+      let modules_by_obj_map = obj_map_of_list modules in
+      fun m ->
+        (* this is necessary whenever [m] is virtual. in that case, we need the
+           implementation's version b/c it has object file (has_impl = true) *)
+        if Module.is_virtual m then
+          (* will always exist b/c the implementation satisfies this for every
+             virtual module *)
+          Module.Obj_map.find_exn modules_by_obj_map m
+        else
+          m
+    in
+    Module.Obj_map.merge (to_obj_map vlib) (to_obj_map impl)
+      ~f:(fun _ vlib impl ->
+        match vlib, impl with
+        | None, None -> assert false
+        | Some vlib, None ->
+          vlib >>^ List.map ~f:replace_virtual_module_by_impl
+          |> Option.some
+        | None, Some impl -> Some impl
+        | Some vlib, Some impl ->
+          vlib &&& impl
+          >>^ (fun (vlib, impl) ->
+            Module.Obj_map.merge
+              (obj_map_of_list vlib) (obj_map_of_list impl)
+              ~f:(fun _ vlib impl ->
+                match vlib, impl with
+                | None, None -> assert false
+                | Some vlib, None ->
+                  Some (replace_virtual_module_by_impl vlib)
+                | None, Some impl -> Some impl
+                | Some vlib, Some impl ->
+                  assert (Module.is_virtual vlib);
+                  Some impl)
+            |> Module.Obj_map.values)
+          |> Option.some)
+    |> Module.Obj_map.to_list
+    |> List.map ~f:(fun (m, deps) ->
+      deps >>^ fun deps -> (m, deps))
+    |> Build.all
+    >>^ fun per_obj ->
+    let per_obj = Module.Obj_map.of_list_exn per_obj in
     match Module.Obj_map.top_closure per_obj modules with
     | Ok modules -> modules
     | Error cycle ->
@@ -62,19 +128,20 @@ module Multi = struct
         pp_cycle cycle
 end
 
-let make_top_closed_implementations ~name ~f ts modules =
+let make_top_closed_implementations ~name ~f modules =
   Build.memoize name (
     let filter_out_intf_only = List.filter ~f:Module.has_impl in
-    f ts (filter_out_intf_only modules)
+    f (filter_out_intf_only modules)
     >>^ filter_out_intf_only)
 
-let top_closed_multi_implementations =
+let top_closed_implementations_for_vlib_impl ~vlib ~impl =
   make_top_closed_implementations
-    ~name:"top sorted multi implementations" ~f:Multi.top_closed_multi
+    ~name:"top sorted implementations for vlib implementation"
+    ~f:(Vlib_impl.top_closed ~vlib ~impl)
 
-let top_closed_implementations =
+let top_closed_implementations t =
   make_top_closed_implementations
-    ~name:"top sorted implementations" ~f:top_closed
+    ~name:"top sorted implementations" ~f:(top_closed t)
 
 let dummy (m : Module.t) =
   { dir = Path.root

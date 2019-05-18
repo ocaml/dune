@@ -87,6 +87,9 @@ unreleased
 - Fix generation of `.merlin` whenever there's more than one stanza with the
   same ppx preprocessing specification (#2209 ,fixes #2206, @rgrinberg)
 
+- Fix archive compilation of implementations of virtual libraries (#2172, fixes
+  #2166, @rgrinberg)
+
 1.9.3 (06/05/2019)
 ------------------
 

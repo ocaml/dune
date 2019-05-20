@@ -10,8 +10,8 @@ module Entry = struct
     | Loc of Loc.t
 
   let to_string = function
-    | Path p -> Utils.describe_target p
-    | Alias p -> "alias " ^ Utils.describe_target p
+    | Path p -> Utils.describe_path p
+    | Alias p -> "alias " ^ Utils.describe_path p
     | Library (path, lib_name) ->
       Format.asprintf "library %a in %s" Lib_name.pp_quoted lib_name
         (Path.to_string_maybe_quoted path)

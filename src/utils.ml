@@ -69,10 +69,15 @@ type target_kind =
   | Regular of string * Path.Source.t
   | Alias   of string * Path.Source.t
   | Install of string * Path.Source.t
-  | Other of Path.t
+  | Other of Path.Build.t
 
-let analyse_target (fn as original_fn) =
-  match Path.extract_build_dir_first_component fn with
+type path_kind =
+  | Source of Path.Source.t
+  | External of Path.External.t
+  | Build of target_kind
+
+let analyse_target (fn as original_fn) : target_kind =
+  match Path.Build.extract_first_component fn with
   | Some (".aliases", sub) ->
     (match Path.Local.split_first_component sub with
      | None -> Other fn
@@ -101,6 +106,11 @@ let analyse_target (fn as original_fn) =
   | None ->
     Other fn
 
+let analyse_path (fn : Path.t) = match fn with
+  | In_source_tree src -> Source src
+  | External e -> External e
+  | In_build_dir build -> Build (analyse_target build)
+
 let describe_target fn =
   let ctx_suffix = function
     | "default" -> ""
@@ -114,7 +124,13 @@ let describe_target fn =
   | Regular (ctx, fn) ->
     sprintf "%s%s" (Path.Source.to_string_maybe_quoted fn) (ctx_suffix ctx)
   | Other fn ->
-    Path.to_string_maybe_quoted fn
+    Path.Build.to_string_maybe_quoted fn
+
+let describe_path (p : Path.t) =
+  match p with
+  | External _ | In_source_tree _ ->
+    Path.to_string_maybe_quoted p
+  | In_build_dir p -> describe_target p
 
 let library_object_directory ~dir name =
   Path.Build.relative dir ("." ^ Lib_name.Local.to_string name ^ ".objs")

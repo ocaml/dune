@@ -652,6 +652,8 @@ module Build = struct
           |> Source0.of_string )
     end
 
+  let extract_first_component = extract_build_context
+
   let extract_build_context_dir t =
     let t_str = Local.to_string t in
     begin match String.lsplit2 t_str ~on:'/' with

@@ -195,9 +195,9 @@ module Fancy = struct
         | [] -> List.rev targets_acc, String.Set.(to_list (of_list ctxs_acc))
         | path :: rest ->
           let add_ctx ctx acc = if ctx = "default" then acc else ctx :: acc in
-          match Utils.analyse_target (Path.build path) with
+          match Utils.analyse_target path with
           | Other path ->
-            split_paths (Path.to_string path :: targets_acc) ctxs_acc rest
+            split_paths (Path.Build.to_string path :: targets_acc) ctxs_acc rest
           | Regular (ctx, filename) ->
             split_paths (Path.Source.to_string filename :: targets_acc)
               (add_ctx ctx ctxs_acc) rest
@@ -209,7 +209,9 @@ module Fancy = struct
               (add_ctx ctx ctxs_acc) rest
       in
       let targets = Path.Build.Set.to_list targets in
-      let target_names, contexts = split_paths [] [] targets in
+      let target_names, contexts =
+        split_paths [] [] targets
+      in
       let target_names_grouped_by_prefix =
         List.map target_names ~f:Filename.split_extension_after_dot
         |> String.Map.of_list_multi

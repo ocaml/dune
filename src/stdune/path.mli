@@ -97,10 +97,16 @@ module Build : sig
   val drop_build_context     : t -> Source.t option
   val drop_build_context_exn : t -> Source.t
 
+  (** [Source.t] here is a lie in some cases: consider when the context name
+      happens to be ["install"] or [".alias"]. *)
   val extract_build_context  : t -> (string * Source.t) option
   val extract_build_context_exn  : t -> (string * Source.t)
   val extract_build_context_dir : t -> (t * Source.t) option
   val extract_build_context_dir_exn : t -> (t * Source.t)
+
+  (** This function does the same as [extract_build_context], but gas a
+      "righter" type.  *)
+  val extract_first_component : t -> (string * Local.t) option
 
   val is_alias_stamp_file : t -> bool
 

@@ -566,11 +566,10 @@ let remove_old_artifacts t ~dir ~(subdirs_to_keep : Subdir_set.t) =
           | _ -> Path.unlink (Path.build path))
 
 let no_rule_found =
-  let fail fn ~loc =
-    Errors.fail_opt loc "No rule found for %s" (Utils.describe_target fn)
-  in
   fun t ~loc fn ->
-    let fn = Path.build fn in
+    let fail fn ~loc =
+      Errors.fail_opt loc "No rule found for %s" (Utils.describe_target fn)
+    in
     match Utils.analyse_target fn with
     | Other _ -> fail fn ~loc
     | Regular (ctx, _) ->
@@ -578,7 +577,7 @@ let no_rule_found =
         fail fn ~loc
       else
         die "Trying to build %s but build context %s doesn't exist.%s"
-          (Path.to_string_maybe_quoted fn)
+          (Path.Build.to_string_maybe_quoted fn)
           ctx
           (hint ctx (String.Map.keys t.contexts))
     | Install (ctx, _) ->
@@ -586,7 +585,7 @@ let no_rule_found =
         fail fn ~loc
       else
         die "Trying to build %s for install but build context %s doesn't exist.%s"
-          (Path.to_string_maybe_quoted fn)
+          (Path.Build.to_string_maybe_quoted fn)
           ctx
           (hint ctx (String.Map.keys t.contexts))
     | Alias (ctx, fn') ->
@@ -891,12 +890,12 @@ The following targets are not:
 
   let load_dir_step2_exn t ~dir =
     let context_name, sub_dir =
-      match Utils.analyse_target dir with
-      | Install (ctx, path) ->
+      match Utils.analyse_path dir with
+      | Build (Install (ctx, path)) ->
         Context_or_install.Install ctx, path
-      | Regular (ctx, path) ->
+      | Build (Regular (ctx, path)) ->
         Context_or_install.Context ctx, path
-      | Alias _ | Other _ ->
+      | Build (Alias _) | Build (Other _) | Source _ | External _ ->
         Code_error.raise "[load_dir_step2_exn] was called on a strange path"
           ["path", Path.to_dyn dir]
     in

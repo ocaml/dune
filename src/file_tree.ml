@@ -290,7 +290,7 @@ let load ?(warn_when_seeing_jbuild_file=true) path ~ancestor_vcs =
         dirs
         |> List.fold_left ~init:String.Map.empty ~f:(fun acc (fn, path, file) ->
           let status =
-            if Bootstrap.data_only_path (Path.source path) then
+            if Bootstrap.data_only_path path then
               Sub_dirs.Status.Ignored
             else
               Sub_dirs.status sub_dirs ~dir:fn

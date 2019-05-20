@@ -138,7 +138,7 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to =
       if is_copied_from_source_tree file1 &&
          not (is_copied_from_source_tree file2) then begin
         Promotion.File.register
-          { src = file2
+          { src = Path.as_in_build_dir_exn file2
           ; dst = Option.value_exn (Path.drop_build_context file1)
           }
       end;

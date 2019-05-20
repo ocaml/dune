@@ -4,22 +4,19 @@ open Path
 type t = Path.t
 
 let encode p =
-  let arg =
-    match Internal.raw_kind p with
-    | Kind.External l -> External.to_string l
-    | Kind.Local    l -> Local.to_string l
+  let make constr arg =
+    Dune_lang.List [
+      Dune_lang.atom constr
+    ; Dune_lang.atom_or_quoted_string arg
+    ]
   in
-  let make constr =
-    Dune_lang.List [ Dune_lang.atom constr
-               ; Dune_lang.atom_or_quoted_string arg
-               ]
-  in
-  if is_in_build_dir p then
-    make "In_build_dir"
-  else if is_in_source_tree p then
-    make "In_source_tree"
-  else
-    make "External"
+  match p with
+  | In_build_dir p ->
+    make "In_build_dir" (Path.Build.to_string p)
+  | In_source_tree p ->
+    make "In_source_tree" (Path.Source.to_string p)
+  | External p ->
+    make "External" (Path.External.to_string p)
 
 let decode =
   let open Dune_lang.Decoder in

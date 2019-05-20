@@ -109,8 +109,12 @@ module Build : sig
   val set_build_dir : Kind.t -> unit
 end
 
-(** In the outside world *)
-include Path_intf.S
+type t = private
+  | External of External.t
+  | In_source_tree of Source.t
+  | In_build_dir of Build.t
+
+include Path_intf.S with type t := t
 
 val hash : t -> int
 
@@ -238,11 +242,6 @@ val of_local : Local.t -> t
 (** Set the workspace root. Can only be called once and the path must be
     absolute *)
 val set_root : External.t -> unit
-
-(** Internal use only *)
-module Internal : sig
-  val raw_kind : t -> Kind.t
-end
 
 module L : sig
   val relative : t -> string list -> t

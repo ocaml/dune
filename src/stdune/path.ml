@@ -1243,13 +1243,6 @@ let build s = in_build_dir s
 
 module Table = Hashtbl.Make(T)
 
-module Internal = struct
-  let raw_kind = function
-    | In_build_dir l -> Kind.Local l
-    | In_source_tree l -> Local l
-    | External l -> External l
-end
-
 module L = struct
   (* TODO more efficient implementation *)
   let relative t = List.fold_left ~init:t ~f:relative

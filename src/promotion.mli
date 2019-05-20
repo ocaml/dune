@@ -2,7 +2,7 @@ open! Stdune
 
 module File : sig
   type t =
-    { src : Path.t
+    { src : Path.Build.t
     ; dst : Path.Source.t
     }
 

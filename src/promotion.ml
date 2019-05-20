@@ -2,14 +2,14 @@ open! Stdune
 
 module File = struct
   type t =
-    { src : Path.t
+    { src : Path.Build.t
     ; dst : Path.Source.t
     }
 
   (* XXX these sexp converters will be useful for the dump command *)
   let _to_sexp { src; dst } =
     Sexp.List
-      [ Path.to_sexp src
+      [ Path.Build.to_sexp src
       ; Sexp.Atom "as"
       ; Path.Source.to_sexp dst
       ]
@@ -19,17 +19,17 @@ module File = struct
   let register t = db := t :: !db
 
   let promote { src; dst } =
-    let src_exists = Path.exists src in
+    let src_exists = Path.exists (Path.build src) in
     Console.print
       (Format.sprintf
          (if src_exists then
             "Promoting %s to %s.@."
           else
             "Skipping promotion of %s to %s as the file is missing.@.")
-         (Path.to_string_maybe_quoted src)
+         (Path.to_string_maybe_quoted (Path.build src))
          (Path.Source.to_string_maybe_quoted dst));
     if src_exists then
-      Io.copy_file ~src ~dst:(Path.source dst) ()
+      Io.copy_file ~src:(Path.build src) ~dst:(Path.source dst) ()
 end
 
 let clear_cache () =
@@ -59,7 +59,7 @@ let group_by_targets db =
     (dst, src))
   |> Path.Source.Map.of_list_multi
   (* Sort the list of possible sources for deterministic behavior *)
-  |> Path.Source.Map.map ~f:(List.sort ~compare:Path.compare)
+  |> Path.Source.Map.map ~f:(List.sort ~compare:Path.Build.compare)
 
 type files_to_promote =
   | All
@@ -94,7 +94,7 @@ let do_promote db files_to_promote =
       File.promote { src; dst };
       List.iter others ~f:(fun path ->
         Format.eprintf " -> ignored %s.@."
-          (Path.to_string_maybe_quoted path))
+          (Path.to_string_maybe_quoted (Path.build path)))
   in
   match files_to_promote with
   | All ->

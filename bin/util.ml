@@ -18,7 +18,7 @@ let check_path contexts =
     String.Map.of_list_exn (List.map contexts ~f:(fun c -> c.Context.name, c))
   in
   fun path ->
-    let internal path =
+    let internal_path () =
       die "This path is internal to dune: %s"
         (Path.to_string_maybe_quoted path)
     in
@@ -31,20 +31,18 @@ let check_path contexts =
           ctx
           (hint ctx (String.Map.keys contexts))
     in
-    match Path.kind path with
+    match path with
     | External e -> External e
-    | Local _ ->
-      match Path.as_in_source_tree path with
-      | Some src -> In_source_dir src
-      | None ->
-        match Path.extract_build_context path with
-        | None -> internal path
-        | Some (name, src) ->
-          if name = "" || name.[0] = '.' then internal path;
-          if name = "install" then (
-            match Path.Source.split_first_component src with
-            | None -> internal path
-            | Some (ctx, src) ->
-              In_install_dir (context_exn ctx, Path.Source.of_local src)
-          )
-          else (In_build_dir (context_exn name, src))
+    | In_source_tree s -> In_source_dir s
+    | In_build_dir path ->
+      match Path.Build.extract_build_context path with
+      | None -> internal_path ()
+      | Some (name, src) ->
+        if name = "" || name.[0] = '.' then internal_path ();
+        if name = "install" then (
+          match Path.Source.split_first_component src with
+          | None -> internal_path ()
+          | Some (ctx, src) ->
+            In_install_dir (context_exn ctx, Path.Source.of_local src)
+        )
+        else (In_build_dir (context_exn name, src))

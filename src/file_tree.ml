@@ -360,7 +360,7 @@ let file_exists t path =
 
 let dir_exists t path = Option.is_some (find_dir t path)
 
-let files_recursively_in t ?(prefix_with=Path.root) path =
+let files_recursively_in t ~prefix_with path =
   match find_dir t path with
   | None -> Path.Set.empty
   | Some dir ->

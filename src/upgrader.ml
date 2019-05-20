@@ -5,30 +5,30 @@ open Fiber.O
 (* Return a mapping [Path.t -> Dune_lang.Ast.t list] containing [path]
    and all the files in includes, recursiverly *)
 let scan_included_files path =
-  let files = ref Path.Map.empty in
+  let files = ref Path.Source.Map.empty in
   let rec iter path =
-    if not (Path.Map.mem !files path) then begin
-      let s = Io.read_file path in
+    if not (Path.Source.Map.mem !files path) then begin
+      let s = Io.read_file (Path.source path) in
       let csts =
-        Dune_lang.parse_cst_string s ~fname:(Path.to_string path)
+        Dune_lang.parse_cst_string s ~fname:(Path.Source.to_string path)
           ~lexer:Dune_lang.Lexer.jbuild_token
         |> List.map ~f:(Dune_lang.Cst.fetch_legacy_comments
                           ~file_contents:s)
       in
       let comments = Dune_lang.Cst.extract_comments csts in
       let sexps = List.filter_map csts ~f:Dune_lang.Cst.abstract in
-      files := Path.Map.add !files path (sexps, comments);
+      files := Path.Source.Map.add !files path (sexps, comments);
       List.iter sexps ~f:(function
         | Dune_lang.Ast.List
             (_,
              [ Atom (_, A "include")
              ; (Atom (loc, A fn) | Quoted_string (loc, fn))
              ]) ->
-          let dir = Path.parent_exn path in
-          let included_file = Path.relative dir fn in
-          if not (Path.exists included_file) then
+          let dir = Path.Source.parent_exn path in
+          let included_file = Path.Source.relative dir fn in
+          if not (Path.exists (Path.source included_file)) then
             Errors.fail loc "File %s doesn't exist."
-              (Path.to_string_maybe_quoted included_file);
+              (Path.Source.to_string_maybe_quoted included_file);
           iter included_file
         | _ -> ())
     end
@@ -37,9 +37,9 @@ let scan_included_files path =
   !files
 
 type rename_and_edit =
-  { original_file : Path.t
-  ; extra_files_to_delete : Path.t list
-  ; new_file : Path.t
+  { original_file : Path.Source.t
+  ; extra_files_to_delete : Path.Source.t list
+  ; new_file : Path.Source.t
   ; contents : string
   }
 
@@ -188,11 +188,11 @@ let upgrade_stanza stanza =
   upgrade stanza
 
 let upgrade_file todo file sexps comments ~look_for_jbuild_ignore =
-  let dir = Path.parent_exn file in
+  let dir = Path.Source.parent_exn file in
   let new_file =
-    let base = Path.basename file in
+    let base = Path.Source.basename file in
     let new_base = rename_basename base in
-    Path.relative dir new_base
+    Path.Source.relative dir new_base
   in
   let sexps =
     List.filter sexps ~f:(function
@@ -202,8 +202,9 @@ let upgrade_file todo file sexps comments ~look_for_jbuild_ignore =
   let sexps = List.map sexps ~f:upgrade_stanza in
   let sexps, extra_files_to_delete =
     (* Port the jbuild-ignore file if necessary *)
-    let jbuild_ignore = Path.relative dir "jbuild-ignore" in
-    if not (look_for_jbuild_ignore && Path.exists jbuild_ignore) then
+    let jbuild_ignore = Path.Source.relative dir "jbuild-ignore" in
+    if not (look_for_jbuild_ignore
+            && Path.exists (Path.source jbuild_ignore)) then
       (sexps, [])
     else begin
       let data_only_dirs = File_tree.load_jbuild_ignore jbuild_ignore in
@@ -355,10 +356,26 @@ let upgrade_dir todo dir =
         "Cannot upgrade this jbuild file as it is using the OCaml syntax.\n\
          You need to upgrade it manually."
     | Jbuild, Plain { path; sexps = _ } ->
-      let files = scan_included_files (Path.source path) in
-      Path.Map.iteri files ~f:(fun fn (sexps, comments) ->
+      let files = scan_included_files path in
+      Path.Source.Map.iteri files ~f:(fun fn (sexps, comments) ->
         upgrade_file todo fn sexps comments
-          ~look_for_jbuild_ignore:(fn = Path.source path)))
+          ~look_for_jbuild_ignore:(Path.Source.equal fn path)))
+
+let rec has_git =
+  let has_git_table = Hashtbl.create 128 in
+  fun path ->
+    match Hashtbl.find has_git_table path with
+    | Some v -> v
+    | None ->
+      let v =
+        if Path.is_directory (Path.relative path ".git") then
+          Some path
+        else
+          Path.parent path
+          |> Option.bind ~f:has_git
+      in
+      Hashtbl.add has_git_table path v;
+      v
 
 let upgrade ft =
   Dune_project.default_dune_language_version := (1, 0);
@@ -374,22 +391,6 @@ let upgrade ft =
     match Bin.which ~path:(Env.path Env.initial) "git" with
     | Some x -> x
     | None -> Utils.program_not_found "git" ~loc:None)
-  in
-  let has_git_table = Hashtbl.create 128 in
-  let rec has_git path =
-    match Hashtbl.find has_git_table path with
-    | None ->
-      let v =
-        if Path.is_directory (Path.relative path ".git") then
-          Some path
-        else
-          match Path.parent path with
-          | None -> None
-          | Some p -> has_git p
-      in
-      Hashtbl.add has_git_table path v;
-      v
-    | Some v -> v
   in
   let log fmt =
     Printf.ksprintf print_to_console fmt
@@ -415,15 +416,18 @@ let upgrade ft =
     in
     log "Upgrading %s to %s...\n"
       (List.map (extra_files_to_delete @ [original_file])
-         ~f:Path.to_string_maybe_quoted |> String.enumerate_and)
-      (Path.to_string_maybe_quoted new_file);
-    (match has_git (Path.parent_exn original_file) with
+         ~f:Path.Source.to_string_maybe_quoted |> String.enumerate_and)
+      (Path.Source.to_string_maybe_quoted new_file);
+    (match has_git (Path.source (Path.Source.parent_exn original_file)) with
      | Some dir ->
        Fiber.map_all_unit extra_files_to_delete ~f:(fun fn ->
+         let fn = Path.source fn in
          Process.run Strict ~dir ~env:Env.initial
            (Lazy.force git)
            ["rm"; Path.reach fn ~from:dir])
        >>>
+       let original_file = Path.source original_file in
+       let new_file = Path.source new_file in
        Process.run Strict ~dir ~env:Env.initial
          (Lazy.force git)
          [ "mv"
@@ -431,7 +435,8 @@ let upgrade ft =
          ; Path.reach new_file ~from:dir
          ]
      | None ->
-       List.iter (original_file :: extra_files_to_delete) ~f:Path.unlink;
+       List.iter (original_file :: extra_files_to_delete)
+         ~f:(fun p -> Path.unlink (Path.source p));
        Fiber.return ())
     >>| fun () ->
-    Io.write_file new_file contents ~binary:true)
+    Io.write_file (Path.source new_file) contents ~binary:true)

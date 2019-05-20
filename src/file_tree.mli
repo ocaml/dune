@@ -102,4 +102,4 @@ val files_recursively_in
   -> Path.Set.t
 
 (** Load a [jbuild-ignore] file *)
-val load_jbuild_ignore : Path.t -> String.Set.t
+val load_jbuild_ignore : Path.Source.t -> String.Set.t

@@ -69,6 +69,7 @@ module Dune_file = struct
 end
 
 let load_jbuild_ignore path =
+  let path = Path.source path in
   List.filteri (Io.lines_of_file path) ~f:(fun i fn ->
     if Filename.dirname fn = Filename.current_dir_name then
       true
@@ -277,7 +278,7 @@ let load ?(warn_when_seeing_jbuild_file=true) path ~ancestor_vcs =
             if String.Set.mem files "jbuild-ignore" then
               Sub_dirs.add_data_only_dirs sub_dirs
                 ~dirs:(load_jbuild_ignore (
-                  Path.source (Path.Source.relative path "jbuild-ignore")))
+                  Path.Source.relative path "jbuild-ignore"))
             else
               sub_dirs
           in

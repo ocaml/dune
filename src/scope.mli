@@ -6,7 +6,7 @@ open! Stdune
 
 type t
 
-val root : t -> Path.t
+val root : t -> Path.Build.t
 val name : t -> Dune_project.Name.t
 val project : t -> Dune_project.t
 
@@ -29,6 +29,6 @@ module DB : sig
     -> (Path.t * Dune_file.Library.t) list
     -> t * Lib.DB.t
 
-  val find_by_dir  : t -> Path.t              -> scope
+  val find_by_dir  : t -> Path.Build.t        -> scope
   val find_by_name : t -> Dune_project.Name.t -> scope
 end with type scope := t

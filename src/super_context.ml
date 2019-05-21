@@ -76,7 +76,8 @@ let internal_lib_names t =
 let public_libs    t = t.public_libs
 let installed_libs t = t.installed_libs
 
-let find_scope_by_dir  t dir  = Scope.DB.find_by_dir  t.scopes dir
+let find_scope_by_dir t dir  =
+  Scope.DB.find_by_dir  t.scopes (Path.as_in_build_dir_exn dir)
 let find_scope_by_name t name = Scope.DB.find_by_name t.scopes name
 
 module External_env = Env
@@ -106,7 +107,7 @@ end = struct
     | None ->
       let node =
         let inherit_from =
-          if Path.equal dir (Scope.root scope) then
+          if Path.equal dir (Path.build (Scope.root scope)) then
             t.default_env
           else
             match Path.parent dir with
@@ -124,7 +125,8 @@ end = struct
     match Hashtbl.find t.env dir with
     | Some node -> node
     | None ->
-      let scope = Scope.DB.find_by_dir t.scopes dir in
+      let scope =
+        Scope.DB.find_by_dir t.scopes (Path.as_in_build_dir_exn dir) in
       try
         get t ~dir ~scope
       with Exit ->
@@ -402,9 +404,10 @@ let create
   let env = Hashtbl.create 128 in
   let default_env = lazy (
     let make ~inherit_from ~config =
+      let build_dir = Path.as_in_build_dir_exn context.build_dir in
       Env_node.make
-        ~dir:(Path.as_in_build_dir context.build_dir |> Option.value_exn)
-        ~scope:(Scope.DB.find_by_dir scopes context.build_dir)
+        ~dir:build_dir
+        ~scope:(Scope.DB.find_by_dir scopes build_dir)
         ~inherit_from
         ~config
     in
@@ -443,7 +446,8 @@ let create
       | Some host -> host.artifacts
     in
     Expander.make
-      ~scope:(Scope.DB.find_by_dir scopes context.build_dir)
+      ~scope:(Scope.DB.find_by_dir scopes
+                (Path.as_in_build_dir_exn context.build_dir))
       ~context
       ~lib_artifacts:artifacts.public_libs
       ~bin_artifacts_host:artifacts_host.bin

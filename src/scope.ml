@@ -4,7 +4,7 @@ open Import
 type t =
   { project : Dune_project.t
   ; db      : Lib.DB.t
-  ; root    : Path.t (* Path inside the build directory *)
+  ; root    : Path.Build.t
   }
 
 let root t = t.root
@@ -17,27 +17,27 @@ module DB = struct
 
   type t =
     { by_name : scope Dune_project.Name.Map.t
-    ; by_dir : scope Path.Map.t
+    ; by_dir : scope Path.Build.Map.t
     ; context : string
     }
 
   let find_by_dir t dir =
     let rec loop d =
-      if Path.is_root d || not (Path.is_managed d) then
+      if Path.Build.is_root d then
         Exn.code_error "Scope.DB.find_by_dir got an invalid path"
-          [ "dir"    , Path.to_sexp dir
+          [ "dir"    , Path.Build.to_sexp dir
           ; "context", Sexp.Encoder.string t.context
           ];
-      match Path.Map.find t.by_dir d with
+      match Path.Build.Map.find t.by_dir d with
       | Some s -> s
       | None ->
-        begin match Path.parent d with
+        begin match Path.Build.parent d with
+        | Some d -> loop d
         | None ->
           Exn.code_error "find_by_dir: invalid directory"
-            [ "d", Path.to_sexp d
-            ; "dir", Path.to_sexp dir
+            [ "d", Path.Build.to_sexp d
+            ; "dir", Path.Build.to_sexp dir
             ]
-        | Some d -> loop d
         end
     in
     loop dir
@@ -103,7 +103,7 @@ module DB = struct
 
   let sccopes_by_name ~context ~projects ~lib_config ~public_libs
         internal_libs =
-    let build_context_dir = Path.relative Path.build_dir context in
+    let build_context_dir = Path.Build.relative Path.Build.root context in
     let projects_by_name =
       List.map projects ~f:(fun (project : Dune_project.t) ->
         (Dune_project.name project, project))
@@ -133,7 +133,8 @@ module DB = struct
         let db = Lib.DB.create_from_library_stanzas libs ~parent:public_libs
                    ~lib_config in
         let root =
-          Path.append_source build_context_dir (Dune_project.root project) in
+          Path.Build.append_source build_context_dir
+            (Dune_project.root project) in
         Some { project; db; root })
 
   let create ~projects ~context ~installed_libs ~lib_config
@@ -145,7 +146,7 @@ module DB = struct
     in
     let by_dir =
       Dune_project.Name.Map.values by_name
-      |> Path.Map.of_list_map_exn ~f:(fun scope -> (scope.root, scope)) in
+      |> Path.Build.Map.of_list_map_exn ~f:(fun scope -> (scope.root, scope)) in
     Fdecl.set t { by_name ; by_dir ; context};
     (Fdecl.get t, public_libs)
 end

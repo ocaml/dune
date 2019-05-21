@@ -87,6 +87,10 @@ val root : t -> Dir.t
 
 val find_dir : t -> Path.Source.t -> Dir.t option
 
+(** [nearest_dir t fn] returns the directory with the longest path
+    that is an ancestor of [fn]. *)
+val nearest_dir : t -> Path.Source.t -> Dir.t
+
 val files_of : t -> Path.Source.t -> Path.Source.Set.t
 
 (** [true] iff the path is a directory *)

@@ -347,6 +347,17 @@ let find_dir t path =
   let components = Path.Source.explode path in
   find_dir t components
 
+let rec nearest_dir t = function
+  | [] -> t
+  | comp :: components ->
+    match String.Map.find (Dir.sub_dirs t) comp with
+    | None -> t
+    | Some t -> nearest_dir t components
+
+let nearest_dir t path =
+  let components = Path.Source.explode path in
+  nearest_dir t components
+
 let files_of t path =
   match find_dir t path with
   | None -> Path.Source.Set.empty

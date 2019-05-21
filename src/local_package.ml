@@ -1,7 +1,5 @@
 open Stdune
 
-module Id = Id.Make ()
-
 type t =
   { odig_files : Path.Build.t list
   ; ctx_build_dir : Path.Build.t
@@ -65,7 +63,12 @@ let add_stanzas t ~sctx =
 
 let stanzas_to_consider_for_install
       (stanzas : Stanza.t list Dir_with_dune.t list) ~external_lib_deps_mode =
-  if not external_lib_deps_mode then
+  if external_lib_deps_mode then
+    List.concat_map stanzas
+      ~f:(fun d ->
+        List.map d.data ~f:(fun stanza ->
+          { d with data = stanza}))
+  else
     List.concat_map stanzas
       ~f:(fun ({ Dir_with_dune.ctx_dir =  _; data = stanzas
                ; scope; kind = _ ; src_dir = _ ; dune_version = _ } as d) ->
@@ -81,11 +84,6 @@ let stanzas_to_consider_for_install
                | _ -> false
              in
              Option.some_if keep { d with data = stanza }))
-  else
-    List.concat_map stanzas
-      ~f:(fun d ->
-        List.map d.data ~f:(fun stanza ->
-          { d with data = stanza}))
 
 module Of_sctx = struct
   module Output = struct
@@ -129,9 +127,7 @@ module Of_sctx = struct
           | Some (_, libs) -> libs
           | None -> Lib.Set.empty
       in
-      let ctx_build_dir =
-        Path.as_in_build_dir ctx.build_dir |> Option.value_exn
-      in
+      let ctx_build_dir = Path.as_in_build_dir_exn ctx.build_dir in
       Super_context.packages sctx
       |> Package.Name.Map.map ~f:(fun (pkg : Package.t) ->
         let odig_files =

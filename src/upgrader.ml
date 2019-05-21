@@ -361,21 +361,10 @@ let upgrade_dir todo dir =
         upgrade_file todo fn sexps comments
           ~look_for_jbuild_ignore:(Path.Source.equal fn path)))
 
-let rec has_git =
-  let has_git_table = Hashtbl.create 128 in
-  fun path ->
-    match Hashtbl.find has_git_table path with
-    | Some v -> v
-    | None ->
-      let v =
-        if Path.is_directory (Path.relative path ".git") then
-          Some path
-        else
-          Path.parent path
-          |> Option.bind ~f:has_git
-      in
-      Hashtbl.add has_git_table path v;
-      v
+let lookup_git_repo ft fn =
+  match File_tree.Dir.vcs (File_tree.nearest_dir ft fn) with
+  | Some { kind = Git; root } -> Some root
+  | _ -> None
 
 let upgrade ft =
   Dune_project.default_dune_language_version := (1, 0);
@@ -397,7 +386,7 @@ let upgrade ft =
   in
   let* () =
     Fiber.map_all_unit todo.to_add ~f:(fun fn ->
-      match has_git (Path.source (Path.Source.parent_exn fn)) with
+      match lookup_git_repo ft fn with
       | Some dir ->
         Process.run Strict ~dir ~env:Env.initial
           (Lazy.force git)
@@ -418,7 +407,7 @@ let upgrade ft =
       (List.map (extra_files_to_delete @ [original_file])
          ~f:Path.Source.to_string_maybe_quoted |> String.enumerate_and)
       (Path.Source.to_string_maybe_quoted new_file);
-    (match has_git (Path.source (Path.Source.parent_exn original_file)) with
+    (match lookup_git_repo ft original_file with
      | Some dir ->
        Fiber.map_all_unit extra_files_to_delete ~f:(fun fn ->
          let fn = Path.source fn in

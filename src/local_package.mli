@@ -44,5 +44,3 @@ val meta_template : t -> Path.Build.t
 val defined_in : Super_context.t -> dir:Path.t -> t list
 
 val coqlibs : t -> Dune_file.Coq.t Dir_with_dune.t list
-
-val project : t -> Dune_project.t

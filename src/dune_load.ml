@@ -45,11 +45,12 @@ module Dune_files = struct
     ; ignore_promoted_rules : bool
     }
 
-  let generated_dune_files_dir = Path.relative Path.build_dir ".dune"
+  let generated_dune_files_dir = Path.Build.relative Path.Build.root ".dune"
 
   let ensure_parent_dir_exists path =
-    if Path.is_in_build_dir path then
-      Option.iter (Path.parent path) ~f:Path.mkdir_p
+    Path.build path
+    |> Path.parent
+    |> Option.iter ~f:(Path.mkdir_p)
 
   type requires = No_requires | Unix
 
@@ -97,7 +98,7 @@ module Dune_files = struct
   let create_plugin_wrapper (context : Context.t) ~exec_dir ~plugin ~wrapper
         ~target ~kind =
     let plugin_contents = Io.read_file plugin in
-    Io.with_file_out wrapper ~f:(fun oc ->
+    Io.with_file_out (Path.build wrapper) ~f:(fun oc ->
       let ocamlc_config =
         let vars =
           Ocaml_config.to_list context.ocaml_config
@@ -158,7 +159,7 @@ end
         context.name
         context.version_string
         ocamlc_config
-        (Path.reach ~from:exec_dir target)
+        (Path.reach ~from:exec_dir (Path.build target))
         (Path.to_string plugin) plugin_contents);
     extract_requires plugin plugin_contents ~kind
 
@@ -171,9 +172,11 @@ end
     in
     Fiber.parallel_map dynamic ~f:(fun { dir; file; project; kind } ->
       let generated_dune_file =
-        Path.append_source (Path.relative generated_dune_files_dir context.name) file
+        Path.Build.append_source
+          (Path.Build.relative generated_dune_files_dir context.name) file
       in
-      let wrapper = Path.extend_basename generated_dune_file ~suffix:".ml" in
+      let wrapper =
+        Path.Build.extend_basename generated_dune_file ~suffix:".ml" in
       ensure_parent_dir_exists generated_dune_file;
       let requires =
         create_plugin_wrapper context
@@ -190,7 +193,7 @@ end
         List.concat
           [ [ "-I"; "+compiler-libs" ]
           ; cmas
-          ; [ Path.to_absolute_filename wrapper ]
+          ; [ Path.to_absolute_filename (Path.build wrapper) ]
           ]
       in
       (* CR-someday jdimino: if we want to allow plugins to use findlib:
@@ -203,13 +206,14 @@ end
          ]}
       *)
       let* () =
-        Process.run Strict ~dir:(Path.source dir) ~env:context.env context.ocaml args in
-      if not (Path.exists generated_dune_file) then
+        Process.run Strict ~dir:(Path.source dir)
+          ~env:context.env context.ocaml args in
+      if not (Path.exists (Path.build generated_dune_file)) then
         die "@{<error>Error:@} %s failed to produce a valid dune_file file.\n\
              Did you forgot to call [Jbuild_plugin.V*.send]?"
           (Path.Source.to_string file);
       Fiber.return
-        (Dune_lang.Io.load generated_dune_file ~mode:Many
+        (Dune_lang.Io.load (Path.build generated_dune_file) ~mode:Many
            ~lexer:(Dune_lang.Lexer.of_syntax kind)
          |> Dune_file.parse ~dir ~file ~project ~kind ~ignore_promoted_rules))
     >>| fun dynamic ->

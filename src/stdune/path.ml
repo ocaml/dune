@@ -519,14 +519,36 @@ end = struct
   module Map = T.Map
 end
 
+module Local = Relative
+module Source0 = Relative
+
 module Build = struct
   include Relative
   let append_source = append
   let append_relative = append
   let append_local = append
+
+  let extract_build_context t =
+    let t = Relative.to_string t in
+    begin match String.lsplit2 t ~on:'/' with
+    | None ->
+      Some (t, Source0.root)
+    | Some (before, after) ->
+      Some
+        ( before
+        , after
+          |> Source0.of_string )
+    end
+
+  let drop_build_context t = Option.map (extract_build_context t) ~f:snd
+  let drop_build_context_exn t =
+    match drop_build_context t with
+    | Some d -> d
+    | None ->
+      Exn.code_error "Path.Build.drop_build_context_exn"
+        [ "t", to_sexp t
+        ]
 end
-module Local = Relative
-module Source0 = Relative
 
 let (abs_root, set_root) =
   let root_dir = ref None in
@@ -890,17 +912,7 @@ let extract_build_context = function
   | In_source_tree _
   | External _ -> None
   | In_build_dir p when Relative.is_root p -> None
-  | In_build_dir t ->
-    let t = Relative.to_string t in
-    begin match String.lsplit2 t ~on:'/' with
-    | None ->
-      Some (t, Source0.root)
-    | Some (before, after) ->
-      Some
-        ( before
-        , after
-          |> Source0.of_string )
-    end
+  | In_build_dir t -> Build.extract_build_context t
 
 let extract_build_dir_first_component = extract_build_context
 

@@ -24,3 +24,7 @@ let to_string = function
 let neq = function
   | Eq -> false
   | Lt | Gt -> true
+
+let is_eq = function
+  | Eq -> true
+  | Lt | Gt -> false

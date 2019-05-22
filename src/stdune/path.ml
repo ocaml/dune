@@ -230,7 +230,7 @@ end = struct
 
   let root = make "."
 
-  let is_root t = t = root
+  let is_root t = Ordering.is_eq (compare t root)
 
   let is_suffix t ~suffix = String.is_suffix (to_string t) ~suffix
 

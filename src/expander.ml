@@ -106,7 +106,8 @@ let make ~scope ~(context : Context.t) ~lib_artifacts
       | Macro (Ocaml_config, s) ->
         Some (Ok (expand_ocaml_config (Lazy.force ocaml_config) var s))
       | Macro (Env, s) -> Option.map ~f:Result.ok (expand_env t var s)
-      | Var Project_root -> Some (Ok [Value.Dir (Scope.root scope)])
+      | Var Project_root ->
+        Some (Ok [Value.Dir (Path.build (Scope.root scope))])
       | expansion -> Some (Error expansion))
   in
   let ocaml_config = lazy (make_ocaml_config context.ocaml_config) in

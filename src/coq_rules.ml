@@ -143,7 +143,7 @@ let setup_rules ~sctx ~build_dir:_ ~dir ~dir_contents (s : Dune_file.Coq.t) =
   if coq_debug then begin
     let scope = SC.find_scope_by_dir sctx dir in
     Format.eprintf "[gen_rules] @[dir: %a@\nscope: %a@]@\n%!"
-      Path.pp dir Path.pp (Scope.root scope)
+      Path.pp dir Path.Build.pp (Scope.root scope)
   end;
 
   let cc = create_ccoq sctx ~dir in

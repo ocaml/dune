@@ -960,11 +960,15 @@ let drop_optional_build_context_src_exn t =
 let local_src   = Relative.of_string "src"
 let local_build = Relative.of_string "build"
 
-let sandbox_managed_paths ~sandbox_dir t =
-  match t with
-  | External _ -> t
-  | In_source_tree p -> append_relative sandbox_dir (Relative.append local_src   p)
-  | In_build_dir   p -> append_relative sandbox_dir (Relative.append local_build p)
+let sandbox_managed_paths =
+  let append_local ~sandbox_dir local_x p =
+    in_build_dir (Build.append_relative sandbox_dir (Relative.append local_x p))
+  in
+  fun ~(sandbox_dir : Build.t) t ->
+    match t with
+    | External _ -> t
+    | In_source_tree p -> append_local ~sandbox_dir local_src p
+    | In_build_dir   p -> append_local ~sandbox_dir local_build p
 
 let split_first_component t =
   match kind t, is_root t with

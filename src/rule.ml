@@ -10,6 +10,11 @@ module Info = struct
   let of_loc_opt = function
     | None -> Internal
     | Some loc -> From_dune_file loc
+
+  let loc = function
+    | From_dune_file loc -> Some loc
+    | Internal
+    | Source_file_copy -> None
 end
 
 type t =

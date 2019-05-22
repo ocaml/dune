@@ -88,7 +88,8 @@ end = struct
       if validate s then
         Named s
       else
-        Dune_lang.Decoder.of_sexp_errorf loc "invalid project name")
+        User_error.raise ~loc
+          [ Pp.text "Invalid project name" ])
 
   let to_encoded_string = function
     | Named     s -> s
@@ -105,7 +106,7 @@ end = struct
     let invalid s =
       (* Users would see this error if they did "dune build
          _build/default/.ppx/..." *)
-      die "Invalid encoded project name: %S" s
+      User_error.raise [ Pp.textf "Invalid encoded project name: %S" s ]
     in
     fun s ->
       match s with
@@ -167,7 +168,7 @@ module Source_kind = struct
          match String.split ~on:'/' s with
          | [user; repo] -> Github (user,repo)
          | _ ->
-           of_sexp_errorf loc "GitHub repository must be of form user/repo")
+           User_error.raise ~loc [ Pp.textf "GitHub repository must be of form user/repo" ])
       ; "uri", string >>| fun s -> Url s
       ]
 end
@@ -262,8 +263,13 @@ type created_or_already_exist = Created | Already_exist
 module Project_file_edit = struct
   open Project_file
 
-  let notify_user s =
-    kerrf ~f:Console.print "@{<warning>Info@}: %s\n" s
+  let notify_user paragraphs =
+    Console.print_user_message
+      (User_message.make paragraphs
+         ~prefix:(Pp.seq
+                    (Pp.tag (Pp.verbatim "Info")
+                       ~tag:User_message.Style.Warning)
+                    (Pp.char ':')))
 
   let lang_stanza () =
     let ver = (Lang.get_exn "dune").version in
@@ -287,9 +293,12 @@ module Project_file_edit = struct
                            ])]
       in
       notify_user
-        (sprintf "creating file %s with this contents:\n%s\n"
-           (Path.Source.to_string_maybe_quoted t.file)
-           (List.map lines ~f:((^) "| ") |> String.concat ~sep:"\n"));
+        [ Pp.textf "Creating file %s with this contents:"
+            (Path.Source.to_string_maybe_quoted t.file)
+        ; Pp.vbox
+            (Pp.concat_map lines ~sep:Pp.cut
+               ~f:(fun line -> Pp.seq (Pp.verbatim "| ") (Pp.verbatim line)))
+        ];
       Io.write_lines (Path.source t.file) lines ~binary:false;
       t.exists <- true;
       Created
@@ -299,8 +308,9 @@ module Project_file_edit = struct
     let what = ensure_exists t in
     let prev = Io.read_file (Path.source t.file) ~binary:false in
     notify_user
-      (sprintf "appending this line to %s: %s"
-         (Path.Source.to_string_maybe_quoted t.file) str);
+      [ Pp.textf "Appending this line to %s: %s"
+          (Path.Source.to_string_maybe_quoted t.file) str
+      ];
     Io.with_file_out (Path.source t.file) ~binary:false ~f:(fun oc ->
       List.iter [prev; str] ~f:(fun s ->
         output_string oc s;
@@ -365,8 +375,10 @@ module Extension = struct
   let instantiate ~loc ~parse_args (name_loc, name) (ver_loc, ver) =
     match Hashtbl.find extensions name with
     | None ->
-      Errors.fail name_loc "Unknown extension %S.%s" name
-        (hint name (Hashtbl.keys extensions))
+      User_error.raise ~loc:name_loc
+        [ Pp.textf "Unknown extension %S." name ]
+        ~hints:(User_message.did_you_mean name
+                  ~candidates:(Hashtbl.keys extensions))
     | Some t ->
       Syntax.check_supported (syntax t) (ver_loc, ver);
       { extension = t
@@ -430,7 +442,8 @@ let interpret_lang_and_extensions ~(lang : Lang.Instance.t)
          (Syntax.name (Extension.syntax e.extension), e.loc)))
   with
   | Error (name, _, loc) ->
-    Errors.fail loc "Extension %S specified for the second time." name
+    User_error.raise ~loc
+      [ Pp.textf "Extension %S specified for the second time." name ]
   | Ok map ->
     let implicit_extensions =
       Extension.automatic ~project_file
@@ -567,9 +580,10 @@ let default_name ~dir ~packages =
     match Name.named name with
     | Some x -> x
     | None ->
-      Errors.fail pkg.loc
-        "%S is not a valid opam package name."
-        name
+      User_error.raise ~loc:pkg.loc
+        [ Pp.textf "%S is not a valid opam package name."
+            name
+        ]
 
 let parse ~dir ~lang ~opam_packages ~file =
   fields
@@ -630,17 +644,17 @@ let parse ~dir ~lang ~opam_packages ~file =
          begin match packages, name with
          | [p], Some (Named name) ->
            if Package.Name.to_string p.name <> name then
-             of_sexp_errorf p.loc
-               "when a single package is defined, it must have the same \
-                name as the project name: %s" name;
+             User_error.raise ~loc:p.loc
+               [ Pp.textf "when a single package is defined, it must have the same \
+                name as the project name: %s" name ];
          | _, _ -> ()
          end;
          match
            Package.Name.Map.of_list_map packages ~f:(fun p -> p.name, p)
          with
          | Error (_, _, p) ->
-           of_sexp_errorf p.loc "package %s is already defined"
-             (Package.Name.to_string p.name)
+           User_error.raise ~loc:p.loc [ Pp.textf "package %s is already defined"
+             (Package.Name.to_string p.name) ]
          | Ok packages ->
            Package.Name.Map.merge packages opam_packages
              ~f:(fun _name dune opam ->
@@ -648,12 +662,15 @@ let parse ~dir ~lang ~opam_packages ~file =
                | _, None -> dune
                | Some p, _ -> Some { p with kind = Dune (Option.is_some opam) }
                | None, Some (loc, _) ->
-                 Errors.fail loc
-                   "\
-This opam file doesn't have a corresponding (package ...) stanza in the
-dune-project_file. Since you have at least one other (package ...) stanza in
-your dune-project file, you must a (package ...) stanza for each opam package
-in your project.")
+                 User_error.raise ~loc
+                   [ Pp.text
+                       "This opam file doesn't have a corresponding \
+                        (package ...) stanza in the dune-project_file. \
+                        Since you have at least one other (package \
+                        ...) stanza in your dune-project file, you \
+                        must a (package ...) stanza for each opam \
+                        package in your project."
+                   ])
        end
      in
      let packages =
@@ -765,10 +782,11 @@ let load ~dir ~files =
               match Opam_file.load (Path.source opam_file) with
               | s -> Some s
               | exception exn ->
-                Errors.warn (Loc.in_file (Path.source opam_file))
-                  "Unable to read opam file. This package's version field will\
-                   be ignored.@.Reason: %a@."
-                  Exn.pp exn;
+                User_warning.emit ~loc:(Loc.in_file (Path.source opam_file))
+                  [ Pp.text "Unable to read opam file. This package's \
+                             version field will be ignored."
+                  ; Pp.textf "Reason: %s" (Printexc.to_string exn)
+                  ];
                 None
             in
             let* version = Opam_file.get_field opam "version" in

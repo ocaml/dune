@@ -519,10 +519,12 @@ let check_mlds_no_dupes ~pkg ~mlds =
   with
   | Ok m -> m
   | Error (_, p1, p2) ->
-    die "Package %s has two mld's with the same basename %s, %s"
-      (Package.Name.to_string pkg)
-      (Path.to_string_maybe_quoted (Path.build p1))
-      (Path.to_string_maybe_quoted (Path.build p2))
+    User_error.raise
+      [ Pp.textf "Package %s has two mld's with the same basename %s, %s"
+          (Package.Name.to_string pkg)
+          (Path.to_string_maybe_quoted (Path.build p1))
+          (Path.to_string_maybe_quoted (Path.build p2))
+      ]
 
 let setup_package_odoc_rules_def =
   let module Input = struct

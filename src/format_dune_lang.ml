@@ -38,7 +38,7 @@ let pp_simple fmt t =
   Dune_lang.Cst.abstract t
   |> Option.value_exn
   |> Dune_lang.Ast.remove_locs
-  |> Dune_lang.pp Dune fmt
+  |> Dune_lang.Deprecated.pp Dune fmt
 
 let print_wrapped_list fmt =
   Format.fprintf fmt "(@[<hov 1>%a@])"
@@ -59,7 +59,8 @@ let pp_comment loc fmt (comment:Dune_lang.Cst.Comment.t) =
          pp_comment_line)
       ls
   | Legacy ->
-    Errors.fail loc "Formatting is only supported with the dune syntax"
+    User_error.raise ~loc
+      [ Pp.text "Formatting is only supported with the dune syntax" ]
 
 let pp_break fmt attached =
   if attached then
@@ -141,7 +142,8 @@ let format_file ~input =
           Io.copy_channels ic stdout
         )
       | None ->
-        Errors.fail loc "OCaml syntax is not supported."
+        User_error.raise ~loc
+          [ Pp.text "OCaml syntax is not supported." ]
     end
   | Sexps sexps ->
     Format.printf "%a%!" pp_top_sexps sexps

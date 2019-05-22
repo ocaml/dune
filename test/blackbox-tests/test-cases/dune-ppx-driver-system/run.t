@@ -39,8 +39,7 @@ Incompatible Cookies
   27 |  (preprocess (pps ppx3 ppx4)))
                     ^^^^^^^^^^^^^^^
   Error: foo.ppx3 and foo.ppx4 have inconsistent requests for cookie "germany";
-  foo.ppx3 requests "spritzgeback" and foo.ppx4 requests
-  "lebkuchen"
+  foo.ppx3 requests "spritzgeback" and foo.ppx4 requests "lebkuchen"
   [1]
 
 Same, but with error pointing to .ppx
@@ -87,7 +86,7 @@ Test the argument syntax
   File "dune", line 101, characters 3-138:
   101 |    (pps -arg1 driver_print_args ppx_with_cookies_print_args -arg2 -arg3=%{env:AMERICA=undefined} --
   102 |     -foo bar %{env:ENGLAND=undefined})))
-  Error: rule failed to generate the following targets:
+  Error: Rule failed to generate the following targets:
   - test_ppx_args.pp.ml
   [1]
 
@@ -124,7 +123,7 @@ Test using installed drivers
   File "dune", line 6, characters 13-53:
   6 |  (preprocess (pps -arg1 testdriver -arg2 -- -foo bar)))
                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  Error: rule failed to generate the following targets:
+  Error: Rule failed to generate the following targets:
   - driveruser.pp.ml
   [1]
 
@@ -147,7 +146,7 @@ Test using installed drivers
   File "dune", line 13, characters 13-57:
   13 |  (preprocess (pps -arg1 replacesdriver -arg2 -- -foo bar)))
                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  Error: rule failed to generate the following targets:
+  Error: Rule failed to generate the following targets:
   - driveruser.pp.ml
   [1]
 
@@ -172,14 +171,15 @@ Test using installed drivers
   File "dune", line 5, characters 13-57:
   5 |  (preprocess (pps -arg1 replacesdriver -arg2 -- -foo bar)))
                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  Error: rule failed to generate the following targets:
+  Error: Rule failed to generate the following targets:
   - driveruser.pp.ml
   [1]
 
   $ dune build --display short --root jbuild-driver @all
   Entering directory 'jbuild-driver'
   File "jbuild", line 1, characters 0-0:
-  Warning: jbuild files are deprecated, please convert this file to a dune file instead.
+  Warning: jbuild files are deprecated, please convert this file to a dune file
+  instead.
   Note: You can use "dune upgrade" to convert your project to dune.
         ocamlc .testdriver.objs/byte/testdriver.{cmi,cmo,cmt}
         ocamlc testdriver.cma
@@ -198,7 +198,8 @@ Test using installed drivers
   $ dune build --display short --root jbuild-driver @install
   Entering directory 'jbuild-driver'
   File "jbuild", line 1, characters 0-0:
-  Warning: jbuild files are deprecated, please convert this file to a dune file instead.
+  Warning: jbuild files are deprecated, please convert this file to a dune file
+  instead.
   Note: You can use "dune upgrade" to convert your project to dune.
   $ OCAMLPATH=jbuild-driver/_build/install/default/lib dune build --root use-external-driver driveruser.cma
   Entering directory 'use-external-driver'
@@ -218,6 +219,6 @@ Test using installed drivers
   File "dune", line 6, characters 13-53:
   6 |  (preprocess (pps -arg1 testdriver -arg2 -- -foo bar)))
                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  Error: rule failed to generate the following targets:
+  Error: Rule failed to generate the following targets:
   - driveruser.pp.ml
   [1]

@@ -122,8 +122,10 @@ module Config = struct
     let path = Path.extend_basename path ~suffix:".d" in
     let conf_file = Path.relative path (toolchain ^ ".conf") in
     if not (Path.exists conf_file) then
-      die "@{<error>Error@}: ocamlfind toolchain %s isn't defined in %a \
-           (context: %s)" toolchain Path.pp path context;
+      User_error.raise
+        [ Pp.textf "ocamlfind toolchain %s isn't defined in %s (context: %s)"
+            toolchain (Path.to_string_maybe_quoted path) context
+        ];
     let vars = (Meta.load ~name:None conf_file).vars in
     { vars = String.Map.map vars ~f:Rules.of_meta_rules
     ; preds = Ps.make [toolchain]
@@ -447,10 +449,12 @@ let root_packages t =
       match Path.readdir_unsorted dir with
       | Error ENOENT -> []
       | Error unix_error ->
-        die
-          "Unable to read directory %s for findlib package@.Reason:%s@."
-          (Path.to_string_maybe_quoted dir)
-          (Unix.error_message unix_error)
+        User_error.raise
+          [ Pp.textf "Unable to read directory %s for findlib package"
+              (Path.to_string_maybe_quoted dir)
+          ; Pp.textf "Reason: %s"
+              (Unix.error_message unix_error)
+          ]
       | Ok listing ->
         List.filter_map listing ~f:(fun name ->
           if Path.exists (Path.relative dir (name ^ "/META")) then

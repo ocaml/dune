@@ -12,8 +12,8 @@ let make_loc lexbuf : Loc.t =
 
 let invalid_lang_line start lexbuf =
   lexbuf.Lexing.lex_start_p <- start;
-  Errors.fail_lex lexbuf
-    "Invalid first line, expected: (lang <lang> <version>)"
+  User_error.raise ~loc:(Loc.of_lexbuf lexbuf)
+    [ Pp.text "Invalid first line, expected: (lang <lang> <version>)" ]
 }
 
 let newline   = '\r'? '\n'

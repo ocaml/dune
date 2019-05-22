@@ -62,7 +62,7 @@ let print_rule_sexp ppf (rule : Build_system.Rule.t) =
         ; [ "action" , sexp_of_action rule.action ]
         ])
   in
-  Format.fprintf ppf "%a@," Dune_lang.pp_split_strings sexp
+  Format.fprintf ppf "%a@," Dune_lang.Deprecated.pp_split_strings sexp
 
 module Syntax = struct
   type t =
@@ -82,7 +82,7 @@ module Syntax = struct
     | Sexp -> print_rule_sexp
 
   let print_rules syntax ppf rules =
-    Dune_lang.prepare_formatter ppf;
+    Dune_lang.Deprecated.prepare_formatter ppf;
     Format.pp_open_vbox ppf 0;
     Format.pp_print_list (print_rule syntax) ppf rules;
     Format.pp_print_flush ppf ()

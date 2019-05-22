@@ -16,11 +16,16 @@ let parse_module_names ~(unit : Module.t) ~modules words =
 
 let parse_deps_exn ~file lines =
   let invalid () =
-    die "ocamldep returned unexpected output for %s:\n\
-         %s"
-      (Path.to_string_maybe_quoted file)
-      (String.concat ~sep:"\n"
-         (List.map lines ~f:(sprintf "> %s")))
+    User_error.raise
+      [ Pp.textf "ocamldep returned unexpected output for %s:"
+          (Path.to_string_maybe_quoted file)
+      ; Pp.vbox
+          (Pp.concat_map lines ~sep:Pp.cut
+             ~f:(fun line ->
+               Pp.seq
+                 (Pp.verbatim "> ")
+                 (Pp.verbatim line)))
+      ]
   in
   match lines with
   | [] | _ :: _ :: _ -> invalid ()
@@ -58,17 +63,20 @@ let interpret_deps cctx ~unit deps =
       if Module.Name.Infix.(Module.name unit <> m)
       && not (Module.kind unit = Alias)
       && List.exists deps ~f:(fun x -> Module.name x = m) then
-        die "Module %a in directory %s depends on %a.\n\
-             This doesn't make sense to me.\n\
-             \n\
-             %a is the main module of the library and is \
-             the only module exposed \n\
-             outside of the library. Consequently, it should \
-             be the one depending \n\
-             on all the other modules in the library."
-          Module.Name.pp (Module.name unit) (Path.to_string (Path.build dir))
-          Module.Name.pp m
-          Module.Name.pp m);
+        User_error.raise
+          [ Pp.textf "Module %s in directory %s depends on %s."
+              (Module.Name.to_string (Module.name unit))
+              (Path.to_string_maybe_quoted (Path.build dir))
+              (Module.Name.to_string m)
+          ; Pp.textf "This doesn't make sense to me."
+          ; Pp.nop
+          ; Pp.textf "%s is the main module of the library and is the \
+                      only module exposed outside of the \
+                      library. Consequently, it should be the one \
+                      depending on all the other modules in the \
+                      library."
+              (Module.Name.to_string m)
+          ]);
   match stdlib with
   | None -> begin
       match alias_module with

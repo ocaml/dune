@@ -31,8 +31,11 @@ let parse_coqdep ~coq_module (lines : string list) =
   if coq_debug then Format.eprintf "Parsing coqdep @\n%!";
   let source = Coq_module.source coq_module in
   let invalid p =
-    Errors.die "coqdep returned invalid output for %s / [phase: %s]"
-      (Path.Build.to_string source) p in
+    User_error.raise
+      [ Pp.textf "coqdep returned invalid output for %s / [phase: %s]"
+          (Path.Build.to_string_maybe_quoted source) p
+      ]
+  in
   let line =
     match lines with
     | [] | _ :: _ :: _ :: _ -> invalid "line"

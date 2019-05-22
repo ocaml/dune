@@ -10,7 +10,8 @@ When using ppxlib, it is possible to define and promote corrections:
   $ cp correct/add.ml.orig correct/add.ml
   $ dune build @correct/lint
   File "correct/add.ml", line 1, characters 0-0:
-  Files _build/default/correct/add.ml and _build/default/correct/add.ml.lint-corrected differ.
+  Error: Files _build/default/correct/add.ml and
+  _build/default/correct/add.ml.lint-corrected differ.
   [1]
   $ dune promote correct/add.ml
   Promoting _build/default/correct/add.ml.lint-corrected to correct/add.ml.

@@ -35,6 +35,7 @@ Test some error cases
   Error: Module "X" appears in several directories:
   - _build/default/b
   - _build/default/a
+  This is not allowed, please rename one of them.
   [1]
 
   $ dune build --root error2
@@ -50,7 +51,8 @@ Test some error cases
   File "src/gen/dune", line 1, characters 0-23:
   1 | (executable (name gen))
       ^^^^^^^^^^^^^^^^^^^^^^^
-  Error: This stanza is not allowed in a sub-directory of directory with (include_subdirs unqualified).
+  Error: This stanza is not allowed in a sub-directory of directory with
+  (include_subdirs unqualified).
   Hint: add (include_subdirs no) to this file.
   [1]
 

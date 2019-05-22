@@ -9,9 +9,9 @@ let parse (lb : Lexing.lexbuf) =
     OpamBaseParser.main OpamLexer.token lb lb.lex_curr_p.pos_fname
   with
   | OpamLexer.Error msg ->
-    Errors.fail_lex lb "%s" msg
+    User_error.raise ~loc:(Loc.of_lexbuf lb) [ Pp.text msg ]
   | Parsing.Parse_error ->
-    Errors.fail_lex lb "Parse error"
+    User_error.raise ~loc:(Loc.of_lexbuf lb) [ Pp.text "Parse error" ]
 
 let of_string ~path s =
   let lb = Lexing.from_string s in

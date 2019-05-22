@@ -77,19 +77,20 @@ end = struct
             sprintf "%s (in project: %s)" s
               (Dune_project.Name.to_string_hum scope)
         in
-        die "Hash collision between set of ppx drivers:\n\
-             - cache : %s\n\
-             - fetch : %s"
-          (to_string x')
-          (to_string x)
+        User_error.raise
+          [ Pp.textf "Hash collision between set of ppx drivers:"
+          ; Pp.textf "- cache : %s" (to_string x')
+          ; Pp.textf "- fetch : %s" (to_string x)
+          ]
       end
 
   let decode y =
     match Hashtbl.find reverse_table y with
     | Some x -> x
     | None ->
-      die "I don't know what ppx rewriters set %s correspond to."
-        (Digest.to_string y)
+      User_error.raise
+        [ Pp.textf "I don't know what ppx rewriters set %s correspond to."
+            (Digest.to_string y) ]
 end
 
 let pped_module m ~f =
@@ -183,9 +184,12 @@ module Driver = struct
             let* lib = resolve x in
             match get ~loc lib with
             | None ->
-              Error (Errors.exnf loc "%a is not a %s"
-                       Lib_name.pp_quoted name
-                       (desc ~plural:false))
+              Error (User_error.E
+                       (User_error.make ~loc
+                          [ Pp.textf "%S is not a %s"
+                              (Lib_name.to_string name)
+                              (desc ~plural:false)
+                          ]))
             | Some t -> Ok t)
       }
 
@@ -212,13 +216,18 @@ module Driver = struct
 
   let make_error loc msg =
     match loc with
-    | User_file (loc, _) -> Error (Errors.exnf loc "%a" Fmt.text msg)
+    | User_file (loc, _) ->
+      Error (User_error.E
+               (User_error.make ~loc [ Pp.text msg ]))
     | Dot_ppx (path, pps) ->
-      Error (Errors.exnf (Loc.in_file (Path.build path)) "%a" Fmt.text
-               (sprintf
-                  "Failed to create on-demand ppx rewriter for %s; %s"
-                  (String.enumerate_and (List.map pps ~f:Lib_name.to_string))
-                  (String.uncapitalize msg)))
+      Error (User_error.E
+               (User_error.make ~loc:(Loc.in_file (Path.build path))
+                  [ Pp.textf
+                      "Failed to create on-demand ppx rewriter for %s; %s"
+                      (String.enumerate_and
+                         (List.map pps ~f:Lib_name.to_string))
+                      (String.uncapitalize msg)
+                  ]))
 
   let select libs ~loc =
     match select_replaceable_backend libs ~replaces with
@@ -525,21 +534,21 @@ let get_cookies ~loc ~expander ~lib_name libs =
               else
                 let lib1 = Lib_name.to_string lib1 in
                 let lib2 = Lib_name.to_string lib2 in
-                Errors.fail loc "%a" Fmt.text
-                  (sprintf "%s and %s have inconsistent requests for cookie %S; \
-                            %s requests %S and %s requests %S"
-                     lib1 lib2 name
-                     lib1 val1
-                     lib2 val2)
-           )
+                User_error.raise ~loc
+                  [ Pp.textf
+                      "%s and %s have inconsistent requests for cookie \
+                       %S; %s requests %S and %s requests %S"
+                      lib1 lib2 name
+                      lib1 val1
+                      lib2 val2
+                  ])
       |> String.Map.foldi ~init:[]
            ~f:(fun name (value, _) acc -> (name, value) :: acc)
       |> List.rev
       |> List.concat_map ~f:
            (fun (name, value) ->
               ["--cookie"; sprintf "%s=%S" name value]
-           )
-    )
+           ))
   with exn -> Error exn
 
 let ppx_driver_and_flags_internal sctx ~loc ~expander ~lib_name ~flags
@@ -640,8 +649,8 @@ let lint_module sctx ~dir ~expander ~dep_kind ~lint ~lib_name ~scope ~dir_kind =
         | Preprocess.No_preprocessing ->
           (fun ~source:_ ~ast:_ -> ())
         | Future_syntax loc ->
-          Errors.fail loc
-            "'compat' cannot be used as a linter"
+          User_error.raise ~loc
+            [ Pp.text "'compat' cannot be used as a linter" ]
         | Action (loc, action) ->
           (fun ~source ~ast:_ ->
              Module.iter source ~f:(fun _ (src : Module.File.t) ->
@@ -651,8 +660,8 @@ let lint_module sctx ~dir ~expander ~dep_kind ~lint ~lib_name ~scope ~dir_kind =
                     ~src ~target:None)))
         | Pps { loc; pps; flags; staged } ->
           if staged then
-            Errors.fail loc
-              "Staged ppx rewriters cannot be used as linters.";
+            User_error.raise ~loc
+              [ Pp.text "Staged ppx rewriters cannot be used as linters." ];
           let corrected_suffix = ".lint-corrected" in
           let driver_and_flags =
             let open Result.O in

@@ -39,7 +39,8 @@ Errors:
   File "dune", line 3, characters 33-34:
   3 |  (modules_without_implementation x))
                                        ^
-  Warning: The following modules must be listed here as they don't have an implementation:
+  Warning: The following modules must be listed here as they don't have an
+  implementation:
   - Y
   This will become an error in the future.
         ocamlc .foo.objs/byte/foo.{cmi,cmo,cmt}
@@ -56,6 +57,7 @@ Errors:
   File "dune", line 3, characters 33-34:
   3 |  (modules_without_implementation x))
                                        ^
-  Error: The following modules have an implementation, they cannot be listed as modules_without_implementation:
+  Error: The following modules have an implementation, they cannot be listed as
+  modules_without_implementation:
   - X
   [1]

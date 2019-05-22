@@ -39,12 +39,17 @@ let executables_rules ~sctx ~dir ~dir_kind ~expander
       match Module.Name.Map.find modules mod_name with
       | Some m ->
         if not (Module.has m ~ml_kind:Impl) then
-          Errors.fail loc "Module %a has no implementation."
-            Module.Name.pp mod_name
+          User_error.raise ~loc
+            [ Pp.textf "Module %S has no implementation."
+                (Module.Name.to_string mod_name)
+            ]
         else
           { Exe.Program.name; main_module_name = mod_name ; loc }
-      | None -> Errors.fail loc "Module %a doesn't exist."
-                  Module.Name.pp mod_name)
+      | None ->
+        User_error.raise ~loc
+          [ Pp.textf "Module %S doesn't exist."
+              (Module.Name.to_string mod_name)
+          ])
   in
 
   let linkages =

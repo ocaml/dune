@@ -3,7 +3,7 @@ us their origin.
 
 Issue: https://github.com/ocaml/dune/issues/1405
   $ dune build foo.install
-  Multiple rules generated for _build/install/default/doc/foo/foo:
+  Error: Multiple rules generated for _build/install/default/doc/foo/foo:
   - dune:3
   - dune:3
   [1]

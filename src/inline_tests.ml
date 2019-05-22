@@ -76,9 +76,11 @@ module Backend = struct
             let* lib = resolve x in
             match get ~loc lib with
             | None ->
-              Error (Errors.exnf loc "%S is not an %s"
-                       (Lib_name.to_string name)
-                       (desc ~plural:false))
+              Error (User_error.E
+                       (User_error.make ~loc
+                          [ Pp.textf "%S is not an %s"
+                              (Lib_name.to_string name)
+                              (desc ~plural:false) ]))
             | Some t -> Ok t)
       }
 

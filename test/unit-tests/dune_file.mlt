@@ -4,7 +4,7 @@ open! Stdune;;
 
 #warnings "-40";;
 
-let sexp_pp = Dune_lang.pp Dune;;
+let sexp_pp ppf x = Pp.render_ignore_tags ppf (Dune_lang.pp Dune x);;
 #install_printer Dune_file.Mode_conf.pp;;
 #install_printer Binary_kind.pp;;
 #install_printer Dune_file.Executables.Link_mode.pp;;

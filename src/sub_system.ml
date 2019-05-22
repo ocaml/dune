@@ -40,9 +40,13 @@ module Register_backend(M : Backend) = struct
     let* lib = Lib.DB.resolve db (loc, name) in
     match get lib with
     | None ->
-      Error (Errors.exnf loc "%a is not %s %s" Lib_name.pp_quoted name
-               M.desc_article
-               (M.desc ~plural:false))
+      Error (User_error.E
+               (User_error.make ~loc
+                  [ Pp.textf "%s is not %s %s"
+                      (Lib_name.to_string name)
+                      M.desc_article
+                      (M.desc ~plural:false)
+                  ]))
     | Some t -> Ok t
 
   module Selection_error = struct
@@ -54,19 +58,22 @@ module Register_backend(M : Backend) = struct
     let to_exn t ~loc =
       match t with
       | Too_many_backends backends ->
-        Errors.exnf loc
-          "Too many independent %s found:\n%s"
-          (M.desc ~plural:true)
-          (String.concat ~sep:"\n"
-             (List.map backends ~f:(fun t ->
-                let lib = M.lib t in
-                let info = Lib.info lib in
-                let src_dir = Lib_info.src_dir info in
-                sprintf "- %S in %s"
-                  (Lib_name.to_string (Lib.name lib))
-                  (Path.to_string_maybe_quoted src_dir))))
+        User_error.E
+          (User_error.make ~loc
+             [ Pp.textf "Too many independent %s found:"
+                 (M.desc ~plural:true)
+             ; Pp.enumerate backends ~f:(fun t ->
+                 let lib = M.lib t in
+                 let info = Lib.info lib in
+                 let src_dir = Lib_info.src_dir info in
+                 Pp.textf "%S in %s"
+                   (Lib_name.to_string (Lib.name lib))
+                   (Path.to_string_maybe_quoted src_dir))
+             ])
       | No_backend_found ->
-        Errors.exnf loc "No %s found." (M.desc ~plural:false)
+        User_error.E
+          (User_error.make ~loc
+             [ Pp.textf "No %s found." (M.desc ~plural:false) ])
       | Other exn ->
         exn
 

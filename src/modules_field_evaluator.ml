@@ -50,7 +50,8 @@ let eval =
         (* We are going to fail only if the module appear in the final set,
            foo \ bar doesn't fail if bar doesn't exists (for jbuild file
            compatibility) *)
-        Errors.fail loc "Module %a doesn't exist." Module.Name.pp s)
+        User_error.raise ~loc
+          [ Pp.textf "Module %s doesn't exist." (Module.Name.to_string s) ])
 
 type single_module_error =
   | Spurious_module_intf
@@ -170,82 +171,101 @@ let check_invalid_module_listing ~(buildable : Buildable.t) ~intf_only
     let uncapitalized =
       List.map ~f:(fun (_, m) -> Module.Name.uncapitalize m) in
     let line_list modules =
-      List.map ~f:(fun (_, m) ->
-        m |> Module.Name.to_string |> sprintf "- %s") modules
-      |> String.concat ~sep:"\n"
+      Pp.enumerate modules ~f:(fun (_, m) ->
+        Pp.verbatim (Module.Name.to_string m))
     in
-    let print fmt l =
+    let print before l after =
       match l with
       | [] -> ()
-      | (loc, _) :: _ -> Errors.fail loc fmt (line_list l)
+      | (loc, _) :: _ ->
+        User_error.raise ~loc
+          (List.concat
+             [ before
+             ; [line_list l]
+             ; after
+             ])
     in
-    print "The folowing modules are implementations of virtual modules:\
-           \n%s\nThey cannot have their own interface files."
-      vmodule_impls_with_own_intf;
-    print "Implementations of wrapped libraries cannot introduce new \
-           public modules.\nThe following modules:\
-           \n%s\n must all be marked as private using the \
-           (private_modules ..) field."
-      forbidden_new_public_modules;
-    print "The following modules implement virtual modules but \
-           do not have implementations:\
-           \n%s\nYou must provide implementations for these"
-      vmodule_impl_missing_impl;
-    print "These modules are supposed to be implemented:\
-           \n%s\nThey cannot be intferface only"
-      vmodule_impl_intf_only_exclusion;
-    print "These modules are virtual modules implementations:\
-           \n%s\nThey cannot be private"
-      private_impl_of_vmodule;
     print
-      "The following modules are declared as virtual and private:\
-       \n%s\nThis is not possible."
-      private_virt_modules;
-    print "These modules appear in the virtual_libraries \
-           and modules_without_implementation fields:\
-           \n%s\nThis is not possible."
-      virt_intf_overlaps;
-    print "These modules are declared virtual, but are missing.\
-           \n%s\n\
-           You must provide an implementation for all of these modules."
+      [ Pp.text "The folowing modules are implementations of virtual modules:" ]
+      vmodule_impls_with_own_intf
+      [ Pp.text "They cannot have their own interface files." ];
+    print
+      [ Pp.text "Implementations of wrapped libraries cannot introduce \
+                 new public modules."
+      ; Pp.text "The following modules:"
+      ]
+      forbidden_new_public_modules
+      [ Pp.text "must all be marked as private using the \
+                 (private_modules ..) field." ];
+    print
+      [ Pp.text "The following modules implement virtual modules but \
+                 do not have implementations:" ]
+       vmodule_impl_missing_impl
+       [ Pp.text "You must provide implementations for these." ];
+    print
+      [ Pp.text "These modules are supposed to be implemented:" ]
+      vmodule_impl_intf_only_exclusion
+      [ Pp.text "They cannot be intferface only" ];
+    print
+      [ Pp.text "These modules are virtual modules implementations:" ]
+      private_impl_of_vmodule
+      [ Pp.text "They cannot be private." ];
+    print
+      [ Pp.text "The following modules are declared as virtual and private:" ]
+      private_virt_modules
+      [ Pp.text "This is not possible." ];
+    print
+      [ Pp.text "These modules appear in the virtual_libraries \
+                 and modules_without_implementation fields:" ]
+      virt_intf_overlaps
+      [ Pp.text "This is not possible." ];
+    print
+      [ Pp.text "These modules are declared virtual, but are missing." ]
       (unimplemented_virt_modules
        |> Module.Name.Set.to_list
-       |> List.map ~f:(fun name -> (buildable.loc, name)));
+       |> List.map ~f:(fun name -> (buildable.loc, name)))
+      [ Pp.text "You must provide an implementation for all of these modules." ];
     if missing_intf_only <> [] then begin
       match Ordered_set_lang.loc buildable.modules_without_implementation with
       | None ->
         (* DUNE2: turn this into an error *)
-        Errors.warn buildable.loc
-          "Some modules don't have an implementation.\
-           \nYou need to add the following field to this stanza:\
-           \n\
-           \n  %s\
-           \n\
-           \nThis will become an error in the future."
-          (let tag =
-             Dune_lang.unsafe_atom_of_string "modules_without_implementation" in
-           let modules =
-             missing_intf_only
-             |> uncapitalized
-             |> List.map ~f:Dune_lang.Encoder.string
-           in
-           Dune_lang.to_string ~syntax:Dune (List (tag :: modules)))
+        User_warning.emit ~loc:buildable.loc
+          [ Pp.text "Some modules don't have an implementation."
+          ; Pp.textf
+              "You need to add the following field to this stanza:\
+               \n\
+               \n  %s\
+               \n\
+               \nThis will become an error in the future."
+              (let tag =
+                 Dune_lang.unsafe_atom_of_string
+                   "modules_without_implementation" in
+               let modules =
+                 missing_intf_only
+                 |> uncapitalized
+                 |> List.map ~f:Dune_lang.Encoder.string
+               in
+               Dune_lang.to_string ~syntax:Dune (List (tag :: modules)))
+          ]
       | Some loc ->
         (* DUNE2: turn this into an error *)
-        Errors.warn loc
-          "The following modules must be listed here as they don't \
-           have an implementation:\n\
-           %s\n\
-           This will become an error in the future."
-          (line_list missing_intf_only)
+        User_warning.emit ~loc
+          [ Pp.text "The following modules must be listed here as they don't \
+                     have an implementation:"
+          ; (line_list missing_intf_only)
+          ; Pp.text "This will become an error in the future."
+          ]
     end;
     print
-      "The following modules have an implementation, \
-       they cannot be listed as modules_without_implementation:\n%s"
-      spurious_modules_intf;
-    print "The following modules have an implementation, they cannot \
-           be listed as virtual:\n%s"
+      [ Pp.text "The following modules have an implementation, they \
+                 cannot be listed as modules_without_implementation:" ]
+      spurious_modules_intf
+      [];
+    print
+      [ Pp.text "The following modules have an implementation, they cannot \
+                 be listed as virtual:" ]
       spurious_modules_virtual
+      []
   end
 
 let eval ~modules:(all_modules : Module.Source.t Module.Name.Map.t)
@@ -284,8 +304,10 @@ let eval ~modules:(all_modules : Module.Source.t Module.Name.Map.t)
   in
   Module.Name.Map.iteri !fake_modules ~f:(fun m loc ->
     (* DUNE2: make this an error *)
-    Errors.warn loc "Module %a is excluded but it doesn't exist."
-      Module.Name.pp m
+    User_warning.emit ~loc
+      [ Pp.textf "Module %s is excluded but it doesn't exist."
+          (Module.Name.to_string m)
+      ]
   );
   check_invalid_module_listing ~buildable:conf ~intf_only
     ~modules ~virtual_modules ~private_modules ~existing_virtual_modules

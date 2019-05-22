@@ -21,8 +21,9 @@ let decode =
   plain_string (fun ~loc -> function
     | "public" -> Public
     | "private" -> Private
-    | _ -> Errors.fail loc
-             "Not a valid visibility. Valid visibility is public or private")
+    | _ -> User_error.raise ~loc
+             [ Pp.text "Not a valid visibility. Valid visibility is \
+                        public or private" ])
 
 let is_public = function
   | Public -> true

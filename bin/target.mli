@@ -13,7 +13,7 @@ val resolve_target
   : Common.t
   -> setup:Dune.Main.build_system
   -> string
-  -> (t list, Path.t * string) result
+  -> (t list, Path.t * User_message.Style.t Pp.t list) result
 
 type resolve_input =
   | Path of Path.t
@@ -24,7 +24,7 @@ val resolve_targets_mixed
   -> Common.t
   -> Dune.Main.build_system
   -> resolve_input list
-  -> (t list, Path.t * string) result list
+  -> (t list, Path.t * User_message.Style.t Pp.t list) result list
 
 val resolve_targets_exn
   :  log:Log.t

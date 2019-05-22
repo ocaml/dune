@@ -53,28 +53,30 @@ module Local = struct
   let pp_quoted fmt t = Format.fprintf fmt "%S" t
   let pp fmt t = Format.fprintf fmt "%s" t
 
-  let invalid_message =
-    "invalid library name.\n\
-     Hint: library names must be non-empty and composed only of \
-     the following characters: 'A'..'Z',  'a'..'z', '_'  or '0'..'9'"
+  let valid_format_doc =
+    Pp.text "library names must be non-empty and composed only of the \
+             following characters: 'A'..'Z', 'a'..'z', '_' or '0'..'9'"
 
-  let wrapped_message =
-    sprintf
-      "%s.\n\
-       This is temporary allowed for libraries with (wrapped false).\
-       \nIt will not be supported in the future. \
-       Please choose a valid name field."
-      invalid_message
+  let wrapped_warning ~loc ~is_error =
+    User_warning.emit ~loc ~hints:[valid_format_doc] ~is_error
+      [ Pp.text "Invalid library name."
+      ; Pp.text "This is temporary allowed for libraries with (wrapped false)."
+      ; Pp.text "It will not be supported in the future. Please choose \
+                 a valid name field."
+      ]
 
   let validate (loc, res) ~wrapped =
     match res, wrapped with
     | Ok s, _ -> s
     | Warn _, None
-    | Warn _, Some true -> Errors.fail loc "%s" wrapped_message
+    | Warn _, Some true -> wrapped_warning ~loc ~is_error:true; assert false
     | Warn s, Some false ->
       (* DUNE2: turn this into an error *)
-      Errors.warn loc "%s" wrapped_message; s
-    | Invalid, _ -> Errors.fail loc "%s" invalid_message
+      wrapped_warning ~loc ~is_error:false;
+      s
+    | Invalid, _ ->
+      User_error.raise ~loc ~hints:[valid_format_doc]
+        [ Pp.text "Invalid library name." ]
 
   let to_string s = s
 end

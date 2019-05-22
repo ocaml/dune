@@ -36,7 +36,8 @@ let make ?(sandbox=false) ?(mode=Dune_file.Rule.Mode.Standard)
     match Path.Build.Set.choose targets with
     | None -> begin
         match info with
-        | From_dune_file loc -> Errors.fail loc "Rule has no targets specified"
+        | From_dune_file loc ->
+          User_error.raise ~loc [ Pp.text "Rule has no targets specified" ]
         | _ -> Code_error.raise "Build_interpret.Rule.make: no targets" []
       end
     | Some x ->
@@ -50,12 +51,12 @@ let make ?(sandbox=false) ?(mode=Dune_file.Rule.Mode.Standard)
             [ "targets", Path.Build.Set.to_dyn targets
             ]
         | From_dune_file loc ->
-          Errors.fail loc
-            "Rule has targets in different directories.\nTargets:\n%s"
-            (String.concat ~sep:"\n"
-               (Path.Build.Set.to_list targets |> List.map ~f:(fun p ->
-                  sprintf "- %s"
-                    (Path.to_string_maybe_quoted (Path.build p)))))
+          User_error.raise ~loc
+            [ Pp.text "Rule has targets in different directories.\nTargets:"
+            ; Pp.enumerate (Path.Build.Set.to_list targets) ~f:(fun p ->
+                Pp.verbatim
+                  (Path.to_string_maybe_quoted (Path.build p)))
+            ]
       end;
       dir
   in

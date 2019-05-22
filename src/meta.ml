@@ -75,7 +75,9 @@ let add_versions t ~get_version =
   map_package t ~rev_path:[]
 
 module Parse = struct
-  let error = Errors.fail_lex
+  let error lexbuf msg =
+    User_error.raise ~loc:(Loc.of_lexbuf lexbuf)
+      [ Pp.text msg ]
 
   let next = Meta_lexer.token
 
@@ -133,7 +135,7 @@ module Parse = struct
       if depth = 0 then
         List.rev acc
       else
-        error lb "%d closing parentheses missing" depth
+        error lb (sprintf "%d closing parentheses missing" depth)
     | Name "package" ->
       let name = package_name lb in
       lparen lb;

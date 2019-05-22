@@ -23,15 +23,16 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
       | Static fns ->
         let f fn =
           let not_in_dir ~error_loc s =
-            Errors.fail
-              error_loc
-              "%s does not denote a file in the current directory" s;
+            User_error.raise ~loc:error_loc
+              [ Pp.textf
+                  "%s does not denote a file in the current directory" s ];
           in
           let error_loc = String_with_vars.loc fn in
           Expander.expand expander ~mode:Many ~template:fn
           |> List.map ~f:(function
             | Value.String ("." | "..") ->
-              Errors.fail error_loc "'.' and '..' are not valid filenames"
+              User_error.raise~loc:error_loc
+                [ Pp.text "'.' and '..' are not valid filenames" ]
             | String s ->
               if Filename.dirname s <> Filename.current_dir_name then
                 not_in_dir ~error_loc s;
@@ -86,10 +87,10 @@ let copy_files sctx ~dir ~expander ~src_dir (def: Copy_files.t) =
   in
   let file_tree = Super_context.file_tree sctx in
   if not (File_tree.dir_exists file_tree src_in_src) then
-    Errors.fail
-      loc
-      "cannot find directory: %a"
-      Path.Source.pp src_in_src;
+    User_error.raise ~loc
+      [ Pp.textf "Cannot find directory: %s"
+          (Path.Source.to_string src_in_src)
+      ];
   (* add rules *)
   let src_in_build =
     Path.Build.append_source (SC.context sctx).build_dir src_in_src in

@@ -10,3 +10,11 @@ open! Stdune
 
     We cache what is actually printed to the screen.  *)
 val report : Exn_with_backtrace.t -> unit
+
+(** Raised for errors that have already been reported to the user and
+    shouldn't be reported again. This might happen when trying to build
+    a dependency that has already failed. *)
+exception Already_reported
+
+(**/**)
+val ppf : Format.formatter

@@ -78,12 +78,12 @@ let load_jbuild_ignore path =
     if Filename.dirname fn = Filename.current_dir_name then
       true
     else begin
-      Errors.(warn (Loc.of_pos
-                      ( Path.to_string path
-                      , i + 1, 0
-                      , String.length fn
-                      ))
-                "subdirectory expression %s ignored" fn);
+      User_warning.emit ~loc:(Loc.of_pos
+                                ( Path.to_string path
+                                , i + 1, 0
+                                , String.length fn
+                                ))
+        [ Pp.textf "subdirectory expression %s ignored" fn ];
       false
     end)
   |> String.Set.of_list
@@ -179,17 +179,18 @@ type readdir =
 let readdir path =
   match Path.readdir_unsorted (Path.source path) with
   | Error unix_error ->
-    Errors.warn Loc.none
-      "Unable to read directory %s. Ignoring.@.\
-       Remove this message by ignoring by adding:@.\
-       (dirs \\ %s)@.\
-       to the dune file: %s@.\
-       Reason: %s@."
-      (Path.Source.to_string_maybe_quoted path)
-      (Path.Source.basename path)
-      (Path.Source.to_string_maybe_quoted
-         (Path.Source.relative (Path.Source.parent_exn path) "dune"))
-      (Unix.error_message unix_error);
+    User_warning.emit
+      [ Pp.textf "Unable to read directory %s. Ignoring."
+          (Path.Source.to_string_maybe_quoted path)
+      ; Pp.text "Remove this message by ignoring by adding:"
+      ; Pp.textf "(dirs \\ %s)"
+          (Path.Source.basename path)
+      ; Pp.textf "to the dune file: %s"
+          (Path.Source.to_string_maybe_quoted
+             (Path.Source.relative (Path.Source.parent_exn path) "dune"))
+      ; Pp.textf "Reason: %s"
+          (Unix.error_message unix_error)
+      ];
     Error unix_error
   | Ok unsorted_contents ->
     let files, dirs =
@@ -261,11 +262,12 @@ let load ?(warn_when_seeing_jbuild_file=true) path ~ancestor_vcs =
                         : Dune_project.created_or_already_exist)
               else if warn_when_seeing_jbuild_file then
                 (* DUNE2: turn this into an error *)
-                Errors.warn (Loc.in_file (Path.source file))
-                  "jbuild files are deprecated, please convert this file to \
-                   a dune file instead.\n\
-                   Note: You can use \"dune upgrade\" to convert your \
-                   project to dune.";
+                User_warning.emit ~loc:(Loc.in_file (Path.source file))
+                  [ Pp.text "jbuild files are deprecated, please \
+                             convert this file to a dune file instead."
+                  ; Pp.text "Note: You can use \"dune upgrade\" to \
+                             convert your project to dune."
+                  ];
               let dune_file, sub_dirs =
                 Dune_file.load file
                   ~project
@@ -274,9 +276,11 @@ let load ?(warn_when_seeing_jbuild_file=true) path ~ancestor_vcs =
               in
               (Some dune_file, sub_dirs)
             | _ ->
-              die "Directory %s has both a 'dune' and 'jbuild' file.\n\
-                   This is not allowed"
-                (Path.Source.to_string_maybe_quoted path)
+              User_error.raise
+                [ Pp.textf "Directory %s has both a 'dune' and 'jbuild' file.\n\
+                            This is not allowed"
+                    (Path.Source.to_string_maybe_quoted path)
+                ]
           in
           let sub_dirs =
             if String.Set.mem files "jbuild-ignore" then
@@ -311,10 +315,10 @@ let load ?(warn_when_seeing_jbuild_file=true) path ~ancestor_vcs =
                 match File.Map.find dirs_visited file with
                 | None -> File.Map.set dirs_visited file path
                 | Some first_path ->
-                  die "Path %s has already been scanned. \
+                  User_error.raise [ Pp.textf "Path %s has already been scanned. \
                        Cannot scan it again through symlink %s"
                     (Path.Source.to_string_maybe_quoted first_path)
-                    (Path.Source.to_string_maybe_quoted path)
+                    (Path.Source.to_string_maybe_quoted path) ]
             in
             match
               walk path ~dirs_visited ~project ~data_only ~vcs
@@ -335,8 +339,8 @@ let load ?(warn_when_seeing_jbuild_file=true) path ~ancestor_vcs =
   with
   | Ok dir -> dir
   | Error m ->
-    die "Unable to load source %s.@.Reason:%s@."
-      (Path.Source.to_string_maybe_quoted path) (Unix.error_message m)
+    User_error.raise [ Pp.textf "Unable to load source %s.@.Reason:%s@."
+      (Path.Source.to_string_maybe_quoted path) (Unix.error_message m) ]
 
 let fold = Dir.fold
 

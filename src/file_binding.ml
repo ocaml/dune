@@ -92,8 +92,9 @@ module Unexpanded = struct
            let* dst = decode in
            return { src; dst = Some dst })
       | sexp ->
-        of_sexp_error (Dune_lang.Ast.loc sexp)
-          "invalid format, <name> or (<name> as <install-as>) expected"
+        User_error.raise ~loc:(Dune_lang.Ast.loc sexp)
+          [ Pp.text
+              "invalid format, <name> or (<name> as <install-as>) expected" ]
 
     let decode =
       let open Stanza.Decoder in list decode_file

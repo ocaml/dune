@@ -1,4 +1,3 @@
-open Import
 open! Stdune
 open Result.O
 
@@ -529,8 +528,10 @@ module Sub_system = struct
     | M.Info.T info ->
       let get ~loc lib' =
         if lib = lib' then
-          Errors.fail loc "Library %a depends on itself"
-            Lib_name.pp_quoted lib.name
+          User_error.raise ~loc
+            [ Pp.textf "Library %S depends on itself"
+                (Lib_name.to_string lib.name)
+            ]
         else
           M.get lib'
       in
@@ -883,21 +884,24 @@ let rec instantiate db name info ~stack ~hidden =
           else
             let name = Lib_info.name info in
             let name_vlib = Lib_info.name vlib.info in
-            Errors.fail loc
-              "Library implementation %a with variant %a implements@ a \
-               library outside the project.@ Instead of using \
-               (variant %a) here,@ you need to reference it in the \
-               virtual library project,@ using the external_variant stanza:@ \
-               (external_variant@\n\
-               \  (virtual_library %a)@\n\
-               \  (variant %a)@\n\
-               \  (implementation %a))"
-              Lib_name.pp name
-              Variant.pp variant
-              Variant.pp variant
-              Lib_name.pp name_vlib
-              Variant.pp variant
-              Lib_name.pp name)
+            User_error.raise ~loc
+              [ Pp.textf
+                  "Library implementation %s with variant %s implements a \
+                   library outside the project. Instead of using \
+                   (variant %S) here, you need to reference it in the \
+                   virtual library project, using the external_variant stanza:"
+                  (Lib_name.to_string name)
+                  (Variant.to_string variant)
+                  (Variant.to_string variant)
+              ; Pp.textf
+                  "(external_variant\n\
+                  \  (virtual_library %s)\n\
+                  \  (variant %S)\n\
+                  \  (implementation %s))"
+                  (Lib_name.to_string name_vlib)
+                  (Variant.to_string variant)
+                  (Lib_name.to_string name)
+              ])
   in
   let resolve_impl impl_name =
     let* impl = resolve impl_name in
@@ -1403,29 +1407,32 @@ module DB = struct
             | _ -> assert false)
       with
       | None ->
-        Errors.fail ev.loc
-          "Virtual library %a hasn't been found in the project."
-          Lib_name.pp ev.virtual_lib
+        User_error.raise ~loc:ev.loc
+          [ Pp.textf "Virtual library %s hasn't been found in the project."
+              (Lib_name.to_string ev.virtual_lib)
+          ]
       | Some info ->
         begin match Lib_info.virtual_ info with
         | Some _ -> ()
         | None ->
-          Errors.fail ev.loc
-            "Library %a isn't a virtual library."
-            Lib_name.pp ev.virtual_lib
+          User_error.raise ~loc:ev.loc
+            [ Pp.textf "Library %s isn't a virtual library."
+                (Lib_name.to_string ev.virtual_lib)
+            ]
         end)
 
   let error_two_impl_for_variant name variant (loc1, impl1) (loc2, impl2) =
-    Errors.fail_opt None
-      "Error: Two implementations of %a have the same variant %a:\n\
-       - %a (%a)\n\
-       - %a (%a)\n"
-      Lib_name.Local.pp name
-      Variant.pp variant
-      Lib_name.pp impl1
-      Loc.pp_file_colon_line loc1
-      Lib_name.pp impl2
-      Loc.pp_file_colon_line loc2
+    User_error.raise
+      [ Pp.textf "Two implementations of %s have the same variant %S:"
+          (Lib_name.Local.to_string name)
+          (Variant.to_string variant)
+      ; Pp.textf "- %s (%s)"
+          (Lib_name.to_string impl1)
+          (Loc.to_file_colon_line loc1)
+      ; Pp.textf "- %s (%s)"
+          (Lib_name.to_string impl2)
+          (Loc.to_file_colon_line loc2)
+      ]
 
   let create_from_library_stanzas ?parent ~lib_config lib_stanzas
         external_variant_stanzas =
@@ -1512,12 +1519,11 @@ module DB = struct
         with
         | [] | [_] -> assert false
         | loc1 :: loc2 :: _ ->
-          die "Library %a is defined twice:\n\
-               - %s\n\
-               - %s"
-            Lib_name.pp_quoted name
-            (Loc.to_file_colon_line loc1)
-            (Loc.to_file_colon_line loc2)
+          User_error.raise
+            [ Pp.textf "Library %s is defined twice:" (Lib_name.to_string name)
+            ; Pp.textf "- %s" (Loc.to_file_colon_line loc1)
+            ; Pp.textf "- %s" (Loc.to_file_colon_line loc2)
+            ]
     in
     (* We need to check that [external_variant] stanzas are correct,
        i.e. contain valid [virtual_library] fields now since this is

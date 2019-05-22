@@ -159,11 +159,7 @@ let memoize name t =
   Memo { name; t; state = Unevaluated }
 
 let source_tree ~dir ~file_tree =
-  let prefix_with, dir =
-    match Path.extract_build_context_dir dir with
-    | None -> (Path.root, Option.value_exn (Path.as_in_source_tree dir))
-    | Some (ctx_dir, src_dir) -> (ctx_dir, src_dir)
-  in
+  let (prefix_with, dir) = Path.extract_build_context_dir_exn dir in
   let paths = File_tree.files_recursively_in file_tree dir ~prefix_with in
   path_set paths >>^ fun _ -> paths
 

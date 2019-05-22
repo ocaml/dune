@@ -69,6 +69,7 @@ module Dune_file = struct
 end
 
 let load_jbuild_ignore path =
+  let path = Path.source path in
   List.filteri (Io.lines_of_file path) ~f:(fun i fn ->
     if Filename.dirname fn = Filename.current_dir_name then
       true
@@ -277,7 +278,7 @@ let load ?(warn_when_seeing_jbuild_file=true) path ~ancestor_vcs =
             if String.Set.mem files "jbuild-ignore" then
               Sub_dirs.add_data_only_dirs sub_dirs
                 ~dirs:(load_jbuild_ignore (
-                  Path.source (Path.Source.relative path "jbuild-ignore")))
+                  Path.Source.relative path "jbuild-ignore"))
             else
               sub_dirs
           in
@@ -345,6 +346,17 @@ let rec find_dir t = function
 let find_dir t path =
   let components = Path.Source.explode path in
   find_dir t components
+
+let rec nearest_dir t = function
+  | [] -> t
+  | comp :: components ->
+    match String.Map.find (Dir.sub_dirs t) comp with
+    | None -> t
+    | Some t -> nearest_dir t components
+
+let nearest_dir t path =
+  let components = Path.Source.explode path in
+  nearest_dir t components
 
 let files_of t path =
   match find_dir t path with

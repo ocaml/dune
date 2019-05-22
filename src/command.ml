@@ -35,6 +35,9 @@ let rec from_arg_spec : type a b. a Build.s -> (a, b) Arg_spec.t -> b t =
     | Arg_spec.Dyn f -> Dyn (Build.S.map arg ~f:(fun x -> from_arg_spec (Build.return ()) (f x)))
     | Arg_spec.Fail f -> Fail f
 
+let dyn_args args = Dyn (Build.S.map args ~f:(fun x -> As x))
+let dyn_deps args = Dyn (Build.S.map args ~f:(fun x -> Deps x))
+
 let rec add_targets ts acc =
   List.fold_left ts ~init:acc ~f:(fun acc t ->
     match t with

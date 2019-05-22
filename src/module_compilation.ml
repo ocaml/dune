@@ -134,7 +134,7 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
       SC.add_rule sctx ?sandbox ~dir
         (Build.S.seqs [Build.paths extra_deps; other_cm_files]
            (Command.run ~dir (Ok compiler)
-              [ Dyn (Build.S.map flags ~f:(fun x -> Command.As x))
+              [ Command.dyn_args flags
               ; no_keep_locs
               ; cmt_args
               ; S (
@@ -210,7 +210,7 @@ let ocamlc_i ?sandbox ?(flags=[]) ~dep_graphs cctx (m : Module.t) ~output =
     (Build.S.seq cm_deps
        (Build.S.map ~f:(fun act -> Action.with_stdout_to output act)
           (Command.run (Ok ctx.ocamlc) ~dir:(Path.build ctx.build_dir)
-             [ Dyn (Build.S.map ocaml_flags ~f:(fun x -> Command.As x))
+             [ Command.dyn_args ocaml_flags
              ; A "-I"; Path (Obj_dir.byte_dir obj_dir)
              ; Cm_kind.Dict.get (CC.includes cctx) Cmo
              ; (match CC.alias_module cctx with

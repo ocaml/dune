@@ -302,7 +302,7 @@ Can init and build a new executable project
 
   $ cd test_exec_proj && dune build
   Info: creating file dune-project with this contents:
-  | (lang dune 1.9)
+  | (lang dune 1.10)
   | (name test_exec_proj)
   
   $ rm -rf ./test_exec_proj
@@ -324,7 +324,7 @@ Can init and build a new library project
 
   $ cd test_lib_proj && dune build
   Info: creating file dune-project with this contents:
-  | (lang dune 1.9)
+  | (lang dune 1.10)
   | (name test_lib_proj)
   
 Can init and build a project using Esy

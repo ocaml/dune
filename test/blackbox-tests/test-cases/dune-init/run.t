@@ -37,14 +37,14 @@ Clean up library with specified public name
 
 Can add a library with inline tests
 
-  $ dune init lib test_lib ./_inline_tests_lib --inline-tests --ppx ppx_inline_tests
+  $ dune init lib test_lib ./_inline_tests_lib --inline-tests --ppx ppx_inline_test
   Success: initialized library component named test_lib
   $ cat ./_inline_tests_lib/dune
   (library
    (inline_tests)
    (name test_lib)
    (preprocess
-    (pps ppx_inline_tests)))
+    (pps ppx_inline_test)))
 
 Clean up library with inlines tests
 
@@ -240,8 +240,8 @@ Will not create components with invalid names
 Will fail and inform user when invalid component command is given
 
   $ dune init foo blah
-  dune: INIT_KIND argument: invalid value `foo', expected one of `exe', `lib'
-        or `test'
+  dune: INIT_KIND argument: invalid value `foo', expected one of `executable',
+        `library', `project' or `test'
   Usage: dune init [OPTION]... INIT_KIND NAME [PATH]
   Try `dune init --help' or `dune --help' for more information.
   [1]
@@ -277,3 +277,71 @@ Adding fields to existing stanzas is currently not supported
   (executable
    (name main)
    (libraries test_lib1))
+
+Creating projects
+-----------------
+
+Can init and build a new executable project
+
+  $ dune init proj test_exec_proj
+  Success: initialized project component named test_exec_proj
+
+  $ ls test_exec_proj/**
+  test_exec_proj/test_exec_proj.opam
+  
+  test_exec_proj/bin:
+  dune
+  main.ml
+  
+  test_exec_proj/lib:
+  dune
+  
+  test_exec_proj/test:
+  dune
+  test_exec_proj.ml
+
+  $ cd test_exec_proj && dune build
+  Info: creating file dune-project with this contents:
+  | (lang dune 1.9)
+  | (name test_exec_proj)
+  
+  $ rm -rf ./test_exec_proj
+
+Can init and build a new library project
+
+  $ dune init proj test_lib_proj --kind lib
+  Success: initialized project component named test_lib_proj
+
+  $ ls test_lib_proj/**
+  test_lib_proj/test_lib_proj.opam
+  
+  test_lib_proj/lib:
+  dune
+  
+  test_lib_proj/test:
+  dune
+  test_lib_proj.ml
+
+  $ cd test_lib_proj && dune build
+  Info: creating file dune-project with this contents:
+  | (lang dune 1.9)
+  | (name test_lib_proj)
+  
+Can init and build a project using Esy
+
+  $ dune init proj test_esy_proj --pkg esy
+  Success: initialized project component named test_esy_proj
+
+  $ ls test_esy_proj/**
+  test_esy_proj/package.json
+  
+  test_esy_proj/bin:
+  dune
+  main.ml
+  
+  test_esy_proj/lib:
+  dune
+  
+  test_esy_proj/test:
+  dune
+  test_esy_proj.ml

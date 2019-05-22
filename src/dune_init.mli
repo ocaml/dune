@@ -6,6 +6,7 @@ module Kind : sig
   type t =
     | Executable
     | Library
+    | Project
     | Test
 
   val to_string : t -> string
@@ -29,35 +30,72 @@ module Component : sig
 
   (** Options determining the details of a generated component *)
   module Options : sig
-    type common =
-      { name: string
-      ; libraries: string list
-      ; pps: string list
-      }
+    module Common : sig
+      type t =
+        { name : string
+        ; libraries : string list
+        ; pps : string list
+        }
+    end
 
-    type executable =
-      { public: string option
-      }
+    module Executable : sig
+      type t =
+        { public : string option
+        }
+    end
 
-    type library =
-      { public: string option
-      ; inline_tests: bool
-      }
+    module Library : sig
+      type t =
+        { public : string option
+        ; inline_tests : bool
+        }
+    end
 
-    (** NOTE: no options supported yet *)
-    type test = unit
+    module Test : sig
+      (** NOTE: no options supported yet *)
+      type t = unit
+    end
+
+    module Project : sig
+
+      module Template : sig
+        type t =
+          | Exec
+          | Lib
+
+        val of_string : string -> t option
+        val commands : (string * t) list
+      end
+
+      (** The package manager used for a project *)
+      module Pkg : sig
+        type t =
+          | Opam
+          | Esy
+
+        val commands : (string * t) list
+      end
+
+      type t =
+        { template : Template.t
+        ; inline_tests: bool
+        ; pkg : Pkg.t
+        }
+    end
 
     type 'a t =
       { context : Init_context.t
-      ; common : common
+      ; common : Common.t
       ; options : 'a
       }
   end
 
+  (** The supported types of components *)
   type 'options t =
-    | Executable : Options.executable Options.t -> Options.executable t
-    | Library : Options.library Options.t -> Options.library t
-    | Test : Options.test Options.t -> Options.test t
+    | Executable : Options.Executable.t Options.t -> Options.Executable.t t
+    | Library : Options.Library.t Options.t -> Options.Library.t t
+    | Project : Options.Project.t Options.t -> Options.Project.t t
+    | Test : Options.Test.t Options.t -> Options.Test.t t
 
   (** Create or update the component specified by the ['options t],
       where ['options] is *)

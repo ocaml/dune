@@ -4,7 +4,7 @@ open Import
 open Dune.Dune_init
 
 (* TODO(shonfeder): Remove when nested subcommands are available *)
-let validate_component_options kind ~unsupported_options =
+let validate_component_options kind unsupported_options =
   let report_invalid_option = function
     | _, false -> ()  (* The option wasn't supplied *)
     | option_name, true ->
@@ -81,32 +81,80 @@ let term =
          & info ["inline-tests"]
              ~docv:"USE_INLINE_TESTS"
              ~doc:"Whether to use inline tests. \
-                   Only applicable for lib components.")
+                   Only applicable for lib and proj components.")
+  and+ template =
+    Arg.(value
+         & opt
+             (some (enum Component.Options.Project.Template.commands))
+             None
+         & info ["kind"]
+             ~docv:"PROJECT_KIND"
+             ~doc:"The kind of project to initialize. \
+                   Only applicable for proj components.")
+  and+ pkg =
+    Arg.(value
+         & opt
+             (some (enum Component.Options.Project.Pkg.commands))
+             None
+         & info ["pkg"]
+             ~docv:"PACKAGE_MANAGER"
+             ~doc:"Which package manager to use. \
+                   Only applicable for project components.")
+
   in
 
   validate_component_name name;
-
   Common.set_common common_term ~targets:[];
+
   let open Component in
   let context = Init_context.make path in
-  let common : Options.common = { name; libraries; pps } in
+  let common : Options.Common.t = { name; libraries; pps } in
+
   let given_public = Option.is_some public in
+  let given_pkg = Option.is_some pkg in
+  let given_template = Option.is_some template in
+
+  let pkg = Option.value pkg ~default:Options.Project.Pkg.Opam in
+  let template = Option.value template ~default:Options.Project.Template.Exec in
+
+  (* for the [kind] of initialization *)
+  let check_unsupported_options = validate_component_options kind in
+
   begin match kind with
-  | Kind.Library ->
-    init @@ Library { context; common; options = {public; inline_tests} }
   | Kind.Executable ->
-    let unsupported_options =
-      ["inline-tests", inline_tests]
-    in
-    validate_component_options kind ~unsupported_options;
-    init @@ Executable { context; common; options = {public} }
+    check_unsupported_options [ "inline-tests", inline_tests
+                              ; "kind", given_template
+                              ; "pkg", given_pkg
+                              ];
+    init @@ Executable { context
+                       ; common
+                       ; options = {public}
+                       }
+  | Kind.Library ->
+    check_unsupported_options [ "kind", given_template
+                              ; "pkg", given_pkg
+                              ];
+    init @@ Library { context
+                    ; common
+                    ; options = {public; inline_tests}
+                    }
+  | Kind.Project ->
+    check_unsupported_options ["public", given_public
+                              ];
+    init @@ Project { context
+                    ; common
+                    ; options = { inline_tests; pkg; template }
+                    }
   | Kind.Test ->
-    let unsupported_options =
-      [ "public", given_public
-      ; "inline-tests", inline_tests]
-    in
-    validate_component_options kind ~unsupported_options;
-    init @@ Test { context; common; options = () }
+    check_unsupported_options [ "public", given_public
+                              ; "inline-tests", inline_tests
+                              ; "kind", given_template
+                              ; "pkg", given_pkg
+                              ];
+    init @@ Test { context
+                 ; common
+                 ; options = ()
+                 }
   end;
 
   print_completion kind name

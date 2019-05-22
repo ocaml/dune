@@ -7,7 +7,12 @@ type ('a, 'b) t
 
 val arr : ('a -> 'b) -> ('a, 'b) t
 
-val return : 'a -> (unit, 'a) t
+(* In the post-arrow Dune, we will have the selective functor [Build] instead of
+the arrow [Build]. To achieve a gradual transition, we introduce a type synonym
+which makes a unit arrow look like a functor. *)
+type 'a s = (unit, 'a) t
+
+val return : 'a -> 'a s
 
 module O : sig
   val ( >>> ) : ('a, 'b) t -> ('b, 'c) t -> ('a, 'c) t
@@ -72,6 +77,9 @@ val paths_existing : Path.t list -> ('a, bool) t
 val env_var : string -> ('a, 'a) t
 
 val alias : Alias.t -> ('a, 'a) t
+
+(** Record a set of targets of the action produced by the build arrow. *)
+val declare_targets : Path.Set.t -> ('a, 'a) t
 
 (** Compute the set of source of all files present in the sub-tree
     starting at [dir] and record them as dependencies. *)
@@ -202,3 +210,21 @@ val exec : eval_pred:Dep.eval_pred -> ('a, 'b) t -> 'a -> 'b * Dep.Set.t
 val paths_for_rule : Path.Set.t -> ('a, 'a) t
 
 val merge_files_dyn : target:Path.t -> (Path.t list * string list, Action.t) t
+
+(* A module with standard combinators for applicative and selective functors, as
+well as equivalents of the functions from the arrow-based API. *)
+module S : sig
+  module O : sig
+    val (let+) : 'a s -> ('a -> 'b) -> 'b s
+    val (and+) : 'a s -> 'b s -> ('a * 'b) s
+  end
+
+  val apply  : 'a s        -> ('a -> 'b) s -> 'b s
+  val map    : 'a s        -> ('a -> 'b)   -> 'b s
+  val seq    : unit s      -> 'a s         -> 'a s
+  val seqs   : unit s list -> 'a s         -> 'a s
+  val ignore : 'a s        -> unit s
+
+  (* In future this will likely replace the [Dyn_deps] constructor. *)
+  val dyn_deps : ('a * Dep.Set.t) s -> 'a s
+end

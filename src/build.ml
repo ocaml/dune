@@ -39,6 +39,8 @@ and ('a, 'b) if_file_exists_state =
   | Undecided of ('a, 'b) t * ('a, 'b) t
   | Decided   of bool * ('a, 'b) t
 
+type 'a s = (unit, 'a) t
+
 let get_if_file_exists_exn state =
   match !state with
   | Decided (_, t) -> t
@@ -100,6 +102,7 @@ let dyn_deps t = Dyn_deps t
 let paths_for_rule ps = Paths_for_rule ps
 let env_var s = Deps (Dep.Set.singleton (Dep.env s))
 let alias a = dep (Dep.alias a)
+let declare_targets a = Targets a
 
 let catch t ~on_error = Catch (t, on_error)
 
@@ -163,6 +166,7 @@ let source_tree ~dir ~file_tree =
   let paths = File_tree.files_recursively_in file_tree dir ~prefix_with in
   path_set paths >>^ fun _ -> paths
 
+(* TODO: The [Error] case in this function can be simplified. *)
 let get_prog = function
   | Ok p -> path p >>> arr (fun _ -> Ok p)
   | Error f ->
@@ -445,3 +449,17 @@ let exec ~(eval_pred : Dep.eval_pred) (t : ('a, 'b) t) (x : 'a)
   let result = exec dyn_deps t x in
   (result, !dyn_deps)
 
+module S = struct
+  open O
+  module O = struct
+    let (and+) = (&&&)
+    let (let+) = (>>^)
+  end
+  let apply x f = (x &&& f) >>^ (fun (x, f) -> f x)
+  let map   x f = apply x (return f)
+  let ignore  x = x >>^ (fun _ -> ())
+  let seq   x y = (x &&& y) >>^ (fun ((), y) -> y)
+  let seqs xs y = seq (ignore (all xs)) y
+
+  let dyn_deps x = x >>> (Dyn_deps (arr (fun (_args, deps) -> deps))) >>> (arr fst)
+end

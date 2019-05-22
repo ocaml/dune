@@ -80,7 +80,7 @@ end
 type 'a t =
   | No_info    of 'a
   | Since      of 'a * Syntax.Version.t
-  | Deleted_in of 'a * Syntax.Version.t * string option
+  | Deleted_in of 'a * Syntax.Version.t * unit Pp.t option
   | Renamed_in of Syntax.Version.t * string
 
 let values v                       = No_info (Var.Values v)
@@ -126,10 +126,14 @@ module Map = struct
       ; "project_root", since ~version:(1, 0) Var.Project_root
 
       ; "<", deleted_in Var.First_dep ~version:(1, 0)
-               ~repl:"Use a named dependency instead:\
-                      \n\
-                      \n  (deps (:x <dep>) ...)\
-                      \n   ... %{x} ..."
+               ~repl:
+                 (Pp.vbox
+                    [ Pp.text "Use a named dependency instead:"
+                    ; Pp.nop
+                    ; Pp.string "  (deps (:x <dep>) ...)"
+                    ; Pp.nop
+                    ; Pp.string "   ... %{x} ..."
+                    ])
       ; "@", renamed_in ~version:(1, 0) ~new_name:"targets"
       ; "^", renamed_in ~version:(1, 0) ~new_name:"deps"
       ; "SCOPE_ROOT", renamed_in ~version:(1, 0) ~new_name:"project_root"

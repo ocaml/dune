@@ -117,13 +117,3 @@ let output_filename : styles = [Bold; Fg Green]
 let command_success : styles = [Bold; Fg Green]
 
 let command_error : styles = [Bold; Fg Red]
-
-module Render = Pp.Renderer.Make(struct
-    type t = Style.t
-
-    module Handler = struct
-      include Ansi_color.Render.Tag.Handler
-
-      let handle t style = handle t (Style.to_styles style)
-    end
-  end)

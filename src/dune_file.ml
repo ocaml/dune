@@ -1064,9 +1064,12 @@ module Library = struct
              | None ->
                self_build_stubs_archive
              | Some name ->
-               of_sexp_errorf loc
-                 "A library cannot use (self_build_stubs_archive ...) \
-                  and (%s ...) simultaneously." name
+               user_error ~loc
+                 [ Pp.textf
+                     "A library cannot use (self_build_stubs_archive \
+                      ...) and (%s ...) simultaneously."
+                     name
+                 ]
            in
            Blang.fold_vars enabled_if ~init:() ~f:(fun var () ->
              match String_with_vars.Var.name var,

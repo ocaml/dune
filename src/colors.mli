@@ -23,19 +23,3 @@ val command_success : styles
 val command_error : styles
 
 val apply_string : styles -> string -> string
-
-module Style : sig
-  type t =
-    | Loc
-    | Error
-    | Warning
-    | Kwd
-    | Id
-    | Prompt
-    | Details
-    | Ok
-    | Debug
-end
-
-module Render : Pp.Renderer.S
-  with type Tag.t = Style.t

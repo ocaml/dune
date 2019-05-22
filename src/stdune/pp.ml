@@ -17,6 +17,19 @@ type +'a t =
   | Text of string
   | Tag of 'a * 'a t
 
+let rec map_tags t ~f =
+  match t with
+  | Nop -> Nop
+  | Seq (a, b) -> Seq (map_tags a ~f, map_tags b ~f)
+  | Concat (sep, l) -> Concat (map_tags sep ~f, List.map l ~f:(map_tags ~f))
+  | Box (indent, t) -> Box (indent, map_tags t ~f)
+  | Vbox (indent, t) -> Vbox (indent, map_tags t ~f)
+  | Hbox t -> Hbox (map_tags t ~f)
+  | Hvbox (indent, t) -> Hvbox (indent, map_tags t ~f)
+  | Hovbox (indent, t) -> Hovbox (indent, map_tags t ~f)
+  | Verbatim _ | Char _ | Break _ | Newline | Text _ -> t
+  | Tag (tag, t) -> Tag (f tag, map_tags t ~f)
+
 module type Tag = sig
   type t
   module Handler : sig

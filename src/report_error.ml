@@ -33,6 +33,17 @@ let builtin_printer = function
   | Exn.Loc_error (loc, msg) ->
     let pp ppf = Format.fprintf ppf "@{<error>Error@}: %s\n" msg in
     Some (make_printer ~loc pp)
+  | User_error.E { loc; paragraphs } ->
+    let error = Pp.text "Error:" in
+    let paragraphs =
+      match paragraphs with
+      | [] -> [ error ]
+      | x :: l -> Pp.box [error; Pp.space; x ] :: l
+    in
+    let pp ppf =
+      Pp.pp ppf (Pp.vbox [ Pp.many paragraphs ~sep:Pp.cut ])
+    in
+    Some (make_printer ?loc pp)
   | Dune_lang.Parse_error e ->
     let loc = Dune_lang.Parse_error.loc     e in
     let msg = Dune_lang.Parse_error.message e in

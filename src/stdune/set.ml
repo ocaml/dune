@@ -69,7 +69,7 @@ module Make(Elt : Comparable.S) : S with type elt = Elt.t = struct
     match choose t with
     | Some e -> e
     | None ->
-      Exn.code_error "Set.choose_exn" []
+      Code_error.raise "Set.choose_exn" []
 end
 
 let to_sexp to_list f t =

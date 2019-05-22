@@ -95,18 +95,22 @@ end
 
 module Error = struct
   let since loc t ver ~what =
-    Errors.fail loc "%s" @@ Error_msg.since t ver ~what
+    user_error ~loc
+      [ Pp.text (Error_msg.since t ver ~what) ]
 
   let renamed_in loc t ver ~what ~to_ =
-    Errors.fail loc "%s was renamed to '%s' in the %s version of %s"
-      what to_ (Version.to_string ver) t.desc
+    user_error ~loc
+      [ Pp.textf "%s was renamed to '%s' in the %s version of %s"
+          what to_ (Version.to_string ver) t.desc
+      ]
 
   let deleted_in loc t ?repl ver ~what =
-    Errors.fail loc "%s was deleted in version %s of %s%s"
-      what (Version.to_string ver) t.desc
-      (match repl with
-       | None -> ""
-       | Some s -> ".\n" ^ s)
+    user_error ~loc
+      (Pp.textf "%s was deleted in version %s of %s"
+         what (Version.to_string ver) t.desc
+       :: match repl with
+       | None -> []
+       | Some s -> [Pp.text s])
 end
 
 module Warning = struct

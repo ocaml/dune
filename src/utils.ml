@@ -136,27 +136,24 @@ let library_private_dir ~obj_dir =
 let executable_object_directory ~dir name =
   Path.Build.relative dir ("." ^ name ^ ".eobjs")
 
+let not_found fmt ?loc ?context ?hint x =
+  user_error ?loc
+    (Pp.many
+       (Pp.textf fmt (String.maybe_quoted x)
+        :: match context with
+        | None -> []
+        | Some name -> [Pp.textf " (context: %s)" name])
+     :: match hint with
+     | None -> []
+     | Some hint -> [Pp.textf "Hint: %s" hint])
+
 let program_not_found ?context ?hint ~loc prog =
-  Errors.fail_opt loc
-    "@{<error>Error@}: Program %s not found in the tree or in PATH%s%a"
-    (String.maybe_quoted prog)
-    (match context with
-     | None -> ""
-     | Some name -> sprintf " (context: %s)" name)
-    (fun fmt -> function
-       | None -> ()
-       | Some h -> Format.fprintf fmt "@ Hint: %s" h)
-    hint
+  not_found "Program %s not found in the tree or in PATH"
+    ?context ?hint ?loc prog
 
 let library_not_found ?context ?hint lib =
-  die "@{<error>Error@}: Library %s not found%s%a" (String.maybe_quoted lib)
-    (match context with
-     | None -> ""
-     | Some name -> sprintf " (context: %s)" name)
-    (fun fmt -> function
-       | None -> ()
-       | Some h -> Format.fprintf fmt "@ Hint: %s" h)
-    hint
+  not_found "Library %s not found"
+    ?context ?hint lib
 
 let install_file ~(package : Package.Name.t) ~findlib_toolchain =
   let package = Package.Name.to_string package in

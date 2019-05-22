@@ -53,6 +53,9 @@ val break : nspaces:int -> shift:int -> _ t
 (** Force a newline to be printed *)
 val newline : _ t
 
+(** Convert tags in a documents *)
+val map_tag : 'a t -> f:('a -> 'b) -> 'b t
+
 (** {1 Boxes} *)
 
 (** Boxes are the basic components to control the layout of the text.

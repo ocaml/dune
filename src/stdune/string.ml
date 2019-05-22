@@ -114,9 +114,9 @@ let lsplit2_exn s ~on =
   match lsplit2 s ~on with
   | Some s -> s
   | None ->
-    Exn.code_error "lsplit2_exn"
-      [ "s", Sexp.Encoder.string s
-      ; "on", Sexp.Encoder.char on
+    Code_error.raise "lsplit2_exn"
+      [ "s", String s
+      ; "on", Char on
       ]
 
 let rsplit2 s ~on =

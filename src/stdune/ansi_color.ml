@@ -136,7 +136,8 @@ module Styles = struct
     Style.escape_sequence l
 end
 
-module Render = Pp.Renderer.Make(struct
+module Render = struct
+  include Pp.Renderer.Make(struct
     type t = Style.t list
 
     module Handler = struct
@@ -155,6 +156,22 @@ module Render = Pp.Renderer.Make(struct
           ("", (t, seq), "")
     end
   end)
+
+  let channel oc =
+    let supports_color =
+      Unix.isatty (Unix.descr_of_out_channel oc) &&
+      match Sys.getenv "TERM" with
+      | exception Not_found -> false
+      | "dumb" -> false
+      | _ -> true
+    in
+    if supports_color then
+      channel oc
+    else
+      let output = Staged.unstage (Pp.Render.channel oc) in
+      Staged.stage (fun ?margin ?tag_handler pp ->
+        output ?margin (Pp.map_tags pp ~f:ignore))
+end
 
 let strip str =
   let len = String.length str in

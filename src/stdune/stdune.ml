@@ -46,6 +46,7 @@ module Float      = Float
 module Tuple      = Tuple
 module Poly       = Poly
 module Code_error = Code_error
+module User_error = User_error
 
 external reraise : exn -> _ = "%reraise"
 

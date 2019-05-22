@@ -72,6 +72,9 @@ unreleased
   `%{os_type}`, `%{model}`, `%{architecture}`, `%{system}` variables (#1764,
   #2164 @diml, @rgrinberg)
 
+- Fix `chdir` on external and source paths. Dune will also fail gracefully if
+  the external or source path does not exist (#2165, fixes #2158, @rgrinberg)
+
 1.9.3 (06/05/2019)
 ------------------
 

@@ -260,7 +260,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
         String.Set.fold (Dir_contents.text_files dc) ~init:acc
           ~f:(fun fn acc ->
             if String.is_suffix fn ~suffix:".h" then
-              Path.relative (Dir_contents.dir dc) fn :: acc
+              Path.relative (Path.build (Dir_contents.dir dc)) fn :: acc
             else
               acc))
     in

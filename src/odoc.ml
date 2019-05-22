@@ -454,7 +454,8 @@ let setup_package_aliases sctx (pkg : Package.t) =
   )
 
 let entry_modules_by_lib sctx lib =
-  Dir_contents.get_without_rules sctx ~dir:(Lib.src_dir lib)
+  Dir_contents.get_without_rules sctx
+    ~dir:(Path.as_in_build_dir_exn (Lib.src_dir lib))
   |> Dir_contents.modules_of_library ~name:(Lib.name lib)
   |> Lib_modules.entry_modules
 

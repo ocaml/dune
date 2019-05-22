@@ -189,7 +189,9 @@ let install_rules ~sctx ~dir s =
     []
   | { Dune_file.Coq. public = Some { package; _ } ; _ } ->
     let scope = SC.find_scope_by_dir sctx dir in
-    let dir_contents = Dir_contents.get_without_rules sctx ~dir in
+    let dir_contents =
+      Dir_contents.get_without_rules sctx ~dir:(Path.as_in_build_dir_exn dir)
+    in
     let name = Dune_file.Coq.best_name s in
     (* This is the usual root for now, Coq + Dune will change it! *)
     let coq_root = Path.of_string "coq/user-contrib" in

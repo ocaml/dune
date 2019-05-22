@@ -153,7 +153,7 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
       ~f:(fun m ->
         let more_src_dirs =
           List.map (Dir_contents.dirs dir_contents) ~f:(fun dc ->
-            Path.drop_optional_build_context_src_exn (Dir_contents.dir dc))
+            Path.Build.drop_build_context_exn (Dir_contents.dir dc))
         in
         Merlin.add_rules sctx ~dir:ctx_dir ~more_src_dirs ~expander ~dir_kind
           (Merlin.add_source_dir m src_dir));
@@ -255,10 +255,12 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
              Build_system.load_dir ~dir:(Path.parent_exn dir)
          | Some _ ->
            (* This interprets "rule" and "copy_files" stanzas. *)
-           let dir_contents = Dir_contents.get sctx ~dir in
+           let dir_contents =
+             Dir_contents.get sctx ~dir:(Path.as_in_build_dir_exn dir)
+           in
            match dir_contents with
            | Group_part root ->
-             Build_system.load_dir ~dir:root
+             Build_system.load_dir ~dir:(Path.build root)
            | Standalone_or_root dir_contents ->
              match Dir_contents.kind dir_contents with
              | Group_part _ -> assert false
@@ -268,8 +270,10 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
                let cctxs = gen_rules dir_contents [] ~dir in
                let subs = Memo.Lazy.force subs in
                List.iter subs ~f:(fun dc ->
-                 ignore (gen_rules dir_contents cctxs ~dir:(Dir_contents.dir dc)
-                         : _ list))
+                 ignore (
+                   gen_rules dir_contents cctxs
+                     ~dir:(Path.build (Dir_contents.dir dc))
+                   : _ list))
        end);
     match components with
     | [] -> These (String.Set.of_list [".js"; "_doc"; ".ppx"])

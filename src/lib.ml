@@ -424,6 +424,9 @@ module Lib_and_module = struct
              Dep (Module.cm_file_unsafe m (Mode.cm_kind mode))
          ))
 
+    let link_flags_cmd ts ~mode ~stdlib_dir =
+      Command.from_arg_spec (Build.return ()) (link_flags ts ~mode ~stdlib_dir)
+
     let of_libs l = List.map l ~f:(fun x -> Lib x)
   end
 end

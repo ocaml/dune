@@ -119,6 +119,7 @@ module Lib_and_module : sig
     type nonrec t = t list
     val of_libs : lib list -> t
     val link_flags : t -> mode:Mode.t -> stdlib_dir:Path.t -> _ Arg_spec.t
+    val link_flags_cmd : t -> mode:Mode.t -> stdlib_dir:Path.t -> _ Command.t
   end
 end with type lib := t
 

@@ -175,7 +175,7 @@ end
 
 type t =
   { kind : kind
-  ; dir : Path.t
+  ; dir : Path.Build.t
   ; text_files : String.Set.t
   ; modules : Modules.t Memo.Lazy.t
   ; c_sources : C_sources.t Memo.Lazy.t
@@ -221,7 +221,7 @@ let modules_of_executables t ~first_exe =
       ]
 
 let c_sources_of_library t ~name =
-  C_sources.for_lib (Memo.Lazy.force t.c_sources) ~dir:t.dir ~name
+  C_sources.for_lib (Memo.Lazy.force t.c_sources) ~dir:(Path.build t.dir) ~name
 
 let lookup_module t name =
   Module.Name.Map.find (Memo.Lazy.force t.modules).rev_map name
@@ -361,7 +361,9 @@ let coq_modules_of_files ~subdirs =
     String.Set.to_list files |> List.map ~f:(fun file ->
       let name, _ = Filename.split_extension file in
       let name = Coq_module.Name.make name in
-      Coq_module.make ~source:(Path.relative dir file) ~prefix ~name) in
+      Coq_module.make
+        ~source:(Path.build (Path.Build.relative dir file))
+        ~prefix ~name) in
   let modules = List.concat_map ~f:build_mod_dir subdirs in
   modules
 
@@ -380,25 +382,25 @@ type result0_here = {
   t : t;
   (* [rules] includes rules for subdirectories too *)
   rules : Rules.t option;
-  subdirs : t Path.Map.t;
+  subdirs : t Path.Build.Map.t;
 }
 
 type result0 =
-  | See_above of Path.t
+  | See_above of Path.Build.t
   | Here of result0_here
 
-let get_without_rules_fdecl : (Super_context.t * Path.t -> t) Fdecl.t =
+let get_without_rules_fdecl : (Super_context.t * Path.Build.t -> t) Fdecl.t =
   Fdecl.create ()
 
 module Key = struct
-  type t = Super_context.t * Path.t
+  type t = Super_context.t * Path.Build.t
 
   let to_dyn (sctx, path) =
-    Dyn.Tuple [Super_context.to_dyn sctx; Path.to_dyn path;]
+    Dyn.Tuple [Super_context.to_dyn sctx; Path.Build.to_dyn path;]
 
   let to_sexp t = Dyn.to_sexp (to_dyn t)
-  let equal = Tuple.T2.equal Super_context.equal Path.equal
-  let hash = Tuple.T2.hash Super_context.hash Path.hash
+  let equal = Tuple.T2.equal Super_context.equal Path.Build.equal
+  let hash = Tuple.T2.hash Super_context.hash Path.Build.hash
 end
 
 let check_no_qualified loc qualif_mode =
@@ -411,7 +413,7 @@ let check_no_unqualified loc qualif_mode =
 
 let get0_impl (sctx, dir) : result0 =
   let dir_status_db = Super_context.dir_status_db sctx in
-  match Dir_status.DB.get dir_status_db ~dir:(Path.as_in_build_dir_exn dir) with
+  match Dir_status.DB.get dir_status_db ~dir with
   | Standalone x ->
     (match x with
      | Some (ft_dir, Some d) ->
@@ -433,10 +435,11 @@ let get0_impl (sctx, dir) : result0 =
                                  ~files))
              ; coq_modules = Memo.lazy_ (fun () ->
                  build_coq_modules_map d ~dir:d.ctx_dir
-                   ~modules:(coq_modules_of_files ~subdirs:[dir,[],files]))
+                   ~modules:(
+                     coq_modules_of_files ~subdirs:[dir,[],files]))
              };
          rules;
-         subdirs = Path.Map.empty;
+         subdirs = Path.Build.Map.empty;
        }
      | Some (_, None)
      | None ->
@@ -450,14 +453,14 @@ let get0_impl (sctx, dir) : result0 =
              ; coq_modules = Memo.Lazy.of_val Lib_name.Map.empty
              };
          rules = None;
-         subdirs = Path.Map.empty;
+         subdirs = Path.Build.Map.empty;
        })
   | Is_component_of_a_group_but_not_the_root { group_root; _ } ->
-    See_above (Path.build group_root)
+    See_above group_root
   | Group_root (ft_dir, qualif_mode, d) ->
     let rec walk ft_dir ~dir ~local acc =
       match
-        Dir_status.DB.get dir_status_db ~dir:(Path.as_in_build_dir_exn dir)
+        Dir_status.DB.get dir_status_db ~dir
       with
       | Is_component_of_a_group_but_not_the_root { stanzas = d; group_root = _ } ->
         let files =
@@ -470,11 +473,11 @@ let get0_impl (sctx, dir) : result0 =
     and walk_children ft_dir ~dir ~local acc =
       String.Map.foldi (File_tree.Dir.sub_dirs ft_dir) ~init:acc
         ~f:(fun name ft_dir acc ->
-          let dir = Path.relative dir name in
+          let dir = Path.Build.relative dir name in
           let local = if qualif_mode = Qualified then name :: local else local in
           walk ft_dir ~dir ~local acc)
     in
-    let (files, subdirs), rules =
+    let (files, (subdirs : (Path.Build.t * _ * _) list)), rules =
       Rules.collect_opt (fun () ->
         let files = load_text_files sctx ft_dir d in
         let subdirs = walk_children ft_dir ~dir ~local:[] [] in
@@ -484,8 +487,8 @@ let get0_impl (sctx, dir) : result0 =
       check_no_qualified Loc.none qualif_mode;
       let modules =
         List.fold_left ((dir, [], files) :: subdirs) ~init:Module.Name.Map.empty
-          ~f:(fun acc (dir, _local, files) ->
-            let modules = modules_of_files ~dir ~files in
+          ~f:(fun acc ((dir : Path.Build.t), _local, files) ->
+            let modules = modules_of_files ~dir:(Path.build dir) ~files in
             Module.Name.Map.union acc modules ~f:(fun name x y ->
               Errors.fail (Loc.in_file
                              (Path.source (match File_tree.Dir.dune_file ft_dir with
@@ -509,7 +512,9 @@ let get0_impl (sctx, dir) : result0 =
       let c_sources =
         List.fold_left ((dir, [], files) :: subdirs) ~init
           ~f:(fun acc (dir, _local, files) ->
-            let sources = C_sources.load_sources ~dir ~dune_version ~files in
+            let sources =
+              C_sources.load_sources ~dir:(Path.build dir) ~dune_version ~files
+            in
             let f acc sources =
               String.Map.union acc sources ~f:(fun name x y ->
                 Errors.fail (Loc.in_file
@@ -561,7 +566,7 @@ let get0_impl (sctx, dir) : result0 =
         ; mlds = Memo.lazy_ (fun () -> (build_mlds_map d ~files))
         ; coq_modules
         })
-      |> Path.Map.of_list_exn
+      |> Path.Build.Map.of_list_exn
     in
     Here {
       t;
@@ -586,7 +591,7 @@ let memo0 =
 
 type get_result =
   | Standalone_or_root of t
-  | Group_part of Path.t
+  | Group_part of Path.Build.t
 
 let get key =
   match Memo.exec memo0 key with
@@ -605,7 +610,7 @@ let get_without_rules key =
     | See_above _ -> assert false
     | Here { t = _; rules; subdirs } ->
       ignore rules;
-      Path.Map.find_exn subdirs dir
+      Path.Build.Map.find_exn subdirs dir
 
 let () =
   Fdecl.set get_without_rules_fdecl

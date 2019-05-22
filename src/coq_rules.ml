@@ -3,7 +3,6 @@
 (*     Written by: Emilio Jesús Gallego Arias  *)
 
 open! Stdune
-open Build.O
 module SC = Super_context
 
 let coq_debug = false
@@ -69,31 +68,33 @@ let setup_rule ~expander ~dir ~cc ~source_rule ~coq_flags ~file_flags
   let stdout_to = Coq_module.obj_file ~obj_dir ~ext:".v.d" coq_module in
   let object_to = Coq_module.obj_file ~obj_dir ~ext:".vo"  coq_module in
 
-  let file_flags = file_flags @ [Arg_spec.Dep (Path.build source)] in
-  let cd_arg = (Arg_spec.As ["-dyndep"; "opt"]) :: file_flags in
+  let file_flags = file_flags @ [Command.Dep (Path.build source)] in
+  let cd_arg = (Command.As ["-dyndep"; "opt"]) :: file_flags in
 
   (* coqdep needs the full source + plugin's mlpack to be present :( *)
   let coqdep_rule =
     (* This is weird stuff in order to adapt the rule so we can reuse
        ml_iflags :( I wish we had more flexible typing. *)
-    ((fun () -> []) ^>> source_rule &&& mlpack_rule) >>^ fst >>>
-    Build.run ~dir ~stdout_to cc.coqdep cd_arg
+
+  Build.S.seqs [mlpack_rule; source_rule]
+    (Command.run ~dir ~stdout_to cc.coqdep cd_arg)
   in
 
   (* Process coqdep and generate rules *)
-  let deps_of = Build.dyn_paths (
-    Build.lines_of stdout_to >>^
-    parse_coqdep ~coq_module >>^
-    List.map ~f:(Path.relative dir)
+
+  let deps_of : unit Build.s = Build.dyn_paths (
+    Build.S.map (Build.lines_of stdout_to)
+      ~f:(fun x -> List.map ~f:(Path.relative dir) (parse_coqdep ~coq_module x))
   ) in
 
-  let cc_arg = (Arg_spec.Hidden_targets [object_to]) :: file_flags in
+  let cc_arg = (Command.Hidden_targets [object_to]) :: file_flags in
 
   (* Rules for the files *)
   [coqdep_rule;
-   deps_of >>>
-   Expander.expand_and_eval_set expander coq_flags ~standard:(Build.return []) >>>
-   Build.run ~dir cc.coqc (Dyn (fun flags -> As flags) :: cc_arg)
+   Build.S.seq deps_of (
+    let coq_flags = Expander.expand_and_eval_set expander coq_flags ~standard:(Build.return []) in
+    let coq_flags = Build.S.map coq_flags ~f:(fun l -> Command.As l) in
+    Command.run ~dir cc.coqc (Command.Dyn coq_flags :: cc_arg))
   ]
 
 (* TODO: remove; rgrinberg points out:
@@ -113,7 +114,7 @@ let libs_of_coq_deps ~lib_db libs =
   Result.List.map ~f:(Lib.DB.resolve lib_db) libs |> Result.ok_exn
 
 (* compute include flags and mlpack rules *)
-let setup_ml_deps ~lib_db libs =
+let setup_ml_deps ~lib_db libs : _ Command.t * _ =
 
   (* coqdep expects an mlpack file next to the sources otherwise it
    * will omit the cmxs deps *)
@@ -130,11 +131,12 @@ let setup_ml_deps ~lib_db libs =
   let ml_iflags, mlpack =
     let libs = libs_of_coq_deps ~lib_db libs
                |> Lib.closure ~linking:false |> Result.ok_exn in
-    Util.include_flags libs, List.concat_map ~f:ml_pack_files libs
+    Command.from_arg_spec (Build.return ())
+      (Util.include_flags libs), List.concat_map ~f:ml_pack_files libs
   in
 
   (* If the mlpack files don't exist, don't fail *)
-  ml_iflags, Build.paths_existing mlpack
+  ml_iflags, Build.S.ignore (Build.paths_existing mlpack)
 
 let coqlib_wrapper_name (s : Dune_file.Coq.t) =
   Lib_name.Local.to_string (snd s.name)
@@ -162,7 +164,7 @@ let setup_rules ~sctx ~dir ~dir_contents (s : Dune_file.Coq.t) =
 
   let lib_db = Scope.libs scope in
   let ml_iflags, mlpack_rule = setup_ml_deps ~lib_db s.libraries in
-  let file_flags = [ml_iflags; Arg_spec.As ["-R"; "."; wrapper_name]] in
+  let file_flags = [ml_iflags; Command.As ["-R"; "."; wrapper_name]] in
 
   List.concat_map
     ~f:(setup_rule ~expander ~dir ~cc ~source_rule ~coq_flags ~file_flags
@@ -217,7 +219,7 @@ let coqpp_rules ~sctx ~build_dir ~dir (s : Dune_file.Coqpp.t) =
   let mlg_rule m =
     let source = Path.build (Path.Build.relative dir (m ^ ".mlg")) in
     let target = Path.build (Path.Build.relative dir (m ^ ".ml")) in
-    let args = Arg_spec.[Dep source; Hidden_targets [target]] in
-    Build.run ~dir:(Path.build build_dir) cc.coqpp args in
+    let args = Command.[Dep source; Hidden_targets [target]] in
+    Command.run ~dir:(Path.build build_dir) cc.coqpp args in
 
   List.map ~f:mlg_rule s.modules

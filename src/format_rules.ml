@@ -76,12 +76,12 @@ let gen_rules_output sctx (config : Dune_file.Auto_format.t) ~output_dir =
       | _, ".re"
       | _, ".rei" when Dune_file.Auto_format.includes config Reason ->
         let exe = resolve_program "refmt" in
-        let args = [Arg_spec.Dep input] in
-        Some (Build.run ~dir ~stdout_to:output exe args)
+        let args = [Command.Dep input] in
+        Some (Command.run ~dir ~stdout_to:output exe args)
       | "dune", _ when Dune_file.Auto_format.includes config Dune ->
         let exe = resolve_program "dune" in
-        let args = [Arg_spec.A "format-dune-file"; Dep input] in
-        Some (Build.run ~dir ~stdout_to:output exe args)
+        let args = [Command.A "format-dune-file"; Dep input] in
+        Some (Command.run ~dir ~stdout_to:output exe args)
       | _ -> None
     in
 

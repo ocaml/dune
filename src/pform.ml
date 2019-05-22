@@ -210,6 +210,12 @@ module Map = struct
       ; "ROOT"           , renamed_in ~version:(1, 0) ~new_name:"workspace_root"
       ; "os_type"        , since ~version:(1, 10)
                              (Var.Values [String context.os_type])
+      ; "architecture"   , since ~version:(1, 10)
+                             (Var.Values [String context.architecture])
+      ; "system"         , since ~version:(1, 10)
+                             (Var.Values [String context.system])
+      ; "model"          , since ~version:(1, 10)
+                             (Var.Values [String context.model])
       ]
     in
     { vars =

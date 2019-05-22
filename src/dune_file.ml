@@ -1028,11 +1028,14 @@ module Library = struct
            Blang.fold_vars enabled_if ~init:() ~f:(fun var () ->
              match String_with_vars.Var.name var,
                    String_with_vars.Var.payload var with
-             | "os_type", None -> ()
+             | var, None when
+                 List.mem var ~set:Lib_config.allowed_in_enabled_if -> ()
              | _ ->
                Errors.fail (String_with_vars.Var.loc var)
-                 "Only the 'os_type' variable is allowed in the 'enabled_if' \
-                  field of libraries.");
+                 "Only %s are allowed in the 'enabled_if' \
+                  field of libraries."
+                 (String.enumerate_and Lib_config.allowed_in_enabled_if)
+           );
            { name
            ; public
            ; synopsis

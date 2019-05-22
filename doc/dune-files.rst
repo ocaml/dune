@@ -1097,6 +1097,12 @@ Dune supports the following variables:
   workspace file)
 - ``os_type`` is the type of the OS the build is targetting. This is
   the same as ``ocaml-config:os_type``
+- ``architecture`` is the type of the architecture the build is targetting. This
+  is the same as ``ocaml-config:architecture``
+- ``model`` is the type of the cpu the build is targetting. This is
+  the same as ``ocaml-config:model``
+- ``system`` is the name of the OS the build is targetting. This is the same as
+  ``ocaml-config:system``
 
 In addition, ``(action ...)`` fields support the following special variables:
 

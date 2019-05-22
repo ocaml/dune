@@ -220,7 +220,7 @@ module S : sig
   end
 
   val apply  : 'a s        -> ('a -> 'b) s -> 'b s
-  val map    : 'a s        -> ('a -> 'b)   -> 'b s
+  val map    : 'a s        -> f:('a -> 'b) -> 'b s
   val seq    : unit s      -> 'a s         -> 'a s
   val seqs   : unit s list -> 'a s         -> 'a s
   val ignore : 'a s        -> unit s

@@ -456,7 +456,7 @@ module S = struct
     let (let+) = (>>^)
   end
   let apply x f = (x &&& f) >>^ (fun (x, f) -> f x)
-  let map   x f = apply x (return f)
+  let map  x ~f = apply x (return f)
   let ignore  x = x >>^ (fun _ -> ())
   let seq   x y = (x &&& y) >>^ (fun ((), y) -> y)
   let seqs xs y = seq (ignore (all xs)) y

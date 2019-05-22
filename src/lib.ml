@@ -340,6 +340,9 @@ module L = struct
   let include_flags ts ~stdlib_dir =
     to_iflags (include_paths ts ~stdlib_dir)
 
+  let include_flags_cmd ts ~stdlib_dir =
+    Command.from_arg_spec (Build.return ()) (include_flags ts ~stdlib_dir)
+
   let c_include_paths ts ~stdlib_dir =
     let dirs =
       List.fold_left ts ~init:Path.Set.empty ~f:(fun acc t ->

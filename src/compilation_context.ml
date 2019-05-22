@@ -4,35 +4,35 @@ open Import
 module SC = Super_context
 
 module Includes = struct
-  type t = (string list, Arg_spec.dynamic) Arg_spec.t Cm_kind.Dict.t
+  type t = Command.dynamic Command.t Cm_kind.Dict.t
 
   let make sctx ~opaque ~requires : _ Cm_kind.Dict.t =
     match requires with
     | Error exn ->
-      Cm_kind.Dict.make_all (Arg_spec.Fail {fail = fun () -> raise exn})
+      Cm_kind.Dict.make_all (Command.Fail {fail = fun () -> raise exn})
     | Ok libs ->
       let iflags =
-        Lib.L.include_flags libs ~stdlib_dir:(SC.context sctx).stdlib_dir
+        Lib.L.include_flags_cmd libs ~stdlib_dir:(SC.context sctx).stdlib_dir
       in
       let cmi_includes =
-        Arg_spec.S [ iflags
-                   ; Hidden_deps (Lib_file_deps.deps libs ~groups:[Cmi])
-                   ]
+        Command.S [ iflags
+                  ; Hidden_deps (Lib_file_deps.deps libs ~groups:[Cmi])
+                  ]
       in
       let cmx_includes =
-        Arg_spec.S
+        Command.S
           [ iflags
           ; Hidden_deps
               (if opaque then
-                  List.map libs ~f:(fun lib ->
-                    (lib, if Lib.is_local lib then
-                       [Lib_file_deps.Group.Cmi]
-                     else
-                       [Cmi; Cmx]))
-                  |> Lib_file_deps.deps_with_exts
-                else
-                  Lib_file_deps.deps libs
-                    ~groups:[Lib_file_deps.Group.Cmi; Cmx])
+                 List.map libs ~f:(fun lib ->
+                   (lib, if Lib.is_local lib then
+                      [Lib_file_deps.Group.Cmi]
+                    else
+                      [Cmi; Cmx]))
+                 |> Lib_file_deps.deps_with_exts
+               else
+                 Lib_file_deps.deps libs
+                   ~groups:[Lib_file_deps.Group.Cmi; Cmx])
           ]
       in
       { cmi = cmi_includes
@@ -41,7 +41,7 @@ module Includes = struct
       }
 
   let empty =
-    Cm_kind.Dict.make_all (Arg_spec.As [])
+    Cm_kind.Dict.make_all (Command.As [])
 end
 
 type t =

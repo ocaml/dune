@@ -77,6 +77,7 @@ module L : sig
 
   val include_paths : t -> stdlib_dir:Path.t -> Path.Set.t
   val include_flags : t -> stdlib_dir:Path.t -> _ Arg_spec.t
+  val include_flags_cmd : t -> stdlib_dir:Path.t -> _ Command.t
 
   val c_include_flags : t -> stdlib_dir:Path.t -> _ Arg_spec.t
 

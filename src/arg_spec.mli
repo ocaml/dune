@@ -44,7 +44,7 @@ type ('a, _) t =
   | Paths    : Path.t list -> ('a, _) t
   | Hidden_deps    : Dep.Set.t -> ('a, _) t
   | Hidden_targets : Path.t list -> ('a, dynamic) t
-  | Dyn      : ('a -> (Nothing.t, static) t) -> ('a, dynamic) t
+  | Dyn      : ('a -> (unit, static) t) -> ('a, dynamic) t
   | Fail     : fail -> ('a, _) t
 
 val static_deps    : _ t list -> Dep.Set.t

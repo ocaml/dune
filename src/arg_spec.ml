@@ -16,7 +16,7 @@ type ('a, _) t =
   | Paths    : Path.t list -> ('a, _) t
   | Hidden_deps    : Dep.Set.t -> ('a, _) t
   | Hidden_targets : Path.t list -> ('a, dynamic) t
-  | Dyn      : ('a -> (Nothing.t, static) t) -> ('a, dynamic) t
+  | Dyn      : ('a -> (unit, static) t) -> ('a, dynamic) t
   | Fail     : fail -> ('a, _) t
 
 let static_deps =
@@ -44,7 +44,7 @@ let rec add_targets ts acc =
 let expand ~dir ts x =
   let dyn_deps = ref Dep.Set.empty in
   let add_dep path = dyn_deps := Dep.Set.add !dyn_deps (Dep.file path) in
-  let rec loop_dyn : (Nothing.t, static) t -> string list = function
+  let rec loop_dyn : (unit, static) t -> string list = function
     | A s  -> [s]
     | As l -> l
     | Dep fn ->

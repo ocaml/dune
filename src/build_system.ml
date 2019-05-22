@@ -11,7 +11,7 @@ let () = Hooks.End_of_build.always Memo.reset
 
 module Fs : sig
   val mkdir_p : Path.Build.t -> unit
-  val mkdir_p_or_check_exists : loc:Loc.t -> Path.t -> unit
+  val mkdir_p_or_check_exists : loc:Loc.t option -> Path.t -> unit
 end = struct
   let mkdir_p_def =
     Memo.create
@@ -37,7 +37,7 @@ end = struct
 
   let assert_exists ~loc path =
     if not (Memo.exec assert_exists_def path) then
-      Errors.fail loc "%a does not exist" Path.pp path
+      Errors.fail_opt loc "%a does not exist" Path.pp path
 
   let mkdir_p_or_check_exists ~loc path =
     match Path.as_in_build_dir path with
@@ -149,9 +149,7 @@ module Internal_rule = struct
     Sexp.Encoder.record
       [ "id", Id.to_sexp t.id
       ; "loc", Sexp.Encoder.option Loc.to_sexp
-                 (match t.info with
-                  | From_dune_file loc -> Some loc
-                  | _ -> None)
+                 (Rule.Info.loc t.info)
       ]
 
   let lib_deps t =
@@ -504,9 +502,7 @@ let compute_targets_digest_after_rule_execution ~info targets =
   | [] -> Digest.string (Marshal.to_string good [])
   | missing ->
     Errors.fail_opt
-      (match (info : Rule.Info.t) with
-       | From_dune_file loc -> Some loc
-       | _ -> None)
+      (Rule.Info.loc info)
       "rule failed to generate the following targets:\n%s"
       (string_of_paths (Path.Set.of_list missing))
 
@@ -1178,11 +1174,10 @@ let () =
       match Memo.Stack_frame.as_instance_of frame ~of_:execute_rule_def with
       | Some input -> Some input
       | None ->
-        Memo.Stack_frame.as_instance_of frame ~of_:evaluate_action_and_dynamic_deps_def)
-    |> Option.bind ~f:(fun rule ->
-      match rule.Internal_rule.info with
-      | From_dune_file loc -> Some loc
-      | _ -> None))
+        Memo.Stack_frame.as_instance_of frame
+          ~of_:evaluate_action_and_dynamic_deps_def)
+    |> Option.bind ~f:(fun (rule : Internal_rule.t) -> Rule.Info.loc rule.info
+      ))
 
 let evaluate_rule (rule : Internal_rule.t) =
   let* static_deps = Fiber.Once.get rule.static_deps in
@@ -1289,6 +1284,7 @@ let () =
       if force || something_changed then begin
         List.iter targets_as_list ~f:Path.unlink_no_err;
         pending_targets := Path.Set.union targets !pending_targets;
+        let loc = Rule.Info.loc info in
         let action =
           match sandbox_dir with
           | None ->
@@ -1299,8 +1295,8 @@ let () =
             Dep.Set.dirs deps
             |> Path.Set.iter ~f:(fun p ->
               sandboxed p
-              |> Fs.mkdir_p_or_check_exists ~loc:Loc.none);
-            Fs.mkdir_p_or_check_exists ~loc:Loc.none (sandboxed dir);
+              |> Fs.mkdir_p_or_check_exists ~loc);
+            Fs.mkdir_p_or_check_exists ~loc (sandboxed dir);
             Action.sandbox action
               ~sandboxed
               ~deps
@@ -1308,7 +1304,7 @@ let () =
               ~eval_pred
         in
         let chdirs = Action.chdirs action in
-        Path.Set.iter chdirs ~f:Fs.(mkdir_p_or_check_exists ~loc:Loc.none);
+        Path.Set.iter chdirs ~f:Fs.(mkdir_p_or_check_exists ~loc);
         let+ () =
           with_locks locks ~f:(fun () ->
             Action_exec.exec ~context ~env ~targets action)

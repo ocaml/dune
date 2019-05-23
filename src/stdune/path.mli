@@ -68,6 +68,8 @@ module Build : sig
   val split_first_component : t -> (string * Relative.t) option
   val explode : t -> string list
 
+  val drop_build_context     : t -> Source.t option
+  val drop_build_context_exn : t -> Source.t
 end
 
 (** In the outside world *)

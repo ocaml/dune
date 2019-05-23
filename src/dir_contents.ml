@@ -411,7 +411,7 @@ let check_no_unqualified loc qualif_mode =
 
 let get0_impl (sctx, dir) : result0 =
   let dir_status_db = Super_context.dir_status_db sctx in
-  match Dir_status.DB.get dir_status_db ~dir with
+  match Dir_status.DB.get dir_status_db ~dir:(Path.as_in_build_dir_exn dir) with
   | Standalone x ->
     (match x with
      | Some (ft_dir, Some d) ->
@@ -453,11 +453,11 @@ let get0_impl (sctx, dir) : result0 =
          subdirs = Path.Map.empty;
        })
   | Is_component_of_a_group_but_not_the_root { group_root; _ } ->
-    See_above group_root
+    See_above (Path.build group_root)
   | Group_root (ft_dir, qualif_mode, d) ->
     let rec walk ft_dir ~dir ~local acc =
       match
-        Dir_status.DB.get dir_status_db ~dir
+        Dir_status.DB.get dir_status_db ~dir:(Path.as_in_build_dir_exn dir)
       with
       | Is_component_of_a_group_but_not_the_root { stanzas = d; group_root = _ } ->
         let files =

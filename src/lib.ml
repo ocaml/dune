@@ -353,6 +353,9 @@ module L = struct
   let c_include_flags ts ~stdlib_dir =
     to_iflags (c_include_paths ts ~stdlib_dir)
 
+  let c_include_flags_cmd ts ~stdlib_dir =
+    Command.from_arg_spec (Build.return ()) (to_iflags (c_include_paths ts ~stdlib_dir))
+
   let link_flags ts ~mode ~stdlib_dir =
     Arg_spec.S
       (c_include_flags ts ~stdlib_dir ::

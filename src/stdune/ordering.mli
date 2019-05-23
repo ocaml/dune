@@ -12,3 +12,5 @@ val to_int : t -> int
 val to_string : t -> string
 
 val neq : t -> bool
+
+val is_eq : t -> bool

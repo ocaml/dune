@@ -240,8 +240,5 @@ let local_packages_by_dir = Memo.exec local_packages_by_dir_def
 let defined_in sctx ~dir =
   let local_packages = of_sctx sctx in
   let by_build_dir = local_packages_by_dir local_packages in
-  match Path.as_in_build_dir dir with
-  | None -> []
-  | Some dir ->
-    Path.Build.Map.find by_build_dir dir
-    |> Option.value ~default:[]
+  Path.Build.Map.find by_build_dir dir
+  |> Option.value ~default:[]

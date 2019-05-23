@@ -76,8 +76,7 @@ let internal_lib_names t =
 let public_libs    t = t.public_libs
 let installed_libs t = t.installed_libs
 
-let find_scope_by_dir t dir  =
-  Scope.DB.find_by_dir  t.scopes (Path.as_in_build_dir_exn dir)
+let find_scope_by_dir t dir = Scope.DB.find_by_dir t.scopes dir
 let find_scope_by_name t name = Scope.DB.find_by_name t.scopes name
 
 module External_env = Env

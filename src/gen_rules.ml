@@ -56,7 +56,7 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
   let sctx = P.sctx
 
   let with_format sctx ~dir ~f =
-    let scope = SC.find_scope_by_dir sctx dir in
+    let scope = SC.find_scope_by_dir sctx (Path.as_in_build_dir_exn dir) in
     let project = Scope.project scope in
     Dune_project.find_extension_args project Auto_format.key
     |> Option.iter ~f
@@ -70,7 +70,6 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
   let gen_rules dir_contents cctxs
         { Dir_with_dune. src_dir; ctx_dir; data = stanzas
         ; scope; kind = dir_kind ; dune_version = _ } =
-    let build_dir = (SC.context sctx).build_dir in
     let expander = Super_context.expander sctx ~dir:ctx_dir in
     let for_stanza stanza =
       let dir = ctx_dir in
@@ -157,6 +156,7 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
         in
         Merlin.add_rules sctx ~dir:ctx_dir ~more_src_dirs ~expander ~dir_kind
           (Merlin.add_source_dir m src_dir));
+    let build_dir = Super_context.build_dir sctx in
     List.iter stanzas ~f:(fun stanza ->
       match (stanza : Stanza.t) with
       | Menhir.T m when Expander.eval_blang expander m.enabled_if ->
@@ -185,7 +185,7 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
           Menhir_rules.gen_rules cctx m ~build_dir ~dir:ctx_dir
         end
       | Coq.T m when Expander.eval_blang expander m.enabled_if ->
-        Coq_rules.setup_rules ~sctx ~build_dir ~dir:ctx_dir ~dir_contents m
+        Coq_rules.setup_rules ~sctx ~dir:ctx_dir ~dir_contents m
         |> SC.add_rules ~dir:ctx_dir sctx
       | Coqpp.T m ->
         Coq_rules.coqpp_rules ~sctx ~build_dir ~dir:ctx_dir m
@@ -218,9 +218,10 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
     | Some d -> gen_rules dir_contents cctxs d
 
   let gen_rules ~dir components : Build_system.extra_sub_directories_to_keep =
-    Install_rules.init_meta sctx ~dir;
-    Opam_create.add_rules sctx ~dir;
-    Install_rules.gen_rules sctx ~dir:(Path.as_in_build_dir_exn dir);
+    (let dir = Path.as_in_build_dir_exn dir in
+     Install_rules.init_meta sctx ~dir;
+     Install_rules.gen_rules sctx ~dir;
+     Opam_create.add_rules sctx ~dir);
     (match components with
      | ".js"  :: rest -> Js_of_ocaml_rules.setup_separate_compilation_rules
                            sctx rest

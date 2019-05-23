@@ -36,9 +36,11 @@ let gen_rules_output sctx (config : Dune_file.Auto_format.t) ~output_dir =
   let source_dir = Path.drop_build_context_exn dir in
   let alias_formatted = Alias.fmt ~dir:output_dir in
   let resolve_program =
-    Super_context.resolve_program ~dir sctx ~loc:(Some loc) in
+    Super_context.resolve_program ~dir:(Path.as_in_build_dir_exn dir)
+      sctx ~loc:(Some loc) in
   let ocamlformat_deps = lazy (
-    depend_on_files ~named:[".ocamlformat"; ".ocamlformat-ignore"] (Path.source source_dir)
+    depend_on_files ~named:[".ocamlformat"; ".ocamlformat-ignore"]
+      (Path.source source_dir)
   ) in
   let setup_formatting file =
     let open Build.O in

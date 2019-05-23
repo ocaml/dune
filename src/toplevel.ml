@@ -96,7 +96,7 @@ let setup_module_rules t =
         Buffer.contents b))
     >>> Build.write_file_dyn path
   in
-  Super_context.add_rule sctx ~dir main_ml
+  Super_context.add_rule sctx ~dir:(Path.build dir) main_ml
 
 let setup_rules t =
   let linkage = Exe.Linkage.custom in
@@ -108,16 +108,17 @@ let setup_rules t =
     ~link_flags:(Build.return ["-linkall"; "-warn-error"; "-31"]);
   let src = Exe.exe_path t.cctx ~program ~linkage in
   let dir = Source.stanza_dir t.source in
-  let dst = Path.relative dir (Path.basename src) in
+  let dst = Path.relative dir (Path.Build.basename src) in
   Super_context.add_rule sctx ~dir ~loc:t.source.loc
-    (Build.symlink ~src ~dst);
+    (Build.symlink ~src:(Path.build src) ~dst);
   setup_module_rules t
 
 module Stanza = struct
 
   let setup ~sctx ~dir ~(toplevel : Dune_file.Toplevel.t) =
     let source = Source.of_stanza ~dir ~toplevel in
-    let expander = Super_context.expander sctx ~dir in
+    let expander =
+      Super_context.expander sctx ~dir:(Path.as_in_build_dir_exn dir) in
     let scope =
       Super_context.find_scope_by_dir sctx (Path.as_in_build_dir_exn dir) in
     let compile_info =

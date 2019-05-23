@@ -32,7 +32,8 @@ let add_stanzas t ~sctx =
   List.fold_left ~init:t
     ~f:(fun t ({ Dir_with_dune. ctx_dir = dir ; scope = _ ; data
                ; src_dir = _ ; kind = _; dune_version = _ } as d) ->
-         let expander = Super_context.expander sctx ~dir in
+         let expander = Super_context.expander sctx
+                          ~dir:(Path.as_in_build_dir_exn dir) in
          let path_expander =
            File_binding.Unexpanded.expand ~dir
              ~f:(Expander.expand_str expander)

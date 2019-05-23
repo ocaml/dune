@@ -138,14 +138,19 @@ let coqlib_wrapper_name (s : Dune_file.Coq.t) =
 
 let setup_rules ~sctx ~dir ~dir_contents (s : Dune_file.Coq.t) =
 
-  let scope = SC.find_scope_by_dir sctx (Path.as_in_build_dir_exn dir) in
+  let (scope, cc, expander) =
+    let dir = Path.as_in_build_dir_exn dir in
+    let scope = SC.find_scope_by_dir sctx dir in
+    let cc = create_ccoq sctx ~dir in
+    let expander = SC.expander sctx ~dir in
+    (scope, cc, expander)
+  in
 
   if coq_debug then begin
     Format.eprintf "[gen_rules] @[dir: %a@\nscope: %a@]@\n%!"
       Path.pp dir Path.Build.pp (Scope.root scope)
   end;
 
-  let cc = create_ccoq sctx ~dir in
   let name = Dune_file.Coq.best_name s in
   let coq_modules = Dir_contents.coq_modules_of_library dir_contents ~name in
 
@@ -153,7 +158,6 @@ let setup_rules ~sctx ~dir ~dir_contents (s : Dune_file.Coq.t) =
      dependencies *)
   let source_rule = Build.paths (List.map ~f:Coq_module.source coq_modules) in
   let coq_flags = s.flags in
-  let expander = SC.expander sctx ~dir in
   let wrapper_name = coqlib_wrapper_name s in
 
   let lib_db = Scope.libs scope in
@@ -210,7 +214,7 @@ let install_rules ~sctx ~dir s =
 
 let coqpp_rules ~sctx ~build_dir ~dir (s : Dune_file.Coqpp.t) =
 
-  let cc = create_ccoq sctx ~dir in
+  let cc = create_ccoq sctx ~dir:(Path.as_in_build_dir_exn dir) in
 
   let mlg_rule m =
     let source = Path.relative dir (m ^ ".mlg") in

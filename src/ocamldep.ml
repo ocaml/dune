@@ -73,7 +73,7 @@ let interpret_deps cctx ~unit deps =
              outside of the library. Consequently, it should \
              be the one depending \n\
              on all the other modules in the library."
-          Module.Name.pp (Module.name unit) (Path.to_string dir)
+          Module.Name.pp (Module.name unit) (Path.to_string (Path.build dir))
           Module.Name.pp m
           Module.Name.pp m);
   match stdlib with
@@ -102,7 +102,7 @@ let deps_of cctx ~ml_kind unit =
     match Module.file unit ml_kind with
     | None -> Build.return []
     | Some file ->
-      let dir = Compilation_context.dir cctx in
+      let dir = Path.build (Compilation_context.dir cctx) in
       let file_in_obj_dir ~suffix file =
         let base = Path.basename file in
         Path.relative
@@ -170,7 +170,7 @@ let rules_generic cctx ~modules =
        let per_module =
          Module.Name.Map.map modules ~f:(fun m -> (m, deps_of cctx ~ml_kind m))
        in
-       Dep_graph.make ~dir:(CC.dir cctx) ~per_module)
+       Dep_graph.make ~dir:(Path.build (CC.dir cctx)) ~per_module)
 
 let rules cctx = rules_generic cctx ~modules:(CC.modules cctx)
 

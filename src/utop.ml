@@ -30,7 +30,9 @@ let libs_under_dir sctx ~db ~dir =
      ~init:[] ~f:(fun dir acc ->
        let dir =
          Path.append_source (Super_context.build_dir sctx) (File_tree.Dir.path dir) in
-       match Super_context.stanzas_in sctx ~dir with
+       match Super_context.stanzas_in sctx
+               ~dir:(Path.as_in_build_dir_exn dir)
+       with
        | None -> acc
        | Some (d : _ Dir_with_dune.t) ->
          List.fold_left d.data ~init:acc ~f:(fun acc -> function
@@ -51,9 +53,12 @@ let libs_under_dir sctx ~db ~dir =
   |> Option.value ~default:[]
 
 let setup sctx ~dir =
-  let expander = Super_context.expander sctx ~dir in
-  let scope =
-    Super_context.find_scope_by_dir sctx (Path.as_in_build_dir_exn dir) in
+  let (expander, scope) =
+    let dir = Path.as_in_build_dir_exn dir in
+    let expander = Super_context.expander sctx ~dir in
+    let scope = Super_context.find_scope_by_dir sctx dir in
+    (expander, scope)
+  in
   let db = Scope.libs scope in
   let libs = libs_under_dir sctx ~db ~dir in
   let source = source ~dir in

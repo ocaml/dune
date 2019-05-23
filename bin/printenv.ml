@@ -41,14 +41,14 @@ let term =
         match checked with
         | In_build_dir (ctx, _) ->
           let sctx = String.Map.find_exn setup.scontexts ctx.name in
-          [dump sctx ~dir]
+          [dump sctx ~dir:(Path.as_in_build_dir_exn dir)]
         | In_source_dir dir ->
           String.Map.values setup.scontexts
           |> List.map ~f:(fun sctx ->
             let dir =
               Path.append_source (Super_context.context sctx).build_dir dir
             in
-            dump sctx ~dir)
+            dump sctx ~dir:(Path.as_in_build_dir_exn dir))
         | External _ ->
           die "Environment is not defined for external paths"
         | In_install_dir _ ->

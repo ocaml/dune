@@ -3,14 +3,14 @@ open Import
 
 (* the parts of Super_context sufficient to construct env nodes *)
 module Env_context = struct
-  type data = (Path.t, Env_node.t) Hashtbl.t
+  type data = (Path.Build.t, Env_node.t) Hashtbl.t
   type t = {
     env : data;
     profile : string;
     scopes : Scope.DB.t;
     context_env : Env.t;
     default_env : Env_node.t lazy_t;
-    stanzas_per_dir : Stanza.t list Dir_with_dune.t Path.Map.t;
+    stanzas_per_dir : Stanza.t list Dir_with_dune.t Path.Build.Map.t;
     host : t option;
     build_dir : Path.t;
     context : Context.t;
@@ -25,7 +25,7 @@ type t =
   ; public_libs                      : Lib.DB.t
   ; installed_libs                   : Lib.DB.t
   ; stanzas                          : Dune_file.Stanzas.t Dir_with_dune.t list
-  ; stanzas_per_dir                  : Dune_file.Stanzas.t Dir_with_dune.t Path.Map.t
+  ; stanzas_per_dir                  : Dune_file.Stanzas.t Dir_with_dune.t Path.Build.Map.t
   ; packages                         : Package.t Package.Name.Map.t
   ; file_tree                        : File_tree.t
   ; artifacts                        : Artifacts.t
@@ -44,7 +44,7 @@ type t =
 
 let context t = t.context
 let stanzas t = t.stanzas
-let stanzas_in t ~dir = Path.Map.find t.stanzas_per_dir dir
+let stanzas_in t ~dir = Path.Build.Map.find t.stanzas_per_dir dir
 let packages t = t.packages
 let libs_by_package t = t.libs_by_package
 let artifacts t = t.artifacts
@@ -83,19 +83,19 @@ module External_env = Env
 
 module Env : sig
   type t = Env_context.t
-  val ocaml_flags : t -> dir:Path.t -> Ocaml_flags.t
-  val c_flags : t -> dir:Path.t -> (unit, string list) Build.t C.Kind.Dict.t
-  val external_ : t -> dir:Path.t -> External_env.t
-  val bin_artifacts_host : t -> dir:Path.t -> Artifacts.Bin.t
-  val expander : t -> dir:Path.t -> Expander.t
-  val local_binaries : t -> dir:Path.t -> File_binding.Expanded.t list
+  val ocaml_flags : t -> dir:Path.Build.t -> Ocaml_flags.t
+  val c_flags : t -> dir:Path.Build.t -> (unit, string list) Build.t C.Kind.Dict.t
+  val external_ : t -> dir:Path.Build.t -> External_env.t
+  val bin_artifacts_host : t -> dir:Path.Build.t -> Artifacts.Bin.t
+  val expander : t -> dir:Path.Build.t -> Expander.t
+  val local_binaries : t -> dir:Path.Build.t -> File_binding.Expanded.t list
 end = struct
 
   include Env_context
 
   let get_env_stanza t ~dir =
     let open Option.O in
-    let* stanza = Path.Map.find t.stanzas_per_dir dir in
+    let* stanza = Path.Build.Map.find t.stanzas_per_dir dir in
     List.find_map stanza.data ~f:(function
       | Dune_env.T config -> Some config
       | _ -> None)
@@ -106,15 +106,14 @@ end = struct
     | None ->
       let node =
         let inherit_from =
-          if Path.equal dir (Path.build (Scope.root scope)) then
+          if Path.Build.equal dir (Scope.root scope) then
             t.default_env
           else
-            match Path.parent dir with
+            match Path.Build.parent dir with
             | None -> raise_notrace Exit
             | Some parent -> lazy (get t ~dir:parent ~scope)
         in
         let config = get_env_stanza t ~dir in
-        let dir = Path.as_in_build_dir dir |> Option.value_exn in
         Env_node.make ~dir ~scope ~config ~inherit_from:(Some inherit_from)
       in
       Hashtbl.add t.env dir node;
@@ -125,12 +124,12 @@ end = struct
     | Some node -> node
     | None ->
       let scope =
-        Scope.DB.find_by_dir t.scopes (Path.as_in_build_dir_exn dir) in
+        Scope.DB.find_by_dir t.scopes dir in
       try
         get t ~dir ~scope
       with Exit ->
         Exn.code_error "Super_context.Env.get called on invalid directory"
-          [ "dir", Path.to_sexp dir ]
+          [ "dir", Path.Build.to_sexp dir ]
 
   let external_ t  ~dir =
     Env_node.external_ (get t ~dir) ~profile:t.profile ~default:t.context_env
@@ -140,7 +139,7 @@ end = struct
     let external_ = external_ t ~dir in
     Expander.extend_env context_expander ~env:external_
     |> Expander.set_scope ~scope:(Env_node.scope node)
-    |> Expander.set_dir ~dir
+    |> Expander.set_dir ~dir:(Path.build dir)
 
   let local_binaries t ~dir =
     let node = get t ~dir in
@@ -163,7 +162,8 @@ end = struct
     | None -> bin_artifacts t ~dir
     | Some host ->
       let dir =
-        Path.append_source host.build_dir (Path.drop_build_context_exn dir)
+        Path.Build.drop_build_context_exn dir
+        |> Path.Build.append_source (Path.as_in_build_dir_exn host.build_dir)
       in
       bin_artifacts host ~dir
 
@@ -192,11 +192,11 @@ end = struct
       ~default_context_flags
 end
 
-let expander t = Env.expander t.env_context
+let expander t ~dir = Env.expander t.env_context ~dir
 
 let add_rule t ?sandbox ?mode ?locks ?loc ~dir build =
   let build = Build.O.(>>>) build t.chdir in
-  let env = Env.external_ t.env_context ~dir in
+  let env = Env.external_ t.env_context ~dir:(Path.as_in_build_dir_exn dir) in
   Rules.Produce.rule
     (Rule.make ?sandbox ?mode ?locks
        ~info:(Rule.Info.of_loc_opt loc)
@@ -204,7 +204,7 @@ let add_rule t ?sandbox ?mode ?locks ?loc ~dir build =
 
 let add_rule_get_targets t ?sandbox ?mode ?locks ?loc ~dir build =
   let build = Build.O.(>>>) build t.chdir in
-  let env = Env.external_ t.env_context ~dir in
+  let env = Env.external_ t.env_context ~dir:(Path.as_in_build_dir_exn dir) in
   let rule =
     Rule.make ?sandbox ?mode ?locks
       ~info:(Rule.Info.of_loc_opt loc)
@@ -218,7 +218,7 @@ let add_rules t ?sandbox ~dir builds =
 
 let add_alias_action t alias ~dir ~loc ?locks ~stamp action =
   let t = t.env_context in
-  let env = Some (Env.external_ t ~dir) in
+  let env = Some (Env.external_ t ~dir:(Path.as_in_build_dir_exn dir)) in
   Rules.Produce.Alias.add_action ~context:t.context ~env alias ~loc ?locks
     ~stamp action
 
@@ -257,7 +257,8 @@ let partial_expand sctx ~dep_kind ~targets_written_by_user ~map_exe
       ~expander t =
   let acc = Expander.Resolved_forms.empty () in
   let read_package = Pkg_version.read sctx in
-  let c_flags = Env.c_flags sctx.env_context in
+  let c_flags ~dir =
+    Env.c_flags sctx.env_context ~dir:(Path.as_in_build_dir_exn dir) in
   let expander =
     Expander.with_record_deps expander  acc ~dep_kind ~targets_written_by_user
       ~map_exe ~read_package ~c_flags in
@@ -397,8 +398,8 @@ let create
   in
   let stanzas_per_dir =
     List.map stanzas ~f:(fun stanzas ->
-      (stanzas.Dir_with_dune.ctx_dir, stanzas))
-    |> Path.Map.of_list_exn
+      (Path.as_in_build_dir_exn stanzas.Dir_with_dune.ctx_dir, stanzas))
+    |> Path.Build.Map.of_list_exn
   in
   let env = Hashtbl.create 128 in
   let default_env = lazy (
@@ -503,7 +504,8 @@ module Libs = struct
   let gen_select_rules t ~dir compile_info =
     List.iter (Lib.Compile.resolved_selects compile_info) ~f:(fun rs ->
       let { Lib.Compile.Resolved_select.dst_fn; src_fn } = rs in
-      let dst = Path.relative dir dst_fn in
+      let dst = Path.build (Path.Build.relative dir dst_fn) in
+      let dir = Path.build dir in
       add_rule t
         ~dir
         (match src_fn with
@@ -522,9 +524,10 @@ module Libs = struct
     in
     let prefix =
       if t.context.merlin then
-        Build.path (Path.relative dir ".merlin-exists")
-        >>>
-        prefix
+        Path.Build.relative dir ".merlin-exists"
+        |> Path.build
+        |> Build.path
+        >>> prefix
       else
         prefix
     in
@@ -583,7 +586,8 @@ module Deps = struct
 
   let make_interpreter ~f t ~expander l =
     let forms = Expander.Resolved_forms.empty () in
-    let c_flags = Env.c_flags t.env_context in
+    let c_flags ~dir =
+      Env.c_flags t.env_context ~dir:(Path.as_in_build_dir_exn dir) in
     let expander =
       Expander.with_record_no_ddeps expander forms
         ~dep_kind:Optional ~map_exe:Fn.id ~c_flags

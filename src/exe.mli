@@ -58,4 +58,4 @@ val exe_path
   :  Compilation_context.t
   -> program:Program.t
   -> linkage:Linkage.t
-  -> Path.t
+  -> Path.Build.t

@@ -13,7 +13,7 @@ let generate_and_compile_module cctx ~name:basename ~code ~requires =
   let obj_dir    = CC.obj_dir       cctx in
   let dir        = CC.dir           cctx in
   let ml = Path.relative (Obj_dir.obj_dir obj_dir) (basename ^ ".ml") in
-  SC.add_rule ~dir sctx (Build.write_file ml code);
+  SC.add_rule ~dir:(Path.build dir) sctx (Build.write_file ml code);
   let impl = Module.File.make OCaml ml in
   let name = Module.Name.of_string basename in
   let module_ =

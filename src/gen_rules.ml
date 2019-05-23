@@ -70,7 +70,8 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
   let gen_rules dir_contents cctxs
         { Dir_with_dune. src_dir; ctx_dir; data = stanzas
         ; scope; kind = dir_kind ; dune_version = _ } =
-    let expander = Super_context.expander sctx ~dir:ctx_dir in
+    let expander =
+      Super_context.expander sctx ~dir:(Path.as_in_build_dir_exn ctx_dir) in
     let for_stanza stanza =
       let dir = ctx_dir in
       match stanza with
@@ -213,7 +214,7 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
 
   let gen_rules dir_contents cctxs ~dir : (Loc.t * Compilation_context.t) list =
     with_format sctx ~dir ~f:(fun _ -> Format_rules.gen_rules ~dir);
-    match SC.stanzas_in sctx ~dir with
+    match SC.stanzas_in sctx ~dir:(Path.as_in_build_dir_exn dir) with
     | None -> []
     | Some d -> gen_rules dir_contents cctxs d
 
@@ -232,7 +233,8 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
        | Some ".formatted" -> gen_format_rules sctx ~output_dir:dir
        | Some ".bin" ->
          let src_dir = Path.parent_exn dir in
-         Super_context.local_binaries sctx ~dir:src_dir
+         Super_context.local_binaries sctx
+           ~dir:(Path.as_in_build_dir_exn src_dir)
          |> List.iter ~f:(fun t ->
            let loc = File_binding.Expanded.src_loc t in
            let src = File_binding.Expanded.src_path t in

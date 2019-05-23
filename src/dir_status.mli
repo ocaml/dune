@@ -26,7 +26,7 @@ module DB : sig
 
   val make
     :  File_tree.t
-    -> stanzas_per_dir:Dune_file.Stanzas.t Dir_with_dune.t Path.Map.t
+    -> stanzas_per_dir:Dune_file.Stanzas.t Dir_with_dune.t Path.Build.Map.t
     -> t
 
   val get : t -> dir:Path.Build.t -> status

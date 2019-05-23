@@ -136,12 +136,11 @@ let setup_ml_deps ~lib_db libs =
 let coqlib_wrapper_name (s : Dune_file.Coq.t) =
   Lib_name.Local.to_string (snd s.name)
 
-let setup_rules ~sctx ~build_dir:_ ~dir ~dir_contents (s : Dune_file.Coq.t) =
+let setup_rules ~sctx ~dir ~dir_contents (s : Dune_file.Coq.t) =
 
-  let scope = SC.find_scope_by_dir sctx dir in
+  let scope = SC.find_scope_by_dir sctx (Path.as_in_build_dir_exn dir) in
 
   if coq_debug then begin
-    let scope = SC.find_scope_by_dir sctx dir in
     Format.eprintf "[gen_rules] @[dir: %a@\nscope: %a@]@\n%!"
       Path.pp dir Path.Build.pp (Scope.root scope)
   end;
@@ -184,13 +183,14 @@ let coq_plugins_install_rules ~scope ~package ~dst_dir (s : Dune_file.Coq.t) =
   List.concat_map ~f:rules_for_lib ml_libs
 
 let install_rules ~sctx ~dir s =
+  let dir = Path.as_in_build_dir_exn dir in
   match s with
   | { Dune_file.Coq. public = None; _ } ->
     []
   | { Dune_file.Coq. public = Some { package; _ } ; _ } ->
     let scope = SC.find_scope_by_dir sctx dir in
     let dir_contents =
-      Dir_contents.get_without_rules sctx ~dir:(Path.as_in_build_dir_exn dir)
+      Dir_contents.get_without_rules sctx ~dir
     in
     let name = Dune_file.Coq.best_name s in
     (* This is the usual root for now, Coq + Dune will change it! *)
@@ -200,7 +200,9 @@ let install_rules ~sctx ~dir s =
     let dst_dir = Path.relative coq_root dst_suffix in
     Dir_contents.coq_modules_of_library dir_contents ~name
     |> List.map ~f:(fun (vfile : Coq_module.t) ->
-      let vofile = Coq_module.obj_file ~obj_dir:dir ~ext:".vo" vfile in
+      let vofile =
+        Coq_module.obj_file ~obj_dir:(Path.build dir) ~ext:".vo" vfile
+      in
       let dst = Coq_module.obj_file ~obj_dir:dst_dir ~ext:".vo" vfile in
       let dst = Path.to_string dst in
       None, Install.(Entry.make Section.Lib_root ~dst vofile))

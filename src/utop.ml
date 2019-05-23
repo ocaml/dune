@@ -52,7 +52,8 @@ let libs_under_dir sctx ~db ~dir =
 
 let setup sctx ~dir =
   let expander = Super_context.expander sctx ~dir in
-  let scope = Super_context.find_scope_by_dir sctx dir in
+  let scope =
+    Super_context.find_scope_by_dir sctx (Path.as_in_build_dir_exn dir) in
   let db = Scope.libs scope in
   let libs = libs_under_dir sctx ~db ~dir in
   let source = source ~dir in

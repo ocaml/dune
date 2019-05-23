@@ -145,8 +145,8 @@ let add_rule sctx ~project ~pkg =
 
 let add_rules sctx ~dir =
   let project =
-    let scope = Super_context.find_scope_by_dir sctx dir in
-    Scope.project scope
+    Super_context.find_scope_by_dir sctx dir
+    |> Scope.project
   in
   if Dune_project.generate_opam_files project then begin
     Local_package.defined_in sctx ~dir

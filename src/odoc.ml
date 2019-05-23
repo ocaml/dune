@@ -585,7 +585,8 @@ let init sctx =
            begin match l.public with
            | Some _ -> None
            | None ->
-             let scope = SC.find_scope_by_dir sctx w.ctx_dir in
+             let scope =
+               SC.find_scope_by_dir sctx (Path.as_in_build_dir_exn w.ctx_dir) in
              Some (Option.value_exn (
                Lib.DB.find_even_when_hidden (Scope.libs scope)
                  (Library.best_name l))

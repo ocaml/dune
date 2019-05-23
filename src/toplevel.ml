@@ -118,7 +118,8 @@ module Stanza = struct
   let setup ~sctx ~dir ~(toplevel : Dune_file.Toplevel.t) =
     let source = Source.of_stanza ~dir ~toplevel in
     let expander = Super_context.expander sctx ~dir in
-    let scope = Super_context.find_scope_by_dir sctx dir in
+    let scope =
+      Super_context.find_scope_by_dir sctx (Path.as_in_build_dir_exn dir) in
     let compile_info =
       let compiler_libs =
         Lib_name.of_string_exn ~loc:(Some source.loc) "compiler-libs.toplevel"

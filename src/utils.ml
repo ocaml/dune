@@ -223,7 +223,7 @@ module Cached_digest = struct
   module P = Persistent(struct
       type nonrec t = t
       let name = "DIGEST-DB"
-      let version = 1
+      let version = 2
     end)
 
   let needs_dumping = ref false

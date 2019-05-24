@@ -262,7 +262,7 @@ let odoc_file t ~doc_dir =
     | Public -> doc_dir
     | Private -> Utils.library_private_dir ~obj_dir:doc_dir
   in
-  Path.relative base (t.obj_name ^ ".odoc")
+  Path.Build.relative base (t.obj_name ^ ".odoc")
 
 let cmti_file t =
   match t.intf with

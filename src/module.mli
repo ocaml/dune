@@ -101,7 +101,7 @@ val src_dir : t -> Path.t option
 val cm_file_unsafe : t -> ?ext:string -> Cm_kind.t -> Path.t
 val cm_public_file_unsafe : t -> ?ext:string -> Cm_kind.t -> Path.t
 
-val odoc_file : t -> doc_dir:Path.t -> Path.t
+val odoc_file : t -> doc_dir:Path.Build.t -> Path.Build.t
 
 (** Either the .cmti, or .cmt if the module has no interface *)
 val cmti_file : t -> Path.t

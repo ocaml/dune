@@ -98,7 +98,7 @@ let of_library_stanza ~dir
       (conf : Dune_file.Library.t) =
   let (_loc, lib_name) = conf.name in
   let obj_dir =
-    Obj_dir.make_lib ~dir
+    Obj_dir.make_lib ~dir:(Path.as_in_build_dir_exn dir)
       ~has_private_modules:(conf.private_modules <> None) lib_name in
   let gen_archive_file ~dir ext =
     Path.relative dir (Lib_name.Local.to_string lib_name ^ ext) in

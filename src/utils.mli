@@ -18,24 +18,24 @@ val describe_target : Path.t -> string
 (** Return the directory where the object files for the given
     library should be stored. *)
 val library_object_directory
-  :  dir:Path.t
+  :  dir:Path.Build.t
   -> Lib_name.Local.t
-  -> Path.t
+  -> Path.Build.t
 
 (** cmx, .a *)
-val library_native_dir     : obj_dir:Path.t -> Path.t
+val library_native_dir     : obj_dir:Path.Build.t -> Path.Build.t
 
 (** cmo, cmi, cmt, cmti *)
-val library_byte_dir       : obj_dir:Path.t -> Path.t
-val library_public_cmi_dir : obj_dir:Path.t -> Path.t
-val library_private_dir    : obj_dir:Path.t -> Path.t
+val library_byte_dir       : obj_dir:Path.Build.t -> Path.Build.t
+val library_public_cmi_dir : obj_dir:Path.Build.t -> Path.Build.t
+val library_private_dir    : obj_dir:Path.Build.t -> Path.Build.t
 
 (** Return the directory where the object files for the given
     executable should be stored. *)
 val executable_object_directory
-  :  dir:Path.t
+  :  dir:Path.Build.t
   -> string
-  -> Path.t
+  -> Path.Build.t
 
 type target_kind =
   | Regular of string (* build context *) * Path.Source.t

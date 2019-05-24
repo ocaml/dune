@@ -129,17 +129,18 @@ let module_deps (m : Module.t) ~doc_dir ~(dep_graphs:Dep_graph.Ml_kind.t) =
    else
      (* When a module has no .mli, use the dependencies for the .ml *)
      Dep_graph.deps_of dep_graphs.impl m)
-  >>^ List.map ~f:(Module.odoc_file ~doc_dir)
+  >>^ List.map ~f:(fun m -> Path.build (Module.odoc_file ~doc_dir m))
   |> Build.dyn_paths
 
 let compile_module sctx (m : Module.t) ~includes:(file_deps, iflags)
       ~dep_graphs ~doc_dir ~pkg_or_lnu =
-  let odoc_file = Module.odoc_file m ~doc_dir in
+  let odoc_file = Path.build (Module.odoc_file m ~doc_dir) in
   add_rule sctx
     (file_deps
      >>>
      module_deps m ~doc_dir ~dep_graphs
      >>>
+     let doc_dir = Path.build doc_dir in
      Build.run ~dir:doc_dir (odoc sctx)
        [ A "compile"
        ; A "-I"; Path doc_dir
@@ -218,9 +219,10 @@ let setup_library_odoc_rules sctx (library : Library.t) ~scope ~modules
      that a package contains only 1 library *)
   let pkg_or_lnu = pkg_or_lnu lib in
   let ctx = Super_context.context sctx in
-  let doc_dir = Paths.odocs ctx (Lib lib) in
+  let doc_dir = Path.as_in_build_dir_exn (Paths.odocs ctx (Lib lib)) in
   let odoc_include_flags = odoc_include_flags ctx (Lib.package lib) requires in
-  let includes = (Dep.deps ctx (Lib.package lib) requires, odoc_include_flags) in
+  let includes =
+    (Dep.deps ctx (Lib.package lib) requires, odoc_include_flags) in
   let modules_and_odoc_files =
     List.map (Module.Name.Map.values modules) ~f:(
       compile_module sctx ~includes ~dep_graphs

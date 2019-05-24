@@ -4,7 +4,7 @@ module Source : sig
   type t
 
   val make
-    :  dir:Path.t
+    :  dir:Path.Build.t
     -> loc:Loc.t
     -> main:string
     -> name:string
@@ -24,7 +24,7 @@ val make : cctx:Compilation_context.t -> source:Source.t -> t
 module Stanza : sig
   val setup
     :  sctx:Super_context.t
-    -> dir:Path.t
+    -> dir:Path.Build.t
     -> toplevel:Dune_file.Toplevel.t
     -> unit
 end

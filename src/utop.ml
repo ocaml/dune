@@ -15,8 +15,8 @@ let utop_exe =
 
 let source ~dir =
   Toplevel.Source.make
-    ~dir:(Path.relative dir utop_dir_basename)
-    ~loc:(Loc.in_dir dir)
+    ~dir:(Path.Build.relative dir utop_dir_basename)
+    ~loc:(Loc.in_dir (Path.build dir))
     ~main:"UTop_main.main ();"
     ~name:exe_name
 
@@ -61,7 +61,7 @@ let setup sctx ~dir =
   in
   let db = Scope.libs scope in
   let libs = libs_under_dir sctx ~db ~dir in
-  let source = source ~dir in
+  let source = source ~dir:(Path.as_in_build_dir_exn dir) in
   let obj_dir = Toplevel.Source.obj_dir source in
   let loc = Toplevel.Source.loc source in
   let modules = Toplevel.Source.modules source in

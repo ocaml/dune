@@ -172,18 +172,15 @@ let link_exe
           ; Command.dyn_deps cm_files
           ]));
   if linkage.ext = ".bc" then
+    let cm = modules_and_cm_files >>^ snd in
+    let flags =
+      (Expander.expand_and_eval_set expander
+         js_of_ocaml.flags
+         ~standard:(Build.return (Js_of_ocaml_rules.standard sctx))) in
     let rules =
-      Js_of_ocaml_rules.build_exe cctx ~js_of_ocaml ~src:exe
+      Js_of_ocaml_rules.build_exe cctx ~js_of_ocaml ~src:exe cm flags
     in
-    let cm_and_flags =
-      Build.fanout
-        (modules_and_cm_files >>^ snd)
-        (Expander.expand_and_eval_set expander
-           js_of_ocaml.flags
-           ~standard:(Build.return (Js_of_ocaml_rules.standard sctx)))
-    in
-    SC.add_rules ~dir:(Path.build dir) sctx
-      (List.map rules ~f:(fun r -> cm_and_flags >>> r))
+    SC.add_rules ~dir:(Path.build dir) sctx rules
 
 let build_and_link_many
       ~programs

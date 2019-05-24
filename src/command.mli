@@ -58,10 +58,11 @@ type _ t =
 (* We can convert an [Arg_spec.t] to [Command.t]. *)
 val from_arg_spec : 'a Build.s -> ('a, 'b) Arg_spec.t -> 'b t
 
-(* Create a dynamic list of command line arguments. *)
+(* Create a dynamic command line arguments. *)
 val dyn_args : string list Build.s -> dynamic t
 
-(* Create a dynamic list of dependencies. *)
+(* Create a dynamic dependencies. *)
+val dyn_dep  : Path.t Build.s -> dynamic t
 val dyn_deps : Path.t list Build.s -> dynamic t
 
 val add_targets : dynamic t list -> Path.t list -> Path.t list

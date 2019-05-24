@@ -16,15 +16,20 @@ module Kind = struct
     | Not_allowed_until of Syntax.Version.t
     | Recognized of string * t
 
+  let cxx_version_introduced ~obj ~dune_version ~version_introduced =
+    if dune_version >= version_introduced then
+      Recognized (obj, Cxx)
+    else
+      Not_allowed_until version_introduced
+
   let split_extension fn ~dune_version =
     match String.rsplit2 fn ~on:'.' with
     | Some (obj, "c") -> Recognized (obj, C)
     | Some (obj, "cpp") -> Recognized (obj, Cxx)
     | Some (obj, "cxx") ->
-      if dune_version >= (1, 8) then
-        Recognized (obj, Cxx)
-      else
-        Not_allowed_until (1, 8)
+      cxx_version_introduced ~obj ~dune_version ~version_introduced:(1, 8)
+    | Some (obj, "cc") ->
+      cxx_version_introduced ~obj ~dune_version ~version_introduced:(1, 10)
     | _ -> Unrecognized
 
   let possible_fns t fn ~dune_version =
@@ -34,6 +39,8 @@ module Kind = struct
       let cxx = [fn ^ ".cpp"] in
       if dune_version >= (1, 8) then
         (fn ^ ".cxx") :: cxx
+      else if dune_version >= (1, 10) then
+        (fn ^ ".cxx") :: (fn ^ ".cc") :: cxx
       else
         cxx
 

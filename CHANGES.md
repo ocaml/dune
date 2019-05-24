@@ -75,6 +75,8 @@ unreleased
 - Fix `chdir` on external and source paths. Dune will also fail gracefully if
   the external or source path does not exist (#2165, fixes #2158, @rgrinberg)
 
+- Support the `.cc` extension fro C++ sources (#2195, fixes #83, @rgrinberg)
+
 1.9.3 (06/05/2019)
 ------------------
 

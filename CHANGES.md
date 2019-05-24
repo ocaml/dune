@@ -80,6 +80,10 @@ unreleased
 - Run `ocamlformat` relative to the context root. This improves the locations of
   errors. (#2196, fixes #1370, @rgrinberg)
 
+- Fix detection of `README`, `LICENSE`, `CHANGE`, and `HISTORY` files. These
+  would be undetected whenever the project was nested in another workspace.
+  (#2194, @rgrinberg)
+
 1.9.3 (06/05/2019)
 ------------------
 

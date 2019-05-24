@@ -68,7 +68,8 @@ let expand ~dir ts =
         []
       | Fail f -> f.fail ()
     in
-    (loop_static t, !static_deps)
+    let res = loop_static t in
+    (res, !static_deps)
   in
   let rec loop = function
     | A s  -> Build.return [s]

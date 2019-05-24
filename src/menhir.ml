@@ -121,15 +121,14 @@ module Run (P : PARAMS) : sig end = struct
      that are neither dependencies nor targets.
      [Hidden_targets] is for targets that are *not* command line arguments.  *)
 
-  type 'a args =
-    (string list, 'a) Arg_spec.t list
+  type 'a args = 'a Command.t list
 
   (* [menhir args] generates a Menhir command line (a build action). *)
 
-  let menhir (args : 'a args) : (string list, Action.t) Build.t =
-    Build.run ~dir:(Path.build build_dir) menhir_binary args
+  let menhir (args : 'a args) : Action.t Build.s =
+    Command.run ~dir:(Path.build build_dir) menhir_binary args
 
-  let rule ?(mode=stanza.mode) : (unit, Action.t) Build.t -> unit =
+  let rule ?(mode=stanza.mode) :Action.t Build.s -> unit =
     SC.add_rule sctx ~dir:(Path.build dir) ~mode ~loc:stanza.loc
 
   let expand_flags flags =
@@ -195,10 +194,8 @@ module Run (P : PARAMS) : sig end = struct
     (* 1. A first invocation of Menhir creates a mock [.ml] file. *)
 
     rule ~mode:Standard (
-      expanded_flags
-      >>>
       menhir
-        [ Dyn (fun flags -> As flags)
+        [ Command.dyn_args expanded_flags
         ; Deps (sources stanza.modules)
         ; A "--base" ; Path (Path.relative (Path.build dir) base)
         ; A "--infer-write-query"; Target (mock_ml base)
@@ -238,10 +235,8 @@ module Run (P : PARAMS) : sig end = struct
     (* 3. A second invocation of Menhir reads the inferred [.mli] file. *)
 
     rule (
-      expanded_flags
-      >>>
       menhir
-        [ Dyn (fun flags -> As flags)
+        [ Command.dyn_args expanded_flags
         ; Deps (sources stanza.modules)
         ; A "--base" ; Path (Path.relative (Path.build dir) base)
         ; A "--infer-read-reply"; Dep (inferred_mli base)
@@ -257,10 +252,8 @@ module Run (P : PARAMS) : sig end = struct
   let process1 base ~cmly (stanza : stanza) : unit =
     let expanded_flags = expand_flags stanza.flags in
     rule (
-      expanded_flags
-      >>>
       menhir
-        [ Dyn (fun flags -> As flags)
+        [ Command.dyn_args expanded_flags
         ; Deps (sources stanza.modules)
         ; A "--base" ; Path (Path.relative (Path.build dir) base)
         ; Hidden_targets (targets base ~cmly)

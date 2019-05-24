@@ -373,6 +373,9 @@ module L = struct
        List.map link ~f:(fun t ->
          Arg_spec.Deps (Mode.Dict.get t.info.archives mode)))
 
+  let compile_and_link_flags_cmd ~compile ~link ~mode ~stdlib_dir =
+    Command.from_arg_spec (Build.return ()) (compile_and_link_flags ~compile ~link ~mode ~stdlib_dir)
+
   let jsoo_runtime_files ts =
     List.concat_map ts ~f:(fun t -> t.info.jsoo_runtime)
 

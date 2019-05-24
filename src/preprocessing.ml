@@ -396,21 +396,20 @@ let build_ppx_driver sctx ~dep_kind ~target ~dir_kind ~pps ~pp_names =
      >>>
      Build.write_file_dyn ml);
   add_rule
-    (Build.record_lib_deps
-       (Lib_deps.info ~kind:dep_kind (Lib_deps.of_pps pp_names))
-     >>>
-     Build.of_result_map driver_and_libs ~f:(fun (_, libs) ->
-       Build.paths (Lib.L.archive_files libs ~mode))
-     >>>
-     Build.run (Ok compiler) ~dir:(Path.build ctx.build_dir)
+    (Build.S.seqs
+      [Build.record_lib_deps
+       (Lib_deps.info ~kind:dep_kind (Lib_deps.of_pps pp_names));
+       Build.of_result_map driver_and_libs ~f:(fun (_, libs) ->
+         Build.paths (Lib.L.archive_files libs ~mode))]
+      (Command.run (Ok compiler) ~dir:(Path.build ctx.build_dir)
        [ A "-o" ; Target target
-       ; Arg_spec.of_result
+       ; Command.of_result
            (Result.map driver_and_libs ~f:(fun (_driver, libs) ->
-              Lib.L.compile_and_link_flags ~mode ~stdlib_dir:ctx.stdlib_dir
+              Lib.L.compile_and_link_flags_cmd ~mode ~stdlib_dir:ctx.stdlib_dir
                 ~compile:libs
                 ~link:libs))
        ; Dep ml
-       ])
+       ]))
 
 let get_rules sctx key ~dir_kind =
   let exe = ppx_exe sctx ~key ~dir_kind in
@@ -569,7 +568,7 @@ let setup_reason_rules sctx (m : Module.t) =
       ~dir:ctx.build_dir
       "refmt" ~hint:"try: opam install reason" in
   let rule src target =
-    Build.run ~dir:(Path.build ctx.build_dir) refmt
+    Command.run ~dir:(Path.build ctx.build_dir) refmt
       [ A "--print"
       ; A "binary"
       ; Dep src
@@ -664,7 +663,7 @@ let lint_module sctx ~dir ~expander ~dep_kind ~lint ~lib_name ~scope ~dir_kind =
                 (Expander.expand_and_eval_set expander driver.info.lint_flags
                    ~standard:(Build.return []))
             in
-            let args : _ Arg_spec.t = S [ As driver_flags ] in
+            let args : _ Command.t = S [ As driver_flags ] in
             (exe, flags, args)
           in
           (fun ~source ~ast ->
@@ -675,13 +674,12 @@ let lint_module sctx ~dir ~expander ~dep_kind ~lint ~lib_name ~scope ~dir_kind =
                     (Option.value_exn (Module.file source kind))
                     (Build.of_result_map driver_and_flags
                        ~f:(fun (exe, flags, args) ->
-                         flags >>>
-                         Build.run ~dir:(Path.build (SC.build_dir sctx))
+                         Command.run ~dir:(Path.build (SC.build_dir sctx))
                            (Ok (Path.build exe))
                            [ args
-                           ; Ml_kind.ppx_driver_flag kind
+                           ; Ml_kind.ppx_driver_flag_cmd kind
                            ; Dep src.path
-                           ; Dyn (fun x -> As x)
+                           ; Command.dyn_args flags
                            ]))))))
     in
     fun ~(source : Module.t) ~ast ->
@@ -728,16 +726,16 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess
         let driver_and_flags =
           let open Result.O in
           let+ (exe, driver, flags) = ppx_driver_and_flags sctx ~expander ~loc ~lib_name ~flags ~dir_kind ~scope pps in
-          let args : _ Arg_spec.t = S [ As flags ] in
+          let args : _ Command.t = S [ As flags ] in
           (exe,
            (let bindings =
-             Pform.Map.singleton "corrected-suffix"
-               (Values [String corrected_suffix])
-           in
-           let expander = Expander.add_bindings expander ~bindings in
-           Build.memoize "ppx flags"
-             (Expander.expand_and_eval_set expander driver.info.flags
-                ~standard:(Build.return ["--as-ppx"]))), args)
+              Pform.Map.singleton "corrected-suffix"
+                (Values [String corrected_suffix])
+            in
+            let expander = Expander.add_bindings expander ~bindings in
+            Build.memoize "ppx flags"
+              (Expander.expand_and_eval_set expander driver.info.flags
+                 ~standard:(Build.return ["--as-ppx"]))), args)
         in
         (fun m ~lint ->
            let ast = setup_reason_rules sctx m in
@@ -751,14 +749,12 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess
                    Build.of_result_map driver_and_flags
                      ~targets:[dst]
                      ~f:(fun (exe, flags, args) ->
-                       flags
-                       >>>
-                       Build.run ~dir:(Path.build (SC.build_dir sctx))
+                       Command.run ~dir:(Path.build (SC.build_dir sctx))
                          (Ok (Path.build exe))
                          [ args
                          ; A "-o"; Target dst
-                         ; Ml_kind.ppx_driver_flag kind; Dep src
-                         ; Dyn (fun x -> As x)
+                         ; Ml_kind.ppx_driver_flag_cmd kind; Dep src
+                         ; Command.dyn_args flags
                          ])))))
       end else begin
         let pp_flags = Build.of_result (

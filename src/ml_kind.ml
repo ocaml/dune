@@ -18,6 +18,7 @@ let flag t = choose (Arg_spec.A "-impl") (A "-intf") t
 let flag_cmd t = choose (Command.A "-impl") (A "-intf") t
 
 let ppx_driver_flag t = choose (Arg_spec.A "--impl") (A "--intf") t
+let ppx_driver_flag_cmd t = choose (Command.A "--impl") (A "--intf") t
 
 module Dict = struct
   type 'a t =

@@ -14,6 +14,7 @@ val to_string : t -> string
 val flag : t -> _ Arg_spec.t
 val flag_cmd : t -> _ Command.t
 val ppx_driver_flag : t -> _ Arg_spec.t
+val ppx_driver_flag_cmd : t -> _ Command.t
 
 module Dict : sig
   type kind = t

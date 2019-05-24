@@ -405,7 +405,7 @@ let build_ppx_driver sctx ~dep_kind ~target ~dir_kind ~pps ~pp_names =
        [ A "-o" ; Target target
        ; Command.of_result
            (Result.map driver_and_libs ~f:(fun (_driver, libs) ->
-              Lib.L.compile_and_link_flags_cmd ~mode ~stdlib_dir:ctx.stdlib_dir
+              Lib.L.compile_and_link_flags ~mode ~stdlib_dir:ctx.stdlib_dir
                 ~compile:libs
                 ~link:libs))
        ; Dep ml
@@ -677,7 +677,7 @@ let lint_module sctx ~dir ~expander ~dep_kind ~lint ~lib_name ~scope ~dir_kind =
                          Command.run ~dir:(Path.build (SC.build_dir sctx))
                            (Ok (Path.build exe))
                            [ args
-                           ; Ml_kind.ppx_driver_flag_cmd kind
+                           ; Ml_kind.ppx_driver_flag kind
                            ; Dep src.path
                            ; Command.dyn_args flags
                            ]))))))
@@ -753,7 +753,7 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess
                          (Ok (Path.build exe))
                          [ args
                          ; A "-o"; Target dst
-                         ; Ml_kind.ppx_driver_flag_cmd kind; Dep src
+                         ; Ml_kind.ppx_driver_flag kind; Dep src
                          ; Command.dyn_args flags
                          ])))))
       end else begin

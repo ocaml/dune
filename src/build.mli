@@ -68,6 +68,7 @@ val path_set : Path.Set.t -> ('a, 'a) t
     dependencies of the action produced by the build arrow. *)
 val paths_matching : loc:Loc.t -> File_selector.t -> ('a, Path.Set.t) t
 
+(* TODO: We always ignore the resulting [bool] -- shall we return [unit]? *)
 (** [paths_existing paths] will require as dependencies the files that
     actually exist, and return true if the all the paths do actually exist. *)
 val paths_existing : Path.t list -> ('a, bool) t
@@ -145,13 +146,6 @@ val of_result_map
 (** [memoize name t] is an arrow that behaves like [t] except that its
     result is computed only once. *)
 val memoize : string -> (unit, 'a) t -> (unit, 'a) t
-
-val run
-  :  dir:Path.t
-  -> ?stdout_to:Path.t
-  -> Action.Prog.t
-  -> ('a, Arg_spec.dynamic) Arg_spec.t list
-  -> ('a, Action.t) t
 
 val action
   :  ?dir:Path.t

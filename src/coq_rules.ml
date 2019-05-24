@@ -131,8 +131,7 @@ let setup_ml_deps ~lib_db libs : _ Command.t * _ =
   let ml_iflags, mlpack =
     let libs = libs_of_coq_deps ~lib_db libs
                |> Lib.closure ~linking:false |> Result.ok_exn in
-    Command.from_arg_spec (Build.return ())
-      (Util.include_flags libs), List.concat_map ~f:ml_pack_files libs
+      Util.include_flags libs, List.concat_map ~f:ml_pack_files libs
   in
 
   (* If the mlpack files don't exist, don't fail *)

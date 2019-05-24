@@ -167,7 +167,7 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
                           "-open" :: Module.Name.to_string (Module.name m')
                           :: flags)
               ; A "-o"; Target dst
-              ; A "-c"; Ml_kind.flag_cmd ml_kind; Dep src
+              ; A "-c"; Ml_kind.flag ml_kind; Dep src
               ; Hidden_targets other_targets
               ]))))
 
@@ -219,6 +219,6 @@ let ocamlc_i ?sandbox ?(flags=[]) ~dep_graphs cctx (m : Module.t) ~output =
                   As ["-open"; Module.Name.to_string (Module.name m)])
              ; As flags
              ; A "-short-paths"
-             ; A "-i"; Ml_kind.flag_cmd Impl; Dep src
+             ; A "-i"; Ml_kind.flag Impl; Dep src
              ]))
      >>> Build.action_dyn () ~targets:[output])

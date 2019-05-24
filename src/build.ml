@@ -98,7 +98,6 @@ let path_set ps = Deps (Dep.Set.of_files_set ps)
 let paths_matching ~loc:_ dir_glob = Paths_glob dir_glob
 let dyn_paths t = Dyn_paths (t >>^ Path.Set.of_list)
 let dyn_path_set t = Dyn_paths t
-let dyn_deps t = Dyn_deps t
 let paths_for_rule ps = Paths_for_rule ps
 let env_var s = Deps (Dep.Set.singleton (Dep.env s))
 let alias a = dep (Dep.alias a)
@@ -165,38 +164,6 @@ let source_tree ~dir ~file_tree =
   let (prefix_with, dir) = Path.extract_build_context_dir_exn dir in
   let paths = File_tree.files_recursively_in file_tree dir ~prefix_with in
   path_set paths >>^ fun _ -> paths
-
-(* TODO: The [Error] case in this function can be simplified. *)
-let get_prog = function
-  | Ok p -> path p >>> arr (fun _ -> Ok p)
-  | Error f ->
-    arr (fun _ -> Error f)
-    >>> dyn_paths (arr (function Error _ -> [] | Ok x -> [x]))
-
-let prog_and_args ?(dir=Path.root) prog args =
-  Deps (Arg_spec.static_deps args) &&& arr (fun x -> x)
-  >>^ snd
-  >>>
-  (get_prog prog &&&
-   (arr (Arg_spec.expand ~dir args)
-    >>>
-    dyn_deps (arr (fun (_args, deps) -> deps))
-    >>>
-    arr fst))
-
-let run ~dir ?stdout_to prog args =
-  let targets = Arg_spec.add_targets args (Option.to_list stdout_to) in
-  prog_and_args ~dir prog args
-  >>>
-  Targets (Path.Set.of_list targets)
-  >>^ (fun (prog, args) ->
-    let action : Action.t = Run (prog, args) in
-    let action =
-      match stdout_to with
-      | None      -> action
-      | Some path -> Redirect (Stdout, path, action)
-    in
-    Action.Chdir (dir, action))
 
 let action ?dir ~targets action =
   Targets (Path.Set.of_list targets)

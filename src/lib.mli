@@ -73,25 +73,16 @@ module L : sig
   type lib
   type nonrec t = t list
 
-  val to_iflags : Path.Set.t -> ('a, 'b) Arg_spec.t
+  val to_iflags : Path.Set.t -> 'a Command.t
 
   val include_paths : t -> stdlib_dir:Path.t -> Path.Set.t
-  val include_flags : t -> stdlib_dir:Path.t -> _ Arg_spec.t
-  val include_flags_cmd : t -> stdlib_dir:Path.t -> _ Command.t
+  val include_flags : t -> stdlib_dir:Path.t -> _ Command.t
 
-  val c_include_flags : t -> stdlib_dir:Path.t -> _ Arg_spec.t
-  val c_include_flags_cmd : t -> stdlib_dir:Path.t -> _ Command.t
+  val c_include_flags : t -> stdlib_dir:Path.t -> _ Command.t
 
-  val link_flags : t -> mode:Mode.t -> stdlib_dir:Path.t -> _ Arg_spec.t
+  val link_flags : t -> mode:Mode.t -> stdlib_dir:Path.t -> _ Command.t
 
   val compile_and_link_flags
-    :  compile:t
-    -> link:t
-    -> mode:Mode.t
-    -> stdlib_dir:Path.t
-    -> _ Arg_spec.t
-
-  val compile_and_link_flags_cmd
     :  compile:t
     -> link:t
     -> mode:Mode.t
@@ -126,8 +117,7 @@ module Lib_and_module : sig
   module L : sig
     type nonrec t = t list
     val of_libs : lib list -> t
-    val link_flags : t -> mode:Mode.t -> stdlib_dir:Path.t -> _ Arg_spec.t
-    val link_flags_cmd : t -> mode:Mode.t -> stdlib_dir:Path.t -> _ Command.t
+    val link_flags : t -> mode:Mode.t -> stdlib_dir:Path.t -> _ Command.t
   end
 end with type lib := t
 

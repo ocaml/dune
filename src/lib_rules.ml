@@ -265,7 +265,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
       Command.S
         [ Hidden_deps (Dep.Set.of_files h_files)
         ; Command.of_result_map requires ~f:(fun libs ->
-            S [ Lib.L.c_include_flags_cmd libs ~stdlib_dir:ctx.stdlib_dir
+            S [ Lib.L.c_include_flags libs ~stdlib_dir:ctx.stdlib_dir
               ; Hidden_deps (
                   Lib_file_deps.deps libs
                     ~groups:[Lib_file_deps.Group.Header])
@@ -301,19 +301,16 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
       let src = Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext Native) in
       let dst = Library.archive lib ~dir ~ext:".cmxs" in
       let build =
-        Build.dyn_paths (Build.arr (fun () ->
-          [Library.archive lib ~dir ~ext:ctx.ext_lib]))
-        >>>
-        Ocaml_flags.get flags Native
-        >>>
-        Build.run ~dir:(Path.build ctx.build_dir)
-          (Ok ocamlopt)
-          [ Dyn (fun flags -> As flags)
-          ; A "-shared"; A "-linkall"
-          ; A "-I"; Path dir
-          ; A "-o"; Target dst
-          ; Dep src
-          ]
+        Build.S.seq (Build.dyn_paths (Build.arr (fun () ->
+          [Library.archive lib ~dir ~ext:ctx.ext_lib])))
+          (Command.run ~dir:(Path.build ctx.build_dir)
+             (Ok ocamlopt)
+             [ Command.dyn_args (Ocaml_flags.get flags Native)
+             ; A "-shared"; A "-linkall"
+             ; A "-I"; Path dir
+             ; A "-o"; Target dst
+             ; Dep src
+             ])
       in
       let build =
         if Library.has_stubs lib then

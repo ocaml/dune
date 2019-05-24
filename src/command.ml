@@ -1,8 +1,8 @@
 open! Stdune
 open Import
 
-type static = Arg_spec.static
-type dynamic = Arg_spec.dynamic
+type static = Static
+type dynamic = Dynamic
 
 type _ t =
   | A        : string -> _ t
@@ -18,22 +18,6 @@ type _ t =
   | Hidden_targets : Path.t list -> dynamic t
   | Dyn      : static t Build.s -> dynamic t
   | Fail     : fail -> _ t
-
-let rec from_arg_spec : type a b. a Build.s -> (a, b) Arg_spec.t -> b t =
-  fun  arg (spec : (_, b) Arg_spec.t) -> match spec with
-    | Arg_spec.A s  -> A s
-    | Arg_spec.As l -> As l
-    | Arg_spec.S ts -> S (List.map ts ~f:(from_arg_spec arg))
-    | Arg_spec.Concat (sep, ts) -> Concat (sep, (List.map ts ~f:(from_arg_spec arg)))
-    | Arg_spec.Dep fn -> Dep fn
-    | Arg_spec.Deps fns -> Deps fns
-    | Arg_spec.Target t -> Target t
-    | Arg_spec.Path fn -> Path fn
-    | Arg_spec.Paths fns -> Paths fns
-    | Arg_spec.Hidden_deps l -> Hidden_deps l
-    | Arg_spec.Hidden_targets l -> Hidden_targets l
-    | Arg_spec.Dyn f -> Dyn (Build.S.map arg ~f:(fun x -> from_arg_spec (Build.return ()) (f x)))
-    | Arg_spec.Fail f -> Fail f
 
 let dyn_args args = Dyn (Build.S.map args ~f:(fun x -> As x))
 

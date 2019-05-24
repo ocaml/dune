@@ -35,10 +35,8 @@ open! Import
     "src/foo.ml")] will translate to "../src/foo.ml" if the command is
     started from the "test" directory.  *)
 
-(* We use type synonyms for compatibility with [Arg_spec] during the
-translation. *)
-type static = Arg_spec.static
-type dynamic = Arg_spec.dynamic
+type static = Static
+type dynamic = Dynamic
 
 type _ t =
   | A        : string -> _ t
@@ -54,9 +52,6 @@ type _ t =
   | Hidden_targets : Path.t list -> dynamic t
   | Dyn      : static t Build.s -> dynamic t
   | Fail     : fail -> _ t
-
-(* We can convert an [Arg_spec.t] to [Command.t]. *)
-val from_arg_spec : 'a Build.s -> ('a, 'b) Arg_spec.t -> 'b t
 
 (* Create a dynamic command line arguments. *)
 val dyn_args : string list Build.s -> dynamic t

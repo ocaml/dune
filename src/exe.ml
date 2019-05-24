@@ -166,7 +166,7 @@ let link_exe
           ; Command.of_result_map link_time_code_gen
               ~f:(fun { Link_time_code_gen.to_link; force_linkall } ->
                 S [ As (if force_linkall then ["-linkall"] else [])
-                  ; Lib.Lib_and_module.L.link_flags_cmd to_link ~mode
+                  ; Lib.Lib_and_module.L.link_flags to_link ~mode
                       ~stdlib_dir:ctx.stdlib_dir
                   ])
           ; Command.dyn_deps cm_files

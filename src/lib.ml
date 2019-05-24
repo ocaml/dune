@@ -324,9 +324,9 @@ module L = struct
   type nonrec t = t list
 
   let to_iflags dirs =
-    Arg_spec.S
+    Command.S
       (Path.Set.fold dirs ~init:[] ~f:(fun dir acc ->
-         Arg_spec.Path dir :: A "-I" :: acc)
+         Command.Path dir :: A "-I" :: acc)
        |> List.rev)
 
   let include_paths ts ~stdlib_dir =
@@ -340,9 +340,6 @@ module L = struct
   let include_flags ts ~stdlib_dir =
     to_iflags (include_paths ts ~stdlib_dir)
 
-  let include_flags_cmd ts ~stdlib_dir =
-    Command.from_arg_spec (Build.return ()) (include_flags ts ~stdlib_dir)
-
   let c_include_paths ts ~stdlib_dir =
     let dirs =
       List.fold_left ts ~init:Path.Set.empty ~f:(fun acc t ->
@@ -353,14 +350,11 @@ module L = struct
   let c_include_flags ts ~stdlib_dir =
     to_iflags (c_include_paths ts ~stdlib_dir)
 
-  let c_include_flags_cmd ts ~stdlib_dir =
-    Command.from_arg_spec (Build.return ()) (to_iflags (c_include_paths ts ~stdlib_dir))
-
   let link_flags ts ~mode ~stdlib_dir =
-    Arg_spec.S
+    Command.S
       (c_include_flags ts ~stdlib_dir ::
        List.map ts ~f:(fun t ->
-         Arg_spec.Deps (Mode.Dict.get t.info.archives mode)))
+         Command.Deps (Mode.Dict.get t.info.archives mode)))
 
   let compile_and_link_flags ~compile ~link ~mode ~stdlib_dir =
     let dirs =
@@ -368,13 +362,10 @@ module L = struct
         (  include_paths compile ~stdlib_dir)
         (c_include_paths link    ~stdlib_dir)
     in
-    Arg_spec.S
+    Command.S
       (to_iflags dirs ::
        List.map link ~f:(fun t ->
-         Arg_spec.Deps (Mode.Dict.get t.info.archives mode)))
-
-  let compile_and_link_flags_cmd ~compile ~link ~mode ~stdlib_dir =
-    Command.from_arg_spec (Build.return ()) (compile_and_link_flags ~compile ~link ~mode ~stdlib_dir)
+         Command.Deps (Mode.Dict.get t.info.archives mode)))
 
   let jsoo_runtime_files ts =
     List.concat_map ts ~f:(fun t -> t.info.jsoo_runtime)
@@ -421,17 +412,14 @@ module Lib_and_module = struct
       let libs = List.filter_map ts ~f:(function
         | Lib lib -> Some lib
         | Module _ -> None) in
-      Arg_spec.S
+      Command.S
         (L.c_include_flags libs ~stdlib_dir ::
          List.map ts ~f:(function
            | Lib t ->
-             Arg_spec.Deps (Mode.Dict.get t.info.archives mode)
+             Command.Deps (Mode.Dict.get t.info.archives mode)
            | Module m ->
              Dep (Module.cm_file_unsafe m (Mode.cm_kind mode))
          ))
-
-    let link_flags_cmd ts ~mode ~stdlib_dir =
-      Command.from_arg_spec (Build.return ()) (link_flags ts ~mode ~stdlib_dir)
 
     let of_libs l = List.map l ~f:(fun x -> Lib x)
   end

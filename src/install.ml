@@ -21,15 +21,22 @@ module Section0 = struct
   let compare : t -> t -> Ordering.t = compare
 end
 
-(* The path after the man section mangling done by opam-installer.
-   This roughly follows [add_man_section_dir] in [src/format/opamFile.ml] in opam. *)
+(* The path after the man section mangling done by opam-installer. This roughly
+   follows [add_man_section_dir] in [src/format/opamFile.ml] in opam. *)
 module Dst : sig
   type t
 
   val to_string : t -> string
 
-  val to_install_file : t -> src_basename:string -> section:Section0.t -> string option
-  val of_install_file : string option -> src_basename:string -> section:Section0.t -> t
+  val to_install_file
+    :  t
+    -> src_basename:string
+    -> section:Section0.t
+    -> string option
+  val of_install_file
+    : string option
+    -> src_basename:string
+    -> section:Section0.t -> t
 
   val explicit : string -> t
   val compare : t -> t -> Ordering.t
@@ -276,7 +283,9 @@ module Entry = struct
           Dst.explicit dst
       in
       let is_executable = is_source_executable () in
-      if Sys.win32 &&  is_executable && Filename.extension (Dst.to_string dst) <> ".exe"
+      if Sys.win32
+         && is_executable
+         && Filename.extension (Dst.to_string dst) <> ".exe"
       then
         Dst.explicit (Dst.to_string dst ^ ".exe")
       else
@@ -331,7 +340,8 @@ let gen_install_file entries =
     |> List.iter ~f:(fun (e : Entry.t) ->
       let src = Path.to_string e.src in
       match
-        Dst.to_install_file ~src_basename:(Path.basename e.src) ~section:e.section e.dst
+        Dst.to_install_file ~src_basename:(Path.basename e.src)
+          ~section:e.section e.dst
       with
       | None     -> pr "  %S"      src
       | Some dst -> pr "  %S {%S}" src dst);

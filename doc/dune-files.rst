@@ -198,9 +198,9 @@ to use the :ref:`include_subdirs` stanza.
   such modules to avoid surprises. ``<modules>`` must be a subset of
   the modules listed in the ``(modules ...)`` field.
 
-- ``(private_modules <modules>)`` species a list of modules that will be marked
-  as private. Private modules are inaccessible from outside the libraries they
-  are defined in.
+- ``(private_modules <modules>)`` specifies a list of modules that will be
+  marked as private. Private modules are inaccessible from outside the libraries
+  they are defined in.
 
 - ``(allow_overlapping_dependencies)`` allows external dependencies to
   overlap with libraries that are present in the workspace

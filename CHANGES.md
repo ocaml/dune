@@ -28,9 +28,9 @@ unreleased
 - Allow %{...} variables in pps flags (#2076, @mlasson review by @diml and
   @aalekseyev).
 
-- Add a 'cookies' option to ppx_rewriter/deriver flags in library stanzas
-  (#2106, @mlasson @diml). This allow to specify cookie requests from
-  variables expanded at each invocation of the preprocessor.
+- Add a 'cookies' option to ppx_rewriter/deriver flags in library stanzas. This
+  allow to specify cookie requests from variables expanded at each invocation of
+  the preprocessor. (#2106, @mlasson @diml)
 
 - Add more opam metadata and use it to generate `.opam` files. In particular, a
   `package` field has been added to specify package specific information.
@@ -49,7 +49,7 @@ unreleased
   (detected using the `CI` environment variable). Commands for which the
   invocation might be omitted must output an error prefixed with `File `. Add an
   `--always-show-command-line` option to disable this behavior and always show
-  the full command.
+  the full command. (#2120, fixes #1733, @rgrinberg)
 
 - In `dune-workspace` files, add the ability to choose the host context and to
   create duplicates of the default context with different settings. (#2098,

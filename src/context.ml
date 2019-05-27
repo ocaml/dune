@@ -49,7 +49,7 @@ type t =
   ; merlin                  : bool
   ; for_host                : t option
   ; implicit                : bool
-  ; build_dir               : Path.t
+  ; build_dir               : Path.Build.t
   ; env_nodes               : Env_nodes.t
   ; path                    : Path.t list
   ; toplevel_path           : Path.t option
@@ -117,7 +117,7 @@ let to_dyn t : Dyn.t =
     ; "merlin", Bool t.merlin
     ; "for_host",
       option string (Option.map t.for_host ~f:(fun t -> t.name))
-    ; "build_dir", path t.build_dir
+    ; "build_dir", Path.Build.to_dyn t.build_dir
     ; "toplevel_path", option path t.toplevel_path
     ; "ocaml_bin", path t.ocaml_bin
     ; "ocaml", path t.ocaml
@@ -279,7 +279,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       | Some fn -> fn
     in
 
-    let build_dir = Path.relative Path.build_dir name in
+    let build_dir = Path.Build.relative Path.Build.root name in
     let ocamlpath =
       match
         let var = "OCAMLPATH" in

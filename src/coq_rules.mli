@@ -8,20 +8,20 @@ open! Stdune
 
 val setup_rules
   :  sctx:Super_context.t
-  -> dir:Path.t
+  -> dir:Path.Build.t
   -> dir_contents:Dir_contents.t
   -> Dune_file.Coq.t
   -> (unit, Action.t) Build.t list
 
 val install_rules
   :  sctx:Super_context.t
-  -> dir:Path.t
+  -> dir:Path.Build.t
   -> Dune_file.Coq.t
   -> (Loc.t option * Install.Entry.t) list
 
 val coqpp_rules
   :  sctx:Super_context.t
-  -> build_dir:Path.t
-  -> dir:Path.t
+  -> build_dir:Path.Build.t
+  -> dir:Path.Build.t
   -> Dune_file.Coqpp.t
   -> (unit, Action.t) Build.t list

@@ -61,8 +61,10 @@ let gen_rules_output sctx (config : Dune_file.Auto_format.t) ~output_dir =
           ; Target output
           ]
         in
-        Some (Lazy.force ocamlformat_deps
-              >>> Build.run ~dir:(Super_context.build_dir sctx) exe args)
+        Some (
+          Lazy.force ocamlformat_deps
+          >>>
+          Build.run ~dir:(Path.build (Super_context.build_dir sctx)) exe args)
       else
         None
     in

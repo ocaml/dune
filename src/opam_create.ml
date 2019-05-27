@@ -95,7 +95,7 @@ let opam_template sctx ~pkg =
   in
   if File_tree.file_exists file_tree opam_template_path then
     let build_dir = Super_context.build_dir sctx in
-    Some (Path.append_source build_dir opam_template_path)
+    Some (Path.Build.append_source build_dir opam_template_path)
   else
     None
 
@@ -104,7 +104,7 @@ let add_rule sctx ~project ~pkg =
   let opam_path = Path.build (Local_package.opam_file pkg) in
   let opam_rule =
     (match opam_template sctx ~pkg:(Local_package.package pkg) with
-     | Some p -> Build.contents p
+     | Some p -> Build.contents (Path.build p)
      | None -> Build.return "")
     >>>
     Build.arr (fun template ->

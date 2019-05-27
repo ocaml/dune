@@ -48,7 +48,7 @@ val get_ppx_driver
   -> flags:String_with_vars.t list
   -> dir_kind:Dune_lang.File_syntax.t
   -> (Loc.t * Lib_name.t) list
-  -> (Path.t * string list) Or_exn.t
+  -> (Path.Build.t * string list) Or_exn.t
 
 module Compat_ppx_exe_kind : sig
   (** [Dune] for directories using a [dune] file, and [Jbuild driver]
@@ -63,7 +63,7 @@ val get_compat_ppx_exe
   :  Super_context.t
   -> name:Lib_name.t
   -> kind:Compat_ppx_exe_kind.t
-  -> Path.t
+  -> Path.Build.t
 
 val gen_rules : Super_context.t -> string list -> unit
 

@@ -29,10 +29,9 @@ let libs_under_dir sctx ~db ~dir =
    File_tree.Dir.fold dir ~traverse_ignored_dirs:true
      ~init:[] ~f:(fun dir acc ->
        let dir =
-         Path.append_source (Super_context.build_dir sctx) (File_tree.Dir.path dir) in
-       match Super_context.stanzas_in sctx
-               ~dir:(Path.as_in_build_dir_exn dir)
-       with
+         Path.Build.append_source (Super_context.build_dir sctx)
+           (File_tree.Dir.path dir) in
+       match Super_context.stanzas_in sctx ~dir with
        | None -> acc
        | Some (d : _ Dir_with_dune.t) ->
          List.fold_left d.data ~init:acc ~f:(fun acc -> function
@@ -43,7 +42,7 @@ let libs_under_dir sctx ~db ~dir =
              | Some lib ->
                (* still need to make sure that it's not coming from an external
                   source *)
-               if Path.is_descendant ~of_:dir (Lib.src_dir lib) then
+               if Path.is_descendant ~of_:(Path.build dir) (Lib.src_dir lib) then
                  lib :: acc
                else
                  acc (* external lib with a name matching our private name *)

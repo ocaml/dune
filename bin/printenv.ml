@@ -46,9 +46,8 @@ let term =
           String.Map.values setup.scontexts
           |> List.map ~f:(fun sctx ->
             let dir =
-              Path.append_source (Super_context.context sctx).build_dir dir
-            in
-            dump sctx ~dir:(Path.as_in_build_dir_exn dir))
+              Path.Build.append_source (Super_context.build_dir sctx) dir in
+            dump sctx ~dir)
         | External _ ->
           die "Environment is not defined for external paths"
         | In_install_dir _ ->

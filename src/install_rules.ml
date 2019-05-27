@@ -57,7 +57,7 @@ let gen_dune_package sctx ~version ~(pkg : Local_package.t) =
             (Dune_lang.pp (Stanza.File_kind.of_syntax dune_version))))
   >>>
   Build.write_file_dyn (Path.build dune_package_file)
-  |> Super_context.add_rule sctx ~dir:ctx.build_dir
+  |> Super_context.add_rule sctx ~dir:(Path.build ctx.build_dir)
 
 type version_method =
   | File of string
@@ -129,7 +129,7 @@ let init_meta sctx ~dir =
         (Lib.Set.to_list libs)
     in
     let ctx = Super_context.context sctx in
-    Super_context.add_rule sctx ~dir:ctx.build_dir
+    Super_context.add_rule sctx ~dir:(Path.build ctx.build_dir)
       (Build.fanout meta_contents template
        >>^ (fun ((meta : Meta.t), template) ->
          let buf = Buffer.create 1024 in
@@ -185,6 +185,7 @@ let lib_ppxs sctx ~(lib : Dune_file.Library.t) ~scope ~dir_kind =
 
 let lib_install_files sctx ~dir_contents ~dir ~sub_dir:lib_subdir
       ~scope ~dir_kind (lib : Library.t) =
+  let dir = Path.build dir in
   let loc = lib.buildable.loc in
   let make_entry section ?sub_dir ?dst fn =
     ( Some loc
@@ -243,7 +244,8 @@ let lib_install_files sctx ~dir_contents ~dir ~sub_dir:lib_subdir
     )
   in
   let archives = Lib_archives.make ~ctx ~dir_contents ~dir lib in
-  let execs = lib_ppxs sctx ~lib ~scope ~dir_kind in
+  let execs =
+    List.map ~f:Path.build (lib_ppxs sctx ~lib ~scope ~dir_kind) in
   List.concat
     [ sources
     ; List.map module_files ~f:(fun (visibility, file) ->
@@ -275,7 +277,7 @@ let symlink_installed_artifacts_to_build_install
       | Some l -> l
       | None -> Loc.in_file entry.src
     in
-    Super_context.add_rule sctx ~loc ~dir:ctx.build_dir
+    Super_context.add_rule sctx ~loc ~dir:(Path.build ctx.build_dir)
       (Build.symlink ~src:entry.src ~dst);
     Install.Entry.set_src entry dst)
 
@@ -313,8 +315,8 @@ let install_entries sctx package =
      |> List.map ~f:(fun mld ->
        (None,
         Install.Entry.make
-          ~dst:(sprintf "odoc-pages/%s" (Path.basename mld))
-          Install.Section.Doc mld)))
+          ~dst:(sprintf "odoc-pages/%s" (Path.Build.basename mld))
+          Install.Section.Doc (Path.build mld))))
     @
     (Local_package.odig_files package
      |> List.map
@@ -332,9 +334,7 @@ let install_entries sctx package =
                  ; dune_version = _
                  } ->
               let sub_dir = (Option.value_exn lib.public).sub_dir in
-              let dir_contents = Dir_contents.get_without_rules sctx ~dir:(
-                Path.as_in_build_dir_exn dir)
-              in
+              let dir_contents = Dir_contents.get_without_rules sctx ~dir in
               lib_install_files sctx ~dir ~sub_dir lib ~scope
                 ~dir_kind ~dir_contents)
   in
@@ -486,7 +486,7 @@ let memo =
                 Dir_set.subtree
                   (Config.local_install_dir ~context:context_name);
                 Dir_set.singleton (Local_package.build_dir pkg);
-                Dir_set.singleton (Path.as_in_build_dir_exn ctx.build_dir)
+                Dir_set.singleton ctx.build_dir
               ])
            ,
            Thunk (fun () -> Finite (

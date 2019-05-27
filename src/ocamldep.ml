@@ -122,7 +122,7 @@ let deps_of cctx ~ml_kind unit =
         (let flags =
            Option.value (Module.pp_flags unit) ~default:(Build.return []) in
          flags >>>
-         Build.run (Ok context.ocamldep) ~dir:context.build_dir
+         Build.run (Ok context.ocamldep) ~dir:(Path.build context.build_dir)
            [ A "-modules"
            ; Dyn (fun flags -> As flags)
            ; Ml_kind.flag ml_kind

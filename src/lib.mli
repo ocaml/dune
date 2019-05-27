@@ -268,7 +268,7 @@ module DB : sig
   val create_from_library_stanzas
     :  ?parent:t
     -> lib_config:Lib_config.t
-    -> (Path.t * Dune_file.Library.t) list
+    -> (Path.Build.t * Dune_file.Library.t) list
     -> t
 
   val create_from_findlib

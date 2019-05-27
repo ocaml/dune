@@ -12,7 +12,7 @@ module Env_context = struct
     default_env : Env_node.t lazy_t;
     stanzas_per_dir : Stanza.t list Dir_with_dune.t Path.Build.Map.t;
     host : t option;
-    build_dir : Path.t;
+    build_dir : Path.Build.t;
     context : Context.t;
     expander : Expander.t;
     bin_artifacts : Artifacts.Bin.t;
@@ -163,7 +163,7 @@ end = struct
     | Some host ->
       let dir =
         Path.Build.drop_build_context_exn dir
-        |> Path.Build.append_source (Path.as_in_build_dir_exn host.build_dir)
+        |> Path.Build.append_source host.build_dir
       in
       bin_artifacts host ~dir
 
@@ -231,7 +231,7 @@ module Pkg_version = struct
   open Build.O
 
   let file sctx (p : Package.t) =
-    Path.relative (Path.append_source sctx.context.build_dir p.path)
+    Path.relative (Path.append_source (Path.build sctx.context.build_dir) p.path)
       (sprintf "%s.version.sexp" (Package.Name.to_string p.name))
 
   let read_file fn =
@@ -245,7 +245,7 @@ module Pkg_version = struct
 
   let set sctx p get =
     let fn = file sctx p in
-    add_rule sctx ~dir:(build_dir sctx)
+    add_rule sctx ~dir:(Path.build (build_dir sctx))
       ((get >>^ fun v ->
         (Dune_lang.Encoder.(option string) v
          |> Dune_lang.to_string ~syntax:Dune))
@@ -314,6 +314,7 @@ let get_installed_binaries stanzas ~(context : Context.t) =
   let install_dir = Config.local_install_bin_dir ~context:context.name in
   let expander = Expander.expand_with_reduced_var_set ~context in
   let expand_str ~dir sw =
+    let dir = Path.build dir in
     String_with_vars.expand ~dir ~mode:Single ~f:(fun var ver ->
       match expander var ver with
       | Unknown -> None
@@ -343,7 +344,7 @@ let get_installed_binaries stanzas ~(context : Context.t) =
               fb
               ~section:Bin
               ~expand:(expand_str ~dir:d.ctx_dir)
-              ~expand_partial:(expand_str_partial ~dir:d.ctx_dir)
+              ~expand_partial:(expand_str_partial ~dir:(Path.build d.ctx_dir))
           in
           let p = Path.Relative.of_string (Install.Dst.to_string p) in
           if Path.Relative.is_root (Path.Relative.parent_exn p) then
@@ -367,7 +368,7 @@ let create
   let internal_libs =
     List.concat_map stanzas
       ~f:(fun { Dune_load.Dune_file. dir; stanzas; project = _ ; kind = _ } ->
-        let ctx_dir = Path.append_source context.build_dir dir in
+        let ctx_dir = Path.Build.append_source context.build_dir dir in
         List.filter_map stanzas ~f:(fun stanza ->
           match (stanza : Stanza.t) with
           | Dune_file.Library lib -> Some (ctx_dir, lib)
@@ -385,7 +386,7 @@ let create
   let stanzas =
     List.map stanzas
       ~f:(fun { Dune_load.Dune_file. dir; project; stanzas; kind } ->
-        let ctx_dir = Path.append_source context.build_dir dir in
+        let ctx_dir = Path.Build.append_source context.build_dir dir in
         let dune_version = Dune_project.dune_version project in
         { Dir_with_dune.
           src_dir = dir
@@ -398,16 +399,16 @@ let create
   in
   let stanzas_per_dir =
     List.map stanzas ~f:(fun stanzas ->
-      (Path.as_in_build_dir_exn stanzas.Dir_with_dune.ctx_dir, stanzas))
+      (stanzas.Dir_with_dune.ctx_dir, stanzas))
     |> Path.Build.Map.of_list_exn
   in
   let env = Hashtbl.create 128 in
   let default_env = lazy (
     let make ~inherit_from ~config =
-      let build_dir = Path.as_in_build_dir_exn context.build_dir in
+      let dir = context.build_dir in
       Env_node.make
-        ~dir:build_dir
-        ~scope:(Scope.DB.find_by_dir scopes build_dir)
+        ~dir
+        ~scope:(Scope.DB.find_by_dir scopes dir)
         ~inherit_from
         ~config
     in
@@ -446,8 +447,7 @@ let create
       | Some host -> host.artifacts
     in
     Expander.make
-      ~scope:(Scope.DB.find_by_dir scopes
-                (Path.as_in_build_dir_exn context.build_dir))
+      ~scope:(Scope.DB.find_by_dir scopes context.build_dir)
       ~context
       ~lib_artifacts:artifacts.public_libs
       ~bin_artifacts_host:artifacts_host.bin
@@ -481,7 +481,7 @@ let create
   ; chdir = Build.arr (fun (action : Action.t) ->
       match action with
       | Chdir _ -> action
-      | _ -> Chdir (context.build_dir, action))
+      | _ -> Chdir (Path.build context.build_dir, action))
   ; libs_by_package =
       Lib.DB.all public_libs
       |> Lib.Set.to_list
@@ -642,8 +642,9 @@ module Action = struct
     | Some host ->
       fun exe ->
         match Path.extract_build_context_dir exe with
-        | Some (dir, exe) when Path.equal dir sctx.context.build_dir ->
-          Path.append_source host.context.build_dir exe
+        | Some (dir, exe)
+          when Path.equal dir (Path.build sctx.context.build_dir) ->
+          Path.append_source (Path.build host.context.build_dir) exe
         | _ -> exe
 
   let run sctx ~loc ~expander ~dep_kind ~targets:targets_written_by_user

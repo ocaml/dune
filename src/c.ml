@@ -93,12 +93,12 @@ end
 module Source = struct
   type t =
     { kind : Kind.t
-    ; path : Path.t
+    ; path : Path.Build.t
     }
 
   let kind t = t.kind
   let path t = t.path
-  let src_dir t = Path.parent_exn t.path
+  let src_dir t = Path.Build.parent_exn t.path
 
   let make ~kind ~path =
     { kind

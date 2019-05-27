@@ -1216,3 +1216,6 @@ let set_of_source_paths set =
   Source.Set.to_list set
   |> List.map ~f:source
   |> Set.of_list
+
+let set_of_build_paths_list =
+  List.fold_left ~init:Set.empty ~f:(fun acc e -> Set.add acc (build e))

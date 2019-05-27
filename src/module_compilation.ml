@@ -116,12 +116,12 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
             , Ocaml_version.supports_no_keep_locs ctx.version
         with
         | true, Cmi, true ->
-          (ctx.build_dir, Arg_spec.As ["-no-keep-locs"])
+          (Path.build ctx.build_dir, Arg_spec.As ["-no-keep-locs"])
         | true, Cmi, false ->
           (Obj_dir.byte_dir obj_dir, As []) (* emulated -no-keep-locs *)
         | true, (Cmo | Cmx), _
         | false, _, _ ->
-          (ctx.build_dir, As [])
+          (Path.build ctx.build_dir, As [])
       in
       let flags =
         let flags = Ocaml_flags.get_for_cm (CC.flags cctx) ~cm_kind in
@@ -210,7 +210,7 @@ let ocamlc_i ?sandbox ?(flags=[]) ~dep_graphs cctx (m : Module.t) ~output =
   SC.add_rule sctx ?sandbox ~dir:(Path.build dir)
     (cm_deps >>>
      Ocaml_flags.get_for_cm (CC.flags cctx) ~cm_kind:Cmo >>>
-     Build.run (Ok ctx.ocamlc) ~dir:ctx.build_dir
+     Build.run (Ok ctx.ocamlc) ~dir:(Path.build ctx.build_dir)
        [ Dyn (fun ocaml_flags -> As ocaml_flags)
        ; A "-I"; Path (Obj_dir.byte_dir obj_dir)
        ; Cm_kind.Dict.get (CC.includes cctx) Cmo

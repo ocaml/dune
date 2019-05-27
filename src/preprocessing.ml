@@ -335,11 +335,12 @@ end
 let ppx_exe sctx ~key ~dir_kind =
   match (dir_kind : Dune_lang.File_syntax.t) with
   | Dune ->
-    Path.relative (SC.build_dir sctx) (".ppx/" ^ key ^ "/ppx.exe")
+    Path.Build.relative (SC.build_dir sctx) (".ppx/" ^ key ^ "/ppx.exe")
   | Jbuild ->
-    Path.relative (SC.build_dir sctx) (".ppx/jbuild/" ^ key ^ "/ppx.exe")
+    Path.Build.relative (SC.build_dir sctx) (".ppx/jbuild/" ^ key ^ "/ppx.exe")
 
 let build_ppx_driver sctx ~dep_kind ~target ~dir_kind ~pps ~pp_names =
+  let target = Path.build target in
   let ctx = SC.context sctx in
   let mode = Context.best_mode ctx in
   let compiler = Option.value_exn (Context.compiler ctx mode) in
@@ -387,7 +388,8 @@ let build_ppx_driver sctx ~dep_kind ~target ~dir_kind ~pps ~pp_names =
   (* CR-someday diml: what we should do is build the .cmx/.cmo once
      and for all at the point where the driver is defined. *)
   let ml = Path.relative (Path.parent_exn target) "ppx.ml" in
-  let add_rule = SC.add_rule sctx ~dir:(Super_context.build_dir sctx) in
+  let add_rule =
+    SC.add_rule sctx ~dir:(Path.build (Super_context.build_dir sctx)) in
   add_rule
     (Build.of_result_map driver_and_libs ~f:(fun (driver, _) ->
        Build.return (sprintf "let () = %s ()\n" driver.info.main))
@@ -400,7 +402,7 @@ let build_ppx_driver sctx ~dep_kind ~target ~dir_kind ~pps ~pp_names =
      Build.of_result_map driver_and_libs ~f:(fun (_, libs) ->
        Build.paths (Lib.L.archive_files libs ~mode))
      >>>
-     Build.run (Ok compiler) ~dir:ctx.build_dir
+     Build.run (Ok compiler) ~dir:(Path.build ctx.build_dir)
        [ A "-o" ; Target target
        ; Arg_spec.of_result
            (Result.map driver_and_libs ~f:(fun (_driver, libs) ->
@@ -541,7 +543,8 @@ let ppx_driver_and_flags_internal sctx ~loc ~expander ~lib_name ~flags ~dir_kind
 let ppx_driver_and_flags sctx ~lib_name ~expander ~scope ~loc ~dir_kind ~flags pps =
   let open Result.O in
   let* libs = Lib.DB.resolve_pps (Scope.libs scope) pps in
-  let* exe, flags = ppx_driver_and_flags_internal sctx ~loc ~expander ~lib_name ~flags ~dir_kind libs in
+  let* exe, flags = ppx_driver_and_flags_internal sctx ~loc ~expander ~lib_name
+                      ~flags ~dir_kind libs in
   let+ driver =
     match (dir_kind : Dune_lang.File_syntax.t) with
     | Dune ->
@@ -563,10 +566,10 @@ let setup_reason_rules sctx (m : Module.t) =
   let ctx = SC.context sctx in
   let refmt =
     SC.resolve_program sctx ~loc:None
-      ~dir:(Path.as_in_build_dir_exn ctx.build_dir)
+      ~dir:ctx.build_dir
       "refmt" ~hint:"try: opam install reason" in
   let rule src target =
-    Build.run ~dir:ctx.build_dir refmt
+    Build.run ~dir:(Path.build ctx.build_dir) refmt
       [ A "--print"
       ; A "binary"
       ; Dep src
@@ -580,7 +583,7 @@ let setup_reason_rules sctx (m : Module.t) =
       ()
     | Reason ->
       let ml = Option.value_exn (Module.file ml kind) in
-      SC.add_rule sctx ~dir:ctx.build_dir (rule f.path ml));
+      SC.add_rule sctx ~dir:(Path.build ctx.build_dir) (rule f.path ml));
   ml
 
 let promote_correction fn build ~suffix =
@@ -673,8 +676,8 @@ let lint_module sctx ~dir ~expander ~dep_kind ~lint ~lib_name ~scope ~dir_kind =
                     (Build.of_result_map driver_and_flags
                        ~f:(fun (exe, flags, args) ->
                          flags >>>
-                         Build.run ~dir:(SC.context sctx).build_dir
-                           (Ok exe)
+                         Build.run ~dir:(Path.build (SC.build_dir sctx))
+                           (Ok (Path.build exe))
                            [ args
                            ; Ml_kind.ppx_driver_flag kind
                            ; Dep src.path
@@ -750,8 +753,8 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess
                      ~f:(fun (exe, flags, args) ->
                        flags
                        >>>
-                       Build.run ~dir:(SC.context sctx).build_dir
-                         (Ok exe)
+                       Build.run ~dir:(Path.build (SC.build_dir sctx))
+                         (Ok (Path.build exe))
                          [ args
                          ; A "-o"; Target dst
                          ; Ml_kind.ppx_driver_flag kind; Dep src
@@ -761,10 +764,11 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess
         let pp_flags = Build.of_result (
           let open Result.O in
           let+ (exe, driver, flags) =
-            ppx_driver_and_flags sctx ~expander ~loc ~scope ~dir_kind ~flags ~lib_name pps
+            ppx_driver_and_flags sctx ~expander ~loc ~scope ~dir_kind ~flags
+              ~lib_name pps
           in
           Build.memoize "ppx command"
-            (Build.path exe
+            (Build.path (Path.build exe)
              >>>
              preprocessor_deps >>^ ignore
              >>>
@@ -774,7 +778,9 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess
              let command =
                List.map
                  (List.concat
-                    [ [Path.reach exe ~from:(SC.context sctx).build_dir]
+                    [ [Path.reach (Path.build exe)
+                         ~from:(Path.build (SC.build_dir sctx))
+                      ]
                     ; driver_flags
                     ; flags
                     ])

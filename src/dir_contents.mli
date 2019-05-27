@@ -32,7 +32,7 @@ val modules_of_executables : t -> first_exe:string -> Executables_modules.t
 val lookup_module : t -> Module.Name.t -> Dune_file.Buildable.t option
 
 (** All mld files attached to this documentation stanza *)
-val mlds : t -> Dune_file.Documentation.t -> Path.t list
+val mlds : t -> Dune_file.Documentation.t -> Path.Build.t list
 
 (** Coq modules of library [name] is the Coq library name.  *)
 val coq_modules_of_library : t -> name:Lib_name.t -> Coq_module.t list

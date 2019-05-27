@@ -245,7 +245,7 @@ module Alias0 = struct
 
   let package_install ~(context : Context.t) ~pkg =
     make (sprintf ".%s-files" (Package.Name.to_string pkg))
-      ~dir:context.build_dir
+      ~dir:(Path.build context.build_dir)
 end
 
 module Loaded = struct
@@ -1075,8 +1075,8 @@ let all_targets () =
         match
           load_dir t
             ~dir:(
-              Path.append_source ctx.Context.build_dir
-                (File_tree.Dir.path dir))
+              Path.build (Path.Build.append_source ctx.Context.build_dir
+                            (File_tree.Dir.path dir)))
         with
         | Non_build _ -> acc
         | Build {

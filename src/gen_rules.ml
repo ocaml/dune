@@ -26,7 +26,7 @@ module For_stanza = struct
 
   let cons_maybe hd_o tl =
     match hd_o with
-    | Some hd -> hd::tl
+    | Some hd -> hd :: tl
     | None -> tl
 
   let cons acc x =
@@ -71,13 +71,12 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
         { Dir_with_dune. src_dir; ctx_dir; data = stanzas
         ; scope; kind = dir_kind ; dune_version = _ } =
     let expander =
-      Super_context.expander sctx ~dir:(Path.as_in_build_dir_exn ctx_dir) in
+      Super_context.expander sctx ~dir:ctx_dir in
     let for_stanza stanza =
       let dir = ctx_dir in
       match stanza with
       | Toplevel toplevel ->
-        Toplevel_rules.setup ~sctx
-          ~dir:(Path.as_in_build_dir_exn dir) ~toplevel;
+        Toplevel_rules.setup ~sctx ~dir ~toplevel;
         For_stanza.empty_none
       | Library lib ->
         let cctx, merlin =
@@ -100,7 +99,7 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
             Some (List.concat_map exes.names ~f:(fun (_, exe) ->
               List.map
                 [exe ^ ".bc.js" ; exe ^ ".bc.runtime.js"]
-                ~f:(Path.relative ctx_dir)))
+                ~f:(Path.Build.relative ctx_dir)))
         }
       | Alias alias ->
         Simple_rules.alias sctx alias ~dir ~expander;
@@ -130,10 +129,10 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
         }
       | Install { Install_conf. section = _; files; package = _ } ->
         List.map files ~f:(fun fb ->
-          File_binding.Unexpanded.expand_src ~dir:ctx_dir
+          File_binding.Unexpanded.expand_src ~dir:(Path.build ctx_dir)
             fb ~f:(Expander.expand_str expander))
         |> Path.Set.of_list
-        |> Rules.Produce.Alias.add_deps (Alias.all ~dir:ctx_dir);
+        |> Rules.Produce.Alias.add_deps (Alias.all ~dir:(Path.build ctx_dir));
         For_stanza.empty_none
       | _ ->
         For_stanza.empty_none
@@ -174,9 +173,10 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
           (* This happens often when passing a [-p ...] option that
              hides a library *)
           let targets =
-            List.map (Menhir_rules.targets m) ~f:(Path.relative ctx_dir)
+            List.map (Menhir_rules.targets m)
+              ~f:(Path.relative (Path.build ctx_dir))
           in
-          SC.add_rule sctx ~dir:ctx_dir
+          SC.add_rule sctx ~dir:(Path.build ctx_dir)
             (Build.fail ~targets
                { fail = fun () ->
                    Errors.fail m.loc
@@ -188,29 +188,30 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
         end
       | Coq.T m when Expander.eval_blang expander m.enabled_if ->
         Coq_rules.setup_rules ~sctx ~dir:ctx_dir ~dir_contents m
-        |> SC.add_rules ~dir:ctx_dir sctx
+        |> SC.add_rules ~dir:(Path.build ctx_dir) sctx
       | Coqpp.T m ->
         Coq_rules.coqpp_rules ~sctx ~build_dir ~dir:ctx_dir m
-        |> SC.add_rules ~dir:ctx_dir sctx
+        |> SC.add_rules ~dir:(Path.build ctx_dir) sctx
       | _ -> ());
     let dyn_deps =
       let pred =
         let id = lazy (
           let open Sexp.Encoder in
-          constr "exclude" (List.map ~f:Path.to_sexp js_targets)
+          constr "exclude" (List.map ~f:Path.Build.to_sexp js_targets)
         ) in
         List.iter js_targets ~f:(fun js_target ->
-          assert (Path.equal (Path.parent_exn js_target) ctx_dir));
+          assert (Path.Build.equal (Path.Build.parent_exn js_target)
+                    ctx_dir));
         Predicate.create ~id ~f:(fun basename ->
           not (List.exists js_targets ~f:(fun js_target ->
-            String.equal (Path.basename js_target) basename)))
+            String.equal (Path.Build.basename js_target) basename)))
       in
-      File_selector.create ~dir:ctx_dir pred
+      File_selector.create ~dir:(Path.build ctx_dir) pred
       |> Build.paths_matching ~loc:Loc.none
     in
     Rules.Produce.Alias.add_deps
       ~dyn_deps
-      (Alias.all ~dir:ctx_dir) Path.Set.empty;
+      (Alias.all ~dir:(Path.build ctx_dir)) Path.Set.empty;
     cctxs
 
   let gen_rules dir_contents cctxs ~dir : (Loc.t * Compilation_context.t) list =

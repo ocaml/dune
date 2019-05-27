@@ -17,7 +17,7 @@ let standard sctx = pretty sctx @ sourcemap sctx
 let install_jsoo_hint = "try: opam install js_of_ocaml-compiler"
 
 let in_build_dir ~ctx args =
-  Path.L.relative ctx.Context.build_dir (".js" :: args)
+  Path.L.relative (Path.build ctx.Context.build_dir) (".js" :: args)
 
 let jsoo ~dir sctx =
   SC.resolve_program sctx ~dir

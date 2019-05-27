@@ -31,7 +31,7 @@ let parse_coqdep ~coq_module (lines : string list) =
   let source = Coq_module.source coq_module in
   let invalid p =
     Errors.die "coqdep returned invalid output for %s / [phase: %s]"
-      (Path.to_string source) p in
+      (Path.Build.to_string source) p in
   let line =
     match lines with
     | [] | _ :: _ :: _ :: _ -> invalid "line"
@@ -46,18 +46,21 @@ let parse_coqdep ~coq_module (lines : string list) =
     let ff = List.hd @@ String.extract_blank_separated_words basename in
     let depname, _ = Filename.split_extension ff in
     let modname =
-      Coq_module.(String.concat ~sep:"/" (prefix coq_module @ [name coq_module])) in
+      Coq_module.(String.concat ~sep:"/"
+                    (prefix coq_module @ [name coq_module])) in
     if coq_debug
     then Format.eprintf "depname / modname: %s / %s@\n%!" depname modname;
     if depname <> modname then invalid "basename";
     let deps = String.extract_blank_separated_words deps in
     if coq_debug
-    then Format.eprintf "deps for %a: %a@\n%!" Path.pp source Fmt.(list text) deps;
+    then Format.eprintf "deps for %a: %a@\n%!"
+           Path.Build.pp (source) Fmt.(list text) deps;
     deps
 
 let setup_rule ~expander ~dir ~cc ~source_rule ~coq_flags ~file_flags
       ~mlpack_rule coq_module =
 
+  let dir = Path.build dir in
   if coq_debug
   then Format.eprintf "gen_rule coq_module: %a@\n%!" Coq_module.pp coq_module;
 
@@ -66,7 +69,7 @@ let setup_rule ~expander ~dir ~cc ~source_rule ~coq_flags ~file_flags
   let stdout_to = Coq_module.obj_file ~obj_dir ~ext:".v.d" coq_module in
   let object_to = Coq_module.obj_file ~obj_dir ~ext:".vo"  coq_module in
 
-  let file_flags = file_flags @ [Arg_spec.Dep source] in
+  let file_flags = file_flags @ [Arg_spec.Dep (Path.build source)] in
   let cd_arg = (Arg_spec.As ["-dyndep"; "opt"]) :: file_flags in
 
   (* coqdep needs the full source + plugin's mlpack to be present :( *)
@@ -137,18 +140,13 @@ let coqlib_wrapper_name (s : Dune_file.Coq.t) =
   Lib_name.Local.to_string (snd s.name)
 
 let setup_rules ~sctx ~dir ~dir_contents (s : Dune_file.Coq.t) =
-
-  let (scope, cc, expander) =
-    let dir = Path.as_in_build_dir_exn dir in
-    let scope = SC.find_scope_by_dir sctx dir in
-    let cc = create_ccoq sctx ~dir in
-    let expander = SC.expander sctx ~dir in
-    (scope, cc, expander)
-  in
+  let scope = SC.find_scope_by_dir sctx dir in
+  let cc = create_ccoq sctx ~dir in
+  let expander = SC.expander sctx ~dir in
 
   if coq_debug then begin
     Format.eprintf "[gen_rules] @[dir: %a@\nscope: %a@]@\n%!"
-      Path.pp dir Path.Build.pp (Scope.root scope)
+      Path.Build.pp dir Path.Build.pp (Scope.root scope)
   end;
 
   let name = Dune_file.Coq.best_name s in
@@ -156,7 +154,9 @@ let setup_rules ~sctx ~dir ~dir_contents (s : Dune_file.Coq.t) =
 
   (* coqdep requires all the files to be in the tree to produce correct
      dependencies *)
-  let source_rule = Build.paths (List.map ~f:Coq_module.source coq_modules) in
+  let source_rule =
+    Build.paths (List.map coq_modules ~f:(fun m ->
+      Path.build (Coq_module.source m))) in
   let coq_flags = s.flags in
   let wrapper_name = coqlib_wrapper_name s in
 
@@ -187,7 +187,6 @@ let coq_plugins_install_rules ~scope ~package ~dst_dir (s : Dune_file.Coq.t) =
   List.concat_map ~f:rules_for_lib ml_libs
 
 let install_rules ~sctx ~dir s =
-  let dir = Path.as_in_build_dir_exn dir in
   match s with
   | { Dune_file.Coq. public = None; _ } ->
     []
@@ -213,13 +212,12 @@ let install_rules ~sctx ~dir s =
     |> List.rev_append (coq_plugins_install_rules ~scope ~package ~dst_dir s)
 
 let coqpp_rules ~sctx ~build_dir ~dir (s : Dune_file.Coqpp.t) =
-
-  let cc = create_ccoq sctx ~dir:(Path.as_in_build_dir_exn dir) in
+  let cc = create_ccoq sctx ~dir in
 
   let mlg_rule m =
-    let source = Path.relative dir (m ^ ".mlg") in
-    let target = Path.relative dir (m ^ ".ml") in
+    let source = Path.build (Path.Build.relative dir (m ^ ".mlg")) in
+    let target = Path.build (Path.Build.relative dir (m ^ ".ml")) in
     let args = Arg_spec.[Dep source; Hidden_targets [target]] in
-    Build.run ~dir:build_dir cc.coqpp args in
+    Build.run ~dir:(Path.build build_dir) cc.coqpp args in
 
   List.map ~f:mlg_rule s.modules

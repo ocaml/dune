@@ -111,7 +111,7 @@ let make ~scope ~(context : Context.t) ~lib_artifacts
       | expansion -> Some (Error expansion))
   in
   let ocaml_config = lazy (make_ocaml_config context.ocaml_config) in
-  let dir = context.build_dir in
+  let dir = Path.build context.build_dir in
   let bindings = Pform.Map.create ~context in
   let env = context.env in
   let c_compiler = context.c_compiler in

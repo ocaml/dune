@@ -51,13 +51,13 @@ let load_sources ~dune_version ~dir ~files =
     match C.Kind.split_extension fn ~dune_version with
     | Unrecognized -> acc
     | Not_allowed_until version ->
-      let loc = Loc.in_dir dir in
+      let loc = Loc.in_dir (Path.build dir) in
       Errors.warn loc
         "Source file %s with extension %s is not allowed before version %a"
         fn (Filename.extension fn) Syntax.Version.pp version;
       acc
     | Recognized (obj, kind) ->
-      let path = Path.relative dir fn in
+      let path = Path.Build.relative dir fn in
       C.Kind.Dict.update acc kind ~f:(fun v ->
         String.Map.add v obj (C.Source.make ~kind ~path)
       ))
@@ -99,8 +99,8 @@ let make (d : _ Dir_with_dune.t)
         let all = String.Map.union c cxx ~f:(fun _ (_loc1, c) (loc2, cxx) ->
           Errors.fail loc2 "%a and %a have conflicting names. \
                             You must rename one of them."
-            Path.pp_in_source (C.Source.path cxx)
-            Path.pp_in_source (C.Source.path c)
+            Path.pp_in_source (Path.build (C.Source.path cxx))
+            Path.pp_in_source (Path.build (C.Source.path c))
         ) in
         Some (lib, all)
       | _ -> None
@@ -124,7 +124,7 @@ let make (d : _ Dir_with_dune.t)
         String.Map.values c_sources
         |> List.map ~f:(fun (loc, source) ->
           (C.Source.path source, loc)))
-      |> Path.Map.of_list
+      |> Path.Build.Map.of_list
     in
     match rev_map with
     | Ok _ -> ()

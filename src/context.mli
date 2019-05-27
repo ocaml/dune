@@ -56,7 +56,7 @@ type t =
     implicit : bool
 
   ; (** Directory where artifact are stored, for instance "_build/default" *)
-    build_dir : Path.t
+    build_dir : Path.Build.t
 
   ; (** env node that this context was initialized with *)
     env_nodes : Env_nodes.t

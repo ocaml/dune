@@ -17,7 +17,7 @@ end
 (* We keep prefix and name separated as the handling of
   `From Foo Require Bar.` may benefit from it. *)
 type t =
-  { source: Path.t
+  { source: Path.Build.t
   ; prefix : string list
   ; name : string
   }
@@ -38,7 +38,8 @@ let pp fmt x =
   let open Format in
   let pp_sep fmt () = pp_print_string fmt "." in
   fprintf fmt "{ prefix = %a; name = %s; source = %a }"
-    (pp_print_list ~pp_sep pp_print_string) x.prefix x.name Path.pp x.source
+    (pp_print_list ~pp_sep pp_print_string) x.prefix x.name
+    Path.Build.pp x.source
 
 let parse ~dir ~loc s =
   let clist = List.rev @@ String.split s ~on:'.' in
@@ -47,8 +48,8 @@ let parse ~dir ~loc s =
     Errors.fail loc "invalid coq module"
   | name :: prefix ->
     let prefix = List.rev prefix in
-    let source = List.fold_left prefix ~init:dir ~f:Path.relative in
-    let source = Path.relative source (name ^ ".v") in
+    let source = List.fold_left prefix ~init:dir ~f:Path.Build.relative in
+    let source = Path.Build.relative source (name ^ ".v") in
     make ~name ~source ~prefix
 
 module Value = struct

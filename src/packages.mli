@@ -3,4 +3,4 @@
    more fine grained *)
 open Stdune
 
-val mlds : Super_context.t -> Package.Name.t -> Path.t list
+val mlds : Super_context.t -> Package.Name.t -> Path.Build.t list

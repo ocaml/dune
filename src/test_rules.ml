@@ -28,7 +28,8 @@ let rules (t : Dune_file.Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents
     let extra_bindings =
       let test_exe = s ^ ".exe" in
       let test_exe_path =
-        Super_context.Action.map_exe sctx (Path.relative dir test_exe) in
+        Super_context.Action.map_exe sctx
+          (Path.relative (Path.build dir) test_exe) in
       Pform.Map.singleton test_var_name (Values [Path test_exe_path]) in
     let add_alias ~loc ~action ~locks =
       let alias =

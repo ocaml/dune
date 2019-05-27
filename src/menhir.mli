@@ -12,8 +12,8 @@ val module_names : Dune_file.Menhir.t -> Module.Name.t list
 
 (** Generate the rules for a [(menhir ...)] stanza. *)
 val gen_rules
-  :  build_dir:Path.t
-  -> dir:Path.t
+  :  build_dir:Path.Build.t
+  -> dir:Path.Build.t
   -> Compilation_context.t
   -> Dune_file.Menhir.t
   -> unit

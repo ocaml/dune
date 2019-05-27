@@ -16,6 +16,7 @@ let dep_bindings ~extra_bindings deps =
   | None -> base
 
 let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
+  let dir = Path.build dir in
   if Expander.eval_blang expander rule.enabled_if then begin
     let targets : Expander.Targets.t =
       match rule.targets with
@@ -63,6 +64,7 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
     Path.Set.empty
 
 let copy_files sctx ~dir ~expander ~src_dir (def: Copy_files.t) =
+  let dir = Path.build dir in
   let loc = String_with_vars.loc def.glob in
   let glob_in_src =
     let src_glob = Expander.expand_str expander def.glob in
@@ -88,9 +90,11 @@ let copy_files sctx ~dir ~expander ~src_dir (def: Copy_files.t) =
       "cannot find directory: %a"
       Path.Source.pp src_in_src;
   (* add rules *)
-  let src_in_build = Path.append_source (SC.context sctx).build_dir src_in_src in
+  let src_in_build =
+    Path.Build.append_source (SC.context sctx).build_dir src_in_src in
   let files =
-    Build_system.eval_pred (File_selector.create ~dir:src_in_build pred) in
+    Build_system.eval_pred
+      (File_selector.create ~dir:(Path.build src_in_build) pred) in
   Path.Set.map files ~f:(fun file_src ->
     let basename = Path.basename file_src in
     let file_dst = Path.relative dir basename in
@@ -119,7 +123,7 @@ let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
   let loc = Some alias_conf.loc in
   if Expander.eval_blang expander alias_conf.enabled_if then
     add_alias sctx
-      ~dir
+      ~dir:(Path.build dir)
       ~loc
       ~name:alias_conf.name
       ~stamp
@@ -138,11 +142,11 @@ let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
            ~expander
            ~dep_kind:Required
            ~targets:(Forbidden "aliases")
-           ~targets_dir:dir)
+           ~targets_dir:(Path.build dir))
   else
     add_alias sctx
       ~loc
-      ~dir
+      ~dir:(Path.build dir)
       ~name:alias_conf.name
       ~stamp
       (Build.return (Action.Progn []))

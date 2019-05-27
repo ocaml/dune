@@ -69,11 +69,12 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
            (Expander.expand_and_eval_set expander lib.library_flags
               ~standard:(Build.return []))
          >>>
-         Build.run (Ok compiler) ~dir:ctx.build_dir
+         Build.run (Ok compiler) ~dir:(Path.build ctx.build_dir)
            [ Dyn (fun (_, _, flags, _) -> As flags)
            ; A "-a"; A "-o"; Target target
            ; As stubs_flags
-           ; Dyn (fun (_, cclibs, _, _) -> Arg_spec.quote_args "-cclib" (map_cclibs cclibs))
+           ; Dyn (fun (_, cclibs, _, _) ->
+               Arg_spec.quote_args "-cclib" (map_cclibs cclibs))
            ; Dyn (fun (_, _, _, library_flags) -> As library_flags)
            ; As (match lib.kind with
                | Normal -> []
@@ -161,12 +162,12 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
     Module_compilation.build_modules cctx ~js_of_ocaml ~dynlink ~dep_graphs
 
   let build_c_file (lib : Library.t) ~dir ~expander ~includes (loc, src, dst) =
-    let src = C.Source.path src in
     let c_flags = (SC.c_flags sctx ~dir:(Path.as_in_build_dir_exn dir)
                      ~expander ~flags:lib.c_flags).c in
     SC.add_rule sctx ~loc ~dir
       (c_flags
        >>>
+       let src = Path.build (C.Source.path src) in
        Build.run
          (* We have to execute the rule in the library directory as
             the .o is produced in the current directory *)
@@ -181,7 +182,6 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
     dst
 
   let build_cxx_file (lib : Library.t) ~dir ~expander ~includes (loc, src, dst) =
-    let src = C.Source.path src in
     let open Arg_spec in
     let output_param =
       if ctx.ccomp_type = "msvc" then
@@ -194,6 +194,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
     SC.add_rule sctx ~loc ~dir
       (cxx_flags
        >>>
+       let src = Path.build (C.Source.path src) in
        Build.run
          (* We have to execute the rule in the library directory as
             the .o is produced in the current directory *)
@@ -215,7 +216,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
       (Expander.expand_and_eval_set expander
          lib.c_library_flags ~standard:(Build.return [])
        >>>
-       Build.run ~dir:ctx.build_dir
+       Build.run ~dir:(Path.build ctx.build_dir)
          (Ok ctx.ocamlmklib)
          [ A "-g"
          ; if custom then A "-custom" else As []
@@ -312,7 +313,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
         >>>
         Ocaml_flags.get flags Native
         >>>
-        Build.run ~dir:ctx.build_dir
+        Build.run ~dir:(Path.build ctx.build_dir)
           (Ok ocamlopt)
           [ Dyn (fun flags -> As flags)
           ; A "-shared"; A "-linkall"
@@ -543,10 +544,10 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
         ~allow_overlaps:lib.buildable.allow_overlapping_dependencies
     in
     let f () =
+      let dir = Path.build dir in
       library_rules lib ~dir_contents ~dir ~scope ~expander ~compile_info
         ~dir_kind
     in
-    let dir = Path.as_in_build_dir_exn dir in
     SC.Libs.gen_select_rules sctx compile_info ~dir;
     SC.Libs.with_lib_deps sctx compile_info ~dir ~f
 end

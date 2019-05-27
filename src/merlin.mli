@@ -22,7 +22,7 @@ val merge_all : allow_approx_merlin:bool -> t list -> t option
 (** Add rules for generating the .merlin in a directory *)
 val add_rules
   : Super_context.t
-  -> dir:Path.t
+  -> dir:Path.Build.t
   -> more_src_dirs:Path.Source.t list
   -> expander:Expander.t
   -> dir_kind:Dune_lang.File_syntax.t

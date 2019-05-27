@@ -75,7 +75,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
               ; As (match lib.kind with
                   | Normal -> []
                   | Ppx_deriver _ | Ppx_rewriter _ -> ["-linkall"])
-              ; Command.dyn_deps cm_files
+              ; Dyn (Build.S.map cm_files ~f:(fun x -> Command.Deps x))
               ; Hidden_targets
                   (match mode with
                    | Byte -> []

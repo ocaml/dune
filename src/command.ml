@@ -21,9 +21,6 @@ type _ t =
 
 let dyn_args args = Dyn (Build.S.map args ~f:(fun x -> As x))
 
-let dyn_deps args = Dyn (Build.S.map args ~f:(fun x -> Deps x))
-let dyn_dep  args = Dyn (Build.S.map args ~f:(fun x -> Dep x))
-
 let rec add_targets ts acc =
   List.fold_left ts ~init:acc ~f:(fun acc t ->
     match t with

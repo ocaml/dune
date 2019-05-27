@@ -60,7 +60,7 @@ let js_of_ocaml_rule sctx ~dir ~flags ~spec ~target =
     [ flags
     ; Command.A "-o"; Target target
     ; Command.A "--no-runtime"
-    ; Command.dyn_dep runtime_dep
+    ; Command.Dyn (Build.S.map runtime_dep ~f:(fun x -> Command.Dep x))
     ; spec
     ]
 

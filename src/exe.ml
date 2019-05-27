@@ -169,7 +169,7 @@ let link_exe
                   ; Lib.Lib_and_module.L.link_flags to_link ~mode
                       ~stdlib_dir:ctx.stdlib_dir
                   ])
-          ; Command.dyn_deps cm_files
+          ; Dyn (Build.S.map cm_files ~f:(fun x -> Command.Deps x))
           ]));
   if linkage.ext = ".bc" then
     let cm = modules_and_cm_files >>^ snd in

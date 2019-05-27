@@ -178,7 +178,8 @@ let link_exe
          js_of_ocaml.flags
          ~standard:(Build.return (Js_of_ocaml_rules.standard sctx))) in
     let rules =
-      Js_of_ocaml_rules.build_exe cctx ~js_of_ocaml ~src:exe cm flags
+      Js_of_ocaml_rules.build_exe cctx ~js_of_ocaml ~src:exe ~cm
+        ~flags:(Command.dyn_args flags)
     in
     SC.add_rules ~dir:(Path.build dir) sctx rules
 

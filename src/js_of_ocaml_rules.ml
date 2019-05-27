@@ -51,20 +51,20 @@ let runtime_file ~dir ~sctx file =
   | Ok f ->
     Build.arr (fun _ -> f)
 
-let js_of_ocaml_rule sctx ~dir ~spec ~target args =
+let js_of_ocaml_rule sctx ~dir ~flags ~spec ~target =
   let jsoo = jsoo ~dir sctx in
   let runtime_dep = runtime_file ~dir ~sctx "runtime.js"
   in
   Command.run ~dir:(Path.build dir)
     jsoo
-    [ Command.dyn_args args
+    [ flags
     ; Command.A "-o"; Target target
     ; Command.A "--no-runtime"
     ; Command.dyn_dep runtime_dep
     ; spec
     ]
 
-let standalone_runtime_rule cc ~javascript_files ~target flags =
+let standalone_runtime_rule cc ~javascript_files ~target ~flags =
   let spec =
     Command.S
       [ Command.of_result_map
@@ -73,13 +73,13 @@ let standalone_runtime_rule cc ~javascript_files ~target flags =
       ; Command.Deps javascript_files
       ]
   in
-  let args = Build.S.map flags ~f:(fun flags -> "--runtime-only" :: flags)
+  let flags = Command.S [ Command.A "--runtime-only"; flags ]
   in
   js_of_ocaml_rule
     (Compilation_context.super_context cc)
-    ~dir:(Compilation_context.dir cc) ~target ~spec args
+    ~dir:(Compilation_context.dir cc) ~flags ~target ~spec
 
-let exe_rule cc ~javascript_files ~src ~target args =
+let exe_rule cc ~javascript_files ~src ~target ~flags =
   let dir = Compilation_context.dir cc in
   let sctx = Compilation_context.super_context cc in
   let spec =
@@ -90,7 +90,7 @@ let exe_rule cc ~javascript_files ~src ~target args =
       ; Command.Dep src
       ]
   in
-  js_of_ocaml_rule sctx ~dir ~spec ~target args
+  js_of_ocaml_rule sctx ~dir ~spec ~target ~flags
 
 let jsoo_archives ~ctx lib =
   match Lib.jsoo_archive lib with
@@ -139,7 +139,7 @@ let build_cm cctx ~(js_of_ocaml:Dune_file.Js_of_ocaml.t) ~src ~target =
       Expander.expand_and_eval_set expander js_of_ocaml.flags
         ~standard:(Build.return (standard sctx))
     in
-    [js_of_ocaml_rule sctx ~dir ~spec ~target flags]
+    [js_of_ocaml_rule sctx ~dir ~flags:(Command.dyn_args flags) ~spec ~target]
   else []
 
 let setup_separate_compilation_rules sctx components =
@@ -171,10 +171,10 @@ let setup_separate_compilation_rules sctx components =
           let dir = Path.as_in_build_dir_exn (in_build_dir ~ctx [lib_name]) in
           let spec = Command.Dep src in
           SC.add_rule sctx ~dir:(Path.build dir)
-            (js_of_ocaml_rule sctx ~dir ~spec ~target
-               (Build.return (standard sctx))))
+            (js_of_ocaml_rule
+               sctx ~dir ~flags:(Command.As (standard sctx)) ~spec ~target))
 
-let build_exe cc ~js_of_ocaml ~src (cm : Path.t list Build.s) flags =
+let build_exe cc ~js_of_ocaml ~src ~(cm : Path.t list Build.s) ~flags =
   let {Dune_file.Js_of_ocaml.javascript_files; _} = js_of_ocaml in
   let javascript_files =
     List.map javascript_files
@@ -184,7 +184,8 @@ let build_exe cc ~js_of_ocaml ~src (cm : Path.t list Build.s) flags =
   let standalone_runtime = mk_target ".runtime.js" in
   if separate_compilation_enabled (Compilation_context.super_context cc) then
     [ link_rule cc ~runtime:standalone_runtime ~target cm
-    ; standalone_runtime_rule cc ~javascript_files ~target:standalone_runtime flags
+    ; standalone_runtime_rule
+        cc ~javascript_files ~target:standalone_runtime ~flags
     ]
   else
-    [ exe_rule cc ~javascript_files ~src ~target flags ]
+    [ exe_rule cc ~javascript_files ~src ~target ~flags ]

@@ -91,7 +91,7 @@ let simplify act =
   in
   block act
 
-let quote s = Pp.string (quote_for_shell s)
+let quote s = Pp.verbatim (quote_for_shell s)
 
 let rec pp = function
   | Run (prog, args) ->
@@ -101,14 +101,14 @@ let rec pp = function
          [Pp.space; quote arg]))
   | Chdir dir ->
     Pp.hovbox ~indent:2
-      [ Pp.string "cd"
+      [ Pp.verbatim "cd"
       ; Pp.space
       ; quote dir
       ]
   | Setenv (k, v) ->
-    Pp.concat [Pp.string k; Pp.string "="; quote v]
+    Pp.concat [Pp.verbatim k; Pp.verbatim "="; quote v]
   | Sh s ->
-    Pp.string s
+    Pp.verbatim s
   | Redirect (l, outputs, dest) ->
     let body =
       match l with
@@ -118,8 +118,8 @@ let rec pp = function
           [ Pp.hvbox ~indent:2
               [ Pp.char '{'
               ; Pp.space
-              ; Pp.hvbox [Pp.list l ~f:(fun x -> Pp.seq (pp x) (Pp.char ';'))
-                             ~sep:Pp.space]
+              ; Pp.hvbox [Pp.concat_map l ~sep:Pp.space
+                            ~f:(fun x -> Pp.seq (pp x) (Pp.char ';'))]
               ]
           ; Pp.space
           ; Pp.char '}'
@@ -128,7 +128,7 @@ let rec pp = function
     Pp.hovbox ~indent:2
       [ body
       ; Pp.space
-      ; Pp.string (match outputs with
+      ; Pp.verbatim (match outputs with
           | Stdout -> ">"
           | Stderr -> "2>"
           | Outputs -> "&>")
@@ -140,7 +140,7 @@ let rec pp = function
       ]
 
 let rec pp_seq = function
-  | [] -> Pp.string "true"
+  | [] -> Pp.verbatim "true"
   | [x] -> pp x
   | x :: l ->
     Pp.concat

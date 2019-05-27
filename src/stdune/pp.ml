@@ -3,21 +3,15 @@ module String = Dune_caml.StringLabels
 type +'a t =
   | Nop
   | Seq of 'a t * 'a t
-  | Concat of 'a t list
+  | Concat of 'a t * 'a t list
   | Box of int * 'a t
   | Vbox of int * 'a t
   | Hbox of 'a t
   | Hvbox of int * 'a t
   | Hovbox of int * 'a t
-  | Bool of bool
-  | Int of int
-  | String of string
+  | Verbatim of string
   | Char of char
-  | Float of float
-  | Sexp of Sexp0.t
-  | List : 'b t * ('a -> 'b t) * 'a list -> 'b t
-  | Space
-  | Cut
+  | Break of int * int
   | Newline
   | Text of string
   | Tag of 'a * 'a t
@@ -83,7 +77,12 @@ module Renderer = struct
       match t with
       | Nop -> ()
       | Seq (a, b) -> pp th ppf a; pp th ppf b
-      | Concat l -> List.iter l ~f:(pp th ppf)
+      | Concat (_, []) -> ()
+      | Concat (sep, x :: l) ->
+        pp th ppf x;
+        List.iter l ~f:(fun x ->
+          pp th ppf sep;
+          pp th ppf x)
       | Box (indent, t) ->
         pp_open_box ppf indent;
         pp th ppf t;
@@ -104,17 +103,9 @@ module Renderer = struct
         pp_open_hovbox ppf indent;
         pp th ppf t;
         pp_close_box ppf ()
-      | Bool   x -> pp_print_bool ppf x
-      | Int    x -> pp_print_int ppf x
-      | String x -> pp_print_string ppf x
+      | Verbatim x -> pp_print_string ppf x
       | Char   x -> pp_print_char ppf x
-      | Float  x -> pp_print_float ppf x
-      | Sexp x -> Sexp1.pp ppf x
-      | List (sep, f, l) ->
-        pp_print_list (fun ppf x -> pp th ppf (f x)) ppf l
-          ~pp_sep:(fun ppf () -> pp th ppf sep)
-      | Space -> pp_print_space ppf ()
-      | Cut -> pp_print_cut ppf ()
+      | Break (nspaces, shift) -> pp_print_break ppf nspaces shift
       | Newline -> pp_force_newline ppf ()
       | Text s -> pp_print_text ppf s
       | Tag (tag, t) ->
@@ -167,25 +158,30 @@ let pp ppf t = Render.pp () ppf t
 
 let nop = Nop
 let seq a b = Seq (a, b)
-let concat l = Concat l
-let box ?(indent=0) l = Box (indent, Concat l)
-let vbox ?(indent=0) l = Vbox (indent, Concat l)
-let hbox l = Hbox (Concat l)
-let hvbox ?(indent=0) l = Hvbox (indent, Concat l)
-let hovbox ?(indent=0) l = Hovbox (indent, Concat l)
+let concat ?(sep=Nop) = function
+  | [] -> Nop
+  | [x] -> x
+  | l -> Concat (sep, l)
+let concat_map ?(sep=Nop) l ~f =
+  match l with
+  | [] -> Nop
+  | [x] -> f x
+  | l -> Concat (sep, List.map l ~f)
+let box ?(indent=0) l = Box (indent, concat l)
+let vbox ?(indent=0) l = Vbox (indent, concat l)
+let hbox l = Hbox (concat l)
+let hvbox ?(indent=0) l = Hvbox (indent, concat l)
+let hovbox ?(indent=0) l = Hovbox (indent, concat l)
 
-let bool b = Bool b
-let int x = Int x
-let string x = String x
+let verbatim x = Verbatim x
 let char x = Char x
-let float x = Float x
-let sexp s = Sexp s
-let list ?(sep=Cut) l ~f = List (sep, f, l)
 
-let space = Space
-let cut = Cut
+let break ~nspaces ~shift = Break (nspaces, shift)
+let space = Break (1, 0)
+let cut = Break (0, 0)
 let newline = Newline
 
 let text s = Text s
+let textf fmt = Printf.ksprintf text fmt
 
 let tag t ~tag = Tag (tag, t)

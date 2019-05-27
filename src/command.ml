@@ -81,7 +81,7 @@ let expand ~dir ts =
     | Concat (sep, ts) -> Build.S.map (loop (S ts)) (fun x -> [(String.concat ~sep x)])
     | Target fn -> Build.return [Path.reach fn ~from:dir]
     | Dyn dyn -> Build.S.dyn_deps (Build.S.map dyn run_loop)
-    | Fail f -> f.fail ()
+    | Fail f -> Build.fail f
     | Hidden_deps deps -> Build.S.map (Build.deps deps) (fun () -> [])
     | Hidden_targets _ -> Build.return []
   in

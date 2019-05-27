@@ -1,9 +1,4 @@
 open! Stdune
-(** This module replaces arg_spec.mli in the post-arrow Dune. The main
-    change is the constructor [Dyn] which now takes [static t Build.s]
-    instead of ['a -> (unit, static) t], which allows us to get rid of
-    the first type parameter ['a] in [('a, 'b) Arg_spec.t]. *)
-
 (** Command line arguments specification *)
 
 (** This module implements a small DSL to specify the command line
@@ -54,7 +49,7 @@ module Args : sig
     | Dyn      : static t Build.s -> dynamic t
     | Fail     : fail -> _ t
 
-  (* Create a dynamic command line arguments. *)
+  (* Create dynamic command line arguments. *)
   val dyn : string list Build.s -> dynamic t
 end
 

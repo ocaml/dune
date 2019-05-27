@@ -20,6 +20,7 @@ module Args = struct
     | Dyn      : static t Build.s -> dynamic t
     | Fail     : fail -> _ t
 
+  (* TODO: Shall we simply make the constructor [Dyn] to accept a list? *)
   let dyn args = Dyn (Build.S.map args ~f:(fun x -> As x))
 end
 

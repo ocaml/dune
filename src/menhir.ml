@@ -114,7 +114,7 @@ module Run (P : PARAMS) : sig end = struct
       ~loc:None
       ~hint:"try: opam install menhir"
 
-  (* Reminder (from arg_spec.mli):
+  (* Reminder (from command.mli):
 
      [Deps]           is for command line arguments that are dependencies.
      [As]             is for command line arguments

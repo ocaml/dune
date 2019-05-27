@@ -27,12 +27,12 @@ val to_sexp: t -> Sexp.t
 val all_obj_dirs : t -> mode:Mode.t -> Path.t list
 
 val make_lib
-  :  dir:Path.t
+  :  dir:Path.Build.t
   -> has_private_modules:bool
   -> Lib_name.Local.t
   -> t
 
-val make_exe: dir:Path.t -> name:string -> t
+val make_exe: dir:Path.Build.t -> name:string -> t
 
 val make_external_no_private : dir:Path.t -> t
 

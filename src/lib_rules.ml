@@ -413,11 +413,12 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
     let lib_modules =
       Dir_contents.modules_of_library dir_contents ~name:(Library.best_name lib)
     in
-    let obj_dir = Library.obj_dir ~dir lib in
+    let obj_dir = Library.obj_dir ~dir:(Path.as_in_build_dir_exn dir) lib in
     Check_rules.add_obj_dir sctx ~obj_dir;
     let source_modules = Lib_modules.modules lib_modules in
     let vimpl =
-      Virtual_rules.impl sctx ~lib ~dir ~scope ~modules:source_modules in
+      Virtual_rules.impl sctx ~lib ~dir:(Path.as_in_build_dir_exn dir)
+        ~scope ~modules:source_modules in
     Option.iter vimpl ~f:(Virtual_rules.setup_copy_rules_for_impl ~sctx ~dir);
     (* Preprocess before adding the alias module as it doesn't need
        preprocessing *)

@@ -8,7 +8,8 @@ let executables_rules ~sctx ~dir ~dir_kind ~expander
       (exes : Dune_file.Executables.t) =
   (* Use "eobjs" rather than "objs" to avoid a potential conflict
      with a library of the same name *)
-  let obj_dir = Obj_dir.make_exe ~dir ~name:(snd (List.hd exes.names)) in
+  let obj_dir = Obj_dir.make_exe ~dir:(Path.as_in_build_dir_exn dir)
+                  ~name:(snd (List.hd exes.names)) in
   Check_rules.add_obj_dir sctx ~obj_dir;
   let modules =
     Dir_contents.modules_of_executables dir_contents

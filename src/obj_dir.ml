@@ -80,21 +80,21 @@ end
 
 module Local = struct
   type t =
-    { dir: Path.t
-    ; obj_dir: Path.t
-    ; native_dir: Path.t
-    ; byte_dir: Path.t
-    ; public_cmi_dir: Path.t option
+    { dir: Path.Build.t
+    ; obj_dir: Path.Build.t
+    ; native_dir: Path.Build.t
+    ; byte_dir: Path.Build.t
+    ; public_cmi_dir: Path.Build.t option
     }
 
   let to_dyn { dir; obj_dir; native_dir; byte_dir; public_cmi_dir } =
     let open Dyn.Encoder in
     record
-      [ "dir", Path.to_dyn dir
-      ; "obj_dir", Path.to_dyn obj_dir
-      ; "native_dir", Path.to_dyn native_dir
-      ; "byte_dir", Path.to_dyn byte_dir
-      ; "public_cmi_dir", option Path.to_dyn public_cmi_dir
+      [ "dir", Path.Build.to_dyn dir
+      ; "obj_dir", Path.Build.to_dyn obj_dir
+      ; "native_dir", Path.Build.to_dyn native_dir
+      ; "byte_dir", Path.Build.to_dyn byte_dir
+      ; "public_cmi_dir", option Path.Build.to_dyn public_cmi_dir
       ]
 
   let make ~dir ~obj_dir ~native_dir ~byte_dir ~public_cmi_dir =
@@ -122,8 +122,8 @@ module Local = struct
       | Byte -> dirs
       | Native -> t.native_dir :: dirs
     in
-    Path.Set.of_list dirs
-    |> Path.Set.to_list
+    Path.Build.Set.of_list dirs
+    |> Path.Build.Set.to_list
 
   let make_lib ~dir ~has_private_modules lib_name =
     let obj_dir = Utils.library_object_directory ~dir lib_name in
@@ -182,27 +182,27 @@ let make_external_no_private ~dir =
 let all_obj_dirs t ~mode =
   match t with
   | External e -> External.all_obj_dirs e ~mode
-  | Local e -> Local.all_obj_dirs e ~mode
+  | Local e -> Local.all_obj_dirs e ~mode |> List.map ~f:Path.build
 
 let public_cmi_dir = function
   | External e -> External.public_cmi_dir e
-  | Local e -> Local.public_cmi_dir e
+  | Local e -> Path.build (Local.public_cmi_dir e)
 
 let byte_dir = function
   | External e -> External.byte_dir e
-  | Local e -> Local.byte_dir e
+  | Local e -> Path.build (Local.byte_dir e)
 
 let native_dir = function
   | External e -> External.native_dir e
-  | Local e -> Local.native_dir e
+  | Local e -> Path.build (Local.native_dir e)
 
 let dir = function
   | External e -> External.dir e
-  | Local e -> Local.dir e
+  | Local e -> Path.build (Local.dir e)
 
 let obj_dir = function
   | External e -> External.obj_dir e
-  | Local e -> Local.obj_dir e
+  | Local e -> Path.build (Local.obj_dir e)
 
 let to_dyn =
   let open Dyn.Encoder in
@@ -226,13 +226,13 @@ let convert_to_external t ~dir =
       ]
 
 let all_cmis = function
-  | Local e -> [Local.byte_dir e]
+  | Local e -> [Path.build (Local.byte_dir e)]
   | External e -> External.all_cmis e
 
 let cm_dir t cm_kind visibility =
   match t with
   | External e -> External.cm_dir e cm_kind visibility
-  | Local e -> Local.cm_dir e cm_kind visibility
+  | Local e -> Path.build (Local.cm_dir e cm_kind visibility)
 
 let cm_public_dir t (cm_kind : Cm_kind.t) =
   match cm_kind with

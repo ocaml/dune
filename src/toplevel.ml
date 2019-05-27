@@ -5,14 +5,14 @@ let toplevel_dir_prefix = ".toplevel."
 module Source = struct
   type t =
     { name : string
-    ; dir : Path.t
+    ; dir : Path.Build.t
     ; loc : Loc.t
     ; main : string
     }
 
   let main_module_name t = Module.Name.of_string t.name
   let main_module_filename t = t.name ^ ".ml"
-  let source_path t = Path.relative t.dir (main_module_filename t)
+  let source_path t = Path.Build.relative t.dir (main_module_filename t)
 
   let obj_dir { dir; name ; _ } =
     Obj_dir.make_exe ~dir ~name
@@ -24,7 +24,7 @@ module Source = struct
       main_module_name
       (Module.make main_module_name
          ~visibility:Public
-         ~impl:{ path   = source_path t
+         ~impl:{ path   = Path.build (source_path t)
                ; syntax = Module.Syntax.OCaml
                }
          ~obj_dir
@@ -39,13 +39,13 @@ module Source = struct
     }
 
   let of_stanza ~dir ~(toplevel : Dune_file.Toplevel.t) =
-    { dir = Path.relative dir (toplevel_dir_prefix ^ toplevel.name)
+    { dir = Path.Build.relative dir (toplevel_dir_prefix ^ toplevel.name)
     ; name = toplevel.name
     ; loc = toplevel.loc
     ; main = "Topmain.main ()"
     }
 
-  let stanza_dir t = Path.parent_exn t.dir
+  let stanza_dir t = Path.Build.parent_exn t.dir
 
   let program t =
     { Exe.Program.
@@ -94,7 +94,7 @@ let setup_module_rules t =
         Source.pp_ml fmt t.source ~include_dirs;
         Format.pp_print_flush fmt ();
         Buffer.contents b))
-    >>> Build.write_file_dyn path
+    >>> Build.write_file_dyn (Path.build path)
   in
   Super_context.add_rule sctx ~dir:(Path.build dir) main_ml
 
@@ -108,19 +108,17 @@ let setup_rules t =
     ~link_flags:(Build.return ["-linkall"; "-warn-error"; "-31"]);
   let src = Exe.exe_path t.cctx ~program ~linkage in
   let dir = Source.stanza_dir t.source in
-  let dst = Path.relative dir (Path.Build.basename src) in
-  Super_context.add_rule sctx ~dir ~loc:t.source.loc
-    (Build.symlink ~src:(Path.build src) ~dst);
+  let dst = Path.Build.relative dir (Path.Build.basename src) in
+  Super_context.add_rule sctx ~dir:(Path.build dir) ~loc:t.source.loc
+    (Build.symlink ~src:(Path.build src) ~dst:(Path.build dst));
   setup_module_rules t
 
 module Stanza = struct
 
   let setup ~sctx ~dir ~(toplevel : Dune_file.Toplevel.t) =
     let source = Source.of_stanza ~dir ~toplevel in
-    let expander =
-      Super_context.expander sctx ~dir:(Path.as_in_build_dir_exn dir) in
-    let scope =
-      Super_context.find_scope_by_dir sctx (Path.as_in_build_dir_exn dir) in
+    let expander = Super_context.expander sctx ~dir in
+    let scope = Super_context.find_scope_by_dir sctx dir in
     let compile_info =
       let compiler_libs =
         Lib_name.of_string_exn ~loc:(Some source.loc) "compiler-libs.toplevel"

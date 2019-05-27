@@ -34,7 +34,8 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
   let ctx = Super_context.context sctx in
   let vlib = Vimpl.vlib vimpl in
   let impl = Vimpl.impl vimpl in
-  let impl_obj_dir = Dune_file.Library.obj_dir ~dir impl in
+  let impl_obj_dir =
+    Dune_file.Library.obj_dir ~dir:(Path.as_in_build_dir_exn dir) impl in
   let vlib_obj_dir = Lib.obj_dir vlib in
   let vlib_modules = Vimpl.vlib_modules vimpl in
   let copy_to_obj_dir ~src ~dst =
@@ -173,7 +174,7 @@ let external_dep_graph sctx ~impl_cm_kind ~vlib_obj_dir ~impl_obj_dir
     fun m cm_kind ->
       let m = Module.set_obj_dir ~obj_dir:vlib_obj_dir m in
       let unit = Module.cm_file_unsafe m cm_kind in
-      Ocamlobjinfo.rules ~dir:impl_obj_dir ~ctx ~unit
+      Ocamlobjinfo.rules ~dir:(Path.build impl_obj_dir) ~ctx ~unit
   in
   Ml_kind.Dict.of_func (fun ~ml_kind ->
     let cm_kind =
@@ -212,7 +213,8 @@ let external_dep_graph sctx ~impl_cm_kind ~vlib_obj_dir ~impl_obj_dir
               Module.Name.Map.find modules name
           end)
     in
-    Dep_graph.make ~dir:impl_obj_dir
+    let dir = Path.build impl_obj_dir in
+    Dep_graph.make ~dir
       ~per_module:(Module.Name.Map.map modules ~f:(fun m ->
         let deps =
           if (ml_kind = Intf && not (Module.has_intf m))
@@ -221,7 +223,7 @@ let external_dep_graph sctx ~impl_cm_kind ~vlib_obj_dir ~impl_obj_dir
             Build.return []
           else
             let (write, read) = ocamlobjinfo m cm_kind in
-            Super_context.add_rule sctx ~dir:impl_obj_dir write;
+            Super_context.add_rule sctx ~dir write;
             let open Build.O in
             Build.memoize "ocamlobjinfo" @@
             read >>^ deps_from_objinfo ~for_module:m
@@ -291,6 +293,7 @@ let impl sctx ~dir ~(lib : Dune_file.Library.t) ~scope ~modules =
           external_dep_graph sctx ~impl_cm_kind ~vlib_obj_dir ~impl_obj_dir
             ~vlib_modules
       in
-      Vimpl.make ~dir ~impl:lib ~vlib ~vlib_modules ~vlib_dep_graph
+      Vimpl.make ~dir
+        ~impl:lib ~vlib ~vlib_modules ~vlib_dep_graph
         ~vlib_foreign_objects
   end

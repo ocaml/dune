@@ -76,7 +76,8 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
       let dir = ctx_dir in
       match stanza with
       | Toplevel toplevel ->
-        Toplevel_rules.setup ~sctx ~dir ~toplevel;
+        Toplevel_rules.setup ~sctx
+          ~dir:(Path.as_in_build_dir_exn dir) ~toplevel;
         For_stanza.empty_none
       | Library lib ->
         let cctx, merlin =

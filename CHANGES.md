@@ -77,6 +77,9 @@ unreleased
 
 - Support the `.cc` extension fro C++ sources (#2195, fixes #83, @rgrinberg)
 
+- Run `ocamlformat` relative to the context root. This improves the locations of
+  errors. (#2196, fixes #1370, @rgrinberg)
+
 1.9.3 (06/05/2019)
 ------------------
 

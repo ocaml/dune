@@ -562,7 +562,8 @@ let workspace_root_var = String_with_vars.virt_var __POS__ "workspace_root"
 let setup_reason_rules sctx (m : Module.t) =
   let ctx = SC.context sctx in
   let refmt =
-    SC.resolve_program sctx ~loc:None ~dir:ctx.build_dir
+    SC.resolve_program sctx ~loc:None
+      ~dir:(Path.as_in_build_dir_exn ctx.build_dir)
       "refmt" ~hint:"try: opam install reason" in
   let rule src target =
     Build.run ~dir:ctx.build_dir refmt

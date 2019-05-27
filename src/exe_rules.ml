@@ -69,7 +69,8 @@ let executables_rules ~sctx ~dir ~dir_kind ~expander
       l
   in
 
-  let flags = SC.ocaml_flags sctx ~dir exes.buildable in
+  let flags =
+    SC.ocaml_flags sctx ~dir:(Path.as_in_build_dir_exn dir) exes.buildable in
   let link_deps =
     SC.Deps.interpret sctx ~expander exes.link_deps
   in
@@ -123,8 +124,10 @@ let rules ~sctx ~dir ~dir_contents ~scope ~expander ~dir_kind
       ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
       ~variants:exes.variants
   in
+  let f () =
+    executables_rules exes ~sctx ~dir
+      ~dir_contents ~scope ~expander ~compile_info ~dir_kind
+  in
+  let dir = Path.as_in_build_dir_exn dir in
   SC.Libs.gen_select_rules sctx compile_info ~dir;
-  SC.Libs.with_lib_deps sctx compile_info ~dir
-    ~f:(fun () ->
-      executables_rules exes ~sctx ~dir
-        ~dir_contents ~scope ~expander ~compile_info ~dir_kind)
+  SC.Libs.with_lib_deps sctx compile_info ~dir ~f

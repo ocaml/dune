@@ -193,7 +193,8 @@ include Sub_system.Register_end_point(
           (Values [String (Lib_name.Local.to_string (snd lib.name))])
       in
 
-      let expander = Super_context.expander sctx ~dir in
+      let expander =
+        Super_context.expander sctx ~dir:(Path.as_in_build_dir_exn dir) in
 
       let runner_libs =
         let open Result.O in

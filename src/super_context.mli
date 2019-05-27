@@ -29,7 +29,7 @@ val create
 
 val context   : t -> Context.t
 val stanzas   : t -> Stanzas.t Dir_with_dune.t list
-val stanzas_in : t -> dir:Path.t -> Stanzas.t Dir_with_dune.t option
+val stanzas_in : t -> dir:Path.Build.t -> Stanzas.t Dir_with_dune.t option
 val packages  : t -> Package.t Package.Name.Map.t
 val libs_by_package : t -> (Package.t * Lib.Set.t) Package.Name.Map.t
 val file_tree : t -> File_tree.t
@@ -52,23 +52,23 @@ val internal_lib_names : t -> Lib_name.Set.t
     buildable stanza *)
 val ocaml_flags
   :  t
-  -> dir:Path.t
+  -> dir:Path.Build.t
   -> Buildable.t
   -> Ocaml_flags.t
 
 val c_flags
   :  t
-  -> dir:Path.t
+  -> dir:Path.Build.t
   -> expander:Expander.t
   -> flags:Ordered_set_lang.Unexpanded.t C.Kind.Dict.t
   -> (unit, string list) Build.t C.Kind.Dict.t
 
 (** Binaries that are symlinked in the associated .bin directory of [dir]. This
     associated directory is [Path.relative dir ".bin"] *)
-val local_binaries : t -> dir:Path.t -> File_binding.Expanded.t list
+val local_binaries : t -> dir:Path.Build.t -> File_binding.Expanded.t list
 
 (** Dump a directory environment in a readable form *)
-val dump_env : t -> dir:Path.t -> (unit, Dune_lang.t list) Build.t
+val dump_env : t -> dir:Path.Build.t -> (unit, Dune_lang.t list) Build.t
 
 val find_scope_by_dir  : t -> Path.Build.t        -> Scope.t
 val find_scope_by_name : t -> Dune_project.Name.t -> Scope.t
@@ -118,7 +118,7 @@ val source_files : t -> src_path:Path.Source.t -> String.Set.t
 *)
 val resolve_program
   :  t
-  -> dir:Path.t
+  -> dir:Path.Build.t
   -> ?hint:string
   -> loc:Loc.t option
   -> string
@@ -136,12 +136,12 @@ module Libs : sig
   val with_lib_deps
     :  t
     -> Lib.Compile.t
-    -> dir:Path.t
+    -> dir:Path.Build.t
     -> f:(unit -> 'a)
     -> 'a
 
   (** Generate the rules for the [(select ...)] forms in library dependencies *)
-  val gen_select_rules : t -> dir:Path.t -> Lib.Compile.t -> unit
+  val gen_select_rules : t -> dir:Path.Build.t -> Lib.Compile.t -> unit
 end
 
 (** Interpret dependencies written in jbuild files *)
@@ -203,6 +203,6 @@ end
 
 val opaque : t -> bool
 
-val expander : t -> dir:Path.t -> Expander.t
+val expander : t -> dir:Path.Build.t -> Expander.t
 
 val dir_status_db : t -> Dir_status.DB.t

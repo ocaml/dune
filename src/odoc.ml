@@ -119,7 +119,8 @@ end = struct
 end
 
 let odoc sctx =
-  SC.resolve_program sctx ~dir:(Super_context.build_dir sctx) "odoc"
+  SC.resolve_program sctx
+    ~dir:(Path.as_in_build_dir_exn (Super_context.build_dir sctx)) "odoc"
     ~loc:None ~hint:"try: opam install odoc"
 
 let module_deps (m : Module.t) ~doc_dir ~(dep_graphs:Dep_graph.Ml_kind.t) =

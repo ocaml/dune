@@ -152,7 +152,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
       let source_path = Option.value_exn (Module.file m Impl) in
       Build.return contents
       >>> Build.write_file_dyn source_path
-      |> SC.add_rule sctx ~dir:(Compilation_context.dir cctx)
+      |> SC.add_rule sctx ~dir:(Path.build (Compilation_context.dir cctx))
     );
     let dep_graphs =
       Dep_graph.Ml_kind.wrapped_compat ~modules ~wrapped_compat
@@ -162,7 +162,8 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
 
   let build_c_file (lib : Library.t) ~dir ~expander ~includes (loc, src, dst) =
     let src = C.Source.path src in
-    let c_flags = (SC.c_flags sctx ~dir ~expander ~flags:lib.c_flags).c in
+    let c_flags = (SC.c_flags sctx ~dir:(Path.as_in_build_dir_exn dir)
+                     ~expander ~flags:lib.c_flags).c in
     SC.add_rule sctx ~loc ~dir
       (c_flags
        >>>
@@ -188,7 +189,8 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
       else
         [A "-o"; Target dst]
     in
-    let cxx_flags = (SC.c_flags sctx ~dir ~expander ~flags:lib.c_flags).cxx in
+    let cxx_flags = (SC.c_flags sctx ~dir:(Path.as_in_build_dir_exn dir)
+                       ~expander ~flags:lib.c_flags).cxx in
     SC.add_rule sctx ~loc ~dir
       (cxx_flags
        >>>
@@ -196,7 +198,8 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
          (* We have to execute the rule in the library directory as
             the .o is produced in the current directory *)
          ~dir
-         (SC.resolve_program ~loc:None ~dir sctx ctx.c_compiler)
+         (SC.resolve_program ~loc:None ~dir:(Path.as_in_build_dir_exn dir)
+            sctx ctx.c_compiler)
          ([ S [A "-I"; Path ctx.stdlib_dir]
           ; includes
           ; Dyn (fun cxx_flags -> As cxx_flags)
@@ -332,7 +335,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
         ~wrapped_compat ~cctx ~(dep_graphs : Dep_graph.Ml_kind.t)
         ~expander
         ~vlib_dep_graphs =
-    let dir = Compilation_context.dir cctx in
+    let dir = Path.build (Compilation_context.dir cctx) in
     let obj_dir = Compilation_context.obj_dir cctx in
     let flags = Compilation_context.flags cctx in
     let modules = Compilation_context.modules cctx in
@@ -405,7 +408,8 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
     let dep_kind =
       if lib.optional then Lib_deps_info.Kind.Optional else Required
     in
-    let flags = SC.ocaml_flags sctx ~dir lib.buildable in
+    let flags =
+      SC.ocaml_flags sctx ~dir:(Path.as_in_build_dir_exn dir) lib.buildable in
     let lib_modules =
       Dir_contents.modules_of_library dir_contents ~name:(Library.best_name lib)
     in
@@ -485,7 +489,8 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
     && Lib_modules.needs_alias_module lib_modules then
       build_alias_module ~dir ~lib_modules ~cctx ~dynlink ~js_of_ocaml;
 
-    let expander = Super_context.expander sctx ~dir in
+    let expander =
+      Super_context.expander sctx ~dir:(Path.as_in_build_dir_exn dir) in
 
     let vlib_stubs_o_files = Vimpl.vlib_stubs_o_files vimpl in
     if Library.has_stubs lib || not (List.is_empty vlib_stubs_o_files) then
@@ -536,10 +541,11 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
       Lib.DB.get_compile_info (Scope.libs scope) (Library.best_name lib)
         ~allow_overlaps:lib.buildable.allow_overlapping_dependencies
     in
+    let f () =
+      library_rules lib ~dir_contents ~dir ~scope ~expander ~compile_info
+        ~dir_kind
+    in
+    let dir = Path.as_in_build_dir_exn dir in
     SC.Libs.gen_select_rules sctx compile_info ~dir;
-    SC.Libs.with_lib_deps sctx compile_info ~dir
-      ~f:(fun () ->
-        library_rules lib ~dir_contents ~dir ~scope ~expander ~compile_info
-          ~dir_kind)
-
+    SC.Libs.with_lib_deps sctx compile_info ~dir ~f
 end

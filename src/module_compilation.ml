@@ -38,7 +38,7 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
         (* symlink the .cmi into the public interface directory *)
         if not (Module.is_private m)
         && (Obj_dir.need_dedicated_public_dir obj_dir) then
-          SC.add_rule sctx ~sandbox:false ~dir
+          SC.add_rule sctx ~sandbox:false ~dir:(Path.build dir)
             (Build.symlink
                ~src:(Module.cm_file_unsafe m Cmi)
                ~dst:(Module.cm_public_file_unsafe m Cmi)
@@ -91,7 +91,12 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
       if CC.dir_kind cctx = Jbuild then begin
         (* Symlink the object files in the original directory for
            backward compatibility *)
-        let old_dst = Path.relative dir ((Module.obj_name m) ^ (Cm_kind.ext cm_kind)) in
+        let old_dst =
+          (Module.obj_name m) ^ (Cm_kind.ext cm_kind)
+          |> Path.Build.relative dir
+          |> Path.build
+        in
+        let dir = Path.build dir in
         SC.add_rule sctx ~dir (Build.symlink ~src:dst ~dst:old_dst);
         List.iter other_targets ~f:(fun in_obj_dir ->
           let in_dir = Path.relative dir (Path.basename in_obj_dir) in
@@ -178,7 +183,7 @@ let build_module ?sandbox ?js_of_ocaml ?dynlink ~dep_graphs cctx m =
     let dir      = CC.dir           cctx in
     let src = Module.cm_file_unsafe m Cm_kind.Cmo in
     let target = Path.extend_basename src ~suffix:".js" in
-    SC.add_rules sctx ~dir
+    SC.add_rules sctx ~dir:(Path.build dir)
       (Js_of_ocaml_rules.build_cm cctx ~js_of_ocaml ~src ~target))
 
 let build_modules ?sandbox ?js_of_ocaml ?dynlink ~dep_graphs cctx =
@@ -202,7 +207,7 @@ let ocamlc_i ?sandbox ?(flags=[]) ~dep_graphs cctx (m : Module.t) ~output =
        List.concat_map deps
          ~f:(fun m -> [Module.cm_file_unsafe m Cmi]))
   in
-  SC.add_rule sctx ?sandbox ~dir
+  SC.add_rule sctx ?sandbox ~dir:(Path.build dir)
     (cm_deps >>>
      Ocaml_flags.get_for_cm (CC.flags cctx) ~cm_kind:Cmo >>>
      Build.run (Ok ctx.ocamlc) ~dir:ctx.build_dir

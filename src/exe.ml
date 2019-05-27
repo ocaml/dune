@@ -112,7 +112,7 @@ module Linkage = struct
 end
 
 let exe_path_from_name cctx ~name ~(linkage : Linkage.t) =
-  Path.relative (CC.dir cctx) (name ^ linkage.ext)
+  Path.Build.relative (CC.dir cctx) (name ^ linkage.ext)
 
 let link_exe
       ~loc
@@ -130,7 +130,7 @@ let link_exe
   let requires = CC.requires_link cctx in
   let expander = CC.expander      cctx in
   let mode = linkage.mode in
-  let exe = exe_path_from_name cctx ~name ~linkage in
+  let exe = Path.build (exe_path_from_name cctx ~name ~linkage) in
   let compiler = Option.value_exn (Context.compiler ctx mode) in
   let kind = Mode.cm_kind mode in
   let artifacts ~ext modules =
@@ -151,7 +151,7 @@ let link_exe
         artifacts modules ~ext:ctx.ext_obj))
   in
   (* The rule *)
-  SC.add_rule sctx ~loc ~dir
+  SC.add_rule sctx ~loc ~dir:(Path.build dir)
     (Build.fanout3
        (register_native_objs_deps modules_and_cm_files >>^ snd)
        (Ocaml_flags.get (CC.flags cctx) mode)
@@ -185,7 +185,8 @@ let link_exe
            js_of_ocaml.flags
            ~standard:(Build.return (Js_of_ocaml_rules.standard sctx)))
     in
-    SC.add_rules ~dir sctx (List.map rules ~f:(fun r -> cm_and_flags >>> r))
+    SC.add_rules ~dir:(Path.build dir) sctx
+      (List.map rules ~f:(fun r -> cm_and_flags >>> r))
 
 let build_and_link_many
       ~programs

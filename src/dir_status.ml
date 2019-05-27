@@ -61,12 +61,13 @@ module DB = struct
 
   type nonrec t =
     { file_tree : File_tree.t
-    ; stanzas_per_dir : Dune_file.Stanzas.t Dir_with_dune.t Path.Map.t
+    ; stanzas_per_dir
+      : Dune_file.Stanzas.t Dir_with_dune.t Path.Build.Map.t
     ; fn : (Path.Build.t, t) Memo.Sync.t
     }
 
   let stanzas_in db ~dir =
-    Path.Map.find db.stanzas_per_dir (Path.build dir)
+    Path.Build.Map.find db.stanzas_per_dir dir
 
   let get db ~dir =
     let get ~dir = Memo.exec db.fn dir in

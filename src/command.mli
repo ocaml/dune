@@ -56,8 +56,6 @@ type _ t =
 (* Create a dynamic command line arguments. *)
 val dyn_args : string list Build.s -> dynamic t
 
-val add_targets : dynamic t list -> Path.t list -> Path.t list
-
 (* TODO: Using list in [dynamic t list] complicates the API unnecessarily: we
 can use the constructor [S] to concatenate lists instead. *)
 val run

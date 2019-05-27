@@ -93,8 +93,7 @@ let setup_rule ~expander ~dir ~cc ~source_rule ~coq_flags ~file_flags
   [coqdep_rule;
    Build.S.seq deps_of (
     let coq_flags = Expander.expand_and_eval_set expander coq_flags ~standard:(Build.return []) in
-    let coq_flags = Build.S.map coq_flags ~f:(fun l -> Command.As l) in
-    Command.run ~dir cc.coqc (Command.Dyn coq_flags :: cc_arg))
+    Command.run ~dir cc.coqc (Command.dyn_args coq_flags :: cc_arg))
   ]
 
 (* TODO: remove; rgrinberg points out:
@@ -114,7 +113,7 @@ let libs_of_coq_deps ~lib_db libs =
   Result.List.map ~f:(Lib.DB.resolve lib_db) libs |> Result.ok_exn
 
 (* compute include flags and mlpack rules *)
-let setup_ml_deps ~lib_db libs : _ Command.t * _ =
+let setup_ml_deps ~lib_db libs =
 
   (* coqdep expects an mlpack file next to the sources otherwise it
    * will omit the cmxs deps *)
@@ -131,7 +130,7 @@ let setup_ml_deps ~lib_db libs : _ Command.t * _ =
   let ml_iflags, mlpack =
     let libs = libs_of_coq_deps ~lib_db libs
                |> Lib.closure ~linking:false |> Result.ok_exn in
-      Util.include_flags libs, List.concat_map ~f:ml_pack_files libs
+    Util.include_flags libs, List.concat_map ~f:ml_pack_files libs
   in
 
   (* If the mlpack files don't exist, don't fail *)

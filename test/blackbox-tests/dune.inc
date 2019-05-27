@@ -1047,6 +1047,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name odig-files-workspace)
+ (deps (package dune) (source_tree test-cases/odig-files-workspace))
+ (action
+  (chdir
+   test-cases/odig-files-workspace
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name odoc)
  (deps (package dune) (source_tree test-cases/odoc))
  (action
@@ -1595,6 +1603,7 @@
   (alias ocaml-syntax)
   (alias ocamldep-multi-stanzas)
   (alias ocamllex-jbuild)
+  (alias odig-files-workspace)
   (alias odoc)
   (alias odoc-package-mld-link)
   (alias odoc-unique-mlds)
@@ -1762,6 +1771,7 @@
   (alias ocaml-syntax)
   (alias ocamldep-multi-stanzas)
   (alias ocamllex-jbuild)
+  (alias odig-files-workspace)
   (alias old-dune-subsystem)
   (alias optional)
   (alias output-obj)

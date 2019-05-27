@@ -132,11 +132,11 @@ module Of_sctx = struct
       Super_context.packages sctx
       |> Package.Name.Map.map ~f:(fun (pkg : Package.t) ->
         let odig_files =
-          let files =
-            Super_context.source_files sctx ~src_path:Path.Source.root in
+          let files = Super_context.source_files sctx ~src_path:pkg.path in
+          let pkg_dir = Path.Build.append_source ctx_build_dir pkg.path in
           String.Set.fold files ~init:[] ~f:(fun fn acc ->
             if is_odig_doc_file fn then
-              Path.Build.relative ctx_build_dir fn :: acc
+              Path.Build.relative pkg_dir fn :: acc
             else
               acc)
         in

@@ -4,23 +4,23 @@ open Import
 module SC = Super_context
 
 module Includes = struct
-  type t = Command.dynamic Command.t Cm_kind.Dict.t
+  type t = Command.Args.dynamic Command.Args.t Cm_kind.Dict.t
 
   let make sctx ~opaque ~requires : _ Cm_kind.Dict.t =
     match requires with
     | Error exn ->
-      Cm_kind.Dict.make_all (Command.Fail {fail = fun () -> raise exn})
+      Cm_kind.Dict.make_all (Command.Args.Fail {fail = fun () -> raise exn})
     | Ok libs ->
       let iflags =
         Lib.L.include_flags libs ~stdlib_dir:(SC.context sctx).stdlib_dir
       in
       let cmi_includes =
-        Command.S [ iflags
-                  ; Hidden_deps (Lib_file_deps.deps libs ~groups:[Cmi])
-                  ]
+        Command.Args.S [ iflags
+                       ; Hidden_deps (Lib_file_deps.deps libs ~groups:[Cmi])
+                       ]
       in
       let cmx_includes =
-        Command.S
+        Command.Args.S
           [ iflags
           ; Hidden_deps
               (if opaque then
@@ -41,7 +41,7 @@ module Includes = struct
       }
 
   let empty =
-    Cm_kind.Dict.make_all (Command.As [])
+    Cm_kind.Dict.make_all (Command.Args.As [])
 end
 
 type t =

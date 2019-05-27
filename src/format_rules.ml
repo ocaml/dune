@@ -51,8 +51,7 @@ let gen_rules_output sctx (config : Dune_file.Auto_format.t) ~output_dir =
       if Dune_file.Auto_format.includes config Ocaml then
         let exe = resolve_program "ocamlformat" in
         let args =
-          let open Command in
-          [ A (flag_of_kind kind)
+          [ Command.Args.A (flag_of_kind kind)
           ; Dep input
           ; A "--name"
           ; Path (Path.source file)
@@ -75,11 +74,11 @@ let gen_rules_output sctx (config : Dune_file.Auto_format.t) ~output_dir =
       | _, ".re"
       | _, ".rei" when Dune_file.Auto_format.includes config Reason ->
         let exe = resolve_program "refmt" in
-        let args = [Command.Dep input] in
+        let args = [Command.Args.Dep input] in
         Some (Command.run ~dir ~stdout_to:output exe args)
       | "dune", _ when Dune_file.Auto_format.includes config Dune ->
         let exe = resolve_program "dune" in
-        let args = [Command.A "format-dune-file"; Dep input] in
+        let args = [Command.Args.A "format-dune-file"; Dep input] in
         Some (Command.run ~dir ~stdout_to:output exe args)
       | _ -> None
     in

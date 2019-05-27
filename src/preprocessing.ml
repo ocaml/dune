@@ -663,7 +663,7 @@ let lint_module sctx ~dir ~expander ~dep_kind ~lint ~lib_name ~scope ~dir_kind =
                 (Expander.expand_and_eval_set expander driver.info.lint_flags
                    ~standard:(Build.return []))
             in
-            let args : _ Command.t = S [ As driver_flags ] in
+            let args : _ Command.Args.t = S [ As driver_flags ] in
             (exe, flags, args)
           in
           (fun ~source ~ast ->
@@ -679,7 +679,7 @@ let lint_module sctx ~dir ~expander ~dep_kind ~lint ~lib_name ~scope ~dir_kind =
                            [ args
                            ; Ml_kind.ppx_driver_flag kind
                            ; Dep src.path
-                           ; Command.dyn_args flags
+                           ; Command.Args.dyn flags
                            ]))))))
     in
     fun ~(source : Module.t) ~ast ->
@@ -726,7 +726,7 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess
         let driver_and_flags =
           let open Result.O in
           let+ (exe, driver, flags) = ppx_driver_and_flags sctx ~expander ~loc ~lib_name ~flags ~dir_kind ~scope pps in
-          let args : _ Command.t = S [ As flags ] in
+          let args : _ Command.Args.t = S [ As flags ] in
           (exe,
            (let bindings =
               Pform.Map.singleton "corrected-suffix"
@@ -754,7 +754,7 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess
                          [ args
                          ; A "-o"; Target dst
                          ; Ml_kind.ppx_driver_flag kind; Dep src
-                         ; Command.dyn_args flags
+                         ; Command.Args.dyn flags
                          ])))))
       end else begin
         let pp_flags = Build.of_result (

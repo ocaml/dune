@@ -156,7 +156,7 @@ let compile_mld sctx (m : Mld.t) ~includes ~doc_dir ~pkg =
   add_rule sctx
     (Command.run ~dir:(Path.build doc_dir) (odoc sctx)
        [ A "compile"
-       ; Command.dyn_args includes
+       ; Command.Args.dyn includes
        ; As ["--pkg"; Package.Name.to_string pkg]
        ; A "-o"; Target (Path.build odoc_file)
        ; Dep (Path.build (Mld.odoc_input m))
@@ -178,8 +178,8 @@ let odoc_include_flags ctx pkg requires =
       | Some p -> Path.Set.add paths (Path.build (Paths.odocs ctx (Pkg p)))
       | None -> paths
     in
-    Command.S (List.concat_map (Path.Set.to_list paths)
-                 ~f:(fun dir -> [Command.A "-I"; Path dir])))
+    S (List.concat_map (Path.Set.to_list paths)
+                 ~f:(fun dir -> [Command.Args.A "-I"; Path dir])))
 
 let setup_html sctx (odoc_file : odoc) ~pkg ~requires =
   let ctx = Super_context.context sctx in

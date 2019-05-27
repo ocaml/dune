@@ -35,26 +35,28 @@ open! Import
     "src/foo.ml")] will translate to "../src/foo.ml" if the command is
     started from the "test" directory.  *)
 
-type static = Static
-type dynamic = Dynamic
+module Args : sig
+  type static = Static
+  type dynamic = Dynamic
 
-type _ t =
-  | A        : string -> _ t
-  | As       : string list -> _ t
-  | S        : 'a t list -> 'a t
-  | Concat   : string * 'a t list  -> 'a t
-  | Dep      : Path.t -> _ t
-  | Deps     : Path.t list -> _ t
-  | Target   : Path.t -> dynamic t
-  | Path     : Path.t -> _ t
-  | Paths    : Path.t list -> _ t
-  | Hidden_deps    : Dep.Set.t -> _ t
-  | Hidden_targets : Path.t list -> dynamic t
-  | Dyn      : static t Build.s -> dynamic t
-  | Fail     : fail -> _ t
+  type _ t =
+    | A        : string -> _ t
+    | As       : string list -> _ t
+    | S        : 'a t list -> 'a t
+    | Concat   : string * 'a t list  -> 'a t
+    | Dep      : Path.t -> _ t
+    | Deps     : Path.t list -> _ t
+    | Target   : Path.t -> dynamic t
+    | Path     : Path.t -> _ t
+    | Paths    : Path.t list -> _ t
+    | Hidden_deps    : Dep.Set.t -> _ t
+    | Hidden_targets : Path.t list -> dynamic t
+    | Dyn      : static t Build.s -> dynamic t
+    | Fail     : fail -> _ t
 
-(* Create a dynamic command line arguments. *)
-val dyn_args : string list Build.s -> dynamic t
+  (* Create a dynamic command line arguments. *)
+  val dyn : string list Build.s -> dynamic t
+end
 
 (* TODO: Using list in [dynamic t list] complicates the API unnecessarily: we
 can use the constructor [S] to concatenate lists instead. *)
@@ -62,12 +64,12 @@ val run
   :  dir:Path.t
   -> ?stdout_to:Path.t
   -> Action.Prog.t
-  -> dynamic t list
+  -> Args.dynamic Args.t list
   -> Action.t Build.s
 
 (** [quote_args quote args] is [As \[quote; arg1; quote; arg2; ...\]] *)
-val quote_args : string -> string list -> _ t
+val quote_args : string -> string list -> _ Args.t
 
-val of_result : 'a t Or_exn.t -> 'a t
-val of_result_map : 'a Or_exn.t -> f:('a -> 'b t) -> 'b t
-val fail : exn -> 'a t
+val of_result : 'a Args.t Or_exn.t -> 'a Args.t
+val of_result_map : 'a Or_exn.t -> f:('a -> 'b Args.t) -> 'b Args.t
+val fail : exn -> 'a Args.t

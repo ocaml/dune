@@ -1,25 +1,29 @@
 open! Stdune
 open Import
 
-type static = Static
-type dynamic = Dynamic
+module Args = struct
+  type static = Static
+  type dynamic = Dynamic
 
-type _ t =
-  | A        : string -> _ t
-  | As       : string list -> _ t
-  | S        : 'a t list -> 'a t
-  | Concat   : string * 'a t list  -> 'a t
-  | Dep      : Path.t -> _ t
-  | Deps     : Path.t list -> _ t
-  | Target   : Path.t -> dynamic t
-  | Path     : Path.t -> _ t
-  | Paths    : Path.t list -> _ t
-  | Hidden_deps    : Dep.Set.t -> _ t
-  | Hidden_targets : Path.t list -> dynamic t
-  | Dyn      : static t Build.s -> dynamic t
-  | Fail     : fail -> _ t
+  type _ t =
+    | A        : string -> _ t
+    | As       : string list -> _ t
+    | S        : 'a t list -> 'a t
+    | Concat   : string * 'a t list  -> 'a t
+    | Dep      : Path.t -> _ t
+    | Deps     : Path.t list -> _ t
+    | Target   : Path.t -> dynamic t
+    | Path     : Path.t -> _ t
+    | Paths    : Path.t list -> _ t
+    | Hidden_deps    : Dep.Set.t -> _ t
+    | Hidden_targets : Path.t list -> dynamic t
+    | Dyn      : static t Build.s -> dynamic t
+    | Fail     : fail -> _ t
 
-let dyn_args args = Dyn (Build.S.map args ~f:(fun x -> As x))
+  let dyn args = Dyn (Build.S.map args ~f:(fun x -> As x))
+end
+
+open Args
 
 let rec add_targets ts acc =
   List.fold_left ts ~init:acc ~f:(fun acc t ->

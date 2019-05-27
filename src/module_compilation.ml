@@ -83,7 +83,7 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
       in
       let other_targets, cmt_args =
         match cm_kind with
-        | Cmx -> (other_targets, Command.S [])
+        | Cmx -> (other_targets, Command.Args.S [])
         | Cmi | Cmo ->
           let fn = Option.value_exn (Module.cmt_file m ml_kind) in
           (fn :: other_targets, A "-bin-annot")
@@ -106,7 +106,7 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
         let intf_only = cm_kind = Cmi && not (Module.has_impl m) in
         if opaque
         || (intf_only && Ocaml_version.supports_opaque_for_mli ctx.version) then
-          Command.A "-opaque"
+          Command.Args.A "-opaque"
         else
           As []
       in
@@ -116,7 +116,7 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
             , Ocaml_version.supports_no_keep_locs ctx.version
         with
         | true, Cmi, true ->
-          (Path.build ctx.build_dir, Command.As ["-no-keep-locs"])
+          (Path.build ctx.build_dir, Command.Args.As ["-no-keep-locs"])
         | true, Cmi, false ->
           (Obj_dir.byte_dir obj_dir, As []) (* emulated -no-keep-locs *)
         | true, (Cmo | Cmx), _
@@ -134,12 +134,12 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
       SC.add_rule sctx ?sandbox ~dir
         (Build.S.seqs [Build.paths extra_deps; other_cm_files]
            (Command.run ~dir (Ok compiler)
-              [ Command.dyn_args flags
+              [ Command.Args.dyn flags
               ; no_keep_locs
               ; cmt_args
-              ; S (
+              ; Command.Args.S (
                   Obj_dir.all_obj_dirs obj_dir ~mode
-                  |> List.concat_map ~f:(fun p -> [Command.A "-I"; Path p])
+                  |> List.concat_map ~f:(fun p -> [Command.Args.A "-I"; Path p])
                 )
               ; Cm_kind.Dict.get (CC.includes cctx) cm_kind
               ; As extra_args
@@ -210,7 +210,7 @@ let ocamlc_i ?sandbox ?(flags=[]) ~dep_graphs cctx (m : Module.t) ~output =
     (Build.S.seq cm_deps
        (Build.S.map ~f:(fun act -> Action.with_stdout_to output act)
           (Command.run (Ok ctx.ocamlc) ~dir:(Path.build ctx.build_dir)
-             [ Command.dyn_args ocaml_flags
+             [ Command.Args.dyn ocaml_flags
              ; A "-I"; Path (Obj_dir.byte_dir obj_dir)
              ; Cm_kind.Dict.get (CC.includes cctx) Cmo
              ; (match CC.alias_module cctx with

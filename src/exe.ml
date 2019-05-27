@@ -159,17 +159,17 @@ let link_exe
        Build.paths (Lib.L.archive_files libs ~mode)))
        (Command.run ~dir:(Path.build ctx.build_dir)
           (Ok compiler)
-          [ Command.dyn_args ocaml_flags
+          [ Command.Args.dyn ocaml_flags
           ; A "-o"; Target exe
           ; As linkage.flags
-          ; Command.dyn_args link_flags
+          ; Command.Args.dyn link_flags
           ; Command.of_result_map link_time_code_gen
               ~f:(fun { Link_time_code_gen.to_link; force_linkall } ->
                 S [ As (if force_linkall then ["-linkall"] else [])
                   ; Lib.Lib_and_module.L.link_flags to_link ~mode
                       ~stdlib_dir:ctx.stdlib_dir
                   ])
-          ; Dyn (Build.S.map cm_files ~f:(fun x -> Command.Deps x))
+          ; Dyn (Build.S.map cm_files ~f:(fun x -> Command.Args.Deps x))
           ]));
   if linkage.ext = ".bc" then
     let cm = modules_and_cm_files >>^ snd in
@@ -179,7 +179,7 @@ let link_exe
          ~standard:(Build.return (Js_of_ocaml_rules.standard sctx))) in
     let rules =
       Js_of_ocaml_rules.build_exe cctx ~js_of_ocaml ~src:exe ~cm
-        ~flags:(Command.dyn_args flags)
+        ~flags:(Command.Args.dyn flags)
     in
     SC.add_rules ~dir:(Path.build dir) sctx rules
 

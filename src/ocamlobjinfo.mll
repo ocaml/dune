@@ -56,13 +56,13 @@ let rules ~dir ~(ctx : Context.t) ~unit =
   in
   let no_approx =
     if Ocaml_version.ooi_supports_no_approx ctx.version then
-      [Command.A "-no-approx"]
+      [Command.Args.A "-no-approx"]
     else
       []
   in
   let no_code =
     if Ocaml_version.ooi_supports_no_code ctx.version then
-      [Command.A "-no-code"]
+      [Command.Args.A "-no-code"]
     else
       []
   in

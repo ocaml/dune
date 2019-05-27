@@ -121,7 +121,7 @@ module Run (P : PARAMS) : sig end = struct
      that are neither dependencies nor targets.
      [Hidden_targets] is for targets that are *not* command line arguments.  *)
 
-  type 'a args = 'a Command.t list
+  type 'a args = 'a Command.Args.t list
 
   (* [menhir args] generates a Menhir command line (a build action). *)
 
@@ -195,7 +195,7 @@ module Run (P : PARAMS) : sig end = struct
 
     rule ~mode:Standard (
       menhir
-        [ Command.dyn_args expanded_flags
+        [ Command.Args.dyn expanded_flags
         ; Deps (sources stanza.modules)
         ; A "--base" ; Path (Path.relative (Path.build dir) base)
         ; A "--infer-write-query"; Target (mock_ml base)
@@ -236,7 +236,7 @@ module Run (P : PARAMS) : sig end = struct
 
     rule (
       menhir
-        [ Command.dyn_args expanded_flags
+        [ Command.Args.dyn expanded_flags
         ; Deps (sources stanza.modules)
         ; A "--base" ; Path (Path.relative (Path.build dir) base)
         ; A "--infer-read-reply"; Dep (inferred_mli base)
@@ -253,7 +253,7 @@ module Run (P : PARAMS) : sig end = struct
     let expanded_flags = expand_flags stanza.flags in
     rule (
       menhir
-        [ Command.dyn_args expanded_flags
+        [ Command.Args.dyn expanded_flags
         ; Deps (sources stanza.modules)
         ; A "--base" ; Path (Path.relative (Path.build dir) base)
         ; Hidden_targets (targets base ~cmly)

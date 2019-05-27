@@ -123,7 +123,7 @@ let deps_of cctx ~ml_kind unit =
            Option.value (Module.pp_flags unit) ~default:(Build.return []) in
          Command.run (Ok context.ocamldep) ~dir:(Path.build context.build_dir)
            [ A "-modules"
-           ; Command.dyn_args flags
+           ; Command.Args.dyn flags
            ; Ml_kind.flag ml_kind
            ; Dep file
            ]

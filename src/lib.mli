@@ -73,21 +73,21 @@ module L : sig
   type lib
   type nonrec t = t list
 
-  val to_iflags : Path.Set.t -> 'a Command.t
+  val to_iflags : Path.Set.t -> 'a Command.Args.t
 
   val include_paths : t -> stdlib_dir:Path.t -> Path.Set.t
-  val include_flags : t -> stdlib_dir:Path.t -> _ Command.t
+  val include_flags : t -> stdlib_dir:Path.t -> _ Command.Args.t
 
-  val c_include_flags : t -> stdlib_dir:Path.t -> _ Command.t
+  val c_include_flags : t -> stdlib_dir:Path.t -> _ Command.Args.t
 
-  val link_flags : t -> mode:Mode.t -> stdlib_dir:Path.t -> _ Command.t
+  val link_flags : t -> mode:Mode.t -> stdlib_dir:Path.t -> _ Command.Args.t
 
   val compile_and_link_flags
     :  compile:t
     -> link:t
     -> mode:Mode.t
     -> stdlib_dir:Path.t
-    -> _ Command.t
+    -> _ Command.Args.t
 
   (** All the library archive files (.a, .cmxa, _stubs.a, ...)  that
       should be linked in when linking an executable. *)
@@ -117,7 +117,7 @@ module Lib_and_module : sig
   module L : sig
     type nonrec t = t list
     val of_libs : lib list -> t
-    val link_flags : t -> mode:Mode.t -> stdlib_dir:Path.t -> _ Command.t
+    val link_flags : t -> mode:Mode.t -> stdlib_dir:Path.t -> _ Command.Args.t
   end
 end with type lib := t
 

@@ -58,22 +58,22 @@ let js_of_ocaml_rule sctx ~dir ~flags ~spec ~target =
   Command.run ~dir:(Path.build dir)
     jsoo
     [ flags
-    ; Command.A "-o"; Target target
-    ; Command.A "--no-runtime"
-    ; Command.Dyn (Build.S.map runtime_dep ~f:(fun x -> Command.Dep x))
+    ; A "-o"; Target target
+    ; A "--no-runtime"
+    ; Dyn (Build.S.map runtime_dep ~f:(fun x -> Command.Args.Dep x))
     ; spec
     ]
 
 let standalone_runtime_rule cc ~javascript_files ~target ~flags =
   let spec =
-    Command.S
+    Command.Args.S
       [ Command.of_result_map
           (Compilation_context.requires_link cc) ~f:(fun libs ->
-            Command.Deps (Lib.L.jsoo_runtime_files libs))
-      ; Command.Deps javascript_files
+            Deps (Lib.L.jsoo_runtime_files libs))
+      ; Deps javascript_files
       ]
   in
-  let flags = Command.S [ Command.A "--runtime-only"; flags ]
+  let flags = Command.Args.S [ A "--runtime-only"; flags ]
   in
   js_of_ocaml_rule
     (Compilation_context.super_context cc)
@@ -83,11 +83,11 @@ let exe_rule cc ~javascript_files ~src ~target ~flags =
   let dir = Compilation_context.dir cc in
   let sctx = Compilation_context.super_context cc in
   let spec =
-    Command.S
+    Command.Args.S
       [ Command.of_result_map (Compilation_context.requires_link cc)
-          ~f:(fun libs -> Command.Deps (Lib.L.jsoo_runtime_files libs))
-      ; Command.Deps javascript_files
-      ; Command.Dep src
+          ~f:(fun libs -> Deps (Lib.L.jsoo_runtime_files libs))
+      ; Deps javascript_files
+      ; Dep src
       ]
   in
   js_of_ocaml_rule sctx ~dir ~spec ~target ~flags
@@ -117,15 +117,15 @@ let link_rule cc ~runtime ~target cm =
         let all_other_modules =
           List.map cm ~f:(fun m -> Path.extend_basename m ~suffix:".js")
         in
-        Command.Deps (List.concat [all_libs; all_other_modules])))
+        Deps (List.concat [all_libs; all_other_modules])))
   in
   let jsoo_link = jsoo_link ~dir sctx in
   Command.run ~dir:(Path.build dir)
     jsoo_link
-    [ Command.A "-o"; Target target
-    ; Command.Dep runtime
-    ; Command.As (sourcemap sctx)
-    ; Command.Dyn get_all
+    [ A "-o"; Target target
+    ; Dep runtime
+    ; As (sourcemap sctx)
+    ; Dyn get_all
     ]
 
 let build_cm cctx ~(js_of_ocaml:Dune_file.Js_of_ocaml.t) ~src ~target =
@@ -134,12 +134,12 @@ let build_cm cctx ~(js_of_ocaml:Dune_file.Js_of_ocaml.t) ~src ~target =
   let expander = Compilation_context.expander cctx in
   if separate_compilation_enabled sctx
   then
-    let spec = Command.Dep src in
+    let spec = Command.Args.Dep src in
     let flags =
       Expander.expand_and_eval_set expander js_of_ocaml.flags
         ~standard:(Build.return (standard sctx))
     in
-    [js_of_ocaml_rule sctx ~dir ~flags:(Command.dyn_args flags) ~spec ~target]
+    [js_of_ocaml_rule sctx ~dir ~flags:(Command.Args.dyn flags) ~spec ~target]
   else []
 
 let setup_separate_compilation_rules sctx components =
@@ -169,10 +169,10 @@ let setup_separate_compilation_rules sctx components =
             in_build_dir ~ctx [lib_name ; sprintf "%s.js" name]
           in
           let dir = Path.as_in_build_dir_exn (in_build_dir ~ctx [lib_name]) in
-          let spec = Command.Dep src in
+          let spec = Command.Args.Dep src in
           SC.add_rule sctx ~dir:(Path.build dir)
             (js_of_ocaml_rule
-               sctx ~dir ~flags:(Command.As (standard sctx)) ~spec ~target))
+               sctx ~dir ~flags:(As (standard sctx)) ~spec ~target))
 
 let build_exe cc ~js_of_ocaml ~src ~(cm : Path.t list Build.s) ~flags =
   let {Dune_file.Js_of_ocaml.javascript_files; _} = js_of_ocaml in

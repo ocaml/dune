@@ -68,8 +68,8 @@ let setup_rule ~expander ~dir ~cc ~source_rule ~coq_flags ~file_flags
   let stdout_to = Coq_module.obj_file ~obj_dir ~ext:".v.d" coq_module in
   let object_to = Coq_module.obj_file ~obj_dir ~ext:".vo"  coq_module in
 
-  let file_flags = file_flags @ [Command.Dep (Path.build source)] in
-  let cd_arg = (Command.As ["-dyndep"; "opt"]) :: file_flags in
+  let file_flags = file_flags @ [Command.Args.Dep (Path.build source)] in
+  let cd_arg = (Command.Args.As ["-dyndep"; "opt"]) :: file_flags in
 
   (* coqdep needs the full source + plugin's mlpack to be present :( *)
   let coqdep_rule =
@@ -87,13 +87,13 @@ let setup_rule ~expander ~dir ~cc ~source_rule ~coq_flags ~file_flags
       ~f:(fun x -> List.map ~f:(Path.relative dir) (parse_coqdep ~coq_module x))
   ) in
 
-  let cc_arg = (Command.Hidden_targets [object_to]) :: file_flags in
+  let cc_arg = (Command.Args.Hidden_targets [object_to]) :: file_flags in
 
   (* Rules for the files *)
   [coqdep_rule;
    Build.S.seq deps_of (
     let coq_flags = Expander.expand_and_eval_set expander coq_flags ~standard:(Build.return []) in
-    Command.run ~dir cc.coqc (Command.dyn_args coq_flags :: cc_arg))
+    Command.run ~dir cc.coqc (Command.Args.dyn coq_flags :: cc_arg))
   ]
 
 (* TODO: remove; rgrinberg points out:
@@ -162,7 +162,7 @@ let setup_rules ~sctx ~dir ~dir_contents (s : Dune_file.Coq.t) =
 
   let lib_db = Scope.libs scope in
   let ml_iflags, mlpack_rule = setup_ml_deps ~lib_db s.libraries in
-  let file_flags = [ml_iflags; Command.As ["-R"; "."; wrapper_name]] in
+  let file_flags = [ml_iflags; Command.Args.As ["-R"; "."; wrapper_name]] in
 
   List.concat_map
     ~f:(setup_rule ~expander ~dir ~cc ~source_rule ~coq_flags ~file_flags
@@ -217,7 +217,7 @@ let coqpp_rules ~sctx ~build_dir ~dir (s : Dune_file.Coqpp.t) =
   let mlg_rule m =
     let source = Path.build (Path.Build.relative dir (m ^ ".mlg")) in
     let target = Path.build (Path.Build.relative dir (m ^ ".ml")) in
-    let args = Command.[Dep source; Hidden_targets [target]] in
+    let args = [Command.Args.Dep source; Hidden_targets [target]] in
     Command.run ~dir:(Path.build build_dir) cc.coqpp args in
 
   List.map ~f:mlg_rule s.modules

@@ -67,15 +67,15 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
       SC.add_rule ~dir sctx ~loc:lib.buildable.loc
         (Build.S.seq obj_deps
            (Command.run (Ok compiler) ~dir:(Path.build ctx.build_dir)
-              [ Command.dyn_args ocaml_flags
+              [ Command.Args.dyn ocaml_flags
               ; A "-a"; A "-o"; Target target
               ; As stubs_flags
               ; Dyn (Build.S.map cclibs ~f:(fun x -> Command.quote_args "-cclib" (map_cclibs x)))
-              ; Command.dyn_args library_flags
+              ; Command.Args.dyn library_flags
               ; As (match lib.kind with
                   | Normal -> []
                   | Ppx_deriver _ | Ppx_rewriter _ -> ["-linkall"])
-              ; Dyn (Build.S.map cm_files ~f:(fun x -> Command.Deps x))
+              ; Dyn (Build.S.map cm_files ~f:(fun x -> Command.Args.Deps x))
               ; Hidden_targets
                   (match mode with
                    | Byte -> []
@@ -179,7 +179,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
   let build_cxx_file (lib : Library.t) ~dir ~expander ~includes (loc, src, dst) =
     let output_param =
       if ctx.ccomp_type = "msvc" then
-        [Command.Concat ("", [A "/Fo"; Target dst])]
+        [Command.Args.Concat ("", [A "/Fo"; Target dst])]
       else
         [A "-o"; Target dst]
     in
@@ -194,9 +194,9 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
           ~dir
           (SC.resolve_program ~loc:None ~dir:(Path.as_in_build_dir_exn dir)
              sctx ctx.c_compiler)
-          ([ Command.S [A "-I"; Path ctx.stdlib_dir]
+          ([ Command.Args.S [A "-I"; Path ctx.stdlib_dir]
            ; includes
-           ; Command.dyn_args cxx_flags
+           ; Command.Args.dyn cxx_flags
            ] @ output_param @
            [ A "-c"; Dep src
            ]));
@@ -262,8 +262,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
               acc))
     in
     let includes =
-      Command.S
-        [ Hidden_deps (Dep.Set.of_files h_files)
+      Command.Args.S [ Hidden_deps (Dep.Set.of_files h_files)
         ; Command.of_result_map requires ~f:(fun libs ->
             S [ Lib.L.c_include_flags libs ~stdlib_dir:ctx.stdlib_dir
               ; Hidden_deps (
@@ -305,7 +304,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
           [Library.archive lib ~dir ~ext:ctx.ext_lib])))
           (Command.run ~dir:(Path.build ctx.build_dir)
              (Ok ocamlopt)
-             [ Command.dyn_args (Ocaml_flags.get flags Native)
+             [ Command.Args.dyn (Ocaml_flags.get flags Native)
              ; A "-shared"; A "-linkall"
              ; A "-I"; Path dir
              ; A "-o"; Target dst

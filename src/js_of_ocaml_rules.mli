@@ -16,7 +16,7 @@ val build_exe
   -> js_of_ocaml:Js_of_ocaml.t
   -> src:Path.t
   -> cm:Path.t list Build.s
-  -> flags:Command.dynamic Command.t
+  -> flags:Command.Args.dynamic Command.Args.t
   -> Action.t Build.s list
 
 val setup_separate_compilation_rules

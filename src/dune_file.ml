@@ -291,16 +291,32 @@ module Dep_conf = struct
 end
 
 module Preprocess = struct
-  type pps =
-    { loc : Loc.t
-    ; pps : (Loc.t * Lib_name.t) list
-    ; flags : String_with_vars.t list
-    ; staged : bool
-    }
+  module Pps = struct
+    type t =
+      { loc : Loc.t
+      ; pps : (Loc.t * Lib_name.t) list
+      ; flags : String_with_vars.t list
+      ; staged : bool
+      }
+
+    let compare_no_locs { loc = _ ; pps = pps1; flags = flags1; staged = s1 }
+          { loc = _; pps = pps2; flags = flags2; staged = s2 } =
+      match Bool.compare s1 s2 with
+      | Lt | Gt as t -> t
+      | Eq ->
+        match
+          List.compare flags1 flags2 ~compare:String_with_vars.compare_no_loc
+        with
+        | Lt | Gt as t -> t
+        | Eq ->
+          List.compare pps1 pps2 ~compare:(fun (_, x) (_, y) ->
+            Lib_name.compare x y)
+  end
+
   type t =
     | No_preprocessing
     | Action of Loc.t * Action_dune_lang.t
-    | Pps    of pps
+    | Pps    of Pps.t
     | Future_syntax of Loc.t
 
   let decode =
@@ -339,7 +355,7 @@ module Preprocess = struct
     type t =
       | No_preprocessing
       | Action of Loc.t * Action_dune_lang.t
-      | Pps    of pps
+      | Pps    of Pps.t
   end
 
   let remove_future_syntax t v : Without_future_syntax.t =

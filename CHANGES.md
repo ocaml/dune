@@ -84,6 +84,9 @@ unreleased
   would be undetected whenever the project was nested in another workspace.
   (#2194, @rgrinberg)
 
+- Fix generation of `.merlin` whenever there's more than one stanza with the
+  same ppx preprocessing specification (#2209 ,fixes #2206, @rgrinberg)
+
 1.9.3 (06/05/2019)
 ------------------
 

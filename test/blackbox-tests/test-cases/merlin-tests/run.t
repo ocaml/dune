@@ -34,12 +34,12 @@
   S $LIB_PREFIX/lib/ocaml
   S .
   S subdir
+  FLG -ppx '$PPX/fcfe04ecb8bb41c1143a3b9acec18678/ppx.exe --as-ppx --cookie '\''library-name="foo"'\'''
   FLG -open Foo -w -40 -open Bar -w -40
 
 Make sure a ppx directive is generated
 
   $ grep -q ppx lib/.merlin
-  [1]
 
 Make sure pp flag is correct and variables are expanded
 

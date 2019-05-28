@@ -42,16 +42,15 @@ module Preprocess = struct
       warn_dropped_pp loc ~allow_approx_merlin
         ~reason:"cannot mix action and pps preprocessors";
       No_preprocessing
-    | Pps { loc ; pps = pps1; flags = flags1; staged = s1 },
-      Pps { loc = _; pps = pps2; flags = flags2; staged = s2 } ->
-      if Bool.(<>) s1 s2
-      || List.compare flags1 flags2 ~compare:String_with_vars.compare_no_loc <> Eq
-      || List.compare pps1 pps2 ~compare:(fun (_, x) (_, y) ->
-        Lib_name.compare x y) <> Eq
-      then
-        warn_dropped_pp loc ~allow_approx_merlin
+    | Pps pp1 as pp, Pps pp2 ->
+      if Ordering.neq (Dune_file.Preprocess.Pps.compare_no_locs pp1 pp2)
+      then begin
+        warn_dropped_pp pp1.loc ~allow_approx_merlin
           ~reason:"pps specification isn't identical in all stanzas";
-      No_preprocessing
+        No_preprocessing
+      end
+      else
+        pp
 end
 
 let quote_for_merlin s =
@@ -188,7 +187,8 @@ let pp_flags sctx ~expander ~dir_kind { preprocess; libname; _ }
     match Preprocessing.get_ppx_driver sctx ~loc ~expander ~lib_name:libname
             ~flags ~scope ~dir_kind pps
     with
-    | Error _ -> Build.return None
+    | Error _exn ->
+      Build.return None
     | Ok (exe, flags) ->
       (Path.to_absolute_filename (Path.build exe)
        :: "--as-ppx" :: flags)

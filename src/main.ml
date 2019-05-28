@@ -173,6 +173,7 @@ let bootstrap () =
       let config : Config.t =
         { display     = Quiet
         ; concurrency = Fixed 1
+        ; sandboxing_preference = []
         }
       in
       Scheduler.go ~config Watermarks.subst;
@@ -216,6 +217,7 @@ let bootstrap () =
       Config.merge config
         { display     = !display
         ; concurrency = !concurrency
+        ; sandboxing_preference = None
         }
     in
     let config =

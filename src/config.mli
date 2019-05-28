@@ -54,12 +54,17 @@ module Concurrency : sig
   val to_string : t -> string
 end
 
+module Sandboxing_preference : sig
+  type t = Sandbox_mode.t list
+end
+
 module type S = sig
   type 'a field
 
   type t =
     { display     : Display.t     field
     ; concurrency : Concurrency.t field
+    ; sandboxing_preference : Sandboxing_preference.t field
     }
 end
 

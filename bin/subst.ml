@@ -66,6 +66,7 @@ let term =
     let config : Config.t =
       { display     = Quiet
       ; concurrency = Fixed 1
+      ; sandboxing_preference = []
       }
     in
     Path.set_root (Path.External.cwd ());

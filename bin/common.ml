@@ -462,6 +462,7 @@ let term =
     Config.merge config
       { display
       ; concurrency
+      ; sandboxing_preference = None
       }
   in
   let config =

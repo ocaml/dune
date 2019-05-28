@@ -75,12 +75,25 @@ module Concurrency = struct
     | Fixed n -> string_of_int n
 end
 
+module Sandboxing_preference = struct
+  type t = Sandbox_mode.t list
+
+  let decode =
+    repeat (
+      plain_string (fun ~loc s ->
+        match Sandbox_mode.of_string s with
+        | Error m -> of_sexp_errorf loc "%s" m
+        | Ok s -> s))
+
+end
+
 module type S = sig
   type 'a field
 
   type t =
     { display     : Display.t     field
     ; concurrency : Concurrency.t field
+    ; sandboxing_preference : Sandboxing_preference.t field
     }
 end
 
@@ -95,20 +108,28 @@ let merge t (partial : Partial.t) =
   in
   { display     = field t.display     partial.display
   ; concurrency = field t.concurrency partial.concurrency
+  ; sandboxing_preference =
+      field t.sandboxing_preference partial.sandboxing_preference
   }
 
 let default =
   { display     = if inside_dune then Quiet   else Progress
   ; concurrency = if inside_dune then Fixed 1 else Auto
+  ; sandboxing_preference = []
   }
 
 let decode =
   let+ display = field "display" Display.decode ~default:default.display
-  and+ concurrency = field "jobs" Concurrency.decode ~default:default.concurrency
+  and+ concurrency =
+    field "jobs" Concurrency.decode ~default:default.concurrency
+  and+ sandboxing_preference =
+    field "sandboxing_preference"
+      Sandboxing_preference.decode ~default:default.sandboxing_preference
   and+ () = Versioned_file.no_more_lang
   in
   { display
   ; concurrency
+  ; sandboxing_preference
   }
 
 let decode = fields decode

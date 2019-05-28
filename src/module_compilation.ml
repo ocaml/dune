@@ -46,7 +46,10 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) =
         (* symlink the .cmi into the public interface directory *)
         if Module.visibility m <> Visibility.Private
         && (Obj_dir.need_dedicated_public_dir obj_dir) then
-          SC.add_rule sctx ~sandbox:false ~dir
+          SC.add_rule sctx
+            (* CR-someday aalekseyev: why do we have [no_sandboxing] here? *)
+            ~sandbox:Sandbox_config.no_sandboxing
+            ~dir
             (Build.symlink
                ~src:(Path.build (Obj_dir.Module.cm_file_unsafe obj_dir m ~kind:Cmi))
                ~dst:(Obj_dir.Module.cm_public_file_unsafe obj_dir m ~kind:Cmi)

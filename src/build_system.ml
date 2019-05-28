@@ -120,7 +120,7 @@ module Internal_rule = struct
       ; info             : Rule.Info.t
       ; dir              : Path.Build.t
       ; env              : Env.t option
-      ; sandbox          : bool
+      ; sandbox          : Sandbox_config.t
       ; locks            : Path.t list
       ; (* Reverse dependencies discovered so far, labelled by the
            requested target *)
@@ -166,7 +166,7 @@ module Internal_rule = struct
     ; info        = Internal
     ; dir         = Path.Build.root
     ; env         = None
-    ; sandbox     = false
+    ; sandbox     = Sandbox_config.no_special_requirements
     ; locks       = []
     ; rev_deps    = []
     ; transitive_rev_deps = Id.Set.empty
@@ -1366,6 +1366,23 @@ end = struct
   let evaluate_action_and_dynamic_deps =
     Memo.exec evaluate_action_and_dynamic_deps_memo
 
+  let select_sandbox_mode (config : Sandbox_config.t) : Sandbox_mode.t =
+    (* TODO: this function' behavior should become configurable *)
+    match config with
+    | { none = true; _ } -> None
+    | { symlink = true; copy = true; _ } ->
+      Some (if Sys.win32 then Copy else Symlink)
+    | { symlink = false; copy = true; _ } ->
+      Some Copy
+    | { symlink = true; copy = false; _ } ->
+      Code_error.raise
+        "This rule requires sandboxing with symlinks, but that won't \
+         work on Windows." []
+    | { none = false; copy = false; symlink = false } ->
+      Code_error.raise
+        "This rule forbids all sandboxing \
+         modes (but it also requires sandboxing)" []
+
   let evaluate_rule (rule : Internal_rule.t) =
     let* static_deps = Fiber.Once.get rule.static_deps in
     let+ (action, dynamic_action_deps) = evaluate_action_and_dynamic_deps rule in
@@ -1429,6 +1446,7 @@ end = struct
     let targets_as_list  = Path.Build.Set.to_list targets  in
     let head_target = List.hd targets_as_list in
     let prev_trace = Trace.get (Path.build head_target) in
+    let sandbox_mode = select_sandbox_mode sandbox in
     let rule_digest =
       let env =
         match env, context with
@@ -1441,6 +1459,7 @@ end = struct
         , List.map targets_as_list ~f:(fun p -> Path.to_string (Path.build p))
         , Option.map context ~f:(fun c -> c.name)
         , Action.for_shell action
+        , (sandbox_mode : Sandbox_mode.t)
         )
       in
       Digest.generic trace
@@ -1451,11 +1470,12 @@ end = struct
       | l -> Some (Digest.generic l)
       | exception (Unix.Unix_error _ | Sys_error _) -> None
     in
-    let sandbox_dir =
-      if sandbox then
+    let sandbox =
+      match sandbox_mode with
+      | Some mode ->
         let digest = Digest.to_string rule_digest in
-        Some (Path.Build.relative sandbox_dir digest)
-      else
+        Some (Path.Build.relative sandbox_dir digest, mode)
+      | None ->
         None
     in
     let force =
@@ -1476,10 +1496,10 @@ end = struct
         pending_targets := Path.Build.Set.union targets !pending_targets;
         let loc = Rule.Info.loc info in
         let action =
-          match sandbox_dir with
+          match sandbox with
           | None ->
             action
-          | Some sandbox_dir ->
+          | Some (sandbox_dir, sandbox_mode) ->
             Path.rm_rf (Path.build sandbox_dir);
             let sandboxed path : Path.Build.t =
               Path.Build.append_local sandbox_dir
@@ -1493,6 +1513,7 @@ end = struct
             Fs.mkdir_p (sandboxed dir);
             Action.sandbox action
               ~sandboxed
+              ~mode:sandbox_mode
               ~deps
               ~targets:targets_as_list
               ~eval_pred
@@ -1503,7 +1524,7 @@ end = struct
           with_locks locks ~f:(fun () ->
             Action_exec.exec ~context ~env ~targets action)
         in
-        Option.iter sandbox_dir ~f:(fun p -> Path.rm_rf (Path.build p));
+        Option.iter sandbox ~f:(fun (p, _mode) -> Path.rm_rf (Path.build p));
         (* All went well, these targets are no longer pending *)
         pending_targets := Path.Build.Set.diff !pending_targets targets;
         let targets_digest =

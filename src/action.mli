@@ -84,6 +84,7 @@ end with type action := t
 val sandbox
   :  t
   -> sandboxed:(Path.Build.t -> Path.Build.t)
+  -> mode:Sandbox_mode.some
   -> deps:Dep.Set.t
   -> targets:Path.Build.t list
   -> eval_pred:Dep.eval_pred

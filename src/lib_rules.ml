@@ -183,12 +183,18 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
       (* If we build for both modes and support dynlink, use a
          single invocation to build both the static and dynamic
          libraries *)
-      ocamlmklib ~sandbox:false ~custom:false ~targets:[static; dynamic]
+      (* CR-someday aalekseyev: why [no_sandboxing]? *)
+      ocamlmklib
+        ~sandbox:Sandbox_config.no_sandboxing
+        ~custom:false ~targets:[static; dynamic]
     end else begin
-      ocamlmklib ~sandbox:false ~custom:true ~targets:[static];
+      (* CR-someday aalekseyev: why [no_sandboxing]? *)
+      ocamlmklib ~sandbox:Sandbox_config.no_sandboxing ~custom:true ~targets:[static];
       (* We can't tell ocamlmklib to build only the dll, so we
          sandbox the action to avoid overriding the static archive *)
-      ocamlmklib ~sandbox:true ~custom:false ~targets:[dynamic]
+      ocamlmklib
+        ~sandbox:Sandbox_config.needs_sandboxing
+        ~custom:false ~targets:[dynamic]
     end
 
   let build_o_files lib ~(c_sources : C.Sources.t)

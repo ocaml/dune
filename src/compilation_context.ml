@@ -59,7 +59,7 @@ type t =
   ; stdlib               : Dune_file.Library.Stdlib.t option
   ; js_of_ocaml          : Dune_file.Js_of_ocaml.t option
   ; dynlink              : bool
-  ; sandbox              : bool option
+  ; sandbox              : Sandbox_config.t option
   ; package              : Package.t option
   ; vimpl                : Vimpl.t option
   }
@@ -128,9 +128,13 @@ let for_alias_module t =
   let sandbox =
     let ctx = Super_context.context t.super_context in
     (* If the compiler reads the cmi for module alias even with [-w -49
-    -no-alias-deps], we must sandbox the build of the alias module since the
-    modules it references are built after. *)
-    Ocaml_version.always_reads_alias_cmi ctx.version
+       -no-alias-deps], we must sandbox the build of the alias module since the
+       modules it references are built after. *)
+    if Ocaml_version.always_reads_alias_cmi ctx.version
+    then
+      Sandbox_config.needs_sandboxing
+    else
+      Sandbox_config.no_special_requirements
   in
   { t with
     flags =

@@ -22,14 +22,16 @@ type t =
   ; env      : Env.t option
   ; build    : (unit, Action.t) Build.t
   ; targets  : Path.Build.Set.t
-  ; sandbox  : bool
+  ; sandbox  : Sandbox_config.t
   ; mode     : Dune_file.Rule.Mode.t
   ; locks    : Path.t list
   ; info     : Info.t
   ; dir      : Path.Build.t
   }
 
-let make ?(sandbox=false) ?(mode=Dune_file.Rule.Mode.Standard)
+let make
+      ?(sandbox=Sandbox_config.default)
+      ?(mode=Dune_file.Rule.Mode.Standard)
       ~context ~env ?(locks=[]) ?(info=Info.Internal) build =
   let targets = Build.targets build in
   let dir =

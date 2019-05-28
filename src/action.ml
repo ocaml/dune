@@ -173,7 +173,7 @@ let chdirs =
   in
   fun t -> loop Path.Set.empty t
 
-let symlink_managed_paths sandboxed deps ~eval_pred =
+let prepare_managed_paths ~link ~sandboxed deps ~eval_pred =
   let steps =
     Path.Set.fold (Dep.Set.paths deps ~eval_pred) ~init:[]
       ~f:(fun path acc ->
@@ -181,18 +181,32 @@ let symlink_managed_paths sandboxed deps ~eval_pred =
         | None ->
           assert (not (Path.is_in_source_tree path));
           acc
-        | Some p -> Symlink (path, sandboxed p) :: acc)
+        | Some p -> link path (sandboxed p) :: acc)
   in
   Progn steps
+
+let link_function ~(mode : Sandbox_mode.some) : path -> target -> t =
+  match mode with
+  | Symlink ->
+    if Sys.win32 then
+      Code_error.raise
+        "Don't have symlinks on win32, but [Symlink] sandboxing \
+         mode was selected. To use emulation via copy, the [Copy] sandboxing \
+         mode should be selected." []
+    else
+      (fun a b -> Symlink (a, b))
+  | Copy ->
+    (fun a b -> Copy (a, b))
 
 let maybe_sandbox_path f p =
   match Path.as_in_build_dir p with
   | None -> p
   | Some p -> Path.build (f p)
 
-let sandbox t ~sandboxed ~deps ~targets ~eval_pred : t =
+let sandbox t ~sandboxed ~mode ~deps ~targets ~eval_pred : t =
+  let link = link_function ~mode in
   Progn
-    [ symlink_managed_paths sandboxed deps ~eval_pred
+    [ prepare_managed_paths ~sandboxed ~link deps ~eval_pred
     ; map t
         ~dir:Path.root
         ~f_string:(fun ~dir:_ x -> x)

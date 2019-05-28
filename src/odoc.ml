@@ -34,7 +34,7 @@ type odoc =
   }
 
 let add_rule sctx =
-  Super_context.add_rule sctx ~dir:(Path.build (Super_context.build_dir sctx))
+  Super_context.add_rule sctx ~dir:(Super_context.build_dir sctx)
 
 module Paths = struct
   let root (context : Context.t) =

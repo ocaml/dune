@@ -388,8 +388,7 @@ let build_ppx_driver sctx ~dep_kind ~target ~dir_kind ~pps ~pp_names =
   (* CR-someday diml: what we should do is build the .cmx/.cmo once
      and for all at the point where the driver is defined. *)
   let ml = Path.relative (Path.parent_exn target) "ppx.ml" in
-  let add_rule =
-    SC.add_rule sctx ~dir:(Path.build (Super_context.build_dir sctx)) in
+  let add_rule = SC.add_rule sctx ~dir:(Super_context.build_dir sctx) in
   add_rule
     (Build.of_result_map driver_and_libs ~f:(fun (driver, _) ->
        Build.return (sprintf "let () = %s ()\n" driver.info.main))
@@ -582,7 +581,7 @@ let setup_reason_rules sctx (m : Module.t) =
       ()
     | Reason ->
       let ml = Option.value_exn (Module.file ml kind) in
-      SC.add_rule sctx ~dir:(Path.build ctx.build_dir) (rule f.path ml));
+      SC.add_rule sctx ~dir:ctx.build_dir (rule f.path ml));
   ml
 
 let promote_correction fn build ~suffix =
@@ -602,7 +601,10 @@ let action_for_pp sctx ~dep_kind ~loc ~expander ~action ~src ~target =
   let expander = Expander.add_bindings expander ~bindings in
   let targets = Expander.Targets.Forbidden "preprocessing actions" in
   let targets_dir =
-    Path.parent_exn (Option.value ~default:src target) in
+    Option.value ~default:src target
+    |> Path.as_in_build_dir_exn 
+    |> Path.Build.parent_exn
+  in
   Build.path src
   >>^ (fun _ -> Bindings.empty)
   >>>
@@ -624,7 +626,7 @@ let action_for_pp sctx ~dep_kind ~loc ~expander ~action ~src ~target =
 
 let lint_module sctx ~dir ~expander ~dep_kind ~lint ~lib_name ~scope ~dir_kind =
   Staged.stage (
-    let alias = Alias.lint ~dir in
+    let alias = Alias.lint ~dir:(Path.build dir) in
     let add_alias fn build =
       SC.add_alias_action sctx alias build ~dir
         ~stamp:("lint", lib_name, fn)
@@ -695,8 +697,8 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess
     Build.memoize "preprocessor deps" preprocessor_deps
   in
   let lint_module =
-    Staged.unstage (lint_module sctx ~dir ~expander ~dep_kind ~lint ~lib_name
-                      ~scope ~dir_kind)
+    Staged.unstage (lint_module sctx ~dir ~expander ~dep_kind
+                      ~lint ~lib_name ~scope ~dir_kind)
   in
   Per_module.map preprocess ~f:(fun pp ->
     match Dune_file.Preprocess.remove_future_syntax pp

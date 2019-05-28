@@ -168,10 +168,10 @@ include Sub_system.Register_end_point(
         sprintf "%s.inline-tests" (Lib_name.Local.to_string (snd lib.name))
       in
 
-      let inline_test_dir = Path.relative dir ("." ^ inline_test_name) in
+      let inline_test_dir = Path.Build.relative dir ("." ^ inline_test_name) in
 
       let obj_dir =
-        Obj_dir.make_exe ~dir:(Path.as_in_build_dir_exn inline_test_dir)
+        Obj_dir.make_exe ~dir:inline_test_dir
           ~name:inline_test_name in
 
       let name = "run" in
@@ -180,7 +180,9 @@ include Sub_system.Register_end_point(
       let modules =
         Module.Name.Map.singleton main_module_name
           (Module.make main_module_name
-             ~impl:{ path   = Path.relative inline_test_dir main_module_filename
+             ~impl:{ path =
+                       Path.Build.relative inline_test_dir main_module_filename
+                       |> Path.build
                    ; syntax = OCaml
                    }
              ~kind:Impl
@@ -194,8 +196,7 @@ include Sub_system.Register_end_point(
           (Values [String (Lib_name.Local.to_string (snd lib.name))])
       in
 
-      let expander =
-        Super_context.expander sctx ~dir:(Path.as_in_build_dir_exn dir) in
+      let expander = Super_context.expander sctx ~dir in
 
       let runner_libs =
         let open Result.O in
@@ -215,7 +216,7 @@ include Sub_system.Register_end_point(
 
       (* Generate the runner file *)
       SC.add_rule sctx ~dir ~loc (
-        let target = Path.relative inline_test_dir main_module_filename in
+        let target = Path.Build.relative inline_test_dir main_module_filename in
         let source_modules = Module.Name.Map.values source_modules in
         let files ml_kind =
           Pform.Var.Values (Value.L.paths (
@@ -240,10 +241,10 @@ include Sub_system.Register_end_point(
                  ~targets:(Forbidden "inline test generators")
                  ~targets_dir:dir)))
         >>^ (fun actions ->
-          Action.with_stdout_to target
+          Action.with_stdout_to (Path.build target)
             (Action.progn actions))
         >>>
-        Build.action_dyn ~targets:[target] ());
+        Build.action_dyn ~targets:[Path.build target] ());
 
       let cctx =
         Compilation_context.create ()
@@ -276,16 +277,19 @@ include Sub_system.Register_end_point(
 
       SC.add_alias_action sctx ~dir
         ~loc:(Some info.loc)
-        (Alias.runtest ~dir)
+        (Alias.runtest ~dir:(Path.build dir))
         ~stamp:("ppx-runner", name)
         (let module A = Action in
-         let exe = Path.relative inline_test_dir (name ^ ".exe") in
+         let exe =
+           Path.Build.relative inline_test_dir (name ^ ".exe")
+           |> Path.build
+         in
          Build.path exe >>>
          Build.fanout
            (Super_context.Deps.interpret sctx info.deps ~expander)
            flags
          >>^ fun (_deps, flags) ->
-         A.chdir dir
+         A.chdir (Path.build dir)
            (A.progn
               (A.run (Ok exe) flags ::
                (Module.Name.Map.values source_modules

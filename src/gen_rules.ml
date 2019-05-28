@@ -56,7 +56,7 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
   let sctx = P.sctx
 
   let with_format sctx ~dir ~f =
-    let scope = SC.find_scope_by_dir sctx (Path.as_in_build_dir_exn dir) in
+    let scope = SC.find_scope_by_dir sctx dir in
     let project = Scope.project scope in
     Dune_project.find_extension_args project Auto_format.key
     |> Option.iter ~f
@@ -176,7 +176,7 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
             List.map (Menhir_rules.targets m)
               ~f:(Path.relative (Path.build ctx_dir))
           in
-          SC.add_rule sctx ~dir:(Path.build ctx_dir)
+          SC.add_rule sctx ~dir:ctx_dir
             (Build.fail ~targets
                { fail = fun () ->
                    Errors.fail m.loc
@@ -188,10 +188,10 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
         end
       | Coq.T m when Expander.eval_blang expander m.enabled_if ->
         Coq_rules.setup_rules ~sctx ~dir:ctx_dir ~dir_contents m
-        |> SC.add_rules ~dir:(Path.build ctx_dir) sctx
+        |> SC.add_rules ~dir:ctx_dir sctx
       | Coqpp.T m ->
         Coq_rules.coqpp_rules ~sctx ~build_dir ~dir:ctx_dir m
-        |> SC.add_rules ~dir:(Path.build ctx_dir) sctx
+        |> SC.add_rules ~dir:ctx_dir sctx
       | _ -> ());
     let dyn_deps =
       let pred =
@@ -216,15 +216,15 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
 
   let gen_rules dir_contents cctxs ~dir : (Loc.t * Compilation_context.t) list =
     with_format sctx ~dir ~f:(fun _ -> Format_rules.gen_rules ~dir);
-    match SC.stanzas_in sctx ~dir:(Path.as_in_build_dir_exn dir) with
+    match SC.stanzas_in sctx ~dir with
     | None -> []
     | Some d -> gen_rules dir_contents cctxs d
 
   let gen_rules ~dir components : Build_system.extra_sub_directories_to_keep =
-    (let dir = Path.as_in_build_dir_exn dir in
-     Install_rules.init_meta sctx ~dir;
-     Install_rules.gen_rules sctx ~dir;
-     Opam_create.add_rules sctx ~dir);
+    let dir = Path.as_in_build_dir_exn dir in
+    Install_rules.init_meta sctx ~dir;
+    Install_rules.gen_rules sctx ~dir;
+    Opam_create.add_rules sctx ~dir;
     (match components with
      | ".js"  :: rest -> Js_of_ocaml_rules.setup_separate_compilation_rules
                            sctx rest
@@ -232,16 +232,15 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
      | ".ppx"  :: rest -> Preprocessing.gen_rules sctx rest
      | comps ->
        begin match List.last comps with
-       | Some ".formatted" -> gen_format_rules sctx ~output_dir:dir
+       | Some ".formatted" ->
+         gen_format_rules sctx ~output_dir:dir
        | Some ".bin" ->
-         let src_dir = Path.parent_exn dir in
-         Super_context.local_binaries sctx
-           ~dir:(Path.as_in_build_dir_exn src_dir)
+         let src_dir = Path.Build.parent_exn dir in
+         Super_context.local_binaries sctx ~dir:src_dir
          |> List.iter ~f:(fun t ->
            let loc = File_binding.Expanded.src_loc t in
            let src = File_binding.Expanded.src_path t in
            let dst =
-             let dir = Path.as_in_build_dir dir |> Option.value_exn in
              File_binding.Expanded.dst_path t ~dir
              |> Path.build
            in
@@ -249,20 +248,18 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
        | _ ->
          match
            File_tree.find_dir (SC.file_tree sctx)
-             (Path.drop_build_context_exn dir)
+             (Path.Build.drop_build_context_exn dir)
          with
          | None ->
            (* We get here when [dir] is a generated directory, such as
               [.utop] or [.foo.objs]. *)
            if Utop.is_utop_dir dir then
-             Utop.setup sctx ~dir:(Path.parent_exn dir)
+             Utop.setup sctx ~dir:(Path.Build.parent_exn dir)
            else if components <> [] then
-             Build_system.load_dir ~dir:(Path.parent_exn dir)
+             Build_system.load_dir ~dir:(Path.parent_exn (Path.build dir))
          | Some _ ->
            (* This interprets "rule" and "copy_files" stanzas. *)
-           let dir_contents =
-             Dir_contents.get sctx ~dir:(Path.as_in_build_dir_exn dir)
-           in
+           let dir_contents = Dir_contents.get sctx ~dir in
            match dir_contents with
            | Group_part root ->
              Build_system.load_dir ~dir:(Path.build root)
@@ -276,8 +273,7 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
                let subs = Memo.Lazy.force subs in
                List.iter subs ~f:(fun dc ->
                  ignore (
-                   gen_rules dir_contents cctxs
-                     ~dir:(Path.build (Dir_contents.dir dc))
+                   gen_rules dir_contents cctxs ~dir:(Dir_contents.dir dc)
                    : _ list))
        end);
     match components with

@@ -217,7 +217,7 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander ~dir_kind
 
        Currently dune doesn't support declaring a dependency only
        on the existence of a file, so we have to use this trick. *)
-    SC.add_rule sctx ~dir:(Path.build dir)
+    SC.add_rule sctx ~dir
       (Build.path (Path.build merlin_file)
        >>>
        Build.create_file (Path.build
@@ -225,7 +225,7 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander ~dir_kind
     Path.Set.singleton (Path.build merlin_file)
     |> Rules.Produce.Alias.add_deps (Alias.check ~dir:(Path.build dir));
     let pp_flags = pp_flags sctx ~expander ~dir_kind t in
-    SC.add_rule sctx ~dir:(Path.build dir)
+    SC.add_rule sctx ~dir
       ~mode:(Promote
                { lifetime = Until_clean
                ; into = None

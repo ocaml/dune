@@ -20,7 +20,7 @@ let source ~dir =
     ~main:"UTop_main.main ();"
     ~name:exe_name
 
-let is_utop_dir dir = Path.basename dir = utop_dir_basename
+let is_utop_dir dir = Path.Build.basename dir = utop_dir_basename
 
 let libs_under_dir sctx ~db ~dir =
   (let open Option.O in
@@ -52,15 +52,11 @@ let libs_under_dir sctx ~db ~dir =
   |> Option.value ~default:[]
 
 let setup sctx ~dir =
-  let (expander, scope) =
-    let dir = Path.as_in_build_dir_exn dir in
-    let expander = Super_context.expander sctx ~dir in
-    let scope = Super_context.find_scope_by_dir sctx dir in
-    (expander, scope)
-  in
+  let expander = Super_context.expander sctx ~dir in
+  let scope = Super_context.find_scope_by_dir sctx dir in
   let db = Scope.libs scope in
-  let libs = libs_under_dir sctx ~db ~dir in
-  let source = source ~dir:(Path.as_in_build_dir_exn dir) in
+  let libs = libs_under_dir sctx ~db ~dir:(Path.build dir) in
+  let source = source ~dir in
   let obj_dir = Toplevel.Source.obj_dir source in
   let loc = Toplevel.Source.loc source in
   let modules = Toplevel.Source.modules source in

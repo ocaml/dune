@@ -79,7 +79,7 @@ val add_rule
   -> ?mode:Dune_file.Rule.Mode.t
   -> ?locks:Path.t list
   -> ?loc:Loc.t
-  -> dir:Path.t
+  -> dir:Path.Build.t
   -> (unit, Action.t) Build.t
   -> unit
 val add_rule_get_targets
@@ -88,19 +88,19 @@ val add_rule_get_targets
   -> ?mode:Dune_file.Rule.Mode.t
   -> ?locks:Path.t list
   -> ?loc:Loc.t
-  -> dir:Path.t
+  -> dir:Path.Build.t
   -> (unit, Action.t) Build.t
   -> Path.Set.t
 val add_rules
   :  t
   -> ?sandbox:bool
-  -> dir:Path.t
+  -> dir:Path.Build.t
   -> (unit, Action.t) Build.t list
   -> unit
 val add_alias_action
   :  t
   -> Build_system.Alias.t
-  -> dir:Path.t
+  -> dir:Path.Build.t
   -> loc:Loc.t option
   -> ?locks:Path.t list
   -> stamp:_
@@ -178,7 +178,7 @@ module Action : sig
     -> expander:Expander.t
     -> dep_kind:Lib_deps_info.Kind.t
     -> targets:Expander.Targets.t
-    -> targets_dir:Path.t
+    -> targets_dir:Path.Build.t
     -> Action_unexpanded.t
     -> (Path.t Bindings.t, Action.t) Build.t
 

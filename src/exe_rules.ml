@@ -9,7 +9,6 @@ let executables_rules ~sctx ~dir ~dir_kind ~expander
   (* Use "eobjs" rather than "objs" to avoid a potential conflict
      with a library of the same name *)
   let obj_dir = Obj_dir.make_exe ~dir ~name:(snd (List.hd exes.names)) in
-  let dir = Path.build dir in
   Check_rules.add_obj_dir sctx ~obj_dir;
   let modules =
     Dir_contents.modules_of_executables dir_contents
@@ -70,11 +69,8 @@ let executables_rules ~sctx ~dir ~dir_kind ~expander
       l
   in
 
-  let flags =
-    SC.ocaml_flags sctx ~dir:(Path.as_in_build_dir_exn dir) exes.buildable in
-  let link_deps =
-    SC.Deps.interpret sctx ~expander exes.link_deps
-  in
+  let flags = SC.ocaml_flags sctx ~dir exes.buildable in
+  let link_deps = SC.Deps.interpret sctx ~expander exes.link_deps in
   let link_flags =
     link_deps >>^ ignore >>>
     Expander.expand_and_eval_set expander exes.link_flags

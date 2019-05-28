@@ -414,13 +414,20 @@ let build_ppx_driver sctx ~dep_kind ~target ~dir_kind ~pps ~pp_names =
      and for all at the point where the driver is defined. *)
   let dir = Path.Build.parent_exn target in
   let ml = Path.Build.relative dir "_ppx.ml" in
-  let add_rule = SC.add_rule sctx ~dir in
+  let add_rule ~sandbox = SC.add_rule ~sandbox sctx ~dir in
   add_rule
+    ~sandbox:Sandbox_config.default
     (Build.of_result_map driver_and_libs ~f:(fun (driver, _) ->
        Build.return (sprintf "let () = %s ()\n" driver.info.main))
      >>>
      Build.write_file_dyn ml);
   add_rule
+    (* Sandboxing breaks with an error like this:
+
+       File ".ppx/foo.ppx_rewriter_dune/ppx.ml", line 1, characters 9-35:
+       Error: Unbound module Foo_ppx_rewriter_dune
+       [1] *)
+    ~sandbox:Sandbox_config.no_sandboxing
     (Build.S.seqs
        [Build.record_lib_deps
           (Lib_deps.info ~kind:dep_kind (Lib_deps.of_pps pp_names));
@@ -798,7 +805,12 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess
            let ast = setup_dialect_rules sctx ~dir ~dep_kind ~expander m in
            if lint then lint_module ~ast ~source:m;
            pped_module ast ~f:(fun ml_kind src dst ->
-             SC.add_rule sctx ~loc ~dir
+             (* Sandboxing breaks with an error like this:
+                Error: rename: _build/.sandbox/d9599ccb22f1fc9fc448f0d987648907/build/default/driveruser.pp.ml: No such file or directory
+
+                instead of the expected "rule failed to generate targets"
+             *)
+             SC.add_rule ~sandbox:Sandbox_config.no_sandboxing sctx ~loc ~dir
                (promote_correction ~suffix:corrected_suffix
                   (Option.value_exn (Module.file m ~ml_kind))
                   (preprocessor_deps >>^ ignore

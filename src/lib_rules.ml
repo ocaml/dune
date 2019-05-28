@@ -104,7 +104,11 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
 
   let build_c_file (lib : Library.t) ~dir ~expander ~includes (loc, src, dst) =
     let c_flags = (SC.c_flags sctx ~dir ~expander ~flags:lib.c_flags).c in
-    SC.add_rule sctx ~loc ~dir
+    (* With sandboxing we get errors like:
+       bar.c:2:19: fatal error: foo.cxx: No such file or directory
+       #include "foo.cxx"
+    *)
+    SC.add_rule ~sandbox:Sandbox_config.no_sandboxing sctx ~loc ~dir
       (
         let src = Path.build (C.Source.path src) in
         Command.run
@@ -129,20 +133,25 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
       else
         [A "-o"; Target dst]
     in
-    let cxx_flags = (SC.c_flags sctx ~dir ~expander ~flags:lib.c_flags).cxx in
-    SC.add_rule sctx ~loc ~dir (
-      let src = Path.build (C.Source.path src) in
-      Command.run
-        (* We have to execute the rule in the library directory as
-           the .o is produced in the current directory *)
-        ~dir:(Path.build dir)
-        (SC.resolve_program ~loc:None ~dir sctx ctx.c_compiler)
-        ([ Command.Args.S [A "-I"; Path ctx.stdlib_dir]
-         ; includes
-         ; Command.Args.dyn cxx_flags
-         ] @ output_param @
-         [ A "-c"; Dep src
-         ]));
+    let cxx_flags = (SC.c_flags sctx ~dir
+                       ~expander ~flags:lib.c_flags).cxx in
+    (* this seems to work with sandboxing, but for symmetry with [build_c_file]
+       disabling that here too *)
+    SC.add_rule ~sandbox:Sandbox_config.no_sandboxing sctx ~loc ~dir
+      (
+        let src = Path.build (C.Source.path src) in
+        Command.run
+          (* We have to execute the rule in the library directory as
+             the .o is produced in the current directory *)
+          ~dir:(Path.build dir)
+          (SC.resolve_program ~loc:None ~dir
+             sctx ctx.c_compiler)
+          ([ Command.Args.S [A "-I"; Path ctx.stdlib_dir]
+           ; includes
+           ; Command.Args.dyn cxx_flags
+           ] @ output_param @
+           [ A "-c"; Dep src
+           ]));
     dst
 
   let ocamlmklib (lib : Library.t) ~dir ~expander ~o_files ~sandbox ~custom
@@ -189,7 +198,8 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
         ~custom:false ~targets:[static; dynamic]
     end else begin
       (* CR-someday aalekseyev: why [no_sandboxing]? *)
-      ocamlmklib ~sandbox:Sandbox_config.no_sandboxing ~custom:true ~targets:[static];
+      ocamlmklib
+        ~sandbox:Sandbox_config.no_sandboxing ~custom:true ~targets:[static];
       (* We can't tell ocamlmklib to build only the dll, so we
          sandbox the action to avoid overriding the static archive *)
       ocamlmklib
@@ -210,14 +220,15 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
               acc))
     in
     let includes =
-      Command.Args.S [ Hidden_deps (Dep.Set.of_files h_files)
-        ; Command.of_result_map requires ~f:(fun libs ->
-            S [ Lib.L.c_include_flags libs
-              ; Hidden_deps (
-                  Lib_file_deps.deps libs
-                    ~groups:[Lib_file_deps.Group.Header])
-              ])
-        ]
+      Command.Args.S [
+        Hidden_deps (Dep.Set.of_files h_files)
+      ; Command.of_result_map requires ~f:(fun libs ->
+          S [ Lib.L.c_include_flags libs
+            ; Hidden_deps (
+                Lib_file_deps.deps libs
+                  ~groups:[Lib_file_deps.Group.Header])
+            ])
+      ]
     in
     let build_x_files build_x files =
       String.Map.to_list files

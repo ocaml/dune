@@ -146,6 +146,10 @@ let link_exe
   in
   let top_sorted_cms = Cm_files.top_sorted_cms cm_files ~mode in
   SC.add_rule sctx ~loc ~dir
+    (* Breaks with sandboxing with errors like:
+       gcc: error: .main_auto.eobjs/native/findlib_initl$ext_obj: No such file or directory
+    *)
+    ~sandbox:Sandbox_config.no_sandboxing
     ~mode:(match promote with
       | None -> Standard
       | Some p -> Promote p)

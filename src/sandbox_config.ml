@@ -20,4 +20,6 @@ let no_sandboxing =
 let needs_sandboxing =
   of_function Option.is_some
 
-let default = no_sandboxing
+let default = no_special_requirements
+
+let user_rule = no_sandboxing

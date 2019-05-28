@@ -63,7 +63,9 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
     in
     let bindings = dep_bindings ~extra_bindings rule.deps in
     let expander = Expander.add_bindings expander ~bindings in
-    SC.add_rule_get_targets sctx ~dir ~mode:rule.mode ~loc:rule.loc
+    SC.add_rule_get_targets sctx
+      ~sandbox:(Sandbox_config.user_rule)
+      ~dir ~mode:rule.mode ~loc:rule.loc
       ~locks:(interpret_locks ~expander rule.locks)
       (SC.Deps.interpret_named sctx ~expander rule.deps
        >>>
@@ -74,7 +76,8 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
          ~expander
          ~dep_kind:Required
          ~targets
-         ~targets_dir:dir)
+         ~targets_dir:dir
+      )
   end else
     Path.Build.Set.empty
 
@@ -112,7 +115,11 @@ let copy_files sctx ~dir ~expander ~src_dir (def: Copy_files.t) =
   Path.Set.map files ~f:(fun file_src ->
     let basename = Path.basename file_src in
     let file_dst = Path.Build.relative dir basename in
-    SC.add_rule sctx ~loc ~dir
+    (* with sandboxing, some expect test fails with:
+       -  #line 1 "include/bar.h"
+       +  #line 1 "1a0210e62c0acf83a7b2119b6ab36462/build/default/include/bar.h"
+    *)
+    SC.add_rule ~sandbox:Sandbox_config.no_sandboxing sctx ~loc ~dir
       ((if def.add_line_directive
         then Build.copy_and_add_line_directive
         else Build.copy)

@@ -18,11 +18,15 @@ val needs_sandboxing : t
 (** The default sandboxing config for actions that don't bother specifying it.
 
     Often this means that they don't have special requirements, but it also
-    often means that we're not sure and there might be some requirements
-    that we didn't yet discover because we never tried sandboxing it.
+    often means that we're not quite sure.
 
-    Currently we have [default = no_sandboxing] to be consistent with the old
-    dune behavior, but we'd like to change it to
-    [default = no_special_requirements].
+    Currently we have [default = no_special_requirements].
 *)
 val default : t
+
+(** The default sandboxing config for user rules.
+
+    We currently assume that user rules must not be sandboxed, but that's a
+    terrible assumption.
+*)
+val user_rule : t

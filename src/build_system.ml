@@ -826,6 +826,8 @@ end = struct
                       in
                       let rule =
                         Pre_rule.make ~locks ~context:(Some context) ~env
+                          (* [no_sandboxing] here is necessary for some reason *)
+                          ~sandbox:Sandbox_config.no_sandboxing
                           ~info:(Rule.Info.of_loc_opt loc)
                           (Build.progn [ action; Build.create_file path ])
                       in

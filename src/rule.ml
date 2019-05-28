@@ -30,7 +30,7 @@ type t =
   }
 
 let make
-      ?(sandbox=Sandbox_config.default)
+      ?(sandbox = Sandbox_config.default)
       ?(mode=Dune_file.Rule.Mode.Standard)
       ~context ~env ?(locks=[]) ?(info=Info.Internal) build =
   let targets = Build.targets build in

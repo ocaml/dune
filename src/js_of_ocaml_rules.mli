@@ -15,7 +15,9 @@ val build_exe
   :  Compilation_context.t
   -> js_of_ocaml:Js_of_ocaml.t
   -> src:Path.t
-  -> (Path.t list * string list, Action.t) Build.t list
+  -> cm:Path.t list Build.s
+  -> flags:Command.Args.dynamic Command.Args.t
+  -> Action.t Build.s list
 
 val setup_separate_compilation_rules
   :  Super_context.t

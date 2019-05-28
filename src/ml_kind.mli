@@ -11,8 +11,8 @@ val suffix : t -> string
 
 val to_string : t -> string
 
-val flag : t -> _ Arg_spec.t
-val ppx_driver_flag : t -> _ Arg_spec.t
+val flag : t -> _ Command.Args.t
+val ppx_driver_flag : t -> _ Command.Args.t
 
 module Dict : sig
   type kind = t

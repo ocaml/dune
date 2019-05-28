@@ -141,7 +141,7 @@ let compile_module sctx (m : Module.t) ~includes:(file_deps, iflags)
      module_deps m ~doc_dir ~dep_graphs
      >>>
      let doc_dir = Path.build doc_dir in
-     Build.run ~dir:doc_dir (odoc sctx)
+     Command.run ~dir:doc_dir (odoc sctx)
        [ A "compile"
        ; A "-I"; Path doc_dir
        ; iflags
@@ -154,11 +154,9 @@ let compile_module sctx (m : Module.t) ~includes:(file_deps, iflags)
 let compile_mld sctx (m : Mld.t) ~includes ~doc_dir ~pkg =
   let odoc_file = Mld.odoc_file m ~doc_dir in
   add_rule sctx
-    (includes
-     >>>
-     Build.run ~dir:(Path.build doc_dir) (odoc sctx)
+    (Command.run ~dir:(Path.build doc_dir) (odoc sctx)
        [ A "compile"
-       ; Dyn Fn.id
+       ; Command.Args.dyn includes
        ; As ["--pkg"; Package.Name.to_string pkg]
        ; A "-o"; Target (Path.build odoc_file)
        ; Dep (Path.build (Mld.odoc_input m))
@@ -166,7 +164,7 @@ let compile_mld sctx (m : Mld.t) ~includes ~doc_dir ~pkg =
   odoc_file
 
 let odoc_include_flags ctx pkg requires =
-  Arg_spec.of_result_map requires ~f:(fun libs ->
+  Command.of_result_map requires ~f:(fun libs ->
     let paths =
       libs |> List.fold_left ~f:(fun paths lib ->
         if Lib.is_local lib then (
@@ -180,8 +178,8 @@ let odoc_include_flags ctx pkg requires =
       | Some p -> Path.Set.add paths (Path.build (Paths.odocs ctx (Pkg p)))
       | None -> paths
     in
-    Arg_spec.S (List.concat_map (Path.Set.to_list paths)
-                  ~f:(fun dir -> [Arg_spec.A "-I"; Path dir])))
+    S (List.concat_map (Path.Set.to_list paths)
+                 ~f:(fun dir -> [Command.Args.A "-I"; Path dir])))
 
 let setup_html sctx (odoc_file : odoc) ~pkg ~requires =
   let ctx = Super_context.context sctx in
@@ -201,7 +199,7 @@ let setup_html sctx (odoc_file : odoc) ~pkg ~requires =
      Build.progn (
        Build.remove_tree (Path.build to_remove)
        :: Build.mkdir (Path.build odoc_file.html_dir)
-       :: Build.run ~dir:(Path.build (Paths.html_root ctx))
+       :: Command.run ~dir:(Path.build (Paths.html_root ctx))
             (odoc sctx)
             [ A "html"
             ; odoc_include_flags ctx pkg requires
@@ -236,7 +234,7 @@ let setup_library_odoc_rules sctx (library : Library.t) ~scope ~modules
 let setup_css_rule sctx =
   let ctx = Super_context.context sctx in
   add_rule sctx
-    (Build.run
+    (Command.run
        ~dir:(Path.build ctx.build_dir)
        (odoc sctx)
        [ A "support-files"; A "-o"
@@ -568,7 +566,7 @@ let setup_package_odoc_rules_def =
            (Mld.create mld)
            ~pkg
            ~doc_dir:(Paths.odocs ctx (Pkg pkg))
-           ~includes:(Build.arr (fun _ -> Arg_spec.As []))
+           ~includes:(Build.return [])
        ) in
        Dep.setup_deps ctx (Pkg pkg) (Path.set_of_build_paths_list odocs))
 

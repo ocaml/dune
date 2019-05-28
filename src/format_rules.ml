@@ -43,7 +43,6 @@ let gen_rules_output sctx (config : Dune_file.Auto_format.t) ~output_dir =
       (Path.source source_dir)
   ) in
   let setup_formatting file =
-    let open Build.O in
     let input_basename = Path.Source.basename file in
     let input = Path.relative dir input_basename in
     let output = Path.relative output_dir input_basename in
@@ -52,8 +51,7 @@ let gen_rules_output sctx (config : Dune_file.Auto_format.t) ~output_dir =
       if Dune_file.Auto_format.includes config Ocaml then
         let exe = resolve_program "ocamlformat" in
         let args =
-          let open Arg_spec in
-          [ A (flag_of_kind kind)
+          [ Command.Args.A (flag_of_kind kind)
           ; Dep input
           ; A "--name"
           ; Path (Path.source file)
@@ -62,9 +60,9 @@ let gen_rules_output sctx (config : Dune_file.Auto_format.t) ~output_dir =
           ]
         in
         Some (
-          Lazy.force ocamlformat_deps
-          >>>
-          Build.run ~dir:(Path.build (Super_context.build_dir sctx)) exe args)
+          Build.S.seq (Build.S.ignore (Lazy.force ocamlformat_deps))
+            (Command.run
+               ~dir:(Path.build (Super_context.build_dir sctx)) exe args))
       else
         None
     in
@@ -76,12 +74,12 @@ let gen_rules_output sctx (config : Dune_file.Auto_format.t) ~output_dir =
       | _, ".re"
       | _, ".rei" when Dune_file.Auto_format.includes config Reason ->
         let exe = resolve_program "refmt" in
-        let args = [Arg_spec.Dep input] in
-        Some (Build.run ~dir ~stdout_to:output exe args)
+        let args = [Command.Args.Dep input] in
+        Some (Command.run ~dir ~stdout_to:output exe args)
       | "dune", _ when Dune_file.Auto_format.includes config Dune ->
         let exe = resolve_program "dune" in
-        let args = [Arg_spec.A "format-dune-file"; Dep input] in
-        Some (Build.run ~dir ~stdout_to:output exe args)
+        let args = [Command.Args.A "format-dune-file"; Dep input] in
+        Some (Command.run ~dir ~stdout_to:output exe args)
       | _ -> None
     in
 

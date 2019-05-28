@@ -83,7 +83,7 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
       in
       let other_targets, cmt_args =
         match cm_kind with
-        | Cmx -> (other_targets, Arg_spec.S [])
+        | Cmx -> (other_targets, Command.Args.S [])
         | Cmi | Cmo ->
           let fn = Option.value_exn (Module.cmt_file m ml_kind) in
           (fn :: other_targets, A "-bin-annot")
@@ -106,7 +106,7 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
         let intf_only = cm_kind = Cmi && not (Module.has_impl m) in
         if opaque
         || (intf_only && Ocaml_version.supports_opaque_for_mli ctx.version) then
-          Arg_spec.A "-opaque"
+          Command.Args.A "-opaque"
         else
           As []
       in
@@ -116,7 +116,7 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
             , Ocaml_version.supports_no_keep_locs ctx.version
         with
         | true, Cmi, true ->
-          (Path.build ctx.build_dir, Arg_spec.As ["-no-keep-locs"])
+          (Path.build ctx.build_dir, Command.Args.As ["-no-keep-locs"])
         | true, Cmi, false ->
           (Obj_dir.byte_dir obj_dir, As []) (* emulated -no-keep-locs *)
         | true, (Cmo | Cmx), _
@@ -132,47 +132,44 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
           flags @ pp_flags
       in
       SC.add_rule sctx ?sandbox ~dir
-        (Build.paths extra_deps >>>
-         other_cm_files >>>
-         flags
-         >>>
-         Build.run ~dir (Ok compiler)
-           [ Dyn (fun flags -> As flags)
-           ; no_keep_locs
-           ; cmt_args
-           ; S (
-               Obj_dir.all_obj_dirs obj_dir ~mode
-               |> List.concat_map ~f:(fun p -> [Arg_spec.A "-I"; Path p])
-             )
-           ; Cm_kind.Dict.get (CC.includes cctx) cm_kind
-           ; As extra_args
-           ; if dynlink || cm_kind <> Cmx then As [] else A "-nodynlink"
-           ; A "-no-alias-deps"; opaque_arg
-           ; (match CC.alias_module cctx with
-              | None -> S []
-              | Some (m : Module.t) ->
-                As ["-open"; Module.Name.to_string (Module.name m)])
-           ; As (match stdlib with
-               | None -> []
-               | Some { Dune_file.Library.Stdlib.modules_before_stdlib; _ } ->
-                 let flags = ["-nopervasives"; "-nostdlib"] in
-                 if Module.Name.Set.mem modules_before_stdlib
-                      (Module.name m) then
-                   flags
-                 else
-                   match CC.lib_interface_module cctx with
-                   | None -> flags
-                   | Some m' ->
-                     (* See comment in [Dune_file.Stdlib]. *)
-                     if Module.name m = Module.name m' then
-                       "-w" :: "-49" :: flags
-                     else
-                       "-open" :: Module.Name.to_string (Module.name m')
-                       :: flags)
-           ; A "-o"; Target dst
-           ; A "-c"; Ml_kind.flag ml_kind; Dep src
-           ; Hidden_targets other_targets
-           ])))
+        (Build.S.seqs [Build.paths extra_deps; other_cm_files]
+           (Command.run ~dir (Ok compiler)
+              [ Command.Args.dyn flags
+              ; no_keep_locs
+              ; cmt_args
+              ; Command.Args.S (
+                  Obj_dir.all_obj_dirs obj_dir ~mode
+                  |> List.concat_map ~f:(fun p -> [Command.Args.A "-I"; Path p])
+                )
+              ; Cm_kind.Dict.get (CC.includes cctx) cm_kind
+              ; As extra_args
+              ; if dynlink || cm_kind <> Cmx then As [] else A "-nodynlink"
+              ; A "-no-alias-deps"; opaque_arg
+              ; (match CC.alias_module cctx with
+                 | None -> S []
+                 | Some (m : Module.t) ->
+                   As ["-open"; Module.Name.to_string (Module.name m)])
+              ; As (match stdlib with
+                  | None -> []
+                  | Some { Dune_file.Library.Stdlib.modules_before_stdlib; _ } ->
+                    let flags = ["-nopervasives"; "-nostdlib"] in
+                    if Module.Name.Set.mem modules_before_stdlib
+                         (Module.name m) then
+                      flags
+                    else
+                      match CC.lib_interface_module cctx with
+                      | None -> flags
+                      | Some m' ->
+                        (* See comment in [Dune_file.Stdlib]. *)
+                        if Module.name m = Module.name m' then
+                          "-w" :: "-49" :: flags
+                        else
+                          "-open" :: Module.Name.to_string (Module.name m')
+                          :: flags)
+              ; A "-o"; Target dst
+              ; A "-c"; Ml_kind.flag ml_kind; Dep src
+              ; Hidden_targets other_targets
+              ]))))
 
 let build_module ?sandbox ?js_of_ocaml ?dynlink ~dep_graphs cctx m =
   List.iter Cm_kind.all ~f:(fun cm_kind ->
@@ -207,20 +204,21 @@ let ocamlc_i ?sandbox ?(flags=[]) ~dep_graphs cctx (m : Module.t) ~output =
        List.concat_map deps
          ~f:(fun m -> [Module.cm_file_unsafe m Cmi]))
   in
+  let ocaml_flags = Ocaml_flags.get_for_cm (CC.flags cctx) ~cm_kind:Cmo
+  in
   SC.add_rule sctx ?sandbox ~dir:(Path.build dir)
-    (cm_deps >>>
-     Ocaml_flags.get_for_cm (CC.flags cctx) ~cm_kind:Cmo >>>
-     Build.run (Ok ctx.ocamlc) ~dir:(Path.build ctx.build_dir)
-       [ Dyn (fun ocaml_flags -> As ocaml_flags)
-       ; A "-I"; Path (Obj_dir.byte_dir obj_dir)
-       ; Cm_kind.Dict.get (CC.includes cctx) Cmo
-       ; (match CC.alias_module cctx with
-          | None -> S []
-          | Some (m : Module.t) ->
-            As ["-open"; Module.Name.to_string (Module.name m)])
-       ; As flags
-       ; A "-short-paths"
-       ; A "-i"; Ml_kind.flag Impl; Dep src
-       ]
-     >>^ (fun act -> Action.with_stdout_to output act)
+    (Build.S.seq cm_deps
+       (Build.S.map ~f:(fun act -> Action.with_stdout_to output act)
+          (Command.run (Ok ctx.ocamlc) ~dir:(Path.build ctx.build_dir)
+             [ Command.Args.dyn ocaml_flags
+             ; A "-I"; Path (Obj_dir.byte_dir obj_dir)
+             ; Cm_kind.Dict.get (CC.includes cctx) Cmo
+             ; (match CC.alias_module cctx with
+                | None -> S []
+                | Some (m : Module.t) ->
+                  As ["-open"; Module.Name.to_string (Module.name m)])
+             ; As flags
+             ; A "-short-paths"
+             ; A "-i"; Ml_kind.flag Impl; Dep src
+             ]))
      >>> Build.action_dyn () ~targets:[output])

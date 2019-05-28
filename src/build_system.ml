@@ -420,6 +420,7 @@ type t =
   ; hook : hook -> unit
   ; (* Package files are part of *)
     packages : (Path.Build.t -> Package.Name.Set.t) Fdecl.t
+  ; sandboxing_preference : Sandbox_mode.t list
   }
 
 let t = ref None
@@ -1366,22 +1367,27 @@ end = struct
   let evaluate_action_and_dynamic_deps =
     Memo.exec evaluate_action_and_dynamic_deps_memo
 
-  let select_sandbox_mode (config : Sandbox_config.t) : Sandbox_mode.t =
-    (* TODO: this function' behavior should become configurable *)
-    match config with
-    | { none = true; _ } -> None
-    | { symlink = true; copy = true; _ } ->
-      Some (if Sys.win32 then Copy else Symlink)
-    | { symlink = false; copy = true; _ } ->
-      Some Copy
-    | { symlink = true; copy = false; _ } ->
-      Code_error.raise
-        "This rule requires sandboxing with symlinks, but that won't \
-         work on Windows." []
-    | { none = false; copy = false; symlink = false } ->
+  let select_sandbox_mode (config : Sandbox_config.t) ~sandboxing_preference =
+    match
+      List.find_map sandboxing_preference ~f:(fun preference ->
+        match (preference, config) with
+        | None, { none = true; _ } ->
+          Some None
+        | Some Sandbox_mode.Copy, { copy = true; _ } ->
+          Some (Some Sandbox_mode.Copy)
+        | Some Symlink, { symlink = true; copy; _ } ->
+          (if copy then
+             Some (Some (if Sys.win32 then Copy else Symlink))
+           else
+             Code_error.raise
+               "This rule requires sandboxing with symlinks, but that won't \
+                work on Windows." [])
+        | _, _ -> None) with
+    | None ->
       Code_error.raise
         "This rule forbids all sandboxing \
          modes (but it also requires sandboxing)" []
+    | Some choice -> choice
 
   let evaluate_rule (rule : Internal_rule.t) =
     let* static_deps = Fiber.Once.get rule.static_deps in
@@ -1446,7 +1452,9 @@ end = struct
     let targets_as_list  = Path.Build.Set.to_list targets  in
     let head_target = List.hd targets_as_list in
     let prev_trace = Trace.get (Path.build head_target) in
-    let sandbox_mode = select_sandbox_mode sandbox in
+    let sandbox_mode =
+      select_sandbox_mode sandbox ~sandboxing_preference:t.sandboxing_preference
+    in
     let rule_digest =
       let env =
         match env, context with
@@ -1972,7 +1980,7 @@ let load_dir_and_produce_its_rules ~dir =
 
 let load_dir ~dir = load_dir_and_produce_its_rules ~dir
 
-let init ~contexts ~file_tree ~hook =
+let init ~contexts ~file_tree ~hook ~sandboxing_preference =
   let contexts =
     List.map contexts ~f:(fun c -> (c.Context.name, c))
     |> String.Map.of_list_exn
@@ -1985,6 +1993,7 @@ let init ~contexts ~file_tree ~hook =
     ; gen_rules = Fdecl.create ()
     ; init_rules = Fdecl.create ()
     ; hook
+    ; sandboxing_preference = sandboxing_preference @ Sandbox_mode.all
     }
   in
   set t

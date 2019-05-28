@@ -82,7 +82,8 @@ module Sandboxing_preference = struct
     repeat (
       plain_string (fun ~loc s ->
         match Sandbox_mode.of_string s with
-        | Error m -> of_sexp_errorf loc "%s" m
+        | Error m ->
+          User_error.raise ~loc [ Pp.text m ]
         | Ok s -> s))
 
 end

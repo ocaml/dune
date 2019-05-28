@@ -48,6 +48,7 @@ module Main = struct
     let open Fiber.O in
     scan_workspace ~log common
     >>= init_build_system
+          ~sandboxing_preference:(common.config.sandboxing_preference)
           ?external_lib_deps_mode
           ?only_packages:common.only_packages
 end

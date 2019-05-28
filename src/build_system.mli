@@ -16,6 +16,7 @@ val init
   :  contexts:Context.t list
   -> file_tree:File_tree.t
   -> hook:(hook -> unit)
+  -> sandboxing_preference:Sandbox_mode.t list
   -> unit
 
 val reset : unit -> unit

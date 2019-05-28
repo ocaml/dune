@@ -72,7 +72,8 @@ let scan_workspace ?(log=Log.no_log)
   ; env
   }
 
-let init_build_system ?only_packages ?external_lib_deps_mode w =
+let init_build_system
+      ?only_packages ?external_lib_deps_mode ~sandboxing_preference w =
   Option.iter only_packages ~f:(fun set ->
     Package.Name.Set.iter set ~f:(fun pkg ->
       if not (Package.Name.Map.mem w.conf.packages pkg) then
@@ -99,7 +100,9 @@ let init_build_system ?only_packages ?external_lib_deps_mode w =
     | Rule_completed -> incr rule_done
   in
   Build_system.reset ();
-  Build_system.init ~contexts:w.contexts ~file_tree:w.conf.file_tree ~hook;
+  Build_system.init
+    ~sandboxing_preference
+    ~contexts:w.contexts ~file_tree:w.conf.file_tree ~hook;
   Scheduler.set_status_line_generator gen_status_line;
   let+ scontexts =
     Gen_rules.gen w.conf
@@ -234,7 +237,10 @@ let bootstrap () =
             ?profile:!profile ~ancestor_vcs:None
             ()
          in
-         let* _ = init_build_system workspace in
+         let* _ =
+           init_build_system
+             ~sandboxing_preference:config.sandboxing_preference workspace
+         in
          Build_system.do_build
            ~request:(Build.path (
              Path.relative Path.build_dir "default/dune.install")))

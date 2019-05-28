@@ -31,6 +31,7 @@ val scan_workspace
 val init_build_system
   :  ?only_packages:Package.Name.Set.t
   -> ?external_lib_deps_mode:bool
+  -> sandboxing_preference:Sandbox_mode.t list
   -> workspace
   -> build_system Fiber.t
 

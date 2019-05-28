@@ -37,7 +37,10 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
                 not_in_dir ~error_loc s;
               Path.relative ~error_loc (Path.build dir) s
             | Path p ->
-              if Path.parent p <> Some (Path.build dir) then
+              if Option.compare Path.compare
+                   (Path.parent p) (Some (Path.build dir))
+                   <> Eq
+              then
                 not_in_dir ~error_loc (Path.to_string p);
               p
             | Dir p ->

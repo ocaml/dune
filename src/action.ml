@@ -179,6 +179,8 @@ let prepare_managed_paths ~link ~sandboxed deps ~eval_pred =
       ~f:(fun path acc ->
         match Path.as_in_build_dir path with
         | None ->
+          (* This can actually raise if we try to sandbox the "copy from
+             source dir" rules. There is no reason to do that though. *)
           assert (not (Path.is_in_source_tree path));
           acc
         | Some p -> link path (sandboxed p) :: acc)

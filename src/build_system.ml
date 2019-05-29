@@ -761,7 +761,11 @@ end = struct
     |> List.map ~f:(fun path ->
       let ctx_path = Path.Build.append_source ctx_dir path in
       let build = Build.copy ~src:(Path.source path) ~dst:ctx_path in
-      Pre_rule.make build ~context:None ~env:None ~info:Source_file_copy)
+      Pre_rule.make
+        (* There's an [assert false] in [prepare_managed_paths] that blows up
+           if we try to sandbox this. *)
+        ~sandbox:Sandbox_config.no_sandboxing
+        build ~context:None ~env:None ~info:Source_file_copy)
 
   let compile_rules ~dir rules =
     List.concat_map rules ~f:(fun rule ->

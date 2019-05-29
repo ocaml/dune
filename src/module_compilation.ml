@@ -116,11 +116,13 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) =
           |> Path.Build.relative dir
         in
         SC.add_rule sctx ~dir
+          ~sandbox
           (Build.symlink ~src:(Path.build dst) ~dst:old_dst);
         List.iter other_targets ~f:(fun in_obj_dir ->
           let in_dir = Path.Build.relative dir
                          (Path.Build.basename in_obj_dir) in
           SC.add_rule sctx ~dir
+            ~sandbox
             (Build.symlink ~src:(Path.build in_obj_dir) ~dst:in_dir))
       end;
       let opaque_arg =
@@ -154,7 +156,7 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) =
           flags @ pp_flags
       in
       let modules = Compilation_context.modules cctx in
-      SC.add_rule sctx ?sandbox ~dir
+      SC.add_rule sctx ~sandbox ~dir
         (Build.S.seqs [Build.paths extra_deps; other_cm_files]
            (Command.run ~dir:(Path.build dir) (Ok compiler)
               [ Command.Args.dyn flags
@@ -193,7 +195,7 @@ let build_module ~dep_graphs ?(precompiled_cmi=false) cctx m =
     let obj_dir = CC.obj_dir cctx in
     let src = Obj_dir.Module.cm_file_unsafe obj_dir m ~kind:Cm_kind.Cmo in
     let target = Path.Build.extend_basename src ~suffix:".js" in
-    SC.add_rules sctx ~dir
+    SC.add_rules ~sandbox:Sandbox_config.no_sandboxing sctx ~dir
       (Js_of_ocaml_rules.build_cm cctx ~js_of_ocaml ~src ~target))
 
 let ocamlc_i ?(flags=[]) ~dep_graphs cctx (m : Module.t) ~output =
@@ -213,7 +215,7 @@ let ocamlc_i ?(flags=[]) ~dep_graphs cctx (m : Module.t) ~output =
   in
   let ocaml_flags = Ocaml_flags.get_for_cm (CC.flags cctx) ~cm_kind:Cmo in
   let modules = Compilation_context.modules cctx in
-  SC.add_rule sctx ?sandbox ~dir
+  SC.add_rule sctx ~sandbox ~dir
     (Build.S.seq cm_deps
        (Build.S.map ~f:(Action.with_stdout_to output)
           (Command.run (Ok ctx.ocamlc) ~dir:(Path.build ctx.build_dir)

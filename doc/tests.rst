@@ -183,6 +183,17 @@ running the tests by typing:
 Finally, some editor integration is possible to make the editor do the
 promotion and make the workflow even smoother.
 
+Running a single test
+---------------------
+
+If you would only like to run a single test for your project, you may use
+``dune exec`` to run the test executable (for the sake of this example,
+``project/tests/myTest.ml``):
+
+.. code:: bash
+
+          dune exec project/tests/myTest.exe
+
 Specifying inline test dependencies
 -----------------------------------
 

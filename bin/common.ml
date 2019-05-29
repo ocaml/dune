@@ -156,27 +156,22 @@ let term =
     | false , Some x -> `Ok (Some x)
     | true  , None   -> `Ok (Some Config.Display.Verbose)
     | true  , Some _ -> incompatible "--display" "--verbose"
-  and+ always_show_command_line =
-    let doc = "Always show the full command lines of programs executed by dune" in
-    Arg.(value
-         & flag
-         & info ["always-show-command-line"] ~docs ~doc)
   and+ no_buffer =
+    let doc =
+      {|Do not buffer the output of commands executed by dune. By default dune
+        buffers the output of subcommands, in order to prevent interleaving when
+        multiple commands are executed in parallel. However, this can be an
+        issue when debugging long running tests. With $(b,--no-buffer), commands
+        have direct access to the terminal. Note that as a result their output
+        won't be captured in the log file.
+
+        You should use this option in conjunction with $(b,-j 1), to avoid
+        interleaving. Additionally you should use $(b,--verbose) as well, to
+        make sure that commands are printed before they are being executed.|}
+    in
     Arg.(value
          & flag
-         & info ["no-buffer"] ~docs ~docv:"DIR"
-             ~doc:{|Do not buffer the output of commands executed by dune.
-                    By default dune buffers the output of subcommands, in order
-                    to prevent interleaving when multiple commands are executed
-                    in parallel. However, this can be an issue when debugging
-                    long running tests. With $(b,--no-buffer), commands have direct
-                    access to the terminal. Note that as a result their output won't
-                    be captured in the log file.
-
-                    You should use this option in conjunction with $(b,-j 1),
-                    to avoid interleaving. Additionally you should use
-                    $(b,--verbose) as well, to make sure that commands are printed
-                    before they are being executed.|})
+         & info ["no-buffer"] ~docs ~docv:"DIR" ~doc)
   and+ workspace_file =
     let doc = "Use this specific workspace file instead of looking it up." in
     Arg.(value
@@ -199,14 +194,15 @@ let term =
     Arg.(value
          & flag
          & info ["watch"; "w"]
-             ~doc:"Instead of terminating build after completion, wait continuously
-              for file changes.")
+             ~doc:"Instead of terminating build after completion, \
+                   wait continuously for file changes.")
   and+ root,
      only_packages,
      ignore_promoted_rules,
      config_file,
      profile,
-     default_target =
+     default_target,
+     always_show_command_line =
     let default_target_default =
       match Wp.t with
       | Dune     -> "@@default"
@@ -303,6 +299,12 @@ let term =
                        {|Set the default target that when none is specified to
                          $(b,dune build). It defaults to %s.|}
                        default_target_default))
+    and+ always_show_command_line =
+      let doc =
+        "Always show the full command lines of programs executed by dune" in
+      Arg.(value
+           & flag
+           & info ["always-show-command-line"] ~docs ~doc)
     and+ frop =
       Arg.(value
            & opt (some string) None
@@ -329,7 +331,8 @@ let term =
            true,
            No_config,
            Some "release",
-           "@install"
+           "@install",
+           true
           )
     | None, _, _, _, _, _, _ ->
       `Ok (root,
@@ -337,7 +340,8 @@ let term =
            ignore_promoted_rules,
            config_file,
            profile,
-           Option.value default_target ~default:default_target_default
+           Option.value default_target ~default:default_target_default,
+           always_show_command_line
           )
   and+ x =
     Arg.(value

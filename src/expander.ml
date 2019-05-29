@@ -1,7 +1,7 @@
 open Stdune
 
 type t =
-  { dir : Path.t
+  { dir : Path.Build.t
   ; hidden_env : Env.Var.Set.t
   ; env : Env.t
   ; lib_artifacts : Artifacts.Public_libs.t
@@ -128,16 +128,16 @@ let make ~scope ~(context : Context.t) ~lib_artifacts
   }
 
 let expand t ~mode ~template =
-  String_with_vars.expand ~dir:t.dir ~mode template
+  String_with_vars.expand ~dir:(Path.build t.dir) ~mode template
     ~f:(expand_var_exn t)
 
 let expand_path t sw =
   expand t ~mode:Single ~template:sw
-  |> Value.to_path ~error_loc:(String_with_vars.loc sw) ~dir:t.dir
+  |> Value.to_path ~error_loc:(String_with_vars.loc sw) ~dir:(Path.build t.dir)
 
 let expand_str t sw =
   expand t ~mode:Single ~template:sw
-  |> Value.to_string ~dir:t.dir
+  |> Value.to_string ~dir:(Path.build t.dir)
 
 type reduced_var_result =
   | Unknown
@@ -233,11 +233,12 @@ let resolve_binary t ~loc ~prog =
     Error {Import. fail = fun () -> Action.Prog.Not_found.raise e }
 
 let expand_and_record acc ~map_exe ~dep_kind ~scope
-      ~expansion_kind ~dir ~pform t expansion
-      ~(cc : dir:Path.t -> (unit, Value.t list) Build.t C.Kind.Dict.t) =
+      ~expansion_kind ~(dir : Path.Build.t) ~pform t expansion
+      ~(cc : dir:Path.Build.t -> (unit, Value.t list) Build.t C.Kind.Dict.t) =
   let key = String_with_vars.Var.full_name pform in
   let loc = String_with_vars.Var.loc pform in
-  let relative = Path.relative ~error_loc:loc in
+  let relative d s =
+    Path.build (Path.Build.relative ~error_loc:loc d s) in
   let add_ddep =
     match expansion_kind with
     | Static -> fun _ ->
@@ -346,7 +347,7 @@ let expand_and_record acc ~map_exe ~dep_kind ~scope
         }
     end
 
-let expand_and_record_deps acc ~dir ~read_package ~dep_kind
+let expand_and_record_deps acc ~(dir : Path.Build.t) ~read_package ~dep_kind
       ~targets_written_by_user ~map_exe ~expand_var ~cc
       t pform syntax_version =
   let res =
@@ -400,7 +401,8 @@ let expand_no_ddeps acc ~dir ~dep_kind ~map_exe ~expand_var
   Option.map res ~f:Result.ok
 
 let gen_with_record_deps ~expand t resolved_forms ~dep_kind ~map_exe
-      ~(c_flags : dir:Path.t -> (unit, string list) Build.t C.Kind.Dict.t) =
+      ~(c_flags : dir:Path.Build.t
+        -> (unit, string list) Build.t C.Kind.Dict.t) =
   let cc ~dir = cc_of_c_flags t (c_flags ~dir) in
   let expand_var =
     expand
@@ -487,7 +489,7 @@ let add_ddeps_and_bindings t ~dynamic_expansions ~deps_written_by_user =
 
 let expand_and_eval_set t set ~standard =
   let open Build.O in
-  let dir = dir t in
+  let dir = Path.build (dir t) in
   let parse ~loc:_ s = s in
   let standard =
     if Ordered_set_lang.Unexpanded.has_special_forms set then
@@ -521,4 +523,4 @@ let expand_and_eval_set t set ~standard =
 
 let eval_blang t = function
   | Blang.Const x -> x (* common case *)
-  | blang -> Blang.eval blang ~dir:t.dir ~f:(expand_var_exn t)
+  | blang -> Blang.eval blang ~dir:(Path.build t.dir) ~f:(expand_var_exn t)

@@ -4,7 +4,7 @@ open Dune_file
 
 let mlds_by_package_def =
   let module Output = struct
-    type t = Path.t list Package.Name.Map.t
+    type t = Path.Build.t list Package.Name.Map.t
 
     let to_sexp _ = Sexp.Encoder.string "opaque"
   end
@@ -22,10 +22,7 @@ let mlds_by_package_def =
        |> List.concat_map ~f:(fun (w : _ Dir_with_dune.t) ->
          List.filter_map w.data ~f:(function
            | Documentation d ->
-             let dc =
-               Dir_contents.get_without_rules
-                 sctx ~dir:(Path.as_in_build_dir_exn w.ctx_dir)
-             in
+             let dc = Dir_contents.get_without_rules sctx ~dir:w.ctx_dir in
              let mlds = Dir_contents.mlds dc d in
              Some (d.package.name, mlds)
            | _ ->

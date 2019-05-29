@@ -29,35 +29,42 @@ open! Import
     where the command is executed. For instance [Path (Path.of_string
     "src/foo.ml")] will translate to "../src/foo.ml" if the command is
     started from the "test" directory.  *)
-type static = Static
-type dynamic = Dynamic
 
-type ('a, _) t =
-  | A        : string -> ('a, _) t
-  | As       : string list -> ('a, _) t
-  | S        : ('a, 'b) t list -> ('a, 'b) t
-  | Concat   : string * ('a, 'b) t list  -> ('a, 'b) t
-  | Dep      : Path.t -> ('a, _) t
-  | Deps     : Path.t list -> ('a, _) t
-  | Target   : Path.t -> ('a, dynamic) t
-  | Path     : Path.t -> ('a, _) t
-  | Paths    : Path.t list -> ('a, _) t
-  | Hidden_deps    : Dep.Set.t -> ('a, _) t
-  | Hidden_targets : Path.t list -> ('a, dynamic) t
-  | Dyn      : ('a -> (Nothing.t, static) t) -> ('a, dynamic) t
-  | Fail     : fail -> ('a, _) t
+module Args : sig
+  type static = Static
+  type dynamic = Dynamic
 
-val static_deps    : _ t list -> Dep.Set.t
-val add_targets : (_, dynamic) t list -> Path.t list -> Path.t list
-val expand
+  type _ t =
+    | A        : string -> _ t
+    | As       : string list -> _ t
+    | S        : 'a t list -> 'a t
+    | Concat   : string * 'a t list  -> 'a t
+    | Dep      : Path.t -> _ t
+    | Deps     : Path.t list -> _ t
+    | Target   : Path.t -> dynamic t
+    | Path     : Path.t -> _ t
+    | Paths    : Path.t list -> _ t
+    | Hidden_deps    : Dep.Set.t -> _ t
+    | Hidden_targets : Path.t list -> dynamic t
+    | Dyn      : static t Build.s -> dynamic t
+    | Fail     : fail -> _ t
+
+  (* Create dynamic command line arguments. *)
+  val dyn : string list Build.s -> dynamic t
+end
+
+(* TODO: Using list in [dynamic t list] complicates the API unnecessarily: we
+can use the constructor [S] to concatenate lists instead. *)
+val run
   :  dir:Path.t
-  -> ('a, dynamic) t list
-  -> 'a
-  -> string list * Dep.Set.t
+  -> ?stdout_to:Path.t
+  -> Action.Prog.t
+  -> Args.dynamic Args.t list
+  -> Action.t Build.s
 
 (** [quote_args quote args] is [As \[quote; arg1; quote; arg2; ...\]] *)
-val quote_args : string -> string list -> _ t
+val quote_args : string -> string list -> _ Args.t
 
-val of_result : ('a, 'b) t Or_exn.t -> ('a, 'b) t
-val of_result_map : 'a Or_exn.t -> f:('a -> ('b, 'c) t) -> ('b, 'c) t
-val fail : exn -> ('a, 'b) t
+val of_result : 'a Args.t Or_exn.t -> 'a Args.t
+val of_result_map : 'a Or_exn.t -> f:('a -> 'b Args.t) -> 'b Args.t
+val fail : exn -> 'a Args.t

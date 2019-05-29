@@ -102,7 +102,7 @@ let deps_of cctx ~ml_kind unit =
     match Module.file unit ml_kind with
     | None -> Build.return []
     | Some file ->
-      let dir = Path.build (Compilation_context.dir cctx) in
+      let dir = Compilation_context.dir cctx in
       let file_in_obj_dir ~suffix file =
         let base = Path.basename file in
         Path.relative
@@ -121,10 +121,9 @@ let deps_of cctx ~ml_kind unit =
       SC.add_rule sctx ~dir
         (let flags =
            Option.value (Module.pp_flags unit) ~default:(Build.return []) in
-         flags >>>
-         Build.run (Ok context.ocamldep) ~dir:context.build_dir
+         Command.run (Ok context.ocamldep) ~dir:(Path.build context.build_dir)
            [ A "-modules"
-           ; Dyn (fun flags -> As flags)
+           ; Command.Args.dyn flags
            ; Ml_kind.flag ml_kind
            ; Dep file
            ]

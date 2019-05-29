@@ -44,9 +44,10 @@ let make ~(ctx : Context.t) ~dir ~dir_contents (lib : Library.t) =
              files @ [ Library.archive ~dir lib ~ext:".cmxs" ]
            else
              files)
-      ; List.map lib.buildable.js_of_ocaml.javascript_files ~f:(Path.relative dir)
+      ; List.map lib.buildable.js_of_ocaml.javascript_files
+          ~f:(Path.Build.relative dir)
       ; List.map lib.install_c_headers ~f:(fun fn ->
-          Path.relative dir (fn ^ ".h"))
+          Path.Build.relative dir (fn ^ ".h"))
       ]
   in
   let dlls  =
@@ -54,6 +55,8 @@ let make ~(ctx : Context.t) ~dir ~dir_contents (lib : Library.t) =
          Dynlink_supported.get lib.dynlink ctx.supports_shared_libraries)
       [Library.dll ~dir lib ~ext_dll:ctx.ext_dll]
   in
+  let files = List.map ~f:Path.build files in
+  let dlls = List.map ~f:Path.build dlls in
   { files
   ; dlls
   }

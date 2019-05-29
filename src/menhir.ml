@@ -38,11 +38,11 @@ module type PARAMS = sig
   (* [dir] is the directory inside [_build/<context>/...] where the build
      happens. If the [(menhir ...)] stanza appears in [src/jbuild], then [dir]
      is of the form [_build/<context>/src], e.g., [_build/default/src]. *)
-  val dir : Path.t
+  val dir : Path.Build.t
 
   (* [build_dir] is the base directory of the context; we run menhir
      from this directoy to we get correct error paths. *)
-  val build_dir : Path.t
+  val build_dir : Path.Build.t
 
   (* [stanza] is the [(menhir ...)] stanza, as found in the [jbuild] file. *)
 
@@ -76,11 +76,11 @@ module Run (P : PARAMS) : sig end = struct
      that Menhir must build. *)
 
   let source m =
-    Path.relative dir (m ^ ".mly")
+    Path.relative (Path.build dir) (m ^ ".mly")
 
   let targets m ~cmly =
     let base = [m ^ ".ml"; m ^ ".mli"] in
-    List.map ~f:(Path.relative dir) (
+    List.map ~f:(Path.relative (Path.build dir)) (
       if cmly then
         (m ^ ".cmly") :: base
       else
@@ -100,36 +100,35 @@ module Run (P : PARAMS) : sig end = struct
     m ^ "__mock"
 
   let mock_ml m : Path.t =
-    Path.relative dir (mock m ^ ".ml.mock")
+    Path.relative (Path.build dir) (mock m ^ ".ml.mock")
 
   let inferred_mli m : Path.t =
-    Path.relative dir (mock m ^ ".mli.inferred")
+    Path.relative (Path.build dir) (mock m ^ ".mli.inferred")
 
   (* ------------------------------------------------------------------------ *)
 
   (* Rule generation. *)
 
   let menhir_binary =
-    SC.resolve_program sctx ~dir:(Path.as_in_build_dir_exn dir) "menhir"
+    SC.resolve_program sctx ~dir "menhir"
       ~loc:None
       ~hint:"try: opam install menhir"
 
-  (* Reminder (from arg_spec.mli):
+  (* Reminder (from command.mli):
 
      [Deps]           is for command line arguments that are dependencies.
      [As]             is for command line arguments
      that are neither dependencies nor targets.
      [Hidden_targets] is for targets that are *not* command line arguments.  *)
 
-  type 'a args =
-    (string list, 'a) Arg_spec.t list
+  type 'a args = 'a Command.Args.t list
 
   (* [menhir args] generates a Menhir command line (a build action). *)
 
-  let menhir (args : 'a args) : (string list, Action.t) Build.t =
-    Build.run ~dir:build_dir menhir_binary args
+  let menhir (args : 'a args) : Action.t Build.s =
+    Command.run ~dir:(Path.build build_dir) menhir_binary args
 
-  let rule ?(mode=stanza.mode) : (unit, Action.t) Build.t -> unit =
+  let rule ?(mode=stanza.mode) :Action.t Build.s -> unit =
     SC.add_rule sctx ~dir ~mode ~loc:stanza.loc
 
   let expand_flags flags =
@@ -195,12 +194,10 @@ module Run (P : PARAMS) : sig end = struct
     (* 1. A first invocation of Menhir creates a mock [.ml] file. *)
 
     rule ~mode:Standard (
-      expanded_flags
-      >>>
       menhir
-        [ Dyn (fun flags -> As flags)
+        [ Command.Args.dyn expanded_flags
         ; Deps (sources stanza.modules)
-        ; A "--base" ; Path (Path.relative dir base)
+        ; A "--base" ; Path (Path.relative (Path.build dir) base)
         ; A "--infer-write-query"; Target (mock_ml base)
         ]
     );
@@ -238,12 +235,10 @@ module Run (P : PARAMS) : sig end = struct
     (* 3. A second invocation of Menhir reads the inferred [.mli] file. *)
 
     rule (
-      expanded_flags
-      >>>
       menhir
-        [ Dyn (fun flags -> As flags)
+        [ Command.Args.dyn expanded_flags
         ; Deps (sources stanza.modules)
-        ; A "--base" ; Path (Path.relative dir base)
+        ; A "--base" ; Path (Path.relative (Path.build dir) base)
         ; A "--infer-read-reply"; Dep (inferred_mli base)
         ; Hidden_targets (targets base ~cmly)
         ]
@@ -257,12 +252,10 @@ module Run (P : PARAMS) : sig end = struct
   let process1 base ~cmly (stanza : stanza) : unit =
     let expanded_flags = expand_flags stanza.flags in
     rule (
-      expanded_flags
-      >>>
       menhir
-        [ Dyn (fun flags -> As flags)
+        [ Command.Args.dyn expanded_flags
         ; Deps (sources stanza.modules)
-        ; A "--base" ; Path (Path.relative dir base)
+        ; A "--base" ; Path (Path.relative (Path.build dir) base)
         ; Hidden_targets (targets base ~cmly)
         ]
     )

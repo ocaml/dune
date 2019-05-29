@@ -1081,16 +1081,16 @@ module Library = struct
     in
     name ^ "_stubs"
 
-  let stubs t ~dir = Path.relative dir (stubs_name t)
+  let stubs t ~dir = Path.Build.relative dir (stubs_name t)
 
   let stubs_archive t ~dir ~ext_lib =
-    Path.relative dir (sprintf "lib%s%s" (stubs_name t) ext_lib)
+    Path.Build.relative dir (sprintf "lib%s%s" (stubs_name t) ext_lib)
 
   let dll t ~dir ~ext_dll =
-    Path.relative dir (sprintf "dll%s%s" (stubs_name t) ext_dll)
+    Path.Build.relative dir (sprintf "dll%s%s" (stubs_name t) ext_dll)
 
   let archive t ~dir ~ext =
-    Path.relative dir (Lib_name.Local.to_string (snd t.name) ^ ext)
+    Path.Build.relative dir (Lib_name.Local.to_string (snd t.name) ^ ext)
 
   let best_name t =
     match t.public with

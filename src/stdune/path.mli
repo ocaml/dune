@@ -253,3 +253,5 @@ val stat : t -> Unix.stats
    to change the [Set] signature because then we don't comply with [Path_intf.S]
 *)
 val set_of_source_paths : Source.Set.t -> Set.t
+
+val set_of_build_paths_list : Build.t list -> Set.t

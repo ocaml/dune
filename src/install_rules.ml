@@ -36,7 +36,9 @@ let gen_dune_package sctx ~version ~(pkg : Local_package.t) =
               let foreign_objects =
                 let dir = Obj_dir.obj_dir (Lib.obj_dir lib) in
                 Dir_contents.c_sources_of_library dir_contents ~name
-                |> C.Sources.objects ~dir ~ext_obj:ctx.ext_obj
+                |> C.Sources.objects ~dir:(Path.as_in_build_dir_exn dir)
+                     ~ext_obj:ctx.ext_obj
+                |> List.map ~f:Path.build
               in
               Lib.to_dune_lib lib ~dir:(Path.build (lib_root lib)) ~lib_modules
                 ~foreign_objects)
@@ -243,7 +245,8 @@ let lib_install_files sctx ~dir_contents ~dir ~sub_dir:lib_subdir
     )
   in
   let archives = Lib_archives.make ~ctx ~dir_contents ~dir lib in
-  let execs = lib_ppxs sctx ~lib ~scope ~dir_kind in
+  let execs =
+    List.map ~f:Path.build (lib_ppxs sctx ~lib ~scope ~dir_kind) in
   List.concat
     [ sources
     ; List.map module_files ~f:(fun (visibility, file) ->
@@ -313,8 +316,8 @@ let install_entries sctx package =
      |> List.map ~f:(fun mld ->
        (None,
         Install.Entry.make
-          ~dst:(sprintf "odoc-pages/%s" (Path.basename mld))
-          Install.Section.Doc mld)))
+          ~dst:(sprintf "odoc-pages/%s" (Path.Build.basename mld))
+          Install.Section.Doc (Path.build mld))))
     @
     (Local_package.odig_files package
      |> List.map
@@ -332,9 +335,7 @@ let install_entries sctx package =
                  ; dune_version = _
                  } ->
               let sub_dir = (Option.value_exn lib.public).sub_dir in
-              let dir_contents = Dir_contents.get_without_rules sctx ~dir:(
-                Path.as_in_build_dir_exn dir)
-              in
+              let dir_contents = Dir_contents.get_without_rules sctx ~dir in
               lib_install_files sctx ~dir ~sub_dir lib ~scope
                 ~dir_kind ~dir_contents)
   in
@@ -398,9 +399,9 @@ let install_rules sctx package =
   in
   let ctx = Super_context.context sctx in
   let package_name = Local_package.name package in
-  let pkg_build_dir = Path.build (Local_package.build_dir package) in
+  let pkg_build_dir = Local_package.build_dir package in
   let install_file =
-    Path.relative
+    Path.Build.relative
       pkg_build_dir
       (Utils.install_file ~package:package_name
          ~findlib_toolchain:ctx.findlib_toolchain)
@@ -442,7 +443,7 @@ let install_rules sctx package =
        in
        Install.gen_install_file entries)
      >>>
-     Build.write_file_dyn install_file)
+     Build.write_file_dyn (Path.build install_file))
 
 let install_alias (ctx : Context.t) (package : Local_package.t) =
   if not ctx.implicit then
@@ -486,7 +487,7 @@ let memo =
                 Dir_set.subtree
                   (Config.local_install_dir ~context:context_name);
                 Dir_set.singleton (Local_package.build_dir pkg);
-                Dir_set.singleton (Path.as_in_build_dir_exn ctx.build_dir)
+                Dir_set.singleton ctx.build_dir
               ])
            ,
            Thunk (fun () -> Finite (

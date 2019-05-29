@@ -95,7 +95,7 @@ let opam_template sctx ~pkg =
   in
   if File_tree.file_exists file_tree opam_template_path then
     let build_dir = Super_context.build_dir sctx in
-    Some (Path.append_source build_dir opam_template_path)
+    Some (Path.Build.append_source build_dir opam_template_path)
   else
     None
 
@@ -104,7 +104,7 @@ let add_rule sctx ~project ~pkg =
   let opam_path = Path.build (Local_package.opam_file pkg) in
   let opam_rule =
     (match opam_template sctx ~pkg:(Local_package.package pkg) with
-     | Some p -> Build.contents p
+     | Some p -> Build.contents (Path.build p)
      | None -> Build.return "")
     >>>
     Build.arr (fun template ->
@@ -124,7 +124,7 @@ let add_rule sctx ~project ~pkg =
         template)
     >>> Build.write_file_dyn opam_path
   in
-  let dir = Path.build (Local_package.build_dir pkg) in
+  let dir = Local_package.build_dir pkg in
   let mode =
     Dune_file.Rule.Mode.Promote
       { lifetime = Unlimited
@@ -134,6 +134,7 @@ let add_rule sctx ~project ~pkg =
   in
   Super_context.add_rule sctx ~mode ~dir opam_rule;
   let aliases =
+    let dir = Path.build dir in
     [ Alias.install ~dir
     ; Alias.runtest ~dir
     ; Alias.check ~dir (* check doesn't pick up the promote target? *)

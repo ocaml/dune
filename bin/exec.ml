@@ -52,7 +52,7 @@ let term =
       `Search prog
     | Relative_to_current_dir ->
       let prog = Common.prefix_target common prog in
-      `This_rel (Path.relative context.build_dir prog) in
+      `This_rel (Path.build (Path.Build.relative context.build_dir prog)) in
   let targets = lazy (
     (match prog_where with
      | `Search p ->

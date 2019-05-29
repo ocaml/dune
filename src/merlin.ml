@@ -190,7 +190,7 @@ let pp_flags sctx ~expander ~dir_kind { preprocess; libname; _ }
     with
     | Error _ -> Build.return None
     | Ok (exe, flags) ->
-      (Path.to_absolute_filename exe
+      (Path.to_absolute_filename (Path.build exe)
        :: "--as-ppx" :: flags)
       |> List.map ~f:quote_for_merlin
       |> String.concat ~sep:" "
@@ -206,9 +206,9 @@ let pp_flags sctx ~expander ~dir_kind { preprocess; libname; _ }
 
 let dot_merlin sctx ~dir ~more_src_dirs ~expander ~dir_kind
       ({ requires; flags; _ } as t) =
-  Path.drop_build_context dir
+  Path.Build.drop_build_context dir
   |> Option.iter ~f:(fun remaindir ->
-    let merlin_file = Path.relative dir ".merlin" in
+    let merlin_file = Path.Build.relative dir ".merlin" in
     (* We make the compilation of .ml/.mli files depend on the
        existence of .merlin so that they are always generated, however
        the command themselves don't read the merlin file, so we don't
@@ -218,11 +218,12 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander ~dir_kind
        Currently dune doesn't support declaring a dependency only
        on the existence of a file, so we have to use this trick. *)
     SC.add_rule sctx ~dir
-      (Build.path merlin_file
+      (Build.path (Path.build merlin_file)
        >>>
-       Build.create_file (Path.relative dir ".merlin-exists"));
-    Path.Set.singleton merlin_file
-    |> Rules.Produce.Alias.add_deps (Alias.check ~dir);
+       Build.create_file (Path.build
+                            (Path.Build.relative dir ".merlin-exists")));
+    Path.Set.singleton (Path.build merlin_file)
+    |> Rules.Produce.Alias.add_deps (Alias.check ~dir:(Path.build dir));
     let pp_flags = pp_flags sctx ~expander ~dir_kind t in
     SC.add_rule sctx ~dir
       ~mode:(Promote
@@ -255,7 +256,7 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander ~dir_kind
           ~src_dirs
           ~obj_dirs)
       >>>
-      Build.write_file_dyn merlin_file))
+      Build.write_file_dyn (Path.build merlin_file)))
 
 let merge_two ~allow_approx_merlin a b =
   { requires = Lib.Set.union a.requires b.requires

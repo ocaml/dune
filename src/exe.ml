@@ -130,7 +130,7 @@ let link_exe
   let requires = CC.requires_link cctx in
   let expander = CC.expander      cctx in
   let mode = linkage.mode in
-  let exe = Path.build (exe_path_from_name cctx ~name ~linkage) in
+  let exe = exe_path_from_name cctx ~name ~linkage in
   let compiler = Option.value_exn (Context.compiler ctx mode) in
   let kind = Mode.cm_kind mode in
   let artifacts ~ext modules =
@@ -151,42 +151,37 @@ let link_exe
         artifacts modules ~ext:ctx.ext_obj))
   in
   (* The rule *)
-  SC.add_rule sctx ~loc ~dir:(Path.build dir)
-    (Build.fanout3
-       (register_native_objs_deps modules_and_cm_files >>^ snd)
-       (Ocaml_flags.get (CC.flags cctx) mode)
-       link_flags
-     >>>
-     Build.of_result_map requires ~f:(fun libs ->
-       Build.paths (Lib.L.archive_files libs ~mode))
-     >>>
-     Build.run ~dir:ctx.build_dir
-       (Ok compiler)
-       [ Dyn (fun (_, flags,_) -> As flags)
-       ; A "-o"; Target exe
-       ; As linkage.flags
-       ; Dyn (fun (_, _, link_flags) -> As link_flags)
-       ; Arg_spec.of_result_map link_time_code_gen
-           ~f:(fun { Link_time_code_gen.to_link; force_linkall } ->
-             S [ As (if force_linkall then ["-linkall"] else [])
-               ; Lib.Lib_and_module.L.link_flags to_link ~mode
-                   ~stdlib_dir:ctx.stdlib_dir
-               ])
-       ; Dyn (fun (cm_files, _, _) -> Deps cm_files)
-       ]);
+  SC.add_rule sctx ~loc ~dir
+    (let cm_files    = register_native_objs_deps modules_and_cm_files >>^ snd in
+     let ocaml_flags = Ocaml_flags.get (CC.flags cctx) mode
+     in
+     Build.S.seq (Build.of_result_map requires ~f:(fun libs ->
+       Build.paths (Lib.L.archive_files libs ~mode)))
+       (Command.run ~dir:(Path.build ctx.build_dir)
+          (Ok compiler)
+          [ Command.Args.dyn ocaml_flags
+          ; A "-o"; Target (Path.build exe)
+          ; As linkage.flags
+          ; Command.Args.dyn link_flags
+          ; Command.of_result_map link_time_code_gen
+              ~f:(fun { Link_time_code_gen.to_link; force_linkall } ->
+                S [ As (if force_linkall then ["-linkall"] else [])
+                  ; Lib.Lib_and_module.L.link_flags to_link ~mode
+                      ~stdlib_dir:ctx.stdlib_dir
+                  ])
+          ; Dyn (Build.S.map cm_files ~f:(fun x -> Command.Args.Deps x))
+          ]));
   if linkage.ext = ".bc" then
+    let cm = modules_and_cm_files >>^ snd in
+    let flags =
+      (Expander.expand_and_eval_set expander
+         js_of_ocaml.flags
+         ~standard:(Build.return (Js_of_ocaml_rules.standard sctx))) in
     let rules =
-      Js_of_ocaml_rules.build_exe cctx ~js_of_ocaml ~src:exe
+      Js_of_ocaml_rules.build_exe cctx ~js_of_ocaml ~src:exe ~cm
+        ~flags:(Command.Args.dyn flags)
     in
-    let cm_and_flags =
-      Build.fanout
-        (modules_and_cm_files >>^ snd)
-        (Expander.expand_and_eval_set expander
-           js_of_ocaml.flags
-           ~standard:(Build.return (Js_of_ocaml_rules.standard sctx)))
-    in
-    SC.add_rules ~dir:(Path.build dir) sctx
-      (List.map rules ~f:(fun r -> cm_and_flags >>> r))
+    SC.add_rules ~dir sctx rules
 
 let build_and_link_many
       ~programs

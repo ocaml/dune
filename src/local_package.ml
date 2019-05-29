@@ -7,7 +7,7 @@ type t =
   ; installs
     : File_binding.Expanded.t Dune_file.Install_conf.t Dir_with_dune.t list
   ; docs : Dune_file.Documentation.t Dir_with_dune.t list
-  ; mlds : Path.t list Lazy.t
+  ; mlds : Path.Build.t list Lazy.t
   ; coqlibs : Dune_file.Coq.t Dir_with_dune.t list
   ; pkg : Package.t
   ; libs : Lib.Set.t
@@ -32,10 +32,9 @@ let add_stanzas t ~sctx =
   List.fold_left ~init:t
     ~f:(fun t ({ Dir_with_dune. ctx_dir = dir ; scope = _ ; data
                ; src_dir = _ ; kind = _; dune_version = _ } as d) ->
-         let expander = Super_context.expander sctx
-                          ~dir:(Path.as_in_build_dir_exn dir) in
+         let expander = Super_context.expander sctx ~dir in
          let path_expander =
-           File_binding.Unexpanded.expand ~dir
+           File_binding.Unexpanded.expand ~dir:(Path.build dir)
              ~f:(Expander.expand_str expander)
          in
          let open Dune_file in
@@ -128,15 +127,14 @@ module Of_sctx = struct
           | Some (_, libs) -> libs
           | None -> Lib.Set.empty
       in
-      let ctx_build_dir = Path.as_in_build_dir_exn ctx.build_dir in
       Super_context.packages sctx
       |> Package.Name.Map.map ~f:(fun (pkg : Package.t) ->
         let odig_files =
-          let files =
-            Super_context.source_files sctx ~src_path:Path.Source.root in
+          let files = Super_context.source_files sctx ~src_path:pkg.path in
+          let pkg_dir = Path.Build.append_source ctx.build_dir pkg.path in
           String.Set.fold files ~init:[] ~f:(fun fn acc ->
             if is_odig_doc_file fn then
-              Path.Build.relative ctx_build_dir fn :: acc
+              Path.Build.relative pkg_dir fn :: acc
             else
               acc)
         in
@@ -153,7 +151,7 @@ module Of_sctx = struct
             ; installs = []
             ; coqlibs = []
             ; pkg
-            ; ctx_build_dir
+            ; ctx_build_dir = ctx.build_dir
             ; libs
             ; mlds = lazy (assert false)
             ; virtual_lib

@@ -19,7 +19,7 @@ type t
 
 (** A Coq module [a.b.foo] defined in file [a/b/foo.v] *)
 val make
-  :  source:Path.t
+  :  source:Path.Build.t
   (** file = .v source file; module name has to be the same so far *)
   -> prefix:string list
   (** Library-local qualified prefix *)
@@ -29,12 +29,12 @@ val make
 
 (** Coq does enforce some invariants wrt module vs file names *)
 
-val source : t -> Path.t
+val source : t -> Path.Build.t
 val prefix : t -> string list
 val name : t -> string
-val obj_file : obj_dir:Path.t -> ext:string -> t -> Path.t
+val obj_file : obj_dir:Path.Build.t -> ext:string -> t -> Path.Build.t
 val pp : t Fmt.t
 
 (** Parses a form "a.b.c" to a module *)
-val parse : dir:Path.t -> loc:Loc.t -> string -> t
+val parse : dir:Path.Build.t -> loc:Loc.t -> string -> t
 module Eval : Ordered_set_lang.S with type value := t

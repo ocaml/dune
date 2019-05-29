@@ -69,7 +69,7 @@ type t = private
   }
 
 val of_library_stanza
-  :  dir:Path.t
+  :  dir:Path.Build.t
   -> lib_config:Lib_config.t
   -> Dune_file.Library.t
   -> t

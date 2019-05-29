@@ -35,9 +35,12 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
             | String s ->
               if Filename.dirname s <> Filename.current_dir_name then
                 not_in_dir ~error_loc s;
-              Path.relative ~error_loc dir s
+              Path.relative ~error_loc (Path.build dir) s
             | Path p ->
-              if Path.parent p <> Some dir then
+              if Option.compare Path.compare
+                   (Path.parent p) (Some (Path.build dir))
+                   <> Eq
+              then
                 not_in_dir ~error_loc (Path.to_string p);
               p
             | Dir p ->
@@ -88,12 +91,14 @@ let copy_files sctx ~dir ~expander ~src_dir (def: Copy_files.t) =
       "cannot find directory: %a"
       Path.Source.pp src_in_src;
   (* add rules *)
-  let src_in_build = Path.append_source (SC.context sctx).build_dir src_in_src in
+  let src_in_build =
+    Path.Build.append_source (SC.context sctx).build_dir src_in_src in
   let files =
-    Build_system.eval_pred (File_selector.create ~dir:src_in_build pred) in
+    Build_system.eval_pred
+      (File_selector.create ~dir:(Path.build src_in_build) pred) in
   Path.Set.map files ~f:(fun file_src ->
     let basename = Path.basename file_src in
-    let file_dst = Path.relative dir basename in
+    let file_dst = Path.build (Path.Build.relative dir basename) in
     SC.add_rule sctx ~loc ~dir
       ((if def.add_line_directive
         then Build.copy_and_add_line_directive
@@ -103,7 +108,7 @@ let copy_files sctx ~dir ~expander ~src_dir (def: Copy_files.t) =
     file_dst)
 
 let add_alias sctx ~dir ~name ~stamp ~loc ?(locks=[]) build =
-  let alias = Alias.make name ~dir in
+  let alias = Alias.make name ~dir:(Path.build dir) in
   SC.add_alias_action sctx alias ~dir ~loc ~locks ~stamp build
 
 let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =

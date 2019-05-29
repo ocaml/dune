@@ -7,11 +7,11 @@
         ocamlc lib/.x.objs/byte/x__.{cmi,cmo,cmt}
         ocamlc lib/.x.objs/byte/x__Y.{cmi,cmo,cmt}
       ocamlopt lib/.x.objs/native/x__Y.{cmx,o}
+   js_of_ocaml bin/technologic.bc.runtime.js
            ppx bin/technologic.pp.ml
       ocamldep bin/.technologic.eobjs/technologic.pp.ml.d
            ppx bin/z.pp.ml
       ocamldep bin/.technologic.eobjs/z.pp.ml.d
-   js_of_ocaml bin/technologic.bc.runtime.js
    js_of_ocaml .js/js_of_ocaml/js_of_ocaml.cma.js
            ppx lib/x.pp.ml
       ocamldep lib/.x.objs/x.pp.ml.d

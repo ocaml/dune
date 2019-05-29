@@ -73,21 +73,21 @@ module L : sig
   type lib
   type nonrec t = t list
 
-  val to_iflags : Path.Set.t -> ('a, 'b) Arg_spec.t
+  val to_iflags : Path.Set.t -> 'a Command.Args.t
 
   val include_paths : t -> stdlib_dir:Path.t -> Path.Set.t
-  val include_flags : t -> stdlib_dir:Path.t -> _ Arg_spec.t
+  val include_flags : t -> stdlib_dir:Path.t -> _ Command.Args.t
 
-  val c_include_flags : t -> stdlib_dir:Path.t -> _ Arg_spec.t
+  val c_include_flags : t -> stdlib_dir:Path.t -> _ Command.Args.t
 
-  val link_flags : t -> mode:Mode.t -> stdlib_dir:Path.t -> _ Arg_spec.t
+  val link_flags : t -> mode:Mode.t -> stdlib_dir:Path.t -> _ Command.Args.t
 
   val compile_and_link_flags
     :  compile:t
     -> link:t
     -> mode:Mode.t
     -> stdlib_dir:Path.t
-    -> _ Arg_spec.t
+    -> _ Command.Args.t
 
   (** All the library archive files (.a, .cmxa, _stubs.a, ...)  that
       should be linked in when linking an executable. *)
@@ -117,7 +117,7 @@ module Lib_and_module : sig
   module L : sig
     type nonrec t = t list
     val of_libs : lib list -> t
-    val link_flags : t -> mode:Mode.t -> stdlib_dir:Path.t -> _ Arg_spec.t
+    val link_flags : t -> mode:Mode.t -> stdlib_dir:Path.t -> _ Command.Args.t
   end
 end with type lib := t
 
@@ -268,7 +268,7 @@ module DB : sig
   val create_from_library_stanzas
     :  ?parent:t
     -> lib_config:Lib_config.t
-    -> (Path.t * Dune_file.Library.t) list
+    -> (Path.Build.t * Dune_file.Library.t) list
     -> t
 
   val create_from_findlib

@@ -9,7 +9,7 @@ val rules
   :  dir:Path.t
   -> ctx:Context.t
   -> unit:Path.t
-  -> (_, Action.t) Build.t * (_, t) Build.t
+  -> Action.t Build.s * t Build.s
 
 (** For testing only *)
 val parse : string -> t

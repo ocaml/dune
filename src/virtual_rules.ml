@@ -34,14 +34,14 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
   let ctx = Super_context.context sctx in
   let vlib = Vimpl.vlib vimpl in
   let impl = Vimpl.impl vimpl in
-  let impl_obj_dir =
-    Dune_file.Library.obj_dir ~dir:(Path.as_in_build_dir_exn dir) impl in
+  let impl_obj_dir = Dune_file.Library.obj_dir ~dir impl in
   let vlib_obj_dir = Lib.obj_dir vlib in
   let vlib_modules = Vimpl.vlib_modules vimpl in
   let copy_to_obj_dir ~src ~dst =
     Super_context.add_rule ~dir ~loc:(Loc.of_pos __POS__)
       sctx (Build.symlink ~src ~dst)
   in
+  let add_rule = Super_context.add_rule ~dir in
   let modes =
     Dune_file.Mode_conf.Set.eval impl.modes
       ~has_native:(Option.is_some ctx.ocamlopt) in
@@ -96,7 +96,7 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
             >>>
             Build.write_file_dyn
               (all_deps ~obj_dir:(Obj_dir.obj_dir impl_obj_dir) f)
-            |> Super_context.add_rule sctx ~dir))
+            |> add_rule sctx))
   in
   Option.iter (Lib_modules.alias_module vlib_modules) ~f:copy_objs;
   Module.Name.Map.iter (Lib_modules.modules vlib_modules)
@@ -213,8 +213,7 @@ let external_dep_graph sctx ~impl_cm_kind ~vlib_obj_dir ~impl_obj_dir
               Module.Name.Map.find modules name
           end)
     in
-    let dir = Path.build impl_obj_dir in
-    Dep_graph.make ~dir
+    Dep_graph.make ~dir:(Path.build impl_obj_dir)
       ~per_module:(Module.Name.Map.map modules ~f:(fun m ->
         let deps =
           if (ml_kind = Intf && not (Module.has_intf m))
@@ -223,7 +222,7 @@ let external_dep_graph sctx ~impl_cm_kind ~vlib_obj_dir ~impl_obj_dir
             Build.return []
           else
             let (write, read) = ocamlobjinfo m cm_kind in
-            Super_context.add_rule sctx ~dir write;
+            Super_context.add_rule sctx ~dir:impl_obj_dir write;
             let open Build.O in
             Build.memoize "ocamlobjinfo" @@
             read >>^ deps_from_objinfo ~for_module:m
@@ -270,7 +269,8 @@ let impl sctx ~dir ~(lib : Dune_file.Library.t) ~scope ~modules =
             let ext_obj = (Super_context.context sctx).ext_obj in
             let dir = Obj_dir.obj_dir (Lib.obj_dir vlib) in
             Dir_contents.c_sources_of_library dir_contents ~name
-            |> C.Sources.objects ~ext_obj ~dir
+            |> C.Sources.objects ~ext_obj ~dir:(Path.as_in_build_dir_exn dir)
+            |> List.map ~f:Path.build
           in
           (modules, foreign_objects)
       in

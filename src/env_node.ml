@@ -112,8 +112,7 @@ let rec ocaml_flags t ~profile ~expander =
       match find_config t ~profile with
       | None -> default
       | Some cfg ->
-        let dir = Path.build t.dir in
-        let expander = Expander.set_dir expander ~dir in
+        let expander = Expander.set_dir expander ~dir:t.dir in
         Ocaml_flags.make
           ~spec:cfg.flags
           ~default
@@ -135,8 +134,7 @@ let rec c_flags t ~profile ~expander ~default_context_flags =
       match find_config t ~profile with
       | None -> default
       | Some cfg ->
-        let dir = Path.build t.dir in
-        let expander = Expander.set_dir expander ~dir in
+        let expander = Expander.set_dir expander ~dir:t.dir in
         C.Kind.Dict.mapi cfg.c_flags ~f:(fun ~kind f ->
           let default = C.Kind.Dict.get default kind in
           Expander.expand_and_eval_set expander f ~standard:default)

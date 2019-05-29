@@ -93,12 +93,12 @@ end
 module Source = struct
   type t =
     { kind : Kind.t
-    ; path : Path.t
+    ; path : Path.Build.t
     }
 
   let kind t = t.kind
   let path t = t.path
-  let src_dir t = Path.parent_exn t.path
+  let src_dir t = Path.Build.parent_exn t.path
 
   let make ~kind ~path =
     { kind
@@ -111,7 +111,7 @@ module Sources = struct
 
   let objects (t : t) ~dir ~ext_obj =
     String.Map.keys t
-    |> List.map ~f:(fun c -> Path.relative dir (c ^ ext_obj))
+    |> List.map ~f:(fun c -> Path.Build.relative dir (c ^ ext_obj))
 
   let split_by_kind t =
     let (c, cxx) =

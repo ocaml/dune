@@ -13,7 +13,7 @@ val build_dir : t -> Path.Build.t
 
 val lib_stanzas : t -> Dune_file.Library.t Dir_with_dune.t list
 
-val mlds : t -> Path.t list
+val mlds : t -> Path.Build.t list
 
 val installs
   : t

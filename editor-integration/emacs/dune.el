@@ -61,8 +61,8 @@
     (concat (regexp-opt
              '("library" "executable" "executables" "rule" "toplevel"
                "ocamllex" "ocamlyacc" "menhir" "alias" "install"
-               "copy_files" "copy_files#" "include" "tests" "test"
-               "env" "ignored_subdirs" "include_subdirs")
+               "copy_files" "copy_files#" "include" "tests" "test" "dirs"
+               "env" "ignored_subdirs" "include_subdirs" "data_only_dirs")
              ) "\\(?:\\_>\\|[[:space:]]\\)"))
   "Stanzas in dune files.")
 

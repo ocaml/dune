@@ -17,3 +17,8 @@ let of_string = function
   | "symlink" -> Ok (Some Symlink : t)
   | "copy" -> Ok (Some Copy)
   | _ -> error
+
+let to_string = function
+  | None -> "none"
+  | Some Symlink -> "symlink"
+  | Some Copy -> "copy"

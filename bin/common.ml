@@ -327,6 +327,27 @@ let term =
          & info ["j"] ~docs ~docv:"JOBS"
              ~doc:{|Run no more than $(i,JOBS) commands simultaneously.|}
         )
+  and+ sandboxing_preference =
+    let arg =
+      Arg.conv
+        ((fun s ->
+           Result.map_error (Dune.Sandbox_mode.of_string s)
+             ~f:(fun s -> `Msg s)),
+         (fun pp x ->
+            Format.pp_print_string pp (Dune.Sandbox_mode.to_string x)))
+    in
+    Arg.(value
+         & opt (some arg) None
+         & info ["sandbox"]
+             ~doc:(
+               Printf.sprintf
+                 "Sandboxing mode to use by default. Some actions require \
+                  a certain sandboxing mode, so they will ignore this \
+                  setting. The allowed values are: %s."
+                 (String.concat ~sep: ", " (
+                    List.map Dune.Sandbox_mode.all
+                      ~f:Dune.Sandbox_mode.to_string))
+             ))
   and+ debug_dep_path =
     Arg.(value
          & flag
@@ -462,7 +483,8 @@ let term =
     Config.merge config
       { display
       ; concurrency
-      ; sandboxing_preference = None
+      ; sandboxing_preference =
+          Option.map sandboxing_preference ~f:(fun x -> [x])
       }
   in
   let config =

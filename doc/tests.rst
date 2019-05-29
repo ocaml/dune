@@ -21,23 +21,38 @@ do something afterwards, such as diffing its output.
 Running tests
 =============
 
-Whatever the tests of a project are, the usual way to run tests with
-dune is to call ``dune runtest`` from the shell. This will run
-all the tests defined in the current directory and any sub-directory
-recursively. You can also pass a directory argument to run the tests
-from a sub-tree. For instance ``dune runtest test`` will only run
-the tests from the ``test`` directory and any sub-directory of
-``test`` recursively.
+Whatever the tests of a project are, the usual way to run tests with dune is to
+call ``dune runtest`` from the shell. This will run all the tests defined in the
+current directory and any sub-directory recursively.
 
-Note that in any case, ``dune runtest`` is simply a short-hand for
-building the ``runtest`` alias, so you can always ask dune to run
-the tests in conjunction with other targets by passing ``@runtest`` to
-``dune build``. For instance:
+Note that in any case, ``dune runtest`` is simply a short-hand for building the
+``runtest`` alias, so you can always ask dune to run the tests in conjunction
+with other targets by passing ``@runtest`` to ``dune build``. For instance:
 
 .. code:: bash
 
           $ dune build @install @runtest
           $ dune build @install @test/runtest
+
+
+Running a single test
+---------------------
+
+If you would only like to run a single test for your project, you may use ``dune
+exec`` to run the test executable (for the sake of this example,
+``project/tests/myTest.ml``):
+
+.. code:: bash
+
+   dune exec project/tests/myTest.exe
+
+
+Running tests in a directory
+----------------------------
+
+You can also pass a directory argument to run the tests from a sub-tree. For
+instance ``dune runtest test`` will only run the tests from the ``test``
+directory and any sub-directory of ``test`` recursively.
 
 Inline tests
 ============
@@ -182,6 +197,18 @@ running the tests by typing:
 
 Finally, some editor integration is possible to make the editor do the
 promotion and make the workflow even smoother.
+
+Running a subset of the test suite
+----------------------------------
+
+
+You may also run a group of tests located under a directory with:
+
+.. code:: bash
+
+   dune runtest mylib/tests
+
+The above command will run all tests defined in tests and its sub-directories.
 
 Specifying inline test dependencies
 -----------------------------------

@@ -4,24 +4,28 @@ open! Stdune
 open Import
 
 module Preprocess : sig
-  type pps =
-    { loc   : Loc.t
-    ; pps   : (Loc.t * Lib_name.t) list
-    ; flags : String_with_vars.t list
-    ; staged : bool
-    }
+  module Pps : sig
+    type t =
+      { loc   : Loc.t
+      ; pps   : (Loc.t * Lib_name.t) list
+      ; flags : String_with_vars.t list
+      ; staged : bool
+      }
+
+    val compare_no_locs : t -> t -> Ordering.t
+  end
 
   type t =
     | No_preprocessing
     | Action of Loc.t * Action_dune_lang.t
-    | Pps    of pps
+    | Pps    of Pps.t
     | Future_syntax of Loc.t
 
   module Without_future_syntax : sig
     type t =
       | No_preprocessing
       | Action of Loc.t * Action_dune_lang.t
-      | Pps    of pps
+      | Pps    of Pps.t
   end
 
   val loc : t -> Loc.t option

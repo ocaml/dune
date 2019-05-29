@@ -100,16 +100,15 @@ let of_library_stanza ~dir
   let obj_dir =
     Obj_dir.make_lib ~dir
       ~has_private_modules:(conf.private_modules <> None) lib_name in
-  let dir = Path.build dir in
   let gen_archive_file ~dir ext =
     Path.relative dir (Lib_name.Local.to_string lib_name ^ ext) in
-  let archive_file = gen_archive_file ~dir in
+  let archive_file = gen_archive_file ~dir:(Path.build dir) in
   let archive_files ~f_ext =
     Mode.Dict.of_func (fun ~mode -> [archive_file (f_ext mode)])
   in
   let jsoo_runtime =
     List.map conf.buildable.js_of_ocaml.javascript_files
-      ~f:(Path.relative dir)
+      ~f:(Path.relative (Path.build dir))
   in
   let status =
     match conf.public with
@@ -120,21 +119,23 @@ let of_library_stanza ~dir
   let foreign_archives =
     let stubs =
       if Dune_file.Library.has_stubs conf then
-        [Dune_file.Library.stubs_archive conf ~dir ~ext_lib]
+        [Path.build (Dune_file.Library.stubs_archive conf ~dir ~ext_lib)]
       else
         []
     in
     { Mode.Dict.
        byte   = stubs
      ; native =
-         Path.relative dir (Lib_name.Local.to_string lib_name ^ ext_lib)
+         Path.relative (Path.build dir)
+           (Lib_name.Local.to_string lib_name ^ ext_lib)
          :: stubs
      }
   in
   let foreign_archives =
     match conf.stdlib with
     | Some { exit_module = Some m; _ } ->
-      let obj_name = Path.relative dir (Module.Name.uncapitalize m) in
+      let obj_name =
+        Path.relative (Path.build dir) (Module.Name.uncapitalize m) in
       { Mode.Dict.
         byte =
           Path.extend_basename obj_name ~suffix:(Cm_kind.ext Cmo) ::
@@ -165,7 +166,7 @@ let of_library_stanza ~dir
   let modes = Dune_file.Mode_conf.Set.eval ~has_native conf.modes in
   let enabled =
     let enabled_if_result =
-      Blang.eval conf.enabled_if ~dir ~f:(fun v _ver ->
+      Blang.eval conf.enabled_if ~dir:(Path.build dir) ~f:(fun v _ver ->
         match String_with_vars.Var.name v,
               String_with_vars.Var.payload v with
         | var, None ->
@@ -183,7 +184,7 @@ let of_library_stanza ~dir
   { loc = conf.buildable.loc
   ; name
   ; kind     = conf.kind
-  ; src_dir  = dir
+  ; src_dir  = Path.build dir
   ; orig_src_dir = None
   ; obj_dir
   ; version  = None

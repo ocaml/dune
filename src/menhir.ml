@@ -129,7 +129,7 @@ module Run (P : PARAMS) : sig end = struct
     Command.run ~dir:(Path.build build_dir) menhir_binary args
 
   let rule ?(mode=stanza.mode) :Action.t Build.s -> unit =
-    SC.add_rule sctx ~dir:(Path.build dir) ~mode ~loc:stanza.loc
+    SC.add_rule sctx ~dir ~mode ~loc:stanza.loc
 
   let expand_flags flags =
     Expander.expand_and_eval_set expander

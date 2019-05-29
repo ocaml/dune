@@ -130,7 +130,7 @@ let link_exe
   let requires = CC.requires_link cctx in
   let expander = CC.expander      cctx in
   let mode = linkage.mode in
-  let exe = Path.build (exe_path_from_name cctx ~name ~linkage) in
+  let exe = exe_path_from_name cctx ~name ~linkage in
   let compiler = Option.value_exn (Context.compiler ctx mode) in
   let kind = Mode.cm_kind mode in
   let artifacts ~ext modules =
@@ -151,7 +151,7 @@ let link_exe
         artifacts modules ~ext:ctx.ext_obj))
   in
   (* The rule *)
-  SC.add_rule sctx ~loc ~dir:(Path.build dir)
+  SC.add_rule sctx ~loc ~dir
     (let cm_files    = register_native_objs_deps modules_and_cm_files >>^ snd in
      let ocaml_flags = Ocaml_flags.get (CC.flags cctx) mode
      in
@@ -160,7 +160,7 @@ let link_exe
        (Command.run ~dir:(Path.build ctx.build_dir)
           (Ok compiler)
           [ Command.Args.dyn ocaml_flags
-          ; A "-o"; Target exe
+          ; A "-o"; Target (Path.build exe)
           ; As linkage.flags
           ; Command.Args.dyn link_flags
           ; Command.of_result_map link_time_code_gen
@@ -181,7 +181,7 @@ let link_exe
       Js_of_ocaml_rules.build_exe cctx ~js_of_ocaml ~src:exe ~cm
         ~flags:(Command.Args.dyn flags)
     in
-    SC.add_rules ~dir:(Path.build dir) sctx rules
+    SC.add_rules ~dir sctx rules
 
 let build_and_link_many
       ~programs

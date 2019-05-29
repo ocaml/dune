@@ -96,7 +96,7 @@ let setup_module_rules t =
         Buffer.contents b))
     >>> Build.write_file_dyn (Path.build path)
   in
-  Super_context.add_rule sctx ~dir:(Path.build dir) main_ml
+  Super_context.add_rule sctx ~dir main_ml
 
 let setup_rules t =
   let linkage = Exe.Linkage.custom in
@@ -109,7 +109,7 @@ let setup_rules t =
   let src = Exe.exe_path t.cctx ~program ~linkage in
   let dir = Source.stanza_dir t.source in
   let dst = Path.Build.relative dir (Path.Build.basename src) in
-  Super_context.add_rule sctx ~dir:(Path.build dir) ~loc:t.source.loc
+  Super_context.add_rule sctx ~dir ~loc:t.source.loc
     (Build.symlink ~src:(Path.build src) ~dst:(Path.build dst));
   setup_module_rules t
 

@@ -16,7 +16,6 @@ let dep_bindings ~extra_bindings deps =
   | None -> base
 
 let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
-  let dir = Path.build dir in
   if Expander.eval_blang expander rule.enabled_if then begin
     let targets : Expander.Targets.t =
       match rule.targets with
@@ -36,9 +35,12 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
             | String s ->
               if Filename.dirname s <> Filename.current_dir_name then
                 not_in_dir ~error_loc s;
-              Path.relative ~error_loc dir s
+              Path.relative ~error_loc (Path.build dir) s
             | Path p ->
-              if Path.parent p <> Some dir then
+              if Option.compare Path.compare
+                   (Path.parent p) (Some (Path.build dir))
+                   <> Eq
+              then
                 not_in_dir ~error_loc (Path.to_string p);
               p
             | Dir p ->
@@ -64,7 +66,6 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
     Path.Set.empty
 
 let copy_files sctx ~dir ~expander ~src_dir (def: Copy_files.t) =
-  let dir = Path.build dir in
   let loc = String_with_vars.loc def.glob in
   let glob_in_src =
     let src_glob = Expander.expand_str expander def.glob in
@@ -97,7 +98,7 @@ let copy_files sctx ~dir ~expander ~src_dir (def: Copy_files.t) =
       (File_selector.create ~dir:(Path.build src_in_build) pred) in
   Path.Set.map files ~f:(fun file_src ->
     let basename = Path.basename file_src in
-    let file_dst = Path.relative dir basename in
+    let file_dst = Path.build (Path.Build.relative dir basename) in
     SC.add_rule sctx ~loc ~dir
       ((if def.add_line_directive
         then Build.copy_and_add_line_directive
@@ -107,7 +108,7 @@ let copy_files sctx ~dir ~expander ~src_dir (def: Copy_files.t) =
     file_dst)
 
 let add_alias sctx ~dir ~name ~stamp ~loc ?(locks=[]) build =
-  let alias = Alias.make name ~dir in
+  let alias = Alias.make name ~dir:(Path.build dir) in
   SC.add_alias_action sctx alias ~dir ~loc ~locks ~stamp build
 
 let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
@@ -123,7 +124,7 @@ let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
   let loc = Some alias_conf.loc in
   if Expander.eval_blang expander alias_conf.enabled_if then
     add_alias sctx
-      ~dir:(Path.build dir)
+      ~dir
       ~loc
       ~name:alias_conf.name
       ~stamp
@@ -142,11 +143,11 @@ let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
            ~expander
            ~dep_kind:Required
            ~targets:(Forbidden "aliases")
-           ~targets_dir:(Path.build dir))
+           ~targets_dir:dir)
   else
     add_alias sctx
       ~loc
-      ~dir:(Path.build dir)
+      ~dir
       ~name:alias_conf.name
       ~stamp
       (Build.return (Action.Progn []))

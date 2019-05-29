@@ -13,7 +13,7 @@ type t
 
 val bindings : t -> Pform.Map.t
 val scope : t -> Scope.t
-val dir : t -> Path.t
+val dir : t -> Path.Build.t
 
 val make
   :  scope:Scope.t
@@ -26,7 +26,7 @@ val set_env : t -> var:string -> value:string -> t
 
 val hide_env : t -> var:string -> t
 
-val set_dir : t -> dir:Path.t -> t
+val set_dir : t -> dir:Path.Build.t -> t
 
 val set_scope : t -> scope:Scope.t -> t
 
@@ -96,7 +96,7 @@ val with_record_deps
   -> targets_written_by_user:Targets.t
   -> dep_kind:Lib_deps_info.Kind.t
   -> map_exe:(Path.t -> Path.t)
-  -> c_flags:(dir:Path.t -> (unit, string list) Build.t C.Kind.Dict.t)
+  -> c_flags:(dir:Path.Build.t -> (unit, string list) Build.t C.Kind.Dict.t)
   -> t
 
 val with_record_no_ddeps
@@ -104,7 +104,7 @@ val with_record_no_ddeps
   -> Resolved_forms.t
   -> dep_kind:Lib_deps_info.Kind.t
   -> map_exe:(Path.t -> Path.t)
-  -> c_flags:(dir:Path.t -> (unit, string list) Build.t C.Kind.Dict.t)
+  -> c_flags:(dir:Path.Build.t -> (unit, string list) Build.t C.Kind.Dict.t)
   -> t
 
 val add_ddeps_and_bindings

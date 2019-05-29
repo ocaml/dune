@@ -58,7 +58,7 @@ let js_of_ocaml_rule sctx ~dir ~flags ~spec ~target =
   Command.run ~dir:(Path.build dir)
     jsoo
     [ flags
-    ; A "-o"; Target target
+    ; A "-o"; Target (Path.build target)
     ; A "--no-runtime"
     ; Dyn (Build.S.map runtime_dep ~f:(fun x -> Command.Args.Dep x))
     ; spec
@@ -87,7 +87,7 @@ let exe_rule cc ~javascript_files ~src ~target ~flags =
       [ Command.of_result_map (Compilation_context.requires_link cc)
           ~f:(fun libs -> Deps (Lib.L.jsoo_runtime_files libs))
       ; Deps javascript_files
-      ; Dep src
+      ; Dep (Path.build src)
       ]
   in
   js_of_ocaml_rule sctx ~dir ~spec ~target ~flags
@@ -122,8 +122,8 @@ let link_rule cc ~runtime ~target cm =
   let jsoo_link = jsoo_link ~dir sctx in
   Command.run ~dir:(Path.build dir)
     jsoo_link
-    [ A "-o"; Target target
-    ; Dep runtime
+    [ A "-o"; Target (Path.build target)
+    ; Dep (Path.build runtime)
     ; As (sourcemap sctx)
     ; Dyn get_all
     ]
@@ -134,7 +134,7 @@ let build_cm cctx ~(js_of_ocaml:Dune_file.Js_of_ocaml.t) ~src ~target =
   let expander = Compilation_context.expander cctx in
   if separate_compilation_enabled sctx
   then
-    let spec = Command.Args.Dep src in
+    let spec = Command.Args.Dep (Path.build src) in
     let flags =
       Expander.expand_and_eval_set expander js_of_ocaml.flags
         ~standard:(Build.return (standard sctx))
@@ -167,10 +167,11 @@ let setup_separate_compilation_rules sctx components =
           let lib_name = Lib_name.to_string (Lib.name pkg) in
           let target =
             in_build_dir ~ctx [lib_name ; sprintf "%s.js" name]
+            |> Path.as_in_build_dir_exn
           in
           let dir = Path.as_in_build_dir_exn (in_build_dir ~ctx [lib_name]) in
           let spec = Command.Args.Dep src in
-          SC.add_rule sctx ~dir:(Path.build dir)
+          SC.add_rule sctx ~dir
             (js_of_ocaml_rule
                sctx ~dir ~flags:(As (standard sctx)) ~spec ~target))
 
@@ -179,7 +180,7 @@ let build_exe cc ~js_of_ocaml ~src ~(cm : Path.t list Build.s) ~flags =
   let javascript_files =
     List.map javascript_files
       ~f:(Path.relative (Path.build (Compilation_context.dir cc))) in
-  let mk_target ext = Path.extend_basename src ~suffix:ext in
+  let mk_target ext = Path.Build.extend_basename src ~suffix:ext in
   let target = mk_target ".js" in
   let standalone_runtime = mk_target ".runtime.js" in
   if separate_compilation_enabled (Compilation_context.super_context cc) then

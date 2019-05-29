@@ -102,7 +102,7 @@ let deps_of cctx ~ml_kind unit =
     match Module.file unit ml_kind with
     | None -> Build.return []
     | Some file ->
-      let dir = Path.build (Compilation_context.dir cctx) in
+      let dir = Compilation_context.dir cctx in
       let file_in_obj_dir ~suffix file =
         let base = Path.basename file in
         Path.relative

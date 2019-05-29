@@ -139,7 +139,7 @@ end = struct
     let external_ = external_ t ~dir in
     Expander.extend_env context_expander ~env:external_
     |> Expander.set_scope ~scope:(Env_node.scope node)
-    |> Expander.set_dir ~dir:(Path.build dir)
+    |> Expander.set_dir ~dir
 
   let local_binaries t ~dir =
     let node = get t ~dir in
@@ -196,7 +196,7 @@ let expander t ~dir = Env.expander t.env_context ~dir
 
 let add_rule t ?sandbox ?mode ?locks ?loc ~dir build =
   let build = Build.O.(>>>) build t.chdir in
-  let env = Env.external_ t.env_context ~dir:(Path.as_in_build_dir_exn dir) in
+  let env = Env.external_ t.env_context ~dir in
   Rules.Produce.rule
     (Rule.make ?sandbox ?mode ?locks
        ~info:(Rule.Info.of_loc_opt loc)
@@ -204,7 +204,7 @@ let add_rule t ?sandbox ?mode ?locks ?loc ~dir build =
 
 let add_rule_get_targets t ?sandbox ?mode ?locks ?loc ~dir build =
   let build = Build.O.(>>>) build t.chdir in
-  let env = Env.external_ t.env_context ~dir:(Path.as_in_build_dir_exn dir) in
+  let env = Env.external_ t.env_context ~dir in
   let rule =
     Rule.make ?sandbox ?mode ?locks
       ~info:(Rule.Info.of_loc_opt loc)
@@ -218,7 +218,7 @@ let add_rules t ?sandbox ~dir builds =
 
 let add_alias_action t alias ~dir ~loc ?locks ~stamp action =
   let t = t.env_context in
-  let env = Some (Env.external_ t ~dir:(Path.as_in_build_dir_exn dir)) in
+  let env = Some (Env.external_ t ~dir) in
   Rules.Produce.Alias.add_action ~context:t.context ~env alias ~loc ?locks
     ~stamp action
 
@@ -245,7 +245,7 @@ module Pkg_version = struct
 
   let set sctx p get =
     let fn = file sctx p in
-    add_rule sctx ~dir:(Path.build (build_dir sctx))
+    add_rule sctx ~dir:(build_dir sctx)
       ((get >>^ fun v ->
         (Dune_lang.Encoder.(option string) v
          |> Dune_lang.to_string ~syntax:Dune))
@@ -257,8 +257,7 @@ let partial_expand sctx ~dep_kind ~targets_written_by_user ~map_exe
       ~expander t =
   let acc = Expander.Resolved_forms.empty () in
   let read_package = Pkg_version.read sctx in
-  let c_flags ~dir =
-    Env.c_flags sctx.env_context ~dir:(Path.as_in_build_dir_exn dir) in
+  let c_flags ~dir = Env.c_flags sctx.env_context ~dir in
   let expander =
     Expander.with_record_deps expander  acc ~dep_kind ~targets_written_by_user
       ~map_exe ~read_package ~c_flags in
@@ -505,12 +504,11 @@ module Libs = struct
     List.iter (Lib.Compile.resolved_selects compile_info) ~f:(fun rs ->
       let { Lib.Compile.Resolved_select.dst_fn; src_fn } = rs in
       let dst = Path.build (Path.Build.relative dir dst_fn) in
-      let dir = Path.build dir in
       add_rule t
         ~dir
         (match src_fn with
          | Ok src_fn ->
-           let src = Path.relative dir src_fn in
+           let src = Path.build (Path.Build.relative dir src_fn) in
            Build.copy_and_add_line_directive ~src ~dst
          | Error e ->
            Build.fail ~targets:[dst]
@@ -586,8 +584,7 @@ module Deps = struct
 
   let make_interpreter ~f t ~expander l =
     let forms = Expander.Resolved_forms.empty () in
-    let c_flags ~dir =
-      Env.c_flags t.env_context ~dir:(Path.as_in_build_dir_exn dir) in
+    let c_flags ~dir = Env.c_flags t.env_context ~dir in
     let expander =
       Expander.with_record_no_ddeps expander forms
         ~dep_kind:Optional ~map_exe:Fn.id ~c_flags
@@ -685,7 +682,8 @@ module Action = struct
     in
     let targets = Path.Set.to_list targets in
     List.iter targets ~f:(fun target ->
-      if Path.parent_exn target <> targets_dir then
+      let target = Path.as_in_build_dir_exn target in
+      if Path.Build.(<>) (Path.Build.parent_exn target) targets_dir then
         Errors.fail loc
           "This action has targets in a different directory than the current \
            one, this is not allowed by dune at the moment:\n%s"
@@ -723,7 +721,7 @@ module Action = struct
         in
         deps))
       >>>
-      Build.action_dyn () ~dir ~targets
+      Build.action_dyn () ~dir:(Path.build dir) ~targets
     in
     match Expander.Resolved_forms.failures forms with
     | [] -> build

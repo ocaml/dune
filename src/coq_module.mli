@@ -32,7 +32,7 @@ val make
 val source : t -> Path.Build.t
 val prefix : t -> string list
 val name : t -> string
-val obj_file : obj_dir:Path.t -> ext:string -> t -> Path.t
+val obj_file : obj_dir:Path.Build.t -> ext:string -> t -> Path.Build.t
 val pp : t Fmt.t
 
 (** Parses a form "a.b.c" to a module *)

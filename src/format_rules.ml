@@ -13,7 +13,7 @@ let add_diff sctx loc alias ~dir ~input ~output =
     (Build.paths [input; output]
      >>>
      Build.action
-       ~dir
+       ~dir:(Path.build dir)
        ~targets:[]
        action)
 
@@ -30,33 +30,32 @@ let depend_on_files ~named dir =
 let formatted = ".formatted"
 
 let gen_rules_output sctx (config : Dune_file.Auto_format.t) ~output_dir =
-  assert (formatted = Path.basename output_dir);
+  assert (formatted = Path.Build.basename output_dir);
   let loc = Dune_file.Auto_format.loc config in
-  let dir = Path.parent_exn output_dir in
-  let source_dir = Path.drop_build_context_exn dir in
-  let alias_formatted = Alias.fmt ~dir:output_dir in
+  let dir = Path.Build.parent_exn output_dir in
+  let source_dir = Path.Build.drop_build_context_exn dir in
+  let alias_formatted = Alias.fmt ~dir:(Path.build output_dir) in
   let resolve_program =
-    Super_context.resolve_program ~dir:(Path.as_in_build_dir_exn dir)
-      sctx ~loc:(Some loc) in
+    Super_context.resolve_program ~dir sctx ~loc:(Some loc) in
   let ocamlformat_deps = lazy (
     depend_on_files ~named:[".ocamlformat"; ".ocamlformat-ignore"]
       (Path.source source_dir)
   ) in
   let setup_formatting file =
     let input_basename = Path.Source.basename file in
-    let input = Path.relative dir input_basename in
-    let output = Path.relative output_dir input_basename in
+    let input = Path.Build.relative dir input_basename in
+    let output = Path.Build.relative output_dir input_basename in
 
     let ocaml kind =
       if Dune_file.Auto_format.includes config Ocaml then
         let exe = resolve_program "ocamlformat" in
         let args =
           [ Command.Args.A (flag_of_kind kind)
-          ; Dep input
+          ; Dep (Path.build input)
           ; A "--name"
           ; Path (Path.source file)
           ; A "-o"
-          ; Target output
+          ; Target (Path.build output)
           ]
         in
         Some (
@@ -68,6 +67,9 @@ let gen_rules_output sctx (config : Dune_file.Auto_format.t) ~output_dir =
     in
 
     let formatter =
+      let dir = Path.build dir in
+      let output = Path.build output in
+      let input = Path.build input in
       match Path.Source.basename file, Path.Source.extension file with
       | _, ".ml" -> ocaml Impl
       | _, ".mli" -> ocaml Intf
@@ -85,16 +87,17 @@ let gen_rules_output sctx (config : Dune_file.Auto_format.t) ~output_dir =
 
     Option.iter formatter ~f:(fun arr ->
       Super_context.add_rule sctx ~mode:Standard ~loc ~dir arr;
-      add_diff sctx loc alias_formatted ~dir ~input ~output)
+      add_diff sctx loc alias_formatted ~dir
+        ~input:(Path.build input) ~output:(Path.build output))
   in
   File_tree.files_of (Super_context.file_tree sctx) source_dir
   |> Path.Source.Set.iter ~f:setup_formatting;
   Rules.Produce.Alias.add_deps alias_formatted Path.Set.empty
 
 let gen_rules ~dir =
-  let output_dir = Path.relative dir formatted in
-  let alias = Alias.fmt ~dir in
-  let alias_formatted = Alias.fmt ~dir:output_dir in
+  let output_dir = Path.Build.relative dir formatted in
+  let alias = Alias.fmt ~dir:(Path.build dir) in
+  let alias_formatted = Alias.fmt ~dir:(Path.build output_dir) in
   Alias.stamp_file alias_formatted
   |> Path.Set.singleton
   |> Rules.Produce.Alias.add_deps alias

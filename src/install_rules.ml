@@ -36,7 +36,9 @@ let gen_dune_package sctx ~version ~(pkg : Local_package.t) =
               let foreign_objects =
                 let dir = Obj_dir.obj_dir (Lib.obj_dir lib) in
                 Dir_contents.c_sources_of_library dir_contents ~name
-                |> C.Sources.objects ~dir ~ext_obj:ctx.ext_obj
+                |> C.Sources.objects ~dir:(Path.as_in_build_dir_exn dir)
+                     ~ext_obj:ctx.ext_obj
+                |> List.map ~f:Path.build
               in
               Lib.to_dune_lib lib ~dir:(Path.build (lib_root lib)) ~lib_modules
                 ~foreign_objects)
@@ -57,7 +59,7 @@ let gen_dune_package sctx ~version ~(pkg : Local_package.t) =
             (Dune_lang.pp (Stanza.File_kind.of_syntax dune_version))))
   >>>
   Build.write_file_dyn (Path.build dune_package_file)
-  |> Super_context.add_rule sctx ~dir:(Path.build ctx.build_dir)
+  |> Super_context.add_rule sctx ~dir:ctx.build_dir
 
 type version_method =
   | File of string
@@ -129,7 +131,7 @@ let init_meta sctx ~dir =
         (Lib.Set.to_list libs)
     in
     let ctx = Super_context.context sctx in
-    Super_context.add_rule sctx ~dir:(Path.build ctx.build_dir)
+    Super_context.add_rule sctx ~dir:ctx.build_dir
       (Build.fanout meta_contents template
        >>^ (fun ((meta : Meta.t), template) ->
          let buf = Buffer.create 1024 in
@@ -185,7 +187,6 @@ let lib_ppxs sctx ~(lib : Dune_file.Library.t) ~scope ~dir_kind =
 
 let lib_install_files sctx ~dir_contents ~dir ~sub_dir:lib_subdir
       ~scope ~dir_kind (lib : Library.t) =
-  let dir = Path.build dir in
   let loc = lib.buildable.loc in
   let make_entry section ?sub_dir ?dst fn =
     ( Some loc
@@ -277,7 +278,7 @@ let symlink_installed_artifacts_to_build_install
       | Some l -> l
       | None -> Loc.in_file entry.src
     in
-    Super_context.add_rule sctx ~loc ~dir:(Path.build ctx.build_dir)
+    Super_context.add_rule sctx ~loc ~dir:ctx.build_dir
       (Build.symlink ~src:entry.src ~dst);
     Install.Entry.set_src entry dst)
 
@@ -398,9 +399,9 @@ let install_rules sctx package =
   in
   let ctx = Super_context.context sctx in
   let package_name = Local_package.name package in
-  let pkg_build_dir = Path.build (Local_package.build_dir package) in
+  let pkg_build_dir = Local_package.build_dir package in
   let install_file =
-    Path.relative
+    Path.Build.relative
       pkg_build_dir
       (Utils.install_file ~package:package_name
          ~findlib_toolchain:ctx.findlib_toolchain)
@@ -442,7 +443,7 @@ let install_rules sctx package =
        in
        Install.gen_install_file entries)
      >>>
-     Build.write_file_dyn install_file)
+     Build.write_file_dyn (Path.build install_file))
 
 let install_alias (ctx : Context.t) (package : Local_package.t) =
   if not ctx.implicit then

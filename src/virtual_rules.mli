@@ -2,7 +2,7 @@ open Stdune
 
 val setup_copy_rules_for_impl
   :  sctx:Super_context.t
-  -> dir:Path.t
+  -> dir:Path.Build.t
   -> Vimpl.t
   -> unit
 

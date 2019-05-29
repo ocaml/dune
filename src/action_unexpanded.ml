@@ -40,7 +40,7 @@ module Partial = struct
     let expand ~expander ~mode ~l ~r =
       Either.map ~l
         ~r:(fun s ->
-          let dir = Expander.dir expander in
+          let dir = Path.build (Expander.dir expander) in
           r ~loc:(Some (String_with_vars.loc s))
             (Expander.expand expander ~template:s ~mode) ~dir)
 
@@ -92,7 +92,8 @@ module Partial = struct
       Run (prog, more_args @ args)
     | Chdir (fn, t) ->
       let fn = E.path ~expander fn in
-      let expander = Expander.set_dir expander ~dir:fn in
+      let expander =
+        Expander.set_dir expander ~dir:(Path.as_in_build_dir_exn fn) in
       Chdir (fn, expand t ~expander ~map_exe)
     | Setenv (var, value, t) ->
       let var = E.string ~expander var in
@@ -144,7 +145,7 @@ end
 
 module E = struct
   let expand ~expander ~mode ~map x =
-    let dir = Expander.dir expander in
+    let dir = Path.build (Expander.dir expander) in
     let f = Expander.expand_var_exn expander in
     match String_with_vars.partial_expand ~mode ~dir ~f x with
     | Expanded e ->
@@ -187,7 +188,8 @@ let rec partial_expand t ~map_exe ~expander : Partial.t =
       let res = E.path ~expander fn in
       match res with
       | Left dir ->
-        let expander = Expander.set_dir expander ~dir in
+        let expander =
+          Expander.set_dir expander ~dir:(Path.as_in_build_dir_exn dir) in
         Chdir (res, partial_expand t ~expander ~map_exe)
       | Right fn ->
         let loc = String_with_vars.loc fn in

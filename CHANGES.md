@@ -15,6 +15,12 @@
   is done to prevent the accidental collision with library dependencies of the
   executable. (#2364, fixes #2292, @rgrinberg)
 
+- Add a new config option sandboxing_preference and the corresponding cli
+  argument `--sandbox`, which lets the user control the level of sandboxing 
+  dune does by default. The individual build rules can override this setting. 
+  The rules  defined in `dune` files are currently not sandboxed. 
+  (#2213, @aalekseyev)
+
 1.11.0 (unreleased)
 -------------------
 

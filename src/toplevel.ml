@@ -94,7 +94,7 @@ let setup_module_rules t =
         Source.pp_ml fmt t.source ~include_dirs;
         Format.pp_print_flush fmt ();
         Buffer.contents b))
-    >>> Build.write_file_dyn (Path.build path)
+    >>> Build.write_file_dyn path
   in
   Super_context.add_rule sctx ~dir main_ml
 
@@ -110,7 +110,7 @@ let setup_rules t =
   let dir = Source.stanza_dir t.source in
   let dst = Path.Build.relative dir (Path.Build.basename src) in
   Super_context.add_rule sctx ~dir ~loc:t.source.loc
-    (Build.symlink ~src:(Path.build src) ~dst:(Path.build dst));
+    (Build.symlink ~src:(Path.build src) ~dst);
   setup_module_rules t
 
 module Stanza = struct

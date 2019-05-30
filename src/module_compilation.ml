@@ -33,7 +33,7 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
   |> Option.iter ~f:(fun compiler ->
     Option.iter (Module.cm_source m cm_kind) ~f:(fun src ->
       let ml_kind = Cm_kind.source cm_kind in
-      let dst = Module.cm_file_unsafe m cm_kind in
+      let dst = Path.as_in_build_dir_exn (Module.cm_file_unsafe m cm_kind) in
       let copy_interface () =
         (* symlink the .cmi into the public interface directory *)
         if not (Module.is_private m)
@@ -41,7 +41,8 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
           SC.add_rule sctx ~sandbox:false ~dir
             (Build.symlink
                ~src:(Module.cm_file_unsafe m Cmi)
-               ~dst:(Module.cm_public_file_unsafe m Cmi)
+               ~dst:(Path.as_in_build_dir_exn
+                       (Module.cm_public_file_unsafe m Cmi))
             )
       in
       let extra_args, extra_deps, other_targets =
@@ -53,7 +54,7 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
            conditions. *)
         | Cmo, None, false ->
           copy_interface ();
-          [], [], [Module.cm_file_unsafe m Cmi]
+          [], [], [Path.as_in_build_dir_exn (Module.cm_file_unsafe m Cmi)]
         | Cmo, None, true
         | (Cmo | Cmx), _, _ ->
           force_read_cmi src,
@@ -65,7 +66,9 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
       in
       let other_targets =
         match cm_kind with
-        | Cmx -> Module.obj_file m ~kind:Cmx ~ext:ctx.ext_obj :: other_targets
+        | Cmx ->
+          Path.as_in_build_dir_exn
+            (Module.obj_file m ~kind:Cmx ~ext:ctx.ext_obj) :: other_targets
         | Cmi | Cmo -> other_targets
       in
       let dep_graph = Ml_kind.Dict.get dep_graphs ml_kind in
@@ -85,7 +88,9 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
         match cm_kind with
         | Cmx -> (other_targets, Command.Args.S [])
         | Cmi | Cmo ->
-          let fn = Option.value_exn (Module.cmt_file m ml_kind) in
+          let fn =
+            Path.as_in_build_dir_exn (Option.value_exn
+                                        (Module.cmt_file m ml_kind)) in
           (fn :: other_targets, A "-bin-annot")
       in
       if CC.dir_kind cctx = Jbuild then begin
@@ -94,13 +99,14 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
         let old_dst =
           (Module.obj_name m) ^ (Cm_kind.ext cm_kind)
           |> Path.Build.relative dir
-          |> Path.build
         in
-        SC.add_rule sctx ~dir (Build.symlink ~src:dst ~dst:old_dst);
+        SC.add_rule sctx ~dir
+          (Build.symlink ~src:(Path.build dst) ~dst:old_dst);
         List.iter other_targets ~f:(fun in_obj_dir ->
-          let in_dir = Path.Build.relative dir (Path.basename in_obj_dir) in
+          let in_dir = Path.Build.relative dir
+                         (Path.Build.basename in_obj_dir) in
           SC.add_rule sctx ~dir
-            (Build.symlink ~src:in_obj_dir ~dst:(Path.build in_dir)))
+            (Build.symlink ~src:(Path.build in_obj_dir) ~dst:in_dir))
       end;
       let opaque_arg =
         let intf_only = cm_kind = Cmi && not (Module.has_impl m) in
@@ -209,7 +215,7 @@ let ocamlc_i ?sandbox ?(flags=[]) ~dep_graphs cctx (m : Module.t) ~output =
   in
   SC.add_rule sctx ?sandbox ~dir
     (Build.S.seq cm_deps
-       (Build.S.map ~f:(fun act -> Action.with_stdout_to output act)
+       (Build.S.map ~f:(fun act -> Action.with_stdout_to (Path.build output) act)
           (Command.run (Ok ctx.ocamlc) ~dir:(Path.build ctx.build_dir)
              [ Command.Args.dyn ocaml_flags
              ; A "-I"; Path (Obj_dir.byte_dir obj_dir)

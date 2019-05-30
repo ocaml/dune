@@ -244,7 +244,7 @@ include Sub_system.Register_end_point(
           Action.with_stdout_to (Path.build target)
             (Action.progn actions))
         >>>
-        Build.action_dyn ~targets:[Path.build target] ());
+        Build.action_dyn ~targets:[target] ());
 
       let cctx =
         Compilation_context.create ()

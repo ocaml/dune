@@ -101,7 +101,9 @@ let dyn_path_set t = Dyn_paths t
 let paths_for_rule ps = Paths_for_rule ps
 let env_var s = Deps (Dep.Set.singleton (Dep.env s))
 let alias a = dep (Dep.alias a)
-let declare_targets a = Targets a
+let declare_targets a =
+  Targets (Path.Build.Set.fold a ~init:Path.Set.empty ~f:(fun p acc ->
+    Path.Set.add acc (Path.build p)))
 
 let catch t ~on_error = Catch (t, on_error)
 
@@ -146,7 +148,9 @@ let paths_existing paths =
 let fail ?targets x =
   match targets with
   | None -> Fail x
-  | Some l -> Targets (Path.Set.of_list l) >>> Fail x
+  | Some l ->
+    Targets (Path.set_of_build_paths_list l)
+    >>> Fail x
 
 let of_result ?targets = function
   | Ok    x -> x
@@ -166,7 +170,7 @@ let source_tree ~dir ~file_tree =
   path_set paths >>^ fun _ -> paths
 
 let action ?dir ~targets action =
-  Targets (Path.Set.of_list targets)
+  Targets (Path.set_of_build_paths_list targets)
   >>^ fun _ ->
   match dir with
   | None -> action
@@ -174,40 +178,43 @@ let action ?dir ~targets action =
 
 let action_dyn ?dir ~targets () =
   match dir with
-  | None -> Targets (Path.Set.of_list targets)
+  | None -> Targets (Path.set_of_build_paths_list targets)
   | Some dir ->
-    Targets (Path.Set.of_list targets)
+    Targets (Path.set_of_build_paths_list targets)
     >>^ fun action ->
     Action.Chdir (dir, action)
 
 let write_file fn s =
-  action ~targets:[fn] (Write_file (fn, s))
+  action ~targets:[fn] (Write_file ((Path.build fn), s))
 
 let write_file_dyn fn =
+  let fn = Path.build fn in
   Targets (Path.Set.singleton fn)
   >>^ fun s ->
   Action.Write_file (fn, s)
 
 let copy ~src ~dst =
   path src >>>
-  action ~targets:[dst] (Copy (src, dst))
+  action ~targets:[dst] (Copy (src, Path.build dst))
 
 let copy_and_add_line_directive ~src ~dst =
   path src >>>
   action ~targets:[dst]
-    (Copy_and_add_line_directive (src, dst))
+    (Copy_and_add_line_directive (src, Path.build dst))
 
 let symlink ~src ~dst =
   path src >>>
-  action ~targets:[dst] (Symlink (src, dst))
+  action ~targets:[dst] (Symlink (src, Path.build dst))
 
 let create_file fn =
-  action ~targets:[fn] (Redirect (Stdout, fn, Progn []))
+  action ~targets:[fn] (Redirect (Stdout, Path.build fn, Progn []))
 
 let remove_tree dir =
+  let dir = Path.build dir in
   arr (fun _ -> Action.Remove_tree dir)
 
 let mkdir dir =
+  let dir = Path.build dir in
   arr (fun _ -> Action.Mkdir dir)
 
 let progn ts =
@@ -217,7 +224,7 @@ let progn ts =
 let merge_files_dyn ~target =
   dyn_paths (arr fst)
   >>^ (fun (sources, extras) ->
-    Action.Merge_files_into (sources, extras, target))
+    Action.Merge_files_into (sources, extras, Path.build target))
   >>> action_dyn ~targets:[target] ()
 
 (* Analysis *)

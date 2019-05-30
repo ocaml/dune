@@ -93,8 +93,13 @@ end
 let pped_module m ~f =
   let pped = Module.pped m in
   Module.iter m ~f:(fun kind file ->
-    let pp_path = Option.value_exn (Module.file pped kind) in
-    f kind file.path pp_path);
+    let pp_path =
+      Module.file pped kind
+      |> Option.value_exn
+      |> Path.as_in_build_dir_exn
+    in
+    let file = Path.as_in_build_dir_exn file.path in
+    f kind file pp_path);
   pped
 
 module Driver = struct
@@ -201,13 +206,13 @@ module Driver = struct
   (* Where are we called from? *)
   type loc =
     | User_file of Loc.t * (Loc.t * Lib_name.t) list
-    | Dot_ppx   of Path.t * Lib_name.t list
+    | Dot_ppx   of Path.Build.t * Lib_name.t list
 
   let make_error loc msg =
     match loc with
     | User_file (loc, _) -> Error (Errors.exnf loc "%a" Fmt.text msg)
     | Dot_ppx (path, pps) ->
-      Error (Errors.exnf (Loc.in_file path) "%a" Fmt.text
+      Error (Errors.exnf (Loc.in_file (Path.build path)) "%a" Fmt.text
                (sprintf
                   "Failed to create on-demand ppx rewriter for %s; %s"
                   (String.enumerate_and (List.map pps ~f:Lib_name.to_string))
@@ -340,7 +345,6 @@ let ppx_exe sctx ~key ~dir_kind =
     Path.Build.relative (SC.build_dir sctx) (".ppx/jbuild/" ^ key ^ "/ppx.exe")
 
 let build_ppx_driver sctx ~dep_kind ~target ~dir_kind ~pps ~pp_names =
-  let target = Path.build target in
   let ctx = SC.context sctx in
   let mode = Context.best_mode ctx in
   let compiler = Option.value_exn (Context.compiler ctx mode) in
@@ -379,7 +383,7 @@ let build_ppx_driver sctx ~dep_kind ~target ~dir_kind ~pps ~pp_names =
        match jbuild_driver with
        | None ->
          let+ driver =
-          Driver.select pps ~loc:(Dot_ppx (target, pp_names))
+           Driver.select pps ~loc:(Dot_ppx (target, pp_names))
          in
          (driver, pps)
        | Some driver ->
@@ -387,7 +391,7 @@ let build_ppx_driver sctx ~dep_kind ~target ~dir_kind ~pps ~pp_names =
   in
   (* CR-someday diml: what we should do is build the .cmx/.cmo once
      and for all at the point where the driver is defined. *)
-  let ml = Path.relative (Path.parent_exn target) "ppx.ml" in
+  let ml = Path.Build.relative (Path.Build.parent_exn target) "ppx.ml" in
   let add_rule = SC.add_rule sctx ~dir:(Super_context.build_dir sctx) in
   add_rule
     (Build.of_result_map driver_and_libs ~f:(fun (driver, _) ->
@@ -396,19 +400,19 @@ let build_ppx_driver sctx ~dep_kind ~target ~dir_kind ~pps ~pp_names =
      Build.write_file_dyn ml);
   add_rule
     (Build.S.seqs
-      [Build.record_lib_deps
-       (Lib_deps.info ~kind:dep_kind (Lib_deps.of_pps pp_names));
-       Build.of_result_map driver_and_libs ~f:(fun (_, libs) ->
-         Build.paths (Lib.L.archive_files libs ~mode))]
-      (Command.run (Ok compiler) ~dir:(Path.build ctx.build_dir)
-       [ A "-o" ; Target target
-       ; Command.of_result
-           (Result.map driver_and_libs ~f:(fun (_driver, libs) ->
-              Lib.L.compile_and_link_flags ~mode ~stdlib_dir:ctx.stdlib_dir
-                ~compile:libs
-                ~link:libs))
-       ; Dep ml
-       ]))
+       [Build.record_lib_deps
+          (Lib_deps.info ~kind:dep_kind (Lib_deps.of_pps pp_names));
+        Build.of_result_map driver_and_libs ~f:(fun (_, libs) ->
+          Build.paths (Lib.L.archive_files libs ~mode))]
+       (Command.run (Ok compiler) ~dir:(Path.build ctx.build_dir)
+          [ A "-o" ; Target target
+          ; Command.of_result
+              (Result.map driver_and_libs ~f:(fun (_driver, libs) ->
+                 Lib.L.compile_and_link_flags ~mode ~stdlib_dir:ctx.stdlib_dir
+                   ~compile:libs
+                   ~link:libs))
+          ; Dep (Path.build ml)
+          ]))
 
 let get_rules sctx key ~dir_kind =
   let exe = ppx_exe sctx ~key ~dir_kind in
@@ -580,7 +584,10 @@ let setup_reason_rules sctx (m : Module.t) =
     | OCaml  ->
       ()
     | Reason ->
-      let ml = Option.value_exn (Module.file ml kind) in
+      let ml =
+        Option.value_exn (Module.file ml kind)
+        |> Path.as_in_build_dir_exn
+      in
       SC.add_rule sctx ~dir:ctx.build_dir (rule f.path ml));
   ml
 
@@ -597,15 +604,14 @@ let chdir action = Action_unexpanded.Chdir (workspace_root_var, action)
 
 let action_for_pp sctx ~dep_kind ~loc ~expander ~action ~src ~target =
   let action = chdir action in
-  let bindings = Pform.Map.input_file src in
+  let bindings = Pform.Map.input_file (Path.build src) in
   let expander = Expander.add_bindings expander ~bindings in
   let targets = Expander.Targets.Forbidden "preprocessing actions" in
   let targets_dir =
     Option.value ~default:src target
-    |> Path.as_in_build_dir_exn 
     |> Path.Build.parent_exn
   in
-  Build.path src
+  Build.path (Path.build src)
   >>^ (fun _ -> Bindings.empty)
   >>>
   SC.Action.run sctx
@@ -622,7 +628,7 @@ let action_for_pp sctx ~dep_kind ~loc ~expander ~action ~src ~target =
   >>^ fun action ->
   match target with
   | None -> action
-  | Some dst -> Action.with_stdout_to dst action
+  | Some dst -> Action.with_stdout_to (Path.build dst) action
 
 let lint_module sctx ~dir ~expander ~dep_kind ~lint ~lib_name ~scope ~dir_kind =
   Staged.stage (
@@ -641,7 +647,7 @@ let lint_module sctx ~dir ~expander ~dep_kind ~lint ~lib_name ~scope ~dir_kind =
         | Action (loc, action) ->
           (fun ~source ~ast:_ ->
              Module.iter source ~f:(fun _ (src : Module.File.t) ->
-               let src = src.path in
+               let src = Path.as_in_build_dir_exn src.path in
                add_alias src ~loc:(Some loc)
                  (action_for_pp sctx ~dep_kind ~loc ~expander ~action
                     ~src ~target:None)))
@@ -653,7 +659,8 @@ let lint_module sctx ~dir ~expander ~dep_kind ~lint ~lib_name ~scope ~dir_kind =
           let driver_and_flags =
             let open Result.O in
             let+ (exe, driver, driver_flags) =
-              ppx_driver_and_flags sctx ~expander ~loc ~lib_name ~flags ~dir_kind ~scope pps
+              ppx_driver_and_flags sctx ~expander ~loc ~lib_name ~flags
+                ~dir_kind ~scope pps
             in
             let flags =
               let bindings =
@@ -755,7 +762,7 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess
                          (Ok (Path.build exe))
                          [ args
                          ; A "-o"; Target dst
-                         ; Ml_kind.ppx_driver_flag kind; Dep src
+                         ; Ml_kind.ppx_driver_flag kind; Dep (Path.build src)
                          ; Command.Args.dyn flags
                          ])))))
       end else begin

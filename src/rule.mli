@@ -24,7 +24,7 @@ type t =
   ; locks    : Path.t list
   ; info     : Info.t
   ; (** Directory where all the targets are produced *)
-    dir      : Path.t
+    dir      : Path.Build.t
   }
 
 val make

@@ -98,14 +98,14 @@ let copy_files sctx ~dir ~expander ~src_dir (def: Copy_files.t) =
       (File_selector.create ~dir:(Path.build src_in_build) pred) in
   Path.Set.map files ~f:(fun file_src ->
     let basename = Path.basename file_src in
-    let file_dst = Path.build (Path.Build.relative dir basename) in
+    let file_dst = Path.Build.relative dir basename in
     SC.add_rule sctx ~loc ~dir
       ((if def.add_line_directive
         then Build.copy_and_add_line_directive
         else Build.copy)
          ~src:file_src
          ~dst:file_dst);
-    file_dst)
+    Path.build file_dst)
 
 let add_alias sctx ~dir ~name ~stamp ~loc ?(locks=[]) build =
   let alias = Alias.make name ~dir:(Path.build dir) in

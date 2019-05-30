@@ -80,7 +80,7 @@ module Run (P : PARAMS) : sig end = struct
 
   let targets m ~cmly =
     let base = [m ^ ".ml"; m ^ ".mli"] in
-    List.map ~f:(Path.relative (Path.build dir)) (
+    List.map ~f:(Path.Build.relative dir) (
       if cmly then
         (m ^ ".cmly") :: base
       else
@@ -99,11 +99,11 @@ module Run (P : PARAMS) : sig end = struct
   let mock m =
     m ^ "__mock"
 
-  let mock_ml m : Path.t =
-    Path.relative (Path.build dir) (mock m ^ ".ml.mock")
+  let mock_ml m : Path.Build.t =
+    Path.Build.relative dir (mock m ^ ".ml.mock")
 
-  let inferred_mli m : Path.t =
-    Path.relative (Path.build dir) (mock m ^ ".mli.inferred")
+  let inferred_mli m : Path.Build.t =
+    Path.Build.relative dir (mock m ^ ".mli.inferred")
 
   (* ------------------------------------------------------------------------ *)
 
@@ -211,7 +211,7 @@ module Run (P : PARAMS) : sig end = struct
         name
         ~visibility:Public
         ~kind:Impl
-        ~impl:{ path = mock_ml base; syntax = OCaml }
+        ~impl:{ path = Path.build (mock_ml base); syntax = OCaml }
         ~obj_dir:(Compilation_context.obj_dir cctx)
     in
 
@@ -239,7 +239,7 @@ module Run (P : PARAMS) : sig end = struct
         [ Command.Args.dyn expanded_flags
         ; Deps (sources stanza.modules)
         ; A "--base" ; Path (Path.relative (Path.build dir) base)
-        ; A "--infer-read-reply"; Dep (inferred_mli base)
+        ; A "--infer-read-reply"; Dep (Path.build (inferred_mli base))
         ; Hidden_targets (targets base ~cmly)
         ]
     )

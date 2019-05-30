@@ -186,7 +186,7 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
              hides a library *)
           let targets =
             List.map (Menhir_rules.targets m)
-              ~f:(Path.relative (Path.build ctx_dir))
+              ~f:(Path.Build.relative ctx_dir)
           in
           SC.add_rule sctx ~dir:ctx_dir
             (Build.fail ~targets
@@ -252,10 +252,7 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
          |> List.iter ~f:(fun t ->
            let loc = File_binding.Expanded.src_loc t in
            let src = File_binding.Expanded.src_path t in
-           let dst =
-             File_binding.Expanded.dst_path t ~dir
-             |> Path.build
-           in
+           let dst = File_binding.Expanded.dst_path t ~dir in
            Super_context.add_rule sctx ~loc ~dir (Build.symlink ~src ~dst))
        | _ ->
          match

@@ -26,7 +26,7 @@ type t =
   ; mode     : Dune_file.Rule.Mode.t
   ; locks    : Path.t list
   ; info     : Info.t
-  ; dir      : Path.t
+  ; dir      : Path.Build.t
   }
 
 let make ?(sandbox=false) ?(mode=Dune_file.Rule.Mode.Standard)
@@ -56,7 +56,7 @@ let make ?(sandbox=false) ?(mode=Dune_file.Rule.Mode.Standard)
                   sprintf "- %s"
                     (Path.to_string_maybe_quoted p))))
       end;
-      dir
+      Path.as_in_build_dir_exn dir
   in
   { context
   ; env

@@ -231,10 +231,11 @@ module Pkg_version = struct
   open Build.O
 
   let file sctx (p : Package.t) =
-    Path.relative (Path.append_source (Path.build sctx.context.build_dir) p.path)
+    Path.Build.relative (Path.Build.append_source sctx.context.build_dir p.path)
       (sprintf "%s.version.sexp" (Package.Name.to_string p.name))
 
   let read_file fn =
+    let fn = Path.build fn in
     Build.memoize "package version"
       (Build.contents fn
        >>^ fun s ->
@@ -503,7 +504,7 @@ module Libs = struct
   let gen_select_rules t ~dir compile_info =
     List.iter (Lib.Compile.resolved_selects compile_info) ~f:(fun rs ->
       let { Lib.Compile.Resolved_select.dst_fn; src_fn } = rs in
-      let dst = Path.build (Path.Build.relative dir dst_fn) in
+      let dst = Path.Build.relative dir dst_fn in
       add_rule t
         ~dir
         (match src_fn with
@@ -680,15 +681,17 @@ module Action = struct
         in
         { deps; targets = Path.Set.empty }
     in
-    let targets = Path.Set.to_list targets in
+    let targets =
+      Path.Set.fold ~init:[] targets
+        ~f:(fun p acc -> Path.as_in_build_dir_exn p :: acc)
+    in
     List.iter targets ~f:(fun target ->
-      let target = Path.as_in_build_dir_exn target in
       if Path.Build.(<>) (Path.Build.parent_exn target) targets_dir then
         Errors.fail loc
           "This action has targets in a different directory than the current \
            one, this is not allowed by dune at the moment:\n%s"
           (List.map targets ~f:(fun target ->
-             sprintf "- %s" (Utils.describe_target target))
+             sprintf "- %s" (Utils.describe_target (Path.build target)))
            |> String.concat ~sep:"\n"));
     let build =
       Build.record_lib_deps (Expander.Resolved_forms.lib_deps forms)

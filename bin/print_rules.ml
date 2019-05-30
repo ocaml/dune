@@ -25,7 +25,7 @@ let info = Term.info "rules" ~doc ~man
 let print_rule_makefile ppf (rule : Build_system.Rule.t) =
   let action =
     Action.For_shell.Progn
-      [ Mkdir (Path.to_string rule.dir)
+      [ Mkdir (Path.to_string (Path.build rule.dir))
       ; Action.for_shell rule.action
       ]
   in

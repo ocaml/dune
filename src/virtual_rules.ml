@@ -48,7 +48,7 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
   let copy_obj_file ~src ~dst ?ext kind =
     let src = Module.cm_file_unsafe src ?ext kind in
     let dst = Module.cm_file_unsafe dst ?ext kind in
-    copy_to_obj_dir ~src ~dst in
+    copy_to_obj_dir ~src ~dst:(Path.as_in_build_dir_exn dst) in
   let copy_objs src =
     let dst = Module.set_obj_dir ~obj_dir:impl_obj_dir src in
     copy_obj_file ~src ~dst Cmi;
@@ -56,7 +56,7 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
     then begin
       let src = Module.cm_public_file_unsafe src Cmi in
       let dst = Module.cm_public_file_unsafe dst Cmi in
-      copy_to_obj_dir ~src ~dst
+      copy_to_obj_dir ~src ~dst:(Path.as_in_build_dir_exn dst)
     end;
     if Module.has_impl src then begin
       if modes.byte then
@@ -68,7 +68,7 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
   in
   let copy_all_deps =
     let all_deps ~obj_dir f =
-      Path.relative obj_dir (Path.basename f ^ ".all-deps") in
+      Path.Build.relative obj_dir (Path.basename f ^ ".all-deps") in
     if Lib.is_local vlib then
       fun m ->
         if Module.is_public m then
@@ -76,8 +76,14 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
             Module.file m kind
             |> Option.iter ~f:(fun f ->
               copy_to_obj_dir
-                ~src:(all_deps ~obj_dir:(Obj_dir.obj_dir vlib_obj_dir) f)
-                ~dst:(all_deps ~obj_dir:(Obj_dir.obj_dir impl_obj_dir) f))
+                ~src:(Path.build
+                        (all_deps
+                           ~obj_dir:
+                           (Path.as_in_build_dir_exn
+                              (Obj_dir.obj_dir vlib_obj_dir)) f))
+                ~dst:(all_deps
+                        ~obj_dir:(Path.as_in_build_dir_exn
+                                    (Obj_dir.obj_dir impl_obj_dir)) f))
           );
     else
       (* we only need to copy the .all-deps files for local libraries. for
@@ -95,7 +101,8 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
               |> String.concat ~sep:"\n")
             >>>
             Build.write_file_dyn
-              (all_deps ~obj_dir:(Obj_dir.obj_dir impl_obj_dir) f)
+              (all_deps ~obj_dir:(Path.as_in_build_dir_exn
+                                    (Obj_dir.obj_dir impl_obj_dir)) f)
             |> add_rule sctx))
   in
   Option.iter (Lib_modules.alias_module vlib_modules) ~f:copy_objs;
@@ -174,7 +181,7 @@ let external_dep_graph sctx ~impl_cm_kind ~vlib_obj_dir ~impl_obj_dir
     fun m cm_kind ->
       let m = Module.set_obj_dir ~obj_dir:vlib_obj_dir m in
       let unit = Module.cm_file_unsafe m cm_kind in
-      Ocamlobjinfo.rules ~dir:(Path.build impl_obj_dir) ~ctx ~unit
+      Ocamlobjinfo.rules ~dir:impl_obj_dir ~ctx ~unit
   in
   Ml_kind.Dict.of_func (fun ~ml_kind ->
     let cm_kind =

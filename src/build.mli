@@ -80,7 +80,7 @@ val env_var : string -> ('a, 'a) t
 val alias : Alias.t -> ('a, 'a) t
 
 (** Record a set of targets of the action produced by the build arrow. *)
-val declare_targets : Path.Set.t -> ('a, 'a) t
+val declare_targets : Path.Build.Set.t -> ('a, 'a) t
 
 (** Compute the set of source of all files present in the sub-tree
     starting at [dir] and record them as dependencies. *)
@@ -130,15 +130,15 @@ val file_exists_opt : Path.t -> ('a, 'b) t -> ('a, 'b option) t
 
 (** Always fail when executed. We pass a function rather than an
     exception to get a proper backtrace *)
-val fail : ?targets:Path.t list -> fail -> (_, _) t
+val fail : ?targets:Path.Build.t list -> fail -> (_, _) t
 
 val of_result
-  :  ?targets:Path.t list
+  :  ?targets:Path.Build.t list
   -> ('a, 'b) t Or_exn.t
   -> ('a, 'b) t
 
 val of_result_map
-  : ?targets:Path.t list
+  : ?targets:Path.Build.t list
   -> 'a Or_exn.t
   -> f:('a -> ('b, 'c) t)
   -> ('b, 'c) t
@@ -149,28 +149,31 @@ val memoize : string -> (unit, 'a) t -> (unit, 'a) t
 
 val action
   :  ?dir:Path.t
-  -> targets:Path.t list
+  -> targets:Path.Build.t list
   -> Action.t
   -> (_, Action.t) t
 
 val action_dyn
   :  ?dir:Path.t
-  -> targets:Path.t list
+  -> targets:Path.Build.t list
   -> unit
   -> (Action.t, Action.t) t
 
 (** Create a file with the given contents. *)
-val write_file : Path.t -> string -> (unit, Action.t) t
-val write_file_dyn : Path.t -> (string, Action.t) t
+val write_file : Path.Build.t -> string -> (unit, Action.t) t
+val write_file_dyn : Path.Build.t -> (string, Action.t) t
 
-val copy : src:Path.t -> dst:Path.t -> (unit, Action.t) t
-val copy_and_add_line_directive : src:Path.t -> dst:Path.t -> (unit, Action.t) t
+val copy : src:Path.t -> dst:Path.Build.t -> (unit, Action.t) t
+val copy_and_add_line_directive
+  :  src:Path.t
+  -> dst:Path.Build.t
+  -> (unit, Action.t) t
 
-val symlink : src:Path.t -> dst:Path.t -> (unit, Action.t) t
+val symlink : src:Path.t -> dst:Path.Build.t -> (unit, Action.t) t
 
-val create_file : Path.t -> (_, Action.t) t
-val remove_tree : Path.t -> (_, Action.t) t
-val mkdir : Path.t -> (_, Action.t) t
+val create_file : Path.Build.t -> (_, Action.t) t
+val remove_tree : Path.Build.t -> (_, Action.t) t
+val mkdir : Path.Build.t -> (_, Action.t) t
 
 (** Merge a list of actions *)
 val progn : ('a, Action.t) t list -> ('a, Action.t) t
@@ -203,7 +206,9 @@ val exec : eval_pred:Dep.eval_pred -> ('a, 'b) t -> 'a -> 'b * Dep.Set.t
 (**/**)
 val paths_for_rule : Path.Set.t -> ('a, 'a) t
 
-val merge_files_dyn : target:Path.t -> (Path.t list * string list, Action.t) t
+val merge_files_dyn
+  :  target:Path.Build.t
+  -> (Path.t list * string list, Action.t) t
 
 (* A module with standard combinators for applicative and selective functors, as
 well as equivalents of the functions from the arrow-based API. *)

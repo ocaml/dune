@@ -42,8 +42,8 @@ let parse s = ocamlobjinfo empty (Lexing.from_string s)
 let rules ~dir ~(ctx : Context.t) ~unit =
   let open Build.O in
   let output =
-    Path.relative dir (Path.basename unit)
-    |> Path.extend_basename ~suffix:".ooi-deps"
+    Path.Build.relative dir (Path.basename unit)
+    |> Path.Build.extend_basename ~suffix:".ooi-deps"
   in
   let bin =
     match ctx.ocamlobjinfo with
@@ -66,13 +66,13 @@ let rules ~dir ~(ctx : Context.t) ~unit =
     else
       []
   in
-  ( Command.run ~dir bin
+  ( Command.run ~dir:(Path.build dir) bin
       (List.concat
          [ no_approx
          ; no_code
          ; [ Dep unit ]
          ])
       ~stdout_to:output
-  , Build.contents output >>^ parse
+  , Build.contents (Path.build output) >>^ parse
   )
 }

@@ -64,10 +64,8 @@ let setup_rule ~expander ~dir ~cc ~source_rule ~coq_flags ~file_flags
 
   let obj_dir = dir in
   let source    = Coq_module.source coq_module in
-  let stdout_to =
-    Path.build (Coq_module.obj_file ~obj_dir ~ext:".v.d" coq_module) in
-  let object_to =
-    Path.build (Coq_module.obj_file ~obj_dir ~ext:".vo" coq_module) in
+  let stdout_to = Coq_module.obj_file ~obj_dir ~ext:".v.d" coq_module in
+  let object_to = Coq_module.obj_file ~obj_dir ~ext:".vo" coq_module in
   let dir = Path.build dir in
 
   let file_flags = file_flags @ [Command.Args.Dep (Path.build source)] in
@@ -85,7 +83,7 @@ let setup_rule ~expander ~dir ~cc ~source_rule ~coq_flags ~file_flags
   (* Process coqdep and generate rules *)
 
   let deps_of : unit Build.s = Build.dyn_paths (
-    Build.S.map (Build.lines_of stdout_to)
+    Build.S.map (Build.lines_of (Path.build stdout_to))
       ~f:(fun x -> List.map ~f:(Path.relative dir) (parse_coqdep ~coq_module x))
   ) in
 
@@ -223,7 +221,7 @@ let coqpp_rules ~sctx ~build_dir ~dir (s : Dune_file.Coqpp.t) =
 
   let mlg_rule m =
     let source = Path.build (Path.Build.relative dir (m ^ ".mlg")) in
-    let target = Path.build (Path.Build.relative dir (m ^ ".ml")) in
+    let target = Path.Build.relative dir (m ^ ".ml") in
     let args = [Command.Args.Dep source; Hidden_targets [target]] in
     Command.run ~dir:(Path.build build_dir) cc.coqpp args in
 

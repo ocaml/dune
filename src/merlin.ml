@@ -220,8 +220,7 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander ~dir_kind
     SC.add_rule sctx ~dir
       (Build.path (Path.build merlin_file)
        >>>
-       Build.create_file (Path.build
-                            (Path.Build.relative dir ".merlin-exists")));
+       Build.create_file (Path.Build.relative dir ".merlin-exists"));
     Path.Set.singleton (Path.build merlin_file)
     |> Rules.Produce.Alias.add_deps (Alias.check ~dir:(Path.build dir));
     let pp_flags = pp_flags sctx ~expander ~dir_kind t in
@@ -256,7 +255,7 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander ~dir_kind
           ~src_dirs
           ~obj_dirs)
       >>>
-      Build.write_file_dyn (Path.build merlin_file)))
+      Build.write_file_dyn merlin_file))
 
 let merge_two ~allow_approx_merlin a b =
   { requires = Lib.Set.union a.requires b.requires

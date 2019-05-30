@@ -119,7 +119,7 @@ module Internal_rule = struct
       ; build            : (unit, Action.t) Build.t
       ; mode             : Dune_file.Rule.Mode.t
       ; info             : Rule.Info.t
-      ; dir              : Path.t
+      ; dir              : Path.Build.t
       ; env              : Env.t option
       ; sandbox          : bool
       ; locks            : Path.t list
@@ -137,7 +137,7 @@ module Internal_rule = struct
   let _pp fmt { targets; dir ; _ } =
     Fmt.record fmt
       [ "targets", Fmt.const (Fmt.ocaml_list Path.pp) (Path.Set.to_list targets)
-      ; "dir", Fmt.const Path.pp dir
+      ; "dir", Fmt.const Path.pp (Path.build dir)
       ]
 
   module Set = Set.Make(T)
@@ -169,7 +169,7 @@ module Internal_rule = struct
     ; build       = Build.return (Action.Progn [])
     ; mode        = Standard
     ; info        = Internal
-    ; dir         = Path.root
+    ; dir         = Path.Build.root
     ; env         = None
     ; sandbox     = false
     ; locks       = []
@@ -717,14 +717,15 @@ and create_copy_rules ~ctx_dir ~non_target_source_files =
     (Path.Source.Set.to_list non_target_source_files)
     ~f:(fun path ->
       let ctx_path = Path.append_source ctx_dir path in
-      let build = Build.copy ~src:(Path.source path) ~dst:ctx_path in
+      let build = Build.copy ~src:(Path.source path)
+                    ~dst:(Path.as_in_build_dir_exn ctx_path) in
       (Pre_rule.make build ~context:None ~env:None
          ~info:Source_file_copy))
 
 and compile_rules ~dir t rules =
   List.concat_map rules ~f:(fun rule ->
     let (targets, rule) = compile_rule t rule in
-    assert (Path.(=) dir rule.Internal_rule.dir);
+    assert (Path.Build.(=) dir rule.Internal_rule.dir);
     List.map (Path.Set.to_list targets) ~f:(fun target -> (target, rule)))
   |> Path.Map.of_list_reducei ~f:rule_conflict
 
@@ -771,7 +772,8 @@ and load_dir_impl t ~dir : Loaded.t =
       load_dir_step2_exn t ~dir
 
 and load_dir_step2_exn t ~dir =
-  let context_name, sub_dir = match Utils.analyse_target dir with
+  let context_name, sub_dir =
+    match Utils.analyse_target dir with
     | Install (ctx, path) ->
       Context_or_install.Install ctx, path
     | Regular (ctx, path) ->
@@ -847,13 +849,15 @@ and load_dir_step2_exn t ~dir =
                      let path =
                        Path.extend_basename base_path
                          ~suffix:("-" ^ Digest.to_string stamp)
+                       |> Path.as_in_build_dir_exn
                      in
                      let rule =
                        Pre_rule.make ~locks ~context:(Some context) ~env
                          ~info:(Rule.Info.of_loc_opt loc)
                          (Build.progn [ action; Build.create_file path ])
                      in
-                     (rule :: rules, Path.Set.add action_stamp_files path))
+                     (rule :: rules
+                     , Path.Set.add action_stamp_files (Path.build path)))
             in
             let deps = Path.Set.union deps action_stamp_files in
             let path = Path.extend_basename base_path ~suffix:Alias0.suffix in
@@ -868,12 +872,13 @@ and load_dir_step2_exn t ~dir =
                   Action.with_stdout_to path
                     (Action.digest_files (Path.Set.to_list deps)))
                 >>>
-                Build.action_dyn () ~targets:[path])
+                Build.action_dyn () ~targets:[Path.as_in_build_dir_exn path])
              :: rules))
       in
       let register =
         (fun ~subdirs_to_keep ->
-           let compiled = compile_rules t ~dir:alias_dir alias_rules in
+           let compiled = compile_rules t ~dir:(
+             Path.as_in_build_dir_exn alias_dir) alias_rules in
            add_rules_exn t compiled;
            remove_old_artifacts t ~dir:alias_dir ~subdirs_to_keep;
            compiled)
@@ -1015,7 +1020,8 @@ The following targets are not:
     )
     @ rules
   in
-  let targets_here = compile_rules t ~dir rules in
+  let targets_here =
+    compile_rules t ~dir:(Path.as_in_build_dir_exn dir) rules in
 
   add_rules_exn t targets_here;
 
@@ -1237,7 +1243,7 @@ let () =
     in
     start_rule t rule;
     let* (action, deps) = evaluate_rule_and_wait_for_dependencies rule in
-    Fs.mkdir_p (Path.as_in_build_dir_exn dir);
+    Fs.mkdir_p dir;
     let targets_as_list  = Path.Set.to_list targets  in
     let head_target = List.hd targets_as_list in
     let prev_trace = Trace.get head_target in
@@ -1296,7 +1302,7 @@ let () =
             |> Path.Set.iter ~f:(fun p ->
               sandboxed p
               |> Fs.mkdir_p_or_check_exists ~loc);
-            Fs.mkdir_p_or_check_exists ~loc (sandboxed dir);
+            Fs.mkdir_p_or_check_exists ~loc (sandboxed (Path.build dir));
             Action.sandbox action
               ~sandboxed
               ~deps
@@ -1328,7 +1334,7 @@ let () =
             match only with
             | None -> true
             | Some pred ->
-              Predicate_lang.exec pred (Path.reach path ~from:dir)
+              Predicate_lang.exec pred (Path.reach path ~from:(Path.build dir))
                 ~standard:Predicate_lang.true_
           in
           if consider_for_promotion then begin
@@ -1436,7 +1442,7 @@ module Rule = struct
 
   type t =
     { id      : Id.t
-    ; dir     : Path.t
+    ; dir     : Path.Build.t
     ; deps    : Dep.Set.t
     ; targets : Path.Set.t
     ; context : Context.t option
@@ -1644,7 +1650,7 @@ end = struct
         if Lib_name.Map.is_empty deps then
           acc
         else
-          match Path.extract_build_context rule.Internal_rule.dir with
+          match Path.Build.extract_build_context rule.Internal_rule.dir with
           | None -> acc
           | Some (context, p) -> ((context, (p, deps)) :: acc))
     |> String.Map.of_list_multi

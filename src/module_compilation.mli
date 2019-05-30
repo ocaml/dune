@@ -31,5 +31,5 @@ val ocamlc_i
   -> dep_graphs:Dep_graph.Ml_kind.t
   -> Compilation_context.t
   -> Module.t
-  -> output:Path.t
+  -> output:Path.Build.t
   -> unit

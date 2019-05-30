@@ -70,6 +70,8 @@ module Build : sig
 
   val drop_build_context     : t -> Source.t option
   val drop_build_context_exn : t -> Source.t
+
+  val extract_build_context  : t -> (string * Source.t) option
 end
 
 (** In the outside world *)

@@ -55,7 +55,7 @@ let gen_rules_output sctx (config : Dune_file.Auto_format.t) ~output_dir =
           ; A "--name"
           ; Path (Path.source file)
           ; A "-o"
-          ; Target (Path.build output)
+          ; Target output
           ]
         in
         Some (
@@ -68,7 +68,6 @@ let gen_rules_output sctx (config : Dune_file.Auto_format.t) ~output_dir =
 
     let formatter =
       let dir = Path.build dir in
-      let output = Path.build output in
       let input = Path.build input in
       match Path.Source.basename file, Path.Source.extension file with
       | _, ".ml" -> ocaml Impl

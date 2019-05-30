@@ -134,7 +134,7 @@ let module_deps (m : Module.t) ~doc_dir ~(dep_graphs:Dep_graph.Ml_kind.t) =
 
 let compile_module sctx (m : Module.t) ~includes:(file_deps, iflags)
       ~dep_graphs ~doc_dir ~pkg_or_lnu =
-  let odoc_file = Path.build (Module.odoc_file m ~doc_dir) in
+  let odoc_file = Module.odoc_file m ~doc_dir in
   add_rule sctx
     (file_deps
      >>>
@@ -158,7 +158,7 @@ let compile_mld sctx (m : Mld.t) ~includes ~doc_dir ~pkg =
        [ A "compile"
        ; Command.Args.dyn includes
        ; As ["--pkg"; Package.Name.to_string pkg]
-       ; A "-o"; Target (Path.build odoc_file)
+       ; A "-o"; Target odoc_file
        ; Dep (Path.build (Mld.odoc_input m))
        ]);
   odoc_file
@@ -189,23 +189,22 @@ let setup_html sctx (odoc_file : odoc) ~pkg ~requires =
     | Mld -> odoc_file.html_file, []
     | Module ->
       let dune_keep =
-        Build.create_file
-          (Path.build (odoc_file.html_dir ++ Config.dune_keep_fname)) in
+        Build.create_file (odoc_file.html_dir ++ Config.dune_keep_fname) in
       odoc_file.html_dir, [dune_keep]
   in
   add_rule sctx
     (deps
      >>>
      Build.progn (
-       Build.remove_tree (Path.build to_remove)
-       :: Build.mkdir (Path.build odoc_file.html_dir)
+       Build.remove_tree to_remove
+       :: Build.mkdir odoc_file.html_dir
        :: Command.run ~dir:(Path.build (Paths.html_root ctx))
             (odoc sctx)
             [ A "html"
             ; odoc_include_flags ctx pkg requires
             ; A "-o"; Path (Path.build (Paths.html_root ctx))
             ; Dep (Path.build odoc_file.odoc_input)
-            ; Hidden_targets [Path.build odoc_file.html_file]
+            ; Hidden_targets [odoc_file.html_file]
             ]
        :: dune_keep))
 
@@ -228,7 +227,7 @@ let setup_library_odoc_rules sctx (library : Library.t) ~scope ~modules
         ~doc_dir ~pkg_or_lnu)
   in
   Dep.setup_deps ctx (Lib lib)
-    (List.map modules_and_odoc_files ~f:snd
+    (List.map modules_and_odoc_files ~f:(fun (_, p) -> Path.build p)
      |> Path.Set.of_list)
 
 let setup_css_rule sctx =
@@ -239,8 +238,8 @@ let setup_css_rule sctx =
        (odoc sctx)
        [ A "support-files"; A "-o"
        ; Path (Path.build (Paths.html_root ctx))
-       ; Hidden_targets [ Path.build (Paths.css_file ctx)
-                        ; Path.build (Paths.highlight_pack_js ctx)
+       ; Hidden_targets [ Paths.css_file ctx
+                        ; Paths.highlight_pack_js ctx
                         ]
        ])
 
@@ -286,7 +285,7 @@ let setup_toplevel_index_rule sctx =
   in
   let ctx = Super_context.context sctx in
   add_rule sctx
-    (Build.write_file (Path.build (Paths.toplevel_index ctx)) html)
+    (Build.write_file (Paths.toplevel_index ctx) html)
 
 let libs_of_pkg sctx ~pkg =
   match Package.Name.Map.find (SC.libs_by_package sctx) pkg with
@@ -558,7 +557,7 @@ let setup_package_odoc_rules_def =
            let gen_mld = Paths.gen_mld_dir ctx pkg ++ "index.mld" in
            let entry_modules = entry_modules sctx in
            add_rule sctx
-             (Build.write_file (Path.build gen_mld)
+             (Build.write_file gen_mld
                 (default_index ~pkg entry_modules));
            String.Map.add mlds "index" gen_mld in
        let odocs = List.map (String.Map.values mlds) ~f:(fun mld ->

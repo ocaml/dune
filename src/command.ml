@@ -12,11 +12,11 @@ module Args = struct
     | Concat   : string * 'a t list  -> 'a t
     | Dep      : Path.t -> _ t
     | Deps     : Path.t list -> _ t
-    | Target   : Path.t -> dynamic t
+    | Target   : Path.Build.t -> dynamic t
     | Path     : Path.t -> _ t
     | Paths    : Path.t list -> _ t
     | Hidden_deps    : Dep.Set.t -> _ t
-    | Hidden_targets : Path.t list -> dynamic t
+    | Hidden_targets : Path.Build.t list -> dynamic t
     | Dyn      : static t Build.s -> dynamic t
     | Fail     : fail -> _ t
 
@@ -65,13 +65,17 @@ let expand ~dir ts =
   let rec loop = function
     | A s  -> Build.return [s]
     | As l -> Build.return l
-    | Dep fn -> Build.S.map (Build.path fn) ~f:(fun () -> [Path.reach fn ~from:dir])
+    | Dep fn ->
+      Build.S.map (Build.path fn) ~f:(fun () -> [Path.reach fn ~from:dir])
     | Path fn -> Build.return [Path.reach fn ~from:dir]
-    | Deps fns -> Build.S.map (Build.paths fns) ~f:(fun () -> List.map fns ~f:(Path.reach ~from:dir))
+    | Deps fns ->
+      Build.S.map (Build.paths fns) ~f:(fun () ->
+        List.map fns ~f:(Path.reach ~from:dir))
     | Paths fns -> Build.return (List.map fns ~f:(Path.reach ~from:dir))
     | S ts -> Build.S.map (Build.all (List.map ts ~f:loop)) ~f:List.concat
-    | Concat (sep, ts) -> Build.S.map (loop (S ts)) ~f:(fun x -> [(String.concat ~sep x)])
-    | Target fn -> Build.return [Path.reach fn ~from:dir]
+    | Concat (sep, ts) ->
+      Build.S.map (loop (S ts)) ~f:(fun x -> [(String.concat ~sep x)])
+    | Target fn -> Build.return [Path.reach (Path.build fn) ~from:dir]
     | Dyn dyn -> Build.S.dyn_deps (Build.S.map dyn ~f:run_loop)
     | Fail f -> Build.fail f
     | Hidden_deps deps -> Build.S.map (Build.deps deps) ~f:(fun () -> [])
@@ -90,13 +94,13 @@ let prog_and_args ?(dir=Path.root) prog args =
 
 let run ~dir ?stdout_to prog args =
   let targets = add_targets args (Option.to_list stdout_to) in
-  Build.S.seq (Build.declare_targets (Path.Set.of_list targets)) (
+  Build.S.seq (Build.declare_targets (Path.Build.Set.of_list targets)) (
     Build.S.map (prog_and_args ~dir prog args) ~f:(fun (prog, args) ->
       let action : Action.t = Run (prog, args) in
       let action =
         match stdout_to with
         | None      -> action
-        | Some path -> Redirect (Stdout, path, action)
+        | Some path -> Redirect (Stdout, Path.build path, action)
       in
       Action.Chdir (dir, action)
     )

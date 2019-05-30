@@ -87,7 +87,7 @@
 - Fix generation of `.merlin` whenever there's more than one stanza with the
   same ppx preprocessing specification (#2209 ,fixes #2206, @rgrinberg)
 
-- Fix generation of `.meriln` in the presence of the `copy_files` stanza and
+- Fix generation of `.merlin` in the presence of the `copy_files` stanza and
   preprocessing specifications of other stanazs. (#2211, fixes #2206,
   @rgrinberg)
 

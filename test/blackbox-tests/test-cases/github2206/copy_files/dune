@@ -1,0 +1,5 @@
+(copy_files sources/*)
+
+(executable
+ (name foo)
+ (preprocess (action (run %{project_root}/pp.exe %{input-file}))))

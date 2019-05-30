@@ -6,22 +6,25 @@ open Dune_file
 open! No_io
 
 module For_stanza = struct
-  type ('merlin, 'cctx, 'js) t =
+  type ('merlin, 'cctx, 'js, 'source_dirs) t =
     { merlin : 'merlin
     ; cctx   : 'cctx
     ; js     : 'js
+    ; source_dirs : 'source_dirs
     }
 
   let empty_none =
     { merlin = None
     ; cctx = None
     ; js = None
+    ; source_dirs = None
     }
 
   let empty_list =
     { merlin = []
     ; cctx = []
     ; js = []
+    ; source_dirs = []
     }
 
   let cons_maybe hd_o tl =
@@ -32,16 +35,19 @@ module For_stanza = struct
   let cons acc x =
     { merlin = cons_maybe x.merlin acc.merlin
     ; cctx = cons_maybe x.cctx acc.cctx
+    ; source_dirs = cons_maybe x.source_dirs acc.source_dirs
     ; js =
         match x.js with
         | None -> acc.js
         | Some js -> List.rev_append acc.js js
+
     }
 
   let rev t =
     { t with
       merlin = List.rev t.merlin
     ; cctx = List.rev t.cctx
+    ; source_dirs = List.rev t.source_dirs
     }
 end
 
@@ -85,6 +91,7 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
           merlin = Some merlin
         ; cctx = Some (lib.buildable.loc, cctx)
         ; js = None
+        ; source_dirs = None
         }
       | Executables exes ->
         let cctx, merlin =
@@ -100,6 +107,7 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
               List.map
                 [exe ^ ".bc.js" ; exe ^ ".bc.runtime.js"]
                 ~f:(Path.Build.relative ctx_dir)))
+        ; source_dirs = None
         }
       | Alias alias ->
         Simple_rules.alias sctx alias ~dir ~expander;
@@ -113,19 +121,20 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
           merlin = Some merlin
         ; cctx = Some (tests.exes.buildable.loc, cctx)
         ; js = None
+        ; source_dirs = None
         }
       | Copy_files { glob; _ } ->
-        let source_dirs =
+        let source_dir =
           let loc = String_with_vars.loc glob in
           let src_glob = Expander.expand_str expander glob in
           Path.Source.relative src_dir src_glob ~error_loc:loc
           |> Path.Source.parent_exn
-          |> Path.Source.Set.singleton
         in
         { For_stanza.
-          merlin = Some (Merlin.make ~source_dirs ())
+          merlin = None
         ; cctx = None
         ; js = None
+        ; source_dirs = Some source_dir
         }
       | Install { Install_conf. section = _; files; package = _ } ->
         List.map files ~f:(fun fb ->
@@ -141,6 +150,7 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
           merlin = merlins
         ; cctx = cctxs
         ; js = js_targets
+        ; source_dirs
         } = List.fold_left stanzas
               ~init:{ For_stanza.empty_list with cctx = cctxs }
               ~f:(fun acc a -> For_stanza.cons acc (for_stanza a))
@@ -152,8 +162,10 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
     Option.iter (Merlin.merge_all ~allow_approx_merlin merlins)
       ~f:(fun m ->
         let more_src_dirs =
-          List.map (Dir_contents.dirs dir_contents) ~f:(fun dc ->
+          Dir_contents.dirs dir_contents
+          |> List.map ~f:(fun dc ->
             Path.Build.drop_build_context_exn (Dir_contents.dir dc))
+          |> List.rev_append source_dirs
         in
         Merlin.add_rules sctx ~dir:ctx_dir ~more_src_dirs ~expander ~dir_kind
           (Merlin.add_source_dir m src_dir));

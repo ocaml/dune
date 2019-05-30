@@ -1,5 +1,5 @@
-unreleased
-----------
+1.10.0 (30/05/2019)
+-------------------
 
 - Restricted the set of variables available for expansion in the destination
   filename of `install` stanza to simplify implementation and avoid dependency

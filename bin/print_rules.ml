@@ -54,8 +54,7 @@ let print_rule_sexp ppf (rule : Build_system.Rule.t) =
       List.concat
         [ [ "deps"   , Dep.Set.encode rule.deps
           ; "targets", paths (Path.Build.Set.to_list rule.targets
-                              |> List.map ~f:Path.build
-                              |> Path.Set.of_list) ]
+                              |> Path.set_of_build_paths_list) ]
         ; (match rule.context with
            | None -> []
            | Some c -> ["context",

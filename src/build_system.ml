@@ -5,7 +5,7 @@ open Fiber.O
 module Pre_rule = Rule
 
 (* Where we store stamp files for aliases *)
-let alias_dir = Path.(relative build_dir) ".aliases"
+let alias_dir = Path.Build.(relative root ".aliases")
 
 let () = Hooks.End_of_build.always Memo.reset
 
@@ -88,7 +88,7 @@ let rule_loc ~file_tree ~info ~dir =
   match (info : Rule.Info.t) with
   | From_dune_file loc -> loc
   | _ ->
-    let dir = Path.drop_optional_build_context_src_exn dir in
+    let dir = Path.drop_optional_build_context_src_exn (Path.build dir) in
     let file =
       match
         Option.bind (File_tree.find_dir file_tree dir)
@@ -523,8 +523,8 @@ let rec with_locks mutexes ~f =
       (fun () -> with_locks mutexes ~f)
 
 let remove_old_artifacts t ~dir ~subdirs_to_keep =
-  if not (Path.is_in_build_dir dir) ||
-     Path.Table.mem t.files (Path.relative dir Config.dune_keep_fname) then
+  let dir = Path.build dir in
+  if Path.Table.mem t.files (Path.relative dir Config.dune_keep_fname) then
     ()
   else
     match Path.readdir_unsorted dir with
@@ -597,7 +597,6 @@ let fix_up_legacy_fallback_rules t ~file_tree_dir ~dir rules =
       rules
     else begin
       let source_files =
-        let dir = Path.as_in_build_dir_exn dir in
         File_tree.Dir.files ftdir
         |> String.Set.fold ~init:Path.Build.Set.empty ~f:(fun name acc ->
           let path = Path.Build.relative dir name in
@@ -620,11 +619,10 @@ let fix_up_legacy_fallback_rules t ~file_tree_dir ~dir rules =
                    { lifetime = Unlimited
                    ; into = None
                    ; only =
-                       Some
-                         (let dir = Path.as_in_build_dir_exn dir in
-                          Predicate_lang.of_pred (fun s ->
-                            Path.Build.Set.mem inter
-                              (Path.Build.relative dir s)))
+                       Some (
+                         Predicate_lang.of_pred (fun s ->
+                           Path.Build.Set.mem inter
+                             (Path.Build.relative dir s)))
                    },
                  "overwriting the source files with the generated one")
             in
@@ -722,14 +720,11 @@ and start_rule t _rule =
   t.hook Rule_started
 
 and create_copy_rules ~ctx_dir ~non_target_source_files =
-  List.map
-    (Path.Source.Set.to_list non_target_source_files)
-    ~f:(fun path ->
-      let ctx_path = Path.append_source ctx_dir path in
-      let build = Build.copy ~src:(Path.source path)
-                    ~dst:(Path.as_in_build_dir_exn ctx_path) in
-      (Pre_rule.make build ~context:None ~env:None
-         ~info:Source_file_copy))
+  Path.Source.Set.to_list non_target_source_files
+  |> List.map ~f:(fun path ->
+    let ctx_path = Path.Build.append_source ctx_dir path in
+    let build = Build.copy ~src:(Path.source path) ~dst:ctx_path in
+    Pre_rule.make build ~context:None ~env:None ~info:Source_file_copy)
 
 and compile_rules ~dir t rules =
   List.concat_map rules ~f:(fun rule ->
@@ -795,6 +790,9 @@ and load_dir_step2_exn t ~dir =
         ["path", (Path.to_sexp dir)]
   in
 
+  (* the above check makes this safe *)
+  let dir = Path.as_in_build_dir_exn dir in
+
   (* Load all the rules *)
   let extra_subdirs_to_keep, rules_produced =
     let gen_rules =
@@ -806,9 +804,10 @@ and load_dir_step2_exn t ~dir =
         rules
     in
     handle_add_rule_effects
-      (fun () -> gen_rules ~dir (Path.Source.explode sub_dir))
+      (fun () -> gen_rules ~dir:(Path.build dir) (Path.Source.explode sub_dir))
   in
   let rules =
+    let dir = Path.build dir in
     Rules.Dir_rules.union
       (Rules.find rules_produced dir)
       (Rules.find (Fdecl.get t.init_rules) dir)
@@ -820,7 +819,9 @@ and load_dir_step2_exn t ~dir =
     match context_name with
     | Context context_name ->
       let alias_dir =
-        Path.append_source (Path.relative alias_dir context_name) sub_dir
+        Path.Build.append_source
+          (Path.Build.relative alias_dir context_name)
+          sub_dir
       in
       let alias_rules =
         let open Build.O in
@@ -831,7 +832,7 @@ and load_dir_step2_exn t ~dir =
           if String.Map.mem aliases "default" then
             aliases
           else
-            match Path.extract_build_context_dir dir with
+            match Path.extract_build_context_dir (Path.build dir) with
             | None -> aliases
             | Some (ctx_dir, src_dir) ->
               match File_tree.find_dir t.file_tree src_dir with
@@ -850,7 +851,7 @@ and load_dir_step2_exn t ~dir =
           ~f:(fun name
                { Rules.Dir_rules.Alias_spec. deps; dyn_deps; actions }
                rules ->
-            let base_path = Path.relative alias_dir name in
+            let base_path = Path.Build.relative alias_dir name in
             let rules, action_stamp_files =
               List.fold_left
                 (Appendable_list.to_list actions)
@@ -858,10 +859,8 @@ and load_dir_step2_exn t ~dir =
                 ~f:(fun (rules, action_stamp_files)
                      { Rules.Dir_rules.
                        stamp; action; locks ; context ; loc ; env } ->
-                     let path =
-                       Path.extend_basename base_path
-                         ~suffix:("-" ^ Digest.to_string stamp)
-                       |> Path.as_in_build_dir_exn
+                     let path = Path.Build.extend_basename base_path
+                                  ~suffix:("-" ^ Digest.to_string stamp)
                      in
                      let rule =
                        Pre_rule.make ~locks ~context:(Some context) ~env
@@ -872,7 +871,8 @@ and load_dir_step2_exn t ~dir =
                      , Path.Set.add action_stamp_files (Path.build path)))
             in
             let deps = Path.Set.union deps action_stamp_files in
-            let path = Path.extend_basename base_path ~suffix:Alias0.suffix in
+            let path = Path.Build.extend_basename base_path
+                         ~suffix:Alias0.suffix in
             (Pre_rule.make
                ~context:None
                ~env:None
@@ -881,16 +881,15 @@ and load_dir_step2_exn t ~dir =
                 Build.dyn_path_set (Build.arr Fn.id)
                 >>^ (fun dyn_deps ->
                   let deps = Path.Set.union deps dyn_deps in
-                  Action.with_stdout_to path
+                  Action.with_stdout_to (Path.build path)
                     (Action.digest_files (Path.Set.to_list deps)))
                 >>>
-                Build.action_dyn () ~targets:[Path.as_in_build_dir_exn path])
+                Build.action_dyn () ~targets:[path])
              :: rules))
       in
       let register =
         (fun ~subdirs_to_keep ->
-           let compiled = compile_rules t ~dir:(
-             Path.as_in_build_dir_exn alias_dir) alias_rules in
+           let compiled = compile_rules t ~dir:alias_dir alias_rules in
            add_rules_exn t compiled;
            remove_old_artifacts t ~dir:alias_dir ~subdirs_to_keep;
            compiled)
@@ -924,7 +923,7 @@ and load_dir_step2_exn t ~dir =
            let to_ignore =
              Path.Build.Set.filter targets ~f:(fun target ->
                Predicate_lang.exec pred
-                 (Path.reach (Path.build target) ~from:dir)
+                 (Path.reach (Path.build target) ~from:(Path.build dir))
                  ~standard:Predicate_lang.true_)
            in
            Path.Build.Set.union to_ignore acc_ignored
@@ -956,7 +955,7 @@ and load_dir_step2_exn t ~dir =
       if Path.Source.Set.is_empty files then
         (None, subdirs)
       else
-        let ctx_path = Path.(relative build_dir) context_name in
+        let ctx_path = Path.Build.(relative root) context_name in
         (Some (ctx_path, files),
          subdirs)
   in
@@ -1005,7 +1004,7 @@ and load_dir_step2_exn t ~dir =
                 (rule_loc
                    ~file_tree:t.file_tree
                    ~info:rule.info
-                   ~dir:(Path.drop_optional_build_context dir))
+                   ~dir)
                 "\
 Some of the targets of this fallback rule are present in the source tree,
 and some are not. This is not allowed. Either none of the targets must
@@ -1033,8 +1032,7 @@ The following targets are not:
     )
     @ rules
   in
-  let targets_here =
-    compile_rules t ~dir:(Path.as_in_build_dir_exn dir) rules in
+  let targets_here = compile_rules t ~dir rules in
 
   add_rules_exn t targets_here;
 
@@ -1550,7 +1548,10 @@ end = struct
   let rules_for_files rules deps =
     Dep.Set.paths deps ~eval_pred
     |> Path.Set.fold ~init:Rule.Set.empty ~f:(fun path acc ->
-      match Path.Build.Map.find rules (Path.as_in_build_dir_exn path) with
+      match
+        Path.as_in_build_dir path
+        |> Option.bind ~f:(Path.Build.Map.find rules)
+      with
       | None -> acc
       | Some rule -> Rule.Set.add acc rule)
     |> Rule.Set.to_list

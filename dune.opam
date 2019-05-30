@@ -35,6 +35,7 @@ depends: [
 conflicts: [
   "jbuilder" {!= "transition"}
   "odoc" {< "1.3.0"}
+  "dune-release" {< "1.3.0"}
 ]
 build: [
   # opam 2 sets OPAM_SWITCH_PREFIX, so we don't need a hardcoded path

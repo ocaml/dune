@@ -18,7 +18,8 @@
   base-threads)
  (conflicts
   (jbuilder (<> "transition"))
-  (odoc (< 1.3.0)))
+  (odoc (< 1.3.0))
+  (dune-release (< 1.3.0)))
  (synopsis "Fast, portable and opinionated build system")
  (description "
 dune is a build system that was designed to simplify the release of

@@ -220,13 +220,21 @@ module Library : sig
   end
 
   module Special_builtin_support : sig
+    module Build_info : sig
+      type api_version =
+        | V1
+
+      type t =
+        { data_module : string
+        ; api_version : api_version
+        }
+    end
+
     type t =
       | Findlib_dynload
+      | Build_info of Build_info.t
 
-    val compare : t -> t -> Ordering.t
     include Dune_lang.Conv with type t := t
-
-    module Map : Map.S with type key := t
   end
 
   type t =

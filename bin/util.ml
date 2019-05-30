@@ -3,6 +3,7 @@ open! Stdune
 module Context = Dune.Context
 module Workspace = Dune.Workspace
 module Dune_project = Dune.Dune_project
+module Vcs = Dune.Vcs
 
 let die = Dune.Import.die
 let hint = Dune.Import.hint

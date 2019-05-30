@@ -115,6 +115,38 @@ let one_of term1 term2 =
               "Cannot use %s and %s simultaneously"
               arg1 arg2)
 
+let build_info =
+  let+ build_info =
+    Arg.(value
+         & flag
+         & info ["build-info"] ~docs:"OPTIONS" ~doc:"Show build information.")
+  in
+  if build_info then begin
+    let module B = Build_info.V1 in
+    let pr fmt = Printf.printf (fmt ^^ "\n") in
+    let ver_string v =
+      match v with
+      | None -> "n/a"
+      | Some v -> B.Version.to_string v
+    in
+    pr "version: %s" (ver_string B.version);
+    let libs =
+      List.map B.statically_linked_libraries ~f:(fun lib ->
+        B.Statically_linked_library.name lib,
+        ver_string (B.Statically_linked_library.version lib))
+      |> List.sort ~compare
+    in
+    begin match libs with
+    | [] -> ()
+    | _ ->
+      pr "statically linked libraries:";
+      let longest = String.longest_map libs ~f:fst in
+      List.iter libs ~f:(fun (name, v) ->
+        pr "- %-*s %s" longest name v)
+    end;
+    exit 0
+  end
+
 module Options_implied_by_dash_p = struct
   type t =
     { root : string option
@@ -408,6 +440,7 @@ let term =
          & info ["store-orig-source-dir"] ~docs
              ~env:(Arg.env_var ~doc "DUNE_STORE_ORIG_SOURCE_DIR")
              ~doc)
+  and+ () = build_info
   in
   let build_dir = Option.value ~default:default_build_dir build_dir in
   let root = Workspace_root.create ~specified_by_user:root in

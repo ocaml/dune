@@ -206,7 +206,9 @@ let build_and_link_many
   |> Module.Name.Map.iter ~f:(
     Module_compilation.build_module cctx ~dep_graphs);
 
-  let link_time_code_gen = Link_time_code_gen.handle_special_libs cctx in
+  let link_time_code_gen =
+    Link_time_code_gen.handle_special_libs cctx
+  in
   List.iter programs ~f:(fun { Program.name; main_module_name ; loc } ->
     let top_sorted_modules =
       let main = Option.value_exn

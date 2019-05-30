@@ -440,14 +440,6 @@ module L = struct
     Id.Top_closure.top_closure l
       ~key:(fun t -> unique_id (key t))
       ~deps
-
-  let special_builtin_support l =
-    let module M = Dune_file.Library.Special_builtin_support.Map in
-    List.fold_left l ~init:M.empty ~f:(fun acc lib ->
-      let special_builtin_support = Lib_info.special_builtin_support lib.info in
-      match special_builtin_support with
-      | None -> acc
-      | Some x -> M.add acc x lib)
 end
 
 module Lib_and_module = struct

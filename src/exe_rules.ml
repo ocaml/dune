@@ -100,6 +100,7 @@ let executables_rules ~sctx ~dir ~dir_kind ~expander
       ~js_of_ocaml:exes.buildable.js_of_ocaml
       ~opaque:(SC.opaque sctx)
       ~dynlink
+      ~package:exes.package
   in
 
   let requires_compile = Compilation_context.requires_compile cctx in

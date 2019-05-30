@@ -167,8 +167,8 @@ module Fancy = struct
       let prog_start = find_prog_start (prog_end - 1) in
       let prog_end =
         match String.index_from s prog_start '.' with
-        | exception _ -> prog_end
-        | i -> i
+        | None -> prog_end
+        | Some i -> i
       in
       let before = String.take s prog_start in
       let after = String.drop s prog_end in
@@ -359,8 +359,8 @@ module Exit_status = struct
         match s.[pos] with
         | '\027' -> begin
             match String.index_from s pos 'm' with
-            | exception Not_found -> false
-            | pos -> loop s (pos + 1) len prefix
+            | None -> false
+            | Some pos -> loop s (pos + 1) len prefix
           end
         | c' -> c = c' && loop s (pos + 1) len rest
     in

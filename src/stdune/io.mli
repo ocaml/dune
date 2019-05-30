@@ -1,7 +1,8 @@
 (** IO operations *)
 
-val close_in  : in_channel  -> unit
+val close_in : in_channel -> unit
 val close_out : out_channel -> unit
+val close_both : in_channel * out_channel -> unit
 
 val input_lines : in_channel -> string list
 
@@ -37,6 +38,13 @@ module type S = sig
 
   val write_lines : ?binary:bool -> path -> string list -> unit
   val copy_file : ?chmod:(int -> int) -> src:path -> dst:path -> unit -> unit
+
+  val setup_copy
+    :  ?chmod:(int -> int)
+    -> src:path
+    -> dst:path
+    -> unit
+    -> in_channel * out_channel
 
   val file_line : path -> int -> string
   val file_lines : path -> start:int -> stop:int -> (string * string) list

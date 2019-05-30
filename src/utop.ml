@@ -82,6 +82,7 @@ let setup sctx ~dir =
                 (Ocaml_flags.default ~profile:(Super_context.profile sctx))
                 ["-w"; "-24"])
       ~dynlink:false
+      ~package:None
   in
   let toplevel = Toplevel.make ~cctx ~source in
   Toplevel.setup_rules toplevel

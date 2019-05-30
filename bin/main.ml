@@ -153,7 +153,10 @@ let default =
     `Help (`Pager, None)
   in
   (term,
-   Term.info "dune" ~doc ~version:"%%VERSION%%"
+   Term.info "dune" ~doc
+     ~version:(match Build_info.V1.version with
+       | None -> "n/a"
+       | Some v -> Build_info.V1.Version.to_string v)
      ~man:
        [ `S "DESCRIPTION"
        ; `P {|Dune is a build system designed for OCaml projects only. It

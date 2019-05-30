@@ -26,6 +26,9 @@ val uppercase    : t -> t
 val lowercase    : t -> t
 
 val index : t -> char -> int option
+val index_from : t -> int -> char -> int option
+val rindex : t -> char -> int option
+val rindex_from : t -> int -> char -> int option
 
 val extract_words : t -> is_word_char:(char -> bool) -> t list
 val extract_comma_space_separated_words : t -> t list

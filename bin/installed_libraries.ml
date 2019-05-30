@@ -37,7 +37,9 @@ let term =
           Lib_name.to_string (Dune_package.Lib.name n)) in
       List.iter pkgs ~f:(fun (pkg : _ Dune_package.Lib.t) ->
         let ver =
-          Option.value (Dune_package.Lib.version pkg) ~default:"n/a"
+          match Dune_package.Lib.version pkg with
+          | Some v -> v
+          | _ -> "n/a"
         in
         Printf.printf "%-*s (version: %s)\n" max_len
           (Lib_name.to_string (Dune_package.Lib.name pkg)) ver);

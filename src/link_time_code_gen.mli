@@ -8,4 +8,7 @@ type t =
   }
 
 (** Generate link time code for special libraries such as [findlib.dynload] *)
-val handle_special_libs : Compilation_context.t -> t Or_exn.t
+val handle_special_libs
+  :  Compilation_context.t
+  -> package:Package.t option
+  -> t Or_exn.t

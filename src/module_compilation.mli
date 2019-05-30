@@ -11,6 +11,7 @@ val build_module
   :  ?sandbox:bool
   -> ?js_of_ocaml:Dune_file.Js_of_ocaml.t
   -> ?dynlink:bool
+  -> ?precompiled_cmi:bool
   -> dep_graphs:Dep_graph.Ml_kind.t
   -> Compilation_context.t
   -> Module.t
@@ -21,6 +22,7 @@ val build_modules
   :  ?sandbox:bool
   -> ?js_of_ocaml:Dune_file.Js_of_ocaml.t
   -> ?dynlink:bool
+  -> ?precompiled_cmi:bool
   -> dep_graphs:Dep_graph.Ml_kind.t
   -> Compilation_context.t
   -> unit

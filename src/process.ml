@@ -136,8 +136,8 @@ module Fancy = struct
       let prog_start = find_prog_start (prog_end - 1) in
       let prog_end =
         match String.index_from s prog_start '.' with
-        | exception _ -> prog_end
-        | i -> i
+        | None -> prog_end
+        | Some i -> i
       in
       let before = String.take s prog_start in
       let after = String.drop s prog_end in

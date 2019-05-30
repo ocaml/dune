@@ -188,6 +188,7 @@ let build_and_link_many
       ~linkages
       ?link_flags
       ?(js_of_ocaml=Dune_file.Js_of_ocaml.default)
+      ?package
       cctx
   =
   let dep_graphs = Ocamldep.rules cctx in
@@ -195,7 +196,9 @@ let build_and_link_many
   (* CR-someday jdimino: this should probably say [~dynlink:false] *)
   Module_compilation.build_modules cctx ~js_of_ocaml ~dep_graphs;
 
-  let link_time_code_gen = Link_time_code_gen.handle_special_libs cctx in
+  let link_time_code_gen =
+    Link_time_code_gen.handle_special_libs cctx ~package
+  in
   List.iter programs ~f:(fun { Program.name; main_module_name ; loc } ->
     let top_sorted_modules =
       let main = Option.value_exn

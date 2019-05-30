@@ -1,0 +1,6 @@
+(library
+ (name dune_build_info)
+ (public_name dune.build-info)
+ (wrapped false)
+ (modules_without_implementation dune_build_info_data)
+ (special_builtin_support dune_build_info))

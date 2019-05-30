@@ -9,6 +9,22 @@ include struct
   let uppercase_ascii    = String.uppercase
   let lowercase_ascii    = String.lowercase
   let equal (a:string) b = Pervasives.(=) a b
+  let index_opt s ch =
+    match String.index s ch with
+    | i -> Some i
+    | exception Not_found -> None
+  let index_from_opt s i ch =
+    match String.index_from s i ch with
+    | i -> Some i
+    | exception Not_found -> None
+  let rindex_opt s ch =
+    match String.rindex s ch with
+    | i -> Some i
+    | exception Not_found -> None
+  let rindex_from_opt s i ch =
+    match String.rindex_from s i ch with
+    | i -> Some i
+    | exception Not_found -> None
 end
 
 include StringLabels
@@ -30,6 +46,11 @@ let capitalize   = capitalize_ascii
 let uncapitalize = uncapitalize_ascii
 let uppercase    = uppercase_ascii
 let lowercase    = lowercase_ascii
+
+let index = index_opt
+let index_from = index_from_opt
+let rindex = rindex_opt
+let rindex_from = rindex_from_opt
 
 let break s ~pos =
   (sub s ~pos:0 ~len:pos,
@@ -104,8 +125,8 @@ let extract_blank_separated_words s =
 
 let lsplit2 s ~on =
   match index s on with
-  | exception Not_found -> None
-  | i ->
+  | None -> None
+  | Some i ->
     Some
       (sub s ~pos:0 ~len:i,
        sub s ~pos:(i + 1) ~len:(length s - i - 1))
@@ -121,16 +142,11 @@ let lsplit2_exn s ~on =
 
 let rsplit2 s ~on =
   match rindex s on with
-  | exception Not_found -> None
-  | i ->
+  | None -> None
+  | Some i ->
     Some
       (sub s ~pos:0 ~len:i,
        sub s ~pos:(i + 1) ~len:(length s - i - 1))
-
-let index s ch =
-  match index s ch with
-  | i -> Some i
-  | exception Not_found -> None
 
 let split s ~on =
   let rec loop i j =

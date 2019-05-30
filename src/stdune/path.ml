@@ -257,8 +257,8 @@ end = struct
     else
       let t = to_string t in
       match String.rindex_from t (String.length t - 1) '/' with
-      | exception Not_found -> Some root
-      | i -> Some (make (String.take t i))
+      | None -> Some root
+      | Some i -> Some (make (String.take t i))
 
   let parent_exn t =
     match parent t with
@@ -272,8 +272,8 @@ end = struct
       let t = to_string t in
       let len = String.length t in
       match String.rindex_from t (len - 1) '/' with
-      | exception Not_found -> t
-      | i -> String.sub t ~pos:(i + 1) ~len:(len - i - 1)
+      | None -> t
+      | Some i -> String.sub t ~pos:(i + 1) ~len:(len - i - 1)
 
   let to_sexp t = Sexp.Encoder.string (to_string t)
   let to_dyn t = Dyn.String (to_string t)

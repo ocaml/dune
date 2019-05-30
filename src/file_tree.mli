@@ -91,6 +91,10 @@ val find_dir : t -> Path.Source.t -> Dir.t option
     that is an ancestor of [fn]. *)
 val nearest_dir : t -> Path.Source.t -> Dir.t
 
+(** [nearest_vcs t fn] returns the version control system with the
+    longest root path that is an ancestor of [fn]. *)
+val nearest_vcs : t -> Path.Source.t -> Vcs.t option
+
 val files_of : t -> Path.Source.t -> Path.Source.Set.t
 
 (** [true] iff the path is a directory *)

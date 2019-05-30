@@ -89,6 +89,7 @@ let term =
     Arg.(value
          & pos 0 (some (enum commands)) None
          & info [] ~docv:"TOPIC")
+  and+ () = Common.build_info
   in
   match what with
   | None ->

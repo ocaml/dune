@@ -1296,7 +1296,7 @@ let () =
         prev_trace.targets_digest <> targets_digest
       | _ -> true
     in
-    begin
+    let* () =
       if force || something_changed then begin
         List.iter targets_as_list ~f:(fun p ->
           Path.unlink_no_err (Path.build p));
@@ -1335,12 +1335,12 @@ let () =
         Trace.set (Path.build head_target) { rule_digest; targets_digest }
       end else
         Fiber.return ()
-    end >>| fun () ->
-    begin
+    in
+    let+ () =
       match mode with
-      | Standard | Fallback | Ignore_source_files -> ()
+      | Standard | Fallback | Ignore_source_files -> Fiber.return ()
       | Promote { lifetime; into; only } ->
-        Path.Build.Set.iter targets ~f:(fun path ->
+        Fiber.map_all_unit (Path.Build.Set.to_list targets) ~f:(fun path ->
           let consider_for_promotion =
             match only with
             | None -> true
@@ -1368,10 +1368,15 @@ let () =
               if lifetime = Until_clean then
                 Promoted_to_delete.add in_source_tree;
               Scheduler.ignore_for_watch in_source_tree;
-              Io.copy_file ~src:path ~dst:in_source_tree ()
-            end
-          end)
-    end;
+              Artifact_substitution.copy_file ()
+                ~src:path
+                ~dst:in_source_tree
+                ~get_vcs:(File_tree.nearest_vcs t.file_tree)
+            end else
+              Fiber.return ()
+          end else
+            Fiber.return ())
+    in
     t.hook Rule_completed
   in
   Memo.set_impl execute_rule_def execute_rule

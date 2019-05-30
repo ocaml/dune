@@ -63,6 +63,8 @@ module Map : Map.S with type key = t
 
 val status : t -> Lib_info.Status.t
 
+val version : t -> string option
+
 val package : t -> Package.Name.t option
 
 val equal : t -> t -> bool

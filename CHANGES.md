@@ -1,3 +1,13 @@
+unreleased
+----------
+
+- Allow to embed build info in executables such as version and list
+  and version of statically linked libraries (#1930, @diml)
+
+- Set version in `META` and `dune-package` files to the one read from
+  the vcs when no other version is available (#1930, @diml)
+
+
 1.10.0 (30/05/2019)
 -------------------
 

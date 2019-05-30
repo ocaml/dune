@@ -282,6 +282,8 @@ let native_dir t = Obj_dir.native_dir t.info.obj_dir
 
 let status t = t.info.status
 
+let version t = t.info.version
+
 let foreign_objects t = t.info.foreign_objects
 
 let special_builtin_support t = t.info.special_builtin_support

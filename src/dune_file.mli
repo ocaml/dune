@@ -202,6 +202,7 @@ module Library : sig
   module Special_builtin_support : sig
     type t =
       | Findlib_dynload
+      | Dune_build_info
 
     val compare : t -> t -> Ordering.t
     include Dune_lang.Conv with type t := t

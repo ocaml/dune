@@ -54,6 +54,10 @@ val term : t Cmdliner.Term.t
 
 val context_arg : doc:string -> string Cmdliner.Term.t
 
+(** A [--build-info] command line argument that print build
+    informations (included in [term]) *)
+val build_info : unit Cmdliner.Term.t
+
 val default_build_dir : string
 
 module Let_syntax : sig

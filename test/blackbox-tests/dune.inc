@@ -39,6 +39,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name build-info)
+ (deps (package dune) (source_tree test-cases/build-info))
+ (action
+  (chdir
+   test-cases/build-info
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name byte-code-only)
  (deps (package dune) (source_tree test-cases/byte-code-only))
  (action
@@ -1490,6 +1498,7 @@
   (alias all-alias)
   (alias bad-alias-error)
   (alias block-strings)
+  (alias build-info)
   (alias byte-code-only)
   (alias c-stubs)
   (alias check-alias)
@@ -1672,6 +1681,7 @@
   (alias all-alias)
   (alias bad-alias-error)
   (alias block-strings)
+  (alias build-info)
   (alias byte-code-only)
   (alias c-stubs)
   (alias check-alias)

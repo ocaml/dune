@@ -20,7 +20,7 @@ let force_read_cmi source_file =
 (* Build the cm* if the corresponding source is present, in the case of cmi if
    the mli is not present it is added as additional target to the .cmo
    generation *)
-let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
+let build_cm cctx ?sandbox ?(dynlink=true) ~precompiled_cmi ~dep_graphs
       ~cm_kind (m : Module.t) =
   let sctx     = CC.super_context cctx in
   let dir      = CC.dir           cctx in
@@ -46,23 +46,26 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
             )
       in
       let extra_args, extra_deps, other_targets =
-        match cm_kind, Module.intf m
-              , Vimpl.is_public_vlib_module vimpl m with
-        (* If there is no mli, [ocamlY -c file.ml] produces both the
-           .cmY and .cmi. We choose to use ocamlc to produce the cmi
-           and to produce the cmx we have to wait to avoid race
-           conditions. *)
-        | Cmo, None, false ->
-          copy_interface ();
-          [], [], [Path.as_in_build_dir_exn (Module.cm_file_unsafe m Cmi)]
-        | Cmo, None, true
-        | (Cmo | Cmx), _, _ ->
-          force_read_cmi src,
-          [Module.cm_file_unsafe m Cmi],
-          []
-        | Cmi, _, _ ->
-          copy_interface ();
-          [], [], []
+        if precompiled_cmi then
+          force_read_cmi src, [], []
+        else
+          match cm_kind, Module.intf m
+                , Vimpl.is_public_vlib_module vimpl m with
+          (* If there is no mli, [ocamlY -c file.ml] produces both the
+             .cmY and .cmi. We choose to use ocamlc to produce the cmi
+             and to produce the cmx we have to wait to avoid race
+             conditions. *)
+          | Cmo, None, false ->
+            copy_interface ();
+            [], [], [Path.as_in_build_dir_exn (Module.cm_file_unsafe m Cmi)]
+          | Cmo, None, true
+          | (Cmo | Cmx), _, _ ->
+            force_read_cmi src,
+            [Module.cm_file_unsafe m Cmi],
+            []
+          | Cmi, _, _ ->
+            copy_interface ();
+            [], [], []
       in
       let other_targets =
         match cm_kind with
@@ -178,9 +181,14 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
               ; Hidden_targets other_targets
               ]))))
 
-let build_module ?sandbox ?js_of_ocaml ?dynlink ~dep_graphs cctx m =
-  List.iter Cm_kind.all ~f:(fun cm_kind ->
-    build_cm cctx m ?sandbox ?dynlink ~dep_graphs ~cm_kind);
+let build_module ?sandbox ?js_of_ocaml ?dynlink ?(precompiled_cmi=false)
+      ~dep_graphs cctx m =
+  let build_cm cm_kind =
+    build_cm cctx m ?sandbox ?dynlink ~precompiled_cmi ~dep_graphs ~cm_kind
+  in
+  build_cm Cmo;
+  build_cm Cmx;
+  if not precompiled_cmi then build_cm Cmi;
   Option.iter js_of_ocaml ~f:(fun js_of_ocaml ->
     (* Build *.cmo.js *)
     let sctx     = CC.super_context cctx in
@@ -190,13 +198,15 @@ let build_module ?sandbox ?js_of_ocaml ?dynlink ~dep_graphs cctx m =
     SC.add_rules sctx ~dir
       (Js_of_ocaml_rules.build_cm cctx ~js_of_ocaml ~src ~target))
 
-let build_modules ?sandbox ?js_of_ocaml ?dynlink ~dep_graphs cctx =
+let build_modules ?sandbox ?js_of_ocaml ?dynlink ?precompiled_cmi
+      ~dep_graphs cctx =
   Module.Name.Map.iter
     (match CC.alias_module cctx with
      | None -> CC.modules cctx
      | Some (m : Module.t) ->
        Module.Name.Map.remove (CC.modules cctx) (Module.name m))
-    ~f:(build_module cctx ?sandbox ?js_of_ocaml ?dynlink ~dep_graphs)
+    ~f:(build_module cctx ?sandbox ?js_of_ocaml ?dynlink ?precompiled_cmi
+          ~dep_graphs)
 
 let ocamlc_i ?sandbox ?(flags=[]) ~dep_graphs cctx (m : Module.t) ~output =
   let sctx     = CC.super_context cctx in

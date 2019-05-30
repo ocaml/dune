@@ -10,7 +10,7 @@ Can build the public library
 
   $ cd _test_lib_dir && touch test_lib.opam && dune build
   Info: creating file dune-project with this contents:
-  | (lang dune 1.10)
+  | (lang dune 1.11)
   | (name test_lib)
   
   $ cat ./_test_lib_dir/dune
@@ -62,7 +62,7 @@ Can build an executable
 
   $ cd _test_bin_dir && touch test_bin.opam && dune build
   Info: creating file dune-project with this contents:
-  | (lang dune 1.10)
+  | (lang dune 1.11)
   | (name test_bin)
   
 
@@ -143,7 +143,7 @@ Can build the combo project
 
   $ cd _test_lib_exe_dir && touch test_bin.opam && dune build
   Info: creating file dune-project with this contents:
-  | (lang dune 1.10)
+  | (lang dune 1.11)
   | (name test_bin)
   
 
@@ -177,7 +177,7 @@ Can build the multiple library project
 
   $ cd _test_lib && touch test_lib1.opam && dune build
   Info: creating file dune-project with this contents:
-  | (lang dune 1.10)
+  | (lang dune 1.11)
   | (name test_lib1)
   
 

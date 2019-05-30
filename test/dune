@@ -96,7 +96,10 @@ Printf.fprintf (open_out Sys.argv.(2)) \"%g\n%!\" (Sys.time ())
 ;; Think twice before adding elements to this list!
 (rule
  (with-stdout-to dune-public-libs.expected
-  (echo "dune.configurator\n")))
+  (echo
+    "\| dune.build-info
+    "\| dune.configurator
+)))
 
 (alias
  (name runtest)

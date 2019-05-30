@@ -53,12 +53,11 @@ let runtime_file ~dir ~sctx file =
 
 let js_of_ocaml_rule sctx ~dir ~flags ~spec ~target =
   let jsoo = jsoo ~dir sctx in
-  let runtime_dep = runtime_file ~dir ~sctx "runtime.js"
-  in
+  let runtime_dep = runtime_file ~dir ~sctx "runtime.js" in
   Command.run ~dir:(Path.build dir)
     jsoo
     [ flags
-    ; A "-o"; Target (Path.build target)
+    ; A "-o"; Target target
     ; A "--no-runtime"
     ; Dyn (Build.S.map runtime_dep ~f:(fun x -> Command.Args.Dep x))
     ; spec
@@ -122,7 +121,7 @@ let link_rule cc ~runtime ~target cm =
   let jsoo_link = jsoo_link ~dir sctx in
   Command.run ~dir:(Path.build dir)
     jsoo_link
-    [ A "-o"; Target (Path.build target)
+    [ A "-o"; Target target
     ; Dep (Path.build runtime)
     ; As (sourcemap sctx)
     ; Dyn get_all

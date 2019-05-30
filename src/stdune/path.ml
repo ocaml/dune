@@ -548,6 +548,9 @@ module Build = struct
       Exn.code_error "Path.Build.drop_build_context_exn"
         [ "t", to_sexp t
         ]
+
+  let is_alias_stamp_file s =
+    String.is_prefix (Local.to_string s) ~prefix:".aliases/"
 end
 
 let (abs_root, set_root) =
@@ -902,11 +905,6 @@ let as_in_build_dir_exn t = match t with
       "[as_in_build_dir_exn] called on something not in build dir"
       ["t", to_sexp t]
   | In_build_dir p -> p
-
-let is_alias_stamp_file = function
-  | In_build_dir s -> String.is_prefix (Local.to_string s) ~prefix:".aliases/"
-  | In_source_tree _
-  | External _ -> false
 
 let extract_build_context = function
   | In_source_tree _

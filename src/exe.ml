@@ -160,7 +160,7 @@ let link_exe
        (Command.run ~dir:(Path.build ctx.build_dir)
           (Ok compiler)
           [ Command.Args.dyn ocaml_flags
-          ; A "-o"; Target (Path.build exe)
+          ; A "-o"; Target exe
           ; As linkage.flags
           ; Command.Args.dyn link_flags
           ; Command.of_result_map link_time_code_gen

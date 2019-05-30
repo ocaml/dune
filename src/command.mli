@@ -41,11 +41,11 @@ module Args : sig
     | Concat   : string * 'a t list  -> 'a t
     | Dep      : Path.t -> _ t
     | Deps     : Path.t list -> _ t
-    | Target   : Path.t -> dynamic t
+    | Target   : Path.Build.t -> dynamic t
     | Path     : Path.t -> _ t
     | Paths    : Path.t list -> _ t
     | Hidden_deps    : Dep.Set.t -> _ t
-    | Hidden_targets : Path.t list -> dynamic t
+    | Hidden_targets : Path.Build.t list -> dynamic t
     | Dyn      : static t Build.s -> dynamic t
     | Fail     : fail -> _ t
 
@@ -57,7 +57,7 @@ end
 can use the constructor [S] to concatenate lists instead. *)
 val run
   :  dir:Path.t
-  -> ?stdout_to:Path.t
+  -> ?stdout_to:Path.Build.t
   -> Action.Prog.t
   -> Args.dynamic Args.t list
   -> Action.t Build.s

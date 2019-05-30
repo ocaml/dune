@@ -108,6 +108,7 @@ let deps_of cctx ~ml_kind unit =
         Path.relative
           (Obj_dir.obj_dir (Compilation_context.obj_dir cctx))
           (base ^ suffix)
+        |> Path.as_in_build_dir_exn
       in
       let all_deps_path file = file_in_obj_dir file ~suffix:".all-deps" in
       let context = SC.context sctx in
@@ -145,12 +146,12 @@ let deps_of cctx ~ml_kind unit =
             | Some v -> Some v
             | None -> Option.bind ~f:file_path (Vimpl.find_module vimpl m)
           in
-          Option.map ~f:all_deps_path module_file_
+          Option.map ~f:(fun p -> Path.build (all_deps_path p)) module_file_
         in
         List.filter_map dependencies ~f:dependency_file_path
       in
       SC.add_rule sctx ~dir
-        ( Build.lines_of ocamldep_output
+        ( Build.lines_of (Path.build ocamldep_output)
           >>^ parse_deps_exn ~file
           >>^ interpret_deps cctx ~unit
           >>^ (fun modules ->
@@ -159,9 +160,9 @@ let deps_of cctx ~ml_kind unit =
                Module.Name.to_string (Module.name m))
             ))
           >>> Build.merge_files_dyn ~target:all_deps_file);
+      let all_deps_file = Path.build all_deps_file in
       Build.memoize (Path.to_string all_deps_file)
-        ( Build.lines_of all_deps_file
-          >>^ parse_module_names ~unit)
+        (Build.lines_of all_deps_file >>^ parse_module_names ~unit)
 
 let rules_generic cctx ~modules =
   Ml_kind.Dict.of_func

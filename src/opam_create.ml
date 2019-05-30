@@ -101,13 +101,14 @@ let opam_template sctx ~pkg =
 
 let add_rule sctx ~project ~pkg =
   let open Build.O in
-  let opam_path = Path.build (Local_package.opam_file pkg) in
+  let opam_path = Local_package.opam_file pkg in
   let opam_rule =
     (match opam_template sctx ~pkg:(Local_package.package pkg) with
      | Some p -> Build.contents (Path.build p)
      | None -> Build.return "")
     >>>
     Build.arr (fun template ->
+      let opam_path = Path.build opam_path in
       let opamfile = Opam_file.of_string ~path:opam_path template in
       let existing_vars_template = Opam_file.existing_variables opamfile in
       let generated_fields =
@@ -140,7 +141,7 @@ let add_rule sctx ~project ~pkg =
     ; Alias.check ~dir (* check doesn't pick up the promote target? *)
     ]
   in
-  let deps = Path.Set.singleton opam_path in
+  let deps = Path.Set.singleton (Path.build opam_path) in
   List.iter aliases ~f:(fun alias ->
     Rules.Produce.Alias.add_deps alias deps)
 

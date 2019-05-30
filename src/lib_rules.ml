@@ -69,7 +69,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
         (Build.S.seq obj_deps
            (Command.run (Ok compiler) ~dir:(Path.build ctx.build_dir)
               [ Command.Args.dyn ocaml_flags
-              ; A "-a"; A "-o"; Target (Path.build target)
+              ; A "-a"; A "-o"; Target target
               ; As stubs_flags
               ; Dyn (Build.S.map cclibs
                        ~f:(fun x -> Command.quote_args "-cclib" (map_cclibs x)))
@@ -82,7 +82,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
                   (match mode with
                    | Byte -> []
                    | Native ->
-                     [Path.build (Library.archive lib ~dir ~ext:ctx.ext_lib)])
+                     [Library.archive lib ~dir ~ext:ctx.ext_lib])
               ])))
 
   (* If the compiler reads the cmi for module alias even with
@@ -117,7 +117,8 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
       |> String.concat ~sep:"\n"
     in
     SC.add_rule sctx ~dir (
-      Build.arr alias_file >>> Build.write_file_dyn file.path
+      Build.arr alias_file
+      >>> Build.write_file_dyn (Path.as_in_build_dir_exn file.path)
     );
     let cctx = Compilation_context.for_alias_module cctx in
     Module_compilation.build_module cctx alias_module
@@ -151,7 +152,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
       in
       let source_path = Option.value_exn (Module.file m Impl) in
       Build.return contents
-      >>> Build.write_file_dyn source_path
+      >>> Build.write_file_dyn (Path.as_in_build_dir_exn source_path)
       |> SC.add_rule sctx ~dir:(Compilation_context.dir cctx)
     );
     let dep_graphs =
@@ -174,7 +175,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
           ; includes
           ; Dyn (
               Build.S.map c_flags ~f:(fun x -> Command.quote_args "-ccopt" x))
-          ; A "-o"; Target (Path.build dst)
+          ; A "-o"; Target dst
           ; Dep src
           ]);
     dst
@@ -182,7 +183,6 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
   let build_cxx_file
         (lib : Library.t) ~dir ~expander ~includes (loc, src, dst) =
     let output_param =
-      let dst = Path.build dst in
       if ctx.ccomp_type = "msvc" then
         [Command.Args.Concat ("", [A "/Fo"; Target dst])]
       else
@@ -226,7 +226,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
              else
                As cclibs
            ))
-         ; Hidden_targets (List.map ~f:Path.build targets)
+         ; Hidden_targets targets
          ])
 
   let build_self_stubs lib ~expander ~dir ~o_files =
@@ -307,7 +307,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
       in
       let dst =
         let ext = Mode.plugin_ext Native in
-        Path.build (Library.archive lib ~dir ~ext)
+        Library.archive lib ~dir ~ext
       in
       let build =
         Build.S.seq (Build.dyn_paths (Build.arr (fun () -> [
@@ -356,9 +356,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
             ; Cmx, ctx.ext_obj ]
             |> List.iter ~f:(fun (kind, ext) ->
               let src = Module.obj_file m ~kind ~ext in
-              let dst =
-                Path.build (Path.Build.relative dir
-                              ((Module.obj_name m) ^ ext)) in
+              let dst = Path.Build.relative dir ((Module.obj_name m) ^ ext) in
               SC.add_rule sctx ~dir (Build.copy ~src ~dst));
             Module.Name.Map.remove modules name
         end

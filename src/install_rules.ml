@@ -58,7 +58,7 @@ let gen_dune_package sctx ~version ~(pkg : Local_package.t) =
          (Fmt.list ~pp_sep:Fmt.nl
             (Dune_lang.pp (Stanza.File_kind.of_syntax dune_version))))
   >>>
-  Build.write_file_dyn (Path.build dune_package_file)
+  Build.write_file_dyn  dune_package_file
   |> Super_context.add_rule sctx ~dir:ctx.build_dir
 
 type version_method =
@@ -151,7 +151,7 @@ let init_meta sctx ~dir =
          Format.pp_print_flush ppf ();
          Buffer.contents buf)
        >>>
-       Build.write_file_dyn (Path.build meta)))
+       Build.write_file_dyn meta))
 
 let lib_ppxs sctx ~(lib : Dune_file.Library.t) ~scope ~dir_kind =
   match lib.kind with
@@ -272,6 +272,7 @@ let symlink_installed_artifacts_to_build_install
     let dst =
       Path.append (Path.build install_dir)
         (Install.Entry.relative_installed_path entry ~paths:install_paths)
+      |> Path.as_in_build_dir_exn
     in
     let loc =
       match loc with
@@ -280,7 +281,7 @@ let symlink_installed_artifacts_to_build_install
     in
     Super_context.add_rule sctx ~loc ~dir:ctx.build_dir
       (Build.symlink ~src:entry.src ~dst);
-    Install.Entry.set_src entry dst)
+    Install.Entry.set_src entry (Path.build dst))
 
 let promote_install_file (ctx : Context.t) =
   not ctx.implicit &&
@@ -443,7 +444,7 @@ let install_rules sctx package =
        in
        Install.gen_install_file entries)
      >>>
-     Build.write_file_dyn (Path.build install_file))
+     Build.write_file_dyn install_file)
 
 let install_alias (ctx : Context.t) (package : Local_package.t) =
   if not ctx.implicit then

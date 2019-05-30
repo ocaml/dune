@@ -3,7 +3,7 @@ open Import
 
 type ('a, 'b) t =
   | Arr : ('a -> 'b) -> ('a, 'b) t
-  | Targets : Path.Set.t -> ('a, 'a) t
+  | Targets : Path.Build.Set.t -> ('a, 'a) t
   | Compose : ('a, 'b) t * ('b, 'c) t -> ('a, 'c) t
   | First : ('a, 'b) t -> ('a * 'c, 'b * 'c) t
   | Second : ('a, 'b) t -> ('c * 'a, 'c * 'b) t
@@ -146,7 +146,9 @@ let paths_existing paths =
 let fail ?targets x =
   match targets with
   | None -> Fail x
-  | Some l -> Targets (Path.Set.of_list l) >>> Fail x
+  | Some l ->
+    Targets (Path.Build.Set.of_list l)
+    >>> Fail x
 
 let of_result ?targets = function
   | Ok    x -> x
@@ -166,7 +168,7 @@ let source_tree ~dir ~file_tree =
   path_set paths >>^ fun _ -> paths
 
 let action ?dir ~targets action =
-  Targets (Path.Set.of_list targets)
+  Targets (Path.Build.Set.of_list targets)
   >>^ fun _ ->
   match dir with
   | None -> action
@@ -174,40 +176,42 @@ let action ?dir ~targets action =
 
 let action_dyn ?dir ~targets () =
   match dir with
-  | None -> Targets (Path.Set.of_list targets)
+  | None -> Targets (Path.Build.Set.of_list targets)
   | Some dir ->
-    Targets (Path.Set.of_list targets)
+    Targets (Path.Build.Set.of_list targets)
     >>^ fun action ->
     Action.Chdir (dir, action)
 
 let write_file fn s =
-  action ~targets:[fn] (Write_file (fn, s))
+  action ~targets:[fn] (Write_file ((Path.build fn), s))
 
 let write_file_dyn fn =
-  Targets (Path.Set.singleton fn)
+  Targets (Path.Build.Set.singleton fn)
   >>^ fun s ->
-  Action.Write_file (fn, s)
+  Action.Write_file (Path.build fn, s)
 
 let copy ~src ~dst =
   path src >>>
-  action ~targets:[dst] (Copy (src, dst))
+  action ~targets:[dst] (Copy (src, Path.build dst))
 
 let copy_and_add_line_directive ~src ~dst =
   path src >>>
   action ~targets:[dst]
-    (Copy_and_add_line_directive (src, dst))
+    (Copy_and_add_line_directive (src, Path.build dst))
 
 let symlink ~src ~dst =
   path src >>>
-  action ~targets:[dst] (Symlink (src, dst))
+  action ~targets:[dst] (Symlink (src, Path.build dst))
 
 let create_file fn =
-  action ~targets:[fn] (Redirect (Stdout, fn, Progn []))
+  action ~targets:[fn] (Redirect (Stdout, Path.build fn, Progn []))
 
 let remove_tree dir =
+  let dir = Path.build dir in
   arr (fun _ -> Action.Remove_tree dir)
 
 let mkdir dir =
+  let dir = Path.build dir in
   arr (fun _ -> Action.Mkdir dir)
 
 let progn ts =
@@ -217,7 +221,7 @@ let progn ts =
 let merge_files_dyn ~target =
   dyn_paths (arr fst)
   >>^ (fun (sources, extras) ->
-    Action.Merge_files_into (sources, extras, target))
+    Action.Merge_files_into (sources, extras, Path.build target))
   >>> action_dyn ~targets:[target] ()
 
 (* Analysis *)
@@ -299,47 +303,48 @@ let lib_deps =
   fun t -> loop t Lib_name.Map.empty
 
 let targets =
-  let rec loop : type a b. (a, b) t -> Path.Set.t -> Path.Set.t = fun t acc ->
-    match t with
-    | Arr _ -> acc
-    | Targets targets -> Path.Set.union targets acc
-    | Compose (a, b) -> loop a (loop b acc)
-    | First t -> loop t acc
-    | Second t -> loop t acc
-    | Split (a, b) -> loop a (loop b acc)
-    | Fanout (a, b) -> loop a (loop b acc)
-    | Paths_for_rule _ -> acc
-    | Paths_glob _ -> acc
-    | Deps _ -> acc
-    | Dyn_paths t -> loop t acc
-    | Dyn_deps t -> loop t acc
-    | Contents _ -> acc
-    | Lines_of _ -> acc
-    | Record_lib_deps _ -> acc
-    | Fail _ -> acc
-    | If_file_exists (_, state) -> begin
-        match !state with
-        | Decided (v, _) ->
-          Exn.code_error "Build_interpret.targets got decided if_file_exists"
-            ["exists", Sexp.Encoder.bool v]
-        | Undecided (a, b) ->
-          let a = loop a Path.Set.empty in
-          let b = loop b Path.Set.empty in
-          if Path.Set.is_empty a && Path.Set.is_empty b then
-            acc
-          else begin
-            Exn.code_error "Build_interpret.targets: cannot have targets \
-                            under a [if_file_exists]"
-              [ "targets-a", Path.Set.to_sexp a
-              ; "targets-b", Path.Set.to_sexp b
-              ]
-          end
-      end
-    | Memo m -> loop m.t acc
-    | Catch (t, _) -> loop t acc
-    | Lazy_no_targets _ -> acc
+  let rec loop : type a b. (a, b) t -> Path.Build.Set.t -> Path.Build.Set.t
+    = fun t acc ->
+      match t with
+      | Arr _ -> acc
+      | Targets targets -> Path.Build.Set.union targets acc
+      | Compose (a, b) -> loop a (loop b acc)
+      | First t -> loop t acc
+      | Second t -> loop t acc
+      | Split (a, b) -> loop a (loop b acc)
+      | Fanout (a, b) -> loop a (loop b acc)
+      | Paths_for_rule _ -> acc
+      | Paths_glob _ -> acc
+      | Deps _ -> acc
+      | Dyn_paths t -> loop t acc
+      | Dyn_deps t -> loop t acc
+      | Contents _ -> acc
+      | Lines_of _ -> acc
+      | Record_lib_deps _ -> acc
+      | Fail _ -> acc
+      | If_file_exists (_, state) -> begin
+          match !state with
+          | Decided (v, _) ->
+            Exn.code_error "Build_interpret.targets got decided if_file_exists"
+              ["exists", Sexp.Encoder.bool v]
+          | Undecided (a, b) ->
+            let a = loop a Path.Build.Set.empty in
+            let b = loop b Path.Build.Set.empty in
+            if Path.Build.Set.is_empty a && Path.Build.Set.is_empty b then
+              acc
+            else begin
+              Exn.code_error "Build_interpret.targets: cannot have targets \
+                              under a [if_file_exists]"
+                [ "targets-a", Path.Build.Set.to_sexp a
+                ; "targets-b", Path.Build.Set.to_sexp b
+                ]
+            end
+        end
+      | Memo m -> loop m.t acc
+      | Catch (t, _) -> loop t acc
+      | Lazy_no_targets _ -> acc
   in
-  fun t -> loop t Path.Set.empty
+  fun t -> loop t Path.Build.Set.empty
 
 (* Execution *)
 

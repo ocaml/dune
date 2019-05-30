@@ -106,7 +106,6 @@ include T
 
 let singleton_rule (rule : Rule.t) =
   let dir = rule.dir in
-  let dir = Path.as_in_build_dir_exn dir in
   Path.Build.Map.singleton dir (Dir_rules.singleton (Rule rule))
 
 let implicit_output = Memo.Implicit_output.add(module T)

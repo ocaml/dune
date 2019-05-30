@@ -40,14 +40,14 @@ let log_targets ~log targets =
 let target_hint (_setup : Dune.Main.build_system) path =
   assert (Path.is_managed path);
   let sub_dir = Option.value ~default:path (Path.parent path) in
-  let candidates = Path.Set.to_list (Build_system.all_targets ()) in
+  let candidates = Path.Build.Set.to_list (Build_system.all_targets ()) in
   let candidates =
     if Path.is_in_build_dir path then
-      candidates
+      List.map ~f:Path.build candidates
     else
       List.map candidates ~f:(fun path ->
-        match Path.extract_build_context path with
-        | None -> path
+        match Path.Build.extract_build_context path with
+        | None -> Path.build path
         | Some (_, path) -> Path.source path)
   in
   let candidates =

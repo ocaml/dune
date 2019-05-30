@@ -195,7 +195,7 @@ val lib_deps
 
 val targets
   :  (_, _) t
-  -> Path.Set.t
+  -> Path.Build.Set.t
 
 (** {1 Execution} *)
 

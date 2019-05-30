@@ -143,7 +143,7 @@ val all_lib_deps
   -> Lib_deps_info.t Path.Source.Map.t String.Map.t Fiber.t
 
 (** List of all buildable targets *)
-val all_targets : unit -> Path.Set.t
+val all_targets : unit -> Path.Build.Set.t
 
 (** Return the set of files that were created in the source tree and
     needs to be deleted *)
@@ -165,7 +165,7 @@ module Rule : sig
     { id      : Id.t
     ; dir     : Path.Build.t
     ; deps    : Dep.Set.t
-    ; targets : Path.Set.t
+    ; targets : Path.Build.Set.t
     ; context : Context.t option
     ; action  : Action.t
     }

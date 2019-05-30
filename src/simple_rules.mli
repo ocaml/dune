@@ -11,7 +11,7 @@ val user_rule
   -> dir:Path.Build.t
   -> expander:Expander.t
   -> Rule.t
-  -> Path.Set.t
+  -> Path.Build.Set.t
 
 (** Interpret a [(copy_files ...)] stanza and return the targets it produces. *)
 val copy_files

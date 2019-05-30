@@ -91,6 +91,6 @@ val sandbox
   :  t
   -> sandboxed:(Path.t -> Path.t)
   -> deps:Dep.Set.t
-  -> targets:Path.t list
+  -> targets:Path.Build.t list
   -> eval_pred:Dep.eval_pred
   -> t

@@ -35,7 +35,7 @@ let print_rule_makefile ppf (rule : Build_system.Rule.t) =
      @<0>\t@{<makefile-action>%a@}@,@,"
     (Format.pp_print_list ~pp_sep:Format.pp_print_space (fun ppf p ->
        Format.pp_print_string ppf (Path.to_string p)))
-    (Path.Set.to_list rule.targets)
+    (List.map ~f:Path.build (Path.Build.Set.to_list rule.targets))
     (fun ppf ->
        Path.Set.iter (Dep.Set.paths rule.deps ~eval_pred) ~f:(fun dep ->
          Format.fprintf ppf "@ %s" (Path.to_string dep)))
@@ -53,7 +53,9 @@ let print_rule_sexp ppf (rule : Build_system.Rule.t) =
     Dune_lang.Encoder.record (
       List.concat
         [ [ "deps"   , Dep.Set.encode rule.deps
-          ; "targets", paths rule.targets ]
+          ; "targets", paths (Path.Build.Set.to_list rule.targets
+                              |> List.map ~f:Path.build
+                              |> Path.Set.of_list) ]
         ; (match rule.context with
            | None -> []
            | Some c -> ["context",
@@ -117,7 +119,9 @@ let term =
     let request =
       match targets with
       | [] ->
-        Build.paths (Path.Set.to_list (Build_system.all_targets ()))
+        Build_system.all_targets ()
+        |> Path.Build.Set.fold ~init:[] ~f:(fun p acc -> Path.build p :: acc)
+        |> Build.paths
       | _  ->
         Target.resolve_targets_exn ~log common setup targets
         |> Target.request setup

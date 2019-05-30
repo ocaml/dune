@@ -90,7 +90,7 @@ val add_rule_get_targets
   -> ?loc:Loc.t
   -> dir:Path.Build.t
   -> (unit, Action.t) Build.t
-  -> Path.Set.t
+  -> Path.Build.Set.t
 val add_rules
   :  t
   -> ?sandbox:bool

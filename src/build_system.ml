@@ -114,7 +114,7 @@ module Internal_rule = struct
     type t =
       { id               : Id.t
       ; static_deps      : Static_deps.t Fiber.Once.t
-      ; targets          : Path.Set.t
+      ; targets          : Path.Build.Set.t
       ; context          : Context.t option
       ; build            : (unit, Action.t) Build.t
       ; mode             : Dune_file.Rule.Mode.t
@@ -136,7 +136,8 @@ module Internal_rule = struct
 
   let _pp fmt { targets; dir ; _ } =
     Fmt.record fmt
-      [ "targets", Fmt.const (Fmt.ocaml_list Path.pp) (Path.Set.to_list targets)
+      [ "targets", Fmt.const (Fmt.ocaml_list Path.Build.pp)
+                     (Path.Build.Set.to_list targets)
       ; "dir", Fmt.const Path.pp (Path.build dir)
       ]
 
@@ -164,7 +165,7 @@ module Internal_rule = struct
   let root =
     { id          = Id.gen ()
     ; static_deps = Fiber.Once.create (fun () -> Fiber.return Static_deps.empty)
-    ; targets     = Path.Set.empty
+    ; targets     = Path.Build.Set.empty
     ; context     = None
     ; build       = Build.return (Action.Progn [])
     ; mode        = Standard
@@ -252,8 +253,8 @@ module Loaded = struct
 
   type build = {
     rules_produced : Rules.t;
-    targets_here : Internal_rule.t Path.Map.t;
-    targets_of_alias_dir : Internal_rule.t Path.Map.t;
+    targets_here : Internal_rule.t Path.Build.Map.t;
+    targets_of_alias_dir : Internal_rule.t Path.Build.Map.t;
   }
 
   type t =
@@ -263,8 +264,8 @@ module Loaded = struct
   let no_rules =
     Build
       { rules_produced = Rules.empty;
-        targets_here = Path.Map.empty;
-        targets_of_alias_dir = Path.Map.empty;
+        targets_here = Path.Build.Map.empty;
+        targets_of_alias_dir = Path.Build.Map.empty;
       }
 
 end
@@ -458,8 +459,8 @@ let add_spec_exn t fn rule =
       ]
 
 let add_rules_exn t rules =
-  Path.Map.iteri rules ~f:(fun key data ->
-    add_spec_exn t key data)
+  Path.Build.Map.iteri rules ~f:(fun key data ->
+    add_spec_exn t (Path.build key) data)
 
 let rule_conflict fn rule' rule =
   let describe (rule : Internal_rule.t) =
@@ -469,6 +470,7 @@ let rule_conflict fn rule' rule =
     | Internal -> "<internal location>"
     | Source_file_copy -> "file present in source tree"
   in
+  let fn = Path.build fn in
   die "Multiple rules generated for %s:\n\
        - %s\n\
        - %s%s"
@@ -483,17 +485,19 @@ let rule_conflict fn rule' rule =
 
 (* This contains the targets of the actions that are being executed. On exit, we
    need to delete them as they might contain garbage *)
-let pending_targets = ref Path.Set.empty
+let pending_targets = ref Path.Build.Set.empty
 
 let () =
   Hooks.End_of_build.always (fun () ->
     let fns = !pending_targets in
-    pending_targets := Path.Set.empty;
-    Path.Set.iter fns ~f:Path.unlink_no_err)
+    pending_targets := Path.Build.Set.empty;
+    Path.Build.Set.iter fns ~f:(fun p ->
+      Path.unlink_no_err (Path.build p)))
 
 let compute_targets_digest_after_rule_execution ~info targets =
   let good, bad =
     List.partition_map targets ~f:(fun fn ->
+      let fn = Path.build fn in
       match Utils.Cached_digest.refresh fn with
       | digest -> Left digest
       | exception (Unix.Unix_error _ | Sys_error _) -> Right fn)
@@ -551,6 +555,7 @@ let no_rule_found =
     Errors.fail_opt loc "No rule found for %s" (Utils.describe_target fn)
   in
   fun t ~loc fn ->
+    let fn = Path.build fn in
     match Utils.analyse_target fn with
     | Other _ -> fail fn ~loc
     | Regular (ctx, _) ->
@@ -592,20 +597,22 @@ let fix_up_legacy_fallback_rules t ~file_tree_dir ~dir rules =
       rules
     else begin
       let source_files =
+        let dir = Path.as_in_build_dir_exn dir in
         File_tree.Dir.files ftdir
-        |> String.Set.to_list
-        |> fun filenames -> Path.Set.of_listing ~dir ~filenames
+        |> String.Set.fold ~init:Path.Build.Set.empty ~f:(fun name acc ->
+          let path = Path.Build.relative dir name in
+          Path.Build.Set.add acc path)
       in
       List.map rules ~f:(fun (rule : Pre_rule.t) ->
         match rule.mode with
         | Promote _ | Fallback | Ignore_source_files -> rule
         | Standard ->
-          let inter = Path.Set.inter rule.targets source_files in
-          if Path.Set.is_empty inter then
+          let inter = Path.Build.Set.inter rule.targets source_files in
+          if Path.Build.Set.is_empty inter then
             rule
           else begin
             let mode, behavior =
-              if Path.Set.equal inter rule.targets then
+              if Path.Build.Set.equal inter rule.targets then
                 (Dune_file.Rule.Mode.Fallback,
                  "acting as if the rule didn't exist")
               else
@@ -614,9 +621,10 @@ let fix_up_legacy_fallback_rules t ~file_tree_dir ~dir rules =
                    ; into = None
                    ; only =
                        Some
-                         (Predicate_lang.of_pred
-                            (fun s ->
-                               Path.Set.mem inter (Path.relative dir s)))
+                         (let dir = Path.as_in_build_dir_exn dir in
+                          Predicate_lang.of_pred (fun s ->
+                            Path.Build.Set.mem inter
+                              (Path.Build.relative dir s)))
                    },
                  "overwriting the source files with the generated one")
             in
@@ -625,8 +633,9 @@ let fix_up_legacy_fallback_rules t ~file_tree_dir ~dir rules =
               "The following files are both generated by a rule and are \
                present in\nthe source tree:@\n@[<v>%a@,@[%a@]@]"
               (Fmt.list (Fmt.prefix (Fmt.string "- ") Path.pp))
-              (Path.Set.to_list inter
-               |> List.map ~f:Path.drop_optional_build_context)
+              (Path.Build.Set.to_list inter
+               |> List.map ~f:(fun p ->
+                 Path.drop_optional_build_context (Path.build p)))
               Fmt.text
               (sprintf "Because %s, I am closing my eyes on this and \
                         I am %s. However, you should really delete \
@@ -726,8 +735,9 @@ and compile_rules ~dir t rules =
   List.concat_map rules ~f:(fun rule ->
     let (targets, rule) = compile_rule t rule in
     assert (Path.Build.(=) dir rule.Internal_rule.dir);
-    List.map (Path.Set.to_list targets) ~f:(fun target -> (target, rule)))
-  |> Path.Map.of_list_reducei ~f:rule_conflict
+    List.map (Path.Build.Set.to_list targets) ~f:(fun target ->
+      (target, rule)))
+  |> Path.Build.Map.of_list_reducei ~f:rule_conflict
 
 and load_dir_and_produce_its_rules t ~dir =
   let loaded = load_dir t ~dir in
@@ -739,12 +749,14 @@ and load_dir_and_produce_its_rules t ~dir =
 and targets_of t ~dir = match load_dir t ~dir with
   | Non_build targets -> targets
   | Build { targets_here; _ } ->
-    Path.Set.of_list (Path.Map.keys targets_here)
+    Path.Build.Map.keys targets_here
+    |> List.map ~f:Path.build
+    |> Path.Set.of_list
 
 and load_dir_and_get_buildable_targets t ~dir =
   let loaded = load_dir t ~dir in
   match loaded with
-  | Non_build _ -> Path.Map.empty
+  | Non_build _ -> Path.Build.Map.empty
   | Build { targets_here; _ } -> targets_here
 
 and load_dir t ~dir : Loaded.t =
@@ -765,7 +777,7 @@ and load_dir_impl t ~dir : Loaded.t =
        } ->
          Loaded.Build {
            targets_here = targets_of_alias_dir;
-           targets_of_alias_dir = Path.Map.empty;
+           targets_of_alias_dir = Path.Build.Map.empty;
            rules_produced
          })
     | Need_step2 ->
@@ -903,24 +915,25 @@ and load_dir_step2_exn t ~dir =
   (* Compute the set of targets and the set of source files that must
      not be copied *)
   let source_files_to_ignore =
-    List.fold_left rules ~init:(Path.Set.empty)
-      ~f:(fun (acc_ignored) { Pre_rule.targets; mode; _ } ->
+    List.fold_left rules ~init:Path.Build.Set.empty
+      ~f:(fun acc_ignored { Pre_rule.targets; mode; _ } ->
         (match mode with
          | Promote { only = None; _ } | Ignore_source_files ->
-           Path.Set.union targets acc_ignored
+           Path.Build.Set.union targets acc_ignored
          | Promote { only = Some pred; _ } ->
            let to_ignore =
-             Path.Set.filter targets ~f:(fun target ->
-               Predicate_lang.exec pred (Path.reach target ~from:dir)
+             Path.Build.Set.filter targets ~f:(fun target ->
+               Predicate_lang.exec pred
+                 (Path.reach (Path.build target) ~from:dir)
                  ~standard:Predicate_lang.true_)
            in
-           Path.Set.union to_ignore acc_ignored
+           Path.Build.Set.union to_ignore acc_ignored
          | _ ->
            acc_ignored))
   in
   let source_files_to_ignore =
-    Path.Set.to_list source_files_to_ignore
-    |> List.map ~f:Path.drop_build_context_exn
+    Path.Build.Set.to_list source_files_to_ignore
+    |> List.map ~f:Path.Build.drop_build_context_exn
     |> Path.Source.Set.of_list
   in
   (* Take into account the source files *)
@@ -969,8 +982,8 @@ and load_dir_step2_exn t ~dir =
             (* All targets are in [dir] and we know it correspond to a
                directory of a build context since there are source
                files to copy, so this call can't fail. *)
-            Path.Set.to_list rule.targets
-            |> List.map ~f:Path.drop_build_context_exn
+            Path.Build.Set.to_list rule.targets
+            |> List.map ~f:Path.Build.drop_build_context_exn
             |> Path.Source.Set.of_list
           in
           if Path.Source.Set.is_subset source_files_for_targtes ~of_:to_copy then
@@ -1040,27 +1053,25 @@ The following targets are not:
     targets_of_alias_dir =
       match alias_targets with
       | None ->
-        Path.Map.empty
+        Path.Build.Map.empty
       | Some v ->
         v
   }
 
 
 let get_rule_other t fn =
-  let dir = Path.parent_exn fn in
-  if Path.is_in_build_dir dir then
-    (match load_dir t ~dir with
-     | Non_build _ -> assert false
-     | Build { targets_here; _ } ->
-       (Path.Map.find targets_here fn))
-  else
-    None
+  Option.bind (Path.as_in_build_dir fn) ~f:(fun fn ->
+    let dir = Path.Build.parent_exn fn in
+    match load_dir t ~dir:(Path.build dir) with
+    | Non_build _ -> assert false
+    | Build { targets_here; _ } -> Path.Build.Map.find targets_here fn)
 
 and get_rule t path =
   let dir = Path.parent_exn path in
   if Path.is_strict_descendant_of_build_dir dir then begin
     let rules = load_dir_and_get_buildable_targets t ~dir in
-    match Path.Map.find rules path with
+    let path = Path.as_in_build_dir_exn path in
+    match Path.Build.Map.find rules path with
     | Some _ as some -> Fiber.return some
     | None ->
       let loc = Rule_fn.loc () in
@@ -1075,7 +1086,7 @@ and get_rule t path =
 let all_targets () =
   let t = t () in
   String.Map.to_list t.contexts
-  |> List.fold_left ~init:Path.Set.empty ~f:(fun acc (_, ctx) ->
+  |> List.fold_left ~init:Path.Build.Set.empty ~f:(fun acc (_, ctx) ->
     File_tree.fold t.file_tree ~traverse_ignored_dirs:true ~init:acc
       ~f:(fun dir acc ->
         match
@@ -1091,9 +1102,9 @@ let all_targets () =
           _
         } ->
           List.fold_left ~init:acc
-            ~f:Path.Set.add
-            (Path.Map.keys targets_of_alias_dir
-             @ Path.Map.keys targets_here)
+            ~f:Path.Build.Set.add
+            (Path.Build.Map.keys targets_of_alias_dir
+             @ Path.Build.Map.keys targets_here)
       ))
 
 let build_file_def =
@@ -1244,9 +1255,9 @@ let () =
     start_rule t rule;
     let* (action, deps) = evaluate_rule_and_wait_for_dependencies rule in
     Fs.mkdir_p dir;
-    let targets_as_list  = Path.Set.to_list targets  in
+    let targets_as_list  = Path.Build.Set.to_list targets  in
     let head_target = List.hd targets_as_list in
-    let prev_trace = Trace.get head_target in
+    let prev_trace = Trace.get (Path.build head_target) in
     let rule_digest =
       let env =
         match env, context with
@@ -1256,7 +1267,7 @@ let () =
       in
       let trace =
         ( Dep.Set.trace deps ~env ~eval_pred
-        , List.map targets_as_list ~f:Path.to_string
+        , List.map targets_as_list ~f:(fun p -> Path.to_string (Path.build p))
         , Option.map context ~f:(fun c -> c.name)
         , Action.for_shell action
         )
@@ -1264,7 +1275,8 @@ let () =
       Digest.string (Marshal.to_string trace [])
     in
     let targets_digest =
-      match List.map targets_as_list ~f:Utils.Cached_digest.file with
+      match List.map targets_as_list ~f:(fun p ->
+        Utils.Cached_digest.file (Path.build p)) with
       | l -> Some (Digest.string (Marshal.to_string l []))
       | exception (Unix.Unix_error _ | Sys_error _) -> None
     in
@@ -1277,7 +1289,7 @@ let () =
     in
     let force =
       !Clflags.force &&
-      List.exists targets_as_list ~f:Path.is_alias_stamp_file
+      List.exists targets_as_list ~f:Path.Build.is_alias_stamp_file
     in
     let something_changed =
       match prev_trace, targets_digest, Dep.Set.has_universe deps with
@@ -1288,8 +1300,9 @@ let () =
     in
     begin
       if force || something_changed then begin
-        List.iter targets_as_list ~f:Path.unlink_no_err;
-        pending_targets := Path.Set.union targets !pending_targets;
+        List.iter targets_as_list ~f:(fun p ->
+          Path.unlink_no_err (Path.build p));
+        pending_targets := Path.Build.Set.union targets !pending_targets;
         let loc = Rule.Info.loc info in
         let action =
           match sandbox_dir with
@@ -1317,11 +1330,11 @@ let () =
         in
         Option.iter sandbox_dir ~f:(fun p -> Path.rm_rf (Path.build p));
         (* All went well, these targets are no longer pending *)
-        pending_targets := Path.Set.diff !pending_targets targets;
+        pending_targets := Path.Build.Set.diff !pending_targets targets;
         let targets_digest =
           compute_targets_digest_after_rule_execution ~info targets_as_list
         in
-        Trace.set head_target { rule_digest; targets_digest }
+        Trace.set (Path.build head_target) { rule_digest; targets_digest }
       end else
         Fiber.return ()
     end >>| fun () ->
@@ -1329,16 +1342,17 @@ let () =
       match mode with
       | Standard | Fallback | Ignore_source_files -> ()
       | Promote { lifetime; into; only } ->
-        Path.Set.iter targets ~f:(fun path ->
+        Path.Build.Set.iter targets ~f:(fun path ->
           let consider_for_promotion =
             match only with
             | None -> true
             | Some pred ->
-              Predicate_lang.exec pred (Path.reach path ~from:(Path.build dir))
+              Predicate_lang.exec pred
+                (Path.reach (Path.build path) ~from:(Path.build dir))
                 ~standard:Predicate_lang.true_
           in
           if consider_for_promotion then begin
-            let in_source_tree = Path.drop_build_context_exn path in
+            let in_source_tree = Path.Build.drop_build_context_exn path in
             let in_source_tree =
               match into with
               | None -> in_source_tree
@@ -1348,13 +1362,15 @@ let () =
                      ~error_loc:loc)
                   (Path.Source.basename in_source_tree)
             in
-            if not (Path.exists (Path.source in_source_tree)) ||
+            let path = Path.build path in
+            let in_source_tree = Path.source in_source_tree in
+            if not (Path.exists in_source_tree) ||
                (Utils.Cached_digest.file path <>
-                Utils.Cached_digest.file (Path.source in_source_tree)) then begin
+                Utils.Cached_digest.file in_source_tree) then begin
               if lifetime = Until_clean then
-                Promoted_to_delete.add (Path.source in_source_tree);
-              Scheduler.ignore_for_watch (Path.source in_source_tree);
-              Io.copy_file ~src:path ~dst:(Path.source in_source_tree) ()
+                Promoted_to_delete.add in_source_tree;
+              Scheduler.ignore_for_watch in_source_tree;
+              Io.copy_file ~src:path ~dst:in_source_tree ()
             end
           end)
     end;
@@ -1444,7 +1460,7 @@ module Rule = struct
     { id      : Id.t
     ; dir     : Path.Build.t
     ; deps    : Dep.Set.t
-    ; targets : Path.Set.t
+    ; targets : Path.Build.Set.t
     ; context : Context.t option
     ; action  : Action.t
     }
@@ -1502,9 +1518,9 @@ let package_deps pkg files =
 
 let prefix_rules prefix ~f =
   let targets = Build.targets prefix in
-  if not (Path.Set.is_empty targets) then
+  if not (Path.Build.Set.is_empty targets) then
     Exn.code_error "Build_system.prefix_rules' prefix contains targets"
-      ["targets", Path.Set.to_sexp targets];
+      ["targets", Path.Build.Set.to_sexp targets];
   let res, rules = Rules.collect f in
   Rules.produce (Rules.map_rules rules ~f:(fun rule ->
     { rule with build = Build.O.(>>>) prefix rule.build }));
@@ -1534,7 +1550,7 @@ end = struct
   let rules_for_files rules deps =
     Dep.Set.paths deps ~eval_pred
     |> Path.Set.fold ~init:Rule.Set.empty ~f:(fun path acc ->
-      match Path.Map.find rules path with
+      match Path.Build.Map.find rules (Path.as_in_build_dir_exn path) with
       | None -> acc
       | Some rule -> Rule.Set.add acc rule)
     |> Rule.Set.to_list
@@ -1583,10 +1599,10 @@ end = struct
       let* (_act, goal) = evaluate_rule rule_shim in
       let+ () = Dep.Set.parallel_iter_files goal ~f:proc_rule ~eval_pred in
       let rules =
-        Internal_rule.Id.Map.fold !rules ~init:Path.Map.empty
+        Internal_rule.Id.Map.fold !rules ~init:Path.Build.Map.empty
           ~f:(fun (r : Rule.t) acc ->
-            Path.Set.fold r.targets ~init:acc ~f:(fun fn acc ->
-              Path.Map.add acc fn r)) in
+            Path.Build.Set.fold r.targets ~init:acc ~f:(fun fn acc ->
+              Path.Build.Map.add acc fn r)) in
       match
         Rule.Id.Top_closure.top_closure
           (rules_for_files rules goal)
@@ -1597,7 +1613,8 @@ end = struct
       | Error cycle ->
         die "dependency cycle detected:\n   %s"
           (List.map cycle ~f:(fun rule ->
-             Path.to_string (Path.Set.choose_exn rule.Rule.targets))
+             Path.to_string (Path.build (
+               Path.Build.Set.choose_exn rule.Rule.targets)))
            |> String.concat ~sep:"\n-> "))
 end
 
@@ -1633,7 +1650,8 @@ end = struct
     | Error cycle ->
       die "dependency cycle detected:\n   %s"
         (List.map cycle ~f:(fun rule ->
-           Path.to_string (Path.Set.choose_exn rule.Internal_rule.targets))
+           Path.to_string
+             (Path.build (Path.Build.Set.choose_exn rule.Internal_rule.targets)))
          |> String.concat ~sep:"\n-> ")
 
   let all_lib_deps ~request =

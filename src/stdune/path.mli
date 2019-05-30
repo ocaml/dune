@@ -72,6 +72,8 @@ module Build : sig
   val drop_build_context_exn : t -> Source.t
 
   val extract_build_context  : t -> (string * Source.t) option
+
+  val is_alias_stamp_file : t -> bool
 end
 
 (** In the outside world *)
@@ -188,8 +190,6 @@ val is_in_source_tree : t -> bool
 val as_in_source_tree : t -> Source.t option
 val as_in_build_dir : t -> Build.t option
 val as_in_build_dir_exn : t -> Build.t
-
-val is_alias_stamp_file : t -> bool
 
 (** [is_strict_descendant_of_build_dir t = is_in_build_dir t && t <>
     build_dir] *)

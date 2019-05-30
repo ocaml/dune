@@ -40,7 +40,7 @@ end
 (** Why a Fiber.t was run *)
 type purpose =
   | Internal_job
-  | Build_job of Path.Set.t
+  | Build_job of Path.Build.Set.t
 
 (** [run ?dir ?stdout_to prog args] spawns a sub-process and wait for its termination *)
 val run

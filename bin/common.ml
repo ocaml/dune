@@ -49,7 +49,7 @@ let set_dirs c =
   if c.root.dir <> Filename.current_dir_name then
     Sys.chdir c.root.dir;
   Path.set_root (Path.External.cwd ());
-  Path.set_build_dir (Path.Kind.of_string c.build_dir)
+  Path.Build.set_build_dir (Path.Kind.of_string c.build_dir)
 
 let set_common_other c ~targets =
   Clflags.debug_dep_path := c.debug_dep_path;

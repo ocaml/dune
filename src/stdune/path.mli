@@ -50,6 +50,26 @@ module Source : sig
   val to_local : t -> Local.t
 end
 
+module External : sig
+  include Path_intf.S
+
+  val initial_cwd : t
+
+  val cwd : unit -> t
+
+  val relative : t -> string -> t
+
+  val mkdir_p : t -> unit
+end
+
+module Kind : sig
+  type t = private
+    | External of External.t
+    | Local    of Local.t
+
+  val of_string : string -> t
+end
+
 module Build : sig
   include Path_intf.S
   val root : t
@@ -74,29 +94,13 @@ module Build : sig
   val extract_build_context  : t -> (string * Source.t) option
 
   val is_alias_stamp_file : t -> bool
+
+  (** set the build directory. Can only be called once and must be done before
+      paths are converted to strings elsewhere. *)
+  val set_build_dir : Kind.t -> unit
 end
 
 (** In the outside world *)
-module External : sig
-  include Path_intf.S
-
-  val initial_cwd : t
-
-  val cwd : unit -> t
-
-  val relative : t -> string -> t
-
-  val mkdir_p : t -> unit
-end
-
-module Kind : sig
-  type t = private
-    | External of External.t
-    | Local    of Local.t
-
-  val of_string : string -> t
-end
-
 include Path_intf.S
 
 val hash : t -> int
@@ -216,10 +220,6 @@ val pp_debug : Format.formatter -> t -> unit
 val build_dir_exists : unit -> bool
 
 val ensure_build_dir_exists : unit -> unit
-
-(** set the build directory. Can only be called once and must be done before
-    paths are converted to strings elsewhere. *)
-val set_build_dir : Kind.t -> unit
 
 val source : Source.t -> t
 val build : Build.t -> t

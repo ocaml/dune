@@ -522,37 +522,6 @@ end
 module Local = Relative
 module Source0 = Relative
 
-module Build = struct
-  include Relative
-  let append_source = append
-  let append_relative = append
-  let append_local = append
-
-  let extract_build_context t =
-    let t = Relative.to_string t in
-    begin match String.lsplit2 t ~on:'/' with
-    | None ->
-      Some (t, Source0.root)
-    | Some (before, after) ->
-      Some
-        ( before
-        , after
-          |> Source0.of_string )
-    end
-
-  let drop_build_context t = Option.map (extract_build_context t) ~f:snd
-  let drop_build_context_exn t =
-    match drop_build_context t with
-    | Some d -> d
-    | None ->
-      Exn.code_error "Path.Build.drop_build_context_exn"
-        [ "t", to_sexp t
-        ]
-
-  let is_alias_stamp_file s =
-    String.is_prefix (Local.to_string s) ~prefix:".aliases/"
-end
-
 let (abs_root, set_root) =
   let root_dir = ref None in
   let set_root new_root =
@@ -571,6 +540,7 @@ let (abs_root, set_root) =
     | Some root_dir -> root_dir)
   in
   (abs_root, set_root)
+
 
 module Kind = struct
   type t =
@@ -618,44 +588,85 @@ module Kind = struct
 
 end
 
-let (build_dir_kind, build_dir_prefix, set_build_dir) =
-  let build_dir = ref None in
-  let build_dir_prefix = ref None in
-  let set_build_dir (new_build_dir : Kind.t) =
-    match !build_dir with
+
+module Build = struct
+  include Relative
+  let append_source = append
+  let append_relative = append
+  let append_local = append
+
+  let extract_build_context t =
+    let t = Relative.to_string t in
+    begin match String.lsplit2 t ~on:'/' with
     | None ->
-      (match new_build_dir with
-       | External _ -> ()
-       | Local p ->
-         if Local.is_root p || Local.parent_exn p <> Local.root then
-           Exn.fatalf
-             "@{<error>Error@}: Invalid build directory: %s\n\
-              The build directory must be an absolute path or \
-              a sub-directory of the root of the workspace."
-             (Local.to_string p |> String.maybe_quoted));
-      build_dir := Some new_build_dir;
-      build_dir_prefix :=
-        Some (match new_build_dir with
-          | Local    p -> Local.Prefix.make p
-          | External _ -> Local.Prefix.invalid)
-    | Some build_dir ->
-      Exn.code_error "set_build_dir: cannot set build_dir more than once"
-        [ "build_dir", Kind.to_sexp build_dir
-        ; "new_build_dir", Kind.to_sexp new_build_dir ]
-  in
-  let build_dir = lazy (
-    match !build_dir with
+      Some (t, Source0.root)
+    | Some (before, after) ->
+      Some
+        ( before
+        , after
+          |> Source0.of_string )
+    end
+
+  let drop_build_context t = Option.map (extract_build_context t) ~f:snd
+  let drop_build_context_exn t =
+    match drop_build_context t with
+    | Some d -> d
     | None ->
-      Exn.code_error "build_dir: cannot use build dir before it's set" []
-    | Some build_dir -> build_dir)
-  in
-  let build_dir_prefix = lazy (
-    match !build_dir_prefix with
-    | None ->
-      Exn.code_error "build_dir: cannot use build dir before it's set" []
-    | Some prefix -> prefix)
-  in
-  (build_dir, build_dir_prefix, set_build_dir)
+      Exn.code_error "Path.Build.drop_build_context_exn"
+        [ "t", to_sexp t
+        ]
+
+  let is_alias_stamp_file s =
+    String.is_prefix (Local.to_string s) ~prefix:".aliases/"
+
+  let (build_dir_kind, build_dir_prefix, set_build_dir) =
+    let build_dir = ref None in
+    let build_dir_prefix = ref None in
+    let set_build_dir (new_build_dir : Kind.t) =
+      match !build_dir with
+      | None ->
+        (match new_build_dir with
+         | External _ -> ()
+         | Local p ->
+           if Local.is_root p || Local.parent_exn p <> Local.root then
+             Exn.fatalf
+               "@{<error>Error@}: Invalid build directory: %s\n\
+                The build directory must be an absolute path or \
+                a sub-directory of the root of the workspace."
+               (Local.to_string p |> String.maybe_quoted));
+        build_dir := Some new_build_dir;
+        build_dir_prefix :=
+          Some (match new_build_dir with
+            | Local    p -> Local.Prefix.make p
+            | External _ -> Local.Prefix.invalid)
+      | Some build_dir ->
+        Exn.code_error "set_build_dir: cannot set build_dir more than once"
+          [ "build_dir", Kind.to_sexp build_dir
+          ; "new_build_dir", Kind.to_sexp new_build_dir ]
+    in
+    let build_dir = lazy (
+      match !build_dir with
+      | None ->
+        Exn.code_error "build_dir: cannot use build dir before it's set" []
+      | Some build_dir -> build_dir)
+    in
+    let build_dir_prefix = lazy (
+      match !build_dir_prefix with
+      | None ->
+        Exn.code_error "build_dir: cannot use build dir before it's set" []
+      | Some prefix -> prefix)
+    in
+    (build_dir, build_dir_prefix, set_build_dir)
+
+  let to_string p =
+    match Lazy.force build_dir_kind with
+    | Local    b -> Local.to_string (Local.append b p)
+    | External b ->
+      if Local.is_root p then
+        External.to_string b
+      else
+        Filename.concat (External.to_string b) (Local.to_string p)
+end
 
 module T : sig
   type t = private
@@ -708,7 +719,7 @@ let is_root = function
 module Map = Map.Make(T)
 
 let kind = function
-  | In_build_dir p -> Kind.append_relative (Lazy.force build_dir_kind) p
+  | In_build_dir p -> Kind.append_relative (Lazy.force Build.build_dir_kind) p
   | In_source_tree s -> Kind.Local s
   | External s -> Kind.External s
 
@@ -721,14 +732,7 @@ let to_string t =
   match t with
   | In_source_tree p -> Local.to_string p
   | External       p -> External.to_string p
-  | In_build_dir   p ->
-    match Lazy.force build_dir_kind with
-    | Local    b -> Local.to_string (Local.append b p)
-    | External b ->
-      if Local.is_root p then
-        External.to_string b
-      else
-        Filename.concat (External.to_string b) (Local.to_string p)
+  | In_build_dir   p -> Build.to_string p
 
 let to_string_maybe_quoted t =
   String.maybe_quoted (to_string t)
@@ -736,7 +740,7 @@ let to_string_maybe_quoted t =
 let root = in_source_tree Local.root
 
 let make_local_path p =
-  match Local.Prefix.drop (Lazy.force build_dir_prefix) p with
+  match Local.Prefix.drop (Lazy.force Build.build_dir_prefix) p with
   | None -> in_source_tree p
   | Some p -> in_build_dir p
 let of_local = make_local_path
@@ -800,18 +804,18 @@ let reach t ~from =
   | In_source_tree t, In_source_tree from
   | In_build_dir   t, In_build_dir   from -> Local.reach t ~from
   | In_source_tree t, In_build_dir from -> begin
-      match Lazy.force build_dir_kind with
+      match Lazy.force Build.build_dir_kind with
       | Local    b -> Local.reach t ~from:(Local.append b from)
       | External _ -> external_of_in_source_tree t
     end
   | In_build_dir t, In_source_tree from -> begin
-      match Lazy.force build_dir_kind with
+      match Lazy.force Build.build_dir_kind with
       | Local    b -> Local.reach (Local.append b t) ~from
       | External b -> external_of_local t ~root:b
     end
   | In_source_tree t, External _ -> external_of_in_source_tree t
   | In_build_dir t, External _ ->
-    match Lazy.force build_dir_kind with
+    match Lazy.force Build.build_dir_kind with
     | Local    b -> external_of_in_source_tree (Local.append b t)
     | External b -> external_of_local t ~root:b
 
@@ -1114,7 +1118,7 @@ let mkdir_p = function
   | In_source_tree s ->
     Local.mkdir_p s
   | In_build_dir k ->
-    Kind.mkdir_p (Kind.append_relative (Lazy.force build_dir_kind) k)
+    Kind.mkdir_p (Kind.append_relative (Lazy.force Build.build_dir_kind) k)
 
 let compare x y =
   match x, y with

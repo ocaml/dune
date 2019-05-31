@@ -3,8 +3,8 @@ js_of_ocaml
 ***********
 
 js_of_ocaml_ is a compiler from OCaml to JavaScript. The compiler works by
-translating OCaml bytecode to JS files. From here on, we'll abbreviate
-js_of_ocaml to jsoo. The compiler can be installed with opam:
+translating OCaml bytecode to JS files. The compiler can be installed with
+opam:
 
 .. code:: bash
 
@@ -13,7 +13,7 @@ js_of_ocaml to jsoo. The compiler can be installed with opam:
 Compiling to JS
 ===============
 
-Dune has full support building jsoo libraries and executables transparently.
+Dune has full support building js_of_ocaml libraries and executables transparently.
 There's no need to customize or enable anything to compile ocaml
 libraries/executables to JS.
 

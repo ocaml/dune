@@ -238,7 +238,7 @@ let install_uninstall ~what =
                 let executable =
                   Install.Section.should_set_executable_bit entry.section
                 in
-                Ops.copy_file ~src:entry.src ~dst ~executable
+                Ops.copy_file ~src:(Path.build entry.src) ~dst ~executable
               end else begin
                 Ops.remove_if_exists dst;
                 files_deleted_in := Path.Set.add !files_deleted_in dir;

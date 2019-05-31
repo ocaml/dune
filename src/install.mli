@@ -64,7 +64,7 @@ end
 module Entry : sig
 
   type t = private
-    { src     : Path.t
+    { src     : Path.Build.t
     ; dst     : Dst.t
     ; section : Section.t
     }
@@ -75,8 +75,8 @@ module Entry : sig
     -> section:Section.t
     -> Dst.t
 
-  val make : Section.t -> ?dst:string -> Path.t -> t
-  val set_src : t -> Path.t -> t
+  val make : Section.t -> ?dst:string -> Path.Build.t -> t
+  val set_src : t -> Path.Build.t -> t
 
   val relative_installed_path : t -> paths:Section.Paths.t -> Path.t
   val add_install_prefix : t -> paths:Section.Paths.t -> prefix:Path.t -> t

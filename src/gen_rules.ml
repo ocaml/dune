@@ -359,14 +359,16 @@ let gen ~contexts
   let+ contexts = Fiber.parallel_map contexts ~f:make_sctx in
   let map = String.Map.of_list_exn contexts in
   let sctxs = String.Map.map map ~f:(fun (module M : Gen) -> M.sctx) in
-  let generators = (String.Map.map map ~f:(fun (module M : Gen) -> M.gen_rules)) in
+  let generators =
+    String.Map.map map ~f:(fun (module M : Gen) -> M.gen_rules) in
   let () =
     Build_system.set_packages (fun path ->
       let open Option.O in
       Option.value ~default:Package.Name.Set.empty (
-        let* ctx_name, _ = Path.extract_build_context path in
+        let* path = Path.as_in_build_dir path in
+        let* ctx_name, _ = Path.Build.extract_build_context path in
         let* sctx = String.Map.find sctxs ctx_name in
-        Path.Map.find (Install_rules.packages sctx) path))
+        Path.Build.Map.find (Install_rules.packages sctx) path))
   in
   Build_system.set_rule_generators
     ~init:(fun () ->

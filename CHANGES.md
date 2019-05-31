@@ -1,3 +1,9 @@
+unreleased
+----------
+
+* Run `refmt` from the context's root directory. This improves error messages in
+  case of syntax errors. (#2223, @rgrinberg)
+
 1.10.0 (30/05/2019)
 -------------------
 

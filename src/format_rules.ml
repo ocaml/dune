@@ -67,19 +67,18 @@ let gen_rules_output sctx (config : Dune_file.Auto_format.t) ~output_dir =
     in
 
     let formatter =
-      let dir = Path.build dir in
       let input = Path.build input in
       match Path.Source.basename file, Path.Source.extension file with
       | _, ".ml" -> ocaml Impl
       | _, ".mli" -> ocaml Intf
       | _, ".re"
       | _, ".rei" when Dune_file.Auto_format.includes config Reason ->
-        let exe = resolve_program "refmt" in
-        let args = [Command.Args.Dep input] in
-        Some (Command.run ~dir ~stdout_to:output exe args)
+        let refmt = Refmt.get sctx ~loc:(Some loc) ~dir in
+        Some (Refmt.format refmt ~input ~output)
       | "dune", _ when Dune_file.Auto_format.includes config Dune ->
         let exe = resolve_program "dune" in
         let args = [Command.Args.A "format-dune-file"; Dep input] in
+        let dir = Path.build dir in
         Some (Command.run ~dir ~stdout_to:output exe args)
       | _ -> None
     in

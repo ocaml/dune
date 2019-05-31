@@ -1,15 +1,12 @@
 open Stdune
 
 type t =
-  { dlls : Path.t list
-  ; files : Path.t list
+  { dlls : Path.Build.t list
+  ; files : Path.Build.t list
   }
 
 let files t = t.files
 let dlls t = t.dlls
-
-let all { files; dlls } =
-  Path.Set.of_list (List.rev_append dlls files)
 
 module Library = Dune_file.Library
 
@@ -50,13 +47,11 @@ let make ~(ctx : Context.t) ~dir ~dir_contents (lib : Library.t) =
           Path.Build.relative dir (fn ^ ".h"))
       ]
   in
-  let dlls  =
+  let dlls =
     if_ (byte && Library.has_stubs lib &&
          Dynlink_supported.get lib.dynlink ctx.supports_shared_libraries)
       [Library.dll ~dir lib ~ext_dll:ctx.ext_dll]
   in
-  let files = List.map ~f:Path.build files in
-  let dlls = List.map ~f:Path.build dlls in
   { files
   ; dlls
   }

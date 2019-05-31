@@ -180,7 +180,8 @@ let coq_plugins_install_rules ~scope ~package ~dst_dir (s : Dune_file.Coq.t) =
     then
       Mode.Dict.get (Lib.plugins lib) Mode.Native |>
       List.map ~f:(fun plugin_file ->
-        let plugin_file_basename = Path.basename plugin_file in
+        let plugin_file = Path.as_in_build_dir_exn plugin_file in
+        let plugin_file_basename = Path.Build.basename plugin_file in
         let dst =
           Path.Relative.(to_string (relative dst_dir plugin_file_basename)) in
         None, Install.(Entry.make Section.Lib_root ~dst plugin_file))
@@ -213,7 +214,7 @@ let install_rules ~sctx ~dir s =
       in
       let dst = Path.Relative.relative dst_dir vofile_rel in
       None, Install.(Entry.make Section.Lib_root
-                       ~dst:(Path.Relative.to_string dst) (Path.build vofile)))
+                       ~dst:(Path.Relative.to_string dst) vofile))
     |> List.rev_append (coq_plugins_install_rules ~scope ~package ~dst_dir s)
 
 let coqpp_rules ~sctx ~build_dir ~dir (s : Dune_file.Coqpp.t) =

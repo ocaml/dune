@@ -850,6 +850,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name install-partial-package)
+ (deps (package dune) (source_tree test-cases/install-partial-package))
+ (action
+  (chdir
+   test-cases/install-partial-package
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name install-rule-order)
  (deps (package dune) (source_tree test-cases/install-rule-order))
  (action
@@ -1596,6 +1604,7 @@
   (alias inline_tests)
   (alias install-dry-run)
   (alias install-libdir)
+  (alias install-partial-package)
   (alias install-rule-order)
   (alias install-with-var)
   (alias installable-dup-private-libs)
@@ -1770,6 +1779,7 @@
   (alias include-loop)
   (alias include-qualified)
   (alias inline_tests)
+  (alias install-partial-package)
   (alias install-rule-order)
   (alias install-with-var)
   (alias installable-dup-private-libs)

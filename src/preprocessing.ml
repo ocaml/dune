@@ -310,9 +310,10 @@ module Jbuild_driver = struct
   |}
 
   let drivers =
-    [ Lib_name.of_string_exn ~loc:None "ocaml-migrate-parsetree.driver-main" , omp
-    ; Lib_name.of_string_exn ~loc:None "ppxlib.runner"                       , ppxlib
-    ; Lib_name.of_string_exn ~loc:None "ppx_driver.runner"                   , ppx_driver
+    let name = Lib_name.of_string_exn ~loc:None in
+    [ name "ocaml-migrate-parsetree.driver-main" , omp
+    ; name "ppxlib.runner"                       , ppxlib
+    ; name "ppx_driver.runner"                   , ppx_driver
     ]
 
   let get_driver pps =
@@ -391,8 +392,9 @@ let build_ppx_driver sctx ~dep_kind ~target ~dir_kind ~pps ~pp_names =
   in
   (* CR-someday diml: what we should do is build the .cmx/.cmo once
      and for all at the point where the driver is defined. *)
-  let ml = Path.Build.relative (Path.Build.parent_exn target) "ppx.ml" in
-  let add_rule = SC.add_rule sctx ~dir:(Super_context.build_dir sctx) in
+  let dir = Path.Build.parent_exn target in
+  let ml = Path.Build.relative dir "ppx.ml" in
+  let add_rule = SC.add_rule sctx ~dir in
   add_rule
     (Build.of_result_map driver_and_libs ~f:(fun (driver, _) ->
        Build.return (sprintf "let () = %s ()\n" driver.info.main))
@@ -535,14 +537,16 @@ let get_cookies ~loc ~expander ~lib_name libs =
       )
   with exn -> Error exn
 
-let ppx_driver_and_flags_internal sctx ~loc ~expander ~lib_name ~flags ~dir_kind libs =
+let ppx_driver_and_flags_internal sctx ~loc ~expander ~lib_name ~flags
+      ~dir_kind libs =
   let open Result.O in
   let flags = List.map ~f:(Expander.expand_str expander) flags in
   let+ cookies = get_cookies ~loc ~lib_name ~expander libs in
   let sctx = SC.host sctx in
   ppx_driver_exe sctx libs ~dir_kind, flags @ cookies
 
-let ppx_driver_and_flags sctx ~lib_name ~expander ~scope ~loc ~dir_kind ~flags pps =
+let ppx_driver_and_flags sctx ~lib_name ~expander ~scope ~loc ~dir_kind ~flags
+      pps =
   let open Result.O in
   let* libs = Lib.DB.resolve_pps (Scope.libs scope) pps in
   let* exe, flags = ppx_driver_and_flags_internal sctx ~loc ~expander ~lib_name
@@ -564,9 +568,8 @@ let workspace_root_var = String_with_vars.virt_var __POS__ "workspace_root"
 
 (* Generate rules for the reason modules in [modules] and return a
    a new module with only OCaml sources *)
-let setup_reason_rules sctx (m : Module.t) =
-  let ctx = SC.context sctx in
-  let refmt = Refmt.get sctx ~loc:None ~dir:ctx.build_dir in
+let setup_reason_rules sctx ~dir (m : Module.t) =
+  let refmt = Refmt.get sctx ~loc:None ~dir in
   let rule input output = Refmt.to_ocaml_ast refmt ~input ~output in
   let ml = Module.ml_source m in
   Module.iter m ~f:(fun kind f ->
@@ -578,7 +581,7 @@ let setup_reason_rules sctx (m : Module.t) =
         Option.value_exn (Module.file ml kind)
         |> Path.as_in_build_dir_exn
       in
-      SC.add_rule sctx ~dir:ctx.build_dir (rule f.path ml));
+      SC.add_rule sctx ~dir (rule f.path ml));
   ml
 
 let promote_correction fn build ~suffix =
@@ -703,7 +706,7 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess
     with
     | No_preprocessing ->
       (fun m ~lint ->
-         let ast = setup_reason_rules sctx m in
+         let ast = setup_reason_rules sctx ~dir m in
          if lint then lint_module ~ast ~source:m;
          ast)
     | Action (loc, action) ->
@@ -715,7 +718,7 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess
              in
              SC.add_rule sctx ~loc ~dir
                (preprocessor_deps >>> action))
-           |> setup_reason_rules sctx
+           |> setup_reason_rules sctx ~dir
          in
          if lint then lint_module ~ast ~source:m;
          ast)
@@ -724,7 +727,8 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess
         let corrected_suffix = ".ppx-corrected" in
         let driver_and_flags =
           let open Result.O in
-          let+ (exe, driver, flags) = ppx_driver_and_flags sctx ~expander ~loc ~lib_name ~flags ~dir_kind ~scope pps in
+          let+ (exe, driver, flags) = ppx_driver_and_flags sctx ~expander ~loc
+                                        ~lib_name ~flags ~dir_kind ~scope pps in
           let args : _ Command.Args.t = S [ As flags ] in
           (exe,
            (let bindings =
@@ -737,7 +741,7 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess
                  ~standard:(Build.return ["--as-ppx"]))), args)
         in
         (fun m ~lint ->
-           let ast = setup_reason_rules sctx m in
+           let ast = setup_reason_rules sctx ~dir m in
            if lint then lint_module ~ast ~source:m;
            pped_module ast ~f:(fun kind src dst ->
              SC.add_rule sctx ~loc ~dir
@@ -786,7 +790,7 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess
         in
         let pp = Some pp_flags in
         (fun m ~lint ->
-           let ast = setup_reason_rules sctx m in
+           let ast = setup_reason_rules sctx ~dir m in
            if lint then lint_module ~ast ~source:m;
            Module.set_pp ast pp)
       end)
@@ -801,4 +805,5 @@ let pp_module_as t ?(lint=true) name m =
 let get_ppx_driver sctx ~loc ~expander ~scope ~lib_name ~flags ~dir_kind pps =
   let open Result.O in
   let* libs = Lib.DB.resolve_pps (Scope.libs scope) pps in
-  ppx_driver_and_flags_internal sctx ~loc ~expander ~lib_name ~flags ~dir_kind libs
+  ppx_driver_and_flags_internal sctx ~loc ~expander ~lib_name ~flags ~dir_kind
+    libs

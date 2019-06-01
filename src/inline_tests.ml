@@ -277,7 +277,7 @@ include Sub_system.Register_end_point(
 
       SC.add_alias_action sctx ~dir
         ~loc:(Some info.loc)
-        (Alias.runtest ~dir:(Path.build dir))
+        (Alias.runtest ~dir)
         ~stamp:("ppx-runner", name)
         (let module A = Action in
          let exe =

@@ -135,7 +135,6 @@ let add_rule sctx ~project ~pkg =
   in
   Super_context.add_rule sctx ~mode ~dir opam_rule;
   let aliases =
-    let dir = Path.build dir in
     [ Alias.install ~dir
     ; Alias.runtest ~dir
     ; Alias.check ~dir (* check doesn't pick up the promote target? *)

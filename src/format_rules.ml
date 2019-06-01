@@ -34,7 +34,7 @@ let gen_rules_output sctx (config : Dune_file.Auto_format.t) ~output_dir =
   let loc = Dune_file.Auto_format.loc config in
   let dir = Path.Build.parent_exn output_dir in
   let source_dir = Path.Build.drop_build_context_exn dir in
-  let alias_formatted = Alias.fmt ~dir:(Path.build output_dir) in
+  let alias_formatted = Alias.fmt ~dir:output_dir in
   let resolve_program =
     Super_context.resolve_program ~dir sctx ~loc:(Some loc) in
   let ocamlformat_deps = lazy (
@@ -94,8 +94,9 @@ let gen_rules_output sctx (config : Dune_file.Auto_format.t) ~output_dir =
 
 let gen_rules ~dir =
   let output_dir = Path.Build.relative dir formatted in
-  let alias = Alias.fmt ~dir:(Path.build dir) in
-  let alias_formatted = Alias.fmt ~dir:(Path.build output_dir) in
+  let alias = Alias.fmt ~dir in
+  let alias_formatted = Alias.fmt ~dir:output_dir in
   Alias.stamp_file alias_formatted
+  |> Path.build
   |> Path.Set.singleton
   |> Rules.Produce.Alias.add_deps alias

@@ -566,18 +566,8 @@ let workspace_root_var = String_with_vars.virt_var __POS__ "workspace_root"
    a new module with only OCaml sources *)
 let setup_reason_rules sctx (m : Module.t) =
   let ctx = SC.context sctx in
-  let refmt =
-    SC.resolve_program sctx ~loc:None
-      ~dir:ctx.build_dir
-      "refmt" ~hint:"try: opam install reason" in
-  let rule src target =
-    Command.run ~dir:(Path.build ctx.build_dir) refmt
-      [ A "--print"
-      ; A "binary"
-      ; Dep src
-      ]
-      ~stdout_to:target
-  in
+  let refmt = Refmt.get sctx ~loc:None ~dir:ctx.build_dir in
+  let rule input output = Refmt.to_ocaml_ast refmt ~input ~output in
   let ml = Module.ml_source m in
   Module.iter m ~f:(fun kind f ->
     match f.syntax with

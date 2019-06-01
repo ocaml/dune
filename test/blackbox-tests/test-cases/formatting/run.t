@@ -80,7 +80,7 @@ And fixable files can be promoted:
   Sys.argv: ../install/default/bin/ocamlformat --impl enabled/ocaml_file.ml --name ../../enabled/ocaml_file.ml -o enabled/.formatted/ocaml_file.ml
   ocamlformat output
   $ cat enabled/reason_file.re
-  Sys.argv: ../../install/default/bin/refmt reason_file.re
+  Sys.argv: ../install/default/bin/refmt enabled/reason_file.re
   refmt output
   $ cat enabled/dune
   (library

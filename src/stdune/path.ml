@@ -46,6 +46,8 @@ end = struct
       let order = Interned.Natural
     end)()
 
+  module Table = Hashtbl.Make(T)
+
   type t = T.t
 
   let to_string = T.to_string
@@ -216,6 +218,8 @@ end = struct
       let resize_policy = Interned.Greedy
       let order = Interned.Natural
     end)()
+
+  module Table = Hashtbl.Make(T)
 
   type t = T.t
 

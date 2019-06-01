@@ -273,7 +273,7 @@ module Dir_triage = struct
 
   type t =
     | Known  of Loaded.t
-    | Alias_dir_of of Path.t
+    | Alias_dir_of of Path.Build.t
     | Need_step2
 
 end
@@ -372,20 +372,21 @@ end
 
 type t =
   { (* File specification by targets *)
-    files       : Internal_rule.t Path.Table.t
+    files       : Internal_rule.t Path.Build.Table.t
   ; contexts    : Context.t String.Map.t
   ; file_tree   : File_tree.t
   ; dirs : (Path.t, Loaded.t, (Path.t -> Loaded.t)) Memo.t
   ; init_rules : Rules.t Fdecl.t
   ; gen_rules :
-      (Context_or_install.t ->
-       (dir:Path.t -> string list -> extra_sub_directories_to_keep) option) Fdecl.t
+      (Context_or_install.t
+       -> (dir:Path.Build.t -> string list -> extra_sub_directories_to_keep)
+            option) Fdecl.t
   ; (* Set of directories under _build that have at least one rule and
        all their ancestors. *)
-    mutable build_dirs_to_keep : Path.Set.t
+    mutable build_dirs_to_keep : Path.Build.Set.t
   ; hook : hook -> unit
   ; (* Package files are part of *)
-    packages : (Path.t -> Package.Name.Set.t) Fdecl.t
+    packages : (Path.Build.t -> Package.Name.Set.t) Fdecl.t
   }
 
 let t = ref None
@@ -438,7 +439,7 @@ let get_dir_triage t ~dir =
     else begin
       let (ctx, sub_dir) = Path.extract_build_context_exn dir in
       if ctx = ".aliases" then
-        Alias_dir_of (Path.(append_source build_dir) sub_dir)
+        Alias_dir_of (Path.Build.(append_source root) sub_dir)
       else if ctx <> "install" && not (String.Map.mem t.contexts ctx) then
         Dir_triage.Known Loaded.no_rules
       else
@@ -446,20 +447,20 @@ let get_dir_triage t ~dir =
     end
 
 let add_spec_exn t fn rule =
-  match Path.Table.find t.files fn with
+  match Path.Build.Table.find t.files fn with
   | None ->
-    Path.Table.add t.files fn rule
+    Path.Build.Table.add t.files fn rule
   | Some _ ->
     Exn.code_error
       "add_spec_exn called on the same file twice. \
        This should be prevented by the check in [compile_rules]"
       [
-        "file", Path.to_sexp fn
+        "file", Path.Build.to_sexp fn
       ]
 
 let add_rules_exn t rules =
   Path.Build.Map.iteri rules ~f:(fun key data ->
-    add_spec_exn t (Path.build key) data)
+    add_spec_exn t key data)
 
 let rule_conflict fn rule' rule =
   let describe (rule : Internal_rule.t) =
@@ -522,32 +523,32 @@ let rec with_locks mutexes ~f =
       (fun () -> with_locks mutexes ~f)
 
 let remove_old_artifacts t ~dir ~subdirs_to_keep =
-  let dir = Path.build dir in
-  if Path.Table.mem t.files (Path.relative dir Config.dune_keep_fname) then
+  if Path.Build.Table.mem t.files
+       (Path.Build.relative dir Config.dune_keep_fname) then
     ()
   else
-    match Path.readdir_unsorted dir with
+    match Path.readdir_unsorted (Path.build dir) with
     | exception _ -> ()
     | Error _ -> ()
     | Ok files ->
       List.iter files ~f:(fun fn ->
-        let path = Path.relative dir fn in
-        let path_is_a_target = Path.Table.mem t.files path in
+        let path = Path.Build.relative dir fn in
+        let path_is_a_target = Path.Build.Table.mem t.files path in
         if path_is_a_target then ()
         else
-          match Unix.lstat (Path.to_string path) with
+          match Unix.lstat (Path.Build.to_string path) with
           | { st_kind = S_DIR; _ } -> begin
               match subdirs_to_keep with
               | All -> ()
               | These set ->
                 if String.Set.mem set fn ||
-                   Path.Set.mem t.build_dirs_to_keep path then
+                   Path.Build.Set.mem t.build_dirs_to_keep path then
                   ()
                 else
-                  Path.rm_rf path
+                  Path.rm_rf (Path.build path)
             end
-          | exception _ -> Path.unlink path
-          | _ -> Path.unlink path)
+          | exception _ -> Path.unlink (Path.build path)
+          | _ -> Path.unlink (Path.build path))
 
 let no_rule_found =
   let fail fn ~loc =
@@ -655,10 +656,10 @@ let fix_up_legacy_fallback_rules t ~file_tree_dir ~dir rules =
    +-----------------------------------------------------------------+ *)
 
 let rec add_build_dir_to_keep t ~dir =
-  if not (Path.Set.mem t.build_dirs_to_keep dir) then begin
-    t.build_dirs_to_keep <- Path.Set.add t.build_dirs_to_keep dir;
-    Option.iter (Path.parent dir) ~f:(fun dir ->
-      if not (Path.is_root dir) then
+  if not (Path.Build.Set.mem t.build_dirs_to_keep dir) then begin
+    t.build_dirs_to_keep <- Path.Build.Set.add t.build_dirs_to_keep dir;
+    Option.iter (Path.Build.parent dir) ~f:(fun dir ->
+      if not (Path.Build.is_root dir) then
         add_build_dir_to_keep t ~dir)
   end
 
@@ -672,7 +673,7 @@ let handle_add_rule_effects f =
      on this side-effect so that memoization can be used here. *)
   Path.Build.Map.iteri (Rules.to_map rules)
     ~f:(fun dir _rules ->
-      add_build_dir_to_keep t ~dir:(Path.build dir));
+      add_build_dir_to_keep t ~dir);
   res, rules
 
 let rec compile_rule t pre_rule =
@@ -762,7 +763,7 @@ and load_dir_impl t ~dir : Loaded.t =
     | Known l ->
       l
     | Alias_dir_of dir' ->
-      (match load_dir t ~dir:dir' with
+      (match load_dir t ~dir:(Path.build dir') with
        | Non_build _ ->
          Exn.code_error "Can only forward to a build dir" []
        | Build {
@@ -804,7 +805,7 @@ and load_dir_step2_exn t ~dir =
         rules
     in
     handle_add_rule_effects
-      (fun () -> gen_rules ~dir:(Path.build dir) (Path.Source.explode sub_dir))
+      (fun () -> gen_rules ~dir (Path.Source.explode sub_dir))
   in
   let rules =
     let dir = Path.build dir in
@@ -1476,16 +1477,22 @@ let package_deps pkg files =
   let t = t () in
   let rules_seen = ref Internal_rule.Set.empty in
   let rec loop fn acc =
-    let pkgs = Fdecl.get t.packages fn in
-    match Package.Name.Set.is_empty pkgs with
-    | true -> loop_deps fn acc
-    | false ->
-      if Package.Name.Set.mem pkgs pkg then
-        loop_deps fn acc
-      else
-        Package.Name.Set.union acc pkgs
+    match Path.as_in_build_dir fn with
+    | None ->
+      (* if this file isn't in the build dir, it doesnt belong to any packages
+      and it doesn't have dependencies that do *)
+      acc
+    | Some fn ->
+      let pkgs = Fdecl.get t.packages fn in
+      match Package.Name.Set.is_empty pkgs with
+      | true -> loop_deps fn acc
+      | false ->
+        if Package.Name.Set.mem pkgs pkg then
+          loop_deps fn acc
+        else
+          Package.Name.Set.union acc pkgs
   and loop_deps fn acc =
-    match Path.Table.find t.files fn with
+    match Path.Build.Table.find t.files fn with
     | None -> acc
     | Some ir ->
       if Internal_rule.Set.mem !rules_seen ir then
@@ -1512,7 +1519,10 @@ let package_deps pkg files =
   Build.paths_for_rule files >>^ fun () ->
   (* We know that at this point of execution, all the relevant ivars
      have been filled *)
-  Path.Set.fold files ~init:Package.Name.Set.empty ~f:loop_deps
+  Path.Set.fold files ~init:Package.Name.Set.empty ~f:(fun fn acc ->
+    match Path.as_in_build_dir fn with
+    | None -> acc
+    | Some fn -> loop_deps fn acc)
 
 let prefix_rules prefix ~f =
   let targets = Build.targets prefix in
@@ -1688,7 +1698,7 @@ let init ~contexts ~file_tree ~hook =
   in
   let t =
     { contexts
-    ; files      = Path.Table.create 1024
+    ; files      = Path.Build.Table.create 1024
     ; packages   = Fdecl.create ()
     ; dirs       =
         Memo.create_hidden
@@ -1700,11 +1710,10 @@ let init ~contexts ~file_tree ~hook =
     ; file_tree
     ; gen_rules = Fdecl.create ()
     ; init_rules = Fdecl.create ()
-    ; build_dirs_to_keep = Path.Set.empty
+    ; build_dirs_to_keep = Path.Build.Set.empty
     ; hook
     }
   in
-  Memo.set_impl t.dirs
-    (fun dir -> load_dir_impl t ~dir);
+  Memo.set_impl t.dirs (fun dir -> load_dir_impl t ~dir);
   set t
 

@@ -34,7 +34,7 @@ module Section : sig
   module Paths : sig
     type section = t
 
-    type t =
+    type t = private
       { lib          : Path.t
       ; lib_root     : Path.t
       ; libexec      : Path.t

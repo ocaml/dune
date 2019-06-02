@@ -164,10 +164,146 @@ end = struct
     | None -> Exn.code_error "Path.External.parent_exn called on a root path" []
     | Some p -> p
 
-  let is_descendant b ~of_:a =
-    if is_root a then true
+  module Set = struct
+    include T.Set
+    let of_listing ~dir ~filenames =
+      of_list (List.map filenames ~f:(fun f -> relative dir f))
+  end
+
+  module Map = T.Map
+end
+
+module Relative : sig
+  include Path_intf.S
+
+  val root : t
+  val is_root : t -> bool
+  val relative : t -> string -> t
+  val append : t -> t -> t
+
+  val split_first_component : t -> (string * t) option
+  val explode : t -> string list
+
+  module L : sig
+    val relative : t -> string list -> t
+  end
+end = struct
+  module T = Interned.No_interning(struct
+      let initial_size = 512
+      let resize_policy = Interned.Greedy
+      let order = Interned.Natural
+    end)()
+
+  type t = T.t
+
+  let to_string = T.to_string
+
+  let root = T.make "."
+
+  let compare = T.compare
+
+  let is_root t = Ordering.is_eq (compare t root)
+
+  let make t =
+    if t = "" then
+      root
+    else if Filename.is_relative t then
+      T.make t
     else
-      String.is_prefix ~prefix:(to_string a ^ "/") (to_string b)
+      Exn.code_error "Relative.make: not relative path"
+        ["t", Sexp.Encoder.string t]
+  let hash = T.hash
+
+  let pp ppf s = Format.pp_print_string ppf (to_string s)
+
+  let compare_val x y = String.compare (to_string x) (to_string y)
+
+  let is_suffix t ~suffix = String.is_suffix (to_string t) ~suffix
+
+  let to_sexp t = Sexp.Encoder.string (to_string t)
+  let parent t =
+    if is_root t then
+      None
+    else
+      Some (make (Filename.dirname (to_string t)))
+
+  let parent_exn t =
+    match parent t with
+    | None -> Exn.code_error "Path.Relative.parent:exn t is root"
+                ["t", to_sexp t]
+    | Some parent -> parent
+
+  let basename t =
+    if is_root t then
+      Exn.code_error "Path.Local.basename called on the root" []
+    else
+      Filename.basename (to_string t)
+
+  let to_dyn t = Dyn.String (to_string t)
+
+  let relative t s =
+    make (Filename.concat (to_string t) s)
+
+  module L = struct
+    let relative t components =
+      List.fold_left ~init:t ~f:relative components
+  end
+
+  let relative t path =
+    relative t path
+
+  let parse_string_exn ~loc s =
+    ignore loc;
+    match s with
+    | "" | "." -> root
+    | _ -> make s
+  let of_string s = parse_string_exn ~loc:Loc0.none s
+
+  let append a b =
+    match is_root a, is_root b with
+    | true, _ -> b
+    | _, true -> a
+    | _, _ -> make ((to_string a) ^ "/" ^ (to_string b))
+
+  let extend_basename t ~suffix = make (to_string t ^ suffix)
+
+  let extension t = Filename.extension (to_string t)
+  let split_extension t =
+    let s, ext = Filename.split_extension (to_string t) in
+    (make s, ext)
+
+  let set_extension t ~ext =
+    let (base, _) = split_extension t in
+    (to_string base) ^ ext
+    |> make
+
+  include (
+    Comparable.Operators(struct
+      type nonrec t = t
+      let compare = compare_val
+    end)
+    : Comparable.OPS with type t := t
+  )
+
+  let split_first_component t =
+    if is_root t then None
+    else
+      let t = (to_string t) in
+      begin match String.lsplit2 t ~on:'/' with
+      | None -> Some (t, root)
+      | Some (before, after) ->
+        Some
+          ( before
+          , after
+            |> of_string)
+      end
+
+  let explode p =
+    if is_root p then []
+    else String.split (to_string p) ~on:'/'
+
+  let to_string_maybe_quoted t =
+    String.maybe_quoted (to_string t)
 
   module Set = struct
     include T.Set
@@ -176,6 +312,7 @@ end = struct
   end
 
   module Map = T.Map
+  module Table = Hashtbl.Make(T)
 end
 
 module Local : sig
@@ -190,6 +327,8 @@ module Local : sig
   val descendant : t -> of_:t -> t option
   val is_descendant : t -> of_:t -> bool
   val reach : t -> from:t -> string
+
+  val append_relative : t -> Relative.t -> t
 
   module L : sig
     val relative : ?error_loc:Loc0.t -> t -> string list -> t
@@ -209,6 +348,7 @@ module Local : sig
   val split_first_component : t -> (string * t) option
   val explode : t -> string list
   val of_local : t -> t
+  val of_relative : Relative.t -> t
 
 end = struct
   (* either "." for root, or a '/' separated list of components
@@ -325,6 +465,8 @@ end = struct
       Exn.fatalf ?loc:error_loc "path outside the workspace: %s from %s"
         path
         (to_string t)
+
+  let append_relative t rel = relative t (Relative.to_string rel)
 
   let is_canonicalized =
     let rec before_slash s i =
@@ -493,10 +635,7 @@ end = struct
       begin match String.lsplit2 t ~on:'/' with
       | None -> Some (t, root)
       | Some (before, after) ->
-        Some
-          ( before
-          , after
-            |> of_string)
+        Some (before, of_string after)
       end
 
   let explode p =
@@ -513,6 +652,7 @@ end = struct
     | Some parent -> parent
 
   let of_local t = t
+  let of_relative t = of_string (Relative.to_string t)
 
   module Set = struct
     include T.Set
@@ -595,6 +735,7 @@ end
 module Build = struct
   include Local
   let append_source = append
+  let append_relative = append_relative
   let append_local = append
 
   let local t = t
@@ -866,6 +1007,12 @@ let is_descendant t ~of_ =
   | In_build_dir t, In_build_dir of_ ->
     Local.is_descendant t ~of_
   | _ -> false
+
+let append_relative a b =
+  match a with
+  | In_source_tree a -> in_source_tree (Local.append_relative a b)
+  | In_build_dir a -> in_build_dir (Local.append_relative a b)
+  | External a -> external_ (External.relative a (Relative.to_string b))
 
 let append_local a b =
   match a with
@@ -1227,10 +1374,10 @@ include (Comparable.Operators(T) : Comparable.OPS with type t := t)
 let path_of_local = of_local
 
 module Source = struct
-  include Source0
-
   let is_in_build_dir s =
     is_in_build_dir (path_of_local s)
+
+  include Local
 
   let to_local t = t
 end

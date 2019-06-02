@@ -42,8 +42,6 @@ module type S = sig
 
   val to_string_maybe_quoted : t -> string
 
-  val is_descendant : t -> of_:t -> bool
-
   val is_root : t -> bool
   val parent_exn : t -> t
   val parent : t -> t option

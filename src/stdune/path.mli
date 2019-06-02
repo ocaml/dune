@@ -1,7 +1,26 @@
+module Relative : sig
+  include Path_intf.S
+
+  (** [root] refers to empty relative path, so whatever the path is interpreted
+      relative to. *)
+  val root : t
+
+  val is_root : t -> bool
+  val append : t -> t -> t
+
+  module L : sig
+    val relative : t -> string list -> t
+  end
+
+  val relative : t -> string -> t
+  val split_first_component : t -> (string * t) option
+  val explode : t -> string list
+end
+
 (** Relative path with unspecified root.
 
-    Either root, or a '/' separated list of components
-    other that ".", ".."  and not containing a '/'. *)
+   Either root, or a '/' separated list of components
+   other that ".", ".."  and not containing a '/'. *)
 module Local : sig
   include Path_intf.S
   val root : t
@@ -24,9 +43,10 @@ module Source : sig
     val relative : ?error_loc:Loc0.t -> t -> string list -> t
   end
 
+  val of_relative : Relative.t -> t
   val of_local : Local.t -> t
   val relative : ?error_loc:Loc0.t -> t -> string -> t
-  val split_first_component : t -> (string * Local.t) option
+  val split_first_component : t -> (string * t) option
   val explode : t -> string list
 
   (** [Source.t] does not statically forbid overlap with build directory,
@@ -34,6 +54,7 @@ module Source : sig
   val is_in_build_dir : t -> bool
 
   val to_local : t -> Local.t
+  val is_descendant : t -> of_:t -> bool
 end
 
 module External : sig
@@ -63,6 +84,7 @@ module Build : sig
   val append_source : t -> Source.t -> t
 
   val append_local : t -> Local.t -> t
+  val append_relative : t -> Relative.t -> t
 
   module L : sig
     val relative : ?error_loc:Loc0.t -> t -> string list -> t
@@ -87,6 +109,10 @@ module Build : sig
   (** set the build directory. Can only be called once and must be done before
       paths are converted to strings elsewhere. *)
   val set_build_dir : Kind.t -> unit
+
+  val of_relative : Relative.t -> t
+  val of_local : Local.t -> t
+
 end
 
 (** In the outside world *)
@@ -124,6 +150,7 @@ val is_descendant : t -> of_:t -> bool
 
 val append : t -> t -> t
 val append_local : t -> Local.t -> t
+val append_relative : t -> Relative.t -> t
 val append_source : t -> Source.t -> t
 
 val extend_basename : t -> suffix:string -> t

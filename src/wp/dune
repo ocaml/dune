@@ -1,3 +1,4 @@
+; DUNE2: delete this library
 (library
  (name        wp)
  (public_name dune._wp)

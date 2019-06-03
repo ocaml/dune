@@ -139,6 +139,7 @@ let check_invalid_module_listing ~(buildable : Buildable.t) ~intf_only
   if errors.missing_intf_only <> [] then begin
     match Ordered_set_lang.loc buildable.modules_without_implementation with
     | None ->
+      (* DUNE2: turn this into an error *)
       Errors.warn buildable.loc
         "Some modules don't have an implementation.\
          \nYou need to add the following field to this stanza:\
@@ -155,6 +156,7 @@ let check_invalid_module_listing ~(buildable : Buildable.t) ~intf_only
          in
          Dune_lang.to_string ~syntax:Dune (List (tag :: modules)))
     | Some loc ->
+      (* DUNE2: turn this into an error *)
       Errors.warn loc
         "The following modules must be listed here as they don't \
          have an implementation:\n\

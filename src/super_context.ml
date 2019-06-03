@@ -227,6 +227,8 @@ let source_files t ~src_path =
   | None -> String.Set.empty
   | Some dir -> File_tree.Dir.files dir
 
+(* DUNE2: delete this since we have formalised version management via
+   the vcs *)
 module Pkg_version = struct
   open Build.O
 
@@ -657,6 +659,7 @@ module Action = struct
       | [] -> ()
       | x :: _ ->
         let loc = String_with_vars.loc x in
+        (* DUNE2: make this an error *)
         Errors.warn loc
           "%s must not have targets, this target will be ignored.\n\
            This will become an error in the future."

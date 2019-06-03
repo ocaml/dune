@@ -36,24 +36,14 @@
 
   $ dune uninstall --dry-run 2>&1 | sed 's#'$(opam config var prefix)'#OPAM_PREFIX#'
   Removing (if it exists) OPAM_PREFIX/lib/mylib/META
-  Removing directory (if empty) OPAM_PREFIX/lib/mylib
   Removing (if it exists) OPAM_PREFIX/lib/mylib/dune-package
-  Removing directory (if empty) OPAM_PREFIX/lib/mylib
   Removing (if it exists) OPAM_PREFIX/lib/mylib/mylib$ext_lib
-  Removing directory (if empty) OPAM_PREFIX/lib/mylib
   Removing (if it exists) OPAM_PREFIX/lib/mylib/mylib.cma
-  Removing directory (if empty) OPAM_PREFIX/lib/mylib
   Removing (if it exists) OPAM_PREFIX/lib/mylib/mylib.cmi
-  Removing directory (if empty) OPAM_PREFIX/lib/mylib
   Removing (if it exists) OPAM_PREFIX/lib/mylib/mylib.cmt
-  Removing directory (if empty) OPAM_PREFIX/lib/mylib
   Removing (if it exists) OPAM_PREFIX/lib/mylib/mylib.cmx
-  Removing directory (if empty) OPAM_PREFIX/lib/mylib
   Removing (if it exists) OPAM_PREFIX/lib/mylib/mylib.cmxa
-  Removing directory (if empty) OPAM_PREFIX/lib/mylib
   Removing (if it exists) OPAM_PREFIX/lib/mylib/mylib.cmxs
-  Removing directory (if empty) OPAM_PREFIX/lib/mylib
   Removing (if it exists) OPAM_PREFIX/lib/mylib/mylib.ml
-  Removing directory (if empty) OPAM_PREFIX/lib/mylib
   Removing (if it exists) OPAM_PREFIX/lib/mylib/opam
   Removing directory (if empty) OPAM_PREFIX/lib/mylib

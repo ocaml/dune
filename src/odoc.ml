@@ -67,7 +67,7 @@ end
 
 module Dep = struct
   let html_alias ctx m =
-    Alias.doc ~dir:(Path.build (Paths.html ctx m))
+    Alias.doc ~dir:(Paths.html ctx m)
 
   let alias = Alias.make ".odoc-all"
 
@@ -78,18 +78,18 @@ module Dep = struct
           match pkg with
           | Some p ->
             Dep.Set.singleton
-              (Dep.alias (alias ~dir:(Path.build (Paths.odocs ctx (Pkg p)))))
+              (Dep.alias (alias ~dir:(Paths.odocs ctx (Pkg p))))
           | None -> Dep.Set.empty
         in
         List.fold_left libs ~init ~f:(fun acc (lib : Lib.t) ->
           if Lib.is_local lib then
-            let dir = Path.build (Paths.odocs ctx (Lib lib)) in
+            let dir = Paths.odocs ctx (Lib lib) in
             let alias = alias ~dir in
             Dep.Set.add acc (Dep.alias alias)
           else
             acc)))
 
-  let alias ctx m = alias ~dir:(Path.build (Paths.odocs ctx m))
+  let alias ctx m = alias ~dir:(Paths.odocs ctx m)
 
   (* let static_deps t lib = Build_system.Alias.dep (alias t lib) *)
 
@@ -445,14 +445,14 @@ let setup_package_aliases sctx (pkg : Package.t) =
   let ctx = Super_context.context sctx in
   let alias =
     let dir = Path.Build.append_source ctx.build_dir pkg.Package.path in
-    Alias.doc ~dir:(Path.build dir)
+    Alias.doc ~dir
   in
   Rules.Produce.Alias.add_deps alias (
     Dep.html_alias ctx (Pkg pkg.name)
     :: (libs_of_pkg sctx ~pkg:pkg.name
         |> Lib.Set.to_list
         |> List.map ~f:(fun lib -> Dep.html_alias ctx (Lib lib)))
-    |> List.map ~f:Alias.stamp_file
+    |> List.map ~f:(fun f -> Path.build (Alias.stamp_file f))
     |> Path.Set.of_list
   )
 
@@ -581,7 +581,7 @@ let init sctx =
     setup_package_aliases sctx pkg;
   );
   Rules.Produce.Alias.add_deps
-    (Alias.private_doc ~dir:(Path.build ctx.build_dir))
+    (Alias.private_doc ~dir:ctx.build_dir)
     (stanzas
      |> List.concat_map ~f:(fun (w : _ Dir_with_dune.t) ->
        List.filter_map w.data ~f:(function
@@ -598,7 +598,10 @@ let init sctx =
          | _ -> None
        ))
      |> List.map ~f:(fun (lib : Lib.t) ->
-       Alias.stamp_file (Dep.html_alias ctx (Lib lib)))
+       Lib lib
+       |> Dep.html_alias ctx
+       |> Alias.stamp_file
+       |> Path.build)
      |> Path.Set.of_list
     )
 

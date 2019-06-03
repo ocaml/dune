@@ -210,44 +210,46 @@ let install_uninstall ~what =
         CMap.of_list_multi install_files |> CMap.to_list
       in
       let (module Ops) = file_operations ~dry_run in
-      Fiber.parallel_iter install_files_by_context
-        ~f:(fun (context, install_files) ->
-          let+ (prefix, libdir) =
-            get_dirs context ~prefix_from_command_line ~libdir_from_command_line
-          in
-          List.iter install_files ~f:(fun (package, path) ->
-            let entries = Install.load_install_file path in
-            let paths =
-              Install.Section.Paths.make
-                ~package
-                ~destdir:prefix
-                ?libdir
-                ()
+      let files_deleted_in = ref Path.Set.empty in
+      let+ () =
+        Fiber.sequential_iter install_files_by_context
+          ~f:(fun (context, install_files) ->
+            let+ (prefix, libdir) =
+              get_dirs context ~prefix_from_command_line ~libdir_from_command_line
             in
-            let files_deleted_in = ref Path.Set.empty in
-            List.iter entries ~f:(fun entry ->
-              let dst =
-                Install.Entry.relative_installed_path entry ~paths
-                |> interpret_destdir ~destdir
+            List.iter install_files ~f:(fun (package, path) ->
+              let entries = Install.load_install_file path in
+              let paths =
+                Install.Section.Paths.make
+                  ~package
+                  ~destdir:prefix
+                  ?libdir
+                  ()
               in
-              let dir = Path.parent_exn dst in
-              if what = "install" then begin
-                Printf.eprintf "Installing %s\n%!"
-                  (Path.to_string_maybe_quoted dst);
-                Ops.mkdir_p dir;
-                let executable =
-                  Install.Section.should_set_executable_bit entry.section
+              List.iter entries ~f:(fun entry ->
+                let dst =
+                  Install.Entry.relative_installed_path entry ~paths
+                  |> interpret_destdir ~destdir
                 in
-                Ops.copy_file ~src:(Path.build entry.src) ~dst ~executable
-              end else begin
-                Ops.remove_if_exists dst;
-                files_deleted_in := Path.Set.add !files_deleted_in dir;
-              end;
-              Path.Set.to_list !files_deleted_in
-              (* This [List.rev] is to ensure we process children
-                 directories before their parents *)
-              |> List.rev
-              |> List.iter ~f:Ops.remove_dir_if_empty))))
+                let dir = Path.parent_exn dst in
+                if what = "install" then begin
+                  Printf.eprintf "Installing %s\n%!"
+                    (Path.to_string_maybe_quoted dst);
+                  Ops.mkdir_p dir;
+                  let executable =
+                    Install.Section.should_set_executable_bit entry.section
+                  in
+                  Ops.copy_file ~src:(Path.build entry.src) ~dst ~executable
+                end else begin
+                  Ops.remove_if_exists dst;
+                  files_deleted_in := Path.Set.add !files_deleted_in dir;
+                end)))
+      in
+      Path.Set.to_list !files_deleted_in
+      (* This [List.rev] is to ensure we process children
+         directories before their parents *)
+      |> List.rev
+      |> List.iter ~f:Ops.remove_dir_if_empty)
   in
   (term, Cmdliner.Term.info what ~doc ~man:Common.help_secs)
 

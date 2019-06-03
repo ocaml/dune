@@ -52,6 +52,7 @@ let load_sources ~dune_version ~dir ~files =
     | Unrecognized -> acc
     | Not_allowed_until version ->
       let loc = Loc.in_dir (Path.build dir) in
+      (* DUNE2: make this an error *)
       Errors.warn loc
         "Source file %s with extension %s is not allowed before version %a"
         fn (Filename.extension fn) Syntax.Version.pp version;
@@ -75,6 +76,7 @@ let make (d : _ Dir_with_dune.t)
               let s = validate ~loc s in
               let s' = Filename.basename s in
               if s' <> s then begin
+                (* DUNE2: make this an error *)
                 Errors.warn loc "relative part of stub are no longer \
                                  necessary and are ignored."
               end;

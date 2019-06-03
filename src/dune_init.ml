@@ -191,7 +191,7 @@ module Component = struct
       }
 
     (* NOTE: no options supported yet *)
-    type test = ()
+    type test = unit
 
     type 'options t =
       { context : Init_context.t

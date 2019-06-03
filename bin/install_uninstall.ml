@@ -212,7 +212,7 @@ let install_uninstall ~what =
       let (module Ops) = file_operations ~dry_run in
       let files_deleted_in = ref Path.Set.empty in
       let+ () =
-        Fiber.map_all_unit install_files_by_context
+        Fiber.sequential_iter install_files_by_context
           ~f:(fun (context, install_files) ->
             let+ (prefix, libdir) =
               get_dirs context ~prefix_from_command_line ~libdir_from_command_line

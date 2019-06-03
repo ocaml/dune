@@ -88,10 +88,15 @@ module Build : sig
   val split_first_component : t -> (string * Relative.t) option
   val explode : t -> string list
 
+  val local : t -> Local.t
+
   val drop_build_context     : t -> Source.t option
   val drop_build_context_exn : t -> Source.t
 
   val extract_build_context  : t -> (string * Source.t) option
+  val extract_build_context_exn  : t -> (string * Source.t)
+  val extract_build_context_dir : t -> (t * Source.t) option
+  val extract_build_context_dir_exn : t -> (t * Source.t)
 
   val is_alias_stamp_file : t -> bool
 

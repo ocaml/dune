@@ -42,7 +42,7 @@ module T = struct
     match t with
     | Universe -> ["universe", Digest.string "universe"]
     | File fn -> [trace_file fn]
-    | Alias a -> [trace_file (Alias.stamp_file a)]
+    | Alias a -> [trace_file (Path.build (Alias.stamp_file a))]
     | Glob dir_glob ->
       eval_pred dir_glob
       |> Path.Set.to_list
@@ -99,7 +99,7 @@ module Set = struct
   let paths t ~eval_pred =
     fold t ~init:Path.Set.empty ~f:(fun d acc ->
       match d with
-      | Alias a -> Path.Set.add acc (Alias.stamp_file a)
+      | Alias a -> Path.Set.add acc (Path.build (Alias.stamp_file a))
       | File f -> Path.Set.add acc f
       | Glob g -> Path.Set.union acc (eval_pred g)
       | Universe
@@ -115,7 +115,7 @@ module Set = struct
   let dirs t =
     fold t ~init:Path.Set.empty ~f:(fun f acc ->
       match f with
-      | Alias a -> Path.Set.add acc (Alias.dir a)
+      | Alias a -> Path.Set.add acc (Path.build (Alias.dir a))
       | Glob g -> Path.Set.add acc (File_selector.dir g)
       | File f -> Path.Set.add acc (Path.parent_exn f)
       | Universe

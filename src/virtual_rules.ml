@@ -220,7 +220,7 @@ let external_dep_graph sctx ~impl_cm_kind ~vlib_obj_dir ~impl_obj_dir
               Module.Name.Map.find modules name
           end)
     in
-    Dep_graph.make ~dir:(Path.build impl_obj_dir)
+    Dep_graph.make ~dir:impl_obj_dir
       ~per_module:(Module.Name.Map.map modules ~f:(fun m ->
         let deps =
           if (ml_kind = Intf && not (Module.has_intf m))
@@ -288,8 +288,9 @@ let impl sctx ~dir ~(lib : Dune_file.Library.t) ~scope ~modules =
         let modules = Lib_modules.modules vlib_modules in
         match virtual_ with
         | Local ->
-          Ocamldep.graph_of_remote_lib
-            ~obj_dir:(Obj_dir.obj_dir vlib_obj_dir) ~modules
+          let obj_dir =
+            Path.as_in_build_dir_exn (Obj_dir.obj_dir vlib_obj_dir) in
+          Ocamldep.graph_of_remote_lib ~obj_dir ~modules
         | External _ ->
           let impl_obj_dir =
             Utils.library_object_directory ~dir (snd lib.name) in

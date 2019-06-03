@@ -4,9 +4,6 @@ open Fiber.O
 
 module Pre_rule = Rule
 
-(* Where we store stamp files for aliases *)
-let alias_dir = Path.Build.(relative root ".aliases")
-
 let () = Hooks.End_of_build.always Memo.reset
 
 module Fs : sig
@@ -189,14 +186,14 @@ end
 
 module Alias0 = struct
   include Alias
-  let dep t = Build.path (stamp_file t)
+  let dep t = Build.path (Path.build (stamp_file t))
 
   let dep_multi_contexts ~dir ~name ~file_tree ~contexts =
     ignore
       (find_dir_specified_on_command_line ~dir ~file_tree : File_tree.Dir.t);
     Build.paths (List.map contexts ~f:(fun ctx ->
-      let dir = Path.append_source (Path.(relative build_dir) ctx) dir in
-      stamp_file (make ~dir name)))
+      let dir = (Path.Build.append_source (Path.Build.(relative root) ctx) dir) in
+      Path.build (stamp_file (make ~dir name))))
 
   open Build.O
 
@@ -205,16 +202,18 @@ module Alias0 = struct
       File_tree.Dir.fold dir ~traverse_ignored_dirs:false
         ~init:(Build.return true)
         ~f:(fun dir acc ->
-          let path = Path.append_source ctx_dir (File_tree.Dir.path dir) in
+          let path = Path.Build.append_source ctx_dir (File_tree.Dir.path dir) in
           let fn = stamp_file (make ~dir:path name) in
           acc
           >>>
+          let fn = Path.build fn in
           Build.if_file_exists fn
             ~then_:(Build.path fn >>^ Fn.const false)
             ~else_:(Build.arr Fn.id))))
 
   let dep_rec t ~loc ~file_tree =
-    let ctx_dir, src_dir = Path.extract_build_context_dir_exn (Alias.dir t) in
+    let ctx_dir, src_dir =
+      Path.Build.extract_build_context_dir_exn (Alias.dir t) in
     match File_tree.find_dir file_tree src_dir with
     | None ->
       Build.fail { fail = fun () ->
@@ -234,7 +233,7 @@ module Alias0 = struct
     let open Build.O in
     let dir = find_dir_specified_on_command_line ~dir:src_dir ~file_tree in
     Build.all (List.map contexts ~f:(fun ctx ->
-      let ctx_dir = Path.(relative build_dir) ctx in
+      let ctx_dir = Path.Build.(relative root) ctx in
       dep_rec_internal ~name ~dir ~ctx_dir))
     >>^ fun is_empty_list ->
     let is_empty = List.for_all is_empty_list ~f:Fn.id in
@@ -246,7 +245,7 @@ module Alias0 = struct
 
   let package_install ~(context : Context.t) ~pkg =
     make (sprintf ".%s-files" (Package.Name.to_string pkg))
-      ~dir:(Path.build context.build_dir)
+      ~dir:context.build_dir
 end
 
 module Loaded = struct
@@ -821,7 +820,7 @@ and load_dir_step2_exn t ~dir =
     | Context context_name ->
       let alias_dir =
         Path.Build.append_source
-          (Path.Build.relative alias_dir context_name)
+          (Path.Build.relative Alias.alias_dir context_name)
           sub_dir
       in
       let alias_rules =
@@ -833,7 +832,7 @@ and load_dir_step2_exn t ~dir =
           if String.Map.mem aliases "default" then
             aliases
           else
-            match Path.extract_build_context_dir (Path.build dir) with
+            match Path.Build.extract_build_context_dir dir with
             | None -> aliases
             | Some (ctx_dir, src_dir) ->
               match File_tree.find_dir t.file_tree src_dir with
@@ -1156,7 +1155,7 @@ let build_pred g = Memo.exec Pred.build_def g
 
 let build_deps =
   Dep.Set.parallel_iter ~f:(function
-    | Alias a -> build_file (Alias.stamp_file a)
+    | Alias a -> build_file (Path.build (Alias.stamp_file a))
     | File f -> build_file f
     | Glob g -> build_pred g
     | Universe

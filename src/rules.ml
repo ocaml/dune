@@ -127,7 +127,6 @@ module Produce = struct
     let alias t spec =
       produce (
         let dir = Alias.dir t in
-        let dir = Path.as_in_build_dir_exn dir in
         let name = Alias.name t in
         Path.Build.Map.singleton dir (Dir_rules.singleton (Alias {
           name;

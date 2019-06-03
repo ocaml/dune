@@ -429,7 +429,8 @@ let install_rules sctx package =
          Package.Name.Set.to_list packages
          |> List.map ~f:(fun pkg ->
            Build_system.Alias.package_install ~context:ctx ~pkg
-           |> Alias.stamp_file)
+           |> Alias.stamp_file
+           |> Path.build)
          |> Path.Set.of_list)
   in
   Super_context.add_rule sctx ~dir:pkg_build_dir
@@ -460,9 +461,9 @@ let install_alias (ctx : Context.t) (package : Local_package.t) =
       Utils.install_file ~package:(Local_package.name package)
         ~findlib_toolchain:ctx.findlib_toolchain
     in
-    let path = Path.build (Local_package.build_dir package) in
+    let path = Local_package.build_dir package in
     let install_alias = Alias.install ~dir:path in
-    let install_file = Path.relative path install_fn in
+    let install_file = Path.relative (Path.build path) install_fn in
     Rules.Produce.Alias.add_deps install_alias (Path.Set.singleton install_file)
 
 module Scheme' =struct

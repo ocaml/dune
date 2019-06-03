@@ -385,7 +385,7 @@ let upgrade ft =
     Printf.ksprintf print_to_console fmt
   in
   let* () =
-    Fiber.map_all_unit todo.to_add ~f:(fun fn ->
+    Fiber.sequential_iter todo.to_add ~f:(fun fn ->
       match lookup_git_repo ft fn with
       | Some dir ->
         Process.run Strict ~dir ~env:Env.initial
@@ -396,7 +396,7 @@ let upgrade ft =
   List.iter todo.to_edit ~f:(fun (fn, s) ->
     log "Upgrading %s...\n" (Path.Source.to_string_maybe_quoted fn);
     Io.write_file (Path.source fn) s ~binary:true);
-  Fiber.map_all_unit todo.to_rename_and_edit ~f:(fun x ->
+  Fiber.sequential_iter todo.to_rename_and_edit ~f:(fun x ->
     let { original_file
         ; new_file
         ; extra_files_to_delete
@@ -409,7 +409,7 @@ let upgrade ft =
       (Path.Source.to_string_maybe_quoted new_file);
     (match lookup_git_repo ft original_file with
      | Some dir ->
-       Fiber.map_all_unit extra_files_to_delete ~f:(fun fn ->
+       Fiber.sequential_iter extra_files_to_delete ~f:(fun fn ->
          let fn = Path.source fn in
          Process.run Strict ~dir ~env:Env.initial
            (Lazy.force git)

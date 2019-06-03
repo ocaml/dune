@@ -170,7 +170,7 @@ let rules_generic cctx ~modules =
        let per_module =
          Module.Name.Map.map modules ~f:(fun m -> (m, deps_of cctx ~ml_kind m))
        in
-       Dep_graph.make ~dir:(Path.build (CC.dir cctx)) ~per_module)
+       Dep_graph.make ~dir:(CC.dir cctx) ~per_module)
 
 let rules cctx = rules_generic cctx ~modules:(CC.modules cctx)
 
@@ -182,14 +182,15 @@ let graph_of_remote_lib ~obj_dir ~modules =
     match Module.file unit ml_kind with
     | None -> Build.return []
     | Some file ->
+      let file = Path.as_in_build_dir_exn file in
       let file_in_obj_dir ~suffix file =
-        let base = Path.basename file in
-        Path.relative obj_dir (base ^ suffix)
+        let base = Path.Build.basename file in
+        Path.Build.relative obj_dir (base ^ suffix)
       in
       let all_deps_path file = file_in_obj_dir file ~suffix:".all-deps" in
       let all_deps_file = all_deps_path file in
-      Build.memoize (Path.to_string all_deps_file)
-        (Build.lines_of all_deps_file
+      Build.memoize (Path.Build.to_string all_deps_file)
+        (Build.lines_of (Path.build all_deps_file)
          >>^ parse_module_names ~unit ~modules)
   in
   Ml_kind.Dict.of_func (fun ~ml_kind ->

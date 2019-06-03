@@ -71,3 +71,9 @@ val negate : 'w t -> 'w t
 val to_sexp : 'w t -> Sexp.t
 
 val forget_root : 'w t -> Path.Local.w t
+
+val toplevel_subdirs : 'w t -> [`Infinite  | `Finite of String.Set.t]
+
+val of_list : 'w Path.Local_gen.t list -> 'w t
+
+val just_the_root : 'w t

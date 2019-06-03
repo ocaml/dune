@@ -5,7 +5,7 @@ open Stdune
 type t
 
 val make
-  :  dir:Path.t
+  :  dir:Path.Build.t
   -> per_module:(Module.t * (unit, Module.t list) Build.t) Module.Name.Map.t
   -> t
 

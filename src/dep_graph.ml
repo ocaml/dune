@@ -3,7 +3,7 @@ open Import
 open Build.O
 
 type t =
-  { dir        : Path.t
+  { dir        : Path.Build.t
   ; per_module : (Module.t * (unit, Module.t list) Build.t) Module.Name.Map.t
   }
 
@@ -15,7 +15,7 @@ let deps_of t (m : Module.t) =
   | Some (_, x) -> x
   | None ->
     Exn.code_error "Ocamldep.Dep_graph.deps_of"
-      [ "dir", Path.to_sexp t.dir
+      [ "dir", Path.Build.to_sexp t.dir
       ; "modules", Sexp.Encoder.(list Module.Name.to_sexp)
                      (Module.Name.Map.keys t.per_module)
       ; "module", Module.Name.to_sexp name
@@ -43,7 +43,7 @@ let top_closed t modules =
   | Ok modules -> modules
   | Error cycle ->
     die "dependency cycle between modules in %s:\n   %a"
-      (Path.to_string t.dir)
+      (Path.Build.to_string t.dir)
       pp_cycle cycle
 
 module Multi = struct
@@ -77,13 +77,13 @@ let top_closed_implementations =
     ~name:"top sorted implementations" ~f:top_closed
 
 let dummy (m : Module.t) =
-  { dir = Path.root
+  { dir = Path.Build.root
   ; per_module =
       Module.Name.Map.singleton (Module.name m) (m, (Build.return []))
   }
 
 let wrapped_compat ~modules ~wrapped_compat =
-  { dir = Path.root
+  { dir = Path.Build.root
   ; per_module = Module.Name.Map.merge wrapped_compat modules ~f:(fun _ d m ->
       match d, m with
       | None, None -> assert false

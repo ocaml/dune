@@ -89,7 +89,7 @@ module Decoder = struct
   let on_dup parsing_context name entries =
     match Univ_map.find parsing_context (Syntax.key syntax) with
     | Some (0, _) ->
-      (* DUNE2: delete this branch (0.x is for jbuilder compat) *) *)
+      (* DUNE2: delete this branch (0.x is for jbuilder compat) *)
       let last = Option.value_exn (List.last entries) in
       Errors.warn (Dune_lang.Ast.loc last)
         "Field %S is present several times, previous occurrences are ignored."

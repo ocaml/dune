@@ -51,3 +51,16 @@ Make sure pp flag is correct and variables are expanded
   S .
   FLG -pp '$PP/_build/default/pp/pp.exe -nothing'
   FLG -w @a-4-29-40-41-42-44-45-48-58-59-60-40 -strict-sequence -strict-formats -short-paths -keep-locs
+
+We want future-syntax to either be applied, or not, depending on OCaml version.
+Adding the `echo` with expected output to the set of lines is a way of achieving that.
+
+  $ (echo "FLG -pp '\$BIN/ocaml-syntax-shims'"; dune build @print-merlins-future-syntax 2>&1) | sort | uniq
+  # Processing future-syntax/.merlin
+  B ../_build/default/future-syntax/.pp_future_syntax.eobjs/byte
+  EXCLUDE_QUERY_DIR
+  FLG -pp '$BIN/ocaml-syntax-shims'
+  FLG -w @a-4-29-40-41-42-44-45-48-58-59-60-40 -strict-sequence -strict-formats -short-paths -keep-locs
+  S .
+  sanitize_dot_merlin alias print-merlins-future-syntax
+

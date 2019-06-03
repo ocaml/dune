@@ -595,8 +595,10 @@ module Build = struct
   let append_relative = append
   let append_local = append
 
+  let local t = t
+
   let extract_build_context t =
-    let t = Relative.to_string t in
+    let t = Local.to_string t in
     begin match String.lsplit2 t ~on:'/' with
     | None ->
       Some (t, Source0.root)
@@ -606,6 +608,30 @@ module Build = struct
         , after
           |> Source0.of_string )
     end
+
+  let extract_build_context_dir t =
+    let t_str = Local.to_string t in
+    begin match String.lsplit2 t_str ~on:'/' with
+    | None -> Some (t, Source0.root)
+    | Some (before, after) ->
+      Some
+        ( Local.of_string before
+        , after
+          |> Source0.of_string
+        )
+    end
+
+  let extract_build_context_dir_exn t =
+    match extract_build_context_dir t with
+    | Some t -> t
+    | None -> Exn.code_error "Path.Build.extract_build_context_dir_exn"
+                ["t", to_sexp t]
+
+  let extract_build_context_exn t =
+    match extract_build_context t with
+    | Some t -> t
+    | None -> Exn.code_error "Path.Build.extract_build_context_exn"
+                ["t", to_sexp t]
 
   let drop_build_context t = Option.map (extract_build_context t) ~f:snd
   let drop_build_context_exn t =
@@ -924,21 +950,12 @@ let extract_build_context_exn t =
   | None -> Exn.code_error "Path.extract_build_context_exn"
               ["t", to_sexp t]
 
-
 let extract_build_context_dir = function
   | In_source_tree _
   | External _ -> None
   | In_build_dir t ->
-    let t_str = Local.to_string t in
-    begin match String.lsplit2 t_str ~on:'/' with
-    | None -> Some (in_build_dir t, Source0.root)
-    | Some (before, after) ->
-      Some
-        ( in_build_dir (Local.of_string before)
-        , after
-          |> Source0.of_string
-        )
-    end
+    Option.map (Build.extract_build_context_dir t)
+      ~f:(fun (base, rest) -> in_build_dir base, rest)
 
 let extract_build_context_dir_exn t =
   match extract_build_context_dir t with

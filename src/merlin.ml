@@ -222,7 +222,7 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander ~dir_kind
        >>>
        Build.create_file (Path.Build.relative dir ".merlin-exists"));
     Path.Set.singleton (Path.build merlin_file)
-    |> Rules.Produce.Alias.add_deps (Alias.check ~dir:(Path.build dir));
+    |> Rules.Produce.Alias.add_deps (Alias.check ~dir);
     let pp_flags = pp_flags sctx ~expander ~dir_kind t in
     SC.add_rule sctx ~dir
       ~mode:(Promote

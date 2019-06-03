@@ -141,7 +141,7 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
           File_binding.Unexpanded.expand_src ~dir:(Path.build ctx_dir)
             fb ~f:(Expander.expand_str expander))
         |> Path.Set.of_list
-        |> Rules.Produce.Alias.add_deps (Alias.all ~dir:(Path.build ctx_dir));
+        |> Rules.Produce.Alias.add_deps (Alias.all ~dir:ctx_dir);
         For_stanza.empty_none
       | _ ->
         For_stanza.empty_none
@@ -223,7 +223,7 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
     in
     Rules.Produce.Alias.add_deps
       ~dyn_deps
-      (Alias.all ~dir:(Path.build ctx_dir)) Path.Set.empty;
+      (Alias.all ~dir:ctx_dir) Path.Set.empty;
     cctxs
 
   let gen_rules dir_contents cctxs ~dir : (Loc.t * Compilation_context.t) list =

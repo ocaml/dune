@@ -58,6 +58,26 @@ module Kind : sig
   include Dune_lang.Conv with type t := t
 end
 
+(* Only the source of a module, not yet associated to a library *)
+module Source : sig
+  type t
+
+  val name : t -> Name.t
+  val impl : t -> File.t option
+  val intf : t -> File.t option
+
+  val make
+    :  ?impl:File.t
+    -> ?intf:File.t
+    -> Name.t
+    -> t
+
+  val has_impl: t -> bool
+
+  val src_dir : t -> Path.t
+end
+
+
 type t
 
 (** [obj_name] Object name. It is different from [name] for wrapped modules. *)
@@ -69,6 +89,15 @@ val make
   -> obj_dir:Obj_dir.t
   -> kind:Kind.t
   -> Name.t
+  -> t
+
+(** [obj_name] Object name. It is different from [name] for wrapped modules. *)
+val of_source
+  :  ?obj_name:string
+  -> visibility:Visibility.t
+  -> obj_dir:Obj_dir.t
+  -> kind:Kind.t
+  -> Source.t
   -> t
 
 val name : t -> Name.t
@@ -91,8 +120,6 @@ val cmt_file        : t -> Ml_kind.t -> Path.t option
 val obj_file : t -> kind:Cm_kind.t -> ext:string -> Path.t
 
 val obj_name : t -> string
-
-val src_dir : t -> Path.t option
 
 (** Same as [cm_file] but doesn't raise if [cm_kind] is [Cmo] or [Cmx]
     and the module has no implementation.
@@ -158,8 +185,6 @@ val set_private : t -> t
 val set_obj_dir : t -> obj_dir:Obj_dir.t -> t
 val set_virtual : t -> t
 
-val remove_files : t -> t
-
 val sources : t -> Path.t list
 
 val visibility : t -> Visibility.t
@@ -167,27 +192,6 @@ val visibility : t -> Visibility.t
 val encode : t -> Dune_lang.t list
 
 val decode : obj_dir:Obj_dir.t -> t Dune_lang.Decoder.t
-
-(* Only the source of a module, not yet associated to a library *)
-module Source : sig
-  type t = private
-    { name : Name.t
-    ; impl : File.t option
-    ; intf : File.t option
-    }
-
-  val make
-    :  ?impl:File.t
-    -> ?intf:File.t
-    -> Name.t
-    -> t
-
-  val has_impl: t -> bool
-
-  val src_dir : t -> Path.t option
-
-  val name : t -> Name.t
-end
 
 (** [pped m] return [m] but with the preprocessed source paths paths *)
 val pped : t -> t

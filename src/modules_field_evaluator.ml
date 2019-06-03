@@ -10,7 +10,7 @@ let eval =
 
     let key = function
       | Error s -> s
-      | Ok m -> m.Module.Source.name
+      | Ok m -> Module.Source.name m
   end in
   let module Eval = Ordered_set_lang.Make_loc(Module.Name)(Value) in
   let parse ~all_modules ~fake_modules ~loc s =
@@ -227,7 +227,7 @@ let eval ~modules:(all_modules : Module.Source.t Module.Name.Map.t)
         else
           Intf_only
       in
-      Module.make ?impl:m.impl ?intf:m.intf m.name
+      Module.of_source m
         ~kind
         ~visibility
         ~obj_dir)

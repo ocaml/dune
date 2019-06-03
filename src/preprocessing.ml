@@ -701,7 +701,9 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess
                       ~lint ~lib_name ~scope ~dir_kind)
   in
   Per_module.map preprocess ~f:(fun pp ->
-    match Dune_file.Preprocess.remove_future_syntax pp
+    match Dune_file.Preprocess.remove_future_syntax
+            ~for_:Compiler
+            pp
             (Super_context.context sctx).version
     with
     | No_preprocessing ->

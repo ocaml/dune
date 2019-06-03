@@ -30,7 +30,14 @@ module Preprocess : sig
 
   val loc : t -> Loc.t option
 
-  val remove_future_syntax : t -> Ocaml_version.t -> Without_future_syntax.t
+  module Pp_flag_consumer : sig
+    type t =
+      | Compiler
+      | Merlin
+  end
+
+  val remove_future_syntax :
+    t -> for_:Pp_flag_consumer.t -> Ocaml_version.t -> Without_future_syntax.t
 end
 
 module Per_module : Per_item.S with type key = Module.Name.t

@@ -358,7 +358,16 @@ module Preprocess = struct
       | Pps    of Pps.t
   end
 
-  let remove_future_syntax t v : Without_future_syntax.t =
+  module Pp_flag_consumer = struct
+    (* Compiler allows the output of [-pp] to be a binary AST.
+       Merlin requires that to be a text file instead. *)
+    type t =
+      | Compiler
+      | Merlin
+  end
+
+  let remove_future_syntax
+        t ~(for_ : Pp_flag_consumer.t) v : Without_future_syntax.t =
     match t with
     | No_preprocessing -> No_preprocessing
     | Action (loc, action) -> Action (loc, action)
@@ -372,9 +381,27 @@ module Preprocess = struct
            Run
              (String_with_vars.make_var loc "bin"
                 ~payload:"ocaml-syntax-shims",
-              [ String_with_vars.make_text loc "-dump-ast"
-              ; String_with_vars.make_var loc "input-file"
-              ]))
+              ((match for_ with
+                 | Compiler -> [ String_with_vars.make_text loc "-dump-ast" ]
+                 | Merlin ->
+                   (* We generate a text file instead of AST. That gives you
+                      less precise locations, but at least Merlin doesn't fail
+                      outright.
+
+                      In general this hack should be applied to all -pp
+                      commands that might produce an AST, not just to
+                      Future_syntax. But doing so means we need to change
+                      dune language so the user can provide two versions of
+                      the command.
+
+                      Hopefully this will be fixed in merlin before that
+                      becomes a necessity.
+                   *)
+                   [])
+               @
+               [ 
+                 String_with_vars.make_var loc "input-file"
+               ])))
 end
 
 let enabled_if ~since =

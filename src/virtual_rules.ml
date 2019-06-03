@@ -15,7 +15,7 @@ end = struct
 
   let make preprocess v =
     Dune_file.Per_module.map preprocess ~f:(fun pp ->
-      match Dune_file.Preprocess.remove_future_syntax pp v with
+      match Dune_file.Preprocess.remove_future_syntax ~for_:Compiler pp v with
       | No_preprocessing -> Module.ml_source
       | Action (_, _) ->
         fun m -> Module.ml_source (Module.pped m)

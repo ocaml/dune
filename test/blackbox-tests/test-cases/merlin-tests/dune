@@ -7,3 +7,8 @@
  (name print-merlins-pp)
  (deps pp-with-expand/.merlin)
  (action (run ./sanitize-dot-merlin/sanitize_dot_merlin.exe %{deps})))
+
+(alias
+ (name print-merlins-future-syntax)
+ (deps future-syntax/.merlin)
+ (action (run ./sanitize-dot-merlin/sanitize_dot_merlin.exe %{deps})))

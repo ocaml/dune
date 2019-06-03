@@ -117,39 +117,19 @@ destdir`:
   Creating directory OPAM_VAR_PREFIX/man/man3
   Copying _build/install/default/man/man3/another-man-page.3 to OPAM_VAR_PREFIX/man/man3/another-man-page.3 (executable: false)
   Removing (if it exists) /OCAMLFIND_DESTDIR/foo/META
-  Removing directory (if empty) /OCAMLFIND_DESTDIR/foo
   Removing (if it exists) /OCAMLFIND_DESTDIR/foo/dune-package
-  Removing directory (if empty) /OCAMLFIND_DESTDIR/foo
   Removing (if it exists) /OCAMLFIND_DESTDIR/foo/foo$ext_lib
-  Removing directory (if empty) /OCAMLFIND_DESTDIR/foo
   Removing (if it exists) /OCAMLFIND_DESTDIR/foo/foo.cma
-  Removing directory (if empty) /OCAMLFIND_DESTDIR/foo
   Removing (if it exists) /OCAMLFIND_DESTDIR/foo/foo.cmi
-  Removing directory (if empty) /OCAMLFIND_DESTDIR/foo
   Removing (if it exists) /OCAMLFIND_DESTDIR/foo/foo.cmt
-  Removing directory (if empty) /OCAMLFIND_DESTDIR/foo
   Removing (if it exists) /OCAMLFIND_DESTDIR/foo/foo.cmx
-  Removing directory (if empty) /OCAMLFIND_DESTDIR/foo
   Removing (if it exists) /OCAMLFIND_DESTDIR/foo/foo.cmxa
-  Removing directory (if empty) /OCAMLFIND_DESTDIR/foo
   Removing (if it exists) /OCAMLFIND_DESTDIR/foo/foo.cmxs
-  Removing directory (if empty) /OCAMLFIND_DESTDIR/foo
   Removing (if it exists) /OCAMLFIND_DESTDIR/foo/foo.ml
-  Removing directory (if empty) /OCAMLFIND_DESTDIR/foo
   Removing (if it exists) /OCAMLFIND_DESTDIR/foo/opam
-  Removing directory (if empty) /OCAMLFIND_DESTDIR/foo
   Removing (if it exists) OPAM_VAR_PREFIX/bin/exec
-  Removing directory (if empty) OPAM_VAR_PREFIX/bin
-  Removing directory (if empty) /OCAMLFIND_DESTDIR/foo
   Removing (if it exists) OPAM_VAR_PREFIX/man/a-man-page-with-no-ext
-  Removing directory (if empty) OPAM_VAR_PREFIX/man
-  Removing directory (if empty) OPAM_VAR_PREFIX/bin
-  Removing directory (if empty) /OCAMLFIND_DESTDIR/foo
   Removing (if it exists) OPAM_VAR_PREFIX/man/man1/a-man-page.1
-  Removing directory (if empty) OPAM_VAR_PREFIX/man/man1
-  Removing directory (if empty) OPAM_VAR_PREFIX/man
-  Removing directory (if empty) OPAM_VAR_PREFIX/bin
-  Removing directory (if empty) /OCAMLFIND_DESTDIR/foo
   Removing (if it exists) OPAM_VAR_PREFIX/man/man3/another-man-page.3
   Removing directory (if empty) OPAM_VAR_PREFIX/man/man3
   Removing directory (if empty) OPAM_VAR_PREFIX/man/man1
@@ -207,39 +187,19 @@ in libdir:
   Creating directory OPAM_VAR_PREFIX/man/man3
   Copying _build/install/default/man/man3/another-man-page.3 to OPAM_VAR_PREFIX/man/man3/another-man-page.3 (executable: false)
   Removing (if it exists) /LIBDIR/foo/META
-  Removing directory (if empty) /LIBDIR/foo
   Removing (if it exists) /LIBDIR/foo/dune-package
-  Removing directory (if empty) /LIBDIR/foo
   Removing (if it exists) /LIBDIR/foo/foo$ext_lib
-  Removing directory (if empty) /LIBDIR/foo
   Removing (if it exists) /LIBDIR/foo/foo.cma
-  Removing directory (if empty) /LIBDIR/foo
   Removing (if it exists) /LIBDIR/foo/foo.cmi
-  Removing directory (if empty) /LIBDIR/foo
   Removing (if it exists) /LIBDIR/foo/foo.cmt
-  Removing directory (if empty) /LIBDIR/foo
   Removing (if it exists) /LIBDIR/foo/foo.cmx
-  Removing directory (if empty) /LIBDIR/foo
   Removing (if it exists) /LIBDIR/foo/foo.cmxa
-  Removing directory (if empty) /LIBDIR/foo
   Removing (if it exists) /LIBDIR/foo/foo.cmxs
-  Removing directory (if empty) /LIBDIR/foo
   Removing (if it exists) /LIBDIR/foo/foo.ml
-  Removing directory (if empty) /LIBDIR/foo
   Removing (if it exists) /LIBDIR/foo/opam
-  Removing directory (if empty) /LIBDIR/foo
   Removing (if it exists) OPAM_VAR_PREFIX/bin/exec
-  Removing directory (if empty) OPAM_VAR_PREFIX/bin
-  Removing directory (if empty) /LIBDIR/foo
   Removing (if it exists) OPAM_VAR_PREFIX/man/a-man-page-with-no-ext
-  Removing directory (if empty) OPAM_VAR_PREFIX/man
-  Removing directory (if empty) OPAM_VAR_PREFIX/bin
-  Removing directory (if empty) /LIBDIR/foo
   Removing (if it exists) OPAM_VAR_PREFIX/man/man1/a-man-page.1
-  Removing directory (if empty) OPAM_VAR_PREFIX/man/man1
-  Removing directory (if empty) OPAM_VAR_PREFIX/man
-  Removing directory (if empty) OPAM_VAR_PREFIX/bin
-  Removing directory (if empty) /LIBDIR/foo
   Removing (if it exists) OPAM_VAR_PREFIX/man/man3/another-man-page.3
   Removing directory (if empty) OPAM_VAR_PREFIX/man/man3
   Removing directory (if empty) OPAM_VAR_PREFIX/man/man1

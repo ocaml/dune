@@ -233,7 +233,6 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
     | Some d -> gen_rules dir_contents cctxs d
 
   let gen_rules ~dir components : Build_system.extra_sub_directories_to_keep =
-    let dir = Path.as_in_build_dir_exn dir in
     Install_rules.init_meta sctx ~dir;
     Install_rules.gen_rules sctx ~dir;
     Opam_create.add_rules sctx ~dir;
@@ -294,7 +293,7 @@ end
 
 module type Gen = sig
   val gen_rules
-    :  dir:Path.t
+    :  dir:Path.Build.t
     -> string list
     -> Build_system.extra_sub_directories_to_keep
   val sctx : Super_context.t
@@ -365,7 +364,6 @@ let gen ~contexts
     Build_system.set_packages (fun path ->
       let open Option.O in
       Option.value ~default:Package.Name.Set.empty (
-        let* path = Path.as_in_build_dir path in
         let* ctx_name, _ = Path.Build.extract_build_context path in
         let* sctx = String.Map.find sctxs ctx_name in
         Path.Build.Map.find (Install_rules.packages sctx) path))
@@ -379,7 +377,7 @@ let gen ~contexts
         | Install ctx ->
           Option.map (String.Map.find sctxs ctx) ~f:(fun sctx ->
             (fun ~dir _ ->
-               Install_rules.gen_rules sctx ~dir:(Path.as_in_build_dir_exn dir);
+               Install_rules.gen_rules sctx ~dir;
                Build_system.These String.Set.empty))
         | Context ctx ->
           String.Map.find generators ctx);

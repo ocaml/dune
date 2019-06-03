@@ -1,0 +1,4 @@
+(library
+ (name foobar)
+ (modules_without_implementation foobar)
+ (public_name foobar))

@@ -401,60 +401,6 @@ To setup the building and running of tests in opam, add this line to your
       ["dune" "runtest" "-p" name "-j" jobs] {with-test}
     ]
 
-Installation
-============
-
-Installing a package means copying the build artifacts from the build directory
-to the installed word.
-
-When installing via opam, you don't need to worry about this step: dune
-generates a ``<package>.install`` file that opam will automatically read to
-handle installation.
-
-However, when not using opam or doing local development, you can use dune to
-install the artifacts by hands. To do that, use the ``install`` command:
-
-::
-
-    $ dune install [PACKAGE]...
-
-without an argument, it will install all the packages available in the
-workspace. With a specific list of packages, it will only install these
-packages. If several build contexts are configured, the installation will be
-performed for all of them.
-
-Destination
------------
-
-The place where the build artifacts are copied, usually referred as **prefix**,
-is determined as follow for a given build context:
-
-#. if an explicit ``--prefix <path>`` argument is passed, use this path
-#. if ``opam`` is present in the ``PATH`` and is configured, use the
-   output of ``opam config var prefix``
-#. otherwise, take the parent of the directory where ``ocamlc`` was found.
-
-As an exception to this rule, library files might be copied to a different
-location. The reason for this is that they often need to be copied to a
-particular location for the various build system used in OCaml projects to find
-them and this location might be different from ``<prefix>/lib`` on some systems.
-
-Historically, the location where to store OCaml library files was configured
-through `findlib <http://projects.camlcity.org/projects/findlib.html>`__ and the
-``ocamlfind`` command line tool was used to both install these files and locate
-them. Many Linux distributions or other packaging systems are using this
-mechanism to setup where OCaml library files should be copied.
-
-As a result, if none of ``--libdir`` and ``--prefix`` is passed to ``dune
-install`` and ``ocamlfind`` is present in the ``PATH``, then library files will
-be copied to the directory reported by ``ocamlfind printconf destdir``. This
-ensures that ``dune install`` can be used without opam. When using opam,
-``ocamlfind`` is configured to point to the opam directory, so this rule makes
-no difference.
-
-Note that ``--prefix`` and ``--libdir`` are only supported if a single build
-context is in use.
-
 Workspace configuration
 =======================
 

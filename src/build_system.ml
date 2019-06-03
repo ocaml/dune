@@ -584,6 +584,7 @@ let no_rule_found =
           ctx
           (hint ctx (String.Map.keys t.contexts))
 
+(* DUNE2: delete this since this has been deprecated for long enough *)
 let fix_up_legacy_fallback_rules t ~file_tree_dir ~dir rules =
   (* Fix up non promote/fallback rules that have targets in the
      source tree if we are in a dune < 1.10 project *)

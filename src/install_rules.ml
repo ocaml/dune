@@ -65,6 +65,8 @@ type version_method =
   | File of string
   | From_metadata of Package.Version_source.t
 
+(* DUNE2: delete this since we have formalised version management via
+   the vcs *)
 let pkg_version ~path ~(pkg : Package.t) =
   let rec loop = function
     | [] -> Build.return None

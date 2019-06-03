@@ -155,6 +155,7 @@ module Modules = struct
               List.sort ~compare
                 (b.Buildable.loc :: List.map rest ~f:(fun b -> b.Buildable.loc))
             in
+            (* DUNE2: make this an error *)
             Errors.warn (Loc.drop_position b.loc)
               "Module %a is used in several stanzas:@\n\
                @[<v>%a@]@\n\

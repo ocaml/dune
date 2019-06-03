@@ -73,7 +73,9 @@ module Local = struct
     | Ok s, _ -> s
     | Warn _, None
     | Warn _, Some true -> Errors.fail loc "%s" wrapped_message
-    | Warn s, Some false -> Errors.warn loc "%s" wrapped_message; s
+    | Warn s, Some false ->
+      (* DUNE2: turn this into an error *)
+      Errors.warn loc "%s" wrapped_message; s
     | Invalid, _ -> Errors.fail loc "%s" invalid_message
 
   let to_string s = s

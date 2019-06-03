@@ -234,7 +234,7 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
 
   let gen_rules ~dir components : Build_system.extra_sub_directories_to_keep =
     Install_rules.init_meta sctx ~dir;
-    Install_rules.gen_rules sctx ~dir;
+    let subdirs_to_keep1 = Install_rules.gen_rules sctx ~dir in
     Opam_create.add_rules sctx ~dir;
     (match components with
      | ".js"  :: rest -> Js_of_ocaml_rules.setup_separate_compilation_rules
@@ -284,10 +284,15 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
                    gen_rules dir_contents cctxs ~dir:(Dir_contents.dir dc)
                    : _ list))
        end);
-    match components with
-    | [] -> These (String.Set.of_list [".js"; "_doc"; ".ppx"])
-    | [(".js"|"_doc"|".ppx")] -> All
-    | _  -> These String.Set.empty
+    let subdirs_to_keep2 =
+      match components with
+      | [] ->
+        Build_system.Subdir_set.These
+          (String.Set.of_list [".js"; "_doc"; ".ppx"])
+      | [(".js"|"_doc"|".ppx")] -> All
+      | _  -> These String.Set.empty
+    in
+    Build_system.Subdir_set.union subdirs_to_keep1 subdirs_to_keep2
 
 end
 
@@ -377,8 +382,7 @@ let gen ~contexts
         | Install ctx ->
           Option.map (String.Map.find sctxs ctx) ~f:(fun sctx ->
             (fun ~dir _ ->
-               Install_rules.gen_rules sctx ~dir;
-               Build_system.These String.Set.empty))
+               Install_rules.gen_rules sctx ~dir))
         | Context ctx ->
           String.Map.find generators ctx);
   sctxs

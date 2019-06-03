@@ -33,7 +33,9 @@ type 'rules t =
 module Evaluated : sig
   type 'a t
 
-  val get_rules : 'a t -> dir:Path.Build.t -> 'a option
+  (** returns the rules and the set of child directories that could have
+      rules defined in this scheme *)
+  val get_rules : 'a t -> dir:Path.Build.t -> ('a option * String.Set.t)
 end
 
 (** [Evaluated.t] shares the work of scheme evaluation between multiple

@@ -529,11 +529,11 @@ let scheme_per_ctx_memo =
        Scheme.evaluate ~union:Rules.Dir_rules.union scheme))
 
 let gen_rules sctx ~dir =
-  let rules =
+  let rules, subdirs =
     Scheme.Evaluated.get_rules (Memo.exec scheme_per_ctx_memo sctx) ~dir
-    |> Option.value ~default:Rules.Dir_rules.empty
   in
-  Rules.produce_dir ~dir rules
+  Rules.produce_dir ~dir (Option.value ~default:Rules.Dir_rules.empty rules);
+  Build_system.Subdir_set.These subdirs
 
 let packages =
   let f sctx =

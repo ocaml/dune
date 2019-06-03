@@ -664,20 +664,20 @@ The syntax is as follows:
 ``<section>`` is the installation section, as described in the opam
 manual. The following sections are available:
 
--  ``lib``
--  ``lib_root``
--  ``libexec``
--  ``libexec_root``
--  ``bin``
--  ``sbin``
--  ``toplevel``
--  ``share``
--  ``share_root``
--  ``etc``
--  ``doc``
--  ``stublibs``
--  ``man``
--  ``misc``
+-  ``lib`` installs to ``<prefix>/lib/<pkgname>/``
+-  ``lib_root`` installs to ``<prefix>/lib/``
+-  ``libexec`` installs to ``<prefix>/lib/<pkgname>/``` with the executable bit set
+-  ``libexec_root`` installs to ``<prefix>/lib/`` with the executable bit set
+-  ``bin`` installs to ``<prefix>/bin/`` with the executable bit set
+-  ``sbin`` installs to ``<prefix>/sbin/`` with the executable bit set
+-  ``toplevel`` installs to ``<prefix>/lib/toplevel/``
+-  ``share`` installs to ``<prefix>/share/<pkgname>/``
+-  ``share_root`` installs to ``<prefix>/share/``
+-  ``etc`` installs to ``<prefix>/etc/<pkgname>/``
+-  ``doc`` installs to ``<prefix>/doc/<pkgname>/``
+-  ``stublibs`` installs to ``<prefix>/lib/stublibs/`` with the executable bit set
+-  ``man`` installs relative to ``<prefix>/man`` with the destination directory extracted from the extension of the source file (so that installing ``foo.1`` is equivalent to a destination of ``man1/foo.1``
+-  ``misc`` requires files to specify an absolute destination, and the user will be prompted before the installation is done via opam. Only use this for advanced cases.
 
 ``<files>`` is the list of files to install. Each element in the list
 must be either a literal filename or a S-expression of the form:

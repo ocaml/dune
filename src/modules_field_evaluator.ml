@@ -211,6 +211,7 @@ let eval ~modules:(all_modules : Module.Source.t Module.Name.Map.t)
   check_invalid_module_listing ~buildable:conf ~intf_only
     ~modules ~virtual_modules ~private_modules;
   let all_modules =
+    let obj_dir = Obj_dir.of_local obj_dir in
     Module.Name.Map.map modules ~f:(fun (_, m) ->
       let name = Module.Source.name m in
       let visibility =

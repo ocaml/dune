@@ -18,8 +18,6 @@ module External = struct
     ; private_dir
     }
 
-  let need_dedicated_public_dir t = Option.is_some t.private_dir
-
   let public_cmi_dir t = t.public_dir
 
   let to_dyn { public_dir; private_dir } =
@@ -156,9 +154,7 @@ type t =
   | External of External.t
   | Local of Local.t
 
-let need_dedicated_public_dir = function
-  | External e -> External.need_dedicated_public_dir e
-  | Local e -> Local.need_dedicated_public_dir e
+let of_local t = Local t
 
 let encode = function
   | Local obj_dir ->
@@ -172,7 +168,6 @@ let decode ~dir =
   let+ external_ = External.decode ~dir in
   External external_
 
-let make_exe ~dir ~name = Local (Local.make_exe ~dir ~name)
 let make_lib ~dir ~has_private_modules lib_name =
   Local (Local.make_lib ~dir ~has_private_modules lib_name)
 

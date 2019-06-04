@@ -398,7 +398,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
           Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext Mode.Byte) in
         let target =
           Path.Build.relative
-            (Path.as_in_build_dir_exn (Obj_dir.obj_dir obj_dir))
+            (Obj_dir.Local.obj_dir obj_dir)
             (Path.Build.basename src)
           |> Path.Build.extend_basename ~suffix:".js" in
         Js_of_ocaml_rules.build_cm cctx ~js_of_ocaml ~src ~target);
@@ -525,9 +525,12 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
       ; compile_info
       };
 
-    let objs_dirs = Path.Set.of_list (Obj_dir.all_cmis obj_dir) in
-
     (cctx,
+     let objs_dirs =
+       Obj_dir.of_local obj_dir
+       |> Obj_dir.all_cmis
+       |> Path.Set.of_list
+     in
      Merlin.make ()
        ~requires:requires_compile
        ~flags

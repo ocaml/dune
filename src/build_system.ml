@@ -332,9 +332,23 @@ end = struct
     Path.Table.replace t ~key:path ~data:e
 end
 
-type extra_sub_directories_to_keep =
-  | All
-  | These of String.Set.t
+module Subdir_set = struct
+  type t =
+    | All
+    | These of String.Set.t
+
+  let empty = These String.Set.empty
+
+  let mem t dir = match t with
+    | All -> true
+    | These t -> String.Set.mem t dir
+
+  let union a b = match a, b with
+    | All, _ | _, All -> All
+    | These a, These b -> These (String.Set.union a b)
+end
+
+type extra_sub_directories_to_keep = Subdir_set.t
 
 type hook =
   | Rule_started
@@ -522,7 +536,7 @@ let rec with_locks mutexes ~f =
       (Hashtbl.find_or_add locks m ~f:(fun _ -> Fiber.Mutex.create ()))
       (fun () -> with_locks mutexes ~f)
 
-let remove_old_artifacts t ~dir ~subdirs_to_keep =
+let remove_old_artifacts t ~dir ~(subdirs_to_keep : Subdir_set.t) =
   if Path.Build.Table.mem t.files
        (Path.Build.relative dir Config.dune_keep_fname) then
     ()
@@ -962,7 +976,7 @@ and load_dir_step2_exn t ~dir =
   in
   let subdirs_to_keep =
     match extra_subdirs_to_keep with
-    | All -> All
+    | All -> Subdir_set.All
     | These set -> These (String.Set.union subdirs_to_keep set)
   in
 

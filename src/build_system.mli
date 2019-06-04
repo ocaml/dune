@@ -20,9 +20,19 @@ val init
 
 val reset : unit -> unit
 
-type extra_sub_directories_to_keep =
-  | All
-  | These of String.Set.t
+module Subdir_set : sig
+  type t =
+    | All
+    | These of String.Set.t
+
+  val empty : t
+
+  val union : t -> t -> t
+
+  val mem : t -> string -> bool
+end
+
+type extra_sub_directories_to_keep = Subdir_set.t
 
 module Context_or_install : sig
   type t =

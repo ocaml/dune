@@ -26,11 +26,13 @@
   Installing installed/lib/foobar/foobar.cmxs
   Installing installed/lib/foobar/foobar.mli
   Installing installed/lib/foobar/impl/foobar.cmi
-  Error: exception Sys_error("_build/install/default/lib/foobar/impl/foobar.cmi: No such file or directory")
-  Backtrace:
-  
-  I must not segfault.  Uncertainty is the mind-killer.  Exceptions are
-  the little-death that brings total obliteration.  I will fully express
-  my cases.  Execution will pass over me and through me.  And when it
-  has gone past, I will unwind the stack along its path.  Where the
-  cases are handled there will be nothing.  Only I will remain.
+  Installing installed/lib/foobar/impl/foobar.cmt
+  Installing installed/lib/foobar/impl/foobar.cmti
+  Installing installed/lib/foobar/impl/foobar.cmx
+  Installing installed/lib/foobar/impl/foobar.ml
+  Installing installed/lib/foobar/impl/foobar.mli
+  Installing installed/lib/foobar/impl/foobar_impl$ext_lib
+  Installing installed/lib/foobar/impl/foobar_impl.cma
+  Installing installed/lib/foobar/impl/foobar_impl.cmxa
+  Installing installed/lib/foobar/impl/foobar_impl.cmxs
+  Installing installed/lib/foobar/opam

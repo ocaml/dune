@@ -98,7 +98,8 @@ module Evaluated = struct
   let get_rules t ~dir =
     let dir = Path.explode dir in
     let t = List.fold_left dir ~init:t ~f:descend in
-    Memo.Lazy.force t.rules_here
+    (Memo.Lazy.force t.rules_here,
+     String.Set.of_list (String.Map.keys t.by_child))
 end
 
 let evaluate ~union_rules =

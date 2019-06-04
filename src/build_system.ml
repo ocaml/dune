@@ -1455,17 +1455,6 @@ let process_memcycle exn =
          (List.map cycle ~f:Path.to_string_maybe_quoted
           |> String.concat ~sep:"\n--> "))
 
-let do_build ~request =
-  let t = t () in
-  Hooks.End_of_build.once Promotion.finalize;
-  (fun () -> build_request t ~request)
-  |> Fiber.with_error_handler ~on_error:(
-    Exn_with_backtrace.map_and_reraise
-      ~f:(Dep_path.map ~f:(function
-        | Memo.Cycle_error.E exn -> process_memcycle exn
-        | _ as exn -> exn
-      )))
-
 module Rule = struct
   module Id = Internal_rule.Id
 
@@ -1558,7 +1547,42 @@ let () =
   in
   Memo.set_impl Pred.eval_def f
 
-let targets_of ~dir = targets_of (t ()) ~dir
+let assert_not_in_memoized_function () =
+  (match Memo.get_call_stack () with
+   | [] ->
+     ()
+   | stack ->
+     Exn.code_error
+       "Build_system.entry_point: called inside a memoized function"
+       ["stack", Dyn.to_sexp (
+          Dyn.Encoder.list Memo.Stack_frame.to_dyn stack
+        )]
+  )
+
+let process_exn_and_reraise =
+  Exn_with_backtrace.map_and_reraise
+    ~f:(Dep_path.map ~f:(function
+      | Memo.Cycle_error.E exn -> process_memcycle exn
+      | _ as exn -> exn
+    ))
+
+let entry_point_async ~f =
+  assert_not_in_memoized_function ();
+  Fiber.with_error_handler f ~on_error:process_exn_and_reraise
+
+let entry_point_sync ~f =
+  assert_not_in_memoized_function ();
+  match Exn_with_backtrace.try_with f with
+  | Ok x -> x
+  | Error exn -> process_exn_and_reraise exn
+
+let do_build ~request =
+  let t = t () in
+  Hooks.End_of_build.once Promotion.finalize;
+  entry_point_async ~f:(fun () -> build_request t ~request)
+
+let targets_of ~dir =
+  entry_point_sync ~f:(fun () -> targets_of (t ()) ~dir)
 
 let is_target file =
   Path.Set.mem (targets_of ~dir:(Path.parent_exn file)) file
@@ -1580,20 +1604,9 @@ end = struct
       | Some rule -> Rule.Set.add acc rule)
     |> Rule.Set.to_list
 
-  let entry_point _t ~f =
-    (match Memo.get_call_stack () with
-     | [] ->
-       ()
-     | _stack ->
-       (* CR aalekseyev: show stack! *)
-       Exn.code_error
-         "Build_system.entry_point: called inside a memoized function" []
-    );
-    f ()
-
   let evaluate_rules ~recursive ~request =
     let t = t () in
-    entry_point t ~f:(fun () ->
+    entry_point_sync ~f:(fun () ->
       let rules = ref Internal_rule.Id.Map.empty in
       let rec run_rule (rule : Internal_rule.t) =
         if Internal_rule.Id.Map.mem !rules rule.id then

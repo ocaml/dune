@@ -360,15 +360,15 @@ Path.relative (r "foo") "../_build"
 
 Path.local_part (Path.of_string "/c/d")
 [%%expect{|
-- : Path.Relative.t = <abstr>
+- : Path.Local.t = c/d
 |}]
 
 Path.local_part (Path.insert_after_build_dir_exn Path.build_dir "c/d")
 [%%expect{|
-- : Path.Relative.t = <abstr>
+- : Path.Local.t = c/d
 |}]
 
 Path.local_part (r "c/d")
 [%%expect{|
-- : Path.Relative.t = <abstr>
+- : Path.Local.t = c/d
 |}]

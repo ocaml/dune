@@ -1,21 +1,7 @@
-(** Relative path with unspecified root *)
-module Relative : sig
-  include Path_intf.S
+(** Relative path with unspecified root.
 
-  (** [root] refers to empty relative path, so whatever the path is interpreted
-      relative to. *)
-  val root : t
-
-  module L : sig
-    val relative : ?error_loc:Loc0.t -> t -> string list -> t
-  end
-
-  val relative : ?error_loc:Loc0.t -> t -> string -> t
-  val split_first_component : t -> (string * t) option
-  val explode : t -> string list
-end
-
-(** In the current workspace (anything under the current project root) *)
+    Either root, or a '/' separated list of components
+    other that ".", ".."  and not containing a '/'. *)
 module Local : sig
   include Path_intf.S
   val root : t
@@ -25,7 +11,7 @@ module Local : sig
   end
 
   val relative : ?error_loc:Loc0.t -> t -> string -> t
-  val split_first_component : t -> (string * Relative.t) option
+  val split_first_component : t -> (string * t) option
   val explode : t -> string list
 end
 
@@ -38,9 +24,9 @@ module Source : sig
     val relative : ?error_loc:Loc0.t -> t -> string list -> t
   end
 
-  val of_relative : Relative.t -> t
+  val of_local : Local.t -> t
   val relative : ?error_loc:Loc0.t -> t -> string -> t
-  val split_first_component : t -> (string * Relative.t) option
+  val split_first_component : t -> (string * Local.t) option
   val explode : t -> string list
 
   (** [Source.t] does not statically forbid overlap with build directory,
@@ -76,8 +62,6 @@ module Build : sig
 
   val append_source : t -> Source.t -> t
 
-  val append_relative : t -> Relative.t -> t
-
   val append_local : t -> Local.t -> t
 
   module L : sig
@@ -85,7 +69,7 @@ module Build : sig
   end
 
   val relative : ?error_loc:Loc0.t -> t -> string -> t
-  val split_first_component : t -> (string * Relative.t) option
+  val split_first_component : t -> (string * Local.t) option
   val explode : t -> string list
 
   val local : t -> Local.t
@@ -139,7 +123,6 @@ val descendant : t -> of_:t -> t option
 val is_descendant : t -> of_:t -> bool
 
 val append : t -> t -> t
-val append_relative : t -> Relative.t -> t
 val append_local : t -> Local.t -> t
 val append_source : t -> Source.t -> t
 
@@ -157,7 +140,7 @@ val extend_basename : t -> suffix:string -> t
 val extract_build_context     : t -> (string * Source.t) option
 val extract_build_context_exn : t -> (string * Source.t)
 
-val extract_build_dir_first_component     : t -> (string * Relative.t) option
+val extract_build_dir_first_component     : t -> (string * Local.t) option
 
 (** Same as [extract_build_context] but return the build context as a path:
 
@@ -250,7 +233,7 @@ end
     this returns the path itself.
     For external paths, it returns a path that is relative to the current
     directory. For example, the local part of [/a/b] is [./a/b]. *)
-val local_part : t -> Relative.t
+val local_part : t -> Local.t
 
 val stat : t -> Unix.stats
 

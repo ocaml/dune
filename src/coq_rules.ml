@@ -183,7 +183,7 @@ let coq_plugins_install_rules ~scope ~package ~dst_dir (s : Dune_file.Coq.t) =
         let plugin_file = Path.as_in_build_dir_exn plugin_file in
         let plugin_file_basename = Path.Build.basename plugin_file in
         let dst =
-          Path.Relative.(to_string (relative dst_dir plugin_file_basename)) in
+          Path.Local.(to_string (relative dst_dir plugin_file_basename)) in
         None, Install.(Entry.make Section.Lib_root ~dst plugin_file))
     else []
   in
@@ -200,10 +200,10 @@ let install_rules ~sctx ~dir s =
     in
     let name = Dune_file.Coq.best_name s in
     (* This is the usual root for now, Coq + Dune will change it! *)
-    let coq_root = Path.Relative.of_string "coq/user-contrib" in
+    let coq_root = Path.Local.of_string "coq/user-contrib" in
     (* This must match the wrapper prefix for now to remain compatible *)
     let dst_suffix = coqlib_wrapper_name s in
-    let dst_dir = Path.Relative.relative coq_root dst_suffix in
+    let dst_dir = Path.Local.relative coq_root dst_suffix in
     Dir_contents.coq_modules_of_library dir_contents ~name
     |> List.map ~f:(fun (vfile : Coq_module.t) ->
       let vofile =
@@ -212,9 +212,9 @@ let install_rules ~sctx ~dir s =
       let vofile_rel =
         Path.reach ~from:(Path.build dir) (Path.build vofile)
       in
-      let dst = Path.Relative.relative dst_dir vofile_rel in
+      let dst = Path.Local.relative dst_dir vofile_rel in
       None, Install.(Entry.make Section.Lib_root
-                       ~dst:(Path.Relative.to_string dst) vofile))
+                       ~dst:(Path.Local.to_string dst) vofile))
     |> List.rev_append (coq_plugins_install_rules ~scope ~package ~dst_dir s)
 
 let coqpp_rules ~sctx ~build_dir ~dir (s : Dune_file.Coqpp.t) =

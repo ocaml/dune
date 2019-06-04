@@ -105,10 +105,9 @@ let deps_of cctx ~ml_kind unit =
       let dir = Compilation_context.dir cctx in
       let file_in_obj_dir ~suffix file =
         let base = Path.basename file in
-        Path.relative
-          (Obj_dir.obj_dir (Compilation_context.obj_dir cctx))
+        Path.Build.relative
+          (Obj_dir.Local.obj_dir (Compilation_context.obj_dir cctx))
           (base ^ suffix)
-        |> Path.as_in_build_dir_exn
       in
       let all_deps_path file = file_in_obj_dir file ~suffix:".all-deps" in
       let context = SC.context sctx in

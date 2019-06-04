@@ -212,7 +212,7 @@ module Run (P : PARAMS) : sig end = struct
         ~visibility:Public
         ~kind:Impl
         ~impl:{ path = Path.build (mock_ml base); syntax = OCaml }
-        ~obj_dir:(Compilation_context.obj_dir cctx)
+        ~obj_dir:(Obj_dir.of_local (Compilation_context.obj_dir cctx))
     in
 
     (* The following incantation allows the mock [.ml] file to be preprocessed

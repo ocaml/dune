@@ -17,7 +17,7 @@ val create
   :  super_context         : Super_context.t
   -> scope                 : Scope.t
   -> expander              : Expander.t
-  -> obj_dir               : Obj_dir.t
+  -> obj_dir               : Obj_dir.Local.t
   -> ?vimpl                : Vimpl.t
   -> ?dir_kind             : Dune_lang.File_syntax.t
   -> modules               : Module.t Module.Name.Map.t
@@ -42,7 +42,7 @@ val context              : t -> Context.t
 val scope                : t -> Scope.t
 val dir                  : t -> Path.Build.t
 val dir_kind             : t -> Dune_lang.File_syntax.t
-val obj_dir              : t -> Obj_dir.t
+val obj_dir              : t -> Obj_dir.Local.t
 val modules              : t -> Module.t Module.Name.Map.t
 val alias_module         : t -> Module.t option
 val lib_interface_module : t -> Module.t option

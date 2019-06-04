@@ -171,13 +171,14 @@ include Sub_system.Register_end_point(
       let inline_test_dir = Path.Build.relative dir ("." ^ inline_test_name) in
 
       let obj_dir =
-        Obj_dir.make_exe ~dir:inline_test_dir
+        Obj_dir.Local.make_exe ~dir:inline_test_dir
           ~name:inline_test_name in
 
       let name = "run" in
       let main_module_filename = name ^ ".ml" in
       let main_module_name = Module.Name.of_string name in
       let modules =
+        let obj_dir = Obj_dir.of_local obj_dir in
         Module.Name.Map.singleton main_module_name
           (Module.make main_module_name
              ~impl:{ path =

@@ -36,6 +36,8 @@ module type S = sig
 
   module Map :  Map.S with type key = t
 
+  module Table : Hashtbl.S with type key = t
+
   val relative : ?error_loc:Loc0.t -> t -> string -> t
 
   val to_string_maybe_quoted : t -> string

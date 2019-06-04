@@ -181,6 +181,7 @@ let pp_flags sctx ~expander ~dir_kind { preprocess; libname; _ }
   : (unit, string option) Build.t =
   let scope = Expander.scope expander in
   match Dune_file.Preprocess.remove_future_syntax preprocess
+          ~for_:Merlin
           (Super_context.context sctx).version
   with
   | Pps { loc; pps; flags; staged = _ } -> begin

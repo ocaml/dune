@@ -110,8 +110,6 @@ include Path_intf.S
 
 val hash : t -> int
 
-module Table : Hashtbl.S with type key = t
-
 (** [to_string_maybe_quoted t] is [maybe_quoted (to_string t)] *)
 val to_string_maybe_quoted : t -> string
 

@@ -142,10 +142,55 @@ module Kind = struct
     | _ -> false
 end
 
+(* Only the source of a module, not yet associated to a library *)
+module Source = struct
+  type t =
+    { name : Name.t
+    ; impl : File.t option
+    ; intf : File.t option
+    }
+
+  let make ?impl ?intf name =
+    begin match impl, intf with
+    | None, None ->
+      Exn.code_error "Module.Source.make called with no files"
+        [ "name", Sexp.Encoder.string name
+        ; "impl", Sexp.Encoder.(option unknown) impl
+        ; "intf", Sexp.Encoder.(option unknown) intf
+        ]
+    | Some _, _
+    | _, Some _ -> ()
+    end;
+    { name
+    ; impl
+    ; intf
+    }
+
+  let has_impl t = Option.is_some t.impl
+
+  let name t = t.name
+  let impl t = t.impl
+  let intf t = t.intf
+
+  let choose_file { impl; intf; name = _} =
+    match intf, impl with
+    | None, None -> assert false
+    | Some x, Some _
+    | Some x, None
+    | None, Some x -> x
+
+
+  let src_dir t = Path.parent_exn (choose_file t).path
+
+  let map_files t ~f =
+    { t with
+      impl = Option.map t.impl ~f:(f Ml_kind.Impl)
+    ; intf = Option.map t.intf ~f:(f Ml_kind.Intf)
+    }
+end
+
 type t =
-  { name       : Name.t
-  ; impl       : File.t option
-  ; intf       : File.t option
+  { source     : Source.t
   ; obj_name   : string
   ; pp         : (unit, string list) Build.t option
   ; visibility : Visibility.t
@@ -153,34 +198,24 @@ type t =
   ; kind       : Kind.t
   }
 
-let name t = t.name
+let name t = t.source.name
 let pp_flags t = t.pp
-let intf t = t.intf
-let impl t = t.impl
+let intf t = t.source.intf
+let impl t = t.source.impl
 let obj_dir t = t.obj_dir
 
-let make ?impl ?intf ?obj_name ~visibility ~obj_dir ~(kind : Kind.t) name =
-  let file : File.t =
-    match impl, intf with
-    | None, None ->
-      Exn.code_error "Module.make called with no files"
-        [ "name", Sexp.Encoder.string name
-        ; "impl", Sexp.Encoder.(option unknown) impl
-        ; "intf", Sexp.Encoder.(option unknown) intf
-        ]
-    | Some file, _
-    | _, Some file -> file
-  in
-  begin match kind, impl, intf with
+let of_source ?obj_name ~visibility ~obj_dir ~(kind : Kind.t)
+      (source : Source.t) =
+  begin match kind, source.impl, source.intf with
   | Virtual, Some _, _
   | Impl, None, _
   | Intf_only, Some _, _ ->
     let open Sexp.Encoder in
     Exn.code_error "Module.make: invalid kind, impl, intf combination"
-      [ "name", Name.to_sexp name
+      [ "name", Name.to_sexp source.name
       ; "kind", Kind.to_sexp kind
-      ; "intf", (option File.to_sexp) intf
-      ; "impl", (option File.to_sexp) impl
+      ; "intf", (option File.to_sexp) source.intf
+      ; "impl", (option File.to_sexp) source.impl
       ]
   | _, _ , _ -> ()
   end;
@@ -188,14 +223,13 @@ let make ?impl ?intf ?obj_name ~visibility ~obj_dir ~(kind : Kind.t) name =
     match obj_name with
     | Some s -> s
     | None ->
+      let file = Source.choose_file source in
       let fn = Path.basename file.path in
       match String.index fn '.' with
       | None   -> fn
       | Some i -> String.take fn i
   in
-  { name
-  ; impl
-  ; intf
+  { source
   ; obj_name
   ; pp = None
   ; visibility
@@ -203,10 +237,14 @@ let make ?impl ?intf ?obj_name ~visibility ~obj_dir ~(kind : Kind.t) name =
   ; kind
   }
 
+let make ?impl ?intf ?obj_name ~visibility ~obj_dir ~kind name =
+  let source = Source.make ?impl ?intf name in
+  of_source ?obj_name ~visibility ~obj_dir ~kind source
+
 let real_unit_name t = Name.of_string (Filename.basename t.obj_name)
 
 let has_impl t = Kind.has_impl t.kind
-let has_intf t = Option.is_some t.intf
+let has_intf t = Option.is_some t.source.intf
 
 let impl_only t = has_impl t && not (has_intf t)
 let intf_only t = has_intf t && not (has_impl t)
@@ -218,8 +256,8 @@ let is_virtual t = Kind.is_virtual t.kind
 let file t (kind : Ml_kind.t) =
   let file =
     match kind with
-    | Impl -> t.impl
-    | Intf -> t.intf
+    | Impl -> t.source.impl
+    | Intf -> t.source.intf
   in
   Option.map file ~f:(fun f -> f.path)
 
@@ -253,8 +291,10 @@ let cm_public_file t ?ext (kind : Cm_kind.t) =
 
 let cmt_file t (kind : Ml_kind.t) =
   match kind with
-  | Impl -> Option.map t.impl ~f:(fun _ -> obj_file t ~kind:Cmi ~ext:".cmt" )
-  | Intf -> Option.map t.intf ~f:(fun _ -> obj_file t ~kind:Cmi ~ext:".cmti")
+  | Impl -> Option.map t.source.impl
+              ~f:(fun _ -> obj_file t ~kind:Cmi ~ext:".cmt" )
+  | Intf -> Option.map t.source.intf
+              ~f:(fun _ -> obj_file t ~kind:Cmi ~ext:".cmti")
 
 let odoc_file t ~doc_dir =
   let base =
@@ -265,36 +305,30 @@ let odoc_file t ~doc_dir =
   Path.Build.relative base (t.obj_name ^ ".odoc")
 
 let cmti_file t =
-  match t.intf with
+  match t.source.intf with
   | None   -> obj_file t ~kind:Cmi ~ext:".cmt"
   | Some _ -> obj_file t ~kind:Cmi ~ext:".cmti"
 
 let iter t ~f =
-  Option.iter t.impl ~f:(f Ml_kind.Impl);
-  Option.iter t.intf ~f:(f Ml_kind.Intf)
+  Option.iter t.source.impl ~f:(f Ml_kind.Impl);
+  Option.iter t.source.intf ~f:(f Ml_kind.Intf)
 
 let with_wrapper t ~main_module_name =
   { t with obj_name
            = sprintf "%s__%s"
-               (String.uncapitalize main_module_name) t.name
+               (String.uncapitalize main_module_name) t.source.name
   }
 
 let map_files t ~f =
-  { t with
-    impl = Option.map t.impl ~f:(f Ml_kind.Impl)
-  ; intf = Option.map t.intf ~f:(f Ml_kind.Intf)
-  }
+  let source = Source.map_files t.source ~f in
+  { t with source }
 
-let src_dir t =
-  match t.intf, t.impl with
-  | None, None -> None
-  | Some x, Some _
-  | Some x, None
-  | None, Some x -> Some (Path.parent_exn x.path)
+let src_dir t = Source.src_dir t.source
 
 let set_pp t pp = { t with pp }
 
-let to_sexp { name; impl; intf; obj_name ; pp ; visibility; obj_dir ; kind } =
+let to_sexp { source = { name; impl; intf }
+            ; obj_name ; pp ; visibility; obj_dir ; kind } =
   let open Sexp.Encoder in
   record
     [ "name", Name.to_sexp name
@@ -307,7 +341,8 @@ let to_sexp { name; impl; intf; obj_name ; pp ; visibility; obj_dir ; kind } =
     ; "kind", Kind.to_sexp kind
     ]
 
-let pp fmt { name; impl; intf; obj_name ; pp = _ ; visibility; obj_dir ; kind } =
+let pp fmt { source = { name; impl; intf }
+           ; obj_name ; pp = _ ; visibility; obj_dir ; kind } =
   Fmt.record fmt
     [ "name", Fmt.const Name.pp name
     ; "impl", Fmt.const (Fmt.optional File.pp) impl
@@ -319,23 +354,26 @@ let pp fmt { name; impl; intf; obj_name ; pp = _ ; visibility; obj_dir ; kind } 
     ]
 
 let wrapped_compat t =
-  { t with
-    intf = None
-  ; impl =
-      Some (
-        { syntax = OCaml
-        ; path =
-            (* Option.value_exn cannot fail because we disallow wrapped
-               compatibility mode for virtual libraries. That means none of the
-               modules are implementing a virtual module, and therefore all have
-               a source dir *)
-            Path.L.relative (Option.value_exn (src_dir t))
-              [ ".wrapped_compat"
-              ; Name.to_string t.name ^ ".ml-gen"
-              ]
-        }
-      )
-  }
+  let source =
+    { t.source with
+      intf = None
+    ; impl =
+        Some (
+          { syntax = OCaml
+          ; path =
+              (* Option.value_exn cannot fail because we disallow wrapped
+                 compatibility mode for virtual libraries. That means none of
+                 the modules are implementing a virtual module, and therefore
+                 all have a source dir *)
+              Path.L.relative (src_dir t)
+                [ ".wrapped_compat"
+                ; Name.to_string t.source.name ^ ".ml-gen"
+                ]
+          }
+        )
+    }
+  in
+  { t with source }
 
 module Name_map = struct
   type nonrec t = t Name.Map.t
@@ -370,14 +408,8 @@ let set_virtual t =
 
 let visibility t = t.visibility
 
-let remove_files t =
-  { t with
-    intf = None
-  ; impl = None
-  }
-
 let sources t =
-  List.filter_map [t.intf; t.impl]
+  List.filter_map [t.source.intf; t.source.impl]
     ~f:(Option.map ~f:(fun (x : File.t) -> x.path))
 
 module Obj_map = struct
@@ -400,9 +432,7 @@ module Obj_map = struct
 end
 
 let encode
-      ({ name
-       ; impl = _
-       ; intf = _
+      ({ source = { name ; impl = _; intf = _}
        ; obj_name
        ; pp = _
        ; visibility
@@ -454,44 +484,6 @@ let decode ~obj_dir =
     let impl = file impl Impl in
     make ~obj_name ~visibility ?impl ?intf ~obj_dir ~kind name
   )
-
-
-(* Only the source of a module, not yet associated to a library *)
-module Source = struct
-  type t =
-    { name : Name.t
-    ; impl : File.t option
-    ; intf : File.t option
-    }
-
-  let make ?impl ?intf name =
-    begin match impl, intf with
-    | None, None ->
-      Exn.code_error "Module.Source.make called with no files"
-        [ "name", Sexp.Encoder.string name
-        ; "impl", Sexp.Encoder.(option unknown) impl
-        ; "intf", Sexp.Encoder.(option unknown) intf
-        ]
-    | Some _, _
-    | _, Some _ -> ()
-    end;
-    { name
-    ; impl
-    ; intf
-    }
-
-  let has_impl t = Option.is_some t.impl
-
-  let name t = t.name
-
-  let src_dir t =
-  match t.intf, t.impl with
-  | None, None -> None
-  | Some x, Some _
-  | Some x, None
-  | None, Some x -> Some (Path.parent_exn x.path)
-
-end
 
 let pped =
   let pped_path path ~suffix =

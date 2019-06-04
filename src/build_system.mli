@@ -48,10 +48,11 @@ end
     [init] can generate rules in any directory, so it's always called.
 *)
 val set_rule_generators
-  :
-  init:(unit -> unit)
-  ->  gen_rules:(Context_or_install.t ->
-                 (dir:Path.t -> string list -> extra_sub_directories_to_keep) option)
+  :  init:(unit -> unit)
+  -> gen_rules:(Context_or_install.t
+                -> (dir:Path.Build.t
+                    -> string list
+                    -> extra_sub_directories_to_keep) option)
   -> unit
 
 (** All other functions in this section must be called inside the rule generator
@@ -75,7 +76,7 @@ val targets_of : dir:Path.t -> Path.Set.t
 val load_dir : dir:Path.t -> unit
 
 (** Sets the package assignment *)
-val set_packages : (Path.t -> Package.Name.Set.t) -> unit
+val set_packages : (Path.Build.t -> Package.Name.Set.t) -> unit
 
 (** Assuming [files] is the list of files in [_build/install] that
     belong to package [pkg], [package_deps t pkg files] is the set of

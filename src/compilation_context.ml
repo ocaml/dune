@@ -48,7 +48,7 @@ type t =
   { super_context        : Super_context.t
   ; scope                : Scope.t
   ; expander             : Expander.t
-  ; obj_dir              : Obj_dir.t
+  ; obj_dir              : Obj_dir.Local.t
   ; dir_kind             : Dune_lang.File_syntax.t
   ; modules              : Module.t Module.Name.Map.t
   ; alias_module         : Module.t option
@@ -67,7 +67,7 @@ type t =
 let super_context        t = t.super_context
 let scope                t = t.scope
 let expander             t = t.expander
-let dir                  t = Path.as_in_build_dir_exn (Obj_dir.dir t.obj_dir)
+let dir                  t = Obj_dir.Local.dir t.obj_dir
 let dir_kind             t = t.dir_kind
 let obj_dir              t = t.obj_dir
 let modules              t = t.modules

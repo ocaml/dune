@@ -15,10 +15,10 @@ module Source = struct
   let source_path t = Path.Build.relative t.dir (main_module_filename t)
 
   let obj_dir { dir; name ; _ } =
-    Obj_dir.make_exe ~dir ~name
+    Obj_dir.Local.make_exe ~dir ~name
 
   let modules t =
-    let obj_dir = obj_dir t in
+    let obj_dir = Obj_dir.of_local (obj_dir t) in
     let main_module_name = main_module_name t in
     Module.Name.Map.singleton
       main_module_name

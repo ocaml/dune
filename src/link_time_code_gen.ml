@@ -12,11 +12,13 @@ let generate_and_compile_module cctx ~name:basename ~code ~requires =
   let sctx       = CC.super_context cctx in
   let obj_dir    = CC.obj_dir       cctx in
   let dir        = CC.dir           cctx in
-  let ml = Path.relative (Obj_dir.obj_dir obj_dir) (basename ^ ".ml") in
-  SC.add_rule ~dir sctx (Build.write_file (Path.as_in_build_dir_exn ml) code);
-  let impl = Module.File.make OCaml ml in
+  let ml = Path.Build.relative
+             (Obj_dir.Local.obj_dir obj_dir) (basename ^ ".ml") in
+  SC.add_rule ~dir sctx (Build.write_file ml code);
+  let impl = Module.File.make OCaml (Path.build ml) in
   let name = Module.Name.of_string basename in
   let module_ =
+    let obj_dir = Obj_dir.of_local obj_dir in
     Module.make ~impl name ~visibility:Public ~obj_dir ~kind:Impl
   in
   let opaque =

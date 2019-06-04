@@ -3,7 +3,7 @@ open! Stdune
 type t =
   { vlib                 : Lib.t
   ; impl                 : Dune_file.Library.t
-  ; obj_dir              : Obj_dir.t
+  ; obj_dir              : Obj_dir.Local.t
   ; vlib_modules         : Lib_modules.t
   ; vlib_foreign_objects : Path.t list
   ; vlib_dep_graph       : Dep_graph.Ml_kind.t
@@ -15,7 +15,7 @@ let impl t = t.impl
 let vlib_dep_graph t = t.vlib_dep_graph
 
 let from_vlib_to_impl_module t m =
-  Module.set_obj_dir ~obj_dir:t.obj_dir m
+  Module.set_obj_dir ~obj_dir:(Obj_dir.of_local t.obj_dir) m
 
 let make ~vlib ~impl ~dir ~vlib_modules ~vlib_foreign_objects ~vlib_dep_graph =
   { impl

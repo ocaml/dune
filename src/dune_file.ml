@@ -1144,7 +1144,7 @@ module Library = struct
   let is_impl t = Option.is_some t.implements
 
   let obj_dir ~dir t =
-    Obj_dir.make_lib ~dir
+    Obj_dir.Local.make_lib ~dir
       ~has_private_modules:(t.private_modules <> None)
       (snd t.name)
 

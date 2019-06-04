@@ -29,7 +29,7 @@ module Modules = struct
         match (stanza : Stanza.t) with
         | Library lib ->
           let obj_dir =
-            Obj_dir.make_lib ~dir:d.ctx_dir
+            Obj_dir.Local.make_lib ~dir:d.ctx_dir
               (snd lib.name)
               ~has_private_modules:(Option.is_some lib.private_modules)
           in
@@ -67,13 +67,16 @@ module Modules = struct
                   (main_module_name, Option.value_exn wrapped)
               )
           in
+          let obj_dir = Obj_dir.of_local obj_dir in
           Left ( lib
-               , Lib_modules.make lib ~obj_dir modules ~main_module_name ~wrapped
+               , Lib_modules.make lib ~obj_dir modules ~main_module_name
+                   ~wrapped
                )
         | Executables exes
         | Tests { exes; _} ->
           let obj_dir =
-            Obj_dir.make_exe ~dir:d.ctx_dir ~name:(snd (List.hd exes.names))
+            let name = snd (List.hd exes.names) in
+            Obj_dir.Local.make_exe ~dir:d.ctx_dir ~name
           in
           let modules =
             Modules_field_evaluator.eval ~modules
@@ -503,8 +506,8 @@ let get0_impl (sctx, dir) : result0 =
                  @\n- %a\
                  @\n- %a"
                 Module.Name.pp_quote name
-                (Fmt.optional Path.pp) (Module.Source.src_dir x)
-                (Fmt.optional Path.pp) (Module.Source.src_dir y)))
+                Path.pp (Module.Source.src_dir x)
+                Path.pp (Module.Source.src_dir y)))
       in
       Modules.make d ~modules)
     in

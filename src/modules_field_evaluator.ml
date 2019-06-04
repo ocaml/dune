@@ -10,7 +10,7 @@ let eval =
 
     let key = function
       | Error s -> s
-      | Ok m -> m.Module.Source.name
+      | Ok m -> Module.Source.name m
   end in
   let module Eval = Ordered_set_lang.Make_loc(Module.Name)(Value) in
   let parse ~all_modules ~fake_modules ~loc s =
@@ -211,6 +211,7 @@ let eval ~modules:(all_modules : Module.Source.t Module.Name.Map.t)
   check_invalid_module_listing ~buildable:conf ~intf_only
     ~modules ~virtual_modules ~private_modules;
   let all_modules =
+    let obj_dir = Obj_dir.of_local obj_dir in
     Module.Name.Map.map modules ~f:(fun (_, m) ->
       let name = Module.Source.name m in
       let visibility =
@@ -227,7 +228,7 @@ let eval ~modules:(all_modules : Module.Source.t Module.Name.Map.t)
         else
           Intf_only
       in
-      Module.make ?impl:m.impl ?intf:m.intf m.name
+      Module.of_source m
         ~kind
         ~visibility
         ~obj_dir)

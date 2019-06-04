@@ -503,8 +503,8 @@ let get0_impl (sctx, dir) : result0 =
                  @\n- %a\
                  @\n- %a"
                 Module.Name.pp_quote name
-                (Fmt.optional Path.pp) (Module.Source.src_dir x)
-                (Fmt.optional Path.pp) (Module.Source.src_dir y)))
+                Path.pp (Module.Source.src_dir x)
+                Path.pp (Module.Source.src_dir y)))
       in
       Modules.make d ~modules)
     in

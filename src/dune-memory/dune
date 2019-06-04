@@ -1,0 +1,10 @@
+(library
+  (name dune_memory)
+  (modules CSexp DuneMemory Utils)
+  (libraries sexplib stdune))
+
+(executable
+  (name main)
+  (package dune)
+  (modules main)
+  (libraries dune_memory stdune sexplib))

@@ -1,0 +1,21 @@
+(alias
+ (name runtest)
+ (deps (:t csexp.mlt)
+  (glob_files %{project_root}/src/.dune.objs/byte/*.cmi)
+  (glob_files %{project_root}/src/stdune/.stdune.objs/byte/*.cmi)
+  (glob_files %{project_root}/src/dune-memory/.dune_memory.objs/byte/*.cmi))
+ (action (chdir %{project_root}
+          (progn
+           (run %{project_root}/test/unit-tests/expect_test.exe %{t})
+           (diff? %{t} %{t}.corrected)))))
+
+(alias
+ (name runtest)
+ (deps (:t memory.mlt)
+  (glob_files %{project_root}/src/.dune.objs/byte/*.cmi)
+  (glob_files %{project_root}/src/stdune/.stdune.objs/byte/*.cmi)
+  (glob_files %{project_root}/src/dune-memory/.dune_memory.objs/byte/*.cmi))
+ (action (chdir %{project_root}
+          (progn
+           (run %{project_root}/test/unit-tests/expect_test.exe %{t})
+           (diff? %{t} %{t}.corrected)))))

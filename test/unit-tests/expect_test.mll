@@ -128,6 +128,7 @@ let run real_err_formatter file_contents (lexbuf : Lexing.lexbuf) =
     ; "src/dag/.dag.objs/byte"
     ; "src/memo/.memo.objs/byte"
     ; "src/.dune.objs/byte"
+    ; "src/dune-memory/.dune_memory.objs/byte"
     ]
     ~f:Topdirs.dir_directory;
 

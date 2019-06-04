@@ -1096,8 +1096,7 @@ and get_rule t path =
     Errors.fail_opt loc
       "File unavailable: %s" (Path.to_string_maybe_quoted path)
 
-let all_targets () =
-  let t = t () in
+let all_targets t =
   String.Map.to_list t.contexts
   |> List.fold_left ~init:Path.Build.Set.empty ~f:(fun acc (_, ctx) ->
     File_tree.fold t.file_tree ~traverse_ignored_dirs:true ~init:acc
@@ -1580,6 +1579,10 @@ let do_build ~request =
   let t = t () in
   Hooks.End_of_build.once Promotion.finalize;
   entry_point_async ~f:(fun () -> build_request t ~request)
+
+let all_targets () =
+  let t = t () in
+  entry_point_sync ~f:(fun () -> all_targets t)
 
 let targets_of ~dir =
   entry_point_sync ~f:(fun () -> targets_of (t ()) ~dir)

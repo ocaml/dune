@@ -61,7 +61,7 @@ module Main = struct
 end
 
 module Log = struct
-  include Dune.Log
+  include Stdune.Log
 
   let create (common : Common.t) =
     Log.create ~display:common.config.display ()

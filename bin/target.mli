@@ -20,14 +20,14 @@ type resolve_input =
   | String of string
 
 val resolve_targets_mixed
-  :  log:Dune.Log.t
+  :  log:Log.t
   -> Common.t
   -> Dune.Main.build_system
   -> resolve_input list
   -> (t list, Path.t * string) result list
 
 val resolve_targets_exn
-  :  log:Dune.Log.t
+  :  log:Log.t
   -> Common.t
   -> Dune.Main.build_system
   -> string list

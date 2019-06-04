@@ -1,3 +1,8 @@
+unreleased
+----------
+
+- Don't reserve the `Ppx` toplevel module name for ppx rewriters (#...., @diml)
+
 1.10.0 (04/06/2019)
 -------------------
 

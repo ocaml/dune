@@ -178,7 +178,7 @@ end = struct
   module Map = T.Map
 end
 
-module Relative : sig
+module Local : sig
   include Path_intf.S
 
   val root : t
@@ -523,8 +523,7 @@ end = struct
   module Map = T.Map
 end
 
-module Local = Relative
-module Source0 = Relative
+module Source0 = Local
 
 let (abs_root, set_root) =
   let root_dir = ref None in
@@ -594,7 +593,7 @@ end
 
 
 module Build = struct
-  include Relative
+  include Local
   let append_source = append
   let append_local = append
 
@@ -700,15 +699,15 @@ end
 module T : sig
   type t = private
     | External of External.t
-    | In_source_tree of Relative.t
-    | In_build_dir of Relative.t
+    | In_source_tree of Local.t
+    | In_build_dir of Local.t
 
   val compare : t -> t -> Ordering.t
   val equal : t -> t -> bool
   val hash : t -> int
 
-  val in_build_dir : Relative.t -> t
-  val in_source_tree : Relative.t -> t
+  val in_build_dir : Local.t -> t
+  val in_source_tree : Local.t -> t
   val external_ : External.t -> t
 end = struct
   type t =
@@ -870,9 +869,9 @@ let is_descendant t ~of_ =
 
 let append_local a b =
   match a with
-  | In_source_tree a -> in_source_tree (Relative.append a b)
-  | In_build_dir a -> in_build_dir (Relative.append a b)
-  | External a -> external_ (External.relative a (Relative.to_string b))
+  | In_source_tree a -> in_source_tree (Local.append a b)
+  | In_build_dir a -> in_build_dir (Local.append a b)
+  | External a -> external_ (External.relative a (Local.to_string b))
 
 let append_local = append_local
 let append_source = append_local
@@ -942,7 +941,7 @@ let as_in_build_dir_exn t = match t with
 let extract_build_context = function
   | In_source_tree _
   | External _ -> None
-  | In_build_dir p when Relative.is_root p -> None
+  | In_build_dir p when Local.is_root p -> None
   | In_build_dir t -> Build.extract_build_context t
 
 let extract_build_dir_first_component = extract_build_context
@@ -991,12 +990,12 @@ let drop_optional_build_context_src_exn t =
          "drop_optional_build_context_src_exn called on a build directory itself" [])
   | In_source_tree p -> p
 
-let local_src   = Relative.of_string "src"
-let local_build = Relative.of_string "build"
+let local_src   = Local.of_string "src"
+let local_build = Local.of_string "build"
 
 let sandbox_managed_paths =
   let append_local ~sandbox_dir local_x p =
-    in_build_dir (Build.append_local sandbox_dir (Relative.append local_x p))
+    in_build_dir (Build.append_local sandbox_dir (Local.append local_x p))
   in
   fun ~(sandbox_dir : Build.t) t ->
     match t with

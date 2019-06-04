@@ -10,9 +10,11 @@ type t = real option
 
 let no_log = None
 
-let create ?(display = Display.Quiet) () =
-  Path.ensure_build_dir_exists () ;
-  let oc = Io.open_out (Path.relative Path.build_dir "log") in
+let create ?(display = Display.Quiet) ?(path) () =
+  let path = match path with
+    | Some p -> p
+    | None -> Path.ensure_build_dir_exists () ; Path.relative Path.build_dir "log" in
+  let oc = Io.open_out path in
   Printf.fprintf oc "# %s\n# OCAMLPARAM: %s\n%!"
     (String.concat
        (List.map (Array.to_list Sys.argv) ~f:quote_for_shell)

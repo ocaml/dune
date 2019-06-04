@@ -4,7 +4,7 @@ type t
 
 val no_log : t
 
-val create : ?display:Display.t -> unit -> t
+val create : ?display:Display.t -> ?path:Path.t -> unit -> t
 
 (** Print an information message in the log *)
 val info  : t -> string -> unit

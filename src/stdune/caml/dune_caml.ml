@@ -11,6 +11,7 @@ module Digest   = Digest
 module StringLabels = StringLabels
 module ListLabels   = ListLabels
 module List   = List
+module ArrayLabels   = ArrayLabels
 
 type ('a, 'error) result = ('a, 'error) Result.t =
   | Ok    of 'a

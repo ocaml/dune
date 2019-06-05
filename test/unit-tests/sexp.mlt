@@ -338,16 +338,18 @@ test Dune (t [Text "x%{"])
 [%%expect{|
 Exception:
 Code_error
- (List
-   [Atom "Invalid text in unquoted template"; List [Atom "s"; Atom "x%{"]]).
+ (Sexp
+   (List
+     [Atom "Invalid text in unquoted template"; List [Atom "s"; Atom "x%{"]])).
 |}]
 
 test Dune (t [Text "x%"; Text "{"])
 [%%expect{|
 Exception:
 Code_error
- (List
-   [Atom "Invalid text in unquoted template"; List [Atom "s"; Atom "x%{"]]).
+ (Sexp
+   (List
+     [Atom "Invalid text in unquoted template"; List [Atom "s"; Atom "x%{"]])).
 |}]
 
 (* This round trip failure is expected *)

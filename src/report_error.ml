@@ -51,7 +51,7 @@ let builtin_printer = function
           Format.fprintf ppf "@{<error>Internal error, please report upstream \
                               including the contents of _build/log.@}\n\
                               Description:%a\n"
-            Sexp.pp sexp
+            Dyn.pp sexp
     in
     Some (make_printer ~backtrace:true pp)
   | Unix.Unix_error (err, func, fname) ->

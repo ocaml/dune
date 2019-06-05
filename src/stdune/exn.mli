@@ -2,7 +2,7 @@
 
 (** An programming error, that should be reported upstream. The error message
     should try to be developer friendly rather than user friendly. *)
-exception Code_error of Sexp.t
+exception Code_error of Dyn0.t
 
 
 (* CR-soon diml:
@@ -22,6 +22,8 @@ val fatalf
   -> 'a
 
 val code_error : string -> (string * Sexp.t) list -> _
+
+val code_error_dyn : string -> (string * Dyn0.t) list -> _
 
 type t = exn
 

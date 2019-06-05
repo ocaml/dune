@@ -3,8 +3,6 @@ module String = Dune_caml.StringLabels
 module Dyn = Dyn0
 type t = exn
 
-exception Code_error of Dyn.t
-
 exception Fatal_error of string
 
 exception Loc_error of Loc0.t * string
@@ -15,7 +13,6 @@ external reraise       : exn -> _ = "%reraise"
 
 let () =
   Printexc.register_printer (function
-    | Code_error s -> Some (Format.asprintf "%a" Dyn.pp s)
     | Loc_error (loc, s) -> Some (Format.asprintf "%a%s" Loc0.print loc s)
     | _ -> None)
 
@@ -33,20 +30,10 @@ let protectx x ~f ~finally =
 
 let protect ~f ~finally = protectx () ~f ~finally
 
-let code_error_dyn message vars =
-  Code_error (
-    Tuple
-      [ String message
-      ; Record vars
-      ])
-  |> raise
-
 let code_error message vars =
-  Code_error
-    (Dyn0.Sexp (List (Atom message
-                      :: List.map vars ~f:(fun (name, value) ->
-                        Sexp.List [Atom name; value]))))
-  |> raise
+  List.map vars ~f:(fun (v, sexp) ->
+    (v, Dyn0.Sexp sexp))
+  |> Code_error.raise message
 
 let pp_uncaught ~backtrace fmt exn =
   let s =

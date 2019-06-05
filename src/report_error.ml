@@ -46,12 +46,12 @@ let builtin_printer = function
         Format.fprintf ppf "%s\n" (String.capitalize msg)
     in
     Some (make_printer pp)
-  | Stdune.Exn.Code_error sexp ->
+  | Code_error.E t ->
     let pp = fun ppf ->
           Format.fprintf ppf "@{<error>Internal error, please report upstream \
                               including the contents of _build/log.@}\n\
                               Description:%a\n"
-            Dyn.pp sexp
+            Dyn.pp (Code_error.to_dyn t)
     in
     Some (make_printer ~backtrace:true pp)
   | Unix.Unix_error (err, func, fname) ->

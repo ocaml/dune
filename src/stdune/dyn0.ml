@@ -100,3 +100,5 @@ and pp_sexp = function
       ]
 
 let pp fmt t = Pp.pp fmt (pp t)
+
+let to_string t = Format.asprintf "%a" pp t

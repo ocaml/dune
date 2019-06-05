@@ -6,7 +6,7 @@ let interpret_destdir ~destdir path =
   | None ->
     path
   | Some prefix ->
-    Path.append_relative
+    Path.append_local
       (Path.of_string prefix)
       (Path.local_part path)
 
@@ -207,18 +207,49 @@ let install_uninstall ~what =
        | _ -> ());
       let module CMap = Map.Make(Context) in
       let install_files_by_context =
-        CMap.of_list_multi install_files |> CMap.to_list
+        CMap.of_list_multi install_files
+        |> CMap.to_list
+        |> List.map ~f:(fun (context, install_files) ->
+          let entries_per_package =
+            Package.Name.Map.of_list_map_exn install_files
+              ~f:(fun (package, install_file) ->
+                let entries = Install.load_install_file install_file in
+                match
+                  List.filter_map entries ~f:(fun entry ->
+                    Option.some_if
+                      (not (Path.exists (Path.build entry.src)))
+                      entry.src)
+                with
+                | [] -> (package, entries)
+                | missing_files ->
+                  let pp =
+                    let open Pp in
+                    List.map missing_files ~f:(fun p ->
+                      concat
+                        [ verbatim "- "
+                        ; verbatim (Path.Build.to_string_maybe_quoted p)
+                        ]
+                    )
+                    |> concat ~sep:newline
+                  in
+                  die "The following files which are listed in %s cannot be \
+                       installed because they do not exist:@.%a@."
+                    (Path.to_string_maybe_quoted install_file)
+                    (fun fmt () -> Pp.pp fmt pp) ())
+          in
+          (context, entries_per_package))
       in
       let (module Ops) = file_operations ~dry_run in
       let files_deleted_in = ref Path.Set.empty in
       let+ () =
         Fiber.sequential_iter install_files_by_context
-          ~f:(fun (context, install_files) ->
+          ~f:(fun (context, entries_per_package) ->
             let+ (prefix, libdir) =
-              get_dirs context ~prefix_from_command_line ~libdir_from_command_line
+              get_dirs context ~prefix_from_command_line
+                ~libdir_from_command_line
             in
-            List.iter install_files ~f:(fun (package, path) ->
-              let entries = Install.load_install_file path in
+            entries_per_package 
+            |> Package.Name.Map.iteri ~f:(fun package entries ->
               let paths =
                 Install.Section.Paths.make
                   ~package

@@ -15,7 +15,7 @@
   $ dune runtest
           test alias test/runtest
   testing
-  $ dune install --prefix ./installed 2>&1 | grep -v "line [0-9]\+"
+  $ dune install --prefix ./installed
   Installing installed/lib/foobar/META
   Installing installed/lib/foobar/dune-package
   Installing installed/lib/foobar/foobar$ext_lib

@@ -393,7 +393,7 @@ let build_ppx_driver sctx ~dep_kind ~target ~dir_kind ~pps ~pp_names =
   (* CR-someday diml: what we should do is build the .cmx/.cmo once
      and for all at the point where the driver is defined. *)
   let dir = Path.Build.parent_exn target in
-  let ml = Path.Build.relative dir "ppx.ml" in
+  let ml = Path.Build.relative dir "_ppx.ml" in
   let add_rule = SC.add_rule sctx ~dir in
   add_rule
     (Build.of_result_map driver_and_libs ~f:(fun (driver, _) ->
@@ -408,6 +408,7 @@ let build_ppx_driver sctx ~dep_kind ~target ~dir_kind ~pps ~pp_names =
           Build.paths (Lib.L.archive_files libs ~mode))]
        (Command.run (Ok compiler) ~dir:(Path.build ctx.build_dir)
           [ A "-o" ; Target target
+          ; A "-w"; A "-24"
           ; Command.of_result
               (Result.map driver_and_libs ~f:(fun (_driver, libs) ->
                  Lib.L.compile_and_link_flags ~mode ~stdlib_dir:ctx.stdlib_dir

@@ -39,6 +39,8 @@ module Dir_rules : sig
 
   val is_empty : t -> bool
 
+  val to_dyn : t -> Dyn.t
+
 end
 
 (** A value of type [t] holds a set of rules for multiple directories *)

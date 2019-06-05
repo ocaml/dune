@@ -251,6 +251,7 @@ end
 module Loaded = struct
 
   type build = {
+    allowed_subdirs : Path.Unspecified.w Dir_set.t;
     rules_produced : Rules.t;
     targets_here : Internal_rule.t Path.Build.Map.t;
     targets_of_alias_dir : Internal_rule.t Path.Build.Map.t;
@@ -260,9 +261,11 @@ module Loaded = struct
     | Non_build of Path.Set.t
     | Build of build
 
-  let no_rules =
+  let no_rules ~allowed_subdirs =
     Build
-      { rules_produced = Rules.empty;
+      {
+        allowed_subdirs;
+        rules_produced = Rules.empty;
         targets_here = Path.Build.Map.empty;
         targets_of_alias_dir = Path.Build.Map.empty;
       }
@@ -336,6 +339,19 @@ module Subdir_set = struct
   type t =
     | All
     | These of String.Set.t
+
+  let to_dir_set = function
+    | All -> Dir_set.universal
+    | These s ->
+       Dir_set.of_list
+         (List.map (String.Set.to_list s) ~f:Path.Local.of_string)
+
+  let of_dir_set d =
+    match Dir_set.toplevel_subdirs d with
+    | `Infinite -> All
+    | `Finite s -> These s
+
+  let of_list l = These (String.Set.of_list l)
 
   let empty = These String.Set.empty
 
@@ -435,9 +451,19 @@ let get_dir_triage t ~dir =
     Dir_triage.Known (Non_build (
       Path.set_of_source_paths (File_tree.files_of t.file_tree dir)))
   | None ->
+    let allowed_subdirs =
+      Subdir_set.to_dir_set (
+        Subdir_set.of_list (
+          [".aliases"; "install";] @ String.Map.keys t.contexts))
+    in
     if Path.equal dir Path.build_dir then
-      (* Not allowed to look here *)
-      Dir_triage.Known Loaded.no_rules
+      Dir_triage.Known (Loaded.no_rules ~allowed_subdirs)
+    else if Path.equal dir (Path.relative Path.build_dir "install") then
+      Dir_triage.Known (Loaded.no_rules ~allowed_subdirs:(
+        Subdir_set.to_dir_set (
+          Subdir_set.of_list (
+            String.Map.keys t.contexts))
+      ))
     else if not (Path.is_managed dir) then
       Dir_triage.Known
         (Non_build (
@@ -456,7 +482,7 @@ let get_dir_triage t ~dir =
       if ctx = ".aliases" then
         Alias_dir_of (Path.Build.(append_source root) sub_dir)
       else if ctx <> "install" && not (String.Map.mem t.contexts ctx) then
-        Dir_triage.Known Loaded.no_rules
+        Dir_triage.Known (Loaded.no_rules ~allowed_subdirs:Dir_set.empty)
       else
         Need_step2
     end
@@ -556,8 +582,7 @@ let remove_old_artifacts t ~dir ~(subdirs_to_keep : Subdir_set.t) =
               match subdirs_to_keep with
               | All -> ()
               | These set ->
-                if String.Set.mem set fn ||
-                   Path.Build.Set.mem t.build_dirs_to_keep path then
+                if String.Set.mem set fn then
                   ()
                 else
                   Path.rm_rf (Path.build path)
@@ -888,6 +913,99 @@ The following targets are not:
           end
         end)
 
+  (** If both [a] and [a/b] are source directories, we don't allow the rules for
+      [a] to define generated directories under [a/b] (e.g.
+      [a/b/.generated-by-a]).
+
+      The purpose is to avoid dependency cycles when computing the list of
+      subdirectories of [b]: you'd need to load rules for [a], for which you
+      often need to load rules for [a/b], at which point you need to do stale
+      artifact deletion, so you need to have computed the set of children
+      of [b] already.
+
+      One reasonable alternative is to delay stale artifact deletion until
+      it's actually necessary and I (aalekseyev) believe it to be a better
+      approach, but for now this restriction gives us an easier and more
+      incremental way forward.
+
+      This is in addition to another more general restriction:
+      a directory is only allowed to be generated if its parent knows
+      about it.
+
+      This module encodes those restrictions. *)
+  module Generated_directory_restrictions : sig
+
+    type restriction =
+      | Unrestricted
+      | Restricted of Path.Unspecified.w Dir_set.t Memo.Lazy.t
+
+    (** Used by the child to ask about the restrictions placed by the parent. *)
+    val allowed_by_parent
+      : dir:Path.Build.t -> restriction
+
+    (** Used by the parent to check what are the subdirs that it's forbidden
+        from generating rules in. *)
+    val is_forbidden_generated_subdir :
+      dir:Path.Build.t -> subdir:Path.Build.t -> bool
+
+  end = struct
+
+    type restriction =
+      | Unrestricted
+      | Restricted of Path.Unspecified.w Dir_set.t Memo.Lazy.t
+
+    let corresponding_source_dir ~dir =
+      let t = t () in
+      match Utils.analyse_target dir with
+      | Install _ | Alias _ | Other _ ->
+        None
+      | Regular (_ctx, sub_dir) ->
+        File_tree.find_dir t.file_tree sub_dir
+
+    let source_subdirs_of_build_dir ~dir =
+      match corresponding_source_dir ~dir with
+      | None -> String.Set.empty
+      | Some dir ->
+        File_tree.Dir.sub_dir_names dir
+
+    let is_forbidden_generated_subdir ~dir ~subdir =
+      match Path.Local_gen.descendant ~of_:dir subdir with
+      | None -> false
+      | Some reach ->
+        match Path.Local_gen.split_first_component reach with
+        | None ->
+          (* allowed to generate rules inside itself *)
+          false
+        | Some (child, _) ->
+          if Option.is_none (
+            corresponding_source_dir ~dir:(Path.Local_gen.relative dir child))
+          then
+            (* allowed to generate directories inside itself *)
+            false
+          else
+            (* allowed to generate rules in child directories as long as the
+               directory itself is not generated *)
+            Option.is_none (corresponding_source_dir ~dir:subdir)
+
+    let allowed_dirs ~dir ~subdir : restriction =
+      if String.Set.mem (source_subdirs_of_build_dir ~dir) subdir
+      then
+        Unrestricted
+      else
+        Restricted (Memo.Lazy.create (fun () ->
+          (match load_dir ~dir:(Path.build dir) with
+           | Non_build _ -> Dir_set.just_the_root
+           | Build { allowed_subdirs; _ } ->
+             Dir_set.descend allowed_subdirs subdir
+          )))
+
+    let allowed_by_parent ~dir =
+      allowed_dirs
+        ~dir:(Path.Build.parent_exn dir)
+        ~subdir:(Path.Build.basename dir)
+
+  end
+
   let load_dir_step2_exn t ~dir =
     let context_name, sub_dir =
       match Utils.analyse_path dir with
@@ -1011,6 +1129,78 @@ The following targets are not:
     in
     let targets_here = compile_rules ~dir rules in
     add_rules_exn t targets_here;
+    let allowed_by_parent =
+      Generated_directory_restrictions.allowed_by_parent ~dir
+    in
+    (match allowed_by_parent with
+     | Unrestricted -> ()
+     | Restricted restriction ->
+       match Path.Build.Map.find (Rules.to_map rules_produced) dir with
+       | None -> ()
+       | Some rules ->
+         if Dir_set.here (Memo.Lazy.force restriction)
+         then ()
+         else
+           Code_error.raise
+             "Generated rules in a directory not allowed by the parent"
+             [ "dir", (Path.Build.to_dyn dir)
+             ; "rules", Rules.Dir_rules.to_dyn rules ]
+    );
+    let weird_set = [
+      ".bin";
+      ".wrapped_compat";
+      ".utop";
+      ".formatted";
+    ]
+    in
+    let rules_generated_in =
+      Dir_set.of_list (
+        Path.Build.Map.keys (Rules.to_map rules_produced)
+        |> List.filter_map ~f:(fun subdir ->
+          Path.Local_gen.descendant ~of_:dir subdir))
+    in
+    let allowed_granddescendants_of_parent =
+      match allowed_by_parent with
+      | Unrestricted ->
+        (* in this case the parent isn't allowed to create any generated
+           granddescendant directories *)
+        Dir_set.empty
+      | Restricted restriction ->
+        Memo.Lazy.force restriction
+    in
+    let descendants_to_keep =
+      Dir_set.union_all [
+        rules_generated_in;
+        (Subdir_set.to_dir_set (Subdir_set.of_list weird_set));
+        Subdir_set.to_dir_set subdirs_to_keep;
+        allowed_granddescendants_of_parent;
+      ]
+    in
+    let violations =
+      Path.Build.Map.filter_mapi (Rules.to_map rules_produced)
+        ~f:(fun key data ->
+          let forbidden =
+            Generated_directory_restrictions.is_forbidden_generated_subdir
+              ~dir ~subdir:key
+          in
+          if forbidden
+          then
+            Some data
+          else
+            None)
+    in
+    (if not (Path.Build.Map.is_empty violations)
+     then
+       Code_error.raise
+         "Directory creates generated directories inside its descendant source \
+          directories. This is not allowed."
+         [ "dir", Path.Build.to_dyn dir;
+           "creates-rules-in",
+           Dyn.Encoder.(list (pair Path.Build.to_dyn Rules.Dir_rules.to_dyn))
+             (Path.Build.Map.to_list violations);
+         ]
+    );
+    let subdirs_to_keep = Subdir_set.of_dir_set descendants_to_keep in
     remove_old_artifacts t ~dir ~subdirs_to_keep;
     let alias_targets =
       (match alias_rules with
@@ -1020,6 +1210,7 @@ The following targets are not:
          Some (f ~subdirs_to_keep))
     in
     Loaded.Build {
+      allowed_subdirs = descendants_to_keep;
       rules_produced;
       targets_here;
       targets_of_alias_dir =
@@ -1041,12 +1232,14 @@ The following targets are not:
        | Build {
          targets_here = _;
          targets_of_alias_dir;
-         rules_produced
+         rules_produced;
+         allowed_subdirs;
        } ->
          Loaded.Build {
            targets_here = targets_of_alias_dir;
            targets_of_alias_dir = Path.Build.Map.empty;
-           rules_produced
+           rules_produced;
+           allowed_subdirs;
          })
     | Need_step2 ->
       load_dir_step2_exn t ~dir

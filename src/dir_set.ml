@@ -174,6 +174,8 @@ let rec to_sexp t = match t with
          | true -> [("*", Sexp.Atom "Universal")]))
       |> List.map ~f:(fun (k, v) -> Sexp.List [Sexp.Atom k; v]))
 
+let to_dyn t : Dyn.t = Sexp (to_sexp t)
+
 let forget_root t = t
 
 let toplevel_subdirs t = match t with

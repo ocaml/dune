@@ -46,6 +46,17 @@ module Dir_rules = struct
 
   type t = data Id.Map.t
 
+  let data_to_dyn = function
+    | Rule rule -> Dyn.Variant ("Rule", [Record [
+      "targets", Path.Build.Set.to_dyn rule.targets;
+    ]])
+    | Alias alias -> Dyn.Variant ("Alias", [Record [
+      "name", Dyn.String alias.name;
+    ]])
+
+  let to_dyn t =
+    Dyn.Encoder. (list data_to_dyn) (Id.Map.values t)
+
   type ready = {
     rules : Rule.t list;
     aliases : Alias_spec.t String.Map.t

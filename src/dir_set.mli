@@ -4,20 +4,20 @@ open! Stdune
 
 (** Type of potentially infinite sets of directories. Not all sets can
     be represented, only ones that can be efficiently inspected. *)
-type t
+type 'w t
 
 (** [mem t p] is [true] if and only if [p] is in [t] *)
-val mem : t -> Path.Build.t -> bool
+val mem : 'w t -> 'w Path.Local_gen.t -> bool
 
 (** [here t] is the same as [mem t Path.Build.root] but more
     efficient. *)
-val here : t -> bool
+val here : 'w t -> bool
 
 (** The empty set *)
-val empty : t
+val empty : 'w t
 
 (** The set of all possible directories *)
-val universal : t
+val universal : 'w t
 
 (** [trivial b] is such that for all path [p]:
 
@@ -27,15 +27,15 @@ val universal : t
 
     i.e. [trivial false] is [empty] and [trivial true] is [universal].
 *)
-val trivial : bool -> t
+val trivial : bool -> 'w t
 
-val is_empty : t -> bool
-val is_universal : t -> bool
+val is_empty : 'w t -> bool
+val is_universal : 'w t -> bool
 
 (** [descend t comp] is the set [t'] such that for all path [p], [p]
     is in [t'] iff [comp/p] is in [t]. [comp] must be a path component,
     i.e. without directory separator characters. *)
-val descend : t -> string -> t
+val descend : 'w t -> string -> Path.Local.w t
 
 (** [exceptions t] is the set of all bindings of the form [(comp,
     t']] such that:
@@ -46,26 +46,28 @@ val descend : t -> string -> t
     Sets of directories for which [exceptions t] is not finite cannot be
     represented by this module.
 *)
-val exceptions : t -> t String.Map.t
+val exceptions : 'w t -> Path.Local.w t String.Map.t
 
 (** Default membership value for paths that are neither empty nor part
     of the exceptions. I.e. for all non-empty path [p] whose first
     component is not in [exceptions t], [mem t p = default t]. *)
-val default : t -> bool
+val default : 'w t -> bool
 
 (** [singleton p] is the set containing only [p] *)
-val singleton : Path.Build.t -> t
+val singleton : 'w Path.Local_gen.t -> 'w t
 
 (** [subtree p] is the set of all directories that are descendant of
     [p]. *)
-val subtree : Path.Build.t -> t
+val subtree : 'w Path.Local_gen.t -> 'w t
 
-val is_subset : t -> of_:t -> bool
-val union : t -> t -> t
-val union_all : t list -> t
-val inter : t -> t -> t
-val inter_all : t list -> t
-val diff : t -> t -> t
-val negate : t -> t
+val is_subset : 'w t -> of_:'w t -> bool
+val union : 'w t -> 'w t -> 'w t
+val union_all : 'w t list -> 'w t
+val inter : 'w t -> 'w t -> 'w t
+val inter_all : 'w t list -> 'w t
+val diff : 'w t -> 'w t -> 'w t
+val negate : 'w t -> 'w t
 
-val to_sexp : t -> Sexp.t
+val to_sexp : 'w t -> Sexp.t
+
+val forget_root : 'w t -> Path.Local.w t

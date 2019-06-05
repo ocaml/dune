@@ -1,20 +1,34 @@
 open! Stdune
 
-module Path = Path.Build
-
 module T = struct
   type 'rules t =
     | Empty
     | Union of 'rules t * 'rules t
-    | Approximation of Dir_set.t * 'rules t
-    | Finite of 'rules Path.Map.t
+    | Approximation of Path.Build.w Dir_set.t * 'rules t
+    | Finite of 'rules Path.Build.Map.t
     | Thunk of (unit -> 'rules t)
 
 end
 
 include T
 
-module Evaluated = struct
+module Evaluated : sig
+  type 'rules t
+
+  val union :
+    union_rules:('a -> 'a -> 'a)
+    -> 'a t -> 'a t -> 'a t
+
+  val empty : 'a t
+
+  val restrict : Path.Build.w Dir_set.t -> 'a t Memo.Lazy.t -> 'a t
+
+  val finite :
+    union_rules:('a -> 'a -> 'a) -> 'a Path.Build.Map.t -> 'a t
+
+  val get_rules : 'a t -> dir:Path.Build.t -> ('a option * String.Set.t)
+
+end = struct
 
   type 'rules t = {
     by_child : 'rules t Memo.Lazy.t String.Map.t;
@@ -47,7 +61,7 @@ module Evaluated = struct
           union_option ~f:union_rules)
     }
 
-  let rec restrict (dirs : Dir_set.t) t : _ t =
+  let rec restrict (dirs : Path.Local.w Dir_set.t) t : _ t =
     {
       rules_here =
         (if Dir_set.here dirs then
@@ -76,6 +90,9 @@ module Evaluated = struct
                       descend (Memo.Lazy.force t) dir)))));
     }
 
+  let restrict dirs t =
+    restrict (Dir_set.forget_root dirs) t
+
   let singleton path rules =
     let rec go = function
       | [] ->
@@ -87,16 +104,16 @@ module Evaluated = struct
           rules_here = Memo.Lazy.of_val None;
         }
     in
-    go (Path.explode path)
+    go (Path.Build.explode path)
 
   let finite ~union_rules m =
-    Path.Map.to_list m
+    Path.Build.Map.to_list m
     |> List.map ~f:(fun (path, rules) ->
       singleton path rules)
     |> List.fold_left ~init:empty ~f:(union ~union_rules)
 
   let get_rules t ~dir =
-    let dir = Path.explode dir in
+    let dir = Path.Build.explode dir in
     let t = List.fold_left dir ~init:t ~f:descend in
     (Memo.Lazy.force t.rules_here,
      String.Set.of_list (String.Map.keys t.by_child))
@@ -126,7 +143,7 @@ let evaluate ~union_rules =
           (Memo.lazy_ (fun () -> loop ~env:paths rules))
     | Finite rules ->
       let violations =
-        List.filter (Path.Map.keys rules) ~f:(fun p -> not (Dir_set.mem env p))
+        List.filter (Path.Build.Map.keys rules) ~f:(fun p -> not (Dir_set.mem env p))
       in
       (match violations with
        | [] -> ()
@@ -134,7 +151,7 @@ let evaluate ~union_rules =
          Errors.code_error
            "Scheme attempted to generate rules in a directory it promised not \
             to touch"
-           [ "directories", (Sexp.Encoder.list Path.to_sexp) violations ]);
+           [ "directories", (Sexp.Encoder.list Path.Build.to_sexp) violations ]);
       Evaluated.finite ~union_rules rules
     | Thunk f -> loop ~env (f ())
   in

@@ -176,37 +176,90 @@ end = struct
   module Map = T.Map
 end
 
-module Local : sig
-  include Path_intf.S
+module Unspecified = struct
+  type w
+end
 
-  val root : t
-  val is_root : t -> bool
-  val compare_val : t -> t -> Ordering.t
-  val relative : ?error_loc:Loc0.t -> t -> string -> t
-  val append : t -> t -> t
-  val mkdir_p : t -> unit
-  val descendant : t -> of_:t -> t option
-  val is_descendant : t -> of_:t -> bool
-  val reach : t -> from:t -> string
+module Local_gen : sig
 
-  module L : sig
-    val relative : ?error_loc:Loc0.t -> t -> string list -> t
+  type 'w t
+
+  val hash : 'w t -> int
+
+  (* it's not clear that these should be polymorphic over 'w, maybe they should
+     additionally ask for an object that fixes 'w *)
+  val to_string : 'w t -> string
+  val of_string : string -> 'w t
+  val parse_string_exn : loc:Loc0.t -> string -> 'w t
+
+  val pp : Format.formatter -> 'w t -> unit
+
+  (** a directory is smaller than its descendants *)
+  val compare : 'w t -> 'w t -> Ordering.t
+
+  (** no particular ordering is guaranteed *)
+  val compare_val : 'w t -> 'w t -> Ordering.t
+
+  val to_dyn : 'w t -> Dyn.t
+  val to_sexp : 'w t -> Sexp.t
+
+  val extension : 'w t -> string
+
+  (** [set_extension path ~ext] replaces extension of [path] by [ext] *)
+  val set_extension : 'w t -> ext:string -> 'w t
+
+  val split_extension : 'w t -> 'w t * string
+
+  val basename : 'w t -> string
+  val extend_basename : 'w t -> suffix:string -> 'w t
+  val is_suffix : 'w t -> suffix:string -> bool
+
+  module Fix_root (Root : sig type w end) : sig
+    module Set : sig
+      include Set.S with type elt = Root.w t
+      val to_sexp : t Sexp.Encoder.t
+      val of_listing : dir:elt -> filenames:string list -> t
+    end
+
+    module Map :  Map.S with type key = Root.w t
+
+    module Table : Hashtbl.S with type key = Root.w t
   end
 
-  module Prefix : sig
-    type local = t
-    type t
+  val relative : ?error_loc:Loc0.t -> 'w t -> string -> 'w t
 
-    val make : local -> t
-    val drop : t -> local -> local option
+  val to_string_maybe_quoted : 'w t -> string
+
+  val is_root : 'w t -> bool
+  val parent_exn : 'w t -> 'w t
+  val parent : 'w t -> 'w t option
+
+  val root : 'w t
+
+  val explode : 'w t -> string list
+
+  module Prefix : sig
+    type 'w local = 'w t
+    type 'w t
+
+    val make : 'w local -> 'w t
+    val drop : 'w t -> 'w local -> 'w local option
 
     (* for all local path p, drop (invalid p = None) *)
-    val invalid : t
-  end with type local := t
+    val invalid : 'w t
+  end with type 'w local := 'w t
 
-  val split_first_component : t -> (string * t) option
-  val explode : t -> string list
-  val of_local : t -> t
+  module L : sig
+    val relative : ?error_loc:Loc0.t -> 'w t -> string list -> 'w t
+  end
+
+  val append : 'w t -> Unspecified.w t -> 'w t
+  val mkdir_p : 'w t -> unit
+  val descendant : 'w t -> of_:'w t -> Unspecified.w t option
+  val is_descendant : 'w t -> of_:'w t -> bool
+  val reach : 'w t -> from:'w t -> string
+
+  val split_first_component : 'w t -> (string * Unspecified.w t) option
 
 end = struct
   (* either "." for root, or a '/' separated list of components
@@ -219,7 +272,7 @@ end = struct
 
   module Table = Hashtbl.Make(T)
 
-  type t = T.t
+  type _ t = T.t
 
   let to_string = T.to_string
   let make = T.make
@@ -448,7 +501,7 @@ end = struct
   module Prefix = struct
     let make_path = make
 
-    type t =
+    type _ t =
       { len        : int
       ; path       : string
       ; path_slash : string
@@ -480,14 +533,6 @@ end = struct
       }
   end
 
-  include (
-    Comparable.Operators(struct
-      type nonrec t = t
-      let compare = compare_val
-    end)
-    : Comparable.OPS with type t := t
-  )
-
   let split_first_component t =
     if is_root t then None
     else
@@ -514,15 +559,82 @@ end = struct
                 ["t", to_dyn t]
     | Some parent -> parent
 
-  let of_local t = t
+  module Fix_root (Root : sig type w end) = struct
+    type _w = Root.w
+    module Set = struct
+      include T.Set
+      let of_listing ~dir ~filenames =
+        of_list (List.map filenames ~f:(fun f -> relative dir f))
+    end
 
-  module Set = struct
-    include T.Set
-    let of_listing ~dir ~filenames =
-      of_list (List.map filenames ~f:(fun f -> relative dir f))
+    module Map = T.Map
+    module Table = Table
   end
 
-  module Map = T.Map
+end
+
+module Local : sig
+  type w = Unspecified.w
+  type t = w Local_gen.t
+  include Path_intf.S with type t := t
+
+  val root : t
+  val is_root : t -> bool
+  val compare_val : t -> t -> Ordering.t
+  val relative : ?error_loc:Loc0.t -> t -> string -> t
+  val append : t -> t -> t
+  val mkdir_p : t -> unit
+  val descendant : t -> of_:t -> t option
+  val is_descendant : t -> of_:t -> bool
+  val reach : t -> from:t -> string
+
+  module L : sig
+    val relative : ?error_loc:Loc0.t -> t -> string list -> t
+  end
+
+  val split_first_component : t -> (string * t) option
+  val explode : t -> string list
+  val of_local : t -> t
+
+  module Prefix : sig
+    type local = t
+    type t
+
+    val make : local -> t
+    val drop : t -> local -> local option
+
+    (* for all local path p, drop (invalid p = None) *)
+    val invalid : t
+  end with type local := t
+end = struct
+
+  type w = Unspecified.w
+
+  include (Local_gen : module type of Local_gen
+           with type 'a t := 'a Local_gen.t
+           with module Prefix := Local_gen.Prefix
+          )
+  type nonrec t = w Local_gen.t
+
+  module Prefix = struct
+    open Local_gen
+    include (Prefix : module type of Prefix with type 'a t := 'a Prefix.t)
+    type t = w Prefix.t
+  end
+
+  include (
+    Comparable.Operators(struct
+      type nonrec t = t
+      let compare = Local_gen.compare_val
+    end)
+    : Comparable.OPS with type t := t
+  )
+
+  let of_local t = t
+
+  include Fix_root (struct
+      type nonrec w = w
+    end)
 end
 
 module Source0 = Local

@@ -32,7 +32,7 @@ let explode_path =
       | xs -> xs
 
 module External : sig
-  include Path_intf.S
+  include Path_intf.Local
   val compare_val : t -> t -> Ordering.t
   val relative : t -> string -> t
   val mkdir_p : t -> unit
@@ -221,17 +221,6 @@ end = struct
   let is_suffix t ~suffix = String.is_suffix (to_string t) ~suffix
 
   let to_sexp t = Sexp.Encoder.string (to_string t)
-  let parent t =
-    if is_root t then
-      None
-    else
-      Some (make (Filename.dirname (to_string t)))
-
-  let parent_exn t =
-    match parent t with
-    | None -> Exn.code_error "Path.Relative.parent:exn t is root"
-                ["t", to_sexp t]
-    | Some parent -> parent
 
   let basename t =
     if is_root t then
@@ -316,7 +305,7 @@ end = struct
 end
 
 module Local : sig
-  include Path_intf.S
+  include Path_intf.Local
 
   val root : t
   val is_root : t -> bool

@@ -42,7 +42,13 @@ module type S = sig
 
   val to_string_maybe_quoted : t -> string
 
+  val root : t
   val is_root : t -> bool
+end
+
+module type Local = sig
+  include S
+
   val parent_exn : t -> t
   val parent : t -> t option
 end

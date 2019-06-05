@@ -22,7 +22,7 @@ end
    Either root, or a '/' separated list of components
    other that ".", ".."  and not containing a '/'. *)
 module Local : sig
-  include Path_intf.S
+  include Path_intf.Local
   val root : t
 
   module L : sig
@@ -36,8 +36,7 @@ end
 
 (** In the source section of the current workspace. *)
 module Source : sig
-  include Path_intf.S
-  val root : t
+  include Path_intf.Local
 
   module L : sig
     val relative : ?error_loc:Loc0.t -> t -> string list -> t
@@ -78,8 +77,7 @@ module Kind : sig
 end
 
 module Build : sig
-  include Path_intf.S
-  val root : t
+  include Path_intf.Local
 
   val append_source : t -> Source.t -> t
 
@@ -116,7 +114,7 @@ module Build : sig
 end
 
 (** In the outside world *)
-include Path_intf.S
+include Path_intf.Local
 
 val hash : t -> int
 
@@ -124,9 +122,6 @@ val hash : t -> int
 val to_string_maybe_quoted : t -> string
 
 val kind : t -> Kind.t
-
-val root : t
-val is_root : t -> bool
 
 val is_managed : t -> bool
 

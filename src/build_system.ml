@@ -691,10 +691,10 @@ let handle_add_rule_effects f =
   res, rules
 
 
-module Load_rules : sig
+module rec Load_rules : sig
   val load_dir : t -> dir:Path.t -> Loaded.t
 
-  (* CR aalekseyev: change [load_dir] to work like the other memoized
+  (* CR-soon aalekseyev: change [load_dir] to work like the other memoized
      functions, so that exposing this won't be necessary *)
   val load_dir_impl : t -> dir:Path.t -> Loaded.t
 
@@ -847,6 +847,55 @@ end = struct
        remove_old_artifacts t ~dir:alias_dir ~subdirs_to_keep;
        compiled)
 
+  let filter_out_fallback_rules t ~to_copy ~dir rules =
+    List.filter rules ~f:(fun (rule : Pre_rule.t) ->
+      match rule.mode with
+      | Standard | Promote _ | Ignore_source_files -> true
+      | Fallback ->
+        let source_files_for_targtes =
+          (* All targets are in [dir] and we know it correspond to a
+             directory of a build context since there are source
+             files to copy, so this call can't fail. *)
+          Path.Build.Set.to_list rule.targets
+          |> List.map ~f:Path.Build.drop_build_context_exn
+          |> Path.Source.Set.of_list
+        in
+        if Path.Source.Set.is_subset source_files_for_targtes ~of_:to_copy then
+          (* All targets are present *)
+          false
+        else begin
+          if Path.Source.Set.is_empty
+               (Path.Source.Set.inter source_files_for_targtes to_copy) then
+            (* No target is present *)
+            true
+          else begin
+            let absent_targets =
+              Path.Source.Set.diff source_files_for_targtes to_copy
+            in
+            let present_targets =
+              Path.Source.Set.diff source_files_for_targtes absent_targets
+            in
+            Errors.fail
+              (rule_loc
+                 ~file_tree:t.file_tree
+                 ~info:rule.info
+                 ~dir)
+              "\
+Some of the targets of this fallback rule are present in the source tree,
+and some are not. This is not allowed. Either none of the targets must
+be present in the source tree, either they must all be.
+
+The following targets are present:
+%s
+
+The following targets are not:
+%s
+"
+              (string_of_paths (Path.set_of_source_paths present_targets))
+              (string_of_paths (Path.set_of_source_paths absent_targets))
+          end
+        end)
+
   let load_dir_step2_exn t ~dir =
     let context_name, sub_dir =
       match Utils.analyse_target dir with
@@ -858,10 +907,8 @@ end = struct
         Exn.code_error "[load_dir_step2_exn] was called on a strange path"
           ["path", (Path.to_sexp dir)]
     in
-
     (* the above check makes this safe *)
     let dir = Path.as_in_build_dir_exn dir in
-
     (* Load all the rules *)
     let extra_subdirs_to_keep, rules_produced =
       let gen_rules =
@@ -959,56 +1006,8 @@ end = struct
            automatically kept *)
         rules
       | Some (_, to_copy) ->
-        List.filter rules ~f:(fun (rule : Pre_rule.t) ->
-          match rule.mode with
-          | Standard | Promote _ | Ignore_source_files -> true
-          | Fallback ->
-            let source_files_for_targtes =
-              (* All targets are in [dir] and we know it correspond to a
-                 directory of a build context since there are source
-                 files to copy, so this call can't fail. *)
-              Path.Build.Set.to_list rule.targets
-              |> List.map ~f:Path.Build.drop_build_context_exn
-              |> Path.Source.Set.of_list
-            in
-            if Path.Source.Set.is_subset source_files_for_targtes ~of_:to_copy then
-              (* All targets are present *)
-              false
-            else begin
-              if Path.Source.Set.is_empty
-                   (Path.Source.Set.inter source_files_for_targtes to_copy) then
-                (* No target is present *)
-                true
-              else begin
-                let absent_targets =
-                  Path.Source.Set.diff source_files_for_targtes to_copy
-                in
-                let present_targets =
-                  Path.Source.Set.diff source_files_for_targtes absent_targets
-                in
-                Errors.fail
-                  (rule_loc
-                     ~file_tree:t.file_tree
-                     ~info:rule.info
-                     ~dir)
-                  "\
-Some of the targets of this fallback rule are present in the source tree,
-and some are not. This is not allowed. Either none of the targets must
-be present in the source tree, either they must all be.
-
-The following targets are present:
-%s
-
-The following targets are not:
-%s
-"
-                  (string_of_paths (Path.set_of_source_paths present_targets))
-                  (string_of_paths (Path.set_of_source_paths absent_targets))
-              end
-            end)
+        filter_out_fallback_rules t ~to_copy ~dir rules
     in
-
-
     (* Compile the rules and cleanup stale artifacts *)
     let rules =
       (match to_copy with
@@ -1019,11 +1018,8 @@ The following targets are not:
       @ rules
     in
     let targets_here = compile_rules t ~dir rules in
-
     add_rules_exn t targets_here;
-
     remove_old_artifacts t ~dir ~subdirs_to_keep;
-
     let alias_targets =
       (match alias_rules with
        | None ->

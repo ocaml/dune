@@ -234,3 +234,7 @@ let cm_public_dir t (cm_kind : Cm_kind.t) =
   | Cmx -> native_dir t
   | Cmo -> byte_dir t
   | Cmi -> public_cmi_dir t
+
+let as_local_exn = function
+  | Local e -> e
+  | External _ -> Exn.code_error "Obj_dir.as_local_exn: external dir" []

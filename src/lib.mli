@@ -366,3 +366,26 @@ val to_dune_lib
   -> foreign_objects:Path.t list
   -> dir:Path.t
   -> (Syntax.Version.t * Dune_lang.t list) Dune_package.Lib.t
+
+module Local : sig
+  type t
+  type lib
+
+  val to_dyn : t -> Dyn.t
+  val equal : t -> t -> bool
+  val hash : t -> int
+
+  val of_lib : lib -> t option
+  val of_lib_exn : lib -> t
+  val to_lib : t -> lib
+
+  val obj_dir : t -> Obj_dir.Local.t
+  val src_dir : t -> Path.Build.t
+
+  module Set : Stdune.Set.S with type elt = t
+  module Map : Stdune.Map.S with type key = t
+
+  module L : sig
+    val to_lib : t list -> lib list
+  end
+end with type lib := t

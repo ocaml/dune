@@ -260,9 +260,11 @@ let impl sctx ~dir ~(lib : Dune_file.Library.t) ~scope ~modules =
         | External lib_modules, External fa -> (lib_modules, fa)
         | Local, Local ->
           let name = Lib.name vlib in
+          let vlib = Lib.Local.of_lib_exn vlib in
           let dir_contents =
-            Dir_contents.get_without_rules sctx ~dir:(
-              Path.as_in_build_dir_exn (Lib.src_dir vlib)) in
+            let dir = Lib.Local.src_dir vlib in
+            Dir_contents.get_without_rules sctx ~dir
+          in
           let modules =
             let pp_spec =
               Pp_spec.make lib.buildable.preprocess
@@ -275,9 +277,9 @@ let impl sctx ~dir ~(lib : Dune_file.Library.t) ~scope ~modules =
           in
           let foreign_objects =
             let ext_obj = (Super_context.context sctx).ext_obj in
-            let dir = Obj_dir.obj_dir (Lib.obj_dir vlib) in
+            let dir = Obj_dir.Local.obj_dir (Lib.Local.obj_dir vlib) in
             Dir_contents.c_sources_of_library dir_contents ~name
-            |> C.Sources.objects ~ext_obj ~dir:(Path.as_in_build_dir_exn dir)
+            |> C.Sources.objects ~ext_obj ~dir
             |> List.map ~f:Path.build
           in
           (modules, foreign_objects)

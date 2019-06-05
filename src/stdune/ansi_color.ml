@@ -19,42 +19,42 @@ module Color = struct
     | Bright_white
 
   let fg_code = function
-    | Black          -> "30"
-    | Red            -> "31"
-    | Green          -> "32"
-    | Yellow         -> "33"
-    | Blue           -> "34"
-    | Magenta        -> "35"
-    | Cyan           -> "36"
-    | White          -> "37"
-    | Default        -> "39"
-    | Bright_black   -> "90"
-    | Bright_red     -> "91"
-    | Bright_green   -> "92"
-    | Bright_yellow  -> "93"
-    | Bright_blue    -> "94"
-    | Bright_magenta -> "95"
-    | Bright_cyan    -> "96"
-    | Bright_white   -> "97"
+    | Black          -> 30
+    | Red            -> 31
+    | Green          -> 32
+    | Yellow         -> 33
+    | Blue           -> 34
+    | Magenta        -> 35
+    | Cyan           -> 36
+    | White          -> 37
+    | Default        -> 39
+    | Bright_black   -> 90
+    | Bright_red     -> 91
+    | Bright_green   -> 92
+    | Bright_yellow  -> 93
+    | Bright_blue    -> 94
+    | Bright_magenta -> 95
+    | Bright_cyan    -> 96
+    | Bright_white   -> 97
 
   let bg_code = function
-    | Black          -> "40"
-    | Red            -> "41"
-    | Green          -> "42"
-    | Yellow         -> "43"
-    | Blue           -> "44"
-    | Magenta        -> "45"
-    | Cyan           -> "46"
-    | White          -> "47"
-    | Default        -> "49"
-    | Bright_black   -> "100"
-    | Bright_red     -> "101"
-    | Bright_green   -> "102"
-    | Bright_yellow  -> "103"
-    | Bright_blue    -> "104"
-    | Bright_magenta -> "105"
-    | Bright_cyan    -> "106"
-    | Bright_white   -> "107"
+    | Black          -> 40
+    | Red            -> 41
+    | Green          -> 42
+    | Yellow         -> 43
+    | Blue           -> 44
+    | Magenta        -> 45
+    | Cyan           -> 46
+    | White          -> 47
+    | Default        -> 49
+    | Bright_black   -> 100
+    | Bright_red     -> 101
+    | Bright_green   -> 102
+    | Bright_yellow  -> 103
+    | Bright_blue    -> 104
+    | Bright_magenta -> 105
+    | Bright_cyan    -> 106
+    | Bright_white   -> 107
 end
 
 module Style = struct
@@ -66,9 +66,9 @@ module Style = struct
     | Underlined
 
   let code = function
-    | Bold       -> "1"
-    | Dim        -> "2"
-    | Underlined -> "4"
+    | Bold       -> 1
+    | Dim        -> 2
+    | Underlined -> 4
     | Fg c       -> Color.fg_code c
     | Bg c       -> Color.bg_code c
 
@@ -136,6 +136,18 @@ module Styles = struct
     Style.escape_sequence l
 end
 
+let term_supports_color = lazy (
+  match Sys.getenv "TERM" with
+  | exception Not_found -> false
+  | "dumb" -> false
+  | _ -> true)
+
+let stdout_supports_color = lazy (
+  Lazy.force term_supports_color && Unix.isatty Unix.stdout)
+
+let stderr_supports_color = lazy (
+  Lazy.force term_supports_color && Unix.isatty Unix.stderr)
+
 module Render = struct
   include Pp.Renderer.Make(struct
     type t = Style.t list
@@ -157,21 +169,33 @@ module Render = struct
     end
   end)
 
-  let channel oc =
-    let supports_color =
-      Unix.isatty (Unix.descr_of_out_channel oc) &&
-      match Sys.getenv "TERM" with
-      | exception Not_found -> false
-      | "dumb" -> false
-      | _ -> true
-    in
-    if supports_color then
-      channel oc
-    else
-      let output = Staged.unstage (Pp.Render.channel oc) in
-      Staged.stage (fun ?margin ?tag_handler pp ->
-        output ?margin (Pp.map_tags pp ~f:ignore))
+  let channel_strip_colors oc =
+    let output = Staged.unstage (Pp.Render.channel oc) in
+    Staged.stage (fun ?margin ?tag_handler:_ pp ->
+      output ?margin (Pp.map_tags pp ~f:ignore))
 end
+
+let print =
+  let f = lazy (
+    Staged.unstage (
+      (if Lazy.force stdout_supports_color then
+         Render.channel
+       else
+         Render.channel_strip_colors)
+        stdout)
+  in
+  fun ?margin pp -> Lazy.force f pp ?margin
+
+let prerr =
+  let f = lazy (
+    Staged.unstage (
+      (if Lazy.force stderr_supports_color then
+         Render.channel
+       else
+         Render.channel_strip_colors)
+        stderr)
+  in
+  fun ?margin pp -> Lazy.force f pp ?margin
 
 let strip str =
   let len = String.length str in

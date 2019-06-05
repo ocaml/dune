@@ -48,7 +48,7 @@ let of_unix arr =
   |> List.map ~f:(fun s ->
     match String.lsplit2 s ~on:'=' with
     | None ->
-      Code_error.raise "Env.of_unix: entry without '=' found in the environ"
+      Exn.code_error "Env.of_unix: entry without '=' found in the environ"
         ["var", Sexp.Encoder.string s]
     | Some (k, v) -> (k, v))
   |> Map.of_list_multi

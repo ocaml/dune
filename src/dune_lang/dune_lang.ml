@@ -515,16 +515,6 @@ module Decoder = struct
     ; candidates: string list
     }
 
-  exception Decoder of Loc.t * string * hint option
-
-  let of_sexp_error ?hint loc msg =
-    raise (Decoder (loc, msg, hint))
-  let of_sexp_errorf ?hint loc fmt =
-    Printf.ksprintf (fun msg -> of_sexp_error loc ?hint msg) fmt
-  let no_templates ?hint loc fmt =
-    Printf.ksprintf (fun msg ->
-      of_sexp_error loc ?hint ("No variables allowed " ^ msg)) fmt
-
   module Name = struct
     module T = struct
       type t = string
@@ -669,9 +659,11 @@ module Decoder = struct
           | sexp :: _ ->
             match cstr with
             | None ->
-              of_sexp_errorf (Ast.loc sexp) "This value is unused"
+              User_error.raise ~loc:(Ast.loc sexp)
+                [ Pp.text "This value is unused" ]
             | Some s ->
-              of_sexp_errorf (Ast.loc sexp) "Too many argument for %s" s
+              User_error.raise ~loc:(Ast.loc sexp)
+                [ Pp.textf "Too many argument for %s" s ]
         end
       | Fields _ -> begin
           match Name.Map.choose state.unparsed with
@@ -682,8 +674,9 @@ module Decoder = struct
               | List (_, s :: _) -> Ast.loc s
               | _ -> assert false
             in
-            of_sexp_errorf ~hint:{ on = name; candidates = state.known }
-              name_loc "Unknown field %s" name
+            User_error.raise ~loc:name_loc
+              ~hints:(User_message.did_you_mean name ~candidates:state.known)
+              [ Pp.textf "Unknown field %s" name ]
         end
 
   let parse t context sexp =
@@ -700,9 +693,11 @@ module Decoder = struct
     match cstr with
     | None ->
       let loc = { loc with start = loc.stop } in
-      of_sexp_errorf loc "Premature end of list"
+      User_error.raise ~loc
+        [ Pp.text "Premature end of list" ]
     | Some s ->
-      of_sexp_errorf loc "Not enough arguments for %s" s
+      User_error.raise ~loc
+        [ Pp.textf "Not enough arguments for %s" s ]
   [@@inline never]
 
   let next f ctx sexps =
@@ -739,7 +734,9 @@ module Decoder = struct
   let keyword kwd =
     next (function
       | Atom (_, s) when Atom.to_string s = kwd -> ()
-      | sexp -> of_sexp_errorf (Ast.loc sexp) "'%s' expected" kwd)
+      | sexp ->
+        User_error.raise ~loc:(Ast.loc sexp)
+          [ Pp.textf "'%s' expected" kwd ])
 
   let match_keyword l ~fallback =
     peek >>= function
@@ -767,7 +764,7 @@ module Decoder = struct
     next (function
       | Atom (loc, A s) | Quoted_string (loc, s) -> f ~loc s
       | Template { loc ; _ } | List (loc, _) ->
-        of_sexp_error loc "Atom or quoted string expected")
+        User_error.raise ~loc [ Pp.text "Atom or quoted string expected" ]
 
   let enter t =
     next_with_user_context (fun uc sexp ->
@@ -776,7 +773,7 @@ module Decoder = struct
         let ctx = Values (loc, None, uc) in
         result ctx (t ctx l)
       | sexp ->
-        of_sexp_error (Ast.loc sexp) "List expected")
+        User_error.raise ~loc:(Ast.loc sexp) [ Pp.text "List expected" ]
 
   let if_list ~then_ ~else_ =
     peek_exn >>= function
@@ -855,16 +852,16 @@ module Decoder = struct
     next
       (function
         | List (_, []) -> ()
-        | sexp -> of_sexp_error (Ast.loc sexp) "() expected")
+        | sexp -> User_error.raise ~loc:(Ast.loc sexp) [ Pp.text "() expected" ])
 
   let basic desc f =
     next (function
       | Template { loc; _ } | List (loc, _) | Quoted_string (loc, _) ->
-        of_sexp_errorf loc "%s expected" desc
+        User_error.raise ~loc [ Pp.textf "%s expected" desc ]
       | Atom (loc, s)  ->
         match f (Atom.to_string s) with
         | Result.Error () ->
-          of_sexp_errorf loc "%s expected" desc
+          User_error.raise ~loc [ Pp.textf "%s expected" desc ]
         | Ok x -> x)
 
   let string = plain_string (fun ~loc:_ x -> x)
@@ -873,7 +870,7 @@ module Decoder = struct
     if String.length x = 1 then
       x.[0]
     else
-      of_sexp_errorf loc "character expected")
+      User_error.raise ~loc [ Pp.text "character expected" ]
 
   let int =
     basic "Integer" (fun s ->
@@ -915,11 +912,10 @@ module Decoder = struct
     | Some t ->
       result ctx (t ctx values)
     | None ->
-      of_sexp_errorf loc
-        ~hint:{ on         = name
-              ; candidates = List.map cstrs ~f:fst
-              }
-        "Unknown constructor %s" name
+      User_error.raise ~loc
+        ~hints:(User_message.did_you_mean name
+                  ~candidates:(List.map cstrs ~f:fst))
+        [ Pp.textf "Unknown constructor %s" name ]
 
   let sum cstrs =
     next_with_user_context (fun uc sexp ->

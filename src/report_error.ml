@@ -1,81 +1,75 @@
 open! Stdune
 open Import
 
-type printer =
-  { loc       : Loc.t option
-  ; pp        : Format.formatter -> unit
-  ; hint      : string option
-  ; backtrace : bool
-  }
+module Printer = struct
+  type t =
+    { message   : User_message.t
+    ; backtrace : bool
+    }
 
-let make_printer ?(backtrace=false) ?hint ?loc pp =
-  { loc
-  ; pp
-  ; hint
-  ; backtrace
-  }
+  let make ?(backtrace=false) message =
+    { message
+    ; backtrace
+    }
 
-let set_loc p ~loc =
-  {p with loc = Some loc}
+  let set_loc p ~loc =
+    { p with message = { p.message with loc = Some loc } }
 
-let set_hint p ~hint =
-  {p with hint = Some hint}
+  let add_hint p ~hint =
+    { p with message =
+               { p.message with hints =
+                                  List.append p.message.hints @ [hint] } }
 
-let builtin_printer = function
-  | Dune_lang.Decoder.Decoder (loc, msg, hint') ->
-    let pp ppf = Format.fprintf ppf "@{<error>Error@}: %s%s\n" msg
-                   (match hint' with
-                    | None -> ""
-                    | Some { Dune_lang.Decoder. on; candidates } ->
-                      hint on candidates)
-    in
-    Some (make_printer ~loc pp)
-  | Exn.Loc_error (loc, msg) ->
-    let pp ppf = Format.fprintf ppf "@{<error>Error@}: %s\n" msg in
-    Some (make_printer ~loc pp)
-  | User_error.E { loc; paragraphs } ->
-    let error = Pp.text "Error:" in
-    let paragraphs =
-      match paragraphs with
-      | [] -> [ error ]
-      | x :: l -> Pp.box [error; Pp.space; x ] :: l
-    in
-    let pp ppf =
-      Pp.pp ppf (Pp.vbox [ Pp.many paragraphs ~sep:Pp.cut ])
-    in
-    Some (make_printer ?loc pp)
-  | Dune_lang.Parse_error e ->
-    let loc = Dune_lang.Parse_error.loc     e in
-    let msg = Dune_lang.Parse_error.message e in
-    let pp ppf = Format.fprintf ppf "@{<error>Error@}: %s\n" msg in
-    Some (make_printer ~loc pp)
-  | Exn.Fatal_error msg ->
-    let pp ppf =
-      if msg.[String.length msg - 1] = '\n' then
-        Format.fprintf ppf "%s" msg
-      else
-        Format.fprintf ppf "%s\n" (String.capitalize msg)
-    in
-    Some (make_printer pp)
-  | Code_error.E t ->
-    let pp = fun ppf ->
-          Format.fprintf ppf "@{<error>Internal error, please report upstream \
-                              including the contents of _build/log.@}\n\
-                              Description:%a\n"
-            Dyn.pp (Code_error.to_dyn t)
-    in
-    Some (make_printer ~backtrace:true pp)
-  | Unix.Unix_error (err, func, fname) ->
-    let pp ppf =
-      Format.fprintf ppf "@{<error>Error@}: %s: %s: %s\n"
-        func fname (Unix.error_message err)
-    in
-    Some (make_printer pp)
-  | _ -> None
+  let builtin_printer = function
+    | Dune_lang.Decoder.Decoder (loc, msg, hint') ->
+      let pp ppf = Format.fprintf ppf "@{<error>Error@}: %s%s\n" msg
+                     (match hint' with
+                      | None -> ""
+                      | Some { Dune_lang.Decoder. on; candidates } ->
+                        hint on candidates)
+      in
+      Some (make_printer ~loc pp)
+    | User_error.E { loc; paragraphs } ->
+      let pp ppf =
+        Pp.pp ppf (User_error.pp error |> Pp.map_tags ~f:ignore)
+      in
+      Some (make_printer ?loc pp)
+    | Dune_lang.Parse_error e ->
+      let loc = Dune_lang.Parse_error.loc     e in
+      let msg = Dune_lang.Parse_error.message e in
+      let pp ppf = Format.fprintf ppf "@{<error>Error@}: %s\n" msg in
+      Some (make_printer ~loc pp)
+    | Code_error.E t ->
+      let pp = fun ppf ->
+        Format.fprintf ppf "@{<error>Internal error, please report upstream \
+                            including the contents of _build/log.@}\n\
+                            Description:%a\n"
+          Dyn.pp (Code_error.to_dyn t)
+      in
+      Some (make_printer ~backtrace:true pp)
+    | Unix.Unix_error (err, func, fname) ->
+      let pp ppf =
+        Format.fprintf ppf "@{<error>Error@}: %s: %s: %s\n"
+          func fname (Unix.error_message err)
+      in
+      Some (make_printer pp)
+    | _ -> None
 
-let printers = ref [builtin_printer]
+  let printers = ref [builtin_printer]
 
-let register f = printers := f :: !printers
+  let register f = printers := f :: !printers
+
+  let find exn = List.find_map !printers ~f:(fun f -> f exn)
+
+  let fallback exn =
+    let s = Printexc.to_string exn in
+    make ~backtrace:true
+      (if String.is_prefix s ~prefix:"File \"" then
+         User_message.make [ Pp.verbatim s ]
+       else
+         User_error.make [ Pp.concat ~sep:Pp.space
+                             [ Pp.verbatim "exception"; Pp.verbatim s ] ])
+end
 
 let i_must_not_segfault =
   let x = lazy (at_exit (fun () ->
@@ -87,25 +81,6 @@ has gone past, I will unwind the stack along its path.  Where the
 cases are handled there will be nothing.  Only I will remain."))
   in
   fun () -> Lazy.force x
-
-let find_printer exn =
-  List.find_map !printers ~f:(fun f -> f exn)
-
-let exn_printer exn =
-  let pp ppf =
-    let s = Printexc.to_string exn in
-    if String.is_prefix s ~prefix:"File \"" then
-      Format.fprintf ppf "%s\n" s
-    else
-      Format.fprintf ppf "@{<error>Error@}: exception %s\n" s
-  in
-  make_printer ~backtrace:true pp
-
-(* Firt return value is [true] if the backtrace was printed *)
-let report_with_backtrace exn =
-  match find_printer exn with
-  | Some p -> p
-  | None -> exn_printer exn
 
 let reported = ref Digest.Set.empty
 
@@ -120,12 +95,16 @@ let report { Exn_with_backtrace. exn; backtrace } =
   | Already_reported -> ()
   | _ ->
     let ppf = err_ppf in
-    let p = report_with_backtrace exn in
+    let p =
+      match Printer.find exn with
+      | Some p -> p
+      | None -> Printer.fallback exn
+    in
     let loc =
       if Option.equal Loc.equal p.loc (Some Loc.none) then
         None
       else
-        p.loc
+        p.message.loc
     in
     Option.iter loc ~f:(fun loc -> Errors.print ppf loc);
     p.pp ppf;

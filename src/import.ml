@@ -1,7 +1,6 @@
 open! Stdune
 
 include Stdune
-include Errors
 
 module Re = Dune_re
 
@@ -31,11 +30,6 @@ end
 
 let protect  = Exn.protect
 let protectx = Exn.protectx
-
-let warn fmt =
-  ksprintf (fun msg ->
-    prerr_endline ("Warning: jbuild: " ^ msg))
-    fmt
 
 type fail = { fail : 'a. unit -> 'a }
 
@@ -71,7 +65,6 @@ let hint name candidates =
       | [] -> ""
     in
     sprintf "\nHint: did you mean %s?" (mk_hint l)
-
 
 (* Disable file operations to force to use the IO module *)
 let open_in      = `Use_Io

@@ -407,23 +407,6 @@ module Decoder : sig
 
   val fix : ('a t -> 'a t) -> 'a t
 
-  val of_sexp_error
-    :  ?hint:hint
-    -> Loc.t
-    -> string
-    -> _
-  val of_sexp_errorf
-    :  ?hint:hint
-    -> Loc.t
-    -> ('a, unit, string, 'b) format4
-    -> 'a
-
-  val no_templates
-    : ?hint:hint
-    -> Loc.t
-    -> ('a, unit, string, 'b) format4
-    -> 'a
-
   val located : ('a, 'k) parser -> (Loc.t * 'a, 'k) parser
 
   val enum : (string * 'a) list -> 'a t

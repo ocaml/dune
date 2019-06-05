@@ -11,21 +11,20 @@ open! Stdune
     We cache what is actually printed to the screen.  *)
 val report : Exn_with_backtrace.t -> unit
 
-type printer
+module Printer : sig
+  type t
 
-val make_printer :
-  ?backtrace:bool ->
-  ?hint:string ->
-  ?loc:Loc.t ->
-  (Format.formatter -> unit) ->
-  printer
+  (** If [backtrace] is [true], then any available backtrace will be
+      printed. *)
+  val make : ?backtrace:bool -> User_message.t -> t
 
-val set_loc : printer -> loc:Loc.t -> printer
+  (** Register an error printer. *)
+  val register : (exn -> t option) -> unit
 
-val set_hint : printer -> hint:string -> printer
+  (** Find an error printer *)
+  val find : exn -> t option
 
-(** Register an error printer. *)
-val register : (exn -> printer option) -> unit
+  val set_loc : t -> loc:Loc.t -> t
+  val add_hint : t -> hint:User_message.Style.t Pp.t -> t
+end
 
-(** Find an error printer *)
-val find_printer : exn -> printer option

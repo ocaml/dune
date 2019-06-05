@@ -1,5 +1,13 @@
 (** Error meant for humans *)
 
+(** User errors are errors that users need to fix themselves in order
+    to make progress. Since these errors are read by users, they should
+    be simple to understand for people who are not familiar with the
+    dune codebase.
+*)
+exception E of User_message.t
+
+(** Styles that can be used inside error messages *)
 module Style : sig
   type t =
     | Loc
@@ -13,30 +21,18 @@ module Style : sig
     | Debug
 end
 
-(** An error that is meant to be shown to the user. If a location is
-    provided, it will be included at the beginning of the error
-    message.
+(** Raise a user error.  The arguments are interpreted in the same way
+    as [User_message.make]. The first paragraph is prefixed with
+    "Error:".  *)
+val raise
+  :  ?loc:Loc.t
+  -> ?hints:Style.t Pp.t list
+  -> Style.t Pp.t list
+  -> _
 
-    The various paragraphs are printed one after the other and all
-    start at the beginning of a line. They are all wrapped inside a
-    [Pp.box] and the first paragraph is prefixed with "Error: ".  *)
-type t =
-  { loc : Loc.t option
-  ; paragraphs : Style.t Pp.t list
-  }
-
-exception E of t
-
-val raise : ?loc:Loc.t -> Style.t Pp.t list -> _
-
-val pp : t -> Style.t Pp.t
-
-module Ansi_output : sig
-  type config = (Style.t -> Ansi_color.Style.t list)
-
-  (** Print to [stdout] (not thread safe) *)
-  val print : ?config:config -> ?margin:int -> Style.t Pp.t -> unit
-
-  (** Print to [stderr] (not thread safe) *)
-  val prerr : ?config:config -> ?margin:int -> Style.t Pp.t -> unit
-end
+(** Create a user error. *)
+val make
+  :  ?loc:Loc.t
+  -> ?hints:Style.t Pp.t list
+  -> Style.t Pp.t list
+  -> User_message.t

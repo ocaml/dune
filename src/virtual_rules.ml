@@ -171,14 +171,12 @@ let check_module_fields ~(lib : Dune_file.Library.t) ~virtual_modules
       (module_list impl_modules_with_intf)
   end
 
-let external_dep_graph sctx ~impl_cm_kind ~vlib_obj_dir ~impl_obj_dir
-      ~vlib_modules =
+let external_dep_graph sctx ~impl_cm_kind ~impl_obj_dir ~vlib_modules =
   let wrapped = Lib_modules.is_wrapped vlib_modules in
   let modules = Lib_modules.modules vlib_modules in
   let ocamlobjinfo =
     let ctx = Super_context.context sctx in
     fun m cm_kind ->
-      let m = Module.set_obj_dir ~obj_dir:vlib_obj_dir m in
       let unit = Module.cm_file_unsafe m cm_kind in
       Ocamlobjinfo.rules ~dir:impl_obj_dir ~ctx ~unit
   in
@@ -280,15 +278,17 @@ let impl sctx ~dir ~(lib : Dune_file.Library.t) ~scope ~modules =
           in
           (modules, foreign_objects)
       in
-      let virtual_modules = Lib_modules.virtual_modules vlib_modules in
-      check_module_fields ~lib ~virtual_modules ~modules ~implements;
+      (let virtual_modules = Lib_modules.virtual_modules vlib_modules in
+       check_module_fields ~lib ~virtual_modules ~modules ~implements);
       let vlib_dep_graph =
-        let vlib_obj_dir = Lib.obj_dir vlib in
         let modules = Lib_modules.modules vlib_modules in
         match virtual_ with
         | Local ->
           let obj_dir =
-            Path.as_in_build_dir_exn (Obj_dir.obj_dir vlib_obj_dir) in
+            Lib.obj_dir vlib
+            |> Obj_dir.obj_dir
+            |> Path.as_in_build_dir_exn (* always safe b/c vlib is local *)
+          in
           Ocamldep.graph_of_remote_lib ~obj_dir ~modules
         | External _ ->
           let impl_obj_dir =
@@ -297,8 +297,7 @@ let impl sctx ~dir ~(lib : Dune_file.Library.t) ~scope ~modules =
             let { Mode.Dict. byte; native = _ } = Lib.modes vlib in
             Mode.cm_kind (if byte then Byte else Native)
           in
-          external_dep_graph sctx ~impl_cm_kind ~vlib_obj_dir ~impl_obj_dir
-            ~vlib_modules
+          external_dep_graph sctx ~impl_cm_kind ~impl_obj_dir ~vlib_modules
       in
       Vimpl.make ~dir
         ~impl:lib ~vlib ~vlib_modules ~vlib_dep_graph

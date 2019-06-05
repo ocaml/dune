@@ -46,7 +46,7 @@ module Source : sig
   val of_relative : Relative.t -> t
   val of_local : Local.t -> t
   val relative : ?error_loc:Loc0.t -> t -> string -> t
-  val split_first_component : t -> (string * t) option
+  val split_first_component : t -> (string * Local.t) option
   val explode : t -> string list
 
   (** [Source.t] does not statically forbid overlap with build directory,

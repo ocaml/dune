@@ -21,6 +21,7 @@ module Stack_frame : sig
   type t
 
   val pp : Format.formatter -> t -> unit
+  val to_dyn : t -> Dyn.t
 
   val equal : t -> t -> bool
   val compare : t -> t -> Ordering.t

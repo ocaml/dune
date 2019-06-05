@@ -45,6 +45,6 @@ let check_path contexts =
             match Path.Source.split_first_component src with
             | None -> internal path
             | Some (ctx, src) ->
-              In_install_dir (context_exn ctx, Path.Source.of_relative src)
+              In_install_dir (context_exn ctx, Path.Source.of_local src)
           )
           else (In_build_dir (context_exn name, src))

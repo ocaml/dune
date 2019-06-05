@@ -45,9 +45,9 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
   let modes =
     Dune_file.Mode_conf.Set.eval impl.modes
       ~has_native:(Option.is_some ctx.ocamlopt) in
-  let copy_obj_file ~src ~dst ?ext kind =
-    let src = Module.cm_file_unsafe src ?ext kind in
-    let dst = Module.cm_file_unsafe dst ?ext kind in
+  let copy_obj_file ~src ~dst kind =
+    let src = Module.cm_file_unsafe src kind in
+    let dst = Module.cm_file_unsafe dst kind in
     copy_to_obj_dir ~src ~dst:(Path.as_in_build_dir_exn dst) in
   let copy_objs src =
     let dst = Module.set_obj_dir ~obj_dir:(Obj_dir.of_local impl_obj_dir) src in
@@ -62,9 +62,13 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
     if Module.has_impl src then begin
       if modes.byte then
         copy_obj_file ~src ~dst Cmo;
-      if modes.native then
-        List.iter [Cm_kind.ext Cmx; ctx.ext_obj]
-          ~f:(fun ext -> copy_obj_file ~src ~dst ~ext Cmx)
+      if modes.native then begin
+        copy_obj_file ~src ~dst Cmx;
+        (let object_file = Module.obj_file ~kind:Cmx ~ext:ctx.ext_obj in
+         copy_to_obj_dir
+           ~src:(object_file src)
+           ~dst:(Path.as_in_build_dir_exn (object_file dst)))
+      end
     end
   in
   let copy_all_deps =

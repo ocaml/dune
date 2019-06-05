@@ -1,3 +1,5 @@
+(** A relative path allowed to escape root. Concretely, any path which is not a
+    valid [External.t] is a valid [Relative.t] *)
 module Relative : sig
   include Path_intf.S
 

@@ -389,7 +389,6 @@ type t =
     files       : Internal_rule.t Path.Build.Table.t
   ; contexts    : Context.t String.Map.t
   ; file_tree   : File_tree.t
-  ; dirs : (Path.t, Loaded.t, (Path.t -> Loaded.t)) Memo.t
   ; init_rules : Rules.t Fdecl.t
   ; gen_rules :
       (Context_or_install.t
@@ -692,19 +691,14 @@ let handle_add_rule_effects f =
 
 
 module rec Load_rules : sig
-  val load_dir : t -> dir:Path.t -> Loaded.t
-
-  (* CR-soon aalekseyev: change [load_dir] to work like the other memoized
-     functions, so that exposing this won't be necessary *)
-  val load_dir_impl : t -> dir:Path.t -> Loaded.t
-
-  val static_deps : t -> (unit, Action.t) Build.t -> Static_deps.t Fiber.Once.t
-  val targets_of : t -> dir:Path.t -> Path.Set.t
+  val load_dir : dir:Path.t -> Loaded.t
+  val static_deps : (unit, Action.t) Build.t -> Static_deps.t Fiber.Once.t
+  val targets_of : dir:Path.t -> Path.Set.t
 end = struct
 
   open Load_rules
 
-  let compile_rule t pre_rule =
+  let compile_rule pre_rule =
     let { Pre_rule.
           context
         ; env
@@ -718,7 +712,7 @@ end = struct
         } =
       pre_rule
     in
-    let static_deps = static_deps t build in
+    let static_deps = static_deps build in
     let rule =
       let id = Internal_rule.Id.gen () in
       { Internal_rule.
@@ -739,11 +733,11 @@ end = struct
     in
     (targets, rule)
 
-  let static_deps t build =
+  let static_deps build =
     Fiber.Once.create (fun () ->
       Fiber.return
         (Build.static_deps build
-           ~all_targets:(targets_of t)))
+           ~all_targets:targets_of))
 
   let create_copy_rules ~ctx_dir ~non_target_source_files =
     Path.Source.Set.to_list non_target_source_files
@@ -752,23 +746,20 @@ end = struct
       let build = Build.copy ~src:(Path.source path) ~dst:ctx_path in
       Pre_rule.make build ~context:None ~env:None ~info:Source_file_copy)
 
-  let compile_rules ~dir t rules =
+  let compile_rules ~dir rules =
     List.concat_map rules ~f:(fun rule ->
-      let (targets, rule) = compile_rule t rule in
+      let (targets, rule) = compile_rule rule in
       assert (Path.Build.(=) dir rule.Internal_rule.dir);
       List.map (Path.Build.Set.to_list targets) ~f:(fun target ->
         (target, rule)))
     |> Path.Build.Map.of_list_reducei ~f:rule_conflict
 
-  let targets_of t ~dir = match load_dir t ~dir with
+  let targets_of ~dir = match load_dir ~dir with
     | Non_build targets -> targets
     | Build { targets_here; _ } ->
       Path.Build.Map.keys targets_here
       |> List.map ~f:Path.build
       |> Path.Set.of_list
-
-  let load_dir t ~dir : Loaded.t =
-    Memo.exec t.dirs dir
 
   let compute_alias_rules t
         ~context_name ~(collected : Rules.Dir_rules.ready) ~dir ~sub_dir =
@@ -842,7 +833,7 @@ end = struct
               :: rules))
     in
     (fun ~subdirs_to_keep ->
-       let compiled = compile_rules t ~dir:alias_dir alias_rules in
+       let compiled = compile_rules ~dir:alias_dir alias_rules in
        add_rules_exn t compiled;
        remove_old_artifacts t ~dir:alias_dir ~subdirs_to_keep;
        compiled)
@@ -1017,7 +1008,7 @@ The following targets are not:
       )
       @ rules
     in
-    let targets_here = compile_rules t ~dir rules in
+    let targets_here = compile_rules ~dir rules in
     add_rules_exn t targets_here;
     remove_old_artifacts t ~dir ~subdirs_to_keep;
     let alias_targets =
@@ -1043,7 +1034,7 @@ The following targets are not:
     | Known l ->
       l
     | Alias_dir_of dir' ->
-      (match load_dir t ~dir:(Path.build dir') with
+      (match load_dir ~dir:(Path.build dir') with
        | Non_build _ ->
          Exn.code_error "Can only forward to a build dir" []
        | Build {
@@ -1059,28 +1050,41 @@ The following targets are not:
     | Need_step2 ->
       load_dir_step2_exn t ~dir
 
+  let load_dir =
+    let load_dir_impl dir =
+      load_dir_impl (t ()) ~dir
+    in
+    let memo =
+      Memo.create_hidden
+        "load-dir"
+        ~doc:"load dir"
+        ~input:(module Path)
+        Sync
+        (Some load_dir_impl)
+    in
+    (fun ~dir -> Memo.exec memo dir)
 
 end
 
 open Load_rules
 
-let load_dir_and_get_buildable_targets t ~dir =
-  let loaded = load_dir t ~dir in
+let load_dir_and_get_buildable_targets ~dir =
+  let loaded = load_dir ~dir in
   match loaded with
   | Non_build _ -> Path.Build.Map.empty
   | Build { targets_here; _ } -> targets_here
 
-let get_rule_other t fn =
+let get_rule_other fn =
   Option.bind (Path.as_in_build_dir fn) ~f:(fun fn ->
     let dir = Path.Build.parent_exn fn in
-    match load_dir t ~dir:(Path.build dir) with
+    match load_dir ~dir:(Path.build dir) with
     | Non_build _ -> assert false
     | Build { targets_here; _ } -> Path.Build.Map.find targets_here fn)
 
 and get_rule t path =
   let dir = Path.parent_exn path in
   if Path.is_strict_descendant_of_build_dir dir then begin
-    let rules = load_dir_and_get_buildable_targets t ~dir in
+    let rules = load_dir_and_get_buildable_targets ~dir in
     let path = Path.as_in_build_dir_exn path in
     match Path.Build.Map.find rules path with
     | Some _ as some -> Fiber.return some
@@ -1100,7 +1104,7 @@ let all_targets t =
     File_tree.fold t.file_tree ~traverse_ignored_dirs:true ~init:acc
       ~f:(fun dir acc ->
         match
-          load_dir t
+          load_dir
             ~dir:(
               Path.build (Path.Build.append_source ctx.Context.build_dir
                             (File_tree.Dir.path dir)))
@@ -1413,7 +1417,7 @@ let () =
   in
   Memo.set_impl Pred.build_def f
 
-let shim_of_build_goal t request =
+let shim_of_build_goal request =
   let request =
     let open Build.O in
     request >>^ fun () ->
@@ -1421,16 +1425,16 @@ let shim_of_build_goal t request =
   in
   Internal_rule.shim_of_build_goal
     ~build:request
-    ~static_deps:(static_deps t request)
+    ~static_deps:(static_deps request)
 
-let build_request t ~request =
+let build_request ~request =
   let result = Fdecl.create () in
   let request =
     let open Build.O in
     request >>^ fun res ->
     Fdecl.set result res
   in
-  let rule = shim_of_build_goal t request in
+  let rule = shim_of_build_goal request in
   let+ (_act, _deps) = evaluate_rule_and_wait_for_dependencies rule in
   Fdecl.get result
 
@@ -1542,8 +1546,7 @@ module Alias = Alias0
 let () =
   let f g =
     let dir = File_selector.dir g in
-    let t = t () in
-    Path.Set.filter (targets_of t ~dir) ~f:(File_selector.test g)
+    Path.Set.filter (targets_of ~dir) ~f:(File_selector.test g)
   in
   Memo.set_impl Pred.eval_def f
 
@@ -1577,16 +1580,15 @@ let entry_point_sync ~f =
   | Error exn -> process_exn_and_reraise exn
 
 let do_build ~request =
-  let t = t () in
   Hooks.End_of_build.once Promotion.finalize;
-  entry_point_async ~f:(fun () -> build_request t ~request)
+  entry_point_async ~f:(fun () -> build_request ~request)
 
 let all_targets () =
   let t = t () in
   entry_point_sync ~f:(fun () -> all_targets t)
 
 let targets_of ~dir =
-  entry_point_sync ~f:(fun () -> targets_of (t ()) ~dir)
+  entry_point_sync ~f:(fun () -> targets_of ~dir)
 
 let is_target file =
   Path.Set.mem (targets_of ~dir:(Path.parent_exn file)) file
@@ -1609,7 +1611,6 @@ end = struct
     |> Rule.Set.to_list
 
   let evaluate_rules ~recursive ~request =
-    let t = t () in
     entry_point_sync ~f:(fun () ->
       let rules = ref Internal_rule.Id.Map.empty in
       let rec run_rule (rule : Internal_rule.t) =
@@ -1633,11 +1634,11 @@ end = struct
             Fiber.return ()
         end
       and proc_rule dep =
-        match get_rule_other t dep with
+        match get_rule_other dep with
         | None -> Fiber.return () (* external files *)
         | Some rule -> run_rule rule
       in
-      let rule_shim = shim_of_build_goal t request in
+      let rule_shim = shim_of_build_goal request in
       let* (_act, goal) = evaluate_rule rule_shim in
       let+ () = Dep.Set.parallel_iter_files goal ~f:proc_rule ~eval_pred in
       let rules =
@@ -1671,22 +1672,22 @@ end = struct
     Static_deps.paths @@
     Build.static_deps request ~all_targets:targets_of
 
-  let rules_for_files t paths =
+  let rules_for_files paths =
     Path.Set.fold paths ~init:[] ~f:(fun path acc ->
-      match get_rule_other t path with
+      match get_rule_other path with
       | None -> acc
       | Some rule -> rule :: acc)
     |> Internal_rule.Set.of_list
     |> Internal_rule.Set.to_list
 
-  let rules_for_targets t targets =
+  let rules_for_targets targets =
     Internal_rule.Id.Top_closure_f.top_closure
-      (rules_for_files t targets)
+      (rules_for_files targets)
       ~key:(fun (r : Internal_rule.t) -> r.id)
       ~deps:(fun (r : Internal_rule.t) ->
         Fiber.Once.get r.static_deps
         >>| Static_deps.paths ~eval_pred
-        >>| rules_for_files t)
+        >>| rules_for_files)
     >>| function
     | Ok l -> l
     | Error cycle ->
@@ -1699,7 +1700,7 @@ end = struct
   let all_lib_deps ~request =
     let t = t () in
     let targets = static_deps_of_request request ~eval_pred in
-    let* rules= rules_for_targets t targets in
+    let* rules= rules_for_targets targets in
     let+ lib_deps =
       Fiber.parallel_map rules ~f:(fun rule ->
         let+ deps = Internal_rule.lib_deps rule in
@@ -1720,14 +1721,14 @@ end
 
 include All_lib_deps
 
-let load_dir_and_produce_its_rules t ~dir =
-  let loaded = load_dir t ~dir in
+let load_dir_and_produce_its_rules ~dir =
+  let loaded = load_dir ~dir in
   match loaded with
   | Non_build _ -> ()
   | Build loaded ->
     Rules.produce loaded.rules_produced
 
-let load_dir ~dir = load_dir_and_produce_its_rules (t ()) ~dir
+let load_dir ~dir = load_dir_and_produce_its_rules ~dir
 
 let init ~contexts ~file_tree ~hook =
   let contexts =
@@ -1738,13 +1739,6 @@ let init ~contexts ~file_tree ~hook =
     { contexts
     ; files      = Path.Build.Table.create 1024
     ; packages   = Fdecl.create ()
-    ; dirs       =
-        Memo.create_hidden
-          "load-dir"
-          ~doc:"load dir"
-          ~input:(module Path)
-          Sync
-          None
     ; file_tree
     ; gen_rules = Fdecl.create ()
     ; init_rules = Fdecl.create ()
@@ -1752,6 +1746,5 @@ let init ~contexts ~file_tree ~hook =
     ; hook
     }
   in
-  Memo.set_impl t.dirs (fun dir -> load_dir_impl t ~dir);
   set t
 

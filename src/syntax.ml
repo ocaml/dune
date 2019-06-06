@@ -41,7 +41,7 @@ module Version = struct
           Errors.fail loc "Atom of the form NNN.NNN expected"
       end
     | sexp ->
-      of_sexp_error (Dune_lang.Ast.loc sexp) "Atom expected"
+      User_error.raise ~loc:(Dune_lang.Ast.loc sexp) [ Pp.text "Atom expected" ]
 
   let can_read
         ~parser_version:(parser_major, parser_minor)

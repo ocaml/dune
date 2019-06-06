@@ -318,13 +318,12 @@ let modules_of_files ~dir ~files =
     | Ok x -> x
     | Error (name, f1, f2) ->
       let src_dir = Path.drop_build_context_exn dir in
-      die "Too many files for module %a in %a:\
-           \n- %a\
-           \n- %a"
-        Module.Name.pp name
-        Path.Source.pp src_dir
-        Path.pp f1.path
-        Path.pp f2.path
+      User_error.raise
+        [ Pp.textf "Too many files for module %a in %a:"
+            (Pp.verbatin (Module.Name.pp name))
+        ; Pp.textf "- %s" (Path.to_string_maybe_quoted f1.path)
+        ; Pp.textf "- %s" (Path.to_string_maybe_quoted f2.path)
+        ]
   in
   let impls = parse_one_set impl_files in
   let intfs = parse_one_set intf_files in

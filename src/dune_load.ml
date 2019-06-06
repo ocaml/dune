@@ -209,9 +209,9 @@ end
         Process.run Strict ~dir:(Path.source dir)
           ~env:context.env context.ocaml args in
       if not (Path.exists (Path.build generated_dune_file)) then
-        die "@{<error>Error:@} %s failed to produce a valid dune_file file.\n\
+        User_error.raise [ Pp.textf "@{<error>Error:@} %s failed to produce a valid dune_file file.\n\
              Did you forgot to call [Jbuild_plugin.V*.send]?"
-          (Path.Source.to_string file);
+          (Path.Source.to_string file) ];
       Fiber.return
         (Dune_lang.Io.load (Path.build generated_dune_file) ~mode:Many
            ~lexer:(Dune_lang.Lexer.of_syntax kind)
@@ -264,10 +264,10 @@ let load ?(ignore_promoted_rules=false) ~ancestor_vcs () =
           | None, Some _ -> b
           | Some _, None -> a
           | Some a, Some b ->
-            die "Too many opam files for package %S:\n- %s\n- %s"
+            User_error.raise [ Pp.textf "Too many opam files for package %S:\n- %s\n- %s"
               (Package.Name.to_string name)
               (Path.Source.to_string_maybe_quoted (Package.opam_file a))
-              (Path.Source.to_string_maybe_quoted (Package.opam_file b))))
+              (Path.Source.to_string_maybe_quoted (Package.opam_file b)) ]))
   in
 
   let rec walk dir dune_files =

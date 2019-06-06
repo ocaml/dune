@@ -271,9 +271,9 @@ let load ?(warn_when_seeing_jbuild_file=true) path ~ancestor_vcs =
               in
               (Some dune_file, sub_dirs)
             | _ ->
-              die "Directory %s has both a 'dune' and 'jbuild' file.\n\
+              User_error.raise [ Pp.textf "Directory %s has both a 'dune' and 'jbuild' file.\n\
                    This is not allowed"
-                (Path.Source.to_string_maybe_quoted path)
+                (Path.Source.to_string_maybe_quoted path) ]
           in
           let sub_dirs =
             if String.Set.mem files "jbuild-ignore" then
@@ -308,10 +308,10 @@ let load ?(warn_when_seeing_jbuild_file=true) path ~ancestor_vcs =
                 match File.Map.find dirs_visited file with
                 | None -> File.Map.add dirs_visited file path
                 | Some first_path ->
-                  die "Path %s has already been scanned. \
+                  User_error.raise [ Pp.textf "Path %s has already been scanned. \
                        Cannot scan it again through symlink %s"
                     (Path.Source.to_string_maybe_quoted first_path)
-                    (Path.Source.to_string_maybe_quoted path)
+                    (Path.Source.to_string_maybe_quoted path) ]
             in
             match
               walk path ~dirs_visited ~project ~data_only ~vcs
@@ -332,8 +332,8 @@ let load ?(warn_when_seeing_jbuild_file=true) path ~ancestor_vcs =
   with
   | Ok dir -> dir
   | Error m ->
-    die "Unable to load source %s.@.Reason:%s@."
-      (Path.Source.to_string_maybe_quoted path) (Unix.error_message m)
+    User_error.raise [ Pp.textf "Unable to load source %s.@.Reason:%s@."
+      (Path.Source.to_string_maybe_quoted path) (Unix.error_message m) ]
 
 let fold = Dir.fold
 

@@ -364,34 +364,34 @@ let run_internal ?dir ?(stdout_to=Output.stdout) ?(stderr_to=Output.stderr)
     n
   | WEXITED n ->
     if display = Verbose then
-      die "\n@{<kwd>Command@} [@{<id>%d@}] exited with code %d:\n\
+      User_error.raise [ Pp.textf "\n@{<kwd>Command@} [@{<id>%d@}] exited with code %d:\n\
            @{<prompt>$@} %s\n%s"
         id n
         (Colors.strip_colors_for_stderr command_line)
-        (Colors.strip_colors_for_stderr output)
+        (Colors.strip_colors_for_stderr output) ]
     else if show_command then
-      die "@{<error>%12s@} %a @{<error>(exit %d)@}\n\
+      User_error.raise [ Pp.textf "@{<error>%12s@} %a @{<error>(exit %d)@}\n\
            @{<details>%s@}\n\
            %s"
         progname Fancy.pp_purpose purpose n
         (Ansi_color.strip command_line)
-        output
+        output ]
     else
-      die "%s" output
+      User_error.raise [ Pp.textf "%s" output ]
   | WSIGNALED n ->
     if display = Verbose then
-      die "\n@{<kwd>Command@} [@{<id>%d@}] got signal %s:\n\
+      User_error.raise [ Pp.textf "\n@{<kwd>Command@} [@{<id>%d@}] got signal %s:\n\
            @{<prompt>$@} %s\n%s"
         id (Utils.signal_name n)
         (Colors.strip_colors_for_stderr command_line)
-        (Colors.strip_colors_for_stderr output)
+        (Colors.strip_colors_for_stderr output) ]
     else
-      die "@{<error>%12s@} %a @{<error>(got signal %s)@}\n\
+      User_error.raise [ Pp.textf "@{<error>%12s@} %a @{<error>(got signal %s)@}\n\
            @{<details>%s@}\n\
            %s"
         progname Fancy.pp_purpose purpose (Utils.signal_name n)
         (Ansi_color.strip command_line)
-        output
+        output ]
   | WSTOPPED _ -> assert false
 
 let run ?dir ?stdout_to ?stderr_to ~env ?(purpose=Internal_job) fail_mode
@@ -429,7 +429,7 @@ let run_capture_line ?dir ?stderr_to ~env ?(purpose=Internal_job) fail_mode
       in
       match l with
       | [] ->
-        die "command returned nothing: %s" cmdline
+        User_error.raise [ Pp.textf "command returned nothing: %s" cmdline ]
       | _ ->
-        die "command returned too many lines: %s\n%s"
-          cmdline (String.concat l ~sep:"\n"))
+        User_error.raise [ Pp.textf "command returned too many lines: %s\n%s"
+          cmdline (String.concat l ~sep:"\n") ])

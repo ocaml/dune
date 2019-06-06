@@ -13,9 +13,9 @@ let system_shell_exn =
     match Lazy.force bin with
     | Some path -> (path, arg)
     | None ->
-      die "I need %s to %s but I couldn't find it :(\n\
+      User_error.raise [ Pp.textf "I need %s to %s but I couldn't find it :(\n\
            Who doesn't have %s%s?!"
-        cmd needed_to cmd os
+        cmd needed_to cmd os ]
 
 let bash_exn =
   let bin = lazy (Bin.which ~path:(Env.path Env.initial) "bash") in
@@ -23,8 +23,8 @@ let bash_exn =
     match Lazy.force bin with
     | Some path -> path
     | None ->
-      die "I need bash to %s but I couldn't find it :("
-        needed_to
+      User_error.raise [ Pp.textf "I need bash to %s but I couldn't find it :("
+        needed_to ]
 
 let signal_name =
   let table =

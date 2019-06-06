@@ -17,9 +17,9 @@ let print ?(skip_trailing_cr=Sys.win32) path1 path2 =
   let loc = Loc.in_file file1 in
   let (file1, file2) = Path.(to_string file1, to_string file2) in
   let fallback () =
-    die "%aFiles %s and %s differ." Errors.print loc
+    User_error.raise [ Pp.textf "%aFiles %s and %s differ." Errors.print loc
       (Path.to_string_maybe_quoted path1)
-      (Path.to_string_maybe_quoted path2)
+      (Path.to_string_maybe_quoted path2) ]
   in
   let normal_diff () =
     match Bin.which ~path:(Env.path Env.initial) "diff" with
@@ -44,11 +44,11 @@ let print ?(skip_trailing_cr=Sys.win32) path1 path2 =
       sprintf "%s %s %s" cmd (quote_for_shell file1) (quote_for_shell file2)
     in
     let* () = Process.run ~dir ~env:Env.initial Strict sh [arg; cmd] in
-    die "command reported no differences: %s"
+    User_error.raise [ Pp.textf "command reported no differences: %s"
       (if Path.is_root dir then
          cmd
        else
-         sprintf "cd %s && %s" (quote_for_shell (Path.to_string dir)) cmd)
+         sprintf "cd %s && %s" (quote_for_shell (Path.to_string dir)) cmd) ]
   | None ->
     if Config.inside_dune then
       fallback ()

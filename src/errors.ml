@@ -35,7 +35,7 @@ let fail_lex lb fmt =
 
 let fail_opt t fmt =
   match t with
-  | None -> die fmt
+  | None -> User_error.raise [ Pp.textf fmt ]
   | Some t -> fail t fmt
 
 let print ppf loc =

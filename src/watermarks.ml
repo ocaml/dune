@@ -268,19 +268,19 @@ let get_name ~files ~(dune_project : Dune_project.t option) ?name () =
       | _ -> None)
   in
   if package_names = [] then
-    die "@{<error>Error@}: no <package>.opam files found.";
+    User_error.raise [ Pp.textf "@{<error>Error@}: no <package>.opam files found." ];
   let (loc, name) =
     match Wp.t with
     | Dune -> begin
         assert (Option.is_none name);
         match dune_project with
         | None ->
-          die "@{<error>Error@}: There is no dune-project file in the current \
+          User_error.raise [ Pp.textf "@{<error>Error@}: There is no dune-project file in the current \
                directory, please add one with a (name <name>) field in it.\n\
-               Hint: dune subst must be executed from the root of the project."
+               Hint: dune subst must be executed from the root of the project." ]
         | Some { name = None; _ } ->
-          die "@{<error>Error@}: The project name is not defined, please add \
-               a (name <name>) field to your dune-project file."
+          User_error.raise [ Pp.textf "@{<error>Error@}: The project name is not defined, please add \
+               a (name <name>) field to your dune-project file." ]
         | Some { name = Some n; _ } -> (n.loc_of_arg, n.arg)
       end
     | Jbuilder ->
@@ -306,12 +306,12 @@ let get_name ~files ~(dune_project : Dune_project.t option) ?name () =
           match name with
           | Some name -> (Loc.none, name)
           | None ->
-            die "@{<error>Error@}: cannot determine name automatically.\n\
-                 You must pass a [--name] command line argument."
+            User_error.raise [ Pp.textf "@{<error>Error@}: cannot determine name automatically.\n\
+                 You must pass a [--name] command line argument." ]
   in
   if not (List.mem name ~set:package_names) then begin
     if Loc.is_none loc then
-      die "@{<error>Error@}: file %s.opam doesn't exist." name
+      User_error.raise [ Pp.textf "@{<error>Error@}: file %s.opam doesn't exist." name ]
     else
       Errors.fail loc
         "file %s.opam doesn't exist. \

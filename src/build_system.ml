@@ -238,10 +238,11 @@ module Alias0 = struct
     >>^ fun is_empty_list ->
     let is_empty = List.for_all is_empty_list ~f:Fn.id in
     if is_empty && not (is_standard name) then
-      die "From the command line:\n\
-           @{<error>Error@}: Alias %S is empty.\n\
-           It is not defined in %s or any of its descendants."
-        name (Path.Source.to_string_maybe_quoted src_dir)
+      User_error.raise
+        [ Pp.textf "Alias %S (specified on the command line) is empty." name
+        ; Pp.textf "It is not defined in %s or any of its descendants."
+            (Path.Source.to_string_maybe_quoted src_dir)
+        ]
 
   let package_install ~(context : Context.t) ~pkg =
     make (sprintf ".%s-files" (Package.Name.to_string pkg))
@@ -485,17 +486,19 @@ let rule_conflict fn rule' rule =
     | Source_file_copy -> "file present in source tree"
   in
   let fn = Path.build fn in
-  die "Multiple rules generated for %s:\n\
-       - %s\n\
-       - %s%s"
-    (Path.to_string_maybe_quoted fn)
-    (describe rule')
-    (describe rule)
-    (match rule.info, rule'.info with
-     | Source_file_copy, _ | _, Source_file_copy ->
-       "\nHint: rm -f " ^ Path.to_string_maybe_quoted
-                            (Path.drop_optional_build_context fn)
-     | _ -> "")
+  User_error.raise
+    [ Pp.textf "Multiple rules generated for %s:"
+        (Path.to_string_maybe_quoted fn)
+    ; Pp.textf "- %s" (describe rule')
+    ; Pp.textf "- %s" (describe rule)
+    ]
+    ~hints:(match rule.info, rule'.info with
+      | Source_file_copy, _ | _, Source_file_copy ->
+        [ Pp.textf "rm -f %s"
+            (Path.to_string_maybe_quoted
+               (Path.drop_optional_build_context fn))
+        | _ -> []
+        ])
 
 (* This contains the targets of the actions that are being executed. On exit, we
    need to delete them as they might contain garbage *)
@@ -576,27 +579,41 @@ let no_rule_found =
       if String.Map.mem t.contexts ctx then
         fail fn ~loc
       else
-        die "Trying to build %s but build context %s doesn't exist.%s"
-          (Path.to_string_maybe_quoted fn)
-          ctx
-          (hint ctx (String.Map.keys t.contexts))
+        User_error.raise
+          [ Pp.textf "Trying to build %s but build context %s doesn't exist."
+              (Path.to_string_maybe_quoted fn)
+              ctx
+          ]
+          ~hints:(User_message.did_you_mean
+                    ctx
+                    ~candidates:(String.Map.keys t.contexts))
     | Install (ctx, _) ->
       if String.Map.mem t.contexts ctx then
         fail fn ~loc
       else
-        die "Trying to build %s for install but build context %s doesn't exist.%s"
-          (Path.to_string_maybe_quoted fn)
-          ctx
-          (hint ctx (String.Map.keys t.contexts))
+        User_error.raise
+          [ Pp.textf "Trying to build %s for install but build context \
+                      %s doesn't exist."
+              (Path.to_string_maybe_quoted fn)
+              ctx
+          ]
+          ~hints:(User_message.did_you_mean
+                    ctx
+                    ~candidates:(String.Map.keys t.contexts))
     | Alias (ctx, fn') ->
       if String.Map.mem t.contexts ctx then
         fail fn ~loc
       else
         let fn = Path.append_source (Path.relative Path.build_dir ctx) fn' in
-        die "Trying to build alias %s but build context %s doesn't exist.%s"
-          (Path.to_string_maybe_quoted fn)
-          ctx
-          (hint ctx (String.Map.keys t.contexts))
+        User_error.raise
+          [ Pp.textf "Trying to build alias %s but build context %s \
+                      doesn't exist."
+              (Path.to_string_maybe_quoted fn)
+              ctx
+          ]
+          ~hints:(User_message.did_you_mean
+                    ctx
+                    ~candidates:(String.Map.keys t.contexts))
 
 (* DUNE2: delete this since this has been deprecated for long enough *)
 let fix_up_legacy_fallback_rules t ~file_tree_dir ~dir rules =
@@ -1595,6 +1612,8 @@ module Print_rules : sig
     :  recursive:bool
     -> request:(unit, unit) Build.t
     -> Rule.t list Fiber.t
+
+  val report_cycle : Rule.t list -> _
 end = struct
   let rules_for_files rules deps =
     Dep.Set.paths deps ~eval_pred
@@ -1606,6 +1625,15 @@ end = struct
       | None -> acc
       | Some rule -> Rule.Set.add acc rule)
     |> Rule.Set.to_list
+
+  let report_cycle cycle =
+    User_error.raise
+      [ Pp.text "dependency cycle detected:"
+      ; pp_cycle cycle ~f:(fun rule ->
+          Pp.verbatim
+            (Path.to_string_maybe_quoted (Path.build (
+               Path.Build.Set.choose_exn rule.Rule.targets))))
+        ]
 
   let evaluate_rules ~recursive ~request =
     let t = t () in
@@ -1651,12 +1679,7 @@ end = struct
           ~deps:(fun (r : Rule.t) -> rules_for_files rules r.deps)
       with
       | Ok l -> l
-      | Error cycle ->
-        die "dependency cycle detected:\n   %s"
-          (List.map cycle ~f:(fun rule ->
-             Path.to_string (Path.build (
-               Path.Build.Set.choose_exn rule.Rule.targets)))
-           |> String.concat ~sep:"\n-> "))
+      | Error cycle -> report_cycle cycle
 end
 
 include Print_rules
@@ -1688,12 +1711,7 @@ end = struct
         >>| rules_for_files t)
     >>| function
     | Ok l -> l
-    | Error cycle ->
-      die "dependency cycle detected:\n   %s"
-        (List.map cycle ~f:(fun rule ->
-           Path.to_string
-             (Path.build (Path.Build.Set.choose_exn rule.Internal_rule.targets)))
-         |> String.concat ~sep:"\n-> ")
+    | Error cycle -> Print_rules.report_cycle cycle
 
   let all_lib_deps ~request =
     let t = t () in
@@ -1746,4 +1764,3 @@ let init ~contexts ~file_tree ~hook =
   in
   Memo.set_impl t.dirs (fun dir -> load_dir_impl t ~dir);
   set t
-

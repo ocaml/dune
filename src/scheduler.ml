@@ -217,8 +217,8 @@ end = struct
              "--event"; "Updated";
              "--event"; "Removed"] @ excludes
          | None ->
-           die "@{<error>Error@}: fswatch (or inotifywait) was not found. \
-                One of them needs to be installed for watch mode to work.\n"))
+           User_error.raise [ Pp.textf "@{<error>Error@}: fswatch (or inotifywait) was not found. \
+                One of them needs to be installed for watch mode to work.\n" ]))
 
   let buffering_time = 0.5 (* seconds *)
   let buffer_capacity = 65536

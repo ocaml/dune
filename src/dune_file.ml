@@ -18,7 +18,7 @@ module Jbuild_version = struct
 end
 
 let invalid_module_name ~loc =
-  of_sexp_errorf loc "invalid module name: %S"
+  User_error.raise ~loc [ Pp.textf "invalid module name: %S" ]
 
 let module_name =
   plain_string (fun ~loc name ->
@@ -40,7 +40,7 @@ let file =
   plain_string (fun ~loc s ->
     match s with
     | "." | ".." ->
-      of_sexp_errorf loc "'.' and '..' are not valid filenames"
+      User_error.raise ~loc [ Pp.textf "'.' and '..' are not valid filenames" ]
     | fn -> fn)
 
 let relative_file =
@@ -48,7 +48,7 @@ let relative_file =
     if Filename.is_relative fn then
       fn
     else
-      of_sexp_errorf loc "relative filename expected")
+      User_error.raise ~loc [ Pp.textf "relative filename expected" ])
 
 
 let library_variants =
@@ -428,9 +428,9 @@ module Per_module = struct
             |> function
             | Ok t -> t
             | Error (name, _, _) ->
-              of_sexp_errorf loc
-                "module %s present in two different sets"
-                (Module.Name.to_string name)
+              User_error.raise ~loc
+                [ Pp.textf "module %s present in two different sets"
+                (Module.Name.to_string name) ]
           ]
     | _ -> a >>| for_all
 end
@@ -516,15 +516,15 @@ module Lib_dep = struct
       in
       match file with
       | None ->
-        of_sexp_errorf loc "(<[!]libraries>... -> <file>) expected"
+        User_error.raise ~loc [ Pp.textf "(<[!]libraries>... -> <file>) expected" ]
       | Some file ->
         let rec loop required forbidden = function
           | [] ->
             let common = Lib_name.Set.inter required forbidden in
             Option.iter (Lib_name.Set.choose common) ~f:(fun name ->
-              of_sexp_errorf loc
-                "library %S is both required and forbidden in this clause"
-                (Lib_name.to_string name));
+              User_error.raise ~loc
+                [ Pp.textf "library %S is both required and forbidden in this clause"
+                (Lib_name.to_string name) ]);
             { required
             ; forbidden
             ; file
@@ -580,20 +580,20 @@ module Lib_deps = struct
       | Some kind' ->
         match kind, kind' with
         | Required, Required ->
-          of_sexp_errorf loc "library %S is present twice"
-            (Lib_name.to_string name)
+          User_error.raise ~loc [ Pp.textf "library %S is present twice"
+            (Lib_name.to_string name) ]
         | (Optional|Forbidden), (Optional|Forbidden) ->
           acc
         | Optional, Required | Required, Optional ->
-          of_sexp_errorf loc
-            "library %S is present both as an optional \
+          User_error.raise ~loc
+            [ Pp.textf "library %S is present both as an optional \
              and required dependency"
-            (Lib_name.to_string name)
+            (Lib_name.to_string name) ]
         | Forbidden, Required | Required, Forbidden ->
-          of_sexp_errorf loc
-            "library %S is present both as a forbidden \
+          User_error.raise ~loc
+            [ Pp.textf "library %S is present both as a forbidden \
              and required dependency"
-            (Lib_name.to_string name)
+            (Lib_name.to_string name) ]
     in
     ignore (
       List.fold_left t ~init:Lib_name.Map.empty ~f:(fun acc x ->
@@ -905,9 +905,9 @@ module Library = struct
       | None, Some w -> From w
       | Some (_loc, w), None -> This w
       | Some (loc, _), Some _ ->
-        of_sexp_error loc
-          "Wrapped cannot be set for implementations. \
-           It is inherited from the virtual library."
+        User_error.raise ~loc
+          [ Pp.text "Wrapped cannot be set for implementations. \
+           It is inherited from the virtual library." ]
 
     let field = field_o "wrapped" (located decode)
   end
@@ -1016,39 +1016,39 @@ module Library = struct
              match Lib_name.to_local name with
              | Ok m -> (loc, m)
              | Warn _ | Invalid ->
-               of_sexp_errorf loc
-                 "%s.\n\
+               User_error.raise ~loc
+                 [ Pp.textf "%s.\n\
                   Public library names don't have this restriction. \
                   You can either change this public name to be a valid library \
                   name or add a \"name\" field with a valid library name."
-                 Lib_name.Local.invalid_message
+                 Lib_name.Local.invalid_message ]
            else
-             of_sexp_error loc "name field cannot be omitted before version \
-                                1.1 of the dune language"
+             User_error.raise ~loc [ Pp.text "name field cannot be omitted before version \
+                                1.1 of the dune language" ]
          | None, None ->
-           of_sexp_error loc (
+           User_error.raise ~loc [ Pp.text (
              if dune_version >= (1, 1) then
                "supply at least least one of name or public_name fields"
              else
                "name field is missing"
-           )
+           ) ]
        in
        Option.both virtual_modules implements
        |> Option.iter ~f:(fun (virtual_modules, (_, impl)) ->
-         of_sexp_errorf
-           (Ordered_set_lang.loc virtual_modules
+         User_error.raise
+           ~loc:(Ordered_set_lang.loc virtual_modules
             |> Option.value_exn)
-           "A library cannot be both virtual and implement %s"
-           (Lib_name.to_string impl));
+           [ Pp.textf "A library cannot be both virtual and implement %s"
+           (Lib_name.to_string impl) ]);
        match virtual_modules, default_implementation with
        | None, Some (loc, _) ->
-         of_sexp_error loc
-           "Only virtual libraries can specify a default implementation."
+         User_error.raise ~loc
+           [ Pp.text "Only virtual libraries can specify a default implementation." ]
        | _ -> ();
          match implements, variant with
          | None, Some (loc, _) ->
-           of_sexp_error loc
-             "Only implementations can specify a variant."
+           User_error.raise ~loc
+             [ Pp.text "Only implementations can specify a variant." ]
          | _ -> ();
            let variant = Option.map variant ~f:(fun (_, v) -> v) in
            let self_build_stubs_archive =
@@ -1298,21 +1298,21 @@ module Executables = struct
             List.map public_names ~f:(fun (loc, p) ->
               match p with
               | None ->
-                of_sexp_error loc "This executable must have a name field"
+                User_error.raise ~loc [ Pp.text "This executable must have a name field" ]
               | Some s -> (loc, s))
           else
-            of_sexp_errorf loc
-              "%s field may not be omitted before dune version %s"
+            User_error.raise ~loc
+              [ Pp.textf "%s field may not be omitted before dune version %s"
               (pluralize ~multi "name")
-              (Syntax.Version.to_string allow_omit_names_version)
+              (Syntax.Version.to_string allow_omit_names_version) ]
         | None, None ->
           if dune_syntax >= allow_omit_names_version then
-            of_sexp_errorf loc "either the %s or the %s field must be present"
+            User_error.raise ~loc [ Pp.textf "either the %s or the %s field must be present"
               (pluralize ~multi "name")
-              (pluralize ~multi "public_name")
+              (pluralize ~multi "public_name") ]
           else
-            of_sexp_errorf loc "field %s is missing"
-              (pluralize ~multi "name")
+            User_error.raise ~loc [ Pp.textf "field %s is missing"
+              (pluralize ~multi "name") ]
       in
       let public =
         match package, public_names with
@@ -1446,15 +1446,15 @@ module Executables = struct
       let decode =
         located (list decode) >>| fun (loc, l) ->
         match l with
-        | [] -> of_sexp_errorf loc "No linking mode defined"
+        | [] -> User_error.raise ~loc [ Pp.textf "No linking mode defined" ]
         | l ->
           let t = of_list l in
           if (mem t native_exe           && mem t exe          ) ||
              (mem t native_object        && mem t object_      ) ||
              (mem t native_shared_object && mem t shared_object) then
-            of_sexp_errorf loc
-              "It is not allowed use both native and best \
-               for the same binary kind."
+            User_error.raise ~loc
+              [ Pp.textf "It is not allowed use both native and best \
+               for the same binary kind." ]
           else
             t
 
@@ -1750,8 +1750,8 @@ module Rule = struct
         | Some Action -> short_form
       end
     | sexp ->
-      of_sexp_errorf (Dune_lang.Ast.loc sexp)
-        "S-expression of the form (<atom> ...) expected"
+      User_error.raise ~loc:(Dune_lang.Ast.loc sexp)
+        [ Pp.textf "S-expression of the form (<atom> ...) expected" ]
 
   let decode =
     switch_file_kind
@@ -2032,7 +2032,7 @@ module Alias_conf = struct
   let alias_name =
     plain_string (fun ~loc s ->
       if Filename.basename s <> s then
-        of_sexp_errorf loc "%S is not a valid alias name" s
+        User_error.raise ~loc [ Pp.textf "%S is not a valid alias name" s ]
       else
         s)
 

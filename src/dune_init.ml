@@ -107,18 +107,18 @@ module File = struct
         match find_conflicting project stanzas f.content with
         | None -> Dune {f with content = f.content @ stanzas}
         | Some (a, b) ->
-          die "Updating existing stanzas is not yet supported.@\n\
+          User_error.raise [ Pp.textf "Updating existing stanzas is not yet supported.@\n\
                A preexisting dune stanza conflicts with a generated stanza:\
                @\n@\nGenerated stanza:@.%a@.@.Pre-existing stanza:@.%a"
-            pp a pp b
+            pp a pp b ]
   end (* Stanza *)
 
   let create_dir path =
     try Path.mkdir_p path with
     | Unix.Unix_error (EACCES, _, _) ->
-      die "A project directory cannot be created or accessed: \
+      User_error.raise [ Pp.textf "A project directory cannot be created or accessed: \
            Lacking permissions needed to create directory %a"
-        Path.pp path
+        Path.pp path ]
 
   let load_dune_file ~path =
     let name = "dune" in
@@ -130,8 +130,8 @@ module File = struct
         match Format_dune_lang.parse_file (Some full_path) with
         | Format_dune_lang.Sexps content -> content
         | Format_dune_lang.OCaml_syntax _ ->
-          die "Cannot load dune file %a because it uses OCaml syntax"
-            Path.pp full_path
+          User_error.raise [ Pp.textf "Cannot load dune file %a because it uses OCaml syntax"
+            Path.pp full_path ]
     in
     Dune {path; name; content}
 
@@ -348,8 +348,8 @@ let validate_component_name name =
   match Lib_name.Local.of_string name with
   | Ok _ -> ()
   | _    ->
-    die "A component named '%s' cannot be created because it is an %s"
-      name Lib_name.Local.invalid_message
+    User_error.raise [ Pp.textf "A component named '%s' cannot be created because it is an %s"
+      name Lib_name.Local.invalid_message ]
 
 let print_completion kind name =
   Errors.kerrf ~f:print_to_console

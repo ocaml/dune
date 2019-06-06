@@ -22,11 +22,11 @@ let parse_module_names ~(unit : Module.t) ~modules words =
 
 let parse_deps_exn ~file lines =
   let invalid () =
-    die "ocamldep returned unexpected output for %s:\n\
+    User_error.raise [ Pp.textf "ocamldep returned unexpected output for %s:\n\
          %s"
       (Path.to_string_maybe_quoted file)
       (String.concat ~sep:"\n"
-         (List.map lines ~f:(sprintf "> %s")))
+         (List.map lines ~f:(sprintf "> %s"))) ]
   in
   match lines with
   | [] | _ :: _ :: _ -> invalid ()
@@ -65,7 +65,7 @@ let interpret_deps cctx ~unit deps =
       if Module.name unit <> m
       && not (is_alias_module cctx unit)
       && List.exists deps ~f:(fun x -> Module.name x = m) then
-        die "Module %a in directory %s depends on %a.\n\
+        User_error.raise [ Pp.textf "Module %a in directory %s depends on %a.\n\
              This doesn't make sense to me.\n\
              \n\
              %a is the main module of the library and is \
@@ -75,7 +75,7 @@ let interpret_deps cctx ~unit deps =
              on all the other modules in the library."
           Module.Name.pp (Module.name unit) (Path.to_string (Path.build dir))
           Module.Name.pp m
-          Module.Name.pp m);
+          Module.Name.pp m ]);
   match stdlib with
   | None -> begin
       match alias_module with

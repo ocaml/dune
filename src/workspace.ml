@@ -40,8 +40,8 @@ module Context = struct
            name = "install" ||
            String.contains name '/' ||
            String.contains name '\\' then
-          of_sexp_errorf loc
-            "%S is not allowed as a build context name" name;
+          User_error.raise ~loc
+            [ Pp.textf "%S is not allowed as a build context name" name ];
         name)
   end
 

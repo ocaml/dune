@@ -403,7 +403,9 @@ let exec ~(eval_pred : Dep.eval_pred) (t : ('a, 'b) t) (x : 'a)
         dyn_deps := Dep.Set.union !dyn_deps deps;
         x
       | Evaluating ->
-        die "Dependency cycle evaluating memoized build arrow %s" m.name
+        User_error.raise
+          [ Pp.textf "Dependency cycle evaluating memoized build arrow \
+                      %s" m.name ]
       | Unevaluated ->
         m.state <- Evaluating;
         let dyn_deps' = ref Dep.Set.empty in

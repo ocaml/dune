@@ -1381,12 +1381,12 @@ module DB = struct
         with
         | [] | [_] -> assert false
         | loc1 :: loc2 :: _ ->
-          die "Library %a is defined twice:\n\
+          User_error.raise [ Pp.textf "Library %a is defined twice:\n\
                - %s\n\
                - %s"
             Lib_name.pp_quoted name
             (Loc.to_file_colon_line loc1)
-            (Loc.to_file_colon_line loc2)
+            (Loc.to_file_colon_line loc2) ]
     in
     check_valid_implementations map;
     create () ?parent

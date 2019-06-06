@@ -54,8 +54,8 @@ let of_sexp =
       | "1" -> (0, 0)
       | "2" -> (1, 0)
       | v ->
-        of_sexp_errorf loc
-          "Unsupported version %S, only version 1 is supported" v)
+        User_error.raise ~loc
+          [ Pp.textf "Unsupported version %S, only version 1 is supported" v ])
   in
   sum
     [ "dune",

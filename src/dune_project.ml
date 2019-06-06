@@ -102,7 +102,7 @@ end = struct
     let invalid s =
       (* Users would see this error if they did "dune build
          _build/default/.ppx/..." *)
-      die "Invalid encoded project name: %S" s
+      User_error.raise [ Pp.textf "Invalid encoded project name: %S" s ]
     in
     fun s ->
       match s with
@@ -164,7 +164,7 @@ module Source_kind = struct
          match String.split ~on:'/' s with
          | [user; repo] -> Github (user,repo)
          | _ ->
-           of_sexp_errorf loc "GitHub repository must be of form user/repo")
+           User_error.raise ~loc [ Pp.textf "GitHub repository must be of form user/repo" ])
       ; "uri", string >>| fun s -> Url s
       ]
 end
@@ -624,17 +624,17 @@ let parse ~dir ~lang ~opam_packages ~file =
          begin match packages, name with
          | [p], Some (Named name) ->
            if Package.Name.to_string p.name <> name then
-             of_sexp_errorf p.loc
-               "when a single package is defined, it must have the same \
-                name as the project name: %s" name;
+             User_error.raise ~loc:p.loc
+               [ Pp.textf "when a single package is defined, it must have the same \
+                name as the project name: %s" name ];
          | _, _ -> ()
          end;
          match
            Package.Name.Map.of_list_map packages ~f:(fun p -> p.name, p)
          with
          | Error (_, _, p) ->
-           of_sexp_errorf p.loc "package %s is already defined"
-             (Package.Name.to_string p.name)
+           User_error.raise ~loc:p.loc [ Pp.textf "package %s is already defined"
+             (Package.Name.to_string p.name) ]
          | Ok packages ->
            Package.Name.Map.merge packages opam_packages
              ~f:(fun _name dune opam ->

@@ -75,19 +75,19 @@ end = struct
             sprintf "%s (in project: %s)" s
               (Dune_project.Name.to_string_hum scope)
         in
-        die "Hash collision between set of ppx drivers:\n\
+        User_error.raise [ Pp.textf "Hash collision between set of ppx drivers:\n\
              - cache : %s\n\
              - fetch : %s"
           (to_string x')
-          (to_string x)
+          (to_string x) ]
       end
 
   let decode y =
     match Hashtbl.find reverse_table y with
     | Some x -> x
     | None ->
-      die "I don't know what ppx rewriters set %s correspond to."
-        (Digest.to_string y)
+      User_error.raise [ Pp.textf "I don't know what ppx rewriters set %s correspond to."
+        (Digest.to_string y) ]
 end
 
 let pped_module m ~f =

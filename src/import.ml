@@ -52,20 +52,6 @@ let quote_for_shell s =
   else
     s
 
-let suggest_function : (string -> string list -> string list) ref = ref (fun _ _ -> [])
-
-let hint name candidates =
-  match !suggest_function name candidates with
-  | [] -> ""
-  | l ->
-    let rec mk_hint = function
-      | [a; b] -> sprintf "%s or %s" a b
-      | [a] -> a
-      | a :: l -> sprintf "%s, %s" a (mk_hint l)
-      | [] -> ""
-    in
-    sprintf "\nHint: did you mean %s?" (mk_hint l)
-
 (* Disable file operations to force to use the IO module *)
 let open_in      = `Use_Io
 let open_in_bin  = `Use_Io
@@ -81,3 +67,15 @@ module No_io = struct
 end
 
 let print_to_console = Console.print
+
+let pp_cycle cycle ~f =
+  Pp.vbox [
+    Pp.concat ~sep:Pp.cut (List.mapi l ~f:(fun i x ->
+      Pp.box ~indent:3
+        [ Pp.seq (if i = 0 then
+                    Pp.(seq space space)
+                  else
+                    Pp.verbatim "->")
+            (Pp.seq Pp.space (f x))
+        ]))
+  ]

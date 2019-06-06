@@ -113,7 +113,7 @@ module Dependency = struct
           name, (let+ x = Var.decode in Uop (op, x)))
       in
       let ops =
-        ("!=", let+ loc = loc in of_sexp_error loc "Use <> instead of !=")
+        ("!=", let+ loc = loc in User_error.raise ~loc [ Pp.text "Use <> instead of !=" ])
         :: ops
       in
       fix begin fun t ->

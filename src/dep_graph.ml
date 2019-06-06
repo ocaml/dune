@@ -21,10 +21,6 @@ let deps_of t (m : Module.t) =
       ; "module", Module.Name.to_sexp name
       ]
 
-let pp_cycle fmt cycle =
-  (Fmt.list ~pp_sep:Fmt.nl (Fmt.prefix (Fmt.string "-> ") Module.Name.pp))
-    fmt (List.map cycle ~f:Module.name)
-
 let top_closed t modules =
   Module.Name.Map.to_list t.per_module
   |> List.map ~f:(fun (unit, (_module, deps)) ->
@@ -42,9 +38,12 @@ let top_closed t modules =
   with
   | Ok modules -> modules
   | Error cycle ->
-    die "dependency cycle between modules in %s:\n   %a"
-      (Path.Build.to_string t.dir)
-      pp_cycle cycle
+    User_error.raise
+      [ Pp.textf "dependency cycle between modules in %s:"
+          (Path.Build.to_string t.dir)
+      ; pp_cycle cycle ~f:(fun m ->
+          Pp.verbatim (Module.Name.to_string (Module.name m)))
+      ]
 
 module Multi = struct
   let top_closed_multi (ts : t list) modules =
@@ -58,8 +57,12 @@ module Multi = struct
     match Module.Obj_map.top_closure per_obj modules with
     | Ok modules -> modules
     | Error cycle ->
-      die "dependency cycle between modules\n   %a"
-        pp_cycle cycle
+    User_error.raise
+      [ Pp.textf "dependency cycle between modules:"
+          (Path.Build.to_string t.dir)
+      ; pp_cycle cycle ~f:(fun m ->
+          Pp.verbatim (Module.Name.to_string (Module.name m)))
+      ]
 end
 
 let make_top_closed_implementations ~name ~f ts modules =

@@ -57,8 +57,9 @@ let dune elem =
           if not (String.Set.mem vars name) then
             String.Set.add vars name
           else
-            of_sexp_errorf loc "Variable %s is defined for the second time."
-              name
+            User_error.raise ~loc
+              [ Pp.textf "Variable %s is defined for the second time."
+                  name ]
         in
         loop vars (Named (name, values) :: acc) l
     in

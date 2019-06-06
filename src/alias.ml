@@ -75,9 +75,11 @@ let stamp_file t =
 let find_dir_specified_on_command_line ~dir ~file_tree =
   match File_tree.find_dir file_tree dir with
   | None ->
-    die "From the command line:\n\
-         @{<error>Error@}: Don't know about directory %s!"
-      (Path.Source.to_string_maybe_quoted dir)
+    User_error.raise
+      [ Pp.textf "Don't know about directory %s (specified on the \
+                  command line)!"
+          (Path.Source.to_string_maybe_quoted dir)
+      ]
   | Some dir -> dir
 
 let standard_aliases = Hashtbl.create 7

@@ -61,7 +61,7 @@ let decode =
            | "" | "." | ".." -> true
            | _ -> false
         then
-          of_sexp_errorf loc "Invalid sub-directory name %S" dn
+          User_error.raise ~loc [ Pp.textf "Invalid sub-directory name %S" dn ]
         else
           dn)
       |> list

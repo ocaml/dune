@@ -86,12 +86,12 @@ module DB = struct
         with
         | [] | [_] -> assert false
         | loc1 :: loc2 :: _ ->
-          die "Public library %a is defined twice:\n\
+          User_error.raise [ Pp.textf "Public library %a is defined twice:\n\
                - %s\n\
                - %s"
             Lib_name.pp_quoted name
             (Loc.to_file_colon_line loc1)
-            (Loc.to_file_colon_line loc2)
+            (Loc.to_file_colon_line loc2) ]
     in
     let resolve = resolve t public_libs in
     let find_implementations = find_implementations t public_libs in

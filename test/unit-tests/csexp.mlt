@@ -1,8 +1,7 @@
 (* -*- tuareg -*- *)
 
 open Stdune
-
-open Dune_memory.CSexp
+open Stdune.Csexp
 
 let roundtrip x =
   let str = to_string_canonical x in

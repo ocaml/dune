@@ -1,6 +1,5 @@
 open Stdune
 open Utils
-open CSexp
 
 type memory = {root: Path.t; log: Log.t}
 
@@ -99,11 +98,11 @@ let promote memory paths metadata _ =
       let res = List.map ~f:promote paths
       and metadata_path =
         FSScheme.path (path_meta memory)
-          (Digest.string (to_string_canonical metadata))
+          (Digest.string (Csexp.to_string_canonical metadata))
       in
       mkpath (Path.parent_exn metadata_path) ;
       Io.write_file metadata_path
-        (CSexp.to_string_canonical
+        (Csexp.to_string_canonical
            (Sexp.List
               [ Sexp.List [Sexp.Atom "metadata"; metadata]
               ; Sexp.List
@@ -122,11 +121,11 @@ let promote memory paths metadata _ =
       res )
 
 let search memory metadata =
-  let metadata_bin = CSexp.to_string_canonical metadata in
+  let metadata_bin = Csexp.to_string_canonical metadata in
   let hash = Digest.string metadata_bin in
   let path = FSScheme.path (path_meta memory) hash in
   let metadata =
-    Io.with_file_in path ~f:(fun input -> parse_channel_canonical input)
+    Io.with_file_in path ~f:(fun input -> Csexp.parse_channel_canonical input)
   in
   match metadata with
   | Sexp.List

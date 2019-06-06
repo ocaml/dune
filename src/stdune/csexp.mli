@@ -1,4 +1,4 @@
-type t = Stdune.Sexp.t
+type t = Sexp.t
 
 module type Stream = sig
   type input

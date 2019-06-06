@@ -16,4 +16,4 @@ val promotion_to_string : promotion -> string
 val promote :
   memory -> (Path.t * Digest.t) list -> Sexp.t -> int option -> promotion list
 
-val search : memory -> CSexp.t -> (Path.t * Path.t) list
+val search : memory -> Sexp.t -> (Path.t * Path.t) list

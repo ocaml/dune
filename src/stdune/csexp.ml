@@ -1,5 +1,3 @@
-open Stdune
-
 exception CParse_error of string
 
 type t = Sexp.t

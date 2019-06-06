@@ -171,7 +171,7 @@ include Sub_system.Register_end_point(
       let inline_test_dir = Path.Build.relative dir ("." ^ inline_test_name) in
 
       let obj_dir =
-        Obj_dir.Local.make_exe ~dir:inline_test_dir
+        Obj_dir.make_exe ~dir:inline_test_dir
           ~name:inline_test_name in
 
       let name = "run" in

@@ -16,10 +16,10 @@ let dev_files =
 let add_obj_dir sctx ~obj_dir =
   if (Super_context.context sctx).merlin then
     let dir_glob =
-      let dir = Path.build (Obj_dir.Local.byte_dir obj_dir) in
+      let dir = Path.build (Obj_dir.byte_dir obj_dir) in
       File_selector.create ~dir dev_files in
     let dyn_deps = Build.paths_matching ~loc:(Loc.of_pos __POS__) dir_glob in
     Rules.Produce.Alias.add_deps
-      (Alias.check ~dir:(Obj_dir.Local.dir obj_dir))
+      (Alias.check ~dir:(Obj_dir.dir obj_dir))
       ~dyn_deps
       Path.Set.empty

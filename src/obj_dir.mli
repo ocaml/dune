@@ -1,75 +1,49 @@
 open! Stdune
 
-(** Representation of the object directory for libraries that are local to the workspace *)
-module Local : sig
-  type t
+type 'path t
 
-  (** The source_root directory *)
-  val dir : t -> Path.Build.t
-
-  val make_exe: dir:Path.Build.t -> name:string -> t
-
-  val need_dedicated_public_dir : t -> bool
-
-  (** The directory for ocamldep files *)
-  val obj_dir : t -> Path.Build.t
-
-  (** The private compiled byte file directories, and all cmi *)
-  val byte_dir : t -> Path.Build.t
-
-  val all_obj_dirs : t -> mode:Mode.t -> Path.Build.t list
-
-  (** The public compiled cmi file directory *)
-  val public_cmi_dir: t -> Path.Build.t
-
-  val make_lib
-    :  dir:Path.Build.t
-    -> has_private_modules:bool
-    -> Lib_name.Local.t
-    -> t
-end
-
-type t
-
-val of_local : Local.t -> t
+val of_local : Path.Build.t t -> Path.t t
 
 (** The source_root directory *)
-val dir : t -> Path.t
+val dir : 'path t -> 'path
 
 (** The directory for ocamldep files *)
-val obj_dir : t -> Path.t
+val obj_dir : 'path t -> 'path
 
 (** The private compiled native file directory *)
-val native_dir : t -> Path.t
+val native_dir : 'path t -> 'path
 
 (** The private compiled byte file directories, and all cmi *)
-val byte_dir : t -> Path.t
+val byte_dir : 'path t -> 'path
 
-val all_cmis: t -> Path.t list
+val all_cmis: 'path t -> 'path list
 
 (** The public compiled cmi file directory *)
-val public_cmi_dir: t -> Path.t
+val public_cmi_dir: 'path t -> 'path
 
-val pp: t Fmt.t
-val to_sexp: t -> Sexp.t
-
-val all_obj_dirs : t -> mode:Mode.t -> Path.t list
+val all_obj_dirs : 'path t -> mode:Mode.t -> 'path list
 
 val make_lib
   :  dir:Path.Build.t
   -> has_private_modules:bool
   -> Lib_name.Local.t
-  -> t
+  -> Path.Build.t t
 
-val make_external_no_private : dir:Path.t -> t
+val make_external_no_private : dir:Path.t -> Path.t t
 
-val encode : t -> Dune_lang.t list
-val decode : dir:Path.t -> t Dune_lang.Decoder.t
+val encode : Path.t t -> Dune_lang.t list
+val decode : dir:Path.t -> Path.t t Dune_lang.Decoder.t
 
-val convert_to_external : t -> dir:Path.t -> t
+val convert_to_external : Path.t t -> dir:Path.t -> Path.t t
 
-val cm_dir : t -> Cm_kind.t -> Visibility.t -> Path.t
+val cm_dir : 'path t -> Cm_kind.t -> Visibility.t -> 'path
 
-val cm_public_dir : t -> Cm_kind.t -> Path.t
+val cm_public_dir : 'path t -> Cm_kind.t -> 'path
 
-val as_local_exn : t -> Local.t
+val to_dyn : _ t -> Dyn.t
+
+val make_exe: dir:Path.Build.t -> name:string -> Path.Build.t t
+
+val as_local_exn : Path.t t -> Path.Build.t t
+
+val need_dedicated_public_dir : Path.Build.t t -> bool

@@ -86,7 +86,7 @@ val make
   -> ?intf:File.t
   -> ?obj_name:string
   -> visibility:Visibility.t
-  -> obj_dir:Obj_dir.t
+  -> obj_dir:Path.t Obj_dir.t
   -> kind:Kind.t
   -> Name.t
   -> t
@@ -95,7 +95,7 @@ val make
 val of_source
   :  ?obj_name:string
   -> visibility:Visibility.t
-  -> obj_dir:Obj_dir.t
+  -> obj_dir:Path.t Obj_dir.t
   -> kind:Kind.t
   -> Source.t
   -> t
@@ -107,7 +107,7 @@ val real_unit_name : t -> Name.t
 
 val intf : t -> File.t option
 val impl : t -> File.t option
-val obj_dir : t -> Obj_dir.t
+val obj_dir : t -> Path.t Obj_dir.t
 
 val pp_flags : t -> (unit, string list) Build.t option
 
@@ -181,7 +181,7 @@ val is_private : t -> bool
 val is_virtual : t -> bool
 
 val set_private : t -> t
-val set_obj_dir : t -> obj_dir:Obj_dir.t -> t
+val set_obj_dir : t -> obj_dir:Path.t Obj_dir.t -> t
 val set_virtual : t -> t
 
 val sources : t -> Path.t list
@@ -190,7 +190,7 @@ val visibility : t -> Visibility.t
 
 val encode : t -> Dune_lang.t list
 
-val decode : obj_dir:Obj_dir.t -> t Dune_lang.Decoder.t
+val decode : obj_dir:Path.t Obj_dir.t -> t Dune_lang.Decoder.t
 
 (** [pped m] return [m] but with the preprocessed source paths paths *)
 val pped : t -> t

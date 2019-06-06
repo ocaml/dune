@@ -65,7 +65,7 @@ type t =
   ; status           : Status.t
   ; src_dir          : Path.t
   ; orig_src_dir     : Path.t option
-  ; obj_dir          : Obj_dir.t
+  ; obj_dir          : Path.t Obj_dir.t
   ; version          : string option
   ; synopsis         : string option
   ; archives         : Path.t list Mode.Dict.t

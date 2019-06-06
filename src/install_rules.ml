@@ -35,7 +35,7 @@ let gen_dune_package sctx ~version ~(pkg : Local_package.t) =
               let lib = Lib.Local.to_lib lib in
               let name = Lib.name lib in
               let foreign_objects =
-                let dir = Obj_dir.Local.obj_dir obj_dir in
+                let dir = Obj_dir.obj_dir obj_dir in
                 Dir_contents.c_sources_of_library dir_contents ~name
                 |> C.Sources.objects ~dir ~ext_obj:ctx.ext_obj
                 |> List.map ~f:Path.build

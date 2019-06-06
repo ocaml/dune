@@ -12,7 +12,7 @@ module Source : sig
 
   val loc : t -> Loc.t
   val modules : t -> Module.t Module.Name.Map.t
-  val obj_dir : t -> Obj_dir.Local.t
+  val obj_dir : t -> Path.Build.t Obj_dir.t
 end
 
 type t

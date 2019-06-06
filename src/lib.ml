@@ -1775,7 +1775,7 @@ module Local : sig
   val of_lib : lib -> t option
   val of_lib_exn : lib -> t
   val to_lib : t -> lib
-  val obj_dir : t -> Obj_dir.Local.t
+  val obj_dir : t -> Path.Build.t Obj_dir.t
   val src_dir : t -> Path.Build.t
   val to_dyn : t -> Dyn.t
   val equal : t -> t -> bool

@@ -27,6 +27,7 @@ module DB : sig
     -> installed_libs:Lib.DB.t
     -> lib_config:Lib_config.t
     -> (Path.Build.t * Dune_file.Library.t) list
+    -> Dune_file.External_variant.t list
     -> t * Lib.DB.t
 
   val find_by_dir  : t -> Path.Build.t        -> scope

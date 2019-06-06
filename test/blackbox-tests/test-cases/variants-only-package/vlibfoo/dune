@@ -1,0 +1,5 @@
+(library
+ (name vlibfoo)
+ (public_name vlibfoo)
+ (virtual_modules vlibfoo)
+)

@@ -85,6 +85,19 @@ val hvbox : ?indent:int -> 'a t list -> 'a t
 (** Try to put as much as possible on each line. *)
 val hovbox : ?indent:int -> 'a t list -> 'a t
 
+(** {1 Common convenience functions} *)
+
+(** [enumerate l ~f] produces an enumeration of the form:
+
+    {v
+       - item1
+       - item2
+       - item3
+       ...
+    v}
+*)
+val enumerate : 'a list -> f:('a -> 'b t) -> 'b t
+
 (** {1 Rendering} *)
 
 module type Tag = sig

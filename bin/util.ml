@@ -19,17 +19,21 @@ let check_path contexts =
   in
   fun path ->
     let internal path =
-      die "This path is internal to dune: %s"
-        (Path.to_string_maybe_quoted path)
+      User_error.raise
+        [ Pp.textf "This path is internal to dune: %s"
+            (Path.to_string_maybe_quoted path) ]
     in
     let context_exn ctx =
       match String.Map.find contexts ctx with
       | Some context -> context
       | None ->
-        die "%s refers to unknown build context: %s%s"
-          (Path.to_string_maybe_quoted path)
-          ctx
-          (hint ctx (String.Map.keys contexts))
+        User_error.raise
+          [ Pp.textf "%s refers to unknown build context: %s"
+              (Path.to_string_maybe_quoted path)
+              ctx
+          ]
+          ~hints:(User_message.did_you_mean ctx
+                    ~candidates:(String.Map.keys contexts))
     in
     match Path.kind path with
     | External e -> External e

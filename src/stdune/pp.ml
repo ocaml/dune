@@ -199,3 +199,9 @@ let text s = Text s
 let textf fmt = Printf.ksprintf text fmt
 
 let tag t ~tag = Tag (tag, t)
+
+let enumerate l ~f =
+  vbox [ concat ~sep:cut (List.map l ~f:(fun x ->
+    box ~indent:2
+      [ seq (char '-') (seq space (f x)) ])
+  ]

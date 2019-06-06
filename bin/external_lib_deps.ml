@@ -1,13 +1,11 @@
 open Stdune
 open Import
 
-let format_external_libs libs =
-  Lib_name.Map.to_list libs
-  |> List.map ~f:(fun (name, kind) ->
+let pp_external_libs libs =
+  Pp.enumerate (Lib_name.Map.to_list libs) ~f:(fun (name, kind) ->
     match (kind : Lib_deps_info.Kind.t) with
-    | Optional -> sprintf "- %s (optional)" (Lib_name.to_string name)
-    | Required -> sprintf "- %s" (Lib_name.to_string name))
-  |> String.concat ~sep:"\n"
+    | Optional -> Pp.textf "%s (optional)" (Lib_name.to_string name)
+    | Required -> Pp.textf "%s" (Lib_name.to_string name))
 
 let doc = "Print out external libraries needed to build the given targets."
 
@@ -38,8 +36,8 @@ let run ~lib_deps ~by_dir ~setup ~only_missing ~sexp =
       in
       if only_missing then begin
         if by_dir || sexp then
-          die "@{<error>Error@}: --only-missing cannot be used with \
-               --unstable-by-dir or --sexp";
+          User_error.raise [ Pp.textf "--only-missing cannot be used with \
+                                       --unstable-by-dir or --sexp" ];
         let context =
           List.find_exn setup.workspace.contexts
             ~f:(fun c -> c.name = context_name)
@@ -53,35 +51,38 @@ let run ~lib_deps ~by_dir ~setup ~only_missing ~sexp =
         else if Lib_name.Map.for_alli missing
                   ~f:(fun _ kind -> kind = Lib_deps_info.Kind.Optional)
         then begin
-          Format.eprintf
-            "@{<error>Error@}: The following libraries are missing \
-             in the %s context:\n\
-             %s@."
-            context_name
-            (format_external_libs missing);
+          User_message.prerr
+            (User_error.make
+               [ Pp.textf "The following libraries are missing \
+                           in the %s context:"
+                   context_name
+               ; pp_external_libs missing
+               ];
           false
         end else begin
-          Format.eprintf
-            "@{<error>Error@}: The following libraries are missing \
-             in the %s context:\n\
-             %s\n\
-             Hint: try: opam install %s@."
-            context_name
-            (format_external_libs missing)
-            (Lib_name.Map.to_list missing
-             |> List.filter_map ~f:(fun (name, kind) ->
-               match (kind : Lib_deps_info.Kind.t) with
-               | Optional -> None
-               | Required -> Some (Lib_name.package_name name))
-             |> Package.Name.Set.of_list
-             |> Package.Name.Set.to_list
-             |> List.map ~f:Package.Name.to_string
-             |> String.concat ~sep:" ");
+          User_message.prerr
+            (User_error.make
+               [ Pp.textf "The following libraries are missing \
+                           in the %s context:"
+                   context_name
+               ; pp_external_libs missing
+               ]
+               ~hints:[ Pp.concat ~sep:Pp.space
+                          (Pp.textf "try: opam install"
+                           :: Lib_name.Map.to_list missing
+                           |> List.filter_map ~f:(fun (name, kind) ->
+                             match (kind : Lib_deps_info.Kind.t) with
+                             | Optional -> None
+                             | Required -> Some (Lib_name.package_name name))
+                           |> Package.Name.Set.of_list
+                           |> Package.Name.Set.to_list
+                           |> List.map ~f:Package.Name.to_string)
+                      ]);
           true
         end
       end else if sexp then begin
         if not by_dir then
-          die "@{<error>Error@}: --sexp requires --unstable-by-dir";
+          User_error.raise [ Pp.textf "--sexp requires --unstable-by-dir" ];
         let lib_deps_by_dir =
           lib_deps_by_dir
           |> Path.Source.Map.map ~f:(Lib_name.Map.filteri ~f:is_external)
@@ -98,7 +99,8 @@ let run ~lib_deps ~by_dir ~setup ~only_missing ~sexp =
         acc
       end else begin
         if by_dir then
-          die "@{<error>Error@}: --unstable-by-dir cannot be used without --sexp";
+          User_error.raise
+            [ Pp.textf "--unstable-by-dir cannot be used without --sexp" ];
         Printf.printf
           "These are the external library dependencies in the %s context:\n\
            %s\n%!"

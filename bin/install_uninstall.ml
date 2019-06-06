@@ -32,18 +32,18 @@ let resolve_package_install setup pkg =
   | Ok path -> path
   | Error () ->
     let pkg = Package.Name.to_string pkg in
-    die "Unknown package %s!%s" pkg
-      (hint pkg
-         (Package.Name.Map.keys setup.conf.packages
-          |> List.map ~f:Package.Name.to_string))
+    User_error.raise [ Pp.textf "Unknown package %s!" pkg ]
+      ~hints:(User_message.did_you_mean pkg
+                ~candidates:(Package.Name.Map.keys setup.conf.packages
+                             |> List.map ~f:Package.Name.to_string))
 
 let print_unix_error f =
   try
     f ()
   with Unix.Unix_error (e, _, _) ->
-    Format.eprintf "@{<error>Error@}: %s@."
-      (Unix.error_message e)
-
+    User_message.prerr
+      (User_error.make
+         [ Pp.text (Unix.error_message e) ])
 
 let set_executable_bits   x = x lor  0o111
 let clear_executable_bits x = x land (lnot 0o111)
@@ -109,8 +109,9 @@ module File_ops_real : FILE_OPERATIONS = struct
           (Path.to_string_maybe_quoted dir);
         print_unix_error (fun () -> Path.rmdir dir)
       | Error e ->
-        Format.eprintf "@{<error>Error@}: %s@."
-          (Unix.error_message e)
+        User_message.prerr
+          (User_error.make
+             [ Pp.text (Unix.error_message e) ])
       | _  -> ()
 
   let mkdir_p = Path.mkdir_p
@@ -189,12 +190,12 @@ let install_uninstall ~what =
         |> List.partition_map ~f:Fn.id
       in
       if missing_install_files <> [] then begin
-        die "The following <package>.install are missing:\n\
-             %s\n\
-             You need to run: dune build @install"
-          (String.concat ~sep:"\n"
-             (List.map missing_install_files
-                ~f:(fun p -> sprintf "- %s" (Path.to_string p))))
+        User_error.raise
+          [ Pp.textf "The following <package>.install are missing:"
+          ; Pp.enumerate missing_install_files ~f:(fun p ->
+              Pp.text (Path.to_string p))
+          ]
+          ~hints:[ Pp.text "try running: dune build @install" ]
       end;
       (match
          workspace.contexts,
@@ -202,8 +203,10 @@ let install_uninstall ~what =
          libdir_from_command_line
        with
        | _ :: _ :: _, Some _, _ | _ :: _ :: _, _, Some _ ->
-         die "Cannot specify --prefix or --libdir when installing \
-              into multiple contexts!"
+         User_error.raise
+           [ Pp.text "Cannot specify --prefix or --libdir when installing \
+                      into multiple contexts!"
+           ]
        | _ -> ());
       let module CMap = Map.Make(Context) in
       let install_files_by_context =
@@ -222,20 +225,14 @@ let install_uninstall ~what =
                 with
                 | [] -> (package, entries)
                 | missing_files ->
-                  let pp =
-                    let open Pp in
-                    List.map missing_files ~f:(fun p ->
-                      concat
-                        [ verbatim "- "
-                        ; verbatim (Path.Build.to_string_maybe_quoted p)
-                        ]
-                    )
-                    |> concat ~sep:newline
-                  in
-                  die "The following files which are listed in %s cannot be \
-                       installed because they do not exist:@.%a@."
-                    (Path.to_string_maybe_quoted install_file)
-                    (fun fmt () -> Pp.pp fmt pp) ())
+                  User_error.raise
+                    [ Pp.textf "The following files which are listed \
+                                in %s cannot be installed because they \
+                                do not exist:"
+                        (Path.to_string_maybe_quoted install_file)
+                    ; Pp.enumerate missing_files ~f:(fun p ->
+                        Pp.text (Path.Build.to_string_maybe_quoted p)
+                    ]
           in
           (context, entries_per_package))
       in
@@ -248,7 +245,7 @@ let install_uninstall ~what =
               get_dirs context ~prefix_from_command_line
                 ~libdir_from_command_line
             in
-            entries_per_package 
+            entries_per_package
             |> Package.Name.Map.iteri ~f:(fun package entries ->
               let paths =
                 Install.Section.Paths.make

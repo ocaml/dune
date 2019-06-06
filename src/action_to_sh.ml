@@ -96,15 +96,17 @@ let quote s = Pp.verbatim (quote_for_shell s)
 let rec pp = function
   | Run (prog, args) ->
     Pp.hovbox ~indent:2
-      (quote prog
-       :: List.concat_map args ~f:(fun arg ->
-         [Pp.space; quote arg]))
+      (Pp.concat
+         (quote prog
+          :: List.concat_map args ~f:(fun arg ->
+            [Pp.space; quote arg])))
   | Chdir dir ->
     Pp.hovbox ~indent:2
-      [ Pp.verbatim "cd"
-      ; Pp.space
-      ; quote dir
-      ]
+      (Pp.concat
+         [ Pp.verbatim "cd"
+         ; Pp.space
+         ; quote dir
+         ])
   | Setenv (k, v) ->
     Pp.concat [Pp.verbatim k; Pp.verbatim "="; quote v]
   | Sh s ->
@@ -115,29 +117,32 @@ let rec pp = function
       | [x] -> pp x
       | l ->
         Pp.box
-          [ Pp.hvbox ~indent:2
-              [ Pp.char '{'
-              ; Pp.space
-              ; Pp.hvbox [Pp.concat_map l ~sep:Pp.space
-                            ~f:(fun x -> Pp.seq (pp x) (Pp.char ';'))]
-              ]
-          ; Pp.space
-          ; Pp.char '}'
-          ]
+          (Pp.concat
+             [ Pp.hvbox ~indent:2
+                 (Pp.concat
+                    [ Pp.char '{'
+                    ; Pp.space
+                    ; Pp.hvbox (Pp.concat_map l ~sep:Pp.space
+                                  ~f:(fun x -> Pp.seq (pp x) (Pp.char ';')))
+                    ])
+             ; Pp.space
+             ; Pp.char '}'
+             ])
     in
     Pp.hovbox ~indent:2
-      [ body
-      ; Pp.space
-      ; Pp.verbatim (match outputs with
-          | Stdout -> ">"
-          | Stderr -> "2>"
-          | Outputs -> "&>")
-      ; Pp.space
-      ; quote
-          (match dest with
-           | Dev_null -> "/dev/null"
-           | File fn -> fn)
-      ]
+      (Pp.concat
+         [ body
+         ; Pp.space
+         ; Pp.verbatim (match outputs with
+             | Stdout -> ">"
+             | Stderr -> "2>"
+             | Outputs -> "&>")
+         ; Pp.space
+         ; quote
+             (match dest with
+              | Dev_null -> "/dev/null"
+              | File fn -> fn)
+         ])
 
 let rec pp_seq = function
   | [] -> Pp.verbatim "true"

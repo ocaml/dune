@@ -168,11 +168,11 @@ let concat_map ?(sep=Nop) l ~f =
   | [] -> Nop
   | [x] -> f x
   | l -> Concat (sep, List.map l ~f)
-let box ?(indent=0) l = Box (indent, concat l)
-let vbox ?(indent=0) l = Vbox (indent, concat l)
-let hbox l = Hbox (concat l)
-let hvbox ?(indent=0) l = Hvbox (indent, concat l)
-let hovbox ?(indent=0) l = Hovbox (indent, concat l)
+let box ?(indent=0) t = Box (indent, t)
+let vbox ?(indent=0) t = Vbox (indent, t)
+let hbox t = Hbox t
+let hvbox ?(indent=0) t = Hvbox (indent, t)
+let hovbox ?(indent=0) t = Hovbox (indent, t)
 
 let verbatim x = Verbatim x
 let char x = Char x

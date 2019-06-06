@@ -31,73 +31,82 @@ let rec pp = function
   | Option (Some x) -> pp (Variant ("Some", [x]))
   | List x ->
     Pp.box
-      [ Pp.char '['
-      ; Pp.concat_map ~sep:(Pp.seq (Pp.char ';') Pp.space) x ~f:pp
-      ; Pp.char ']'
-      ]
+      (Pp.concat
+         [ Pp.char '['
+         ; Pp.concat_map ~sep:(Pp.seq (Pp.char ';') Pp.space) x ~f:pp
+         ; Pp.char ']'
+         ])
   | Array a ->
     Pp.box
-      [ Pp.verbatim "[|"
-      ; Pp.concat_map ~sep:(Pp.seq (Pp.char ';') Pp.space) (Array.to_list a) ~f:pp
-      ; Pp.verbatim "|]"
-      ]
+      (Pp.concat
+         [ Pp.verbatim "[|"
+         ; Pp.concat_map ~sep:(Pp.seq (Pp.char ';') Pp.space) (Array.to_list a) ~f:pp
+         ; Pp.verbatim "|]"
+         ])
   | Set xs ->
     Pp.box
-      [ Pp.verbatim "set {"
-      ; Pp.concat_map ~sep:(Pp.seq (Pp.char ';') Pp.space) xs ~f:pp
-      ; Pp.verbatim "}"
-      ]
+      (Pp.concat
+         [ Pp.verbatim "set {"
+         ; Pp.concat_map ~sep:(Pp.seq (Pp.char ';') Pp.space) xs ~f:pp
+         ; Pp.verbatim "}"
+         ])
   | Map xs ->
     Pp.box
-      [ Pp.verbatim "map {"
-      ; Pp.concat_map ~sep:(Pp.seq (Pp.char ';') Pp.space) xs ~f:(fun (k, v) ->
-          Pp.box
-            [ pp k
-            ; Pp.space
-            ; Pp.verbatim ":"
-            ; Pp.space
-            ; pp v
-            ]
-        )
-      ; Pp.verbatim "}"
-      ]
+      (Pp.concat
+         [ Pp.verbatim "map {"
+         ; Pp.concat_map ~sep:(Pp.seq (Pp.char ';') Pp.space) xs ~f:(fun (k, v) ->
+             Pp.box
+               (Pp.concat
+                  [ pp k
+                  ; Pp.space
+                  ; Pp.verbatim ":"
+                  ; Pp.space
+                  ; pp v
+                  ])
+           )
+         ; Pp.verbatim "}"
+         ])
   | Tuple x ->
     Pp.box
-      [ Pp.char '('
-      ; Pp.concat_map ~sep:(Pp.seq (Pp.char ',') Pp.space) x ~f:pp
-      ; Pp.char ')'
-      ]
+      (Pp.concat
+         [ Pp.char '('
+         ; Pp.concat_map ~sep:(Pp.seq (Pp.char ',') Pp.space) x ~f:pp
+         ; Pp.char ')'
+         ])
   | Record fields ->
     Pp.vbox ~indent:2
-      [ Pp.char '{'
-      ; Pp.concat_map ~sep:(Pp.char ';') fields ~f:(fun (f, v) ->
-          Pp.concat
-            [ Pp.verbatim f
-            ; Pp.space
-            ; Pp.char '='
-            ; Pp.space
-            ; Pp.box ~indent:2 [pp v]
-            ]
-        )
-      ; Pp.char '}'
-      ]
+      (Pp.concat
+         [ Pp.char '{'
+         ; Pp.concat_map ~sep:(Pp.char ';') fields ~f:(fun (f, v) ->
+             Pp.concat
+               [ Pp.verbatim f
+               ; Pp.space
+               ; Pp.char '='
+               ; Pp.space
+               ; Pp.box ~indent:2 (pp v)
+               ]
+           )
+         ; Pp.char '}'
+         ])
   | Variant (v, []) -> Pp.verbatim v
   | Variant (v, xs) ->
     Pp.hvbox ~indent:2
-      [ Pp.verbatim v
-      ; Pp.space
-      ; Pp.concat_map ~sep:(Pp.char ',') xs ~f:pp
-      ]
+      (Pp.concat
+         [ Pp.verbatim v
+         ; Pp.space
+         ; Pp.concat_map ~sep:(Pp.char ',') xs ~f:pp
+         ])
 
 and pp_sexp = function
   | Sexp0.Atom s -> Pp.verbatim (Escape.quote_if_needed s)
   | List [] -> Pp.verbatim "()"
   | List l ->
     Pp.box ~indent:1
-      [ Pp.char '('
-      ; Pp.hvbox [ Pp.concat_map l ~sep:Pp.space ~f:pp_sexp ]
-      ; Pp.char ')'
-      ]
+      (Pp.concat
+         [ Pp.char '('
+         ; Pp.hvbox (Pp.concat_map l ~sep:Pp.space ~f:pp_sexp)
+         ; Pp.char ')'
+         ])
 
 let pp fmt t = Pp.pp fmt (pp t)
 

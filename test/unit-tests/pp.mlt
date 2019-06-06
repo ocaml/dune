@@ -1,0 +1,41 @@
+(* -*- tuareg -*- *)
+open! Stdune;;
+
+#warnings "-40";;
+
+let pp pp =
+  Format.printf "%a@." Pp.pp pp
+;;
+
+[%%ignore]
+
+let enum_x_and_y =
+  Pp.enumerate
+      [ Array.make 50 "x"
+      ; Array.make 50 "y"
+      ]
+      ~f:(fun a -> Pp.concat_map (Array.to_list a) ~sep:Pp.space ~f:Pp.verbatim)
+[%%ignore]
+
+pp enum_x_and_y
+[%%expect{|
+- x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x
+  x x x x x x x x x x x x
+- y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y
+  y y y y y y y y y y y y
+- : unit = ()
+|}]
+
+pp (Pp.enumerate
+      [ Pp.enumerate [ "abc"; "def" ] ~f:Pp.text
+      ; enum_x_and_y
+      ] ~f:Fn.id)
+[%%expect{|
+- - abc
+  - def
+- - x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x
+    x x x x x x x x x x x x x
+  - y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y
+    y y y y y y y y y y y y y
+- : unit = ()
+|}]

@@ -112,7 +112,7 @@ let evaluate ~union_rules =
         not (Dir_set.is_subset paths ~of_:env)
         && not (Dir_set.is_subset (Dir_set.negate paths) ~of_:env)
       then
-        Exn.code_error
+        Errors.code_error
           "inner [Approximate] specifies a set such that neither it, \
            nor its negation, are a subset of directories specified by \
            the outer [Approximate]."
@@ -131,7 +131,7 @@ let evaluate ~union_rules =
       (match violations with
        | [] -> ()
        | _ :: _ ->
-         Exn.code_error
+         Errors.code_error
            "Scheme attempted to generate rules in a directory it promised not \
             to touch"
            [ "directories", (Sexp.Encoder.list Path.to_sexp) violations ]);

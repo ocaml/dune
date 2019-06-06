@@ -572,7 +572,7 @@ let already_in_table (info : Lib_info.t) name x =
       List [Sexp.Atom "Hidden";
             Path.to_sexp path; Sexp.Atom reason]
   in
-  Exn.code_error
+  Errors.code_error
     "Lib_db.DB: resolver returned name that's already in the table"
     [ "name"            , Lib_name.to_sexp name
     ; "returned_lib"    , to_sexp (info.src_dir, name)
@@ -1497,7 +1497,7 @@ module DB = struct
   let get_compile_info t ?(allow_overlaps=false) name =
     match find_even_when_hidden t name with
     | None ->
-      Exn.code_error "Lib.DB.get_compile_info got library that doesn't exist"
+      Errors.code_error "Lib.DB.get_compile_info got library that doesn't exist"
         [ "name", Lib_name.to_sexp name ]
     | Some lib ->
       let t = Option.some_if (not allow_overlaps) t in
@@ -1798,8 +1798,8 @@ end = struct
   let of_lib_exn t =
     match of_lib t with
     | Some l -> l
-    | None -> Exn.code_error "Lib.Local.of_lib_exn"
-                ["l", Dyn.to_sexp (to_dyn t)]
+    | None -> Code_error.raise "Lib.Local.of_lib_exn"
+                ["l", to_dyn t]
 
   let obj_dir t = Obj_dir.as_local_exn t.info.obj_dir
 

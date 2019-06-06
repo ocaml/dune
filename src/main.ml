@@ -24,7 +24,7 @@ let package_install_file w pkg =
 
 let setup_env ~capture_outputs =
   let env =
-    if capture_outputs || not (Lazy.force Colors.stderr_supports_colors) then
+    if capture_outputs || not (Lazy.force Ansi_color.stderr_supports_color) then
       Env.initial
     else
       Colors.setup_env_for_colors Env.initial
@@ -216,7 +216,7 @@ let bootstrap () =
     in
     let config =
       Config.adapt_display config
-        ~output_is_a_tty:(Lazy.force Colors.stderr_supports_colors)
+        ~output_is_a_tty:(Lazy.force Ansi_color.stderr_supports_color)
     in
     let log = Log.create ~display:config.display () in
     Scheduler.go ~log ~config

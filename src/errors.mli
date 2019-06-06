@@ -4,6 +4,24 @@ open Stdune
 (* CR-soon diml: stop including this in [Import] *)
 (** This module is included in [Import] *)
 
+(* CR-soon diml:
+   - Rename to [User_error]
+   - change the [string] argument to [Loc0.t option * string] and get rid of
+   [Loc.Error]. The two are a bit confusing
+   - change [string] to [Colors.Style.t Lib_name.t]
+*)
+(** A fatal error, that should be reported to the user in a nice way *)
+exception Fatal_error of string
+
+exception Loc_error of Loc.t * string
+
+val fatalf
+  :  ?loc:Loc.t
+  -> ('a, unit, string, string, string, 'b) format6
+  -> 'a
+
+val code_error : string -> (string * Sexp.t) list -> _
+
 (* CR-soon diml: we won't need this once we can generate rules dynamically *)
 (** Raised for errors that have already been reported to the user and shouldn't be
     reported again. This might happen when trying to build a dependency that has already

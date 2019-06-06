@@ -48,11 +48,11 @@ let print ((A atom) as t) syntax =
   else
     match syntax with
     | Jbuild ->
-      Exn.code_error "atom cannot be printed in jbuild syntax"
-        ["atom", Sexp.Atom atom]
+      Code_error.raise "atom cannot be printed in jbuild syntax"
+        ["atom", String atom]
     | Dune ->
-      Exn.code_error "atom cannot be printed in dune syntax"
-        ["atom", Sexp.Atom atom]
+      Code_error.raise "atom cannot be printed in dune syntax"
+        ["atom", String atom]
 
 let of_int i = of_string (string_of_int i)
 let of_float x = of_string (string_of_float x)

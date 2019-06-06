@@ -53,6 +53,9 @@ val break : nspaces:int -> shift:int -> _ t
 (** Force a newline to be printed *)
 val newline : _ t
 
+(** Convert tags in a documents *)
+val map_tags : 'a t -> f:('a -> 'b) -> 'b t
+
 (** {1 Boxes} *)
 
 (** Boxes are the basic components to control the layout of the text.
@@ -78,6 +81,19 @@ val hvbox : ?indent:int -> 'a t -> 'a t
 
 (** Try to put as much as possible on each line. *)
 val hovbox : ?indent:int -> 'a t -> 'a t
+
+(** {1 Common convenience functions} *)
+
+(** [enumerate l ~f] produces an enumeration of the form:
+
+    {v
+       - item1
+       - item2
+       - item3
+       ...
+    v}
+*)
+val enumerate : 'a list -> f:('a -> 'b t) -> 'b t
 
 (** {1 Rendering} *)
 

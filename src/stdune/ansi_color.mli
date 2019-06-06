@@ -37,3 +37,13 @@ module Render : Pp.Renderer.S
 
 (** Filter out escape sequences in a string *)
 val strip : string -> string
+
+(** Print to [stdout] (not thread safe) *)
+val print : ?margin:int -> Style.t list Pp.t -> unit
+
+(** Print to [stderr] (not thread safe) *)
+val prerr : ?margin:int -> Style.t list Pp.t -> unit
+
+(** Whether [stdout]/[stderr] support colors *)
+val stdout_supports_color : bool Lazy.t
+val stderr_supports_color : bool Lazy.t

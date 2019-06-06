@@ -116,11 +116,11 @@ let print_rules scheme ~dir =
   in
   if not ((res1 : string list) = res2)
   then
-    Exn.code_error
+    Code_error.raise
       "Naive [collect_rules_simple] gives result inconsistent with [Scheme.evaluate]"
       [
-        "res1", Sexp.List (List.map res1 ~f:(fun s -> Sexp.Atom s));
-        "res2", Sexp.List (List.map res2 ~f:(fun s -> Sexp.Atom s));
+        "res1", Dyn.Encoder.(list string) res1;
+        "res2", Dyn.Encoder.(list string) res2;
       ]
   else
     (

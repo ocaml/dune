@@ -1,24 +1,5 @@
 (** Exceptions *)
 
-
-(* CR-soon diml:
-   - Rename to [User_error]
-   - change the [string] argument to [Loc0.t option * string] and get rid of
-   [Loc.Error]. The two are a bit confusing
-   - change [string] to [Colors.Style.t Lib_name.t]
-*)
-(** A fatal error, that should be reported to the user in a nice way *)
-exception Fatal_error of string
-
-exception Loc_error of Loc0.t * string
-
-val fatalf
-  :  ?loc:Loc0.t
-  -> ('a, unit, string, string, string, 'b) format6
-  -> 'a
-
-val code_error : string -> (string * Sexp0.t) list -> _
-
 type t = exn
 
 external raise         : exn -> _ = "%raise"

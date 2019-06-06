@@ -210,7 +210,7 @@ let modules_of_library t ~name =
   match Lib_name.Map.find map name with
   | Some m -> m
   | None ->
-    Exn.code_error "Dir_contents.modules_of_library"
+    Errors.code_error "Dir_contents.modules_of_library"
       [ "name", Lib_name.to_sexp name
       ; "available", Sexp.Encoder.(list Lib_name.to_sexp) (Lib_name.Map.keys map)
       ]
@@ -220,7 +220,7 @@ let modules_of_executables t ~first_exe =
   match String.Map.find map first_exe with
   | Some m -> m
   | None ->
-    Exn.code_error "Dir_contents.modules_of_executables"
+    Errors.code_error "Dir_contents.modules_of_executables"
       [ "first_exe", Sexp.Encoder.string first_exe
       ; "available", Sexp.Encoder.(list string) (String.Map.keys map)
       ]
@@ -239,7 +239,7 @@ let mlds t (doc : Documentation.t) =
   with
   | Some x -> x
   | None ->
-    Exn.code_error "Dir_contents.mlds"
+    Errors.code_error "Dir_contents.mlds"
       [ "doc", Loc.to_sexp doc.loc
       ; "available", Sexp.Encoder.(list Loc.to_sexp)
                        (List.map map ~f:(fun (d, _) -> d.Documentation.loc))
@@ -250,7 +250,7 @@ let coq_modules_of_library t ~name =
   match Lib_name.Map.find map name with
   | Some x -> x
   | None ->
-    Exn.code_error "Dir_contents.coq_modules_of_library"
+    Errors.code_error "Dir_contents.coq_modules_of_library"
       [ "name", Lib_name.to_sexp name
       ; "available", Sexp.Encoder.(list Lib_name.to_sexp) (Lib_name.Map.keys map)
       ]

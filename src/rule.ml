@@ -37,7 +37,7 @@ let make ?(sandbox=false) ?(mode=Dune_file.Rule.Mode.Standard)
     | None -> begin
         match info with
         | From_dune_file loc -> Errors.fail loc "Rule has no targets specified"
-        | _ -> Exn.code_error "Build_interpret.Rule.make: no targets" []
+        | _ -> Errors.code_error "Build_interpret.Rule.make: no targets" []
       end
     | Some x ->
       let dir = Path.Build.parent_exn x in
@@ -46,7 +46,7 @@ let make ?(sandbox=false) ?(mode=Dune_file.Rule.Mode.Standard)
       then begin
         match info with
         | Internal | Source_file_copy ->
-          Exn.code_error "rule has targets in different directories"
+          Errors.code_error "rule has targets in different directories"
             [ "targets", Path.Build.Set.to_sexp targets
             ]
         | From_dune_file loc ->

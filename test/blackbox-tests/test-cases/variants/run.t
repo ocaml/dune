@@ -15,8 +15,8 @@ variants results in an appropriate error message.
   File "dune", line 4, characters 11-14:
   4 |  (variants a b))
                  ^^^
-  Error: Multiple solutions for the implementation
-  of vlib  with variants [ "a"; "b" ]
+  Error: Multiple solutions for the implementation of vlib 
+  with variants [ "a"; "b" ]
   -> lib_b ("b")
   -> lib2_a ("a")
   -> required by executable bar in dune:2

@@ -106,7 +106,7 @@ let pp_file_excerpt ~context_lines ~max_lines_to_print_in_full
       Result.try_with (fun () -> Io.String_path.file_line file line_num) in
     if stop_c <= String.length line then begin
       let len = stop_c - start_c in
-      Format.fprintf pp "%a%*s\n"
+      Format.fprintf pp "%a%*s@."
         (pp_line padding_width) (line_num_str, line)
         (stop_c + padding_width + 3)
         (String.make len '^');

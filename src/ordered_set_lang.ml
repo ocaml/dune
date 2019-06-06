@@ -387,7 +387,7 @@ module Unexpanded = struct
           match Path.Map.find files_contents path with
           | Some x -> x
           | None ->
-            Exn.code_error
+            Errors.code_error
               "Ordered_set_lang.Unexpanded.expand"
               [ "included-file", Path.to_sexp path
               ; "files", Sexp.Encoder.(list Path.to_sexp)

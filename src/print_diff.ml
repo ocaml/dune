@@ -60,7 +60,7 @@ let print ?(skip_trailing_cr=Sys.win32) path1 path2 =
           Process.run ~dir ~env:Env.initial Strict prog
             [ "-keep-whitespace"
             ; "-location-style"; "omake"
-            ; if Lazy.force Colors.stderr_supports_colors then
+            ; if Lazy.force Ansi_color.stderr_supports_color then
                 "-unrefined"
               else
                 "-ascii"

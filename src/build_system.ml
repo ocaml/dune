@@ -408,11 +408,11 @@ let t = ref None
 let set x =
   match !t with
   | None -> t := Some x
-  | Some _ -> Exn.code_error "build system already initialized" []
+  | Some _ -> Errors.code_error "build system already initialized" []
 let get_build_system () =
   match !t with
   | Some t -> t
-  | None -> Exn.code_error "build system not yet initialized" []
+  | None -> Errors.code_error "build system not yet initialized" []
 let reset () = t := None
 let t = get_build_system
 
@@ -466,7 +466,7 @@ let add_spec_exn t fn rule =
   | None ->
     Path.Build.Table.add t.files fn rule
   | Some _ ->
-    Exn.code_error
+    Errors.code_error
       "add_spec_exn called on the same file twice. \
        This should be prevented by the check in [compile_rules]"
       [
@@ -897,8 +897,8 @@ The following targets are not:
       | Regular (ctx, path) ->
         Context_or_install.Context ctx, path
       | Alias _ | Other _ ->
-        Exn.code_error "[load_dir_step2_exn] was called on a strange path"
-          ["path", (Path.to_sexp dir)]
+        Code_error.raise "[load_dir_step2_exn] was called on a strange path"
+          ["path", Path.to_dyn dir]
     in
     (* the above check makes this safe *)
     let dir = Path.as_in_build_dir_exn dir in
@@ -907,8 +907,8 @@ The following targets are not:
       let gen_rules =
         match (Fdecl.get t.gen_rules) context_name with
         | None ->
-          Exn.code_error "[gen_rules] did not specify rules for the context"
-            ["context_name", (Context_or_install.to_sexp context_name)]
+          Code_error.raise "[gen_rules] did not specify rules for the context"
+            ["context_name", Context_or_install.to_dyn context_name]
         | Some rules ->
           rules
       in
@@ -1038,7 +1038,7 @@ The following targets are not:
     | Alias_dir_of dir' ->
       (match load_dir ~dir:(Path.build dir') with
        | Non_build _ ->
-         Exn.code_error "Can only forward to a build dir" []
+         Errors.code_error "Can only forward to a build dir" []
        | Build {
          targets_here = _;
          targets_of_alias_dir;
@@ -1488,12 +1488,12 @@ let process_memcycle exn =
       Memo.Cycle_error.get exn
       |> List.map ~f:(Format.asprintf "%a" Memo.Stack_frame.pp)
     in
-    Exn.code_error "dependency cycle that does not involve any files"
+    Errors.code_error "dependency cycle that does not involve any files"
       ["frames", Sexp.Encoder.(list string) frames]
   | Some last ->
     let first = List.hd cycle in
     let cycle = if last = first then cycle else last :: cycle in
-    Exn.Fatal_error
+    Errors.Fatal_error
       (Format.asprintf "Dependency cycle between the following files:\n    %s"
          (List.map cycle ~f:Path.to_string_maybe_quoted
           |> String.concat ~sep:"\n--> "))
@@ -1573,7 +1573,7 @@ let package_deps pkg files =
 let prefix_rules prefix ~f =
   let targets = Build.targets prefix in
   if not (Path.Build.Set.is_empty targets) then
-    Exn.code_error "Build_system.prefix_rules' prefix contains targets"
+    Errors.code_error "Build_system.prefix_rules' prefix contains targets"
       ["targets", Path.Build.Set.to_sexp targets];
   let res, rules = Rules.collect f in
   Rules.produce (Rules.map_rules rules ~f:(fun rule ->
@@ -1587,7 +1587,7 @@ let assert_not_in_memoized_function () =
    | [] ->
      ()
    | stack ->
-     Exn.code_error
+     Errors.code_error
        "Build_system.entry_point: called inside a memoized function"
        ["stack", Dyn.to_sexp (
           Dyn.Encoder.list Memo.Stack_frame.to_dyn stack

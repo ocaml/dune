@@ -320,7 +320,7 @@ let upgrade_opam_file todo fn =
     let ofs =
       List.fold_left substs ~init:0 ~f:(fun ofs (start, stop, repl) ->
         if not (ofs <= start && start <= stop) then
-          Exn.code_error "Invalid text subsitution"
+          Errors.code_error "Invalid text subsitution"
             [ "ofs", Sexp.Encoder.int ofs
             ; "start", Sexp.Encoder.int start
             ; "stop", Sexp.Encoder.int stop

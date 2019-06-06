@@ -136,7 +136,20 @@ module Styles = struct
     Style.escape_sequence l
 end
 
-module Render = Pp.Renderer.Make(struct
+let term_supports_color = lazy (
+  match Sys.getenv "TERM" with
+  | exception Not_found -> false
+  | "dumb" -> false
+  | _ -> true)
+
+let stdout_supports_color = lazy (
+  Lazy.force term_supports_color && Unix.isatty Unix.stdout)
+
+let stderr_supports_color = lazy (
+  Lazy.force term_supports_color && Unix.isatty Unix.stderr)
+
+module Render = struct
+  include Pp.Renderer.Make(struct
     type t = Style.t list
 
     module Handler = struct
@@ -155,6 +168,34 @@ module Render = Pp.Renderer.Make(struct
           ("", (t, seq), "")
     end
   end)
+
+  let channel_strip_colors oc =
+    let output = Staged.unstage (Pp.Render.channel oc) in
+    Staged.stage (fun ?margin ?tag_handler:_ pp ->
+      output ?margin (Pp.map_tags pp ~f:ignore))
+end
+
+let print =
+  let f = lazy (
+    Staged.unstage (
+      (if Lazy.force stdout_supports_color then
+         Render.channel
+       else
+         Render.channel_strip_colors)
+        stdout))
+  in
+  fun ?margin pp -> Lazy.force f ?margin ?tag_handler:None pp
+
+let prerr =
+  let f = lazy (
+    Staged.unstage (
+      (if Lazy.force stderr_supports_color then
+         Render.channel
+       else
+         Render.channel_strip_colors)
+        stderr))
+  in
+  fun ?margin pp -> Lazy.force f ?margin ?tag_handler:None pp
 
 let strip str =
   let len = String.length str in

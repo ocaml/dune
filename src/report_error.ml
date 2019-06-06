@@ -22,6 +22,19 @@ let set_hint p ~hint =
   {p with hint = Some hint}
 
 let builtin_printer = function
+  | User_error.E msg ->
+    Some
+      { loc = msg.loc
+      ; backtrace = false
+      ; hint =
+          (match msg.hints with
+           | [] -> None
+           | hint :: _ ->
+             Some (Format.asprintf "%a" Pp.pp (Pp.map_tags hint ~f:ignore)))
+      ; pp = fun ppf ->
+          Pp.pp ppf (User_message.pp { msg with loc = None; hints = [] }
+                     |> Pp.map_tags ~f:ignore)
+      }
   | Dune_lang.Decoder.Decoder (loc, msg, hint') ->
     let pp ppf = Format.fprintf ppf "@{<error>Error@}: %s%s\n" msg
                    (match hint' with
@@ -30,7 +43,7 @@ let builtin_printer = function
                       hint on candidates)
     in
     Some (make_printer ~loc pp)
-  | Exn.Loc_error (loc, msg) ->
+  | Errors.Loc_error (loc, msg) ->
     let pp ppf = Format.fprintf ppf "@{<error>Error@}: %s\n" msg in
     Some (make_printer ~loc pp)
   | Dune_lang.Parse_error e ->
@@ -38,7 +51,7 @@ let builtin_printer = function
     let msg = Dune_lang.Parse_error.message e in
     let pp ppf = Format.fprintf ppf "@{<error>Error@}: %s\n" msg in
     Some (make_printer ~loc pp)
-  | Exn.Fatal_error msg ->
+  | Errors.Fatal_error msg ->
     let pp ppf =
       if msg.[String.length msg - 1] = '\n' then
         Format.fprintf ppf "%s" msg

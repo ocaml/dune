@@ -27,16 +27,8 @@ let colorize =
     let fore, back = color_combos.(hash mod (Array.length color_combos)) in
     apply_string [Fg fore; Bg back] str
 
-let stderr_supports_colors = lazy(
-  Unix.(isatty stderr) &&
-  match Env.get Env.initial "TERM" with
-  | None        -> false
-  | Some "dumb" -> false
-  | Some _      -> true
-)
-
 let strip_colors_for_stderr s =
-  if Lazy.force stderr_supports_colors then
+  if Lazy.force Ansi_color.stderr_supports_color then
     s
   else
     Ansi_color.strip s
@@ -56,29 +48,9 @@ let setup_env_for_colors env =
   env
 
 module Style = struct
-  open Ansi_color.Style
+  include User_message.Style
 
-  type t =
-    | Loc
-    | Error
-    | Warning
-    | Kwd
-    | Id
-    | Prompt
-    | Details
-    | Ok
-    | Debug
-
-  let to_styles = function
-    | Loc     -> [Bold]
-    | Error   -> [Bold; Fg Red]
-    | Warning -> [Bold; Fg Magenta]
-    | Kwd     -> [Bold; Fg Blue]
-    | Id      -> [Bold; Fg Yellow]
-    | Prompt  -> [Bold; Fg Green]
-    | Details -> [Dim; Fg White]
-    | Ok      -> [Dim; Fg Green]
-    | Debug   -> [Underlined; Fg Bright_cyan]
+  let to_styles = User_message.Print_config.default
 
   let of_string = function
     | "loc"     -> Some Loc
@@ -100,7 +72,7 @@ let styles_of_tag s =
 
 let setup_err_formatter_colors () =
   let open Format in
-  if Lazy.force stderr_supports_colors then begin
+  if Lazy.force Ansi_color.stderr_supports_color then begin
     List.iter [err_formatter; err_ppf] ~f:(fun ppf ->
       let funcs = pp_get_formatter_tag_functions ppf () in
       pp_set_mark_tags ppf true;
@@ -117,13 +89,3 @@ let output_filename : styles = [Bold; Fg Green]
 let command_success : styles = [Bold; Fg Green]
 
 let command_error : styles = [Bold; Fg Red]
-
-module Render = Pp.Renderer.Make(struct
-    type t = Style.t
-
-    module Handler = struct
-      include Ansi_color.Render.Tag.Handler
-
-      let handle t style = handle t (Style.to_styles style)
-    end
-  end)

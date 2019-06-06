@@ -11,7 +11,7 @@ let for_lib t ~dir ~name =
   match Lib_name.Map.find t.libraries name with
   | Some m -> m
   | None ->
-    Exn.code_error "C_sources.for_lib"
+    Errors.code_error "C_sources.for_lib"
       [ "name", Lib_name.to_sexp name
       ; "dir", Path.to_sexp dir
       ; "available", Sexp.Encoder.(list Lib_name.to_sexp)

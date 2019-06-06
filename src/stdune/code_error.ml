@@ -20,4 +20,3 @@ let () =
   Printexc.register_printer (function
     | E t -> Some (Dyn.to_string (to_dyn t))
     | _ -> None)
-

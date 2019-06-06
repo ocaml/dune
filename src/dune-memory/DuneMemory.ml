@@ -89,7 +89,10 @@ let promote memory paths metadata _ =
           Already_promoted (path, p)
       | Collision.Not_found p ->
           mkpath (Path.parent_exn p) ;
-          Unix.rename (Path.to_string tmp) (Path.to_string p) ;
+          let dest = Path.to_string p in
+          Unix.rename (Path.to_string tmp) dest ;
+          (* Remove write permissions *)
+          Unix.chmod dest ((Unix.stat dest).st_perm land 0o555) ;
           Promoted (path, p)
   in
   unix (fun () ->

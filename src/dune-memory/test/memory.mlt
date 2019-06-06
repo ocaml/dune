@@ -63,6 +63,13 @@ val file1 : Path.t = <abstr>
 - : string option = None
 |}]
 
+(* Check write permissions where removed *)
+
+(Unix.stat (Path.to_string file1)).st_perm land 0o222 = 0;;
+[%%expect{|
+- : bool = true
+|}]
+
 Path.rm_rf dir;;
 [%%expect{|
 - : unit = ()

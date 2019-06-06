@@ -773,7 +773,7 @@ module Decoder = struct
         let ctx = Values (loc, None, uc) in
         result ctx (t ctx l)
       | sexp ->
-        User_error.raise ~loc:(Ast.loc sexp) [ Pp.text "List expected" ]
+        User_error.raise ~loc:(Ast.loc sexp) [ Pp.text "List expected" ])
 
   let if_list ~then_ ~else_ =
     peek_exn >>= function
@@ -870,7 +870,7 @@ module Decoder = struct
     if String.length x = 1 then
       x.[0]
     else
-      User_error.raise ~loc [ Pp.text "character expected" ]
+      User_error.raise ~loc [ Pp.text "character expected" ])
 
   let int =
     basic "Integer" (fun s ->
@@ -924,13 +924,13 @@ module Decoder = struct
         find_cstr cstrs loc s (Values (loc, Some s, uc)) []
       | Template { loc; _ }
       | Quoted_string (loc, _) ->
-        of_sexp_error loc "Atom expected"
+        User_error.raise ~loc [ Pp.text "Atom expected" ]
       | List (loc, []) ->
-        of_sexp_error loc "Non-empty list expected"
+        User_error.raise ~loc [ Pp.text "Non-empty list expected" ]
       | List (loc, name :: args) ->
         match name with
         | Quoted_string (loc, _) | List (loc, _) | Template { loc; _ } ->
-          of_sexp_error loc "Atom expected"
+          User_error.raise ~loc [ Pp.text "Atom expected" ]
         | Atom (s_loc, A s) ->
           find_cstr cstrs s_loc s (Values (loc, Some s, uc)) args)
 
@@ -938,7 +938,7 @@ module Decoder = struct
     next (function
       | Quoted_string (loc, _)
       | Template { loc; _ }
-      | List (loc, _) -> of_sexp_error loc "Atom expected"
+      | List (loc, _) -> User_error.raise ~loc [ Pp.text "Atom expected" ]
       | Atom (loc, A s) ->
         match List.assoc cstrs s with
         | Some value -> value
@@ -957,17 +957,17 @@ module Decoder = struct
     | Result.Ok x -> (x, state2)
     | Error msg ->
       let loc = loc_between_states ctx state1 state2 in
-      of_sexp_errorf loc "%s" msg
+      User_error.raise ~loc [ Pp.textf "%s" msg ]
 
   let field_missing loc name =
-    of_sexp_errorf loc "field %s missing" name
+    User_error.raise ~loc [ Pp.textf "field %s missing" name ]
   [@@inline never]
 
   let field_present_too_many_times _ name entries =
     match entries with
     | _ :: second :: _ ->
-      of_sexp_errorf (Ast.loc second) "Field %S is present too many times"
-        name
+      User_error.raise ~loc:(Ast.loc second) [ Pp.textf "Field %S is present too many times"
+        name ]
     | _ -> assert false
 
   let multiple_occurrences ?(on_dup=field_present_too_many_times) uc name last =
@@ -1044,11 +1044,11 @@ module Decoder = struct
                 ; prev  = Name.Map.find acc name
                 }
             | List (loc, _) | Quoted_string (loc, _) | Template { loc; _ } ->
-              of_sexp_error loc "Atom expected"
+              User_error.raise ~loc [ Pp.text "Atom expected" ]
           end
         | _ ->
-          of_sexp_error (Ast.loc sexp)
-            "S-expression of the form (<name> <values>...) expected")
+          User_error.raise ~loc:(Ast.loc sexp)
+            [ Pp.text "S-expression of the form (<name> <values>...) expected" ])
     in
     let ctx = Fields (loc, cstr, uc) in
     let x = result ctx (t ctx { Fields. unparsed; known = [] }) in

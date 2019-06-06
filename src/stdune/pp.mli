@@ -59,28 +59,25 @@ val newline : _ t
     Break hints such as [space] and [cut] may cause the line to be
     broken, depending on the splitting rules.  Whenever a line is
     split, the rest of the material printed in the box is indented with
-    [indent].
-
-    All functions take a list as argument for convenience.  Elements
-    are printed one by one. *)
+    [indent]. *)
 
 (** Try to put as much as possible on each line.  Additionally, a
     break hint always break the line if the breaking would reduce the
     indentation level ([break] with negative [shift] value). *)
-val box : ?indent:int -> 'a t list -> 'a t
+val box : ?indent:int -> 'a t -> 'a t
 
 (** Always break the line when encountering a break hint. *)
-val vbox : ?indent:int -> 'a t list -> 'a t
+val vbox : ?indent:int -> 'a t -> 'a t
 
 (** Print everything on one line, no matter what *)
-val hbox : 'a t list -> 'a t
+val hbox : 'a t -> 'a t
 
 (** If possible, print everything on one line. Otherwise, behave as a
     [vbox] *)
-val hvbox : ?indent:int -> 'a t list -> 'a t
+val hvbox : ?indent:int -> 'a t -> 'a t
 
 (** Try to put as much as possible on each line. *)
-val hovbox : ?indent:int -> 'a t list -> 'a t
+val hovbox : ?indent:int -> 'a t -> 'a t
 
 (** {1 Rendering} *)
 

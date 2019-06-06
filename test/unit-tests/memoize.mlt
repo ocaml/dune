@@ -42,9 +42,9 @@ let compdep x = Fiber.return (x ^ x);;
 
 (* our two dependencies are called some and another *)
 let mcompdep1 =
-  string_fn_create "some" ~output:(Allow_cutoff (module String)) (Some compdep) ~doc:"";;
+  string_fn_create "some" ~output:(Allow_cutoff (module String)) compdep ~doc:"";;
 let mcompdep2 =
-  string_fn_create "another" ~output:(Allow_cutoff (module String)) (Some compdep) ~doc:"";;
+  string_fn_create "another" ~output:(Allow_cutoff (module String)) compdep ~doc:"";;
 
 (* compute the dependencies once so they are present in the
    global hash table *)
@@ -64,9 +64,13 @@ let comp x =
   Fiber.return x >>=
   Memo.exec mcompdep1 >>=
   Memo.exec mcompdep2 >>=
-  (fun a -> counter := !counter + 1; String.sub a 0 (String.length a |> min 3) |> Fiber.return);;
+  fun a ->
+  counter := !counter + 1;
+  String.sub a 0 (String.length a |> min 3) |> Fiber.return
+;;
 
-let mcomp = string_fn_create "test" ~output:(Allow_cutoff (module String)) (Some comp) ~doc:"";;
+let mcomp =
+  string_fn_create "test" ~output:(Allow_cutoff (module String)) comp ~doc:"";;
 
 [%%ignore]
 
@@ -144,7 +148,7 @@ let mcompcycle =
     ) in
   let fn =
     int_fn_create "cycle"
-      ~output:(Allow_cutoff (module String)) (Some compcycle) ~doc:"" in
+      ~output:(Allow_cutoff (module String)) compcycle ~doc:"" in
   Fdecl.set mcompcycle fn;
   fn;;
 
@@ -189,7 +193,7 @@ let mfib =
         mfib (x - 2)
         >>| fun r2 -> r1 + r2) in
   let fn =
-    int_fn_create "fib" ~output:(Allow_cutoff (module Int)) (Some compfib) ~doc:""
+    int_fn_create "fib" ~output:(Allow_cutoff (module Int)) compfib ~doc:""
   in
   Fdecl.set mfib fn;
   fn;;
@@ -233,7 +237,7 @@ let sync_fib =
     sync_int_fn_create
       "sync-fib"
       ~output:(Allow_cutoff (module Int))
-      (Some compfib) ~doc:""
+      compfib ~doc:""
   in
   Fdecl.set mfib fn;
   fn;;
@@ -259,7 +263,7 @@ let make_f =
       ~output:(Allow_cutoff output)
       ~doc:""
       Sync
-      (Some f)
+      f
 
 let id =
   let f =

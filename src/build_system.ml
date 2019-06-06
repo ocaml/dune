@@ -18,7 +18,7 @@ end = struct
       ~output:(Simple (module Unit))
       ~visibility:Hidden
       Sync
-      (Some (fun p -> Path.mkdir_p (Path.build p)))
+      (fun p -> Path.mkdir_p (Path.build p))
 
   let mkdir_p = Memo.exec mkdir_p_def
 
@@ -30,7 +30,7 @@ end = struct
       ~output:(Simple (module Bool))
       ~visibility:Hidden
       Sync
-      (Some Path.exists)
+      Path.exists
 
   let assert_exists ~loc path =
     if not (Memo.exec assert_exists_def path) then
@@ -1060,7 +1060,7 @@ The following targets are not:
         ~doc:"load dir"
         ~input:(module Path)
         Sync
-        (Some load_dir_impl)
+        load_dir_impl
     in
     (fun ~dir -> Memo.exec memo dir)
 
@@ -1121,137 +1121,113 @@ let all_targets t =
              @ Path.Build.Map.keys targets_here)
       ))
 
-let build_file_def =
-  Memo.create
-    "build-file"
-    ~output:(Allow_cutoff (module Unit))
-    ~doc:"Build a file."
-    ~input:(module Path)
-    ~visibility:(Public Path_dune_lang.decode)
-    Async
-    None
+module type Rec = sig
+  val build_file : Path.t -> unit Fiber.t
 
-let build_file = Memo.exec build_file_def
+  val execute_rule : Internal_rule.t -> unit Fiber.t
+  module Pred : sig
+    val eval : File_selector.t -> Path.Set.t
+    val build : File_selector.t -> unit Fiber.t
+  end
 
-let execute_rule_def =
-  Memo.create
-    "execute-rule"
-    ~output:(Allow_cutoff (module Unit))
-    ~doc:"-"
-    ~input:(module Internal_rule)
-    ~visibility:Hidden
-    Async
-    None
+  val evaluate_rule : Internal_rule.t -> (Action.t * Dep.Set.t) Fiber.t
 
-module Pred = struct
-  let eval_def =
-    Memo.create "eval-pred"
-      ~doc:"Evaluate a predicate in a directory"
-      ~input:(module File_selector)
-      ~output:(Allow_cutoff (module Path.Set))
-      ~visibility:Hidden
-      Sync
-      None
-
-  let build_def =
-    Memo.create "build-pred"
-      ~doc:"build a predicate"
-      ~input:(module File_selector)
-      ~output:(Allow_cutoff (module Unit))
-      ~visibility:Hidden
-      Async
-      None
+  (* other stuff: *)
+  val evaluate_rule_and_wait_for_dependencies :
+    Internal_rule.t -> (Action.t * Dep.Set.t) Fiber.t
 end
 
-let eval_pred g = Memo.exec Pred.eval_def g
+module rec
+  Rec : Rec = struct
+  include To_open
+end
+and
+  To_open : sig
+  include Rec
 
-let execute_rule = Memo.exec execute_rule_def
+  (* exported to inspect memory cycles *)
 
-let build_pred g = Memo.exec Pred.build_def g
+  val evaluate_action_and_dynamic_deps_memo :
+    (Internal_rule.t, Action_and_deps.t,
+     Internal_rule.t -> Action_and_deps.t Fiber.t) Memo.t
 
-let build_deps =
-  Dep.Set.parallel_iter ~f:(function
-    | Alias a -> build_file (Path.build (Alias.stamp_file a))
-    | File f -> build_file f
-    | Glob g -> build_pred g
-    | Universe
-    | Env _ -> Fiber.return ())
+  val build_file_memo : (Path.t, unit, Path.t -> unit Fiber.t) Memo.t
 
-(* Evaluate a rule and return the action and set of dynamic dependencies *)
-let evaluate_action_and_dynamic_deps_def =
-  let f (rule : Internal_rule.t) =
+end = struct
+
+  open Rec
+
+  let build_deps =
+    Dep.Set.parallel_iter ~f:(function
+      | Alias a -> build_file (Path.build (Alias.stamp_file a))
+      | File f -> build_file f
+      | Glob g -> Pred.build g
+      | Universe
+      | Env _ -> Fiber.return ())
+
+  let eval_pred = Pred.eval
+
+  (* Evaluate a rule and return the action and set of dynamic dependencies *)
+  let evaluate_action_and_dynamic_deps_memo =
+    let f (rule : Internal_rule.t) =
+      let* static_deps = Fiber.Once.get rule.static_deps in
+      let rule_deps = Static_deps.rule_deps static_deps in
+      let+ () = build_deps rule_deps in
+      Build.exec ~eval_pred rule.build ()
+    in
+    Memo.create
+      "evaluate-action-and-dynamic-deps"
+      ~output:(Simple (module Action_and_deps))
+      ~doc:"Evaluate the build arrow part of a rule and return the \
+            action and dynamic dependency of the rule."
+      ~input:(module Internal_rule)
+      ~visibility:Hidden
+      Async
+      f
+
+  let evaluate_action_and_dynamic_deps =
+    Memo.exec evaluate_action_and_dynamic_deps_memo
+
+  let evaluate_rule (rule : Internal_rule.t) =
     let* static_deps = Fiber.Once.get rule.static_deps in
-    let rule_deps = Static_deps.rule_deps static_deps in
-    let+ () = build_deps rule_deps in
-    Build.exec ~eval_pred rule.build ()
-  in
-  Memo.create
-    "evaluate-action-and-dynamic-deps"
-    ~output:(Simple (module Action_and_deps))
-    ~doc:"Evaluate the build arrow part of a rule and return the \
-          action and dynamic dependency of the rule."
-    ~input:(module Internal_rule)
-    ~visibility:Hidden
-    Async
-    (Some f)
+    let+ (action, dynamic_action_deps) = evaluate_action_and_dynamic_deps rule in
+    let static_action_deps = Static_deps.action_deps static_deps in
+    let action_deps = Dep.Set.union static_action_deps dynamic_action_deps in
+    (action, action_deps)
 
-let evaluate_action_and_dynamic_deps =
-  Memo.exec evaluate_action_and_dynamic_deps_def
+  (* Same as the function just bellow, but with less opportunity for
+     parallelism. We keep this dead code here for documentation purposes
+     as it is easier to read the one bellow. The reader only has to
+     check that both function do the same thing. *)
+  let _evaluate_rule_and_wait_for_dependencies rule =
+    let* (action, action_deps) = evaluate_rule rule in
+    let+ () = build_deps action_deps in
+    (action, action_deps)
 
-let () =
-  Fdecl.set Rule_fn.loc_decl (fun () ->
-    let stack = Memo.get_call_stack () in
-    List.find_map stack ~f:(fun frame ->
-      match Memo.Stack_frame.as_instance_of frame ~of_:execute_rule_def with
-      | Some input -> Some input
-      | None ->
-        Memo.Stack_frame.as_instance_of frame
-          ~of_:evaluate_action_and_dynamic_deps_def)
-    |> Option.bind ~f:(fun (rule : Internal_rule.t) -> Rule.Info.loc rule.info
-                      ))
+  (* The following function does exactly the same as the function above
+     with the difference that it starts the build of static dependencies
+     before we know the final action and set of dynamic dependencies. We
+     do this to increase opportunities for parallelism.
+  *)
+  let evaluate_rule_and_wait_for_dependencies (rule : Internal_rule.t) =
+    let* static_deps = Fiber.Once.get rule.static_deps in
+    let static_action_deps = Static_deps.action_deps static_deps in
+    (* Build the static dependencies in parallel with evaluation the
+       action and dynamic dependencies *)
+    let* (action, dynamic_action_deps) =
+      Fiber.fork_and_join_unit
+        (fun () -> build_deps static_action_deps)
+        (fun () -> evaluate_action_and_dynamic_deps rule)
+    in
+    build_deps dynamic_action_deps
+    >>>
+    let action_deps = Dep.Set.union static_action_deps dynamic_action_deps in
+    Fiber.return (action, action_deps)
 
-let evaluate_rule (rule : Internal_rule.t) =
-  let* static_deps = Fiber.Once.get rule.static_deps in
-  let+ (action, dynamic_action_deps) = evaluate_action_and_dynamic_deps rule in
-  let static_action_deps = Static_deps.action_deps static_deps in
-  let action_deps = Dep.Set.union static_action_deps dynamic_action_deps in
-  (action, action_deps)
+  let start_rule t _rule =
+    t.hook Rule_started
 
-(* Same as the function just bellow, but with less opportunity for
-   parallelism. We keep this dead code here for documentation purposes
-   as it is easier to read the one bellow. The reader only has to
-   check that both function do the same thing. *)
-let _evaluate_rule_and_wait_for_dependencies rule =
-  let* (action, action_deps) = evaluate_rule rule in
-  let+ () = build_deps action_deps in
-  (action, action_deps)
-
-(* The following function does exactly the same as the function above
-   with the difference that it starts the build of static dependencies
-   before we know the final action and set of dynamic dependencies. We
-   do this to increase opportunities for parallelism.
-*)
-let evaluate_rule_and_wait_for_dependencies (rule : Internal_rule.t) =
-  let* static_deps = Fiber.Once.get rule.static_deps in
-  let static_action_deps = Static_deps.action_deps static_deps in
-  (* Build the static dependencies in parallel with evaluation the
-     action and dynamic dependencies *)
-  let* (action, dynamic_action_deps) =
-    Fiber.fork_and_join_unit
-      (fun () -> build_deps static_action_deps)
-      (fun () -> evaluate_action_and_dynamic_deps rule)
-  in
-  build_deps dynamic_action_deps
-  >>>
-  let action_deps = Dep.Set.union static_action_deps dynamic_action_deps in
-  Fiber.return (action, action_deps)
-
-let start_rule t _rule =
-  t.hook Rule_started
-
-let () =
-  (* Evaluate and execute a rule *)
-  let execute_rule rule =
+  let execute_rule_impl rule =
     let t = t () in
     let { Internal_rule.
           dir
@@ -1392,12 +1368,9 @@ let () =
           end)
     end;
     t.hook Rule_completed
-  in
-  Memo.set_impl execute_rule_def execute_rule
 
-let () =
   (* a rule can have multiple files, but rule.run_rule may only be called once *)
-  let build_file path =
+  let build_file_impl path =
     let t = t () in
     let on_error exn = Dep_path.reraise exn (Path path) in
     Fiber.with_error_handler ~on_error (fun () ->
@@ -1406,16 +1379,79 @@ let () =
         (* file already exists *)
         Fiber.return ()
       | Some rule -> execute_rule rule)
-  in
-  Memo.set_impl build_file_def build_file
 
-let () =
-  let f g =
-    eval_pred g
-    |> Path.Set.to_list
-    |> Fiber.parallel_iter ~f:build_file
-  in
-  Memo.set_impl Pred.build_def f
+  module Pred = struct
+    let build_impl g =
+      Pred.eval g
+      |> Path.Set.to_list
+      |> Fiber.parallel_iter ~f:build_file
+
+    let eval_impl g =
+      let dir = File_selector.dir g in
+      Path.Set.filter (targets_of ~dir) ~f:(File_selector.test g)
+
+    let eval = Memo.exec (
+      Memo.create "eval-pred"
+        ~doc:"Evaluate a predicate in a directory"
+        ~input:(module File_selector)
+        ~output:(Allow_cutoff (module Path.Set))
+        ~visibility:Hidden
+        Sync
+        eval_impl)
+
+    let build = Memo.exec (
+      Memo.create "build-pred"
+        ~doc:"build a predicate"
+        ~input:(module File_selector)
+        ~output:(Allow_cutoff (module Unit))
+        ~visibility:Hidden
+        Async
+        build_impl)
+  end
+
+  let build_file_memo =
+    Memo.create
+      "build-file"
+      ~output:(Allow_cutoff (module Unit))
+      ~doc:"Build a file."
+      ~input:(module Path)
+      ~visibility:(Public Path_dune_lang.decode)
+      Async
+      build_file_impl
+
+  let build_file =
+    Memo.exec build_file_memo
+
+  let execute_rule_memo = 
+    Memo.create
+      "execute-rule"
+      ~output:(Allow_cutoff (module Unit))
+      ~doc:"-"
+      ~input:(module Internal_rule)
+      ~visibility:Hidden
+      Async
+      execute_rule_impl
+
+  let execute_rule =
+    Memo.exec execute_rule_memo
+
+  let () =
+    Fdecl.set Rule_fn.loc_decl (fun () ->
+      let stack = Memo.get_call_stack () in
+      List.find_map stack ~f:(fun frame ->
+        match Memo.Stack_frame.as_instance_of frame ~of_:execute_rule_memo with
+        | Some input -> Some input
+        | None ->
+          Memo.Stack_frame.as_instance_of frame
+            ~of_:evaluate_action_and_dynamic_deps_memo)
+      |> Option.bind ~f:(fun (rule : Internal_rule.t) -> Rule.Info.loc rule.info
+                        ))
+
+end
+
+open To_open
+
+let eval_pred = Pred.eval
 
 let shim_of_build_goal request =
   let request =
@@ -1441,7 +1477,7 @@ let build_request ~request =
 let process_memcycle exn =
   let cycle =
     Memo.Cycle_error.get exn
-    |> List.filter_map ~f:(Memo.Stack_frame.as_instance_of ~of_:build_file_def)
+    |> List.filter_map ~f:(Memo.Stack_frame.as_instance_of ~of_:build_file_memo)
   in
   match List.last cycle with
   | None ->
@@ -1512,7 +1548,7 @@ let package_deps pkg files =
         let static_deps = Fiber.Once.peek_exn ir.static_deps in
         let static_action_deps = Static_deps.action_deps static_deps in
         let _act, dynamic_action_deps =
-          Memo.peek_exn evaluate_action_and_dynamic_deps_def ir
+          Memo.peek_exn evaluate_action_and_dynamic_deps_memo ir
         in
         let action_deps =
           Path.Set.union
@@ -1542,13 +1578,6 @@ let prefix_rules prefix ~f =
   res
 
 module Alias = Alias0
-
-let () =
-  let f g =
-    let dir = File_selector.dir g in
-    Path.Set.filter (targets_of ~dir) ~f:(File_selector.test g)
-  in
-  Memo.set_impl Pred.eval_def f
 
 let assert_not_in_memoized_function () =
   (match Memo.get_call_stack () with

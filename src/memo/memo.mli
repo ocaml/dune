@@ -120,7 +120,7 @@ val create
   -> visibility:'i Visibility.t
   -> output:('o Output.t)
   -> ('i, 'o, 'f) Function_type.t
-  -> 'f option
+  -> 'f
   -> ('i, 'o, 'f) t
 
 val create_hidden
@@ -128,7 +128,7 @@ val create_hidden
   -> doc:string
   -> input:(module Input with type t = 'i)
   -> ('i, 'o, 'f) Function_type.t
-  -> 'f option
+  -> 'f
   -> ('i, 'o, 'f) t
 
 (** Set the implementation of a memoized function whose implementation was omitted

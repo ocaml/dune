@@ -455,8 +455,9 @@ let create (type i) (type o) (type f)
       ~visibility
       ~(output : o Output.t)
       (typ : (i, o, f) Function_type.t)
-      (body : f option)
+      (body : f)
   =
+  let body = Some body in
   let name = Function_name.make name in
   let fdecl, f =
     match body with
@@ -776,7 +777,7 @@ let lazy_ (type a) f =
       ~visibility:Hidden
       ~output:(Allow_cutoff (module Output))
       Sync
-      (Some f)
+      f
   in
   (fun () -> exec memo ())
 
@@ -828,8 +829,8 @@ module With_implicit_output = struct
              ~doc ~input ~visibility
              ~output
              Sync
-             (Some (fun i ->
-                Implicit_output.collect_sync implicit_output (fun () -> impl i))))
+             (fun i ->
+                Implicit_output.collect_sync implicit_output (fun () -> impl i)))
       in
       ((fun input ->
          let (res, output) = exec memo input in
@@ -843,8 +844,8 @@ module With_implicit_output = struct
              ~doc ~input ~visibility
              ~output
              Async
-             (Some (fun i ->
-                Implicit_output.collect_async implicit_output (fun () -> impl i))))
+             (fun i ->
+                Implicit_output.collect_async implicit_output (fun () -> impl i)))
       in
       ((fun input ->
          Fiber.map

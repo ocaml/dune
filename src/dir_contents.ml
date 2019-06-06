@@ -591,7 +591,7 @@ let memo0 =
     ~doc:"dir contents"
     ~visibility:Hidden
     Sync
-    (Some get0_impl)
+    get0_impl
 
 type get_result =
   | Standalone_or_root of t

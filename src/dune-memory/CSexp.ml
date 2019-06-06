@@ -5,15 +5,24 @@ exception CParse_error of string
 type t = Sexp.t
 
 module type Stream = sig
+  type input
+
   type t
+
+  val make : input -> t
 
   val input_byte : t -> int
 
   val input_string : t -> int -> string
 end
 
-module ChannelStream : Stream with type t = in_channel = struct
+module ChannelStream :
+  Stream with type input = in_channel and type t = in_channel = struct
+  type input = in_channel
+
   type t = in_channel
+
+  let make i = i
 
   let input_byte = input_byte
 
@@ -22,8 +31,13 @@ end
 
 type string_stream = {data: string; mutable pos: int}
 
-module StringStream : Stream with type t = string_stream = struct
+module StringStream :
+  Stream with type input = string and type t = string_stream = struct
+  type input = string
+
   type t = string_stream
+
+  let make str = {data= str; pos= 0}
 
   let input_byte s =
     s.pos <- s.pos + 1 ;
@@ -35,7 +49,8 @@ module StringStream : Stream with type t = string_stream = struct
 end
 
 module Parser (S : Stream) = struct
-  let parse chan =
+  let parse input =
+    let chan = S.make input in
     let rec read_size acc c =
       if c == int_of_char ':' then acc
       else
@@ -82,6 +97,6 @@ let to_string_canonical sexp =
   to_buffer_canonical sexp ~buf ;
   Buffer.contents buf
 
-let parse_canonical str = StringParser.parse {data= str; pos= 0}
+let parse_canonical = StringParser.parse
 
-let parse_channel_canonical chan = ChannelParser.parse chan
+let parse_channel_canonical = ChannelParser.parse

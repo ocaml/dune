@@ -1,5 +1,25 @@
 type t = Stdune.Sexp.t
 
+module type Stream = sig
+  type input
+
+  type t
+
+  val make : input -> t
+
+  val input_byte : t -> int
+
+  val input_string : t -> int -> string
+end
+
+module StringStream : Stream with type input = string
+
+module ChannelStream : Stream with type input = in_channel
+
+module Parser (S : Stream) : sig
+  val parse : S.input -> t
+end
+
 val to_buffer_canonical : buf:Buffer.t -> t -> unit
 (** [to_buffer_canonical ~buf sexp] outputs the S-expression [sexp] converted
       to its canonical form to buffer [buf]. *)

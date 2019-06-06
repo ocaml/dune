@@ -764,7 +764,7 @@ module Decoder = struct
     next (function
       | Atom (loc, A s) | Quoted_string (loc, s) -> f ~loc s
       | Template { loc ; _ } | List (loc, _) ->
-        User_error.raise ~loc [ Pp.text "Atom or quoted string expected" ]
+        User_error.raise ~loc [ Pp.text "Atom or quoted string expected" ])
 
   let enter t =
     next_with_user_context (fun uc sexp ->

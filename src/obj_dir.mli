@@ -1,3 +1,32 @@
+(** Representation of the object directory for libraries *)
+
+(** Dune store the artifacts of a library or a set of executables in a
+    dedicated dot directory (name starting with a '.').
+
+    This is mainly for hygiene reasons. Since the compiler might look
+    at any artifact in an include directory, it is important that we
+    control precisely what it can see. This is important when a
+    directory contains several libraries and/or executables.
+
+    This also allows us to provide a different API for a given
+    library.  In particular, depending on the context we might choose
+    to expose or not the private modules.
+
+    In the rest of this API, "local" and "external" have their usual
+    Dune meaning: "local" is for libraries or executables that are
+    local to the current worksapce and "extenal" for libraries that are
+    part of the installed world.
+
+    For local libraries, the path are reported as [Path.Build.t]
+    values given that they are all inside the build directory.  For
+    external libraries the path are reported as [Path.t]
+    values. However, it is possible to get a view of the object
+    directory for a local library where the path are reported as
+    [Path.t] values with [of_local].  This is convenient in places
+    where we need to treat object directories of both local and
+    external library in the same way.
+*)
+
 open! Stdune
 
 type 'path t
@@ -23,12 +52,18 @@ val public_cmi_dir: 'path t -> 'path
 
 val all_obj_dirs : 'path t -> mode:Mode.t -> 'path list
 
+(** Create the object directory for a library *)
 val make_lib
   :  dir:Path.Build.t
   -> has_private_modules:bool
   -> Lib_name.Local.t
   -> Path.Build.t t
 
+(** Create the object directory for a set of executables. [name] is
+    name of one of the executable in set. It is included in the dot
+    subdirectory name. *)
+(** Create the object directory for an external library that has no
+   private directory for private modules *)
 val make_external_no_private : dir:Path.t -> Path.t t
 
 val encode : Path.t t -> Dune_lang.t list

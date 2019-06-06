@@ -943,11 +943,10 @@ module Decoder = struct
         match List.assoc cstrs s with
         | Some value -> value
         | None ->
-          of_sexp_errorf loc
-            ~hint:{ on         = s
-                  ; candidates = List.map cstrs ~f:fst
-                  }
-            "Unknown value %s" s)
+          User_error.raise ~loc
+            [ Pp.textf "Unknown value %s" s ]
+            ~hints:(User_message.did_you_mean s
+                      ~candidates:(List.map cstrs ~f:fst)))
 
   let bool = enum [ ("true", true); ("false", false) ]
 

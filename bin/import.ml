@@ -34,9 +34,6 @@ module Workspace      = Dune.Workspace
 
 include Common.Let_syntax
 
-let die = Dune.Import.die
-let hint = Dune.Import.hint
-
 module Main = struct
 
   include Dune.Main

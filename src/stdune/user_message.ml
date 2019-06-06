@@ -11,7 +11,7 @@ module Style = struct
     | Debug
 end
 
-module Print_config : sig
+module Print_config = struct
   type t = Style.t -> Ansi_color.Style.t list
 
   let default : t = function
@@ -73,7 +73,7 @@ let prerr ?(config=Print_config.default) ?margin t =
   Ansi_color.prerr ?margin (Pp.map_tags (pp t) ~f:config)
 
 (* As found here http://rosettacode.org/wiki/Levenshtein_distance#OCaml *)
-let levenshtein_distance s t let levenshtein_distance s t =
+let levenshtein_distance s t =
   let m = String.length s
   and n = String.length t in
   (* for all i and j, d.(i).(j) will hold the Levenshtein distance between

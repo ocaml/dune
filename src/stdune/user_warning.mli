@@ -8,8 +8,8 @@
     prefixed with "Warning: " rather than "Error: ". *)
 val emit
   :  loc:Loc.t
-  -> ?hints:Style.t Pp.t list
-  -> Style.t Pp.t list
+  -> ?hints:User_message.Style.t Pp.t list
+  -> User_message.Style.t Pp.t list
   -> _
 
 (** Set the warning reporter. The default one is

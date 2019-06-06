@@ -47,6 +47,8 @@ module Tuple      = Tuple
 module Poly       = Poly
 module Code_error = Code_error
 module User_error = User_error
+module User_message = User_message
+module User_warning = User_warning
 
 external reraise : exn -> _ = "%reraise"
 

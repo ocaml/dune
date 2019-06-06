@@ -1,7 +1,5 @@
 open Stdune
 
-let die = Dune.Import.die
-
 type t =
   { name : string
   ; recursive : bool

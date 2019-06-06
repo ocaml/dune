@@ -182,7 +182,7 @@ let print =
          Render.channel
        else
          Render.channel_strip_colors)
-        stdout)
+        stdout))
   in
   fun ?margin pp -> Lazy.force f pp ?margin
 
@@ -193,7 +193,7 @@ let prerr =
          Render.channel
        else
          Render.channel_strip_colors)
-        stderr)
+        stderr))
   in
   fun ?margin pp -> Lazy.force f pp ?margin
 

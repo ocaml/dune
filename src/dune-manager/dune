@@ -1,0 +1,10 @@
+(library
+  (name dune_manager)
+  (modules DuneManager)
+  (libraries stdune))
+
+(executable
+  (name main)
+  (package dune)
+  (modules main)
+  (libraries dune_manager stdune))

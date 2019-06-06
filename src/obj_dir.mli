@@ -46,4 +46,7 @@ val make_exe: dir:Path.Build.t -> name:string -> Path.Build.t t
 
 val as_local_exn : Path.t t -> Path.Build.t t
 
+(** For local libraries with private modules, all public cmi's are symlinked to
+    their own directory. Such a public cmi dir is only necessary if a library
+    contains private modules *)
 val need_dedicated_public_dir : Path.Build.t t -> bool

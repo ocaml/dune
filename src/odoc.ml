@@ -425,7 +425,7 @@ let setup_pkg_html_rules_def =
     ~visibility:Hidden
     Sync
     (fun (sctx, pkg, libs) ->
-       let libs = Lib.Local.L.to_lib libs in
+       let libs = (libs :> Lib.t list) in
        let requires = Lib.closure libs ~linking:false in
        let ctx = Super_context.context sctx in
        List.iter libs ~f:(setup_lib_html_rules sctx ~requires);

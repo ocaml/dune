@@ -1771,7 +1771,7 @@ let to_dune_lib ({ name ; info ; _ } as lib) ~lib_modules ~foreign_objects
     ~special_builtin_support:info.special_builtin_support
 
 module Local : sig
-  type t
+  type t = private lib
   val of_lib : lib -> t option
   val of_lib_exn : lib -> t
   val to_lib : t -> lib
@@ -1784,9 +1784,6 @@ module Local : sig
   module Set : Stdune.Set.S with type elt = t
   module Map : Stdune.Map.S with type key = t
 
-  module L : sig
-    val to_lib : t list -> lib list
-  end
 end = struct
   type nonrec t = t
 
@@ -1810,8 +1807,4 @@ end = struct
   let to_dyn = to_dyn
   let equal = equal
   let hash = hash
-
-  module L = struct
-    let to_lib x = x
-  end
 end

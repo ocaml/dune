@@ -368,8 +368,8 @@ val to_dune_lib
   -> (Syntax.Version.t * Dune_lang.t list) Dune_package.Lib.t
 
 module Local : sig
-  type t
   type lib
+  type t = private lib
 
   val to_dyn : t -> Dyn.t
   val equal : t -> t -> bool
@@ -385,7 +385,4 @@ module Local : sig
   module Set : Stdune.Set.S with type elt = t
   module Map : Stdune.Map.S with type key = t
 
-  module L : sig
-    val to_lib : t list -> lib list
-  end
 end with type lib := t

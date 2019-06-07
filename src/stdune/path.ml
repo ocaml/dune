@@ -66,8 +66,6 @@ end = struct
 
   let extend_basename t ~suffix = as_string t ~f:(fun t -> t ^ suffix)
 
-  let is_suffix t ~suffix = String.is_suffix (to_string t) ~suffix
-
   let of_string t =
     if Filename.is_relative t then
       Exn.code_error "Path.External.of_string: relative path given"
@@ -235,8 +233,6 @@ end = struct
   let root = make "."
 
   let is_root t = Ordering.is_eq (compare t root)
-
-  let is_suffix t ~suffix = String.is_suffix (to_string t) ~suffix
 
   let to_list =
     let rec loop t acc i j =
@@ -1194,12 +1190,6 @@ end
 let in_source s = in_source_tree (Local.of_string s)
 let source s = in_source_tree s
 let build s = in_build_dir s
-
-let is_suffix p ~suffix =
-  match p with
-  | In_build_dir l
-  | In_source_tree l -> Local.is_suffix l ~suffix
-  | External p -> External.is_suffix p ~suffix
 
 module Table = Hashtbl.Make(T)
 

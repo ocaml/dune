@@ -18,7 +18,7 @@ Check that ambiguity is handled correctly.
   $ dune build --root dependency-cycle
   Entering directory 'dependency-cycle'
   Error: Default implementation cycle detected between the following libraries:
-  -> "clock"
+     "clock"
   -> "clock_ocaml"
   -> "async_ocaml"
   -> "async"

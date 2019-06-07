@@ -95,6 +95,18 @@ val hovbox : ?indent:int -> 'a t -> 'a t
 *)
 val enumerate : 'a list -> f:('a -> 'b t) -> 'b t
 
+(** [chain l ~f] is used to print a succession of items that
+    follow each other.  It produces an output of this form:
+
+    {v
+          item1
+       -> item2
+       -> item3
+       ...
+    v}
+*)
+val chain : 'a list -> f:('a -> 'b t) -> 'b t
+
 (** {1 Rendering} *)
 
 module type Tag = sig

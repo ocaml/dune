@@ -204,3 +204,8 @@ let enumerate l ~f =
   vbox (concat ~sep:cut (List.map l ~f:(fun x ->
     box ~indent:2
       (seq (verbatim "- ") (f x)))))
+
+let chain l ~f =
+  vbox (concat ~sep:cut (List.mapi l ~f:(fun i x ->
+    box ~indent:3
+      (seq (verbatim (if i = 0 then "   " else "-> ")) (f x)))))

@@ -1,13 +1,20 @@
 (** A relative path allowed to escape root. Concretely, any path which is not a
-    valid [External.t] is a valid [Relative.t] *)
+    valid [External.t] is a valid [Relative.t].
+
+    So, "foo///bar" and "foo/bar" are distinct valid relative paths (even though
+    going through them has the same effect). "foo/../foo/bar" is also distinct,
+    and in fact for external paths its effect can be different. *)
 module Relative : sig
+
+  (** All function that deal with basename ([basename], [split_extension],
+      [set_extension], [extension]) raise if they see a path that ends with
+      ".." or "." *)
   include Path_intf.S
 
   (** [root] refers to empty relative path, so whatever the path is interpreted
       relative to. *)
   val root : t
 
-  val is_root : t -> bool
   val append : t -> t -> t
 
   module L : sig

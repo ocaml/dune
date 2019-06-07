@@ -66,8 +66,6 @@ end = struct
 
   let extend_basename t ~suffix = as_string t ~f:(fun t -> t ^ suffix)
 
-  let is_suffix t ~suffix = String.is_suffix (to_string t) ~suffix
-
   let of_string t =
     if Filename.is_relative t then
       Exn.code_error "Path.External.of_string: relative path given"
@@ -177,7 +175,6 @@ module Relative : sig
   include Path_intf.S
 
   val root : t
-  val is_root : t -> bool
   val relative : t -> string -> t
   val append : t -> t -> t
 
@@ -210,7 +207,7 @@ end = struct
     else if Filename.is_relative t then
       T.make t
     else
-      Exn.code_error "Relative.make: not relative path"
+      Exn.code_error "Relative.make: not a relative path"
         ["t", Sexp.Encoder.string t]
   let hash = T.hash
 
@@ -218,15 +215,17 @@ end = struct
 
   let compare_val x y = String.compare (to_string x) (to_string y)
 
-  let is_suffix t ~suffix = String.is_suffix (to_string t) ~suffix
-
   let to_sexp t = Sexp.Encoder.string (to_string t)
 
   let basename t =
-    if is_root t then
-      Exn.code_error "Path.Local.basename called on the root" []
-    else
-      Filename.basename (to_string t)
+    let basename = Filename.basename (to_string t) in
+    match basename with
+    | "." -> 
+      Exn.code_error "Path.Local.basename called on the root ending with '.'" []
+    | ".." -> 
+      Exn.code_error
+        "Path.Local.basename called on the root ending with '..'" []
+    | _ -> basename
 
   let to_dyn t = Dyn.String (to_string t)
 
@@ -238,26 +237,31 @@ end = struct
       List.fold_left ~init:t ~f:relative components
   end
 
-  let relative t path =
-    relative t path
-
   let parse_string_exn ~loc s =
     ignore loc;
-    match s with
-    | "" | "." -> root
-    | _ -> make s
+    (* CR aalekseyev: we shouldn't ignore [loc] when [make] raises. *)
+    make s
   let of_string s = parse_string_exn ~loc:Loc0.none s
 
   let append a b =
     match is_root a, is_root b with
     | true, _ -> b
     | _, true -> a
-    | _, _ -> make ((to_string a) ^ "/" ^ (to_string b))
+    | _, _ -> make (Filename.concat (to_string a) (to_string b))
 
-  let extend_basename t ~suffix = make (to_string t ^ suffix)
+  let assert_basename_is_known t =
+    (* raise an exception if basename is not known *)
+    let (_ : string) = basename t in
+    ()
 
-  let extension t = Filename.extension (to_string t)
+  let extend_basename t ~suffix =
+    assert_basename_is_known t;
+    make (to_string t ^ suffix)
+
+  let extension t = Filename.extension (basename t)
+
   let split_extension t =
+    assert_basename_is_known t;
     let s, ext = Filename.split_extension (to_string t) in
     (make s, ext)
 
@@ -277,10 +281,12 @@ end = struct
   let split_first_component t =
     if is_root t then None
     else
-      let t = (to_string t) in
+      let t = to_string t in
       begin match String.lsplit2 t ~on:'/' with
       | None -> Some (t, root)
       | Some (before, after) ->
+        (* CR aalekseyev: if there are multiple forward slashes, we should skip
+           them all so that the path doesn't become absolute *)
         Some
           ( before
           , after
@@ -364,8 +370,6 @@ end = struct
   let root = make "."
 
   let is_root t = Ordering.is_eq (compare t root)
-
-  let is_suffix t ~suffix = String.is_suffix (to_string t) ~suffix
 
   let to_list =
     let rec loop t acc i j =
@@ -1330,12 +1334,6 @@ end
 let in_source s = in_source_tree (Local.of_string s)
 let source s = in_source_tree s
 let build s = in_build_dir s
-
-let is_suffix p ~suffix =
-  match p with
-  | In_build_dir l
-  | In_source_tree l -> Local.is_suffix l ~suffix
-  | External p -> External.is_suffix p ~suffix
 
 module Table = Hashtbl.Make(T)
 

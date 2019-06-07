@@ -116,7 +116,7 @@ exception Error of Error.t
 
 module Resolved_select = struct
   type t =
-    { src_fn : (string, Error.No_solution_found_for_select.t) result
+    { src_fn : string Or_exn.t
     ; dst_fn : string
     }
 end
@@ -246,11 +246,6 @@ and resolve_result =
 type lib = t
 
 let to_dyn t = Lib_name.to_dyn t.name
-
-let not_available ~loc reason fmt =
-  Errors.kerrf fmt ~f:(fun s ->
-    Errors.fail loc "%s %a" s
-      Error.Library_not_available.Reason.pp reason)
 
 (* Generals *)
 
@@ -561,12 +556,6 @@ let already_in_table (info : Lib_info.t) name x =
     ; "returned_lib"    , to_sexp (info.src_dir, name)
     ; "conflicting_with", sexp
     ]
-
-let result_of_resolve_status = function
-  | St_initializing _     -> assert false
-  | St_found x            -> Ok x
-  | St_not_found          -> Error Error.Library_not_available.Reason.Not_found
-  | St_hidden (_, hidden) -> Error (Hidden hidden)
 
 module Vlib : sig
   (** Make sure that for every virtual library in the list there is at
@@ -896,16 +885,6 @@ let rec instantiate db name (info : Lib_info.t) ~stack ~hidden =
   Hashtbl.replace db.table ~key:name ~data:res;
   res
 
-and find db name : (t, Error.Library_not_available.Reason.t) result =
-  result_of_resolve_status (find_internal db name ~stack:Dep_stack.empty)
-
-and find_even_when_hidden db name =
-  match find_internal db name ~stack:Dep_stack.empty with
-  | St_initializing _     -> assert false
-  | St_found t            -> Some t
-  | St_not_found          -> None
-  | St_hidden (t, _)      -> Some t
-
 and find_internal db (name : Lib_name.t) ~stack : status =
   match Hashtbl.find db.table name with
   | Some x -> x
@@ -994,9 +973,8 @@ and resolve_complex_deps db deps ~allow_private_deps ~stack =
             | Some (ts, file) ->
               (Ok ts, Ok file)
             | None ->
-              let e = { Error.No_solution_found_for_select.loc } in
-              (Error (Error (No_solution_found_for_select e)),
-               Error e)
+              let e = Error (No_solution_found_for_select { loc }) in
+              (Error e, Error e)
           in
           (res, { Resolved_select. src_fn; dst_fn = result_fn } :: acc_selects)
       in
@@ -1459,21 +1437,34 @@ module DB = struct
         Findlib.all_packages findlib
         |> List.map ~f:Dune_package.Lib.name)
 
-  let find = find
-  let find_even_when_hidden = find_even_when_hidden
+  let find t name =
+    match find_internal t name ~stack:Dep_stack.empty with
+    | St_initializing _ -> assert false
+    | St_found t -> Some t
+    | St_not_found | St_hidden _ -> None
+
+  let find_even_when_hidden t name =
+    match find_internal t name ~stack:Dep_stack.empty with
+    | St_initializing _ -> assert false
+    | St_found t | St_hidden (t, _) -> Some t
+    | St_not_found -> None
 
   let resolve t (loc, name) =
-    match find t name with
-    | Ok _ as res -> res
-    | Error reason ->
+    match find_internal t name ~stack:Dep_stack.empty with
+    | St_initializing _ -> assert false
+    | St_found t  -> Ok t
+    | St_not_found ->
       Error (Error (Library_not_available
                       { loc
                       ; name
-                      ; reason
+                      ; reason = Not_found
                       }))
-
-  let find_many t ~loc =
-    Result.List.map ~f:(fun name -> resolve t (loc, name))
+    | St_hidden (_, hidden) ->
+      Error (Error (Library_not_available
+                      { loc
+                      ; name
+                      ; reason = Hidden hidden
+                      }))
 
   let available t name = available_internal t name ~stack:Dep_stack.empty
 
@@ -1523,8 +1514,8 @@ module DB = struct
     let l =
       List.fold_left (Lazy.force t.all) ~f:(fun libs name ->
         match find t name with
-        | Ok    x -> Set.add libs x
-        | Error _ -> libs) ~init:Set.empty
+        | Some x -> Set.add libs x
+        | None -> libs) ~init:Set.empty
     in
     match recursive, t.parent with
     | true, Some t -> Set.union (all ~recursive t) l

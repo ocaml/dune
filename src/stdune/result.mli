@@ -46,8 +46,6 @@ val to_dyn
 (** Produce [Error <message>] *)
 val errorf : ('a, unit, string, (_, string) t) format4 -> 'a
 
-val iter : ('a, _) t -> f:('a -> unit) -> unit
-
 (** For compatibility with some other code *)
 type ('a, 'error) result = ('a, 'error) t
 

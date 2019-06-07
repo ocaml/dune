@@ -151,8 +151,8 @@ let setup_separate_compilation_rules sctx components =
       let pkg = Lib_name.of_string_exn ~loc:None pkg in
       let ctx = SC.context sctx in
       match Lib.DB.find (SC.installed_libs sctx) pkg with
-      | Error _ -> ()
-      | Ok pkg ->
+      | None -> ()
+      | Some pkg ->
         let info = Lib.info pkg in
         let archives = info.archives.byte in
         let archives =

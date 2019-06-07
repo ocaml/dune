@@ -98,82 +98,6 @@ module Lib_and_module : sig
   end
 end with type lib := t
 
-(** {1 Errors} *)
-
-module Error : sig
-  module Library_not_available : sig
-    module Reason : sig
-      type t
-
-      val to_string : t -> string
-      val pp : Format.formatter -> t -> unit
-    end
-
-    type t
-  end
-
-  module No_solution_found_for_select : sig
-    type t
-  end
-
-  module Conflict : sig
-    (** When two libraries in a transitive closure conflict *)
-    type t
-  end
-
-  module Overlap : sig
-    (** A conflict that doesn't prevent compilation, but that we still
-        consider as an error to avoid surprises. *)
-    type t
-  end
-
-  module Multiple_implementations_for_virtual_lib : sig
-    type t
-  end
-
-  module Private_deps_not_allowed : sig
-    type t
-  end
-
-  module Double_implementation : sig
-    type t
-  end
-
-  module No_implementation : sig
-    type t
-  end
-
-  module Not_virtual_lib : sig
-    type t
-  end
-
-  module Default_implementation_cycle : sig
-    type t
-  end
-
-  type t =
-    | Library_not_available                  of Library_not_available.t
-    | No_solution_found_for_select           of No_solution_found_for_select.t
-    | Dependency_cycle                       of (Path.t * Lib_name.t) list
-    | Conflict                               of Conflict.t
-    | Overlap                                of Overlap.t
-    | Private_deps_not_allowed               of Private_deps_not_allowed.t
-    | Double_implementation                  of Double_implementation.t
-    | No_implementation                      of No_implementation.t
-    | Not_virtual_lib                        of Not_virtual_lib.t
-    | Multiple_implementations_for_virtual_lib  of Multiple_implementations_for_virtual_lib.t
-    | Default_implementation_cycle           of Default_implementation_cycle.t
-end
-
-exception Error of Error.t
-
-(** Raise a error about a library that is not available *)
-val not_available
-  :  loc:Loc.t
-  -> Error.Library_not_available.Reason.t
-  -> ('a, Format.formatter, unit, 'b) format4
-  -> 'a
-
 (** {1 Compilation contexts} *)
 
 (** See {!Sub_system} *)
@@ -191,7 +115,7 @@ module Compile : sig
 
   module Resolved_select : sig
     type t =
-      { src_fn : (string, Error.No_solution_found_for_select.t) result
+      { src_fn : string Or_exn.t
       ; dst_fn : string
       }
   end
@@ -253,13 +177,7 @@ module DB : sig
     -> Findlib.t
     -> t
 
-  val find : t -> Lib_name.t -> (lib, Error.Library_not_available.Reason.t) result
-  val find_many
-    :  t
-    -> loc:Loc.t
-    -> Lib_name.t list
-    -> lib list Or_exn.t
-
+  val find : t -> Lib_name.t -> lib option
   val find_even_when_hidden : t -> Lib_name.t -> lib option
 
   val available : t -> Lib_name.t -> bool

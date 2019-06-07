@@ -63,26 +63,22 @@ module Public_libs = struct
   let create ~context ~public_libs = { context; public_libs; }
 
   let file_of_lib t ~loc ~lib ~file =
-    match Lib.DB.find t.public_libs lib with
-    | Error reason ->
-      Error { fail = fun () ->
-        Lib.not_available ~loc reason "Public library %a" Lib_name.pp_quoted lib }
-    | Ok lib ->
-      if Lib.is_local lib then begin
-        let (package, rest) = Lib_name.split (Lib.name lib) in
-        let lib_install_dir =
-          Config.local_install_lib_dir ~context:t.context.name ~package
-        in
-        let lib_install_dir =
-          match rest with
-          | [] -> lib_install_dir
-          | _  -> Path.Build.relative lib_install_dir (String.concat rest ~sep:"/")
-        in
-        Ok (Path.build (Path.Build.relative lib_install_dir file))
-      end else
-        let info = Lib.info lib in
-        Ok (Path.relative info.src_dir file)
-
+    let open Result.O in
+    let+ lib = Lib.DB.resolve t.public_libs (loc, lib) in
+    if Lib.is_local lib then begin
+      let (package, rest) = Lib_name.split (Lib.name lib) in
+      let lib_install_dir =
+        Config.local_install_lib_dir ~context:t.context.name ~package
+      in
+      let lib_install_dir =
+        match rest with
+        | [] -> lib_install_dir
+        | _  -> Path.Build.relative lib_install_dir (String.concat rest ~sep:"/")
+      in
+      Path.build (Path.Build.relative lib_install_dir file)
+    end else
+      let info = Lib.info lib in
+      Path.relative info.src_dir file
 end
 
 type t = {

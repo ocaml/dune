@@ -76,13 +76,18 @@ let handle_special_libs cctx =
          packages linked by linking just after findlib.dynload a
          module containing the info *)
       let requires =
+        let open Result.O in
         (* This shouldn't fail since findlib.dynload depends on
            dynlink and findlib. That's why it's ok to use a dummy
            location. *)
-        Lib.DB.find_many ~loc:Loc.none (SC.public_libs sctx)
-          [ Lib_name.of_string_exn ~loc:None "dynlink"
-          ; Lib_name.of_string_exn ~loc:None "findlib"
-          ]
+        let+ dynlink =
+          Lib.DB.resolve (SC.public_libs sctx)
+            (Loc.none, Lib_name.of_string_exn ~loc:None "dynlink")
+        and+ findlib =
+          Lib.DB.resolve (SC.public_libs sctx)
+            (Loc.none, Lib_name.of_string_exn ~loc:None "findlib")
+        in
+        [ dynlink; findlib ]
       in
       let code = findlib_init_code ~preds:Findlib.Package.preds ~libs in
       let module_ =

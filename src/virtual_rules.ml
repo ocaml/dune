@@ -242,11 +242,11 @@ let external_dep_graph sctx ~impl_cm_kind ~impl_obj_dir ~vlib_modules =
 let impl sctx ~dir ~(lib : Dune_file.Library.t) ~scope ~modules =
   Option.map lib.implements ~f:begin fun (loc, implements) ->
     match Lib.DB.find (Scope.libs scope) implements with
-    | Error _ ->
+    | None ->
       Errors.fail loc
         "Cannot implement %a as that library isn't available"
         Lib_name.pp implements
-    | Ok vlib ->
+    | Some vlib ->
       let info = Lib.info vlib in
       let virtual_ =
         match info.virtual_ with

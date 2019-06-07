@@ -622,10 +622,10 @@ let gen_rules sctx ~dir:_ rest =
   | "_odoc" :: "lib" :: lib :: _ ->
     let lib, lib_db = SC.Scope_key.of_string sctx lib in
     let lib = Lib_name.of_string_exn ~loc:None lib in
-    Lib.DB.find lib_db lib
-    |> Result.iter ~f:(fun lib ->
-      (* TODO instead of this hack, call memoized function that generates the
-         rules for this library *)
+    (* diml: why isn't [None] some kind of error here? *)
+    Option.iter (Lib.DB.find lib_db lib) ~f:(fun lib ->
+      (* TODO instead of this hack, call memoized function that
+         generates the rules for this library *)
       let dir = (Lib.info lib).src_dir in
       Build_system.load_dir ~dir)
   | "_html" :: lib_unique_name_or_pkg :: _ ->
@@ -636,8 +636,8 @@ let gen_rules sctx ~dir:_ rest =
     let setup_pkg_html_rules pkg =
       setup_pkg_html_rules sctx ~pkg ~libs:(
         Lib.Local.Set.to_list (load_all_odoc_rules_pkg sctx ~pkg)) in
-    Lib.DB.find lib_db lib
-    |> Result.iter ~f:(fun lib ->
+    (* diml: why isn't [None] some kind of error here? *)
+    Option.iter (Lib.DB.find lib_db lib) ~f:(fun lib ->
       match Lib.package lib with
       | None ->
         setup_lib_html_rules sctx

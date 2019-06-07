@@ -29,22 +29,6 @@ module Decoder = struct
 
   exception Parens_no_longer_necessary of Loc.t * exn
 
-  let () =
-    Report_error.register
-      (function
-        | Parens_no_longer_necessary (loc, exn) ->
-          let hint =
-            "dune files require fewer parentheses than jbuild files.\n\
-             If you just converted this file from a jbuild file, try removing these parentheses."
-          in
-          Option.map (Report_error.find_printer exn)
-            ~f:(fun printer ->
-              printer
-              |> Report_error.set_loc ~loc
-              |> Report_error.set_hint ~hint
-            )
-        | _ -> None)
-
   let switch_file_kind ~jbuild ~dune =
     file_kind () >>= function
     | Jbuild -> jbuild

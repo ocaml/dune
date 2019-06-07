@@ -204,13 +204,13 @@ include Sub_system.Register_end_point(
             ~f:(fun (backend : Backend.t) -> backend.runner_libraries)
         in
         let* lib =
-          Lib.DB.find_many ~loc
-            (Scope.libs scope) [Dune_file.Library.best_name lib]
+          Lib.DB.resolve
+            (Scope.libs scope) (loc, Dune_file.Library.best_name lib)
         in
         let* more_libs =
           Result.List.map info.libraries ~f:(Lib.DB.resolve (Scope.libs scope))
         in
-        Lib.closure ~linking:true (lib @ libs @ more_libs)
+        Lib.closure ~linking:true (lib :: libs @ more_libs)
       in
 
       (* Generate the runner file *)

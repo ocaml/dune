@@ -119,11 +119,6 @@ let equal e1 e2 x y =
   | Error x, Error y -> e2 x y
   | _, _ -> false
 
-let iter t ~f =
-  match t with
-  | Error _ -> ()
-  | Ok s -> f s
-
 module Option = struct
   let iter t ~f =
     match t with

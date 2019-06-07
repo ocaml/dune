@@ -25,6 +25,7 @@ end
 let equal : string -> string -> bool = (=)
 let hash = Hashtbl.hash
 let to_sexp = Sexp.Encoder.string
+let to_dyn s = Dyn.String s
 
 let capitalize   = capitalize_ascii
 let uncapitalize = uncapitalize_ascii

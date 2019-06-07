@@ -303,7 +303,7 @@ module Sctx_and_package = struct
 
   let hash (x, y) = Hashtbl.hash (Super_context.hash x, Local_package.hash y)
   let equal (x1, y1) (x2, y2) = (x1 == x2 && y1 == y2)
-  let to_sexp _ = Sexp.Atom "<opaque>"
+  let to_dyn _ = Dyn.Opaque
 end
 
 let install_entries sctx package =
@@ -385,7 +385,7 @@ let install_entries =
       ~output:(
         Simple (module struct
           type t = (Loc.t option * Install.Entry.t) list
-          let to_sexp _ = Sexp.Atom "<opaque>"
+          let to_dyn _ = Dyn.Opaque
         end))
       "install-entries"
       ~doc:"install entries"
@@ -470,7 +470,7 @@ module Scheme' =struct
 
   type t = Rules.Dir_rules.t Scheme.t
 
-  let to_sexp _ = Sexp.Atom "<opaque>"
+  let to_dyn _ = Dyn.Opaque
 end
 
 let memo =
@@ -513,7 +513,7 @@ let scheme_per_ctx_memo =
     ~output:
       (Simple (module struct
          type t = Rules.Dir_rules.t Scheme.Evaluated.t
-         let to_sexp _ = Sexp.Atom "<opaque>"
+         let to_dyn _ = Dyn.Opaque
        end ))
     "install-rule-scheme"
     ~doc:"install rules scheme"
@@ -553,11 +553,11 @@ let packages =
       ~visibility:Hidden
       ~output:(Allow_cutoff (module struct
                  type t = Package.Name.Set.t Path.Build.Map.t
-                 let to_sexp =
-                   Map.to_sexp
+                 let to_dyn =
+                   Map.to_dyn
                      Path.Build.Map.to_list
-                     Path.Build.to_sexp
-                     (Set.to_sexp Package.Name.Set.to_list Package.Name.to_sexp)
+                     Path.Build.to_dyn
+                     (Set.to_dyn Package.Name.Set.to_list Package.Name.to_dyn)
                  let equal =
                    Path.Build.Map.equal
                      ~equal:Package.Name.Set.equal

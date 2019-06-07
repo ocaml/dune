@@ -39,8 +39,6 @@ module T = struct
       ; "kind", Kind.to_dyn kind
       ]
 
-  let to_sexp t = Dyn.to_sexp (to_dyn t)
-
   let equal { root = ra; kind = ka } { root = rb; kind = kb } =
     Path.equal ra rb && Kind.equal ka kb
 
@@ -152,7 +150,7 @@ let files =
     ~doc:"Return the files committed in the repo"
     ~output:(Simple (module struct
                 type t = Path.t list
-                let to_sexp = Sexp.Encoder.list Path.to_sexp
+                let to_dyn = Dyn.Encoder.list Path.to_dyn
               end))
     ~git:(f ["ls-tree"; "-r"; "--name-only"; "HEAD"])
     ~hg:(f ["files"])

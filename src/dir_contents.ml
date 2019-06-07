@@ -404,7 +404,6 @@ module Key = struct
   let to_dyn (sctx, path) =
     Dyn.Tuple [Super_context.to_dyn sctx; Path.Build.to_dyn path;]
 
-  let to_sexp t = Dyn.to_sexp (to_dyn t)
   let equal = Tuple.T2.equal Super_context.equal Path.Build.equal
   let hash = Tuple.T2.hash Super_context.hash Path.Build.hash
 end
@@ -581,7 +580,7 @@ let get0_impl (sctx, dir) : result0 =
 let memo0 =
   let module Output = struct
     type t = result0
-    let to_sexp _ = Sexp.Atom "<opaque>"
+    let to_dyn _ = Dyn.Opaque
   end
   in
   Memo.create

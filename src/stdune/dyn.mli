@@ -1,4 +1,5 @@
 type t = Dyn0.t =
+  | Opaque
   | Unit
   | Int of int
   | Bool of bool

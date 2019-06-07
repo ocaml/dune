@@ -3,6 +3,7 @@ include Dyn0
 let rec to_sexp =
   let open Sexp.Encoder in
   function
+  | Opaque -> Sexp.Atom "<opaque>"
   | Unit -> unit ()
   | Int i -> int i
   | Bool b -> bool b

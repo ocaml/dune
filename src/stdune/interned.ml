@@ -13,6 +13,7 @@ module type S = sig
     include Set.S with type elt = t
 
     val to_sexp : t -> Sexp.t
+    val to_dyn : t -> Dyn.t
 
     val make : string list -> t
 
@@ -119,6 +120,7 @@ module Make(R : Settings)() = struct
     include Set.Make(T)
 
     let to_sexp t = Sexp.Encoder.(list String.to_sexp) (List.map ~f:to_string (to_list t))
+    let to_dyn t = Set.to_dyn to_list to_dyn t
 
     let make l =
       List.fold_left l ~init:empty ~f:(fun acc s -> add acc (make s))

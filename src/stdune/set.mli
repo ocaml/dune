@@ -6,3 +6,8 @@ val to_sexp
   :  ('a -> 'b list)
   -> 'b Sexp.Encoder.t
   -> 'a Sexp.Encoder.t
+
+val to_dyn
+  :  ('a -> 'b list)
+  -> 'b Dyn.Encoder.t
+  -> 'a Dyn.Encoder.t

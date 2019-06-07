@@ -73,18 +73,18 @@ end
 
 module type Output_simple = sig
   type t
-  val to_sexp : t -> Sexp.t
+  val to_dyn : t -> Dyn.t
 end
 
 module type Output_allow_cutoff = sig
   type t
-  val to_sexp : t -> Sexp.t
+  val to_dyn : t -> Dyn.t
   val equal : t -> t -> bool
 end
 
 module type Input = sig
   type t
-  val to_sexp : t -> Sexp.t
+  val to_dyn : t -> Dyn.t
   include Table.Key with type t := t
 end
 
@@ -314,7 +314,7 @@ end
 
 let ser_input (type a) (node : (a, _, _) Dep_node.t) =
   let (module Input : Input with type t = a) = node.spec.input in
-  Input.to_sexp node.input
+  Input.to_dyn node.input
 
 let dag_node (dep_node : _ Dep_node.t) = Lazy.force dep_node.dag_node
 
@@ -330,12 +330,12 @@ module Stack_frame0 = struct
   let equal (T a) (T b) = Id.equal a.id b.id
   let compare (T a) (T b) = Id.compare a.id b.id
 
-  let to_dyn t = Dyn.Tuple [String (name t); Sexp (input t)]
+  let to_dyn t = Dyn.Tuple [String (name t); input t]
 
   let pp ppf t =
     Format.fprintf ppf "%s %a"
       (name t)
-      Sexp.pp (input t)
+      Dyn.pp (input t)
 end
 
 module To_open = struct
@@ -512,7 +512,7 @@ let create_hidden (type output) name ~doc ~input typ impl =
   let module O =
   struct
     type t = output
-    let to_sexp (_ : t) = Sexp.Atom "<opaque>"
+    let to_dyn (_ : t) = Dyn.Opaque
   end
   in
   create
@@ -724,7 +724,7 @@ let call name input =
      | Function.Async f -> f
      | Function.Sync f -> (fun x -> Fiber.return (f x))) input
   in
-  Output.to_sexp output
+  Output.to_dyn output
 
 module Function_info = struct
   type t =
@@ -763,7 +763,7 @@ module Lazy_id = Stdune.Id.Make()
 let lazy_ (type a) f =
   let module Output = struct
     type t = a
-    let to_sexp _ = Sexp.Atom "<opaque>"
+    let to_dyn _ = Dyn.Opaque
     let equal = (==)
   end
   in
@@ -814,10 +814,10 @@ module With_implicit_output = struct
       (Output.Simple (
          module struct
            type t = o * io option
-           let to_sexp ((o, _io) : t) =
-             Sexp.List
-               [ O.to_sexp o;
-                 Sexp.Atom "<implicit output is opaque>" ]
+           let to_dyn ((o, _io) : t) =
+             Dyn.List
+               [ O.to_dyn o;
+                 Dyn.String "<implicit output is opaque>" ]
          end))
     in
     match typ with

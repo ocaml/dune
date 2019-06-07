@@ -365,7 +365,7 @@ let setup_lib_html_rules_def =
         , Or_exn.hash (List.hash Lib.hash) r
         )
 
-    let to_sexp _ = Sexp.Encoder.string "<opaque>"
+    let to_dyn _ = Dyn.Opaque
   end
   in
   let f (sctx, lib, requires) =
@@ -406,13 +406,12 @@ let setup_pkg_html_rules_def =
         , List.hash Lib.hash ls
         )
 
-    let to_sexp (_, package, libs) =
+    let to_dyn (_, package, libs) =
       let open Dyn in
       Tuple
         [ Package.Name.to_dyn package
         ; List (List.map ~f:Lib.to_dyn libs)
         ]
-      |> Dyn.to_sexp
   end
   in
   Memo.With_implicit_output.create "setup-package-html-rules"
@@ -531,12 +530,11 @@ let setup_package_odoc_rules_def =
       && Package.Name.equal x1 x2
       && List.equal Path.Build.equal y1 y2
 
-    let to_sexp (_, name, paths) =
+    let to_dyn (_, name, paths) =
       Dyn.Tuple
         [ Package.Name.to_dyn name
         ; Dyn.List (List.map ~f:Path.Build.to_dyn paths)
         ]
-      |> Dyn.to_sexp
   end
   in
   Memo.With_implicit_output.create "setup-package-odoc-rules"

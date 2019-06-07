@@ -22,7 +22,7 @@ module T = struct
     | Is_component_of_a_group_but_not_the_root of is_component_of_a_group_but_not_the_root
     (* Sub-directory of a [Group_root _] *)
 
-  let to_sexp _ = Sexp.Atom "<dir-status is opaque>"
+  let to_dyn _ = Dyn.String "<dir-status>"
 end
 include T
 

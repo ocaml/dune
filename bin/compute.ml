@@ -58,7 +58,7 @@ let term =
   | `Error msg ->
     `Error (true, msg)
   | `Result res ->
-    Format.printf "%a\n%!" Sexp.pp res;
+    Format.printf "%a\n%!" Dyn.pp res;
     `Ok ()
   | `List ->
     let fns = Memo.registered_functions () in

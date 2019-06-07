@@ -10,15 +10,12 @@ module Entry : sig
     | Executables of (Loc.t * string) list
     | Preprocess of Lib_name.t list
     | Loc of Loc.t
-
-  val to_string : t -> string
-  val pp : Format.formatter -> t -> unit
 end
 
 module Entries : sig
   type t = Entry.t list
 
-  val pp : Format.formatter -> t -> unit
+  val pp : t -> _ Pp.t
 end
 
 (** Re-raise an exception and augment it's dependency path with the

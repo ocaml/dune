@@ -32,8 +32,10 @@ let builtin_printer = function
            | hint :: _ ->
              Some (Format.asprintf "%a" Pp.pp (Pp.map_tags hint ~f:ignore)))
       ; pp = fun ppf ->
-          Pp.pp ppf (User_message.pp { msg with loc = None; hints = [] }
-                     |> Pp.map_tags ~f:ignore)
+          Format.fprintf ppf "%a@."
+            Pp.pp
+            (User_message.pp { msg with loc = None; hints = [] }
+             |> Pp.map_tags ~f:ignore)
       }
   | Dune_lang.Decoder.Decoder (loc, msg, hint') ->
     let pp ppf = Format.fprintf ppf "@{<error>Error@}: %s%s\n" msg
@@ -163,8 +165,8 @@ let report { Exn_with_backtrace. exn; backtrace } =
               drop dependency_path
       in
       if dependency_path <> [] then
-        Format.fprintf ppf "%a@\n" Dep_path.Entries.pp
-          (List.rev dependency_path);
+        Format.fprintf ppf "%a@\n" Pp.pp
+          (Dep_path.Entries.pp (List.rev dependency_path));
       Option.iter p.hint ~f:(fun s -> Format.fprintf ppf "Hint: %s\n" s);
       Format.pp_print_flush ppf ();
       let s = Buffer.contents err_buf in

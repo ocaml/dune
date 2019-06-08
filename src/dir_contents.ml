@@ -29,7 +29,7 @@ module Modules = struct
         match (stanza : Stanza.t) with
         | Library lib ->
           let obj_dir =
-            Obj_dir.Local.make_lib ~dir:d.ctx_dir
+            Obj_dir.make_lib ~dir:d.ctx_dir
               (snd lib.name)
               ~has_private_modules:(Option.is_some lib.private_modules)
           in
@@ -76,7 +76,7 @@ module Modules = struct
         | Tests { exes; _} ->
           let obj_dir =
             let name = snd (List.hd exes.names) in
-            Obj_dir.Local.make_exe ~dir:d.ctx_dir ~name
+            Obj_dir.make_exe ~dir:d.ctx_dir ~name
           in
           let modules =
             Modules_field_evaluator.eval ~modules

@@ -53,7 +53,7 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
     let dst = Module.set_obj_dir ~obj_dir:(Obj_dir.of_local impl_obj_dir) src in
     copy_obj_file ~src ~dst Cmi;
     if Module.is_public dst
-    && Obj_dir.Local.need_dedicated_public_dir impl_obj_dir
+    && Obj_dir.need_dedicated_public_dir impl_obj_dir
     then begin
       let src = Module.cm_public_file_unsafe src Cmi in
       let dst = Module.cm_public_file_unsafe dst Cmi in
@@ -87,7 +87,7 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
                            (Path.as_in_build_dir_exn
                               (Obj_dir.obj_dir vlib_obj_dir)) f))
                 ~dst:(all_deps
-                        ~obj_dir:(Obj_dir.Local.obj_dir impl_obj_dir) f))
+                        ~obj_dir:(Obj_dir.obj_dir impl_obj_dir) f))
           );
     else
       (* we only need to copy the .all-deps files for local libraries. for
@@ -105,7 +105,7 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
               |> String.concat ~sep:"\n")
             >>>
             Build.write_file_dyn
-              (all_deps ~obj_dir:(Obj_dir.Local.obj_dir impl_obj_dir) f)
+              (all_deps ~obj_dir:(Obj_dir.obj_dir impl_obj_dir) f)
             |> add_rule sctx))
   in
   Option.iter (Lib_modules.alias_module vlib_modules) ~f:copy_objs;
@@ -277,7 +277,7 @@ let impl sctx ~dir ~(lib : Dune_file.Library.t) ~scope ~modules =
           in
           let foreign_objects =
             let ext_obj = (Super_context.context sctx).ext_obj in
-            let dir = Obj_dir.Local.obj_dir (Lib.Local.obj_dir vlib) in
+            let dir = Obj_dir.obj_dir (Lib.Local.obj_dir vlib) in
             Dir_contents.c_sources_of_library dir_contents ~name
             |> C.Sources.objects ~ext_obj ~dir
             |> List.map ~f:Path.build

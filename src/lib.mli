@@ -19,7 +19,7 @@ val src_dir : t -> Path.t
 val orig_src_dir : t -> Path.t
 
 (** Directory where the object files for the library are located. *)
-val obj_dir : t -> Obj_dir.t
+val obj_dir : t -> Path.t Obj_dir.t
 val public_cmi_dir : t -> Path.t
 
 (** Same as [Path.is_managed (obj_dir t)] *)
@@ -379,7 +379,7 @@ module Local : sig
   val of_lib_exn : lib -> t
   val to_lib : t -> lib
 
-  val obj_dir : t -> Obj_dir.Local.t
+  val obj_dir : t -> Path.Build.t Obj_dir.t
   val src_dir : t -> Path.Build.t
 
   module Set : Stdune.Set.S with type elt = t

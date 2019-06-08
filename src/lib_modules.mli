@@ -40,7 +40,7 @@ val public_modules : t -> Module.Name_map.t
 
 val make
   :  Dune_file.Library.t
-  -> obj_dir:Obj_dir.t
+  -> obj_dir:Path.t Obj_dir.t
   -> Module.Name_map.t
   -> main_module_name:Module.Name.t option
   -> wrapped:Wrapped.t
@@ -50,7 +50,7 @@ val set_modules : t -> Module.Name_map.t -> t
 
 (** [version_installed t ~install_dir] converts [t] to a version that represents
     a library installed [install_dir]*)
-val version_installed : t -> install_dir:Obj_dir.t -> t
+val version_installed : t -> install_dir:Path.t Obj_dir.t -> t
 
 (** Return all modules that need to be compiled. Includes the alias module if it
     exists. This does not include the compatibility modules which are compiled
@@ -62,7 +62,8 @@ val for_alias : t -> Module.Name_map.t
 
 val encode : t -> Dune_lang.t list
 
-val decode : implements:bool -> obj_dir:Obj_dir.t -> t Dune_lang.Decoder.t
+val decode
+  : implements:bool -> obj_dir:Path.t Obj_dir.t -> t Dune_lang.Decoder.t
 
 val is_wrapped : t -> bool
 

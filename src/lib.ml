@@ -1724,7 +1724,11 @@ let to_dune_lib ({ name ; info ; _ } as lib) ~lib_modules ~foreign_objects
       ~dir =
   let add_loc = List.map ~f:(fun x -> (info.loc, x.name)) in
   let virtual_ = Option.is_some info.virtual_ in
-  let obj_dir = Obj_dir.convert_to_external ~dir (obj_dir lib) in
+  let obj_dir =
+    match Obj_dir.to_local (obj_dir lib) with
+    | None -> assert false
+    | Some obj_dir -> Obj_dir.convert_to_external ~dir obj_dir
+  in
   let lib_modules =
     Lib_modules.version_installed ~install_dir:obj_dir lib_modules in
   let orig_src_dir =
@@ -1775,7 +1779,7 @@ module Local : sig
   val of_lib : lib -> t option
   val of_lib_exn : lib -> t
   val to_lib : t -> lib
-  val obj_dir : t -> Obj_dir.Local.t
+  val obj_dir : t -> Path.Build.t Obj_dir.t
   val src_dir : t -> Path.Build.t
   val to_dyn : t -> Dyn.t
   val equal : t -> t -> bool

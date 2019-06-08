@@ -1,75 +1,89 @@
+(** Representation of the object directory for libraries *)
+
+(** Dune store the artifacts of a library or a set of executables in a
+    dedicated dot directory (name starting with a '.').
+
+    This is mainly for hygiene reasons. Since the compiler might look
+    at any artifact in an include directory, it is important that we
+    control precisely what it can see. This is important when a
+    directory contains several libraries and/or executables.
+
+    This also allows us to provide a different API for a given
+    library.  In particular, depending on the context we might choose
+    to expose or not the private modules.
+
+    In the rest of this API, "local" and "external" have their usual
+    Dune meaning: "local" is for libraries or executables that are
+    local to the current worksapce and "extenal" for libraries that are
+    part of the installed world.
+
+    For local libraries, the path are reported as [Path.Build.t]
+    values given that they are all inside the build directory.  For
+    external libraries the path are reported as [Path.t]
+    values. However, it is possible to get a view of the object
+    directory for a local library where the path are reported as
+    [Path.t] values with [of_local].  This is convenient in places
+    where we need to treat object directories of both local and
+    external library in the same way.
+*)
+
 open! Stdune
 
-(** Representation of the object directory for libraries that are local to the workspace *)
-module Local : sig
-  type t
+type 'path t
 
-  (** The source_root directory *)
-  val dir : t -> Path.Build.t
-
-  val make_exe: dir:Path.Build.t -> name:string -> t
-
-  val need_dedicated_public_dir : t -> bool
-
-  (** The directory for ocamldep files *)
-  val obj_dir : t -> Path.Build.t
-
-  (** The private compiled byte file directories, and all cmi *)
-  val byte_dir : t -> Path.Build.t
-
-  val all_obj_dirs : t -> mode:Mode.t -> Path.Build.t list
-
-  (** The public compiled cmi file directory *)
-  val public_cmi_dir: t -> Path.Build.t
-
-  val make_lib
-    :  dir:Path.Build.t
-    -> has_private_modules:bool
-    -> Lib_name.Local.t
-    -> t
-end
-
-type t
-
-val of_local : Local.t -> t
+val of_local : Path.Build.t t -> Path.t t
 
 (** The source_root directory *)
-val dir : t -> Path.t
+val dir : 'path t -> 'path
 
 (** The directory for ocamldep files *)
-val obj_dir : t -> Path.t
+val obj_dir : 'path t -> 'path
 
 (** The private compiled native file directory *)
-val native_dir : t -> Path.t
+val native_dir : 'path t -> 'path
 
 (** The private compiled byte file directories, and all cmi *)
-val byte_dir : t -> Path.t
+val byte_dir : 'path t -> 'path
 
-val all_cmis: t -> Path.t list
+val all_cmis: 'path t -> 'path list
 
 (** The public compiled cmi file directory *)
-val public_cmi_dir: t -> Path.t
+val public_cmi_dir: 'path t -> 'path
 
-val pp: t Fmt.t
-val to_sexp: t -> Sexp.t
+val all_obj_dirs : 'path t -> mode:Mode.t -> 'path list
 
-val all_obj_dirs : t -> mode:Mode.t -> Path.t list
-
+(** Create the object directory for a library *)
 val make_lib
   :  dir:Path.Build.t
   -> has_private_modules:bool
   -> Lib_name.Local.t
-  -> t
+  -> Path.Build.t t
 
-val make_external_no_private : dir:Path.t -> t
+(** Create the object directory for a set of executables. [name] is
+    name of one of the executable in set. It is included in the dot
+    subdirectory name. *)
+(** Create the object directory for an external library that has no
+   private directory for private modules *)
+val make_external_no_private : dir:Path.t -> Path.t t
 
-val encode : t -> Dune_lang.t list
-val decode : dir:Path.t -> t Dune_lang.Decoder.t
+val encode : Path.t t -> Dune_lang.t list
+val decode : dir:Path.t -> Path.t t Dune_lang.Decoder.t
 
-val convert_to_external : t -> dir:Path.t -> t
+val convert_to_external : Path.Build.t t -> dir:Path.t -> Path.t t
 
-val cm_dir : t -> Cm_kind.t -> Visibility.t -> Path.t
+val cm_dir : 'path t -> Cm_kind.t -> Visibility.t -> 'path
 
-val cm_public_dir : t -> Cm_kind.t -> Path.t
+val cm_public_dir : 'path t -> Cm_kind.t -> 'path
 
-val as_local_exn : t -> Local.t
+val to_dyn : _ t -> Dyn.t
+
+val make_exe: dir:Path.Build.t -> name:string -> Path.Build.t t
+
+val as_local_exn : Path.t t -> Path.Build.t t
+
+(** For local libraries with private modules, all public cmi's are symlinked to
+    their own directory. Such a public cmi dir is only necessary if a library
+    contains private modules *)
+val need_dedicated_public_dir : Path.Build.t t -> bool
+
+val to_local : Path.t t -> Path.Build.t t option

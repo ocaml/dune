@@ -7,7 +7,7 @@ module Lib = struct
   type 'sub_system t =
     { loc              : Loc.t
     ; name             : Lib_name.t
-    ; obj_dir          : Obj_dir.t
+    ; obj_dir          : Path.t Obj_dir.t
     ; orig_src_dir     : Path.t option
     ; kind             : Lib_kind.t
     ; synopsis         : string option

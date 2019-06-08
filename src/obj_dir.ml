@@ -74,6 +74,12 @@ module External = struct
 
   let all_cmis {public_dir; private_dir} =
     List.filter_opt [Some public_dir; private_dir]
+
+  let cm_public_dir t (cm_kind : Cm_kind.t) =
+    match cm_kind with
+    | Cmx -> native_dir t
+    | Cmo -> byte_dir t
+    | Cmi -> public_cmi_dir t
 end
 
 module Local = struct
@@ -148,15 +154,31 @@ module Local = struct
     match cm_kind with
     | Cm_kind.Cmx -> native_dir t
     | Cmo | Cmi -> byte_dir t
+
+  let cm_public_dir t (cm_kind : Cm_kind.t) =
+    match cm_kind with
+    | Cmx -> native_dir t
+    | Cmo -> byte_dir t
+    | Cmi -> public_cmi_dir t
 end
 
-type t =
-  | External of External.t
-  | Local of Local.t
+type _ t =
+  | External      : External.t -> Path.t t
+  | Local         : Local.t    -> Path.Build.t t
+  | Local_as_path : Local.t    -> Path.t t
 
-let of_local t = Local t
+let of_local
+  : Path.Build.t t -> Path.t t
+  = fun t ->
+    match t with
+    | Local t -> Local_as_path t
+    | _ -> assert false
 
 let encode = function
+  | Local_as_path obj_dir ->
+    Exn.code_error "Obj_dir.encode: local obj_dir cannot be encoded"
+      [ "obj_dir", Dyn.to_sexp (Local.to_dyn obj_dir)
+      ]
   | Local obj_dir ->
     Exn.code_error "Obj_dir.encode: local obj_dir cannot be encoded"
       [ "obj_dir", Dyn.to_sexp (Local.to_dyn obj_dir)
@@ -174,67 +196,89 @@ let make_lib ~dir ~has_private_modules lib_name =
 let make_external_no_private ~dir =
   External (External.make ~dir ~has_private_modules:false)
 
-let all_obj_dirs t ~mode =
+let all_obj_dirs (type path) (t : path t) ~mode : path list =
   match t with
   | External e -> External.all_obj_dirs e ~mode
-  | Local e -> Local.all_obj_dirs e ~mode |> List.map ~f:Path.build
+  | Local e -> Local.all_obj_dirs e ~mode
+  | Local_as_path e -> Local.all_obj_dirs e ~mode |> List.map ~f:Path.build
 
-let public_cmi_dir = function
+let public_cmi_dir (type path) (t : path t) : path =
+  match t with
   | External e -> External.public_cmi_dir e
-  | Local e -> Path.build (Local.public_cmi_dir e)
+  | Local e -> Local.public_cmi_dir e
+  | Local_as_path e -> Path.build (Local.public_cmi_dir e)
 
-let byte_dir = function
+let byte_dir (type path) (t : path t) : path =
+  match t with
   | External e -> External.byte_dir e
-  | Local e -> Path.build (Local.byte_dir e)
+  | Local e -> Local.byte_dir e
+  | Local_as_path e -> Path.build (Local.byte_dir e)
 
-let native_dir = function
+let native_dir (type path) (t : path t) : path =
+  match t with
   | External e -> External.native_dir e
-  | Local e -> Path.build (Local.native_dir e)
+  | Local e -> Local.native_dir e
+  | Local_as_path e -> Path.build (Local.native_dir e)
 
-let dir = function
+let dir (type path) (t : path t) : path =
+  match t with
   | External e -> External.dir e
-  | Local e -> Path.build (Local.dir e)
+  | Local e -> Local.dir e
+  | Local_as_path e -> Path.build (Local.dir e)
 
-let obj_dir = function
+let obj_dir (type path) (t : path t) : path =
+  match t with
   | External e -> External.obj_dir e
-  | Local e -> Path.build (Local.obj_dir e)
+  | Local e -> Local.obj_dir e
+  | Local_as_path e -> Path.build (Local.obj_dir e)
 
-let to_dyn =
+let to_dyn (type path) (t : path t) =
   let open Dyn.Encoder in
-  function
+  match t with
   | Local e -> constr "Local" [Local.to_dyn e]
+  | Local_as_path e -> constr "Local_as_path" [Local.to_dyn e]
   | External e -> constr "External" [External.to_dyn e]
 
-let to_sexp t = Dyn.to_sexp (to_dyn t)
-let pp fmt t = Dyn.pp fmt (to_dyn t)
-
-let convert_to_external t ~dir =
+let convert_to_external (t : Path.Build.t t) ~dir =
   match t with
   | Local e ->
     let has_private_modules = Local.need_dedicated_public_dir e in
     External (External.make ~dir ~has_private_modules)
-  | External obj_dir ->
-    Exn.code_error
-      "Obj_dir.convert_to_external: converting already external dir"
-      [ "dir", Path.to_sexp dir
-      ; "obj_dir", Dyn.to_sexp (External.to_dyn obj_dir)
-      ]
+  | _ -> assert false
 
-let all_cmis = function
-  | Local e -> [Path.build (Local.byte_dir e)]
+let all_cmis (type path) (t : path t) : path list =
+  match t with
+  | Local e -> [Local.byte_dir e]
+  | Local_as_path e -> [Path.build (Local.byte_dir e)]
   | External e -> External.all_cmis e
 
-let cm_dir t cm_kind visibility =
+let cm_dir (type path) (t : path t) cm_kind visibility : path =
   match t with
   | External e -> External.cm_dir e cm_kind visibility
-  | Local e -> Path.build (Local.cm_dir e cm_kind visibility)
+  | Local e -> Local.cm_dir e cm_kind visibility
+  | Local_as_path e -> Path.build (Local.cm_dir e cm_kind visibility)
 
-let cm_public_dir t (cm_kind : Cm_kind.t) =
-  match cm_kind with
-  | Cmx -> native_dir t
-  | Cmo -> byte_dir t
-  | Cmi -> public_cmi_dir t
+let cm_public_dir (type path) (t : path t) (cm_kind : Cm_kind.t) : path =
+  match t with
+  | External e -> External.cm_public_dir e cm_kind
+  | Local e -> Local.cm_public_dir e cm_kind
+  | Local_as_path e -> Path.build (Local.cm_public_dir e cm_kind)
 
-let as_local_exn = function
-  | Local e -> e
+let need_dedicated_public_dir (t : Path.Build.t t) =
+  match t with
+  | Local t -> Local.need_dedicated_public_dir t
+  | _ -> assert false
+
+let as_local_exn (t : Path.t t) =
+  match t with
+  | Local _ -> assert false
+  | Local_as_path e -> Local e
   | External _ -> Exn.code_error "Obj_dir.as_local_exn: external dir" []
+
+let make_exe ~dir ~name = Local (Local.make_exe ~dir ~name)
+
+let to_local (t : Path.t t) =
+  match t with
+  | Local _ -> assert false
+  | Local_as_path t -> Some (Local t)
+  | External _ -> None

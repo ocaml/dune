@@ -239,20 +239,12 @@ let to_dyn (type path) (t : path t) =
   | Local_as_path e -> constr "Local_as_path" [Local.to_dyn e]
   | External e -> constr "External" [External.to_dyn e]
 
-let convert_to_external t ~dir =
+let convert_to_external (t : Path.Build.t t) ~dir =
   match t with
-  | Local_as_path e ->
-    let has_private_modules = Local.need_dedicated_public_dir e in
-    External (External.make ~dir ~has_private_modules)
   | Local e ->
     let has_private_modules = Local.need_dedicated_public_dir e in
     External (External.make ~dir ~has_private_modules)
-  | External obj_dir ->
-    Exn.code_error
-      "Obj_dir.convert_to_external: converting already external dir"
-      [ "dir", Path.to_sexp dir
-      ; "obj_dir", Dyn.to_sexp (External.to_dyn obj_dir)
-      ]
+  | _ -> assert false
 
 let all_cmis (type path) (t : path t) : path list =
   match t with
@@ -284,3 +276,9 @@ let as_local_exn (t : Path.t t) =
   | External _ -> Exn.code_error "Obj_dir.as_local_exn: external dir" []
 
 let make_exe ~dir ~name = Local (Local.make_exe ~dir ~name)
+
+let to_local (t : Path.t t) =
+  match t with
+  | Local _ -> assert false
+  | Local_as_path t -> Some (Local t)
+  | External _ -> None

@@ -69,7 +69,7 @@ val make_external_no_private : dir:Path.t -> Path.t t
 val encode : Path.t t -> Dune_lang.t list
 val decode : dir:Path.t -> Path.t t Dune_lang.Decoder.t
 
-val convert_to_external : Path.t t -> dir:Path.t -> Path.t t
+val convert_to_external : Path.Build.t t -> dir:Path.t -> Path.t t
 
 val cm_dir : 'path t -> Cm_kind.t -> Visibility.t -> 'path
 
@@ -85,3 +85,5 @@ val as_local_exn : Path.t t -> Path.Build.t t
     their own directory. Such a public cmi dir is only necessary if a library
     contains private modules *)
 val need_dedicated_public_dir : Path.Build.t t -> bool
+
+val to_local : Path.t t -> Path.Build.t t option

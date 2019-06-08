@@ -424,7 +424,7 @@ let setup_pkg_html_rules_def =
     ~input:(module Input)
     ~visibility:Hidden
     Sync
-    (fun (sctx, pkg, libs) ->
+    (fun (sctx, pkg, (libs : Lib.Local.t list)) ->
        let libs = (libs :> Lib.t list) in
        let requires = Lib.closure libs ~linking:false in
        let ctx = Super_context.context sctx in

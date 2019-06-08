@@ -1769,3 +1769,42 @@ let to_dune_lib ({ name ; info ; _ } as lib) ~lib_modules ~foreign_objects
     ~main_module_name:(Result.ok_exn (main_module_name lib))
     ~sub_systems:(Sub_system.dump_config lib)
     ~special_builtin_support:info.special_builtin_support
+
+module Local : sig
+  type t = private lib
+  val of_lib : lib -> t option
+  val of_lib_exn : lib -> t
+  val to_lib : t -> lib
+  val obj_dir : t -> Obj_dir.Local.t
+  val src_dir : t -> Path.Build.t
+  val to_dyn : t -> Dyn.t
+  val equal : t -> t -> bool
+  val hash : t -> int
+
+  module Set : Stdune.Set.S with type elt = t
+  module Map : Stdune.Map.S with type key = t
+
+end = struct
+  type nonrec t = t
+
+  let to_lib t = t
+
+  let of_lib (t : lib) = Option.some_if (is_local t) t
+
+  let of_lib_exn t =
+    match of_lib t with
+    | Some l -> l
+    | None -> Exn.code_error "Lib.Local.of_lib_exn"
+                ["l", Dyn.to_sexp (to_dyn t)]
+
+  let obj_dir t = Obj_dir.as_local_exn t.info.obj_dir
+
+  let src_dir t = Path.as_in_build_dir_exn t.info.src_dir
+
+  module Set = Set
+  module Map = Map
+
+  let to_dyn = to_dyn
+  let equal = equal
+  let hash = hash
+end

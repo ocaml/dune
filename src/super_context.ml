@@ -32,7 +32,7 @@ type t =
   ; expander                         : Expander.t
   ; chdir                            : (Action.t, Action.t) Build.t
   ; host                             : t option
-  ; libs_by_package : (Package.t * Lib.Set.t) Package.Name.Map.t
+  ; libs_by_package : (Package.t * Lib.Local.Set.t) Package.Name.Map.t
   ; env_context                      : Env_context.t
   ; dir_status_db                    : Dir_status.DB.t
   ; external_lib_deps_mode           : bool
@@ -492,13 +492,15 @@ let create
   ; libs_by_package =
       Lib.DB.all public_libs
       |> Lib.Set.to_list
-      |> List.map ~f:(fun lib ->
-        (Option.value_exn (Lib.package lib), lib))
+      |> List.filter_map ~f:(fun lib ->
+        Lib.Local.of_lib lib
+        |> Option.map ~f:(fun local ->
+          (Option.value_exn (Lib.package lib), local)))
       |> Package.Name.Map.of_list_multi
       |> Package.Name.Map.merge packages ~f:(fun _name pkg libs ->
         let pkg  = Option.value_exn pkg          in
         let libs = Option.value libs ~default:[] in
-        Some (pkg, Lib.Set.of_list libs))
+        Some (pkg, Lib.Local.Set.of_list libs))
   ; env_context
   ; default_env
   ; external_lib_deps_mode

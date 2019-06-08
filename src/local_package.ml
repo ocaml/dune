@@ -10,8 +10,8 @@ type t =
   ; mlds : Path.Build.t list Lazy.t
   ; coqlibs : Dune_file.Coq.t Dir_with_dune.t list
   ; pkg : Package.t
-  ; libs : Lib.Set.t
-  ; virtual_lib : Lib.t option Lazy.t
+  ; libs : Lib.Local.Set.t
+  ; virtual_lib : Lib.Local.t option Lazy.t
   }
 
 let to_dyn t = Package.to_dyn t.pkg
@@ -125,7 +125,7 @@ module Of_sctx = struct
         fun (pkg : Package.t) ->
           match Package.Name.Map.find libs pkg.name with
           | Some (_, libs) -> libs
-          | None -> Lib.Set.empty
+          | None -> Lib.Local.Set.empty
       in
       Super_context.packages sctx
       |> Package.Name.Map.map ~f:(fun (pkg : Package.t) ->
@@ -140,7 +140,9 @@ module Of_sctx = struct
         in
         let libs = libs_of pkg in
         let virtual_lib = lazy (
-          Lib.Set.find libs ~f:(fun l -> Option.is_some (Lib.virtual_ l))
+          Lib.Local.Set.find libs ~f:(fun l ->
+            let l = Lib.Local.to_lib l in
+            Option.is_some (Lib.virtual_ l))
         ) in
         let t =
           add_stanzas

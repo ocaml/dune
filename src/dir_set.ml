@@ -1,14 +1,16 @@
 open! Stdune
 
-type t =
+type t0 =
   | Empty
   | Universal
   | Nontrivial of nontrivial
 and nontrivial = {
   default : bool;
   here : bool;
-  exceptions : t String.Map.t;
+  exceptions : t0 String.Map.t;
 }
+
+type _ t = t0
 
 let here = function
   | Empty -> false
@@ -110,7 +112,7 @@ let rec mem t dir =
       | None -> default
       | Some t -> mem t rest
 
-let mem t dir = mem t (Path.Build.explode dir)
+let mem t dir = mem t (Path.Local_gen.explode dir)
 
 let descend t child =
   match t with
@@ -133,7 +135,7 @@ let of_subtree_gen =
         ~default:false
         ~exceptions:(String.Map.singleton component (loop subtree rest))
   in
-  fun subtree path -> loop subtree (Path.Build.explode path)
+  fun subtree path -> loop subtree (Path.Local_gen.explode path)
 
 let just_the_root =
   Nontrivial
@@ -168,3 +170,5 @@ let rec to_sexp t = match t with
          | false -> []
          | true -> [("*", Sexp.Atom "Universal")]))
       |> List.map ~f:(fun (k, v) -> Sexp.List [Sexp.Atom k; v]))
+
+let forget_root t = t

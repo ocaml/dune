@@ -1,9 +1,21 @@
+(** Relative path relative to the root tracked by the type system.
+
+    Represented as: either the root, or a '/' separated list of components
+    other that ".", ".."  and not containing a '/'. *)
+module Local_gen : Path_intf.Local_gen
+
+module Unspecified : sig
+  type w = Path_intf.Unspecified.w
+end
+
 (** Relative path with unspecified root.
 
     Either root, or a '/' separated list of components
     other that ".", ".."  and not containing a '/'. *)
 module Local : sig
-  include Path_intf.S
+  type w = Unspecified.w
+  type t = w Local_gen.t
+  include Path_intf.S with type t := t
   val root : t
 
   module L : sig
@@ -17,7 +29,11 @@ end
 
 (** In the source section of the current workspace. *)
 module Source : sig
-  include Path_intf.S
+  type w
+
+  type t = w Local_gen.t
+
+  include Path_intf.S with type t := t
   val root : t
 
   module L : sig
@@ -57,7 +73,11 @@ module Kind : sig
 end
 
 module Build : sig
-  include Path_intf.S
+  type w
+
+  type t = w Local_gen.t
+
+  include Path_intf.S with type t := t
   val root : t
 
   val append_source : t -> Source.t -> t

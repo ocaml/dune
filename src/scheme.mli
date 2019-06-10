@@ -16,7 +16,7 @@ type 'rules t =
       This error is not always going to be detected, especially if it's hidden
       by an occurrence of [Thunk]. If the error is undetected, the violating
       rules are just silently ignored. *)
-  | Approximation of Dir_set.t * 'rules t
+  | Approximation of Path.Build.w Dir_set.t * 'rules t
 
   (** [Finite rules] just produces a fixed set of rules known in advance.
       The keys in the map are the directory paths. *)

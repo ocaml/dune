@@ -206,12 +206,12 @@ module Local_gen : sig
 
   val basename : 'w t -> string
   val extend_basename : 'w t -> suffix:string -> 'w t
-  val is_suffix : 'w t -> suffix:string -> bool
 
   module Fix_root (Root : sig type w end) : sig
     module Set : sig
       include Set.S with type elt = Root.w t
       val to_sexp : t Sexp.Encoder.t
+      val to_dyn : t Dyn.Encoder.t
       val of_listing : dir:elt -> filenames:string list -> t
     end
 
@@ -303,11 +303,6 @@ end = struct
       match String.rindex_from t (String.length t - 1) '/' with
       | exception Not_found -> Some root
       | i -> Some (make (String.take t i))
-
-  let parent_exn t =
-    match parent t with
-    | None -> Code_error.raise "Path.Local.parent called on the root" []
-    | Some t -> t
 
   let basename t =
     if is_root t then
@@ -612,6 +607,8 @@ module Relative_to_source_root : sig
   val mkdir_p : Local.t -> unit
 end = struct
 
+  open Local
+  
   let rec mkdir_p t =
     if is_root t then
       ()

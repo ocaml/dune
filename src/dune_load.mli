@@ -7,6 +7,12 @@ module Dune_file : sig
     ; stanzas : Dune_file.Stanzas.t
     ; kind    : Dune_lang.File_syntax.t
     }
+
+  val fold_stanzas :
+      t list
+    -> init:'acc
+    -> f:(t -> Stanza.t -> 'acc -> 'acc)
+    -> 'acc
 end
 
 module Dune_files : sig

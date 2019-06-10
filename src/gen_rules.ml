@@ -304,11 +304,36 @@ module type Gen = sig
   val sctx : Super_context.t
 end
 
-let relevant_stanzas pkgs stanzas =
-  List.filter stanzas ~f:(fun stanza ->
+let filter_out_stanzas_from_hidden_packages ~visible_pkgs =
+  List.filter_map ~f:(fun stanza ->
     match Dune_file.stanza_package stanza with
-    | Some package -> Package.Name.Set.mem pkgs package.name
-    | None -> true)
+    | None -> Some stanza
+    | Some package ->
+      if Package.Name.Set.mem visible_pkgs package.name then
+        Some stanza
+      else
+        (* If the stanza is a hidden public implementation of a
+           visible library, turn it into an external variant so that
+           we can correctly compute the set of "knonw implementation"
+           when generating the dune-package file. *)
+        match stanza with
+        | Library { public = Some { name = (_, name); _ }
+                  ; variant = Some variant
+                  ; implements = Some (_, virtual_lib)
+                  ; project
+                  ; buildable = { loc; _ }
+                  ; _ }
+          when Package.Name.Set.mem visible_pkgs
+                 (Lib_name.package_name virtual_lib) ->
+          Some
+            (External_variant
+               { implementation = name
+               ; virtual_lib
+               ; variant
+               ; project
+               ; loc
+               })
+        | _ -> None)
 
 let gen ~contexts
       ?(external_lib_deps_mode=false)
@@ -333,14 +358,16 @@ let gen ~contexts
         Fiber.Ivar.read (Hashtbl.find_exn sctxs h.name)
         >>| Option.some
     in
+
     let stanzas () =
       let+ stanzas = Dune_load.Dune_files.eval ~context dune_files in
       match only_packages with
       | None -> stanzas
-      | Some pkgs ->
+      | Some visible_pkgs ->
         List.map stanzas ~f:(fun (dir_conf : Dune_load.Dune_file.t) ->
           { dir_conf with
-            stanzas = relevant_stanzas pkgs dir_conf.stanzas
+            stanzas = filter_out_stanzas_from_hidden_packages
+                        ~visible_pkgs dir_conf.stanzas
           })
     in
     let* (host, stanzas) = Fiber.fork_and_join host stanzas in

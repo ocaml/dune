@@ -5,12 +5,15 @@ open Stdune
 module Status : sig
   type t =
     | Installed
-    | Public  of Package.t
+    | Public  of Dune_project.Name.t * Package.t
     | Private of Dune_project.Name.t
 
   val pp : t Fmt.t
 
   val is_private : t -> bool
+
+  (** For local libraries, return the project name they are part of *)
+  val project_name : t -> Dune_project.Name.t option
 end
 
 module Deps : sig
@@ -42,7 +45,7 @@ type t = private
   ; status           : Status.t
   ; src_dir          : Path.t
   ; orig_src_dir     : Path.t option
-  ; obj_dir          : Obj_dir.t
+  ; obj_dir          : Path.t Obj_dir.t
   ; version          : string option
   ; synopsis         : string option
   ; archives         : Path.t list Mode.Dict.t
@@ -61,6 +64,7 @@ type t = private
   ; virtual_         : Lib_modules.t Source.t option
   ; implements       : (Loc.t * Lib_name.t) option
   ; variant          : Variant.t option
+  ; known_implementations : (Loc.t * Lib_name.t) Variant.Map.t
   ; default_implementation  : (Loc.t * Lib_name.t) option
   ; wrapped          : Wrapped.t Dune_file.Library.Inherited.t option
   ; main_module_name : Dune_file.Library.Main_module_name.t
@@ -71,6 +75,7 @@ type t = private
 val of_library_stanza
   :  dir:Path.Build.t
   -> lib_config:Lib_config.t
+  -> (Loc.t * Lib_name.t) Variant.Map.t
   -> Dune_file.Library.t
   -> t
 

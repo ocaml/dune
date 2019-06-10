@@ -76,11 +76,13 @@ implementation for every virtual library that we've used:
      clock_unix ;; leaving this dependency will make dune loudly complain
      calendar))
 
+.. _dune-variants:
+
 Variants
 ========
 
 This feature is still under development and may change with new dune
-releases. You need to write ``(using library_variants 0.1)`` in your
+releases. You need to write ``(using library_variants 0.2)`` in your
 ``dune-project`` file to unlock it.
 
 When building a binary, implementations can be selected using a set of variants
@@ -107,6 +109,21 @@ implementation would have the following configuration:
     (name time-js)
     (implements time)
     (variant js))
+
+The list of available variants is computed while building the virtual library.
+This means only variant implementations that are part of the same project are
+implicitely taken into account. It's possible to declare an external
+implementation by using the `external_variant` stanza in the virtual library
+scope.
+
+.. code:: scheme
+
+   (external_variant
+    (variant foo)
+    (implementation lib-foo)
+    (virtual_library vlib))
+
+This will add `lib-foo` to the list of known implementations of `vlib`.
 
 Default implementation
 ======================

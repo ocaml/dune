@@ -3,7 +3,7 @@ open Stdune
 module Status = struct
   type t =
     | Installed
-    | Public  of Package.t
+    | Public  of Dune_project.Name.t * Package.t
     | Private of Dune_project.Name.t
 
   let pp ppf t =
@@ -17,6 +17,10 @@ module Status = struct
   let is_private = function
     | Private _ -> true
     | Installed | Public _ -> false
+
+  let project_name = function
+    | Installed -> None
+    | Public (name, _) | Private name -> Some name
 end
 
 
@@ -61,7 +65,7 @@ type t =
   ; status           : Status.t
   ; src_dir          : Path.t
   ; orig_src_dir     : Path.t option
-  ; obj_dir          : Obj_dir.t
+  ; obj_dir          : Path.t Obj_dir.t
   ; version          : string option
   ; synopsis         : string option
   ; archives         : Path.t list Mode.Dict.t
@@ -80,6 +84,7 @@ type t =
   ; virtual_         : Lib_modules.t Source.t option
   ; implements       : (Loc.t * Lib_name.t) option
   ; variant          : Variant.t option
+  ; known_implementations : (Loc.t * Lib_name.t) Variant.Map.t
   ; default_implementation  : (Loc.t * Lib_name.t) option
   ; wrapped          : Wrapped.t Dune_file.Library.Inherited.t option
   ; main_module_name : Dune_file.Library.Main_module_name.t
@@ -95,6 +100,7 @@ let user_written_deps t =
 let of_library_stanza ~dir
       ~lib_config:({ Lib_config.has_native; ext_lib; ext_obj; _ }
                    as lib_config)
+      (known_implementations : (Loc.t * Lib_name.t) Variant.Map.t)
       (conf : Dune_file.Library.t) =
   let (_loc, lib_name) = conf.name in
   let obj_dir =
@@ -114,7 +120,7 @@ let of_library_stanza ~dir
   let status =
     match conf.public with
     | None   -> Status.Private (Dune_project.name conf.project)
-    | Some p -> Public p.package
+    | Some p -> Public (Dune_project.name conf.project, p.package)
   in
   let virtual_library = Dune_file.Library.is_virtual conf in
   let foreign_archives =
@@ -207,6 +213,7 @@ let of_library_stanza ~dir
   ; virtual_
   ; implements = conf.implements
   ; variant = conf.variant
+  ; known_implementations
   ; default_implementation = conf.default_implementation
   ; main_module_name
   ; modes
@@ -253,7 +260,8 @@ let of_dune_lib dp =
   ; sub_systems = Lib.sub_systems dp
   ; virtual_
   ; implements = Lib.implements dp
-  ; variant = Lib.variant dp
+  ; variant = None
+  ; known_implementations = Lib.known_implementations dp
   ; default_implementation = Lib.default_implementation dp
   ; modes = Lib.modes dp
   ; wrapped

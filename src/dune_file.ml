@@ -55,7 +55,7 @@ let library_variants =
   let syntax =
     Syntax.create ~name:"library_variants"
       ~desc:"the experimental library variants feature."
-      [ (0, 1) ]
+      [ (0, 2) ]
   in
   Dune_project.Extension.register_simple ~experimental:true
     syntax (Dune_lang.Decoder.return []);
@@ -830,6 +830,34 @@ module Mode_conf = struct
   end
 end
 
+module External_variant = struct
+  type t =
+    { implementation : Lib_name.t
+    ; virtual_lib : Lib_name.t
+    ; variant : Variant.t
+    ; project : Dune_project.t
+    ; loc : Loc.t
+    }
+
+  let decode =
+    let open Stanza.Decoder in
+    record (
+      let+ loc = loc
+      and+ variant = field "variant" Variant.decode
+      and+ virtual_lib = field "virtual_library" Lib_name.decode
+      and+ implementation = field "implementation" Lib_name.decode
+      and+ project = Dune_project.get_exn ()
+      in
+      { implementation
+      ; virtual_lib
+      ; variant
+      ; project
+      ; loc
+      }
+    )
+end
+
+
 module Library = struct
   module Inherited = struct
     type 'a t =
@@ -1041,7 +1069,7 @@ module Library = struct
            "A library cannot be both virtual and implement %s"
            (Lib_name.to_string impl));
        match virtual_modules, default_implementation with
-       | None, Some (loc, _) ->
+       | None, (Some (loc, _)) ->
          of_sexp_error loc
            "Only virtual libraries can specify a default implementation."
        | _ -> ();
@@ -1144,7 +1172,7 @@ module Library = struct
   let is_impl t = Option.is_some t.implements
 
   let obj_dir ~dir t =
-    Obj_dir.Local.make_lib ~dir
+    Obj_dir.make_lib ~dir
       ~has_private_modules:(t.private_modules <> None)
       (snd t.name)
 
@@ -2171,16 +2199,17 @@ module Include_subdirs = struct
 end
 
 type Stanza.t +=
-  | Library         of Library.t
-  | Executables     of Executables.t
-  | Rule            of Rule.t
-  | Install         of File_binding.Unexpanded.t Install_conf.t
-  | Alias           of Alias_conf.t
-  | Copy_files      of Copy_files.t
-  | Documentation   of Documentation.t
-  | Tests           of Tests.t
-  | Include_subdirs of Loc.t * Include_subdirs.t
-  | Toplevel        of Toplevel.t
+  | Library                of Library.t
+  | Executables            of Executables.t
+  | Rule                   of Rule.t
+  | Install                of File_binding.Unexpanded.t Install_conf.t
+  | Alias                  of Alias_conf.t
+  | Copy_files             of Copy_files.t
+  | Documentation          of Documentation.t
+  | Tests                  of Tests.t
+  | Include_subdirs        of Loc.t * Include_subdirs.t
+  | Toplevel               of Toplevel.t
+  | External_variant of External_variant.t
 
 module Stanzas = struct
   type t = Stanza.t list
@@ -2249,6 +2278,10 @@ module Stanzas = struct
       (let+ () = Syntax.since Stanza.syntax (1, 0)
        and+ t = Tests.single in
        [Tests t])
+    ; "external_variant",
+      (let+ () = Syntax.since library_variants (0, 2)
+       and+ t = External_variant.decode in
+       [External_variant t])
     ; "env",
       (let+ x = Dune_env.Stanza.decode in
        [Dune_env.T x])

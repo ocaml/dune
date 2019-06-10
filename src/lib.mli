@@ -19,7 +19,7 @@ val src_dir : t -> Path.t
 val orig_src_dir : t -> Path.t
 
 (** Directory where the object files for the library are located. *)
-val obj_dir : t -> Obj_dir.t
+val obj_dir : t -> Path.t Obj_dir.t
 val public_cmi_dir : t -> Path.t
 
 (** Same as [Path.is_managed (obj_dir t)] *)
@@ -259,16 +259,16 @@ module DB : sig
   val create
     :  ?parent:t
     -> resolve:(Lib_name.t -> Resolve_result.t)
-    -> find_implementations:(Lib_name.t -> Lib_info.t list Variant.Map.t)
     -> all:(unit -> Lib_name.t list)
     -> unit
     -> t
 
-  (** Create a database from a list of library stanzas *)
+  (** Create a database from a list of library/variants stanzas *)
   val create_from_library_stanzas
     :  ?parent:t
     -> lib_config:Lib_config.t
     -> (Path.Build.t * Dune_file.Library.t) list
+    -> Dune_file.External_variant.t list
     -> t
 
   val create_from_findlib
@@ -290,8 +290,6 @@ module DB : sig
   (** Retrieve the compile information for the given library. Works
       for libraries that are optional and not available as well. *)
   val get_compile_info : t -> ?allow_overlaps:bool -> Lib_name.t -> Compile.t
-
-  val find_implementations : t -> Lib_name.t -> Lib_info.t list Variant.Map.t
 
   val resolve : t -> Loc.t * Lib_name.t -> lib Or_exn.t
 
@@ -368,3 +366,23 @@ val to_dune_lib
   -> foreign_objects:Path.t list
   -> dir:Path.t
   -> (Syntax.Version.t * Dune_lang.t list) Dune_package.Lib.t
+
+module Local : sig
+  type lib
+  type t = private lib
+
+  val to_dyn : t -> Dyn.t
+  val equal : t -> t -> bool
+  val hash : t -> int
+
+  val of_lib : lib -> t option
+  val of_lib_exn : lib -> t
+  val to_lib : t -> lib
+
+  val obj_dir : t -> Path.Build.t Obj_dir.t
+  val src_dir : t -> Path.Build.t
+
+  module Set : Stdune.Set.S with type elt = t
+  module Map : Stdune.Map.S with type key = t
+
+end with type lib := t

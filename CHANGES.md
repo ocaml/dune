@@ -3,6 +3,11 @@ unreleased
 
 - Don't reserve the `Ppx` toplevel module name for ppx rewriters (#...., @diml)
 
+- Redesign of the library variant feature according to the #2134 proposal. The
+  set of variants is now computed when the virtual library is installed.
+  Introducing a new `external_variant` stanza. (#2169, fixes #2134, @TheLortex,
+  review by @diml)
+
 1.10.0 (04/06/2019)
 -------------------
 

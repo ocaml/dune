@@ -398,7 +398,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
           Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext Mode.Byte) in
         let target =
           Path.Build.relative
-            (Obj_dir.Local.obj_dir obj_dir)
+            (Obj_dir.obj_dir obj_dir)
             (Path.Build.basename src)
           |> Path.Build.extend_basename ~suffix:".js" in
         Js_of_ocaml_rules.build_cm cctx ~js_of_ocaml ~src ~target);

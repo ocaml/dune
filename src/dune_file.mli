@@ -181,6 +181,16 @@ module Mode_conf : sig
   end
 end
 
+module External_variant : sig
+  type t =
+    { implementation : Lib_name.t
+    ; virtual_lib : Lib_name.t
+    ; variant : Variant.t
+    ; project : Dune_project.t
+    ; loc : Loc.t
+    }
+end
+
 module Library : sig
   module Inherited : sig
     type 'a t =
@@ -258,7 +268,7 @@ module Library : sig
   val best_name : t -> Lib_name.t
   val is_virtual : t -> bool
   val is_impl : t -> bool
-  val obj_dir : dir:Path.Build.t -> t -> Obj_dir.Local.t
+  val obj_dir : dir:Path.Build.t -> t -> Path.Build.t Obj_dir.t
 
   module Main_module_name : sig
     type t = Module.Name.t option Inherited.t
@@ -467,16 +477,17 @@ module Include_subdirs : sig
 end
 
 type Stanza.t +=
-  | Library         of Library.t
-  | Executables     of Executables.t
-  | Rule            of Rule.t
-  | Install         of File_binding.Unexpanded.t Install_conf.t
-  | Alias           of Alias_conf.t
-  | Copy_files      of Copy_files.t
-  | Documentation   of Documentation.t
-  | Tests           of Tests.t
-  | Include_subdirs of Loc.t * Include_subdirs.t
-  | Toplevel        of Toplevel.t
+  | Library                of Library.t
+  | Executables            of Executables.t
+  | Rule                   of Rule.t
+  | Install                of File_binding.Unexpanded.t Install_conf.t
+  | Alias                  of Alias_conf.t
+  | Copy_files             of Copy_files.t
+  | Documentation          of Documentation.t
+  | Tests                  of Tests.t
+  | Include_subdirs        of Loc.t * Include_subdirs.t
+  | Toplevel               of Toplevel.t
+  | External_variant       of External_variant.t
 
 val stanza_package : Stanza.t -> Package.t option
 

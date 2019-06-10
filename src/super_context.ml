@@ -32,7 +32,7 @@ type t =
   ; expander                         : Expander.t
   ; chdir                            : (Action.t, Action.t) Build.t
   ; host                             : t option
-  ; libs_by_package : (Package.t * Lib.Set.t) Package.Name.Map.t
+  ; libs_by_package : (Package.t * Lib.Local.Set.t) Package.Name.Map.t
   ; env_context                      : Env_context.t
   ; dir_status_db                    : Dir_status.DB.t
   ; external_lib_deps_mode           : bool
@@ -181,8 +181,8 @@ end = struct
   let default_context_flags (ctx : Context.t) =
     let c = ctx.ocamlc_cflags in
     let cxx =
-        List.filter ctx.ocamlc_cflags
-          ~f:(fun s -> not (String.is_prefix s ~prefix:"-std=")) in
+      List.filter ctx.ocamlc_cflags
+        ~f:(fun s -> not (String.is_prefix s ~prefix:"-std=")) in
     C.Kind.Dict.make ~c ~cxx
 
   let c_flags t ~dir =
@@ -359,7 +359,7 @@ let create
       ~(context:Context.t)
       ?host
       ~projects
-     ~file_tree
+      ~file_tree
       ~packages
       ~stanzas
       ~external_lib_deps_mode
@@ -367,23 +367,28 @@ let create
   let installed_libs =
     Lib.DB.create_from_findlib context.findlib ~external_lib_deps_mode
   in
-  let internal_libs =
-    List.concat_map stanzas
-      ~f:(fun { Dune_load.Dune_file. dir; stanzas; project = _ ; kind = _ } ->
-        let ctx_dir = Path.Build.append_source context.build_dir dir in
-        List.filter_map stanzas ~f:(fun stanza ->
-          match (stanza : Stanza.t) with
-          | Dune_file.Library lib -> Some (ctx_dir, lib)
-          | _ -> None))
-  in
   let scopes, public_libs =
+    let libs, external_variants =
+      Dune_load.Dune_file.fold_stanzas stanzas ~init:([], [])
+        ~f:(fun dune_file stanza ((libs, external_variants) as acc) ->
+          match stanza with
+          | Dune_file.Library lib ->
+            let ctx_dir =
+              Path.Build.append_source context.build_dir dune_file.dir
+            in
+            ((ctx_dir, lib) :: libs, external_variants)
+          | Dune_file.External_variant ev ->
+            (libs, ev :: external_variants)
+          | _ -> acc)
+    in
     let lib_config = Context.lib_config context in
     Scope.DB.create
       ~projects
       ~context:context.name
       ~installed_libs
       ~lib_config
-      internal_libs
+      libs
+      external_variants
   in
   let stanzas =
     List.map stanzas
@@ -455,18 +460,18 @@ let create
       ~bin_artifacts_host:artifacts_host.bin
   in
   let env_context = { Env_context.
-    env;
-    profile = context.profile;
-    scopes;
-    context_env = context.env;
-    default_env;
-    stanzas_per_dir;
-    host = Option.map host ~f:(fun x -> x.env_context);
-    build_dir = context.build_dir;
-    context = context;
-    expander = expander;
-    bin_artifacts = artifacts.Artifacts.bin;
-  }
+                      env;
+                      profile = context.profile;
+                      scopes;
+                      context_env = context.env;
+                      default_env;
+                      stanzas_per_dir;
+                      host = Option.map host ~f:(fun x -> x.env_context);
+                      build_dir = context.build_dir;
+                      context = context;
+                      expander = expander;
+                      bin_artifacts = artifacts.Artifacts.bin;
+                    }
   in
   let dir_status_db = Dir_status.DB.make file_tree ~stanzas_per_dir in
   { context
@@ -487,13 +492,15 @@ let create
   ; libs_by_package =
       Lib.DB.all public_libs
       |> Lib.Set.to_list
-      |> List.map ~f:(fun lib ->
-        (Option.value_exn (Lib.package lib), lib))
+      |> List.filter_map ~f:(fun lib ->
+        Lib.Local.of_lib lib
+        |> Option.map ~f:(fun local ->
+          (Option.value_exn (Lib.package lib), local)))
       |> Package.Name.Map.of_list_multi
       |> Package.Name.Map.merge packages ~f:(fun _name pkg libs ->
         let pkg  = Option.value_exn pkg          in
         let libs = Option.value libs ~default:[] in
-        Some (pkg, Lib.Set.of_list libs))
+        Some (pkg, Lib.Local.Set.of_list libs))
   ; env_context
   ; default_env
   ; external_lib_deps_mode

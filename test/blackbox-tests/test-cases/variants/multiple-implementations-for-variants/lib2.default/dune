@@ -1,4 +1,0 @@
-(library
- (name lib2_default)
- (implements vlib)
- (variant default))

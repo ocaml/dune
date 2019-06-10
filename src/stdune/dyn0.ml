@@ -1,6 +1,7 @@
 module Array = Dune_caml.ArrayLabels
 
 type t =
+  | Opaque
   | Unit
   | Int of int
   | Bool of bool
@@ -19,6 +20,7 @@ type t =
   | Set of t list
 
 let rec pp = function
+  | Opaque -> Pp.verbatim "<opaque>"
   | Unit -> Pp.verbatim "()"
   | Int i -> Pp.verbatim (string_of_int i)
   | Bool b -> Pp.verbatim (string_of_bool b)

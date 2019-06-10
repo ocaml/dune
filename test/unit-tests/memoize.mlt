@@ -94,8 +94,8 @@ run mcomp "a";;
   Memo.get_deps mcomp "a";;
 
 [%%expect{|
-- : (string * Sexp.t) list option =
-Some [("another", Atom "aa"); ("some", Atom "a")]
+- : (string * Dyn.t) list option =
+Some [("another", String "aa"); ("some", String "a")]
 |}]
 
   (* running it on a new input should cause it to recompute
@@ -175,9 +175,8 @@ with
 [%%expect{|
 - : int list option = Some [2; 1; 0; 2]
 - : int = 4
-- : (string * Sexp.t) list =
-[("cycle", Atom "2"); ("cycle", Atom "1"); ("cycle", Atom "0");
- ("cycle", Atom "5")]
+- : (string * Dyn.t) list =
+[("cycle", Int 2); ("cycle", Int 1); ("cycle", Int 0); ("cycle", Int 5)]
 |}]
 
 let mfib =
@@ -284,7 +283,7 @@ module Test_lazy(Lazy : sig
   module Lazy_string = struct
     type t = string Lazy.t
 
-    let to_sexp s = ignore (Lazy.force s); Sexp.Encoder.string "opaque"
+    let to_dyn s = ignore (Lazy.force s); Dyn.Encoder.string "opaque"
     let equal x y = String.equal (Lazy.force x) (Lazy.force y)
     let hash s = String.hash (Lazy.force s)
   end
@@ -347,9 +346,9 @@ Builtin_lazy.run ();;
    (see below) *)
 Builtin_lazy.deps ();;
 [%%expect{|
-- : (string * Sexp.t) list option * (string * Sexp.t) list option =
-(Some [("lazy_memo", Atom "foo")],
- Some [("id", Atom "lazy: foo"); ("lazy_memo", Atom "foo")])
+- : (string * Dyn.t) list option * (string * Dyn.t) list option =
+(Some [("lazy_memo", String "foo")],
+ Some [("id", String "lazy: foo"); ("lazy_memo", String "foo")])
 |}]
 ;;
 
@@ -365,7 +364,7 @@ Memo_lazy.run ();;
 
 Memo_lazy.deps ();;
 [%%expect{|
-- : (string * Sexp.t) list option * (string * Sexp.t) list option =
-(Some [("lazy-0", List []); ("lazy_memo", Atom "foo")],
- Some [("lazy-0", List []); ("lazy_memo", Atom "foo")])
+- : (string * Dyn.t) list option * (string * Dyn.t) list option =
+(Some [("lazy-0", Unit); ("lazy_memo", String "foo")],
+ Some [("lazy-0", Unit); ("lazy_memo", String "foo")])
 |}]

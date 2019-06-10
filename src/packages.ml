@@ -6,7 +6,7 @@ let mlds_by_package_def =
   let module Output = struct
     type t = Path.Build.t list Package.Name.Map.t
 
-    let to_sexp _ = Sexp.Encoder.string "opaque"
+    let to_dyn _ = Dyn.Opaque
   end
   in
   Memo.With_implicit_output.create "mlds by package"

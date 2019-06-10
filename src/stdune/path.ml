@@ -1183,6 +1183,7 @@ let pp_debug ppf = function
 module Set = struct
   include Set.Make(T)
   let to_sexp t = Sexp.Encoder.(list to_sexp) (to_list t)
+  let to_dyn t = Set.to_dyn to_list to_dyn t
   let of_listing ~dir ~filenames =
     of_list (List.map filenames ~f:(fun f -> relative dir f))
 end

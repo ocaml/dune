@@ -27,7 +27,7 @@ module Stack_frame : sig
   val compare : t -> t -> Ordering.t
 
   val name : t -> string
-  val input : t -> Sexp.t
+  val input : t -> Dyn.t
 
   (** Checks if the stack frame is a frame of the given memoized function
       and if so, returns [Some i] where [i] is the argument of the function. *)
@@ -58,12 +58,12 @@ end
 
 module type Output_simple = sig
   type t
-  val to_sexp : t -> Sexp.t
+  val to_dyn : t -> Dyn.t
 end
 
 module type Output_allow_cutoff = sig
   type t
-  val to_sexp : t -> Sexp.t
+  val to_dyn : t -> Dyn.t
   val equal : t -> t -> bool
 end
 
@@ -84,7 +84,7 @@ end
 
 module type Input = sig
   type t
-  val to_sexp : t -> Sexp.t
+  val to_dyn : t -> Dyn.t
   include Table.Key with type t := t
 end
 
@@ -144,7 +144,7 @@ val exec : (_, _, 'f) t -> 'f
 
     Returns [None] if the dependencies were not computed yet.
 *)
-val get_deps : ('i, _, _) t -> 'i -> (string * Sexp.t) list option
+val get_deps : ('i, _, _) t -> 'i -> (string * Dyn.t) list option
 
 (** Print the memoized call stack during execution. This is useful for
     debugging purposes. *)
@@ -156,7 +156,7 @@ val pp_stack : Format.formatter -> unit -> unit
 val get_call_stack : unit -> Stack_frame.t list
 
 (** Call a memoized function by name *)
-val call : string -> Dune_lang.Ast.t -> Sexp.t Fiber.t
+val call : string -> Dune_lang.Ast.t -> Dyn.t Fiber.t
 
 module Function_info : sig
   type t =

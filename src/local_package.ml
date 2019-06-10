@@ -96,11 +96,10 @@ module Of_sctx = struct
       |> List.hash (fun (k, v) ->
         Hashtbl.hash (Package.Name.hash k, hash v))
 
-    let to_sexp t =
+    let to_dyn t =
       Dyn.Map (
         Package.Name.Map.to_list t
         |> List.map ~f:(fun (k, v) -> (Package.Name.to_dyn k, to_dyn v)))
-      |> Dyn.to_sexp
   end
 
   let def =
@@ -217,8 +216,6 @@ let local_packages_by_dir_def =
         |> List.map ~f:(fun (k, v) ->
           let v = List (List.map ~f:to_dyn v) in
           (Path.Build.to_dyn k, v)))
-
-    let to_sexp t = Dyn.to_sexp (to_dyn t)
   end
   in
   let f local_packages =

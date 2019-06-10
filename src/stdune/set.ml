@@ -74,3 +74,6 @@ end
 
 let to_sexp to_list f t =
   Sexp.Encoder.list f (to_list t)
+
+let to_dyn to_list f t =
+  Dyn.Encoder.list f (to_list t)

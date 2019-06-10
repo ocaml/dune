@@ -39,6 +39,7 @@ module Context_or_install : sig
     | Install of string
     | Context of string
 
+  val to_dyn : t -> Dyn.t
   val to_sexp : t -> Sexp.t
 end
 

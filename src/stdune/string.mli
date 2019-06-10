@@ -5,6 +5,7 @@ val equal : t -> t -> bool
 val compare : t -> t -> Ordering.t
 val hash : t -> int
 val to_sexp : t -> Sexp.t
+val to_dyn : t -> Dyn.t
 
 val break : t -> pos:int -> t * t
 

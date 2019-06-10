@@ -143,10 +143,10 @@ module Internal_rule = struct
   let equal a b = Id.equal a.id b.id
   let hash t = Id.hash t.id
 
-  let to_sexp t : Sexp.t =
-    Sexp.Encoder.record
-      [ "id", Id.to_sexp t.id
-      ; "loc", Sexp.Encoder.option Loc.to_sexp
+  let to_dyn t : Dyn.t =
+    Record
+      [ "id", Id.to_dyn t.id
+      ; "loc", Dyn.Encoder.option Loc.to_dyn
                  (Rule.Info.loc t.info)
       ]
 
@@ -357,11 +357,11 @@ type hook =
 module Action_and_deps = struct
   type t = Action.t * Dep.Set.t
 
-  let to_sexp (action, deps) =
-    Sexp.Encoder.record
-      [ "action", Dune_lang.to_sexp
-                    (Action.For_shell.encode (Action.for_shell action))
-      ; "deps", Dune_lang.to_sexp (Dep.Set.encode deps)
+  let to_dyn (action, deps) =
+    Dyn.Encoder.record
+      [ "action", Sexp (Dune_lang.to_sexp
+                          (Action.For_shell.encode (Action.for_shell action)))
+      ; "deps", Sexp (Dune_lang.to_sexp (Dep.Set.encode deps))
       ]
 end
 
@@ -376,11 +376,13 @@ module Context_or_install = struct
     | Install of string
     | Context of string
 
-  let to_sexp = function
-    | Install ctx -> Sexp.List [ Sexp.Atom "install"; Sexp.Atom ctx ]
+  let to_dyn = function
+    | Install ctx -> Dyn.List [ Dyn.String "install"; Dyn.String ctx ]
     | Context s ->
       assert (not (s = "install"));
-      Sexp.Atom s
+      Dyn.String s
+
+  let to_sexp t = Dyn.to_sexp (to_dyn t)
 end
 
 

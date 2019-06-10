@@ -14,7 +14,7 @@ let deps_of t (m : Module.t) =
   match Module.Name.Map.find t.per_module name with
   | Some (_, x) -> x
   | None ->
-    Exn.code_error "Ocamldep.Dep_graph.deps_of"
+    Errors.code_error "Ocamldep.Dep_graph.deps_of"
       [ "dir", Path.Build.to_sexp t.dir
       ; "modules", Sexp.Encoder.(list Module.Name.to_sexp)
                      (Module.Name.Map.keys t.per_module)
@@ -88,7 +88,7 @@ let wrapped_compat ~modules ~wrapped_compat =
       match d, m with
       | None, None -> assert false
       | Some wrapped_compat, None ->
-        Exn.code_error "deprecated module needs counterpart"
+        Errors.code_error "deprecated module needs counterpart"
           [ "deprecated", Module.to_sexp wrapped_compat
           ]
       | None, Some _ -> None
@@ -123,7 +123,7 @@ module Ml_kind = struct
         Some (mi, i)
       else
         let open Sexp.Encoder in
-        Exn.code_error "merge_impl: unexpected dep graph"
+        Errors.code_error "merge_impl: unexpected dep graph"
           [ "ml_kind", string (Ml_kind.to_string ml_kind)
           ; "mv", Module.to_sexp mv
           ; "mi", Module.to_sexp mi

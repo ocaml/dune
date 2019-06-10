@@ -57,8 +57,8 @@ end = struct
   (* TODO use the loc for the error *)
   let check_valid_unquoted s ~syntax ~loc:_ =
     if not (Atom.is_valid (Atom.of_string s) syntax) then
-      Exn.code_error "Invalid text in unquoted template"
-        ["s", Sexp.Encoder.string s]
+      Code_error.raise "Invalid text in unquoted template"
+        ["s", String s]
 
   let to_string { parts; quoted; loc } ~syntax =
     Buffer.clear buf;

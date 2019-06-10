@@ -358,7 +358,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
          OCAMLPARAM, use the latter.
          If 'color' is not supported, we just don't force colors with 4.02. *)
       if !Clflags.capture_outputs
-      && Lazy.force Colors.stderr_supports_colors
+      && Lazy.force Ansi_color.stderr_supports_color
       && Ocaml_version.supports_color_in_ocamlparam version
       && not (Ocaml_version.supports_ocaml_color version) then
         let value =

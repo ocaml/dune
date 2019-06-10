@@ -64,7 +64,7 @@ module Supported_versions = struct
     with
     | Ok x -> x
     | Error _ ->
-      Exn.code_error
+      Errors.code_error
         "Syntax.create"
         [ "versions", Sexp.Encoder.list Version.to_sexp l ]
 
@@ -160,7 +160,7 @@ let get_exn t =
   | Some x -> return x
   | None ->
     let+ context = get_all in
-    Exn.code_error "Syntax identifier is unset"
+    Errors.code_error "Syntax identifier is unset"
       [ "name", Sexp.Encoder.string t.name
       ; "supported_versions", Supported_versions.to_sexp t.supported_versions
       ; "context", Univ_map.to_sexp context

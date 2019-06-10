@@ -400,7 +400,7 @@ let term =
   in
   let config =
     Config.adapt_display config
-      ~output_is_a_tty:(Lazy.force Colors.stderr_supports_colors)
+      ~output_is_a_tty:(Lazy.force Ansi_color.stderr_supports_color)
   in
   { debug_dep_path
   ; debug_findlib

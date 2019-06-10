@@ -23,5 +23,5 @@ let get_for_enabled_if t ~var =
   match List.assoc var_map var with
   | Some f -> f t
   | None ->
-    Exn.code_error "Lib_config.get_for_enabled_if: var not allowed"
+    Errors.code_error "Lib_config.get_for_enabled_if: var not allowed"
       ["var", Sexp.Encoder.string var]

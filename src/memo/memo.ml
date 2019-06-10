@@ -111,7 +111,7 @@ module Spec = struct
   let register t =
     match find t.name with
     | Some _ ->
-      Exn.code_error "[Spec.register] called twice on the same function" []
+      Code_error.raise "[Spec.register] called twice on the same function" []
     | None ->
       Function_name.Table.set by_name ~key:t.name ~data:(Some (T t))
 
@@ -235,13 +235,14 @@ module Cached_value = struct
               true
           | Running_sync run ->
             if Run.is_current run then
-              Exn.code_error "dependency_cycle 1" []
+              Code_error.raise "dependency_cycle 1" []
             else
               true
           | Running_async _ ->
-            Exn.code_error
-              "Synchronous function depends on an asynchronous one. That is not allowed. \
-               (in fact this case should be unreachable)" []
+            Code_error.raise
+              "Synchronous function depends on an asynchronous \
+               one. That is not allowed. (in fact this case should be \
+               unreachable)" []
           | Done t' ->
             get_sync t' |> function
             | None -> true
@@ -271,7 +272,8 @@ module Cached_value = struct
             else
               Fiber.return true
           | Running_sync _ ->
-            Exn.code_error "Synchronous function called [Cached_value.get_async]" []
+            Code_error.raise "Synchronous function called \
+                              [Cached_value.get_async]" []
           | Running_async (run, ivar) ->
             if not (Run.is_current run) then
               Fiber.return true
@@ -463,7 +465,7 @@ let create (type i) (type o) (type f)
     | Visibility.Hidden ->
       let open Dune_lang.Decoder in
       let+ loc = loc in
-      Exn.fatalf ~loc "<not-implemented>"
+      User_error.raise ~loc [ Pp.text "<not-implemented>" ]
     | Public decode -> decode
   in
   let (output : (module Output_simple with type t = o)), allow_cutoff =
@@ -567,12 +569,12 @@ module Exec_sync = struct
         if Run.is_current run then
           (* hopefully this branch should be unreachable and [add_rev_dep]
              reports a cycle above instead *)
-          Exn.code_error "bug: unreported sync dependency_cycle" [
-            "stack", Dyn.to_sexp (
+          Code_error.raise "bug: unreported sync dependency_cycle"
+            [ "stack",
               Dyn.Encoder.list
-                Stack_frame.to_dyn (Call_stack.get_call_stack ()));
-            "adding", Dyn.to_sexp (Stack_frame.to_dyn (T dep_node));
-          ]
+                Stack_frame.to_dyn (Call_stack.get_call_stack ())
+            ; "adding", Stack_frame.to_dyn (T dep_node);
+            ]
         else
           recompute t inp dep_node
       | Done cv ->
@@ -693,7 +695,7 @@ let get_func name =
     let open Option.O in
     Function_name.get name >>= Spec.find
   with
-  | None -> Exn.fatalf "@{<error>Error@}: function %s doesn't exist!" name
+  | None -> User_error.raise [ Pp.textf "function %s doesn't exist!" name ]
   | Some spec -> spec
 
 let call name input =

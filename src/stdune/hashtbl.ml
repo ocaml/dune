@@ -57,7 +57,7 @@ module Make(H : Hashable.S) = struct
     match of_list l with
     | Result.Ok h -> h
     | Error (_, _, _) ->
-      Exn.code_error "Hashtbl.of_list_exn duplicate keys" []
+      Code_error.raise "Hashtbl.of_list_exn duplicate keys" []
 end
 
 open MoreLabels.Hashtbl

@@ -226,8 +226,8 @@ Exception:
 E
  {message = "Path.insert_after_build_dir_exn";
   data =
-   [("path", Sexp (List [Atom "In_source_tree"; Atom "."]));
-    ("insert", Sexp (Atom "foobar"))]}.
+   [("path", Variant ("In_source_tree", [String "."]));
+    ("insert", String "foobar")]}.
 |}]
 
 Path.insert_after_build_dir_exn Path.build_dir "foobar"
@@ -251,8 +251,8 @@ Exception:
 E
  {message = "Path.append called with directory that's not in the source tree";
   data =
-   [("a", Sexp (List [Atom "In_build_dir"; Atom "."]));
-    ("b", Sexp (List [Atom "In_build_dir"; Atom "foo"]))]}.
+   [("a", Variant ("In_build_dir", [String "."]));
+    ("b", Variant ("In_build_dir", [String "foo"]))]}.
 |}]
 
 Path.append Path.root (Path.relative Path.build_dir "foo")
@@ -261,8 +261,8 @@ Exception:
 E
  {message = "Path.append called with directory that's not in the source tree";
   data =
-   [("a", Sexp (List [Atom "In_source_tree"; Atom "."]));
-    ("b", Sexp (List [Atom "In_build_dir"; Atom "foo"]))]}.
+   [("a", Variant ("In_source_tree", [String "."]));
+    ("b", Variant ("In_build_dir", [String "foo"]))]}.
 |}]
 
 Path.append Path.root (Path.relative Path.root "foo")
@@ -281,8 +281,8 @@ Exception:
 E
  {message = "Path.append called with directory that's not in the source tree";
   data =
-   [("a", Sexp (List [Atom "External"; Atom "/root"]));
-    ("b", Sexp (List [Atom "In_build_dir"; Atom "foo"]))]}.
+   [("a", Variant ("External", [String "/root"]));
+    ("b", Variant ("In_build_dir", [String "foo"]))]}.
 |}]
 
 Path.rm_rf (Path.of_string "/does/not/exist/foo/bar/baz")
@@ -291,7 +291,7 @@ Exception:
 E
  {message = "Path.rm_rf called on external dir";
   data =
-   [("t", Sexp (List [Atom "External"; Atom "/does/not/exist/foo/bar/baz"]))]}.
+   [("t", Variant ("External", [String "/does/not/exist/foo/bar/baz"]))]}.
 |}]
 
 Path.drop_build_context (Path.relative Path.build_dir "foo/bar")

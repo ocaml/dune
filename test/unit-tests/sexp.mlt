@@ -339,7 +339,7 @@ test Dune (t [Text "x%{"])
 Exception:
 E
  {message = "Invalid text in unquoted template";
-  data = [("s", Sexp (Atom "x%{"))]}.
+  data = [("s", String "x%{")]}.
 |}]
 
 test Dune (t [Text "x%"; Text "{"])
@@ -347,7 +347,7 @@ test Dune (t [Text "x%"; Text "{"])
 Exception:
 E
  {message = "Invalid text in unquoted template";
-  data = [("s", Sexp (Atom "x%{"))]}.
+  data = [("s", String "x%{")]}.
 |}]
 
 (* This round trip failure is expected *)

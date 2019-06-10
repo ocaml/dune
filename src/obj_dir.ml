@@ -31,7 +31,7 @@ module External = struct
     match cm_kind, visibility, t.private_dir with
     | Cmi, Private, Some p -> p
     | Cmi, Private, None ->
-      Exn.code_error "External.cm_dir"
+      Errors.code_error "External.cm_dir"
         [ "t", Dyn.to_sexp (to_dyn t)
         ]
     | Cmi, Public, _
@@ -176,12 +176,12 @@ let of_local
 
 let encode = function
   | Local_as_path obj_dir ->
-    Exn.code_error "Obj_dir.encode: local obj_dir cannot be encoded"
-      [ "obj_dir", Dyn.to_sexp (Local.to_dyn obj_dir)
+    Code_error.raise "Obj_dir.encode: local obj_dir cannot be encoded"
+      [ "obj_dir", Local.to_dyn obj_dir
       ]
   | Local obj_dir ->
-    Exn.code_error "Obj_dir.encode: local obj_dir cannot be encoded"
-      [ "obj_dir", Dyn.to_sexp (Local.to_dyn obj_dir)
+    Code_error.raise "Obj_dir.encode: local obj_dir cannot be encoded"
+      [ "obj_dir", Local.to_dyn obj_dir
       ]
   | External e -> External.encode e
 
@@ -273,7 +273,7 @@ let as_local_exn (t : Path.t t) =
   match t with
   | Local _ -> assert false
   | Local_as_path e -> Local e
-  | External _ -> Exn.code_error "Obj_dir.as_local_exn: external dir" []
+  | External _ -> Code_error.raise "Obj_dir.as_local_exn: external dir" []
 
 let make_exe ~dir ~name = Local (Local.make_exe ~dir ~name)
 

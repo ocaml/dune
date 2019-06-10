@@ -345,7 +345,7 @@ module Extension = struct
   let register ?(experimental=false) syntax stanzas arg_to_sexp =
     let name = Syntax.name syntax in
     if Hashtbl.mem extensions name then
-      Exn.code_error "Dune_project.Extension.register: already registered"
+      Errors.code_error "Dune_project.Extension.register: already registered"
         [ "name", Sexp.Encoder.string name ];
     let key = Univ_map.Key.create ~name arg_to_sexp in
     let ext = { syntax; stanzas; experimental; key } in
@@ -510,7 +510,7 @@ let get_exn () =
   get key >>| function
   | Some t -> t
   | None ->
-    Exn.code_error "Current project is unset" []
+    Errors.code_error "Current project is unset" []
 
 let filename = "dune-project"
 

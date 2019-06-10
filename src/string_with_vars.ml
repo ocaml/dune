@@ -120,7 +120,7 @@ let decode =
   let jbuild =
     raw >>| function
     | Template _ as t ->
-      Exn.code_error "Unexpected dune template from a jbuild file"
+      Errors.code_error "Unexpected dune template from a jbuild file"
         [ "t", Dune_lang.to_sexp (Dune_lang.Ast.remove_locs t)
         ]
     | Atom(loc, A s) -> Jbuild.parse s ~loc ~quoted:false

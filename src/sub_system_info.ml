@@ -24,7 +24,7 @@ module Register(M : S) : sig end = struct
   let () =
     match Sub_system_name.Table.get all name with
     | Some _ ->
-      Exn.code_error "Sub_system_info.register: already registered"
+      Errors.code_error "Sub_system_info.register: already registered"
         [ "name", Sexp.Encoder.string (Sub_system_name.to_string name) ];
     | None ->
       Sub_system_name.Table.set all ~key:name ~data:(Some (module M : S));

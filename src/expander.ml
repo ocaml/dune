@@ -439,7 +439,7 @@ let expand_special_vars ~deps_written_by_user ~var pform =
   | Pform.Expansion.Var Named_local ->
     begin match Bindings.find deps_written_by_user key with
     | None ->
-      Exn.code_error "Local named variable not present in named deps"
+      Errors.code_error "Local named variable not present in named deps"
         [ "pform", String_with_vars.Var.to_sexp var
         ; "deps_written_by_user",
           Bindings.to_sexp Path.to_sexp deps_written_by_user
@@ -464,7 +464,7 @@ let expand_special_vars ~deps_written_by_user ~var pform =
       [Value.String ""]
     end
   | _ ->
-    Exn.code_error "Unexpected variable in step2"
+    Errors.code_error "Unexpected variable in step2"
       ["var", String_with_vars.Var.to_sexp var]
 
 let expand_ddeps_and_bindings ~(dynamic_expansions : Value.t list String.Map.t)

@@ -177,7 +177,7 @@ module Dependency = struct
     | Or (c :: cs) ->
       Logop (nopos, `Or, opam_constraint c, opam_constraint (And cs))
     | And []
-    | Or [] -> Exn.code_error "opam_constraint" []
+    | Or [] -> Errors.code_error "opam_constraint" []
 
   let opam_depend : t -> OpamParserTypes.value =
     let nopos = Opam_file.nopos in

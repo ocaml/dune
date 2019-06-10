@@ -37,7 +37,7 @@ let value t ~default =
 
 let value_exn = function
   | Some x -> x
-  | None -> Exn.code_error "Option.value_exn" []
+  | None -> Code_error.raise "Option.value_exn" []
 
 let some x = Some x
 

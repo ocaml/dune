@@ -24,7 +24,7 @@ module DB = struct
   let find_by_dir t dir =
     let rec loop d =
       if Path.Build.is_root d then
-        Exn.code_error "Scope.DB.find_by_dir got an invalid path"
+        Errors.code_error "Scope.DB.find_by_dir got an invalid path"
           [ "dir"    , Path.Build.to_sexp dir
           ; "context", Sexp.Encoder.string t.context
           ];
@@ -34,7 +34,7 @@ module DB = struct
         begin match Path.Build.parent d with
         | Some d -> loop d
         | None ->
-          Exn.code_error "find_by_dir: invalid directory"
+          Errors.code_error "find_by_dir: invalid directory"
             [ "d", Path.Build.to_sexp d
             ; "dir", Path.Build.to_sexp dir
             ]
@@ -47,7 +47,7 @@ module DB = struct
     | Some x -> x
     | None ->
       let dune_project_sexp p = Dyn.to_sexp (Dune_project.Name.to_dyn p) in
-      Exn.code_error "Scope.DB.find_by_name"
+      Errors.code_error "Scope.DB.find_by_name"
         [ "name"   , dune_project_sexp name
         ; "context", Sexp.Encoder.string t.context
         ; "names",
@@ -108,7 +108,7 @@ module DB = struct
             (Dune_project.name project, Dune_project.root project)
           |> Dyn.to_sexp
         in
-        Exn.code_error "Scope.DB.create got two projects with the same name"
+        Errors.code_error "Scope.DB.create got two projects with the same name"
           [ "project1", to_sexp project1
           ; "project2", to_sexp project2
           ]

@@ -128,7 +128,7 @@ end = struct
       try
         get t ~dir ~scope
       with Exit ->
-        Exn.code_error "Super_context.Env.get called on invalid directory"
+        Errors.code_error "Super_context.Env.get called on invalid directory"
           [ "dir", Path.Build.to_sexp dir ]
 
   let external_ t  ~dir =

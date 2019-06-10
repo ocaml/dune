@@ -153,7 +153,7 @@ module Source = struct
   let make ?impl ?intf name =
     begin match impl, intf with
     | None, None ->
-      Exn.code_error "Module.Source.make called with no files"
+      Errors.code_error "Module.Source.make called with no files"
         [ "name", Sexp.Encoder.string name
         ; "impl", Sexp.Encoder.(option unknown) impl
         ; "intf", Sexp.Encoder.(option unknown) intf
@@ -211,7 +211,7 @@ let of_source ?obj_name ~visibility ~obj_dir ~(kind : Kind.t)
   | Impl, None, _
   | Intf_only, Some _, _ ->
     let open Sexp.Encoder in
-    Exn.code_error "Module.make: invalid kind, impl, intf combination"
+    Errors.code_error "Module.make: invalid kind, impl, intf combination"
       [ "name", Name.to_sexp source.name
       ; "kind", Kind.to_sexp kind
       ; "intf", (option File.to_sexp) source.intf
@@ -425,7 +425,7 @@ module Obj_map = struct
         match find t m with
         | Some m -> m
         | None ->
-          Exn.code_error "top_closure: unable to find key"
+          Errors.code_error "top_closure: unable to find key"
             [ "m", to_sexp m
             ; "t", (Sexp.Encoder.list to_sexp) (keys t)
             ])

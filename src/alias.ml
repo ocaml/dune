@@ -16,7 +16,7 @@ end = struct
 
   let make name ~dir =
     if String.contains name '/' then
-      Exn.code_error "Alias0.make: Invalid alias"
+      Errors.code_error "Alias0.make: Invalid alias"
         [ "name", Sexp.Encoder.string name
         ; "dir", Path.Build.to_sexp dir
         ];

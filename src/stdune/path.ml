@@ -68,13 +68,13 @@ end = struct
 
   let of_string t =
     if Filename.is_relative t then
-      Exn.code_error "Path.External.of_string: relative path given"
-        [ "t", Sexp.Encoder.string t ];
+      Code_error.raise "Path.External.of_string: relative path given"
+        [ "t", String t ];
     make t
 
   let parse_string_exn ~loc t =
     if Filename.is_relative t then
-      Exn.fatalf ~loc "path %s is not absolute" t;
+      User_error.raise ~loc [ Pp.textf "path %s is not absolute" t ];
     make t
 
   let to_sexp t = Sexp.Encoder.string (to_string t)
@@ -159,7 +159,7 @@ end = struct
 
   let parent_exn t =
     match parent t with
-    | None -> Exn.code_error "Path.External.parent_exn called on a root path" []
+    | None -> Code_error.raise "Path.External.parent_exn called on a root path" []
     | Some p -> p
 
   let is_descendant b ~of_:a =
@@ -262,12 +262,12 @@ end = struct
 
   let parent_exn t =
     match parent t with
-    | None -> Exn.code_error "Path.Local.parent called on the root" []
+    | None -> Code_error.raise "Path.Local.parent called on the root" []
     | Some t -> t
 
   let basename t =
     if is_root t then
-      Exn.code_error "Path.Local.basename called on the root" []
+      Code_error.raise "Path.Local.basename called on the root" []
     else
       let t = to_string t in
       let len = String.length t in
@@ -303,24 +303,30 @@ end = struct
       match relative_result t components with
       | Result.Ok t -> t
       | Error () ->
-        Exn.fatalf ?loc:error_loc "path outside the workspace: %s from %s"
-          (String.concat ~sep:"/" components)
-          (to_string t)
+        User_error.raise ?loc:error_loc
+          [ Pp.textf
+              "path outside the workspace: %s from %s"
+              (String.concat ~sep:"/" components)
+              (to_string t)
+          ]
   end
 
   let relative ?error_loc t path =
     if not (Filename.is_relative path) then (
-      Exn.code_error "Local.relative: received absolute path"
-        [ "t", to_sexp t
-        ; "path", Sexp.Encoder.string path
+      Code_error.raise "Local.relative: received absolute path"
+        [ "t", to_dyn t
+        ; "path", String path
         ]
     );
     match L.relative_result t (explode_path path) with
     | Result.Ok t -> t
     | Error () ->
-      Exn.fatalf ?loc:error_loc "path outside the workspace: %s from %s"
-        path
-        (to_string t)
+      User_error.raise ?loc:error_loc
+        [ Pp.textf
+            "path outside the workspace: %s from %s"
+            path
+            (to_string t)
+        ]
 
   let is_canonicalized =
     let rec before_slash s i =
@@ -450,8 +456,8 @@ end = struct
 
     let make p =
       if is_root p then
-        Exn.code_error "Path.Local.Prefix.make"
-          [ "path", to_sexp p ];
+        Code_error.raise "Path.Local.Prefix.make"
+          [ "path", to_dyn p ];
       let p = to_string p in
       { len        = String.length p
       ; path       = p
@@ -504,8 +510,8 @@ end = struct
 
   let parent_exn t =
     match parent t with
-    | None -> Exn.code_error "Path.Local.parent:exn t is root"
-                ["t", to_sexp t]
+    | None -> Code_error.raise "Path.Local.parent:exn t is root"
+                ["t", to_dyn t]
     | Some parent -> parent
 
   let of_local t = t
@@ -527,15 +533,15 @@ let (abs_root, set_root) =
     match !root_dir with
     | None -> root_dir := Some new_root
     | Some root_dir ->
-      Exn.code_error "set_root: cannot set root_dir more than once"
-        [ "root_dir", External.to_sexp root_dir
-        ; "new_root_dir", External.to_sexp new_root
+      Code_error.raise "set_root: cannot set root_dir more than once"
+        [ "root_dir", External.to_dyn root_dir
+        ; "new_root_dir", External.to_dyn new_root
         ]
   in
   let abs_root = lazy (
     match !root_dir with
     | None ->
-      Exn.code_error "root_dir: cannot use root dir before it's set" []
+      Code_error.raise "root_dir: cannot use root dir before it's set" []
     | Some root_dir -> root_dir)
   in
   (abs_root, set_root)
@@ -558,7 +564,7 @@ module Kind = struct
     | Local t -> Local.to_string t
     | External t -> External.to_string t
 
-  let to_sexp t = Sexp.Encoder.string (to_string t)
+  let to_dyn t = Dyn.String (to_string t)
 
   let of_string s =
     if Filename.is_relative s then
@@ -622,22 +628,22 @@ module Build = struct
   let extract_build_context_dir_exn t =
     match extract_build_context_dir t with
     | Some t -> t
-    | None -> Exn.code_error "Path.Build.extract_build_context_dir_exn"
-                ["t", to_sexp t]
+    | None -> Code_error.raise "Path.Build.extract_build_context_dir_exn"
+                ["t", to_dyn t]
 
   let extract_build_context_exn t =
     match extract_build_context t with
     | Some t -> t
-    | None -> Exn.code_error "Path.Build.extract_build_context_exn"
-                ["t", to_sexp t]
+    | None -> Code_error.raise "Path.Build.extract_build_context_exn"
+                ["t", to_dyn t]
 
   let drop_build_context t = Option.map (extract_build_context t) ~f:snd
   let drop_build_context_exn t =
     match drop_build_context t with
     | Some d -> d
     | None ->
-      Exn.code_error "Path.Build.drop_build_context_exn"
-        [ "t", to_sexp t
+      Code_error.raise "Path.Build.drop_build_context_exn"
+        [ "t", to_dyn t
         ]
 
   let is_alias_stamp_file s =
@@ -653,31 +659,33 @@ module Build = struct
          | External _ -> ()
          | Local p ->
            if Local.is_root p || Local.parent_exn p <> Local.root then
-             Exn.fatalf
-               "@{<error>Error@}: Invalid build directory: %s\n\
-                The build directory must be an absolute path or \
-                a sub-directory of the root of the workspace."
-               (Local.to_string p |> String.maybe_quoted));
+             User_error.raise
+               [ Pp.textf "Invalid build directory: %s"
+                   (Local.to_string p |> String.maybe_quoted)
+               ; Pp.text "The build directory must be an absolute path \
+                          or a sub-directory of the root of the \
+                          workspace."
+               ]);
         build_dir := Some new_build_dir;
         build_dir_prefix :=
           Some (match new_build_dir with
             | Local    p -> Local.Prefix.make p
             | External _ -> Local.Prefix.invalid)
       | Some build_dir ->
-        Exn.code_error "set_build_dir: cannot set build_dir more than once"
-          [ "build_dir", Kind.to_sexp build_dir
-          ; "new_build_dir", Kind.to_sexp new_build_dir ]
+        Code_error.raise "set_build_dir: cannot set build_dir more than once"
+          [ "build_dir", Kind.to_dyn build_dir
+          ; "new_build_dir", Kind.to_dyn new_build_dir ]
     in
     let build_dir = lazy (
       match !build_dir with
       | None ->
-        Exn.code_error "build_dir: cannot use build dir before it's set" []
+        Code_error.raise "build_dir: cannot use build dir before it's set" []
       | Some build_dir -> build_dir)
     in
     let build_dir_prefix = lazy (
       match !build_dir_prefix with
       | None ->
-        Exn.code_error "build_dir: cannot use build dir before it's set" []
+        Code_error.raise "build_dir: cannot use build dir before it's set" []
       | Some prefix -> prefix)
     in
     (build_dir, build_dir_prefix, set_build_dir)
@@ -875,10 +883,10 @@ let append_source = append_local
 let append a b =
   match b with
   | In_build_dir _ | External _ ->
-    Exn.code_error "Path.append called with directory that's \
+    Code_error.raise "Path.append called with directory that's \
                     not in the source tree"
-      [ "a", to_sexp a
-      ; "b", to_sexp b
+      [ "a", to_dyn a
+      ; "b", to_dyn b
       ]
   | In_source_tree b -> append_local a b
 
@@ -899,8 +907,8 @@ let parent = function
 let parent_exn t =
   match parent t with
   | Some p -> p
-  | None -> Exn.code_error "Path.parent:exn t is root"
-              ["t", to_sexp t]
+  | None -> Code_error.raise "Path.parent:exn t is root"
+              ["t", to_dyn t]
 
 let is_strict_descendant_of_build_dir = function
   | In_build_dir p -> not (Local.is_root p)
@@ -929,9 +937,9 @@ let as_in_build_dir = function
 
 let as_in_build_dir_exn t = match t with
   | External _ | In_source_tree _  ->
-    Exn.code_error
+    Code_error.raise
       "[as_in_build_dir_exn] called on something not in build dir"
-      ["t", to_sexp t]
+      ["t", to_dyn t]
   | In_build_dir p -> p
 
 let extract_build_context = function
@@ -945,8 +953,8 @@ let extract_build_dir_first_component = extract_build_context
 let extract_build_context_exn t =
   match extract_build_context t with
   | Some t -> t
-  | None -> Exn.code_error "Path.extract_build_context_exn"
-              ["t", to_sexp t]
+  | None -> Code_error.raise "Path.extract_build_context_exn"
+              ["t", to_dyn t]
 
 let extract_build_context_dir = function
   | In_source_tree _
@@ -958,15 +966,15 @@ let extract_build_context_dir = function
 let extract_build_context_dir_exn t =
   match extract_build_context_dir t with
   | Some t -> t
-  | None -> Exn.code_error "Path.extract_build_context_dir_exn"
-              ["t", to_sexp t]
+  | None -> Code_error.raise "Path.extract_build_context_dir_exn"
+              ["t", to_dyn t]
 
 let drop_build_context t =
   Option.map (extract_build_context t) ~f:snd
 
 let drop_build_context_exn t =
   match extract_build_context t with
-  | None -> Exn.code_error "Path.drop_build_context_exn" [ "t", to_sexp t ]
+  | None -> Code_error.raise "Path.drop_build_context_exn" [ "t", to_dyn t ]
   | Some (_, t) -> t
 
 let drop_optional_build_context t =
@@ -977,12 +985,12 @@ let drop_optional_build_context t =
 let drop_optional_build_context_src_exn t =
   match t with
   | External _ ->
-    Exn.code_error "drop_optional_build_context_src_exn called on an external path" []
+    Code_error.raise "drop_optional_build_context_src_exn called on an external path" []
   | In_build_dir _ ->
     (match extract_build_context t with
      | Some (_, s) -> s
      | None ->
-       Exn.code_error
+       Code_error.raise
          "drop_optional_build_context_src_exn called on a build directory itself" [])
   | In_source_tree p -> p
 
@@ -1023,8 +1031,8 @@ let explode t =
 let explode_exn t =
   match explode t with
   | Some s -> s
-  | None -> Exn.code_error "Path.explode_exn"
-              ["path", to_sexp t]
+  | None -> Code_error.raise "Path.explode_exn"
+              ["path", to_dyn t]
 
 let exists t =
   try Sys.file_exists (to_string t)
@@ -1085,9 +1093,11 @@ let ensure_build_dir_exists () =
     with
     | Unix.Unix_error (EEXIST, _, _) -> ()
     | Unix.Unix_error (ENOENT, _, _) ->
-      Exn.fatalf "Cannot create external build directory %s. \
-                  Make sure that the parent dir %s exists."
-        p (Filename.dirname p)
+      User_error.raise
+        [ Pp.textf "Cannot create external build directory %s. Make \
+                    sure that the parent dir %s exists."
+            p (Filename.dirname p)
+        ]
 
 let extend_basename t ~suffix =
   match t with
@@ -1097,10 +1107,10 @@ let extend_basename t ~suffix =
 
 let insert_after_build_dir_exn =
   let error a b =
-    Exn.code_error
+    Code_error.raise
       "Path.insert_after_build_dir_exn"
-      [ "path"  , to_sexp a
-      ; "insert", Sexp.Encoder.string b
+      [ "path"  , to_dyn a
+      ; "insert", String b
       ]
   in
   fun a b ->
@@ -1120,8 +1130,8 @@ let rm_rf =
   in
   fun t ->
     if not (is_managed t) then (
-      Exn.code_error "Path.rm_rf called on external dir"
-        ["t", to_sexp t]
+      Code_error.raise "Path.rm_rf called on external dir"
+        ["t", to_dyn t]
     );
     let fn = to_string t in
     match Unix.lstat fn with

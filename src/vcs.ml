@@ -121,7 +121,7 @@ let make_fun name ~output ~doc ~git ~hg =
       ~output
       ~visibility:(Public decode)
       Async
-      (Some (select git hg))
+      (select git hg)
   in
   Staged.stage (Memo.exec memo)
 

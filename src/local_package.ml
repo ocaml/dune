@@ -170,7 +170,7 @@ module Of_sctx = struct
       ~output:(Allow_cutoff (module Output))
       ~visibility:Hidden
       Sync
-      (Some f)
+      f
 end
 
 let of_sctx sctx = Memo.exec Of_sctx.def sctx
@@ -234,7 +234,7 @@ let local_packages_by_dir_def =
     ~output:(Allow_cutoff (module Output))
     ~visibility:Hidden
     Sync
-    (Some f)
+    f
 
 let local_packages_by_dir = Memo.exec local_packages_by_dir_def
 

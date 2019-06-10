@@ -396,7 +396,7 @@ let install_entries =
       ~doc:"install entries"
       ~visibility:Hidden
       Sync
-      (Some (fun (sctx, package) -> install_entries sctx package))
+      (fun (sctx, package) -> install_entries sctx package)
   in
   fun sctx package -> Memo.exec memo (sctx, package)
 
@@ -486,7 +486,7 @@ let memo =
     ~doc:"install rules and package entries"
     ~visibility:Hidden
     Sync
-    (Some (fun (sctx, pkg) ->
+    (fun (sctx, pkg) ->
        let ctx = Super_context.context sctx in
        let context_name = ctx.name in
        let rules = Memo.lazy_ (fun () ->
@@ -508,7 +508,7 @@ let memo =
            Thunk (fun () -> Finite (
              Rules.to_map (Memo.Lazy.force rules)))
          )
-       )))
+       ))
 
 let scheme sctx pkg = Memo.exec memo (sctx, pkg)
 
@@ -524,14 +524,14 @@ let scheme_per_ctx_memo =
     ~doc:"install rules scheme"
     ~visibility:Hidden
     Sync
-    (Some (fun sctx ->
+    (fun sctx ->
        let packages = Local_package.of_sctx sctx in
        let scheme =
          Scheme.all (
            List.map (Package.Name.Map.to_list packages)
              ~f:(fun (_, pkg) -> (scheme sctx pkg)))
        in
-       Scheme.evaluate ~union:Rules.Dir_rules.union scheme))
+       Scheme.evaluate ~union:Rules.Dir_rules.union scheme)
 
 let gen_rules sctx ~dir =
   let rules, subdirs =
@@ -568,6 +568,6 @@ let packages =
                      ~equal:Package.Name.Set.equal
                end))
       Sync
-      (Some f)
+      f
   in
   fun sctx -> Memo.exec memo sctx

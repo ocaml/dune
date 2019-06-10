@@ -7,4 +7,5 @@
   (name main)
   (package dune)
   (modules main)
+  (public_name dune-memory)
   (libraries dune_memory stdune sexplib))

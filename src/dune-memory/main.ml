@@ -15,16 +15,57 @@ let parse_metadata s =
   | Sexplib.Sexp.Cont _ ->
       raise (Failed (Printf.sprintf "unfinished sexp"))
 
+let usage =
+  Printf.sprintf "Usage: %s [OPTIONS] command [ARGUMENTS]" Sys.argv.(0)
+
+let fill_option ref s =
+  match !ref with
+  | None ->
+      ref := Some s
+  | Some _ ->
+      failwith "duplicate option"
+
+let unwrap_option ?default o = function
+  | None -> (
+    match default with
+    | None ->
+        failwith (Printf.sprintf "missing required argument: %s" o)
+    | Some v ->
+        v )
+  | Some v ->
+      v
+
 let main () =
+  let root = ref None
+  and cmd = ref None
+  and current = ref (Array.length Sys.argv) in
+  Arg.parse_argv Sys.argv
+    [("--root", Arg.String (fill_option root), "root directory")]
+    (fun a ->
+      if !cmd = None then cmd := Some a
+      else if !current = Array.length Sys.argv then current := !Arg.current - 1
+      )
+    usage ;
+  let root = unwrap_option "--root" !root
+  and cmd = unwrap_option "command" !cmd in
   let memory =
     make
       ~log:(Log.create ~path:(Path.of_string "/tmp/log") ())
-      (Path.of_string Sys.argv.(1))
-  and cmd = Sys.argv.(2) in
+      (Path.of_string root)
+  in
   match cmd with
   | "promote" ->
-      let files = Array.sub Sys.argv ~pos:3 ~len:(Array.length Sys.argv - 4)
-      and metadata = parse_metadata Sys.argv.(Array.length Sys.argv - 1) in
+      let usage = ""
+      and metadata = ref None
+      and files = ref (Array.make 0 "") in
+      Arg.parse_argv ?current:(Some current) Sys.argv
+        [("--metadata", Arg.String (fill_option metadata), "metadata")]
+        (fun f -> files := Array.append !files (Array.make 1 f))
+        usage ;
+      let files = !files
+      and metadata =
+        parse_metadata (unwrap_option ~default:"()" "--metadata" !metadata)
+      in
       let promotions =
         promote memory
           (Array.to_list

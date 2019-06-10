@@ -1137,12 +1137,13 @@ module type Rec = sig
     Internal_rule.t -> (Action.t * Dep.Set.t) Fiber.t
 end
 
+(* Separation between [Used_recursively] and [Exported] is necessary
+   because at least one module in the recursive module group must be pure
+   (only expose functions) *)
 module rec
-  Rec : Rec = struct
-  include To_open
-end
+  Used_recursively : Rec = Exported
 and
-  To_open : sig
+  Exported : sig
   include Rec
 
   (* exported to inspect memory cycles *)
@@ -1155,7 +1156,7 @@ and
 
 end = struct
 
-  open Rec
+  open Used_recursively
 
   let build_deps =
     Dep.Set.parallel_iter ~f:(function
@@ -1449,7 +1450,7 @@ end = struct
 
 end
 
-open To_open
+open Exported
 
 let eval_pred = Pred.eval
 

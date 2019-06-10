@@ -5,7 +5,7 @@
 open Stdune;;
 open Dune;;
 open Action_unexpanded.Infer.Outcome;;
-Stdune.Path.Build.set_build_dir (Path.Kind.of_string "_build");;
+Stdune.Path.Build.set_build_dir (Path.Build.Kind.of_string "_build");;
 
 let p = Path.of_string;;
 let infer (a : Action.t) =

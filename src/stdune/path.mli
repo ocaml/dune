@@ -64,14 +64,6 @@ module External : sig
   val mkdir_p : t -> unit
 end
 
-module Kind : sig
-  type t = private
-    | External of External.t
-    | Local    of Local.t
-
-  val of_string : string -> t
-end
-
 module Build : sig
   type w
 
@@ -110,6 +102,14 @@ module Build : sig
 
   val is_alias_stamp_file : t -> bool
 
+  module Kind : sig
+    type t = private
+      | External of External.t
+      | In_source_dir of Local.t
+
+    val of_string : string -> t
+  end
+  
   (** set the build directory. Can only be called once and must be done before
       paths are converted to strings elsewhere. *)
   val set_build_dir : Kind.t -> unit
@@ -126,8 +126,6 @@ val hash : t -> int
 
 (** [to_string_maybe_quoted t] is [maybe_quoted (to_string t)] *)
 val to_string_maybe_quoted : t -> string
-
-val kind : t -> Kind.t
 
 val root : t
 val is_root : t -> bool

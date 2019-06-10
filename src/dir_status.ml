@@ -130,6 +130,10 @@ module DB = struct
           end
 
   let make file_tree ~stanzas_per_dir =
+    (* CR-someday aalekseyev:
+       This local recursive module is a bit awkward.
+       In the future the plan is to move the memo to the top-level to make it
+       less awkward (and to dissolve the [DB] datatype). *)
     let module M = struct
       module rec Res : sig
         val t : t

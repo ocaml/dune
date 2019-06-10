@@ -421,15 +421,15 @@ let get_deps_from_graph_exn dep_node =
 type ('input, 'output, 'f) t =
   { spec  : ('input, 'output, 'f) Spec.t
   ; cache : ('input, ('input, 'output, 'f) Dep_node.t) Table.t
-  ; fdecl : 'f Fdecl.t option
   }
 
 module Stack_frame = struct
-  type ('input, 'output, 'fdecl) memo = ('input, 'output, 'fdecl) t
+  type ('input, 'output, 'f) memo = ('input, 'output, 'f) t
 
   include Stack_frame0
 
-  let as_instance_of (type i) (Dep_node.T t) ~of_:(memo : (i, _, _) memo) : i option =
+  let as_instance_of
+        (type i) (Dep_node.T t) ~of_:(memo : (i, _, _) memo) : i option =
     match Witness.same memo.spec.witness t.spec.witness with
     | Some Type_eq.T ->
       Some t.input
@@ -455,22 +455,9 @@ let create (type i) (type o) (type f)
       ~visibility
       ~(output : o Output.t)
       (typ : (i, o, f) Function_type.t)
-      (body : f option)
+      (f : f)
   =
   let name = Function_name.make name in
-  let fdecl, f =
-    match body with
-    | None ->
-      let decl_and_get () =
-        let f = Fdecl.create () in
-        Some f, (fun x -> Fdecl.get f x)
-      in
-      ((match typ with
-       | Function_type.Sync -> decl_and_get ()
-       | Function_type.Async -> decl_and_get ()) : f Fdecl.t option * f)
-    | Some f ->
-      None, f
-  in
   let decode : i Dune_lang.Decoder.t =
     match visibility with
     | Visibility.Hidden ->
@@ -505,7 +492,6 @@ let create (type i) (type o) (type f)
   Caches.register ~clear:(fun () -> Table.clear cache);
   { cache
   ; spec
-  ; fdecl
   }
 
 let create_hidden (type output) name ~doc ~input typ impl =
@@ -691,11 +677,6 @@ let peek t inp =
 
 let peek_exn t inp = Option.value_exn (peek t inp)
 
-let set_impl t f =
-  match t.fdecl with
-  | None -> Exn.code_error "Memo.set_impl" []
-  | Some fdecl -> Fdecl.set fdecl f
-
 let get_deps t inp =
   match Table.find t.cache inp with
   | None | Some { state = Running_async _; _ } -> None
@@ -776,7 +757,7 @@ let lazy_ (type a) f =
       ~visibility:Hidden
       ~output:(Allow_cutoff (module Output))
       Sync
-      (Some f)
+      f
   in
   (fun () -> exec memo ())
 
@@ -828,8 +809,8 @@ module With_implicit_output = struct
              ~doc ~input ~visibility
              ~output
              Sync
-             (Some (fun i ->
-                Implicit_output.collect_sync implicit_output (fun () -> impl i))))
+             (fun i ->
+                Implicit_output.collect_sync implicit_output (fun () -> impl i)))
       in
       ((fun input ->
          let (res, output) = exec memo input in
@@ -843,8 +824,8 @@ module With_implicit_output = struct
              ~doc ~input ~visibility
              ~output
              Async
-             (Some (fun i ->
-                Implicit_output.collect_async implicit_output (fun () -> impl i))))
+             (fun i ->
+                Implicit_output.collect_async implicit_output (fun () -> impl i)))
       in
       ((fun input ->
          Fiber.map

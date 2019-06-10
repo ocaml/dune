@@ -3,7 +3,7 @@ open! Stdune
 type t =
   { vlib                 : Lib.t
   ; impl                 : Dune_file.Library.t
-  ; obj_dir              : Obj_dir.Local.t
+  ; obj_dir              : Path.Build.t Obj_dir.t
   ; vlib_modules         : Lib_modules.t
   ; vlib_foreign_objects : Path.t list
   ; vlib_dep_graph       : Dep_graph.Ml_kind.t

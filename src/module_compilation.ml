@@ -37,7 +37,7 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
       let copy_interface () =
         (* symlink the .cmi into the public interface directory *)
         if not (Module.is_private m)
-        && (Obj_dir.Local.need_dedicated_public_dir obj_dir) then
+        && (Obj_dir.need_dedicated_public_dir obj_dir) then
           SC.add_rule sctx ~sandbox:false ~dir
             (Build.symlink
                ~src:(Module.cm_file_unsafe m Cmi)
@@ -124,7 +124,7 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
         | true, Cmi, true ->
           (ctx.build_dir, Command.Args.As ["-no-keep-locs"])
         | true, Cmi, false ->
-          (Obj_dir.Local.byte_dir obj_dir, As [])
+          (Obj_dir.byte_dir obj_dir, As [])
         (* emulated -no-keep-locs *)
         | true, (Cmo | Cmx), _
         | false, _, _ ->
@@ -145,7 +145,7 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
               ; no_keep_locs
               ; cmt_args
               ; Command.Args.S (
-                  Obj_dir.Local.all_obj_dirs obj_dir ~mode
+                  Obj_dir.all_obj_dirs obj_dir ~mode
                   |> List.concat_map ~f:(fun p -> [ Command.Args.A "-I"
                                                   ; Path (Path.build p)])
                 )
@@ -219,7 +219,7 @@ let ocamlc_i ?sandbox ?(flags=[]) ~dep_graphs cctx (m : Module.t) ~output =
        (Build.S.map ~f:(fun act -> Action.with_stdout_to (Path.build output) act)
           (Command.run (Ok ctx.ocamlc) ~dir:(Path.build ctx.build_dir)
              [ Command.Args.dyn ocaml_flags
-             ; A "-I"; Path (Path.build (Obj_dir.Local.byte_dir obj_dir))
+             ; A "-I"; Path (Path.build (Obj_dir.byte_dir obj_dir))
              ; Cm_kind.Dict.get (CC.includes cctx) Cmo
              ; (match CC.alias_module cctx with
                 | None -> S []

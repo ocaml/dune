@@ -289,17 +289,19 @@ let setup_toplevel_index_rule sctx =
 
 let libs_of_pkg sctx ~pkg =
   match Package.Name.Map.find (SC.libs_by_package sctx) pkg with
-  | None -> Lib.Set.empty
+  | None -> Lib.Local.Set.empty
   | Some (_, libs) ->
     (* Filter out all implementations of virtual libraries *)
-    Lib.Set.filter ~f:(fun lib ->
-      not (Lib.is_impl lib)) libs
+    Lib.Local.Set.filter libs ~f:(fun lib ->
+      let lib = Lib.Local.to_lib lib in
+      not (Lib.is_impl lib))
 
 let load_all_odoc_rules_pkg sctx ~pkg =
   let pkg_libs = libs_of_pkg sctx ~pkg in
   let ctx = Super_context.context sctx in
   Build_system.load_dir ~dir:(Path.build (Paths.odocs ctx (Pkg pkg)));
-  Lib.Set.iter pkg_libs ~f:(fun lib ->
+  Lib.Local.Set.iter pkg_libs ~f:(fun lib ->
+    let lib = Lib.Local.to_lib lib in
     Build_system.load_dir ~dir:(Path.build (Paths.odocs ctx (Lib lib))));
   pkg_libs
 
@@ -392,25 +394,25 @@ let setup_lib_html_rules sctx lib ~requires =
 
 let setup_pkg_html_rules_def =
   let module Input = struct
-    type t = Super_context.t * Package.Name.t * Lib.t list
+    type t = Super_context.t * Package.Name.t * Lib.Local.t list
 
     let equal (s1, p1, l1) (s2, p2, l2) =
       Package.Name.equal p1 p2
-      && List.equal Lib.equal l1 l2
+      && List.equal Lib.Local.equal l1 l2
       && Super_context.equal s1 s2
 
     let hash (sctx, p, ls) =
       Hashtbl.hash
         ( Super_context.hash sctx
         , Package.Name.hash p
-        , List.hash Lib.hash ls
+        , List.hash Lib.Local.hash ls
         )
 
     let to_dyn (_, package, libs) =
       let open Dyn in
       Tuple
         [ Package.Name.to_dyn package
-        ; List (List.map ~f:Lib.to_dyn libs)
+        ; List (List.map ~f:Lib.Local.to_dyn libs)
         ]
   end
   in
@@ -421,7 +423,8 @@ let setup_pkg_html_rules_def =
     ~input:(module Input)
     ~visibility:Hidden
     Sync
-    (fun (sctx, pkg, libs) ->
+    (fun (sctx, pkg, (libs : Lib.Local.t list)) ->
+       let libs = (libs :> Lib.t list) in
        let requires = Lib.closure libs ~linking:false in
        let ctx = Super_context.context sctx in
        List.iter libs ~f:(setup_lib_html_rules sctx ~requires);
@@ -449,37 +452,37 @@ let setup_package_aliases sctx (pkg : Package.t) =
   Rules.Produce.Alias.add_deps alias (
     Dep.html_alias ctx (Pkg pkg.name)
     :: (libs_of_pkg sctx ~pkg:pkg.name
-        |> Lib.Set.to_list
-        |> List.map ~f:(fun lib -> Dep.html_alias ctx (Lib lib)))
+        |> Lib.Local.Set.to_list
+        |> List.map ~f:(fun lib ->
+          let lib = Lib.Local.to_lib lib in
+          Dep.html_alias ctx (Lib lib)))
     |> List.map ~f:(fun f -> Path.build (Alias.stamp_file f))
     |> Path.Set.of_list
   )
 
 let entry_modules_by_lib sctx lib =
-  Dir_contents.get_without_rules sctx
-    ~dir:(Path.as_in_build_dir_exn (Lib.src_dir lib))
-  |> Dir_contents.modules_of_library ~name:(Lib.name lib)
+  let dir = Lib.Local.src_dir lib in
+  let name = Lib.name (Lib.Local.to_lib lib) in
+  Dir_contents.get_without_rules sctx ~dir
+  |> Dir_contents.modules_of_library ~name
   |> Lib_modules.entry_modules
 
 let entry_modules sctx ~pkg =
   libs_of_pkg sctx ~pkg
-  |> Lib.Set.to_list
-  |> List.filter_map ~f:(fun l ->
-    if Lib.is_local l then (
-      Some (l, entry_modules_by_lib sctx l)
-    ) else (
-      None
-    ))
-  |> Lib.Map.of_list_exn
+  |> Lib.Local.Set.to_list
+  |> Lib.Local.Map.of_list_map_exn ~f:(fun l ->
+    (l, entry_modules_by_lib sctx l))
 
 let default_index ~pkg entry_modules =
   let b = Buffer.create 512 in
   Printf.bprintf b "{0 %s index}\n"
     (Package.Name.to_string pkg);
-  Lib.Map.to_list entry_modules
+  Lib.Local.Map.to_list entry_modules
   |> List.sort ~compare:(fun (x, _) (y, _) ->
-    Lib_name.compare (Lib.name x) (Lib.name y))
+    let name lib = Lib.name (Lib.Local.to_lib lib) in
+    Lib_name.compare (name x) (name y))
   |> List.iter ~f:(fun (lib, modules) ->
+    let lib = Lib.Local.to_lib lib in
     Printf.bprintf b "{1 Library %s}\n" (Lib_name.to_string (Lib.name lib));
     Buffer.add_string b (
       match modules with
@@ -631,7 +634,7 @@ let gen_rules sctx ~dir:_ rest =
     let lib = Lib_name.of_string_exn ~loc:None lib in
     let setup_pkg_html_rules pkg =
       setup_pkg_html_rules sctx ~pkg ~libs:(
-        Lib.Set.to_list (load_all_odoc_rules_pkg sctx ~pkg)) in
+        Lib.Local.Set.to_list (load_all_odoc_rules_pkg sctx ~pkg)) in
     Lib.DB.find lib_db lib
     |> Result.iter ~f:(fun lib ->
       match Lib.package lib with

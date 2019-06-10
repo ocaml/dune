@@ -5,7 +5,7 @@ module Lib : sig
 
   val dir : _ t -> Path.t
   val orig_src_dir : _ t -> Path.t option
-  val obj_dir : _ t -> Obj_dir.t
+  val obj_dir : _ t -> Path.t Obj_dir.t
   val requires : _ t -> (Loc.t * Lib_name.t) list
   val name : _ t -> Lib_name.t
   val version : _ t -> string option
@@ -58,7 +58,7 @@ module Lib : sig
     -> modes:Mode.Dict.Set.t
     -> version:string option
     -> orig_src_dir:Path.t option
-    -> obj_dir:Obj_dir.t
+    -> obj_dir:Path.t Obj_dir.t
     -> special_builtin_support:
          Dune_file.Library.Special_builtin_support.t option
     -> 'a t

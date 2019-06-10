@@ -194,7 +194,7 @@ type t =
   ; obj_name   : string
   ; pp         : (unit, string list) Build.t option
   ; visibility : Visibility.t
-  ; obj_dir    : Obj_dir.t
+  ; obj_dir    : Path.t Obj_dir.t
   ; kind       : Kind.t
   }
 
@@ -337,7 +337,7 @@ let to_sexp { source = { name; impl; intf }
     ; "intf", (option File.to_sexp) intf
     ; "pp", (option string) (Option.map ~f:(fun _ -> "has pp") pp)
     ; "visibility", Visibility.to_sexp visibility
-    ; "obj_dir", Obj_dir.to_sexp obj_dir
+    ; "obj_dir", Dyn.to_sexp (Obj_dir.to_dyn obj_dir)
     ; "kind", Kind.to_sexp kind
     ]
 
@@ -349,7 +349,7 @@ let pp fmt { source = { name; impl; intf }
     ; "intf", Fmt.const (Fmt.optional File.pp) intf
     ; "obj_name", Fmt.const Format.pp_print_string obj_name
     ; "visibility", Fmt.const Visibility.pp visibility
-    ; "obj_dir", Fmt.const Obj_dir.pp obj_dir
+    ; "obj_dir", Fmt.const Dyn.pp (Obj_dir.to_dyn obj_dir)
     ; "kind", Fmt.const Kind.pp kind
     ]
 

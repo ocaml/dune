@@ -25,20 +25,23 @@ let gen_dune_package sctx ~version ~(pkg : Local_package.t) =
           in
           let libs =
             Local_package.libs pkg
-            |> Lib.Set.to_list
+            |> Lib.Local.Set.to_list
             |> List.map ~f:(fun lib ->
-              let name = Lib.name lib in
               let dir_contents =
-                Dir_contents.get_without_rules sctx ~dir:(
-                  Path.as_in_build_dir_exn (Lib.src_dir lib)) in
-              let lib_modules =
-                Dir_contents.modules_of_library dir_contents ~name in
+                let dir = Lib.Local.src_dir lib in
+                Dir_contents.get_without_rules sctx ~dir
+              in
+              let obj_dir = Lib.Local.obj_dir lib in
+              let lib = Lib.Local.to_lib lib in
+              let name = Lib.name lib in
               let foreign_objects =
-                let dir = Obj_dir.obj_dir (Lib.obj_dir lib) in
+                let dir = Obj_dir.obj_dir obj_dir in
                 Dir_contents.c_sources_of_library dir_contents ~name
-                |> C.Sources.objects ~dir:(Path.as_in_build_dir_exn dir)
-                     ~ext_obj:ctx.ext_obj
+                |> C.Sources.objects ~dir ~ext_obj:ctx.ext_obj
                 |> List.map ~f:Path.build
+              in
+              let lib_modules =
+                Dir_contents.modules_of_library dir_contents ~name
               in
               Lib.to_dune_lib lib ~dir:(Path.build (lib_root lib)) ~lib_modules
                 ~foreign_objects)
@@ -114,6 +117,7 @@ let init_meta sctx ~dir =
         ~then_:(
           match Local_package.virtual_lib pkg with
           | Some lib ->
+            let lib = Lib.Local.to_lib lib in
             Build.fail { fail = fun () ->
               Errors.fail (Loc.in_file meta_template)
                 "Package %a defines virtual library %a and has a META \
@@ -130,7 +134,8 @@ let init_meta sctx ~dir =
       Gen_meta.gen
         ~package:(Package.Name.to_string pkg_name)
         ~version
-        (Lib.Set.to_list libs)
+        (Lib.Local.Set.to_list libs
+         |> List.map ~f:Lib.Local.to_lib)
     in
     let ctx = Super_context.context sctx in
     Super_context.add_rule sctx ~dir:ctx.build_dir
@@ -391,7 +396,7 @@ let install_entries =
       ~doc:"install entries"
       ~visibility:Hidden
       Sync
-      (Some (fun (sctx, package) -> install_entries sctx package))
+      (fun (sctx, package) -> install_entries sctx package)
   in
   fun sctx package -> Memo.exec memo (sctx, package)
 
@@ -481,7 +486,7 @@ let memo =
     ~doc:"install rules and package entries"
     ~visibility:Hidden
     Sync
-    (Some (fun (sctx, pkg) ->
+    (fun (sctx, pkg) ->
        let ctx = Super_context.context sctx in
        let context_name = ctx.name in
        let rules = Memo.lazy_ (fun () ->
@@ -503,7 +508,7 @@ let memo =
            Thunk (fun () -> Finite (
              Rules.to_map (Memo.Lazy.force rules)))
          )
-       )))
+       ))
 
 let scheme sctx pkg = Memo.exec memo (sctx, pkg)
 
@@ -519,14 +524,14 @@ let scheme_per_ctx_memo =
     ~doc:"install rules scheme"
     ~visibility:Hidden
     Sync
-    (Some (fun sctx ->
+    (fun sctx ->
        let packages = Local_package.of_sctx sctx in
        let scheme =
          Scheme.all (
            List.map (Package.Name.Map.to_list packages)
              ~f:(fun (_, pkg) -> (scheme sctx pkg)))
        in
-       Scheme.evaluate ~union:Rules.Dir_rules.union scheme))
+       Scheme.evaluate ~union:Rules.Dir_rules.union scheme)
 
 let gen_rules sctx ~dir =
   let rules, subdirs =
@@ -563,6 +568,6 @@ let packages =
                      ~equal:Package.Name.Set.equal
                end))
       Sync
-      (Some f)
+      f
   in
   fun sctx -> Memo.exec memo sctx

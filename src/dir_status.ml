@@ -130,22 +130,36 @@ module DB = struct
           end
 
   let make file_tree ~stanzas_per_dir =
-    let t =
-      { file_tree
-      ; stanzas_per_dir
-      ; fn =
-          Memo.create
-            "get-dir-status"
-            ~input:(module Path.Build)
-            ~visibility:Hidden
-            ~output:(Simple (module T))
-            ~doc:"Get a directory status."
-            Sync
-            None
-      }
+    (* CR-someday aalekseyev:
+       This local recursive module is a bit awkward.
+       In the future the plan is to move the memo to the top-level to make it
+       less awkward (and to dissolve the [DB] datatype). *)
+    let module M = struct
+      module rec Res : sig
+        val t : t
+      end = struct
+        let t =
+          { file_tree
+          ; stanzas_per_dir
+          ; fn = Memo.create
+                   "get-dir-status"
+                   ~input:(module Path.Build)
+                   ~visibility:Hidden
+                   ~output:(Simple (module T))
+                   ~doc:"Get a directory status."
+                   Sync
+                   Fn.get
+          }
+      end
+      and
+        Fn : sig
+        val get : Path.Build.t -> T.t
+      end = struct
+        let get dir = get Res.t ~dir
+      end
+    end
     in
-    Memo.set_impl t.fn (fun dir -> get t ~dir);
-    t
+    M.Res.t
 
   let get db ~dir =
     Memo.exec db.fn dir

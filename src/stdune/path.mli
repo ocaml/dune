@@ -2,65 +2,10 @@
 
     Represented as: either the root, or a '/' separated list of components
     other that ".", ".."  and not containing a '/'. *)
-module Local_gen : sig
-
-  type 'w t
-
-  val hash : 'w t -> int
-
-  (* it's not clear that these should be polymorphic over 'w, maybe they should
-     additionally ask for an object that fixes 'w *)
-  val to_string : 'w t -> string
-  val of_string : string -> 'w t
-  val parse_string_exn : loc:Loc0.t -> string -> 'w t
-
-  val pp : Format.formatter -> 'w t -> unit
-
-  (** a directory is smaller than its descendants *)
-  val compare : 'w t -> 'w t -> Ordering.t
-
-  val to_dyn : 'w t -> Dyn.t
-  val to_sexp : 'w t -> Sexp.t
-
-  val extension : 'w t -> string
-
-  (** [set_extension path ~ext] replaces extension of [path] by [ext] *)
-  val set_extension : 'w t -> ext:string -> 'w t
-
-  val split_extension : 'w t -> 'w t * string
-
-  val basename : 'w t -> string
-  val extend_basename : 'w t -> suffix:string -> 'w t
-
-  module Fix_root (Root : sig type w end) : sig
-    module Set : sig
-      include Set.S with type elt = Root.w t
-      val to_sexp : t Sexp.Encoder.t
-      val to_dyn : t Dyn.Encoder.t
-      val of_listing : dir:elt -> filenames:string list -> t
-    end
-
-    module Map :  Map.S with type key = Root.w t
-
-    module Table : Hashtbl.S with type key = Root.w t
-  end
-
-  val relative : ?error_loc:Loc0.t -> 'w t -> string -> 'w t
-
-  val to_string_maybe_quoted : 'w t -> string
-
-  val is_descendant : 'w t -> of_:'w t -> bool
-
-  val is_root : 'w t -> bool
-  val parent_exn : 'w t -> 'w t
-  val parent : 'w t -> 'w t option
-
-  val explode : 'w t -> string list
-
-end
+module Local_gen : Path_intf.Local_gen
 
 module Unspecified : sig
-  type w
+  type w = Path_intf.Unspecified.w
 end
 
 (** Relative path with unspecified root.

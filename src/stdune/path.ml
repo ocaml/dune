@@ -33,7 +33,6 @@ let explode_path =
 
 module External : sig
   include Path_intf.S
-  val compare_val : t -> t -> Ordering.t
   val relative : t -> string -> t
   val mkdir_p : t -> unit
   val initial_cwd : t
@@ -56,8 +55,6 @@ end = struct
   let hash = T.hash
   let pp = T.pp
   let compare = T.compare
-
-  let compare_val x y = String.compare (to_string x) (to_string y)
 
   let as_string x ~f =
     to_string x
@@ -149,7 +146,7 @@ end = struct
   include (
     Comparable.Operators(struct
       type nonrec t = t
-      let compare = compare_val
+      let compare = compare
     end)
     : Comparable.OPS with type t := t
   )
@@ -196,9 +193,6 @@ module Local_gen : sig
 
   (** a directory is smaller than its descendants *)
   val compare : 'w t -> 'w t -> Ordering.t
-
-  (** no particular ordering is guaranteed *)
-  val compare_val : 'w t -> 'w t -> Ordering.t
 
   val to_dyn : 'w t -> Dyn.t
   val to_sexp : 'w t -> Sexp.t
@@ -254,7 +248,6 @@ module Local_gen : sig
   end
 
   val append : 'w t -> Unspecified.w t -> 'w t
-  val mkdir_p : 'w t -> unit
   val descendant : 'w t -> of_:'w t -> Unspecified.w t option
   val is_descendant : 'w t -> of_:'w t -> bool
   val reach : 'w t -> from:'w t -> string
@@ -280,8 +273,6 @@ end = struct
   let compare = T.compare
 
   let pp ppf s = Format.pp_print_string ppf (to_string s)
-
-  let compare_val x y = String.compare (to_string x) (to_string y)
 
   let root = make "."
 
@@ -424,24 +415,6 @@ end = struct
     | _ -> relative root s ~error_loc:loc
   let of_string s = parse_string_exn ~loc:Loc0.none s
 
-  let rec mkdir_p t =
-    if is_root t then
-      ()
-    else
-      let t_s = to_string t in
-      try
-        Unix.mkdir t_s 0o777
-      with
-      | Unix.Unix_error (EEXIST, _, _) -> ()
-      | Unix.Unix_error (ENOENT, _, _) as e ->
-        let parent = parent_exn t in
-        if is_root parent then
-          raise e
-        else begin
-          mkdir_p parent;
-          Unix.mkdir t_s 0o777
-        end
-
   let append a b =
     match is_root a, is_root b with
     | true, _ -> b
@@ -580,10 +553,8 @@ module Local : sig
 
   val root : t
   val is_root : t -> bool
-  val compare_val : t -> t -> Ordering.t
   val relative : ?error_loc:Loc0.t -> t -> string -> t
   val append : t -> t -> t
-  val mkdir_p : t -> unit
   val descendant : t -> of_:t -> t option
   val is_descendant : t -> of_:t -> bool
   val reach : t -> from:t -> string
@@ -625,7 +596,7 @@ end = struct
   include (
     Comparable.Operators(struct
       type nonrec t = t
-      let compare = Local_gen.compare_val
+      let compare = Local_gen.compare
     end)
     : Comparable.OPS with type t := t
   )
@@ -635,6 +606,29 @@ end = struct
   include Fix_root (struct
       type nonrec w = w
     end)
+end
+
+module Relative_to_source_root : sig
+  val mkdir_p : Local.t -> unit
+end = struct
+
+  let rec mkdir_p t =
+    if is_root t then
+      ()
+    else
+      let t_s = to_string t in
+      try
+        Unix.mkdir t_s 0o777
+      with
+      | Unix.Unix_error (EEXIST, _, _) -> ()
+      | Unix.Unix_error (ENOENT, _, _) as e ->
+        let parent = parent_exn t in
+        if is_root parent then
+          raise e
+        else begin
+          mkdir_p parent;
+          Unix.mkdir t_s 0o777
+        end
 end
 
 module Source0 = Local
@@ -695,7 +689,7 @@ module Kind = struct
     | External t -> External (External.relative t fn)
 
   let mkdir_p = function
-    | Local t -> Local.mkdir_p t
+    | Local t -> Relative_to_source_root.mkdir_p t
     | External t -> External.mkdir_p t
 
   let append_local x y =
@@ -1197,7 +1191,7 @@ let build_dir_exists () = is_directory build_dir
 
 let ensure_build_dir_exists () =
   match kind build_dir with
-  | Local p -> Local.mkdir_p p
+  | Local p -> Relative_to_source_root.mkdir_p p
   | External p ->
     let p = External.to_string p in
     try
@@ -1253,19 +1247,19 @@ let rm_rf =
 let mkdir_p = function
   | External s -> External.mkdir_p s
   | In_source_tree s ->
-    Local.mkdir_p s
+    Relative_to_source_root.mkdir_p s
   | In_build_dir k ->
     Kind.mkdir_p (Kind.append_local (Lazy.force Build.build_dir_kind) k)
 
 let compare x y =
   match x, y with
-  | External x      , External y       -> External.compare_val x y
+  | External x      , External y       -> External.compare x y
   | External _      , _                -> Lt
   | _               , External _       -> Gt
-  | In_source_tree x, In_source_tree y -> Local.compare_val x y
+  | In_source_tree x, In_source_tree y -> Local.compare x y
   | In_source_tree _, _                -> Lt
   | _               , In_source_tree _ -> Gt
-  | In_build_dir x  , In_build_dir y   -> Local.compare_val x y
+  | In_build_dir x  , In_build_dir y   -> Local.compare x y
 
 let extension t =
   match t with

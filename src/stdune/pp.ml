@@ -30,6 +30,24 @@ let rec map_tags t ~f =
   | Verbatim _ | Char _ | Break _ | Newline | Text _ as t -> t
   | Tag (tag, t) -> Tag (f tag, map_tags t ~f)
 
+let rec filter_map_tags t ~f =
+  match t with
+  | Nop -> Nop
+  | Seq (a, b) -> Seq (filter_map_tags a ~f, filter_map_tags b ~f)
+  | Concat (sep, l) ->
+    Concat (filter_map_tags sep ~f, List.map l ~f:(filter_map_tags ~f))
+  | Box (indent, t) -> Box (indent, filter_map_tags t ~f)
+  | Vbox (indent, t) -> Vbox (indent, filter_map_tags t ~f)
+  | Hbox t -> Hbox (filter_map_tags t ~f)
+  | Hvbox (indent, t) -> Hvbox (indent, filter_map_tags t ~f)
+  | Hovbox (indent, t) -> Hovbox (indent, filter_map_tags t ~f)
+  | Verbatim _ | Char _ | Break _ | Newline | Text _ as t -> t
+  | Tag (tag, t) ->
+    let t = filter_map_tags t ~f in
+    match f tag with
+    | None -> t
+    | Some tag -> Tag (tag, t)
+
 module type Tag = sig
   type t
   module Handler : sig
@@ -209,3 +227,7 @@ let chain l ~f =
   vbox (concat ~sep:cut (List.mapi l ~f:(fun i x ->
     box ~indent:3
       (seq (verbatim (if i = 0 then "   " else "-> ")) (f x)))))
+
+module O = struct
+  let ( ++ ) = seq
+end

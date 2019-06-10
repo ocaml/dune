@@ -35,9 +35,6 @@ end
 module Render : Pp.Renderer.S
   with type Tag.t = Style.t list
 
-(** Filter out escape sequences in a string *)
-val strip : string -> string
-
 (** Print to [stdout] (not thread safe) *)
 val print : ?margin:int -> Style.t list Pp.t -> unit
 
@@ -47,3 +44,9 @@ val prerr : ?margin:int -> Style.t list Pp.t -> unit
 (** Whether [stdout]/[stderr] support colors *)
 val stdout_supports_color : bool Lazy.t
 val stderr_supports_color : bool Lazy.t
+
+(** Filter out escape sequences in a string *)
+val strip : string -> string
+
+(** Parse a string containing ANSI escape sequences *)
+val parse : string -> Style.t list Pp.t

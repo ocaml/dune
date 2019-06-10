@@ -19,6 +19,7 @@ module Style : sig
     | Details
     | Ok
     | Debug
+    | Ansi_styles of Ansi_color.Style.t list
 end
 
 (** A user message.contents composed of an optional file location and

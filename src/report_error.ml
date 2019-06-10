@@ -35,8 +35,7 @@ let rec get_printer = function
          | hint :: _ ->
            Some (Format.asprintf "%a" Pp.pp (Pp.map_tags hint ~f:ignore)))
     ; pp = fun ppf ->
-        Format.fprintf ppf "%a@."
-          Pp.pp
+        Pp.pp ppf
           (User_message.pp { msg with loc = None; hints = [] }
            |> Pp.map_tags ~f:ignore)
     }

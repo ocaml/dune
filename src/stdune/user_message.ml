@@ -9,6 +9,7 @@ module Style = struct
     | Details
     | Ok
     | Debug
+    | Ansi_styles of Ansi_color.Style.t list
 end
 
 module Print_config = struct
@@ -24,6 +25,7 @@ module Print_config = struct
     | Details -> [Dim; Fg White]
     | Ok      -> [Dim; Fg Green]
     | Debug   -> [Underlined; Fg Bright_cyan]
+    | Ansi_styles l -> l
 end
 
 type t =
@@ -64,7 +66,8 @@ let pp { loc; paragraphs; hints } =
            start.pos_fname start.pos_lnum start_c stop_c)
       :: paragraphs
   in
-  Pp.vbox (Pp.concat paragraphs ~sep:Pp.cut)
+  Pp.vbox (Pp.concat_map paragraphs ~sep:Pp.nop
+             ~f:(fun pp -> Pp.seq pp Pp.cut))
 
 let print ?(config=Print_config.default) ?margin t =
   Ansi_color.print ?margin (Pp.map_tags (pp t) ~f:config)

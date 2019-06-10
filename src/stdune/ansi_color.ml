@@ -75,6 +75,46 @@ module Style = struct
   let escape_sequence l =
     let codes = "0" :: List.map l ~f:code in
     Printf.sprintf "\027[%sm" (String.concat codes ~sep:";")
+
+  let of_code = function
+    | 1 -> Some Bold
+    | 2 -> Some Dim
+    | 4 -> Some Underlined
+    | 30 -> Some (Fg Black)
+    | 31 -> Some (Fg Red)
+    | 32 -> Some (Fg Green)
+    | 33 -> Some (Fg Yellow)
+    | 34 -> Some (Fg Blue)
+    | 35 -> Some (Fg Magenta)
+    | 36 -> Some (Fg Cyan)
+    | 37 -> Some (Fg White)
+    | 39 -> Some (Fg Default)
+    | 90 -> Some (Fg Bright_black)
+    | 91 -> Some (Fg Bright_red)
+    | 92 -> Some (Fg Bright_green)
+    | 93 -> Some (Fg Bright_yellow)
+    | 94 -> Some (Fg Bright_blue)
+    | 95 -> Some (Fg Bright_magenta)
+    | 96 -> Some (Fg Bright_cyan)
+    | 97 -> Some (Fg Bright_white)
+    | 40 -> Some (Bg Black)
+    | 41 -> Some (Bg Red)
+    | 42 -> Some (Bg Green)
+    | 43 -> Some (Bg Yellow)
+    | 44 -> Some (Bg Blue)
+    | 45 -> Some (Bg Magenta)
+    | 46 -> Some (Bg Cyan)
+    | 47 -> Some (Bg White)
+    | 49 -> Some (Bg Default)
+    | 100 -> Some (Bg Bright_black)
+    | 101 -> Some (Bg Bright_red)
+    | 102 -> Some (Bg Bright_green)
+    | 103 -> Some (Bg Bright_yellow)
+    | 104 -> Some (Bg Bright_blue)
+    | 105 -> Some (Bg Bright_magenta)
+    | 106 -> Some (Bg Bright_cyan)
+    | 107 -> Some (Bg Bright_white)
+    | _ -> None
 end
 
 module Styles = struct
@@ -216,3 +256,49 @@ let strip str =
       | _   -> skip (i + 1)
   in
   loop 0
+
+let parse_line str styles =
+  let len = String.length str in
+  let add_chunk acc ~styles ~pos ~len =
+    if len = 0 then
+      acc
+    else
+      let s = String.sub str ~pos ~len in
+      Pp.seq acc (Pp.tag (Pp.verbatim s) ~tag:styles)
+  in
+  let rec loop styles i acc =
+    match String.index_from str i '\027' with
+    | exception Not_found ->
+      (styles, add_chunk acc ~styles ~pos:i ~len:(len - i))
+    | seq_start ->
+      let acc = add_chunk acc ~styles ~pos:i ~len:(seq_start - i) in
+      match String.index_from str (seq_start + 1) 'm' with
+      | exception Not_found -> (styles, acc)
+      | seq_end ->
+        let styles =
+          String.sub str ~pos:(seq_start + 1) ~len:(seq_end - seq_start - 1)
+          |> String.split ~on:';'
+          |> List.fold_left ~init:(List.rev styles) ~f:(fun styles s ->
+            match int_of_string s with
+            | exception _ -> styles
+            | 0 -> []
+            | n ->
+              match Style.of_code n with
+              | None -> styles
+              | Some style -> style :: styles)
+          |> List.rev
+        in
+        loop styles (seq_end + 1) acc
+  in
+  loop styles 0 Pp.nop
+
+let parse =
+  let rec loop styles lines acc =
+    match lines with
+    | [] -> Pp.vbox (Pp.concat ~sep:Pp.cut (List.rev acc))
+    | line :: lines ->
+      let styles, pp = parse_line line styles in
+      loop styles lines (pp :: acc)
+  in
+  fun str ->
+    loop [] (String.split_lines str) []

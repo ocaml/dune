@@ -9,24 +9,6 @@ let apply_string styles str =
     str
     (Ansi_color.Style.escape_sequence [])
 
-let colorize =
-  let color_combos =
-    let open Ansi_color.Color in
-    [| Blue,          Bright_green
-     ; Red,           Bright_yellow
-     ; Yellow,        Blue
-     ; Magenta,       Bright_cyan
-     ; Bright_green,  Blue
-     ; Bright_yellow, Red
-     ; Blue,          Yellow
-     ; Bright_cyan,   Magenta
-    |]
-  in
-  fun ~key str ->
-    let hash = Hashtbl.hash key in
-    let fore, back = color_combos.(hash mod (Array.length color_combos)) in
-    apply_string [Fg fore; Bg back] str
-
 let strip_colors_for_stderr s =
   if Lazy.force Ansi_color.stderr_supports_color then
     s

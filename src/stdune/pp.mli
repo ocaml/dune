@@ -55,6 +55,7 @@ val newline : _ t
 
 (** Convert tags in a documents *)
 val map_tags : 'a t -> f:('a -> 'b) -> 'b t
+val filter_map_tags : 'a t -> f:('a -> 'b option) -> 'b t
 
 (** {1 Boxes} *)
 
@@ -106,6 +107,13 @@ val enumerate : 'a list -> f:('a -> 'b t) -> 'b t
     v}
 *)
 val chain : 'a list -> f:('a -> 'b t) -> 'b t
+
+(** {1 Operators} *)
+
+module O : sig
+  (** Same as [seq] *)
+  val ( ++ ) : 'a t -> 'a t -> 'a t
+end
 
 (** {1 Rendering} *)
 

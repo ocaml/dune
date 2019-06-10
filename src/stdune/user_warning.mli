@@ -7,7 +7,7 @@
     fashion to {!User_error.raise} except that the first paragraph is
     prefixed with "Warning: " rather than "Error: ". *)
 val emit
-  :  loc:Loc0.t
+  :  ?loc:Loc0.t
   -> ?hints:User_message.Style.t Pp.t list
   -> User_message.Style.t Pp.t list
   -> unit

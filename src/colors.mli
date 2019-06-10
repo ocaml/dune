@@ -1,7 +1,5 @@
 open! Stdune
 
-val colorize : key:string -> string -> string
-
 (** [Env.initial] extended with variables to force a few tools to
     print colors *)
 val setup_env_for_colors : Env.t -> Env.t

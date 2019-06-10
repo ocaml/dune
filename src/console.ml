@@ -48,6 +48,13 @@ module T = struct
     show_status_line s;
     flush stderr
 
+  let print_user_message t ?config ?margin msg =
+    let s = t.status_line in
+    hide_status_line s;
+    User_message.prerr ?config ?margin msg;
+    show_status_line s;
+    flush stderr
+
   let hide_status_line t =
     hide_status_line t.status_line;
     flush stderr
@@ -81,3 +88,7 @@ let print msg =
   match !t_var with
   | None -> Printf.eprintf "%s%!" msg
   | Some t -> T.print t msg
+let print_user_message ?config ?margin msg =
+  match !t_var with
+  | None -> User_message.prerr ?config ?margin msg
+  | Some t -> T.print_user_message t ?config ?margin msg

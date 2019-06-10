@@ -17,10 +17,7 @@ let generate_and_compile_module cctx ~name:basename ~code ~requires =
   SC.add_rule ~dir sctx (Build.write_file ml code);
   let impl = Module.File.make OCaml (Path.build ml) in
   let name = Module.Name.of_string basename in
-  let module_ =
-    let obj_dir = Obj_dir.of_local obj_dir in
-    Module.make ~impl name ~visibility:Public ~obj_dir ~kind:Impl
-  in
+  let module_ = Module.make ~impl name ~visibility:Public ~kind:Impl in
   let opaque =
     Ocaml_version.supports_opaque_for_mli
       (Super_context.context sctx).version
@@ -93,6 +90,7 @@ let handle_special_libs cctx =
           ~code
           ~requires
       in
+      let obj_dir = Compilation_context.obj_dir cctx in
       let rec insert = function
         | [] -> assert false
         | x :: l ->
@@ -102,7 +100,8 @@ let handle_special_libs cctx =
           | Lib lib ->
             match Lib.special_builtin_support lib with
             | Some Findlib_dynload ->
-              x :: Module module_ :: l
+              let obj_dir = Obj_dir.of_local obj_dir in
+              x :: Module (obj_dir, module_) :: l
             | _ -> x :: insert l
       in
       { force_linkall = true

@@ -1,4 +1,4 @@
-let setup_library_odoc_rules _ _ ~scope:_ ~modules:_ ~requires:_
+let setup_library_odoc_rules _ _ ~obj_dir:_ ~scope:_ ~modules:_ ~requires:_
       ~dep_graphs:_ = ()
 
 let init _ = ()

@@ -24,7 +24,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
       in
       Option.value ~default:lib (String.drop_prefix ~prefix:"-l" lib))
 
-  let build_lib (lib : Library.t) ~expander ~flags ~dir ~mode
+  let build_lib (lib : Library.t) ~obj_dir ~expander ~flags ~dir ~mode
         ~top_sorted_modules ~modules =
     let kind = Mode.cm_kind mode in
     Option.iter (Context.compiler ctx mode) ~f:(fun compiler ->
@@ -46,7 +46,9 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
           Fn.id
       in
       let artifacts ~ext modules =
-        List.map modules ~f:(Module.obj_file ~kind ~ext)
+        List.map modules ~f:(fun m ->
+          let obj = Obj_dir.Module.obj_file obj_dir m ~kind ~ext in
+          Path.build obj)
       in
       let obj_deps =
         Build.paths (artifacts modules ~ext:(Cm_kind.ext kind))
@@ -355,7 +357,8 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
             ; Cmo, (Cm_kind.ext Cmo)
             ; Cmx, ctx.ext_obj ]
             |> List.iter ~f:(fun (kind, ext) ->
-              let src = Module.obj_file m ~kind ~ext in
+              let src =
+                Path.build (Obj_dir.Module.obj_file obj_dir m ~kind ~ext) in
               let dst = Path.Build.relative dir ((Module.obj_name m) ^ ext) in
               SC.add_rule sctx ~dir (Build.copy ~src ~dst));
             Module.Name.Map.remove modules name
@@ -389,7 +392,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
     (let modules = modules @ wrapped_compat in
      Mode.Dict.Set.to_list modes
      |> List.iter ~f:(fun mode ->
-       build_lib lib ~expander ~flags ~dir ~mode ~top_sorted_modules
+       build_lib lib ~obj_dir ~expander ~flags ~dir ~mode ~top_sorted_modules
          ~modules));
     (* Build *.cma.js *)
     if modes.byte then
@@ -504,7 +507,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
         ~vlib_dep_graphs ~expander
     );
 
-    Odoc.setup_library_odoc_rules sctx lib ~requires:requires_compile
+    Odoc.setup_library_odoc_rules sctx lib ~obj_dir ~requires:requires_compile
       ~modules ~dep_graphs ~scope;
 
     let flags =

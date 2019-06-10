@@ -37,37 +37,38 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
   let impl_obj_dir = Dune_file.Library.obj_dir ~dir impl in
   let vlib_obj_dir = Lib.obj_dir vlib in
   let vlib_modules = Vimpl.vlib_modules vimpl in
+  let add_rule = Super_context.add_rule sctx ~dir in
   let copy_to_obj_dir ~src ~dst =
-    Super_context.add_rule ~dir ~loc:(Loc.of_pos __POS__)
-      sctx (Build.symlink ~src ~dst)
-  in
-  let add_rule = Super_context.add_rule ~dir in
+    add_rule ~loc:(Loc.of_pos __POS__) (Build.symlink ~src ~dst) in
   let modes =
     Dune_file.Mode_conf.Set.eval impl.modes
       ~has_native:(Option.is_some ctx.ocamlopt) in
-  let copy_obj_file ~src ~dst kind =
-    let src = Module.cm_file_unsafe src kind in
-    let dst = Module.cm_file_unsafe dst kind in
-    copy_to_obj_dir ~src ~dst:(Path.as_in_build_dir_exn dst) in
+  let copy_obj_file m kind =
+    let src = Obj_dir.Module.cm_file_unsafe vlib_obj_dir m kind in
+    let dst = Obj_dir.Module.cm_file_unsafe impl_obj_dir m kind in
+    copy_to_obj_dir ~src ~dst
+  in
   let copy_objs src =
-    let dst = Module.set_obj_dir ~obj_dir:(Obj_dir.of_local impl_obj_dir) src in
-    copy_obj_file ~src ~dst Cmi;
-    if Module.is_public dst
+    copy_obj_file src Cmi;
+    if Module.is_public src
     && Obj_dir.need_dedicated_public_dir impl_obj_dir
     then begin
-      let src = Module.cm_public_file_unsafe src Cmi in
-      let dst = Module.cm_public_file_unsafe dst Cmi in
-      copy_to_obj_dir ~src ~dst:(Path.as_in_build_dir_exn dst)
+      let dst =
+        Obj_dir.Module.cm_public_file_unsafe impl_obj_dir src Cmi in
+      let src =
+        Obj_dir.Module.cm_public_file_unsafe vlib_obj_dir src Cmi in
+      copy_to_obj_dir ~src ~dst
     end;
     if Module.has_impl src then begin
       if modes.byte then
-        copy_obj_file ~src ~dst Cmo;
+        copy_obj_file src Cmo;
       if modes.native then begin
-        copy_obj_file ~src ~dst Cmx;
-        (let object_file = Module.obj_file ~kind:Cmx ~ext:ctx.ext_obj in
+        copy_obj_file src Cmx;
+        (let object_file dir =
+           Obj_dir.Module.obj_file dir src ~kind:Cmx ~ext:ctx.ext_obj in
          copy_to_obj_dir
-           ~src:(object_file src)
-           ~dst:(Path.as_in_build_dir_exn (object_file dst)))
+           ~src:(object_file vlib_obj_dir)
+           ~dst:(object_file impl_obj_dir))
       end
     end
   in
@@ -106,7 +107,7 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
             >>>
             Build.write_file_dyn
               (all_deps ~obj_dir:(Obj_dir.obj_dir impl_obj_dir) f)
-            |> add_rule sctx))
+            |> add_rule))
   in
   Option.iter (Lib_modules.alias_module vlib_modules) ~f:copy_objs;
   Module.Name.Map.iter (Lib_modules.modules vlib_modules)
@@ -178,11 +179,15 @@ let check_module_fields ~(lib : Dune_file.Library.t) ~virtual_modules
 let external_dep_graph sctx ~impl_cm_kind ~impl_obj_dir ~vlib_modules =
   let wrapped = Lib_modules.is_wrapped vlib_modules in
   let modules = Lib_modules.modules vlib_modules in
+  let dir = Obj_dir.dir impl_obj_dir in
   let ocamlobjinfo =
     let ctx = Super_context.context sctx in
     fun m cm_kind ->
-      let unit = Module.cm_file_unsafe m cm_kind in
-      Ocamlobjinfo.rules ~dir:impl_obj_dir ~ctx ~unit
+      let unit =
+        Obj_dir.Module.cm_file_unsafe impl_obj_dir m cm_kind
+        |> Path.build
+      in
+      Ocamlobjinfo.rules ~dir ~ctx ~unit
   in
   Ml_kind.Dict.of_func (fun ~ml_kind ->
     let cm_kind =
@@ -221,7 +226,7 @@ let external_dep_graph sctx ~impl_cm_kind ~impl_obj_dir ~vlib_modules =
               Module.Name.Map.find modules name
           end)
     in
-    Dep_graph.make ~dir:impl_obj_dir
+    Dep_graph.make ~dir
       ~per_module:(Module.Name.Map.map modules ~f:(fun m ->
         let deps =
           if (ml_kind = Intf && not (Module.has_intf m))
@@ -230,7 +235,7 @@ let external_dep_graph sctx ~impl_cm_kind ~impl_obj_dir ~vlib_modules =
             Build.return []
           else
             let (write, read) = ocamlobjinfo m cm_kind in
-            Super_context.add_rule sctx ~dir:impl_obj_dir write;
+            Super_context.add_rule sctx ~dir write;
             let open Build.O in
             Build.memoize "ocamlobjinfo" @@
             read >>^ deps_from_objinfo ~for_module:m
@@ -297,8 +302,7 @@ let impl sctx ~dir ~(lib : Dune_file.Library.t) ~scope ~modules =
           in
           Ocamldep.graph_of_remote_lib ~obj_dir ~modules
         | External _ ->
-          let impl_obj_dir =
-            Utils.library_object_directory ~dir (snd lib.name) in
+          let impl_obj_dir = Dune_file.Library.obj_dir ~dir lib in
           let impl_cm_kind =
             let { Mode.Dict. byte; native = _ } = Lib.modes vlib in
             Mode.cm_kind (if byte then Byte else Native)

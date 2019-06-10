@@ -282,3 +282,60 @@ let to_local (t : Path.t t) =
   | Local _ -> assert false
   | Local_as_path t -> Some (Local t)
   | External _ -> None
+
+module Module = struct
+
+  let relative (type path) (t : path t) (dir : path) name : path =
+    match t with
+    | Local _ -> Path.Build.relative dir name
+    | Local_as_path _ -> Path.relative dir name
+    | External _ -> Path.relative dir name
+
+  let obj_file (type path) (t : path t) m ~kind ~ext : path =
+    let visibility = Module.visibility m in
+    let obj_name = Module.obj_name m ^ ext in
+    let dir = cm_dir t kind visibility in
+    relative t dir obj_name
+
+  let cm_file_unsafe t m kind =
+    let ext = Cm_kind.ext kind in
+    obj_file t m ~kind ~ext
+
+  let cm_file t m (kind : Cm_kind.t) =
+    let has_impl = Module.has_impl m in
+    match kind with
+    | (Cmx | Cmo) when not has_impl -> None
+    | _ -> Some (cm_file_unsafe t m kind)
+
+  let cm_public_file_unsafe t m kind =
+    let ext = Cm_kind.ext kind in
+    let base = cm_public_dir t kind in
+    let obj_name = Module.obj_name m in
+    relative t base (obj_name ^ ext)
+
+  let cm_public_file (type path) (t : path t) m (kind : Cm_kind.t) : path option =
+    let is_private = Module.visibility m = Private in
+    let has_impl = Module.has_impl m in
+    match kind with
+    | (Cmx | Cmo) when not has_impl -> None
+    |  Cmi when is_private -> None
+    | _ -> Some (cm_public_file_unsafe t m kind)
+
+  let cmt_ext (kind : Ml_kind.t) =
+    match kind with
+    | Impl -> ".cmt"
+    | Intf -> ".cmti"
+
+  let cmt_file t m (kind : Ml_kind.t) =
+    let file = Module.file m kind in
+    let ext = cmt_ext kind in
+    Option.map file ~f:(fun _ -> obj_file t m ~kind:Cmi ~ext)
+
+  let cmti_file t m =
+    let ext = cmt_ext (
+      match Module.file m Intf with
+      | None -> Impl
+      | Some _ -> Intf
+    ) in
+    obj_file t m ~kind:Cmi ~ext
+end

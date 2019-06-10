@@ -27,9 +27,8 @@ let make_unwrapped ~modules ~main_module_name =
   ; wrapped = Simple false
   }
 
-let make_alias_module ~obj_dir ~implements ~lib_name ~stdlib
+let make_alias_module ~src_dir ~implements ~lib_name ~stdlib
       ~main_module_name ~modules =
-  let dir = Obj_dir.dir obj_dir in
   let alias_prefix =
     String.uncapitalize (Module.Name.to_string main_module_name) in
   if implements then
@@ -42,9 +41,8 @@ let make_alias_module ~obj_dir ~implements ~lib_name ~stdlib
          ~visibility:Public
          ~kind:Impl
          ~impl:(Module.File.make OCaml
-                  (Path.relative dir (sprintf "%s.ml-gen" alias_prefix)))
-         ~obj_name:alias_prefix
-         ~obj_dir)
+                  (Path.relative src_dir (sprintf "%s.ml-gen" alias_prefix)))
+         ~obj_name:alias_prefix)
   else if Module.Name.Map.cardinal modules = 1 &&
           Module.Name.Map.mem modules main_module_name ||
           stdlib then
@@ -59,21 +57,19 @@ let make_alias_module ~obj_dir ~implements ~lib_name ~stdlib
          ~visibility:Public
          ~kind:Impl
          ~impl:(Module.File.make OCaml
-                  (Path.relative dir (sprintf "%s__.ml-gen" alias_prefix)))
-         ~obj_name:(alias_prefix ^ "__")
-         ~obj_dir)
+                  (Path.relative src_dir (sprintf "%s__.ml-gen" alias_prefix)))
+         ~obj_name:(alias_prefix ^ "__"))
   else
     Some
       (Module.make main_module_name
          ~visibility:Public
          ~kind:Impl
          ~impl:(Module.File.make OCaml
-                  (Path.relative dir (alias_prefix ^ ".ml-gen")))
-         ~obj_name:alias_prefix
-         ~obj_dir)
+                  (Path.relative src_dir (alias_prefix ^ ".ml-gen")))
+         ~obj_name:alias_prefix)
 
-let make_alias_module_of_lib ~obj_dir ~lib ~main_module_name ~modules =
-  make_alias_module ~obj_dir ~main_module_name
+let make_alias_module_of_lib ~src_dir ~lib ~main_module_name ~modules =
+  make_alias_module ~src_dir ~main_module_name
     ~modules
     ~implements:(Dune_file.Library.is_impl lib)
     ~lib_name:(snd lib.name)
@@ -110,7 +106,7 @@ let wrap_modules ~modules ~lib ~main_module_name =
     else
       Module.with_wrapper m ~main_module_name:(prefix m))
 
-let make_wrapped ~(lib : Dune_file.Library.t) ~obj_dir ~wrapped ~modules
+let make_wrapped ~(lib : Dune_file.Library.t) ~src_dir ~wrapped ~modules
       ~main_module_name =
   let (modules, wrapped_compat) =
     match (wrapped : Wrapped.t) with
@@ -128,7 +124,7 @@ let make_wrapped ~(lib : Dune_file.Library.t) ~obj_dir ~wrapped ~modules
       )
   in
   let alias_module =
-    make_alias_module_of_lib ~main_module_name ~obj_dir ~lib ~modules
+    make_alias_module_of_lib ~main_module_name ~src_dir ~lib ~modules
   in
   { modules
   ; alias_module
@@ -138,7 +134,7 @@ let make_wrapped ~(lib : Dune_file.Library.t) ~obj_dir ~wrapped ~modules
   ; wrapped
   }
 
-let make (lib : Dune_file.Library.t) ~obj_dir (modules : Module.Name_map.t)
+let make (lib : Dune_file.Library.t) ~src_dir (modules : Module.Name_map.t)
       ~main_module_name ~(wrapped : Wrapped.t) =
   match wrapped, main_module_name with
   | Simple false, _ ->
@@ -146,7 +142,7 @@ let make (lib : Dune_file.Library.t) ~obj_dir (modules : Module.Name_map.t)
   | (Yes_with_transition _ | Simple true), None ->
     assert false
   | wrapped, Some main_module_name ->
-    make_wrapped ~wrapped ~modules ~obj_dir ~main_module_name ~lib
+    make_wrapped ~wrapped ~modules ~src_dir ~main_module_name ~lib
 
 let needs_alias_module t = Option.is_some t.alias_module
 
@@ -161,7 +157,7 @@ let installable_modules t =
   | Some alias -> alias :: modules
 
 let version_installed t ~install_dir =
-  let set = Module.set_obj_dir ~obj_dir:install_dir in
+  let set = Module.set_src_dir ~src_dir:install_dir in
   { t with
     alias_module = Option.map ~f:set t.alias_module
   ; modules = Module.Name.Map.map ~f:set t.modules;
@@ -220,13 +216,13 @@ let encode
     ; field "wrapped" Wrapped.encode wrapped
     ]
 
-let decode ~implements ~obj_dir =
+let decode ~implements ~src_dir =
   let open Stanza.Decoder in
   fields (
-    let+ alias_module = field_o "alias_module" (Module.decode ~obj_dir)
+    let+ alias_module = field_o "alias_module" (Module.decode ~src_dir)
     and+ main_module_name = field_o "main_module_name" Module.Name.decode
     and+ modules =
-      field ~default:[] "modules" (list (enter (Module.decode ~obj_dir)))
+      field ~default:[] "modules" (list (enter (Module.decode ~src_dir)))
     and+ wrapped = field "wrapped" Wrapped.decode
     in
     let modules =

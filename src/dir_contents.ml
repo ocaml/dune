@@ -28,14 +28,9 @@ module Modules = struct
       List.filter_partition_map d.data ~f:(fun stanza ->
         match (stanza : Stanza.t) with
         | Library lib ->
-          let obj_dir =
-            Obj_dir.make_lib ~dir:d.ctx_dir
-              (snd lib.name)
-              ~has_private_modules:(Option.is_some lib.private_modules)
-          in
+          let src_dir = d.ctx_dir in
           let modules =
             Modules_field_evaluator.eval ~modules
-              ~obj_dir
               ~buildable:lib.buildable
               ~virtual_modules:lib.virtual_modules
               ~private_modules:(
@@ -67,20 +62,15 @@ module Modules = struct
                   (main_module_name, Option.value_exn wrapped)
               )
           in
-          let obj_dir = Obj_dir.of_local obj_dir in
           Left ( lib
-               , Lib_modules.make lib ~obj_dir modules ~main_module_name
+               , let src_dir = Path.build src_dir in
+                 Lib_modules.make lib ~src_dir modules ~main_module_name
                    ~wrapped
                )
         | Executables exes
         | Tests { exes; _} ->
-          let obj_dir =
-            let name = snd (List.hd exes.names) in
-            Obj_dir.make_exe ~dir:d.ctx_dir ~name
-          in
           let modules =
             Modules_field_evaluator.eval ~modules
-              ~obj_dir
               ~buildable:exes.buildable
               ~virtual_modules:None
               ~private_modules:Ordered_set_lang.standard

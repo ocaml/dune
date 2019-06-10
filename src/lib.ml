@@ -401,7 +401,7 @@ end
 module Lib_and_module = struct
   type t =
     | Lib of lib
-    | Module of Module.t
+    | Module of Path.t Obj_dir.t * Module.t
 
   module L = struct
     type nonrec t = t list
@@ -415,8 +415,8 @@ module Lib_and_module = struct
          List.map ts ~f:(function
            | Lib t ->
              Command.Args.Deps (Mode.Dict.get t.info.archives mode)
-           | Module m ->
-             Dep (Module.cm_file_unsafe m (Mode.cm_kind mode))
+           | Module (obj_dir, m) ->
+             Dep (Obj_dir.Module.cm_file_unsafe obj_dir m (Mode.cm_kind mode))
          ))
 
     let of_libs l = List.map l ~f:(fun x -> Lib x)
@@ -1730,7 +1730,9 @@ let to_dune_lib ({ name ; info ; _ } as lib) ~lib_modules ~foreign_objects
     | Some obj_dir -> Obj_dir.convert_to_external ~dir obj_dir
   in
   let lib_modules =
-    Lib_modules.version_installed ~install_dir:obj_dir lib_modules in
+    let install_dir = Obj_dir.dir obj_dir in
+    Lib_modules.version_installed ~install_dir lib_modules
+  in
   let orig_src_dir =
     if !Clflags.store_orig_src_dir
     then Some (

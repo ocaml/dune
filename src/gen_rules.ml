@@ -143,6 +143,9 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
         |> Path.Set.of_list
         |> Rules.Produce.Alias.add_deps (Alias.all ~dir:ctx_dir);
         For_stanza.empty_none
+      | Cinaps.T cinaps ->
+        Cinaps.gen_rules sctx cinaps ~dir ~scope ~dir_kind;
+        For_stanza.empty_none
       | _ ->
         For_stanza.empty_none
     in

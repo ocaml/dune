@@ -3,6 +3,48 @@ open Fiber.O
 
 let on_already_reported = ref Exn_with_backtrace.reraise
 
+module Code_error_with_memo_backtrace = struct
+
+  (* A single memo frame and the OCaml frames it called which lead to the
+     error *)
+  type frame = {
+    ocaml : string;
+    memo : Dyn.t;
+  }
+
+  type t = {
+    exn : Code_error.t;
+    reverse_backtrace : frame list;
+    (* [outer_call_stack] is a trick to capture some of the information
+       that's lost by the async memo error handler. It can be safely ignored by
+       the sync error handler. *)
+    outer_call_stack : Dyn.t;
+  }
+
+  type exn += E of t
+
+  let frame_to_dyn { ocaml; memo } =
+    Dyn.Record [
+      "ocaml", Dyn.String ocaml;
+      "memo", memo;
+    ]
+
+  let to_dyn { exn; reverse_backtrace; outer_call_stack } =
+    Dyn.Record [
+      "exn", Code_error.to_dyn exn;
+      "backtrace", Dyn.Encoder.list frame_to_dyn (List.rev reverse_backtrace);
+      "outer_call_stack", outer_call_stack;
+    ]
+
+  let () =
+    Printexc.register_printer (function
+      | E t -> Some (Dyn.to_string (to_dyn t))
+      | _ -> None)
+
+end
+
+
+
 let already_reported exn = Nothing.unreachable_code (!on_already_reported exn)
 
 module Function_name = Interned.Make(struct
@@ -368,6 +410,10 @@ module Call_stack = struct
   let get_call_stack () =
     Fiber.Var.get call_stack_key |> Option.value ~default:[]
 
+  let get_call_stack_as_dyn () =
+    Dyn.Encoder.list
+      Stack_frame.to_dyn (get_call_stack ())
+
   let get_call_stack_tip () =
     List.hd_opt (get_call_stack ())
 
@@ -512,15 +558,45 @@ module Exec_sync = struct
     (* define the function to update / double check intermediate result *)
     (* set context of computation then run it *)
     let res =
-      match
-        (Call_stack.push_sync_frame (T dep_node) (fun () -> match t.spec.f with
-           | Function.Sync f -> f inp))
+      match Call_stack.push_sync_frame (T dep_node) (fun () ->
+        match t.spec.f with
+        | Function.Sync f ->
+          (* If [f] raises an exception, [push_sync_frame] re-raises it twice,
+             so you'd end up with ugly "re-raised by" stack frames.
+             Catching it here cuts the backtrace to just the desired part. *)
+          Exn_with_backtrace.try_with (fun () -> f inp))
       with
-      | exception exn ->
-        let exn = Exn_with_backtrace.capture exn in
+      | Error exn ->
         dep_node.state <- Failed (run, exn);
-        Exn_with_backtrace.reraise exn
-      | res -> res
+        let code_error (e : Code_error_with_memo_backtrace.t) =
+          let bt = exn.backtrace in
+          let {
+            Code_error_with_memo_backtrace.
+            exn; reverse_backtrace; outer_call_stack = _
+          } = e
+          in
+          (Code_error_with_memo_backtrace.E {
+             exn;
+             reverse_backtrace = {
+               ocaml = Printexc.raw_backtrace_to_string bt;
+               memo = Stack_frame.to_dyn (T dep_node);
+             } :: reverse_backtrace;
+             outer_call_stack = Call_stack.get_call_stack_as_dyn ();
+           })
+        in
+        (match exn.exn with
+         | Code_error.E exn ->
+           raise (code_error {
+             Code_error_with_memo_backtrace.
+             exn;
+             reverse_backtrace = [];
+             outer_call_stack = Dyn.String "<n/a>";
+           })
+         | Code_error_with_memo_backtrace.E e ->
+           raise (code_error e)
+         | _exn ->
+           Exn_with_backtrace.reraise exn)
+      | Ok res -> res
     in
     (* update the output cache with the correct value *)
     let deps =
@@ -570,9 +646,7 @@ module Exec_sync = struct
           (* hopefully this branch should be unreachable and [add_rev_dep]
              reports a cycle above instead *)
           Code_error.raise "bug: unreported sync dependency_cycle"
-            [ "stack",
-              Dyn.Encoder.list
-                Stack_frame.to_dyn (Call_stack.get_call_stack ())
+            [ "stack", Call_stack.get_call_stack_as_dyn ()
             ; "adding", Stack_frame.to_dyn (T dep_node);
             ]
         else

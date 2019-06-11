@@ -10,6 +10,10 @@ exception Failed of string
 
 val make : ?log:Log.t -> Path.t -> memory
 
+val key_to_string : key -> string
+
+val key_of_string : string -> key
+
 type promotion =
   | Already_promoted of Path.t * Path.t
   | Promoted of Path.t * Path.t

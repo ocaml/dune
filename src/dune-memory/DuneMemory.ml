@@ -48,6 +48,10 @@ let key consumed metadata produced =
   in
   Digest.string (Csexp.to_string_canonical key)
 
+let key_to_string = Digest.to_string
+
+let key_of_string = Digest.from_hex
+
 let promotion_to_string = function
   | Already_promoted (original, promoted) ->
       Printf.sprintf "%s already promoted as %s" (Path.to_string original)

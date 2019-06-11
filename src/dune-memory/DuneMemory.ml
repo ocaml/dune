@@ -3,10 +3,50 @@ open Utils
 
 type memory = {root: Path.t; log: Log.t}
 
+type key = Digest.t
+
+type metadata = Sexp.t
+
 type promotion =
   | Already_promoted of Path.t * Path.t
   | Promoted of Path.t * Path.t
   | Hash_mismatch of Path.t * Digest.t * Digest.t
+
+let compare a b : ordering =
+  let a = Path.to_string a and b = Path.to_string b in
+  let lena = String.length a and lenb = String.length b in
+  let len = min lena lenb in
+  let rec loop i =
+    if i = len then Int.compare lena lenb
+    else
+      match Char.compare a.[i] b.[i] with
+      | 0 ->
+          loop (i + 1)
+      | x when x < 0 ->
+          Ordering.Lt
+      | _ ->
+          Ordering.Gt
+  in
+  loop 0
+
+let key consumed metadata produced =
+  let consumed =
+    List.sort ~compare:(fun (p1, _) (p2, _) -> compare p1 p2) consumed
+  and produced = List.sort ~compare produced in
+  let key =
+    Sexp.List
+      [ Sexp.List
+          (List.map
+             ~f:(fun (p, h) ->
+               Sexp.List
+                 [Sexp.Atom (Path.to_string p); Sexp.Atom (Digest.to_string h)]
+               )
+             consumed)
+      ; metadata
+      ; Sexp.List
+          (List.map ~f:(fun p -> Sexp.Atom (Path.to_string p)) produced) ]
+  in
+  Digest.string (Csexp.to_string_canonical key)
 
 let promotion_to_string = function
   | Already_promoted (original, promoted) ->
@@ -62,7 +102,7 @@ end
 let search memory hash file =
   Collision.search (FSScheme.path (path_files memory) hash) file
 
-let promote memory paths metadata _ =
+let promote memory paths key metadata _ =
   let promote (path, expected_hash) =
     Log.infof memory.log "promote %s" (Path.to_string path) ;
     let hardlink path =
@@ -96,10 +136,7 @@ let promote memory paths metadata _ =
   in
   unix (fun () ->
       let res = List.map ~f:promote paths
-      and metadata_path =
-        FSScheme.path (path_meta memory)
-          (Digest.string (Csexp.to_string_canonical metadata))
-      in
+      and metadata_path = FSScheme.path (path_meta memory) key in
       mkpath (Path.parent_exn metadata_path) ;
       Io.write_file metadata_path
         (Csexp.to_string_canonical
@@ -120,26 +157,26 @@ let promote memory paths metadata _ =
                          res) ] ])) ;
       res )
 
-let search memory metadata =
-  let metadata_bin = Csexp.to_string_canonical metadata in
-  let hash = Digest.string metadata_bin in
-  let path = FSScheme.path (path_meta memory) hash in
+let search memory key =
+  let path = FSScheme.path (path_meta memory) key in
   let metadata =
     Io.with_file_in path ~f:(fun input -> Csexp.parse_channel_canonical input)
   in
   match metadata with
   | Sexp.List
-      [ Sexp.List [Sexp.Atom s_metadata; _]
+      [ Sexp.List [Sexp.Atom s_metadata; metadata]
       ; Sexp.List [Sexp.Atom s_produced; Sexp.List produced] ] ->
       if
         (not (String.equal s_metadata "metadata"))
         && String.equal s_produced "produced-files"
       then raise (Failed "invalid metadata scheme: wrong key")
       else
-        List.map produced ~f:(function
-          | Sexp.List [Sexp.Atom f; Sexp.Atom t] ->
-              (Path.of_string f, Path.of_string t)
-          | _ ->
-              raise (Failed "invalid metadata scheme in produced files list") )
+        ( metadata
+        , List.map produced ~f:(function
+            | Sexp.List [Sexp.Atom f; Sexp.Atom t] ->
+                (Path.of_string f, Path.of_string t)
+            | _ ->
+                raise (Failed "invalid metadata scheme in produced files list") )
+        )
   | _ ->
       raise (Failed "invalid metadata scheme")

@@ -67,13 +67,17 @@ let main () =
         parse_metadata (unwrap_option ~default:"()" "--metadata" !metadata)
       in
       let promotions =
-        promote memory
-          (Array.to_list
-             (Array.map
-                ~f:(fun p ->
-                  let p = Path.of_string p in
-                  (p, Digest.file p) )
-                files))
+        let produced =
+          Array.to_list
+            (Array.map
+               ~f:(fun p ->
+                 let p = Path.of_string p in
+                 (p, Digest.file p) )
+               files)
+        in
+        promote memory produced
+          (key (* FIXME: consumed files *) [] metadata
+             (List.map ~f:fst produced))
           metadata None
       in
       ignore
@@ -87,7 +91,10 @@ let main () =
            ~f:(fun (sym, act) ->
              Printf.printf "%s: %s\n" (Path.to_string sym) (Path.to_string act)
              )
-           (search memory metadata))
+           (snd
+              (search memory
+                 (key (* FIXME: consumed files *) [] metadata
+                    (* FIXME: produced files *) []))))
   | _ ->
       raise (Failed (Printf.sprintf "unkown command: %s" cmd))
 

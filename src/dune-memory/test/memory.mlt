@@ -46,11 +46,15 @@ val memory : DuneMemory.memory = <abstr>
 (* Promote a file twice and check we can search it *)
 
 let file1 = make_file "file1";;
-DuneMemory.promote memory [(file1, Digest.file file1)] (Sexp.List []) None;;
-DuneMemory.promote memory [(file1, Digest.file file1)] (Sexp.List []) None;;
-match DuneMemory.search memory (Sexp.List []) with
-| [(original, promoted)] ->
-   if Path.equal original file1 then
+let metadata = Sexp.List [Sexp.Atom "test"; Sexp.Atom "metadata"];;
+let key = DuneMemory.key [] metadata [file1];;
+DuneMemory.promote memory [(file1, Digest.file file1)] key metadata None;;
+DuneMemory.promote memory [(file1, Digest.file file1)] key metadata None;;
+match DuneMemory.search memory key with
+| stored_metadata, [(original, promoted)] ->
+   if not (Sexp.equal stored_metadata metadata) then
+     failwith "Metadata mismatch"
+   else if Path.equal original file1 then
      if Io.compare_files promoted file1 = Ordering.Eq then None
      else Some "promoted file content does not match"
    else Some "original file path does not match"
@@ -58,6 +62,8 @@ match DuneMemory.search memory (Sexp.List []) with
 
 [%%expect{|
 val file1 : Path.t = <abstr>
+val metadata : Sexp.t = List [Atom "test"; Atom "metadata"]
+val key : DuneMemory.key = <abstr>
 - : DuneMemory.promotion list = [Promoted (<abstr>, <abstr>)]
 - : DuneMemory.promotion list = [Already_promoted (<abstr>, <abstr>)]
 - : string option = None

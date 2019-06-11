@@ -544,7 +544,7 @@ module Relative_to_source_root : sig
 end = struct
 
   open Local
-  
+
   let rec mkdir_p t =
     if is_root t then
       ()
@@ -675,9 +675,11 @@ module Build = struct
         [ "t", to_dyn t
         ]
 
+  (* CR-someday rgrinberg:
+     I think we should just move this function to the alias module. *)
   let is_alias_stamp_file s =
-    String.is_prefix (Local.to_string s) ~prefix:".aliases/"  
-  
+    String.is_prefix (Local.to_string s) ~prefix:".aliases/"
+
   let (build_dir_kind, build_dir_prefix, set_build_dir) =
     let build_dir = ref None in
     let build_dir_prefix = ref None in
@@ -852,7 +854,7 @@ let of_filename_relative_to_initial_cwd fn =
     else
       External.of_string fn
   )
-                    
+
 let to_absolute_filename t =
   Kind.to_absolute_filename (kind t)
 

@@ -96,7 +96,7 @@ module Build : sig
   val extract_build_context_dir : t -> (t * Source.t) option
   val extract_build_context_dir_exn : t -> (t * Source.t)
 
-  (** This function does the same as [extract_build_context], but gas a
+  (** This function does the same as [extract_build_context], but has a
       "righter" type.  *)
   val extract_first_component : t -> (string * Local.t) option
 
@@ -109,7 +109,7 @@ module Build : sig
 
     val of_string : string -> t
   end
-  
+
   (** set the build directory. Can only be called once and must be done before
       paths are converted to strings elsewhere. *)
   val set_build_dir : Kind.t -> unit

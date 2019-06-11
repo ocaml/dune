@@ -1,5 +1,7 @@
 type t = Sexp.t
 
+exception Parse_error of string
+
 module type Stream = sig
   type input
 

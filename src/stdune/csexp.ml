@@ -1,4 +1,4 @@
-exception CParse_error of string
+exception Parse_error of string
 
 type t = Sexp.t
 
@@ -82,7 +82,7 @@ module Parser (S : Stream) = struct
         let idx = c - int_of_char '0' in
         if idx < 0 || idx > 9 then
           raise
-            (CParse_error
+            (Parse_error
                (Printf.sprintf "invalid character in size: %c" (char_of_int c)))
         else read_size ((10 * acc) + idx)
     in

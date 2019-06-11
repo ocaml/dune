@@ -1,3 +1,44 @@
+(** Representation of paths *)
+
+(** The aim of this module is to provide a solid basis to reason about
+    file and directory paths inside the Dune code base.  What it is not
+    is a complete API for paths management that handles all the aspects
+    of file system paths.  It simply exposes a high-level and portable
+    API that covers the needs of Dune.
+
+    {1 Model of the file system}
+
+    {2 Local paths}
+
+    Dune sees the file system as two parts. The first part is composed
+    of the source tree and the build directory.  In this part, Dune
+    doesn't know about symlinks and has a fully expanded view of the
+    file system.  This means that if the user has a symlink `src/foo`
+    pointing to `bar`, then `src/foo/x` and `bar/x` are seen as two
+    different paths.
+
+    A path in this world is called a local path and is simply a sequence
+    of path components.  A path component being a string other than "."
+    or ".." and not containing the path separator character ('/').
+
+    Such a path can be rooted at the source tree root, the build directory or
+    an unspecified root.  All these paths are represented by values of type
+    ['a Path.Local_gen.t] where ['a] denotes the root of the path.
+
+    {2 External paths}
+
+    The second part is the "external world".  It is all the paths that live
+    outside of the workspace and build directory.  To be on the safe side
+    Dune makes no assumption does nothing clever with these paths.
+
+    External paths are presented as [Path.External.t] values.contents
+
+    {1 The Path.t type}
+
+    The [Path.t] type represents all possible paths, i.e. both local and
+    extenral paths.
+*)
+
 (** Relative path relative to the root tracked by the type system.
 
     Represented as: either the root, or a '/' separated list of components

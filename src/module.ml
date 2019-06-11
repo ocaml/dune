@@ -86,6 +86,10 @@ module File = struct
     ; syntax : Syntax.t
     }
 
+  let set_src_dir t ~src_dir =
+    let path = Path.relative src_dir (Path.basename t.path) in
+    { t with path }
+
   let make syntax path = { syntax; path }
 
   let to_sexp { path; syntax } =
@@ -194,7 +198,6 @@ type t =
   ; obj_name   : string
   ; pp         : (unit, string list) Build.t option
   ; visibility : Visibility.t
-  ; obj_dir    : Path.t Obj_dir.t
   ; kind       : Kind.t
   }
 
@@ -202,9 +205,8 @@ let name t = t.source.name
 let pp_flags t = t.pp
 let intf t = t.source.intf
 let impl t = t.source.impl
-let obj_dir t = t.obj_dir
 
-let of_source ?obj_name ~visibility ~obj_dir ~(kind : Kind.t)
+let of_source ?obj_name ~visibility ~(kind : Kind.t)
       (source : Source.t) =
   begin match kind, source.impl, source.intf with
   | Virtual, Some _, _
@@ -233,13 +235,12 @@ let of_source ?obj_name ~visibility ~obj_dir ~(kind : Kind.t)
   ; obj_name
   ; pp = None
   ; visibility
-  ; obj_dir
   ; kind
   }
 
-let make ?impl ?intf ?obj_name ~visibility ~obj_dir ~kind name =
+let make ?impl ?intf ?obj_name ~visibility ~kind name =
   let source = Source.make ?impl ?intf name in
-  of_source ?obj_name ~visibility ~obj_dir ~kind source
+  of_source ?obj_name ~visibility ~kind source
 
 let real_unit_name t = Name.of_string (Filename.basename t.obj_name)
 
@@ -261,40 +262,9 @@ let file t (kind : Ml_kind.t) =
   in
   Option.map file ~f:(fun f -> f.path)
 
-let obj_file t ~kind ~ext =
-  let base = Obj_dir.cm_dir t.obj_dir kind t.visibility in
-  Path.relative base (t.obj_name ^ ext)
-
 let obj_name t = t.obj_name
 
 let cm_source t kind = file t (Cm_kind.source kind)
-
-let cm_file_unsafe t kind =
-  let ext = Cm_kind.ext kind in
-  obj_file t ~kind ~ext
-
-let cm_file t (kind : Cm_kind.t) =
-  match kind with
-  | (Cmx | Cmo) when not (has_impl t) -> None
-  | _ -> Some (cm_file_unsafe t kind)
-
-let cm_public_file_unsafe t kind =
-  let ext = Cm_kind.ext kind in
-  let base = Obj_dir.cm_public_dir t.obj_dir kind in
-  Path.relative base (t.obj_name ^ ext)
-
-let cm_public_file t (kind : Cm_kind.t) =
-  match kind with
-  | (Cmx | Cmo) when not (has_impl t) -> None
-  |  Cmi when is_private t -> None
-  | _ -> Some (cm_public_file_unsafe t kind)
-
-let cmt_file t (kind : Ml_kind.t) =
-  match kind with
-  | Impl -> Option.map t.source.impl
-              ~f:(fun _ -> obj_file t ~kind:Cmi ~ext:".cmt" )
-  | Intf -> Option.map t.source.intf
-              ~f:(fun _ -> obj_file t ~kind:Cmi ~ext:".cmti")
 
 let odoc_file t ~doc_dir =
   let base =
@@ -303,11 +273,6 @@ let odoc_file t ~doc_dir =
     | Private -> Utils.library_private_dir ~obj_dir:doc_dir
   in
   Path.Build.relative base (t.obj_name ^ ".odoc")
-
-let cmti_file t =
-  match t.source.intf with
-  | None   -> obj_file t ~kind:Cmi ~ext:".cmt"
-  | Some _ -> obj_file t ~kind:Cmi ~ext:".cmti"
 
 let iter t ~f =
   Option.iter t.source.impl ~f:(f Ml_kind.Impl);
@@ -328,7 +293,7 @@ let src_dir t = Source.src_dir t.source
 let set_pp t pp = { t with pp }
 
 let to_sexp { source = { name; impl; intf }
-            ; obj_name ; pp ; visibility; obj_dir ; kind } =
+            ; obj_name ; pp ; visibility; kind } =
   let open Sexp.Encoder in
   record
     [ "name", Name.to_sexp name
@@ -337,19 +302,17 @@ let to_sexp { source = { name; impl; intf }
     ; "intf", (option File.to_sexp) intf
     ; "pp", (option string) (Option.map ~f:(fun _ -> "has pp") pp)
     ; "visibility", Visibility.to_sexp visibility
-    ; "obj_dir", Dyn.to_sexp (Obj_dir.to_dyn obj_dir)
     ; "kind", Kind.to_sexp kind
     ]
 
 let pp fmt { source = { name; impl; intf }
-           ; obj_name ; pp = _ ; visibility; obj_dir ; kind } =
+           ; obj_name ; pp = _ ; visibility; kind } =
   Fmt.record fmt
     [ "name", Fmt.const Name.pp name
     ; "impl", Fmt.const (Fmt.optional File.pp) impl
     ; "intf", Fmt.const (Fmt.optional File.pp) intf
     ; "obj_name", Fmt.const Format.pp_print_string obj_name
     ; "visibility", Fmt.const Visibility.pp visibility
-    ; "obj_dir", Fmt.const Dyn.pp (Obj_dir.to_dyn obj_dir)
     ; "kind", Fmt.const Kind.pp kind
     ]
 
@@ -399,12 +362,8 @@ end
 let set_private t =
   { t with visibility = Private }
 
-let set_obj_dir t ~obj_dir =
-  { t with obj_dir }
-
 let set_virtual t =
   { t with kind = Virtual }
-
 
 let visibility t = t.visibility
 
@@ -436,7 +395,6 @@ let encode
        ; obj_name
        ; pp = _
        ; visibility
-       ; obj_dir = _
        ; kind
        } as t) =
   let open Dune_lang.Encoder in
@@ -457,9 +415,8 @@ let encode
     ; field_b "intf" (has_intf t)
     ]
 
-let decode ~obj_dir =
+let decode ~src_dir =
   let open Dune_lang.Decoder in
-  let dir = Obj_dir.dir obj_dir in
   fields (
     let+ name = field "name" Name.decode
     and+ obj_name = field "obj_name" string
@@ -471,7 +428,7 @@ let decode ~obj_dir =
     let file exists ml_kind =
       if exists then
         let basename = Name.basename name ~ml_kind ~syntax:OCaml in
-        Some (File.make Syntax.OCaml (Path.relative dir basename))
+        Some (File.make Syntax.OCaml (Path.relative src_dir basename))
       else
         None
     in
@@ -482,7 +439,7 @@ let decode ~obj_dir =
     in
     let intf = file intf Intf in
     let impl = file impl Impl in
-    make ~obj_name ~visibility ?impl ?intf ~obj_dir ~kind name
+    make ~obj_name ~visibility ?impl ?intf ~kind name
   )
 
 let pped =
@@ -516,3 +473,6 @@ let ml_source =
         Path.extend_basename base ~suffix
       in
       File.make OCaml path)
+
+let set_src_dir t ~src_dir =
+  map_files t ~f:(fun _ -> File.set_src_dir ~src_dir)

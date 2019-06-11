@@ -168,9 +168,10 @@ module Lib = struct
                                              (located Lib_name.decode))
       and+ sub_systems = Sub_system_info.record_parser ()
       and+ orig_src_dir = field_o "orig_src_dir" path
-      and+ modules = field_o "modules" (Lib_modules.decode
-                                          ~implements:(Option.is_some
-                                                         implements) ~obj_dir)
+      and+ modules =
+        let src_dir = Obj_dir.dir obj_dir in
+        field_o "modules" (
+          Lib_modules.decode ~implements:(Option.is_some implements) ~src_dir)
       and+ special_builtin_support =
         field_o "special_builtin_support"
           (Syntax.since Stanza.syntax (1, 10) >>>

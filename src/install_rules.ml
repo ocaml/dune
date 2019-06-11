@@ -195,6 +195,7 @@ let lib_ppxs sctx ~(lib : Dune_file.Library.t) ~scope ~dir_kind =
 let lib_install_files sctx ~dir_contents ~dir ~sub_dir:lib_subdir
       ~scope ~dir_kind (lib : Library.t) =
   let loc = lib.buildable.loc in
+  let obj_dir = Dune_file.Library.obj_dir lib ~dir in
   let make_entry section ?sub_dir ?dst fn =
     ( Some loc
     , Install.Entry.make section fn
@@ -238,23 +239,24 @@ let lib_install_files sctx ~dir_contents ~dir ~sub_dir:lib_subdir
     in
     let virtual_library = Library.is_virtual lib in
     List.concat_map installable_modules ~f:(fun m ->
+      let cm_file_unsafe kind = Obj_dir.Module.cm_file_unsafe obj_dir m ~kind in
       let cmi_file =
         ( Module.visibility m
-        , Path.as_in_build_dir_exn (Module.cm_file_unsafe m Cmi)
+        , cm_file_unsafe Cmi
         )
       in
       let other_cm_files =
         [ if_ (native && Module.has_impl m)
-            [ Module.cm_file_unsafe m Cmx ]
+            [ cm_file_unsafe Cmx ]
         ; if_ (byte && Module.has_impl m && virtual_library)
-            [ Module.cm_file_unsafe m Cmo ]
+            [ cm_file_unsafe Cmo ]
         ; if_ (native && Module.has_impl m && virtual_library)
-            [ Module.obj_file m ~kind:Cmx ~ext:ctx.ext_obj ]
-        ; List.filter_map Ml_kind.all ~f:(Module.cmt_file m)
+            [ Obj_dir.Module.obj_file obj_dir m ~kind:Cmx ~ext:ctx.ext_obj ]
+        ; List.filter_map Ml_kind.all ~f:(Obj_dir.Module.cmt_file obj_dir m)
         ]
         |> List.concat
         |> List.map ~f:(fun f ->
-          (Visibility.Public, Path.as_in_build_dir_exn f))
+          (Visibility.Public, f))
       in
       cmi_file :: other_cm_files
     )

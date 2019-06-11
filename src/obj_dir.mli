@@ -87,3 +87,27 @@ val as_local_exn : Path.t t -> Path.Build.t t
 val need_dedicated_public_dir : Path.Build.t t -> bool
 
 val to_local : Path.t t -> Path.Build.t t option
+
+module Module : sig
+  (** The functions in this this module gives the paths to the various
+      object files produced from the compilation of a module (.cmi
+      files, .cmx files, .o files, ...) *)
+
+  val cm_file        : 'path t -> Module.t -> kind:Cm_kind.t -> 'path option
+  val cm_public_file : 'path t -> Module.t -> kind:Cm_kind.t -> 'path option
+  val cmt_file       : 'path t -> Module.t -> Ml_kind.t -> 'path option
+  val obj_file       : 'path t -> Module.t -> kind:Cm_kind.t -> ext:string -> 'path
+
+  (** Same as [cm_file] but doesn't raise if [cm_kind] is [Cmo] or [Cmx] and the
+      module has no implementation.*)
+  val cm_file_unsafe : 'path t -> Module.t -> kind:Cm_kind.t -> 'path
+  val cm_public_file_unsafe : 'path t -> Module.t -> kind:Cm_kind.t -> 'path
+
+  (** Either the .cmti, or .cmt if the module has no interface *)
+  val cmti_file : 'path t -> Module.t -> 'path
+
+  module L : sig
+    val o_files : 'path t -> Module.t list -> ext_obj:string -> Path.t list
+    val cm_files : 'path t -> Module.t list -> kind:Cm_kind.t -> Path.t list
+  end
+end

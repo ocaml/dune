@@ -18,7 +18,6 @@ module Source = struct
     Obj_dir.make_exe ~dir ~name
 
   let modules t =
-    let obj_dir = Obj_dir.of_local (obj_dir t) in
     let main_module_name = main_module_name t in
     Module.Name.Map.singleton
       main_module_name
@@ -27,7 +26,6 @@ module Source = struct
          ~impl:{ path   = Path.build (source_path t)
                ; syntax = Module.Syntax.OCaml
                }
-         ~obj_dir
          ~kind:Module.Kind.Impl
          ~obj_name:t.name)
 

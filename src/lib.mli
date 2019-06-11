@@ -112,7 +112,7 @@ module Lib_and_module : sig
   type lib = t
   type t =
     | Lib of lib
-    | Module of Module.t
+    | Module of Path.t Obj_dir.t * Module.t
 
   module L : sig
     type nonrec t = t list

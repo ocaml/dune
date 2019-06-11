@@ -33,16 +33,15 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
   |> Option.iter ~f:(fun compiler ->
     Option.iter (Module.cm_source m cm_kind) ~f:(fun src ->
       let ml_kind = Cm_kind.source cm_kind in
-      let dst = Path.as_in_build_dir_exn (Module.cm_file_unsafe m cm_kind) in
+      let dst = Obj_dir.Module.cm_file_unsafe obj_dir m ~kind:cm_kind in
       let copy_interface () =
         (* symlink the .cmi into the public interface directory *)
         if not (Module.is_private m)
         && (Obj_dir.need_dedicated_public_dir obj_dir) then
           SC.add_rule sctx ~sandbox:false ~dir
             (Build.symlink
-               ~src:(Module.cm_file_unsafe m Cmi)
-               ~dst:(Path.as_in_build_dir_exn
-                       (Module.cm_public_file_unsafe m Cmi))
+               ~src:(Path.build (Obj_dir.Module.cm_file_unsafe obj_dir m ~kind:Cmi))
+               ~dst:(Obj_dir.Module.cm_public_file_unsafe obj_dir m ~kind:Cmi)
             )
       in
       let extra_args, extra_deps, other_targets =
@@ -54,11 +53,11 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
            conditions. *)
         | Cmo, None, false ->
           copy_interface ();
-          [], [], [Path.as_in_build_dir_exn (Module.cm_file_unsafe m Cmi)]
+          [], [], [Obj_dir.Module.cm_file_unsafe obj_dir m ~kind:Cmi]
         | Cmo, None, true
         | (Cmo | Cmx), _, _ ->
           force_read_cmi src,
-          [Module.cm_file_unsafe m Cmi],
+          [Path.build (Obj_dir.Module.cm_file_unsafe obj_dir m ~kind:Cmi)],
           []
         | Cmi, _, _ ->
           copy_interface ();
@@ -66,9 +65,8 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
       in
       let other_targets =
         match cm_kind with
-        | Cmx ->
-          Path.as_in_build_dir_exn
-            (Module.obj_file m ~kind:Cmx ~ext:ctx.ext_obj) :: other_targets
+        | Cmx -> (Obj_dir.Module.obj_file obj_dir m ~kind:Cmx ~ext:ctx.ext_obj)
+                 :: other_targets
         | Cmi | Cmo -> other_targets
       in
       let dep_graph = Ml_kind.Dict.get dep_graphs ml_kind in
@@ -78,9 +76,11 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
           (Dep_graph.deps_of dep_graph m >>^ fun deps ->
            List.concat_map deps
              ~f:(fun m ->
-               let deps = [Module.cm_file_unsafe m Cmi] in
+               let deps =
+                 [Path.build (Obj_dir.Module.cm_file_unsafe obj_dir m ~kind:Cmi)] in
                if Module.has_impl m && cm_kind = Cmx && not opaque then
-                 Module.cm_file_unsafe m Cmx :: deps
+                 let cmx = Obj_dir.Module.cm_file_unsafe obj_dir m ~kind:Cmx in
+                 Path.build cmx :: deps
                else
                  deps))
       in
@@ -89,8 +89,7 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
         | Cmx -> (other_targets, Command.Args.S [])
         | Cmi | Cmo ->
           let fn =
-            Path.as_in_build_dir_exn (Option.value_exn
-                                        (Module.cmt_file m ml_kind)) in
+            Option.value_exn (Obj_dir.Module.cmt_file obj_dir m ml_kind) in
           (fn :: other_targets, A "-bin-annot")
       in
       if CC.dir_kind cctx = Jbuild then begin
@@ -186,7 +185,8 @@ let build_module ?sandbox ?js_of_ocaml ?dynlink ~dep_graphs cctx m =
     (* Build *.cmo.js *)
     let sctx     = CC.super_context cctx in
     let dir      = CC.dir           cctx in
-    let src = Path.as_in_build_dir_exn (Module.cm_file_unsafe m Cm_kind.Cmo) in
+    let obj_dir = CC.obj_dir cctx in
+    let src = Obj_dir.Module.cm_file_unsafe obj_dir m ~kind:Cm_kind.Cmo in
     let target = Path.Build.extend_basename src ~suffix:".js" in
     SC.add_rules sctx ~dir
       (Js_of_ocaml_rules.build_cm cctx ~js_of_ocaml ~src ~target))
@@ -210,7 +210,8 @@ let ocamlc_i ?sandbox ?(flags=[]) ~dep_graphs cctx (m : Module.t) ~output =
     Build.dyn_paths
       (Dep_graph.deps_of dep_graph m >>^ fun deps ->
        List.concat_map deps
-         ~f:(fun m -> [Module.cm_file_unsafe m Cmi]))
+         ~f:(fun m -> [Path.build (Obj_dir.Module.cm_file_unsafe
+                                     obj_dir m ~kind:Cmi)]))
   in
   let ocaml_flags = Ocaml_flags.get_for_cm (CC.flags cctx) ~cm_kind:Cmo
   in

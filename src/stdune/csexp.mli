@@ -7,6 +7,8 @@ module type Stream = sig
 
   val make : input -> t
 
+  val peek_byte : t -> int
+
   val input_byte : t -> int
 
   val input_string : t -> int -> string

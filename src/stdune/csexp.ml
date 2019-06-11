@@ -9,22 +9,46 @@ module type Stream = sig
 
   val make : input -> t
 
+  val peek_byte : t -> int
+
   val input_byte : t -> int
 
   val input_string : t -> int -> string
 end
 
 module ChannelStream :
-  Stream with type input = in_channel and type t = in_channel = struct
+  Stream with type input = in_channel and type t = in_channel * int option ref =
+struct
   type input = in_channel
 
-  type t = in_channel
+  type t = in_channel * int option ref
 
-  let make i = i
+  let make i = (i, ref None)
 
-  let input_byte = input_byte
+  let peek_byte (chan, peek) =
+    match !peek with
+    | None ->
+        let b = input_byte chan in
+        peek := Some b ;
+        b
+    | Some b ->
+        b
 
-  let input_string = really_input_string
+  let input_byte (chan, peek) =
+    match !peek with
+    | None ->
+        input_byte chan
+    | Some b ->
+        peek := None ;
+        b
+
+  let input_string (chan, peek) len =
+    match !peek with
+    | None ->
+        really_input_string chan len
+    | Some b ->
+        peek := None ;
+        String.make 1 (char_of_int b) ^ really_input_string chan (len - 1)
 end
 
 type string_stream = {data: string; mutable pos: int}
@@ -37,9 +61,12 @@ module StringStream :
 
   let make str = {data= str; pos= 0}
 
+  let peek_byte s = int_of_char s.data.[s.pos]
+
   let input_byte s =
+    let b = peek_byte s in
     s.pos <- s.pos + 1 ;
-    int_of_char s.data.[s.pos - 1]
+    b
 
   let input_string s len =
     s.pos <- s.pos + len ;
@@ -47,29 +74,34 @@ module StringStream :
 end
 
 module Parser (S : Stream) = struct
-  let parse input =
-    let chan = S.make input in
-    let rec read_size acc c =
-      if c == int_of_char ':' then acc
+  let parse_stream chan =
+    let rec read_size acc =
+      let c = S.input_byte chan in
+      if c = int_of_char ':' then acc
       else
         let idx = c - int_of_char '0' in
         if idx < 0 || idx > 9 then
           raise
             (CParse_error
                (Printf.sprintf "invalid character in size: %c" (char_of_int c)))
-        else read_size ((10 * acc) + idx) (S.input_byte chan)
+        else read_size ((10 * acc) + idx)
     in
-    let rec parse c =
-      if c == int_of_char '(' then Sexp.List (parse_list ())
-      else Atom (S.input_string chan (read_size 0 c))
+    let rec parse () =
+      let c = S.peek_byte chan in
+      if c = int_of_char '(' then (
+        ignore (S.input_byte chan) ;
+        Sexp.List (parse_list ()) )
+      else Atom (S.input_string chan (read_size 0))
     and parse_list () =
-      let c = S.input_byte chan in
-      if c == int_of_char ')' then []
+      let c = S.peek_byte chan in
+      if c = int_of_char ')' then (
+        ignore (S.input_byte chan) ;
+        [] )
       else
-        let head = parse c in
+        let head = parse () in
         head :: parse_list ()
     in
-    parse (S.input_byte chan)
+    parse ()
 
   let parse input = parse_stream (S.make input)
 end

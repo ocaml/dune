@@ -50,4 +50,6 @@ val opaque : t
 
 val to_sexp : t Sexp.Encoder.t
 
+val to_string : t -> string
+
 type dyn = t

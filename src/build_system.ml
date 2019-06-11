@@ -1424,7 +1424,7 @@ end = struct
   let build_file =
     Memo.exec build_file_memo
 
-  let execute_rule_memo = 
+  let execute_rule_memo =
     Memo.create
       "execute-rule"
       ~output:(Allow_cutoff (module Unit))

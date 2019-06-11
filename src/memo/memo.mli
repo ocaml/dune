@@ -98,11 +98,11 @@ end
     version of [f]. The result of [f] for a given input is cached, so that the
     second time [exec t x] is called, the previous result is re-used if
     possible.
-    
+
     [exec t x] tracks what calls to other memoized function [f x] performs. When
     the result of such dependent call changes, [exec t x] will automatically
     recompute [f x].
-    
+
     Running the computation may raise [Memo.Cycle_error.E] if a cycle is
     detected.
 

@@ -4,9 +4,9 @@
   Entering directory 'private-exe'
       ocamldep .foo.eobjs/foo.ml.d
         ocamlc .foo.eobjs/byte/foo.{cmi,cmo,cmt}
-        ocamlc foo.bc
       ocamlopt .foo.eobjs/native/foo.{cmx,o}
       ocamlopt foo.exe
+        ocamlc foo.bc
 
 @all builds private libs
 

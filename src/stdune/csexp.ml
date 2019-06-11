@@ -70,6 +70,8 @@ module Parser (S : Stream) = struct
         head :: parse_list ()
     in
     parse (S.input_byte chan)
+
+  let parse input = parse_stream (S.make input)
 end
 
 module ChannelParser = Parser (ChannelStream)

@@ -18,6 +18,8 @@ module ChannelStream : Stream with type input = in_channel
 
 module Parser (S : Stream) : sig
   val parse : S.input -> t
+
+  val parse_stream : S.t -> t
 end
 
 val to_buffer_canonical : buf:Buffer.t -> t -> unit

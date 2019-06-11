@@ -544,7 +544,7 @@ module Relative_to_source_root : sig
 end = struct
 
   open Local
-  
+
   let rec mkdir_p t =
     if is_root t then
       ()
@@ -585,53 +585,41 @@ let (abs_root, set_root) =
   in
   (abs_root, set_root)
 
-
 module Kind = struct
   type t =
     | External of External.t
-    | Local    of Local.t
+    | In_source_dir of Local.t
 
   let to_absolute_filename t =
     match t with
     | External s -> External.to_string s
-    | Local l ->
+    | In_source_dir l ->
       External.to_string
         (External.relative (Lazy.force abs_root)
            (Local.to_string l))
 
   let to_string = function
-    | Local t -> Local.to_string t
+    | In_source_dir t -> Local.to_string t
     | External t -> External.to_string t
 
   let to_dyn t = Dyn.String (to_string t)
 
   let of_string s =
     if Filename.is_relative s then
-      Local (Local.of_string s)
+      In_source_dir (Local.of_string s)
     else
       External (External.of_string s)
 
-  let _ =
-    let root = Local Local.root in
-    assert (of_string ""  = root);
-    assert (of_string "." = root)
-
-  let _relative ?error_loc t fn =
-    match t with
-    | Local t -> Local (Local.relative ?error_loc t fn)
-    | External t -> External (External.relative t fn)
-
   let mkdir_p = function
-    | Local t -> Relative_to_source_root.mkdir_p t
+    | In_source_dir t -> Relative_to_source_root.mkdir_p t
     | External t -> External.mkdir_p t
 
   let append_local x y =
     match x with
-    | Local x -> Local (Local.append x y)
+    | In_source_dir x -> In_source_dir (Local.append x y)
     | External x -> External (External.relative x (Local.to_string y))
 
 end
-
 
 module Build = struct
   include Local
@@ -651,6 +639,8 @@ module Build = struct
         , after
           |> Source0.of_string )
     end
+
+  let extract_first_component = extract_build_context
 
   let extract_build_context_dir t =
     let t_str = Local.to_string t in
@@ -685,6 +675,8 @@ module Build = struct
         [ "t", to_dyn t
         ]
 
+  (* CR-someday rgrinberg:
+     I think we should just move this function to the alias module. *)
   let is_alias_stamp_file s =
     String.is_prefix (Local.to_string s) ~prefix:".aliases/"
 
@@ -696,7 +688,7 @@ module Build = struct
       | None ->
         (match new_build_dir with
          | External _ -> ()
-         | Local p ->
+         | In_source_dir p ->
            if Local.is_root p || Local.parent_exn p <> Local.root then
              User_error.raise
                [ Pp.textf "Invalid build directory: %s"
@@ -708,7 +700,7 @@ module Build = struct
         build_dir := Some new_build_dir;
         build_dir_prefix :=
           Some (match new_build_dir with
-            | Local    p -> Local.Prefix.make p
+            | In_source_dir p -> Local.Prefix.make p
             | External _ -> Local.Prefix.invalid)
       | Some build_dir ->
         Code_error.raise "set_build_dir: cannot set build_dir more than once"
@@ -731,12 +723,14 @@ module Build = struct
 
   let to_string p =
     match Lazy.force build_dir_kind with
-    | Local    b -> Local.to_string (Local.append b p)
+    | In_source_dir b -> Local.to_string (Local.append b p)
     | External b ->
       if Local.is_root p then
         External.to_string b
       else
         Filename.concat (External.to_string b) (Local.to_string p)
+
+  module Kind = Kind
 end
 
 module T : sig
@@ -791,7 +785,7 @@ module Map = Map.Make(T)
 
 let kind = function
   | In_build_dir p -> Kind.append_local (Lazy.force Build.build_dir_kind) p
-  | In_source_tree s -> Kind.Local s
+  | In_source_tree s -> Kind.In_source_dir s
   | External s -> Kind.External s
 
 let is_managed = function
@@ -861,7 +855,8 @@ let of_filename_relative_to_initial_cwd fn =
       External.of_string fn
   )
 
-let to_absolute_filename t = Kind.to_absolute_filename (kind t)
+let to_absolute_filename t =
+  Kind.to_absolute_filename (kind t)
 
 let external_of_local x ~root =
   External.to_string (External.relative root (Local.to_string x))
@@ -876,18 +871,18 @@ let reach t ~from =
   | In_build_dir   t, In_build_dir   from -> Local.reach t ~from
   | In_source_tree t, In_build_dir from -> begin
       match Lazy.force Build.build_dir_kind with
-      | Local    b -> Local.reach t ~from:(Local.append b from)
+      | In_source_dir b -> Local.reach t ~from:(Local.append b from)
       | External _ -> external_of_in_source_tree t
     end
   | In_build_dir t, In_source_tree from -> begin
       match Lazy.force Build.build_dir_kind with
-      | Local    b -> Local.reach (Local.append b t) ~from
+      | In_source_dir b -> Local.reach (Local.append b t) ~from
       | External b -> external_of_local t ~root:b
     end
   | In_source_tree t, External _ -> external_of_in_source_tree t
   | In_build_dir t, External _ ->
     match Lazy.force Build.build_dir_kind with
-    | Local    b -> external_of_in_source_tree (Local.append b t)
+    | In_source_dir b -> external_of_in_source_tree (Local.append b t)
     | External b -> external_of_local t ~root:b
 
 let reach_for_running ?(from=root) t =
@@ -931,7 +926,7 @@ let append a b =
 
 let basename t =
   match kind t with
-  | Local t -> Local.basename t
+  | In_source_dir t -> Local.basename t
   | External t -> External.basename t
 
 let parent = function
@@ -1048,7 +1043,7 @@ let sandbox_managed_paths =
 
 let split_first_component t =
   match kind t, is_root t with
-  | Local t, false ->
+  | In_source_dir t, false ->
     let t = Local.to_string t in
     begin match String.lsplit2 t ~on:'/' with
     | None -> Some (t, root)
@@ -1063,8 +1058,8 @@ let split_first_component t =
 
 let explode t =
   match kind t with
-  | Local p when Local.is_root p -> Some []
-  | Local s -> Some (String.split (Local.to_string s) ~on:'/')
+  | In_source_dir p when Local.is_root p -> Some []
+  | In_source_dir s -> Some (String.split (Local.to_string s) ~on:'/')
   | External _ -> None
 
 let explode_exn t =
@@ -1124,7 +1119,7 @@ let build_dir_exists () = is_directory build_dir
 
 let ensure_build_dir_exists () =
   match kind build_dir with
-  | Local p -> Relative_to_source_root.mkdir_p p
+  | In_source_dir p -> Relative_to_source_root.mkdir_p p
   | External p ->
     let p = External.to_string p in
     try
@@ -1242,13 +1237,6 @@ let source s = in_source_tree s
 let build s = in_build_dir s
 
 module Table = Hashtbl.Make(T)
-
-module Internal = struct
-  let raw_kind = function
-    | In_build_dir l -> Kind.Local l
-    | In_source_tree l -> Local l
-    | External l -> External l
-end
 
 module L = struct
   (* TODO more efficient implementation *)

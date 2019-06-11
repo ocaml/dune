@@ -162,7 +162,7 @@ let set_concurrency ?log (config : Config.t) =
 let bootstrap () =
   Colors.setup_err_formatter_colors ();
   Path.set_root Path.External.initial_cwd;
-  Path.Build.set_build_dir (Path.Kind.of_string "_boot");
+  Path.Build.set_build_dir (Path.Build.Kind.of_string "_boot");
   let main () =
     let anon s = raise (Arg.Bad (Printf.sprintf "don't know what to do with %s\n" s)) in
     let subst () =

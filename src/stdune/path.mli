@@ -105,14 +105,6 @@ module External : sig
   val mkdir_p : t -> unit
 end
 
-module Kind : sig
-  type t = private
-    | External of External.t
-    | Local    of Local.t
-
-  val of_string : string -> t
-end
-
 module Build : sig
   type w
 
@@ -138,27 +130,43 @@ module Build : sig
   val drop_build_context     : t -> Source.t option
   val drop_build_context_exn : t -> Source.t
 
+  (** [Source.t] here is a lie in some cases: consider when the context name
+      happens to be ["install"] or [".alias"]. *)
   val extract_build_context  : t -> (string * Source.t) option
   val extract_build_context_exn  : t -> (string * Source.t)
   val extract_build_context_dir : t -> (t * Source.t) option
   val extract_build_context_dir_exn : t -> (t * Source.t)
 
+  (** This function does the same as [extract_build_context], but has a
+      "righter" type.  *)
+  val extract_first_component : t -> (string * Local.t) option
+
   val is_alias_stamp_file : t -> bool
+
+  module Kind : sig
+    type t = private
+      | External of External.t
+      | In_source_dir of Local.t
+
+    val of_string : string -> t
+  end
 
   (** set the build directory. Can only be called once and must be done before
       paths are converted to strings elsewhere. *)
   val set_build_dir : Kind.t -> unit
 end
 
-(** In the outside world *)
-include Path_intf.S
+type t = private
+  | External of External.t
+  | In_source_tree of Source.t
+  | In_build_dir of Build.t
+
+include Path_intf.S with type t := t
 
 val hash : t -> int
 
 (** [to_string_maybe_quoted t] is [maybe_quoted (to_string t)] *)
 val to_string_maybe_quoted : t -> string
-
-val kind : t -> Kind.t
 
 val root : t
 val is_root : t -> bool
@@ -279,11 +287,6 @@ val of_local : Local.t -> t
 (** Set the workspace root. Can only be called once and the path must be
     absolute *)
 val set_root : External.t -> unit
-
-(** Internal use only *)
-module Internal : sig
-  val raw_kind : t -> Kind.t
-end
 
 module L : sig
   val relative : t -> string list -> t

@@ -104,12 +104,42 @@ include Sub_system.Register_end_point(
   struct
     module Backend = Backend
 
+    module Mode_conf = struct
+      module T = struct
+        type t =
+          | Byte
+          | Javascript
+          | Native
+          | Best
+        let compare (a : t) b = compare a b
+      end
+      include T
+      open Stanza.Decoder
+
+      let decode =
+        enum
+          [ "byte"  , Byte
+          ; "js"    , Javascript
+          ; "native", Native
+          ; "best"  , Best
+          ]
+      module Set = struct
+        include Set.Make(T)
+
+        let decode = list decode >>| of_list
+
+        let default = of_list [Best]
+      end
+    end
+
+
     module Info = struct
       let name = Sub_system_name.make "inline_tests"
 
       type t =
         { loc       : Loc.t
         ; deps      : Dep_conf.t list
+        ; modes     : Mode_conf.Set.t
         ; flags     : Ordered_set_lang.Unexpanded.t
         ; backend   : (Loc.t * Lib_name.t) option
         ; libraries : (Loc.t * Lib_name.t) list
@@ -122,6 +152,7 @@ include Sub_system.Register_end_point(
         ; deps      = []
         ; flags     = Ordered_set_lang.Unexpanded.standard
         ; backend   = None
+        ; modes     = Mode_conf.Set.default
         ; libraries = []
         }
 
@@ -142,12 +173,14 @@ include Sub_system.Register_end_point(
                 and+ flags = Ordered_set_lang.Unexpanded.field "flags"
                 and+ backend = field_o "backend" (located Lib_name.decode)
                 and+ libraries = field "libraries" (list (located Lib_name.decode)) ~default:[]
+                and+ modes = field "modes" (Mode_conf.Set.decode) ~default:Mode_conf.Set.default
                 in
                 { loc
                 ; deps
                 ; flags
                 ; backend
                 ; libraries
+                ; modes
                 }))
     end
 
@@ -255,11 +288,25 @@ include Sub_system.Register_end_point(
           ~opaque:false
           ~requires_compile:runner_libs
           ~requires_link:(lazy runner_libs)
-          ~flags:(Ocaml_flags.of_list ["-w"; "-24"]);
+          ~flags:(Ocaml_flags.of_list ["-w"; "-24"; "-g"]);
+      in
+      let linkages =
+        let modes =
+          if Mode_conf.Set.mem info.modes Javascript
+          then Mode_conf.Set.add info.modes Byte
+          else info.modes
+        in
+        List.filter_map (Mode_conf.Set.to_list modes) ~f:(fun (mode : Mode_conf.t) ->
+          match mode with
+          | Native -> Some Exe.Linkage.native
+          | Best -> Some (Exe.Linkage.native_or_custom (Super_context.context sctx))
+          | Byte -> Some Exe.Linkage.byte
+          | Javascript -> None
+        )
       in
       Exe.build_and_link cctx
         ~program:{ name; main_module_name ; loc }
-        ~linkages:[Exe.Linkage.native_or_custom (SC.context sctx)]
+        ~linkages
         ~link_flags:(Build.return ["-linkall"]);
 
       let flags =
@@ -273,30 +320,45 @@ include Sub_system.Register_end_point(
         |> Build.all
         >>^ List.concat
       in
-
-      SC.add_alias_action sctx ~dir
-        ~loc:(Some info.loc)
-        (Alias.runtest ~dir)
-        ~stamp:("ppx-runner", name)
-        (let module A = Action in
-         let exe =
-           Path.Build.relative inline_test_dir (name ^ ".exe")
-           |> Path.build
-         in
-         Build.path exe >>>
-         Build.fanout
-           (Super_context.Deps.interpret sctx info.deps ~expander)
-           flags
-         >>^ fun (_deps, flags) ->
-         A.chdir (Path.build dir)
-           (A.progn
-              (A.run (Ok exe) flags ::
-               (Module.Name.Map.values source_modules
-                |> List.concat_map ~f:(fun m ->
-                  Module.sources m
-                  |> List.map ~f:(fun fn ->
-                    A.diff ~optional:true
-                      fn (Path.extend_basename fn ~suffix:".corrected")))))))
-  end)
+      Mode_conf.Set.iter info.modes ~f:(fun (mode : Mode_conf.t) ->
+        let ext = match mode with
+          | Native | Best -> ".exe"
+          | Javascript -> ".bc.js"
+          | Byte -> ".bc"
+        in
+        let custom_runner = match mode with
+          | Native | Best | Byte -> None
+          | Javascript -> Some "node"
+        in
+        SC.add_alias_action sctx ~dir
+          ~loc:(Some info.loc)
+          (Alias.runtest ~dir)
+          ~stamp:("ppx-runner", name)
+          (let module A = Action in
+           let exe =
+             Path.Build.relative inline_test_dir (name ^ ext)
+             |> Path.build
+           in
+           Build.path exe >>>
+           Build.fanout
+             (Super_context.Deps.interpret sctx info.deps ~expander)
+             flags
+           >>^ fun (_deps, flags) ->
+           let exe, runner_args = match custom_runner with
+             | None -> Ok exe, []
+             | Some runner ->
+               Super_context.resolve_program ~dir sctx ~loc:(Some loc) runner
+             , [ Path.reach ~from:(Path.build dir) exe ]
+           in
+           A.chdir (Path.build dir)
+             (A.progn
+                (A.run exe (runner_args @ flags) ::
+                 (Module.Name.Map.values source_modules
+                  |> List.concat_map ~f:(fun m ->
+                    Module.sources m
+                    |> List.map ~f:(fun fn ->
+                      A.diff ~optional:true
+                        fn (Path.extend_basename fn ~suffix:".corrected"))))))))
+end)
 
 let linkme = ()

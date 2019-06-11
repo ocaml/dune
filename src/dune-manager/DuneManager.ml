@@ -10,6 +10,8 @@ let peer_name = function
   | Unix.ADDR_INET (addr, port) ->
       Printf.sprintf "%s:%d" (Unix.string_of_inet_addr addr) port
 
+module Parser = Csexp.Parser (Csexp.ChannelStream)
+
 let run _ =
   let sock = Unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
   let finally () = Unix.close sock
@@ -18,8 +20,22 @@ let run _ =
     Unix.listen sock 1024 ;
     while true do
       let fd, peer = Unix.accept sock in
-      print_endline (peer_name peer) ;
-      ignore (fd, peer)
+      try
+        Printf.printf "accept client: %s\n" (peer_name peer) ;
+        let input = Csexp.ChannelStream.make (Unix.in_channel_of_descr fd) in
+        while true do
+          (* Skip toplevel newlines, for easy netcat interaction *)
+          while Csexp.ChannelStream.peek_byte input = int_of_char '\n' do
+            ignore (Csexp.ChannelStream.input_byte input)
+          done ;
+          let cmd = Parser.parse_stream input in
+          print_endline (Sexp.to_string cmd)
+        done
+      with
+      | End_of_file ->
+          ()
+      | Csexp.Parse_error msg ->
+          Printf.printf "Canonical SExp parse error: %s\n" msg
     done
   in
   Exn.protect ~f ~finally

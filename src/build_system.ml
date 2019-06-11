@@ -362,6 +362,9 @@ module Subdir_set = struct
   let union a b = match a, b with
     | All, _ | _, All -> All
     | These a, These b -> These (String.Set.union a b)
+
+  let union_all = List.fold_left ~init:empty ~f:union
+
 end
 
 type extra_sub_directories_to_keep = Subdir_set.t
@@ -1146,13 +1149,6 @@ The following targets are not:
              [ "dir", (Path.Build.to_dyn dir)
              ; "rules", Rules.Dir_rules.to_dyn rules ]
     );
-    let weird_set = [
-      ".bin";
-      ".wrapped_compat";
-      ".utop";
-      ".formatted";
-    ]
-    in
     let rules_generated_in =
       Dir_set.of_list (
         Path.Build.Map.keys (Rules.to_map rules_produced)
@@ -1171,7 +1167,6 @@ The following targets are not:
     let descendants_to_keep =
       Dir_set.union_all [
         rules_generated_in;
-        (Subdir_set.to_dir_set (Subdir_set.of_list weird_set));
         Subdir_set.to_dir_set subdirs_to_keep;
         allowed_granddescendants_of_parent;
       ]

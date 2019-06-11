@@ -99,25 +99,20 @@ let deps_of cctx ~ml_kind unit =
   if is_alias_module cctx unit then
     Build.return []
   else
-    match Module.file unit ml_kind with
+    match Module.source unit ml_kind with
     | None -> Build.return []
-    | Some file ->
+    | Some source ->
+      let obj_dir = Compilation_context.obj_dir cctx in
       let dir = Compilation_context.dir cctx in
-      let file_in_obj_dir ~suffix file =
-        let base = Path.basename file in
-        Path.Build.relative
-          (Obj_dir.obj_dir (Compilation_context.obj_dir cctx))
-          (base ^ suffix)
-      in
-      let all_deps_path file = file_in_obj_dir file ~suffix:".all-deps" in
+      let dep = Obj_dir.Module.dep obj_dir in
       let context = SC.context sctx in
       let vimpl = Compilation_context.vimpl cctx in
       let parse_module_names =
         let modules = Vimpl.add_vlib_modules vimpl (CC.modules cctx) in
         parse_module_names ~modules
       in
-      let all_deps_file = all_deps_path file in
-      let ocamldep_output = file_in_obj_dir file ~suffix:".d" in
+      let all_deps_file = dep source ~kind:Transitive in
+      let ocamldep_output = dep source ~kind:Immediate in
       SC.add_rule sctx ~dir
         (let flags =
            Option.value (Module.pp_flags unit) ~default:(Build.return []) in
@@ -125,33 +120,32 @@ let deps_of cctx ~ml_kind unit =
            [ A "-modules"
            ; Command.Args.dyn flags
            ; Ml_kind.flag ml_kind
-           ; Dep file
+           ; Dep (Module.File.path source)
            ]
            ~stdout_to:ocamldep_output
         );
       let build_paths dependencies =
         let dependency_file_path m =
-          let file_path m =
+          let source m =
             if is_alias_module cctx m then
               None
             else
-              match Module.file m Ml_kind.Intf with
+              match Module.source m Ml_kind.Intf with
               | Some _ as x -> x
-              | None ->
-                Module.file m Ml_kind.Impl
+              | None -> Module.source m Ml_kind.Impl
           in
           let module_file_ =
-            match file_path m with
+            match source m with
             | Some v -> Some v
-            | None -> Option.bind ~f:file_path (Vimpl.find_module vimpl m)
+            | None -> Option.bind ~f:source (Vimpl.find_module vimpl m)
           in
-          Option.map ~f:(fun p -> Path.build (all_deps_path p)) module_file_
+          Option.map ~f:(fun p -> Path.build (dep p ~kind:Transitive)) module_file_
         in
         List.filter_map dependencies ~f:dependency_file_path
       in
       SC.add_rule sctx ~dir
         ( Build.lines_of (Path.build ocamldep_output)
-          >>^ parse_deps_exn ~file
+          >>^ parse_deps_exn ~file:(Module.File.path source)
           >>^ interpret_deps cctx ~unit
           >>^ (fun modules ->
             (build_paths modules,

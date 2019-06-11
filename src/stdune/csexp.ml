@@ -21,7 +21,7 @@ module ChannelStream :
 struct
   type input = in_channel
 
-  type t = in_channel * int option ref
+  type t = input * int option ref
 
   let make i = (i, ref None)
 
@@ -49,6 +49,58 @@ struct
     | Some b ->
         peek := None ;
         String.make 1 (char_of_int b) ^ really_input_string chan (len - 1)
+end
+
+module FDStream :
+  Stream
+  with type input = Unix.file_descr
+   and type t = Unix.file_descr * int option ref = struct
+  type input = Unix.file_descr
+
+  type t = input * int option ref
+
+  let make i = (i, ref None)
+
+  let rec read fd buf pos len =
+    try Unix.read fd buf pos len
+    with Unix.Unix_error (Unix.EINTR, _, _) -> read fd buf pos len
+
+  let read_one chan =
+    let buf = Bytes.make 1 ' ' in
+    if read chan buf 0 1 = 0 then raise End_of_file
+    else int_of_char (Bytes.get buf 0)
+
+  let peek_byte (chan, peek) =
+    match !peek with
+    | None ->
+        let b = read_one chan in
+        peek := Some b ;
+        b
+    | Some b ->
+        b
+
+  let input_byte (chan, peek) =
+    match !peek with
+    | None ->
+        read_one chan
+    | Some b ->
+        peek := None ;
+        b
+
+  let input_string (chan, peek) len =
+    let res = Bytes.make len ' ' and pos = ref 0 in
+    ( match !peek with
+    | Some b ->
+        peek := None ;
+        Bytes.set res 0 (char_of_int b) ;
+        pos := 1
+    | None ->
+        () ) ;
+    while !pos < len do
+      let l = read chan res !pos (len - !pos) in
+      if l = 0 then raise End_of_file else pos := !pos + l
+    done ;
+    Bytes.to_string res
 end
 
 type string_stream = {data: string; mutable pos: int}

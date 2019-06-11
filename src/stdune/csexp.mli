@@ -20,6 +20,8 @@ module StringStream : Stream with type input = string
 
 module ChannelStream : Stream with type input = in_channel
 
+module FDStream : Stream with type input = Unix.file_descr
+
 module Parser (S : Stream) : sig
   val parse : S.input -> t
 

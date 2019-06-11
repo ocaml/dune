@@ -132,7 +132,7 @@ let module_deps (m : Module.t) ~doc_dir ~(dep_graphs:Dep_graph.Ml_kind.t) =
   >>^ List.map ~f:(fun m -> Path.build (Module.odoc_file ~doc_dir m))
   |> Build.dyn_paths
 
-let compile_module sctx (m : Module.t) ~includes:(file_deps, iflags)
+let compile_module sctx ~obj_dir (m : Module.t) ~includes:(file_deps, iflags)
       ~dep_graphs ~doc_dir ~pkg_or_lnu =
   let odoc_file = Module.odoc_file m ~doc_dir in
   add_rule sctx
@@ -147,7 +147,7 @@ let compile_module sctx (m : Module.t) ~includes:(file_deps, iflags)
        ; iflags
        ; As ["--pkg"; pkg_or_lnu]
        ; A "-o"; Target odoc_file
-       ; Dep (Module.cmti_file m)
+       ; Dep (Path.build (Obj_dir.Module.cmti_file obj_dir m))
        ]);
   (m, odoc_file)
 
@@ -208,7 +208,7 @@ let setup_html sctx (odoc_file : odoc) ~pkg ~requires =
             ]
        :: dune_keep))
 
-let setup_library_odoc_rules sctx (library : Library.t) ~scope ~modules
+let setup_library_odoc_rules sctx (library : Library.t) ~obj_dir ~scope ~modules
       ~requires ~(dep_graphs:Dep_graph.Ml_kind.t) =
   let lib =
     Option.value_exn (Lib.DB.find_even_when_hidden (Scope.libs scope)
@@ -223,7 +223,7 @@ let setup_library_odoc_rules sctx (library : Library.t) ~scope ~modules
     (Dep.deps ctx (Lib.package lib) requires, odoc_include_flags) in
   let modules_and_odoc_files =
     List.map (Module.Name.Map.values modules) ~f:(
-      compile_module sctx ~includes ~dep_graphs
+      compile_module sctx ~includes ~dep_graphs ~obj_dir
         ~doc_dir ~pkg_or_lnu)
   in
   Dep.setup_deps ctx (Lib lib)

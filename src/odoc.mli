@@ -7,6 +7,7 @@ open Dune_file
 val setup_library_odoc_rules
   :  Super_context.t
   -> Library.t
+  -> obj_dir:Path.Build.t Obj_dir.t
   -> scope:Scope.t
   -> modules:Module.t Module.Name.Map.t
   -> requires:Lib.t list Or_exn.t

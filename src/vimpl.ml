@@ -15,7 +15,8 @@ let impl t = t.impl
 let vlib_dep_graph t = t.vlib_dep_graph
 
 let from_vlib_to_impl_module t m =
-  Module.set_obj_dir ~obj_dir:(Obj_dir.of_local t.obj_dir) m
+  let src_dir = Path.build (Obj_dir.dir t.obj_dir) in
+  Module.set_src_dir m ~src_dir
 
 let make ~vlib ~impl ~dir ~vlib_modules ~vlib_foreign_objects ~vlib_dep_graph =
   { impl

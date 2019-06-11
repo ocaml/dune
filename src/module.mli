@@ -86,7 +86,6 @@ val make
   -> ?intf:File.t
   -> ?obj_name:string
   -> visibility:Visibility.t
-  -> obj_dir:Path.t Obj_dir.t
   -> kind:Kind.t
   -> Name.t
   -> t
@@ -95,7 +94,6 @@ val make
 val of_source
   :  ?obj_name:string
   -> visibility:Visibility.t
-  -> obj_dir:Path.t Obj_dir.t
   -> kind:Kind.t
   -> Source.t
   -> t
@@ -107,30 +105,15 @@ val real_unit_name : t -> Name.t
 
 val intf : t -> File.t option
 val impl : t -> File.t option
-val obj_dir : t -> Path.t Obj_dir.t
 
 val pp_flags : t -> (unit, string list) Build.t option
 
 val file            : t -> Ml_kind.t -> Path.t option
 val cm_source       : t -> Cm_kind.t -> Path.t option
-val cm_file         : t -> Cm_kind.t -> Path.t option
-val cm_public_file  : t -> Cm_kind.t -> Path.t option
-val cmt_file        : t -> Ml_kind.t -> Path.t option
-
-val obj_file : t -> kind:Cm_kind.t -> ext:string -> Path.t
 
 val obj_name : t -> string
 
-(** Same as [cm_file] but doesn't raise if [cm_kind] is [Cmo] or [Cmx]
-    and the module has no implementation.
- *)
-val cm_file_unsafe : t -> Cm_kind.t -> Path.t
-val cm_public_file_unsafe : t -> Cm_kind.t -> Path.t
-
 val odoc_file : t -> doc_dir:Path.Build.t -> Path.Build.t
-
-(** Either the .cmti, or .cmt if the module has no interface *)
-val cmti_file : t -> Path.t
 
 val iter : t -> f:(Ml_kind.t -> File.t -> unit) -> unit
 
@@ -181,7 +164,6 @@ val is_private : t -> bool
 val is_virtual : t -> bool
 
 val set_private : t -> t
-val set_obj_dir : t -> obj_dir:Path.t Obj_dir.t -> t
 val set_virtual : t -> t
 
 val sources : t -> Path.t list
@@ -190,10 +172,12 @@ val visibility : t -> Visibility.t
 
 val encode : t -> Dune_lang.t list
 
-val decode : obj_dir:Path.t Obj_dir.t -> t Dune_lang.Decoder.t
+val decode : src_dir:Path.t -> t Dune_lang.Decoder.t
 
 (** [pped m] return [m] but with the preprocessed source paths paths *)
 val pped : t -> t
 
 (** [ml_source m] returns [m] but with the OCaml syntax source paths *)
 val ml_source : t -> t
+
+val set_src_dir : t -> src_dir:Path.t -> t

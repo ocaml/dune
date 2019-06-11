@@ -178,7 +178,6 @@ include Sub_system.Register_end_point(
       let main_module_filename = name ^ ".ml" in
       let main_module_name = Module.Name.of_string name in
       let modules =
-        let obj_dir = Obj_dir.of_local obj_dir in
         Module.Name.Map.singleton main_module_name
           (Module.make main_module_name
              ~impl:{ path =
@@ -188,8 +187,7 @@ include Sub_system.Register_end_point(
                    }
              ~kind:Impl
              ~visibility:Public
-             ~obj_name:name
-             ~obj_dir)
+             ~obj_name:name)
       in
 
       let bindings =

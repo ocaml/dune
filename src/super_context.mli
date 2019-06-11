@@ -11,10 +11,8 @@ open Dune_file
 
 type t
 
-val equal : t -> t -> bool
-val hash : t -> int
-
 val to_dyn : t -> Dyn.t
+val to_dyn_concise : t -> Dyn.t
 val to_sexp : t -> Sexp.t
 
 val create
@@ -206,3 +204,10 @@ val opaque : t -> bool
 val expander : t -> dir:Path.Build.t -> Expander.t
 
 val dir_status_db : t -> Dir_status.DB.t
+
+module As_memo_key : sig
+  type nonrec t = t
+  val to_dyn : t -> Dyn.t
+  val equal : t -> t -> bool
+  val hash : t -> int
+end

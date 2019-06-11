@@ -353,6 +353,7 @@ let odocs =
 
 let setup_lib_html_rules_def =
   let module Input = struct
+    module Super_context = Super_context.As_memo_key
     type t = Super_context.t * Lib.t * Lib.t list Or_exn.t
 
     let equal (sc1, l1, r1) (sc2, l2, r2) =
@@ -394,6 +395,9 @@ let setup_lib_html_rules sctx lib ~requires =
 
 let setup_pkg_html_rules_def =
   let module Input = struct
+
+    module Super_context = Super_context.As_memo_key
+
     type t = Super_context.t * Package.Name.t * Lib.Local.t list
 
     let equal (s1, p1, l1) (s2, p2, l2) =
@@ -519,6 +523,9 @@ let check_mlds_no_dupes ~pkg ~mlds =
 
 let setup_package_odoc_rules_def =
   let module Input = struct
+
+    module Super_context = Super_context.As_memo_key
+
     type t = Super_context.t * Package.Name.t * Path.Build.t list
 
     let hash (sctx, p, ps) =

@@ -165,7 +165,7 @@ module Of_sctx = struct
     in
     Memo.create "of-sctx-def"
       ~doc:"mapping from package names to local packages"
-      ~input:(module Super_context)
+      ~input:(module Super_context.As_memo_key)
       ~output:(Allow_cutoff (module Output))
       ~visibility:Hidden
       Sync

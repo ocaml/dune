@@ -137,6 +137,8 @@ let to_dyn t : Dyn.t =
     ; "which", Hashtbl.to_dyn string (option path) t.which_cache
     ]
 
+let to_dyn_concise t : Dyn.t = String t.name
+
 let to_sexp t = Dyn.to_sexp (to_dyn t)
 
 let compare a b = compare a.name b.name

@@ -415,9 +415,6 @@ type t =
       (Context_or_install.t
        -> (dir:Path.Build.t -> string list -> extra_sub_directories_to_keep)
             option) Fdecl.t
-  ; (* Set of directories under _build that have at least one rule and
-       all their ancestors. *)
-    mutable build_dirs_to_keep : Path.Build.Set.t
   ; hook : hook -> unit
   ; (* Package files are part of *)
     packages : (Path.Build.t -> Package.Name.Set.t) Fdecl.t
@@ -567,31 +564,27 @@ let rec with_locks mutexes ~f =
       (fun () -> with_locks mutexes ~f)
 
 let remove_old_artifacts t ~dir ~(subdirs_to_keep : Subdir_set.t) =
-  if Path.Build.Table.mem t.files
-       (Path.Build.relative dir Config.dune_keep_fname) then
-    ()
-  else
-    match Path.readdir_unsorted (Path.build dir) with
-    | exception _ -> ()
-    | Error _ -> ()
-    | Ok files ->
-      List.iter files ~f:(fun fn ->
-        let path = Path.Build.relative dir fn in
-        let path_is_a_target = Path.Build.Table.mem t.files path in
-        if path_is_a_target then ()
-        else
-          match Unix.lstat (Path.Build.to_string path) with
-          | { st_kind = S_DIR; _ } -> begin
-              match subdirs_to_keep with
-              | All -> ()
-              | These set ->
-                if String.Set.mem set fn then
-                  ()
-                else
-                  Path.rm_rf (Path.build path)
-            end
-          | exception _ -> Path.unlink (Path.build path)
-          | _ -> Path.unlink (Path.build path))
+  match Path.readdir_unsorted (Path.build dir) with
+  | exception _ -> ()
+  | Error _ -> ()
+  | Ok files ->
+    List.iter files ~f:(fun fn ->
+      let path = Path.Build.relative dir fn in
+      let path_is_a_target = Path.Build.Table.mem t.files path in
+      if path_is_a_target then ()
+      else
+        match Unix.lstat (Path.Build.to_string path) with
+        | { st_kind = S_DIR; _ } -> begin
+            match subdirs_to_keep with
+            | All -> ()
+            | These set ->
+              if String.Set.mem set fn then
+                ()
+              else
+                Path.rm_rf (Path.build path)
+          end
+        | exception _ -> Path.unlink (Path.build path)
+        | _ -> Path.unlink (Path.build path))
 
 let no_rule_found =
   fun t ~loc fn ->
@@ -696,28 +689,6 @@ let fix_up_legacy_fallback_rules t ~file_tree_dir ~dir rules =
 (* +-----------------------------------------------------------------+
    | Adding rules to the system                                      |
    +-----------------------------------------------------------------+ *)
-
-let rec add_build_dir_to_keep t ~dir =
-  if not (Path.Build.Set.mem t.build_dirs_to_keep dir) then begin
-    t.build_dirs_to_keep <- Path.Build.Set.add t.build_dirs_to_keep dir;
-    Option.iter (Path.Build.parent dir) ~f:(fun dir ->
-      if not (Path.Build.is_root dir) then
-        add_build_dir_to_keep t ~dir)
-  end
-
-let handle_add_rule_effects f =
-  let t = t () in
-  let res, rules =
-    Rules.collect f
-  in
-  (* CR-someday aalekseyev:
-     find a way to do what [add_build_dir_to_keep] without relying
-     on this side-effect so that memoization can be used here. *)
-  Path.Build.Map.iteri (Rules.to_map rules)
-    ~f:(fun dir _rules ->
-      add_build_dir_to_keep t ~dir);
-  res, rules
-
 
 module rec Load_rules : sig
   val load_dir : dir:Path.t -> Loaded.t
@@ -1032,7 +1003,7 @@ The following targets are not:
         | Some rules ->
           rules
       in
-      handle_add_rule_effects
+      Rules.collect
         (fun () -> gen_rules ~dir (Path.Source.explode sub_dir))
     in
     let rules =
@@ -1961,7 +1932,6 @@ let init ~contexts ~file_tree ~hook =
     ; file_tree
     ; gen_rules = Fdecl.create ()
     ; init_rules = Fdecl.create ()
-    ; build_dirs_to_keep = Path.Build.Set.empty
     ; hook
     }
   in

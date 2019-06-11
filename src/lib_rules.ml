@@ -45,22 +45,17 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
         else
           Fn.id
       in
-      let artifacts ~ext modules =
-        List.map modules ~f:(fun m ->
-          let obj = Obj_dir.Module.obj_file obj_dir m ~kind ~ext in
-          Path.build obj)
-      in
+      let cm_files = Obj_dir.Module.L.cm_files obj_dir ~kind in
       let obj_deps =
-        Build.paths (artifacts modules ~ext:(Cm_kind.ext kind))
-      in
-      let obj_deps =
+        let obj_deps = Build.paths (cm_files modules) in
         match mode with
         | Byte   -> obj_deps
         | Native ->
           obj_deps >>>
-          Build.paths (artifacts modules ~ext:ctx.ext_obj)
+          Build.paths (
+            Obj_dir.Module.L.o_files obj_dir modules ~ext_obj:ctx.ext_obj)
       in
-      let cm_files = top_sorted_modules >>^artifacts ~ext:(Cm_kind.ext kind) in
+      let cm_files = top_sorted_modules >>^ cm_files in
       let ocaml_flags = Ocaml_flags.get flags mode in
       let cclibs = Expander.expand_and_eval_set expander lib.c_library_flags
                      ~standard:(Build.return []) in

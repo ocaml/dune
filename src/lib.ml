@@ -416,7 +416,8 @@ module Lib_and_module = struct
            | Lib t ->
              Command.Args.Deps (Mode.Dict.get t.info.archives mode)
            | Module (obj_dir, m) ->
-             Dep (Obj_dir.Module.cm_file_unsafe obj_dir m (Mode.cm_kind mode))
+             Dep (Obj_dir.Module.cm_file_unsafe obj_dir m
+                    ~kind:(Mode.cm_kind mode))
          ))
 
     let of_libs l = List.map l ~f:(fun x -> Lib x)

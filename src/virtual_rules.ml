@@ -44,8 +44,8 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
     Dune_file.Mode_conf.Set.eval impl.modes
       ~has_native:(Option.is_some ctx.ocamlopt) in
   let copy_obj_file m kind =
-    let src = Obj_dir.Module.cm_file_unsafe vlib_obj_dir m kind in
-    let dst = Obj_dir.Module.cm_file_unsafe impl_obj_dir m kind in
+    let src = Obj_dir.Module.cm_file_unsafe vlib_obj_dir m ~kind in
+    let dst = Obj_dir.Module.cm_file_unsafe impl_obj_dir m ~kind in
     copy_to_obj_dir ~src ~dst
   in
   let copy_objs src =
@@ -54,9 +54,9 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
     && Obj_dir.need_dedicated_public_dir impl_obj_dir
     then begin
       let dst =
-        Obj_dir.Module.cm_public_file_unsafe impl_obj_dir src Cmi in
+        Obj_dir.Module.cm_public_file_unsafe impl_obj_dir src ~kind:Cmi in
       let src =
-        Obj_dir.Module.cm_public_file_unsafe vlib_obj_dir src Cmi in
+        Obj_dir.Module.cm_public_file_unsafe vlib_obj_dir src ~kind:Cmi in
       copy_to_obj_dir ~src ~dst
     end;
     if Module.has_impl src then begin
@@ -184,7 +184,7 @@ let external_dep_graph sctx ~impl_cm_kind ~impl_obj_dir ~vlib_modules =
     let ctx = Super_context.context sctx in
     fun m cm_kind ->
       let unit =
-        Obj_dir.Module.cm_file_unsafe impl_obj_dir m cm_kind
+        Obj_dir.Module.cm_file_unsafe impl_obj_dir m ~kind:cm_kind
         |> Path.build
       in
       Ocamlobjinfo.rules ~dir ~ctx ~unit

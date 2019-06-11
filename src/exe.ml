@@ -134,16 +134,11 @@ let link_exe
   let exe = exe_path_from_name cctx ~name ~linkage in
   let compiler = Option.value_exn (Context.compiler ctx mode) in
   let kind = Mode.cm_kind mode in
-  let artifacts ~ext modules =
-    List.map modules ~f:(fun m ->
-      let path = Obj_dir.Module.obj_file obj_dir m ~kind ~ext in
-      Path.build path)
-  in
   let modules_and_cm_files =
     Build.memoize "cm files"
       (top_sorted_modules >>^ fun modules ->
        (modules,
-        artifacts modules ~ext:(Cm_kind.ext kind)))
+        Obj_dir.Module.L.cm_files obj_dir modules ~kind))
   in
   let register_native_objs_deps build =
     match mode with
@@ -151,7 +146,7 @@ let link_exe
     | Native ->
       build >>>
       Build.dyn_paths (Build.arr (fun (modules, _) ->
-        artifacts modules ~ext:ctx.ext_obj))
+        Obj_dir.Module.L.o_files obj_dir modules ~ext_obj:ctx.ext_obj))
   in
   (* The rule *)
   SC.add_rule sctx ~loc ~dir

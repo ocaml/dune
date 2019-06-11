@@ -239,7 +239,7 @@ let lib_install_files sctx ~dir_contents ~dir ~sub_dir:lib_subdir
     in
     let virtual_library = Library.is_virtual lib in
     List.concat_map installable_modules ~f:(fun m ->
-      let cm_file_unsafe = Obj_dir.Module.cm_file_unsafe obj_dir m in
+      let cm_file_unsafe kind = Obj_dir.Module.cm_file_unsafe obj_dir m ~kind in
       let cmi_file =
         ( Module.visibility m
         , cm_file_unsafe Cmi

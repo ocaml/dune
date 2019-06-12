@@ -4,6 +4,8 @@ open! Stdune
 
 type t = ..
 
+val latest_version : Syntax.Version.t
+
 module Parser : sig
   (** Type of stanza parser.
 

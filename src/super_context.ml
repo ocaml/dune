@@ -700,7 +700,7 @@ module Action = struct
           "This action has targets in a different directory than the current \
            one, this is not allowed by dune at the moment:\n%s"
           (List.map targets ~f:(fun target ->
-             sprintf "- %s" (Utils.describe_path (Path.build target)))
+             sprintf "- %s" (Dpath.describe_path (Path.build target)))
            |> String.concat ~sep:"\n"));
     let build =
       Build.record_lib_deps (Expander.Resolved_forms.lib_deps forms)

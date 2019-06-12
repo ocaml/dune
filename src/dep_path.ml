@@ -10,8 +10,8 @@ module Entry = struct
     | Loc of Loc.t
 
   let pp = function
-    | Path p -> Pp.text (Utils.describe_path p)
-    | Alias p -> Pp.textf "alias %s" (Utils.describe_path p)
+    | Path p -> Pp.text (Dpath.describe_path p)
+    | Alias p -> Pp.textf "alias %s" (Dpath.describe_path p)
     | Library (path, lib_name) ->
       Pp.textf "library %S in %s"
         (Lib_name.to_string lib_name)

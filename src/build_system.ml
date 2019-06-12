@@ -589,9 +589,9 @@ let remove_old_artifacts t ~dir ~(subdirs_to_keep : Subdir_set.t) =
 let no_rule_found =
   fun t ~loc fn ->
     let fail fn ~loc =
-      Errors.fail_opt loc "No rule found for %s" (Utils.describe_target fn)
+      Errors.fail_opt loc "No rule found for %s" (Dpath.describe_target fn)
     in
-    match Utils.analyse_target fn with
+    match Dpath.analyse_target fn with
     | Other _ -> fail fn ~loc
     | Regular (ctx, _) ->
       if String.Map.mem t.contexts ctx then
@@ -930,7 +930,7 @@ The following targets are not:
 
     let corresponding_source_dir ~dir =
       let t = t () in
-      match Utils.analyse_target dir with
+      match Dpath.analyse_target dir with
       | Install _ | Alias _ | Other _ ->
         None
       | Regular (_ctx, sub_dir) ->
@@ -982,7 +982,7 @@ The following targets are not:
 
   let load_dir_step2_exn t ~dir =
     let context_name, sub_dir =
-      match Utils.analyse_path dir with
+      match Dpath.analyse_path dir with
       | Build (Install (ctx, path)) ->
         Context_or_install.Install ctx, path
       | Build (Regular (ctx, path)) ->

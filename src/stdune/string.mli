@@ -54,7 +54,12 @@ val exists : t -> f:(char -> bool) -> bool
 val for_all : t -> f:(char -> bool) -> bool
 
 (** [maybe_quoted s] is [s] if [s] doesn't need escaping according to OCaml
-    lexing conventions and [sprintf "%S" s] otherwise. *)
+    lexing conventions and [sprintf "%S" s] otherwise.
+
+    (* CR-someday aalekseyev: this function is not great: barely anything
+    "needs escaping according to OCaml lexing conventions", so the condition
+    for whether to add the quote characters ends up being quite arbitrary. *)
+*)
 val maybe_quoted : t -> t
 
 (** Produces: "x, y and z" *)

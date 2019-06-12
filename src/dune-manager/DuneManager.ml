@@ -3,7 +3,14 @@ open Dune_memory
 
 type version = int * int
 
-type client = {fd: Unix.file_descr; mutable version: version option}
+type client =
+  {fd: Unix.file_descr; output: out_channel; mutable version: version option}
+
+let send client sexp =
+  output_string client.output (Csexp.to_string_canonical sexp) ;
+  (* We need to flush when sending the version. Other
+     instances are more debatable. *)
+  flush client.output
 
 module ClientsKey = struct
   type t = client
@@ -103,7 +110,7 @@ let run ?(port_f = ignore) ?(port = 0) manager =
           (CommandError
              (Printf.sprintf "invalid lang command: %s"
                 (Sexp.to_string (Sexp.List cmd))))
-  and handle_promote = function
+  and handle_promote client = function
     | Sexp.List [Sexp.Atom "key"; Sexp.Atom key]
       :: Sexp.List (Sexp.Atom "files" :: files)
          :: Sexp.List [Sexp.Atom "metadata"; metadata] :: rest as cmd ->
@@ -136,10 +143,18 @@ let run ?(port_f = ignore) ?(port = 0) manager =
             (DuneMemory.key_of_string key)
             metadata repo
         in
-        ignore
-          (List.map
-             ~f:(fun p -> print_endline (DuneMemory.promotion_to_string p))
-             promotions)
+        let f promotion =
+          print_endline (DuneMemory.promotion_to_string promotion) ;
+          match promotion with
+          | Already_promoted (f, t) ->
+              Some
+                (Sexp.List
+                   [Sexp.Atom (Path.to_string f); Sexp.Atom (Path.to_string t)])
+          | _ ->
+              None
+        in
+        send client
+          (Sexp.List (Sexp.Atom "dedup" :: List.filter_map ~f promotions))
     | args ->
         raise
           (CommandError
@@ -155,7 +170,7 @@ let run ?(port_f = ignore) ?(port = 0) manager =
         else
           match cmd with
           | "promote" ->
-              handle_promote args
+              handle_promote client args
           | _ ->
               raise (CommandError (Printf.sprintf "unknown command: %s" cmd)) )
     | cmd ->
@@ -183,18 +198,11 @@ let run ?(port_f = ignore) ?(port = 0) manager =
     Unix.listen sock 1024 ;
     while Option.is_some manager.socket do
       let fd, peer = accept () in
-      let client = {fd; version= None} in
+      let client = {fd; output= Unix.out_channel_of_descr fd; version= None} in
       let f () =
         try
-          let output = Unix.out_channel_of_descr fd in
-          let send sexp =
-            output_string output (Csexp.to_string_canonical sexp) ;
-            (* We need to flush when sending the version. Other
-            instances are more debatable. *)
-            flush output
-          in
           manager.clients <- Clients.add manager.clients client ;
-          send
+          send client
             (Sexp.List
                ( Sexp.Atom "lang" :: Sexp.Atom "dune-memory-protocol"
                :: (List.map ~f:(function maj, min ->

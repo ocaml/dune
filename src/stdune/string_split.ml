@@ -2,6 +2,17 @@ module List = Dune_caml.ListLabels
 module String = Dune_caml.StringLabels
 open String
 
+let split s ~on =
+  let rec loop i j =
+    if j = length s then
+      [sub s ~pos:i ~len:(j - i)]
+    else if s.[j] = on then
+      sub s ~pos:i ~len:(j - i) :: loop (j + 1) (j + 1)
+    else
+      loop i (j + 1)
+  in
+  loop 0 0
+
 let split_lines s =
   let rec loop ~last_is_cr ~acc i j =
     if j = length s then (

@@ -67,19 +67,16 @@ let promotion_to_string = function
 
 exception Failed = Utils.Failed
 
-let concat p f = Path.of_string (Filename.concat (Path.to_string p) f)
+let path_files memory = Path.L.relative memory.root ["files"]
 
-let path_files memory = concat memory.root "files"
+let path_meta memory = Path.L.relative memory.root ["meta"]
 
-let path_meta memory = concat memory.root "meta"
-
-let path_tmp memory = concat memory.root "temp"
+let path_tmp memory = Path.L.relative memory.root ["temp"]
 
 let make ?log
-    ?(root =
-      Path.append (Path.of_string Xdg.cache_dir) (Path.of_string "dune/db")) ()
+    ?(root = Path.L.relative (Path.of_string Xdg.cache_dir) ["dune"; "db"]) ()
     =
-  let root = concat root "v2" in
+  let root = Path.L.relative root ["v2"] in
   {root; log= (match log with Some log -> log | None -> Log.no_log)}
 
 (* How to handle collisions. E.g. another version could assume collisions are not possible *)
@@ -103,7 +100,7 @@ module FSScheme = struct
   let path root hash =
     let hash = Digest.to_string hash in
     let short_hash = String.sub hash ~pos:0 ~len:2 in
-    List.fold_left ~f:concat ~init:root [short_hash; hash]
+    Path.L.relative root [short_hash; hash]
 end
 
 let search memory hash file =
@@ -115,7 +112,7 @@ let promote memory paths key metadata _ =
     let hardlink path =
       let tmp = path_tmp memory in
       (* dune-memory uses a single writer model, the promoted file name can be constant *)
-      let dest = concat tmp "promoting" in
+      let dest = Path.L.relative tmp ["promoting"] in
       (let dest = Path.to_string dest in
        if Sys.file_exists dest then Unix.unlink dest else mkpath tmp ;
        Unix.link (Path.to_string path) dest) ;

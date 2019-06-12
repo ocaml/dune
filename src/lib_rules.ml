@@ -385,8 +385,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
       Mode_conf.Set.eval lib.modes
         ~has_native:(Option.is_some ctx.ocamlopt) in
     (let modules = modules @ wrapped_compat in
-     Mode.Dict.Set.to_list modes
-     |> List.iter ~f:(fun mode ->
+     Mode.Dict.Set.iter modes ~f:(fun mode ->
        build_lib lib ~obj_dir ~expander ~flags ~dir ~mode ~top_sorted_modules
          ~modules));
     (* Build *.cma.js *)

@@ -67,3 +67,5 @@ module Sources : sig
 
   val split_by_kind : t -> t Kind.Dict.t
 end
+
+val c_cxx_or_header : fn:string -> bool

@@ -115,9 +115,10 @@ let install_file ~(package : Package.Name.t) ~findlib_toolchain =
 
 let line_directive ~filename:fn ~line_number =
   let directive =
-    match Filename.extension fn with
-    | ".c" | ".cpp" | ".h" -> "line"
-    | _ -> ""
+    if C.c_cxx_or_header ~fn then
+      "line"
+    else
+      ""
   in
   sprintf "#%s %d %S\n" directive line_number fn
 

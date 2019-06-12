@@ -153,8 +153,9 @@ let run ?(port_f = ignore) ?(port = 0) manager =
           | _ ->
               None
         in
-        send client
-          (Sexp.List (Sexp.Atom "dedup" :: List.filter_map ~f promotions))
+        let dedup = List.filter_map ~f promotions in
+        if dedup != [] then
+          send client (Sexp.List (Sexp.Atom "dedup" :: dedup))
     | args ->
         raise
           (CommandError

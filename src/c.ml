@@ -1,5 +1,7 @@
 open Stdune
 
+let header_ext = ".h"
+
 module Kind = struct
   type t =
     | C

@@ -1,5 +1,7 @@
 open Stdune
 
+val header_ext : string
+
 module Kind : sig
   type t =
     | C

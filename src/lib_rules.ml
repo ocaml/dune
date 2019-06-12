@@ -248,7 +248,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
       List.fold_left all_dirs ~init:[] ~f:(fun acc dc ->
         String.Set.fold (Dir_contents.text_files dc) ~init:acc
           ~f:(fun fn acc ->
-            if String.is_suffix fn ~suffix:".h" then
+            if String.is_suffix fn ~suffix:C.header_ext then
               Path.relative (Path.build (Dir_contents.dir dc)) fn :: acc
             else
               acc))

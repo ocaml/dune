@@ -46,12 +46,10 @@ let main () =
       else if !current = Array.length Sys.argv then current := !Arg.current - 1
       )
     usage ;
-  let root = unwrap_option "--root" !root
+  let root = Option.map ~f:Path.of_string !root
   and cmd = unwrap_option "command" !cmd in
   let memory =
-    make
-      ~log:(Log.create ~path:(Path.of_string "/tmp/log") ())
-      ~root:(Path.of_string root) ()
+    make ~log:(Log.create ~path:(Path.of_string "/tmp/log") ()) ?root ()
   in
   match cmd with
   | "promote" ->

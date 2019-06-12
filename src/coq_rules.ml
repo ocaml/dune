@@ -13,7 +13,8 @@ module Util = struct
 
   let include_paths ts =
     List.fold_left ts ~init:Path.Set.empty ~f:(fun acc t ->
-      Path.Set.add acc (Lib.src_dir t))
+      let info = Lib.info t in
+      Path.Set.add acc info.src_dir)
 
   let include_flags ts = include_paths ts |> Lib.L.to_iflags
 
@@ -118,7 +119,10 @@ let setup_ml_deps ~lib_db libs =
   (* coqdep expects an mlpack file next to the sources otherwise it
    * will omit the cmxs deps *)
   let ml_pack_files lib =
-    let plugins = Mode.Dict.get (Lib.plugins lib) Mode.Native in
+    let plugins =
+      let info = Lib.info lib in
+      Mode.Dict.get info.plugins Mode.Native
+    in
     let to_mlpack file =
       [ Path.set_extension file ~ext:".mlpack"
       ; Path.set_extension file ~ext:".mllib"
@@ -178,8 +182,9 @@ let coq_plugins_install_rules ~scope ~package ~dst_dir (s : Dune_file.Coq.t) =
     if Option.equal Package.Name.equal
          (Lib.package lib) (Some (package.Package.name))
     then
-      Mode.Dict.get (Lib.plugins lib) Mode.Native |>
-      List.map ~f:(fun plugin_file ->
+      let info = Lib.info lib in
+      Mode.Dict.get info.plugins Mode.Native
+      |> List.map ~f:(fun plugin_file ->
         let plugin_file = Path.as_in_build_dir_exn plugin_file in
         let plugin_file_basename = Path.Build.basename plugin_file in
         let dst =

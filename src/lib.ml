@@ -255,35 +255,15 @@ let not_available ~loc reason fmt =
 (* Generals *)
 
 let name t = t.name
+let info t = t.info
 
-let kind         t = t.info.kind
-let synopsis     t = t.info.synopsis
-let archives     t = t.info.archives
-let plugins      t = t.info.plugins
-let jsoo_runtime t = t.info.jsoo_runtime
-let jsoo_archive t = t.info.jsoo_archive
 let unique_id    t = t.unique_id
-let modes        t = t.info.modes
-
-let virtual_     t = t.info.virtual_
 
 let is_impl      t = Option.is_some t.implements
 
-let src_dir t = t.info.src_dir
-let orig_src_dir t = Option.value ~default:t.info.src_dir t.info.orig_src_dir
 let obj_dir t = t.info.obj_dir
 
 let is_local t = Path.is_managed (Obj_dir.byte_dir t.info.obj_dir)
-
-let public_cmi_dir t = Obj_dir.public_cmi_dir t.info.obj_dir
-
-let native_dir t = Obj_dir.native_dir t.info.obj_dir
-
-let status t = t.info.status
-
-let foreign_objects t = t.info.foreign_objects
-
-let special_builtin_support t = t.info.special_builtin_support
 
 let main_module_name t =
   match t.info.main_module_name with
@@ -330,8 +310,10 @@ module L = struct
   let include_paths ts ~stdlib_dir =
     let dirs =
       List.fold_left ts ~init:Path.Set.empty ~f:(fun acc t ->
+        let public_cmi_dir = Obj_dir.public_cmi_dir t.info.obj_dir in
+        let native_dir = Obj_dir.native_dir t.info.obj_dir in
         List.fold_left ~f:Path.Set.add ~init:acc
-          [public_cmi_dir t ; native_dir t])
+          [public_cmi_dir ; native_dir])
     in
     Path.Set.remove dirs stdlib_dir
 

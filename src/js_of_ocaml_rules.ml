@@ -92,10 +92,11 @@ let exe_rule cc ~javascript_files ~src ~target ~flags =
   js_of_ocaml_rule sctx ~dir ~spec ~target ~flags
 
 let jsoo_archives ~ctx lib =
-  match Lib.jsoo_archive lib with
+  let info = Lib.info lib in
+  match info.jsoo_archive with
   | Some a -> [a]
   | None ->
-    List.map (Lib.archives lib).byte ~f:(fun archive ->
+    List.map info.archives.byte ~f:(fun archive ->
       in_build_dir ~ctx
         [ Lib_name.to_string (Lib.name lib)
         ; Path.basename archive ^ ".js"
@@ -152,7 +153,8 @@ let setup_separate_compilation_rules sctx components =
       match Lib.DB.find (SC.installed_libs sctx) pkg with
       | Error _ -> ()
       | Ok pkg ->
-        let archives = (Lib.archives pkg).byte in
+        let info = Lib.info pkg in
+        let archives = info.archives.byte in
         let archives =
           (* Special case for the stdlib because it is not referenced
              in the META *)
@@ -162,7 +164,7 @@ let setup_separate_compilation_rules sctx components =
         in
         List.iter archives ~f:(fun fn ->
           let name = Path.basename fn in
-          let src = Path.relative (Lib.src_dir pkg) name in
+          let src = Path.relative info.src_dir name in
           let lib_name = Lib_name.to_string (Lib.name pkg) in
           let target =
             in_build_dir ~ctx [lib_name ; sprintf "%s.js" name]

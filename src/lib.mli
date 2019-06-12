@@ -12,41 +12,20 @@ val to_dyn : t -> Dyn.t
     present or the [name] if not. *)
 val name : t -> Lib_name.t
 
-(* CR-someday diml: this should be [Path.t list], since some libraries
-   have multiple source directories because of [copy_files]. *)
-(** Directory where the source files for the library are located. *)
-val src_dir : t -> Path.t
-val orig_src_dir : t -> Path.t
-
 (** Directory where the object files for the library are located. *)
 val obj_dir : t -> Path.t Obj_dir.t
-val public_cmi_dir : t -> Path.t
 
 (** Same as [Path.is_managed (obj_dir t)] *)
 val is_local : t -> bool
 
-val synopsis     : t -> string option
-val kind         : t -> Lib_kind.t
-val archives     : t -> Path.t list Mode.Dict.t
-val plugins      : t -> Path.t list Mode.Dict.t
-val jsoo_runtime : t -> Path.t list
-val jsoo_archive : t -> Path.t option
-val modes        : t -> Mode.Dict.Set.t
-
-val foreign_objects : t -> Path.t list Lib_info.Source.t
+val info : t -> Lib_info.t
 
 val main_module_name : t -> Module.Name.t option Or_exn.t
 val wrapped : t -> Wrapped.t option Or_exn.t
 
-val virtual_ : t -> Lib_modules.t Lib_info.Source.t option
-
 (** [is_impl lib] returns [true] if the library is an implementation
     of a virtual library *)
 val is_impl : t -> bool
-
-
-val special_builtin_support
-  : t -> Dune_file.Library.Special_builtin_support.t option
 
 (** A unique integer identifier. It is only unique for the duration of
     the process *)
@@ -60,8 +39,6 @@ val unique_id : t -> Id.t
 module Set : Set.S with type elt = t
 
 module Map : Map.S with type key = t
-
-val status : t -> Lib_info.Status.t
 
 val package : t -> Package.Name.t option
 

@@ -75,7 +75,10 @@ let path_meta memory = concat memory.root "meta"
 
 let path_tmp memory = concat memory.root "temp"
 
-let make ?log root =
+let make ?log
+    ?(root =
+      Path.append (Path.of_string Xdg.cache_dir) (Path.of_string "dune/db")) ()
+    =
   let root = concat root "v2" in
   {root; log= (match log with Some log -> log | None -> Log.no_log)}
 

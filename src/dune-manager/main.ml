@@ -2,7 +2,9 @@ open Stdune
 open Dune_manager
 
 let () =
-  let manager = DuneManager.make (Path.of_string "/tmp/dune-memory") in
+  let manager =
+    DuneManager.make ~root:(Path.of_string "/tmp/dune-memory") ()
+  in
   Sys.set_signal Sys.sigint
     (Sys.Signal_handle (fun _ -> DuneManager.stop manager)) ;
   try

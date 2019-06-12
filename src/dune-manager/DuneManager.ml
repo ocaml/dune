@@ -8,7 +8,7 @@ module FDSet = Set.Make (struct
 end)
 
 type t =
-  { root: Path.t
+  { memory: DuneMemory.memory
   ; mutable socket: Unix.file_descr option
   ; mutable clients: FDSet.t }
 
@@ -16,7 +16,8 @@ exception CommandError of string
 
 exception Error of string
 
-let make root : t = {root; socket= None; clients= FDSet.empty}
+let make ?root () : t =
+  {memory= DuneMemory.make ?root (); socket= None; clients= FDSet.empty}
 
 let getsockname = function
   | Unix.ADDR_UNIX _ ->
@@ -42,7 +43,7 @@ let stop manager =
       ()
 
 let run ?(port_f = ignore) ?(port = 0) manager =
-  let memory = DuneMemory.make manager.root in
+  let memory = manager.memory in
   let handle_promote = function
     | Sexp.List [Sexp.Atom "key"; Sexp.Atom key]
       :: Sexp.List (Sexp.Atom "files" :: files)

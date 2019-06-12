@@ -51,7 +51,7 @@ let main () =
   let memory =
     make
       ~log:(Log.create ~path:(Path.of_string "/tmp/log") ())
-      (Path.of_string root)
+      ~root:(Path.of_string root) ()
   in
   match cmd with
   | "promote" ->

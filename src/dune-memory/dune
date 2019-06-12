@@ -1,7 +1,7 @@
 (library
   (name dune_memory)
   (modules DuneMemory Utils)
-  (libraries sexplib stdune))
+  (libraries sexplib stdune xdg))
 
 (executable
   (name main)

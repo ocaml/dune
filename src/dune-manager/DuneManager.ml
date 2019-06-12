@@ -1,23 +1,30 @@
 open Stdune
 open Dune_memory
 
-module FDSet = Set.Make (struct
-  type t = Unix.file_descr
+type version = int * int
 
-  let compare a b = Ordering.of_int (Pervasives.compare a b)
-end)
+type client = {fd: Unix.file_descr; mutable version: version option}
+
+module ClientsKey = struct
+  type t = client
+
+  let compare a b = Ordering.of_int (Pervasives.compare a.fd b.fd)
+  let to_dyn _ = Dyn.Opaque
+end
+
+module Clients = Set.Make (ClientsKey) (Map.Make (ClientsKey))
 
 type t =
   { memory: DuneMemory.memory
   ; mutable socket: Unix.file_descr option
-  ; mutable clients: FDSet.t }
+  ; mutable clients: Clients.t }
 
 exception CommandError of string
 
 exception Error of string
 
 let make ?root () : t =
-  {memory= DuneMemory.make ?root (); socket= None; clients= FDSet.empty}
+  {memory= DuneMemory.make ?root (); socket= None; clients= Clients.empty}
 
 let getsockname = function
   | Unix.ADDR_UNIX _ ->
@@ -37,14 +44,66 @@ let stop manager =
   match manager.socket with
   | Some fd ->
       manager.socket <- None ;
-      ignore (FDSet.iter ~f:(fun fd -> Unix.close fd) manager.clients) ;
+      ignore
+        (Clients.iter ~f:(fun client -> Unix.close client.fd) manager.clients) ;
       Unix.close fd
   | _ ->
       ()
 
+let my_versions : version list = [(2, 0)]
+
+module Int_map = Map.Make (Int)
+
+let find_higest_common_version (a : version list) (b : version list) :
+    version option =
+  let a = Int_map.of_list_exn a and b = Int_map.of_list_exn b in
+  let common =
+    Int_map.merge
+      ~f:(fun _ minor_in_a minor_in_b ->
+        match (minor_in_a, minor_in_b) with
+        | Some a, Some b ->
+            Some (min a b)
+        | _ ->
+            None )
+      a b
+  in
+  Int_map.max_binding common
+
 let run ?(port_f = ignore) ?(port = 0) manager =
   let memory = manager.memory in
-  let handle_promote = function
+  let handle_lang client = function
+    | Sexp.Atom "dune-memory-protocol" :: versions -> (
+        let decode_version = function
+          | Sexp.List [Sexp.Atom major; Sexp.Atom minor] as v -> (
+            try (int_of_string major, int_of_string minor)
+            with Failure _ ->
+              raise
+                (CommandError
+                   (Printf.sprintf
+                      "invalid intergers in lang command version: %s"
+                      (Sexp.to_string v))) )
+          | v ->
+              raise
+                (CommandError
+                   (Printf.sprintf "invalid version in lang command: %s"
+                      (Sexp.to_string v)))
+        in
+        match
+          find_higest_common_version my_versions
+            (List.map ~f:decode_version versions)
+        with
+        | None ->
+            Unix.close client.fd ;
+            raise (CommandError "no compatible versions")
+        | Some (major, minor) as v ->
+            Printf.printf "negotiated version: %i.%i\n%!" major minor ;
+            client.version <- v )
+    | cmd ->
+        raise
+          (CommandError
+             (Printf.sprintf "invalid lang command: %s"
+                (Sexp.to_string (Sexp.List cmd))))
+  and handle_promote = function
     | Sexp.List [Sexp.Atom "key"; Sexp.Atom key]
       :: Sexp.List (Sexp.Atom "files" :: files)
          :: Sexp.List [Sexp.Atom "metadata"; metadata] :: rest as cmd ->
@@ -87,13 +146,18 @@ let run ?(port_f = ignore) ?(port = 0) manager =
              (Printf.sprintf "invalid promotion message: %s"
                 (Sexp.to_string (Sexp.List args))))
   in
-  let handle_cmd = function
+  let handle_cmd client = function
     | Sexp.List (Sexp.Atom cmd :: args) -> (
-      match cmd with
-      | "promote" ->
-          handle_promote args
-      | _ ->
-          raise (CommandError (Printf.sprintf "unknown command: %s" cmd)) )
+        if cmd = "lang" then handle_lang client args
+        else if Option.is_none client.version then (
+          Unix.close client.fd ;
+          raise (CommandError "version was not negotiated") )
+        else
+          match cmd with
+          | "promote" ->
+              handle_promote args
+          | _ ->
+              raise (CommandError (Printf.sprintf "unknown command: %s" cmd)) )
     | cmd ->
         raise
           (CommandError
@@ -119,9 +183,25 @@ let run ?(port_f = ignore) ?(port = 0) manager =
     Unix.listen sock 1024 ;
     while Option.is_some manager.socket do
       let fd, peer = accept () in
+      let client = {fd; version= None} in
       let f () =
         try
-          manager.clients <- FDSet.add manager.clients fd ;
+          let output = Unix.out_channel_of_descr fd in
+          let send sexp =
+            output_string output (Csexp.to_string_canonical sexp) ;
+            (* We need to flush when sending the version. Other
+            instances are more debatable. *)
+            flush output
+          in
+          manager.clients <- Clients.add manager.clients client ;
+          send
+            (Sexp.List
+               ( Sexp.Atom "lang" :: Sexp.Atom "dune-memory-protocol"
+               :: (List.map ~f:(function maj, min ->
+                       Sexp.List
+                         [ Sexp.Atom (string_of_int maj)
+                         ; Sexp.Atom (string_of_int min) ] ))
+                    my_versions )) ;
           Printf.printf "accept client: %s\n%!" (peer_name peer) ;
           let input = Csexp.FDStream.make fd in
           while Option.is_some manager.socket do
@@ -130,18 +210,19 @@ let run ?(port_f = ignore) ?(port = 0) manager =
               ignore (Csexp.FDStream.input_byte input)
             done ;
             let cmd = Parser.parse_stream input in
-            try handle_cmd cmd
+            Printf.printf "received command: %s\n%!" (Sexp.to_string cmd) ;
+            try handle_cmd client cmd
             with CommandError s ->
               Printf.fprintf stderr "Command error: %s\n%!" s
           done
         with
         | End_of_file | Unix.Unix_error (Unix.EBADF, _, _) ->
-            ()
+            Printf.printf "client ended\n%!"
         | Csexp.Parse_error msg ->
             Printf.fprintf stderr "Canonical SExp parse error: %s\n%!" msg
       and finally () =
         (try Unix.close fd with Unix.Unix_error (Unix.EBADF, _, _) -> ()) ;
-        manager.clients <- FDSet.remove manager.clients fd
+        manager.clients <- Clients.remove manager.clients client
       in
       Exn.protect ~f ~finally
     done

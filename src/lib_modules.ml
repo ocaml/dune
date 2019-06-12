@@ -190,12 +190,6 @@ let for_compilation t =
   | None -> t.modules
   | Some alias -> Module.Name_map.add t.modules alias
 
-let has_private_modules t =
-  Module.Name.Map.exists t.modules ~f:Module.is_private
-
-let public_modules t =
-  Module.Name.Map.filter ~f:Module.is_public t.modules
-
 let encode
       { modules
       ; alias_module

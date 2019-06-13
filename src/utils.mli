@@ -12,10 +12,6 @@ val bash_exn : needed_to:string -> Path.t
 (** Convert a signal number to a name: INT, TERM, ... *)
 val signal_name : int -> string
 
-(** Nice description of a target *)
-val describe_target : Path.Build.t -> string
-val describe_path : Path.t -> string
-
 (** Return the directory where the object files for the given
     library should be stored. *)
 val library_object_directory
@@ -37,21 +33,6 @@ val executable_object_directory
   :  dir:Path.Build.t
   -> string
   -> Path.Build.t
-
-type target_kind =
-  | Regular of string (* build context *) * Path.Source.t
-  | Alias   of string (* build context *) * Path.Source.t
-  | Install of string (* build context *) * Path.Source.t
-  | Other of Path.Build.t
-
-type path_kind =
-  | Source of Path.Source.t
-  | External of Path.External.t
-  | Build of target_kind
-
-(** Return the name of an alias from its stamp file *)
-val analyse_target : Path.Build.t -> target_kind
-val analyse_path : Path.t -> path_kind
 
 (** Raise an error about a program not found in the PATH or in the tree *)
 val program_not_found

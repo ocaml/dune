@@ -6,10 +6,12 @@ module Parser = struct
   type nonrec t = string * t list Dune_lang.Decoder.t
 end
 
+let latest_version = (1, 10)
+
 let syntax =
   Syntax.create ~name:"dune" ~desc:"the dune language"
     [ (0, 0) (* Jbuild syntax *)
-    ; (1, 10)
+    ; latest_version
     ]
 
 module File_kind = struct

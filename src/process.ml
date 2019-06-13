@@ -195,7 +195,7 @@ module Fancy = struct
         | [] -> List.rev targets_acc, String.Set.(to_list (of_list ctxs_acc))
         | path :: rest ->
           let add_ctx ctx acc = if ctx = "default" then acc else ctx :: acc in
-          match Utils.analyse_target path with
+          match Dpath.analyse_target path with
           | Other path ->
             split_paths (Path.Build.to_string path :: targets_acc) ctxs_acc rest
           | Regular (ctx, filename) ->

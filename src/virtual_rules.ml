@@ -73,24 +73,21 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
     end
   in
   let copy_all_deps =
-    let all_deps ~obj_dir f =
-      Path.Build.relative obj_dir (Path.basename f ^ ".all-deps") in
-    if Lib.is_local vlib then
+    match Lib.Local.of_lib vlib with
+    | Some vlib ->
+      let vlib_obj_dir = Lib.Local.obj_dir vlib in
       fun m ->
         if Module.is_public m then
           List.iter [Intf; Impl] ~f:(fun kind ->
-            Module.file m kind
+            Module.source m kind
             |> Option.iter ~f:(fun f ->
-              copy_to_obj_dir
-                ~src:(Path.build
-                        (all_deps
-                           ~obj_dir:
-                           (Path.as_in_build_dir_exn
-                              (Obj_dir.obj_dir vlib_obj_dir)) f))
-                ~dst:(all_deps
-                        ~obj_dir:(Obj_dir.obj_dir impl_obj_dir) f))
+              let kind = Obj_dir.Module.Dep.Transitive in
+              let src =
+                Path.build (Obj_dir.Module.dep vlib_obj_dir f ~kind) in
+              let dst = Obj_dir.Module.dep impl_obj_dir f ~kind in
+              copy_to_obj_dir ~src ~dst)
           );
-    else
+    | None ->
       (* we only need to copy the .all-deps files for local libraries. for
          remote libraries, we just use ocamlobjinfo *)
       let vlib_dep_graph = Vimpl.vlib_dep_graph vimpl in
@@ -98,7 +95,7 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
         List.iter [Intf; Impl] ~f:(fun kind ->
           let dep_graph = Ml_kind.Dict.get vlib_dep_graph kind in
           let deps = Dep_graph.deps_of dep_graph m in
-          Module.file m kind |> Option.iter ~f:(fun f ->
+          Module.source m kind |> Option.iter ~f:(fun source ->
             let open Build.O in
             deps >>^ (fun modules ->
               modules
@@ -106,7 +103,7 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
               |> String.concat ~sep:"\n")
             >>>
             Build.write_file_dyn
-              (all_deps ~obj_dir:(Obj_dir.obj_dir impl_obj_dir) f)
+              (Obj_dir.Module.dep impl_obj_dir source ~kind:Transitive)
             |> add_rule))
   in
   Option.iter (Lib_modules.alias_module vlib_modules) ~f:copy_objs;

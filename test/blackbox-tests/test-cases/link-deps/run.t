@@ -12,6 +12,4 @@ file) and be created just before linking.
   5 |   )
   Error: No rule found for .link_deps.eobjs/.byte_objs/link_deps.cmo
       ocamldep .link_deps.eobjs/link_deps.ml.d
-        ocamlc .link_deps.eobjs/byte/link_deps.{cmi,cmo,cmt}
-      ocamlopt .link_deps.eobjs/native/link_deps.{cmx,o}
   [1]

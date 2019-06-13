@@ -3,8 +3,6 @@
         ocamlc lib/.p.objs/byte/p.{cmi,cmo,cmt} [default.foo]
         ocamlc lib/p.cma [default.foo]
       ocamldep bin/.blah.eobjs/blah.ml.d [default.foo]
-        ocamlc bin/.blah.eobjs/byte/blah.{cmi,cmo,cmt} [default.foo]
-      ocamlopt bin/.blah.eobjs/native/blah.{cmx,o} [default.foo]
       ocamldep lib/.p.objs/p.ml.d
         ocamlc lib/.p.objs/byte/p.{cmi,cmo,cmt}
       ocamlopt lib/.p.objs/native/p.{cmx,o}
@@ -18,6 +16,8 @@
       ocamlopt lib/p.{a,cmxa} [default.foo]
       ocamlopt lib/p.cmxs [default.foo]
           blah file [default.foo]
+        ocamlc bin/.blah.eobjs/byte/blah.{cmi,cmo,cmt} [default.foo]
+      ocamlopt bin/.blah.eobjs/native/blah.{cmx,o} [default.foo]
       ocamlopt bin/blah.exe [default.foo]
   $ cat _build/default.foo/file
   42

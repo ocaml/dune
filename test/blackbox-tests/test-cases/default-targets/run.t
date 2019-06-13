@@ -1,10 +1,10 @@
 Generates targets when modes is set for binaries:
   $ dune build --root bins --display short @all 2>&1 | grep '\.bc\|\.exe'
-      ocamlopt byteandnative.exe
-        ocamlc bytecodeonly.exe
-      ocamlopt nativeonly.exe
         ocamlc byteandnative.bc
         ocamlc bytecodeonly.bc
+      ocamlopt nativeonly.exe
+      ocamlopt byteandnative.exe
+        ocamlc bytecodeonly.exe
 
 Generate targets when modes are set for libraries
 

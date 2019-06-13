@@ -10,20 +10,20 @@
   $ dune runtest --root plural --display short
   Entering directory 'plural'
       ocamldep .expect_test.eobjs/expect_test.ml.d
-        ocamlc .expect_test.eobjs/byte/expect_test.{cmi,cmo,cmt}
-      ocamlopt .expect_test.eobjs/native/expect_test.{cmx,o}
       ocamldep .expect_test.eobjs/regular_test.ml.d
-        ocamlc .expect_test.eobjs/byte/regular_test.{cmi,cmo,cmt}
-      ocamlopt .expect_test.eobjs/native/regular_test.{cmx,o}
       ocamldep .expect_test.eobjs/regular_test2.ml.d
         ocamlc .expect_test.eobjs/byte/regular_test2.{cmi,cmo,cmt}
       ocamlopt .expect_test.eobjs/native/regular_test2.{cmx,o}
       ocamlopt regular_test2.exe
   regular_test2 alias runtest
   regular test2
+        ocamlc .expect_test.eobjs/byte/regular_test.{cmi,cmo,cmt}
+      ocamlopt .expect_test.eobjs/native/regular_test.{cmx,o}
       ocamlopt regular_test.exe
   regular_test alias runtest
   regular test
+        ocamlc .expect_test.eobjs/byte/expect_test.{cmi,cmo,cmt}
+      ocamlopt .expect_test.eobjs/native/expect_test.{cmx,o}
       ocamlopt expect_test.exe
    expect_test expect_test.output
   $ dune runtest --root generated --display short

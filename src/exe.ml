@@ -148,9 +148,20 @@ let link_exe
   SC.add_rule sctx ~loc ~dir
     (let ocaml_flags = Ocaml_flags.get (CC.flags cctx) mode in
      let top_sorted_cms = Cm_files.top_sorted_cms cm_files ~mode in
-     Cm_files.unsorted_objects_and_cms cm_files ~mode
-     |> Build.paths
-     >>^ ignore
+     let prefix =
+       let dune_version =
+         let scope = CC.scope cctx in
+         let project = Scope.project scope in
+         Dune_project.dune_version project
+       in
+       if dune_version >= (2, 0) then
+         Cm_files.unsorted_objects_and_cms cm_files ~mode
+         |> Build.paths
+         >>^ ignore
+       else
+         Build.return ()
+     in
+     prefix
      >>>
      Build.S.seq (Build.of_result_map requires ~f:(fun libs ->
        Build.paths (Lib.L.archive_files libs ~mode)))

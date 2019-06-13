@@ -6,11 +6,9 @@ Formatting can be checked using the @fmt target:
   $ dune build --display short @fmt
           dune enabled/dune-ocaml-syntax/.formatted/dune
       ocamldep fake-tools/.ocamlformat.eobjs/ocamlformat.ml.d
+      ocamldep fake-tools/.ocamlformat.eobjs/refmt.ml.d
         ocamlc fake-tools/.ocamlformat.eobjs/byte/ocamlformat.{cmi,cmo,cmt}
       ocamlopt fake-tools/.ocamlformat.eobjs/native/ocamlformat.{cmx,o}
-      ocamldep fake-tools/.ocamlformat.eobjs/refmt.ml.d
-        ocamlc fake-tools/.ocamlformat.eobjs/byte/refmt.{cmi,cmo,cmt}
-      ocamlopt fake-tools/.ocamlformat.eobjs/native/refmt.{cmx,o}
       ocamlopt fake-tools/ocamlformat.exe
    ocamlformat enabled/.formatted/ocaml_file.ml
   File "enabled/ocaml_file.ml", line 1, characters 0-0:
@@ -21,6 +19,8 @@ Formatting can be checked using the @fmt target:
           dune enabled/subdir/.formatted/dune
   File "enabled/subdir/dune", line 1, characters 0-0:
   Files _build/default/enabled/subdir/dune and _build/default/enabled/subdir/.formatted/dune differ.
+        ocamlc fake-tools/.ocamlformat.eobjs/byte/refmt.{cmi,cmo,cmt}
+      ocamlopt fake-tools/.ocamlformat.eobjs/native/refmt.{cmx,o}
       ocamlopt fake-tools/refmt.exe
          refmt enabled/.formatted/reason_file.rei
   File "enabled/reason_file.rei", line 1, characters 0-0:

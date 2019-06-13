@@ -917,9 +917,9 @@ The following targets are not:
     val allowed_by_parent
       : dir:Path.Build.t -> restriction
 
-    (** Used by the parent to check what are the subdirs that it's forbidden
-        from generating rules in. *)
-    val is_forbidden_generated_subdir :
+    (** Used by the parent to check what are the subdirs that it's allowed
+        to generate rules in. *)
+    val is_allowed_to_generate_rules_in :
       dir:Path.Build.t -> subdir:Path.Build.t -> bool
 
   end = struct
@@ -942,24 +942,24 @@ The following targets are not:
       | Some dir ->
         File_tree.Dir.sub_dir_names dir
 
-    let is_forbidden_generated_subdir ~dir ~subdir =
+    let is_allowed_to_generate_rules_in ~dir ~subdir =
       match Path.Local_gen.descendant ~of_:dir subdir with
-      | None -> false
+      | None -> true
       | Some reach ->
         match Path.Local_gen.split_first_component reach with
         | None ->
           (* allowed to generate rules inside itself *)
-          false
+          true
         | Some (child, _) ->
           if Option.is_none (
             corresponding_source_dir ~dir:(Path.Local_gen.relative dir child))
           then
             (* allowed to generate directories inside itself *)
-            false
+            true
           else
             (* allowed to generate rules in child directories as long as the
                directory itself is not generated *)
-            Option.is_none (corresponding_source_dir ~dir:subdir)
+            Option.is_some (corresponding_source_dir ~dir:subdir)
 
     let allowed_dirs ~dir ~subdir : restriction =
       if String.Set.mem (source_subdirs_of_build_dir ~dir) subdir
@@ -1145,11 +1145,11 @@ The following targets are not:
     let violations =
       Path.Build.Map.filter_mapi (Rules.to_map rules_produced)
         ~f:(fun key data ->
-          let forbidden =
-            Generated_directory_restrictions.is_forbidden_generated_subdir
+          let allowed =
+            Generated_directory_restrictions.is_allowed_to_generate_rules_in
               ~dir ~subdir:key
           in
-          if forbidden
+          if not allowed
           then
             Some data
           else

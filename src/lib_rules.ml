@@ -26,7 +26,8 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
 
   let build_lib (lib : Library.t) ~obj_dir ~expander ~flags ~dir ~mode
         ~top_sorted_modules ~modules =
-    let kind = Mode.cm_kind mode in
+    let cm_files =
+      Cm_files.make_lib ~obj_dir ~ext_obj:ctx.ext_obj ~modules ~top_sorted_modules in
     Option.iter (Context.compiler ctx mode) ~f:(fun compiler ->
       let target = Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext mode) in
       let stubs_flags =
@@ -45,17 +46,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
         else
           Fn.id
       in
-      let cm_files = Obj_dir.Module.L.cm_files obj_dir ~kind in
-      let obj_deps =
-        let obj_deps = Build.paths (cm_files modules) in
-        match mode with
-        | Byte   -> obj_deps
-        | Native ->
-          obj_deps >>>
-          Build.paths (
-            Obj_dir.Module.L.o_files obj_dir modules ~ext_obj:ctx.ext_obj)
-      in
-      let cm_files = top_sorted_modules >>^ cm_files in
+      let obj_deps = Build.paths (Cm_files.unsorted_objects_and_cms cm_files ~mode) in
       let ocaml_flags = Ocaml_flags.get flags mode in
       let cclibs = Expander.expand_and_eval_set expander lib.c_library_flags
                      ~standard:(Build.return []) in
@@ -74,7 +65,9 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
               ; As (match lib.kind with
                   | Normal -> []
                   | Ppx_deriver _ | Ppx_rewriter _ -> ["-linkall"])
-              ; Dyn (Build.S.map cm_files ~f:(fun x -> Command.Args.Deps x))
+              ; Dyn (
+                  Cm_files.top_sorted_cms cm_files ~mode
+                  |> Build.S.map ~f:(fun x -> Command.Args.Deps x))
               ; Hidden_targets
                   (match mode with
                    | Byte -> []

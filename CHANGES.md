@@ -1,5 +1,12 @@
-unreleased
-----------
+2.0.0 (unreleased)
+------------------
+
+- Build `.cm[ox]` files for executables more eagerly. This speeds up builds at
+  the cost of building unnecessary artifacts in some cases. Some of these extra
+  artifacts can fail to built, so this is a breaking change. (#2268, @rgrinberg)
+
+1.11.0 (unreleased)
+-------------------
 
 - Don't reserve the `Ppx` toplevel module name for ppx rewriters (#...., @diml)
 

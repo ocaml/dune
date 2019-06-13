@@ -134,25 +134,35 @@ let link_exe
   let exe = exe_path_from_name cctx ~name ~linkage in
   let compiler = Option.value_exn (Context.compiler ctx mode) in
   let kind = Mode.cm_kind mode in
+  let cm_files =
+    let modules = CC.modules cctx in
+    Cm_files.make_exe ~obj_dir ~modules ~top_sorted_modules
+      ~ext_obj:ctx.ext_obj
+  in
   let modules_and_cm_files =
     Build.memoize "cm files"
       (top_sorted_modules >>^ fun modules ->
        (modules,
         Obj_dir.Module.L.cm_files obj_dir modules ~kind))
   in
-  let register_native_objs_deps build =
-    match mode with
-    | Byte -> build
-    | Native ->
-      build >>>
-      Build.dyn_paths (Build.arr (fun (modules, _) ->
-        Obj_dir.Module.L.o_files obj_dir modules ~ext_obj:ctx.ext_obj))
-  in
-  (* The rule *)
   SC.add_rule sctx ~loc ~dir
-    (let cm_files    = register_native_objs_deps modules_and_cm_files >>^ snd in
-     let ocaml_flags = Ocaml_flags.get (CC.flags cctx) mode
+    (let ocaml_flags = Ocaml_flags.get (CC.flags cctx) mode in
+     let top_sorted_cms = Cm_files.top_sorted_cms cm_files ~mode in
+     let prefix =
+       let dune_version =
+         let scope = CC.scope cctx in
+         let project = Scope.project scope in
+         Dune_project.dune_version project
+       in
+       if dune_version >= (2, 0) then
+         Cm_files.unsorted_objects_and_cms cm_files ~mode
+         |> Build.paths
+         >>^ ignore
+       else
+         Build.return ()
      in
+     prefix
+     >>>
      Build.S.seq (Build.of_result_map requires ~f:(fun libs ->
        Build.paths (Lib.L.archive_files libs ~mode)))
        (Command.run ~dir:(Path.build ctx.build_dir)
@@ -167,7 +177,7 @@ let link_exe
                   ; Lib.Lib_and_module.L.link_flags to_link ~mode
                       ~stdlib_dir:ctx.stdlib_dir
                   ])
-          ; Dyn (Build.S.map cm_files ~f:(fun x -> Command.Args.Deps x))
+          ; Dyn (Build.S.map top_sorted_cms ~f:(fun x -> Command.Args.Deps x))
           ]));
   if linkage.ext = ".bc" then
     let cm = modules_and_cm_files >>^ snd in

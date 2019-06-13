@@ -15,6 +15,12 @@
   Introducing a new `external_variant` stanza. (#2169, fixes #2134, @TheLortex,
   review by @diml)
 
+- Add proper line directives when copying `.cc` and `.cxx` sources (#2275,
+  @rgrinberg)
+
+- Fix error message for missing C++ sources. The `.cc` extension was always
+  ignored before. (#2275, @rgrinberg)
+
 1.10.0 (04/06/2019)
 -------------------
 

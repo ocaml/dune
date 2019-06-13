@@ -272,7 +272,7 @@ let expand_and_record acc ~map_exe ~dep_kind ~scope
         Artifacts.Public_libs.file_of_lib t.lib_artifacts ~loc ~lib:lib_dep ~file
       with
       | Ok path -> Some (path_exp path)
-      | Error fail -> Resolved_forms.add_fail acc fail
+      | Error e -> Resolved_forms.add_fail acc { fail = fun () -> raise e }
     end
   | Macro (Libexec, s) -> begin
       let lib_dep, file = parse_lib_file ~loc s in
@@ -280,7 +280,7 @@ let expand_and_record acc ~map_exe ~dep_kind ~scope
       match
         Artifacts.Public_libs.file_of_lib t.lib_artifacts ~loc ~lib:lib_dep ~file
       with
-      | Error fail -> Resolved_forms.add_fail acc fail
+      | Error e -> Resolved_forms.add_fail acc { fail = fun () -> raise e }
       | Ok path ->
         if not Sys.win32 || Filename.extension s = ".exe" then begin
           Some (path_exp path)

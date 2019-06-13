@@ -86,6 +86,8 @@ module File = struct
     ; syntax : Syntax.t
     }
 
+  let path t = t.path
+
   let set_src_dir t ~src_dir =
     let path = Path.relative src_dir (Path.basename t.path) in
     { t with path }
@@ -254,13 +256,14 @@ let is_public t = Visibility.is_public t.visibility
 let is_private t = Visibility.is_private t.visibility
 let is_virtual t = Kind.is_virtual t.kind
 
+let source t (kind : Ml_kind.t) =
+  match kind with
+  | Impl -> t.source.impl
+  | Intf -> t.source.intf
+
 let file t (kind : Ml_kind.t) =
-  let file =
-    match kind with
-    | Impl -> t.source.impl
-    | Intf -> t.source.intf
-  in
-  Option.map file ~f:(fun f -> f.path)
+  source t kind
+  |> Option.map ~f:File.path
 
 let obj_name t = t.obj_name
 

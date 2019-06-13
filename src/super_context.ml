@@ -523,10 +523,7 @@ module Libs = struct
            let src = Path.build (Path.Build.relative dir src_fn) in
            Build.copy_and_add_line_directive ~src ~dst
          | Error e ->
-           Build.fail ~targets:[dst]
-             { fail = fun () ->
-                 raise (Lib.Error (No_solution_found_for_select e))
-             }))
+           Build.fail ~targets:[dst] { fail = fun () -> raise e }))
 
   let with_lib_deps t compile_info ~dir ~f =
     let prefix =

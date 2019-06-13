@@ -19,6 +19,8 @@ We need ocamlfind to run this test
       ocamldep root/.pas_de_bol.objs/a.ml.d
   File ".../plop/META", line 1, characters 0-0:
   Error: Library "une-lib-qui-nexiste-pas" not found.
-  -> required by library "plop.ca-marche-pas" in .../plop
-  Hint: try: dune external-lib-deps --missing --display short --only pas-de-bol @install
+  -> required by library "plop.ca-marche-pas" in
+     .../plop
+  Hint: try: dune external-lib-deps --missing --display short --only pas-de-bol
+    @install
       ocamldep root/.pas_de_bol.objs/b.ml.d

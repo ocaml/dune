@@ -24,7 +24,7 @@ module Error = struct
       (User_error.E
          (User_error.make ?loc ?hints paragraphs))
 
-  let pp_lib (info : Lib_info.t) =
+  let pp_lib (info : _ Lib_info.t) =
     Pp.textf "%S in %s"
       (Lib_name.to_string info.name)
       (Path.to_string_maybe_quoted info.src_dir)
@@ -67,11 +67,11 @@ module Error = struct
     make
       [ Pp.text "Default implementation cycle detected between the \
                  following libraries:"
-      ; Pp.chain cycle ~f:(fun (info : Lib_info.t) ->
+      ; Pp.chain cycle ~f:(fun (info : _ Lib_info.t) ->
           Pp.textf "%S" (Lib_name.to_string info.name))
       ]
 
-  let multiple_implementations_for_virtual_lib ~loc ~(lib : Lib_info.t)
+  let multiple_implementations_for_virtual_lib ~loc ~(lib : _ Lib_info.t)
         ~given_variants ~conflict =
     make ~loc
       [ Pp.textf "Multiple solutions for the implementation of %S%s%s:"
@@ -86,7 +86,7 @@ module Error = struct
            | [] -> ""
            | [v] -> sprintf "with variant %s" v
            | vs -> sprintf " with variants %s" (String.enumerate_and vs))
-      ; Pp.enumerate conflict ~f:(fun (lib : Lib_info.t) ->
+      ; Pp.enumerate conflict ~f:(fun (lib : _ Lib_info.t) ->
           Pp.seq
             (pp_lib lib)
             (match lib.variant with
@@ -144,7 +144,7 @@ module Error = struct
             (Path.to_string_maybe_quoted dir))
       ]
 
-  let private_deps_not_allowed ~loc (private_dep : Lib_info.t) =
+  let private_deps_not_allowed ~loc (private_dep : _ Lib_info.t) =
     make ~loc
       [ Pp.textf "Library %S is private, it cannot be a dependency of \
                   a public library."
@@ -245,7 +245,7 @@ end
 
 module T = struct
   type t =
-    { info              : Lib_info.t
+    { info              : Lib_info.external_
     ; name              : Lib_name.t
     ; unique_id         : Id.t
     ; requires          : t list Or_exn.t
@@ -288,8 +288,8 @@ type db =
 
 and resolve_result =
   | Not_found
-  | Found    of Lib_info.t
-  | Hidden   of Lib_info.t * string
+  | Found    of Lib_info.external_
+  | Hidden   of Lib_info.external_ * string
   | Redirect of db option * Lib_name.t
 
 type lib = t
@@ -582,7 +582,7 @@ let check_private_deps lib ~loc ~allow_private_deps =
   else
     Ok lib
 
-let already_in_table (info : Lib_info.t) name x =
+let already_in_table (info : _ Lib_info.t) name x =
   let to_sexp = Sexp.Encoder.(pair Path.to_sexp Lib_name.to_sexp) in
   let sexp =
     match x with
@@ -755,7 +755,7 @@ module Vlib_visit : sig
   val visit
     :  t
     -> lib
-    -> stack:Lib_info.t list
+    -> stack:Lib_info.external_ list
     -> f:(lib -> unit Or_exn.t)
     -> unit Or_exn.t
 end = struct
@@ -809,7 +809,7 @@ let find_implementation_for lib ~variants =
         ~given_variants:variants_set
         ~conflict
 
-let rec instantiate db name (info : Lib_info.t) ~stack ~hidden =
+let rec instantiate db name (info : _ Lib_info.t) ~stack ~hidden =
   let id, stack =
     Dep_stack.create_and_push stack name info.src_dir
   in
@@ -1302,8 +1302,8 @@ module DB = struct
   module Resolve_result = struct
     type t = resolve_result =
       | Not_found
-      | Found    of Lib_info.t
-      | Hidden   of Lib_info.t * string
+      | Found    of Lib_info.external_
+      | Hidden   of Lib_info.external_ * string
       | Redirect of db option * Lib_name.t
   end
 
@@ -1407,7 +1407,10 @@ module DB = struct
           | Error (variant, x, y) ->
             error_two_impl_for_variant (snd conf.name) variant x y
         in
-        let info = Lib_info.of_library_stanza ~dir ~lib_config variants conf in
+        let info =
+          Lib_info.of_library_stanza ~dir ~lib_config variants conf
+          |> Lib_info.to_external
+        in
         match conf.public with
         | None ->
           [Dune_file.Library.best_name conf, Resolve_result.Found info]

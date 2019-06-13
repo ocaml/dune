@@ -18,7 +18,7 @@ val obj_dir : t -> Path.t Obj_dir.t
 (** Same as [Path.is_managed (obj_dir t)] *)
 val is_local : t -> bool
 
-val info : t -> Lib_info.t
+val info : t -> Path.t Lib_info.t
 
 val main_module_name : t -> Module.Name.t option Or_exn.t
 val wrapped : t -> Wrapped.t option Or_exn.t
@@ -144,8 +144,8 @@ module DB : sig
   module Resolve_result : sig
     type nonrec t =
       | Not_found
-      | Found    of Lib_info.t
-      | Hidden   of Lib_info.t * string
+      | Found    of Lib_info.external_
+      | Hidden   of Lib_info.external_ * string
       | Redirect of t option * Lib_name.t
   end
 

@@ -49,6 +49,11 @@ module Source = struct
   type 'a t =
     | Local
     | External of 'a
+
+  let map t ~f =
+    match t with
+    | Local -> Local
+    | External a -> External (f a)
 end
 
 module Enabled_status = struct
@@ -58,22 +63,22 @@ module Enabled_status = struct
     | Disabled_because_of_enabled_if
 end
 
-type t =
+type 'path t =
   { loc              : Loc.t
   ; name             : Lib_name.t
   ; kind             : Lib_kind.t
   ; status           : Status.t
-  ; src_dir          : Path.t
-  ; orig_src_dir     : Path.t option
-  ; obj_dir          : Path.t Obj_dir.t
+  ; src_dir          : 'path
+  ; orig_src_dir     : 'path option
+  ; obj_dir          : 'path Obj_dir.t
   ; version          : string option
   ; synopsis         : string option
-  ; archives         : Path.t list Mode.Dict.t
-  ; plugins          : Path.t list Mode.Dict.t
-  ; foreign_objects  : Path.t list Source.t
-  ; foreign_archives : Path.t list Mode.Dict.t
-  ; jsoo_runtime     : Path.t list
-  ; jsoo_archive     : Path.t option
+  ; archives         : 'path list Mode.Dict.t
+  ; plugins          : 'path list Mode.Dict.t
+  ; foreign_objects  : 'path list Source.t
+  ; foreign_archives : 'path list Mode.Dict.t (** [.a/.lib/...] files *)
+  ; jsoo_runtime     : 'path list
+  ; jsoo_archive     : 'path option
   ; requires         : Deps.t
   ; ppx_runtime_deps : (Loc.t * Lib_name.t) list
   ; pps              : (Loc.t * Lib_name.t) list
@@ -103,19 +108,16 @@ let of_library_stanza ~dir
       (known_implementations : (Loc.t * Lib_name.t) Variant.Map.t)
       (conf : Dune_file.Library.t) =
   let (_loc, lib_name) = conf.name in
-  let obj_dir =
-    Dune_file.Library.obj_dir ~dir conf
-    |> Obj_dir.of_local
-  in
+  let obj_dir = Dune_file.Library.obj_dir ~dir conf in
   let gen_archive_file ~dir ext =
-    Path.relative dir (Lib_name.Local.to_string lib_name ^ ext) in
-  let archive_file = gen_archive_file ~dir:(Path.build dir) in
+    Path.Build.relative dir (Lib_name.Local.to_string lib_name ^ ext) in
+  let archive_file = gen_archive_file ~dir in
   let archive_files ~f_ext =
     Mode.Dict.of_func (fun ~mode -> [archive_file (f_ext mode)])
   in
   let jsoo_runtime =
     List.map conf.buildable.js_of_ocaml.javascript_files
-      ~f:(Path.relative (Path.build dir))
+      ~f:(Path.Build.relative dir)
   in
   let status =
     match conf.public with
@@ -126,14 +128,14 @@ let of_library_stanza ~dir
   let foreign_archives =
     let stubs =
       if Dune_file.Library.has_stubs conf then
-        [Path.build (Dune_file.Library.stubs_archive conf ~dir ~ext_lib)]
+        [Dune_file.Library.stubs_archive conf ~dir ~ext_lib]
       else
         []
     in
     { Mode.Dict.
        byte   = stubs
      ; native =
-         Path.relative (Path.build dir)
+         Path.Build.relative dir
            (Lib_name.Local.to_string lib_name ^ ext_lib)
          :: stubs
      }
@@ -142,14 +144,14 @@ let of_library_stanza ~dir
     match conf.stdlib with
     | Some { exit_module = Some m; _ } ->
       let obj_name =
-        Path.relative (Path.build dir) (Module.Name.uncapitalize m) in
+        Path.Build.relative dir (Module.Name.uncapitalize m) in
       { Mode.Dict.
         byte =
-          Path.extend_basename obj_name ~suffix:(Cm_kind.ext Cmo) ::
+          Path.Build.extend_basename obj_name ~suffix:(Cm_kind.ext Cmo) ::
           foreign_archives.byte
       ; native =
-          Path.extend_basename obj_name ~suffix:(Cm_kind.ext Cmx) ::
-          Path.extend_basename obj_name ~suffix:ext_obj ::
+          Path.Build.extend_basename obj_name ~suffix:(Cm_kind.ext Cmx) ::
+          Path.Build.extend_basename obj_name ~suffix:ext_obj ::
           foreign_archives.native
       }
     | _ -> foreign_archives
@@ -191,7 +193,7 @@ let of_library_stanza ~dir
   { loc = conf.buildable.loc
   ; name
   ; kind     = conf.kind
-  ; src_dir  = Path.build dir
+  ; src_dir  = dir
   ; orig_src_dir = None
   ; obj_dir
   ; version  = None
@@ -269,3 +271,22 @@ let of_dune_lib dp =
   }
 
 let orig_src_dir t = Option.value ~default:t.src_dir t.orig_src_dir
+
+type external_ = Path.t t
+type local = Path.Build.t t
+
+let to_external t =
+  let f = Path.build in
+  let list = List.map ~f in
+  let mode_list = Mode.Dict.map ~f:list in
+  { t with
+    src_dir = Path.build t.src_dir
+  ; orig_src_dir = Option.map ~f t.orig_src_dir
+  ; obj_dir = Obj_dir.of_local t.obj_dir
+  ; archives = mode_list t.archives
+  ; plugins = mode_list t.plugins
+  ; foreign_objects = Source.map ~f:(List.map ~f) t.foreign_objects
+  ; foreign_archives = mode_list t.foreign_archives
+  ; jsoo_runtime = List.map ~f t.jsoo_runtime
+  ; jsoo_archive = Option.map ~f t.jsoo_archive
+  }

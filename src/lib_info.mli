@@ -38,22 +38,22 @@ module Enabled_status : sig
     | Disabled_because_of_enabled_if
 end
 
-type t = private
+type 'path t = private
   { loc              : Loc.t
   ; name             : Lib_name.t
   ; kind             : Lib_kind.t
   ; status           : Status.t
-  ; src_dir          : Path.t
-  ; orig_src_dir     : Path.t option
-  ; obj_dir          : Path.t Obj_dir.t
+  ; src_dir          : 'path
+  ; orig_src_dir     : 'path option
+  ; obj_dir          : 'path Obj_dir.t
   ; version          : string option
   ; synopsis         : string option
-  ; archives         : Path.t list Mode.Dict.t
-  ; plugins          : Path.t list Mode.Dict.t
-  ; foreign_objects  : Path.t list Source.t
-  ; foreign_archives : Path.t list Mode.Dict.t (** [.a/.lib/...] files *)
-  ; jsoo_runtime     : Path.t list
-  ; jsoo_archive     : Path.t option
+  ; archives         : 'path list Mode.Dict.t
+  ; plugins          : 'path list Mode.Dict.t
+  ; foreign_objects  : 'path list Source.t
+  ; foreign_archives : 'path list Mode.Dict.t (** [.a/.lib/...] files *)
+  ; jsoo_runtime     : 'path list
+  ; jsoo_archive     : 'path option
   ; requires         : Deps.t
   ; ppx_runtime_deps : (Loc.t * Lib_name.t) list
   ; pps              : (Loc.t * Lib_name.t) list
@@ -72,20 +72,25 @@ type t = private
   ; special_builtin_support : Dune_file.Library.Special_builtin_support.t option
   }
 
+type external_ = Path.t t
+type local = Path.Build.t t
+
 val of_library_stanza
   :  dir:Path.Build.t
   -> lib_config:Lib_config.t
   -> (Loc.t * Lib_name.t) Variant.Map.t
   -> Dune_file.Library.t
-  -> t
+  -> local
 
-val user_written_deps : t -> Dune_file.Lib_deps.t
+val user_written_deps : _ t -> Dune_file.Lib_deps.t
 
 val of_dune_lib
   :  Sub_system_info.t Dune_package.Lib.t
-  -> t
+  -> external_
+
+val to_external : local -> external_
 
 (* CR-someday diml: this should be [Path.t list], since some libraries
    have multiple source directories because of [copy_files]. *)
 (** Directory where the source files for the library are located. *)
-val orig_src_dir : t -> Path.t
+val orig_src_dir : 'path t -> 'path

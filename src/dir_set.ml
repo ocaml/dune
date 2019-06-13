@@ -135,7 +135,7 @@ let of_subtree_gen =
         ~default:false
         ~exceptions:(String.Map.singleton component (loop subtree rest))
   in
-  fun subtree path -> loop subtree (Path.Local_gen.explode path)
+  loop
 
 let just_the_root =
   Nontrivial
@@ -144,8 +144,11 @@ let just_the_root =
     ; exceptions = String.Map.empty
     }
 
-let subtree p = of_subtree_gen universal p
-let singleton p = of_subtree_gen just_the_root p
+let subtree' = of_subtree_gen universal
+let singleton' = of_subtree_gen just_the_root
+
+let subtree p = subtree' (Path.Local_gen.explode p)
+let singleton p = singleton' (Path.Local_gen.explode p)
 
 let rec is_subset t ~of_ =
   match t, of_ with
@@ -171,4 +174,24 @@ let rec to_sexp t = match t with
          | true -> [("*", Sexp.Atom "Universal")]))
       |> List.map ~f:(fun (k, v) -> Sexp.List [Sexp.Atom k; v]))
 
+let to_dyn t : Dyn.t = Sexp (to_sexp t)
+
 let forget_root t = t
+
+type toplevel_subdirs =
+  | Infinite
+  | Finite of String.Set.t
+
+let toplevel_subdirs t = match t with
+  | Universal -> Infinite
+  | Empty -> Finite (String.Set.empty)
+  | Nontrivial t ->
+    if t.default then Infinite
+    else
+      Finite (String.Set.of_list (String.Map.keys t.exceptions))
+
+let of_list paths =
+  union_all (
+    (List.map paths
+       ~f:(fun p ->
+         singleton' (Path.Local_gen.explode p))))

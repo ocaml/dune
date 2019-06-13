@@ -29,6 +29,8 @@ module Subdir_set : sig
 
   val union : t -> t -> t
 
+  val union_all : t list -> t
+
   val mem : t -> string -> bool
 end
 

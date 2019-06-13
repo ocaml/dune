@@ -53,6 +53,12 @@ val exceptions : 'w t -> Path.Local.w t String.Map.t
     component is not in [exceptions t], [mem t p = default t]. *)
 val default : 'w t -> bool
 
+val create :
+  default:bool
+  -> here:bool
+  -> exceptions:Path.Unspecified.w t String.Map.t
+  -> Path.Unspecified.w t
+
 (** [singleton p] is the set containing only [p] *)
 val singleton : 'w Path.Local_gen.t -> 'w t
 
@@ -69,5 +75,16 @@ val diff : 'w t -> 'w t -> 'w t
 val negate : 'w t -> 'w t
 
 val to_sexp : 'w t -> Sexp.t
+val to_dyn : 'w t -> Dyn.t
 
-val forget_root : 'w t -> Path.Local.w t
+val forget_root : 'w t -> Path.Unspecified.w t
+
+type toplevel_subdirs =
+  | Infinite
+  | Finite of String.Set.t
+
+val toplevel_subdirs : 'w t -> toplevel_subdirs
+
+val of_list : 'w Path.Local_gen.t list -> 'w t
+
+val just_the_root : 'w t

@@ -92,7 +92,7 @@ module Lib = struct
         } =
     let open Dune_lang.Encoder in
     let no_loc f (_loc, x) = f x in
-    let path = Path_dune_lang.Local.encode ~dir:package_root in
+    let path = Dpath.Local.encode ~dir:package_root in
     let paths name f = field_l name path f in
     let mode_paths name (xs : Path.t Mode.Dict.List.t) =
       field_l name sexp (Mode.Dict.List.encode path xs) in
@@ -131,7 +131,7 @@ module Lib = struct
 
   let decode ~base =
     let open Stanza.Decoder in
-    let path = Path_dune_lang.Local.decode ~dir:base in
+    let path = Dpath.Local.decode ~dir:base in
     let field_l s x = field ~default:[] s (list x) in
     let libs s = field_l s (located Lib_name.decode) in
     let paths s = field_l s path in

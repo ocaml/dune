@@ -26,7 +26,7 @@ let pp fmt t = Dyn.pp fmt (to_dyn t)
 let encode { dir; predicate } =
   let open Dune_lang.Encoder in
   record
-    [ "dir", Path_dune_lang.encode dir
+    [ "dir", Dpath.encode dir
     ; "predicate", Predicate.encode predicate
     ]
 

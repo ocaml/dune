@@ -47,7 +47,7 @@ let print_rule_sexp ppf (rule : Build_system.Rule.t) =
     Action.for_shell action |> Action.For_shell.encode
   in
   let paths ps =
-    Dune_lang.Encoder.list Path_dune_lang.encode (Path.Set.to_list ps)
+    Dune_lang.Encoder.list Dpath.encode (Path.Set.to_list ps)
   in
   let sexp =
     Dune_lang.Encoder.record (

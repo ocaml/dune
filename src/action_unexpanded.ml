@@ -23,7 +23,7 @@ let check_mkdir loc path =
       "(mkdir ...) is not supported for paths outside of the workspace:\n\
       \  %a\n"
       (Dune_lang.pp Dune)
-      (List [Dune_lang.unsafe_atom_of_string "mkdir"; Path_dune_lang.encode path])
+      (List [Dune_lang.unsafe_atom_of_string "mkdir"; Dpath.encode path])
 
 module Partial = struct
   module Program = Unresolved.Program

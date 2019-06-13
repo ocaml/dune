@@ -72,10 +72,10 @@ module Prog = struct
   type t = (Path.t, Not_found.t) result
 
   let decode : t Dune_lang.Decoder.t =
-    Dune_lang.Decoder.map Path_dune_lang.decode ~f:Result.ok
+    Dune_lang.Decoder.map Dpath.decode ~f:Result.ok
 
   let encode = function
-    | Ok s -> Path_dune_lang.encode s
+    | Ok s -> Dpath.encode s
     | Error (e : Not_found.t) -> Dune_lang.Encoder.string e.program
 end
 
@@ -91,7 +91,7 @@ module String_with_sexp = struct
   let encode = Dune_lang.Encoder.string
 end
 
-include Action_ast.Make(Prog)(Path_dune_lang)(String_with_sexp)(Ast)
+include Action_ast.Make(Prog)(Dpath)(String_with_sexp)(Ast)
 type program = Prog.t
 type path = Path.t
 type string = String.t

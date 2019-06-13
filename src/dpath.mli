@@ -18,3 +18,11 @@ val analyse_path : Path.t -> path_kind
 (** Nice description of a target *)
 val describe_target : Path.Build.t -> string
 val describe_path : Path.t -> string
+
+include Dune_lang.Conv with type t = Path.t
+
+module Local : sig
+  val encode : dir:Path.t -> Path.t Dune_lang.Encoder.t
+
+  val decode : dir:Path.t -> Path.t Dune_lang.Decoder.t
+end

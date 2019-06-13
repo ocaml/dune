@@ -83,5 +83,5 @@ module Or_meta : sig
     -> (Syntax.Version.t * Dune_lang.t list) t
     -> Dune_lang.t list
 
-  val load : Path_dune_lang.t -> Sub_system_info.t t
+  val load : Dpath.t -> Sub_system_info.t t
 end

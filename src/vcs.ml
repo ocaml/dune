@@ -48,7 +48,7 @@ module T = struct
   let decode =
     let open Stanza.Decoder in
     record
-      (let+ root = field "root" Path_dune_lang.decode
+      (let+ root = field "root" Dpath.decode
        and+ kind = field "kind" Kind.decode
        in
        { root; kind })

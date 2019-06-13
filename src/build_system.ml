@@ -1576,7 +1576,7 @@ end = struct
       ~output:(Allow_cutoff (module Unit))
       ~doc:"Build a file."
       ~input:(module Path)
-      ~visibility:(Public Path_dune_lang.decode)
+      ~visibility:(Public Dpath.decode)
       Async
       build_file_impl
 

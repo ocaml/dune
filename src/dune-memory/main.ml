@@ -93,6 +93,10 @@ let main () =
               (search memory
                  (key (* FIXME: consumed files *) [] metadata
                     (* FIXME: produced files *) []))))
+  | "trim" ->
+      let freed, files = trim memory 1 in
+      Printf.printf "freed %i bytes\n" freed ;
+      List.iter ~f:(fun p -> Printf.printf "%s\n" (Path.to_string p)) files
   | _ ->
       raise (Failed (Printf.sprintf "unkown command: %s" cmd))
 

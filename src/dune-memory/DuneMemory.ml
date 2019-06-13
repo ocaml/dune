@@ -95,16 +95,40 @@ module Collision = struct
     loop 1
 end
 
+module type FSScheme = sig
+  val path : Path.t -> Digest.t -> Path.t
+
+  val list : Path.t -> Path.t list
+end
+
 (* Where to store file with a given hash. In this case ab/abcdef. *)
-module FSScheme = struct
+module FirstTwoCharsSubdir : FSScheme = struct
   let path root hash =
     let hash = Digest.to_string hash in
     let short_hash = String.sub hash ~pos:0 ~len:2 in
     Path.L.relative root [short_hash; hash]
+
+  let list root =
+    let f dir =
+      let is_hex_char c =
+        let char_in s e = Char.compare c s >= 0 && Char.compare c e <= 0 in
+        char_in 'a' 'f' || char_in '0' '9'
+      and root = Path.L.relative root [dir] in
+      if String.for_all ~f:is_hex_char dir then
+        Array.map
+          ~f:(fun filename -> Path.L.relative root [filename])
+          (Sys.readdir (Path.to_string root))
+      else Array.of_list []
+    in
+    Array.to_list
+      (Array.concat
+         (Array.to_list (Array.map ~f (Sys.readdir (Path.to_string root)))))
 end
 
+module FSSchemeImpl = FirstTwoCharsSubdir
+
 let search memory hash file =
-  Collision.search (FSScheme.path (path_files memory) hash) file
+  Collision.search (FSSchemeImpl.path (path_files memory) hash) file
 
 let promote memory paths key metadata _ =
   let promote (path, expected_hash) =
@@ -140,7 +164,7 @@ let promote memory paths key metadata _ =
   in
   unix (fun () ->
       let res = List.map ~f:promote paths
-      and metadata_path = FSScheme.path (path_meta memory) key in
+      and metadata_path = FSSchemeImpl.path (path_meta memory) key in
       mkpath (Path.parent_exn metadata_path) ;
       Io.write_file metadata_path
         (Csexp.to_string_canonical
@@ -162,7 +186,7 @@ let promote memory paths key metadata _ =
       res )
 
 let search memory key =
-  let path = FSScheme.path (path_meta memory) key in
+  let path = FSSchemeImpl.path (path_meta memory) key in
   let metadata =
     Io.with_file_in path ~f:(fun input -> Csexp.parse_channel_canonical input)
   in
@@ -184,3 +208,22 @@ let search memory key =
         )
   | _ ->
       raise (Failed "invalid metadata scheme")
+
+let trim memory free =
+  let path = path_files memory in
+  let files = FSSchemeImpl.list path in
+  let f path =
+    let stat = Unix.stat (Path.to_string path) in
+    if stat.st_nlink = 1 then Some (path, stat.st_size, stat.st_ctime)
+    else None
+  and compare (_, _, t1) (_, _, t2) =
+    Ordering.of_int (Pervasives.compare t1 t2)
+  in
+  let files = List.sort ~compare (List.filter_map ~f files)
+  and delete (freed, res) (path, size, _) =
+    if freed >= free then (freed, res)
+    else (
+      Unix.unlink (Path.to_string path) ;
+      (freed + size, path :: res) )
+  in
+  List.fold_left ~init:(0, []) ~f:delete files

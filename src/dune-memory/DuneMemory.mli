@@ -32,3 +32,5 @@ val promote :
   -> promotion list
 
 val search : memory -> key -> metadata * (Path.t * Path.t) list
+
+val trim : memory -> int -> int * Path.t list

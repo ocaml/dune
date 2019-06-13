@@ -389,6 +389,8 @@ let get_without_rules_fdecl : (Super_context.t * Path.Build.t -> t) Fdecl.t =
   Fdecl.create ()
 
 module Key = struct
+  module Super_context = Super_context.As_memo_key
+
   type t = Super_context.t * Path.Build.t
 
   let to_dyn (sctx, path) =

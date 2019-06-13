@@ -55,6 +55,8 @@ let external_lib_deps_mode t = t.external_lib_deps_mode
 
 let equal = ((==) : t -> t -> bool)
 let hash t = Context.hash t.context
+let to_dyn_concise t =
+  Context.to_dyn_concise t.context
 let to_dyn t = Context.to_dyn t.context
 let to_sexp t = Context.to_sexp t.context
 
@@ -743,3 +745,10 @@ let opaque t =
   && Ocaml_version.supports_opaque_for_mli t.context.version
 
 let dir_status_db t = t.dir_status_db
+
+module As_memo_key = struct
+  type nonrec t = t
+  let equal = equal
+  let hash = hash
+  let to_dyn = to_dyn_concise
+end

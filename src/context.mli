@@ -135,6 +135,7 @@ val hash : t -> int
 
 val to_sexp : t -> Sexp.t
 val to_dyn : t -> Dyn.t
+val to_dyn_concise : t -> Dyn.t
 
 (** Compare the context names *)
 val compare : t -> t -> Ordering.t

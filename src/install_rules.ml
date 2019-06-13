@@ -306,6 +306,7 @@ let promote_install_file (ctx : Context.t) =
   | Opam _  -> false
 
 module Sctx_and_package = struct
+  module Super_context = Super_context.As_memo_key
   type t = Super_context.t * Local_package.t
 
   let hash (x, y) = Hashtbl.hash (Super_context.hash x, Local_package.hash y)
@@ -516,7 +517,7 @@ let scheme sctx pkg = Memo.exec memo (sctx, pkg)
 
 let scheme_per_ctx_memo =
   Memo.create
-    ~input:(module Super_context)
+    ~input:(module Super_context.As_memo_key)
     ~output:
       (Simple (module struct
          type t = Rules.Dir_rules.t Scheme.Evaluated.t
@@ -556,7 +557,7 @@ let packages =
   let memo =
     Memo.create "package-map"
       ~doc:"Return a map assining package to files"
-      ~input:(module Super_context)
+      ~input:(module Super_context.As_memo_key)
       ~visibility:Hidden
       ~output:(Allow_cutoff (module struct
                  type t = Package.Name.Set.t Path.Build.Map.t

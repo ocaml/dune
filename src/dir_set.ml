@@ -178,13 +178,17 @@ let to_dyn t : Dyn.t = Sexp (to_sexp t)
 
 let forget_root t = t
 
+type toplevel_subdirs =
+  | Infinite
+  | Finite of String.Set.t
+
 let toplevel_subdirs t = match t with
-  | Universal -> `Infinite
-  | Empty -> `Finite (String.Set.empty)
+  | Universal -> Infinite
+  | Empty -> Finite (String.Set.empty)
   | Nontrivial t ->
-    if t.default then `Infinite
+    if t.default then Infinite
     else
-      `Finite (String.Set.of_list (String.Map.keys t.exceptions))
+      Finite (String.Set.of_list (String.Map.keys t.exceptions))
 
 let of_list paths =
   union_all (

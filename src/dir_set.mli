@@ -79,7 +79,11 @@ val to_dyn : 'w t -> Dyn.t
 
 val forget_root : 'w t -> Path.Unspecified.w t
 
-val toplevel_subdirs : 'w t -> [`Infinite  | `Finite of String.Set.t]
+type toplevel_subdirs =
+  | Infinite
+  | Finite of String.Set.t
+
+val toplevel_subdirs : 'w t -> toplevel_subdirs
 
 val of_list : 'w Path.Local_gen.t list -> 'w t
 

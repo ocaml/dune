@@ -348,8 +348,8 @@ module Subdir_set = struct
 
   let of_dir_set d =
     match Dir_set.toplevel_subdirs d with
-    | `Infinite -> All
-    | `Finite s -> These s
+    | Infinite -> All
+    | Finite s -> These s
 
   let of_list l = These (String.Set.of_list l)
 

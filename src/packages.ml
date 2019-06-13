@@ -12,7 +12,7 @@ let mlds_by_package_def =
   Memo.With_implicit_output.create "mlds by package"
     ~implicit_output:Rules.implicit_output
     ~doc:"mlds by package"
-    ~input:(module Super_context)
+    ~input:(module Super_context.As_memo_key)
     ~output:(module Output)
     ~visibility:Hidden
     Sync

@@ -147,18 +147,21 @@ Virtual library where a wrapped module is virtual
 Executable that tries to build against a virtual library without an implementation
   $ dune build --root missing-implementation
   Entering directory 'missing-implementation'
-  Error: No implementation found for virtual library "vlib" (_build/default/vlib).
+  Error: No implementation found for virtual library "vlib" in
+  _build/default/vlib.
   -> required by executable foo in dune:2
   [1]
 
 Executable that tries to use two implementations for the same virtual lib
   $ dune build --root double-implementation
   Entering directory 'double-implementation'
-  Error: Conflicting implementations for virtual library "vlib":
+  Error: Conflicting implementations for virtual library "vlib" in
+  _build/default/vlib:
   - "impl1" in _build/default/impl1
-     -> required by library "bar" in _build/default
+    -> required by library "bar" in _build/default
   - "impl2" in _build/default/impl2
-  This cannot work.-> required by executable foo in dune:2
+  This cannot work.
+  -> required by executable foo in dune:2
   [1]
 
 Install files for implemenations and virtual libs have all the artifacts:
@@ -267,7 +270,8 @@ an appropriate error message.
   File "dune", line 7, characters 13-30:
   7 |  (implements dune.configurator))
                    ^^^^^^^^^^^^^^^^^
-  Error: Library "dune.configurator" is not virtual. It cannot be implemented by "foobar".
+  Error: Library "dune.configurator" is not virtual. It cannot be implemented
+  by "foobar".
   [1]
 
 Test that we can implement external libraries.

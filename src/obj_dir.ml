@@ -345,6 +345,21 @@ module Module = struct
     ) in
     obj_file t m ~kind:Cmi ~ext
 
+  module Dep = struct
+    type t =
+      | Immediate
+      | Transitive
+
+    let ext = function
+      | Immediate -> ".d"
+      | Transitive -> ".all-deps"
+  end
+
+  let dep t file ~kind =
+    let dir = obj_dir t in
+    let name = Path.basename (Module.File.path file) in
+    let ext = Dep.ext kind in
+    Path.Build.relative dir (name ^ ext)
 
   module L = struct
     let o_files t modules ~ext_obj =

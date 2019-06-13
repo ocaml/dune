@@ -18,5 +18,6 @@ But it must still be available in jbuild files
   File "jbuild", line 4, characters 23-42:
   4 | (write-file target.txt ${findlib:pkg:file})
                              ^^^^^^^^^^^^^^^^^^^
-  Error: Public library "pkg" not found
+  Error: Library "pkg" not found.
+  Hint: try: dune external-lib-deps --missing --root in-jbuild target.txt
   [1]

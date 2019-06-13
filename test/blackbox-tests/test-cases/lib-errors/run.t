@@ -5,7 +5,7 @@ Cycle detection
 
   $ dune build cycle.exe
   Error: Dependency cycle detected between the following libraries:
-  -> "a" in _build/default
+     "a" in _build/default
   -> "b" in _build/default
   -> "c" in _build/default
   -> "a" in _build/default
@@ -21,6 +21,5 @@ Select with no solution
   25 |  (libraries (select x from))
                    ^^^^^^^^^^^^^^^
   Error: No solution found for this select form.
-  -> required by executable select_error in dune:24
   [1]
 

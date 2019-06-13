@@ -250,8 +250,9 @@ let impl sctx ~dir ~(lib : Dune_file.Library.t) ~scope ~modules =
         "Cannot implement %a as that library isn't available"
         Lib_name.pp implements
     | Ok vlib ->
+      let info = Lib.info vlib in
       let virtual_ =
-        match Lib.virtual_ vlib with
+        match info.virtual_ with
         | None ->
           Errors.fail lib.buildable.loc
             "Library %a isn't virtual and cannot be implemented"
@@ -259,7 +260,7 @@ let impl sctx ~dir ~(lib : Dune_file.Library.t) ~scope ~modules =
         | Some v -> v
       in
       let (vlib_modules, vlib_foreign_objects) =
-        match virtual_, Lib.foreign_objects vlib with
+        match virtual_, info.foreign_objects with
         | External _, Local
         | Local, External _ -> assert false
         | External lib_modules, External fa -> (lib_modules, fa)
@@ -304,7 +305,7 @@ let impl sctx ~dir ~(lib : Dune_file.Library.t) ~scope ~modules =
         | External _ ->
           let impl_obj_dir = Dune_file.Library.obj_dir ~dir lib in
           let impl_cm_kind =
-            let { Mode.Dict. byte; native = _ } = Lib.modes vlib in
+            let { Mode.Dict. byte; native = _ } = (Lib.info vlib).modes in
             Mode.cm_kind (if byte then Byte else Native)
           in
           external_dep_graph sctx ~impl_cm_kind ~impl_obj_dir ~vlib_modules

@@ -80,7 +80,8 @@ module Public_libs = struct
         in
         Ok (Path.build (Path.Build.relative lib_install_dir file))
       end else
-        Ok (Path.relative (Lib.src_dir lib) file)
+        let info = Lib.info lib in
+        Ok (Path.relative info.src_dir file)
 
 end
 

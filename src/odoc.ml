@@ -9,7 +9,7 @@ let (++) = Path.Build.relative
 
 let lib_unique_name lib =
   let name = Lib.name lib in
-  match Lib.status lib with
+  match (Lib.info lib).status with
   | Installed -> assert false
   | Public _  -> Lib_name.to_string name
   | Private scope_name ->
@@ -626,7 +626,8 @@ let gen_rules sctx ~dir:_ rest =
     |> Result.iter ~f:(fun lib ->
       (* TODO instead of this hack, call memoized function that generates the
          rules for this library *)
-      Build_system.load_dir ~dir:(Lib.src_dir lib))
+      let dir = (Lib.info lib).src_dir in
+      Build_system.load_dir ~dir)
   | "_html" :: lib_unique_name_or_pkg :: _ ->
     (* TODO we can be a better with the error handling in the case where
        lib_unique_name_or_pkg is neither a valid pkg or lnu *)

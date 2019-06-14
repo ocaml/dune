@@ -142,7 +142,8 @@ module Of_sctx = struct
           Lib.Local.Set.find libs ~f:(fun l ->
             let l = Lib.Local.to_lib l in
             let info = Lib.info l in
-            Option.is_some info.virtual_)
+            let virtual_ = Lib_info.virtual_ info in
+            Option.is_some virtual_)
         ) in
         let t =
           add_stanzas

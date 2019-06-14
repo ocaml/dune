@@ -43,7 +43,8 @@ let libs_under_dir sctx ~db ~dir =
                (* still need to make sure that it's not coming from an external
                   source *)
                let info = Lib.info lib in
-               if Path.is_descendant ~of_:(Path.build dir) info.src_dir then
+               let src_dir = Lib_info.src_dir info in
+               if Path.is_descendant ~of_:(Path.build dir) src_dir then
                  lib :: acc
                else
                  acc (* external lib with a name matching our private name *)

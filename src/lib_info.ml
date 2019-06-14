@@ -97,6 +97,37 @@ type 'path t =
   ; special_builtin_support : Dune_file.Library.Special_builtin_support.t option
   }
 
+let name t = t.name
+let version t = t.version
+let loc t = t.loc
+let requires t = t.requires
+let pps t = t.pps
+let ppx_runtime_deps t = t.ppx_runtime_deps
+let sub_systems t = t.sub_systems
+let modes t =t.modes
+let archives t = t.archives
+let foreign_archives t = t.foreign_archives
+let foreign_objects t = t.foreign_objects
+let plugins t = t.plugins
+let src_dir t = t.src_dir
+let variant t = t.variant
+let enabled t = t.enabled
+let status t = t.status
+let kind t = t.kind
+let default_implementation t = t.default_implementation
+let known_implementations t = t.known_implementations
+let obj_dir t = t.obj_dir
+let virtual_ t = t.virtual_
+let implements t = t.implements
+let synopsis t = t.synopsis
+let wrapped t = t.wrapped
+let special_builtin_support t = t.special_builtin_support
+let jsoo_runtime t = t.jsoo_runtime
+let jsoo_archive t = t.jsoo_archive
+let main_module_name t = t.main_module_name
+let orig_src_dir t = t.orig_src_dir
+let best_src_dir t = Option.value ~default:t.src_dir t.orig_src_dir
+
 let user_written_deps t =
   List.fold_left (t.virtual_deps @ t.ppx_runtime_deps)
     ~init:(Deps.to_lib_deps t.requires)
@@ -270,19 +301,17 @@ let of_dune_lib dp =
   ; special_builtin_support = Lib.special_builtin_support dp
   }
 
-let orig_src_dir t = Option.value ~default:t.src_dir t.orig_src_dir
-
 type external_ = Path.t t
 type local = Path.Build.t t
 
-let to_external t =
-  let f = Path.build in
+let map t ~f_path ~f_obj_dir =
+  let f = f_path in
   let list = List.map ~f in
   let mode_list = Mode.Dict.map ~f:list in
   { t with
-    src_dir = Path.build t.src_dir
+    src_dir = f t.src_dir
   ; orig_src_dir = Option.map ~f t.orig_src_dir
-  ; obj_dir = Obj_dir.of_local t.obj_dir
+  ; obj_dir = f_obj_dir t.obj_dir
   ; archives = mode_list t.archives
   ; plugins = mode_list t.plugins
   ; foreign_objects = Source.map ~f:(List.map ~f) t.foreign_objects
@@ -290,3 +319,6 @@ let to_external t =
   ; jsoo_runtime = List.map ~f t.jsoo_runtime
   ; jsoo_archive = Option.map ~f t.jsoo_archive
   }
+
+let to_external = map ~f_path:Path.build ~f_obj_dir:Obj_dir.of_local
+let as_local_exn = map ~f_path:Path.as_in_build_dir_exn ~f_obj_dir:Obj_dir.as_local_exn

@@ -78,7 +78,8 @@ module Public_libs = struct
       Path.build (Path.Build.relative lib_install_dir file)
     end else
       let info = Lib.info lib in
-      Path.relative info.src_dir file
+      let src_dir = Lib_info.src_dir info in
+      Path.relative src_dir file
 end
 
 type t = {

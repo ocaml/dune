@@ -38,39 +38,43 @@ module Enabled_status : sig
     | Disabled_because_of_enabled_if
 end
 
-type 'path t = private
-  { loc              : Loc.t
-  ; name             : Lib_name.t
-  ; kind             : Lib_kind.t
-  ; status           : Status.t
-  ; src_dir          : 'path
-  ; orig_src_dir     : 'path option
-  ; obj_dir          : 'path Obj_dir.t
-  ; version          : string option
-  ; synopsis         : string option
-  ; archives         : 'path list Mode.Dict.t
-  ; plugins          : 'path list Mode.Dict.t
-  ; foreign_objects  : 'path list Source.t
-  ; foreign_archives : 'path list Mode.Dict.t (** [.a/.lib/...] files *)
-  ; jsoo_runtime     : 'path list
-  ; jsoo_archive     : 'path option
-  ; requires         : Deps.t
-  ; ppx_runtime_deps : (Loc.t * Lib_name.t) list
-  ; pps              : (Loc.t * Lib_name.t) list
-  ; enabled          : Enabled_status.t
-  ; virtual_deps     : (Loc.t * Lib_name.t) list
-  ; dune_version     : Syntax.Version.t option
-  ; sub_systems      : Sub_system_info.t Sub_system_name.Map.t
-  ; virtual_         : Lib_modules.t Source.t option
-  ; implements       : (Loc.t * Lib_name.t) option
-  ; variant          : Variant.t option
-  ; known_implementations : (Loc.t * Lib_name.t) Variant.Map.t
-  ; default_implementation  : (Loc.t * Lib_name.t) option
-  ; wrapped          : Wrapped.t Dune_file.Library.Inherited.t option
-  ; main_module_name : Dune_file.Library.Main_module_name.t
-  ; modes            : Mode.Dict.Set.t
-  ; special_builtin_support : Dune_file.Library.Special_builtin_support.t option
-  }
+type 'path t
+
+val name : _ t -> Lib_name.t
+val loc : _ t -> Loc.t
+val archives : 'path t -> 'path list Mode.Dict.t
+val foreign_archives : 'path t -> 'path list Mode.Dict.t
+val foreign_objects : 'path t -> 'path list Source.t
+val plugins : 'path t -> 'path list Mode.Dict.t
+val src_dir : 'path t -> 'path
+val status : _ t -> Status.t
+val variant : _ t -> Variant.t option
+val default_implementation : _ t -> (Loc.t * Lib_name.t) option
+val kind : _ t -> Lib_kind.t
+val synopsis : _ t -> string option
+val jsoo_runtime : 'path t -> 'path list
+val jsoo_archive : 'path t -> 'path option
+val obj_dir : 'path t -> 'path Obj_dir.t
+val virtual_ : _ t -> Lib_modules.t Source.t option
+val main_module_name : _ t -> Dune_file.Library.Main_module_name.t
+val wrapped : _ t -> Wrapped.t Dune_file.Library.Inherited.t option
+val special_builtin_support : _ t -> Dune_file.Library.Special_builtin_support.t option
+val modes : _ t -> Mode.Dict.Set.t
+val implements : _ t -> (Loc.t * Lib_name.t) option
+val known_implementations : _ t -> (Loc.t * Lib_name.t) Variant.Map.t
+val requires : _ t -> Deps.t
+val ppx_runtime_deps : _ t -> (Loc.t * Lib_name.t) list
+val pps : _ t -> (Loc.t * Lib_name.t) list
+val sub_systems : _ t -> Sub_system_info.t Sub_system_name.Map.t
+val enabled : _ t -> Enabled_status.t
+val orig_src_dir : 'path t -> 'path option
+val version : _ t -> string option
+
+(* CR-someday diml: this should be [Path.t list], since some libraries
+   have multiple source directories because of [copy_files]. *)
+(** Directory where the source files for the library are located. Returns
+    the original src dir when it exists *)
+val best_src_dir : 'path t -> 'path
 
 type external_ = Path.t t
 type local = Path.Build.t t
@@ -90,7 +94,4 @@ val of_dune_lib
 
 val to_external : local -> external_
 
-(* CR-someday diml: this should be [Path.t list], since some libraries
-   have multiple source directories because of [copy_files]. *)
-(** Directory where the source files for the library are located. *)
-val orig_src_dir : 'path t -> 'path
+val as_local_exn : external_ -> local

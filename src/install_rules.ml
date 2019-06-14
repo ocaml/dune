@@ -28,7 +28,8 @@ let gen_dune_package sctx ~version ~(pkg : Local_package.t) =
             |> Lib.Local.Set.to_list
             |> List.map ~f:(fun lib ->
               let dir_contents =
-                let dir = Lib.Local.src_dir lib in
+                let info = Lib.Local.info lib in
+                let dir = Lib_info.src_dir info in
                 Dir_contents.get_without_rules sctx ~dir
               in
               let obj_dir = Lib.Local.obj_dir lib in

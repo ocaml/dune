@@ -239,8 +239,8 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander ~dir_kind
           , t.objs_dirs)
             ~f:(fun (lib : Lib.t) (src_dirs, obj_dirs) ->
               let info = Lib.info lib in
-              let orig_src_dir = Lib_info.orig_src_dir info in
-              ( Path.Set.add src_dirs (Path.drop_optional_build_context orig_src_dir)
+              let best_src_dir = Lib_info.best_src_dir info in
+              ( Path.Set.add src_dirs (Path.drop_optional_build_context best_src_dir)
               , let public_cmi_dir = Obj_dir.public_cmi_dir (Lib.obj_dir lib) in
                 Path.Set.add obj_dirs public_cmi_dir
               ))

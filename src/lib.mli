@@ -274,8 +274,8 @@ module Local : sig
   val of_lib_exn : lib -> t
   val to_lib : t -> lib
 
+  val info    : t -> Lib_info.local
   val obj_dir : t -> Path.Build.t Obj_dir.t
-  val src_dir : t -> Path.Build.t
 
   module Set : Stdune.Set.S with type elt = t
   module Map : Stdune.Map.S with type key = t

@@ -24,10 +24,12 @@ module Error = struct
       (User_error.E
          (User_error.make ?loc ?hints paragraphs))
 
-  let pp_lib (info : _ Lib_info.t) =
+  let pp_lib info =
+    let name = Lib_info.name info in
+    let src_dir = Lib_info.src_dir info in
     Pp.textf "%S in %s"
-      (Lib_name.to_string info.name)
-      (Path.to_string_maybe_quoted info.src_dir)
+      (Lib_name.to_string name)
+      (Path.to_string_maybe_quoted src_dir)
 
   let pp_lib_and_dep_path (info, dp) =
     let info = Pp.box (pp_lib info) in
@@ -67,16 +69,19 @@ module Error = struct
     make
       [ Pp.text "Default implementation cycle detected between the \
                  following libraries:"
-      ; Pp.chain cycle ~f:(fun (info : _ Lib_info.t) ->
-          Pp.textf "%S" (Lib_name.to_string info.name))
+      ; Pp.chain cycle ~f:(fun info ->
+          let name = Lib_info.name info in
+          Pp.textf "%S" (Lib_name.to_string name))
       ]
 
-  let multiple_implementations_for_virtual_lib ~loc ~(lib : _ Lib_info.t)
+  let multiple_implementations_for_virtual_lib ~loc ~lib
         ~given_variants ~conflict =
+    let name = Lib_info.name lib in
+    let default_implementation = Lib_info.default_implementation lib in
     make ~loc
       [ Pp.textf "Multiple solutions for the implementation of %S%s%s:"
-          (Lib_name.to_string lib.name)
-          (match lib.default_implementation with
+          (Lib_name.to_string name)
+          (match default_implementation with
            | None -> ""
            | Some (_, x) ->
              sprintf " (default implementation %S)" (Lib_name.to_string x))
@@ -86,10 +91,11 @@ module Error = struct
            | [] -> ""
            | [v] -> sprintf "with variant %s" v
            | vs -> sprintf " with variants %s" (String.enumerate_and vs))
-      ; Pp.enumerate conflict ~f:(fun (lib : _ Lib_info.t) ->
+      ; Pp.enumerate conflict ~f:(fun lib ->
+          let variant = Lib_info.variant lib in
           Pp.seq
             (pp_lib lib)
-            (match lib.variant with
+            (match variant with
              | Some v -> Pp.textf " (variant %s)" (Variant.to_string v)
              | None -> Pp.nop))
       ]
@@ -144,20 +150,23 @@ module Error = struct
             (Path.to_string_maybe_quoted dir))
       ]
 
-  let private_deps_not_allowed ~loc (private_dep : _ Lib_info.t) =
+  let private_deps_not_allowed ~loc private_dep =
+    let name = Lib_info.name private_dep in
     make ~loc
       [ Pp.textf "Library %S is private, it cannot be a dependency of \
                   a public library."
-          (Lib_name.to_string private_dep.name)
+          (Lib_name.to_string name)
       ; Pp.textf "You need to give %S a public name."
-          (Lib_name.to_string private_dep.name)
+          (Lib_name.to_string name)
       ]
 
   let not_virtual_lib ~loc ~impl ~not_vlib =
+    let impl = Lib_info.name impl in
+    let not_vlib = Lib_info.name not_vlib in
     make ~loc
       [ Pp.textf "Library %S is not virtual. It cannot be implemented by %S."
-          (Lib_name.to_string not_vlib.Lib_info.name)
-          (Lib_name.to_string impl.Lib_info.name)
+          (Lib_name.to_string not_vlib)
+          (Lib_name.to_string impl)
       ]
 end
 
@@ -305,32 +314,39 @@ let unique_id    t = t.unique_id
 
 let is_impl      t = Option.is_some t.implements
 
-let obj_dir t = t.info.obj_dir
+let obj_dir t = Lib_info.obj_dir t.info
 
-let is_local t = Path.is_managed (Obj_dir.byte_dir t.info.obj_dir)
+let is_local t =
+  let obj_dir = obj_dir t in
+  Path.is_managed (Obj_dir.byte_dir obj_dir)
 
 let main_module_name t =
-  match t.info.main_module_name with
+  let main_module_name = Lib_info.main_module_name t.info in
+  match main_module_name with
   | This mmn -> Ok mmn
   | From _ ->
     let+ vlib = Option.value_exn t.implements in
-    match vlib.info.main_module_name with
+    let main_module_name = Lib_info.main_module_name vlib.info in
+    match main_module_name with
     | This x -> x
     | From _ -> assert false
 
 let wrapped t =
-  match t.info.wrapped with
+  let wrapped = Lib_info.wrapped t.info in
+  match wrapped with
   | None -> Ok None
   | Some (This wrapped) -> Ok (Some wrapped)
   | Some (From _) ->
     let+ vlib = Option.value_exn t.implements in
-    match vlib.info.wrapped with
+  let wrapped = Lib_info.wrapped vlib.info in
+    match wrapped with
     | Some (From _) (* can't inherit this value in virtual libs *)
     | None -> assert false (* will always be specified in dune package *)
     | Some (This x) -> Some x
 
 let package t =
-  match t.info.status with
+  let status = Lib_info.status t.info in
+  match status with
   | Installed -> Some (Lib_name.package_name t.name)
   | Public (_, p) -> Some p.name
   | Private _ -> None
@@ -354,8 +370,9 @@ module L = struct
   let include_paths ts ~stdlib_dir =
     let dirs =
       List.fold_left ts ~init:Path.Set.empty ~f:(fun acc t ->
-        let public_cmi_dir = Obj_dir.public_cmi_dir t.info.obj_dir in
-        let native_dir = Obj_dir.native_dir t.info.obj_dir in
+        let obj_dir = Lib_info.obj_dir t.info in
+        let public_cmi_dir = Obj_dir.public_cmi_dir obj_dir in
+        let native_dir = Obj_dir.native_dir obj_dir in
         List.fold_left ~f:Path.Set.add ~init:acc
           [public_cmi_dir ; native_dir])
     in
@@ -367,7 +384,8 @@ module L = struct
   let c_include_paths ts ~stdlib_dir =
     let dirs =
       List.fold_left ts ~init:Path.Set.empty ~f:(fun acc t ->
-        Path.Set.add acc t.info.src_dir)
+        let src_dir = Lib_info.src_dir t.info in
+        Path.Set.add acc src_dir)
     in
     Path.Set.remove dirs stdlib_dir
 
@@ -378,7 +396,8 @@ module L = struct
     Command.Args.S
       (c_include_flags ts ~stdlib_dir ::
        List.map ts ~f:(fun t ->
-         Command.Args.Deps (Mode.Dict.get t.info.archives mode)))
+         let archives = Lib_info.archives t.info in
+         Command.Args.Deps (Mode.Dict.get archives mode)))
 
   let compile_and_link_flags ~compile ~link ~mode ~stdlib_dir =
     let dirs =
@@ -389,15 +408,18 @@ module L = struct
     Command.Args.S
       (to_iflags dirs ::
        List.map link ~f:(fun t ->
-         Command.Args.Deps (Mode.Dict.get t.info.archives mode)))
+         let archives = Lib_info.archives t.info in
+         Command.Args.Deps (Mode.Dict.get archives mode)))
 
   let jsoo_runtime_files ts =
-    List.concat_map ts ~f:(fun t -> t.info.jsoo_runtime)
+    List.concat_map ts ~f:(fun t -> Lib_info.jsoo_runtime t.info)
 
   let archive_files ts ~mode =
     List.concat_map ts ~f:(fun t ->
-      Mode.Dict.get t.info.archives mode @
-      Mode.Dict.get t.info.foreign_archives mode)
+      let archives = Lib_info.archives t.info in
+      let foreign_archives = Lib_info.foreign_archives t.info in
+      Mode.Dict.get archives mode @
+      Mode.Dict.get foreign_archives mode)
 
   let remove_dups l =
     let rec loop acc l seen =
@@ -419,7 +441,8 @@ module L = struct
   let special_builtin_support l =
     let module M = Dune_file.Library.Special_builtin_support.Map in
     List.fold_left l ~init:M.empty ~f:(fun acc lib ->
-      match lib.info.special_builtin_support with
+      let special_builtin_support = Lib_info.special_builtin_support lib.info in
+      match special_builtin_support with
       | None -> acc
       | Some x -> M.add acc x lib)
 end
@@ -440,7 +463,8 @@ module Lib_and_module = struct
         (L.c_include_flags libs ~stdlib_dir ::
          List.map ts ~f:(function
            | Lib t ->
-             Command.Args.Deps (Mode.Dict.get t.info.archives mode)
+             let archives = Lib_info.archives t.info in
+             Command.Args.Deps (Mode.Dict.get archives mode)
            | Module (obj_dir, m) ->
              Dep (Obj_dir.Module.cm_file_unsafe obj_dir m
                     ~kind:(Mode.cm_kind mode))
@@ -576,13 +600,14 @@ module Dep_stack = struct
 end
 
 let check_private_deps lib ~loc ~allow_private_deps =
-  if (not allow_private_deps) && Lib_info.Status.is_private lib.info.status
+  let status = Lib_info.status lib.info in
+  if (not allow_private_deps) && Lib_info.Status.is_private status
   then
     Error.private_deps_not_allowed ~loc lib.info
   else
     Ok lib
 
-let already_in_table (info : _ Lib_info.t) name x =
+let already_in_table info name x =
   let to_sexp = Sexp.Encoder.(pair Path.to_sexp Lib_name.to_sexp) in
   let sexp =
     match x with
@@ -590,18 +615,19 @@ let already_in_table (info : _ Lib_info.t) name x =
       Sexp.List [Sexp.Atom "Initializing";
                  Path.to_sexp x.path]
     | St_found t ->
-      List [Sexp.Atom "Found";
-            Path.to_sexp t.info.src_dir]
+      let src_dir = Lib_info.src_dir t.info in
+      List [Sexp.Atom "Found"; Path.to_sexp src_dir]
     | St_not_found ->
       Sexp.Atom "Not_found"
     | St_hidden (_, path, reason) ->
       List [Sexp.Atom "Hidden";
             Path.to_sexp path; Sexp.Atom reason]
   in
+  let src_dir = Lib_info.src_dir info in
   Errors.code_error
     "Lib_db.DB: resolver returned name that's already in the table"
     [ "name"            , Lib_name.to_sexp name
-    ; "returned_lib"    , to_sexp (info.src_dir, name)
+    ; "returned_lib"    , to_sexp (src_dir, name)
     ; "conflicting_with", sexp
     ]
 
@@ -640,7 +666,8 @@ end = struct
     let empty = Map.empty
 
     let add t lib =
-      match lib.implements, lib.info.virtual_ with
+      let virtual_ = Lib_info.virtual_ lib.info in
+      match lib.implements, virtual_ with
       | None, None -> Ok t
       | Some _, Some _ ->
         assert false (* can't be virtual and implement *)
@@ -675,7 +702,8 @@ end = struct
         let rec loop acc = function
           | [] -> Ok acc
           | (lib, stack) :: libs ->
-            match lib.implements, lib.info.virtual_ with
+            let virtual_ = Lib_info.virtual_ lib.info in
+            match lib.implements, virtual_ with
             | None, None -> loop acc libs
             | Some _, Some _ ->
               assert false (* can't be virtual and implement *)
@@ -783,7 +811,10 @@ end
 
 (* Find implementation that matches given variants *)
 let find_implementation_for lib ~variants =
-  assert (Option.is_some lib.info.virtual_);
+  assert (
+    let virtual_ = Lib_info.virtual_ lib.info in
+    Option.is_some virtual_
+  );
   match variants with
   | None -> Ok None
   | Some (loc, variants_set) ->
@@ -809,39 +840,47 @@ let find_implementation_for lib ~variants =
         ~given_variants:variants_set
         ~conflict
 
-let rec instantiate db name (info : _ Lib_info.t) ~stack ~hidden =
+let rec instantiate db name info ~stack ~hidden =
   let id, stack =
-    Dep_stack.create_and_push stack name info.src_dir
+    let src_dir = Lib_info.src_dir info in
+    Dep_stack.create_and_push stack name src_dir
   in
   Option.iter (Hashtbl.find db.table name) ~f:(fun x ->
     already_in_table info name x);
   (* Add [id] to the table, to detect loops *)
   Hashtbl.add db.table name (St_initializing id);
 
-  let allow_private_deps = Lib_info.Status.is_private info.status in
+  let status = Lib_info.status info in
+  let allow_private_deps = Lib_info.Status.is_private status in
 
   let resolve (loc, name) =
     resolve_dep db (name : Lib_name.t) ~allow_private_deps ~loc ~stack in
 
   let implements =
-    Option.map info.implements ~f:(fun ((loc,  _) as name) ->
+    Lib_info.implements info
+    |> Option.map ~f:(fun ((loc,  _) as name) ->
       let* vlib = resolve name in
-      match vlib.info.virtual_ with
+      let virtual_ = Lib_info.virtual_ vlib.info in
+      match virtual_ with
       | None ->
         Error.not_virtual_lib ~loc ~impl:info ~not_vlib:vlib.info
       | Some _ ->
-        match info.variant with
+        let variant = Lib_info.variant info in
+        match variant with
         | None -> Ok vlib
         | Some variant ->
           (* If the library is an implementation tagged with a
              variant, we must make sure that that it implements a
              library that is part of the same project *)
+          let status_vlib = Lib_info.status vlib.info in
           if Option.equal Dune_project.Name.equal
-               (Lib_info.Status.project_name info.status)
-               (Lib_info.Status.project_name vlib.info.status)
+               (Lib_info.Status.project_name status)
+               (Lib_info.Status.project_name status_vlib)
           then
             Ok vlib
           else
+            let name = Lib_info.name info in
+            let name_vlib = Lib_info.name vlib.info in
             Errors.fail loc
               "Library implementation %a with variant %a implements@ a \
                library outside the project.@ Instead of using \
@@ -851,21 +890,26 @@ let rec instantiate db name (info : _ Lib_info.t) ~stack ~hidden =
                \  (virtual_library %a)@\n\
                \  (variant %a)@\n\
                \  (implementation %a))"
-              Lib_name.pp info.name
+              Lib_name.pp name
               Variant.pp variant
               Variant.pp variant
-              Lib_name.pp vlib.name
+              Lib_name.pp name_vlib
               Variant.pp variant
-              Lib_name.pp info.name)
+              Lib_name.pp name)
   in
   let default_implementation =
-    Option.map info.default_implementation ~f:(fun l -> lazy (resolve l)) in
+    Lib_info.default_implementation info
+    |> Option.map ~f:(fun l -> lazy (resolve l)) in
   let resolved_implementations =
-    Option.map info.virtual_ ~f:(fun _ -> lazy (
-      Variant.Map.map info.known_implementations ~f:resolve))
+    Lib_info.virtual_ info
+    |> Option.map ~f:(fun _ -> lazy (
+      Lib_info.known_implementations info
+      |> Variant.Map.map ~f:resolve))
   in
   let requires, pps, resolved_selects =
-    resolve_user_deps db info.requires ~allow_private_deps ~pps:info.pps ~stack
+    let pps = Lib_info.pps info in
+    Lib_info.requires info
+    |> resolve_user_deps db ~allow_private_deps ~pps ~stack
   in
   let requires =
     match implements with
@@ -876,11 +920,13 @@ let rec instantiate db name (info : _ Lib_info.t) ~stack ~hidden =
       impl :: requires
   in
   let ppx_runtime_deps =
-    resolve_simple_deps db info.ppx_runtime_deps ~allow_private_deps ~stack
+    Lib_info.ppx_runtime_deps info
+    |> resolve_simple_deps db ~allow_private_deps ~stack
   in
+  let src_dir = Lib_info.src_dir info in
   let map_error x =
     Result.map_error x ~f:(fun e ->
-      Dep_path.prepend_exn e (Library (info.src_dir, name)))
+      Dep_path.prepend_exn e (Library (src_dir, name)))
   in
   let requires         = map_error requires         in
   let ppx_runtime_deps = map_error ppx_runtime_deps in
@@ -900,7 +946,8 @@ let rec instantiate db name (info : _ Lib_info.t) ~stack ~hidden =
     }
   in
   t.sub_systems <-
-    Sub_system_name.Map.mapi info.sub_systems ~f:(fun name info ->
+    Lib_info.sub_systems info
+    |> Sub_system_name.Map.mapi ~f:(fun name info ->
       lazy (Sub_system.instantiate name info t ~resolve));
 
   let res =
@@ -908,7 +955,8 @@ let rec instantiate db name (info : _ Lib_info.t) ~stack ~hidden =
       match hidden with
       | Some _ -> hidden
       | None ->
-        match info.enabled with
+        let enabled = Lib_info.enabled info in
+        match enabled with
         | Normal -> None
         | Optional ->
           Option.some_if
@@ -920,7 +968,7 @@ let rec instantiate db name (info : _ Lib_info.t) ~stack ~hidden =
     match hidden with
     | None -> St_found t
     | Some reason ->
-      St_hidden (t, t.info.src_dir, reason)
+      St_hidden (t, src_dir, reason)
   in
   Hashtbl.replace db.table ~key:name ~data:res;
   res
@@ -976,7 +1024,7 @@ and available_internal db (name : Lib_name.t) ~stack =
   resolve_dep db name ~allow_private_deps:true ~loc:Loc.none ~stack
   |> Result.is_ok
 
-and resolve_simple_deps db names ~allow_private_deps ~stack =
+and resolve_simple_deps db (names : (Loc.t * Lib_name.t) list) ~allow_private_deps ~stack =
   Result.List.map names ~f:(fun (loc, name) ->
     resolve_dep db name ~allow_private_deps ~loc ~stack)
 
@@ -1149,7 +1197,8 @@ and resolve_default_libraries libraries ~variants =
       in
       (* If the library has an implementation according to variants or default
          impl. *)
-      if Option.is_none lib.info.virtual_ then
+      let virtual_ = Lib_info.virtual_ lib.info in
+      if Option.is_none virtual_ then
         Ok ()
       else
         let* impl = impl_for lib in
@@ -1264,12 +1313,15 @@ module Compile = struct
 
   let for_lib db (t : lib) =
     let lib_deps_info =
-      make_lib_deps_info
-        ~user_written_deps:(Lib_info.user_written_deps t.info)
-        ~pps:t.info.pps
-        ~kind:(match t.info.enabled with
-          | Normal -> Required
-          | _ -> Optional)
+      let pps = Lib_info.pps t.info in
+      let user_written_deps = Lib_info.user_written_deps t.info in
+      let kind : Lib_deps_info.Kind.t =
+        let enabled = Lib_info.enabled t.info in
+        match enabled with
+        | Normal -> Required
+        | _ -> Optional
+      in
+      make_lib_deps_info ~user_written_deps ~pps ~kind
     in
     let requires_link = lazy (
       t.requires >>= closure_with_overlap_checks
@@ -1336,11 +1388,14 @@ module DB = struct
         Errors.fail ev.loc
           "Virtual library %a hasn't been found in the project."
           Lib_name.pp ev.virtual_lib
-      | Some { virtual_ = None; _ } ->
-        Errors.fail ev.loc
-          "Library %a isn't a virtual library."
-          Lib_name.pp ev.virtual_lib
-      | Some { virtual_ = Some _; _ } -> ())
+      | Some info ->
+        begin match Lib_info.virtual_ info with
+        | Some _ -> ()
+        | None ->
+          Errors.fail ev.loc
+            "Library %a isn't a virtual library."
+            Lib_name.pp ev.virtual_lib
+        end)
 
   let error_two_impl_for_variant name variant (loc1, impl1) (loc2, impl2) =
     Errors.fail_opt None
@@ -1577,95 +1632,111 @@ end
 
 let to_dune_lib ({ name ; info ; _ } as lib) ~lib_modules ~foreign_objects
       ~dir =
-  let add_loc = List.map ~f:(fun x -> (info.loc, x.name)) in
-  let virtual_ = Option.is_some info.virtual_ in
-  let obj_dir =
-    match Obj_dir.to_local (obj_dir lib) with
-    | None -> assert false
-    | Some obj_dir -> Obj_dir.convert_to_external ~dir obj_dir
-  in
-  let lib_modules =
-    let install_dir = Obj_dir.dir obj_dir in
-    Lib_modules.version_installed ~install_dir lib_modules
-  in
-  let orig_src_dir =
-    if !Clflags.store_orig_src_dir
-    then Some (
-      match info.orig_src_dir with
-      | Some src_dir -> src_dir
-      | None ->
-        match Path.drop_build_context info.src_dir with
-        | None -> info.src_dir
-        | Some src_dir ->
-          Path.(of_string (to_absolute_filename (Path.source src_dir)))
-    )
-    else None
-  in
-  let foreign_objects =
-    match info.foreign_objects with
-    | External f -> f
-    | Local -> foreign_objects
-  in
-  Dune_package.Lib.make
-    ~obj_dir
-    ~orig_src_dir
-    ~name
-    ~loc:info.loc
-    ~kind:info.kind
-    ~synopsis:info.synopsis
-    ~version:info.version
-    ~archives:info.archives
-    ~plugins:info.plugins
-    ~foreign_archives:info.foreign_archives
-    ~foreign_objects
-    ~jsoo_runtime:info.jsoo_runtime
-    ~requires:(add_loc (requires_exn lib))
-    ~ppx_runtime_deps:(add_loc (ppx_runtime_deps_exn lib))
-    ~modes:info.modes
-    ~implements:info.implements
-    ~known_implementations:info.known_implementations
-    ~default_implementation:info.default_implementation
-    ~virtual_
-    ~modules:(Some lib_modules)
-    ~main_module_name:(Result.ok_exn (main_module_name lib))
-    ~sub_systems:(Sub_system.dump_config lib)
-    ~special_builtin_support:info.special_builtin_support
+  let add_loc =
+    let loc = Lib_info.loc info in
+    List.map ~f:(fun x -> (loc, x.name)) in
+    let virtual_ = Option.is_some (Lib_info.virtual_ info) in
+    let obj_dir =
+      match Obj_dir.to_local (obj_dir lib) with
+      | None -> assert false
+      | Some obj_dir -> Obj_dir.convert_to_external ~dir obj_dir
+    in
+    let lib_modules =
+      let install_dir = Obj_dir.dir obj_dir in
+      Lib_modules.version_installed ~install_dir lib_modules
+    in
+    let orig_src_dir =
+      if !Clflags.store_orig_src_dir
+      then Some (
+        let orig_src_dir = Lib_info.orig_src_dir info in
+        match orig_src_dir with
+        | Some src_dir -> src_dir
+        | None ->
+          let src_dir = Lib_info.src_dir info in
+          match Path.drop_build_context src_dir with
+          | None -> src_dir
+          | Some src_dir ->
+            Path.(of_string (to_absolute_filename (Path.source src_dir)))
+      )
+      else None
+    in
+    let foreign_objects =
+      match Lib_info.foreign_objects info with
+      | External f -> f
+      | Local -> foreign_objects
+    in
+    let loc = Lib_info.loc info in
+    let synopsis = Lib_info.synopsis info in
+    let archives = Lib_info.archives info in
+    let plugins = Lib_info.plugins info in
+    let implements = Lib_info.implements info in
+    let modes = Lib_info.modes info in
+    let kind = Lib_info.kind info in
+    let version = Lib_info.version info in
+    let jsoo_runtime = Lib_info.jsoo_runtime info in
+    let special_builtin_support = Lib_info.special_builtin_support info in
+    let default_implementation = Lib_info.default_implementation info in
+    let known_implementations = Lib_info.known_implementations info in
+    let foreign_archives = Lib_info.foreign_archives info in
+    Dune_package.Lib.make
+      ~obj_dir
+      ~orig_src_dir
+      ~name
+      ~loc
+      ~kind
+      ~synopsis
+      ~version
+      ~archives
+      ~plugins
+      ~foreign_archives
+      ~foreign_objects
+      ~jsoo_runtime
+      ~requires:(add_loc (requires_exn lib))
+      ~ppx_runtime_deps:(add_loc (ppx_runtime_deps_exn lib))
+      ~modes
+      ~implements
+      ~known_implementations
+      ~default_implementation
+      ~virtual_
+      ~modules:(Some lib_modules)
+      ~main_module_name:(Result.ok_exn (main_module_name lib))
+      ~sub_systems:(Sub_system.dump_config lib)
+      ~special_builtin_support
 
-module Local : sig
-  type t = private lib
-  val of_lib : lib -> t option
-  val of_lib_exn : lib -> t
-  val to_lib : t -> lib
-  val obj_dir : t -> Path.Build.t Obj_dir.t
-  val src_dir : t -> Path.Build.t
-  val to_dyn : t -> Dyn.t
-  val equal : t -> t -> bool
-  val hash : t -> int
+  module Local : sig
+    type t = private lib
+    val of_lib : lib -> t option
+    val of_lib_exn : lib -> t
+    val to_lib : t -> lib
+    val obj_dir : t -> Path.Build.t Obj_dir.t
+    val info : t -> Path.Build.t Lib_info.t
+    val to_dyn : t -> Dyn.t
+    val equal : t -> t -> bool
+    val hash : t -> int
 
-  module Set : Stdune.Set.S with type elt = t
-  module Map : Stdune.Map.S with type key = t
+    module Set : Stdune.Set.S with type elt = t
+    module Map : Stdune.Map.S with type key = t
 
-end = struct
-  type nonrec t = t
+  end = struct
+    type nonrec t = t
 
-  let to_lib t = t
+    let to_lib t = t
 
-  let of_lib (t : lib) = Option.some_if (is_local t) t
+    let of_lib (t : lib) = Option.some_if (is_local t) t
 
-  let of_lib_exn t =
-    match of_lib t with
-    | Some l -> l
-    | None -> Code_error.raise "Lib.Local.of_lib_exn"
-                ["l", to_dyn t]
+    let of_lib_exn t =
+      match of_lib t with
+      | Some l -> l
+      | None -> Code_error.raise "Lib.Local.of_lib_exn"
+                  ["l", to_dyn t]
 
-  let obj_dir t = Obj_dir.as_local_exn t.info.obj_dir
+    let obj_dir t = Obj_dir.as_local_exn (Lib_info.obj_dir t.info)
+    let info t = Lib_info.as_local_exn t.info
 
-  let src_dir t = Path.as_in_build_dir_exn t.info.src_dir
+    module Set = Set
+    module Map = Map
 
-  module Set = Set
-  module Map = Map
-
-  let to_dyn = to_dyn
-  let equal = equal
-  let hash = hash
-end
+    let to_dyn = to_dyn
+    let equal = equal
+    let hash = hash
+  end

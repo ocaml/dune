@@ -40,9 +40,8 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
   let add_rule = Super_context.add_rule sctx ~dir in
   let copy_to_obj_dir ~src ~dst =
     add_rule ~loc:(Loc.of_pos __POS__) (Build.symlink ~src ~dst) in
-  let modes =
-    Dune_file.Mode_conf.Set.eval impl.modes
-      ~has_native:(Option.is_some ctx.ocamlopt) in
+  let { Lib_config. has_native; ext_obj; _ } = ctx.lib_config in
+  let modes = Dune_file.Mode_conf.Set.eval impl.modes ~has_native in
   let copy_obj_file m kind =
     let src = Obj_dir.Module.cm_file_unsafe vlib_obj_dir m ~kind in
     let dst = Obj_dir.Module.cm_file_unsafe impl_obj_dir m ~kind in
@@ -65,7 +64,7 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
       if modes.native then begin
         copy_obj_file src Cmx;
         (let object_file dir =
-           Obj_dir.Module.obj_file dir src ~kind:Cmx ~ext:ctx.lib_config.ext_obj in
+           Obj_dir.Module.obj_file dir src ~kind:Cmx ~ext:ext_obj in
          copy_to_obj_dir
            ~src:(object_file vlib_obj_dir)
            ~dst:(object_file impl_obj_dir))

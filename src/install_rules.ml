@@ -231,11 +231,11 @@ let lib_install_files sctx ~dir_contents ~dir ~sub_dir:lib_subdir
         make_entry Lib source ?dst))
   in
   let ctx = Super_context.context sctx in
+  let { Lib_config. has_native; ext_obj; _ } = ctx.lib_config in
   let module_files =
     let if_ cond l = if cond then l else [] in
     let { Mode.Dict.byte ; native } =
-      Dune_file.Mode_conf.Set.eval lib.modes
-        ~has_native:(Option.is_some ctx.ocamlopt)
+      Dune_file.Mode_conf.Set.eval lib.modes ~has_native
     in
     let virtual_library = Library.is_virtual lib in
     List.concat_map installable_modules ~f:(fun m ->
@@ -251,8 +251,7 @@ let lib_install_files sctx ~dir_contents ~dir ~sub_dir:lib_subdir
         ; if_ (byte && Module.has_impl m && virtual_library)
             [ cm_file_unsafe Cmo ]
         ; if_ (native && Module.has_impl m && virtual_library)
-            [ Obj_dir.Module.obj_file obj_dir
-                m ~kind:Cmx ~ext:ctx.lib_config.ext_obj ]
+            [ Obj_dir.Module.obj_file obj_dir m ~kind:Cmx ~ext:ext_obj ]
         ; List.filter_map Ml_kind.all ~f:(Obj_dir.Module.cmt_file obj_dir m)
         ]
         |> List.concat

@@ -11,12 +11,11 @@ let dlls t = t.dlls
 module Library = Dune_file.Library
 
 let make ~(ctx : Context.t) ~dir ~dir_contents (lib : Library.t) =
+  let { Lib_config. has_native; ext_obj ; ext_dll ; ext_lib ; _ } =
+    ctx.lib_config in
   let { Mode.Dict.byte; native } =
-    Dune_file.Mode_conf.Set.eval lib.modes
-      ~has_native:(Option.is_some ctx.ocamlopt)
-  in
+    Dune_file.Mode_conf.Set.eval lib.modes ~has_native in
   let if_ cond l = if cond then l else [] in
-  let { Lib_config. ext_obj ; ext_dll ; ext_lib ; _ } = ctx.lib_config in
   let files =
     let virtual_library = Library.is_virtual lib in
     List.concat

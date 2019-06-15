@@ -19,7 +19,9 @@ guide][quick-start] or watch [this introduction video][video].
 The [example][example] directory contains examples of projects using
 dune.
 
-[![Travis status][travis-img]][travis] [![AppVeyor status][appveyor-img]][appveyor]
+[![Travis status][travis-img]][travis]
+[![AppVeyor status][appveyor-img]][appveyor]
+[![Release][release-img]][release]
 
 [manual]:         https://dune.readthedocs.io/en/latest/
 [quick-start]:    https://dune.readthedocs.io/en/latest/quick-start.html
@@ -28,6 +30,8 @@ dune.
 [travis-img]:     https://travis-ci.org/ocaml/dune.svg?branch=master
 [appveyor]:       https://ci.appveyor.com/project/diml/dune/branch/master
 [appveyor-img]:   https://ci.appveyor.com/api/projects/status/rsxayce22e8f2jkp?svg=true
+[release]:        https://github.com/ocaml/dune/releases
+[release-img]:    https://img.shields.io/github/release/ocaml/dune.svg
 [merlin]:         https://github.com/ocaml/merlin
 [opam]:           https://opam.ocaml.org
 [issues]:         https://github.com/ocaml/dune/issues

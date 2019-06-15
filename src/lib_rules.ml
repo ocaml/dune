@@ -495,7 +495,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
     );
 
     Odoc.setup_library_odoc_rules sctx lib ~obj_dir ~requires:requires_compile
-      ~modules ~dep_graphs ~scope;
+      ~modules:(Lib_modules.modules lib_modules) ~dep_graphs ~scope;
 
     let flags =
       match alias_module with

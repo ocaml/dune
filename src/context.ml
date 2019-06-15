@@ -65,7 +65,6 @@ type t =
   ; findlib_toolchain       : string option
   ; arch_sixtyfour          : bool
   ; opam_var_cache          : (string, string) Hashtbl.t
-  ; natdynlink_supported    : Dynlink_supported.By_the_os.t
   ; ocaml_config            : Ocaml_config.t
   ; version_string          : string
   ; version                 : Ocaml_version.t
@@ -80,7 +79,6 @@ type t =
   ; architecture            : string
   ; system                  : string
   ; ext_asm                 : string
-  ; ext_dll                 : string
   ; ext_exe                 : string
   ; os_type                 : string
   ; model                   : string
@@ -128,7 +126,7 @@ let to_dyn t : Dyn.t =
     ; "findlib_path", list path (Findlib.paths t.findlib)
     ; "arch_sixtyfour", Bool t.arch_sixtyfour
     ; "natdynlink_supported",
-      Bool (Dynlink_supported.By_the_os.get t.natdynlink_supported)
+      Bool (Dynlink_supported.By_the_os.get t.lib_config.natdynlink_supported)
     ; "supports_shared_libraries",
       Bool (Dynlink_supported.By_the_os.get t.supports_shared_libraries)
     ; "opam_vars", Hashtbl.to_dyn string string t.opam_var_cache
@@ -431,6 +429,9 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       ; architecture = Ocaml_config.architecture ocfg
       ; system = Ocaml_config.system ocfg
       ; model = Ocaml_config.model ocfg
+      ; ext_dll = Ocaml_config.ext_dll ocfg
+      ; natdynlink_supported =
+          Dynlink_supported.By_the_os.of_bool natdynlink_supported
       }
     in
     let t =
@@ -465,9 +466,6 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
 
       ; opam_var_cache
 
-      ; natdynlink_supported =
-          Dynlink_supported.By_the_os.of_bool natdynlink_supported
-
       ; stdlib_dir
       ; ocaml_config = ocfg
       ; version_string
@@ -482,7 +480,6 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       ; architecture            = Ocaml_config.architecture            ocfg
       ; system                  = Ocaml_config.system                  ocfg
       ; ext_asm                 = Ocaml_config.ext_asm                 ocfg
-      ; ext_dll                 = Ocaml_config.ext_dll                 ocfg
       ; ext_exe                 = Ocaml_config.ext_exe                 ocfg
       ; os_type                 = Ocaml_config.os_type                 ocfg
       ; model                   = Ocaml_config.model                   ocfg

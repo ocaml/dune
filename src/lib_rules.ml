@@ -219,11 +219,10 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
          ])
 
   let build_self_stubs lib ~expander ~dir ~o_files =
-    let static = Library.stubs_archive lib ~dir ~ext_lib:ctx.lib_config.ext_lib in
-    let dynamic = Library.dll lib ~dir ~ext_dll:ctx.ext_dll in
-    let modes =
-      Mode_conf.Set.eval lib.modes
-        ~has_native:(Option.is_some ctx.ocamlopt) in
+    let { Lib_config. ext_lib; ext_dll; has_native; _ } = ctx.lib_config in
+    let static = Library.stubs_archive lib ~dir ~ext_lib in
+    let dynamic = Library.dll lib ~dir ~ext_dll in
+    let modes = Mode_conf.Set.eval lib.modes ~has_native in
     let ocamlmklib = ocamlmklib lib ~expander ~dir ~o_files in
     if modes.native &&
        modes.byte   &&
@@ -391,7 +390,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
             (Path.Build.basename src)
           |> Path.Build.extend_basename ~suffix:".js" in
         Js_of_ocaml_rules.build_cm cctx ~js_of_ocaml ~src ~target);
-    if Dynlink_supported.By_the_os.get ctx.natdynlink_supported
+    if Dynlink_supported.By_the_os.get ctx.lib_config.natdynlink_supported
     && modes.native then
       build_shared lib ~dir ~flags ~ctx
 

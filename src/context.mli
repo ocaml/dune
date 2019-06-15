@@ -87,9 +87,6 @@ type t =
 
   ; opam_var_cache : (string, string) Hashtbl.t
 
-  ; (** Native dynlink *)
-    natdynlink_supported : Dynlink_supported.By_the_os.t
-
   ; ocaml_config            : Ocaml_config.t
   ; version_string          : string
   ; version                 : Ocaml_version.t
@@ -104,7 +101,6 @@ type t =
   ; architecture            : string
   ; system                  : string
   ; ext_asm                 : string
-  ; ext_dll                 : string
   ; ext_exe                 : string
   ; os_type                 : string
   ; model                   : string

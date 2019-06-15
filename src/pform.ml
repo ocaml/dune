@@ -202,7 +202,7 @@ module Map = struct
       ; "ext_obj"        , string context.lib_config.ext_obj
       ; "ext_asm"        , string context.ext_asm
       ; "ext_lib"        , string context.lib_config.ext_lib
-      ; "ext_dll"        , string context.ext_dll
+      ; "ext_dll"        , string context.lib_config.ext_dll
       ; "ext_exe"        , string context.ext_exe
       ; "profile"        , string context.profile
       ; "workspace_root" , values [Value.Dir (Path.build context.build_dir)]

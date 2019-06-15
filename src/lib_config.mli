@@ -6,6 +6,9 @@ type t =
   ; architecture : string
   ; system : string
   ; model : string
+  ; (** Native dynlink *)
+    natdynlink_supported    : Dynlink_supported.By_the_os.t
+  ; ext_dll                 : string
   }
 
 val allowed_in_enabled_if : string list

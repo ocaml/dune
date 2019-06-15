@@ -8,6 +8,8 @@ type t =
   ; architecture : string
   ; system : string
   ; model : string
+  ; natdynlink_supported    : Dynlink_supported.By_the_os.t
+  ; ext_dll                 : string
   }
 
 let var_map =

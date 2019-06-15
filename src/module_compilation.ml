@@ -65,8 +65,9 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
       in
       let other_targets =
         match cm_kind with
-        | Cmx -> (Obj_dir.Module.obj_file obj_dir m ~kind:Cmx ~ext:ctx.ext_obj)
-                 :: other_targets
+        | Cmx ->
+          (Obj_dir.Module.obj_file obj_dir m ~kind:Cmx ~ext:ctx.lib_config.ext_obj)
+          :: other_targets
         | Cmi | Cmo -> other_targets
       in
       let dep_graph = Ml_kind.Dict.get dep_graphs ml_kind in

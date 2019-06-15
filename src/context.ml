@@ -79,9 +79,7 @@ type t =
   ; cc_profile              : string list
   ; architecture            : string
   ; system                  : string
-  ; ext_obj                 : string
   ; ext_asm                 : string
-  ; ext_lib                 : string
   ; ext_dll                 : string
   ; ext_exe                 : string
   ; os_type                 : string
@@ -102,6 +100,7 @@ type t =
   ; cmt_magic_number        : string
   ; supports_shared_libraries : Dynlink_supported.By_the_os.t
   ; which_cache             : (string, Path.t option) Hashtbl.t
+  ; lib_config : Lib_config.t
   }
 
 let equal x y = String.equal x.name y.name
@@ -422,6 +421,18 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     let version_string = Ocaml_config.version_string ocfg in
     let version        = Ocaml_version.of_ocaml_config ocfg in
     let arch_sixtyfour = Ocaml_config.word_size ocfg = 64 in
+    let ocamlopt = get_ocaml_tool "ocamlopt" in
+    let lib_config     =
+      { Lib_config.
+        has_native = Option.is_some ocamlopt
+      ; ext_obj = Ocaml_config.ext_obj ocfg
+      ; ext_lib = Ocaml_config.ext_lib ocfg
+      ; os_type = Ocaml_config.os_type ocfg
+      ; architecture = Ocaml_config.architecture ocfg
+      ; system = Ocaml_config.system ocfg
+      ; model = Ocaml_config.model ocfg
+      }
+    in
     let t =
       { name
       ; implicit
@@ -442,7 +453,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
           | Some p -> p
           | None -> prog_not_found_in_path "ocaml")
       ; ocamlc
-      ; ocamlopt     = get_ocaml_tool     "ocamlopt"
+      ; ocamlopt
       ; ocamldep     = get_ocaml_tool_exn "ocamldep"
       ; ocamlmklib   = get_ocaml_tool_exn "ocamlmklib"
       ; ocamlobjinfo = which "ocamlobjinfo"
@@ -470,9 +481,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       ; cc_profile              = Ocaml_config.cc_profile              ocfg
       ; architecture            = Ocaml_config.architecture            ocfg
       ; system                  = Ocaml_config.system                  ocfg
-      ; ext_obj                 = Ocaml_config.ext_obj                 ocfg
       ; ext_asm                 = Ocaml_config.ext_asm                 ocfg
-      ; ext_lib                 = Ocaml_config.ext_lib                 ocfg
       ; ext_dll                 = Ocaml_config.ext_dll                 ocfg
       ; ext_exe                 = Ocaml_config.ext_exe                 ocfg
       ; os_type                 = Ocaml_config.os_type                 ocfg
@@ -496,6 +505,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
             (Ocaml_config.supports_shared_libraries ocfg)
 
       ; which_cache
+      ; lib_config
       }
     in
     if Ocaml_version.supports_response_file version then begin
@@ -701,13 +711,4 @@ let name t = t.name
 
 let has_native t = Option.is_some t.ocamlopt
 
-let lib_config t =
-  { Lib_config.
-    has_native = has_native t
-  ; ext_obj = t.ext_obj
-  ; ext_lib = t.ext_lib
-  ; os_type = t.os_type
-  ; architecture = t.architecture
-  ; system = t.system
-  ; model = t.model
-  }
+let lib_config t = t.lib_config

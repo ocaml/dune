@@ -26,15 +26,15 @@ let make ~(ctx : Context.t) ~dir ~dir_contents (lib : Library.t) =
             Dir_contents.c_sources_of_library dir_contents
               ~name:(Library.best_name lib)
           in
-          C.Sources.objects files ~dir ~ext_obj:ctx.ext_obj
+          C.Sources.objects files ~dir ~ext_obj:ctx.lib_config.ext_obj
         ) else if Library.has_stubs lib then (
-          [ Library.stubs_archive ~dir lib ~ext_lib:ctx.ext_lib ]
+          [ Library.stubs_archive ~dir lib ~ext_lib:ctx.lib_config.ext_lib ]
         ) else
           []
       ; if_ (native && not virtual_library)
           (let files =
              [ Library.archive ~dir lib ~ext:(Mode.compiled_lib_ext Native)
-             ; Library.archive ~dir lib ~ext:ctx.ext_lib
+             ; Library.archive ~dir lib ~ext:ctx.lib_config.ext_lib
              ]
            in
            if Dynlink_supported.get lib.dynlink ctx.natdynlink_supported then

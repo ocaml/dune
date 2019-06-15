@@ -65,7 +65,7 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
       if modes.native then begin
         copy_obj_file src Cmx;
         (let object_file dir =
-           Obj_dir.Module.obj_file dir src ~kind:Cmx ~ext:ctx.ext_obj in
+           Obj_dir.Module.obj_file dir src ~kind:Cmx ~ext:ctx.lib_config.ext_obj in
          copy_to_obj_dir
            ~src:(object_file vlib_obj_dir)
            ~dst:(object_file impl_obj_dir))
@@ -279,7 +279,7 @@ let impl sctx ~dir ~(lib : Dune_file.Library.t) ~scope ~modules =
             |> Lib_modules.set_modules modules
           in
           let foreign_objects =
-            let ext_obj = (Super_context.context sctx).ext_obj in
+            let ext_obj = (Super_context.context sctx).lib_config.ext_obj in
             let dir = Obj_dir.obj_dir (Lib.Local.obj_dir vlib) in
             Dir_contents.c_sources_of_library dir_contents ~name
             |> C.Sources.objects ~ext_obj ~dir

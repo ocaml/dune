@@ -27,7 +27,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
   let build_lib (lib : Library.t) ~obj_dir ~expander ~flags ~dir ~mode
         ~top_sorted_modules ~modules =
     let cm_files =
-      Cm_files.make_lib ~obj_dir ~ext_obj:ctx.ext_obj ~modules ~top_sorted_modules in
+      Cm_files.make_lib ~obj_dir ~ext_obj:ctx.lib_config.ext_obj ~modules ~top_sorted_modules in
     Option.iter (Context.compiler ctx mode) ~f:(fun compiler ->
       let target = Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext mode) in
       let stubs_flags =
@@ -72,7 +72,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
                   (match mode with
                    | Byte -> []
                    | Native ->
-                     [Library.archive lib ~dir ~ext:ctx.ext_lib])
+                     [Library.archive lib ~dir ~ext:ctx.lib_config.ext_lib])
               ])))
 
   (* If the compiler reads the cmi for module alias even with
@@ -219,7 +219,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
          ])
 
   let build_self_stubs lib ~expander ~dir ~o_files =
-    let static = Library.stubs_archive lib ~dir ~ext_lib:ctx.ext_lib in
+    let static = Library.stubs_archive lib ~dir ~ext_lib:ctx.lib_config.ext_lib in
     let dynamic = Library.dll lib ~dir ~ext_dll:ctx.ext_dll in
     let modes =
       Mode_conf.Set.eval lib.modes
@@ -265,7 +265,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
     let build_x_files build_x files =
       String.Map.to_list files
       |> List.map ~f:(fun (obj, (loc, src)) ->
-        let dst = Path.Build.relative dir (obj ^ ctx.ext_obj) in
+        let dst = Path.Build.relative dir (obj ^ ctx.lib_config.ext_obj) in
         build_x lib ~dir ~expander ~includes (loc, src, dst)
       )
     in
@@ -300,7 +300,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
       in
       let build =
         Build.S.seq (Build.dyn_paths (Build.arr (fun () -> [
-            Path.build (Library.archive lib ~dir ~ext:ctx.ext_lib)
+            Path.build (Library.archive lib ~dir ~ext:ctx.lib_config.ext_lib)
           ])))
           (Command.run ~dir:(Path.build ctx.build_dir)
              (Ok ocamlopt)
@@ -314,7 +314,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
       let build =
         if Library.has_stubs lib then
           Build.path (Path.build (Library.stubs_archive ~dir lib
-                                    ~ext_lib:ctx.ext_lib))
+                                    ~ext_lib:ctx.lib_config.ext_lib))
           >>>
           build
         else
@@ -342,7 +342,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
                compiler implicitly adds this module. *)
             [ Cm_kind.Cmx, (Cm_kind.ext Cmx)
             ; Cmo, (Cm_kind.ext Cmo)
-            ; Cmx, ctx.ext_obj ]
+            ; Cmx, ctx.lib_config.ext_obj ]
             |> List.iter ~f:(fun (kind, ext) ->
               let src =
                 Path.build (Obj_dir.Module.obj_file obj_dir m ~kind ~ext) in

@@ -103,9 +103,7 @@ type t =
   ; cc_profile              : string list
   ; architecture            : string
   ; system                  : string
-  ; ext_obj                 : string
   ; ext_asm                 : string
-  ; ext_lib                 : string
   ; ext_dll                 : string
   ; ext_exe                 : string
   ; os_type                 : string
@@ -128,6 +126,7 @@ type t =
   ; supports_shared_libraries : Dynlink_supported.By_the_os.t
 
   ; which_cache             : (string, Path.t option) Hashtbl.t
+  ; lib_config : Lib_config.t
   }
 
 val equal : t -> t -> bool

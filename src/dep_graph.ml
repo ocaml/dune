@@ -14,11 +14,11 @@ let deps_of t (m : Module.t) =
   match Module.Name.Map.find t.per_module name with
   | Some (_, x) -> x
   | None ->
-    Errors.code_error "Ocamldep.Dep_graph.deps_of"
-      [ "dir", Path.Build.to_sexp t.dir
-      ; "modules", Sexp.Encoder.(list Module.Name.to_sexp)
+    Code_error.raise "Ocamldep.Dep_graph.deps_of"
+      [ "dir", Path.Build.to_dyn t.dir
+      ; "modules", Dyn.Encoder.(list Module.Name.to_dyn)
                      (Module.Name.Map.keys t.per_module)
-      ; "module", Module.Name.to_sexp name
+      ; "module", Module.Name.to_dyn name
       ]
 
 let pp_cycle fmt cycle =
@@ -88,8 +88,8 @@ let wrapped_compat ~modules ~wrapped_compat =
       match d, m with
       | None, None -> assert false
       | Some wrapped_compat, None ->
-        Errors.code_error "deprecated module needs counterpart"
-          [ "deprecated", Module.to_sexp wrapped_compat
+        Code_error.raise "deprecated module needs counterpart"
+          [ "deprecated", Module.to_dyn wrapped_compat
           ]
       | None, Some _ -> None
       | Some _, Some m -> Some (m, (Build.return [m]))
@@ -122,11 +122,10 @@ module Ml_kind = struct
       else if Module.is_private mv || Module.is_private mi then
         Some (mi, i)
       else
-        let open Sexp.Encoder in
-        Errors.code_error "merge_impl: unexpected dep graph"
-          [ "ml_kind", string (Ml_kind.to_string ml_kind)
-          ; "mv", Module.to_sexp mv
-          ; "mi", Module.to_sexp mi
+        Code_error.raise "merge_impl: unexpected dep graph"
+          [ "ml_kind", (Ml_kind.to_dyn ml_kind)
+          ; "mv", Module.to_dyn mv
+          ; "mi", Module.to_dyn mi
           ]
 
   let merge_for_impl ~(vlib : t) ~(impl : t) =

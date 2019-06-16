@@ -8,9 +8,7 @@ module Syntax = struct
     | OCaml -> "ocaml"
     | Reason -> "reason"
 
-  let pp fmt t = Format.pp_print_string fmt (to_string t)
-
-  let to_sexp t = Sexp.Encoder.string (to_string t)
+  let to_dyn t = Dyn.Encoder.string (to_string t)
 end
 
 module Name = struct
@@ -24,7 +22,7 @@ module Name = struct
   let decode = Dune_lang.Decoder.string
   let encode = Dune_lang.Encoder.string
 
-  let to_sexp = Sexp.Encoder.string
+  let to_dyn = Dyn.Encoder.string
 
   let add_suffix = (^)
 
@@ -36,9 +34,7 @@ module Name = struct
   let pp = Format.pp_print_string
   let pp_quote fmt x = Format.fprintf fmt "%S" x
 
-  module Set = struct
-    include String.Set
-  end
+  module Set = String.Set
   module Map = String.Map
   module Top_closure = Top_closure.String
   module Infix = Comparable.Operators(T)
@@ -94,18 +90,13 @@ module File = struct
 
   let make syntax path = { syntax; path }
 
-  let to_sexp { path; syntax } =
-    let open Sexp.Encoder in
+  let to_dyn { path; syntax } =
+    let open Dyn.Encoder in
     record
-      [ "path", Path.to_sexp path
-      ; "syntax", Syntax.to_sexp syntax
+      [ "path", Path.to_dyn path
+      ; "syntax", Syntax.to_dyn syntax
       ]
 
-  let pp fmt { path; syntax } =
-    Fmt.record fmt
-      [ "path", Fmt.const Path.pp path
-      ; "syntax", Fmt.const Syntax.pp syntax
-      ]
 end
 
 module Kind = struct
@@ -119,9 +110,7 @@ module Kind = struct
     | Virtual -> "virtual"
     | Impl -> "impl"
 
-  let pp fmt t = Format.pp_print_string fmt (to_string t)
-
-  let to_sexp t = Sexp.Encoder.string (to_string t)
+  let to_dyn t = Dyn.Encoder.string (to_string t)
 
   let encode =
     let open Dune_lang.Encoder in
@@ -159,10 +148,10 @@ module Source = struct
   let make ?impl ?intf name =
     begin match impl, intf with
     | None, None ->
-      Errors.code_error "Module.Source.make called with no files"
-        [ "name", Sexp.Encoder.string name
-        ; "impl", Sexp.Encoder.(option unknown) impl
-        ; "intf", Sexp.Encoder.(option unknown) intf
+      Code_error.raise "Module.Source.make called with no files"
+        [ "name", Dyn.Encoder.string name
+        ; "impl", Dyn.Encoder.(option unknown) impl
+        ; "intf", Dyn.Encoder.(option unknown) intf
         ]
     | Some _, _
     | _, Some _ -> ()
@@ -214,12 +203,12 @@ let of_source ?obj_name ~visibility ~(kind : Kind.t)
   | Virtual, Some _, _
   | Impl, None, _
   | Intf_only, Some _, _ ->
-    let open Sexp.Encoder in
-    Errors.code_error "Module.make: invalid kind, impl, intf combination"
-      [ "name", Name.to_sexp source.name
-      ; "kind", Kind.to_sexp kind
-      ; "intf", (option File.to_sexp) source.intf
-      ; "impl", (option File.to_sexp) source.impl
+    let open Dyn.Encoder in
+    Code_error.raise "Module.make: invalid kind, impl, intf combination"
+      [ "name", Name.to_dyn source.name
+      ; "kind", Kind.to_dyn kind
+      ; "intf", (option File.to_dyn) source.intf
+      ; "impl", (option File.to_dyn) source.impl
       ]
   | _, _ , _ -> ()
   end;
@@ -295,28 +284,17 @@ let src_dir t = Source.src_dir t.source
 
 let set_pp t pp = { t with pp }
 
-let to_sexp { source = { name; impl; intf }
+let to_dyn { source = { name; impl; intf }
             ; obj_name ; pp ; visibility; kind } =
-  let open Sexp.Encoder in
+  let open Dyn.Encoder in
   record
-    [ "name", Name.to_sexp name
+    [ "name", Name.to_dyn name
     ; "obj_name", string obj_name
-    ; "impl", (option File.to_sexp) impl
-    ; "intf", (option File.to_sexp) intf
+    ; "impl", (option File.to_dyn) impl
+    ; "intf", (option File.to_dyn) intf
     ; "pp", (option string) (Option.map ~f:(fun _ -> "has pp") pp)
-    ; "visibility", Visibility.to_sexp visibility
-    ; "kind", Kind.to_sexp kind
-    ]
-
-let pp fmt { source = { name; impl; intf }
-           ; obj_name ; pp = _ ; visibility; kind } =
-  Fmt.record fmt
-    [ "name", Fmt.const Name.pp name
-    ; "impl", Fmt.const (Fmt.optional File.pp) impl
-    ; "intf", Fmt.const (Fmt.optional File.pp) intf
-    ; "obj_name", Fmt.const Format.pp_print_string obj_name
-    ; "visibility", Fmt.const Visibility.pp visibility
-    ; "kind", Fmt.const Kind.pp kind
+    ; "visibility", Visibility.to_dyn visibility
+    ; "kind", Kind.to_dyn kind
     ]
 
 let wrapped_compat t =
@@ -387,9 +365,9 @@ module Obj_map = struct
         match find t m with
         | Some m -> m
         | None ->
-          Errors.code_error "top_closure: unable to find key"
-            [ "m", to_sexp m
-            ; "t", (Sexp.Encoder.list to_sexp) (keys t)
+          Code_error.raise "top_closure: unable to find key"
+            [ "m", to_dyn m
+            ; "t", (Dyn.Encoder.list to_dyn) (keys t)
             ])
 end
 

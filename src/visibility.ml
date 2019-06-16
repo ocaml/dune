@@ -9,6 +9,7 @@ let to_string = function
 let pp fmt t = Format.pp_print_string fmt (to_string t)
 
 let to_sexp t = Sexp.Encoder.string (to_string t)
+let to_dyn t = Dyn.Encoder.string (to_string t)
 
 let encode =
   let open Dune_lang.Encoder in

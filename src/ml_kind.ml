@@ -12,6 +12,8 @@ let suffix = choose "" "i"
 
 let to_string = choose "impl" "intf"
 
+let to_dyn t = Dyn.String (to_string t)
+
 let pp fmt t = Format.pp_print_string fmt (to_string t)
 
 let flag t = choose (Command.Args.A "-impl") (A "-intf") t

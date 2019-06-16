@@ -166,9 +166,6 @@ val is_private : t -> bool
 val is_virtual : t -> bool
 val is_alias : t -> bool
 
-val set_private : t -> t
-val set_virtual : t -> t
-
 val sources : t -> Path.t list
 
 val visibility : t -> Visibility.t

@@ -351,12 +351,6 @@ module Name_map = struct
     Fmt.ocaml_list Name.pp fmt (Name.Map.keys t)
 end
 
-let set_private t =
-  { t with visibility = Private }
-
-let set_virtual t =
-  { t with kind = Virtual }
-
 let visibility t = t.visibility
 
 let sources t =

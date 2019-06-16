@@ -13,6 +13,6 @@ val rules_for_auxiliary_module
 
 (** Get the dep graph for an already defined library *)
 val graph_of_remote_lib
-  :  obj_dir:Path.Build.t
+  :  obj_dir:Path.Build.t Obj_dir.t
   -> modules:Module.t Module.Name.Map.t
   -> Dep_graph.Ml_kind.t

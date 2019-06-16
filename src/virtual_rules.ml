@@ -293,9 +293,8 @@ let impl sctx ~dir ~(lib : Dune_file.Library.t) ~scope ~modules =
         match virtual_ with
         | Local ->
           let obj_dir =
-            Lib.obj_dir vlib
-            |> Obj_dir.obj_dir
-            |> Path.as_in_build_dir_exn (* always safe b/c vlib is local *)
+            Lib.Local.of_lib_exn vlib
+            |> Lib.Local.obj_dir
           in
           Ocamldep.graph_of_remote_lib ~obj_dir ~modules
         | External _ ->

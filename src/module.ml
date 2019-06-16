@@ -107,11 +107,13 @@ module Kind = struct
     | Intf_only
     | Virtual
     | Impl
+    | Alias
 
   let to_string = function
     | Intf_only -> "intf_only"
     | Virtual -> "virtual"
     | Impl -> "impl"
+    | Alias -> "alias"
 
   let to_dyn t = Dyn.Encoder.string (to_string t)
 
@@ -121,6 +123,7 @@ module Kind = struct
     | Intf_only -> string "intf_only"
     | Virtual -> string "virtual"
     | Impl -> string "impl"
+    | Alias -> string "alias"
 
   let decode =
     let open Stanza.Decoder in
@@ -128,15 +131,21 @@ module Kind = struct
       [ "intf_only", Intf_only
       ; "virtual", Virtual
       ; "impl", Impl
+      ; "alias", Alias
       ]
 
   let has_impl = function
+    | Alias
     | Impl -> true
     | Intf_only
     | Virtual -> false
 
   let is_virtual = function
     | Virtual -> true
+    | _ -> false
+
+  let is_alias = function
+    | Alias -> true
     | _ -> false
 end
 
@@ -246,6 +255,7 @@ let intf_only t = has_intf t && not (has_impl t)
 let is_public t = Visibility.is_public t.visibility
 let is_private t = Visibility.is_private t.visibility
 let is_virtual t = Kind.is_virtual t.kind
+let is_alias t = Kind.is_alias t.kind
 
 let source t (kind : Ml_kind.t) =
   Ml_kind.Dict.get t.source.files kind
@@ -386,7 +396,7 @@ let encode
     match kind with
     | Kind.Impl when has_impl -> None
     | Intf_only when not has_impl -> None
-    | Impl | Virtual | Intf_only -> Some kind
+    | Alias | Impl | Virtual | Intf_only -> Some kind
   in
   record_fields
     [ field "name" Name.encode name
@@ -469,4 +479,6 @@ let generated ~src_dir name =
     ~impl
     ~obj_name:basename
 
-let alias = generated
+let alias ~src_dir name =
+  let t = generated ~src_dir name in
+  { t with kind = Alias }

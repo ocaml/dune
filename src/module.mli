@@ -55,7 +55,7 @@ module File : sig
 end
 
 module Kind : sig
-  type t = Intf_only | Virtual | Impl
+  type t = Intf_only | Virtual | Impl | Alias
 
   include Dune_lang.Conv with type t := t
 end
@@ -162,6 +162,7 @@ end with type module_ := t
 val is_public : t -> bool
 val is_private : t -> bool
 val is_virtual : t -> bool
+val is_alias : t -> bool
 
 val set_private : t -> t
 val set_virtual : t -> t

@@ -5,12 +5,6 @@ open Build.O
 module CC = Compilation_context
 module SC = Super_context
 
-let is_alias_module cctx (m : Module.t) =
-  let open Module.Name.Infix in
-  match CC.alias_module cctx with
-  | None -> false
-  | Some alias -> Module.name alias = Module.name m
-
 let parse_module_names ~(unit : Module.t) ~modules words =
   let open Module.Name.Infix in
   List.filter_map words ~f:(fun m ->
@@ -63,7 +57,7 @@ let interpret_deps cctx ~unit deps =
       let m = Module.name m in
       let open Module.Name.Infix in
       if Module.name unit <> m
-      && not (is_alias_module cctx unit)
+      && not (Module.is_alias unit)
       && List.exists deps ~f:(fun x -> Module.name x = m) then
         die "Module %a in directory %s depends on %a.\n\
              This doesn't make sense to me.\n\
@@ -96,7 +90,7 @@ let interpret_deps cctx ~unit deps =
 
 let deps_of cctx ~ml_kind unit =
   let sctx = CC.super_context cctx in
-  if is_alias_module cctx unit then
+  if Module.is_alias unit then
     Build.return []
   else
     match Module.source unit ml_kind with
@@ -127,7 +121,7 @@ let deps_of cctx ~ml_kind unit =
       let build_paths dependencies =
         let dependency_file_path m =
           let source m =
-            if is_alias_module cctx m then
+            if Module.is_alias m then
               None
             else
               match Module.source m Ml_kind.Intf with

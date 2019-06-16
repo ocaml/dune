@@ -294,6 +294,8 @@ let to_dyn { source ; obj_name ; pp ; visibility; kind } =
     ; "kind", Kind.to_dyn kind
     ]
 
+let ml_gen = ".ml-gen"
+
 let wrapped_compat t =
   let source =
     let impl =
@@ -307,7 +309,7 @@ let wrapped_compat t =
                a source dir *)
             Path.L.relative (src_dir t)
               [ ".wrapped_compat"
-              ; Name.to_string t.source.name ^ ".ml-gen"
+              ; Name.to_string t.source.name ^ ml_gen
               ]
         }
       )
@@ -456,3 +458,15 @@ let ml_source =
 
 let set_src_dir t ~src_dir =
   map_files t ~f:(fun _ -> File.set_src_dir ~src_dir)
+
+let generated ~src_dir name =
+  let basename = String.uncapitalize (Name.to_string name) in
+  let impl =
+    File.make OCaml (Path.relative src_dir (basename ^ ml_gen)) in
+  make name
+    ~visibility:Public
+    ~kind:Impl
+    ~impl
+    ~obj_name:basename
+
+let alias = generated

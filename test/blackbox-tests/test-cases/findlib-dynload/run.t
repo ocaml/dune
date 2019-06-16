@@ -63,7 +63,7 @@
   m: init
   c_thread: registering
 
-  $ cat _build/default/.main.eobjs/findlib_initl.ml
+  $ cat _build/default/.main.eobjs/findlib_initl.ml-gen
   Findlib.record_package Findlib.Record_core "mytool";;
   Findlib.record_package Findlib.Record_core "findlib.internal";;
   Findlib.record_package Findlib.Record_core "findlib";;

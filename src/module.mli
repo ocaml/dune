@@ -181,3 +181,6 @@ val pped : t -> t
 val ml_source : t -> t
 
 val set_src_dir : t -> src_dir:Path.t -> t
+
+val alias : src_dir:Path.t -> Name.t -> t
+val generated : src_dir:Path.t -> Name.t -> t

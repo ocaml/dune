@@ -211,20 +211,12 @@ include Sub_system.Register_end_point(
           ~name:inline_test_name in
 
       let name = "run" in
-      let main_module_filename = name ^ ".ml" in
-      let main_module_name = Module.Name.of_string name in
-      let modules =
-        Module.Name.Map.singleton main_module_name
-          (Module.make main_module_name
-             ~impl:{ path =
-                       Path.Build.relative inline_test_dir main_module_filename
-                       |> Path.build
-                   ; syntax = OCaml
-                   }
-             ~kind:Impl
-             ~visibility:Public
-             ~obj_name:name)
+      let main_module =
+        let name = Module.Name.of_string name in
+        let src_dir = Path.build inline_test_dir in
+        Module.generated ~src_dir name
       in
+      let modules = Module.Name.Map.singleton (Module.name main_module) main_module in
 
       let bindings =
         Pform.Map.singleton "library-name"
@@ -251,7 +243,11 @@ include Sub_system.Register_end_point(
 
       (* Generate the runner file *)
       SC.add_rule sctx ~dir ~loc (
-        let target = Path.Build.relative inline_test_dir main_module_filename in
+        let target =
+          Module.file main_module Impl
+          |> Option.value_exn
+          |> Path.as_in_build_dir_exn
+        in
         let source_modules = Module.Name.Map.values source_modules in
         let files ml_kind =
           Pform.Var.Values (Value.L.paths (
@@ -309,7 +305,7 @@ include Sub_system.Register_end_point(
         )
       in
       Exe.build_and_link cctx
-        ~program:{ name; main_module_name ; loc }
+        ~program:{ name; main_module_name = Module.name main_module ; loc }
         ~linkages
         ~link_flags:(Build.return ["-linkall"]);
 

@@ -1,7 +1,9 @@
+(** Represents OCaml and Reason source files *)
 open! Stdune
 open! Import
 
 module Name : sig
+  (** Represents a valid OCaml module name *)
   type t
 
   val to_dyn : t -> Dyn.t
@@ -60,8 +62,8 @@ module Kind : sig
   include Dune_lang.Conv with type t := t
 end
 
-(* Only the source of a module, not yet associated to a library *)
 module Source : sig
+  (** Only the source of a module, not yet associated to a library *)
   type t
 
   val name : t -> Name.t

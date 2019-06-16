@@ -45,6 +45,7 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
             )
       in
       let extra_args, extra_deps, other_targets =
+        (* If we're compiling an implementation, then the cmi is present *)
         match cm_kind, Module.intf m
               , Vimpl.is_public_vlib_module vimpl m with
         (* If there is no mli, [ocamlY -c file.ml] produces both the

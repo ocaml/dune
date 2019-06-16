@@ -3,8 +3,8 @@ open Stdune
 
 type t = Module.Name.Set.t Ml_kind.Dict.t
 
-let pp =
-  Ml_kind.Dict.pp Module.Name.Set.pp
+let to_dyn = Ml_kind.Dict.to_dyn Module.Name.Set.to_dyn
+let pp fmt t = Dyn.pp fmt (to_dyn t)
 
 let empty =
   { Ml_kind.Dict.

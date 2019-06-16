@@ -35,13 +35,21 @@ module Dict = struct
     ; intf = f ~ml_kind:Intf
     }
 
+  let make ~impl ~intf = { impl; intf }
+
   let make_both x = { impl = x; intf = x }
 
   let map t ~f = { impl = f t.impl; intf = f t.intf }
+  let mapi t ~f = { impl = f Impl t.impl; intf = f Intf t.intf }
 
-  let pp f fmt { impl; intf } =
-    Fmt.record fmt
-      [ "impl", Fmt.const f impl
-      ; "intf", Fmt.const f intf
+  let iteri t ~f =
+    f Impl t.impl;
+    f Intf t.intf
+
+  let to_dyn f { impl; intf } =
+    let open Dyn.Encoder in
+    record
+      [ "impl", f impl
+      ; "intf", f intf
       ]
 end

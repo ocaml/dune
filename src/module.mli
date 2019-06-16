@@ -23,7 +23,7 @@ module Name : sig
 
   module Set : sig
     include Set.S with type elt = t
-    val pp : t Fmt.t
+    val to_dyn : t -> Dyn.t
   end
 
   module Map : Map.S with type key = t
@@ -65,8 +65,6 @@ module Source : sig
   type t
 
   val name : t -> Name.t
-  val impl : t -> File.t option
-  val intf : t -> File.t option
 
   val make
     :  ?impl:File.t

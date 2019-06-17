@@ -4,7 +4,7 @@ known_implementations implementations when using -p
   $ dune build -p vlibfoo
 
   $ cat _build/install/default/lib/vlibfoo/dune-package
-  (lang dune 1.10)
+  (lang dune 1.11)
   (name vlibfoo)
   (library
    (name vlibfoo)

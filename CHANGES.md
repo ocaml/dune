@@ -5,6 +5,9 @@
   the cost of building unnecessary artifacts in some cases. Some of these extra
   artifacts can fail to built, so this is a breaking change. (#2268, @rgrinberg)
 
+- Build `ppx.exe` as compiling host binary. (#2286, fixes #2252, @toots, review
+  by @rgrinberg and @diml)
+
 1.11.0 (unreleased)
 -------------------
 

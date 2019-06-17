@@ -472,6 +472,7 @@ end
 
 let get_compat_ppx_exe sctx ~name ~kind =
   let name = Lib_name.to_string name in
+  let sctx = SC.host sctx in
   match (kind : Compat_ppx_exe_kind.t) with
   | Dune ->
     ppx_exe sctx ~key:name ~dir_kind:Dune

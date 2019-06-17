@@ -21,6 +21,9 @@
 - Fix error message for missing C++ sources. The `.cc` extension was always
   ignored before. (#2275, @rgrinberg)
 
+- Add `$ dune init project` subcommand to create project boilerplate according
+  to a common template. (#2185, fixes #159, @shonfeder)
+
 1.10.0 (04/06/2019)
 -------------------
 

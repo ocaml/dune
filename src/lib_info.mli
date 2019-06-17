@@ -70,8 +70,6 @@ val enabled : _ t -> Enabled_status.t
 val orig_src_dir : 'path t -> 'path option
 val version : _ t -> string option
 
-(* CR-someday diml: this should be [Path.t list], since some libraries
-   have multiple source directories because of [copy_files]. *)
 (** Directory where the source files for the library are located. Returns
     the original src dir when it exists *)
 val best_src_dir : 'path t -> 'path

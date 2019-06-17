@@ -9,7 +9,6 @@ open Import
  *)
 val build_module
   :  ?sandbox:bool
-  -> ?js_of_ocaml:Dune_file.Js_of_ocaml.t
   -> ?dynlink:bool
   -> dep_graphs:Dep_graph.Ml_kind.t
   -> Compilation_context.t
@@ -19,7 +18,6 @@ val build_module
 (** Setup rules to build all of the modules in the compilation context. *)
 val build_modules
   :  ?sandbox:bool
-  -> ?js_of_ocaml:Dune_file.Js_of_ocaml.t
   -> ?dynlink:bool
   -> dep_graphs:Dep_graph.Ml_kind.t
   -> Compilation_context.t

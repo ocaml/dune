@@ -121,7 +121,6 @@ let link_exe
       ~top_sorted_modules
       ~link_time_code_gen
       ?(link_flags=Build.arr (fun _ -> []))
-      ?(js_of_ocaml=Dune_file.Js_of_ocaml.default)
       cctx
   =
   let sctx     = CC.super_context cctx in
@@ -134,6 +133,10 @@ let link_exe
   let exe = exe_path_from_name cctx ~name ~linkage in
   let compiler = Option.value_exn (Context.compiler ctx mode) in
   let kind = Mode.cm_kind mode in
+  let js_of_ocaml =
+    CC.js_of_ocaml cctx
+    |> Option.value ~default:Dune_file.Js_of_ocaml.default
+  in
   let cm_files =
     let modules = CC.modules cctx in
     Cm_files.make_exe ~obj_dir ~modules ~top_sorted_modules
@@ -195,13 +198,12 @@ let build_and_link_many
       ~programs
       ~linkages
       ?link_flags
-      ?(js_of_ocaml=Dune_file.Js_of_ocaml.default)
       cctx
   =
   let dep_graphs = Ocamldep.rules cctx in
 
   (* CR-someday jdimino: this should probably say [~dynlink:false] *)
-  Module_compilation.build_modules cctx ~js_of_ocaml ~dep_graphs;
+  Module_compilation.build_modules cctx ~dep_graphs;
 
   let link_time_code_gen = Link_time_code_gen.handle_special_libs cctx in
   List.iter programs ~f:(fun { Program.name; main_module_name ; loc } ->
@@ -217,7 +219,6 @@ let build_and_link_many
         ~name
         ~linkage
         ~top_sorted_modules
-        ~js_of_ocaml
         ~link_time_code_gen
         ?link_flags))
 

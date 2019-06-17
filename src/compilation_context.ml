@@ -61,6 +61,7 @@ type t =
   ; no_keep_locs         : bool
   ; opaque               : bool
   ; stdlib               : Dune_file.Library.Stdlib.t option
+  ; js_of_ocaml          : Dune_file.Js_of_ocaml.t option
   ; vimpl                : Vimpl.t option
   }
 
@@ -81,6 +82,7 @@ let preprocessing        t = t.preprocessing
 let no_keep_locs         t = t.no_keep_locs
 let opaque               t = t.opaque
 let stdlib               t = t.stdlib
+let js_of_ocaml          t = t.js_of_ocaml
 let vimpl                t = t.vimpl
 
 let context              t = Super_context.context t.super_context
@@ -91,7 +93,7 @@ let create ~super_context ~scope ~expander ~obj_dir
       ~modules ?alias_module ?lib_interface_module ~flags
       ~requires_compile ~requires_link
       ?(preprocessing=Preprocessing.dummy) ?(no_keep_locs=false)
-      ~opaque ?stdlib () =
+      ~opaque ?stdlib ?js_of_ocaml () =
   let requires_compile =
     if Dune_project.implicit_transitive_deps (Scope.project scope) then
       Lazy.force requires_link
@@ -114,6 +116,7 @@ let create ~super_context ~scope ~expander ~obj_dir
   ; no_keep_locs
   ; opaque
   ; stdlib
+  ; js_of_ocaml
   ; vimpl
   }
 

@@ -136,8 +136,7 @@ let user_written_deps t =
 let of_library_stanza ~dir
       ~lib_config:({ Lib_config.has_native; ext_lib; ext_obj; _ }
                    as lib_config)
-      (known_implementations : (Loc.t * Lib_name.t) Variant.Map.t)
-      (conf : Dune_file.Library.t) =
+      ~known_implementations (conf : Dune_file.Library.t) =
   let (_loc, lib_name) = conf.name in
   let obj_dir = Dune_file.Library.obj_dir ~dir conf in
   let gen_archive_file ~dir ext =

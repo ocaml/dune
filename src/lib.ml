@@ -1456,14 +1456,15 @@ module DB = struct
               | Some variants_public ->
                 List.rev_append variants_private variants_public
         in
-        let variants =
+        let known_implementations =
           match Variant.Map.of_list variants with
           | Ok x -> x
           | Error (variant, x, y) ->
             error_two_impl_for_variant (snd conf.name) variant x y
         in
         let info =
-          Lib_info.of_library_stanza ~dir ~lib_config variants conf
+          Lib_info.of_library_stanza ~dir ~lib_config
+            ~known_implementations conf
           |> Lib_info.of_local
         in
         match conf.public with

@@ -87,7 +87,7 @@ type local = Path.Build.t t
 val of_library_stanza
   :  dir:Path.Build.t
   -> lib_config:Lib_config.t
-  -> (Loc.t * Lib_name.t) Variant.Map.t
+  -> known_implementations:(Loc.t * Lib_name.t) Variant.Map.t
   -> Dune_file.Library.t
   -> local
 

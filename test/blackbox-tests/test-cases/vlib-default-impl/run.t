@@ -45,7 +45,7 @@ Check that default implementation data is installed in the dune package file.
    (main_module_name A)
    (modes byte native)
    (modules
-    (alias_module (name A) (obj_name a) (visibility public) (impl))
+    (alias_module (name A) (obj_name a) (visibility public) (kind alias) (impl))
     (main_module_name A)
     (modules
      ((name X) (obj_name a__X) (visibility public) (kind virtual) (intf)))

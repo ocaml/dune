@@ -24,13 +24,19 @@ module Dict : sig
     ; intf : 'a
     }
 
-  val pp : 'a Fmt.t -> 'a t Fmt.t
+  val to_dyn : ('a -> Dyn.t) -> 'a t -> Dyn.t
 
   val get : 'a t -> kind -> 'a
 
   val of_func : (ml_kind:kind -> 'a) -> 'a t
 
   val make_both : 'a -> 'a t
+
+  val iteri : 'a t -> f:(kind -> 'a -> unit) -> unit
+
+  val make : impl:'a -> intf:'a -> 'a t
+
+  val mapi : 'a t -> f:(kind -> 'a -> 'b) -> 'b t
 
   val map : 'a t -> f:('a -> 'b) -> 'b t
 end with type kind := t

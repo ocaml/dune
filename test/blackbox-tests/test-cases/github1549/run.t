@@ -19,6 +19,7 @@ Reproduction case for #1549: too many parentheses in installed .dune files
      (name Simple_tests)
      (obj_name simple_tests)
      (visibility public)
+     (kind alias)
      (impl))
     (main_module_name Simple_tests)
     (wrapped true))

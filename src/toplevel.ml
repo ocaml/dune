@@ -10,24 +10,23 @@ module Source = struct
     ; main : string
     }
 
-  let main_module_name t = Module.Name.of_string t.name
-  let main_module_filename t = t.name ^ ".ml"
-  let source_path t = Path.Build.relative t.dir (main_module_filename t)
+  let main_module t =
+    let main_module_name = Module.Name.of_string t.name in
+    let src_dir = Path.build t.dir in
+    Module.generated ~src_dir main_module_name
+
+  let source_path t =
+    Module.file (main_module t) Impl
+    |> Option.value_exn
+    |> Path.as_in_build_dir_exn
 
   let obj_dir { dir; name ; _ } =
     Obj_dir.make_exe ~dir ~name
 
   let modules t =
-    let main_module_name = main_module_name t in
-    Module.Name.Map.singleton
-      main_module_name
-      (Module.make main_module_name
-         ~visibility:Public
-         ~impl:{ path   = Path.build (source_path t)
-               ; syntax = Module.Syntax.OCaml
-               }
-         ~kind:Module.Kind.Impl
-         ~obj_name:t.name)
+    let main_module = main_module t in
+    let name = Module.name main_module in
+    Module.Name.Map.singleton name main_module
 
   let make ~dir ~loc ~main ~name =
     { dir
@@ -49,7 +48,7 @@ module Source = struct
     { Exe.Program.
       loc = t.loc
     ; name = t.name
-    ; main_module_name = main_module_name t
+    ; main_module_name = Module.name (main_module t)
     }
 
   let pp_ml fmt t ~include_dirs =

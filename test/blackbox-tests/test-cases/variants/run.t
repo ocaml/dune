@@ -54,7 +54,12 @@ Check that variant data is installed in the dune package file.
    (main_module_name B)
    (modes byte native)
    (modules
-    (alias_module (name B__a__) (obj_name b__a__) (visibility public) (impl))
+    (alias_module
+     (name B__a__)
+     (obj_name b__a__)
+     (visibility public)
+     (kind alias)
+     (impl))
     (main_module_name B)
     (modules ((name X) (obj_name b__X) (visibility public) (impl)))
     (wrapped true)))
@@ -70,7 +75,7 @@ Check that variant data is installed in the dune package file.
    (main_module_name B)
    (modes byte native)
    (modules
-    (alias_module (name B) (obj_name b) (visibility public) (impl))
+    (alias_module (name B) (obj_name b) (visibility public) (kind alias) (impl))
     (main_module_name B)
     (modules
      ((name X) (obj_name b__X) (visibility public) (kind virtual) (intf)))

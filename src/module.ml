@@ -34,7 +34,10 @@ module Name = struct
   let pp = Format.pp_print_string
   let pp_quote fmt x = Format.fprintf fmt "%S" x
 
-  module Set = String.Set
+  module Set = struct
+    include String.Set
+    let to_dyn t = Dyn.Set (List.map ~f:(fun s -> Dyn.String s) (to_list t))
+  end
   module Map = String.Map
   module Top_closure = Top_closure.String
   module Infix = Comparable.Operators(T)
@@ -104,11 +107,13 @@ module Kind = struct
     | Intf_only
     | Virtual
     | Impl
+    | Alias
 
   let to_string = function
     | Intf_only -> "intf_only"
     | Virtual -> "virtual"
     | Impl -> "impl"
+    | Alias -> "alias"
 
   let to_dyn t = Dyn.Encoder.string (to_string t)
 
@@ -118,6 +123,7 @@ module Kind = struct
     | Intf_only -> string "intf_only"
     | Virtual -> string "virtual"
     | Impl -> string "impl"
+    | Alias -> string "alias"
 
   let decode =
     let open Stanza.Decoder in
@@ -125,63 +131,60 @@ module Kind = struct
       [ "intf_only", Intf_only
       ; "virtual", Virtual
       ; "impl", Impl
+      ; "alias", Alias
       ]
 
   let has_impl = function
+    | Alias
     | Impl -> true
     | Intf_only
     | Virtual -> false
-
-  let is_virtual = function
-    | Virtual -> true
-    | _ -> false
 end
 
 (* Only the source of a module, not yet associated to a library *)
 module Source = struct
   type t =
     { name : Name.t
-    ; impl : File.t option
-    ; intf : File.t option
+    ; files : File.t option Ml_kind.Dict.t
     }
+
+  let to_dyn { name; files } =
+    let open Dyn.Encoder in
+    record
+      [ "name", Name.to_dyn name
+      ; "files", Ml_kind.Dict.to_dyn (option File.to_dyn) files
+      ]
 
   let make ?impl ?intf name =
     begin match impl, intf with
     | None, None ->
       Code_error.raise "Module.Source.make called with no files"
         [ "name", Dyn.Encoder.string name
-        ; "impl", Dyn.Encoder.(option unknown) impl
-        ; "intf", Dyn.Encoder.(option unknown) intf
         ]
     | Some _, _
     | _, Some _ -> ()
     end;
+    let files = Ml_kind.Dict.make ~impl ~intf in
     { name
-    ; impl
-    ; intf
+    ; files
     }
 
-  let has_impl t = Option.is_some t.impl
+  let has_impl t = Option.is_some t.files.impl
 
   let name t = t.name
-  let impl t = t.impl
-  let intf t = t.intf
 
-  let choose_file { impl; intf; name = _} =
+  let choose_file { files = {impl; intf}; name = _} =
     match intf, impl with
     | None, None -> assert false
     | Some x, Some _
     | Some x, None
     | None, Some x -> x
 
-
   let src_dir t = Path.parent_exn (choose_file t).path
 
   let map_files t ~f =
-    { t with
-      impl = Option.map t.impl ~f:(f Ml_kind.Impl)
-    ; intf = Option.map t.intf ~f:(f Ml_kind.Intf)
-    }
+    let files = Ml_kind.Dict.mapi ~f t.files in
+    { t with files }
 end
 
 type t =
@@ -193,13 +196,14 @@ type t =
   }
 
 let name t = t.source.name
+let kind t = t.kind
 let pp_flags t = t.pp
-let intf t = t.source.intf
-let impl t = t.source.impl
+let intf t = t.source.files.intf
+let impl t = t.source.files.impl
 
 let of_source ?obj_name ~visibility ~(kind : Kind.t)
       (source : Source.t) =
-  begin match kind, source.impl, source.intf with
+  begin match kind, source.files.impl, source.files.intf with
   | Virtual, Some _, _
   | Impl, None, _
   | Intf_only, Some _, _ ->
@@ -207,8 +211,8 @@ let of_source ?obj_name ~visibility ~(kind : Kind.t)
     Code_error.raise "Module.make: invalid kind, impl, intf combination"
       [ "name", Name.to_dyn source.name
       ; "kind", Kind.to_dyn kind
-      ; "intf", (option File.to_dyn) source.intf
-      ; "impl", (option File.to_dyn) source.impl
+      ; "intf", (option File.to_dyn) source.files.intf
+      ; "impl", (option File.to_dyn) source.files.impl
       ]
   | _, _ , _ -> ()
   end;
@@ -236,19 +240,13 @@ let make ?impl ?intf ?obj_name ~visibility ~kind name =
 let real_unit_name t = Name.of_string (Filename.basename t.obj_name)
 
 let has_impl t = Kind.has_impl t.kind
-let has_intf t = Option.is_some t.source.intf
+let has_intf t = Option.is_some t.source.files.intf
 
 let impl_only t = has_impl t && not (has_intf t)
 let intf_only t = has_intf t && not (has_impl t)
 
-let is_public t = Visibility.is_public t.visibility
-let is_private t = Visibility.is_private t.visibility
-let is_virtual t = Kind.is_virtual t.kind
-
 let source t (kind : Ml_kind.t) =
-  match kind with
-  | Impl -> t.source.impl
-  | Intf -> t.source.intf
+  Ml_kind.Dict.get t.source.files kind
 
 let file t (kind : Ml_kind.t) =
   source t kind
@@ -267,8 +265,8 @@ let odoc_file t ~doc_dir =
   Path.Build.relative base (t.obj_name ^ ".odoc")
 
 let iter t ~f =
-  Option.iter t.source.impl ~f:(f Ml_kind.Impl);
-  Option.iter t.source.intf ~f:(f Ml_kind.Intf)
+  Ml_kind.Dict.iteri t.source.files
+    ~f:(fun kind -> Option.iter ~f:(f kind))
 
 let with_wrapper t ~main_module_name =
   { t with obj_name
@@ -277,44 +275,45 @@ let with_wrapper t ~main_module_name =
   }
 
 let map_files t ~f =
-  let source = Source.map_files t.source ~f in
+  let source = Source.map_files t.source ~f:(fun kind -> Option.map ~f:(f kind)) in
   { t with source }
 
 let src_dir t = Source.src_dir t.source
 
 let set_pp t pp = { t with pp }
 
-let to_dyn { source = { name; impl; intf }
-            ; obj_name ; pp ; visibility; kind } =
+let to_dyn { source ; obj_name ; pp ; visibility; kind } =
   let open Dyn.Encoder in
   record
-    [ "name", Name.to_dyn name
+    [ "source", Source.to_dyn source
     ; "obj_name", string obj_name
-    ; "impl", (option File.to_dyn) impl
-    ; "intf", (option File.to_dyn) intf
     ; "pp", (option string) (Option.map ~f:(fun _ -> "has pp") pp)
     ; "visibility", Visibility.to_dyn visibility
     ; "kind", Kind.to_dyn kind
     ]
 
+let ml_gen = ".ml-gen"
+
 let wrapped_compat t =
   let source =
+    let impl =
+      Some (
+        { File.
+          syntax = OCaml
+        ; path =
+            (* Option.value_exn cannot fail because we disallow wrapped
+               compatibility mode for virtual libraries. That means none of the
+               modules are implementing a virtual module, and therefore all have
+               a source dir *)
+            Path.L.relative (src_dir t)
+              [ ".wrapped_compat"
+              ; Name.to_string t.source.name ^ ml_gen
+              ]
+        }
+      )
+    in
     { t.source with
-      intf = None
-    ; impl =
-        Some (
-          { syntax = OCaml
-          ; path =
-              (* Option.value_exn cannot fail because we disallow wrapped
-                 compatibility mode for virtual libraries. That means none of
-                 the modules are implementing a virtual module, and therefore
-                 all have a source dir *)
-              Path.L.relative (src_dir t)
-                [ ".wrapped_compat"
-                ; Name.to_string t.source.name ^ ".ml-gen"
-                ]
-          }
-        )
+      files = { intf = None ; impl }
     }
   in
   { t with source }
@@ -340,16 +339,10 @@ module Name_map = struct
     Fmt.ocaml_list Name.pp fmt (Name.Map.keys t)
 end
 
-let set_private t =
-  { t with visibility = Private }
-
-let set_virtual t =
-  { t with kind = Virtual }
-
 let visibility t = t.visibility
 
 let sources t =
-  List.filter_map [t.source.intf; t.source.impl]
+  List.filter_map [t.source.files.intf; t.source.files.impl]
     ~f:(Option.map ~f:(fun (x : File.t) -> x.path))
 
 module Obj_map = struct
@@ -372,7 +365,7 @@ module Obj_map = struct
 end
 
 let encode
-      ({ source = { name ; impl = _; intf = _}
+      ({ source = { name ; files = _}
        ; obj_name
        ; pp = _
        ; visibility
@@ -385,7 +378,7 @@ let encode
     match kind with
     | Kind.Impl when has_impl -> None
     | Intf_only when not has_impl -> None
-    | Impl | Virtual | Intf_only -> Some kind
+    | Alias | Impl | Virtual | Intf_only -> Some kind
   in
   record_fields
     [ field "name" Name.encode name
@@ -430,7 +423,7 @@ let pped =
     let base, ext = Path.split_extension path in
     Path.extend_basename base ~suffix:(suffix ^ ext)
   in
-  map_files ~f:(fun _kind file ->
+  map_files ~f:(fun _kind (file : File.t) ->
     let pp_path = pped_path file.path ~suffix:".pp" in
     { file with path = pp_path })
 
@@ -457,3 +450,17 @@ let ml_source =
 
 let set_src_dir t ~src_dir =
   map_files t ~f:(fun _ -> File.set_src_dir ~src_dir)
+
+let generated ~src_dir name =
+  let basename = String.uncapitalize (Name.to_string name) in
+  let impl =
+    File.make OCaml (Path.relative src_dir (basename ^ ml_gen)) in
+  make name
+    ~visibility:Public
+    ~kind:Impl
+    ~impl
+    ~obj_name:basename
+
+let generated_alias ~src_dir name =
+  let t = generated ~src_dir name in
+  { t with kind = Alias }

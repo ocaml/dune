@@ -40,7 +40,7 @@ let is_public_vlib_module t m =
     let modules = Lib_modules.modules vlib_modules in
     begin match Module.Name.Map.find modules (Module.name m) with
     | None -> false
-    | Some m -> Module.is_public m
+    | Some m -> Module.visibility m = Public
     end
 
 let impl_only = function
@@ -60,7 +60,7 @@ let aliased_modules t modules =
         | Some _, _ -> impl
         | _, Some vlib ->
           let vlib = from_vlib_to_impl_module t vlib in
-          Option.some_if (Module.is_public vlib) vlib)
+          Option.some_if (Module.visibility vlib = Public) vlib)
 
 let find_module t m =
   match t with

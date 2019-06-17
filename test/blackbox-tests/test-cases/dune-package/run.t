@@ -11,7 +11,7 @@
    (main_module_name A)
    (modes byte native)
    (modules
-    (alias_module (name A) (obj_name a) (visibility public) (impl))
+    (alias_module (name A) (obj_name a) (visibility public) (kind alias) (impl))
     (main_module_name A)
     (modules ((name X) (obj_name a__X) (visibility public) (impl)))
     (wrapped true)))
@@ -25,7 +25,7 @@
    (modes byte native)
    (obj_dir (private_dir .private))
    (modules
-    (alias_module (name C) (obj_name c) (visibility public) (impl))
+    (alias_module (name C) (obj_name c) (visibility public) (kind alias) (impl))
     (main_module_name C)
     (modules ((name Y) (obj_name c__Y) (visibility private) (impl) (intf)))
     (wrapped true)))

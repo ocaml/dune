@@ -9,7 +9,8 @@ type t =
   ; wrapped          : Wrapped.t
   }
 
-let virtual_modules t = Module.Name.Map.filter ~f:Module.is_virtual t.modules
+let virtual_modules t =
+  Module.Name.Map.filter ~f:(fun m -> Module.kind m = Virtual) t.modules
 let alias_module t = t.alias_module
 let wrapped_compat t = t.wrapped_compat
 let modules t = t.modules
@@ -29,20 +30,12 @@ let make_unwrapped ~modules ~main_module_name =
 
 let make_alias_module ~src_dir ~implements ~lib_name ~stdlib
       ~main_module_name ~modules =
-  let alias_prefix =
-    String.uncapitalize (Module.Name.to_string main_module_name) in
   if implements then
-    let alias_prefix =
-      sprintf "%s__%s__" alias_prefix
-        (Lib_name.Local.to_string lib_name) in
-    let name = Module.Name.of_string alias_prefix in
-    Some
-      (Module.make name
-         ~visibility:Public
-         ~kind:Impl
-         ~impl:(Module.File.make OCaml
-                  (Path.relative src_dir (sprintf "%s.ml-gen" alias_prefix)))
-         ~obj_name:alias_prefix)
+    let name =
+      Module.Name.add_suffix main_module_name
+        (sprintf  "__%s__" (Lib_name.Local.to_string lib_name))
+    in
+    Some (Module.generated_alias ~src_dir name)
   else if Module.Name.Map.cardinal modules = 1 &&
           Module.Name.Map.mem modules main_module_name ||
           stdlib then
@@ -52,21 +45,10 @@ let make_alias_module ~src_dir ~implements ~lib_name ~stdlib
        users of the library:
 
        https://github.com/ocaml/dune/issues/567 *)
-    Some
-      (Module.make (Module.Name.add_suffix main_module_name "__")
-         ~visibility:Public
-         ~kind:Impl
-         ~impl:(Module.File.make OCaml
-                  (Path.relative src_dir (sprintf "%s__.ml-gen" alias_prefix)))
-         ~obj_name:(alias_prefix ^ "__"))
+    let name = Module.Name.add_suffix main_module_name "__" in
+    Some (Module.generated_alias ~src_dir name)
   else
-    Some
-      (Module.make main_module_name
-         ~visibility:Public
-         ~kind:Impl
-         ~impl:(Module.File.make OCaml
-                  (Path.relative src_dir (alias_prefix ^ ".ml-gen")))
-         ~obj_name:alias_prefix)
+    Some (Module.generated_alias ~src_dir main_module_name)
 
 let make_alias_module_of_lib ~src_dir ~lib ~main_module_name ~modules =
   make_alias_module ~src_dir ~main_module_name
@@ -76,7 +58,6 @@ let make_alias_module_of_lib ~src_dir ~lib ~main_module_name ~modules =
     ~stdlib:(Option.is_some lib.stdlib)
 
 let wrap_modules ~modules ~lib ~main_module_name =
-  let open Module.Name.Infix in
   let prefix =
     if not (Dune_file.Library.is_impl lib) then
       fun _ -> main_module_name
@@ -94,11 +75,11 @@ let wrap_modules ~modules ~lib ~main_module_name =
           main_module_name
       in
       fun m ->
-        if Module.is_private m then
-          private_module_prefix
-        else
-          main_module_name
+        match Module.visibility m with
+        | Private -> private_module_prefix
+        | Public -> main_module_name
   in
+  let open Module.Name.Infix in
   Module.Name.Map.map modules ~f:(fun (m : Module.t) ->
     if Module.name m = main_module_name ||
        Dune_file.Library.special_compiler_module lib m then
@@ -117,10 +98,9 @@ let make_wrapped ~(lib : Dune_file.Library.t) ~src_dir ~wrapped ~modules
       ( wrap_modules ~modules ~main_module_name ~lib
       , Module.Name.Map.remove modules main_module_name
         |> Module.Name.Map.filter_map ~f:(fun m ->
-          if Module.is_public m then
-            Some (Module.wrapped_compat m)
-          else
-            None)
+          match Module.visibility m with
+          | Public -> Some (Module.wrapped_compat m)
+          | Private -> None)
       )
   in
   let alias_module =

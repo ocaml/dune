@@ -5,12 +5,6 @@ open Build.O
 module CC = Compilation_context
 module SC = Super_context
 
-let is_alias_module cctx (m : Module.t) =
-  let open Module.Name.Infix in
-  match CC.alias_module cctx with
-  | None -> false
-  | Some alias -> Module.name alias = Module.name m
-
 let parse_module_names ~(unit : Module.t) ~modules words =
   let open Module.Name.Infix in
   List.filter_map words ~f:(fun m ->
@@ -61,9 +55,8 @@ let interpret_deps cctx ~unit deps =
   if Option.is_none stdlib then
     Option.iter lib_interface_module ~f:(fun (m : Module.t) ->
       let m = Module.name m in
-      let open Module.Name.Infix in
-      if Module.name unit <> m
-      && not (is_alias_module cctx unit)
+      if Module.Name.Infix.(Module.name unit <> m)
+      && not (Module.kind unit = Alias)
       && List.exists deps ~f:(fun x -> Module.name x = m) then
         die "Module %a in directory %s depends on %a.\n\
              This doesn't make sense to me.\n\
@@ -96,7 +89,7 @@ let interpret_deps cctx ~unit deps =
 
 let deps_of cctx ~ml_kind unit =
   let sctx = CC.super_context cctx in
-  if is_alias_module cctx unit then
+  if Module.kind unit = Alias then
     Build.return []
   else
     match Module.source unit ml_kind with
@@ -127,7 +120,7 @@ let deps_of cctx ~ml_kind unit =
       let build_paths dependencies =
         let dependency_file_path m =
           let source m =
-            if is_alias_module cctx m then
+            if Module.kind m = Alias then
               None
             else
               match Module.source m Ml_kind.Intf with
@@ -172,21 +165,16 @@ let rules_for_auxiliary_module cctx (m : Module.t) =
 
 let graph_of_remote_lib ~obj_dir ~modules =
   let deps_of unit ~ml_kind =
-    match Module.file unit ml_kind with
+    match Module.source unit ml_kind with
     | None -> Build.return []
-    | Some file ->
-      let file = Path.as_in_build_dir_exn file in
-      let file_in_obj_dir ~suffix file =
-        let base = Path.Build.basename file in
-        Path.Build.relative obj_dir (base ^ suffix)
-      in
-      let all_deps_path file = file_in_obj_dir file ~suffix:".all-deps" in
-      let all_deps_file = all_deps_path file in
+    | Some source ->
+      let all_deps_file = Obj_dir.Module.dep obj_dir source ~kind:Transitive in
       Build.memoize (Path.Build.to_string all_deps_file)
         (Build.lines_of (Path.build all_deps_file)
          >>^ parse_module_names ~unit ~modules)
   in
+  let dir = Obj_dir.dir obj_dir in
   Ml_kind.Dict.of_func (fun ~ml_kind ->
     let per_module =
       Module.Name.Map.map modules ~f:(fun m -> (m, deps_of ~ml_kind m)) in
-    Dep_graph.make ~dir:obj_dir ~per_module)
+    Dep_graph.make ~dir ~per_module)

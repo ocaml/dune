@@ -12,12 +12,18 @@ let generate_and_compile_module cctx ~name:basename ~code ~requires =
   let sctx       = CC.super_context cctx in
   let obj_dir    = CC.obj_dir       cctx in
   let dir        = CC.dir           cctx in
-  let ml = Path.Build.relative
-             (Obj_dir.obj_dir obj_dir) (basename ^ ".ml") in
-  SC.add_rule ~dir sctx (Build.write_file ml code);
-  let impl = Module.File.make OCaml (Path.build ml) in
   let name = Module.Name.of_string basename in
-  let module_ = Module.make ~impl name ~visibility:Public ~kind:Impl in
+  let module_ =
+    let src_dir = Path.build (Obj_dir.obj_dir obj_dir) in
+    Module.generated ~src_dir name
+  in
+  SC.add_rule ~dir sctx (
+    let ml =
+      Module.file module_ Impl
+      |> Option.value_exn
+      |> Path.as_in_build_dir_exn
+    in
+    Build.write_file ml code);
   let opaque =
     Ocaml_version.supports_opaque_for_mli
       (Super_context.context sctx).version
@@ -28,7 +34,7 @@ let generate_and_compile_module cctx ~name:basename ~code ~requires =
       ~expander:(Compilation_context.expander cctx)
       ~scope:(Compilation_context.scope cctx)
       ~dir_kind:(Compilation_context.dir_kind cctx)
-      ~obj_dir:(Compilation_context.obj_dir cctx)
+      ~obj_dir
       ~modules:(Module.Name.Map.singleton name module_)
       ~requires_compile:requires
       ~requires_link:(lazy requires)

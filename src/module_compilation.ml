@@ -36,7 +36,7 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
       let dst = Obj_dir.Module.cm_file_unsafe obj_dir m ~kind:cm_kind in
       let copy_interface () =
         (* symlink the .cmi into the public interface directory *)
-        if not (Module.is_private m)
+        if Module.visibility m <> Visibility.Private
         && (Obj_dir.need_dedicated_public_dir obj_dir) then
           SC.add_rule sctx ~sandbox:false ~dir
             (Build.symlink
@@ -45,6 +45,7 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
             )
       in
       let extra_args, extra_deps, other_targets =
+        (* If we're compiling an implementation, then the cmi is present *)
         match cm_kind, Module.intf m
               , Vimpl.is_public_vlib_module vimpl m with
         (* If there is no mli, [ocamlY -c file.ml] produces both the

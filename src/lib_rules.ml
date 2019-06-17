@@ -82,15 +82,9 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
   let alias_module_build_sandbox =
     Ocaml_version.always_reads_alias_cmi ctx.version
 
-  let build_alias_module ~lib_modules ~dir ~cctx ~dynlink =
+  let build_alias_module ~loc ~alias_module ~lib_modules ~dir ~cctx ~dynlink =
     let vimpl = Compilation_context.vimpl cctx in
-    let alias_module =
-      Option.value_exn (Lib_modules.alias_module lib_modules) in
-    let file =
-      match Module.impl alias_module with
-      | Some f -> f
-      | None -> Option.value_exn (Module.intf alias_module)
-    in
+    let file = Option.value_exn (Module.impl alias_module) in
     let alias_file () =
       let main_module_name =
         Option.value_exn (Lib_modules.main_module_name lib_modules)
@@ -107,7 +101,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
           (Module.Name.to_string (Module.real_unit_name m)))
       |> String.concat ~sep:"\n"
     in
-    SC.add_rule sctx ~dir (
+    SC.add_rule ~loc sctx ~dir (
       Build.arr alias_file
       >>> Build.write_file_dyn (Path.as_in_build_dir_exn file.path)
     );
@@ -141,9 +135,10 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
           (Lazy.force transition_message) real_name hidden_name
       in
       let source_path = Option.value_exn (Module.file m Impl) in
+      let loc = lib.buildable.loc in
       Build.return contents
       >>> Build.write_file_dyn (Path.as_in_build_dir_exn source_path)
-      |> SC.add_rule sctx ~dir:(Compilation_context.dir cctx)
+      |> SC.add_rule sctx ~loc ~dir:(Compilation_context.dir cctx)
     );
     let dep_graphs =
       Dep_graph.Ml_kind.wrapped_compat ~modules ~wrapped_compat
@@ -476,9 +471,12 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
 
     Module_compilation.build_modules cctx ~dynlink ~dep_graphs;
 
-    if Option.is_none lib.stdlib
-    && Lib_modules.needs_alias_module lib_modules then
-      build_alias_module ~dir ~lib_modules ~cctx ~dynlink;
+    if Option.is_none lib.stdlib then begin
+      Lib_modules.alias_module lib_modules
+      |> Option.iter ~f:(fun alias_module ->
+        let loc = lib.buildable.loc in
+        build_alias_module ~loc ~alias_module ~dir ~lib_modules ~cctx ~dynlink)
+    end;
 
     let expander = Super_context.expander sctx ~dir in
 

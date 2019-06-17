@@ -114,7 +114,7 @@ field:
           (library
            (name foo)
            (inline_tests (backend qtest.lib)))
-           
+
 In the example above, the name `qtest.lib` comes from the `public_name` field
 in `qtest`'s own `dune` file.
 
@@ -209,6 +209,31 @@ You may also run a group of tests located under a directory with:
    dune runtest mylib/tests
 
 The above command will run all tests defined in tests and its sub-directories.
+
+Running tests in bytecode or javascript
+---------------------------------------
+
+By default Dune run inline tests in native mode, except if native
+compilation is not available in which case it runs them in bytecode.
+
+You can change this setting to choose which modes tests should run
+in. To do that, add a ``modes`` field to the ``inline_tests``
+field.  Available modes are:
+
+- ``byte`` for running tests in byte code
+- ``native`` for running tests in native mode
+- ``best`` for running tests in native mode with fallback to byte code
+  if native compilation is not available
+- ``js`` for running tests in javascript using nodejs
+
+For instance:
+
+.. code:: ocaml
+
+          (library
+           (name foo)
+           (inline_tests (modes byte best js))
+           (preprocess (pps ppx_expect)))
 
 Specifying inline test dependencies
 -----------------------------------

@@ -11,7 +11,7 @@
 1.11.0 (unreleased)
 -------------------
 
-- Don't reserve the `Ppx` toplevel module name for ppx rewriters (#...., @diml)
+- Don't reserve the `Ppx` toplevel module name for ppx rewriters (#2242, @diml)
 
 - Redesign of the library variant feature according to the #2134 proposal. The
   set of variants is now computed when the virtual library is installed.
@@ -26,6 +26,8 @@
 
 - Add `$ dune init project` subcommand to create project boilerplate according
   to a common template. (#2185, fixes #159, @shonfeder)
+
+- Allow to run inline tests in javascript with nodejs (#2266, @hhugo)
 
 1.10.0 (04/06/2019)
 -------------------

@@ -26,6 +26,9 @@
 
 - Allow to run inline tests in javascript with nodejs (#2266, @hhugo)
 
+- Build `ppx.exe` as compiling host binary. (#2286, fixes #2252, @toots, review
+  by @rgrinberg and @diml)
+
 1.10.0 (04/06/2019)
 -------------------
 

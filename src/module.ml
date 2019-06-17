@@ -139,14 +139,6 @@ module Kind = struct
     | Impl -> true
     | Intf_only
     | Virtual -> false
-
-  let is_virtual = function
-    | Virtual -> true
-    | _ -> false
-
-  let is_alias = function
-    | Alias -> true
-    | _ -> false
 end
 
 (* Only the source of a module, not yet associated to a library *)
@@ -204,6 +196,7 @@ type t =
   }
 
 let name t = t.source.name
+let kind t = t.kind
 let pp_flags t = t.pp
 let intf t = t.source.files.intf
 let impl t = t.source.files.impl
@@ -254,9 +247,6 @@ let intf_only t = has_intf t && not (has_impl t)
 
 let is_public t = Visibility.is_public t.visibility
 let is_private t = Visibility.is_private t.visibility
-let is_virtual t = Kind.is_virtual t.kind
-let is_alias t = Kind.is_alias t.kind
-
 let source t (kind : Ml_kind.t) =
   Ml_kind.Dict.get t.source.files kind
 

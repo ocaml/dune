@@ -82,6 +82,8 @@ end
 
 type t
 
+val kind : t -> Kind.t
+
 val to_dyn : t -> Dyn.t
 
 (** [obj_name] Object name. It is different from [name] for wrapped modules. *)
@@ -163,9 +165,6 @@ end with type module_ := t
 
 val is_public : t -> bool
 val is_private : t -> bool
-val is_virtual : t -> bool
-val is_alias : t -> bool
-
 val sources : t -> Path.t list
 
 val visibility : t -> Visibility.t

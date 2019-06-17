@@ -55,9 +55,8 @@ let interpret_deps cctx ~unit deps =
   if Option.is_none stdlib then
     Option.iter lib_interface_module ~f:(fun (m : Module.t) ->
       let m = Module.name m in
-      let open Module.Name.Infix in
-      if Module.name unit <> m
-      && not (Module.is_alias unit)
+      if Module.Name.Infix.(Module.name unit <> m)
+      && not (Module.kind unit = Alias)
       && List.exists deps ~f:(fun x -> Module.name x = m) then
         die "Module %a in directory %s depends on %a.\n\
              This doesn't make sense to me.\n\
@@ -90,7 +89,7 @@ let interpret_deps cctx ~unit deps =
 
 let deps_of cctx ~ml_kind unit =
   let sctx = CC.super_context cctx in
-  if Module.is_alias unit then
+  if Module.kind unit = Alias then
     Build.return []
   else
     match Module.source unit ml_kind with
@@ -121,7 +120,7 @@ let deps_of cctx ~ml_kind unit =
       let build_paths dependencies =
         let dependency_file_path m =
           let source m =
-            if Module.is_alias m then
+            if Module.kind m = Alias then
               None
             else
               match Module.source m Ml_kind.Intf with

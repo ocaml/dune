@@ -9,7 +9,8 @@ type t =
   ; wrapped          : Wrapped.t
   }
 
-let virtual_modules t = Module.Name.Map.filter ~f:Module.is_virtual t.modules
+let virtual_modules t =
+  Module.Name.Map.filter ~f:(fun m -> Module.kind m = Virtual) t.modules
 let alias_module t = t.alias_module
 let wrapped_compat t = t.wrapped_compat
 let modules t = t.modules

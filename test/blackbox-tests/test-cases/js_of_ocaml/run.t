@@ -52,3 +52,17 @@
   use it
   break it
   fix it
+
+Inline tests
+------------
+
+  $ dune runtest inline-tests
+           run alias inline-tests/byte/runtest
+  inline tests (Byte)
+  inline tests (Byte)
+           run alias inline-tests/native/runtest
+  inline tests (Native)
+  inline tests (Native)
+          node alias inline-tests/js/runtest
+  inline tests (JS)
+  inline tests (JS)

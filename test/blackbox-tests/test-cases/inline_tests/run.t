@@ -77,14 +77,3 @@ Make sure we can read generated dune-package files:
   Entering directory 'dune-file-user'
            run alias runtest
   414243
-
-  $ dune runtest modes
-           run alias modes/byte/runtest
-  inline tests (Byte)
-  inline tests (Byte)
-           run alias modes/native/runtest
-  inline tests (Native)
-  inline tests (Native)
-          node alias modes/js/runtest
-  inline tests (JS)
-  inline tests (JS)

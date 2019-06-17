@@ -265,7 +265,9 @@ module T = struct
     ; implements        : t Or_exn.t option
     ; (* these fields cannot be forced until the library is instantiated *)
       default_implementation     : t Or_exn.t Lazy.t option
-    ; resolved_implementations   : t Or_exn.t Variant.Map.t Lazy.t option
+    ; (* if this is a virtual library, this library contains all known
+         implementations that are associated with a variant *)
+      resolved_implementations   : t Or_exn.t Variant.Map.t Lazy.t option
     ; (* This is mutable to avoid this error:
 
          {[
@@ -830,6 +832,7 @@ let find_implementation_for lib ~variants =
           | None -> acc)
       |> Result.List.all
     in
+    (* TODO once we find one conflict, there's no need to search for more *)
     match candidates with
     | [] -> Ok None
     | [elem] -> Ok (Some elem)
@@ -903,6 +906,8 @@ let rec instantiate db name info ~stack ~hidden =
   let resolved_implementations =
     Lib_info.virtual_ info
     |> Option.map ~f:(fun _ -> lazy (
+      (* TODO this can be made even lazier as we don't need to resolve all
+         variants at once *)
       Lib_info.known_implementations info
       |> Variant.Map.map ~f:resolve))
   in

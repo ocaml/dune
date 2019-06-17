@@ -73,10 +73,10 @@ module Linkage = struct
       | Native , C             -> Errors.fail m.loc "C file generation only supports bytecode!"
       | Byte   , Exe           -> ".bc"
       | Native , Exe           -> ".exe"
-      | Byte   , Object        -> ".bc"  ^ ctx.ext_obj
-      | Native , Object        -> ".exe" ^ ctx.ext_obj
-      | Byte   , Shared_object -> ".bc"  ^ ctx.ext_dll
-      | Native , Shared_object ->          ctx.ext_dll
+      | Byte   , Object        -> ".bc"  ^ ctx.lib_config.ext_obj
+      | Native , Object        -> ".exe" ^ ctx.lib_config.ext_obj
+      | Byte   , Shared_object -> ".bc"  ^ ctx.lib_config.ext_dll
+      | Native , Shared_object ->          ctx.lib_config.ext_dll
     in
     let flags =
       match m.kind with
@@ -140,7 +140,7 @@ let link_exe
   let cm_files =
     let modules = CC.modules cctx in
     Cm_files.make_exe ~obj_dir ~modules ~top_sorted_modules
-      ~ext_obj:ctx.ext_obj
+      ~ext_obj:ctx.lib_config.ext_obj
   in
   let modules_and_cm_files =
     Build.memoize "cm files"

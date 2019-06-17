@@ -199,10 +199,10 @@ module Map = struct
       ; "ocaml_version"  , string context.version_string
       ; "ocaml_where"    , string (Path.to_string context.stdlib_dir)
       ; "null"           , string (Path.to_string Config.dev_null)
-      ; "ext_obj"        , string context.ext_obj
+      ; "ext_obj"        , string context.lib_config.ext_obj
       ; "ext_asm"        , string context.ext_asm
-      ; "ext_lib"        , string context.ext_lib
-      ; "ext_dll"        , string context.ext_dll
+      ; "ext_lib"        , string context.lib_config.ext_lib
+      ; "ext_dll"        , string context.lib_config.ext_dll
       ; "ext_exe"        , string context.ext_exe
       ; "profile"        , string context.profile
       ; "workspace_root" , values [Value.Dir (Path.build context.build_dir)]

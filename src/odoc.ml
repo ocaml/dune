@@ -9,7 +9,9 @@ let (++) = Path.Build.relative
 
 let lib_unique_name lib =
   let name = Lib.name lib in
-  match (Lib.info lib).status with
+  let info = Lib.info lib in
+  let status = Lib_info.status info in
+  match status with
   | Installed -> assert false
   | Public _  -> Lib_name.to_string name
   | Private scope_name ->
@@ -465,7 +467,8 @@ let setup_package_aliases sctx (pkg : Package.t) =
   )
 
 let entry_modules_by_lib sctx lib =
-  let dir = Lib.Local.src_dir lib in
+  let info = Lib.Local.info lib in
+  let dir = Lib_info.src_dir info in
   let name = Lib.name (Lib.Local.to_lib lib) in
   Dir_contents.get_without_rules sctx ~dir
   |> Dir_contents.modules_of_library ~name
@@ -633,7 +636,8 @@ let gen_rules sctx ~dir:_ rest =
     Option.iter (Lib.DB.find lib_db lib) ~f:(fun lib ->
       (* TODO instead of this hack, call memoized function that
          generates the rules for this library *)
-      let dir = (Lib.info lib).src_dir in
+      let info = Lib.info lib in
+      let dir = Lib_info.src_dir info in
       Build_system.load_dir ~dir)
   | "_html" :: lib_unique_name_or_pkg :: _ ->
     (* TODO we can be a better with the error handling in the case where

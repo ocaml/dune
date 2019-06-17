@@ -247,7 +247,8 @@ let impl sctx ~dir ~(lib : Dune_file.Library.t) ~scope ~modules =
     | Some vlib ->
       let info = Lib.info vlib in
       let virtual_ =
-        match info.virtual_ with
+        let virtual_ = Lib_info.virtual_ info in
+        match virtual_ with
         | None ->
           Errors.fail lib.buildable.loc
             "Library %a isn't virtual and cannot be implemented"
@@ -255,7 +256,8 @@ let impl sctx ~dir ~(lib : Dune_file.Library.t) ~scope ~modules =
         | Some v -> v
       in
       let (vlib_modules, vlib_foreign_objects) =
-        match virtual_, info.foreign_objects with
+        let foreign_objects = Lib_info.foreign_objects info in
+        match virtual_, foreign_objects with
         | External _, Local
         | Local, External _ -> assert false
         | External lib_modules, External fa -> (lib_modules, fa)
@@ -263,7 +265,8 @@ let impl sctx ~dir ~(lib : Dune_file.Library.t) ~scope ~modules =
           let name = Lib.name vlib in
           let vlib = Lib.Local.of_lib_exn vlib in
           let dir_contents =
-            let dir = Lib.Local.src_dir vlib in
+            let info = Lib.Local.info vlib in
+            let dir = Lib_info.src_dir info in
             Dir_contents.get_without_rules sctx ~dir
           in
           let modules =
@@ -299,7 +302,7 @@ let impl sctx ~dir ~(lib : Dune_file.Library.t) ~scope ~modules =
         | External _ ->
           let impl_obj_dir = Dune_file.Library.obj_dir ~dir lib in
           let impl_cm_kind =
-            let { Mode.Dict. byte; native = _ } = (Lib.info vlib).modes in
+            let { Mode.Dict. byte; native = _ } = Lib_info.modes info in
             Mode.cm_kind (if byte then Byte else Native)
           in
           external_dep_graph sctx ~impl_cm_kind ~impl_obj_dir ~vlib_modules

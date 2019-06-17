@@ -61,9 +61,10 @@ module Register_backend(M : Backend) = struct
              (List.map backends ~f:(fun t ->
                 let lib = M.lib t in
                 let info = Lib.info lib in
+                let src_dir = Lib_info.src_dir info in
                 sprintf "- %S in %s"
                   (Lib_name.to_string (Lib.name lib))
-                  (Path.to_string_maybe_quoted info.src_dir))))
+                  (Path.to_string_maybe_quoted src_dir))))
       | No_backend_found ->
         Errors.exnf loc "No %s found." (M.desc ~plural:false)
       | Other exn ->

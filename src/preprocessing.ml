@@ -45,7 +45,8 @@ end = struct
       List.fold_left libs ~init:None ~f:(fun acc lib ->
         let scope_for_key =
           let info = Lib.info lib in
-          match info.status with
+          let status = Lib_info.status info in
+          match status with
           | Private scope_name   -> Some scope_name
           | Public _ | Installed -> None
         in
@@ -503,7 +504,8 @@ let get_cookies ~loc ~expander ~lib_name libs =
     Ok (
       List.concat_map libs ~f:(fun t ->
         let info = Lib.info t in
-        match info.kind with
+        let kind = Lib_info.kind info in
+        match kind with
         | Normal -> []
         | Ppx_rewriter {cookies}
         | Ppx_deriver {cookies} ->

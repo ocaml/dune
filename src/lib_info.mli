@@ -1,4 +1,11 @@
-(** {1 Raw library descriptions} *)
+(** Raw library descriptions *)
+
+(** This module regroup all information about a library. We call such
+    descriptions "raw" as the names, such as the names of dependencies
+    are plain unresolved library names.
+
+    The [Lib] module takes care of resolving library names to actual
+    libraries. *)
 
 open Stdune
 
@@ -38,54 +45,58 @@ module Enabled_status : sig
     | Disabled_because_of_enabled_if
 end
 
-type t = private
-  { loc              : Loc.t
-  ; name             : Lib_name.t
-  ; kind             : Lib_kind.t
-  ; status           : Status.t
-  ; src_dir          : Path.t
-  ; orig_src_dir     : Path.t option
-  ; obj_dir          : Path.t Obj_dir.t
-  ; version          : string option
-  ; synopsis         : string option
-  ; archives         : Path.t list Mode.Dict.t
-  ; plugins          : Path.t list Mode.Dict.t
-  ; foreign_objects  : Path.t list Source.t
-  ; foreign_archives : Path.t list Mode.Dict.t (** [.a/.lib/...] files *)
-  ; jsoo_runtime     : Path.t list
-  ; jsoo_archive     : Path.t option
-  ; requires         : Deps.t
-  ; ppx_runtime_deps : (Loc.t * Lib_name.t) list
-  ; pps              : (Loc.t * Lib_name.t) list
-  ; enabled          : Enabled_status.t
-  ; virtual_deps     : (Loc.t * Lib_name.t) list
-  ; dune_version     : Syntax.Version.t option
-  ; sub_systems      : Sub_system_info.t Sub_system_name.Map.t
-  ; virtual_         : Lib_modules.t Source.t option
-  ; implements       : (Loc.t * Lib_name.t) option
-  ; variant          : Variant.t option
-  ; known_implementations : (Loc.t * Lib_name.t) Variant.Map.t
-  ; default_implementation  : (Loc.t * Lib_name.t) option
-  ; wrapped          : Wrapped.t Dune_file.Library.Inherited.t option
-  ; main_module_name : Dune_file.Library.Main_module_name.t
-  ; modes            : Mode.Dict.Set.t
-  ; special_builtin_support : Dune_file.Library.Special_builtin_support.t option
-  }
+type 'path t
+
+val name : _ t -> Lib_name.t
+val loc : _ t -> Loc.t
+val archives : 'path t -> 'path list Mode.Dict.t
+val foreign_archives : 'path t -> 'path list Mode.Dict.t
+val foreign_objects : 'path t -> 'path list Source.t
+val plugins : 'path t -> 'path list Mode.Dict.t
+val src_dir : 'path t -> 'path
+val status : _ t -> Status.t
+val variant : _ t -> Variant.t option
+val default_implementation : _ t -> (Loc.t * Lib_name.t) option
+val kind : _ t -> Lib_kind.t
+val synopsis : _ t -> string option
+val jsoo_runtime : 'path t -> 'path list
+val jsoo_archive : 'path t -> 'path option
+val obj_dir : 'path t -> 'path Obj_dir.t
+val virtual_ : _ t -> Lib_modules.t Source.t option
+val main_module_name : _ t -> Dune_file.Library.Main_module_name.t
+val wrapped : _ t -> Wrapped.t Dune_file.Library.Inherited.t option
+val special_builtin_support : _ t -> Dune_file.Library.Special_builtin_support.t option
+val modes : _ t -> Mode.Dict.Set.t
+val implements : _ t -> (Loc.t * Lib_name.t) option
+val known_implementations : _ t -> (Loc.t * Lib_name.t) Variant.Map.t
+val requires : _ t -> Deps.t
+val ppx_runtime_deps : _ t -> (Loc.t * Lib_name.t) list
+val pps : _ t -> (Loc.t * Lib_name.t) list
+val sub_systems : _ t -> Sub_system_info.t Sub_system_name.Map.t
+val enabled : _ t -> Enabled_status.t
+val orig_src_dir : 'path t -> 'path option
+val version : _ t -> string option
+
+(** Directory where the source files for the library are located. Returns
+    the original src dir when it exists *)
+val best_src_dir : 'path t -> 'path
+
+type external_ = Path.t t
+type local = Path.Build.t t
 
 val of_library_stanza
   :  dir:Path.Build.t
   -> lib_config:Lib_config.t
-  -> (Loc.t * Lib_name.t) Variant.Map.t
+  -> known_implementations:(Loc.t * Lib_name.t) Variant.Map.t
   -> Dune_file.Library.t
-  -> t
+  -> local
 
-val user_written_deps : t -> Dune_file.Lib_deps.t
+val user_written_deps : _ t -> Dune_file.Lib_deps.t
 
 val of_dune_lib
   :  Sub_system_info.t Dune_package.Lib.t
-  -> t
+  -> external_
 
-(* CR-someday diml: this should be [Path.t list], since some libraries
-   have multiple source directories because of [copy_files]. *)
-(** Directory where the source files for the library are located. *)
-val orig_src_dir : t -> Path.t
+val of_local : local -> external_
+
+val as_local_exn : external_ -> local

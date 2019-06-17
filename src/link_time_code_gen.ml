@@ -53,7 +53,8 @@ let findlib_init_code ~preds ~libs =
     List.filter
       ~f:(fun lib ->
         let info = Lib.info lib in
-        not (Lib_info.Status.is_private info.status))
+        let status = Lib_info.status info in
+        not (Lib_info.Status.is_private status))
       libs
   in
   Format.asprintf "%t@." (fun ppf ->
@@ -112,7 +113,8 @@ let handle_special_libs cctx =
             x :: insert l
           | Lib lib ->
             let info = Lib.info lib in
-            match info.special_builtin_support with
+            let special_builtin_support = Lib_info.special_builtin_support info in
+            match special_builtin_support with
             | Some Findlib_dynload ->
               let obj_dir = Obj_dir.of_local obj_dir in
               x :: Module (obj_dir, module_) :: l

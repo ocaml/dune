@@ -1464,7 +1464,7 @@ module DB = struct
         in
         let info =
           Lib_info.of_library_stanza ~dir ~lib_config variants conf
-          |> Lib_info.to_external
+          |> Lib_info.of_local
         in
         match conf.public with
         | None ->

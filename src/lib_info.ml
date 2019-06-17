@@ -320,5 +320,5 @@ let map t ~f_path ~f_obj_dir =
   ; jsoo_archive = Option.map ~f t.jsoo_archive
   }
 
-let to_external = map ~f_path:Path.build ~f_obj_dir:Obj_dir.of_local
+let of_local = map ~f_path:Path.build ~f_obj_dir:Obj_dir.of_local
 let as_local_exn = map ~f_path:Path.as_in_build_dir_exn ~f_obj_dir:Obj_dir.as_local_exn

@@ -97,6 +97,6 @@ val of_dune_lib
   :  Sub_system_info.t Dune_package.Lib.t
   -> external_
 
-val to_external : local -> external_
+val of_local : local -> external_
 
 val as_local_exn : external_ -> local

@@ -213,7 +213,7 @@ module Component = struct
           | _ -> None
 
         let commands =
-          [ "executab", Exec
+          [ "executable", Exec
           ; "library", Lib
           ]
       end

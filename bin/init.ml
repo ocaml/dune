@@ -16,10 +16,12 @@ let validate_component_options kind unsupported_options =
 let doc = "Initialize dune components"
 let man =
   [ `S "DESCRIPTION"
-  ; `P {|$(b,dune init {lib,exe,test} NAME [PATH]) initialize a new dune
-         component of the specified kind, named $(b,NAME), with fields
-         determined by the supplied options.|}
-  ; `P {|If the optional $(b,PATH) is provided, the project will be created
+  ; `P {|$(b,dune init {library,executable,test,project} NAME [PATH]) initialize
+         a new dune component of the specified kind, named $(b,NAME), with
+         fields determined by the supplied options.|}
+  ; `P {|Any prefix of the component kinds can be supplied, e.g., $(b,dune init
+         proj myproject).|}
+  ; `P {|If the optional $(b,PATH) is provided, the component will be created
          there. Otherwise, it is created in the current working directory.|}
   ; `P {|The command can be used to add stanzas to existing dune files as
          well as for creating new dune files and basic component templates.|}
@@ -81,7 +83,7 @@ let term =
          & info ["inline-tests"]
              ~docv:"USE_INLINE_TESTS"
              ~doc:"Whether to use inline tests. \
-                   Only applicable for lib and proj components.")
+                   Only applicable for $(b,library) and $(b,project) components.")
   and+ template =
     Arg.(value
          & opt
@@ -90,7 +92,9 @@ let term =
          & info ["kind"]
              ~docv:"PROJECT_KIND"
              ~doc:"The kind of project to initialize. \
-                   Only applicable for proj components.")
+                   Valid options are $(b,e[xecutable]) or $(b,l[ibrary]). \
+                   Defaults to $(b,executable). \
+                   Only applicable for $(b,project) components.")
   and+ pkg =
     Arg.(value
          & opt
@@ -99,7 +103,9 @@ let term =
          & info ["pkg"]
              ~docv:"PACKAGE_MANAGER"
              ~doc:"Which package manager to use. \
-                   Only applicable for project components.")
+                   Valid options are $(b,o[pam]) or $(b,e[sy]). \
+                   Defaults to $(b,opam). \
+                   Only applicable for $(b,project) components.")
 
   in
 

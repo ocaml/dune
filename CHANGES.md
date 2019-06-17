@@ -1,5 +1,12 @@
-unreleased
-----------
+2.0.0 (unreleased)
+------------------
+
+- Build `.cm[ox]` files for executables more eagerly. This speeds up builds at
+  the cost of building unnecessary artifacts in some cases. Some of these extra
+  artifacts can fail to built, so this is a breaking change. (#2268, @rgrinberg)
+
+1.11.0 (unreleased)
+-------------------
 
 - Don't reserve the `Ppx` toplevel module name for ppx rewriters (#...., @diml)
 
@@ -7,6 +14,15 @@ unreleased
   set of variants is now computed when the virtual library is installed.
   Introducing a new `external_variant` stanza. (#2169, fixes #2134, @TheLortex,
   review by @diml)
+
+- Add proper line directives when copying `.cc` and `.cxx` sources (#2275,
+  @rgrinberg)
+
+- Fix error message for missing C++ sources. The `.cc` extension was always
+  ignored before. (#2275, @rgrinberg)
+
+- Add `$ dune init project` subcommand to create project boilerplate according
+  to a common template. (#2185, fixes #159, @shonfeder)
 
 1.10.0 (04/06/2019)
 -------------------

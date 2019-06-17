@@ -55,6 +55,8 @@ let external_lib_deps_mode t = t.external_lib_deps_mode
 
 let equal = ((==) : t -> t -> bool)
 let hash t = Context.hash t.context
+let to_dyn_concise t =
+  Context.to_dyn_concise t.context
 let to_dyn t = Context.to_dyn t.context
 let to_sexp t = Context.to_sexp t.context
 
@@ -521,10 +523,7 @@ module Libs = struct
            let src = Path.build (Path.Build.relative dir src_fn) in
            Build.copy_and_add_line_directive ~src ~dst
          | Error e ->
-           Build.fail ~targets:[dst]
-             { fail = fun () ->
-                 raise (Lib.Error (No_solution_found_for_select e))
-             }))
+           Build.fail ~targets:[dst] { fail = fun () -> raise e }))
 
   let with_lib_deps t compile_info ~dir ~f =
     let prefix =
@@ -701,7 +700,7 @@ module Action = struct
           "This action has targets in a different directory than the current \
            one, this is not allowed by dune at the moment:\n%s"
           (List.map targets ~f:(fun target ->
-             sprintf "- %s" (Utils.describe_path (Path.build target)))
+             sprintf "- %s" (Dpath.describe_path (Path.build target)))
            |> String.concat ~sep:"\n"));
     let build =
       Build.record_lib_deps (Expander.Resolved_forms.lib_deps forms)
@@ -746,3 +745,10 @@ let opaque t =
   && Ocaml_version.supports_opaque_for_mli t.context.version
 
 let dir_status_db t = t.dir_status_db
+
+module As_memo_key = struct
+  type nonrec t = t
+  let equal = equal
+  let hash = hash
+  let to_dyn = to_dyn_concise
+end

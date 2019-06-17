@@ -68,7 +68,7 @@ module T = struct
     match t with
     | Glob g -> pair string File_selector.encode ("glob", g)
     | Env e -> pair string string ("Env", e)
-    | File f -> pair string Path_dune_lang.encode ("File", f)
+    | File f -> pair string Dpath.encode ("File", f)
     | Alias a -> pair string Alias.encode ("Alias", a)
     | Universe -> string "Universe"
 end

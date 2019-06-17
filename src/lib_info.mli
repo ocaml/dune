@@ -84,3 +84,8 @@ val user_written_deps : t -> Dune_file.Lib_deps.t
 val of_dune_lib
   :  Sub_system_info.t Dune_package.Lib.t
   -> t
+
+(* CR-someday diml: this should be [Path.t list], since some libraries
+   have multiple source directories because of [copy_files]. *)
+(** Directory where the source files for the library are located. *)
+val orig_src_dir : t -> Path.t

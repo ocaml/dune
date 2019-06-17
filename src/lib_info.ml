@@ -267,3 +267,5 @@ let of_dune_lib dp =
   ; wrapped
   ; special_builtin_support = Lib.special_builtin_support dp
   }
+
+let orig_src_dir t = Option.value ~default:t.src_dir t.orig_src_dir

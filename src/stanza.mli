@@ -4,6 +4,8 @@ open! Stdune
 
 type t = ..
 
+val latest_version : Syntax.Version.t
+
 module Parser : sig
   (** Type of stanza parser.
 
@@ -33,6 +35,9 @@ val file_kind : unit -> (File_kind.t, _) Dune_lang.Decoder.parser
     fields in jbuild files, for backward compatibility. *)
 module Decoder : sig
   include module type of struct include Dune_lang.Decoder end
+
+  (* DUNE2: get rid of this *)
+  exception Parens_no_longer_necessary of Loc.t * exn
 
   val record : 'a fields_parser -> 'a t
   val list : 'a t -> 'a list t

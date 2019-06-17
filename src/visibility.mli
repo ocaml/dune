@@ -8,5 +8,6 @@ val is_public : t -> bool
 val is_private : t -> bool
 
 val to_sexp : t -> Sexp.t
+val to_dyn : t -> Dyn.t
 
 val pp : t Fmt.t

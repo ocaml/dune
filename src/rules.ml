@@ -46,6 +46,17 @@ module Dir_rules = struct
 
   type t = data Id.Map.t
 
+  let data_to_dyn = function
+    | Rule rule -> Dyn.Variant ("Rule", [Record [
+      "targets", Path.Build.Set.to_dyn rule.targets;
+    ]])
+    | Alias alias -> Dyn.Variant ("Alias", [Record [
+      "name", Dyn.String alias.name;
+    ]])
+
+  let to_dyn t =
+    Dyn.Encoder. (list data_to_dyn) (Id.Map.values t)
+
   type ready = {
     rules : Rule.t list;
     aliases : Alias_spec.t String.Map.t
@@ -87,17 +98,32 @@ module Dir_rules = struct
     Id.Map.is_subset t ~of_ ~f:(fun _ ~of_:_ -> true)
 
   let is_empty = Id.Map.is_empty
+
+  module Nonempty : sig
+    type maybe_empty = t
+    type t = private maybe_empty
+    val create : maybe_empty -> t option
+    val union : t -> t -> t
+    val singleton : data -> t
+  end = struct
+    type maybe_empty = t
+    type nonrec t = t
+    let create t = if is_empty t then None else Some t
+    let union = union
+    let singleton = singleton
+  end
+
 end
 
 module T = struct
-  type t = Dir_rules.t Path.Build.Map.t
+  type t = Dir_rules.Nonempty.t Path.Build.Map.t
 
   let empty = Path.Build.Map.empty
 
   let union_map a b ~f =
     Path.Build.Map.union a b ~f:(fun _key a b -> Some (f a b))
 
-  let union = union_map ~f:Dir_rules.union
+  let union = union_map ~f:Dir_rules.Nonempty.union
 
   let name = "Rules"
 end
@@ -106,7 +132,7 @@ include T
 
 let singleton_rule (rule : Rule.t) =
   let dir = rule.dir in
-  Path.Build.Map.singleton dir (Dir_rules.singleton (Rule rule))
+  Path.Build.Map.singleton dir (Dir_rules.Nonempty.singleton (Rule rule))
 
 let implicit_output = Memo.Implicit_output.add(module T)
 
@@ -128,7 +154,7 @@ module Produce = struct
       produce (
         let dir = Alias.dir t in
         let name = Alias.name t in
-        Path.Build.Map.singleton dir (Dir_rules.singleton (Alias {
+        Path.Build.Map.singleton dir (Dir_rules.Nonempty.singleton (Alias {
           name;
           spec;
         })))
@@ -160,7 +186,10 @@ module Produce = struct
 end
 
 let produce_dir ~dir rules =
-  produce (Path.Build.Map.singleton dir rules)
+  match Dir_rules.Nonempty.create rules with
+  | None -> ()
+  | Some rules ->
+    produce (Path.Build.Map.singleton dir rules)
 
 let produce_dir' ~dir rules =
   let dir = Path.as_in_build_dir_exn dir in
@@ -176,11 +205,11 @@ let collect f =
 let collect_unit f =
   let (), rules = collect f in rules
 
-let to_map x = x
+let to_map x = (x : t :> Dir_rules.t Path.Build.Map.t)
 
 let map t ~f =
   Path.Build.Map.map t ~f:(fun m ->
-    Id.Map.to_list m
+    Id.Map.to_list (m : Dir_rules.Nonempty.t :> Dir_rules.t)
     |> List.map ~f:(fun (id, data) ->
       match f data with
       | `No_change -> (id, data)
@@ -188,10 +217,12 @@ let map t ~f =
         (Id.gen (), data)
     )
     |> Id.Map.of_list_exn
+    |> Dir_rules.Nonempty.create
+    |> Option.value_exn
   )
 
 let is_subset t ~of_ =
-  Path.Build.Map.is_subset t ~of_ ~f:Dir_rules.is_subset
+  Path.Build.Map.is_subset (to_map t) ~of_:(to_map of_) ~f:Dir_rules.is_subset
 
 let map_rules t ~f =
   map t ~f:(function
@@ -203,4 +234,6 @@ let find t p =
   | None ->
     Dir_rules.empty
   | Some p ->
-    Option.value ~default:Dir_rules.empty (Path.Build.Map.find t p)
+    match Path.Build.Map.find t p with
+    | Some dir_rules -> (dir_rules : Dir_rules.Nonempty.t :> Dir_rules.t)
+    | None -> Dir_rules.empty

@@ -4,11 +4,11 @@ open! Import
 module Name : sig
   type t
 
+  val to_dyn : t -> Dyn.t
   include Dune_lang.Conv with type t := t
 
   val add_suffix : t -> string -> t
 
-  val to_sexp : t Sexp.Encoder.t
   val compare : t -> t -> Ordering.t
   val of_string : string -> t
   val to_string : t -> string
@@ -49,6 +49,8 @@ module File : sig
     ; syntax : Syntax.t
     }
 
+  val path : t -> Path.t
+
   val make : Syntax.t -> Path.t -> t
 end
 
@@ -80,6 +82,8 @@ end
 
 type t
 
+val to_dyn : t -> Dyn.t
+
 (** [obj_name] Object name. It is different from [name] for wrapped modules. *)
 val make
   :  ?impl:File.t
@@ -106,6 +110,8 @@ val real_unit_name : t -> Name.t
 val intf : t -> File.t option
 val impl : t -> File.t option
 
+val source : t -> Ml_kind.t -> File.t option
+
 val pp_flags : t -> (unit, string list) Build.t option
 
 val file            : t -> Ml_kind.t -> Path.t option
@@ -129,10 +135,6 @@ val map_files : t -> f:(Ml_kind.t -> File.t -> File.t) -> t
 
 (** Set preprocessing flags *)
 val set_pp : t -> (unit, string list) Build.t option -> t
-
-val to_sexp : t Sexp.Encoder.t
-
-val pp : t Fmt.t
 
 val wrapped_compat : t -> t
 

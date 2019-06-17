@@ -44,7 +44,8 @@ end = struct
     let scope =
       List.fold_left libs ~init:None ~f:(fun acc lib ->
         let scope_for_key =
-          match Lib.status lib with
+          let info = Lib.info lib in
+          match info.status with
           | Private scope_name   -> Some scope_name
           | Public _ | Installed -> None
         in
@@ -498,44 +499,44 @@ let get_cookies ~loc ~expander ~lib_name libs =
       Some ("library-name", (library_name, Lib_name.of_local (loc, lib_name)))
   in
   try
-    Ok (libs
-      |> List.concat_map ~f:
-        (fun t ->
-          match Lib.kind t with
-          | Normal -> []
-          | Ppx_rewriter {cookies}
-          | Ppx_deriver {cookies} ->
-            List.map ~f:(fun {Lib_kind.Ppx_args.Cookie.name; value} ->
-              (name, (Expander.expand_str expander value, Lib.name t)))
-              cookies
-        )
+    Ok (
+      List.concat_map libs ~f:(fun t ->
+        let info = Lib.info t in
+        match info.kind with
+        | Normal -> []
+        | Ppx_rewriter {cookies}
+        | Ppx_deriver {cookies} ->
+          List.map ~f:(fun {Lib_kind.Ppx_args.Cookie.name; value} ->
+            (name, (Expander.expand_str expander value, Lib.name t)))
+            cookies
+      )
       |> (fun l ->
         match library_name_cookie with
         | None -> l
         | Some cookie -> cookie :: l
       )
       |> String.Map.of_list_reducei ~f:
-        (fun name ((val1, lib1) as res) (val2, lib2) ->
-          if String.equal val1 val2 then
-            res
-          else
-            let lib1 = Lib_name.to_string lib1 in
-            let lib2 = Lib_name.to_string lib2 in
-            Errors.fail loc "%a" Fmt.text
-             (sprintf "%s and %s have inconsistent requests for cookie %S; \
-                       %s requests %S and %s requests %S"
-                lib1 lib2 name
-                lib1 val1
-                lib2 val2)
-        )
+           (fun name ((val1, lib1) as res) (val2, lib2) ->
+              if String.equal val1 val2 then
+                res
+              else
+                let lib1 = Lib_name.to_string lib1 in
+                let lib2 = Lib_name.to_string lib2 in
+                Errors.fail loc "%a" Fmt.text
+                  (sprintf "%s and %s have inconsistent requests for cookie %S; \
+                            %s requests %S and %s requests %S"
+                     lib1 lib2 name
+                     lib1 val1
+                     lib2 val2)
+           )
       |> String.Map.foldi ~init:[]
-        ~f:(fun name (value, _) acc -> (name, value) :: acc)
+           ~f:(fun name (value, _) acc -> (name, value) :: acc)
       |> List.rev
       |> List.concat_map ~f:
-        (fun (name, value) ->
-          ["--cookie"; sprintf "%s=%S" name value]
-        )
-      )
+           (fun (name, value) ->
+              ["--cookie"; sprintf "%s=%S" name value]
+           )
+    )
   with exn -> Error exn
 
 let ppx_driver_and_flags_internal sctx ~loc ~expander ~lib_name ~flags

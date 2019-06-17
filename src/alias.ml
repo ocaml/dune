@@ -101,6 +101,6 @@ let fmt         = make_standard "fmt"
 let encode { dir ; name } =
   let open Dune_lang.Encoder in
   record
-    [ "dir", Path_dune_lang.encode (Path.build dir)
+    [ "dir", Dpath.encode (Path.build dir)
     ; "name", string name
     ]

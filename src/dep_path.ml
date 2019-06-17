@@ -9,37 +9,39 @@ module Entry = struct
     | Preprocess of Lib_name.t list
     | Loc of Loc.t
 
-  let to_string = function
-    | Path p -> Utils.describe_path p
-    | Alias p -> "alias " ^ Utils.describe_path p
+  let pp = function
+    | Path p -> Pp.text (Dpath.describe_path p)
+    | Alias p -> Pp.textf "alias %s" (Dpath.describe_path p)
     | Library (path, lib_name) ->
-      Format.asprintf "library %a in %s" Lib_name.pp_quoted lib_name
+      Pp.textf "library %S in %s"
+        (Lib_name.to_string lib_name)
         (Path.to_string_maybe_quoted path)
+    | Executables [(loc, name)] ->
+      Pp.textf "executable %s in %s"
+        name
+        (Loc.to_file_colon_line loc)
     | Executables names ->
       let (loc, _) = List.hd names in
-      Format.asprintf "executable %s in %s"
+      Pp.textf "executables %s in %s"
         (String.enumerate_and (List.map ~f:snd names))
         (Loc.to_file_colon_line loc)
     | Preprocess l ->
-      Sexp.to_string
-        (List [ Atom "pps"
-              ; Sexp.Encoder.(list Lib_name.to_sexp) l])
+      Pp.textf "%s"
+        (Sexp.to_string
+           (List [ Atom "pps"
+                 ; Sexp.Encoder.(list Lib_name.to_sexp) l ]))
     | Loc loc ->
-      Loc.to_file_colon_line loc
-
-  let pp ppf x =
-    Format.pp_print_string ppf (to_string x)
+      Pp.text (Loc.to_file_colon_line loc)
 end
 
 module Entries = struct
   type t = Entry.t list
 
-  let pp ppf t =
-    Format.fprintf ppf "@[<v>%a@]"
-      (Format.pp_print_list ~pp_sep:Fmt.break
-         (fun ppf x ->
-            Format.fprintf ppf "-> required by %a" Entry.pp x))
-      t
+  let pp t =
+    Pp.vbox (Pp.concat ~sep:Pp.cut (List.map t ~f:(fun x ->
+      Pp.box ~indent:3
+        (Pp.seq (Pp.verbatim "-> ")
+           (Pp.seq (Pp.text "required by ") (Entry.pp x))))))
 end
 
 exception E of exn * Entry.t list

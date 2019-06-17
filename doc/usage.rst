@@ -14,12 +14,32 @@ change.
 
 Dune's ``init`` subcommand provides limited support for generating dune file
 stanzas and folder structures to define components. ``dune init`` can be used to
-quickly add new libraries, tests, or executables without having to manually edit
-a dune file, or it can be composed to programmatically generate parts of a
-multi-component project.
+quickly add new projects, libraries, tests, or executables without having to
+manually create dune files, or it can be composed to programmatically generate
+parts of a multi-component project.
 
-For example, to add a new executable to a ``dune`` file in the current directory
-(creating the file if necessary), you can run
+Initializing a project
+----------------------
+
+To initialize a new ``dune`` project that uses the ``base`` and ``cmdliner``,
+libraries and supports inline tests, you can run
+
+.. code:: bash
+
+   $ dune init proj myproj --libs base,cmdliner --inline-tests --ppx ppx_inline_test
+
+This will create a new directory called ``myproj`` including sub directories and
+``dune`` files for library, executable, and test components. Each component's
+``dune`` file will also include the declarations required for the given
+dependencies.
+
+This is the quickest way to get a basic ``dune`` project up and building.
+
+Initializing an executable
+-----------------------------
+
+To add a new executable to a ``dune`` file in the current directory
+(creating the file if necessary), run
 
 .. code:: bash
 
@@ -35,7 +55,10 @@ This will add the following stanza to the ``dune`` file:
      (preprocess
       (pps ppx_deriving)))
 
-Or, to create a new directory ``src``, initialized as a library, you can run:
+Initializing a library
+----------------------
+
+To create a new directory ``src``, initialized as a library, can run:
 
 .. code:: bash
 

@@ -189,10 +189,10 @@ let directory   s = rule "directory"  []      Set s
 let archive p s   = rule "archive"    [Pos p] Set s
 let plugin  p s   = rule "plugin"     [Pos p] Set s
 let archives name =
-  [ archive "byte"   (name ^ ".cma" )
-  ; archive "native" (name ^ ".cmxa")
-  ; plugin  "byte"   (name ^ ".cma" )
-  ; plugin  "native" (name ^ ".cmxs")
+  [ archive "byte"   (name ^ (Mode.compiled_lib_ext Byte))
+  ; archive "native" (name ^ (Mode.compiled_lib_ext Native))
+  ; plugin  "byte"   (name ^ (Mode.compiled_lib_ext Byte))
+  ; plugin  "native" (name ^ (Mode.plugin_ext Native))
   ]
 
 let builtins ~stdlib_dir ~version:ocaml_version =

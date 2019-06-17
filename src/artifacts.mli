@@ -36,7 +36,7 @@ module Public_libs : sig
     -> loc:Loc.t
     -> lib:Lib_name.t
     -> file:string
-    -> (Path.t, fail) result
+    -> Path.t Or_exn.t
 end
 
 type t = {

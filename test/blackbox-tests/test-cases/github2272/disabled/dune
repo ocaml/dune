@@ -1,0 +1,3 @@
+(library
+ (name foo)
+ (enabled_if (= %{system} foobarbaz)))

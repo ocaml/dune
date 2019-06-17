@@ -10,18 +10,21 @@ module Kind = struct
   type t =
     | Executable
     | Library
+    | Project
     | Test
 
   let to_string = function
     | Executable -> "executable"
     | Library -> "library"
+    | Project -> "project"
     | Test -> "test"
 
   let pp ppf t = Format.pp_print_string ppf (to_string t)
 
   let commands =
-    [ "exe", Executable
-    ; "lib", Library
+    [ "executable", Executable
+    ; "library", Library
+    ; "project", Project
     ; "test", Test
     ]
 end
@@ -50,7 +53,7 @@ module File = struct
 
   let full_path = function
     | Dune {path; name; _} | Text {path; name; _} ->
-       Path.relative path name
+      Path.relative path name
 
   (** Inspection and manipulation of stanzas in a file *)
   module Stanza = struct
@@ -175,36 +178,82 @@ end
 module Component = struct
 
   module Options = struct
-    type common =
-      { name : string
-      ; libraries : string list
-      ; pps : string list
-      }
 
-    type executable =
-      { public: string option
-      }
+    module Common = struct
+      type t =
+        { name : string
+        ; libraries : string list
+        ; pps : string list
+        }
+    end
 
-    type library =
-      { public: string option
-      ; inline_tests: bool
-      }
+    module Executable = struct
+      type t =
+        { public: string option
+        }
+    end
 
-    (* NOTE: no options supported yet *)
-    type test = unit
+    module Library = struct
+      type t =
+        { public: string option
+        ; inline_tests: bool
+        }
+    end
+
+    module Project = struct
+      module Template = struct
+        type t =
+          | Exec
+          | Lib
+          (* TODO(shonfeder) Add custom templates *)
+
+        let of_string = function
+          | "executable" -> Some Exec
+          | "library" -> Some Lib
+          | _ -> None
+
+        let commands =
+          [ "executable", Exec
+          ; "library", Lib
+          ]
+      end
+
+      module Pkg = struct
+        type t =
+          | Opam
+          | Esy
+
+        let commands =
+          [ "opam", Opam
+          ; "esy", Esy
+          ]
+      end
+
+      type t =
+        { template: Template.t
+        ; inline_tests: bool
+        ; pkg: Pkg.t
+        }
+    end
+
+    module Test = struct
+      type t = unit
+    end
 
     type 'options t =
       { context : Init_context.t
-      ; common : common
+      ; common : Common.t
       ; options : 'options
       }
-  end
+  end (* Options *)
 
   type 'options t =
-    | Executable : Options.executable Options.t -> Options.executable t
-    | Library : Options.library Options.t -> Options.library t
-    | Test : Options.test Options.t -> Options.test t
+    | Executable : Options.Executable.t Options.t -> Options.Executable.t t
+    | Library : Options.Library.t Options.t -> Options.Library.t t
+    | Project : Options.Project.t Options.t -> Options.Project.t t
+    | Test : Options.Test.t Options.t -> Options.Test.t t
 
+  (** Internal representation of the files comprising a component *)
   type target =
     { dir : Path.t
     ; files : File.t list
@@ -226,7 +275,7 @@ module Component = struct
         | [] -> []
         | args -> [f args]
 
-      let common (options : Options.common) =
+      let common (options : Options.Common.t) =
         let optional_fields =
           optional_field ~f:libraries options.libraries
           @ optional_field ~f:pps options.pps
@@ -253,19 +302,19 @@ module Component = struct
       | Some "" -> [Field.public_name default]
       | Some n  -> [Field.public_name n]
 
-    let executable (common : Options.common) (options : Options.executable) =
+    let executable (common : Options.Common.t) (options : Options.Executable.t) =
       let public_name =
         public_name_field ~default:common.name options.public
       in
       make "executable" {common with name = "main"} public_name
 
-    let library (common : Options.common) (options: Options.library) =
+    let library (common : Options.Common.t) (options: Options.Library.t) =
       let (common, inline_tests) =
         if not options.inline_tests then
           (common, [])
         else
           let pps =
-            add_to_list_set "ppx_inline_tests" common.pps
+            add_to_list_set "ppx_inline_test" common.pps
           in
           ({common with pps}, [Field.inline_tests])
       in
@@ -274,7 +323,7 @@ module Component = struct
       in
       make "library" common (public_name @ inline_tests)
 
-    let test common ((): Options.test) =
+    let test common ((): Options.Test.t) =
       make "test" common []
   end
 
@@ -283,52 +332,112 @@ module Component = struct
     File.load_dune_file ~path:dir
     |> File.Stanza.add project stanza
 
-  let bin ({context; common; options} : Options.executable Options.t) =
-    let dir = context.dir in
-    let bin_dune =
-      Stanza_cst.executable common options
-      |> add_stanza_to_dune_file ~project:context.project ~dir
-    in
-    let bin_ml =
-      let name = "main.ml" in
-      let content = sprintf "let () = print_endline \"Hello, World!\"\n" in
-      File.make_text dir name content
-    in
-    let files = [bin_dune; bin_ml] in
-    {dir; files}
+  module Make = struct
+    let bin ({context; common; options} : Options.Executable.t Options.t) =
+      let dir = context.dir in
+      let bin_dune =
+        Stanza_cst.executable common options
+        |> add_stanza_to_dune_file ~project:context.project ~dir
+      in
+      let bin_ml =
+        let name = "main.ml" in
+        let content = sprintf "let () = print_endline \"Hello, World!\"\n" in
+        File.make_text dir name content
+      in
+      let files = [bin_dune; bin_ml] in
+      [{dir; files}]
 
-  let src ({context; common; options} : Options.library Options.t) =
-    let dir = context.dir in
-    let lib_dune =
-      Stanza_cst.library common options
-      |> add_stanza_to_dune_file ~project:context.project ~dir
-    in
-    let files = [lib_dune] in
-    {dir; files}
+    let src ({context; common; options} : Options.Library.t Options.t) =
+      let dir = context.dir in
+      let lib_dune =
+        Stanza_cst.library common options
+        |> add_stanza_to_dune_file ~project:context.project ~dir
+      in
+      let files = [lib_dune] in
+      [{dir; files}]
 
-  let test ({context; common; options}: Options.test Options.t) =
-    (* Marking the current absence of test-specific options *)
-    let dir = context.dir in
-    let test_dune =
-      Stanza_cst.test common options
-      |> add_stanza_to_dune_file ~project:context.project ~dir
-    in
-    let test_ml =
-      let name = sprintf "%s.ml" common.name in
-      let content = "" in
-      File.make_text dir name content
-    in
-    let files = [test_dune; test_ml] in
-    {dir; files}
+    let test ({context; common; options}: Options.Test.t Options.t) =
+      (* Marking the current absence of test-specific options *)
+      let dir = context.dir in
+      let test_dune =
+        Stanza_cst.test common options
+        |> add_stanza_to_dune_file ~project:context.project ~dir
+      in
+      let test_ml =
+        let name = sprintf "%s.ml" common.name in
+        let content = "" in
+        File.make_text dir name content
+      in
+      let files = [test_dune; test_ml] in
+      [{dir; files}]
+
+    let proj_exec dir ({context; common; options} : Options.Project.t Options.t) =
+      let lib_target =
+        src { context = {context with dir = Path.relative dir "lib"}
+            ; options = {public = None; inline_tests = options.inline_tests}
+            ; common
+            }
+      in
+      let test_target =
+        test { context = {context with dir = Path.relative dir "test"}
+             ; options = ()
+             ; common
+             }
+      in
+      let bin_target =
+        (* Add the lib_target as a library to the executable*)
+        let libraries = Stanza_cst.add_to_list_set common.name common.libraries in
+        bin { context = {context with dir = Path.relative dir "bin"}
+            ; options = {public = Some common. name}
+            ; common = {common with libraries}
+            }
+      in
+      bin_target @ lib_target @ test_target
+
+    let proj_lib dir ({context; common; options} : Options.Project.t Options.t) =
+      let lib_target =
+        src { context = {context with dir = Path.relative dir "lib"}
+            ; options = {public = Some common.name; inline_tests = options.inline_tests}
+            ; common
+            }
+      in
+      let test_target =
+        test { context = {context with dir = Path.relative dir "test"}
+             ; options = ()
+             ; common
+             }
+      in
+      lib_target @ test_target
+
+    let proj ({context; common; options} as opts : Options.Project.t Options.t) =
+      let {template; pkg; _} : Options.Project.t = options in
+      let dir = Path.relative context.dir common.name in
+      let name = common.name in
+      let proj_target =
+        let files =
+          match (pkg : Options.Project.Pkg.t) with
+          | Opam -> [File.make_text dir (name ^ ".opam") ""]
+          | Esy  -> [File.make_text dir "package.json" ""]
+        in
+        {dir; files}
+      in
+      let component_targets =
+        match (template : Options.Project.Template.t) with
+        | Exec -> proj_exec dir opts
+        | Lib  -> proj_lib dir opts
+      in
+      proj_target :: component_targets
+  end
 
   let report_uncreated_file = function
     | Ok _ -> ()
     | Error path ->
       Errors.kerrf ~f:print_to_console
-         "@{<warning>Warning@}: file @{<kwd>%a@} was not created \
-          because it already exists\n"
-         Path.pp path
+        "@{<warning>Warning@}: file @{<kwd>%a@} was not created \
+         because it already exists\n"
+        Path.pp path
 
+  (** Creates a component, writing the files to disk *)
   let create target =
     File.create_dir target.dir;
     List.map ~f:File.write target.files
@@ -336,11 +445,12 @@ module Component = struct
   let init (type options) (t : options t) =
     let target =
       match t with
-      | Executable params -> bin params
-      | Library params    -> src params
-      | Test params       -> test params
+      | Executable params -> Make.bin params
+      | Library params    -> Make.src params
+      | Project params    -> Make.proj params
+      | Test params       -> Make.test params
     in
-    create target
+    List.concat_map ~f:create target
     |> List.iter ~f:report_uncreated_file
 end
 

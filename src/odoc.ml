@@ -9,7 +9,7 @@ let (++) = Path.Build.relative
 
 let lib_unique_name lib =
   let name = Lib.name lib in
-  match Lib.status lib with
+  match (Lib.info lib).status with
   | Installed -> assert false
   | Public _  -> Lib_name.to_string name
   | Private scope_name ->
@@ -353,6 +353,7 @@ let odocs =
 
 let setup_lib_html_rules_def =
   let module Input = struct
+    module Super_context = Super_context.As_memo_key
     type t = Super_context.t * Lib.t * Lib.t list Or_exn.t
 
     let equal (sc1, l1, r1) (sc2, l2, r2) =
@@ -394,6 +395,9 @@ let setup_lib_html_rules sctx lib ~requires =
 
 let setup_pkg_html_rules_def =
   let module Input = struct
+
+    module Super_context = Super_context.As_memo_key
+
     type t = Super_context.t * Package.Name.t * Lib.Local.t list
 
     let equal (s1, p1, l1) (s2, p2, l2) =
@@ -519,6 +523,9 @@ let check_mlds_no_dupes ~pkg ~mlds =
 
 let setup_package_odoc_rules_def =
   let module Input = struct
+
+    module Super_context = Super_context.As_memo_key
+
     type t = Super_context.t * Package.Name.t * Path.Build.t list
 
     let hash (sctx, p, ps) =
@@ -622,11 +629,12 @@ let gen_rules sctx ~dir:_ rest =
   | "_odoc" :: "lib" :: lib :: _ ->
     let lib, lib_db = SC.Scope_key.of_string sctx lib in
     let lib = Lib_name.of_string_exn ~loc:None lib in
-    Lib.DB.find lib_db lib
-    |> Result.iter ~f:(fun lib ->
-      (* TODO instead of this hack, call memoized function that generates the
-         rules for this library *)
-      Build_system.load_dir ~dir:(Lib.src_dir lib))
+    (* diml: why isn't [None] some kind of error here? *)
+    Option.iter (Lib.DB.find lib_db lib) ~f:(fun lib ->
+      (* TODO instead of this hack, call memoized function that
+         generates the rules for this library *)
+      let dir = (Lib.info lib).src_dir in
+      Build_system.load_dir ~dir)
   | "_html" :: lib_unique_name_or_pkg :: _ ->
     (* TODO we can be a better with the error handling in the case where
        lib_unique_name_or_pkg is neither a valid pkg or lnu *)
@@ -635,8 +643,8 @@ let gen_rules sctx ~dir:_ rest =
     let setup_pkg_html_rules pkg =
       setup_pkg_html_rules sctx ~pkg ~libs:(
         Lib.Local.Set.to_list (load_all_odoc_rules_pkg sctx ~pkg)) in
-    Lib.DB.find lib_db lib
-    |> Result.iter ~f:(fun lib ->
+    (* diml: why isn't [None] some kind of error here? *)
+    Option.iter (Lib.DB.find lib_db lib) ~f:(fun lib ->
       match Lib.package lib with
       | None ->
         setup_lib_html_rules sctx

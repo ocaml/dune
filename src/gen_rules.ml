@@ -236,63 +236,75 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
     Install_rules.init_meta sctx ~dir;
     let subdirs_to_keep1 = Install_rules.gen_rules sctx ~dir in
     Opam_create.add_rules sctx ~dir;
-    (match components with
-     | ".js"  :: rest -> Js_of_ocaml_rules.setup_separate_compilation_rules
-                           sctx rest
-     | "_doc" :: rest -> Odoc.gen_rules sctx rest ~dir
-     | ".ppx"  :: rest -> Preprocessing.gen_rules sctx rest
-     | comps ->
-       begin match List.last comps with
-       | Some ".formatted" ->
-         gen_format_rules sctx ~output_dir:dir
-       | Some ".bin" ->
-         let src_dir = Path.Build.parent_exn dir in
-         Super_context.local_binaries sctx ~dir:src_dir
-         |> List.iter ~f:(fun t ->
-           let loc = File_binding.Expanded.src_loc t in
-           let src = File_binding.Expanded.src_path t in
-           let dst = File_binding.Expanded.dst_path t ~dir in
-           Super_context.add_rule sctx ~loc ~dir (Build.symlink ~src ~dst))
-       | _ ->
-         match
-           File_tree.find_dir (SC.file_tree sctx)
-             (Path.Build.drop_build_context_exn dir)
-         with
-         | None ->
-           (* We get here when [dir] is a generated directory, such as
-              [.utop] or [.foo.objs]. *)
-           if Utop.is_utop_dir dir then
-             Utop.setup sctx ~dir:(Path.Build.parent_exn dir)
-           else if components <> [] then
-             Build_system.load_dir ~dir:(Path.parent_exn (Path.build dir))
-         | Some _ ->
-           (* This interprets "rule" and "copy_files" stanzas. *)
-           let dir_contents = Dir_contents.get sctx ~dir in
-           match dir_contents with
-           | Group_part root ->
-             Build_system.load_dir ~dir:(Path.build root)
-           | Standalone_or_root dir_contents ->
-             match Dir_contents.kind dir_contents with
-             | Group_part _ -> assert false
-             | Standalone ->
-               ignore (gen_rules dir_contents [] ~dir : _ list)
-             | Group_root subs ->
-               let cctxs = gen_rules dir_contents [] ~dir in
-               let subs = Memo.Lazy.force subs in
-               List.iter subs ~f:(fun dc ->
-                 ignore (
-                   gen_rules dir_contents cctxs ~dir:(Dir_contents.dir dc)
-                   : _ list))
-       end);
-    let subdirs_to_keep2 =
+    let subdirs_to_keep2 : Build_system.extra_sub_directories_to_keep =
+      (match components with
+       | ".js"  :: rest ->
+         Js_of_ocaml_rules.setup_separate_compilation_rules sctx rest;
+         (match rest with | [] -> All | _ -> These String.Set.empty)
+       | "_doc" :: rest ->
+         Odoc.gen_rules sctx rest ~dir;
+         (match rest with | [] -> All | _ -> These String.Set.empty)
+       | ".ppx"  :: rest ->
+         Preprocessing.gen_rules sctx rest;
+         (match rest with | [] -> All | _ -> These String.Set.empty)
+       | comps ->
+         let subdirs = [".formatted"; ".bin"; ".utop"] in
+         begin match List.last comps with
+         | Some ".formatted" ->
+           gen_format_rules sctx ~output_dir:dir
+         | Some ".bin" ->
+           let src_dir = Path.Build.parent_exn dir in
+           (Super_context.local_binaries sctx ~dir:src_dir
+            |> List.iter ~f:(fun t ->
+              let loc = File_binding.Expanded.src_loc t in
+              let src = File_binding.Expanded.src_path t in
+              let dst = File_binding.Expanded.dst_path t ~dir in
+              Super_context.add_rule sctx ~loc ~dir (Build.symlink ~src ~dst)))
+         | _ ->
+           match
+             File_tree.find_dir (SC.file_tree sctx)
+               (Path.Build.drop_build_context_exn dir)
+           with
+           | None ->
+             (* We get here when [dir] is a generated directory, such as
+                [.utop] or [.foo.objs]. *)
+             (if Utop.is_utop_dir dir then
+                Utop.setup sctx ~dir:(Path.Build.parent_exn dir)
+              else if components <> [] then
+                Build_system.load_dir ~dir:(Path.parent_exn (Path.build dir)))
+           | Some _ ->
+             (* This interprets "rule" and "copy_files" stanzas. *)
+             let dir_contents = Dir_contents.get sctx ~dir in
+             match dir_contents with
+             | Group_part root ->
+               Build_system.load_dir ~dir:(Path.build root)
+             | Standalone_or_root dir_contents ->
+               match Dir_contents.kind dir_contents with
+               | Group_part _ -> assert false
+               | Standalone ->
+                 ignore (gen_rules dir_contents [] ~dir : _ list)
+               | Group_root subs ->
+                 let cctxs = gen_rules dir_contents [] ~dir in
+                 let subs = Memo.Lazy.force subs in
+                 List.iter subs ~f:(fun dc ->
+                   ignore (
+                     gen_rules dir_contents cctxs ~dir:(Dir_contents.dir dc)
+                     : _ list))
+         end;
+         These (String.Set.of_list subdirs))
+    in
+    let subdirs_to_keep3 =
       match components with
       | [] ->
         Build_system.Subdir_set.These
           (String.Set.of_list [".js"; "_doc"; ".ppx"])
-      | [(".js"|"_doc"|".ppx")] -> All
       | _  -> These String.Set.empty
     in
-    Build_system.Subdir_set.union subdirs_to_keep1 subdirs_to_keep2
+    Build_system.Subdir_set.union_all [
+      subdirs_to_keep1;
+      subdirs_to_keep2;
+      subdirs_to_keep3
+    ]
 
 end
 

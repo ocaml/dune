@@ -133,17 +133,6 @@ let index s ch =
   | i -> Some i
   | exception Not_found -> None
 
-let split s ~on =
-  let rec loop i j =
-    if j = length s then
-      [sub s ~pos:i ~len:(j - i)]
-    else if s.[j] = on then
-      sub s ~pos:i ~len:(j - i) :: loop (j + 1) (j + 1)
-    else
-      loop i (j + 1)
-  in
-  loop 0 0
-
 include String_split
 
 let escape_only c s =

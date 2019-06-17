@@ -47,9 +47,11 @@ let description s = rule "description" []      Set s
 let directory   s = rule "directory"   []      Set s
 let archive preds s = rule "archive"   preds Set s
 let plugin preds  s = rule "plugin"    preds Set s
+
 let archives ?(preds=[]) lib =
-  let archives = Lib.archives lib in
-  let plugins  = Lib.plugins  lib in
+  let info = Lib.info lib in
+  let archives = info.archives in
+  let plugins  = info.plugins in
   let make ps =
     String.concat ~sep:" " (List.map ps ~f:Path.basename)
   in
@@ -60,8 +62,9 @@ let archives ?(preds=[]) lib =
   ]
 
 let gen_lib pub_name lib ~version =
+  let info = Lib.info lib in
   let desc =
-    match Lib.synopsis lib with
+    match info.synopsis with
     | Some s -> s
     | None ->
       (* CR-someday jdimino: wut? this looks old *)
@@ -73,7 +76,7 @@ let gen_lib pub_name lib ~version =
       | _ -> ""
   in
   let preds =
-    match Lib.kind lib with
+    match info.kind with
     | Normal -> []
     | Ppx_rewriter _ | Ppx_deriver _ -> [Pos "ppx_driver"]
   in
@@ -93,7 +96,7 @@ let gen_lib pub_name lib ~version =
         ; Comment "a preprocessor"
         ; ppx_runtime_deps ppx_rt_deps
         ]
-    ; (match Lib.kind lib with
+    ; (match info.kind with
        | Normal -> []
        | Ppx_rewriter _ | Ppx_deriver _ ->
          (* Deprecated ppx method support *)
@@ -105,7 +108,7 @@ let gen_lib pub_name lib ~version =
              ; requires ~preds:[no_ppx_driver]
                  (Lib.Meta.ppx_runtime_deps_for_deprecated_method lib)
              ]
-           ; match Lib.kind lib with
+           ; match info.kind with
            | Normal -> assert false
            | Ppx_rewriter _ ->
              [ rule "ppx" [no_ppx_driver; no_custom_ppx]
@@ -118,7 +121,7 @@ let gen_lib pub_name lib ~version =
              ]
            ]
       )
-    ; (match Lib.jsoo_runtime lib with
+    ; (match info.jsoo_runtime with
        | [] -> []
        | l  ->
          let root = Pub_name.root pub_name in

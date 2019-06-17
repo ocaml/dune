@@ -117,7 +117,7 @@ module type Local_gen = sig
   val explode : 'w t -> string list
 
   val root : 'w t
-  
+
   val append : 'w t -> Unspecified.w t -> 'w t
   val descendant : 'w t -> of_:'w t -> Unspecified.w t option
   val reach : 'w t -> from:'w t -> string

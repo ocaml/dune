@@ -20,7 +20,7 @@ let make ~(ctx : Context.t) ~dir ~dir_contents (lib : Library.t) =
     let virtual_library = Library.is_virtual lib in
     List.concat
       [ if_ (byte && not virtual_library)
-          [ Library.archive ~dir lib ~ext:".cma" ]
+          [ Library.archive ~dir lib ~ext:(Mode.compiled_lib_ext Byte) ]
       ; if virtual_library then (
           let files =
             Dir_contents.c_sources_of_library dir_contents
@@ -33,18 +33,18 @@ let make ~(ctx : Context.t) ~dir ~dir_contents (lib : Library.t) =
           []
       ; if_ (native && not virtual_library)
           (let files =
-             [ Library.archive ~dir lib ~ext:".cmxa"
+             [ Library.archive ~dir lib ~ext:(Mode.compiled_lib_ext Native)
              ; Library.archive ~dir lib ~ext:ctx.ext_lib
              ]
            in
            if Dynlink_supported.get lib.dynlink ctx.natdynlink_supported then
-             files @ [ Library.archive ~dir lib ~ext:".cmxs" ]
+             files @ [ Library.archive ~dir lib ~ext:(Mode.plugin_ext Native) ]
            else
              files)
       ; List.map lib.buildable.js_of_ocaml.javascript_files
           ~f:(Path.Build.relative dir)
       ; List.map lib.install_c_headers ~f:(fun fn ->
-          Path.Build.relative dir (fn ^ ".h"))
+          Path.Build.relative dir (fn ^ C.header_ext))
       ]
   in
   let dlls =

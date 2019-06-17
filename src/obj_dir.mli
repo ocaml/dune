@@ -110,4 +110,12 @@ module Module : sig
     val o_files : 'path t -> Module.t list -> ext_obj:string -> Path.t list
     val cm_files : 'path t -> Module.t list -> kind:Cm_kind.t -> Path.t list
   end
+
+  module Dep : sig
+    type t =
+      | Immediate
+      | Transitive
+  end
+
+  val dep : Path.Build.t t -> Module.File.t -> kind:Dep.t -> Path.Build.t
 end

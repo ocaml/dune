@@ -461,6 +461,6 @@ let generated ~src_dir name =
     ~impl
     ~obj_name:basename
 
-let alias ~src_dir name =
+let generated_alias ~src_dir name =
   let t = generated ~src_dir name in
   { t with kind = Alias }

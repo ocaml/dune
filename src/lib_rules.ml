@@ -81,7 +81,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
   let alias_module_build_sandbox =
     Ocaml_version.always_reads_alias_cmi ctx.version
 
-  let build_alias_module ~lib_modules ~dir ~cctx ~dynlink ~js_of_ocaml =
+  let build_alias_module ~lib_modules ~dir ~cctx ~dynlink =
     let vimpl = Compilation_context.vimpl cctx in
     let alias_module =
       Option.value_exn (Lib_modules.alias_module lib_modules) in
@@ -112,12 +112,11 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
     );
     let cctx = Compilation_context.for_alias_module cctx in
     Module_compilation.build_module cctx alias_module
-      ~js_of_ocaml
       ~dynlink
       ~sandbox:alias_module_build_sandbox
       ~dep_graphs:(Dep_graph.Ml_kind.dummy alias_module)
 
-  let build_wrapped_compat_modules (lib : Library.t) cctx ~js_of_ocaml
+  let build_wrapped_compat_modules (lib : Library.t) cctx
         ~dynlink ~lib_modules =
     let wrapped_compat = Lib_modules.wrapped_compat lib_modules in
     let modules = Lib_modules.modules lib_modules in
@@ -149,7 +148,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
       Dep_graph.Ml_kind.wrapped_compat ~modules ~wrapped_compat
     in
     let cctx = Compilation_context.for_wrapped_compat cctx wrapped_compat in
-    Module_compilation.build_modules cctx ~js_of_ocaml ~dynlink ~dep_graphs
+    Module_compilation.build_modules cctx ~dynlink ~dep_graphs
 
   let build_c_file (lib : Library.t) ~dir ~expander ~includes (loc, src, dst) =
     let c_flags = (SC.c_flags sctx ~dir ~expander ~flags:lib.c_flags).c in
@@ -451,6 +450,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
         ~preprocessing:pp
         ~no_keep_locs:lib.no_keep_locs
         ~opaque
+        ~js_of_ocaml:lib.buildable.js_of_ocaml
         ?stdlib:lib.stdlib
     in
 
@@ -459,9 +459,8 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
     let dynlink =
       Dynlink_supported.get lib.dynlink ctx.supports_shared_libraries
     in
-    let js_of_ocaml = lib.buildable.js_of_ocaml in
 
-    build_wrapped_compat_modules lib cctx ~dynlink ~js_of_ocaml ~lib_modules;
+    build_wrapped_compat_modules lib cctx ~dynlink ~lib_modules;
 
     let (vlib_dep_graphs, dep_graphs) =
       let dep_graphs = Ocamldep.rules cctx in
@@ -475,11 +474,11 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
         )
     in
 
-    Module_compilation.build_modules cctx ~js_of_ocaml ~dynlink ~dep_graphs;
+    Module_compilation.build_modules cctx ~dynlink ~dep_graphs;
 
     if Option.is_none lib.stdlib
     && Lib_modules.needs_alias_module lib_modules then
-      build_alias_module ~dir ~lib_modules ~cctx ~dynlink ~js_of_ocaml;
+      build_alias_module ~dir ~lib_modules ~cctx ~dynlink;
 
     let expander = Super_context.expander sctx ~dir in
 

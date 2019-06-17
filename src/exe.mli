@@ -42,7 +42,6 @@ val build_and_link
   :  program:Program.t
   -> linkages:Linkage.t list
   -> ?link_flags:(unit, string list) Build.t
-  -> ?js_of_ocaml:Dune_file.Js_of_ocaml.t
   -> Compilation_context.t
   -> unit
 
@@ -50,7 +49,6 @@ val build_and_link_many
   :  programs:Program.t list
   -> linkages:Linkage.t list
   -> ?link_flags:(unit, string list) Build.t
-  -> ?js_of_ocaml:Dune_file.Js_of_ocaml.t
   -> Compilation_context.t
   -> unit
 

@@ -91,6 +91,7 @@ let executables_rules ~sctx ~dir ~dir_kind ~expander
       ~requires_link
       ~requires_compile
       ~preprocessing:pp
+      ~js_of_ocaml:exes.buildable.js_of_ocaml
       ~opaque:(SC.opaque sctx)
   in
 
@@ -99,8 +100,7 @@ let executables_rules ~sctx ~dir ~dir_kind ~expander
   Exe.build_and_link_many cctx
     ~programs
     ~linkages
-    ~link_flags
-    ~js_of_ocaml:exes.buildable.js_of_ocaml;
+    ~link_flags;
 
   (cctx,
    let objs_dirs =

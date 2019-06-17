@@ -178,10 +178,11 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
               ; Hidden_targets other_targets
               ]))))
 
-let build_module ?sandbox ?js_of_ocaml ?dynlink ~dep_graphs cctx m =
+let build_module ?sandbox ?dynlink ~dep_graphs cctx m =
   List.iter Cm_kind.all ~f:(fun cm_kind ->
     build_cm cctx m ?sandbox ?dynlink ~dep_graphs ~cm_kind);
-  Option.iter js_of_ocaml ~f:(fun js_of_ocaml ->
+  Compilation_context.js_of_ocaml cctx
+  |> Option.iter ~f:(fun js_of_ocaml ->
     (* Build *.cmo.js *)
     let sctx     = CC.super_context cctx in
     let dir      = CC.dir           cctx in
@@ -191,13 +192,13 @@ let build_module ?sandbox ?js_of_ocaml ?dynlink ~dep_graphs cctx m =
     SC.add_rules sctx ~dir
       (Js_of_ocaml_rules.build_cm cctx ~js_of_ocaml ~src ~target))
 
-let build_modules ?sandbox ?js_of_ocaml ?dynlink ~dep_graphs cctx =
+let build_modules ?sandbox ?dynlink ~dep_graphs cctx =
   Module.Name.Map.iter
     (match CC.alias_module cctx with
      | None -> CC.modules cctx
      | Some (m : Module.t) ->
        Module.Name.Map.remove (CC.modules cctx) (Module.name m))
-    ~f:(build_module cctx ?sandbox ?js_of_ocaml ?dynlink ~dep_graphs)
+    ~f:(build_module cctx ?sandbox ?dynlink ~dep_graphs)
 
 let ocamlc_i ?sandbox ?(flags=[]) ~dep_graphs cctx (m : Module.t) ~output =
   let sctx     = CC.super_context cctx in

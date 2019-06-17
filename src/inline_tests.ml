@@ -173,7 +173,10 @@ include Sub_system.Register_end_point(
                 and+ flags = Ordered_set_lang.Unexpanded.field "flags"
                 and+ backend = field_o "backend" (located Lib_name.decode)
                 and+ libraries = field "libraries" (list (located Lib_name.decode)) ~default:[]
-                and+ modes = field "modes" (Mode_conf.Set.decode) ~default:Mode_conf.Set.default
+                and+ modes = field "modes"
+                               (Syntax.since syntax (1, 11) >>>
+                                Mode_conf.Set.decode)
+                               ~default:Mode_conf.Set.default
                 in
                 { loc
                 ; deps

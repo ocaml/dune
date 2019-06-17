@@ -119,7 +119,8 @@ module Ml_kind = struct
         match ml_kind with
         | Impl -> Some (mi, i)
         | Intf -> None
-      else if Module.is_private mv || Module.is_private mi then
+      else if Module.visibility mv = Private
+           || Module.visibility mi = Private then
         Some (mi, i)
       else
         Code_error.raise "merge_impl: unexpected dep graph"

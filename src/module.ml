@@ -245,8 +245,6 @@ let has_intf t = Option.is_some t.source.files.intf
 let impl_only t = has_impl t && not (has_intf t)
 let intf_only t = has_intf t && not (has_impl t)
 
-let is_public t = Visibility.is_public t.visibility
-let is_private t = Visibility.is_private t.visibility
 let source t (kind : Ml_kind.t) =
   Ml_kind.Dict.get t.source.files kind
 

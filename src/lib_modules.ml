@@ -58,7 +58,6 @@ let make_alias_module_of_lib ~src_dir ~lib ~main_module_name ~modules =
     ~stdlib:(Option.is_some lib.stdlib)
 
 let wrap_modules ~modules ~lib ~main_module_name =
-  let open Module.Name.Infix in
   let prefix =
     if not (Dune_file.Library.is_impl lib) then
       fun _ -> main_module_name
@@ -76,11 +75,11 @@ let wrap_modules ~modules ~lib ~main_module_name =
           main_module_name
       in
       fun m ->
-        if Module.is_private m then
-          private_module_prefix
-        else
-          main_module_name
+        match Module.visibility m with
+        | Private -> private_module_prefix
+        | Public -> main_module_name
   in
+  let open Module.Name.Infix in
   Module.Name.Map.map modules ~f:(fun (m : Module.t) ->
     if Module.name m = main_module_name ||
        Dune_file.Library.special_compiler_module lib m then
@@ -99,10 +98,9 @@ let make_wrapped ~(lib : Dune_file.Library.t) ~src_dir ~wrapped ~modules
       ( wrap_modules ~modules ~main_module_name ~lib
       , Module.Name.Map.remove modules main_module_name
         |> Module.Name.Map.filter_map ~f:(fun m ->
-          if Module.is_public m then
-            Some (Module.wrapped_compat m)
-          else
-            None)
+          match Module.visibility m with
+          | Public -> Some (Module.wrapped_compat m)
+          | Private -> None)
       )
   in
   let alias_module =

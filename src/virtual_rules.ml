@@ -49,7 +49,7 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
   in
   let copy_objs src =
     copy_obj_file src Cmi;
-    if Module.is_public src
+    if Module.visibility src = Public
     && Obj_dir.need_dedicated_public_dir impl_obj_dir
     then begin
       let dst =
@@ -76,7 +76,7 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
     | Some vlib ->
       let vlib_obj_dir = Lib.Local.obj_dir vlib in
       fun m ->
-        if Module.is_public m then
+        if Module.visibility m = Public then
           List.iter [Intf; Impl] ~f:(fun kind ->
             Module.source m kind
             |> Option.iter ~f:(fun f ->
@@ -118,7 +118,7 @@ let check_module_fields ~(lib : Dune_file.Library.t) ~virtual_modules
       ~modules ~implements =
   let new_public_modules =
     Module.Name.Map.foldi modules ~init:[] ~f:(fun name m acc ->
-      if Module.is_public m
+      if Module.visibility m = Public
       && not (Module.Name.Map.mem virtual_modules name) then
         name :: acc
       else
@@ -144,10 +144,9 @@ let check_module_fields ~(lib : Dune_file.Library.t) ~virtual_modules
               ims
           in
           let pvms =
-            if Module.is_public m then
-              pvms
-            else
-              Module.name m :: pvms
+            match Module.visibility m with
+            | Public -> pvms
+            | Private -> Module.name m :: pvms
           in
           (mms, ims, pvms))
   in

@@ -8,7 +8,7 @@
 1.11.0 (unreleased)
 -------------------
 
-- Don't reserve the `Ppx` toplevel module name for ppx rewriters (#...., @diml)
+- Don't reserve the `Ppx` toplevel module name for ppx rewriters (#2242, @diml)
 
 - Redesign of the library variant feature according to the #2134 proposal. The
   set of variants is now computed when the virtual library is installed.

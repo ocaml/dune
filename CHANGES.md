@@ -24,6 +24,8 @@
 - Add `$ dune init project` subcommand to create project boilerplate according
   to a common template. (#2185, fixes #159, @shonfeder)
 
+- Allow to run inline tests in javascript with nodejs (#2266, @hhugo)
+
 1.10.0 (04/06/2019)
 -------------------
 

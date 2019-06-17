@@ -24,6 +24,9 @@
 1.10.0 (04/06/2019)
 -------------------
 
+- Add `$ dune init project` subcommand to create project boilerplate according
+  to a common template. (#2185, fixes #159, @shonfeder)
+
 - Restricted the set of variables available for expansion in the destination
   filename of `install` stanza to simplify implementation and avoid dependency
   cycles. (#2073, @aalekseyev, @diml)

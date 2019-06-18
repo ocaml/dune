@@ -131,11 +131,11 @@ let check_module_fields ~(lib : Dune_file.Library.t) ~virtual_modules
        They must be marked as private using the (private_modules ..) field"
       (module_list new_public_modules)
   end;
-  let (missing_modules, impl_modules_with_intf, private_virtual_modules) =
-    Module.Name.Map.foldi virtual_modules ~init:([], [], [])
-      ~f:(fun m _ (mms, ims, pvms) ->
+  let (missing_modules, impl_modules_with_intf) =
+    Module.Name.Map.foldi virtual_modules ~init:([], [])
+      ~f:(fun m _ (mms, ims) ->
         match Module.Name.Map.find modules m with
-        | None -> (m :: mms, ims, pvms)
+        | None -> (m :: mms, ims)
         | Some m ->
           let ims =
             if Module.has m ~ml_kind:Intf then
@@ -143,19 +143,8 @@ let check_module_fields ~(lib : Dune_file.Library.t) ~virtual_modules
             else
               ims
           in
-          let pvms =
-            match Module.visibility m with
-            | Public -> pvms
-            | Private -> Module.name m :: pvms
-          in
-          (mms, ims, pvms))
+          (mms, ims))
   in
-  if private_virtual_modules <> [] then begin
-    (* The loc here will never be none as we've some private modules *)
-    Errors.fail_opt (Option.bind lib.private_modules ~f:Ordered_set_lang.loc)
-      "These private modules cannot be private:\n%s"
-      (module_list private_virtual_modules)
-  end;
   if missing_modules <> [] then begin
     Errors.fail lib.buildable.loc
       "Library %a cannot implement %a because the following \

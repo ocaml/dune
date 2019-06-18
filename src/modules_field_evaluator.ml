@@ -43,6 +43,9 @@ type errors =
   ; missing_intf_only        : (Loc.t * Module.Name.t) list
   ; virt_intf_overlaps       : (Loc.t * Module.Name.t) list
   ; private_virt_modules     : (Loc.t * Module.Name.t) list
+  ; private_impl_of_vmodule  : (Loc.t * Module.Name.t) list
+  ; vmodule_impl_intf_only_exclusion : (Loc.t * Module.Name.t) list
+  ; vmodule_impl_missing_impl : (Loc.t * Module.Name.t) list
   ; unimplemented_virt_modules : Module.Name.Set.t
   }
 
@@ -80,22 +83,33 @@ let find_errors ~modules ~intf_only ~virtual_modules ~private_modules
   let intf_only = Properties.add Intf_only intf_only in
   let virtual_modules = Properties.add Virtual virtual_modules in
   let private_modules = Properties.add Private private_modules in
-  let all =
+  let all : (Module.Source.t * Loc.t Properties.Map.t) Module.Name.Map.t =
     let union = Properties.union in
-    union modules (union intf_only (union virtual_modules private_modules)) in
+    union modules (union intf_only (union virtual_modules private_modules))
+  in
   let spurious_modules_intf    = ref [] in
   let spurious_modules_virtual = ref [] in
   let virt_intf_overlaps       = ref [] in
   let private_virt_modules     = ref [] in
   let missing_intf_only        = ref [] in
   let unimplemented_virt_modules = ref existing_virtual_modules in
-  Module.Name.Map.iteri all ~f:(fun module_name (module_,  props) ->
+  let private_impl_of_vmodule  = ref [] in
+  let vmodule_impl_intf_only_exclusion = ref [] in
+  let vmodule_impl_missing_impl = ref [] in
+  Module.Name.Map.iteri all ~f:(fun module_name (module_, props) ->
     let has_impl = Module.Source.has_impl module_ in
+    let impl_vmodule = Module.Name.Set.mem existing_virtual_modules module_name in
     let (!?) p = Properties.Map.mem props p in
     let (!??) p f = Option.iter ~f (Properties.Map.find props p) in
     let add_to stack loc = stack := (loc, module_name) :: !stack in
+    !?? Private (fun loc ->
+      if impl_vmodule then
+        add_to private_impl_of_vmodule loc;
+    );
     !?? Intf_only (fun loc ->
       if has_impl then add_to spurious_modules_intf loc;
+      if impl_vmodule then
+        add_to vmodule_impl_intf_only_exclusion loc;
     );
     !?? Virtual (fun loc ->
       if    has_impl  then add_to spurious_modules_virtual loc;
@@ -105,10 +119,14 @@ let find_errors ~modules ~intf_only ~virtual_modules ~private_modules
     !?? Modules (fun loc ->
       if not has_impl && not !? Intf_only && not !? Virtual then
         add_to missing_intf_only loc;
-      if has_impl then
-        unimplemented_virt_modules :=
-          Module.Name.Set.remove !unimplemented_virt_modules
-            module_name
+      if impl_vmodule then begin
+        if has_impl then
+          unimplemented_virt_modules :=
+            Module.Name.Set.remove !unimplemented_virt_modules
+              module_name
+        else
+          add_to vmodule_impl_missing_impl loc
+      end
     );
   );
   { spurious_modules_intf    = List.rev !spurious_modules_intf
@@ -117,11 +135,24 @@ let find_errors ~modules ~intf_only ~virtual_modules ~private_modules
   ; private_virt_modules     = List.rev !private_virt_modules
   ; missing_intf_only        = List.rev !missing_intf_only
   ; unimplemented_virt_modules = !unimplemented_virt_modules
+  ; private_impl_of_vmodule = List.rev !private_impl_of_vmodule
+  ; vmodule_impl_intf_only_exclusion =
+      List.rev !vmodule_impl_intf_only_exclusion
+  ; vmodule_impl_missing_impl = List.rev !vmodule_impl_missing_impl
   }
 
 let check_invalid_module_listing ~(buildable : Buildable.t) ~intf_only
       ~modules ~virtual_modules ~private_modules ~existing_virtual_modules =
-  let errors =
+  let { spurious_modules_intf
+      ; spurious_modules_virtual
+      ; virt_intf_overlaps
+      ; private_virt_modules
+      ; missing_intf_only
+      ; unimplemented_virt_modules
+      ; private_impl_of_vmodule
+      ; vmodule_impl_intf_only_exclusion
+      ; vmodule_impl_missing_impl
+      } =
     find_errors ~modules ~intf_only ~virtual_modules ~private_modules
       ~existing_virtual_modules
   in
@@ -138,21 +169,31 @@ let check_invalid_module_listing ~(buildable : Buildable.t) ~intf_only
     | (loc, _) :: _ ->
       Errors.fail loc fmt (line_list l)
   in
+  print "The following modules implement virtual modules but \
+         do not have implementations:\
+         \n%s\nYou must provide implementations for these"
+    vmodule_impl_missing_impl;
+  print "These modules are supposed to be implemented:\
+         \n%s\nThey cannot be intferface only"
+    vmodule_impl_intf_only_exclusion;
+  print "These modules are virtual modules implementations:\
+        \n%s\nThey cannot be private"
+    private_impl_of_vmodule;
   print
     "The following modules are declared as virtual and private:\
      \n%s\nThis is not possible."
-    errors.private_virt_modules;
+    private_virt_modules;
   print "These modules appear in the virtual_libraries \
          and modules_without_implementation fields:\
          \n%s\nThis is not possible."
-    errors.virt_intf_overlaps;
-  print "These modules are declared virtual, but aren't implemented.\
+    virt_intf_overlaps;
+  print "These modules are declared virtual, but are missing.\
          \n%s\n\
          You must provide an implementation for all of these modules."
-    (errors.unimplemented_virt_modules
+    (unimplemented_virt_modules
      |> Module.Name.Set.to_list
      |> List.map ~f:(fun name -> (buildable.loc, name)));
-  if errors.missing_intf_only <> [] then begin
+  if missing_intf_only <> [] then begin
     match Ordered_set_lang.loc buildable.modules_without_implementation with
     | None ->
       (* DUNE2: turn this into an error *)
@@ -166,7 +207,7 @@ let check_invalid_module_listing ~(buildable : Buildable.t) ~intf_only
         (let tag =
            Dune_lang.unsafe_atom_of_string "modules_without_implementation" in
          let modules =
-           errors.missing_intf_only
+           missing_intf_only
            |> uncapitalized
            |> List.map ~f:Dune_lang.Encoder.string
          in
@@ -178,15 +219,15 @@ let check_invalid_module_listing ~(buildable : Buildable.t) ~intf_only
          have an implementation:\n\
          %s\n\
          This will become an error in the future."
-        (line_list errors.missing_intf_only)
+        (line_list missing_intf_only)
   end;
   print
     "The following modules have an implementation, \
      they cannot be listed as modules_without_implementation:\n%s"
-    errors.spurious_modules_intf;
+    spurious_modules_intf;
   print "The following modules have an implementation, \
          they cannot be listed as virtual:\n%s"
-    errors.spurious_modules_virtual
+    spurious_modules_virtual
 
 let eval ~modules:(all_modules : Module.Source.t Module.Name.Map.t)
       ~buildable:(conf : Buildable.t) ~virtual_modules

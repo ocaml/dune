@@ -199,6 +199,16 @@ let pp_flags t = t.pp
 
 let of_source ?obj_name ~visibility ~(kind : Kind.t)
       (source : Source.t) =
+  begin match kind, visibility with
+  | (Alias | Impl_vmodule | Virtual), Visibility.Public
+  | (Impl | Intf_only), _ -> ()
+  | _, _ ->
+    Code_error.raise "Module.of_source: invalid kind, visibility combination"
+      [ "name", Name.to_dyn source.name
+      ; "kind", Kind.to_dyn kind
+      ; "visibility", Visibility.to_dyn visibility
+      ]
+  end;
   begin match kind, source.files.impl, source.files.intf with
   | (Alias | Impl_vmodule | Impl), None, _
   | (Alias | Impl_vmodule), Some _, Some _

@@ -33,6 +33,7 @@ module Modules = struct
             Modules_field_evaluator.eval ~modules
               ~buildable:lib.buildable
               ~virtual_modules:lib.virtual_modules
+              ~existing_virtual_modules:Module.Name.Set.empty
               ~private_modules:(
                 Option.value ~default:Ordered_set_lang.standard
                   lib.private_modules)
@@ -74,6 +75,7 @@ module Modules = struct
               ~buildable:exes.buildable
               ~virtual_modules:None
               ~private_modules:Ordered_set_lang.standard
+              ~existing_virtual_modules:Module.Name.Set.empty
           in
           Right (exes, modules)
         | _ -> Skip)

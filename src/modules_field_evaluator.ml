@@ -43,6 +43,7 @@ type errors =
   ; missing_intf_only        : (Loc.t * Module.Name.t) list
   ; virt_intf_overlaps       : (Loc.t * Module.Name.t) list
   ; private_virt_modules     : (Loc.t * Module.Name.t) list
+  ; unimplemented_virt_modules : Module.Name.Set.t
   }
 
 module Properties = struct
@@ -73,7 +74,8 @@ module Properties = struct
 end
 
 
-let find_errors ~modules ~intf_only ~virtual_modules ~private_modules =
+let find_errors ~modules ~intf_only ~virtual_modules ~private_modules
+      ~existing_virtual_modules =
   let modules = Properties.add Modules modules in
   let intf_only = Properties.add Intf_only intf_only in
   let virtual_modules = Properties.add Virtual virtual_modules in
@@ -86,6 +88,7 @@ let find_errors ~modules ~intf_only ~virtual_modules ~private_modules =
   let virt_intf_overlaps       = ref [] in
   let private_virt_modules     = ref [] in
   let missing_intf_only        = ref [] in
+  let unimplemented_virt_modules = ref existing_virtual_modules in
   Module.Name.Map.iteri all ~f:(fun module_name (module_,  props) ->
     let has_impl = Module.Source.has_impl module_ in
     let (!?) p = Properties.Map.mem props p in
@@ -101,7 +104,11 @@ let find_errors ~modules ~intf_only ~virtual_modules ~private_modules =
     );
     !?? Modules (fun loc ->
       if not has_impl && not !? Intf_only && not !? Virtual then
-        add_to missing_intf_only loc
+        add_to missing_intf_only loc;
+      if has_impl then
+        unimplemented_virt_modules :=
+          Module.Name.Set.remove !unimplemented_virt_modules
+            module_name
     );
   );
   { spurious_modules_intf    = List.rev !spurious_modules_intf
@@ -109,12 +116,15 @@ let find_errors ~modules ~intf_only ~virtual_modules ~private_modules =
   ; virt_intf_overlaps       = List.rev !virt_intf_overlaps
   ; private_virt_modules     = List.rev !private_virt_modules
   ; missing_intf_only        = List.rev !missing_intf_only
+  ; unimplemented_virt_modules = !unimplemented_virt_modules
   }
 
 let check_invalid_module_listing ~(buildable : Buildable.t) ~intf_only
-      ~modules ~virtual_modules ~private_modules =
+      ~modules ~virtual_modules ~private_modules ~existing_virtual_modules =
   let errors =
-    find_errors ~modules ~intf_only ~virtual_modules ~private_modules in
+    find_errors ~modules ~intf_only ~virtual_modules ~private_modules
+      ~existing_virtual_modules
+  in
   let uncapitalized =
     List.map ~f:(fun (_, m) -> Module.Name.uncapitalize m) in
   let line_list modules =
@@ -136,6 +146,12 @@ let check_invalid_module_listing ~(buildable : Buildable.t) ~intf_only
          and modules_without_implementation fields:\
          \n%s\nThis is not possible."
     errors.virt_intf_overlaps;
+  print "These modules are declared virtual, but aren't implemented.\
+         \n%s\n\
+         You must provide an implementation for all of these modules."
+    (errors.unimplemented_virt_modules
+     |> Module.Name.Set.to_list
+     |> List.map ~f:(fun name -> (buildable.loc, name)));
   if errors.missing_intf_only <> [] then begin
     match Ordered_set_lang.loc buildable.modules_without_implementation with
     | None ->
@@ -174,7 +190,7 @@ let check_invalid_module_listing ~(buildable : Buildable.t) ~intf_only
 
 let eval ~modules:(all_modules : Module.Source.t Module.Name.Map.t)
       ~buildable:(conf : Buildable.t) ~virtual_modules
-      ~private_modules =
+      ~private_modules ~existing_virtual_modules =
   (* fake modules are modules that doesn't exists but it doesn't
      matter because they are only removed from a set (for jbuild file
      compatibility) *)
@@ -185,7 +201,8 @@ let eval ~modules:(all_modules : Module.Source.t Module.Name.Map.t)
   in
   let modules =
     add_fake_modules @@
-    eval ~standard:all_modules ~all_modules conf.modules in
+    eval ~standard:all_modules ~all_modules conf.modules
+  in
   let intf_only =
     add_fake_modules @@
     eval ~standard:Module.Name.Map.empty ~all_modules
@@ -196,19 +213,19 @@ let eval ~modules:(all_modules : Module.Source.t Module.Name.Map.t)
     | None -> Module.Name.Map.empty
     | Some virtual_modules ->
       add_fake_modules @@
-      eval ~standard:Module.Name.Map.empty ~all_modules
-        virtual_modules
+      eval ~standard:Module.Name.Map.empty ~all_modules virtual_modules
   in
   let private_modules =
     add_fake_modules @@
     eval ~standard:Module.Name.Map.empty ~all_modules private_modules
   in
   Module.Name.Map.iteri !fake_modules ~f:(fun m loc ->
+    (* DUNE2: make this an error *)
     Errors.warn loc "Module %a is excluded but it doesn't exist."
       Module.Name.pp m
   );
   check_invalid_module_listing ~buildable:conf ~intf_only
-    ~modules ~virtual_modules ~private_modules;
+    ~modules ~virtual_modules ~private_modules ~existing_virtual_modules;
   let all_modules =
     Module.Name.Map.map modules ~f:(fun (_, m) ->
       let name = Module.Source.name m in
@@ -222,7 +239,11 @@ let eval ~modules:(all_modules : Module.Source.t Module.Name.Map.t)
         if Module.Name.Map.mem virtual_modules name then
           Module.Kind.Virtual
         else if Module.Source.has_impl m then
-          Impl
+          let name = Module.Source.name m in
+          if Module.Name.Set.mem existing_virtual_modules name then
+            Impl_vmodule
+          else
+            Impl
         else
           Intf_only
       in

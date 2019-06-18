@@ -108,22 +108,18 @@ module Kind = struct
     | Virtual
     | Impl
     | Alias
+    | Impl_vmodule
 
   let to_string = function
     | Intf_only -> "intf_only"
     | Virtual -> "virtual"
     | Impl -> "impl"
     | Alias -> "alias"
+    | Impl_vmodule -> "impl_vmodule"
 
   let to_dyn t = Dyn.Encoder.string (to_string t)
 
-  let encode =
-    let open Dune_lang.Encoder in
-    function
-    | Intf_only -> string "intf_only"
-    | Virtual -> string "virtual"
-    | Impl -> string "impl"
-    | Alias -> string "alias"
+  let encode t = Dune_lang.Encoder.string (to_string t)
 
   let decode =
     let open Stanza.Decoder in
@@ -132,10 +128,12 @@ module Kind = struct
       ; "virtual", Virtual
       ; "impl", Impl
       ; "alias", Alias
+      ; "impl_vmodule", Impl_vmodule
       ]
 
   let has_impl = function
     | Alias
+    | Impl_vmodule
     | Impl -> true
     | Intf_only
     | Virtual -> false
@@ -348,7 +346,7 @@ let encode
     match kind with
     | Kind.Impl when has_impl -> None
     | Intf_only when not has_impl -> None
-    | Alias | Impl | Virtual | Intf_only -> Some kind
+    | Impl_vmodule | Alias | Impl | Virtual | Intf_only -> Some kind
   in
   record_fields
     [ field "name" Name.encode name

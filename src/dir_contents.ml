@@ -22,18 +22,32 @@ module Modules = struct
     ; rev_map = Module.Name.Map.empty
     }
 
-  let make (d : _ Dir_with_dune.t) ~modules =
+  let make (d : _ Dir_with_dune.t) ~virtual_modules_of_impl ~modules =
     let scope = d.scope in
     let libs, exes =
       List.filter_partition_map d.data ~f:(fun stanza ->
         match (stanza : Stanza.t) with
         | Library lib ->
           let src_dir = d.ctx_dir in
+          let resolved = lazy (
+            let name = Library.best_name lib in
+            Lib.DB.find_even_when_hidden (Scope.libs scope) name
+            (* can't happen because this library is defined using the current
+               stanza *)
+            |> Option.value_exn
+          ) in
+          let existing_virtual_modules =
+            match lib.implements with
+            | None -> Module.Name.Set.empty
+            | Some _ ->
+              virtual_modules_of_impl (Lazy.force resolved)
+              |> Result.ok_exn
+          in
           let modules =
             Modules_field_evaluator.eval ~modules
               ~buildable:lib.buildable
               ~virtual_modules:lib.virtual_modules
-              ~existing_virtual_modules:Module.Name.Set.empty
+              ~existing_virtual_modules
               ~private_modules:(
                 Option.value ~default:Ordered_set_lang.standard
                   lib.private_modules)
@@ -47,20 +61,12 @@ module Modules = struct
             | From _, This _ -> assert false
             | This mmn, This wrapped -> mmn, wrapped
             | From _, From _ ->
-              let name = (fst lib.name, Library.best_name lib) in
               Result.ok_exn (
-                match
-                  Lib.DB.find_even_when_hidden (Scope.libs scope) (snd name)
-                with
-                | None ->
-                  (* can't happen because this library is defined using the
-                     current stanza *)
-                  assert false
-                | Some lib ->
-                  let open Result.O in
-                  let* main_module_name = Lib.main_module_name lib in
-                  let+ wrapped = Lib.wrapped lib in
-                  (main_module_name, Option.value_exn wrapped)
+                let lib = Lazy.force resolved in
+                let open Result.O in
+                let* main_module_name = Lib.main_module_name lib in
+                let+ wrapped = Lib.wrapped lib in
+                (main_module_name, Option.value_exn wrapped)
               )
           in
           Left ( lib
@@ -410,6 +416,28 @@ let check_no_unqualified loc qualif_mode =
   if qualif_mode = Include_subdirs.Unqualified then
     Errors.fail loc "(include_subdirs qualified) is not supported yet"
 
+let virtual_modules_of_impl ~sctx impl =
+  match Lib.implements impl with
+  | None -> assert false
+  | Some vlib ->
+    let open Result.O in
+    let+ vlib = vlib in
+    let info = Lib.info vlib in
+    let lib_modules =
+      match Option.value_exn (Lib_info.virtual_ info) with
+      | External lib_modules -> lib_modules
+      | Local ->
+        let src_dir =
+          Lib_info.src_dir info
+          |> Path.as_in_build_dir_exn
+        in
+        let t = Fdecl.get get_without_rules_fdecl (sctx, src_dir) in
+        modules_of_library t ~name:(Lib.name vlib)
+    in
+    Lib_modules.virtual_modules lib_modules
+    |> Module.Name.Map.keys
+    |> Module.Name.Set.of_list
+
 let get0_impl (sctx, dir) : result0 =
   let dir_status_db = Super_context.dir_status_db sctx in
   match Dir_status.DB.get dir_status_db ~dir with
@@ -425,6 +453,7 @@ let get0_impl (sctx, dir) : result0 =
              ; text_files = files
              ; modules = Memo.lazy_ (fun () ->
                  Modules.make d
+                   ~virtual_modules_of_impl:(virtual_modules_of_impl ~sctx)
                    ~modules:(modules_of_files ~dir:d.ctx_dir ~files))
              ; mlds = Memo.lazy_ (fun () -> build_mlds_map d ~files)
              ; c_sources = Memo.lazy_ (fun () ->
@@ -502,7 +531,9 @@ let get0_impl (sctx, dir) : result0 =
                 Path.pp (Module.Source.src_dir x)
                 Path.pp (Module.Source.src_dir y)))
       in
-      Modules.make d ~modules)
+      Modules.make d
+        ~modules
+        ~virtual_modules_of_impl:(virtual_modules_of_impl ~sctx))
     in
     let c_sources = Memo.lazy_ (fun () ->
       check_no_qualified Loc.none qualif_mode;

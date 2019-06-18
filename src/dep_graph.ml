@@ -115,7 +115,7 @@ module Ml_kind = struct
     | Some (mv, _), Some (mi, i) ->
       if Module.obj_name mv = Module.obj_name mi
       && Module.kind mv = Virtual
-      && Module.kind mi = Impl (* TODO more precise once we have right kind *)
+      && Module.kind mi = Impl_vmodule
       then
         match ml_kind with
         | Impl -> Some (mi, i)

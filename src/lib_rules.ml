@@ -84,7 +84,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
 
   let build_alias_module ~loc ~alias_module ~lib_modules ~dir ~cctx ~dynlink =
     let vimpl = Compilation_context.vimpl cctx in
-    let file = Option.value_exn (Module.impl alias_module) in
+    let file = Option.value_exn (Module.file alias_module ~ml_kind:Impl) in
     let alias_file () =
       let main_module_name =
         Option.value_exn (Lib_modules.main_module_name lib_modules)
@@ -103,7 +103,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
     in
     SC.add_rule ~loc sctx ~dir (
       Build.arr alias_file
-      >>> Build.write_file_dyn (Path.as_in_build_dir_exn file.path)
+      >>> Build.write_file_dyn (Path.as_in_build_dir_exn file)
     );
     let cctx = Compilation_context.for_alias_module cctx in
     Module_compilation.build_module cctx alias_module
@@ -134,7 +134,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
         sprintf {|[@@@deprecated "%s. Use %s instead."] include %s|}
           (Lazy.force transition_message) real_name hidden_name
       in
-      let source_path = Option.value_exn (Module.file m Impl) in
+      let source_path = Option.value_exn (Module.file m ~ml_kind:Impl) in
       let loc = lib.buildable.loc in
       Build.return contents
       >>> Build.write_file_dyn (Path.as_in_build_dir_exn source_path)

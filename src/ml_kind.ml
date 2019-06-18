@@ -4,21 +4,22 @@ type t = Impl | Intf
 
 let all = [Impl; Intf]
 
-let choose impl intf = function
+let choose t ~impl ~intf =
+  match t with
   | Impl -> impl
   | Intf -> intf
 
-let suffix = choose "" "i"
+let suffix = choose ~impl:"" ~intf:"i"
 
-let to_string = choose "impl" "intf"
+let to_string = choose ~impl:"impl" ~intf:"intf"
 
 let to_dyn t = Dyn.String (to_string t)
 
 let pp fmt t = Format.pp_print_string fmt (to_string t)
 
-let flag t = choose (Command.Args.A "-impl") (A "-intf") t
+let flag t = choose ~impl:(Command.Args.A "-impl") ~intf:(A "-intf") t
 
-let ppx_driver_flag t = choose (Command.Args.A "--impl") (A "--intf") t
+let ppx_driver_flag t = choose ~impl:(Command.Args.A "--impl") ~intf:(A "--intf") t
 
 module Dict = struct
   type 'a t =

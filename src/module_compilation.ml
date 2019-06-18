@@ -31,8 +31,9 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
   let mode     = Mode.of_cm_kind cm_kind in
   Context.compiler ctx mode
   |> Option.iter ~f:(fun compiler ->
-    Option.iter (Module.cm_source m cm_kind) ~f:(fun src ->
-      let ml_kind = Cm_kind.source cm_kind in
+    let ml_kind = Cm_kind.source cm_kind in
+    Module.file m ~ml_kind
+    |> Option.iter  ~f:(fun src ->
       let dst = Obj_dir.Module.cm_file_unsafe obj_dir m ~kind:cm_kind in
       let copy_interface () =
         (* symlink the .cmi into the public interface directory *)
@@ -46,7 +47,7 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
       in
       let extra_args, extra_deps, other_targets =
         (* If we're compiling an implementation, then the cmi is present *)
-        match cm_kind, Module.intf m
+        match cm_kind, Module.file m ~ml_kind:Intf
               , Vimpl.is_public_vlib_module vimpl m with
         (* If there is no mli, [ocamlY -c file.ml] produces both the
            .cmY and .cmi. We choose to use ocamlc to produce the cmi
@@ -80,7 +81,7 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
              ~f:(fun m ->
                let deps =
                  [Path.build (Obj_dir.Module.cm_file_unsafe obj_dir m ~kind:Cmi)] in
-               if Module.has_impl m && cm_kind = Cmx && not opaque then
+               if Module.has m ~ml_kind:Impl && cm_kind = Cmx && not opaque then
                  let cmx = Obj_dir.Module.cm_file_unsafe obj_dir m ~kind:Cmx in
                  Path.build cmx :: deps
                else
@@ -91,7 +92,7 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
         | Cmx -> (other_targets, Command.Args.S [])
         | Cmi | Cmo ->
           let fn =
-            Option.value_exn (Obj_dir.Module.cmt_file obj_dir m ml_kind) in
+            Option.value_exn (Obj_dir.Module.cmt_file obj_dir m ~ml_kind) in
           (fn :: other_targets, A "-bin-annot")
       in
       if CC.dir_kind cctx = Jbuild then begin
@@ -110,7 +111,7 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
             (Build.symlink ~src:(Path.build in_obj_dir) ~dst:in_dir))
       end;
       let opaque_arg =
-        let intf_only = cm_kind = Cmi && not (Module.has_impl m) in
+        let intf_only = cm_kind = Cmi && not (Module.has m ~ml_kind:Impl) in
         if opaque
         || (intf_only && Ocaml_version.supports_opaque_for_mli ctx.version) then
           Command.Args.A "-opaque"
@@ -207,7 +208,7 @@ let ocamlc_i ?sandbox ?(flags=[]) ~dep_graphs cctx (m : Module.t) ~output =
   let obj_dir  = CC.obj_dir       cctx in
   let dir      = CC.dir           cctx in
   let ctx      = SC.context       sctx in
-  let src = Option.value_exn (Module.file m Impl) in
+  let src = Option.value_exn (Module.file m ~ml_kind:Impl) in
   let dep_graph = Ml_kind.Dict.get dep_graphs Impl in
   let cm_deps =
     Build.dyn_paths

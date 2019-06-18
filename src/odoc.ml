@@ -126,7 +126,7 @@ let odoc sctx =
     ~loc:None ~hint:"try: opam install odoc"
 
 let module_deps (m : Module.t) ~doc_dir ~(dep_graphs:Dep_graph.Ml_kind.t) =
-  (if Module.has_intf m then
+  (if Module.has m ~ml_kind:Intf then
      Dep_graph.deps_of dep_graphs.intf m
    else
      (* When a module has no .mli, use the dependencies for the .ml *)

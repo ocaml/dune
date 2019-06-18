@@ -198,8 +198,6 @@ type t =
 let name t = t.source.name
 let kind t = t.kind
 let pp_flags t = t.pp
-let intf t = t.source.files.intf
-let impl t = t.source.files.impl
 
 let of_source ?obj_name ~visibility ~(kind : Kind.t)
       (source : Source.t) =
@@ -233,28 +231,21 @@ let of_source ?obj_name ~visibility ~(kind : Kind.t)
   ; kind
   }
 
-let make ?impl ?intf ?obj_name ~visibility ~kind name =
-  let source = Source.make ?impl ?intf name in
-  of_source ?obj_name ~visibility ~kind source
-
 let real_unit_name t = Name.of_string (Filename.basename t.obj_name)
 
-let has_impl t = Kind.has_impl t.kind
-let has_intf t = Option.is_some t.source.files.intf
+let has t ~ml_kind =
+  match (ml_kind : Ml_kind.t) with
+  | Impl -> Kind.has_impl t.kind
+  | Intf -> Option.is_some t.source.files.intf
 
-let impl_only t = has_impl t && not (has_intf t)
-let intf_only t = has_intf t && not (has_impl t)
+let source t ~(ml_kind : Ml_kind.t) =
+  Ml_kind.Dict.get t.source.files ml_kind
 
-let source t (kind : Ml_kind.t) =
-  Ml_kind.Dict.get t.source.files kind
-
-let file t (kind : Ml_kind.t) =
-  source t kind
+let file t ~(ml_kind : Ml_kind.t) =
+  source t ~ml_kind
   |> Option.map ~f:File.path
 
 let obj_name t = t.obj_name
-
-let cm_source t kind = file t (Cm_kind.source kind)
 
 let odoc_file t ~doc_dir =
   let base =
@@ -318,27 +309,6 @@ let wrapped_compat t =
   in
   { t with source }
 
-module Name_map = struct
-  type nonrec t = t Name.Map.t
-
-  let impl_only =
-    Name.Map.fold ~init:[] ~f:(fun m acc ->
-      if has_impl m then
-        m :: acc
-      else
-        acc)
-
-  let of_list_exn modules =
-    List.map modules ~f:(fun m -> (name m, m))
-    |> Name.Map.of_list_exn
-
-  let add t module_ =
-    Name.Map.add t (name module_) module_
-
-  let pp fmt t =
-    Fmt.ocaml_list Name.pp fmt (Name.Map.keys t)
-end
-
 let visibility t = t.visibility
 
 let sources t =
@@ -372,7 +342,7 @@ let encode
        ; kind
        } as t) =
   let open Dune_lang.Encoder in
-  let has_impl = has_impl t in
+  let has_impl = has t ~ml_kind:Impl in
 
   let kind =
     match kind with
@@ -386,7 +356,7 @@ let encode
     ; field "visibility" Visibility.encode visibility
     ; field_o "kind" Kind.encode kind
     ; field_b "impl" has_impl
-    ; field_b "intf" (has_intf t)
+    ; field_b "intf" (has t ~ml_kind:Intf)
     ]
 
 let decode ~src_dir =
@@ -413,7 +383,8 @@ let decode ~src_dir =
     in
     let intf = file intf Intf in
     let impl = file impl Impl in
-    make ~obj_name ~visibility ?impl ?intf ~kind name
+    let source = Source.make ?impl ?intf name in
+    of_source ~obj_name ~visibility ~kind source
   )
 
 let pped =
@@ -453,14 +424,37 @@ let set_src_dir t ~src_dir =
 
 let generated ~src_dir name =
   let basename = String.uncapitalize (Name.to_string name) in
-  let impl =
-    File.make OCaml (Path.relative src_dir (basename ^ ml_gen)) in
-  make name
+  let source =
+    let impl =
+      File.make OCaml (Path.relative src_dir (basename ^ ml_gen)) in
+    Source.make ~impl name in
+  of_source
     ~visibility:Public
     ~kind:Impl
-    ~impl
     ~obj_name:basename
+    source
 
 let generated_alias ~src_dir name =
   let t = generated ~src_dir name in
   { t with kind = Alias }
+
+module Name_map = struct
+  type nonrec t = t Name.Map.t
+
+  let impl_only =
+    Name.Map.fold ~init:[] ~f:(fun m acc ->
+      if has m ~ml_kind:Impl then
+        m :: acc
+      else
+        acc)
+
+  let of_list_exn modules =
+    List.map modules ~f:(fun m -> (name m, m))
+    |> Name.Map.of_list_exn
+
+  let add t module_ =
+    Name.Map.add t (name module_) module_
+
+  let pp fmt t =
+    Fmt.ocaml_list Name.pp fmt (Name.Map.keys t)
+end

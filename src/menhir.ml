@@ -207,11 +207,11 @@ module Run (P : PARAMS) : sig end = struct
     let name = Module.Name.of_string (mock base) in
 
     let mock_module : Module.t =
-      Module.make
-        name
-        ~visibility:Public
-        ~kind:Impl
-        ~impl:{ path = Path.build (mock_ml base); syntax = OCaml }
+      let source =
+        let impl = Module.File.make OCaml (Path.build (mock_ml base)) in
+        Module.Source.make ~impl name
+      in
+      Module.of_source ~visibility:Public ~kind:Impl source
     in
 
     (* The following incantation allows the mock [.ml] file to be preprocessed

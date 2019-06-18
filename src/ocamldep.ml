@@ -92,7 +92,7 @@ let deps_of cctx ~ml_kind unit =
   if Module.kind unit = Alias then
     Build.return []
   else
-    match Module.source unit ml_kind with
+    match Module.source unit ~ml_kind with
     | None -> Build.return []
     | Some source ->
       let obj_dir = Compilation_context.obj_dir cctx in
@@ -123,9 +123,9 @@ let deps_of cctx ~ml_kind unit =
             if Module.kind m = Alias then
               None
             else
-              match Module.source m Ml_kind.Intf with
+              match Module.source m ~ml_kind:Intf with
               | Some _ as x -> x
-              | None -> Module.source m Ml_kind.Impl
+              | None -> Module.source m ~ml_kind:Impl
           in
           let module_file_ =
             match source m with
@@ -165,7 +165,7 @@ let rules_for_auxiliary_module cctx (m : Module.t) =
 
 let graph_of_remote_lib ~obj_dir ~modules =
   let deps_of unit ~ml_kind =
-    match Module.source unit ml_kind with
+    match Module.source unit ~ml_kind with
     | None -> Build.return []
     | Some source ->
       let all_deps_file = Obj_dir.Module.dep obj_dir source ~kind:Transitive in

@@ -58,7 +58,7 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
         Obj_dir.Module.cm_public_file_unsafe vlib_obj_dir src ~kind:Cmi in
       copy_to_obj_dir ~src ~dst
     end;
-    if Module.has_impl src then begin
+    if Module.has src ~ml_kind:Impl then begin
       if modes.byte then
         copy_obj_file src Cmo;
       if modes.native then begin
@@ -77,8 +77,8 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
       let vlib_obj_dir = Lib.Local.obj_dir vlib in
       fun m ->
         if Module.visibility m = Public then
-          List.iter [Intf; Impl] ~f:(fun kind ->
-            Module.source m kind
+          List.iter [Intf; Impl] ~f:(fun ml_kind ->
+            Module.source m ~ml_kind
             |> Option.iter ~f:(fun f ->
               let kind = Obj_dir.Module.Dep.Transitive in
               let src =
@@ -91,10 +91,10 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
          remote libraries, we just use ocamlobjinfo *)
       let vlib_dep_graph = Vimpl.vlib_dep_graph vimpl in
       fun m ->
-        List.iter [Intf; Impl] ~f:(fun kind ->
-          let dep_graph = Ml_kind.Dict.get vlib_dep_graph kind in
+        List.iter [Intf; Impl] ~f:(fun ml_kind ->
+          let dep_graph = Ml_kind.Dict.get vlib_dep_graph ml_kind in
           let deps = Dep_graph.deps_of dep_graph m in
-          Module.source m kind |> Option.iter ~f:(fun source ->
+          Module.source m ~ml_kind |> Option.iter ~f:(fun source ->
             let open Build.O in
             deps >>^ (fun modules ->
               modules
@@ -138,7 +138,7 @@ let check_module_fields ~(lib : Dune_file.Library.t) ~virtual_modules
         | None -> (m :: mms, ims, pvms)
         | Some m ->
           let ims =
-            if Module.has_intf m then
+            if Module.has m ~ml_kind:Intf then
               Module.name m :: ims
             else
               ims
@@ -224,8 +224,8 @@ let external_dep_graph sctx ~impl_cm_kind ~impl_obj_dir ~vlib_modules =
     Dep_graph.make ~dir
       ~per_module:(Module.Name.Map.map modules ~f:(fun m ->
         let deps =
-          if (ml_kind = Intf && not (Module.has_intf m))
-          || (ml_kind = Impl && not (Module.has_impl m))
+          if (ml_kind = Intf && not (Module.has m ~ml_kind:Intf))
+          || (ml_kind = Impl && not (Module.has m ~ml_kind:Impl))
           then
             Build.return []
           else

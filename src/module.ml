@@ -200,9 +200,10 @@ let pp_flags t = t.pp
 let of_source ?obj_name ~visibility ~(kind : Kind.t)
       (source : Source.t) =
   begin match kind, source.files.impl, source.files.intf with
-  | Virtual, Some _, _
-  | Impl, None, _
-  | Intf_only, Some _, _ ->
+  | (Alias | Impl_vmodule | Impl), None, _
+  | (Alias | Impl_vmodule), Some _, Some _
+  | (Intf_only | Virtual), Some _, _
+  | (Intf_only | Virtual), _, None ->
     let open Dyn.Encoder in
     Code_error.raise "Module.make: invalid kind, impl, intf combination"
       [ "name", Name.to_dyn source.name

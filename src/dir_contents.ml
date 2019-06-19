@@ -232,35 +232,61 @@ end = struct
         match (stanza : Stanza.t) with
         | Library lib ->
           let src_dir = d.ctx_dir in
-          let resolved = lazy (
-            let name = Library.best_name lib in
-            Lib.DB.find_even_when_hidden (Scope.libs scope) name
-            (* can't happen because this library is defined using the current
-               stanza *)
-            |> Option.value_exn
-          ) in
-          let kind : Modules_field_evaluator.kind =
-            match lib.implements, lib.virtual_modules with
-            | Some _, None ->
+          let kind, main_module_name, wrapped =
+            match lib.implements with
+            | None ->
+              (* In the two following pattern matching, we can only
+                 get [From _] if [lib] is an implementation.  Since we
+                 know that it is not one because of the above [match
+                 lib.implements with ...], we know that we can't get
+                 [From _]. That's why we have these [assert false]. *)
+              let main_module_name =
+                match Library.main_module_name lib with
+                | This x -> x
+                | From _ -> assert false
+              in
+              let wrapped =
+                match lib.wrapped with
+                | This x -> x
+                | From _ -> assert false
+              in
+              let kind : Modules_field_evaluator.kind =
+                match lib.virtual_modules with
+                | None -> Exe_or_normal_lib
+                | Some virtual_modules -> Virtual { virtual_modules }
+              in
+              (kind, main_module_name, wrapped)
+            | Some _ ->
+              assert (Option.is_none lib.virtual_modules);
+              let resolved =
+                let name = Library.best_name lib in
+                Lib.DB.find_even_when_hidden (Scope.libs scope) name
+                (* can't happen because this library is defined using
+                   the current stanza *)
+                |> Option.value_exn
+              in
               (* diml: this [Result.ok_exn] means that if the user
                  writes an invalid [implements] field, we will get an
                  error immediately even if the library is not
                  built. We should change this to carry the [Or_exn.t]
                  a bit longer. *)
               let vlib = Result.ok_exn (
-                let lib = Lazy.force resolved in
                 (* This [Option.value_exn] is correct because the
                    above [lib.implements] is [Some _] and this [lib]
                    variable correspond to the same library. *)
-                Option.value_exn (Lib.implements lib))
+                Option.value_exn (Lib.implements resolved))
               in
-              Implementation (virtual_modules sctx vlib)
-            | None, Some virtual_modules ->
-              Virtual { Modules_field_evaluator.Virtual.
-                        virtual_modules
-                      }
-            | None, None -> Exe_or_normal_lib
-            | Some _, Some _ -> assert false
+              let kind : Modules_field_evaluator.kind =
+                Implementation (virtual_modules sctx vlib)
+              in
+              let main_module_name, wrapped =
+                Result.ok_exn (
+                  let open Result.O in
+                  let* main_module_name = Lib.main_module_name resolved in
+                  let+ wrapped = Lib.wrapped resolved in
+                  (main_module_name, Option.value_exn wrapped))
+              in
+              (kind, main_module_name, wrapped)
           in
           let modules =
             Modules_field_evaluator.eval ~modules
@@ -269,23 +295,6 @@ end = struct
               ~private_modules:(
                 Option.value ~default:Ordered_set_lang.standard
                   lib.private_modules)
-          in
-          let (main_module_name, wrapped) =
-            (* the common case are normal libs where this is all specified so we
-               special case it so that we don't have to resolve anything the db *)
-            match Library.main_module_name lib, lib.wrapped with
-            (* these values are always either inherited together or specified *)
-            | This _, From _
-            | From _, This _ -> assert false
-            | This mmn, This wrapped -> mmn, wrapped
-            | From _, From _ ->
-              Result.ok_exn (
-                let lib = Lazy.force resolved in
-                let open Result.O in
-                let* main_module_name = Lib.main_module_name lib in
-                let+ wrapped = Lib.wrapped lib in
-                (main_module_name, Option.value_exn wrapped)
-              )
           in
           Left ( lib
                , let src_dir = Path.build src_dir in

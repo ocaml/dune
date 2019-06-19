@@ -80,6 +80,12 @@ let executables_rules ~sctx ~dir ~dir_kind ~expander
   let cctx =
     let requires_compile = Lib.Compile.direct_requires compile_info in
     let requires_link = Lib.Compile.requires_link compile_info in
+    let dynlink =
+      Dune_file.Executables.Link_mode.Set.exists exes.modes ~f:(fun mode ->
+        match mode.kind with
+        | Shared_object -> true
+        | _ -> false)
+    in
     Compilation_context.create ()
       ~super_context:sctx
       ~expander
@@ -93,6 +99,7 @@ let executables_rules ~sctx ~dir ~dir_kind ~expander
       ~preprocessing:pp
       ~js_of_ocaml:exes.buildable.js_of_ocaml
       ~opaque:(SC.opaque sctx)
+      ~dynlink
   in
 
   let requires_compile = Compilation_context.requires_compile cctx in

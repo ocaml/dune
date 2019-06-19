@@ -40,6 +40,7 @@ let generate_and_compile_module cctx ~name:basename ~code ~requires =
       ~requires_link:(lazy requires)
       ~flags:Ocaml_flags.empty
       ~opaque
+      ~dynlink:(Compilation_context.dynlink cctx)
       ()
   in
   Module_compilation.build_module

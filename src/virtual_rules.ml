@@ -206,7 +206,7 @@ let impl sctx ~dir ~(lib : Dune_file.Library.t) ~scope =
           let dir_contents =
             let info = Lib.Local.info vlib in
             let dir = Lib_info.src_dir info in
-            Dir_contents.get_without_rules sctx ~dir
+            Dir_contents.get sctx ~dir
           in
           let modules =
             let pp_spec =

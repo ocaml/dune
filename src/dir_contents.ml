@@ -192,18 +192,18 @@ type t =
 
 and kind =
   | Standalone
-  | Group_root of (t list Memo.Lazy.t)
-  | Group_part of t
+  | Group_root of t list
+  | Group_part
 
-let kind t = t.kind
 let dir t = t.dir
 
 let dirs t =
   match t.kind with
   | Standalone -> [t]
-  | Group_root l
-  | Group_part { kind = Group_root l; _ } -> t :: Memo.Lazy.force l
-  | Group_part { kind = _; _ } -> assert false
+  | Group_root subs -> t :: subs
+  | Group_part ->
+    Code_error.raise "Dir_contents.dirs called on a group part"
+      [ "dir", Path.Build.to_dyn t.dir ]
 
 let text_files t = t.text_files
 
@@ -228,7 +228,8 @@ let modules_of_executables t ~first_exe =
       ]
 
 let c_sources_of_library t ~name =
-  C_sources.for_lib (Memo.Lazy.force t.c_sources) ~dir:(Path.build t.dir) ~name
+  C_sources.for_lib (Memo.Lazy.force t.c_sources)
+    ~dir:(Path.build t.dir) ~name
 
 let lookup_module t name =
   Module.Name.Map.find (Memo.Lazy.force t.modules).rev_map name
@@ -397,7 +398,7 @@ type result0 =
   | See_above of Path.Build.t
   | Here of result0_here
 
-let get_without_rules_fdecl : (Super_context.t * Path.Build.t -> t) Fdecl.t =
+let get_fdecl : (Super_context.t -> dir:Path.Build.t -> t) Fdecl.t =
   Fdecl.create ()
 
 module Key = struct
@@ -436,7 +437,7 @@ let virtual_modules_of_impl ~sctx impl
           Lib_info.src_dir info
           |> Path.as_in_build_dir_exn
         in
-        let t = Fdecl.get get_without_rules_fdecl (sctx, src_dir) in
+        let t = Fdecl.get get_fdecl sctx ~dir:src_dir in
         modules_of_library t ~name:(Lib.name vlib)
     in
     let existing_virtual_modules =
@@ -536,10 +537,10 @@ let get0_impl (sctx, dir) : result0 =
             Module.Name.Map.union acc modules ~f:(fun name x y ->
               Errors.fail (Loc.in_file
                              (Path.source (match File_tree.Dir.dune_file ft_dir with
-                              | None ->
-                                Path.Source.relative (File_tree.Dir.path ft_dir)
-                                  "_unknown_"
-                              | Some d -> File_tree.Dune_file.path d)))
+                                | None ->
+                                  Path.Source.relative (File_tree.Dir.path ft_dir)
+                                    "_unknown_"
+                                | Some d -> File_tree.Dune_file.path d)))
                 "Module %a appears in several directories:\
                  @\n- %a\
                  @\n- %a"
@@ -548,8 +549,8 @@ let get0_impl (sctx, dir) : result0 =
                 Path.pp (Module.Source.src_dir y)))
       in
       Modules.make d
-        ~modules
-        ~virtual_modules_of_impl:(virtual_modules_of_impl ~sctx))
+        ~virtual_modules_of_impl:(virtual_modules_of_impl ~sctx)
+        ~modules)
     in
     let c_sources = Memo.lazy_ (fun () ->
       check_no_qualified Loc.none qualif_mode;
@@ -563,10 +564,10 @@ let get0_impl (sctx, dir) : result0 =
               String.Map.union acc sources ~f:(fun name x y ->
                 Errors.fail (Loc.in_file
                                (Path.source (match File_tree.Dir.dune_file ft_dir with
-                                | None ->
-                                  Path.Source.relative (File_tree.Dir.path ft_dir)
-                                    "_unknown_"
-                                | Some d -> File_tree.Dune_file.path d)))
+                                  | None ->
+                                    Path.Source.relative (File_tree.Dir.path ft_dir)
+                                      "_unknown_"
+                                  | Some d -> File_tree.Dune_file.path d)))
                   "%a file %s appears in several directories:\
                    @\n- %a\
                    @\n- %a\
@@ -584,12 +585,19 @@ let get0_impl (sctx, dir) : result0 =
       check_no_unqualified Loc.none qualif_mode;
       build_coq_modules_map d ~dir:d.ctx_dir
         ~modules:(coq_modules_of_files ~subdirs:((dir,[],files)::subdirs))) in
+    let subdirs =
+      List.map subdirs ~f:(fun (dir, _local, files) ->
+        { kind = Group_part
+        ; dir
+        ; text_files = files
+        ; modules
+        ; c_sources
+        ; mlds = Memo.lazy_ (fun () -> (build_mlds_map d ~files))
+        ; coq_modules
+        })
+    in
     let t =
-      { kind = Group_root
-                 (Memo.lazy_ (fun () ->
-                    List.map subdirs ~f:(fun (dir, _, _) ->
-                      Fdecl.get get_without_rules_fdecl (sctx, dir)
-                    )))
+      { kind = Group_root subdirs
       ; dir
       ; text_files = files
       ; modules
@@ -598,24 +606,10 @@ let get0_impl (sctx, dir) : result0 =
       ; coq_modules
       }
     in
-    let
-      subdirs =
-      List.map subdirs ~f:(fun (dir, _local, files) ->
-        dir,
-        { kind = Group_part t
-        ; dir
-        ; text_files = files
-        ; modules
-        ; c_sources
-        ; mlds = Memo.lazy_ (fun () -> (build_mlds_map d ~files))
-        ; coq_modules
-        })
-      |> Path.Build.Map.of_list_exn
-    in
     Here {
       t;
       rules;
-      subdirs;
+      subdirs = Path.Build.Map.of_list_map_exn subdirs ~f:(fun x -> x.dir, x)
     }
 
 let memo0 =
@@ -633,36 +627,24 @@ let memo0 =
     Sync
     get0_impl
 
-type get_result =
-  | Standalone_or_root of t
-  | Group_part of Path.Build.t
-
-let get key =
-  match Memo.exec memo0 key with
+let get sctx ~dir =
+  match Memo.exec memo0 (sctx, dir) with
+  | Here { t; rules = _; subdirs = _ } -> t
   | See_above group_root ->
-    None, Group_part group_root
-  | Here { t; rules; subdirs = _ } ->
-    rules, Standalone_or_root t
-
-let get_without_rules key =
-  let _rules, res = get key in
-  match res with
-  | Standalone_or_root t -> t
-  | Group_part group_root ->
-    let (sctx, dir) = key in
     match Memo.exec memo0 (sctx, group_root) with
     | See_above _ -> assert false
-    | Here { t = _; rules; subdirs } ->
-      ignore rules;
-      Path.Build.Map.find_exn subdirs dir
+    | Here { t; rules = _; subdirs = _ } -> t
 
-let () =
-  Fdecl.set get_without_rules_fdecl
-    get_without_rules
+let () = Fdecl.set get_fdecl get
 
-let get_without_rules sctx ~dir = get_without_rules (sctx, dir)
+type gen_rules_result =
+  | Standalone_or_root of t * t list
+  | Group_part of Path.Build.t
 
-let get sctx ~dir =
-  let rules, res = get (sctx, dir) in
-  Rules.produce_opt rules;
-  res
+let gen_rules sctx ~dir =
+  match Memo.exec memo0 (sctx, dir) with
+  | See_above group_root ->
+    Group_part group_root
+  | Here { t; rules; subdirs } ->
+    Rules.produce_opt rules;
+    Standalone_or_root (t, Path.Build.Map.values subdirs)

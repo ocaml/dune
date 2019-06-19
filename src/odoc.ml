@@ -470,7 +470,7 @@ let entry_modules_by_lib sctx lib =
   let info = Lib.Local.info lib in
   let dir = Lib_info.src_dir info in
   let name = Lib.name (Lib.Local.to_lib lib) in
-  Dir_contents.get_without_rules sctx ~dir
+  Dir_contents.get sctx ~dir
   |> Dir_contents.modules_of_library ~name
   |> Lib_modules.entry_modules
 

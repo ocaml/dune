@@ -274,22 +274,15 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
                 Build_system.load_dir ~dir:(Path.parent_exn (Path.build dir)))
            | Some _ ->
              (* This interprets "rule" and "copy_files" stanzas. *)
-             let dir_contents = Dir_contents.get sctx ~dir in
-             match dir_contents with
+             match Dir_contents.gen_rules sctx ~dir with
              | Group_part root ->
                Build_system.load_dir ~dir:(Path.build root)
-             | Standalone_or_root dir_contents ->
-               match Dir_contents.kind dir_contents with
-               | Group_part _ -> assert false
-               | Standalone ->
-                 ignore (gen_rules dir_contents [] ~dir : _ list)
-               | Group_root subs ->
-                 let cctxs = gen_rules dir_contents [] ~dir in
-                 let subs = Memo.Lazy.force subs in
-                 List.iter subs ~f:(fun dc ->
-                   ignore (
-                     gen_rules dir_contents cctxs ~dir:(Dir_contents.dir dc)
-                     : _ list))
+             | Standalone_or_root (dir_contents, subs) ->
+               let cctxs = gen_rules dir_contents [] ~dir in
+               List.iter subs ~f:(fun dc ->
+                 ignore (
+                   gen_rules dir_contents cctxs ~dir:(Dir_contents.dir dc)
+                   : _ list))
          end;
          These (String.Set.of_list subdirs))
     in

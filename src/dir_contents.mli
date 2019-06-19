@@ -37,23 +37,27 @@ val mlds : t -> Dune_file.Documentation.t -> Path.Build.t list
 (** Coq modules of library [name] is the Coq library name.  *)
 val coq_modules_of_library : t -> name:Lib_name.t -> Coq_module.t list
 
-type get_result =
-  | Standalone_or_root of t
+(** Get the directory contents of the given directory. *)
+val get : Super_context.t -> dir:Path.Build.t -> t
+
+(** All directories in this group if [t] is a group root or just [t]
+    if it is not part of a group. *)
+val dirs : t -> t list
+
+type gen_rules_result =
+  | Standalone_or_root of t * t list (** Sub-directories part of the group *)
   | Group_part of Path.Build.t
 
-(** Produces rules for all group parts when it returns [Standalone_or_root].
-    Does not generate any rules when it returns [Group_part]. *)
-val get : Super_context.t -> dir:Path.Build.t -> get_result
+(** In order to compute the directory contents, we need to interpret
+    stanzas such as [rule] or [copy_files]. For such stanzas, computing
+    the targets is very similar to interpreting the stanza and
+    compiling it down to low-level rules.
 
-val get_without_rules : Super_context.t -> dir:Path.Build.t -> t
+    As a result, we proceed as follow: we interpret the stanza into
+    rules and extract the targets of the computed rule. This function
+    simply emits these rules so that they can be collected by
+    [Build_system].
 
-type kind = private
-  | Standalone
-  | Group_root of t list Memo.Lazy.t (** Sub-directories part of the group *)
-  | Group_part of t
-
-val kind : t -> kind
-
-(** All directories in this group, or just [t] if this directory is
-    not part of a group.  *)
-val dirs : t -> t list
+    However, if the directory is part of a group, this function simply
+    returns the root of the group without emitting any rule.  *)
+val gen_rules : Super_context.t -> dir:Path.Build.t -> gen_rules_result

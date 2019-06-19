@@ -39,237 +39,214 @@ let eval =
       fake_modules := Module.Name.Map.add !fake_modules name loc;
       Error name
   in
-  fun ~all_modules ~standard osl ->
-    let fake_modules = ref Module.Name.Map.empty in
+  fun ~fake_modules ~all_modules ~standard osl ->
     let parse = parse ~fake_modules ~all_modules in
     let standard = Module.Name.Map.map standard ~f:(fun m -> Ok m) in
     let modules = Eval.eval_unordered ~parse ~standard osl in
-    ( !fake_modules
-    , Module.Name.Map.filter_map modules ~f:(fun (loc, m) ->
-        match m with
-        | Ok m -> Some (loc, m)
-        | Error s ->
-          (* We are going to fail only if the module appear in the final set,
-             foo \ bar doesn't fail if bar doesn't exists (for jbuild file
-             compatibility) *)
-          Errors.fail loc "Module %a doesn't exist." Module.Name.pp s)
-    )
+    Module.Name.Map.filter_map modules ~f:(fun (loc, m) ->
+      match m with
+      | Ok m -> Some (loc, m)
+      | Error s ->
+        (* We are going to fail only if the module appear in the final set,
+           foo \ bar doesn't fail if bar doesn't exists (for jbuild file
+           compatibility) *)
+        Errors.fail loc "Module %a doesn't exist." Module.Name.pp s)
+
+type single_module_error =
+  | Spurious_module_intf
+  | Spurious_module_virtual
+  | Missing_intf_only
+  | Virt_intf_overlap
+  | Private_virt_module
+  | Private_impl_of_vmodule
+  | Vmodule_impl_intf_only_exclusion
+  | Vmodule_impl_missing_impl
+  | Forbidden_new_public_module
+  | Vmodule_impls_with_own_intf
 
 type errors =
-  { spurious_modules_intf    : (Loc.t * Module.Name.t) list
-  ; spurious_modules_virtual : (Loc.t * Module.Name.t) list
-  ; missing_intf_only        : (Loc.t * Module.Name.t) list
-  ; virt_intf_overlaps       : (Loc.t * Module.Name.t) list
-  ; private_virt_modules     : (Loc.t * Module.Name.t) list
-  ; private_impl_of_vmodule  : (Loc.t * Module.Name.t) list
-  ; vmodule_impl_intf_only_exclusion : (Loc.t * Module.Name.t) list
-  ; vmodule_impl_missing_impl : (Loc.t * Module.Name.t) list
-  ; forbidden_new_public_modules : (Loc.t * Module.Name.t) list
-  ; vmodule_impls_with_own_intf : (Loc.t * Module.Name.t) list
+  { errors : (single_module_error * Loc.t * Module.Name.t) list
   ; unimplemented_virt_modules : Module.Name.Set.t
   }
 
-module Properties = struct
-  type t =
-    | Modules
-    | Private
-    | Virtual
-    | Intf_only
-
-  let tag = function
-    | Modules -> 0
-    | Private -> 1
-    | Virtual -> 2
-    | Intf_only -> 3
-
-  let compare a b = compare (tag a) (tag b)
-
-  module Map = Map.Make(struct type nonrec t = t let compare = compare end)
-
-  let add prop =
-    Module.Name.Map.map
-      ~f:(fun (loc, module_) -> module_, Map.singleton prop loc)
-
-  let union m1 m2 =
-    Module.Name.Map.union m1 m2
-      ~f:(fun _ (module_, l1) (_, l2) ->
-        Some (module_, Map.union l1 l2 ~f:(fun _ _ -> assert false)))
-end
-
-
 let find_errors ~modules ~intf_only ~virtual_modules ~private_modules
       ~existing_virtual_modules ~allow_new_public_modules =
-  let modules = Properties.add Modules modules in
-  let intf_only = Properties.add Intf_only intf_only in
-  let virtual_modules = Properties.add Virtual virtual_modules in
-  let private_modules = Properties.add Private private_modules in
-  let all : (Module.Source.t * Loc.t Properties.Map.t) Module.Name.Map.t =
-    let union = Properties.union in
-    union modules (union intf_only (union virtual_modules private_modules))
+  let all =
+    (* We expect that [modules] is big and all the other ones are
+       small, that's why the code is implemented this way. *)
+    List.fold_left [intf_only; virtual_modules; private_modules]
+      ~init:(Module.Name.Map.map modules ~f:snd)
+      ~f:(fun acc map ->
+        Module.Name.Map.foldi map ~init:acc ~f:(fun name (_loc, m) acc ->
+          Module.Name.Map.add acc name m))
   in
-  let spurious_modules_intf    = ref [] in
-  let spurious_modules_virtual = ref [] in
-  let virt_intf_overlaps       = ref [] in
-  let private_virt_modules     = ref [] in
-  let missing_intf_only        = ref [] in
-  let unimplemented_virt_modules = ref existing_virtual_modules in
-  let private_impl_of_vmodule  = ref [] in
-  let vmodule_impl_intf_only_exclusion = ref [] in
-  let forbidden_new_public_modules = ref [] in
-  let vmodule_impls_with_own_intf = ref [] in
-  let vmodule_impl_missing_impl = ref [] in
-  Module.Name.Map.iteri all ~f:(fun module_name (module_, props) ->
-    let has_impl = Module.Source.has module_ ~ml_kind:Impl in
-    let has_intf = Module.Source.has module_ ~ml_kind:Intf in
-    let impl_vmodule =
-      Module.Name.Set.mem existing_virtual_modules module_name in
-    let (!?) p = Properties.Map.mem props p in
-    let (!??) p f = Option.iter ~f (Properties.Map.find props p) in
-    let add_to stack loc = stack := (loc, module_name) :: !stack in
-    !?? Private (fun loc ->
-      if impl_vmodule then
-        add_to private_impl_of_vmodule loc;
-    );
-    !?? Intf_only (fun loc ->
-      if has_impl then add_to spurious_modules_intf loc;
-      if impl_vmodule then add_to vmodule_impl_intf_only_exclusion loc;
-    );
-    !?? Virtual (fun loc ->
-      if    has_impl  then add_to spurious_modules_virtual loc;
-      if !? Intf_only then add_to virt_intf_overlaps loc;
-      if !? Private   then add_to private_virt_modules loc;
-    );
-    !?? Modules (fun loc ->
-      if not (!? Private)
-      && not allow_new_public_modules
-         && not impl_vmodule then
-        add_to forbidden_new_public_modules loc;
-      if not has_impl && not !? Intf_only && not !? Virtual then
-        add_to missing_intf_only loc;
-      if impl_vmodule then begin
-        if has_impl then
-          unimplemented_virt_modules :=
-            Module.Name.Set.remove !unimplemented_virt_modules
-              module_name
+  let errors =
+    Module.Name.Map.foldi all ~init:[] ~f:(fun module_name module_ acc ->
+      let has_impl = Module.Source.has module_ ~ml_kind:Impl in
+      let has_intf = Module.Source.has module_ ~ml_kind:Intf in
+      let impl_vmodule =
+        Module.Name.Set.mem existing_virtual_modules module_name
+      in
+      let modules = Module.Name.Map.find modules module_name in
+      let private_ = Module.Name.Map.find private_modules module_name in
+      let virtual_ = Module.Name.Map.find virtual_modules module_name in
+      let intf_only = Module.Name.Map.find intf_only module_name in
+      let with_property prop f acc =
+        match prop with
+        | None -> acc
+        | Some (loc, _) -> f loc acc
+      in
+      let add_if b kind loc acc =
+        if b then
+          (kind, loc, module_name) :: acc
         else
-          add_to vmodule_impl_missing_impl loc;
-        if has_intf then
-          add_to vmodule_impls_with_own_intf loc;
-      end
-    );
-  );
-  { spurious_modules_intf    = List.rev !spurious_modules_intf
-  ; spurious_modules_virtual = List.rev !spurious_modules_virtual
-  ; virt_intf_overlaps       = List.rev !virt_intf_overlaps
-  ; private_virt_modules     = List.rev !private_virt_modules
-  ; missing_intf_only        = List.rev !missing_intf_only
-  ; unimplemented_virt_modules = !unimplemented_virt_modules
-  ; private_impl_of_vmodule = List.rev !private_impl_of_vmodule
-  ; vmodule_impl_intf_only_exclusion =
-      List.rev !vmodule_impl_intf_only_exclusion
-  ; vmodule_impl_missing_impl = List.rev !vmodule_impl_missing_impl
-  ; forbidden_new_public_modules = List.rev !forbidden_new_public_modules
-  ; vmodule_impls_with_own_intf = List.rev !vmodule_impls_with_own_intf
+          acc
+      in
+      let (++) f g loc acc = f loc (g loc acc) in
+      let (!?) = Option.is_some in
+      with_property private_
+        (add_if impl_vmodule Private_impl_of_vmodule)
+      @@
+      with_property intf_only
+        (add_if has_impl Spurious_module_intf ++
+         add_if impl_vmodule Vmodule_impl_intf_only_exclusion)
+      @@
+      with_property virtual_
+        (add_if has_impl Spurious_module_virtual ++
+         add_if (!? intf_only) Virt_intf_overlap ++
+         add_if (!? private_) Private_virt_module)
+      @@
+      with_property modules
+        (add_if (not (!? private_)
+                 && not allow_new_public_modules
+                 && not impl_vmodule)
+           Forbidden_new_public_module ++
+         add_if (not has_impl && not (!? intf_only) && not (!? virtual_))
+           Missing_intf_only ++
+         add_if (impl_vmodule && not has_impl)
+           Vmodule_impl_missing_impl ++
+         add_if (impl_vmodule && has_intf)
+           Vmodule_impls_with_own_intf)
+      @@
+      acc)
+  in
+  let unimplemented_virt_modules =
+    Module.Name.Set.filter existing_virtual_modules ~f:(fun module_name ->
+      match Module.Name.Map.find all module_name with
+      | None -> true
+      | Some m -> not (Module.Source.has m ~ml_kind:Impl))
+  in
+  { errors
+  ; unimplemented_virt_modules
   }
 
 let check_invalid_module_listing ~(buildable : Buildable.t) ~intf_only
       ~modules ~virtual_modules ~private_modules ~existing_virtual_modules
       ~allow_new_public_modules =
-  let { spurious_modules_intf
-      ; spurious_modules_virtual
-      ; virt_intf_overlaps
-      ; private_virt_modules
-      ; missing_intf_only
+  let { errors
       ; unimplemented_virt_modules
-      ; private_impl_of_vmodule
-      ; vmodule_impl_intf_only_exclusion
-      ; vmodule_impl_missing_impl
-      ; forbidden_new_public_modules
-      ; vmodule_impls_with_own_intf
       } =
     find_errors ~modules ~intf_only ~virtual_modules ~private_modules
       ~existing_virtual_modules ~allow_new_public_modules
   in
-  let uncapitalized =
-    List.map ~f:(fun (_, m) -> Module.Name.uncapitalize m) in
-  let line_list modules =
-    List.map ~f:(fun (_, m) ->
-      m |> Module.Name.to_string |> sprintf "- %s") modules
-    |> String.concat ~sep:"\n"
-  in
-  let print fmt l =
-    match l with
-    | [] -> ()
-    | (loc, _) :: _ ->
-      Errors.fail loc fmt (line_list l)
-  in
-  print "The folowing modules are implementations of virtual modules:\
-         \n%s\nThey cannot have their own interface files."
-    vmodule_impls_with_own_intf;
-  print "Implementations of wrapped libraries cannot introduce new \
-         public modules.\nThe following modules:\
-         \n%s\n must all be marked as private using the \
-         (private_modules ..) field."
-    forbidden_new_public_modules;
-  print "The following modules implement virtual modules but \
-         do not have implementations:\
-         \n%s\nYou must provide implementations for these"
-    vmodule_impl_missing_impl;
-  print "These modules are supposed to be implemented:\
-         \n%s\nThey cannot be intferface only"
-    vmodule_impl_intf_only_exclusion;
-  print "These modules are virtual modules implementations:\
-        \n%s\nThey cannot be private"
-    private_impl_of_vmodule;
-  print
-    "The following modules are declared as virtual and private:\
-     \n%s\nThis is not possible."
-    private_virt_modules;
-  print "These modules appear in the virtual_libraries \
-         and modules_without_implementation fields:\
-         \n%s\nThis is not possible."
-    virt_intf_overlaps;
-  print "These modules are declared virtual, but are missing.\
-         \n%s\n\
-         You must provide an implementation for all of these modules."
-    (unimplemented_virt_modules
-     |> Module.Name.Set.to_list
-     |> List.map ~f:(fun name -> (buildable.loc, name)));
-  if missing_intf_only <> [] then begin
-    match Ordered_set_lang.loc buildable.modules_without_implementation with
-    | None ->
-      (* DUNE2: turn this into an error *)
-      Errors.warn buildable.loc
-        "Some modules don't have an implementation.\
-         \nYou need to add the following field to this stanza:\
-         \n\
-         \n  %s\
-         \n\
-         \nThis will become an error in the future."
-        (let tag =
-           Dune_lang.unsafe_atom_of_string "modules_without_implementation" in
-         let modules =
-           missing_intf_only
-           |> uncapitalized
-           |> List.map ~f:Dune_lang.Encoder.string
-         in
-         Dune_lang.to_string ~syntax:Dune (List (tag :: modules)))
-    | Some loc ->
-      (* DUNE2: turn this into an error *)
-      Errors.warn loc
-        "The following modules must be listed here as they don't \
-         have an implementation:\n\
-         %s\n\
-         This will become an error in the future."
-        (line_list missing_intf_only)
-  end;
-  print
-    "The following modules have an implementation, \
-     they cannot be listed as modules_without_implementation:\n%s"
-    spurious_modules_intf;
-  print "The following modules have an implementation, \
-         they cannot be listed as virtual:\n%s"
-    spurious_modules_virtual
+  if not (List.is_empty errors) ||
+     not (Module.Name.Set.is_empty unimplemented_virt_modules) then begin
+    let get kind =
+      List.filter_map errors ~f:(fun (k, loc, m) ->
+        Option.some_if (kind = k) (loc, m))
+      |> List.sort ~compare:(fun (_, a) (_, b) -> Module.Name.compare a b)
+    in
+    let vmodule_impls_with_own_intf = get Vmodule_impls_with_own_intf in
+    let forbidden_new_public_modules = get Forbidden_new_public_module in
+    let vmodule_impl_missing_impl = get Vmodule_impl_missing_impl in
+    let vmodule_impl_intf_only_exclusion =
+      get Vmodule_impl_intf_only_exclusion in
+    let private_impl_of_vmodule = get Private_impl_of_vmodule in
+    let private_virt_modules = get Private_virt_module in
+    let virt_intf_overlaps = get Virt_intf_overlap in
+    let missing_intf_only = get Missing_intf_only in
+    let spurious_modules_intf = get Spurious_module_intf in
+    let spurious_modules_virtual = get Spurious_module_virtual in
+    let uncapitalized =
+      List.map ~f:(fun (_, m) -> Module.Name.uncapitalize m) in
+    let line_list modules =
+      List.map ~f:(fun (_, m) ->
+        m |> Module.Name.to_string |> sprintf "- %s") modules
+      |> String.concat ~sep:"\n"
+    in
+    let print fmt l =
+      match l with
+      | [] -> ()
+      | (loc, _) :: _ -> Errors.fail loc fmt (line_list l)
+    in
+    print "The folowing modules are implementations of virtual modules:\
+           \n%s\nThey cannot have their own interface files."
+      vmodule_impls_with_own_intf;
+    print "Implementations of wrapped libraries cannot introduce new \
+           public modules.\nThe following modules:\
+           \n%s\n must all be marked as private using the \
+           (private_modules ..) field."
+      forbidden_new_public_modules;
+    print "The following modules implement virtual modules but \
+           do not have implementations:\
+           \n%s\nYou must provide implementations for these"
+      vmodule_impl_missing_impl;
+    print "These modules are supposed to be implemented:\
+           \n%s\nThey cannot be intferface only"
+      vmodule_impl_intf_only_exclusion;
+    print "These modules are virtual modules implementations:\
+           \n%s\nThey cannot be private"
+      private_impl_of_vmodule;
+    print
+      "The following modules are declared as virtual and private:\
+       \n%s\nThis is not possible."
+      private_virt_modules;
+    print "These modules appear in the virtual_libraries \
+           and modules_without_implementation fields:\
+           \n%s\nThis is not possible."
+      virt_intf_overlaps;
+    print "These modules are declared virtual, but are missing.\
+           \n%s\n\
+           You must provide an implementation for all of these modules."
+      (unimplemented_virt_modules
+       |> Module.Name.Set.to_list
+       |> List.map ~f:(fun name -> (buildable.loc, name)));
+    if missing_intf_only <> [] then begin
+      match Ordered_set_lang.loc buildable.modules_without_implementation with
+      | None ->
+        (* DUNE2: turn this into an error *)
+        Errors.warn buildable.loc
+          "Some modules don't have an implementation.\
+           \nYou need to add the following field to this stanza:\
+           \n\
+           \n  %s\
+           \n\
+           \nThis will become an error in the future."
+          (let tag =
+             Dune_lang.unsafe_atom_of_string "modules_without_implementation" in
+           let modules =
+             missing_intf_only
+             |> uncapitalized
+             |> List.map ~f:Dune_lang.Encoder.string
+           in
+           Dune_lang.to_string ~syntax:Dune (List (tag :: modules)))
+      | Some loc ->
+        (* DUNE2: turn this into an error *)
+        Errors.warn loc
+          "The following modules must be listed here as they don't \
+           have an implementation:\n\
+           %s\n\
+           This will become an error in the future."
+          (line_list missing_intf_only)
+    end;
+    print
+      "The following modules have an implementation, \
+       they cannot be listed as modules_without_implementation:\n%s"
+      spurious_modules_intf;
+    print "The following modules have an implementation, they cannot \
+           be listed as virtual:\n%s"
+      spurious_modules_virtual
+  end
 
 let eval ~modules:(all_modules : Module.Source.t Module.Name.Map.t)
       ~buildable:(conf : Buildable.t) ~private_modules ~kind =
@@ -277,18 +254,10 @@ let eval ~modules:(all_modules : Module.Source.t Module.Name.Map.t)
      matter because they are only removed from a set (for jbuild file
      compatibility) *)
   let fake_modules = ref Module.Name.Map.empty in
-  let add_fake_modules (fake_modules', a) =
-    fake_modules := Module.Name.Map.superpose fake_modules' !fake_modules;
-    a
-  in
-  let modules =
-    add_fake_modules @@
-    eval ~standard:all_modules ~all_modules conf.modules
-  in
+  let eval = eval ~fake_modules ~all_modules in
+  let modules = eval ~standard:all_modules conf.modules in
   let intf_only =
-    add_fake_modules @@
-    eval ~standard:Module.Name.Map.empty ~all_modules
-      conf.modules_without_implementation
+    eval ~standard:Module.Name.Map.empty conf.modules_without_implementation
   in
   let allow_new_public_modules =
     match kind with
@@ -308,12 +277,10 @@ let eval ~modules:(all_modules : Module.Source.t Module.Name.Map.t)
     | Exe_or_normal_lib
     | Implementation _ -> Module.Name.Map.empty
     | Virtual { virtual_modules } ->
-      add_fake_modules @@
-      eval ~standard:Module.Name.Map.empty ~all_modules virtual_modules
+      eval ~standard:Module.Name.Map.empty virtual_modules
   in
   let private_modules =
-    add_fake_modules @@
-    eval ~standard:Module.Name.Map.empty ~all_modules private_modules
+    eval ~standard:Module.Name.Map.empty private_modules
   in
   Module.Name.Map.iteri !fake_modules ~f:(fun m loc ->
     (* DUNE2: make this an error *)

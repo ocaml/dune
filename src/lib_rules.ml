@@ -76,12 +76,6 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
                      [Library.archive lib ~dir ~ext:ext_lib])
               ])))
 
-  (* If the compiler reads the cmi for module alias even with
-     [-w -49 -no-alias-deps], we must sandbox the build of the
-     alias module since the modules it references are built after. *)
-  let alias_module_build_sandbox =
-    Ocaml_version.always_reads_alias_cmi ctx.version
-
   let build_alias_module ~loc ~alias_module ~lib_modules ~dir ~cctx =
     let vimpl = Compilation_context.vimpl cctx in
     let file = Option.value_exn (Module.file alias_module ~ml_kind:Impl) in
@@ -107,7 +101,6 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
     );
     let cctx = Compilation_context.for_alias_module cctx in
     Module_compilation.build_module cctx alias_module
-      ~sandbox:alias_module_build_sandbox
       ~dep_graphs:(Dep_graph.Ml_kind.dummy alias_module)
 
   let build_wrapped_compat_modules (lib : Library.t) cctx ~lib_modules =

@@ -20,8 +20,7 @@ let force_read_cmi source_file =
 (* Build the cm* if the corresponding source is present, in the case of cmi if
    the mli is not present it is added as additional target to the .cmo
    generation *)
-let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
-      ~cm_kind (m : Module.t) =
+let build_cm cctx ~dep_graphs ~cm_kind (m : Module.t) =
   let sctx     = CC.super_context cctx in
   let dir      = CC.dir           cctx in
   let obj_dir  = CC.obj_dir       cctx in
@@ -29,6 +28,8 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
   let stdlib   = CC.stdlib        cctx in
   let vimpl    = CC.vimpl cctx in
   let mode     = Mode.of_cm_kind cm_kind in
+  let dynlink  = CC.dynlink cctx in
+  let sandbox  = CC.sandbox cctx in
   Context.compiler ctx mode
   |> Option.iter ~f:(fun compiler ->
     let ml_kind = Cm_kind.source cm_kind in
@@ -181,9 +182,9 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs
               ; Hidden_targets other_targets
               ]))))
 
-let build_module ?sandbox ?dynlink ~dep_graphs cctx m =
+let build_module ~dep_graphs cctx m =
   List.iter Cm_kind.all ~f:(fun cm_kind ->
-    build_cm cctx m ?sandbox ?dynlink ~dep_graphs ~cm_kind);
+    build_cm cctx m ~dep_graphs ~cm_kind);
   Compilation_context.js_of_ocaml cctx
   |> Option.iter ~f:(fun js_of_ocaml ->
     (* Build *.cmo.js *)
@@ -195,21 +196,22 @@ let build_module ?sandbox ?dynlink ~dep_graphs cctx m =
     SC.add_rules sctx ~dir
       (Js_of_ocaml_rules.build_cm cctx ~js_of_ocaml ~src ~target))
 
-let build_modules ?sandbox ?dynlink ~dep_graphs cctx =
+let build_modules ~dep_graphs cctx =
   Module.Name.Map.iter
     (match CC.alias_module cctx with
      | None -> CC.modules cctx
      | Some (m : Module.t) ->
        Module.Name.Map.remove (CC.modules cctx) (Module.name m))
-    ~f:(build_module cctx ?sandbox ?dynlink ~dep_graphs)
+    ~f:(build_module cctx ~dep_graphs)
 
-let ocamlc_i ?sandbox ?(flags=[]) ~dep_graphs cctx (m : Module.t) ~output =
+let ocamlc_i ?(flags=[]) ~dep_graphs cctx (m : Module.t) ~output =
   let sctx     = CC.super_context cctx in
   let obj_dir  = CC.obj_dir       cctx in
   let dir      = CC.dir           cctx in
   let ctx      = SC.context       sctx in
   let src = Option.value_exn (Module.file m ~ml_kind:Impl) in
   let dep_graph = Ml_kind.Dict.get dep_graphs Impl in
+  let sandbox = Compilation_context.sandbox cctx in
   let cm_deps =
     Build.dyn_paths
       (Dep_graph.deps_of dep_graph m >>^ fun deps ->

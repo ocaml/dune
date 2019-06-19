@@ -31,6 +31,8 @@ val create
   -> opaque                : bool
   -> ?stdlib               : Dune_file.Library.Stdlib.t
   -> ?js_of_ocaml          : Dune_file.Js_of_ocaml.t
+  -> ?dynlink              : bool
+  -> ?sandbox              : bool
   -> unit
   -> t
 
@@ -56,6 +58,8 @@ val no_keep_locs         : t -> bool
 val opaque               : t -> bool
 val stdlib               : t -> Dune_file.Library.Stdlib.t option
 val js_of_ocaml          : t -> Dune_file.Js_of_ocaml.t option
+val dynlink              : t -> bool
+val sandbox              : t -> bool option
 
 (** Information for implementation of virtual libraries. *)
 val vimpl                : t -> Vimpl.t option

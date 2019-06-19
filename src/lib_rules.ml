@@ -76,13 +76,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
                      [Library.archive lib ~dir ~ext:ext_lib])
               ])))
 
-  (* If the compiler reads the cmi for module alias even with
-     [-w -49 -no-alias-deps], we must sandbox the build of the
-     alias module since the modules it references are built after. *)
-  let alias_module_build_sandbox =
-    Ocaml_version.always_reads_alias_cmi ctx.version
-
-  let build_alias_module ~loc ~alias_module ~lib_modules ~dir ~cctx ~dynlink =
+  let build_alias_module ~loc ~alias_module ~lib_modules ~dir ~cctx =
     let vimpl = Compilation_context.vimpl cctx in
     let file = Option.value_exn (Module.file alias_module ~ml_kind:Impl) in
     let alias_file () =
@@ -107,12 +101,9 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
     );
     let cctx = Compilation_context.for_alias_module cctx in
     Module_compilation.build_module cctx alias_module
-      ~dynlink
-      ~sandbox:alias_module_build_sandbox
       ~dep_graphs:(Dep_graph.Ml_kind.dummy alias_module)
 
-  let build_wrapped_compat_modules (lib : Library.t) cctx
-        ~dynlink ~lib_modules =
+  let build_wrapped_compat_modules (lib : Library.t) cctx ~lib_modules =
     let wrapped_compat = Lib_modules.wrapped_compat lib_modules in
     let modules = Lib_modules.modules lib_modules in
     let wrapped = Lib_modules.wrapped lib_modules in
@@ -144,7 +135,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
       Dep_graph.Ml_kind.wrapped_compat ~modules ~wrapped_compat
     in
     let cctx = Compilation_context.for_wrapped_compat cctx wrapped_compat in
-    Module_compilation.build_modules cctx ~dynlink ~dep_graphs
+    Module_compilation.build_modules cctx ~dep_graphs
 
   let build_c_file (lib : Library.t) ~dir ~expander ~includes (loc, src, dst) =
     let c_flags = (SC.c_flags sctx ~dir ~expander ~flags:lib.c_flags).c in
@@ -428,6 +419,8 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
     let cctx =
       let requires_compile = Lib.Compile.direct_requires compile_info in
       let requires_link    = Lib.Compile.requires_link compile_info in
+      let dynlink =
+        Dynlink_supported.get lib.dynlink ctx.supports_shared_libraries in
       Compilation_context.create ()
         ~super_context:sctx
         ~expander
@@ -445,16 +438,13 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
         ~no_keep_locs:lib.no_keep_locs
         ~opaque
         ~js_of_ocaml:lib.buildable.js_of_ocaml
+        ~dynlink
         ?stdlib:lib.stdlib
     in
 
     let requires_compile = Compilation_context.requires_compile cctx in
 
-    let dynlink =
-      Dynlink_supported.get lib.dynlink ctx.supports_shared_libraries
-    in
-
-    build_wrapped_compat_modules lib cctx ~dynlink ~lib_modules;
+    build_wrapped_compat_modules lib cctx ~lib_modules;
 
     let (vlib_dep_graphs, dep_graphs) =
       let dep_graphs = Ocamldep.rules cctx in
@@ -468,13 +458,13 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
         )
     in
 
-    Module_compilation.build_modules cctx ~dynlink ~dep_graphs;
+    Module_compilation.build_modules cctx ~dep_graphs;
 
     if Option.is_none lib.stdlib then begin
       Lib_modules.alias_module lib_modules
       |> Option.iter ~f:(fun alias_module ->
         let loc = lib.buildable.loc in
-        build_alias_module ~loc ~alias_module ~dir ~lib_modules ~cctx ~dynlink)
+        build_alias_module ~loc ~alias_module ~dir ~lib_modules ~cctx)
     end;
 
     let expander = Super_context.expander sctx ~dir in

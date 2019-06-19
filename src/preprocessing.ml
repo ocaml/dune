@@ -94,14 +94,14 @@ end
 
 let pped_module m ~f =
   let pped = Module.pped m in
-  Module.iter m ~f:(fun kind file ->
+  Module.iter m ~f:(fun ml_kind file ->
     let pp_path =
-      Module.file pped kind
+      Module.file pped ~ml_kind
       |> Option.value_exn
       |> Path.as_in_build_dir_exn
     in
     let file = Path.as_in_build_dir_exn file.path in
-    f kind file pp_path);
+    f ml_kind file pp_path);
   pped
 
 module Driver = struct
@@ -577,13 +577,13 @@ let setup_reason_rules sctx ~dir (m : Module.t) =
   let refmt = Refmt.get sctx ~loc:None ~dir in
   let rule input output = Refmt.to_ocaml_ast refmt ~input ~output in
   let ml = Module.ml_source m in
-  Module.iter m ~f:(fun kind f ->
+  Module.iter m ~f:(fun ml_kind f ->
     match f.syntax with
     | OCaml  ->
       ()
     | Reason ->
       let ml =
-        Option.value_exn (Module.file ml kind)
+        Option.value_exn (Module.file ml ~ml_kind)
         |> Path.as_in_build_dir_exn
       in
       SC.add_rule sctx ~dir (rule f.path ml));
@@ -674,17 +674,17 @@ let lint_module sctx ~dir ~expander ~dep_kind ~lint ~lib_name ~scope ~dir_kind =
             (exe, flags, args)
           in
           (fun ~source ~ast ->
-             Module.iter ast ~f:(fun kind src ->
+             Module.iter ast ~f:(fun ml_kind src ->
                add_alias src.path
                  ~loc:None
                  (promote_correction ~suffix:corrected_suffix
-                    (Option.value_exn (Module.file source kind))
+                    (Option.value_exn (Module.file source ~ml_kind))
                     (Build.of_result_map driver_and_flags
                        ~f:(fun (exe, flags, args) ->
                          Command.run ~dir:(Path.build (SC.build_dir sctx))
                            (Ok (Path.build exe))
                            [ args
-                           ; Ml_kind.ppx_driver_flag kind
+                           ; Ml_kind.ppx_driver_flag ml_kind
                            ; Dep src.path
                            ; Command.Args.dyn flags
                            ]))))))
@@ -750,10 +750,10 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess
         (fun m ~lint ->
            let ast = setup_reason_rules sctx ~dir m in
            if lint then lint_module ~ast ~source:m;
-           pped_module ast ~f:(fun kind src dst ->
+           pped_module ast ~f:(fun ml_kind src dst ->
              SC.add_rule sctx ~loc ~dir
                (promote_correction ~suffix:corrected_suffix
-                  (Option.value_exn (Module.file m kind))
+                  (Option.value_exn (Module.file m ~ml_kind))
                   (preprocessor_deps >>^ ignore
                    >>>
                    Build.of_result_map driver_and_flags
@@ -763,7 +763,7 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess
                          (Ok (Path.build exe))
                          [ args
                          ; A "-o"; Target dst
-                         ; Ml_kind.ppx_driver_flag kind; Dep (Path.build src)
+                         ; Ml_kind.ppx_driver_flag ml_kind; Dep (Path.build src)
                          ; Command.Args.dyn flags
                          ])))))
       end else begin

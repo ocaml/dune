@@ -64,7 +64,7 @@ end
 
 let make_top_closed_implementations ~name ~f ts modules =
   Build.memoize name (
-    let filter_out_intf_only = List.filter ~f:Module.has_impl in
+    let filter_out_intf_only = List.filter ~f:(Module.has ~ml_kind:Impl) in
     f ts (filter_out_intf_only modules)
     >>^ filter_out_intf_only)
 
@@ -114,8 +114,9 @@ module Ml_kind = struct
     | None, Some d -> Some d
     | Some (mv, _), Some (mi, i) ->
       if Module.obj_name mv = Module.obj_name mi
-      && Module.intf_only mv
-      && Module.impl_only mi then
+      && Module.kind mv = Virtual
+      && Module.kind mi = Impl_vmodule
+      then
         match ml_kind with
         | Impl -> Some (mi, i)
         | Intf -> None

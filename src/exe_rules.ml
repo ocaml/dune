@@ -38,7 +38,7 @@ let executables_rules ~sctx ~dir ~dir_kind ~expander
       let mod_name = Module.Name.of_string name in
       match Module.Name.Map.find modules mod_name with
       | Some m ->
-        if not (Module.has_impl m) then
+        if not (Module.has m ~ml_kind:Impl) then
           Errors.fail loc "Module %a has no implementation."
             Module.Name.pp mod_name
         else

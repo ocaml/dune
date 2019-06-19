@@ -12,6 +12,8 @@ val to_dyn : t -> Dyn.t
     present or the [name] if not. *)
 val name : t -> Lib_name.t
 
+val implements : t -> t Or_exn.t option
+
 (** Directory where the object files for the library are located. *)
 val obj_dir : t -> Path.t Obj_dir.t
 

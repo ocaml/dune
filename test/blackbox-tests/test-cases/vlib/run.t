@@ -120,9 +120,10 @@ Implementations cannot introduce new modules to the library's interface
   1 | (library
   2 |  (name foo_impl)
   3 |  (implements foo))
-  Error: The following modules aren't part of the virtual library's interface:
+  Error: Implementations of wrapped libraries cannot introduce new public modules.
+  The following modules:
   - Baz
-  They must be marked as private using the (private_modules ..) field
+   must all be marked as private using the (private_modules ..) field.
   [1]
 
 They can only introduce private modules:
@@ -238,9 +239,10 @@ There should be an error message that clarifies this.
   1 | (library
   2 |  (name impl)
   3 |  (implements vlib))
-  Error: The following modules aren't part of the virtual library's interface:
+  Error: Implementations of wrapped libraries cannot introduce new public modules.
+  The following modules:
   - Vlib
-  They must be marked as private using the (private_modules ..) field
+   must all be marked as private using the (private_modules ..) field.
   [1]
 
 Test that implementing vlibs that aren't present is impossible
@@ -329,7 +331,12 @@ Include variants and implementation information in dune-package
      (kind alias)
      (impl))
     (main_module_name Vlib)
-    (modules ((name Vmod) (obj_name vlib__Vmod) (visibility public) (impl)))
+    (modules
+     ((name Vmod)
+      (obj_name vlib__Vmod)
+      (visibility public)
+      (kind impl_vmodule)
+      (impl)))
     (wrapped true)))
   (library
    (name foo.vlib)

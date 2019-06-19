@@ -22,7 +22,7 @@ let mlds_by_package_def =
        |> List.concat_map ~f:(fun (w : _ Dir_with_dune.t) ->
          List.filter_map w.data ~f:(function
            | Documentation d ->
-             let dc = Dir_contents.get_without_rules sctx ~dir:w.ctx_dir in
+             let dc = Dir_contents.get sctx ~dir:w.ctx_dir in
              let mlds = Dir_contents.mlds dc d in
              Some (d.package.name, mlds)
            | _ ->

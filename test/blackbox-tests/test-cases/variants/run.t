@@ -61,7 +61,8 @@ Check that variant data is installed in the dune package file.
      (kind alias)
      (impl))
     (main_module_name B)
-    (modules ((name X) (obj_name b__X) (visibility public) (impl)))
+    (modules
+     ((name X) (obj_name b__X) (visibility public) (kind impl_vmodule) (impl)))
     (wrapped true)))
   $ cat  dune-package/_build/install/default/lib/b/dune-package
   (lang dune 1.11)

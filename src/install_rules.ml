@@ -30,7 +30,7 @@ let gen_dune_package sctx ~version ~(pkg : Local_package.t) =
               let dir_contents =
                 let info = Lib.Local.info lib in
                 let dir = Lib_info.src_dir info in
-                Dir_contents.get_without_rules sctx ~dir
+                Dir_contents.get sctx ~dir
               in
               let obj_dir = Lib.Local.obj_dir lib in
               let lib = Lib.Local.to_lib lib in
@@ -247,13 +247,15 @@ let lib_install_files sctx ~dir_contents ~dir ~sub_dir:lib_subdir
         )
       in
       let other_cm_files =
-        [ if_ (native && Module.has_impl m)
+        let has_impl = Module.has ~ml_kind:Impl m in
+        [ if_ (native && has_impl)
             [ cm_file_unsafe Cmx ]
-        ; if_ (byte && Module.has_impl m && virtual_library)
+        ; if_ (byte && has_impl && virtual_library)
             [ cm_file_unsafe Cmo ]
-        ; if_ (native && Module.has_impl m && virtual_library)
+        ; if_ (native && has_impl && virtual_library)
             [ Obj_dir.Module.obj_file obj_dir m ~kind:Cmx ~ext:ext_obj ]
-        ; List.filter_map Ml_kind.all ~f:(Obj_dir.Module.cmt_file obj_dir m)
+        ; List.filter_map Ml_kind.all ~f:(fun ml_kind ->
+            Obj_dir.Module.cmt_file obj_dir m ~ml_kind)
         ]
         |> List.concat
         |> List.map ~f:(fun f ->
@@ -353,7 +355,7 @@ let install_entries sctx package =
                  ; dune_version = _
                  } ->
               let sub_dir = (Option.value_exn lib.public).sub_dir in
-              let dir_contents = Dir_contents.get_without_rules sctx ~dir in
+              let dir_contents = Dir_contents.get sctx ~dir in
               lib_install_files sctx ~dir ~sub_dir lib ~scope
                 ~dir_kind ~dir_contents)
   in

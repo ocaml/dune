@@ -126,7 +126,7 @@ let odoc sctx =
     ~loc:None ~hint:"try: opam install odoc"
 
 let module_deps (m : Module.t) ~doc_dir ~(dep_graphs:Dep_graph.Ml_kind.t) =
-  (if Module.has_intf m then
+  (if Module.has m ~ml_kind:Intf then
      Dep_graph.deps_of dep_graphs.intf m
    else
      (* When a module has no .mli, use the dependencies for the .ml *)
@@ -470,7 +470,7 @@ let entry_modules_by_lib sctx lib =
   let info = Lib.Local.info lib in
   let dir = Lib_info.src_dir info in
   let name = Lib.name (Lib.Local.to_lib lib) in
-  Dir_contents.get_without_rules sctx ~dir
+  Dir_contents.get sctx ~dir
   |> Dir_contents.modules_of_library ~name
   |> Lib_modules.entry_modules
 

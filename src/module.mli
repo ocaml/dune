@@ -57,7 +57,7 @@ module File : sig
 end
 
 module Kind : sig
-  type t = Intf_only | Virtual | Impl | Alias
+  type t = Intf_only | Virtual | Impl | Alias | Impl_vmodule
 
   include Dune_lang.Conv with type t := t
 end
@@ -74,7 +74,7 @@ module Source : sig
     -> Name.t
     -> t
 
-  val has_impl: t -> bool
+  val has : t -> ml_kind:Ml_kind.t -> bool
 
   val src_dir : t -> Path.t
 end
@@ -85,16 +85,6 @@ type t
 val kind : t -> Kind.t
 
 val to_dyn : t -> Dyn.t
-
-(** [obj_name] Object name. It is different from [name] for wrapped modules. *)
-val make
-  :  ?impl:File.t
-  -> ?intf:File.t
-  -> ?obj_name:string
-  -> visibility:Visibility.t
-  -> kind:Kind.t
-  -> Name.t
-  -> t
 
 (** [obj_name] Object name. It is different from [name] for wrapped modules. *)
 val of_source
@@ -109,15 +99,11 @@ val name : t -> Name.t
 (** Real unit name once wrapped. This is always a valid module name. *)
 val real_unit_name : t -> Name.t
 
-val intf : t -> File.t option
-val impl : t -> File.t option
-
-val source : t -> Ml_kind.t -> File.t option
+val source : t -> ml_kind:Ml_kind.t -> File.t option
 
 val pp_flags : t -> (unit, string list) Build.t option
 
-val file            : t -> Ml_kind.t -> Path.t option
-val cm_source       : t -> Cm_kind.t -> Path.t option
+val file            : t -> ml_kind:Ml_kind.t -> Path.t option
 
 val obj_name : t -> string
 
@@ -125,10 +111,7 @@ val odoc_file : t -> doc_dir:Path.Build.t -> Path.Build.t
 
 val iter : t -> f:(Ml_kind.t -> File.t -> unit) -> unit
 
-val has_impl : t -> bool
-val has_intf : t -> bool
-val impl_only : t -> bool
-val intf_only : t -> bool
+val has : t -> ml_kind:Ml_kind.t -> bool
 
 (** Prefix the object name with the library name. *)
 val with_wrapper : t -> main_module_name:Name.t -> t

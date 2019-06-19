@@ -311,6 +311,7 @@ let to_dyn t = Lib_name.to_dyn t.name
 
 let name t = t.name
 let info t = t.info
+let implements t = t.implements
 
 let unique_id    t = t.unique_id
 

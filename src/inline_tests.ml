@@ -244,15 +244,14 @@ include Sub_system.Register_end_point(
       (* Generate the runner file *)
       SC.add_rule sctx ~dir ~loc (
         let target =
-          Module.file main_module Impl
+          Module.file main_module ~ml_kind:Impl
           |> Option.value_exn
           |> Path.as_in_build_dir_exn
         in
         let source_modules = Module.Name.Map.values source_modules in
         let files ml_kind =
           Pform.Var.Values (Value.L.paths (
-            List.filter_map source_modules ~f:(fun m ->
-              Module.file m ml_kind)))
+            List.filter_map source_modules ~f:(Module.file ~ml_kind)))
         in
         let bindings =
           Pform.Map.of_list_exn

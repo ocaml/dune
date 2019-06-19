@@ -31,7 +31,7 @@ val create
   -> opaque                : bool
   -> ?stdlib               : Dune_file.Library.Stdlib.t
   -> ?js_of_ocaml          : Dune_file.Js_of_ocaml.t
-  -> ?dynlink              : bool
+  -> dynlink               : bool
   -> ?sandbox              : bool
   -> unit
   -> t

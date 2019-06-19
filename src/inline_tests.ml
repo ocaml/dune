@@ -287,7 +287,8 @@ include Sub_system.Register_end_point(
           ~requires_compile:runner_libs
           ~requires_link:(lazy runner_libs)
           ~flags:(Ocaml_flags.of_list ["-w"; "-24"; "-g"])
-          ~js_of_ocaml:lib.buildable.js_of_ocaml;
+          ~js_of_ocaml:lib.buildable.js_of_ocaml
+          ~dynlink:false;
       in
       let linkages =
         let modes =

@@ -145,6 +145,7 @@ module Stanza = struct
         ~flags:(Ocaml_flags.append_common
                   (Ocaml_flags.default ~profile:(Super_context.profile sctx))
                   ["-w"; "-24"])
+        ~dynlink:false
     in
     let resolved = make ~cctx ~source in
     setup_rules resolved

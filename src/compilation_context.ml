@@ -97,7 +97,7 @@ let create ~super_context ~scope ~expander ~obj_dir
       ~modules ?alias_module ?lib_interface_module ~flags
       ~requires_compile ~requires_link
       ?(preprocessing=Preprocessing.dummy) ?(no_keep_locs=false)
-      ~opaque ?stdlib ?js_of_ocaml ?(dynlink=false) ?sandbox () =
+      ~opaque ?stdlib ?js_of_ocaml ~dynlink ?sandbox () =
   let requires_compile =
     if Dune_project.implicit_transitive_deps (Scope.project scope) then
       Lazy.force requires_link

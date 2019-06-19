@@ -74,7 +74,7 @@ module Source : sig
     -> Name.t
     -> t
 
-  val has_impl: t -> bool
+  val has : t -> ml_kind:Ml_kind.t -> bool
 
   val src_dir : t -> Path.t
 end

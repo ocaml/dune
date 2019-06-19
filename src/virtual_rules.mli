@@ -11,5 +11,4 @@ val impl
   -> dir:Path.Build.t
   -> lib:Dune_file.Library.t
   -> scope:Scope.t
-  -> modules:Module.Name_map.t
   -> Vimpl.t option

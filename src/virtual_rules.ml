@@ -110,41 +110,6 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
     ~f:(fun m -> copy_objs m; copy_all_deps m)
 
 
-let module_list ms =
-  List.map ms ~f:(fun m -> sprintf "- %s" (Module.Name.to_string m))
-  |> String.concat ~sep:"\n"
-
-let check_module_fields ~(lib : Dune_file.Library.t) ~virtual_modules
-      ~modules ~implements =
-  let (missing_modules, impl_modules_with_intf) =
-    Module.Name.Map.foldi virtual_modules ~init:([], [])
-      ~f:(fun m _ (mms, ims) ->
-        match Module.Name.Map.find modules m with
-        | None -> (m :: mms, ims)
-        | Some m ->
-          let ims =
-            if Module.has m ~ml_kind:Intf then
-              Module.name m :: ims
-            else
-              ims
-          in
-          (mms, ims))
-  in
-  if missing_modules <> [] then begin
-    Errors.fail lib.buildable.loc
-      "Library %a cannot implement %a because the following \
-       modules lack an implementation:\n%s"
-      Lib_name.Local.pp (snd lib.name)
-      Lib_name.pp implements
-      (module_list missing_modules)
-  end;
-  if impl_modules_with_intf <> [] then begin
-    Errors.fail lib.buildable.loc
-      "The following modules cannot have .mli files as they implement \
-       virtual modules:\n%s"
-      (module_list impl_modules_with_intf)
-  end
-
 let external_dep_graph sctx ~impl_cm_kind ~impl_obj_dir ~vlib_modules =
   let wrapped = Wrapped.to_bool (Lib_modules.wrapped vlib_modules) in
   let modules = Lib_modules.modules vlib_modules in
@@ -211,7 +176,7 @@ let external_dep_graph sctx ~impl_cm_kind ~impl_obj_dir ~vlib_modules =
         in
         m, deps)))
 
-let impl sctx ~dir ~(lib : Dune_file.Library.t) ~scope ~modules =
+let impl sctx ~dir ~(lib : Dune_file.Library.t) ~scope =
   Option.map lib.implements ~f:begin fun (loc, implements) ->
     match Lib.DB.find (Scope.libs scope) implements with
     | None ->
@@ -262,8 +227,6 @@ let impl sctx ~dir ~(lib : Dune_file.Library.t) ~scope ~modules =
           in
           (modules, foreign_objects)
       in
-      (let virtual_modules = Lib_modules.virtual_modules vlib_modules in
-       check_module_fields ~lib ~virtual_modules ~modules ~implements);
       let vlib_dep_graph =
         let modules = Lib_modules.modules vlib_modules in
         match virtual_ with

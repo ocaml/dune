@@ -65,6 +65,7 @@ type errors =
   ; vmodule_impl_intf_only_exclusion : (Loc.t * Module.Name.t) list
   ; vmodule_impl_missing_impl : (Loc.t * Module.Name.t) list
   ; forbidden_new_public_modules : (Loc.t * Module.Name.t) list
+  ; vmodule_impls_with_own_intf : (Loc.t * Module.Name.t) list
   ; unimplemented_virt_modules : Module.Name.Set.t
   }
 
@@ -115,9 +116,11 @@ let find_errors ~modules ~intf_only ~virtual_modules ~private_modules
   let private_impl_of_vmodule  = ref [] in
   let vmodule_impl_intf_only_exclusion = ref [] in
   let forbidden_new_public_modules = ref [] in
+  let vmodule_impls_with_own_intf = ref [] in
   let vmodule_impl_missing_impl = ref [] in
   Module.Name.Map.iteri all ~f:(fun module_name (module_, props) ->
-    let has_impl = Module.Source.has_impl module_ in
+    let has_impl = Module.Source.has module_ ~ml_kind:Impl in
+    let has_intf = Module.Source.has module_ ~ml_kind:Intf in
     let impl_vmodule =
       Module.Name.Set.mem existing_virtual_modules module_name in
     let (!?) p = Properties.Map.mem props p in
@@ -149,7 +152,9 @@ let find_errors ~modules ~intf_only ~virtual_modules ~private_modules
             Module.Name.Set.remove !unimplemented_virt_modules
               module_name
         else
-          add_to vmodule_impl_missing_impl loc
+          add_to vmodule_impl_missing_impl loc;
+        if has_intf then
+          add_to vmodule_impls_with_own_intf loc;
       end
     );
   );
@@ -164,6 +169,7 @@ let find_errors ~modules ~intf_only ~virtual_modules ~private_modules
       List.rev !vmodule_impl_intf_only_exclusion
   ; vmodule_impl_missing_impl = List.rev !vmodule_impl_missing_impl
   ; forbidden_new_public_modules = List.rev !forbidden_new_public_modules
+  ; vmodule_impls_with_own_intf = List.rev !vmodule_impls_with_own_intf
   }
 
 let check_invalid_module_listing ~(buildable : Buildable.t) ~intf_only
@@ -179,6 +185,7 @@ let check_invalid_module_listing ~(buildable : Buildable.t) ~intf_only
       ; vmodule_impl_intf_only_exclusion
       ; vmodule_impl_missing_impl
       ; forbidden_new_public_modules
+      ; vmodule_impls_with_own_intf
       } =
     find_errors ~modules ~intf_only ~virtual_modules ~private_modules
       ~existing_virtual_modules ~allow_new_public_modules
@@ -196,6 +203,9 @@ let check_invalid_module_listing ~(buildable : Buildable.t) ~intf_only
     | (loc, _) :: _ ->
       Errors.fail loc fmt (line_list l)
   in
+  print "The folowing modules are implementations of virtual modules:\
+         \n%s\nThey cannot have their own interface files."
+    vmodule_impls_with_own_intf;
   print "Implementations of wrapped libraries cannot introduce new \
          public modules.\nThe following modules:\
          \n%s\n must all be marked as private using the \
@@ -325,7 +335,7 @@ let eval ~modules:(all_modules : Module.Source.t Module.Name.Map.t)
       let kind =
         if Module.Name.Map.mem virtual_modules name then
           Module.Kind.Virtual
-        else if Module.Source.has_impl m then
+        else if Module.Source.has m ~ml_kind:Impl then
           let name = Module.Source.name m in
           if Module.Name.Set.mem existing_virtual_modules name then
             Impl_vmodule

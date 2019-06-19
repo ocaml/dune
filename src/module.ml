@@ -167,7 +167,9 @@ module Source = struct
     ; files
     }
 
-  let has_impl t = Option.is_some t.files.impl
+  let has t ~ml_kind =
+    Ml_kind.Dict.get t.files ml_kind
+    |> Option.is_some
 
   let name t = t.name
 

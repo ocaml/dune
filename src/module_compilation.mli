@@ -2,14 +2,9 @@
 
 open Import
 
-(** Setup rules to build a single module.
-
-    @param dynlink if false disables the possibility to dynamically
-    link. The module can't be in a .cmxs or .so (default true).
- *)
+(** Setup rules to build a single module.*)
 val build_module
   :  ?sandbox:bool
-  -> ?dynlink:bool
   -> dep_graphs:Dep_graph.Ml_kind.t
   -> Compilation_context.t
   -> Module.t
@@ -18,7 +13,6 @@ val build_module
 (** Setup rules to build all of the modules in the compilation context. *)
 val build_modules
   :  ?sandbox:bool
-  -> ?dynlink:bool
   -> dep_graphs:Dep_graph.Ml_kind.t
   -> Compilation_context.t
   -> unit

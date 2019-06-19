@@ -6,3 +6,17 @@ project in the current workspace.
   Public library: lib1
   Dependencies: lib1-dep1, lib1-dep2
   Synopsis: What lib1 does
+
+It can output data in JSON format:
+
+  $ dune describe-project --format=json
+  { "name": "project_name",
+    "libs":
+    [ { "name": "lib1",
+        "deps": [ "lib1-dep1",
+                  "lib1-dep2"
+                  ],
+        "synopsis": "What lib1 does"
+        }
+      ]
+    }

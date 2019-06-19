@@ -197,39 +197,33 @@ module rec Load : sig
   val get : Super_context.t -> dir:Path.Build.t -> t
   val gen_rules : Super_context.t -> dir:Path.Build.t -> gen_rules_result
 end = struct
-  let virtual_modules_of_impl sctx impl
-    : Modules_field_evaluator.Implementation.t Or_exn.t =
-    match Lib.implements impl with
-    | None -> assert false
-    | Some vlib ->
-      let open Result.O in
-      let+ vlib = vlib in
-      let info = Lib.info vlib in
-      let lib_modules =
-        match Option.value_exn (Lib_info.virtual_ info) with
-        | External lib_modules -> lib_modules
-        | Local ->
-          let src_dir =
-            Lib_info.src_dir info
-            |> Path.as_in_build_dir_exn
-          in
-          let t = Load.get sctx ~dir:src_dir in
-          modules_of_library t ~name:(Lib.name vlib)
-      in
-      let existing_virtual_modules =
-        Lib_modules.virtual_modules lib_modules
-        |> Module.Name.Map.keys
-        |> Module.Name.Set.of_list
-      in
-      let allow_new_public_modules =
-        Lib_modules.wrapped lib_modules
-        |> Wrapped.to_bool
-        |> not
-      in
-      { Modules_field_evaluator.Implementation.
-        existing_virtual_modules
-      ; allow_new_public_modules
-      }
+  let virtual_modules sctx vlib =
+    let info = Lib.info vlib in
+    let lib_modules =
+      match Option.value_exn (Lib_info.virtual_ info) with
+      | External lib_modules -> lib_modules
+      | Local ->
+        let src_dir =
+          Lib_info.src_dir info
+          |> Path.as_in_build_dir_exn
+        in
+        let t = Load.get sctx ~dir:src_dir in
+        modules_of_library t ~name:(Lib.name vlib)
+    in
+    let existing_virtual_modules =
+      Lib_modules.virtual_modules lib_modules
+      |> Module.Name.Map.keys
+      |> Module.Name.Set.of_list
+    in
+    let allow_new_public_modules =
+      Lib_modules.wrapped lib_modules
+      |> Wrapped.to_bool
+      |> not
+    in
+    { Modules_field_evaluator.Implementation.
+      existing_virtual_modules
+    ; allow_new_public_modules
+    }
 
   let make_modules sctx (d : _ Dir_with_dune.t) ~modules =
     let scope = d.scope in
@@ -248,9 +242,19 @@ end = struct
           let kind : Modules_field_evaluator.kind =
             match lib.implements, lib.virtual_modules with
             | Some _, None ->
-              Implementation (
-                virtual_modules_of_impl sctx (Lazy.force resolved)
-                |> Result.ok_exn)
+              (* diml: this [Result.ok_exn] means that if the user
+                 writes an invalid [implements] field, we will get an
+                 error immediately even if the library is not
+                 built. We should change this to carry the [Or_exn.t]
+                 a bit longer. *)
+              let vlib = Result.ok_exn (
+                let lib = Lazy.force resolved in
+                (* This [Option.value_exn] is correct because the
+                   above [lib.implements] is [Some _] and this [lib]
+                   variable correspond to the same library. *)
+                Option.value_exn (Lib.implements lib))
+              in
+              Implementation (virtual_modules sctx vlib)
             | None, Some virtual_modules ->
               Virtual { Modules_field_evaluator.Virtual.
                         virtual_modules

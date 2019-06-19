@@ -63,7 +63,7 @@ let rec pp ppf = function
 
 let hash = Dune_caml.Hashtbl.hash
 
-let string_equal (x : string) (y : string) = Pervasives.(=) x y
+let string_equal (x : string) (y : string) = (=) x y
 
 let rec equal x y =
   match x, y with

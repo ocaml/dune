@@ -116,6 +116,10 @@ virtual libraries may not implement their virtual modules
 Implementations cannot introduce new modules to the library's interface
   $ dune build --root impl-public-modules
   Entering directory 'impl-public-modules'
+  File "impl/dune", line 1, characters 0-44:
+  1 | (library
+  2 |  (name foo_impl)
+  3 |  (implements foo))
   Error: Implementations of wrapped libraries cannot introduce new public modules.
   The following modules:
   - Baz
@@ -231,6 +235,10 @@ Implementations may not provide a library interface module unless it is virtual.
 There should be an error message that clarifies this.
   $ dune build --root impl-lib-interface-module @all
   Entering directory 'impl-lib-interface-module'
+  File "impl/dune", line 1, characters 0-41:
+  1 | (library
+  2 |  (name impl)
+  3 |  (implements vlib))
   Error: Implementations of wrapped libraries cannot introduce new public modules.
   The following modules:
   - Vlib

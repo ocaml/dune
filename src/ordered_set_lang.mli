@@ -53,14 +53,14 @@ module Make_loc (Key : Key)(Value : Value with type key = Key.t) : sig
   val eval
     :  t
     -> parse:(loc:Loc.t -> string -> Value.t)
-    -> standard:Value.t list
+    -> standard:(Loc.t * Value.t) list
     -> (Loc.t * Value.t) list
 
   (** Same as [eval] but the result is unordered *)
   val eval_unordered
     :  t
     -> parse:(loc:Loc.t -> string -> Value.t)
-    -> standard:Value.t Key.Map.t
+    -> standard:(Loc.t * Value.t) Key.Map.t
     -> (Loc.t * Value.t) Key.Map.t
 end
 

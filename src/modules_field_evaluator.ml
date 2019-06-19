@@ -39,9 +39,9 @@ let eval =
       fake_modules := Module.Name.Map.add !fake_modules name loc;
       Error name
   in
-  fun ~fake_modules ~all_modules ~standard osl ->
+  fun ~loc ~fake_modules ~all_modules ~standard osl ->
     let parse = parse ~fake_modules ~all_modules in
-    let standard = Module.Name.Map.map standard ~f:(fun m -> Ok m) in
+    let standard = Module.Name.Map.map standard ~f:(fun m -> loc, Ok m) in
     let modules = Eval.eval_unordered ~parse ~standard osl in
     Module.Name.Map.filter_map modules ~f:(fun (loc, m) ->
       match m with
@@ -254,7 +254,7 @@ let eval ~modules:(all_modules : Module.Source.t Module.Name.Map.t)
      matter because they are only removed from a set (for jbuild file
      compatibility) *)
   let fake_modules = ref Module.Name.Map.empty in
-  let eval = eval ~fake_modules ~all_modules in
+  let eval = eval ~loc:conf.loc ~fake_modules ~all_modules in
   let modules = eval ~standard:all_modules conf.modules in
   let intf_only =
     eval ~standard:Module.Name.Map.empty conf.modules_without_implementation

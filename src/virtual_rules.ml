@@ -172,7 +172,7 @@ let check_module_fields ~(lib : Dune_file.Library.t) ~virtual_modules
   end
 
 let external_dep_graph sctx ~impl_cm_kind ~impl_obj_dir ~vlib_modules =
-  let wrapped = Lib_modules.is_wrapped vlib_modules in
+  let wrapped = Wrapped.to_bool (Lib_modules.wrapped vlib_modules) in
   let modules = Lib_modules.modules vlib_modules in
   let dir = Obj_dir.dir impl_obj_dir in
   let ocamlobjinfo =

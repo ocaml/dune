@@ -16,7 +16,6 @@ let wrapped_compat t = t.wrapped_compat
 let modules t = t.modules
 let main_module_name t = t.main_module_name
 let wrapped t = t.wrapped
-let is_wrapped t = Wrapped.to_bool (wrapped t)
 
 let make_unwrapped ~modules ~main_module_name =
   assert (main_module_name = None);
@@ -123,8 +122,6 @@ let make (lib : Dune_file.Library.t) ~src_dir (modules : Module.Name_map.t)
     assert false
   | wrapped, Some main_module_name ->
     make_wrapped ~wrapped ~modules ~src_dir ~main_module_name ~lib
-
-let needs_alias_module t = Option.is_some t.alias_module
 
 let installable_modules t =
   let modules =

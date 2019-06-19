@@ -59,9 +59,6 @@ val make_lib
   -> Lib_name.Local.t
   -> Path.Build.t t
 
-(** Create the object directory for a set of executables. [name] is
-    name of one of the executable in set. It is included in the dot
-    subdirectory name. *)
 (** Create the object directory for an external library that has no
    private directory for private modules *)
 val make_external_no_private : dir:Path.t -> Path.t t

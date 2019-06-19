@@ -124,18 +124,18 @@ module Renderer = struct
       | Text s -> pp_print_text ppf s
       | Tag (tag, t) ->
         let opening, th, closing = Tag.Handler.handle th tag in
-        pp_open_tag ppf (embed_tag ~opening ~closing);
+        pp_open_tag ppf (embed_tag ~opening ~closing) [@warning "-3"];
         pp th ppf t;
-        pp_close_tag ppf ()
+        pp_close_tag ppf () [@warning "-3"]
 
     let setup ppf =
-      let funcs = pp_get_formatter_tag_functions ppf () in
+      let funcs = pp_get_formatter_tag_functions ppf () [@warning "-3"] in
       pp_set_mark_tags ppf true;
       pp_set_formatter_tag_functions ppf
         { funcs with
           mark_open_tag  = extract_opening_tag
         ; mark_close_tag = extract_closing_tag
-        }
+        } [@warning "-3"]
 
     let string () =
       let buf = Buffer.create 1024 in

@@ -3,7 +3,7 @@ include sig
   (* This open is unused with OCaml >= 4.03 since the stdlib defines a
      result type *)
   open Result_compat
-  open Pervasives
+  open Pervasives [@@warning "-3"]
 
   (** The result type.
 

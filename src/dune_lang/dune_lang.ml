@@ -102,7 +102,7 @@ let prepare_formatter ppf =
   let state = ref [] in
   Format.pp_set_mark_tags ppf true;
   let ofuncs = Format.pp_get_formatter_out_functions ppf () in
-  let tfuncs = Format.pp_get_formatter_tag_functions ppf () in
+  let tfuncs = Format.pp_get_formatter_tag_functions ppf () [@warning "-3"] in
   Format.pp_set_formatter_tag_functions ppf
     { tfuncs with
       mark_open_tag  = (function
@@ -113,7 +113,7 @@ let prepare_formatter ppf =
     ; mark_close_tag = (function
         | "atom" | "makefile-action" | "makefile-stuff" -> state := List.tl !state; ""
         | s -> tfuncs.mark_close_tag s)
-    };
+    } [@warning "-3"];
   Format.pp_set_formatter_out_functions ppf
     { ofuncs with
       out_newline = (fun () ->

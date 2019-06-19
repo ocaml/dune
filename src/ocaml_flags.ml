@@ -20,6 +20,7 @@ let dev_mode_warnings =
        ; 58
        ; 59
        ; 60
+       ; 66
        ])
 
 let default_warnings =

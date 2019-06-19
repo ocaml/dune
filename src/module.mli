@@ -50,7 +50,7 @@ module File : sig
 end
 
 module Kind : sig
-  type t = Intf_only | Virtual | Impl | Alias | Impl_vmodule
+  type t = Intf_only | Virtual | Impl | Alias | Impl_vmodule | Wrapped_compat
 
   include Dune_lang.Conv with type t := t
 end

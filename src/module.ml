@@ -109,6 +109,7 @@ module Kind = struct
     | Impl
     | Alias
     | Impl_vmodule
+    | Wrapped_compat
 
   let to_string = function
     | Intf_only -> "intf_only"
@@ -116,6 +117,7 @@ module Kind = struct
     | Impl -> "impl"
     | Alias -> "alias"
     | Impl_vmodule -> "impl_vmodule"
+    | Wrapped_compat -> "wrapped_compat"
 
   let to_dyn t = Dyn.Encoder.string (to_string t)
 
@@ -129,11 +131,13 @@ module Kind = struct
       ; "impl", Impl
       ; "alias", Alias
       ; "impl_vmodule", Impl_vmodule
+      ; "wrapped_compat", Wrapped_compat
       ]
 
   let has_impl = function
     | Alias
     | Impl_vmodule
+    | Wrapped_compat
     | Impl -> true
     | Intf_only
     | Virtual -> false
@@ -202,7 +206,7 @@ let pp_flags t = t.pp
 let of_source ?obj_name ~visibility ~(kind : Kind.t)
       (source : Source.t) =
   begin match kind, visibility with
-  | (Alias | Impl_vmodule | Virtual), Visibility.Public
+  | (Alias | Impl_vmodule | Virtual | Wrapped_compat), Visibility.Public
   | (Impl | Intf_only), _ -> ()
   | _, _ ->
     Code_error.raise "Module.of_source: invalid kind, visibility combination"
@@ -212,8 +216,8 @@ let of_source ?obj_name ~visibility ~(kind : Kind.t)
       ]
   end;
   begin match kind, source.files.impl, source.files.intf with
-  | (Alias | Impl_vmodule | Impl), None, _
-  | (Alias | Impl_vmodule), Some _, Some _
+  | (Alias | Impl_vmodule | Impl | Wrapped_compat), None, _
+  | (Alias | Impl_vmodule | Wrapped_compat), Some _, Some _
   | (Intf_only | Virtual), Some _, _
   | (Intf_only | Virtual), _, None ->
     let open Dyn.Encoder in
@@ -297,6 +301,7 @@ let to_dyn { source ; obj_name ; pp ; visibility; kind } =
 let ml_gen = ".ml-gen"
 
 let wrapped_compat t =
+  assert (t.visibility = Public);
   let source =
     let impl =
       Some (
@@ -318,7 +323,10 @@ let wrapped_compat t =
       files = { intf = None ; impl }
     }
   in
-  { t with source }
+  { t with
+    source
+  ; kind = Wrapped_compat
+  }
 
 let visibility t = t.visibility
 
@@ -353,6 +361,7 @@ let encode
     match kind with
     | Kind.Impl when has_impl -> None
     | Intf_only when not has_impl -> None
+    | Wrapped_compat
     | Impl_vmodule | Alias | Impl | Virtual | Intf_only -> Some kind
   in
   record_fields

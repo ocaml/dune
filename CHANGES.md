@@ -29,6 +29,10 @@
 - Build `ppx.exe` as compiling host binary. (#2286, fixes #2252, @toots, review
   by @rgrinberg and @diml)
 
+- Add a `cinaps` extension and stanza for better integration with the
+  [cinaps tool](https://github.com/janestreet/cinaps) tool (#2269,
+  @diml)
+
 1.10.0 (04/06/2019)
 -------------------
 

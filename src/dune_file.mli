@@ -45,6 +45,8 @@ module Per_module : Per_item.S with type key = Module.Name.t
 module Preprocess_map : sig
   type t = Preprocess.t Per_module.t
 
+  val decode : t Dune_lang.Decoder.t
+
   val no_preprocessing : t
   val default : t
 
@@ -97,6 +99,7 @@ module Lib_deps : sig
   type t = Lib_dep.t list
   val of_pps : Lib_name.t list -> t
   val info : t -> kind:Lib_deps_info.Kind.t -> Lib_deps_info.t
+  val decode : t Dune_lang.Decoder.t
 end
 
 module Dep_conf : sig

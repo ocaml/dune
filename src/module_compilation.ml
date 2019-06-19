@@ -196,14 +196,6 @@ let build_module ~dep_graphs cctx m =
     SC.add_rules sctx ~dir
       (Js_of_ocaml_rules.build_cm cctx ~js_of_ocaml ~src ~target))
 
-let build_modules ~dep_graphs cctx =
-  Module.Name.Map.iter
-    (match CC.alias_module cctx with
-     | None -> CC.modules cctx
-     | Some (m : Module.t) ->
-       Module.Name.Map.remove (CC.modules cctx) (Module.name m))
-    ~f:(build_module cctx ~dep_graphs)
-
 let ocamlc_i ?(flags=[]) ~dep_graphs cctx (m : Module.t) ~output =
   let sctx     = CC.super_context cctx in
   let obj_dir  = CC.obj_dir       cctx in

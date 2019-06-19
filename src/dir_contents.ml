@@ -36,18 +36,23 @@ module Modules = struct
                stanza *)
             |> Option.value_exn
           ) in
-          let existing_virtual_modules =
-            match lib.implements with
-            | None -> Module.Name.Set.empty
-            | Some _ ->
-              virtual_modules_of_impl (Lazy.force resolved)
-              |> Result.ok_exn
+          let kind : Modules_field_evaluator.kind =
+            match lib.implements, lib.virtual_modules with
+            | Some _, None ->
+              Implementation (
+                virtual_modules_of_impl (Lazy.force resolved)
+                |> Result.ok_exn)
+            | None, Some virtual_modules ->
+              Virtual { Modules_field_evaluator.Virtual.
+                        virtual_modules
+                      }
+            | None, None -> Exe_or_normal_lib
+            | Some _, Some _ -> assert false
           in
           let modules =
             Modules_field_evaluator.eval ~modules
               ~buildable:lib.buildable
-              ~virtual_modules:lib.virtual_modules
-              ~existing_virtual_modules
+              ~kind
               ~private_modules:(
                 Option.value ~default:Ordered_set_lang.standard
                   lib.private_modules)
@@ -79,9 +84,8 @@ module Modules = struct
           let modules =
             Modules_field_evaluator.eval ~modules
               ~buildable:exes.buildable
-              ~virtual_modules:None
+              ~kind:Modules_field_evaluator.Exe_or_normal_lib
               ~private_modules:Ordered_set_lang.standard
-              ~existing_virtual_modules:Module.Name.Set.empty
           in
           Right (exes, modules)
         | _ -> Skip)
@@ -416,7 +420,8 @@ let check_no_unqualified loc qualif_mode =
   if qualif_mode = Include_subdirs.Unqualified then
     Errors.fail loc "(include_subdirs qualified) is not supported yet"
 
-let virtual_modules_of_impl ~sctx impl =
+let virtual_modules_of_impl ~sctx impl
+  : Modules_field_evaluator.Implementation.t Or_exn.t =
   match Lib.implements impl with
   | None -> assert false
   | Some vlib ->
@@ -434,9 +439,20 @@ let virtual_modules_of_impl ~sctx impl =
         let t = Fdecl.get get_without_rules_fdecl (sctx, src_dir) in
         modules_of_library t ~name:(Lib.name vlib)
     in
-    Lib_modules.virtual_modules lib_modules
-    |> Module.Name.Map.keys
-    |> Module.Name.Set.of_list
+    let existing_virtual_modules =
+      Lib_modules.virtual_modules lib_modules
+      |> Module.Name.Map.keys
+      |> Module.Name.Set.of_list
+    in
+    let allow_new_public_modules =
+      Lib_modules.wrapped lib_modules
+      |> Wrapped.to_bool
+      |> not
+    in
+    { Modules_field_evaluator.Implementation.
+      existing_virtual_modules
+    ; allow_new_public_modules
+    }
 
 let get0_impl (sctx, dir) : result0 =
   let dir_status_db = Super_context.dir_status_db sctx in

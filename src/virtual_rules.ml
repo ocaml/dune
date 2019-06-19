@@ -116,21 +116,6 @@ let module_list ms =
 
 let check_module_fields ~(lib : Dune_file.Library.t) ~virtual_modules
       ~modules ~implements =
-  let new_public_modules =
-    Module.Name.Map.foldi modules ~init:[] ~f:(fun name m acc ->
-      if Module.visibility m = Public
-      && not (Module.Name.Map.mem virtual_modules name) then
-        name :: acc
-      else
-        acc)
-  in
-  if new_public_modules <> [] then begin
-    Errors.fail lib.buildable.loc
-      "The following modules aren't part of the virtual library's interface:\
-       \n%s\n\
-       They must be marked as private using the (private_modules ..) field"
-      (module_list new_public_modules)
-  end;
   let (missing_modules, impl_modules_with_intf) =
     Module.Name.Map.foldi virtual_modules ~init:([], [])
       ~f:(fun m _ (mms, ims) ->

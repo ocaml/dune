@@ -1,4 +1,4 @@
-(library 
+(library
  (name foo_impl)
  (public_name foo.impl)
  (implements foo)

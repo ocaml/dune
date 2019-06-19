@@ -116,13 +116,10 @@ virtual libraries may not implement their virtual modules
 Implementations cannot introduce new modules to the library's interface
   $ dune build --root impl-public-modules
   Entering directory 'impl-public-modules'
-  File "impl/dune", line 1, characters 0-44:
-  1 | (library
-  2 |  (name foo_impl)
-  3 |  (implements foo))
-  Error: The following modules aren't part of the virtual library's interface:
+  Error: Implementations of wrapped libraries cannot introduce new public modules.
+  The following modules:
   - Baz
-  They must be marked as private using the (private_modules ..) field
+   must all be marked as private using the (private_modules ..) field.
   [1]
 
 They can only introduce private modules:
@@ -234,13 +231,10 @@ Implementations may not provide a library interface module unless it is virtual.
 There should be an error message that clarifies this.
   $ dune build --root impl-lib-interface-module @all
   Entering directory 'impl-lib-interface-module'
-  File "impl/dune", line 1, characters 0-41:
-  1 | (library
-  2 |  (name impl)
-  3 |  (implements vlib))
-  Error: The following modules aren't part of the virtual library's interface:
+  Error: Implementations of wrapped libraries cannot introduce new public modules.
+  The following modules:
   - Vlib
-  They must be marked as private using the (private_modules ..) field
+   must all be marked as private using the (private_modules ..) field.
   [1]
 
 Test that implementing vlibs that aren't present is impossible

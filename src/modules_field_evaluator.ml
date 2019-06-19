@@ -2,6 +2,24 @@ open Stdune
 
 module Buildable = Dune_file.Buildable
 
+module Virtual = struct
+  type t =
+    { virtual_modules : Ordered_set_lang.t
+    }
+end
+
+module Implementation = struct
+  type t =
+    { existing_virtual_modules : Module.Name.Set.t
+    ; allow_new_public_modules : bool
+    }
+end
+
+type kind =
+  | Virtual of Virtual.t
+  | Implementation of Implementation.t
+  | Exe_or_normal_lib
+
 let eval =
   let module Value = struct
     type t = (Module.Source.t, Module.Name.t) result
@@ -46,6 +64,7 @@ type errors =
   ; private_impl_of_vmodule  : (Loc.t * Module.Name.t) list
   ; vmodule_impl_intf_only_exclusion : (Loc.t * Module.Name.t) list
   ; vmodule_impl_missing_impl : (Loc.t * Module.Name.t) list
+  ; forbidden_new_public_modules : (Loc.t * Module.Name.t) list
   ; unimplemented_virt_modules : Module.Name.Set.t
   }
 
@@ -78,7 +97,7 @@ end
 
 
 let find_errors ~modules ~intf_only ~virtual_modules ~private_modules
-      ~existing_virtual_modules =
+      ~existing_virtual_modules ~allow_new_public_modules =
   let modules = Properties.add Modules modules in
   let intf_only = Properties.add Intf_only intf_only in
   let virtual_modules = Properties.add Virtual virtual_modules in
@@ -95,10 +114,12 @@ let find_errors ~modules ~intf_only ~virtual_modules ~private_modules
   let unimplemented_virt_modules = ref existing_virtual_modules in
   let private_impl_of_vmodule  = ref [] in
   let vmodule_impl_intf_only_exclusion = ref [] in
+  let forbidden_new_public_modules = ref [] in
   let vmodule_impl_missing_impl = ref [] in
   Module.Name.Map.iteri all ~f:(fun module_name (module_, props) ->
     let has_impl = Module.Source.has_impl module_ in
-    let impl_vmodule = Module.Name.Set.mem existing_virtual_modules module_name in
+    let impl_vmodule =
+      Module.Name.Set.mem existing_virtual_modules module_name in
     let (!?) p = Properties.Map.mem props p in
     let (!??) p f = Option.iter ~f (Properties.Map.find props p) in
     let add_to stack loc = stack := (loc, module_name) :: !stack in
@@ -108,8 +129,7 @@ let find_errors ~modules ~intf_only ~virtual_modules ~private_modules
     );
     !?? Intf_only (fun loc ->
       if has_impl then add_to spurious_modules_intf loc;
-      if impl_vmodule then
-        add_to vmodule_impl_intf_only_exclusion loc;
+      if impl_vmodule then add_to vmodule_impl_intf_only_exclusion loc;
     );
     !?? Virtual (fun loc ->
       if    has_impl  then add_to spurious_modules_virtual loc;
@@ -117,6 +137,10 @@ let find_errors ~modules ~intf_only ~virtual_modules ~private_modules
       if !? Private   then add_to private_virt_modules loc;
     );
     !?? Modules (fun loc ->
+      if not (!? Private)
+      && not allow_new_public_modules
+         && not impl_vmodule then
+        add_to forbidden_new_public_modules loc;
       if not has_impl && not !? Intf_only && not !? Virtual then
         add_to missing_intf_only loc;
       if impl_vmodule then begin
@@ -139,10 +163,12 @@ let find_errors ~modules ~intf_only ~virtual_modules ~private_modules
   ; vmodule_impl_intf_only_exclusion =
       List.rev !vmodule_impl_intf_only_exclusion
   ; vmodule_impl_missing_impl = List.rev !vmodule_impl_missing_impl
+  ; forbidden_new_public_modules = List.rev !forbidden_new_public_modules
   }
 
 let check_invalid_module_listing ~(buildable : Buildable.t) ~intf_only
-      ~modules ~virtual_modules ~private_modules ~existing_virtual_modules =
+      ~modules ~virtual_modules ~private_modules ~existing_virtual_modules
+      ~allow_new_public_modules =
   let { spurious_modules_intf
       ; spurious_modules_virtual
       ; virt_intf_overlaps
@@ -152,9 +178,10 @@ let check_invalid_module_listing ~(buildable : Buildable.t) ~intf_only
       ; private_impl_of_vmodule
       ; vmodule_impl_intf_only_exclusion
       ; vmodule_impl_missing_impl
+      ; forbidden_new_public_modules
       } =
     find_errors ~modules ~intf_only ~virtual_modules ~private_modules
-      ~existing_virtual_modules
+      ~existing_virtual_modules ~allow_new_public_modules
   in
   let uncapitalized =
     List.map ~f:(fun (_, m) -> Module.Name.uncapitalize m) in
@@ -169,6 +196,11 @@ let check_invalid_module_listing ~(buildable : Buildable.t) ~intf_only
     | (loc, _) :: _ ->
       Errors.fail loc fmt (line_list l)
   in
+  print "Implementations of wrapped libraries cannot introduce new \
+         public modules.\nThe following modules:\
+         \n%s\n must all be marked as private using the \
+         (private_modules ..) field."
+    forbidden_new_public_modules;
   print "The following modules implement virtual modules but \
          do not have implementations:\
          \n%s\nYou must provide implementations for these"
@@ -230,8 +262,7 @@ let check_invalid_module_listing ~(buildable : Buildable.t) ~intf_only
     spurious_modules_virtual
 
 let eval ~modules:(all_modules : Module.Source.t Module.Name.Map.t)
-      ~buildable:(conf : Buildable.t) ~virtual_modules
-      ~private_modules ~existing_virtual_modules =
+      ~buildable:(conf : Buildable.t) ~private_modules ~kind =
   (* fake modules are modules that doesn't exists but it doesn't
      matter because they are only removed from a set (for jbuild file
      compatibility) *)
@@ -249,10 +280,24 @@ let eval ~modules:(all_modules : Module.Source.t Module.Name.Map.t)
     eval ~standard:Module.Name.Map.empty ~all_modules
       conf.modules_without_implementation
   in
+  let allow_new_public_modules =
+    match kind with
+    | Exe_or_normal_lib
+    | Virtual _ -> true
+    | Implementation { allow_new_public_modules ; _ } ->
+      allow_new_public_modules
+  in
+  let existing_virtual_modules =
+    match kind with
+    | Exe_or_normal_lib
+    | Virtual _ -> Module.Name.Set.empty
+    | Implementation { existing_virtual_modules; _ } -> existing_virtual_modules
+  in
   let virtual_modules =
-    match virtual_modules with
-    | None -> Module.Name.Map.empty
-    | Some virtual_modules ->
+    match kind with
+    | Exe_or_normal_lib
+    | Implementation _ -> Module.Name.Map.empty
+    | Virtual { virtual_modules } ->
       add_fake_modules @@
       eval ~standard:Module.Name.Map.empty ~all_modules virtual_modules
   in
@@ -266,7 +311,8 @@ let eval ~modules:(all_modules : Module.Source.t Module.Name.Map.t)
       Module.Name.pp m
   );
   check_invalid_module_listing ~buildable:conf ~intf_only
-    ~modules ~virtual_modules ~private_modules ~existing_virtual_modules;
+    ~modules ~virtual_modules ~private_modules ~existing_virtual_modules
+    ~allow_new_public_modules;
   let all_modules =
     Module.Name.Map.map modules ~f:(fun (_, m) ->
       let name = Module.Source.name m in

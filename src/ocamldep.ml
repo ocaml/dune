@@ -75,7 +75,7 @@ let interpret_deps cctx ~unit deps =
     if Module.Name.Set.mem modules_before_stdlib (Module.name unit) then
       deps
     else
-      match CC.lib_interface_module cctx with
+      match lib_interface_module with
       | None -> deps
       | Some m ->
         if Module.name unit = Module.name m then

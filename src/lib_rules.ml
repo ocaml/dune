@@ -24,11 +24,8 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
       in
       Option.value ~default:lib (String.drop_prefix ~prefix:"-l" lib))
 
-  let build_lib (lib : Library.t) ~obj_dir ~expander ~flags ~dir ~mode
-        ~top_sorted_modules ~modules =
-    let { Lib_config. ext_obj; ext_lib; _ } = ctx.lib_config in
-    let cm_files =
-      Cm_files.make ~obj_dir ~ext_obj ~modules ~top_sorted_modules in
+  let build_lib (lib : Library.t) ~expander ~flags ~dir ~mode ~cm_files =
+    let { Lib_config. ext_lib; _ } = ctx.lib_config in
     Option.iter (Context.compiler ctx mode) ~f:(fun compiler ->
       let target = Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext mode) in
       let stubs_flags =
@@ -47,7 +44,8 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
         else
           Fn.id
       in
-      let obj_deps = Build.paths (Cm_files.unsorted_objects_and_cms cm_files ~mode) in
+      let obj_deps =
+        Build.paths (Cm_files.unsorted_objects_and_cms cm_files ~mode) in
       let ocaml_flags = Ocaml_flags.get flags mode in
       let cclibs = Expander.expand_and_eval_set expander lib.c_library_flags
                      ~standard:(Build.return []) in
@@ -315,7 +313,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
     let js_of_ocaml = lib.buildable.js_of_ocaml in
     let { Lib_config. ext_obj; has_native; natdynlink_supported; _ } =
       ctx.lib_config in
-    let modules =
+    let impl_only =
       let impl_only = Modules.impl_only modules in
       match lib.stdlib with
       | Some { exit_module = Some name; _ } -> begin
@@ -337,12 +335,13 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
       | _ -> impl_only
     in
     let top_sorted_modules =
-      Dep_graph.top_closed_implementations dep_graphs.impl modules in
+      Dep_graph.top_closed_implementations dep_graphs.impl impl_only in
 
     let modes = Mode_conf.Set.eval lib.modes ~has_native in
-    Mode.Dict.Set.iter modes ~f:(fun mode ->
-      build_lib lib ~obj_dir ~expander ~flags ~dir ~mode ~top_sorted_modules
-        ~modules:(Compilation_context.modules cctx));
+    (let cm_files =
+       Cm_files.make ~obj_dir ~ext_obj ~modules ~top_sorted_modules in
+     Mode.Dict.Set.iter modes ~f:(fun mode ->
+       build_lib lib ~expander ~flags ~dir ~mode ~cm_files));
     (* Build *.cma.js *)
     if modes.byte then
       SC.add_rules sctx ~dir (

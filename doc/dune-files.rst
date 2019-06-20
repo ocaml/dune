@@ -652,63 +652,9 @@ tests.
 install
 -------
 
-The ``install`` stanza is what lets you describe what dune should install,
-either when running ``dune install`` or through opam.
-
-Libraries and executables don't need an ``install`` stanza to be
-installed, just a ``public_name`` field. Everything else needs an
-``install`` stanza.
-
-The syntax is as follows:
-
-.. code:: scheme
-
-    (install
-     (section <section>)
-     (files   <filenames>)
-     <optional-fields>)
-
-``<section>`` is the installation section, as described in the opam
-manual. The following sections are available:
-
--  ``lib``
--  ``lib_root``
--  ``libexec``
--  ``libexec_root``
--  ``bin``
--  ``sbin``
--  ``toplevel``
--  ``share``
--  ``share_root``
--  ``etc``
--  ``doc``
--  ``stublibs``
--  ``man``
--  ``misc``
-
-``<files>`` is the list of files to install. Each element in the list
-must be either a literal filename or a S-expression of the form:
-
-.. code:: scheme
-
-    (<filename> as <destination>)
-
-where ``<destination>`` describe how the file will be installed. For
-instance, to install a file ``mylib.el`` as
-``emacs/site-lisp/mylib.el`` in the ``share_root`` section:
-
-.. code:: scheme
-
-    (install
-     (section share_root)
-     (files   (mylib.el as emacs/site-lisp/mylib.el)))
-
-``<optional-fields>`` are:
-
-- ``(package <name>)``. If there are no ambiguities, you can omit this field.
-  Otherwise you need it to specify which package these files are part of. The
-  package is not ambiguous when the first parent directory to contain a
-  ``<package>.opam`` file contains exactly one ``<package>.opam`` file
+Dune supports installing packages on the system, i.e. copying freshly
+built artifacts from the workspace to the system.  See the
+`installation` section for more details.
 
 Handling of the .exe extension on Windows
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

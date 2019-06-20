@@ -92,6 +92,8 @@ let wrapped_compat ~modules ~wrapped_compat =
           [ "deprecated", Module.to_dyn wrapped_compat
           ]
       | None, Some _ -> None
+      (* TODO this is wrong. The dependencies should be on the lib interface
+         whenever it exists *)
       | Some _, Some m -> Some (m, (Build.return [m]))
     )
   }

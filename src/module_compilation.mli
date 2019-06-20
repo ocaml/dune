@@ -9,12 +9,6 @@ val build_module
   -> Module.t
   -> unit
 
-(** Setup rules to build all of the modules in the compilation context. *)
-val build_modules
-  :  dep_graphs:Dep_graph.Ml_kind.t
-  -> Compilation_context.t
-  -> unit
-
 val ocamlc_i
   :  ?flags:string list
   -> dep_graphs:Dep_graph.Ml_kind.t

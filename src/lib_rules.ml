@@ -132,10 +132,10 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
       |> SC.add_rule sctx ~loc ~dir:(Compilation_context.dir cctx)
     );
     let dep_graphs =
-      Dep_graph.Ml_kind.wrapped_compat ~modules ~wrapped_compat
-    in
+      Dep_graph.Ml_kind.wrapped_compat ~modules ~wrapped_compat in
     let cctx = Compilation_context.for_wrapped_compat cctx wrapped_compat in
-    Module_compilation.build_modules cctx ~dep_graphs
+    Module.Name.Map.iter wrapped_compat
+      ~f:(Module_compilation.build_module cctx ~dep_graphs)
 
   let build_c_file (lib : Library.t) ~dir ~expander ~includes (loc, src, dst) =
     let c_flags = (SC.c_flags sctx ~dir ~expander ~flags:lib.c_flags).c in
@@ -414,7 +414,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
     in
 
     let alias_module = Lib_modules.alias_module lib_modules in
-    let modules = Lib_modules.for_compilation lib_modules in
+    let for_compilation = Lib_modules.for_compilation lib_modules in
 
     let cctx =
       let requires_compile = Lib.Compile.direct_requires compile_info in
@@ -428,7 +428,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
         ~scope
         ~dir_kind
         ~obj_dir
-        ~modules
+        ~modules:for_compilation
         ?alias_module
         ?lib_interface_module:(Lib_modules.lib_interface_module lib_modules)
         ~flags
@@ -458,7 +458,9 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
         )
     in
 
-    Module_compilation.build_modules cctx ~dep_graphs;
+    Lib_modules.modules lib_modules
+    |> Module.Name.Map.iter
+         ~f:(Module_compilation.build_module cctx ~dep_graphs);
 
     if Option.is_none lib.stdlib then begin
       Lib_modules.alias_module lib_modules
@@ -481,7 +483,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
     );
 
     Odoc.setup_library_odoc_rules sctx lib ~obj_dir ~requires:requires_compile
-      ~modules ~dep_graphs ~scope;
+      ~modules:for_compilation ~dep_graphs ~scope;
 
     let flags =
       match alias_module with

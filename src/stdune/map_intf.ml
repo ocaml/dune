@@ -95,6 +95,8 @@ module type S = sig
   val find : 'a t -> key -> 'a option
   val find_exn : 'a t -> key -> 'a
 
+  val find_key : 'a t -> f:(key -> bool) -> key option
+
   val map  : 'a t -> f:(       'a -> 'b) -> 'b t
   val mapi : 'a t -> f:(key -> 'a -> 'b) -> 'b t
 

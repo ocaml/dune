@@ -192,6 +192,19 @@ module Make(Key : Comparable.S) : S with type key = Key.t = struct
 
     let find t k = Option.value (find t k) ~default:[]
   end
+
+  exception Found of Key.t
+  let find_key t ~f =
+    match
+      iteri t ~f:(fun key _ ->
+        if f key then
+          raise_notrace (Found key)
+        else
+          ())
+    with
+    | () -> None
+    | exception (Found e) -> Some e
+
 end
 
 let to_dyn to_list f g t =

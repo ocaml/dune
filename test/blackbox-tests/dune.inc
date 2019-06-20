@@ -1551,7 +1551,6 @@
   (alias byte-code-only)
   (alias c-stubs)
   (alias check-alias)
-  (alias cinaps)
   (alias configurator)
   (alias configurator-gh1166)
   (alias contents-depends-on-glob)
@@ -1740,7 +1739,6 @@
   (alias byte-code-only)
   (alias c-stubs)
   (alias check-alias)
-  (alias cinaps)
   (alias configurator)
   (alias configurator-gh1166)
   (alias contents-depends-on-glob)
@@ -1894,7 +1892,9 @@
   (alias wrapped-false-main-module-name)
   (alias wrapped-transition)))
 
-(alias (name runtest-disabled) (deps (alias envs-and-contexts)))
+(alias
+ (name runtest-disabled)
+ (deps (alias cinaps) (alias envs-and-contexts)))
 
 (alias (name runtest-js) (deps (alias js_of_ocaml)))
 

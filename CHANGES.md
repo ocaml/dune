@@ -8,6 +8,9 @@
 - Do not put the `<package>.install` files in the source tree unless
   `-p` or `--promote-install-files` is passed on the command line (#..., @diml)
 
+- Change `implicit_transive_deps` to be false. Implicit transitive deps now must
+  be manually enabled (#2306, @rgrinberg)
+
 1.11.0 (unreleased)
 -------------------
 

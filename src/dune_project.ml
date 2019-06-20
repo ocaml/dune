@@ -514,6 +514,9 @@ let get_exn () =
 
 let filename = "dune-project"
 
+let implicit_transitive_deps_default ~(lang : Lang.Instance.t) =
+  lang.version < (2, 0)
+
 let anonymous = lazy (
   let lang = get_dune_lang () in
   let name = Name.anonymous_root in
@@ -527,6 +530,7 @@ let anonymous = lazy (
   let parsing_context, stanza_parser, extension_args =
     interpret_lang_and_extensions ~lang ~explicit_extensions:[] ~project_file
   in
+  let implicit_transitive_deps = implicit_transitive_deps_default ~lang in
   { name          = name
   ; packages      = Package.Name.Map.empty
   ; root          = Path.Source.root
@@ -538,7 +542,7 @@ let anonymous = lazy (
   ; maintainers   = []
   ; authors       = []
   ; version       = None
-  ; implicit_transitive_deps = false
+  ; implicit_transitive_deps
   ; stanza_parser
   ; project_file
   ; extension_args
@@ -678,7 +682,8 @@ in your project.")
        interpret_lang_and_extensions ~lang ~explicit_extensions ~project_file
      in
      let implicit_transitive_deps =
-       Option.value implicit_transitive_deps ~default:true
+       Option.value implicit_transitive_deps
+         ~default:(implicit_transitive_deps_default ~lang)
      in
      let allow_approx_merlin =
        Option.value ~default:false allow_approx_merlin in

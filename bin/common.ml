@@ -98,13 +98,170 @@ type config_file =
 
 let default_build_dir = "_build"
 
-let term =
-  let incompatible a b =
+(* Allow options from term1 or exclusively options from term2. If the
+   user passes options from both terms, an error is reported. *)
+let one_of term1 term2 =
+  Term.ret @@
+  let+ x, args1 = Term.with_used_args term1
+  and+ y, args2 = Term.with_used_args term2 in
+  match args1, args2 with
+  | _, [] -> `Ok x
+  | [], _ -> `Ok y
+  | arg1 :: _, arg2 :: _ ->
     `Error (true,
             sprintf
               "Cannot use %s and %s simultaneously"
-              a b)
-  in
+              arg1 arg2)
+
+module Options_implied_by_dash_p = struct
+  type t =
+    { root : string option
+    ; only_packages : string option
+    ; ignore_promoted_rules : bool
+    ; config_file : config_file
+    ; profile : string option
+    ; default_target : string
+    ; always_show_command_line : bool
+    }
+
+  let docs = copts_sect
+
+  let options =
+    let+ root =
+      Arg.(value
+           & opt (some dir) None
+           & info ["root"] ~docs ~docv:"DIR"
+               ~doc:{|Use this directory as workspace root instead of
+                      guessing it. Note that this option doesn't change
+                      the interpretation of targets given on the command
+                      line. It is only intended for scripts.|})
+    and+ only_packages =
+      Arg.(value
+           & opt (some string) None
+           & info ["only-packages"] ~docs ~docv:"PACKAGES"
+               ~doc:{|Ignore stanzas referring to a package that is not in
+                      $(b,PACKAGES). $(b,PACKAGES) is a comma-separated list
+                      of package names. Note that this has the same effect
+                      as deleting the relevant stanzas from jbuild files.
+                      It is mostly meant for releases. During development,
+                      it is likely that what you want instead is to
+                      build a particular $(b,<package>.install) target.|}
+          )
+    and+ ignore_promoted_rules =
+      Arg.(value
+           & flag
+           & info ["ignore-promoted-rules"] ~docs
+               ~doc:"Ignore rules with (mode promote),
+                     except ones with (only ...)")
+    and+ config_file =
+      let+ x =
+        one_of
+          (let+ fn =
+             Arg.(value
+                  & opt (some path) None
+                  & info ["config-file"] ~docs ~docv:"FILE"
+                      ~doc:"Load this configuration file instead of \
+                            the default one.")
+           in
+           Option.map fn ~f:(fun fn -> This (Arg.Path.path fn)))
+          (let+ x =
+             Arg.(value
+                  & flag
+                  & info ["no-config"] ~docs
+                      ~doc:"Do not load the configuration file")
+           in
+           Option.some_if x No_config)
+      in
+      Option.value x ~default:Default
+    and+ profile =
+      Term.ret @@
+      let+ dev =
+        Term.ret @@
+        let+ dev =
+          Arg.(value
+               & flag
+               & info ["dev"] ~docs
+                   ~doc:{|Same as $(b,--profile dev)|})
+        in
+        match dev, Wp.t with
+        | false, (Dune | Jbuilder) -> `Ok false
+        | true, Jbuilder -> `Ok true
+        | true, Dune ->
+          `Error
+            (true, "--dev is no longer accepted as it is now the default.")
+      and+ profile =
+        let doc =
+          "Build profile. dev if unspecified or release if -p is set." in
+        Arg.(value
+             & opt (some string) None
+             & info ["profile"] ~docs
+                 ~env:(Arg.env_var ~doc "DUNE_PROFILE")
+                 ~doc:
+                   (sprintf
+                      {|Select the build profile, for instance $(b,dev) or
+                        $(b,release). The default is $(b,%s).|}
+                      Config.default_build_profile))
+      in
+      match dev, profile with
+      | false, x    -> `Ok x
+      | true , None -> `Ok (Some "dev")
+      | true , Some _ ->
+        `Error (true,
+                "Cannot use --dev and --profile simultaneously")
+    and+ default_target =
+      let default =
+        match Wp.t with
+        | Dune     -> "@@default"
+        | Jbuilder -> "@install"
+      in
+      Arg.(value
+           & opt string default
+           & info ["default-target"] ~docs ~docv:"TARGET"
+               ~doc:{|Set the default target that when none is specified to
+                      $(b,dune build).|})
+    and+ always_show_command_line =
+      let doc =
+        "Always show the full command lines of programs executed by dune" in
+      Arg.(value
+           & flag
+           & info ["always-show-command-line"] ~docs ~doc)
+    in
+    { root
+    ; only_packages
+    ; ignore_promoted_rules
+    ; config_file
+    ; profile
+    ; default_target
+    ; always_show_command_line
+    }
+
+  let for_release = "for-release-of-packages"
+
+  let dash_p =
+    let+ pkgs =
+      Arg.(value
+           & opt (some string) None
+           & info ["p"; for_release] ~docs ~docv:"PACKAGES"
+               ~doc:{|Shorthand for $(b,--root . --only-packages PACKAGE
+                      --ignore-promoted-rules --no-config --profile release).
+                      You must use this option in your $(i,<package>.opam)
+                      files, in order to build only what's necessary when
+                      your project contains multiple packages as well as
+                      getting reproducible builds.|})
+    in
+    { root = Some "."
+    ; only_packages = pkgs
+    ; ignore_promoted_rules = true
+    ; config_file = No_config
+    ; profile = Some "release"
+    ; default_target = "@install"
+    ; always_show_command_line = true
+    }
+
+  let term = one_of options dash_p
+end
+
+let term =
   let docs = copts_sect in
   let+ concurrency =
     let arg =
@@ -138,24 +295,19 @@ let term =
          & info ["debug-backtraces"] ~docs
              ~doc:{|Always print exception backtraces.|})
   and+ display =
-    Term.ret @@
-    let+ verbose =
-      Arg.(value
-           & flag
-           & info ["verbose"] ~docs
-               ~doc:"Same as $(b,--display verbose)")
-    and+ display =
-      Arg.(value
-           & opt (some (enum Config.Display.all)) None
-           & info ["display"] ~docs ~docv:"MODE"
-               ~doc:{|Control the display mode of Dune.
-                      See $(b,dune-config\(5\)) for more details.|})
-    in
-    match verbose, display with
-    | false , None   -> `Ok None
-    | false , Some x -> `Ok (Some x)
-    | true  , None   -> `Ok (Some Config.Display.Verbose)
-    | true  , Some _ -> incompatible "--display" "--verbose"
+    one_of
+      (let+ verbose =
+         Arg.(value
+              & flag
+              & info ["verbose"] ~docs
+                  ~doc:"Same as $(b,--display verbose)")
+       in
+       Option.some_if verbose Config.Display.Verbose)
+      (Arg.(value
+            & opt (some (enum Config.Display.all)) None
+            & info ["display"] ~docs ~docv:"MODE"
+                ~doc:{|Control the display mode of Dune.
+                      See $(b,dune-config\(5\)) for more details.|}))
   and+ no_buffer =
     let doc =
       {|Do not buffer the output of commands executed by dune. By default dune
@@ -196,153 +348,15 @@ let term =
          & info ["watch"; "w"]
              ~doc:"Instead of terminating build after completion, \
                    wait continuously for file changes.")
-  and+ root,
-     only_packages,
-     ignore_promoted_rules,
-     config_file,
-     profile,
-     default_target,
-     always_show_command_line =
-    let default_target_default =
-      match Wp.t with
-      | Dune     -> "@@default"
-      | Jbuilder -> "@install"
-    in
-    let for_release = "for-release-of-packages" in
-    Term.ret @@
-    let+ root =
-      Arg.(value
-           & opt (some dir) None
-           & info ["root"] ~docs ~docv:"DIR"
-               ~doc:{|Use this directory as workspace root instead of
-                      guessing it. Note that this option doesn't change
-                      the interpretation of targets given on the command
-                      line. It is only intended for scripts.|})
-    and+ only_packages =
-      Arg.(value
-           & opt (some string) None
-           & info ["only-packages"] ~docs ~docv:"PACKAGES"
-               ~doc:{|Ignore stanzas referring to a package that is not in
-                      $(b,PACKAGES). $(b,PACKAGES) is a comma-separated list
-                      of package names. Note that this has the same effect
-                      as deleting the relevant stanzas from jbuild files.
-                      It is mostly meant for releases. During development,
-                      it is likely that what you want instead is to
-                      build a particular $(b,<package>.install) target.|}
-          )
-    and+ ignore_promoted_rules =
-      Arg.(value
-           & flag
-           & info ["ignore-promoted-rules"] ~docs
-               ~doc:"Ignore rules with (mode promote),
-                     except ones with (only ...)")
-    and+ (config_file_opt, config_file) =
-      Term.ret @@
-      let+ config_file =
-        Arg.(value
-             & opt (some path) None
-             & info ["config-file"] ~docs ~docv:"FILE"
-                 ~doc:"Load this configuration file instead of \
-                       the default one.")
-      and+ no_config =
-        Arg.(value
-             & flag
-             & info ["no-config"] ~docs
-                 ~doc:"Do not load the configuration file")
-      in
-      match config_file, no_config with
-      | None   , false -> `Ok (None, Default)
-      | Some fn, false -> `Ok (Some "--config-file",
-                               This (Arg.Path.path fn))
-      | None   , true  -> `Ok (Some "--no-config"  , No_config)
-      | Some _ , true  -> incompatible "--no-config" "--config-file"
-    and+ profile =
-      Term.ret @@
-      let+ dev =
-        Term.ret @@
-        let+ dev =
-          Arg.(value
-               & flag
-               & info ["dev"] ~docs
-                   ~doc:{|Same as $(b,--profile dev)|})
-        in
-        match dev, Wp.t with
-        | false, (Dune | Jbuilder) -> `Ok false
-        | true, Jbuilder -> `Ok true
-        | true, Dune ->
-          `Error
-            (true, "--dev is no longer accepted as it is now the default.")
-      and+ profile =
-        let doc =
-          "Build profile. dev if unspecified or release if -p is set." in
-        Arg.(value
-             & opt (some string) None
-             & info ["profile"] ~docs
-                 ~env:(Arg.env_var ~doc "DUNE_PROFILE")
-                 ~doc:
-                   (sprintf
-                      {|Select the build profile, for instance $(b,dev) or
-                        $(b,release). The default is $(b,%s).|}
-                      Config.default_build_profile))
-      in
-      match dev, profile with
-      | false, x    -> `Ok x
-      | true , None -> `Ok (Some "dev")
-      | true , Some _ ->
-        `Error (true,
-                "Cannot use --dev and --profile simultaneously")
-    and+ default_target =
-      Arg.(value
-           & opt (some string) None
-           & info ["default-target"] ~docs ~docv:"TARGET"
-               ~doc:(sprintf
-                       {|Set the default target that when none is specified to
-                         $(b,dune build). It defaults to %s.|}
-                       default_target_default))
-    and+ always_show_command_line =
-      let doc =
-        "Always show the full command lines of programs executed by dune" in
-      Arg.(value
-           & flag
-           & info ["always-show-command-line"] ~docs ~doc)
-    and+ frop =
-      Arg.(value
-           & opt (some string) None
-           & info ["p"; for_release] ~docs ~docv:"PACKAGES"
-               ~doc:{|Shorthand for $(b,--root . --only-packages PACKAGE
-                      --ignore-promoted-rules --no-config --profile release).
-                      You must use this option in your $(i,<package>.opam)
-                      files, in order to build only what's necessary when
-                      your project contains multiple packages as well as
-                      getting reproducible builds.|})
-    in
-    let fail opt = incompatible ("-p/--" ^ for_release) opt in
-    match frop, root, only_packages, ignore_promoted_rules,
-          profile, default_target, config_file_opt with
-    | Some _, Some _, _, _, _, _, _ -> fail "--root"
-    | Some _, _, Some _, _, _, _, _ -> fail "--only-packages"
-    | Some _, _, _, true  , _, _, _ -> fail "--ignore-promoted-rules"
-    | Some _, _, _, _, Some _, _, _ -> fail "--profile"
-    | Some _, _, _, _, _, Some s, _ -> fail s
-    | Some _, _, _, _, _, _, Some _ -> fail "--default-target"
-    | Some pkgs, None, None, false, None, None, None ->
-      `Ok (Some ".",
-           Some pkgs,
-           true,
-           No_config,
-           Some "release",
-           "@install",
-           true
-          )
-    | None, _, _, _, _, _, _ ->
-      `Ok (root,
-           only_packages,
-           ignore_promoted_rules,
-           config_file,
-           profile,
-           Option.value default_target ~default:default_target_default,
-           always_show_command_line
-          )
+  and+ { Options_implied_by_dash_p.
+         root
+       ; only_packages
+       ; ignore_promoted_rules
+       ; config_file
+       ; profile
+       ; default_target
+       ; always_show_command_line
+       } = Options_implied_by_dash_p.term
   and+ x =
     Arg.(value
          & opt (some string) None

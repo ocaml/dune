@@ -440,7 +440,8 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
     build_wrapped_compat_modules lib cctx ~lib_modules;
 
     let dep_graphs =
-      let dep_graphs = Ocamldep.rules cctx in
+      let modules = Compilation_context.modules cctx in
+      let dep_graphs = Ocamldep.rules cctx ~modules in
       match vimpl with
       | None -> dep_graphs
       | Some impl ->

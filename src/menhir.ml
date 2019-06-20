@@ -225,8 +225,14 @@ module Run (P : PARAMS) : sig end = struct
         ~lint:false
     in
 
+    let dep_graphs =
+      let name = Module.name mock_module in
+      let modules = Module.Name.Map.singleton name mock_module in
+      Ocamldep.rules cctx ~modules
+    in
+
     Module_compilation.ocamlc_i
-      ~dep_graphs:(Ocamldep.rules_for_auxiliary_module cctx mock_module)
+      ~dep_graphs
       cctx
       mock_module
       ~output:(inferred_mli base);

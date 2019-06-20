@@ -154,7 +154,9 @@ let rules_generic cctx ~modules =
   Ml_kind.Dict.of_func
     (fun ~ml_kind ->
        let per_module =
-         Module.Name.Map.map modules ~f:(fun m -> (m, deps_of cctx ~ml_kind m))
+         Module.Name.Map.fold modules ~init:Module.Obj_map.empty
+           ~f:(fun m acc ->
+             Module.Obj_map.add acc m (m, deps_of cctx ~ml_kind m))
        in
        Dep_graph.make ~dir:(CC.dir cctx) ~per_module)
 
@@ -176,5 +178,8 @@ let graph_of_remote_lib ~obj_dir ~modules =
   let dir = Obj_dir.dir obj_dir in
   Ml_kind.Dict.of_func (fun ~ml_kind ->
     let per_module =
-      Module.Name.Map.map modules ~f:(fun m -> (m, deps_of ~ml_kind m)) in
+      Module.Name.Map.fold modules ~init:Module.Obj_map.empty
+        ~f:(fun m acc ->
+          Module.Obj_map.add acc m (m, deps_of ~ml_kind m))
+    in
     Dep_graph.make ~dir ~per_module)

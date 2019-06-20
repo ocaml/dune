@@ -161,20 +161,21 @@ let external_dep_graph sctx ~impl_cm_kind ~impl_obj_dir ~vlib_modules =
           end)
     in
     Dep_graph.make ~dir
-      ~per_module:(Module.Name.Map.map modules ~f:(fun m ->
-        let deps =
-          if (ml_kind = Intf && not (Module.has m ~ml_kind:Intf))
-          || (ml_kind = Impl && not (Module.has m ~ml_kind:Impl))
-          then
-            Build.return []
-          else
-            let (write, read) = ocamlobjinfo m cm_kind in
-            Super_context.add_rule sctx ~dir write;
-            let open Build.O in
-            Build.memoize "ocamlobjinfo" @@
-            read >>^ deps_from_objinfo ~for_module:m
-        in
-        m, deps)))
+      ~per_module:(
+        Module.Name.Map.fold modules ~init:Module.Obj_map.empty ~f:(fun m acc ->
+          let deps =
+            if (ml_kind = Intf && not (Module.has m ~ml_kind:Intf))
+            || (ml_kind = Impl && not (Module.has m ~ml_kind:Impl))
+            then
+              Build.return []
+            else
+              let (write, read) = ocamlobjinfo m cm_kind in
+              Super_context.add_rule sctx ~dir write;
+              let open Build.O in
+              Build.memoize "ocamlobjinfo" @@
+              read >>^ deps_from_objinfo ~for_module:m
+          in
+          Module.Obj_map.add acc m (m, deps))))
 
 let impl sctx ~dir ~(lib : Dune_file.Library.t) ~scope =
   Option.map lib.implements ~f:begin fun (loc, implements) ->

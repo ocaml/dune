@@ -4,21 +4,21 @@ open Build.O
 
 type t =
   { dir        : Path.Build.t
-  ; per_module : (Module.t * (unit, Module.t list) Build.t) Module.Name.Map.t
+  ; per_module : (Module.t * (unit, Module.t list) Build.t) Module.Obj_map.t
   }
 
 let make ~dir ~per_module = { dir ; per_module }
 
 let deps_of t (m : Module.t) =
-  let name = Module.name m in
-  match Module.Name.Map.find t.per_module name with
+  match Module.Obj_map.find t.per_module m with
   | Some (_, x) -> x
   | None ->
     Code_error.raise "Ocamldep.Dep_graph.deps_of"
       [ "dir", Path.Build.to_dyn t.dir
-      ; "modules", Dyn.Encoder.(list Module.Name.to_dyn)
-                     (Module.Name.Map.keys t.per_module)
-      ; "module", Module.Name.to_dyn name
+      ; "modules", Dyn.Encoder.(list string)
+                     (Module.Obj_map.keys t.per_module
+                      |> List.map ~f:Module.obj_name)
+      ; "m", Module.to_dyn m
       ]
 
 let pp_cycle fmt cycle =
@@ -26,18 +26,17 @@ let pp_cycle fmt cycle =
     fmt (List.map cycle ~f:Module.name)
 
 let top_closed t modules =
-  Module.Name.Map.to_list t.per_module
+  Module.Obj_map.to_list t.per_module
   |> List.map ~f:(fun (unit, (_module, deps)) ->
     deps >>^ fun deps -> (unit, deps))
   |> Build.all
   >>^ fun per_module ->
-  let per_module = Module.Name.Map.of_list_exn per_module in
+  let per_module = Module.Obj_map.of_list_exn per_module in
   match
     Module.Name.Top_closure.top_closure modules
       ~key:Module.name
       ~deps:(fun m ->
-        Module.name m
-        |> Module.Name.Map.find per_module
+        Module.Obj_map.find per_module m
         |> Option.value_exn)
   with
   | Ok modules -> modules
@@ -49,7 +48,7 @@ let top_closed t modules =
 module Multi = struct
   let top_closed_multi (ts : t list) modules =
     List.concat_map ts ~f:(fun t ->
-      Module.Name.Map.to_list t.per_module
+      Module.Obj_map.to_list t.per_module
       |> List.map ~f:(fun (_name, (unit, deps)) ->
         deps >>^ fun deps -> (unit, deps)))
     |> Build.all >>^ fun per_module ->
@@ -78,24 +77,25 @@ let top_closed_implementations =
 
 let dummy (m : Module.t) =
   { dir = Path.Build.root
-  ; per_module =
-      Module.Name.Map.singleton (Module.name m) (m, (Build.return []))
+  ; per_module = Module.Obj_map.singleton m (m, (Build.return []))
   }
 
 let wrapped_compat ~modules ~wrapped_compat =
   { dir = Path.Build.root
-  ; per_module = Module.Name.Map.merge wrapped_compat modules ~f:(fun _ d m ->
-      match d, m with
-      | None, None -> assert false
-      | Some wrapped_compat, None ->
-        Code_error.raise "deprecated module needs counterpart"
-          [ "deprecated", Module.to_dyn wrapped_compat
-          ]
-      | None, Some _ -> None
-      (* TODO this is wrong. The dependencies should be on the lib interface
-         whenever it exists *)
-      | Some _, Some m -> Some (m, (Build.return [m]))
-    )
+  ; per_module =
+      Module.Name.Map.fold wrapped_compat ~init:Module.Obj_map.empty
+        ~f:(fun compat acc ->
+          let wrapped =
+            let name = Module.name compat in
+            match Module.Name.Map.find modules name with
+            | Some m -> m
+            | None ->
+              Code_error.raise "deprecated module needs counterpart"
+                [ "compat", Module.to_dyn compat ]
+          in
+          (* TODO this is wrong. The dependencies should be on the lib interface
+             whenever it exists *)
+          Module.Obj_map.add acc compat (compat, (Build.return [wrapped])))
   }
 
 module Ml_kind = struct
@@ -137,7 +137,7 @@ module Ml_kind = struct
       let impl = Ml_kind.Dict.get impl ml_kind in
       { impl with
         per_module =
-          Module.Name.Map.merge ~f:(merge_impl ~ml_kind)
+          Module.Obj_map.merge ~f:(merge_impl ~ml_kind)
             (Ml_kind.Dict.get vlib ml_kind).per_module
             impl.per_module
       })

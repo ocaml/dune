@@ -4,14 +4,14 @@ open Build.O
 
 type t =
   { dir        : Path.Build.t
-  ; per_module : (Module.t * (unit, Module.t list) Build.t) Module.Obj_map.t
+  ; per_module : ((unit, Module.t list) Build.t) Module.Obj_map.t
   }
 
 let make ~dir ~per_module = { dir ; per_module }
 
 let deps_of t (m : Module.t) =
   match Module.Obj_map.find t.per_module m with
-  | Some (_, x) -> x
+  | Some x -> x
   | None ->
     Code_error.raise "Ocamldep.Dep_graph.deps_of"
       [ "dir", Path.Build.to_dyn t.dir
@@ -27,7 +27,7 @@ let pp_cycle fmt cycle =
 
 let top_closed t modules =
   Module.Obj_map.to_list t.per_module
-  |> List.map ~f:(fun (unit, (_module, deps)) ->
+  |> List.map ~f:(fun (unit, deps) ->
     deps >>^ fun deps -> (unit, deps))
   |> Build.all
   >>^ fun per_module ->
@@ -49,7 +49,7 @@ module Multi = struct
   let top_closed_multi (ts : t list) modules =
     List.concat_map ts ~f:(fun t ->
       Module.Obj_map.to_list t.per_module
-      |> List.map ~f:(fun (_name, (unit, deps)) ->
+      |> List.map ~f:(fun (unit, deps) ->
         deps >>^ fun deps -> (unit, deps)))
     |> Build.all >>^ fun per_module ->
     let per_obj =
@@ -77,7 +77,7 @@ let top_closed_implementations =
 
 let dummy (m : Module.t) =
   { dir = Path.Build.root
-  ; per_module = Module.Obj_map.singleton m (m, (Build.return []))
+  ; per_module = Module.Obj_map.singleton m (Build.return [])
   }
 
 let wrapped_compat ~modules ~wrapped_compat =
@@ -95,7 +95,7 @@ let wrapped_compat ~modules ~wrapped_compat =
           in
           (* TODO this is wrong. The dependencies should be on the lib interface
              whenever it exists *)
-          Module.Obj_map.add acc compat (compat, (Build.return [wrapped])))
+          Module.Obj_map.add acc compat (Build.return [wrapped]))
   }
 
 module Ml_kind = struct
@@ -114,23 +114,7 @@ module Ml_kind = struct
     | None, None -> assert false
     | Some _, None -> None (* we don't care about internal vlib deps *)
     | None, Some d -> Some d
-    | Some (mv, _), Some (mi, i) ->
-      if Module.obj_name mv = Module.obj_name mi
-      && Module.kind mv = Virtual
-      && Module.kind mi = Impl_vmodule
-      then
-        match ml_kind with
-        | Impl -> Some (mi, i)
-        | Intf -> None
-      else if Module.visibility mv = Private
-           || Module.visibility mi = Private then
-        Some (mi, i)
-      else
-        Code_error.raise "merge_impl: unexpected dep graph"
-          [ "ml_kind", (Ml_kind.to_dyn ml_kind)
-          ; "mv", Module.to_dyn mv
-          ; "mi", Module.to_dyn mi
-          ]
+    | Some vlib , Some impl -> Some (Ml_kind.choose ml_kind ~impl ~intf:vlib)
 
   let merge_for_impl ~(vlib : t) ~(impl : t) =
     Ml_kind.Dict.of_func (fun ~ml_kind ->

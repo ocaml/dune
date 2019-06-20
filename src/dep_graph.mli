@@ -6,7 +6,7 @@ type t
 
 val make
   :  dir:Path.Build.t
-  -> per_module:(Module.t * (unit, Module.t list) Build.t) Module.Obj_map.t
+  -> per_module:((unit, Module.t list) Build.t) Module.Obj_map.t
   -> t
 
 val deps_of

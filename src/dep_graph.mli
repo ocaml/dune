@@ -19,12 +19,6 @@ val top_closed_implementations
   -> Module.t list
   -> (unit, Module.t list) Build.t
 
-val top_closed_multi_implementations
-  :  t list
-  -> Module.t list
-  -> (unit, Module.t list) Build.t
-
-
 module Ml_kind : sig
   type nonrec t = t Ml_kind.Dict.t
 

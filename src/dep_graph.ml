@@ -45,35 +45,11 @@ let top_closed t modules =
       (Path.Build.to_string t.dir)
       pp_cycle cycle
 
-module Multi = struct
-  let top_closed_multi (ts : t list) modules =
-    List.concat_map ts ~f:(fun t ->
-      Module.Obj_map.to_list t.per_module
-      |> List.map ~f:(fun (unit, deps) ->
-        deps >>^ fun deps -> (unit, deps)))
-    |> Build.all >>^ fun per_module ->
-    let per_obj =
-      Module.Obj_map.of_list_reduce per_module ~f:List.rev_append in
-    match Module.Obj_map.top_closure per_obj modules with
-    | Ok modules -> modules
-    | Error cycle ->
-      die "dependency cycle between modules\n   %a"
-        pp_cycle cycle
-end
-
-let make_top_closed_implementations ~name ~f ts modules =
-  Build.memoize name (
+let top_closed_implementations t modules =
+  Build.memoize "top sorted implementations"  (
     let filter_out_intf_only = List.filter ~f:(Module.has ~ml_kind:Impl) in
-    f ts (filter_out_intf_only modules)
+    top_closed t (filter_out_intf_only modules)
     >>^ filter_out_intf_only)
-
-let top_closed_multi_implementations =
-  make_top_closed_implementations
-    ~name:"top sorted multi implementations" ~f:Multi.top_closed_multi
-
-let top_closed_implementations =
-  make_top_closed_implementations
-    ~name:"top sorted implementations" ~f:top_closed
 
 let dummy (m : Module.t) =
   { dir = Path.Build.root

@@ -310,8 +310,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
 
   let setup_build_archives (lib : Dune_file.Library.t)
         ~wrapped_compat ~cctx ~(dep_graphs : Dep_graph.Ml_kind.t)
-        ~expander
-        ~vlib_dep_graphs =
+        ~expander =
     let dir = Compilation_context.dir cctx in
     let obj_dir = Compilation_context.obj_dir cctx in
     let flags = Compilation_context.flags cctx in
@@ -349,16 +348,9 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
        We append the modules at the end as no library modules depend on
        them. *)
     let top_sorted_modules =
-      match vlib_dep_graphs with
-      | None ->
-        Dep_graph.top_closed_implementations dep_graphs.impl modules
-        >>^ fun modules -> modules @ wrapped_compat
-      | Some (vlib_dep_graphs : Dep_graph.Ml_kind.t) ->
-        Dep_graph.top_closed_multi_implementations
-          [ vlib_dep_graphs.impl
-          ; dep_graphs.impl
-          ]
-          modules
+      Dep_graph.top_closed_implementations dep_graphs.impl modules
+      (* TODO this is broken for vlibs that introduce wrapped compat *)
+      >>^ fun modules -> modules @ wrapped_compat
     in
 
     let modes = Mode_conf.Set.eval lib.modes ~has_native in
@@ -446,16 +438,13 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
 
     build_wrapped_compat_modules lib cctx ~lib_modules;
 
-    let (vlib_dep_graphs, dep_graphs) =
+    let dep_graphs =
       let dep_graphs = Ocamldep.rules cctx in
       match vimpl with
-      | None ->
-        (None, dep_graphs)
+      | None -> dep_graphs
       | Some impl ->
         let vlib = Vimpl.vlib_dep_graph impl in
-        ( Some vlib
-        , Dep_graph.Ml_kind.merge_for_impl ~vlib ~impl:dep_graphs
-        )
+        Dep_graph.Ml_kind.merge_for_impl ~vlib ~impl:dep_graphs
     in
 
     Lib_modules.modules lib_modules
@@ -478,9 +467,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
 
     if not (Library.is_virtual lib) then (
       let wrapped_compat = Lib_modules.wrapped_compat lib_modules in
-      setup_build_archives lib ~wrapped_compat ~cctx ~dep_graphs
-        ~vlib_dep_graphs ~expander
-    );
+      setup_build_archives lib ~wrapped_compat ~cctx ~dep_graphs ~expander);
 
     Odoc.setup_library_odoc_rules sctx lib ~obj_dir ~requires:requires_compile
       ~modules:for_compilation ~dep_graphs ~scope;

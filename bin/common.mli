@@ -24,6 +24,7 @@ type t =
   ; watch : bool
   ; stats_trace_file : string option
   ; always_show_command_line : bool
+  ; promote_install_files : bool
   }
 
 val prefix_target : t -> string -> string

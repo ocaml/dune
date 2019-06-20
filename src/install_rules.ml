@@ -303,6 +303,7 @@ let symlink_installed_artifacts_to_build_install
     Install.Entry.set_src entry dst)
 
 let promote_install_file (ctx : Context.t) =
+  !Clflags.promote_install_files &&
   not ctx.implicit &&
   match ctx.kind with
   | Default -> true

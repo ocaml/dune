@@ -1,10 +1,6 @@
   $ dune build 2>&1 | grep -v ocamlc
-  File "fooexe.ml", line 3, characters 0-7:
-  Error (warning 3): deprecated: module Bar
-  Will be removed past 2020-20-20. Use Mylib.Bar instead.
-  File "fooexe.ml", line 4, characters 0-7:
-  Error (warning 3): deprecated: module Foo
-  Will be removed past 2020-20-20. Use Mylib.Foo instead.
-  File "fooexe.ml", line 7, characters 11-22:
-  Error (warning 3): deprecated: module Intf_only
-  Will be removed past 2020-20-20. Use Mylib.Intf_only instead.
+      ocamlopt lib/mylib.{a,cmxa} (exit 2)
+  (cd _build/default && /Users/rgrinberg/.opam/4.07.1/bin/ocamlopt.opt -w @a-4-29-40-41-42-44-45-48-58-59-60-66-40 -strict-sequence -strict-formats -short-paths -keep-locs -g -a -o lib/mylib.cmxa lib/.mylib.objs/native/mylib__.cmx lib/.mylib.objs/native/mylib__Bar.cmx lib/.mylib.objs/native/mylib__Foo.cmx lib/.mylib.objs/native/mylib.cmx lib/.mylib.objs/native/bar.cmx lib/.mylib.objs/native/foo.cmx lib/.mylib.objs/native/intf_only.cmx lib/.mylib.objs/native/bar.cmx lib/.mylib.objs/native/foo.cmx lib/.mylib.objs/native/intf_only.cmx)
+  File "_none_", line 1:
+  Error: Files lib/.mylib.objs/native/bar.cmx
+         and lib/.mylib.objs/native/bar.cmx both define a module named Bar

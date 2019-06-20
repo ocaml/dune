@@ -226,8 +226,7 @@ module Run (P : PARAMS) : sig end = struct
     in
 
     let dep_graphs =
-      let name = Module.name mock_module in
-      let modules = Module.Name.Map.singleton name mock_module in
+      let modules = Modules.singleton mock_module in
       Ocamldep.rules cctx ~modules
     in
 

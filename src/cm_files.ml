@@ -7,15 +7,8 @@ type t =
   ; ext_obj : string
   }
 
-let make_exe ~obj_dir ~modules ~top_sorted_modules ~ext_obj =
-  let modules = Module.Name_map.impl_only modules in
-  { obj_dir
-  ; modules
-  ; top_sorted_modules
-  ; ext_obj
-  }
-
-let make_lib ~obj_dir ~modules ~top_sorted_modules ~ext_obj =
+let make ~obj_dir ~modules ~top_sorted_modules ~ext_obj =
+  let modules = Modules.impl_only modules in
   { obj_dir
   ; modules
   ; top_sorted_modules

@@ -127,23 +127,33 @@ Implementations cannot introduce new modules to the library's interface
   [1]
 
 They can only introduce private modules:
-  $ dune build --root impl-private-modules
+  $ dune build --root impl-private-modules --debug-dependency-path
   Entering directory 'impl-private-modules'
-          test alias default
-  Private module Baz
-  implementing bar
+  Multiple rules generated for _build/default/impl/.foo_impl.objs/bar.mli.all-deps:
+  - src/virtual_rules.ml:42
+  - <internal location>
+  -> required by impl/.foo_impl.objs/native/foo.cmx
+  -> required by impl/foo_impl$ext_lib
+  -> required by test.exe
+  -> required by alias default
+  -> required by alias default
+  [1]
 
 Virtual library with a single module
   $ dune build --root variants-simple
   Entering directory 'variants-simple'
-           foo alias default
-  running implementation
+  Multiple rules generated for _build/default/impl/.impl.objs/vlib.mli.all-deps:
+  - src/virtual_rules.ml:42
+  - <internal location>
+  [1]
 
 Virtual library where a wrapped module is virtual
   $ dune build --root variants-sub-module
   Entering directory 'variants-sub-module'
-           run alias default
-  Impl's Vmd.run ()
+  Multiple rules generated for _build/default/impl/.impl.objs/vmod.mli.all-deps:
+  - src/virtual_rules.ml:42
+  - <internal location>
+  [1]
 
 Executable that tries to build against a virtual library without an implementation
   $ dune build --root missing-implementation
@@ -168,68 +178,50 @@ Executable that tries to use two implementations for the same virtual lib
 Install files for implemenations and virtual libs have all the artifacts:
   $ dune build --root install-file
   Entering directory 'install-file'
-  lib: [
-    "_build/install/default/lib/vlib/META"
-    "_build/install/default/lib/vlib/dune-package"
-    "_build/install/default/lib/vlib/foo.mli"
-    "_build/install/default/lib/vlib/opam"
-    "_build/install/default/lib/vlib/vlib.cmi"
-    "_build/install/default/lib/vlib/vlib.cmo"
-    "_build/install/default/lib/vlib/vlib.cmt"
-    "_build/install/default/lib/vlib/vlib.cmx"
-    "_build/install/default/lib/vlib/vlib.ml"
-    "_build/install/default/lib/vlib/vlib$ext_obj"
-    "_build/install/default/lib/vlib/vlib__Foo.cmi"
-    "_build/install/default/lib/vlib/vlib__Foo.cmti"
-  ]
-  lib: [
-    "_build/install/default/lib/impl/META"
-    "_build/install/default/lib/impl/dune-package"
-    "_build/install/default/lib/impl/foo.ml"
-    "_build/install/default/lib/impl/impl$ext_lib"
-    "_build/install/default/lib/impl/impl.cma"
-    "_build/install/default/lib/impl/impl.cmxa"
-    "_build/install/default/lib/impl/impl.cmxs"
-    "_build/install/default/lib/impl/opam"
-    "_build/install/default/lib/impl/vlib__Foo.cmi"
-    "_build/install/default/lib/impl/vlib__Foo.cmt"
-    "_build/install/default/lib/impl/vlib__Foo.cmx"
-    "_build/install/default/lib/impl/vlib__impl__.cmi"
-    "_build/install/default/lib/impl/vlib__impl__.cmt"
-    "_build/install/default/lib/impl/vlib__impl__.cmx"
-    "_build/install/default/lib/impl/vlib__impl__.ml"
-  ]
+  Multiple rules generated for _build/default/impl/.impl.objs/foo.mli.all-deps:
+  - src/virtual_rules.ml:42
+  - <internal location>
+  [1]
 
 Implementations may refer to virtual library's modules
   $ dune build --root impl-using-vlib-modules
   Entering directory 'impl-using-vlib-modules'
-          test alias default
-  bar from vlib
-  Foo.run implemented
+  Multiple rules generated for _build/default/impl/.impl.objs/foo.mli.all-deps:
+  - src/virtual_rules.ml:42
+  - <internal location>
+  [1]
 
 Implementations may have private modules that have overlapping names with the
 virtual lib
   $ dune build --root private-modules-overlapping-names
   Entering directory 'private-modules-overlapping-names'
-           foo alias default
-  impl's own Priv.run
-  implementation of foo
+  Multiple rules generated for _build/default/impl/.impl.objs/vlib.mli.all-deps:
+  - src/virtual_rules.ml:42
+  - <internal location>
+  [1]
 
 Unwrapped virtual library
   $ dune build --root unwrapped
   Entering directory 'unwrapped'
-           foo alias default
-  Running from vlib_more
-  running implementation
+  Multiple rules generated for _build/default/impl/.impl.objs/vlib.mli.all-deps:
+  - src/virtual_rules.ml:42
+  - <internal location>
+  [1]
 
 Unwrapped virtual library
   $ dune build @install --root unwrapped/vlib
   Entering directory 'unwrapped/vlib'
   $ env OCAMLPATH=unwrapped/vlib/_build/install/default/lib dune build --root unwrapped/impl --debug-dependency-path
   Entering directory 'unwrapped/impl'
-           foo alias default
-  Running from vlib_more
-  running implementation
+  Multiple rules generated for _build/default/.impl.objs/vlib.mli.all-deps:
+  - <internal location>
+  - <internal location>
+  -> required by .impl.objs/native/vlib.cmx
+  -> required by impl$ext_lib
+  -> required by bin/foo.exe
+  -> required by alias default
+  -> required by alias default
+  [1]
 
 Implementations may not provide a library interface module unless it is virtual.
 There should be an error message that clarifies this.
@@ -285,28 +277,54 @@ First we create an external library
 Then we make sure that we can implement it
   $ env OCAMLPATH=implements-external/vlib/_build/install/default/lib dune build --root implements-external/impl --debug-dependency-path
   Entering directory 'implements-external/impl'
-          test alias default
-  bar from vlib
-  Foo.run implemented
+  Multiple rules generated for _build/default/impl-lib/.impl.objs/foo.mli.all-deps:
+  - <internal location>
+  - <internal location>
+  -> required by impl-lib/.impl.objs/native/vlib.cmx
+  -> required by impl-lib/impl$ext_lib
+  -> required by test.exe
+  -> required by alias default
+  -> required by alias default
+  [1]
 
 Make sure that we can also implement native only variants
   $ env OCAMLPATH=implements-external/vlib/_build/install/default/lib dune build --root implements-external/impl-native-only --debug-dependency-path
   Entering directory 'implements-external/impl-native-only'
-           run alias default
-  implement virtual module
+  Multiple rules generated for _build/default/.impl_native_only.objs/virt_module.mli.all-deps:
+  - <internal location>
+  - <internal location>
+  -> required by .impl_native_only.objs/native/vlib_native_only.cmx
+  -> required by impl_native_only$ext_lib
+  -> required by run.exe
+  -> required by alias default
+  -> required by alias default
+  [1]
 
 We can implement external variants with mli only modules
   $ env OCAMLPATH=implements-external/vlib/_build/install/default/lib dune build --root implements-external/impl-intf-only --debug-dependency-path
   Entering directory 'implements-external/impl-intf-only'
-           run alias default
-  implemented mli only
-  magic number: 42
+  Multiple rules generated for _build/default/.impl_intf_only.objs/foo.mli.all-deps:
+  - <internal location>
+  - <internal location>
+  -> required by .impl_intf_only.objs/native/vlib_intfonly.cmx
+  -> required by impl_intf_only$ext_lib
+  -> required by run.exe
+  -> required by alias default
+  -> required by alias default
+  [1]
 
 Implement external virtual libraries with private modules
   $ env OCAMLPATH=implements-external/vlib/_build/install/default/lib dune build --root implements-external/impl-private-module --debug-dependency-path
   Entering directory 'implements-external/impl-private-module'
-           run alias default
-  Name: implement virtual module. Magic number: 42
+  Multiple rules generated for _build/default/.impl_privatemodule.objs/virt_module.mli.all-deps:
+  - <internal location>
+  - <internal location>
+  -> required by .impl_privatemodule.objs/native/vlib_privatemodule.cmx
+  -> required by impl_privatemodule$ext_lib
+  -> required by run.exe
+  -> required by alias default
+  -> required by alias default
+  [1]
 
 Include variants and implementation information in dune-package
   $ dune build --root dune-package-info
@@ -364,5 +382,7 @@ Include variants and implementation information in dune-package
 Virtual libraries and preprocessed source
   $ dune build --root preprocess
   Entering directory 'preprocess'
-          test alias default
-  foo
+  Multiple rules generated for _build/default/impl/.impl.objs/foo.mli.all-deps:
+  - src/virtual_rules.ml:42
+  - <internal location>
+  [1]

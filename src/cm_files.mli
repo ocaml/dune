@@ -6,16 +6,9 @@ open Stdune
 
 type t
 
-val make_exe
+val make
   :  obj_dir:Path.Build.t Obj_dir.t
-  -> modules:Module.Name_map.t
-  -> top_sorted_modules:(unit, Module.t list) Build.t
-  -> ext_obj:string
-  -> t
-
-val make_lib
-  :  obj_dir:Path.Build.t Obj_dir.t
-  -> modules:Module.t list
+  -> modules:Modules.t
   -> top_sorted_modules:(unit, Module.t list) Build.t
   -> ext_obj:string
   -> t

@@ -28,7 +28,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
         ~top_sorted_modules ~modules =
     let { Lib_config. ext_obj; ext_lib; _ } = ctx.lib_config in
     let cm_files =
-      Cm_files.make_lib ~obj_dir ~ext_obj ~modules ~top_sorted_modules in
+      Cm_files.make ~obj_dir ~ext_obj ~modules ~top_sorted_modules in
     Option.iter (Context.compiler ctx mode) ~f:(fun compiler ->
       let target = Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext mode) in
       let stubs_flags =
@@ -103,9 +103,9 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
     Module_compilation.build_module cctx alias_module
       ~dep_graphs:(Dep_graph.Ml_kind.dummy alias_module)
 
-  let build_wrapped_compat_modules (lib : Library.t) cctx ~lib_modules =
+  let build_wrapped_compat_modules (lib : Library.t) cctx ~dep_graphs
+        ~lib_modules =
     let wrapped_compat = Lib_modules.wrapped_compat lib_modules in
-    let modules = Lib_modules.modules lib_modules in
     let wrapped = Lib_modules.wrapped lib_modules in
     let transition_message = lazy (
       match (wrapped : Wrapped.t) with
@@ -131,9 +131,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
       >>> Build.write_file_dyn (Path.as_in_build_dir_exn source_path)
       |> SC.add_rule sctx ~loc ~dir:(Compilation_context.dir cctx)
     );
-    let dep_graphs =
-      Dep_graph.Ml_kind.wrapped_compat ~modules ~wrapped_compat in
-    let cctx = Compilation_context.for_wrapped_compat cctx wrapped_compat in
+    let cctx = Compilation_context.for_wrapped_compat cctx in
     Module.Name.Map.iter wrapped_compat
       ~f:(Module_compilation.build_module cctx ~dep_graphs)
 
@@ -316,14 +314,14 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
     let flags = Compilation_context.flags cctx in
     let modules = Compilation_context.modules cctx in
     let js_of_ocaml = lib.buildable.js_of_ocaml in
-    let vimpl = Compilation_context.vimpl cctx in
     let { Lib_config. ext_obj; has_native; natdynlink_supported; _ } =
       ctx.lib_config in
     let modules =
+      let impl_only = Modules.impl_only modules in
       match lib.stdlib with
       | Some { exit_module = Some name; _ } -> begin
-          match Module.Name.Map.find modules name with
-          | None -> modules
+          match Modules.find modules name with
+          | None -> impl_only
           | Some m ->
             (* These files needs to be alongside stdlib.cma as the
                compiler implicitly adds this module. *)
@@ -335,14 +333,10 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
                 Path.build (Obj_dir.Module.obj_file obj_dir m ~kind ~ext) in
               let dst = Path.Build.relative dir ((Module.obj_name m) ^ ext) in
               SC.add_rule sctx ~dir (Build.copy ~src ~dst));
-            Module.Name.Map.remove modules name
+            List.filter impl_only ~f:(fun m -> Module.name m <> name)
         end
-      | _ ->
-        modules
+      | _ -> impl_only
     in
-    let modules = List.rev_append
-                    (Module.Name_map.impl_only modules)
-                    (Vimpl.impl_only vimpl) in
     let wrapped_compat = Module.Name.Map.values wrapped_compat in
     (* Compatibility modules have implementations so we can just append them.
        We append the modules at the end as no library modules depend on
@@ -354,10 +348,9 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
     in
 
     let modes = Mode_conf.Set.eval lib.modes ~has_native in
-    (let modules = modules @ wrapped_compat in
-     Mode.Dict.Set.iter modes ~f:(fun mode ->
-       build_lib lib ~obj_dir ~expander ~flags ~dir ~mode ~top_sorted_modules
-         ~modules));
+    Mode.Dict.Set.iter modes ~f:(fun mode ->
+      build_lib lib ~obj_dir ~expander ~flags ~dir ~mode ~top_sorted_modules
+        ~modules:(Compilation_context.modules cctx));
     (* Build *.cma.js *)
     if modes.byte then
       SC.add_rules sctx ~dir (
@@ -408,6 +401,15 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
     let alias_module = Lib_modules.alias_module lib_modules in
     let for_compilation = Lib_modules.for_compilation lib_modules in
 
+    let modules =
+      let modules = Modules.lib lib_modules in
+      match vimpl with
+      | None -> modules
+      | Some vimpl ->
+        let vlib = Modules.lib (Vimpl.vlib_modules vimpl) in
+        Modules.impl modules ~vlib
+    in
+
     let cctx =
       let requires_compile = Lib.Compile.direct_requires compile_info in
       let requires_link    = Lib.Compile.requires_link compile_info in
@@ -420,7 +422,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
         ~scope
         ~dir_kind
         ~obj_dir
-        ~modules:for_compilation
+        ~modules
         ?alias_module
         ?lib_interface_module:(Lib_modules.lib_interface_module lib_modules)
         ~flags
@@ -437,8 +439,6 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
 
     let requires_compile = Compilation_context.requires_compile cctx in
 
-    build_wrapped_compat_modules lib cctx ~lib_modules;
-
     let dep_graphs =
       let modules = Compilation_context.modules cctx in
       let dep_graphs = Ocamldep.rules cctx ~modules in
@@ -448,6 +448,8 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
         let vlib = Vimpl.vlib_dep_graph impl in
         Dep_graph.Ml_kind.merge_for_impl ~vlib ~impl:dep_graphs
     in
+
+    build_wrapped_compat_modules lib cctx ~dep_graphs ~lib_modules;
 
     Lib_modules.modules lib_modules
     |> Module.Name.Map.iter

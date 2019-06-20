@@ -11,6 +11,6 @@ Running toplevel with variants
   $ dune exec --root variants ./tt.exe -- -init variants/init.ml | sed -E 's/[0-9]+\.[0-9]+\.[0-9]+/REDACTED/g'
   Entering directory 'variants'
   Entering directory 'variants'
-          OCaml version REDACTED
-  
-  Foo.x = 42
+  Multiple rules generated for _build/default/foo$ext_lib/.foo_a.objs/foo.mli.all-deps:
+  - src/virtual_rules.ml:42
+  - <internal location>

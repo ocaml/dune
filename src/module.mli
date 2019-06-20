@@ -140,6 +140,8 @@ module Obj_map : sig
   type module_
   include Map.S with type key = module_
 
+  val find_exn : 'a t -> module_ -> 'a
+
   val top_closure
     :  module_ list t
     -> module_ list

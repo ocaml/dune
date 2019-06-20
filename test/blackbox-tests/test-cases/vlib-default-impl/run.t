@@ -11,8 +11,10 @@ in an appropriate error message.
 Basic sample selecting implementation according to default library.
   $ dune build --root default-impl
   Entering directory 'default-impl'
-           bar alias default
-  hi from lib.default
+  Multiple rules generated for _build/default/lib.default/.lib_default.objs/vlib.mli.all-deps:
+  - src/virtual_rules.ml:42
+  - <internal location>
+  [1]
 
 Check that ambiguity is handled correctly.
   $ dune build --root dependency-cycle
@@ -56,9 +58,30 @@ Test default implementation for an external library
 First we create an external library and implementation
   $ dune build --root external/lib @install
   Entering directory 'external/lib'
+  Multiple rules generated for _build/default/impl/.vlib_impl.objs/x.mli.all-deps:
+  - src/virtual_rules.ml:42
+  - <internal location>
+  [1]
 
 Then we make sure that it works fine.
   $ env OCAMLPATH=external/lib/_build/install/default/lib dune build --root external/exe --debug-dependency-path
   Entering directory 'external/exe'
-           bar alias default
-  hey
+  File "dune", line 2, characters 7-10:
+  2 |  (name bar)
+             ^^^
+  Error: File unavailable: $TESTCASE_ROOT/external/lib/_build/install/default/lib/vlib/impl/vlib_impl$ext_lib
+  -> required by
+     $TESTCASE_ROOT/external/lib/_build/install/default/lib/vlib/impl/vlib_impl$ext_lib
+  -> required by bar.exe
+  -> required by alias default
+  -> required by alias default
+  File "dune", line 2, characters 7-10:
+  2 |  (name bar)
+             ^^^
+  Error: File unavailable: $TESTCASE_ROOT/external/lib/_build/install/default/lib/vlib/impl/vlib_impl.cmxa
+  -> required by
+     $TESTCASE_ROOT/external/lib/_build/install/default/lib/vlib/impl/vlib_impl.cmxa
+  -> required by bar.exe
+  -> required by alias default
+  -> required by alias default
+  [1]

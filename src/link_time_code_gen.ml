@@ -37,7 +37,7 @@ let generate_and_compile_module cctx ~precompiled_cmi ~name:basename ~code
       ~scope:(Compilation_context.scope cctx)
       ~dir_kind:(Compilation_context.dir_kind cctx)
       ~obj_dir
-      ~modules:(Module.Name.Map.singleton name module_)
+      ~modules:(Modules.singleton module_)
       ~requires_compile:requires
       ~requires_link:(lazy requires)
       ~flags:Ocaml_flags.empty

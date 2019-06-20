@@ -50,7 +50,7 @@ type t =
   ; expander             : Expander.t
   ; obj_dir              : Path.Build.t Obj_dir.t
   ; dir_kind             : Dune_lang.File_syntax.t
-  ; modules              : Module.t Module.Name.Map.t
+  ; modules              : Modules.t
   ; alias_module         : Module.t option
   ; lib_interface_module : Module.t option
   ; flags                : Ocaml_flags.t
@@ -148,10 +148,9 @@ let for_alias_module t =
   ; sandbox      = Some sandbox
   }
 
-let for_wrapped_compat t modules =
+let for_wrapped_compat t =
   { t with
     includes = Includes.empty
   ; alias_module = None
   ; stdlib = None
-  ; modules
   }

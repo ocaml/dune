@@ -229,13 +229,13 @@ let impl sctx ~dir ~(lib : Dune_file.Library.t) ~scope =
           (modules, foreign_objects)
       in
       let vlib_dep_graph =
-        let modules = Lib_modules.modules vlib_modules in
         match virtual_ with
         | Local ->
           let obj_dir =
             Lib.Local.of_lib_exn vlib
             |> Lib.Local.obj_dir
           in
+          let modules = Modules.lib vlib_modules in
           Ocamldep.graph_of_remote_lib ~obj_dir ~modules
         | External _ ->
           let impl_obj_dir = Dune_file.Library.obj_dir ~dir lib in

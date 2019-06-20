@@ -314,7 +314,8 @@ let wrapped_compat t =
                a source dir *)
             Path.L.relative (src_dir t)
               [ ".wrapped_compat"
-              ; Name.to_string t.source.name ^ ml_gen
+              ; String.uncapitalize
+                  (Name.to_string t.source.name) ^ ml_gen
               ]
         }
       )
@@ -340,6 +341,15 @@ module Obj_map = struct
       let compare m1 m2 = String.compare m1.obj_name m2.obj_name
       let to_dyn = to_dyn
     end)
+
+  let find_exn t m =
+    match find t m with
+    | Some m -> m
+    | None ->
+      Code_error.raise "Module.Obj_map.find: unable to find module"
+        [ "m", to_dyn m
+        ; "keys", Dyn.Set (keys t |> List.map ~f:to_dyn)
+        ]
 
   let top_closure t =
     Top_closure.String.top_closure

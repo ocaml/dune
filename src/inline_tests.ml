@@ -219,7 +219,8 @@ include Sub_system.Register_end_point(
         let src_dir = Path.build inline_test_dir in
         Module.generated ~src_dir name
       in
-      let modules = Module.Name.Map.singleton (Module.name main_module) main_module in
+
+      let modules = Modules.singleton main_module in
 
       let bindings =
         Pform.Map.singleton "library-name"

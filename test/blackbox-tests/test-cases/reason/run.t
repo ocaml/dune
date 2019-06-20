@@ -54,3 +54,7 @@
 virtual libraries in reason
   $ PATH="_build/install/default/bin:$PATH" dune build --root vlib-impl @all
   Entering directory 'vlib-impl'
+  Multiple rules generated for _build/default/impl/.ReproImpl.objs/V.re.mli.all-deps:
+  - src/virtual_rules.ml:42
+  - <internal location>
+  [1]

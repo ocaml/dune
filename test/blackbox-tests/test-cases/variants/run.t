@@ -24,22 +24,34 @@ variants results in an appropriate error message.
 Basic sample using variants and a default library.
   $ dune build --root variants-base
   Entering directory 'variants-base'
-           bar alias default
-  hello from lib.test
+  Multiple rules generated for _build/default/lib.test/.lib2_default.objs/vlib.mli.all-deps:
+  - src/virtual_rules.ml:42
+  - <internal location>
+  [1]
 
 Check that implementations are chosen according to manual specification, then
 variants and finally default implementation.
   $ dune build --root resolution-priority
   Entering directory 'resolution-priority'
-           bar alias default
-  hi from direct.ocaml
-  hi from variant.c
-  hi from test.default
+  Multiple rules generated for _build/default/direct.ocaml/.direct_ocaml.objs/direct.mli.all-deps:
+  - src/virtual_rules.ml:42
+  - <internal location>
+  Multiple rules generated for _build/default/test.default/.test_default.objs/test.mli.all-deps:
+  - src/virtual_rules.ml:42
+  - <internal location>
+  Multiple rules generated for _build/default/variant.c/.variant_c.objs/variant.mli.all-deps:
+  - src/virtual_rules.ml:42
+  - <internal location>
+  [1]
 
 Check that variant data is installed in the dune package file.
 
   $ dune build --root dune-package
   Entering directory 'dune-package'
+  Multiple rules generated for _build/default/a/.a.objs/x.mli.all-deps:
+  - src/virtual_rules.ml:42
+  - <internal location>
+  [1]
   $ cat  dune-package/_build/install/default/lib/a/dune-package
   (lang dune 1.11)
   (name a)
@@ -87,12 +99,33 @@ Test variants for an external library
 First we create an external library and implementation
   $ dune build --root external/lib @install
   Entering directory 'external/lib'
+  Multiple rules generated for _build/default/impl/.vlib_impl.objs/x.mli.all-deps:
+  - src/virtual_rules.ml:42
+  - <internal location>
+  [1]
 
 Then we make sure that it works fine.
   $ env OCAMLPATH=external/lib/_build/install/default/lib dune build --root external/exe --debug-dependency-path
   Entering directory 'external/exe'
-           bar alias default
-  hey
+  File "dune", line 2, characters 7-10:
+  2 |  (name bar)
+             ^^^
+  Error: File unavailable: $TESTCASE_ROOT/external/lib/_build/install/default/lib/vlib/impl/vlib_impl$ext_lib
+  -> required by
+     $TESTCASE_ROOT/external/lib/_build/install/default/lib/vlib/impl/vlib_impl$ext_lib
+  -> required by bar.exe
+  -> required by alias default
+  -> required by alias default
+  File "dune", line 2, characters 7-10:
+  2 |  (name bar)
+             ^^^
+  Error: File unavailable: $TESTCASE_ROOT/external/lib/_build/install/default/lib/vlib/impl/vlib_impl.cmxa
+  -> required by
+     $TESTCASE_ROOT/external/lib/_build/install/default/lib/vlib/impl/vlib_impl.cmxa
+  -> required by bar.exe
+  -> required by alias default
+  -> required by alias default
+  [1]
 
 Variant ambiguity is forbidden even if a concrete implementation is provided.
   $ dune build --root variant-with-concrete-impl
@@ -105,3 +138,7 @@ Variant ambiguity is forbidden even if a concrete implementation is provided.
 Don't fail when the same library is defined in multiple scopes.
   $ dune build --root same-lib-in-multiple-scopes
   Entering directory 'same-lib-in-multiple-scopes'
+  Multiple rules generated for _build/default/test/unix/.test_unix.objs/foo.mli.all-deps:
+  - src/virtual_rules.ml:42
+  - <internal location>
+  [1]

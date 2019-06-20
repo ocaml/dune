@@ -12,7 +12,7 @@ let parse_module_names ~(unit : Module.t) ~modules words =
     if m = Module.name unit then
       None
     else
-      Module.Name.Map.find modules m)
+      Modules.find_dep modules m)
 
 let parse_deps_exn ~file lines =
   let invalid () =
@@ -37,11 +37,7 @@ let interpret_deps cctx ~unit deps =
   let alias_module         = CC.alias_module         cctx in
   let lib_interface_module = CC.lib_interface_module cctx in
   let modules              = CC.modules              cctx in
-  let vimpl                = CC.vimpl                cctx in
-  let deps =
-    let modules = Vimpl.add_vlib_modules vimpl modules in
-    parse_module_names ~unit ~modules deps
-  in
+  let deps = parse_module_names ~unit ~modules deps in
   let stdlib = CC.stdlib cctx in
   let deps =
     match stdlib, CC.lib_interface_module cctx with
@@ -88,11 +84,20 @@ let interpret_deps cctx ~unit deps =
           m :: deps
 
 let deps_of cctx ~ml_kind unit =
-  let sctx = CC.super_context cctx in
-  if Module.kind unit = Alias then
-    Build.return []
-  else
-    match Module.source unit ~ml_kind with
+  let kind = Module.kind unit in
+  let modules = Compilation_context.modules cctx in
+  match kind with
+  | Alias -> Build.return []
+  | Wrapped_compat ->
+    begin match Modules.lib_interface modules with
+    | Some m -> m
+    | None -> Modules.compat_for_exn modules unit
+    end
+    |> List.singleton
+    |> Build.return
+  | _ ->
+    let sctx = CC.super_context cctx in
+    begin match Module.source unit ~ml_kind with
     | None -> Build.return []
     | Some source ->
       let obj_dir = Compilation_context.obj_dir cctx in
@@ -100,10 +105,7 @@ let deps_of cctx ~ml_kind unit =
       let dep = Obj_dir.Module.dep obj_dir in
       let context = SC.context sctx in
       let vimpl = Compilation_context.vimpl cctx in
-      let parse_module_names =
-        let modules = Vimpl.add_vlib_modules vimpl (CC.modules cctx) in
-        parse_module_names ~modules
-      in
+      let parse_module_names = parse_module_names ~modules in
       let all_deps_file = dep source ~kind:Transitive in
       let ocamldep_output = dep source ~kind:Immediate in
       SC.add_rule sctx ~dir
@@ -149,23 +151,24 @@ let deps_of cctx ~ml_kind unit =
       let all_deps_file = Path.build all_deps_file in
       Build.memoize (Path.to_string all_deps_file)
         (Build.lines_of all_deps_file >>^ parse_module_names ~unit)
+    end
 
 let rules cctx ~modules =
-  Ml_kind.Dict.of_func
-    (fun ~ml_kind ->
-       let per_module =
-         Module.Name.Map.fold modules ~init:Module.Obj_map.empty
-           ~f:(fun m acc ->
-             Module.Obj_map.add acc m (deps_of cctx ~ml_kind m))
-       in
-       Dep_graph.make ~dir:(CC.dir cctx) ~per_module)
+  let dir = CC.dir cctx in
+  Ml_kind.Dict.of_func (fun ~ml_kind ->
+    let per_module =
+      Modules.fold modules ~init:Module.Obj_map.empty ~f:(fun m acc ->
+        Module.Obj_map.add acc m (deps_of cctx ~ml_kind m))
+    in
+    Dep_graph.make ~dir ~per_module)
 
 let graph_of_remote_lib ~obj_dir ~modules =
   let deps_of unit ~ml_kind =
     match Module.source unit ~ml_kind with
     | None -> Build.return []
     | Some source ->
-      let all_deps_file = Obj_dir.Module.dep obj_dir source ~kind:Transitive in
+      let all_deps_file =
+        Obj_dir.Module.dep obj_dir source ~kind:Transitive in
       Build.memoize (Path.Build.to_string all_deps_file)
         (Build.lines_of (Path.build all_deps_file)
          >>^ parse_module_names ~unit ~modules)
@@ -173,8 +176,7 @@ let graph_of_remote_lib ~obj_dir ~modules =
   let dir = Obj_dir.dir obj_dir in
   Ml_kind.Dict.of_func (fun ~ml_kind ->
     let per_module =
-      Module.Name.Map.fold modules ~init:Module.Obj_map.empty
-        ~f:(fun m acc ->
-          Module.Obj_map.add acc m (deps_of ~ml_kind m))
+      Modules.fold modules ~init:Module.Obj_map.empty ~f:(fun m acc ->
+        Module.Obj_map.add acc m (deps_of ~ml_kind m))
     in
     Dep_graph.make ~dir ~per_module)

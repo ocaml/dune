@@ -31,12 +31,13 @@ let executables_rules ~sctx ~dir ~dir_kind ~expander
   let modules =
     Module.Name.Map.map modules ~f:(fun m ->
       Preprocessing.pp_module_as pp (Module.name m) m)
+    |> Modules.exe
   in
 
   let programs =
     List.map exes.names ~f:(fun (loc, name) ->
       let mod_name = Module.Name.of_string name in
-      match Module.Name.Map.find modules mod_name with
+      match Modules.find modules mod_name with
       | Some m ->
         if not (Module.has m ~ml_kind:Impl) then
           Errors.fail loc "Module %a has no implementation."

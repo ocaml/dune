@@ -3,3 +3,4 @@
 type t = Dune | Jbuilder
 
 val t : t
+val dune2 : bool

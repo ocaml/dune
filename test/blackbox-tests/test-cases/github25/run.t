@@ -21,6 +21,6 @@ We need ocamlfind to run this test
   Error: Library "une-lib-qui-nexiste-pas" not found.
   -> required by library "plop.ca-marche-pas" in
      .../plop
-  Hint: try: dune external-lib-deps --missing --display short --only pas-de-bol
+  Hint: try: dune external-lib-deps --missing --only pas-de-bol --display short
     @install
       ocamldep root/.pas_de_bol.objs/b.ml.d

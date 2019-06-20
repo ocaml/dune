@@ -58,7 +58,7 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
         Obj_dir.Module.cm_public_file_unsafe vlib_obj_dir src ~kind:Cmi in
       copy_to_obj_dir ~src ~dst
     end;
-    if Module.has_impl src then begin
+    if Module.has src ~ml_kind:Impl then begin
       if modes.byte then
         copy_obj_file src Cmo;
       if modes.native then begin
@@ -77,8 +77,8 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
       let vlib_obj_dir = Lib.Local.obj_dir vlib in
       fun m ->
         if Module.visibility m = Public then
-          List.iter [Intf; Impl] ~f:(fun kind ->
-            Module.source m kind
+          List.iter [Intf; Impl] ~f:(fun ml_kind ->
+            Module.source m ~ml_kind
             |> Option.iter ~f:(fun f ->
               let kind = Obj_dir.Module.Dep.Transitive in
               let src =
@@ -91,10 +91,10 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
          remote libraries, we just use ocamlobjinfo *)
       let vlib_dep_graph = Vimpl.vlib_dep_graph vimpl in
       fun m ->
-        List.iter [Intf; Impl] ~f:(fun kind ->
-          let dep_graph = Ml_kind.Dict.get vlib_dep_graph kind in
+        List.iter [Intf; Impl] ~f:(fun ml_kind ->
+          let dep_graph = Ml_kind.Dict.get vlib_dep_graph ml_kind in
           let deps = Dep_graph.deps_of dep_graph m in
-          Module.source m kind |> Option.iter ~f:(fun source ->
+          Module.source m ~ml_kind |> Option.iter ~f:(fun source ->
             let open Build.O in
             deps >>^ (fun modules ->
               modules
@@ -110,69 +110,8 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
     ~f:(fun m -> copy_objs m; copy_all_deps m)
 
 
-let module_list ms =
-  List.map ms ~f:(fun m -> sprintf "- %s" (Module.Name.to_string m))
-  |> String.concat ~sep:"\n"
-
-let check_module_fields ~(lib : Dune_file.Library.t) ~virtual_modules
-      ~modules ~implements =
-  let new_public_modules =
-    Module.Name.Map.foldi modules ~init:[] ~f:(fun name m acc ->
-      if Module.visibility m = Public
-      && not (Module.Name.Map.mem virtual_modules name) then
-        name :: acc
-      else
-        acc)
-  in
-  if new_public_modules <> [] then begin
-    Errors.fail lib.buildable.loc
-      "The following modules aren't part of the virtual library's interface:\
-       \n%s\n\
-       They must be marked as private using the (private_modules ..) field"
-      (module_list new_public_modules)
-  end;
-  let (missing_modules, impl_modules_with_intf, private_virtual_modules) =
-    Module.Name.Map.foldi virtual_modules ~init:([], [], [])
-      ~f:(fun m _ (mms, ims, pvms) ->
-        match Module.Name.Map.find modules m with
-        | None -> (m :: mms, ims, pvms)
-        | Some m ->
-          let ims =
-            if Module.has_intf m then
-              Module.name m :: ims
-            else
-              ims
-          in
-          let pvms =
-            match Module.visibility m with
-            | Public -> pvms
-            | Private -> Module.name m :: pvms
-          in
-          (mms, ims, pvms))
-  in
-  if private_virtual_modules <> [] then begin
-    (* The loc here will never be none as we've some private modules *)
-    Errors.fail_opt (Option.bind lib.private_modules ~f:Ordered_set_lang.loc)
-      "These private modules cannot be private:\n%s"
-      (module_list private_virtual_modules)
-  end;
-  if missing_modules <> [] then begin
-    Errors.fail lib.buildable.loc
-      "Library %a cannot implement %a because the following \
-       modules lack an implementation:\n%s"
-      Lib_name.Local.pp (snd lib.name)
-      Lib_name.pp implements
-      (module_list missing_modules)
-  end;
-  if impl_modules_with_intf <> [] then begin
-    Errors.fail lib.buildable.loc
-      "The following modules cannot have .mli files as they implement \
-       virtual modules:\n%s"
-      (module_list impl_modules_with_intf)
-  end
-
 let external_dep_graph sctx ~impl_cm_kind ~impl_obj_dir ~vlib_modules =
-  let wrapped = Lib_modules.is_wrapped vlib_modules in
+  let wrapped = Wrapped.to_bool (Lib_modules.wrapped vlib_modules) in
   let modules = Lib_modules.modules vlib_modules in
   let dir = Obj_dir.dir impl_obj_dir in
   let ocamlobjinfo =
@@ -222,22 +161,23 @@ let external_dep_graph sctx ~impl_cm_kind ~impl_obj_dir ~vlib_modules =
           end)
     in
     Dep_graph.make ~dir
-      ~per_module:(Module.Name.Map.map modules ~f:(fun m ->
-        let deps =
-          if (ml_kind = Intf && not (Module.has_intf m))
-          || (ml_kind = Impl && not (Module.has_impl m))
-          then
-            Build.return []
-          else
-            let (write, read) = ocamlobjinfo m cm_kind in
-            Super_context.add_rule sctx ~dir write;
-            let open Build.O in
-            Build.memoize "ocamlobjinfo" @@
-            read >>^ deps_from_objinfo ~for_module:m
-        in
-        m, deps)))
+      ~per_module:(
+        Module.Name.Map.fold modules ~init:Module.Obj_map.empty ~f:(fun m acc ->
+          let deps =
+            if (ml_kind = Intf && not (Module.has m ~ml_kind:Intf))
+            || (ml_kind = Impl && not (Module.has m ~ml_kind:Impl))
+            then
+              Build.return []
+            else
+              let (write, read) = ocamlobjinfo m cm_kind in
+              Super_context.add_rule sctx ~dir write;
+              let open Build.O in
+              Build.memoize "ocamlobjinfo" @@
+              read >>^ deps_from_objinfo ~for_module:m
+          in
+          Module.Obj_map.add acc m deps)))
 
-let impl sctx ~dir ~(lib : Dune_file.Library.t) ~scope ~modules =
+let impl sctx ~dir ~(lib : Dune_file.Library.t) ~scope =
   Option.map lib.implements ~f:begin fun (loc, implements) ->
     match Lib.DB.find (Scope.libs scope) implements with
     | None ->
@@ -267,7 +207,7 @@ let impl sctx ~dir ~(lib : Dune_file.Library.t) ~scope ~modules =
           let dir_contents =
             let info = Lib.Local.info vlib in
             let dir = Lib_info.src_dir info in
-            Dir_contents.get_without_rules sctx ~dir
+            Dir_contents.get sctx ~dir
           in
           let modules =
             let pp_spec =
@@ -288,8 +228,6 @@ let impl sctx ~dir ~(lib : Dune_file.Library.t) ~scope ~modules =
           in
           (modules, foreign_objects)
       in
-      (let virtual_modules = Lib_modules.virtual_modules vlib_modules in
-       check_module_fields ~lib ~virtual_modules ~modules ~implements);
       let vlib_dep_graph =
         let modules = Lib_modules.modules vlib_modules in
         match virtual_ with

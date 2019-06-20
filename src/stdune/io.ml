@@ -1,4 +1,4 @@
-module P = Pervasives
+module P = Pervasives [@warning "-3"]
 
 let close_in  = close_in
 let close_out = close_out

@@ -50,6 +50,11 @@ module User_error = User_error
 module User_message = User_message
 module User_warning = User_warning
 
+(* Pervasives is deprecated in 4.08 in favor of Stdlib, however we are
+   currently compatible with OCaml >= 4.02 so for now we simply
+   disable the deprecation warning. *)
+module Pervasives = Pervasives [@@warning "-3"]
+
 external reraise : exn -> _ = "%reraise"
 
 let compare a b = Ordering.of_int (compare a b)

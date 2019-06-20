@@ -62,6 +62,8 @@ type t =
   ; opaque               : bool
   ; stdlib               : Dune_file.Library.Stdlib.t option
   ; js_of_ocaml          : Dune_file.Js_of_ocaml.t option
+  ; dynlink              : bool
+  ; sandbox              : bool option
   ; vimpl                : Vimpl.t option
   }
 
@@ -83,6 +85,8 @@ let no_keep_locs         t = t.no_keep_locs
 let opaque               t = t.opaque
 let stdlib               t = t.stdlib
 let js_of_ocaml          t = t.js_of_ocaml
+let dynlink              t = t.dynlink
+let sandbox              t = t.sandbox
 let vimpl                t = t.vimpl
 
 let context              t = Super_context.context t.super_context
@@ -93,7 +97,7 @@ let create ~super_context ~scope ~expander ~obj_dir
       ~modules ?alias_module ?lib_interface_module ~flags
       ~requires_compile ~requires_link
       ?(preprocessing=Preprocessing.dummy) ?(no_keep_locs=false)
-      ~opaque ?stdlib ?js_of_ocaml () =
+      ~opaque ?stdlib ?js_of_ocaml ~dynlink ?sandbox () =
   let requires_compile =
     if Dune_project.implicit_transitive_deps (Scope.project scope) then
       Lazy.force requires_link
@@ -118,10 +122,19 @@ let create ~super_context ~scope ~expander ~obj_dir
   ; stdlib
   ; js_of_ocaml
   ; vimpl
+  ; dynlink
+  ; sandbox
   }
 
 let for_alias_module t =
   let flags = Ocaml_flags.default ~profile:(SC.profile t.super_context) in
+  let sandbox =
+    let ctx = Super_context.context t.super_context in
+    (* If the compiler reads the cmi for module alias even with [-w -49
+    -no-alias-deps], we must sandbox the build of the alias module since the
+    modules it references are built after. *)
+    Ocaml_version.always_reads_alias_cmi ctx.version
+  in
   { t with
     flags =
       Ocaml_flags.append_common flags
@@ -129,6 +142,7 @@ let for_alias_module t =
   ; includes     = Includes.empty
   ; alias_module = None
   ; stdlib       = None
+  ; sandbox      = Some sandbox
   }
 
 let for_wrapped_compat t modules =

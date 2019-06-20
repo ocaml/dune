@@ -3,12 +3,13 @@
 open! Stdune
 
 type 'rules t =
-  (** [Empty] is a scheme that has no rules *)
   | Empty
+  (** [Empty] is a scheme that has no rules *)
 
-  (** [Union (a, b)] produces all the rules produced by a and b *)
   | Union of 'rules t * 'rules t
+  (** [Union (a, b)] produces all the rules produced by a and b *)
 
+  | Approximation of Path.Build.w Dir_set.t * 'rules t
   (** [Approximation (dirs, x)] produces the same rules as [x] in [dirs] and
       produces no rules outside of [dirs].
 
@@ -16,19 +17,18 @@ type 'rules t =
       This error is not always going to be detected, especially if it's hidden
       by an occurrence of [Thunk]. If the error is undetected, the violating
       rules are just silently ignored. *)
-  | Approximation of Path.Build.w Dir_set.t * 'rules t
 
+  | Finite of 'rules Path.Build.Map.t
   (** [Finite rules] just produces a fixed set of rules known in advance.
       The keys in the map are the directory paths. *)
-  | Finite of 'rules Path.Build.Map.t
 
+  | Thunk of (unit -> 'rules t)
   (** [Thunk f] is a "lazy" collection of rules. This is normally used with
       [Approximation (dirs, Thunk f)] such that the work of [f] can be delayed
       (or avoided entirely) until (or unless) the rules for [dirs] become
       necessary.
 
       The thunk will be called at most once per [evaluate]. *)
-  | Thunk of (unit -> 'rules t)
 
 module Evaluated : sig
   type 'a t

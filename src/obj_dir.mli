@@ -59,9 +59,6 @@ val make_lib
   -> Lib_name.Local.t
   -> Path.Build.t t
 
-(** Create the object directory for a set of executables. [name] is
-    name of one of the executable in set. It is included in the dot
-    subdirectory name. *)
 (** Create the object directory for an external library that has no
    private directory for private modules *)
 val make_external_no_private : dir:Path.t -> Path.t t
@@ -95,7 +92,7 @@ module Module : sig
 
   val cm_file        : 'path t -> Module.t -> kind:Cm_kind.t -> 'path option
   val cm_public_file : 'path t -> Module.t -> kind:Cm_kind.t -> 'path option
-  val cmt_file       : 'path t -> Module.t -> Ml_kind.t -> 'path option
+  val cmt_file       : 'path t -> Module.t -> ml_kind:Ml_kind.t -> 'path option
   val obj_file       : 'path t -> Module.t -> kind:Cm_kind.t -> ext:string -> 'path
 
   (** Same as [cm_file] but doesn't raise if [cm_kind] is [Cmo] or [Cmx] and the

@@ -92,7 +92,7 @@ let deps_of cctx ~ml_kind unit =
   if Module.kind unit = Alias then
     Build.return []
   else
-    match Module.source unit ml_kind with
+    match Module.source unit ~ml_kind with
     | None -> Build.return []
     | Some source ->
       let obj_dir = Compilation_context.obj_dir cctx in
@@ -123,9 +123,9 @@ let deps_of cctx ~ml_kind unit =
             if Module.kind m = Alias then
               None
             else
-              match Module.source m Ml_kind.Intf with
+              match Module.source m ~ml_kind:Intf with
               | Some _ as x -> x
-              | None -> Module.source m Ml_kind.Impl
+              | None -> Module.source m ~ml_kind:Impl
           in
           let module_file_ =
             match source m with
@@ -154,7 +154,9 @@ let rules_generic cctx ~modules =
   Ml_kind.Dict.of_func
     (fun ~ml_kind ->
        let per_module =
-         Module.Name.Map.map modules ~f:(fun m -> (m, deps_of cctx ~ml_kind m))
+         Module.Name.Map.fold modules ~init:Module.Obj_map.empty
+           ~f:(fun m acc ->
+             Module.Obj_map.add acc m (deps_of cctx ~ml_kind m))
        in
        Dep_graph.make ~dir:(CC.dir cctx) ~per_module)
 
@@ -165,7 +167,7 @@ let rules_for_auxiliary_module cctx (m : Module.t) =
 
 let graph_of_remote_lib ~obj_dir ~modules =
   let deps_of unit ~ml_kind =
-    match Module.source unit ml_kind with
+    match Module.source unit ~ml_kind with
     | None -> Build.return []
     | Some source ->
       let all_deps_file = Obj_dir.Module.dep obj_dir source ~kind:Transitive in
@@ -176,5 +178,8 @@ let graph_of_remote_lib ~obj_dir ~modules =
   let dir = Obj_dir.dir obj_dir in
   Ml_kind.Dict.of_func (fun ~ml_kind ->
     let per_module =
-      Module.Name.Map.map modules ~f:(fun m -> (m, deps_of ~ml_kind m)) in
+      Module.Name.Map.fold modules ~init:Module.Obj_map.empty
+        ~f:(fun m acc ->
+          Module.Obj_map.add acc m (deps_of ~ml_kind m))
+    in
     Dep_graph.make ~dir ~per_module)

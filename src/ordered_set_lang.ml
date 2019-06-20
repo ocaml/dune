@@ -218,12 +218,12 @@ module Make_loc(Key : Key)(Value : Value with type key = Key.t) = struct
   let eval t ~parse ~standard =
     No_loc.eval t
       ~parse:(loc_parse parse)
-      ~standard:(List.map standard ~f:(fun x -> (Loc.none, x)))
+      ~standard
 
   let eval_unordered t ~parse ~standard =
     No_loc.eval_unordered t
       ~parse:(loc_parse parse)
-      ~standard:(Key.Map.map standard ~f:(fun x -> (Loc.none, x)))
+      ~standard
 end
 
 let standard =

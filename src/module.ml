@@ -108,22 +108,18 @@ module Kind = struct
     | Virtual
     | Impl
     | Alias
+    | Impl_vmodule
 
   let to_string = function
     | Intf_only -> "intf_only"
     | Virtual -> "virtual"
     | Impl -> "impl"
     | Alias -> "alias"
+    | Impl_vmodule -> "impl_vmodule"
 
   let to_dyn t = Dyn.Encoder.string (to_string t)
 
-  let encode =
-    let open Dune_lang.Encoder in
-    function
-    | Intf_only -> string "intf_only"
-    | Virtual -> string "virtual"
-    | Impl -> string "impl"
-    | Alias -> string "alias"
+  let encode t = Dune_lang.Encoder.string (to_string t)
 
   let decode =
     let open Stanza.Decoder in
@@ -132,10 +128,12 @@ module Kind = struct
       ; "virtual", Virtual
       ; "impl", Impl
       ; "alias", Alias
+      ; "impl_vmodule", Impl_vmodule
       ]
 
   let has_impl = function
     | Alias
+    | Impl_vmodule
     | Impl -> true
     | Intf_only
     | Virtual -> false
@@ -169,7 +167,9 @@ module Source = struct
     ; files
     }
 
-  let has_impl t = Option.is_some t.files.impl
+  let has t ~ml_kind =
+    Ml_kind.Dict.get t.files ml_kind
+    |> Option.is_some
 
   let name t = t.name
 
@@ -198,15 +198,24 @@ type t =
 let name t = t.source.name
 let kind t = t.kind
 let pp_flags t = t.pp
-let intf t = t.source.files.intf
-let impl t = t.source.files.impl
 
 let of_source ?obj_name ~visibility ~(kind : Kind.t)
       (source : Source.t) =
+  begin match kind, visibility with
+  | (Alias | Impl_vmodule | Virtual), Visibility.Public
+  | (Impl | Intf_only), _ -> ()
+  | _, _ ->
+    Code_error.raise "Module.of_source: invalid kind, visibility combination"
+      [ "name", Name.to_dyn source.name
+      ; "kind", Kind.to_dyn kind
+      ; "visibility", Visibility.to_dyn visibility
+      ]
+  end;
   begin match kind, source.files.impl, source.files.intf with
-  | Virtual, Some _, _
-  | Impl, None, _
-  | Intf_only, Some _, _ ->
+  | (Alias | Impl_vmodule | Impl), None, _
+  | (Alias | Impl_vmodule), Some _, Some _
+  | (Intf_only | Virtual), Some _, _
+  | (Intf_only | Virtual), _, None ->
     let open Dyn.Encoder in
     Code_error.raise "Module.make: invalid kind, impl, intf combination"
       [ "name", Name.to_dyn source.name
@@ -233,28 +242,21 @@ let of_source ?obj_name ~visibility ~(kind : Kind.t)
   ; kind
   }
 
-let make ?impl ?intf ?obj_name ~visibility ~kind name =
-  let source = Source.make ?impl ?intf name in
-  of_source ?obj_name ~visibility ~kind source
-
 let real_unit_name t = Name.of_string (Filename.basename t.obj_name)
 
-let has_impl t = Kind.has_impl t.kind
-let has_intf t = Option.is_some t.source.files.intf
+let has t ~ml_kind =
+  match (ml_kind : Ml_kind.t) with
+  | Impl -> Kind.has_impl t.kind
+  | Intf -> Option.is_some t.source.files.intf
 
-let impl_only t = has_impl t && not (has_intf t)
-let intf_only t = has_intf t && not (has_impl t)
+let source t ~(ml_kind : Ml_kind.t) =
+  Ml_kind.Dict.get t.source.files ml_kind
 
-let source t (kind : Ml_kind.t) =
-  Ml_kind.Dict.get t.source.files kind
-
-let file t (kind : Ml_kind.t) =
-  source t kind
+let file t ~(ml_kind : Ml_kind.t) =
+  source t ~ml_kind
   |> Option.map ~f:File.path
 
 let obj_name t = t.obj_name
-
-let cm_source t kind = file t (Cm_kind.source kind)
 
 let odoc_file t ~doc_dir =
   let base =
@@ -318,27 +320,6 @@ let wrapped_compat t =
   in
   { t with source }
 
-module Name_map = struct
-  type nonrec t = t Name.Map.t
-
-  let impl_only =
-    Name.Map.fold ~init:[] ~f:(fun m acc ->
-      if has_impl m then
-        m :: acc
-      else
-        acc)
-
-  let of_list_exn modules =
-    List.map modules ~f:(fun m -> (name m, m))
-    |> Name.Map.of_list_exn
-
-  let add t module_ =
-    Name.Map.add t (name module_) module_
-
-  let pp fmt t =
-    Fmt.ocaml_list Name.pp fmt (Name.Map.keys t)
-end
-
 let visibility t = t.visibility
 
 let sources t =
@@ -372,13 +353,13 @@ let encode
        ; kind
        } as t) =
   let open Dune_lang.Encoder in
-  let has_impl = has_impl t in
+  let has_impl = has t ~ml_kind:Impl in
 
   let kind =
     match kind with
     | Kind.Impl when has_impl -> None
     | Intf_only when not has_impl -> None
-    | Alias | Impl | Virtual | Intf_only -> Some kind
+    | Impl_vmodule | Alias | Impl | Virtual | Intf_only -> Some kind
   in
   record_fields
     [ field "name" Name.encode name
@@ -386,7 +367,7 @@ let encode
     ; field "visibility" Visibility.encode visibility
     ; field_o "kind" Kind.encode kind
     ; field_b "impl" has_impl
-    ; field_b "intf" (has_intf t)
+    ; field_b "intf" (has t ~ml_kind:Intf)
     ]
 
 let decode ~src_dir =
@@ -413,7 +394,8 @@ let decode ~src_dir =
     in
     let intf = file intf Intf in
     let impl = file impl Impl in
-    make ~obj_name ~visibility ?impl ?intf ~kind name
+    let source = Source.make ?impl ?intf name in
+    of_source ~obj_name ~visibility ~kind source
   )
 
 let pped =
@@ -453,14 +435,37 @@ let set_src_dir t ~src_dir =
 
 let generated ~src_dir name =
   let basename = String.uncapitalize (Name.to_string name) in
-  let impl =
-    File.make OCaml (Path.relative src_dir (basename ^ ml_gen)) in
-  make name
+  let source =
+    let impl =
+      File.make OCaml (Path.relative src_dir (basename ^ ml_gen)) in
+    Source.make ~impl name in
+  of_source
     ~visibility:Public
     ~kind:Impl
-    ~impl
     ~obj_name:basename
+    source
 
 let generated_alias ~src_dir name =
   let t = generated ~src_dir name in
   { t with kind = Alias }
+
+module Name_map = struct
+  type nonrec t = t Name.Map.t
+
+  let impl_only =
+    Name.Map.fold ~init:[] ~f:(fun m acc ->
+      if has m ~ml_kind:Impl then
+        m :: acc
+      else
+        acc)
+
+  let of_list_exn modules =
+    List.map modules ~f:(fun m -> (name m, m))
+    |> Name.Map.of_list_exn
+
+  let add t module_ =
+    Name.Map.add t (name module_) module_
+
+  let pp fmt t =
+    Fmt.ocaml_list Name.pp fmt (Name.Map.keys t)
+end

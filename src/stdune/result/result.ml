@@ -1,7 +1,7 @@
 include struct
   [@@@warning "-33"]
   open Result_compat
-  open Pervasives
+  open Pervasives [@@warning "-3"]
 
   type ('a, 'error) t = ('a, 'error) result =
     | Ok    of 'a

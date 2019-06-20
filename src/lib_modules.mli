@@ -57,12 +57,6 @@ val encode : t -> Dune_lang.t list
 val decode
   : implements:bool -> src_dir:Path.t -> t Dune_lang.Decoder.t
 
-val is_wrapped : t -> bool
-
 val wrapped : t -> Wrapped.t
-
-(** Returns true if the collection of modules represented here needs an alias
-    module. I.e. it's wrapped and has more than one module. *)
-val needs_alias_module : t -> bool
 
 val version_installed : t -> install_dir:Path.t -> t

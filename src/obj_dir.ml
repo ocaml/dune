@@ -308,7 +308,7 @@ module Module = struct
     obj_file t m ~kind ~ext
 
   let cm_file t m ~(kind : Cm_kind.t) =
-    let has_impl = Module.has_impl m in
+    let has_impl = Module.has m ~ml_kind:Impl in
     match kind with
     | (Cmx | Cmo) when not has_impl -> None
     | _ -> Some (cm_file_unsafe t m ~kind)
@@ -321,7 +321,7 @@ module Module = struct
 
   let cm_public_file (type path) (t : path t) m ~(kind : Cm_kind.t) : path option =
     let is_private = Module.visibility m = Private in
-    let has_impl = Module.has_impl m in
+    let has_impl = Module.has m ~ml_kind:Impl in
     match kind with
     | (Cmx | Cmo) when not has_impl -> None
     |  Cmi when is_private -> None
@@ -332,14 +332,14 @@ module Module = struct
     | Impl -> ".cmt"
     | Intf -> ".cmti"
 
-  let cmt_file t m (kind : Ml_kind.t) =
-    let file = Module.file m kind in
-    let ext = cmt_ext kind in
+  let cmt_file t m ~(ml_kind : Ml_kind.t) =
+    let file = Module.file m ~ml_kind in
+    let ext = cmt_ext ml_kind in
     Option.map file ~f:(fun _ -> obj_file t m ~kind:Cmi ~ext)
 
   let cmti_file t m =
     let ext = cmt_ext (
-      match Module.file m Intf with
+      match Module.file m ~ml_kind:Intf with
       | None -> Impl
       | Some _ -> Intf
     ) in
@@ -364,7 +364,7 @@ module Module = struct
   module L = struct
     let o_files t modules ~ext_obj =
       List.filter_map modules ~f:(fun m ->
-        if Module.has_impl m then
+        if Module.has m ~ml_kind:Impl then
           Some (path_of_build t (obj_file t m ~kind:Cmx ~ext:ext_obj))
         else
           None)

@@ -19,7 +19,7 @@ let generate_and_compile_module cctx ~name:basename ~code ~requires =
   in
   SC.add_rule ~dir sctx (
     let ml =
-      Module.file module_ Impl
+      Module.file module_ ~ml_kind:Impl
       |> Option.value_exn
       |> Path.as_in_build_dir_exn
     in
@@ -40,6 +40,7 @@ let generate_and_compile_module cctx ~name:basename ~code ~requires =
       ~requires_link:(lazy requires)
       ~flags:Ocaml_flags.empty
       ~opaque
+      ~dynlink:(Compilation_context.dynlink cctx)
       ()
   in
   Module_compilation.build_module

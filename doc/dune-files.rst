@@ -585,6 +585,13 @@ menhir
 A ``menhir`` stanza is available to support the menhir_ parser generator. See
 the :ref:`menhir-main` section for details.
 
+cinaps
+------
+
+A ``cianps`` stanza is available to support the ``cinaps`` tool.  See
+the `cinaps website <https://github.com/janestreet/cinaps>`_ for more
+details.
+
 .. _alias-stanza:
 
 alias

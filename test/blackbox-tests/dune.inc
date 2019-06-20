@@ -63,6 +63,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name cinaps)
+ (deps (package dune) (source_tree test-cases/cinaps))
+ (action
+  (chdir
+   test-cases/cinaps
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name configurator)
  (deps (package dune) (source_tree test-cases/configurator))
  (action
@@ -1884,7 +1892,9 @@
   (alias wrapped-false-main-module-name)
   (alias wrapped-transition)))
 
-(alias (name runtest-disabled) (deps (alias envs-and-contexts)))
+(alias
+ (name runtest-disabled)
+ (deps (alias cinaps) (alias envs-and-contexts)))
 
 (alias (name runtest-js) (deps (alias js_of_ocaml)))
 

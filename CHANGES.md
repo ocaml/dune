@@ -5,6 +5,9 @@
   the cost of building unnecessary artifacts in some cases. Some of these extra
   artifacts can fail to built, so this is a breaking change. (#2268, @rgrinberg)
 
+- Do not put the `<package>.install` files in the source tree unless
+  `-p` or `--promote-install-files` is passed on the command line (#..., @diml)
+
 1.11.0 (unreleased)
 -------------------
 

@@ -41,6 +41,7 @@ type t =
   ; watch : bool
   ; stats_trace_file : string option
   ; always_show_command_line : bool
+  ; promote_install_files : bool
   }
 
 let prefix_target common s = common.target_prefix ^ s
@@ -62,6 +63,7 @@ let set_common_other c ~targets =
   Clflags.watch := c.watch;
   Clflags.no_print_directory := c.no_print_directory;
   Clflags.store_orig_src_dir := c.store_orig_src_dir;
+  Clflags.promote_install_files := c.promote_install_files;
   Clflags.external_lib_deps_hint :=
     List.concat
       [ ["dune"; "external-lib-deps"; "--missing"]
@@ -122,6 +124,7 @@ module Options_implied_by_dash_p = struct
     ; profile : string option
     ; default_target : string
     ; always_show_command_line : bool
+    ; promote_install_files : bool
     }
 
   let docs = copts_sect
@@ -225,6 +228,12 @@ module Options_implied_by_dash_p = struct
       Arg.(value
            & flag
            & info ["always-show-command-line"] ~docs ~doc)
+    and+ promote_install_files =
+      let doc =
+        "Promote the generated <package>.install files to the source tree" in
+      Arg.(value
+           & flag
+           & info ["promote-install-files"] ~docs ~doc)
     in
     { root
     ; only_packages
@@ -233,6 +242,7 @@ module Options_implied_by_dash_p = struct
     ; profile
     ; default_target
     ; always_show_command_line
+    ; promote_install_files
     }
 
   let for_release = "for-release-of-packages"
@@ -256,6 +266,7 @@ module Options_implied_by_dash_p = struct
     ; profile = Some "release"
     ; default_target = "@install"
     ; always_show_command_line = true
+    ; promote_install_files = true
     }
 
   let term = one_of options dash_p
@@ -356,6 +367,7 @@ let term =
        ; profile
        ; default_target
        ; always_show_command_line
+       ; promote_install_files
        } = Options_implied_by_dash_p.term
   and+ x =
     Arg.(value
@@ -443,6 +455,7 @@ let term =
   ; watch
   ; stats_trace_file
   ; always_show_command_line
+  ; promote_install_files
   }
 
 let term =

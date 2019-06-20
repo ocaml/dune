@@ -35,3 +35,6 @@ val store_orig_src_dir : bool ref
 
 (** Always show full command on error *)
 val always_show_command_line : bool ref
+
+(** Promote the generated [<package>.install] files to the source tree *)
+val promote_install_files : bool ref

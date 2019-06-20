@@ -307,8 +307,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
       SC.add_rule sctx build ~dir)
 
   let setup_build_archives (lib : Dune_file.Library.t)
-        ~wrapped_compat ~cctx ~(dep_graphs : Dep_graph.Ml_kind.t)
-        ~expander =
+        ~cctx ~(dep_graphs : Dep_graph.Ml_kind.t) ~expander =
     let dir = Compilation_context.dir cctx in
     let obj_dir = Compilation_context.obj_dir cctx in
     let flags = Compilation_context.flags cctx in
@@ -337,15 +336,8 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
         end
       | _ -> impl_only
     in
-    let wrapped_compat = Module.Name.Map.values wrapped_compat in
-    (* Compatibility modules have implementations so we can just append them.
-       We append the modules at the end as no library modules depend on
-       them. *)
     let top_sorted_modules =
-      Dep_graph.top_closed_implementations dep_graphs.impl modules
-      (* TODO this is broken for vlibs that introduce wrapped compat *)
-      >>^ fun modules -> modules @ wrapped_compat
-    in
+      Dep_graph.top_closed_implementations dep_graphs.impl modules in
 
     let modes = Mode_conf.Set.eval lib.modes ~has_native in
     Mode.Dict.Set.iter modes ~f:(fun mode ->
@@ -470,8 +462,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
         ~dir_contents ~vlib_stubs_o_files;
 
     if not (Library.is_virtual lib) then (
-      let wrapped_compat = Lib_modules.wrapped_compat lib_modules in
-      setup_build_archives lib ~wrapped_compat ~cctx ~dep_graphs ~expander);
+      setup_build_archives lib ~cctx ~dep_graphs ~expander);
 
     Odoc.setup_library_odoc_rules sctx lib ~obj_dir ~requires:requires_compile
       ~modules:for_compilation ~dep_graphs ~scope;

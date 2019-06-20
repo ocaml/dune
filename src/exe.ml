@@ -200,10 +200,9 @@ let build_and_link_many
       ?link_flags
       cctx
   =
-  let dep_graphs = Ocamldep.rules cctx in
-
-  Compilation_context.modules cctx
-  |> Module.Name.Map.iter ~f:(
+  let modules = Compilation_context.modules cctx in
+  let dep_graphs = Ocamldep.rules cctx ~modules in
+  Module.Name.Map.iter modules ~f:(
     Module_compilation.build_module cctx ~dep_graphs);
 
   let link_time_code_gen =

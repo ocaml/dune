@@ -150,7 +150,7 @@ let deps_of cctx ~ml_kind unit =
       Build.memoize (Path.to_string all_deps_file)
         (Build.lines_of all_deps_file >>^ parse_module_names ~unit)
 
-let rules_generic cctx ~modules =
+let rules cctx ~modules =
   Ml_kind.Dict.of_func
     (fun ~ml_kind ->
        let per_module =
@@ -159,11 +159,6 @@ let rules_generic cctx ~modules =
              Module.Obj_map.add acc m (deps_of cctx ~ml_kind m))
        in
        Dep_graph.make ~dir:(CC.dir cctx) ~per_module)
-
-let rules cctx = rules_generic cctx ~modules:(CC.modules cctx)
-
-let rules_for_auxiliary_module cctx (m : Module.t) =
-  rules_generic cctx ~modules:(Module.Name.Map.singleton (Module.name m) m)
 
 let graph_of_remote_lib ~obj_dir ~modules =
   let deps_of unit ~ml_kind =

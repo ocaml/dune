@@ -229,11 +229,14 @@ module Options_implied_by_dash_p = struct
            & flag
            & info ["always-show-command-line"] ~docs ~doc)
     and+ promote_install_files =
-      let doc =
-        "Promote the generated <package>.install files to the source tree" in
-      Arg.(value
-           & flag
-           & info ["promote-install-files"] ~docs ~doc)
+      if Wp.dune2 then
+        let doc =
+          "Promote the generated <package>.install files to the source tree" in
+        Arg.(value
+             & flag
+             & info ["promote-install-files"] ~docs ~doc)
+      else
+        Term.const true
     in
     { root
     ; only_packages

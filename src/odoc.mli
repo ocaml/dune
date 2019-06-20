@@ -9,7 +9,7 @@ val setup_library_odoc_rules
   -> Library.t
   -> obj_dir:Path.Build.t Obj_dir.t
   -> scope:Scope.t
-  -> modules:Module.t Module.Name.Map.t
+  -> modules:Modules.t
   -> requires:Lib.t list Or_exn.t
   -> dep_graphs:Dep_graph.Ml_kind.t
   -> unit

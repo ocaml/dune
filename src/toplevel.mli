@@ -11,7 +11,7 @@ module Source : sig
     -> t
 
   val loc : t -> Loc.t
-  val modules : t -> Module.t Module.Name.Map.t
+  val modules : t -> Modules.t
   val obj_dir : t -> Path.Build.t Obj_dir.t
 end
 

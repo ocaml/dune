@@ -4,14 +4,10 @@ module Menhir_rules = Menhir
 open Dune_file
 open! No_io
 
-module Executables_modules = struct
-  type t = Module.Name_map.t
-end
-
-module Modules = struct
+module Dir_modules = struct
   type t =
-    { libraries : Lib_modules.t Lib_name.Map.t
-    ; executables : Executables_modules.t String.Map.t
+    { libraries : Modules.t Lib_name.Map.t
+    ; executables : Modules.t String.Map.t
     ; (* Map from modules to the buildable they are part of *)
       rev_map : Buildable.t Module.Name.Map.t
     }
@@ -27,7 +23,7 @@ type t =
   { kind : kind
   ; dir : Path.Build.t
   ; text_files : String.Set.t
-  ; modules : Modules.t Memo.Lazy.t
+  ; modules : Dir_modules.t Memo.Lazy.t
   ; c_sources : C_sources.t Memo.Lazy.t
   ; mlds : (Dune_file.Documentation.t * Path.Build.t list) list Memo.Lazy.t
   ; coq_modules : Coq_module.t list Lib_name.Map.t Memo.Lazy.t
@@ -182,9 +178,9 @@ module rec Load : sig
 end = struct
   let virtual_modules sctx vlib =
     let info = Lib.info vlib in
-    let lib_modules =
+    let modules =
       match Option.value_exn (Lib_info.virtual_ info) with
-      | External lib_modules -> lib_modules
+      | External modules -> modules
       | Local ->
         let src_dir =
           Lib_info.src_dir info
@@ -193,13 +189,9 @@ end = struct
         let t = Load.get sctx ~dir:src_dir in
         modules_of_library t ~name:(Lib.name vlib)
     in
-    let existing_virtual_modules =
-      Lib_modules.virtual_modules lib_modules
-      |> Module.Name.Map.keys
-      |> Module.Name.Set.of_list
-    in
+    let existing_virtual_modules = Modules.virtual_module_names modules in
     let allow_new_public_modules =
-      Lib_modules.wrapped lib_modules
+      Modules.wrapped modules
       |> Wrapped.to_bool
       |> not
     in
@@ -281,8 +273,7 @@ end = struct
           in
           Left ( lib
                , let src_dir = Path.build src_dir in
-                 Lib_modules.make lib ~src_dir modules ~main_module_name
-                   ~wrapped
+                 Modules.lib ~lib ~src_dir ~modules ~main_module_name ~wrapped
                )
         | Executables exes
         | Tests { exes; _} ->
@@ -292,7 +283,7 @@ end = struct
               ~kind:Modules_field_evaluator.Exe_or_normal_lib
               ~private_modules:Ordered_set_lang.standard
           in
-          Right (exes, modules)
+          Right (exes, Modules.exe modules)
         | _ -> Skip)
     in
     let libraries =
@@ -322,14 +313,13 @@ end = struct
     in
     let rev_map =
       let rev_modules =
+        let by_name buildable =
+          Modules.fold_user_written ~init:[] ~f:(fun m acc ->
+            (Module.name m, buildable) :: acc)
+        in
         List.rev_append
-          (List.concat_map libs ~f:(fun (l, m) ->
-             let modules = Lib_modules.modules m in
-             List.map (Module.Name.Map.values modules) ~f:(fun m ->
-               (Module.name m, l.buildable))))
-          (List.concat_map exes ~f:(fun (e, m) ->
-             List.map (Module.Name.Map.values m) ~f:(fun m ->
-               (Module.name m, e.buildable))))
+          (List.concat_map libs ~f:(fun (l, m) -> by_name l.buildable m))
+          (List.concat_map exes ~f:(fun (e, m) -> by_name e.buildable m))
       in
       match d.kind with
       | Dune -> begin
@@ -383,7 +373,7 @@ end = struct
               ];
             b)
     in
-    { Modules. libraries; executables; rev_map }
+    { Dir_modules. libraries; executables; rev_map }
 
   (* As a side-effect, setup user rules and copy_files rules. *)
   let load_text_files sctx ft_dir
@@ -495,7 +485,7 @@ end = struct
            t = { kind = Standalone
                ; dir
                ; text_files = String.Set.empty
-               ; modules = Memo.Lazy.of_val Modules.empty
+               ; modules = Memo.Lazy.of_val Dir_modules.empty
                ; mlds = Memo.Lazy.of_val []
                ; c_sources = Memo.Lazy.of_val C_sources.empty
                ; coq_modules = Memo.Lazy.of_val Lib_name.Map.empty

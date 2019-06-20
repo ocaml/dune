@@ -86,7 +86,7 @@ type 'path t =
   ; virtual_deps     : (Loc.t * Lib_name.t) list
   ; dune_version     : Syntax.Version.t option
   ; sub_systems      : Sub_system_info.t Sub_system_name.Map.t
-  ; virtual_         : Lib_modules.t Source.t option
+  ; virtual_         : Modules.t Source.t option
   ; implements       : (Loc.t * Lib_name.t) option
   ; variant          : Variant.t option
   ; known_implementations : (Loc.t * Lib_name.t) Variant.Map.t
@@ -263,7 +263,8 @@ let of_dune_lib dp =
   let src_dir = Lib.dir dp in
   let virtual_ =
     if Lib.virtual_ dp then
-      Some (Source.External (Option.value_exn (Lib.modules dp)))
+      let modules = Option.value_exn (Lib.modules dp) in
+      Some (Source.External modules)
     else
       None
   in

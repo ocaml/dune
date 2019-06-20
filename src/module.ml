@@ -436,6 +436,20 @@ let generated_alias ~src_dir name =
 module Name_map = struct
   type nonrec t = t Name.Map.t
 
+  let to_dyn = Name.Map.to_dyn to_dyn
+
+  let decode ~src_dir =
+    let open Stanza.Decoder in
+    let+ modules = list (enter (decode ~src_dir)) in
+    Name.Map.of_list_map_exn
+      ~f:(fun m -> (name m, m)) modules
+
+  let encode t =
+    Name.Map.values t
+    |> List.map ~f:(fun x -> Dune_lang.List (encode x))
+
+  let singleton m = Name.Map.singleton (name m) m
+
   let impl_only =
     Name.Map.fold ~init:[] ~f:(fun m acc ->
       if has m ~ml_kind:Impl then

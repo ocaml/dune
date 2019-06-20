@@ -24,10 +24,5 @@ module Ml_kind : sig
 
   val dummy : Module.t -> t
 
-  val wrapped_compat
-    :  modules:Module.t Module.Name.Map.t
-    -> wrapped_compat:Module.t Module.Name.Map.t
-    -> t
-
   val merge_for_impl : vlib:t -> impl:t -> t
 end

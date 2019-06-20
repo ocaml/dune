@@ -60,3 +60,5 @@ val hd_opt : 'a t -> 'a option
 val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
 
 val hash : ('a -> int) -> 'a list -> int
+
+val cons : 'a t -> 'a -> 'a t

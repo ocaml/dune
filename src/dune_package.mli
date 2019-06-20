@@ -18,7 +18,7 @@ module Lib : sig
   val foreign_archives : _ t -> Path.t list Mode.Dict.t
   val archives : _ t -> Path.t list Mode.Dict.t
   val virtual_ : _ t -> bool
-  val modules : _ t -> Lib_modules.t option
+  val modules : _ t -> Modules.t option
   val main_module_name : _ t -> Module.Name.t option
   val plugins : _ t -> Path.t list Mode.Dict.t
   val jsoo_runtime : _ t -> Path.t list
@@ -54,7 +54,7 @@ module Lib : sig
     -> default_implementation: (Loc.t * Lib_name.t) option
     -> virtual_:bool
     -> known_implementations: (Loc.t * Lib_name.t) Variant.Map.t
-    -> modules:Lib_modules.t option
+    -> modules:Modules.t option
     -> modes:Mode.Dict.Set.t
     -> version:string option
     -> orig_src_dir:Path.t option

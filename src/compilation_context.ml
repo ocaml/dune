@@ -48,9 +48,7 @@ type t =
   ; expander             : Expander.t
   ; obj_dir              : Path.Build.t Obj_dir.t
   ; dir_kind             : Dune_lang.File_syntax.t
-  ; modules              : Module.t Module.Name.Map.t
-  ; alias_module         : Module.t option
-  ; lib_interface_module : Module.t option
+  ; modules              : Modules.t
   ; flags                : Ocaml_flags.t
   ; requires_compile     : Lib.t list Or_exn.t
   ; requires_link        : Lib.t list Or_exn.t Lazy.t
@@ -62,7 +60,6 @@ type t =
   ; js_of_ocaml          : Dune_file.Js_of_ocaml.t option
   ; dynlink              : bool
   ; sandbox              : bool option
-  ; vimpl                : Vimpl.t option
   ; package              : Package.t option
   }
 
@@ -73,8 +70,6 @@ let dir                  t = Obj_dir.dir t.obj_dir
 let dir_kind             t = t.dir_kind
 let obj_dir              t = t.obj_dir
 let modules              t = t.modules
-let alias_module         t = t.alias_module
-let lib_interface_module t = t.lib_interface_module
 let flags                t = t.flags
 let requires_compile     t = t.requires_compile
 let requires_link        t = Lazy.force t.requires_link
@@ -86,16 +81,13 @@ let stdlib               t = t.stdlib
 let js_of_ocaml          t = t.js_of_ocaml
 let dynlink              t = t.dynlink
 let sandbox              t = t.sandbox
-let vimpl                t = t.vimpl
 let package              t = t.package
 
 let context              t = Super_context.context t.super_context
 
 let create ~super_context ~scope ~expander ~obj_dir
-      ?vimpl
       ?(dir_kind=Dune_lang.File_syntax.Dune)
-      ~modules ?alias_module ?lib_interface_module ~flags
-      ~requires_compile ~requires_link
+      ~modules ~flags ~requires_compile ~requires_link
       ?(preprocessing=Preprocessing.dummy) ?(no_keep_locs=false)
       ~opaque ?stdlib ?js_of_ocaml ~dynlink ?sandbox ~package () =
   let requires_compile =
@@ -110,8 +102,6 @@ let create ~super_context ~scope ~expander ~obj_dir
   ; obj_dir
   ; dir_kind
   ; modules
-  ; alias_module
-  ; lib_interface_module
   ; flags
   ; requires_compile
   ; requires_link
@@ -121,7 +111,6 @@ let create ~super_context ~scope ~expander ~obj_dir
   ; opaque
   ; stdlib
   ; js_of_ocaml
-  ; vimpl
   ; dynlink
   ; sandbox
   ; package
@@ -141,15 +130,12 @@ let for_alias_module t =
       Ocaml_flags.append_common flags
         ["-w"; "-49"; "-nopervasives"; "-nostdlib"]
   ; includes     = Includes.empty
-  ; alias_module = None
   ; stdlib       = None
   ; sandbox      = Some sandbox
   }
 
-let for_wrapped_compat t modules =
+let for_wrapped_compat t =
   { t with
     includes = Includes.empty
-  ; alias_module = None
   ; stdlib = None
-  ; modules
   }

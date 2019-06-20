@@ -120,11 +120,19 @@ module Name_map : sig
   type module_
   type t = module_ Name.Map.t
 
+  val decode : src_dir:Path.t -> t Dune_lang.Decoder.t
+
+  val encode : t -> Dune_lang.t list
+
+  val to_dyn : t -> Dyn.t
+
   val pp : t Fmt.t
 
   val impl_only : t -> module_ list
 
   val of_list_exn : module_ list -> t
+
+  val singleton : module_ -> t
 
   val add : t -> module_ -> t
 
@@ -134,6 +142,8 @@ end with type module_ := t
 module Obj_map : sig
   type module_
   include Map.S with type key = module_
+
+  val find_exn : 'a t -> module_ -> 'a
 
   val top_closure
     :  module_ list t

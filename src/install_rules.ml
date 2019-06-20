@@ -41,10 +41,9 @@ let gen_dune_package sctx ~version ~(pkg : Local_package.t) =
                 |> C.Sources.objects ~dir ~ext_obj:ctx.lib_config.ext_obj
                 |> List.map ~f:Path.build
               in
-              let lib_modules =
-                Dir_contents.modules_of_library dir_contents ~name
-              in
-              Lib.to_dune_lib lib ~dir:(Path.build (lib_root lib)) ~lib_modules
+              let modules =
+                Dir_contents.modules_of_library dir_contents ~name in
+              Lib.to_dune_lib lib ~dir:(Path.build (lib_root lib)) ~modules
                 ~foreign_objects)
           in
           Dune_package.Or_meta.Dune_package
@@ -220,7 +219,7 @@ let lib_install_files sctx ~dir_contents ~dir ~sub_dir:lib_subdir
   let installable_modules =
     Dir_contents.modules_of_library dir_contents
       ~name:(Library.best_name lib)
-    |> Lib_modules.installable_modules
+    |> Modules.fold_no_vlib ~init:[] ~f:(fun m acc -> m :: acc)
   in
   let sources =
     List.concat_map installable_modules ~f:(fun m ->

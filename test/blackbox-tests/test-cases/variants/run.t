@@ -54,16 +54,17 @@ Check that variant data is installed in the dune package file.
    (main_module_name B)
    (modes byte native)
    (modules
-    (alias_module
-     (name B__a__)
-     (obj_name b__a__)
-     (visibility public)
-     (kind alias)
-     (impl))
-    (main_module_name B)
-    (modules
-     ((name X) (obj_name b__X) (visibility public) (kind impl_vmodule) (impl)))
-    (wrapped true)))
+    (wrapped
+     (main_module_name B)
+     (modules
+      ((name X) (obj_name b__X) (visibility public) (kind impl_vmodule) (impl)))
+     (alias_module
+      (name B__a__)
+      (obj_name b__a__)
+      (visibility public)
+      (kind alias)
+      (impl))
+     (wrapped true))))
   $ cat  dune-package/_build/install/default/lib/b/dune-package
   (lang dune 1.11)
   (name b)
@@ -76,11 +77,17 @@ Check that variant data is installed in the dune package file.
    (main_module_name B)
    (modes byte native)
    (modules
-    (alias_module (name B) (obj_name b) (visibility public) (kind alias) (impl))
-    (main_module_name B)
-    (modules
-     ((name X) (obj_name b__X) (visibility public) (kind virtual) (intf)))
-    (wrapped true)))
+    (wrapped
+     (main_module_name B)
+     (modules
+      ((name X) (obj_name b__X) (visibility public) (kind virtual) (intf)))
+     (alias_module
+      (name B)
+      (obj_name b)
+      (visibility public)
+      (kind alias)
+      (impl))
+     (wrapped true))))
 
 Test variants for an external library
 

@@ -23,10 +23,7 @@ module Source = struct
   let obj_dir { dir; name ; _ } =
     Obj_dir.make_exe ~dir ~name
 
-  let modules t =
-    let main_module = main_module t in
-    let name = Module.name main_module in
-    Module.Name.Map.singleton name main_module
+  let modules t = Modules.singleton (main_module t)
 
   let make ~dir ~loc ~main ~name =
     { dir

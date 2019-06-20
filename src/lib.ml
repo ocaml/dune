@@ -1663,7 +1663,7 @@ module Meta = struct
 end
 
 
-let to_dune_lib ({ name ; info ; _ } as lib) ~lib_modules ~foreign_objects
+let to_dune_lib ({ name ; info ; _ } as lib) ~modules ~foreign_objects
       ~dir =
   let add_loc =
     let loc = Lib_info.loc info in
@@ -1674,9 +1674,9 @@ let to_dune_lib ({ name ; info ; _ } as lib) ~lib_modules ~foreign_objects
       | None -> assert false
       | Some obj_dir -> Obj_dir.convert_to_external ~dir obj_dir
     in
-    let lib_modules =
+    let modules =
       let install_dir = Obj_dir.dir obj_dir in
-      Lib_modules.version_installed ~install_dir lib_modules
+      Modules.version_installed modules ~install_dir
     in
     let orig_src_dir =
       if !Clflags.store_orig_src_dir
@@ -1731,7 +1731,7 @@ let to_dune_lib ({ name ; info ; _ } as lib) ~lib_modules ~foreign_objects
       ~known_implementations
       ~default_implementation
       ~virtual_
-      ~modules:(Some lib_modules)
+      ~modules:(Some modules)
       ~main_module_name:(Result.ok_exn (main_module_name lib))
       ~sub_systems:(Sub_system.dump_config lib)
       ~special_builtin_support

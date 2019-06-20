@@ -134,7 +134,7 @@ Implementations cannot introduce new modules to the library's interface
   [1]
 
 They can only introduce private modules:
-  $ dune build --root impl-private-modules
+  $ dune build --root impl-private-modules --debug-dependency-path
   Entering directory 'impl-private-modules'
           test alias default
   Private module Baz
@@ -332,20 +332,21 @@ Include variants and implementation information in dune-package
    (main_module_name Vlib)
    (modes byte native)
    (modules
-    (alias_module
-     (name Vlib__impl__)
-     (obj_name vlib__impl__)
-     (visibility public)
-     (kind alias)
-     (impl))
-    (main_module_name Vlib)
-    (modules
-     ((name Vmod)
-      (obj_name vlib__Vmod)
+    (wrapped
+     (main_module_name Vlib)
+     (modules
+      ((name Vmod)
+       (obj_name vlib__Vmod)
+       (visibility public)
+       (kind impl_vmodule)
+       (impl)))
+     (alias_module
+      (name Vlib__impl__)
+      (obj_name vlib__impl__)
       (visibility public)
-      (kind impl_vmodule)
-      (impl)))
-    (wrapped true)))
+      (kind alias)
+      (impl))
+     (wrapped true))))
   (library
    (name foo.vlib)
    (kind normal)
@@ -354,20 +355,21 @@ Include variants and implementation information in dune-package
    (main_module_name Vlib)
    (modes byte native)
    (modules
-    (alias_module
-     (name Vlib)
-     (obj_name vlib)
-     (visibility public)
-     (kind alias)
-     (impl))
-    (main_module_name Vlib)
-    (modules
-     ((name Vmod)
-      (obj_name vlib__Vmod)
+    (wrapped
+     (main_module_name Vlib)
+     (modules
+      ((name Vmod)
+       (obj_name vlib__Vmod)
+       (visibility public)
+       (kind virtual)
+       (intf)))
+     (alias_module
+      (name Vlib)
+      (obj_name vlib)
       (visibility public)
-      (kind virtual)
-      (intf)))
-    (wrapped true)))
+      (kind alias)
+      (impl))
+     (wrapped true))))
 
 Virtual libraries and preprocessed source
   $ dune build --root preprocess

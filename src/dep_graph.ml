@@ -49,34 +49,11 @@ let dummy (m : Module.t) =
   ; per_module = Module.Obj_map.singleton m (Build.return [])
   }
 
-let wrapped_compat ~modules ~wrapped_compat =
-  { dir = Path.Build.root
-  ; per_module =
-      Module.Name.Map.fold wrapped_compat ~init:Module.Obj_map.empty
-        ~f:(fun compat acc ->
-          let wrapped =
-            let name = Module.name compat in
-            match Module.Name.Map.find modules name with
-            | Some m -> m
-            | None ->
-              Code_error.raise "deprecated module needs counterpart"
-                [ "compat", Module.to_dyn compat ]
-          in
-          (* TODO this is wrong. The dependencies should be on the lib interface
-             whenever it exists *)
-          Module.Obj_map.set acc compat (Build.return [wrapped]))
-  }
-
 module Ml_kind = struct
   type nonrec t = t Ml_kind.Dict.t
 
   let dummy m =
     Ml_kind.Dict.make_both (dummy m)
-
-  let wrapped_compat =
-    let w = wrapped_compat in
-    fun ~modules ~wrapped_compat ->
-      Ml_kind.Dict.make_both (w ~modules ~wrapped_compat)
 
   let merge_impl ~(ml_kind : Ml_kind.t) _ vlib impl =
     Some (Ml_kind.choose ml_kind ~impl ~intf:vlib)

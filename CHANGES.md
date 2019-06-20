@@ -53,6 +53,9 @@
 - Set version in `META` and `dune-package` files to the one read from
   the vcs when no other version is available (#2224, @diml)
 
+- Fix dependency graph of wrapped_compat modules. Previously, the dependency on
+  the user written entry module was omitted. (#2305, @rgrinberg)
+
 1.10.0 (04/06/2019)
 -------------------
 

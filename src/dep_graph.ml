@@ -110,18 +110,14 @@ module Ml_kind = struct
       Ml_kind.Dict.make_both (w ~modules ~wrapped_compat)
 
   let merge_impl ~(ml_kind : Ml_kind.t) _ vlib impl =
-    match vlib, impl with
-    | None, None -> assert false
-    | Some _, None -> None (* we don't care about internal vlib deps *)
-    | None, Some d -> Some d
-    | Some vlib , Some impl -> Some (Ml_kind.choose ml_kind ~impl ~intf:vlib)
+    Some (Ml_kind.choose ml_kind ~impl ~intf:vlib)
 
   let merge_for_impl ~(vlib : t) ~(impl : t) =
     Ml_kind.Dict.of_func (fun ~ml_kind ->
       let impl = Ml_kind.Dict.get impl ml_kind in
       { impl with
         per_module =
-          Module.Obj_map.merge ~f:(merge_impl ~ml_kind)
+          Module.Obj_map.union ~f:(merge_impl ~ml_kind)
             (Ml_kind.Dict.get vlib ml_kind).per_module
             impl.per_module
       })

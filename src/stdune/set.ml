@@ -86,6 +86,3 @@ module Make(Elt : Map.Key) : S with type elt = Elt.t = struct
       Code_error.raise "Set.choose_exn"
         ["t", to_dyn t]
 end
-
-let to_sexp to_list f t =
-  Sexp.Encoder.list f (to_list t)

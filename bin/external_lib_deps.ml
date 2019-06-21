@@ -88,11 +88,8 @@ let run ~lib_deps ~by_dir ~setup ~only_missing ~sexp =
           |> Path.Source.Map.filter ~f:(fun m -> not (Lib_name.Map.is_empty m))
         in
         let sexp =
-          Map.to_sexp
-            Path.Source.Map.to_list
-            (fun p -> Atom (Path.Source.to_string p))
-            Lib_deps_info.to_sexp
-            lib_deps_by_dir
+          Path.Source.Map.to_dyn Lib_deps_info.to_dyn lib_deps_by_dir
+          |> Dyn.to_sexp
         in
         Format.printf "%a@." Sexp.pp (List [Atom context_name; sexp]);
         acc

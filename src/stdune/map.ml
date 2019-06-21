@@ -223,9 +223,3 @@ module Make(Key : Key) : S with type key = Key.t = struct
       |> List.map ~f:(fun (k, v)  ->
         (Key.to_dyn k, f v)))
 end
-
-let to_dyn to_list f g t =
-  Dyn.Map (List.map ~f:(fun (k, v) -> (f k, g v)) (to_list t))
-
-let to_sexp to_list f g t =
-  Dyn.to_sexp (to_dyn to_list (Dyn.Encoder.via_sexp f) (Dyn.Encoder.via_sexp g) t)

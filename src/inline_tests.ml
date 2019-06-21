@@ -112,6 +112,8 @@ include Sub_system.Register_end_point(
           | Native
           | Best
         let compare (a : t) b = compare a b
+
+        let to_dyn _ = Dyn.opaque
       end
       include T
       open Stanza.Decoder

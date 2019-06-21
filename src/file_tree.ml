@@ -19,7 +19,11 @@ module File = struct
     ; dev = st.st_dev
     }
 
-  module Map = Map.Make(struct type nonrec t = t let compare = compare end)
+  module Map = Map.Make(struct
+      type nonrec t = t
+      let compare = compare
+      let to_dyn _ = Dyn.opaque
+    end)
 
   let of_source_path p = of_stats (Path.stat (Path.source p))
 end

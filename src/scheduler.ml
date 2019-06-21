@@ -14,6 +14,7 @@ module Signal = struct
   module Set = Set.Make(struct
       type nonrec t = t
       let compare = compare
+      let to_dyn _ = Dyn.opaque
     end)
 
   let all = [Int; Quit; Term]

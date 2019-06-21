@@ -1,6 +1,6 @@
 module type S = Set_intf.S
 
-module Make(Elt : Comparable.S) : S with type elt = Elt.t = struct
+module Make(Elt : Map.Key) : S with type elt = Elt.t = struct
   module M = Map.Make(Elt)
 
   include struct
@@ -77,15 +77,15 @@ module Make(Elt : Comparable.S) : S with type elt = Elt.t = struct
 
   let find t ~f = M.find_key t ~f
 
+  let to_dyn t = Dyn.Set (to_list t |> List.map ~f:Elt.to_dyn)
+
   let choose_exn t =
     match choose t with
     | Some e -> e
     | None ->
-      Code_error.raise "Set.choose_exn" []
+      Code_error.raise "Set.choose_exn"
+        ["t", to_dyn t]
 end
 
 let to_sexp to_list f t =
   Sexp.Encoder.list f (to_list t)
-
-let to_dyn to_list f t =
-  Dyn.Encoder.list f (to_list t)

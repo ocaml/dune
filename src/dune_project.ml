@@ -47,6 +47,12 @@ end = struct
       | Anonymous _, Named     _ -> Gt
 
     let equal a b = Ordering.is_eq (compare a b)
+
+    let to_dyn =
+      let open Dyn.Encoder in
+      function
+      | Named n -> constr "Named" [string n]
+      | Anonymous p -> constr "Anonymous" [Path.Source.to_dyn p]
   end
 
   include T
@@ -56,12 +62,6 @@ end = struct
   module Infix = Comparable.Operators(T)
 
   let anonymous_root = Anonymous Path.Source.root
-
-  let to_dyn =
-    let open Dyn.Encoder in
-    function
-    | Named n -> constr "Named" [string n]
-    | Anonymous p -> constr "Anonymous" [Path.Source.to_dyn p]
 
   let to_string_hum = function
     | Named s -> s

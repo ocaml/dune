@@ -216,17 +216,22 @@ module Id : sig
     with type key := t
      and type 'a monad := 'a Monad.Id.t
 end = struct
-  type t =
-    { unique_id : int
-    ; path      : Path.t
-    ; name      : Lib_name.t
-    }
+  module T = struct
+    type t =
+      { unique_id : int
+      ; path      : Path.t
+      ; name      : Lib_name.t
+      }
 
-  let compare t1 t2 = Int.compare t1.unique_id t2.unique_id
+    let compare t1 t2 = Int.compare t1.unique_id t2.unique_id
+    let to_dyn _ = Dyn.opaque
+  end
+
+  include T
 
   include (
-    Comparable.Operators(struct type nonrec t = t let compare = compare end)
-    : Comparable.OPS with type t := t
+    Comparable.Operators(T)
+    : Comparable.OPS with type t := T.t
   )
 
   let gen_unique_id =
@@ -244,10 +249,7 @@ end = struct
     ; name
     }
 
-  module Set = Set.Make(struct
-      type nonrec t = t
-      let compare = compare
-    end)
+  module Set = Set.Make(T)
 
   module Top_closure = Top_closure.Make(Set)(Monad.Id)
 end
@@ -278,6 +280,8 @@ module T = struct
     }
 
   let compare (x : t) (y : t) = Id.compare x.unique_id y.unique_id
+
+  let to_dyn t = Lib_name.to_dyn t.name
 end
 
 include T
@@ -304,8 +308,6 @@ and resolve_result =
   | Redirect of db option * Lib_name.t
 
 type lib = t
-
-let to_dyn t = Lib_name.to_dyn t.name
 
 (* Generals *)
 

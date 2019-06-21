@@ -794,6 +794,7 @@ module Mode_conf = struct
       | Native
       | Best
     let compare (a : t) b = compare a b
+    let to_dyn _ = Dyn.opaque
   end
   include T
 
@@ -1440,6 +1441,8 @@ module Executables = struct
         match compare a.mode b.mode with
         | Eq -> compare a.kind b.kind
         | ne -> ne
+
+      let to_dyn _ = Dyn.opaque
     end
     include T
 

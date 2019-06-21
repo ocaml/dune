@@ -19,6 +19,8 @@ module Section0 = struct
     | Misc
 
   let compare : t -> t -> Ordering.t = compare
+
+  let to_dyn _ = Dyn.opaque
 end
 
 (* The path after the man section mangling done by opam-installer. This roughly
@@ -86,7 +88,6 @@ end = struct
         None
       else
         Some s
-
 end
 
 module Section = struct

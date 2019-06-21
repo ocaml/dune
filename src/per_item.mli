@@ -33,4 +33,4 @@ module type S = sig
   val fold : 'a t -> init:'acc -> f:('a -> 'acc -> 'acc) -> 'acc
 end
 
-module Make(Key : Comparable.S) : S with type key = Key.t
+module Make(Key : Map.Key) : S with type key = Key.t

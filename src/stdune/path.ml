@@ -739,6 +739,8 @@ module T : sig
     | In_source_tree of Local.t
     | In_build_dir of Local.t
 
+  val to_dyn : t -> Dyn.t
+
   val compare : t -> t -> Ordering.t
   val equal : t -> t -> bool
   val hash : t -> int
@@ -768,6 +770,13 @@ end = struct
   let in_build_dir s = In_build_dir s
   let in_source_tree s = In_source_tree s
   let external_ e = External e
+
+  let to_dyn t =
+    let open Dyn in
+    match t with
+    | In_build_dir s -> Variant ("In_build_dir", [Local.to_dyn s])
+    | In_source_tree s -> Variant ("In_source_tree", [Local.to_dyn s])
+    | External s -> Variant ("External", [External.to_dyn s])
 end
 
 include T
@@ -839,13 +848,6 @@ let to_sexp t =
   | In_build_dir s -> constr Local.to_sexp "In_build_dir" s
   | In_source_tree s -> constr Local.to_sexp "In_source_tree" s
   | External s -> constr External.to_sexp "External" s
-
-let to_dyn t =
-  let open Dyn in
-  match t with
-  | In_build_dir s -> Variant ("In_build_dir", [Local.to_dyn s])
-  | In_source_tree s -> Variant ("In_source_tree", [Local.to_dyn s])
-  | External s -> Variant ("External", [External.to_dyn s])
 
 let of_filename_relative_to_initial_cwd fn =
   external_ (
@@ -1227,7 +1229,6 @@ let pp_debug ppf = function
 module Set = struct
   include Set.Make(T)
   let to_sexp t = Sexp.Encoder.(list to_sexp) (to_list t)
-  let to_dyn t = Set.to_dyn to_list to_dyn t
   let of_listing ~dir ~filenames =
     of_list (List.map filenames ~f:(fun f -> relative dir f))
 end

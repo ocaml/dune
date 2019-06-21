@@ -97,11 +97,13 @@ let to_dyn (type key) f g t =
     Map.Make(struct
       type t = key
       let compare a b = Ordering.of_int (compare a b)
+      let to_dyn = f
     end)
   in
-  Map.to_dyn M.to_list f g
-    (foldi t ~init:M.empty ~f:(fun key data acc ->
-       M.add acc key data))
+  let m =
+    foldi t ~init:M.empty ~f:(fun key data acc -> M.add acc key data)
+  in
+  M.to_dyn g m
 
 let to_sexp f g t =
   Dyn.to_sexp (to_dyn (Dyn.Encoder.via_sexp f) (Dyn.Encoder.via_sexp g) t)

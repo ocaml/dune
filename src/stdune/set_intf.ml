@@ -34,4 +34,5 @@ module type S = sig
   val union_all : t list -> t
   val union_map : 'a list -> f:('a -> t) -> t
 
+  val to_dyn : t -> Dyn.t
 end

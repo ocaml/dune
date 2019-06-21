@@ -128,27 +128,21 @@ module Internal_rule = struct
       }
 
     let compare a b = Id.compare a.id b.id
+
+    let to_dyn t : Dyn.t =
+      Record
+        [ "id", Id.to_dyn t.id
+        ; "loc", Dyn.Encoder.option Loc.to_dyn
+                   (Rule.Info.loc t.info)
+        ]
+
   end
   include T
-
-  let _pp fmt { targets; dir ; _ } =
-    Fmt.record fmt
-      [ "targets", Fmt.const (Fmt.ocaml_list Path.Build.pp)
-                     (Path.Build.Set.to_list targets)
-      ; "dir", Fmt.const Path.pp (Path.build dir)
-      ]
 
   module Set = Set.Make(T)
 
   let equal a b = Id.equal a.id b.id
   let hash t = Id.hash t.id
-
-  let to_dyn t : Dyn.t =
-    Record
-      [ "id", Id.to_dyn t.id
-      ; "loc", Dyn.Encoder.option Loc.to_dyn
-                 (Rule.Info.loc t.info)
-      ]
 
   let lib_deps t =
     (* Forcing this lazy ensures that the various globs and
@@ -1664,18 +1658,22 @@ let process_memcycle exn =
 module Rule = struct
   module Id = Internal_rule.Id
 
-  type t =
-    { id      : Id.t
-    ; dir     : Path.Build.t
-    ; deps    : Dep.Set.t
-    ; targets : Path.Build.Set.t
-    ; context : Context.t option
-    ; action  : Action.t
-    }
+  module T = struct
+    type t =
+      { id      : Id.t
+      ; dir     : Path.Build.t
+      ; deps    : Dep.Set.t
+      ; targets : Path.Build.Set.t
+      ; context : Context.t option
+      ; action  : Action.t
+      }
 
-  let compare a b = Id.compare a.id b.id
+    let compare a b = Id.compare a.id b.id
+    let to_dyn _ = Dyn.opaque
+  end
+  include T
 
-  module Set = Set.Make(struct type nonrec t = t let compare = compare end)
+  module Set = Set.Make(T)
 end
 
 let set_packages f =

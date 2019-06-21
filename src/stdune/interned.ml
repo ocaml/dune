@@ -97,7 +97,6 @@ module Make(R : Settings)() = struct
 
   let to_string t = Table.get names t
   let hash t = String.hash (to_string t)
-  let to_dyn t = Dyn.String (to_string t)
 
   let all () = List.init !next ~f:(fun t -> t)
 
@@ -110,6 +109,8 @@ module Make(R : Settings)() = struct
       | Natural -> fun x y -> String.compare (to_string x) (to_string y)
 
     let equal x y = compare x y = Ordering.Eq
+
+    let to_dyn = Dyn.Encoder.int
   end
 
   include T
@@ -120,7 +121,6 @@ module Make(R : Settings)() = struct
     include Set.Make(T)
 
     let to_sexp t = Sexp.Encoder.(list String.to_sexp) (List.map ~f:to_string (to_list t))
-    let to_dyn t = Set.to_dyn to_list to_dyn t
 
     let make l =
       List.fold_left l ~init:empty ~f:(fun acc s -> add acc (make s))

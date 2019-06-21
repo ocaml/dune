@@ -343,7 +343,7 @@ module Exit_status = struct
         Pp.tag ~tag:User_message.Style.Kwd (Pp.verbatim "Command") ++
         Pp.space ++ pp_id id ++
         Pp.space ++ Pp.text msg ++ Pp.char ':'
-        :: Pp.tag ~tag:User_message.Style.Prompt (Pp.char '$') ++ Pp.space ++
+        :: Pp.tag ~tag:User_message.Style.Prompt (Pp.char '$') ++ Pp.char ' ' ++
            command_line
         :: Option.to_list output)
 
@@ -436,7 +436,7 @@ let run_internal ?dir ?(stdout_to=Output.stdout) ?(stderr_to=Output.stderr)
       Console.print_user_message
         (User_message.make
            [ Pp.tag ~tag:User_message.Style.Kwd (Pp.verbatim "Running") ++
-             pp_id id ++ Pp.char ':' ++ Pp.space ++
+             pp_id id ++ Pp.verbatim ": " ++
              cmdline
            ]);
       cmdline

@@ -1,7 +1,7 @@
 open! Stdune
 
 type status_line_config =
-  { message   : string option
+  { message   : User_message.Style.t Pp.t option
   ; show_jobs : bool
   }
 
@@ -9,60 +9,66 @@ module T = struct
 
   type t = {
     display : Config0.Display.t;
-    mutable status_line : string;
+    mutable status_line : Ansi_color.Style.t list Pp.t;
+    mutable status_line_len : int;
     mutable gen_status_line : unit -> status_line_config;
   }
 
-  let hide_status_line s =
-    let len = String.length s in
-    if len > 0 then Printf.eprintf "\r%*s\r" len ""
+  let hide_status_line t =
+    if t.status_line_len > 0 then
+      Printf.eprintf "\r%*s\r" t.status_line_len ""
 
   let show_status_line s =
-    prerr_string s
+    Ansi_color.prerr s
 
   let update_status_line t ~running_jobs =
     if t.display = Progress then begin
       match t.gen_status_line () with
       | { message = None; _ } ->
-        if t.status_line <> "" then begin
-          hide_status_line t.status_line;
-          flush stderr
-        end
+        hide_status_line t;
+        flush stderr
       | { message = Some status_line; show_jobs } ->
         let status_line =
           if show_jobs then
-            sprintf "%s (jobs: %u)" status_line running_jobs
+            Pp.seq status_line
+              (Pp.verbatim (sprintf " (jobs: %u)" running_jobs))
           else
             status_line
         in
-        hide_status_line t.status_line;
-        show_status_line   status_line;
+        let status_line =
+          Pp.map_tags status_line ~f:User_message.Print_config.default
+        in
+        let status_line_len =
+          String.length
+            (Format.asprintf "%a" Pp.pp
+               (Pp.map_tags status_line ~f:ignore))
+        in
+        hide_status_line t;
+        show_status_line status_line;
         flush stderr;
         t.status_line <- status_line;
+        t.status_line_len <- status_line_len
     end
 
   let print t msg =
-    let s = t.status_line in
-    hide_status_line s;
+    hide_status_line t;
     prerr_string msg;
-    show_status_line s;
+    show_status_line t.status_line;
     flush stderr
 
   let print_user_message t ?config ?margin msg =
-    let s = t.status_line in
-    hide_status_line s;
+    hide_status_line t;
     User_message.prerr ?config ?margin msg;
-    show_status_line s;
+    show_status_line t.status_line;
     flush stderr
 
   let hide_status_line t =
-    hide_status_line t.status_line;
+    hide_status_line t;
     flush stderr
 
   let set_status_line_generator t f ~running_jobs =
     t.gen_status_line <- f;
     update_status_line t ~running_jobs
-
 end
 
 let t_var = ref None
@@ -70,7 +76,8 @@ let t_var = ref None
 let init display =
   t_var := Some {
     T.display;
-    status_line = "";
+    status_line = Pp.nop;
+    status_line_len = 0;
     gen_status_line = (fun () -> { message = None; show_jobs = false; });
   }
 

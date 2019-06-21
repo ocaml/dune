@@ -9,6 +9,7 @@ module Style = struct
     | Details
     | Ok
     | Debug
+    | Success
     | Ansi_styles of Ansi_color.Style.t list
 end
 
@@ -25,6 +26,7 @@ module Print_config = struct
     | Details -> [Dim; Fg White]
     | Ok      -> [Dim; Fg Green]
     | Debug   -> [Underlined; Fg Bright_cyan]
+    | Success -> [Bold; Fg Green]
     | Ansi_styles l -> l
 end
 

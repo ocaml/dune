@@ -1,20 +1,6 @@
 open! Stdune
 open Import
 
-type styles = Ansi_color.Style.t list
-
-let apply_string styles str =
-  sprintf "%s%s%s"
-    (Ansi_color.Style.escape_sequence styles)
-    str
-    (Ansi_color.Style.escape_sequence [])
-
-let strip_colors_for_stderr s =
-  if Lazy.force Ansi_color.stderr_supports_color then
-    s
-  else
-    Ansi_color.strip s
-
 (* We redirect the output of all commands, so by default the various
    tools will disable colors. Since we support colors in the output of
    commands, we force it via specific environment variables if stderr
@@ -65,9 +51,3 @@ let setup_err_formatter_colors () =
                                          (styles_of_tag tag))
         } [@warning "-3"])
   end
-
-let output_filename : styles = [Bold; Fg Green]
-
-let command_success : styles = [Bold; Fg Green]
-
-let command_error : styles = [Bold; Fg Red]

@@ -9,7 +9,7 @@ val print_user_message
   -> unit
 
 type status_line_config =
-  { message   : string option
+  { message   : User_message.Style.t Pp.t option
   ; show_jobs : bool
   }
 

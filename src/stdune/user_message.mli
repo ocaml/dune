@@ -19,6 +19,7 @@ module Style : sig
     | Details
     | Ok
     | Debug
+    | Success
     | Ansi_styles of Ansi_color.Style.t list
 end
 

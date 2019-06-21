@@ -77,8 +77,11 @@ end
 
 include T
 
+module O = Ordered.Make(T)
+
+module Map = O.Map
 module Set = struct
-  include Set.Make(T)
+  include O.Set
 
   let has_universe t = mem t Universe
 

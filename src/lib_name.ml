@@ -111,9 +111,10 @@ include (
   : Comparable.OPS with type t := t
 )
 
-module Map = Map.Make(String)
+module O = Ordered.Make(String)
+module Map = O.Map
 module Set = struct
-  include Set.Make(String)
+  include O.Set
 
   let to_string_list = to_list
 end

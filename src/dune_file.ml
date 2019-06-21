@@ -816,8 +816,9 @@ module Mode_conf = struct
   let encode t =
     Dune_lang.unsafe_atom_of_string (to_string t)
 
+  module O = Ordered.Make(T)
   module Set = struct
-    include Set.Make(T)
+    include O.Set
 
     let decode = list decode >>| of_list
 
@@ -1509,8 +1510,9 @@ module Executables = struct
         ; "kind", Fmt.const Binary_kind.pp kind
         ]
 
+    module O = Ordered.Make(T)
     module Set = struct
-      include Set.Make(T)
+      include O.Set
 
       let decode =
         located (list decode) >>| fun (loc, l) ->

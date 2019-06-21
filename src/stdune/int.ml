@@ -13,8 +13,7 @@ end
 
 include T
 
-module Set = Set.Make(T)
-module Map = Map.Make(T)
+include Ordered.Make(T)
 
 let equal (a : t) b = a = b
 

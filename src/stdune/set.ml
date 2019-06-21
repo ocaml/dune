@@ -1,8 +1,7 @@
 module type S = Set_intf.S
 
-module Make(Elt : Map.Key) : S with type elt = Elt.t = struct
-  module M = Map.Make(Elt)
-
+module Make(Key : Map_intf.Key)(M : Map_intf.S with type key = Key.t)
+= struct
   include struct
     [@@@warning "-32"]
     (* [map] is only available since 4.04 *)
@@ -21,8 +20,8 @@ module Make(Elt : Map.Key) : S with type elt = Elt.t = struct
     let max_elt_opt = to_opt M.max_binding
   end
 
-  type elt = Elt.t
-
+  type elt = M.key
+  type 'a map = 'a M.t
   type t = unit M.t
 
   let to_list = M.keys
@@ -77,7 +76,7 @@ module Make(Elt : Map.Key) : S with type elt = Elt.t = struct
 
   let find t ~f = M.find_key t ~f
 
-  let to_dyn t = Dyn.Set (to_list t |> List.map ~f:Elt.to_dyn)
+  let to_dyn t = Dyn.Set (to_list t |> List.map ~f:Key.to_dyn)
 
   let choose_exn t =
     match choose t with
@@ -85,4 +84,7 @@ module Make(Elt : Map.Key) : S with type elt = Elt.t = struct
     | None ->
       Code_error.raise "Set.choose_exn"
         ["t", to_dyn t]
+
+  let of_keys = M.map ~f:(fun _ -> ())
+  let to_map t = t
 end

@@ -10,7 +10,7 @@ module Var = struct
     let to_dyn = Dyn.Encoder.string
   end
 
-  module Set = Set.Make(T)
+  include Ordered.Make(T)
   include T
 end
 

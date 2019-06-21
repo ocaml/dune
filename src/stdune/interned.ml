@@ -117,8 +117,10 @@ module Make(R : Settings)() = struct
 
   let pp fmt t = Format.fprintf fmt "%S" (to_string t)
 
+  module O = Ordered.Make(T)
+
   module Set = struct
-    include Set.Make(T)
+    include O.Set
 
     let to_sexp t = Sexp.Encoder.(list String.to_sexp) (List.map ~f:to_string (to_list t))
 

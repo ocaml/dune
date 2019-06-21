@@ -125,8 +125,9 @@ include Sub_system.Register_end_point(
           ; "native", Native
           ; "best"  , Best
           ]
+      module O = Ordered.Make(T)
       module Set = struct
-        include Set.Make(T)
+        include O.Set
 
         let decode = list decode >>| of_list
 

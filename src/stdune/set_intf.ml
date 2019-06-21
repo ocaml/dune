@@ -1,6 +1,7 @@
 module type S = sig
   type elt
-  and t
+  type t
+  type 'a map
 
   val empty          : t
   val is_empty       : t -> bool
@@ -35,4 +36,7 @@ module type S = sig
   val union_map : 'a list -> f:('a -> t) -> t
 
   val to_dyn : t -> Dyn.t
+
+  val of_keys : _ map -> t
+  val to_map : t -> unit map
 end

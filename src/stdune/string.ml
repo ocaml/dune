@@ -219,21 +219,19 @@ let maybe_quoted s =
   else
     Printf.sprintf {|"%s"|} escaped
 
+module O = Ordered.Make(T)
 module Set = struct
-  include Set.Make(T)
+  include O.Set
+
   let pp fmt t =
     Format.fprintf fmt "Set (@[%a@])"
       (Format.pp_print_list Format.pp_print_string
          ~pp_sep:(fun fmt () -> Format.fprintf fmt "@ "))
       (to_list t)
-
-  let to_dyn t =
-    let open Dyn in
-    Set (List.map (to_list t) ~f:(fun x -> Dyn.String x))
 end
 
 module Map = struct
-  include Map.Make(T)
+  include O.Map
   let pp f fmt t =
     Format.pp_print_list (fun fmt (k, v) ->
       Format.fprintf fmt "@[<hov 2>(%s@ =@ %a)@]" k f v

@@ -117,44 +117,14 @@ end
 
 (** {1 Rendering} *)
 
-module type Tag = sig
-  type t
+(** Render a document to a classic formatter *)
+val render
+  :  Format.formatter
+  -> 'a t
+  -> tag_handler:(Format.formatter -> 'a -> 'a t -> unit)
+  -> unit
 
-  module Handler : sig
-    type tag = t
-    type t
-
-    (** Initial tag handler *)
-    val init : t
-
-    (** Handle a tag: return the string that enables the tag, the
-        handler while the tag is active and the string to disable the
-        tag. *)
-    val handle : t -> tag -> string * t * string
-  end with type tag := t
-end
-
-module Renderer : sig
-  module type S = sig
-    module Tag : Tag
-
-    val string
-      :  unit
-      -> (?margin:int -> ?tag_handler:Tag.Handler.t -> Tag.t t -> string)
-           Staged.t
-    val channel
-      :  out_channel
-      -> (?margin:int -> ?tag_handler:Tag.Handler.t -> Tag.t t -> unit)
-           Staged.t
-  end
-
-  module Make(Tag : Tag) : S with module Tag = Tag
-end
-
-(** A simple renderer that doesn't take tags *)
-module Render : Renderer.S
-    with type Tag.t         = unit
-    with type Tag.Handler.t = unit
-
-(** Render to a formatter *)
-val pp : Format.formatter -> unit t -> unit
+val render_ignore_tags
+  :  Format.formatter
+  -> 'a t
+  -> unit

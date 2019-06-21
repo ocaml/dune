@@ -33,10 +33,11 @@ module Style = struct
     | _         -> None
 end
 
-let styles_of_tag s =
+let mark_open_tag s =
   match Style.of_string s with
-  | None -> []
-  | Some style -> Style.to_styles style
+  | Some style -> Ansi_color.Style.escape_sequence (Style.to_styles style)
+  | None ->
+    if s <> "" && s.[0] = '\027' then s else ""
 
 let setup_err_formatter_colors () =
   let open Format in
@@ -46,8 +47,7 @@ let setup_err_formatter_colors () =
       pp_set_mark_tags ppf true;
       pp_set_formatter_tag_functions ppf
         { funcs with
-          mark_close_tag = (fun _   -> Ansi_color.Style.escape_sequence [])
-        ; mark_open_tag  = (fun tag -> Ansi_color.Style.escape_sequence
-                                         (styles_of_tag tag))
+          mark_close_tag = (fun _ -> Ansi_color.Style.escape_sequence [])
+        ; mark_open_tag
         } [@warning "-3"])
   end

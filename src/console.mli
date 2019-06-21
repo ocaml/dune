@@ -4,7 +4,6 @@ val print : string -> unit
 
 val print_user_message
   :  ?config:User_message.Print_config.t
-  -> ?margin:int
   -> User_message.t
   -> unit
 

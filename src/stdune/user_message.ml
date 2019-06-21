@@ -16,17 +16,19 @@ end
 module Print_config = struct
   type t = Style.t -> Ansi_color.Style.t list
 
-  let default : t = function
-    | Loc     -> [Bold]
-    | Error   -> [Bold; Fg Red]
-    | Warning -> [Bold; Fg Magenta]
-    | Kwd     -> [Bold; Fg Blue]
-    | Id      -> [Bold; Fg Yellow]
-    | Prompt  -> [Bold; Fg Green]
-    | Details -> [Dim; Fg White]
-    | Ok      -> [Dim; Fg Green]
-    | Debug   -> [Underlined; Fg Bright_cyan]
-    | Success -> [Bold; Fg Green]
+  open Ansi_color.Style
+
+  let default : Style.t -> _ = function
+    | Loc     -> [bold]
+    | Error   -> [bold; fg_red]
+    | Warning -> [bold; fg_magenta]
+    | Kwd     -> [bold; fg_blue]
+    | Id      -> [bold; fg_yellow]
+    | Prompt  -> [bold; fg_green]
+    | Details -> [dim; fg_white]
+    | Ok      -> [dim; fg_green]
+    | Debug   -> [underlined; fg_bright_cyan]
+    | Success -> [bold; fg_green]
     | Ansi_styles l -> l
 end
 
@@ -71,11 +73,11 @@ let pp { loc; paragraphs; hints } =
   Pp.vbox (Pp.concat_map paragraphs ~sep:Pp.nop
              ~f:(fun pp -> Pp.seq pp Pp.cut))
 
-let print ?(config=Print_config.default) ?margin t =
-  Ansi_color.print ?margin (Pp.map_tags (pp t) ~f:config)
+let print ?(config=Print_config.default) t =
+  Ansi_color.print (Pp.map_tags (pp t) ~f:config)
 
-let prerr ?(config=Print_config.default) ?margin t =
-  Ansi_color.prerr ?margin (Pp.map_tags (pp t) ~f:config)
+let prerr ?(config=Print_config.default) t =
+  Ansi_color.prerr (Pp.map_tags (pp t) ~f:config)
 
 (* As found here http://rosettacode.org/wiki/Levenshtein_distance#OCaml *)
 let levenshtein_distance s t =

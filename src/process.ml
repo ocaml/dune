@@ -177,15 +177,15 @@ module Fancy = struct
     end
 
   let color_combos =
-    let open Ansi_color.Color in
-    [| Blue,          Bright_green
-     ; Red,           Bright_yellow
-     ; Yellow,        Blue
-     ; Magenta,       Bright_cyan
-     ; Bright_green,  Blue
-     ; Bright_yellow, Red
-     ; Blue,          Yellow
-     ; Bright_cyan,   Magenta
+    let open Ansi_color.Style in
+    [| [ fg_blue;          bg_bright_green ]
+     ; [ fg_red;           bg_bright_yellow ]
+     ; [ fg_yellow;        bg_blue ]
+     ; [ fg_magenta;       bg_bright_cyan ]
+     ; [ fg_bright_green;  bg_blue ]
+     ; [ fg_bright_yellow; bg_red ]
+     ; [ fg_blue;          bg_yellow ]
+     ; [ fg_bright_cyan;   bg_magenta ]
     |]
 
   let colorize_prog s =
@@ -196,8 +196,8 @@ module Fancy = struct
       let before, prog, after = split_prog s in
       let styles =
         let hash = Hashtbl.hash prog in
-        let fore, back = color_combos.(hash mod (Array.length color_combos)) in
-        User_message.Style.Ansi_styles [Fg fore; Bg back]
+        let styles = color_combos.(hash mod (Array.length color_combos)) in
+        User_message.Style.Ansi_styles styles
       in
       Pp.seq
         (Pp.verbatim before)
@@ -210,7 +210,8 @@ module Fancy = struct
     | "-o" :: fn :: rest ->
       Pp.verbatim "-o"
       :: Pp.tag (Pp.verbatim (quote_for_shell fn))
-           ~tag:(User_message.Style.Ansi_styles [Bold; Fg Green])
+           ~tag:(User_message.Style.Ansi_styles
+                   Ansi_color.Style.[bold; fg_green])
       :: colorize_args rest
     | x :: rest -> Pp.verbatim (quote_for_shell x) :: colorize_args rest
 

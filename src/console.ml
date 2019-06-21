@@ -39,9 +39,7 @@ module T = struct
           Pp.map_tags status_line ~f:User_message.Print_config.default
         in
         let status_line_len =
-          String.length
-            (Format.asprintf "%a" Pp.pp
-               (Pp.map_tags status_line ~f:ignore))
+          String.length (Format.asprintf "%a" Pp.render_ignore_tags status_line)
         in
         hide_status_line t;
         show_status_line status_line;
@@ -56,9 +54,9 @@ module T = struct
     show_status_line t.status_line;
     flush stderr
 
-  let print_user_message t ?config ?margin msg =
+  let print_user_message t ?config msg =
     hide_status_line t;
-    User_message.prerr ?config ?margin msg;
+    User_message.prerr ?config msg;
     show_status_line t.status_line;
     flush stderr
 
@@ -95,7 +93,7 @@ let print msg =
   match !t_var with
   | None -> Printf.eprintf "%s%!" msg
   | Some t -> T.print t msg
-let print_user_message ?config ?margin msg =
+let print_user_message ?config msg =
   match !t_var with
-  | None -> User_message.prerr ?config ?margin msg
-  | Some t -> T.print_user_message t ?config ?margin msg
+  | None -> User_message.prerr ?config msg
+  | Some t -> T.print_user_message t ?config msg

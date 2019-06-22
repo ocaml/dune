@@ -16,17 +16,13 @@ val dir : t -> Path.Build.t
     [ocamlyacc], [menhir] stanzas. *)
 val text_files : t -> String.Set.t
 
-module Executables_modules : sig
-  type t = Module.Name_map.t
-end
-
 (** Modules attached to a library. [name] is the library best name. *)
 val modules_of_library : t -> name:Lib_name.t -> Lib_modules.t
 
 val c_sources_of_library : t -> name:Lib_name.t -> C.Sources.t
 
 (** Modules attached to a set of executables. *)
-val modules_of_executables : t -> first_exe:string -> Executables_modules.t
+val modules_of_executables : t -> first_exe:string -> Modules.t
 
 (** Find out what buildable a module is part of *)
 val lookup_module : t -> Module.Name.t -> Dune_file.Buildable.t option

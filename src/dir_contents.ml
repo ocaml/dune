@@ -4,14 +4,10 @@ module Menhir_rules = Menhir
 open Dune_file
 open! No_io
 
-module Executables_modules = struct
-  type t = Module.Name_map.t
-end
-
-module Modules = struct
+module Dir_modules = struct
   type t =
     { libraries : Lib_modules.t Lib_name.Map.t
-    ; executables : Executables_modules.t String.Map.t
+    ; executables : Modules.t String.Map.t
     ; (* Map from modules to the buildable they are part of *)
       rev_map : Buildable.t Module.Name.Map.t
     }
@@ -27,7 +23,7 @@ type t =
   { kind : kind
   ; dir : Path.Build.t
   ; text_files : String.Set.t
-  ; modules : Modules.t Memo.Lazy.t
+  ; modules : Dir_modules.t Memo.Lazy.t
   ; c_sources : C_sources.t Memo.Lazy.t
   ; mlds : (Dune_file.Documentation.t * Path.Build.t list) list Memo.Lazy.t
   ; coq_modules : Coq_module.t list Lib_name.Map.t Memo.Lazy.t
@@ -309,7 +305,7 @@ end = struct
               ~kind:Modules_field_evaluator.Exe_or_normal_lib
               ~private_modules:Ordered_set_lang.standard
           in
-          Right (exes, modules)
+          Right (exes, Modules.exe modules)
         | _ -> Skip)
     in
     let libraries =
@@ -343,8 +339,8 @@ end = struct
              List.map (Module.Name.Map.values modules) ~f:(fun m ->
                (Module.name m, l.buildable))))
           (List.concat_map exes ~f:(fun (e, m) ->
-             List.map (Module.Name.Map.values m) ~f:(fun m ->
-               (Module.name m, e.buildable))))
+             Modules.fold_user_written m ~init:[] ~f:(fun m acc ->
+               (Module.name m, e.buildable) :: acc)))
       in
       match d.kind with
       | Dune -> begin
@@ -399,7 +395,7 @@ end = struct
                or executable.";
             b)
     in
-    { Modules. libraries; executables; rev_map }
+    { Dir_modules. libraries; executables; rev_map }
 
   (* As a side-effect, setup user rules and copy_files rules. *)
   let load_text_files sctx ft_dir
@@ -509,7 +505,7 @@ end = struct
            t = { kind = Standalone
                ; dir
                ; text_files = String.Set.empty
-               ; modules = Memo.Lazy.of_val Modules.empty
+               ; modules = Memo.Lazy.of_val Dir_modules.empty
                ; mlds = Memo.Lazy.of_val []
                ; c_sources = Memo.Lazy.of_val C_sources.empty
                ; coq_modules = Memo.Lazy.of_val Lib_name.Map.empty

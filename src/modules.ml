@@ -145,3 +145,32 @@ let wrapped_compat = function
   | Impl _
   | Unwrapped _ -> Module.Name.Map.empty
   | Wrapped w -> w.wrapped_compat
+
+let rec fold_user_written t ~f ~init =
+  match t with
+  | Wrapped { modules ; _ }
+  | Unwrapped modules -> Module.Name.Map.fold modules ~init ~f
+  | Impl { impl ; vlib = _ } -> fold_user_written impl ~f ~init
+
+let rec map_user_written t ~f =
+  match t with
+  | Unwrapped m -> Unwrapped (Module.Name.Map.map m ~f)
+  | Wrapped ({ modules
+             ; alias_module = _
+             ; lib_interface
+             ; wrapped_compat = _
+             } as w) ->
+    let modules = Module.Name.Map.map modules ~f in
+    let lib_interface =
+      (* we don't want to run [f] more than once per module *)
+      Option.map lib_interface ~f:(fun interface ->
+        let name = Module.name interface in
+        Module.Name.Map.find_exn modules name)
+    in
+    Wrapped
+      { w with
+        modules
+      ; lib_interface
+      }
+  | Impl t ->
+    Impl { t with vlib = map_user_written t.vlib ~f }

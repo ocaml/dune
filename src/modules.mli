@@ -26,4 +26,12 @@ val for_alias_exn : t -> Module.Name_map.t
 
 val main_module_name_exn : t -> Module.Name.t
 
+val fold_user_written
+  :  t
+  -> f:(Module.t -> 'acc -> 'acc)
+  -> init:'acc
+  -> 'acc
+
+val map_user_written : t -> f:(Module.t -> Module.t) -> t
+
 val wrapped_compat : t -> Module.Name_map.t

@@ -29,9 +29,9 @@ let executables_rules ~sctx ~dir ~dir_kind ~expander
       ~dir_kind
   in
   let modules =
-    Module.Name.Map.map modules ~f:(fun m ->
-      Preprocessing.pp_module_as pp (Module.name m) m)
-    |> Modules.exe
+    Modules.map_user_written modules ~f:(fun m ->
+      let name = Module.name m in
+      Preprocessing.pp_module_as pp name m)
   in
 
   let programs =

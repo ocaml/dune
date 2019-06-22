@@ -49,9 +49,6 @@ val set_modules : t -> Module.Name_map.t -> t
     separately *)
 val for_compilation : t -> Module.Name_map.t
 
-(** Returns the modules that need to be aliased in the alias module *)
-val for_alias : t -> Module.Name_map.t
-
 val encode : t -> Dune_lang.t list
 
 val decode

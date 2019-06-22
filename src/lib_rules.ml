@@ -74,13 +74,12 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
                      [Library.archive lib ~dir ~ext:ext_lib])
               ])))
 
-  let build_alias_module ~loc ~alias_module ~lib_modules ~dir ~vimpl ~cctx =
+  let build_alias_module ~loc ~alias_module ~dir ~cctx =
     let file = Option.value_exn (Module.file alias_module ~ml_kind:Impl) in
+    let modules = Compilation_context.modules cctx in
     let alias_file () =
-      let main_module_name =
-        Option.value_exn (Lib_modules.main_module_name lib_modules)
-      in
-      Vimpl.aliased_modules vimpl lib_modules
+      let main_module_name = Modules.main_module_name_exn modules in
+      Modules.for_alias_exn modules
       |> Module.Name.Map.values
       |> List.map ~f:(fun (m : Module.t) ->
         let name = Module.Name.to_string (Module.name m) in
@@ -448,7 +447,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
       Lib_modules.alias_module lib_modules
       |> Option.iter ~f:(fun alias_module ->
         let loc = lib.buildable.loc in
-        build_alias_module ~loc ~alias_module ~dir ~lib_modules ~cctx ~vimpl)
+        build_alias_module ~loc ~alias_module ~dir ~cctx)
     end;
 
     let expander = Super_context.expander sctx ~dir in

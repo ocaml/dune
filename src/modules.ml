@@ -111,3 +111,32 @@ let compat_for_exn t m =
       []
 
 let iter t ~f = fold t ~init:() ~f:(fun x () -> f x)
+
+let rec for_alias_exn = function
+  | Unwrapped _ -> assert false
+  | Wrapped { modules ; lib_interface
+            ; alias_module = _; wrapped_compat = _ } ->
+    begin match lib_interface with
+    | None -> modules
+    | Some lib_interface ->
+      let name = Module.name lib_interface in
+      Module.Name.Map.remove modules name
+    end
+  | Impl { vlib ; impl } ->
+    let impl = for_alias_exn impl in
+    let vlib = for_alias_exn vlib in
+    Module.Name.Map.merge impl vlib ~f:(fun _ impl vlib ->
+      match impl, vlib with
+      | None, None -> assert false
+      | Some _, _ -> impl
+      | _, Some vlib ->
+        Option.some_if (Module.visibility vlib = Public) vlib)
+
+let rec main_module_name_exn = function
+  | Unwrapped _ -> assert false
+  | Wrapped { lib_interface; alias_module; modules = _; wrapped_compat = _ } ->
+    begin match lib_interface with
+    | Some m -> Module.name m
+    | None -> Module.name alias_module
+    end
+  | Impl { vlib ; impl = _ } -> main_module_name_exn vlib

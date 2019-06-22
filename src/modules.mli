@@ -21,3 +21,7 @@ val iter : t -> f:(Module.t -> unit) -> unit
 val exe : Module.Name_map.t -> t
 
 val lib_interface : t -> Module.t option
+
+val for_alias_exn : t -> Module.Name_map.t
+
+val main_module_name_exn : t -> Module.Name.t

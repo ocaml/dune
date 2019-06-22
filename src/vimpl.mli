@@ -24,9 +24,6 @@ val vlib : t -> Lib.t
 
 val vlib_dep_graph : t -> Dep_graph.Ml_kind.t
 
-(** Module list for creating an implementation's alias file *)
-val aliased_modules : t option -> Lib_modules.t -> Module.Name_map.t
-
 (** Return the combined list of .o files for stubs consisting of .o files from
     the implementation and virtual library.*)
 val vlib_stubs_o_files : t option -> Path.t list

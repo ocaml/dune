@@ -209,8 +209,3 @@ let decode ~implements ~src_dir =
     ; wrapped
     }
   )
-
-let for_alias t =
-  match t.main_module_name with
-  | None -> t.modules
-  | Some m -> Module.Name.Map.remove t.modules m

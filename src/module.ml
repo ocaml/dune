@@ -341,15 +341,6 @@ module Obj_map = struct
       let to_dyn = to_dyn
     end)
 
-  let find_exn t m =
-    match find t m with
-    | Some m -> m
-    | None ->
-      Code_error.raise "Module.Obj_map.find: unable to find module"
-        [ "m", to_dyn m
-        ; "keys", Dyn.Set (keys t |> List.map ~f:to_dyn)
-        ]
-
   let top_closure t =
     Top_closure.String.top_closure
       ~key:(fun m -> m.obj_name)

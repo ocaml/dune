@@ -26,7 +26,6 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) =
   let obj_dir  = CC.obj_dir       cctx in
   let ctx      = SC.context       sctx in
   let stdlib   = CC.stdlib        cctx in
-  let vimpl    = CC.vimpl cctx in
   let mode     = Mode.of_cm_kind cm_kind in
   let dynlink  = CC.dynlink cctx in
   let sandbox  = CC.sandbox cctx in
@@ -51,8 +50,8 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) =
           force_read_cmi src, [], []
         else
           (* If we're compiling an implementation, then the cmi is present *)
-          match cm_kind, Module.file m ~ml_kind:Intf
-                , Vimpl.is_public_vlib_module vimpl m with
+          let public_vlib_module = Module.kind m = Impl_vmodule in
+          match cm_kind, Module.file m ~ml_kind:Intf, public_vlib_module with
           (* If there is no mli, [ocamlY -c file.ml] produces both the
              .cmY and .cmi. We choose to use ocamlc to produce the cmi
              and to produce the cmx we have to wait to avoid race

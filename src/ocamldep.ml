@@ -104,7 +104,6 @@ let deps_of cctx ~ml_kind unit =
       let dir = Compilation_context.dir cctx in
       let dep = Obj_dir.Module.dep obj_dir in
       let context = SC.context sctx in
-      let vimpl = Compilation_context.vimpl cctx in
       let parse_module_names = parse_module_names ~modules in
       let all_deps_file = dep source ~kind:Transitive in
       let ocamldep_output = dep source ~kind:Immediate in
@@ -129,11 +128,7 @@ let deps_of cctx ~ml_kind unit =
               | Some _ as x -> x
               | None -> Module.source m ~ml_kind:Impl
           in
-          let module_file_ =
-            match source m with
-            | Some v -> Some v
-            | None -> Option.bind ~f:source (Vimpl.find_module vimpl m)
-          in
+          let module_file_ = source m in
           Option.map ~f:(fun p -> Path.build (dep p ~kind:Transitive)) module_file_
         in
         List.filter_map dependencies ~f:dependency_file_path

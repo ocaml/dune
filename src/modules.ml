@@ -140,3 +140,8 @@ let rec main_module_name_exn = function
     | None -> Module.name alias_module
     end
   | Impl { vlib ; impl = _ } -> main_module_name_exn vlib
+
+let wrapped_compat = function
+  | Impl _
+  | Unwrapped _ -> Module.Name.Map.empty
+  | Wrapped w -> w.wrapped_compat

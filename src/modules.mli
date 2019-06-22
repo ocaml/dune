@@ -25,3 +25,5 @@ val lib_interface : t -> Module.t option
 val for_alias_exn : t -> Module.Name_map.t
 
 val main_module_name_exn : t -> Module.Name.t
+
+val wrapped_compat : t -> Module.Name_map.t

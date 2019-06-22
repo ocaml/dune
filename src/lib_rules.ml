@@ -101,7 +101,8 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
 
   let build_wrapped_compat_modules (lib : Library.t) cctx ~dep_graphs
         ~lib_modules =
-    let wrapped_compat = Lib_modules.wrapped_compat lib_modules in
+    let modules = Compilation_context.modules cctx in
+    let wrapped_compat = Modules.wrapped_compat modules in
     let wrapped = Lib_modules.wrapped lib_modules in
     let transition_message = lazy (
       match (wrapped : Wrapped.t) with

@@ -18,7 +18,6 @@ val create
   -> scope                 : Scope.t
   -> expander              : Expander.t
   -> obj_dir               : Path.Build.t Obj_dir.t
-  -> ?vimpl                : Vimpl.t
   -> ?dir_kind             : Dune_lang.File_syntax.t
   -> modules               : Modules.t
   -> ?alias_module         : Module.t
@@ -62,8 +61,5 @@ val js_of_ocaml          : t -> Dune_file.Js_of_ocaml.t option
 val dynlink              : t -> bool
 val sandbox              : t -> bool option
 val package              : t -> Package.t option
-
-(** Information for implementation of virtual libraries. *)
-val vimpl                : t -> Vimpl.t option
 
 val for_wrapped_compat : t -> t

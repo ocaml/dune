@@ -64,7 +64,6 @@ type t =
   ; js_of_ocaml          : Dune_file.Js_of_ocaml.t option
   ; dynlink              : bool
   ; sandbox              : bool option
-  ; vimpl                : Vimpl.t option
   ; package              : Package.t option
   }
 
@@ -88,13 +87,11 @@ let stdlib               t = t.stdlib
 let js_of_ocaml          t = t.js_of_ocaml
 let dynlink              t = t.dynlink
 let sandbox              t = t.sandbox
-let vimpl                t = t.vimpl
 let package              t = t.package
 
 let context              t = Super_context.context t.super_context
 
 let create ~super_context ~scope ~expander ~obj_dir
-      ?vimpl
       ?(dir_kind=Dune_lang.File_syntax.Dune)
       ~modules ?alias_module ?lib_interface_module ~flags
       ~requires_compile ~requires_link
@@ -123,7 +120,6 @@ let create ~super_context ~scope ~expander ~obj_dir
   ; opaque
   ; stdlib
   ; js_of_ocaml
-  ; vimpl
   ; dynlink
   ; sandbox
   ; package

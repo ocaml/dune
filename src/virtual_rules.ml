@@ -245,7 +245,7 @@ let impl sctx ~dir ~(lib : Dune_file.Library.t) ~scope =
           in
           external_dep_graph sctx ~impl_cm_kind ~impl_obj_dir ~vlib_modules
       in
-      Vimpl.make ~dir
+      Vimpl.make
         ~impl:lib ~vlib ~vlib_modules ~vlib_dep_graph
         ~vlib_foreign_objects
   end

@@ -154,18 +154,8 @@ let lib_interface_module t =
       |> Option.value ~default:alias_module
       |> Option.some
 
-let entry_modules t =
-  match lib_interface_module t with
-  | None -> Module.Name.Map.values t.modules
-  | Some m -> [m]
-
 let set_modules t pped_modules =
   { t with modules = pped_modules }
-
-let for_compilation t =
-  match t.alias_module with
-  | None -> t.modules
-  | Some alias -> Module.Name_map.add t.modules alias
 
 let encode
       { modules

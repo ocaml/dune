@@ -22,6 +22,11 @@ let rec lib_interface = function
   | Wrapped w -> w.lib_interface
   | Impl { impl = _; vlib } -> lib_interface vlib
 
+let rec alias_module = function
+  | Unwrapped _ -> None
+  | Wrapped w -> Some w.alias_module
+  | Impl { impl ; vlib = _ } -> alias_module impl
+
 let exe m = Unwrapped m
 
 let lib lm =
@@ -174,3 +179,25 @@ let rec map_user_written t ~f =
       }
   | Impl t ->
     Impl { t with vlib = map_user_written t.vlib ~f }
+
+let rec for_odoc = function
+  | Unwrapped m -> Module.Name.Map.values m
+  | Wrapped { modules
+            ; alias_module
+            ; lib_interface = _
+            ; wrapped_compat = _ } ->
+    alias_module :: Module.Name.Map.values modules
+  | Impl { vlib ; _ } ->
+    (* TODO wrong but odoc doesn't support this yet anwyway *)
+    for_odoc vlib
+
+let entry_modules = function
+  | Unwrapped m ->
+    Module.Name.Map.values m
+    |> List.filter ~f:(fun m -> Module.visibility m = Public)
+  | Wrapped m ->
+    [match m.lib_interface with
+    | None -> m.alias_module
+    | Some m -> m
+    ]
+  | Impl _ -> assert false

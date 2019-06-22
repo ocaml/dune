@@ -20,6 +20,8 @@ val iter : t -> f:(Module.t -> unit) -> unit
 
 val exe : Module.Name_map.t -> t
 
+val alias_module : t -> Module.t option
+
 val lib_interface : t -> Module.t option
 
 val for_alias_exn : t -> Module.Name_map.t
@@ -35,3 +37,10 @@ val fold_user_written
 val map_user_written : t -> f:(Module.t -> Module.t) -> t
 
 val wrapped_compat : t -> Module.Name_map.t
+
+val for_odoc : t -> Module.t list
+
+(** List of entry modules visible to users of the library. For wrapped
+    libraries, this is always one module. For unwrapped libraries, this could be
+    more than one. *)
+val entry_modules : t -> Module.t list

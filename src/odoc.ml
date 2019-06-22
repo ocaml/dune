@@ -224,7 +224,7 @@ let setup_library_odoc_rules sctx (library : Library.t) ~obj_dir ~scope ~modules
   let includes =
     (Dep.deps ctx (Lib.package lib) requires, odoc_include_flags) in
   let modules_and_odoc_files =
-    List.map (Module.Name.Map.values modules) ~f:(
+    List.map modules ~f:(
       compile_module sctx ~includes ~dep_graphs ~obj_dir
         ~doc_dir ~pkg_or_lnu)
   in
@@ -472,7 +472,8 @@ let entry_modules_by_lib sctx lib =
   let name = Lib.name (Lib.Local.to_lib lib) in
   Dir_contents.get sctx ~dir
   |> Dir_contents.modules_of_library ~name
-  |> Lib_modules.entry_modules
+  |> Modules.lib
+  |> Modules.entry_modules
 
 let entry_modules sctx ~pkg =
   libs_of_pkg sctx ~pkg

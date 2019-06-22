@@ -29,11 +29,6 @@ val installable_modules : t -> Module.t list
     library. For single module libraries, it's the sole module in the library *)
 val lib_interface_module : t -> Module.t option
 
-(** List of entry modules visible to users of the library. For wrapped
-    libraries, this is always one module. For unwrapped libraries, this could be
-    more than one. *)
-val entry_modules : t -> Module.t list
-
 val make
   :  Dune_file.Library.t
   -> src_dir:Path.t
@@ -43,11 +38,6 @@ val make
   -> t
 
 val set_modules : t -> Module.Name_map.t -> t
-
-(** Return all modules that need to be compiled. Includes the alias module if it
-    exists. This does not include the compatibility modules which are compiled
-    separately *)
-val for_compilation : t -> Module.Name_map.t
 
 val encode : t -> Dune_lang.t list
 

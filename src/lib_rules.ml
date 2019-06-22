@@ -389,7 +389,6 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
     in
 
     let alias_module = Lib_modules.alias_module lib_modules in
-    let for_compilation = Lib_modules.for_compilation lib_modules in
 
     let modules =
       let modules = Modules.lib lib_modules in
@@ -445,7 +444,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
          ~f:(Module_compilation.build_module cctx ~dep_graphs);
 
     if Option.is_none lib.stdlib then begin
-      Lib_modules.alias_module lib_modules
+      Modules.alias_module modules
       |> Option.iter ~f:(fun alias_module ->
         let loc = lib.buildable.loc in
         build_alias_module ~loc ~alias_module ~dir ~cctx)
@@ -461,8 +460,9 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
     if not (Library.is_virtual lib) then (
       setup_build_archives lib ~cctx ~dep_graphs ~expander);
 
-    Odoc.setup_library_odoc_rules sctx lib ~obj_dir ~requires:requires_compile
-      ~modules:for_compilation ~dep_graphs ~scope;
+    (let modules = Modules.for_odoc modules in
+     Odoc.setup_library_odoc_rules sctx lib ~obj_dir
+       ~requires:requires_compile ~modules ~dep_graphs ~scope);
 
     let flags =
       match alias_module with

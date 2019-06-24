@@ -24,33 +24,29 @@ variants results in an appropriate error message.
 Basic sample using variants and a default library.
   $ dune build --root variants-base
   Entering directory 'variants-base'
-  Multiple rules generated for _build/default/lib.test/.lib2_default.objs/vlib.mli.all-deps:
-  - src/virtual_rules.ml:42
-  - <internal location>
-  [1]
+           bar alias default
+  hello from lib.test
 
 Check that implementations are chosen according to manual specification, then
 variants and finally default implementation.
   $ dune build --root resolution-priority
   Entering directory 'resolution-priority'
-  Multiple rules generated for _build/default/direct.ocaml/.direct_ocaml.objs/direct.mli.all-deps:
-  - src/virtual_rules.ml:42
-  - <internal location>
-  Multiple rules generated for _build/default/test.default/.test_default.objs/test.mli.all-deps:
-  - src/virtual_rules.ml:42
-  - <internal location>
-  Multiple rules generated for _build/default/variant.c/.variant_c.objs/variant.mli.all-deps:
-  - src/virtual_rules.ml:42
-  - <internal location>
-  [1]
+           bar alias default
+  hi from direct.ocaml
+  hi from variant.c
+  hi from test.default
 
 Check that variant data is installed in the dune package file.
 
   $ dune build --root dune-package
   Entering directory 'dune-package'
-  Multiple rules generated for _build/default/a/.a.objs/x.mli.all-deps:
-  - src/virtual_rules.ml:42
-  - <internal location>
+  File "a/dune", line 1, characters 0-71:
+  1 | (library
+  2 |  (public_name a)
+  3 |  (implements b)
+  4 |  (variant test)
+  5 |  (modules x))
+  Error: No rule found for b/.b.objs/b.ml-gen.all-deps
   [1]
   $ cat  dune-package/_build/install/default/lib/a/dune-package
   (lang dune 1.11)
@@ -66,16 +62,16 @@ Check that variant data is installed in the dune package file.
    (main_module_name B)
    (modes byte native)
    (modules
+    wrapped
     (alias_module
      (name B__a__)
      (obj_name b__a__)
      (visibility public)
      (kind alias)
      (impl))
-    (main_module_name B)
+    (main_module_name B__a__)
     (modules
-     ((name X) (obj_name b__X) (visibility public) (kind impl_vmodule) (impl)))
-    (wrapped true)))
+     ((name X) (obj_name b__X) (visibility public) (kind impl_vmodule) (impl)))))
   $ cat  dune-package/_build/install/default/lib/b/dune-package
   (lang dune 1.11)
   (name b)
@@ -88,40 +84,26 @@ Check that variant data is installed in the dune package file.
    (main_module_name B)
    (modes byte native)
    (modules
+    wrapped
     (alias_module (name B) (obj_name b) (visibility public) (kind alias) (impl))
     (main_module_name B)
     (modules
-     ((name X) (obj_name b__X) (visibility public) (kind virtual) (intf)))
-    (wrapped true)))
+     ((name X) (obj_name b__X) (visibility public) (kind virtual) (intf)))))
 
 Test variants for an external library
 
 First we create an external library and implementation
   $ dune build --root external/lib @install
   Entering directory 'external/lib'
-  Multiple rules generated for _build/default/impl/.vlib_impl.objs/x.mli.all-deps:
-  - src/virtual_rules.ml:42
-  - <internal location>
-  [1]
 
 Then we make sure that it works fine.
   $ env OCAMLPATH=external/lib/_build/install/default/lib dune build --root external/exe --debug-dependency-path
   Entering directory 'external/exe'
-  File "dune", line 2, characters 7-10:
-  2 |  (name bar)
-             ^^^
-  Error: File unavailable: $TESTCASE_ROOT/external/lib/_build/install/default/lib/vlib/impl/vlib_impl$ext_lib
-  -> required by
-     $TESTCASE_ROOT/external/lib/_build/install/default/lib/vlib/impl/vlib_impl$ext_lib
-  -> required by bar.exe
-  -> required by alias default
-  -> required by alias default
-  File "dune", line 2, characters 7-10:
-  2 |  (name bar)
-             ^^^
-  Error: File unavailable: $TESTCASE_ROOT/external/lib/_build/install/default/lib/vlib/impl/vlib_impl.cmxa
-  -> required by
-     $TESTCASE_ROOT/external/lib/_build/install/default/lib/vlib/impl/vlib_impl.cmxa
+      ocamlopt bar.exe (exit 2)
+  (cd _build/default && /Users/rgrinberg/.opam/4.07.1/bin/ocamlopt.opt -w @a-4-29-40-41-42-44-45-48-58-59-60-66-40 -strict-sequence -strict-formats -short-paths -keep-locs -g -o bar.exe -I $TESTCASE_ROOT/external/lib/_build/install/default/lib/vlib .bar.eobjs/native/bar.cmx)
+  File "_none_", line 1:
+  Error: No implementations provided for the following modules:
+           X referenced from .bar.eobjs/native/bar.cmx
   -> required by bar.exe
   -> required by alias default
   -> required by alias default
@@ -138,7 +120,11 @@ Variant ambiguity is forbidden even if a concrete implementation is provided.
 Don't fail when the same library is defined in multiple scopes.
   $ dune build --root same-lib-in-multiple-scopes
   Entering directory 'same-lib-in-multiple-scopes'
-  Multiple rules generated for _build/default/test/unix/.test_unix.objs/foo.mli.all-deps:
-  - src/virtual_rules.ml:42
-  - <internal location>
+  File "test/unix/dune", line 1, characters 0-91:
+  1 | (library
+  2 |   (name test_unix)
+  3 |   (public_name test-unix)
+  4 |   (implements test)
+  5 |   (variant unix))
+  Error: No rule found for test/virt/.test.objs/test.ml-gen.all-deps
   [1]

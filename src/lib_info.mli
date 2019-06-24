@@ -62,7 +62,7 @@ val synopsis : _ t -> string option
 val jsoo_runtime : 'path t -> 'path list
 val jsoo_archive : 'path t -> 'path option
 val obj_dir : 'path t -> 'path Obj_dir.t
-val virtual_ : _ t -> Lib_modules.t Source.t option
+val virtual_ : _ t -> Modules.t Source.t option
 val main_module_name : _ t -> Dune_file.Library.Main_module_name.t
 val wrapped : _ t -> Wrapped.t Dune_file.Library.Inherited.t option
 val special_builtin_support : _ t -> Dune_file.Library.Special_builtin_support.t option

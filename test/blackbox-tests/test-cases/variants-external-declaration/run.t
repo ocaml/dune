@@ -2,10 +2,6 @@ Implementation of library from another project is allowed when explicitely
 declared in the virtual library definition.
 
   $ dune build exe/exe.exe
-  Multiple rules generated for _build/default/prj2/.impl.objs/vlibfoo.mli.all-deps:
-  - src/virtual_rules.ml:42
-  - <internal location>
-  [1]
 
   $ dune build -p vlibfoo-ext
 
@@ -21,11 +17,9 @@ declared in the virtual library definition.
    (main_module_name Vlibfoo)
    (modes byte native)
    (modules
-    (main_module_name Vlibfoo)
-    (modules
-     ((name Vlibfoo)
-      (obj_name vlibfoo)
-      (visibility public)
-      (kind virtual)
-      (intf)))
-    (wrapped true)))
+    singleton
+    (name Vlibfoo)
+    (obj_name vlibfoo)
+    (visibility public)
+    (kind virtual)
+    (intf)))

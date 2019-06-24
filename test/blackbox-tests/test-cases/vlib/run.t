@@ -142,17 +142,17 @@ They can only introduce private modules:
 Virtual library with a single module
   $ dune build --root variants-simple
   Entering directory 'variants-simple'
-  Multiple rules generated for _build/default/impl/.impl.objs/vlib.mli.all-deps:
-  - src/virtual_rules.ml:42
-  - <internal location>
-  [1]
+           foo alias default
+  running implementation
 
 Virtual library where a wrapped module is virtual
   $ dune build --root variants-sub-module
   Entering directory 'variants-sub-module'
-  Multiple rules generated for _build/default/impl/.impl.objs/vmod.mli.all-deps:
-  - src/virtual_rules.ml:42
-  - <internal location>
+  File "impl/dune", line 1, characters 0-41:
+  1 | (library
+  2 |  (name impl)
+  3 |  (implements vlib))
+  Error: No rule found for vlib/.vlib.objs/vlib.ml-gen.all-deps
   [1]
 
 Executable that tries to build against a virtual library without an implementation
@@ -178,48 +178,52 @@ Executable that tries to use two implementations for the same virtual lib
 Install files for implemenations and virtual libs have all the artifacts:
   $ dune build --root install-file
   Entering directory 'install-file'
-  Multiple rules generated for _build/default/impl/.impl.objs/foo.mli.all-deps:
-  - src/virtual_rules.ml:42
-  - <internal location>
+  File "impl/dune", line 1, characters 0-48:
+  1 | (library
+  2 |  (public_name impl)
+  3 |  (implements vlib))
+  Error: No rule found for vlib/.vlib.objs/vlib.ml-gen.all-deps
   [1]
 
 Implementations may refer to virtual library's modules
   $ dune build --root impl-using-vlib-modules
   Entering directory 'impl-using-vlib-modules'
-  Multiple rules generated for _build/default/impl/.impl.objs/foo.mli.all-deps:
-  - src/virtual_rules.ml:42
-  - <internal location>
+  File "impl/dune", line 1, characters 0-41:
+  1 | (library
+  2 |  (name impl)
+  3 |  (implements vlib))
+  Error: No rule found for vlib/.vlib.objs/vlib.ml-gen.all-deps
   [1]
 
 Implementations may have private modules that have overlapping names with the
 virtual lib
   $ dune build --root private-modules-overlapping-names
   Entering directory 'private-modules-overlapping-names'
-  Multiple rules generated for _build/default/impl/.impl.objs/vlib.mli.all-deps:
-  - src/virtual_rules.ml:42
-  - <internal location>
+  File "impl/dune", line 1, characters 0-65:
+  1 | (library
+  2 |  (name impl)
+  3 |  (implements vlib)
+  4 |  (private_modules priv))
+  Error: No rule found for vlib/.vlib.objs/vlib__.ml-gen.all-deps
   [1]
 
 Unwrapped virtual library
   $ dune build --root unwrapped
   Entering directory 'unwrapped'
-  Multiple rules generated for _build/default/impl/.impl.objs/vlib.mli.all-deps:
-  - src/virtual_rules.ml:42
-  - <internal location>
-  [1]
+           foo alias default
+  Running from vlib_more
+  running implementation
 
 Unwrapped virtual library
   $ dune build @install --root unwrapped/vlib
   Entering directory 'unwrapped/vlib'
   $ env OCAMLPATH=unwrapped/vlib/_build/install/default/lib dune build --root unwrapped/impl --debug-dependency-path
   Entering directory 'unwrapped/impl'
-  Multiple rules generated for _build/default/.impl.objs/vlib.mli.all-deps:
-  - <internal location>
-  - <internal location>
-  -> required by .impl.objs/native/vlib.cmx
-  -> required by impl$ext_lib
-  -> required by bin/foo.exe
-  -> required by alias default
+  File "dune", line 4, characters 13-25:
+  4 |  (implements vlib_wrapped))
+                   ^^^^^^^^^^^^
+  Error: Library "vlib_wrapped" is not virtual. It cannot be implemented by
+  "impl_wrapped".
   -> required by alias default
   [1]
 
@@ -277,11 +281,14 @@ First we create an external library
 Then we make sure that we can implement it
   $ env OCAMLPATH=implements-external/vlib/_build/install/default/lib dune build --root implements-external/impl --debug-dependency-path
   Entering directory 'implements-external/impl'
-  Multiple rules generated for _build/default/impl-lib/.impl.objs/foo.mli.all-deps:
-  - <internal location>
-  - <internal location>
-  -> required by impl-lib/.impl.objs/native/vlib.cmx
-  -> required by impl-lib/impl$ext_lib
+  File "impl-lib/dune", line 3, characters 13-17:
+  3 |  (implements vlib))
+                   ^^^^
+  Error: Library "vlib" is not virtual. It cannot be implemented by "impl".
+  -> required by library "impl" in _build/default/impl-lib
+  -> required by executable test in dune:2
+  -> required by .test.eobjs/test.ml.d
+  -> required by .test.eobjs/test.ml.all-deps
   -> required by test.exe
   -> required by alias default
   -> required by alias default
@@ -290,39 +297,33 @@ Then we make sure that we can implement it
 Make sure that we can also implement native only variants
   $ env OCAMLPATH=implements-external/vlib/_build/install/default/lib dune build --root implements-external/impl-native-only --debug-dependency-path
   Entering directory 'implements-external/impl-native-only'
-  Multiple rules generated for _build/default/.impl_native_only.objs/virt_module.mli.all-deps:
-  - <internal location>
-  - <internal location>
-  -> required by .impl_native_only.objs/native/vlib_native_only.cmx
-  -> required by impl_native_only$ext_lib
-  -> required by run.exe
-  -> required by alias default
+  File "dune", line 4, characters 13-28:
+  4 |  (implements vlib.nativeonly))
+                   ^^^^^^^^^^^^^^^
+  Error: Library "vlib.nativeonly" is not virtual. It cannot be implemented by
+  "impl_native_only".
   -> required by alias default
   [1]
 
 We can implement external variants with mli only modules
   $ env OCAMLPATH=implements-external/vlib/_build/install/default/lib dune build --root implements-external/impl-intf-only --debug-dependency-path
   Entering directory 'implements-external/impl-intf-only'
-  Multiple rules generated for _build/default/.impl_intf_only.objs/foo.mli.all-deps:
-  - <internal location>
-  - <internal location>
-  -> required by .impl_intf_only.objs/native/vlib_intfonly.cmx
-  -> required by impl_intf_only$ext_lib
-  -> required by run.exe
-  -> required by alias default
+  File "dune", line 4, characters 13-26:
+  4 |  (implements vlib.intfonly))
+                   ^^^^^^^^^^^^^
+  Error: Library "vlib.intfonly" is not virtual. It cannot be implemented by
+  "impl_intf_only".
   -> required by alias default
   [1]
 
 Implement external virtual libraries with private modules
   $ env OCAMLPATH=implements-external/vlib/_build/install/default/lib dune build --root implements-external/impl-private-module --debug-dependency-path
   Entering directory 'implements-external/impl-private-module'
-  Multiple rules generated for _build/default/.impl_privatemodule.objs/virt_module.mli.all-deps:
-  - <internal location>
-  - <internal location>
-  -> required by .impl_privatemodule.objs/native/vlib_privatemodule.cmx
-  -> required by impl_privatemodule$ext_lib
-  -> required by run.exe
-  -> required by alias default
+  File "dune", line 4, characters 13-31:
+  4 |  (implements vlib.privatemodule))
+                   ^^^^^^^^^^^^^^^^^^
+  Error: Library "vlib.privatemodule" is not virtual. It cannot be implemented
+  by "impl_privatemodule".
   -> required by alias default
   [1]
 
@@ -342,20 +343,20 @@ Include variants and implementation information in dune-package
    (main_module_name Vlib)
    (modes byte native)
    (modules
+    wrapped
     (alias_module
      (name Vlib__impl__)
      (obj_name vlib__impl__)
      (visibility public)
      (kind alias)
      (impl))
-    (main_module_name Vlib)
+    (main_module_name Vlib__impl__)
     (modules
      ((name Vmod)
       (obj_name vlib__Vmod)
       (visibility public)
       (kind impl_vmodule)
-      (impl)))
-    (wrapped true)))
+      (impl)))))
   (library
    (name foo.vlib)
    (kind normal)
@@ -364,6 +365,7 @@ Include variants and implementation information in dune-package
    (main_module_name Vlib)
    (modes byte native)
    (modules
+    wrapped
     (alias_module
      (name Vlib)
      (obj_name vlib)
@@ -376,13 +378,14 @@ Include variants and implementation information in dune-package
       (obj_name vlib__Vmod)
       (visibility public)
       (kind virtual)
-      (intf)))
-    (wrapped true)))
+      (intf)))))
 
 Virtual libraries and preprocessed source
   $ dune build --root preprocess
   Entering directory 'preprocess'
-  Multiple rules generated for _build/default/impl/.impl.objs/foo.mli.all-deps:
-  - src/virtual_rules.ml:42
-  - <internal location>
+  File "impl/dune", line 1, characters 0-40:
+  1 | (library
+  2 |  (name impl)
+  3 |  (implements bar))
+  Error: No rule found for vlib/.bar.objs/bar.ml-gen.all-deps
   [1]

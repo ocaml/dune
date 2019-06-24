@@ -22,7 +22,7 @@ module Lib = struct
     ; known_implementations :  (Loc.t * Lib_name.t) Variant.Map.t
     ; default_implementation  : (Loc.t * Lib_name.t)  option
     ; implements       : (Loc.t * Lib_name.t) option
-    ; modules          : Lib_modules.t option
+    ; modules          : Modules.t option
     ; main_module_name : Module.Name.t option
     ; requires         : (Loc.t * Lib_name.t) list
     ; version          : string option
@@ -122,7 +122,7 @@ module Lib = struct
     ; field_l "modules" sexp
         (match modules with
          | None -> []
-         | Some modules -> Lib_modules.encode modules)
+         | Some modules -> Modules.encode modules)
     ; field_o "special_builtin_support"
         Dune_file.Library.Special_builtin_support.encode special_builtin_support
     ] @ (Sub_system_name.Map.to_list sub_systems
@@ -170,8 +170,7 @@ module Lib = struct
       and+ orig_src_dir = field_o "orig_src_dir" path
       and+ modules =
         let src_dir = Obj_dir.dir obj_dir in
-        field_o "modules" (
-          Lib_modules.decode ~implements:(Option.is_some implements) ~src_dir)
+        field_o "modules" (Modules.decode ~src_dir)
       and+ special_builtin_support =
         field_o "special_builtin_support"
           (Syntax.since Stanza.syntax (1, 10) >>>
@@ -229,7 +228,6 @@ module Lib = struct
   let special_builtin_support t = t.special_builtin_support
 
   let compare_name x y = Lib_name.compare x.name y.name
-  let wrapped t = Option.map t.modules ~f:Lib_modules.wrapped
 end
 
 type 'sub_system t =

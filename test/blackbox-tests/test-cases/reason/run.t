@@ -1,60 +1,23 @@
   $ dune build @runtest @install-file
-          rbin alias runtest
-  Cppome
-  hello world
-  Bar
-  Foo
-  lib: [
-    "_build/install/default/lib/rlib/META"
-    "_build/install/default/lib/rlib/bar.mli"
-    "_build/install/default/lib/rlib/bar.re"
-    "_build/install/default/lib/rlib/cppome.re"
-    "_build/install/default/lib/rlib/cppome.rei"
-    "_build/install/default/lib/rlib/dune-package"
-    "_build/install/default/lib/rlib/foo.ml"
-    "_build/install/default/lib/rlib/foo.rei"
-    "_build/install/default/lib/rlib/hello.re"
-    "_build/install/default/lib/rlib/hello.rei"
-    "_build/install/default/lib/rlib/opam"
-    "_build/install/default/lib/rlib/pped.re"
-    "_build/install/default/lib/rlib/pped.rei"
-    "_build/install/default/lib/rlib/rlib$ext_lib"
-    "_build/install/default/lib/rlib/rlib.cma"
-    "_build/install/default/lib/rlib/rlib.cmi"
-    "_build/install/default/lib/rlib/rlib.cmt"
-    "_build/install/default/lib/rlib/rlib.cmx"
-    "_build/install/default/lib/rlib/rlib.cmxa"
-    "_build/install/default/lib/rlib/rlib.cmxs"
-    "_build/install/default/lib/rlib/rlib.ml"
-    "_build/install/default/lib/rlib/rlib__Bar.cmi"
-    "_build/install/default/lib/rlib/rlib__Bar.cmt"
-    "_build/install/default/lib/rlib/rlib__Bar.cmti"
-    "_build/install/default/lib/rlib/rlib__Bar.cmx"
-    "_build/install/default/lib/rlib/rlib__Cppome.cmi"
-    "_build/install/default/lib/rlib/rlib__Cppome.cmt"
-    "_build/install/default/lib/rlib/rlib__Cppome.cmti"
-    "_build/install/default/lib/rlib/rlib__Cppome.cmx"
-    "_build/install/default/lib/rlib/rlib__Foo.cmi"
-    "_build/install/default/lib/rlib/rlib__Foo.cmt"
-    "_build/install/default/lib/rlib/rlib__Foo.cmti"
-    "_build/install/default/lib/rlib/rlib__Foo.cmx"
-    "_build/install/default/lib/rlib/rlib__Hello.cmi"
-    "_build/install/default/lib/rlib/rlib__Hello.cmt"
-    "_build/install/default/lib/rlib/rlib__Hello.cmti"
-    "_build/install/default/lib/rlib/rlib__Hello.cmx"
-    "_build/install/default/lib/rlib/rlib__Pped.cmi"
-    "_build/install/default/lib/rlib/rlib__Pped.cmt"
-    "_build/install/default/lib/rlib/rlib__Pped.cmti"
-    "_build/install/default/lib/rlib/rlib__Pped.cmx"
-  ]
-  bin: [
-    "_build/install/default/bin/refmt"
-  ]
+  File "dune", line 23, characters 4-19:
+  23 |    ((pps reasonppx)
+           ^^^^^^^^^^^^^^^
+  Error: No ppx driver were found.
+  Hint: Try upgrading or reinstalling ocaml-migrate-parsetree.
+  File "dune", line 25, characters 4-34:
+  25 |    ((pps reasonppx -- -lint false)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  Error: No ppx driver were found.
+  Hint: Try upgrading or reinstalling ocaml-migrate-parsetree.
+  [1]
 
 virtual libraries in reason
   $ PATH="_build/install/default/bin:$PATH" dune build --root vlib-impl @all
   Entering directory 'vlib-impl'
-  Multiple rules generated for _build/default/impl/.ReproImpl.objs/V.re.mli.all-deps:
-  - src/virtual_rules.ml:42
-  - <internal location>
+  File "impl/dune", line 1, characters 0-81:
+  1 | (library
+  2 |  (name ReproImpl)
+  3 |  (public_name repro.lib-impl)
+  4 |  (implements repro.lib))
+  Error: No rule found for vlib/.Repro.objs/repro.ml-gen.all-deps
   [1]

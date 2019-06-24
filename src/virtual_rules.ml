@@ -9,7 +9,7 @@ module Pp_spec : sig
     -> Ocaml_version.t
     -> t
 
-  val pped_modules : t -> Module.Name_map.t -> Module.Name_map.t
+  val pped_modules : t -> (Module.t -> Module.t)
 end = struct
   type t = (Module.t -> Module.t) Dune_file.Per_module.t
 
@@ -25,9 +25,8 @@ end = struct
         else
           fun m -> Module.pped (Module.ml_source m))
 
-  let pped_modules (t : t) modules =
-    Module.Name.Map.map modules ~f:(fun (m : Module.t) ->
-      Dune_file.Per_module.get t (Module.name m) m)
+  let pped_modules (t : t) m =
+    Dune_file.Per_module.get t (Module.name m) m
 end
 
 let setup_copy_rules_for_impl ~sctx ~dir vimpl =
@@ -105,14 +104,13 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
               (Obj_dir.Module.dep impl_obj_dir source ~kind:Transitive)
             |> add_rule))
   in
-  Option.iter (Lib_modules.alias_module vlib_modules) ~f:copy_objs;
-  Module.Name.Map.iter (Lib_modules.modules vlib_modules)
-    ~f:(fun m -> copy_objs m; copy_all_deps m)
+  Option.iter (Modules.alias_module vlib_modules) ~f:copy_objs;
+  Modules.fold_user_written ~init:() vlib_modules ~f:(fun m () ->
+    copy_objs m; copy_all_deps m)
 
 
 let external_dep_graph sctx ~impl_cm_kind ~impl_obj_dir ~vlib_modules =
-  let wrapped = Wrapped.to_bool (Lib_modules.wrapped vlib_modules) in
-  let modules = Lib_modules.modules vlib_modules in
+  let wrapped = Modules.wrapped vlib_modules |> Wrapped.to_bool in
   let dir = Obj_dir.dir impl_obj_dir in
   let ocamlobjinfo =
     let ctx = Super_context.context sctx in
@@ -123,6 +121,7 @@ let external_dep_graph sctx ~impl_cm_kind ~impl_obj_dir ~vlib_modules =
       in
       Ocamlobjinfo.rules ~dir ~ctx ~unit
   in
+  let main_module = Modules.main_module vlib_modules in
   Ml_kind.Dict.of_func (fun ~ml_kind ->
     let cm_kind =
       match ml_kind with
@@ -138,31 +137,28 @@ let external_dep_graph sctx ~impl_cm_kind ~impl_obj_dir ~vlib_modules =
           if Module.name for_module = dep then
             None
           else
-            Module.Name.Map.find modules dep
+            Modules.find vlib_modules dep
         | None, true -> (* lib interface module *)
           if Module.name for_module = dep then
             None
           else
-            Lib_modules.main_module_name vlib_modules
-            |> Option.bind ~f:(fun main_module_name ->
+            Option.bind main_module ~f:(fun main_module ->
+              let main_module_name = Module.name main_module in
               if main_module_name = Module.name for_module then
-                Module.Name.Map.find modules dep
+                Modules.find vlib_modules dep
               else
                 None)
         | Some (prefix, name), true ->
-          begin match Lib_modules.main_module_name vlib_modules with
-          | None -> assert false
-          | Some main_module_name ->
-            if main_module_name <> prefix
+          Option.bind main_module ~f:(fun main_module ->
+            if Module.name main_module <> prefix
             || Module.name for_module = name then
               None
             else
-              Module.Name.Map.find modules name
-          end)
+              Modules.find vlib_modules name))
     in
     Dep_graph.make ~dir
       ~per_module:(
-        Module.Name.Map.fold modules ~init:Module.Obj_map.empty ~f:(fun m acc ->
+        Modules.fold vlib_modules ~init:Module.Obj_map.empty ~f:(fun m acc ->
           let deps =
             if (ml_kind = Intf && not (Module.has m ~ml_kind:Intf))
             || (ml_kind = Impl && not (Module.has m ~ml_kind:Impl))
@@ -214,10 +210,8 @@ let impl sctx ~dir ~(lib : Dune_file.Library.t) ~scope =
               Pp_spec.make lib.buildable.preprocess
                 (Super_context.context sctx).version
             in
-            let modules = Dir_contents.modules_of_library dir_contents ~name in
-            Lib_modules.modules modules
-            |> Pp_spec.pped_modules pp_spec
-            |> Lib_modules.set_modules modules
+            Dir_contents.modules_of_library dir_contents ~name
+            |> Modules.map_user_written ~f:(Pp_spec.pped_modules pp_spec)
           in
           let foreign_objects =
             let ext_obj = (Super_context.context sctx).lib_config.ext_obj in
@@ -235,8 +229,7 @@ let impl sctx ~dir ~(lib : Dune_file.Library.t) ~scope =
             Lib.Local.of_lib_exn vlib
             |> Lib.Local.obj_dir
           in
-          let modules = Modules.lib vlib_modules in
-          Ocamldep.graph_of_remote_lib ~obj_dir ~modules
+          Ocamldep.graph_of_remote_lib ~obj_dir ~modules:vlib_modules
         | External _ ->
           let impl_obj_dir = Dune_file.Library.obj_dir ~dir lib in
           let impl_cm_kind =

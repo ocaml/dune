@@ -86,7 +86,7 @@ type 'path t =
   ; virtual_deps     : (Loc.t * Lib_name.t) list
   ; dune_version     : Syntax.Version.t option
   ; sub_systems      : Sub_system_info.t Sub_system_name.Map.t
-  ; virtual_         : Lib_modules.t Source.t option
+  ; virtual_         : Modules.t Source.t option
   ; implements       : (Loc.t * Lib_name.t) option
   ; variant          : Variant.t option
   ; known_implementations : (Loc.t * Lib_name.t) Variant.Map.t
@@ -268,8 +268,10 @@ let of_dune_lib dp =
       None
   in
   let wrapped =
-    Lib.wrapped dp
-    |> Option.map ~f:(fun w -> Dune_file.Library.Inherited.This w)
+    let open Option.O in
+    let+ modules = Lib.modules dp in
+    let wrapped = Modules.wrapped modules in
+    Dune_file.Library.Inherited.This wrapped
   in
   let obj_dir = Lib.obj_dir dp in
   { loc = Lib.loc dp

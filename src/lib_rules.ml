@@ -99,11 +99,10 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
     Module_compilation.build_module cctx alias_module
       ~dep_graphs:(Dep_graph.Ml_kind.dummy alias_module)
 
-  let build_wrapped_compat_modules (lib : Library.t) cctx ~dep_graphs
-        ~lib_modules =
+  let build_wrapped_compat_modules (lib : Library.t) cctx ~dep_graphs =
     let modules = Compilation_context.modules cctx in
     let wrapped_compat = Modules.wrapped_compat modules in
-    let wrapped = Lib_modules.wrapped lib_modules in
+    let wrapped = Modules.wrapped modules in
     let transition_message = lazy (
       match (wrapped : Wrapped.t) with
       | Simple _ -> assert false
@@ -362,12 +361,11 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
       if lib.optional then Lib_deps_info.Kind.Optional else Required
     in
     let flags = SC.ocaml_flags sctx ~dir lib.buildable in
-    let lib_modules =
+    let modules =
       Dir_contents.modules_of_library dir_contents ~name:(Library.best_name lib)
     in
     let obj_dir = Library.obj_dir ~dir lib in
     Check_rules.add_obj_dir sctx ~obj_dir;
-    let source_modules = Lib_modules.modules lib_modules in
     let vimpl = Virtual_rules.impl sctx ~lib ~dir ~scope in
     Option.iter vimpl ~f:(Virtual_rules.setup_copy_rules_for_impl ~sctx ~dir);
     (* Preprocess before adding the alias module as it doesn't need
@@ -383,19 +381,18 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
         ~dir_kind
     in
 
-    let lib_modules =
-      Preprocessing.pp_modules pp source_modules
-      |> Lib_modules.set_modules lib_modules
+    let modules =
+      let f = Preprocessing.pp_modules pp in
+      Modules.map_user_written modules ~f
     in
 
-    let alias_module = Lib_modules.alias_module lib_modules in
+    let alias_module = Modules.alias_module modules in
 
     let modules =
-      let modules = Modules.lib lib_modules in
       match vimpl with
       | None -> modules
       | Some vimpl ->
-        let vlib = Modules.lib (Vimpl.vlib_modules vimpl) in
+        let vlib = Vimpl.vlib_modules vimpl in
         Modules.impl modules ~vlib
     in
 
@@ -412,7 +409,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
         ~obj_dir
         ~modules
         ?alias_module
-        ?lib_interface_module:(Lib_modules.lib_interface_module lib_modules)
+        ?lib_interface_module:(Modules.lib_interface modules)
         ~flags
         ~requires_compile
         ~requires_link
@@ -437,11 +434,10 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
         Dep_graph.Ml_kind.merge_for_impl ~vlib ~impl:dep_graphs
     in
 
-    build_wrapped_compat_modules lib cctx ~dep_graphs ~lib_modules;
+    build_wrapped_compat_modules lib cctx ~dep_graphs;
 
-    Lib_modules.modules lib_modules
-    |> Module.Name.Map.iter
-         ~f:(Module_compilation.build_module cctx ~dep_graphs);
+    Modules.fold_user_written modules ~init:() ~f:(fun m () ->
+      Module_compilation.build_module cctx m ~dep_graphs);
 
     if Option.is_none lib.stdlib then begin
       Modules.alias_module modules
@@ -478,7 +474,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
       ; dir
       ; stanza = lib
       ; scope
-      ; source_modules
+      ; source_modules = modules
       ; compile_info
       };
 

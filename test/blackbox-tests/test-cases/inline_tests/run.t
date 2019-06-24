@@ -36,14 +36,14 @@
    (main_module_name Foo)
    (modes byte native)
    (modules
+    wrapped
     (alias_module
      (name Foo)
      (obj_name foo)
      (visibility public)
      (kind alias)
      (impl))
-    (main_module_name Foo)
-    (wrapped true))
+    (main_module_name Foo))
    (inline_tests.backend
     (runner_libraries str)
     (flags

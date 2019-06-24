@@ -11,10 +11,8 @@ in an appropriate error message.
 Basic sample selecting implementation according to default library.
   $ dune build --root default-impl
   Entering directory 'default-impl'
-  Multiple rules generated for _build/default/lib.default/.lib_default.objs/vlib.mli.all-deps:
-  - src/virtual_rules.ml:42
-  - <internal location>
-  [1]
+           bar alias default
+  hi from lib.default
 
 Check that ambiguity is handled correctly.
   $ dune build --root dependency-cycle
@@ -47,40 +45,26 @@ Check that default implementation data is installed in the dune package file.
    (main_module_name A)
    (modes byte native)
    (modules
+    wrapped
     (alias_module (name A) (obj_name a) (visibility public) (kind alias) (impl))
     (main_module_name A)
     (modules
-     ((name X) (obj_name a__X) (visibility public) (kind virtual) (intf)))
-    (wrapped true)))
+     ((name X) (obj_name a__X) (visibility public) (kind virtual) (intf)))))
 
 Test default implementation for an external library
 
 First we create an external library and implementation
   $ dune build --root external/lib @install
   Entering directory 'external/lib'
-  Multiple rules generated for _build/default/impl/.vlib_impl.objs/x.mli.all-deps:
-  - src/virtual_rules.ml:42
-  - <internal location>
-  [1]
 
 Then we make sure that it works fine.
   $ env OCAMLPATH=external/lib/_build/install/default/lib dune build --root external/exe --debug-dependency-path
   Entering directory 'external/exe'
-  File "dune", line 2, characters 7-10:
-  2 |  (name bar)
-             ^^^
-  Error: File unavailable: $TESTCASE_ROOT/external/lib/_build/install/default/lib/vlib/impl/vlib_impl$ext_lib
-  -> required by
-     $TESTCASE_ROOT/external/lib/_build/install/default/lib/vlib/impl/vlib_impl$ext_lib
-  -> required by bar.exe
-  -> required by alias default
-  -> required by alias default
-  File "dune", line 2, characters 7-10:
-  2 |  (name bar)
-             ^^^
-  Error: File unavailable: $TESTCASE_ROOT/external/lib/_build/install/default/lib/vlib/impl/vlib_impl.cmxa
-  -> required by
-     $TESTCASE_ROOT/external/lib/_build/install/default/lib/vlib/impl/vlib_impl.cmxa
+      ocamlopt bar.exe (exit 2)
+  (cd _build/default && /Users/rgrinberg/.opam/4.07.1/bin/ocamlopt.opt -w @a-4-29-40-41-42-44-45-48-58-59-60-66-40 -strict-sequence -strict-formats -short-paths -keep-locs -g -o bar.exe -I $TESTCASE_ROOT/external/lib/_build/install/default/lib/vlib .bar.eobjs/native/bar.cmx)
+  File "_none_", line 1:
+  Error: No implementations provided for the following modules:
+           X referenced from .bar.eobjs/native/bar.cmx
   -> required by bar.exe
   -> required by alias default
   -> required by alias default

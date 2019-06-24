@@ -110,6 +110,14 @@ module Kind = struct
     | Impl_vmodule
     | Wrapped_compat
 
+  let user_written = function
+    | Intf_only
+    | Virtual
+    | Impl
+    | Impl_vmodule -> true
+    | Alias
+    | Wrapped_compat -> false
+
   let to_string = function
     | Intf_only -> "intf_only"
     | Virtual -> "virtual"
@@ -471,4 +479,13 @@ module Name_map = struct
 
   let pp fmt t =
     Fmt.ocaml_list Name.pp fmt (Name.Map.keys t)
+
+  let encode t =
+    Name.Map.values t
+    |> List.map ~f:(fun m -> Dune_lang.List (encode m))
+
+  let decode ~src_dir =
+    let open Stanza.Decoder in
+    let+ modules = list (decode ~src_dir) in
+    of_list_exn modules
 end

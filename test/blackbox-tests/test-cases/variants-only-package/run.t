@@ -15,11 +15,9 @@ known_implementations implementations when using -p
    (main_module_name Vlibfoo)
    (modes byte native)
    (modules
-    (main_module_name Vlibfoo)
-    (modules
-     ((name Vlibfoo)
-      (obj_name vlibfoo)
-      (visibility public)
-      (kind virtual)
-      (intf)))
-    (wrapped true)))
+    singleton
+    (name Vlibfoo)
+    (obj_name vlibfoo)
+    (visibility public)
+    (kind virtual)
+    (intf)))

@@ -1,6 +1,14 @@
+open Stdune
+
 type t
 
-val lib : Lib_modules.t -> t
+val lib
+  :  lib:Dune_file.Library.t
+  -> src_dir:Path.t
+  -> user_written_modules:Module.Name_map.t
+  -> main_module_name:Module.Name.t option
+  -> mode:Wrapped.t
+  -> t
 
 val impl : t -> vlib:t -> t
 
@@ -15,6 +23,7 @@ val impl_only : t -> Module.t list
 val singleton : Module.t -> t
 
 val fold : t -> init:'acc -> f:(Module.t -> 'acc -> 'acc) -> 'acc
+val fold_no_vlib : t -> init:'acc -> f:(Module.t -> 'acc -> 'acc) -> 'acc
 
 val iter : t -> f:(Module.t -> unit) -> unit
 
@@ -25,6 +34,8 @@ val alias_module : t -> Module.t option
 val lib_interface : t -> Module.t option
 
 val for_alias_exn : t -> Module.Name_map.t
+
+val main_module : t -> Module.t option
 
 val main_module_name_exn : t -> Module.Name.t
 
@@ -44,3 +55,15 @@ val for_odoc : t -> Module.t list
     libraries, this is always one module. For unwrapped libraries, this could be
     more than one. *)
 val entry_modules : t -> Module.t list
+
+val version_installed : t -> install_dir:Path.t -> t
+
+val installable_modules : t -> Module.t list
+
+val virtual_module_names : t -> Module.Name.Set.t
+
+val decode : src_dir:Path.t -> t Dune_lang.Decoder.t
+
+val encode : t -> Dune_lang.t list
+
+val wrapped : t -> Wrapped.t

@@ -252,7 +252,8 @@ include Sub_system.Register_end_point(
           |> Option.value_exn
           |> Path.as_in_build_dir_exn
         in
-        let source_modules = Module.Name.Map.values source_modules in
+        let source_modules = Modules.fold_user_written ~init:[]
+                               ~f:(fun m acc -> m :: acc) source_modules in
         let files ml_kind =
           Pform.Var.Values (Value.L.paths (
             List.filter_map source_modules ~f:(Module.file ~ml_kind)))
@@ -355,11 +356,13 @@ include Sub_system.Register_end_point(
                Super_context.resolve_program ~dir sctx ~loc:(Some loc) runner
              , [ Path.reach ~from:(Path.build dir) exe ]
            in
+           let modules =
+             Modules.fold_user_written ~init:[]
+               ~f:(fun m acc -> m :: acc) modules in
            A.chdir (Path.build dir)
              (A.progn
                 (A.run exe (runner_args @ flags) ::
-                 (Module.Name.Map.values source_modules
-                  |> List.concat_map ~f:(fun m ->
+                 (List.concat_map modules ~f:(fun m ->
                     Module.sources m
                     |> List.map ~f:(fun fn ->
                       A.diff ~optional:true

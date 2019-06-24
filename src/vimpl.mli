@@ -8,7 +8,7 @@ type t
 val make
   :  vlib:Lib.t
   -> impl:Dune_file.Library.t
-  -> vlib_modules:Lib_modules.t
+  -> vlib_modules:Modules.t
   -> vlib_foreign_objects:Path.t list
   -> vlib_dep_graph:Dep_graph.Ml_kind.t
   -> t
@@ -17,7 +17,7 @@ val impl : t -> Dune_file.Library.t
 
 (** Return the library module information for the virtual library. Required for
     setting up the copying rules *)
-val vlib_modules : t -> Lib_modules.t
+val vlib_modules : t -> Modules.t
 
 val vlib : t -> Lib.t
 

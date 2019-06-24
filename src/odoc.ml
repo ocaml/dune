@@ -472,7 +472,6 @@ let entry_modules_by_lib sctx lib =
   let name = Lib.name (Lib.Local.to_lib lib) in
   Dir_contents.get sctx ~dir
   |> Dir_contents.modules_of_library ~name
-  |> Modules.lib
   |> Modules.entry_modules
 
 let entry_modules sctx ~pkg =

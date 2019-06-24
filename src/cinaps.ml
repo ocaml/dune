@@ -101,7 +101,8 @@ let gen_rules sctx t ~dir ~scope ~dir_kind =
       ~dir_kind
   in
   let modules =
-    Preprocessing.pp_modules preprocess modules
+    let f = Preprocessing.pp_modules preprocess in
+    Module.Name.Map.map ~f modules
     |> Modules.exe
   in
 

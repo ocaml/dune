@@ -17,7 +17,7 @@ val dir : t -> Path.Build.t
 val text_files : t -> String.Set.t
 
 (** Modules attached to a library. [name] is the library best name. *)
-val modules_of_library : t -> name:Lib_name.t -> Lib_modules.t
+val modules_of_library : t -> name:Lib_name.t -> Modules.t
 
 val c_sources_of_library : t -> name:Lib_name.t -> C.Sources.t
 

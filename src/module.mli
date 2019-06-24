@@ -56,6 +56,8 @@ module Kind : sig
   type t = Intf_only | Virtual | Impl | Alias | Impl_vmodule | Wrapped_compat
 
   include Dune_lang.Conv with type t := t
+
+  val user_written : t -> bool
 end
 
 module Source : sig
@@ -122,6 +124,10 @@ val wrapped_compat : t -> t
 module Name_map : sig
   type module_
   type t = module_ Name.Map.t
+
+  val encode : t -> Dune_lang.t list
+
+  val decode : src_dir:Path.t -> t Dune_lang.Decoder.t
 
   val pp : t Fmt.t
 

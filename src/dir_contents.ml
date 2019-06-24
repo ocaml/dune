@@ -6,7 +6,7 @@ open! No_io
 
 module Dir_modules = struct
   type t =
-    { libraries : Lib_modules.t Lib_name.Map.t
+    { libraries : Modules.t Lib_name.Map.t
     ; executables : Modules.t String.Map.t
     ; (* Map from modules to the buildable they are part of *)
       rev_map : Buildable.t Module.Name.Map.t
@@ -195,9 +195,9 @@ module rec Load : sig
 end = struct
   let virtual_modules sctx vlib =
     let info = Lib.info vlib in
-    let lib_modules =
+    let modules =
       match Option.value_exn (Lib_info.virtual_ info) with
-      | External lib_modules -> lib_modules
+      | External modules -> modules
       | Local ->
         let src_dir =
           Lib_info.src_dir info
@@ -207,12 +207,9 @@ end = struct
         modules_of_library t ~name:(Lib.name vlib)
     in
     let existing_virtual_modules =
-      Lib_modules.virtual_modules lib_modules
-      |> Module.Name.Map.keys
-      |> Module.Name.Set.of_list
-    in
+      Modules.virtual_module_names modules in
     let allow_new_public_modules =
-      Lib_modules.wrapped lib_modules
+      Modules.wrapped modules
       |> Wrapped.to_bool
       |> not
     in
@@ -294,8 +291,8 @@ end = struct
           in
           Left ( lib
                , let src_dir = Path.build src_dir in
-                 Lib_modules.make lib ~src_dir modules ~main_module_name
-                   ~wrapped
+                 Modules.lib ~lib ~src_dir ~user_written_modules:modules
+                   ~main_module_name ~mode:wrapped
                )
         | Executables exes
         | Tests { exes; _} ->
@@ -335,9 +332,8 @@ end = struct
       let rev_modules =
         List.rev_append
           (List.concat_map libs ~f:(fun (l, m) ->
-             let modules = Lib_modules.modules m in
-             List.map (Module.Name.Map.values modules) ~f:(fun m ->
-               (Module.name m, l.buildable))))
+             Modules.fold_user_written m ~init:[] ~f:(fun m acc ->
+               (Module.name m, l.buildable) :: acc)))
           (List.concat_map exes ~f:(fun (e, m) ->
              Modules.fold_user_written m ~init:[] ~f:(fun m acc ->
                (Module.name m, e.buildable) :: acc)))

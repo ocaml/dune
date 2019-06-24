@@ -349,13 +349,16 @@ let compile ~dirs ~generated_file ~exe ~main ~flags ~byte_flags ~native_flags
     let n = List.length deps in
     let deps_by_module = Hashtbl.create n in
     List.iter deps ~f:(fun (m, deps) ->
-      Hashtbl.add deps_by_module m deps);
+      match Hashtbl.find deps_by_module m with
+      | exception Not_found -> Hashtbl.add deps_by_module m (ref deps)
+      | deps' -> deps' :=  deps @ !deps'
+    );
     let not_seen = ref (List.map deps ~f:fst |> String_set.of_list) in
     let res = ref [] in
     let rec loop m =
       if String_set.mem m !not_seen then begin
         not_seen := String_set.remove m !not_seen;
-        List.iter (Hashtbl.find deps_by_module m) ~f:loop;
+        List.iter !(Hashtbl.find deps_by_module m) ~f:loop;
         res := m :: !res
       end
     in
@@ -367,7 +370,16 @@ let compile ~dirs ~generated_file ~exe ~main ~flags ~byte_flags ~native_flags
 
   let modules_deps =
     let files_by_lib =
-      List.map (String_map.bindings modules) ~f:(fun (_, x) -> (x.libname, x.impl))
+      String_map.bindings modules
+      |> List.map ~f:(fun (_, x) ->
+        let deps = [x.impl] in
+        let deps =
+          match x.intf with
+          | None -> deps
+          | Some intf -> intf :: deps
+        in
+        List.map deps ~f:(fun d -> (x.libname, d)))
+      |> List.concat
       |> String_option_map.of_alist_multi
       |> String_option_map.bindings
     in

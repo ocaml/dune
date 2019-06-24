@@ -87,7 +87,7 @@ let executable_object_directory ~dir name =
 
 let program_not_found ?context ?hint ~loc prog =
   Errors.fail_opt loc
-    "@{<error>Error@}: Program %s not found in the tree or in PATH%s%a"
+    "Program %s not found in the tree or in PATH%s%a"
     (String.maybe_quoted prog)
     (match context with
      | None -> ""

@@ -879,6 +879,30 @@ instead of this stanza. For example:
 
   (dirs :standard \ <sub-dir1> <sub-dir2> ...)
 
+.. _dune-vendored_dirs:
+
+vendored_dirs (since 1.11)
+-------------------------
+
+Dune supports vendoring of other dune-based projects natively since simply
+copying a project into a subdirectory of your own project will work. Simply
+doing that has a few limitations though. You can workaround those by explicitly
+marking such directories as containing vendored code.
+
+Example:
+
+.. code:: scheme
+
+   (vendored_dirs vendor)
+
+
+Dune will not resolve aliases in vendored directories meaning by default it will
+not build all installable targets, run the test, format or lint the code located
+in such a directory while still building the parts your project depend upon.
+Libraries and executable in vendored directories will also be built with a ``-w
+-a`` flag to suppress all warnings and prevent pollution of your build output.
+
+
 .. _include_subdirs:
 
 include_subdirs

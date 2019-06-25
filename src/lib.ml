@@ -249,7 +249,7 @@ end = struct
     ; name
     }
 
-  module O = Ordered.Make(T)
+  module O = Comparable.Make(T)
   module Set = O.Set
   module Top_closure = Top_closure.Make(Set)(Monad.Id)
 end
@@ -360,7 +360,7 @@ let to_id t : Id.t = t.unique_id
 let equal l1 l2 = Id.equal (to_id l1) (to_id l2)
 let hash t = Id.hash (to_id t)
 
-include Ordered.Make(T)
+include Comparable.Make(T)
 
 module L = struct
   type nonrec t = t list

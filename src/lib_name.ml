@@ -111,7 +111,7 @@ include (
   : Comparator.OPS with type t := t
 )
 
-module O = Ordered.Make(String)
+module O = Comparable.Make(String)
 module Map = O.Map
 module Set = struct
   include O.Set

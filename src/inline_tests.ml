@@ -125,7 +125,7 @@ include Sub_system.Register_end_point(
           ; "native", Native
           ; "best"  , Best
           ]
-      module O = Ordered.Make(T)
+      module O = Comparable.Make(T)
       module Set = struct
         include O.Set
 

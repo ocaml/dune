@@ -11,7 +11,7 @@ module Signal = struct
   type t = Int | Quit | Term
   let compare : t -> t -> Ordering.t = compare
 
-  include Ordered.Make(struct
+  include Comparable.Make(struct
       type nonrec t = t
       let compare = compare
       let to_dyn _ = Dyn.opaque

@@ -219,7 +219,7 @@ let maybe_quoted s =
   else
     Printf.sprintf {|"%s"|} escaped
 
-module O = Ordered.Make(T)
+module O = Comparable.Make(T)
 module Set = struct
   include O.Set
 

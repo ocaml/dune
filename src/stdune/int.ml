@@ -13,7 +13,7 @@ end
 
 include T
 
-include Ordered.Make(T)
+include Comparable.Make(T)
 
 let equal (a : t) b = a = b
 

@@ -139,7 +139,7 @@ module Internal_rule = struct
   end
   include T
 
-  module O = Ordered.Make(T)
+  module O = Comparable.Make(T)
   module Set = O.Set
 
   let equal a b = Id.equal a.id b.id
@@ -1674,7 +1674,7 @@ module Rule = struct
   end
   include T
 
-  module O = Ordered.Make(T)
+  module O = Comparable.Make(T)
   module Set = O.Set
 end
 

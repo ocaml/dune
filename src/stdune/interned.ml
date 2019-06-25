@@ -117,7 +117,7 @@ module Make(R : Settings)() = struct
 
   let pp fmt t = Format.fprintf fmt "%S" (to_string t)
 
-  module O = Ordered.Make(T)
+  module O = Comparable.Make(T)
 
   module Set = struct
     include O.Set

@@ -77,7 +77,7 @@ end
 
 include T
 
-module O = Ordered.Make(T)
+module O = Comparable.Make(T)
 
 module Map = O.Map
 module Set = struct

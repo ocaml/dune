@@ -13,4 +13,4 @@ val of_string : string -> t option
 
 val to_string : t -> string
 
-module Infix : Comparable.OPS with type t = t
+module Infix : Comparator.OPS with type t = t

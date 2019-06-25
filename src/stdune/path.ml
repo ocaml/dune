@@ -144,11 +144,11 @@ end = struct
     "." ^ s
 
   include (
-    Comparable.Operators(struct
+    Comparator.Operators(struct
       type nonrec t = t
       let compare = compare
     end)
-    : Comparable.OPS with type t := t
+    : Comparator.OPS with type t := t
   )
 
   let to_string_maybe_quoted t =
@@ -525,11 +525,11 @@ end = struct
   end
 
   include (
-    Comparable.Operators(struct
+    Comparator.Operators(struct
       type nonrec t = t
       let compare = Local_gen.compare
     end)
-    : Comparable.OPS with type t := t
+    : Comparator.OPS with type t := t
   )
 
   let of_local t = t
@@ -1252,7 +1252,7 @@ let local_part = function
 
 let stat t = Unix.stat (to_string t)
 
-include (Comparable.Operators(T) : Comparable.OPS with type t := t)
+include (Comparator.Operators(T) : Comparator.OPS with type t := t)
 
 let path_of_local = of_local
 

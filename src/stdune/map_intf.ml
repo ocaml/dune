@@ -1,5 +1,5 @@
 module type Key = sig
-  include Comparable.S
+  include Comparator.S
   val to_dyn : t -> Dyn.t
 end
 

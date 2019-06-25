@@ -107,8 +107,8 @@ type t = string
 let compare = String.compare
 
 include (
-  Comparable.Operators(struct type nonrec t = t let compare = compare end)
-  : Comparable.OPS with type t := t
+  Comparator.Operators(struct type nonrec t = t let compare = compare end)
+  : Comparator.OPS with type t := t
 )
 
 module O = Ordered.Make(String)

@@ -25,7 +25,7 @@ module Name = struct
 
   let to_sexp t = Sexp.Encoder.string (to_string t)
 
-  module Infix = Comparable.Operators(T)
+  module Infix = Comparator.Operators(T)
 end
 
 module Version_source = struct

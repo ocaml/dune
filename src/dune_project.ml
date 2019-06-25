@@ -30,7 +30,7 @@ module Name : sig
 
   val anonymous_root : t
 
-  module Infix : Comparable.OPS with type t = t
+  module Infix : Comparator.OPS with type t = t
 
   module Map : Map.S with type key = t
 end = struct
@@ -59,7 +59,7 @@ end = struct
 
   module Map = Map.Make(T)
 
-  module Infix = Comparable.Operators(T)
+  module Infix = Comparator.Operators(T)
 
   let anonymous_root = Anonymous Path.Source.root
 

@@ -33,7 +33,7 @@ Interfaces imported:
         b438dbe8d4c60ca1bb06d04c7bc95652        Stdune__Exn
         a1b4f657ccceb16196f104a53a0e199a        Stdune__Env
         7643682d2d95acbcf8834a351a1e2779        Stdune__Either
-        826226f09894dc48694a431d13b9e541        Stdune__Comparable
+        826226f09894dc48694a431d13b9e541        Stdune__Comparator
         69861cabc5a73becd98269ce298eaa59        Stdune__Bin
         cbf0ce887ccceaff96f4a22a8f057799        Stdune__Array
         37cf8dd4fc4be5636ff9f78604107f8b        Stdune__
@@ -91,7 +91,7 @@ Ocamlobjinfo.parse fixture;;
     "Dune_caml__Result"; "Dune_caml__Result_compat"; "Format"; "Hashtbl";
     "Lexing"; "ListLabels"; "Map"; "MoreLabels"; "Pervasives"; "Printexc";
     "Printf"; "Set"; "Stdune__"; "Stdune__Array"; "Stdune__Bin";
-    "Stdune__Comparable"; "Stdune__Either"; "Stdune__Env"; "Stdune__Exn";
+    "Stdune__Comparator"; "Stdune__Either"; "Stdune__Env"; "Stdune__Exn";
     "Stdune__Hashable"; "Stdune__Hashtbl"; "Stdune__Hashtbl_intf";
     "Stdune__List"; "Stdune__Loc"; "Stdune__Map"; "Stdune__Map_intf";
     "Stdune__Ordering"; "Stdune__Path"; "Stdune__Result"; "Stdune__Set";

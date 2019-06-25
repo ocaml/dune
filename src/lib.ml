@@ -206,7 +206,7 @@ module Id : sig
 
   val compare : t -> t -> Ordering.t
 
-  include Comparable.OPS with type t := t
+  include Comparator.OPS with type t := t
 
   val make : path:Path.t -> name:Lib_name.t -> t
 
@@ -230,8 +230,8 @@ end = struct
   include T
 
   include (
-    Comparable.Operators(T)
-    : Comparable.OPS with type t := T.t
+    Comparator.Operators(T)
+    : Comparator.OPS with type t := T.t
   )
 
   let gen_unique_id =
@@ -286,7 +286,7 @@ end
 
 include T
 
-include (Comparable.Operators(T) : Comparable.OPS with type t := t)
+include (Comparator.Operators(T) : Comparator.OPS with type t := t)
 
 type status =
   | St_initializing of Id.t (* To detect cycles *)

@@ -37,13 +37,13 @@ Test embedding of build information
   >   | Some v -> B.Version.to_string v
   >   | None -> "n/a"
   > let () =
-  >   pr "%s" (get_version B.version);
+  >   pr "%s" (get_version (B.version ()));
   >   let process_lib lib =
   >     let name = B.Statically_linked_library.name lib in
   >     let version = B.Statically_linked_library.version lib in
   >     pr "lib %s: %s" name (get_version version)
   >   in
-  >   List.iter process_lib B.statically_linked_libraries
+  >   List.iter process_lib (B.All_statically_linked_libraries.to_list ())
   > EOF
 
   $ dune build

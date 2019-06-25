@@ -11,7 +11,7 @@ module V1 : sig
   (** The version at which the current executable was built. The
       version is [None] during development, it is only [Some _] once
       the executable is installed or promoted to the source tree. *)
-  val version : Version.t option
+  val version : unit -> Version.t option
 
   module Statically_linked_library : sig
     type t
@@ -24,6 +24,11 @@ module V1 : sig
     val version : t -> Version.t option
   end
 
-  (** All the libraries that where statically linked in *)
-  val statically_linked_libraries : Statically_linked_library.t list
+  module All_statically_linked_libraries : sig
+    (** All the libraries that where statically linked in *)
+
+    val to_list : unit -> Statically_linked_library.t list
+
+    val find : name:string -> Statically_linked_library.t option
+  end
 end

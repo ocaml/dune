@@ -129,9 +129,10 @@ let build_info =
       | None -> "n/a"
       | Some v -> B.Version.to_string v
     in
-    pr "version: %s" (ver_string B.version);
+    pr "version: %s" (ver_string (B.version ()));
     let libs =
-      List.map B.statically_linked_libraries ~f:(fun lib ->
+      B.All_statically_linked_libraries.to_list ()
+      |> List.map ~f:(fun lib ->
         B.Statically_linked_library.name lib,
         ver_string (B.Statically_linked_library.version lib))
       |> List.sort ~compare

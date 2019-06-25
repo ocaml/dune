@@ -1,5 +1,11 @@
 open Stdune
 
+let real_unit_map_of_name_map map =
+  Module.Name.Map.fold map ~init:Module.Name.Map.empty
+    ~f:(fun m acc ->
+      Module.Name.Map.add acc
+        (Module.real_unit_name m) m)
+
 module Wrapped = struct
   module Mode = Wrapped
   type t =
@@ -9,6 +15,18 @@ module Wrapped = struct
     ; alias_module : Module.t
     ; lib_interface : Module.t option
     }
+
+  let real_unit_names
+        { modules; wrapped_compat; alias_module
+        ; lib_interface = _ ; mode = _
+        } =
+    let m = real_unit_map_of_name_map modules in
+    let m =
+      Module.Name.Map.add m (Module.real_unit_name alias_module) alias_module
+    in
+    Module.Name.Map.union m
+      (real_unit_map_of_name_map wrapped_compat)
+      ~f:(fun _name _ _ -> assert false)
 
   let main_module t =
     Option.value t.lib_interface ~default:t.alias_module
@@ -439,3 +457,13 @@ let decode ~src_dir =
         Wrapped w
       )
     ]
+
+let real_unit_names = function
+  | Singleton m ->
+    Module.Name.Map.singleton (Module.real_unit_name m) m
+  | Unwrapped m -> real_unit_map_of_name_map m
+  | Wrapped m -> Wrapped.real_unit_names m
+  | Impl _ ->
+    Code_error.raise
+      "real_unit_names: not well defined for implementations"
+      []

@@ -35,8 +35,8 @@ val lib_interface : t -> Module.t option
 
 val for_alias_exn : t -> Module.Name_map.t
 
-val main_module : t -> Module.t option
-
+(** This function doesn't really make sense for implementations, but it's only
+    used for generating a comment in an alias file *)
 val main_module_name_exn : t -> Module.Name.t
 
 val fold_user_written
@@ -67,3 +67,5 @@ val decode : src_dir:Path.t -> t Dune_lang.Decoder.t
 val encode : t -> Dune_lang.t list
 
 val wrapped : t -> Wrapped.t
+
+val real_unit_names : t -> Module.Name_map.t

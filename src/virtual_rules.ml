@@ -110,7 +110,8 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
 
 
 let external_dep_graph sctx ~impl_cm_kind ~impl_obj_dir ~vlib_modules =
-  let wrapped = Modules.wrapped vlib_modules |> Wrapped.to_bool in
+  let vlib_real_unit_names =
+    Modules.real_unit_names vlib_modules in
   let dir = Obj_dir.dir impl_obj_dir in
   let ocamlobjinfo =
     let ctx = Super_context.context sctx in
@@ -121,7 +122,6 @@ let external_dep_graph sctx ~impl_cm_kind ~impl_obj_dir ~vlib_modules =
       in
       Ocamlobjinfo.rules ~dir ~ctx ~unit
   in
-  let main_module = Modules.main_module vlib_modules in
   Ml_kind.Dict.of_func (fun ~ml_kind ->
     let cm_kind =
       match ml_kind with
@@ -131,30 +131,10 @@ let external_dep_graph sctx ~impl_cm_kind ~impl_obj_dir ~vlib_modules =
     let deps_from_objinfo ~for_module (ocamlobjinfo : Ocamlobjinfo.t) =
       Module.Name.Set.to_list ocamlobjinfo.intf
       |> List.filter_map ~f:(fun dep ->
-        match Module.Name.split_alias_prefix dep, wrapped with
-        | Some _, false -> None
-        | None, false ->
-          if Module.name for_module = dep then
-            None
-          else
-            Modules.find vlib_modules dep
-        | None, true -> (* lib interface module *)
-          if Module.name for_module = dep then
-            None
-          else
-            Option.bind main_module ~f:(fun main_module ->
-              let main_module_name = Module.name main_module in
-              if main_module_name = Module.name for_module then
-                Modules.find vlib_modules dep
-              else
-                None)
-        | Some (prefix, name), true ->
-          Option.bind main_module ~f:(fun main_module ->
-            if Module.name main_module <> prefix
-            || Module.name for_module = name then
-              None
-            else
-              Modules.find vlib_modules name))
+        if Module.name for_module = dep then
+          None (* no circles *)
+        else
+          Module.Name.Map.find vlib_real_unit_names dep)
     in
     Dep_graph.make ~dir
       ~per_module:(

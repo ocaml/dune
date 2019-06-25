@@ -357,8 +357,6 @@ module Obj = struct
         ~key:(fun m -> m.obj_name)
         ~deps:(find_exn t)
   end
-
-  module Set = Set.Make(T)
 end
 
 let encode

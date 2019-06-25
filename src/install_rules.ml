@@ -86,7 +86,8 @@ let pkg_version ~path ~(pkg : Package.t) =
           ~else_:(loop rest)
       | From_metadata source ->
         match pkg.version with
-        | Some (v, source') when source = source' -> Build.return (Some v)
+        | Some (v, source') when source = source' ->
+          Build.return (Some v)
         | _ -> loop rest
   in
   loop

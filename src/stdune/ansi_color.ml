@@ -113,13 +113,13 @@ let parse_line str styles =
   in
   let rec loop styles i acc =
     match String.index_from str i '\027' with
-    | exception Not_found ->
+    | None ->
       (styles, add_chunk acc ~styles ~pos:i ~len:(len - i))
-    | seq_start ->
+    | Some seq_start ->
       let acc = add_chunk acc ~styles ~pos:i ~len:(seq_start - i) in
       match String.index_from str (seq_start + 1) 'm' with
-      | exception Not_found -> (styles, acc)
-      | seq_end ->
+      | None -> (styles, acc)
+      | Some seq_end ->
         let styles =
           String.sub str ~pos:(seq_start + 1) ~len:(seq_end - seq_start - 1)
           |> String.split ~on:';'

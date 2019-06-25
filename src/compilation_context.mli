@@ -33,6 +33,7 @@ val create
   -> ?js_of_ocaml          : Dune_file.Js_of_ocaml.t
   -> dynlink               : bool
   -> ?sandbox              : bool
+  -> package               : Package.t option
   -> unit
   -> t
 
@@ -60,6 +61,7 @@ val stdlib               : t -> Dune_file.Library.Stdlib.t option
 val js_of_ocaml          : t -> Dune_file.Js_of_ocaml.t option
 val dynlink              : t -> bool
 val sandbox              : t -> bool option
+val package              : t -> Package.t option
 
 (** Information for implementation of virtual libraries. *)
 val vimpl                : t -> Vimpl.t option

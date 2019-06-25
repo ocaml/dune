@@ -114,7 +114,10 @@ end
 
 (** Load a project description from the following directory. [files]
     is the set of files in this directory. *)
-val load : dir:Path.Source.t -> files:String.Set.t -> t option
+val load
+  :  dir:Path.Source.t
+  -> files:String.Set.t
+  -> t option
 
 (** "dune-project" *)
 val filename : string

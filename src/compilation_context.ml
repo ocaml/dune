@@ -65,6 +65,7 @@ type t =
   ; dynlink              : bool
   ; sandbox              : bool option
   ; vimpl                : Vimpl.t option
+  ; package              : Package.t option
   }
 
 let super_context        t = t.super_context
@@ -88,6 +89,7 @@ let js_of_ocaml          t = t.js_of_ocaml
 let dynlink              t = t.dynlink
 let sandbox              t = t.sandbox
 let vimpl                t = t.vimpl
+let package              t = t.package
 
 let context              t = Super_context.context t.super_context
 
@@ -97,7 +99,7 @@ let create ~super_context ~scope ~expander ~obj_dir
       ~modules ?alias_module ?lib_interface_module ~flags
       ~requires_compile ~requires_link
       ?(preprocessing=Preprocessing.dummy) ?(no_keep_locs=false)
-      ~opaque ?stdlib ?js_of_ocaml ~dynlink ?sandbox () =
+      ~opaque ?stdlib ?js_of_ocaml ~dynlink ?sandbox ~package () =
   let requires_compile =
     if Dune_project.implicit_transitive_deps (Scope.project scope) then
       Lazy.force requires_link
@@ -124,6 +126,7 @@ let create ~super_context ~scope ~expander ~obj_dir
   ; vimpl
   ; dynlink
   ; sandbox
+  ; package
   }
 
 let for_alias_module t =

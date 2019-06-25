@@ -220,13 +220,18 @@ let of_library_stanza ~dir
     else
       Normal
   in
+  let version =
+    match status with
+    | Public (_, pkg) -> Option.map pkg.version ~f:fst
+    | Installed | Private _ -> None
+  in
   { loc = conf.buildable.loc
   ; name
   ; kind     = conf.kind
   ; src_dir  = dir
   ; orig_src_dir = None
   ; obj_dir
-  ; version  = None
+  ; version
   ; synopsis = conf.synopsis
   ; archives
   ; plugins

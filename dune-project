@@ -1,4 +1,4 @@
-(lang dune 1.10)
+(lang dune 1.11)
 (name dune)
 
 (implicit_transitive_deps false)
@@ -38,4 +38,19 @@ It also supports multi-context builds, such as building against
 several opam roots/switches simultaneously. This helps maintaining
 packages across several versions of OCaml and gives cross-compilation
 for free.
+"))
+
+(package
+ (name dune-build-info)
+ (depends
+  (ocaml (>= 4.02))
+  (dune (>= 1.11)))
+ (synopsis "Embed build informations inside executable")
+ (description "\
+The build-info library allows to access information about how the
+executable was built, such as the version of the project at which it
+was built or the list of statically linked libraries with their
+versions.  It supports reporting the version from the version control
+system during development to get an precise reference of when the
+executable was built.
 "))

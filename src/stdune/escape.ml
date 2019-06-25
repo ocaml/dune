@@ -62,7 +62,7 @@ let quote_if_needed s =
   let len = String.length s in
   match quote_length s with
   | No_quoting ->
-    s
+    if s = "" then "\"\"" else s
   | Needs_quoting_with_length n ->
     let s' = Bytes.create (n + 2) in
     Bytes.unsafe_set s' 0 '"';

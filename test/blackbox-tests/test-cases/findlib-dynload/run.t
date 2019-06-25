@@ -72,7 +72,13 @@
   Findlib.record_package Findlib.Record_core "unix";;
   Findlib.record_package Findlib.Record_core "threads.posix";;
   Findlib.record_package Findlib.Record_core "threads";;
-  let preds = [ "ppx_driver"; "mt"; "mt_posix" ] in
-  let preds = (if Dynlink.is_native then "native" else "byte") :: preds in
+  let preds =
+    [ "ppx_driver"
+    ; "mt"
+    ; "mt_posix"
+    ]
+  in
+  let preds =
+    (if Dynlink.is_native then "native" else "byte") :: preds
+  in
   Findlib.record_package_predicates preds;;
-  

@@ -432,6 +432,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
         ~js_of_ocaml:lib.buildable.js_of_ocaml
         ~dynlink
         ?stdlib:lib.stdlib
+        ~package:(Option.map lib.public ~f:(fun p -> p.package))
     in
 
     let requires_compile = Compilation_context.requires_compile cctx in

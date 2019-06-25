@@ -399,7 +399,7 @@ module Preprocess = struct
                    *)
                    [])
                @
-               [ 
+               [
                  String_with_vars.make_var loc "input-file"
                ])))
 end
@@ -866,24 +866,65 @@ module Library = struct
   end
 
   module Special_builtin_support = struct
-    module T = struct
+    module Build_info = struct
+      type api_version =
+        | V1
+
+      let supported_api_versions =
+        [ 1, V1 ]
+
       type t =
-        | Findlib_dynload
-      let compare = compare
+        { data_module : string
+        ; api_version : api_version
+        }
+
+      let decode =
+        fields
+          (let+ data_module = field "data_module" string
+           and+ api_version =
+             field "api_version"
+               (let+ loc = loc and+ ver = int in
+                match List.assoc supported_api_versions ver with
+                | Some x -> x
+                | None ->
+                  User_error.raise ~loc
+                    [ Pp.textf
+                        "API version %d is not supported. Only the \
+                         following versions are currently supported:" ver
+                    ; Pp.enumerate supported_api_versions
+                        ~f:(fun (n, _) -> Pp.textf "%d" n)
+                    ])
+           in
+           { data_module; api_version })
+
+      let encode { data_module; api_version } =
+        let open Dune_lang.Encoder in
+        record_fields
+          [ field "data_module" string data_module
+          ; field "api_version" int
+              (match api_version with
+               | V1 -> 1)
+          ]
     end
 
-    include T
-    module Map = Map.Make(T)
+    type t =
+      | Findlib_dynload
+      | Build_info of Build_info.t
 
     let decode =
-      enum
-        [ "findlib_dynload", Findlib_dynload
+      sum
+        [ "findlib_dynload", return Findlib_dynload
+        ; "build_info",
+          (let+ () = Syntax.since Stanza.syntax (1, 11)
+           and+ info = Build_info.decode in
+           Build_info info)
         ]
 
     let encode t =
-      Dune_lang.atom
-        (match t with
-         | Findlib_dynload -> "findlib_dynload")
+      match t with
+      | Findlib_dynload -> Dune_lang.atom "findlib_dynload"
+      | Build_info x ->
+        Dune_lang.List (Dune_lang.atom "build_info" :: Build_info.encode x)
   end
 
   module Stdlib = struct

@@ -39,6 +39,12 @@
   [cinaps tool](https://github.com/janestreet/cinaps) tool (#2269,
   @diml)
 
+- Allow to embed build info in executables such as version and list
+  and version of statically linked libraries (#2224, @diml)
+
+- Set version in `META` and `dune-package` files to the one read from
+  the vcs when no other version is available (#2224, @diml)
+
 1.10.0 (04/06/2019)
 -------------------
 

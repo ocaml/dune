@@ -711,7 +711,8 @@ in your project.")
 
 let load_dune_project ~dir opam_packages =
   let file = Path.Source.relative dir filename in
-  load (Path.source file) ~f:(fun lang -> parse ~dir ~lang ~opam_packages ~file)
+  load (Path.source file) ~f:(fun lang ->
+    parse ~dir ~lang ~opam_packages ~file)
 
 let make_jbuilder_project ~dir opam_packages =
   let lang = get_dune_lang () in
@@ -773,7 +774,8 @@ let load ~dir ~files =
             in
             let* version = Opam_file.get_field opam "version" in
             match version with
-            | String (_, s) -> Some (s, Package.Version_source.Package)
+            | String (_, s) ->
+              Some (s, Package.Version_source.Package)
             | _ -> None
           in
           { Package.

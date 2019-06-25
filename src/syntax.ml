@@ -13,7 +13,7 @@ module Version = struct
 
   include T
 
-  module Infix = Comparable.Operators(T)
+  module Infix = Comparator.Operators(T)
 
   let equal = Infix.equal
 

@@ -7,12 +7,13 @@ module Var = struct
       ) else (
         String.compare
       )
+    let to_dyn = Dyn.Encoder.string
   end
-  module Set = Set.Make(T)
+
+  include Comparable.Make(T)
   include T
 end
 
-let map_to_dyn = Map.to_dyn
 module Map = Map.Make(Var)
 
 type t =
@@ -72,7 +73,7 @@ let extend_env x y =
 
 let to_dyn t =
   let open Dyn.Encoder in
-  map_to_dyn Map.to_list string string t.vars
+  Map.to_dyn string t.vars
 
 let to_sexp t =
   Dyn.to_sexp (to_dyn t)

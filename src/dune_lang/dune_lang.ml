@@ -533,6 +533,8 @@ module Decoder = struct
         match Int.compare alen blen with
         | Eq -> String.compare a b
         | ne -> ne
+
+      let to_dyn = Dyn.Encoder.string
     end
     include T
     module Map = Map.Make(T)

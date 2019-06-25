@@ -36,12 +36,14 @@ module T = struct
   let compare = compare
   let equal (x : t) (y : t) = x = y
   let hash (s : t) = Hashtbl.hash s
+  let to_dyn s = Dyn.String s
 end
+
+let to_dyn = T.to_dyn
 
 let equal : string -> string -> bool = (=)
 let hash = Hashtbl.hash
 let to_sexp = Sexp.Encoder.string
-let to_dyn s = Dyn.String s
 
 let capitalize   = capitalize_ascii
 let uncapitalize = uncapitalize_ascii
@@ -217,32 +219,23 @@ let maybe_quoted s =
   else
     Printf.sprintf {|"%s"|} escaped
 
+module O = Comparable.Make(T)
 module Set = struct
-  include Set.Make(T)
+  include O.Set
+
   let pp fmt t =
     Format.fprintf fmt "Set (@[%a@])"
       (Format.pp_print_list Format.pp_print_string
          ~pp_sep:(fun fmt () -> Format.fprintf fmt "@ "))
       (to_list t)
-
-  let to_dyn t =
-    let open Dyn in
-    Set (List.map (to_list t) ~f:(fun x -> Dyn.String x))
 end
 
 module Map = struct
-  include Map.Make(T)
+  include O.Map
   let pp f fmt t =
     Format.pp_print_list (fun fmt (k, v) ->
       Format.fprintf fmt "@[<hov 2>(%s@ =@ %a)@]" k f v
     ) fmt (to_list t)
-
-  let to_dyn f t =
-    let open Dyn in
-    Map (
-      to_list t
-      |> List.map ~f:(fun (k ,v) -> (String k, f v))
-    )
 end
 module Table = Hashtbl.Make(T)
 

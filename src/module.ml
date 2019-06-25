@@ -40,7 +40,7 @@ module Name = struct
   end
   module Map = String.Map
   module Top_closure = Top_closure.String
-  module Infix = Comparable.Operators(T)
+  module Infix = Comparator.Operators(T)
 
   let of_local_lib_name s =
     of_string (Lib_name.Local.to_string s)
@@ -330,19 +330,13 @@ module Obj_map = struct
   include Map.Make(struct
       type nonrec t = t
       let compare m1 m2 = String.compare m1.obj_name m2.obj_name
+      let to_dyn = to_dyn
     end)
 
   let top_closure t =
     Top_closure.String.top_closure
       ~key:(fun m -> m.obj_name)
-      ~deps:(fun m ->
-        match find t m with
-        | Some m -> m
-        | None ->
-          Code_error.raise "top_closure: unable to find key"
-            [ "m", to_dyn m
-            ; "t", (Dyn.Encoder.list to_dyn) (keys t)
-            ])
+      ~deps:(find_exn t)
 end
 
 let encode

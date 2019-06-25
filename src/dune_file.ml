@@ -794,6 +794,7 @@ module Mode_conf = struct
       | Native
       | Best
     let compare (a : t) b = compare a b
+    let to_dyn _ = Dyn.opaque
   end
   include T
 
@@ -815,8 +816,9 @@ module Mode_conf = struct
   let encode t =
     Dune_lang.unsafe_atom_of_string (to_string t)
 
+  module O = Comparable.Make(T)
   module Set = struct
-    include Set.Make(T)
+    include O.Set
 
     let decode = list decode >>| of_list
 
@@ -1440,6 +1442,8 @@ module Executables = struct
         match compare a.mode b.mode with
         | Eq -> compare a.kind b.kind
         | ne -> ne
+
+      let to_dyn _ = Dyn.opaque
     end
     include T
 
@@ -1506,8 +1510,9 @@ module Executables = struct
         ; "kind", Fmt.const Binary_kind.pp kind
         ]
 
+    module O = Comparable.Make(T)
     module Set = struct
-      include Set.Make(T)
+      include O.Set
 
       let decode =
         located (list decode) >>| fun (loc, l) ->

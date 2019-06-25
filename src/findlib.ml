@@ -404,7 +404,7 @@ let find_and_acknowledge_package t ~fq_name =
         Discovered_package.Findlib (Meta_source.internal t ~meta))
     | dir :: dirs ->
       let dir = Path.relative dir (Lib_name.to_string root_name) in
-      let dune = Path.relative dir "dune-package" in
+      let dune = Path.relative dir "dune-package123" in
       match
         (if Path.exists dune then
            Dune_package.Or_meta.load dune

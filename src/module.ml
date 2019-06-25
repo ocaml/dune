@@ -342,17 +342,23 @@ let sources t =
   List.filter_map [t.source.files.intf; t.source.files.impl]
     ~f:(Option.map ~f:(fun (x : File.t) -> x.path))
 
-module Obj_map = struct
-  include Map.Make(struct
-      type nonrec t = t
-      let compare m1 m2 = String.compare m1.obj_name m2.obj_name
+module Obj = struct
+  module T = struct
+    type nonrec t = t
+    let compare m1 m2 = String.compare m1.obj_name m2.obj_name
       let to_dyn = to_dyn
-    end)
+  end
 
-  let top_closure t =
-    Top_closure.String.top_closure
-      ~key:(fun m -> m.obj_name)
-      ~deps:(find_exn t)
+  module Map = struct
+    include Map.Make(T)
+
+    let top_closure t =
+      Top_closure.String.top_closure
+        ~key:(fun m -> m.obj_name)
+        ~deps:(find_exn t)
+  end
+
+  module Set = Set.Make(T)
 end
 
 let encode

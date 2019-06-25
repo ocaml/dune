@@ -4,19 +4,19 @@ open Build.O
 
 type t =
   { dir        : Path.Build.t
-  ; per_module : ((unit, Module.t list) Build.t) Module.Obj_map.t
+  ; per_module : ((unit, Module.t list) Build.t) Module.Obj.Map.t
   }
 
 let make ~dir ~per_module = { dir ; per_module }
 
 let deps_of t (m : Module.t) =
-  match Module.Obj_map.find t.per_module m with
+  match Module.Obj.Map.find t.per_module m with
   | Some x -> x
   | None ->
     Code_error.raise "Ocamldep.Dep_graph.deps_of"
       [ "dir", Path.Build.to_dyn t.dir
       ; "modules", Dyn.Encoder.(list string)
-                     (Module.Obj_map.keys t.per_module
+                     (Module.Obj.Map.keys t.per_module
                       |> List.map ~f:Module.obj_name)
       ; "m", Module.to_dyn m
       ]
@@ -26,13 +26,13 @@ let pp_cycle fmt cycle =
     fmt (List.map cycle ~f:Module.name)
 
 let top_closed t modules =
-  Module.Obj_map.to_list t.per_module
+  Module.Obj.Map.to_list t.per_module
   |> List.map ~f:(fun (unit, deps) ->
     deps >>^ fun deps -> (unit, deps))
   |> Build.all
   >>^ fun per_module ->
-  let per_module = Module.Obj_map.of_list_exn per_module in
-  match Module.Obj_map.top_closure per_module modules with
+  let per_module = Module.Obj.Map.of_list_exn per_module in
+  match Module.Obj.Map.top_closure per_module modules with
   | Ok modules -> modules
   | Error cycle ->
     die "dependency cycle between modules in %s:\n   %a"
@@ -47,7 +47,7 @@ let top_closed_implementations t modules =
 
 let dummy (m : Module.t) =
   { dir = Path.Build.root
-  ; per_module = Module.Obj_map.singleton m (Build.return [])
+  ; per_module = Module.Obj.Map.singleton m (Build.return [])
   }
 
 module Ml_kind = struct
@@ -64,7 +64,7 @@ module Ml_kind = struct
       let impl = Ml_kind.Dict.get impl ml_kind in
       { impl with
         per_module =
-          Module.Obj_map.union ~f:(merge_impl ~ml_kind)
+          Module.Obj.Map.union ~f:(merge_impl ~ml_kind)
             (Ml_kind.Dict.get vlib ml_kind).per_module
             impl.per_module
       })

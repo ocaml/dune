@@ -158,7 +158,7 @@ let external_dep_graph sctx ~impl_cm_kind ~impl_obj_dir ~vlib_modules =
     in
     Dep_graph.make ~dir
       ~per_module:(
-        Modules.fold vlib_modules ~init:Module.Obj_map.empty ~f:(fun m acc ->
+        Modules.fold vlib_modules ~init:Module.Obj.Map.empty ~f:(fun m acc ->
           let deps =
             if (ml_kind = Intf && not (Module.has m ~ml_kind:Intf))
             || (ml_kind = Impl && not (Module.has m ~ml_kind:Impl))
@@ -171,7 +171,7 @@ let external_dep_graph sctx ~impl_cm_kind ~impl_obj_dir ~vlib_modules =
               Build.memoize "ocamlobjinfo" @@
               read >>^ deps_from_objinfo ~for_module:m
           in
-          Module.Obj_map.add acc m deps)))
+          Module.Obj.Map.add acc m deps)))
 
 let impl sctx ~dir ~(lib : Dune_file.Library.t) ~scope =
   Option.map lib.implements ~f:begin fun (loc, implements) ->

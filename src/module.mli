@@ -138,16 +138,19 @@ module Name_map : sig
   val add : t -> module_ -> t
 end with type module_ := t
 
-module Obj_map : sig
+module Obj : sig
   type module_
-  include Map.S with type key = module_
 
-  val find_exn : 'a t -> module_ -> 'a
+  module Map : sig
+    include Map.S with type key = module_
 
-  val top_closure
-    :  module_ list t
-    -> module_ list
-    -> (module_ list, module_ list) Result.result
+    val find_exn : 'a t -> module_ -> 'a
+
+    val top_closure
+      :  module_ list t
+      -> module_ list
+      -> (module_ list, module_ list) Result.result
+  end
 end with type module_ := t
 
 val sources : t -> Path.t list

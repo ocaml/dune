@@ -2,69 +2,51 @@ module type S = Set_intf.S
 
 module Make(Key : Map_intf.Key)(M : Map_intf.S with type key = Key.t)
 = struct
+  module T = Dune_caml.MoreLabels.Set.Make(struct
+      type t = Key.t
+      let compare x y = Ordering.to_int (Key.compare x y)
+    end)
+
   include struct
     [@@@warning "-32"]
     (* [map] is only available since 4.04 *)
     let map ~f t =
-      M.keys t
+      T.elements t
       |> List.map ~f
-      |> M.of_list
+      |> T.of_list
 
     (* Since 4.05 *)
     let to_opt f t =
       match f t with
-      | Some (x, _) -> Some x
-      | None -> None
-    let choose_opt  = to_opt M.choose
-    let min_elt_opt = to_opt M.min_binding
-    let max_elt_opt = to_opt M.max_binding
+      | x -> Some x
+      | exception Not_found -> None
+    let choose_opt  = to_opt T.choose
+    let min_elt_opt = to_opt T.min_elt
+    let max_elt_opt = to_opt T.max_elt
   end
 
-  type elt = M.key
   type 'a map = 'a M.t
-  type t = unit M.t
 
-  let to_list = M.keys
+  let to_list = T.elements
 
-  let is_empty = M.is_empty
-  let cardinal = M.cardinal
-  let equal = M.equal ~equal:(fun () () -> true)
-  let empty = M.empty
-  let singleton k = M.singleton k ()
+  include T
 
-  let diff = M.merge ~f:(fun _ x y ->
-    match x, y with
-    | None, Some ()
-    | Some (), Some () -> None
-    | Some (), None -> Some ()
-    | None, None -> assert false)
-
-  let inter = M.merge ~f:(fun _ x y ->
-    match x, y with
-    | Some (), Some () -> Some ()
-    | _, _ -> None)
-
-  let mem t x = M.mem t x
-  let add t x = M.add t x ()
-  let remove = M.remove
-  let compare = M.compare ~compare:(fun _ _ -> Ordering.Eq)
-  let is_subset t ~of_ = M.is_subset t ~of_ ~f:(fun _ ~of_:_ -> true)
-  let iter t ~f = M.iteri t ~f:(fun k _ -> f k)
-  let fold t ~init ~f = M.foldi t ~init ~f:(fun k () acc -> f k acc)
-  let map t ~f = fold t ~init:empty ~f:(fun k acc -> add acc (f k))
-  let for_all t ~f = M.for_alli t ~f:(fun k () -> f k)
-  let exists t ~f = M.existsi t ~f:(fun k () -> f k)
-  let filter t ~f = M.filteri t ~f:(fun k () -> f k)
-  let partition t ~f = M.partitioni t ~f:(fun k () -> f k)
+  let mem t x = mem x t
+  let add t x = add x t
+  let remove t x = remove x t
+  let compare a b = Ordering.of_int (compare a b)
+  let is_subset t ~of_ = subset t of_
+  let iter t ~f = iter t ~f
+  let map t ~f = map t ~f
+  let fold t ~init ~f = fold t ~init ~f
+  let for_all t ~f = for_all t ~f
+  let exists t ~f = exists t ~f
+  let filter t ~f = filter t ~f
+  let partition t ~f = partition t ~f
   let min_elt = min_elt_opt
   let max_elt = max_elt_opt
   let choose = choose_opt
-  let of_list = List.fold_left ~init:empty ~f:add
-  let split t e =
-    let (l, e, r) = M.split t e in
-    (l, Option.is_some e, r)
-
-  let union = M.union ~f:(fun _ _ _ -> Some ())
+  let split x t = split t x
 
   let union_map l ~f =
     List.fold_left ~init:empty l ~f:(fun acc x ->
@@ -74,7 +56,17 @@ module Make(Key : Map_intf.Key)(M : Map_intf.S with type key = Key.t)
   let union_all l =
     union_map l ~f:(fun x -> x)
 
-  let find t ~f = M.find_key t ~f
+  exception Found of elt
+  let find t ~f =
+    match
+      iter t ~f:(fun e ->
+        if f e then
+          raise_notrace (Found e)
+        else
+          ())
+    with
+    | () -> None
+    | exception (Found e) -> Some e
 
   let to_dyn t = Dyn.Set (to_list t |> List.map ~f:Key.to_dyn)
 
@@ -85,6 +77,8 @@ module Make(Key : Map_intf.Key)(M : Map_intf.S with type key = Key.t)
       Code_error.raise "Set.choose_exn"
         ["t", to_dyn t]
 
-  let of_keys = M.map ~f:(fun _ -> ())
-  let to_map t = t
+  let of_keys =
+    M.foldi ~init:empty ~f:(fun k _ acc -> add acc k)
+  let to_map =
+    fold ~init:M.empty ~f:(fun k acc -> M.add acc k ())
 end

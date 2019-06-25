@@ -18,6 +18,8 @@ val external_ : t -> profile:string -> default:Env.t -> Env.t
 
 val ocaml_flags : t -> profile:string -> expander:Expander.t -> Ocaml_flags.t
 
+val inline_tests : t -> profile:string -> Dune_env.Stanza.Inline_tests.t
+
 val c_flags
   : t
   -> profile:string

@@ -1,8 +1,10 @@
   $ env -u OCAMLRUNPARAM dune runtest simple
            run alias simple/runtest (exit 2)
   (cd _build/default/simple && .foo_simple.inline-tests/run.exe)
-  Fatal error: exception File "simple/.foo_simple.inline-tests/run.ml-gen", line 1, characters 10-16: Assertion failed
+  Fatal error: exception File "simple/.foo_simple.inline-tests/run.ml-gen", line 1, characters 40-46: Assertion failed
   [1]
+
+  $ env -u OCAMLRUNPARAM dune runtest simple --profile release
 
   $ dune runtest missing-backend
   File "missing-backend/dune", line 3, characters 1-15:

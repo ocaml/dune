@@ -2,7 +2,7 @@
  (name backend_simple)
  (modules ())
  (inline_tests.backend
-  (generate_runner (run sed "s/(\\*TEST:\\(.*\\)\\*)/let () = \\1;;/" %{impl-files})
+  (generate_runner (run sed "s/(\\*TEST:\\(.*\\)\\*)/let () = if \"%{inline-tests}\" = \"enabled\" then \\1;;/" %{impl-files})
   )))
 
 (library

@@ -9,7 +9,8 @@ type t =
   ; mutable ocaml_flags   : Ocaml_flags.t option
   ; mutable c_flags       : (unit, string list) Build.t C.Kind.Dict.t option
   ; mutable external_     : Env.t option
-  ; mutable bin_artifacts     : Artifacts.Bin.t option
+  ; mutable bin_artifacts : Artifacts.Bin.t option
+  ; mutable inline_tests  : Dune_env.Stanza.Inline_tests.t option;
   }
 
 let scope t = t.scope
@@ -24,6 +25,7 @@ let make ~dir ~inherit_from ~scope ~config =
   ; external_ = None
   ; bin_artifacts = None
   ; local_binaries = None
+  ; inline_tests = None
   }
 
 let find_config t ~profile =
@@ -122,6 +124,22 @@ let rec ocaml_flags t ~profile ~expander =
     in
     t.ocaml_flags <- Some flags;
     flags
+
+let inline_tests t ~profile =
+  match t.inline_tests with
+  | Some x -> x
+  | None ->
+    let state : Dune_env.Stanza.Inline_tests.t =
+      match find_config t ~profile with
+      | None | Some {inline_tests = None; _} ->
+        if profile = "release" then
+          Disabled
+        else
+          Enabled
+      | Some {inline_tests = Some s; _} -> s
+    in
+    t.inline_tests <- Some state;
+    state
 
 let rec c_flags t ~profile ~expander ~default_context_flags =
   match t.c_flags with

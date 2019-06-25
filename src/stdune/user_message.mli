@@ -19,6 +19,8 @@ module Style : sig
     | Details
     | Ok
     | Debug
+    | Success
+    | Ansi_styles of Ansi_color.Style.t list
 end
 
 (** A user message.contents composed of an optional file location and
@@ -61,10 +63,10 @@ val make
   -> t
 
 (** Print to [stdout] (not thread safe) *)
-val print : ?config:Print_config.t -> ?margin:int -> t -> unit
+val print : ?config:Print_config.t -> t -> unit
 
 (** Print to [stderr] (not thread safe) *)
-val prerr : ?config:Print_config.t -> ?margin:int -> t -> unit
+val prerr : ?config:Print_config.t -> t -> unit
 
 (** Produces a "Did you mean ...?" hint *)
 val did_you_mean : string -> candidates:string list -> Style.t Pp.t list

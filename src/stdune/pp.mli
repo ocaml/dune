@@ -55,6 +55,7 @@ val newline : _ t
 
 (** Convert tags in a documents *)
 val map_tags : 'a t -> f:('a -> 'b) -> 'b t
+val filter_map_tags : 'a t -> f:('a -> 'b option) -> 'b t
 
 (** {1 Boxes} *)
 
@@ -107,46 +108,23 @@ val enumerate : 'a list -> f:('a -> 'b t) -> 'b t
 *)
 val chain : 'a list -> f:('a -> 'b t) -> 'b t
 
+(** {1 Operators} *)
+
+module O : sig
+  (** Same as [seq] *)
+  val ( ++ ) : 'a t -> 'a t -> 'a t
+end
+
 (** {1 Rendering} *)
 
-module type Tag = sig
-  type t
+(** Render a document to a classic formatter *)
+val render
+  :  Format.formatter
+  -> 'a t
+  -> tag_handler:(Format.formatter -> 'a -> 'a t -> unit)
+  -> unit
 
-  module Handler : sig
-    type tag = t
-    type t
-
-    (** Initial tag handler *)
-    val init : t
-
-    (** Handle a tag: return the string that enables the tag, the
-        handler while the tag is active and the string to disable the
-        tag. *)
-    val handle : t -> tag -> string * t * string
-  end with type tag := t
-end
-
-module Renderer : sig
-  module type S = sig
-    module Tag : Tag
-
-    val string
-      :  unit
-      -> (?margin:int -> ?tag_handler:Tag.Handler.t -> Tag.t t -> string)
-           Staged.t
-    val channel
-      :  out_channel
-      -> (?margin:int -> ?tag_handler:Tag.Handler.t -> Tag.t t -> unit)
-           Staged.t
-  end
-
-  module Make(Tag : Tag) : S with module Tag = Tag
-end
-
-(** A simple renderer that doesn't take tags *)
-module Render : Renderer.S
-    with type Tag.t         = unit
-    with type Tag.Handler.t = unit
-
-(** Render to a formatter *)
-val pp : Format.formatter -> unit t -> unit
+val render_ignore_tags
+  :  Format.formatter
+  -> 'a t
+  -> unit

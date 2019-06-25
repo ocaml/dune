@@ -2,9 +2,13 @@ open! Stdune
 
 val print : string -> unit
 
+val print_user_message
+  :  ?config:User_message.Print_config.t
+  -> User_message.t
+  -> unit
 
 type status_line_config =
-  { message   : string option
+  { message   : User_message.Style.t Pp.t option
   ; show_jobs : bool
   }
 

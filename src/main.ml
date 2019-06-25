@@ -86,7 +86,8 @@ let init_build_system ?only_packages ?external_lib_deps_mode w =
   let rule_total = ref 0 in
   let gen_status_line () =
     { Console.
-      message = Some (sprintf "Done: %u/%u" !rule_done !rule_total)
+      message = Some (Pp.verbatim
+                        (sprintf "Done: %u/%u" !rule_done !rule_total))
     ; show_jobs = true
     }
   in

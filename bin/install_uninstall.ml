@@ -222,20 +222,14 @@ let install_uninstall ~what =
                 with
                 | [] -> (package, entries)
                 | missing_files ->
-                  let pp =
-                    let open Pp in
-                    List.map missing_files ~f:(fun p ->
-                      concat
-                        [ verbatim "- "
-                        ; verbatim (Path.Build.to_string_maybe_quoted p)
-                        ]
-                    )
-                    |> concat ~sep:newline
-                  in
-                  die "The following files which are listed in %s cannot be \
-                       installed because they do not exist:@.%a@."
-                    (Path.to_string_maybe_quoted install_file)
-                    (fun fmt () -> Pp.pp fmt pp) ())
+                  User_error.raise
+                    [ Pp.textf
+                        "The following files which are listed in %s \
+                         cannot be installed because they do not exist:"
+                        (Path.to_string_maybe_quoted install_file)
+                    ; Pp.enumerate missing_files ~f:(fun p ->
+                        Pp.verbatim (Path.Build.to_string_maybe_quoted p))
+                    ])
           in
           (context, entries_per_package))
       in

@@ -10,9 +10,9 @@ module type S = sig
   val pp : Format.formatter -> t -> unit
 
   (** a directory is smaller than its descendants *)
-  include Comparable.S with type t := t
+  include Comparator.S with type t := t
 
-  include Comparable.OPS with type t := t
+  include Comparator.OPS with type t := t
 
   val to_dyn : t -> Dyn.t
   val to_sexp : t -> Sexp.t

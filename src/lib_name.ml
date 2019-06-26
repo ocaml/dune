@@ -107,13 +107,14 @@ type t = string
 let compare = String.compare
 
 include (
-  Comparable.Operators(struct type nonrec t = t let compare = compare end)
-  : Comparable.OPS with type t := t
+  Comparator.Operators(struct type nonrec t = t let compare = compare end)
+  : Comparator.OPS with type t := t
 )
 
-module Map = Map.Make(String)
+module O = Comparable.Make(String)
+module Map = O.Map
 module Set = struct
-  include Set.Make(String)
+  include O.Set
 
   let to_string_list = to_list
 end

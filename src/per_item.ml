@@ -16,7 +16,7 @@ module type S = sig
   val fold : 'a t -> init:'acc -> f:('a -> 'acc -> 'acc) -> 'acc
 end
 
-module Make(Key : Comparable.S) : S with type key = Key.t = struct
+module Make(Key : Map.Key) : S with type key = Key.t = struct
   module Map = Map.Make(Key)
 
   type key = Key.t

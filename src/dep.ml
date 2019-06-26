@@ -71,12 +71,17 @@ module T = struct
     | File f -> pair string Dpath.encode ("File", f)
     | Alias a -> pair string Alias.encode ("Alias", a)
     | Universe -> string "Universe"
+
+  let to_dyn _ = Dyn.opaque
 end
 
 include T
 
+module O = Comparable.Make(T)
+
+module Map = O.Map
 module Set = struct
-  include Set.Make(T)
+  include O.Set
 
   let has_universe t = mem t Universe
 

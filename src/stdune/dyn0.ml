@@ -152,6 +152,6 @@ type t =
            ; Pp.char ')'
            ])
 
-let pp fmt t = Pp.pp fmt (pp t)
+let pp fmt t = Pp.render_ignore_tags fmt (pp t)
 
 let to_string t = Format.asprintf "%a" pp t

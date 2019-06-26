@@ -206,7 +206,7 @@ module Id : sig
 
   val compare : t -> t -> Ordering.t
 
-  include Comparable.OPS with type t := t
+  include Comparator.OPS with type t := t
 
   val make : path:Path.t -> name:Lib_name.t -> t
 
@@ -216,17 +216,22 @@ module Id : sig
     with type key := t
      and type 'a monad := 'a Monad.Id.t
 end = struct
-  type t =
-    { unique_id : int
-    ; path      : Path.t
-    ; name      : Lib_name.t
-    }
+  module T = struct
+    type t =
+      { unique_id : int
+      ; path      : Path.t
+      ; name      : Lib_name.t
+      }
 
-  let compare t1 t2 = Int.compare t1.unique_id t2.unique_id
+    let compare t1 t2 = Int.compare t1.unique_id t2.unique_id
+    let to_dyn _ = Dyn.opaque
+  end
+
+  include T
 
   include (
-    Comparable.Operators(struct type nonrec t = t let compare = compare end)
-    : Comparable.OPS with type t := t
+    Comparator.Operators(T)
+    : Comparator.OPS with type t := T.t
   )
 
   let gen_unique_id =
@@ -244,11 +249,8 @@ end = struct
     ; name
     }
 
-  module Set = Set.Make(struct
-      type nonrec t = t
-      let compare = compare
-    end)
-
+  module O = Comparable.Make(T)
+  module Set = O.Set
   module Top_closure = Top_closure.Make(Set)(Monad.Id)
 end
 
@@ -278,11 +280,13 @@ module T = struct
     }
 
   let compare (x : t) (y : t) = Id.compare x.unique_id y.unique_id
+
+  let to_dyn t = Lib_name.to_dyn t.name
 end
 
 include T
 
-include (Comparable.Operators(T) : Comparable.OPS with type t := t)
+include (Comparator.Operators(T) : Comparator.OPS with type t := t)
 
 type status =
   | St_initializing of Id.t (* To detect cycles *)
@@ -304,8 +308,6 @@ and resolve_result =
   | Redirect of db option * Lib_name.t
 
 type lib = t
-
-let to_dyn t = Lib_name.to_dyn t.name
 
 (* Generals *)
 
@@ -358,8 +360,7 @@ let to_id t : Id.t = t.unique_id
 let equal l1 l2 = Id.equal (to_id l1) (to_id l2)
 let hash t = Id.hash (to_id t)
 
-module Set = Set.Make(T)
-module Map = Map.Make(T)
+include Comparable.Make(T)
 
 module L = struct
   type nonrec t = t list
@@ -440,14 +441,6 @@ module L = struct
     Id.Top_closure.top_closure l
       ~key:(fun t -> unique_id (key t))
       ~deps
-
-  let special_builtin_support l =
-    let module M = Dune_file.Library.Special_builtin_support.Map in
-    List.fold_left l ~init:M.empty ~f:(fun acc lib ->
-      let special_builtin_support = Lib_info.special_builtin_support lib.info in
-      match special_builtin_support with
-      | None -> acc
-      | Some x -> M.add acc x lib)
 end
 
 module Lib_and_module = struct

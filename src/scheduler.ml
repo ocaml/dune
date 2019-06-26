@@ -11,9 +11,10 @@ module Signal = struct
   type t = Int | Quit | Term
   let compare : t -> t -> Ordering.t = compare
 
-  module Set = Set.Make(struct
+  include Comparable.Make(struct
       type nonrec t = t
       let compare = compare
+      let to_dyn _ = Dyn.opaque
     end)
 
   let all = [Int; Quit; Term]
@@ -696,7 +697,10 @@ end = struct
      | Error Files_changed ->
        set_status_line_generator
          (fun () ->
-            { message = Some "Had errors, killing current build..."
+            { message =
+                Some (Pp.seq (Pp.tag ~tag:User_message.Style.Error
+                                (Pp.verbatim "Had errors"))
+                        (Pp.verbatim ", killing current build..."))
             ; show_jobs = false
             })
      | _ -> ());
@@ -742,7 +746,8 @@ let poll ?log ?config ~once ~finally () =
     let old_generator = Console.get_status_line_generator () in
     set_status_line_generator
       (fun () ->
-         { message = Some (msg ^ ", waiting for filesystem changes...")
+         { message = Some (Pp.seq msg
+                             (Pp.verbatim ", waiting for filesystem changes..."))
          ; show_jobs = false
          });
     let res = block_waiting_for_changes () in
@@ -754,11 +759,15 @@ let poll ?log ?config ~once ~finally () =
     finally ();
     match res with
     | Ok () ->
-      wait (Colors.apply_string Colors.command_success "Success") |> after_wait
+      wait (Pp.tag ~tag:User_message.Style.Success
+              (Pp.verbatim "Success"))
+      |> after_wait
     | Error Got_signal ->
       (Already_reported, None)
     | Error Never ->
-      wait (Colors.apply_string Colors.command_error "Had errors") |> after_wait
+      wait (Pp.tag ~tag:User_message.Style.Error
+              (Pp.verbatim "Had errors"))
+      |> after_wait
     | Error Files_changed ->
       loop ()
     | Error (Exn (exn, bt)) -> (exn, Some bt)

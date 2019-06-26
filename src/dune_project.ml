@@ -30,7 +30,7 @@ module Name : sig
 
   val anonymous_root : t
 
-  module Infix : Comparable.OPS with type t = t
+  module Infix : Comparator.OPS with type t = t
 
   module Map : Map.S with type key = t
 end = struct
@@ -47,21 +47,21 @@ end = struct
       | Anonymous _, Named     _ -> Gt
 
     let equal a b = Ordering.is_eq (compare a b)
+
+    let to_dyn =
+      let open Dyn.Encoder in
+      function
+      | Named n -> constr "Named" [string n]
+      | Anonymous p -> constr "Anonymous" [Path.Source.to_dyn p]
   end
 
   include T
 
   module Map = Map.Make(T)
 
-  module Infix = Comparable.Operators(T)
+  module Infix = Comparator.Operators(T)
 
   let anonymous_root = Anonymous Path.Source.root
-
-  let to_dyn =
-    let open Dyn.Encoder in
-    function
-    | Named n -> constr "Named" [string n]
-    | Anonymous p -> constr "Anonymous" [Path.Source.to_dyn p]
 
   let to_string_hum = function
     | Named s -> s
@@ -711,7 +711,8 @@ in your project.")
 
 let load_dune_project ~dir opam_packages =
   let file = Path.Source.relative dir filename in
-  load (Path.source file) ~f:(fun lang -> parse ~dir ~lang ~opam_packages ~file)
+  load (Path.source file) ~f:(fun lang ->
+    parse ~dir ~lang ~opam_packages ~file)
 
 let make_jbuilder_project ~dir opam_packages =
   let lang = get_dune_lang () in
@@ -773,7 +774,8 @@ let load ~dir ~files =
             in
             let* version = Opam_file.get_field opam "version" in
             match version with
-            | String (_, s) -> Some (s, Package.Version_source.Package)
+            | String (_, s) ->
+              Some (s, Package.Version_source.Package)
             | _ -> None
           in
           { Package.

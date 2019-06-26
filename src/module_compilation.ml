@@ -20,7 +20,7 @@ let force_read_cmi source_file =
 (* Build the cm* if the corresponding source is present, in the case of cmi if
    the mli is not present it is added as additional target to the .cmo
    generation *)
-let build_cm cctx ~dep_graphs ~cm_kind (m : Module.t) =
+let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) =
   let sctx     = CC.super_context cctx in
   let dir      = CC.dir           cctx in
   let obj_dir  = CC.obj_dir       cctx in
@@ -47,24 +47,27 @@ let build_cm cctx ~dep_graphs ~cm_kind (m : Module.t) =
             )
       in
       let extra_args, extra_deps, other_targets =
-        (* If we're compiling an implementation, then the cmi is present *)
-        match cm_kind, Module.file m ~ml_kind:Intf
-              , Vimpl.is_public_vlib_module vimpl m with
-        (* If there is no mli, [ocamlY -c file.ml] produces both the
-           .cmY and .cmi. We choose to use ocamlc to produce the cmi
-           and to produce the cmx we have to wait to avoid race
-           conditions. *)
-        | Cmo, None, false ->
-          copy_interface ();
-          [], [], [Obj_dir.Module.cm_file_unsafe obj_dir m ~kind:Cmi]
-        | Cmo, None, true
-        | (Cmo | Cmx), _, _ ->
-          force_read_cmi src,
-          [Path.build (Obj_dir.Module.cm_file_unsafe obj_dir m ~kind:Cmi)],
-          []
-        | Cmi, _, _ ->
-          copy_interface ();
-          [], [], []
+        if precompiled_cmi then
+          force_read_cmi src, [], []
+        else
+          (* If we're compiling an implementation, then the cmi is present *)
+          match cm_kind, Module.file m ~ml_kind:Intf
+                , Vimpl.is_public_vlib_module vimpl m with
+          (* If there is no mli, [ocamlY -c file.ml] produces both the
+             .cmY and .cmi. We choose to use ocamlc to produce the cmi
+             and to produce the cmx we have to wait to avoid race
+             conditions. *)
+          | Cmo, None, false ->
+            copy_interface ();
+            [], [], [Obj_dir.Module.cm_file_unsafe obj_dir m ~kind:Cmi]
+          | Cmo, None, true
+          | (Cmo | Cmx), _, _ ->
+            force_read_cmi src,
+            [Path.build (Obj_dir.Module.cm_file_unsafe obj_dir m ~kind:Cmi)],
+            []
+          | Cmi, _, _ ->
+            copy_interface ();
+            [], [], []
       in
       let other_targets =
         match cm_kind with
@@ -182,9 +185,11 @@ let build_cm cctx ~dep_graphs ~cm_kind (m : Module.t) =
               ; Hidden_targets other_targets
               ]))))
 
-let build_module ~dep_graphs cctx m =
-  List.iter Cm_kind.all ~f:(fun cm_kind ->
-    build_cm cctx m ~dep_graphs ~cm_kind);
+let build_module ~dep_graphs ?(precompiled_cmi=false) cctx m =
+  build_cm cctx m ~dep_graphs ~precompiled_cmi ~cm_kind:Cmo;
+  build_cm cctx m ~dep_graphs ~precompiled_cmi ~cm_kind:Cmx;
+  if not precompiled_cmi then
+    build_cm cctx m ~dep_graphs ~precompiled_cmi ~cm_kind:Cmi;
   Compilation_context.js_of_ocaml cctx
   |> Option.iter ~f:(fun js_of_ocaml ->
     (* Build *.cmo.js *)

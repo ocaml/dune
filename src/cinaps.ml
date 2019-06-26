@@ -125,6 +125,7 @@ let gen_rules sctx t ~dir ~scope ~dir_kind =
       ~requires_link:(Lib.Compile.requires_link compile_info)
       ~flags:(Ocaml_flags.of_list ["-w"; "-24"])
       ~dynlink:false
+      ~package:None
   in
   Exe.build_and_link cctx
     ~program:{ name; main_module_name; loc }

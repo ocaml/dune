@@ -15,6 +15,15 @@ let make_printer ?(backtrace=false) ?hint ?loc pp =
   ; backtrace
   }
 
+let rec tag_handler ppf (style : User_message.Style.t) pp =
+  Format.pp_open_tag ppf
+    (User_message.Print_config.default style
+     |> Ansi_color.Style.escape_sequence) [@warning "-3"];
+  Pp.render ppf pp ~tag_handler;
+  Format.pp_close_tag ppf () [@warning "-3"]
+
+let render ppf pp = Pp.render ppf pp ~tag_handler
+
 let rec get_printer = function
   | Stanza.Decoder.Parens_no_longer_necessary (loc, exn) ->
     let hint =
@@ -33,12 +42,10 @@ let rec get_printer = function
         (match msg.hints with
          | [] -> None
          | hint :: _ ->
-           Some (Format.asprintf "%a" Pp.pp (Pp.map_tags hint ~f:ignore)))
+           Some (Format.asprintf "%a" Pp.render_ignore_tags hint))
     ; pp = fun ppf ->
-        Format.fprintf ppf "%a@."
-          Pp.pp
-          (User_message.pp { msg with loc = None; hints = [] }
-           |> Pp.map_tags ~f:ignore)
+        render ppf
+          (User_message.pp { msg with loc = None; hints = [] })
     }
   | Dune_lang.Decoder.Decoder (loc, msg, hint') ->
     let pp ppf = Format.fprintf ppf "@{<error>Error@}: %s%s\n" msg
@@ -153,7 +160,7 @@ let report { Exn_with_backtrace. exn; backtrace } =
               drop dependency_path
       in
       if dependency_path <> [] then
-        Format.fprintf ppf "%a@\n" Pp.pp
+        Format.fprintf ppf "%a@\n" render
           (Dep_path.Entries.pp (List.rev dependency_path));
       Option.iter p.hint ~f:(fun s -> Format.fprintf ppf "Hint: %s\n" s);
       Format.pp_print_flush ppf ();

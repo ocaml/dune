@@ -86,7 +86,8 @@ let pkg_version ~path ~(pkg : Package.t) =
           ~else_:(loop rest)
       | From_metadata source ->
         match pkg.version with
-        | Some (v, source') when source = source' -> Build.return (Some v)
+        | Some (v, source') when source = source' ->
+          Build.return (Some v)
         | _ -> loop rest
   in
   loop
@@ -563,17 +564,12 @@ let packages =
       ~doc:"Return a map assining package to files"
       ~input:(module Super_context.As_memo_key)
       ~visibility:Hidden
-      ~output:(Allow_cutoff (module struct
-                 type t = Package.Name.Set.t Path.Build.Map.t
-                 let to_dyn =
-                   Map.to_dyn
-                     Path.Build.Map.to_list
-                     Path.Build.to_dyn
-                     (Set.to_dyn Package.Name.Set.to_list Package.Name.to_dyn)
-                 let equal =
-                   Path.Build.Map.equal
-                     ~equal:Package.Name.Set.equal
-               end))
+      ~output:(Allow_cutoff (
+        module struct
+          type t = Package.Name.Set.t Path.Build.Map.t
+          let to_dyn = Path.Build.Map.to_dyn Package.Name.Set.to_dyn
+          let equal = Path.Build.Map.equal ~equal:Package.Name.Set.equal
+        end))
       Sync
       f
   in

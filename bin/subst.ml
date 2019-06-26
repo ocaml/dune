@@ -62,7 +62,7 @@ let term =
     Common.set_common common ~targets:[];
     Scheduler.go ~common (Watermarks.subst ?name)
   | Dune ->
-    let+ () = Term.const () in
+    let+ () = Common.build_info in
     let config : Config.t =
       { display     = Quiet
       ; concurrency = Fixed 1

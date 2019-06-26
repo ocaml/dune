@@ -30,7 +30,7 @@ module Name : sig
   val to_encoded_string : t -> string
   val of_encoded_string : string -> t
 
-  module Infix : Comparable.OPS with type t = t
+  module Infix : Comparator.OPS with type t = t
 
   module Map : Map.S with type key = t
 end
@@ -114,7 +114,10 @@ end
 
 (** Load a project description from the following directory. [files]
     is the set of files in this directory. *)
-val load : dir:Path.Source.t -> files:String.Set.t -> t option
+val load
+  :  dir:Path.Source.t
+  -> files:String.Set.t
+  -> t option
 
 (** "dune-project" *)
 val filename : string

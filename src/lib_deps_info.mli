@@ -18,4 +18,4 @@ end
 type t = Kind.t Lib_name.Map.t
 
 val merge : t -> t -> t
-val to_sexp : t -> Sexp.t
+val to_dyn : t -> Dyn.t

@@ -81,9 +81,6 @@ module L : sig
     -> key:('a -> lib)
     -> deps:('a -> 'a list)
     -> ('a list, 'a list) Result.t
-
-  val special_builtin_support
-    : t -> lib Dune_file.Library.Special_builtin_support.Map.t
 end with type lib := t
 
 (** Operation on list of libraries and modules *)

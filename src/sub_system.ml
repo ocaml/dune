@@ -26,9 +26,9 @@ module Register_backend(M : Backend) = struct
       assert false
     | exception exn -> Error exn
 
-  module Set =
-    Set.Make(struct
+  include Comparable.Make(struct
       type t = M.t
+      let to_dyn _ = Dyn.opaque
       let compare a b =
         Lib.Id.compare
           (Lib.unique_id (M.lib a))

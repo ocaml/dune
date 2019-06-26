@@ -25,7 +25,7 @@ module Name = struct
 
   let to_sexp t = Sexp.Encoder.string (to_string t)
 
-  module Infix = Comparable.Operators(T)
+  module Infix = Comparator.Operators(T)
 end
 
 module Version_source = struct
@@ -271,8 +271,8 @@ let to_dyn { name; path; version ; synopsis ; description
     ; "kind", Kind.to_dyn kind
     ; "tags", list string tags
     ; "version",
-      Option (Option.map ~f:(fun (v, s) ->
-        Dyn.Tuple [String v; Version_source.to_dyn s]) version)
+      Option (Option.map version ~f:(fun (v, s) ->
+        Dyn.Tuple [String v; Version_source.to_dyn s]))
     ]
 
 let pp fmt t = Dyn.pp fmt (to_dyn t)

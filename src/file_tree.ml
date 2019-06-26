@@ -19,7 +19,11 @@ module File = struct
     ; dev = st.st_dev
     }
 
-  module Map = Map.Make(struct type nonrec t = t let compare = compare end)
+  module Map = Map.Make(struct
+      type nonrec t = t
+      let compare = compare
+      let to_dyn _ = Dyn.opaque
+    end)
 
   let of_source_path p = of_stats (Path.stat (Path.source p))
 end
@@ -217,6 +221,7 @@ let readdir path =
     }
     |> Result.ok
 
+
 let load ?(warn_when_seeing_jbuild_file=true) path ~ancestor_vcs =
   let open Result.O in
   let rec walk path ~dirs_visited ~project:parent_project ~vcs ~data_only
@@ -358,6 +363,8 @@ let rec nearest_dir t = function
 let nearest_dir t path =
   let components = Path.Source.explode path in
   nearest_dir t components
+
+let nearest_vcs t path = Dir.vcs (nearest_dir t path)
 
 let files_of t path =
   match find_dir t path with

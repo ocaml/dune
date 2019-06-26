@@ -112,6 +112,8 @@ include Sub_system.Register_end_point(
           | Native
           | Best
         let compare (a : t) b = compare a b
+
+        let to_dyn _ = Dyn.opaque
       end
       include T
       open Stanza.Decoder
@@ -123,8 +125,9 @@ include Sub_system.Register_end_point(
           ; "native", Native
           ; "best"  , Best
           ]
+      module O = Comparable.Make(T)
       module Set = struct
-        include Set.Make(T)
+        include O.Set
 
         let decode = list decode >>| of_list
 
@@ -288,7 +291,8 @@ include Sub_system.Register_end_point(
           ~requires_link:(lazy runner_libs)
           ~flags:(Ocaml_flags.of_list ["-w"; "-24"; "-g"])
           ~js_of_ocaml:lib.buildable.js_of_ocaml
-          ~dynlink:false;
+          ~dynlink:false
+          ~package:(Option.map lib.public ~f:(fun p -> p.package));
       in
       let linkages =
         let modes =

@@ -114,6 +114,37 @@ module Temp = struct
     tmp_files := Path.Set.remove !tmp_files fn
 end
 
+let command_line_enclosers ~dir ~(stdout_to:Output.t) ~(stderr_to:Output.t) =
+  let quote fn = quote_for_shell (Path.to_string fn) in
+  let prefix, suffix =
+    match dir with
+    | None -> "", ""
+    | Some dir -> sprintf "(cd %s && " (quote dir), ")"
+  in
+  let suffix =
+    match stdout_to.kind, stderr_to.kind with
+    | File fn1, File fn2 when Path.equal fn1 fn2 ->
+      " &> " ^ quote fn1
+    | _ ->
+      let suffix =
+        match stdout_to.kind with
+        | Terminal -> suffix
+        | File fn -> suffix ^ " > " ^ quote fn
+      in
+      match stderr_to.kind with
+      | Terminal -> suffix
+      | File fn -> suffix ^ " 2> " ^ quote fn
+  in
+  (prefix, suffix)
+
+let command_line ~prog ~args ~dir ~stdout_to ~stderr_to =
+  let s =
+    List.map (prog :: args) ~f:quote_for_shell
+    |> String.concat ~sep:" "
+  in
+  let prefix, suffix = command_line_enclosers ~dir ~stdout_to ~stderr_to in
+  prefix ^ s ^ suffix
+
 module Fancy = struct
   let split_prog s =
     let len = String.length s in
@@ -136,8 +167,8 @@ module Fancy = struct
       let prog_start = find_prog_start (prog_end - 1) in
       let prog_end =
         match String.index_from s prog_start '.' with
-        | exception _ -> prog_end
-        | i -> i
+        | None -> prog_end
+        | Some i -> i
       in
       let before = String.take s prog_start in
       let after = String.drop s prog_end in
@@ -145,102 +176,109 @@ module Fancy = struct
       before, prog, after
     end
 
+  let color_combos =
+    let open Ansi_color.Style in
+    [| [ fg_blue;          bg_bright_green ]
+     ; [ fg_red;           bg_bright_yellow ]
+     ; [ fg_yellow;        bg_blue ]
+     ; [ fg_magenta;       bg_bright_cyan ]
+     ; [ fg_bright_green;  bg_blue ]
+     ; [ fg_bright_yellow; bg_red ]
+     ; [ fg_blue;          bg_yellow ]
+     ; [ fg_bright_cyan;   bg_magenta ]
+    |]
+
   let colorize_prog s =
     let len = String.length s in
     if len = 0 then
-      s
+      Pp.verbatim s
     else
       let before, prog, after = split_prog s in
-      before ^ Colors.colorize ~key:prog prog ^ after
+      let styles =
+        let hash = Hashtbl.hash prog in
+        let styles = color_combos.(hash mod (Array.length color_combos)) in
+        User_message.Style.Ansi_styles styles
+      in
+      Pp.seq
+        (Pp.verbatim before)
+        (Pp.seq
+           (Pp.tag (Pp.verbatim prog) ~tag:styles)
+           (Pp.verbatim after))
 
   let rec colorize_args = function
     | [] -> []
     | "-o" :: fn :: rest ->
-      "-o" :: Colors.(apply_string output_filename) fn :: colorize_args rest
-    | x :: rest -> x :: colorize_args rest
+      Pp.verbatim "-o"
+      :: Pp.tag (Pp.verbatim (quote_for_shell fn))
+           ~tag:(User_message.Style.Ansi_styles
+                   Ansi_color.Style.[bold; fg_green])
+      :: colorize_args rest
+    | x :: rest -> Pp.verbatim (quote_for_shell x) :: colorize_args rest
 
-  let command_line ~prog ~args ~dir
-        ~(stdout_to:Output.t) ~(stderr_to:Output.t) =
-    let prog = Path.reach_for_running ?from:dir prog in
-    let quote = quote_for_shell in
-    let prog = colorize_prog (quote prog) in
-    let s =
-      String.concat (prog :: colorize_args (List.map args ~f:quote)) ~sep:" "
+  let command_line ~prog ~args ~dir ~stdout_to ~stderr_to =
+    let open Pp.O in
+    let prog = colorize_prog (quote_for_shell prog) in
+    let pp =
+      Pp.concat ~sep:(Pp.char ' ') (prog :: colorize_args args)
     in
-    let s =
-      match dir with
-      | None -> s
-      | Some dir -> sprintf "(cd %s && %s)" (Path.to_string dir) s
-    in
-    match stdout_to.kind, stderr_to.kind with
-    | File fn1, File fn2 when Path.equal fn1 fn2 ->
-      sprintf "%s &> %s" s (Path.to_string fn1)
-    | _ ->
-      let s =
-        match stdout_to.kind with
-        | Terminal -> s
-        | File fn ->
-          sprintf "%s > %s" s (Path.to_string fn)
-      in
-      match stderr_to.kind with
-      | Terminal -> s
-      | File fn ->
-        sprintf "%s 2> %s" s (Path.to_string fn)
+    let prefix, suffix = command_line_enclosers ~dir ~stdout_to ~stderr_to in
+    Pp.verbatim prefix ++ pp ++ Pp.verbatim suffix
 
-  let pp_purpose ppf = function
-    | Internal_job ->
-      Format.fprintf ppf "(internal)"
+  let pp_purpose = function
+    | Internal_job -> Pp.verbatim "(internal)"
     | Build_job targets ->
       let rec split_paths targets_acc ctxs_acc = function
-        | [] -> List.rev targets_acc, String.Set.(to_list (of_list ctxs_acc))
+        | [] -> List.rev targets_acc, String.Set.to_list ctxs_acc
         | path :: rest ->
-          let add_ctx ctx acc = if ctx = "default" then acc else ctx :: acc in
+          let add_ctx ctx acc =
+            match ctx with
+            | "default" -> acc
+            | _ -> String.Set.add acc ctx
+          in
           match Dpath.analyse_target path with
           | Other path ->
-            split_paths (Path.Build.to_string path :: targets_acc) ctxs_acc rest
+            split_paths
+              (Path.Build.to_string path :: targets_acc)
+              ctxs_acc rest
           | Regular (ctx, filename) ->
-            split_paths (Path.Source.to_string filename :: targets_acc)
+            split_paths
+              (Path.Source.to_string filename :: targets_acc)
               (add_ctx ctx ctxs_acc) rest
           | Alias (ctx, name) ->
-            split_paths (("alias " ^ Path.Source.to_string name) :: targets_acc)
+            split_paths
+              (("alias " ^ Path.Source.to_string name) :: targets_acc)
               (add_ctx ctx ctxs_acc) rest
           | Install (ctx, name) ->
-            split_paths (("install " ^ Path.Source.to_string name) :: targets_acc)
+            split_paths
+              (("install " ^ Path.Source.to_string name) :: targets_acc)
               (add_ctx ctx ctxs_acc) rest
       in
       let targets = Path.Build.Set.to_list targets in
       let target_names, contexts =
-        split_paths [] [] targets
+        split_paths [] String.Set.empty targets
       in
-      let target_names_grouped_by_prefix =
+      let targets =
         List.map target_names ~f:Filename.split_extension_after_dot
         |> String.Map.of_list_multi
         |> String.Map.to_list
+        |> List.map ~f:(fun (prefix, suffixes) ->
+          match suffixes with
+          | [] -> assert false
+          | [suffix] -> prefix ^ suffix
+          | _ ->
+            sprintf "%s{%s}" prefix (String.concat ~sep:"," suffixes))
+        |> String.concat ~sep:","
       in
-      let pp_comma ppf () = Format.fprintf ppf "," in
-      let pp_group ppf (prefix, suffixes) =
-        match suffixes with
-        | [] -> assert false
-        | [suffix] -> Format.fprintf ppf "%s%s" prefix suffix
-        | _ ->
-          Format.fprintf ppf "%s{%a}"
-            prefix
-            (Format.pp_print_list ~pp_sep:pp_comma Format.pp_print_string)
-            suffixes
-      in
-      let pp_contexts ppf = function
-        | [] -> ()
-        | ctxs ->
-          Format.fprintf ppf " @{<details>[%a]@}"
-            (Format.pp_print_list ~pp_sep:pp_comma
-               (fun ppf s -> Format.fprintf ppf "%s" s))
-            ctxs
-      in
-      Format.fprintf ppf "%a%a"
-        (Format.pp_print_list ~pp_sep:pp_comma pp_group)
-        target_names_grouped_by_prefix
-        pp_contexts
-        contexts;
+      let pp = Pp.verbatim targets in
+      match contexts with
+      | [] -> pp
+      | l ->
+        let open Pp.O in
+        pp ++ Pp.char ' ' ++
+        Pp.tag ~tag:User_message.Style.Details
+          (Pp.char '[' ++
+           Pp.concat_map l ~sep:(Pp.char ',') ~f:Pp.verbatim ++
+           Pp.char ']')
 end
 
 let gen_id =
@@ -250,6 +288,125 @@ let gen_id =
 let cmdline_approximate_length prog args =
   List.fold_left args ~init:(String.length prog) ~f:(fun acc arg ->
     acc + String.length arg)
+
+let pp_id id =
+  let open Pp.O in
+  Pp.char '[' ++
+  Pp.tag ~tag:User_message.Style.Id (Pp.textf "%d" id) ++
+  Pp.char ']'
+
+module Exit_status = struct
+  type error =
+    | Failed of int
+    | Signaled of string
+
+  type t = (int, error) result
+
+  let parse_output = function
+    | "" -> None
+    | s -> Some (Pp.map_tags (Ansi_color.parse s)
+                   ~f:(fun styles -> User_message.Style.Ansi_styles styles))
+
+  (* In this module, we don't need the "Error: " prefix given that it
+     is already included in the error message from the command. *)
+  let fail paragraphs =
+    raise (User_error.E (User_message.make paragraphs))
+
+  let handle_verbose t ~id ~output ~command_line =
+    let open Pp.O in
+    let output = parse_output output in
+    match t with
+    | Ok n ->
+      Option.iter output ~f:(fun output ->
+        Console.print_user_message
+          (User_message.make
+             [ Pp.tag ~tag:User_message.Style.Kwd (Pp.verbatim "Output") ++
+               pp_id id ++ Pp.char ':'
+             ; output
+             ]));
+      if n <> 0 then
+        User_warning.emit
+          [ Pp.tag ~tag:User_message.Style.Kwd (Pp.verbatim "Command") ++
+            Pp.space ++ pp_id id ++
+            Pp.textf " exited with code %d, but I'm ignoring it, hope \
+                      that's OK." n
+          ];
+      n
+    | Error err ->
+      let msg =
+        match err with
+        | Failed n ->
+          sprintf "exited with code %d" n
+        | Signaled signame ->
+          sprintf "got signal %s" signame
+      in
+      fail (
+        Pp.tag ~tag:User_message.Style.Kwd (Pp.verbatim "Command") ++
+        Pp.space ++ pp_id id ++
+        Pp.space ++ Pp.text msg ++ Pp.char ':'
+        :: Pp.tag ~tag:User_message.Style.Prompt (Pp.char '$') ++ Pp.char ' ' ++
+           command_line
+        :: Option.to_list output)
+
+  (* Check if the command output starts with a location, ignoring ansi
+     escape sequences *)
+  let outputs_starts_with_location =
+    let rec loop s pos len prefix =
+      match prefix with
+      | [] -> true
+      | c :: rest ->
+        pos < len &&
+        match s.[pos] with
+        | '\027' -> begin
+            match String.index_from s pos 'm' with
+            | None -> false
+            | Some pos -> loop s (pos + 1) len prefix
+          end
+        | c' -> c = c' && loop s (pos + 1) len rest
+    in
+    fun output -> loop output 0 (String.length output) ['F'; 'i'; 'l'; 'e'; ' ']
+
+  let handle_non_verbose t ~display ~purpose ~output ~prog ~command_line =
+    let open Pp.O in
+    let show_command =
+      Config.show_full_command_on_error () ||
+      not (outputs_starts_with_location output)
+    in
+    let output = parse_output output in
+    let _, progname, _ = Fancy.split_prog prog in
+    let progname_and_purpose tag =
+      let progname = sprintf "%12s" progname in
+      Pp.tag ~tag (Pp.verbatim progname) ++
+      Pp.char ' ' ++ Fancy.pp_purpose purpose
+    in
+    match t with
+    | Ok n ->
+      if Option.is_some output ||
+         (display = Config.Display.Short && purpose <> Internal_job) then
+        Console.print_user_message (
+          User_message.make (
+            if show_command then
+              progname_and_purpose Ok :: Option.to_list output
+            else
+              Option.to_list output));
+      n
+    | Error err ->
+      let msg =
+        match err with
+        | Failed n ->
+          if show_command then
+            sprintf "(exit %d)" n
+          else
+            fail (Option.to_list output)
+        | Signaled signame ->
+          sprintf "(got signal %s)" signame
+      in
+      fail (
+        progname_and_purpose Error ++ Pp.char ' ' ++
+        Pp.tag ~tag:User_message.Style.Error (Pp.verbatim msg)
+        :: Pp.tag ~tag:User_message.Style.Details (Pp.verbatim command_line)
+        :: Option.to_list output)
+end
 
 let run_internal ?dir ?(stdout_to=Output.stdout) ?(stderr_to=Output.stderr)
       ~env ~purpose fail_mode prog args =
@@ -266,11 +423,26 @@ let run_internal ?dir ?(stdout_to=Output.stdout) ?(stderr_to=Output.stderr)
   in
   let id = gen_id () in
   let ok_codes = accepted_codes fail_mode in
-  let command_line = Fancy.command_line ~prog ~args ~dir ~stdout_to ~stderr_to in
-  if display = Verbose then
-    Format.eprintf "@{<kwd>Running@}[@{<id>%d@}]: %s@." id
-      (Colors.strip_colors_for_stderr command_line);
   let prog_str = Path.reach_for_running ?from:dir prog in
+  let command_line =
+    command_line ~prog:prog_str ~args ~dir ~stdout_to ~stderr_to
+  in
+  let fancy_command_line =
+    match display with
+    | Verbose ->
+      let open Pp.O in
+      let cmdline =
+        Fancy.command_line ~prog:prog_str ~args ~dir ~stdout_to ~stderr_to
+      in
+      Console.print_user_message
+        (User_message.make
+           [ Pp.tag ~tag:User_message.Style.Kwd (Pp.verbatim "Running") ++
+             pp_id id ++ Pp.verbatim ": " ++
+             cmdline
+           ]);
+      cmdline
+    | _ -> Pp.nop
+  in
   let args, response_file =
     if Sys.win32 && cmdline_approximate_length prog_str args >= 1024 then
       match Response_file.get ~prog with
@@ -333,68 +505,24 @@ let run_internal ?dir ?(stdout_to=Output.stdout) ?(stderr_to=Output.stderr)
     | Some fn ->
       let s = Io.read_file fn in
       Temp.destroy fn;
-      let len = String.length s in
-      if len > 0 && s.[len - 1] <> '\n' then
-        s ^ "\n"
-      else
-        s
+      s
   in
   Log.command (Scheduler.log scheduler) ~command_line ~output ~exit_status;
-  let _, progname, _ = Fancy.split_prog prog_str in
-  let print fmt = Errors.kerrf ~f:Console.print fmt in
-  let show_command =
-    Config.show_full_command_on_error ()
-    || (not (String.is_prefix output ~prefix:"File "))
+  let exit_status : Exit_status.t =
+    match exit_status with
+    | WEXITED n when code_is_ok ok_codes n -> Ok n
+    | WEXITED n -> Error (Failed n)
+    | WSIGNALED n -> Error (Signaled (Utils.signal_name n))
+    | WSTOPPED _ -> assert false
   in
-  match exit_status with
-  | WEXITED n when code_is_ok ok_codes n ->
-    if display = Verbose then begin
-      if output <> "" then
-        print "@{<kwd>Output@}[@{<id>%d@}]:\n%s" id output;
-      if n <> 0 then
-        print
-          "@{<warning>Warning@}: Command [@{<id>%d@}] exited with code %d, \
-           but I'm ignoring it, hope that's OK.\n" id n
-    end else if output <> "" ||
-                (display = Short && purpose <> Internal_job) then begin
-      let pad = String.make (max 0 (12 - String.length progname)) ' ' in
-      if show_command then
-        print "%s@{<ok>%s@} %a\n%s" pad progname Fancy.pp_purpose purpose output
-      else
-        print "%s" output
-    end;
-    n
-  | WEXITED n ->
-    if display = Verbose then
-      die "\n@{<kwd>Command@} [@{<id>%d@}] exited with code %d:\n\
-           @{<prompt>$@} %s\n%s"
-        id n
-        (Colors.strip_colors_for_stderr command_line)
-        (Colors.strip_colors_for_stderr output)
-    else if show_command then
-      die "@{<error>%12s@} %a @{<error>(exit %d)@}\n\
-           @{<details>%s@}\n\
-           %s"
-        progname Fancy.pp_purpose purpose n
-        (Ansi_color.strip command_line)
-        output
-    else
-      die "%s" output
-  | WSIGNALED n ->
-    if display = Verbose then
-      die "\n@{<kwd>Command@} [@{<id>%d@}] got signal %s:\n\
-           @{<prompt>$@} %s\n%s"
-        id (Utils.signal_name n)
-        (Colors.strip_colors_for_stderr command_line)
-        (Colors.strip_colors_for_stderr output)
-    else
-      die "@{<error>%12s@} %a @{<error>(got signal %s)@}\n\
-           @{<details>%s@}\n\
-           %s"
-        progname Fancy.pp_purpose purpose (Utils.signal_name n)
-        (Ansi_color.strip command_line)
-        output
-  | WSTOPPED _ -> assert false
+  match display, exit_status, output with
+  | (Quiet | Progress), Ok n, "" -> n (* Optimisation for the common case *)
+  | Verbose, _, _ ->
+    Exit_status.handle_verbose exit_status ~id ~command_line:fancy_command_line
+      ~output
+  | _ ->
+    Exit_status.handle_non_verbose exit_status ~prog:prog_str ~command_line
+      ~output ~purpose ~display
 
 let run ?dir ?stdout_to ?stderr_to ~env ?(purpose=Internal_job) fail_mode
       prog args =

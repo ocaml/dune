@@ -128,27 +128,22 @@ module Internal_rule = struct
       }
 
     let compare a b = Id.compare a.id b.id
+
+    let to_dyn t : Dyn.t =
+      Record
+        [ "id", Id.to_dyn t.id
+        ; "loc", Dyn.Encoder.option Loc.to_dyn
+                   (Rule.Info.loc t.info)
+        ]
+
   end
   include T
 
-  let _pp fmt { targets; dir ; _ } =
-    Fmt.record fmt
-      [ "targets", Fmt.const (Fmt.ocaml_list Path.Build.pp)
-                     (Path.Build.Set.to_list targets)
-      ; "dir", Fmt.const Path.pp (Path.build dir)
-      ]
-
-  module Set = Set.Make(T)
+  module O = Comparable.Make(T)
+  module Set = O.Set
 
   let equal a b = Id.equal a.id b.id
   let hash t = Id.hash t.id
-
-  let to_dyn t : Dyn.t =
-    Record
-      [ "id", Id.to_dyn t.id
-      ; "loc", Dyn.Encoder.option Loc.to_dyn
-                 (Rule.Info.loc t.info)
-      ]
 
   let lib_deps t =
     (* Forcing this lazy ensures that the various globs and
@@ -1452,7 +1447,7 @@ end = struct
         prev_trace.targets_digest <> targets_digest
       | _ -> true
     in
-    begin
+    let* () =
       if force || something_changed then begin
         List.iter targets_as_list ~f:(fun p ->
           Path.unlink_no_err (Path.build p));
@@ -1491,12 +1486,12 @@ end = struct
         Trace.set (Path.build head_target) { rule_digest; targets_digest }
       end else
         Fiber.return ()
-    end >>| fun () ->
-    begin
+    in
+    let+ () =
       match mode with
-      | Standard | Fallback | Ignore_source_files -> ()
+      | Standard | Fallback | Ignore_source_files -> Fiber.return ()
       | Promote { lifetime; into; only } ->
-        Path.Build.Set.iter targets ~f:(fun path ->
+        Fiber.sequential_iter (Path.Build.Set.to_list targets) ~f:(fun path ->
           let consider_for_promotion =
             match only with
             | None -> true
@@ -1524,10 +1519,15 @@ end = struct
               if lifetime = Until_clean then
                 Promoted_to_delete.add in_source_tree;
               Scheduler.ignore_for_watch in_source_tree;
-              Io.copy_file ~src:path ~dst:in_source_tree ()
-            end
-          end)
-    end;
+              Artifact_substitution.copy_file ()
+                ~src:path
+                ~dst:in_source_tree
+                ~get_vcs:(File_tree.nearest_vcs t.file_tree)
+            end else
+              Fiber.return ()
+          end else
+            Fiber.return ())
+    in
     t.hook Rule_completed
 
   (* a rule can have multiple files, but rule.run_rule may only be called once *)
@@ -1659,18 +1659,23 @@ let process_memcycle exn =
 module Rule = struct
   module Id = Internal_rule.Id
 
-  type t =
-    { id      : Id.t
-    ; dir     : Path.Build.t
-    ; deps    : Dep.Set.t
-    ; targets : Path.Build.Set.t
-    ; context : Context.t option
-    ; action  : Action.t
-    }
+  module T = struct
+    type t =
+      { id      : Id.t
+      ; dir     : Path.Build.t
+      ; deps    : Dep.Set.t
+      ; targets : Path.Build.Set.t
+      ; context : Context.t option
+      ; action  : Action.t
+      }
 
-  let compare a b = Id.compare a.id b.id
+    let compare a b = Id.compare a.id b.id
+    let to_dyn _ = Dyn.opaque
+  end
+  include T
 
-  module Set = Set.Make(struct type nonrec t = t let compare = compare end)
+  module O = Comparable.Make(T)
+  module Set = O.Set
 end
 
 let set_packages f =

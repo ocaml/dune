@@ -1,3 +1,8 @@
+module type Key = sig
+  include Comparator.S
+  val to_dyn : t -> Dyn.t
+end
+
 module type S = sig
   type key
   and (+'a) t
@@ -95,6 +100,8 @@ module type S = sig
   val find : 'a t -> key -> 'a option
   val find_exn : 'a t -> key -> 'a
 
+  val find_key : 'a t -> f:(key -> bool) -> key option
+
   val map  : 'a t -> f:(       'a -> 'b) -> 'b t
   val mapi : 'a t -> f:(key -> 'a -> 'b) -> 'b t
 
@@ -104,6 +111,8 @@ module type S = sig
   (** [is_subset t ~of_ ~f] is [true] iff all keys in [t] are in [of_]
       and [f] is [true] for all keys that are in both. *)
   val is_subset : 'a t -> of_:'b t -> f:('a -> of_:'b -> bool) -> bool
+
+  val to_dyn : ('a -> Dyn.t) -> 'a t -> Dyn.t
 
   module Multi : sig
     type nonrec 'a t = 'a list t

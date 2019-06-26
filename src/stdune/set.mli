@@ -1,13 +1,5 @@
 module type S = Set_intf.S
 
-module Make(Elt : Comparable.S) : S with type elt = Elt.t
-
-val to_sexp
-  :  ('a -> 'b list)
-  -> 'b Sexp.Encoder.t
-  -> 'a Sexp.Encoder.t
-
-val to_dyn
-  :  ('a -> 'b list)
-  -> 'b Dyn.Encoder.t
-  -> 'a Dyn.Encoder.t
+module Make(Key : Map_intf.Key)(M : Map.S with type key = Key.t) : S
+  with type elt = M.key
+   and type 'a map = 'a M.t

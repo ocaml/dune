@@ -1,7 +1,13 @@
 module P = Pervasives [@warning "-3"]
 
-let close_in  = close_in
+let close_in = close_in
 let close_out = close_out
+let close_both (ic, oc) =
+  match close_out oc with
+  | () -> close_in ic
+  | exception exn ->
+    close_in ic;
+    Exn.reraise exn
 
 let input_lines =
   let rec loop ic acc =
@@ -50,6 +56,13 @@ module type S = sig
 
   val write_lines : ?binary:bool -> path -> string list -> unit
   val copy_file : ?chmod:(int -> int) -> src:path -> dst:path -> unit -> unit
+
+  val setup_copy
+    :  ?chmod:(int -> int)
+    -> src:path
+    -> dst:path
+    -> unit
+    -> in_channel * out_channel
 
   val file_line : path -> int -> string
   val file_lines : path -> start:int -> stop:int -> (string * string) list
@@ -115,8 +128,8 @@ module Make (Path : sig
       let dst = Bytes.create len in
       let rec find_next_crnl i =
         match String.index_from src i '\r' with
-        | exception Not_found -> None
-        | j ->
+        | None -> None
+        | Some j ->
           if j + 1 < len && src.[j + 1] = '\n' then
             Some j
           else
@@ -153,17 +166,24 @@ module Make (Path : sig
     let s2 = read_file fn2 in
     String.compare s1 s2
 
-  let copy_file ?(chmod=Fn.id) ~src ~dst () =
-    with_file_in src ~f:(fun ic ->
-      let perm = (Unix.fstat (Unix.descr_of_in_channel ic)).st_perm |> chmod in
-      Exn.protectx (P.open_out_gen
-                      [Open_wronly; Open_creat; Open_trunc; Open_binary]
-                      perm
-                      (Path.to_string dst))
-        ~finally:close_out
-        ~f:(fun oc ->
-          copy_channels ic oc))
+  let setup_copy ?(chmod=Fn.id) ~src ~dst () =
+    let ic = open_in src in
+    let oc =
+      try
+        let perm = (Unix.fstat (Unix.descr_of_in_channel ic)).st_perm |> chmod in
+        P.open_out_gen
+          [Open_wronly; Open_creat; Open_trunc; Open_binary]
+          perm
+          (Path.to_string dst)
+      with exn ->
+        close_in ic;
+        Exn.reraise exn
+    in
+    (ic, oc)
 
+  let copy_file ?chmod ~src ~dst () =
+    Exn.protectx (setup_copy ?chmod ~src ~dst ()) ~finally:close_both
+      ~f:(fun (ic, oc) -> copy_channels ic oc)
 
   let file_line path n =
     with_file_in ~binary:false path

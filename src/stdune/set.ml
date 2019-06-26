@@ -1,32 +1,35 @@
 module type S = Set_intf.S
 
-module Make(Elt : Comparable.S) : S with type elt = Elt.t = struct
-  module M = MoreLabels.Set.Make(struct
-      type t = Elt.t
-      let compare a b = Ordering.to_int (Elt.compare a b)
+module Make(Key : Map_intf.Key)(M : Map_intf.S with type key = Key.t)
+= struct
+  module T = Dune_caml.MoreLabels.Set.Make(struct
+      type t = Key.t
+      let compare x y = Ordering.to_int (Key.compare x y)
     end)
 
   include struct
     [@@@warning "-32"]
     (* [map] is only available since 4.04 *)
     let map ~f t =
-      M.elements t
+      T.elements t
       |> List.map ~f
-      |> M.of_list
+      |> T.of_list
 
     (* Since 4.05 *)
     let to_opt f t =
       match f t with
       | x -> Some x
       | exception Not_found -> None
-    let choose_opt  = to_opt M.choose
-    let min_elt_opt = to_opt M.min_elt
-    let max_elt_opt = to_opt M.max_elt
+    let choose_opt  = to_opt T.choose
+    let min_elt_opt = to_opt T.min_elt
+    let max_elt_opt = to_opt T.max_elt
   end
 
-  include M
+  type 'a map = 'a M.t
 
-  let to_list = elements
+  let to_list = T.elements
+
+  include T
 
   let mem t x = mem x t
   let add t x = add x t
@@ -65,15 +68,17 @@ module Make(Elt : Comparable.S) : S with type elt = Elt.t = struct
     | () -> None
     | exception (Found e) -> Some e
 
+  let to_dyn t = Dyn.Set (to_list t |> List.map ~f:Key.to_dyn)
+
   let choose_exn t =
     match choose t with
     | Some e -> e
     | None ->
-      Code_error.raise "Set.choose_exn" []
+      Code_error.raise "Set.choose_exn"
+        ["t", to_dyn t]
+
+  let of_keys =
+    M.foldi ~init:empty ~f:(fun k _ acc -> add acc k)
+  let to_map =
+    fold ~init:M.empty ~f:(fun k acc -> M.add acc k ())
 end
-
-let to_sexp to_list f t =
-  Sexp.Encoder.list f (to_list t)
-
-let to_dyn to_list f t =
-  Dyn.Encoder.list f (to_list t)

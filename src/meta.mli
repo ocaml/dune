@@ -26,6 +26,13 @@ and predicate =
   | Pos of string
   | Neg of string
 
+val parse_entries : Lexing.lexbuf -> entry list
+
+(** Add version fields to all package in [t] that don't have and have
+    at least one rule.  [get_version] is used to obtain the version.
+    It receives as argument the package path. *)
+val add_versions : t -> get_version:(Lib_name.t list -> string option) -> t
+
 module Simplified : sig
   module Rules : sig
     type t =

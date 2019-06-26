@@ -34,7 +34,7 @@ module Name : sig
     with type key := t
      and type 'a monad := 'a Monad.Id.t
 
-  module Infix : Comparable.OPS with type t = t
+  module Infix : Comparator.OPS with type t = t
 
   val of_local_lib_name : Lib_name.Local.t -> t
 

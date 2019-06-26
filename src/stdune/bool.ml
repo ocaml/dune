@@ -5,7 +5,7 @@ let compare x y =
   | true, false -> Gt
   | false, true -> Lt
 
-include Comparable.Operators(struct
+include Comparator.Operators(struct
     type nonrec t = bool
     let compare = compare
   end)

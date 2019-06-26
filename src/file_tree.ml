@@ -309,7 +309,7 @@ let load ?(warn_when_seeing_jbuild_file=true) path ~ancestor_vcs =
                 dirs_visited
               else
                 match File.Map.find dirs_visited file with
-                | None -> File.Map.add dirs_visited file path
+                | None -> File.Map.set dirs_visited file path
                 | Some first_path ->
                   die "Path %s has already been scanned. \
                        Cannot scan it again through symlink %s"
@@ -319,7 +319,7 @@ let load ?(warn_when_seeing_jbuild_file=true) path ~ancestor_vcs =
             match
               walk path ~dirs_visited ~project ~data_only ~vcs
             with
-            | Ok dir -> String.Map.add acc fn dir
+            | Ok dir -> String.Map.set acc fn dir
             | Error _ -> acc)
       in
       { Dir. files; sub_dirs; dune_file })

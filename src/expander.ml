@@ -181,14 +181,14 @@ module Resolved_forms = struct
     }
 
   let add_lib_dep acc lib kind =
-    acc.lib_deps <- Lib_name.Map.add acc.lib_deps lib kind
+    acc.lib_deps <- Lib_name.Map.set acc.lib_deps lib kind
 
   let add_fail acc fail =
     acc.failures <- fail :: acc.failures;
     None
 
   let add_ddep acc ~key dep =
-    acc.ddeps <- String.Map.add acc.ddeps key dep;
+    acc.ddeps <- String.Map.set acc.ddeps key dep;
     None
 end
 

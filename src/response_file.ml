@@ -10,4 +10,4 @@ let get ~prog =
   Option.value (Hashtbl.find registry prog) ~default:Not_supported
 
 let set ~prog t =
-  Hashtbl.add registry prog t
+  Hashtbl.set registry prog t

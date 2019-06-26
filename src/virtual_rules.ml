@@ -152,7 +152,7 @@ let external_dep_graph sctx ~impl_cm_kind ~impl_obj_dir ~vlib_modules =
               Build.memoize "ocamlobjinfo" @@
               read >>^ deps_from_objinfo ~for_module:m
           in
-          Module.Obj_map.add acc m deps)))
+          Module.Obj_map.set acc m deps)))
 
 let impl sctx ~dir ~(lib : Dune_file.Library.t) ~scope =
   Option.map lib.implements ~f:begin fun (loc, implements) ->

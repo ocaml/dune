@@ -1043,7 +1043,7 @@ module Decoder = struct
         | List (_, name_sexp :: values) -> begin
             match name_sexp with
             | Atom (_, A name) ->
-              Name.Map.add acc name
+              Name.Map.set acc name
                 { Fields.Unparsed.
                   values
                 ; entry = sexp

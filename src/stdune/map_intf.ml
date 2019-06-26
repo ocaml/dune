@@ -9,7 +9,7 @@ module type S = sig
   val empty     : 'a t
   val is_empty  : 'a t -> bool
   val mem       : 'a t -> key -> bool
-  val add       : 'a t -> key -> 'a -> 'a t
+  val set       : 'a t -> key -> 'a -> 'a t
   val update    : 'a t -> key -> f:('a option -> 'a option) -> 'a t
   val singleton : key -> 'a -> 'a t
   val remove    : 'a t -> key -> 'a t

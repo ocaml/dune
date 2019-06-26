@@ -670,7 +670,7 @@ end = struct
           | Some _ as x -> x))
       | Some vlib, None ->
         let+ vlib = vlib in
-        Map.add t vlib Implemented
+        Map.set t vlib Implemented
 
     let fold =
       let rec loop ~f ~acc = function
@@ -701,7 +701,7 @@ end = struct
             | Some _, Some _ ->
               assert false (* can't be virtual and implement *)
             | None, Some _ ->
-              loop (Map.add acc lib (No_impl stack)) libs
+              loop (Map.set acc lib (No_impl stack)) libs
             | Some vlib, None ->
               let* vlib = vlib in
               begin match Map.find acc vlib with
@@ -710,7 +710,7 @@ end = struct
                    it must have occured earlier in the closure *)
                 assert false
               | Some (No_impl _) ->
-                loop (Map.add acc vlib (Impl (lib, stack))) libs
+                loop (Map.set acc vlib (Impl (lib, stack))) libs
               | Some (Impl (lib', stack')) ->
                 let req_by' =
                   Dep_stack.to_required_by stack' ~stop_at:orig_stack
@@ -736,7 +736,7 @@ end = struct
           let rb = Dep_stack.to_required_by stack ~stop_at:orig_stack in
           Error.no_implementation (vlib.info, rb)
         | (vlib, (Impl (impl, _stack))) :: libs ->
-          loop (Map.add acc vlib impl) libs
+          loop (Map.set acc vlib impl) libs
       in
       loop Map.empty (Map.to_list impls)
   end
@@ -796,9 +796,9 @@ end = struct
     | Some Visiting ->
       Error.default_implementation_cycle (lib.info :: stack)
     | None ->
-      t := Map.add !t lib Visiting;
+      t := Map.set !t lib Visiting;
       let res = f lib in
-      t := Map.add !t lib Visited;
+      t := Map.set !t lib Visited;
       res
 end
 
@@ -842,7 +842,7 @@ let rec instantiate db name info ~stack ~hidden =
   Option.iter (Hashtbl.find db.table name) ~f:(fun x ->
     already_in_table info name x);
   (* Add [id] to the table, to detect loops *)
-  Hashtbl.add db.table name (St_initializing id);
+  Hashtbl.add_exn db.table name (St_initializing id);
 
   let status = Lib_info.status info in
   let allow_private_deps = Lib_info.Status.is_private status in
@@ -991,7 +991,7 @@ and resolve_name db name ~stack =
       match find_internal db' name' ~stack with
       | St_initializing _ as x -> x
       | x ->
-        Hashtbl.add db.table name x;
+        Hashtbl.add_exn db.table name x;
         x
     end
   | Found info ->
@@ -1002,7 +1002,7 @@ and resolve_name db name ~stack =
       | None    -> St_not_found
       | Some db -> find_internal db name ~stack
     in
-    Hashtbl.add db.table name res;
+    Hashtbl.add_exn db.table name res;
     res
   | Hidden (info, hidden) ->
     match
@@ -1011,7 +1011,7 @@ and resolve_name db name ~stack =
       | Some db -> find_internal db name ~stack
     with
     | St_found _ as x ->
-      Hashtbl.add db.table name x;
+      Hashtbl.add_exn db.table name x;
       x
     | _ ->
       instantiate db name info ~stack ~hidden:(Some hidden)
@@ -1224,7 +1224,7 @@ and closure_with_overlap_checks db ts ~stack:orig_stack ~linking ~variants =
           (t'.info, req_by stack')
           (t.info, req_by stack)
     | None ->
-      visited := Map.add !visited t (t, stack);
+      visited := Map.set !visited t (t, stack);
       let* () =
         match db with
         | None -> Ok ()

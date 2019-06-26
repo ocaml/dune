@@ -17,7 +17,7 @@ let scan_included_files path =
       in
       let comments = Dune_lang.Cst.extract_comments csts in
       let sexps = List.filter_map csts ~f:Dune_lang.Cst.abstract in
-      files := Path.Source.Map.add !files path (sexps, comments);
+      files := Path.Source.Map.set !files path (sexps, comments);
       List.iter sexps ~f:(function
         | Dune_lang.Ast.List
             (_,

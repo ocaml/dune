@@ -83,7 +83,7 @@ let standard_aliases = Hashtbl.create 7
 let is_standard name = Hashtbl.mem standard_aliases name
 
 let make_standard name =
-  Hashtbl.add standard_aliases name ();
+  Hashtbl.add_exn standard_aliases name ();
   make name
 
 let default     = make_standard "default"

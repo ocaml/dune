@@ -356,7 +356,7 @@ end = struct
     let add job =
       match Hashtbl.find table job.pid with
       | None ->
-        Hashtbl.add table job.pid (Running job);
+        Hashtbl.set table job.pid (Running job);
         incr running_count;
         if !running_count = 1 then Condition.signal something_is_running_cv
       | Some (Zombie status) ->
@@ -368,7 +368,7 @@ end = struct
     let remove ~pid status =
       match Hashtbl.find table pid with
       | None ->
-        Hashtbl.add table pid (Zombie status)
+        Hashtbl.set table pid (Zombie status)
       | Some (Running job) ->
         decr running_count;
         Hashtbl.remove table pid;

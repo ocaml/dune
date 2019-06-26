@@ -49,7 +49,7 @@ let is_empty = Int.Map.is_empty
 let add (type a) t (key : a Key.t) x =
   let (module M) = key in
   let data = Binding.T (key, x) in
-  Int.Map.add t M.id data
+  Int.Map.set t M.id data
 
 let mem t key = Int.Map.mem t (Key.id key)
 

@@ -23,8 +23,14 @@ let create (type key) (type value)
 let find (type input) (type output) ((module T) : (input, output) t) x =
   T.H.find T.value x
 
-let add (type input) (type output) ((module T) : (input, output) t) k v =
-  T.H.add T.value k v
+let set (type input) (type output) ((module T) : (input, output) t) k v =
+  T.H.set T.value k v
+
+let add_exn t k v =
+  match find t k with
+  | None -> set t k v
+  | Some _ ->
+    Code_error.raise "Table.add_exn: key already exists" []
 
 let clear (type input) (type output) ((module T) : (input, output) t) =
   T.H.clear T.value

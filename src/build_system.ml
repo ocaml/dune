@@ -486,7 +486,7 @@ let get_dir_triage t ~dir =
 let add_spec_exn t fn rule =
   match Path.Build.Table.find t.files fn with
   | None ->
-    Path.Build.Table.add t.files fn rule
+    Path.Build.Table.set t.files fn rule
   | Some _ ->
     Code_error.raise
       "add_spec_exn called on the same file twice. \
@@ -778,7 +778,7 @@ end = struct
             match File_tree.find_dir t.file_tree src_dir with
             | None -> aliases
             | Some dir ->
-              String.Map.add aliases "default"
+              String.Map.set aliases "default"
                 { deps = Path.Set.empty
                 ; dyn_deps =
                     (Alias0.dep_rec_internal ~name:"install" ~dir ~ctx_dir
@@ -1820,7 +1820,7 @@ end = struct
             ; context = rule.context
             ; action
             } in
-          rules := Internal_rule.Id.Map.add !rules rule.id rule;
+          rules := Internal_rule.Id.Map.set !rules rule.id rule;
           if recursive then
             Dep.Set.parallel_iter_files deps ~f:proc_rule ~eval_pred
           else
@@ -1838,7 +1838,7 @@ end = struct
         Internal_rule.Id.Map.fold !rules ~init:Path.Build.Map.empty
           ~f:(fun (r : Rule.t) acc ->
             Path.Build.Set.fold r.targets ~init:acc ~f:(fun fn acc ->
-              Path.Build.Map.add acc fn r)) in
+              Path.Build.Map.set acc fn r)) in
       match
         Rule.Id.Top_closure.top_closure
           (rules_for_files rules goal)

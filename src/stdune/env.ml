@@ -60,7 +60,7 @@ let of_unix arr =
 let initial = make (of_unix (Unix.environment ()))
 
 let add t ~var ~value =
-  make (Map.add t.vars var value)
+  make (Map.set t.vars var value)
 
 let remove t ~var =
   make (Map.remove t.vars var)
@@ -86,7 +86,7 @@ let update t ~var ~f =
   make (Map.update t.vars var ~f)
 
 let of_string_map m =
-  make (String.Map.foldi ~init:Map.empty ~f:(fun k v acc -> Map.add acc k v) m)
+  make (String.Map.foldi ~init:Map.empty ~f:(fun k v acc -> Map.set acc k v) m)
 
 let iter t =
   Map.iteri t.vars

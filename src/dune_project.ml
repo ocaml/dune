@@ -349,7 +349,7 @@ module Extension = struct
         [ "name", Dyn.Encoder.string name ];
     let key = Univ_map.Key.create ~name arg_to_dyn in
     let ext = { syntax; stanzas; experimental; key } in
-    Hashtbl.add extensions name (Extension ext);
+    Hashtbl.add_exn extensions name (Extension ext);
     key
 
   let register_simple ?experimental syntax stanzas =

@@ -628,7 +628,7 @@ module Exec_sync = struct
         }
       in
       dep_node.dag_node <- lazy dag_node;
-      Table.add t.cache inp dep_node;
+      Table.set t.cache inp dep_node;
       add_rev_dep dag_node;
       compute t run inp dep_node
     | Some dep_node ->
@@ -708,7 +708,7 @@ module Exec_async = struct
         }
       in
       dep_node.dag_node <- lazy dag_node;
-      Table.add t.cache inp dep_node;
+      Table.set t.cache inp dep_node;
       add_rev_dep dag_node;
       compute t inp ivar dep_node
     | Some dep_node ->

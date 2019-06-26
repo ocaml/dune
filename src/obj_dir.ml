@@ -31,9 +31,8 @@ module External = struct
     match cm_kind, visibility, t.private_dir with
     | Cmi, Private, Some p -> p
     | Cmi, Private, None ->
-      Errors.code_error "External.cm_dir"
-        [ "t", Dyn.to_sexp (to_dyn t)
-        ]
+      Code_error.raise "External.cm_dir"
+        [ "t", to_dyn t]
     | Cmi, Public, _
     | (Cmo | Cmx), _, _ -> t.public_dir
 

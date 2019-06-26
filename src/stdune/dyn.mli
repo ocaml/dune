@@ -34,8 +34,6 @@ module Encoder : sig
   val array      : 'a t -> 'a array          t
   val option     : 'a t -> 'a option         t
 
-  val via_sexp : ('a -> Sexp0.t) -> 'a t
-
   val record : (string * dyn) list -> dyn
 
   val unknown : _ t
@@ -48,7 +46,11 @@ val pp : Format.formatter -> t -> unit
 
 val opaque : t
 
-val to_sexp : t Sexp.Encoder.t
+val compare : t -> t -> Ordering.t
+
+val to_sexp : t -> Sexp0.t
+
+val hash : t -> int
 
 val to_string : t -> string
 

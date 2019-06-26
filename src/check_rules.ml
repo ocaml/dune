@@ -2,7 +2,7 @@ open Stdune
 
 let dev_files =
   let id = lazy (
-    let open Sexp.Encoder in
+    let open Dyn.Encoder in
     constr "dev_files"
       [string ".cmt"; string ".cmti"; string (Cm_kind.ext Cmi)]
   ) in

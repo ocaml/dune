@@ -331,7 +331,7 @@ module Var = struct
     EC.set_vars (Univ_map.remove (EC.vars ()) var) f () k
 
   let create () =
-    create ~name:"var" (fun _ -> Sexp.Encoder.string "var")
+    create ~name:"var" (fun _ -> Dyn.Encoder.string "var")
 end
 
 let with_error_handler f ~on_error k =

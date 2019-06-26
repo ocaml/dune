@@ -34,6 +34,4 @@ let equal x y = compare x y = Eq
 let hash { dir; predicate} =
   Tuple.T2.hash Path.hash Predicate.hash (dir, predicate)
 
-let to_sexp t = Dyn.to_sexp (to_dyn t)
-
 let test t path = Predicate.test t.predicate (Path.basename path)

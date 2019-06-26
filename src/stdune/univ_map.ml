@@ -8,21 +8,21 @@ module Key = struct
     type 'a Witness.t += T : t Witness.t
     val id : int
     val name : string
-    val to_sexp : t -> Sexp.t
+    val to_dyn : t -> Dyn.t
   end
 
   type 'a t = (module T with type t = 'a)
 
   let next = ref 0
 
-  let create (type a) ~name to_sexp =
+  let create (type a) ~name to_dyn =
     let n = !next in
     next := n + 1;
     let module M = struct
       type t = a
       type 'a Witness.t += T : t Witness.t
       let id = n
-      let to_sexp = to_sexp
+      let to_dyn = to_dyn
       let name = name
     end in
     (module M : T with type t = a)
@@ -73,13 +73,10 @@ let singleton key v = Int.Map.singleton (Key.id key) (Binding.T (key, v))
 
 let superpose = Int.Map.superpose
 
-let to_sexp (t : t) =
-  let open Sexp in
-  List (
-    Int.Map.to_list t
-    |> List.map ~f:(fun (_, (Binding.T (key, v))) ->
+let to_dyn (t : t) =
+  let open Dyn.Encoder in
+  Dyn.Map (
+    Int.Map.values t
+    |> List.map ~f:(fun (Binding.T (key, v)) ->
       let (module K) = key in
-      List
-        [ Atom K.name
-        ; K.to_sexp v
-        ]))
+      (string K.name, K.to_dyn v)))

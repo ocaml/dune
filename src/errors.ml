@@ -16,11 +16,6 @@ let fatalf ?loc fmt =
     | Some loc -> raise (Loc_error (loc, s))
   ) fmt
 
-let code_error message vars =
-  List.map vars ~f:(fun (v, sexp) ->
-    (v, Dyn.Sexp sexp))
-  |> Code_error.raise message
-
 exception Already_reported
 
 let max_lines_to_print_in_full = 10

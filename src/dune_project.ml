@@ -224,7 +224,7 @@ let to_dyn
   let open Dyn.Encoder in
   record
     [ "name", Name.to_dyn name
-    ; "root", via_sexp Path.Source.to_sexp root
+    ; "root", Path.Source.to_dyn root
     ; "version", (option string) version
     ; "source", (option Source_kind.to_dyn) source
     ; "license", (option string) license
@@ -342,12 +342,12 @@ module Extension = struct
 
   let extensions = Hashtbl.create 32
 
-  let register ?(experimental=false) syntax stanzas arg_to_sexp =
+  let register ?(experimental=false) syntax stanzas arg_to_dyn =
     let name = Syntax.name syntax in
     if Hashtbl.mem extensions name then
-      Errors.code_error "Dune_project.Extension.register: already registered"
-        [ "name", Sexp.Encoder.string name ];
-    let key = Univ_map.Key.create ~name arg_to_sexp in
+      Code_error.raise "Dune_project.Extension.register: already registered"
+        [ "name", Dyn.Encoder.string name ];
+    let key = Univ_map.Key.create ~name arg_to_dyn in
     let ext = { syntax; stanzas; experimental; key } in
     Hashtbl.add extensions name (Extension ext);
     key
@@ -357,9 +357,8 @@ module Extension = struct
       let+ r = stanzas in
       ((), r)
     in
-    let unit_to_sexp () = Sexp.List [] in
     let _ : unit t =
-      register ?experimental syntax unit_stanzas unit_to_sexp
+      register ?experimental syntax unit_stanzas Unit.to_dyn
     in
     ()
 
@@ -484,22 +483,22 @@ let key =
          ; stanza_parser = _; packages = _ ; extension_args = _
          ; parsing_context ; implicit_transitive_deps ; dune_version
          ; allow_approx_merlin ; generate_opam_files } ->
-      let open Sexp.Encoder in
+      let open Dyn.Encoder in
       record
-        [ "name", Dyn.to_sexp (Name.to_dyn name)
-        ; "root", Path.Source.to_sexp root
+        [ "name", Name.to_dyn name
+        ; "root", Path.Source.to_dyn root
         ; "license", (option string) license
         ; "authors", (list string) authors
-        ; "source", Dyn.to_sexp (Dyn.Encoder.(option Source_kind.to_dyn) source)
+        ; "source", Dyn.Encoder.(option Source_kind.to_dyn) source
         ; "version", (option string) version
         ; "homepage", (option string) homepage
         ; "documentation", (option string) documentation
         ; "bug_reports", (option string) bug_reports
         ; "maintainers", (list string) maintainers
-        ; "project_file", Dyn.to_sexp (Project_file.to_dyn project_file)
-        ; "parsing_context", Univ_map.to_sexp parsing_context
+        ; "project_file", Project_file.to_dyn project_file
+        ; "parsing_context", Univ_map.to_dyn parsing_context
         ; "implicit_transitive_deps", bool implicit_transitive_deps
-        ; "dune_version", Syntax.Version.to_sexp dune_version
+        ; "dune_version", Syntax.Version.to_dyn dune_version
         ; "allow_approx_merlin", bool allow_approx_merlin
         ; "generate_opam_files", bool generate_opam_files
         ])
@@ -510,7 +509,7 @@ let get_exn () =
   get key >>| function
   | Some t -> t
   | None ->
-    Errors.code_error "Current project is unset" []
+    Code_error.raise "Current project is unset" []
 
 let filename = "dune-project"
 

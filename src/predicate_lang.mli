@@ -5,7 +5,7 @@ open! Stdune
 
 type t
 
-val pp : t Fmt.t
+val to_dyn : t -> Dyn.t
 
 val decode : t Stanza.Decoder.t
 

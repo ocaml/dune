@@ -136,8 +136,6 @@ let to_dyn t : Dyn.t =
 
 let to_dyn_concise t : Dyn.t = String t.name
 
-let to_sexp t = Dyn.to_sexp (to_dyn t)
-
 let compare a b = compare a.name b.name
 
 let opam = lazy (Bin.which ~path:(Env.path Env.initial) "opam")

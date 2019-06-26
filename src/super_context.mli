@@ -12,7 +12,6 @@ open Dune_file
 type t
 
 val to_dyn : t -> Dyn.t
-val to_sexp : t -> Sexp.t
 
 val create
   :  context:Context.t

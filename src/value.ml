@@ -6,12 +6,12 @@ type t =
   | Dir of Path.t
   | Path of Path.t
 
-let to_sexp =
-  let open Sexp.Encoder in
+let to_dyn =
+  let open Dyn.Encoder in
   function
-  | String s -> (pair string string) ("string", s)
-  | Path p -> (pair string Path.to_sexp) ("path", p)
-  | Dir p -> (pair string Path.to_sexp) ("dir", p)
+  | String s -> constr "string" [string s]
+  | Path p -> constr "path" [Path.to_dyn p]
+  | Dir p -> constr "dir" [Path.to_dyn p]
 
 let string_of_path ~dir p = Path.reach ~from:dir p
 

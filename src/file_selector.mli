@@ -17,10 +17,8 @@ val compare : t -> t -> Ordering.t
 
 val pp : t Fmt.t
 
-val to_dyn : t -> Dyn.t
-
 val encode : t Dune_lang.Encoder.t
 
-val to_sexp : t -> Sexp.t
+val to_dyn : t -> Dyn.t
 
 val test : t -> Path.t -> bool

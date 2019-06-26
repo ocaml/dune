@@ -45,7 +45,7 @@ let get_if_file_exists_exn state =
   match !state with
   | Decided (_, t) -> t
   | Undecided _ ->
-    Errors.code_error "Build.get_if_file_exists_exn: got undecided" []
+    Code_error.raise "Build.get_if_file_exists_exn: got undecided" []
 
 let arr f = Arr f
 let return x = Arr (fun _ -> x)
@@ -227,7 +227,7 @@ let merge_files_dyn ~target =
 (* Analysis *)
 
 let no_targets_allowed () =
-  Errors.code_error "No targets allowed under a [Build.lazy_no_targets] \
+  Code_error.raise "No targets allowed under a [Build.lazy_no_targets] \
                   or [Build.if_file_exists]" []
 [@@inline never]
 
@@ -325,18 +325,19 @@ let targets =
       | If_file_exists (_, state) -> begin
           match !state with
           | Decided (v, _) ->
-            Errors.code_error "Build_interpret.targets got decided if_file_exists"
-              ["exists", Sexp.Encoder.bool v]
+            Code_error.raise "Build_interpret.targets got decided if_file_exists"
+              ["exists", Dyn.Encoder.bool v]
           | Undecided (a, b) ->
             let a = loop a Path.Build.Set.empty in
             let b = loop b Path.Build.Set.empty in
             if Path.Build.Set.is_empty a && Path.Build.Set.is_empty b then
               acc
             else begin
-              Errors.code_error "Build_interpret.targets: cannot have targets \
-                              under a [if_file_exists]"
-                [ "targets-a", Path.Build.Set.to_sexp a
-                ; "targets-b", Path.Build.Set.to_sexp b
+              Code_error.raise
+                "Build_interpret.targets: cannot have targets \
+                 under a [if_file_exists]"
+                [ "targets-a", Path.Build.Set.to_dyn a
+                ; "targets-b", Path.Build.Set.to_dyn b
                 ]
             end
         end

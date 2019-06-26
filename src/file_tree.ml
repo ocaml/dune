@@ -160,8 +160,6 @@ module Dir = struct
       ; "contents", dyn_of_contents contents
       ; "vcs", Dyn.Encoder.option Vcs.to_dyn vcs
       ]
-
-  let to_sexp t = Dyn.to_sexp (to_dyn t)
 end
 
 type t = Dir.t

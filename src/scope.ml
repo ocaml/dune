@@ -24,9 +24,9 @@ module DB = struct
   let find_by_dir t dir =
     let rec loop d =
       if Path.Build.is_root d then
-        Errors.code_error "Scope.DB.find_by_dir got an invalid path"
-          [ "dir"    , Path.Build.to_sexp dir
-          ; "context", Sexp.Encoder.string t.context
+        Code_error.raise "Scope.DB.find_by_dir got an invalid path"
+          [ "dir"    , Path.Build.to_dyn dir
+          ; "context", Dyn.Encoder.string t.context
           ];
       match Path.Build.Map.find t.by_dir d with
       | Some s -> s
@@ -34,26 +34,15 @@ module DB = struct
         begin match Path.Build.parent d with
         | Some d -> loop d
         | None ->
-          Errors.code_error "find_by_dir: invalid directory"
-            [ "d", Path.Build.to_sexp d
-            ; "dir", Path.Build.to_sexp dir
+          Code_error.raise "find_by_dir: invalid directory"
+            [ "d", Path.Build.to_dyn d
+            ; "dir", Path.Build.to_dyn dir
             ]
         end
     in
     loop dir
 
-  let find_by_name t name =
-    match Dune_project.Name.Map.find t.by_name name with
-    | Some x -> x
-    | None ->
-      let dune_project_sexp p = Dyn.to_sexp (Dune_project.Name.to_dyn p) in
-      Errors.code_error "Scope.DB.find_by_name"
-        [ "name"   , dune_project_sexp name
-        ; "context", Sexp.Encoder.string t.context
-        ; "names",
-          Sexp.Encoder.(list dune_project_sexp)
-            (Dune_project.Name.Map.keys t.by_name)
-        ]
+  let find_by_name t name = Dune_project.Name.Map.find_exn t.by_name name
 
   let resolve t public_libs name : Lib.DB.Resolve_result.t =
     match Lib_name.Map.find public_libs name with
@@ -103,14 +92,13 @@ module DB = struct
       |> function
       | Ok x -> x
       | Error (_name, project1, project2) ->
-        let to_sexp (project : Dune_project.t) =
+        let to_dyn (project : Dune_project.t) =
           Dyn.Encoder.(pair Dune_project.Name.to_dyn Path.Source.to_dyn)
             (Dune_project.name project, Dune_project.root project)
-          |> Dyn.to_sexp
         in
-        Errors.code_error "Scope.DB.create got two projects with the same name"
-          [ "project1", to_sexp project1
-          ; "project2", to_sexp project2
+        Code_error.raise "Scope.DB.create got two projects with the same name"
+          [ "project1", to_dyn project1
+          ; "project2", to_dyn project2
           ]
     in
     let libs_by_project_name =

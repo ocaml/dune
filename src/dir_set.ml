@@ -159,22 +159,22 @@ let rec is_subset t ~of_ =
     (not x.default || y.default) &&
     String.Map.is_subset x.exceptions ~of_:y.exceptions ~f:is_subset
 
-let rec to_sexp t = match t with
-  | Empty -> Sexp.Atom "Empty"
-  | Universal -> Sexp.Atom "Universal"
+let rec to_dyn =
+  let open Dyn.Encoder in
+  function
+  | Empty -> constr "Empty" []
+  | Universal -> constr "Universal" []
   | Nontrivial { here; default; exceptions } ->
-    Sexp.List (
-      (
-        (match here with | true -> [ ".", Sexp.Atom "true" ] | false -> []) @
-        (String.Map.to_list exceptions
-         |> List.map ~f:(fun (s, t) ->
-           s, to_sexp t)) @
-        (match default with
-         | false -> []
-         | true -> [("*", Sexp.Atom "Universal")]))
-      |> List.map ~f:(fun (k, v) -> Sexp.List [Sexp.Atom k; v]))
-
-let to_dyn t : Dyn.t = Sexp (to_sexp t)
+    let open Dyn in
+    List ((
+      (match here with | true -> [ ".", String "true" ] | false -> []) @
+      (String.Map.to_list exceptions
+       |> List.map ~f:(fun (s, t) ->
+         s, to_dyn t)) @
+      (match default with
+       | false -> []
+       | true -> [("*", String "Universal")]))
+      |> List.map ~f:(fun (k, v) -> List [String k; v]))
 
 let forget_root t = t
 

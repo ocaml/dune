@@ -112,8 +112,8 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to =
       if Path.is_in_build_dir path then
         Path.mkdir_p path
       else
-        Errors.code_error "Action_exec.exec: mkdir on non build dir"
-          ["path", Path.to_sexp path]
+        Code_error.raise "Action_exec.exec: mkdir on non build dir"
+          ["path", Path.to_dyn path]
     end;
     Fiber.return ()
   | Digest_files paths ->

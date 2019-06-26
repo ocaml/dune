@@ -19,8 +19,6 @@ module Local : sig
   val decode_loc : (Loc.t * result) Dune_lang.Decoder.t
   val validate : (Loc.t * result) -> wrapped:bool option -> t
 
-  val to_sexp : t Sexp.Encoder.t
-
   val of_string_exn : string -> t
 
   val of_string : string -> result
@@ -56,8 +54,6 @@ module Set : sig
   include Set.S with type elt = t
   val to_string_list : t -> string list
 end
-
-val to_sexp : t Sexp.Encoder.t
 
 val nest : t -> t -> t
 

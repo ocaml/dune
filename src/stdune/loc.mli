@@ -12,11 +12,9 @@ val drop_position : t -> t
 
 val of_lexbuf : Lexing.lexbuf -> t
 
-val to_sexp : t -> Sexp.t
-
 val to_dyn : t -> Dyn.t
 
-val sexp_of_position_no_file : Lexing.position -> Sexp.t
+val dyn_of_position_no_file : Lexing.position -> Dyn.t
 
 val equal : t -> t -> bool
 

@@ -74,7 +74,6 @@ end = struct
       User_error.raise ~loc [ Pp.textf "path %s is not absolute" t ];
     make t
 
-  let to_sexp t = Sexp.Encoder.string (to_string t)
   let to_dyn t = Dyn.String (to_string t)
 
 (*
@@ -250,7 +249,6 @@ end = struct
       | None -> t
       | Some i -> String.sub t ~pos:(i + 1) ~len:(len - i - 1)
 
-  let to_sexp t = Sexp.Encoder.string (to_string t)
   let to_dyn t = Dyn.String (to_string t)
 
   module L = struct
@@ -842,12 +840,12 @@ let parse_string_exn ~loc s =
 
 let of_string s = parse_string_exn ~loc:Loc0.none s
 
-let to_sexp t =
-  let constr f x y = Sexp.Encoder.(pair string f) (x, y) in
-  match t with
-  | In_build_dir s -> constr Local.to_sexp "In_build_dir" s
-  | In_source_tree s -> constr Local.to_sexp "In_source_tree" s
-  | External s -> constr External.to_sexp "External" s
+let to_dyn =
+  let open Dyn.Encoder in
+  function
+  | In_build_dir s -> constr "In_build_dir" [Local.to_dyn s]
+  | In_source_tree s -> constr "In_source_tree" [Local.to_dyn s]
+  | External s -> constr "External" [External.to_dyn s]
 
 let of_filename_relative_to_initial_cwd fn =
   external_ (
@@ -1229,7 +1227,6 @@ let pp_debug ppf = function
 module O = Comparable.Make(T)
 module Set = struct
   include O.Set
-  let to_sexp t = Sexp.Encoder.(list to_sexp) (to_list t)
   let of_listing ~dir ~filenames =
     of_list (List.map filenames ~f:(fun f -> relative dir f))
 end

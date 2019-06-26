@@ -6,6 +6,8 @@ module File : sig
     ; dst : Path.Source.t
     }
 
+  val to_dyn : t -> Dyn.t
+
   (** Register a file to promote *)
   val register : t -> unit
 end

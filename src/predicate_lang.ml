@@ -69,20 +69,20 @@ module Ast = struct
     | Dune -> many union [] kind
     | Jbuild -> one kind
 
-  let rec to_sexp f =
-    let open Sexp.Encoder in
+  let rec to_dyn f =
+    let open Dyn.Encoder in
     function
     | Element a -> f a
-    | Compl a -> constr "compl" [to_sexp f a]
+    | Compl a -> constr "compl" [to_dyn f a]
     | Standard -> string ":standard"
-    | Union xs -> constr "or" (List.map ~f:(to_sexp f) xs)
-    | Inter xs -> constr "and" (List.map ~f:(to_sexp f) xs)
+    | Union xs -> constr "or" (List.map ~f:(to_dyn f) xs)
+    | Inter xs -> constr "and" (List.map ~f:(to_dyn f) xs)
 end
 
 type t = (string -> bool) Ast.t
 
-let pp ppf t =
-  Sexp.pp ppf (Ast.to_sexp (fun _ -> Sexp.Encoder.string "opaque") t)
+let to_dyn t =
+  Ast.to_dyn (fun _ -> Dyn.Encoder.string "opaque") t
 
 let decode : t Dune_lang.Decoder.t =
   let open Stanza.Decoder in

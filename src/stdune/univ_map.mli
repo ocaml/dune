@@ -7,7 +7,7 @@ type t
 
 module Key : sig
   type 'a t
-  val create : name:string -> ('a -> Sexp.t) -> 'a t
+  val create : name:string -> ('a -> Dyn.t) -> 'a t
 end
 
 val empty    : t
@@ -23,4 +23,4 @@ val singleton : 'a Key.t -> 'a -> t
     in [b]. *)
 val superpose : t -> t -> t
 
-val to_sexp : t -> Sexp.t
+val to_dyn : t -> Dyn.t

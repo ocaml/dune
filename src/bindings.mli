@@ -21,7 +21,7 @@ val to_list : 'a t -> 'a list
 
 val singleton : 'a -> 'a t
 
-val to_sexp : 'a Sexp.Encoder.t -> 'a t Sexp.Encoder.t
+val to_dyn : 'a Dyn.Encoder.t -> 'a t Dyn.Encoder.t
 
 val decode : 'a Dune_lang.Decoder.t -> 'a t Dune_lang.Decoder.t
 

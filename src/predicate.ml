@@ -1,21 +1,18 @@
 open Stdune
 
 type 'a t =
-  { id : Sexp.t Lazy.t
+  { id : Dyn.t Lazy.t
   ; f : 'a -> bool
   }
 
-let compare x y = Sexp.compare (Lazy.force x.id) (Lazy.force y.id)
+let compare x y = Dyn.compare (Lazy.force x.id) (Lazy.force y.id)
 let equal x y = compare x y = Ordering.Eq
-let hash t = Sexp.hash (Lazy.force t.id)
-
-let to_sexp t = Sexp.Encoder.constr "Predicate" [Lazy.force t.id]
+let hash t = Dyn.hash (Lazy.force t.id)
 
 let to_dyn t =
   let open Dyn in
   Record
-    [ "id", Sexp.to_dyn (Lazy.force t.id)
-    ]
+    ["id", Lazy.force t.id]
 
 let encode _ = Dune_lang.Encoder.string "predicate <opaque>"
 

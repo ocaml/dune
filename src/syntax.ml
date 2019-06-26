@@ -21,8 +21,6 @@ module Version = struct
 
   let pp fmt t = Format.fprintf fmt "%s" (to_string t)
 
-  let to_sexp t = Sexp.Atom (to_string t)
-
   let to_dyn t =
     let open Dyn.Encoder in
     pair int int t
@@ -53,20 +51,9 @@ end
 module Supported_versions = struct
   type t = int Int.Map.t
 
-  let to_sexp (t : t) =
-    let open Sexp.Encoder in
-    (list (pair int int)) (Int.Map.to_list t)
+  let to_dyn = Int.Map.to_dyn Int.to_dyn
 
-  let make l : t =
-    match
-      List.map l ~f:(fun (major, minor) -> (major, minor))
-      |> Int.Map.of_list
-    with
-    | Ok x -> x
-    | Error _ ->
-      Errors.code_error
-        "Syntax.create"
-        [ "versions", Sexp.Encoder.list Version.to_sexp l ]
+  let make = Int.Map.of_list_exn
 
   let greatest_supported_version t = Option.value_exn (Int.Map.max_binding t)
 
@@ -122,7 +109,7 @@ end
 let create ~name ~desc supported_versions =
   { name
   ; desc
-  ; key = Univ_map.Key.create ~name Version.to_sexp
+  ; key = Univ_map.Key.create ~name Version.to_dyn
   ; supported_versions = Supported_versions.make supported_versions
   }
 
@@ -160,10 +147,10 @@ let get_exn t =
   | Some x -> return x
   | None ->
     let+ context = get_all in
-    Errors.code_error "Syntax identifier is unset"
-      [ "name", Sexp.Encoder.string t.name
-      ; "supported_versions", Supported_versions.to_sexp t.supported_versions
-      ; "context", Univ_map.to_sexp context
+    Code_error.raise "Syntax identifier is unset"
+      [ "name", Dyn.Encoder.string t.name
+      ; "supported_versions", Supported_versions.to_dyn t.supported_versions
+      ; "context", Univ_map.to_dyn context
       ]
 
 let desc () =

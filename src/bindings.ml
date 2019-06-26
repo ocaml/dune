@@ -28,12 +28,13 @@ let empty = []
 
 let singleton x = [Unnamed x]
 
-let to_sexp sexp_of_a bindings =
-  Sexp.List (
+let to_dyn dyn_of_a bindings =
+  let open Dyn.Encoder in
+  Dyn.List (
     List.map bindings ~f:(function
-      | Unnamed a -> sexp_of_a a
+      | Unnamed a -> dyn_of_a a
       | Named (name, bindings) ->
-        Sexp.List (Sexp.Encoder.string (":" ^ name) :: List.map ~f:sexp_of_a bindings))
+        Dyn.List (string (":" ^ name) :: List.map ~f:dyn_of_a bindings))
   )
 
 let jbuild elem =

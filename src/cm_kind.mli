@@ -7,7 +7,7 @@ val pp : t Fmt.t
 val ext : t -> string
 val source : t -> Ml_kind.t
 
-val to_sexp : t Sexp.Encoder.t
+val to_dyn : t -> Dyn.t
 
 module Dict : sig
   type cm_kind = t

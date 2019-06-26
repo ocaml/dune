@@ -14,8 +14,6 @@ module Version : sig
 
   val pp : t Fmt.t
 
-  val to_sexp : t Sexp.Encoder.t
-
   val to_dyn : t Dyn.Encoder.t
 
   val hash : t -> int

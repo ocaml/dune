@@ -50,8 +50,6 @@ module Local = struct
 
   let encode = Dune_lang.Encoder.string
 
-  let to_sexp = Sexp.Encoder.string
-
   let pp_quoted fmt t = Format.fprintf fmt "%S" t
   let pp fmt t = Format.fprintf fmt "%s" t
 
@@ -91,8 +89,6 @@ let pp = Format.pp_print_string
 let pp_quoted fmt t = Format.fprintf fmt "%S" t
 
 let to_local = Local.of_string
-
-let to_sexp t = Sexp.Atom t
 
 let to_dyn t = Dyn.String t
 

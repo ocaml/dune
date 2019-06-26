@@ -1094,15 +1094,14 @@ module type Conv = sig
   val encode : t Encoder.t
 end
 
-let rec to_sexp = function
-  | Atom (A a) -> Sexp.Atom a
-  | List s -> List (List.map s ~f:to_sexp)
-  | Quoted_string s -> Sexp.Atom s
+let rec to_dyn =
+  let open Dyn.Encoder in
+  function
+  | Atom (A a) -> string a
+  | List s -> List (List.map s ~f:to_dyn)
+  | Quoted_string s -> string s
   | Template t ->
-    List
-      [ Atom "template"
-      ; Atom (Template.to_string ~syntax:Dune t)
-      ]
+    constr "template" [string (Template.to_string ~syntax:Dune t)]
 
 module Io = struct
   let load ?lexer path ~mode =

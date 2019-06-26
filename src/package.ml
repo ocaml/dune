@@ -23,7 +23,7 @@ module Name = struct
 
   let encode t = Dune_lang.Encoder.(string (to_string t))
 
-  let to_sexp t = Sexp.Encoder.string (to_string t)
+  let to_dyn t = Dyn.Encoder.string (to_string t)
 
   module Infix = Comparator.Operators(T)
 end
@@ -177,7 +177,7 @@ module Dependency = struct
     | Or (c :: cs) ->
       Logop (nopos, `Or, opam_constraint c, opam_constraint (And cs))
     | And []
-    | Or [] -> Errors.code_error "opam_constraint" []
+    | Or [] -> Code_error.raise "opam_constraint" []
 
   let opam_depend : t -> OpamParserTypes.value =
     let nopos = Opam_file.nopos in

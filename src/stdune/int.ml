@@ -7,7 +7,6 @@ module T = struct
       Eq
     else
       Gt
-  let to_sexp = Sexp.Encoder.int
   let to_dyn x = Dyn0.Int x
 end
 

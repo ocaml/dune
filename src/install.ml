@@ -219,7 +219,7 @@ module Section = struct
       | Doc          -> t.doc
       | Stublibs     -> t.stublibs
       | Man          -> t.man
-      | Misc         -> Errors.code_error "Install.Paths.get" []
+      | Misc         -> Code_error.raise "Install.Paths.get" []
 
     let install_path t section p =
       Path.relative (get t section) (Dst.to_string p)

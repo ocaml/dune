@@ -104,6 +104,3 @@ let to_dyn (type key) f g t =
     foldi t ~init:M.empty ~f:(fun key data acc -> M.add acc key data)
   in
   M.to_dyn g m
-
-let to_sexp f g t =
-  Dyn.to_sexp (to_dyn (Dyn.Encoder.via_sexp f) (Dyn.Encoder.via_sexp g) t)

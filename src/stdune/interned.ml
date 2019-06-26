@@ -12,7 +12,6 @@ module type S = sig
   module Set : sig
     include Set.S with type elt = t
 
-    val to_sexp : t -> Sexp.t
     val to_dyn : t -> Dyn.t
 
     val make : string list -> t
@@ -122,8 +121,6 @@ module Make(R : Settings)() = struct
   module Set = struct
     include O.Set
 
-    let to_sexp t = Sexp.Encoder.(list String.to_sexp) (List.map ~f:to_string (to_list t))
-
     let make l =
       List.fold_left l ~init:empty ~f:(fun acc s -> add acc (make s))
 
@@ -151,7 +148,6 @@ module No_interning(R : Settings)() = struct
     include String.Set
     let make = of_list
     let pp fmt t = Fmt.ocaml_list Format.pp_print_string fmt (to_list t)
-    let to_sexp t = Sexp.Encoder.(list String.to_sexp) (to_list t)
   end
   module Map = String.Map
 

@@ -116,7 +116,7 @@ module Dep_conf : sig
   val remove_locs : t -> t
 
   include Dune_lang.Conv with type t := t
-  val to_sexp : t Sexp.Encoder.t
+  val to_dyn : t Dyn.Encoder.t
 end
 
 module Auto_format : sig

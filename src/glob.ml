@@ -10,7 +10,7 @@ let equal x y = String.equal x.repr y.repr
 
 let hash t = String.hash t.repr
 
-let to_sexp t = Sexp.Encoder.string t.repr
+let to_dyn t = Dyn.Encoder.string t.repr
 
 let of_string repr =
   Glob_lexer.parse_string repr
@@ -40,5 +40,8 @@ let empty =
   }
 
 let to_pred t =
-  let id = lazy (Sexp.List [Atom "Glob"; Atom t.repr]) in
+  let id = lazy (
+    let open Dyn.Encoder in
+    constr "Glob" [string t.repr])
+  in
   Predicate.create ~id ~f:(test t)

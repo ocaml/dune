@@ -16,9 +16,9 @@ end = struct
 
   let make name ~dir =
     if String.contains name '/' then
-      Errors.code_error "Alias0.make: Invalid alias"
-        [ "name", Sexp.Encoder.string name
-        ; "dir", Path.Build.to_sexp dir
+      Code_error.raise "Alias0.make: Invalid alias"
+        [ "name", Dyn.Encoder.string name
+        ; "dir", Path.Build.to_dyn dir
         ];
     { dir; name }
 
@@ -53,8 +53,6 @@ let to_dyn { dir ; name } =
     [ "dir", Path.Build.to_dyn dir
     ; "name", String name
     ]
-
-let to_sexp t = Dyn.to_sexp (to_dyn t)
 
 let suffix = "-" ^ String.make 32 '0'
 

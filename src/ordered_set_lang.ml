@@ -384,15 +384,7 @@ module Unexpanded = struct
                 "An unquoted templated expanded to more than one value. \
                  A file path is expected in this position."
           in
-          match Path.Map.find files_contents path with
-          | Some x -> x
-          | None ->
-            Errors.code_error
-              "Ordered_set_lang.Unexpanded.expand"
-              [ "included-file", Path.to_sexp path
-              ; "files", Sexp.Encoder.(list Path.to_sexp)
-                           (Path.Map.keys files_contents)
-              ]
+          Path.Map.find_exn files_contents path
         in
         let open Stanza.Decoder in
         parse

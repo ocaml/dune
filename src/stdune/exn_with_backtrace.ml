@@ -24,8 +24,9 @@ let map { exn; backtrace } ~f =
 
 let map_and_reraise t ~f = reraise (map ~f t)
 
-let to_sexp { exn; backtrace } =
-  Sexp.List [
-    Atom (Printexc.to_string exn);
-    Atom (Printexc.raw_backtrace_to_string backtrace)
-  ]
+let to_dyn { exn; backtrace } =
+  let open Dyn.Encoder in
+  record
+    [ "exn", string (Printexc.to_string exn)
+    ; "backtrace", string (Printexc.raw_backtrace_to_string backtrace)
+    ]

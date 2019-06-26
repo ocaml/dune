@@ -105,7 +105,7 @@ val conf : Findlib.Config.t =
   }
 |}]
 
-let env_pp fmt env = Sexp.pp fmt (Env.to_sexp env);;
+let env_pp fmt env = Dyn.pp fmt (Env.to_dyn env);;
 #install_printer env_pp;;
 
 [%%expect{|
@@ -115,5 +115,5 @@ val env_pp : Format.formatter -> Env.t -> unit = <fun>
 let env = Findlib.Config.env conf
 
 [%%expect{|
-val env : Env.t = ((FOO_BAR "my variable"))
+val env : Env.t = map {"FOO_BAR" : "my variable"}
 |}]

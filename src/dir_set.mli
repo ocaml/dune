@@ -74,7 +74,6 @@ val inter_all : 'w t list -> 'w t
 val diff : 'w t -> 'w t -> 'w t
 val negate : 'w t -> 'w t
 
-val to_sexp : 'w t -> Sexp.t
 val to_dyn : 'w t -> Dyn.t
 
 val forget_root : 'w t -> Path.Unspecified.w t

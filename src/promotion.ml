@@ -6,12 +6,11 @@ module File = struct
     ; dst : Path.Source.t
     }
 
-  (* XXX these sexp converters will be useful for the dump command *)
-  let _to_sexp { src; dst } =
-    Sexp.List
-      [ Path.Build.to_sexp src
-      ; Sexp.Atom "as"
-      ; Path.Source.to_sexp dst
+  let to_dyn { src; dst } =
+    let open Dyn.Encoder in
+    record
+      [ "src", Path.Build.to_dyn src
+      ; "dst", Path.Source.to_dyn dst
       ]
 
   let db : t list ref = ref []

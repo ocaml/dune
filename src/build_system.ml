@@ -372,10 +372,13 @@ module Action_and_deps = struct
   type t = Action.t * Dep.Set.t
 
   let to_dyn (action, deps) =
-    Dyn.Encoder.record
-      [ "action", Sexp (Dune_lang.to_sexp
-                          (Action.For_shell.encode (Action.for_shell action)))
-      ; "deps", Sexp (Dune_lang.to_sexp (Dep.Set.encode deps))
+    let open Dyn.Encoder in
+    let action =
+      Dune_lang.to_dyn (Action.For_shell.encode (Action.for_shell action))
+    in
+    record
+      [ "action", action
+      ; "deps", Dep.Set.to_dyn deps
       ]
 end
 
@@ -395,8 +398,6 @@ module Context_or_install = struct
     | Context s ->
       assert (not (s = "install"));
       Dyn.String s
-
-  let to_sexp t = Dyn.to_sexp (to_dyn t)
 end
 
 
@@ -419,11 +420,11 @@ let t = ref None
 let set x =
   match !t with
   | None -> t := Some x
-  | Some _ -> Errors.code_error "build system already initialized" []
+  | Some _ -> Code_error.raise "build system already initialized" []
 let get_build_system () =
   match !t with
   | Some t -> t
-  | None -> Errors.code_error "build system not yet initialized" []
+  | None -> Code_error.raise "build system not yet initialized" []
 let reset () = t := None
 let t = get_build_system
 
@@ -487,11 +488,10 @@ let add_spec_exn t fn rule =
   | None ->
     Path.Build.Table.add t.files fn rule
   | Some _ ->
-    Errors.code_error
+    Code_error.raise
       "add_spec_exn called on the same file twice. \
        This should be prevented by the check in [compile_rules]"
-      [
-        "file", Path.Build.to_sexp fn
+      [ "file", Path.Build.to_dyn fn
       ]
 
 let add_rules_exn t rules =
@@ -1189,7 +1189,7 @@ The following targets are not:
     | Alias_dir_of dir' ->
       (match load_dir ~dir:(Path.build dir') with
        | Non_build _ ->
-         Errors.code_error "Can only forward to a build dir" []
+         Code_error.raise "Can only forward to a build dir" []
        | Build {
          targets_here = _;
          targets_of_alias_dir;
@@ -1646,8 +1646,8 @@ let process_memcycle exn =
       Memo.Cycle_error.get exn
       |> List.map ~f:(Format.asprintf "%a" Memo.Stack_frame.pp)
     in
-    Errors.code_error "dependency cycle that does not involve any files"
-      ["frames", Sexp.Encoder.(list string) frames]
+    Code_error.raise "dependency cycle that does not involve any files"
+      ["frames", Dyn.Encoder.(list string) frames]
   | Some last ->
     let first = List.hd cycle in
     let cycle = if last = first then cycle else last :: cycle in
@@ -1736,8 +1736,8 @@ let package_deps pkg files =
 let prefix_rules prefix ~f =
   let targets = Build.targets prefix in
   if not (Path.Build.Set.is_empty targets) then
-    Errors.code_error "Build_system.prefix_rules' prefix contains targets"
-      ["targets", Path.Build.Set.to_sexp targets];
+    Code_error.raise "Build_system.prefix_rules' prefix contains targets"
+      ["targets", Path.Build.Set.to_dyn targets];
   let res, rules = Rules.collect f in
   Rules.produce (Rules.map_rules rules ~f:(fun rule ->
     { rule with build = Build.O.(>>>) prefix rule.build }));
@@ -1750,11 +1750,9 @@ let assert_not_in_memoized_function () =
    | [] ->
      ()
    | stack ->
-     Errors.code_error
+     Code_error.raise
        "Build_system.entry_point: called inside a memoized function"
-       ["stack", Dyn.to_sexp (
-          Dyn.Encoder.list Memo.Stack_frame.to_dyn stack
-        )]
+       ["stack", Dyn.Encoder.list Memo.Stack_frame.to_dyn stack]
   )
 
 let process_exn_and_reraise =

@@ -21,8 +21,6 @@ val dir : t -> Path.Build.t
 
 val to_dyn : t -> Dyn.t
 
-val to_sexp : t -> Sexp.t
-
 val encode : t Dune_lang.Encoder.t
 
 val pp : t Fmt.t

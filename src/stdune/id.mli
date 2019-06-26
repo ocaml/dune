@@ -21,7 +21,6 @@ module type S = sig
   val equal : t -> t -> bool
   val hash : t -> int
   val to_dyn : t -> Dyn.t
-  val to_sexp : t -> Sexp.t
 end
 
 (** A functor to create a new ID generator module. *)

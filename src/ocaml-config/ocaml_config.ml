@@ -27,8 +27,6 @@ module Value = struct
     | Prog_and_args { prog; args } ->
       (list string) (prog :: args)
 
-  let to_sexp t = Dyn.to_sexp (to_dyn t)
-
   let to_string = function
     | Bool   x -> string_of_bool x
     | Int    x -> string_of_int x
@@ -196,8 +194,6 @@ let to_dyn t =
     (to_list t
      |> List.map ~f:(fun (k, v) ->
        k, Value.to_dyn v))
-
-let to_sexp t = Dyn.to_sexp (to_dyn t)
 
 module Origin = struct
   type t =

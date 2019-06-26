@@ -58,14 +58,14 @@ let rec to_dyn =
   let open Dyn.Encoder in
   function
   | Const b -> constr "Const" [bool b]
-  | Expr e -> constr "Expr" [via_sexp String_with_vars.to_sexp e]
+  | Expr e -> constr "Expr" [String_with_vars.to_dyn e]
   | And t -> constr "And" (List.map ~f:to_dyn t)
   | Or t -> constr "Or" (List.map ~f:to_dyn t)
   | Compare (o, s1, s2) ->
     constr "Compare"
       [ Op.to_dyn o
-      ; via_sexp String_with_vars.to_sexp s1
-      ; via_sexp String_with_vars.to_sexp s2
+      ; String_with_vars.to_dyn s1
+      ; String_with_vars.to_dyn s2
       ]
 
 let ops =

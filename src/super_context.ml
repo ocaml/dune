@@ -58,7 +58,6 @@ let hash t = Context.hash t.context
 let to_dyn_concise t =
   Context.to_dyn_concise t.context
 let to_dyn t = Context.to_dyn t.context
-let to_sexp t = Context.to_sexp t.context
 
 let host t = Option.value t.host ~default:t
 
@@ -130,8 +129,8 @@ end = struct
       try
         get t ~dir ~scope
       with Exit ->
-        Errors.code_error "Super_context.Env.get called on invalid directory"
-          [ "dir", Path.Build.to_sexp dir ]
+        Code_error.raise "Super_context.Env.get called on invalid directory"
+          [ "dir", Path.Build.to_dyn dir ]
 
   let external_ t  ~dir =
     Env_node.external_ (get t ~dir) ~profile:t.profile ~default:t.context_env

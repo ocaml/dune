@@ -100,7 +100,7 @@ module Extension : sig
     :  ?experimental:bool
     -> Syntax.t
     -> ('a * Stanza.Parser.t list) Dune_lang.Decoder.t
-    -> ('a -> Sexp.t)
+    -> ('a -> Dyn.t)
     -> 'a t
 
   (** A simple version where the arguments are not used through

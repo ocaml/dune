@@ -64,8 +64,8 @@ let scan_workspace ?(log=Log.no_log)
 
   let+ contexts = Context.create ~env workspace in
   List.iter contexts ~f:(fun (ctx : Context.t) ->
-    Log.infof log "@[<1>Dune context:@,%a@]@." Sexp.pp
-      (Context.to_sexp ctx));
+    Log.infof log "@[<1>Dune context:@,%a@]@." Dyn.pp
+      (Context.to_dyn ctx));
   { contexts
   ; conf
   ; env

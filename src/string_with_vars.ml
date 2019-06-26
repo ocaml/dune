@@ -120,8 +120,8 @@ let decode =
   let jbuild =
     raw >>| function
     | Template _ as t ->
-      Errors.code_error "Unexpected dune template from a jbuild file"
-        [ "t", Dune_lang.to_sexp (Dune_lang.Ast.remove_locs t)
+      Code_error.raise "Unexpected dune template from a jbuild file"
+        [ "t", Dune_lang.to_dyn (Dune_lang.Ast.remove_locs t)
         ]
     | Atom(loc, A s) -> Jbuild.parse s ~loc ~quoted:false
     | Quoted_string (loc, s) -> Jbuild.parse s ~loc ~quoted:true
@@ -216,7 +216,7 @@ module Var = struct
 
   let to_string = string_of_var
 
-  let to_sexp t = Sexp.Encoder.string (to_string t)
+  let to_dyn t = Dyn.Encoder.string (to_string t)
 
   let with_name t ~name =
     { t with name }
@@ -398,7 +398,7 @@ let encode t =
   | Some s -> Dune_lang.atom_or_quoted_string s
   | None -> Dune_lang.Template t.template
 
-let to_sexp t = Dune_lang.to_sexp (encode t)
+let to_dyn t = Dune_lang.to_dyn (encode t)
 
 let remove_locs t =
   { t with template = Dune_lang.Template.remove_locs t.template
@@ -521,14 +521,9 @@ let upgrade_to_dune t ~allow_first_dep_var =
 module Partial = struct
   include Private.Partial
 
-  let to_sexp f t =
-    match t with
-    | Expanded x ->
-      Sexp.List [
-        Sexp.Atom "Expanded"; f x
-      ]
-    | Unexpanded t ->
-      Sexp.List [
-        Sexp.Atom "Unexpanded"; to_sexp t
-      ]
+  let to_dyn f =
+    let open Dyn.Encoder in
+    function
+    | Expanded x -> constr "Expander" [f x]
+    | Unexpanded t -> constr "Unexpanded" [to_dyn t]
 end

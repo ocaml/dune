@@ -43,8 +43,8 @@ module Make(Data : sig type t end) = struct
     let register syntax data =
       let name = Syntax.name syntax in
       if Hashtbl.mem langs name then
-        Errors.code_error "Versioned_file.Lang.register: already registered"
-          [ "name", Sexp.Encoder.string name ];
+        Code_error.raise "Versioned_file.Lang.register: already registered"
+          [ "name", Dyn.Encoder.string name ];
       Hashtbl.add langs name { syntax; data }
 
     let parse first_line : Instance.t =

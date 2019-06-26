@@ -5,7 +5,7 @@ type t =
   | Dir of Path.t
   | Path of Path.t
 
-val to_sexp : t Sexp.Encoder.t
+val to_dyn : t -> Dyn.t
 
 val to_string : t -> dir:Path.t -> string
 

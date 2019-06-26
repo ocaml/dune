@@ -604,27 +604,24 @@ let check_private_deps lib ~loc ~allow_private_deps =
     Ok lib
 
 let already_in_table info name x =
-  let to_sexp = Sexp.Encoder.(pair Path.to_sexp Lib_name.to_sexp) in
-  let sexp =
+  let to_dyn = Dyn.Encoder.(pair Path.to_dyn Lib_name.to_dyn) in
+  let dyn =
+    let open Dyn.Encoder in
     match x with
-    | St_initializing x ->
-      Sexp.List [Sexp.Atom "Initializing";
-                 Path.to_sexp x.path]
+    | St_initializing x -> constr "St_initializing" [Path.to_dyn x.path]
     | St_found t ->
       let src_dir = Lib_info.src_dir t.info in
-      List [Sexp.Atom "Found"; Path.to_sexp src_dir]
-    | St_not_found ->
-      Sexp.Atom "Not_found"
+      constr "St_found" [Path.to_dyn src_dir]
+    | St_not_found -> constr "Not_found" []
     | St_hidden (_, path, reason) ->
-      List [Sexp.Atom "Hidden";
-            Path.to_sexp path; Sexp.Atom reason]
+      constr "Hidden" [Path.to_dyn path; string reason]
   in
   let src_dir = Lib_info.src_dir info in
-  Errors.code_error
+  Code_error.raise
     "Lib_db.DB: resolver returned name that's already in the table"
-    [ "name"            , Lib_name.to_sexp name
-    ; "returned_lib"    , to_sexp (src_dir, name)
-    ; "conflicting_with", sexp
+    [ "name"            , Lib_name.to_dyn name
+    ; "returned_lib"    , to_dyn (src_dir, name)
+    ; "conflicting_with", dyn
     ]
 
 module Vlib : sig
@@ -1553,8 +1550,8 @@ module DB = struct
   let get_compile_info t ?(allow_overlaps=false) name =
     match find_even_when_hidden t name with
     | None ->
-      Errors.code_error "Lib.DB.get_compile_info got library that doesn't exist"
-        [ "name", Lib_name.to_sexp name ]
+      Code_error.raise "Lib.DB.get_compile_info got library that doesn't exist"
+        [ "name", Lib_name.to_dyn name ]
     | Some lib ->
       let t = Option.some_if (not allow_overlaps) t in
       Compile.for_lib t lib

@@ -40,9 +40,9 @@ module Dict = struct
     }
 end
 
-let to_sexp =
-  let open Sexp.Encoder in
+let to_dyn =
+  let open Dyn.Encoder in
   function
-  | Cmi -> string "cmi"
-  | Cmo -> string "cmo"
-  | Cmx -> string "cmx"
+  | Cmi -> constr "cmi" []
+  | Cmo -> constr "cmo" []
+  | Cmx -> constr "cmx" []

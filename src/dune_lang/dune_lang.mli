@@ -490,7 +490,7 @@ module type Conv = sig
   val encode : t Encoder.t
 end
 
-val to_sexp : t Sexp.Encoder.t
+val to_dyn : t Dyn.Encoder.t
 
 module Io : sig
   val load : ?lexer:Lexer.t -> Path.t -> mode:'a Parser.Mode.t -> 'a

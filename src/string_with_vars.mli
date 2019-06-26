@@ -16,7 +16,7 @@ val loc : t -> Loc.t
 
 val syntax_version : t -> Syntax.Version.t
 
-val to_sexp : t Sexp.Encoder.t
+val to_dyn : t Dyn.Encoder.t
 
 include Dune_lang.Conv with type t := t
 
@@ -46,7 +46,7 @@ end
 module Var : sig
   type t
 
-  val to_sexp : t -> Sexp.t
+  val to_dyn : t -> Dyn.t
 
   val name : t -> string
   val loc : t -> Loc.t
@@ -69,7 +69,7 @@ module Partial : sig
     | Expanded of 'a
     | Unexpanded of t
 
-  val to_sexp : ('a -> Sexp.t) -> 'a t -> Sexp.t
+  val to_dyn : ('a -> Dyn.t) -> 'a t -> Dyn.t
 
   val map : 'a t -> f:('a -> 'b) -> 'b t
 

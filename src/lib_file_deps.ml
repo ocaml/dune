@@ -24,8 +24,8 @@ module Group = struct
       let ext = ext g in
       (* we cannot use globs because of bootstrapping. *)
       let id = lazy (
-        let open Sexp.Encoder in
-        constr "Lib_file_deps" [Atom ext]
+        let open Dyn.Encoder in
+        constr "Lib_file_deps" [string ext]
       ) in
       let pred = Predicate.create ~id ~f:(fun p ->
         String.equal (Filename.extension p) ext)

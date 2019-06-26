@@ -7,16 +7,7 @@ type t =
   { libraries : C.Sources.t Lib_name.Map.t
   }
 
-let for_lib t ~dir ~name =
-  match Lib_name.Map.find t.libraries name with
-  | Some m -> m
-  | None ->
-    Errors.code_error "C_sources.for_lib"
-      [ "name", Lib_name.to_sexp name
-      ; "dir", Path.to_sexp dir
-      ; "available", Sexp.Encoder.(list Lib_name.to_sexp)
-                       (Lib_name.Map.keys t.libraries)
-      ]
+let for_lib t ~name = Lib_name.Map.find_exn t.libraries name
 
 let empty =
   { libraries = Lib_name.Map.empty

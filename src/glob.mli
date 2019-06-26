@@ -6,7 +6,7 @@ val equal : t -> t -> bool
 
 val hash : t -> int
 
-val to_sexp : t Sexp.Encoder.t
+val to_dyn : t Dyn.Encoder.t
 
 val decode : t Stanza.Decoder.t
 

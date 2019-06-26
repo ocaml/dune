@@ -287,7 +287,7 @@ module Dep_conf = struct
       List [ Dune_lang.unsafe_atom_of_string "env_var"
            ; String_with_vars.encode t]
 
-  let to_sexp t = Dune_lang.to_sexp (encode t)
+  let to_dyn t = Dune_lang.to_dyn (encode t)
 end
 
 module Preprocess = struct
@@ -636,10 +636,12 @@ module Auto_format = struct
     | Reason
     | Dune
 
-  let language_to_sexp = function
-    | Ocaml -> Sexp.Atom "ocaml"
-    | Reason -> Sexp.Atom "reason"
-    | Dune -> Sexp.Atom "dune"
+  let language_to_dyn =
+    let open Dyn.Encoder in
+    function
+    | Ocaml -> constr "ocaml" []
+    | Reason -> constr "reason" []
+    | Dune -> constr "dune" []
 
   let language =
     sum
@@ -662,20 +664,20 @@ module Auto_format = struct
     | Some l -> Only l
     | None -> Default version
 
-  let enabled_for_to_sexp =
+  let enabled_for_to_dyn =
+    let open Dyn.Encoder in
     function
-    | Default v -> Sexp.List [Atom "default"; Syntax.Version.to_sexp v]
-    | Only l -> List [Atom "only"; List (List.map ~f:language_to_sexp l)]
+    | Default v -> constr "default" [Syntax.Version.to_dyn v]
+    | Only l -> constr "only" (List.map ~f:language_to_dyn l)
 
   type t =
     { loc : Loc.t
     ; enabled_for : enabled_for
     }
 
-  let to_sexp {enabled_for; loc = _} =
-    Sexp.List
-      [ List [Atom "enabled_for"; enabled_for_to_sexp enabled_for]
-      ]
+  let to_dyn {enabled_for; loc = _} =
+    let open Dyn.Encoder in
+    record ["enabled_for", enabled_for_to_dyn enabled_for]
 
   let dparse_args =
     let+ loc = loc
@@ -684,7 +686,7 @@ module Auto_format = struct
     ({loc; enabled_for}, [])
 
   let key =
-    Dune_project.Extension.register syntax dparse_args to_sexp
+    Dune_project.Extension.register syntax dparse_args to_dyn
 
   let enabled_languages config =
     match config.enabled_for with
@@ -2067,8 +2069,6 @@ module Coq = struct
 
   type Stanza.t += T of t
 
-  let unit_to_sexp () = Sexp.List []
-
   let coqlib_warn x =
     Errors.warn x.loc
       "(coqlib ...) is deprecated and will be removed in the Coq \
@@ -2084,7 +2084,7 @@ module Coq = struct
     ((), r)
 
   let key =
-    Dune_project.Extension.register syntax unit_stanzas unit_to_sexp
+    Dune_project.Extension.register syntax unit_stanzas Unit.to_dyn
 
 end
 

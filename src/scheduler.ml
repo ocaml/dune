@@ -678,7 +678,7 @@ end = struct
              let* pump_events_result = pump_events t in
              Fiber.return (pump_events_result, user_action_result)) with
     | exception Fiber.Never ->
-      Errors.code_error "[Scheduler.pump_events] got stuck somehow" []
+      Code_error.raise "[Scheduler.pump_events] got stuck somehow" []
     | exception exn ->
       Error (Exn (exn, (Printexc.get_raw_backtrace ())))
     | (a, b) ->
@@ -725,7 +725,7 @@ let go ?log ?config f =
   | Error Never ->
     raise Fiber.Never
   | Error Files_changed ->
-    Errors.code_error
+    Code_error.raise
       "Scheduler.go: files changed even though we're running without filesystem watcher"
       []
 

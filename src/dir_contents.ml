@@ -56,27 +56,14 @@ let text_files t = t.text_files
 
 let modules_of_library t ~name =
   let map = (Memo.Lazy.force t.modules).libraries in
-  match Lib_name.Map.find map name with
-  | Some m -> m
-  | None ->
-    Errors.code_error "Dir_contents.modules_of_library"
-      [ "name", Lib_name.to_sexp name
-      ; "available", Sexp.Encoder.(list Lib_name.to_sexp) (Lib_name.Map.keys map)
-      ]
+  Lib_name.Map.find_exn map name
 
 let modules_of_executables t ~first_exe =
   let map = (Memo.Lazy.force t.modules).executables in
-  match String.Map.find map first_exe with
-  | Some m -> m
-  | None ->
-    Errors.code_error "Dir_contents.modules_of_executables"
-      [ "first_exe", Sexp.Encoder.string first_exe
-      ; "available", Sexp.Encoder.(list string) (String.Map.keys map)
-      ]
+  String.Map.find_exn map first_exe
 
 let c_sources_of_library t ~name =
-  C_sources.for_lib (Memo.Lazy.force t.c_sources)
-    ~dir:(Path.build t.dir) ~name
+  C_sources.for_lib (Memo.Lazy.force t.c_sources) ~name
 
 let lookup_module t name =
   Module.Name.Map.find (Memo.Lazy.force t.modules).rev_map name
@@ -89,21 +76,15 @@ let mlds t (doc : Documentation.t) =
   with
   | Some x -> x
   | None ->
-    Errors.code_error "Dir_contents.mlds"
-      [ "doc", Loc.to_sexp doc.loc
-      ; "available", Sexp.Encoder.(list Loc.to_sexp)
+    Code_error.raise "Dir_contents.mlds"
+      [ "doc", Loc.to_dyn doc.loc
+      ; "available", Dyn.Encoder.(list Loc.to_dyn)
                        (List.map map ~f:(fun (d, _) -> d.Documentation.loc))
       ]
 
 let coq_modules_of_library t ~name =
   let map = Memo.Lazy.force t.coq_modules in
-  match Lib_name.Map.find map name with
-  | Some x -> x
-  | None ->
-    Errors.code_error "Dir_contents.coq_modules_of_library"
-      [ "name", Lib_name.to_sexp name
-      ; "available", Sexp.Encoder.(list Lib_name.to_sexp) (Lib_name.Map.keys map)
-      ]
+  Lib_name.Map.find_exn map name
 
 let modules_of_files ~dir ~files =
   let dir = Path.build dir in

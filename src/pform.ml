@@ -12,10 +12,10 @@ module Var = struct
     | Cc
     | Cxx
 
-  let to_sexp =
-    let open Sexp.Encoder in
+  let to_dyn =
+    let open Dyn.Encoder in
     function
-    | Values values -> constr "Values" [list Value.to_sexp values]
+    | Values values -> constr "Values" [list Value.to_dyn values]
     | Project_root -> string "Project_root"
     | First_dep -> string "First_dep"
     | Deps -> string "Deps"
@@ -23,9 +23,6 @@ module Var = struct
     | Named_local -> string "Named_local"
     | Cc -> string "cc"
     | Cxx -> string "cxx"
-
-  let pp_debug fmt t =
-    Sexp.pp fmt (to_sexp t)
 end
 
 module Macro = struct
@@ -44,8 +41,8 @@ module Macro = struct
     | Ocaml_config
     | Env
 
-  let to_sexp =
-    let open Sexp.Encoder in
+  let to_dyn =
+    let open Dyn.Encoder in
     function
     | Exe -> string "Exe"
     | Dep -> string "Dep"
@@ -60,9 +57,6 @@ module Macro = struct
     | Path_no_dep -> string "Path_no_dep"
     | Ocaml_config -> string "Ocaml_config"
     | Env -> string "Env"
-
-  let pp_debug fmt t =
-    Sexp.pp fmt (to_sexp t)
 end
 
 module Expansion = struct
@@ -70,11 +64,11 @@ module Expansion = struct
     | Var   of Var.t
     | Macro of Macro.t * string
 
-  let to_sexp e =
-    let open Sexp.Encoder in
+  let to_dyn e =
+    let open Dyn.Encoder in
     match e with
-    | Var v -> pair string Var.to_sexp ("Var", v)
-    | Macro (m, s) -> triple string Macro.to_sexp string ("Macro", m, s)
+    | Var v -> pair string Var.to_dyn ("Var", v)
+    | Macro (m, s) -> triple string Macro.to_dyn string ("Macro", m, s)
 end
 
 type 'a t =
@@ -90,29 +84,20 @@ let since ~version v               = Since (v, version)
 
 type 'a pform = 'a t
 
-let pp_debug_pform pp fmt = function
-  | No_info x ->
-    Format.fprintf fmt "No_info (%a)"
-      pp x
+let to_dyn f =
+  let open Dyn.Encoder in
+  function
+  | No_info x -> constr "No_info" [f x]
   | Since (x, v) ->
-    Format.fprintf fmt "Since (%a, %a)"
-      pp x
-      Syntax.Version.pp v
+    constr "Since" [f x; Syntax.Version.to_dyn v]
   | Deleted_in (x, v, so) ->
-    Format.fprintf fmt "Deleted_in (%a, %a, %a)"
-      pp x
-      Syntax.Version.pp v
-      (Fmt.optional Fmt.text) so
+    constr "Deleted_in"
+      [f x; Syntax.Version.to_dyn v; option string so]
   | Renamed_in (v, s) ->
-    Format.fprintf fmt "Renamed_in (%a, %s)"
-      Syntax.Version.pp v
-      s
+    constr "Renamed_in" [Syntax.Version.to_dyn v; string s]
 
 module Map = struct
   type 'a map = 'a t String.Map.t
-
-  let pp_map pp =
-    String.Map.pp (pp_debug_pform pp)
 
   type t =
     { vars   : Var.t   map
@@ -321,9 +306,10 @@ module Map = struct
     , String.Map.to_list macros
     )
 
-  let pp_debug fmt { vars; macros } =
-    Fmt.record fmt
-      [ "vars", Fmt.const (pp_map Var.pp_debug) vars
-      ; "macros", Fmt.const (pp_map Macro.pp_debug) macros
+  let to_dyn { vars; macros } =
+    let open Dyn.Encoder in
+    record
+      [ "vars", String.Map.to_dyn (to_dyn Var.to_dyn) vars
+      ; "macros", String.Map.to_dyn (to_dyn Macro.to_dyn) macros
       ]
 end

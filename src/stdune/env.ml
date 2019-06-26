@@ -75,9 +75,6 @@ let to_dyn t =
   let open Dyn.Encoder in
   Map.to_dyn string t.vars
 
-let to_sexp t =
-  Dyn.to_sexp (to_dyn t)
-
 let diff x y =
   Map.merge x.vars y.vars ~f:(fun _k vx vy ->
     match vy with
@@ -93,8 +90,6 @@ let of_string_map m =
 
 let iter t =
   Map.iteri t.vars
-
-let pp fmt t = Sexp.pp fmt (to_sexp t)
 
 let cons_path t ~dir =
   make (Map.update t.vars "PATH"

@@ -15,7 +15,6 @@ module type S = sig
   include Comparator.OPS with type t := t
 
   val to_dyn : t -> Dyn.t
-  val to_sexp : t -> Sexp.t
 
   val extension : t -> string
 
@@ -29,7 +28,6 @@ module type S = sig
 
   module Set : sig
     include Set.S with type elt = t
-    val to_sexp : t Sexp.Encoder.t
     val to_dyn : t Dyn.Encoder.t
     val of_listing : dir:elt -> filenames:string list -> t
   end
@@ -78,7 +76,6 @@ module type Local_gen = sig
   val compare : 'w t -> 'w t -> Ordering.t
 
   val to_dyn : 'w t -> Dyn.t
-  val to_sexp : 'w t -> Sexp.t
 
   val extension : 'w t -> string
 
@@ -93,7 +90,6 @@ module type Local_gen = sig
   module Fix_root (Root : sig type w end) : sig
     module Set : sig
       include Set.S with type elt = Root.w t
-      val to_sexp : t Sexp.Encoder.t
       val to_dyn : t Dyn.Encoder.t
       val of_listing : dir:elt -> filenames:string list -> t
     end

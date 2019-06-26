@@ -17,7 +17,7 @@ module Name : sig
 
   module Infix : Comparator.OPS with type t = t
 
-  val to_sexp : t -> Sexp.t
+  val to_dyn : t -> Dyn.t
 end
 
 module Version_source : sig

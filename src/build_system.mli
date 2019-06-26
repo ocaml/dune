@@ -42,7 +42,6 @@ module Context_or_install : sig
     | Context of string
 
   val to_dyn : t -> Dyn.t
-  val to_sexp : t -> Sexp.t
 end
 
 (** Set the rule generators callback. There must be one callback per

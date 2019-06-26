@@ -27,9 +27,9 @@ module Entry = struct
         (Loc.to_file_colon_line loc)
     | Preprocess l ->
       Pp.textf "%s"
-        (Sexp.to_string
-           (List [ Atom "pps"
-                 ; Sexp.Encoder.(list Lib_name.to_sexp) l ]))
+        (Dyn.to_string
+           (List [ String "pps"
+                 ; Dyn.Encoder.(list Lib_name.to_dyn) l ]))
     | Loc loc ->
       Pp.text (Loc.to_file_colon_line loc)
 end

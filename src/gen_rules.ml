@@ -211,8 +211,9 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
     let dyn_deps =
       let pred =
         let id = lazy (
-          let open Sexp.Encoder in
-          constr "exclude" (List.map ~f:Path.Build.to_sexp js_targets)
+          let open Dyn.Encoder in
+          constr "exclude" (List.map ~f:(fun p ->
+            Path.Build.to_dyn p) js_targets)
         ) in
         List.iter js_targets ~f:(fun js_target ->
           assert (Path.Build.equal (Path.Build.parent_exn js_target)

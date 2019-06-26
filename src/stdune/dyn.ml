@@ -42,8 +42,6 @@ module Encoder = struct
   let array f = fun a -> Array (Array.map ~f a)
   let option f = fun x -> Option (Option.map ~f x)
 
-  let via_sexp f = fun x -> Sexp (f x)
-
   let record r = Record r
 
   let unknown _ = String "<unknown>"
@@ -56,3 +54,6 @@ end
 let opaque = String "<opaque>"
 
 type dyn = t
+
+let hash = Dune_caml.Hashtbl.hash
+let compare x y = Ordering.of_int (compare x y)

@@ -422,6 +422,8 @@ let exec ~(eval_pred : Dep.eval_pred) (t : ('a, 'b) t) (x : 'a)
   let result = exec dyn_deps t x in
   (result, !dyn_deps)
 
+let ignore x = x >>^ ignore
+
 module S = struct
   open O
   module O = struct

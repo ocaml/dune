@@ -210,6 +210,8 @@ val merge_files_dyn
   :  target:Path.Build.t
   -> (Path.t list * string list, Action.t) t
 
+val ignore : ('a, 'b) t -> ('a, unit) t
+
 (* A module with standard combinators for applicative and selective functors, as
 well as equivalents of the functions from the arrow-based API. *)
 module S : sig

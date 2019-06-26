@@ -150,14 +150,14 @@ let link_exe
          let project = Scope.project scope in
          Dune_project.dune_version project
        in
-       if dune_version >= (2, 0) then
-         Cm_files.unsorted_objects_and_cms cm_files ~mode
-         |> Build.paths
-         >>^ ignore
-       else
-         Cm_files.top_sorted_objects_and_cms cm_files ~mode
-         |> Build.dyn_paths
-         >>^ ignore
+       Build.ignore (
+         if dune_version >= (2, 0) then
+           Cm_files.unsorted_objects_and_cms cm_files ~mode
+           |> Build.paths
+         else
+           Cm_files.top_sorted_objects_and_cms cm_files ~mode
+           |> Build.dyn_paths
+       )
      in
      prefix
      >>>

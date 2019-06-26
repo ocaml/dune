@@ -196,41 +196,21 @@ let make_lib ~dir ~has_private_modules lib_name =
 let make_external_no_private ~dir =
   External (External.make ~dir ~has_private_modules:false)
 
-let all_obj_dirs (type path) (t : path t) ~mode : path list =
-  match t with
-  | External e -> External.all_obj_dirs e ~mode
-  | Local e -> Local.all_obj_dirs e ~mode
-  | Local_as_path e -> Local.all_obj_dirs e ~mode |> List.map ~f:Path.build
+let get_path
+  : type a. a t -> l:(Local.t -> Path.Build.t) -> e:(External.t -> Path.t) -> a
+  = fun t ~l ~e ->
+    match t with
+    | External e' -> e e'
+    | Local l' -> l l'
+    | Local_as_path l' -> Path.build (l l')
 
-let public_cmi_dir (type path) (t : path t) : path =
-  match t with
-  | External e -> External.public_cmi_dir e
-  | Local e -> Local.public_cmi_dir e
-  | Local_as_path e -> Path.build (Local.public_cmi_dir e)
+let public_cmi_dir =
+  get_path ~l:Local.public_cmi_dir ~e:External.public_cmi_dir
 
-let byte_dir (type path) (t : path t) : path =
-  match t with
-  | External e -> External.byte_dir e
-  | Local e -> Local.byte_dir e
-  | Local_as_path e -> Path.build (Local.byte_dir e)
-
-let native_dir (type path) (t : path t) : path =
-  match t with
-  | External e -> External.native_dir e
-  | Local e -> Local.native_dir e
-  | Local_as_path e -> Path.build (Local.native_dir e)
-
-let dir (type path) (t : path t) : path =
-  match t with
-  | External e -> External.dir e
-  | Local e -> Local.dir e
-  | Local_as_path e -> Path.build (Local.dir e)
-
-let obj_dir (type path) (t : path t) : path =
-  match t with
-  | External e -> External.obj_dir e
-  | Local e -> Local.obj_dir e
-  | Local_as_path e -> Path.build (Local.obj_dir e)
+let byte_dir = get_path ~l:Local.byte_dir ~e:External.byte_dir
+let native_dir = get_path ~l:Local.native_dir ~e:External.native_dir
+let dir = get_path ~l:Local.dir ~e:External.dir
+let obj_dir = get_path ~l:Local.obj_dir ~e:External.obj_dir
 
 let to_dyn (type path) (t : path t) =
   let open Dyn.Encoder in
@@ -252,17 +232,21 @@ let all_cmis (type path) (t : path t) : path list =
   | Local_as_path e -> [Path.build (Local.byte_dir e)]
   | External e -> External.all_cmis e
 
-let cm_dir (type path) (t : path t) cm_kind visibility : path =
+let all_obj_dirs (type path) (t : path t) ~mode : path list =
   match t with
-  | External e -> External.cm_dir e cm_kind visibility
-  | Local e -> Local.cm_dir e cm_kind visibility
-  | Local_as_path e -> Path.build (Local.cm_dir e cm_kind visibility)
+  | External e -> External.all_obj_dirs e ~mode
+  | Local e -> Local.all_obj_dirs e ~mode
+  | Local_as_path e -> Local.all_obj_dirs e ~mode |> List.map ~f:Path.build
 
-let cm_public_dir (type path) (t : path t) (cm_kind : Cm_kind.t) : path =
-  match t with
-  | External e -> External.cm_public_dir e cm_kind
-  | Local e -> Local.cm_public_dir e cm_kind
-  | Local_as_path e -> Path.build (Local.cm_public_dir e cm_kind)
+let cm_dir t cm_kind visibility =
+  get_path t
+    ~l:(fun l -> Local.cm_dir l cm_kind visibility)
+    ~e:(fun e -> External.cm_dir e cm_kind visibility)
+
+let cm_public_dir t cm_kind =
+  get_path t
+    ~l:(fun l -> Local.cm_public_dir l cm_kind)
+    ~e:(fun e -> External.cm_public_dir e cm_kind)
 
 let need_dedicated_public_dir (t : Path.Build.t t) =
   match t with

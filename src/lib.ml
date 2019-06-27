@@ -141,6 +141,14 @@ module Error = struct
       [ Pp.text "No solution found for this select form."
       ]
 
+
+  let not_an_implementation_of ~vlib ~impl =
+    make
+      [ Pp.textf "%S is not an implementation of %S."
+          (Lib_name.to_string (Lib_info.name impl))
+          (Lib_name.to_string (Lib_info.name vlib))
+      ]
+
   let dependency_cycle cycle =
     make
       [ Pp.text "Dependency cycle detected between the following libraries:"
@@ -891,16 +899,23 @@ let rec instantiate db name info ~stack ~hidden =
               Variant.pp variant
               Lib_name.pp name)
   in
+  let actually_implements_vlib (lib : lib Or_exn.t) =
+    let* lib = lib in
+    let* vlib = Option.value ~default:(Error.not_an_implementation_of ~vlib:info ~impl:lib.info) lib.implements in
+    if Lib_name.equal vlib.name name
+    then Ok lib
+    else Error.not_an_implementation_of ~vlib:info ~impl:lib.info
+  in
   let default_implementation =
     Lib_info.default_implementation info
-    |> Option.map ~f:(fun l -> lazy (resolve l)) in
+    |> Option.map ~f:(fun l -> lazy (resolve l |> actually_implements_vlib)) in
   let resolved_implementations =
     Lib_info.virtual_ info
     |> Option.map ~f:(fun _ -> lazy (
       (* TODO this can be made even lazier as we don't need to resolve all
          variants at once *)
       Lib_info.known_implementations info
-      |> Variant.Map.map ~f:resolve))
+      |> Variant.Map.map ~f:(fun l -> resolve l |> actually_implements_vlib)))
   in
   let requires, pps, resolved_selects =
     let pps = Lib_info.pps info in

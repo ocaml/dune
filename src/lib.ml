@@ -352,7 +352,7 @@ let wrapped t =
 let package t =
   let status = Lib_info.status t.info in
   match status with
-  | Installed -> Some (Lib_name.package_name t.name)
+  | Installed _ -> Some (Lib_name.package_name t.name)
   | Public (_, p) -> Some p.name
   | Private _ -> None
 
@@ -867,7 +867,7 @@ let rec instantiate db name info ~stack ~hidden =
              variant, we must make sure that that it implements a
              library that is part of the same project *)
           let status_vlib = Lib_info.status vlib.info in
-          if Option.equal Dune_project.Name.equal
+          if Dune_project.Name.equal
                (Lib_info.Status.project_name status)
                (Lib_info.Status.project_name status_vlib)
           then
@@ -1675,6 +1675,7 @@ let to_dune_lib ({ name ; info ; _ } as lib) ~lib_modules ~foreign_objects
     let default_implementation = Lib_info.default_implementation info in
     let known_implementations = Lib_info.known_implementations info in
     let foreign_archives = Lib_info.foreign_archives info in
+    let project_name = Lib_info.Status.project_name (Lib_info.status info) in
     Dune_package.Lib.make
       ~obj_dir
       ~orig_src_dir
@@ -1699,6 +1700,7 @@ let to_dune_lib ({ name ; info ; _ } as lib) ~lib_modules ~foreign_objects
       ~main_module_name:(Result.ok_exn (main_module_name lib))
       ~sub_systems:(Sub_system.dump_config lib)
       ~special_builtin_support
+      ~project_name
 
   module Local : sig
     type t = private lib

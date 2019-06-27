@@ -7,6 +7,7 @@ module Lib = struct
   type 'sub_system t =
     { loc              : Loc.t
     ; name             : Lib_name.t
+    ; project_name     : Dune_project.Name.t
     ; obj_dir          : Path.t Obj_dir.t
     ; orig_src_dir     : Path.t option
     ; kind             : Lib_kind.t
@@ -36,7 +37,7 @@ module Lib = struct
         ~requires ~ppx_runtime_deps ~implements
         ~default_implementation ~virtual_ ~known_implementations ~modules ~modes
         ~version ~orig_src_dir ~obj_dir
-        ~special_builtin_support =
+        ~special_builtin_support ~project_name =
     let dir = Obj_dir.dir obj_dir in
     let map_path p =
       if Path.is_managed p then
@@ -69,6 +70,7 @@ module Lib = struct
     ; modes
     ; obj_dir
     ; special_builtin_support
+    ; project_name
     }
 
   let obj_dir t = t.obj_dir
@@ -88,7 +90,7 @@ module Lib = struct
         ; ppx_runtime_deps ; sub_systems ; virtual_ ; known_implementations
         ; implements ; default_implementation
         ; main_module_name ; version = _; obj_dir ; orig_src_dir
-        ; modules ; modes ; special_builtin_support
+        ; modules ; modes ; special_builtin_support ; project_name
         } =
     let open Dune_lang.Encoder in
     let no_loc f (_loc, x) = f x in
@@ -125,6 +127,7 @@ module Lib = struct
          | Some modules -> Lib_modules.encode modules)
     ; field_o "special_builtin_support"
         Dune_file.Library.Special_builtin_support.encode special_builtin_support
+    ; field "project_name" string (Dune_project.Name.to_encoded_string project_name)
     ] @ (Sub_system_name.Map.to_list sub_systems
          |> List.map ~f:(fun (name, (_ver, sexps)) ->
            field_l (Sub_system_name.to_string name) sexp sexps))
@@ -176,9 +179,14 @@ module Lib = struct
         field_o "special_builtin_support"
           (Syntax.since Stanza.syntax (1, 10) >>>
            Dune_file.Library.Special_builtin_support.decode)
+      and+ project_name =
+        field "project_name"
+          (Syntax.since Stanza.syntax (1, 11) >>>
+           string)
       in
       let known_implementations =
         Variant.Map.of_list_exn known_implementations in
+      let project_name = Dune_project.Name.of_encoded_string project_name in
       let modes = Mode.Dict.Set.of_list modes in
       { kind
       ; name
@@ -203,6 +211,7 @@ module Lib = struct
       ; modules
       ; modes
       ; special_builtin_support
+      ; project_name
       }
     )
 
@@ -227,6 +236,7 @@ module Lib = struct
   let default_implementation t = t.default_implementation
   let modes t = t.modes
   let special_builtin_support t = t.special_builtin_support
+  let project_name t = t.project_name
 
   let compare_name x y = Lib_name.compare x.name y.name
   let wrapped t = Option.map t.modules ~f:Lib_modules.wrapped

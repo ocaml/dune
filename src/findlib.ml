@@ -244,6 +244,7 @@ module Package = struct
         match Lib_name.to_string t.name with
         | "findlib.dynload" -> Some Findlib_dynload
         | _ -> None)
+      ~project_name:(Dune_project.Name.of_encoded_string "findlib")
 
   let parse db ~meta_file ~name ~parent_dir ~vars =
     let pkg_dir = Vars.get vars "directory" Ps.empty in

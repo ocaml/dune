@@ -27,6 +27,7 @@ module Lib : sig
   val default_implementation : _ t -> (Loc.t * Lib_name.t) option
   val special_builtin_support
     : _ t -> Dune_file.Library.Special_builtin_support.t option
+  val project_name : _ t -> Dune_project.Name.t
 
   val dir_of_name : Lib_name.t -> Path.Local.t
 
@@ -61,6 +62,7 @@ module Lib : sig
     -> obj_dir:Path.t Obj_dir.t
     -> special_builtin_support:
          Dune_file.Library.Special_builtin_support.t option
+    -> project_name:Dune_project.Name.t
     -> 'a t
 
   val set_subsystems : 'a t -> 'b Sub_system_name.Map.t -> 'b t

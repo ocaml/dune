@@ -11,16 +11,16 @@ open Stdune
 
 module Status : sig
   type t =
-    | Installed
-    | Public  of Dune_project.Name.t * Package.t
-    | Private of Dune_project.Name.t
+    | Installed of Dune_project.Name.t
+    | Public    of Dune_project.Name.t * Package.t
+    | Private   of Dune_project.Name.t
 
   val pp : t Fmt.t
 
   val is_private : t -> bool
 
-  (** For local libraries, return the project name they are part of *)
-  val project_name : t -> Dune_project.Name.t option
+  (** Return the project name the library is part of *)
+  val project_name : t -> Dune_project.Name.t
 end
 
 module Deps : sig

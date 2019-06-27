@@ -2,25 +2,25 @@ open Stdune
 
 module Status = struct
   type t =
-    | Installed
-    | Public  of Dune_project.Name.t * Package.t
-    | Private of Dune_project.Name.t
+    | Installed of Dune_project.Name.t
+    | Public    of Dune_project.Name.t * Package.t
+    | Private   of Dune_project.Name.t
 
   let pp ppf t =
     Format.pp_print_string ppf
       (match t with
-       | Installed -> "installed"
+       | Installed _ -> "installed"
        | Public _ -> "public"
        | Private name ->
          sprintf "private (%s)" (Dune_project.Name.to_string_hum name))
 
   let is_private = function
     | Private _ -> true
-    | Installed | Public _ -> false
+    | Installed _ | Public _ -> false
 
   let project_name = function
-    | Installed -> None
-    | Public (name, _) | Private name -> Some name
+    | Installed name
+    | Public (name, _) | Private name -> name
 end
 
 
@@ -223,7 +223,7 @@ let of_library_stanza ~dir
   let version =
     match status with
     | Public (_, pkg) -> Option.map pkg.version ~f:fst
-    | Installed | Private _ -> None
+    | Installed _ | Private _ -> None
   in
   { loc = conf.buildable.loc
   ; name
@@ -275,7 +275,7 @@ let of_dune_lib dp =
   { loc = Lib.loc dp
   ; name = Lib.name dp
   ; kind = Lib.kind dp
-  ; status = Installed
+  ; status = Installed (Lib.project_name dp)
   ; src_dir
   ; orig_src_dir = Lib.orig_src_dir dp
   ; obj_dir

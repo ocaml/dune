@@ -48,7 +48,7 @@ end = struct
           let status = Lib_info.status info in
           match status with
           | Private scope_name   -> Some scope_name
-          | Public _ | Installed -> None
+          | Public _ | Installed _ -> None
         in
         let open Dune_project.Name.Infix in
         match acc, scope_for_key with

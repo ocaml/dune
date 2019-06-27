@@ -39,15 +39,20 @@ let libs_under_dir sctx ~db ~dir =
              begin match Lib.DB.find_even_when_hidden db
                            (Dune_file.Library.best_name l) with
              | None -> acc (* library is defined but outside our scope *)
-             | Some lib ->
+             | Some lib when should_be_selected lib ->
                (* still need to make sure that it's not coming from an external
                   source *)
                let info = Lib.info lib in
                let src_dir = Lib_info.src_dir info in
-               if Path.is_descendant ~of_:(Path.build dir) src_dir then
+               (* Only select libraries that are not implementations.
+                  Implementations are selected using the default implementation
+                  feature. *)
+               let not_impl = Option.is_none (Lib_info.implements info) in
+               if not_impl && Path.is_descendant ~of_:(Path.build dir) src_dir then
                  lib :: acc
                else
                  acc (* external lib with a name matching our private name *)
+              | _ -> acc
              end
            | _ ->
              acc)))

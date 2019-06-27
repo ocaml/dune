@@ -1449,6 +1449,14 @@
     (diff? run.t run.t.corrected)))))
 
 (alias
+ (name utop-default-implementation)
+ (deps (package dune) (source_tree test-cases/utop-default-implementation))
+ (action
+  (chdir
+   test-cases/utop-default-implementation
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name variants)
  (deps (package dune) (source_tree test-cases/variants))
  (action
@@ -1716,6 +1724,7 @@
   (alias use-meta)
   (alias utop)
   (alias utop-default)
+  (alias utop-default-implementation)
   (alias variants)
   (alias variants-external-declaration)
   (alias variants-external-declaration-conflict)
@@ -1880,6 +1889,7 @@
   (alias transitive-deps-mode)
   (alias unreadable-src)
   (alias upgrader)
+  (alias utop-default-implementation)
   (alias variants)
   (alias variants-external-declaration)
   (alias variants-external-declaration-conflict)

@@ -48,9 +48,10 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to =
     exec t ~ectx ~dir ~stdout_to ~stderr_to
       ~env:(Env.add env ~var ~value)
   | Redirect (Stdout, fn, Echo s) ->
-    Io.write_file fn (String.concat s ~sep:" ");
+    Io.write_file (Path.build fn) (String.concat s ~sep:" ");
     Fiber.return ()
   | Redirect (outputs, fn, t) ->
+    let fn = Path.build fn in
     redirect ~ectx ~dir outputs fn t ~env ~stdout_to ~stderr_to
   | Ignore (outputs, t) ->
     redirect ~ectx ~dir outputs Config.dev_null t ~env ~stdout_to ~stderr_to
@@ -62,18 +63,22 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to =
       Io.copy_channels ic (Process.Output.channel stdout_to));
     Fiber.return ()
   | Copy (src, dst) ->
+    let dst = Path.build dst in
     Io.copy_file ~src ~dst ();
     Fiber.return ()
   | Symlink (src, dst) ->
     if Sys.win32 then
+      let dst = Path.build dst in
       Io.copy_file ~src ~dst ()
     else begin
       let src =
-        match Path.parent dst with
+        match Path.Build.parent dst with
         | None -> Path.to_string src
-        | Some from -> Path.reach ~from src
+        | Some from ->
+          let from = Path.build from in
+          Path.reach ~from src
       in
-      let dst = Path.to_string dst in
+      let dst = Path.Build.to_string dst in
       match Unix.readlink dst with
       | target ->
         if target <> src then begin
@@ -87,7 +92,8 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to =
     Fiber.return ()
   | Copy_and_add_line_directive (src, dst) ->
     Io.with_file_in src ~f:(fun ic ->
-      Io.with_file_out dst ~f:(fun oc ->
+      Path.build dst
+      |> Io.with_file_out ~f:(fun oc ->
         let fn = Path.drop_optional_build_context src in
         output_string oc
           (Utils.line_directive
@@ -105,13 +111,13 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to =
       (Utils.bash_exn ~needed_to:"interpret (bash ...) actions")
       ["-e"; "-u"; "-o"; "pipefail"; "-c"; cmd]
   | Write_file (fn, s) ->
-    Io.write_file fn s;
+    Io.write_file (Path.build fn) s;
     Fiber.return ()
   | Rename (src, dst) ->
-    Unix.rename (Path.to_string src) (Path.to_string dst);
+    Unix.rename (Path.Build.to_string src) (Path.Build.to_string dst);
     Fiber.return ()
   | Remove_tree path ->
-    Path.rm_rf path;
+    Path.rm_rf (Path.build path);
     Fiber.return ()
   | Mkdir path ->
     begin
@@ -168,6 +174,7 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to =
         )
         sources
     in
+    let target = Path.build target in
     Io.write_lines target (String.Set.to_list lines);
     Fiber.return ()
 

@@ -183,31 +183,30 @@ let action_dyn ?dir ~targets () =
     Action.Chdir (dir, action)
 
 let write_file fn s =
-  action ~targets:[fn] (Write_file ((Path.build fn), s))
+  action ~targets:[fn] (Write_file (fn, s))
 
 let write_file_dyn fn =
   Targets (Path.Build.Set.singleton fn)
   >>^ fun s ->
-  Action.Write_file (Path.build fn, s)
+  Action.Write_file (fn, s)
 
 let copy ~src ~dst =
   path src >>>
-  action ~targets:[dst] (Copy (src, Path.build dst))
+  action ~targets:[dst] (Copy (src, dst))
 
 let copy_and_add_line_directive ~src ~dst =
   path src >>>
   action ~targets:[dst]
-    (Copy_and_add_line_directive (src, Path.build dst))
+    (Copy_and_add_line_directive (src, dst))
 
 let symlink ~src ~dst =
   path src >>>
-  action ~targets:[dst] (Symlink (src, Path.build dst))
+  action ~targets:[dst] (Symlink (src, dst))
 
 let create_file fn =
-  action ~targets:[fn] (Redirect (Stdout, Path.build fn, Progn []))
+  action ~targets:[fn] (Redirect (Stdout, fn, Progn []))
 
 let remove_tree dir =
-  let dir = Path.build dir in
   arr (fun _ -> Action.Remove_tree dir)
 
 let mkdir dir =
@@ -221,7 +220,7 @@ let progn ts =
 let merge_files_dyn ~target =
   dyn_paths (arr fst)
   >>^ (fun (sources, extras) ->
-    Action.Merge_files_into (sources, extras, Path.build target))
+    Action.Merge_files_into (sources, extras, target))
   >>> action_dyn ~targets:[target] ()
 
 (* Analysis *)

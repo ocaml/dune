@@ -100,7 +100,7 @@ let run ~dir ?stdout_to prog args =
       let action =
         match stdout_to with
         | None      -> action
-        | Some path -> Redirect (Stdout, Path.build path, action)
+        | Some path -> Redirect (Stdout, path, action)
       in
       Action.Chdir (dir, action)
     )

@@ -2,6 +2,11 @@ All builtin variables are lower cased in Dune:
 
   $ dune runtest --root dune-lower
   Entering directory 'dune-lower'
+  File "dune", line 3, characters 25-32:
+  3 |  (action (with-stdout-to %{null} (echo %{make}))))
+                               ^^^^^^^
+  Error: target /dev/null cannot be in build dir
+  [1]
 
   $ dune runtest --root dune-upper
   Entering directory 'dune-upper'
@@ -20,6 +25,11 @@ jbuild files retain the the old names:
   Warning: jbuild files are deprecated, please convert this file to a dune file
   instead.
   Note: You can use "dune upgrade" to convert your project to dune.
+  File "jbuild", line 3, characters 26-33:
+  3 |   (action (with-stdout-to ${null} (echo ${MAKE})))))
+                                ^^^^^^^
+  Error: target /dev/null cannot be in build dir
+  [1]
 
   $ dune runtest --root jbuilder-upper
   Entering directory 'jbuilder-upper'
@@ -27,3 +37,8 @@ jbuild files retain the the old names:
   Warning: jbuild files are deprecated, please convert this file to a dune file
   instead.
   Note: You can use "dune upgrade" to convert your project to dune.
+  File "jbuild", line 3, characters 26-33:
+  3 |   (action (with-stdout-to ${null} (echo ${MAKE})))))
+                                ^^^^^^^
+  Error: target /dev/null cannot be in build dir
+  [1]

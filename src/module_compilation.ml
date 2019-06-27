@@ -212,7 +212,7 @@ let ocamlc_i ?(flags=[]) ~dep_graphs cctx (m : Module.t) ~output =
   let modules = Compilation_context.modules cctx in
   SC.add_rule sctx ?sandbox ~dir
     (Build.S.seq cm_deps
-       (Build.S.map ~f:(fun act -> Action.with_stdout_to (Path.build output) act)
+       (Build.S.map ~f:(Action.with_stdout_to output)
           (Command.run (Ok ctx.ocamlc) ~dir:(Path.build ctx.build_dir)
              [ Command.Args.dyn ocaml_flags
              ; A "-I"; Path (Path.build (Obj_dir.byte_dir obj_dir))

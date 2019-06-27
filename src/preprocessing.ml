@@ -655,7 +655,7 @@ let action_for_pp sctx ~dep_kind ~loc ~expander ~action ~src ~target =
   >>^ fun action ->
   match target with
   | None -> action
-  | Some dst -> Action.with_stdout_to (Path.build dst) action
+  | Some dst -> Action.with_stdout_to dst action
 
 (* Generate rules for the dialect modules in [modules] and return a
    a new module with only OCaml sources *)

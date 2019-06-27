@@ -113,3 +113,15 @@ module Local = struct
     in
     Path.relative ~error_loc dir path
 end
+
+module Build = struct
+  type t = Path.Build.t
+  let encode p =
+    let str = Path.reach ~from:Path.build_dir (Path.build p) in
+    Dune_lang.atom_or_quoted_string str
+
+  let decode =
+    let open Dune_lang.Decoder in
+    let+ base = string in
+    Path.Build.(relative root) base
+end

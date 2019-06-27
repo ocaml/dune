@@ -277,9 +277,7 @@ include Sub_system.Register_end_point(
                  ~dep_kind:Required
                  ~targets:(Forbidden "inline test generators")
                  ~targets_dir:dir)))
-        >>^ (fun actions ->
-          Action.with_stdout_to (Path.build target)
-            (Action.progn actions))
+        >>^ (fun actions -> Action.with_stdout_to target (Action.progn actions))
         >>>
         Build.action_dyn ~targets:[target] ());
 

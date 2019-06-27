@@ -15,6 +15,7 @@ let remove_locs =
     Mapper.map t ~dir:no_loc_template
       ~f_program:(fun ~dir:_ -> String_with_vars.remove_locs)
       ~f_path:(fun ~dir:_ -> String_with_vars.remove_locs)
+      ~f_target:(fun ~dir:_ -> String_with_vars.remove_locs)
       ~f_string:(fun ~dir:_ -> String_with_vars.remove_locs)
 
 let check_mkdir loc path =
@@ -28,12 +29,23 @@ let check_mkdir loc path =
                 [Dune_lang.unsafe_atom_of_string "mkdir"; Dpath.encode path]))
       ]
 
+let as_in_build_dir ~loc p =
+  match Path.as_in_build_dir p with
+  | Some p -> p
+  | None ->
+    User_error.raise ?loc
+      [ Pp.textf
+          "target %s cannot be in build dir"
+          (Path.to_string_maybe_quoted p)
+      ]
+
 module Partial = struct
   module Program = Unresolved.Program
 
   module type Past = Action_intf.Ast
     with type program = (Program.t, String_with_vars.t) either
     with type path    = (Path.t   , String_with_vars.t) either
+    with type target  = (Path.Build.t , String_with_vars.t) either
     with type string  = (String.t , String_with_vars.t) either
   module rec Past : Past = Past
 
@@ -55,13 +67,20 @@ module Partial = struct
       expand ~mode:Many ~l:List.singleton
         ~r:(ignore_loc Value.L.to_strings)
 
+    let loc = function
+      | Left _ -> None
+      | Right r -> Some (String_with_vars.loc r)
+
     let path e =
-      let error_loc =
-        match e with
-        | Left _ -> None
-        | Right r -> Some (String_with_vars.loc r) in
+      let error_loc = loc e in
       expand ~mode:Single ~l:Fn.id
-        ~r:(ignore_loc (Value.(to_path ?error_loc))) e
+        ~r:(ignore_loc (Value.to_path ?error_loc)) e
+
+    let target e =
+      let error_loc = loc e in
+      expand e ~mode:Single ~l:Fn.id ~r:(ignore_loc (fun v ~dir ->
+        Value.to_path ?error_loc v ~dir
+        |> as_in_build_dir ~loc:error_loc))
 
     let prog_and_args_of_values ~loc p ~dir =
       match p with
@@ -98,6 +117,8 @@ module Partial = struct
     | Chdir (fn, t) ->
       let fn = E.path ~expander fn in
       let expander =
+        (* TODO this conversion doesn't look safe. It's possible to chdir
+           outside the build dir *)
         Expander.set_dir expander ~dir:(Path.as_in_build_dir_exn fn) in
       Chdir (fn, expand t ~expander ~map_exe)
     | Setenv (var, value, t) ->
@@ -106,25 +127,25 @@ module Partial = struct
       let expander = Expander.set_env expander ~var ~value in
       Setenv (var, value, expand t ~expander ~map_exe)
     | Redirect (outputs, fn, t) ->
-      Redirect (outputs, E.path ~expander fn, expand t ~map_exe ~expander)
+      Redirect (outputs, E.target ~expander fn, expand t ~map_exe ~expander)
     | Ignore (outputs, t) ->
       Ignore (outputs, expand t ~expander ~map_exe)
     | Progn l -> Progn (List.map l ~f:(expand ~expander ~map_exe))
     | Echo xs -> Echo (List.concat_map xs ~f:(E.strings ~expander))
     | Cat x -> Cat (E.path ~expander x)
     | Copy (x, y) ->
-      Copy (E.path ~expander x, E.path ~expander y)
+      Copy (E.path ~expander x, E.target ~expander y)
     | Symlink (x, y) ->
-      Symlink (E.path ~expander x, E.path ~expander y)
+      Symlink (E.path ~expander x, E.target ~expander y)
     | Copy_and_add_line_directive (x, y) ->
-      Copy_and_add_line_directive (E.path ~expander x, E.path ~expander y)
+      Copy_and_add_line_directive (E.path ~expander x, E.target ~expander y)
     | System x -> System (E.string ~expander x)
     | Bash x -> Bash (E.string ~expander x)
-    | Write_file (x, y) -> Write_file (E.path ~expander x, E.string ~expander y)
+    | Write_file (x, y) -> Write_file (E.target ~expander x, E.string ~expander y)
     | Rename (x, y) ->
-      Rename (E.path ~expander x, E.path ~expander y)
+      Rename (E.target ~expander x, E.target ~expander y)
     | Remove_tree x ->
-      Remove_tree (E.path ~expander x)
+      Remove_tree (E.target ~expander x)
     | Mkdir x -> begin
         match x with
         | Left  path -> Mkdir path
@@ -145,7 +166,7 @@ module Partial = struct
       Merge_files_into
         (List.map ~f:(E.path ~expander) sources,
          List.map ~f:(E.string ~expander) extras,
-         E.path ~expander target)
+         E.target ~expander target)
 end
 
 module E = struct
@@ -164,6 +185,10 @@ module E = struct
   let path x =
     expand ~mode:Single ~map:(fun ~loc v ~dir ->
       Value.to_path ?error_loc:loc v ~dir) x
+  let target x =
+    expand ~mode:Single ~map:(fun ~loc v ~dir ->
+      Value.to_path ?error_loc:loc v ~dir
+      |> as_in_build_dir ~loc) x
   let prog_and_args = expand ~mode:Many ~map:Partial.E.prog_and_args_of_values
 end
 
@@ -194,6 +219,8 @@ let rec partial_expand t ~map_exe ~expander : Partial.t =
       match res with
       | Left dir ->
         let expander =
+        (* TODO this conversion doesn't look safe. It's possible to chdir
+           outside the build dir *)
           Expander.set_dir expander ~dir:(Path.as_in_build_dir_exn dir) in
         Chdir (res, partial_expand t ~expander ~map_exe)
       | Right fn ->
@@ -219,25 +246,25 @@ let rec partial_expand t ~map_exe ~expander : Partial.t =
     in
     Setenv (Left var, value, partial_expand t ~expander ~map_exe)
   | Redirect (outputs, fn, t) ->
-    Redirect (outputs, E.path ~expander fn, partial_expand t ~expander ~map_exe)
+    Redirect (outputs, E.target ~expander fn, partial_expand t ~expander ~map_exe)
   | Ignore (outputs, t) ->
     Ignore (outputs, partial_expand t ~expander ~map_exe)
   | Progn l -> Progn (List.map l ~f:(partial_expand ~map_exe ~expander))
   | Echo xs -> Echo (List.map xs ~f:(E.cat_strings ~expander))
   | Cat x -> Cat (E.path ~expander x)
   | Copy (x, y) ->
-    Copy (E.path ~expander x, E.path ~expander y)
+    Copy (E.path ~expander x, E.target ~expander y)
   | Symlink (x, y) ->
-    Symlink (E.path ~expander x, E.path ~expander y)
+    Symlink (E.path ~expander x, E.target ~expander y)
   | Copy_and_add_line_directive (x, y) ->
-    Copy_and_add_line_directive (E.path ~expander x, E.path ~expander y)
+    Copy_and_add_line_directive (E.path ~expander x, E.target ~expander y)
   | System x -> System (E.string ~expander x)
   | Bash x -> Bash (E.string ~expander x)
-  | Write_file (x, y) -> Write_file (E.path ~expander x, E.string ~expander y)
+  | Write_file (x, y) -> Write_file (E.target ~expander x, E.string ~expander y)
   | Rename (x, y) ->
-    Rename (E.path ~expander x, E.path ~expander y)
+    Rename (E.target ~expander x, E.target ~expander y)
   | Remove_tree x ->
-    Remove_tree (E.path ~expander x)
+    Remove_tree (E.target ~expander x)
   | Mkdir x ->
     let res = E.path ~expander x in
     (match res with
@@ -256,46 +283,57 @@ let rec partial_expand t ~map_exe ~expander : Partial.t =
     Merge_files_into
       (List.map sources ~f:(E.path ~expander),
        List.map extras ~f:(E.string ~expander),
-       E.path ~expander target)
+       E.target ~expander target)
 
 module Infer = struct
   module Outcome = struct
     type t =
       { deps    : Path.Set.t
-      ; targets : Path.Set.t
+      ; targets : Path.Build.Set.t
       }
   end
   open Outcome
 
-  module type Pset = sig
-    type t
-    val empty : t
-    val diff : t -> t -> t
+  module type Sets = sig
+    module Targets : sig
+      type t
+      val empty : t
+    end
+    module Deps : sig
+      type t
+      val empty : t
+      val diff : t -> Targets.t -> t
+    end
   end
 
   module type Outcome = sig
     type path_set
+    type target_set
     type t =
       { deps    : path_set
-      ; targets : path_set
+      ; targets : target_set
       }
   end
 
   module type Primitives = sig
     type path
+    type target
     type program
     type outcome
-    val ( +@ ) : outcome -> path -> outcome
+    val ( +@+ ) : outcome -> target -> outcome
     val ( +< ) : outcome -> path -> outcome
+    val ( +<+ ) : outcome -> target -> outcome
     val ( +<! ) : outcome -> program -> outcome
   end
 
   module Make
       (Ast : Action_intf.Ast)
-      (Pset : Pset)
-      (Out : Outcome with type path_set := Pset.t)
+      (Sets : Sets)
+      (Out : Outcome with type path_set := Sets.Deps.t
+                      and type target_set := Sets.Targets.t)
       (Prim : Primitives
        with type path := Ast.path
+       with type target := Ast.target
        with type program := Ast.program
        with type outcome := Out.t) =
   struct
@@ -305,13 +343,13 @@ module Infer = struct
     let rec infer acc t =
       match t with
       | Run (prog, _) -> acc +<! prog
-      | Redirect (_, fn, t)  -> infer (acc +@ fn) t
+      | Redirect (_, fn, t)  -> infer (acc +@+ fn) t
       | Cat fn               -> acc +< fn
-      | Write_file (fn, _)  -> acc +@ fn
-      | Rename (src, dst)    -> acc +< src +@ dst
+      | Write_file (fn, _)  -> acc +@+ fn
+      | Rename (src, dst) -> acc +<+ src +@+ dst
       | Copy (src, dst)
       | Copy_and_add_line_directive (src, dst)
-      | Symlink (src, dst) -> acc +< src +@ dst
+      | Symlink (src, dst) -> acc +< src +@+ dst
       | Chdir (_, t)
       | Setenv (_, _, t)
       | Ignore (_, t) -> infer acc t
@@ -320,7 +358,7 @@ module Infer = struct
       | Diff { optional; file1; file2; mode = _ } ->
         if optional then acc else acc +< file1 +< file2
       | Merge_files_into (sources, _extras, target) ->
-        List.fold_left sources ~init:acc ~f:(+<) +@ target
+        List.fold_left sources ~init:acc ~f:(+<) +@+ target
       | Echo _
       | System _
       | Bash _
@@ -329,7 +367,7 @@ module Infer = struct
 
     let infer t =
       let { deps; targets } =
-        infer { deps = Pset.empty; targets = Pset.empty } t
+        infer { deps = Sets.Deps.empty; targets = Sets.Targets.empty } t
       in
       (* A file can be inferred as both a dependency and a target,
          for instance:
@@ -338,28 +376,45 @@ module Infer = struct
            (progn (copy a b) (copy b c))
          ]}
       *)
-      { deps = Pset.diff deps targets; targets }
+      { deps = Sets.Deps.diff deps targets; targets }
   end [@@inline always]
 
-  include Make(Action)(Path.Set)(Outcome)(struct
-      let ( +@ ) acc fn = { acc with targets = Path.Set.add acc.targets fn }
-      let ( +< ) acc fn = { acc with deps    = Path.Set.add acc.deps    fn }
+  module Sets = struct
+    module Targets = Path.Build.Set
+    module Deps = struct
+      include Path.Set
+      let diff deps targets =
+        Path.Build.Set.fold targets ~init:deps ~f:(fun target acc ->
+          Path.Set.remove acc (Path.build target))
+    end
+  end
+  include Make(Action)(Sets)(Outcome)(struct
+      let ( +@+ ) acc fn =
+        { acc with targets = Path.Build.Set.add acc.targets fn }
+      let ( +< ) acc fn = { acc with deps = Path.Set.add acc.deps fn }
+      let ( +<+ ) acc fn =
+        { acc with deps = Path.Set.add acc.deps (Path.build fn) }
       let ( +<! ) acc prog =
         match prog with
         | Ok p -> acc +< p
         | Error _ -> acc
     end)
 
-  module Partial_with_all_targets = Make(Partial.Past)(Path.Set)(Outcome)(struct
-      let ( +@ ) acc fn =
+  module Partial_with_all_targets = Make(Partial.Past)(Sets)(Outcome)(struct
+      let ( +@+ ) acc fn =
         match fn with
-        | Left  fn -> { acc with targets = Path.Set.add acc.targets fn }
+        | Left  fn ->
+          { acc with targets = Path.Build.Set.add acc.targets fn }
         | Right sw ->
           User_error.raise ~loc:(String_with_vars.loc sw)
             [ Pp.text "Cannot determine this target statically." ]
       let ( +< ) acc fn =
         match fn with
-        | Left  fn -> { acc with deps    = Path.Set.add acc.deps fn }
+        | Left  fn -> { acc with deps = Path.Set.add acc.deps fn }
+        | Right _  -> acc
+      let ( +<+ ) acc fn =
+        match fn with
+        | Left  fn -> { acc with deps = Path.Set.add acc.deps (Path.build fn) }
         | Right _  -> acc
       let ( +<! ) acc fn =
         match (fn : Partial.program) with
@@ -367,14 +422,18 @@ module Infer = struct
         | Left  (Search _) | Right _ -> acc
     end)
 
-  module Partial = Make(Partial.Past)(Path.Set)(Outcome)(struct
-      let ( +@ ) acc fn =
+  module Partial = Make(Partial.Past)(Sets)(Outcome)(struct
+      let ( +@+ ) acc fn =
         match fn with
-        | Left  fn -> { acc with targets = Path.Set.add acc.targets fn }
+        | Left  fn -> { acc with targets = Path.Build.Set.add acc.targets fn }
         | Right _  -> acc
       let ( +< ) acc fn =
         match fn with
         | Left  fn -> { acc with deps    = Path.Set.add acc.deps fn }
+        | Right _  -> acc
+      let ( +<+ ) acc fn =
+        match fn with
+        | Left  fn -> { acc with deps = Path.Set.add acc.deps (Path.build fn) }
         | Right _  -> acc
       let ( +<! ) acc fn =
         match (fn : Partial.program) with
@@ -389,26 +448,32 @@ module Infer = struct
       Partial.infer t
 
   module S_unexp = struct
-    type t = String_with_vars.t list
-    let empty = []
-    let diff a _ = a
+    module Targets = struct
+      type t = String_with_vars.t list
+      let empty = []
+    end
+    module Deps = struct
+      include Targets
+      let diff a _ = a
+    end
   end
 
   module Outcome_unexp = struct
     type t =
-      { deps    : S_unexp.t
-      ; targets : S_unexp.t
+      { deps    : S_unexp.Deps.t
+      ; targets : S_unexp.Targets.t
       }
   end
 
   module Unexp = Make(Action_dune_lang)(S_unexp)(Outcome_unexp)(struct
       open Outcome_unexp
-      let ( +@ ) acc fn =
+      let ( +@+ ) acc fn =
         if String_with_vars.is_var fn ~name:"null" then
           acc
         else
           { acc with targets = fn :: acc.targets }
       let ( +< ) acc _ = acc
+      let ( +<+ ) acc _ = acc
       let ( +<! )= ( +< )
     end)
 

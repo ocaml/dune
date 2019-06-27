@@ -141,6 +141,14 @@ module Error = struct
       [ Pp.text "No solution found for this select form."
       ]
 
+
+  let not_an_implementation_of ~vlib ~impl =
+    make
+      [ Pp.textf "%S is not an implementation of %S."
+          (Lib_name.to_string (Lib_info.name impl))
+          (Lib_name.to_string (Lib_info.name vlib))
+      ]
+
   let dependency_cycle cycle =
     make
       [ Pp.text "Dependency cycle detected between the following libraries:"
@@ -835,14 +843,14 @@ let find_implementation_for lib ~variants =
         ~conflict
 
 let rec instantiate db name info ~stack ~hidden =
-  let id, stack =
+  let unique_id, stack =
     let src_dir = Lib_info.src_dir info in
     Dep_stack.create_and_push stack name src_dir
   in
   Option.iter (Hashtbl.find db.table name) ~f:(fun x ->
     already_in_table info name x);
   (* Add [id] to the table, to detect loops *)
-  Hashtbl.add_exn db.table name (St_initializing id);
+  Hashtbl.add_exn db.table name (St_initializing unique_id);
 
   let status = Lib_info.status info in
   let allow_private_deps = Lib_info.Status.is_private status in
@@ -891,16 +899,30 @@ let rec instantiate db name info ~stack ~hidden =
               Variant.pp variant
               Lib_name.pp name)
   in
+  let resolve_impl impl_name =
+    let* impl = resolve impl_name in
+    let* vlib =
+      match impl.implements with
+      | Some vlib -> vlib
+      | None -> Error.not_an_implementation_of
+                  ~vlib:info ~impl:impl.info
+    in
+    if Id.equal vlib.unique_id unique_id then
+      Ok impl
+    else
+      Error.not_an_implementation_of
+        ~vlib:info ~impl:impl.info
+  in
   let default_implementation =
     Lib_info.default_implementation info
-    |> Option.map ~f:(fun l -> lazy (resolve l)) in
+    |> Option.map ~f:(fun l -> lazy (resolve_impl l)) in
   let resolved_implementations =
     Lib_info.virtual_ info
     |> Option.map ~f:(fun _ -> lazy (
       (* TODO this can be made even lazier as we don't need to resolve all
          variants at once *)
       Lib_info.known_implementations info
-      |> Variant.Map.map ~f:resolve))
+      |> Variant.Map.map ~f:resolve_impl))
   in
   let requires, pps, resolved_selects =
     let pps = Lib_info.pps info in
@@ -929,7 +951,7 @@ let rec instantiate db name info ~stack ~hidden =
   let t =
     { info
     ; name
-    ; unique_id         = id
+    ; unique_id
     ; requires
     ; ppx_runtime_deps
     ; pps

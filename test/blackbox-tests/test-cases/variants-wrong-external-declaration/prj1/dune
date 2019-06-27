@@ -1,0 +1,10 @@
+(library
+ (name vlibfoo)
+ (public_name vlibfoo-ext)
+ (virtual_modules vlibfoo)
+)
+
+(external_variant
+  (virtual_library vlibfoo)
+  (variant somevariant)
+  (implementation not-an-implementation))

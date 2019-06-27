@@ -1,0 +1,4 @@
+(library
+ (name vlibfoo)
+ (virtual_modules vlibfoo)
+ (default_implementation not_an_implem))

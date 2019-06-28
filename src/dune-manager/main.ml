@@ -54,13 +54,17 @@ let daemonize dir f =
       f () ) ;
     exit 0 )
 
-let main () =
+module Modes = Map.Make (String)
+
+let modes = Modes.empty
+
+let start () =
   let port_path = ref (Path.of_string (Filename.concat runtime_dir "port"))
   and pid_path = ref (Path.of_string (Filename.concat runtime_dir "pid"))
   and root = ref (Dune_memory.DuneMemory.default_root ())
   and foreground = ref false
-  and usage = Printf.sprintf "%s [OPTIONS]" Sys.argv.(0) in
-  Arg.parse_argv Sys.argv
+  and usage = Printf.sprintf "%s start [OPTIONS]" Sys.argv.(0) in
+  Arg.parse_argv ~current:Arg.current Sys.argv
     [ path_option "port" port_path "file to write listening port to"
     ; path_option "pid" pid_path
         "file to write PID to or check if the process is already running from"
@@ -108,6 +112,26 @@ let main () =
       Printf.fprintf stderr "%s: already running as PID %i\n" Sys.argv.(0) pid ;
       exit 0
 
+let modes = Modes.add_exn modes "start" start
+
+let main () =
+  let nargs = Array.length Sys.argv
+  and help =
+    Printf.sprintf "%s [--help%s]\n" Sys.argv.(0)
+      (Modes.foldi modes ~init:"" ~f:(fun k _ b -> b ^ "|" ^ k))
+  in
+  if nargs = 1 || Sys.argv.(1) = "--help" then raise (Arg.Help help)
+  else
+    match Modes.find modes Sys.argv.(1) with
+    | Some f ->
+        Arg.current := 1 ;
+        f ()
+    | None ->
+        raise
+          (Arg.Bad
+             (Printf.sprintf "unknown mode \"%s\".\nUsage: %s" Sys.argv.(1)
+                help))
+
 let () =
   try main () with
   | Arg.Bad reason ->
@@ -115,4 +139,4 @@ let () =
       exit 1
   | Arg.Help help ->
       Printf.fprintf stdout "Usage: %s" help ;
-      exit 1
+      exit 0

@@ -220,7 +220,7 @@ let rec simplify t =
           | Set -> { rules with set_rules = rule :: rules.set_rules }
           | Add -> { rules with add_rules = rule :: rules.add_rules }
         in
-        { pkg with vars = String.Map.add pkg.vars rule.var rules })
+        { pkg with vars = String.Map.set pkg.vars rule.var rules })
 
 let parse_entries lb = Parse.entries lb 0 []
 

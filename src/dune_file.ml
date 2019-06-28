@@ -448,7 +448,7 @@ module Preprocess_map = struct
   let pps t =
     Per_module.fold t ~init:Lib_name.Map.empty ~f:(fun pp acc ->
       List.fold_left (Preprocess.pps pp) ~init:acc ~f:(fun acc (loc, pp) ->
-        Lib_name.Map.add acc pp loc))
+        Lib_name.Map.set acc pp loc))
     |> Lib_name.Map.foldi ~init:[] ~f:(fun pp loc acc -> (loc, pp) :: acc)
 end
 
@@ -576,7 +576,7 @@ module Lib_deps = struct
     in
     let add kind name acc =
       match Lib_name.Map.find acc name with
-      | None -> Lib_name.Map.add acc name kind
+      | None -> Lib_name.Map.set acc name kind
       | Some kind' ->
         match kind, kind' with
         | Required, Required ->

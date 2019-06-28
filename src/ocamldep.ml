@@ -156,7 +156,7 @@ let rules_generic cctx ~modules =
        let per_module =
          Module.Name.Map.fold modules ~init:Module.Obj_map.empty
            ~f:(fun m acc ->
-             Module.Obj_map.add acc m (deps_of cctx ~ml_kind m))
+             Module.Obj_map.set acc m (deps_of cctx ~ml_kind m))
        in
        Dep_graph.make ~dir:(CC.dir cctx) ~per_module)
 
@@ -180,6 +180,6 @@ let graph_of_remote_lib ~obj_dir ~modules =
     let per_module =
       Module.Name.Map.fold modules ~init:Module.Obj_map.empty
         ~f:(fun m acc ->
-          Module.Obj_map.add acc m (deps_of ~ml_kind m))
+          Module.Obj_map.set acc m (deps_of ~ml_kind m))
     in
     Dep_graph.make ~dir ~per_module)

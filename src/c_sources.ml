@@ -51,7 +51,7 @@ let load_sources ~dune_version ~dir ~files =
     | Recognized (obj, kind) ->
       let path = Path.Build.relative dir fn in
       C.Kind.Dict.update acc kind ~f:(fun v ->
-        String.Map.add v obj (C.Source.make ~kind ~path)
+        String.Map.set v obj (C.Source.make ~kind ~path)
       ))
 
 let make (d : _ Dir_with_dune.t)

@@ -152,7 +152,7 @@ let opam_config_var ~env ~cache var =
       >>| function
       | Ok s ->
         let s = String.trim s in
-        Hashtbl.add cache var s;
+        Hashtbl.set cache var s;
         Some s
       | Error _ -> None
 
@@ -211,7 +211,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
   let opam_var_cache = Hashtbl.create 128 in
   (match kind with
    | Opam { root = Some root; _ } ->
-     Hashtbl.add opam_var_cache "root" root
+     Hashtbl.set opam_var_cache "root" root
    | _ -> ());
   let prog_not_found_in_path prog =
     Utils.program_not_found prog ~context:name ~loc:None

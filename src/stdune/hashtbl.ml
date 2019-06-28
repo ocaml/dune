@@ -26,14 +26,14 @@ module Make(H : Hashable.S) = struct
   include struct
     let find = find_opt
     let find_exn t key = Option.value_exn (find_opt t key)
-    let add t key data = add t ~key ~data
+    let set t key data = add t ~key ~data
 
     let find_or_add t key ~f =
       match find t key with
       | Some x -> x
       | None ->
         let x = f key in
-        add t key x;
+        set t key x;
         x
 
     let foldi t ~init ~f =
@@ -47,7 +47,7 @@ module Make(H : Hashable.S) = struct
       | [] -> Result.Ok h
       | (k, v) :: xs ->
         begin match find h k with
-        | None -> add h k v; loop xs
+        | None -> set h k v; loop xs
         | Some v' -> Error (k, v', v)
         end
     in
@@ -58,6 +58,16 @@ module Make(H : Hashable.S) = struct
     | Result.Ok h -> h
     | Error (_, _, _) ->
       Code_error.raise "Hashtbl.of_list_exn duplicate keys" []
+
+  let add_exn t key data =
+    match find t key with
+    | None -> set t key data
+    | Some _ -> Code_error.raise "Hastbl.add_exn: key already exists" []
+
+  let add t key data =
+    match find t key with
+    | None -> set t key data; Result.Ok ()
+    | Some p -> Result.Error p
 end
 
 open MoreLabels.Hashtbl
@@ -66,7 +76,6 @@ type nonrec ('a, 'b) t = ('a, 'b) t
 
 let hash = hash
 let create = create
-let add = add
 let replace = replace
 let length = length
 let remove = remove
@@ -75,15 +84,25 @@ let reset = reset
 
 let find = find_opt
 
-let add t key data = add t ~key ~data
+let set t key data = add t ~key ~data
 
 let find_or_add t key ~f =
   match find t key with
   | Some x -> x
   | None ->
     let x = f key in
-    add t key x;
+    set t key x;
     x
+
+let add_exn t key data =
+  match find t key with
+  | None -> set t key data
+  | Some _ -> Code_error.raise "Hastbl.add_exn: key already exists" []
+
+let add t key data =
+  match find t key with
+  | None -> set t key data; Result.Ok ()
+  | Some p -> Error p
 
 let foldi t ~init ~f = fold  t ~init ~f:(fun ~key ~data acc -> f key data acc)
 let fold  t ~init ~f = foldi t ~init ~f:(fun _ x -> f x)
@@ -101,6 +120,6 @@ let to_dyn (type key) f g t =
     end)
   in
   let m =
-    foldi t ~init:M.empty ~f:(fun key data acc -> M.add acc key data)
+    foldi t ~init:M.empty ~f:(fun key data acc -> M.set acc key data)
   in
   M.to_dyn g m

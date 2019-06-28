@@ -36,7 +36,7 @@ let eval =
     match Module.Name.Map.find all_modules name with
     | Some m -> Ok m
     | None ->
-      fake_modules := Module.Name.Map.add !fake_modules name loc;
+      fake_modules := Module.Name.Map.set !fake_modules name loc;
       Error name
   in
   fun ~loc ~fake_modules ~all_modules ~standard osl ->
@@ -78,7 +78,7 @@ let find_errors ~modules ~intf_only ~virtual_modules ~private_modules
       ~init:(Module.Name.Map.map modules ~f:snd)
       ~f:(fun acc map ->
         Module.Name.Map.foldi map ~init:acc ~f:(fun name (_loc, m) acc ->
-          Module.Name.Map.add acc name m))
+          Module.Name.Map.set acc name m))
   in
   let errors =
     Module.Name.Map.foldi all ~init:[] ~f:(fun module_name module_ acc ->

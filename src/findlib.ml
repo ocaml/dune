@@ -375,7 +375,7 @@ end = struct
       let dir, res =
         parse_package db ~meta_file ~name:full_name ~parent_dir:dir ~vars
       in
-      Hashtbl.add db.packages full_name res;
+      Hashtbl.set db.packages full_name res;
       List.iter meta.subs ~f:(fun (meta : Meta.Simplified.t) ->
         let full_name =
           match meta.name with
@@ -420,12 +420,12 @@ let find_and_acknowledge_package t ~fq_name =
   in
   match loop t.paths with
   | None ->
-    Hashtbl.add t.packages root_name (Error Not_found)
+    Hashtbl.set t.packages root_name (Error Not_found)
   | Some (Findlib findlib_package) ->
     Meta_source.parse_and_acknowledge findlib_package t
   | Some (Dune pkg) ->
     List.iter pkg.libs ~f:(fun lib ->
-      Hashtbl.add t.packages (Dune_package.Lib.name lib) (Ok lib))
+      Hashtbl.set t.packages (Dune_package.Lib.name lib) (Ok lib))
 
 let find t name =
   match Hashtbl.find t.packages name with
@@ -436,7 +436,7 @@ let find t name =
     | Some x -> x
     | None ->
       let res = Error Unavailable_reason.Not_found in
-      Hashtbl.add t.packages name res;
+      Hashtbl.set t.packages name res;
       res
 
 let available t name = Result.is_ok (find t name)

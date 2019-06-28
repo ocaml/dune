@@ -31,7 +31,7 @@ module Bin = struct
         ~f:(fun acc fb ->
           let path = File_binding.Expanded.dst_path fb
                        ~dir:(Utils.local_bin dir) in
-          String.Map.add acc (Path.Build.basename path) path)
+          String.Map.set acc (Path.Build.basename path) path)
     in
     { t with local_bins }
 
@@ -46,7 +46,7 @@ module Bin = struct
           else
             name
         in
-        String.Map.add acc key path)
+        String.Map.set acc key path)
     in
     { context
     ; local_bins

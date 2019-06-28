@@ -80,5 +80,5 @@ module Make(Key : Map_intf.Key)(M : Map_intf.S with type key = Key.t)
   let of_keys =
     M.foldi ~init:empty ~f:(fun k _ acc -> add acc k)
   let to_map =
-    fold ~init:M.empty ~f:(fun k acc -> M.add acc k ())
+    fold ~init:M.empty ~f:(fun k acc -> M.set acc k ())
 end

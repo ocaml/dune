@@ -1,7 +1,10 @@
 module type S = sig
   include MoreLabels.Hashtbl.S
 
-  val add : 'a t -> key -> 'a -> unit
+  val set : 'a t -> key -> 'a -> unit
+
+  val add_exn : 'a t -> key -> 'a -> unit
+  val add : 'a t -> key -> 'a -> (unit, 'a) Result.t
 
   val find : 'a t -> key -> 'a option
   val find_exn : 'a t -> key -> 'a

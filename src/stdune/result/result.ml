@@ -8,4 +8,6 @@ include struct
     | Error of 'error
 end
 
-type ('a, 'error) result = ('a, 'error) t
+type ('a, 'error) result = ('a, 'error) t =
+  | Ok of 'a
+  | Error of 'error

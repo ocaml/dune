@@ -45,7 +45,7 @@ module Make(Data : sig type t end) = struct
       if Hashtbl.mem langs name then
         Code_error.raise "Versioned_file.Lang.register: already registered"
           [ "name", Dyn.Encoder.string name ];
-      Hashtbl.add langs name { syntax; data }
+      Hashtbl.add_exn langs name { syntax; data }
 
     let parse first_line : Instance.t =
       let { Dune_lexer.

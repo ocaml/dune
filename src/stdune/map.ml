@@ -42,13 +42,29 @@ module Make(Key : Key) : S with type key = Key.t = struct
   let find key t = find_opt t key
 
   let mem t k = mem k t
-  let add t k v = add ~key:k ~data:v t
+  let set t k v = add ~key:k ~data:v t
   let update t k ~f = update ~key:k ~f t
+  let add_exn t key v = update t key ~f:(function
+    | None -> Some v
+    | Some _ ->
+      Code_error.raise "Map.add_exn: key already exists"
+        ["key", Key.to_dyn key])
+
+  let add (type e) (t : e t) key v =
+    let module M = struct exception Found of e end in
+    try
+      Result.Ok (
+        update t key ~f:(function
+          | None -> Some v
+          | Some e -> raise_notrace (M.Found e)))
+    with M.Found e ->
+      Error e
+
   let remove t k = remove k t
 
   let add_multi t key x =
     let l = Option.value (find t key) ~default:[] in
-    add t key (x :: l)
+    set t key (x :: l)
 
   let merge a b ~f = merge a b ~f
   let union a b ~f = union a b ~f
@@ -79,7 +95,7 @@ module Make(Key : Key) : S with type key = Key.t = struct
       | [] -> Result.Ok acc
       | (k, v) :: l ->
         match find acc k with
-        | None       -> loop (add acc k v) l
+        | None       -> loop (set acc k v) l
         | Some v_old -> Error (k, v_old, v)
     in
     fun l -> loop empty l
@@ -90,13 +106,13 @@ module Make(Key : Key) : S with type key = Key.t = struct
       | x :: l ->
         let k, v = f x in
         if not (mem acc k) then
-          loop f (add acc k v) l
+          loop f (set acc k v) l
         else
           Error k
     in
     fun l ~f ->
       match loop f empty l with
-      | Ok _ as x -> x
+      | Result.Ok _ as x -> x
       | Error k ->
         match
           List.filter l ~f:(fun x ->
@@ -109,14 +125,14 @@ module Make(Key : Key) : S with type key = Key.t = struct
 
   let of_list_map_exn t ~f =
     match of_list_map t ~f with
-    | Ok x -> x
+    | Result.Ok x -> x
     | Error (key, _, _) ->
       Code_error.raise "Map.of_list_map_exn"
         ["key", Key.to_dyn key]
 
   let of_list_exn l =
     match of_list l with
-    | Ok    x -> x
+    | Result.Ok    x -> x
     | Error (key, _, _) ->
       Code_error.raise "Map.of_list_exn"
         ["key", Key.to_dyn key]
@@ -124,19 +140,19 @@ module Make(Key : Key) : S with type key = Key.t = struct
   let of_list_reduce l ~f =
     List.fold_left l ~init:empty ~f:(fun acc (key, data) ->
       match find acc key with
-      | None   -> add acc key data
-      | Some x -> add acc key (f x data))
+      | None   -> set acc key data
+      | Some x -> set acc key (f x data))
 
   let of_list_fold l ~init ~f =
     List.fold_left l ~init:empty ~f:(fun acc (key, data) ->
       let x = Option.value (find acc key) ~default:init in
-      add acc key (f x data))
+      set acc key (f x data))
 
   let of_list_reducei l ~f =
     List.fold_left l ~init:empty ~f:(fun acc (key, data) ->
       match find acc key with
-      | None   -> add acc key data
-      | Some x -> add acc key (f key x data))
+      | None   -> set acc key data
+      | Some x -> set acc key (f key x data))
 
   let of_list_multi l =
     List.fold_left (List.rev l) ~init:empty ~f:(fun acc (key, data) ->

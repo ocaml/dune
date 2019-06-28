@@ -124,7 +124,7 @@ let build_info_code cctx ~libs ~api_version =
       | Some var -> var
       | None ->
         let  var = gen_placeholder_var () in
-        placeholders := Path.Source.Map.add !placeholders p var;
+        placeholders := Path.Source.Map.set !placeholders p var;
         var
   in
   let version_of_package (p : Package.t) =

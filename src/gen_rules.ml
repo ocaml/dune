@@ -358,7 +358,7 @@ let gen ~contexts
   in
   let sctxs = Hashtbl.create 4 in
   List.iter contexts ~f:(fun c ->
-    Hashtbl.add sctxs c.Context.name (Fiber.Ivar.create ()));
+    Hashtbl.add_exn sctxs c.Context.name (Fiber.Ivar.create ()));
   let make_sctx (context : Context.t) : _ Fiber.t =
     let host () =
       match context.for_host with

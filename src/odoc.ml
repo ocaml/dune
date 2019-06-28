@@ -570,7 +570,7 @@ let setup_package_odoc_rules_def =
            add_rule sctx
              (Build.write_file gen_mld
                 (default_index ~pkg entry_modules));
-           String.Map.add mlds "index" gen_mld in
+           String.Map.set mlds "index" gen_mld in
        let odocs = List.map (String.Map.values mlds) ~f:(fun mld ->
          compile_mld sctx
            (Mld.create mld)

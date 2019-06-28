@@ -438,7 +438,7 @@ module Name_map = struct
     |> Name.Map.of_list_exn
 
   let add t module_ =
-    Name.Map.add t (name module_) module_
+    Name.Map.set t (name module_) module_
 
   let pp fmt t =
     Fmt.ocaml_list Name.pp fmt (Name.Map.keys t)
@@ -446,5 +446,5 @@ module Name_map = struct
   let by_obj =
     Name.Map.fold ~init:Name.Map.empty ~f:(fun m acc ->
       let obj = real_unit_name m in
-      Name.Map.add acc obj m)
+      Name.Map.add_exn acc obj m)
 end

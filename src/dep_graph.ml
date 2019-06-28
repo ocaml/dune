@@ -71,7 +71,7 @@ let wrapped_compat ~modules ~wrapped_compat =
           in
           (* TODO this is wrong. The dependencies should be on the lib interface
              whenever it exists *)
-          Module.Obj_map.add acc compat (Build.return [wrapped]))
+          Module.Obj_map.set acc compat (Build.return [wrapped]))
   }
 
 module Ml_kind = struct

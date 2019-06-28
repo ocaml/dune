@@ -283,7 +283,7 @@ module Map = struct
         Bindings.fold bindings ~init:String.Map.empty ~f:(fun x acc ->
           match x with
           | Unnamed _ -> acc
-          | Named (s, _) -> String.Map.add acc s (No_info Var.Named_local))
+          | Named (s, _) -> String.Map.set acc s (No_info Var.Named_local))
     ; macros = String.Map.empty
     }
 

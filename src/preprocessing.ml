@@ -63,7 +63,7 @@ end = struct
     let y = Digest.string (Marshal.to_string x []) in
     match Hashtbl.find reverse_table y with
     | None ->
-      Hashtbl.add reverse_table y x;
+      Hashtbl.set reverse_table y x;
       y
     | Some x' ->
       if x = x' then

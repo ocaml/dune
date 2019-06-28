@@ -117,7 +117,7 @@ end = struct
         let config = get_env_stanza t ~dir in
         Env_node.make ~dir ~scope ~config ~inherit_from:(Some inherit_from)
       in
-      Hashtbl.add t.env dir node;
+      Hashtbl.set t.env dir node;
       node
 
   let get t ~dir =
@@ -719,7 +719,7 @@ module Action = struct
       >>^ (fun (vals, deps_written_by_user) ->
         let dynamic_expansions =
           List.fold_left2 ddeps vals ~init:String.Map.empty
-            ~f:(fun acc (var, _) value -> String.Map.add acc var value)
+            ~f:(fun acc (var, _) value -> String.Map.set acc var value)
         in
         let unresolved =
           let expander =

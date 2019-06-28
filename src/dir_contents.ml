@@ -127,7 +127,7 @@ let build_mlds_map (d : _ Dir_with_dune.t) ~files =
   let mlds = Memo.lazy_ (fun () -> (
       String.Set.fold files ~init:String.Map.empty ~f:(fun fn acc ->
         match String.lsplit2 fn ~on:'.' with
-        | Some (s, "mld") -> String.Map.add acc s fn
+        | Some (s, "mld") -> String.Map.set acc s fn
         | _ -> acc)))
   in
   List.filter_map d.data ~f:(function
@@ -171,7 +171,7 @@ let build_coq_modules_map (d : _ Dir_with_dune.t) ~dir ~modules =
     | Coq.T coq ->
       let modules = Coq_module.Eval.eval coq.modules
         ~parse:(Coq_module.parse ~dir) ~standard:modules in
-      Lib_name.Map.add map (Dune_file.Coq.best_name coq) modules
+      Lib_name.Map.set map (Dune_file.Coq.best_name coq) modules
     | _ -> map)
 
 module rec Load : sig

@@ -691,7 +691,13 @@ module Action = struct
     in
     let targets =
       Path.Set.fold ~init:[] targets
-        ~f:(fun p acc -> Path.as_in_build_dir_exn p :: acc)
+        ~f:(fun p acc ->
+          match Path.as_in_build_dir p with
+          | Some p -> p :: acc
+          | None ->
+            Errors.fail loc
+              "target %s is outside the build directory. This is not allowed."
+              (Path.to_string_maybe_quoted p))
     in
     List.iter targets ~f:(fun target ->
       if Path.Build.(<>) (Path.Build.parent_exn target) targets_dir then

@@ -1259,6 +1259,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name rule-target-external)
+ (deps (package dune) (source_tree test-cases/rule-target-external))
+ (action
+  (chdir
+   test-cases/rule-target-external
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name scope-bug)
  (deps (package dune) (source_tree test-cases/scope-bug))
  (action
@@ -1701,6 +1709,7 @@
   (alias reason)
   (alias redirections)
   (alias reporting-of-cycles)
+  (alias rule-target-external)
   (alias scope-bug)
   (alias scope-ppx-bug)
   (alias select)
@@ -1870,6 +1879,7 @@
   (alias quoting)
   (alias redirections)
   (alias reporting-of-cycles)
+  (alias rule-target-external)
   (alias scope-bug)
   (alias select)
   (alias several-packages)

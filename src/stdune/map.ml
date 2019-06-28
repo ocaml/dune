@@ -44,6 +44,11 @@ module Make(Key : Key) : S with type key = Key.t = struct
   let mem t k = mem k t
   let set t k v = add ~key:k ~data:v t
   let update t k ~f = update ~key:k ~f t
+  let add_exn t key v = update t key ~f:(function
+    | None -> Some v
+    | Some _ ->
+      Code_error.raise "Map.add_exn: key already exists"
+        ["key", Key.to_dyn key])
   let remove t k = remove k t
 
   let add_multi t key x =

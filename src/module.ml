@@ -446,5 +446,5 @@ module Name_map = struct
   let by_obj =
     Name.Map.fold ~init:Name.Map.empty ~f:(fun m acc ->
       let obj = real_unit_name m in
-      Name.Map.add acc obj m)
+      Name.Map.add_exn acc obj m)
 end

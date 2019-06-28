@@ -1,9 +1,9 @@
 Check that local variant implementations are correctly exported in the list of
 known_implementations implementations when using -p
 
-  $ dune build -p vlibfoo
+  $ cd project && dune build -p vlibfoo
 
-  $ cat _build/install/default/lib/vlibfoo/dune-package
+  $ cat project/_build/install/default/lib/vlibfoo/dune-package
   (lang dune 1.11)
   (name vlibfoo)
   (library
@@ -22,4 +22,28 @@ known_implementations implementations when using -p
       (visibility public)
       (kind virtual)
       (intf)))
-    (wrapped true)))
+    (wrapped true))
+   (project_name implfoo))
+
+Also check that the implementation correctly builds while using -p when part of the same project
+
+  $ cp -r project/_build/ opam
+
+  $ cd project && env OCAMLPATH=../opam/install/default/lib dune build -p implfoo
+
+And fail if it's not part of the same project.
+
+  $ cd project-2 && env OCAMLPATH=../opam/install/default/lib dune build -p impl2foo
+  File "impl2foo/dune", line 4, characters 13-20:
+  4 |  (implements vlibfoo)
+                   ^^^^^^^
+  Error: Library implementation impl2foo with variant "somevariant2" implements
+  a library outside the project.
+  Instead of using (variant "somevariant2") here,
+  you need to reference it in the virtual library project,
+  using the external_variant stanza:
+  (external_variant
+    (virtual_library vlibfoo)
+    (variant "somevariant2")
+    (implementation impl2foo))
+  [1]

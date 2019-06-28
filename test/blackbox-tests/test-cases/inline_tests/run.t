@@ -44,6 +44,7 @@
      (impl))
     (main_module_name Foo)
     (wrapped true))
+   (project_name foo)
    (inline_tests.backend
     (runner_libraries str)
     (flags

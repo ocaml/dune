@@ -181,8 +181,8 @@ module Lib = struct
            Dune_file.Library.Special_builtin_support.decode)
       and+ project_name =
         field "project_name"
-          (Syntax.since Stanza.syntax (1, 11) >>>
-           string)
+          ~default:( name |> Lib_name.root_lib |> Lib_name.to_string )
+          (Syntax.since Stanza.syntax (1, 11) >>> string)
       in
       let known_implementations =
         Variant.Map.of_list_exn known_implementations in

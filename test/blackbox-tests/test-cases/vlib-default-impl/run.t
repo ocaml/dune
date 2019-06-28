@@ -49,7 +49,8 @@ Check that default implementation data is installed in the dune package file.
     (main_module_name A)
     (modules
      ((name X) (obj_name a__X) (visibility public) (kind virtual) (intf)))
-    (wrapped true)))
+    (wrapped true))
+   (project_name a))
 
 Test default implementation for an external library
 

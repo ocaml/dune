@@ -1,0 +1,6 @@
+(library
+ (name impl2foo)
+ (public_name impl2foo)
+ (implements vlibfoo)
+ (variant somevariant2)
+)

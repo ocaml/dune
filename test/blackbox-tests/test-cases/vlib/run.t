@@ -337,7 +337,8 @@ Include variants and implementation information in dune-package
       (visibility public)
       (kind impl_vmodule)
       (impl)))
-    (wrapped true)))
+    (wrapped true))
+   (project_name foo))
   (library
    (name foo.vlib)
    (kind normal)
@@ -359,7 +360,8 @@ Include variants and implementation information in dune-package
       (visibility public)
       (kind virtual)
       (intf)))
-    (wrapped true)))
+    (wrapped true))
+   (project_name foo))
 
 Virtual libraries and preprocessed source
   $ dune build --root preprocess

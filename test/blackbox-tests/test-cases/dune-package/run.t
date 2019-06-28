@@ -14,7 +14,8 @@
     (alias_module (name A) (obj_name a) (visibility public) (kind alias) (impl))
     (main_module_name A)
     (modules ((name X) (obj_name a__X) (visibility public) (impl)))
-    (wrapped true)))
+    (wrapped true))
+   (project_name a))
   (library
    (name a.b.c)
    (kind normal)
@@ -28,7 +29,8 @@
     (alias_module (name C) (obj_name c) (visibility public) (kind alias) (impl))
     (main_module_name C)
     (modules ((name Y) (obj_name c__Y) (visibility private) (impl) (intf)))
-    (wrapped true)))
+    (wrapped true))
+   (project_name a))
 
 Build with "--store-orig-source-dir" profile
   $ dune build --store-orig-source-dir

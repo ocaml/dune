@@ -24,4 +24,5 @@ declared in the virtual library definition.
       (visibility public)
       (kind virtual)
       (intf)))
-    (wrapped true)))
+    (wrapped true))
+   (project_name vlibfoo-ext))

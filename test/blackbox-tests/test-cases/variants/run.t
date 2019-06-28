@@ -63,7 +63,8 @@ Check that variant data is installed in the dune package file.
     (main_module_name B)
     (modules
      ((name X) (obj_name b__X) (visibility public) (kind impl_vmodule) (impl)))
-    (wrapped true)))
+    (wrapped true))
+   (project_name a))
   $ cat  dune-package/_build/install/default/lib/b/dune-package
   (lang dune 1.11)
   (name b)
@@ -80,7 +81,8 @@ Check that variant data is installed in the dune package file.
     (main_module_name B)
     (modules
      ((name X) (obj_name b__X) (visibility public) (kind virtual) (intf)))
-    (wrapped true)))
+    (wrapped true))
+   (project_name a))
 
 Test variants for an external library
 

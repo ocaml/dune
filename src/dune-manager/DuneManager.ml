@@ -24,14 +24,18 @@ module Clients = Set.Make (ClientsKey) (Map.Make (ClientsKey))
 type t =
   { memory: DuneMemory.memory
   ; mutable socket: Unix.file_descr option
-  ; mutable clients: Clients.t }
+  ; mutable clients: Clients.t
+  ; mutable endpoint: string option }
 
 exception CommandError of string
 
 exception Error of string
 
 let make ?root () : t =
-  {memory= DuneMemory.make ?root (); socket= None; clients= Clients.empty}
+  { memory= DuneMemory.make ?root ()
+  ; socket= None
+  ; clients= Clients.empty
+  ; endpoint= None }
 
 let getsockname = function
   | Unix.ADDR_UNIX _ ->
@@ -193,9 +197,12 @@ let run ?(port_f = ignore) ?(port = 0) manager =
     in
     manager.socket <- Some sock ;
     Unix.bind sock (Unix.ADDR_INET (Unix.inet_addr_of_string "0.0.0.0", port)) ;
-    let _, port = getsockname (Unix.getsockname sock) in
-    port_f port ;
-    Printf.printf "listening on port %i\n%!" port ;
+    let addr, port = getsockname (Unix.getsockname sock) in
+    let endpoint =
+      Printf.sprintf "%s:%i" (Unix.string_of_inet_addr addr) port
+    in
+    manager.endpoint <- Some endpoint ;
+    port_f endpoint ;
     Unix.listen sock 1024 ;
     while Option.is_some manager.socket do
       let fd, peer = accept () in
@@ -240,3 +247,5 @@ let run ?(port_f = ignore) ?(port = 0) manager =
   with Unix.Unix_error (errno, f, _) ->
     raise
       (Error (Printf.sprintf "unable to %s: %s\n" f (Unix.error_message errno)))
+
+let endpoint m = m.endpoint

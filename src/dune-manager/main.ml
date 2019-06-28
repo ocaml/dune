@@ -64,6 +64,10 @@ let start () =
   and root = ref (Dune_memory.DuneMemory.default_root ())
   and foreground = ref false
   and usage = Printf.sprintf "%s start [OPTIONS]" Sys.argv.(0) in
+  let report_endpoint () =
+    let port_file = open_in (Path.to_string !port_path) in
+    Printf.printf "listening on %s\n%!" (input_line port_file)
+  in
   Arg.parse_argv ~current:Arg.current Sys.argv
     [ path_option "port" port_path "file to write listening port to"
     ; path_option "pid" pid_path
@@ -83,9 +87,9 @@ let start () =
           let manager = DuneManager.make ~root:!root ()
           and port_f port =
             let c = open_out (Path.to_string !port_path) in
-            let f () = output_string c (string_of_int port)
-            and finally () = close_out c in
-            Exn.protect ~f ~finally
+            let f () = output_string c port and finally () = close_out c in
+            Exn.protect ~f ~finally ;
+            if !foreground then report_endpoint ()
           in
           Sys.set_signal Sys.sigint
             (Sys.Signal_handle (fun _ -> DuneManager.stop manager)) ;
@@ -107,10 +111,17 @@ let start () =
         in
         Exn.protect ~f ~finally
       in
-      if !foreground then f () else daemonize (Path.to_string !root) f
+      if !foreground then f ()
+      else (
+        daemonize (Path.to_string !root) f ;
+        while not (Sys.file_exists (Path.to_string !port_path)) do
+          Unix.sleepf 0.1
+        done ;
+        report_endpoint () )
   | Some pid ->
-      Printf.fprintf stderr "%s: already running as PID %i\n" Sys.argv.(0) pid ;
-      exit 0
+      if !foreground then
+        failwith (Printf.sprintf "already running as PID %i\n" pid)
+      else report_endpoint ()
 
 let modes = Modes.add_exn modes "start" start
 
@@ -120,11 +131,11 @@ let main () =
     Printf.sprintf "%s [--help%s]\n" Sys.argv.(0)
       (Modes.foldi modes ~init:"" ~f:(fun k _ b -> b ^ "|" ^ k))
   in
+  Arg.current := 1 ;
   if nargs = 1 || Sys.argv.(1) = "--help" then raise (Arg.Help help)
   else
     match Modes.find modes Sys.argv.(1) with
     | Some f ->
-        Arg.current := 1 ;
         f ()
     | None ->
         raise
@@ -136,6 +147,9 @@ let () =
   try main () with
   | Arg.Bad reason ->
       Printf.fprintf stderr "%s: command line error: %s" Sys.argv.(0) reason ;
+      exit 1
+  | Failure reason ->
+      Printf.fprintf stderr "%s: fatal error: %s" Sys.argv.(0) reason ;
       exit 1
   | Arg.Help help ->
       Printf.fprintf stdout "Usage: %s" help ;

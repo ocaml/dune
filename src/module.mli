@@ -17,9 +17,6 @@ module Name : sig
 
   val uncapitalize : t -> string
 
-  (** Split a prefixed module name into its components *)
-  val split_alias_prefix : t -> (t * t) option
-
   val pp : Format.formatter -> t -> unit
   val pp_quote : Format.formatter -> t -> unit
 
@@ -134,6 +131,8 @@ module Name_map : sig
   val of_list_exn : module_ list -> t
 
   val add : t -> module_ -> t
+
+  val by_obj : t -> t
 end with type module_ := t
 
 module Obj_map : sig

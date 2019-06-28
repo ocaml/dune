@@ -57,26 +57,6 @@ module Name = struct
       | OCaml, Impl -> ".ml"
     in
     String.lowercase n ^ ext
-
-  (* XXX this will need to be fixed once (include_subdirs qualified) is
-     supported *)
-  let split_alias_prefix t =
-    let len = String.length t in
-    let rec loop t i =
-      if i >= len - 1 then
-        None
-      else if t.[i] = '_' && t.[i + 1] = '_' then
-        if i = 1 || i = len - 2 then
-          None (* name of the form __Foo or Foo__ *)
-        else
-          Some ( of_string (String.take t i)
-               , of_string (String.drop t (i + 2))
-               )
-      else
-        loop t (i + 1)
-    in
-    loop t 0
-
 end
 
 module File = struct
@@ -462,4 +442,9 @@ module Name_map = struct
 
   let pp fmt t =
     Fmt.ocaml_list Name.pp fmt (Name.Map.keys t)
+
+  let by_obj =
+    Name.Map.fold ~init:Name.Map.empty ~f:(fun m acc ->
+      let obj = real_unit_name m in
+      Name.Map.add acc obj m)
 end

@@ -63,7 +63,7 @@ let start () =
   and pid_path = ref (Path.of_string (Filename.concat runtime_dir "pid"))
   and root = ref (Dune_memory.DuneMemory.default_root ())
   and foreground = ref false
-  and usage = Printf.sprintf "%s start [OPTIONS]" Sys.argv.(0) in
+  and usage = Printf.sprintf "start [OPTIONS]" in
   let report_endpoint () =
     let port_file = open_in (Path.to_string !port_path) in
     Printf.printf "listening on %s\n%!" (input_line port_file)
@@ -125,10 +125,30 @@ let start () =
 
 let modes = Modes.add_exn modes "start" start
 
+let stop () =
+  let pid_path = ref (Path.of_string (Filename.concat runtime_dir "pid")) in
+  Arg.parse_argv ~current:Arg.current Sys.argv
+    [ path_option "pid" pid_path
+        "file to write PID to or check if the process is already running from"
+    ]
+    (fun o -> raise (Arg.Bad (Printf.sprintf "unexpected option: %s" o)))
+    "stop [OPTIONS]" ;
+  match check_pid_file !pid_path with
+  | None ->
+      failwith "not running"
+  | Some pid ->
+      Printf.printf "kill %i\n%!" pid ;
+      Unix.kill pid Sys.sigterm ;
+      while try Unix.kill pid 0 ; true with _ -> false do
+        Unix.sleepf 0.1
+      done
+
+let modes = Modes.add_exn modes "stop" stop
+
 let main () =
   let nargs = Array.length Sys.argv
   and help =
-    Printf.sprintf "%s [--help%s]\n" Sys.argv.(0)
+    Printf.sprintf "[--help%s]\n"
       (Modes.foldi modes ~init:"" ~f:(fun k _ b -> b ^ "|" ^ k))
   in
   Arg.current := 1 ;
@@ -140,8 +160,8 @@ let main () =
     | None ->
         raise
           (Arg.Bad
-             (Printf.sprintf "unknown mode \"%s\".\nUsage: %s" Sys.argv.(1)
-                help))
+             (Printf.sprintf "unknown mode \"%s\".\nUsage: %s %s" Sys.argv.(1)
+                Sys.argv.(0) help))
 
 let () =
   try main () with
@@ -152,5 +172,5 @@ let () =
       Printf.fprintf stderr "%s: fatal error: %s" Sys.argv.(0) reason ;
       exit 1
   | Arg.Help help ->
-      Printf.fprintf stdout "Usage: %s" help ;
+      Printf.fprintf stdout "Usage: %s %s" Sys.argv.(0) help ;
       exit 0

@@ -10,16 +10,21 @@ let runtime_dir =
 
 let main () =
   let port_path = ref (Filename.concat runtime_dir "port")
+  and root = ref (Dune_memory.DuneMemory.default_root ())
   and usage = Printf.sprintf "%s [OPTIONS]" Sys.argv.(0) in
   Arg.parse_argv Sys.argv
     [ ( "--port"
       , Arg.Set_string port_path
       , Printf.sprintf "file to write listening port to (default: %s)"
-          !port_path ) ]
+          !port_path )
+    ; ( "--root"
+      , Arg.String (fun r -> root := Path.of_string r)
+      , Printf.sprintf "dune memory root (default: %s)" (Path.to_string !root)
+      ) ]
     (fun o -> raise (Arg.Bad (Printf.sprintf "unexpected option: %s" o)))
     usage ;
   Path.mkdir_p (Path.of_string runtime_dir) ;
-  let manager = DuneManager.make ()
+  let manager = DuneManager.make ~root:!root ()
   and port_f port =
     let c = open_out !port_path in
     let f () = output_string c (string_of_int port)

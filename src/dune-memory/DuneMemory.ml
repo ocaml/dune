@@ -73,9 +73,10 @@ let path_meta memory = Path.L.relative memory.root ["meta"]
 
 let path_tmp memory = Path.L.relative memory.root ["temp"]
 
-let make ?log
-    ?(root = Path.L.relative (Path.of_string Xdg.cache_dir) ["dune"; "db"]) ()
-    =
+let default_root () =
+  Path.L.relative (Path.of_string Xdg.cache_dir) ["dune"; "db"]
+
+let make ?log ?(root = default_root ()) () =
   let root = Path.L.relative root ["v2"] in
   {root; log= (match log with Some log -> log | None -> Log.no_log)}
 

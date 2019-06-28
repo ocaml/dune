@@ -10,6 +10,8 @@ exception Failed of string
 
 val make : ?log:Log.t -> ?root:Path.t -> unit -> memory
 
+val default_root : unit -> Path.t
+
 val key_to_string : key -> string
 
 val key_of_string : string -> key

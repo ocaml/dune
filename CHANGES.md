@@ -14,6 +14,9 @@
 1.11.0 (unreleased)
 -------------------
 
+- Install project name metadata in dune-package files (#2326, fixes #2322,
+  @TheLortex, review by ?)
+
 - Don't reserve the `Ppx` toplevel module name for ppx rewriters (#2242, @diml)
 
 - Redesign of the library variant feature according to the #2134 proposal. The

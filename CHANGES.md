@@ -5,8 +5,8 @@
   the cost of building unnecessary artifacts in some cases. Some of these extra
   artifacts can fail to built, so this is a breaking change. (#2268, @rgrinberg)
 
-- Do not put the `<package>.install` files in the source tree unless
-  `-p` or `--promote-install-files` is passed on the command line (#..., @diml)
+- Do not put the `<package>.install` files in the source tree unless `-p` or
+  `--promote-install-files` is passed on the command line (#2329, @diml)
 
 - Change `implicit_transive_deps` to be false. Implicit transitive deps now must
   be manually enabled (#2306, @rgrinberg)

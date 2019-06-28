@@ -1462,7 +1462,9 @@
  (action
   (chdir
    test-cases/utop-default-implementation
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} -skip-versions <4.05.0 -test run.t)
+    (diff? run.t run.t.corrected)))))
 
 (alias
  (name variants)
@@ -1899,7 +1901,6 @@
   (alias transitive-deps-mode)
   (alias unreadable-src)
   (alias upgrader)
-  (alias utop-default-implementation)
   (alias variants)
   (alias variants-external-declaration)
   (alias variants-external-declaration-conflict)

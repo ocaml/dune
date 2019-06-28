@@ -1491,6 +1491,16 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name variants-wrong-external-declaration)
+ (deps
+  (package dune)
+  (source_tree test-cases/variants-wrong-external-declaration))
+ (action
+  (chdir
+   test-cases/variants-wrong-external-declaration
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name vlib)
  (deps (package dune) (source_tree test-cases/vlib))
  (action
@@ -1504,6 +1514,14 @@
  (action
   (chdir
    test-cases/vlib-default-impl
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
+ (name vlib-wrong-default-impl)
+ (deps (package dune) (source_tree test-cases/vlib-wrong-default-impl))
+ (action
+  (chdir
+   test-cases/vlib-wrong-default-impl
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
@@ -1721,8 +1739,10 @@
   (alias variants-external-declaration-conflict)
   (alias variants-multi-project)
   (alias variants-only-package)
+  (alias variants-wrong-external-declaration)
   (alias vlib)
   (alias vlib-default-impl)
+  (alias vlib-wrong-default-impl)
   (alias windows-diff)
   (alias workspaces)
   (alias wrapped-false-main-module-name)
@@ -1885,8 +1905,10 @@
   (alias variants-external-declaration-conflict)
   (alias variants-multi-project)
   (alias variants-only-package)
+  (alias variants-wrong-external-declaration)
   (alias vlib)
   (alias vlib-default-impl)
+  (alias vlib-wrong-default-impl)
   (alias windows-diff)
   (alias workspaces)
   (alias wrapped-false-main-module-name)

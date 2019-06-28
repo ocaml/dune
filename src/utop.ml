@@ -39,7 +39,7 @@ let libs_under_dir sctx ~db ~dir =
              begin match Lib.DB.find_even_when_hidden db
                            (Dune_file.Library.best_name l) with
              | None -> acc (* library is defined but outside our scope *)
-             | Some lib when should_be_selected lib ->
+             | Some lib ->
                (* still need to make sure that it's not coming from an external
                   source *)
                let info = Lib.info lib in
@@ -52,7 +52,6 @@ let libs_under_dir sctx ~db ~dir =
                  lib :: acc
                else
                  acc (* external lib with a name matching our private name *)
-              | _ -> acc
              end
            | _ ->
              acc)))

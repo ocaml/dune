@@ -53,7 +53,7 @@ module Make(Key : Key) : S with type key = Key.t = struct
   let add (type e) (t : e t) key v =
     let module M = struct exception Found of e end in
     try
-      Ok (
+      Result.Ok (
         update t key ~f:(function
           | None -> Some v
           | Some e -> raise_notrace (M.Found e)))
@@ -112,7 +112,7 @@ module Make(Key : Key) : S with type key = Key.t = struct
     in
     fun l ~f ->
       match loop f empty l with
-      | Ok _ as x -> x
+      | Result.Ok _ as x -> x
       | Error k ->
         match
           List.filter l ~f:(fun x ->
@@ -125,14 +125,14 @@ module Make(Key : Key) : S with type key = Key.t = struct
 
   let of_list_map_exn t ~f =
     match of_list_map t ~f with
-    | Ok x -> x
+    | Result.Ok x -> x
     | Error (key, _, _) ->
       Code_error.raise "Map.of_list_map_exn"
         ["key", Key.to_dyn key]
 
   let of_list_exn l =
     match of_list l with
-    | Ok    x -> x
+    | Result.Ok    x -> x
     | Error (key, _, _) ->
       Code_error.raise "Map.of_list_exn"
         ["key", Key.to_dyn key]

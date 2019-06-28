@@ -34,7 +34,7 @@ let add_exn t k v =
 
 let add t k v =
   match find t k with
-  | None -> set t k v; Ok ()
+  | None -> set t k v; Result.Ok ()
   | Some e -> Error e
 
 let clear (type input) (type output) ((module T) : (input, output) t) =

@@ -66,7 +66,7 @@ module Make(H : Hashable.S) = struct
 
   let add t key data =
     match find t key with
-    | None -> set t key data; Ok ()
+    | None -> set t key data; Result.Ok ()
     | Some p -> Result.Error p
 end
 
@@ -101,7 +101,7 @@ let add_exn t key data =
 
 let add t key data =
   match find t key with
-  | None -> set t key data; Ok ()
+  | None -> set t key data; Result.Ok ()
   | Some p -> Error p
 
 let foldi t ~init ~f = fold  t ~init ~f:(fun ~key ~data acc -> f key data acc)

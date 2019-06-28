@@ -14,6 +14,10 @@
 1.11.0 (unreleased)
 -------------------
 
+- Don't select all local implementations in `dune utop`. Instead, let the
+  default implementation selection do its job. (#2327, fixes #2323, @TheLortex,
+  review by @rgrinberg)
+
 - Don't reserve the `Ppx` toplevel module name for ppx rewriters (#2242, @diml)
 
 - Redesign of the library variant feature according to the #2134 proposal. The

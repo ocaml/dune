@@ -49,6 +49,17 @@ module Make(Key : Key) : S with type key = Key.t = struct
     | Some _ ->
       Code_error.raise "Map.add_exn: key already exists"
         ["key", Key.to_dyn key])
+
+  let add (type e) (t : e t) key v =
+    let module M = struct exception Found of e end in
+    try
+      Ok (
+        update t key ~f:(function
+          | None -> Some v
+          | Some e -> raise_notrace (M.Found e)))
+    with M.Found e ->
+      Error e
+
   let remove t k = remove k t
 
   let add_multi t key x =

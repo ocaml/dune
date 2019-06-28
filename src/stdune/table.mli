@@ -23,4 +23,6 @@ val set : ('k, 'v) t -> 'k -> 'v -> unit
 
 val add_exn : ('k, 'v) t -> 'k -> 'v -> unit
 
+val add : ('k, 'v) t -> 'k -> 'v -> (unit, 'v) Result.t
+
 val clear : ('k, 'v) t -> unit

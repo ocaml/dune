@@ -18,6 +18,8 @@ val iter : ('a, 'b) t -> f:(key:'a -> data:'b -> unit) -> unit
 
 val replace : ('a, 'b) t -> key:'a -> data:'b -> unit
 
+val add : ('a, 'b) t -> 'a -> 'b -> (unit, 'b) Result.t
+
 val add_exn : ('a, 'b) t -> 'a -> 'b -> unit
 val set : ('a, 'b) t -> 'a -> 'b -> unit
 

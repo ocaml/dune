@@ -63,6 +63,11 @@ module Make(H : Hashable.S) = struct
     match find t key with
     | None -> set t key data
     | Some _ -> Code_error.raise "Hastbl.add_exn: key already exists" []
+
+  let add t key data =
+    match find t key with
+    | None -> set t key data; Ok ()
+    | Some p -> Result.Error p
 end
 
 open MoreLabels.Hashtbl
@@ -93,6 +98,11 @@ let add_exn t key data =
   match find t key with
   | None -> set t key data
   | Some _ -> Code_error.raise "Hastbl.add_exn: key already exists" []
+
+let add t key data =
+  match find t key with
+  | None -> set t key data; Ok ()
+  | Some p -> Error p
 
 let foldi t ~init ~f = fold  t ~init ~f:(fun ~key ~data acc -> f key data acc)
 let fold  t ~init ~f = foldi t ~init ~f:(fun _ x -> f x)

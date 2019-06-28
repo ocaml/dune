@@ -3,6 +3,7 @@
  (public_name dune-build-info)
  (wrapped false)
  (modules_without_implementation build_info_data)
+ (private_modules build_info_data)
  (special_builtin_support
   (build_info
    (data_module build_info_data)

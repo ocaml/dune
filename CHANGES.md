@@ -14,6 +14,9 @@
 1.11.0 (unreleased)
 -------------------
 
+- Check that selected implementations (either by variants or default
+  implementations) are indeed implementations. (#2328, @TheLortex, review by ?)
+
 - Don't reserve the `Ppx` toplevel module name for ppx rewriters (#2242, @diml)
 
 - Redesign of the library variant feature according to the #2134 proposal. The

@@ -132,7 +132,6 @@ let link_exe
   let mode = linkage.mode in
   let exe = exe_path_from_name cctx ~name ~linkage in
   let compiler = Option.value_exn (Context.compiler ctx mode) in
-  let kind = Mode.cm_kind mode in
   let js_of_ocaml =
     CC.js_of_ocaml cctx
     |> Option.value ~default:Dune_file.Js_of_ocaml.default
@@ -142,27 +141,23 @@ let link_exe
     Cm_files.make_exe ~obj_dir ~modules ~top_sorted_modules
       ~ext_obj:ctx.lib_config.ext_obj
   in
-  let modules_and_cm_files =
-    Build.memoize "cm files"
-      (top_sorted_modules >>^ fun modules ->
-       (modules,
-        Obj_dir.Module.L.cm_files obj_dir modules ~kind))
-  in
+  let top_sorted_cms = Cm_files.top_sorted_cms cm_files ~mode in
   SC.add_rule sctx ~loc ~dir
     (let ocaml_flags = Ocaml_flags.get (CC.flags cctx) mode in
-     let top_sorted_cms = Cm_files.top_sorted_cms cm_files ~mode in
      let prefix =
        let dune_version =
          let scope = CC.scope cctx in
          let project = Scope.project scope in
          Dune_project.dune_version project
        in
-       if dune_version >= (2, 0) then
-         Cm_files.unsorted_objects_and_cms cm_files ~mode
-         |> Build.paths
-         >>^ ignore
-       else
-         Build.return ()
+       Build.ignore (
+         if dune_version >= (2, 0) then
+           Cm_files.unsorted_objects_and_cms cm_files ~mode
+           |> Build.paths
+         else
+           Cm_files.top_sorted_objects_and_cms cm_files ~mode
+           |> Build.dyn_paths
+       )
      in
      prefix
      >>>
@@ -183,14 +178,13 @@ let link_exe
           ; Dyn (Build.S.map top_sorted_cms ~f:(fun x -> Command.Args.Deps x))
           ]));
   if linkage.ext = ".bc" then
-    let cm = modules_and_cm_files >>^ snd in
     let flags =
       (Expander.expand_and_eval_set expander
          js_of_ocaml.flags
          ~standard:(Build.return (Js_of_ocaml_rules.standard sctx))) in
     let rules =
-      Js_of_ocaml_rules.build_exe cctx ~js_of_ocaml ~src:exe ~cm
-        ~flags:(Command.Args.dyn flags)
+      Js_of_ocaml_rules.build_exe cctx ~js_of_ocaml ~src:exe
+        ~cm:top_sorted_cms ~flags:(Command.Args.dyn flags)
     in
     SC.add_rules ~dir sctx rules
 

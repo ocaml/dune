@@ -984,15 +984,23 @@ module Library = struct
 
     let default = Simple true
 
-    let make ~wrapped ~implements : t Inherited.t =
-      match wrapped, implements with
+    let make ~wrapped ~implements ~special_builtin_support : t Inherited.t =
+      begin match wrapped, special_builtin_support with
+      | Some (loc, Yes_with_transition _), Some _ ->
+        User_error.raise ~loc
+          [ Pp.text "Cannot have transition modules for libraries with \
+                     special builtin support" ]
+      | _, _ -> ()
+      end;
+      begin match wrapped, implements with
       | None, None -> This default
       | None, Some w -> From w
       | Some (_loc, w), None -> This w
       | Some (loc, _), Some _ ->
         User_error.raise ~loc
           [ Pp.text "Wrapped cannot be set for implementations. \
-           It is inherited from the virtual library." ]
+                     It is inherited from the virtual library." ]
+      end
 
     let field = field_o "wrapped" (located decode)
   end
@@ -1089,7 +1097,8 @@ module Library = struct
            (Syntax.since Stanza.syntax (1, 10) >>>
             Special_builtin_support.decode)
        and+ enabled_if = enabled_if ~since:(Some (1, 10)) in
-       let wrapped = Wrapped.make ~wrapped ~implements in
+       let wrapped = Wrapped.make ~wrapped ~implements
+                       ~special_builtin_support in
        let name =
          let open Syntax.Version.Infix in
          match name, public with

@@ -76,6 +76,8 @@
        "ocamlc_flags" "ocamlopt_flags" "library_flags" "c_flags"
        "cxx_flags" "c_library_flags" "self_build_stubs_archive"
        "modules_without_implementation" "private_modules"
+       ;; + special_builtin_support
+       "special_builtin_support" "build_info" "data_module" "api_version"
        ;; + virtual libraries
        "virtual_modules" "implements" "variant" "default_implementation"
        "allow_overlapping_dependencies"

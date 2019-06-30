@@ -78,6 +78,8 @@
        "modules_without_implementation" "private_modules"
        ;; + special_builtin_support
        "special_builtin_support" "build_info" "data_module" "api_version"
+       ;; +stdlib
+       "stdlib" "modules_before_stdlib" "exit_module" "internal_modules"
        ;; + virtual libraries
        "virtual_modules" "implements" "variant" "default_implementation"
        "allow_overlapping_dependencies"

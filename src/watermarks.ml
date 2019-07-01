@@ -28,7 +28,6 @@ let make_watermark_map ~name ~version ~commit =
     match Opam_file.get_field opam_file name with
     | None -> Error (sprintf "variable %S not found in opam file" name)
     | Some value ->
-      let err = Error (sprintf "invalid value for variable %S in opam file" name) in
       match value with
       | String (_, s) -> Ok s
       | List (_, l) -> begin
@@ -39,12 +38,14 @@ let make_watermark_map ~name ~version ~commit =
               | Ok l ->
                 match v with
                 | OpamParserTypes.String (_, s) -> Ok (s :: l)
-                | _ -> err)
+                | _ ->
+                  Error (sprintf "invalid value for variable %S in opam file" name))
           with
           | Error _ as e -> e
           | Ok l -> Ok (String.concat ~sep (List.rev l))
         end
-      | _ -> err
+      | _ ->
+        Error (sprintf "invalid value for variable %S in opam file" name)
   in
   String.Map.of_list_exn
     [ "NAME"           , Ok name

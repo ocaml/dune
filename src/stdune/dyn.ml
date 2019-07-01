@@ -1,28 +1,30 @@
 include Dyn0
 
-let rec to_sexp =
-  let open Sexp.Encoder in
-  function
-  | Opaque -> Sexp.Atom "<opaque>"
-  | Unit -> unit ()
-  | Int i -> int i
-  | Bool b -> bool b
-  | String s -> string s
-  | Bytes s -> string (Bytes.to_string s)
-  | Char c -> char c
-  | Float f -> float f
+let rec to_sexp : t -> Sexp0.t = function
+  | Opaque -> Atom "<opaque>"
+  | Unit -> List []
+  | Int i -> Atom (string_of_int i)
+  | Bool b -> Atom (string_of_bool b)
+  | String s -> Atom s
+  | Bytes s -> Atom (Stdlib.Bytes.to_string s)
+  | Char c -> Atom (Stdlib.String.make 1 c)
+  | Float f -> Atom (string_of_float f)
   | Sexp s -> s
-  | Option o -> option to_sexp o
-  | List l -> list to_sexp l
-  | Array a -> array to_sexp a
-  | Map xs -> list (pair to_sexp to_sexp) xs
-  | Set xs -> list to_sexp xs
-  | Tuple t -> list to_sexp t
+  | Option o ->
+    List (match o with
+      | None -> []
+      | Some x -> [to_sexp x])
+  | List l -> List (List.map l ~f:to_sexp)
+  | Array a -> List (Array.to_list a |> List.map ~f:to_sexp)
+  | Map xs -> List (List.map xs ~f:(fun (k, v) ->
+    Sexp0.List [to_sexp k; to_sexp v]))
+  | Set xs -> List (List.map xs ~f:to_sexp)
+  | Tuple t -> List (List.map t ~f:to_sexp)
   | Record fields ->
-    List.map fields ~f:(fun (field, f) -> (field, to_sexp f))
-    |> record
-  | Variant (s, []) -> string s
-  | Variant (s, xs) -> constr s (List.map xs ~f:to_sexp)
+    List (List.map fields ~f:(fun (field, f) ->
+      Sexp0.List [Atom field; to_sexp f]))
+  | Variant (s, []) -> Atom s
+  | Variant (s, xs) -> List (Atom s :: List.map xs ~f:to_sexp)
 
 module Encoder = struct
 

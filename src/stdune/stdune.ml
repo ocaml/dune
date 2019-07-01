@@ -26,7 +26,6 @@ module Staged     = Staged
 module String     = String
 module Char       = Char
 module Bool       = Bool
-module Sexp_intf  = Sexp_intf
 module Sexp       = Sexp
 module Path       = Path
 module Fmt        = Fmt

@@ -52,6 +52,11 @@
 
 - Set version in `META` and `dune-package` files to the one read from
   the vcs when no other version is available (#2224, @diml)
+  
+- Add a variable %{target} to be used in situations where the context
+  requires at most one word, so %{targets} can be confusing. Stdout
+  redirections and "-o" arguments of various tools are the main
+  use case.  (#????, @aalekseyev)
 
 - Fix dependency graph of wrapped_compat modules. Previously, the dependency on
   the user written entry module was omitted. (#2305, @rgrinberg)

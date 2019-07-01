@@ -1031,6 +1031,14 @@
     (diff? run.t run.t.corrected)))))
 
 (alias
+ (name multiple-targets)
+ (deps (package dune) (source_tree test-cases/multiple-targets))
+ (action
+  (chdir
+   test-cases/multiple-targets
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name name-field-validation)
  (deps (package dune) (source_tree test-cases/name-field-validation))
  (action
@@ -1710,6 +1718,7 @@
   (alias missing-loc-run)
   (alias multi-dir)
   (alias multiple-private-libs)
+  (alias multiple-targets)
   (alias name-field-validation)
   (alias no-installable-mode)
   (alias no-name-field)
@@ -1890,6 +1899,7 @@
   (alias misc)
   (alias missing-loc-run)
   (alias multi-dir)
+  (alias multiple-targets)
   (alias name-field-validation)
   (alias no-installable-mode)
   (alias no-name-field)

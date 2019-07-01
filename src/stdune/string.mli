@@ -81,13 +81,13 @@ module Set : sig
 
   val pp : Format.formatter -> t -> unit
 
-  val to_dyn : t -> Dyn0.t
+  val to_dyn : t -> Dyn.t
 end
 module Map : sig
   include Map.S with type key = t
 
   val pp : (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a t -> unit
 
-  val to_dyn : ('a -> Dyn0.t) -> 'a t -> Dyn0.t
+  val to_dyn : ('a -> Dyn.t) -> 'a t -> Dyn.t
 end
 module Table : Hashtbl.S with type key = t

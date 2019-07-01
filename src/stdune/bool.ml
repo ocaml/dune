@@ -14,4 +14,4 @@ let to_string = string_of_bool
 
 let of_string s = Option.try_with (fun () -> bool_of_string s)
 
-let to_dyn t = Dyn0.Bool t
+let to_dyn t = Dyn.Bool t

@@ -1,5 +1,3 @@
-module Dyn = Dyn0
-
 type t =
   { message : string
   ; data : (string * Dyn.t) list

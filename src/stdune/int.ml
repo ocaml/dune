@@ -7,7 +7,7 @@ module T = struct
       Eq
     else
       Gt
-  let to_dyn x = Dyn0.Int x
+  let to_dyn x = Dyn.Int x
 end
 
 include T

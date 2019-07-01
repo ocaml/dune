@@ -12,7 +12,7 @@ type t =
   | Bytes of bytes
   | Char of char
   | Float of float
-  | Sexp of Sexp0.t
+  | Sexp of Sexp.t
   | Option of t option
   | List of t list
   | Array of t array
@@ -142,7 +142,7 @@ type t =
            ; Pp.concat_map ~sep:(Pp.char ',') xs ~f:pp
            ])
   and pp_sexp = function
-    | Sexp0.Atom s -> Pp.verbatim (Escape.quote_if_needed s)
+    | Sexp.Atom s -> Pp.verbatim (Escape.quote_if_needed s)
     | List [] -> Pp.verbatim "()"
     | List l ->
       Pp.box ~indent:1

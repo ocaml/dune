@@ -32,13 +32,7 @@ let top_closed t modules =
   |> Build.all
   >>^ fun per_module ->
   let per_module = Module.Obj_map.of_list_exn per_module in
-  match
-    Module.Name.Top_closure.top_closure modules
-      ~key:Module.name
-      ~deps:(fun m ->
-        Module.Obj_map.find per_module m
-        |> Option.value_exn)
-  with
+  match Module.Obj_map.top_closure per_module modules with
   | Ok modules -> modules
   | Error cycle ->
     die "dependency cycle between modules in %s:\n   %a"

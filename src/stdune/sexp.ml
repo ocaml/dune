@@ -77,9 +77,3 @@ and equal_list xs ys = (* replicating List.equal to avoid circular deps *)
   | _, _ -> false
 
 let compare x y = Ordering.of_int (compare x y)
-
-let rec to_dyn =
-  let open Dyn0 in
-  function
-  | Atom s -> Variant ("Atom", [String s])
-  | List xs -> Variant ("List", List.map ~f:to_dyn xs)

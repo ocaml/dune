@@ -12,7 +12,6 @@ type t =
   | Bytes of bytes
   | Char of char
   | Float of float
-  | Sexp of Sexp.t
   | Option of t option
   | List of t list
   | Array of t array
@@ -69,7 +68,6 @@ let rec pp = function
   | Bytes b -> string_in_ocaml_syntax (Bytes.to_string b)
   | Char c -> Pp.char c
   | Float f -> Pp.verbatim (string_of_float f)
-  | Sexp s -> pp_sexp s
   | Option None -> pp (Variant ("None", []))
   | Option (Some x) -> pp (Variant ("Some", [x]))
   | List x ->
@@ -141,16 +139,6 @@ let rec pp = function
          ; Pp.space
          ; Pp.concat_map ~sep:(Pp.char ',') xs ~f:pp
          ])
-and pp_sexp = function
-  | Sexp.Atom s -> Pp.verbatim (Escape.quote_if_needed s)
-  | List [] -> Pp.verbatim "()"
-  | List l ->
-    Pp.box ~indent:1
-      (Pp.concat
-         [ Pp.char '('
-         ; Pp.hvbox (Pp.concat_map l ~sep:Pp.space ~f:pp_sexp)
-         ; Pp.char ')'
-         ])
 
 let pp fmt t = Pp.render_ignore_tags fmt (pp t)
 
@@ -165,7 +153,6 @@ let rec to_sexp : t -> Sexp.t = function
   | Bytes s -> Atom (Bytes.to_string s)
   | Char c -> Atom (String.make 1 c)
   | Float f -> Atom (string_of_float f)
-  | Sexp s -> s
   | Option o ->
     List (match o with
       | None -> []

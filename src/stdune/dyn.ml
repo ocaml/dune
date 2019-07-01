@@ -1,13 +1,13 @@
 include Dyn0
 
-let rec to_sexp : t -> Sexp0.t = function
+let rec to_sexp : t -> Sexp.t = function
   | Opaque -> Atom "<opaque>"
   | Unit -> List []
   | Int i -> Atom (string_of_int i)
   | Bool b -> Atom (string_of_bool b)
   | String s -> Atom s
-  | Bytes s -> Atom (Stdlib.Bytes.to_string s)
-  | Char c -> Atom (Stdlib.String.make 1 c)
+  | Bytes s -> Atom (Dune_caml.Bytes.to_string s)
+  | Char c -> Atom (Dune_caml.String.make 1 c)
   | Float f -> Atom (string_of_float f)
   | Sexp s -> s
   | Option o ->
@@ -17,12 +17,12 @@ let rec to_sexp : t -> Sexp0.t = function
   | List l -> List (List.map l ~f:to_sexp)
   | Array a -> List (Array.to_list a |> List.map ~f:to_sexp)
   | Map xs -> List (List.map xs ~f:(fun (k, v) ->
-    Sexp0.List [to_sexp k; to_sexp v]))
+    Sexp.List [to_sexp k; to_sexp v]))
   | Set xs -> List (List.map xs ~f:to_sexp)
   | Tuple t -> List (List.map t ~f:to_sexp)
   | Record fields ->
     List (List.map fields ~f:(fun (field, f) ->
-      Sexp0.List [Atom field; to_sexp f]))
+      Sexp.List [Atom field; to_sexp f]))
   | Variant (s, []) -> Atom s
   | Variant (s, xs) -> List (Atom s :: List.map xs ~f:to_sexp)
 

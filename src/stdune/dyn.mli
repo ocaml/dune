@@ -7,7 +7,7 @@ type t = Dyn0.t =
   | Bytes of bytes
   | Char of char
   | Float of float
-  | Sexp of Sexp0.t
+  | Sexp of Sexp.t
   | Option of t option
   | List of t list
   | Array of t array
@@ -48,7 +48,7 @@ val opaque : t
 
 val compare : t -> t -> Ordering.t
 
-val to_sexp : t -> Sexp0.t
+val to_sexp : t -> Sexp.t
 
 val hash : t -> int
 

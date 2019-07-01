@@ -2,12 +2,9 @@ module Array = ArrayLabels
 module List = ListLabels
 module String = StringLabels
 
-type t = Sexp0.t =
+type t =
   | Atom of string
   | List of t list
-
-(* XXX otherwise the dependency isn't recorded by bootstrap *)
-module Sexp_intf = Sexp_intf
 
 let rec to_string = function
   | Atom s -> Escape.quote_if_needed s

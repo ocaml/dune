@@ -1,4 +1,6 @@
-type t = Sexp0.t =
+(** S-expressions *)
+
+type t =
   | Atom of string
   | List of t list
 

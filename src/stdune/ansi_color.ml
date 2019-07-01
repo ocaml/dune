@@ -117,19 +117,24 @@ let parse_line str styles =
       (styles, add_chunk acc ~styles ~pos:i ~len:(len - i))
     | Some seq_start ->
       let acc = add_chunk acc ~styles ~pos:i ~len:(seq_start - i) in
-      match String.index_from str (seq_start + 1) 'm' with
-      | None -> (styles, acc)
-      | Some seq_end ->
-        let styles =
-          String.sub str ~pos:(seq_start + 1) ~len:(seq_end - seq_start - 1)
-          |> String.split ~on:';'
-          |> List.fold_left ~init:(List.rev styles) ~f:(fun styles s ->
-            match s with
-            | "0" -> styles
-            | _ -> s :: styles)
-          |> List.rev
-        in
-        loop styles (seq_end + 1) acc
+      (* Skip the "\027[" *)
+      let seq_start = seq_start + 2 in
+      if seq_start >= len || str.[seq_start - 1] <> '[' then
+        (styles, acc)
+      else
+        match String.index_from str seq_start 'm' with
+        | None -> (styles, acc)
+        | Some seq_end ->
+          let styles =
+            String.sub str ~pos:seq_start ~len:(seq_end - seq_start)
+            |> String.split ~on:';'
+            |> List.fold_left ~init:(List.rev styles) ~f:(fun styles s ->
+              match s with
+              | "0" -> []
+              | _ -> s :: styles)
+            |> List.rev
+          in
+          loop styles (seq_end + 1) acc
   in
   loop styles 0 Pp.nop
 

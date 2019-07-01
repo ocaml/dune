@@ -1,4 +1,4 @@
-module type Combinators = sig
+module type S = sig
   type 'a t
   val unit       : unit                      t
   val char       : char                      t

@@ -221,7 +221,7 @@ val parse_cst_string
 
 module Encoder : sig
   type sexp = t
-  include Sexp_intf.Combinators with type 'a t = 'a -> t
+  include Combinators.S with type 'a t = 'a -> t
 
   val sexp : sexp t
 
@@ -383,7 +383,7 @@ module Decoder : sig
   val record : 'a fields_parser -> 'a t
 
   (** Consume the next element of the input as a string, int, char, ... *)
-  include Sexp_intf.Combinators with type 'a t := 'a t
+  include Combinators.S with type 'a t := 'a t
 
   (** Unparsed next element of the input *)
   val raw : ast t

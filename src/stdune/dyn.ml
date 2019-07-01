@@ -144,31 +144,6 @@ let pp fmt t = Pp.render_ignore_tags fmt (pp t)
 
 let to_string t = Format.asprintf "%a" pp t
 
-let rec to_sexp : t -> Sexp.t = function
-  | Opaque -> Atom "<opaque>"
-  | Unit -> List []
-  | Int i -> Atom (string_of_int i)
-  | Bool b -> Atom (string_of_bool b)
-  | String s -> Atom s
-  | Bytes s -> Atom (Bytes.to_string s)
-  | Char c -> Atom (String.make 1 c)
-  | Float f -> Atom (string_of_float f)
-  | Option o ->
-    List (match o with
-      | None -> []
-      | Some x -> [to_sexp x])
-  | List l -> List (List.map l ~f:to_sexp)
-  | Array a -> List (Array.to_list a |> List.map ~f:to_sexp)
-  | Map xs -> List (List.map xs ~f:(fun (k, v) ->
-    Sexp.List [to_sexp k; to_sexp v]))
-  | Set xs -> List (List.map xs ~f:to_sexp)
-  | Tuple t -> List (List.map t ~f:to_sexp)
-  | Record fields ->
-    List (List.map fields ~f:(fun (field, f) ->
-      Sexp.List [Atom field; to_sexp f]))
-  | Variant (s, []) -> Atom s
-  | Variant (s, xs) -> List (Atom s :: List.map xs ~f:to_sexp)
-
 module Encoder = struct
 
   type dyn = t

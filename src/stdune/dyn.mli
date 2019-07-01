@@ -7,7 +7,6 @@ type t =
   | Bytes of bytes
   | Char of char
   | Float of float
-  | Sexp of Sexp.t
   | Option of t option
   | List of t list
   | Array of t array

@@ -19,4 +19,4 @@ val equal : t -> t -> bool
 
 val hash : t -> int
 
-val to_dyn : t -> Dyn0.t
+val to_dyn : t -> Dyn.t

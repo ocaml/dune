@@ -1,4 +1,4 @@
-type t = Dyn0.t =
+type t =
   | Opaque
   | Unit
   | Int of int

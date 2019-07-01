@@ -1,6 +1,6 @@
 module type Key = sig
   include Comparator.S
-  val to_dyn : t -> Dyn0.t
+  val to_dyn : t -> Dyn.t
 end
 
 module type S = sig

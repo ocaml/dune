@@ -1,6 +1,5 @@
 (* Because other the syntax s.[x] causes trouble *)
 module String = Dune_caml.String
-module Dyn = Dyn0
 
 include struct
   [@@@warning "-32-3"]

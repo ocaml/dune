@@ -1,6 +1,5 @@
 module List = Dune_caml.ListLabels
 module String = Dune_caml.StringLabels
-module Dyn = Dyn0
 type t = exn
 
 external raise         : exn -> _ = "%raise"
@@ -45,4 +44,4 @@ include
 let equal = (=)
 let hash = Dune_caml.Hashtbl.hash
 
-let to_dyn exn = Dyn0.String (Printexc.to_string exn)
+let to_dyn exn = Dyn.String (Printexc.to_string exn)

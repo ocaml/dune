@@ -39,7 +39,6 @@ module Name = struct
     let to_dyn t = Dyn.Set (List.map ~f:(fun s -> Dyn.String s) (to_list t))
   end
   module Map = String.Map
-  module Top_closure = Top_closure.String
   module Infix = Comparator.Operators(T)
 
   let of_local_lib_name s =
@@ -315,7 +314,7 @@ module Obj_map = struct
 
   let top_closure t =
     Top_closure.String.top_closure
-      ~key:(fun m -> m.obj_name)
+      ~key:real_unit_name
       ~deps:(find_exn t)
 end
 

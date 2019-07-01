@@ -11,7 +11,7 @@ module V1 = struct
     let version = snd
   end
 
-  module All_statically_linked_libraries = struct
+  module Statically_linked_libraries = struct
     let to_list () = Build_info_data.statically_linked_libraries
 
     let find ~name =

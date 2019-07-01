@@ -131,7 +131,7 @@ let build_info =
     in
     pr "version: %s" (ver_string (B.version ()));
     let libs =
-      B.All_statically_linked_libraries.to_list ()
+      B.Statically_linked_libraries.to_list ()
       |> List.map ~f:(fun lib ->
         B.Statically_linked_library.name lib,
         ver_string (B.Statically_linked_library.version lib))

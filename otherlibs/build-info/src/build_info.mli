@@ -24,7 +24,7 @@ module V1 : sig
     val version : t -> Version.t option
   end
 
-  module All_statically_linked_libraries : sig
+  module Statically_linked_libraries : sig
     (** All the libraries that where statically linked in *)
 
     val to_list : unit -> Statically_linked_library.t list

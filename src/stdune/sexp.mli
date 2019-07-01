@@ -13,3 +13,5 @@ val hash : t -> int
 val equal : t -> t -> bool
 
 val compare : t -> t -> Ordering.t
+
+val of_dyn : Dyn.t -> t

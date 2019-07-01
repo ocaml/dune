@@ -46,3 +46,28 @@ and equal_list xs ys = (* replicating List.equal to avoid circular deps *)
   | _, _ -> false
 
 let compare x y = Ordering.of_int (compare x y)
+
+let rec of_dyn : Dyn.t -> t = function
+  | Opaque -> Atom "<opaque>"
+  | Unit -> List []
+  | Int i -> Atom (string_of_int i)
+  | Bool b -> Atom (string_of_bool b)
+  | String s -> Atom s
+  | Bytes s -> Atom (Bytes.to_string s)
+  | Char c -> Atom (String.make 1 c)
+  | Float f -> Atom (string_of_float f)
+  | Option o ->
+    List (match o with
+      | None -> []
+      | Some x -> [of_dyn x])
+  | List l -> List (List.map l ~f:of_dyn)
+  | Array a -> List (Array.to_list a |> List.map ~f:of_dyn)
+  | Map xs -> List (List.map xs ~f:(fun (k, v) ->
+    List [of_dyn k; of_dyn v]))
+  | Set xs -> List (List.map xs ~f:of_dyn)
+  | Tuple t -> List (List.map t ~f:of_dyn)
+  | Record fields ->
+    List (List.map fields ~f:(fun (field, f) ->
+      List [Atom field; of_dyn f]))
+  | Variant (s, []) -> Atom s
+  | Variant (s, xs) -> List (Atom s :: List.map xs ~f:of_dyn)

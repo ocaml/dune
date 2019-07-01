@@ -47,8 +47,6 @@ val opaque : t
 
 val compare : t -> t -> Ordering.t
 
-val to_sexp : t -> Sexp.t
-
 val hash : t -> int
 
 val to_string : t -> string

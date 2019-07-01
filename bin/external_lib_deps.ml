@@ -89,7 +89,7 @@ let run ~lib_deps ~by_dir ~setup ~only_missing ~sexp =
         in
         let sexp =
           Path.Source.Map.to_dyn Lib_deps_info.to_dyn lib_deps_by_dir
-          |> Dyn.to_sexp
+          |> Sexp.of_dyn
         in
         Format.printf "%a@." Sexp.pp (List [Atom context_name; sexp]);
         acc

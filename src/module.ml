@@ -314,7 +314,7 @@ module Obj_map = struct
 
   let top_closure t =
     Top_closure.String.top_closure
-      ~key:real_unit_name
+      ~key:obj_name
       ~deps:(find_exn t)
 end
 

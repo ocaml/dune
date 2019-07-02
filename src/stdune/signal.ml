@@ -1,4 +1,4 @@
-let signal_name =
+let name =
   let table =
     let open Sys in
     [ sigabrt   , "ABRT"

@@ -26,8 +26,7 @@ let bash_exn =
       die "I need bash to %s but I couldn't find it :("
         needed_to
 
-let signal_name = StdUtils.signal_name
-
+let signal_name = Stdune.Signal.name
 
 let library_object_directory ~dir name =
   Path.Build.relative dir ("." ^ Lib_name.Local.to_string name ^ ".objs")

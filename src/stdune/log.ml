@@ -70,7 +70,7 @@ let command t ~command_line ~output ~exit_status =
       | WEXITED n ->
           Printf.fprintf oc "[%d]\n" n
       | WSIGNALED n ->
-          Printf.fprintf oc "[got signal %s]\n" (Utils.signal_name n)
+          Printf.fprintf oc "[got signal %s]\n" (Signal.name n)
       | WSTOPPED _ ->
           assert false ) ;
       flush oc

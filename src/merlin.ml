@@ -63,7 +63,7 @@ let quote_for_merlin s =
     else
       s
   in
-  if need_quoting s then
+  if String.need_quoting s then
     Filename.quote s
   else
     s

@@ -49,7 +49,6 @@ module Float      = Float
 module Tuple      = Tuple
 module Poly       = Poly
 module StdDisplay = Display
-module StdImport  = Import
 module StdUtils   = Utils
 module Code_error = Code_error
 module User_error = User_error
@@ -82,3 +81,4 @@ type ordering = Ordering.t =
   | Gt
 
 let sprintf = Printf.sprintf
+let ksprintf = Printf.ksprintf

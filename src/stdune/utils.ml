@@ -1,5 +1,3 @@
-open Import
-
 let signal_name =
   let table =
     let open Sys in
@@ -36,5 +34,5 @@ let signal_name =
   in
   fun n ->
     match List.assoc table n with
-    | None -> sprintf "%d\n" n
+    | None -> Printf.sprintf "%d\n" n
     | Some s -> s

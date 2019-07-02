@@ -1,5 +1,3 @@
-open Import
-
 type real =
   { oc: out_channel
   ; buf: Buffer.t
@@ -17,7 +15,7 @@ let create ?(display = Display.Quiet) ?(path) () =
   let oc = Io.open_out path in
   Printf.fprintf oc "# %s\n# OCAMLPARAM: %s\n%!"
     (String.concat
-       (List.map (Array.to_list Sys.argv) ~f:quote_for_shell)
+       (List.map (Array.to_list Sys.argv) ~f:String.quote_for_shell)
        ~sep:" ")
     ( match Env.get Env.initial "OCAMLPARAM" with
     | Some s ->
@@ -38,7 +36,7 @@ let info_internal {ppf; display; _} str =
     Format.pp_print_flush ppf ()
   in
   write ppf ;
-  if display = Verbose then print_to_console (Format.asprintf "%t" write)
+  if display = Verbose then Console.print (Format.asprintf "%t" write)
 
 let info t str = match t with None -> () | Some t -> info_internal t str
 

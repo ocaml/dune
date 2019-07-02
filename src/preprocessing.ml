@@ -790,7 +790,7 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess
                     ; driver_flags
                     ; flags
                     ])
-                 ~f:quote_for_shell
+                 ~f:String.quote_for_shell
                |> String.concat ~sep:" "
              in
              ["-ppx"; command]))

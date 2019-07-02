@@ -41,14 +41,14 @@ let print ?(skip_trailing_cr=Sys.win32) path1 path2 =
   | Some cmd ->
     let sh, arg = Utils.system_shell_exn ~needed_to:"print diffs" in
     let cmd =
-      sprintf "%s %s %s" cmd (quote_for_shell file1) (quote_for_shell file2)
+      sprintf "%s %s %s" cmd (String.quote_for_shell file1) (String.quote_for_shell file2)
     in
     let* () = Process.run ~dir ~env:Env.initial Strict sh [arg; cmd] in
     die "command reported no differences: %s"
       (if Path.is_root dir then
          cmd
        else
-         sprintf "cd %s && %s" (quote_for_shell (Path.to_string dir)) cmd)
+         sprintf "cd %s && %s" (String.quote_for_shell (Path.to_string dir)) cmd)
   | None ->
     if Config.inside_dune then
       fallback ()

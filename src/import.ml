@@ -2,7 +2,6 @@ open! Stdune
 
 include Stdune
 include Errors
-include Stdune.StdImport
 
 module Re = Dune_re
 

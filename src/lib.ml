@@ -49,7 +49,7 @@ module Error = struct
       [ Pp.box ~indent:2
           (Pp.concat ~sep:Pp.space
              (Pp.text "try:"
-              :: List.map l ~f:(fun x -> Pp.verbatim (quote_for_shell x))))
+              :: List.map l ~f:(fun x -> Pp.verbatim (String.quote_for_shell x))))
       ]
 
   let not_found ~loc ~name =

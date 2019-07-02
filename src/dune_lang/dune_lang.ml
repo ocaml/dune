@@ -1047,6 +1047,43 @@ module Decoder = struct
     let a, state = a ctx state in
     let b, state = b ctx state in
     ((a, b), state)
+
+  let traverse f l ctx state =
+    Tuple.T2.swap (
+      List.fold_map ~init:state l ~f:(fun state x ->
+        Tuple.T2.swap (f x ctx state)
+      ))
+
+let fields_missing_need_exactly_one loc names =
+  of_sexp_errorf loc "fields %s are all missing (exactly one is needed)"
+    (String.concat ~sep:", " names)
+[@@inline never]
+
+let fields_mutual_exclusion_violation loc names =
+  of_sexp_errorf loc "fields %s are mutually-exclusive"
+    (String.concat ~sep:", " names)
+[@@inline never]
+
+let fields_mutually_exclusive
+      ?on_dup fields ((Fields (loc, _, _) : _ context) as ctx) state =
+  let res, state =
+    traverse (fun (name, parser) ->
+      field_o name ?on_dup parser
+      >>| fun res -> (name, res)
+    ) fields ctx state
+  in
+  match
+    List.filter_map res
+      ~f:(function (name, Some x) -> Some(name, x) | (_, None) -> None) with
+  | [] ->
+    let names = List.map fields ~f:fst in
+    fields_missing_need_exactly_one loc names
+  | [ (_name, res) ] ->
+    res, state
+  | (_ :: _ :: _ as results) ->
+    let names = List.map ~f:fst results in
+    fields_mutual_exclusion_violation loc names
+
 end
 
 module type Conv = sig

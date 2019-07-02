@@ -427,6 +427,11 @@ module Decoder : sig
     -> 'a t
     -> 'a option fields_parser
 
+  val fields_mutually_exclusive
+    : ?on_dup:(Univ_map.t -> string -> Ast.t list -> unit)
+    -> (string * 'a t) list
+    -> 'a fields_parser
+
   val field_b
     :  ?check:(unit t)
     -> ?on_dup:(Univ_map.t -> string -> Ast.t list -> unit)

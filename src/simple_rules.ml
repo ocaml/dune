@@ -20,7 +20,7 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
     let targets : Expander.Targets.t =
       match rule.targets with
       | Infer -> Infer
-      | Static fns ->
+      | Static { targets = fns; multiplicity = _ } ->
         let f fn =
           let not_in_dir ~error_loc s =
             User_error.raise ~loc:error_loc
@@ -40,14 +40,14 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
             | Path p ->
               if Option.compare Path.compare
                    (Path.parent p) (Some (Path.build dir))
-                   <> Eq
+                 <> Eq
               then
                 not_in_dir ~error_loc (Path.to_string p);
               p
             | Dir p ->
               not_in_dir ~error_loc (Path.to_string p))
         in
-        Static (List.concat_map ~f fns)
+        Expander.Targets.Static (List.concat_map ~f fns)
     in
     let bindings = dep_bindings ~extra_bindings rule.deps in
     let expander = Expander.add_bindings expander ~bindings in

@@ -332,8 +332,16 @@ end
 
 module Rule : sig
   module Targets : sig
+
+    module Multiplicity : sig
+      type t = One | Multiple
+    end
+
+    type static =
+      { targets : String_with_vars.t list; multiplicity : Multiplicity.t }
+
     type t =
-      | Static of String_with_vars.t list
+      | Static of static
       | Infer
   end
 

@@ -53,3 +53,44 @@ to get a better error message:
   Error: There is more than one target. %{target} requires there to be one
   unambiguous target.
   [1]
+
+^ Expected error message
+
+  $ cat > dune <<EOF
+  > (rule
+  >   (targets a)
+  >   (target a)
+  >   (action (bash "echo hola > %{target}")))
+  > EOF
+
+  $ dune build a
+  File "dune", line 1, characters 0-75:
+  1 | (rule
+  2 |   (targets a)
+  3 |   (target a)
+  4 |   (action (bash "echo hola > %{target}")))
+  Error: fields targets, target are mutually-exclusive
+  [1]
+
+^ Specifying both [targets] and [target] is not allowed
+
+  $ cat > dune <<EOF
+  > (rule
+  >   (targets a)
+  >   (action (bash "echo hola > %{target}")))
+  > EOF
+
+  $ dune build a
+
+^ You can use [target] even though you specified [targets]
+^ CR aalekseyev: It seems that people want to disallow this.
+
+  $ cat > dune <<EOF
+  > (rule
+  >   (target a)
+  >   (action (bash "echo hola > %{targets}")))
+  > EOF
+
+  $ dune build a
+
+^ You can use [targets] even though you specified [target]

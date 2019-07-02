@@ -15,6 +15,7 @@ module Int        = Int
 module Id         = Id
 module Io         = Io
 module List       = List
+module Lockf      = Lockf
 module Map        = Map
 module Option     = Option
 module Or_exn     = Or_exn

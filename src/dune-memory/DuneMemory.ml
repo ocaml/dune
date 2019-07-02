@@ -29,6 +29,13 @@ let compare a b : ordering =
   in
   loop 0
 
+let with_lock memory f =
+  let lock =
+    Stdune.Lockf.lock (Path.to_string (Path.L.relative memory.root [".lock"]))
+  in
+  let finally () = Stdune.Lockf.unlock lock in
+  Exn.protect ~f ~finally
+
 let key consumed metadata produced =
   let consumed =
     List.sort ~compare:(fun (p1, _) (p2, _) -> compare p1 p2) consumed
@@ -163,52 +170,59 @@ let promote memory paths key metadata _ =
           Unix.chmod dest ((Unix.stat dest).st_perm land 0o555) ;
           Promoted (path, p)
   in
-  unix (fun () ->
-      let res = List.map ~f:promote paths
-      and metadata_path = FSSchemeImpl.path (path_meta memory) key in
-      mkpath (Path.parent_exn metadata_path) ;
-      Io.write_file metadata_path
-        (Csexp.to_string_canonical
-           (Sexp.List
-              [ Sexp.List [Sexp.Atom "metadata"; metadata]
-              ; Sexp.List
-                  [ Sexp.Atom "produced-files"
-                  ; Sexp.List
-                      (List.filter_map
-                         ~f:(function
-                           | Promoted (o, p) | Already_promoted (o, p) ->
-                               Some
-                                 (Sexp.List
-                                    [ Sexp.Atom (Path.to_string o)
-                                    ; Sexp.Atom (Path.to_string p) ])
-                           | _ ->
-                               None )
-                         res) ] ])) ;
-      res )
+  let f () =
+    unix (fun () ->
+        let res = List.map ~f:promote paths
+        and metadata_path = FSSchemeImpl.path (path_meta memory) key in
+        mkpath (Path.parent_exn metadata_path) ;
+        Io.write_file metadata_path
+          (Csexp.to_string_canonical
+             (Sexp.List
+                [ Sexp.List [Sexp.Atom "metadata"; metadata]
+                ; Sexp.List
+                    [ Sexp.Atom "produced-files"
+                    ; Sexp.List
+                        (List.filter_map
+                           ~f:(function
+                             | Promoted (o, p) | Already_promoted (o, p) ->
+                                 Some
+                                   (Sexp.List
+                                      [ Sexp.Atom (Path.to_string o)
+                                      ; Sexp.Atom (Path.to_string p) ])
+                             | _ ->
+                                 None )
+                           res) ] ])) ;
+        res )
+  in
+  with_lock memory f
 
 let search memory key =
   let path = FSSchemeImpl.path (path_meta memory) key in
   let metadata =
     Io.with_file_in path ~f:(fun input -> Csexp.parse_channel_canonical input)
   in
-  match metadata with
-  | Sexp.List
-      [ Sexp.List [Sexp.Atom s_metadata; metadata]
-      ; Sexp.List [Sexp.Atom s_produced; Sexp.List produced] ] ->
-      if
-        (not (String.equal s_metadata "metadata"))
-        && String.equal s_produced "produced-files"
-      then raise (Failed "invalid metadata scheme: wrong key")
-      else
-        ( metadata
-        , List.map produced ~f:(function
-            | Sexp.List [Sexp.Atom f; Sexp.Atom t] ->
-                (Path.of_string f, Path.of_string t)
-            | _ ->
-                raise (Failed "invalid metadata scheme in produced files list") )
-        )
-  | _ ->
-      raise (Failed "invalid metadata scheme")
+  let f () =
+    match metadata with
+    | Sexp.List
+        [ Sexp.List [Sexp.Atom s_metadata; metadata]
+        ; Sexp.List [Sexp.Atom s_produced; Sexp.List produced] ] ->
+        if
+          (not (String.equal s_metadata "metadata"))
+          && String.equal s_produced "produced-files"
+        then raise (Failed "invalid metadata scheme: wrong key")
+        else
+          ( metadata
+          , List.map produced ~f:(function
+              | Sexp.List [Sexp.Atom f; Sexp.Atom t] ->
+                  (Path.of_string f, Path.of_string t)
+              | _ ->
+                  raise
+                    (Failed "invalid metadata scheme in produced files list") )
+          )
+    | _ ->
+        raise (Failed "invalid metadata scheme")
+  in
+  with_lock memory f
 
 let trim memory free =
   let path = path_files memory in
@@ -227,4 +241,4 @@ let trim memory free =
       Unix.unlink (Path.to_string path) ;
       (freed + size, path :: res) )
   in
-  List.fold_left ~init:(0, []) ~f:delete files
+  with_lock memory (fun () -> List.fold_left ~init:(0, []) ~f:delete files)

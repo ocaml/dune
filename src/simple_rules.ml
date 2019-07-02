@@ -20,16 +20,14 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
     let targets : Expander.Targets.t =
       match rule.targets with
       | Infer -> Infer
-      | Static { targets = fns; multiplicity = _ } ->
-        let f fn =
-          let not_in_dir ~error_loc s =
-            User_error.raise ~loc:error_loc
-              [ Pp.textf
-                  "%s does not denote a file in the current directory" s ];
-          in
-          let error_loc = String_with_vars.loc fn in
-          Expander.expand expander ~mode:Many ~template:fn
-          |> List.map ~f:(function
+      | Static { targets; multiplicity } ->
+        let not_in_dir ~error_loc s =
+          User_error.raise ~loc:error_loc
+            [ Pp.textf
+                "%s does not denote a file in the current directory" s ];
+        in
+        let check_filename ~error_loc fn =
+          match fn with
             | Value.String ("." | "..") ->
               User_error.raise~loc:error_loc
                 [ Pp.text "'.' and '..' are not valid filenames" ]
@@ -45,9 +43,23 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
                 not_in_dir ~error_loc (Path.to_string p);
               p
             | Dir p ->
-              not_in_dir ~error_loc (Path.to_string p))
+              not_in_dir ~error_loc (Path.to_string p)
         in
-        Expander.Targets.Static (List.concat_map ~f fns)
+
+        let targets = List.concat_map targets ~f:(fun target ->
+          let error_loc = String_with_vars.loc target in
+          match multiplicity with
+          | One ->
+            let res = Expander.expand expander ~mode:Single ~template:target in
+            [check_filename ~error_loc res]
+          | Multiple ->
+            Expander.expand expander ~mode:Many ~template:target
+            |> List.map ~f:(check_filename ~error_loc))
+        in
+        Expander.Targets.Static
+          { multiplicity;
+            targets
+          }
     in
     let bindings = dep_bindings ~extra_bindings rule.deps in
     let expander = Expander.add_bindings expander ~bindings in

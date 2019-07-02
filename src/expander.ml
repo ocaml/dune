@@ -197,8 +197,14 @@ module Resolved_forms = struct
 end
 
 module Targets = struct
+  type static =
+    {
+      targets : Path.t list;
+      multiplicity : Dune_file.Rule.Targets.Multiplicity.t;
+    }
+
   type t =
-    | Static of Path.t list
+    | Static of static
     | Infer
     | Forbidden of string
 end
@@ -372,27 +378,25 @@ let expand_and_record_deps acc ~(dir : Path.Build.t) ~read_package ~dep_kind
               (String_with_vars.Var.describe pform)
           ]
       | Forbidden context ->
-        User_error.raise ~loc
-          [ Pp.textf
-              "You cannot use %s in %s."
-              (String_with_vars.Var.describe pform) context
-          ]
-      | Static l ->
+        User_error.raise ~loc [
+          Pp.textf  "You cannot use %s in %s."
+            (String_with_vars.Var.describe pform) context ]
+      | Static { targets = l; multiplicity = declared_multiplicity } ->
         let value = Value.L.dirs l (* XXX hack to signal no dep *) in
-        match multiplicity, l with
-        | Multiple, _
-        | One, [ _ ]
+        match multiplicity, declared_multiplicity, l with
+        | Multiple, _, _
+        | One, One, [ _ ]
           -> Some value
-        | One, [] ->
-          User_error.raise ~loc
-            [ Pp.textf "There is no target." ]
-        | One, _ :: _ :: _ ->
-          User_error.raise ~loc
-            [ Pp.textf
-                "There is more than one target. %s requires there to \
-                 be one unambiguous target."
-                (String_with_vars.Var.describe pform) ]
-
+        | One, One, ([] | _ :: _ :: _ as l) ->
+          Code_error.raise
+            "target multiplicity is not consistent with the number of targets"
+            ["targets", Dyn.Encoder.list Path.to_dyn l]
+        | One, Multiple, _ ->
+          User_error.raise ~loc [
+            Pp.textf "You can only use the variable %%{target} if you \
+                      defined the list of targets using a field [target] \
+                      (not [targets])"
+          ]
       end
     in
     expand_var t pform syntax_version

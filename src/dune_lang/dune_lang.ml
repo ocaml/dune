@@ -1055,13 +1055,17 @@ module Decoder = struct
       ))
 
 let fields_missing_need_exactly_one loc names =
-  of_sexp_errorf loc "fields %s are all missing (exactly one is needed)"
-    (String.concat ~sep:", " names)
+  User_error.raise ~loc [
+    Pp.textf "fields %s are all missing (exactly one is needed)"
+      (String.concat ~sep:", " names)
+  ]
 [@@inline never]
 
 let fields_mutual_exclusion_violation loc names =
-  of_sexp_errorf loc "fields %s are mutually-exclusive"
-    (String.concat ~sep:", " names)
+  User_error.raise ~loc [
+    Pp.textf "fields %s are mutually exclusive"
+      (String.concat ~sep:", " names)
+  ]
 [@@inline never]
 
 let fields_mutually_exclusive

@@ -50,8 +50,8 @@ to get a better error message:
   File "dune", line 3, characters 31-38:
   3 |   (action (bash "echo hola > %{target}")))
                                      ^^^^^^^
-  Error: There is more than one target. %{target} requires there to be one
-  unambiguous target.
+  Error: You can only use the variable %{target} if you defined the list of
+  targets using a field [target] (not [targets])
   [1]
 
 ^ Expected error message
@@ -69,7 +69,7 @@ to get a better error message:
   2 |   (targets a)
   3 |   (target a)
   4 |   (action (bash "echo hola > %{target}")))
-  Error: fields targets, target are mutually-exclusive
+  Error: fields targets, target are mutually exclusive
   [1]
 
 ^ Specifying both [targets] and [target] is not allowed
@@ -81,9 +81,15 @@ to get a better error message:
   > EOF
 
   $ dune build a
+  File "dune", line 3, characters 31-38:
+  3 |   (action (bash "echo hola > %{target}")))
+                                     ^^^^^^^
+  Error: You can only use the variable %{target} if you defined the list of
+  targets using a field [target] (not [targets])
+  [1]
 
-^ You can use [target] even though you specified [targets]
-^ CR aalekseyev: It seems that people want to disallow this.
+^ You can't use the variable %{target} if you specified targets with
+the field [targets]
 
   $ cat > dune <<EOF
   > (rule

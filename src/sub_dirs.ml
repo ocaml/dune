@@ -136,9 +136,14 @@ let decode =
     Predicate_lang.decode
   in
   let vendored_dirs =
-    located
-      (Syntax.since Stanza.syntax (1, 11) >>>
-       Predicate_lang.decode)
+    let decode =
+      if Bootstrap.bootstrapping then
+        let pred = Predicate_lang.of_pred (fun _ -> true) in
+        Dune_lang.Decoder.(map ~f:(fun () -> pred) (keyword "*"))
+      else
+        Predicate_lang.decode
+    in
+    located (Syntax.since Stanza.syntax (1, 11) >>> decode)
   in
   let decode =
     let+ dirs = field_o "dirs" (located plang)

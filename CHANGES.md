@@ -76,6 +76,9 @@
 - Change the automatically generated odoc index to only list public modules.
   This only affects unwrapped libraries (#2479, @rgrinberg)
 
+- Set up formatting rules by default. They can be configured through a new
+  `(formatting)` stanza in `dune-project` (#2347, fixes #2315, @emillon)
+
 1.11.0 (23/07/2019)
 -------------------
 

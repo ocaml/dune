@@ -84,6 +84,7 @@ val allow_approx_merlin : t -> bool
 val generate_opam_files : t -> bool
 val dialects : t -> Dialect.DB.t
 val explicit_js_mode : t -> bool
+val format_config : t -> Format_config.t option
 
 val equal : t -> t -> bool
 val hash : t -> int

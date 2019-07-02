@@ -125,20 +125,6 @@ module Dep_conf : sig
   val to_dyn : t Dyn.Encoder.t
 end
 
-module Auto_format : sig
-  type language =
-    | Dialect of string
-    | Dune
-
-  type t
-
-  val key : t Dune_project.Extension.t
-
-  val loc : t -> Loc.t
-
-  val includes : t -> language -> bool
-end
-
 module Buildable : sig
   type t =
     { loc                      : Loc.t

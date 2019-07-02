@@ -15,14 +15,16 @@ Furthermore it can be used to format code of any defined dialect (see
 .. _ocamlformat: https://github.com/ocaml-ppx/ocamlformat
 .. _refmt: https://github.com/facebook/reason/tree/master/src/refmt
 
-Enabling automatic formatting
-=============================
+Configuring automatic formatting (dune 2.0)
+===========================================
 
-This feature is enabled by adding the following to the ``dune-project`` file:
+If using ``(lang dune 2.0)``, there is nothing to do, formatting will be set up
+by default. It is possible to disable it by adding the following to
+``dune-project``:
 
 .. code:: scheme
 
-    (using fmt 1.2)
+    (formatting disabled)
 
 Formatting a project
 ====================
@@ -66,22 +68,45 @@ the languages that are considered for formatting.
 
 .. code:: scheme
 
+    (formatting (enabled_for reason))
+
+Enabling and configuring automatic formatting (dune 1.x)
+========================================================
+
+.. note:: This section applies only to projects with ``(lang dune 1.x)``.
+
+In ``(lang dune 1.x)``, no formatting is done by default. This feature is
+enabled by adding the following to the ``dune-project`` file:
+
+.. code:: scheme
+
+    (using fmt 1.2)
+
+Languages can be configured using the following syntax:
+
+.. code:: scheme
+
     (using fmt 1.2 (enabled_for reason))
 
 Version history
 ===============
 
-1.2
----
+(lang dune 2.0)
+---------------
+
+* Formatting is enabled by default.
+
+(using fmt 1.2)
+---------------
 
 * Format :ref:`dialects-main`.
 
-1.1
----
+(using fmt 1.1)
+---------------
 
 * Format Dune files.
 
-1.0
----
+(using fmt 1.0)
+---------------
 
 * Format OCaml (using ocamlformat_) and Reason (using refmt_) source code.

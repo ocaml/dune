@@ -1,3 +1,8 @@
+Note about versioning:
+
+- in (lang dune 1.x), no formatting rules are set up by default.
+- (lang dune 2.0) behaves as if (using fmt 1.2) is set.
+
 Formatting can be checked using the @fmt target:
 
   $ cp enabled/ocaml_file.ml.orig enabled/ocaml_file.ml
@@ -22,6 +27,10 @@ Formatting can be checked using the @fmt target:
   File "enabled/subdir/dune", line 1, characters 0-0:
   Error: Files _build/default/enabled/subdir/dune and
   _build/default/enabled/subdir/.formatted/dune differ.
+          dune lang2/default/.formatted/dune
+  File "lang2/default/dune", line 1, characters 0-0:
+  Error: Files _build/default/lang2/default/dune and
+  _build/default/lang2/default/.formatted/dune differ.
         ocamlc fake-tools/.ocamlformat.eobjs/byte/refmt.{cmi,cmo,cmt}
       ocamlopt fake-tools/.ocamlformat.eobjs/native/refmt.{cmx,o}
       ocamlopt fake-tools/refmt.exe
@@ -33,6 +42,14 @@ Formatting can be checked using the @fmt target:
   File "enabled/subdir/lib.ml", line 1, characters 0-0:
   Error: Files _build/default/enabled/subdir/lib.ml and
   _build/default/enabled/subdir/.formatted/lib.ml differ.
+   ocamlformat lang2/default/.formatted/e.ml
+  File "lang2/default/e.ml", line 1, characters 0-0:
+  Error: Files _build/default/lang2/default/e.ml and
+  _build/default/lang2/default/.formatted/e.ml differ.
+   ocamlformat lang2/partial/.formatted/a.ml
+  File "lang2/partial/a.ml", line 1, characters 0-0:
+  Error: Files _build/default/lang2/partial/a.ml and
+  _build/default/lang2/partial/.formatted/a.ml differ.
    ocamlformat partial/.formatted/a.ml
   File "partial/a.ml", line 1, characters 0-0:
   Error: Files _build/default/partial/a.ml and
@@ -63,6 +80,15 @@ Configuration files are taken into account for this action:
   File "enabled/subdir/dune", line 1, characters 0-0:
   Error: Files _build/default/enabled/subdir/dune and
   _build/default/enabled/subdir/.formatted/dune differ.
+  File "lang2/default/e.ml", line 1, characters 0-0:
+  Error: Files _build/default/lang2/default/e.ml and
+  _build/default/lang2/default/.formatted/e.ml differ.
+  File "lang2/default/dune", line 1, characters 0-0:
+  Error: Files _build/default/lang2/default/dune and
+  _build/default/lang2/default/.formatted/dune differ.
+  File "lang2/partial/a.ml", line 1, characters 0-0:
+  Error: Files _build/default/lang2/partial/a.ml and
+  _build/default/lang2/partial/.formatted/a.ml differ.
   File "partial/a.ml", line 1, characters 0-0:
   Error: Files _build/default/partial/a.ml and
   _build/default/partial/.formatted/a.ml differ.
@@ -106,6 +132,9 @@ All .ocamlformat files are considered dependencies:
   File "enabled/subdir/dune", line 1, characters 0-0:
   Error: Files _build/default/enabled/subdir/dune and
   _build/default/enabled/subdir/.formatted/dune differ.
+  File "lang2/default/dune", line 1, characters 0-0:
+  Error: Files _build/default/lang2/default/dune and
+  _build/default/lang2/default/.formatted/dune differ.
          refmt enabled/.formatted/reason_file.re
    ocamlformat enabled/.formatted/ocaml_file.mli
   File "enabled/ocaml_file.mli", line 1, characters 0-0:
@@ -117,8 +146,42 @@ All .ocamlformat files are considered dependencies:
   File "enabled/subdir/lib.ml", line 1, characters 0-0:
   Error: Files _build/default/enabled/subdir/lib.ml and
   _build/default/enabled/subdir/.formatted/lib.ml differ.
+   ocamlformat lang2/default/.formatted/e.ml
+  File "lang2/default/e.ml", line 1, characters 0-0:
+  Error: Files _build/default/lang2/default/e.ml and
+  _build/default/lang2/default/.formatted/e.ml differ.
+   ocamlformat lang2/partial/.formatted/a.ml
+  File "lang2/partial/a.ml", line 1, characters 0-0:
+  Error: Files _build/default/lang2/partial/a.ml and
+  _build/default/lang2/partial/.formatted/a.ml differ.
    ocamlformat partial/.formatted/a.ml
   File "partial/a.ml", line 1, characters 0-0:
   Error: Files _build/default/partial/a.ml and
   _build/default/partial/.formatted/a.ml differ.
+  [1]
+
+Mixing (lang dune 2.0) and (using fmt 1.0) is an error.
+But a helpful message is displayed.
+
+  $ cp lang2/partial/dune-project lang2/partial/dune-project.bak
+  $ echo '(using fmt 1.0)' >> lang2/partial/dune-project
+  $ dune build --display short @fmt
+  File "lang2/partial/dune-project", line 5, characters 0-15:
+  5 | (using fmt 1.0)
+      ^^^^^^^^^^^^^^^
+  Error: Starting with (lang dune 2.0), formatting is enabled by default.
+  To port it to the new syntax, you can replace this part by:
+  (formatting (enabled_for ocaml reason))
+  [1]
+  $ mv lang2/partial/dune-project.bak lang2/partial/dune-project
+
+Sometimes, the suggestion is to just remove the configuration.
+
+  $ echo '(using fmt 1.2)' >> lang2/default/dune-project
+  $ dune build --display short @fmt
+  File "lang2/default/dune-project", line 2, characters 0-15:
+  2 | (using fmt 1.2)
+      ^^^^^^^^^^^^^^^
+  Error: Starting with (lang dune 2.0), formatting is enabled by default.
+  To port it to the new syntax, you can delete this part.
   [1]

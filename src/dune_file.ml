@@ -1932,7 +1932,11 @@ module Rule = struct
     List.map modules ~f:(fun name ->
       let src = name ^ ".mll" in
       let dst = name ^ ".ml" in
-      { targets = Static { targets = [S.make_text loc dst]; multiplicity = One }
+      { targets =
+          (* CR-someday aalekseyev: want to use [multiplicity = One] here, but
+             can't because this is might get parsed with old dune syntax where
+             [multiplicity = One] is not supported. *)
+          Static { targets = [S.make_text loc dst]; multiplicity = Multiple }
       ; deps    = Bindings.singleton (Dep_conf.File (S.virt_text __POS__ src))
       ; action  =
           (loc,

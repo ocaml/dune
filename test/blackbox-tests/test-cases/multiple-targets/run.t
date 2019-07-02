@@ -51,7 +51,7 @@ to get a better error message:
   3 |   (action (bash "echo hola > %{target}")))
                                      ^^^^^^^
   Error: You can only use the variable %{target} if you defined the list of
-  targets using a field [target] (not [targets])
+  targets using the field [target] (not [targets])
   [1]
 
 ^ Expected error message
@@ -85,11 +85,10 @@ to get a better error message:
   3 |   (action (bash "echo hola > %{target}")))
                                      ^^^^^^^
   Error: You can only use the variable %{target} if you defined the list of
-  targets using a field [target] (not [targets])
+  targets using the field [target] (not [targets])
   [1]
 
-^ You can't use the variable %{target} if you specified targets with
-the field [targets]
+^ Expected error
 
   $ cat > dune <<EOF
   > (rule
@@ -98,5 +97,11 @@ the field [targets]
   > EOF
 
   $ dune build a
+  File "dune", line 3, characters 31-39:
+  3 |   (action (bash "echo hola > %{targets}")))
+                                     ^^^^^^^^
+  Error: You can only use the variable %{targets} if you defined the list of
+  targets using the field [targets] (not [target])
+  [1]
 
-^ You can use [targets] even though you specified [target]
+^ Expected error

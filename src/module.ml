@@ -288,7 +288,8 @@ let wrapped_compat t =
                a source dir *)
             Path.L.relative (src_dir t)
               [ ".wrapped_compat"
-              ; Name.to_string t.source.name ^ ml_gen
+              ; String.uncapitalize
+                  (Name.to_string t.source.name) ^ ml_gen
               ]
         }
       )

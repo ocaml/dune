@@ -35,7 +35,7 @@ val default_build_profile : string
 (** Dune configuration *)
 
 module Display : sig
-  type t = Stdune.StdDisplay.t =
+  type t = Stdune.Console.Display.t =
     | Progress (** Single interactive status line *)
     | Short    (** One line per command           *)
     | Verbose  (** Display all commands fully     *)

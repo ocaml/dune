@@ -2,13 +2,13 @@ type real =
   { oc: out_channel
   ; buf: Buffer.t
   ; ppf: Format.formatter
-  ; display: Display.t }
+  ; display: Console.Display.t }
 
 type t = real option
 
 let no_log = None
 
-let create ?(display = Display.Quiet) ?(path) () =
+let create ?(display = Console.Display.Quiet) ?(path) () =
   let path = match path with
     | Some p -> p
     | None -> Path.ensure_build_dir_exists () ; Path.relative Path.build_dir "log" in

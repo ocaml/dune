@@ -1,3 +1,18 @@
+module Display = struct
+  type t =
+    | Progress
+    | Short
+    | Verbose
+    | Quiet
+
+  let all =
+    [ "progress" , Progress
+    ; "verbose"  , Verbose
+    ; "short"    , Short
+    ; "quiet"    , Quiet
+    ]
+end
+
 type status_line_config =
   { message   : User_message.Style.t Pp.t option
   ; show_jobs : bool

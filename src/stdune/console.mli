@@ -1,3 +1,15 @@
+module Display : sig
+
+    type t =
+      | Progress
+      | Short
+      | Verbose
+      | Quiet
+
+    val all : (string * t) list
+
+end
+
 val print : string -> unit
 
 val print_user_message

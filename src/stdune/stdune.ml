@@ -49,7 +49,6 @@ module Dyn        = Dyn
 module Float      = Float
 module Tuple      = Tuple
 module Poly       = Poly
-module StdDisplay = Display
 module Code_error = Code_error
 module User_error = User_error
 module User_message = User_message

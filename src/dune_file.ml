@@ -1659,16 +1659,10 @@ module Rule = struct
       Static { targets; multiplicity = Multiple }
 
     let decode_one_static =
-      let+ syntax_version = Syntax.get_exn Stanza.syntax
+      let+ () = Syntax.since Stanza.syntax (1, 11)
       and+ target = String_with_vars.decode
       in
-      if syntax_version < (1, 11) then
-        Syntax.Error.since (String_with_vars.loc target)
-          Stanza.syntax
-          (1, 11)
-          ~what:"[target] field"
-      else
-        Static { targets = [target]; multiplicity = One }
+      Static { targets = [target]; multiplicity = One }
 
     let fields_parser =
       fields_mutually_exclusive

@@ -155,16 +155,6 @@ end with type sexp := t
     based on their location. *)
 val insert_comments : Cst.t list -> (Loc.t * Cst.Comment.t) list -> Cst.t list
 
-module Parse_error : sig
-  type t
-
-  val loc     : t -> Loc.t
-  val message : t -> string
-end
-
-(** Exception raised in case of a parsing error *)
-exception Parse_error of Parse_error.t
-
 module Lexer : sig
   module Token : sig
 

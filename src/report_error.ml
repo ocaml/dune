@@ -49,11 +49,6 @@ let rec get_printer = function
         render ppf
           (User_message.pp { msg with loc = None; hints = [] })
     }
-  | Dune_lang.Parse_error e ->
-    let loc = Dune_lang.Parse_error.loc     e in
-    let msg = Dune_lang.Parse_error.message e in
-    let pp ppf = Format.fprintf ppf "@{<error>Error@}: %s\n" msg in
-    make_printer ~loc pp
   | Code_error.E t ->
     let pp = fun ppf ->
       Format.fprintf ppf "@{<error>Internal error, please report upstream \

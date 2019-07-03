@@ -512,7 +512,7 @@ let run_internal ?dir ?(stdout_to=Output.stdout) ?(stderr_to=Output.stderr)
     match exit_status with
     | WEXITED n when code_is_ok ok_codes n -> Ok n
     | WEXITED n -> Error (Failed n)
-    | WSIGNALED n -> Error (Signaled (Utils.signal_name n))
+    | WSIGNALED n -> Error (Signaled (Signal.name n))
     | WSTOPPED _ -> assert false
   in
   match display, exit_status, output with

@@ -29,7 +29,7 @@ module Signal = struct
     |> Int.Map.of_list_reduce ~f:(fun _ t -> t)
     |> Int.Map.find
 
-  let name t = Utils.signal_name (to_int t)
+  let name t = Signal.name (to_int t)
 end
 
 module Thread = struct

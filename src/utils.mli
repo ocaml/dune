@@ -9,9 +9,6 @@ val system_shell_exn : needed_to:string -> Path.t * string
 (** Same as [system_shell_exn] but for bash *)
 val bash_exn : needed_to:string -> Path.t
 
-(** Convert a signal number to a name: INT, TERM, ... *)
-val signal_name : int -> string
-
 (** Return the directory where the object files for the given
     library should be stored. *)
 val library_object_directory

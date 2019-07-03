@@ -6,8 +6,8 @@ open Stdune.Csexp
 let () = Printexc.record_backtrace false;;
 
 let roundtrip x =
-  let str = to_string_canonical x in
-  let exp = parse_canonical (Stream.of_string str) in
+  let str = to_string x in
+  let exp = parse (Stream.of_string str) in
   assert ((Sexp.compare exp x) = Ordering.Eq) ;
   str
 
@@ -39,12 +39,12 @@ roundtrip
 "((8:metadata(3:foo3:bar))(14:produced-files((9:/tmp/coin63:/tmp/dune-memory/v2/files/b2/b295e63b0b8e8fae971d9c493be0d261.1))))"
 |}]
 
-parse_canonical (Stream.of_string "") ;;
-parse_canonical (Stream.of_string "(") ;;
-parse_canonical (Stream.of_string "(a)") ;;
-parse_canonical (Stream.of_string "(:)") ;;
-parse_canonical (Stream.of_string "(4:foo)") ;;
-parse_canonical (Stream.of_string "(5:foo)") ;;
+parse (Stream.of_string "") ;;
+parse (Stream.of_string "(") ;;
+parse (Stream.of_string "(a)") ;;
+parse (Stream.of_string "(:)") ;;
+parse (Stream.of_string "(4:foo)") ;;
+parse (Stream.of_string "(5:foo)") ;;
 [%%expect{|
 Exception: Parse_error "unexpected end of file".
 Exception: Parse_error "unexpected end of file".

@@ -24,7 +24,7 @@ let read_string s l =
       (Parse_error
          (Printf.sprintf "unexpected end of file in atom of size %i" l))
 
-let parse_canonical stream =
+let parse stream =
   let rec read_size acc =
     let c = Stream.next stream in
     if c = ':' then acc
@@ -55,7 +55,7 @@ let parse_canonical stream =
 
 let buffer () = Buffer.create 1024
 
-let to_buffer_canonical ~buf sexp =
+let to_buffer ~buf sexp =
   let rec loop = function
     | Sexp.Atom str ->
         Buffer.add_string buf (string_of_int (String.length str)) ;
@@ -68,7 +68,6 @@ let to_buffer_canonical ~buf sexp =
   in
   ignore (loop sexp)
 
-let to_string_canonical sexp =
+let to_string sexp =
   let buf = buffer () in
-  to_buffer_canonical sexp ~buf ;
-  Buffer.contents buf
+  to_buffer sexp ~buf ; Buffer.contents buf

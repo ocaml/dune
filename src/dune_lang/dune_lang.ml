@@ -235,23 +235,11 @@ module Cst = struct
     List.rev !tokens
 end
 
-module Parse_error = struct
-  include Lexer.Error
-
-  let loc t : Loc.t = { start = t.start; stop = t.stop }
-  let message t = t.message
-end
-exception Parse_error = Lexer.Error
-
 module Lexer = Lexer
 
 module Parser = struct
   let error (loc : Loc.t) message =
-    raise (Parse_error
-             { start = loc.start
-             ; stop  = loc.stop
-             ; message
-             })
+    User_error.raise ~loc [ Pp.text message ]
 
   module Mode = struct
     type 'a t =

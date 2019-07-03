@@ -129,11 +129,6 @@ let write_file ~path sexps =
 
 let format_file ~input =
   match parse_file input with
-  | exception Dune_lang.Parse_error e ->
-    Printf.eprintf
-      "Parse error: %s\n"
-      (Dune_lang.Parse_error.message e);
-    exit 1
   | OCaml_syntax loc ->
     begin
       match input with

@@ -1,7 +1,5 @@
 open Stdune
 
-exception Invalid_lib_name of string
-
 let encode = Dune_lang.Encoder.string
 let decode = Dune_lang.Decoder.string
 
@@ -43,7 +41,9 @@ module Local = struct
     match of_string s with
     | Ok s -> s
     | Warn _
-    | Invalid -> raise (Invalid_lib_name s)
+    | Invalid ->
+      Code_error.raise "Lib_name.Local.of_string_exn got invalid name"
+        [ "name", String s ]
 
   let decode_loc =
     Dune_lang.Decoder.plain_string (fun ~loc s -> (loc, of_string s))

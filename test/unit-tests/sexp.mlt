@@ -54,13 +54,22 @@ type 'res parse_result =
   | Same of ('res, string) result
   | Different of 'res parse_result_diff
 
+let string_of_user_error (msg : User_message.t) =
+  Format.asprintf "%a"
+    Pp.render_ignore_tags
+    (User_message.pp { msg with loc = None })
+  |> String.drop_prefix ~prefix:"Error: "
+  |> Option.value_exn
+  |> String.trim
+
 let parse s =
   let f ~lexer =
     try
       Ok (Dune_lang.parse_string ~fname:"" ~mode:Many ~lexer s
           |> List.map ~f:Dune_lang.Ast.remove_locs)
     with
-    | Dune_lang.Parse_error e -> Error (Dune_lang.Parse_error.message e)
+    | User_error.E msg ->
+      Error (string_of_user_error msg)
     | e -> Error (Printexc.to_string e)
   in
   let jbuild = f ~lexer:Dune_lang.Lexer.jbuild_token in
@@ -77,6 +86,7 @@ type 'res parse_result_diff = {
 type 'res parse_result =
     Same of ('res, string) Stdune.result
   | Different of 'res parse_result_diff
+val string_of_user_error : User_message.t -> string = <fun>
 val parse : string -> Dune_lang.t list parse_result = <fun>
 |}]
 
@@ -311,8 +321,8 @@ let test syntax sexp =
        Round_trip_success
      else
        Did_not_round_trip sexp'
-   | exception (Dune_lang.Parse_error e) ->
-     Did_not_parse_back (Dune_lang.Parse_error.message e))
+   | exception (User_error.E msg) ->
+     Did_not_parse_back (string_of_user_error msg))
 ;;
 #install_printer print_sexp
 

@@ -282,3 +282,20 @@ let findi =
       loop s len ~f (i + 1)
   in
   fun s ~f -> loop s (String.length s) ~f 0
+
+let need_quoting s =
+  let len = String.length s in
+  len = 0
+  ||
+  let rec loop i =
+    if i = len then false
+    else
+      match s.[i] with
+      | ' ' | '\"' | '(' | ')' | '{' | '}' | ';' | '#' ->
+          true
+      | _ ->
+          loop (i + 1)
+  in
+  loop 0
+
+let quote_for_shell s = if need_quoting s then Dune_caml.Filename.quote s else s

@@ -3,6 +3,7 @@ module Ansi_color = Ansi_color
 module Array      = Array
 module Bytes      = Bytes
 module Comparator = Comparator
+module Console    = Console
 module Either     = Either
 module Exn        = Exn
 module Exn_with_backtrace = Exn_with_backtrace
@@ -20,6 +21,7 @@ module Ordering   = Ordering
 module Pp         = Pp
 module Result     = Result
 module Set        = Set
+module Signal     = Signal
 module Comparable    = Comparable
 module Comparable_intf = Comparable_intf
 module Staged     = Staged
@@ -32,6 +34,7 @@ module Fmt        = Fmt
 module Interned   = Interned
 module Univ_map   = Univ_map
 module Loc        = Loc
+module Log        = Log
 module Env        = Env
 module Proc       = Proc
 module Type_eq    = Type_eq
@@ -77,3 +80,4 @@ type ordering = Ordering.t =
   | Gt
 
 let sprintf = Printf.sprintf
+let ksprintf = Printf.ksprintf

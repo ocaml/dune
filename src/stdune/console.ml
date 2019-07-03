@@ -1,4 +1,17 @@
-open! Stdune
+module Display = struct
+  type t =
+    | Progress
+    | Short
+    | Verbose
+    | Quiet
+
+  let all =
+    [ "progress" , Progress
+    ; "verbose"  , Verbose
+    ; "short"    , Short
+    ; "quiet"    , Quiet
+    ]
+end
 
 type status_line_config =
   { message   : User_message.Style.t Pp.t option
@@ -8,7 +21,7 @@ type status_line_config =
 module T = struct
 
   type t = {
-    display : Config0.Display.t;
+    display : Display.t;
     mutable status_line : Ansi_color.Style.t list Pp.t;
     mutable status_line_len : int;
     mutable gen_status_line : unit -> status_line_config;
@@ -31,7 +44,7 @@ module T = struct
         let status_line =
           if show_jobs then
             Pp.seq status_line
-              (Pp.verbatim (sprintf " (jobs: %u)" running_jobs))
+              (Pp.verbatim (Printf.sprintf " (jobs: %u)" running_jobs))
           else
             status_line
         in

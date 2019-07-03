@@ -166,6 +166,6 @@ let report { Exn_with_backtrace. exn; backtrace } =
       Format.pp_print_flush ppf ();
       let s = Buffer.contents err_buf in
       Buffer.clear err_buf;
-      print_to_console s;
+      Console.print s;
       if p.backtrace then i_must_not_segfault ()
     end

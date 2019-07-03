@@ -382,7 +382,7 @@ let upgrade ft =
     | None -> Utils.program_not_found "git" ~loc:None)
   in
   let log fmt =
-    Printf.ksprintf print_to_console fmt
+    Printf.ksprintf Console.print fmt
   in
   let* () =
     Fiber.sequential_iter todo.to_add ~f:(fun fn ->

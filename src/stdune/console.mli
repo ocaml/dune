@@ -1,4 +1,14 @@
-open! Stdune
+module Display : sig
+
+    type t =
+      | Progress
+      | Short
+      | Verbose
+      | Quiet
+
+    val all : (string * t) list
+
+end
 
 val print : string -> unit
 
@@ -12,7 +22,7 @@ type status_line_config =
   ; show_jobs : bool
   }
 
-val init : Config0.Display.t -> unit
+val init : Display.t -> unit
 
 (** / *)
 (** Everything below this line requires [init] to have been called earlier. *)
@@ -22,4 +32,4 @@ val set_status_line_generator : (unit -> status_line_config) -> running_jobs:int
 
 val update_status_line : running_jobs:int -> unit
 val hide_status_line : unit -> unit
-val display : unit -> Config0.Display.t
+val display : unit -> Display.t

@@ -91,3 +91,6 @@ module Map : sig
   val to_dyn : ('a -> Dyn.t) -> 'a t -> Dyn.t
 end
 module Table : Hashtbl.S with type key = t
+
+val need_quoting : string -> bool
+val quote_for_shell : string -> string

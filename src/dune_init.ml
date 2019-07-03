@@ -432,7 +432,7 @@ module Component = struct
   let report_uncreated_file = function
     | Ok _ -> ()
     | Error path ->
-      Errors.kerrf ~f:print_to_console
+      Errors.kerrf ~f:Console.print
         "@{<warning>Warning@}: file @{<kwd>%a@} was not created \
          because it already exists\n"
         Path.pp path
@@ -462,6 +462,6 @@ let validate_component_name name =
       name Lib_name.Local.invalid_message
 
 let print_completion kind name =
-  Errors.kerrf ~f:print_to_console
+  Errors.kerrf ~f:Console.print
     "@{<ok>Success@}: initialized %a component named @{<kwd>%s@}\n"
     Kind.pp kind name

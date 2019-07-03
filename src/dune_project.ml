@@ -263,7 +263,7 @@ module Project_file_edit = struct
   open Project_file
 
   let notify_user s =
-    kerrf ~f:print_to_console "@{<warning>Info@}: %s\n" s
+    kerrf ~f:Console.print "@{<warning>Info@}: %s\n" s
 
   let lang_stanza () =
     let ver = (Lang.get_exn "dune").version in

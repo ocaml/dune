@@ -41,7 +41,7 @@ open Stanza.Decoder
 let syntax = Stanza.syntax
 
 module Display = struct
-  include Config0.Display
+  include Stdune.Console.Display
   let decode = enum all
 end
 

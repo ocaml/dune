@@ -3,7 +3,6 @@ open Stdune
 module Context = Dune.Context
 module Build = Dune.Build
 module Build_system = Dune.Build_system
-module Log = Dune.Log
 
 let die = Dune.Import.die
 let hint = Dune.Import.hint

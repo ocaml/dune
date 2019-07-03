@@ -595,7 +595,7 @@ let create_for_opam ~root ~env ~env_nodes ~targets ~profile
            @{<details>%s@}@."
           var
           (String.concat ~sep:" "
-             (List.map ~f:quote_for_shell
+             (List.map ~f:String.quote_for_shell
                 (Path.to_string opam :: args)));
         x)
   in

@@ -252,13 +252,7 @@ let rec end_offset_of_opam_value : OpamParserTypes.value -> int =
 let upgrade_opam_file todo fn =
   let open OpamParserTypes in
   let s = Io.read_file (Path.source fn) ~binary:true in
-  let lb = Lexing.from_string s in
-  lb.lex_curr_p <-
-    { pos_fname = Path.Source.to_string fn
-    ; pos_lnum  = 1
-    ; pos_bol   = 0
-    ; pos_cnum  = 0
-    };
+  let lb = Lexbuf.from_string s ~fname:(Path.Source.to_string fn) in
   let t =
     Opam_file.parse lb
     |> Opam_file.absolutify_positions ~file_contents:s

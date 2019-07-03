@@ -53,6 +53,7 @@ module Code_error = Code_error
 module User_error = User_error
 module User_message = User_message
 module User_warning = User_warning
+module Lexbuf = Lexbuf
 
 (* Pervasives is deprecated in 4.08 in favor of Stdlib, however we are
    currently compatible with OCaml >= 4.02 so for now we simply

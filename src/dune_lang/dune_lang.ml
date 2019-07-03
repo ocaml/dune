@@ -391,22 +391,12 @@ let insert_comments csts comments =
   in
   Parser.parse_cst (Lexing.from_string "") ~lexer
 
-let lexbuf_from_string ~fname str =
-  let lb = Lexing.from_string str in
-  lb.lex_curr_p <-
-    { pos_fname = fname
-    ; pos_lnum  = 1
-    ; pos_bol   = 0
-    ; pos_cnum  = 0
-    };
-  lb
-
 let parse_string ~fname ~mode ?lexer str =
-  let lb = lexbuf_from_string ~fname str in
+  let lb = Lexbuf.from_string ~fname str in
   Parser.parse ~mode ?lexer lb
 
 let parse_cst_string ~fname ?lexer str =
-  let lb = lexbuf_from_string ~fname str in
+  let lb = Lexbuf.from_string ~fname str in
   Parser.parse_cst ?lexer lb
 
 type dune_lang = t

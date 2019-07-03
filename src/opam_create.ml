@@ -1,19 +1,15 @@
 open Stdune
 
 let default_build_command = lazy (
-  let path = Path.of_string "<internal>" in
-  let dummy_opam =
-      Opam_file.of_string ~path {|
-build: [
+  Opam_file.parse_value
+      (Lexbuf.from_string ~fname:"<internal>" {|
+[
   [ "dune" "subst" ] {pinned}
   [ "dune" "build" "-p" name "-j" jobs]
   [ "dune" "runtest" "-p" name "-j" jobs] {with-test}
   [ "dune" "build" "-p" name "@doc"] {with-doc}
 ]
-|}
-  in
-  Opam_file.get_field dummy_opam "build"
-  |> Option.value_exn)
+|}))
 
 let package_fields
       { Package.synopsis
@@ -109,7 +105,10 @@ let add_rule sctx ~project ~pkg =
     >>>
     Build.arr (fun template ->
       let opam_path = Path.build opam_path in
-      let opamfile = Opam_file.of_string ~path:opam_path template in
+      let opamfile =
+        Opam_file.parse (Lexbuf.from_string ~fname:(Path.to_string opam_path)
+                           template)
+      in
       let existing_vars_template = Opam_file.existing_variables opamfile in
       let generated_fields =
         let package = Local_package.package pkg in

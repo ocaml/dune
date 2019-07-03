@@ -183,13 +183,7 @@ module Dune_project = struct
 
   let load file =
     let s = Io.read_file file in
-    let lb = Lexing.from_string s in
-    lb.lex_curr_p <-
-      { pos_fname = Path.to_string file
-      ; pos_lnum  = 1
-      ; pos_bol   = 0
-      ; pos_cnum  = 0
-      };
+    let lb = Lexbuf.from_string s ~fname:(Path.to_string file) in
     let sexp = Dune_lang.Parser.parse lb ~mode:Many_as_one in
     let parser =
       let open Dune_lang.Decoder in

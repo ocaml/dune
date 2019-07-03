@@ -101,6 +101,12 @@ module Run (P : PARAMS) : sig end = struct
     SC.resolve_program sctx ~dir "menhir" ~loc:None
       ~hint:"try: opam install menhir"
 
+  let local_package_dir ~sctx =
+    let package = Package.Name.of_string "menhir" in
+    let context = Context.name (Super_context.context sctx) in
+    let pkg = Package.Name.Map.find (Super_context.packages sctx) package in
+    Option.map pkg ~f:(fun _ -> Path.build (Config.local_install_lib_dir ~context ~package))
+
   (* Reminder (from command.mli):
 
      [Deps] is for command line arguments that are dependencies. [As] is for
@@ -112,6 +118,17 @@ module Run (P : PARAMS) : sig end = struct
   (* [menhir args] generates a Menhir command line (a build action). *)
 
   let menhir (args : 'a args) : Action.t Build.t =
+    let args =
+      match local_package_dir ~sctx with
+      | None ->
+        args
+      | Some path ->
+        let open Command.Args in
+        let path = Build.return path in
+        A "--stdlib" ::
+        Dyn (Build.S.map ~f:(fun x -> Path x) path) ::
+        Dyn (Build.S.map ~f:(fun x -> Hidden_deps (Dep.Set.of_files [Path.relative x "standard.mly"])) path) :: args
+    in
     Command.run ~dir:(Path.build build_dir) menhir_binary args
 
   let rule ?(mode = stanza.mode) : Action.t Build.t -> unit =

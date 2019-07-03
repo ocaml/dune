@@ -1,7 +1,8 @@
 open Stdune
 
-let default_build_command = lazy (
-  Opam_file.parse_value
+let default_build_command =
+  let before_1_11 = lazy (
+    Opam_file.parse_value
       (Lexbuf.from_string ~fname:"<internal>" {|
 [
   [ "dune" "subst" ] {pinned}
@@ -10,6 +11,26 @@ let default_build_command = lazy (
   [ "dune" "build" "-p" name "@doc"] {with-doc}
 ]
 |}))
+  and from_1_11 = lazy (
+    Opam_file.parse_value
+      (Lexbuf.from_string ~fname:"<internal>" {|
+[
+  [ "dune" "subst" ] {pinned}
+  [ "dune" "build" "-p" name "-j" jobs
+      "@install"
+      "@runtest" {with-test}
+      "@doc" {with-doc}
+  ]
+]
+|}))
+  in
+  fun project ->
+    Lazy.force (
+      if Dune_project.dune_version project < (1, 11) then
+        before_1_11
+      else
+        from_1_11
+    )
 
 let package_fields
       { Package.synopsis
@@ -73,7 +94,7 @@ let opam_fields project (package : Package.t) =
   in
   let fields =
     [ "opam-version", string "2.0"
-    ; "build", (Lazy.force default_build_command)
+    ; "build", default_build_command project
     ]
   in
   List.concat

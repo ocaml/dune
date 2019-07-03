@@ -37,7 +37,7 @@ module Preprocess = struct
       if Action_dune_lang.compare_no_locs a1 a2 <> Ordering.Eq then
         warn_dropped_pp loc ~allow_approx_merlin
           ~reason:"this action preprocessor is not equivalent to other \
-                   preproocessor specifications.";
+                   preprocessor specifications.";
       Action (loc, a1)
     | Pps _, Action (loc, _)
     | Action (loc, _), Pps _ ->

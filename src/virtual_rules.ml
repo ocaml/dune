@@ -158,18 +158,20 @@ let impl sctx ~dir ~(lib : Dune_file.Library.t) ~scope =
   Option.map lib.implements ~f:begin fun (loc, implements) ->
     match Lib.DB.find (Scope.libs scope) implements with
     | None ->
-      Errors.fail loc
-        "Cannot implement %a as that library isn't available"
-        Lib_name.pp implements
+      User_error.raise ~loc
+        [ Pp.textf "Cannot implement %s as that library isn't available"
+            (Lib_name.to_string implements)
+        ]
     | Some vlib ->
       let info = Lib.info vlib in
       let virtual_ =
         let virtual_ = Lib_info.virtual_ info in
         match virtual_ with
         | None ->
-          Errors.fail lib.buildable.loc
-            "Library %a isn't virtual and cannot be implemented"
-            Lib_name.pp implements
+          User_error.raise ~loc:lib.buildable.loc
+            [ Pp.textf "Library %s isn't virtual and cannot be implemented"
+                (Lib_name.to_string implements)
+            ]
         | Some v -> v
       in
       let (vlib_modules, vlib_foreign_objects) =

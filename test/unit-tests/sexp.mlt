@@ -28,10 +28,14 @@ List
 |}]
 
 let of_sexp = record (field "foo" int)
-let x = parse of_sexp Univ_map.empty (Lazy.force sexp)
+let () =
+  try
+    ignore (parse of_sexp Univ_map.empty (Lazy.force sexp) : int)
+  with User_error.E msg ->
+    User_message.print { msg with loc = None }
 [%%expect{|
 val of_sexp : int t = <abstr>
-Exception: Decoder (<loc>, "Field \"foo\" is present too many times", None).
+Error: Field "foo" is present too many times
 |}]
 
 let of_sexp = record (multi_field "foo" int)
@@ -281,7 +285,7 @@ let var ?(syntax=Dune_lang.Template.Percent) ?payload name =
 
 type sexp = S of Dune_lang.File_syntax.t * Dune_lang.t
 
-let print_sexp ppf (S (syntax, sexp)) = Dune_lang.pp syntax ppf sexp;;
+let print_sexp ppf (S (syntax, sexp)) = Dune_lang.Deprecated.pp syntax ppf sexp;;
 #install_printer print_sexp
 
 type round_trip_result =
@@ -291,7 +295,10 @@ type round_trip_result =
 
 let test syntax sexp =
   (S (syntax, sexp),
-   let s = Format.asprintf "%a" (Dune_lang.pp syntax) sexp in
+   let s =
+     Format.asprintf "%a"
+       (fun ppf x -> Pp.render_ignore_tags ppf (Dune_lang.pp syntax x)) sexp
+   in
    match
      Dune_lang.parse_string s ~mode:Single ~fname:""
        ~lexer:(match syntax with

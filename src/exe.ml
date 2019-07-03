@@ -70,7 +70,9 @@ module Linkage = struct
     let ext =
       match wanted_mode, m.kind with
       | Byte   , C             -> ".bc.c"
-      | Native , C             -> Errors.fail m.loc "C file generation only supports bytecode!"
+      | Native , C             -> User_error.raise ~loc:m.loc
+                                    [ Pp.text "C file generation only \
+                                               supports bytecode!" ]
       | Byte   , Exe           -> ".bc"
       | Native , Exe           -> ".exe"
       | Byte   , Object        -> ".bc"  ^ ctx.lib_config.ext_obj

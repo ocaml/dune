@@ -15,5 +15,4 @@ c_names with overlapping names in different stanzas
                 ^^^
   Error: This c stub is already used in another stanza:
   - dune:4
-  
   [1]

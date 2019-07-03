@@ -58,10 +58,10 @@ Fatal error with opam file that is not listed in the dune-project file:
   $ dune build @install --root bad-opam-file --auto-promote
   Entering directory 'bad-opam-file'
   File "foo.opam", line 1, characters 0-0:
-  Error: This opam file doesn't have a corresponding (package ...) stanza in the
-  dune-project_file. Since you have at least one other (package ...) stanza in
-  your dune-project file, you must a (package ...) stanza for each opam package
-  in your project.
+  Error: This opam file doesn't have a corresponding (package ...) stanza in
+  the dune-project_file. Since you have at least one other (package ...) stanza
+  in your dune-project file, you must a (package ...) stanza for each opam
+  package in your project.
   [1]
 
 Version generated in opam and META files

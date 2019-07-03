@@ -42,7 +42,7 @@ let mark_open_tag s =
 let setup_err_formatter_colors () =
   let open Format in
   if Lazy.force Ansi_color.stderr_supports_color then begin
-    List.iter [err_formatter; err_ppf] ~f:(fun ppf ->
+    List.iter [err_formatter; Report_error.ppf] ~f:(fun ppf ->
       let funcs = pp_get_formatter_tag_functions ppf () [@warning "-3"] in
       pp_set_mark_tags ppf true;
       pp_set_formatter_tag_functions ppf

@@ -8,8 +8,9 @@ let validate_component_options kind unsupported_options =
   let report_invalid_option = function
     | _, false -> ()  (* The option wasn't supplied *)
     | option_name, true ->
-      die "The %s component does not support the %s option"
-        (Kind.to_string kind) option_name
+      User_error.raise
+        [ Pp.textf "The %s component does not support the %s option"
+            (Kind.to_string kind) option_name ]
   in
   List.iter ~f:report_invalid_option unsupported_options
 

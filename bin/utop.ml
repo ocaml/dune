@@ -23,7 +23,8 @@ let term =
   Common.set_dirs common;
   if not (Path.is_directory
             (Path.of_string (Common.prefix_target common dir))) then
-    die "cannot find directory: %s" (String.maybe_quoted dir);
+    User_error.raise
+      [ Pp.textf "cannot find directory: %s" (String.maybe_quoted dir) ];
   let utop_target = Filename.concat dir Utop.utop_exe in
   Common.set_common_other common ~targets:[utop_target];
   let log = Log.create common in
@@ -42,7 +43,8 @@ let term =
       let target =
         match Target.resolve_target common ~setup utop_target with
         | Error _ ->
-          die "no library is defined in %s" (String.maybe_quoted dir)
+          User_error.raise
+            [ Pp.textf "no library is defined in %s" (String.maybe_quoted dir) ]
         | Ok [File target] -> target
         | Ok _ -> assert false
       in

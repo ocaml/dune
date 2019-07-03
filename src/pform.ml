@@ -74,12 +74,12 @@ end
 type 'a t =
   | No_info    of 'a
   | Since      of 'a * Syntax.Version.t
-  | Deleted_in of 'a * Syntax.Version.t * string option
+  | Deleted_in of 'a * Syntax.Version.t * User_message.Style.t Pp.t list
   | Renamed_in of Syntax.Version.t * string
 
 let values v                       = No_info (Var.Values v)
 let renamed_in ~new_name ~version  = Renamed_in (version, new_name)
-let deleted_in ~version ?repl kind = Deleted_in (kind, version, repl)
+let deleted_in ~version ?(repl=[]) kind = Deleted_in (kind, version, repl)
 let since ~version v               = Since (v, version)
 
 type 'a pform = 'a t
@@ -90,9 +90,12 @@ let to_dyn f =
   | No_info x -> constr "No_info" [f x]
   | Since (x, v) ->
     constr "Since" [f x; Syntax.Version.to_dyn v]
-  | Deleted_in (x, v, so) ->
+  | Deleted_in (x, v, repl) ->
     constr "Deleted_in"
-      [f x; Syntax.Version.to_dyn v; option string so]
+      [f x; Syntax.Version.to_dyn v;
+       List (List.map repl ~f:(fun pp ->
+         Dyn.String (Format.asprintf "%a" Pp.render_ignore_tags pp)))
+      ]
   | Renamed_in (v, s) ->
     constr "Renamed_in" [Syntax.Version.to_dyn v; string s]
 
@@ -111,10 +114,12 @@ module Map = struct
       ; "project_root", since ~version:(1, 0) Var.Project_root
 
       ; "<", deleted_in Var.First_dep ~version:(1, 0)
-               ~repl:"Use a named dependency instead:\
-                      \n\
-                      \n  (deps (:x <dep>) ...)\
-                      \n   ... %{x} ..."
+               ~repl:
+                 [Pp.text
+                    "Use a named dependency instead:\
+                     \n\
+                     \n  (deps (:x <dep>) ...)\
+                     \n   ... %{x} ..."]
       ; "@", renamed_in ~version:(1, 0) ~new_name:"targets"
       ; "^", renamed_in ~version:(1, 0) ~new_name:"deps"
       ; "SCOPE_ROOT", renamed_in ~version:(1, 0) ~new_name:"project_root"
@@ -251,7 +256,7 @@ module Map = struct
         Some v
       else
         Syntax.Error.deleted_in (String_with_vars.Var.loc pform)
-          Stanza.syntax in_version ~what:(describe pform) ?repl
+          Stanza.syntax in_version ~what:(describe pform) ~repl
 
   let expand t pform syntax_version =
     match String_with_vars.Var.payload pform with

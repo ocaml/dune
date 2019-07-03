@@ -31,9 +31,12 @@ there's only a public name but it's invalid as a name
   File "dune", line 1, characters 22-28:
   1 | (library (public_name c.find))
                             ^^^^^^
-  Error: invalid library name.
-  Hint: library names must be non-empty and composed only of the following characters: 'A'..'Z',  'a'..'z', '_'  or '0'..'9'.
-  Public library names don't have this restriction. You can either change this public name to be a valid library name or add a "name" field with a valid library name.
+  Error: Invalid library name.
+  Public library names don't have this restriction. You can either change this
+  public name to be a valid library name or add a "name" field with a valid
+  library name.
+  Hint: library names must be non-empty and composed only of the following
+  characters: 'A'..'Z', 'a'..'z', '_' or '0'..'9'
   [1]
 
 there's only a public name which is invalid, but sine the library is unwrapped,
@@ -44,7 +47,10 @@ it's just a warning
   File "dune", line 3, characters 14-21:
   3 |  (public_name foo.bar))
                     ^^^^^^^
-  Error: invalid library name.
-  Hint: library names must be non-empty and composed only of the following characters: 'A'..'Z',  'a'..'z', '_'  or '0'..'9'.
-  Public library names don't have this restriction. You can either change this public name to be a valid library name or add a "name" field with a valid library name.
+  Error: Invalid library name.
+  Public library names don't have this restriction. You can either change this
+  public name to be a valid library name or add a "name" field with a valid
+  library name.
+  Hint: library names must be non-empty and composed only of the following
+  characters: 'A'..'Z', 'a'..'z', '_' or '0'..'9'
   [1]

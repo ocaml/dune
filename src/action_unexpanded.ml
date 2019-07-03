@@ -19,11 +19,14 @@ let remove_locs =
 
 let check_mkdir loc path =
   if not (Path.is_managed path) then
-    Errors.fail loc
-      "(mkdir ...) is not supported for paths outside of the workspace:\n\
-      \  %a\n"
-      (Dune_lang.pp Dune)
-      (List [Dune_lang.unsafe_atom_of_string "mkdir"; Dpath.encode path])
+    User_error.raise ~loc
+      [ Pp.text
+          "(mkdir ...) is not supported for paths outside of the workspace:"
+      ; Pp.seq (Pp.verbatim "  ")
+          (Dune_lang.pp Dune
+             (List
+                [Dune_lang.unsafe_atom_of_string "mkdir"; Dpath.encode path]))
+      ]
 
 module Partial = struct
   module Program = Unresolved.Program
@@ -64,9 +67,11 @@ module Partial = struct
       match p with
       | [] -> (Unresolved.Program.Search (loc, ""), [])
       | Value.Dir p :: _ ->
-        Errors.fail_opt loc
-          "%s is a directory and cannot be used as an executable"
-          (Path.to_string_maybe_quoted p)
+        User_error.raise ?loc
+          [ Pp.textf
+              "%s is a directory and cannot be used as an executable"
+              (Path.to_string_maybe_quoted p)
+          ]
       | Value.Path p :: xs -> (This p, Value.L.to_strings ~dir xs)
       | String s :: xs ->
         ( Unresolved.Program.of_string ~loc ~dir s
@@ -193,17 +198,18 @@ let rec partial_expand t ~map_exe ~expander : Partial.t =
         Chdir (res, partial_expand t ~expander ~map_exe)
       | Right fn ->
         let loc = String_with_vars.loc fn in
-        Errors.fail loc
-          "This directory cannot be evaluated statically.\n\
-           This is not allowed by dune"
+        User_error.raise ~loc
+          [ Pp.text "This directory cannot be evaluated statically."
+          ; Pp.text "This is not allowed by dune"
+          ]
     end
   | Setenv (var, value, t) ->
     let var =
       match E.string ~expander var with
       | Left l -> l
       | Right sw ->
-        Errors.fail (String_with_vars.loc sw)
-          "environment variable names must be static"
+        User_error.raise ~loc:(String_with_vars.loc sw)
+          [ Pp.text "environment variable names must be static" ]
     in
     let value = E.string ~expander value in
     let expander =
@@ -349,8 +355,8 @@ module Infer = struct
         match fn with
         | Left  fn -> { acc with targets = Path.Set.add acc.targets fn }
         | Right sw ->
-          Errors.fail (String_with_vars.loc sw)
-            "Cannot determine this target statically."
+          User_error.raise ~loc:(String_with_vars.loc sw)
+            [ Pp.text "Cannot determine this target statically." ]
       let ( +< ) acc fn =
         match fn with
         | Left  fn -> { acc with deps    = Path.Set.add acc.deps fn }

@@ -6,7 +6,8 @@ that ${@} is not quoted and doesn't contain exactly 1 element
   File "dune", line 3, characters 27-35:
   3 |  (action (with-stdout-to %{targets} (echo foo))))
                                  ^^^^^^^^
-  Error: Variable %{targets} expands to 2 values, however a single value is expected here. Please quote this atom.
+  Error: Variable %{targets} expands to 2 values, however a single value is
+  expected here. Please quote this atom.
   [1]
 
 The targets should only be interpreted as a single path when quoted
@@ -17,7 +18,7 @@ The targets should only be interpreted as a single path when quoted
   1 | (rule
   2 |  (targets s t)
   3 |  (action (with-stdout-to "%{targets}" (echo foo))))
-  Error: rule failed to generate the following targets:
+  Error: Rule failed to generate the following targets:
   - s
   - t
   [1]

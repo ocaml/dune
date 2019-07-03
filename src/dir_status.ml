@@ -41,8 +41,9 @@ let get_include_subdirs stanzas =
     match stanza with
     | Include_subdirs (loc, x) ->
       if Option.is_some acc then
-        Errors.fail loc "The 'include_subdirs' stanza cannot appear \
-                         more than once";
+        User_error.raise ~loc
+          [ Pp.text "The 'include_subdirs' stanza cannot appear more \
+                     than once" ];
       Some x
     | _ -> acc)
 
@@ -51,10 +52,10 @@ let check_no_module_consumer stanzas =
     match stanza with
     | Library { buildable; _} | Executables { buildable; _ }
     | Tests { exes = { buildable; _ }; _ } ->
-      Errors.fail buildable.loc
-        "This stanza is not allowed in a sub-directory of directory with \
-         (include_subdirs unqualified).\n\
-         Hint: add (include_subdirs no) to this file."
+      User_error.raise ~loc:buildable.loc
+        [ Pp.text "This stanza is not allowed in a sub-directory of \
+                   directory with (include_subdirs unqualified)." ]
+        ~hints:[ Pp.text "add (include_subdirs no) to this file." ]
     | _ -> ())
 
 module DB = struct

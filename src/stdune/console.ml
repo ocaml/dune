@@ -69,7 +69,8 @@ module T = struct
 
   let print_user_message t ?config msg =
     hide_status_line t;
-    User_message.prerr ?config msg;
+    Option.iter msg.User_message.loc ~f:(Loc.print Format.err_formatter);
+    User_message.prerr ?config { msg with loc = None };
     show_status_line t.status_line;
     flush stderr
 
@@ -110,3 +111,5 @@ let print_user_message ?config msg =
   match !t_var with
   | None -> User_message.prerr ?config msg
   | Some t -> T.print_user_message t ?config msg
+
+let () = User_warning.set_reporter print_user_message

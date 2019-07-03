@@ -20,7 +20,8 @@
   5 | (context (default
   6 |  (name cross-1)
   7 |  (host default)))
-  Error: Context 'cross-1' is both a host (for 'cross-2') and a target (for 'default').
+  Error: Context 'cross-1' is both a host (for 'cross-2') and a target (for
+  'default').
   [1]
 
   $ dune build --root ./topological-loop --display short file @install
@@ -29,7 +30,8 @@
   13 | (context (default
   14 |  (name cross-3)
   15 |  (host cross-2)))
-  Error: Context 'cross-3' is both a host (for 'cross-1') and a target (for 'cross-2').
+  Error: Context 'cross-3' is both a host (for 'cross-1') and a target (for
+  'cross-2').
   [1]
 
   $ env OCAMLFIND_CONF=$PWD/target-and-host/etc/findlib.conf dune build --root ./target-and-host --display short file @install

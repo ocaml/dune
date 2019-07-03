@@ -102,14 +102,16 @@ let term =
   | None, true ->
     begin match Lazy.force targets with
     | [] ->
-      die "@{<Error>Error@}: Program %S not found!" prog
+      User_error.raise
+        [ Pp.textf "Program %S not found!" prog ]
     | _::_ ->
-      die "@{<Error>Error@}: Program %S isn't built yet \
-           you need to build it first or remove the \
-           --no-build option." prog
+      User_error.raise
+        [ Pp.textf "Program %S isn't built yet. You need to build it \
+                    first or remove the --no-build option." prog
+        ]
     end
   | None, false ->
-    die "@{<Error>Error@}: Program %S not found!" prog
+    User_error.raise [ Pp.textf "Program %S not found!" prog ]
   | Some real_prog, _ ->
     let real_prog = Path.to_string real_prog     in
     let argv      = prog :: args in

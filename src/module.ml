@@ -394,10 +394,12 @@ let ml_source =
           | ".re"  -> ".re.ml"
           | ".rei" -> ".re.mli"
           | _     ->
-            Errors.fail
-              (Loc.in_file (Path.source (Path.drop_build_context_exn f.path)))
-              "Unknown file extension for reason source file: %S"
-              ext
+            User_error.raise
+              ~loc:(Loc.in_file
+                      (Path.source (Path.drop_build_context_exn f.path)))
+              [ Pp.textf "Unknown file extension for reason source file: %S"
+                  ext
+              ]
         in
         Path.extend_basename base ~suffix
       in

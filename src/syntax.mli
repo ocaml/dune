@@ -39,7 +39,7 @@ module Error : sig
   val deleted_in
     :  Loc.t
     -> t
-    -> ?repl:string
+    -> ?repl:User_message.Style.t Pp.t list
     -> Version.t
     -> what:string
     -> _
@@ -49,7 +49,7 @@ module Warning : sig
   val deprecated_in
     :  Loc.t
     -> t
-    -> ?repl:string
+    -> ?repl:User_message.Style.t Pp.t list
     -> Version.t
     -> what:string
     -> unit

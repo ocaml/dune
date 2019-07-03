@@ -45,7 +45,7 @@ let parse ~dir ~loc s =
   let clist = List.rev @@ String.split s ~on:'.' in
   match clist with
   | [] ->
-    Errors.fail loc "invalid coq module"
+    User_error.raise ~loc [ Pp.text "Invalid coq module" ]
   | name :: prefix ->
     let prefix = List.rev prefix in
     let source = List.fold_left prefix ~init:dir ~f:Path.Build.relative in

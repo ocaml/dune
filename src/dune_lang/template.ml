@@ -95,8 +95,7 @@ let string_of_var { loc = _; syntax; name; payload } =
   | None -> before ^ name ^ after
   | Some p -> before ^ name ^ ":" ^ p ^ after
 
-let pp syntax ppf t =
-  Format.pp_print_string ppf (Pp.to_string ~syntax t)
+let pp syntax t = Stdune.Pp.verbatim (Pp.to_string ~syntax t)
 
 let pp_split_strings ppf (t : t) =
   let syntax = File_syntax.Dune in
@@ -120,7 +119,7 @@ let pp_split_strings ppf (t : t) =
     Format.fprintf ppf "@}\"@]"
   end
   else
-    pp syntax ppf t
+    Format.pp_print_string ppf (Pp.to_string ~syntax t)
 
 let remove_locs t =
   { t with

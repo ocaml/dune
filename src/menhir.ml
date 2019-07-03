@@ -176,8 +176,9 @@ module Run (P : PARAMS) : sig end = struct
                       ; "--infer-write-query"
                       ; "--infer-read-reply"
                       ] then
-              Errors.fail (String_with_vars.loc sw)
-                "The flag %s must not be used in a menhir stanza." text
+              User_error.raise ~loc:(String_with_vars.loc sw)
+                [ Pp.textf
+                    "The flag %s must not be used in a menhir stanza." text ]
         )
     )
 

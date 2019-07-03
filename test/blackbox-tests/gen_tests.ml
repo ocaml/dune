@@ -117,7 +117,8 @@ module Test = struct
                        ; sprintf "test-cases/%s" t.name]
         ]
       ) ~action
-    |> Dune_lang.pp Dune fmt
+    |> Dune_lang.pp Dune
+    |> Pp.render_ignore_tags fmt
 end
 
 let exclusions =
@@ -182,7 +183,8 @@ let pp_group fmt (name, tests) =
   alias name ~deps:(
     (List.map tests ~f:(fun (t : Test.t) ->
        Sexp.strings ["alias"; t.name])))
-  |> Dune_lang.pp Dune fmt
+  |> Dune_lang.pp Dune
+  |> Pp.render_ignore_tags fmt
 
 let () =
   let tests = Lazy.force all_tests in

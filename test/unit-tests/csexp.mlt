@@ -1,0 +1,57 @@
+(* -*- tuareg -*- *)
+
+open Stdune
+open Stdune.Csexp
+
+let () = Printexc.record_backtrace false;;
+
+let roundtrip x =
+  let str = to_string x in
+  match parse (Stream.of_string str) with
+  | Result.Ok exp -> assert ((Sexp.compare exp x) = Ordering.Eq) ; str
+  | Result.Error e -> failwith e
+
+
+[%%expect{|
+val roundtrip : t -> string = <fun>
+|}]
+
+roundtrip (Sexp.Atom "foo");;
+roundtrip (Sexp.List []);;
+roundtrip (Sexp.List [Sexp.Atom "Hello"; Sexp.Atom "World!"]);;
+roundtrip
+  (Sexp.List
+     [ Sexp.List
+         [Sexp.Atom "metadata"; Sexp.List [Sexp.Atom "foo"; Sexp.Atom "bar"]]
+     ; Sexp.List
+         [ Sexp.Atom "produced-files"
+         ; Sexp.List
+             [ Sexp.List
+                 [ Sexp.Atom "/tmp/coin"
+                 ; Sexp.Atom
+                     "/tmp/dune-memory/v2/files/b2/b295e63b0b8e8fae971d9c493be0d261.1"
+                 ] ] ] ]);;
+
+[%%expect{|
+- : string = "3:foo"
+- : string = "()"
+- : string = "(5:Hello6:World!)"
+- : string =
+"((8:metadata(3:foo3:bar))(14:produced-files((9:/tmp/coin63:/tmp/dune-memory/v2/files/b2/b295e63b0b8e8fae971d9c493be0d261.1))))"
+|}]
+
+parse (Stream.of_string "") ;;
+parse (Stream.of_string "(") ;;
+parse (Stream.of_string "(a)") ;;
+parse (Stream.of_string "(:)") ;;
+parse (Stream.of_string "(4:foo)") ;;
+parse (Stream.of_string "(5:foo)") ;;
+[%%expect{|
+- : (t, string) Stdune.result = Error "unexpected end of file"
+- : (t, string) Stdune.result = Error "unexpected end of file"
+- : (t, string) Stdune.result = Error "invalid character in size: a"
+- : (t, string) Stdune.result = Error "missing size"
+- : (t, string) Stdune.result = Error "unexpected end of file"
+- : (t, string) Stdune.result =
+Error "unexpected end of file in atom of size 5"
+|}]

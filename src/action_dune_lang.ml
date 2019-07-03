@@ -37,6 +37,9 @@ let decode =
     ~then_:decode
     ~else_:
       (loc >>| fun loc ->
-       of_sexp_errorf
-         loc
-         "if you meant for this to be executed with bash, write (bash \"...\") instead")
+       User_error.raise
+         ~loc
+         [ Pp.textf
+             "if you meant for this to be executed with bash, write \
+              (bash \"...\") instead"
+         ])

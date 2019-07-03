@@ -27,8 +27,9 @@ let scan_included_files path =
           let dir = Path.Source.parent_exn path in
           let included_file = Path.Source.relative dir fn in
           if not (Path.exists (Path.source included_file)) then
-            Errors.fail loc "File %s doesn't exist."
-              (Path.Source.to_string_maybe_quoted included_file);
+            User_error.raise ~loc
+              [ Pp.textf "File %s doesn't exist."
+                  (Path.Source.to_string_maybe_quoted included_file) ];
           iter included_file
         | _ -> ())
     end
@@ -251,13 +252,7 @@ let rec end_offset_of_opam_value : OpamParserTypes.value -> int =
 let upgrade_opam_file todo fn =
   let open OpamParserTypes in
   let s = Io.read_file (Path.source fn) ~binary:true in
-  let lb = Lexing.from_string s in
-  lb.lex_curr_p <-
-    { pos_fname = Path.Source.to_string fn
-    ; pos_lnum  = 1
-    ; pos_bol   = 0
-    ; pos_cnum  = 0
-    };
+  let lb = Lexbuf.from_string s ~fname:(Path.Source.to_string fn) in
   let t =
     Opam_file.parse lb
     |> Opam_file.absolutify_positions ~file_contents:s
@@ -352,9 +347,11 @@ let upgrade_dir todo dir =
     match dune_file.kind, dune_file.contents with
     | Dune, _ -> ()
     | Jbuild, Ocaml_script fn ->
-      Errors.warn (Loc.in_file (Path.source fn))
-        "Cannot upgrade this jbuild file as it is using the OCaml syntax.\n\
-         You need to upgrade it manually."
+      User_warning.emit ~loc:(Loc.in_file (Path.source fn))
+        [ Pp.text
+            "Cannot upgrade this jbuild file as it is using the OCaml syntax."
+        ; Pp.text "You need to upgrade it manually."
+        ]
     | Jbuild, Plain { path; sexps = _ } ->
       let files = scan_included_files path in
       Path.Source.Map.iteri files ~f:(fun fn (sexps, comments) ->

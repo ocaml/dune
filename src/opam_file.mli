@@ -16,7 +16,8 @@ val get_field : t -> string -> value option
 (** Parse the contents of an opam file *)
 val parse : Lexing.lexbuf -> t
 
-val of_string : path:Path.t -> string -> t
+(** Parse just a value *)
+val parse_value : Lexing.lexbuf -> value
 
 (** Replace all [pos] value by a triplet [(fname, line,
     absolute_offset)] *)

@@ -20,23 +20,14 @@ end
 
 type t = with_comments:bool -> Lexing.lexbuf -> Token.t
 
-module Error = struct
-  type t =
-    { start   : Lexing.position
-    ; stop    : Lexing.position
-    ; message : string
-    }
-end
-
-exception Error of Error.t
-
 let error ?(delta=0) lexbuf message =
-  let start = Lexing.lexeme_start_p lexbuf in
-  raise
-    (Error { start = { start with pos_cnum = start.pos_cnum + delta }
-           ; stop  = Lexing.lexeme_end_p   lexbuf
-           ; message
-           })
+   let start = Lexing.lexeme_start_p lexbuf in
+   let loc : Loc.t =
+     { start = { start with pos_cnum = start.pos_cnum + delta }
+     ; stop  = Lexing.lexeme_end_p   lexbuf
+     }
+   in
+  User_error.raise ~loc [ Pp.text message ]
 
 let invalid_dune_or_jbuild lexbuf =
   let start = Lexing.lexeme_start_p lexbuf in

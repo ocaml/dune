@@ -1,6 +1,8 @@
 open! Stdune
 open Import
 
+exception Already_reported
+
 type printer =
   { loc       : Loc.t option
   ; pp        : Format.formatter -> unit
@@ -42,35 +44,11 @@ let rec get_printer = function
         (match msg.hints with
          | [] -> None
          | hint :: _ ->
-           Some (Format.asprintf "%a" Pp.render_ignore_tags hint))
+           Some (Format.asprintf "@[%a@]" Pp.render_ignore_tags hint))
     ; pp = fun ppf ->
         render ppf
           (User_message.pp { msg with loc = None; hints = [] })
     }
-  | Dune_lang.Decoder.Decoder (loc, msg, hint') ->
-    let pp ppf = Format.fprintf ppf "@{<error>Error@}: %s%s\n" msg
-                   (match hint' with
-                    | None -> ""
-                    | Some { Dune_lang.Decoder. on; candidates } ->
-                      hint on candidates)
-    in
-    make_printer ~loc pp
-  | Errors.Loc_error (loc, msg) ->
-    let pp ppf = Format.fprintf ppf "@{<error>Error@}: %s\n" msg in
-    make_printer ~loc pp
-  | Dune_lang.Parse_error e ->
-    let loc = Dune_lang.Parse_error.loc     e in
-    let msg = Dune_lang.Parse_error.message e in
-    let pp ppf = Format.fprintf ppf "@{<error>Error@}: %s\n" msg in
-    make_printer ~loc pp
-  | Errors.Fatal_error msg ->
-    let pp ppf =
-      if msg.[String.length msg - 1] = '\n' then
-        Format.fprintf ppf "%s" msg
-      else
-        Format.fprintf ppf "%s\n" (String.capitalize msg)
-    in
-    make_printer pp
   | Code_error.E t ->
     let pp = fun ppf ->
       Format.fprintf ppf "@{<error>Internal error, please report upstream \
@@ -113,12 +91,14 @@ let clear_cache () =
 
 let () = Hooks.End_of_build.always clear_cache
 
+let buf = Buffer.create 128
+let ppf = Format.formatter_of_buffer buf
+
 let report { Exn_with_backtrace. exn; backtrace } =
   let exn, dependency_path = Dep_path.unwrap_exn exn in
   match exn with
   | Already_reported -> ()
   | _ ->
-    let ppf = err_ppf in
     let p = get_printer exn in
     let loc =
       if Option.equal Loc.equal p.loc (Some Loc.none) then
@@ -126,14 +106,14 @@ let report { Exn_with_backtrace. exn; backtrace } =
       else
         p.loc
     in
-    Option.iter loc ~f:(fun loc -> Errors.print ppf loc);
+    Option.iter loc ~f:(Loc.print ppf);
     p.pp ppf;
     Format.pp_print_flush ppf ();
-    let s = Buffer.contents err_buf in
+    let s = Buffer.contents buf in
     (* Hash to avoid keeping huge errors in memory *)
     let hash = Digest.string s in
     if Digest.Set.mem !reported hash then
-      Buffer.clear err_buf
+      Buffer.clear buf
     else begin
       reported := Digest.Set.add !reported hash;
       if p.backtrace || !Clflags.debug_backtraces then
@@ -164,8 +144,8 @@ let report { Exn_with_backtrace. exn; backtrace } =
           (Dep_path.Entries.pp (List.rev dependency_path));
       Option.iter p.hint ~f:(fun s -> Format.fprintf ppf "Hint: %s\n" s);
       Format.pp_print_flush ppf ();
-      let s = Buffer.contents err_buf in
-      Buffer.clear err_buf;
+      let s = Buffer.contents buf in
+      Buffer.clear buf;
       Console.print s;
       if p.backtrace then i_must_not_segfault ()
     end

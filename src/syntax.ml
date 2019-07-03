@@ -36,10 +36,10 @@ module Version = struct
         try
           Scanf.sscanf s "%u.%u" (fun a b -> (a, b))
         with _ ->
-          Errors.fail loc "Atom of the form NNN.NNN expected"
+          User_error.raise ~loc [ Pp.text "Atom of the form NNN.NNN expected" ]
       end
     | sexp ->
-      of_sexp_error (Dune_lang.Ast.loc sexp) "Atom expected"
+      User_error.raise ~loc:(Dune_lang.Ast.loc sexp) [ Pp.text "Atom expected" ]
 
   let can_read
         ~parser_version:(parser_major, parser_minor)
@@ -82,27 +82,28 @@ end
 
 module Error = struct
   let since loc t ver ~what =
-    Errors.fail loc "%s" @@ Error_msg.since t ver ~what
+    User_error.raise ~loc
+      [ Pp.text (Error_msg.since t ver ~what) ]
 
   let renamed_in loc t ver ~what ~to_ =
-    Errors.fail loc "%s was renamed to '%s' in the %s version of %s"
-      what to_ (Version.to_string ver) t.desc
+    User_error.raise ~loc
+      [ Pp.textf "%s was renamed to '%s' in the %s version of %s"
+          what to_ (Version.to_string ver) t.desc
+      ]
 
-  let deleted_in loc t ?repl ver ~what =
-    Errors.fail loc "%s was deleted in version %s of %s%s"
-      what (Version.to_string ver) t.desc
-      (match repl with
-       | None -> ""
-       | Some s -> ".\n" ^ s)
+  let deleted_in loc t ?(repl=[]) ver ~what =
+    User_error.raise ~loc
+      (Pp.textf "%s was deleted in version %s of %s"
+         what (Version.to_string ver) t.desc
+       :: repl)
 end
 
 module Warning = struct
-  let deprecated_in loc t ?repl ver ~what =
-    Errors.warn loc "%s was deprecated in version %s of %s%s"
-      what (Version.to_string ver) t.desc
-      (match repl with
-       | None -> ""
-       | Some s -> ".\n" ^ s)
+  let deprecated_in loc t ?(repl=[]) ver ~what =
+    User_warning.emit ~loc
+      (Pp.textf "%s was deprecated in version %s of %s."
+         what (Version.to_string ver) t.desc
+       :: repl)
 end
 
 
@@ -117,20 +118,20 @@ let name t = t.name
 
 let check_supported t (loc, ver) =
   if not (Supported_versions.is_supported t.supported_versions ver) then
-    Errors.fail loc "Version %s of %s is not supported.\n\
-                  Supported versions:\n\
-                  %s"
-      (Version.to_string ver) t.name
-      (String.concat ~sep:"\n"
-         (List.map (Supported_versions.supported_ranges t.supported_versions)
-            ~f:(fun (a, b) ->
-              let open Version.Infix in
-              if a = b then
-                sprintf "- %s" (Version.to_string a)
-              else
-                sprintf "- %s to %s"
-                  (Version.to_string a)
-                  (Version.to_string b))))
+    User_error.raise ~loc
+      [ Pp.textf "Version %s of %s is not supported."
+          (Version.to_string ver) t.name
+      ; Pp.text "Supported versions:"
+      ; Pp.enumerate (Supported_versions.supported_ranges t.supported_versions)
+          ~f:(fun (a, b) ->
+            let open Version.Infix in
+            if a = b then
+              Pp.text (Version.to_string a)
+            else
+              Pp.textf "%s to %s"
+                (Version.to_string a)
+                (Version.to_string b))
+      ]
 
 let greatest_supported_version t =
   Supported_versions.greatest_supported_version t.supported_versions
@@ -200,5 +201,6 @@ let since ?(fatal=true) t ver =
     desc () >>= function
     | (loc, what) when fatal -> Error.since loc t ver ~what
     | (loc, what) ->
-      Errors.warn loc "%s" @@ Error_msg.since t ver ~what;
+      User_warning.emit ~loc
+        [ Pp.text (Error_msg.since t ver ~what) ];
       return ()

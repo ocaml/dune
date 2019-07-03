@@ -194,9 +194,11 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
           SC.add_rule sctx ~dir:ctx_dir
             (Build.fail ~targets
                { fail = fun () ->
-                   Errors.fail m.loc
-                     "I can't determine what library/executable the files \
-                      produced by this stanza are part of."
+                   User_error.raise ~loc:m.loc
+                     [ Pp.text
+                         "I can't determine what library/executable \
+                          the files produced by this stanza are part of."
+                     ]
                })
         | Some cctx ->
           Menhir_rules.gen_rules cctx m ~build_dir ~dir:ctx_dir

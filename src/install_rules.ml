@@ -60,7 +60,7 @@ let gen_dune_package sctx ~version ~(pkg : Local_package.t) =
     Dune_package.Or_meta.encode ~dune_version pkg
     |> Format.asprintf "%a@."
          (Fmt.list ~pp_sep:Fmt.nl
-            (Dune_lang.pp (Stanza.File_kind.of_syntax dune_version))))
+            (Dune_lang.Deprecated.pp (Stanza.File_kind.of_syntax dune_version))))
   >>>
   Build.write_file_dyn  dune_package_file
   |> Super_context.add_rule sctx ~dir:ctx.build_dir
@@ -121,11 +121,12 @@ let init_meta sctx ~dir =
           | Some lib ->
             let lib = Lib.Local.to_lib lib in
             Build.fail { fail = fun () ->
-              Errors.fail (Loc.in_file meta_template)
-                "Package %a defines virtual library %a and has a META \
-                 template. This is not allowed."
-                Package.Name.pp (Local_package.name pkg)
-                Lib_name.pp (Lib.name lib)
+              User_error.raise ~loc:(Loc.in_file meta_template)
+                [ Pp.textf "Package %s defines virtual library %s and \
+                            has a META template. This is not allowed."
+                    (Package.Name.to_string (Local_package.name pkg))
+                    (Lib_name.to_string (Lib.name lib))
+                ]
             }
           | None ->
             Build.lines_of meta_template)

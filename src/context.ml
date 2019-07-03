@@ -262,8 +262,11 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     in
     let dir = Path.parent_exn ocamlc in
     let ocaml_tool_not_found prog =
-      die "ocamlc found in %s, but %s/%s doesn't exist (context: %s)"
-        (Path.to_string dir) (Path.to_string dir) prog name
+      User_error.raise
+        [ Pp.textf "ocamlc found in %s, but %s/%s doesn't exist \
+                    (context: %s)"
+            (Path.to_string dir) (Path.to_string dir) prog name
+        ]
     in
     let get_ocaml_tool prog =
       match get_tool_using_findlib_config prog with
@@ -331,11 +334,14 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     let ocaml_config_ok_exn = function
       | Ok x -> x
       | Error (Ocaml_config.Origin.Ocamlc_config, msg) ->
-        die "Failed to parse the output of '%s -config':@\n\
-             %s"
-          (Path.to_string ocamlc) msg
+        User_error.raise
+          [ Pp.textf "Failed to parse the output of '%s -config':"
+              (Path.to_string ocamlc)
+          ; Pp.text msg
+          ]
       | Error (Makefile_config file, msg) ->
-        Errors.fail (Loc.in_file file) "%s" msg
+        User_error.raise ~loc:(Loc.in_file file)
+          [ Pp.text msg ]
     in
     let* (findlib_paths, ocfg) =
       Fiber.fork_and_join
@@ -430,6 +436,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       ; ext_dll = Ocaml_config.ext_dll ocfg
       ; natdynlink_supported =
           Dynlink_supported.By_the_os.of_bool natdynlink_supported
+      ; stdlib_dir
       }
     in
     let t =
@@ -554,9 +561,12 @@ let opam_version =
           try
             Scanf.sscanf version "%d.%d.%d" (fun a b c -> a, b, c)
           with _ ->
-            die "@{<error>Error@}: `%a config --version' \
-                 returned invalid output:\n%s"
-              Path.pp opam version)
+            User_error.raise
+              [ Pp.textf "`%s config --version' returned invalid \
+                          output:"
+                  (Path.to_string_maybe_quoted opam)
+              ; Pp.verbatim version
+              ])
       in
       res := Some future;
       Fiber.Future.wait future

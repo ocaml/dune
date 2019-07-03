@@ -10,9 +10,9 @@ message is displayed:
   4 |  (modes shared_object))
   Error: No installable mode found for this executable.
   One of the following modes is required:
-   - exe
-   - native
-   - byte
+  - exe
+  - native
+  - byte
   [1]
 
 However, it is possible to build a private one explicitly.

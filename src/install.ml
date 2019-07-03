@@ -245,10 +245,12 @@ module Entry = struct
 
   let adjust_dst ~src ~dst ~section =
     let error var =
-      Errors.fail (String_with_vars.Var.loc var)
-        "Because this file is installed in the 'bin' section, you\n\
-         cannot use the variable %s in its basename."
-        (String_with_vars.Var.describe var)
+      User_error.raise ~loc:(String_with_vars.Var.loc var)
+        [ Pp.textf
+            "Because this file is installed in the 'bin' section, you \
+             cannot use the variable %s in its basename."
+            (String_with_vars.Var.describe var)
+        ]
     in
     let is_source_executable () =
       let has_ext ext =
@@ -369,7 +371,7 @@ let pos_of_opam_value : OpamParserTypes.value -> OpamParserTypes.pos = function
 let load_install_file path =
   let open OpamParserTypes in
   let file = Opam_file.load path in
-  let fail (fname, line, col) fmt =
+  let fail (fname, line, col) msg =
     let pos : Lexing.position =
       { pos_fname = fname
       ; pos_lnum = line
@@ -377,7 +379,8 @@ let load_install_file path =
       ; pos_cnum = col
       }
     in
-    Errors.fail { start =  pos; stop = pos } fmt
+    User_error.raise ~loc:{ start =  pos; stop = pos }
+      [ Pp.text msg ]
   in
   List.concat_map file.file_contents ~f:(function
     | Variable (pos, section, files) -> begin

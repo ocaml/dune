@@ -1,3 +1,5 @@
+open Stdune
+
 module Ppx_args = struct
   module Cookie = struct
     type t =
@@ -13,7 +15,8 @@ module Ppx_args = struct
           let+ name = plain_string
             (fun ~loc str ->
               if String.contains str '=' then
-                Errors.fail loc "Character '=' is not allowed in cookie names"
+                User_error.raise ~loc
+                  [ Pp.text "Character '=' is not allowed in cookie names" ]
               else
                 str
             )

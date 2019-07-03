@@ -45,7 +45,8 @@ let rec eval t ~dir ~f =
     | String "false" -> false
     | _ ->
       let loc = String_with_vars.loc sw in
-      Errors.fail loc "This value must be either true or false"
+      User_error.raise ~loc
+        [ Pp.text "This value must be either true or false" ]
     end
   | And xs -> List.for_all ~f:(eval ~f ~dir) xs
   | Or xs -> List.exists ~f:(eval ~f ~dir) xs

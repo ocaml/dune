@@ -323,9 +323,10 @@ let get_installed_binaries stanzas ~(context : Context.t) =
       | Unknown -> None
       | Expanded x -> Some x
       | Restricted ->
-        Errors.fail (String_with_vars.Var.loc var)
-          "%s isn't allowed in this position"
-          (String_with_vars.Var.describe var)
+        User_error.raise ~loc:(String_with_vars.Var.loc var)
+          [ Pp.textf "%s isn't allowed in this position."
+              (String_with_vars.Var.describe var)
+          ]
     ) sw
     |> Value.to_string ~dir
   in
@@ -366,7 +367,9 @@ let create
       ~external_lib_deps_mode
   =
   let installed_libs =
-    Lib.DB.create_from_findlib context.findlib ~external_lib_deps_mode
+    let stdlib_dir = context.stdlib_dir in
+    Lib.DB.create_from_findlib context.findlib ~stdlib_dir
+      ~external_lib_deps_mode
   in
   let scopes, public_libs =
     let libs, external_variants =
@@ -665,10 +668,11 @@ module Action = struct
       | x :: _ ->
         let loc = String_with_vars.loc x in
         (* DUNE2: make this an error *)
-        Errors.warn loc
-          "%s must not have targets, this target will be ignored.\n\
-           This will become an error in the future."
-          (String.capitalize context)
+        User_warning.emit ~loc
+          [ Pp.textf "%s must not have targets, this target will be ignored."
+              (String.capitalize context)
+          ; Pp.textf "This will become an error in the future."
+          ]
     end;
     let t, forms =
       partial_expand sctx ~expander ~dep_kind
@@ -695,18 +699,21 @@ module Action = struct
           match Path.as_in_build_dir p with
           | Some p -> p :: acc
           | None ->
-            Errors.fail loc
-              "target %s is outside the build directory. This is not allowed."
-              (Path.to_string_maybe_quoted p))
+            User_error.raise ~loc
+              [ Pp.textf "target %s is outside the build \
+                          directory. This is not allowed."
+                  (Path.to_string_maybe_quoted p)
+              ])
     in
     List.iter targets ~f:(fun target ->
       if Path.Build.(<>) (Path.Build.parent_exn target) targets_dir then
-        Errors.fail loc
-          "This action has targets in a different directory than the current \
-           one, this is not allowed by dune at the moment:\n%s"
-          (List.map targets ~f:(fun target ->
-             sprintf "- %s" (Dpath.describe_path (Path.build target)))
-           |> String.concat ~sep:"\n"));
+        User_error.raise ~loc
+          [ Pp.text "This action has targets in a different directory \
+                     than the current one, this is not allowed by dune \
+                     at the moment:"
+          ; Pp.enumerate targets ~f:(fun target ->
+              Pp.text (Dpath.describe_path (Path.build target)))
+          ]);
     let build =
       Build.record_lib_deps (Expander.Resolved_forms.lib_deps forms)
       >>>

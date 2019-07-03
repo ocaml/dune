@@ -46,7 +46,7 @@ Dune >= 1.10
 
   $ echo '(lang dune 1.10)' > dune-project
   $ dune build a
-  Multiple rules generated for _build/default/a:
+  Error: Multiple rules generated for _build/default/a:
   - file present in source tree
   - dune:1
   Hint: rm -f a

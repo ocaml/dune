@@ -9,10 +9,9 @@ Can init a public library
 Can build the public library
 
   $ cd _test_lib_dir && touch test_lib.opam && dune build
-  Info: creating file dune-project with this contents:
+  Info: Creating file dune-project with this contents:
   | (lang dune 1.11)
   | (name test_lib)
-  
   $ cat ./_test_lib_dir/dune
   (library
    (public_name test_lib)
@@ -61,10 +60,9 @@ Can init a public executable
 Can build an executable
 
   $ cd _test_bin_dir && touch test_bin.opam && dune build
-  Info: creating file dune-project with this contents:
+  Info: Creating file dune-project with this contents:
   | (lang dune 1.11)
   | (name test_bin)
-  
 
 Can run the created executable
 
@@ -142,10 +140,9 @@ Can init a library and dependent executable in a combo project
 Can build the combo project
 
   $ cd _test_lib_exe_dir && touch test_bin.opam && dune build
-  Info: creating file dune-project with this contents:
+  Info: Creating file dune-project with this contents:
   | (lang dune 1.11)
   | (name test_bin)
-  
 
 Can run the combo project
 
@@ -176,10 +173,9 @@ Can add multiple libraries in the same directory
 Can build the multiple library project
 
   $ cd _test_lib && touch test_lib1.opam && dune build
-  Info: creating file dune-project with this contents:
+  Info: Creating file dune-project with this contents:
   | (lang dune 1.11)
   | (name test_lib1)
-  
 
 Clan up the multiple library project
 
@@ -209,7 +205,8 @@ Safety and Validation
 Will not overwrite existing files
 
   $ dune init exe test_bin ./existing_project/bin
-  Warning: file existing_project/bin/main.ml was not created because it already exists
+  Warning: File existing_project/bin/main.ml was not created because it already
+  exists
   Success: initialized executable component named test_bin
   $ cat ./existing_project/bin/main.ml
   () = print_endline "Goodbye"
@@ -231,8 +228,10 @@ Comments in dune files are preserved
 Will not create components with invalid names
 
   $ dune init lib invalid-component-name ./_test_lib
-  A component named 'invalid-component-name' cannot be created because it is an invalid library name.
-  Hint: library names must be non-empty and composed only of the following characters: 'A'..'Z',  'a'..'z', '_'  or '0'..'9'
+  Error: A component named 'invalid-component-name' cannot be created because
+  it is an invalid library name.
+  Hint: library names must be non-empty and composed only of the following
+  characters: 'A'..'Z', 'a'..'z', '_' or '0'..'9'
   [1]
   $ test -f ./_test_lib
   [1]
@@ -249,10 +248,10 @@ Will fail and inform user when invalid component command is given
 Will fail and inform user when an invalid option is given to a component
 
   $ dune init test test_foo --public
-  The test component does not support the public option
+  Error: The test component does not support the public option
   [1]
   $ dune init exe test_exe --inline-tests
-  The executable component does not support the inline-tests option
+  Error: The executable component does not support the inline-tests option
   [1]
 
 Adding fields to existing stanzas
@@ -264,7 +263,7 @@ Adding fields to existing stanzas is currently not supported
   $ dune init exe test_bin ./_test_bin --libs test_lib1
   Success: initialized executable component named test_bin
   $ dune init exe test_bin ./_test_bin --libs test_lib2
-  Updating existing stanzas is not yet supported.
+  Error: Updating existing stanzas is not yet supported.
   A preexisting dune stanza conflicts with a generated stanza:
   
   Generated stanza:
@@ -301,10 +300,9 @@ Can init and build a new executable project
   test_exec_proj.ml
 
   $ cd test_exec_proj && dune build
-  Info: creating file dune-project with this contents:
+  Info: Creating file dune-project with this contents:
   | (lang dune 1.11)
   | (name test_exec_proj)
-  
   $ rm -rf ./test_exec_proj
 
 Can init and build a new library project
@@ -323,10 +321,9 @@ Can init and build a new library project
   test_lib_proj.ml
 
   $ cd test_lib_proj && dune build
-  Info: creating file dune-project with this contents:
+  Info: Creating file dune-project with this contents:
   | (lang dune 1.11)
   | (name test_lib_proj)
-  
 Can init and build a project using Esy
 
   $ dune init proj test_esy_proj --pkg esy

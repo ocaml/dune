@@ -4,9 +4,6 @@ module Context = Dune.Context
 module Build = Dune.Build
 module Build_system = Dune.Build_system
 
-let die = Dune.Import.die
-let hint = Dune.Import.hint
-
 type t =
   | File      of Path.t
   | Alias     of Alias.t
@@ -59,7 +56,7 @@ let target_hint (_setup : Dune.Main.build_system) path =
         None)
   in
   let candidates = String.Set.of_list candidates |> String.Set.to_list in
-  hint (Path.to_string path) candidates
+  User_message.did_you_mean (Path.to_string path) ~candidates
 
 let resolve_path path ~(setup : Dune.Main.build_system) =
   let checked = Util.check_path setup.workspace.contexts path in
@@ -138,7 +135,10 @@ let resolve_targets ~log common (setup : Dune.Main.build_system) user_targets =
 let resolve_targets_exn ~log common setup user_targets =
   resolve_targets ~log common setup user_targets
   |> List.concat_map ~f:(function
-    | Error (path, hint) ->
-      die "Don't know how to build %a%s" Path.pp path hint
+    | Error (path, hints) ->
+      User_error.raise
+        [ Pp.textf "Don't know how to build %s"
+            (Path.to_string_maybe_quoted path) ]
+        ~hints
     | Ok targets ->
       targets)

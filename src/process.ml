@@ -559,7 +559,13 @@ let run_capture_line ?dir ?stderr_to ~env ?(purpose=Internal_job) fail_mode
       in
       match l with
       | [] ->
-        die "command returned nothing: %s" cmdline
+        User_error.raise
+          [ Pp.textf "Command returned nothing: %s" cmdline ]
       | _ ->
-        die "command returned too many lines: %s\n%s"
-          cmdline (String.concat l ~sep:"\n"))
+        User_error.raise
+          [ Pp.textf "command returned too many lines: %s" cmdline
+          ; Pp.vbox
+              (Pp.concat_map l ~sep:Pp.cut
+                 ~f:(fun line ->
+                   Pp.seq (Pp.verbatim "> ") (Pp.verbatim line)))
+          ])

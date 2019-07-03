@@ -61,7 +61,7 @@ let decode =
            | "" | "." | ".." -> true
            | _ -> false
         then
-          of_sexp_errorf loc "Invalid sub-directory name %S" dn
+          User_error.raise ~loc [ Pp.textf "Invalid sub-directory name %S" dn ]
         else
           dn)
       |> list
@@ -73,10 +73,12 @@ let decode =
     in
     if version >= (1, 6) then begin
       (* DUNE2: make this an error *)
-      Errors.warn loc
-        "ignored_subdirs is deprecated in 1.6. Use dirs to specify \
-         visible directories or data_only_dirs for ignoring only dune \
-         files."
+      User_warning.emit ~loc
+        [ Pp.text
+            "ignored_subdirs is deprecated in 1.6. Use dirs to specify \
+             visible directories or data_only_dirs for ignoring only \
+             dune files."
+        ]
     end;
     ignored
   in
@@ -92,13 +94,13 @@ let decode =
     in
     match data_only, dirs, ignored_sub_dirs with
     | None, Some (loc, _), _::_ ->
-      Errors.fail loc
-        "Cannot have both dirs and ignored_subdirs \
-         stanza in a dune file. "
+      User_error.raise ~loc
+        [ Pp.text "Cannot have both dirs and ignored_subdirs \
+                   stanza in a dune file. " ]
     | Some (loc, _), None, _::_ ->
-      Errors.fail loc
-        "Cannot have both data_only_dirs and ignored_subdirs \
-         stanza in a dune file. "
+      User_error.raise ~loc
+        [ Pp.text "Cannot have both data_only_dirs and ignored_subdirs \
+                   stanza in a dune file. " ]
     | _ ->
       let dirs = Option.map ~f:snd dirs in
       let data_only = Option.map ~f:snd data_only in

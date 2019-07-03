@@ -6,14 +6,12 @@ module SC = Super_context
 module Includes = struct
   type t = Command.Args.dynamic Command.Args.t Cm_kind.Dict.t
 
-  let make sctx ~opaque ~requires : _ Cm_kind.Dict.t =
+  let make ~opaque ~requires : _ Cm_kind.Dict.t =
     match requires with
     | Error exn ->
       Cm_kind.Dict.make_all (Command.Args.Fail {fail = fun () -> raise exn})
     | Ok libs ->
-      let iflags =
-        Lib.L.include_flags libs ~stdlib_dir:(SC.context sctx).stdlib_dir
-      in
+      let iflags = Lib.L.include_flags libs in
       let cmi_includes =
         Command.Args.S [ iflags
                        ; Hidden_deps (Lib_file_deps.deps libs ~groups:[Cmi])
@@ -117,7 +115,7 @@ let create ~super_context ~scope ~expander ~obj_dir
   ; flags
   ; requires_compile
   ; requires_link
-  ; includes = Includes.make super_context ~opaque ~requires:requires_compile
+  ; includes = Includes.make ~opaque ~requires:requires_compile
   ; preprocessing
   ; no_keep_locs
   ; opaque

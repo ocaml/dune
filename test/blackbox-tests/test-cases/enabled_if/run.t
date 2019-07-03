@@ -9,7 +9,7 @@ This one is enabled:
 
 This rule is disabled, trying to build a should fail:
   $ dune build a
-  Don't know how to build a
+  Error: Don't know how to build a
   Hint: did you mean b?
   [1]
 

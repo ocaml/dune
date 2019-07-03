@@ -5,7 +5,7 @@ Make sure that we require a default value regardless of the context
   File "dune", line 3, characters 17-34:
   3 |  (action (echo %{env:DUNE_ENV_VAR})))
                        ^^^^^^^^^^^^^^^^^
-  Error: %{env:..} must always come with a default value
+  Error: %{env:..} must always come with a default value.
   Hint: the syntax is %{env:VAR=DEFAULT-VALUE}
   [1]
   $ dune build --root missing-default-in-blang @echo
@@ -13,7 +13,7 @@ Make sure that we require a default value regardless of the context
   File "dune", line 3, characters 23-40:
   3 |  (enabled_if (= true %{env:DUNE_ENV_VAR}))
                              ^^^^^^^^^^^^^^^^^
-  Error: %{env:..} must always come with a default value
+  Error: %{env:..} must always come with a default value.
   Hint: the syntax is %{env:VAR=DEFAULT-VALUE}
   [1]
 

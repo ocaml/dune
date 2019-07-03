@@ -25,7 +25,8 @@ module Local : sig
 
   val to_string : t -> string
 
-  val invalid_message : string
+  (** Description of valid library banes *)
+  val valid_format_doc : User_message.Style.t Pp.t
 
   val pp_quoted : t Fmt.t
   val pp : t Fmt.t

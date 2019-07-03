@@ -43,7 +43,8 @@ let parse_sub_systems ~parsing_context sexps =
   |> (function
     | Ok x -> x
     | Error (name, _, (loc, _, _)) ->
-      Errors.fail loc "%S present twice" (Sub_system_name.to_string name))
+      User_error.raise ~loc
+        [ Pp.textf "%S present twice" (Sub_system_name.to_string name) ])
   |> Sub_system_name.Map.mapi ~f:(fun name (_, version, data) ->
     parse_sub_system ~parsing_context ~name ~version ~data)
 
@@ -54,8 +55,8 @@ let of_sexp =
       | "1" -> (0, 0)
       | "2" -> (1, 0)
       | v ->
-        of_sexp_errorf loc
-          "Unsupported version %S, only version 1 is supported" v)
+        User_error.raise ~loc
+          [ Pp.textf "Unsupported version %S, only version 1 is supported" v ])
   in
   sum
     [ "dune",
@@ -86,12 +87,15 @@ let load fname =
        | 2, Atom (A "1") -> state := 3; lexer := Dune_lang.Lexer.jbuild_token
        | 2, Atom (A "2") -> state := 3; lexer := Dune_lang.Lexer.token
        | 2, Atom (A version) ->
-         Errors.fail (Loc.of_lexbuf lexbuf) "Unsupported version %S" version
+         User_error.raise ~loc:(Loc.of_lexbuf lexbuf)
+           [ Pp.textf "Unsupported version %S" version ]
        | 3, _ -> ()
        | _ ->
-         Errors.fail (Loc.of_lexbuf lexbuf)
-           "This <lib>.dune file looks invalid, it should \
-            contain a S-expression of the form (dune x.y ..)"
+         User_error.raise ~loc:(Loc.of_lexbuf lexbuf)
+           [ Pp.text
+               "This <lib>.dune file looks invalid, it should contain \
+                a S-expression of the form (dune x.y ..)"
+           ]
       );
       token
     in

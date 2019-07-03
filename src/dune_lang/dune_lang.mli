@@ -69,20 +69,21 @@ val unsafe_atom_of_string : string -> t
 val to_string : t -> syntax:File_syntax.t -> string
 
 (** Serialize a S-expression using indentation to improve readability *)
-val pp : File_syntax.t -> Format.formatter -> t -> unit
+val pp : File_syntax.t -> t -> _ Pp.t
 
-(** Serialization that never fails because it quotes atoms when necessary
-    TODO remove this once we have a proper sexp type *)
-val pp_quoted : Format.formatter -> t -> unit
+module Deprecated : sig
+  (** Serialize a S-expression using indentation to improve readability *)
+  val pp : File_syntax.t -> Format.formatter -> t -> unit
 
-(** Same as [pp ~syntax:Dune], but split long strings. The formatter
-    must have been prepared with [prepare_formatter]. *)
-val pp_split_strings : Format.formatter -> t -> unit
+  (** Same as [pp ~syntax:Dune], but split long strings. The formatter
+      must have been prepared with [prepare_formatter]. *)
+  val pp_split_strings : Format.formatter -> t -> unit
 
-(** Prepare a formatter for [pp_split_strings]. Additionaly the
-    formatter escape newlines when the tags "makefile-action" or
-    "makefile-stuff" are active. *)
-val prepare_formatter : Format.formatter -> unit
+  (** Prepare a formatter for [pp_split_strings]. Additionaly the
+      formatter escape newlines when the tags "makefile-action" or
+      "makefile-stuff" are active. *)
+  val prepare_formatter : Format.formatter -> unit
+end
 
 (** Abstract syntax tree *)
 module Ast : sig
@@ -153,16 +154,6 @@ end with type sexp := t
 (** Insert comments in a concrete syntax tree. Comments are inserted
     based on their location. *)
 val insert_comments : Cst.t list -> (Loc.t * Cst.Comment.t) list -> Cst.t list
-
-module Parse_error : sig
-  type t
-
-  val loc     : t -> Loc.t
-  val message : t -> string
-end
-
-(** Exception raised in case of a parsing error *)
-exception Parse_error of Parse_error.t
 
 module Lexer : sig
   module Token : sig
@@ -262,8 +253,6 @@ module Decoder : sig
     { on: string
     ; candidates: string list
     }
-
-  exception Decoder of Loc.t * string * hint option
 
   (** Monad producing a value of type ['a] by parsing an input
       composed of a sequence of S-expressions.
@@ -407,23 +396,6 @@ module Decoder : sig
 
   val fix : ('a t -> 'a t) -> 'a t
 
-  val of_sexp_error
-    :  ?hint:hint
-    -> Loc.t
-    -> string
-    -> _
-  val of_sexp_errorf
-    :  ?hint:hint
-    -> Loc.t
-    -> ('a, unit, string, 'b) format4
-    -> 'a
-
-  val no_templates
-    : ?hint:hint
-    -> Loc.t
-    -> ('a, unit, string, 'b) format4
-    -> 'a
-
   val located : ('a, 'k) parser -> (Loc.t * 'a, 'k) parser
 
   val enum : (string * 'a) list -> 'a t
@@ -438,7 +410,7 @@ module Decoder : sig
       error in case of failure. *)
   val map_validate
     :  'a fields_parser
-    -> f:('a -> ('b, string) Result.t)
+    -> f:('a -> ('b, User_message.t) Result.t)
     -> 'b fields_parser
 
   (** {3 Parsing record fields} *)

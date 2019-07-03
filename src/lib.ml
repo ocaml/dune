@@ -1,4 +1,3 @@
-open Import
 open! Stdune
 open Result.O
 
@@ -273,6 +272,7 @@ module T = struct
     ; resolved_selects  : Resolved_select.t list
     ; user_written_deps : Dune_file.Lib_deps.t
     ; implements        : t Or_exn.t option
+    ; stdlib_dir        : Path.t
     ; (* these fields cannot be forced until the library is instantiated *)
       default_implementation     : t Or_exn.t Lazy.t option
     ; (* if this is a virtual library, this library contains all known
@@ -307,6 +307,7 @@ type db =
   ; resolve              : Lib_name.t -> resolve_result
   ; table                : (Lib_name.t, status) Hashtbl.t
   ; all                  : Lib_name.t list Lazy.t
+  ; stdlib_dir           : Path.t
   }
 
 and resolve_result =
@@ -379,7 +380,7 @@ module L = struct
          Command.Args.Path dir :: A "-I" :: acc)
        |> List.rev)
 
-  let include_paths ts ~stdlib_dir =
+  let include_paths ts =
     let dirs =
       List.fold_left ts ~init:Path.Set.empty ~f:(fun acc t ->
         let obj_dir = Lib_info.obj_dir t.info in
@@ -388,34 +389,36 @@ module L = struct
         List.fold_left ~f:Path.Set.add ~init:acc
           [public_cmi_dir ; native_dir])
     in
-    Path.Set.remove dirs stdlib_dir
+    match ts with
+    | [] -> dirs
+    | x :: _ -> Path.Set.remove dirs x.stdlib_dir
 
-  let include_flags ts ~stdlib_dir =
-    to_iflags (include_paths ts ~stdlib_dir)
+  let include_flags ts = to_iflags (include_paths ts)
 
-  let c_include_paths ts ~stdlib_dir =
+  let c_include_paths ts =
     let dirs =
       List.fold_left ts ~init:Path.Set.empty ~f:(fun acc t ->
         let src_dir = Lib_info.src_dir t.info in
         Path.Set.add acc src_dir)
     in
-    Path.Set.remove dirs stdlib_dir
+    match ts with
+    | [] -> dirs
+    | x :: _ -> Path.Set.remove dirs x.stdlib_dir
 
-  let c_include_flags ts ~stdlib_dir =
-    to_iflags (c_include_paths ts ~stdlib_dir)
+  let c_include_flags ts = to_iflags (c_include_paths ts)
 
-  let link_flags ts ~mode ~stdlib_dir =
+  let link_flags ts ~mode =
     Command.Args.S
-      (c_include_flags ts ~stdlib_dir ::
+      (c_include_flags ts ::
        List.map ts ~f:(fun t ->
          let archives = Lib_info.archives t.info in
          Command.Args.Deps (Mode.Dict.get archives mode)))
 
-  let compile_and_link_flags ~compile ~link ~mode ~stdlib_dir =
+  let compile_and_link_flags ~compile ~link ~mode =
     let dirs =
       Path.Set.union
-        (  include_paths compile ~stdlib_dir)
-        (c_include_paths link    ~stdlib_dir)
+        (  include_paths compile)
+        (c_include_paths link)
     in
     Command.Args.S
       (to_iflags dirs ::
@@ -459,12 +462,12 @@ module Lib_and_module = struct
   module L = struct
     type nonrec t = t list
 
-    let link_flags ts ~mode ~stdlib_dir =
+    let link_flags ts ~mode =
       let libs = List.filter_map ts ~f:(function
         | Lib lib -> Some lib
         | Module _ -> None) in
       Command.Args.S
-        (L.c_include_flags libs ~stdlib_dir ::
+        (L.c_include_flags libs ::
          List.map ts ~f:(function
            | Lib t ->
              let archives = Lib_info.archives t.info in
@@ -529,8 +532,10 @@ module Sub_system = struct
     | M.Info.T info ->
       let get ~loc lib' =
         if lib = lib' then
-          Errors.fail loc "Library %a depends on itself"
-            Lib_name.pp_quoted lib.name
+          User_error.raise ~loc
+            [ Pp.textf "Library %S depends on itself"
+                (Lib_name.to_string lib.name)
+            ]
         else
           M.get lib'
       in
@@ -883,21 +888,24 @@ let rec instantiate db name info ~stack ~hidden =
           else
             let name = Lib_info.name info in
             let name_vlib = Lib_info.name vlib.info in
-            Errors.fail loc
-              "Library implementation %a with variant %a implements@ a \
-               library outside the project.@ Instead of using \
-               (variant %a) here,@ you need to reference it in the \
-               virtual library project,@ using the external_variant stanza:@ \
-               (external_variant@\n\
-               \  (virtual_library %a)@\n\
-               \  (variant %a)@\n\
-               \  (implementation %a))"
-              Lib_name.pp name
-              Variant.pp variant
-              Variant.pp variant
-              Lib_name.pp name_vlib
-              Variant.pp variant
-              Lib_name.pp name)
+            User_error.raise ~loc
+              [ Pp.textf
+                  "Library implementation %s with variant %s implements a \
+                   library outside the project. Instead of using \
+                   (variant %S) here, you need to reference it in the \
+                   virtual library project, using the external_variant stanza:"
+                  (Lib_name.to_string name)
+                  (Variant.to_string variant)
+                  (Variant.to_string variant)
+              ; Pp.textf
+                  "(external_variant\n\
+                  \  (virtual_library %s)\n\
+                  \  (variant %S)\n\
+                  \  (implementation %s))"
+                  (Lib_name.to_string name_vlib)
+                  (Variant.to_string variant)
+                  (Lib_name.to_string name)
+              ])
   in
   let resolve_impl impl_name =
     let* impl = resolve impl_name in
@@ -961,6 +969,7 @@ let rec instantiate db name info ~stack ~hidden =
     ; implements
     ; default_implementation
     ; resolved_implementations
+    ; stdlib_dir = db.stdlib_dir
     }
   in
   t.sub_systems <-
@@ -1379,11 +1388,12 @@ module DB = struct
 
   type t = db
 
-  let create ?parent ~resolve ~all () =
+  let create ?parent ~stdlib_dir ~resolve ~all () =
     { parent
     ; resolve
     ; table  = Hashtbl.create 1024
     ; all    = Lazy.from_fun all
+    ; stdlib_dir
     }
 
   let check_valid_external_variants libmap external_variants =
@@ -1403,29 +1413,32 @@ module DB = struct
             | _ -> assert false)
       with
       | None ->
-        Errors.fail ev.loc
-          "Virtual library %a hasn't been found in the project."
-          Lib_name.pp ev.virtual_lib
+        User_error.raise ~loc:ev.loc
+          [ Pp.textf "Virtual library %s hasn't been found in the project."
+              (Lib_name.to_string ev.virtual_lib)
+          ]
       | Some info ->
         begin match Lib_info.virtual_ info with
         | Some _ -> ()
         | None ->
-          Errors.fail ev.loc
-            "Library %a isn't a virtual library."
-            Lib_name.pp ev.virtual_lib
+          User_error.raise ~loc:ev.loc
+            [ Pp.textf "Library %s isn't a virtual library."
+                (Lib_name.to_string ev.virtual_lib)
+            ]
         end)
 
   let error_two_impl_for_variant name variant (loc1, impl1) (loc2, impl2) =
-    Errors.fail_opt None
-      "Error: Two implementations of %a have the same variant %a:\n\
-       - %a (%a)\n\
-       - %a (%a)\n"
-      Lib_name.Local.pp name
-      Variant.pp variant
-      Lib_name.pp impl1
-      Loc.pp_file_colon_line loc1
-      Lib_name.pp impl2
-      Loc.pp_file_colon_line loc2
+    User_error.raise
+      [ Pp.textf "Two implementations of %s have the same variant %S:"
+          (Lib_name.Local.to_string name)
+          (Variant.to_string variant)
+      ; Pp.textf "- %s (%s)"
+          (Lib_name.to_string impl1)
+          (Loc.to_file_colon_line loc1)
+      ; Pp.textf "- %s (%s)"
+          (Lib_name.to_string impl2)
+          (Loc.to_file_colon_line loc2)
+      ]
 
   let create_from_library_stanzas ?parent ~lib_config lib_stanzas
         external_variant_stanzas =
@@ -1512,25 +1525,26 @@ module DB = struct
         with
         | [] | [_] -> assert false
         | loc1 :: loc2 :: _ ->
-          die "Library %a is defined twice:\n\
-               - %s\n\
-               - %s"
-            Lib_name.pp_quoted name
-            (Loc.to_file_colon_line loc1)
-            (Loc.to_file_colon_line loc2)
+          User_error.raise
+            [ Pp.textf "Library %s is defined twice:" (Lib_name.to_string name)
+            ; Pp.textf "- %s" (Loc.to_file_colon_line loc1)
+            ; Pp.textf "- %s" (Loc.to_file_colon_line loc2)
+            ]
     in
     (* We need to check that [external_variant] stanzas are correct,
        i.e. contain valid [virtual_library] fields now since this is
        the last time we analyse them. *)
     check_valid_external_variants map external_variant_stanzas;
-    create () ?parent
+    create () ?parent ~stdlib_dir:lib_config.stdlib_dir
       ~resolve:(fun name ->
         Lib_name.Map.find map name
         |> Option.value ~default:Not_found)
       ~all:(fun () -> Lib_name.Map.keys map)
 
-  let create_from_findlib ?(external_lib_deps_mode=false) findlib =
+  let create_from_findlib ?(external_lib_deps_mode=false)
+        ~stdlib_dir findlib =
     create ()
+      ~stdlib_dir
       ~resolve:(fun name ->
         match Findlib.find findlib name with
         | Ok pkg -> Found (Lib_info.of_dune_lib pkg)

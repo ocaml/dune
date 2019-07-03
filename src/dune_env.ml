@@ -39,7 +39,8 @@ module Stanza = struct
        match Env.Map.of_list pairs with
        | Ok vars -> Env.extend Env.empty ~vars
        | Error (k, _, _) ->
-         Errors.fail loc "Variable %s is specified several times" k)
+         User_error.raise ~loc
+           [ Pp.textf "Variable %s is specified several times" k ])
 
   let config =
     let+ flags = Ocaml_flags.Spec.decode

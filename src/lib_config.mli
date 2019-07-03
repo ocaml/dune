@@ -1,3 +1,5 @@
+open Stdune
+
 type t =
   { has_native : bool
   ; ext_lib : string
@@ -9,6 +11,7 @@ type t =
   ; (** Native dynlink *)
     natdynlink_supported    : Dynlink_supported.By_the_os.t
   ; ext_dll                 : string
+  ; stdlib_dir              : Path.t
   }
 
 val allowed_in_enabled_if : string list

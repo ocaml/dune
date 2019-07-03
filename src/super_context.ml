@@ -367,7 +367,9 @@ let create
       ~external_lib_deps_mode
   =
   let installed_libs =
-    Lib.DB.create_from_findlib context.findlib ~external_lib_deps_mode
+    let stdlib_dir = context.stdlib_dir in
+    Lib.DB.create_from_findlib context.findlib ~stdlib_dir
+      ~external_lib_deps_mode
   in
   let scopes, public_libs =
     let libs, external_variants =

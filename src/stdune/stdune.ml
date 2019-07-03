@@ -8,6 +8,7 @@ module Csexp      = Csexp
 module Either     = Either
 module Exn        = Exn
 module Exn_with_backtrace = Exn_with_backtrace
+module Fcntl      = Fcntl
 module Filename   = Filename
 module Hashtbl    = Hashtbl
 module Table      = Table

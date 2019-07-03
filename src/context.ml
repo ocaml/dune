@@ -436,6 +436,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       ; ext_dll = Ocaml_config.ext_dll ocfg
       ; natdynlink_supported =
           Dynlink_supported.By_the_os.of_bool natdynlink_supported
+      ; stdlib_dir
       }
     in
     let t =

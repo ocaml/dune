@@ -51,7 +51,7 @@ module DB = struct
       let scope = find_by_name (Fdecl.get t) (Dune_project.name project) in
       Redirect (Some scope.db, name)
 
-  let public_libs t ~installed_libs internal_libs =
+  let public_libs t ~stdlib_dir ~installed_libs internal_libs =
     let public_libs =
       List.filter_map internal_libs
         ~f:(fun (_dir, (lib : Dune_file.Library.t)) ->
@@ -78,6 +78,7 @@ module DB = struct
     in
     let resolve = resolve t public_libs in
     Lib.DB.create ()
+      ~stdlib_dir
       ~parent:installed_libs
       ~resolve
       ~all:(fun () -> Lib_name.Map.keys public_libs)
@@ -135,7 +136,9 @@ module DB = struct
   let create ~projects ~context ~installed_libs ~lib_config
         internal_libs variant_implementations =
     let t = Fdecl.create () in
-    let public_libs = public_libs t ~installed_libs internal_libs in
+    let public_libs =
+      public_libs t ~stdlib_dir:lib_config.Lib_config.stdlib_dir
+        ~installed_libs internal_libs in
     let by_name =
       sccopes_by_name ~context ~projects ~lib_config ~public_libs
         internal_libs variant_implementations

@@ -272,6 +272,7 @@ module T = struct
     ; resolved_selects  : Resolved_select.t list
     ; user_written_deps : Dune_file.Lib_deps.t
     ; implements        : t Or_exn.t option
+    ; stdlib_dir        : Path.t
     ; (* these fields cannot be forced until the library is instantiated *)
       default_implementation     : t Or_exn.t Lazy.t option
     ; (* if this is a virtual library, this library contains all known
@@ -306,6 +307,7 @@ type db =
   ; resolve              : Lib_name.t -> resolve_result
   ; table                : (Lib_name.t, status) Hashtbl.t
   ; all                  : Lib_name.t list Lazy.t
+  ; stdlib_dir           : Path.t
   }
 
 and resolve_result =
@@ -378,7 +380,7 @@ module L = struct
          Command.Args.Path dir :: A "-I" :: acc)
        |> List.rev)
 
-  let include_paths ts ~stdlib_dir =
+  let include_paths ts =
     let dirs =
       List.fold_left ts ~init:Path.Set.empty ~f:(fun acc t ->
         let obj_dir = Lib_info.obj_dir t.info in
@@ -387,34 +389,36 @@ module L = struct
         List.fold_left ~f:Path.Set.add ~init:acc
           [public_cmi_dir ; native_dir])
     in
-    Path.Set.remove dirs stdlib_dir
+    match ts with
+    | [] -> dirs
+    | x :: _ -> Path.Set.remove dirs x.stdlib_dir
 
-  let include_flags ts ~stdlib_dir =
-    to_iflags (include_paths ts ~stdlib_dir)
+  let include_flags ts = to_iflags (include_paths ts)
 
-  let c_include_paths ts ~stdlib_dir =
+  let c_include_paths ts =
     let dirs =
       List.fold_left ts ~init:Path.Set.empty ~f:(fun acc t ->
         let src_dir = Lib_info.src_dir t.info in
         Path.Set.add acc src_dir)
     in
-    Path.Set.remove dirs stdlib_dir
+    match ts with
+    | [] -> dirs
+    | x :: _ -> Path.Set.remove dirs x.stdlib_dir
 
-  let c_include_flags ts ~stdlib_dir =
-    to_iflags (c_include_paths ts ~stdlib_dir)
+  let c_include_flags ts = to_iflags (c_include_paths ts)
 
-  let link_flags ts ~mode ~stdlib_dir =
+  let link_flags ts ~mode =
     Command.Args.S
-      (c_include_flags ts ~stdlib_dir ::
+      (c_include_flags ts ::
        List.map ts ~f:(fun t ->
          let archives = Lib_info.archives t.info in
          Command.Args.Deps (Mode.Dict.get archives mode)))
 
-  let compile_and_link_flags ~compile ~link ~mode ~stdlib_dir =
+  let compile_and_link_flags ~compile ~link ~mode =
     let dirs =
       Path.Set.union
-        (  include_paths compile ~stdlib_dir)
-        (c_include_paths link    ~stdlib_dir)
+        (  include_paths compile)
+        (c_include_paths link)
     in
     Command.Args.S
       (to_iflags dirs ::
@@ -458,12 +462,12 @@ module Lib_and_module = struct
   module L = struct
     type nonrec t = t list
 
-    let link_flags ts ~mode ~stdlib_dir =
+    let link_flags ts ~mode =
       let libs = List.filter_map ts ~f:(function
         | Lib lib -> Some lib
         | Module _ -> None) in
       Command.Args.S
-        (L.c_include_flags libs ~stdlib_dir ::
+        (L.c_include_flags libs ::
          List.map ts ~f:(function
            | Lib t ->
              let archives = Lib_info.archives t.info in
@@ -965,6 +969,7 @@ let rec instantiate db name info ~stack ~hidden =
     ; implements
     ; default_implementation
     ; resolved_implementations
+    ; stdlib_dir = db.stdlib_dir
     }
   in
   t.sub_systems <-
@@ -1383,11 +1388,12 @@ module DB = struct
 
   type t = db
 
-  let create ?parent ~resolve ~all () =
+  let create ?parent ~stdlib_dir ~resolve ~all () =
     { parent
     ; resolve
     ; table  = Hashtbl.create 1024
     ; all    = Lazy.from_fun all
+    ; stdlib_dir
     }
 
   let check_valid_external_variants libmap external_variants =
@@ -1529,14 +1535,16 @@ module DB = struct
        i.e. contain valid [virtual_library] fields now since this is
        the last time we analyse them. *)
     check_valid_external_variants map external_variant_stanzas;
-    create () ?parent
+    create () ?parent ~stdlib_dir:lib_config.stdlib_dir
       ~resolve:(fun name ->
         Lib_name.Map.find map name
         |> Option.value ~default:Not_found)
       ~all:(fun () -> Lib_name.Map.keys map)
 
-  let create_from_findlib ?(external_lib_deps_mode=false) findlib =
+  let create_from_findlib ?(external_lib_deps_mode=false)
+        ~stdlib_dir findlib =
     create ()
+      ~stdlib_dir
       ~resolve:(fun name ->
         match Findlib.find findlib name with
         | Ok pkg -> Found (Lib_info.of_dune_lib pkg)

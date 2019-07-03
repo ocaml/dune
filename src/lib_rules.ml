@@ -241,7 +241,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
     let includes =
       Command.Args.S [ Hidden_deps (Dep.Set.of_files h_files)
         ; Command.of_result_map requires ~f:(fun libs ->
-            S [ Lib.L.c_include_flags libs ~stdlib_dir:ctx.stdlib_dir
+            S [ Lib.L.c_include_flags libs
               ; Hidden_deps (
                   Lib_file_deps.deps libs
                     ~groups:[Lib_file_deps.Group.Header])

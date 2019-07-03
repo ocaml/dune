@@ -175,7 +175,6 @@ let link_exe
               ~f:(fun { Link_time_code_gen.to_link; force_linkall } ->
                 S [ As (if force_linkall then ["-linkall"] else [])
                   ; Lib.Lib_and_module.L.link_flags to_link ~mode
-                      ~stdlib_dir:ctx.stdlib_dir
                   ])
           ; Dyn (Build.S.map top_sorted_cms ~f:(fun x -> Command.Args.Deps x))
           ]));

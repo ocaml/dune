@@ -422,9 +422,7 @@ let build_ppx_driver sctx ~dep_kind ~target ~dir_kind ~pps ~pp_names =
           ; A "-w"; A "-24"
           ; Command.of_result
               (Result.map driver_and_libs ~f:(fun (_driver, libs) ->
-                 Lib.L.compile_and_link_flags ~mode ~stdlib_dir:ctx.stdlib_dir
-                   ~compile:libs
-                   ~link:libs))
+                 Lib.L.compile_and_link_flags ~mode ~compile:libs ~link:libs))
           ; Dep (Path.build ml)
           ]))
 

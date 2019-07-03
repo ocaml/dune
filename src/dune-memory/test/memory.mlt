@@ -5,7 +5,7 @@ open Stdune
 open Dune_memory
 
 let () =
-  Path.Build.set_build_dir (Path.Kind.of_string (Filename.get_temp_dir_name ()));;
+  Path.Build.set_build_dir (Path.Build.Kind.of_string (Filename.get_temp_dir_name ()));;
 
 let dir =
   let rand_digits () =
@@ -31,14 +31,16 @@ let dir =
     loop 1000
   in
   (mk_temp_dir ".dune-memory_unit-test_");;
+
 let () =
   Path.mkdir_p dir;;
+
 let make_file p = let path = (Path.of_string ((Path.to_string dir) ^ "/" ^ p)) in
   Io.write_file path p; path;;
 let memory = DuneMemory.make ~root:(Path.of_string ((Path.to_string dir) ^ "/root")) ()
 
 [%%expect{|
-val dir : Path.t = <abstr>
+val dir : Path.t = In_source_tree <abstr>
 val make_file : string -> Path.t = <fun>
 val memory : DuneMemory.memory = <abstr>
 |}]
@@ -61,11 +63,13 @@ match DuneMemory.search memory key with
 | _ -> Some "wrong number of file found";;
 
 [%%expect{|
-val file1 : Path.t = <abstr>
+val file1 : Path.t = In_source_tree <abstr>
 val metadata : Sexp.t = List [Atom "test"; Atom "metadata"]
 val key : DuneMemory.key = <abstr>
-- : DuneMemory.promotion list = [Promoted (<abstr>, <abstr>)]
-- : DuneMemory.promotion list = [Already_promoted (<abstr>, <abstr>)]
+- : DuneMemory.promotion list =
+[Promoted (In_source_tree <abstr>, In_source_tree <abstr>)]
+- : DuneMemory.promotion list =
+[Already_promoted (In_source_tree <abstr>, In_source_tree <abstr>)]
 - : string option = None
 |}]
 

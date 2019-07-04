@@ -126,7 +126,7 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to =
     let s =
       let data =
         List.map paths ~f:(fun fn ->
-          (Path.to_string fn, Utils.Cached_digest.file fn))
+          (Path.to_string fn, Cached_digest.file fn))
       in
       Digest.string
         (Marshal.to_string data [])

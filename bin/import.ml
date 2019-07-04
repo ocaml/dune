@@ -13,7 +13,6 @@ module Build_system   = Dune.Build_system
 module Findlib        = Dune.Findlib
 module Package        = Dune.Package
 module Dune_package   = Dune.Dune_package
-module Utils          = Dune.Utils
 module Hooks          = Dune.Hooks
 module Build          = Dune.Build
 module Action         = Dune.Action
@@ -27,6 +26,7 @@ module Colors         = Dune.Colors
 module Report_error   = Dune.Report_error
 module Dune_project   = Dune.Dune_project
 module Workspace      = Dune.Workspace
+module Cached_digest  = Dune.Cached_digest
 
 include Common.Let_syntax
 

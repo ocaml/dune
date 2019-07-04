@@ -9,7 +9,7 @@ let run_build_command ~log ~common ~targets =
   in
   if common.watch then begin
     let once () =
-      Utils.Cached_digest.invalidate_cached_timestamps ();
+      Cached_digest.invalidate_cached_timestamps ();
       once ()
     in
     Scheduler.poll ~log ~common ~once ~finally:Hooks.End_of_build.run ()

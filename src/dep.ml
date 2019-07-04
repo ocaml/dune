@@ -36,7 +36,7 @@ module T = struct
 
   let unset = lazy (Digest.string "unset")
 
-  let trace_file fn = (Path.to_string fn, Utils.Cached_digest.file fn)
+  let trace_file fn = (Path.to_string fn, Cached_digest.file fn)
 
   let trace t ~env ~eval_pred =
     match t with

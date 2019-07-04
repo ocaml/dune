@@ -420,6 +420,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name exe-name-mangle)
+ (deps (package dune) (source_tree test-cases/exe-name-mangle))
+ (action
+  (chdir
+   test-cases/exe-name-mangle
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name exec-cmd)
  (deps (package dune) (source_tree test-cases/exec-cmd))
  (action
@@ -1628,6 +1636,7 @@
   (alias env-var-expansion)
   (alias env-variables)
   (alias exclude-missing-module)
+  (alias exe-name-mangle)
   (alias exec-cmd)
   (alias exec-missing)
   (alias external-lib-deps)
@@ -1818,6 +1827,7 @@
   (alias env-var-expansion)
   (alias env-variables)
   (alias exclude-missing-module)
+  (alias exe-name-mangle)
   (alias exec-cmd)
   (alias exec-missing)
   (alias external-lib-deps)

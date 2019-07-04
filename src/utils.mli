@@ -66,18 +66,3 @@ module Persistent(D : Persistent_desc) : sig
   val dump : Path.t -> D.t -> unit
   val load : Path.t -> D.t option
 end
-
-(** Digest files with caching *)
-module Cached_digest : sig
-  (** Digest the contents of the following file *)
-  val file : Path.t -> Digest.t
-
-  (** Clear the following digest from the cache *)
-  val remove : Path.t -> unit
-
-  (** Same as {!file} but forces the digest to be recomputed *)
-  val refresh : Path.t -> Digest.t
-
-  (** Invalidate cached timestamp *)
-  val invalidate_cached_timestamps : unit -> unit
-end

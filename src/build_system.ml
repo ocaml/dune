@@ -540,7 +540,7 @@ let compute_targets_digest_after_rule_execution ~info targets =
   let good, bad =
     List.partition_map targets ~f:(fun fn ->
       let fn = Path.build fn in
-      match Utils.Cached_digest.refresh fn with
+      match Cached_digest.refresh fn with
       | digest -> Left digest
       | exception (Unix.Unix_error _ | Sys_error _) -> Right fn)
   in
@@ -1446,7 +1446,7 @@ end = struct
     in
     let targets_digest =
       match List.map targets_as_list ~f:(fun p ->
-        Utils.Cached_digest.file (Path.build p)) with
+        Cached_digest.file (Path.build p)) with
       | l -> Some (Digest.string (Marshal.to_string l []))
       | exception (Unix.Unix_error _ | Sys_error _) -> None
     in
@@ -1535,8 +1535,8 @@ end = struct
             let path = Path.build path in
             let in_source_tree = Path.source in_source_tree in
             if not (Path.exists in_source_tree) ||
-               (Utils.Cached_digest.file path <>
-                Utils.Cached_digest.file in_source_tree) then begin
+               (Cached_digest.file path <>
+                Cached_digest.file in_source_tree) then begin
               if lifetime = Until_clean then
                 Promoted_to_delete.add in_source_tree;
               Scheduler.ignore_for_watch in_source_tree;

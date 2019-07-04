@@ -403,11 +403,7 @@ module Unexpanded = struct
     { t with ast = expand t.ast }
 end
 
-module String = Make(struct
-    type t = string
-    let compare = String.compare
-    module Map = String.Map
-  end)(struct
+module String = Make(String)(struct
     type t = string
     type key = string
     let key x = x

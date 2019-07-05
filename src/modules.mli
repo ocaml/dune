@@ -6,7 +6,7 @@ type t
 val to_dyn : t -> Dyn.t
 
 val lib
-  : src_dir:Path.t
+  : src_dir:Path.Build.t
   -> main_module_name:Module.Name.t option
   -> wrapped:Wrapped.t
   -> lib:Dune_file.Library.t
@@ -31,13 +31,17 @@ val compat_for_exn : t -> Module.t -> Module.t
 
 val impl_only : t -> Module.t list
 
-val singleton : Module.t -> t
+val singleton_exe : Module.t -> t
 
 val fold_no_vlib : t -> init:'acc -> f:(Module.t -> 'acc -> 'acc) -> 'acc
 
 val iter_no_vlib : t -> f:(Module.t -> unit) -> unit
 
-val exe : Module.Name_map.t -> t
+val exe_unwrapped : Module.Name_map.t -> t
+val exe_wrapped
+  :  src_dir:Path.Build.t
+  -> modules:Module.Name_map.t
+  -> t
 
 (** For wrapped libraries, this is the user written entry module for the
     library. For single module libraries, it's the sole module in the library *)

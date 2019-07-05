@@ -272,8 +272,7 @@ end = struct
                   lib.private_modules)
           in
           Left ( lib
-               , let src_dir = Path.build src_dir in
-                 Modules.lib ~lib ~src_dir ~modules ~main_module_name ~wrapped
+               , Modules.lib ~lib ~src_dir ~modules ~main_module_name ~wrapped
                )
         | Executables exes
         | Tests { exes; _} ->
@@ -283,7 +282,14 @@ end = struct
               ~kind:Modules_field_evaluator.Exe_or_normal_lib
               ~private_modules:Ordered_set_lang.standard
           in
-          Right (exes, Modules.exe modules)
+          let modules =
+            let project = Scope.project scope in
+            if Dune_project.wrapped_executables project then
+              Modules.exe_wrapped ~src_dir:d.ctx_dir ~modules
+            else
+              Modules.exe_unwrapped modules
+          in
+          Right (exes, modules)
         | _ -> Skip)
     in
     let libraries =

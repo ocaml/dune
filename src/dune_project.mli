@@ -155,3 +155,5 @@ val set_parsing_context : t -> 'a Dune_lang.Decoder.t -> 'a Dune_lang.Decoder.t
 val implicit_transitive_deps : t -> bool
 
 val dune_version : t -> Syntax.Version.t
+
+val wrapped_executables : t -> bool

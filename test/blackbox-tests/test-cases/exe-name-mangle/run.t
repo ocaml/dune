@@ -1,15 +1,26 @@
-Binary composed of a single module with the same name as the dependency
-  $ dune build --root single-module 2>&1 | grep -v ocamlopt
+These tests show that (wrapped_executables true) addresses the problem of compilation
+units of exes colliding with libraries.
+
+Single module case. Here we technically don't need an alias module
+
+  $ dune build --root single-module
   Entering directory 'single-module'
-  File "exe.ml", line 1:
-  Error: The files foo/.foo.objs/byte/foo.cmi and .exe.eobjs/byte/exe.cmi
-         make inconsistent assumptions over interface Exe
-Binary composed of multiple modules where one collides with a dependency
-  $ dune build --root multi-module 2>&1 | grep -v ocamlopt | grep -v ocamlc
+           exe alias default
+  this module is unlinkable
+  this module is unlinkable
+
+The multi module case always requires an alias.
+
+  $ dune build --root multi-module
   Entering directory 'multi-module'
-  File "foo.ml", line 1:
-  Error: The files foo/.foo.objs/byte/bar.cmi and .baz.eobjs/byte/foo.cmi
-         make inconsistent assumptions over interface Foo
-  File "baz.ml", line 1:
-  Error: The files .baz.eobjs/byte/foo.cmi and .baz.eobjs/byte/foo.cmi
-         make inconsistent assumptions over interface Foo
+           baz alias default
+  not directly usable
+
+Multiple executables defined in the same directory
+
+  $ dune build --root multi-exe-same-dir
+  Entering directory 'multi-exe-same-dir'
+  Error: Multiple rules generated for _build/default/dune__exe.ml-gen:
+  - <none>:1
+  - <none>:1
+  [1]

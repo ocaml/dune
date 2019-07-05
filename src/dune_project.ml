@@ -190,6 +190,7 @@ type t =
   ; extension_args  : Univ_map.t
   ; parsing_context : Univ_map.t
   ; implicit_transitive_deps : bool
+  ; wrapped_executables : bool
   ; dune_version    : Syntax.Version.t
   ; allow_approx_merlin : bool
   ; generate_opam_files : bool
@@ -220,7 +221,7 @@ let to_dyn
       ; homepage ; documentation ; project_file ; parsing_context = _
       ; bug_reports ; maintainers
       ; extension_args = _; stanza_parser = _ ; packages
-      ; implicit_transitive_deps ; dune_version
+      ; implicit_transitive_deps ; wrapped_executables ; dune_version
       ; allow_approx_merlin ; generate_opam_files } =
   let open Dyn.Encoder in
   record
@@ -240,6 +241,7 @@ let to_dyn
         (Package.Name.Map.to_list packages)
     ; "implicit_transitive_deps",
       bool implicit_transitive_deps
+    ; "wrapped_executables", bool wrapped_executables
     ; "dune_version", Syntax.Version.to_dyn dune_version
     ; "allow_approx_merlin", bool allow_approx_merlin
     ; "generate_opam_files", bool generate_opam_files
@@ -490,31 +492,7 @@ let interpret_lang_and_extensions ~(lang : Lang.Instance.t)
     (parsing_context, stanza_parser, extension_args)
 
 let key =
-  Univ_map.Key.create ~name:"dune-project"
-    (fun { name; root; version; project_file; source
-         ; license; authors; homepage; documentation ; bug_reports ; maintainers
-         ; stanza_parser = _; packages = _ ; extension_args = _
-         ; parsing_context ; implicit_transitive_deps ; dune_version
-         ; allow_approx_merlin ; generate_opam_files } ->
-      let open Dyn.Encoder in
-      record
-        [ "name", Name.to_dyn name
-        ; "root", Path.Source.to_dyn root
-        ; "license", (option string) license
-        ; "authors", (list string) authors
-        ; "source", Dyn.Encoder.(option Source_kind.to_dyn) source
-        ; "version", (option string) version
-        ; "homepage", (option string) homepage
-        ; "documentation", (option string) documentation
-        ; "bug_reports", (option string) bug_reports
-        ; "maintainers", (list string) maintainers
-        ; "project_file", Project_file.to_dyn project_file
-        ; "parsing_context", Univ_map.to_dyn parsing_context
-        ; "implicit_transitive_deps", bool implicit_transitive_deps
-        ; "dune_version", Syntax.Version.to_dyn dune_version
-        ; "allow_approx_merlin", bool allow_approx_merlin
-        ; "generate_opam_files", bool generate_opam_files
-        ])
+  Univ_map.Key.create ~name:"dune-project" to_dyn
 
 let set t = Dune_lang.Decoder.set key t
 let get_exn () =
@@ -528,6 +506,9 @@ let filename = "dune-project"
 
 let implicit_transitive_deps_default ~(lang : Lang.Instance.t) =
   lang.version < (2, 0)
+
+let wrapped_executables_default ~(lang : Lang.Instance.t) =
+  lang.version >= (2, 0)
 
 let anonymous = lazy (
   let lang = get_dune_lang () in
@@ -543,6 +524,7 @@ let anonymous = lazy (
     interpret_lang_and_extensions ~lang ~explicit_extensions:[] ~project_file
   in
   let implicit_transitive_deps = implicit_transitive_deps_default ~lang in
+  let wrapped_executables = wrapped_executables_default ~lang in
   { name          = name
   ; packages      = Package.Name.Map.empty
   ; root          = Path.Source.root
@@ -555,6 +537,7 @@ let anonymous = lazy (
   ; authors       = []
   ; version       = None
   ; implicit_transitive_deps
+  ; wrapped_executables
   ; stanza_parser
   ; project_file
   ; extension_args
@@ -618,6 +601,9 @@ let parse ~dir ~lang ~opam_packages ~file =
      and+ implicit_transitive_deps =
        field_o_b "implicit_transitive_deps"
          ~check:(Syntax.since Stanza.syntax (1, 7))
+     and+ wrapped_executables =
+       field_o_b "wrapped_executables"
+         ~check:(Syntax.since Stanza.syntax (1, 11))
      and+ allow_approx_merlin =
        field_o_b "allow_approximate_merlin"
          ~check:(Syntax.since Stanza.syntax (1, 9))
@@ -701,9 +687,13 @@ let parse ~dir ~lang ~opam_packages ~file =
        Option.value implicit_transitive_deps
          ~default:(implicit_transitive_deps_default ~lang)
      in
+     let wrapped_executables =
+       Option.value wrapped_executables
+         ~default:(wrapped_executables_default ~lang) in
      let allow_approx_merlin =
        Option.value ~default:false allow_approx_merlin in
-     let generate_opam_files = Option.value ~default:false generate_opam_files in
+     let generate_opam_files =
+       Option.value ~default:false generate_opam_files in
      { name
      ; root = dir
      ; version
@@ -720,6 +710,7 @@ let parse ~dir ~lang ~opam_packages ~file =
      ; extension_args
      ; parsing_context
      ; implicit_transitive_deps
+     ; wrapped_executables
      ; dune_version = lang.version
      ; allow_approx_merlin
      ; generate_opam_files
@@ -765,6 +756,7 @@ let make_jbuilder_project ~dir opam_packages =
   ; dune_version = lang.version
   ; allow_approx_merlin = true
   ; generate_opam_files = false
+  ; wrapped_executables = false
   }
 
 let load ~dir ~files =
@@ -824,3 +816,5 @@ let dune_version t = t.dune_version
 
 let set_parsing_context t parser =
   Dune_lang.Decoder.set_many t.parsing_context parser
+
+let wrapped_executables t = t.wrapped_executables

@@ -175,7 +175,30 @@ module Error = struct
           (Lib_name.to_string not_vlib)
           (Lib_name.to_string impl)
       ]
+
+  let vlib_known_implementation_mismatch ~loc ~name ~variant ~vlib_name =
+    make ~loc
+      [ Pp.textf "Virtual library %S doesn't know about implementation %S with \
+                  variant %S. Instead of using (variant %s) here, you need to \
+                  reference it in the virtual library project, using the \
+                  external_variant stanza:"
+          (Lib_name.to_string vlib_name)
+          (Lib_name.to_string name)
+          (Variant.to_string variant)
+          (Variant.to_string variant)
+      ; Pp.textf
+          "(external_variant\n\
+          \  (virtual_library %s)\n\
+          \  (variant %s)\n\
+          \  (implementation %s))"
+          (Lib_name.to_string vlib_name)
+          (Variant.to_string variant)
+          (Lib_name.to_string name)
+      ]
+
+
 end
+
 
 (* Types *)
 
@@ -921,36 +944,19 @@ end = struct
           | None -> Ok vlib
           | Some variant ->
             (* If the library is an implementation tagged with a
-               variant, we must make sure that that it implements a
-               library that is part of the same project *)
-            let status_vlib = Lib_info.status vlib.info in
-            if Option.equal Dune_project.Name.equal
-                 (Lib_info.Status.project_name status)
-                 (Lib_info.Status.project_name status_vlib)
-            then
-              Ok vlib
-            else
+              variant, we must make sure that that it's correctly part of the
+              virtual library's known implementations. *)
+            let vlib_impls = Lib_info.known_implementations vlib.info in
+            Variant.Map.find vlib_impls variant
+            |> Option.bind
+              ~f:(fun (_, impl_name) ->
+                let name = Lib_info.name info in
+                Option.some_if (Lib_name.equal impl_name name) (Ok vlib))
+            |> Option.value
+            ~default:(
+              let vlib_name = Lib_info.name vlib.info in
               let name = Lib_info.name info in
-              let name_vlib = Lib_info.name vlib.info in
-              User_error.raise ~loc
-                [ Pp.textf
-                    "Library implementation %s with variant %s implements a \
-                     library outside the project. Instead of using \
-                     (variant %S) here, you need to reference it in the \
-                     virtual library project, using the external_variant \
-                     stanza:"
-                    (Lib_name.to_string name)
-                    (Variant.to_string variant)
-                    (Variant.to_string variant)
-                ; Pp.textf
-                    "(external_variant\n\
-                    \  (virtual_library %s)\n\
-                    \  (variant %S)\n\
-                    \  (implementation %s))"
-                    (Lib_name.to_string name_vlib)
-                    (Variant.to_string variant)
-                    (Lib_name.to_string name)
-                ])
+              Error.vlib_known_implementation_mismatch ~loc ~name ~variant ~vlib_name))
     in
     let resolve_impl impl_name =
       let* impl = resolve impl_name in

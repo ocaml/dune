@@ -47,20 +47,18 @@ let invalidate_cached_timestamps () =
   end
 
 let dir_digest (stat : Unix.stats) =
-  Marshal.to_string
+  Digest.generic
     ( stat.st_size
     , stat.st_perm
     , stat.st_mtime
     , stat.st_ctime
-    ) []
-  |> Digest.string
+    )
 
 let path_stat_digest fn stat =
   if stat.Unix.st_kind = Unix.S_DIR then
     dir_digest stat
   else
-    Marshal.to_string (Digest.file fn, stat.st_perm) []
-    |> Digest.string
+    Digest.generic (Digest.file fn, stat.st_perm)
 
 let refresh fn =
   let cache = Lazy.force cache in

@@ -15,3 +15,5 @@ let from_hex = D.from_hex
 let string = D.string
 
 let to_string_raw s = s
+
+let generic a = string (Marshal.to_string a [])

@@ -69,6 +69,10 @@
 - Allow to promote executables built with an `executable` stanza
   (#2379, @diml)
 
+- When instantiating an implementation with a variant, make sure it matches
+  virtual library's list of known implementations. (#2361, fixes #2322,
+  @TheLortex, review by @rgrinberg)
+
 1.10.0 (04/06/2019)
 -------------------
 

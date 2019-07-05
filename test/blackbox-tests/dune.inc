@@ -1533,6 +1533,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name variants-rogue-impl)
+ (deps (package dune) (source_tree test-cases/variants-rogue-impl))
+ (action
+  (chdir
+   test-cases/variants-rogue-impl
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name variants-wrong-external-declaration)
  (deps
   (package dune)
@@ -1794,6 +1802,7 @@
   (alias variants-external-declaration-conflict)
   (alias variants-multi-project)
   (alias variants-only-package)
+  (alias variants-rogue-impl)
   (alias variants-wrong-external-declaration)
   (alias vendor)
   (alias vlib)
@@ -1965,6 +1974,7 @@
   (alias variants-external-declaration-conflict)
   (alias variants-multi-project)
   (alias variants-only-package)
+  (alias variants-rogue-impl)
   (alias variants-wrong-external-declaration)
   (alias vendor)
   (alias vlib)

@@ -8,6 +8,7 @@ module Var = struct
     | First_dep
     | Deps
     | Targets
+    | Target
     | Named_local
     | Cc
     | Cxx
@@ -20,6 +21,7 @@ module Var = struct
     | First_dep -> string "First_dep"
     | Deps -> string "Deps"
     | Targets -> string "Targets"
+    | Target -> string "Target"
     | Named_local -> string "Named_local"
     | Cc -> string "cc"
     | Cxx -> string "cxx"
@@ -110,6 +112,7 @@ module Map = struct
   let static_vars =
     String.Map.of_list_exn
       [ "targets", since ~version:(1, 0) Var.Targets
+      ; "target", since ~version:(1,11) Var.Target
       ; "deps", since ~version:(1, 0) Var.Deps
       ; "project_root", since ~version:(1, 0) Var.Project_root
 

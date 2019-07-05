@@ -681,8 +681,10 @@ module Action = struct
     let { U.Infer.Outcome. deps; targets } =
       match targets_written_by_user with
       | Infer -> U.Infer.partial t ~all_targets:true
-      | Static targets_written_by_user ->
-        let targets_written_by_user = Path.Set.of_list targets_written_by_user in
+      | Static { targets = targets_written_by_user; multiplicity = _ } ->
+        let targets_written_by_user =
+          Path.Set.of_list targets_written_by_user
+        in
         let { U.Infer.Outcome. deps; targets } =
           U.Infer.partial t ~all_targets:false
         in

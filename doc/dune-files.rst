@@ -20,9 +20,9 @@ Stanzas
      (libraries base lwt))
 
     (rule
-     (targets foo.ml)
-     (deps    generator/gen.exe)
-     (action  (run %{deps} -o %{targets})))
+     (target foo.ml)
+     (deps   generator/gen.exe)
+     (action (run %{deps} -o %{target})))
 
 The following sections describe the available stanzas and their meaning.
 
@@ -419,12 +419,14 @@ The syntax is as follows:
 .. code:: scheme
 
     (rule
-     (targets <filenames>)
+     (target[s] <filenames>)
      (action  <action>)
      <optional-fields>)
 
-``<filenames>`` is a list of file names. Note that currently dune only
-support user rules with targets in the current directory.
+``<filenames>`` is a list of file names (if defined with ``targets``)
+or exactly one file name (if defined with ``target``). Note that
+currently dune only supports user rules with targets in the current
+directory.
 
 ``<action>`` is the action to run to produce the targets from the dependencies.
 See the `User actions`_ section for more details.
@@ -509,9 +511,9 @@ For instance:
 .. code:: scheme
 
     (rule
-     (targets b)
-     (deps    a)
-     (action  (copy %{deps} %{targets})))
+     (target b)
+     (deps   a)
+     (action (copy %{deps} %{target})))
 
 In this example it is obvious by inspecting the action what the
 dependencies and targets are. When this is the case you can use the
@@ -545,10 +547,10 @@ ocamllex
 .. code:: scheme
 
     (rule
-     (targets <name>.ml)
-     (deps    <name>.mll)
-     (action  (chdir %{workspace_root}
-               (run %{bin:ocamllex} -q -o %{targets} %{deps}))))
+     (target <name>.ml)
+     (deps   <name>.mll)
+     (action (chdir %{workspace_root}
+              (run %{bin:ocamllex} -q -o %{target} %{deps}))))
 
 To use a different rule mode, use the long form:
 
@@ -1076,6 +1078,7 @@ Dune supports the following variables:
 
 In addition, ``(action ...)`` fields support the following special variables:
 
+- ``target`` expands to the one target
 - ``targets`` expands to the list of target
 - ``deps`` expands to the list of dependencies
 - ``^`` expands to the list of dependencies, separated by spaces
@@ -1173,9 +1176,9 @@ Here is another example:
 .. code:: scheme
 
     (rule
-     (targets foo.exe)
-     (deps    foo.c)
-     (action  (run %{cc} -o %{targets} %{deps} -lfoolib)))
+     (target foo.exe)
+     (deps   foo.c)
+     (action (run %{cc} -o %{target} %{deps} -lfoolib)))
 
 
 Library dependencies
@@ -1284,10 +1287,10 @@ you had setup a rule for every file of the form:
    .. code:: scheme
 
        (rule
-        (targets file.pp.ml)
-        (deps    file.ml)
-        (action  (with-stdout-to %{targets}
-                  (chdir %{workspace_root} <action>))))
+        (target file.pp.ml)
+        (deps   file.ml)
+        (action (with-stdout-to %{target}
+                 (chdir %{workspace_root} <action>))))
 
 The equivalent of a ``-pp <command>`` option passed to the OCaml compiler is
 ``(system "<command> %{input-file}")``.
@@ -1403,7 +1406,7 @@ Named Dependencies
 
 dune allows a user to organize dependency lists by naming them. The user is
 allowed to assign a group of dependencies a name that can later be referred to
-in actions (like the ``%{deps}`` and ``%{targets}`` built in variables).
+in actions (like the ``%{deps}``, ``%{target}`` and ``%{targets}`` built in variables).
 
 One instance where this is useful is for naming globs. Here's an
 example of an imaginary bundle command:
@@ -1411,14 +1414,14 @@ example of an imaginary bundle command:
 .. code:: scheme
 
    (rule
-    (targets archive.tar)
+    (target archive.tar)
     (deps
      index.html
      (:css (glob_files *.css))
      (:js foo.js bar.js)
      (:img (glob_files *.png) (glob_files *.jpg)))
     (action
-     (run %{bin:bundle} index.html -css %{css} -js %{js} -img %{img} -o %{targets})))
+     (run %{bin:bundle} index.html -css %{css} -js %{js} -img %{img} -o %{target})))
 
 Note that such named dependency list can also include unnamed
 dependencies (like ``index.html`` in the example above). Also, such
@@ -1577,9 +1580,9 @@ To understand why this is important, let's consider this dune file living in
 ::
 
     (rule
-     (targets blah.ml)
-     (deps    blah.mll)
-     (action  (run ocamllex -o %{targets} %{deps})))
+     (target blah.ml)
+     (deps   blah.mll)
+     (action (run ocamllex -o %{target} %{deps})))
 
 Here the command that will be executed is:
 
@@ -1601,9 +1604,9 @@ of your project. What you should write instead is:
 ::
 
     (rule
-     (targets blah.ml)
-     (deps    blah.mll)
-     (action  (chdir %{workspace_root} (run ocamllex -o %{targets} %{deps}))))
+     (target blah.ml)
+     (deps   blah.mll)
+     (action (chdir %{workspace_root} (run ocamllex -o %{target} %{deps}))))
 
 Locks
 -----

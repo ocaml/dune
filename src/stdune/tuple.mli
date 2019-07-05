@@ -16,4 +16,6 @@ module T2 : sig
     -> ('a, 'b) t
     -> ('a, 'b) t
     -> Ordering.t
+
+  val swap : ('a * 'b) -> ('b * 'a)
 end

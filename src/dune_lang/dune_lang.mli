@@ -295,6 +295,8 @@ module Decoder : sig
   val (>>>) : (unit, 'k) parser -> ('a, 'k) parser -> ('a, 'k) parser
   val map : ('a, 'k) parser -> f:('a -> 'b) -> ('b, 'k) parser
   val try_ : ('a, 'k) parser -> (exn -> ('a, 'k) parser) -> ('a, 'k) parser
+  val traverse : 'a list -> f:('a -> ('b, 'k) parser) -> ('b list, 'k) parser
+  val all : ('a, 'k) parser list -> ('a list, 'k) parser
 
   (** Access to the context *)
   val get : 'a Univ_map.Key.t -> ('a option, _) parser
@@ -426,6 +428,11 @@ module Decoder : sig
     -> ?on_dup:(Univ_map.t -> string -> Ast.t list -> unit)
     -> 'a t
     -> 'a option fields_parser
+
+  val fields_mutually_exclusive
+    : ?on_dup:(Univ_map.t -> string -> Ast.t list -> unit)
+    -> (string * 'a t) list
+    -> 'a fields_parser
 
   val field_b
     :  ?check:(unit t)

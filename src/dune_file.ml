@@ -1632,9 +1632,17 @@ end
 
 module Rule = struct
   module Targets = struct
+
+    module Multiplicity = struct
+      type t = One | Multiple
+    end
+
+    type static =
+      { targets : String_with_vars.t list; multiplicity : Multiplicity.t }
+
     type t =
       (* List of files in the current directory *)
-      | Static of String_with_vars.t list
+      | Static of static
       | Infer
 
     let decode_static =
@@ -1648,7 +1656,20 @@ module Rule = struct
               Stanza.syntax
               (1, 3)
               ~what:"Using variables in the targets field");
-      Static targets
+      Static { targets; multiplicity = Multiple }
+
+    let decode_one_static =
+      let+ () = Syntax.since Stanza.syntax (1, 11)
+      and+ target = String_with_vars.decode
+      in
+      Static { targets = [target]; multiplicity = One }
+
+    let fields_parser =
+      fields_mutually_exclusive
+        [ "targets", decode_static
+        ; "target", decode_one_static
+        ]
+
   end
 
 
@@ -1761,6 +1782,7 @@ module Rule = struct
       ; "diff"                        , Action
       ; "diff?"                       , Action
       ; "targets"                     , Field
+      ; "target"                      , Field
       ; "deps"                        , Field
       ; "action"                      , Field
       ; "locks"                       , Field
@@ -1782,7 +1804,7 @@ module Rule = struct
   let long_form =
     let+ loc = loc
     and+ action = field "action" (located Action_dune_lang.decode)
-    and+ targets = field "targets" Targets.decode_static
+    and+ targets = Targets.fields_parser
     and+ deps =
       field "deps" (Bindings.decode Dep_conf.decode) ~default:Bindings.empty
     and+ locks = field "locks" (list String_with_vars.decode) ~default:[]
@@ -1904,7 +1926,11 @@ module Rule = struct
     List.map modules ~f:(fun name ->
       let src = name ^ ".mll" in
       let dst = name ^ ".ml" in
-      { targets = Static [S.make_text loc dst]
+      { targets =
+          (* CR-someday aalekseyev: want to use [multiplicity = One] here, but
+             can't because this is might get parsed with old dune syntax where
+             [multiplicity = One] is not supported. *)
+          Static { targets = [S.make_text loc dst]; multiplicity = Multiple }
       ; deps    = Bindings.singleton (Dep_conf.File (S.virt_text __POS__ src))
       ; action  =
           (loc,
@@ -1926,7 +1952,10 @@ module Rule = struct
     let module S = String_with_vars in
     List.map modules ~f:(fun name ->
       let src = name ^ ".mly" in
-      { targets = Static (List.map ~f:(S.make_text loc) [name ^ ".ml"; name ^ ".mli"])
+      { targets = Static {
+          targets = List.map ~f:(S.make_text loc) [name ^ ".ml"; name ^ ".mli"];
+          multiplicity = Multiple;
+        }
       ; deps    = Bindings.singleton (Dep_conf.File (S.virt_text __POS__ src))
       ; action  =
           (loc,

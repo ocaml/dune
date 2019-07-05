@@ -9,4 +9,6 @@ module T2 = struct
     match f a1 a2 with
     | Ordering.Lt | Gt  as x -> x
     | Eq -> g b1 b2
+
+  let swap (x, y) = (y, x)
 end

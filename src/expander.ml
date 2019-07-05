@@ -197,8 +197,14 @@ module Resolved_forms = struct
 end
 
 module Targets = struct
+  type static =
+    {
+      targets : Path.t list;
+      multiplicity : Dune_file.Rule.Targets.Multiplicity.t;
+    }
+
   type t =
-    | Static of Path.t list
+    | Static of static
     | Infer
     | Forbidden of string
 end
@@ -260,7 +266,8 @@ let expand_and_record acc ~map_exe ~dep_kind ~scope
   in
   let open Build.O in
   match (expansion : Pform.Expansion.t) with
-  | Var (Project_root | First_dep | Deps | Targets | Named_local | Values _)
+  | Var (Project_root | First_dep | Deps | Targets | Target | Named_local
+        | Values _)
   | Macro ((Ocaml_config | Env ), _) -> assert false
   | Var Cc -> add_ddep (cc ~dir).c
   | Var Cxx -> add_ddep (cc ~dir).cxx
@@ -354,10 +361,48 @@ let expand_and_record acc ~map_exe ~dep_kind ~scope
         }
     end
 
+let check_multiplicity ~pform ~declaration ~use =
+  let module Multiplicity = Dune_file.Rule.Targets.Multiplicity in
+  let loc = String_with_vars.Var.loc pform in
+  let error declaration use =
+    User_error.raise ~loc [
+      Pp.textf "You can only use the variable %%{%s} if you \
+                defined the list of targets using the field [%s] \
+                (not [%s])"
+        use use declaration
+    ]
+  in
+  match declaration, use with
+  | Multiplicity.One, Multiplicity.One
+  | Multiple, Multiple -> ()
+  | One, Multiple ->
+    error "target" "targets"
+  | Multiple, One ->
+    error "targets" "target"
+
 let expand_and_record_deps acc ~(dir : Path.Build.t) ~read_package ~dep_kind
       ~targets_written_by_user ~map_exe ~expand_var ~cc
       t pform syntax_version =
   let res =
+    let targets ~(multiplicity : Dune_file.Rule.Targets.Multiplicity.t) =
+      let loc = String_with_vars.Var.loc pform in
+      begin match (targets_written_by_user : Targets.t) with
+      | Infer ->
+        User_error.raise ~loc
+          [ Pp.textf "You cannot use %s with inferred rules."
+              (String_with_vars.Var.describe pform)
+          ]
+      | Forbidden context ->
+        User_error.raise ~loc [
+          Pp.textf  "You cannot use %s in %s."
+            (String_with_vars.Var.describe pform) context ]
+      | Static { targets = l; multiplicity = declared_multiplicity } ->
+        let value = Value.L.dirs l (* XXX hack to signal no dep *) in
+        check_multiplicity
+          ~pform ~declaration:declared_multiplicity ~use:multiplicity;
+        Some value
+      end
+    in
     expand_var t pform syntax_version
     |> Option.bind ~f:(function
       | Ok s -> Some s
@@ -368,21 +413,9 @@ let expand_and_record_deps acc ~(dir : Path.Build.t) ~read_package ~dep_kind
           assert false (* these have been expanded statically *)
         | Var (First_dep | Deps | Named_local) -> None
         | Var Targets ->
-          let loc = String_with_vars.Var.loc pform in
-          begin match (targets_written_by_user : Targets.t) with
-          | Infer ->
-            User_error.raise ~loc
-              [ Pp.textf "You cannot use %s with inferred rules."
-                  (String_with_vars.Var.describe pform)
-              ]
-          | Forbidden context ->
-            User_error.raise ~loc
-              [ Pp.textf "You cannot use %s in %s."
-                  (String_with_vars.Var.describe pform) context
-              ]
-          | Static l ->
-            Some (Value.L.dirs l) (* XXX hack to signal no dep *)
-          end
+          targets ~multiplicity:Multiple
+        | Var Target ->
+          targets ~multiplicity:One
         | _ ->
           expand_and_record acc ~map_exe ~dep_kind ~scope:t.scope
             ~expansion_kind:(Dynamic { read_package }) ~dir ~pform

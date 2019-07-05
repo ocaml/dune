@@ -3,6 +3,8 @@ open! Stdune
 (* HACK Otherwise ocamldep doesn't detect this module in bootstrap *)
 let () = let module M = Sub_system_info in ()
 
+module Vfile = Versioned_file.Make(struct type t = unit end)
+
 module Lib = struct
   type 'sub_system t =
     { loc              : Loc.t
@@ -22,7 +24,7 @@ module Lib = struct
     ; known_implementations :  (Loc.t * Lib_name.t) Variant.Map.t
     ; default_implementation  : (Loc.t * Lib_name.t)  option
     ; implements       : (Loc.t * Lib_name.t) option
-    ; modules          : Lib_modules.t option
+    ; modules          : Modules.t option
     ; main_module_name : Module.Name.t option
     ; requires         : (Loc.t * Lib_name.t) list
     ; version          : string option
@@ -119,17 +121,14 @@ module Lib = struct
     ; field_o "main_module_name" Module.Name.encode main_module_name
     ; field_l "modes" sexp (Mode.Dict.Set.encode modes)
     ; field_l "obj_dir" sexp (Obj_dir.encode obj_dir)
-    ; field_l "modules" sexp
-        (match modules with
-         | None -> []
-         | Some modules -> Lib_modules.encode modules)
+    ; field_o "modules" Modules.encode modules
     ; field_o "special_builtin_support"
         Dune_file.Library.Special_builtin_support.encode special_builtin_support
     ] @ (Sub_system_name.Map.to_list sub_systems
          |> List.map ~f:(fun (name, (_ver, sexps)) ->
            field_l (Sub_system_name.to_string name) sexp sexps))
 
-  let decode ~base =
+  let decode ~(lang : Vfile.Lang.Instance.t) ~base =
     let open Stanza.Decoder in
     let path = Dpath.Local.decode ~dir:base in
     let field_l s x = field ~default:[] s (list x) in
@@ -171,7 +170,8 @@ module Lib = struct
       and+ modules =
         let src_dir = Obj_dir.dir obj_dir in
         field_o "modules" (
-          Lib_modules.decode ~implements:(Option.is_some implements) ~src_dir)
+          Modules.decode ~implements:(Option.is_some implements) ~src_dir
+            ~version:lang.version)
       and+ special_builtin_support =
         field_o "special_builtin_support"
           (Syntax.since Stanza.syntax (1, 10) >>>
@@ -229,7 +229,7 @@ module Lib = struct
   let special_builtin_support t = t.special_builtin_support
 
   let compare_name x y = Lib_name.compare x.name y.name
-  let wrapped t = Option.map t.modules ~f:Lib_modules.wrapped
+  let wrapped t = Option.map t.modules ~f:Modules.wrapped
 end
 
 type 'sub_system t =
@@ -239,20 +239,17 @@ type 'sub_system t =
   ; dir      : Path.t
   }
 
-let decode ~dir =
+let decode ~lang ~dir =
   let open Dune_lang.Decoder in
   let+ name = field "name" Package.Name.decode
   and+ version = field_o "version" string
-  and+ libs = multi_field "library" (Lib.decode ~base:dir)
+  and+ libs = multi_field "library" (Lib.decode ~lang ~base:dir)
   in
   { name
   ; version
   ; libs = List.map libs ~f:(fun (lib : _ Lib.t) -> { lib with version })
   ; dir
   }
-
-
-module Vfile = Versioned_file.Make(struct type t = unit end)
 
 let () = Vfile.Lang.register Stanza.syntax ()
 
@@ -295,15 +292,16 @@ module Or_meta = struct
       prepend_version ~dune_version [Dune_lang.(List [atom "use_meta"])]
     | Dune_package p -> encode ~dune_version p
 
-  let decode ~dir =
+  let decode ~lang ~dir =
     let open Dune_lang.Decoder in
     fields
       (let* use_meta = field_b "use_meta" in
        if use_meta then
          return Use_meta
        else
-         let+ package = decode ~dir in
+         let+ package = decode ~lang ~dir in
          Dune_package package)
 
-  let load p = Vfile.load p ~f:(fun _ -> decode ~dir:(Path.parent_exn p))
+  let load p =
+    Vfile.load p ~f:(fun lang -> decode ~lang ~dir:(Path.parent_exn p))
 end

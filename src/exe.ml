@@ -140,7 +140,7 @@ let link_exe
   in
   let cm_files =
     let modules = CC.modules cctx in
-    Cm_files.make_exe ~obj_dir ~modules ~top_sorted_modules
+    Cm_files.make ~obj_dir ~modules ~top_sorted_modules
       ~ext_obj:ctx.lib_config.ext_obj
   in
   let top_sorted_cms = Cm_files.top_sorted_cms cm_files ~mode in
@@ -197,16 +197,13 @@ let build_and_link_many
   =
   let modules = Compilation_context.modules cctx in
   let dep_graphs = Ocamldep.rules cctx ~modules in
-  Module.Name.Map.iter modules ~f:(
-    Module_compilation.build_module cctx ~dep_graphs);
+  Module_compilation.build_all cctx ~dep_graphs;
 
-  let link_time_code_gen =
-    Link_time_code_gen.handle_special_libs cctx
-  in
+  let link_time_code_gen = Link_time_code_gen.handle_special_libs cctx in
+  let modules = Compilation_context.modules cctx in
   List.iter programs ~f:(fun { Program.name; main_module_name ; loc } ->
     let top_sorted_modules =
-      let main = Option.value_exn
-                   (Module.Name.Map.find (CC.modules cctx) main_module_name) in
+      let main = Option.value_exn (Modules.find modules main_module_name) in
       Dep_graph.top_closed_implementations dep_graphs.impl
         [main]
     in

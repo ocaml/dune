@@ -286,12 +286,6 @@ module Library : sig
   end
 
   val main_module_name : t -> Main_module_name.t
-
-  (** Returns [true] is a special module, i.e. one whose compilation
-      unit name is hard-coded inside the compiler. It is not possible
-      to change the compilation unit name of such modules, so they
-      cannot be wrapped. *)
-  val special_compiler_module : t -> Module.t -> bool
 end
 
 module Install_conf : sig

@@ -17,3 +17,6 @@ val ocamlc_i
   -> Module.t
   -> output:Path.Build.t
   -> unit
+
+val build_all
+  : Compilation_context.t -> dep_graphs:Dep_graph.Ml_kind.t -> unit

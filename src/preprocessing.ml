@@ -809,9 +809,8 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess
            Module.set_pp ast pp)
       end)
 
-let pp_modules t ?(lint=true) modules =
-  Module.Name.Map.map modules ~f:(fun (m : Module.t) ->
-    Per_module.get t (Module.name m) m ~lint)
+let pp_module t ?(lint=true) m =
+  Per_module.get t (Module.name m) m ~lint
 
 let pp_module_as t ?(lint=true) name m =
   Per_module.get t name m ~lint

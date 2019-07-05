@@ -257,7 +257,7 @@ end
 
 val to_dune_lib
   :  t
-  -> lib_modules:Lib_modules.t
+  -> modules:Modules.t
   -> foreign_objects:Path.t list
   -> dir:Path.t
   -> (Syntax.Version.t * Dune_lang.t list) Dune_package.Lib.t

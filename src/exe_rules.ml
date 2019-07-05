@@ -29,14 +29,15 @@ let executables_rules ~sctx ~dir ~dir_kind ~expander
       ~dir_kind
   in
   let modules =
-    Module.Name.Map.map modules ~f:(fun m ->
-      Preprocessing.pp_module_as pp (Module.name m) m)
+    Modules.map_user_written modules ~f:(fun m ->
+      let name = Module.name m in
+      Preprocessing.pp_module_as pp name m)
   in
 
   let programs =
     List.map exes.names ~f:(fun (loc, name) ->
       let mod_name = Module.Name.of_string name in
-      match Module.Name.Map.find modules mod_name with
+      match Modules.find modules mod_name with
       | Some m ->
         if not (Module.has m ~ml_kind:Impl) then
           User_error.raise ~loc

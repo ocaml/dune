@@ -11,10 +11,16 @@
    (main_module_name A)
    (modes byte native)
    (modules
-    (alias_module (name A) (obj_name a) (visibility public) (kind alias) (impl))
-    (main_module_name A)
-    (modules ((name X) (obj_name a__X) (visibility public) (impl)))
-    (wrapped true)))
+    (wrapped
+     (main_module_name A)
+     (modules ((name X) (obj_name a__X) (visibility public) (impl)))
+     (alias_module
+      (name A)
+      (obj_name a)
+      (visibility public)
+      (kind alias)
+      (impl))
+     (wrapped true))))
   (library
    (name a.b.c)
    (kind normal)
@@ -25,10 +31,16 @@
    (modes byte native)
    (obj_dir (private_dir .private))
    (modules
-    (alias_module (name C) (obj_name c) (visibility public) (kind alias) (impl))
-    (main_module_name C)
-    (modules ((name Y) (obj_name c__Y) (visibility private) (impl) (intf)))
-    (wrapped true)))
+    (wrapped
+     (main_module_name C)
+     (modules ((name Y) (obj_name c__Y) (visibility private) (impl) (intf)))
+     (alias_module
+      (name C)
+      (obj_name c)
+      (visibility public)
+      (kind alias)
+      (impl))
+     (wrapped true))))
 
 Build with "--store-orig-source-dir" profile
   $ dune build --store-orig-source-dir

@@ -1252,16 +1252,6 @@ module Library = struct
     | None, This (Simple false) -> This None
     | None, This (Simple true | Yes_with_transition _) ->
       This (Some (Module.Name.of_local_lib_name (snd t.name)))
-
-  let special_compiler_module t (m : Module.t) =
-    match t.stdlib with
-    | None -> false
-    | Some stdlib ->
-      let name = Module.name m in
-      Glob.test stdlib.internal_modules (Module.Name.to_string name) ||
-      match stdlib.exit_module with
-      | None -> false
-      | Some n -> n = name
 end
 
 module Install_conf = struct

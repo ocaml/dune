@@ -23,11 +23,7 @@ val make
 
 (** Setup the preprocessing rules for the following modules and
     returns the translated modules *)
-val pp_modules
-  :  t
-  -> ?lint:bool
-  -> Module.t Module.Name.Map.t
-  -> Module.t Module.Name.Map.t
+val pp_module :  t -> ?lint:bool -> Module.t -> Module.t
 
 (** Preprocess a single module, using the configuration for the given
     module name. *)

@@ -931,32 +931,39 @@ end = struct
       resolve_dep db (name : Lib_name.t) ~allow_private_deps ~loc ~stack in
 
     let implements =
-      Lib_info.implements info
-      |> Option.map ~f:(fun ((loc,  _) as name) ->
-        let* vlib = resolve name in
-        let virtual_ = Lib_info.virtual_ vlib.info in
-        match virtual_ with
-        | None ->
-          Error.not_virtual_lib ~loc ~impl:info ~not_vlib:vlib.info
-        | Some _ ->
-          let variant = Lib_info.variant info in
-          match variant with
-          | None -> Ok vlib
-          | Some variant ->
-            (* If the library is an implementation tagged with a
-              variant, we must make sure that that it's correctly part of the
-              virtual library's known implementations. *)
-            let vlib_impls = Lib_info.known_implementations vlib.info in
-            Variant.Map.find vlib_impls variant
-            |> Option.bind
-              ~f:(fun (_, impl_name) ->
-                let name = Lib_info.name info in
-                Option.some_if (Lib_name.equal impl_name name) (Ok vlib))
-            |> Option.value
-            ~default:(
-              let vlib_name = Lib_info.name vlib.info in
-              let name = Lib_info.name info in
-              Error.vlib_known_implementation_mismatch ~loc ~name ~variant ~vlib_name))
+      let open Option.O in
+      let+ ((loc, _) as name) = Lib_info.implements info in
+      let open Result.O in
+      let* vlib = resolve name in
+      let virtual_ = Lib_info.virtual_ vlib.info in
+      match virtual_ with
+      | None ->
+        Error.not_virtual_lib ~loc ~impl:info ~not_vlib:vlib.info
+      | Some _ ->
+        let variant = Lib_info.variant info in
+        begin match variant with
+        | None -> Ok vlib
+        | Some variant ->
+          (* If the library is an implementation tagged with a variant, we must
+            make sure that that it's correctly part of the virtual library's
+            known implementations. *)
+          let name = Lib_info.name info in
+          let error () =
+            let vlib_name = Lib_info.name vlib.info in
+            Error.vlib_known_implementation_mismatch
+              ~loc ~name ~variant ~vlib_name
+          in
+          let vlib_impls = Lib_info.known_implementations vlib.info in
+          let* (_, impl_name) =
+            match Variant.Map.find vlib_impls variant with
+            | None -> error ()
+            | Some impl_name -> Ok impl_name
+          in
+          if Lib_name.equal impl_name name then
+            Ok vlib
+          else
+            error ()
+        end
     in
     let resolve_impl impl_name =
       let* impl = resolve impl_name in

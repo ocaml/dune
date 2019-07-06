@@ -14,7 +14,7 @@ type t =
 
 let db_file = Path.relative Path.build_dir ".digest-db"
 
-module P = Utils.Persistent(struct
+module P = Persistent.Make(struct
     type nonrec t = t
     let name = "DIGEST-DB"
     let version = 2

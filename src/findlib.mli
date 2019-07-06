@@ -26,7 +26,8 @@ module Unavailable_reason : sig
         'exist_if' clause *)
     | Hidden of Sub_system_info.t Dune_package.Lib.t
 
-  val pp : Format.formatter -> t -> unit
+  val to_string : t -> string
+  val to_dyn : t -> Dyn.t
 end
 
 (** Lookup a package in the given database *)
@@ -54,7 +55,7 @@ val dummy_package
 module Config : sig
   type t
 
-  val pp : t Fmt.t
+  val to_dyn : t -> Dyn.t
 
   val load : Path.t -> toolchain:string -> context:string -> t
   val get : t -> string -> string option

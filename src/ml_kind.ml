@@ -21,6 +21,10 @@ let flag t = choose ~impl:(Command.Args.A "-impl") ~intf:(A "-intf") t
 
 let ppx_driver_flag t = choose ~impl:(Command.Args.A "--impl") ~intf:(A "--intf") t
 
+let cmt_ext = function
+  | Impl -> ".cmt"
+  | Intf -> ".cmti"
+
 module Dict = struct
   type 'a t =
     { impl : 'a

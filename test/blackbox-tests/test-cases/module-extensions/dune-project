@@ -1,0 +1,3 @@
+(lang dune 1.11)
+
+(module_extensions (impl mf) (intf mfi))

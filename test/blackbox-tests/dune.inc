@@ -1013,6 +1013,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name module-extensions)
+ (deps (package dune) (source_tree test-cases/module-extensions))
+ (action
+  (chdir
+   test-cases/module-extensions
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name multi-dir)
  (deps (package dune) (source_tree test-cases/multi-dir))
  (action
@@ -1716,6 +1724,7 @@
   (alias meta-gen)
   (alias misc)
   (alias missing-loc-run)
+  (alias module-extensions)
   (alias multi-dir)
   (alias multiple-private-libs)
   (alias multiple-targets)
@@ -1898,6 +1907,7 @@
   (alias meta-gen)
   (alias misc)
   (alias missing-loc-run)
+  (alias module-extensions)
   (alias multi-dir)
   (alias multiple-targets)
   (alias name-field-validation)

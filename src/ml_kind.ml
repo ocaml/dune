@@ -17,10 +17,6 @@ let to_dyn t = Dyn.String (to_string t)
 
 let pp fmt t = Format.pp_print_string fmt (to_string t)
 
-let flag t = choose ~impl:(Command.Args.A "-impl") ~intf:(A "-intf") t
-
-let ppx_driver_flag t = choose ~impl:(Command.Args.A "--impl") ~intf:(A "--intf") t
-
 module Dict = struct
   type 'a t =
     { impl : 'a
@@ -53,4 +49,11 @@ module Dict = struct
       [ "impl", f impl
       ; "intf", f intf
       ]
+
+  let decode ~default f =
+    let open Dune_lang.Decoder in
+    fields
+      (let+ impl = field ~default "impl" f
+       and+ intf = field ~default "intf" f in
+       {impl; intf})
 end

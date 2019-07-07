@@ -123,3 +123,9 @@ let of_result_map res ~f =
   match res with
   | Ok    x -> f x
   | Error e -> fail e
+
+module Ml_kind = struct
+  let flag t = Ml_kind.choose ~impl:(Args.A "-impl") ~intf:(A "-intf") t
+
+  let ppx_driver_flag t = Ml_kind.choose ~impl:(Args.A "--impl") ~intf:(A "--intf") t
+end

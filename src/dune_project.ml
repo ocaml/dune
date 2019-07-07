@@ -193,6 +193,7 @@ type t =
   ; dune_version    : Syntax.Version.t
   ; allow_approx_merlin : bool
   ; generate_opam_files : bool
+  ; module_extensions : String.Set.t Ml_kind.Dict.t;
   }
 
 let equal = (==)
@@ -214,6 +215,7 @@ let file t = t.project_file.file
 let implicit_transitive_deps t = t.implicit_transitive_deps
 let allow_approx_merlin t = t.allow_approx_merlin
 let generate_opam_files t = t.generate_opam_files
+let module_extensions t = t.module_extensions
 
 let to_dyn
       { name ; root ; version ; source; license; authors
@@ -221,7 +223,7 @@ let to_dyn
       ; bug_reports ; maintainers
       ; extension_args = _; stanza_parser = _ ; packages
       ; implicit_transitive_deps ; dune_version
-      ; allow_approx_merlin ; generate_opam_files } =
+      ; allow_approx_merlin ; generate_opam_files ; module_extensions } =
   let open Dyn.Encoder in
   record
     [ "name", Name.to_dyn name
@@ -243,6 +245,8 @@ let to_dyn
     ; "dune_version", Syntax.Version.to_dyn dune_version
     ; "allow_approx_merlin", bool allow_approx_merlin
     ; "generate_opam_files", bool generate_opam_files
+    ; "module_extensions",
+      Ml_kind.Dict.to_dyn String.Set.to_dyn module_extensions
     ]
 
 let find_extension_args t key =
@@ -495,7 +499,7 @@ let key =
          ; license; authors; homepage; documentation ; bug_reports ; maintainers
          ; stanza_parser = _; packages = _ ; extension_args = _
          ; parsing_context ; implicit_transitive_deps ; dune_version
-         ; allow_approx_merlin ; generate_opam_files } ->
+         ; allow_approx_merlin ; generate_opam_files ; module_extensions } ->
       let open Dyn.Encoder in
       record
         [ "name", Name.to_dyn name
@@ -514,6 +518,8 @@ let key =
         ; "dune_version", Syntax.Version.to_dyn dune_version
         ; "allow_approx_merlin", bool allow_approx_merlin
         ; "generate_opam_files", bool generate_opam_files
+        ; "module_extensions",
+          Ml_kind.Dict.to_dyn String.Set.to_dyn module_extensions
         ])
 
 let set t = Dune_lang.Decoder.set key t
@@ -562,6 +568,7 @@ let anonymous = lazy (
   ; dune_version = lang.version
   ; allow_approx_merlin = true
   ; generate_opam_files = false
+  ; module_extensions = Ml_kind.Dict.make_both String.Set.empty
   })
 
 let default_name ~dir ~packages =
@@ -624,6 +631,10 @@ let parse ~dir ~lang ~opam_packages ~file =
      and+ () = Versioned_file.no_more_lang
      and+ generate_opam_files = field_o_b "generate_opam_files"
                                   ~check:(Syntax.since Stanza.syntax (1, 10))
+     and+ module_extensions =
+       let f = map ~f:String.Set.of_list (repeat string) in
+       field_o "module_extensions"
+         (Ml_kind.Dict.decode ~default:String.Set.empty f)
      in
      let homepage =
        match homepage, source with
@@ -704,6 +715,10 @@ let parse ~dir ~lang ~opam_packages ~file =
      let allow_approx_merlin =
        Option.value ~default:false allow_approx_merlin in
      let generate_opam_files = Option.value ~default:false generate_opam_files in
+     let module_extensions =
+       Option.value ~default:(Ml_kind.Dict.make_both String.Set.empty)
+         module_extensions
+     in
      { name
      ; root = dir
      ; version
@@ -723,6 +738,7 @@ let parse ~dir ~lang ~opam_packages ~file =
      ; dune_version = lang.version
      ; allow_approx_merlin
      ; generate_opam_files
+     ; module_extensions
      })
 
 let load_dune_project ~dir opam_packages =
@@ -765,6 +781,7 @@ let make_jbuilder_project ~dir opam_packages =
   ; dune_version = lang.version
   ; allow_approx_merlin = true
   ; generate_opam_files = false
+  ; module_extensions = Ml_kind.Dict.make_both String.Set.empty
   }
 
 let load ~dir ~files =

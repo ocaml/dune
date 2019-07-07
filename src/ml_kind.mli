@@ -15,9 +15,6 @@ val to_string : t -> string
 
 val to_dyn : t -> Dyn.t
 
-val flag : t -> _ Command.Args.t
-val ppx_driver_flag : t -> _ Command.Args.t
-
 module Dict : sig
   type kind = t
 
@@ -41,4 +38,7 @@ module Dict : sig
   val mapi : 'a t -> f:(kind -> 'a -> 'b) -> 'b t
 
   val map : 'a t -> f:('a -> 'b) -> 'b t
+
+  val decode :
+    default:'a -> ('a Dune_lang.Decoder.t) -> 'a t Dune_lang.Decoder.t
 end with type kind := t

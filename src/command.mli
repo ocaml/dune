@@ -68,3 +68,8 @@ val quote_args : string -> string list -> _ Args.t
 val of_result : 'a Args.t Or_exn.t -> 'a Args.t
 val of_result_map : 'a Or_exn.t -> f:('a -> 'b Args.t) -> 'b Args.t
 val fail : exn -> 'a Args.t
+
+module Ml_kind : sig
+  val flag : Ml_kind.t -> _ Args.t
+  val ppx_driver_flag : Ml_kind.t -> _ Args.t
+end

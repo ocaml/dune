@@ -92,14 +92,13 @@ module DB = struct
       |> Dune_project.Name.Map.of_list
       |> function
       | Ok x -> x
-      | Error (_name, project1, project2) ->
-        let to_dyn (project : Dune_project.t) =
-          Dyn.Encoder.(pair Dune_project.Name.to_dyn Path.Source.to_dyn)
-            (Dune_project.name project, Dune_project.root project)
-        in
-        Code_error.raise "Scope.DB.create got two projects with the same name"
-          [ "project1", to_dyn project1
-          ; "project2", to_dyn project2
+      | Error (name, project1, project2) ->
+        let loc = Loc.in_file (Path.source (Dune_project.file project1)) in
+        let name = Dune_project.Name.to_string_hum name in
+        let dup_path = Path.source (Dune_project.file project2) in
+        User_error.raise ~loc
+          [ Pp.textf "Project %s is already defined in %s"
+              name (Path.to_string_maybe_quoted dup_path)
           ]
     in
     let libs_by_project_name =

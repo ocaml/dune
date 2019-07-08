@@ -24,7 +24,6 @@ module T = struct
     display : Display.t;
     mutable status_line : Ansi_color.Style.t list Pp.t;
     mutable status_line_len : int;
-    mutable gen_status_line : unit -> status_line_config;
   }
 
   let hide_status_line t =
@@ -34,9 +33,9 @@ module T = struct
   let show_status_line s =
     Ansi_color.prerr s
 
-  let update_status_line t ~running_jobs =
+  let update_status_line t gen_status_line ~running_jobs =
     if t.display = Progress then begin
-      match t.gen_status_line () with
+      match gen_status_line with
       | { message = None; _ } ->
         hide_status_line t;
         flush stderr
@@ -78,9 +77,6 @@ module T = struct
     hide_status_line t;
     flush stderr
 
-  let set_status_line_generator t f ~running_jobs =
-    t.gen_status_line <- f;
-    update_status_line t ~running_jobs
 end
 
 let t_var = ref None
@@ -90,7 +86,6 @@ let init display =
     T.display;
     status_line = Pp.nop;
     status_line_len = 0;
-    gen_status_line = (fun () -> { message = None; show_jobs = false; });
   }
 
 let t () =
@@ -98,10 +93,7 @@ let t () =
 
 let display () = (t ()).display
 
-let get_status_line_generator () = (t ()).gen_status_line
-let set_status_line_generator f ~running_jobs =
-  T.set_status_line_generator (t ()) f ~running_jobs
-let update_status_line ~running_jobs = T.update_status_line (t ()) ~running_jobs
+let update_status_line gen ~running_jobs = T.update_status_line (t ()) gen ~running_jobs
 let hide_status_line () = T.hide_status_line (t ())
 let print msg =
   match !t_var with

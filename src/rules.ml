@@ -172,7 +172,7 @@ module Produce = struct
           dyn_deps = Build.return Path.Set.empty;
           actions =
             Appendable_list.singleton
-              ({ stamp = Digest.string (Marshal.to_string stamp [])
+              ({ stamp = Digest.generic stamp
                ; action
                ; locks
                ; context

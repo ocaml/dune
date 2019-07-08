@@ -545,7 +545,7 @@ let compute_targets_digest_after_rule_execution ~info targets =
       | exception (Unix.Unix_error _ | Sys_error _) -> Right fn)
   in
   match bad with
-  | [] -> Digest.string (Marshal.to_string good [])
+  | [] -> Digest.generic good
   | missing ->
     User_error.raise ?loc:(Rule.Info.loc info)
       [ Pp.textf "Rule failed to generate the following targets:"
@@ -1442,12 +1442,12 @@ end = struct
         , Action.for_shell action
         )
       in
-      Digest.string (Marshal.to_string trace [])
+      Digest.generic trace
     in
     let targets_digest =
       match List.map targets_as_list ~f:(fun p ->
         Cached_digest.file (Path.build p)) with
-      | l -> Some (Digest.string (Marshal.to_string l []))
+      | l -> Some (Digest.generic l)
       | exception (Unix.Unix_error _ | Sys_error _) -> None
     in
     let sandbox_dir =

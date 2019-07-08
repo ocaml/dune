@@ -189,7 +189,9 @@ module Options_implied_by_dash_p = struct
            & flag
            & info ["ignore-promoted-rules"] ~docs
                ~doc:"Ignore rules with (mode promote),
-                     except ones with (only ...)")
+                     except ones with (only ...). The variable
+                     %{ignoring_promoted_rules} in dune files reflects
+                     whether this option was passed or not.")
     and+ config_file =
       let+ x =
         one_of

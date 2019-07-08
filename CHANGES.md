@@ -73,6 +73,10 @@
   virtual library's list of known implementations. (#2361, fixes #2322,
   @TheLortex, review by @rgrinberg)
 
+- Add a variable `%{ignoring_promoted_rules}` that is `true` when
+  `--ingore-promoted-rules` is passed on the command line and false
+  otherwise (#2382, @diml)
+
 1.10.0 (04/06/2019)
 -------------------
 

@@ -13,7 +13,12 @@
 
 type ('k, 'v) t
 
-module type Key = sig type t val equal : t -> t -> bool val hash : t -> int end
+module type Key = sig
+  type t
+  val equal : t -> t -> bool
+  val hash : t -> int
+  val to_dyn : t -> Dyn.t
+end
 
 val create : (module Key with type t = 'k) -> int -> ('k, 'v) t
 

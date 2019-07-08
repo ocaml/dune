@@ -100,7 +100,10 @@ let gen_rules sctx t ~dir ~scope ~dir_kind =
       ~scope
       ~dir_kind
   in
-  let modules = Preprocessing.pp_modules preprocess modules in
+  let modules =
+    Modules.exe modules
+    |> Modules.map_user_written ~f:(Preprocessing.pp_module preprocess)
+  in
 
   let compile_info =
     Lib.DB.resolve_user_written_deps_for_exes

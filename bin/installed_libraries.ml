@@ -26,8 +26,8 @@ let term =
         String.longest_map pkgs ~f:(fun (n, _) -> Lib_name.to_string n) in
       let ppf = Format.std_formatter in
       List.iter pkgs ~f:(fun (n, r) ->
-        Format.fprintf ppf "%-*s -> %a@\n" longest (Lib_name.to_string n)
-          Findlib.Unavailable_reason.pp r);
+        Format.fprintf ppf "%-*s -> %s@\n" longest (Lib_name.to_string n)
+          (Findlib.Unavailable_reason.to_string r));
       Format.pp_print_flush ppf ();
       Fiber.return ()
     end else begin

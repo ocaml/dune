@@ -53,31 +53,3 @@ val line_directive : filename:string -> line_number:int -> string
 (** [local_bin dir] The directory which contains the local binaries viewed by
     rules defined in [dir] *)
 val local_bin : Path.Build.t -> Path.Build.t
-
-module type Persistent_desc = sig
-  type t
-  val name : string
-  val version : int
-end
-
-(** Persistent value stored on disk *)
-module Persistent(D : Persistent_desc) : sig
-  val to_out_string : D.t -> string
-  val dump : Path.t -> D.t -> unit
-  val load : Path.t -> D.t option
-end
-
-(** Digest files with caching *)
-module Cached_digest : sig
-  (** Digest the contents of the following file *)
-  val file : Path.t -> Digest.t
-
-  (** Clear the following digest from the cache *)
-  val remove : Path.t -> unit
-
-  (** Same as {!file} but forces the digest to be recomputed *)
-  val refresh : Path.t -> Digest.t
-
-  (** Invalidate cached timestamp *)
-  val invalidate_cached_timestamps : unit -> unit
-end

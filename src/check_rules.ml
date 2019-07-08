@@ -1,17 +1,19 @@
 open Stdune
 
 let dev_files =
+  let exts =
+    [ Ml_kind.cmt_ext Impl
+    ; Ml_kind.cmt_ext Intf
+    ; Cm_kind.ext Cmi
+    ]
+  in
   let id = lazy (
     let open Dyn.Encoder in
-    constr "dev_files"
-      [string ".cmt"; string ".cmti"; string (Cm_kind.ext Cmi)]
+    constr "dev_files" (List.map ~f:string exts)
   ) in
-  let cmi = Cm_kind.ext Cmi in
   Predicate.create ~id ~f:(fun p ->
-    match Filename.extension p with
-    | ".cmt"
-    | ".cmti" -> true
-    | ext -> ext = cmi)
+    let ext = Filename.extension p in
+    List.mem ext ~set:exts)
 
 let add_obj_dir sctx ~obj_dir =
   if (Super_context.context sctx).merlin then

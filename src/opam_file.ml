@@ -4,24 +4,19 @@ open OpamParserTypes
 
 type t = opamfile
 
-let parse (lb : Lexing.lexbuf) =
+let parse_gen entry (lb : Lexing.lexbuf) =
   try
-    OpamBaseParser.main OpamLexer.token lb lb.lex_curr_p.pos_fname
+    entry OpamLexer.token lb
   with
   | OpamLexer.Error msg ->
-    Errors.fail_lex lb "%s" msg
+    User_error.raise ~loc:(Loc.of_lexbuf lb) [ Pp.text msg ]
   | Parsing.Parse_error ->
-    Errors.fail_lex lb "Parse error"
+    User_error.raise ~loc:(Loc.of_lexbuf lb) [ Pp.text "Parse error" ]
 
-let of_string ~path s =
-  let lb = Lexing.from_string s in
-  lb.lex_curr_p <-
-    { pos_fname = Path.to_string path
-    ; pos_lnum  = 1
-    ; pos_bol   = 0
-    ; pos_cnum  = 0
-    };
-  parse lb
+let parse =
+  parse_gen (fun lexer lexbuf ->
+    OpamBaseParser.main lexer lexbuf lexbuf.Lexing.lex_curr_p.pos_fname)
+let parse_value = parse_gen OpamBaseParser.value
 
 let load fn =
   Io.with_lexbuf_from_file fn ~f:parse

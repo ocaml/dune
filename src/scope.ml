@@ -51,7 +51,7 @@ module DB = struct
       let scope = find_by_name (Fdecl.get t) (Dune_project.name project) in
       Redirect (Some scope.db, name)
 
-  let public_libs t ~installed_libs internal_libs =
+  let public_libs t ~stdlib_dir ~installed_libs internal_libs =
     let public_libs =
       List.filter_map internal_libs
         ~f:(fun (_dir, (lib : Dune_file.Library.t)) ->
@@ -69,15 +69,16 @@ module DB = struct
         with
         | [] | [_] -> assert false
         | loc1 :: loc2 :: _ ->
-          die "Public library %a is defined twice:\n\
-               - %s\n\
-               - %s"
-            Lib_name.pp_quoted name
-            (Loc.to_file_colon_line loc1)
-            (Loc.to_file_colon_line loc2)
+          User_error.raise
+            [ Pp.textf "Public library %s is defined twice:"
+                (Lib_name.to_string name)
+            ; Pp.textf "- %s" (Loc.to_file_colon_line loc1)
+            ; Pp.textf "- %s" (Loc.to_file_colon_line loc2)
+            ]
     in
     let resolve = resolve t public_libs in
     Lib.DB.create ()
+      ~stdlib_dir
       ~parent:installed_libs
       ~resolve
       ~all:(fun () -> Lib_name.Map.keys public_libs)
@@ -91,14 +92,13 @@ module DB = struct
       |> Dune_project.Name.Map.of_list
       |> function
       | Ok x -> x
-      | Error (_name, project1, project2) ->
-        let to_dyn (project : Dune_project.t) =
-          Dyn.Encoder.(pair Dune_project.Name.to_dyn Path.Source.to_dyn)
-            (Dune_project.name project, Dune_project.root project)
-        in
-        Code_error.raise "Scope.DB.create got two projects with the same name"
-          [ "project1", to_dyn project1
-          ; "project2", to_dyn project2
+      | Error (name, project1, project2) ->
+        let loc = Loc.in_file (Path.source (Dune_project.file project1)) in
+        let name = Dune_project.Name.to_string_hum name in
+        let dup_path = Path.source (Dune_project.file project2) in
+        User_error.raise ~loc
+          [ Pp.textf "Project %s is already defined in %s"
+              name (Path.to_string_maybe_quoted dup_path)
           ]
     in
     let libs_by_project_name =
@@ -135,7 +135,9 @@ module DB = struct
   let create ~projects ~context ~installed_libs ~lib_config
         internal_libs variant_implementations =
     let t = Fdecl.create () in
-    let public_libs = public_libs t ~installed_libs internal_libs in
+    let public_libs =
+      public_libs t ~stdlib_dir:lib_config.Lib_config.stdlib_dir
+        ~installed_libs internal_libs in
     let by_name =
       sccopes_by_name ~context ~projects ~lib_config ~public_libs
         internal_libs variant_implementations

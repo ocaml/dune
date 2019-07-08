@@ -23,10 +23,7 @@ module Source = struct
   let obj_dir { dir; name ; _ } =
     Obj_dir.make_exe ~dir ~name
 
-  let modules t =
-    let main_module = main_module t in
-    let name = Module.name main_module in
-    Module.Name.Map.singleton name main_module
+  let modules t = Modules.singleton (main_module t)
 
   let make ~dir ~loc ~main ~name =
     { dir
@@ -81,11 +78,7 @@ let setup_module_rules t =
     let open Build.O in
     Build.of_result_map requires_compile ~f:(fun libs ->
       Build.arr (fun () ->
-        let include_dirs =
-          let ctx = Super_context.context sctx in
-          Path.Set.to_list
-            (Lib.L.include_paths libs ~stdlib_dir:ctx.stdlib_dir)
-        in
+        let include_dirs = Path.Set.to_list (Lib.L.include_paths libs) in
         let b = Buffer.create 64 in
         let fmt = Format.formatter_of_buffer b in
         Source.pp_ml fmt t.source ~include_dirs;

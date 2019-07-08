@@ -8,7 +8,7 @@ open! Import
 
 type t
 
-val pp : t Fmt.t
+val to_dyn : t -> Dyn.t
 
 (** {1} Constructors *)
 

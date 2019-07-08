@@ -40,8 +40,8 @@ module Context = struct
            name = "install" ||
            String.contains name '/' ||
            String.contains name '\\' then
-          of_sexp_errorf loc
-            "%S is not allowed as a build context name" name;
+          User_error.raise ~loc
+            [ Pp.textf "%S is not allowed as a build context name" name ];
         name)
   end
 
@@ -70,8 +70,10 @@ module Context = struct
         host_context
         ~f:(fun _ -> match targets with
             | [Target.Native] -> ()
-            | _ -> (Errors.fail loc "`targets` and `host` options cannot be used in the same context.")
-           );
+            | _ -> (User_error.raise ~loc
+                      [ Pp.text "`targets` and `host` options cannot \
+                                 be used in the same context." ])
+        );
       { targets
       ; profile
       ; loc
@@ -193,11 +195,11 @@ let bad_configuration_check map =
     match String.Map.find map host with
     | Some host_ctx -> host_ctx
     | None ->
-      Errors.fail
-        loc
-        "Undefined host context '%s' for '%s'."
-        host
-        name
+      User_error.raise ~loc
+        [ Pp.textf "Undefined host context '%s' for '%s'."
+            host
+            name
+        ]
   in
   let check elt =
     Context.host_context elt
@@ -207,12 +209,13 @@ let bad_configuration_check map =
       let host_elt = find_exn loc name host in
       Context.host_context host_elt
       |> Option.iter ~f:(fun host_of_host ->
-        Errors.fail
-          (Context.loc host_elt)
-          "Context '%s' is both a host (for '%s') and a target (for '%s')."
-          host
-          name
-          host_of_host))
+        User_error.raise ~loc:(Context.loc host_elt)
+          [ Pp.textf
+              "Context '%s' is both a host (for '%s') and a target (for '%s')."
+              host
+              name
+              host_of_host
+          ]))
   in
   String.Map.iter map ~f:check
 
@@ -241,14 +244,14 @@ let t ?x ?profile:cmdline_profile () =
     List.fold_left contexts ~init:None ~f:(fun acc ctx ->
       let name = Context.name ctx in
       if String.Set.mem !defined_names name then
-        Errors.fail (Context.loc ctx)
-          "second definition of build context %S" name;
+        User_error.raise ~loc:(Context.loc ctx)
+          [ Pp.textf "second definition of build context %S" name ];
       defined_names := String.Set.union !defined_names
                          (String.Set.of_list (Context.all_names ctx));
       match ctx, acc with
       | Opam { merlin = true; _ }, Some _ ->
-        Errors.fail (Context.loc ctx)
-          "you can only have one context for merlin"
+        User_error.raise ~loc:(Context.loc ctx)
+          [ Pp.text "you can only have one context for merlin" ]
       | Opam { merlin = true; _ }, None ->
         Some name
       | _ ->

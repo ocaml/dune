@@ -304,6 +304,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name duplicate-project-names)
+ (deps (package dune) (source_tree test-cases/duplicate-project-names))
+ (action
+  (chdir
+   test-cases/duplicate-project-names
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name duplicate-target-no-loc)
  (deps (package dune) (source_tree test-cases/duplicate-target-no-loc))
  (action
@@ -417,6 +425,14 @@
  (action
   (chdir
    test-cases/exclude-missing-module
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
+ (name exe-name-mangle)
+ (deps (package dune) (source_tree test-cases/exe-name-mangle))
+ (action
+  (chdir
+   test-cases/exe-name-mangle
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
@@ -1023,6 +1039,14 @@
     (diff? run.t run.t.corrected)))))
 
 (alias
+ (name multiple-targets)
+ (deps (package dune) (source_tree test-cases/multiple-targets))
+ (action
+  (chdir
+   test-cases/multiple-targets
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name name-field-validation)
  (deps (package dune) (source_tree test-cases/name-field-validation))
  (action
@@ -1615,6 +1639,7 @@
   (alias dup-fields)
   (alias duplicate-c-cxx)
   (alias duplicate-c-cxx-obj)
+  (alias duplicate-project-names)
   (alias duplicate-target-no-loc)
   (alias embed-jbuild)
   (alias enabled_if)
@@ -1628,6 +1653,7 @@
   (alias env-var-expansion)
   (alias env-variables)
   (alias exclude-missing-module)
+  (alias exe-name-mangle)
   (alias exec-cmd)
   (alias exec-missing)
   (alias external-lib-deps)
@@ -1701,6 +1727,7 @@
   (alias missing-loc-run)
   (alias multi-dir)
   (alias multiple-private-libs)
+  (alias multiple-targets)
   (alias name-field-validation)
   (alias no-installable-mode)
   (alias no-name-field)
@@ -1805,6 +1832,7 @@
   (alias dup-fields)
   (alias duplicate-c-cxx)
   (alias duplicate-c-cxx-obj)
+  (alias duplicate-project-names)
   (alias duplicate-target-no-loc)
   (alias embed-jbuild)
   (alias enabled_if)
@@ -1818,6 +1846,7 @@
   (alias env-var-expansion)
   (alias env-variables)
   (alias exclude-missing-module)
+  (alias exe-name-mangle)
   (alias exec-cmd)
   (alias exec-missing)
   (alias external-lib-deps)
@@ -1880,6 +1909,7 @@
   (alias misc)
   (alias missing-loc-run)
   (alias multi-dir)
+  (alias multiple-targets)
   (alias name-field-validation)
   (alias no-installable-mode)
   (alias no-name-field)

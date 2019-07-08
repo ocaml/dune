@@ -12,11 +12,9 @@
   running in baz
   running in .
   $ dune build --display short @plop
-  From the command line:
-  Error: Alias "plop" is empty.
+  Error: Alias "plop" specified on the command line is empty.
   It is not defined in . or any of its descendants.
   [1]
   $ dune build --display short @truc/x
-  From the command line:
-  Error: Don't know about directory truc!
+  Error: Don't know about directory truc specified on the command line!
   [1]

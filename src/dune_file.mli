@@ -171,7 +171,7 @@ module Mode_conf : sig
 
   val decode : t Dune_lang.Decoder.t
   val compare : t -> t -> Ordering.t
-  val pp : Format.formatter -> t -> unit
+  val to_dyn : t -> Dyn.t
 
   module Set : sig
     include Set.S with type elt = t
@@ -286,12 +286,6 @@ module Library : sig
   end
 
   val main_module_name : t -> Main_module_name.t
-
-  (** Returns [true] is a special module, i.e. one whose compilation
-      unit name is hard-coded inside the compiler. It is not possible
-      to change the compilation unit name of such modules, so they
-      cannot be wrapped. *)
-  val special_compiler_module : t -> Module.t -> bool
 end
 
 module Install_conf : sig
@@ -320,7 +314,7 @@ module Executables : sig
 
     val compare : t -> t -> Ordering.t
 
-    val pp : t Fmt.t
+    val to_dyn : t -> Dyn.t
 
     module Set : Set.S with type elt = t
   end
@@ -338,8 +332,16 @@ end
 
 module Rule : sig
   module Targets : sig
+
+    module Multiplicity : sig
+      type t = One | Multiple
+    end
+
+    type static =
+      { targets : String_with_vars.t list; multiplicity : Multiplicity.t }
+
     type t =
-      | Static of String_with_vars.t list
+      | Static of static
       | Infer
   end
 

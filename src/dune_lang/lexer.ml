@@ -1,5 +1,4 @@
 module Token = Lexer_shared.Token
-module Error = Lexer_shared.Error
 
 type t = Lexer_shared.t
 
@@ -9,5 +8,3 @@ let jbuild_token = Jbuild_lexer.token
 let of_syntax = function
   | File_syntax.Dune -> token
   | Jbuild -> jbuild_token
-
-exception Error = Lexer_shared.Error

@@ -7,11 +7,13 @@ module SC = Super_context
 
 let warn_dropped_pp loc ~allow_approx_merlin ~reason =
   if not allow_approx_merlin then
-    Errors.warn loc
-      ".merlin generated is inaccurate. %s.\n\
-        Split the stanzas into different directories or silence this warning \
-        by adding (allow_approximate_merlin) to your dune-project."
-      reason
+    User_warning.emit ~loc
+      [ Pp.textf ".merlin generated is inaccurate. %s." reason
+      ; Pp.text
+          "Split the stanzas into different directories or silence \
+           this warning by adding (allow_approximate_merlin) to your \
+           dune-project."
+      ]
 
 module Preprocess = struct
 

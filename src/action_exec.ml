@@ -16,9 +16,15 @@ let exec_run ~ectx ~dir ~env ~stdout_to ~stderr_to prog args =
       match Path.descendant prog ~of_:prefix with
       | None -> ()
       | Some _ ->
-        die "Context %s has a host %s.@.It's not possible to execute binary %a \
-             in it.@.@.This is a bug and should be reported upstream."
-          target.name host.name Path.pp prog in
+        User_error.raise
+          [ Pp.textf "Context %s has a host %s."
+              target.name host.name
+          ; Pp.textf "It's not possible to execute binary %s in it."
+              (Path.to_string_maybe_quoted prog)
+          ; Pp.nop
+          ; Pp.text "This is a bug and should be reported upstream."
+          ]
+    in
     invalid_prefix (Path.relative Path.build_dir target.name);
     invalid_prefix (Path.relative Path.build_dir ("install/" ^ target.name));
   end;
@@ -120,10 +126,9 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to =
     let s =
       let data =
         List.map paths ~f:(fun fn ->
-          (Path.to_string fn, Utils.Cached_digest.file fn))
+          (Path.to_string fn, Cached_digest.file fn))
       in
-      Digest.string
-        (Marshal.to_string data [])
+      Digest.generic data
     in
     exec_echo stdout_to (Digest.to_string_raw s)
   | Diff ({ optional = _; file1; file2; mode } as diff) ->
@@ -143,9 +148,11 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to =
           }
       end;
       if mode = Binary then
-        die "@{<error>Error@}: Files %s and %s differ."
-          (Path.to_string_maybe_quoted file1)
-          (Path.to_string_maybe_quoted file2)
+        User_error.raise
+          [ Pp.textf "Files %s and %s differ."
+              (Path.to_string_maybe_quoted file1)
+              (Path.to_string_maybe_quoted file2)
+          ]
       else
         Print_diff.print file1 file2
           ~skip_trailing_cr:(mode = Text && Sys.win32)

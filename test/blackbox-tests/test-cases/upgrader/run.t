@@ -1,8 +1,7 @@
   $ dune upgrade
-  Info: creating file dune-project with this contents:
+  Info: Creating file dune-project with this contents:
   | (lang dune 1.0)
   | (name foo)
-  
   Upgrading foo.opam...
   Upgrading jbuild.inc to dune.inc...
   Upgrading jbuild to dune...

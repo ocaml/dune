@@ -23,3 +23,9 @@ let encode =
 let to_bool = function
   | Simple b -> b
   | Yes_with_transition _ -> true
+
+let to_dyn =
+  let open Dyn.Encoder in
+  function
+  | Simple s -> constr "Simple" [bool s]
+  | Yes_with_transition s -> constr "Yes_with_transition" [string s]

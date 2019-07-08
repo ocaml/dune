@@ -1,186 +1,77 @@
-exception Parse_error of string
+open Result.O
+
+let ok = Result.ok
 
 type t = Sexp.t
 
-module type Stream = sig
-  type input
+let peek s =
+  match Stream.peek s with
+  | Some v ->
+      ok v
+  | None ->
+      Error "unexpected end of file"
 
-  type t
+let read_string s l =
+  let res = Bytes.make l ' ' in
+  let rec read = function
+    | v when v = l ->
+        ()
+    | v ->
+        BytesLabels.set res v (Stream.next s) ;
+        read (v + 1)
+  in
+  try
+    read 0 ;
+    ok (Bytes.to_string res)
+  with Stream.Failure ->
+    Error (Printf.sprintf "unexpected end of file in atom of size %i" l)
 
-  val make : input -> t
-
-  val peek_byte : t -> int
-
-  val input_byte : t -> int
-
-  val input_string : t -> int -> string
-end
-
-module ChannelStream :
-  Stream with type input = in_channel and type t = in_channel * int option ref =
-struct
-  type input = in_channel
-
-  type t = input * int option ref
-
-  let make i = (i, ref None)
-
-  let peek_byte (chan, peek) =
-    match !peek with
-    | None ->
-        let b = input_byte chan in
-        peek := Some b ;
-        b
-    | Some b ->
-        b
-
-  let input_byte (chan, peek) =
-    match !peek with
-    | None ->
-        input_byte chan
-    | Some b ->
-        peek := None ;
-        b
-
-  let input_string (chan, peek) len =
-    match !peek with
-    | None ->
-        really_input_string chan len
-    | Some b ->
-        peek := None ;
-        String.make 1 (char_of_int b) ^ really_input_string chan (len - 1)
-end
-
-module FDStream :
-  Stream
-  with type input = Unix.file_descr
-   and type t = Unix.file_descr * int option ref = struct
-  type input = Unix.file_descr
-
-  type t = input * int option ref
-
-  let make i = (i, ref None)
-
-  let rec read fd buf pos len =
-    try Unix.read fd buf pos len
-    with Unix.Unix_error (Unix.EINTR, _, _) -> read fd buf pos len
-
-  let read_one chan =
-    let buf = Bytes.make 1 ' ' in
-    if read chan buf 0 1 = 0 then raise End_of_file
-    else int_of_char (Bytes.get buf 0)
-
-  let peek_byte (chan, peek) =
-    match !peek with
-    | None ->
-        let b = read_one chan in
-        peek := Some b ;
-        b
-    | Some b ->
-        b
-
-  let input_byte (chan, peek) =
-    match !peek with
-    | None ->
-        read_one chan
-    | Some b ->
-        peek := None ;
-        b
-
-  let input_string (chan, peek) len =
-    let res = Bytes.make len ' ' and pos = ref 0 in
-    ( match !peek with
-    | Some b ->
-        peek := None ;
-        Bytes.set res 0 (char_of_int b) ;
-        pos := 1
-    | None ->
-        () ) ;
-    while !pos < len do
-      let l = read chan res !pos (len - !pos) in
-      if l = 0 then raise End_of_file else pos := !pos + l
-    done ;
-    Bytes.to_string res
-end
-
-type string_stream = {data: string; mutable pos: int}
-
-module StringStream :
-  Stream with type input = string and type t = string_stream = struct
-  type input = string
-
-  type t = string_stream
-
-  let make str = {data= str; pos= 0}
-
-  let peek_byte s = int_of_char s.data.[s.pos]
-
-  let input_byte s =
-    let b = peek_byte s in
-    s.pos <- s.pos + 1 ;
-    b
-
-  let input_string s len =
-    s.pos <- s.pos + len ;
-    String.sub s.data ~pos:(s.pos - len) ~len
-end
-
-module Parser (S : Stream) = struct
-  let parse_stream chan =
-    let rec read_size acc =
-      let c = S.input_byte chan in
-      if c = int_of_char ':' then acc
-      else
-        let idx = c - int_of_char '0' in
-        if idx < 0 || idx > 9 then
-          raise
-            (Parse_error
-               (Printf.sprintf "invalid character in size: %c" (char_of_int c)))
-        else read_size ((10 * acc) + idx)
-    in
-    let rec parse () =
-      let c = S.peek_byte chan in
-      if c = int_of_char '(' then (
-        ignore (S.input_byte chan) ;
-        Sexp.List (parse_list ()) )
-      else Atom (S.input_string chan (read_size 0))
-    and parse_list () =
-      let c = S.peek_byte chan in
-      if c = int_of_char ')' then (
-        ignore (S.input_byte chan) ;
-        [] )
-      else
+let parse stream =
+  let rec read_size acc =
+    let c = Stream.next stream in
+    if c = ':' then ok acc
+    else
+      let idx = int_of_char c - int_of_char '0' in
+      if idx < 0 || idx > 9 then
+        Error (Printf.sprintf "invalid character in size: %c" c)
+      else read_size ((10 * acc) + idx)
+  in
+  let rec parse () =
+    peek stream
+    >>= function
+    | '(' ->
+        Stream.junk stream ;
+        parse_list () >>| fun l -> Sexp.List l
+    | _ ->
+        read_size 0 >>= read_string stream >>| fun x -> Sexp.Atom x
+  and parse_list () =
+    peek stream
+    >>= function
+    | ')' ->
+        Stream.junk stream ; ok []
+    | ':' ->
+        Error "missing size"
+    | _ ->
         let head = parse () in
-        head :: parse_list ()
-    in
-    parse ()
-
-  let parse input = parse_stream (S.make input)
-end
-
-module ChannelParser = Parser (ChannelStream)
-module StringParser = Parser (StringStream)
+        head >>= fun head -> parse_list () >>| fun tail -> head :: tail
+  in
+  parse ()
 
 let buffer () = Buffer.create 1024
 
-let to_buffer_canonical ~buf sexp =
+let to_buffer ~buf sexp =
   let rec loop = function
     | Sexp.Atom str ->
         Buffer.add_string buf (string_of_int (String.length str)) ;
         Buffer.add_string buf ":" ;
         Buffer.add_string buf str
-    | Sexp.List e ->
+    | Sexp.List (e : t list) ->
         Buffer.add_char buf '(' ;
         ignore (List.map ~f:loop e) ;
         Buffer.add_char buf ')'
   in
   ignore (loop sexp)
 
-let to_string_canonical sexp =
+let to_string sexp =
   let buf = buffer () in
-  to_buffer_canonical sexp ~buf ;
-  Buffer.contents buf
-
-let parse_canonical = StringParser.parse
-
-let parse_channel_canonical = ChannelParser.parse
+  to_buffer sexp ~buf ; Buffer.contents buf

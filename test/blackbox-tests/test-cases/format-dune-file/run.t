@@ -35,7 +35,8 @@ It is possible to pass a file name:
 Parse errors are displayed:
 
   $ echo '(' | dune format-dune-file
-  Parse error: unclosed parenthesis at end of input
+  File "", line 2, characters 0-0:
+  Error: unclosed parenthesis at end of input
   [1]
 
 When a list is indented, there is no extra space at the end.
@@ -162,5 +163,6 @@ Files in OCaml syntax are copied verbatim (but error when passed in stdin).
 Non 0 error code:
 
   $ echo "(" | dune format ; echo $?
-  Parse error: unclosed parenthesis at end of input
+  File "", line 2, characters 0-0:
+  Error: unclosed parenthesis at end of input
   1

@@ -53,7 +53,7 @@ let key consumed metadata produced =
       ; Sexp.List
           (List.map ~f:(fun p -> Sexp.Atom (Path.to_string p)) produced) ]
   in
-  Digest.string (Csexp.to_string_canonical key)
+  Digest.string (Csexp.to_string key)
 
 let key_to_string = Digest.to_string
 
@@ -176,7 +176,7 @@ let promote memory paths key metadata _ =
         and metadata_path = FSSchemeImpl.path (path_meta memory) key in
         mkpath (Path.parent_exn metadata_path) ;
         Io.write_file metadata_path
-          (Csexp.to_string_canonical
+          (Csexp.to_string
              (Sexp.List
                 [ Sexp.List [Sexp.Atom "metadata"; metadata]
                 ; Sexp.List
@@ -199,7 +199,11 @@ let promote memory paths key metadata _ =
 let search memory key =
   let path = FSSchemeImpl.path (path_meta memory) key in
   let metadata =
-    Io.with_file_in path ~f:(fun input -> Csexp.parse_channel_canonical input)
+    Result.ok_exn
+      (Result.map_error
+         ~f:(fun r -> Failure r)
+         (Io.with_file_in path ~f:(fun input ->
+              Csexp.parse (Stream.of_channel input) )))
   in
   let f () =
     match metadata with

@@ -83,8 +83,15 @@ module Resolved_forms : sig
 end
 
 module Targets : sig
+
+  type static =
+    {
+      targets : Path.t list;
+      multiplicity : Dune_file.Rule.Targets.Multiplicity.t;
+    }
+
   type t =
-    | Static of Path.t list
+    | Static of static
     | Infer
     | Forbidden of string (** context *)
 end

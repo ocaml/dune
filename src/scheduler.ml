@@ -218,8 +218,11 @@ end = struct
              "--event"; "Updated";
              "--event"; "Removed"] @ excludes
          | None ->
-           die "@{<error>Error@}: fswatch (or inotifywait) was not found. \
-                One of them needs to be installed for watch mode to work.\n"))
+           User_error.raise
+             [ Pp.text "fswatch (or inotifywait) was not found. One of \
+                        them needs to be installed for watch mode to \
+                        work."
+             ]))
 
   let buffering_time = 0.5 (* seconds *)
   let buffer_capacity = 65536
@@ -721,7 +724,7 @@ let go ?log ?config f =
   | Ok res ->
     res
   | Error Got_signal ->
-    raise Already_reported
+    raise Report_error.Already_reported
   | Error Never ->
     raise Fiber.Never
   | Error Files_changed ->
@@ -763,7 +766,7 @@ let poll ?log ?config ~once ~finally () =
               (Pp.verbatim "Success"))
       |> after_wait
     | Error Got_signal ->
-      (Already_reported, None)
+      (Report_error.Already_reported, None)
     | Error Never ->
       wait (Pp.tag ~tag:User_message.Style.Error
               (Pp.verbatim "Had errors"))
@@ -773,7 +776,7 @@ let poll ?log ?config ~once ~finally () =
     | Error (Exn (exn, bt)) -> (exn, Some bt)
   and
     after_wait = function
-    | Exit -> (Already_reported, None)
+    | Exit -> (Report_error.Already_reported, None)
     | Continue -> loop ()
   in
   let exn, bt = loop () in

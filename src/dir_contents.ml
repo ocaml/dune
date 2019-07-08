@@ -4,14 +4,10 @@ module Menhir_rules = Menhir
 open Dune_file
 open! No_io
 
-module Executables_modules = struct
-  type t = Module.Name_map.t
-end
-
-module Modules = struct
+module Dir_modules = struct
   type t =
-    { libraries : Lib_modules.t Lib_name.Map.t
-    ; executables : Executables_modules.t String.Map.t
+    { libraries : Modules.t Lib_name.Map.t
+    ; executables : Modules.t String.Map.t
     ; (* Map from modules to the buildable they are part of *)
       rev_map : Buildable.t Module.Name.Map.t
     }
@@ -27,7 +23,7 @@ type t =
   { kind : kind
   ; dir : Path.Build.t
   ; text_files : String.Set.t
-  ; modules : Modules.t Memo.Lazy.t
+  ; modules : Dir_modules.t Memo.Lazy.t
   ; c_sources : C_sources.t Memo.Lazy.t
   ; mlds : (Dune_file.Documentation.t * Path.Build.t list) list Memo.Lazy.t
   ; coq_modules : Coq_module.t list Lib_name.Map.t Memo.Lazy.t
@@ -109,13 +105,13 @@ let modules_of_files ~dir ~files =
     | Ok x -> x
     | Error (name, f1, f2) ->
       let src_dir = Path.drop_build_context_exn dir in
-      die "Too many files for module %a in %a:\
-           \n- %a\
-           \n- %a"
-        Module.Name.pp name
-        Path.Source.pp src_dir
-        Path.pp f1.path
-        Path.pp f2.path
+      User_error.raise
+        [ Pp.textf "Too many files for module %s in %s:"
+            (Module.Name.to_string name)
+            (Path.Source.to_string_maybe_quoted src_dir)
+        ; Pp.textf "- %s" (Path.to_string_maybe_quoted f1.path)
+        ; Pp.textf "- %s" (Path.to_string_maybe_quoted f2.path)
+        ]
   in
   let impls = parse_one_set impl_files in
   let intfs = parse_one_set intf_files in
@@ -140,9 +136,11 @@ let build_mlds_map (d : _ Dir_with_dune.t) ~files =
             | Some s ->
               s
             | None ->
-              Errors.fail loc "%s.mld doesn't exist in %s" s
-                (Path.to_string_maybe_quoted
-                   (Path.drop_optional_build_context (Path.build dir)))
+              User_error.raise ~loc
+                [ Pp.textf "%s.mld doesn't exist in %s" s
+                    (Path.to_string_maybe_quoted
+                       (Path.drop_optional_build_context (Path.build dir)))
+                ]
           )
           ~standard:mlds
       in
@@ -180,9 +178,9 @@ module rec Load : sig
 end = struct
   let virtual_modules sctx vlib =
     let info = Lib.info vlib in
-    let lib_modules =
+    let modules =
       match Option.value_exn (Lib_info.virtual_ info) with
-      | External lib_modules -> lib_modules
+      | External modules -> modules
       | Local ->
         let src_dir =
           Lib_info.src_dir info
@@ -191,13 +189,9 @@ end = struct
         let t = Load.get sctx ~dir:src_dir in
         modules_of_library t ~name:(Lib.name vlib)
     in
-    let existing_virtual_modules =
-      Lib_modules.virtual_modules lib_modules
-      |> Module.Name.Map.keys
-      |> Module.Name.Set.of_list
-    in
+    let existing_virtual_modules = Modules.virtual_module_names modules in
     let allow_new_public_modules =
-      Lib_modules.wrapped lib_modules
+      Modules.wrapped modules
       |> Wrapped.to_bool
       |> not
     in
@@ -279,8 +273,7 @@ end = struct
           in
           Left ( lib
                , let src_dir = Path.build src_dir in
-                 Lib_modules.make lib ~src_dir modules ~main_module_name
-                   ~wrapped
+                 Modules.lib ~lib ~src_dir ~modules ~main_module_name ~wrapped
                )
         | Executables exes
         | Tests { exes; _} ->
@@ -290,7 +283,7 @@ end = struct
               ~kind:Modules_field_evaluator.Exe_or_normal_lib
               ~private_modules:Ordered_set_lang.standard
           in
-          Right (exes, modules)
+          Right (exes, Modules.exe modules)
         | _ -> Skip)
     in
     let libraries =
@@ -299,10 +292,11 @@ end = struct
       with
       | Ok x -> x
       | Error (name, _, (lib2, _)) ->
-        Errors.fail lib2.buildable.loc
-          "Library %a appears for the second time \
-           in this directory"
-          Lib_name.pp_quoted name
+        User_error.raise ~loc:lib2.buildable.loc
+          [ Pp.textf "Library %S appears for the second time in this \
+                      directory"
+              (Lib_name.to_string name)
+          ]
     in
     let executables =
       match
@@ -311,21 +305,21 @@ end = struct
       with
       | Ok x -> x
       | Error (name, _, (exes2, _)) ->
-        Errors.fail exes2.buildable.loc
-          "Executable %S appears for the second time \
-           in this directory"
-          name
+        User_error.raise ~loc:exes2.buildable.loc
+          [ Pp.textf "Executable %S appears for the second time in \
+                      this directory"
+              name
+          ]
     in
     let rev_map =
       let rev_modules =
+        let by_name buildable =
+          Modules.fold_user_written ~init:[] ~f:(fun m acc ->
+            (Module.name m, buildable) :: acc)
+        in
         List.rev_append
-          (List.concat_map libs ~f:(fun (l, m) ->
-             let modules = Lib_modules.modules m in
-             List.map (Module.Name.Map.values modules) ~f:(fun m ->
-               (Module.name m, l.buildable))))
-          (List.concat_map exes ~f:(fun (e, m) ->
-             List.map (Module.Name.Map.values m) ~f:(fun m ->
-               (Module.name m, e.buildable))))
+          (List.concat_map libs ~f:(fun (l, m) -> by_name l.buildable m))
+          (List.concat_map exes ~f:(fun (e, m) -> by_name e.buildable m))
       in
       match d.kind with
       | Dune -> begin
@@ -338,19 +332,19 @@ end = struct
                 Option.some_if (n = name) b.loc)
               |> List.sort ~compare
             in
-            Errors.fail (Loc.drop_position (List.hd locs))
-              "Module %a is used in several stanzas:@\n\
-               @[<v>%a@]@\n\
-               @[%a@]"
-              Module.Name.pp_quote name
-              (Fmt.list (Fmt.prefix (Fmt.string "- ") Loc.pp_file_colon_line))
-              locs
-              Format.pp_print_text
-              "To fix this error, you must specify an explicit \"modules\" \
-               field in every library, executable, and executables stanzas in \
-               this dune file. Note that each module cannot appear in more \
-               than one \"modules\" field - it must belong to a single library \
-               or executable."
+            User_error.raise ~loc:(Loc.drop_position (List.hd locs))
+              [ Pp.textf "Module %S is used in several stanzas:"
+                  (Module.Name.to_string name)
+              ; Pp.enumerate locs ~f:(fun loc ->
+                  Pp.verbatim (Loc.to_file_colon_line loc))
+              ; Pp.text
+                  "To fix this error, you must specify an explicit \
+                   \"modules\" field in every library, executable, and \
+                   executables stanzas in this dune file. Note that \
+                   each module cannot appear in more than one \
+                   \"modules\" field - it must belong to a single \
+                   library or executable."
+              ]
         end
       | Jbuild ->
         Module.Name.Map.of_list_multi rev_modules
@@ -364,23 +358,22 @@ end = struct
                 (b.Buildable.loc :: List.map rest ~f:(fun b -> b.Buildable.loc))
             in
             (* DUNE2: make this an error *)
-            Errors.warn (Loc.drop_position b.loc)
-              "Module %a is used in several stanzas:@\n\
-               @[<v>%a@]@\n\
-               @[%a@]@\n\
-               This warning will become an error in the future."
-              Module.Name.pp_quote name
-              (Fmt.list (Fmt.prefix (Fmt.string "- ") Loc.pp_file_colon_line))
-              locs
-              Format.pp_print_text
-              "To remove this warning, you must specify an explicit \"modules\" \
-               field in every library, executable, and executables stanzas in \
-               this jbuild file. Note that each module cannot appear in more \
-               than one \"modules\" field - it must belong to a single library \
-               or executable.";
+            User_warning.emit ~loc:(Loc.drop_position b.loc)
+              [ Pp.textf "Module %S is used in several stanzas:"
+                  (Module.Name.to_string name)
+              ; Pp.enumerate locs ~f:(fun loc ->
+                  Pp.verbatim (Loc.to_file_colon_line loc))
+              ; Pp.text
+                  "To remove this warning, you must specify an \
+                   explicit \"modules\" field in every library, \
+                   executable, and executables stanzas in this jbuild \
+                   file. Note that each module cannot appear in more \
+                   than one \"modules\" field - it must belong to a \
+                   single library or executable."
+              ];
             b)
     in
-    { Modules. libraries; executables; rev_map }
+    { Dir_modules. libraries; executables; rev_map }
 
   (* As a side-effect, setup user rules and copy_files rules. *)
   let load_text_files sctx ft_dir
@@ -448,11 +441,13 @@ end = struct
 
   let check_no_qualified loc qualif_mode =
     if qualif_mode = Include_subdirs.Qualified then
-      Errors.fail loc "(include_subdirs qualified) is not supported yet"
+      User_error.raise ~loc
+        [ Pp.text "(include_subdirs qualified) is not supported yet" ]
 
   let check_no_unqualified loc qualif_mode =
     if qualif_mode = Include_subdirs.Unqualified then
-      Errors.fail loc "(include_subdirs qualified) is not supported yet"
+      User_error.raise ~loc
+        [ Pp.text "(include_subdirs qualified) is not supported yet" ]
 
   let get0_impl (sctx, dir) : result0 =
     let dir_status_db = Super_context.dir_status_db sctx in
@@ -490,7 +485,7 @@ end = struct
            t = { kind = Standalone
                ; dir
                ; text_files = String.Set.empty
-               ; modules = Memo.Lazy.of_val Modules.empty
+               ; modules = Memo.Lazy.of_val Dir_modules.empty
                ; mlds = Memo.Lazy.of_val []
                ; c_sources = Memo.Lazy.of_val C_sources.empty
                ; coq_modules = Memo.Lazy.of_val Lib_name.Map.empty
@@ -533,18 +528,21 @@ end = struct
             ~f:(fun acc ((dir : Path.Build.t), _local, files) ->
               let modules = modules_of_files ~dir ~files in
               Module.Name.Map.union acc modules ~f:(fun name x y ->
-                Errors.fail (Loc.in_file
-                               (Path.source (match File_tree.Dir.dune_file ft_dir with
-                                  | None ->
-                                    Path.Source.relative (File_tree.Dir.path ft_dir)
-                                      "_unknown_"
-                                  | Some d -> File_tree.Dune_file.path d)))
-                  "Module %a appears in several directories:\
-                   @\n- %a\
-                   @\n- %a"
-                  Module.Name.pp_quote name
-                  Path.pp (Module.Source.src_dir x)
-                  Path.pp (Module.Source.src_dir y)))
+                User_error.raise
+                  ~loc:(Loc.in_file
+                          (Path.source (match File_tree.Dir.dune_file ft_dir with
+                             | None ->
+                               Path.Source.relative (File_tree.Dir.path ft_dir)
+                                 "_unknown_"
+                             | Some d -> File_tree.Dune_file.path d)))
+                  [ Pp.textf "Module %S appears in several directories:"
+                      (Module.Name.to_string name)
+                  ; Pp.textf "- %s"
+                      (Path.to_string_maybe_quoted (Module.Source.src_dir x))
+                  ; Pp.textf "- %s"
+                      (Path.to_string_maybe_quoted (Module.Source.src_dir y))
+                  ; Pp.text "This is not allowed, please rename one of them."
+                  ]))
         in
         make_modules sctx d ~modules)
       in
@@ -558,20 +556,26 @@ end = struct
               let sources = C_sources.load_sources ~dir ~dune_version ~files in
               let f acc sources =
                 String.Map.union acc sources ~f:(fun name x y ->
-                  Errors.fail (Loc.in_file
-                                 (Path.source (match File_tree.Dir.dune_file ft_dir with
-                                    | None ->
-                                      Path.Source.relative (File_tree.Dir.path ft_dir)
-                                        "_unknown_"
-                                    | Some d -> File_tree.Dune_file.path d)))
-                    "%a file %s appears in several directories:\
-                     @\n- %a\
-                     @\n- %a\
-                     @\nThis is not allowed, please rename one of them."
-                    (C.Kind.pp) (C.Source.kind x)
-                    name
-                    Path.pp_in_source (Path.build (C.Source.src_dir x))
-                    Path.pp_in_source (Path.build (C.Source.src_dir y)))
+                  User_error.raise
+                    ~loc:(Loc.in_file
+                            (Path.source (match File_tree.Dir.dune_file ft_dir with
+                               | None ->
+                                 Path.Source.relative (File_tree.Dir.path ft_dir)
+                                   "_unknown_"
+                               | Some d -> File_tree.Dune_file.path d)))
+                    [ Pp.textf "%s file %s appears in several directories:"
+                        (C.Kind.to_string (C.Source.kind x))
+                        name
+                    ; Pp.textf "- %s"
+                        (Path.to_string_maybe_quoted
+                           (Path.drop_optional_build_context
+                              (Path.build (C.Source.src_dir x))))
+                    ; Pp.textf "- %s"
+                        (Path.to_string_maybe_quoted
+                           (Path.drop_optional_build_context
+                              (Path.build (C.Source.src_dir y))))
+                    ; Pp.text "This is not allowed, please rename one of them."
+                    ])
               in
               C.Kind.Dict.merge acc sources ~f)
         in

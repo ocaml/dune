@@ -36,7 +36,7 @@ let clear_cache () =
 
 let () = Hooks.End_of_build.always clear_cache
 
-module P = Utils.Persistent(struct
+module P = Persistent.Make(struct
     type t = File.t list
     let name = "TO-PROMOTE"
     let version = 1
@@ -89,7 +89,7 @@ let do_promote db files_to_promote =
          quickly, it will look like it hasn't changed even though it
          might have. *)
       List.iter dirs_to_clear_from_cache ~f:(fun dir ->
-        Utils.Cached_digest.remove (Path.append_source dir dst));
+        Cached_digest.remove (Path.append_source dir dst));
       File.promote { src; dst };
       List.iter others ~f:(fun path ->
         Format.eprintf " -> ignored %s.@."

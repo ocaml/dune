@@ -8,16 +8,28 @@ type t =
   ; force_linkall : bool
   }
 
-let generate_and_compile_module cctx ~precompiled_cmi ~name:basename ~code
-      ~requires =
+let generate_and_compile_module cctx ~precompiled_cmi ~name:basename
+      ~lib ~code ~requires =
   let open Build.O in
   let sctx       = CC.super_context cctx in
   let obj_dir    = CC.obj_dir       cctx in
   let dir        = CC.dir           cctx in
   let name = Module.Name.of_string basename in
+  let wrapped = Result.ok_exn (Lib.wrapped lib) in
   let module_ =
     let src_dir = Path.build (Obj_dir.obj_dir obj_dir) in
-    Module.generated ~src_dir name
+    let gen_module = Module.generated ~src_dir name in
+    match wrapped with
+    | None -> gen_module
+    | Some (Yes_with_transition _) -> assert false
+    | Some (Simple false) -> gen_module
+    | Some (Simple true) ->
+      let main_module_name =
+        Lib.main_module_name lib
+        |> Result.ok_exn
+        |> Option.value_exn
+      in
+      Module.with_wrapper gen_module ~main_module_name
   in
   SC.add_rule ~dir sctx (
     let ml =
@@ -37,7 +49,7 @@ let generate_and_compile_module cctx ~precompiled_cmi ~name:basename ~code
       ~scope:(Compilation_context.scope cctx)
       ~dir_kind:(Compilation_context.dir_kind cctx)
       ~obj_dir
-      ~modules:(Module.Name.Map.singleton name module_)
+      ~modules:(Modules.singleton module_)
       ~requires_compile:requires
       ~requires_link:(lazy requires)
       ~flags:Ocaml_flags.empty
@@ -200,6 +212,7 @@ let handle_special_libs cctx =
             generate_and_compile_module
               cctx
               ~name:data_module
+              ~lib
               ~code:(Build.arr (fun () ->
                 build_info_code cctx ~libs:all_libs ~api_version))
               ~requires:(Ok [lib])
@@ -230,6 +243,7 @@ let handle_special_libs cctx =
           let module_ =
             generate_and_compile_module
               cctx
+              ~lib
               ~name:"findlib_initl"
               ~code:(Build.arr (fun () ->
                 findlib_init_code ~preds:Findlib.Package.preds ~libs:all_libs))

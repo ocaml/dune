@@ -7,6 +7,7 @@ module Var : sig
     | First_dep
     | Deps
     | Targets
+    | Target
     | Named_local
     | Cc
     | Cxx

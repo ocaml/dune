@@ -29,7 +29,8 @@ rule token = parse
   | '=' { Equal }
   | "+=" { Plus_equal }
   | eof { Eof }
-  | _ { Errors.fail_lex lexbuf "invalid character" }
+  | _ { Stdune.User_error.raise ~loc:(Stdune.Loc.of_lexbuf lexbuf)
+          [ Stdune.Pp.text "invalid character" ] }
 
 and string buf = parse
   | '"'
@@ -44,4 +45,5 @@ and string buf = parse
       { Buffer.add_char buf c;
         string buf lexbuf }
   | eof
-      { Errors.fail_lex lexbuf "unterminated string" }
+      { Stdune.User_error.raise ~loc:(Stdune.Loc.of_lexbuf lexbuf)
+          [ Stdune.Pp.text "unterminated string" ] }

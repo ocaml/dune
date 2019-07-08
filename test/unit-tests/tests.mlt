@@ -54,7 +54,9 @@ Dune_package.Lib.requires pkg |> List.map ~f:snd;;
 (* Meta parsing/simplification *)
 
 open Meta
-#install_printer Simplified.pp;;
+let simplified_pp fmt t = Dyn.pp fmt (Simplified.to_dyn t);;
+[%%ignore]
+#install_printer simplified_pp;;
 
 let meta =
   Path.in_source "test/unit-tests/findlib-db/foo/META"
@@ -62,28 +64,26 @@ let meta =
 
 [%%expect{|
 val meta : Simplified.t =
-  { name = "foo"
-  ; vars =
-     (requires =
-       { set_rules =
-          [ { var = "requires"
-            ; predicates = []
-            ; action = Set
-            ; value = "bar"
-            }
-          ; { var = "requires"
-            ; predicates = [ "+ppx_driver" ]
-            ; action = Set
-            ; value = "baz"
-            }
-          ]
-       ; add_rules = []
-       })
-  ; subs = []
-  }
+  {name = Some "foo";
+    vars =
+      map {"requires" :
+           {set_rules =
+              [{var = "requires";
+                 predicates = [];
+                 action = Set;
+                 value = "bar"};
+              {var = "requires";
+                predicates = [Pos "ppx_driver"];
+                action = Set;
+                value = "baz"}];
+             add_rules = []}};
+    subs = []}
 |}]
 
-#install_printer Findlib.Config.pp;;
+let config_printer fmt d = Dyn.pp fmt (Findlib.Config.to_dyn d);;
+[%%ignore]
+
+#install_printer config_printer;;
 
 let conf =
   Findlib.Config.load (Path.in_source "test/unit-tests/toolchain")
@@ -91,18 +91,14 @@ let conf =
 
 [%%expect{|
 val conf : Findlib.Config.t =
-  { vars =
-     [ (FOO_BAR, { set_rules =
-                    [ { preds_required = [ "tlc"; "env" ]
-                      ; preds_forbidden = []
-                      ; value = "my variable"
-                      }
-                    ]
-                 ; add_rules = []
-                 })
-     ]
-  ; preds = [ "tlc" ]
-  }
+  {vars =
+     map {"FOO_BAR" :
+          {set_rules =
+             [{preds_required = set {6; 7};
+                preds_forbidden = set {};
+                value = "my variable"}];
+            add_rules = []}};
+    preds = set {6}}
 |}]
 
 let env_pp fmt env = Dyn.pp fmt (Env.to_dyn env);;

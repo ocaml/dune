@@ -11,7 +11,8 @@ In expands to a file name, and registers this as a dependency.
   File "dune", line 13, characters 17-47:
   13 |         (echo "%{path:file-that-does-not-exist}\n")
                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  Error: %{path:..} was renamed to '%{dep:..}' in the 1.0 version of the dune language
+  Error: %{path:..} was renamed to '%{dep:..}' in the 1.0 version of the dune
+  language
   [1]
 
 %{path-no-dep:string}
@@ -38,7 +39,8 @@ This registers the dependency:
   $ dune build --root jbuild @test-path
   Entering directory 'jbuild'
   File "jbuild", line 1, characters 0-0:
-  Warning: jbuild files are deprecated, please convert this file to a dune file instead.
+  Warning: jbuild files are deprecated, please convert this file to a dune file
+  instead.
   Note: You can use "dune upgrade" to convert your project to dune.
   dynamic-contents
 
@@ -50,7 +52,8 @@ This does not:
   $ dune build --root jbuild @test-path-no-dep
   Entering directory 'jbuild'
   File "jbuild", line 1, characters 0-0:
-  Warning: jbuild files are deprecated, please convert this file to a dune file instead.
+  Warning: jbuild files are deprecated, please convert this file to a dune file
+  instead.
   Note: You can use "dune upgrade" to convert your project to dune.
   ../../file-that-does-not-exist
   ../..
@@ -63,7 +66,8 @@ This form does not exist, but displays an hint:
   $ dune build --root jbuild-invalid @test-dep
   Entering directory 'jbuild-invalid'
   File "jbuild", line 1, characters 0-0:
-  Warning: jbuild files are deprecated, please convert this file to a dune file instead.
+  Warning: jbuild files are deprecated, please convert this file to a dune file
+  instead.
   Note: You can use "dune upgrade" to convert your project to dune.
   File "jbuild", line 5, characters 16-37:
   5 |    (action (cat ${dep:generated-file}))))

@@ -8,5 +8,5 @@
 
 Check that building a native only executable fails
   $ env ORIG_PATH="$PATH" PATH="$PWD/ocaml-bin:$PATH" dune build --display short native-only/foo.exe
-  Don't know how to build native-only/foo.exe
+  Error: Don't know how to build native-only/foo.exe
   [1]

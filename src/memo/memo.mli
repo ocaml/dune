@@ -84,7 +84,6 @@ end
 
 module type Input = sig
   type t
-  val to_dyn : t -> Dyn.t
   include Table.Key with type t := t
 end
 

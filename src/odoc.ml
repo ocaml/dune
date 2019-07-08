@@ -224,9 +224,12 @@ let setup_library_odoc_rules sctx (library : Library.t) ~obj_dir ~scope ~modules
   let includes =
     (Dep.deps ctx (Lib.package lib) requires, odoc_include_flags) in
   let modules_and_odoc_files =
-    List.map (Module.Name.Map.values modules) ~f:(
-      compile_module sctx ~includes ~dep_graphs ~obj_dir
-        ~doc_dir ~pkg_or_lnu)
+    Modules.fold_no_vlib modules ~init:[] ~f:(fun m acc ->
+      let compiled =
+        compile_module sctx ~includes ~dep_graphs ~obj_dir
+          ~doc_dir ~pkg_or_lnu m
+      in
+      compiled :: acc)
   in
   Dep.setup_deps ctx (Lib lib)
     (List.map modules_and_odoc_files ~f:(fun (_, p) -> Path.build p)
@@ -472,7 +475,7 @@ let entry_modules_by_lib sctx lib =
   let name = Lib.name (Lib.Local.to_lib lib) in
   Dir_contents.get sctx ~dir
   |> Dir_contents.modules_of_library ~name
-  |> Lib_modules.entry_modules
+  |> Modules.entry_modules
 
 let entry_modules sctx ~pkg =
   libs_of_pkg sctx ~pkg
@@ -519,10 +522,12 @@ let check_mlds_no_dupes ~pkg ~mlds =
   with
   | Ok m -> m
   | Error (_, p1, p2) ->
-    die "Package %s has two mld's with the same basename %s, %s"
-      (Package.Name.to_string pkg)
-      (Path.to_string_maybe_quoted (Path.build p1))
-      (Path.to_string_maybe_quoted (Path.build p2))
+    User_error.raise
+      [ Pp.textf "Package %s has two mld's with the same basename %s, %s"
+          (Package.Name.to_string pkg)
+          (Path.to_string_maybe_quoted (Path.build p1))
+          (Path.to_string_maybe_quoted (Path.build p2))
+      ]
 
 let setup_package_odoc_rules_def =
   let module Input = struct

@@ -41,10 +41,9 @@ let gen_dune_package sctx ~version ~(pkg : Local_package.t) =
                 |> C.Sources.objects ~dir ~ext_obj:ctx.lib_config.ext_obj
                 |> List.map ~f:Path.build
               in
-              let lib_modules =
-                Dir_contents.modules_of_library dir_contents ~name
-              in
-              Lib.to_dune_lib lib ~dir:(Path.build (lib_root lib)) ~lib_modules
+              let modules =
+                Dir_contents.modules_of_library dir_contents ~name in
+              Lib.to_dune_lib lib ~dir:(Path.build (lib_root lib)) ~modules
                 ~foreign_objects)
           in
           Dune_package.Or_meta.Dune_package
@@ -60,7 +59,7 @@ let gen_dune_package sctx ~version ~(pkg : Local_package.t) =
     Dune_package.Or_meta.encode ~dune_version pkg
     |> Format.asprintf "%a@."
          (Fmt.list ~pp_sep:Fmt.nl
-            (Dune_lang.pp (Stanza.File_kind.of_syntax dune_version))))
+            (Dune_lang.Deprecated.pp (Stanza.File_kind.of_syntax dune_version))))
   >>>
   Build.write_file_dyn  dune_package_file
   |> Super_context.add_rule sctx ~dir:ctx.build_dir
@@ -121,11 +120,12 @@ let init_meta sctx ~dir =
           | Some lib ->
             let lib = Lib.Local.to_lib lib in
             Build.fail { fail = fun () ->
-              Errors.fail (Loc.in_file meta_template)
-                "Package %a defines virtual library %a and has a META \
-                 template. This is not allowed."
-                Package.Name.pp (Local_package.name pkg)
-                Lib_name.pp (Lib.name lib)
+              User_error.raise ~loc:(Loc.in_file meta_template)
+                [ Pp.textf "Package %s defines virtual library %s and \
+                            has a META template. This is not allowed."
+                    (Package.Name.to_string (Local_package.name pkg))
+                    (Lib_name.to_string (Lib.name lib))
+                ]
             }
           | None ->
             Build.lines_of meta_template)
@@ -219,7 +219,7 @@ let lib_install_files sctx ~dir_contents ~dir ~sub_dir:lib_subdir
   let installable_modules =
     Dir_contents.modules_of_library dir_contents
       ~name:(Library.best_name lib)
-    |> Lib_modules.installable_modules
+    |> Modules.fold_no_vlib ~init:[] ~f:(fun m acc -> m :: acc)
   in
   let sources =
     List.concat_map installable_modules ~f:(fun m ->

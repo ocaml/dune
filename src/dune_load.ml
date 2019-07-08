@@ -88,20 +88,25 @@ module Dune_files = struct
             (match (kind : Dune_lang.File_syntax.t) with
              | Jbuild -> ()
              | Dune ->
-               Errors.fail loc
-                 "#require is no longer supported in dune files.\n\
-                  You can use the following function instead of \
-                  Unix.open_process_in:\n\
-                  \n\
-                 \  (** Execute a command and read it's output *)\n\
-                 \  val run_and_read_lines : string -> string list");
+               User_error.raise ~loc
+                 [ Pp.text
+                     "#require is no longer supported in dune files."
+                 ; Pp.text
+                     "You can use the following function instead of \
+                      Unix.open_process_in:\n\
+                      \n\
+                     \  (** Execute a command and read it's output *)\n\
+                     \  val run_and_read_lines : string -> string list"
+                 ]);
             match String.split s ~on:',' with
             | [] -> acc
             | ["unix"] -> Unix
             | _ ->
-              Errors.fail loc
-                "Using libraries other that \"unix\" is not supported.\n\
-                 See the manual for details.";
+              User_error.raise ~loc
+                [ Pp.text
+                    "Using libraries other that \"unix\" is not supported."
+                ; Pp.text "See the manual for details."
+                ];
         in
         loop (n + 1) lines acc
     in
@@ -221,9 +226,11 @@ end
         Process.run Strict ~dir:(Path.source dir)
           ~env:context.env context.ocaml args in
       if not (Path.exists (Path.build generated_dune_file)) then
-        die "@{<error>Error:@} %s failed to produce a valid dune_file file.\n\
-             Did you forgot to call [Jbuild_plugin.V*.send]?"
-          (Path.Source.to_string file);
+        User_error.raise
+          [ Pp.textf "%s failed to produce a valid dune_file file."
+              (Path.Source.to_string_maybe_quoted file)
+          ; Pp.textf "Did you forgot to call [Jbuild_plugin.V*.send]?"
+          ];
       Fiber.return
         (Dune_lang.Io.load (Path.build generated_dune_file) ~mode:Many
            ~lexer:(Dune_lang.Lexer.of_syntax kind)
@@ -276,10 +283,14 @@ let load ?(ignore_promoted_rules=false) ~ancestor_vcs () =
           | None, Some _ -> b
           | Some _, None -> a
           | Some a, Some b ->
-            die "Too many opam files for package %S:\n- %s\n- %s"
-              (Package.Name.to_string name)
-              (Path.Source.to_string_maybe_quoted (Package.opam_file a))
-              (Path.Source.to_string_maybe_quoted (Package.opam_file b))))
+            User_error.raise
+              [ Pp.textf "Too many opam files for package %S:"
+                  (Package.Name.to_string name)
+              ; Pp.textf "- %s"
+                  (Path.Source.to_string_maybe_quoted (Package.opam_file a))
+              ; Pp.textf "- %s"
+                  (Path.Source.to_string_maybe_quoted (Package.opam_file b))
+              ]))
   in
 
   let rec walk dir dune_files =

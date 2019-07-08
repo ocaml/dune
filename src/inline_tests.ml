@@ -76,9 +76,11 @@ module Backend = struct
             let* lib = resolve x in
             match get ~loc lib with
             | None ->
-              Error (Errors.exnf loc "%S is not an %s"
-                       (Lib_name.to_string name)
-                       (desc ~plural:false))
+              Error (User_error.E
+                       (User_error.make ~loc
+                          [ Pp.textf "%S is not an %s"
+                              (Lib_name.to_string name)
+                              (desc ~plural:false) ]))
             | Some t -> Ok t)
       }
 
@@ -196,10 +198,12 @@ include Sub_system.Register_end_point(
           ; dir
           ; stanza = lib
           ; scope
-          ; source_modules
+          ; modules
           ; compile_info = _
           } = c
       in
+      let source_modules =
+        Modules.fold_user_written modules ~init:[] ~f:(fun x xs -> x :: xs) in
 
       let loc = lib.buildable.loc in
 
@@ -219,7 +223,8 @@ include Sub_system.Register_end_point(
         let src_dir = Path.build inline_test_dir in
         Module.generated ~src_dir name
       in
-      let modules = Module.Name.Map.singleton (Module.name main_module) main_module in
+
+      let modules = Modules.singleton main_module in
 
       let bindings =
         Pform.Map.singleton "library-name"
@@ -251,7 +256,6 @@ include Sub_system.Register_end_point(
           |> Option.value_exn
           |> Path.as_in_build_dir_exn
         in
-        let source_modules = Module.Name.Map.values source_modules in
         let files ml_kind =
           Pform.Var.Values (Value.L.paths (
             List.filter_map source_modules ~f:(Module.file ~ml_kind)))
@@ -357,8 +361,7 @@ include Sub_system.Register_end_point(
            A.chdir (Path.build dir)
              (A.progn
                 (A.run exe (runner_args @ flags) ::
-                 (Module.Name.Map.values source_modules
-                  |> List.concat_map ~f:(fun m ->
+                 (List.concat_map source_modules ~f:(fun m ->
                     Module.sources m
                     |> List.map ~f:(fun fn ->
                       A.diff ~optional:true

@@ -176,8 +176,9 @@ module Run (P : PARAMS) : sig end = struct
                       ; "--infer-write-query"
                       ; "--infer-read-reply"
                       ] then
-              Errors.fail (String_with_vars.loc sw)
-                "The flag %s must not be used in a menhir stanza." text
+              User_error.raise ~loc:(String_with_vars.loc sw)
+                [ Pp.textf
+                    "The flag %s must not be used in a menhir stanza." text ]
         )
     )
 
@@ -226,8 +227,7 @@ module Run (P : PARAMS) : sig end = struct
     in
 
     let dep_graphs =
-      let name = Module.name mock_module in
-      let modules = Module.Name.Map.singleton name mock_module in
+      let modules = Modules.singleton mock_module in
       Ocamldep.rules cctx ~modules
     in
 

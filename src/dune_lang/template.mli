@@ -26,7 +26,7 @@ val to_string : t -> syntax:File_syntax.t -> string
 val compare_no_loc : t -> t -> Ordering.t
 val string_of_var : var -> string
 
-val pp : File_syntax.t -> Format.formatter -> t -> unit
+val pp : File_syntax.t -> t -> _ Pp.t
 
 val pp_split_strings : Format.formatter -> t -> unit
 

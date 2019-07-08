@@ -49,9 +49,11 @@ let term =
               Path.Build.append_source (Super_context.build_dir sctx) dir in
             dump sctx ~dir)
         | External _ ->
-          die "Environment is not defined for external paths"
+          User_error.raise
+            [ Pp.text "Environment is not defined for external paths" ]
         | In_install_dir _ ->
-          die "Environment is not defined in install dirs"
+          User_error.raise
+            [ Pp.text "Environment is not defined in install dirs" ]
       )
     in
     Build_system.do_build ~request

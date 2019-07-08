@@ -1,10 +1,6 @@
 open Stdune
 open Dune
 
-(* Things in src/ don't depend on cmdliner to speed up the
-   bootstrap, so we set this reference here *)
-let () = Import.suggest_function := Cmdliner_suggest.value
-
 module Term       = Cmdliner.Term
 module Manpage    = Cmdliner.Manpage
 
@@ -17,7 +13,6 @@ module Build_system   = Dune.Build_system
 module Findlib        = Dune.Findlib
 module Package        = Dune.Package
 module Dune_package   = Dune.Dune_package
-module Utils          = Dune.Utils
 module Hooks          = Dune.Hooks
 module Build          = Dune.Build
 module Action         = Dune.Action
@@ -31,11 +26,9 @@ module Colors         = Dune.Colors
 module Report_error   = Dune.Report_error
 module Dune_project   = Dune.Dune_project
 module Workspace      = Dune.Workspace
+module Cached_digest  = Dune.Cached_digest
 
 include Common.Let_syntax
-
-let die = Dune.Import.die
-let hint = Dune.Import.hint
 
 module Main = struct
 

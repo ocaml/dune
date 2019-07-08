@@ -178,7 +178,7 @@ module Error = struct
 
   let vlib_known_implementation_mismatch ~loc ~name ~variant ~vlib_name =
     make ~loc
-      [ Pp.textf "Virtual library %S doesn't know about implementation %S with \
+      [ Pp.textf "Virtual library %S does not know about implementation %S with \
                   variant %S. Instead of using (variant %s) here, you need to \
                   reference it in the virtual library project, using the \
                   external_variant stanza:"
@@ -194,6 +194,16 @@ module Error = struct
           (Lib_name.to_string vlib_name)
           (Variant.to_string variant)
           (Lib_name.to_string name)
+      ]
+
+  let vlib_variant_conflict ~loc ~name ~known_impl_name ~variant ~vlib_name =
+    make ~loc
+      [ Pp.textf "Implementation %S cannot have variant %S for virtual library \
+      %S as it is already defined for implementation %S."
+          (Lib_name.to_string name)
+          (Variant.to_string variant)
+          (Lib_name.to_string vlib_name)
+          (Lib_name.to_string known_impl_name)
       ]
 
 
@@ -945,24 +955,22 @@ end = struct
         | None -> Ok vlib
         | Some variant ->
           (* If the library is an implementation tagged with a variant, we must
-            make sure that that it's correctly part of the virtual library's
-            known implementations. *)
+              make sure that that it's correctly part of the virtual library's
+              known implementations. *)
           let name = Lib_info.name info in
-          let error () =
-            let vlib_name = Lib_info.name vlib.info in
-            Error.vlib_known_implementation_mismatch
-              ~loc ~name ~variant ~vlib_name
-          in
+          let vlib_name = Lib_info.name vlib.info in
           let vlib_impls = Lib_info.known_implementations vlib.info in
           let* (_, impl_name) =
             match Variant.Map.find vlib_impls variant with
-            | None -> error ()
+            | None -> Error.vlib_known_implementation_mismatch
+                        ~loc ~name ~variant ~vlib_name
             | Some impl_name -> Ok impl_name
           in
           if Lib_name.equal impl_name name then
             Ok vlib
           else
-            error ()
+            Error.vlib_variant_conflict
+              ~loc ~name ~known_impl_name:impl_name ~variant ~vlib_name
         end
     in
     let resolve_impl impl_name =

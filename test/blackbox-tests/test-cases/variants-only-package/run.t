@@ -34,10 +34,10 @@ And fail if it's not part of the same project.
   File "impl2foo/dune", line 4, characters 13-20:
   4 |  (implements vlibfoo)
                    ^^^^^^^
-  Error: Virtual library "vlibfoo" doesn't know about implementation "impl2foo"
-  with variant "somevariant2". Instead of using (variant somevariant2) here,
-  you need to reference it in the virtual library project, using the
-  external_variant stanza:
+  Error: Virtual library "vlibfoo" does not know about implementation
+  "impl2foo" with variant "somevariant2". Instead of using (variant
+  somevariant2) here, you need to reference it in the virtual library project,
+  using the external_variant stanza:
   (external_variant
     (virtual_library vlibfoo)
     (variant somevariant2)

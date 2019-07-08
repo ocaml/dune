@@ -31,7 +31,6 @@ module Name = struct
 
   let uncapitalize = String.uncapitalize
 
-  let pp = Format.pp_print_string
   let pp_quote fmt x = Format.fprintf fmt "%S" x
 
   module Set = struct
@@ -463,9 +462,6 @@ module Name_map = struct
 
   let add t module_ =
     Name.Map.set t (name module_) module_
-
-  let pp fmt t =
-    Fmt.ocaml_list Name.pp fmt (Name.Map.keys t)
 
   let by_obj =
     Name.Map.fold ~init:Name.Map.empty ~f:(fun m acc ->

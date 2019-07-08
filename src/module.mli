@@ -17,7 +17,6 @@ module Name : sig
 
   val uncapitalize : t -> string
 
-  val pp : Format.formatter -> t -> unit
   val pp_quote : Format.formatter -> t -> unit
 
   module Set : sig
@@ -125,8 +124,6 @@ module Name_map : sig
   val encode : t -> Dune_lang.t list
 
   val to_dyn : t -> Dyn.t
-
-  val pp : t Fmt.t
 
   val impl_only : t -> module_ list
 

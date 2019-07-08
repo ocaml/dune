@@ -18,7 +18,7 @@ val variant : t -> Variant.t
 
 val to_string : t -> string
 
-val pp : t Fmt.t
+val to_dyn : t -> Dyn.t
 
 module Dict : sig
   type mode = t
@@ -30,7 +30,7 @@ module Dict : sig
 
   val for_all : 'a t -> f:('a -> bool) -> bool
 
-  val pp : 'a Fmt.t -> 'a t Fmt.t
+  val to_dyn : ('a -> Dyn.t) -> 'a t -> Dyn.t
 
   module List : sig
     type 'a dict

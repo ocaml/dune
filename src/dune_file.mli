@@ -171,7 +171,7 @@ module Mode_conf : sig
 
   val decode : t Dune_lang.Decoder.t
   val compare : t -> t -> Ordering.t
-  val pp : Format.formatter -> t -> unit
+  val to_dyn : t -> Dyn.t
 
   module Set : sig
     include Set.S with type elt = t
@@ -314,7 +314,7 @@ module Executables : sig
 
     val compare : t -> t -> Ordering.t
 
-    val pp : t Fmt.t
+    val to_dyn : t -> Dyn.t
 
     module Set : Set.S with type elt = t
   end

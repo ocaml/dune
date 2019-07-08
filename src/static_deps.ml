@@ -5,10 +5,11 @@ type t =
   ; action_deps : Dep.Set.t
   }
 
-let pp fmt { rule_deps ; action_deps } =
-  Fmt.record fmt
-    [ "rule_deps", Fmt.const Dep.Set.pp rule_deps
-    ; "action_deps", Fmt.const Dep.Set.pp action_deps
+let to_dyn { rule_deps ; action_deps } =
+  let open Dyn.Encoder in
+  record
+    [ "rule_deps", Dep.Set.to_dyn rule_deps
+    ; "action_deps", Dep.Set.to_dyn action_deps
     ]
 
 let action_deps t = t.action_deps

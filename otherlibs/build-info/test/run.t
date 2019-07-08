@@ -27,6 +27,7 @@ Test embedding of build information
   $ cat >c/dune <<EOF
   > (executable
   >  (public_name c)
+  >  (promote (until-clean))
   >  (libraries a b dune-build-info))
   > EOF
 
@@ -132,16 +133,7 @@ Check what the generated build info module looks like:
 Test substitution when promoting
 --------------------------------
 
-  $ cat >> c/dune <<EOF
-  > (rule
-  >  (targets d.exe)
-  >  (mode promote)
-  >  (action (copy c.exe d.exe)))
-  > EOF
-
-  $ dune build c/d.exe
-
-  $ c/d.exe | sed 's/build-info: .*/build-info: XXX/'
+  $ c/c.exe | sed 's/build-info: .*/build-info: XXX/'
   1.0+c
   lib a: 1.0+a
   lib b: 1.0+b

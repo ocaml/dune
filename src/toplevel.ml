@@ -95,7 +95,8 @@ let setup_rules t =
   Exe.build_and_link t.cctx
     ~program
     ~linkages:[linkage]
-    ~link_flags:(Build.return ["-linkall"; "-warn-error"; "-31"]);
+    ~link_flags:(Build.return ["-linkall"; "-warn-error"; "-31"])
+    ~promote:None;
   let src = Exe.exe_path t.cctx ~program ~linkage in
   let dir = Source.stanza_dir t.source in
   let dst = Path.Build.relative dir (Path.Build.basename src) in

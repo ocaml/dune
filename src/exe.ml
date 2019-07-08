@@ -122,6 +122,7 @@ let link_exe
       ~(linkage:Linkage.t)
       ~top_sorted_modules
       ~link_time_code_gen
+      ~promote
       ?(link_flags=Build.arr (fun _ -> []))
       cctx
   =
@@ -145,6 +146,9 @@ let link_exe
   in
   let top_sorted_cms = Cm_files.top_sorted_cms cm_files ~mode in
   SC.add_rule sctx ~loc ~dir
+    ~mode:(match promote with
+      | None -> Standard
+      | Some p -> Promote p)
     (let ocaml_flags = Ocaml_flags.get (CC.flags cctx) mode in
      let prefix =
        let dune_version =
@@ -183,15 +187,14 @@ let link_exe
       (Expander.expand_and_eval_set expander
          js_of_ocaml.flags
          ~standard:(Build.return (Js_of_ocaml_rules.standard sctx))) in
-    let rules =
-      Js_of_ocaml_rules.build_exe cctx ~js_of_ocaml ~src:exe
-        ~cm:top_sorted_cms ~flags:(Command.Args.dyn flags)
-    in
-    SC.add_rules ~dir sctx rules
+    Js_of_ocaml_rules.build_exe cctx ~js_of_ocaml ~src:exe
+      ~cm:top_sorted_cms ~flags:(Command.Args.dyn flags)
+      ~promote
 
 let build_and_link_many
       ~programs
       ~linkages
+      ~promote
       ?link_flags
       cctx
   =
@@ -214,6 +217,7 @@ let build_and_link_many
         ~linkage
         ~top_sorted_modules
         ~link_time_code_gen
+        ~promote
         ?link_flags))
 
 let build_and_link ~program =

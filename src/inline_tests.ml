@@ -315,7 +315,8 @@ include Sub_system.Register_end_point(
       Exe.build_and_link cctx
         ~program:{ name; main_module_name = Module.name main_module ; loc }
         ~linkages
-        ~link_flags:(Build.return ["-linkall"]);
+        ~link_flags:(Build.return ["-linkall"])
+        ~promote:None;
 
       let flags =
         let flags =

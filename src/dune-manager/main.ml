@@ -1,5 +1,6 @@
 open Stdune
 open Dune_manager
+open Dune_manager.Utils
 
 let runtime_dir =
   let xdg =
@@ -14,23 +15,6 @@ let path_option name var help =
   , Printf.sprintf "%s (default: %s)" help (Path.to_string !var) )
 
 let max_port_size = 1024
-
-let retry ?message ?(count = 100) f =
-  let rec loop = function
-    | x when x >= count ->
-        Result.Error
-          (Failure
-             ( Printf.sprintf "too many retries (%i)" x
-             ^ match message with None -> "" | Some msg -> ": " ^ msg ))
-    | x -> (
-      match f () with
-      | Some v ->
-          Result.Ok v
-      | None ->
-          Unix.sleepf 0.1 ;
-          loop (x + 1) )
-  in
-  loop 0
 
 let check_port_file ?(close = true) p =
   let p = Path.to_string p in

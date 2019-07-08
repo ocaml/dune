@@ -4,7 +4,11 @@ open Dune_memory
 type version = int * int
 
 type client =
-  {fd: Unix.file_descr; output: out_channel; mutable version: version option}
+  { fd: Unix.file_descr
+  ; peer: Unix.sockaddr
+  ; output: out_channel
+  ; mutable version: version option (* client owned*)
+  ; mutable tid: Thread.t option (* server owned *) }
 
 let send client sexp =
   output_string client.output (Csexp.to_string sexp) ;
@@ -51,9 +55,12 @@ exception Stop
 let stop manager =
   match manager.socket with
   | Some fd ->
+      Printf.printf "stop\n%!" ;
       manager.socket <- None ;
-      ignore
-        (Clients.iter ~f:(fun client -> Unix.close client.fd) manager.clients) ;
+      let clean f = ignore (Clients.iter ~f manager.clients) in
+      clean (fun client -> Unix.shutdown client.fd Unix.SHUTDOWN_ALL) ;
+      clean (fun client -> Option.iter ~f:Thread.join client.tid) ;
+      clean (fun client -> Unix.close client.fd) ;
       Unix.close fd
   | _ ->
       ()
@@ -165,7 +172,8 @@ let run ?(port_f = ignore) ?(port = 0) manager =
     | Sexp.List (Sexp.Atom cmd :: args) -> (
         if cmd = "lang" then handle_lang client args
         else if Option.is_none client.version then (
-          Unix.close client.fd ; Result.Error "version was not negotiated" )
+          Unix.shutdown client.fd Unix.SHUTDOWN_ALL ;
+          Result.Error "version was not negotiated" )
         else
           match cmd with
           | "promote" ->
@@ -198,10 +206,8 @@ let run ?(port_f = ignore) ?(port = 0) manager =
     port_f endpoint ;
     Unix.listen sock 1024 ;
     while Option.is_some manager.socket do
-      let fd, peer = accept () in
-      let client = {fd; output= Unix.out_channel_of_descr fd; version= None} in
-      let f () =
-        try
+      let client_thread client =
+        let f () =
           manager.clients <- Clients.add manager.clients client ;
           send client
             (Sexp.List
@@ -243,14 +249,30 @@ let run ?(port_f = ignore) ?(port = 0) manager =
           in
           handle input
         and finally () =
-          ( try Unix.close client.fd
-            with Unix.Unix_error (Unix.EBADF, _, _) -> () ) ;
+          ( try
+              Unix.shutdown client.fd Unix.SHUTDOWN_ALL ;
+              Unix.close client.fd
+            with
+          | Unix.Unix_error (Unix.EBADF, _, _) ->
+              Printf.printf "client %s ended\n%!" (peer_name client.peer)
+          | Sys_error msg ->
+              Printf.printf "client %s ended: %s\n%!" (peer_name client.peer)
+                msg ) ;
           manager.clients <- Clients.remove manager.clients client
         in
         try Exn.protect ~f ~finally
         with Unix.Unix_error (Unix.EBADF, _, _) -> ()
       in
-      Exn.protect ~f ~finally
+      let fd, peer = accept () in
+      let client =
+        { fd
+        ; peer
+        ; output= Unix.out_channel_of_descr fd
+        ; version= None
+        ; tid= None }
+      in
+      let tid = Thread.create client_thread client in
+      client.tid <- Some tid
     done
   in
   try Exn.protect ~f ~finally

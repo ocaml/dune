@@ -1,7 +1,7 @@
 (library
   (name dune_manager)
-  (modules DuneManager)
-  (libraries dune_memory stdune))
+  (modules DuneManager Utils)
+  (libraries threads.posix dune_memory stdune))
 
 (executable
   (name main)

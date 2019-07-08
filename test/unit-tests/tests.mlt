@@ -83,7 +83,10 @@ val meta : Simplified.t =
   }
 |}]
 
-#install_printer Findlib.Config.pp;;
+let config_printer fmt d = Dyn.pp fmt (Findlib.Config.to_dyn d);;
+[%%ignore]
+
+#install_printer config_printer;;
 
 let conf =
   Findlib.Config.load (Path.in_source "test/unit-tests/toolchain")
@@ -91,18 +94,14 @@ let conf =
 
 [%%expect{|
 val conf : Findlib.Config.t =
-  { vars =
-     [ (FOO_BAR, { set_rules =
-                    [ { preds_required = [ "tlc"; "env" ]
-                      ; preds_forbidden = []
-                      ; value = "my variable"
-                      }
-                    ]
-                 ; add_rules = []
-                 })
-     ]
-  ; preds = [ "tlc" ]
-  }
+  {vars =
+     map {"FOO_BAR" :
+          {set_rules =
+             [{preds_required = set {6; 7};
+                preds_forbidden = set {};
+                value = "my variable"}];
+            add_rules = []}};
+    preds = set {6}}
 |}]
 
 let env_pp fmt env = Dyn.pp fmt (Env.to_dyn env);;

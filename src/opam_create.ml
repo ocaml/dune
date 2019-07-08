@@ -119,7 +119,11 @@ let opam_fields project (package : Package.t) =
     ; "build", default_build_command project
     ]
   in
-  List.concat
+  let sort_fields l =
+    if Dune_project.dune_version project < (1, 11) then l
+    else Opam_file.Create.normalise_field_order l
+  in
+  sort_fields @@ List.concat
     [ fields
     ; list_fields
     ; optional_fields

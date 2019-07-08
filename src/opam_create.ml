@@ -70,7 +70,7 @@ let package_fields
 let opam_fields project (package : Package.t) =
   let dv = Dune_project.dune_version project in
   let package =
-    if dv < (1,11) then
+    if dv < (1,11) || Package.Name.(equal package.name (of_string "dune")) then
       package
     else
       let open Package in

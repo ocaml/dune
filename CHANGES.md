@@ -81,6 +81,9 @@
   not distinguished in the names of binding operators (`let@` was the
   same as `let&`) (#2376, @aalekseyev, @diml)
 
+- Workspaces with non unique project names are now supported. (#2377, fix #2325,
+  @rgrinberg)
+
 1.10.0 (04/06/2019)
 -------------------
 

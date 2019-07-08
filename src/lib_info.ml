@@ -4,14 +4,15 @@ module Status = struct
   type t =
     | Installed
     | Public  of Dune_project.Name.t * Package.t
-    | Private of Dune_project.Name.t
+    | Private of Dune_project.t
 
   let pp ppf t =
     Format.pp_print_string ppf
       (match t with
        | Installed -> "installed"
        | Public _ -> "public"
-       | Private name ->
+       | Private project ->
+         let name = Dune_project.name project in
          sprintf "private (%s)" (Dune_project.Name.to_string_hum name))
 
   let is_private = function
@@ -20,7 +21,8 @@ module Status = struct
 
   let project_name = function
     | Installed -> None
-    | Public (name, _) | Private name -> Some name
+    | Private project -> Some (Dune_project.name project)
+    | Public (name, _)  -> Some name
 end
 
 
@@ -151,7 +153,7 @@ let of_library_stanza ~dir
   in
   let status =
     match conf.public with
-    | None   -> Status.Private (Dune_project.name conf.project)
+    | None   -> Status.Private conf.project
     | Some p -> Public (Dune_project.name conf.project, p.package)
   in
   let virtual_library = Dune_file.Library.is_virtual conf in

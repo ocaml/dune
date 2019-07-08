@@ -47,7 +47,7 @@ module Promoted_to_delete : sig
   val add : Path.t -> unit
   val load : unit -> Path.Set.t
 end = struct
-  module P = Utils.Persistent(struct
+  module P = Persistent.Make(struct
       type t = Path.Set.t
       let name = "PROMOTED-TO-DELETE"
       let version = 1
@@ -304,7 +304,7 @@ end = struct
 
   let file = Path.relative Path.build_dir ".db"
 
-  module P = Utils.Persistent(struct
+  module P = Persistent.Make(struct
       type nonrec t = t
       let name = "INCREMENTAL-DB"
       let version = 2

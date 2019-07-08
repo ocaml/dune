@@ -53,16 +53,3 @@ val line_directive : filename:string -> line_number:int -> string
 (** [local_bin dir] The directory which contains the local binaries viewed by
     rules defined in [dir] *)
 val local_bin : Path.Build.t -> Path.Build.t
-
-module type Persistent_desc = sig
-  type t
-  val name : string
-  val version : int
-end
-
-(** Persistent value stored on disk *)
-module Persistent(D : Persistent_desc) : sig
-  val to_out_string : D.t -> string
-  val dump : Path.t -> D.t -> unit
-  val load : Path.t -> D.t option
-end

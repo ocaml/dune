@@ -32,7 +32,6 @@ type conf = private
   }
 
 val load
-  :  ?ignore_promoted_rules:bool
-  -> ancestor_vcs:Vcs.t option
+  :  ancestor_vcs:Vcs.t option
   -> unit
   -> conf

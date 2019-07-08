@@ -72,6 +72,7 @@ let set_common_other c ~targets =
       ];
   Clflags.always_show_command_line :=
     c.always_show_command_line;
+  Clflags.ignore_promoted_rules := c.ignore_promoted_rules;
   Option.iter ~f:Dune.Stats.enable c.stats_trace_file
 
 let set_common c ~targets =

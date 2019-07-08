@@ -38,3 +38,6 @@ val always_show_command_line : bool ref
 
 (** Promote the generated [<package>.install] files to the source tree *)
 val promote_install_files : bool ref
+
+(** Wether we are ignorimg rules with [(mode promote)] *)
+val ignore_promoted_rules : bool ref

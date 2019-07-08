@@ -62,6 +62,9 @@
 - Fix dependency graph of wrapped_compat modules. Previously, the dependency on
   the user written entry module was omitted. (#2305, @rgrinberg)
 
+- Allow to promote executables built with an `executable` stanza
+  (#2379, @diml)
+
 1.10.0 (04/06/2019)
 -------------------
 

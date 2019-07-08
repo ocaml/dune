@@ -1283,6 +1283,52 @@ module Install_conf = struct
        })
 end
 
+module Promote = struct
+  module Lifetime = struct
+    type t =
+      | Unlimited
+      | Until_clean
+  end
+
+  module Into = struct
+    type t =
+      { loc : Loc.t
+      ; dir : string
+      }
+
+    let decode =
+      let+ (loc, dir) = located relative_file in
+      { loc
+      ; dir
+      }
+  end
+
+  type t =
+    { lifetime : Lifetime.t
+    ; into : Into.t option
+    ; only : Predicate_lang.t option
+    }
+
+  let decode =
+    fields
+      (let+ until_clean =
+         field_b "until-clean"
+           ~check:(Syntax.since Stanza.syntax (1, 10))
+       and+ into =
+         field_o "into"
+           (Syntax.since Stanza.syntax (1, 10) >>= fun () ->
+            Into.decode)
+       and+ only =
+         field_o "only"
+           (Syntax.since Stanza.syntax (1, 10) >>= fun () ->
+            Predicate_lang.decode)
+       in
+       { lifetime = if until_clean then Until_clean else Unlimited
+       ; into
+       ; only
+       })
+end
+
 module Executables = struct
   module Names : sig
     type t
@@ -1571,6 +1617,7 @@ module Executables = struct
     ; buildable  : Buildable.t
     ; variants   : (Loc.t * Variant.Set.t) option
     ; package    : Package.t option
+    ; promote    : Promote.t option
     }
 
   let common =
@@ -1581,6 +1628,8 @@ module Executables = struct
     and+ link_flags = field_oslu "link_flags"
     and+ modes = field "modes" Link_mode.Set.decode ~default:Link_mode.Set.default
     and+ variants = variants_field
+    and+ promote =
+      field_o "promote" (Syntax.since Stanza.syntax (1, 11) >>> Promote.decode)
     and+ () = map_validate (
       field "inline_tests" (repeat junk >>| fun _ -> true) ~default:false)
       ~f:(function
@@ -1604,6 +1653,7 @@ module Executables = struct
         ; buildable
         ; variants
         ; package = Names.package names
+        ; promote
         }
       in
       let install_conf =
@@ -1685,33 +1735,6 @@ module Rule = struct
 
 
   module Mode = struct
-    module Promote = struct
-      module Lifetime = struct
-        type t =
-          | Unlimited
-          | Until_clean
-      end
-
-      module Into = struct
-        type t =
-          { loc : Loc.t
-          ; dir : string
-          }
-
-        let decode =
-          let+ (loc, dir) = located relative_file in
-          { loc
-          ; dir
-          }
-      end
-
-      type t =
-        { lifetime : Lifetime.t
-        ; into : Into.t option
-        ; only : Predicate_lang.t option
-        }
-    end
-
     type t =
       | Standard
       | Fallback
@@ -1728,24 +1751,8 @@ module Rule = struct
         [ "standard"           , return Standard
         ; "fallback"           , return Fallback
         ; "promote"            ,
-          fields
-            (let+ until_clean =
-               field_b "until-clean"
-                 ~check:(Syntax.since Stanza.syntax (1, 10))
-             and+ into =
-               field_o "into"
-                 (Syntax.since Stanza.syntax (1, 10) >>= fun () ->
-                  Promote.Into.decode)
-             and+ only =
-               field_o "only"
-                 (Syntax.since Stanza.syntax (1, 10) >>= fun () ->
-                  Predicate_lang.decode)
-             in
-             Promote
-               { lifetime = if until_clean then Until_clean else Unlimited
-               ; into
-               ; only
-               })
+          (let+ p = Promote.decode in
+           Promote p)
         ; "promote-until-clean",
           return (Promote { lifetime = Until_clean
                           ; into = None
@@ -2221,6 +2228,7 @@ module Tests = struct
            ; names
            ; variants
            ; package = None
+           ; promote = None
            }
        ; locks
        ; package

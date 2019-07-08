@@ -114,7 +114,8 @@ let executables_rules ~sctx ~dir ~dir_kind ~expander
   Exe.build_and_link_many cctx
     ~programs
     ~linkages
-    ~link_flags;
+    ~link_flags
+    ~promote:exes.promote;
 
   (cctx,
    let objs_dirs =

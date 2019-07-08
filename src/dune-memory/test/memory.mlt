@@ -37,7 +37,7 @@ let () =
 
 let make_file p = let path = (Path.of_string ((Path.to_string dir) ^ "/" ^ p)) in
   Io.write_file path p; path;;
-let memory = DuneMemory.make ~root:(Path.of_string ((Path.to_string dir) ^ "/root")) ()
+let memory = Result.ok_exn (DuneMemory.make ~root:(Path.of_string ((Path.to_string dir) ^ "/root/v2")) ())
 
 [%%expect{|
 val dir : Path.t = In_source_tree <abstr>

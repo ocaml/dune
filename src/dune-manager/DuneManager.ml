@@ -7,6 +7,7 @@ type client =
   { fd: Unix.file_descr
   ; peer: Unix.sockaddr
   ; output: out_channel
+  ; mutable memory: Dune_memory.DuneMemory.memory (* client owned*)
   ; mutable version: version option (* client owned*)
   ; mutable tid: Thread.t option (* server owned *) }
 
@@ -27,7 +28,7 @@ end
 module Clients = Set.Make (ClientsKey) (Map.Make (ClientsKey))
 
 type t =
-  { memory: DuneMemory.memory
+  { root: Path.t option
   ; mutable socket: Unix.file_descr option
   ; mutable clients: Clients.t
   ; mutable endpoint: string option }
@@ -35,10 +36,7 @@ type t =
 exception Error of string
 
 let make ?root () : t =
-  { memory= DuneMemory.make ?root ()
-  ; socket= None
-  ; clients= Clients.empty
-  ; endpoint= None }
+  {root; socket= None; clients= Clients.empty; endpoint= None}
 
 let getsockname = function
   | Unix.ADDR_UNIX _ ->
@@ -86,7 +84,13 @@ let find_highest_common_version (a : version list) (b : version list) :
 
 let run ?(port_f = ignore) ?(port = 0) manager =
   let open Result.O in
-  let memory = manager.memory in
+  let invalid_args args =
+    Result.Error
+      (Printf.sprintf "invalid arguments:%s"
+         (List.fold_left ~init:""
+            ~f:(fun a b -> a ^ " " ^ b)
+            (List.map ~f:Sexp.to_string args)))
+  in
   let handle_lang client = function
     | Sexp.Atom "dune-memory-protocol" :: versions -> (
         let decode_version = function
@@ -110,10 +114,8 @@ let run ?(port_f = ignore) ?(port = 0) manager =
             Printf.printf "negotiated version: %i.%i\n%!" major minor ;
             client.version <- v ;
             Result.ok () )
-    | cmd ->
-        Result.Error
-          (Printf.sprintf "invalid lang command: %s"
-             (Sexp.to_string (Sexp.List cmd)))
+    | args ->
+        invalid_args args
   and handle_promote client = function
     | Sexp.List [Sexp.Atom "key"; Sexp.Atom key]
       :: Sexp.List (Sexp.Atom "files" :: files)
@@ -154,7 +156,7 @@ let run ?(port_f = ignore) ?(port = 0) manager =
         Result.List.map ~f:file files
         >>| fun files ->
         let promotions =
-          DuneMemory.promote memory files
+          DuneMemory.promote client.memory files
             (DuneMemory.key_of_string key)
             metadata repo
         in
@@ -164,22 +166,40 @@ let run ?(port_f = ignore) ?(port = 0) manager =
         | dedup ->
             send client (Sexp.List (Sexp.Atom "dedup" :: dedup)) )
     | args ->
-        Result.Error
-          (Printf.sprintf "invalid promotion message: %s"
-             (Sexp.to_string (Sexp.List args)))
+        invalid_args args
+  and handle_set_root client = function
+    | [Sexp.Atom dir] ->
+        Result.map_error
+          ~f:(function
+            | _ ->
+                send client
+                  (Sexp.List
+                     [ Sexp.Atom "cannot-read-dune-memory"
+                     ; Sexp.List [Sexp.Atom "supported-formats"; Sexp.Atom "v2"]
+                     ]) ;
+                "unable to read Dune memory" )
+          ( Dune_memory.DuneMemory.make ~root:(Path.of_string dir) ()
+          >>| fun memory -> client.memory <- memory )
+    | args ->
+        invalid_args args
   in
   let handle_cmd client = function
-    | Sexp.List (Sexp.Atom cmd :: args) -> (
-        if cmd = "lang" then handle_lang client args
-        else if Option.is_none client.version then (
+    | Sexp.List (Sexp.Atom cmd :: args) ->
+        if cmd <> "lang" && Option.is_none client.version then (
           Unix.shutdown client.fd Unix.SHUTDOWN_ALL ;
           Result.Error "version was not negotiated" )
         else
-          match cmd with
-          | "promote" ->
-              handle_promote client args
-          | _ ->
-              Result.Error (Printf.sprintf "unknown command: %s" cmd) )
+          Result.map_error
+            ~f:(fun s -> cmd ^ ": " ^ s)
+            ( match cmd with
+            | "lang" ->
+                handle_lang client args
+            | "promote" ->
+                handle_promote client args
+            | "set-dune-memory-root" ->
+                handle_set_root client args
+            | _ ->
+                Result.Error (Printf.sprintf "unknown command: %s" cmd) )
     | cmd ->
         Result.Error
           (Printf.sprintf "invalid command format: %s" (Sexp.to_string cmd))
@@ -269,7 +289,8 @@ let run ?(port_f = ignore) ?(port = 0) manager =
         ; peer
         ; output= Unix.out_channel_of_descr fd
         ; version= None
-        ; tid= None }
+        ; tid= None
+        ; memory= Result.ok_exn (DuneMemory.make ?root:manager.root ()) }
       in
       let tid = Thread.create client_thread client in
       client.tid <- Some tid

@@ -49,7 +49,8 @@ let main () =
   let root = Option.map ~f:Path.of_string !root
   and cmd = unwrap_option "command" !cmd in
   let memory =
-    make ~log:(Log.create ~path:(Path.of_string "/tmp/log") ()) ?root ()
+    Result.ok_exn
+      (make ~log:(Log.create ~path:(Path.of_string "/tmp/log") ()) ?root ())
   in
   match cmd with
   | "promote" ->

@@ -8,7 +8,7 @@ type metadata = Sexp.t
 
 exception Failed of string
 
-val make : ?log:Log.t -> ?root:Path.t -> unit -> memory
+val make : ?log:Log.t -> ?root:Path.t -> unit -> (memory, exn) Result.t
 
 val default_root : unit -> Path.t
 

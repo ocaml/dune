@@ -81,11 +81,14 @@ let path_meta memory = Path.L.relative memory.root ["meta"]
 let path_tmp memory = Path.L.relative memory.root ["temp"]
 
 let default_root () =
-  Path.L.relative (Path.of_string Xdg.cache_dir) ["dune"; "db"]
+  Path.L.relative (Path.of_string Xdg.cache_dir) ["dune"; "db"; "v2"]
 
 let make ?log ?(root = default_root ()) () =
-  let root = Path.L.relative root ["v2"] in
-  {root; log= (match log with Some log -> log | None -> Log.no_log)}
+  if Path.basename root <> "v2" then
+    Result.Error (Failure "unable to read dune-memory")
+  else
+    Result.ok
+      {root; log= (match log with Some log -> log | None -> Log.no_log)}
 
 (* How to handle collisions. E.g. another version could assume collisions are not possible *)
 module Collision = struct

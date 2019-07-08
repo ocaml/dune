@@ -268,13 +268,30 @@ let partial_expand sctx ~dep_kind ~targets_written_by_user ~map_exe
   let partial = Action_unexpanded.partial_expand t ~expander ~map_exe in
   (partial, acc)
 
+let dir_is_vendored t src_dir =
+  Option.value ~default:false (File_tree.dir_is_vendored t.file_tree src_dir)
+
+let build_dir_is_vendored t build_dir =
+  let opt =
+    let open Option.O in
+    let+ src_dir = Path.Build.drop_build_context build_dir in
+    dir_is_vendored t src_dir
+  in
+  Option.value ~default:false opt
+
 let ocaml_flags t ~dir (x : Dune_file.Buildable.t) =
-  let t = t.env_context in
-  let expander = Env.expander t ~dir in
-  Ocaml_flags.make
-    ~spec:x.flags
-    ~default:(Env.ocaml_flags t ~dir)
-    ~eval:(Expander.expand_and_eval_set expander)
+  let expander = Env.expander t.env_context ~dir in
+  let flags =
+    Ocaml_flags.make
+      ~spec:x.flags
+      ~default:(Env.ocaml_flags t.env_context ~dir)
+      ~eval:(Expander.expand_and_eval_set expander)
+  in
+  let dir_is_vendored = build_dir_is_vendored t dir in
+  if dir_is_vendored then
+    Ocaml_flags.with_vendored_warnings flags
+  else
+    flags
 
 let c_flags t ~dir ~expander ~flags =
   let t = t.env_context in

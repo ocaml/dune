@@ -195,7 +195,7 @@ module Alias0 = struct
 
   let dep_rec_internal ~name ~dir ~ctx_dir =
     Build.lazy_no_targets (lazy (
-      File_tree.Dir.fold dir ~traverse_ignored_dirs:false
+      File_tree.Dir.fold dir ~traverse:Sub_dirs.Status.Set.normal_only
         ~init:(Build.return true)
         ~f:(fun dir acc ->
           let path = Path.Build.append_source ctx_dir (File_tree.Dir.path dir) in
@@ -1277,7 +1277,7 @@ and get_rule t path =
 let all_targets t =
   String.Map.to_list t.contexts
   |> List.fold_left ~init:Path.Build.Set.empty ~f:(fun acc (_, ctx) ->
-    File_tree.fold t.file_tree ~traverse_ignored_dirs:true ~init:acc
+    File_tree.fold t.file_tree ~traverse:Sub_dirs.Status.Set.all ~init:acc
       ~f:(fun dir acc ->
         match
           load_dir

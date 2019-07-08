@@ -26,6 +26,9 @@ let dev_mode_warnings =
 let default_warnings =
   "-40"
 
+let vendored_warnings =
+  ["-w"; "-a"]
+
 let default_flags ~profile =
   if profile = "dev" then
     [ "-w"; dev_mode_warnings ^ default_warnings
@@ -98,6 +101,8 @@ let get_for_cm t ~cm_kind = get t (Mode.of_cm_kind cm_kind)
 let append_common t flags = {t with common = t.common >>^ fun l -> l @ flags}
 
 let prepend_common flags t = {t with common = t.common >>^ fun l -> flags @ l}
+
+let with_vendored_warnings t = append_common t vendored_warnings
 
 let common t = t.common
 

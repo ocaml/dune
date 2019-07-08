@@ -1543,6 +1543,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name vendor)
+ (deps (package dune) (source_tree test-cases/vendor))
+ (action
+  (chdir
+   test-cases/vendor
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name vlib)
  (deps (package dune) (source_tree test-cases/vlib))
  (action
@@ -1787,6 +1795,7 @@
   (alias variants-multi-project)
   (alias variants-only-package)
   (alias variants-wrong-external-declaration)
+  (alias vendor)
   (alias vlib)
   (alias vlib-default-impl)
   (alias vlib-wrong-default-impl)
@@ -1957,6 +1966,7 @@
   (alias variants-multi-project)
   (alias variants-only-package)
   (alias variants-wrong-external-declaration)
+  (alias vendor)
   (alias vlib)
   (alias vlib-default-impl)
   (alias vlib-wrong-default-impl)

@@ -216,11 +216,12 @@ let main () =
 let () =
   try main () with
   | Arg.Bad reason ->
-      Printf.fprintf stderr "%s: command line error: %s" Sys.argv.(0) reason ;
+      Printf.fprintf stderr "%s: command line error: %s\n%!" Sys.argv.(0)
+        reason ;
       exit 1
   | Failure reason ->
-      Printf.fprintf stderr "%s: fatal error: %s" Sys.argv.(0) reason ;
+      Printf.fprintf stderr "%s: fatal error: %s\n%!" Sys.argv.(0) reason ;
       exit 1
   | Arg.Help help ->
-      Printf.fprintf stdout "Usage: %s %s" Sys.argv.(0) help ;
+      Printf.fprintf stdout "Usage: %s %s\n%!" Sys.argv.(0) help ;
       exit 0

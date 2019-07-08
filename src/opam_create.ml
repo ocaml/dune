@@ -68,6 +68,28 @@ let package_fields
   optional @ dep_fields
 
 let opam_fields project (package : Package.t) =
+  let dune_version = Dune_project.dune_version project in
+  let dune_name = Package.Name.of_string "dune" in
+  let package =
+    if dune_version < (1, 11) || Package.Name.equal package.name dune_name then
+      package
+    else
+      let dune_dep =
+        let dune_version = Syntax.Version.to_string dune_version in
+        let constraint_ : Package.Dependency.Constraint.t =
+          Uop (Gte, QVar dune_version) in
+        { Package.Dependency.
+          name = dune_name
+        ; constraint_ = Some constraint_
+        }
+      in
+      let is_dune_depend (pkg : Package.Dependency.t) =
+        Package.Name.equal pkg.name dune_dep.name in
+      if List.exists package.depends ~f:is_dune_depend then
+        package
+      else
+        { package with depends = dune_dep :: package.depends }
+  in
   let package_fields = package_fields package in
   let open Opam_file.Create in
   let optional_fields =

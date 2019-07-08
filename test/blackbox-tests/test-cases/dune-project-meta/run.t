@@ -169,3 +169,6 @@ Generation of opam files with lang dune >= 1.11
       "@doc" {with-doc}
     ]
   ]
+  depends: [
+    "dune" {>= "1.11"}
+  ]

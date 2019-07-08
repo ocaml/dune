@@ -824,8 +824,9 @@ module Mode_conf = struct
     | Native -> "native"
     | Best -> "best"
 
-  let pp fmt t =
-    Format.pp_print_string fmt (to_string t)
+  let to_dyn t =
+    let open Dyn.Encoder in
+    constr (to_string t) []
 
   let encode t =
     Dune_lang.unsafe_atom_of_string (to_string t)
@@ -1525,10 +1526,11 @@ module Executables = struct
         let { mode; kind; loc = _ } = link_mode in
         Dune_lang.Encoder.pair Mode_conf.encode Binary_kind.encode (mode, kind)
 
-    let pp fmt { mode ; kind ; loc = _ } =
-      Fmt.record fmt
-        [ "mode", Fmt.const Mode_conf.pp mode
-        ; "kind", Fmt.const Binary_kind.pp kind
+    let to_dyn { mode ; kind ; loc = _ } =
+      let open Dyn.Encoder in
+      record
+        [ "mode", Mode_conf.to_dyn mode
+        ; "kind", Binary_kind.to_dyn kind
         ]
 
     module O = Comparable.Make(T)

@@ -5,46 +5,56 @@ open! Stdune;;
 #warnings "-40";;
 
 let sexp_pp ppf x = Pp.render_ignore_tags ppf (Dune_lang.pp Dune x);;
-#install_printer Dune_file.Mode_conf.pp;;
-#install_printer Binary_kind.pp;;
-#install_printer Dune_file.Executables.Link_mode.pp;;
+let mode_conf_pp fmt x = Dyn.pp fmt (Dune_file.Mode_conf.to_dyn x);;
+let binary_kind_pp fmt x = Dyn.pp fmt (Binary_kind.to_dyn x);;
+let link_mode_pp fmt x = Dyn.pp fmt (Dune_file.Executables.Link_mode.to_dyn x);;
+#install_printer mode_conf_pp;;
+#install_printer binary_kind_pp;;
+#install_printer link_mode_pp;;
 #install_printer sexp_pp;;
+
+[%%ignore]
 
 (* Dune_file.Executables.Link_mode.decode *)
 let test s =
   Dune_lang.Decoder.parse Dune_file.Executables.Link_mode.decode Univ_map.empty
     (Dune_lang.parse_string ~fname:"" ~mode:Dune_lang.Parser.Mode.Single s)
 [%%expect{|
-val sexp_pp : Format.formatter -> Dune_lang.t -> unit = <fun>
 val test : string -> Dune_file.Executables.Link_mode.t = <fun>
 |}]
 
 (* Link modes can be read as a (<mode> <kind>) list *)
 test "(best exe)"
 [%%expect{|
-- : Dune_file.Executables.Link_mode.t = { mode = best; kind = exe }
+- : Dune_file.Executables.Link_mode.t = {mode = best;
+                                          kind = exe}
 |}]
 
 (* Some shortcuts also exist *)
 test "exe"
 [%%expect{|
-- : Dune_file.Executables.Link_mode.t = { mode = best; kind = exe }
+- : Dune_file.Executables.Link_mode.t = {mode = best;
+                                          kind = exe}
 |}]
 test "object"
 [%%expect{|
-- : Dune_file.Executables.Link_mode.t = { mode = best; kind = object }
+- : Dune_file.Executables.Link_mode.t = {mode = best;
+                                          kind = object}
 |}]
 test "shared_object"
 [%%expect{|
-- : Dune_file.Executables.Link_mode.t = { mode = best; kind = shared_object }
+- : Dune_file.Executables.Link_mode.t = {mode = best;
+                                          kind = shared_object}
 |}]
 test "byte"
 [%%expect{|
-- : Dune_file.Executables.Link_mode.t = { mode = byte; kind = exe }
+- : Dune_file.Executables.Link_mode.t = {mode = byte;
+                                          kind = exe}
 |}]
 test "native"
 [%%expect{|
-- : Dune_file.Executables.Link_mode.t = { mode = native; kind = exe }
+- : Dune_file.Executables.Link_mode.t = {mode = native;
+                                          kind = exe}
 |}]
 
 (* Dune_file.Executables.Link_mode.encode *)

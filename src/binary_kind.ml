@@ -21,8 +21,9 @@ let to_string = function
   | Object -> "object"
   | Shared_object -> "shared_object"
 
-let pp fmt t =
-  Format.pp_print_string fmt (to_string t)
+let to_dyn t =
+  let open Dyn.Encoder in
+  constr (to_string t) []
 
 let encode t =
   Dune_lang.unsafe_atom_of_string (to_string t)

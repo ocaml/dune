@@ -13,20 +13,64 @@ let path_option name var help =
   , Arg.String (fun p -> var := Path.of_string p)
   , Printf.sprintf "%s (default: %s)" help (Path.to_string !var) )
 
-(* Check whether the PID file existes, and if so check the process is
-still alive in case of a stale PID file*)
+let max_port_size = 1024
 
-let check_pid_file p =
-  try
-    let p = Path.to_string p in
-    let pid_file = open_in p in
-    let f () =
-      let pid = int_of_string (input_line pid_file) in
-      try Unix.kill pid 0 ; Some pid
-      with Unix.Unix_error (Unix.ESRCH, _, _) -> Unix.unlink p ; None
-    and finally () = close_in pid_file in
-    Exn.protect ~f ~finally
-  with Sys_error _ -> None
+let retry ?message ?(count = 100) f =
+  let rec loop = function
+    | x when x >= count ->
+        Result.Error
+          (Failure
+             ( Printf.sprintf "too many retries (%i)" x
+             ^ match message with None -> "" | Some msg -> ": " ^ msg ))
+    | x -> (
+      match f () with
+      | Some v ->
+          Result.Ok v
+      | None ->
+          Unix.sleepf 0.1 ;
+          loop (x + 1) )
+  in
+  loop 0
+
+let check_port_file ?(close = true) p =
+  let p = Path.to_string p in
+  match Result.try_with (fun () -> Unix.openfile p [Unix.O_RDONLY] 0o600) with
+  | Result.Ok fd ->
+      let f () =
+        let open Result.O in
+        retry (fun () ->
+            match Fcntl.lock_get fd Fcntl.Write with
+            | None ->
+                Some None
+            | Some (Fcntl.Read, pid) ->
+                Some (Some pid)
+            | Some (Fcntl.Write, _) ->
+                None )
+        >>| Option.map ~f:(fun pid ->
+                let buf = Bytes.make max_port_size ' ' in
+                let read = Unix.read fd buf 0 max_port_size in
+                (Bytes.sub_string buf ~pos:0 ~len:read, pid, fd) )
+      and finally () = if close then Unix.close fd in
+      Exn.protect ~f ~finally
+  | Result.Error (Unix.Unix_error (Unix.ENOENT, _, _)) ->
+      Result.Ok None
+  | Result.Error e ->
+      Result.Error e
+
+let make_port_file path contents =
+  Option.iter ~f:Path.mkdir_p (Path.parent path) ;
+  let p = Path.to_string path and length = String.length contents in
+  let fd = Unix.openfile p [Unix.O_RDWR; Unix.O_CREAT] 0o600 in
+  let cancel () = Unix.close fd in
+  if Fcntl.lock_try fd Fcntl.Write then
+    if
+      (* Write the content to the file. *)
+      Unix.write fd (Bytes.of_string contents) 0 length <> length
+    then (
+      cancel () ;
+      failwith "couldn't write whole endpoint to port file" )
+    else ( Fcntl.lock fd Fcntl.Read ; Some fd )
+  else None
 
 let daemonize dir f =
   if Unix.fork () = 0 then (
@@ -60,7 +104,6 @@ let modes = Modes.empty
 
 let start () =
   let port_path = ref (Path.of_string (Filename.concat runtime_dir "port"))
-  and pid_path = ref (Path.of_string (Filename.concat runtime_dir "pid"))
   and root = ref (Dune_memory.DuneMemory.default_root ())
   and foreground = ref false
   and usage = Printf.sprintf "start [OPTIONS]" in
@@ -70,26 +113,20 @@ let start () =
   in
   Arg.parse_argv ~current:Arg.current Sys.argv
     [ path_option "port" port_path "file to write listening port to"
-    ; path_option "pid" pid_path
-        "file to write PID to or check if the process is already running from"
     ; path_option "root" root "dune memory root"
     ; ("--foreground", Arg.Set foreground, "do not daemonize") ]
     (fun o -> raise (Arg.Bad (Printf.sprintf "unexpected option: %s" o)))
     usage ;
-  match check_pid_file !pid_path with
+  match Result.ok_exn (check_port_file !port_path) with
   | None ->
       let f () =
         Path.mkdir_p (Path.of_string runtime_dir) ;
-        let pid_file = open_out (Path.to_string !pid_path) in
         let f () =
-          output_string pid_file (string_of_int (Unix.getpid ())) ;
-          close_out pid_file ;
-          let manager = DuneManager.make ~root:!root ()
-          and port_f port =
-            let c = open_out (Path.to_string !port_path) in
-            let f () = output_string c port and finally () = close_out c in
-            Exn.protect ~f ~finally ;
-            if !foreground then report_endpoint ()
+          let manager = DuneManager.make ~root:!root () in
+          let port_f port =
+            if make_port_file !port_path port = None then
+              DuneManager.stop manager
+            else if !foreground then report_endpoint ()
           in
           Sys.set_signal Sys.sigint
             (Sys.Signal_handle (fun _ -> DuneManager.stop manager)) ;
@@ -97,51 +134,64 @@ let start () =
             (Sys.Signal_handle (fun _ -> DuneManager.stop manager)) ;
           try
             let f () = DuneManager.run ~port_f manager
-            and finally () = Sys.remove (Path.to_string !port_path) in
+            and finally () = Unix.truncate (Path.to_string !port_path) 0 in
             Exn.protect ~f ~finally
           with
           | DuneManager.Error s ->
-              Printf.fprintf stderr "%s: fatal error: %s\n" Sys.argv.(0) s ;
+              Printf.fprintf stderr "%s: fatal error: %s\n%!" Sys.argv.(0) s ;
               exit 1
           | DuneManager.Stop ->
               ()
-        and finally () =
-          close_out pid_file ;
-          Unix.unlink (Path.to_string !pid_path)
-        in
+        and finally () = () in
         Exn.protect ~f ~finally
       in
       if !foreground then f ()
       else (
         daemonize (Path.to_string !root) f ;
-        while not (Sys.file_exists (Path.to_string !port_path)) do
-          Unix.sleepf 0.1
-        done ;
+        let path = Path.to_string !port_path in
+        let open Result.O in
+        Result.ok_exn
+          ( retry
+              ~message:
+                (Printf.sprintf "waiting for port file \"%s\" to be created"
+                   path) (fun () ->
+                try Some (Unix.openfile path [Unix.O_RDONLY] 0o600)
+                with Unix.Unix_error (Unix.ENOENT, _, _) -> None )
+          >>= fun fd ->
+          retry
+            ~message:
+              (Printf.sprintf "waiting for port file \"%s\" to be locked" path)
+            (fun () ->
+              Option.some_if
+                ( match Fcntl.lock_get fd Fcntl.Write with
+                | Some (Fcntl.Read, _) ->
+                    true
+                | _ ->
+                    false )
+                () ) ) ;
         report_endpoint () )
-  | Some pid ->
+  | Some (e, pid, _) ->
       if !foreground then
-        failwith (Printf.sprintf "already running as PID %i\n" pid)
+        failwith (Printf.sprintf "already running on %s (PID %i)" e pid)
       else report_endpoint ()
 
 let modes = Modes.add_exn modes "start" start
 
 let stop () =
-  let pid_path = ref (Path.of_string (Filename.concat runtime_dir "pid")) in
+  let port_path = ref (Path.of_string (Filename.concat runtime_dir "port")) in
   Arg.parse_argv ~current:Arg.current Sys.argv
-    [ path_option "pid" pid_path
-        "file to write PID to or check if the process is already running from"
-    ]
+    [path_option "port" port_path "file to read listening port from"]
     (fun o -> raise (Arg.Bad (Printf.sprintf "unexpected option: %s" o)))
     "stop [OPTIONS]" ;
-  match check_pid_file !pid_path with
+  match Result.ok_exn (check_port_file ~close:false !port_path) with
   | None ->
       failwith "not running"
-  | Some pid ->
-      Printf.printf "kill %i\n%!" pid ;
+  | Some (_, pid, fd) ->
       Unix.kill pid Sys.sigterm ;
-      while try Unix.kill pid 0 ; true with _ -> false do
-        Unix.sleepf 0.1
-      done
+      Result.ok_exn
+        (retry
+           ~message:(Printf.sprintf "waiting for daemon to stop (PID %i)" pid)
+           (fun () -> Option.some_if (Fcntl.lock_get fd Fcntl.Write = None) ()))
 
 let modes = Modes.add_exn modes "stop" stop
 

@@ -24,7 +24,7 @@ let package_install_file w pkg =
 
 let setup_env ~capture_outputs =
   let env =
-    if capture_outputs || not (Lazy.force Ansi_color.stderr_supports_color) then
+    if not capture_outputs || not (Lazy.force Ansi_color.stderr_supports_color) then
       Env.initial
     else
       Colors.setup_env_for_colors Env.initial

@@ -7,9 +7,19 @@ type client =
   { fd: Unix.file_descr
   ; peer: Unix.sockaddr
   ; output: out_channel
+  ; mutable build_root: Path.t option (* client owned *)
   ; mutable memory: Dune_memory.DuneMemory.memory (* client owned*)
   ; mutable version: version option (* client owned*)
   ; mutable tid: Thread.t option (* server owned *) }
+
+let make_path client path =
+  if Filename.is_relative path then
+    match client.build_root with
+    | Some p ->
+        Result.ok (Path.of_string (Filename.concat (Path.to_string p) path))
+    | None ->
+        Result.Error "relative path while no build root was set"
+  else Result.ok (Path.of_string path)
 
 let send client sexp =
   output_string client.output (Csexp.to_string sexp) ;
@@ -136,7 +146,7 @@ let run ?(port_f = ignore) ?(port = 0) manager =
                    (Sexp.to_string (Sexp.List cmd)))
         and file = function
           | Sexp.List [Sexp.Atom path; Sexp.Atom hash] ->
-              Result.ok (Path.of_string path, Digest.from_hex hash)
+              make_path client path >>| fun path -> (path, Digest.from_hex hash)
           | sexp ->
               Result.Error
                 (Printf.sprintf "invalid file in promotion message: %s"
@@ -182,6 +192,12 @@ let run ?(port_f = ignore) ?(port = 0) manager =
           >>| fun memory -> client.memory <- memory )
     | args ->
         invalid_args args
+  and handle_set_build_root client = function
+    | [Sexp.Atom dir] ->
+        client.build_root <- Some (Path.of_string dir) ;
+        Result.ok ()
+    | args ->
+        invalid_args args
   in
   let handle_cmd client = function
     | Sexp.List (Sexp.Atom cmd :: args) ->
@@ -196,6 +212,8 @@ let run ?(port_f = ignore) ?(port = 0) manager =
                 handle_lang client args
             | "promote" ->
                 handle_promote client args
+            | "set-build-root" ->
+                handle_set_build_root client args
             | "set-dune-memory-root" ->
                 handle_set_root client args
             | _ ->
@@ -289,6 +307,7 @@ let run ?(port_f = ignore) ?(port = 0) manager =
         ; peer
         ; output= Unix.out_channel_of_descr fd
         ; version= None
+        ; build_root= None
         ; tid= None
         ; memory= Result.ok_exn (DuneMemory.make ?root:manager.root ()) }
       in

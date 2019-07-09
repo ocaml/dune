@@ -30,16 +30,15 @@ let print ?(skip_trailing_cr=Sys.win32) path1 path2 =
     | None -> fallback ()
     | Some (prog, bin) ->
       Format.eprintf "%a@?" Loc.print loc;
-      let sh, arg = Utils.system_shell_exn ~needed_to:"print diffs" in
-      let args = String.concat ~sep:" " (List.concat
+      let* () =
+        Process.run ~dir ~env:Env.initial Strict prog
+          (List.concat
              [ if bin = "git" then ["diff"; "--no-index"; "--color=always"] else []
              ; ["-u"]
              ; if skip_trailing_cr then ["--strip-trailing-cr"] else []
-             ; [ String.quote_for_shell file1; String.quote_for_shell file2 ]
+             ; [ file1; file2 ]
              ])
       in
-      let cmd = sprintf "%s %s" (Path.to_string_maybe_quoted prog) args in
-      let* () = Process.run ~dir ~env:Env.initial Strict sh [arg; cmd] in
       fallback ()
   in
   match !Clflags.diff_command with

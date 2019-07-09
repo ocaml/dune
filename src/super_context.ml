@@ -40,6 +40,7 @@ type t =
        workspace. It is used as default at the root of every project
        in the workspace. *)
     default_env : Env_node.t Lazy.t
+  ; projects_by_key : Dune_project.t Dune_project.File_key.Map.t
   }
 
 let context t = t.context
@@ -79,6 +80,9 @@ let installed_libs t = t.installed_libs
 
 let find_scope_by_dir t dir = Scope.DB.find_by_dir t.scopes dir
 let find_scope_by_name t name = Scope.DB.find_by_name t.scopes name
+let find_scope_by_project t = Scope.DB.find_by_project t.scopes
+let find_project_by_key t =
+  Dune_project.File_key.Map.find_exn t.projects_by_key
 
 module External_env = Env
 
@@ -420,7 +424,7 @@ let create
           src_dir = dir
         ; ctx_dir
         ; data = stanzas
-        ; scope = Scope.DB.find_by_name scopes (Dune_project.name project)
+        ; scope = Scope.DB.find_by_project scopes project
         ; kind
         ; dune_version
         })
@@ -495,6 +499,9 @@ let create
                     }
   in
   let dir_status_db = Dir_status.DB.make file_tree ~stanzas_per_dir in
+  let projects_by_key =
+    Dune_project.File_key.Map.of_list_map_exn projects
+      ~f:(fun project -> (Dune_project.file_key project, project)) in
   { context
   ; expander
   ; host
@@ -526,6 +533,7 @@ let create
   ; default_env
   ; external_lib_deps_mode
   ; dir_status_db
+  ; projects_by_key
   }
 
 module Libs = struct
@@ -641,20 +649,6 @@ module Deps = struct
       | Named (s, ps) ->
         Build.all (List.map ps ~f:(dep t expander)) >>^ fun l ->
         [Bindings.Named (s, List.concat l)])
-end
-
-module Scope_key = struct
-  let of_string sctx key =
-    match String.rsplit2 key ~on:'@' with
-    | None ->
-      (key, public_libs sctx)
-    | Some (key, scope) ->
-      ( key
-      , Scope.libs (find_scope_by_name sctx
-                      (Dune_project.Name.of_encoded_string scope)))
-
-  let to_string key scope =
-    sprintf "%s@%s" key (Dune_project.Name.to_encoded_string scope)
 end
 
 module Action = struct

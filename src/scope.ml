@@ -16,39 +16,35 @@ module DB = struct
   type scope = t
 
   type t =
-    { by_name : scope Dune_project.Name.Map.t
-    ; by_dir : scope Path.Build.Map.t
+    { by_name : scope list Dune_project.Name.Map.t
+    ; by_dir : scope Path.Source.Map.t
     ; context : string
     }
 
-  let find_by_dir t dir =
+  let find_by_dir t (dir : Path.Source.t) =
     let rec loop d =
-      if Path.Build.is_root d then
-        Code_error.raise "Scope.DB.find_by_dir got an invalid path"
-          [ "dir"    , Path.Build.to_dyn dir
-          ; "context", Dyn.Encoder.string t.context
-          ];
-      match Path.Build.Map.find t.by_dir d with
+      match Path.Source.Map.find t.by_dir d with
       | Some s -> s
       | None ->
-        begin match Path.Build.parent d with
+        begin match Path.Source.parent d with
         | Some d -> loop d
         | None ->
           Code_error.raise "find_by_dir: invalid directory"
-            [ "d", Path.Build.to_dyn d
-            ; "dir", Path.Build.to_dyn dir
+            [ "d", Path.Source.to_dyn d
+            ; "dir", Path.Source.to_dyn dir
             ]
         end
     in
     loop dir
 
-  let find_by_name t name = Dune_project.Name.Map.find_exn t.by_name name
+  let find_by_project t project =
+    Path.Source.Map.find_exn t.by_dir (Dune_project.root project)
 
   let resolve t public_libs name : Lib.DB.Resolve_result.t =
     match Lib_name.Map.find public_libs name with
     | None -> Not_found
     | Some project ->
-      let scope = find_by_name (Fdecl.get t) (Dune_project.name project) in
+      let scope = find_by_project (Fdecl.get t) project in
       Redirect (Some scope.db, name)
 
   let public_libs t ~stdlib_dir ~installed_libs internal_libs =
@@ -83,46 +79,36 @@ module DB = struct
       ~resolve
       ~all:(fun () -> Lib_name.Map.keys public_libs)
 
-  let sccopes_by_name ~context ~projects ~lib_config ~public_libs
+  let scopes_by_dir context ~projects ~lib_config ~public_libs
         internal_libs variant_implementations =
     let build_context_dir = Path.Build.relative Path.Build.root context in
-    let projects_by_name =
+    let projects_by_dir =
       List.map projects ~f:(fun (project : Dune_project.t) ->
-        (Dune_project.name project, project))
-      |> Dune_project.Name.Map.of_list
-      |> function
-      | Ok x -> x
-      | Error (name, project1, project2) ->
-        let loc = Loc.in_file (Path.source (Dune_project.file project1)) in
-        let name = Dune_project.Name.to_string_hum name in
-        let dup_path = Path.source (Dune_project.file project2) in
-        User_error.raise ~loc
-          [ Pp.textf "Project %s is already defined in %s"
-              name (Path.to_string_maybe_quoted dup_path)
-          ]
+        (Dune_project.root project, project))
+      |> Path.Source.Map.of_list_exn
     in
-    let libs_by_project_name =
+    let libs_by_project_dir =
       List.map internal_libs ~f:(fun (dir, (lib : Dune_file.Library.t)) ->
-        (Dune_project.name lib.project, (dir, lib)))
-      |> Dune_project.Name.Map.of_list_multi
+        (Dune_project.root lib.project, (dir, lib)))
+      |> Path.Source.Map.of_list_multi
     in
-    let variant_implementations_by_project_name =
+    let variant_implementations_by_project_dir =
       List.map variant_implementations
         ~f:(fun (lib : Dune_file.External_variant.t) ->
-          (Dune_project.name lib.project, lib))
-      |> Dune_project.Name.Map.of_list_multi
+          (Dune_project.root lib.project, lib))
+      |> Path.Source.Map.of_list_multi
     in
-    let libs_variants_by_project_name =
-      Dune_project.Name.Map.merge
-        libs_by_project_name
-        variant_implementations_by_project_name
-        ~f:(fun _name libs variants ->
+    let libs_variants_by_project_dir =
+      Path.Source.Map.merge
+        libs_by_project_dir
+        variant_implementations_by_project_dir
+        ~f:(fun _dir libs variants ->
           let libs = Option.value libs ~default:[] in
           let variants = Option.value variants ~default:[] in
           Some (libs, variants))
     in
-    Dune_project.Name.Map.merge projects_by_name libs_variants_by_project_name
-      ~f:(fun _name project l_v ->
+    Path.Source.Map.merge projects_by_dir libs_variants_by_project_dir
+      ~f:(fun _dir project l_v ->
         let project = Option.value_exn project in
         let libs, variants = Option.value l_v ~default:([], []) in
         let db = Lib.DB.create_from_library_stanzas libs variants
@@ -138,13 +124,28 @@ module DB = struct
     let public_libs =
       public_libs t ~stdlib_dir:lib_config.Lib_config.stdlib_dir
         ~installed_libs internal_libs in
-    let by_name =
-      sccopes_by_name ~context ~projects ~lib_config ~public_libs
+    let by_dir =
+      scopes_by_dir context ~projects ~lib_config ~public_libs
         internal_libs variant_implementations
     in
-    let by_dir =
-      Dune_project.Name.Map.values by_name
-      |> Path.Build.Map.of_list_map_exn ~f:(fun scope -> (scope.root, scope)) in
+    let by_name =
+      List.map projects ~f:(fun project ->
+        let root = Dune_project.root project in
+        let scope = Path.Source.Map.find_exn by_dir root in
+        (Dune_project.name project, scope))
+      |> Dune_project.Name.Map.of_list_multi
+    in
     Fdecl.set t { by_name ; by_dir ; context};
     (Fdecl.get t, public_libs)
+
+  let find_by_dir t dir =
+    if Path.Build.is_root dir then
+      Code_error.raise "Scope.DB.find_by_dir got an invalid path"
+        [ "dir"    , Path.Build.to_dyn dir
+        ; "context", Dyn.Encoder.string t.context
+        ];
+    find_by_dir t (Path.Build.drop_build_context_exn dir)
+
+  let find_by_name t name =
+    Dune_project.Name.Map.find_exn t.by_name name
 end

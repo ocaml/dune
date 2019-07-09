@@ -7,6 +7,33 @@ module SC = Super_context
 
 let (++) = Path.Build.relative
 
+module Scope_key : sig
+  val of_string : Super_context.t -> string -> Lib_name.t * Lib.DB.t
+
+  val to_string : Lib_name.t -> Dune_project.t -> string
+end = struct
+  let of_string sctx s =
+    match String.rsplit2 s ~on:'@' with
+    | None ->
+      ( Lib_name.of_string_exn s ~loc:None
+      , Super_context.public_libs sctx
+      )
+    | Some (lib, key) ->
+      let scope =
+        Dune_project.File_key.of_string key
+        |> Super_context.find_project_by_key sctx
+        |> Super_context.find_scope_by_project sctx
+      in
+      ( Lib_name.of_string_exn lib ~loc:None
+      , Scope.libs scope
+      )
+
+  let to_string lib project =
+    let key = Dune_project.file_key project in
+    sprintf "%s@%s" (Lib_name.to_string lib)
+      (Dune_project.File_key.to_string key)
+end
+
 let lib_unique_name lib =
   let name = Lib.name lib in
   let info = Lib.info lib in
@@ -14,8 +41,7 @@ let lib_unique_name lib =
   match status with
   | Installed -> assert false
   | Public _  -> Lib_name.to_string name
-  | Private scope_name ->
-    SC.Scope_key.to_string (Lib_name.to_string name) scope_name
+  | Private project -> Scope_key.to_string name project
 
 let pkg_or_lnu lib =
   match Lib.package lib with
@@ -635,8 +661,7 @@ let gen_rules sctx ~dir:_ rest =
       let mlds = Packages.mlds sctx pkg in
       setup_package_odoc_rules sctx ~pkg ~mlds)
   | "_odoc" :: "lib" :: lib :: _ ->
-    let lib, lib_db = SC.Scope_key.of_string sctx lib in
-    let lib = Lib_name.of_string_exn ~loc:None lib in
+    let lib, lib_db = Scope_key.of_string sctx lib in
     (* diml: why isn't [None] some kind of error here? *)
     Option.iter (Lib.DB.find lib_db lib) ~f:(fun lib ->
       (* TODO instead of this hack, call memoized function that
@@ -647,8 +672,7 @@ let gen_rules sctx ~dir:_ rest =
   | "_html" :: lib_unique_name_or_pkg :: _ ->
     (* TODO we can be a better with the error handling in the case where
        lib_unique_name_or_pkg is neither a valid pkg or lnu *)
-    let lib, lib_db = SC.Scope_key.of_string sctx lib_unique_name_or_pkg in
-    let lib = Lib_name.of_string_exn ~loc:None lib in
+    let lib, lib_db = Scope_key.of_string sctx lib_unique_name_or_pkg in
     let setup_pkg_html_rules pkg =
       setup_pkg_html_rules sctx ~pkg ~libs:(
         Lib.Local.Set.to_list (load_all_odoc_rules_pkg sctx ~pkg)) in

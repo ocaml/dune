@@ -15,10 +15,6 @@
   is done to prevent the accidental collision with library dependencies of the
   executable. (#2364, fixes #2292, @rgrinberg)
 
-- Improve opam generation to include the `dune` dependncies with the minimum
-  constraint set based on the dune language version specified in the
-  `dune-project` file. (2383, @avsm)
-
 1.11.0 (unreleased)
 -------------------
 
@@ -87,6 +83,13 @@
 
 - Workspaces with non unique project names are now supported. (#2377, fix #2325,
   @rgrinberg)
+
+- Improve opam generation to include the `dune` dependncies with the minimum
+  constraint set based on the dune language version specified in the
+  `dune-project` file. (2383, @avsm)
+
+- The order of fields in the generated opam file now follows order preferred in
+  opam-lib. (@avsm, #2380)
 
 1.10.0 (04/06/2019)
 -------------------

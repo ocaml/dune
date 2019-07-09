@@ -523,11 +523,27 @@ let with_chdir t ~dir ~f =
 
 let t_var : t Fiber.Var.t = Fiber.Var.create ()
 
+type status_line_config =
+  { message   : User_message.Style.t Pp.t option
+  ; show_jobs : bool
+  }
 
-let status_line_generator = ref (fun () -> { Console.message = None; show_jobs = false; })
+let status_line_generator = ref (fun () -> { message = None; show_jobs = false; })
 
 let update_status_line () =
-  Console.update_status_line (!status_line_generator ()) ~running_jobs:(Event.pending_jobs ())
+  let gen_status_line = !status_line_generator () in
+  match gen_status_line with
+  | { message = None; _ } ->
+    Console.hide_status_line ();
+  | { message = Some status_line; show_jobs } ->
+    let status_line =
+      if show_jobs then
+        Pp.seq status_line
+          (Pp.verbatim (Printf.sprintf " (jobs: %u)" (Event.pending_jobs ())))
+      else
+        status_line
+    in
+    Console.update_status_line status_line
 
 let set_status_line_generator gen =
   status_line_generator := gen;

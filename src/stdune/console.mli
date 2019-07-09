@@ -17,16 +17,15 @@ val print_user_message
   -> User_message.t
   -> unit
 
-type status_line_config =
-  { message   : User_message.Style.t Pp.t option
-  ; show_jobs : bool
-  }
-
 val init : Display.t -> unit
 
 (** / *)
 (** Everything below this line requires [init] to have been called earlier. *)
 
-val update_status_line : status_line_config -> running_jobs:int -> unit
+val update_status_line : User_message.Style.t Pp.t -> unit
+(** Update the status line if the display is in progress mode *)
+
 val hide_status_line : unit -> unit
+(** Hide the status line *)
+
 val display : unit -> Display.t

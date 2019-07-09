@@ -13,11 +13,6 @@ module Display = struct
     ]
 end
 
-type status_line_config =
-  { message   : User_message.Style.t Pp.t option
-  ; show_jobs : bool
-  }
-
 module T = struct
 
   type t = {
@@ -33,31 +28,19 @@ module T = struct
   let show_status_line s =
     Ansi_color.prerr s
 
-  let update_status_line t gen_status_line ~running_jobs =
+  let update_status_line t status_line =
     if t.display = Progress then begin
-      match gen_status_line with
-      | { message = None; _ } ->
-        hide_status_line t;
-        flush stderr
-      | { message = Some status_line; show_jobs } ->
-        let status_line =
-          if show_jobs then
-            Pp.seq status_line
-              (Pp.verbatim (Printf.sprintf " (jobs: %u)" running_jobs))
-          else
-            status_line
-        in
-        let status_line =
-          Pp.map_tags status_line ~f:User_message.Print_config.default
-        in
-        let status_line_len =
-          String.length (Format.asprintf "%a" Pp.render_ignore_tags status_line)
-        in
-        hide_status_line t;
-        show_status_line status_line;
-        flush stderr;
-        t.status_line <- status_line;
-        t.status_line_len <- status_line_len
+      let status_line =
+        Pp.map_tags status_line ~f:User_message.Print_config.default
+      in
+      let status_line_len =
+        String.length (Format.asprintf "%a" Pp.render_ignore_tags status_line)
+      in
+      hide_status_line t;
+      show_status_line status_line;
+      flush stderr;
+      t.status_line <- status_line;
+      t.status_line_len <- status_line_len
     end
 
   let print t msg =
@@ -93,7 +76,7 @@ let t () =
 
 let display () = (t ()).display
 
-let update_status_line gen ~running_jobs = T.update_status_line (t ()) gen ~running_jobs
+let update_status_line status_line = T.update_status_line (t ()) status_line
 let hide_status_line () = T.hide_status_line (t ())
 let print msg =
   match !t_var with

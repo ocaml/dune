@@ -188,6 +188,9 @@
   exist before trying to install anything. This prevents partial installation of
   packages (#2230, @rgrinberg)
 
+- Improve opam generation to include the `dune` dependncies with the minimum
+  constraint set based on the dune language version specified in the
+  `dune-project` file. (2383, @avsm)
 
 1.9.3 (06/05/2019)
 ------------------

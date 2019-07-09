@@ -18,6 +18,10 @@
 1.11.0 (unreleased)
 -------------------
 
+- When instantiating an implementation with a variant, make sure it matches
+  virtual library's list of known implementations. (#2361, fixes #2322, 
+  @TheLortex, review by @rgrinberg)
+
 - Don't select all local implementations in `dune utop`. Instead, let the
   default implementation selection do its job. (#2327, fixes #2323, @TheLortex,
   review by @rgrinberg)

@@ -11,6 +11,10 @@
 - Change `implicit_transive_deps` to be false. Implicit transitive deps now must
   be manually enabled (#2306, @rgrinberg)
 
+- Compilation units of user defined executables are now mangled by default. This
+  is done to prevent the accidental collision with library dependencies of the
+  executable. (#2364, fixes #2292, @rgrinberg)
+
 1.11.0 (unreleased)
 -------------------
 
@@ -64,6 +68,18 @@
 
 - Allow to promote executables built with an `executable` stanza
   (#2379, @diml)
+
+- When instantiating an implementation with a variant, make sure it matches
+  virtual library's list of known implementations. (#2361, fixes #2322,
+  @TheLortex, review by @rgrinberg)
+
+- Add a variable `%{ignoring_promoted_rules}` that is `true` when
+  `--ingore-promoted-rules` is passed on the command line and false
+  otherwise (#2382, @diml)
+
+- Fix a bug in `future_syntax` where the characters `@` and `&` were
+  not distinguished in the names of binding operators (`let@` was the
+  same as `let&`) (#2376, @aalekseyev, @diml)
 
 1.10.0 (04/06/2019)
 -------------------

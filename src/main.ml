@@ -24,7 +24,7 @@ let package_install_file w pkg =
 
 let setup_env ~capture_outputs =
   let env =
-    if capture_outputs || not (Lazy.force Ansi_color.stderr_supports_color) then
+    if not capture_outputs || not (Lazy.force Ansi_color.stderr_supports_color) then
       Env.initial
     else
       Colors.setup_env_for_colors Env.initial
@@ -34,14 +34,13 @@ let setup_env ~capture_outputs =
 let scan_workspace ?(log=Log.no_log)
       ?workspace ?workspace_file
       ?x
-      ?ignore_promoted_rules
       ?(capture_outputs=true)
       ?profile
       ~ancestor_vcs
       () =
   let env = setup_env ~capture_outputs in
   let conf =
-    Dune_load.load ?ignore_promoted_rules ~ancestor_vcs ()
+    Dune_load.load ~ancestor_vcs ()
   in
   let workspace =
     match workspace with

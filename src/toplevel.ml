@@ -23,7 +23,7 @@ module Source = struct
   let obj_dir { dir; name ; _ } =
     Obj_dir.make_exe ~dir ~name
 
-  let modules t = Modules.singleton (main_module t)
+  let modules t = Modules.singleton_exe (main_module t)
 
   let make ~dir ~loc ~main ~name =
     { dir

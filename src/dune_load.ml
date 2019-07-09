@@ -10,10 +10,10 @@ module Dune_file = struct
     ; kind    : Dune_lang.File_syntax.t
     }
 
-  let parse sexps ~dir ~file ~project ~kind ~ignore_promoted_rules =
+  let parse sexps ~dir ~file ~project ~kind =
     let stanzas = Stanzas.parse ~file ~kind project sexps in
     let stanzas =
-      if ignore_promoted_rules then
+      if !Clflags.ignore_promoted_rules then
         List.filter stanzas ~f:(function
           | Rule { mode = Promote { only = None; _ }; _ }
           | Dune_file.Menhir.T { mode = Promote { only = None; _ }; _ } -> false
@@ -52,10 +52,7 @@ module Dune_files = struct
     | Literal of Dune_file.t
     | Script  of script
 
-  type t =
-    { dune_files            : one list
-    ; ignore_promoted_rules : bool
-    }
+  type t = one list
 
   let generated_dune_files_dir = Path.Build.relative Path.Build.root ".dune"
 
@@ -180,7 +177,7 @@ end
         (Path.to_string plugin) plugin_contents);
     extract_requires plugin plugin_contents ~kind
 
-  let eval { dune_files; ignore_promoted_rules } ~(context : Context.t) =
+  let eval dune_files ~(context : Context.t) =
     let open Fiber.O in
     let static, dynamic =
       List.partition_map dune_files ~f:(function
@@ -234,7 +231,7 @@ end
       Fiber.return
         (Dune_lang.Io.load (Path.build generated_dune_file) ~mode:Many
            ~lexer:(Dune_lang.Lexer.of_syntax kind)
-         |> Dune_file.parse ~dir ~file ~project ~kind ~ignore_promoted_rules))
+         |> Dune_file.parse ~dir ~file ~project ~kind))
     >>| fun dynamic ->
     static @ dynamic
 end
@@ -246,23 +243,21 @@ type conf =
   ; projects   : Dune_project.t list
   }
 
-let interpret ~dir ~project ~ignore_promoted_rules
-      ~(dune_file:File_tree.Dune_file.t) =
+let interpret ~dir ~project ~(dune_file:File_tree.Dune_file.t) =
   match dune_file.contents with
   | Plain p ->
     let dune_file =
       Dune_files.Literal
         (Dune_file.parse p.sexps ~dir ~file:p.path
            ~project
-           ~kind:dune_file.kind
-           ~ignore_promoted_rules)
+           ~kind:dune_file.kind)
     in
     p.sexps <- [];
     dune_file
   | Ocaml_script file ->
     Script { dir; project; file; kind = dune_file.kind }
 
-let load ?(ignore_promoted_rules=false) ~ancestor_vcs () =
+let load ~ancestor_vcs () =
   let ftree = File_tree.load Path.Source.root ~ancestor_vcs in
   let projects =
     File_tree.fold ftree
@@ -306,9 +301,7 @@ let load ?(ignore_promoted_rules=false) ~ancestor_vcs () =
         match File_tree.Dir.dune_file dir with
         | None -> dune_files
         | Some dune_file ->
-          let dune_file =
-            interpret ~dir:path ~project ~ignore_promoted_rules ~dune_file
-          in
+          let dune_file = interpret ~dir:path ~project ~dune_file in
           dune_file :: dune_files
       in
       String.Map.fold sub_dirs ~init:dune_files ~f:walk
@@ -316,7 +309,7 @@ let load ?(ignore_promoted_rules=false) ~ancestor_vcs () =
   in
   let dune_files = walk (File_tree.root ftree) [] in
   { file_tree = ftree
-  ; dune_files = { dune_files; ignore_promoted_rules }
+  ; dune_files
   ; packages
   ; projects
   }

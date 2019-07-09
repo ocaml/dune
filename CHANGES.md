@@ -77,6 +77,10 @@
   `--ingore-promoted-rules` is passed on the command line and false
   otherwise (#2382, @diml)
 
+- Fix a bug in `future_syntax` where the characters `@` and `&` were
+  not distinguished in the names of binding operators (`let@` was the
+  same as `let&`) (#2376, @aalekseyev, @diml)
+
 1.10.0 (04/06/2019)
 -------------------
 

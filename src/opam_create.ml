@@ -119,16 +119,18 @@ let opam_fields project (package : Package.t) =
     ; "build", default_build_command project
     ]
   in
-  let sort_fields l =
-    if Dune_project.dune_version project < (1, 11) then l
-    else Opam_file.Create.normalise_field_order l
+  let fields =
+    List.concat
+      [ fields
+      ; list_fields
+      ; optional_fields
+      ; package_fields
+      ]
   in
-  sort_fields @@ List.concat
-    [ fields
-    ; list_fields
-    ; optional_fields
-    ; package_fields
-    ]
+  if Dune_project.dune_version project < (1, 11) then
+    fields
+  else
+    Opam_file.Create.normalise_field_order fields
 
 let opam_template sctx ~pkg =
   let file_tree = Super_context.file_tree sctx in

@@ -87,57 +87,61 @@ module Create = struct
   let list f xs = List (nopos, List.map ~f xs)
   let string_list xs = list string xs
 
-  let normalise_field_order vars =
-    let normal_field_order = [
-      (* Extracted from opam/src/format/opamFile.ml *)
-      "opam-version";
-      "name";
-      "version";
-      "synopsis";
-      "description";
-      "maintainer";
-      "authors";
-      "author";
-      "license";
-      "tags";
-      "homepage";
-      "doc";
-      "bug-reports";
-      "depends";
-      "depopts";
-      "conflicts";
-      "conflict-class";
-      "available";
-      "flags";
-      "setenv";
-      "build";
-      "run-test";
-      "install";
-      "remove";
-      "substs";
-      "patches";
-      "build-env";
-      "features";
-      "messages";
-      "post-messages";
-      "depexts";
-      "libraries";
-      "syntax";
-      "dev-repo";
-      "pin-depends";
-      "extra-files" ]
+  let normalise_field_order =
+    let normal_field_order =
+      let fields =
+        [| (* Extracted from opam/src/format/opamFile.ml *)
+          "opam-version"
+        ; "name"
+        ; "version"
+        ; "synopsis"
+        ; "description"
+        ; "maintainer"
+        ; "authors"
+        ; "author"
+        ; "license"
+        ; "tags"
+        ; "homepage"
+        ; "doc"
+        ; "bug-reports"
+        ; "depends"
+        ; "depopts"
+        ; "conflicts"
+        ; "conflict-class"
+        ; "available"
+        ; "flags"
+        ; "setenv"
+        ; "build"
+        ; "run-test"
+        ; "install"
+        ; "remove"
+        ; "substs"
+        ; "patches"
+        ; "build-env"
+        ; "features"
+        ; "messages"
+        ; "post-messages"
+        ; "depexts"
+        ; "libraries"
+        ; "syntax"
+        ; "dev-repo"
+        ; "pin-depends"
+        ; "extra-files"
+        |] in
+      let table = lazy (
+        let table = Hashtbl.create (Array.length fields) in
+        Array.iteri fields ~f:(fun i field -> Hashtbl.add_exn table field i);
+        table
+      ) in
+      fun key -> Hashtbl.find (Lazy.force table) key
     in
-    let standard_fields =
-      List.filter_map normal_field_order ~f:(fun field ->
-        Option.map (List.assoc vars field)
-          ~f:(fun v -> field, v))
-    in
-    let extra_fields =
-      List.filter_map vars ~f:(fun (name,v) ->
-        if List.mem ~set:normal_field_order name then None
-        else Some (name,v))
-    in
-    standard_fields @ extra_fields
+    fun vars ->
+      List.stable_sort vars ~compare:(fun (x, _) (y, _) ->
+        match normal_field_order x, normal_field_order y with
+        | Some x, Some y -> Int.compare x y
+        | Some _, None -> Lt
+        | None, Some _ -> Gt
+        | None, None -> Eq)
 
   let of_bindings vars ~file =
     let file_contents =

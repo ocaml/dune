@@ -429,6 +429,7 @@ let generated ~src_dir name =
     source
 
 let generated_alias ~src_dir name =
+  let src_dir = Path.build src_dir in
   let t = generated ~src_dir name in
   { t with kind = Alias }
 

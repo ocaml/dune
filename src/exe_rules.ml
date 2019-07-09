@@ -12,7 +12,7 @@ let executables_rules ~sctx ~dir ~dir_kind ~expander
   Check_rules.add_obj_dir sctx ~obj_dir;
   let modules =
     Dir_contents.modules_of_executables dir_contents
-      ~first_exe:(snd (List.hd exes.names))
+      ~first_exe:(snd (List.hd exes.names)) ~obj_dir
   in
 
   let preprocessor_deps =
@@ -117,6 +117,15 @@ let executables_rules ~sctx ~dir ~dir_kind ~expander
     ~link_flags
     ~promote:exes.promote;
 
+  let flags =
+    match Modules.alias_module modules with
+    | None -> Ocaml_flags.common flags
+    | Some m ->
+      Ocaml_flags.prepend_common
+        ["-open"; Module.Name.to_string (Module.name m)] flags
+      |> Ocaml_flags.common
+  in
+
   (cctx,
    let objs_dirs =
      Obj_dir.public_cmi_dir obj_dir
@@ -125,7 +134,7 @@ let executables_rules ~sctx ~dir ~dir_kind ~expander
    in
    Merlin.make ()
      ~requires:requires_compile
-     ~flags:(Ocaml_flags.common flags)
+     ~flags
      ~preprocess:(Dune_file.Buildable.single_preprocess exes.buildable)
      (* only public_dir? *)
      ~objs_dirs)

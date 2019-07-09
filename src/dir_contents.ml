@@ -54,9 +54,12 @@ let modules_of_library t ~name =
   let map = (Memo.Lazy.force t.modules).libraries in
   Lib_name.Map.find_exn map name
 
-let modules_of_executables t ~first_exe =
+let modules_of_executables t ~obj_dir ~first_exe =
   let map = (Memo.Lazy.force t.modules).executables in
+  (* we need to relocate the alias module to its own directory. *)
+  let src_dir = Path.build (Obj_dir.obj_dir obj_dir) in
   String.Map.find_exn map first_exe
+  |> Modules.relocate_alias_module ~src_dir
 
 let c_sources_of_library t ~name =
   C_sources.for_lib (Memo.Lazy.force t.c_sources) ~name
@@ -272,8 +275,7 @@ end = struct
                   lib.private_modules)
           in
           Left ( lib
-               , let src_dir = Path.build src_dir in
-                 Modules.lib ~lib ~src_dir ~modules ~main_module_name ~wrapped
+               , Modules.lib ~lib ~src_dir ~modules ~main_module_name ~wrapped
                )
         | Executables exes
         | Tests { exes; _} ->
@@ -283,7 +285,14 @@ end = struct
               ~kind:Modules_field_evaluator.Exe_or_normal_lib
               ~private_modules:Ordered_set_lang.standard
           in
-          Right (exes, Modules.exe modules)
+          let modules =
+            let project = Scope.project scope in
+            if Dune_project.wrapped_executables project then
+              Modules.exe_wrapped ~src_dir:d.ctx_dir ~modules
+            else
+              Modules.exe_unwrapped modules
+          in
+          Right (exes, modules)
         | _ -> Skip)
     in
     let libraries =

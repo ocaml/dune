@@ -101,7 +101,7 @@ let gen_rules sctx t ~dir ~scope ~dir_kind =
       ~dir_kind
   in
   let modules =
-    Modules.exe modules
+    Modules.exe_unwrapped modules
     |> Modules.map_user_written ~f:(Preprocessing.pp_module preprocess)
   in
 

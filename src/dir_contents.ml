@@ -54,9 +54,12 @@ let modules_of_library t ~name =
   let map = (Memo.Lazy.force t.modules).libraries in
   Lib_name.Map.find_exn map name
 
-let modules_of_executables t ~first_exe =
+let modules_of_executables t ~obj_dir ~first_exe =
   let map = (Memo.Lazy.force t.modules).executables in
+  (* we need to relocate the alias module to its own directory. *)
+  let src_dir = Path.build (Obj_dir.obj_dir obj_dir) in
   String.Map.find_exn map first_exe
+  |> Modules.relocate_alias_module ~src_dir
 
 let c_sources_of_library t ~name =
   C_sources.for_lib (Memo.Lazy.force t.c_sources) ~name

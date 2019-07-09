@@ -88,3 +88,7 @@ val alias_for : t -> Module.t -> Module.t option
 val is_stdlib_alias : t -> Module.t -> bool
 
 val exit_module : t -> Module.t option
+
+(** [relcoate_alias_module t ~src_dir] sets the source directory of the alias
+    module to [src_dir]. Only works if [t] is wrapped. *)
+val relocate_alias_module : t -> src_dir:Path.t -> t

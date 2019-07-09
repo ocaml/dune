@@ -20,7 +20,3 @@ Multiple executables defined in the same directory
 
   $ dune build --root multi-exe-same-dir
   Entering directory 'multi-exe-same-dir'
-  Error: Multiple rules generated for _build/default/dune__exe.ml-gen:
-  - <none>:1
-  - <none>:1
-  [1]

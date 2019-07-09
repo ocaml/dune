@@ -12,7 +12,7 @@ let executables_rules ~sctx ~dir ~dir_kind ~expander
   Check_rules.add_obj_dir sctx ~obj_dir;
   let modules =
     Dir_contents.modules_of_executables dir_contents
-      ~first_exe:(snd (List.hd exes.names))
+      ~first_exe:(snd (List.hd exes.names)) ~obj_dir
   in
 
   let preprocessor_deps =

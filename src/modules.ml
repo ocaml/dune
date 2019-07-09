@@ -362,6 +362,10 @@ module Wrapped = struct
     | Alias
     | Wrapped_compat -> None
     | _ -> Some t.alias_module
+
+  let relocate_alias_module t ~src_dir =
+    let alias_module = Module.set_src_dir t.alias_module ~src_dir in
+    { t with alias_module }
 end
 
 type t =
@@ -728,3 +732,8 @@ let is_stdlib_alias t m =
 let exit_module = function
   | Stdlib w -> Stdlib.exit_module w
   | _ -> None
+
+let relocate_alias_module t ~src_dir =
+  match t with
+  | Wrapped t -> Wrapped (Wrapped.relocate_alias_module t ~src_dir)
+  | s -> s

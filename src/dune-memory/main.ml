@@ -9,11 +9,13 @@ let parse_metadata s =
         Stdune.Sexp.List (List.map ~f:convert l)
   in
   match Sexplib.Sexp.parse s with
-  | Sexplib.Sexp.Done (exp, _) ->
+  | Sexplib.Sexp.Done (Sexplib.Sexp.List l, _) ->
       (* FIXME: check there's no leftover *)
-      convert exp
+      List.map ~f:convert l
   | Sexplib.Sexp.Cont _ ->
       raise (Failed (Printf.sprintf "unfinished sexp"))
+  | _ ->
+      raise (Failed (Printf.sprintf "metadata must be a list"))
 
 let usage =
   Printf.sprintf "Usage: %s [OPTIONS] command [ARGUMENTS]" Sys.argv.(0)

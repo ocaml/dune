@@ -5,7 +5,7 @@ type memory = {root: Path.t; log: Log.t}
 
 type key = Digest.t
 
-type metadata = Sexp.t
+type metadata = Sexp.t list
 
 type promotion =
   | Already_promoted of Path.t * Path.t
@@ -49,7 +49,7 @@ let key consumed metadata produced =
                  [Sexp.Atom (Path.to_string p); Sexp.Atom (Digest.to_string h)]
                )
              consumed)
-      ; metadata
+      ; Sexp.List metadata
       ; Sexp.List
           (List.map ~f:(fun p -> Sexp.Atom (Path.to_string p)) produced) ]
   in
@@ -141,7 +141,17 @@ module FSSchemeImpl = FirstTwoCharsSubdir
 let search memory hash file =
   Collision.search (FSSchemeImpl.path (path_files memory) hash) file
 
-let promote memory paths key metadata _ =
+let apply ~f o v = match o with Some o -> f v o | None -> v
+
+let promote memory paths key metadata repo =
+  let metadata =
+    apply
+      ~f:(fun metadata (remote, commit) ->
+        metadata
+        @ [ Sexp.List [Sexp.Atom "repo"; Sexp.Atom remote]
+          ; Sexp.List [Sexp.Atom "commit_id"; Sexp.Atom commit] ] )
+      repo metadata
+  in
   let promote (path, expected_hash) =
     Log.infof memory.log "promote %s" (Path.to_string path) ;
     let hardlink path =
@@ -181,7 +191,7 @@ let promote memory paths key metadata _ =
         Io.write_file metadata_path
           (Csexp.to_string
              (Sexp.List
-                [ Sexp.List [Sexp.Atom "metadata"; metadata]
+                [ Sexp.List (Sexp.Atom "metadata" :: metadata)
                 ; Sexp.List
                     [ Sexp.Atom "produced-files"
                     ; Sexp.List
@@ -205,14 +215,16 @@ let search memory key =
     Result.ok_exn
       (Result.map_error
          ~f:(fun r -> Failure r)
-         (Io.with_file_in path ~f:(fun input ->
-              Csexp.parse (Stream.of_channel input) )))
+         (let open Result.O in
+         Io.with_file_in path ~f:(fun input ->
+             Csexp.parse (Stream.of_channel input) )
+         >>= function
+         | Sexp.List l -> Result.ok l | _ -> Result.Error "invalid metadata"))
   in
   let f () =
     match metadata with
-    | Sexp.List
-        [ Sexp.List [Sexp.Atom s_metadata; metadata]
-        ; Sexp.List [Sexp.Atom s_produced; Sexp.List produced] ] ->
+    | [ Sexp.List (Sexp.Atom s_metadata :: metadata)
+      ; Sexp.List [Sexp.Atom s_produced; Sexp.List produced] ] ->
         if
           (not (String.equal s_metadata "metadata"))
           && String.equal s_produced "produced-files"

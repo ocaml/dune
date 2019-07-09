@@ -8,7 +8,9 @@ type client =
   ; peer: Unix.sockaddr
   ; output: out_channel
   ; mutable build_root: Path.t option (* client owned *)
+  ; mutable common_metadata: Sexp.t list (* client owned *)
   ; mutable memory: Dune_memory.DuneMemory.memory (* client owned*)
+  ; mutable repositories: (string * string * string) list (* client owned *)
   ; mutable version: version option (* client owned*)
   ; mutable tid: Thread.t option (* server owned *) }
 
@@ -129,15 +131,20 @@ let run ?(port_f = ignore) ?(port = 0) manager =
   and handle_promote client = function
     | Sexp.List [Sexp.Atom "key"; Sexp.Atom key]
       :: Sexp.List (Sexp.Atom "files" :: files)
-         :: Sexp.List [Sexp.Atom "metadata"; metadata] :: rest as cmd -> (
+         :: Sexp.List [Sexp.Atom "metadata"; Sexp.List metadata] :: rest as cmd
+      -> (
         let repo =
           match rest with
           | [] ->
               Result.ok None
           | [Sexp.List [Sexp.Atom "repo"; Sexp.Atom repo]] -> (
             match int_of_string_opt repo with
-            | Some v ->
-                Result.ok (Some v)
+            | Some i -> (
+              match List.nth_opt client.repositories i with
+              | None ->
+                  Result.Error (Printf.sprintf "repository out of range: %i" i)
+              | v ->
+                  Result.ok v )
             | None ->
                 Result.Error (Printf.sprintf "invalid repo: %s" repo) )
           | _ ->
@@ -168,7 +175,8 @@ let run ?(port_f = ignore) ?(port = 0) manager =
         let promotions =
           DuneMemory.promote client.memory files
             (DuneMemory.key_of_string key)
-            metadata repo
+            (metadata @ client.common_metadata)
+            (Option.map ~f:(fun (_, remote, commit) -> (remote, commit)) repo)
         in
         match List.filter_map ~f promotions with
         | [] ->
@@ -198,6 +206,22 @@ let run ?(port_f = ignore) ?(port = 0) manager =
         Result.ok ()
     | args ->
         invalid_args args
+  and handle_set_metadata client arg =
+    client.common_metadata <- arg ;
+    Result.ok ()
+  and handle_set_repos client arg =
+    let convert = function
+      | Sexp.List
+          [ Sexp.List [Sexp.Atom "dir"; Sexp.Atom dir]
+          ; Sexp.List [Sexp.Atom "remote"; Sexp.Atom remote]
+          ; Sexp.List [Sexp.Atom "commit_id"; Sexp.Atom commit] ] ->
+          Result.ok (dir, remote, commit)
+      | invalid ->
+          Result.Error
+            (Printf.sprintf "invalid repo: %s" (Sexp.to_string invalid))
+    in
+    Result.List.map ~f:convert arg
+    >>| fun repos -> client.repositories <- repos
   in
   let handle_cmd client = function
     | Sexp.List (Sexp.Atom cmd :: args) ->
@@ -214,8 +238,12 @@ let run ?(port_f = ignore) ?(port = 0) manager =
                 handle_promote client args
             | "set-build-root" ->
                 handle_set_build_root client args
+            | "set-common-metadata" ->
+                handle_set_metadata client args
             | "set-dune-memory-root" ->
                 handle_set_root client args
+            | "set-repos" ->
+                handle_set_repos client args
             | _ ->
                 Result.Error (Printf.sprintf "unknown command: %s" cmd) )
     | cmd ->
@@ -308,6 +336,8 @@ let run ?(port_f = ignore) ?(port = 0) manager =
         ; output= Unix.out_channel_of_descr fd
         ; version= None
         ; build_root= None
+        ; common_metadata= []
+        ; repositories= []
         ; tid= None
         ; memory= Result.ok_exn (DuneMemory.make ?root:manager.root ()) }
       in

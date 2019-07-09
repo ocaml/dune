@@ -4,7 +4,7 @@ type memory
 
 type key
 
-type metadata = Sexp.t
+type metadata = Sexp.t list
 
 exception Failed of string
 
@@ -30,7 +30,7 @@ val promote :
   -> (Path.t * Digest.t) list
   -> key
   -> metadata
-  -> int option
+  -> (string * string) option
   -> promotion list
 
 val search : memory -> key -> metadata * (Path.t * Path.t) list

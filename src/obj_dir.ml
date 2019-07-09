@@ -302,7 +302,8 @@ module Module = struct
     let obj_name = Module.obj_name m in
     relative t base (obj_name ^ ext)
 
-  let cm_public_file (type path) (t : path t) m ~(kind : Cm_kind.t) : path option =
+  let cm_public_file (type path) (t : path t) m ~(kind : Cm_kind.t)
+    : path option =
     let is_private = Module.visibility m = Private in
     let has_impl = Module.has m ~ml_kind:Impl in
     match kind with
@@ -310,18 +311,13 @@ module Module = struct
     |  Cmi when is_private -> None
     | _ -> Some (cm_public_file_unsafe t m ~kind)
 
-  let cmt_ext (kind : Ml_kind.t) =
-    match kind with
-    | Impl -> ".cmt"
-    | Intf -> ".cmti"
-
   let cmt_file t m ~(ml_kind : Ml_kind.t) =
     let file = Module.file m ~ml_kind in
-    let ext = cmt_ext ml_kind in
+    let ext = Ml_kind.cmt_ext ml_kind in
     Option.map file ~f:(fun _ -> obj_file t m ~kind:Cmi ~ext)
 
   let cmti_file t m =
-    let ext = cmt_ext (
+    let ext = Ml_kind.cmt_ext (
       match Module.file m ~ml_kind:Intf with
       | None -> Impl
       | Some _ -> Intf

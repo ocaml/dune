@@ -69,6 +69,9 @@ val dump_env : t -> dir:Path.Build.t -> (unit, Dune_lang.t list) Build.t
 val find_scope_by_dir  : t -> Path.Build.t        -> Scope.t
 val find_scope_by_name : t -> Dune_project.Name.t -> Scope.t
 
+(** Tells whether the given source directory is marked as vendored *)
+val dir_is_vendored : t -> Path.Source.t -> bool
+
 val add_rule
   :  t
   -> ?sandbox:bool

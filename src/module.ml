@@ -31,7 +31,6 @@ module Name = struct
 
   let uncapitalize = String.uncapitalize
 
-  let pp = Format.pp_print_string
   let pp_quote fmt x = Format.fprintf fmt "%S" x
 
   module Set = struct
@@ -430,6 +429,7 @@ let generated ~src_dir name =
     source
 
 let generated_alias ~src_dir name =
+  let src_dir = Path.build src_dir in
   let t = generated ~src_dir name in
   { t with kind = Alias }
 
@@ -463,9 +463,6 @@ module Name_map = struct
 
   let add t module_ =
     Name.Map.set t (name module_) module_
-
-  let pp fmt t =
-    Fmt.ocaml_list Name.pp fmt (Name.Map.keys t)
 
   let by_obj =
     Name.Map.fold ~init:Name.Map.empty ~f:(fun m acc ->

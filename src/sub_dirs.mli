@@ -1,23 +1,46 @@
 open Stdune
 
-type 'set t = private
-  { dirs : 'set
-  ; data_only : 'set
-  }
-
 module Status : sig
-  type t = Ignored | Data_only | Normal
+  type t = Data_only | Normal | Vendored
+
+  val to_dyn : t -> Dyn.t
+
+  module Or_ignored : sig
+    type nonrec t = Ignored | Status of t
+  end
+
+  module Map : sig
+    type status
+    type 'a t =
+      { data_only : 'a
+      ; vendored : 'a
+      ; normal : 'a
+      }
+
+    val find : 'a t -> status -> 'a
+  end with type status := t
+
+  module Set : sig
+    type t = bool Map.t
+
+    val all : t
+    val normal_only : t
+  end
 end
 
-val default : Predicate_lang.t t
+val default : Predicate_lang.t Status.Map.t
 
 val add_data_only_dirs
-  :  Predicate_lang.t t
+  :  Predicate_lang.t Status.Map.t
   -> dirs:String.Set.t
-  -> Predicate_lang.t t
+  -> Predicate_lang.t Status.Map.t
 
-val eval : Predicate_lang.t t -> dirs:string list -> String.Set.t t
+val eval
+  : Predicate_lang.t Status.Map.t
+  -> dirs:string list
+  -> String.Set.t Status.Map.t
 
-val status : String.Set.t t -> dir:string -> Status.t
+val status : String.Set.t Status.Map.t -> dir:string -> Status.Or_ignored.t
 
-val decode : (Predicate_lang.t t * Dune_lang.Ast.t list) Stanza.Decoder.t
+val decode
+  : (Predicate_lang.t Status.Map.t * Dune_lang.Ast.t list) Stanza.Decoder.t

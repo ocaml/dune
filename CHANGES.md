@@ -11,6 +11,10 @@
 - Change `implicit_transive_deps` to be false. Implicit transitive deps now must
   be manually enabled (#2306, @rgrinberg)
 
+- Compilation units of user defined executables are now mangled by default. This
+  is done to prevent the accidental collision with library dependencies of the
+  executable. (#2364, fixes #2292, @rgrinberg)
+
 1.11.0 (unreleased)
 -------------------
 
@@ -52,7 +56,7 @@
 
 - Set version in `META` and `dune-package` files to the one read from
   the vcs when no other version is available (#2224, @diml)
-  
+
 - Add a variable `%{target}` to be used in situations where the context
   requires at most one word, so `%{targets}` can be confusing; stdout
   redirections and "-o" arguments of various tools are the main use
@@ -61,6 +65,17 @@
 
 - Fix dependency graph of wrapped_compat modules. Previously, the dependency on
   the user written entry module was omitted. (#2305, @rgrinberg)
+
+- Allow to promote executables built with an `executable` stanza
+  (#2379, @diml)
+
+- When instantiating an implementation with a variant, make sure it matches
+  virtual library's list of known implementations. (#2361, fixes #2322,
+  @TheLortex, review by @rgrinberg)
+
+- Add a variable `%{ignoring_promoted_rules}` that is `true` when
+  `--ingore-promoted-rules` is passed on the command line and false
+  otherwise (#2382, @diml)
 
 - Fix a bug in `future_syntax` where the characters `@` and `&` were
   not distinguished in the names of binding operators (`let@` was the

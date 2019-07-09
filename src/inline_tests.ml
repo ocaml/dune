@@ -90,13 +90,13 @@ module Backend = struct
       let f x = Lib_name.encode (Lib.name x.lib) in
       ((1, 0),
        record_fields @@
-         [ field_l "runner_libraries" lib (Result.ok_exn t.runner_libraries)
-         ; field_i "flags" Ordered_set_lang.Unexpanded.encode_and_upgrade
-             t.info.flags
-         ; field_o "generate_runner" Action_dune_lang.encode_and_upgrade
-             (Option.map t.info.generate_runner ~f:snd)
-         ; field_l "extends" f (Result.ok_exn t.extends)
-         ])
+       [ field_l "runner_libraries" lib (Result.ok_exn t.runner_libraries)
+       ; field_i "flags" Ordered_set_lang.Unexpanded.encode_and_upgrade
+           t.info.flags
+       ; field_o "generate_runner" Action_dune_lang.encode_and_upgrade
+           (Option.map t.info.generate_runner ~f:snd)
+       ; field_l "extends" f (Result.ok_exn t.extends)
+       ])
   end
   include M
   include Sub_system.Register_backend(M)
@@ -207,8 +207,10 @@ include Sub_system.Register_end_point(
 
       let loc = lib.buildable.loc in
 
+      let lib_name = snd lib.name in
+
       let inline_test_name =
-        sprintf "%s.inline-tests" (Lib_name.Local.to_string (snd lib.name))
+        sprintf "%s.inline-tests" (Lib_name.Local.to_string lib_name)
       in
 
       let inline_test_dir = Path.Build.relative dir ("." ^ inline_test_name) in
@@ -224,7 +226,7 @@ include Sub_system.Register_end_point(
         Module.generated ~src_dir name
       in
 
-      let modules = Modules.singleton main_module in
+      let modules = Modules.singleton_exe main_module in
 
       let bindings =
         Pform.Map.singleton "library-name"
@@ -315,7 +317,8 @@ include Sub_system.Register_end_point(
       Exe.build_and_link cctx
         ~program:{ name; main_module_name = Module.name main_module ; loc }
         ~linkages
-        ~link_flags:(Build.return ["-linkall"]);
+        ~link_flags:(Build.return ["-linkall"])
+        ~promote:None;
 
       let flags =
         let flags =
@@ -366,6 +369,6 @@ include Sub_system.Register_end_point(
                     |> List.map ~f:(fun fn ->
                       A.diff ~optional:true
                         fn (Path.extend_basename fn ~suffix:".corrected"))))))))
-end)
+  end)
 
 let linkme = ()

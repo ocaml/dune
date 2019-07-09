@@ -14,13 +14,13 @@ module Rule = struct
     ; value           : string
     }
 
-  let pp fmt { preds_required; preds_forbidden; value } =
-    Fmt.record fmt
-      [ "preds_required", Fmt.const Ps.pp preds_required
-      ; "preds_forbidden", Fmt.const Ps.pp preds_forbidden
-      ; "value", Fmt.const (fun fmt -> Format.fprintf fmt "%S") value
+  let to_dyn { preds_required; preds_forbidden; value } =
+    let open Dyn.Encoder in
+    record
+      [ "preds_required", Ps.to_dyn preds_required
+      ; "preds_forbidden", Ps.to_dyn preds_forbidden
+      ; "value", string value
       ]
-
 
   let formal_predicates_count t =
     Ps.cardinal t.preds_required + Ps.cardinal t.preds_forbidden
@@ -56,10 +56,11 @@ module Rules = struct
     ; add_rules : Rule.t list
     }
 
-  let pp fmt { set_rules; add_rules } =
-    Fmt.record fmt
-      [ "set_rules", (fun fmt () -> Fmt.ocaml_list Rule.pp fmt set_rules)
-      ; "add_rules", (fun fmt () -> Fmt.ocaml_list Rule.pp fmt add_rules)
+  let to_dyn { set_rules; add_rules } =
+    let open Dyn.Encoder in
+    record
+      [ "set_rules", list Rule.to_dyn set_rules
+      ; "add_rules", list Rule.to_dyn add_rules
       ]
 
   let interpret t ~preds =
@@ -109,13 +110,11 @@ module Config = struct
     ; preds : Ps.t
     }
 
-  let pp fmt { vars; preds } =
-    Fmt.record fmt
-      [ "vars"
-      , Fmt.const (Fmt.ocaml_list (Fmt.tuple Format.pp_print_string Rules.pp))
-          (String.Map.to_list vars)
-      ; "preds"
-      , Fmt.const Ps.pp preds
+  let to_dyn { vars; preds } =
+    let open Dyn.Encoder in
+    record
+      [ "vars", String.Map.to_dyn Rules.to_dyn vars
+      ; "preds" , Ps.to_dyn preds
       ]
 
   let load path ~toolchain ~context =
@@ -151,7 +150,12 @@ module Unavailable_reason = struct
       sprintf "in %s is hidden (unsatisfied 'exist_if')"
         (Path.to_string_maybe_quoted (Dune_package.Lib.dir pkg))
 
-  let pp ppf t = Format.pp_print_string ppf (to_string t)
+  let to_dyn =
+    let open Dyn.Encoder in
+    function
+    | Not_found -> constr "Not_found" []
+    | Hidden lib ->
+      constr "Hidden" [Path.to_dyn (Dune_package.Lib.dir lib)]
 end
 
 type t =

@@ -128,8 +128,7 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to =
         List.map paths ~f:(fun fn ->
           (Path.to_string fn, Cached_digest.file fn))
       in
-      Digest.string
-        (Marshal.to_string data [])
+      Digest.generic data
     in
     exec_echo stdout_to (Digest.to_string_raw s)
   | Diff ({ optional = _; file1; file2; mode } as diff) ->

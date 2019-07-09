@@ -17,7 +17,6 @@ module Name : sig
 
   val uncapitalize : t -> string
 
-  val pp : Format.formatter -> t -> unit
   val pp_quote : Format.formatter -> t -> unit
 
   module Set : sig
@@ -126,8 +125,6 @@ module Name_map : sig
 
   val to_dyn : t -> Dyn.t
 
-  val pp : t Fmt.t
-
   val impl_only : t -> module_ list
 
   val of_list_exn : module_ list -> t
@@ -173,4 +170,4 @@ val set_src_dir : t -> src_dir:Path.t -> t
 val generated : src_dir:Path.t -> Name.t -> t
 
 (** Represent the generated alias module. *)
-val generated_alias : src_dir:Path.t -> Name.t -> t
+val generated_alias : src_dir:Path.Build.t -> Name.t -> t

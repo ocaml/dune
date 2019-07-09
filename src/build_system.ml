@@ -47,7 +47,7 @@ module Promoted_to_delete : sig
   val add : Path.t -> unit
   val load : unit -> Path.Set.t
 end = struct
-  module P = Utils.Persistent(struct
+  module P = Persistent.Make(struct
       type t = Path.Set.t
       let name = "PROMOTED-TO-DELETE"
       let version = 1
@@ -195,7 +195,7 @@ module Alias0 = struct
 
   let dep_rec_internal ~name ~dir ~ctx_dir =
     Build.lazy_no_targets (lazy (
-      File_tree.Dir.fold dir ~traverse_ignored_dirs:false
+      File_tree.Dir.fold dir ~traverse:Sub_dirs.Status.Set.normal_only
         ~init:(Build.return true)
         ~f:(fun dir acc ->
           let path = Path.Build.append_source ctx_dir (File_tree.Dir.path dir) in
@@ -304,7 +304,7 @@ end = struct
 
   let file = Path.relative Path.build_dir ".db"
 
-  module P = Utils.Persistent(struct
+  module P = Persistent.Make(struct
       type nonrec t = t
       let name = "INCREMENTAL-DB"
       let version = 2
@@ -545,7 +545,7 @@ let compute_targets_digest_after_rule_execution ~info targets =
       | exception (Unix.Unix_error _ | Sys_error _) -> Right fn)
   in
   match bad with
-  | [] -> Digest.string (Marshal.to_string good [])
+  | [] -> Digest.generic good
   | missing ->
     User_error.raise ?loc:(Rule.Info.loc info)
       [ Pp.textf "Rule failed to generate the following targets:"
@@ -1277,7 +1277,7 @@ and get_rule t path =
 let all_targets t =
   String.Map.to_list t.contexts
   |> List.fold_left ~init:Path.Build.Set.empty ~f:(fun acc (_, ctx) ->
-    File_tree.fold t.file_tree ~traverse_ignored_dirs:true ~init:acc
+    File_tree.fold t.file_tree ~traverse:Sub_dirs.Status.Set.all ~init:acc
       ~f:(fun dir acc ->
         match
           load_dir
@@ -1442,12 +1442,12 @@ end = struct
         , Action.for_shell action
         )
       in
-      Digest.string (Marshal.to_string trace [])
+      Digest.generic trace
     in
     let targets_digest =
       match List.map targets_as_list ~f:(fun p ->
         Cached_digest.file (Path.build p)) with
-      | l -> Some (Digest.string (Marshal.to_string l []))
+      | l -> Some (Digest.generic l)
       | exception (Unix.Unix_error _ | Sys_error _) -> None
     in
     let sandbox_dir =

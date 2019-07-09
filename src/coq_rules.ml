@@ -58,14 +58,15 @@ let parse_coqdep ~coq_module (lines : string list) =
     let deps = String.extract_blank_separated_words deps in
     if coq_debug
     then Format.eprintf "deps for %a: %a@\n%!"
-           Path.Build.pp (source) Fmt.(list text) deps;
+           Path.Build.pp source Fmt.(list text) deps;
     deps
 
 let setup_rule ~expander ~dir ~cc ~source_rule ~coq_flags ~file_flags
       ~mlpack_rule coq_module =
 
   if coq_debug
-  then Format.eprintf "gen_rule coq_module: %a@\n%!" Coq_module.pp coq_module;
+  then Format.eprintf "gen_rule coq_module: %a@\n%!"
+         Dyn.pp (Coq_module.to_dyn coq_module);
 
   let obj_dir = dir in
   let source    = Coq_module.source coq_module in

@@ -156,20 +156,25 @@ module Parse = struct
       error lb "'package' or variable name expected"
 end
 
-let pp_action fmt = function
-  | Set -> Format.pp_print_string fmt "Set"
-  | Add -> Format.pp_print_string fmt "Add"
+let dyn_of_action =
+  let open Dyn.Encoder in
+  function
+  | Set -> constr "Set" []
+  | Add -> constr "Add" []
 
-let pp_predicate fmt = function
-  | Pos s -> Format.fprintf fmt "%S" ("+" ^ s)
-  | Neg s -> Format.fprintf fmt "%S" ("-" ^ s)
+let dyn_of_predicate =
+  let open Dyn.Encoder in
+  function
+  | Pos s -> constr "Pos" [String s]
+  | Neg s -> constr "Neg" [String s]
 
-let pp_rule fmt (t : rule) =
-  Fmt.record fmt
-    [ "var", (Fmt.const Fmt.quoted t.var)
-    ; "predicates", (Fmt.const (Fmt.ocaml_list pp_predicate) t.predicates)
-    ; "action", (Fmt.const pp_action t.action)
-    ; "value", (Fmt.const Fmt.quoted t.value)
+let dyn_of_rule { var; predicates; action; value } =
+  let open Dyn.Encoder in
+  record
+    [ "var", string var
+    ; "predicates", list dyn_of_predicate predicates
+    ; "action", dyn_of_action action
+    ; "value", string value
     ]
 
 module Simplified = struct
@@ -179,10 +184,11 @@ module Simplified = struct
       ; add_rules : rule list
       }
 
-    let pp fmt t =
-      Fmt.record fmt
-        [ "set_rules", Fmt.const (Fmt.ocaml_list pp_rule) t.set_rules
-        ; "add_rules", Fmt.const (Fmt.ocaml_list pp_rule) t.add_rules
+    let to_dyn { set_rules ; add_rules } =
+      let open Dyn.Encoder in
+      record
+        [ "set_rules", list dyn_of_rule set_rules
+        ; "add_rules", list dyn_of_rule add_rules
         ]
   end
 
@@ -192,11 +198,12 @@ module Simplified = struct
     ; subs : t list
     }
 
-  let rec pp fmt t =
-    Fmt.record fmt
-      [ "name", Fmt.const (Fmt.optional Lib_name.pp_quoted) t.name
-      ; "vars", Fmt.const (String.Map.pp Rules.pp) t.vars
-      ; "subs", Fmt.const (Fmt.ocaml_list pp) t.subs
+  let rec to_dyn { name; vars; subs } =
+    let open Dyn.Encoder in
+    record
+      [ "name", option Lib_name.to_dyn name
+      ; "vars", String.Map.to_dyn Rules.to_dyn vars
+      ; "subs", list to_dyn subs
       ]
 end
 

@@ -17,7 +17,8 @@ val build_exe
   -> src:Path.Build.t
   -> cm:Path.t list Build.s
   -> flags:Command.Args.dynamic Command.Args.t
-  -> Action.t Build.s list
+  -> promote:Dune_file.Promote.t option
+  -> unit
 
 val setup_separate_compilation_rules
   :  Super_context.t

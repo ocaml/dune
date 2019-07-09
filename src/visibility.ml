@@ -30,3 +30,16 @@ let is_public = function
   | Private -> false
 
 let is_private t = not (is_public t)
+
+module Map = struct
+  type 'a t =
+    { public : 'a
+    ; private_ : 'a
+    }
+
+  let make_both a = { public = a; private_ = a }
+
+  let find { private_ ; public } = function
+    | Private -> private_
+    | Public -> public
+end

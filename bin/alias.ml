@@ -18,7 +18,8 @@ let in_dir ~name ~recursive ~contexts dir =
   let checked = Util.check_path contexts dir in
   match checked with
   | External _ ->
-    User_error.raise [ Pp.textf "@@ on the command line must be followed by a relative path" ]
+    User_error.raise
+      [ Pp.textf "@@ on the command line must be followed by a relative path" ]
   | In_source_dir dir ->
     { dir
     ; recursive

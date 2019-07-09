@@ -824,8 +824,9 @@ module Mode_conf = struct
     | Native -> "native"
     | Best -> "best"
 
-  let pp fmt t =
-    Format.pp_print_string fmt (to_string t)
+  let to_dyn t =
+    let open Dyn.Encoder in
+    constr (to_string t) []
 
   let encode t =
     Dune_lang.unsafe_atom_of_string (to_string t)
@@ -984,15 +985,23 @@ module Library = struct
 
     let default = Simple true
 
-    let make ~wrapped ~implements : t Inherited.t =
-      match wrapped, implements with
+    let make ~wrapped ~implements ~special_builtin_support : t Inherited.t =
+      begin match wrapped, special_builtin_support with
+      | Some (loc, Yes_with_transition _), Some _ ->
+        User_error.raise ~loc
+          [ Pp.text "Cannot have transition modules for libraries with \
+                     special builtin support" ]
+      | _, _ -> ()
+      end;
+      begin match wrapped, implements with
       | None, None -> This default
       | None, Some w -> From w
       | Some (_loc, w), None -> This w
       | Some (loc, _), Some _ ->
         User_error.raise ~loc
           [ Pp.text "Wrapped cannot be set for implementations. \
-           It is inherited from the virtual library." ]
+                     It is inherited from the virtual library." ]
+      end
 
     let field = field_o "wrapped" (located decode)
   end
@@ -1089,7 +1098,8 @@ module Library = struct
            (Syntax.since Stanza.syntax (1, 10) >>>
             Special_builtin_support.decode)
        and+ enabled_if = enabled_if ~since:(Some (1, 10)) in
-       let wrapped = Wrapped.make ~wrapped ~implements in
+       let wrapped = Wrapped.make ~wrapped ~implements
+                       ~special_builtin_support in
        let name =
          let open Syntax.Version.Infix in
          match name, public with
@@ -1270,6 +1280,52 @@ module Install_conf = struct
        { section
        ; files
        ; package
+       })
+end
+
+module Promote = struct
+  module Lifetime = struct
+    type t =
+      | Unlimited
+      | Until_clean
+  end
+
+  module Into = struct
+    type t =
+      { loc : Loc.t
+      ; dir : string
+      }
+
+    let decode =
+      let+ (loc, dir) = located relative_file in
+      { loc
+      ; dir
+      }
+  end
+
+  type t =
+    { lifetime : Lifetime.t
+    ; into : Into.t option
+    ; only : Predicate_lang.t option
+    }
+
+  let decode =
+    fields
+      (let+ until_clean =
+         field_b "until-clean"
+           ~check:(Syntax.since Stanza.syntax (1, 10))
+       and+ into =
+         field_o "into"
+           (Syntax.since Stanza.syntax (1, 10) >>= fun () ->
+            Into.decode)
+       and+ only =
+         field_o "only"
+           (Syntax.since Stanza.syntax (1, 10) >>= fun () ->
+            Predicate_lang.decode)
+       in
+       { lifetime = if until_clean then Until_clean else Unlimited
+       ; into
+       ; only
        })
 end
 
@@ -1516,10 +1572,11 @@ module Executables = struct
         let { mode; kind; loc = _ } = link_mode in
         Dune_lang.Encoder.pair Mode_conf.encode Binary_kind.encode (mode, kind)
 
-    let pp fmt { mode ; kind ; loc = _ } =
-      Fmt.record fmt
-        [ "mode", Fmt.const Mode_conf.pp mode
-        ; "kind", Fmt.const Binary_kind.pp kind
+    let to_dyn { mode ; kind ; loc = _ } =
+      let open Dyn.Encoder in
+      record
+        [ "mode", Mode_conf.to_dyn mode
+        ; "kind", Binary_kind.to_dyn kind
         ]
 
     module O = Comparable.Make(T)
@@ -1560,6 +1617,7 @@ module Executables = struct
     ; buildable  : Buildable.t
     ; variants   : (Loc.t * Variant.Set.t) option
     ; package    : Package.t option
+    ; promote    : Promote.t option
     }
 
   let common =
@@ -1570,6 +1628,8 @@ module Executables = struct
     and+ link_flags = field_oslu "link_flags"
     and+ modes = field "modes" Link_mode.Set.decode ~default:Link_mode.Set.default
     and+ variants = variants_field
+    and+ promote =
+      field_o "promote" (Syntax.since Stanza.syntax (1, 11) >>> Promote.decode)
     and+ () = map_validate (
       field "inline_tests" (repeat junk >>| fun _ -> true) ~default:false)
       ~f:(function
@@ -1593,6 +1653,7 @@ module Executables = struct
         ; buildable
         ; variants
         ; package = Names.package names
+        ; promote
         }
       in
       let install_conf =
@@ -1674,33 +1735,6 @@ module Rule = struct
 
 
   module Mode = struct
-    module Promote = struct
-      module Lifetime = struct
-        type t =
-          | Unlimited
-          | Until_clean
-      end
-
-      module Into = struct
-        type t =
-          { loc : Loc.t
-          ; dir : string
-          }
-
-        let decode =
-          let+ (loc, dir) = located relative_file in
-          { loc
-          ; dir
-          }
-      end
-
-      type t =
-        { lifetime : Lifetime.t
-        ; into : Into.t option
-        ; only : Predicate_lang.t option
-        }
-    end
-
     type t =
       | Standard
       | Fallback
@@ -1717,24 +1751,8 @@ module Rule = struct
         [ "standard"           , return Standard
         ; "fallback"           , return Fallback
         ; "promote"            ,
-          fields
-            (let+ until_clean =
-               field_b "until-clean"
-                 ~check:(Syntax.since Stanza.syntax (1, 10))
-             and+ into =
-               field_o "into"
-                 (Syntax.since Stanza.syntax (1, 10) >>= fun () ->
-                  Promote.Into.decode)
-             and+ only =
-               field_o "only"
-                 (Syntax.since Stanza.syntax (1, 10) >>= fun () ->
-                  Predicate_lang.decode)
-             in
-             Promote
-               { lifetime = if until_clean then Until_clean else Unlimited
-               ; into
-               ; only
-               })
+          (let+ p = Promote.decode in
+           Promote p)
         ; "promote-until-clean",
           return (Promote { lifetime = Until_clean
                           ; into = None
@@ -2210,6 +2228,7 @@ module Tests = struct
            ; names
            ; variants
            ; package = None
+           ; promote = None
            }
        ; locks
        ; package

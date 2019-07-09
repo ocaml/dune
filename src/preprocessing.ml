@@ -60,7 +60,7 @@ end = struct
     { pps; scope }
 
   let encode x =
-    let y = Digest.string (Marshal.to_string x []) in
+    let y = Digest.generic x in
     match Hashtbl.find reverse_table y with
     | None ->
       Hashtbl.set reverse_table y x;

@@ -304,6 +304,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name duplicate-project-names)
+ (deps (package dune) (source_tree test-cases/duplicate-project-names))
+ (action
+  (chdir
+   test-cases/duplicate-project-names
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name duplicate-target-no-loc)
  (deps (package dune) (source_tree test-cases/duplicate-target-no-loc))
  (action
@@ -1525,6 +1533,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name variants-rogue-impl)
+ (deps (package dune) (source_tree test-cases/variants-rogue-impl))
+ (action
+  (chdir
+   test-cases/variants-rogue-impl
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name variants-wrong-external-declaration)
  (deps
   (package dune)
@@ -1532,6 +1548,14 @@
  (action
   (chdir
    test-cases/variants-wrong-external-declaration
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
+ (name vendor)
+ (deps (package dune) (source_tree test-cases/vendor))
+ (action
+  (chdir
+   test-cases/vendor
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
@@ -1631,6 +1655,7 @@
   (alias dup-fields)
   (alias duplicate-c-cxx)
   (alias duplicate-c-cxx-obj)
+  (alias duplicate-project-names)
   (alias duplicate-target-no-loc)
   (alias embed-jbuild)
   (alias enabled_if)
@@ -1777,7 +1802,9 @@
   (alias variants-external-declaration-conflict)
   (alias variants-multi-project)
   (alias variants-only-package)
+  (alias variants-rogue-impl)
   (alias variants-wrong-external-declaration)
+  (alias vendor)
   (alias vlib)
   (alias vlib-default-impl)
   (alias vlib-wrong-default-impl)
@@ -1823,6 +1850,7 @@
   (alias dup-fields)
   (alias duplicate-c-cxx)
   (alias duplicate-c-cxx-obj)
+  (alias duplicate-project-names)
   (alias duplicate-target-no-loc)
   (alias embed-jbuild)
   (alias enabled_if)
@@ -1946,7 +1974,9 @@
   (alias variants-external-declaration-conflict)
   (alias variants-multi-project)
   (alias variants-only-package)
+  (alias variants-rogue-impl)
   (alias variants-wrong-external-declaration)
+  (alias vendor)
   (alias vlib)
   (alias vlib-default-impl)
   (alias vlib-wrong-default-impl)

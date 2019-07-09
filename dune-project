@@ -3,6 +3,7 @@
 
 (implicit_transitive_deps false)
 (generate_opam_files true)
+(wrapped_executables true)
 
 (license MIT)
 (maintainers "Jane Street Group, LLC <opensource@janestreet.com>")

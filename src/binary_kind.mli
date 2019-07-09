@@ -12,4 +12,4 @@ include Dune_lang.Conv with type t := t
 
 val all : t list
 
-val pp : Format.formatter -> t -> unit
+val to_dyn : t -> Dyn.t

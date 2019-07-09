@@ -171,7 +171,7 @@ module Mode_conf : sig
 
   val decode : t Dune_lang.Decoder.t
   val compare : t -> t -> Ordering.t
-  val pp : Format.formatter -> t -> unit
+  val to_dyn : t -> Dyn.t
 
   module Set : sig
     include Set.S with type elt = t
@@ -296,6 +296,28 @@ module Install_conf : sig
     }
 end
 
+module Promote : sig
+  module Lifetime : sig
+    type t =
+      | Unlimited
+      (** The promoted file will be deleted by [dune clean] *)
+      | Until_clean
+  end
+
+  module Into : sig
+    type t =
+      { loc : Loc.t
+      ; dir : string
+      }
+  end
+
+  type t =
+    { lifetime : Lifetime.t
+    ; into : Into.t option
+    ; only : Predicate_lang.t option
+    }
+end
+
 module Executables : sig
   module Link_mode : sig
     type t =
@@ -314,7 +336,7 @@ module Executables : sig
 
     val compare : t -> t -> Ordering.t
 
-    val pp : t Fmt.t
+    val to_dyn : t -> Dyn.t
 
     module Set : Set.S with type elt = t
   end
@@ -327,6 +349,7 @@ module Executables : sig
     ; buildable  : Buildable.t
     ; variants   : (Loc.t * Variant.Set.t) option
     ; package    : Package.t option
+    ; promote    : Promote.t option
     }
 end
 
@@ -346,28 +369,6 @@ module Rule : sig
   end
 
   module Mode : sig
-    module Promote : sig
-      module Lifetime : sig
-        type t =
-          | Unlimited
-          (** The promoted file will be deleted by [dune clean] *)
-          | Until_clean
-      end
-
-      module Into : sig
-        type t =
-          { loc : Loc.t
-          ; dir : string
-          }
-      end
-
-      type t =
-        { lifetime : Lifetime.t
-        ; into : Into.t option
-        ; only : Predicate_lang.t option
-        }
-    end
-
     type t =
       | Standard
       (** Only use this rule if  the source files don't exist. *)

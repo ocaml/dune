@@ -161,7 +161,8 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
     in
     let allow_approx_merlin =
       let dune_project = Scope.project scope in
-      Dune_project.allow_approx_merlin dune_project in
+      let dir_is_vendored = Super_context.dir_is_vendored sctx src_dir in
+      dir_is_vendored || Dune_project.allow_approx_merlin dune_project in
     Option.iter (Merlin.merge_all ~allow_approx_merlin merlins)
       ~f:(fun m ->
         let more_src_dirs =

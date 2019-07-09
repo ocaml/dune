@@ -11,7 +11,10 @@ include struct
   let find_exn t key = Option.value_exn (find_opt t key)
 end
 
-module Make(H : Hashable.S) = struct
+module Make(H : sig
+    include Hashable.S
+    val to_dyn : t -> Dyn.t
+  end) = struct
   include MoreLabels.Hashtbl.Make(H)
 
   include struct
@@ -25,7 +28,14 @@ module Make(H : Hashable.S) = struct
 
   include struct
     let find = find_opt
-    let find_exn t key = Option.value_exn (find_opt t key)
+    let find_exn t key =
+      match find_opt t key with
+      | Some v -> v
+      | None ->
+        Code_error.raise "Hashtbl.find_exn"
+          [ "key", H.to_dyn key
+          ]
+
     let set t key data = add t ~key ~data
 
     let find_or_add t key ~f =
@@ -56,13 +66,16 @@ module Make(H : Hashable.S) = struct
   let of_list_exn l =
     match of_list l with
     | Result.Ok h -> h
-    | Error (_, _, _) ->
-      Code_error.raise "Hashtbl.of_list_exn duplicate keys" []
+    | Error (key, _, _) ->
+      Code_error.raise "Hashtbl.of_list_exn duplicate keys"
+        ["key", H.to_dyn key]
 
   let add_exn t key data =
     match find t key with
     | None -> set t key data
-    | Some _ -> Code_error.raise "Hastbl.add_exn: key already exists" []
+    | Some _ ->
+      Code_error.raise "Hastbl.add_exn: key already exists"
+        ["key", H.to_dyn key]
 
   let add t key data =
     match find t key with

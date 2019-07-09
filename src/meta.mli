@@ -47,7 +47,7 @@ module Simplified : sig
     ; subs : t list
     }
 
-  val pp : Format.formatter -> t -> unit
+  val to_dyn : t -> Dyn.t
 end
 
 val load : Path.t -> name:Lib_name.t option -> Simplified.t

@@ -209,6 +209,9 @@ module Map = struct
                              (Var.Values [String context.system])
       ; "model"          , since ~version:(1, 10)
                              (Var.Values [String context.model])
+      ; "ignoring_promoted_rules",
+        since ~version:(1, 10)
+          (Var.Values [String (string_of_bool !Clflags.ignore_promoted_rules)])
       ]
     in
     { vars =

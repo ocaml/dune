@@ -1107,6 +1107,9 @@ Dune supports the following variables:
   the same as ``ocaml-config:model``
 - ``system`` is the name of the OS the build is targetting. This is the same as
   ``ocaml-config:system``
+- ``ignoring_promoted_rule`` is ``true`` if
+  ``--ignore-promoted-rules`` was passed on the command line and
+  ``false`` otherwise
 
 In addition, ``(action ...)`` fields support the following special variables:
 

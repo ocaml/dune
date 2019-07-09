@@ -34,14 +34,13 @@ let setup_env ~capture_outputs =
 let scan_workspace ?(log=Log.no_log)
       ?workspace ?workspace_file
       ?x
-      ?ignore_promoted_rules
       ?(capture_outputs=true)
       ?profile
       ~ancestor_vcs
       () =
   let env = setup_env ~capture_outputs in
   let conf =
-    Dune_load.load ?ignore_promoted_rules ~ancestor_vcs ()
+    Dune_load.load ~ancestor_vcs ()
   in
   let workspace =
     match workspace with

@@ -72,6 +72,7 @@ let set_common_other c ~targets =
       ];
   Clflags.always_show_command_line :=
     c.always_show_command_line;
+  Clflags.ignore_promoted_rules := c.ignore_promoted_rules;
   Option.iter ~f:Dune.Stats.enable c.stats_trace_file
 
 let set_common c ~targets =
@@ -188,7 +189,9 @@ module Options_implied_by_dash_p = struct
            & flag
            & info ["ignore-promoted-rules"] ~docs
                ~doc:"Ignore rules with (mode promote),
-                     except ones with (only ...)")
+                     except ones with (only ...). The variable
+                     %{ignoring_promoted_rules} in dune files reflects
+                     whether this option was passed or not.")
     and+ config_file =
       let+ x =
         one_of

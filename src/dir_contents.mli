@@ -22,7 +22,11 @@ val modules_of_library : t -> name:Lib_name.t -> Modules.t
 val c_sources_of_library : t -> name:Lib_name.t -> C.Sources.t
 
 (** Modules attached to a set of executables. *)
-val modules_of_executables : t -> first_exe:string -> Modules.t
+val modules_of_executables
+  : t
+  -> obj_dir:Path.Build.t Obj_dir.t
+  -> first_exe:string
+  -> Modules.t
 
 (** Find out what buildable a module is part of *)
 val lookup_module : t -> Module.Name.t -> Dune_file.Buildable.t option

@@ -485,9 +485,6 @@ let rec lib_interface = function
   | Stdlib w -> Stdlib.lib_interface w
   | Impl { impl = _; vlib } -> lib_interface vlib
 
-let exe_unwrapped m = Unwrapped m
-let exe_wrapped ~src_dir ~modules = Wrapped (Wrapped.exe ~src_dir ~modules)
-
 let rec main_module_name = function
   | Singleton m -> Some (Module.name m)
   | Unwrapped _ -> None
@@ -576,6 +573,12 @@ let singleton_exe m =
     let main_module_name = (Mangle.prefix mangle).public in
     Module.with_wrapper m ~main_module_name
   )
+
+let exe_unwrapped m = Unwrapped m
+let exe_wrapped ~src_dir ~modules =
+  match as_singleton modules with
+  | None -> Wrapped (Wrapped.exe ~src_dir ~modules)
+  | Some m -> singleton_exe m
 
 let rec impl_only = function
   | Stdlib w -> Stdlib.impl_only w

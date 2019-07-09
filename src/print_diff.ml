@@ -24,14 +24,17 @@ let print ?(skip_trailing_cr=Sys.win32) path1 path2 =
       ]
   in
   let normal_diff () =
-    match Bin.which ~path:(Env.path Env.initial) "diff" with
+    let which bin = Option.map (Bin.which ~path:(Env.path Env.initial) bin) ~f:(fun path -> path, bin) in
+    let (|||) a b = if a = None then b else a in
+    match which "git" ||| which "diff" with
     | None -> fallback ()
-    | Some prog ->
+    | Some (prog, bin) ->
       Format.eprintf "%a@?" Loc.print loc;
       let* () =
         Process.run ~dir ~env:Env.initial Strict prog
           (List.concat
-             [ ["-u"]
+             [ if bin = "git" then ["diff"; "--no-index"; "--color=always"] else []
+             ; ["-u"]
              ; if skip_trailing_cr then ["--strip-trailing-cr"] else []
              ; [ file1; file2 ]
              ])

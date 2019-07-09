@@ -25,8 +25,9 @@ module T = struct
     if t.status_line_len > 0 then
       Printf.eprintf "\r%*s\r" t.status_line_len ""
 
-  let show_status_line s =
-    Ansi_color.prerr s
+  let show_status_line t =
+    if t.status_line_len > 0 then
+      Ansi_color.prerr t.status_line
 
   let update_status_line t status_line =
     if t.display = Progress then begin
@@ -37,27 +38,29 @@ module T = struct
         String.length (Format.asprintf "%a" Pp.render_ignore_tags status_line)
       in
       hide_status_line t;
-      show_status_line status_line;
-      flush stderr;
       t.status_line <- status_line;
-      t.status_line_len <- status_line_len
+      t.status_line_len <- status_line_len;
+      show_status_line t;
+      flush stderr;
     end
 
   let print t msg =
     hide_status_line t;
     prerr_string msg;
-    show_status_line t.status_line;
+    show_status_line t;
     flush stderr
 
   let print_user_message t ?config msg =
     hide_status_line t;
     Option.iter msg.User_message.loc ~f:(Loc.print Format.err_formatter);
     User_message.prerr ?config { msg with loc = None };
-    show_status_line t.status_line;
+    show_status_line t;
     flush stderr
 
-  let hide_status_line t =
+  let clear_status_line t =
     hide_status_line t;
+    t.status_line <- Pp.nop;
+    t.status_line_len <- 0;
     flush stderr
 
 end
@@ -77,7 +80,7 @@ let t () =
 let display () = (t ()).display
 
 let update_status_line status_line = T.update_status_line (t ()) status_line
-let hide_status_line () = T.hide_status_line (t ())
+let clear_status_line () = T.clear_status_line (t ())
 let print msg =
   match !t_var with
   | None -> Printf.eprintf "%s%!" msg

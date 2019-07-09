@@ -534,7 +534,7 @@ let update_status_line () =
   let gen_status_line = !status_line_generator () in
   match gen_status_line with
   | { message = None; _ } ->
-    Console.hide_status_line ();
+    Console.clear_status_line ();
   | { message = Some status_line; show_jobs } ->
     let status_line =
       if show_jobs then
@@ -667,7 +667,7 @@ end = struct
     let* () = Fiber.yield () in
     let count = Event.pending_jobs () in
     if count = 0 then begin
-      Console.hide_status_line ();
+      Console.clear_status_line ();
       Fiber.return Done
     end else begin
       update_status_line ();

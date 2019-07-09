@@ -1,3 +1,6 @@
+(** Manage printing user message and keeping progress information in the status line *)
+
+
 module Display : sig
 
     type t =
@@ -23,9 +26,9 @@ val init : Display.t -> unit
 (** Everything below this line requires [init] to have been called earlier. *)
 
 val update_status_line : User_message.Style.t Pp.t -> unit
-(** Update the status line if the display is in progress mode *)
+(** Update the status line if the display is in progress mode. *)
 
-val hide_status_line : unit -> unit
-(** Hide the status line *)
+val clear_status_line : unit -> unit
+(** Clear the status line *)
 
 val display : unit -> Display.t

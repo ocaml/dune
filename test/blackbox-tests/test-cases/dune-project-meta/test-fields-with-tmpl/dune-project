@@ -51,7 +51,7 @@ JavaScript via [js_of_ocaml](http://ocsigen.org/js_of_ocaml)."))
   (github (= :version))
   (cohttp (>= 0.99.0))
   (cohttp-lwt-unix (>= 0.99.0))
-  stringext
+  (stringext)
   (lambda-term (>= 2.0))
   (cmdliner (>= 0.9.8))
   base-unix)

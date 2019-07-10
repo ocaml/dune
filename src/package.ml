@@ -152,10 +152,13 @@ module Dependency = struct
     let open Dune_lang.Decoder in
     let constrained =
       let+ name = Name.decode
-      and+ expr = Constraint.decode
+      and+ expr =
+        peek >>= function
+        | None -> return None
+        | Some _ -> Constraint.decode >>| fun v -> Some v
       in
       { name
-      ; constraint_ = Some expr
+      ; constraint_ = expr
       }
     in
     if_list

@@ -40,14 +40,16 @@ module Clients = Map.Make (ClientsKey)
 
 type t =
   { root: Path.t option
+  ; log: Log.t
   ; mutable socket: Unix.file_descr option
   ; mutable clients: (client * Thread.t) Clients.t
   ; mutable endpoint: string option }
 
 exception Error of string
 
-let make ?root () : t =
-  {root; socket= None; clients= Clients.empty; endpoint= None}
+let make ?root ?log () : t =
+  let log = match log with Some log -> log | None -> Log.create () in
+  {root; log; socket= None; clients= Clients.empty; endpoint= None}
 
 let getsockname = function
   | Unix.ADDR_UNIX _ ->
@@ -64,7 +66,7 @@ exception Stop
 let stop manager =
   match manager.socket with
   | Some fd ->
-      Printf.printf "stop\n%!" ;
+      Log.infof manager.log "stop" ;
       manager.socket <- None ;
       let clean f = ignore (Clients.iter ~f manager.clients) in
       clean (fun (client, _) -> Unix.shutdown client.fd Unix.SHUTDOWN_ALL) ;
@@ -122,7 +124,7 @@ let run ?(port_f = ignore) ?(port = 0) manager =
         | None ->
             Unix.close client.fd ; Result.Error "no compatible versions"
         | Some (major, minor) as v ->
-            Printf.printf "negotiated version: %i.%i\n%!" major minor ;
+            Log.infof manager.log "negotiated version: %i.%i" major minor ;
             client.version <- v ;
             Result.ok () )
     | args ->
@@ -281,7 +283,7 @@ let run ?(port_f = ignore) ?(port = 0) manager =
                          [ Sexp.Atom (string_of_int maj)
                          ; Sexp.Atom (string_of_int min) ] ))
                     my_versions )) ;
-          Printf.printf "accept client: %s\n%!" (peer_name client.peer) ;
+          Log.infof manager.log "accept client: %s" (peer_name client.peer) ;
           let rec input =
             Stream.of_channel (Unix.in_channel_of_descr client.fd)
           and handle input =
@@ -289,7 +291,8 @@ let run ?(port_f = ignore) ?(port = 0) manager =
             else
               match Stream.peek input with
               | None ->
-                  Printf.printf "client %s ended\n%!" (peer_name client.peer)
+                  Log.infof manager.log "client %s ended"
+                    (peer_name client.peer)
               | Some '\n' ->
                   Stream.junk input ;
                   (handle [@tailcall]) input
@@ -301,12 +304,12 @@ let run ?(port_f = ignore) ?(port = 0) manager =
                       ~f:(fun r -> "parse error: " ^ r)
                       (Csexp.parse input)
                     >>= fun cmd ->
-                    Printf.printf "received command: %s\n%!"
+                    Log.infof manager.log "received command: %s"
                       (Sexp.to_string cmd) ;
                     handle_cmd client cmd
                   with
                   | Result.Error e ->
-                      Printf.fprintf stderr "command error: %s\n%!" e
+                      Log.infof manager.log "command error: %s" e
                   | _ ->
                       ()) ;
                   (handle [@tailcall]) input
@@ -318,10 +321,10 @@ let run ?(port_f = ignore) ?(port = 0) manager =
               Unix.close client.fd
             with
           | Unix.Unix_error (Unix.EBADF, _, _) ->
-              Printf.printf "client %s ended\n%!" (peer_name client.peer)
+              Log.infof manager.log "client %s ended" (peer_name client.peer)
           | Sys_error msg ->
-              Printf.printf "client %s ended: %s\n%!" (peer_name client.peer)
-                msg ) ;
+              Log.infof manager.log "client %s ended: %s"
+                (peer_name client.peer) msg ) ;
           manager.clients <- Clients.remove manager.clients client.fd
         in
         try Exn.protect ~f ~finally

@@ -106,7 +106,16 @@ let start () =
       let f () =
         Path.mkdir_p (Path.of_string runtime_dir) ;
         let f () =
-          let manager = DuneManager.make ~root:!root () in
+          let manager =
+            DuneManager.make ~root:!root
+              ~log:
+                (let display =
+                   if !foreground then Console.Display.Verbose
+                   else Console.Display.Quiet
+                 and path = Path.L.relative !root ["log"] in
+                 Log.create ~display ~path ())
+              ()
+          in
           let port_f port =
             if make_port_file !port_path port = None then
               DuneManager.stop manager

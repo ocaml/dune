@@ -84,8 +84,8 @@ let deps_of cctx ~ml_kind unit =
       let dep = Obj_dir.Module.dep obj_dir in
       let context = SC.context sctx in
       let parse_module_names = parse_module_names ~modules in
-      let all_deps_file = dep source ~kind:Transitive in
-      let ocamldep_output = dep source ~kind:Immediate in
+      let all_deps_file = dep (Transitive (unit, ml_kind)) in
+      let ocamldep_output = dep (Immediate source) in
       SC.add_rule sctx ~dir
         (let flags =
            Option.value (Module.pp_flags unit) ~default:(Build.return []) in
@@ -99,16 +99,17 @@ let deps_of cctx ~ml_kind unit =
         );
       let build_paths dependencies =
         let dependency_file_path m =
-          let source m =
+          let ml_kind m =
             if Module.kind m = Alias then
               None
+            else if Module.has m ~ml_kind:Intf then
+              Some Ml_kind.Intf
             else
-              match Module.source m ~ml_kind:Intf with
-              | Some _ as x -> x
-              | None -> Module.source m ~ml_kind:Impl
+              Some Impl
           in
-          let module_file_ = source m in
-          Option.map ~f:(fun p -> Path.build (dep p ~kind:Transitive)) module_file_
+          ml_kind m
+          |> Option.map ~f:(fun ml_kind ->
+            Path.build (dep (Transitive (m, ml_kind))))
         in
         List.filter_map dependencies ~f:dependency_file_path
       in
@@ -140,9 +141,9 @@ let graph_of_remote_lib ~obj_dir ~modules =
     else
       match Module.source unit ~ml_kind with
       | None -> Build.return []
-      | Some source ->
+      | Some _ ->
         let all_deps_file =
-          Obj_dir.Module.dep obj_dir source ~kind:Transitive in
+          Obj_dir.Module.dep obj_dir (Transitive (unit, ml_kind)) in
         Build.memoize (Path.Build.to_string all_deps_file)
           (Build.lines_of (Path.build all_deps_file)
            >>^ parse_module_names ~unit ~modules)

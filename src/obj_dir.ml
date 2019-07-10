@@ -326,19 +326,21 @@ module Module = struct
 
   module Dep = struct
     type t =
-      | Immediate
-      | Transitive
+      | Immediate of Module.File.t
+      | Transitive of Module.t * Ml_kind.t
 
-    let ext = function
-      | Immediate -> ".d"
-      | Transitive -> ".all-deps"
+    let basename = function
+      | Immediate f -> Path.basename (Module.File.path f) ^ ".d"
+      | Transitive (m, ml_kind) ->
+        sprintf "%s.%s.all-deps"
+          (Module.obj_name m)
+          (Ml_kind.choose ml_kind ~intf:"intf" ~impl:"impl")
   end
 
-  let dep t file ~kind =
+  let dep t dep =
     let dir = obj_dir t in
-    let name = Path.basename (Module.File.path file) in
-    let ext = Dep.ext kind in
-    Path.Build.relative dir (name ^ ext)
+    let name = Dep.basename dep in
+    Path.Build.relative dir name
 
   module L = struct
     let o_files t modules ~ext_obj =

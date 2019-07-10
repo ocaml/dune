@@ -110,9 +110,9 @@ module Module : sig
 
   module Dep : sig
     type t =
-      | Immediate
-      | Transitive
+      | Immediate of Module.File.t
+      | Transitive of Module.t * Ml_kind.t
   end
 
-  val dep : Path.Build.t t -> Module.File.t -> kind:Dep.t -> Path.Build.t
+  val dep : Path.Build.t t -> Dep.t -> Path.Build.t
 end

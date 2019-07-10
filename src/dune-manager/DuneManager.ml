@@ -11,8 +11,7 @@ type client =
   ; mutable common_metadata: Sexp.t list (* client owned *)
   ; mutable memory: Dune_memory.DuneMemory.memory (* client owned*)
   ; mutable repositories: (string * string * string) list (* client owned *)
-  ; mutable version: version option (* client owned*)
-  ; mutable tid: Thread.t option (* server owned *) }
+  ; mutable version: version option (* client owned*) }
 
 let make_path client path =
   if Filename.is_relative path then
@@ -30,19 +29,19 @@ let send client sexp =
   flush client.output
 
 module ClientsKey = struct
-  type t = client
+  type t = Unix.file_descr
 
-  let compare a b = Ordering.of_int (Pervasives.compare a.fd b.fd)
+  let compare a b = Ordering.of_int (Pervasives.compare a b)
 
   let to_dyn _ = Dyn.Opaque
 end
 
-module Clients = Set.Make (ClientsKey) (Map.Make (ClientsKey))
+module Clients = Map.Make (ClientsKey)
 
 type t =
   { root: Path.t option
   ; mutable socket: Unix.file_descr option
-  ; mutable clients: Clients.t
+  ; mutable clients: (client * Thread.t) Clients.t
   ; mutable endpoint: string option }
 
 exception Error of string
@@ -68,9 +67,9 @@ let stop manager =
       Printf.printf "stop\n%!" ;
       manager.socket <- None ;
       let clean f = ignore (Clients.iter ~f manager.clients) in
-      clean (fun client -> Unix.shutdown client.fd Unix.SHUTDOWN_ALL) ;
-      clean (fun client -> Option.iter ~f:Thread.join client.tid) ;
-      clean (fun client -> Unix.close client.fd) ;
+      clean (fun (client, _) -> Unix.shutdown client.fd Unix.SHUTDOWN_ALL) ;
+      clean (fun (_, tid) -> Thread.join tid) ;
+      clean (fun (client, _) -> Unix.close client.fd) ;
       Unix.close fd
   | _ ->
       ()
@@ -274,7 +273,6 @@ let run ?(port_f = ignore) ?(port = 0) manager =
     while Option.is_some manager.socket do
       let client_thread client =
         let f () =
-          manager.clients <- Clients.add manager.clients client ;
           send client
             (Sexp.List
                ( Sexp.Atom "lang" :: Sexp.Atom "dune-memory-protocol"
@@ -324,7 +322,7 @@ let run ?(port_f = ignore) ?(port = 0) manager =
           | Sys_error msg ->
               Printf.printf "client %s ended: %s\n%!" (peer_name client.peer)
                 msg ) ;
-          manager.clients <- Clients.remove manager.clients client
+          manager.clients <- Clients.remove manager.clients client.fd
         in
         try Exn.protect ~f ~finally
         with Unix.Unix_error (Unix.EBADF, _, _) -> ()
@@ -338,11 +336,15 @@ let run ?(port_f = ignore) ?(port = 0) manager =
         ; build_root= None
         ; common_metadata= []
         ; repositories= []
-        ; tid= None
         ; memory= Result.ok_exn (DuneMemory.make ?root:manager.root ()) }
       in
       let tid = Thread.create client_thread client in
-      client.tid <- Some tid
+      manager.clients
+      <- ( match Clients.add manager.clients client.fd (client, tid) with
+         | Result.Ok v ->
+             v
+         | Result.Error _ ->
+             failwith "duplicate socket" )
     done
   in
   try Exn.protect ~f ~finally

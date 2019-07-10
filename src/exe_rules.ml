@@ -117,19 +117,11 @@ let executables_rules ~sctx ~dir ~dir_kind ~expander
     ~link_flags
     ~promote:exes.promote;
 
-  let flags =
-    match Modules.alias_module modules with
-    | None -> Ocaml_flags.common flags
-    | Some m ->
-      Ocaml_flags.prepend_common
-        ["-open"; Module.Name.to_string (Module.name m)] flags
-      |> Ocaml_flags.common
-  in
-
   (cctx,
    Merlin.make ()
      ~requires:requires_compile
      ~flags
+     ~modules
      ~preprocess:(Dune_file.Buildable.single_preprocess exes.buildable)
      ~obj_dir)
 

@@ -124,7 +124,8 @@ let run ?(port_f = ignore) ?(port = 0) manager =
         | None ->
             Unix.close client.fd ; Result.Error "no compatible versions"
         | Some (major, minor) as v ->
-            Log.infof manager.log "negotiated version: %i.%i" major minor ;
+            Log.infof manager.log "%s: negotiated version: %i.%i"
+              (peer_name client.peer) major minor ;
             client.version <- v ;
             Result.ok () )
     | args ->
@@ -291,8 +292,7 @@ let run ?(port_f = ignore) ?(port = 0) manager =
             else
               match Stream.peek input with
               | None ->
-                  Log.infof manager.log "client %s ended"
-                    (peer_name client.peer)
+                  Log.infof manager.log "%s: ended" (peer_name client.peer)
               | Some '\n' ->
                   Stream.junk input ;
                   (handle [@tailcall]) input
@@ -304,12 +304,13 @@ let run ?(port_f = ignore) ?(port = 0) manager =
                       ~f:(fun r -> "parse error: " ^ r)
                       (Csexp.parse input)
                     >>= fun cmd ->
-                    Log.infof manager.log "received command: %s"
-                      (Sexp.to_string cmd) ;
+                    Log.infof manager.log "%s: received command: %s"
+                      (peer_name client.peer) (Sexp.to_string cmd) ;
                     handle_cmd client cmd
                   with
                   | Result.Error e ->
-                      Log.infof manager.log "command error: %s" e
+                      Log.infof manager.log "%s: command error: %s"
+                        (peer_name client.peer) e
                   | _ ->
                       ()) ;
                   (handle [@tailcall]) input
@@ -321,10 +322,10 @@ let run ?(port_f = ignore) ?(port = 0) manager =
               Unix.close client.fd
             with
           | Unix.Unix_error (Unix.EBADF, _, _) ->
-              Log.infof manager.log "client %s ended" (peer_name client.peer)
+              Log.infof manager.log "%s: ended" (peer_name client.peer)
           | Sys_error msg ->
-              Log.infof manager.log "client %s ended: %s"
-                (peer_name client.peer) msg ) ;
+              Log.infof manager.log "%s: ended: %s" (peer_name client.peer) msg
+          ) ;
           manager.clients <- Clients.remove manager.clients client.fd
         in
         try Exn.protect ~f ~finally

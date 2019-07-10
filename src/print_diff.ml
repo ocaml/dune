@@ -24,22 +24,23 @@ let print ?(skip_trailing_cr=Sys.win32) path1 path2 =
       ]
   in
   let normal_diff () =
-    let which bin = Option.map (Bin.which ~path:(Env.path Env.initial) bin) ~f:(fun path -> path, bin) in
-    let (|||) a b = if a = None then b else a in
-    match which "git" ||| which "diff" with
-    | None -> fallback ()
-    | Some (prog, bin) ->
-      Format.eprintf "%a@?" Loc.print loc;
-      let* () =
-        Process.run ~dir ~env:Env.initial Strict prog
-          (List.concat
-             [ if bin = "git" then ["diff"; "--no-index"; "--color=always"] else []
-             ; ["-u"]
-             ; if skip_trailing_cr then ["--strip-trailing-cr"] else []
-             ; [ file1; file2 ]
-             ])
-      in
-      fallback ()
+    let path, args =
+      let which prog = Bin.which ~path:(Env.path Env.initial) prog in
+      match which "git" with
+      | Some path ->
+        path, [ "diff"; "--no-index"; "--color=always"; "-u" ]
+      | None ->
+        match which "diff" with
+        | Some path ->
+          path, [ "-u" ]
+        | None ->
+          fallback ()
+    in
+    let args = if skip_trailing_cr then args @ [ "--strip-trailing-cr" ] else args in
+    let args = args @ [ file1; file2 ] in
+    Format.eprintf "%a@?" Loc.print loc;
+    let* () = Process.run ~dir ~env:Env.initial Strict path args in
+    fallback ()
   in
   match !Clflags.diff_command with
   | Some "-" -> fallback ()

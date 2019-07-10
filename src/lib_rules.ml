@@ -348,7 +348,6 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
       Modules.map_user_written modules ~f:(Preprocessing.pp_module pp)
     in
     let modules = Vimpl.impl_modules vimpl modules in
-    let alias_module = Modules.alias_module modules in
 
     let cctx =
       let requires_compile = Lib.Compile.direct_requires compile_info in
@@ -402,15 +401,6 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
     Odoc.setup_library_odoc_rules sctx lib ~obj_dir ~requires:requires_compile
       ~modules ~dep_graphs ~scope;
 
-    let flags =
-      match alias_module with
-      | None -> Ocaml_flags.common flags
-      | Some m ->
-        Ocaml_flags.prepend_common
-          ["-open"; Module.Name.to_string (Module.name m)] flags
-        |> Ocaml_flags.common
-    in
-
     Sub_system.gen_rules
       { super_context = sctx
       ; dir
@@ -420,18 +410,14 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
       ; compile_info
       };
 
-    (cctx,
-     let objs_dirs =
-       Obj_dir.of_local obj_dir
-       |> Obj_dir.all_cmis
-       |> Path.Set.of_list
-     in
-     Merlin.make ()
-       ~requires:requires_compile
-       ~flags
-       ~preprocess:(Buildable.single_preprocess lib.buildable)
-       ~libname:(snd lib.name)
-       ~objs_dirs
+    ( cctx
+    , Merlin.make ()
+        ~requires:requires_compile
+        ~flags
+        ~modules
+        ~preprocess:(Buildable.single_preprocess lib.buildable)
+        ~libname:(snd lib.name)
+        ~obj_dir
     )
 
   let rules (lib : Library.t) ~dir_contents ~dir ~expander ~scope

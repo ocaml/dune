@@ -11,7 +11,7 @@ val make
   -> ?preprocess:Dune_file.Preprocess.t
   -> ?libname:Lib_name.Local.t
   -> ?source_dirs: Path.Source.Set.t
-  -> ?objs_dirs:Path.Set.t
+  -> obj_dir:Path.Build.t Obj_dir.t
   -> unit
   -> t
 

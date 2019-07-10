@@ -110,13 +110,18 @@ let make
       ?(preprocess=Dune_file.Preprocess.No_preprocessing)
       ?libname
       ?(source_dirs=Path.Source.Set.empty)
-      ?(objs_dirs=Path.Set.empty)
+      ~obj_dir
       () =
   (* Merlin shouldn't cause the build to fail, so we just ignore errors *)
   let requires =
     match requires with
     | Ok    l -> Lib.Set.of_list l
     | Error _ -> Lib.Set.empty
+  in
+  let objs_dirs =
+    Obj_dir.byte_dir obj_dir
+    |> Path.build
+    |> Path.Set.singleton
   in
   { requires
   ; flags      = Build.catch flags    ~on_error:(fun _ -> [])

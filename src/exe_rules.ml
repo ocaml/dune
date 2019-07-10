@@ -127,17 +127,11 @@ let executables_rules ~sctx ~dir ~dir_kind ~expander
   in
 
   (cctx,
-   let objs_dirs =
-     Obj_dir.public_cmi_dir obj_dir
-     |> Path.build
-     |> Path.Set.singleton
-   in
    Merlin.make ()
      ~requires:requires_compile
      ~flags
      ~preprocess:(Dune_file.Buildable.single_preprocess exes.buildable)
-     (* only public_dir? *)
-     ~objs_dirs)
+     ~obj_dir)
 
 let rules ~sctx ~dir ~dir_contents ~scope ~expander ~dir_kind
       (exes : Dune_file.Executables.t) =

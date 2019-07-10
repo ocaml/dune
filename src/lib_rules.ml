@@ -421,17 +421,12 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
       };
 
     (cctx,
-     let objs_dirs =
-       Obj_dir.of_local obj_dir
-       |> Obj_dir.all_cmis
-       |> Path.Set.of_list
-     in
      Merlin.make ()
        ~requires:requires_compile
        ~flags
        ~preprocess:(Buildable.single_preprocess lib.buildable)
        ~libname:(snd lib.name)
-       ~objs_dirs
+       ~obj_dir
     )
 
   let rules (lib : Library.t) ~dir_contents ~dir ~expander ~scope

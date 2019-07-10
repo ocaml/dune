@@ -61,7 +61,14 @@ val map_user_written : t -> f:(Module.t -> Module.t) -> t
 (** Returns all the compatibility modules. *)
 val wrapped_compat : t -> Module.Name_map.t
 
-val obj_map : t -> f:(Module.t -> 'a) -> 'a Module.Obj_map.t
+module Sourced_module : sig
+  type t =
+    | Normal of Module.t
+    | Imported_from_vlib of Module.t
+    | Impl_of_virtual_module of Module.t Ml_kind.Dict.t
+end
+
+val obj_map : t -> f:(Sourced_module.t -> 'a) -> 'a Module.Obj_map.t
 
 (** List of entry modules visible to users of the library. For wrapped
     libraries, this is always one module. For unwrapped libraries, this could be

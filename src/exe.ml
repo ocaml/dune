@@ -199,7 +199,7 @@ let build_and_link_many
       cctx
   =
   let modules = Compilation_context.modules cctx in
-  let dep_graphs = Ocamldep.rules cctx ~modules in
+  let dep_graphs = Dep_rules.rules cctx ~modules in
   Module_compilation.build_all cctx ~dep_graphs;
 
   let link_time_code_gen = Link_time_code_gen.handle_special_libs cctx in

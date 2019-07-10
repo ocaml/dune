@@ -674,15 +674,36 @@ let version_installed t ~install_dir =
   in
   loop t
 
-let rec obj_map t ~f =
-  match t with
-  | Singleton m -> Module.Obj_map.add_exn Module.Obj_map.empty m (f m)
-  | Unwrapped m ->
-    Module.Name.Map.fold m ~init:Module.Obj_map.empty ~f:(fun m acc ->
-      Module.Obj_map.add_exn acc m (f m))
-  | Wrapped w -> Wrapped.obj_map w ~f
-  | Stdlib w -> Stdlib.obj_map w ~f
-  | Impl { impl ; vlib = _ } -> obj_map impl ~f
+module Sourced_module = struct
+  type t =
+    | Normal of Module.t
+    | Imported_from_vlib of Module.t
+    | Impl_of_virtual_module of Module.t Ml_kind.Dict.t
+end
+
+let rec obj_map
+  : 'a. t -> f:(Sourced_module.t -> 'a) -> 'a Module.Obj_map.t
+  = fun t ~f ->
+    let normal m = f (Sourced_module.Normal m) in
+    match t with
+    | Singleton m ->
+      Module.Obj_map.add_exn Module.Obj_map.empty m (normal m)
+    | Unwrapped m ->
+      Module.Name.Map.fold m ~init:Module.Obj_map.empty ~f:(fun m acc ->
+        Module.Obj_map.add_exn acc m (normal m))
+    | Wrapped w -> Wrapped.obj_map w ~f:normal
+    | Stdlib w -> Stdlib.obj_map w ~f:normal
+    | Impl { vlib; impl } ->
+      Module.Obj_map.merge (obj_map vlib ~f:Fn.id) (obj_map impl ~f:Fn.id)
+        ~f:(fun _ vlib impl ->
+          match vlib, impl with
+          | None, None -> assert false
+          | Some (Normal m), None -> Some (f (Sourced_module.Imported_from_vlib m))
+          | None, Some (Normal m) -> Some (f (Normal m))
+          | Some (Normal intf), Some (Normal impl) ->
+            Some (f (Sourced_module.Impl_of_virtual_module { intf; impl }))
+          | Some (Imported_from_vlib _ | Impl_of_virtual_module _), _
+          | _ , Some (Imported_from_vlib _ | Impl_of_virtual_module _) -> assert false)
 
 (* TODO perhaps return only public modules? *)
 let entry_modules = function

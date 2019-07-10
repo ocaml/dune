@@ -10,7 +10,6 @@ val make
   -> impl:Dune_file.Library.t
   -> vlib_modules:Modules.t
   -> vlib_foreign_objects:Path.t list
-  -> vlib_dep_graph:Dep_graph.Ml_kind.t
   -> t
 
 val impl : t -> Dune_file.Library.t
@@ -23,8 +22,10 @@ val impl_modules : t option -> Modules.t -> Modules.t
 
 val vlib : t -> Lib.t
 
-val vlib_dep_graph : t -> Dep_graph.Ml_kind.t
-
 (** Return the combined list of .o files for stubs consisting of .o files from
     the implementation and virtual library.*)
 val vlib_stubs_o_files : t option -> Path.t list
+
+val impl_cm_kind : t -> Cm_kind.t
+
+val vlib_obj_map : t -> Module.Name_map.t

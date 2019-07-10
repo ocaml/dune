@@ -45,11 +45,12 @@ let infof t fmt =
   | None ->
       Format.ikfprintf ignore Format.str_formatter fmt
   | Some t ->
+      Buffer.clear t.buf ;
       Format.kfprintf
         (fun ppf ->
           Format.pp_print_flush ppf () ;
           let s = Buffer.contents t.buf in
-          Buffer.clear t.buf ; info_internal t s )
+          info_internal t s )
         t.ppf fmt
 
 let command t ~command_line ~output ~exit_status =

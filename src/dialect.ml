@@ -124,9 +124,9 @@ let reason =
   ; file_kinds = Ml_kind.Dict.make ~intf ~impl
   }
 
-let ml_suffix dialect ml_kind =
-  match dialect.name with
-  | "ocaml" -> None
+let ml_suffix { file_kinds = { Ml_kind.Dict.intf ; impl } ; _ } ml_kind =
+  match ml_kind, intf.preprocess, impl.preprocess with
+  | Ml_kind.Intf, Filter.No_filter, _ | Impl, _, No_filter -> None
   | _ -> Some (extension ocaml ml_kind)
 
 module S = struct

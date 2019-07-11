@@ -143,12 +143,26 @@ module S = struct
     }
 
   let add { by_name ; by_extension } dialect =
-    { by_name      = String.Map.add_exn by_name dialect.name dialect
-    ; by_extension =
-        String.Map.add_exn
-          (String.Map.add_exn by_extension dialect.file_kinds.intf.extension dialect)
-          dialect.file_kinds.impl.extension dialect
-    }
+    let by_name =
+      match String.Map.add by_name dialect.name dialect with
+      | Ok by_name -> by_name
+      | Error _ ->
+        User_error.raise
+          [ Pp.textf "dialect %S is already defined" dialect.name ]
+    in
+    let add_ext map ext =
+      match String.Map.add map ext dialect with
+      | Ok map ->
+        map
+      | Error dialect ->
+        User_error.raise
+          [ Pp.textf "extension %S is already registered by dialect %S" ext dialect.name ]
+    in
+    let by_extension =
+      add_ext (add_ext by_extension dialect.file_kinds.intf.extension)
+        dialect.file_kinds.impl.extension
+    in
+    { by_name ; by_extension }
 
   let of_list dialects =
     List.fold_left ~f:add ~init:empty dialects

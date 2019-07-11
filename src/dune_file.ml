@@ -698,22 +698,20 @@ module Auto_format = struct
   let key =
     Dune_project.Extension.register syntax dparse_args to_dyn
 
-  let enabled_languages config =
+  let includes config =
     match config.enabled_for with
     | Default ver ->
       let in_1_0 =
         [Dialect "ocaml"; Dialect "reason"]
       in
-      let extra =
-        match Syntax.Version.compare ver (1, 1) with
-        | Lt -> []
-        | Eq | Gt -> [Dune]
-      in
-      in_1_0 @ extra
-    | Only l -> l
-
-  let includes config language =
-    List.mem language ~set:(enabled_languages config)
+      begin match Syntax.Version.compare ver (1, 1) with
+      | Lt ->
+        fun language -> List.mem language ~set:in_1_0
+      | Eq | Gt ->
+        fun _ -> true
+      end
+    | Only l ->
+      fun language -> List.mem language ~set:l
 
   let loc t = t.loc
 end

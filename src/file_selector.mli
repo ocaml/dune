@@ -15,8 +15,6 @@ val hash : t -> int
 
 val compare : t -> t -> Ordering.t
 
-val pp : t Fmt.t
-
 val encode : t Dune_lang.Encoder.t
 
 val to_dyn : t -> Dyn.t

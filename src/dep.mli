@@ -15,8 +15,6 @@ val alias : Alias.t -> t
 
 val compare : t -> t -> Ordering.t
 
-val pp : t Fmt.t
-
 type eval_pred = File_selector.t -> Path.Set.t
 
 module Trace : sig
@@ -49,8 +47,6 @@ module Set : sig
     -> f:(Path.t -> unit Fiber.t)
     -> eval_pred:eval_pred
     -> unit Fiber.t
-
-  val pp : t Fmt.t
 
   val dirs : t -> Path.Set.t
 end

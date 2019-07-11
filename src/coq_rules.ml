@@ -66,7 +66,7 @@ let setup_rule ~expander ~dir ~cc ~source_rule ~coq_flags ~file_flags
 
   if coq_debug
   then Format.eprintf "gen_rule coq_module: %a@\n%!"
-         Dyn.pp (Coq_module.to_dyn coq_module);
+         Pp.render_ignore_tags (Dyn.pp (Coq_module.to_dyn coq_module));
 
   let obj_dir = dir in
   let source    = Coq_module.source coq_module in

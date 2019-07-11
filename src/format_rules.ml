@@ -1,10 +1,5 @@
 open Import
 
-let flag_of_kind : Ml_kind.t -> _ =
-  function
-  | Impl -> "--impl"
-  | Intf -> "--intf"
-
 let add_diff sctx loc alias ~dir ~input ~output =
   let open Build.O in
   let action = Action.diff input output in
@@ -37,30 +32,11 @@ let gen_rules_output sctx (config : Dune_file.Auto_format.t) ~dialects ~expander
   let alias_formatted = Alias.fmt ~dir:output_dir in
   let resolve_program =
     Super_context.resolve_program ~dir sctx ~loc:(Some loc) in
-  let ocamlformat_deps = lazy (
-    depend_on_files ~named:[".ocamlformat"; ".ocamlformat-ignore"]
-      (Path.source source_dir)
-  ) in
+  let depend_on_files named = depend_on_files ~named (Path.source source_dir) in
   let setup_formatting file =
     let input_basename = Path.Source.basename file in
     let input = Path.Build.relative dir input_basename in
     let output = Path.Build.relative output_dir input_basename in
-
-    let ocaml kind =
-      let exe = resolve_program "ocamlformat" in
-      let args =
-        [ Command.Args.A (flag_of_kind kind)
-        ; Dep (Path.build input)
-        ; A "--name"
-        ; Path (Path.source file)
-        ; A "-o"
-        ; Target output
-        ]
-      in
-      Build.S.seq (Build.S.ignore (Lazy.force ocamlformat_deps))
-        (Command.run
-           ~dir:(Path.build (Super_context.build_dir sctx)) exe args)
-    in
 
     let formatter =
       let input = Path.build input in
@@ -73,25 +49,35 @@ let gen_rules_output sctx (config : Dune_file.Auto_format.t) ~dialects ~expander
       | _ ->
         let ext = Path.Source.extension file in
         begin match Dialect.S.find_by_extension dialects ext with
-        | Some (dialect, kind) when Dialect.name dialect = "ocaml" ->
-          if Dune_file.Auto_format.includes config (Dialect "ocaml") then
-            Some (ocaml kind)
-          else
-            None
         | Some (dialect, kind) ->
           if not (Dune_file.Auto_format.includes config (Dialect (Dialect.name dialect))) then
             None
           else begin
-            match Dialect.format dialect kind with
-            | Dialect.Filter.No_filter ->
-              begin match Dialect.preprocess dialect kind with
-              | Dialect.Filter.No_filter -> Some (ocaml kind)
-              | Action _ -> None
-              end
-            | Action (loc, action) ->
+            let format =
+              match Dialect.format dialect kind with
+              | Some _ as action ->
+                action
+              | None ->
+                begin match Dialect.preprocess dialect kind with
+                | None -> Dialect.format Dialect.ocaml kind
+                | Some _ -> None
+                end
+            in
+            match format with
+            | None ->
+              None
+            | Some (loc, action, extra_deps) ->
               let src = Path.as_in_build_dir_exn input in
-              Some (Preprocessing.action_for_pp sctx ~dep_kind:Lib_deps_info.Kind.Required
-                      ~loc ~expander ~action ~src ~target:(Some output))
+              let extra_deps =
+                match extra_deps with
+                | [] ->
+                    Build.return ()
+                | extra_deps ->
+                    Build.S.ignore (depend_on_files extra_deps)
+              in
+              Some (Build.S.seq extra_deps
+                      (Preprocessing.action_for_pp sctx ~dep_kind:Lib_deps_info.Kind.Required
+                         ~loc ~expander ~action ~src ~target:(Some output)))
           end
         | None -> None
         end

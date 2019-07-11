@@ -663,8 +663,8 @@ let setup_dialect_rules sctx ~dir ~dep_kind ~expander (m : Module.t) =
   let ml = Module.ml_source m in
   Module.iter m ~f:(fun ml_kind f ->
     match Dialect.preprocess f.dialect ml_kind with
-    | Dialect.Filter.No_filter -> ()
-    | Action (loc, action) ->
+    | None -> ()
+    | Some (loc, action) ->
       let src = Path.as_in_build_dir_exn f.path in
       let dst =
         Option.value_exn (Module.file ml ~ml_kind)

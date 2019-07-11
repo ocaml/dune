@@ -19,14 +19,6 @@ open! Stdune
     but a way to specify custom file extensions for OCaml code.
 *)
 
-module Filter : sig
-  type t =
-    | No_filter
-    | Action of Loc.t * Action_dune_lang.t
-
-  val to_dyn : t -> Dyn.t
-end
-
 type t
 
 val name : t -> string
@@ -37,9 +29,9 @@ val decode : t Dune_lang.Decoder.t
 
 val extension : t -> Ml_kind.t -> string
 
-val preprocess : t -> Ml_kind.t -> Filter.t
+val preprocess : t -> Ml_kind.t -> (Loc.t * Action_dune_lang.t) option
 
-val format : t -> Ml_kind.t -> Filter.t
+val format : t -> Ml_kind.t -> (Loc.t * Action_dune_lang.t * string list) option
 
 val ocaml : t
 

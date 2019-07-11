@@ -1,28 +1,11 @@
 open! Stdune
 
-module Filter = struct
-  type t =
-    | No_filter
-    | Action of Loc.t * Action_dune_lang.t
-
-  open Dyn.Encoder
-
-  let to_dyn = function
-    | No_filter ->
-        constr "no_filter" []
-    | Action (loc, action) ->
-        constr "action"
-          [ Loc.to_dyn loc
-          ; Dune_lang.to_dyn (Action_dune_lang.encode action)
-          ]
-end
-
 module File_kind = struct
   type t =
     { kind       : Ml_kind.t
     ; extension  : string
-    ; preprocess : Filter.t
-    ; format     : Filter.t
+    ; preprocess : (Loc.t * Action_dune_lang.t) option
+    ; format     : (Loc.t * Action_dune_lang.t * string list) option
     }
 
   let to_dyn { kind ; extension ; preprocess ; format } =
@@ -30,8 +13,8 @@ module File_kind = struct
     record
       [ "kind"      , Ml_kind.to_dyn kind
       ; "extension" , string extension
-      ; "preprocess", Filter.to_dyn preprocess
-      ; "format"    , Filter.to_dyn format
+      ; "preprocess", option (pair Loc.to_dyn Action_dune_lang.to_dyn) preprocess
+      ; "format"    , option (triple Loc.to_dyn Action_dune_lang.to_dyn (list string)) format
       ]
 end
 
@@ -52,14 +35,9 @@ let to_dyn { name ; file_kinds } =
 let decode =
   let open Dune_lang.Decoder in
   let kind kind =
-    let filter name =
-      let f (loc, action) = Filter.Action (loc, action) in
-      field name ~default:Filter.No_filter
-        (map ~f (located Action_dune_lang.decode))
-    in
     let+ extension  = field "extension" (map ~f:(fun s -> "." ^ s) string)
-    and+ preprocess = filter "preprocess"
-    and+ format     = filter "format"
+    and+ preprocess = field_o "preprocess" (located Action_dune_lang.decode)
+    and+ format     = field_o "format" (map ~f:(fun (loc, x) -> loc, x, []) (located Action_dune_lang.decode))
     in
     { File_kind.kind ; extension ; preprocess ; format }
   in
@@ -82,12 +60,22 @@ let format { file_kinds = { Ml_kind.Dict.intf ; impl } ; _ } = function
   | Impl         -> impl.format
 
 let ocaml =
+  let format kind =
+    let flag_of_kind = function
+      | Ml_kind.Impl -> "--impl"
+      | Intf         -> "--intf"
+    in
+    let module S = String_with_vars in
+    Action_dune_lang.chdir (S.virt_var __POS__ "workspace_root")
+      (Action_dune_lang.run (S.virt __POS__ "ocamlformat")
+         [ S.virt __POS__ (flag_of_kind kind) ; S.virt_var __POS__ "input-file" ])
+  in
   let file_kind kind extension =
     { File_kind.
       kind
     ; extension
-    ; preprocess = Filter.No_filter
-    ; format     = Filter.No_filter
+    ; preprocess = None
+    ; format     = Some (Loc.none, format kind, [ ".ocamlformat" ; ".ocamlformat-ignore" ])
     }
   in
   let intf = file_kind Ml_kind.Intf ".mli" in
@@ -114,8 +102,8 @@ let reason =
     { File_kind.
       kind
     ; extension
-    ; preprocess = Filter.Action (Loc.none, preprocess)
-    ; format     = Filter.Action (Loc.none, format)
+    ; preprocess = Some (Loc.none, preprocess)
+    ; format     = Some (Loc.none, format, [])
     }
   in
   let intf = file_kind Ml_kind.Intf ".rei" in
@@ -126,7 +114,7 @@ let reason =
 
 let ml_suffix { file_kinds = { Ml_kind.Dict.intf ; impl } ; _ } ml_kind =
   match ml_kind, intf.preprocess, impl.preprocess with
-  | Ml_kind.Intf, Filter.No_filter, _ | Impl, _, No_filter -> None
+  | Ml_kind.Intf, None, _ | Impl, _, None -> None
   | _ -> Some (extension ocaml ml_kind)
 
 module S = struct

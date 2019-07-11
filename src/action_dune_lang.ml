@@ -43,3 +43,6 @@ let decode =
              "if you meant for this to be executed with bash, write \
               (bash \"...\") instead"
          ])
+
+let to_dyn a =
+  Dune_lang.to_dyn (encode a)

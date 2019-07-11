@@ -50,8 +50,8 @@ let to_dyn { name ; file_kinds } =
     ]
 
 let extension { file_kinds = { Ml_kind.Dict.intf ; impl } ; _ } = function
-  | Ml_kind.Intf -> "." ^ intf.extension
-  | Impl         -> "." ^ impl.extension
+  | Ml_kind.Intf -> intf.extension
+  | Impl         -> impl.extension
 
 let preprocess { file_kinds = { Ml_kind.Dict.intf ; impl } ; _ } = function
   | Ml_kind.Intf -> intf.preprocess
@@ -59,7 +59,7 @@ let preprocess { file_kinds = { Ml_kind.Dict.intf ; impl } ; _ } = function
 
 let ml_suffix { file_kinds = { Ml_kind.Dict.intf ; impl } ; _ } ml_kind =
   match intf.extension, impl.extension, ml_kind with
-  | "mli", _, Ml_kind.Intf | _, "ml", Impl -> None
+  | ".mli", _, Ml_kind.Intf | _, ".ml", Impl -> None
   | _, _, Intf -> Some ".mli"
   | _, _, Impl -> Some ".ml"
 
@@ -82,8 +82,8 @@ let ocaml =
     ; format     = Filter.No_filter
     }
   in
-  let intf = file_kind Ml_kind.Intf "mli" in
-  let impl = file_kind Ml_kind.Impl "ml"  in
+  let intf = file_kind Ml_kind.Intf ".mli" in
+  let impl = file_kind Ml_kind.Impl ".ml"  in
   { name       = "ocaml"
   ; file_kinds = Ml_kind.Dict.make ~intf ~impl
   }
@@ -110,8 +110,8 @@ let reason =
     ; format     = Filter.Action (Loc.none, format)
     }
   in
-  let intf = file_kind Ml_kind.Intf "rei" in
-  let impl = file_kind Ml_kind.Impl "re"  in
+  let intf = file_kind Ml_kind.Intf ".rei" in
+  let impl = file_kind Ml_kind.Impl ".re"  in
   { name       = "reason"
   ; file_kinds = Ml_kind.Dict.make ~intf ~impl
   }

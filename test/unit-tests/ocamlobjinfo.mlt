@@ -2,7 +2,13 @@
 open Dune;;
 open! Stdune;;
 
-#install_printer Ocamlobjinfo.pp;;
+let pp ppf ooi =
+  Format.fprintf ppf "%a" Pp.render_ignore_tags
+    (Ocamlobjinfo.to_dyn ooi |> Dyn.pp)
+;;
+#install_printer pp;;
+
+[%%ignore]
 
 let fixture = {ocamlobjinfo|
 File _build/install/default/lib/dune/_stdune/stdune__Env.cmx

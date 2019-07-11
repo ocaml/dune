@@ -26,5 +26,3 @@ val test : 'a t -> 'a -> bool
 (** the user of this function must take care not to break the uniqueness of the
     underlying representation *)
 val contramap : 'a t -> f:('b -> 'a) -> map_id:(Dyn.t -> Dyn.t) -> 'b t
-
-val pp : _ t Fmt.t

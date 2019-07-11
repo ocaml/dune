@@ -41,7 +41,7 @@ module Encoder : sig
   val constr : string -> dyn list -> dyn
 end with type dyn := t
 
-val pp : Format.formatter -> t -> unit
+val pp : t -> _ Pp.t
 
 val opaque : t
 

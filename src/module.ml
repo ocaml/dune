@@ -240,14 +240,6 @@ let file t ~(ml_kind : Ml_kind.t) =
 
 let obj_name t = t.obj_name
 
-let odoc_file t ~doc_dir =
-  let base =
-    match t.visibility with
-    | Public -> doc_dir
-    | Private -> Utils.library_private_dir ~obj_dir:doc_dir
-  in
-  Path.Build.relative base (t.obj_name ^ ".odoc")
-
 let iter t ~f =
   Ml_kind.Dict.iteri t.source.files
     ~f:(fun kind -> Option.iter ~f:(f kind))

@@ -641,7 +641,7 @@ module Auto_format = struct
   let syntax =
     Syntax.create ~name:"fmt"
       ~desc:"integration with automatic formatters"
-      [ (1, 1) ]
+      [ (1, 2) ]
 
   type language =
     | Dialect of string

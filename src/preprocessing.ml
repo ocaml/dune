@@ -659,10 +659,10 @@ let action_for_pp sctx ~dep_kind ~loc ~expander ~action ~src ~target =
 
 (* Generate rules for the reason modules in [modules] and return a
    a new module with only OCaml sources *)
-let setup_reason_rules sctx ~dir ~dep_kind ~expander (m : Module.t) =
+let setup_dialect_rules sctx ~dir ~dep_kind ~expander (m : Module.t) =
   let ml = Module.ml_source m in
   Module.iter m ~f:(fun ml_kind f ->
-    match Dialect.preprocess f.syntax ml_kind with
+    match Dialect.preprocess f.dialect ml_kind with
     | Dialect.Filter.No_filter -> ()
     | Action (loc, action) ->
       let src = Path.as_in_build_dir_exn f.path in
@@ -760,7 +760,7 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess
     with
     | No_preprocessing ->
       (fun m ~lint ->
-         let ast = setup_reason_rules sctx ~dir ~dep_kind ~expander m in
+         let ast = setup_dialect_rules sctx ~dir ~dep_kind ~expander m in
          if lint then lint_module ~ast ~source:m;
          ast)
     | Action (loc, action) ->
@@ -772,7 +772,7 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess
              in
              SC.add_rule sctx ~loc ~dir
                (preprocessor_deps >>> action))
-           |> setup_reason_rules sctx ~dir ~dep_kind ~expander
+           |> setup_dialect_rules sctx ~dir ~dep_kind ~expander
          in
          if lint then lint_module ~ast ~source:m;
          ast)
@@ -795,7 +795,7 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess
                  ~standard:(Build.return ["--as-ppx"]))), args)
         in
         (fun m ~lint ->
-           let ast = setup_reason_rules sctx ~dir ~dep_kind ~expander m in
+           let ast = setup_dialect_rules sctx ~dir ~dep_kind ~expander m in
            if lint then lint_module ~ast ~source:m;
            pped_module ast ~f:(fun ml_kind src dst ->
              SC.add_rule sctx ~loc ~dir
@@ -844,7 +844,7 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess
         in
         let pp = Some pp_flags in
         (fun m ~lint ->
-           let ast = setup_reason_rules sctx ~dir ~dep_kind ~expander m in
+           let ast = setup_dialect_rules sctx ~dir ~dep_kind ~expander m in
            if lint then lint_module ~ast ~source:m;
            Module.set_pp ast pp)
       end)

@@ -36,14 +36,14 @@ module Name = struct
   let to_local_lib_name s =
     Lib_name.Local.of_string_exn s
 
-  let basename n ~(ml_kind : Ml_kind.t) ~(syntax : Dialect.t) =
-    String.lowercase n ^ Dialect.extension syntax ml_kind
+  let basename n ~(ml_kind : Ml_kind.t) ~(dialect : Dialect.t) =
+    String.lowercase n ^ Dialect.extension dialect ml_kind
 end
 
 module File = struct
   type t =
-    { path   : Path.t
-    ; syntax : Dialect.t
+    { path    : Path.t
+    ; dialect : Dialect.t
     }
 
   let path t = t.path
@@ -52,13 +52,13 @@ module File = struct
     let path = Path.relative src_dir (Path.basename t.path) in
     { t with path }
 
-  let make syntax path = { syntax; path }
+  let make dialect path = { dialect; path }
 
-  let to_dyn { path; syntax } =
+  let to_dyn { path; dialect } =
     let open Dyn.Encoder in
     record
       [ "path", Path.to_dyn path
-      ; "syntax", Dialect.to_dyn syntax
+      ; "dialect", Dialect.to_dyn dialect
       ]
 
 end
@@ -259,7 +259,7 @@ let wrapped_compat t =
     let impl =
       Some (
         { File.
-          syntax = Dialect.ocaml
+          dialect = Dialect.ocaml
         ; path =
             (* Option.value_exn cannot fail because we disallow wrapped
                compatibility mode for virtual libraries. That means none of the
@@ -338,7 +338,7 @@ let decode ~src_dir =
     in
     let file exists ml_kind =
       if exists then
-        let basename = Name.basename name ~ml_kind ~syntax:Dialect.ocaml in
+        let basename = Name.basename name ~ml_kind ~dialect:Dialect.ocaml in
         Some (File.make Dialect.ocaml (Path.relative src_dir basename))
       else
         None
@@ -367,7 +367,7 @@ let pped =
 
 let ml_source =
   map_files ~f:(fun ml_kind f ->
-    match Dialect.ml_suffix f.syntax ml_kind with
+    match Dialect.ml_suffix f.dialect ml_kind with
     | None -> f
     | Some suffix ->
       let path = Path.extend_basename f.path ~suffix in

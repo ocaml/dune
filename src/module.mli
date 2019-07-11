@@ -35,8 +35,8 @@ end
 
 module File : sig
   type t =
-    { path   : Path.t
-    ; syntax : Dialect.t
+    { path    : Path.t
+    ; dialect : Dialect.t
     }
 
   val path : t -> Path.t

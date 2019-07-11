@@ -11,16 +11,6 @@ val to_dyn : t Dyn.Encoder.t
 
 val build_dir : t -> Path.Build.t
 
-val lib_stanzas : t -> Dune_file.Library.t Dir_with_dune.t list
-
-val mlds : t -> Path.Build.t list
-
-val installs
-  : t
-  -> File_binding.Expanded.t Dune_file.Install_conf.t Dir_with_dune.t list
-
-val odig_files : t -> Path.Build.t list
-
 val of_sctx : Super_context.t -> t Package.Name.Map.t
 
 val meta_file : t -> Path.Build.t
@@ -42,5 +32,3 @@ val virtual_lib : t -> Lib.Local.t option
 val meta_template : t -> Path.Build.t
 
 val defined_in : Super_context.t -> dir:Path.Build.t -> t list
-
-val coqlibs : t -> Dune_file.Coq.t Dir_with_dune.t list

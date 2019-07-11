@@ -108,8 +108,10 @@ let parse_line str styles =
     if len = 0 then
       acc
     else
-      let s = String.sub str ~pos ~len in
-      Pp.seq acc (Pp.tag (Pp.verbatim s) ~tag:styles)
+      let s = Pp.verbatim (String.sub str ~pos ~len) in
+      match styles with
+      | [] -> s
+      | _ -> Pp.seq acc (Pp.tag s ~tag:styles)
   in
   let rec loop styles i acc =
     match String.index_from str i '\027' with
@@ -126,13 +128,18 @@ let parse_line str styles =
         | None -> (styles, acc)
         | Some seq_end ->
           let styles =
-            String.sub str ~pos:seq_start ~len:(seq_end - seq_start)
-            |> String.split ~on:';'
-            |> List.fold_left ~init:(List.rev styles) ~f:(fun styles s ->
-              match s with
-              | "0" -> []
-              | _ -> s :: styles)
-            |> List.rev
+            if seq_start = seq_end then
+              (* Some commands output "\027[m", which seems to be
+                 interpreted the same as "\027[0m" by terminals *)
+              []
+            else
+              String.sub str ~pos:seq_start ~len:(seq_end - seq_start)
+              |> String.split ~on:';'
+              |> List.fold_left ~init:(List.rev styles) ~f:(fun styles s ->
+                match s with
+                | "0" -> []
+                | _ -> s :: styles)
+              |> List.rev
           in
           loop styles (seq_end + 1) acc
   in

@@ -98,7 +98,7 @@ let modules_of_files ~dialects ~dir ~files =
          filenames such as foo.cppo.ml *)
       match String.lsplit2 fn ~on:'.' with
       | Some (s, ext) ->
-        begin match Dialect.S.find_by_extension dialects ext with
+        begin match Dialect.S.find_by_extension dialects ("." ^ ext) with
         | Some (dialect, Ml_kind.Impl) -> Left  (make_module dialect s fn)
         | Some (dialect, Ml_kind.Intf) -> Right (make_module dialect s fn)
         | None                         -> Skip

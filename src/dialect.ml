@@ -57,7 +57,7 @@ let decode =
       field name ~default:Filter.No_filter
         (map ~f (located Action_dune_lang.decode))
     in
-    let+ extension  = field "extension"  string
+    let+ extension  = field "extension" (map ~f:(fun s -> "." ^ s) string)
     and+ preprocess = filter "preprocess"
     and+ format     = filter "format"
     in
@@ -90,8 +90,8 @@ let ocaml =
     ; format     = Filter.No_filter
     }
   in
-  let intf = file_kind Ml_kind.Intf "mli" in
-  let impl = file_kind Ml_kind.Impl "ml"  in
+  let intf = file_kind Ml_kind.Intf ".mli" in
+  let impl = file_kind Ml_kind.Impl ".ml"  in
   { name       = "ocaml"
   ; file_kinds = Ml_kind.Dict.make ~intf ~impl
   }
@@ -118,8 +118,8 @@ let reason =
     ; format     = Filter.Action (Loc.none, format)
     }
   in
-  let intf = file_kind Ml_kind.Intf "rei" in
-  let impl = file_kind Ml_kind.Impl "re"  in
+  let intf = file_kind Ml_kind.Intf ".rei" in
+  let impl = file_kind Ml_kind.Impl ".re"  in
   { name       = "reason"
   ; file_kinds = Ml_kind.Dict.make ~intf ~impl
   }

@@ -37,7 +37,7 @@ module Name = struct
     Lib_name.Local.of_string_exn s
 
   let basename n ~(ml_kind : Ml_kind.t) ~(dialect : Dialect.t) =
-    String.lowercase n ^ "." ^ Dialect.extension dialect ml_kind
+    String.lowercase n ^ Dialect.extension dialect ml_kind
 end
 
 module File = struct

@@ -29,7 +29,7 @@ let depend_on_files ~named dir =
 
 let formatted = ".formatted"
 
-let gen_rules_output sctx (config : Dune_file.Auto_format.t) ~output_dir =
+let gen_rules_output sctx (config : Dune_file.Auto_format.t) ~expander ~output_dir =
   assert (formatted = Path.Build.basename output_dir);
   let loc = Dune_file.Auto_format.loc config in
   let dir = Path.Build.parent_exn output_dir in
@@ -71,10 +71,15 @@ let gen_rules_output sctx (config : Dune_file.Auto_format.t) ~output_dir =
       match Path.Source.basename file, Path.Source.extension file with
       | _, ".ml" -> ocaml Impl
       | _, ".mli" -> ocaml Intf
-      | _, ".re"
-      | _, ".rei" when Dune_file.Auto_format.includes config Reason ->
-        let refmt = Refmt.get sctx ~loc:(Some loc) ~dir in
-        Some (Refmt.format refmt ~input ~output)
+      | _, (".re"|".rei" as ext) when Dune_file.Auto_format.includes config Reason ->
+        begin match Dialect.format Dialect.reason (if ext = ".re" then Impl else Intf) with
+        | Dialect.Filter.No_filter ->
+          assert false
+        | Action (loc, action) ->
+          let src = Path.as_in_build_dir_exn input in
+          Some (Preprocessing.action_for_pp sctx ~dep_kind:Lib_deps_info.Kind.Required
+                  ~loc ~expander ~action ~src ~target:(Some output))
+        end
       | "dune", _ when Dune_file.Auto_format.includes config Dune ->
         let exe = resolve_program "dune" in
         let args = [Command.Args.A "format-dune-file"; Dep input] in

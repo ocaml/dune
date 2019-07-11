@@ -18,6 +18,8 @@ val extension : t -> Ml_kind.t -> string
 
 val preprocess : t -> Ml_kind.t -> Filter.t
 
+val format : t -> Ml_kind.t -> Filter.t
+
 val ocaml : t
 
 val reason : t

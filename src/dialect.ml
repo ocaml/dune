@@ -57,6 +57,10 @@ let preprocess { file_kinds = { Ml_kind.Dict.intf ; impl } ; _ } = function
   | Ml_kind.Intf -> intf.preprocess
   | Impl         -> impl.preprocess
 
+let format { file_kinds = { Ml_kind.Dict.intf ; impl } ; _ } = function
+  | Ml_kind.Intf -> intf.format
+  | Impl         -> impl.format
+
 let ocaml =
   let file_kind kind extension =
     { File_kind.

@@ -67,9 +67,9 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
     Dune_project.find_extension_args project Auto_format.key
     |> Option.iter ~f
 
-  let gen_format_rules sctx ~output_dir =
+  let gen_format_rules sctx ~expander ~output_dir =
     with_format sctx ~dir:output_dir
-      ~f:(Format_rules.gen_rules_output sctx ~output_dir)
+      ~f:(Format_rules.gen_rules_output sctx ~expander ~output_dir)
 
   (* Stanza *)
 
@@ -259,7 +259,8 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
          let subdirs = [".formatted"; ".bin"; ".utop"] in
          begin match List.last comps with
          | Some ".formatted" ->
-           gen_format_rules sctx ~output_dir:dir
+           let expander = Super_context.expander sctx ~dir in
+           gen_format_rules sctx ~expander ~output_dir:dir
          | Some ".bin" ->
            let src_dir = Path.Build.parent_exn dir in
            (Super_context.local_binaries sctx ~dir:src_dir

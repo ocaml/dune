@@ -1,6 +1,25 @@
 open! Stdune
 open Import
 
+module Paths = struct
+  let library_object_directory ~dir name =
+    Path.Build.relative dir ("." ^ Lib_name.Local.to_string name ^ ".objs")
+
+  let library_native_dir ~obj_dir =
+    Path.Build.relative obj_dir "native"
+
+  let library_byte_dir ~obj_dir =
+    Path.Build.relative obj_dir "byte"
+
+  let library_public_cmi_dir ~obj_dir =
+    Path.Build.relative obj_dir "public_cmi"
+
+  (* Use "eobjs" rather than "objs" to avoid a potential conflict with a
+     library of the same name *)
+  let executable_object_directory ~dir name =
+    Path.Build.relative dir ("." ^ name ^ ".eobjs")
+end
+
 module External = struct
   type t =
     { public_dir : Path.t
@@ -129,24 +148,24 @@ module Local = struct
     |> Path.Build.Set.to_list
 
   let make_lib ~dir ~has_private_modules lib_name =
-    let obj_dir = Utils.library_object_directory ~dir lib_name in
+    let obj_dir = Paths.library_object_directory ~dir lib_name in
     let public_cmi_dir =
       Option.some_if
         has_private_modules
-        (Utils.library_public_cmi_dir ~obj_dir)
+        (Paths.library_public_cmi_dir ~obj_dir)
     in
     make ~dir
       ~obj_dir
-      ~native_dir:(Utils.library_native_dir ~obj_dir)
-      ~byte_dir:(Utils.library_byte_dir ~obj_dir)
+      ~native_dir:(Paths.library_native_dir ~obj_dir)
+      ~byte_dir:(Paths.library_byte_dir ~obj_dir)
       ~public_cmi_dir
 
   let make_exe ~dir ~name =
-    let obj_dir = Utils.executable_object_directory ~dir name in
+    let obj_dir = Paths.executable_object_directory ~dir name in
     make ~dir
       ~obj_dir
-      ~native_dir:(Utils.library_native_dir ~obj_dir)
-      ~byte_dir:(Utils.library_byte_dir ~obj_dir)
+      ~native_dir:(Paths.library_native_dir ~obj_dir)
+      ~byte_dir:(Paths.library_byte_dir ~obj_dir)
       ~public_cmi_dir:None
 
   let cm_dir t cm_kind _ =

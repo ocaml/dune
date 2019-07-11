@@ -9,8 +9,6 @@ val system_shell_exn : needed_to:string -> Path.t * string
 (** Same as [system_shell_exn] but for bash *)
 val bash_exn : needed_to:string -> Path.t
 
-val library_private_dir    : obj_dir:Path.Build.t -> Path.Build.t
-
 (** Raise an error about a program not found in the PATH or in the tree *)
 val program_not_found
   :  ?context:string

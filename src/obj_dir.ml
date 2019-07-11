@@ -86,6 +86,7 @@ module External = struct
   let native_dir t = t.public_dir
   let dir t = t.public_dir
   let obj_dir t = t.public_dir
+  let odoc_dir t = t.public_dir
 
   let all_obj_dirs t ~mode:_ =
     [t.public_dir]
@@ -136,6 +137,7 @@ module Local = struct
   let obj_dir t = t.obj_dir
   let byte_dir t = t.byte_dir
   let native_dir t = t.native_dir
+  let odoc_dir t = t.byte_dir
 
   let all_obj_dirs t ~(mode : Mode.t) =
     let dirs = [t.byte_dir; public_cmi_dir t] in
@@ -266,6 +268,9 @@ let cm_public_dir t cm_kind =
     ~l:(fun l -> Local.cm_public_dir l cm_kind)
     ~e:(fun e -> External.cm_public_dir e cm_kind)
 
+let odoc_dir t =
+  get_path t ~l:Local.odoc_dir ~e:External.odoc_dir
+
 let need_dedicated_public_dir (t : Path.Build.t t) =
   match t with
   | Local t -> Local.need_dedicated_public_dir t
@@ -342,6 +347,10 @@ module Module = struct
       | Some _ -> Intf
     ) in
     obj_file t m ~kind:Cmi ~ext
+
+  let odoc t m =
+    let basename = Module.obj_name m ^ ".odoc" in
+    relative t (odoc_dir t) basename
 
   module Dep = struct
     type t =

@@ -29,9 +29,6 @@ let bash_exn =
             needed_to
         ]
 
-let library_private_dir ~obj_dir =
-  Path.Build.relative obj_dir "private"
-
 let not_found fmt ?loc ?context ?hint x =
   User_error.raise ?loc
     (Pp.textf fmt (String.maybe_quoted x)

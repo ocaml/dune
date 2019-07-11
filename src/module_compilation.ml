@@ -173,7 +173,7 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) =
                     (* XXX why aren't these just normal library flags? *)
                     ["-nopervasives"; "-nostdlib"])
               ; A "-o"; Target dst
-              ; A "-c"; Ml_kind.flag ml_kind; Dep src
+              ; A "-c"; Command.Ml_kind.flag ml_kind; Dep src
               ; Hidden_targets other_targets
               ]))))
 
@@ -220,7 +220,7 @@ let ocamlc_i ?(flags=[]) ~dep_graphs cctx (m : Module.t) ~output =
              ; opens modules m
              ; As flags
              ; A "-short-paths"
-             ; A "-i"; Ml_kind.flag Impl; Dep src
+             ; A "-i"; Command.Ml_kind.flag Impl; Dep src
              ]))
      >>> Build.action_dyn () ~targets:[output])
 

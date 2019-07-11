@@ -11,7 +11,7 @@ module type Uast = Action_intf.Ast
 module rec Uast : Uast = Uast
 include Action_ast.Make(String_with_vars)(String_with_vars)(String_with_vars)(Uast)
 
-module Mapper = Action.Make_mapper(Uast)(Uast)
+module Mapper = Action_mapper.Make(Uast)(Uast)
 
 let upgrade_to_dune =
   let id ~dir:_ p = p in

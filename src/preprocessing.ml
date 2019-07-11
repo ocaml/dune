@@ -731,7 +731,7 @@ let lint_module sctx ~dir ~expander ~dep_kind ~lint ~lib_name ~scope ~dir_kind =
                          Command.run ~dir:(Path.build (SC.build_dir sctx))
                            (Ok (Path.build exe))
                            [ args
-                           ; Ml_kind.ppx_driver_flag ml_kind
+                           ; Command.Ml_kind.ppx_driver_flag ml_kind
                            ; Dep src.path
                            ; Command.Args.dyn flags
                            ]))))))
@@ -810,7 +810,7 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess
                          (Ok (Path.build exe))
                          [ args
                          ; A "-o"; Target dst
-                         ; Ml_kind.ppx_driver_flag ml_kind; Dep (Path.build src)
+                         ; Command.Ml_kind.ppx_driver_flag ml_kind; Dep (Path.build src)
                          ; Command.Args.dyn flags
                          ])))))
       end else begin

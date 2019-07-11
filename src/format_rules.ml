@@ -47,7 +47,7 @@ let gen_rules_output sctx (config : Dune_file.Auto_format.t) ~dialects ~expander
     let output = Path.Build.relative output_dir input_basename in
 
     let ocaml kind =
-      if Dune_file.Auto_format.includes config Ocaml then
+      if Dune_file.Auto_format.includes config (Dialect "ocaml") then
         let exe = resolve_program "ocamlformat" in
         let args =
           [ Command.Args.A (flag_of_kind kind)
@@ -79,7 +79,7 @@ let gen_rules_output sctx (config : Dune_file.Auto_format.t) ~dialects ~expander
         begin match Dialect.S.find_by_extension dialects ext with
         | Some (dialect, kind) when Dialect.name dialect = "ocaml" ->
           ocaml kind
-        | Some (dialect, kind) when Dialect.name dialect <> "reason" || Dune_file.Auto_format.includes config Reason ->
+        | Some (dialect, kind) when Dune_file.Auto_format.includes config (Dialect (Dialect.name dialect)) ->
           begin match Dialect.format dialect kind with
           | Dialect.Filter.No_filter ->
             None

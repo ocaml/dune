@@ -644,21 +644,19 @@ module Auto_format = struct
       [ (1, 1) ]
 
   type language =
-    | Ocaml
-    | Reason
+    | Dialect of string
     | Dune
 
   let language_to_dyn =
     let open Dyn.Encoder in
     function
-    | Ocaml -> constr "ocaml" []
-    | Reason -> constr "reason" []
+    | Dialect name -> constr "dialect" [string name]
     | Dune -> constr "dune" []
 
   let language =
     sum
-      [ ("ocaml", return Ocaml)
-      ; ("reason", return Reason)
+      [ ("ocaml", return (Dialect "ocaml"))
+      ; ("reason", return (Dialect "reason"))
       ; ("dune",
          let+ () = Syntax.since syntax (1, 1) in
          Dune)
@@ -704,7 +702,7 @@ module Auto_format = struct
     match config.enabled_for with
     | Default ver ->
       let in_1_0 =
-        [Ocaml; Reason]
+        [Dialect "ocaml"; Dialect "reason"]
       in
       let extra =
         match Syntax.Version.compare ver (1, 1) with

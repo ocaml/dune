@@ -27,5 +27,3 @@ let contramap t ~f ~map_id =
   { f = (fun s -> t.f (f s))
   ; id = lazy (map_id (Lazy.force t.id))
   }
-
-let pp fmt t = Dyn.pp fmt (to_dyn t)

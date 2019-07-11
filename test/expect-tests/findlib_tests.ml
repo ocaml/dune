@@ -1,68 +1,48 @@
-(* -*- tuareg -*- *)
-
-#warnings "-40";;
-
 open Dune
 open Import
+
+let print pp = Format.printf "%a@." Pp.render_ignore_tags pp
+let print_dyn dyn = print (Dyn.pp dyn)
+
+let db_path = Path.of_filename_relative_to_initial_cwd "../unit-tests/findlib-db"
 
 let () =
   Path.set_root (Path.External.cwd ());
   Path.Build.set_build_dir (Path.Build.Kind.of_string "_build")
-;;
 
 let print_pkg ppf pkg =
   Format.fprintf ppf "<package:%s>"
     (Lib_name.to_string (Dune_package.Lib.name pkg))
-;;
-
-#install_printer Lib_name.pp_quoted;;
-#install_printer print_pkg;;
-#install_printer String.Map.pp;;
-
-[%%expect{|
-val print_pkg : Format.formatter -> 'a Dune_package.Lib.t -> unit = <fun>
-|}]
 
 let findlib =
   let cwd = Path.of_filename_relative_to_initial_cwd (Sys.getcwd ()) in
-    Findlib.create
+  Findlib.create
     ~stdlib_dir:cwd
-    ~paths:[Path.relative cwd "test/unit-tests/findlib-db"]
+    ~paths:[db_path]
     ~version:(Ocaml_version.make (4, 02, 3))
-;;
 
-[%%expect{|
-val findlib : Findlib.t = <abstr>
-|}]
-
-let pkg =
-  match Findlib.find findlib (Lib_name.of_string_exn ~loc:None "foo") with
-  | Ok x -> x
-  | Error _ -> assert false;;
-
-[%%expect{|
-val pkg : Sub_system_info.t Dune_package.Lib.t = <package:foo>
-|}]
-
-(* "foo" should depend on "baz" *)
-Dune_package.Lib.requires pkg |> List.map ~f:snd;;
-
-[%%expect{|
+let%expect_test _ =
+  let pkg =
+    match Findlib.find findlib (Lib_name.of_string_exn ~loc:None "foo") with
+    | Ok x -> x
+    | Error _ -> assert false
+  in
+  (* "foo" should depend on "baz" *)
+  Dune_package.Lib.requires pkg
+  |> List.iter ~f:(fun (_, name) ->
+    print_endline (Lib_name.to_string name));
+  [%expect{|
 - : Lib_name.t list = ["baz"]
 |}]
 
 (* Meta parsing/simplification *)
 
-open Meta
-let simplified_pp fmt t = Dyn.pp fmt (Simplified.to_dyn t);;
-[%%ignore]
-#install_printer simplified_pp;;
-
-let meta =
-  Path.in_source "test/unit-tests/findlib-db/foo/META"
+let%expect_test _ =
+  Path.relative db_path "foo/META"
   |> Meta.load ~name:(Some (Lib_name.of_string_exn ~loc:None "foo"))
-
-[%%expect{|
+  |> Meta.Simplified.to_dyn
+  |> print_dyn;
+  [%expect {|
 val meta : Simplified.t =
   {name = Some "foo";
     vars =
@@ -80,16 +60,13 @@ val meta : Simplified.t =
     subs = []}
 |}]
 
-let config_printer fmt d = Dyn.pp fmt (Findlib.Config.to_dyn d);;
-[%%ignore]
-
-#install_printer config_printer;;
-
 let conf =
-  Findlib.Config.load (Path.in_source "test/unit-tests/toolchain")
+  Findlib.Config.load (Path.relative db_path "../toolchain")
     ~toolchain:"tlc" ~context:"<context>"
 
-[%%expect{|
+let%expect_test _ =
+  print_dyn (Findlib.Config.to_dyn conf);
+  [%expect{|
 val conf : Findlib.Config.t =
   {vars =
      map {"FOO_BAR" :
@@ -99,17 +76,9 @@ val conf : Findlib.Config.t =
                 value = "my variable"}];
             add_rules = []}};
     preds = set {6}}
-|}]
+|}];
 
-let env_pp fmt env = Dyn.pp fmt (Env.to_dyn env);;
-#install_printer env_pp;;
-
-[%%expect{|
-val env_pp : Format.formatter -> Env.t -> unit = <fun>
-|}]
-
-let env = Findlib.Config.env conf
-
-[%%expect{|
+  print_dyn (Env.to_dyn (Findlib.Config.env conf));
+  [%expect{|
 val env : Env.t = map {"FOO_BAR" : "my variable"}
 |}]

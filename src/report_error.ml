@@ -54,7 +54,7 @@ let rec get_printer = function
       Format.fprintf ppf "@{<error>Internal error, please report upstream \
                           including the contents of _build/log.@}\n\
                           Description:%a\n"
-        Dyn.pp (Code_error.to_dyn t)
+        Pp.render_ignore_tags (Dyn.pp (Code_error.to_dyn t))
     in
     make_printer ~backtrace:true pp
   | Unix.Unix_error (err, func, fname) ->

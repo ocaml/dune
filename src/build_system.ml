@@ -1663,12 +1663,9 @@ let process_memcycle exn =
   in
   match List.last cycle with
   | None ->
-    let frames : string list =
-      Memo.Cycle_error.get exn
-      |> List.map ~f:(Format.asprintf "%a" Memo.Stack_frame.pp)
-    in
+    let frames = Memo.Cycle_error.get exn in
     Code_error.raise "dependency cycle that does not involve any files"
-      ["frames", Dyn.Encoder.(list string) frames]
+      ["frames", Dyn.Encoder.(list Memo.Stack_frame.to_dyn) frames]
   | Some last ->
     let first = List.hd cycle in
     let cycle = if last = first then cycle else last :: cycle in

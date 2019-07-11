@@ -277,8 +277,6 @@ let to_dyn { name; path; version ; synopsis ; description
         Dyn.Tuple [String v; Version_source.to_dyn s]))
     ]
 
-let pp fmt t = Dyn.pp fmt (to_dyn t)
-
 let opam_file t = Path.Source.relative t.path (Name.opam_fn t.name)
 
 let meta_file t = Path.Source.relative t.path (Name.meta_fn t.name)

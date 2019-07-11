@@ -49,6 +49,26 @@ let to_dyn { name ; file_kinds } =
     ; "file_kinds", Ml_kind.Dict.to_dyn File_kind.to_dyn file_kinds
     ]
 
+let decode =
+  let open Dune_lang.Decoder in
+  let kind kind =
+    let filter name =
+      let f (loc, action) = Filter.Action (loc, action) in
+      field name ~default:Filter.No_filter
+        (map ~f (located Action_dune_lang.decode))
+    in
+    let+ extension  = field "extension"  string
+    and+ preprocess = filter "preprocess"
+    and+ format     = filter "format"
+    in
+    { File_kind.kind ; extension ; preprocess ; format }
+  in
+  fields (let+ name = field "name" string
+          and+ impl = field "implementation" (fields (kind Ml_kind.Impl))
+          and+ intf = field "interface" (fields (kind Ml_kind.Intf))
+          in
+          { name ; file_kinds = Ml_kind.Dict.make ~intf ~impl })
+
 let extension { file_kinds = { Ml_kind.Dict.intf ; impl } ; _ } = function
   | Ml_kind.Intf -> intf.extension
   | Impl         -> impl.extension

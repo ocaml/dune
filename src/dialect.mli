@@ -33,6 +33,8 @@ val name : t -> string
 
 val to_dyn : t -> Dyn.t
 
+val decode : t Dune_lang.Decoder.t
+
 val extension : t -> Ml_kind.t -> string
 
 val preprocess : t -> Ml_kind.t -> Filter.t

@@ -328,7 +328,7 @@ let install_entries sctx package =
       in
       List.map files ~f:(fun fb ->
         let loc = File_binding.Expanded.src_loc fb in
-        let src = Path.as_in_build_dir_exn (File_binding.Expanded.src fb) in
+        let src = File_binding.Expanded.src fb in
         let dst = File_binding.Expanded.dst fb in
         ( Some loc
         , Install.Entry.make section src ?dst

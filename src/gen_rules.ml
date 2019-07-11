@@ -138,8 +138,9 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
         }
       | Install { Install_conf. section = _; files; package = _ } ->
         List.map files ~f:(fun fb ->
-          File_binding.Unexpanded.expand_src ~dir:(Path.build ctx_dir)
-            fb ~f:(Expander.expand_str expander))
+          File_binding.Unexpanded.expand_src ~dir:ctx_dir
+            fb ~f:(Expander.expand_str expander)
+          |> Path.build)
         |> Path.Set.of_list
         |> Rules.Produce.Alias.add_deps (Alias.all ~dir:ctx_dir);
         For_stanza.empty_none
@@ -264,7 +265,7 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
            (Super_context.local_binaries sctx ~dir:src_dir
             |> List.iter ~f:(fun t ->
               let loc = File_binding.Expanded.src_loc t in
-              let src = File_binding.Expanded.src_path t in
+              let src = Path.build (File_binding.Expanded.src t) in
               let dst = File_binding.Expanded.dst_path t ~dir in
               Super_context.add_rule sctx ~loc ~dir (Build.symlink ~src ~dst)))
          | _ ->

@@ -3,13 +3,12 @@ open Stdune
 module Expanded : sig
   type t
 
-  val src : t -> Path.t
+  val src : t -> Path.Build.t
   val dst : t -> string option
 
   val src_loc : t -> Loc.t
 
   val dst_path : t -> dir:Path.Build.t -> Path.Build.t
-  val src_path : t -> Path.t
 end
 
 module Unexpanded : sig
@@ -19,12 +18,12 @@ module Unexpanded : sig
 
   val expand
     :  t
-    -> dir:Path.t
+    -> dir:Path.Build.t
     -> f:(String_with_vars.t -> string)
     -> Expanded.t
 
   val expand_src
-    : t -> dir:Path.t -> f:(String_with_vars.t -> string) -> Path.t
+    : t -> dir:Path.Build.t -> f:(String_with_vars.t -> string) -> Path.Build.t
 
   val destination_relative_to_install_path
     : t

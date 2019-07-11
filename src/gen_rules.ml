@@ -68,8 +68,11 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
     |> Option.iter ~f
 
   let gen_format_rules sctx ~expander ~output_dir =
+    let scope = SC.find_scope_by_dir sctx output_dir in
+    let project = Scope.project scope in
+    let dialects = Dune_project.dialects project in
     with_format sctx ~dir:output_dir
-      ~f:(Format_rules.gen_rules_output sctx ~expander ~output_dir)
+      ~f:(Format_rules.gen_rules_output sctx ~dialects ~expander ~output_dir)
 
   (* Stanza *)
 

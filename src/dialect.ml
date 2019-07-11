@@ -145,4 +145,10 @@ module S = struct
       in
       dialect, kind
     ) (String.Map.find by_extension extension)
+
+  let to_dyn { by_name ; _ } =
+    String.Map.to_dyn to_dyn by_name
+
+  let builtin =
+    of_list [ocaml; reason]
 end

@@ -54,4 +54,8 @@ module S : sig
   val add : t -> dialect -> t
   val find_by_name : t -> string -> dialect option
   val find_by_extension : t -> string -> (dialect * Ml_kind.t) option
+
+  val to_dyn : t -> Dyn.t
+
+  val builtin : t
 end with type dialect := t

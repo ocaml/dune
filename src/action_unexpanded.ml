@@ -415,4 +415,3 @@ module Infer = struct
   let unexpanded_targets t =
     (Unexp.infer t).targets
 end
-

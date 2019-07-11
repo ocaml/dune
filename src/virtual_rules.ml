@@ -77,11 +77,10 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
         if Module.visibility m = Public && Module.kind m <> Alias then
           List.iter [Intf; Impl] ~f:(fun ml_kind ->
             Module.source m ~ml_kind
-            |> Option.iter ~f:(fun f ->
-              let kind = Obj_dir.Module.Dep.Transitive in
-              let src =
-                Path.build (Obj_dir.Module.dep vlib_obj_dir f ~kind) in
-              let dst = Obj_dir.Module.dep impl_obj_dir f ~kind in
+            |> Option.iter ~f:(fun _ ->
+              let dep = Obj_dir.Module.Dep.Transitive (m, ml_kind) in
+              let src = Path.build (Obj_dir.Module.dep vlib_obj_dir dep) in
+              let dst = Obj_dir.Module.dep impl_obj_dir dep in
               copy_to_obj_dir ~src ~dst)
           );
     | None ->
@@ -92,7 +91,7 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
         List.iter [Intf; Impl] ~f:(fun ml_kind ->
           let dep_graph = Ml_kind.Dict.get vlib_dep_graph ml_kind in
           let deps = Dep_graph.deps_of dep_graph m in
-          Module.source m ~ml_kind |> Option.iter ~f:(fun source ->
+          Module.source m ~ml_kind |> Option.iter ~f:(fun _ ->
             let open Build.O in
             deps >>^ (fun modules ->
               modules
@@ -100,7 +99,7 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
               |> String.concat ~sep:"\n")
             >>>
             Build.write_file_dyn
-              (Obj_dir.Module.dep impl_obj_dir source ~kind:Transitive)
+              (Obj_dir.Module.dep impl_obj_dir (Transitive (m, ml_kind)))
             |> add_rule))
   in
   let vlib_modules = Vimpl.vlib_modules vimpl in

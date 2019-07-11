@@ -108,3 +108,41 @@ let ml_suffix dialect ml_kind =
   match dialect.name with
   | "ocaml" -> None
   | _ -> Some (extension ocaml ml_kind)
+
+module S = struct
+  type dialect = t
+
+  type t =
+    { by_name      : dialect String.Map.t
+    ; by_extension : dialect String.Map.t
+    }
+
+  let empty =
+    { by_name      = String.Map.empty
+    ; by_extension = String.Map.empty
+    }
+
+  let add { by_name ; by_extension } dialect =
+    { by_name      = String.Map.add_exn by_name dialect.name dialect
+    ; by_extension =
+        String.Map.add_exn
+          (String.Map.add_exn by_extension dialect.file_kinds.intf.extension dialect)
+          dialect.file_kinds.impl.extension dialect
+    }
+
+  let of_list dialects =
+    List.fold_left ~f:add ~init:empty dialects
+
+  let find_by_name { by_name ; _ } name =
+    String.Map.find by_name name
+
+  let find_by_extension { by_extension ; _ } extension =
+    Option.map ~f:(fun dialect ->
+      let kind =if dialect.file_kinds.intf.extension = extension then
+        Ml_kind.Intf
+      else
+        Ml_kind.Impl
+      in
+      dialect, kind
+    ) (String.Map.find by_extension extension)
+end

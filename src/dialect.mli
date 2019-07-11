@@ -44,3 +44,14 @@ val ocaml : t
 val reason : t
 
 val ml_suffix : t -> Ml_kind.t -> string option
+
+module S : sig
+  type dialect
+  type t
+
+  val empty : t
+  val of_list : dialect list -> t
+  val add : t -> dialect -> t
+  val find_by_name : t -> string -> dialect option
+  val find_by_extension : t -> string -> (dialect * Ml_kind.t) option
+end with type dialect := t

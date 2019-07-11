@@ -66,6 +66,13 @@ module Prog = struct
       }
 
     let raise { context ; program ; hint ; loc } =
+      let hint =
+        match program with
+        | "refmt" ->
+          Some (Option.value ~default:"try: opam install reason" hint)
+        | _ ->
+          hint
+      in
       Utils.program_not_found ?hint ~loc ~context program
   end
 

@@ -35,9 +35,14 @@ let to_dyn { name ; file_kinds } =
 let decode =
   let open Dune_lang.Decoder in
   let kind kind =
-    let+ extension  = field "extension" (map ~f:(fun s -> "." ^ s) string)
+    let+ loc, extension  = field "extension" (located string)
     and+ preprocess = field_o "preprocess" (located Action_dune_lang.decode)
     and+ format     = field_o "format" (map ~f:(fun (loc, x) -> loc, x, []) (located Action_dune_lang.decode))
+    in
+    let extension =
+      if String.contains extension '.' then
+        User_error.raise ~loc [ Pp.textf "extension string must not contain '.'" ];
+      "." ^ extension
     in
     { File_kind.kind ; extension ; preprocess ; format }
   in

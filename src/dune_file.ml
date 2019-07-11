@@ -707,7 +707,9 @@ module Auto_format = struct
       begin match Syntax.Version.compare ver (1, 1) with
       | Lt ->
         fun language -> List.mem language ~set:in_1_0
-      | Eq | Gt ->
+      | Eq ->
+        fun language -> List.mem language ~set:(Dune :: in_1_0)
+      | Gt ->
         fun _ -> true
       end
     | Only l ->

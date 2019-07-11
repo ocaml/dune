@@ -653,21 +653,16 @@ module Auto_format = struct
     | Dialect name -> constr "dialect" [string name]
     | Dune -> constr "dune" []
 
-  let language =
-    sum
-      [ ("ocaml", return (Dialect "ocaml"))
-      ; ("reason", return (Dialect "reason"))
-      ; ("dune",
-         let+ () = Syntax.since syntax (1, 1) in
-         Dune)
-      ]
+  let language = function
+    | "dune" -> Dune
+    | s -> Dialect s
 
   type enabled_for =
     | Default of Syntax.Version.t
     | Only of language list
 
   let enabled_for_field =
-    let+ r = field_o "enabled_for" (repeat language)
+    let+ r = field_o "enabled_for" (repeat (map ~f:language string))
     and+ version = Syntax.get_exn syntax
     in
     match r with

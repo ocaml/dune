@@ -791,7 +791,7 @@ let make_jbuilder_project ~dir opam_packages =
   ; allow_approx_merlin = true
   ; generate_opam_files = false
   ; wrapped_executables = false
-  ; dialects;
+  ; dialects
   }
 
 let load ~dir ~files =

@@ -198,12 +198,10 @@ include Sub_system.Register_end_point(
           ; dir
           ; stanza = lib
           ; scope
-          ; modules
+          ; source_modules
           ; compile_info = _
           } = c
       in
-      let source_modules =
-        Modules.fold_user_written modules ~init:[] ~f:(fun x xs -> x :: xs) in
 
       let loc = lib.buildable.loc in
 

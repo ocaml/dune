@@ -33,19 +33,15 @@ module Name : sig
   val to_local_lib_name : t -> Lib_name.Local.t
 end
 
-module Syntax : sig
-  type t = OCaml | Reason
-end
-
 module File : sig
   type t =
     { path   : Path.t
-    ; syntax : Syntax.t
+    ; syntax : Dialect.t
     }
 
   val path : t -> Path.t
 
-  val make : Syntax.t -> Path.t -> t
+  val make : Dialect.t -> Path.t -> t
 end
 
 module Kind : sig

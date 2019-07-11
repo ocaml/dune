@@ -97,10 +97,10 @@ let modules_of_files ~dir ~files =
       (* we aren't using Filename.extension because we want to handle
          filenames such as foo.cppo.ml *)
       match String.lsplit2 fn ~on:'.' with
-      | Some (s, "ml" ) -> Left  (make_module OCaml  s fn)
-      | Some (s, "re" ) -> Left  (make_module Reason s fn)
-      | Some (s, "mli") -> Right (make_module OCaml  s fn)
-      | Some (s, "rei") -> Right (make_module Reason s fn)
+      | Some (s, "ml" ) -> Left  (make_module Dialect.ocaml  s fn)
+      | Some (s, "re" ) -> Left  (make_module Dialect.reason s fn)
+      | Some (s, "mli") -> Right (make_module Dialect.ocaml  s fn)
+      | Some (s, "rei") -> Right (make_module Dialect.reason s fn)
       | _ -> Skip)
   in
   let parse_one_set (files : (Module.Name.t * Module.File.t) list)  =

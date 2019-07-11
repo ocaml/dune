@@ -209,7 +209,7 @@ module Run (P : PARAMS) : sig end = struct
 
     let mock_module : Module.t =
       let source =
-        let impl = Module.File.make OCaml (Path.build (mock_ml base)) in
+        let impl = Module.File.make Dialect.ocaml (Path.build (mock_ml base)) in
         Module.Source.make ~impl name
       in
       Module.of_source ~visibility:Public ~kind:Impl source

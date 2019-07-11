@@ -31,6 +31,7 @@ val create
   -> dynlink               : bool
   -> ?sandbox              : bool
   -> package               : Package.t option
+  -> ?vimpl                : Vimpl.t
   -> unit
   -> t
 
@@ -57,5 +58,6 @@ val js_of_ocaml          : t -> Dune_file.Js_of_ocaml.t option
 val dynlink              : t -> bool
 val sandbox              : t -> bool option
 val package              : t -> Package.t option
+val vimpl                : t -> Vimpl.t option
 
 val for_wrapped_compat : t -> t

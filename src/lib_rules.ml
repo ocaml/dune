@@ -329,7 +329,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
     in
     let obj_dir = Library.obj_dir ~dir lib in
     Check_rules.add_obj_dir sctx ~obj_dir;
-    let vimpl = Virtual_rules.impl sctx ~lib ~dir ~scope in
+    let vimpl = Virtual_rules.impl sctx ~lib ~scope in
     Option.iter vimpl ~f:(Virtual_rules.setup_copy_rules_for_impl ~sctx ~dir);
     (* Preprocess before adding the alias module as it doesn't need
        preprocessing *)
@@ -371,19 +371,11 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
         ~dynlink
         ?stdlib:lib.stdlib
         ~package:(Option.map lib.public ~f:(fun p -> p.package))
+        ?vimpl
     in
 
     let requires_compile = Compilation_context.requires_compile cctx in
-
-    let dep_graphs =
-      let modules = Compilation_context.modules cctx in
-      let dep_graphs = Ocamldep.rules cctx ~modules in
-      match vimpl with
-      | None -> dep_graphs
-      | Some impl ->
-        let vlib = Vimpl.vlib_dep_graph impl in
-        Dep_graph.Ml_kind.merge_for_impl ~vlib ~impl:dep_graphs
-    in
+    let dep_graphs = Dep_rules.rules cctx ~modules in
 
     gen_wrapped_compat_modules lib cctx;
     Module_compilation.build_all cctx ~dep_graphs;

@@ -670,7 +670,6 @@ let setup_reason_rules sctx ~dir ~dep_kind ~expander (m : Module.t) =
         Option.value_exn (Module.file ml ~ml_kind)
         |> Path.as_in_build_dir_exn
       in
-      Printf.eprintf "%s -> %s\n%!" (Path.Build.to_string src) (Path.Build.to_string dst);
       SC.add_rule sctx ~dir
         (action_for_pp sctx ~dep_kind ~loc ~expander ~action ~src ~target:(Some dst))
   );

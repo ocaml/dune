@@ -57,22 +57,6 @@ let preprocess { file_kinds = { Ml_kind.Dict.intf ; impl } ; _ } = function
   | Ml_kind.Intf -> intf.preprocess
   | Impl         -> impl.preprocess
 
-let ml_suffix { file_kinds = { Ml_kind.Dict.intf ; impl } ; _ } ml_kind =
-  match intf.extension, impl.extension, ml_kind with
-  | ".mli", _, Ml_kind.Intf | _, ".ml", Impl -> None
-  | _, _, Intf -> Some ".mli"
-  | _, _, Impl -> Some ".ml"
-
-module Key = struct
-  type nonrec t = t
-  let compare t1 t2 = String.compare t1.name t2.name
-  let to_dyn = to_dyn
-end
-
-module Map = Map.Make (Key)
-
-module Set = Set.Make (Key) (Map)
-
 let ocaml =
   let file_kind kind extension =
     { File_kind.
@@ -115,3 +99,8 @@ let reason =
   { name       = "reason"
   ; file_kinds = Ml_kind.Dict.make ~intf ~impl
   }
+
+let ml_suffix dialect ml_kind =
+  match dialect.name with
+  | "ocaml" -> None
+  | _ -> Some (extension ocaml ml_kind)

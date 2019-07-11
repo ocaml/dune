@@ -18,10 +18,8 @@ val extension : t -> Ml_kind.t -> string
 
 val preprocess : t -> Ml_kind.t -> Filter.t
 
-val ml_suffix : t -> Ml_kind.t -> string option
-
-module Set : Set.S with type elt = t
-
 val ocaml : t
 
 val reason : t
+
+val ml_suffix : t -> Ml_kind.t -> string option

@@ -657,7 +657,7 @@ let action_for_pp sctx ~dep_kind ~loc ~expander ~action ~src ~target =
   | None -> action
   | Some dst -> Action.with_stdout_to (Path.build dst) action
 
-(* Generate rules for the reason modules in [modules] and return a
+(* Generate rules for the dialect modules in [modules] and return a
    a new module with only OCaml sources *)
 let setup_dialect_rules sctx ~dir ~dep_kind ~expander (m : Module.t) =
   let ml = Module.ml_source m in

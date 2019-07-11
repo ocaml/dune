@@ -14,6 +14,7 @@ opam_install_test_deps () {
          ocamlfind \
          utop \
          ppxlib \
+         ppx_expect \
          $ODOC \
          menhir \
          ocaml-migrate-parsetree \

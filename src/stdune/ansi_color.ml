@@ -109,9 +109,12 @@ let parse_line str styles =
       acc
     else
       let s = Pp.verbatim (String.sub str ~pos ~len) in
-      match styles with
-      | [] -> s
-      | _ -> Pp.seq acc (Pp.tag s ~tag:styles)
+      let s =
+        match styles with
+        | [] -> s
+        | _ -> Pp.tag s ~tag:styles
+      in
+      Pp.seq acc s
   in
   let rec loop styles i acc =
     match String.index_from str i '\027' with

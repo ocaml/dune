@@ -634,7 +634,7 @@ let parse ~dir ~lang ~opam_packages ~file =
      and+ () = Versioned_file.no_more_lang
      and+ generate_opam_files = field_o_b "generate_opam_files"
                                   ~check:(Syntax.since Stanza.syntax (1, 10))
-     and+ _dialects = multi_field "dialect" Dialect.decode
+     and+ dialects = multi_field "dialect" Dialect.decode
      in
      let homepage =
        match homepage, source with
@@ -721,7 +721,7 @@ let parse ~dir ~lang ~opam_packages ~file =
        Option.value ~default:false generate_opam_files in
      let root = dir in
      let file_key = File_key.make ~name ~root in
-     let dialects = Dialect.S.builtin in
+     let dialects = List.fold_left ~f:Dialect.S.add ~init:Dialect.S.builtin dialects in
      { name
      ; file_key
      ; root

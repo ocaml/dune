@@ -76,10 +76,10 @@ let ocaml =
       | Intf         -> "--intf"
     in
     let module S = String_with_vars in
-    Action_dune_lang.chdir (S.virt_var __POS__ "workspace_root")
-      (Action_dune_lang.run (S.virt __POS__ "ocamlformat")
-         [ S.virt __POS__ (flag_of_kind kind)
-         ; S.virt_var __POS__ "input-file"
+    Action_dune_lang.chdir (S.make_var Loc.none "workspace_root")
+      (Action_dune_lang.run (S.make_text Loc.none "ocamlformat")
+         [ S.make_text Loc.none (flag_of_kind kind)
+         ; S.make_var Loc.none "input-file"
          ])
   in
   let file_kind kind extension =
@@ -101,15 +101,15 @@ let reason =
   let file_kind kind extension =
     let module S = String_with_vars in
     let preprocess =
-      Action_dune_lang.run (S.virt __POS__ "refmt")
-        [ S.virt     __POS__ "--print"
-        ; S.virt     __POS__ "binary"
-        ; S.virt_var __POS__ "input-file"
+      Action_dune_lang.run (S.make_text Loc.none "refmt")
+        [ S.make_text Loc.none "--print"
+        ; S.make_text Loc.none "binary"
+        ; S.make_var Loc.none "input-file"
         ]
     in
     let format =
-      Action_dune_lang.run (S.virt __POS__ "refmt")
-        [ S.virt_var __POS__ "input-file"
+      Action_dune_lang.run (S.make_text Loc.none "refmt")
+        [ S.make_var Loc.none "input-file"
         ]
     in
     { File_kind.

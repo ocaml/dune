@@ -175,7 +175,7 @@ module S = struct
 
   let find_by_extension { by_extension ; _ } extension =
     Option.map ~f:(fun dialect ->
-      let kind =if dialect.file_kinds.intf.extension = extension then
+      let kind = if dialect.file_kinds.intf.extension = extension then
         Ml_kind.Intf
       else
         Ml_kind.Impl

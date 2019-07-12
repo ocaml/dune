@@ -568,7 +568,7 @@ let anonymous = lazy (
   ; allow_approx_merlin = true
   ; generate_opam_files = false
   ; file_key
-  ; dialects = Dialect.S.empty
+  ; dialects = Dialect.S.builtin
   })
 
 let default_name ~dir ~packages =

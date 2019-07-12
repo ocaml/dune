@@ -44,7 +44,6 @@ module S : sig
   type t
 
   val empty : t
-  val of_list : dialect list -> t
   val add : t -> ?loc:Loc.t -> dialect -> t
   val find_by_name : t -> string -> dialect option
   val find_by_extension : t -> string -> (dialect * Ml_kind.t) option

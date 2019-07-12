@@ -344,6 +344,9 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
         ~dir_kind
     in
 
+    let source_modules =
+      Modules.fold_user_written modules ~init:[] ~f:(fun m acc -> m :: acc)
+    in
     let modules =
       Modules.map_user_written modules ~f:(Preprocessing.pp_module pp)
     in
@@ -398,7 +401,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
       ; dir
       ; stanza = lib
       ; scope
-      ; modules
+      ; source_modules
       ; compile_info
       };
 

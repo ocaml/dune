@@ -31,9 +31,7 @@ let%expect_test _ =
   Dune_package.Lib.requires pkg
   |> List.iter ~f:(fun (_, name) ->
     print_endline (Lib_name.to_string name));
-  [%expect{|
-- : Lib_name.t list = ["baz"]
-|}]
+  [%expect{|baz|}]
 
 (* Meta parsing/simplification *)
 
@@ -43,22 +41,20 @@ let%expect_test _ =
   |> Meta.Simplified.to_dyn
   |> print_dyn;
   [%expect {|
-val meta : Simplified.t =
-  {name = Some "foo";
-    vars =
-      map {"requires" :
-           {set_rules =
-              [{var = "requires";
-                 predicates = [];
-                 action = Set;
-                 value = "bar"};
-              {var = "requires";
-                predicates = [Pos "ppx_driver"];
-                action = Set;
-                value = "baz"}];
-             add_rules = []}};
-    subs = []}
-|}]
+    {name = Some "foo";
+      vars =
+        map {"requires" :
+             {set_rules =
+                [{var = "requires";
+                   predicates = [];
+                   action = Set;
+                   value = "bar"};
+                {var = "requires";
+                  predicates = [Pos "ppx_driver"];
+                  action = Set;
+                  value = "baz"}];
+               add_rules = []}};
+      subs = []} |}]
 
 let conf =
   Findlib.Config.load (Path.relative db_path "../toolchain")
@@ -67,18 +63,14 @@ let conf =
 let%expect_test _ =
   print_dyn (Findlib.Config.to_dyn conf);
   [%expect{|
-val conf : Findlib.Config.t =
-  {vars =
-     map {"FOO_BAR" :
-          {set_rules =
-             [{preds_required = set {6; 7};
-                preds_forbidden = set {};
-                value = "my variable"}];
-            add_rules = []}};
-    preds = set {6}}
-|}];
+    {vars =
+       map {"FOO_BAR" :
+            {set_rules =
+               [{preds_required = set {6; 7};
+                  preds_forbidden = set {};
+                  value = "my variable"}];
+              add_rules = []}};
+      preds = set {6}} |}];
 
   print_dyn (Env.to_dyn (Findlib.Config.env conf));
-  [%expect{|
-val env : Env.t = map {"FOO_BAR" : "my variable"}
-|}]
+  [%expect{| map {"FOO_BAR" : "my variable"} |}]

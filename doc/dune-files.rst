@@ -1307,6 +1307,8 @@ instance. When using such ppx rewriters, you must use ``staged_pps``
 instead of ``pps`` in order to force Dune to use the second pipeline,
 which is slower but necessary in this case.
 
+.. _preprocessing-actions:
+
 Preprocessing with actions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 

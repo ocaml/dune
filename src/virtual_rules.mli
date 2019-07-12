@@ -8,7 +8,6 @@ val setup_copy_rules_for_impl
 
 val impl
   :  Super_context.t
-  -> dir:Path.Build.t
   -> lib:Dune_file.Library.t
   -> scope:Scope.t
   -> Vimpl.t option

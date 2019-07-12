@@ -23,6 +23,4 @@ module Ml_kind : sig
   type nonrec t = t Ml_kind.Dict.t
 
   val dummy : Module.t -> t
-
-  val merge_for_impl : vlib:t -> impl:t -> t
 end

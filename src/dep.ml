@@ -56,13 +56,6 @@ module T = struct
       in
       [var, value]
 
-  let pp fmt = function
-    | Env e -> Format.fprintf fmt "Env %S" e
-    | Alias a -> Format.fprintf fmt "Alias %a" Alias.pp a
-    | File f -> Format.fprintf fmt "File %a" Path.pp f
-    | Glob g -> Format.fprintf fmt "Glob %a" File_selector.pp g
-    | Universe -> Format.fprintf fmt "Universe"
-
   let encode t =
     let open Dune_lang.Encoder in
     match t with
@@ -92,9 +85,6 @@ module Set = struct
 
   let trace t ~env ~eval_pred =
     List.concat_map (to_list t) ~f:(trace ~env ~eval_pred)
-
-  let pp fmt (t : t) =
-    Format.fprintf fmt "Deps %a" (Fmt.list pp) (to_list t)
 
   let add_paths t paths =
     Path.Set.fold paths ~init:t ~f:(fun p set -> add set (File p))

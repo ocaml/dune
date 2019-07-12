@@ -5,9 +5,10 @@ open! Stdune;;
 #warnings "-40";;
 
 let sexp_pp ppf x = Pp.render_ignore_tags ppf (Dune_lang.pp Dune x);;
-let mode_conf_pp fmt x = Dyn.pp fmt (Dune_file.Mode_conf.to_dyn x);;
-let binary_kind_pp fmt x = Dyn.pp fmt (Binary_kind.to_dyn x);;
-let link_mode_pp fmt x = Dyn.pp fmt (Dune_file.Executables.Link_mode.to_dyn x);;
+let print_dyn fmt dyn = Format.fprintf fmt "%a" Pp.render_ignore_tags (Dyn.pp dyn);;
+let mode_conf_pp fmt x = print_dyn fmt (Dune_file.Mode_conf.to_dyn x);;
+let binary_kind_pp fmt x = print_dyn fmt (Binary_kind.to_dyn x);;
+let link_mode_pp fmt x = print_dyn fmt (Dune_file.Executables.Link_mode.to_dyn x);;
 #install_printer mode_conf_pp;;
 #install_printer binary_kind_pp;;
 #install_printer link_mode_pp;;

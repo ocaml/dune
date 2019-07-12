@@ -99,8 +99,6 @@ val file            : t -> ml_kind:Ml_kind.t -> Path.t option
 
 val obj_name : t -> string
 
-val odoc_file : t -> doc_dir:Path.Build.t -> Path.Build.t
-
 val iter : t -> f:(Ml_kind.t -> File.t -> unit) -> unit
 
 val has : t -> ml_kind:Ml_kind.t -> bool

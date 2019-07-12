@@ -228,7 +228,7 @@ module Run (P : PARAMS) : sig end = struct
       in
       Modules.singleton_exe mock_module
     in
-    let dep_graphs = Ocamldep.rules cctx ~modules in
+    let dep_graphs = Dep_rules.rules cctx ~modules in
 
     Modules.iter_no_vlib modules ~f:(fun m ->
       Module_compilation.ocamlc_i

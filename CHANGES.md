@@ -91,6 +91,8 @@
 - The order of fields in the generated opam file now follows order preferred in
   opam-lib. (@avsm, #2380)
 
+- Fix coloring of error messages from the compiler (@diml, #2384)
+
 1.10.0 (04/06/2019)
 -------------------
 

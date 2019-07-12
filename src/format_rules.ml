@@ -24,7 +24,8 @@ let depend_on_files ~named dir =
 
 let formatted = ".formatted"
 
-let gen_rules_output sctx (config : Dune_file.Auto_format.t) ~dialects ~expander ~output_dir =
+let gen_rules_output sctx (config : Dune_file.Auto_format.t)
+      ~dialects ~expander ~output_dir =
   assert (formatted = Path.Build.basename output_dir);
   let loc = Dune_file.Auto_format.loc config in
   let dir = Path.Build.parent_exn output_dir in

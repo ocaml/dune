@@ -93,6 +93,9 @@
 
 - Fix coloring of error messages from the compiler (@diml, #2384)
 
+- Add warning `66` to default set of warnings starting for dune projects with
+  language verison >= `1.11` (@rgrinberg, @diml, fixes #2299)
+
 1.10.0 (04/06/2019)
 -------------------
 

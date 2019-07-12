@@ -1,10 +1,5 @@
 open Import
 
-let flag_of_kind : Ml_kind.t -> _ =
-  function
-  | Impl -> "--impl"
-  | Intf -> "--intf"
-
 let add_diff sctx loc alias ~dir ~input ~output =
   let open Build.O in
   let action = Action.diff input output in
@@ -29,7 +24,8 @@ let depend_on_files ~named dir =
 
 let formatted = ".formatted"
 
-let gen_rules_output sctx (config : Dune_file.Auto_format.t) ~output_dir =
+let gen_rules_output sctx (config : Dune_file.Auto_format.t)
+      ~dialects ~expander ~output_dir =
   assert (formatted = Path.Build.basename output_dir);
   let loc = Dune_file.Auto_format.loc config in
   let dir = Path.Build.parent_exn output_dir in
@@ -37,52 +33,50 @@ let gen_rules_output sctx (config : Dune_file.Auto_format.t) ~output_dir =
   let alias_formatted = Alias.fmt ~dir:output_dir in
   let resolve_program =
     Super_context.resolve_program ~dir sctx ~loc:(Some loc) in
-  let ocamlformat_deps = lazy (
-    depend_on_files ~named:[".ocamlformat"; ".ocamlformat-ignore"]
-      (Path.source source_dir)
-  ) in
+  let depend_on_files named = depend_on_files ~named (Path.source source_dir) in
   let setup_formatting file =
     let input_basename = Path.Source.basename file in
     let input = Path.Build.relative dir input_basename in
     let output = Path.Build.relative output_dir input_basename in
 
-    let ocaml kind =
-      if Dune_file.Auto_format.includes config Ocaml then
-        let exe = resolve_program "ocamlformat" in
-        let args =
-          [ Command.Args.A (flag_of_kind kind)
-          ; Dep (Path.build input)
-          ; A "--name"
-          ; Path (Path.source file)
-          ; A "-o"
-          ; Target output
-          ]
-        in
-        Some (
-          Build.S.seq (Build.S.ignore (Lazy.force ocamlformat_deps))
-            (Command.run
-               ~dir:(Path.build (Super_context.build_dir sctx)) exe args))
-      else
-        None
-    in
-
     let formatter =
       let input = Path.build input in
-      match Path.Source.basename file, Path.Source.extension file with
-      | _, ".ml" -> ocaml Impl
-      | _, ".mli" -> ocaml Intf
-      | _, ".re"
-      | _, ".rei" when Dune_file.Auto_format.includes config Reason ->
-        let refmt = Refmt.get sctx ~loc:(Some loc) ~dir in
-        Some (Refmt.format refmt ~input ~output)
-      | "dune", _ when Dune_file.Auto_format.includes config Dune ->
+      match Path.Source.basename file with
+      | "dune" when Dune_file.Auto_format.includes config Dune ->
         let exe = resolve_program "dune" in
         let args = [Command.Args.A "format-dune-file"; Dep input] in
         let dir = Path.build dir in
         Some (Command.run ~dir ~stdout_to:output exe args)
-      | _ -> None
+      | _ ->
+        let ext = Path.Source.extension file in
+        let open Option.O in
+        let* (dialect, kind) = Dialect.S.find_by_extension dialects ext in
+        let* () =
+          Option.some_if (Dune_file.Auto_format.includes
+                            config (Dialect (Dialect.name dialect))) ()
+        in
+        let+ (loc, action, extra_deps) =
+          match Dialect.format dialect kind with
+          | Some _ as action ->
+            action
+          | None ->
+            begin match Dialect.preprocess dialect kind with
+            | None -> Dialect.format Dialect.ocaml kind
+            | Some _ -> None
+            end
+        in
+        let src = Path.as_in_build_dir_exn input in
+        let extra_deps =
+          match extra_deps with
+          | [] ->
+            Build.return ()
+          | extra_deps ->
+            Build.S.ignore (depend_on_files extra_deps)
+        in
+        Build.S.seq extra_deps
+          (Preprocessing.action_for_pp sctx ~dep_kind:Lib_deps_info.Kind.Required
+             ~loc ~expander ~action ~src ~target:(Some output))
     in
-
     Option.iter formatter ~f:(fun arr ->
       Super_context.add_rule sctx ~mode:Standard ~loc ~dir arr;
       add_diff sctx loc alias_formatted ~dir

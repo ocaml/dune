@@ -82,6 +82,7 @@ val authors : t -> string list
 val stanza_parser : t -> Stanza.t list Dune_lang.Decoder.t
 val allow_approx_merlin : t -> bool
 val generate_opam_files : t -> bool
+val dialects : t -> Dialect.S.t
 
 val equal : t -> t -> bool
 val hash : t -> int

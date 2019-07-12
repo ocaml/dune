@@ -18,3 +18,5 @@ include Action_intf.Helpers
   type path = String_with_vars.t
 
 val compare_no_locs : t -> t -> Ordering.t
+
+val to_dyn : t -> Dyn.t

@@ -5,7 +5,7 @@ include Action_dune_lang
 
 module Unresolved = Action.Unresolved
 
-module Mapper = Action.Make_mapper(Action_dune_lang)(Action_dune_lang)
+module Mapper = Action_mapper.Make(Action_dune_lang)(Action_dune_lang)
 
 let ignore_loc k ~loc:_ = k
 
@@ -415,4 +415,3 @@ module Infer = struct
   let unexpanded_targets t =
     (Unexp.infer t).targets
 end
-

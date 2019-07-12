@@ -121,8 +121,7 @@ end
 
 module Auto_format : sig
   type language =
-    | Ocaml
-    | Reason
+    | Dialect of string
     | Dune
 
   type t

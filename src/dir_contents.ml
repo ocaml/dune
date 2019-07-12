@@ -85,11 +85,11 @@ let coq_modules_of_library t ~name =
   let map = Memo.Lazy.force t.coq_modules in
   Lib_name.Map.find_exn map name
 
-let modules_of_files ~dir ~files =
+let modules_of_files ~dialects ~dir ~files =
   let dir = Path.build dir in
-  let make_module syntax base fn =
+  let make_module dialect base fn =
     (Module.Name.of_string base,
-     Module.File.make syntax (Path.relative dir fn))
+     Module.File.make dialect (Path.relative dir fn))
   in
   let impl_files, intf_files =
     String.Set.to_list files
@@ -97,11 +97,13 @@ let modules_of_files ~dir ~files =
       (* we aren't using Filename.extension because we want to handle
          filenames such as foo.cppo.ml *)
       match String.lsplit2 fn ~on:'.' with
-      | Some (s, "ml" ) -> Left  (make_module OCaml  s fn)
-      | Some (s, "re" ) -> Left  (make_module Reason s fn)
-      | Some (s, "mli") -> Right (make_module OCaml  s fn)
-      | Some (s, "rei") -> Right (make_module Reason s fn)
-      | _ -> Skip)
+      | Some (s, ext) ->
+        begin match Dialect.S.find_by_extension dialects ("." ^ ext) with
+        | Some (dialect, Ml_kind.Impl) -> Left  (make_module dialect s fn)
+        | Some (dialect, Ml_kind.Intf) -> Right (make_module dialect s fn)
+        | None                         -> Skip
+        end
+      | None -> Skip)
   in
   let parse_one_set (files : (Module.Name.t * Module.File.t) list)  =
     match Module.Name.Map.of_list files with
@@ -467,13 +469,14 @@ end = struct
          let files, rules =
            Rules.collect_opt (fun () -> load_text_files sctx ft_dir d)
          in
+         let dialects = Dune_project.dialects (Scope.project d.scope) in
          Here {
            t = { kind = Standalone
                ; dir
                ; text_files = files
                ; modules = Memo.lazy_ (fun () ->
                    make_modules sctx d
-                     ~modules:(modules_of_files ~dir:d.ctx_dir ~files))
+                     ~modules:(modules_of_files ~dialects ~dir:d.ctx_dir ~files))
                ; mlds = Memo.lazy_ (fun () -> build_mlds_map d ~files)
                ; c_sources = Memo.lazy_ (fun () ->
                    let dune_version = d.dune_version in
@@ -533,9 +536,10 @@ end = struct
       let modules = Memo.lazy_ (fun () ->
         check_no_qualified Loc.none qualif_mode;
         let modules =
+          let dialects = Dune_project.dialects (Scope.project d.scope) in
           List.fold_left ((dir, [], files) :: subdirs) ~init:Module.Name.Map.empty
             ~f:(fun acc ((dir : Path.Build.t), _local, files) ->
-              let modules = modules_of_files ~dir ~files in
+              let modules = modules_of_files ~dialects ~dir ~files in
               Module.Name.Map.union acc modules ~f:(fun name x y ->
                 User_error.raise
                   ~loc:(Loc.in_file

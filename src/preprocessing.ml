@@ -618,25 +618,6 @@ let ppx_driver_and_flags sctx ~lib_name ~expander ~scope ~loc ~dir_kind ~flags
 
 let workspace_root_var = String_with_vars.virt_var __POS__ "workspace_root"
 
-
-(* Generate rules for the reason modules in [modules] and return a
-   a new module with only OCaml sources *)
-let setup_reason_rules sctx ~dir (m : Module.t) =
-  let refmt = Refmt.get sctx ~loc:None ~dir in
-  let rule input output = Refmt.to_ocaml_ast refmt ~input ~output in
-  let ml = Module.ml_source m in
-  Module.iter m ~f:(fun ml_kind f ->
-    match f.syntax with
-    | OCaml  ->
-      ()
-    | Reason ->
-      let ml =
-        Option.value_exn (Module.file ml ~ml_kind)
-        |> Path.as_in_build_dir_exn
-      in
-      SC.add_rule sctx ~dir (rule f.path ml));
-  ml
-
 let promote_correction fn build ~suffix =
   Build.progn
     [ build
@@ -675,6 +656,24 @@ let action_for_pp sctx ~dep_kind ~loc ~expander ~action ~src ~target =
   match target with
   | None -> action
   | Some dst -> Action.with_stdout_to (Path.build dst) action
+
+(* Generate rules for the dialect modules in [modules] and return a
+   a new module with only OCaml sources *)
+let setup_dialect_rules sctx ~dir ~dep_kind ~expander (m : Module.t) =
+  let ml = Module.ml_source m in
+  Module.iter m ~f:(fun ml_kind f ->
+    match Dialect.preprocess f.dialect ml_kind with
+    | None -> ()
+    | Some (loc, action) ->
+      let src = Path.as_in_build_dir_exn f.path in
+      let dst =
+        Option.value_exn (Module.file ml ~ml_kind)
+        |> Path.as_in_build_dir_exn
+      in
+      SC.add_rule sctx ~dir
+        (action_for_pp sctx ~dep_kind ~loc ~expander ~action ~src ~target:(Some dst))
+  );
+  ml
 
 let lint_module sctx ~dir ~expander ~dep_kind ~lint ~lib_name ~scope ~dir_kind =
   Staged.stage (
@@ -732,7 +731,7 @@ let lint_module sctx ~dir ~expander ~dep_kind ~lint ~lib_name ~scope ~dir_kind =
                          Command.run ~dir:(Path.build (SC.build_dir sctx))
                            (Ok (Path.build exe))
                            [ args
-                           ; Ml_kind.ppx_driver_flag ml_kind
+                           ; Command.Ml_kind.ppx_driver_flag ml_kind
                            ; Dep src.path
                            ; Command.Args.dyn flags
                            ]))))))
@@ -761,7 +760,7 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess
     with
     | No_preprocessing ->
       (fun m ~lint ->
-         let ast = setup_reason_rules sctx ~dir m in
+         let ast = setup_dialect_rules sctx ~dir ~dep_kind ~expander m in
          if lint then lint_module ~ast ~source:m;
          ast)
     | Action (loc, action) ->
@@ -773,7 +772,7 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess
              in
              SC.add_rule sctx ~loc ~dir
                (preprocessor_deps >>> action))
-           |> setup_reason_rules sctx ~dir
+           |> setup_dialect_rules sctx ~dir ~dep_kind ~expander
          in
          if lint then lint_module ~ast ~source:m;
          ast)
@@ -796,7 +795,7 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess
                  ~standard:(Build.return ["--as-ppx"]))), args)
         in
         (fun m ~lint ->
-           let ast = setup_reason_rules sctx ~dir m in
+           let ast = setup_dialect_rules sctx ~dir ~dep_kind ~expander m in
            if lint then lint_module ~ast ~source:m;
            pped_module ast ~f:(fun ml_kind src dst ->
              SC.add_rule sctx ~loc ~dir
@@ -811,7 +810,7 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess
                          (Ok (Path.build exe))
                          [ args
                          ; A "-o"; Target dst
-                         ; Ml_kind.ppx_driver_flag ml_kind; Dep (Path.build src)
+                         ; Command.Ml_kind.ppx_driver_flag ml_kind; Dep (Path.build src)
                          ; Command.Args.dyn flags
                          ])))))
       end else begin
@@ -845,7 +844,7 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess
         in
         let pp = Some pp_flags in
         (fun m ~lint ->
-           let ast = setup_reason_rules sctx ~dir m in
+           let ast = setup_dialect_rules sctx ~dir ~dep_kind ~expander m in
            if lint then lint_module ~ast ~source:m;
            Module.set_pp ast pp)
       end)

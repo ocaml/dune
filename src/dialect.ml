@@ -158,7 +158,7 @@ module S = struct
       | Error dialect ->
         User_error.raise ?loc
           [ Pp.textf "extension %S is already registered by dialect %S"
-              ext dialect.name
+              (String.drop ext 1) dialect.name
           ]
     in
     let by_extension =

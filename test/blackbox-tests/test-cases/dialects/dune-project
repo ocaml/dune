@@ -1,7 +1,0 @@
-(lang dune 1.11)
-(using fmt 1.2)
-
-(dialect
- (name mlfi)
- (implementation (extension mf))
- (interface (extension mfi)))

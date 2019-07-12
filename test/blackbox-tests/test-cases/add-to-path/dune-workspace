@@ -1,0 +1,5 @@
+(lang dune 1.12)
+
+(context
+ (default
+   (env (_ (add-to-path bin)))))

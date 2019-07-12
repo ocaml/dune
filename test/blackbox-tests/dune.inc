@@ -7,6 +7,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name add-to-path)
+ (deps (package dune) (source_tree test-cases/add-to-path))
+ (action
+  (chdir
+   test-cases/add-to-path
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name aliases)
  (deps (package dune) (source_tree test-cases/aliases))
  (action
@@ -1644,6 +1652,7 @@
  (name runtest)
  (deps
   (alias action-modifying-a-dependency)
+  (alias add-to-path)
   (alias aliases)
   (alias all-alias)
   (alias allow_approximate_merlin)
@@ -1843,6 +1852,7 @@
  (name runtest-no-deps)
  (deps
   (alias action-modifying-a-dependency)
+  (alias add-to-path)
   (alias aliases)
   (alias all-alias)
   (alias allow_approximate_merlin)

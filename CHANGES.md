@@ -96,6 +96,9 @@
 - Add warning `66` to default set of warnings starting for dune projects with
   language verison >= `1.11` (@rgrinberg, @diml, fixes #2299)
 
+- Add (dialect ...) stanza
+  (@nojb, #2404)
+
 1.10.0 (04/06/2019)
 -------------------
 

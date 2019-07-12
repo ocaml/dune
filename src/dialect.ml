@@ -13,8 +13,10 @@ module File_kind = struct
     record
       [ "kind"      , Ml_kind.to_dyn kind
       ; "extension" , string extension
-      ; "preprocess", option (pair Loc.to_dyn Action_dune_lang.to_dyn) preprocess
-      ; "format"    , option (triple Loc.to_dyn Action_dune_lang.to_dyn (list string)) format
+      ; "preprocess",
+        option (pair Loc.to_dyn Action_dune_lang.to_dyn) preprocess
+      ; "format"    ,
+        option (triple Loc.to_dyn Action_dune_lang.to_dyn (list string)) format
       ]
 end
 
@@ -35,13 +37,16 @@ let to_dyn { name ; file_kinds } =
 let decode =
   let open Dune_lang.Decoder in
   let kind kind =
-    let+ loc, extension  = field "extension" (located string)
+    let+ loc, extension = field "extension" (located string)
     and+ preprocess = field_o "preprocess" (located Action_dune_lang.decode)
-    and+ format     = field_o "format" (map ~f:(fun (loc, x) -> loc, x, []) (located Action_dune_lang.decode))
+    and+ format =
+      field_o "format"
+        (map ~f:(fun (loc, x) -> loc, x, [])
+           (located Action_dune_lang.decode))
     in
     let extension =
       if String.contains extension '.' then
-        User_error.raise ~loc [ Pp.textf "extension string must not contain '.'" ];
+        User_error.raise ~loc [ Pp.textf "extension must not contain '.'" ];
       "." ^ extension
     in
     { File_kind.kind ; extension ; preprocess ; format }
@@ -73,14 +78,17 @@ let ocaml =
     let module S = String_with_vars in
     Action_dune_lang.chdir (S.virt_var __POS__ "workspace_root")
       (Action_dune_lang.run (S.virt __POS__ "ocamlformat")
-         [ S.virt __POS__ (flag_of_kind kind) ; S.virt_var __POS__ "input-file" ])
+         [ S.virt __POS__ (flag_of_kind kind)
+         ; S.virt_var __POS__ "input-file"
+         ])
   in
   let file_kind kind extension =
     { File_kind.
       kind
     ; extension
     ; preprocess = None
-    ; format     = Some (Loc.none, format kind, [ ".ocamlformat" ; ".ocamlformat-ignore" ])
+    ; format = Some (Loc.none, format kind, [ ".ocamlformat"
+                                            ; ".ocamlformat-ignore" ])
     }
   in
   let intf = file_kind Ml_kind.Intf ".mli" in
@@ -149,7 +157,9 @@ module S = struct
         map
       | Error dialect ->
         User_error.raise ?loc
-          [ Pp.textf "extension %S is already registered by dialect %S" ext dialect.name ]
+          [ Pp.textf "extension %S is already registered by dialect %S"
+              ext dialect.name
+          ]
     in
     let by_extension =
       add_ext (add_ext by_extension dialect.file_kinds.intf.extension)

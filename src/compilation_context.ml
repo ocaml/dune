@@ -120,7 +120,11 @@ let create ~super_context ~scope ~expander ~obj_dir
   }
 
 let for_alias_module t =
-  let flags = Ocaml_flags.default ~profile:(SC.profile t.super_context) in
+  let flags =
+    let project = Scope.project t.scope in
+    let dune_version = Dune_project.dune_version project in
+    Ocaml_flags.default ~profile:(SC.profile t.super_context) ~dune_version
+  in
   let sandbox =
     let ctx = Super_context.context t.super_context in
     (* If the compiler reads the cmi for module alias even with [-w -49

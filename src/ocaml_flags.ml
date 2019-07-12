@@ -5,23 +5,30 @@ open Build.O
 let default_ocamlc_flags   = ["-g"]
 let default_ocamlopt_flags = ["-g"]
 
-let dev_mode_warnings =
+let dev_mode_warnings ~dune_version =
+  let codes =
+    [ 4
+    ; 29
+    ; 40
+    ; 41
+    ; 42
+    ; 44
+    ; 45
+    ; 48
+    ; 58
+    ; 59
+    ; 60
+    ]
+  in
+  let codes =
+    if dune_version >= (1, 11) then
+      codes @ [66]
+    else
+      codes
+  in
   "@a" ^
   String.concat ~sep:""
-    (List.map ~f:(sprintf "-%d")
-       [ 4
-       ; 29
-       ; 40
-       ; 41
-       ; 42
-       ; 44
-       ; 45
-       ; 48
-       ; 58
-       ; 59
-       ; 60
-       ; 66
-       ])
+    (List.map ~f:(sprintf "-%d") codes)
 
 let default_warnings =
   "-40"
@@ -29,9 +36,9 @@ let default_warnings =
 let vendored_warnings =
   ["-w"; "-a"]
 
-let default_flags ~profile =
+let default_flags ~dune_version ~profile =
   if profile = "dev" then
-    [ "-w"; dev_mode_warnings ^ default_warnings
+    [ "-w"; dev_mode_warnings ~dune_version ^ default_warnings
     ; "-strict-sequence"
     ; "-strict-formats"
     ; "-short-paths"
@@ -72,8 +79,8 @@ let empty =
 let of_list l =
   { empty with common = Build.arr (fun () -> l) }
 
-let default ~profile =
-  { common = Build.return (default_flags ~profile)
+let default ~dune_version ~profile =
+  { common = Build.return (default_flags ~dune_version ~profile)
   ; specific =
       { byte   = Build.return default_ocamlc_flags
       ; native = Build.return default_ocamlopt_flags

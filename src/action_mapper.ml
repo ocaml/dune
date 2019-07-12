@@ -4,6 +4,14 @@ module Make
     (Src : Action_intf.Ast)
     (Dst : Action_intf.Ast)
 = struct
+  type map
+    =  Src.t
+    -> dir:Src.path
+    -> f_program:(dir:Src.path -> Src.program -> Dst.program)
+    -> f_string:(dir:Src.path -> Src.string -> Dst.string)
+    -> f_path:(dir:Src.path -> Src.path -> Dst.path)
+    -> Dst.t
+
   let map_one_step f (t : Src.t) ~dir ~f_program ~f_string ~f_path : Dst.t =
     match t with
     | Run (prog, args) ->

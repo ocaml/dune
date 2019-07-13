@@ -173,11 +173,12 @@ let chdirs =
 
 let symlink_managed_paths sandboxed deps ~eval_pred =
   let steps =
-    Path.Set.fold (Dep.Set.paths deps ~eval_pred)
-      ~init:[]
+    Path.Set.fold (Dep.Set.paths deps ~eval_pred) ~init:[]
       ~f:(fun path acc ->
         match Path.as_in_build_dir path with
-        | None -> acc
+        | None ->
+          assert (not (Path.is_in_source_tree path));
+          acc
         | Some p -> Symlink (path, sandboxed p) :: acc)
   in
   Progn steps

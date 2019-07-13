@@ -5,7 +5,7 @@ All builtin variables are lower cased in Dune:
   File "dune", line 3, characters 25-32:
   3 |  (action (with-stdout-to %{null} (echo %{make}))))
                                ^^^^^^^
-  Error: target /dev/null cannot be in build dir
+  Error: target /dev/null is outside the build directory. This is not allowed.
   [1]
 
   $ dune runtest --root dune-upper
@@ -28,7 +28,7 @@ jbuild files retain the the old names:
   File "jbuild", line 3, characters 26-33:
   3 |   (action (with-stdout-to ${null} (echo ${MAKE})))))
                                 ^^^^^^^
-  Error: target /dev/null cannot be in build dir
+  Error: target /dev/null is outside the build directory. This is not allowed.
   [1]
 
   $ dune runtest --root jbuilder-upper
@@ -40,5 +40,5 @@ jbuild files retain the the old names:
   File "jbuild", line 3, characters 26-33:
   3 |   (action (with-stdout-to ${null} (echo ${MAKE})))))
                                 ^^^^^^^
-  Error: target /dev/null cannot be in build dir
+  Error: target /dev/null is outside the build directory. This is not allowed.
   [1]

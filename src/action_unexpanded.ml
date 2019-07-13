@@ -35,7 +35,7 @@ let as_in_build_dir ~loc p =
   | None ->
     User_error.raise ?loc
       [ Pp.textf
-          "target %s cannot be in build dir"
+          "target %s is outside the build directory. This is not allowed."
           (Path.to_string_maybe_quoted p)
       ]
 

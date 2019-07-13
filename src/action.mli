@@ -14,13 +14,13 @@ module Prog : sig
       ; loc     : Loc.t option
       }
 
-      val create
-        :  ?hint:string
-        -> context:string
-        -> program:string
-        -> loc:Loc.t option
-        -> unit
-        -> t
+    val create
+      :  ?hint:string
+      -> context:string
+      -> program:string
+      -> loc:Loc.t option
+      -> unit
+      -> t
 
     val raise : t -> _
   end

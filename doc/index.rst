@@ -26,7 +26,6 @@ Welcome to dune's documentation!
    jsoo
    opam
    variants
-   dialects
    formatting
    coq
    faq

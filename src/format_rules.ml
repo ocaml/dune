@@ -50,7 +50,7 @@ let gen_rules_output sctx (config : Dune_file.Auto_format.t)
       | _ ->
         let ext = Path.Source.extension file in
         let open Option.O in
-        let* (dialect, kind) = Dialect.S.find_by_extension dialects ext in
+        let* (dialect, kind) = Dialect.DB.find_by_extension dialects ext in
         let* () =
           Option.some_if (Dune_file.Auto_format.includes
                             config (Dialect (Dialect.name dialect))) ()

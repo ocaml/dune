@@ -143,12 +143,12 @@ module DB = struct
     ; by_extension = String.Map.empty
     }
 
-  let add { by_name ; by_extension } ?loc dialect =
+  let add { by_name ; by_extension } ~loc dialect =
     let by_name =
       match String.Map.add by_name dialect.name dialect with
       | Ok by_name -> by_name
       | Error _ ->
-        User_error.raise ?loc
+        User_error.raise ~loc
           [ Pp.textf "dialect %S is already defined" dialect.name ]
     in
     let add_ext map ext =
@@ -156,7 +156,7 @@ module DB = struct
       | Ok map ->
         map
       | Error dialect ->
-        User_error.raise ?loc
+        User_error.raise ~loc
           [ Pp.textf "extension %S is already registered by dialect %S"
               (String.drop ext 1) dialect.name
           ]
@@ -168,7 +168,7 @@ module DB = struct
     { by_name ; by_extension }
 
   let of_list dialects =
-    List.fold_left ~f:(add ?loc:None) ~init:empty dialects
+    List.fold_left ~f:(add ~loc:Loc.none) ~init:empty dialects
 
   let find_by_name { by_name ; _ } name =
     String.Map.find by_name name

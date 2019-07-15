@@ -208,7 +208,7 @@ type t =
   ; allow_approx_merlin : bool
   ; generate_opam_files : bool
   ; file_key : File_key.t
-  ; dialects        : Dialect.S.t
+  ; dialects        : Dialect.DB.t
   }
 
 let equal = (==)
@@ -264,7 +264,7 @@ let to_dyn
     ; "allow_approx_merlin", bool allow_approx_merlin
     ; "generate_opam_files", bool generate_opam_files
     ; "file_key", string file_key
-    ; "dialects", Dialect.S.to_dyn dialects
+    ; "dialects", Dialect.DB.to_dyn dialects
     ]
 
 let find_extension_args t key =
@@ -568,7 +568,7 @@ let anonymous = lazy (
   ; allow_approx_merlin = true
   ; generate_opam_files = false
   ; file_key
-  ; dialects = Dialect.S.builtin
+  ; dialects = Dialect.DB.builtin
   })
 
 let default_name ~dir ~packages =
@@ -724,8 +724,8 @@ let parse ~dir ~lang ~opam_packages ~file =
      let file_key = File_key.make ~name ~root in
      let dialects =
        List.fold_left
-         ~f:(fun dialects (loc, dialect) -> Dialect.S.add dialects ~loc dialect)
-         ~init:Dialect.S.builtin dialects
+         ~f:(fun dialects (loc, dialect) -> Dialect.DB.add dialects ~loc dialect)
+         ~init:Dialect.DB.builtin dialects
      in
      { name
      ; file_key
@@ -774,7 +774,7 @@ let make_jbuilder_project ~dir opam_packages =
   let root = dir in
   let file_key = File_key.make ~root ~name
   in
-  let dialects = Dialect.S.builtin in
+  let dialects = Dialect.DB.builtin in
   { name
   ; root
   ; file_key

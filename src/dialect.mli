@@ -41,12 +41,12 @@ val reason : t
 
 val ml_suffix : t -> Ml_kind.t -> string option
 
-module S : sig
+module DB : sig
   type dialect
   type t
 
   val empty : t
-  val add : t -> ?loc:Loc.t -> dialect -> t
+  val add : t -> loc:Loc.t -> dialect -> t
   val find_by_name : t -> string -> dialect option
   val find_by_extension : t -> string -> (dialect * Ml_kind.t) option
 

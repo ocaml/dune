@@ -130,7 +130,7 @@ let ml_suffix { file_kinds = { Ml_kind.Dict.intf ; impl } ; _ } ml_kind =
   | Ml_kind.Intf, None, _ | Impl, _, None -> None
   | _ -> Some (extension ocaml ml_kind)
 
-module S = struct
+module DB = struct
   type dialect = t
 
   type t =

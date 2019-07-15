@@ -41,7 +41,7 @@ val reason : t
 
 val ml_suffix : t -> Ml_kind.t -> string option
 
-module S : sig
+module DB : sig
   type dialect
   type t
 

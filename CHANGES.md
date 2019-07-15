@@ -99,6 +99,8 @@
 - Add (dialect ...) stanza
   (@nojb, #2404)
 
+- Add a `--context` argument to `dune install/uninstall` (@diml, #2412)
+
 1.10.0 (04/06/2019)
 -------------------
 

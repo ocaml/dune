@@ -282,12 +282,23 @@ let install_uninstall ~what =
           )
     and+ pkgs =
       Arg.(value & pos_all package_name [] name_)
+    and+ context =
+      Arg.(value
+           & opt (some string) None
+           & info ["context"] ~docv:"CONTEXT"
+               ~doc:"Select context to install from. By default, \
+                     install files from all defined contexts.")
     in
     Common.set_common common ~targets:[];
     let log = Log.create common in
     Scheduler.go ~log ~common (fun () ->
       let open Fiber.O in
       let* workspace = Import.Main.scan_workspace ~log common in
+      let contexts =
+        match context with
+        | None -> workspace.contexts
+        | Some name -> [Import.Main.find_context_exn workspace ~name]
+      in
       let pkgs =
         match pkgs with
         | [] -> Package.Name.Map.keys workspace.conf.packages
@@ -296,7 +307,7 @@ let install_uninstall ~what =
       let install_files, missing_install_files =
         List.concat_map pkgs ~f:(fun pkg ->
           let fn = resolve_package_install workspace pkg in
-          List.map workspace.contexts ~f:(fun ctx ->
+          List.map contexts ~f:(fun ctx ->
             let fn = Path.append_source (Path.build ctx.Context.build_dir) fn in
             if Path.exists fn then
               Left (ctx, (pkg, fn))
@@ -313,7 +324,7 @@ let install_uninstall ~what =
           ~hints:[ Pp.text "try running: dune build @install" ]
       end;
       (match
-         workspace.contexts,
+         contexts,
          prefix_from_command_line,
          libdir_from_command_line
        with

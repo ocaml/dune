@@ -890,6 +890,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name install-multiple-contexts)
+ (deps (package dune) (source_tree test-cases/install-multiple-contexts))
+ (action
+  (chdir
+   test-cases/install-multiple-contexts
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name install-partial-package)
  (deps (package dune) (source_tree test-cases/install-partial-package))
  (action
@@ -1734,6 +1742,7 @@
   (alias inline_tests)
   (alias install-dry-run)
   (alias install-libdir)
+  (alias install-multiple-contexts)
   (alias install-partial-package)
   (alias install-rule-order)
   (alias install-with-var)
@@ -1923,6 +1932,7 @@
   (alias include-loop)
   (alias include-qualified)
   (alias inline_tests)
+  (alias install-multiple-contexts)
   (alias install-partial-package)
   (alias install-rule-order)
   (alias install-with-var)

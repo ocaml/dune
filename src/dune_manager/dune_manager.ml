@@ -96,6 +96,14 @@ let find_highest_common_version (a : version list) (b : version list) :
   in
   Int_map.max_binding common
 
+let int_of_string ?where s =
+  try Result.Ok (int_of_string s)
+  with Failure _ ->
+    Result.Error
+      (Printf.sprintf "invalid integer%s: %s"
+         (match where with Some l -> " in " ^ l | None -> "")
+         s)
+
 let run ?(port_f = ignore) ?(port = 0) manager =
   let open Result.O in
   let invalid_args args =
@@ -108,12 +116,11 @@ let run ?(port_f = ignore) ?(port = 0) manager =
   let handle_lang client = function
     | Sexp.Atom "dune-memory-protocol" :: versions -> (
         let decode_version = function
-          | Sexp.List [Sexp.Atom major; Sexp.Atom minor] as v -> (
-            try Result.ok (int_of_string major, int_of_string minor)
-            with Failure _ ->
-              Result.Error
-                (Printf.sprintf "invalid intergers in lang command version: %s"
-                   (Sexp.to_string v)) )
+          | Sexp.List [Sexp.Atom major; Sexp.Atom minor] ->
+              int_of_string ~where:"lang command version" major
+              >>= fun major ->
+              int_of_string ~where:"lang command version" minor
+              >>| fun minor -> (major, minor)
           | v ->
               Result.Error
                 (Printf.sprintf "invalid version in lang command: %s"
@@ -141,15 +148,14 @@ let run ?(port_f = ignore) ?(port = 0) manager =
           | [] ->
               Result.ok None
           | [Sexp.List [Sexp.Atom "repo"; Sexp.Atom repo]] -> (
-            match int_of_string_opt repo with
-            | Some i -> (
-              match List.nth_opt client.repositories i with
+              int_of_string ~where:"repository index" repo
+              >>= fun repo ->
+              match List.nth_opt client.repositories repo with
               | None ->
-                  Result.Error (Printf.sprintf "repository out of range: %i" i)
+                  Result.Error
+                    (Printf.sprintf "repository out of range: %i" repo)
               | v ->
                   Result.ok v )
-            | None ->
-                Result.Error (Printf.sprintf "invalid repo: %s" repo) )
           | _ ->
               Result.Error
                 (Printf.sprintf "invalid promotion message: %s"

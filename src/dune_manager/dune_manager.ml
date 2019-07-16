@@ -53,7 +53,8 @@ let make ?root ?log () : t =
 
 let getsockname = function
   | Unix.ADDR_UNIX _ ->
-      failwith "got a Unix socket connection on our TCP socket ?"
+      User_error.raise
+        [Pp.textf "got a Unix socket connection on our TCP socket ?"]
   | Unix.ADDR_INET (addr, port) ->
       (addr, port)
 
@@ -348,12 +349,12 @@ let run ?(port_f = ignore) ?(port = 0) manager =
          | Result.Ok v ->
              v
          | Result.Error _ ->
-             failwith "duplicate socket" )
+             User_error.raise [Pp.textf "duplicate socket"] )
     done
   in
   try Exn.protect ~f ~finally
   with Unix.Unix_error (errno, f, _) ->
-    raise
-      (Error (Printf.sprintf "unable to %s: %s\n" f (Unix.error_message errno)))
+    User_error.raise
+      [Pp.textf "unable to %s: %s\n" f (Unix.error_message errno)]
 
 let endpoint m = m.endpoint

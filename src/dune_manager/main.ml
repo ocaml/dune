@@ -4,7 +4,7 @@ open Utils
 let runtime_dir =
   let xdg =
     try Sys.getenv "XDG_RUNTIME_DIR"
-    with Not_found -> failwith "XDG_RUNTIME_DIR is not set"
+    with Not_found -> User_error.raise [Pp.textf "XDG_RUNTIME_DIR is not set"]
   in
   Filename.concat xdg "dune-manager"
 
@@ -51,7 +51,8 @@ let make_port_file path contents =
       Unix.write fd (Bytes.of_string contents) 0 length <> length
     then (
       cancel () ;
-      failwith "couldn't write whole endpoint to port file" )
+      User_error.raise
+        [Pp.textf "couldn't write whole endpoint to port file \"%s\"" p] )
     else ( Fcntl.lock fd Fcntl.Read ; Some fd )
   else None
 
@@ -164,7 +165,7 @@ let start () =
         report_endpoint () )
   | Some (e, pid, _) ->
       if !foreground then
-        failwith (Printf.sprintf "already running on %s (PID %i)" e pid)
+        User_error.raise [Pp.textf "already running on %s (PID %i)" e pid]
       else report_endpoint ()
 
 let modes = Modes.add_exn modes "start" start
@@ -177,7 +178,7 @@ let stop () =
     "stop [OPTIONS]" ;
   match Result.ok_exn (check_port_file ~close:false !port_path) with
   | None ->
-      failwith "not running"
+      User_error.raise [Pp.textf "not running"]
   | Some (_, pid, fd) ->
       Unix.kill pid Sys.sigterm ;
       Result.ok_exn
@@ -211,9 +212,13 @@ let () =
       Printf.fprintf stderr "%s: command line error: %s\n%!" Sys.argv.(0)
         reason ;
       exit 1
+  | User_error.E msg ->
+      Printf.fprintf stderr "%s: user error: %s\n" Sys.argv.(0)
+        (Format.asprintf "%a@?" Pp.render_ignore_tags (User_message.pp msg)) ;
+      exit 2
   | Failure reason ->
       Printf.fprintf stderr "%s: fatal error: %s\n%!" Sys.argv.(0) reason ;
-      exit 1
+      exit 3
   | Arg.Help help ->
       Printf.fprintf stdout "Usage: %s %s\n%!" Sys.argv.(0) help ;
       exit 0

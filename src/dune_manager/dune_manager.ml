@@ -150,12 +150,10 @@ let run ?(port_f = ignore) ?(port = 0) manager =
           | [Sexp.List [Sexp.Atom "repo"; Sexp.Atom repo]] -> (
               int_of_string ~where:"repository index" repo
               >>= fun repo ->
-              match List.nth_opt client.repositories repo with
-              | None ->
-                  Result.Error
-                    (Printf.sprintf "repository out of range: %i" repo)
-              | v ->
-                  Result.ok v )
+              try Result.Ok (List.nth client.repositories repo)
+              with Failure _ ->
+                Result.Error
+                  (Printf.sprintf "repository out of range: %i" repo) )
           | _ ->
               Result.Error
                 (Printf.sprintf "invalid promotion message: %s"

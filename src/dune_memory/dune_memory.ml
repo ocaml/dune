@@ -74,8 +74,6 @@ let promotion_to_string = function
         (Digest.to_string expected)
         (Digest.to_string effective)
 
-exception Failed = Utils.Failed
-
 let path_files memory = Path.L.relative memory.root ["files"]
 
 let path_meta memory = Path.L.relative memory.root ["meta"]
@@ -87,7 +85,7 @@ let default_root () =
 
 let make ?log ?(root = default_root ()) () =
   if Path.basename root <> "v2" then
-    Result.Error (Failure "unable to read dune-memory")
+    Result.Error (error "unable to read dune-memory")
   else
     Result.ok
       {root; log= (match log with Some log -> log | None -> Log.no_log)}

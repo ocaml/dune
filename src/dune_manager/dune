@@ -1,11 +1,11 @@
 (library
   (name dune_manager)
-  (modules DuneManager Utils)
+  (modules dune_manager)
   (libraries threads.posix dune_memory stdune))
 
 (executable
   (name main)
   (package dune)
-  (modules main)
+  (modules main utils)
   (public_name dune-manager)
   (libraries dune_manager dune_memory stdune))

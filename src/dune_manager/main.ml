@@ -1,6 +1,5 @@
 open Stdune
-open Dune_manager
-open Dune_manager.Utils
+open Utils
 
 let runtime_dir =
   let xdg =
@@ -88,7 +87,7 @@ let modes = Modes.empty
 
 let start () =
   let port_path = ref (Path.of_string (Filename.concat runtime_dir "port"))
-  and root = ref (Dune_memory.DuneMemory.default_root ())
+  and root = ref (Dune_memory.default_root ())
   and foreground = ref false
   and usage = Printf.sprintf "start [OPTIONS]" in
   let report_endpoint () =
@@ -107,7 +106,7 @@ let start () =
         Path.mkdir_p (Path.of_string runtime_dir) ;
         let f () =
           let manager =
-            DuneManager.make ~root:!root
+            Dune_manager.make ~root:!root
               ~log:
                 (let display =
                    if !foreground then Console.Display.Verbose
@@ -118,22 +117,22 @@ let start () =
           in
           let port_f port =
             if make_port_file !port_path port = None then
-              DuneManager.stop manager
+              Dune_manager.stop manager
             else if !foreground then report_endpoint ()
           in
           Sys.set_signal Sys.sigint
-            (Sys.Signal_handle (fun _ -> DuneManager.stop manager)) ;
+            (Sys.Signal_handle (fun _ -> Dune_manager.stop manager)) ;
           Sys.set_signal Sys.sigterm
-            (Sys.Signal_handle (fun _ -> DuneManager.stop manager)) ;
+            (Sys.Signal_handle (fun _ -> Dune_manager.stop manager)) ;
           try
-            let f () = DuneManager.run ~port_f manager
+            let f () = Dune_manager.run ~port_f manager
             and finally () = Unix.truncate (Path.to_string !port_path) 0 in
             Exn.protect ~f ~finally
           with
-          | DuneManager.Error s ->
+          | Dune_manager.Error s ->
               Printf.fprintf stderr "%s: fatal error: %s\n%!" Sys.argv.(0) s ;
               exit 1
-          | DuneManager.Stop ->
+          | Dune_manager.Stop ->
               ()
         and finally () = () in
         Exn.protect ~f ~finally

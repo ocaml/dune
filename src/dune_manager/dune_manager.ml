@@ -9,7 +9,7 @@ type client =
   ; output: out_channel
   ; mutable build_root: Path.t option (* client owned *)
   ; mutable common_metadata: Sexp.t list (* client owned *)
-  ; mutable memory: Dune_memory.DuneMemory.memory (* client owned*)
+  ; mutable memory: Dune_memory.memory (* client owned*)
   ; mutable repositories: (string * string * string) list (* client owned *)
   ; mutable version: version option (* client owned*) }
 
@@ -161,7 +161,7 @@ let run ?(port_f = ignore) ?(port = 0) manager =
                 (Printf.sprintf "invalid file in promotion message: %s"
                    (Sexp.to_string sexp))
         and f promotion =
-          print_endline (DuneMemory.promotion_to_string promotion) ;
+          print_endline (Dune_memory.promotion_to_string promotion) ;
           match promotion with
           | Already_promoted (f, t) ->
               Some
@@ -175,8 +175,8 @@ let run ?(port_f = ignore) ?(port = 0) manager =
         Result.List.map ~f:file files
         >>| fun files ->
         let promotions =
-          DuneMemory.promote client.memory files
-            (DuneMemory.key_of_string key)
+          Dune_memory.promote client.memory files
+            (Dune_memory.key_of_string key)
             (metadata @ client.common_metadata)
             (Option.map ~f:(fun (_, remote, commit) -> (remote, commit)) repo)
         in
@@ -198,7 +198,7 @@ let run ?(port_f = ignore) ?(port = 0) manager =
                      ; Sexp.List [Sexp.Atom "supported-formats"; Sexp.Atom "v2"]
                      ]) ;
                 "unable to read Dune memory" )
-          ( Dune_memory.DuneMemory.make ~root:(Path.of_string dir) ()
+          ( Dune_memory.make ~root:(Path.of_string dir) ()
           >>| fun memory -> client.memory <- memory )
     | args ->
         invalid_args args
@@ -340,7 +340,7 @@ let run ?(port_f = ignore) ?(port = 0) manager =
         ; build_root= None
         ; common_metadata= []
         ; repositories= []
-        ; memory= Result.ok_exn (DuneMemory.make ?root:manager.root ()) }
+        ; memory= Result.ok_exn (Dune_memory.make ?root:manager.root ()) }
       in
       let tid = Thread.create client_thread client in
       manager.clients

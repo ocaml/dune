@@ -1,4 +1,4 @@
-open Dune_memory.DuneMemory
+open Dune_memory
 open Stdune
 
 let parse_metadata s =

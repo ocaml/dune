@@ -1,5 +1,9 @@
-#include <fcntl.h>
-#include <stdio.h>
+#ifndef _WIN32
+# include <fcntl.h>
+# include <stdio.h>
+#else
+# include <Windows.h>
+#endif
 
 #include <caml/custom.h>
 #include <caml/mlvalues.h>
@@ -7,6 +11,7 @@
 #include <caml/alloc.h>
 #include <caml/memory.h>
 
+#ifndef _WIN32
 CAMLprim value fcntl_lk_native(value fd, value op_v, value type_v, value whence_v, value start, value len)
 {
   int op;
@@ -96,6 +101,67 @@ CAMLprim value fcntl_lk_native(value fd, value op_v, value type_v, value whence_
   }
   return res;
 }
+#else
+CAMLprim value fcntl_lk_native(value fd, value op_v, value type_v, value whence_v, value start, value len)
+{
+  DWORD dwFlags = 0;
+  int op;
+  switch (Int_val(op_v))
+  {
+  case 0: // F_SETLK
+    dwFlags |= LOCKFILE_FAIL_IMMEDIATELY;
+    break;
+  case 1: // F_SETLKW
+    break;
+  case 2: // F_GETLK
+    // FIXME
+    caml_failwith("fcntl: F_GETLK not supported on windows");
+    break;
+  default:
+    caml_failwith("fcntl: invalid lock operation");
+  }
+  int unlock = 0;
+  switch (Int_val(type_v))
+  {
+  case 0: // F_RDLCK
+    break;
+  case 1: // F_WRLCK
+    dwFlags |= LOCKFILE_EXCLUSIVE_LOCK;
+    break;
+  case 2: // F_UNLCK
+    unlock = 1;
+    break;
+  default:
+    caml_failwith("fcntl: invalid lock type");
+  }
+
+  OVERLAPPED overlapped = {0};
+  overlapped.Offset = Long_val(start);
+  if (whence != SEEK_SET)
+    // FIXME: can be implemented
+    caml_failwith("fcntl: Set is the only whence supported on windows");
+
+
+  int rv;
+  if (unlock)
+    rv = UnlockFileEx(fd, 0, Long_val(len), 0, &overlapped);
+  else
+    rv = LockFileEx(fd, dwFlangs, 0, Long_val(len), 0, &overlapped);
+
+  value res;
+
+  res = caml_alloc(2, 0);
+
+  if (op == F_GETLK)
+    caml_failwith("fcntl: F_GETLK not supported on windows");
+  else
+  {
+    Store_field(res, 0, !Val_int(rv));
+    Store_field(res, 1, Val_int(0));
+  }
+  return res;
+}
+#endif
 
 CAMLprim value fcntl_lk_bytecode(value* argv, int argn)
 {

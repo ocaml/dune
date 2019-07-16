@@ -9,6 +9,10 @@ module Version = struct
       match Int.compare major_a major_b with
       | (Gt | Lt) as ne -> ne
       | Eq -> Int.compare minor_a minor_b
+
+    let to_dyn t =
+      let open Dyn.Encoder in
+      pair int int t
   end
 
   include T
@@ -20,10 +24,6 @@ module Version = struct
   let to_string (a, b) = sprintf "%u.%u" a b
 
   let pp fmt t = Format.fprintf fmt "%s" (to_string t)
-
-  let to_dyn t =
-    let open Dyn.Encoder in
-    pair int int t
 
   let hash = Hashtbl.hash
 

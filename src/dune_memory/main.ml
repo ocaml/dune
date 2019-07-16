@@ -86,16 +86,19 @@ let main () =
            ~f:(fun p -> Printf.printf "%s\n" (promotion_to_string p))
            promotions)
   | "search" ->
+      let open Result.O in
       let metadata = parse_metadata Sys.argv.(3) in
-      ignore
-        (List.map
-           ~f:(fun (sym, act) ->
-             Printf.printf "%s: %s\n" (Path.to_string sym) (Path.to_string act)
-             )
-           (snd
-              (search memory
-                 (key (* FIXME: consumed files *) [] metadata
-                    (* FIXME: produced files *) []))))
+      Result.ok_exn
+        ( search memory
+            (key (* FIXME: consumed files *) [] metadata
+               (* FIXME: produced files *) [])
+        >>| function
+        | _, paths ->
+            List.iter
+              ~f:(fun (sym, act) ->
+                Printf.printf "%s: %s\n" (Path.to_string sym)
+                  (Path.to_string act) )
+              paths )
   | "trim" ->
       let freed, files = trim memory 1 in
       Printf.printf "freed %i bytes\n" freed ;

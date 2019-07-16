@@ -29,6 +29,8 @@ let compare a b : ordering =
   in
   loop 0
 
+let error s = User_error.E (User_error.make [Pp.textf "%s" s])
+
 let with_lock memory f =
   let lock =
     Stdune.Lockf.lock (Path.to_string (Path.L.relative memory.root [".lock"]))
@@ -211,35 +213,32 @@ let promote memory paths key metadata repo =
 
 let search memory key =
   let path = FSSchemeImpl.path (path_meta memory) key in
-  let metadata =
-    Result.ok_exn
-      (Result.map_error
-         ~f:(fun r -> Failure r)
-         (let open Result.O in
-         Io.with_file_in path ~f:(fun input ->
-             Csexp.parse (Stream.of_channel input) )
-         >>= function
-         | Sexp.List l -> Result.ok l | _ -> Result.Error "invalid metadata"))
-  in
   let f () =
-    match metadata with
+    let open Result.O in
+    Io.with_file_in path ~f:(fun input ->
+        Csexp.parse (Stream.of_channel input) |> Result.map_error ~f:error )
+    >>= (function
+          | Sexp.List l ->
+              Result.ok l
+          | _ ->
+              Result.Error (error "invalid metadata") )
+    >>= function
     | [ Sexp.List (Sexp.Atom s_metadata :: metadata)
-      ; Sexp.List [Sexp.Atom s_produced; Sexp.List produced] ] ->
+      ; Sexp.List [Sexp.Atom s_produced; Sexp.List produced] ] -> (
         if
           (not (String.equal s_metadata "metadata"))
           && String.equal s_produced "produced-files"
-        then raise (Failed "invalid metadata scheme: wrong key")
+        then Result.Error (error "invalid metadata scheme: wrong key")
         else
-          ( metadata
-          , List.map produced ~f:(function
-              | Sexp.List [Sexp.Atom f; Sexp.Atom t] ->
-                  (Path.of_string f, Path.of_string t)
-              | _ ->
-                  raise
-                    (Failed "invalid metadata scheme in produced files list") )
-          )
+          Result.List.map produced ~f:(function
+            | Sexp.List [Sexp.Atom f; Sexp.Atom t] ->
+                Result.Ok (Path.of_string f, Path.of_string t)
+            | _ ->
+                Result.Error
+                  (error "invalid metadata scheme in produced files list") )
+          >>| function produced -> (metadata, produced) )
     | _ ->
-        raise (Failed "invalid metadata scheme")
+        Result.Error (error "invalid metadata scheme")
   in
   with_lock memory f
 

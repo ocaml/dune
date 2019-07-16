@@ -33,6 +33,6 @@ val promote :
   -> (string * string) option
   -> promotion list
 
-val search : memory -> key -> metadata * (Path.t * Path.t) list
+val search : memory -> key -> (metadata * (Path.t * Path.t) list, exn) Result.t
 
 val trim : memory -> int -> int * Path.t list

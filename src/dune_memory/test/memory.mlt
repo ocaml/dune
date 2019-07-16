@@ -50,8 +50,8 @@ let metadata = [Sexp.List [Sexp.Atom "test"; Sexp.Atom "metadata"]];;
 let key = Dune_memory.key [] metadata [file1];;
 Dune_memory.promote memory [(file1, Digest.file file1)] key metadata None;;
 Dune_memory.promote memory [(file1, Digest.file file1)] key metadata None;;
-match Dune_memory.search memory key with
-| stored_metadata, [(original, promoted)] ->
+match Result.ok_exn (Dune_memory.search memory key) with
+|  (stored_metadata, [(original, promoted)]) ->
    if not (List.for_all2 ~f:Sexp.equal stored_metadata metadata) then
      failwith "Metadata mismatch"
    else if Path.equal original file1 then

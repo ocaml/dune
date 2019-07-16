@@ -1,11 +1,11 @@
 (library
   (name dune_memory)
   (modules Dune_memory Utils)
-  (libraries sexplib stdune xdg))
+  (libraries stdune xdg))
 
 (executable
   (name main)
   (package dune)
   (modules main)
   (public_name dune-memory)
-  (libraries dune_memory stdune sexplib))
+  (libraries dune_memory stdune))

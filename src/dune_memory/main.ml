@@ -1,20 +1,18 @@
 open Dune_memory
 open Stdune
 
+(* Idealy these should be parsed as human readable
+(i.e. non-canonical) S-Expressions, but we don't have such
+capabilities in stdune yet. *)
 let parse_metadata s =
-  let rec convert = function
-    | Sexplib.Sexp.Atom x ->
-        Stdune.Sexp.Atom x
-    | Sexplib.Sexp.List l ->
-        Stdune.Sexp.List (List.map ~f:convert l)
-  in
-  match Sexplib.Sexp.parse s with
-  | Sexplib.Sexp.Done (Sexplib.Sexp.List l, _) ->
-      (* FIXME: check there's no leftover *)
-      Result.Ok (List.map ~f:convert l)
-  | Sexplib.Sexp.Cont _ ->
-      Result.Error
-        (User_error.E (User_error.make [Pp.textf "unfinished sexp"]))
+  let open Result.O in
+  let s = Stream.of_string s in
+  Result.map_error
+    ~f:(fun s -> User_error.E (User_error.make [Pp.textf "%s" s]))
+    (Csexp.parse s)
+  >>= function
+  | Sexp.List l ->
+      Result.Ok l
   | _ ->
       Result.Error
         (User_error.E (User_error.make [Pp.textf "metadata must be a list"]))

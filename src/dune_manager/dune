@@ -8,4 +8,4 @@
   (package dune)
   (modules main utils)
   (public_name dune-manager)
-  (libraries dune_manager dune_memory stdune))
+  (libraries dune_manager dune_memory stdune threads.posix))

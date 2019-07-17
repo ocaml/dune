@@ -89,7 +89,6 @@ type t =
 val decode : dir:Path.Source.t -> t Dune_lang.Decoder.t
 
 val opam_file : t -> Path.Source.t
-
 val meta_file : t -> Path.Source.t
 
 val to_dyn : t -> Dyn.t

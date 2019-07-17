@@ -21,7 +21,6 @@ val scan_workspace
   -> ?workspace:Workspace.t
   -> ?workspace_file:Path.t
   -> ?x:string
-  -> ?ignore_promoted_rules:bool
   -> ?capture_outputs:bool
   -> ?profile:string
   -> ancestor_vcs:Vcs.t option

@@ -50,6 +50,8 @@ val all_cmis: 'path t -> 'path list
 (** The public compiled cmi file directory *)
 val public_cmi_dir: 'path t -> 'path
 
+val odoc_dir : 'path t -> 'path
+
 val all_obj_dirs : 'path t -> mode:Mode.t -> 'path list
 
 (** Create the object directory for a library *)
@@ -103,6 +105,8 @@ module Module : sig
   (** Either the .cmti, or .cmt if the module has no interface *)
   val cmti_file : 'path t -> Module.t -> 'path
 
+  val odoc : 'path t -> Module.t -> 'path
+
   module L : sig
     val o_files : 'path t -> Module.t list -> ext_obj:string -> Path.t list
     val cm_files : 'path t -> Module.t list -> kind:Cm_kind.t -> Path.t list
@@ -110,9 +114,9 @@ module Module : sig
 
   module Dep : sig
     type t =
-      | Immediate
-      | Transitive
+      | Immediate of Module.File.t
+      | Transitive of Module.t * Ml_kind.t
   end
 
-  val dep : Path.Build.t t -> Module.File.t -> kind:Dep.t -> Path.Build.t
+  val dep : Path.Build.t t -> Dep.t -> Path.Build.t
 end

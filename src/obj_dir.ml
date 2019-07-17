@@ -1,6 +1,25 @@
 open! Stdune
 open Import
 
+module Paths = struct
+  let library_object_directory ~dir name =
+    Path.Build.relative dir ("." ^ Lib_name.Local.to_string name ^ ".objs")
+
+  let library_native_dir ~obj_dir =
+    Path.Build.relative obj_dir "native"
+
+  let library_byte_dir ~obj_dir =
+    Path.Build.relative obj_dir "byte"
+
+  let library_public_cmi_dir ~obj_dir =
+    Path.Build.relative obj_dir "public_cmi"
+
+  (* Use "eobjs" rather than "objs" to avoid a potential conflict with a
+     library of the same name *)
+  let executable_object_directory ~dir name =
+    Path.Build.relative dir ("." ^ name ^ ".eobjs")
+end
+
 module External = struct
   type t =
     { public_dir : Path.t
@@ -67,6 +86,7 @@ module External = struct
   let native_dir t = t.public_dir
   let dir t = t.public_dir
   let obj_dir t = t.public_dir
+  let odoc_dir t = t.public_dir
 
   let all_obj_dirs t ~mode:_ =
     [t.public_dir]
@@ -117,6 +137,7 @@ module Local = struct
   let obj_dir t = t.obj_dir
   let byte_dir t = t.byte_dir
   let native_dir t = t.native_dir
+  let odoc_dir t = t.byte_dir
 
   let all_obj_dirs t ~(mode : Mode.t) =
     let dirs = [t.byte_dir; public_cmi_dir t] in
@@ -129,24 +150,24 @@ module Local = struct
     |> Path.Build.Set.to_list
 
   let make_lib ~dir ~has_private_modules lib_name =
-    let obj_dir = Utils.library_object_directory ~dir lib_name in
+    let obj_dir = Paths.library_object_directory ~dir lib_name in
     let public_cmi_dir =
       Option.some_if
         has_private_modules
-        (Utils.library_public_cmi_dir ~obj_dir)
+        (Paths.library_public_cmi_dir ~obj_dir)
     in
     make ~dir
       ~obj_dir
-      ~native_dir:(Utils.library_native_dir ~obj_dir)
-      ~byte_dir:(Utils.library_byte_dir ~obj_dir)
+      ~native_dir:(Paths.library_native_dir ~obj_dir)
+      ~byte_dir:(Paths.library_byte_dir ~obj_dir)
       ~public_cmi_dir
 
   let make_exe ~dir ~name =
-    let obj_dir = Utils.executable_object_directory ~dir name in
+    let obj_dir = Paths.executable_object_directory ~dir name in
     make ~dir
       ~obj_dir
-      ~native_dir:(Utils.library_native_dir ~obj_dir)
-      ~byte_dir:(Utils.library_byte_dir ~obj_dir)
+      ~native_dir:(Paths.library_native_dir ~obj_dir)
+      ~byte_dir:(Paths.library_byte_dir ~obj_dir)
       ~public_cmi_dir:None
 
   let cm_dir t cm_kind _ =
@@ -247,6 +268,9 @@ let cm_public_dir t cm_kind =
     ~l:(fun l -> Local.cm_public_dir l cm_kind)
     ~e:(fun e -> External.cm_public_dir e cm_kind)
 
+let odoc_dir t =
+  get_path t ~l:Local.odoc_dir ~e:External.odoc_dir
+
 let need_dedicated_public_dir (t : Path.Build.t t) =
   match t with
   | Local t -> Local.need_dedicated_public_dir t
@@ -302,7 +326,8 @@ module Module = struct
     let obj_name = Module.obj_name m in
     relative t base (obj_name ^ ext)
 
-  let cm_public_file (type path) (t : path t) m ~(kind : Cm_kind.t) : path option =
+  let cm_public_file (type path) (t : path t) m ~(kind : Cm_kind.t)
+    : path option =
     let is_private = Module.visibility m = Private in
     let has_impl = Module.has m ~ml_kind:Impl in
     match kind with
@@ -310,39 +335,40 @@ module Module = struct
     |  Cmi when is_private -> None
     | _ -> Some (cm_public_file_unsafe t m ~kind)
 
-  let cmt_ext (kind : Ml_kind.t) =
-    match kind with
-    | Impl -> ".cmt"
-    | Intf -> ".cmti"
-
   let cmt_file t m ~(ml_kind : Ml_kind.t) =
     let file = Module.file m ~ml_kind in
-    let ext = cmt_ext ml_kind in
+    let ext = Ml_kind.cmt_ext ml_kind in
     Option.map file ~f:(fun _ -> obj_file t m ~kind:Cmi ~ext)
 
   let cmti_file t m =
-    let ext = cmt_ext (
+    let ext = Ml_kind.cmt_ext (
       match Module.file m ~ml_kind:Intf with
       | None -> Impl
       | Some _ -> Intf
     ) in
     obj_file t m ~kind:Cmi ~ext
 
+  let odoc t m =
+    let basename = Module.obj_name m ^ ".odoc" in
+    relative t (odoc_dir t) basename
+
   module Dep = struct
     type t =
-      | Immediate
-      | Transitive
+      | Immediate of Module.File.t
+      | Transitive of Module.t * Ml_kind.t
 
-    let ext = function
-      | Immediate -> ".d"
-      | Transitive -> ".all-deps"
+    let basename = function
+      | Immediate f -> Path.basename (Module.File.path f) ^ ".d"
+      | Transitive (m, ml_kind) ->
+        sprintf "%s.%s.all-deps"
+          (Module.obj_name m)
+          (Ml_kind.choose ml_kind ~intf:"intf" ~impl:"impl")
   end
 
-  let dep t file ~kind =
+  let dep t dep =
     let dir = obj_dir t in
-    let name = Path.basename (Module.File.path file) in
-    let ext = Dep.ext kind in
-    Path.Build.relative dir (name ^ ext)
+    let name = Dep.basename dep in
+    Path.Build.relative dir name
 
   module L = struct
     let o_files t modules ~ext_obj =

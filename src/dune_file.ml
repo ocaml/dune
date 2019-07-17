@@ -17,8 +17,8 @@ module Jbuild_version = struct
       ]
 end
 
-let invalid_module_name ~loc =
-  of_sexp_errorf loc "invalid module name: %S"
+let invalid_module_name ~loc name =
+  User_error.raise ~loc [ Pp.textf "invalid module name: %S" name ]
 
 let module_name =
   plain_string (fun ~loc name ->
@@ -40,7 +40,7 @@ let file =
   plain_string (fun ~loc s ->
     match s with
     | "." | ".." ->
-      of_sexp_errorf loc "'.' and '..' are not valid filenames"
+      User_error.raise ~loc [ Pp.textf "'.' and '..' are not valid filenames" ]
     | fn -> fn)
 
 let relative_file =
@@ -48,8 +48,7 @@ let relative_file =
     if Filename.is_relative fn then
       fn
     else
-      of_sexp_errorf loc "relative filename expected")
-
+      User_error.raise ~loc [ Pp.textf "relative filename expected" ])
 
 let library_variants =
   let syntax =
@@ -73,35 +72,39 @@ module Pkg = struct
       String.longest_map packages ~f:(fun p ->
         Package.Name.to_string p.Package.name)
     in
-    String.concat ~sep:"\n"
-      (List.map packages ~f:(fun pkg ->
-         sprintf "- %-*s (because of %s)" longest_pkg
-           (Package.Name.to_string pkg.Package.name)
-           (Path.Source.to_string (Package.opam_file pkg))))
+    Pp.enumerate packages ~f:(fun pkg ->
+      Printf.ksprintf Pp.verbatim "%-*s (because of %s)" longest_pkg
+        (Package.Name.to_string pkg.Package.name)
+        (Path.Source.to_string (Package.opam_file pkg)))
 
   let default (project : Dune_project.t) stanza =
     match Package.Name.Map.values (Dune_project.packages project) with
     | [pkg] -> Ok pkg
     | [] ->
       Error
-        "The current project defines some public elements, \
-         but no opam packages are defined.\n\
-         Please add a <package>.opam file at the project root \
-         so that these elements are installed into it."
+        (User_error.make
+           [ Pp.text "The current project defines some public \
+                      elements, but no opam packages are defined."
+           ; Pp.text "Please add a <package>.opam file at the project \
+                      root so that these elements are installed into \
+                      it."
+           ])
     | _ :: _ :: _ ->
       Error
-        (sprintf
-           "I can't determine automatically which package this \
-            stanza is for.\nI have the choice between these ones:\n\
-            %s\n\
-            You need to add a (package ...) field to this (%s) stanza."
-           (listing (Package.Name.Map.values (Dune_project.packages project)))
-           stanza)
+        (User_error.make
+           [ Pp.text "I can't determine automatically which package \
+                      this stanza is for."
+           ; Pp.text "I have the choice between these ones:"
+           ; listing (Package.Name.Map.values (Dune_project.packages project))
+           ; Pp.textf
+               "You need to add a (package ...) field to this (%s) stanza."
+               stanza
+           ])
 
   let default_exn ~loc project stanza =
     match default project stanza with
     | Ok p -> p
-    | Error msg -> Errors.fail loc "%s" msg
+    | Error msg -> raise (User_error.E { msg with loc = Some loc })
 
   let resolve (project : Dune_project.t) name =
     let packages = Dune_project.packages project in
@@ -111,32 +114,38 @@ module Pkg = struct
     | None ->
       let name_s = Package.Name.to_string name in
       if Package.Name.Map.is_empty packages then
-        Error (sprintf
+        Error
+          (User_error.make
+             [ Pp.text
                  "You cannot declare items to be installed without \
-                  adding a <package>.opam file at the root of your project.\n\
-                  To declare elements to be installed as part of package %S, \
-                  add a %S file at the root of your project.\nn\
-                 Root of the project as discovered by dune: %s@"
+                  adding a <package>.opam file at the root of your project."
+             ; Pp.textf
+                 "To declare elements to be installed as part of \
+                  package %S, add a %S file at the root of your \
+                  project."
                  name_s (Package.Name.opam_fn name)
+             ; Pp.textf "Root of the project as discovered by dune: %s"
                  (Path.Source.to_string_maybe_quoted
-                    (Dune_project.root project)))
+                    (Dune_project.root project))
+             ])
       else
-        Error (sprintf
-                 "The current scope doesn't define package %S.\n\
-                  The only packages for which you can declare \
-                  elements to be installed in this directory are:\n\
-                  %s%s"
-                 name_s
-                 (listing (Package.Name.Map.values packages))
-                 (hint name_s (Package.Name.Map.keys packages
-                               |> List.map ~f:Package.Name.to_string)))
+        Error
+          (User_error.make
+             [ Pp.textf "The current scope doesn't define package %S." name_s
+             ; Pp.text "The only packages for which you can declare \
+                        elements to be installed in this directory are:"
+             ; listing (Package.Name.Map.values packages)
+             ]
+             ~hints:(User_message.did_you_mean name_s
+                       ~candidates:(Package.Name.Map.keys packages
+                                    |> List.map ~f:Package.Name.to_string)))
 
   let decode =
     let+ p = Dune_project.get_exn ()
     and+ (loc, name) = located Package.Name.decode in
     match resolve p name with
     | Ok    x -> x
-    | Error e -> Errors.fail loc "%s" e
+    | Error e -> raise (User_error.E { e with loc = Some loc })
 
   let field stanza =
     map_validate
@@ -160,7 +169,8 @@ module Pps_and_flags = struct
     let item =
       peek_exn >>= function
       | Template { loc; _ } ->
-        no_templates loc "in the preprocessors field"
+        User_error.raise ~loc
+          [ Pp.text "No variables allowed in the preprocessors field" ]
       | Atom _ | Quoted_string _ -> plain_string of_string
       | List _ ->
         list (plain_string (fun ~loc str ->
@@ -190,7 +200,9 @@ module Pps_and_flags = struct
           | No | Unknown _ ->
             let loc = String_with_vars.loc s in
             match String_with_vars.text_only s with
-            | None -> no_templates loc "in the ppx library names"
+            | None ->
+              User_error.raise ~loc
+                [ Pp.text "No variables allowed in ppx library names" ]
             | Some txt ->
               Left (loc, Lib_name.of_string_exn ~loc:(Some loc) txt)
         )
@@ -428,9 +440,9 @@ module Per_module = struct
             |> function
             | Ok t -> t
             | Error (name, _, _) ->
-              of_sexp_errorf loc
-                "module %s present in two different sets"
-                (Module.Name.to_string name)
+              User_error.raise ~loc
+                [ Pp.textf "module %s present in two different sets"
+                (Module.Name.to_string name) ]
           ]
     | _ -> a >>| for_all
 end
@@ -516,15 +528,15 @@ module Lib_dep = struct
       in
       match file with
       | None ->
-        of_sexp_errorf loc "(<[!]libraries>... -> <file>) expected"
+        User_error.raise ~loc [ Pp.textf "(<[!]libraries>... -> <file>) expected" ]
       | Some file ->
         let rec loop required forbidden = function
           | [] ->
             let common = Lib_name.Set.inter required forbidden in
             Option.iter (Lib_name.Set.choose common) ~f:(fun name ->
-              of_sexp_errorf loc
-                "library %S is both required and forbidden in this clause"
-                (Lib_name.to_string name));
+              User_error.raise ~loc
+                [ Pp.textf "library %S is both required and forbidden in this clause"
+                (Lib_name.to_string name) ]);
             { required
             ; forbidden
             ; file
@@ -580,20 +592,20 @@ module Lib_deps = struct
       | Some kind' ->
         match kind, kind' with
         | Required, Required ->
-          of_sexp_errorf loc "library %S is present twice"
-            (Lib_name.to_string name)
+          User_error.raise ~loc [ Pp.textf "library %S is present twice"
+            (Lib_name.to_string name) ]
         | (Optional|Forbidden), (Optional|Forbidden) ->
           acc
         | Optional, Required | Required, Optional ->
-          of_sexp_errorf loc
-            "library %S is present both as an optional \
+          User_error.raise ~loc
+            [ Pp.textf "library %S is present both as an optional \
              and required dependency"
-            (Lib_name.to_string name)
+            (Lib_name.to_string name) ]
         | Forbidden, Required | Required, Forbidden ->
-          of_sexp_errorf loc
-            "library %S is present both as a forbidden \
+          User_error.raise ~loc
+            [ Pp.textf "library %S is present both as a forbidden \
              and required dependency"
-            (Lib_name.to_string name)
+            (Lib_name.to_string name) ]
     in
     ignore (
       List.fold_left t ~init:Lib_name.Map.empty ~f:(fun acc x ->
@@ -629,35 +641,28 @@ module Auto_format = struct
   let syntax =
     Syntax.create ~name:"fmt"
       ~desc:"integration with automatic formatters"
-      [ (1, 1) ]
+      [ (1, 2) ]
 
   type language =
-    | Ocaml
-    | Reason
+    | Dialect of string
     | Dune
 
   let language_to_dyn =
     let open Dyn.Encoder in
     function
-    | Ocaml -> constr "ocaml" []
-    | Reason -> constr "reason" []
+    | Dialect name -> constr "dialect" [string name]
     | Dune -> constr "dune" []
 
-  let language =
-    sum
-      [ ("ocaml", return Ocaml)
-      ; ("reason", return Reason)
-      ; ("dune",
-         let+ () = Syntax.since syntax (1, 1) in
-         Dune)
-      ]
+  let language = function
+    | "dune" -> Dune
+    | s -> Dialect s
 
   type enabled_for =
     | Default of Syntax.Version.t
     | Only of language list
 
   let enabled_for_field =
-    let+ r = field_o "enabled_for" (repeat language)
+    let+ r = field_o "enabled_for" (repeat (map ~f:language string))
     and+ version = Syntax.get_exn syntax
     in
     match r with
@@ -688,22 +693,22 @@ module Auto_format = struct
   let key =
     Dune_project.Extension.register syntax dparse_args to_dyn
 
-  let enabled_languages config =
+  let includes config =
     match config.enabled_for with
     | Default ver ->
       let in_1_0 =
-        [Ocaml; Reason]
+        [Dialect "ocaml"; Dialect "reason"]
       in
-      let extra =
-        match Syntax.Version.compare ver (1, 1) with
-        | Lt -> []
-        | Eq | Gt -> [Dune]
-      in
-      in_1_0 @ extra
-    | Only l -> l
-
-  let includes config language =
-    List.mem language ~set:(enabled_languages config)
+      begin match Syntax.Version.compare ver (1, 1) with
+      | Lt ->
+        fun language -> List.mem language ~set:in_1_0
+      | Eq ->
+        fun language -> List.mem language ~set:(Dune :: in_1_0)
+      | Gt ->
+        fun _ -> true
+      end
+    | Only l ->
+      fun language -> List.mem language ~set:l
 
   let loc t = t.loc
 end
@@ -812,8 +817,9 @@ module Mode_conf = struct
     | Native -> "native"
     | Best -> "best"
 
-  let pp fmt t =
-    Format.pp_print_string fmt (to_string t)
+  let to_dyn t =
+    let open Dyn.Encoder in
+    constr (to_string t) []
 
   let encode t =
     Dune_lang.unsafe_atom_of_string (to_string t)
@@ -972,15 +978,23 @@ module Library = struct
 
     let default = Simple true
 
-    let make ~wrapped ~implements : t Inherited.t =
-      match wrapped, implements with
+    let make ~wrapped ~implements ~special_builtin_support : t Inherited.t =
+      begin match wrapped, special_builtin_support with
+      | Some (loc, Yes_with_transition _), Some _ ->
+        User_error.raise ~loc
+          [ Pp.text "Cannot have transition modules for libraries with \
+                     special builtin support" ]
+      | _, _ -> ()
+      end;
+      begin match wrapped, implements with
       | None, None -> This default
       | None, Some w -> From w
       | Some (_loc, w), None -> This w
       | Some (loc, _), Some _ ->
-        of_sexp_error loc
-          "Wrapped cannot be set for implementations. \
-           It is inherited from the virtual library."
+        User_error.raise ~loc
+          [ Pp.text "Wrapped cannot be set for implementations. \
+                     It is inherited from the virtual library." ]
+      end
 
     let field = field_o "wrapped" (located decode)
   end
@@ -1044,7 +1058,7 @@ module Library = struct
          located (field "self_build_stubs_archive" (option string) ~default:None)
        and+ no_dynlink = field_b "no_dynlink"
        and+ no_keep_locs = field_b "no_keep_locs"
-                            ~check:(Syntax.deprecated_in Stanza.syntax (1, 7))
+                             ~check:(Syntax.deprecated_in Stanza.syntax (1, 7))
        and+ sub_systems =
          let* () = return () in
          Sub_system_info.record_parser ()
@@ -1077,7 +1091,8 @@ module Library = struct
            (Syntax.since Stanza.syntax (1, 10) >>>
             Special_builtin_support.decode)
        and+ enabled_if = enabled_if ~since:(Some (1, 10)) in
-       let wrapped = Wrapped.make ~wrapped ~implements in
+       let wrapped = Wrapped.make ~wrapped ~implements
+                       ~special_builtin_support in
        let name =
          let open Syntax.Version.Infix in
          match name, public with
@@ -1089,39 +1104,42 @@ module Library = struct
              match Lib_name.to_local name with
              | Ok m -> (loc, m)
              | Warn _ | Invalid ->
-               of_sexp_errorf loc
-                 "%s.\n\
-                  Public library names don't have this restriction. \
-                  You can either change this public name to be a valid library \
-                  name or add a \"name\" field with a valid library name."
-                 Lib_name.Local.invalid_message
+               User_error.raise ~loc
+                 [ Pp.textf "Invalid library name."
+                 ; Pp.text
+                     "Public library names don't have this \
+                      restriction. You can either change this public \
+                      name to be a valid library name or add a \
+                      \"name\" field with a valid library name."
+                 ]
+                 ~hints:[Lib_name.Local.valid_format_doc]
            else
-             of_sexp_error loc "name field cannot be omitted before version \
-                                1.1 of the dune language"
+             User_error.raise ~loc [ Pp.text "name field cannot be omitted before version \
+                                              1.1 of the dune language" ]
          | None, None ->
-           of_sexp_error loc (
+           User_error.raise ~loc [ Pp.text (
              if dune_version >= (1, 1) then
                "supply at least least one of name or public_name fields"
              else
                "name field is missing"
-           )
+           ) ]
        in
        Option.both virtual_modules implements
        |> Option.iter ~f:(fun (virtual_modules, (_, impl)) ->
-         of_sexp_errorf
-           (Ordered_set_lang.loc virtual_modules
-            |> Option.value_exn)
-           "A library cannot be both virtual and implement %s"
-           (Lib_name.to_string impl));
+         User_error.raise
+           ~loc:(Ordered_set_lang.loc virtual_modules
+                 |> Option.value_exn)
+           [ Pp.textf "A library cannot be both virtual and implement %s"
+               (Lib_name.to_string impl) ]);
        match virtual_modules, default_implementation with
-       | None, (Some (loc, _)) ->
-         of_sexp_error loc
-           "Only virtual libraries can specify a default implementation."
+       | None, Some (loc, _) ->
+         User_error.raise ~loc
+           [ Pp.text "Only virtual libraries can specify a default implementation." ]
        | _ -> ();
          match implements, variant with
          | None, Some (loc, _) ->
-           of_sexp_error loc
-             "Only implementations can specify a variant."
+           User_error.raise ~loc
+             [ Pp.text "Only implementations can specify a variant." ]
          | _ -> ();
            let variant = Option.map variant ~f:(fun (_, v) -> v) in
            let self_build_stubs_archive =
@@ -1137,9 +1155,12 @@ module Library = struct
              | None ->
                self_build_stubs_archive
              | Some name ->
-               of_sexp_errorf loc
-                 "A library cannot use (self_build_stubs_archive ...) \
-                  and (%s ...) simultaneously." name
+               User_error.raise ~loc
+                 [ Pp.textf
+                     "A library cannot use (self_build_stubs_archive \
+                      ...) and (%s ...) simultaneously."
+                     name
+                 ]
            in
            Blang.fold_vars enabled_if ~init:() ~f:(fun var () ->
              match String_with_vars.Var.name var,
@@ -1147,10 +1168,11 @@ module Library = struct
              | var, None when
                  List.mem var ~set:Lib_config.allowed_in_enabled_if -> ()
              | _ ->
-               Errors.fail (String_with_vars.Var.loc var)
-                 "Only %s are allowed in the 'enabled_if' \
-                  field of libraries."
-                 (String.enumerate_and Lib_config.allowed_in_enabled_if)
+               User_error.raise ~loc:(String_with_vars.Var.loc var)
+                 [ Pp.textf "Only %s are allowed in the 'enabled_if' \
+                             field of libraries."
+                     (String.enumerate_and Lib_config.allowed_in_enabled_if)
+                 ]
            );
            { name
            ; public
@@ -1233,16 +1255,6 @@ module Library = struct
     | None, This (Simple false) -> This None
     | None, This (Simple true | Yes_with_transition _) ->
       This (Some (Module.Name.of_local_lib_name (snd t.name)))
-
-  let special_compiler_module t (m : Module.t) =
-    match t.stdlib with
-    | None -> false
-    | Some stdlib ->
-      let name = Module.name m in
-      Glob.test stdlib.internal_modules (Module.Name.to_string name) ||
-      match stdlib.exit_module with
-      | None -> false
-      | Some n -> n = name
 end
 
 module Install_conf = struct
@@ -1261,6 +1273,52 @@ module Install_conf = struct
        { section
        ; files
        ; package
+       })
+end
+
+module Promote = struct
+  module Lifetime = struct
+    type t =
+      | Unlimited
+      | Until_clean
+  end
+
+  module Into = struct
+    type t =
+      { loc : Loc.t
+      ; dir : string
+      }
+
+    let decode =
+      let+ (loc, dir) = located relative_file in
+      { loc
+      ; dir
+      }
+  end
+
+  type t =
+    { lifetime : Lifetime.t
+    ; into : Into.t option
+    ; only : Predicate_lang.t option
+    }
+
+  let decode =
+    fields
+      (let+ until_clean =
+         field_b "until-clean"
+           ~check:(Syntax.since Stanza.syntax (1, 10))
+       and+ into =
+         field_o "into"
+           (Syntax.since Stanza.syntax (1, 10) >>= fun () ->
+            Into.decode)
+       and+ only =
+         field_o "only"
+           (Syntax.since Stanza.syntax (1, 10) >>= fun () ->
+            Predicate_lang.decode)
+       in
+       { lifetime = if until_clean then Until_clean else Unlimited
+       ; into
+       ; only
        })
 end
 
@@ -1323,8 +1381,11 @@ module Executables = struct
             if List.length public_names = List.length names then
               Ok (Some names, Some public_names)
             else
-              Error "The list of public names must be of the same \
-                     length as the list of names"
+              Error
+                (User_error.make
+                   [ Pp.text "The list of public names must be of the same \
+                              length as the list of names"
+                   ])
           | names, public_names ->
             Ok (names, public_names))
 
@@ -1368,21 +1429,21 @@ module Executables = struct
             List.map public_names ~f:(fun (loc, p) ->
               match p with
               | None ->
-                of_sexp_error loc "This executable must have a name field"
+                User_error.raise ~loc [ Pp.text "This executable must have a name field" ]
               | Some s -> (loc, s))
           else
-            of_sexp_errorf loc
-              "%s field may not be omitted before dune version %s"
+            User_error.raise ~loc
+              [ Pp.textf "%s field may not be omitted before dune version %s"
               (pluralize ~multi "name")
-              (Syntax.Version.to_string allow_omit_names_version)
+              (Syntax.Version.to_string allow_omit_names_version) ]
         | None, None ->
           if dune_syntax >= allow_omit_names_version then
-            of_sexp_errorf loc "either the %s or the %s field must be present"
+            User_error.raise ~loc [ Pp.textf "either the %s or the %s field must be present"
               (pluralize ~multi "name")
-              (pluralize ~multi "public_name")
+              (pluralize ~multi "public_name") ]
           else
-            of_sexp_errorf loc "field %s is missing"
-              (pluralize ~multi "name")
+            User_error.raise ~loc [ Pp.textf "field %s is missing"
+              (pluralize ~multi "name") ]
       in
       let public =
         match package, public_names with
@@ -1399,14 +1460,12 @@ module Executables = struct
                   Pkg.default_exn ~loc project (pluralize "executable" ~multi)
               }
         | Some (loc, _), None ->
-          let func =
-            match file_kind with
-            | Jbuild -> Errors.warn
-            | Dune   -> Errors.fail
-          in
-          func loc
-            "This field is useless without a (%s ...) field."
-            (pluralize "public_name" ~multi);
+          User_warning.emit ~is_error:(file_kind = Dune)
+            ~loc
+            [ Pp.textf
+                "This field is useless without a (%s ...) field."
+                (pluralize "public_name" ~multi)
+            ];
           None
       in
       { names
@@ -1506,10 +1565,11 @@ module Executables = struct
         let { mode; kind; loc = _ } = link_mode in
         Dune_lang.Encoder.pair Mode_conf.encode Binary_kind.encode (mode, kind)
 
-    let pp fmt { mode ; kind ; loc = _ } =
-      Fmt.record fmt
-        [ "mode", Fmt.const Mode_conf.pp mode
-        ; "kind", Fmt.const Binary_kind.pp kind
+    let to_dyn { mode ; kind ; loc = _ } =
+      let open Dyn.Encoder in
+      record
+        [ "mode", Mode_conf.to_dyn mode
+        ; "kind", Binary_kind.to_dyn kind
         ]
 
     module O = Comparable.Make(T)
@@ -1519,15 +1579,15 @@ module Executables = struct
       let decode =
         located (list decode) >>| fun (loc, l) ->
         match l with
-        | [] -> of_sexp_errorf loc "No linking mode defined"
+        | [] -> User_error.raise ~loc [ Pp.textf "No linking mode defined" ]
         | l ->
           let t = of_list l in
           if (mem t native_exe           && mem t exe          ) ||
              (mem t native_object        && mem t object_      ) ||
              (mem t native_shared_object && mem t shared_object) then
-            of_sexp_errorf loc
-              "It is not allowed use both native and best \
-               for the same binary kind."
+            User_error.raise ~loc
+              [ Pp.textf "It is not allowed use both native and best \
+               for the same binary kind." ]
           else
             t
 
@@ -1550,6 +1610,7 @@ module Executables = struct
     ; buildable  : Buildable.t
     ; variants   : (Loc.t * Variant.Set.t) option
     ; package    : Package.t option
+    ; promote    : Promote.t option
     }
 
   let common =
@@ -1560,14 +1621,19 @@ module Executables = struct
     and+ link_flags = field_oslu "link_flags"
     and+ modes = field "modes" Link_mode.Set.decode ~default:Link_mode.Set.default
     and+ variants = variants_field
+    and+ promote =
+      field_o "promote" (Syntax.since Stanza.syntax (1, 11) >>> Promote.decode)
     and+ () = map_validate (
       field "inline_tests" (repeat junk >>| fun _ -> true) ~default:false)
       ~f:(function
         | false -> Ok ()
         | true  ->
           Error
-            "Inline tests are only allowed in libraries.\n\
-             See https://github.com/ocaml/dune/issues/745 for more details.")
+            (User_error.make
+               [ Pp.text "Inline tests are only allowed in libraries."
+               ; Pp.text "See https://github.com/ocaml/dune/issues/745 \
+                          for more details."
+               ]))
     in
     fun names ~multi ->
       let has_public_name = Names.has_public_name names in
@@ -1580,21 +1646,20 @@ module Executables = struct
         ; buildable
         ; variants
         ; package = Names.package names
+        ; promote
         }
       in
       let install_conf =
         match Link_mode.Set.best_install_mode t.modes with
         | None when has_public_name ->
-          let mode_to_string mode =
-            " - " ^ Dune_lang.to_string ~syntax:Dune (Link_mode.encode mode) in
-          let mode_strings = List.map ~f:mode_to_string Link_mode.installable_modes in
-          Errors.fail
-            buildable.loc
-            "No installable mode found for %s.\n\
-             One of the following modes is required:\n\
-             %s"
-            (if multi then "these executables" else "this executable")
-            (String.concat ~sep:"\n" mode_strings)
+          User_error.raise ~loc:buildable.loc
+            [ Pp.textf "No installable mode found for %s."
+                (if multi then "these executables" else "this executable")
+            ; Pp.text "One of the following modes is required:"
+            ; Pp.enumerate Link_mode.installable_modes ~f:(fun mode ->
+                Pp.verbatim (Dune_lang.to_string ~syntax:Dune
+                               (Link_mode.encode mode)))
+            ]
         | None -> None
         | Some mode ->
           let ext =
@@ -1621,9 +1686,17 @@ end
 
 module Rule = struct
   module Targets = struct
+
+    module Multiplicity = struct
+      type t = One | Multiple
+    end
+
+    type static =
+      { targets : String_with_vars.t list; multiplicity : Multiplicity.t }
+
     type t =
       (* List of files in the current directory *)
-      | Static of String_with_vars.t list
+      | Static of static
       | Infer
 
     let decode_static =
@@ -1637,38 +1710,24 @@ module Rule = struct
               Stanza.syntax
               (1, 3)
               ~what:"Using variables in the targets field");
-      Static targets
+      Static { targets; multiplicity = Multiple }
+
+    let decode_one_static =
+      let+ () = Syntax.since Stanza.syntax (1, 11)
+      and+ target = String_with_vars.decode
+      in
+      Static { targets = [target]; multiplicity = One }
+
+    let fields_parser =
+      fields_mutually_exclusive
+        [ "targets", decode_static
+        ; "target", decode_one_static
+        ]
+
   end
 
 
   module Mode = struct
-    module Promote = struct
-      module Lifetime = struct
-        type t =
-          | Unlimited
-          | Until_clean
-      end
-
-      module Into = struct
-        type t =
-          { loc : Loc.t
-          ; dir : string
-          }
-
-        let decode =
-          let+ (loc, dir) = located relative_file in
-          { loc
-          ; dir
-          }
-      end
-
-      type t =
-        { lifetime : Lifetime.t
-        ; into : Into.t option
-        ; only : Predicate_lang.t option
-        }
-    end
-
     type t =
       | Standard
       | Fallback
@@ -1685,24 +1744,8 @@ module Rule = struct
         [ "standard"           , return Standard
         ; "fallback"           , return Fallback
         ; "promote"            ,
-          fields
-            (let+ until_clean =
-               field_b "until-clean"
-                 ~check:(Syntax.since Stanza.syntax (1, 10))
-             and+ into =
-               field_o "into"
-                 (Syntax.since Stanza.syntax (1, 10) >>= fun () ->
-                  Promote.Into.decode)
-             and+ only =
-               field_o "only"
-                 (Syntax.since Stanza.syntax (1, 10) >>= fun () ->
-                  Predicate_lang.decode)
-             in
-             Promote
-               { lifetime = if until_clean then Until_clean else Unlimited
-               ; into
-               ; only
-               })
+          (let+ p = Promote.decode in
+           Promote p)
         ; "promote-until-clean",
           return (Promote { lifetime = Until_clean
                           ; into = None
@@ -1750,6 +1793,7 @@ module Rule = struct
       ; "diff"                        , Action
       ; "diff?"                       , Action
       ; "targets"                     , Field
+      ; "target"                      , Field
       ; "deps"                        , Field
       ; "action"                      , Field
       ; "locks"                       , Field
@@ -1771,11 +1815,12 @@ module Rule = struct
   let long_form =
     let+ loc = loc
     and+ action = field "action" (located Action_dune_lang.decode)
-    and+ targets = field "targets" Targets.decode_static
+    and+ targets = Targets.fields_parser
     and+ deps =
       field "deps" (Bindings.decode Dep_conf.decode) ~default:Bindings.empty
     and+ locks = field "locks" (list String_with_vars.decode) ~default:[]
     and+ mode =
+      (* DUNE2: forbid (fallback) *)
       map_validate
         (let+ fallback =
            field_b
@@ -1787,10 +1832,13 @@ module Rule = struct
          (fallback, mode))
         ~f:(function
           | true, Some _ ->
-            Error "Cannot use both (fallback) and (mode ...) at the \
-                   same time.\n\
-                   (fallback) is the same as (mode fallback), \
-                   please use the latter in new code."
+            Error
+              (User_error.make
+                 [ Pp.text "Cannot use both (fallback) and (mode ...) \
+                            at the same time."
+                 ; Pp.text "(fallback) is the same as (mode fallback), \
+                            please use the latter in new code."
+                 ])
           | false, Some mode -> Ok mode
           | true, None -> Ok Fallback
           | false, None -> Ok Standard)
@@ -1815,16 +1863,16 @@ module Rule = struct
     | List (_, Atom (loc, A s) :: _) -> begin
         match String.Map.find atom_table s with
         | None ->
-          of_sexp_errorf loc ~hint:{ on = s
-                                   ; candidates = String.Map.keys atom_table
-                                   }
-            "Unknown action or rule field."
+          User_error.raise ~loc
+            [ Pp.text "Unknown action or rule field." ]
+            ~hints:(User_message.did_you_mean s
+                      ~candidates:(String.Map.keys atom_table))
         | Some Field -> fields long_form
         | Some Action -> short_form
       end
     | sexp ->
-      of_sexp_errorf (Dune_lang.Ast.loc sexp)
-        "S-expression of the form (<atom> ...) expected"
+      User_error.raise ~loc:(Dune_lang.Ast.loc sexp)
+        [ Pp.textf "S-expression of the form (<atom> ...) expected" ]
 
   let decode =
     switch_file_kind
@@ -1889,7 +1937,11 @@ module Rule = struct
     List.map modules ~f:(fun name ->
       let src = name ^ ".mll" in
       let dst = name ^ ".ml" in
-      { targets = Static [S.make_text loc dst]
+      { targets =
+          (* CR-someday aalekseyev: want to use [multiplicity = One] here, but
+             can't because this is might get parsed with old dune syntax where
+             [multiplicity = One] is not supported. *)
+          Static { targets = [S.make_text loc dst]; multiplicity = Multiple }
       ; deps    = Bindings.singleton (Dep_conf.File (S.virt_text __POS__ src))
       ; action  =
           (loc,
@@ -1911,7 +1963,10 @@ module Rule = struct
     let module S = String_with_vars in
     List.map modules ~f:(fun name ->
       let src = name ^ ".mly" in
-      { targets = Static (List.map ~f:(S.make_text loc) [name ^ ".ml"; name ^ ".mli"])
+      { targets = Static {
+          targets = List.map ~f:(S.make_text loc) [name ^ ".ml"; name ^ ".mli"];
+          multiplicity = Multiple;
+        }
       ; deps    = Bindings.singleton (Dep_conf.File (S.virt_text __POS__ src))
       ; action  =
           (loc,
@@ -2070,9 +2125,11 @@ module Coq = struct
   type Stanza.t += T of t
 
   let coqlib_warn x =
-    Errors.warn x.loc
-      "(coqlib ...) is deprecated and will be removed in the Coq \
-       language version 1.0, please use (coq.theory ...) instead";
+    User_warning.emit ~loc:x.loc
+      [ Pp.text
+          "(coqlib ...) is deprecated and will be removed in the Coq \
+           language version 1.0, please use (coq.theory ...) instead"
+      ];
     x
 
   let coqlib_p = "coqlib", decode >>| fun x -> [T (coqlib_warn x)]
@@ -2103,7 +2160,7 @@ module Alias_conf = struct
   let alias_name =
     plain_string (fun ~loc s ->
       if Filename.basename s <> s then
-        of_sexp_errorf loc "%S is not a valid alias name" s
+        User_error.raise ~loc [ Pp.textf "%S is not a valid alias name" s ]
       else
         s)
 
@@ -2164,6 +2221,7 @@ module Tests = struct
            ; names
            ; variants
            ; package = None
+           ; promote = None
            }
        ; locks
        ; package
@@ -2388,8 +2446,10 @@ module Stanzas = struct
         let dir = Path.Source.parent_exn current_file in
         let current_file = Path.Source.relative dir fn in
         if not (Path.exists (Path.source current_file)) then
-          Errors.fail loc "File %s doesn't exist."
-            (Path.Source.to_string_maybe_quoted current_file);
+          User_error.raise ~loc
+            [ Pp.textf "File %s doesn't exist."
+                (Path.Source.to_string_maybe_quoted current_file)
+            ];
         if List.exists include_stack
              ~f:(fun (_, f) -> Path.Source.equal f current_file) then
           raise (Include_loop (current_file, include_stack));
@@ -2414,23 +2474,24 @@ module Stanzas = struct
             (Path.Source.to_string_maybe_quoted file)
             loc.Loc.start.pos_lnum
         in
-        Errors.fail loc
-          "Recursive inclusion of jbuild files detected:\n\
-           File %s is included from %s%s"
-          (Path.Source.to_string_maybe_quoted file)
-          (line_loc last)
-          (String.concat ~sep:""
-             (List.map rest ~f:(fun x ->
-                sprintf
-                  "\n--> included from %s"
-                  (line_loc x))))
+        User_error.raise ~loc
+          [ Pp.text "Recursive inclusion of jbuild files detected:"
+          ; Pp.textf "File %s is included from %s"
+              (Path.Source.to_string_maybe_quoted file)
+              (line_loc last)
+          ; Pp.vbox (Pp.concat_map rest ~sep:Pp.cut ~f:(fun x ->
+              Pp.box ~indent:3
+                (Pp.seq (Pp.verbatim "-> ")
+                   (Pp.textf "included from %s" (line_loc x)))))
+          ]
     in
     match
       List.filter_map stanzas
         ~f:(function Dune_env.T e -> Some e | _ -> None)
     with
     | _ :: e :: _ ->
-      Errors.fail e.loc "The 'env' stanza cannot appear more than once"
+      User_error.raise ~loc:e.loc
+        [ Pp.text "The 'env' stanza cannot appear more than once" ]
     | _ -> stanzas
 end
 

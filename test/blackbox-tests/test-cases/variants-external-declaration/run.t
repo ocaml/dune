@@ -17,11 +17,9 @@ declared in the virtual library definition.
    (main_module_name Vlibfoo)
    (modes byte native)
    (modules
-    (main_module_name Vlibfoo)
-    (modules
-     ((name Vlibfoo)
-      (obj_name vlibfoo)
-      (visibility public)
-      (kind virtual)
-      (intf)))
-    (wrapped true)))
+    (singleton
+     (name Vlibfoo)
+     (obj_name vlibfoo)
+     (visibility public)
+     (kind virtual)
+     (intf))))

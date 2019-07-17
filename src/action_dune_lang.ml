@@ -11,7 +11,7 @@ module type Uast = Action_intf.Ast
 module rec Uast : Uast = Uast
 include Action_ast.Make(String_with_vars)(String_with_vars)(String_with_vars)(Uast)
 
-module Mapper = Action.Make_mapper(Uast)(Uast)
+module Mapper = Action_mapper.Make(Uast)(Uast)
 
 let upgrade_to_dune =
   let id ~dir:_ p = p in
@@ -37,6 +37,12 @@ let decode =
     ~then_:decode
     ~else_:
       (loc >>| fun loc ->
-       of_sexp_errorf
-         loc
-         "if you meant for this to be executed with bash, write (bash \"...\") instead")
+       User_error.raise
+         ~loc
+         [ Pp.textf
+             "if you meant for this to be executed with bash, write \
+              (bash \"...\") instead"
+         ])
+
+let to_dyn a =
+  Dune_lang.to_dyn (encode a)

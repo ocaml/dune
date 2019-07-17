@@ -1,16 +1,6 @@
 open! Stdune
 open Import
 
-module Syntax = struct
-  type t = OCaml | Reason
-
-  let to_string = function
-    | OCaml -> "ocaml"
-    | Reason -> "reason"
-
-  let to_dyn t = Dyn.Encoder.string (to_string t)
-end
-
 module Name = struct
   module T = struct
     type t = string
@@ -31,7 +21,6 @@ module Name = struct
 
   let uncapitalize = String.uncapitalize
 
-  let pp = Format.pp_print_string
   let pp_quote fmt x = Format.fprintf fmt "%S" x
 
   module Set = struct
@@ -47,21 +36,14 @@ module Name = struct
   let to_local_lib_name s =
     Lib_name.Local.of_string_exn s
 
-  let basename n ~(ml_kind : Ml_kind.t) ~(syntax : Syntax.t) =
-    let ext =
-      match syntax, ml_kind with
-      | Reason, Intf -> ".rei"
-      | Reason, Impl -> ".re"
-      | OCaml, Intf -> ".mli"
-      | OCaml, Impl -> ".ml"
-    in
-    String.lowercase n ^ ext
+  let basename n ~(ml_kind : Ml_kind.t) ~(dialect : Dialect.t) =
+    String.lowercase n ^ Dialect.extension dialect ml_kind
 end
 
 module File = struct
   type t =
-    { path   : Path.t
-    ; syntax : Syntax.t
+    { path    : Path.t
+    ; dialect : Dialect.t
     }
 
   let path t = t.path
@@ -70,13 +52,13 @@ module File = struct
     let path = Path.relative src_dir (Path.basename t.path) in
     { t with path }
 
-  let make syntax path = { syntax; path }
+  let make dialect path = { dialect; path }
 
-  let to_dyn { path; syntax } =
+  let to_dyn { path; dialect } =
     let open Dyn.Encoder in
     record
       [ "path", Path.to_dyn path
-      ; "syntax", Syntax.to_dyn syntax
+      ; "dialect", Dialect.to_dyn dialect
       ]
 
 end
@@ -88,6 +70,7 @@ module Kind = struct
     | Impl
     | Alias
     | Impl_vmodule
+    | Wrapped_compat
 
   let to_string = function
     | Intf_only -> "intf_only"
@@ -95,6 +78,7 @@ module Kind = struct
     | Impl -> "impl"
     | Alias -> "alias"
     | Impl_vmodule -> "impl_vmodule"
+    | Wrapped_compat -> "wrapped_compat"
 
   let to_dyn t = Dyn.Encoder.string (to_string t)
 
@@ -108,11 +92,13 @@ module Kind = struct
       ; "impl", Impl
       ; "alias", Alias
       ; "impl_vmodule", Impl_vmodule
+      ; "wrapped_compat", Wrapped_compat
       ]
 
   let has_impl = function
     | Alias
     | Impl_vmodule
+    | Wrapped_compat
     | Impl -> true
     | Intf_only
     | Virtual -> false
@@ -181,7 +167,7 @@ let pp_flags t = t.pp
 let of_source ?obj_name ~visibility ~(kind : Kind.t)
       (source : Source.t) =
   begin match kind, visibility with
-  | (Alias | Impl_vmodule | Virtual), Visibility.Public
+  | (Alias | Impl_vmodule | Virtual | Wrapped_compat), Visibility.Public
   | (Impl | Intf_only), _ -> ()
   | _, _ ->
     Code_error.raise "Module.of_source: invalid kind, visibility combination"
@@ -191,8 +177,8 @@ let of_source ?obj_name ~visibility ~(kind : Kind.t)
       ]
   end;
   begin match kind, source.files.impl, source.files.intf with
-  | (Alias | Impl_vmodule | Impl), None, _
-  | (Alias | Impl_vmodule), Some _, Some _
+  | (Alias | Impl_vmodule | Impl | Wrapped_compat), None, _
+  | (Alias | Impl_vmodule | Wrapped_compat), Some _, Some _
   | (Intf_only | Virtual), Some _, _
   | (Intf_only | Virtual), _, None ->
     let open Dyn.Encoder in
@@ -237,14 +223,6 @@ let file t ~(ml_kind : Ml_kind.t) =
 
 let obj_name t = t.obj_name
 
-let odoc_file t ~doc_dir =
-  let base =
-    match t.visibility with
-    | Public -> doc_dir
-    | Private -> Utils.library_private_dir ~obj_dir:doc_dir
-  in
-  Path.Build.relative base (t.obj_name ^ ".odoc")
-
 let iter t ~f =
   Ml_kind.Dict.iteri t.source.files
     ~f:(fun kind -> Option.iter ~f:(f kind))
@@ -276,11 +254,12 @@ let to_dyn { source ; obj_name ; pp ; visibility; kind } =
 let ml_gen = ".ml-gen"
 
 let wrapped_compat t =
+  assert (t.visibility = Public);
   let source =
     let impl =
       Some (
         { File.
-          syntax = OCaml
+          dialect = Dialect.ocaml
         ; path =
             (* Option.value_exn cannot fail because we disallow wrapped
                compatibility mode for virtual libraries. That means none of the
@@ -297,7 +276,10 @@ let wrapped_compat t =
       files = { intf = None ; impl }
     }
   in
-  { t with source }
+  { t with
+    source
+  ; kind = Wrapped_compat
+  }
 
 let visibility t = t.visibility
 
@@ -314,7 +296,7 @@ module Obj_map = struct
 
   let top_closure t =
     Top_closure.String.top_closure
-      ~key:real_unit_name
+      ~key:obj_name
       ~deps:(find_exn t)
 end
 
@@ -332,6 +314,7 @@ let encode
     match kind with
     | Kind.Impl when has_impl -> None
     | Intf_only when not has_impl -> None
+    | Wrapped_compat
     | Impl_vmodule | Alias | Impl | Virtual | Intf_only -> Some kind
   in
   record_fields
@@ -355,8 +338,8 @@ let decode ~src_dir =
     in
     let file exists ml_kind =
       if exists then
-        let basename = Name.basename name ~ml_kind ~syntax:OCaml in
-        Some (File.make Syntax.OCaml (Path.relative src_dir basename))
+        let basename = Name.basename name ~ml_kind ~dialect:Dialect.ocaml in
+        Some (File.make Dialect.ocaml (Path.relative src_dir basename))
       else
         None
     in
@@ -383,25 +366,12 @@ let pped =
     { file with path = pp_path })
 
 let ml_source =
-  map_files ~f:(fun _ f ->
-    match f.syntax with
-    | OCaml  -> f
-    | Reason ->
-      let path =
-        let base, ext = Path.split_extension f.path in
-        let suffix =
-          match ext with
-          | ".re"  -> ".re.ml"
-          | ".rei" -> ".re.mli"
-          | _     ->
-            Errors.fail
-              (Loc.in_file (Path.source (Path.drop_build_context_exn f.path)))
-              "Unknown file extension for reason source file: %S"
-              ext
-        in
-        Path.extend_basename base ~suffix
-      in
-      File.make OCaml path)
+  map_files ~f:(fun ml_kind f ->
+    match Dialect.ml_suffix f.dialect ml_kind with
+    | None -> f
+    | Some suffix ->
+      let path = Path.extend_basename f.path ~suffix in
+      File.make Dialect.ocaml path)
 
 let set_src_dir t ~src_dir =
   map_files t ~f:(fun _ -> File.set_src_dir ~src_dir)
@@ -410,7 +380,7 @@ let generated ~src_dir name =
   let basename = String.uncapitalize (Name.to_string name) in
   let source =
     let impl =
-      File.make OCaml (Path.relative src_dir (basename ^ ml_gen)) in
+      File.make Dialect.ocaml (Path.relative src_dir (basename ^ ml_gen)) in
     Source.make ~impl name in
   of_source
     ~visibility:Public
@@ -419,11 +389,26 @@ let generated ~src_dir name =
     source
 
 let generated_alias ~src_dir name =
+  let src_dir = Path.build src_dir in
   let t = generated ~src_dir name in
   { t with kind = Alias }
 
 module Name_map = struct
   type nonrec t = t Name.Map.t
+
+  let to_dyn = Name.Map.to_dyn to_dyn
+
+  let decode ~src_dir =
+    let open Stanza.Decoder in
+    let+ modules = list (enter (decode ~src_dir)) in
+    Name.Map.of_list_map_exn
+      ~f:(fun m -> (name m, m)) modules
+
+  let encode t =
+    Name.Map.values t
+    |> List.map ~f:(fun x -> Dune_lang.List (encode x))
+
+  let singleton m = Name.Map.singleton (name m) m
 
   let impl_only =
     Name.Map.fold ~init:[] ~f:(fun m acc ->
@@ -438,9 +423,6 @@ module Name_map = struct
 
   let add t module_ =
     Name.Map.set t (name module_) module_
-
-  let pp fmt t =
-    Fmt.ocaml_list Name.pp fmt (Name.Map.keys t)
 
   let by_obj =
     Name.Map.fold ~init:Name.Map.empty ~f:(fun m acc ->

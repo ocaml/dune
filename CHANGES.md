@@ -11,6 +11,10 @@
 - Change `implicit_transive_deps` to be false. Implicit transitive deps now must
   be manually enabled (#2306, @rgrinberg)
 
+- Compilation units of user defined executables are now mangled by default. This
+  is done to prevent the accidental collision with library dependencies of the
+  executable. (#2364, fixes #2292, @rgrinberg)
+
 1.11.0 (unreleased)
 -------------------
 
@@ -52,6 +56,50 @@
 
 - Set version in `META` and `dune-package` files to the one read from
   the vcs when no other version is available (#2224, @diml)
+
+- Add a variable `%{target}` to be used in situations where the context
+  requires at most one word, so `%{targets}` can be confusing; stdout
+  redirections and "-o" arguments of various tools are the main use
+  case; also, introduce a separate field `target` that must be used
+  instead of `targets` in those situations.  (#2341, @aalekseyev)
+
+- Fix dependency graph of wrapped_compat modules. Previously, the dependency on
+  the user written entry module was omitted. (#2305, @rgrinberg)
+
+- Allow to promote executables built with an `executable` stanza
+  (#2379, @diml)
+
+- When instantiating an implementation with a variant, make sure it matches
+  virtual library's list of known implementations. (#2361, fixes #2322,
+  @TheLortex, review by @rgrinberg)
+
+- Add a variable `%{ignoring_promoted_rules}` that is `true` when
+  `--ingore-promoted-rules` is passed on the command line and false
+  otherwise (#2382, @diml)
+
+- Fix a bug in `future_syntax` where the characters `@` and `&` were
+  not distinguished in the names of binding operators (`let@` was the
+  same as `let&`) (#2376, @aalekseyev, @diml)
+
+- Workspaces with non unique project names are now supported. (#2377, fix #2325,
+  @rgrinberg)
+
+- Improve opam generation to include the `dune` dependncies with the minimum
+  constraint set based on the dune language version specified in the
+  `dune-project` file. (2383, @avsm)
+
+- The order of fields in the generated opam file now follows order preferred in
+  opam-lib. (@avsm, #2380)
+
+- Fix coloring of error messages from the compiler (@diml, #2384)
+
+- Add warning `66` to default set of warnings starting for dune projects with
+  language verison >= `1.11` (@rgrinberg, @diml, fixes #2299)
+
+- Add (dialect ...) stanza
+  (@nojb, #2404)
+
+- Add a `--context` argument to `dune install/uninstall` (@diml, #2412)
 
 1.10.0 (04/06/2019)
 -------------------
@@ -156,7 +204,6 @@
 - `dune install` will verify that all files mentioned in all .install files
   exist before trying to install anything. This prevents partial installation of
   packages (#2230, @rgrinberg)
-
 
 1.9.3 (06/05/2019)
 ------------------

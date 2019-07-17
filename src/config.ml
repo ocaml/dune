@@ -41,7 +41,7 @@ open Stanza.Decoder
 let syntax = Stanza.syntax
 
 module Display = struct
-  include Config0.Display
+  include Stdune.Console.Display
   let decode = enum all
 end
 
@@ -67,7 +67,7 @@ module Concurrency = struct
   let decode =
     plain_string (fun ~loc s ->
       match of_string s with
-      | Error m -> of_sexp_errorf loc "%s" m
+      | Error m -> User_error.raise ~loc [ Pp.text m ]
       | Ok s -> s)
 
   let to_string = function

@@ -125,14 +125,14 @@ let decode =
         ]
     | Atom(loc, A s) -> Jbuild.parse s ~loc ~quoted:false
     | Quoted_string (loc, s) -> Jbuild.parse s ~loc ~quoted:true
-    | List (loc, _) -> Dune_lang.Decoder.of_sexp_error loc "Atom expected"
+    | List (loc, _) -> User_error.raise ~loc [ Pp.text "Atom expected" ]
   in
   let dune =
     raw >>| function
     | Template t -> t
     | Atom(loc, A s) -> literal ~quoted:false ~loc s
     | Quoted_string (loc, s) -> literal ~quoted:true ~loc s
-    | List (loc, _) -> Dune_lang.Decoder.of_sexp_error loc "Unexpected list"
+    | List (loc, _) -> User_error.raise ~loc [ Pp.text "Unexpected list" ]
   in
   let template_parser = Stanza.Decoder.switch_file_kind ~jbuild ~dune in
   let+ syntax_version = Syntax.get_exn Stanza.syntax
@@ -195,10 +195,12 @@ module Mode = struct
 end
 
 let invalid_multivalue (v : var) x =
-  Errors.fail v.loc "Variable %s expands to %d values, \
-                   however a single value is expected here. \
-                   Please quote this atom."
-    (string_of_var v) (List.length x)
+  User_error.raise
+    ~loc:v.loc
+    [ Pp.textf "Variable %s expands to %d values, however a single \
+                value is expected here. Please quote this atom."
+        (string_of_var v) (List.length x)
+    ]
 
 module Var = struct
   type t = var
@@ -368,9 +370,11 @@ let expand t ~mode ~dir ~f =
         begin match var.syntax with
         | Percent ->
           if Var.is_macro var then
-            Errors.fail var.loc "Unknown macro %s" (Var.describe var)
+            User_error.raise ~loc:var.loc
+              [ Pp.textf "Unknown macro %s" (Var.describe var) ]
           else
-            Errors.fail var.loc "Unknown variable %S" (Var.name var)
+            User_error.raise ~loc:var.loc
+              [ Pp.textf "Unknown variable %S" (Var.name var) ]
         | Dollar_brace
         | Dollar_paren -> Some [Value.String (string_of_var var)]
         end
@@ -498,8 +502,9 @@ let upgrade_to_dune t ~allow_first_dep_var =
           if v.name = "<" && allow_first_dep_var then
             Some v.name
           else
-            Errors.fail v.loc "%s is not supported in dune files.%s"
-              (Var.describe v) repl
+            User_error.raise ~loc:v.loc
+              [ Pp.textf "%s is not supported in dune files.%s"
+                  (Var.describe v) repl ]
         | Keep -> Some v.name
         | Renamed_to new_name ->
           Some new_name

@@ -47,12 +47,13 @@ let find () =
   let rec loop counter ~candidate ~to_cwd dir =
     match Sys.readdir dir with
     | exception (Sys_error msg) ->
-      Errors.warn Loc.none
-        "Unable to read directory %s. \
-         Will not look for root in parent directories@.\
-         Reason: %s@.\
-         To remove this warning, set your root explicitly using --root.@."
-        dir msg;
+      User_warning.emit
+        [ Pp.textf "Unable to read directory %s. Will not look for \
+                    root in parent directories."
+            dir
+        ; Pp.textf "Reason: %s" msg
+        ; Pp.text "To remove this warning, set your root explicitly using --root."
+        ];
       candidate
     | files ->
       let files = String.Set.of_list (Array.to_list files) in

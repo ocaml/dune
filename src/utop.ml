@@ -26,7 +26,7 @@ let libs_under_dir sctx ~db ~dir =
   (let open Option.O in
    let* dir = Path.drop_build_context dir in
    let+ dir = File_tree.find_dir (Super_context.file_tree sctx) dir in
-   File_tree.Dir.fold dir ~traverse_ignored_dirs:true
+   File_tree.Dir.fold dir ~traverse:Sub_dirs.Status.Set.all
      ~init:[] ~f:(fun dir acc ->
        let dir =
          Path.Build.append_source (Super_context.build_dir sctx)
@@ -72,6 +72,14 @@ let setup sctx ~dir =
     |> Lib.DB.resolve db >>| (fun utop -> utop :: libs)
     >>= Lib.closure ~linking:true
   in
+  let flags =
+    let project = Scope.project scope in
+    let dune_version = Dune_project.dune_version project in
+    (Ocaml_flags.append_common
+       (Ocaml_flags.default ~dune_version
+          ~profile:(Super_context.profile sctx))
+       ["-w"; "-24"])
+  in
   let cctx =
     Compilation_context.create ()
       ~super_context:sctx
@@ -82,9 +90,7 @@ let setup sctx ~dir =
       ~opaque:false
       ~requires_link:(lazy requires)
       ~requires_compile:requires
-      ~flags:(Ocaml_flags.append_common
-                (Ocaml_flags.default ~profile:(Super_context.profile sctx))
-                ["-w"; "-24"])
+      ~flags
       ~dynlink:false
       ~package:None
   in

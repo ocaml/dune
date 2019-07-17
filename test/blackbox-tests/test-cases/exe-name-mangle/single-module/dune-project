@@ -1,0 +1,5 @@
+(lang dune 1.11)
+
+(wrapped_executables true)
+
+(implicit_transitive_deps false)

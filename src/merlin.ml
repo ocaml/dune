@@ -7,11 +7,13 @@ module SC = Super_context
 
 let warn_dropped_pp loc ~allow_approx_merlin ~reason =
   if not allow_approx_merlin then
-    Errors.warn loc
-      ".merlin generated is inaccurate. %s.\n\
-        Split the stanzas into different directories or silence this warning \
-        by adding (allow_approximate_merlin) to your dune-project."
-      reason
+    User_warning.emit ~loc
+      [ Pp.textf ".merlin generated is inaccurate. %s." reason
+      ; Pp.text
+          "Split the stanzas into different directories or silence \
+           this warning by adding (allow_approximate_merlin) to your \
+           dune-project."
+      ]
 
 module Preprocess = struct
 
@@ -35,7 +37,7 @@ module Preprocess = struct
       if Action_dune_lang.compare_no_locs a1 a2 <> Ordering.Eq then
         warn_dropped_pp loc ~allow_approx_merlin
           ~reason:"this action preprocessor is not equivalent to other \
-                   preproocessor specifications.";
+                   preprocessor specifications.";
       Action (loc, a1)
     | Pps _, Action (loc, _)
     | Action (loc, _), Pps _ ->
@@ -63,7 +65,7 @@ let quote_for_merlin s =
     else
       s
   in
-  if need_quoting s then
+  if String.need_quoting s then
     Filename.quote s
   else
     s
@@ -104,17 +106,31 @@ type t =
 
 let make
       ?(requires=Ok [])
-      ?(flags=Build.return [])
+      ~flags
       ?(preprocess=Dune_file.Preprocess.No_preprocessing)
       ?libname
       ?(source_dirs=Path.Source.Set.empty)
-      ?(objs_dirs=Path.Set.empty)
+      ~modules
+      ~obj_dir
       () =
   (* Merlin shouldn't cause the build to fail, so we just ignore errors *)
   let requires =
     match requires with
     | Ok    l -> Lib.Set.of_list l
     | Error _ -> Lib.Set.empty
+  in
+  let objs_dirs =
+    Obj_dir.byte_dir obj_dir
+    |> Path.build
+    |> Path.Set.singleton
+  in
+  let flags =
+    match Modules.alias_module modules with
+    | None -> Ocaml_flags.common flags
+    | Some m ->
+      Ocaml_flags.prepend_common
+        ["-open"; Module.Name.to_string (Module.name m)] flags
+      |> Ocaml_flags.common
   in
   { requires
   ; flags      = Build.catch flags    ~on_error:(fun _ -> [])

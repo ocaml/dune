@@ -126,7 +126,6 @@ end
 
 module type Input = sig
   type t
-  val to_dyn : t -> Dyn.t
   include Table.Key with type t := t
 end
 
@@ -375,11 +374,6 @@ module Stack_frame0 = struct
   let compare (T a) (T b) = Id.compare a.id b.id
 
   let to_dyn t = Dyn.Tuple [String (name t); input t]
-
-  let pp ppf t =
-    Format.fprintf ppf "%s %a"
-      (name t)
-      Dyn.pp (input t)
 end
 
 module To_open = struct
@@ -429,16 +423,16 @@ module Call_stack = struct
 
 end
 
-let pp_stack ppf () =
+let pp_stack () =
+  let open Pp.O in
   let stack = Call_stack.get_call_stack () in
-  Format.fprintf ppf "Memoized function stack:@\n";
-  Format.pp_print_list ~pp_sep:Fmt.nl
-    (fun ppf t -> Format.fprintf ppf "  %a" Stack_frame.pp t)
-    ppf
-    stack
+  Pp.vbox
+    (Pp.box (Pp.text "Memoized function stack:") ++ Pp.cut ++
+     Pp.chain stack ~f:(fun frame ->
+       Dyn.pp (Stack_frame.to_dyn frame)))
 
 let dump_stack () =
-  Format.eprintf "%a" pp_stack ()
+  Format.eprintf "%a" Pp.render_ignore_tags (pp_stack ())
 
 let add_rev_dep dep_node =
   match Call_stack.get_call_stack_tip () with

@@ -12,31 +12,39 @@ Formatting can be checked using the @fmt target:
       ocamlopt fake-tools/ocamlformat.exe
    ocamlformat enabled/.formatted/ocaml_file.ml
   File "enabled/ocaml_file.ml", line 1, characters 0-0:
-  Files _build/default/enabled/ocaml_file.ml and _build/default/enabled/.formatted/ocaml_file.ml differ.
+  Error: Files _build/default/enabled/ocaml_file.ml and
+  _build/default/enabled/.formatted/ocaml_file.ml differ.
           dune enabled/.formatted/dune
   File "enabled/dune", line 1, characters 0-0:
-  Files _build/default/enabled/dune and _build/default/enabled/.formatted/dune differ.
+  Error: Files _build/default/enabled/dune and
+  _build/default/enabled/.formatted/dune differ.
           dune enabled/subdir/.formatted/dune
   File "enabled/subdir/dune", line 1, characters 0-0:
-  Files _build/default/enabled/subdir/dune and _build/default/enabled/subdir/.formatted/dune differ.
+  Error: Files _build/default/enabled/subdir/dune and
+  _build/default/enabled/subdir/.formatted/dune differ.
         ocamlc fake-tools/.ocamlformat.eobjs/byte/refmt.{cmi,cmo,cmt}
       ocamlopt fake-tools/.ocamlformat.eobjs/native/refmt.{cmx,o}
       ocamlopt fake-tools/refmt.exe
          refmt enabled/.formatted/reason_file.rei
   File "enabled/reason_file.rei", line 1, characters 0-0:
-  Files _build/default/enabled/reason_file.rei and _build/default/enabled/.formatted/reason_file.rei differ.
+  Error: Files _build/default/enabled/reason_file.rei and
+  _build/default/enabled/.formatted/reason_file.rei differ.
    ocamlformat enabled/subdir/.formatted/lib.ml
   File "enabled/subdir/lib.ml", line 1, characters 0-0:
-  Files _build/default/enabled/subdir/lib.ml and _build/default/enabled/subdir/.formatted/lib.ml differ.
+  Error: Files _build/default/enabled/subdir/lib.ml and
+  _build/default/enabled/subdir/.formatted/lib.ml differ.
    ocamlformat partial/.formatted/a.ml
   File "partial/a.ml", line 1, characters 0-0:
-  Files _build/default/partial/a.ml and _build/default/partial/.formatted/a.ml differ.
+  Error: Files _build/default/partial/a.ml and
+  _build/default/partial/.formatted/a.ml differ.
    ocamlformat enabled/.formatted/ocaml_file.mli
   File "enabled/ocaml_file.mli", line 1, characters 0-0:
-  Files _build/default/enabled/ocaml_file.mli and _build/default/enabled/.formatted/ocaml_file.mli differ.
+  Error: Files _build/default/enabled/ocaml_file.mli and
+  _build/default/enabled/.formatted/ocaml_file.mli differ.
          refmt enabled/.formatted/reason_file.re
   File "enabled/reason_file.re", line 1, characters 0-0:
-  Files _build/default/enabled/reason_file.re and _build/default/enabled/.formatted/reason_file.re differ.
+  Error: Files _build/default/enabled/reason_file.re and
+  _build/default/enabled/.formatted/reason_file.re differ.
   [1]
 
 Configuration files are taken into account for this action:
@@ -44,24 +52,32 @@ Configuration files are taken into account for this action:
   $ touch enabled/.ocamlformat
   $ dune build --display short @fmt
   File "enabled/reason_file.re", line 1, characters 0-0:
-  Files _build/default/enabled/reason_file.re and _build/default/enabled/.formatted/reason_file.re differ.
+  Error: Files _build/default/enabled/reason_file.re and
+  _build/default/enabled/.formatted/reason_file.re differ.
   File "enabled/reason_file.rei", line 1, characters 0-0:
-  Files _build/default/enabled/reason_file.rei and _build/default/enabled/.formatted/reason_file.rei differ.
+  Error: Files _build/default/enabled/reason_file.rei and
+  _build/default/enabled/.formatted/reason_file.rei differ.
   File "enabled/dune", line 1, characters 0-0:
-  Files _build/default/enabled/dune and _build/default/enabled/.formatted/dune differ.
+  Error: Files _build/default/enabled/dune and
+  _build/default/enabled/.formatted/dune differ.
   File "enabled/subdir/dune", line 1, characters 0-0:
-  Files _build/default/enabled/subdir/dune and _build/default/enabled/subdir/.formatted/dune differ.
+  Error: Files _build/default/enabled/subdir/dune and
+  _build/default/enabled/subdir/.formatted/dune differ.
   File "partial/a.ml", line 1, characters 0-0:
-  Files _build/default/partial/a.ml and _build/default/partial/.formatted/a.ml differ.
+  Error: Files _build/default/partial/a.ml and
+  _build/default/partial/.formatted/a.ml differ.
    ocamlformat enabled/.formatted/ocaml_file.mli
   File "enabled/ocaml_file.mli", line 1, characters 0-0:
-  Files _build/default/enabled/ocaml_file.mli and _build/default/enabled/.formatted/ocaml_file.mli differ.
+  Error: Files _build/default/enabled/ocaml_file.mli and
+  _build/default/enabled/.formatted/ocaml_file.mli differ.
    ocamlformat enabled/.formatted/ocaml_file.ml
   File "enabled/ocaml_file.ml", line 1, characters 0-0:
-  Files _build/default/enabled/ocaml_file.ml and _build/default/enabled/.formatted/ocaml_file.ml differ.
+  Error: Files _build/default/enabled/ocaml_file.ml and
+  _build/default/enabled/.formatted/ocaml_file.ml differ.
    ocamlformat enabled/subdir/.formatted/lib.ml
   File "enabled/subdir/lib.ml", line 1, characters 0-0:
-  Files _build/default/enabled/subdir/lib.ml and _build/default/enabled/subdir/.formatted/lib.ml differ.
+  Error: Files _build/default/enabled/subdir/lib.ml and
+  _build/default/enabled/subdir/.formatted/lib.ml differ.
   [1]
 
 And fixable files can be promoted:
@@ -71,7 +87,7 @@ And fixable files can be promoted:
   Promoting _build/default/enabled/.formatted/ocaml_file.ml to enabled/ocaml_file.ml.
   Promoting _build/default/enabled/.formatted/reason_file.re to enabled/reason_file.re.
   $ cat enabled/ocaml_file.ml
-  Sys.argv: ../install/default/bin/ocamlformat --impl enabled/ocaml_file.ml --name ../../enabled/ocaml_file.ml -o enabled/.formatted/ocaml_file.ml
+  Sys.argv: ../install/default/bin/ocamlformat --impl enabled/ocaml_file.ml
   ocamlformat output
   $ cat enabled/reason_file.re
   Sys.argv: ../install/default/bin/refmt enabled/reason_file.re
@@ -85,19 +101,24 @@ All .ocamlformat files are considered dependencies:
   $ echo 'margin = 70' > .ocamlformat
   $ dune build --display short @fmt
   File "enabled/reason_file.rei", line 1, characters 0-0:
-  Files _build/default/enabled/reason_file.rei and _build/default/enabled/.formatted/reason_file.rei differ.
+  Error: Files _build/default/enabled/reason_file.rei and
+  _build/default/enabled/.formatted/reason_file.rei differ.
   File "enabled/subdir/dune", line 1, characters 0-0:
-  Files _build/default/enabled/subdir/dune and _build/default/enabled/subdir/.formatted/dune differ.
+  Error: Files _build/default/enabled/subdir/dune and
+  _build/default/enabled/subdir/.formatted/dune differ.
          refmt enabled/.formatted/reason_file.re
    ocamlformat enabled/.formatted/ocaml_file.mli
   File "enabled/ocaml_file.mli", line 1, characters 0-0:
-  Files _build/default/enabled/ocaml_file.mli and _build/default/enabled/.formatted/ocaml_file.mli differ.
+  Error: Files _build/default/enabled/ocaml_file.mli and
+  _build/default/enabled/.formatted/ocaml_file.mli differ.
    ocamlformat enabled/.formatted/ocaml_file.ml
           dune enabled/.formatted/dune
    ocamlformat enabled/subdir/.formatted/lib.ml
   File "enabled/subdir/lib.ml", line 1, characters 0-0:
-  Files _build/default/enabled/subdir/lib.ml and _build/default/enabled/subdir/.formatted/lib.ml differ.
+  Error: Files _build/default/enabled/subdir/lib.ml and
+  _build/default/enabled/subdir/.formatted/lib.ml differ.
    ocamlformat partial/.formatted/a.ml
   File "partial/a.ml", line 1, characters 0-0:
-  Files _build/default/partial/a.ml and _build/default/partial/.formatted/a.ml differ.
+  Error: Files _build/default/partial/a.ml and
+  _build/default/partial/.formatted/a.ml differ.
   [1]

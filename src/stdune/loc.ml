@@ -148,8 +148,17 @@ let pp_file_excerpt ~context_lines ~max_lines_to_print_in_full
       let backtrace = Printexc.get_backtrace () in
       Format.eprintf "Raised when trying to print location contents of %s@.%a@."
         file (Exn.pp_uncaught ~backtrace) exn
-    | Ok () -> ()
+    | Ok () ->
+      Format.pp_print_flush pp ()
   end
+
+let print ppf ({ start; stop } as loc) =
+  let start_c = start.pos_cnum - start.pos_bol in
+  let stop_c  = stop.pos_cnum  - start.pos_bol in
+  Format.fprintf ppf
+    "@{<loc>File \"%s\", line %d, characters %d-%d:@}@\n"
+    start.pos_fname start.pos_lnum start_c stop_c;
+  pp_file_excerpt ppf ~context_lines:2 ~max_lines_to_print_in_full:10 loc
 
 let on_same_line loc1 loc2 =
   let start1 = loc1.start in

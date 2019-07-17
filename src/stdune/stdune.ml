@@ -3,6 +3,8 @@ module Ansi_color = Ansi_color
 module Array      = Array
 module Bytes      = Bytes
 module Comparator = Comparator
+module Console    = Console
+module Csexp      = Csexp
 module Either     = Either
 module Exn        = Exn
 module Exn_with_backtrace = Exn_with_backtrace
@@ -20,6 +22,7 @@ module Ordering   = Ordering
 module Pp         = Pp
 module Result     = Result
 module Set        = Set
+module Signal     = Signal
 module Comparable    = Comparable
 module Comparable_intf = Comparable_intf
 module Staged     = Staged
@@ -32,6 +35,7 @@ module Fmt        = Fmt
 module Interned   = Interned
 module Univ_map   = Univ_map
 module Loc        = Loc
+module Log        = Log
 module Env        = Env
 module Proc       = Proc
 module Type_eq    = Type_eq
@@ -50,6 +54,7 @@ module Code_error = Code_error
 module User_error = User_error
 module User_message = User_message
 module User_warning = User_warning
+module Lexbuf = Lexbuf
 
 (* Pervasives is deprecated in 4.08 in favor of Stdlib, however we are
    currently compatible with OCaml >= 4.02 so for now we simply
@@ -77,3 +82,4 @@ type ordering = Ordering.t =
   | Gt
 
 let sprintf = Printf.sprintf
+let ksprintf = Printf.ksprintf

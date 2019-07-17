@@ -159,3 +159,17 @@ let rec equal eq xs ys =
   | _, _ -> false
 
 let hash f xs = Dune_caml.Hashtbl.hash (map ~f xs)
+
+let cons xs x = x :: xs
+
+(* copy&paste from [base] *)
+let fold_map t ~init ~f =
+  let acc = ref init in
+  let result =
+    map t ~f:(fun x ->
+      let new_acc, y = f !acc x in
+      acc := new_acc;
+      y)
+  in
+  !acc, result
+;;

@@ -1,10 +1,12 @@
   $ dune exec ./test.exe --debug-dep --display short --root jbuild --profile release
   Entering directory 'jbuild'
   File "jbuild", line 1, characters 0-0:
-  Warning: jbuild files are deprecated, please convert this file to a dune file instead.
+  Warning: jbuild files are deprecated, please convert this file to a dune file
+  instead.
   Note: You can use "dune upgrade" to convert your project to dune.
   File "src/jbuild", line 1, characters 0-0:
-  Warning: jbuild files are deprecated, please convert this file to a dune file instead.
+  Warning: jbuild files are deprecated, please convert this file to a dune file
+  instead.
   Note: You can use "dune upgrade" to convert your project to dune.
   File "jbuild", line 1, characters 0-0:
   Warning: Module "Lib" is used in several stanzas:
@@ -14,8 +16,7 @@
   library, executable, and executables stanzas in this jbuild file. Note that
   each module cannot appear in more than one "modules" field - it must belong
   to a single library or executable.
-  This warning will become an error in the future.
-  Multiple rules generated for _build/default/lib.cmo:
+  Error: Multiple rules generated for _build/default/lib.cmo:
   - <internal location>
   - <internal location>
   [1]
@@ -23,10 +24,12 @@
   $ dune build src/a.cma --debug-dep --display short --root jbuild
   Entering directory 'jbuild'
   File "jbuild", line 1, characters 0-0:
-  Warning: jbuild files are deprecated, please convert this file to a dune file instead.
+  Warning: jbuild files are deprecated, please convert this file to a dune file
+  instead.
   Note: You can use "dune upgrade" to convert your project to dune.
   File "src/jbuild", line 1, characters 0-0:
-  Warning: jbuild files are deprecated, please convert this file to a dune file instead.
+  Warning: jbuild files are deprecated, please convert this file to a dune file
+  instead.
   Note: You can use "dune upgrade" to convert your project to dune.
   File "src/jbuild", line 1, characters 0-0:
   Warning: Module "X" is used in several stanzas:
@@ -36,7 +39,6 @@
   library, executable, and executables stanzas in this jbuild file. Note that
   each module cannot appear in more than one "modules" field - it must belong
   to a single library or executable.
-  This warning will become an error in the future.
         ocamlc src/.a.objs/byte/a.{cmi,cmo,cmt}
       ocamldep src/.a.objs/x.ml.d
         ocamlc src/.a.objs/byte/a__X.{cmi,cmo,cmt}

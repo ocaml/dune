@@ -130,7 +130,7 @@ let subst_string s path ~map =
             loop (i + 1) acc
           | Some (Error msg) ->
             let loc = loc_of_offset ~ofs:start ~len:(i + 1 - start) in
-            Errors.fail loc "%s" msg
+            User_error.raise ~loc [ Pp.text msg ]
         end
       | _ -> loop (i + 1) acc
   in
@@ -184,13 +184,7 @@ module Dune_project = struct
 
   let load file =
     let s = Io.read_file file in
-    let lb = Lexing.from_string s in
-    lb.lex_curr_p <-
-      { pos_fname = Path.to_string file
-      ; pos_lnum  = 1
-      ; pos_bol   = 0
-      ; pos_cnum  = 0
-      };
+    let lb = Lexbuf.from_string s ~fname:(Path.to_string file) in
     let sexp = Dune_lang.Parser.parse lb ~mode:Many_as_one in
     let parser =
       let open Dune_lang.Decoder in
@@ -269,19 +263,24 @@ let get_name ~files ~(dune_project : Dune_project.t option) ?name () =
       | _ -> None)
   in
   if package_names = [] then
-    die "@{<error>Error@}: no <package>.opam files found.";
+    User_error.raise
+      [ Pp.textf "No <package>.opam files found." ];
   let (loc, name) =
     match Wp.t with
     | Dune -> begin
         assert (Option.is_none name);
         match dune_project with
         | None ->
-          die "@{<error>Error@}: There is no dune-project file in the current \
-               directory, please add one with a (name <name>) field in it.\n\
-               Hint: dune subst must be executed from the root of the project."
+          User_error.raise
+            [ Pp.text "There is no dune-project file in the current \
+                        directory, please add one with a (name <name>) field in it."
+            ]
+            ~hints:[Pp.text "dune subst must be executed from the root \
+                             of the project."]
         | Some { name = None; _ } ->
-          die "@{<error>Error@}: The project name is not defined, please add \
-               a (name <name>) field to your dune-project file."
+          User_error.raise
+            [ Pp.textf "The project name is not defined, please add a \
+                        (name <name>) field to your dune-project file." ]
         | Some { name = Some n; _ } -> (n.loc_of_arg, n.arg)
       end
     | Jbuilder ->
@@ -307,17 +306,22 @@ let get_name ~files ~(dune_project : Dune_project.t option) ?name () =
           match name with
           | Some name -> (Loc.none, name)
           | None ->
-            die "@{<error>Error@}: cannot determine name automatically.\n\
-                 You must pass a [--name] command line argument."
+            User_error.raise
+              [ Pp.text "Cannot determine name automatically."
+              ; Pp.text "You must pass a [--name] command line \
+                         argument."
+              ]
   in
   if not (List.mem name ~set:package_names) then begin
     if Loc.is_none loc then
-      die "@{<error>Error@}: file %s.opam doesn't exist." name
+      User_error.raise
+        [ Pp.textf "File %s.opam doesn't exist." name ]
     else
-      Errors.fail loc
-        "file %s.opam doesn't exist. \
-         It is inferred from the name in the dune-project file"
-        name
+      User_error.raise ~loc
+        [ Pp.textf "File %s.opam doesn't exist. It is inferred from \
+                    the name in the dune-project file"
+            name
+        ]
   end;
   name
 

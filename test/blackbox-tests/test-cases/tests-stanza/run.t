@@ -34,5 +34,6 @@
       ocamlopt generated.exe
      generated generated.output
   File "generated.expected", line 1, characters 0-0:
-  Files _build/default/generated.expected and _build/default/generated.output differ.
+  Error: Files _build/default/generated.expected and
+  _build/default/generated.output differ.
   [1]

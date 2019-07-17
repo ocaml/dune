@@ -21,10 +21,6 @@ let deps_of t (m : Module.t) =
       ; "m", Module.to_dyn m
       ]
 
-let pp_cycle fmt cycle =
-  (Fmt.list ~pp_sep:Fmt.nl (Fmt.prefix (Fmt.string "-> ") Module.Name.pp))
-    fmt (List.map cycle ~f:Module.name)
-
 let top_closed t modules =
   Module.Obj_map.to_list t.per_module
   |> List.map ~f:(fun (unit, deps) ->
@@ -35,9 +31,12 @@ let top_closed t modules =
   match Module.Obj_map.top_closure per_module modules with
   | Ok modules -> modules
   | Error cycle ->
-    die "dependency cycle between modules in %s:\n   %a"
-      (Path.Build.to_string t.dir)
-      pp_cycle cycle
+    User_error.raise
+      [ Pp.textf "dependency cycle between modules in %s:"
+          (Path.Build.to_string t.dir)
+      ; Pp.chain cycle ~f:(fun m ->
+          Pp.verbatim (Module.Name.to_string (Module.name m)))
+      ]
 
 let top_closed_implementations t modules =
   Build.memoize "top sorted implementations"  (
@@ -50,45 +49,9 @@ let dummy (m : Module.t) =
   ; per_module = Module.Obj_map.singleton m (Build.return [])
   }
 
-let wrapped_compat ~modules ~wrapped_compat =
-  { dir = Path.Build.root
-  ; per_module =
-      Module.Name.Map.fold wrapped_compat ~init:Module.Obj_map.empty
-        ~f:(fun compat acc ->
-          let wrapped =
-            let name = Module.name compat in
-            match Module.Name.Map.find modules name with
-            | Some m -> m
-            | None ->
-              Code_error.raise "deprecated module needs counterpart"
-                [ "compat", Module.to_dyn compat ]
-          in
-          (* TODO this is wrong. The dependencies should be on the lib interface
-             whenever it exists *)
-          Module.Obj_map.set acc compat (Build.return [wrapped]))
-  }
-
 module Ml_kind = struct
   type nonrec t = t Ml_kind.Dict.t
 
   let dummy m =
     Ml_kind.Dict.make_both (dummy m)
-
-  let wrapped_compat =
-    let w = wrapped_compat in
-    fun ~modules ~wrapped_compat ->
-      Ml_kind.Dict.make_both (w ~modules ~wrapped_compat)
-
-  let merge_impl ~(ml_kind : Ml_kind.t) _ vlib impl =
-    Some (Ml_kind.choose ml_kind ~impl ~intf:vlib)
-
-  let merge_for_impl ~(vlib : t) ~(impl : t) =
-    Ml_kind.Dict.of_func (fun ~ml_kind ->
-      let impl = Ml_kind.Dict.get impl ml_kind in
-      { impl with
-        per_module =
-          Module.Obj_map.union ~f:(merge_impl ~ml_kind)
-            (Ml_kind.Dict.get vlib ml_kind).per_module
-            impl.per_module
-      })
 end

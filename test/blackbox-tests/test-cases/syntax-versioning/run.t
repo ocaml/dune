@@ -12,7 +12,8 @@
   $ echo '(jbuild_version 1)' > jbuild
   $ dune build
   File "jbuild", line 1, characters 0-0:
-  Warning: jbuild files are deprecated, please convert this file to a dune file instead.
+  Warning: jbuild files are deprecated, please convert this file to a dune file
+  instead.
   Note: You can use "dune upgrade" to convert your project to dune.
   $ rm -f jbuild
 
@@ -30,7 +31,7 @@
   File "dune", line 1, characters 40-42:
   1 | (alias (name x) (deps x) (action (run %{<})))
                                               ^^
-  Error: %{<} was deleted in version 1.0 of the dune language.
+  Error: %{<} was deleted in version 1.0 of the dune language
   Use a named dependency instead:
   
     (deps (:x <dep>) ...)
@@ -48,5 +49,5 @@
   File "dune", line 3, characters 1-15:
   3 |  (no_keep_locs))
        ^^^^^^^^^^^^^^
-  Warning: 'no_keep_locs' was deprecated in version 1.7 of the dune language
+  Warning: 'no_keep_locs' was deprecated in version 1.7 of the dune language.
   $ rm -f dune

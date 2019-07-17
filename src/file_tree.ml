@@ -78,12 +78,12 @@ let load_jbuild_ignore path =
     if Filename.dirname fn = Filename.current_dir_name then
       true
     else begin
-      Errors.(warn (Loc.of_pos
-                      ( Path.to_string path
-                      , i + 1, 0
-                      , String.length fn
-                      ))
-                "subdirectory expression %s ignored" fn);
+      User_warning.emit ~loc:(Loc.of_pos
+                                ( Path.to_string path
+                                , i + 1, 0
+                                , String.length fn
+                                ))
+        [ Pp.textf "subdirectory expression %s ignored" fn ];
       false
     end)
   |> String.Set.of_list
@@ -91,7 +91,7 @@ let load_jbuild_ignore path =
 module Dir = struct
   type t =
     { path     : Path.Source.t
-    ; ignored  : bool
+    ; status   : Sub_dirs.Status.t
     ; contents : contents Lazy.t
     ; project  : Dune_project.t
     ; vcs      : Vcs.t option
@@ -103,9 +103,9 @@ module Dir = struct
     ; dune_file : Dune_file.t option
     }
 
-  let create ~project ~path ~ignored ~contents ~vcs =
+  let create ~project ~path ~status ~contents ~vcs =
     { path
-    ; ignored
+    ; status
     ; contents
     ; project
     ; vcs
@@ -114,7 +114,8 @@ module Dir = struct
   let contents t = Lazy.force t.contents
 
   let path t = t.path
-  let ignored t = t.ignored
+  let ignored t = t.status = Data_only
+  let vendored t = t.status = Vendored
 
   let files     t = (contents t).files
   let sub_dirs  t = (contents t).sub_dirs
@@ -135,13 +136,14 @@ module Dir = struct
     String.Map.foldi (sub_dirs t) ~init:Path.Source.Set.empty
       ~f:(fun s _ acc -> Path.Source.Set.add acc (Path.Source.relative t.path s))
 
-  let rec fold t ~traverse_ignored_dirs ~init:acc ~f =
-    if not traverse_ignored_dirs && t.ignored then
-      acc
-    else
+  let rec fold t ~traverse ~init:acc ~f =
+    let must_traverse = Sub_dirs.Status.Map.find traverse t.status in
+    if must_traverse then
       let acc = f t acc in
       String.Map.fold (sub_dirs t) ~init:acc ~f:(fun t acc ->
-        fold t ~traverse_ignored_dirs ~init:acc ~f)
+        fold t ~traverse ~init:acc ~f)
+    else
+      acc
 
   let rec dyn_of_contents { files; sub_dirs; dune_file } =
     let open Dyn in
@@ -152,11 +154,11 @@ module Dir = struct
       ; "project", Dyn.opaque
       ]
 
-  and to_dyn { path ; ignored ; contents = lazy contents ; project = _; vcs } =
+  and to_dyn { path ; status ; contents = lazy contents ; project = _; vcs } =
     let open Dyn in
     Record
       [ "path", Path.Source.to_dyn path
-      ; "ignored", Bool ignored
+      ; "status", Sub_dirs.Status.to_dyn status
       ; "contents", dyn_of_contents contents
       ; "vcs", Dyn.Encoder.option Vcs.to_dyn vcs
       ]
@@ -179,17 +181,18 @@ type readdir =
 let readdir path =
   match Path.readdir_unsorted (Path.source path) with
   | Error unix_error ->
-    Errors.warn Loc.none
-      "Unable to read directory %s. Ignoring.@.\
-       Remove this message by ignoring by adding:@.\
-       (dirs \\ %s)@.\
-       to the dune file: %s@.\
-       Reason: %s@."
-      (Path.Source.to_string_maybe_quoted path)
-      (Path.Source.basename path)
-      (Path.Source.to_string_maybe_quoted
-         (Path.Source.relative (Path.Source.parent_exn path) "dune"))
-      (Unix.error_message unix_error);
+    User_warning.emit
+      [ Pp.textf "Unable to read directory %s. Ignoring."
+          (Path.Source.to_string_maybe_quoted path)
+      ; Pp.text "Remove this message by ignoring by adding:"
+      ; Pp.textf "(dirs \\ %s)"
+          (Path.Source.basename path)
+      ; Pp.textf "to the dune file: %s"
+          (Path.Source.to_string_maybe_quoted
+             (Path.Source.relative (Path.Source.parent_exn path) "dune"))
+      ; Pp.textf "Reason: %s"
+          (Unix.error_message unix_error)
+      ];
     Error unix_error
   | Ok unsorted_contents ->
     let files, dirs =
@@ -222,11 +225,11 @@ let readdir path =
 
 let load ?(warn_when_seeing_jbuild_file=true) path ~ancestor_vcs =
   let open Result.O in
-  let rec walk path ~dirs_visited ~project:parent_project ~vcs ~data_only
+  let rec walk path ~dirs_visited ~project:parent_project ~vcs ~(dir_status : Sub_dirs.Status.t)
     : (_, _) Result.t =
     let+ { dirs; files } = readdir path in
     let project =
-      if data_only then
+      if dir_status = Data_only then
         parent_project
       else
         Option.value (Dune_project.load ~dir:path ~files)
@@ -248,7 +251,7 @@ let load ?(warn_when_seeing_jbuild_file=true) path ~ancestor_vcs =
     in
     let contents = lazy (
       let dune_file, sub_dirs =
-        if data_only then
+        if dir_status = Data_only then
           (None, Sub_dirs.default)
         else
           let dune_file, sub_dirs =
@@ -256,16 +259,20 @@ let load ?(warn_when_seeing_jbuild_file=true) path ~ancestor_vcs =
             | [] -> (None, Sub_dirs.default)
             | [fn] ->
               let file = Path.Source.relative path fn in
+              let warn_about_jbuild =
+                warn_when_seeing_jbuild_file && dir_status <> Vendored
+              in
               if fn = "dune" then
                 ignore (Dune_project.ensure_project_file_exists project
                         : Dune_project.created_or_already_exist)
-              else if warn_when_seeing_jbuild_file then
+              else if warn_about_jbuild then
                 (* DUNE2: turn this into an error *)
-                Errors.warn (Loc.in_file (Path.source file))
-                  "jbuild files are deprecated, please convert this file to \
-                   a dune file instead.\n\
-                   Note: You can use \"dune upgrade\" to convert your \
-                   project to dune.";
+                User_warning.emit ~loc:(Loc.in_file (Path.source file))
+                  [ Pp.text "jbuild files are deprecated, please \
+                             convert this file to a dune file instead."
+                  ; Pp.text "Note: You can use \"dune upgrade\" to \
+                             convert your project to dune."
+                  ];
               let dune_file, sub_dirs =
                 Dune_file.load file
                   ~project
@@ -274,9 +281,11 @@ let load ?(warn_when_seeing_jbuild_file=true) path ~ancestor_vcs =
               in
               (Some dune_file, sub_dirs)
             | _ ->
-              die "Directory %s has both a 'dune' and 'jbuild' file.\n\
-                   This is not allowed"
-                (Path.Source.to_string_maybe_quoted path)
+              User_error.raise
+                [ Pp.textf "Directory %s has both a 'dune' and 'jbuild' file.\n\
+                            This is not allowed"
+                    (Path.Source.to_string_maybe_quoted path)
+                ]
           in
           let sub_dirs =
             if String.Set.mem files "jbuild-ignore" then
@@ -296,14 +305,19 @@ let load ?(warn_when_seeing_jbuild_file=true) path ~ancestor_vcs =
         |> List.fold_left ~init:String.Map.empty ~f:(fun acc (fn, path, file) ->
           let status =
             if Bootstrap.data_only_path path then
-              Sub_dirs.Status.Ignored
+              Sub_dirs.Status.Or_ignored.Ignored
             else
               Sub_dirs.status sub_dirs ~dir:fn
           in
           match status with
           | Ignored -> acc
-          | Normal | Data_only ->
-            let data_only = data_only || status = Data_only in
+          | Status status ->
+            let dir_status : Sub_dirs.Status.t =
+              match dir_status, status with
+              | Data_only, _ -> Data_only
+              | Vendored, Normal -> Vendored
+              | _, _ -> status
+            in
             let dirs_visited =
               if Sys.win32 then
                 dirs_visited
@@ -311,32 +325,32 @@ let load ?(warn_when_seeing_jbuild_file=true) path ~ancestor_vcs =
                 match File.Map.find dirs_visited file with
                 | None -> File.Map.set dirs_visited file path
                 | Some first_path ->
-                  die "Path %s has already been scanned. \
+                  User_error.raise [ Pp.textf "Path %s has already been scanned. \
                        Cannot scan it again through symlink %s"
                     (Path.Source.to_string_maybe_quoted first_path)
-                    (Path.Source.to_string_maybe_quoted path)
+                    (Path.Source.to_string_maybe_quoted path) ]
             in
             match
-              walk path ~dirs_visited ~project ~data_only ~vcs
+              walk path ~dirs_visited ~project ~dir_status ~vcs
             with
             | Ok dir -> String.Map.set acc fn dir
             | Error _ -> acc)
       in
       { Dir. files; sub_dirs; dune_file })
     in
-    Dir.create ~path ~contents ~ignored:data_only ~project ~vcs
+    Dir.create ~path ~contents ~status:dir_status ~project ~vcs
   in
   match
     walk path
       ~dirs_visited:(File.Map.singleton (File.of_source_path path) path)
-      ~data_only:false
+      ~dir_status:Normal
       ~project:(Lazy.force Dune_project.anonymous)
       ~vcs:ancestor_vcs
   with
   | Ok dir -> dir
   | Error m ->
-    die "Unable to load source %s.@.Reason:%s@."
-      (Path.Source.to_string_maybe_quoted path) (Unix.error_message m)
+    User_error.raise [ Pp.textf "Unable to load source %s.@.Reason:%s@."
+      (Path.Source.to_string_maybe_quoted path) (Unix.error_message m) ]
 
 let fold = Dir.fold
 
@@ -378,11 +392,14 @@ let file_exists t path =
 
 let dir_exists t path = Option.is_some (find_dir t path)
 
+let dir_is_vendored t path =
+  Option.map ~f:(fun dir -> Dir.vendored dir) (find_dir t path)
+
 let files_recursively_in t ~prefix_with path =
   match find_dir t path with
   | None -> Path.Set.empty
   | Some dir ->
-    Dir.fold dir ~init:Path.Set.empty ~traverse_ignored_dirs:true
+    Dir.fold dir ~init:Path.Set.empty ~traverse:Sub_dirs.Status.Set.all
       ~f:(fun dir acc ->
         let path = Path.append_source prefix_with (Dir.path dir) in
         String.Set.fold (Dir.files dir) ~init:acc ~f:(fun fn acc ->

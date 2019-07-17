@@ -40,6 +40,7 @@ type t =
        workspace. It is used as default at the root of every project
        in the workspace. *)
     default_env : Env_node.t Lazy.t
+  ; projects_by_key : Dune_project.t Dune_project.File_key.Map.t
   }
 
 let context t = t.context
@@ -79,6 +80,9 @@ let installed_libs t = t.installed_libs
 
 let find_scope_by_dir t dir = Scope.DB.find_by_dir t.scopes dir
 let find_scope_by_name t name = Scope.DB.find_by_name t.scopes name
+let find_scope_by_project t = Scope.DB.find_by_project t.scopes
+let find_project_by_key t =
+  Dune_project.File_key.Map.find_exn t.projects_by_key
 
 module External_env = Env
 
@@ -268,13 +272,30 @@ let partial_expand sctx ~dep_kind ~targets_written_by_user ~map_exe
   let partial = Action_unexpanded.partial_expand t ~expander ~map_exe in
   (partial, acc)
 
+let dir_is_vendored t src_dir =
+  Option.value ~default:false (File_tree.dir_is_vendored t.file_tree src_dir)
+
+let build_dir_is_vendored t build_dir =
+  let opt =
+    let open Option.O in
+    let+ src_dir = Path.Build.drop_build_context build_dir in
+    dir_is_vendored t src_dir
+  in
+  Option.value ~default:false opt
+
 let ocaml_flags t ~dir (x : Dune_file.Buildable.t) =
-  let t = t.env_context in
-  let expander = Env.expander t ~dir in
-  Ocaml_flags.make
-    ~spec:x.flags
-    ~default:(Env.ocaml_flags t ~dir)
-    ~eval:(Expander.expand_and_eval_set expander)
+  let expander = Env.expander t.env_context ~dir in
+  let flags =
+    Ocaml_flags.make
+      ~spec:x.flags
+      ~default:(Env.ocaml_flags t.env_context ~dir)
+      ~eval:(Expander.expand_and_eval_set expander)
+  in
+  let dir_is_vendored = build_dir_is_vendored t dir in
+  if dir_is_vendored then
+    Ocaml_flags.with_vendored_warnings flags
+  else
+    flags
 
 let c_flags t ~dir ~expander ~flags =
   let t = t.env_context in
@@ -323,9 +344,10 @@ let get_installed_binaries stanzas ~(context : Context.t) =
       | Unknown -> None
       | Expanded x -> Some x
       | Restricted ->
-        Errors.fail (String_with_vars.Var.loc var)
-          "%s isn't allowed in this position"
-          (String_with_vars.Var.describe var)
+        User_error.raise ~loc:(String_with_vars.Var.loc var)
+          [ Pp.textf "%s isn't allowed in this position."
+              (String_with_vars.Var.describe var)
+          ]
     ) sw
     |> Value.to_string ~dir
   in
@@ -366,7 +388,9 @@ let create
       ~external_lib_deps_mode
   =
   let installed_libs =
-    Lib.DB.create_from_findlib context.findlib ~external_lib_deps_mode
+    let stdlib_dir = context.stdlib_dir in
+    Lib.DB.create_from_findlib context.findlib ~stdlib_dir
+      ~external_lib_deps_mode
   in
   let scopes, public_libs =
     let libs, external_variants =
@@ -400,7 +424,7 @@ let create
           src_dir = dir
         ; ctx_dir
         ; data = stanzas
-        ; scope = Scope.DB.find_by_name scopes (Dune_project.name project)
+        ; scope = Scope.DB.find_by_project scopes project
         ; kind
         ; dune_version
         })
@@ -475,6 +499,9 @@ let create
                     }
   in
   let dir_status_db = Dir_status.DB.make file_tree ~stanzas_per_dir in
+  let projects_by_key =
+    Dune_project.File_key.Map.of_list_map_exn projects
+      ~f:(fun project -> (Dune_project.file_key project, project)) in
   { context
   ; expander
   ; host
@@ -506,6 +533,7 @@ let create
   ; default_env
   ; external_lib_deps_mode
   ; dir_status_db
+  ; projects_by_key
   }
 
 module Libs = struct
@@ -623,20 +651,6 @@ module Deps = struct
         [Bindings.Named (s, List.concat l)])
 end
 
-module Scope_key = struct
-  let of_string sctx key =
-    match String.rsplit2 key ~on:'@' with
-    | None ->
-      (key, public_libs sctx)
-    | Some (key, scope) ->
-      ( key
-      , Scope.libs (find_scope_by_name sctx
-                      (Dune_project.Name.of_encoded_string scope)))
-
-  let to_string key scope =
-    sprintf "%s@%s" key (Dune_project.Name.to_encoded_string scope)
-end
-
 module Action = struct
   open Build.O
   module U = Action_unexpanded
@@ -665,10 +679,11 @@ module Action = struct
       | x :: _ ->
         let loc = String_with_vars.loc x in
         (* DUNE2: make this an error *)
-        Errors.warn loc
-          "%s must not have targets, this target will be ignored.\n\
-           This will become an error in the future."
-          (String.capitalize context)
+        User_warning.emit ~loc
+          [ Pp.textf "%s must not have targets, this target will be ignored."
+              (String.capitalize context)
+          ; Pp.textf "This will become an error in the future."
+          ]
     end;
     let t, forms =
       partial_expand sctx ~expander ~dep_kind
@@ -677,8 +692,10 @@ module Action = struct
     let { U.Infer.Outcome. deps; targets } =
       match targets_written_by_user with
       | Infer -> U.Infer.partial t ~all_targets:true
-      | Static targets_written_by_user ->
-        let targets_written_by_user = Path.Set.of_list targets_written_by_user in
+      | Static { targets = targets_written_by_user; multiplicity = _ } ->
+        let targets_written_by_user =
+          Path.Set.of_list targets_written_by_user
+        in
         let { U.Infer.Outcome. deps; targets } =
           U.Infer.partial t ~all_targets:false
         in
@@ -695,18 +712,21 @@ module Action = struct
           match Path.as_in_build_dir p with
           | Some p -> p :: acc
           | None ->
-            Errors.fail loc
-              "target %s is outside the build directory. This is not allowed."
-              (Path.to_string_maybe_quoted p))
+            User_error.raise ~loc
+              [ Pp.textf "target %s is outside the build \
+                          directory. This is not allowed."
+                  (Path.to_string_maybe_quoted p)
+              ])
     in
     List.iter targets ~f:(fun target ->
       if Path.Build.(<>) (Path.Build.parent_exn target) targets_dir then
-        Errors.fail loc
-          "This action has targets in a different directory than the current \
-           one, this is not allowed by dune at the moment:\n%s"
-          (List.map targets ~f:(fun target ->
-             sprintf "- %s" (Dpath.describe_path (Path.build target)))
-           |> String.concat ~sep:"\n"));
+        User_error.raise ~loc
+          [ Pp.text "This action has targets in a different directory \
+                     than the current one, this is not allowed by dune \
+                     at the moment:"
+          ; Pp.enumerate targets ~f:(fun target ->
+              Pp.text (Dpath.describe_path (Path.build target)))
+          ]);
     let build =
       Build.record_lib_deps (Expander.Resolved_forms.lib_deps forms)
       >>>

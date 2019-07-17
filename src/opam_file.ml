@@ -4,24 +4,19 @@ open OpamParserTypes
 
 type t = opamfile
 
-let parse (lb : Lexing.lexbuf) =
+let parse_gen entry (lb : Lexing.lexbuf) =
   try
-    OpamBaseParser.main OpamLexer.token lb lb.lex_curr_p.pos_fname
+    entry OpamLexer.token lb
   with
   | OpamLexer.Error msg ->
-    Errors.fail_lex lb "%s" msg
+    User_error.raise ~loc:(Loc.of_lexbuf lb) [ Pp.text msg ]
   | Parsing.Parse_error ->
-    Errors.fail_lex lb "Parse error"
+    User_error.raise ~loc:(Loc.of_lexbuf lb) [ Pp.text "Parse error" ]
 
-let of_string ~path s =
-  let lb = Lexing.from_string s in
-  lb.lex_curr_p <-
-    { pos_fname = Path.to_string path
-    ; pos_lnum  = 1
-    ; pos_bol   = 0
-    ; pos_cnum  = 0
-    };
-  parse lb
+let parse =
+  parse_gen (fun lexer lexbuf ->
+    OpamBaseParser.main lexer lexbuf lexbuf.Lexing.lex_curr_p.pos_fname)
+let parse_value = parse_gen OpamBaseParser.value
 
 let load fn =
   Io.with_lexbuf_from_file fn ~f:parse
@@ -91,6 +86,62 @@ module Create = struct
   let string s = String (nopos, s)
   let list f xs = List (nopos, List.map ~f xs)
   let string_list xs = list string xs
+
+  let normalise_field_order =
+    let normal_field_order =
+      let fields =
+        [| (* Extracted from opam/src/format/opamFile.ml *)
+          "opam-version"
+        ; "name"
+        ; "version"
+        ; "synopsis"
+        ; "description"
+        ; "maintainer"
+        ; "authors"
+        ; "author"
+        ; "license"
+        ; "tags"
+        ; "homepage"
+        ; "doc"
+        ; "bug-reports"
+        ; "depends"
+        ; "depopts"
+        ; "conflicts"
+        ; "conflict-class"
+        ; "available"
+        ; "flags"
+        ; "setenv"
+        ; "build"
+        ; "run-test"
+        ; "install"
+        ; "remove"
+        ; "substs"
+        ; "patches"
+        ; "build-env"
+        ; "features"
+        ; "messages"
+        ; "post-messages"
+        ; "depexts"
+        ; "libraries"
+        ; "syntax"
+        ; "dev-repo"
+        ; "pin-depends"
+        ; "extra-files"
+        |] in
+      let table = lazy (
+        let table = Hashtbl.create (Array.length fields) in
+        Array.iteri fields ~f:(fun i field -> Hashtbl.add_exn table field i);
+        table
+      ) in
+      fun key -> Hashtbl.find (Lazy.force table) key
+    in
+    fun vars ->
+      List.stable_sort vars ~compare:(fun (x, _) (y, _) ->
+        match normal_field_order x, normal_field_order y with
+        | Some x, Some y -> Int.compare x y
+        | Some _, None -> Lt
+        | None, Some _ -> Gt
+        | None, None -> Eq)
 
   let of_bindings vars ~file =
     let file_contents =

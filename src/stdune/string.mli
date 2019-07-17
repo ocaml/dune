@@ -91,3 +91,10 @@ module Map : sig
   val to_dyn : ('a -> Dyn.t) -> 'a t -> Dyn.t
 end
 module Table : Hashtbl.S with type key = t
+
+(** Whether the string needs quoting if it is part of a shell command *)
+val need_quoting : string -> bool
+
+(** [quote_for_shell s] quotes [s] using [Filename.quote] if
+    [need_quoting s] is [true] *)
+val quote_for_shell : string -> string

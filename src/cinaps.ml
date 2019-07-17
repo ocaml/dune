@@ -100,7 +100,10 @@ let gen_rules sctx t ~dir ~scope ~dir_kind =
       ~scope
       ~dir_kind
   in
-  let modules = Preprocessing.pp_modules preprocess modules in
+  let modules =
+    Modules.exe_unwrapped modules
+    |> Modules.map_user_written ~f:(Preprocessing.pp_module preprocess)
+  in
 
   let compile_info =
     Lib.DB.resolve_user_written_deps_for_exes
@@ -129,7 +132,8 @@ let gen_rules sctx t ~dir ~scope ~dir_kind =
   in
   Exe.build_and_link cctx
     ~program:{ name; main_module_name; loc }
-    ~linkages:[Exe.Linkage.native_or_custom (Super_context.context sctx)];
+    ~linkages:[Exe.Linkage.native_or_custom (Super_context.context sctx)]
+    ~promote:None;
 
   Super_context.add_alias_action sctx ~dir ~loc:(Some loc) ~stamp:"cinaps"
     (Alias.runtest ~dir)

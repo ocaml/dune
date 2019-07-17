@@ -113,7 +113,9 @@ module Dependency = struct
           name, (let+ x = Var.decode in Uop (op, x)))
       in
       let ops =
-        ("!=", let+ loc = loc in of_sexp_error loc "Use <> instead of !=")
+        ("!=",
+         let+ loc = loc in
+         User_error.raise ~loc [ Pp.text "Use <> instead of !=" ])
         :: ops
       in
       fix begin fun t ->
@@ -274,8 +276,6 @@ let to_dyn { name; path; version ; synopsis ; description
       Option (Option.map version ~f:(fun (v, s) ->
         Dyn.Tuple [String v; Version_source.to_dyn s]))
     ]
-
-let pp fmt t = Dyn.pp fmt (to_dyn t)
 
 let opam_file t = Path.Source.relative t.path (Name.opam_fn t.name)
 

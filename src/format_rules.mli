@@ -8,5 +8,7 @@ val gen_rules : dir:Path.Build.t -> unit
 val gen_rules_output
   :  Super_context.t
   -> Dune_file.Auto_format.t
+  -> dialects:Dialect.DB.t
+  -> expander:Expander.t
   -> output_dir:Path.Build.t
   -> unit

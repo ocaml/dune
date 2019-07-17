@@ -13,7 +13,7 @@
     | '=' -> "equal"
     | '>' -> "greater"
     | '?' -> "question"
-    | '@' -> "ampersand"
+    | '@' -> "at"
     | '^' -> "circumflex"
     | '|' -> "pipe"
     | _ -> assert false

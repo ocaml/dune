@@ -23,11 +23,7 @@ val make
 
 (** Setup the preprocessing rules for the following modules and
     returns the translated modules *)
-val pp_modules
-  :  t
-  -> ?lint:bool
-  -> Module.t Module.Name.Map.t
-  -> Module.t Module.Name.Map.t
+val pp_module :  t -> ?lint:bool -> Module.t -> Module.t
 
 (** Preprocess a single module, using the configuration for the given
     module name. *)
@@ -68,3 +64,13 @@ val get_compat_ppx_exe
 val gen_rules : Super_context.t -> string list -> unit
 
 val chdir : Action_unexpanded.t -> Action_unexpanded.t
+
+val action_for_pp
+  :  Super_context.t
+  -> dep_kind:Lib_deps_info.Kind.t
+  -> loc:Loc.t
+  -> expander:Expander.t
+  -> action:Action_unexpanded.t
+  -> src:Path.Build.t
+  -> target:Path.Build.t option
+  -> ('a, Action.t) Build.t

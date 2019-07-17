@@ -88,7 +88,8 @@ end = struct
       if validate s then
         Named s
       else
-        Dune_lang.Decoder.of_sexp_errorf loc "invalid project name")
+        User_error.raise ~loc
+          [ Pp.text "Invalid project name" ])
 
   let to_encoded_string = function
     | Named     s -> s
@@ -105,7 +106,7 @@ end = struct
     let invalid s =
       (* Users would see this error if they did "dune build
          _build/default/.ppx/..." *)
-      die "Invalid encoded project name: %S" s
+      User_error.raise [ Pp.textf "Invalid encoded project name: %S" s ]
     in
     fun s ->
       match s with
@@ -167,9 +168,22 @@ module Source_kind = struct
          match String.split ~on:'/' s with
          | [user; repo] -> Github (user,repo)
          | _ ->
-           of_sexp_errorf loc "GitHub repository must be of form user/repo")
+           User_error.raise ~loc [ Pp.textf "GitHub repository must be of form user/repo" ])
       ; "uri", string >>| fun s -> Url s
       ]
+end
+
+module File_key = struct
+  type t = string
+
+  module Map = String.Map
+
+  let of_string s = s
+  let to_string s = s
+
+  let make ~name ~root =
+    let digest = Digest.generic (name, root) |> Digest.to_string in
+    String.take digest 12
 end
 
 type t =
@@ -189,9 +203,12 @@ type t =
   ; extension_args  : Univ_map.t
   ; parsing_context : Univ_map.t
   ; implicit_transitive_deps : bool
+  ; wrapped_executables : bool
   ; dune_version    : Syntax.Version.t
   ; allow_approx_merlin : bool
   ; generate_opam_files : bool
+  ; file_key : File_key.t
+  ; dialects        : Dialect.DB.t
   }
 
 let equal = (==)
@@ -210,17 +227,20 @@ let name t = t.name
 let root t = t.root
 let stanza_parser t = t.stanza_parser
 let file t = t.project_file.file
+let file_key t = t.file_key
 let implicit_transitive_deps t = t.implicit_transitive_deps
 let allow_approx_merlin t = t.allow_approx_merlin
 let generate_opam_files t = t.generate_opam_files
+let dialects t = t.dialects
 
 let to_dyn
       { name ; root ; version ; source; license; authors
       ; homepage ; documentation ; project_file ; parsing_context = _
       ; bug_reports ; maintainers
       ; extension_args = _; stanza_parser = _ ; packages
-      ; implicit_transitive_deps ; dune_version
-      ; allow_approx_merlin ; generate_opam_files } =
+      ; implicit_transitive_deps ; wrapped_executables ; dune_version
+      ; allow_approx_merlin ; generate_opam_files
+      ; file_key ; dialects } =
   let open Dyn.Encoder in
   record
     [ "name", Name.to_dyn name
@@ -239,9 +259,12 @@ let to_dyn
         (Package.Name.Map.to_list packages)
     ; "implicit_transitive_deps",
       bool implicit_transitive_deps
+    ; "wrapped_executables", bool wrapped_executables
     ; "dune_version", Syntax.Version.to_dyn dune_version
     ; "allow_approx_merlin", bool allow_approx_merlin
     ; "generate_opam_files", bool generate_opam_files
+    ; "file_key", string file_key
+    ; "dialects", Dialect.DB.to_dyn dialects
     ]
 
 let find_extension_args t key =
@@ -262,8 +285,13 @@ type created_or_already_exist = Created | Already_exist
 module Project_file_edit = struct
   open Project_file
 
-  let notify_user s =
-    kerrf ~f:print_to_console "@{<warning>Info@}: %s\n" s
+  let notify_user paragraphs =
+    Console.print_user_message
+      (User_message.make paragraphs
+         ~prefix:(Pp.seq
+                    (Pp.tag (Pp.verbatim "Info")
+                       ~tag:User_message.Style.Warning)
+                    (Pp.char ':')))
 
   let lang_stanza () =
     let ver = (Lang.get_exn "dune").version in
@@ -287,9 +315,12 @@ module Project_file_edit = struct
                            ])]
       in
       notify_user
-        (sprintf "creating file %s with this contents:\n%s\n"
-           (Path.Source.to_string_maybe_quoted t.file)
-           (List.map lines ~f:((^) "| ") |> String.concat ~sep:"\n"));
+        [ Pp.textf "Creating file %s with this contents:"
+            (Path.Source.to_string_maybe_quoted t.file)
+        ; Pp.vbox
+            (Pp.concat_map lines ~sep:Pp.cut
+               ~f:(fun line -> Pp.seq (Pp.verbatim "| ") (Pp.verbatim line)))
+        ];
       Io.write_lines (Path.source t.file) lines ~binary:false;
       t.exists <- true;
       Created
@@ -299,8 +330,9 @@ module Project_file_edit = struct
     let what = ensure_exists t in
     let prev = Io.read_file (Path.source t.file) ~binary:false in
     notify_user
-      (sprintf "appending this line to %s: %s"
-         (Path.Source.to_string_maybe_quoted t.file) str);
+      [ Pp.textf "Appending this line to %s: %s"
+          (Path.Source.to_string_maybe_quoted t.file) str
+      ];
     Io.with_file_out (Path.source t.file) ~binary:false ~f:(fun oc ->
       List.iter [prev; str] ~f:(fun s ->
         output_string oc s;
@@ -365,8 +397,10 @@ module Extension = struct
   let instantiate ~loc ~parse_args (name_loc, name) (ver_loc, ver) =
     match Hashtbl.find extensions name with
     | None ->
-      Errors.fail name_loc "Unknown extension %S.%s" name
-        (hint name (Hashtbl.keys extensions))
+      User_error.raise ~loc:name_loc
+        [ Pp.textf "Unknown extension %S." name ]
+        ~hints:(User_message.did_you_mean name
+                  ~candidates:(Hashtbl.keys extensions))
     | Some t ->
       Syntax.check_supported (syntax t) (ver_loc, ver);
       { extension = t
@@ -430,7 +464,8 @@ let interpret_lang_and_extensions ~(lang : Lang.Instance.t)
          (Syntax.name (Extension.syntax e.extension), e.loc)))
   with
   | Error (name, _, loc) ->
-    Errors.fail loc "Extension %S specified for the second time." name
+    User_error.raise ~loc
+      [ Pp.textf "Extension %S specified for the second time." name ]
   | Ok map ->
     let implicit_extensions =
       Extension.automatic ~project_file
@@ -477,31 +512,7 @@ let interpret_lang_and_extensions ~(lang : Lang.Instance.t)
     (parsing_context, stanza_parser, extension_args)
 
 let key =
-  Univ_map.Key.create ~name:"dune-project"
-    (fun { name; root; version; project_file; source
-         ; license; authors; homepage; documentation ; bug_reports ; maintainers
-         ; stanza_parser = _; packages = _ ; extension_args = _
-         ; parsing_context ; implicit_transitive_deps ; dune_version
-         ; allow_approx_merlin ; generate_opam_files } ->
-      let open Dyn.Encoder in
-      record
-        [ "name", Name.to_dyn name
-        ; "root", Path.Source.to_dyn root
-        ; "license", (option string) license
-        ; "authors", (list string) authors
-        ; "source", Dyn.Encoder.(option Source_kind.to_dyn) source
-        ; "version", (option string) version
-        ; "homepage", (option string) homepage
-        ; "documentation", (option string) documentation
-        ; "bug_reports", (option string) bug_reports
-        ; "maintainers", (list string) maintainers
-        ; "project_file", Project_file.to_dyn project_file
-        ; "parsing_context", Univ_map.to_dyn parsing_context
-        ; "implicit_transitive_deps", bool implicit_transitive_deps
-        ; "dune_version", Syntax.Version.to_dyn dune_version
-        ; "allow_approx_merlin", bool allow_approx_merlin
-        ; "generate_opam_files", bool generate_opam_files
-        ])
+  Univ_map.Key.create ~name:"dune-project" to_dyn
 
 let set t = Dune_lang.Decoder.set key t
 let get_exn () =
@@ -515,6 +526,9 @@ let filename = "dune-project"
 
 let implicit_transitive_deps_default ~(lang : Lang.Instance.t) =
   lang.version < (2, 0)
+
+let wrapped_executables_default ~(lang : Lang.Instance.t) =
+  lang.version >= (2, 0)
 
 let anonymous = lazy (
   let lang = get_dune_lang () in
@@ -530,9 +544,12 @@ let anonymous = lazy (
     interpret_lang_and_extensions ~lang ~explicit_extensions:[] ~project_file
   in
   let implicit_transitive_deps = implicit_transitive_deps_default ~lang in
-  { name          = name
+  let wrapped_executables = wrapped_executables_default ~lang in
+  let root = Path.Source.root in
+  let file_key = File_key.make ~root ~name in
+  { name
   ; packages      = Package.Name.Map.empty
-  ; root          = Path.Source.root
+  ; root
   ; source        = None
   ; license       = None
   ; homepage      = None
@@ -542,6 +559,7 @@ let anonymous = lazy (
   ; authors       = []
   ; version       = None
   ; implicit_transitive_deps
+  ; wrapped_executables
   ; stanza_parser
   ; project_file
   ; extension_args
@@ -549,6 +567,8 @@ let anonymous = lazy (
   ; dune_version = lang.version
   ; allow_approx_merlin = true
   ; generate_opam_files = false
+  ; file_key
+  ; dialects = Dialect.DB.builtin
   })
 
 let default_name ~dir ~packages =
@@ -567,9 +587,10 @@ let default_name ~dir ~packages =
     match Name.named name with
     | Some x -> x
     | None ->
-      Errors.fail pkg.loc
-        "%S is not a valid opam package name."
-        name
+      User_error.raise ~loc:pkg.loc
+        [ Pp.textf "%S is not a valid opam package name."
+            name
+        ]
 
 let parse ~dir ~lang ~opam_packages ~file =
   fields
@@ -604,12 +625,17 @@ let parse ~dir ~lang ~opam_packages ~file =
      and+ implicit_transitive_deps =
        field_o_b "implicit_transitive_deps"
          ~check:(Syntax.since Stanza.syntax (1, 7))
+     and+ wrapped_executables =
+       field_o_b "wrapped_executables"
+         ~check:(Syntax.since Stanza.syntax (1, 11))
      and+ allow_approx_merlin =
        field_o_b "allow_approximate_merlin"
          ~check:(Syntax.since Stanza.syntax (1, 9))
      and+ () = Versioned_file.no_more_lang
      and+ generate_opam_files = field_o_b "generate_opam_files"
                                   ~check:(Syntax.since Stanza.syntax (1, 10))
+     and+ dialects = multi_field "dialect"
+                       (Syntax.since Stanza.syntax (1, 11) >>> located Dialect.decode)
      in
      let homepage =
        match homepage, source with
@@ -630,17 +656,17 @@ let parse ~dir ~lang ~opam_packages ~file =
          begin match packages, name with
          | [p], Some (Named name) ->
            if Package.Name.to_string p.name <> name then
-             of_sexp_errorf p.loc
-               "when a single package is defined, it must have the same \
-                name as the project name: %s" name;
+             User_error.raise ~loc:p.loc
+               [ Pp.textf "when a single package is defined, it must have the same \
+                name as the project name: %s" name ];
          | _, _ -> ()
          end;
          match
            Package.Name.Map.of_list_map packages ~f:(fun p -> p.name, p)
          with
          | Error (_, _, p) ->
-           of_sexp_errorf p.loc "package %s is already defined"
-             (Package.Name.to_string p.name)
+           User_error.raise ~loc:p.loc [ Pp.textf "package %s is already defined"
+             (Package.Name.to_string p.name) ]
          | Ok packages ->
            Package.Name.Map.merge packages opam_packages
              ~f:(fun _name dune opam ->
@@ -648,12 +674,15 @@ let parse ~dir ~lang ~opam_packages ~file =
                | _, None -> dune
                | Some p, _ -> Some { p with kind = Dune (Option.is_some opam) }
                | None, Some (loc, _) ->
-                 Errors.fail loc
-                   "\
-This opam file doesn't have a corresponding (package ...) stanza in the
-dune-project_file. Since you have at least one other (package ...) stanza in
-your dune-project file, you must a (package ...) stanza for each opam package
-in your project.")
+                 User_error.raise ~loc
+                   [ Pp.text
+                       "This opam file doesn't have a corresponding \
+                        (package ...) stanza in the dune-project_file. \
+                        Since you have at least one other (package \
+                        ...) stanza in your dune-project file, you \
+                        must a (package ...) stanza for each opam \
+                        package in your project."
+                   ])
        end
      in
      let packages =
@@ -684,11 +713,23 @@ in your project.")
        Option.value implicit_transitive_deps
          ~default:(implicit_transitive_deps_default ~lang)
      in
+     let wrapped_executables =
+       Option.value wrapped_executables
+         ~default:(wrapped_executables_default ~lang) in
      let allow_approx_merlin =
        Option.value ~default:false allow_approx_merlin in
-     let generate_opam_files = Option.value ~default:false generate_opam_files in
+     let generate_opam_files =
+       Option.value ~default:false generate_opam_files in
+     let root = dir in
+     let file_key = File_key.make ~name ~root in
+     let dialects =
+       List.fold_left
+         ~f:(fun dialects (loc, dialect) -> Dialect.DB.add dialects ~loc dialect)
+         ~init:Dialect.DB.builtin dialects
+     in
      { name
-     ; root = dir
+     ; file_key
+     ; root
      ; version
      ; source
      ; license
@@ -703,9 +744,11 @@ in your project.")
      ; extension_args
      ; parsing_context
      ; implicit_transitive_deps
+     ; wrapped_executables
      ; dune_version = lang.version
      ; allow_approx_merlin
      ; generate_opam_files
+     ; dialects
      })
 
 let load_dune_project ~dir opam_packages =
@@ -727,10 +770,14 @@ let make_jbuilder_project ~dir opam_packages =
     }
   in
   let parsing_context, stanza_parser, extension_args =
-    interpret_lang_and_extensions ~lang ~explicit_extensions:[] ~project_file
+    interpret_lang_and_extensions ~lang ~explicit_extensions:[] ~project_file in
+  let root = dir in
+  let file_key = File_key.make ~root ~name
   in
+  let dialects = Dialect.DB.builtin in
   { name
-  ; root = dir
+  ; root
+  ; file_key
   ; version = None
   ; source = None
   ; license = None
@@ -748,6 +795,8 @@ let make_jbuilder_project ~dir opam_packages =
   ; dune_version = lang.version
   ; allow_approx_merlin = true
   ; generate_opam_files = false
+  ; wrapped_executables = false
+  ; dialects
   }
 
 let load ~dir ~files =
@@ -765,10 +814,11 @@ let load ~dir ~files =
               match Opam_file.load (Path.source opam_file) with
               | s -> Some s
               | exception exn ->
-                Errors.warn (Loc.in_file (Path.source opam_file))
-                  "Unable to read opam file. This package's version field will\
-                   be ignored.@.Reason: %a@."
-                  Exn.pp exn;
+                User_warning.emit ~loc:(Loc.in_file (Path.source opam_file))
+                  [ Pp.text "Unable to read opam file. This package's \
+                             version field will be ignored."
+                  ; Pp.textf "Reason: %s" (Printexc.to_string exn)
+                  ];
                 None
             in
             let* version = Opam_file.get_field opam "version" in
@@ -806,3 +856,5 @@ let dune_version t = t.dune_version
 
 let set_parsing_context t parser =
   Dune_lang.Decoder.set_many t.parsing_context parser
+
+let wrapped_executables t = t.wrapped_executables

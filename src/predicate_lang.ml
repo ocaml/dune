@@ -23,7 +23,7 @@ module Ast = struct
     let elt = let+ e = elt in Element e in
     let rec one (kind : Dune_lang.File_syntax.t) =
       peek_exn >>= function
-      | Atom (loc, A "\\") -> Errors.fail loc "unexpected \\"
+      | Atom (loc, A "\\") -> User_error.raise ~loc [ Pp.text "unexpected \\" ]
       | (Atom (_, A "") | Quoted_string (_, _)) | Template _ ->
         elt
       | Atom (loc, A s) -> begin
@@ -31,21 +31,26 @@ module Ast = struct
           | ":standard" ->
             junk >>> return Standard
           | ":include" ->
-            Errors.fail loc ":include isn't supported in the predicate language"
+            User_error.raise ~loc
+              [ Pp.text ":include isn't supported in the predicate language" ]
           | _ when s.[0] = ':' ->
-            Errors.fail loc "undefined symbol %s" s
+            User_error.raise ~loc
+              [ Pp.textf "undefined symbol %s" s ]
           | _ ->
             elt
         end
       | List (_, Atom (loc, A s) :: _) -> begin
           match s, kind with
           | ":include", _ ->
-            Errors.fail loc ":include isn't supported in the predicate language"
+            User_error.raise ~loc
+              [ Pp.text ":include isn't supported in the predicate language" ]
           | ("or" | "and" | "not"), _ -> bool_ops kind
           | s, Dune when s <> "" && s.[0] <> '-' && s.[0] <> ':' ->
-            Errors.fail loc
-              "This atom must be quoted because it is the first element \
-               of a list and doesn't start with - or :"
+            User_error.raise ~loc
+              [ Pp.text
+                  "This atom must be quoted because it is the first \
+                   element of a list and doesn't start with - or:"
+              ]
           | _ -> enter (many union [] kind)
         end
       | List _ -> enter (many union [] kind)

@@ -71,7 +71,7 @@ let simplify act =
       Run ("cmp", [file1; file2]) :: acc
     | Diff { optional = true; file1; file2; mode = _ } ->
       Sh (Printf.sprintf "test ! -e file1 -o ! -e file2 || diff %s %s"
-            (quote_for_shell file1) (quote_for_shell file2))
+            (String.quote_for_shell file1) (String.quote_for_shell file2))
       :: acc
     | Diff { optional = false; file1; file2; mode = _ } ->
       Run ("diff", [file1; file2]) :: acc
@@ -80,9 +80,9 @@ let simplify act =
             "{ echo -ne %s; cat %s; } | sort -u > %s"
             (Filename.quote (List.map extras ~f:(sprintf "%s\n")
                              |> String.concat ~sep:""))
-            (List.map srcs ~f:quote_for_shell
+            (List.map srcs ~f:String.quote_for_shell
              |> String.concat ~sep:" ")
-            (quote_for_shell target))
+            (String.quote_for_shell target))
       :: acc
   and block act =
     match List.rev (loop act []) with
@@ -91,7 +91,7 @@ let simplify act =
   in
   block act
 
-let quote s = Pp.verbatim (quote_for_shell s)
+let quote s = Pp.verbatim (String.quote_for_shell s)
 
 let rec pp = function
   | Run (prog, args) ->

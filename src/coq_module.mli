@@ -11,7 +11,7 @@ module Name : sig
   val make : string -> t
   val compare : t -> t -> Ordering.t
 
-  val pp : t Fmt.t
+  val to_dyn : t -> Dyn.t
 
 end
 
@@ -33,7 +33,7 @@ val source : t -> Path.Build.t
 val prefix : t -> string list
 val name : t -> string
 val obj_file : obj_dir:Path.Build.t -> ext:string -> t -> Path.Build.t
-val pp : t Fmt.t
+val to_dyn : t -> Dyn.t
 
 (** Parses a form "a.b.c" to a module *)
 val parse : dir:Path.Build.t -> loc:Loc.t -> string -> t

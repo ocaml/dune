@@ -54,18 +54,17 @@ module L : sig
 
   val to_iflags : Path.Set.t -> 'a Command.Args.t
 
-  val include_paths : t -> stdlib_dir:Path.t -> Path.Set.t
-  val include_flags : t -> stdlib_dir:Path.t -> _ Command.Args.t
+  val include_paths : t -> Path.Set.t
+  val include_flags : t -> _ Command.Args.t
 
-  val c_include_flags : t -> stdlib_dir:Path.t -> _ Command.Args.t
+  val c_include_flags : t -> _ Command.Args.t
 
-  val link_flags : t -> mode:Mode.t -> stdlib_dir:Path.t -> _ Command.Args.t
+  val link_flags : t -> mode:Mode.t -> _ Command.Args.t
 
   val compile_and_link_flags
     :  compile:t
     -> link:t
     -> mode:Mode.t
-    -> stdlib_dir:Path.t
     -> _ Command.Args.t
 
   (** All the library archive files (.a, .cmxa, _stubs.a, ...)  that
@@ -93,7 +92,7 @@ module Lib_and_module : sig
   module L : sig
     type nonrec t = t list
     val of_libs : lib list -> t
-    val link_flags : t -> mode:Mode.t -> stdlib_dir:Path.t -> _ Command.Args.t
+    val link_flags : t -> mode:Mode.t -> _ Command.Args.t
   end
 end with type lib := t
 
@@ -158,6 +157,7 @@ module DB : sig
   *)
   val create
     :  ?parent:t
+    -> stdlib_dir:Path.t
     -> resolve:(Lib_name.t -> Resolve_result.t)
     -> all:(unit -> Lib_name.t list)
     -> unit
@@ -173,6 +173,7 @@ module DB : sig
 
   val create_from_findlib
     :  ?external_lib_deps_mode:bool
+    -> stdlib_dir:Path.t
     -> Findlib.t
     -> t
 
@@ -256,7 +257,7 @@ end
 
 val to_dune_lib
   :  t
-  -> lib_modules:Lib_modules.t
+  -> modules:Modules.t
   -> foreign_objects:Path.t list
   -> dir:Path.t
   -> (Syntax.Version.t * Dune_lang.t list) Dune_package.Lib.t

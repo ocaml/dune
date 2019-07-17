@@ -22,7 +22,8 @@ let of_string repr =
 let of_string_exn loc repr =
   match of_string repr with
   | Error (_, msg) ->
-    Errors.fail loc "invalid glob: :%s" msg
+    User_error.raise ~loc
+      [ Pp.textf "invalid glob: :%s" msg ]
   | Ok t -> t
 
 let decode =

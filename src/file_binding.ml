@@ -6,19 +6,18 @@ type ('src, 'dst) t =
   }
 
 module Expanded = struct
-  type nonrec t = (Loc.t * Path.t, Loc.t * string) t
+  type nonrec t = (Loc.t * Path.Build.t, Loc.t * string) t
 
   let src t = snd t.src
   let dst t = Option.map ~f:snd t.dst
 
   let src_loc t = fst t.src
 
-  let src_path t = snd t.src
   let dst_basename { src = (_, src); dst } =
     match dst with
     | Some (_, dst) -> dst
     | None ->
-      let basename = Path.basename src in
+      let basename = Path.Build.basename src in
       String.drop_suffix basename ~suffix:".exe"
       |> Option.value ~default:basename
 
@@ -34,7 +33,7 @@ module Unexpanded = struct
     ; dst = Some (String_with_vars.make_text locd dst)
     }
 
-  let expand_src t ~dir ~f = Path.relative dir (f t.src)
+  let expand_src t ~dir ~f = Path.Build.relative dir (f t.src)
 
   let destination_relative_to_install_path t ~section ~expand ~expand_partial =
     let dst = Option.map ~f:expand t.dst in
@@ -47,7 +46,7 @@ module Unexpanded = struct
     let f sw = (String_with_vars.loc sw, f sw) in
     let src =
       let (loc, expanded) = f t.src in
-      (loc, Path.relative dir expanded)
+      (loc, Path.Build.relative dir expanded)
     in
     { src
     ; dst =
@@ -92,8 +91,9 @@ module Unexpanded = struct
            let* dst = decode in
            return { src; dst = Some dst })
       | sexp ->
-        of_sexp_error (Dune_lang.Ast.loc sexp)
-          "invalid format, <name> or (<name> as <install-as>) expected"
+        User_error.raise ~loc:(Dune_lang.Ast.loc sexp)
+          [ Pp.text
+              "invalid format, <name> or (<name> as <install-as>) expected" ]
 
     let decode =
       let open Stanza.Decoder in list decode_file

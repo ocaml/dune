@@ -18,11 +18,8 @@ val create
   -> scope                 : Scope.t
   -> expander              : Expander.t
   -> obj_dir               : Path.Build.t Obj_dir.t
-  -> ?vimpl                : Vimpl.t
   -> ?dir_kind             : Dune_lang.File_syntax.t
-  -> modules               : Module.t Module.Name.Map.t
-  -> ?alias_module         : Module.t
-  -> ?lib_interface_module : Module.t
+  -> modules               : Modules.t
   -> flags                 : Ocaml_flags.t
   -> requires_compile      : Lib.t list Or_exn.t
   -> requires_link         : Lib.t list Or_exn.t Lazy.t
@@ -34,6 +31,7 @@ val create
   -> dynlink               : bool
   -> ?sandbox              : bool
   -> package               : Package.t option
+  -> ?vimpl                : Vimpl.t
   -> unit
   -> t
 
@@ -47,9 +45,7 @@ val scope                : t -> Scope.t
 val dir                  : t -> Path.Build.t
 val dir_kind             : t -> Dune_lang.File_syntax.t
 val obj_dir              : t -> Path.Build.t Obj_dir.t
-val modules              : t -> Module.t Module.Name.Map.t
-val alias_module         : t -> Module.t option
-val lib_interface_module : t -> Module.t option
+val modules              : t -> Modules.t
 val flags                : t -> Ocaml_flags.t
 val requires_link        : t -> Lib.t list Or_exn.t
 val requires_compile     : t -> Lib.t list Or_exn.t
@@ -62,8 +58,6 @@ val js_of_ocaml          : t -> Dune_file.Js_of_ocaml.t option
 val dynlink              : t -> bool
 val sandbox              : t -> bool option
 val package              : t -> Package.t option
-
-(** Information for implementation of virtual libraries. *)
 val vimpl                : t -> Vimpl.t option
 
-val for_wrapped_compat : t -> Module.t Module.Name.Map.t -> t
+val for_wrapped_compat : t -> t

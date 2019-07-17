@@ -5,10 +5,15 @@
 
 (** Emit a user warning. The arguments are interpreted in a similar
     fashion to {!User_error.raise} except that the first paragraph is
-    prefixed with "Warning: " rather than "Error: ". *)
+    prefixed with "Warning: " rather than "Error: ".
+
+    If [is_error] is [true], then this function behaves exactly the
+    same as [User_error.raise].
+*)
 val emit
   :  ?loc:Loc0.t
   -> ?hints:User_message.Style.t Pp.t list
+  -> ?is_error:bool
   -> User_message.Style.t Pp.t list
   -> unit
 

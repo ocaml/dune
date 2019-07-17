@@ -5,7 +5,7 @@ If the source directory does not exist, an error message is printed:
   File "dune", line 1, characters 13-23:
   1 | (copy_files# "no_dir/*")
                    ^^^^^^^^^^
-  Error: cannot find directory: no_dir
+  Error: Cannot find directory: no_dir
   [1]
 
 This works also is a file exists with the same name:
@@ -15,5 +15,5 @@ This works also is a file exists with the same name:
   File "dune", line 1, characters 13-23:
   1 | (copy_files# "no_dir/*")
                    ^^^^^^^^^^
-  Error: cannot find directory: no_dir
+  Error: Cannot find directory: no_dir
   [1]

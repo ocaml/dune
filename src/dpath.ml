@@ -90,7 +90,8 @@ let decode =
   let external_ =
     plain_string (fun ~loc t ->
       if Filename.is_relative t then
-        Dune_lang.Decoder.of_sexp_errorf loc "Absolute path expected"
+        User_error.raise ~loc
+          [ Pp.text "Absolute path expected" ]
       else
         Path.parse_string_exn ~loc t
     )

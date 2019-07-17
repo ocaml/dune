@@ -43,12 +43,11 @@ let rec local_binaries t ~profile ~expander =
       match find_config t ~profile with
       | None -> default
       | Some cfg ->
-        let dir = Path.build t.dir in
         default @
         List.map cfg.binaries
-          ~f:(File_binding.Unexpanded.expand ~dir ~f:(fun template ->
+          ~f:(File_binding.Unexpanded.expand ~dir:t.dir ~f:(fun template ->
             Expander.expand expander ~mode:Single ~template
-            |> Value.to_string ~dir))
+            |> Value.to_string ~dir:(Path.build t.dir)))
     in
     t.local_binaries <- Some local_binaries;
     local_binaries
@@ -105,7 +104,10 @@ let rec ocaml_flags t ~profile ~expander =
   | None ->
     let default =
       match t.inherit_from with
-      | None -> Ocaml_flags.default ~profile
+      | None ->
+        let project = Scope.project t.scope in
+        let dune_version = Dune_project.dune_version project in
+        Ocaml_flags.default ~profile ~dune_version
       | Some (lazy t) -> ocaml_flags t ~profile ~expander
     in
     let flags =

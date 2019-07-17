@@ -20,13 +20,19 @@ let force_read_cmi source_file =
 (* Build the cm* if the corresponding source is present, in the case of cmi if
    the mli is not present it is added as additional target to the .cmo
    generation *)
+
+let opens modules m =
+  match Modules.alias_for modules m with
+  | None -> Command.Args.S []
+  | Some (m : Module.t) ->
+    As ["-open"; Module.Name.to_string (Module.name m)]
+
 let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) =
   let sctx     = CC.super_context cctx in
   let dir      = CC.dir           cctx in
   let obj_dir  = CC.obj_dir       cctx in
   let ctx      = SC.context       sctx in
   let stdlib   = CC.stdlib        cctx in
-  let vimpl    = CC.vimpl cctx in
   let mode     = Mode.of_cm_kind cm_kind in
   let dynlink  = CC.dynlink cctx in
   let sandbox  = CC.sandbox cctx in
@@ -51,8 +57,8 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) =
           force_read_cmi src, [], []
         else
           (* If we're compiling an implementation, then the cmi is present *)
-          match cm_kind, Module.file m ~ml_kind:Intf
-                , Vimpl.is_public_vlib_module vimpl m with
+          let public_vlib_module = Module.kind m = Impl_vmodule in
+          match cm_kind, Module.file m ~ml_kind:Intf, public_vlib_module with
           (* If there is no mli, [ocamlY -c file.ml] produces both the
              .cmY and .cmi. We choose to use ocamlc to produce the cmi
              and to produce the cmx we have to wait to avoid race
@@ -144,6 +150,7 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) =
           Build.fanout flags pp >>^ fun (flags, pp_flags) ->
           flags @ pp_flags
       in
+      let modules = Compilation_context.modules cctx in
       SC.add_rule sctx ?sandbox ~dir
         (Build.S.seqs [Build.paths extra_deps; other_cm_files]
            (Command.run ~dir:(Path.build dir) (Ok compiler)
@@ -159,29 +166,14 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) =
               ; As extra_args
               ; if dynlink || cm_kind <> Cmx then As [] else A "-nodynlink"
               ; A "-no-alias-deps"; opaque_arg
-              ; (match CC.alias_module cctx with
-                 | None -> S []
-                 | Some (m : Module.t) ->
-                   As ["-open"; Module.Name.to_string (Module.name m)])
+              ; opens modules m
               ; As (match stdlib with
                   | None -> []
-                  | Some { Dune_file.Library.Stdlib.modules_before_stdlib; _ } ->
-                    let flags = ["-nopervasives"; "-nostdlib"] in
-                    if Module.Name.Set.mem modules_before_stdlib
-                         (Module.name m) then
-                      flags
-                    else
-                      match CC.lib_interface_module cctx with
-                      | None -> flags
-                      | Some m' ->
-                        (* See comment in [Dune_file.Stdlib]. *)
-                        if Module.name m = Module.name m' then
-                          "-w" :: "-49" :: flags
-                        else
-                          "-open" :: Module.Name.to_string (Module.name m')
-                          :: flags)
+                  | Some _ ->
+                    (* XXX why aren't these just normal library flags? *)
+                    ["-nopervasives"; "-nostdlib"])
               ; A "-o"; Target dst
-              ; A "-c"; Ml_kind.flag ml_kind; Dep src
+              ; A "-c"; Command.Ml_kind.flag ml_kind; Dep src
               ; Hidden_targets other_targets
               ]))))
 
@@ -216,8 +208,8 @@ let ocamlc_i ?(flags=[]) ~dep_graphs cctx (m : Module.t) ~output =
          ~f:(fun m -> [Path.build (Obj_dir.Module.cm_file_unsafe
                                      obj_dir m ~kind:Cmi)]))
   in
-  let ocaml_flags = Ocaml_flags.get_for_cm (CC.flags cctx) ~cm_kind:Cmo
-  in
+  let ocaml_flags = Ocaml_flags.get_for_cm (CC.flags cctx) ~cm_kind:Cmo in
+  let modules = Compilation_context.modules cctx in
   SC.add_rule sctx ?sandbox ~dir
     (Build.S.seq cm_deps
        (Build.S.map ~f:(fun act -> Action.with_stdout_to (Path.build output) act)
@@ -225,12 +217,77 @@ let ocamlc_i ?(flags=[]) ~dep_graphs cctx (m : Module.t) ~output =
              [ Command.Args.dyn ocaml_flags
              ; A "-I"; Path (Path.build (Obj_dir.byte_dir obj_dir))
              ; Cm_kind.Dict.get (CC.includes cctx) Cmo
-             ; (match CC.alias_module cctx with
-                | None -> S []
-                | Some (m : Module.t) ->
-                  As ["-open"; Module.Name.to_string (Module.name m)])
+             ; opens modules m
              ; As flags
              ; A "-short-paths"
-             ; A "-i"; Ml_kind.flag Impl; Dep src
+             ; A "-i"; Command.Ml_kind.flag Impl; Dep src
              ]))
      >>> Build.action_dyn () ~targets:[output])
+
+
+(* The alias module is an implementation detail to support wrapping library
+   modules under a single toplevel name. Since OCaml doesn't have proper support
+   for namespacing at the moment, in order to expose module `X` of library `foo`
+   as `Foo.X`, Dune does the following:
+
+   - it compiles x.ml to Foo__X.cmo, Foo__X.cmx, Foo__X.o, ...
+   - it implictly exposes a module alias [module X = Foo__X] to all the
+     modules of the `foo` library
+
+   The second point is achieved by implicitely openning a module containing such
+   aliases for all modules of `foo` when compiling modules of `foo` via the
+   `-open` option of the compiler. This module is called the alias module and is
+   implicitely generated by Dune.*)
+
+let build_alias_module ~loc ~alias_module ~dir ~cctx =
+  let sctx = Compilation_context.super_context cctx in
+  let file = Option.value_exn (Module.file alias_module ~ml_kind:Impl) in
+  let modules = Compilation_context.modules cctx in
+  let alias_file () =
+    let main_module_name =
+      Modules.main_module_name modules
+      |> Option.value_exn
+    in
+    Modules.for_alias modules
+    |> Module.Name.Map.values
+    |> List.map ~f:(fun (m : Module.t) ->
+      let name = Module.Name.to_string (Module.name m) in
+      sprintf "(** @canonical %s.%s *)\n\
+               module %s = %s\n"
+        (Module.Name.to_string main_module_name)
+        name
+        name
+        (Module.Name.to_string (Module.real_unit_name m)))
+    |> String.concat ~sep:"\n"
+  in
+  Super_context.add_rule ~loc sctx ~dir (
+    Build.arr alias_file
+    >>> Build.write_file_dyn (Path.as_in_build_dir_exn file)
+  );
+  let cctx = Compilation_context.for_alias_module cctx in
+  build_module cctx alias_module
+    ~dep_graphs:(Dep_graph.Ml_kind.dummy alias_module)
+
+let build_all cctx ~dep_graphs =
+  let for_wrapped_compat =
+    lazy (Compilation_context.for_wrapped_compat cctx) in
+  let modules = Compilation_context.modules cctx in
+  Modules.iter_no_vlib modules ~f:(fun m ->
+    match Module.kind m with
+    | Alias ->
+      let cctx = Compilation_context.for_alias_module cctx in
+      let dir = Compilation_context.dir cctx in
+      build_alias_module ~loc:Loc.none ~alias_module:m ~dir ~cctx
+    | Wrapped_compat ->
+      let cctx = Lazy.force for_wrapped_compat in
+      build_module cctx ~dep_graphs m
+    |  _ ->
+      let cctx =
+        if Modules.is_stdlib_alias modules m then
+          (* XXX it would probably be simpler if the flags were just for this
+             module in the definition of the stanza *)
+          Compilation_context.for_alias_module cctx
+        else
+          cctx
+      in
+      build_module cctx ~dep_graphs m)

@@ -4,14 +4,15 @@ module Status = struct
   type t =
     | Installed
     | Public  of Dune_project.Name.t * Package.t
-    | Private of Dune_project.Name.t
+    | Private of Dune_project.t
 
   let pp ppf t =
     Format.pp_print_string ppf
       (match t with
        | Installed -> "installed"
        | Public _ -> "public"
-       | Private name ->
+       | Private project ->
+         let name = Dune_project.name project in
          sprintf "private (%s)" (Dune_project.Name.to_string_hum name))
 
   let is_private = function
@@ -20,7 +21,8 @@ module Status = struct
 
   let project_name = function
     | Installed -> None
-    | Public (name, _) | Private name -> Some name
+    | Private project -> Some (Dune_project.name project)
+    | Public (name, _)  -> Some name
 end
 
 
@@ -86,7 +88,7 @@ type 'path t =
   ; virtual_deps     : (Loc.t * Lib_name.t) list
   ; dune_version     : Syntax.Version.t option
   ; sub_systems      : Sub_system_info.t Sub_system_name.Map.t
-  ; virtual_         : Lib_modules.t Source.t option
+  ; virtual_         : Modules.t Source.t option
   ; implements       : (Loc.t * Lib_name.t) option
   ; variant          : Variant.t option
   ; known_implementations : (Loc.t * Lib_name.t) Variant.Map.t
@@ -151,7 +153,7 @@ let of_library_stanza ~dir
   in
   let status =
     match conf.public with
-    | None   -> Status.Private (Dune_project.name conf.project)
+    | None   -> Status.Private conf.project
     | Some p -> Public (Dune_project.name conf.project, p.package)
   in
   let virtual_library = Dune_file.Library.is_virtual conf in
@@ -263,7 +265,8 @@ let of_dune_lib dp =
   let src_dir = Lib.dir dp in
   let virtual_ =
     if Lib.virtual_ dp then
-      Some (Source.External (Option.value_exn (Lib.modules dp)))
+      let modules = Option.value_exn (Lib.modules dp) in
+      Some (Source.External modules)
     else
       None
   in

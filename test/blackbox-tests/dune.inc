@@ -200,6 +200,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name dialects)
+ (deps (package dune) (source_tree test-cases/dialects))
+ (action
+  (chdir
+   test-cases/dialects
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name dir-target-dep)
  (deps (package dune) (source_tree test-cases/dir-target-dep))
  (action
@@ -301,6 +309,14 @@
  (action
   (chdir
    test-cases/duplicate-c-cxx-obj
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
+ (name duplicate-project-names)
+ (deps (package dune) (source_tree test-cases/duplicate-project-names))
+ (action
+  (chdir
+   test-cases/duplicate-project-names
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
@@ -417,6 +433,14 @@
  (action
   (chdir
    test-cases/exclude-missing-module
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
+ (name exe-name-mangle)
+ (deps (package dune) (source_tree test-cases/exe-name-mangle))
+ (action
+  (chdir
+   test-cases/exe-name-mangle
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
@@ -866,6 +890,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name install-multiple-contexts)
+ (deps (package dune) (source_tree test-cases/install-multiple-contexts))
+ (action
+  (chdir
+   test-cases/install-multiple-contexts
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name install-partial-package)
  (deps (package dune) (source_tree test-cases/install-partial-package))
  (action
@@ -1021,6 +1053,14 @@
    (progn
     (run %{exe:cram.exe} -skip-versions 4.02.3 -test run.t)
     (diff? run.t run.t.corrected)))))
+
+(alias
+ (name multiple-targets)
+ (deps (package dune) (source_tree test-cases/multiple-targets))
+ (action
+  (chdir
+   test-cases/multiple-targets
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
  (name name-field-validation)
@@ -1509,6 +1549,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name variants-rogue-impl)
+ (deps (package dune) (source_tree test-cases/variants-rogue-impl))
+ (action
+  (chdir
+   test-cases/variants-rogue-impl
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name variants-wrong-external-declaration)
  (deps
   (package dune)
@@ -1516,6 +1564,14 @@
  (action
   (chdir
    test-cases/variants-wrong-external-declaration
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
+ (name vendor)
+ (deps (package dune) (source_tree test-cases/vendor))
+ (action
+  (chdir
+   test-cases/vendor
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
@@ -1602,6 +1658,7 @@
   (alias depend-on-the-universe)
   (alias deps-conf-vars)
   (alias dev-flag-1103)
+  (alias dialects)
   (alias dir-target-dep)
   (alias double-echo)
   (alias dune-build-dir-exec-1101)
@@ -1615,6 +1672,7 @@
   (alias dup-fields)
   (alias duplicate-c-cxx)
   (alias duplicate-c-cxx-obj)
+  (alias duplicate-project-names)
   (alias duplicate-target-no-loc)
   (alias embed-jbuild)
   (alias enabled_if)
@@ -1628,6 +1686,7 @@
   (alias env-var-expansion)
   (alias env-variables)
   (alias exclude-missing-module)
+  (alias exe-name-mangle)
   (alias exec-cmd)
   (alias exec-missing)
   (alias external-lib-deps)
@@ -1683,6 +1742,7 @@
   (alias inline_tests)
   (alias install-dry-run)
   (alias install-libdir)
+  (alias install-multiple-contexts)
   (alias install-partial-package)
   (alias install-rule-order)
   (alias install-with-var)
@@ -1701,6 +1761,7 @@
   (alias missing-loc-run)
   (alias multi-dir)
   (alias multiple-private-libs)
+  (alias multiple-targets)
   (alias name-field-validation)
   (alias no-installable-mode)
   (alias no-name-field)
@@ -1759,7 +1820,9 @@
   (alias variants-external-declaration-conflict)
   (alias variants-multi-project)
   (alias variants-only-package)
+  (alias variants-rogue-impl)
   (alias variants-wrong-external-declaration)
+  (alias vendor)
   (alias vlib)
   (alias vlib-default-impl)
   (alias vlib-wrong-default-impl)
@@ -1793,6 +1856,7 @@
   (alias depend-on-the-universe)
   (alias deps-conf-vars)
   (alias dev-flag-1103)
+  (alias dialects)
   (alias dir-target-dep)
   (alias double-echo)
   (alias dune-build-dir-exec-1101)
@@ -1805,6 +1869,7 @@
   (alias dup-fields)
   (alias duplicate-c-cxx)
   (alias duplicate-c-cxx-obj)
+  (alias duplicate-project-names)
   (alias duplicate-target-no-loc)
   (alias embed-jbuild)
   (alias enabled_if)
@@ -1818,6 +1883,7 @@
   (alias env-var-expansion)
   (alias env-variables)
   (alias exclude-missing-module)
+  (alias exe-name-mangle)
   (alias exec-cmd)
   (alias exec-missing)
   (alias external-lib-deps)
@@ -1866,6 +1932,7 @@
   (alias include-loop)
   (alias include-qualified)
   (alias inline_tests)
+  (alias install-multiple-contexts)
   (alias install-partial-package)
   (alias install-rule-order)
   (alias install-with-var)
@@ -1880,6 +1947,7 @@
   (alias misc)
   (alias missing-loc-run)
   (alias multi-dir)
+  (alias multiple-targets)
   (alias name-field-validation)
   (alias no-installable-mode)
   (alias no-name-field)
@@ -1926,7 +1994,9 @@
   (alias variants-external-declaration-conflict)
   (alias variants-multi-project)
   (alias variants-only-package)
+  (alias variants-rogue-impl)
   (alias variants-wrong-external-declaration)
+  (alias vendor)
   (alias vlib)
   (alias vlib-default-impl)
   (alias vlib-wrong-default-impl)

@@ -5,7 +5,7 @@ General tests
 
   $ dune build --display short @blah
   File "x", line 1, characters 0-0:
-  Files _build/default/x and _build/default/x.gen differ.
+  Error: Files _build/default/x and _build/default/x.gen differ.
   [1]
   $ cat x
   titi
@@ -25,7 +25,7 @@ Otherwise this test fails on OSX
   $ printf titi > x
   $ dune build --display short @blah --auto-promote
   File "x", line 1, characters 0-0:
-  Files _build/default/x and _build/default/x.gen differ.
+  Error: Files _build/default/x and _build/default/x.gen differ.
   Promoting _build/default/x.gen to x.
   [1]
   $ cat x
@@ -41,9 +41,9 @@ Test single file promotion
   $ printf a > y
   $ dune build --display short @blah @blah2
   File "x", line 1, characters 0-0:
-  Files _build/default/x and _build/default/x.gen differ.
+  Error: Files _build/default/x and _build/default/x.gen differ.
   File "y", line 1, characters 0-0:
-  Files _build/default/y and _build/default/y.gen differ.
+  Error: Files _build/default/y and _build/default/y.gen differ.
   [1]
   $ dune promote x
   Promoting _build/default/x.gen to x.
@@ -68,9 +68,9 @@ Reproduction case for #1772
   $ printf a > y
   $ dune build --display short @blah @blah2
   File "x", line 1, characters 0-0:
-  Files _build/default/x and _build/default/x.gen differ.
+  Error: Files _build/default/x and _build/default/x.gen differ.
   File "y", line 1, characters 0-0:
-  Files _build/default/y and _build/default/y.gen differ.
+  Error: Files _build/default/y and _build/default/y.gen differ.
   [1]
   $ rm -f _build/default/x.gen
   $ dune promote
@@ -93,3 +93,10 @@ Only "only1" should be promoted in the source tree:
   $ dune build only2
   $ ls -1 only*
   only1
+
+Test for (promote (into ...)) + (enabled_if %{ignoring_promoted_rules}
+----------------------------------------------------------------------
+
+  $ dune build into+ignoring
+  $ dune clean
+  $ dune build into+ignoring --ignore-promoted-rules

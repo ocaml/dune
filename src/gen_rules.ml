@@ -67,9 +67,12 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
     Dune_project.find_extension_args project Auto_format.key
     |> Option.iter ~f
 
-  let gen_format_rules sctx ~output_dir =
+  let gen_format_rules sctx ~expander ~output_dir =
+    let scope = SC.find_scope_by_dir sctx output_dir in
+    let project = Scope.project scope in
+    let dialects = Dune_project.dialects project in
     with_format sctx ~dir:output_dir
-      ~f:(Format_rules.gen_rules_output sctx ~output_dir)
+      ~f:(Format_rules.gen_rules_output sctx ~dialects ~expander ~output_dir)
 
   (* Stanza *)
 
@@ -138,8 +141,9 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
         }
       | Install { Install_conf. section = _; files; package = _ } ->
         List.map files ~f:(fun fb ->
-          File_binding.Unexpanded.expand_src ~dir:(Path.build ctx_dir)
-            fb ~f:(Expander.expand_str expander))
+          File_binding.Unexpanded.expand_src ~dir:ctx_dir
+            fb ~f:(Expander.expand_str expander)
+          |> Path.build)
         |> Path.Set.of_list
         |> Rules.Produce.Alias.add_deps (Alias.all ~dir:ctx_dir);
         For_stanza.empty_none
@@ -161,7 +165,8 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
     in
     let allow_approx_merlin =
       let dune_project = Scope.project scope in
-      Dune_project.allow_approx_merlin dune_project in
+      let dir_is_vendored = Super_context.dir_is_vendored sctx src_dir in
+      dir_is_vendored || Dune_project.allow_approx_merlin dune_project in
     Option.iter (Merlin.merge_all ~allow_approx_merlin merlins)
       ~f:(fun m ->
         let more_src_dirs =
@@ -194,9 +199,11 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
           SC.add_rule sctx ~dir:ctx_dir
             (Build.fail ~targets
                { fail = fun () ->
-                   Errors.fail m.loc
-                     "I can't determine what library/executable the files \
-                      produced by this stanza are part of."
+                   User_error.raise ~loc:m.loc
+                     [ Pp.text
+                         "I can't determine what library/executable \
+                          the files produced by this stanza are part of."
+                     ]
                })
         | Some cctx ->
           Menhir_rules.gen_rules cctx m ~build_dir ~dir:ctx_dir
@@ -255,13 +262,14 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
          let subdirs = [".formatted"; ".bin"; ".utop"] in
          begin match List.last comps with
          | Some ".formatted" ->
-           gen_format_rules sctx ~output_dir:dir
+           let expander = Super_context.expander sctx ~dir in
+           gen_format_rules sctx ~expander ~output_dir:dir
          | Some ".bin" ->
            let src_dir = Path.Build.parent_exn dir in
            (Super_context.local_binaries sctx ~dir:src_dir
             |> List.iter ~f:(fun t ->
               let loc = File_binding.Expanded.src_loc t in
-              let src = File_binding.Expanded.src_path t in
+              let src = Path.build (File_binding.Expanded.src t) in
               let dst = File_binding.Expanded.dst_path t ~dir in
               Super_context.add_rule sctx ~loc ~dir (Build.symlink ~src ~dst)))
          | _ ->

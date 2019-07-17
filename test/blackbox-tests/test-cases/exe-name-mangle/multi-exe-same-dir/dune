@@ -1,0 +1,7 @@
+(executable
+ (name foo)
+ (modules foo))
+
+(executable
+ (name bar)
+ (modules bar))

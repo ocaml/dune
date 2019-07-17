@@ -1,4 +1,3 @@
-open Import
 open! Stdune
 open Result.O
 
@@ -49,7 +48,7 @@ module Error = struct
       [ Pp.box ~indent:2
           (Pp.concat ~sep:Pp.space
              (Pp.text "try:"
-              :: List.map l ~f:(fun x -> Pp.verbatim (quote_for_shell x))))
+              :: List.map l ~f:(fun x -> Pp.verbatim (String.quote_for_shell x))))
       ]
 
   let not_found ~loc ~name =
@@ -176,7 +175,40 @@ module Error = struct
           (Lib_name.to_string not_vlib)
           (Lib_name.to_string impl)
       ]
+
+  let vlib_known_implementation_mismatch ~loc ~name ~variant ~vlib_name =
+    make ~loc
+      [ Pp.textf "Virtual library %S does not know about implementation %S with \
+                  variant %S. Instead of using (variant %s) here, you need to \
+                  reference it in the virtual library project, using the \
+                  external_variant stanza:"
+          (Lib_name.to_string vlib_name)
+          (Lib_name.to_string name)
+          (Variant.to_string variant)
+          (Variant.to_string variant)
+      ; Pp.textf
+          "(external_variant\n\
+          \  (virtual_library %s)\n\
+          \  (variant %s)\n\
+          \  (implementation %s))"
+          (Lib_name.to_string vlib_name)
+          (Variant.to_string variant)
+          (Lib_name.to_string name)
+      ]
+
+  let vlib_variant_conflict ~loc ~name ~known_impl_name ~variant ~vlib_name =
+    make ~loc
+      [ Pp.textf "Implementation %S cannot have variant %S for virtual library \
+      %S as it is already defined for implementation %S."
+          (Lib_name.to_string name)
+          (Variant.to_string variant)
+          (Lib_name.to_string vlib_name)
+          (Lib_name.to_string known_impl_name)
+      ]
+
+
 end
+
 
 (* Types *)
 
@@ -273,6 +305,7 @@ module T = struct
     ; resolved_selects  : Resolved_select.t list
     ; user_written_deps : Dune_file.Lib_deps.t
     ; implements        : t Or_exn.t option
+    ; stdlib_dir        : Path.t
     ; (* these fields cannot be forced until the library is instantiated *)
       default_implementation     : t Or_exn.t Lazy.t option
     ; (* if this is a virtual library, this library contains all known
@@ -307,6 +340,7 @@ type db =
   ; resolve              : Lib_name.t -> resolve_result
   ; table                : (Lib_name.t, status) Hashtbl.t
   ; all                  : Lib_name.t list Lazy.t
+  ; stdlib_dir           : Path.t
   }
 
 and resolve_result =
@@ -351,7 +385,7 @@ let wrapped t =
   | Some (This wrapped) -> Ok (Some wrapped)
   | Some (From _) ->
     let+ vlib = Option.value_exn t.implements in
-  let wrapped = Lib_info.wrapped vlib.info in
+    let wrapped = Lib_info.wrapped vlib.info in
     match wrapped with
     | Some (From _) (* can't inherit this value in virtual libs *)
     | None -> assert false (* will always be specified in dune package *)
@@ -379,7 +413,7 @@ module L = struct
          Command.Args.Path dir :: A "-I" :: acc)
        |> List.rev)
 
-  let include_paths ts ~stdlib_dir =
+  let include_paths ts =
     let dirs =
       List.fold_left ts ~init:Path.Set.empty ~f:(fun acc t ->
         let obj_dir = Lib_info.obj_dir t.info in
@@ -388,34 +422,36 @@ module L = struct
         List.fold_left ~f:Path.Set.add ~init:acc
           [public_cmi_dir ; native_dir])
     in
-    Path.Set.remove dirs stdlib_dir
+    match ts with
+    | [] -> dirs
+    | x :: _ -> Path.Set.remove dirs x.stdlib_dir
 
-  let include_flags ts ~stdlib_dir =
-    to_iflags (include_paths ts ~stdlib_dir)
+  let include_flags ts = to_iflags (include_paths ts)
 
-  let c_include_paths ts ~stdlib_dir =
+  let c_include_paths ts =
     let dirs =
       List.fold_left ts ~init:Path.Set.empty ~f:(fun acc t ->
         let src_dir = Lib_info.src_dir t.info in
         Path.Set.add acc src_dir)
     in
-    Path.Set.remove dirs stdlib_dir
+    match ts with
+    | [] -> dirs
+    | x :: _ -> Path.Set.remove dirs x.stdlib_dir
 
-  let c_include_flags ts ~stdlib_dir =
-    to_iflags (c_include_paths ts ~stdlib_dir)
+  let c_include_flags ts = to_iflags (c_include_paths ts)
 
-  let link_flags ts ~mode ~stdlib_dir =
+  let link_flags ts ~mode =
     Command.Args.S
-      (c_include_flags ts ~stdlib_dir ::
+      (c_include_flags ts ::
        List.map ts ~f:(fun t ->
          let archives = Lib_info.archives t.info in
          Command.Args.Deps (Mode.Dict.get archives mode)))
 
-  let compile_and_link_flags ~compile ~link ~mode ~stdlib_dir =
+  let compile_and_link_flags ~compile ~link ~mode =
     let dirs =
       Path.Set.union
-        (  include_paths compile ~stdlib_dir)
-        (c_include_paths link    ~stdlib_dir)
+        (  include_paths compile)
+        (c_include_paths link)
     in
     Command.Args.S
       (to_iflags dirs ::
@@ -459,12 +495,12 @@ module Lib_and_module = struct
   module L = struct
     type nonrec t = t list
 
-    let link_flags ts ~mode ~stdlib_dir =
+    let link_flags ts ~mode =
       let libs = List.filter_map ts ~f:(function
         | Lib lib -> Some lib
         | Module _ -> None) in
       Command.Args.S
-        (L.c_include_flags libs ~stdlib_dir ::
+        (L.c_include_flags libs ::
          List.map ts ~f:(function
            | Lib t ->
              let archives = Lib_info.archives t.info in
@@ -529,8 +565,10 @@ module Sub_system = struct
     | M.Info.T info ->
       let get ~loc lib' =
         if lib = lib' then
-          Errors.fail loc "Library %a depends on itself"
-            Lib_name.pp_quoted lib.name
+          User_error.raise ~loc
+            [ Pp.textf "Library %S depends on itself"
+                (Lib_name.to_string lib.name)
+            ]
         else
           M.get lib'
       in
@@ -842,25 +880,70 @@ let find_implementation_for lib ~variants =
         ~given_variants:variants_set
         ~conflict
 
-let rec instantiate db name info ~stack ~hidden =
-  let unique_id, stack =
-    let src_dir = Lib_info.src_dir info in
-    Dep_stack.create_and_push stack name src_dir
-  in
-  Option.iter (Hashtbl.find db.table name) ~f:(fun x ->
-    already_in_table info name x);
-  (* Add [id] to the table, to detect loops *)
-  Hashtbl.add_exn db.table name (St_initializing unique_id);
+module rec Resolve : sig
+  val find_internal : db -> Lib_name.t -> stack:Dep_stack.t -> status
 
-  let status = Lib_info.status info in
-  let allow_private_deps = Lib_info.Status.is_private status in
+  val resolve_dep
+    : db
+    -> Lib_name.t
+    -> allow_private_deps:bool
+    -> loc:Loc.t
+    -> stack:Dep_stack.t
+    -> lib Or_exn.t
 
-  let resolve (loc, name) =
-    resolve_dep db (name : Lib_name.t) ~allow_private_deps ~loc ~stack in
+  val resolve_name : db -> Lib_name.t -> stack:Dep_stack.t -> status
 
-  let implements =
-    Lib_info.implements info
-    |> Option.map ~f:(fun ((loc,  _) as name) ->
+  val available_internal : db -> Lib_name.t -> stack:Dep_stack.t -> bool
+
+  val resolve_simple_deps
+    : db ->
+    (Loc.t * Lib_name.t) list
+    -> allow_private_deps:bool
+    -> stack:Dep_stack.t
+    -> (t list, exn) Result.t
+
+
+  val resolve_user_deps
+    :  db
+    -> Lib_info.Deps.t
+    -> allow_private_deps:bool
+    -> pps:(Loc.t * Lib_name.t) list
+    -> stack:Dep_stack.t
+    -> lib list Or_exn.t
+       * lib list Or_exn.t
+       * Resolved_select.t list
+
+  val closure_with_overlap_checks
+    :  db option
+    -> lib list
+    -> stack:Dep_stack.t
+    -> linking:bool
+    -> variants:(Loc.t * Variant.Set.t) option
+    -> lib list Or_exn.t
+end = struct
+
+  open Resolve
+
+  let instantiate db name info ~stack ~hidden =
+    let unique_id, stack =
+      let src_dir = Lib_info.src_dir info in
+      Dep_stack.create_and_push stack name src_dir
+    in
+    Option.iter (Hashtbl.find db.table name) ~f:(fun x ->
+      already_in_table info name x);
+    (* Add [id] to the table, to detect loops *)
+    Hashtbl.add_exn db.table name (St_initializing unique_id);
+
+    let status = Lib_info.status info in
+    let allow_private_deps = Lib_info.Status.is_private status in
+
+    let resolve (loc, name) =
+      resolve_dep db (name : Lib_name.t) ~allow_private_deps ~loc ~stack in
+
+    let implements =
+      let open Option.O in
+      let+ ((loc, _) as name) = Lib_info.implements info in
+      let open Result.O in
       let* vlib = resolve name in
       let virtual_ = Lib_info.virtual_ vlib.info in
       match virtual_ with
@@ -868,442 +951,441 @@ let rec instantiate db name info ~stack ~hidden =
         Error.not_virtual_lib ~loc ~impl:info ~not_vlib:vlib.info
       | Some _ ->
         let variant = Lib_info.variant info in
-        match variant with
+        begin match variant with
         | None -> Ok vlib
         | Some variant ->
-          (* If the library is an implementation tagged with a
-             variant, we must make sure that that it implements a
-             library that is part of the same project *)
-          let status_vlib = Lib_info.status vlib.info in
-          if Option.equal Dune_project.Name.equal
-               (Lib_info.Status.project_name status)
-               (Lib_info.Status.project_name status_vlib)
-          then
+          (* If the library is an implementation tagged with a variant, we must
+              make sure that that it's correctly part of the virtual library's
+              known implementations. *)
+          let name = Lib_info.name info in
+          let vlib_name = Lib_info.name vlib.info in
+          let vlib_impls = Lib_info.known_implementations vlib.info in
+          let* (_, impl_name) =
+            match Variant.Map.find vlib_impls variant with
+            | None -> Error.vlib_known_implementation_mismatch
+                        ~loc ~name ~variant ~vlib_name
+            | Some impl_name -> Ok impl_name
+          in
+          if Lib_name.equal impl_name name then
             Ok vlib
           else
-            let name = Lib_info.name info in
-            let name_vlib = Lib_info.name vlib.info in
-            Errors.fail loc
-              "Library implementation %a with variant %a implements@ a \
-               library outside the project.@ Instead of using \
-               (variant %a) here,@ you need to reference it in the \
-               virtual library project,@ using the external_variant stanza:@ \
-               (external_variant@\n\
-               \  (virtual_library %a)@\n\
-               \  (variant %a)@\n\
-               \  (implementation %a))"
-              Lib_name.pp name
-              Variant.pp variant
-              Variant.pp variant
-              Lib_name.pp name_vlib
-              Variant.pp variant
-              Lib_name.pp name)
-  in
-  let resolve_impl impl_name =
-    let* impl = resolve impl_name in
-    let* vlib =
-      match impl.implements with
-      | Some vlib -> vlib
-      | None -> Error.not_an_implementation_of
-                  ~vlib:info ~impl:impl.info
+            Error.vlib_variant_conflict
+              ~loc ~name ~known_impl_name:impl_name ~variant ~vlib_name
+        end
     in
-    if Id.equal vlib.unique_id unique_id then
-      Ok impl
-    else
-      Error.not_an_implementation_of
-        ~vlib:info ~impl:impl.info
-  in
-  let default_implementation =
-    Lib_info.default_implementation info
-    |> Option.map ~f:(fun l -> lazy (resolve_impl l)) in
-  let resolved_implementations =
-    Lib_info.virtual_ info
-    |> Option.map ~f:(fun _ -> lazy (
-      (* TODO this can be made even lazier as we don't need to resolve all
-         variants at once *)
-      Lib_info.known_implementations info
-      |> Variant.Map.map ~f:resolve_impl))
-  in
-  let requires, pps, resolved_selects =
-    let pps = Lib_info.pps info in
-    Lib_info.requires info
-    |> resolve_user_deps db ~allow_private_deps ~pps ~stack
-  in
-  let requires =
-    match implements with
-    | None -> requires
-    | Some impl ->
-      let* impl = impl in
-      let+ requires = requires in
-      impl :: requires
-  in
-  let ppx_runtime_deps =
-    Lib_info.ppx_runtime_deps info
-    |> resolve_simple_deps db ~allow_private_deps ~stack
-  in
-  let src_dir = Lib_info.src_dir info in
-  let map_error x =
-    Result.map_error x ~f:(fun e ->
-      Dep_path.prepend_exn e (Library (src_dir, name)))
-  in
-  let requires         = map_error requires         in
-  let ppx_runtime_deps = map_error ppx_runtime_deps in
-  let t =
-    { info
-    ; name
-    ; unique_id
-    ; requires
-    ; ppx_runtime_deps
-    ; pps
-    ; resolved_selects
-    ; user_written_deps = Lib_info.user_written_deps info
-    ; sub_systems       = Sub_system_name.Map.empty
-    ; implements
-    ; default_implementation
-    ; resolved_implementations
-    }
-  in
-  t.sub_systems <-
-    Lib_info.sub_systems info
-    |> Sub_system_name.Map.mapi ~f:(fun name info ->
-      lazy (Sub_system.instantiate name info t ~resolve));
+    let resolve_impl impl_name =
+      let* impl = resolve impl_name in
+      let* vlib =
+        match impl.implements with
+        | Some vlib -> vlib
+        | None -> Error.not_an_implementation_of
+                    ~vlib:info ~impl:impl.info
+      in
+      if Id.equal vlib.unique_id unique_id then
+        Ok impl
+      else
+        Error.not_an_implementation_of
+          ~vlib:info ~impl:impl.info
+    in
+    let default_implementation =
+      Lib_info.default_implementation info
+      |> Option.map ~f:(fun l -> lazy (resolve_impl l)) in
+    let resolved_implementations =
+      Lib_info.virtual_ info
+      |> Option.map ~f:(fun _ -> lazy (
+        (* TODO this can be made even lazier as we don't need to resolve all
+           variants at once *)
+        Lib_info.known_implementations info
+        |> Variant.Map.map ~f:resolve_impl))
+    in
+    let requires, pps, resolved_selects =
+      let pps = Lib_info.pps info in
+      Lib_info.requires info
+      |> resolve_user_deps db ~allow_private_deps ~pps ~stack
+    in
+    let requires =
+      match implements with
+      | None -> requires
+      | Some impl ->
+        let* impl = impl in
+        let+ requires = requires in
+        impl :: requires
+    in
+    let ppx_runtime_deps =
+      Lib_info.ppx_runtime_deps info
+      |> resolve_simple_deps db ~allow_private_deps ~stack
+    in
+    let src_dir = Lib_info.src_dir info in
+    let map_error x =
+      Result.map_error x ~f:(fun e ->
+        Dep_path.prepend_exn e (Library (src_dir, name)))
+    in
+    let requires         = map_error requires         in
+    let ppx_runtime_deps = map_error ppx_runtime_deps in
+    let t =
+      { info
+      ; name
+      ; unique_id
+      ; requires
+      ; ppx_runtime_deps
+      ; pps
+      ; resolved_selects
+      ; user_written_deps = Lib_info.user_written_deps info
+      ; sub_systems       = Sub_system_name.Map.empty
+      ; implements
+      ; default_implementation
+      ; resolved_implementations
+      ; stdlib_dir = db.stdlib_dir
+      }
+    in
+    t.sub_systems <-
+      Lib_info.sub_systems info
+      |> Sub_system_name.Map.mapi ~f:(fun name info ->
+        lazy (Sub_system.instantiate name info t ~resolve));
 
-  let res =
-    let hidden =
+    let res =
+      let hidden =
+        match hidden with
+        | Some _ -> hidden
+        | None ->
+          let enabled = Lib_info.enabled info in
+          match enabled with
+          | Normal -> None
+          | Optional ->
+            Option.some_if
+              (not (Result.is_ok t.requires && Result.is_ok t.ppx_runtime_deps))
+              "optional with unavailable dependencies"
+          | Disabled_because_of_enabled_if ->
+            Some "unsatisfied 'enabled_if'"
+      in
       match hidden with
-      | Some _ -> hidden
-      | None ->
-        let enabled = Lib_info.enabled info in
-        match enabled with
-        | Normal -> None
-        | Optional ->
-          Option.some_if
-            (not (Result.is_ok t.requires && Result.is_ok t.ppx_runtime_deps))
-            "optional with unavailable dependencies"
-        | Disabled_because_of_enabled_if ->
-          Some "unsatisfied 'enabled_if'"
+      | None -> St_found t
+      | Some reason ->
+        St_hidden (t, src_dir, reason)
     in
-    match hidden with
-    | None -> St_found t
-    | Some reason ->
-      St_hidden (t, src_dir, reason)
-  in
-  Hashtbl.replace db.table ~key:name ~data:res;
-  res
+    Hashtbl.replace db.table ~key:name ~data:res;
+    res
 
-and find_internal db (name : Lib_name.t) ~stack : status =
-  match Hashtbl.find db.table name with
-  | Some x -> x
-  | None   -> resolve_name db name ~stack
+  let find_internal db (name : Lib_name.t) ~stack : status =
+    match Hashtbl.find db.table name with
+    | Some x -> x
+    | None   -> resolve_name db name ~stack
 
-and resolve_dep db (name : Lib_name.t) ~allow_private_deps
-      ~loc ~stack : t Or_exn.t =
-  match find_internal db name ~stack with
-  | St_initializing id ->
-    Dep_stack.dependency_cycle stack id
-  | St_found lib -> check_private_deps lib ~loc ~allow_private_deps
-  | St_not_found -> Error.not_found ~loc ~name
-  | St_hidden (_, dir, reason) ->
-    Error.hidden ~loc ~name ~dir ~reason
+  let resolve_dep db (name : Lib_name.t) ~allow_private_deps
+        ~loc ~stack : t Or_exn.t =
+    match find_internal db name ~stack with
+    | St_initializing id ->
+      Dep_stack.dependency_cycle stack id
+    | St_found lib -> check_private_deps lib ~loc ~allow_private_deps
+    | St_not_found -> Error.not_found ~loc ~name
+    | St_hidden (_, dir, reason) ->
+      Error.hidden ~loc ~name ~dir ~reason
 
-and resolve_name db name ~stack =
-  match db.resolve name with
-  | Redirect (db', name') -> begin
-      let db' = Option.value db' ~default:db in
-      match find_internal db' name' ~stack with
-      | St_initializing _ as x -> x
-      | x ->
+  let resolve_name db name ~stack =
+    match db.resolve name with
+    | Redirect (db', name') -> begin
+        let db' = Option.value db' ~default:db in
+        match find_internal db' name' ~stack with
+        | St_initializing _ as x -> x
+        | x ->
+          Hashtbl.add_exn db.table name x;
+          x
+      end
+    | Found info ->
+      instantiate db name info ~stack ~hidden:None
+    | Not_found ->
+      let res =
+        match db.parent with
+        | None    -> St_not_found
+        | Some db -> find_internal db name ~stack
+      in
+      Hashtbl.add_exn db.table name res;
+      res
+    | Hidden (info, hidden) ->
+      match
+        match db.parent with
+        | None    -> St_not_found
+        | Some db -> find_internal db name ~stack
+      with
+      | St_found _ as x ->
         Hashtbl.add_exn db.table name x;
         x
-    end
-  | Found info ->
-    instantiate db name info ~stack ~hidden:None
-  | Not_found ->
-    let res =
-      match db.parent with
-      | None    -> St_not_found
-      | Some db -> find_internal db name ~stack
+      | _ ->
+        instantiate db name info ~stack ~hidden:(Some hidden)
+
+  let available_internal db (name : Lib_name.t) ~stack =
+    resolve_dep db name ~allow_private_deps:true ~loc:Loc.none ~stack
+    |> Result.is_ok
+
+  let resolve_simple_deps db names ~allow_private_deps ~stack =
+    Result.List.map names ~f:(fun (loc, name) ->
+      resolve_dep db name ~allow_private_deps ~loc ~stack)
+
+  let resolve_complex_deps db deps ~allow_private_deps ~stack =
+    let res, resolved_selects =
+      List.fold_left deps ~init:(Ok [], []) ~f:(fun (acc_res, acc_selects) dep ->
+        let res, acc_selects =
+          match (dep : Dune_file.Lib_dep.t) with
+          | Direct (loc, name) ->
+            let res =
+              resolve_dep db name ~allow_private_deps ~loc ~stack
+              >>| List.singleton
+            in
+            (res, acc_selects)
+          | Select { result_fn; choices; loc } ->
+            let res, src_fn =
+              match
+                List.find_map choices ~f:(fun { required; forbidden; file } ->
+                  if Lib_name.Set.exists forbidden
+                       ~f:(available_internal db ~stack) then
+                    None
+                  else
+                    match
+                      let deps =
+                        Lib_name.Set.fold required ~init:[] ~f:(fun x acc ->
+                          (loc, x) :: acc)
+                      in
+                      resolve_simple_deps ~allow_private_deps db deps ~stack
+                    with
+                    | Ok ts -> Some (ts, file)
+                    | Error _ -> None)
+              with
+              | Some (ts, file) ->
+                (Ok ts, Ok file)
+              | None ->
+                let e = Error.no_solution_found_for_select ~loc in
+                (e, e)
+            in
+            (res, { Resolved_select. src_fn; dst_fn = result_fn }
+                  :: acc_selects)
+        in
+        let res =
+          match res, acc_res with
+          | Ok l, Ok acc -> Ok (List.rev_append l acc)
+          | (Error _ as res), _
+          | _, (Error _ as res) -> res
+        in
+        (res, acc_selects))
     in
-    Hashtbl.add_exn db.table name res;
-    res
-  | Hidden (info, hidden) ->
-    match
-      match db.parent with
-      | None    -> St_not_found
-      | Some db -> find_internal db name ~stack
-    with
-    | St_found _ as x ->
-      Hashtbl.add_exn db.table name x;
-      x
-    | _ ->
-      instantiate db name info ~stack ~hidden:(Some hidden)
-
-and available_internal db (name : Lib_name.t) ~stack =
-  resolve_dep db name ~allow_private_deps:true ~loc:Loc.none ~stack
-  |> Result.is_ok
-
-and resolve_simple_deps db (names : (Loc.t * Lib_name.t) list) ~allow_private_deps ~stack =
-  Result.List.map names ~f:(fun (loc, name) ->
-    resolve_dep db name ~allow_private_deps ~loc ~stack)
-
-and resolve_complex_deps db deps ~allow_private_deps ~stack =
-  let res, resolved_selects =
-    List.fold_left deps ~init:(Ok [], []) ~f:(fun (acc_res, acc_selects) dep ->
-      let res, acc_selects =
-        match (dep : Dune_file.Lib_dep.t) with
-        | Direct (loc, name) ->
-          let res =
-            resolve_dep db name ~allow_private_deps ~loc ~stack
-            >>| List.singleton
-          in
-          (res, acc_selects)
-        | Select { result_fn; choices; loc } ->
-          let res, src_fn =
-            match
-              List.find_map choices ~f:(fun { required; forbidden; file } ->
-                if Lib_name.Set.exists forbidden
-                     ~f:(available_internal db ~stack) then
-                  None
-                else
-                  match
-                    let deps =
-                      Lib_name.Set.fold required ~init:[] ~f:(fun x acc ->
-                        (loc, x) :: acc)
-                    in
-                    resolve_simple_deps ~allow_private_deps db deps ~stack
-                  with
-                  | Ok ts -> Some (ts, file)
-                  | Error _ -> None)
-            with
-            | Some (ts, file) ->
-              (Ok ts, Ok file)
-            | None ->
-              let e = Error.no_solution_found_for_select ~loc in
-              (e, e)
-          in
-          (res, { Resolved_select. src_fn; dst_fn = result_fn } :: acc_selects)
-      in
-      let res =
-        match res, acc_res with
-        | Ok l, Ok acc -> Ok (List.rev_append l acc)
-        | (Error _ as res), _
-        | _, (Error _ as res) -> res
-      in
-      (res, acc_selects))
-  in
-  let res =
-    match res with
-    | Ok    l -> Ok (List.rev l)
-    | Error _ -> res
-  in
-  (res, resolved_selects)
+    let res =
+      match res with
+      | Ok    l -> Ok (List.rev l)
+      | Error _ -> res
+    in
+    (res, resolved_selects)
 
 
-and resolve_deps db deps ~allow_private_deps ~stack =
-  (* Compute transitive closure *)
-  let libs, selects = match (deps : Lib_info.Deps.t) with
-    | Simple  names ->
-      (resolve_simple_deps db names ~allow_private_deps ~stack, [])
-    | Complex names ->
-      resolve_complex_deps db names ~allow_private_deps ~stack
-  in
-  (* Find implementations for virtual libraries. *)
-  libs, selects
+  let resolve_deps db deps ~allow_private_deps ~stack =
+    (* Compute transitive closure *)
+    let libs, selects = match (deps : Lib_info.Deps.t) with
+      | Simple  names ->
+        (resolve_simple_deps db names ~allow_private_deps ~stack, [])
+      | Complex names ->
+        resolve_complex_deps db names ~allow_private_deps ~stack
+    in
+    (* Find implementations for virtual libraries. *)
+    libs, selects
 
 
-and resolve_user_deps db deps ~allow_private_deps ~pps ~stack =
-  let deps, resolved_selects =
-    resolve_deps db deps ~allow_private_deps ~stack in
-  let deps, pps =
-    match pps with
-    | [] -> (deps, Ok [])
-    | first :: others as pps ->
-      (* Location of the list of ppx rewriters *)
-      let loc =
-        let last = Option.value (List.last others) ~default:first in
-        { (fst first) with stop = (fst last).stop }
-      in
-      let pps =
-        let* pps = resolve_simple_deps db pps ~allow_private_deps:true ~stack in
-        closure_with_overlap_checks None pps ~stack ~linking:true
-          ~variants:None
-      in
-      let deps =
-        let* init = deps in
-        pps >>=
-        Result.List.fold_left ~init ~f:(fun init pp ->
-          pp.ppx_runtime_deps >>=
-          Result.List.fold_left ~init ~f:(fun acc rt ->
-            let+ rt = check_private_deps rt ~loc ~allow_private_deps in
-            rt :: acc))
-      in
-      (deps, pps)
-  in
-  (deps, pps, resolved_selects)
+  let resolve_user_deps db deps ~allow_private_deps ~pps ~stack =
+    let deps, resolved_selects =
+      resolve_deps db deps ~allow_private_deps ~stack in
+    let deps, pps =
+      match pps with
+      | [] -> (deps, Ok [])
+      | first :: others as pps ->
+        (* Location of the list of ppx rewriters *)
+        let loc : Loc.t =
+          let (last, _) : (Loc.t * _) =
+            Option.value (List.last others) ~default:first in
+          { (fst first) with stop = last.stop }
+        in
+        let pps =
+          let* pps =
+            resolve_simple_deps db pps ~allow_private_deps:true ~stack in
+          closure_with_overlap_checks None pps ~stack ~linking:true
+            ~variants:None
+        in
+        let deps =
+          let* init = deps in
+          pps >>=
+          Result.List.fold_left ~init ~f:(fun init pp ->
+            pp.ppx_runtime_deps >>=
+            Result.List.fold_left ~init ~f:(fun acc rt ->
+              let+ rt = check_private_deps rt ~loc ~allow_private_deps in
+              rt :: acc))
+        in
+        (deps, pps)
+    in
+    (deps, pps, resolved_selects)
 
-(* Compute transitive closure of libraries to figure which ones will trigger
-   their default implementation.
+  (* Compute transitive closure of libraries to figure which ones will trigger
+     their default implementation.
 
-   Assertion: libraries is a list of virtual libraries with no implementation.
-   The goal is to find which libraries can safely be defaulted. *)
-and resolve_default_libraries libraries ~variants =
-  (* Map from a vlib to vlibs that are implemented in the transitive closure of
-     its default impl. *)
-  let vlib_status = Vlib_visit.create () in
-  (* Reverse map *)
-  let vlib_default_parent = ref Map.empty in
-  let avoid_direct_parent vlib (impl : lib) =
-    match impl.implements with
-    | None -> Ok true
-    | Some x -> let+ x = x in x <> vlib
-  in
-  (* Either by variants or by default. *)
-  let impl_for vlib =
-    find_implementation_for vlib ~variants >>= function
-    | Some impl -> Ok (Some impl)
-    | None ->
-      begin match vlib.default_implementation with
-      | None -> Ok None
-      | Some d -> Result.map ~f:Option.some (Lazy.force d)
-      end
-  in
-  let impl_different_from_vlib_default vlib (impl : lib) =
-    impl_for vlib >>| function
-    | None -> true
-    | Some lib -> lib <> impl
-  in
-  let library_is_default lib =
-    match Map.find !vlib_default_parent lib with
-    | Some (_ :: _) -> None
-    | None
-    | Some [] ->
-      Option.bind lib.default_implementation ~f:(fun lib ->
-        Result.to_option (Lazy.force lib))
-  in
-  (* Gather vlibs that are transitively implemented by another
-     vlib's default implementation. *)
-  let rec visit ~stack ancestor_vlib =
-    Vlib_visit.visit vlib_status ~stack ~f:(fun lib ->
-      (* Visit direct dependencies *)
-      let* deps = lib.requires in
-      let* () =
-        List.filter deps ~f:(fun x ->
-          match avoid_direct_parent x lib with
-          | Ok x -> x
-          | Error _ -> false)
-        |> Result.List.iter ~f:(visit ~stack:(lib.info :: stack) ancestor_vlib)
-      in
-      (* If the library is an implementation of some virtual library that
-         overrides default, add a link in the graph. *)
-      let* () =
-        Result.Option.iter lib.implements ~f:(fun vlib ->
-          let* res = impl_different_from_vlib_default vlib lib in
-          match res, ancestor_vlib with
-          | true, None ->
-            (* Recursion: no ancestor, vlib is explored *)
-            visit ~stack:(lib.info::stack) None vlib
-          | true, Some ancestor ->
-            vlib_default_parent := Map.Multi.cons
-                                     !vlib_default_parent
-                                     lib
-                                     ancestor;
-            visit ~stack:(lib.info :: stack) None vlib
-          | false, _ ->
-            (* If lib is the default implementation, we'll manage it when
-               handling virtual lib. *)
-            Ok ())
-      in
-      (* If the library has an implementation according to variants or default
-         impl. *)
-      let virtual_ = Lib_info.virtual_ lib.info in
-      if Option.is_none virtual_ then
-        Ok ()
-      else
-        let* impl = impl_for lib in
-        begin match impl with
-        | None -> Ok ()
-        | Some impl -> visit ~stack:(lib.info :: stack) (Some lib) impl
+     Assertion: libraries is a list of virtual libraries with no implementation.
+     The goal is to find which libraries can safely be defaulted. *)
+  let resolve_default_libraries libraries ~variants =
+    (* Map from a vlib to vlibs that are implemented in the transitive closure
+       of its default impl. *)
+    let vlib_status = Vlib_visit.create () in
+    (* Reverse map *)
+    let vlib_default_parent = ref Map.empty in
+    let avoid_direct_parent vlib (impl : lib) =
+      match impl.implements with
+      | None -> Ok true
+      | Some x -> let+ x = x in x <> vlib
+    in
+    (* Either by variants or by default. *)
+    let impl_for vlib =
+      find_implementation_for vlib ~variants >>= function
+      | Some impl -> Ok (Some impl)
+      | None ->
+        begin match vlib.default_implementation with
+        | None -> Ok None
+        | Some d -> Result.map ~f:Option.some (Lazy.force d)
         end
-    )
-  in
-  (* For each virtual library we know which vlibs will be implemented when
-     enabling its default implementation. *)
-  let+ () = Result.List.iter ~f:(visit ~stack:[] None) libraries in
-  List.filter_map ~f:library_is_default libraries
+    in
+    let impl_different_from_vlib_default vlib (impl : lib) =
+      impl_for vlib >>| function
+      | None -> true
+      | Some lib -> lib <> impl
+    in
+    let library_is_default lib =
+      match Map.find !vlib_default_parent lib with
+      | Some (_ :: _) -> None
+      | None
+      | Some [] ->
+        Option.bind lib.default_implementation ~f:(fun lib ->
+          Result.to_option (Lazy.force lib))
+    in
+    (* Gather vlibs that are transitively implemented by another
+       vlib's default implementation. *)
+    let rec visit ~stack ancestor_vlib =
+      Vlib_visit.visit vlib_status ~stack ~f:(fun lib ->
+        (* Visit direct dependencies *)
+        let* deps = lib.requires in
+        let* () =
+          List.filter deps ~f:(fun x ->
+            match avoid_direct_parent x lib with
+            | Ok x -> x
+            | Error _ -> false)
+          |> Result.List.iter
+               ~f:(visit ~stack:(lib.info :: stack) ancestor_vlib)
+        in
+        (* If the library is an implementation of some virtual library that
+           overrides default, add a link in the graph. *)
+        let* () =
+          Result.Option.iter lib.implements ~f:(fun vlib ->
+            let* res = impl_different_from_vlib_default vlib lib in
+            match res, ancestor_vlib with
+            | true, None ->
+              (* Recursion: no ancestor, vlib is explored *)
+              visit ~stack:(lib.info::stack) None vlib
+            | true, Some ancestor ->
+              vlib_default_parent := Map.Multi.cons
+                                       !vlib_default_parent
+                                       lib
+                                       ancestor;
+              visit ~stack:(lib.info :: stack) None vlib
+            | false, _ ->
+              (* If lib is the default implementation, we'll manage it when
+                 handling virtual lib. *)
+              Ok ())
+        in
+        (* If the library has an implementation according to variants or default
+           impl. *)
+        let virtual_ = Lib_info.virtual_ lib.info in
+        if Option.is_none virtual_ then
+          Ok ()
+        else
+          let* impl = impl_for lib in
+          begin match impl with
+          | None -> Ok ()
+          | Some impl -> visit ~stack:(lib.info :: stack) (Some lib) impl
+          end
+      )
+    in
+    (* For each virtual library we know which vlibs will be implemented when
+       enabling its default implementation. *)
+    let+ () = Result.List.iter ~f:(visit ~stack:[] None) libraries in
+    List.filter_map ~f:library_is_default libraries
 
-and closure_with_overlap_checks db ts ~stack:orig_stack ~linking ~variants =
-  let visited = ref Map.empty in
-  let unimplemented = ref Vlib.Unimplemented.empty in
-  let res = ref [] in
-  let rec loop t ~stack =
-    match Map.find !visited t with
-    | Some (t', stack') ->
-      if t = t' then
+  let closure_with_overlap_checks db ts ~stack:orig_stack ~linking ~variants =
+    let visited = ref Map.empty in
+    let unimplemented = ref Vlib.Unimplemented.empty in
+    let res = ref [] in
+    let rec loop t ~stack =
+      match Map.find !visited t with
+      | Some (t', stack') ->
+        if t = t' then
+          Ok ()
+        else
+          let req_by = Dep_stack.to_required_by ~stop_at:orig_stack in
+          Error.conflict
+            (t'.info, req_by stack')
+            (t.info, req_by stack)
+      | None ->
+        visited := Map.set !visited t (t, stack);
+        let* () =
+          match db with
+          | None -> Ok ()
+          | Some db ->
+            match find_internal db t.name ~stack with
+            | St_found t' ->
+              if t = t' then
+                Ok ()
+              else begin
+                let req_by =
+                  Dep_stack.to_required_by stack ~stop_at:orig_stack in
+                Error.overlap ~in_workspace:t'.info ~installed:(t.info, req_by)
+              end
+            | _ -> assert false
+        in
+        let* new_stack = Dep_stack.push stack (to_id t) in
+        let* deps = t.requires in
+        let* unimplemented' = Vlib.Unimplemented.add !unimplemented t in
+        unimplemented := unimplemented';
+        let+ () = Result.List.iter deps ~f:(loop ~stack:new_stack) in
+        res := (t, stack) :: !res
+    in
+    (* Closure loop with virtual libraries/variants selection*)
+    let rec handle ts ~stack =
+      let* () = Result.List.iter ts ~f:(loop ~stack) in
+      if not linking then
         Ok ()
-      else
-        let req_by = Dep_stack.to_required_by ~stop_at:orig_stack in
-        Error.conflict
-          (t'.info, req_by stack')
-          (t.info, req_by stack)
-    | None ->
-      visited := Map.set !visited t (t, stack);
-      let* () =
-        match db with
-        | None -> Ok ()
-        | Some db ->
-          match find_internal db t.name ~stack with
-          | St_found t' ->
-            if t = t' then
-              Ok ()
-            else begin
-              let req_by = Dep_stack.to_required_by stack ~stop_at:orig_stack in
-              Error.overlap ~in_workspace:t'.info ~installed:(t.info, req_by)
-            end
-          | _ -> assert false
-      in
-      let* new_stack = Dep_stack.push stack (to_id t) in
-      let* deps = t.requires in
-      let* unimplemented' = Vlib.Unimplemented.add !unimplemented t in
-      unimplemented := unimplemented';
-      let+ () = Result.List.iter deps ~f:(loop ~stack:new_stack) in
-      res := (t, stack) :: !res
-  in
-  (* Closure loop with virtual libraries/variants selection*)
-  let rec handle ts ~stack =
-    let* () = Result.List.iter ts ~f:(loop ~stack) in
-    if not linking then
-      Ok ()
-    else begin
-      (* Virtual libraries: find implementations according to variants. *)
-      let* (lst, with_default_impl) =
-        !unimplemented
-        |> Vlib.Unimplemented.fold ~init:([], []) ~f:(fun lib (lst, def) ->
-          let* impl =
-            find_implementation_for lib ~variants in
-          match impl, lib.default_implementation with
-          | None, Some _ ->
-            Ok (lst, (lib :: def))
-          | None, None ->
-            Ok (lst, def)
-          | Some (impl : lib), _ ->
-            Ok (impl :: lst, def))
-      in
-      (* Manage unimplemented libraries that have a default implementation. *)
-      match lst, with_default_impl with
-      | [], [] ->
-        Ok ()
-      | [], def ->
-        resolve_default_libraries def ~variants
-        >>= handle ~stack
-      | lst, _ ->
-        handle lst ~stack
-    end
-  in
-  let* () = handle ts ~stack:orig_stack in
-  Vlib.associate (List.rev !res) ~linking ~orig_stack
+      else begin
+        (* Virtual libraries: find implementations according to variants. *)
+        let* (lst, with_default_impl) =
+          !unimplemented
+          |> Vlib.Unimplemented.fold ~init:([], []) ~f:(fun lib (lst, def) ->
+            let* impl =
+              find_implementation_for lib ~variants in
+            match impl, lib.default_implementation with
+            | None, Some _ ->
+              Ok (lst, (lib :: def))
+            | None, None ->
+              Ok (lst, def)
+            | Some (impl : lib), _ ->
+              Ok (impl :: lst, def))
+        in
+        (* Manage unimplemented libraries that have a default implementation. *)
+        match lst, with_default_impl with
+        | [], [] ->
+          Ok ()
+        | [], def ->
+          resolve_default_libraries def ~variants
+          >>= handle ~stack
+        | lst, _ ->
+          handle lst ~stack
+      end
+    in
+    let* () = handle ts ~stack:orig_stack in
+    Vlib.associate (List.rev !res) ~linking ~orig_stack
+
+end
 
 let closure_with_overlap_checks db l ~variants =
-  closure_with_overlap_checks db l ~stack:Dep_stack.empty ~variants
+  Resolve.closure_with_overlap_checks db l ~stack:Dep_stack.empty ~variants
 
 let closure l = closure_with_overlap_checks None l ~variants:None
 
@@ -1379,11 +1461,12 @@ module DB = struct
 
   type t = db
 
-  let create ?parent ~resolve ~all () =
+  let create ?parent ~stdlib_dir ~resolve ~all () =
     { parent
     ; resolve
     ; table  = Hashtbl.create 1024
     ; all    = Lazy.from_fun all
+    ; stdlib_dir
     }
 
   let check_valid_external_variants libmap external_variants =
@@ -1403,29 +1486,32 @@ module DB = struct
             | _ -> assert false)
       with
       | None ->
-        Errors.fail ev.loc
-          "Virtual library %a hasn't been found in the project."
-          Lib_name.pp ev.virtual_lib
+        User_error.raise ~loc:ev.loc
+          [ Pp.textf "Virtual library %s hasn't been found in the project."
+              (Lib_name.to_string ev.virtual_lib)
+          ]
       | Some info ->
         begin match Lib_info.virtual_ info with
         | Some _ -> ()
         | None ->
-          Errors.fail ev.loc
-            "Library %a isn't a virtual library."
-            Lib_name.pp ev.virtual_lib
+          User_error.raise ~loc:ev.loc
+            [ Pp.textf "Library %s isn't a virtual library."
+                (Lib_name.to_string ev.virtual_lib)
+            ]
         end)
 
   let error_two_impl_for_variant name variant (loc1, impl1) (loc2, impl2) =
-    Errors.fail_opt None
-      "Error: Two implementations of %a have the same variant %a:\n\
-       - %a (%a)\n\
-       - %a (%a)\n"
-      Lib_name.Local.pp name
-      Variant.pp variant
-      Lib_name.pp impl1
-      Loc.pp_file_colon_line loc1
-      Lib_name.pp impl2
-      Loc.pp_file_colon_line loc2
+    User_error.raise
+      [ Pp.textf "Two implementations of %s have the same variant %S:"
+          (Lib_name.Local.to_string name)
+          (Variant.to_string variant)
+      ; Pp.textf "- %s (%s)"
+          (Lib_name.to_string impl1)
+          (Loc.to_file_colon_line loc1)
+      ; Pp.textf "- %s (%s)"
+          (Lib_name.to_string impl2)
+          (Loc.to_file_colon_line loc2)
+      ]
 
   let create_from_library_stanzas ?parent ~lib_config lib_stanzas
         external_variant_stanzas =
@@ -1512,25 +1598,26 @@ module DB = struct
         with
         | [] | [_] -> assert false
         | loc1 :: loc2 :: _ ->
-          die "Library %a is defined twice:\n\
-               - %s\n\
-               - %s"
-            Lib_name.pp_quoted name
-            (Loc.to_file_colon_line loc1)
-            (Loc.to_file_colon_line loc2)
+          User_error.raise
+            [ Pp.textf "Library %s is defined twice:" (Lib_name.to_string name)
+            ; Pp.textf "- %s" (Loc.to_file_colon_line loc1)
+            ; Pp.textf "- %s" (Loc.to_file_colon_line loc2)
+            ]
     in
     (* We need to check that [external_variant] stanzas are correct,
        i.e. contain valid [virtual_library] fields now since this is
        the last time we analyse them. *)
     check_valid_external_variants map external_variant_stanzas;
-    create () ?parent
+    create () ?parent ~stdlib_dir:lib_config.stdlib_dir
       ~resolve:(fun name ->
         Lib_name.Map.find map name
         |> Option.value ~default:Not_found)
       ~all:(fun () -> Lib_name.Map.keys map)
 
-  let create_from_findlib ?(external_lib_deps_mode=false) findlib =
+  let create_from_findlib ?(external_lib_deps_mode=false)
+        ~stdlib_dir findlib =
     create ()
+      ~stdlib_dir
       ~resolve:(fun name ->
         match Findlib.find findlib name with
         | Ok pkg -> Found (Lib_info.of_dune_lib pkg)
@@ -1549,25 +1636,26 @@ module DB = struct
         |> List.map ~f:Dune_package.Lib.name)
 
   let find t name =
-    match find_internal t name ~stack:Dep_stack.empty with
+    match Resolve.find_internal t name ~stack:Dep_stack.empty with
     | St_initializing _ -> assert false
     | St_found t -> Some t
     | St_not_found | St_hidden _ -> None
 
   let find_even_when_hidden t name =
-    match find_internal t name ~stack:Dep_stack.empty with
+    match Resolve.find_internal t name ~stack:Dep_stack.empty with
     | St_initializing _ -> assert false
     | St_found t | St_hidden (t, _, _) -> Some t
     | St_not_found -> None
 
   let resolve t (loc, name) =
-    match find_internal t name ~stack:Dep_stack.empty with
+    match Resolve.find_internal t name ~stack:Dep_stack.empty with
     | St_initializing _ -> assert false
     | St_found t  -> Ok t
     | St_not_found -> Error.not_found ~loc ~name
     | St_hidden (_, dir, reason) -> Error.hidden ~loc ~name ~dir ~reason
 
-  let available t name = available_internal t name ~stack:Dep_stack.empty
+  let available t name =
+    Resolve.available_internal t name ~stack:Dep_stack.empty
 
   let get_compile_info t ?(allow_overlaps=false) name =
     match find_even_when_hidden t name with
@@ -1587,7 +1675,7 @@ module DB = struct
         ~kind:Required
     in
     let res, pps, resolved_selects =
-      resolve_user_deps t (Lib_info.Deps.of_lib_deps deps) ~pps
+      Resolve.resolve_user_deps t (Lib_info.Deps.of_lib_deps deps) ~pps
         ~stack:Dep_stack.empty ~allow_private_deps:true
     in
     let requires_link = lazy (
@@ -1609,7 +1697,8 @@ module DB = struct
     }
 
   let resolve_pps t pps =
-    resolve_simple_deps t ~allow_private_deps:true pps ~stack:Dep_stack.empty
+    Resolve.resolve_simple_deps t ~allow_private_deps:true pps
+      ~stack:Dep_stack.empty
 
   let rec all ?(recursive=false) t =
     let l =
@@ -1649,113 +1738,113 @@ module Meta = struct
 end
 
 
-let to_dune_lib ({ name ; info ; _ } as lib) ~lib_modules ~foreign_objects
+let to_dune_lib ({ name ; info ; _ } as lib) ~modules ~foreign_objects
       ~dir =
   let add_loc =
     let loc = Lib_info.loc info in
     List.map ~f:(fun x -> (loc, x.name)) in
-    let virtual_ = Option.is_some (Lib_info.virtual_ info) in
-    let obj_dir =
-      match Obj_dir.to_local (obj_dir lib) with
-      | None -> assert false
-      | Some obj_dir -> Obj_dir.convert_to_external ~dir obj_dir
-    in
-    let lib_modules =
-      let install_dir = Obj_dir.dir obj_dir in
-      Lib_modules.version_installed ~install_dir lib_modules
-    in
-    let orig_src_dir =
-      if !Clflags.store_orig_src_dir
-      then Some (
-        let orig_src_dir = Lib_info.orig_src_dir info in
-        match orig_src_dir with
-        | Some src_dir -> src_dir
-        | None ->
-          let src_dir = Lib_info.src_dir info in
-          match Path.drop_build_context src_dir with
-          | None -> src_dir
-          | Some src_dir ->
-            Path.(of_string (to_absolute_filename (Path.source src_dir)))
-      )
-      else None
-    in
-    let foreign_objects =
-      match Lib_info.foreign_objects info with
-      | External f -> f
-      | Local -> foreign_objects
-    in
-    let loc = Lib_info.loc info in
-    let synopsis = Lib_info.synopsis info in
-    let archives = Lib_info.archives info in
-    let plugins = Lib_info.plugins info in
-    let implements = Lib_info.implements info in
-    let modes = Lib_info.modes info in
-    let kind = Lib_info.kind info in
-    let version = Lib_info.version info in
-    let jsoo_runtime = Lib_info.jsoo_runtime info in
-    let special_builtin_support = Lib_info.special_builtin_support info in
-    let default_implementation = Lib_info.default_implementation info in
-    let known_implementations = Lib_info.known_implementations info in
-    let foreign_archives = Lib_info.foreign_archives info in
-    Dune_package.Lib.make
-      ~obj_dir
-      ~orig_src_dir
-      ~name
-      ~loc
-      ~kind
-      ~synopsis
-      ~version
-      ~archives
-      ~plugins
-      ~foreign_archives
-      ~foreign_objects
-      ~jsoo_runtime
-      ~requires:(add_loc (requires_exn lib))
-      ~ppx_runtime_deps:(add_loc (ppx_runtime_deps_exn lib))
-      ~modes
-      ~implements
-      ~known_implementations
-      ~default_implementation
-      ~virtual_
-      ~modules:(Some lib_modules)
-      ~main_module_name:(Result.ok_exn (main_module_name lib))
-      ~sub_systems:(Sub_system.dump_config lib)
-      ~special_builtin_support
+  let virtual_ = Option.is_some (Lib_info.virtual_ info) in
+  let obj_dir =
+    match Obj_dir.to_local (obj_dir lib) with
+    | None -> assert false
+    | Some obj_dir -> Obj_dir.convert_to_external ~dir obj_dir
+  in
+  let modules =
+    let install_dir = Obj_dir.dir obj_dir in
+    Modules.version_installed modules ~install_dir
+  in
+  let orig_src_dir =
+    if !Clflags.store_orig_src_dir
+    then Some (
+      let orig_src_dir = Lib_info.orig_src_dir info in
+      match orig_src_dir with
+      | Some src_dir -> src_dir
+      | None ->
+        let src_dir = Lib_info.src_dir info in
+        match Path.drop_build_context src_dir with
+        | None -> src_dir
+        | Some src_dir ->
+          Path.(of_string (to_absolute_filename (Path.source src_dir)))
+    )
+    else None
+  in
+  let foreign_objects =
+    match Lib_info.foreign_objects info with
+    | External f -> f
+    | Local -> foreign_objects
+  in
+  let loc = Lib_info.loc info in
+  let synopsis = Lib_info.synopsis info in
+  let archives = Lib_info.archives info in
+  let plugins = Lib_info.plugins info in
+  let implements = Lib_info.implements info in
+  let modes = Lib_info.modes info in
+  let kind = Lib_info.kind info in
+  let version = Lib_info.version info in
+  let jsoo_runtime = Lib_info.jsoo_runtime info in
+  let special_builtin_support = Lib_info.special_builtin_support info in
+  let default_implementation = Lib_info.default_implementation info in
+  let known_implementations = Lib_info.known_implementations info in
+  let foreign_archives = Lib_info.foreign_archives info in
+  Dune_package.Lib.make
+    ~obj_dir
+    ~orig_src_dir
+    ~name
+    ~loc
+    ~kind
+    ~synopsis
+    ~version
+    ~archives
+    ~plugins
+    ~foreign_archives
+    ~foreign_objects
+    ~jsoo_runtime
+    ~requires:(add_loc (requires_exn lib))
+    ~ppx_runtime_deps:(add_loc (ppx_runtime_deps_exn lib))
+    ~modes
+    ~implements
+    ~known_implementations
+    ~default_implementation
+    ~virtual_
+    ~modules:(Some modules)
+    ~main_module_name:(Result.ok_exn (main_module_name lib))
+    ~sub_systems:(Sub_system.dump_config lib)
+    ~special_builtin_support
 
-  module Local : sig
-    type t = private lib
-    val of_lib : lib -> t option
-    val of_lib_exn : lib -> t
-    val to_lib : t -> lib
-    val obj_dir : t -> Path.Build.t Obj_dir.t
-    val info : t -> Path.Build.t Lib_info.t
-    val to_dyn : t -> Dyn.t
-    val equal : t -> t -> bool
-    val hash : t -> int
+module Local : sig
+  type t = private lib
+  val of_lib : lib -> t option
+  val of_lib_exn : lib -> t
+  val to_lib : t -> lib
+  val obj_dir : t -> Path.Build.t Obj_dir.t
+  val info : t -> Path.Build.t Lib_info.t
+  val to_dyn : t -> Dyn.t
+  val equal : t -> t -> bool
+  val hash : t -> int
 
-    module Set : Stdune.Set.S with type elt = t
-    module Map : Stdune.Map.S with type key = t
+  module Set : Stdune.Set.S with type elt = t
+  module Map : Stdune.Map.S with type key = t
 
-  end = struct
-    type nonrec t = t
+end = struct
+  type nonrec t = t
 
-    let to_lib t = t
+  let to_lib t = t
 
-    let of_lib (t : lib) = Option.some_if (is_local t) t
+  let of_lib (t : lib) = Option.some_if (is_local t) t
 
-    let of_lib_exn t =
-      match of_lib t with
-      | Some l -> l
-      | None -> Code_error.raise "Lib.Local.of_lib_exn"
-                  ["l", to_dyn t]
+  let of_lib_exn t =
+    match of_lib t with
+    | Some l -> l
+    | None -> Code_error.raise "Lib.Local.of_lib_exn"
+                ["l", to_dyn t]
 
-    let obj_dir t = Obj_dir.as_local_exn (Lib_info.obj_dir t.info)
-    let info t = Lib_info.as_local_exn t.info
+  let obj_dir t = Obj_dir.as_local_exn (Lib_info.obj_dir t.info)
+  let info t = Lib_info.as_local_exn t.info
 
-    module Set = Set
-    module Map = Map
+  module Set = Set
+  module Map = Map
 
-    let to_dyn = to_dyn
-    let equal = equal
-    let hash = hash
-  end
+  let to_dyn = to_dyn
+  let equal = equal
+  let hash = hash
+end

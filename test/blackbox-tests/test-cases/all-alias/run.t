@@ -23,7 +23,7 @@
 
   $ dune build --root install-stanza @subdir/all
   Entering directory 'install-stanza'
-  No rule found for subdir/foobar
+  Error: No rule found for subdir/foobar
   [1]
 
 @all builds user defined rules

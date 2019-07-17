@@ -1,7 +1,5 @@
 open Stdune
 
-let die = Dune.Import.die
-
 type t =
   { name : string
   ; recursive : bool
@@ -20,7 +18,8 @@ let in_dir ~name ~recursive ~contexts dir =
   let checked = Util.check_path contexts dir in
   match checked with
   | External _ ->
-    die "@@ on the command line must be followed by a relative path"
+    User_error.raise
+      [ Pp.textf "@@ on the command line must be followed by a relative path" ]
   | In_source_dir dir ->
     { dir
     ; recursive
@@ -28,10 +27,12 @@ let in_dir ~name ~recursive ~contexts dir =
     ; contexts
     }
   | In_install_dir _ ->
-    die "Invalid alias: %s.\n\
-         There are no aliases in %s."
-      (Path.to_string_maybe_quoted Path.(relative build_dir "install"))
-      (Path.to_string_maybe_quoted dir)
+    User_error.raise
+      [ Pp.textf "Invalid alias: %s."
+          (Path.to_string_maybe_quoted Path.(relative build_dir "install"))
+      ; Pp.textf "There are no aliases in %s."
+          (Path.to_string_maybe_quoted dir)
+      ]
   | In_build_dir (ctx, dir) ->
     { dir
     ; recursive
@@ -53,7 +54,10 @@ let of_string common s ~contexts =
     let s = String.drop s pos in
     let path = Path.relative Path.root (Common.prefix_target common s) in
     if Path.is_root path then
-      die "@@ on the command line must be followed by a valid alias name"
+      User_error.raise
+        [ Pp.textf
+            "@ on the command line must be followed by a valid alias name"
+        ]
     else
       let dir = Path.parent_exn path in
       let name = Path.basename path in

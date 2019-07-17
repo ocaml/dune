@@ -3,16 +3,6 @@ open! Import
 
 module Outputs : module type of struct include Action_intf.Outputs end
 
-module Make_mapper (Src : Action_intf.Ast) (Dst : Action_intf.Ast) : sig
-  val map
-    : Src.t
-    -> dir:Src.path
-    -> f_program:(dir:Src.path -> Src.program -> Dst.program)
-    -> f_string:(dir:Src.path -> Src.string -> Dst.string)
-    -> f_path:(dir:Src.path -> Src.path -> Dst.path)
-    -> Dst.t
-end
-
 (** result of the lookup of a program, the path to it or information about the
     failure and possibly a hint how to fix it *)
 module Prog : sig

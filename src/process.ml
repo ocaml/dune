@@ -115,7 +115,7 @@ module Temp = struct
 end
 
 let command_line_enclosers ~dir ~(stdout_to:Output.t) ~(stderr_to:Output.t) =
-  let quote fn = quote_for_shell (Path.to_string fn) in
+  let quote fn = String.quote_for_shell (Path.to_string fn) in
   let prefix, suffix =
     match dir with
     | None -> "", ""
@@ -139,7 +139,7 @@ let command_line_enclosers ~dir ~(stdout_to:Output.t) ~(stderr_to:Output.t) =
 
 let command_line ~prog ~args ~dir ~stdout_to ~stderr_to =
   let s =
-    List.map (prog :: args) ~f:quote_for_shell
+    List.map (prog :: args) ~f:String.quote_for_shell
     |> String.concat ~sep:" "
   in
   let prefix, suffix = command_line_enclosers ~dir ~stdout_to ~stderr_to in
@@ -209,15 +209,15 @@ module Fancy = struct
     | [] -> []
     | "-o" :: fn :: rest ->
       Pp.verbatim "-o"
-      :: Pp.tag (Pp.verbatim (quote_for_shell fn))
+      :: Pp.tag (Pp.verbatim (String.quote_for_shell fn))
            ~tag:(User_message.Style.Ansi_styles
                    Ansi_color.Style.[bold; fg_green])
       :: colorize_args rest
-    | x :: rest -> Pp.verbatim (quote_for_shell x) :: colorize_args rest
+    | x :: rest -> Pp.verbatim (String.quote_for_shell x) :: colorize_args rest
 
   let command_line ~prog ~args ~dir ~stdout_to ~stderr_to =
     let open Pp.O in
-    let prog = colorize_prog (quote_for_shell prog) in
+    let prog = colorize_prog (String.quote_for_shell prog) in
     let pp =
       Pp.concat ~sep:(Pp.char ' ') (prog :: colorize_args args)
     in
@@ -512,7 +512,7 @@ let run_internal ?dir ?(stdout_to=Output.stdout) ?(stderr_to=Output.stderr)
     match exit_status with
     | WEXITED n when code_is_ok ok_codes n -> Ok n
     | WEXITED n -> Error (Failed n)
-    | WSIGNALED n -> Error (Signaled (Utils.signal_name n))
+    | WSIGNALED n -> Error (Signaled (Signal.name n))
     | WSTOPPED _ -> assert false
   in
   match display, exit_status, output with
@@ -559,7 +559,13 @@ let run_capture_line ?dir ?stderr_to ~env ?(purpose=Internal_job) fail_mode
       in
       match l with
       | [] ->
-        die "command returned nothing: %s" cmdline
+        User_error.raise
+          [ Pp.textf "Command returned nothing: %s" cmdline ]
       | _ ->
-        die "command returned too many lines: %s\n%s"
-          cmdline (String.concat l ~sep:"\n"))
+        User_error.raise
+          [ Pp.textf "command returned too many lines: %s" cmdline
+          ; Pp.vbox
+              (Pp.concat_map l ~sep:Pp.cut
+                 ~f:(fun line ->
+                   Pp.seq (Pp.verbatim "> ") (Pp.verbatim line)))
+          ])

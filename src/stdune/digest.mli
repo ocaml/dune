@@ -13,3 +13,5 @@ val file : Path.t -> t
 val string : string -> t
 
 val to_string_raw : t -> string
+
+val generic : 'a -> t

@@ -32,17 +32,18 @@ let resolve_package_install setup pkg =
   | Ok path -> path
   | Error () ->
     let pkg = Package.Name.to_string pkg in
-    die "Unknown package %s!%s" pkg
-      (hint pkg
-         (Package.Name.Map.keys setup.conf.packages
-          |> List.map ~f:Package.Name.to_string))
+    User_error.raise [ Pp.textf "Unknown package %s!" pkg ]
+      ~hints:(User_message.did_you_mean pkg
+                ~candidates:(Package.Name.Map.keys setup.conf.packages
+                             |> List.map ~f:Package.Name.to_string))
 
 let print_unix_error f =
   try
     f ()
   with Unix.Unix_error (e, _, _) ->
-    Format.eprintf "@{<error>Error@}: %s@."
-      (Unix.error_message e)
+    User_message.prerr
+      (User_error.make
+         [ Pp.text (Unix.error_message e) ])
 
 let set_executable_bits   x = x lor  0o111
 let clear_executable_bits x = x land (lnot 0o111)
@@ -108,8 +109,8 @@ module File_ops_real(W : Workspace) : File_operations = struct
     in
     match f ic with
     | exception _ ->
-      Dune.Errors.warn (Loc.in_file (Path.build src))
-        "Failed to parse file, not adding version information.";
+      User_warning.emit ~loc:(Loc.in_file (Path.build src))
+        [ Pp.text "Failed to parse file, not adding version information." ];
       plain_copy ()
     | No_version_needed ->
       plain_copy ()
@@ -182,7 +183,7 @@ module File_ops_real(W : Workspace) : File_operations = struct
         in
         Format.pp_open_vbox ppf 0;
         List.iter dp ~f:(fun x ->
-          Dune_lang.pp Dune ppf x;
+          Dune_lang.Deprecated.pp Dune ppf x;
           Format.pp_print_cut ppf ());
         Format.pp_close_box ppf ())
 
@@ -221,8 +222,9 @@ module File_ops_real(W : Workspace) : File_operations = struct
           (Path.to_string_maybe_quoted dir);
         print_unix_error (fun () -> Path.rmdir dir)
       | Error e ->
-        Format.eprintf "@{<error>Error@}: %s@."
-          (Unix.error_message e)
+        User_message.prerr
+          (User_error.make
+             [ Pp.text (Unix.error_message e) ])
       | _  -> ()
 
   let mkdir_p = Path.mkdir_p
@@ -280,12 +282,23 @@ let install_uninstall ~what =
           )
     and+ pkgs =
       Arg.(value & pos_all package_name [] name_)
+    and+ context =
+      Arg.(value
+           & opt (some string) None
+           & info ["context"] ~docv:"CONTEXT"
+               ~doc:"Select context to install from. By default, \
+                     install files from all defined contexts.")
     in
     Common.set_common common ~targets:[];
     let log = Log.create common in
     Scheduler.go ~log ~common (fun () ->
       let open Fiber.O in
       let* workspace = Import.Main.scan_workspace ~log common in
+      let contexts =
+        match context with
+        | None -> workspace.contexts
+        | Some name -> [Import.Main.find_context_exn workspace ~name]
+      in
       let pkgs =
         match pkgs with
         | [] -> Package.Name.Map.keys workspace.conf.packages
@@ -294,7 +307,7 @@ let install_uninstall ~what =
       let install_files, missing_install_files =
         List.concat_map pkgs ~f:(fun pkg ->
           let fn = resolve_package_install workspace pkg in
-          List.map workspace.contexts ~f:(fun ctx ->
+          List.map contexts ~f:(fun ctx ->
             let fn = Path.append_source (Path.build ctx.Context.build_dir) fn in
             if Path.exists fn then
               Left (ctx, (pkg, fn))
@@ -303,21 +316,23 @@ let install_uninstall ~what =
         |> List.partition_map ~f:Fn.id
       in
       if missing_install_files <> [] then begin
-        die "The following <package>.install are missing:\n\
-             %s\n\
-             You need to run: dune build @install"
-          (String.concat ~sep:"\n"
-             (List.map missing_install_files
-                ~f:(fun p -> sprintf "- %s" (Path.to_string p))))
+        User_error.raise
+          [ Pp.textf "The following <package>.install are missing:"
+          ; Pp.enumerate missing_install_files ~f:(fun p ->
+              Pp.text (Path.to_string p))
+          ]
+          ~hints:[ Pp.text "try running: dune build @install" ]
       end;
       (match
-         workspace.contexts,
+         contexts,
          prefix_from_command_line,
          libdir_from_command_line
        with
        | _ :: _ :: _, Some _, _ | _ :: _ :: _, _, Some _ ->
-         die "Cannot specify --prefix or --libdir when installing \
-              into multiple contexts!"
+         User_error.raise
+           [ Pp.text "Cannot specify --prefix or --libdir when installing \
+                      into multiple contexts!"
+           ]
        | _ -> ());
       let module CMap = Map.Make(Context) in
       let install_files_by_context =

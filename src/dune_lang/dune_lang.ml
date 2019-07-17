@@ -29,112 +29,96 @@ let rec to_string t ~syntax =
                            |> String.concat ~sep:" ")
   | Template t -> Template.to_string t ~syntax
 
-let rec pp syntax ppf = function
-  | Atom s ->
-    Format.pp_print_string ppf (Atom.print s syntax)
-  | Quoted_string s ->
-    Format.pp_print_string ppf (Escape.quoted ~syntax s)
-  | List [] ->
-    Format.pp_print_string ppf "()"
-  | List (first :: rest) ->
-    Format.pp_open_box ppf 1;
-    Format.pp_print_string ppf "(";
-    Format.pp_open_hvbox ppf 0;
-    pp syntax ppf first;
-    List.iter rest ~f:(fun sexp ->
-      Format.pp_print_space ppf ();
-      pp syntax ppf sexp);
-    Format.pp_close_box ppf ();
-    Format.pp_print_string ppf ")";
-    Format.pp_close_box ppf ()
-  | Template t -> Template.pp syntax ppf t
+let rec pp syntax = function
+  | Atom s -> Pp.verbatim (Atom.print s syntax)
+  | Quoted_string s -> Pp.verbatim (Escape.quoted ~syntax s)
+  | List [] -> Pp.verbatim "()"
+  | List l ->
+    let open Pp.O in
+    Pp.box ~indent:1
+      (Pp.char '(' ++
+       Pp.hvbox (Pp.concat_map l ~sep:Pp.space ~f:(pp syntax)) ++
+       Pp.char ')')
+  | Template t -> Template.pp syntax t
 
-let pp_quoted =
-  let rec loop = function
-    | Atom (A s) as t ->
-      if Atom.is_valid_dune s then
-        t
-      else
-        Quoted_string s
-    | List xs -> List (List.map ~f:loop xs)
-    | (Quoted_string _ | Template _) as t -> t
-  in
-  fun ppf t -> pp Dune ppf (loop t)
+module Deprecated = struct
+  let pp syntax ppf t = Pp.render_ignore_tags ppf (pp syntax t)
 
-let pp_print_quoted_string ppf s =
-  let syntax = File_syntax.Dune in
-  if String.contains s '\n' then begin
-    match String.split s ~on:'\n' with
-    | [] -> Format.pp_print_string ppf (Escape.quoted ~syntax s)
-    | first :: rest ->
-       Format.fprintf ppf "@[<hv 1>\"@{<atom>%s"
-         (Escape.escaped ~syntax first);
-       List.iter rest ~f:(fun s ->
-           Format.fprintf ppf "@,\\n%s" (Escape.escaped ~syntax s));
-       Format.fprintf ppf "@}\"@]"
-  end else
-    Format.pp_print_string ppf (Escape.quoted ~syntax s)
+  let pp_print_quoted_string ppf s =
+    let syntax = File_syntax.Dune in
+    if String.contains s '\n' then begin
+      match String.split s ~on:'\n' with
+      | [] -> Format.pp_print_string ppf (Escape.quoted ~syntax s)
+      | first :: rest ->
+        Format.fprintf ppf "@[<hv 1>\"@{<atom>%s"
+          (Escape.escaped ~syntax first);
+        List.iter rest ~f:(fun s ->
+          Format.fprintf ppf "@,\\n%s" (Escape.escaped ~syntax s));
+        Format.fprintf ppf "@}\"@]"
+    end else
+      Format.pp_print_string ppf (Escape.quoted ~syntax s)
 
-let rec pp_split_strings ppf = function
-  | Atom s -> Format.pp_print_string ppf (Atom.print s File_syntax.Dune)
-  | Quoted_string s -> pp_print_quoted_string ppf s
-  | List [] ->
-    Format.pp_print_string ppf "()"
-  | List (first :: rest) ->
-    Format.pp_open_box ppf 1;
-    Format.pp_print_string ppf "(";
-    Format.pp_open_hvbox ppf 0;
-    pp_split_strings ppf first;
-    List.iter rest ~f:(fun sexp ->
-      Format.pp_print_space ppf ();
-      pp_split_strings ppf sexp);
-    Format.pp_close_box ppf ();
-    Format.pp_print_string ppf ")";
-    Format.pp_close_box ppf ()
-  | Template t -> Template.pp_split_strings ppf t
+  let rec pp_split_strings ppf = function
+    | Atom s -> Format.pp_print_string ppf (Atom.print s File_syntax.Dune)
+    | Quoted_string s -> pp_print_quoted_string ppf s
+    | List [] ->
+      Format.pp_print_string ppf "()"
+    | List (first :: rest) ->
+      Format.pp_open_box ppf 1;
+      Format.pp_print_string ppf "(";
+      Format.pp_open_hvbox ppf 0;
+      pp_split_strings ppf first;
+      List.iter rest ~f:(fun sexp ->
+        Format.pp_print_space ppf ();
+        pp_split_strings ppf sexp);
+      Format.pp_close_box ppf ();
+      Format.pp_print_string ppf ")";
+      Format.pp_close_box ppf ()
+    | Template t -> Template.pp_split_strings ppf t
 
-type formatter_state =
-  | In_atom
-  | In_makefile_action
-  | In_makefile_stuff
+  type formatter_state =
+    | In_atom
+    | In_makefile_action
+    | In_makefile_stuff
 
-let prepare_formatter ppf =
-  let state = ref [] in
-  Format.pp_set_mark_tags ppf true;
-  let ofuncs = Format.pp_get_formatter_out_functions ppf () in
-  let tfuncs = Format.pp_get_formatter_tag_functions ppf () [@warning "-3"] in
-  Format.pp_set_formatter_tag_functions ppf
-    { tfuncs with
-      mark_open_tag  = (function
-        | "atom" -> state := In_atom :: !state; ""
-        | "makefile-action" -> state := In_makefile_action :: !state; ""
-        | "makefile-stuff" -> state := In_makefile_stuff :: !state; ""
-        | s -> tfuncs.mark_open_tag s)
-    ; mark_close_tag = (function
-        | "atom" | "makefile-action" | "makefile-stuff" -> state := List.tl !state; ""
-        | s -> tfuncs.mark_close_tag s)
-    } [@warning "-3"];
-  Format.pp_set_formatter_out_functions ppf
-    { ofuncs with
-      out_newline = (fun () ->
-        match !state with
-        | [In_atom; In_makefile_action] ->
-          ofuncs.out_string "\\\n\t" 0 3
-        | [In_atom] ->
-          ofuncs.out_string "\\\n" 0 2
-        | [In_makefile_action] ->
-          ofuncs.out_string " \\\n\t" 0 4
-        | [In_makefile_stuff] ->
-          ofuncs.out_string " \\\n" 0 3
-        | [] ->
-          ofuncs.out_string "\n" 0 1
-        | _ -> assert false)
-    ; out_spaces = (fun n ->
-        ofuncs.out_spaces
-          (match !state with
-           | In_atom :: _ -> max 0 (n - 2)
-           | _ -> n))
-    }
+  let prepare_formatter ppf =
+    let state = ref [] in
+    Format.pp_set_mark_tags ppf true;
+    let ofuncs = Format.pp_get_formatter_out_functions ppf () in
+    let tfuncs = Format.pp_get_formatter_tag_functions ppf () [@warning "-3"] in
+    Format.pp_set_formatter_tag_functions ppf
+      { tfuncs with
+        mark_open_tag  = (function
+          | "atom" -> state := In_atom :: !state; ""
+          | "makefile-action" -> state := In_makefile_action :: !state; ""
+          | "makefile-stuff" -> state := In_makefile_stuff :: !state; ""
+          | s -> tfuncs.mark_open_tag s)
+      ; mark_close_tag = (function
+          | "atom" | "makefile-action" | "makefile-stuff" -> state := List.tl !state; ""
+          | s -> tfuncs.mark_close_tag s)
+      } [@warning "-3"];
+    Format.pp_set_formatter_out_functions ppf
+      { ofuncs with
+        out_newline = (fun () ->
+          match !state with
+          | [In_atom; In_makefile_action] ->
+            ofuncs.out_string "\\\n\t" 0 3
+          | [In_atom] ->
+            ofuncs.out_string "\\\n" 0 2
+          | [In_makefile_action] ->
+            ofuncs.out_string " \\\n\t" 0 4
+          | [In_makefile_stuff] ->
+            ofuncs.out_string " \\\n" 0 3
+          | [] ->
+            ofuncs.out_string "\n" 0 1
+          | _ -> assert false)
+      ; out_spaces = (fun n ->
+          ofuncs.out_spaces
+            (match !state with
+             | In_atom :: _ -> max 0 (n - 2)
+             | _ -> n))
+      }
+end
 
 module Ast = struct
   type dune_lang = t
@@ -251,23 +235,11 @@ module Cst = struct
     List.rev !tokens
 end
 
-module Parse_error = struct
-  include Lexer.Error
-
-  let loc t : Loc.t = { start = t.start; stop = t.stop }
-  let message t = t.message
-end
-exception Parse_error = Lexer.Error
-
 module Lexer = Lexer
 
 module Parser = struct
   let error (loc : Loc.t) message =
-    raise (Parse_error
-             { start = loc.start
-             ; stop  = loc.stop
-             ; message
-             })
+    User_error.raise ~loc [ Pp.text message ]
 
   module Mode = struct
     type 'a t =
@@ -419,22 +391,12 @@ let insert_comments csts comments =
   in
   Parser.parse_cst (Lexing.from_string "") ~lexer
 
-let lexbuf_from_string ~fname str =
-  let lb = Lexing.from_string str in
-  lb.lex_curr_p <-
-    { pos_fname = fname
-    ; pos_lnum  = 1
-    ; pos_bol   = 0
-    ; pos_cnum  = 0
-    };
-  lb
-
 let parse_string ~fname ~mode ?lexer str =
-  let lb = lexbuf_from_string ~fname str in
+  let lb = Lexbuf.from_string ~fname str in
   Parser.parse ~mode ?lexer lb
 
 let parse_cst_string ~fname ?lexer str =
-  let lb = lexbuf_from_string ~fname str in
+  let lb = Lexbuf.from_string ~fname str in
   Parser.parse_cst ?lexer lb
 
 type dune_lang = t
@@ -514,16 +476,6 @@ module Decoder = struct
     { on: string
     ; candidates: string list
     }
-
-  exception Decoder of Loc.t * string * hint option
-
-  let of_sexp_error ?hint loc msg =
-    raise (Decoder (loc, msg, hint))
-  let of_sexp_errorf ?hint loc fmt =
-    Printf.ksprintf (fun msg -> of_sexp_error loc ?hint msg) fmt
-  let no_templates ?hint loc fmt =
-    Printf.ksprintf (fun msg ->
-      of_sexp_error loc ?hint ("No variables allowed " ^ msg)) fmt
 
   module Name = struct
     module T = struct
@@ -671,9 +623,11 @@ module Decoder = struct
           | sexp :: _ ->
             match cstr with
             | None ->
-              of_sexp_errorf (Ast.loc sexp) "This value is unused"
+              User_error.raise ~loc:(Ast.loc sexp)
+                [ Pp.text "This value is unused" ]
             | Some s ->
-              of_sexp_errorf (Ast.loc sexp) "Too many argument for %s" s
+              User_error.raise ~loc:(Ast.loc sexp)
+                [ Pp.textf "Too many argument for %s" s ]
         end
       | Fields _ -> begin
           match Name.Map.choose state.unparsed with
@@ -684,8 +638,9 @@ module Decoder = struct
               | List (_, s :: _) -> Ast.loc s
               | _ -> assert false
             in
-            of_sexp_errorf ~hint:{ on = name; candidates = state.known }
-              name_loc "Unknown field %s" name
+            User_error.raise ~loc:name_loc
+              ~hints:(User_message.did_you_mean name ~candidates:state.known)
+              [ Pp.textf "Unknown field %s" name ]
         end
 
   let parse t context sexp =
@@ -702,9 +657,11 @@ module Decoder = struct
     match cstr with
     | None ->
       let loc = { loc with start = loc.stop } in
-      of_sexp_errorf loc "Premature end of list"
+      User_error.raise ~loc
+        [ Pp.text "Premature end of list" ]
     | Some s ->
-      of_sexp_errorf loc "Not enough arguments for %s" s
+      User_error.raise ~loc
+        [ Pp.textf "Not enough arguments for %s" s ]
   [@@inline never]
 
   let next f ctx sexps =
@@ -741,7 +698,9 @@ module Decoder = struct
   let keyword kwd =
     next (function
       | Atom (_, s) when Atom.to_string s = kwd -> ()
-      | sexp -> of_sexp_errorf (Ast.loc sexp) "'%s' expected" kwd)
+      | sexp ->
+        User_error.raise ~loc:(Ast.loc sexp)
+          [ Pp.textf "'%s' expected" kwd ])
 
   let match_keyword l ~fallback =
     peek >>= function
@@ -769,7 +728,7 @@ module Decoder = struct
     next (function
       | Atom (loc, A s) | Quoted_string (loc, s) -> f ~loc s
       | Template { loc ; _ } | List (loc, _) ->
-        of_sexp_error loc "Atom or quoted string expected")
+        User_error.raise ~loc [ Pp.text "Atom or quoted string expected" ])
 
   let enter t =
     next_with_user_context (fun uc sexp ->
@@ -778,7 +737,7 @@ module Decoder = struct
         let ctx = Values (loc, None, uc) in
         result ctx (t ctx l)
       | sexp ->
-        of_sexp_error (Ast.loc sexp) "List expected")
+        User_error.raise ~loc:(Ast.loc sexp) [ Pp.text "List expected" ])
 
   let if_list ~then_ ~else_ =
     peek_exn >>= function
@@ -857,16 +816,16 @@ module Decoder = struct
     next
       (function
         | List (_, []) -> ()
-        | sexp -> of_sexp_error (Ast.loc sexp) "() expected")
+        | sexp -> User_error.raise ~loc:(Ast.loc sexp) [ Pp.text "() expected" ])
 
   let basic desc f =
     next (function
       | Template { loc; _ } | List (loc, _) | Quoted_string (loc, _) ->
-        of_sexp_errorf loc "%s expected" desc
+        User_error.raise ~loc [ Pp.textf "%s expected" desc ]
       | Atom (loc, s)  ->
         match f (Atom.to_string s) with
         | Result.Error () ->
-          of_sexp_errorf loc "%s expected" desc
+          User_error.raise ~loc [ Pp.textf "%s expected" desc ]
         | Ok x -> x)
 
   let string = plain_string (fun ~loc:_ x -> x)
@@ -875,7 +834,7 @@ module Decoder = struct
     if String.length x = 1 then
       x.[0]
     else
-      of_sexp_errorf loc "character expected")
+      User_error.raise ~loc [ Pp.text "character expected" ])
 
   let int =
     basic "Integer" (fun s ->
@@ -917,11 +876,10 @@ module Decoder = struct
     | Some t ->
       result ctx (t ctx values)
     | None ->
-      of_sexp_errorf loc
-        ~hint:{ on         = name
-              ; candidates = List.map cstrs ~f:fst
-              }
-        "Unknown constructor %s" name
+      User_error.raise ~loc
+        ~hints:(User_message.did_you_mean name
+                  ~candidates:(List.map cstrs ~f:fst))
+        [ Pp.textf "Unknown constructor %s" name ]
 
   let sum cstrs =
     next_with_user_context (fun uc sexp ->
@@ -930,13 +888,13 @@ module Decoder = struct
         find_cstr cstrs loc s (Values (loc, Some s, uc)) []
       | Template { loc; _ }
       | Quoted_string (loc, _) ->
-        of_sexp_error loc "Atom expected"
+        User_error.raise ~loc [ Pp.text "Atom expected" ]
       | List (loc, []) ->
-        of_sexp_error loc "Non-empty list expected"
+        User_error.raise ~loc [ Pp.text "Non-empty list expected" ]
       | List (loc, name :: args) ->
         match name with
         | Quoted_string (loc, _) | List (loc, _) | Template { loc; _ } ->
-          of_sexp_error loc "Atom expected"
+          User_error.raise ~loc [ Pp.text "Atom expected" ]
         | Atom (s_loc, A s) ->
           find_cstr cstrs s_loc s (Values (loc, Some s, uc)) args)
 
@@ -944,16 +902,15 @@ module Decoder = struct
     next (function
       | Quoted_string (loc, _)
       | Template { loc; _ }
-      | List (loc, _) -> of_sexp_error loc "Atom expected"
+      | List (loc, _) -> User_error.raise ~loc [ Pp.text "Atom expected" ]
       | Atom (loc, A s) ->
         match List.assoc cstrs s with
         | Some value -> value
         | None ->
-          of_sexp_errorf loc
-            ~hint:{ on         = s
-                  ; candidates = List.map cstrs ~f:fst
-                  }
-            "Unknown value %s" s)
+          User_error.raise ~loc
+            [ Pp.textf "Unknown value %s" s ]
+            ~hints:(User_message.did_you_mean s
+                      ~candidates:(List.map cstrs ~f:fst)))
 
   let bool = enum [ ("true", true); ("false", false) ]
 
@@ -961,19 +918,23 @@ module Decoder = struct
     let x, state2 = t ctx state1 in
     match f x with
     | Result.Ok x -> (x, state2)
-    | Error msg ->
-      let loc = loc_between_states ctx state1 state2 in
-      of_sexp_errorf loc "%s" msg
+    | Error (msg : User_message.t) ->
+      let msg =
+        match msg.loc with
+        | Some _ -> msg
+        | None -> { msg with loc = Some (loc_between_states ctx state1 state2) }
+      in
+      raise (User_error.E msg)
 
   let field_missing loc name =
-    of_sexp_errorf loc "field %s missing" name
+    User_error.raise ~loc [ Pp.textf "field %s missing" name ]
   [@@inline never]
 
   let field_present_too_many_times _ name entries =
     match entries with
     | _ :: second :: _ ->
-      of_sexp_errorf (Ast.loc second) "Field %S is present too many times"
-        name
+      User_error.raise ~loc:(Ast.loc second) [ Pp.textf "Field %S is present too many times"
+        name ]
     | _ -> assert false
 
   let multiple_occurrences ?(on_dup=field_present_too_many_times) uc name last =
@@ -1050,11 +1011,11 @@ module Decoder = struct
                 ; prev  = Name.Map.find acc name
                 }
             | List (loc, _) | Quoted_string (loc, _) | Template { loc; _ } ->
-              of_sexp_error loc "Atom expected"
+              User_error.raise ~loc [ Pp.text "Atom expected" ]
           end
         | _ ->
-          of_sexp_error (Ast.loc sexp)
-            "S-expression of the form (<name> <values>...) expected")
+          User_error.raise ~loc:(Ast.loc sexp)
+            [ Pp.text "S-expression of the form (<name> <values>...) expected" ])
     in
     let ctx = Fields (loc, cstr, uc) in
     let x = result ctx (t ctx { Fields. unparsed; known = [] }) in
@@ -1080,12 +1041,55 @@ module Decoder = struct
       | Values (loc, cstr, _) -> (Values (loc, cstr), state)
       | Fields (loc, cstr, _) -> (Fields (loc, cstr), state)
 
+  let traverse l ~f ctx state =
+    Tuple.T2.swap (
+      List.fold_map ~init:state l ~f:(fun state x ->
+        Tuple.T2.swap (f x ctx state)
+      ))
+
+  let all = traverse ~f:(fun x -> x)
+
+  let fields_missing_need_exactly_one loc names =
+    User_error.raise ~loc [
+      Pp.textf "fields %s are all missing (exactly one is needed)"
+        (String.concat ~sep:", " names)
+    ]
+  [@@inline never]
+
+  let fields_mutual_exclusion_violation loc names =
+    User_error.raise ~loc [
+      Pp.textf "fields %s are mutually exclusive"
+        (String.concat ~sep:", " names)
+    ]
+  [@@inline never]
+
+  let fields_mutually_exclusive
+        ?on_dup fields ((Fields (loc, _, _) : _ context) as ctx) state =
+    let res, state =
+      traverse ~f:(fun (name, parser) ->
+        field_o name ?on_dup parser
+        >>| fun res -> (name, res)
+      ) fields ctx state
+    in
+    match
+      List.filter_map res
+        ~f:(function (name, Some x) -> Some(name, x) | (_, None) -> None) with
+    | [] ->
+      let names = List.map fields ~f:fst in
+      fields_missing_need_exactly_one loc names
+    | [ (_name, res) ] ->
+      res, state
+    | (_ :: _ :: _ as results) ->
+      let names = List.map ~f:fst results in
+      fields_mutual_exclusion_violation loc names
+
   let ( let* ) = ( >>= )
   let ( let+ ) = ( >>| )
   let ( and+ ) a b ctx state =
-    let a, state = a ctx state in
-    let b, state = b ctx state in
-    ((a, b), state)
+               let a, state = a ctx state in
+               let b, state = b ctx state in
+               ((a, b), state)
+
 end
 
 module type Conv = sig

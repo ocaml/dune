@@ -15,8 +15,7 @@ val to_string : t -> string
 
 val to_dyn : t -> Dyn.t
 
-val flag : t -> _ Command.Args.t
-val ppx_driver_flag : t -> _ Command.Args.t
+val cmt_ext : t -> string
 
 module Dict : sig
   type kind = t

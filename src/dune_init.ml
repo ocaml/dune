@@ -19,8 +19,6 @@ module Kind = struct
     | Project -> "project"
     | Test -> "test"
 
-  let pp ppf t = Format.pp_print_string ppf (to_string t)
-
   let commands =
     [ "executable", Executable
     ; "library", Library
@@ -58,8 +56,10 @@ module File = struct
   (** Inspection and manipulation of stanzas in a file *)
   module Stanza = struct
 
-    let pp ppf s =
-      Option.iter (Cst.to_sexp s) ~f:(Dune_lang.pp Dune ppf)
+    let pp s =
+      match Cst.to_sexp s with
+      | None -> Pp.nop
+      | Some s -> Dune_lang.pp Dune s
 
     let libraries_conflict (a: Dune_file.Library.t) (b: Dune_file.Library.t) =
       a.name = b.name
@@ -110,18 +110,26 @@ module File = struct
         match find_conflicting project stanzas f.content with
         | None -> Dune {f with content = f.content @ stanzas}
         | Some (a, b) ->
-          die "Updating existing stanzas is not yet supported.@\n\
-               A preexisting dune stanza conflicts with a generated stanza:\
-               @\n@\nGenerated stanza:@.%a@.@.Pre-existing stanza:@.%a"
-            pp a pp b
+          User_error.raise
+            [ Pp.text "Updating existing stanzas is not yet supported."
+            ; Pp.text "A preexisting dune stanza conflicts with a \
+                       generated stanza:"
+            ; Pp.nop
+            ; Pp.text "Generated stanza:"
+            ; pp a
+            ; Pp.nop
+            ; Pp.text "Pre-existing stanza:"
+            ; pp b
+            ]
   end (* Stanza *)
 
   let create_dir path =
     try Path.mkdir_p path with
     | Unix.Unix_error (EACCES, _, _) ->
-      die "A project directory cannot be created or accessed: \
-           Lacking permissions needed to create directory %a"
-        Path.pp path
+      User_error.raise
+        [ Pp.textf "A project directory cannot be created or accessed: \
+                    Lacking permissions needed to create directory %s"
+            (Path.to_string_maybe_quoted path) ]
 
   let load_dune_file ~path =
     let name = "dune" in
@@ -133,8 +141,10 @@ module File = struct
         match Format_dune_lang.parse_file (Some full_path) with
         | Format_dune_lang.Sexps content -> content
         | Format_dune_lang.OCaml_syntax _ ->
-          die "Cannot load dune file %a because it uses OCaml syntax"
-            Path.pp full_path
+          User_error.raise
+            [ Pp.textf "Cannot load dune file %s because it uses OCaml \
+                        syntax"
+                (Path.to_string_maybe_quoted full_path) ]
     in
     Dune {path; name; content}
 
@@ -432,10 +442,13 @@ module Component = struct
   let report_uncreated_file = function
     | Ok _ -> ()
     | Error path ->
-      Errors.kerrf ~f:print_to_console
-        "@{<warning>Warning@}: file @{<kwd>%a@} was not created \
-         because it already exists\n"
-        Path.pp path
+      let open Pp.O in
+      User_warning.emit
+        [ Pp.textf "File " ++
+          Pp.tag ~tag:User_message.Style.Kwd
+            (Pp.verbatim (Path.to_string_maybe_quoted path)) ++
+          Pp.text " was not created because it already exists"
+        ]
 
   (** Creates a component, writing the files to disk *)
   let create target =
@@ -458,10 +471,18 @@ let validate_component_name name =
   match Lib_name.Local.of_string name with
   | Ok _ -> ()
   | _    ->
-    die "A component named '%s' cannot be created because it is an %s"
-      name Lib_name.Local.invalid_message
+    User_error.raise
+      [ Pp.textf "A component named '%s' cannot be created because it \
+                  is an invalid library name."
+          name ]
+      ~hints:[Lib_name.Local.valid_format_doc]
 
 let print_completion kind name =
-  Errors.kerrf ~f:print_to_console
-    "@{<ok>Success@}: initialized %a component named @{<kwd>%s@}\n"
-    Kind.pp kind name
+  let open Pp.O in
+  Console.print_user_message
+    (User_message.make
+       [ Pp.tag (Pp.verbatim "Success")
+           ~tag:User_message.Style.Ok
+         ++ Pp.textf ": initialized %s component named " (Kind.to_string kind) ++
+         Pp.tag (Pp.verbatim name) ~tag:User_message.Style.Kwd
+       ])

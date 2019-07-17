@@ -35,7 +35,7 @@ module Parse = struct
     let open Stanza.Decoder in
     let rec one (kind : Dune_lang.File_syntax.t) =
       peek_exn >>= function
-      | Atom (loc, A "\\") -> Errors.fail loc "unexpected \\"
+      | Atom (loc, A "\\") -> User_error.raise ~loc [ Pp.text "unexpected \\" ]
       | (Atom (_, A "") | Quoted_string (_, _)) | Template _ ->
         elt
       | Atom (loc, A s) -> begin
@@ -43,10 +43,11 @@ module Parse = struct
           | ":standard" ->
             junk >>> return Standard
           | ":include" ->
-            Errors.fail loc
-              "Invalid use of :include, should be: (:include <filename>)"
+            User_error.raise ~loc
+              [ Pp.text "Invalid use of :include, should be: (:include \
+                         <filename>)" ]
           | _ when s.[0] = ':' ->
-            Errors.fail loc "undefined symbol %s" s
+            User_error.raise ~loc [ Pp.textf "undefined symbol %s" s ]
           | _ ->
             elt
         end
@@ -54,9 +55,11 @@ module Parse = struct
           match s, kind with
           | ":include", _ -> inc
           | s, Dune when s <> "" && s.[0] <> '-' && s.[0] <> ':' ->
-            Errors.fail loc
-              "This atom must be quoted because it is the first element \
-               of a list and doesn't start with - or :"
+            User_error.raise ~loc
+              [ Pp.text
+                  "This atom must be quoted because it is the first \
+                   element of a list and doesn't start with - or:"
+              ]
           | _ -> enter (many [] kind)
         end
       | List _ -> enter (many [] kind)
@@ -86,7 +89,7 @@ module Parse = struct
     generic ~elt ~inc:(
       enter
         (let* loc = loc in
-         Errors.fail loc "(:include ...) is not allowed here"))
+         User_error.raise ~loc [ Pp.text "(:include ...) is not allowed here" ]))
 end
 
 
@@ -380,9 +383,11 @@ module Unexpanded = struct
             match f fn with
             | [x] -> Value.to_path ~dir x
             | _ ->
-              Errors.fail (String_with_vars.loc fn)
-                "An unquoted templated expanded to more than one value. \
-                 A file path is expected in this position."
+              User_error.raise ~loc:(String_with_vars.loc fn)
+                [ Pp.text
+                    "An unquoted templated expanded to more than one \
+                     value. A file path is expected in this position."
+                ]
           in
           Path.Map.find_exn files_contents path
         in
@@ -398,11 +403,7 @@ module Unexpanded = struct
     { t with ast = expand t.ast }
 end
 
-module String = Make(struct
-    type t = string
-    let compare = String.compare
-    module Map = String.Map
-  end)(struct
+module String = Make(String)(struct
     type t = string
     type key = string
     let key x = x

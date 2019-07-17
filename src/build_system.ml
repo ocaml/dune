@@ -34,7 +34,8 @@ end = struct
 
   let assert_exists ~loc path =
     if not (Memo.exec assert_exists_def path) then
-      Errors.fail_opt loc "%a does not exist" Path.pp path
+      User_error.raise ?loc
+        [ Pp.textf "%S does not exist" (Path.to_string_maybe_quoted path) ]
 
   let mkdir_p_or_check_exists ~loc path =
     match Path.as_in_build_dir path with
@@ -46,7 +47,7 @@ module Promoted_to_delete : sig
   val add : Path.t -> unit
   val load : unit -> Path.Set.t
 end = struct
-  module P = Utils.Persistent(struct
+  module P = Persistent.Make(struct
       type t = Path.Set.t
       let name = "PROMOTED-TO-DELETE"
       let version = 1
@@ -194,7 +195,7 @@ module Alias0 = struct
 
   let dep_rec_internal ~name ~dir ~ctx_dir =
     Build.lazy_no_targets (lazy (
-      File_tree.Dir.fold dir ~traverse_ignored_dirs:false
+      File_tree.Dir.fold dir ~traverse:Sub_dirs.Status.Set.normal_only
         ~init:(Build.return true)
         ~f:(fun dir acc ->
           let path = Path.Build.append_source ctx_dir (File_tree.Dir.path dir) in
@@ -212,17 +213,20 @@ module Alias0 = struct
     match File_tree.find_dir file_tree src_dir with
     | None ->
       Build.fail { fail = fun () ->
-        Errors.fail loc "Don't know about directory %s!"
-          (Path.Source.to_string_maybe_quoted src_dir) }
+        User_error.raise ~loc
+          [ Pp.textf "Don't know about directory %s!"
+              (Path.Source.to_string_maybe_quoted src_dir)
+          ]}
     | Some dir ->
       let name = Alias.name t in
       dep_rec_internal ~name ~dir ~ctx_dir
       >>^ fun is_empty ->
       if is_empty && not (is_standard name) then
-        Errors.fail loc
-          "This alias is empty.\n\
-           Alias %S is not defined in %s or any of its descendants."
-          name (Path.Source.to_string_maybe_quoted src_dir)
+        User_error.raise ~loc
+          [ Pp.text "This alias is empty."
+          ; Pp.textf "Alias %S is not defined in %s or any of its descendants."
+              name (Path.Source.to_string_maybe_quoted src_dir)
+          ]
 
   let dep_rec_multi_contexts ~dir:src_dir ~name ~file_tree ~contexts =
     let open Build.O in
@@ -233,10 +237,11 @@ module Alias0 = struct
     >>^ fun is_empty_list ->
     let is_empty = List.for_all is_empty_list ~f:Fn.id in
     if is_empty && not (is_standard name) then
-      die "From the command line:\n\
-           @{<error>Error@}: Alias %S is empty.\n\
-           It is not defined in %s or any of its descendants."
-        name (Path.Source.to_string_maybe_quoted src_dir)
+      User_error.raise
+        [ Pp.textf "Alias %S specified on the command line is empty." name
+        ; Pp.textf "It is not defined in %s or any of its descendants."
+            (Path.Source.to_string_maybe_quoted src_dir)
+        ]
 
   let package_install ~(context : Context.t) ~pkg =
     make (sprintf ".%s-files" (Package.Name.to_string pkg))
@@ -299,7 +304,7 @@ end = struct
 
   let file = Path.relative Path.build_dir ".db"
 
-  module P = Utils.Persistent(struct
+  module P = Persistent.Make(struct
       type nonrec t = t
       let name = "INCREMENTAL-DB"
       let version = 2
@@ -428,12 +433,10 @@ let get_build_system () =
 let reset () = t := None
 let t = get_build_system
 
-let string_of_paths set =
-  Path.Set.to_list set
-  |> List.map ~f:(fun p -> sprintf "- %s"
-                             (Path.to_string_maybe_quoted
-                                (Path.drop_optional_build_context p)))
-  |> String.concat ~sep:"\n"
+let pp_paths set =
+  Pp.enumerate (Path.Set.to_list set) ~f:(fun p ->
+    Pp.verbatim (Path.to_string_maybe_quoted
+                   (Path.drop_optional_build_context p)))
 
 let set_rule_generators ~init ~gen_rules =
   let t = t () in
@@ -466,10 +469,12 @@ let get_dir_triage t ~dir =
            match Path.readdir_unsorted dir with
            | Error Unix.ENOENT -> Path.Set.empty
            | Error m ->
-             Errors.warn Loc.none
-               "Unable to read %s@.Reason: %s@."
-               (Path.to_string_maybe_quoted dir)
-               (Unix.error_message m);
+             User_warning.emit
+               [ Pp.textf "Unable to read %s"
+                   (Path.to_string_maybe_quoted dir)
+               ; Pp.textf "Reason: %s"
+                   (Unix.error_message m)
+               ];
              Path.Set.empty
            | Ok filenames ->
              Path.Set.of_listing ~dir ~filenames))
@@ -498,7 +503,7 @@ let add_rules_exn t rules =
   Path.Build.Map.iteri rules ~f:(fun key data ->
     add_spec_exn t key data)
 
-let rule_conflict fn rule' rule =
+let rule_conflict fn (rule' : Internal_rule.t) (rule : Internal_rule.t) =
   let describe (rule : Internal_rule.t) =
     match rule.info with
     | From_dune_file { start; _ } ->
@@ -507,17 +512,18 @@ let rule_conflict fn rule' rule =
     | Source_file_copy -> "file present in source tree"
   in
   let fn = Path.build fn in
-  die "Multiple rules generated for %s:\n\
-       - %s\n\
-       - %s%s"
-    (Path.to_string_maybe_quoted fn)
-    (describe rule')
-    (describe rule)
-    (match rule.info, rule'.info with
-     | Source_file_copy, _ | _, Source_file_copy ->
-       "\nHint: rm -f " ^ Path.to_string_maybe_quoted
-                            (Path.drop_optional_build_context fn)
-     | _ -> "")
+  User_error.raise
+    [ Pp.textf "Multiple rules generated for %s:"
+        (Path.to_string_maybe_quoted fn)
+    ; Pp.textf "- %s" (describe rule')
+    ; Pp.textf "- %s" (describe rule)
+    ]
+    ~hints:(match rule.info, rule'.info with
+      | Source_file_copy, _ | _, Source_file_copy ->
+        [ Pp.textf "rm -f %s"
+            (Path.to_string_maybe_quoted
+               (Path.drop_optional_build_context fn)) ]
+      | _ -> [])
 
 (* This contains the targets of the actions that are being executed. On exit, we
    need to delete them as they might contain garbage *)
@@ -534,17 +540,17 @@ let compute_targets_digest_after_rule_execution ~info targets =
   let good, bad =
     List.partition_map targets ~f:(fun fn ->
       let fn = Path.build fn in
-      match Utils.Cached_digest.refresh fn with
+      match Cached_digest.refresh fn with
       | digest -> Left digest
       | exception (Unix.Unix_error _ | Sys_error _) -> Right fn)
   in
   match bad with
-  | [] -> Digest.string (Marshal.to_string good [])
+  | [] -> Digest.generic good
   | missing ->
-    Errors.fail_opt
-      (Rule.Info.loc info)
-      "rule failed to generate the following targets:\n%s"
-      (string_of_paths (Path.Set.of_list missing))
+    User_error.raise ?loc:(Rule.Info.loc info)
+      [ Pp.textf "Rule failed to generate the following targets:"
+      ; pp_paths (Path.Set.of_list missing)
+      ]
 
 let sandbox_dir = Path.Build.relative Path.Build.root ".sandbox"
 
@@ -584,7 +590,8 @@ let remove_old_artifacts t ~dir ~(subdirs_to_keep : Subdir_set.t) =
 let no_rule_found =
   fun t ~loc fn ->
     let fail fn ~loc =
-      Errors.fail_opt loc "No rule found for %s" (Dpath.describe_target fn)
+      User_error.raise ?loc
+        [ Pp.textf "No rule found for %s" (Dpath.describe_target fn) ]
     in
     match Dpath.analyse_target fn with
     | Other _ -> fail fn ~loc
@@ -592,27 +599,41 @@ let no_rule_found =
       if String.Map.mem t.contexts ctx then
         fail fn ~loc
       else
-        die "Trying to build %s but build context %s doesn't exist.%s"
-          (Path.Build.to_string_maybe_quoted fn)
-          ctx
-          (hint ctx (String.Map.keys t.contexts))
+        User_error.raise
+          [ Pp.textf "Trying to build %s but build context %s doesn't exist."
+              (Path.Build.to_string_maybe_quoted fn)
+              ctx
+          ]
+          ~hints:(User_message.did_you_mean
+                    ctx
+                    ~candidates:(String.Map.keys t.contexts))
     | Install (ctx, _) ->
       if String.Map.mem t.contexts ctx then
         fail fn ~loc
       else
-        die "Trying to build %s for install but build context %s doesn't exist.%s"
-          (Path.Build.to_string_maybe_quoted fn)
-          ctx
-          (hint ctx (String.Map.keys t.contexts))
+        User_error.raise
+          [ Pp.textf "Trying to build %s for install but build context \
+                      %s doesn't exist."
+              (Path.Build.to_string_maybe_quoted fn)
+              ctx
+          ]
+          ~hints:(User_message.did_you_mean
+                    ctx
+                    ~candidates:(String.Map.keys t.contexts))
     | Alias (ctx, fn') ->
       if String.Map.mem t.contexts ctx then
         fail fn ~loc
       else
         let fn = Path.append_source (Path.relative Path.build_dir ctx) fn' in
-        die "Trying to build alias %s but build context %s doesn't exist.%s"
-          (Path.to_string_maybe_quoted fn)
-          ctx
-          (hint ctx (String.Map.keys t.contexts))
+        User_error.raise
+          [ Pp.textf "Trying to build alias %s but build context %s \
+                      doesn't exist."
+              (Path.to_string_maybe_quoted fn)
+              ctx
+          ]
+          ~hints:(User_message.did_you_mean
+                    ctx
+                    ~candidates:(String.Map.keys t.contexts))
 
 (* DUNE2: delete this since this has been deprecated for long enough *)
 let fix_up_legacy_fallback_rules t ~file_tree_dir ~dir rules =
@@ -657,26 +678,25 @@ let fix_up_legacy_fallback_rules t ~file_tree_dir ~dir rules =
                    },
                  "overwriting the source files with the generated one")
             in
-            Errors.warn
-              (rule_loc ~info:rule.info ~dir ~file_tree:t.file_tree)
-              "The following files are both generated by a rule and are \
-               present in\nthe source tree:@\n@[<v>%a@,@[%a@]@]"
-              (Fmt.list (Fmt.prefix (Fmt.string "- ") Path.pp))
-              (Path.Build.Set.to_list inter
-               |> List.map ~f:(fun p ->
-                 Path.drop_optional_build_context (Path.build p)))
-              Fmt.text
-              (sprintf "Because %s, I am closing my eyes on this and \
-                        I am %s. However, you should really delete \
-                        these files from your source tree. I will no \
-                        longer accept this once you upgrade your \
-                        project to dune >= 1.10."
-                 (match Wp.t with
-                  | Jbuilder -> "you are using the jbuilder binary"
-                  | Dune ->
-                    "your project was written for dune " ^
-                    Syntax.Version.to_string dune_version)
-                 behavior);
+            User_warning.emit
+              ~loc:(rule_loc ~info:rule.info ~dir ~file_tree:t.file_tree)
+              [ Pp.text "The following files are both generated by a \
+                         rule and are present in the source tree:"
+              ; pp_paths (Path.Build.Set.to_list inter
+                          |> List.map ~f:Path.build
+                          |> Path.Set.of_list)
+              ; Pp.textf
+                  "Because %s, I am closing my eyes on this and I am \
+                   %s. However, you should really delete these files \
+                   from your source tree. I will no longer accept this \
+                   once you upgrade your project to dune >= 1.10."
+                  (match Wp.t with
+                   | Jbuilder -> "you are using the jbuilder binary"
+                   | Dune ->
+                     "your project was written for dune " ^
+                     Syntax.Version.to_string dune_version)
+                  behavior
+              ];
             { rule with mode }
           end)
     end
@@ -861,24 +881,23 @@ end = struct
             let present_targets =
               Path.Source.Set.diff source_files_for_targtes absent_targets
             in
-            Errors.fail
-              (rule_loc
+            User_error.raise
+              ~loc:(rule_loc
                  ~file_tree:t.file_tree
                  ~info:rule.info
                  ~dir)
-              "\
-Some of the targets of this fallback rule are present in the source tree,
-and some are not. This is not allowed. Either none of the targets must
-be present in the source tree, either they must all be.
-
-The following targets are present:
-%s
-
-The following targets are not:
-%s
-"
-              (string_of_paths (Path.set_of_source_paths present_targets))
-              (string_of_paths (Path.set_of_source_paths absent_targets))
+              [ Pp.text
+                  "Some of the targets of this fallback rule are \
+                   present in the source tree, and some are not. This \
+                   is not allowed. Either none of the targets must be \
+                   present in the source tree, either they must all be."
+              ; Pp.nop
+              ; Pp.text "The following targets are present:"
+              ; pp_paths (Path.set_of_source_paths present_targets)
+              ; Pp.nop
+              ; Pp.text "The following targets are not:"
+              ; pp_paths (Path.set_of_source_paths absent_targets)
+              ]
           end
         end)
 
@@ -1250,13 +1269,15 @@ and get_rule t path =
     Fiber.return None
   else
     let loc = Rule_fn.loc () in
-    Errors.fail_opt loc
-      "File unavailable: %s" (Path.to_string_maybe_quoted path)
+    User_error.raise ?loc
+      [ Pp.textf
+          "File unavailable: %s" (Path.to_string_maybe_quoted path)
+      ]
 
 let all_targets t =
   String.Map.to_list t.contexts
   |> List.fold_left ~init:Path.Build.Set.empty ~f:(fun acc (_, ctx) ->
-    File_tree.fold t.file_tree ~traverse_ignored_dirs:true ~init:acc
+    File_tree.fold t.file_tree ~traverse:Sub_dirs.Status.Set.all ~init:acc
       ~f:(fun dir acc ->
         match
           load_dir
@@ -1421,12 +1442,12 @@ end = struct
         , Action.for_shell action
         )
       in
-      Digest.string (Marshal.to_string trace [])
+      Digest.generic trace
     in
     let targets_digest =
       match List.map targets_as_list ~f:(fun p ->
-        Utils.Cached_digest.file (Path.build p)) with
-      | l -> Some (Digest.string (Marshal.to_string l []))
+        Cached_digest.file (Path.build p)) with
+      | l -> Some (Digest.generic l)
       | exception (Unix.Unix_error _ | Sys_error _) -> None
     in
     let sandbox_dir =
@@ -1514,8 +1535,8 @@ end = struct
             let path = Path.build path in
             let in_source_tree = Path.source in_source_tree in
             if not (Path.exists in_source_tree) ||
-               (Utils.Cached_digest.file path <>
-                Utils.Cached_digest.file in_source_tree) then begin
+               (Cached_digest.file path <>
+                Cached_digest.file in_source_tree) then begin
               if lifetime = Until_clean then
                 Promoted_to_delete.add in_source_tree;
               Scheduler.ignore_for_watch in_source_tree;
@@ -1642,19 +1663,17 @@ let process_memcycle exn =
   in
   match List.last cycle with
   | None ->
-    let frames : string list =
-      Memo.Cycle_error.get exn
-      |> List.map ~f:(Format.asprintf "%a" Memo.Stack_frame.pp)
-    in
+    let frames = Memo.Cycle_error.get exn in
     Code_error.raise "dependency cycle that does not involve any files"
-      ["frames", Dyn.Encoder.(list string) frames]
+      ["frames", Dyn.Encoder.(list Memo.Stack_frame.to_dyn) frames]
   | Some last ->
     let first = List.hd cycle in
     let cycle = if last = first then cycle else last :: cycle in
-    Errors.Fatal_error
-      (Format.asprintf "Dependency cycle between the following files:\n    %s"
-         (List.map cycle ~f:Path.to_string_maybe_quoted
-          |> String.concat ~sep:"\n--> "))
+    User_error.raise
+      [ Pp.text "Dependency cycle between the following files:"
+      ; Pp.chain cycle ~f:(fun p ->
+          Pp.verbatim (Path.to_string_maybe_quoted p))
+      ]
 
 module Rule = struct
   module Id = Internal_rule.Id
@@ -1847,11 +1866,13 @@ end = struct
       with
       | Ok l -> l
       | Error cycle ->
-        die "dependency cycle detected:\n   %s"
-          (List.map cycle ~f:(fun rule ->
-             Path.to_string (Path.build (
-               Path.Build.Set.choose_exn rule.Rule.targets)))
-           |> String.concat ~sep:"\n-> "))
+        User_error.raise
+          [ Pp.text "Dependency cycle detected:"
+          ; Pp.chain cycle ~f:(fun rule ->
+              Pp.verbatim
+                (Path.to_string_maybe_quoted (Path.build (
+                   Path.Build.Set.choose_exn rule.Rule.targets))))
+          ])
 end
 
 include Print_rules
@@ -1884,11 +1905,13 @@ end = struct
     >>| function
     | Ok l -> l
     | Error cycle ->
-      die "dependency cycle detected:\n   %s"
-        (List.map cycle ~f:(fun rule ->
-           Path.to_string
-             (Path.build (Path.Build.Set.choose_exn rule.Internal_rule.targets)))
-         |> String.concat ~sep:"\n-> ")
+      User_error.raise
+        [ Pp.text "Dependency cycle detected:"
+        ; Pp.chain cycle ~f:(fun rule ->
+            Pp.verbatim
+              (Path.to_string_maybe_quoted (Path.build (
+                 Path.Build.Set.choose_exn rule.Internal_rule.targets))))
+        ]
 
   let all_lib_deps ~request =
     let t = t () in
@@ -1939,4 +1962,3 @@ let init ~contexts ~file_tree ~hook =
     }
   in
   set t
-

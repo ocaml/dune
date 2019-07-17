@@ -70,7 +70,9 @@ module Linkage = struct
     let ext =
       match wanted_mode, m.kind with
       | Byte   , C             -> ".bc.c"
-      | Native , C             -> Errors.fail m.loc "C file generation only supports bytecode!"
+      | Native , C             -> User_error.raise ~loc:m.loc
+                                    [ Pp.text "C file generation only \
+                                               supports bytecode!" ]
       | Byte   , Exe           -> ".bc"
       | Native , Exe           -> ".exe"
       | Byte   , Object        -> ".bc"  ^ ctx.lib_config.ext_obj
@@ -120,6 +122,7 @@ let link_exe
       ~(linkage:Linkage.t)
       ~top_sorted_modules
       ~link_time_code_gen
+      ~promote
       ?(link_flags=Build.arr (fun _ -> []))
       cctx
   =
@@ -138,11 +141,14 @@ let link_exe
   in
   let cm_files =
     let modules = CC.modules cctx in
-    Cm_files.make_exe ~obj_dir ~modules ~top_sorted_modules
+    Cm_files.make ~obj_dir ~modules ~top_sorted_modules
       ~ext_obj:ctx.lib_config.ext_obj
   in
   let top_sorted_cms = Cm_files.top_sorted_cms cm_files ~mode in
   SC.add_rule sctx ~loc ~dir
+    ~mode:(match promote with
+      | None -> Standard
+      | Some p -> Promote p)
     (let ocaml_flags = Ocaml_flags.get (CC.flags cctx) mode in
      let prefix =
        let dune_version =
@@ -173,7 +179,6 @@ let link_exe
               ~f:(fun { Link_time_code_gen.to_link; force_linkall } ->
                 S [ As (if force_linkall then ["-linkall"] else [])
                   ; Lib.Lib_and_module.L.link_flags to_link ~mode
-                      ~stdlib_dir:ctx.stdlib_dir
                   ])
           ; Dyn (Build.S.map top_sorted_cms ~f:(fun x -> Command.Args.Deps x))
           ]));
@@ -182,30 +187,26 @@ let link_exe
       (Expander.expand_and_eval_set expander
          js_of_ocaml.flags
          ~standard:(Build.return (Js_of_ocaml_rules.standard sctx))) in
-    let rules =
-      Js_of_ocaml_rules.build_exe cctx ~js_of_ocaml ~src:exe
-        ~cm:top_sorted_cms ~flags:(Command.Args.dyn flags)
-    in
-    SC.add_rules ~dir sctx rules
+    Js_of_ocaml_rules.build_exe cctx ~js_of_ocaml ~src:exe
+      ~cm:top_sorted_cms ~flags:(Command.Args.dyn flags)
+      ~promote
 
 let build_and_link_many
       ~programs
       ~linkages
+      ~promote
       ?link_flags
       cctx
   =
   let modules = Compilation_context.modules cctx in
-  let dep_graphs = Ocamldep.rules cctx ~modules in
-  Module.Name.Map.iter modules ~f:(
-    Module_compilation.build_module cctx ~dep_graphs);
+  let dep_graphs = Dep_rules.rules cctx ~modules in
+  Module_compilation.build_all cctx ~dep_graphs;
 
-  let link_time_code_gen =
-    Link_time_code_gen.handle_special_libs cctx
-  in
+  let link_time_code_gen = Link_time_code_gen.handle_special_libs cctx in
+  let modules = Compilation_context.modules cctx in
   List.iter programs ~f:(fun { Program.name; main_module_name ; loc } ->
     let top_sorted_modules =
-      let main = Option.value_exn
-                   (Module.Name.Map.find (CC.modules cctx) main_module_name) in
+      let main = Option.value_exn (Modules.find modules main_module_name) in
       Dep_graph.top_closed_implementations dep_graphs.impl
         [main]
     in
@@ -216,6 +217,7 @@ let build_and_link_many
         ~linkage
         ~top_sorted_modules
         ~link_time_code_gen
+        ~promote
         ?link_flags))
 
 let build_and_link ~program =

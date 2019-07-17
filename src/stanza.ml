@@ -77,9 +77,11 @@ module Decoder = struct
     | Some (0, _) ->
       (* DUNE2: delete this branch (0.x is for jbuilder compat) *)
       let last = Option.value_exn (List.last entries) in
-      Errors.warn (Dune_lang.Ast.loc last)
-        "Field %S is present several times, previous occurrences are ignored."
-        name
+      User_warning.emit ~loc:(Dune_lang.Ast.loc last)
+        [ Pp.textf "Field %S is present several times, previous \
+                    occurrences are ignored."
+            name
+        ]
     | _ ->
       field_present_too_many_times parsing_context name entries
 

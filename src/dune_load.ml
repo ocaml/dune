@@ -10,10 +10,10 @@ module Dune_file = struct
     ; kind    : Dune_lang.File_syntax.t
     }
 
-  let parse sexps ~dir ~file ~project ~kind ~ignore_promoted_rules =
+  let parse sexps ~dir ~file ~project ~kind =
     let stanzas = Stanzas.parse ~file ~kind project sexps in
     let stanzas =
-      if ignore_promoted_rules then
+      if !Clflags.ignore_promoted_rules then
         List.filter stanzas ~f:(function
           | Rule { mode = Promote { only = None; _ }; _ }
           | Dune_file.Menhir.T { mode = Promote { only = None; _ }; _ } -> false
@@ -52,10 +52,7 @@ module Dune_files = struct
     | Literal of Dune_file.t
     | Script  of script
 
-  type t =
-    { dune_files            : one list
-    ; ignore_promoted_rules : bool
-    }
+  type t = one list
 
   let generated_dune_files_dir = Path.Build.relative Path.Build.root ".dune"
 
@@ -88,20 +85,25 @@ module Dune_files = struct
             (match (kind : Dune_lang.File_syntax.t) with
              | Jbuild -> ()
              | Dune ->
-               Errors.fail loc
-                 "#require is no longer supported in dune files.\n\
-                  You can use the following function instead of \
-                  Unix.open_process_in:\n\
-                  \n\
-                 \  (** Execute a command and read it's output *)\n\
-                 \  val run_and_read_lines : string -> string list");
+               User_error.raise ~loc
+                 [ Pp.text
+                     "#require is no longer supported in dune files."
+                 ; Pp.text
+                     "You can use the following function instead of \
+                      Unix.open_process_in:\n\
+                      \n\
+                     \  (** Execute a command and read it's output *)\n\
+                     \  val run_and_read_lines : string -> string list"
+                 ]);
             match String.split s ~on:',' with
             | [] -> acc
             | ["unix"] -> Unix
             | _ ->
-              Errors.fail loc
-                "Using libraries other that \"unix\" is not supported.\n\
-                 See the manual for details.";
+              User_error.raise ~loc
+                [ Pp.text
+                    "Using libraries other that \"unix\" is not supported."
+                ; Pp.text "See the manual for details."
+                ];
         in
         loop (n + 1) lines acc
     in
@@ -175,7 +177,7 @@ end
         (Path.to_string plugin) plugin_contents);
     extract_requires plugin plugin_contents ~kind
 
-  let eval { dune_files; ignore_promoted_rules } ~(context : Context.t) =
+  let eval dune_files ~(context : Context.t) =
     let open Fiber.O in
     let static, dynamic =
       List.partition_map dune_files ~f:(function
@@ -221,13 +223,15 @@ end
         Process.run Strict ~dir:(Path.source dir)
           ~env:context.env context.ocaml args in
       if not (Path.exists (Path.build generated_dune_file)) then
-        die "@{<error>Error:@} %s failed to produce a valid dune_file file.\n\
-             Did you forgot to call [Jbuild_plugin.V*.send]?"
-          (Path.Source.to_string file);
+        User_error.raise
+          [ Pp.textf "%s failed to produce a valid dune_file file."
+              (Path.Source.to_string_maybe_quoted file)
+          ; Pp.textf "Did you forgot to call [Jbuild_plugin.V*.send]?"
+          ];
       Fiber.return
         (Dune_lang.Io.load (Path.build generated_dune_file) ~mode:Many
            ~lexer:(Dune_lang.Lexer.of_syntax kind)
-         |> Dune_file.parse ~dir ~file ~project ~kind ~ignore_promoted_rules))
+         |> Dune_file.parse ~dir ~file ~project ~kind))
     >>| fun dynamic ->
     static @ dynamic
 end
@@ -239,26 +243,26 @@ type conf =
   ; projects   : Dune_project.t list
   }
 
-let interpret ~dir ~project ~ignore_promoted_rules
-      ~(dune_file:File_tree.Dune_file.t) =
+let interpret ~dir ~project ~(dune_file:File_tree.Dune_file.t) =
   match dune_file.contents with
   | Plain p ->
     let dune_file =
       Dune_files.Literal
         (Dune_file.parse p.sexps ~dir ~file:p.path
            ~project
-           ~kind:dune_file.kind
-           ~ignore_promoted_rules)
+           ~kind:dune_file.kind)
     in
     p.sexps <- [];
     dune_file
   | Ocaml_script file ->
     Script { dir; project; file; kind = dune_file.kind }
 
-let load ?(ignore_promoted_rules=false) ~ancestor_vcs () =
+let load ~ancestor_vcs () =
   let ftree = File_tree.load Path.Source.root ~ancestor_vcs in
   let projects =
-    File_tree.fold ftree ~traverse_ignored_dirs:false ~init:[]
+    File_tree.fold ftree
+      ~traverse:{data_only = false; vendored = true; normal = true}
+      ~init:[]
       ~f:(fun dir acc ->
         let p = File_tree.Dir.project dir in
         if Path.Source.equal
@@ -276,10 +280,14 @@ let load ?(ignore_promoted_rules=false) ~ancestor_vcs () =
           | None, Some _ -> b
           | Some _, None -> a
           | Some a, Some b ->
-            die "Too many opam files for package %S:\n- %s\n- %s"
-              (Package.Name.to_string name)
-              (Path.Source.to_string_maybe_quoted (Package.opam_file a))
-              (Path.Source.to_string_maybe_quoted (Package.opam_file b))))
+            User_error.raise
+              [ Pp.textf "Too many opam files for package %S:"
+                  (Package.Name.to_string name)
+              ; Pp.textf "- %s"
+                  (Path.Source.to_string_maybe_quoted (Package.opam_file a))
+              ; Pp.textf "- %s"
+                  (Path.Source.to_string_maybe_quoted (Package.opam_file b))
+              ]))
   in
 
   let rec walk dir dune_files =
@@ -293,9 +301,7 @@ let load ?(ignore_promoted_rules=false) ~ancestor_vcs () =
         match File_tree.Dir.dune_file dir with
         | None -> dune_files
         | Some dune_file ->
-          let dune_file =
-            interpret ~dir:path ~project ~ignore_promoted_rules ~dune_file
-          in
+          let dune_file = interpret ~dir:path ~project ~dune_file in
           dune_file :: dune_files
       in
       String.Map.fold sub_dirs ~init:dune_files ~f:walk
@@ -303,7 +309,7 @@ let load ?(ignore_promoted_rules=false) ~ancestor_vcs () =
   in
   let dune_files = walk (File_tree.root ftree) [] in
   { file_tree = ftree
-  ; dune_files = { dune_files; ignore_promoted_rules }
+  ; dune_files
   ; packages
   ; projects
   }

@@ -101,6 +101,9 @@
 
 - Add a `--context` argument to `dune install/uninstall` (@diml, #2412)
 
+- Do not warn about merlin files pre 1.9. This warning can only be disabled in
+  1.9 (#2421, fixes #2399, @emillon)
+
 1.10.0 (04/06/2019)
 -------------------
 

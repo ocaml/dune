@@ -108,5 +108,7 @@ let describe project dune_files ~format =
   match format with
   | Text -> Format.printf "%a" Project_data.pp project_data
   | JSON ->
-      Project_data.to_dyn project_data
-      |> Json.of_dyn |> Json.pp |> Pp.render_ignore_tags Format.std_formatter
+    Project_data.to_dyn project_data
+    |> Json.of_dyn
+    |> Json.pp
+    |> Format.printf "%a\n" Pp.render_ignore_tags

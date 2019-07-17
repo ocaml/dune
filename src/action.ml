@@ -51,6 +51,8 @@ module String_with_sexp = struct
   type t = string
   let decode = Dune_lang.Decoder.string
   let encode = Dune_lang.Encoder.string
+  let is_dev_null s =
+    Path.equal (Path.of_string s) Config.dev_null
 end
 
 include Action_ast.Make(Prog)(Dpath)(Dpath.Build)(String_with_sexp)(Ast)

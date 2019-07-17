@@ -124,4 +124,6 @@ module Build = struct
     let open Dune_lang.Decoder in
     let+ base = string in
     Path.Build.(relative root) base
+
+  let is_dev_null = Fn.const false
 end

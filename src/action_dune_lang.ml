@@ -5,13 +5,19 @@ type string = String_with_vars.t
 type path = String_with_vars.t
 type target = String_with_vars.t
 
+module String_with_vars = struct
+  include String_with_vars
+  let is_dev_null = String_with_vars.is_var ~name:"null"
+end
+
 module type Uast = Action_intf.Ast
   with type program = String_with_vars.t
   with type path    = String_with_vars.t
   with type target  = String_with_vars.t
   with type string  = String_with_vars.t
 module rec Uast : Uast = Uast
-include Action_ast.Make(String_with_vars)(String_with_vars)(String_with_vars)(String_with_vars)(Uast)
+include Action_ast.Make(String_with_vars)(String_with_vars)(String_with_vars)
+    (String_with_vars)(Uast)
 
 module Mapper = Action_mapper.Make(Uast)(Uast)
 

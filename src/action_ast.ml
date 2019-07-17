@@ -13,10 +13,16 @@ module Outputs = struct
     | Outputs -> "outputs"
 end
 
+module type Target_intf = sig
+  include Dune_lang.Conv
+
+  val is_dev_null : t -> bool
+end
+
 module Make
     (Program : Dune_lang.Conv)
     (Path    : Dune_lang.Conv)
-    (Target    : Dune_lang.Conv)
+    (Target    : Target_intf)
     (String  : Dune_lang.Conv)
     (Ast : Action_intf.Ast
      with type program := Program.t
@@ -25,6 +31,12 @@ module Make
      with type string  := String.t) =
 struct
   include Ast
+
+  let translate_to_ignore fn output action =
+    if Target.is_dev_null fn then
+      Ignore (output, action)
+    else
+      Redirect (output, fn, action)
 
   let decode =
     let path = Path.decode in
@@ -52,17 +64,17 @@ struct
           (let+ fn = target
            and+ t = t
            in
-           Redirect (Stdout, fn, t))
+           translate_to_ignore fn Stdout t)
         ; "with-stderr-to",
           (let+ fn = target
            and+ t = t
            in
-           Redirect (Stderr, fn, t))
+           translate_to_ignore fn Stderr t)
         ; "with-outputs-to",
           (let+ fn = target
            and+ t = t
            in
-           Redirect (Outputs, fn, t))
+           translate_to_ignore fn Outputs t)
         ; "ignore-stdout",
           (t >>| fun t -> Ignore (Stdout, t))
         ; "ignore-stderr",

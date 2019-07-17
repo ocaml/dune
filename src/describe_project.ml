@@ -20,20 +20,40 @@ module Json = struct
     | Option (Some dyn) -> of_dyn dyn
     | dyn -> Code_error.raise "Json.of_dyn: unsupported case" [ ("dyn", dyn) ]
 
-  let pp_comma = Pp.seq (Pp.text ",") Pp.cut
+  type tag =
+    | Key
+    | String
+    | Symbol
+    | Null
 
-  let surround pre post x = Pp.concat [ Pp.text pre; x; Pp.text post ]
+  let ansi_color =
+    let open Ansi_color.Style in
+    function
+    | Key -> [bold; fg_bright_blue]
+    | String -> [fg_green]
+    | Symbol -> [bold]
+    | Null -> [bold; fg_black]
 
-  let rec (pp : _ -> _ Pp.t) = function
+  let pp_symbol s =
+    Pp.tag ~tag:Symbol (Pp.text s)
+
+  let pp_comma = Pp.seq (pp_symbol ",") Pp.cut
+
+  let surround pre post x = Pp.concat [ pp_symbol pre; x; pp_symbol post ]
+
+  let pp_key s =
+    Pp.tag (Pp.textf "%S:" s) ~tag:Key
+
+  let rec pp = function
     | Record kvs ->
         Pp.concat_map ~sep:pp_comma kvs ~f:pp_kv |> Pp.vbox |> surround "{" "}"
     | List js ->
         Pp.concat_map ~sep:pp_comma js ~f:pp |> Pp.vbox |> surround "[" "]"
-    | String s -> Pp.hbox (Pp.textf "%S" s)
-    | Null -> Pp.text "null"
+    | String s -> Pp.hbox (Pp.tag ~tag:String (Pp.textf "%S" s))
+    | Null -> Pp.tag ~tag:Null (Pp.text "null")
 
   and pp_kv (s, json) =
-    Pp.hvbox (Pp.concat [ Pp.textf "%S:" s; Pp.space; pp json ])
+    Pp.hvbox (Pp.concat [ pp_key s; Pp.space; pp json ])
 end
 
 module Lib_data = struct
@@ -111,4 +131,6 @@ let describe project dune_files ~format =
     Project_data.to_dyn project_data
     |> Json.of_dyn
     |> Json.pp
-    |> Format.printf "%a\n" Pp.render_ignore_tags
+    |> Pp.map_tags ~f:Json.ansi_color
+    |> Ansi_color.print;
+    print_newline ()

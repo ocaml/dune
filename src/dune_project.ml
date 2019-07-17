@@ -716,8 +716,9 @@ let parse ~dir ~lang ~opam_packages ~file =
      let wrapped_executables =
        Option.value wrapped_executables
          ~default:(wrapped_executables_default ~lang) in
+     let dune_version = lang.version in
      let allow_approx_merlin =
-       Option.value ~default:false allow_approx_merlin in
+       Option.value ~default:(dune_version < (1, 9)) allow_approx_merlin in
      let generate_opam_files =
        Option.value ~default:false generate_opam_files in
      let root = dir in
@@ -745,7 +746,7 @@ let parse ~dir ~lang ~opam_packages ~file =
      ; parsing_context
      ; implicit_transitive_deps
      ; wrapped_executables
-     ; dune_version = lang.version
+     ; dune_version
      ; allow_approx_merlin
      ; generate_opam_files
      ; dialects

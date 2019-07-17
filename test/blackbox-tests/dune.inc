@@ -23,6 +23,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name allow_approximate_merlin)
+ (deps (package dune) (source_tree test-cases/allow_approximate_merlin))
+ (action
+  (chdir
+   test-cases/allow_approximate_merlin
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name bad-alias-error)
  (deps (package dune) (source_tree test-cases/bad-alias-error))
  (action
@@ -1638,6 +1646,7 @@
   (alias action-modifying-a-dependency)
   (alias aliases)
   (alias all-alias)
+  (alias allow_approximate_merlin)
   (alias bad-alias-error)
   (alias block-strings)
   (alias byte-code-only)
@@ -1837,6 +1846,7 @@
   (alias action-modifying-a-dependency)
   (alias aliases)
   (alias all-alias)
+  (alias allow_approximate_merlin)
   (alias bad-alias-error)
   (alias block-strings)
   (alias byte-code-only)

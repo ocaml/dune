@@ -26,6 +26,7 @@ let format_arg =
   let values =
     [ ("text", Text)
     ; ("json", JSON)
+    ; ("sexp", Sexp)
     ]
   in
   Arg.

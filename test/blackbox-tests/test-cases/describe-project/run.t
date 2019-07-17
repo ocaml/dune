@@ -20,3 +20,12 @@ It can output data in JSON format:
         }
       ]
     }
+
+And as a S-expression:
+
+  $ dune describe-project --format=sexp
+  ((name "project_name")
+   (libs
+     (((name "lib1")
+       (deps ("lib1-dep1" "lib1-dep2"))
+       (synopsis "What lib1 does")))))

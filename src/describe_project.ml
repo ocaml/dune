@@ -1,6 +1,6 @@
 open Import
 
-type format = Text | JSON
+type format = Text | JSON | Sexp
 
 let dyn_list ~f l = Dyn.List (List.map ~f l)
 
@@ -123,6 +123,24 @@ module Project_data = struct
     { name = Dune_project.name project; libs }
 end
 
+let rec dune_lang_of_dyn : Dyn.t -> Dune_lang.t = function
+  | Record kvs ->
+    List
+      (List.map kvs ~f:(fun (k, v) ->
+         Dune_lang.List
+           [ Atom (Dune_lang.Atom.of_string k)
+           ; dune_lang_of_dyn v
+           ]
+        ))
+  | String s -> Quoted_string s
+  | List l -> List (List.map ~f:dune_lang_of_dyn l)
+  | Option (Some d) -> dune_lang_of_dyn d
+  | Option None -> List []
+  | dyn ->
+    Code_error.raise
+      "dune_lang_of_dyn: unsupported case"
+      [ ("dyn", dyn) ]
+
 let describe project dune_files ~format =
   let project_data = Project_data.of_project project dune_files in
   match format with
@@ -134,3 +152,10 @@ let describe project dune_files ~format =
     |> Pp.map_tags ~f:Json.ansi_color
     |> Ansi_color.print;
     print_newline ()
+  | Sexp ->
+    Project_data.to_dyn project_data
+    |> dune_lang_of_dyn
+    |> Dune_lang.add_loc ~loc:Loc.none
+    |> Dune_lang.Cst.concrete
+    |> List.singleton
+    |> Format.printf "%a" Format_dune_lang.pp_top_sexps

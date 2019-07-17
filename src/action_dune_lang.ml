@@ -3,20 +3,28 @@ open! Stdune
 type program = String_with_vars.t
 type string = String_with_vars.t
 type path = String_with_vars.t
+type target = String_with_vars.t
+
+module String_with_vars = struct
+  include String_with_vars
+  let is_dev_null = String_with_vars.is_var ~name:"null"
+end
 
 module type Uast = Action_intf.Ast
   with type program = String_with_vars.t
   with type path    = String_with_vars.t
+  with type target  = String_with_vars.t
   with type string  = String_with_vars.t
 module rec Uast : Uast = Uast
-include Action_ast.Make(String_with_vars)(String_with_vars)(String_with_vars)(Uast)
+include Action_ast.Make(String_with_vars)(String_with_vars)(String_with_vars)
+    (String_with_vars)(Uast)
 
 module Mapper = Action_mapper.Make(Uast)(Uast)
 
 let upgrade_to_dune =
   let id ~dir:_ p = p in
   let dir = String_with_vars.make_text Loc.none "" in
-  Mapper.map ~dir ~f_program:id ~f_path:id
+  Mapper.map ~dir ~f_program:id ~f_path:id ~f_target:id
     ~f_string:(fun ~dir:_ sw ->
       String_with_vars.upgrade_to_dune sw ~allow_first_dep_var:false)
 
@@ -26,8 +34,9 @@ let remove_locs =
   let dir = String_with_vars.make_text Loc.none "" in
   let f_program ~dir:_ = String_with_vars.remove_locs in
   let f_path ~dir:_ = String_with_vars.remove_locs in
+  let f_target ~dir:_ = String_with_vars.remove_locs in
   let f_string ~dir:_ = String_with_vars.remove_locs in
-  Mapper.map ~dir ~f_program ~f_path ~f_string
+  Mapper.map ~dir ~f_program ~f_path ~f_target ~f_string
 
 let compare_no_locs t1 t2 = compare (remove_locs t1) (remove_locs t2)
 

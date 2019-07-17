@@ -199,7 +199,7 @@ end
 module Targets = struct
   type static =
     {
-      targets : Path.t list;
+      targets : Path.Build.t list;
       multiplicity : Dune_file.Rule.Targets.Multiplicity.t;
     }
 
@@ -396,8 +396,11 @@ let expand_and_record_deps acc ~(dir : Path.Build.t) ~read_package ~dep_kind
         User_error.raise ~loc [
           Pp.textf  "You cannot use %s in %s."
             (String_with_vars.Var.describe pform) context ]
-      | Static { targets = l; multiplicity = declared_multiplicity } ->
-        let value = Value.L.dirs l (* XXX hack to signal no dep *) in
+      | Static { targets; multiplicity = declared_multiplicity } ->
+        let value =
+          List.map ~f:Path.build targets
+          |> Value.L.dirs (* XXX hack to signal no dep *)
+        in
         check_multiplicity
           ~pform ~declaration:declared_multiplicity ~use:multiplicity;
         Some value

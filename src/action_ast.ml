@@ -13,19 +13,35 @@ module Outputs = struct
     | Outputs -> "outputs"
 end
 
+module type Target_intf = sig
+  include Dune_lang.Conv
+
+  val is_dev_null : t -> bool
+end
+
 module Make
     (Program : Dune_lang.Conv)
     (Path    : Dune_lang.Conv)
+    (Target    : Target_intf)
     (String  : Dune_lang.Conv)
     (Ast : Action_intf.Ast
      with type program := Program.t
      with type path    := Path.t
+     with type target  := Target.t
      with type string  := String.t) =
 struct
   include Ast
 
+  let translate_to_ignore fn output action =
+    if Target.is_dev_null fn then
+      Ignore (output, action)
+    else
+      Redirect (output, fn, action)
+
   let decode =
-    let path = Path.decode and string = String.decode in
+    let path = Path.decode in
+    let string = String.decode in
+    let target = Target.decode in
     Dune_lang.Decoder.fix (fun t ->
       sum
         [ "run",
@@ -45,20 +61,20 @@ struct
            in
            Setenv (k, v, t))
         ; "with-stdout-to",
-          (let+ fn = path
+          (let+ fn = target
            and+ t = t
            in
-           Redirect (Stdout, fn, t))
+           translate_to_ignore fn Stdout t)
         ; "with-stderr-to",
-          (let+ fn = path
+          (let+ fn = target
            and+ t = t
            in
-           Redirect (Stderr, fn, t))
+           translate_to_ignore fn Stderr t)
         ; "with-outputs-to",
-          (let+ fn = path
+          (let+ fn = target
            and+ t = t
            in
-           Redirect (Outputs, fn, t))
+           translate_to_ignore fn Outputs t)
         ; "ignore-stdout",
           (t >>| fun t -> Ignore (Stdout, t))
         ; "ignore-stderr",
@@ -76,17 +92,17 @@ struct
           (path >>| fun x -> Cat x)
         ; "copy",
           (let+ src = path
-           and+ dst = path
+           and+ dst = target
            in
            Copy (src, dst))
         ; "copy#",
           (let+ src = path
-           and+ dst = path
+           and+ dst = target
            in
            Copy_and_add_line_directive (src, dst))
         ; "copy-and-add-line-directive",
           (let+ src = path
-           and+ dst = path
+           and+ dst = target
            in
            Copy_and_add_line_directive (src, dst))
         ; "system",
@@ -94,7 +110,7 @@ struct
         ; "bash",
           (string >>| fun cmd -> Bash cmd)
         ; "write-file",
-          (let+ fn = path
+          (let+ fn = target
            and+ s = string
            in
            Write_file (fn, s))
@@ -114,6 +130,7 @@ struct
     let program = Program.encode in
     let string = String.encode in
     let path = Path.encode in
+    let target = Target.encode in
     function
     | Run (a, xs) ->
       List (atom "run" :: program a :: List.map xs ~f:string)
@@ -121,7 +138,7 @@ struct
     | Setenv (k, v, r) -> List [atom "setenv" ; string k ; string v ; encode r]
     | Redirect (outputs, fn, r) ->
       List [ atom (sprintf "with-%s-to" (Outputs.to_string outputs))
-           ; path fn
+           ; target fn
            ; encode r
            ]
     | Ignore (outputs, r) ->
@@ -133,16 +150,16 @@ struct
       List (atom "echo" :: List.map xs ~f:string)
     | Cat x -> List [atom "cat"; path x]
     | Copy (x, y) ->
-      List [atom "copy"; path x; path y]
+      List [atom "copy"; path x; target y]
     | Symlink (x, y) ->
-      List [atom "symlink"; path x; path y]
+      List [atom "symlink"; path x; target y]
     | Copy_and_add_line_directive (x, y) ->
-      List [atom "copy#"; path x; path y]
+      List [atom "copy#"; path x; target y]
     | System x -> List [atom "system"; string x]
     | Bash   x -> List [atom "bash"; string x]
-    | Write_file (x, y) -> List [atom "write-file"; path x; string y]
-    | Rename (x, y) -> List [atom "rename"; path x; path y]
-    | Remove_tree x -> List [atom "remove-tree"; path x]
+    | Write_file (x, y) -> List [atom "write-file"; target x; string y]
+    | Rename (x, y) -> List [atom "rename"; target x; target y]
+    | Remove_tree x -> List [atom "remove-tree"; target x]
     | Mkdir x       -> List [atom "mkdir"; path x]
     | Digest_files paths -> List [atom "digest-files";
                                   List (List.map paths ~f:path)]
@@ -153,12 +170,12 @@ struct
       List [atom "diff"; path file1; path file2]
     | Diff { optional = true; file1; file2; mode = _ } ->
       List [atom "diff?"; path file1; path file2]
-    | Merge_files_into (srcs, extras, target) ->
+    | Merge_files_into (srcs, extras, into) ->
       List
         [ atom "merge-files-into"
         ; List (List.map ~f:path srcs)
         ; List (List.map ~f:string extras)
-        ; path target
+        ; target into
         ]
 
   let run prog args = Run (prog, args)

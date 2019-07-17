@@ -43,6 +43,7 @@ end
 module type Ast = Action_intf.Ast
   with type program = Prog.t
   with type path    = Path.t
+  with type target  = Path.Build.t
   with type string  = String.t
 module rec Ast : Ast = Ast
 
@@ -50,21 +51,26 @@ module String_with_sexp = struct
   type t = string
   let decode = Dune_lang.Decoder.string
   let encode = Dune_lang.Encoder.string
+  let is_dev_null s =
+    Path.equal (Path.of_string s) Config.dev_null
 end
 
-include Action_ast.Make(Prog)(Dpath)(String_with_sexp)(Ast)
+include Action_ast.Make(Prog)(Dpath)(Dpath.Build)(String_with_sexp)(Ast)
 type program = Prog.t
 type path = Path.t
+type target = Path.Build.t
 type string = String.t
 
 module For_shell = struct
   module type Ast = Action_intf.Ast
     with type program = string
     with type path    = string
+    with type target  = string
     with type string  = string
   module rec Ast : Ast = Ast
 
   include Action_ast.Make
+      (String_with_sexp)
       (String_with_sexp)
       (String_with_sexp)
       (String_with_sexp)
@@ -74,23 +80,24 @@ end
 module Relativise = Action_mapper.Make(Ast)(For_shell.Ast)
 
 let for_shell t =
-  let rec loop t ~dir ~f_program ~f_string ~f_path =
+  let rec loop t ~dir ~f_program ~f_string ~f_path ~f_target =
     match t with
     | Symlink (src, dst) ->
       let src =
-        match Path.parent dst with
+        match Path.Build.parent dst with
         | None -> Path.to_string src
-        | Some from -> Path.reach ~from src
+        | Some from -> Path.reach ~from:(Path.build from) src
       in
-      let dst = Path.reach ~from:dir dst in
+      let dst = Path.reach ~from:dir (Path.build dst) in
       For_shell.Symlink (src, dst)
     | t ->
-      Relativise.map_one_step loop t ~dir ~f_program ~f_string ~f_path
+      Relativise.map_one_step loop t ~dir ~f_program ~f_string ~f_path ~f_target
   in
   loop t
     ~dir:Path.root
     ~f_string:(fun ~dir:_ x -> x)
     ~f_path:(fun ~dir x -> Path.reach x ~from:dir)
+    ~f_target:(fun ~dir x -> Path.reach (Path.build x) ~from:dir)
     ~f_program:(fun ~dir x ->
       match x with
       | Ok p -> Path.reach p ~from:dir
@@ -112,6 +119,7 @@ module Unresolved = struct
   module type Uast = Action_intf.Ast
     with type program = Program.t
     with type path    = Path.t
+    with type target  = Path.Build.t
     with type string  = String.t
   module rec Uast : Uast = Uast
   include Uast
@@ -122,6 +130,7 @@ module Unresolved = struct
     map t
       ~dir:Path.root
       ~f_path:(fun ~dir:_ x -> x)
+      ~f_target:(fun ~dir:_ x -> x)
       ~f_string:(fun ~dir:_ x -> x)
       ~f_program:(fun ~dir:_ -> function
         | This p -> Ok p
@@ -166,16 +175,20 @@ let chdirs =
 
 let symlink_managed_paths sandboxed deps ~eval_pred =
   let steps =
-    Path.Set.fold (Dep.Set.paths deps ~eval_pred)
-      ~init:[]
+    Path.Set.fold (Dep.Set.paths deps ~eval_pred) ~init:[]
       ~f:(fun path acc ->
-        if Path.is_managed path then
-          Symlink (path, sandboxed path)::acc
-        else
+        match Path.as_in_build_dir path with
+        | None ->
+          assert (not (Path.is_in_source_tree path));
           acc
-      )
+        | Some p -> Symlink (path, sandboxed p) :: acc)
   in
   Progn steps
+
+let maybe_sandbox_path f p =
+  match Path.as_in_build_dir p with
+  | None -> p
+  | Some p -> Path.build (f p)
 
 let sandbox t ~sandboxed ~deps ~targets ~eval_pred : t =
   Progn
@@ -183,9 +196,10 @@ let sandbox t ~sandboxed ~deps ~targets ~eval_pred : t =
     ; map t
         ~dir:Path.root
         ~f_string:(fun ~dir:_ x -> x)
-        ~f_path:(fun ~dir:_ p -> sandboxed p)
-        ~f_program:(fun ~dir:_ x -> Result.map x ~f:sandboxed)
+        ~f_path:(fun ~dir:_ p -> maybe_sandbox_path sandboxed p)
+        ~f_target:(fun ~dir:_ -> sandboxed)
+        ~f_program:(fun ~dir:_ ->
+          Result.map ~f:(maybe_sandbox_path sandboxed))
     ; Progn (List.filter_map targets ~f:(fun path ->
-        let path = Path.build path in
         Some (Rename (sandboxed path, path))))
     ]

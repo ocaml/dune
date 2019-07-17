@@ -8,32 +8,34 @@ open Action_unexpanded.Infer.Outcome;;
 Stdune.Path.Build.set_build_dir (Path.Build.Kind.of_string "_build");;
 
 let p = Path.of_string;;
+let b = Path.Build.of_string;;
+let pb x = Path.build (Path.Build.of_string x);;
 let infer (a : Action.t) =
   let x = Action_unexpanded.Infer.infer a in
   (List.map (Path.Set.to_list x.deps) ~f:Path.to_string,
-   List.map (Path.Set.to_list x.targets) ~f:Path.to_string)
+   List.map (Path.Build.Set.to_list x.targets) ~f:Path.Build.to_string)
 [%%ignore]
 
-infer (Copy (p "a", p "b"));;
+infer (Copy (p "a", b "b"));;
 [%%expect{|
-- : string list * string list = (["a"], ["b"])
+- : string list * string list = (["a"], ["_build/b"])
 |}]
 
 infer (Progn
-         [ Copy (p "a", p "b")
-         ; Copy (p "b", p "c")
+         [ Copy (p "a", b "b")
+         ; Copy (pb "b", b "c")
          ]);;
 [%%expect{|
-- : string list * string list = (["a"], ["b"; "c"])
+- : string list * string list = (["a"], ["_build/b"; "_build/c"])
 |}]
 
 (* CR-someday jdimino: ideally "b" should be treated as a non-buildable targets. As long
    as [rename] is not available in the DSL given to user, we don't need to care about this
    too much. *)
 infer (Progn
-         [ Copy (p "a", p "b")
-         ; Rename (p "b", p "c")
+         [ Copy (p "a", b "b")
+         ; Rename (b "b", b "c")
          ]);;
 [%%expect{|
-- : string list * string list = (["a"], ["b"; "c"])
+- : string list * string list = (["a"], ["_build/b"; "_build/c"])
 |}]

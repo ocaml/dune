@@ -694,30 +694,24 @@ module Action = struct
       | Infer -> U.Infer.partial t ~all_targets:true
       | Static { targets = targets_written_by_user; multiplicity = _ } ->
         let targets_written_by_user =
-          Path.Set.of_list targets_written_by_user
+          Path.Build.Set.of_list targets_written_by_user
         in
         let { U.Infer.Outcome. deps; targets } =
           U.Infer.partial t ~all_targets:false
         in
-        { deps; targets = Path.Set.union targets targets_written_by_user }
+        { deps
+        ; targets = Path.Build.Set.union targets targets_written_by_user
+        }
       | Forbidden _ ->
         let { U.Infer.Outcome. deps; targets = _ } =
           U.Infer.partial t ~all_targets:false
         in
-        { deps; targets = Path.Set.empty }
+        { U.Infer.Outcome.
+          deps
+        ; targets = Path.Build.Set.empty
+        }
     in
-    let targets =
-      Path.Set.fold ~init:[] targets
-        ~f:(fun p acc ->
-          match Path.as_in_build_dir p with
-          | Some p -> p :: acc
-          | None ->
-            User_error.raise ~loc
-              [ Pp.textf "target %s is outside the build \
-                          directory. This is not allowed."
-                  (Path.to_string_maybe_quoted p)
-              ])
-    in
+    let targets = Path.Build.Set.to_list targets in
     List.iter targets ~f:(fun target ->
       if Path.Build.(<>) (Path.Build.parent_exn target) targets_dir then
         User_error.raise ~loc

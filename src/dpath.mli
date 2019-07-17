@@ -26,3 +26,8 @@ module Local : sig
 
   val decode : dir:Path.t -> Path.t Dune_lang.Decoder.t
 end
+
+module Build : sig
+  include Dune_lang.Conv with type t = Path.Build.t
+  val is_dev_null : t -> bool
+end

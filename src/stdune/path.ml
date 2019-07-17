@@ -1028,19 +1028,6 @@ let drop_optional_build_context_src_exn t =
          "drop_optional_build_context_src_exn called on a build directory itself" [])
   | In_source_tree p -> p
 
-let local_src   = Local.of_string "src"
-let local_build = Local.of_string "build"
-
-let sandbox_managed_paths =
-  let append_local ~sandbox_dir local_x p =
-    in_build_dir (Build.append_local sandbox_dir (Local.append local_x p))
-  in
-  fun ~(sandbox_dir : Build.t) t ->
-    match t with
-    | External _ -> t
-    | In_source_tree p -> append_local ~sandbox_dir local_src p
-    | In_build_dir   p -> append_local ~sandbox_dir local_build p
-
 let split_first_component t =
   match kind t, is_root t with
   | In_source_dir t, false ->

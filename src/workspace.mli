@@ -18,6 +18,7 @@ module Context : sig
       ; toolchain    : string option
       ; name         : string
       ; host_context : string option
+      ; add_to_path  : string list
       }
   end
   module Opam : sig

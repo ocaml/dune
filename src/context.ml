@@ -27,25 +27,6 @@ module Env_nodes = struct
     ; workspace: Dune_env.Stanza.t option
     }
 
-  let extra_path ~profile ~cwd env_nodes =
-    let make_path l =
-      let open Option.O in
-      Option.value
-        ~default:[]
-        (let* stanza = l in
-         let+ {add_to_path; _} = Dune_env.Stanza.find stanza ~profile
-         in
-         List.map ~f:(fun s ->
-           let s =
-             if Filename.is_relative s then Filename.concat cwd s
-             else s
-           in
-           Path.of_string s
-         ) add_to_path)
-    in
-    make_path env_nodes.context @
-    make_path env_nodes.workspace
-
   let extra_env ~profile env_nodes =
     let make_env l =
       let open Option.O in
@@ -225,8 +206,17 @@ let ocamlfind_printconf_path ~env ~ocamlfind ~toolchain =
   let+ l = Process.run_capture_lines ~env Strict ocamlfind args in
   List.map l ~f:Path.of_filename_relative_to_initial_cwd
 
+let extra_path ~cwd add_to_path =
+  List.map ~f:(fun s ->
+    let s =
+      if Filename.is_relative s then Filename.concat cwd s
+      else s
+    in
+    Path.of_string s
+  ) add_to_path
+
 let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
-      ~host_context ~host_toolchain ~profile =
+      ~host_context ~host_toolchain ~profile ~add_to_path =
   let opam_var_cache = Hashtbl.create 128 in
   (match kind with
    | Opam { root = Some root; _ } ->
@@ -236,7 +226,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     Utils.program_not_found prog ~context:name ~loc:None
   in
   let cwd = Sys.getcwd () in
-  let extra_path = Env_nodes.extra_path ~profile ~cwd env_nodes in
+  let extra_path = extra_path ~cwd add_to_path in
   let env = List.fold_right ~init:env ~f:(fun dir env -> Env.cons_path env ~dir) extra_path in
   let path = extra_path @ path in
   let which_cache = Hashtbl.create 128 in
@@ -565,9 +555,10 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
 let opam_config_var t var =
   opam_config_var ~env:t.env ~cache:t.opam_var_cache var
 
-let default ~merlin ~env_nodes ~env ~targets =
+let default ~merlin ~env_nodes ~env ~targets ~add_to_path  =
   let path = Env.path Env.initial in
   create ~kind:Default ~path ~env ~env_nodes ~merlin ~targets
+    ~add_to_path
 
 let opam_version =
   let res = ref None in
@@ -594,7 +585,8 @@ let opam_version =
       Fiber.Future.wait future
 
 let create_for_opam ~root ~env ~env_nodes ~targets ~profile
-      ~switch ~name ~merlin ~host_context ~host_toolchain =
+      ~switch ~name ~merlin ~host_context ~host_toolchain
+      ~add_to_path =
   let opam =
     match Lazy.force opam with
     | None -> Utils.program_not_found "opam" ~loc:None
@@ -638,7 +630,7 @@ let create_for_opam ~root ~env ~env_nodes ~targets ~profile
   in
   let env = Env.extend env ~vars in
   create ~kind:(Opam { root; switch }) ~profile ~targets ~path ~env ~env_nodes
-    ~name ~merlin ~host_context ~host_toolchain
+    ~name ~merlin ~host_context ~host_toolchain ~add_to_path
 
 let instantiate_context env (workspace : Workspace.t)
       ~(context : Workspace.Context.t) ~host_context =
@@ -651,7 +643,7 @@ let instantiate_context env (workspace : Workspace.t)
   in
   match context with
   | Default { targets; name; host_context = _; profile; env = _
-            ; toolchain ; loc = _ } ->
+            ; toolchain ; add_to_path; loc = _ } ->
     let merlin =
       workspace.merlin_context = Some (Workspace.Context.name context)
     in
@@ -661,12 +653,12 @@ let instantiate_context env (workspace : Workspace.t)
       | None -> Env.get env "OCAMLFIND_TOOLCHAIN"
     in
     default ~env ~env_nodes ~profile ~targets ~name ~merlin ~host_context
-      ~host_toolchain
+      ~host_toolchain ~add_to_path
   | Opam { base = { targets; name; host_context = _; profile; env = _
-                  ; toolchain; loc = _ }
+                  ; toolchain; add_to_path; loc = _ }
          ; switch; root; merlin } ->
     create_for_opam ~root ~env_nodes ~env ~profile ~switch ~name ~merlin
-      ~targets ~host_context ~host_toolchain:toolchain
+      ~targets ~host_context ~host_toolchain:toolchain ~add_to_path
 
 let create ~env (workspace : Workspace.t) =
   let rec contexts : t list Fiber.Once.t String.Map.t Lazy.t = lazy (

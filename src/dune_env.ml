@@ -39,6 +39,7 @@ module Stanza = struct
     ; env_vars       : Env.t
     ; binaries       : File_binding.Unexpanded.t list
     ; inline_tests   : Inline_tests.t option
+    ; add_to_path    : string list
     }
 
   type pattern =
@@ -76,12 +77,16 @@ module Stanza = struct
                       (Syntax.since Stanza.syntax (1, 6)
                        >>> File_binding.Unexpanded.L.decode)
     and+ inline_tests = inline_tests_field
+    and+ add_to_path =
+      field "add-to-path" ~default:[]
+        (Syntax.since Stanza.syntax (1, 12) >>> list string)
     in
     { flags
     ; c_flags
     ; env_vars
     ; binaries
     ; inline_tests
+    ; add_to_path
     }
 
   let rule =

@@ -27,6 +27,25 @@ module Env_nodes = struct
     ; workspace: Dune_env.Stanza.t option
     }
 
+  let extra_path ~profile ~cwd env_nodes =
+    let make_path l =
+      let open Option.O in
+      Option.value
+        ~default:[]
+        (let* stanza = l in
+         let+ {add_to_path; _} = Dune_env.Stanza.find stanza ~profile
+         in
+         List.map ~f:(fun s ->
+           let s =
+             if Filename.is_relative s then Filename.concat cwd s
+             else s
+           in
+           Path.of_string s
+         ) add_to_path)
+    in
+    make_path env_nodes.context @
+    make_path env_nodes.workspace
+
   let extra_env ~profile env_nodes =
     let make_env l =
       let open Option.O in
@@ -216,6 +235,10 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
   let prog_not_found_in_path prog =
     Utils.program_not_found prog ~context:name ~loc:None
   in
+  let cwd = Sys.getcwd () in
+  let extra_path = Env_nodes.extra_path ~profile ~cwd env_nodes in
+  let env = List.fold_right ~init:env ~f:(fun dir env -> Env.cons_path env ~dir) extra_path in
+  let path = extra_path @ path in
   let which_cache = Hashtbl.create 128 in
   let which x = which ~cache:which_cache ~path x in
   let which_exn x =
@@ -374,7 +397,6 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
         env
     in
     let env =
-      let cwd = Sys.getcwd () in
       let extend_var var ?(path_sep=Bin.path_sep) v =
         let v = Filename.concat cwd (Path.to_string v) in
         match Env.get env var with

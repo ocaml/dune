@@ -19,6 +19,7 @@ module Stanza : sig
     ; env_vars       : Env.t
     ; binaries       : File_binding.Unexpanded.t list
     ; inline_tests   : Inline_tests.t option
+    ; add_to_path    : string list
     }
 
   type pattern =

@@ -1,0 +1,120 @@
+open! Stdune
+open Dyn.Encoder
+
+let () = Printexc.record_backtrace false
+
+let print pp = Format.printf "%a@." Pp.render_ignore_tags pp
+let print_dyn dyn = print (Dyn.pp dyn)
+
+let take s n =
+  String.take s n
+  |> string
+  |> print_dyn
+
+let drop s n =
+  String.drop s n
+  |> string
+  |> print_dyn
+
+let split_n s n =
+  String.split_n s n
+  |> pair string string
+  |> print_dyn
+
+let%expect_test _ =
+  take "foobar" 3;
+  [%expect{|
+"foo"
+|}]
+
+let%expect_test _ =
+  take "foobar" 0;
+  [%expect{|
+""
+|}]
+
+let%expect_test _ =
+  take "foo" 10;
+  [%expect{|
+"foo"
+|}]
+
+let%expect_test _ =
+  take "" 10;
+  [%expect{|
+""
+|}]
+
+let%expect_test _ =
+  take "" 0;
+  [%expect{|
+""
+|}]
+
+let%expect_test _ =
+  drop "" 0;
+  [%expect{|
+""
+|}]
+
+let%expect_test _ =
+  drop "foo" 0;
+  [%expect{|
+"foo"
+|}]
+
+let%expect_test _ =
+  drop "foo" 5;
+  [%expect{|
+""
+|}]
+
+let%expect_test _ =
+  drop "foobar" 3;
+  [%expect{|
+"bar"
+|}]
+
+let%expect_test _ =
+  split_n "foobar" 3;
+  [%expect{|
+("foo", "bar")
+|}]
+
+let%expect_test _ =
+  split_n "foobar" 10;
+  [%expect{|
+("foobar", "")
+|}]
+
+let%expect_test _ =
+  split_n "foobar" 0;
+  [%expect{|
+("", "foobar")
+|}]
+
+let%expect_test _ =
+  split_n "foobar" 6;
+  [%expect{|
+("foobar", "")
+|}]
+
+let%expect_test _ =
+  split_n "" 0;
+  [%expect{|
+("", "")
+|}]
+
+let%expect_test _ =
+  split_n "" 10;
+  [%expect{|
+("", "")
+|}]
+
+let%expect_test _ =
+  String.longest_prefix ["food"; "foo"; "foo-bar"]
+  |> string
+  |> print_dyn;
+  [%expect{|
+"foo"
+|}]

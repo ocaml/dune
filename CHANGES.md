@@ -40,6 +40,8 @@
 - Stub names are no longer allowed relative paths. This was previously a warning
   and is now an error (#2443, @rgrinberg).
 
+- Add (paths ...) in (context ...) definitions. (#2426, @nojb)
+
 1.11.0 (23/07/2019)
 -------------------
 

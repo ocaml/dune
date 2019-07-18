@@ -500,6 +500,10 @@ context or can be the description of an opam switch, as follows:
 - ``(host <host_context>)`` choose a different context to build binaries that
   are meant to be executed on the host machine, such as preprocessors.
 
+- ``(add-to-path <string list>)`` allows to extend the value of the PATH for the
+  context. The resulting value of PATH will be used for binary resolution
+  (including for the compiler tools).
+
 Both ``(default ...)`` and ``(opam ...)`` accept a ``targets`` field in order to
 setup cross compilation. See :ref:`advanced-cross-compilation` for more
 information.

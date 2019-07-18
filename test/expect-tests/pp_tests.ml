@@ -1,41 +1,34 @@
-(* -*- tuareg -*- *)
-open! Stdune;;
-
-#warnings "-40";;
+open! Stdune
 
 let pp pp =
   Format.printf "%a@." Pp.render_ignore_tags pp
-;;
-
-[%%ignore]
 
 let enum_x_and_y =
   Pp.enumerate
-      [ Array.make 50 "x"
-      ; Array.make 50 "y"
-      ]
-      ~f:(fun a -> Pp.concat_map (Array.to_list a) ~sep:Pp.space ~f:Pp.verbatim)
-[%%ignore]
+    [ Array.make 50 "x"
+    ; Array.make 50 "y"
+    ]
+    ~f:(fun a -> Pp.concat_map (Array.to_list a) ~sep:Pp.space ~f:Pp.verbatim)
 
-pp enum_x_and_y
-[%%expect{|
+let%expect_test _ =
+  pp enum_x_and_y;
+  [%expect{|
 - x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x
   x x x x x x x x x x x x
 - y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y
   y y y y y y y y y y y y
-- : unit = ()
 |}]
 
-pp (Pp.enumerate
-      [ Pp.enumerate [ "abc"; "def" ] ~f:Pp.text
-      ; enum_x_and_y
-      ] ~f:Fn.id)
-[%%expect{|
+let%expect_test _ =
+  pp (Pp.enumerate
+        [ Pp.enumerate [ "abc"; "def" ] ~f:Pp.text
+        ; enum_x_and_y
+        ] ~f:Fn.id);
+    [%expect{|
 - - abc
   - def
 - - x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x
     x x x x x x x x x x x x x
   - y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y
     y y y y y y y y y y y y y
-- : unit = ()
 |}]

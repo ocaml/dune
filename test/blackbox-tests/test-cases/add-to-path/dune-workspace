@@ -2,4 +2,4 @@
 
 (context
  (default
-   (env (_ (add-to-path bin)))))
+   (add-to-path bin)))

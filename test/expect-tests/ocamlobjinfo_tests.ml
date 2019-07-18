@@ -1,14 +1,8 @@
-(* -*- tuareg -*- *)
-open Dune;;
-open! Stdune;;
+open Dune
+open! Stdune
 
-let pp ppf ooi =
-  Format.fprintf ppf "%a" Pp.render_ignore_tags
-    (Ocamlobjinfo.to_dyn ooi |> Dyn.pp)
-;;
-#install_printer pp;;
-
-[%%ignore]
+let print pp = Format.printf "%a@." Pp.render_ignore_tags pp
+let print_dyn dyn = print (Dyn.pp dyn)
 
 let fixture = {ocamlobjinfo|
 File _build/install/default/lib/dune/_stdune/stdune__Env.cmx
@@ -82,11 +76,14 @@ Send functions:
 Force link: no
 |ocamlobjinfo}
 
-[%%ignore]
+let parse s =
+  Ocamlobjinfo.parse s
+  |> Ocamlobjinfo.to_dyn
+  |> print_dyn
 
-Ocamlobjinfo.parse fixture;;
-[%%expect{|
-- : Ocamlobjinfo.t =
+let%expect_test _ =
+  parse fixture;
+  [%expect{|
 {impl =
    set {"Printf"; "Stdune__Array"; "Stdune__Bin"; "Stdune__Exn";
    "Stdune__List"; "Stdune__Map"; "Stdune__Set"; "Stdune__Sexp";

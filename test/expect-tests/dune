@@ -4,7 +4,7 @@
   (deps
    (source_tree ../unit-tests/findlib-db)
    (source_tree ../unit-tests/toolchain.d)))
- (libraries stdune dune wp_dune fiber dune_lang
+ (libraries stdune dune wp_dune fiber dune_lang memo
             ;; This is because of the (implicit_transitive_deps false)
             ;; in dune-project
             ppx_expect.config

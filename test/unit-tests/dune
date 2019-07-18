@@ -26,20 +26,6 @@
 
 (alias
  (name runtest)
- (deps (:t fiber.mlt)
-  (glob_files %{project_root}/src/.dune.objs/byte/*.cmi)
-  (glob_files %{project_root}/src/stdune/.stdune.objs/byte/*.cmi)
-  (glob_files %{project_root}/src/fiber/.fiber.objs/byte/*.cmi))
- (action (chdir %{project_root}
-          (progn
-           (run %{exe:expect_test.exe} %{t})
-           (diff? %{t} %{t}.corrected))))
- (enabled_if (>= %{ocaml_version} "4.07.0"))
- ;Raise not found under ocaml 4.05.0
-)
-
-(alias
- (name runtest)
  (deps (:t import_dot_map.mlt)
   (glob_files %{project_root}/src/.dune.objs/byte/*.cmi)
   (glob_files %{project_root}/src/stdune/.stdune.objs/byte/*.cmi))

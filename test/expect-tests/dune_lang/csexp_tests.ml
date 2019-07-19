@@ -2,6 +2,8 @@ open Stdune
 open Stdune.Csexp
 open Dune_tests_common
 
+let () = init ()
+
 let roundtrip x =
   let str = to_string x in
   match parse (Stream.of_string str) with

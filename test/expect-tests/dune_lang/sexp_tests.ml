@@ -2,7 +2,7 @@ open! Stdune
 open Dune_lang.Decoder
 open Dune_tests_common
 
-let () = Printexc.record_backtrace false
+let () = init ()
 let print_loc ppf (_ : Loc.t) = Format.pp_print_string ppf "<loc>"
 
 let sexp = lazy (Dune_lang.parse_string ~fname:"" ~mode:Single {|

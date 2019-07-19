@@ -1,6 +1,8 @@
 open Stdune
 open Dune_tests_common
 
+let () = init ()
+
 (* Check that [of_alist_multi] groups elements in the right order *)
 let%expect_test _ =
   let open Dyn.Encoder in

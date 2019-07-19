@@ -1,14 +1,14 @@
 open! Stdune
 open Path
+open Dune_tests_common
+
+let () = Dune_tests_common.init ()
 
 let r = Path.(relative root)
 let e = Path.of_filename_relative_to_initial_cwd
 
 let pp_path_local fmt l =
   Format.pp_print_string fmt (Path.Local.to_string l)
-
-let print pp = Format.printf "%a@." Pp.render_ignore_tags pp
-let print_dyn dyn = print (Dyn.pp dyn)
 
 let of_filename_relative_to_initial_cwd s =
   Path.of_filename_relative_to_initial_cwd s

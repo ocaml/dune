@@ -1,4 +1,7 @@
 open Stdune
+open Dune_tests_common
+
+let () = init ()
 
 let print = Printf.printf "%s\n"
 

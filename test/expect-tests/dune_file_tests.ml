@@ -2,6 +2,8 @@ open Dune
 open! Stdune
 open Dune_tests_common
 
+let () = init ()
+
 (* Dune_file.Executables.Link_mode.decode *)
 let test s =
   Dune_lang.Decoder.parse Dune_file.Executables.Link_mode.decode Univ_map.empty

@@ -1,5 +1,7 @@
 open! Stdune
 
+let () = Dune_tests_common.init ()
+
 let pp pp =
   Format.printf "%a@." Pp.render_ignore_tags pp
 

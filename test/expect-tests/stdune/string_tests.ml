@@ -2,6 +2,8 @@ open! Stdune
 open Dyn.Encoder
 open Dune_tests_common
 
+let () = init ()
+
 let take s n =
   String.take s n
   |> string

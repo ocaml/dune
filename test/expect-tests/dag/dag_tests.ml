@@ -1,6 +1,8 @@
 open Stdune
 open Dune_tests_common
 
+let () = init ()
+
 type mynode = {
   name : string;
 }

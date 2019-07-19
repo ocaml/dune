@@ -3,6 +3,8 @@ open Dune
 open Fiber.O
 open! Dune_tests_common
 
+let () = init ()
+
 let printf = Printf.printf
 
 let temp_dir = lazy (Path.of_string "vcs-tests")

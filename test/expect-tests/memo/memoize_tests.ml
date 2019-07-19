@@ -4,6 +4,8 @@ module Caml_lazy = Lazy
 open Memo
 open Dune_tests_common
 
+let () = init ()
+
 let string_fn_create =
   fun name ->
     Memo.create

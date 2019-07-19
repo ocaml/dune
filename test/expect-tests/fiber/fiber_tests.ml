@@ -4,7 +4,7 @@ open Fiber.O
 open Dyn.Encoder
 open Dune_tests_common
 
-let () = Printexc.record_backtrace false
+let () = init ()
 
 let failing_fiber () : unit Fiber.t =
   Fiber.yield ()

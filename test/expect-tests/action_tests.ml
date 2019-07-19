@@ -3,6 +3,8 @@ open Dune
 open Action_unexpanded.Infer.Outcome
 open Dune_tests_common
 
+let () = init ()
+
 let p = Path.of_string
 let b = Path.Build.of_string
 let pb x = Path.build (Path.Build.of_string x)

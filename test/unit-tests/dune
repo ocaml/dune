@@ -15,17 +15,3 @@
 (alias
  (name runtest)
  (action (run ./sexp_tests.exe)))
-
-(alias
- (name runtestdag)
- (deps (:t dag.mlt)
-  (glob_files %{project_root}/src/stdune/.stdune.objs/byte/*.cmi)
-  (glob_files %{project_root}/src/dag/.dag.objs/byte/*.cmi))
- (action (chdir %{project_root}
-          (progn
-           (run %{exe:expect_test.exe} %{t})
-           (diff? %{t} %{t}.corrected)))))
-
-(alias
- (name runtest)
- (deps (alias runtestdag)))

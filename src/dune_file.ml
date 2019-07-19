@@ -236,6 +236,7 @@ module Dep_conf = struct
     | Package of String_with_vars.t
     | Universe
     | Env_var of String_with_vars.t
+    | Sandbox_config of Sandbox_config.t
 
   let remove_locs = function
     | File sw -> File (String_with_vars.remove_locs sw)
@@ -246,6 +247,7 @@ module Dep_conf = struct
     | Package sw -> Package (String_with_vars.remove_locs sw)
     | Universe -> Universe
     | Env_var sw -> Env_var sw
+    | Sandbox_config s -> Sandbox_config s
 
   let decode =
     let decode =
@@ -298,6 +300,11 @@ module Dep_conf = struct
     | Env_var t ->
       List [ Dune_lang.unsafe_atom_of_string "env_var"
            ; String_with_vars.encode t]
+    | Sandbox_config config ->
+      if Sandbox_config.equal config Sandbox_config.no_special_requirements
+      then
+        List []
+      else Code_error.raise "There's no syntax for [Sandbox_config] yet" []
 
   let to_dyn t = Dune_lang.to_dyn (encode t)
 end
@@ -434,7 +441,7 @@ module Per_module = struct
             let+ x =
               repeat
                 (let+ (pp, names) = pair a (list module_name) in
-                (names, pp))
+                 (names, pp))
             in
             of_mapping x ~default
             |> function
@@ -442,7 +449,7 @@ module Per_module = struct
             | Error (name, _, _) ->
               User_error.raise ~loc
                 [ Pp.textf "module %s present in two different sets"
-                (Module.Name.to_string name) ]
+                    (Module.Name.to_string name) ]
           ]
     | _ -> a >>| for_all
 end
@@ -536,7 +543,7 @@ module Lib_dep = struct
             Option.iter (Lib_name.Set.choose common) ~f:(fun name ->
               User_error.raise ~loc
                 [ Pp.textf "library %S is both required and forbidden in this clause"
-                (Lib_name.to_string name) ]);
+                    (Lib_name.to_string name) ]);
             { required
             ; forbidden
             ; file
@@ -593,19 +600,19 @@ module Lib_deps = struct
         match kind, kind' with
         | Required, Required ->
           User_error.raise ~loc [ Pp.textf "library %S is present twice"
-            (Lib_name.to_string name) ]
+                                    (Lib_name.to_string name) ]
         | (Optional|Forbidden), (Optional|Forbidden) ->
           acc
         | Optional, Required | Required, Optional ->
           User_error.raise ~loc
             [ Pp.textf "library %S is present both as an optional \
-             and required dependency"
-            (Lib_name.to_string name) ]
+                        and required dependency"
+                (Lib_name.to_string name) ]
         | Forbidden, Required | Required, Forbidden ->
           User_error.raise ~loc
             [ Pp.textf "library %S is present both as a forbidden \
-             and required dependency"
-            (Lib_name.to_string name) ]
+                        and required dependency"
+                (Lib_name.to_string name) ]
     in
     ignore (
       List.fold_left t ~init:Lib_name.Map.empty ~f:(fun acc x ->
@@ -1434,16 +1441,16 @@ module Executables = struct
           else
             User_error.raise ~loc
               [ Pp.textf "%s field may not be omitted before dune version %s"
-              (pluralize ~multi "name")
-              (Syntax.Version.to_string allow_omit_names_version) ]
+                  (pluralize ~multi "name")
+                  (Syntax.Version.to_string allow_omit_names_version) ]
         | None, None ->
           if dune_syntax >= allow_omit_names_version then
             User_error.raise ~loc [ Pp.textf "either the %s or the %s field must be present"
-              (pluralize ~multi "name")
-              (pluralize ~multi "public_name") ]
+                                      (pluralize ~multi "name")
+                                      (pluralize ~multi "public_name") ]
           else
             User_error.raise ~loc [ Pp.textf "field %s is missing"
-              (pluralize ~multi "name") ]
+                                      (pluralize ~multi "name") ]
       in
       let public =
         match package, public_names with
@@ -1587,7 +1594,7 @@ module Executables = struct
              (mem t native_shared_object && mem t shared_object) then
             User_error.raise ~loc
               [ Pp.textf "It is not allowed use both native and best \
-               for the same binary kind." ]
+                          for the same binary kind." ]
           else
             t
 
@@ -1616,7 +1623,7 @@ module Executables = struct
   let common =
     let+ buildable = Buildable.decode
     and+ (_ : bool) = field "link_executables" ~default:true
-                       (Syntax.deleted_in Stanza.syntax (1, 0) >>> bool)
+                        (Syntax.deleted_in Stanza.syntax (1, 0) >>> bool)
     and+ link_deps = field "link_deps" (list Dep_conf.decode) ~default:[]
     and+ link_flags = field_oslu "link_flags"
     and+ modes = field "modes" Link_mode.Set.decode ~default:Link_mode.Set.default
@@ -2203,7 +2210,7 @@ module Tests = struct
        and+ package = field_o "package" Pkg.decode
        and+ locks = field "locks" (list String_with_vars.decode) ~default:[]
        and+ modes = field "modes" Executables.Link_mode.Set.decode
-                     ~default:Executables.Link_mode.Set.default
+                      ~default:Executables.Link_mode.Set.default
        and+ deps =
          field "deps" (Bindings.decode Dep_conf.decode) ~default:Bindings.empty
        and+ enabled_if = enabled_if ~since:(Some (1, 4))

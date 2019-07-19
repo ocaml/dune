@@ -120,7 +120,6 @@ module Internal_rule = struct
       ; info             : Rule.Info.t
       ; dir              : Path.Build.t
       ; env              : Env.t option
-      ; sandbox          : Sandbox_config.t
       ; locks            : Path.t list
       ; (* Reverse dependencies discovered so far, labelled by the
            requested target *)
@@ -166,7 +165,6 @@ module Internal_rule = struct
     ; info        = Internal
     ; dir         = Path.Build.root
     ; env         = None
-    ; sandbox     = Sandbox_config.no_special_requirements
     ; locks       = []
     ; rev_deps    = []
     ; transitive_rev_deps = Id.Set.empty
@@ -721,7 +719,6 @@ end = struct
         ; env
         ; build
         ; targets
-        ; sandbox
         ; mode
         ; locks
         ; info
@@ -739,7 +736,6 @@ end = struct
       ; build
       ; context
       ; env
-      ; sandbox
       ; locks
       ; mode
       ; info
@@ -1348,7 +1344,9 @@ end = struct
       | File f -> build_file f
       | Glob g -> Pred.build g
       | Universe
-      | Env _ -> Fiber.return ())
+      | Env _ -> Fiber.return ()
+      | Sandbox_config _ -> Fiber.return ()
+    )
 
   let eval_pred = Pred.eval
 
@@ -1442,7 +1440,6 @@ end = struct
         ; env
         ; context
         ; mode
-        ; sandbox
         ; locks
         ; id = _
         ; static_deps = _
@@ -1459,7 +1456,9 @@ end = struct
     let head_target = List.hd targets_as_list in
     let prev_trace = Trace.get (Path.build head_target) in
     let sandbox_mode =
-      select_sandbox_mode sandbox ~sandboxing_preference:t.sandboxing_preference
+      select_sandbox_mode
+        (Dep.Set.sandbox_config deps)
+        ~sandboxing_preference:t.sandboxing_preference
     in
     let rule_digest =
       let env =
@@ -1469,11 +1468,10 @@ end = struct
         | None, Some c -> c.env
       in
       let trace =
-        ( Dep.Set.trace deps ~env ~eval_pred
+        ( Dep.Set.trace deps ~sandbox_mode ~env ~eval_pred
         , List.map targets_as_list ~f:(fun p -> Path.to_string (Path.build p))
         , Option.map context ~f:(fun c -> c.name)
         , Action.for_shell action
-        , (sandbox_mode : Sandbox_mode.t)
         )
       in
       Digest.generic trace

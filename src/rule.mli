@@ -19,7 +19,6 @@ type t =
   ; env      : Env.t option
   ; build    : (unit, Action.t) Build.t
   ; targets  : Path.Build.Set.t
-  ; sandbox  : Sandbox_config.t
   ; mode     : Dune_file.Rule.Mode.t
   ; locks    : Path.t list
   ; info     : Info.t

@@ -1,13 +1,21 @@
 open! Stdune
 
-(** A function [Sandbox_mode.t -> bool] returning true if the rule is expected
-    to work correctly (respecting its specified dependencies) in this mode. *)
-
-type t = {
-  none : bool;
-  symlink : bool;
-  copy : bool;
+type 'a gen = {
+  none : 'a;
+  symlink : 'a;
+  copy : 'a;
 }
+
+(** A set of sandbox modes in which the rule is expected
+    to work correctly. *)
+type t = bool gen
+
+val compare : t -> t -> Ordering.t
+
+val equal : t -> t -> bool
+
+(** Computes the intersection of allowed sandbox modes *)
+val inter : t -> t -> t
 
 val no_special_requirements : t
 
@@ -30,3 +38,24 @@ val default : t
     terrible assumption.
 *)
 val user_rule : t
+
+val disallow : Sandbox_mode.t -> t
+
+val mem : t -> Sandbox_mode.t -> bool
+
+module Partial : sig
+  type t = bool option gen
+
+  (** [merge] distributes across [inter] when there is no error, but it can
+      detect a nonsensical configuration where [inter] can't.
+
+      Can raise a User_error.
+  *)
+  val merge : loc:Loc.t -> t list -> bool gen
+
+  val no_special_requirements : t
+
+  val no_sandboxing : t
+
+  val needs_sandboxing : t
+end

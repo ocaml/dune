@@ -1,10 +1,27 @@
 open! Stdune
 
-type t = {
-  none : bool;
-  symlink : bool;
-  copy : bool;
+type 'a gen = {
+  none : 'a;
+  symlink : 'a;
+  copy : 'a;
 }
+
+type t = bool gen
+
+let compare_gen compare x y =
+  let compare_k a b k =
+    match compare a b with
+    | Eq -> k ()
+    | Lt -> Lt
+    | Gt -> Gt
+  in
+  compare_k x.none y.none (fun () ->
+    compare_k x.symlink y.symlink (fun () ->
+      compare x.copy y.copy
+    )
+  )
+
+let compare = compare_gen Bool.compare
 
 let of_function (f : Sandbox_mode.t -> _) = {
   none = f None;
@@ -23,3 +40,84 @@ let needs_sandboxing =
 let default = no_special_requirements
 
 let user_rule = no_sandboxing
+
+type conflict = Conflict
+
+
+module Partial = struct
+  type t = bool option gen
+
+  let get_unique eq l =
+    match l with
+    | [] -> Ok None
+    | x :: xs ->
+      if List.for_all xs ~f:(eq x)
+      then
+        Ok (Some x)
+      else
+        Error Conflict
+
+  (** [merge] behaves like [inter] when there is no error, but it can
+      detect a nonsensical configuration where [inter] can't. *)
+  let merge ~loc items =
+    let merge_field field_name field =
+      match
+        get_unique Bool.equal
+          (List.filter_map items ~f:field)
+      with
+      | Error Conflict ->
+        User_error.raise ~loc [ Pp.text (
+          sprintf "Inconsistent sandboxing configuration. Sandboxing mode \
+                   %s is both allowed and disallowed" field_name)
+        ]
+      | Ok None ->
+        (* allowed if not forbidden *)
+        true
+      | Ok (Some v) -> v
+    in
+    let none = merge_field "none" (fun t -> t.none) in
+    let symlink = merge_field "symlink" (fun t -> t.symlink) in
+    let copy = merge_field "copy" (fun t -> t.copy) in
+    { none; symlink; copy }
+
+  let no_special_requirements = {
+    none = Some true;
+    symlink = Some true;
+    copy = Some true;
+  }
+
+  let no_sandboxing = {
+    none = Some true;
+    symlink = Some false;
+    copy = Some false;
+  }
+
+  let needs_sandboxing = {
+    none = Some false;
+    symlink = None;
+    copy = None;
+  }
+end
+
+let disallow (t : Sandbox_mode.t) = match t with
+  | None ->
+    { no_special_requirements with none = false }
+  | Some Copy ->
+    { no_special_requirements with copy = false }
+  | Some Symlink ->
+    { no_special_requirements with symlink = false }
+
+let inter x y = {
+  none = x.none && y.none;
+  copy = x.copy && y.copy;
+  symlink = x.symlink && y.symlink;
+}
+
+let mem t (mode : Sandbox_mode.t) = match mode with
+  | None -> t.none
+  | Some Copy -> t.copy
+  | Some Symlink -> t.symlink
+
+let equal x y = match compare x y with
+  | Eq -> true
+  | Lt | Gt -> false

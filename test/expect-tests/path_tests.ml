@@ -1,11 +1,6 @@
 open! Stdune
 open Path
 
-let () =
-  Path.set_root (Path.External.cwd ());
-  Path.Build.set_build_dir (Path.Build.Kind.of_string "_build");
-  Printexc.record_backtrace false
-
 let r = Path.(relative root)
 let e = Path.of_filename_relative_to_initial_cwd
 

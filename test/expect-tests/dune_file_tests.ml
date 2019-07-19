@@ -1,8 +1,6 @@
 open Dune
 open! Stdune
-
-let print pp = Format.printf "%a@." Pp.render_ignore_tags pp
-let print_dyn dyn = print (Dyn.pp dyn)
+open Common
 
 (* Dune_file.Executables.Link_mode.decode *)
 let test s =

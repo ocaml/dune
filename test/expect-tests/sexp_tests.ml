@@ -1,10 +1,6 @@
 open! Stdune
 open Dune_lang.Decoder
-
-let () = Printexc.record_backtrace false
-
-let print pp = Format.printf "%a@." Pp.render_ignore_tags pp
-let print_dyn dyn = print (Dyn.pp dyn)
+open Common
 
 let print_loc ppf (_ : Loc.t) = Format.pp_print_string ppf "<loc>"
 

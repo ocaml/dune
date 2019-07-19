@@ -1,7 +1,7 @@
 open Dune
 open Import
+open Common
 
-let print pp = Format.printf "%a@." Pp.render_ignore_tags pp
 let extension s = print (Pp.text (Filename.extension s))
 
 let%expect_test _ = extension "toto.titi";

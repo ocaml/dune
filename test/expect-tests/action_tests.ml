@@ -1,9 +1,7 @@
 open Stdune
 open Dune
 open Action_unexpanded.Infer.Outcome
-
-let print pp = Format.printf "%a@." Pp.render_ignore_tags pp
-let print_dyn dyn = print (Dyn.pp dyn)
+open Common
 
 let p = Path.of_string
 let b = Path.Build.of_string

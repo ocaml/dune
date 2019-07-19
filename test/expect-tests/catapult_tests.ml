@@ -1,10 +1,5 @@
 open Stdune
-
-let print pp = Format.printf "%a@." Pp.render_ignore_tags pp
-let print_dyn dyn = print (Dyn.pp dyn)
-
-(* let () =
- *   Topdirs.dir_directory "src/catapult/.catapult.objs/byte/" *)
+open Common
 
 let buf = Buffer.create 0
 

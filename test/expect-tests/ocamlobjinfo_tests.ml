@@ -1,8 +1,6 @@
 open Dune
 open! Stdune
-
-let print pp = Format.printf "%a@." Pp.render_ignore_tags pp
-let print_dyn dyn = print (Dyn.pp dyn)
+open Common
 
 let fixture = {ocamlobjinfo|
 File _build/install/default/lib/dune/_stdune/stdune__Env.cmx

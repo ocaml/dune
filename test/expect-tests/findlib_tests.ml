@@ -1,8 +1,6 @@
 open Dune
 open Import
-
-let print pp = Format.printf "%a@." Pp.render_ignore_tags pp
-let print_dyn dyn = print (Dyn.pp dyn)
+open Common
 
 let db_path = Path.of_filename_relative_to_initial_cwd "../unit-tests/findlib-db"
 

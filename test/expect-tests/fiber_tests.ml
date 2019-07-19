@@ -2,11 +2,7 @@ open Dune
 open Stdune
 open Fiber.O
 open Dyn.Encoder
-
-let () = Printexc.record_backtrace false
-
-let print pp = Format.printf "%a@." Pp.render_ignore_tags pp
-let print_dyn dyn = print (Dyn.pp dyn)
+open Common
 
 let failing_fiber () : unit Fiber.t =
   Fiber.yield ()

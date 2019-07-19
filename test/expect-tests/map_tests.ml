@@ -1,8 +1,5 @@
-open Dune
-open Import
-
-let print pp = Format.printf "%a@." Pp.render_ignore_tags pp
-let print_dyn dyn = print (Dyn.pp dyn)
+open Stdune
+open Common
 
 (* Check that [of_alist_multi] groups elements in the right order *)
 let%expect_test _ =

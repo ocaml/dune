@@ -1,10 +1,6 @@
 open Stdune
 open Stdune.Csexp
-
-let () = Printexc.record_backtrace false
-
-let print pp = Format.printf "%a@." Pp.render_ignore_tags pp
-let print_dyn dyn = print (Dyn.pp dyn)
+open Common
 
 let roundtrip x =
   let str = to_string x in

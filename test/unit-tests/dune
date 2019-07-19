@@ -1,13 +1,4 @@
 (executable
- (name expect_test)
- (modules expect_test)
- (link_flags (-linkall))
- (modes byte)
- (libraries stdune wp_dune unix dune compiler-libs.toplevel test_common dag))
-
-(ocamllex expect_test)
-
-(executable
  (name sexp_tests)
  (modules sexp_tests)
  (libraries stdune dune_lang))

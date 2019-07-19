@@ -1,14 +1,10 @@
 open Dune
 open Import
+open Dune_tests_common
 
-let print pp = Format.printf "%a@." Pp.render_ignore_tags pp
-let print_dyn dyn = print (Dyn.pp dyn)
+let () = init ()
 
 let db_path = Path.of_filename_relative_to_initial_cwd "../unit-tests/findlib-db"
-
-let () =
-  Path.set_root (Path.External.cwd ());
-  Path.Build.set_build_dir (Path.Build.Kind.of_string "_build")
 
 let print_pkg ppf pkg =
   Format.fprintf ppf "<package:%s>"

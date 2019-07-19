@@ -1,18 +1,14 @@
-open Stdune;;
-open Dune;;
-open Fiber.O;;
+open Stdune
+open Dune
+open Fiber.O
+open! Dune_tests_common
 
-#warnings "-40";;
+let () = init ()
 
-let printf = Printf.printf;;
+let printf = Printf.printf
 
-let () =
-  Path.set_root (Path.External.cwd ());
-  Path.Build.set_build_dir (Path.Build.Kind.of_string "_build")
-;;
-
-let temp_dir = Path.of_string "vcs-tests";;
-let () = at_exit (fun () -> Path.rm_rf temp_dir);;
+let temp_dir = lazy (Path.of_string "vcs-tests")
+let () = at_exit (fun () -> Path.rm_rf (Lazy.force temp_dir))
 
 (* When hg is not available, we test with git twice indeed. This is
    because many people don't have hg installed. *)
@@ -46,7 +42,6 @@ let run (vcs : Vcs.t) args =
         ~value:(Filename.concat (Path.to_absolute_filename vcs.root) ".git"))
     ~dir:vcs.root
     ~stdout_to:(Process.Output.file Config.dev_null)
-;;
 
 type action =
   | Init
@@ -67,7 +62,7 @@ let run_action (vcs : Vcs.t) action =
     end
   | Write (fn, s) ->
     printf "$ echo %S > %s\n" s fn;
-    Io.write_file (Path.relative temp_dir fn) s;
+    Io.write_file (Path.relative (Lazy.force temp_dir) fn) s;
     Fiber.return ()
   | Describe expected ->
     printf "$ %s describe [...]\n"
@@ -108,12 +103,12 @@ let run_action (vcs : Vcs.t) action =
     | Hg -> run vcs ["tag"; s; "-u"; "toto"]
 
 let run kind script =
+  let (lazy temp_dir) = temp_dir in
   Path.rm_rf temp_dir;
   Path.mkdir_p temp_dir;
   let vcs = { Vcs.kind; root = temp_dir } in
   Scheduler.go (fun () ->
     Fiber.sequential_iter script ~f:(run_action vcs))
-;;
 
 let script =
   [ Init
@@ -146,13 +141,11 @@ let script =
   ; Commit
   ; Describe "1.0-2-<commit-id>"
   ]
-;;
 
-[%%ignore]
 
-run Git script;;
-
-[%%expect{|
+let%expect_test _ =
+  run Git script;
+  [%expect{|
 $ git init
 $ echo "-" > a
 $ git add a
@@ -190,13 +183,13 @@ $ git describe [...]
 $ git commit -m 'commit message'
 $ git describe [...]
 1.0-2-<commit-id>
-
-- : unit = ()
 |}]
 
-run Hg script;;
 
-[%%expect{|
+let%expect_test _ =
+  run Hg script;
+
+  [%expect{|
 $ hg init
 $ echo "-" > a
 $ hg add a
@@ -234,6 +227,4 @@ $ hg describe [...]
 $ hg commit -m 'commit message' -u toto
 $ hg describe [...]
 1.0-2-<commit-id>
-
-- : unit = ()
 |}]

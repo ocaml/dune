@@ -17,3 +17,5 @@ val of_float : float -> t
 val of_bool : bool -> t
 val of_int64 : Int64.t -> t
 val of_digest : Digest.t -> t
+
+val to_dyn : t -> Dyn.t

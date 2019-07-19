@@ -2,6 +2,10 @@ open Stdune
 
 type t = A of string [@@unboxed]
 
+let to_dyn (A s) =
+  let open Dyn.Encoder in
+  constr "A" [string s]
+
 let equal (A a) (A b) = String.equal a b
 
 let is_valid_dune =

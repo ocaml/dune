@@ -1,6 +1,7 @@
-(* -*- tuareg -*- *)
+open Stdune
+open Dune_tests_common
 
-open Stdune;;
+let () = init ()
 
 type mynode = {
   name : string;
@@ -16,98 +17,52 @@ module Dag = struct
   let node dag data =
     { info = create_node_info dag; data }
 end
-[%%expect{|
-type mynode = { name : string; }
-module DagF = Dag
-module Dag :
-  sig
-    type t
-    type node_info
-    type node = { data : mynode; info : node_info; }
-    exception Cycle of node list
-    val create : unit -> t
-    val create_node_info : t -> node_info
-    val add : t -> node -> node -> unit
-    val children : node -> node list
-    val pp_node : mynode Fmt.t -> node Fmt.t
-    val is_child : node -> node -> bool
-    val node : t -> mynode -> node
-  end
-|}]
 
 open Dag
 
-let dag = Dag.create ();;
+let dag = Dag.create ()
 
-let node = Dag.node dag { name = "root" };;
-let node11 = Dag.node dag { name = "child 1 1" };;
-let node12 = Dag.node dag { name = "child 1 2" };;
-let node21 = Dag.node dag { name = "child 2 1" };;
-let node31 = Dag.node dag { name = "child 3 1" };;
+let node = Dag.node dag { name = "root" }
+let node11 = Dag.node dag { name = "child 1 1" }
+let node12 = Dag.node dag { name = "child 1 2" }
+let node21 = Dag.node dag { name = "child 2 1" }
+let node31 = Dag.node dag { name = "child 3 1" }
 
-Dag.add dag node node11;;
-Dag.add dag node node12;;
-Dag.add dag node12 node21;;
-Dag.add dag node21 node31;;
+let () =
+  Dag.add dag node node11;
+  Dag.add dag node node12;
+  Dag.add dag node12 node21;
+  Dag.add dag node21 node31
 
 let pp_mynode fmt n =
   Format.fprintf fmt "%s" n.name;;
 let dag_pp_mynode = (Dag.pp_node pp_mynode);;
 
-#install_printer dag_pp_mynode;;
-
-node;;
-
-let node41 = Dag.node dag { name = "child 4 1" };;
-
-Dag.add dag node31 node41;;
-
-node;;
-
-let name node = node.data.name in
-try
-  Dag.add dag node41 node;
-  None
-with
+let%expect_test _ =
+  Format.printf "%a@." dag_pp_mynode node;
+  let node41 = Dag.node dag { name = "child 4 1" } in
+  Dag.add dag node31 node41;
+  Format.printf "%a@." dag_pp_mynode node;
+  let name node = node.data.name in
+  try
+    Dag.add dag node41 node;
+    print_endline "no cycle"
+  with
   | Dag.Cycle cycle ->
     let cycle = List.map cycle ~f:name in
-    Some cycle;;
-node;;
-
-(* node;; *)
-
-[%%expect{|
-val dag : t = <abstr>
-val node : node = {data = {name = "root"}; info = <abstr>}
-val node11 : node = {data = {name = "child 1 1"}; info = <abstr>}
-val node12 : node = {data = {name = "child 1 2"}; info = <abstr>}
-val node21 : node = {data = {name = "child 2 1"}; info = <abstr>}
-val node31 : node = {data = {name = "child 3 1"}; info = <abstr>}
-- : unit = ()
-- : unit = ()
-- : unit = ()
-- : unit = ()
-val pp_mynode : Format.formatter -> mynode -> unit = <fun>
-val dag_pp_mynode : node Fmt.t = <fun>
-- : node =
+    List.map ~f:Pp.text cycle
+    |> Pp.concat ~sep:Pp.space
+    |> print;
+    [%expect{|
 (1: k=1) (root) [(3: k=1) (child 1 2) [(4: k=1) (child 2 1) [(5: k=2) (child 3 1) [
                                                              ]]];
                   (2: k=1) (child 1 1) []]
-val node41 : node = (6: k=1) (child 4 1) []
-- : unit = ()
-- : node =
 (1: k=1) (root) [(3: k=1) (child 1 2) [(4: k=1) (child 2 1) [(5: k=2) (child 3 1) [
                                                              (6: k=2) (child 4 1) [
                                                              ]]]];
                   (2: k=1) (child 1 1) []]
-- : string list option =
-Some
- ["child 4 1"; "child 3 1"; "child 2 1"; "child 1 2"; "root"; "child 4 1"]
-- : node =
-(1: k=2) (root) [(3: k=2) (child 1 2) [(4: k=2) (child 2 1) [(5: k=2) (child 3 1) [
-                                                             (6: k=2) (child 4 1) [
-                                                             ]]]];
-                  (2: k=2) (child 1 1) []]
+child 4 1 child 3 1 child 2 1 child 1 2 root child 4
+1
 |}]
 
 
@@ -139,8 +94,8 @@ let cycle_test variant =
       code path when producing the cycle for some reason (or at least they did in
       2019-03) *)
     match variant with
-   | `a -> add d n2 n3
-   | `b -> ());
+    | `a -> add d n2 n3
+    | `b -> ());
   let n4 = node d 4 in
   add d n3 n4;
   let n5 = node d 5 in
@@ -201,31 +156,29 @@ let cycle_test variant =
   | exception Cycle c ->
     let c = List.map c ~f:(fun x -> x.data) in
     List.iter (adjacent_pairs c) ~f:(fun (b, a) ->
-      match (List.exists !edges ~f:(
-        fun edge ->
-          edge = (a, b))) with
+      match (
+        List.exists !edges ~f:(fun edge ->
+          edge = (a, b))
+      ) with
       | true ->
         ()
       | false ->
         Printf.ksprintf failwith "bad edge in cycle: (%d, %d)\n" a b);
-    c
-;;
+    List.map c ~f:(Pp.textf "%d")
+    |> Pp.concat ~sep:Pp.space
+    |> print
 
-[%%expect{|
-val adjacent_pairs : 'a list -> ('a * 'a) list = <fun>
-val cycle_test : [< `a | `b ] -> int list = <fun>
+
+let%expect_test _ =
+  cycle_test `a;
+  [%expect{|
+23 22 21 20 14 13 12 11
+23
 |}]
-;;
 
-cycle_test `a
-;;
-
-[%%expect{|
-- : int list = [23; 22; 21; 20; 14; 13; 12; 11; 23]
-|}]
-;;
-cycle_test `b
-;;
-[%%expect{|
-- : int list = [23; 22; 21; 20; 14; 13; 12; 11; 23]
+let%expect_test _ =
+  cycle_test `b;
+  [%expect{|
+23 22 21 20 14 13 12 11
+23
 |}]

@@ -145,6 +145,8 @@ module Cst : sig
 
   val concrete : Ast.t -> t
 
+  val to_dyn : t -> Dyn.t
+
   val to_sexp : t -> sexp option
 
   (** Return all the comments contained in a concrete syntax tree *)

@@ -5,6 +5,12 @@ module Token = struct
     type t =
       | Lines of string list
       | Legacy
+
+    let to_dyn =
+      let open Dyn.Encoder in
+      function
+      | Legacy -> constr "Legacy" []
+      | Lines l -> constr "Lines" [list string l]
   end
 
   type t =

@@ -1,5 +1,7 @@
-(* -*- tuareg -*- *)
 open Stdune
+open Dune_tests_common
+
+let () = init ()
 
 let print = Printf.printf "%s\n"
 
@@ -96,8 +98,6 @@ module Path = struct
     | other -> other)
 end
 
-[%%ignore]
-
 let record_calls scheme ~f =
   let calls = ref [] in
   let scheme =
@@ -141,17 +141,15 @@ let print_rules scheme ~dir =
       );
       print "rules:";
       print_log res1)
-[%%ignore]
 
 open Dune.Scheme
 
-let () =
+let%expect_test _ =
   let scheme =
     Scheme.Thunk (fun () -> Scheme.Empty)
   in
-  print_rules scheme ~dir:(Path.of_string "foo/bar")
-
-[%%expect{|
+  print_rules scheme ~dir:(Path.of_string "foo/bar");
+  [%expect{|
 calls:
     thunk
 rules:
@@ -164,22 +162,18 @@ let scheme_all_but_foo_bar =
       Dir_set.subtree (Path.of_string "foo/bar")),
     Thunk (fun () -> Empty))
 
-[%%ignore]
-
-let () =
-  print_rules scheme_all_but_foo_bar ~dir:(Path.of_string "unrelated/dir")
-
-[%%expect{|
+let%expect_test _ =
+  print_rules scheme_all_but_foo_bar ~dir:(Path.of_string "unrelated/dir");
+  [%expect{|
 calls:
     t:thunk
 rules:
     <none>
 |}]
 
-let () =
-  print_rules scheme_all_but_foo_bar ~dir:(Path.of_string "foo/bar")
-
-[%%expect{|
+let%expect_test _ =
+  print_rules scheme_all_but_foo_bar ~dir:(Path.of_string "foo/bar");
+    [%expect{|
 inconsistent laziness behavior:
 naive calls:
     <none>
@@ -189,10 +183,9 @@ rules:
     <none>
 |}]
 
-let () =
-  print_rules scheme_all_but_foo_bar ~dir:(Path.of_string "foo/bar/baz")
-
-[%%expect{|
+let%expect_test _ =
+  print_rules scheme_all_but_foo_bar ~dir:(Path.of_string "foo/bar/baz");
+    [%expect{|
 inconsistent laziness behavior:
 naive calls:
     <none>

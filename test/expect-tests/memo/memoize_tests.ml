@@ -2,7 +2,7 @@ open Stdune
 open Fiber.O
 module Caml_lazy = Lazy
 open Memo
-open Common
+open Dune_tests_common
 
 let string_fn_create =
   fun name ->
@@ -374,6 +374,6 @@ let%expect_test _ =
   Memo_lazy.deps ()
   |> print_dyn;
   [%expect{|
-(Some [("lazy-6", ()); ("lazy_memo", "foo")],
-Some [("lazy-6", ()); ("lazy_memo", "foo")])
+(Some [("lazy-0", ()); ("lazy_memo", "foo")],
+Some [("lazy-0", ()); ("lazy_memo", "foo")])
 |}]

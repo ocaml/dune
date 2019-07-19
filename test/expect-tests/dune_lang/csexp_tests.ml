@@ -1,6 +1,6 @@
 open Stdune
 open Stdune.Csexp
-open Common
+open Dune_tests_common
 
 let roundtrip x =
   let str = to_string x in

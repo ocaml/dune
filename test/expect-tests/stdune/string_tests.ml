@@ -1,6 +1,6 @@
 open! Stdune
 open Dyn.Encoder
-open Common
+open Dune_tests_common
 
 let take s n =
   String.take s n

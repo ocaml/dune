@@ -2,7 +2,9 @@ open Dune
 open Stdune
 open Fiber.O
 open Dyn.Encoder
-open Common
+open Dune_tests_common
+
+let () = Printexc.record_backtrace false
 
 let failing_fiber () : unit Fiber.t =
   Fiber.yield ()

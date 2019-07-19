@@ -1,6 +1,6 @@
 open Dune
 open! Stdune
-open Common
+open Dune_tests_common
 
 (* Dune_file.Executables.Link_mode.decode *)
 let test s =

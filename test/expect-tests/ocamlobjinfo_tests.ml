@@ -1,6 +1,6 @@
 open Dune
 open! Stdune
-open Common
+open Dune_tests_common
 
 let fixture = {ocamlobjinfo|
 File _build/install/default/lib/dune/_stdune/stdune__Env.cmx

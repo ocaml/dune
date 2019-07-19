@@ -1,5 +1,5 @@
 open Stdune
-open Common
+open Dune_tests_common
 
 let buf = Buffer.create 0
 

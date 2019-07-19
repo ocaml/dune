@@ -1,6 +1,5 @@
-open Dune
-open Import
-open Common
+open Stdune
+open Dune_tests_common
 
 let extension s = print (Pp.text (Filename.extension s))
 

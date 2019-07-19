@@ -1,10 +1,7 @@
 (library
- (name dune_unit_tests)
- (inline_tests
-  (deps
-   (source_tree ../unit-tests/findlib-db)
-   (source_tree ../unit-tests/toolchain.d)))
- (libraries dune_tests_common stdune dune wp_dune fiber dune_lang memo
+ (name dune_catapult_tests)
+ (inline_tests)
+ (libraries dune_tests_common stdune catapult
             ;; This is because of the (implicit_transitive_deps false)
             ;; in dune-project
             ppx_expect.config

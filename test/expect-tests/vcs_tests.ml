@@ -1,7 +1,7 @@
 open Stdune
 open Dune
 open Fiber.O
-open! Common
+open! Dune_tests_common
 
 let printf = Printf.printf
 

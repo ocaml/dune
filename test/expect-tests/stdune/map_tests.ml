@@ -1,5 +1,5 @@
 open Stdune
-open Common
+open Dune_tests_common
 
 (* Check that [of_alist_multi] groups elements in the right order *)
 let%expect_test _ =

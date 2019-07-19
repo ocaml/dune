@@ -1,7 +1,7 @@
 open Stdune
 open Dune
 open Action_unexpanded.Infer.Outcome
-open Common
+open Dune_tests_common
 
 let p = Path.of_string
 let b = Path.Build.of_string

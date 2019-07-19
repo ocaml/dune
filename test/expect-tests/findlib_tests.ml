@@ -1,6 +1,6 @@
 open Dune
 open Import
-open Common
+open Dune_tests_common
 
 let db_path = Path.of_filename_relative_to_initial_cwd "../unit-tests/findlib-db"
 

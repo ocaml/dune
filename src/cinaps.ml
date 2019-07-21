@@ -130,9 +130,12 @@ let gen_rules sctx t ~dir ~scope ~dir_kind =
       ~dynlink:false
       ~package:None
   in
+  let linkages =
+    [Exe.Linkage.Js.NonJs (Exe.Linkage.native_or_custom (Super_context.context sctx))]
+  in
   Exe.build_and_link cctx
     ~program:{ name; main_module_name; loc }
-    ~linkages:[Exe.Linkage.native_or_custom (Super_context.context sctx)]
+    ~linkages
     ~promote:None;
 
   Super_context.add_alias_action sctx ~dir ~loc:(Some loc) ~stamp:"cinaps"

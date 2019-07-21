@@ -58,7 +58,14 @@ let executables_rules ~sctx ~dir ~dir_kind ~expander
     let ctx = SC.context sctx in
     let l =
       let has_native = Option.is_some ctx.ocamlopt in
-      List.filter_map (L.Set.to_list exes.modes) ~f:(fun (mode : L.t) ->
+      let modes =
+        let f = function {L.mode = Js; _} -> true | _ -> false in
+        if L.Set.exists exes.modes ~f then
+          L.Set.add exes.modes L.byte_exe
+        else
+          exes.modes
+      in
+      List.filter_map (L.Set.to_list modes) ~f:(fun (mode : L.t) ->
         match has_native, mode.mode with
         | false, Native ->
           None
@@ -70,7 +77,7 @@ let executables_rules ~sctx ~dir ~dir_kind ~expander
     if L.Set.mem exes.modes L.byte         &&
        not (L.Set.mem exes.modes L.native) &&
        not (L.Set.mem exes.modes L.exe) then
-      Exe.Linkage.custom :: l
+      Exe.Linkage.Js.NonJs Exe.Linkage.custom :: l
     else
       l
   in

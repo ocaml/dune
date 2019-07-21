@@ -14,29 +14,33 @@ module Program = struct
 end
 
 module Linkage = struct
-  type 'mode t =
-    { mode  : 'mode
+  type t =
+    { mode  : Mode.t
     ; ext   : string
     ; flags : string list
     }
 
-  let map t ~f =
-    { t with mode = f t.mode }
+  module Js = struct
+    type linkage = t
+    type t =
+      | Js
+      | NonJs of linkage
+  end
 
   let byte =
-    { mode  = Mode.Js.Mode Byte
+    { mode  = Byte
     ; ext   = ".bc"
     ; flags = []
     }
 
   let native =
-    { mode  = Mode.Js.Mode Native
+    { mode  = Native
     ; ext   = ".exe"
     ; flags = []
     }
 
   let custom =
-    { mode  = Mode.Js.Mode Byte
+    { mode  = Byte
     ; ext   = ".exe"
     ; flags = ["-custom"]
     }
@@ -58,36 +62,32 @@ module Linkage = struct
   let so_flags_unix    = ["-output-complete-obj"; "-runtime-variant"; "_pic"]
 
   let of_user_config (ctx : Context.t) (m : Dune_file.Executables.Link_mode.t) =
-    let wanted_mode : Mode.Js.t =
+    let wanted_mode : Mode.t =
       match m.mode with
-      | Js -> Js
-      | Byte -> Mode Byte
-      | Native -> Mode Native
-      | Best   -> Mode Native
+      | Js -> assert false
+      | Byte -> Byte
+      | Native -> Native
+      | Best   -> Native
     in
-    let real_mode : Mode.Js.t =
+    let real_mode : Mode.t =
       match m.mode with
-      | Js -> Js
-      | Byte -> Mode Byte
-      | Native -> Mode Native
-      | Best   -> if Option.is_some ctx.ocamlopt then Mode Native else Mode Byte
+      | Js -> assert false
+      | Byte -> Byte
+      | Native -> Native
+      | Best   -> if Option.is_some ctx.ocamlopt then Native else Byte
     in
     let ext =
-      match wanted_mode with
-      | Js    -> ".bc.js"
-      | Mode mode -> begin
-          match mode, m.kind with
-          | Byte   , C             -> ".bc.c"
-          | Native , C             -> User_error.raise ~loc:m.loc
-                                        [ Pp.text "C file generation only \
-                                                   supports bytecode!" ]
-          | Byte   , Exe           -> ".bc"
-          | Native , Exe           -> ".exe"
-          | Byte   , Object        -> ".bc"  ^ ctx.lib_config.ext_obj
-          | Native , Object        -> ".exe" ^ ctx.lib_config.ext_obj
-          | Byte   , Shared_object -> ".bc"  ^ ctx.lib_config.ext_dll
-          | Native , Shared_object ->          ctx.lib_config.ext_dll
-        end
+      match wanted_mode, m.kind with
+      | Byte   , C             -> ".bc.c"
+      | Native , C             -> User_error.raise ~loc:m.loc
+                                    [ Pp.text "C file generation only \
+                                               supports bytecode!" ]
+      | Byte   , Exe           -> ".bc"
+      | Native , Exe           -> ".exe"
+      | Byte   , Object        -> ".bc"  ^ ctx.lib_config.ext_obj
+      | Native , Object        -> ".exe" ^ ctx.lib_config.ext_obj
+      | Byte   , Shared_object -> ".bc"  ^ ctx.lib_config.ext_dll
+      | Native , Shared_object ->          ctx.lib_config.ext_dll
     in
     let flags =
       match m.kind with
@@ -95,7 +95,7 @@ module Linkage = struct
       | Exe ->
         begin
           match wanted_mode, real_mode with
-          | Mode Native, Mode Byte -> ["-custom"]
+          | Native, Byte -> ["-custom"]
           | _ -> []
         end
       | Object -> o_flags
@@ -107,31 +107,33 @@ module Linkage = struct
             so_flags_unix
         in
         match real_mode with
-        | Mode Native ->
+        | Native ->
           (* The compiler doesn't pass these flags in native mode. This
              looks like a bug in the compiler. *)
           List.concat_map ctx.native_c_libraries ~f:(fun flag ->
             ["-cclib"; flag])
           @ so_flags
-        | Mode Byte ->
+        | Byte ->
           so_flags
-        | Js ->
-          Code_error.raise "js mode/shared object binary kind combination is illegal"
-            []
     in
     { ext
     ; mode = real_mode
     ; flags
     }
+
+  let of_user_config (ctx : Context.t) (m : Dune_file.Executables.Link_mode.t) =
+    match m.mode with
+    | Js -> Js.Js
+    | _ -> NonJs (of_user_config ctx m)
 end
 
-let exe_path_from_name cctx ~name ~(linkage : Mode.t Linkage.t) =
+let exe_path_from_name cctx ~name ~(linkage : Linkage.t) =
   Path.Build.relative (CC.dir cctx) (name ^ linkage.ext)
 
 let link_exe
       ~loc
       ~name
-      ~(linkage:Mode.t Linkage.t)
+      ~(linkage:Linkage.t)
       ~cm_files
       ~link_time_code_gen
       ~promote
@@ -182,8 +184,7 @@ let link_exe
                   ; Lib.Lib_and_module.L.link_flags to_link ~mode
                   ])
           ; Dyn (Build.S.map top_sorted_cms ~f:(fun x -> Command.Args.Deps x))
-          ]));
-  exe
+          ]))
 
 let link_js ~src ~cm_files ~promote cctx =
   let sctx     = CC.super_context cctx in
@@ -226,9 +227,11 @@ let build_and_link_many
         ~ext_obj:ctx.lib_config.ext_obj
     in
     List.iter linkages ~f:(fun linkage ->
-      let has_js = linkage.Linkage.mode = Mode.Js.Js in
-      let linkage = Linkage.map ~f:Mode.Js.to_mode linkage in
-      let exe =
+      match linkage with
+      | Linkage.Js.Js ->
+        let exe = exe_path_from_name cctx ~name ~linkage:Linkage.byte in
+        link_js ~src:exe ~cm_files ~promote cctx
+      | NonJs linkage ->
         link_exe cctx
           ~loc
           ~name
@@ -237,9 +240,6 @@ let build_and_link_many
           ~link_time_code_gen
           ~promote
           ?link_flags
-      in
-      if has_js then
-        link_js ~src:exe ~cm_files ~promote cctx
     ))
 
 let build_and_link ~program =

@@ -333,6 +333,7 @@ module Executables : sig
     val shared_object : t
     val byte          : t
     val native        : t
+    val byte_exe      : t
 
     val compare : t -> t -> Ordering.t
 

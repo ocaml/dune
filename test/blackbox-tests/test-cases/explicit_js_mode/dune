@@ -1,0 +1,8 @@
+(executable
+ (name a)
+ (modules a))
+
+(executable
+ (name b)
+ (modes js)
+ (modules b))

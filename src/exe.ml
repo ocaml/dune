@@ -186,13 +186,14 @@ let link_exe
           ; Dyn (Build.S.map top_sorted_cms ~f:(fun x -> Command.Args.Deps x))
           ]))
 
-let link_js ~src ~cm_files ~promote cctx =
+let link_js ~name ~cm_files ~promote cctx =
   let sctx     = CC.super_context cctx in
   let expander = CC.expander cctx in
   let js_of_ocaml =
     CC.js_of_ocaml cctx
     |> Option.value ~default:Dune_file.Js_of_ocaml.default
   in
+  let src = exe_path_from_name cctx ~name ~linkage:Linkage.byte in
   let flags =
     (Expander.expand_and_eval_set expander
        js_of_ocaml.flags
@@ -229,8 +230,7 @@ let build_and_link_many
     List.iter linkages ~f:(fun linkage ->
       match linkage with
       | Linkage.Js.Js ->
-        let exe = exe_path_from_name cctx ~name ~linkage:Linkage.byte in
-        link_js ~src:exe ~cm_files ~promote cctx
+        link_js ~name ~cm_files ~promote cctx
       | NonJs linkage ->
         link_exe cctx
           ~loc

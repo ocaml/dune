@@ -279,6 +279,10 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
     let obj_dir = Compilation_context.obj_dir cctx in
     let flags = Compilation_context.flags cctx in
     let modules = Compilation_context.modules cctx in
+    let explicit_js_mode =
+      Dune_project.explicit_js_mode
+        (Scope.project (Compilation_context.scope cctx))
+    in
     let js_of_ocaml = lib.buildable.js_of_ocaml in
     let { Lib_config. ext_obj; has_native; natdynlink_supported; _ } =
       ctx.lib_config in
@@ -304,7 +308,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
      Mode.Dict.Set.iter modes ~f:(fun mode ->
        build_lib lib ~expander ~flags ~dir ~mode ~cm_files));
     (* Build *.cma.js *)
-    if modes.byte then
+    if (explicit_js_mode && Mode_conf.Set.mem lib.modes Js) || modes.byte then
       SC.add_rules sctx ~dir (
         let src =
           Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext Mode.Byte) in

@@ -233,6 +233,7 @@ let implicit_transitive_deps t = t.implicit_transitive_deps
 let allow_approx_merlin t = t.allow_approx_merlin
 let generate_opam_files t = t.generate_opam_files
 let dialects t = t.dialects
+let explicit_js_mode t = t.explicit_js_mode
 
 let to_dyn
       { name ; root ; version ; source; license; authors

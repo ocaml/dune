@@ -58,10 +58,13 @@ let executables_rules ~sctx ~dir ~dir_kind ~expander
     let ctx = SC.context sctx in
     let l =
       let has_native = Option.is_some ctx.ocamlopt in
+      let explicit_js_mode = Dune_project.explicit_js_mode (Scope.project scope) in
       let modes =
         let f = function {L.mode = Js; _} -> true | _ -> false in
         if L.Set.exists exes.modes ~f then
           L.Set.add exes.modes L.byte_exe
+        else if not explicit_js_mode && L.Set.mem exes.modes L.byte_exe then
+          L.Set.add exes.modes L.js
         else
           exes.modes
       in

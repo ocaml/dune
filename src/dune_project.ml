@@ -209,6 +209,7 @@ type t =
   ; generate_opam_files : bool
   ; file_key : File_key.t
   ; dialects        : Dialect.DB.t
+  ; explicit_js_mode : bool
   }
 
 let equal = (==)
@@ -240,7 +241,7 @@ let to_dyn
       ; extension_args = _; stanza_parser = _ ; packages
       ; implicit_transitive_deps ; wrapped_executables ; dune_version
       ; allow_approx_merlin ; generate_opam_files
-      ; file_key ; dialects } =
+      ; file_key ; dialects ; explicit_js_mode } =
   let open Dyn.Encoder in
   record
     [ "name", Name.to_dyn name
@@ -265,6 +266,7 @@ let to_dyn
     ; "generate_opam_files", bool generate_opam_files
     ; "file_key", string file_key
     ; "dialects", Dialect.DB.to_dyn dialects
+    ; "explicit_js_mode", bool explicit_js_mode
     ]
 
 let find_extension_args t key =
@@ -569,6 +571,7 @@ let anonymous = lazy (
   ; generate_opam_files = false
   ; file_key
   ; dialects = Dialect.DB.builtin
+  ; explicit_js_mode = false
   })
 
 let default_name ~dir ~packages =
@@ -636,6 +639,8 @@ let parse ~dir ~lang ~opam_packages ~file =
                                   ~check:(Syntax.since Stanza.syntax (1, 10))
      and+ dialects = multi_field "dialect"
                        (Syntax.since Stanza.syntax (1, 11) >>> located Dialect.decode)
+     and+ explicit_js_mode =
+       field_b "explicit_js_mode" ~check:(Syntax.since Stanza.syntax (1, 11))
      in
      let homepage =
        match homepage, source with
@@ -750,6 +755,7 @@ let parse ~dir ~lang ~opam_packages ~file =
      ; allow_approx_merlin
      ; generate_opam_files
      ; dialects
+     ; explicit_js_mode
      })
 
 let load_dune_project ~dir opam_packages =
@@ -798,6 +804,7 @@ let make_jbuilder_project ~dir opam_packages =
   ; generate_opam_files = false
   ; wrapped_executables = false
   ; dialects
+  ; explicit_js_mode = false
   }
 
 let load ~dir ~files =

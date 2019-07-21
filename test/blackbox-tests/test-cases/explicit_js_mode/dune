@@ -6,3 +6,12 @@
  (name b)
  (modes js)
  (modules b))
+
+(library
+ (name foo)
+ (modules c))
+
+(library
+ (name bar)
+ (modules d)
+ (modes js))

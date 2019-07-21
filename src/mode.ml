@@ -135,3 +135,13 @@ module Dict = struct
       )
   end
 end
+
+module Js = struct
+  type mode_ = t
+  type t =
+    | Js
+    | Mode of mode_
+  let to_mode = function
+    | Js -> Byte
+    | Mode m -> m
+end

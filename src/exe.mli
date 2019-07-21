@@ -10,28 +10,30 @@ module Program : sig
 end
 
 module Linkage : sig
-  type t
+  type 'mode t
+
+  val map : 'm1 t -> f:('m1 -> 'm2) -> 'm2 t
 
   (** Byte compilation, exetension [.bc] *)
-  val byte : t
+  val byte : Mode.Js.t t
 
   (** Native compilation, extension [.exe] *)
-  val native : t
+  val native : Mode.Js.t t
 
   (** Byte compilation, link with [-custom], extension [.exe] *)
-  val custom : t
+  val custom : Mode.Js.t t
 
   (** [native] if supported, [custom] if not *)
-  val native_or_custom : Context.t -> t
+  val native_or_custom : Context.t -> Mode.Js.t t
 
   val make
-    :  mode:Mode.t
+    :  mode:'mode
     -> ext:string
     -> ?flags:string list
     -> unit
-    -> t
+    -> 'mode t
 
-  val of_user_config : Context.t -> Dune_file.Executables.Link_mode.t -> t
+  val of_user_config : Context.t -> Dune_file.Executables.Link_mode.t -> Mode.Js.t t
 end
 
 (** {1 High-level functions} *)
@@ -40,7 +42,7 @@ end
 
 val build_and_link
   :  program:Program.t
-  -> linkages:Linkage.t list
+  -> linkages:Mode.Js.t Linkage.t list
   -> promote:Dune_file.Promote.t option
   -> ?link_flags:(unit, string list) Build.t
   -> Compilation_context.t
@@ -48,7 +50,7 @@ val build_and_link
 
 val build_and_link_many
   :  programs:Program.t list
-  -> linkages:Linkage.t list
+  -> linkages:Mode.Js.t Linkage.t list
   -> promote:Dune_file.Promote.t option
   -> ?link_flags:(unit, string list) Build.t
   -> Compilation_context.t
@@ -57,5 +59,5 @@ val build_and_link_many
 val exe_path
   :  Compilation_context.t
   -> program:Program.t
-  -> linkage:Linkage.t
+  -> linkage:Mode.t Linkage.t
   -> Path.Build.t

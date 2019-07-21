@@ -800,6 +800,7 @@ module Mode_conf = struct
       | Byte
       | Native
       | Best
+      | Js
     let compare (a : t) b = compare a b
     let to_dyn _ = Dyn.opaque
   end
@@ -810,12 +811,14 @@ module Mode_conf = struct
       [ "byte"  , Byte
       ; "native", Native
       ; "best"  , Best
+      ; "js"    , Js
       ]
 
   let to_string = function
     | Byte -> "byte"
     | Native -> "native"
     | Best -> "best"
+    | Js -> "js"
 
   let to_dyn t =
     let open Dyn.Encoder in
@@ -1526,6 +1529,7 @@ module Executables = struct
 
     let byte   = byte_exe
     let native = native_exe
+    let js     = make Js Exe
 
     let installable_modes =
       [exe; native; byte]
@@ -1536,19 +1540,34 @@ module Executables = struct
       ; "shared_object" , shared_object
       ; "byte"          , byte
       ; "native"        , native
+      ; "js"            , js
       ]
 
     let simple =
       Dune_lang.Decoder.enum simple_representations
 
     let decode =
+      let then_ =
+        let non_js_mode =
+          let f (loc, mode) =
+            match mode with
+            | Mode_conf.Js ->
+              User_error.raise ~loc
+                [ Pp.text "It is not allowed to specify a binary kind when \
+                           using js mode."
+                ]
+            | mode -> mode
+          in
+          map ~f (located Mode_conf.decode)
+        in
+        enter
+          (let+ mode = non_js_mode
+           and+ kind = Binary_kind.decode
+           and+ loc = loc in
+           {mode; kind; loc})
+      in
       if_list
-        ~then_:
-          (enter
-             (let+ mode = Mode_conf.decode
-              and+ kind = Binary_kind.decode
-              and+ loc = loc in
-              { mode; kind; loc}))
+        ~then_
         ~else_:simple
 
     let simple_encode link_mode =
@@ -1666,6 +1685,7 @@ module Executables = struct
             match mode.mode with
             | Native | Best -> ".exe"
             | Byte -> ".bc"
+            | Js -> ".bc.js"
           in
           Names.install_conf names ~ext
       in

@@ -837,7 +837,7 @@ module Mode_conf = struct
 
     let eval t ~has_native =
       let has_best = mem t Best in
-      let byte = mem t Byte || (has_best && (not has_native)) in
+      let byte = mem t Byte || mem t Js || (has_best && (not has_native)) in
       let native = has_native && (mem t Native || has_best) in
       { Mode.Dict.byte; native }
   end

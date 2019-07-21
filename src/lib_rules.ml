@@ -308,7 +308,9 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
      Mode.Dict.Set.iter modes ~f:(fun mode ->
        build_lib lib ~expander ~flags ~dir ~mode ~cm_files));
     (* Build *.cma.js *)
-    if (explicit_js_mode && Mode_conf.Set.mem lib.modes Js) || modes.byte then
+    if (explicit_js_mode && Mode_conf.Set.mem lib.modes Js) ||
+       (not explicit_js_mode && modes.byte)
+    then
       SC.add_rules sctx ~dir (
         let src =
           Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext Mode.Byte) in

@@ -1,3 +1,3 @@
   $ dune build
          hello alias default
-  Hello
+  Hello: $TESTCASE_ROOT/a:/c

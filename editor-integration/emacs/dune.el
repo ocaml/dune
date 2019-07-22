@@ -75,7 +75,7 @@
        "install_c_headers" "modes" "no_dynlink" "kind"
        "ppx_runtime_libraries" "virtual_deps" "js_of_ocaml" "flags"
        "ocamlc_flags" "ocamlopt_flags" "library_flags" "c_flags"
-       "cxx_flags" "c_library_flags" "self_build_stubs_archive"
+       "cxx_flags" "c_library_flags" "self_build_stubs_archive" "inline_tests"
        "modules_without_implementation" "private_modules"
        ;; + special_builtin_support
        "special_builtin_support" "build_info" "data_module" "api_version"

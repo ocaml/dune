@@ -165,6 +165,7 @@ let exclusions =
   ; make "env" ~skip_ocaml:"<4.06.0"
   ; make "env-cflags" ~skip_ocaml:"<4.06.0"
   ; make "wrapped-transition" ~skip_ocaml:"<4.06.0"
+  ; make "explicit_js_mode" ~js:true
   ]
 
 let all_tests = lazy (

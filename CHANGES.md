@@ -1,23 +1,4 @@
-2.0.0 (unreleased)
-------------------
-
-- Build `.cm[ox]` files for executables more eagerly. This speeds up builds at
-  the cost of building unnecessary artifacts in some cases. Some of these extra
-  artifacts can fail to built, so this is a breaking change. (#2268, @rgrinberg)
-
-- Do not put the `<package>.install` files in the source tree unless `-p` or
-  `--promote-install-files` is passed on the command line (#2329, @diml)
-
-- Change `implicit_transive_deps` to be false. Implicit transitive deps now must
-  be manually enabled (#2306, @rgrinberg)
-
-- Compilation units of user defined executables are now mangled by default. This
-  is done to prevent the accidental collision with library dependencies of the
-  executable. (#2364, fixes #2292, @rgrinberg)
-
-- Enable `(explicit_js_mode)` by default. (#1941, @nojb)
-
-1.11.0 (unreleased)
+1.11.0 (23/07/2019)
 -------------------
 
 - Don't select all local implementations in `dune utop`. Instead, let the

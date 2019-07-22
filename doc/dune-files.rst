@@ -815,9 +815,10 @@ Fields supported in ``<settings>`` are:
   suffix if it exists.
 
 - ``(inline_tests <state>)`` where state is either ``enabled``, ``disabled`` or
-  ``ignored``. This field controls the value of the variable ``%{inline_tests}``
-  that is read by the inline test framework. The default value is ``disabled``
-  for the ``release`` profile and ``enabled`` otherwise.
+  ``ignored``. This field is available since Dune 1.11. It controls the value
+  of the variable ``%{inline_tests}`` that is read by the inline test framework.
+  The default value is ``disabled`` for the ``release`` profile and ``enabled``
+  otherwise.
 
 .. _dune-subdirs:
 

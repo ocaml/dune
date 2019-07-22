@@ -1,0 +1,22 @@
+(executable
+ (name a)
+ (modules a))
+
+(executable
+ (name b)
+ (modes js)
+ (modules b))
+
+(library
+ (name foo)
+ (modules c))
+
+(test
+ (name d)
+ (modules d))
+
+(executable
+ (name e)
+ (modules e)
+ (modes js)
+ (libraries foo))

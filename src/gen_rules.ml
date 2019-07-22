@@ -216,6 +216,7 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
         |> SC.add_rules ~dir:ctx_dir sctx
       | _ -> ());
     let dyn_deps =
+      (* DUNE2: no need to filter out js targets anymore *)
       let pred =
         let id = lazy (
           let open Dyn.Encoder in
@@ -225,9 +226,15 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
         List.iter js_targets ~f:(fun js_target ->
           assert (Path.Build.equal (Path.Build.parent_exn js_target)
                     ctx_dir));
-        Predicate.create ~id ~f:(fun basename ->
-          not (List.exists js_targets ~f:(fun js_target ->
-            String.equal (Path.Build.basename js_target) basename)))
+        let f =
+          if Dune_project.explicit_js_mode (Scope.project scope) then
+            fun _ -> true
+          else
+            fun basename ->
+              not (List.exists js_targets ~f:(fun js_target ->
+                String.equal (Path.Build.basename js_target) basename))
+        in
+        Predicate.create ~id ~f
       in
       File_selector.create ~dir:(Path.build ctx_dir) pred
       |> Build.paths_matching ~loc:Loc.none

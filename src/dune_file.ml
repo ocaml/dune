@@ -1526,6 +1526,7 @@ module Executables = struct
 
     let byte   = byte_exe
     let native = native_exe
+    let js     = make Byte Js
 
     let installable_modes =
       [exe; native; byte]
@@ -1536,6 +1537,7 @@ module Executables = struct
       ; "shared_object" , shared_object
       ; "byte"          , byte
       ; "native"        , native
+      ; "js"            , js
       ]
 
     let simple =
@@ -1548,7 +1550,7 @@ module Executables = struct
              (let+ mode = Mode_conf.decode
               and+ kind = Binary_kind.decode
               and+ loc = loc in
-              { mode; kind; loc}))
+              {mode; kind; loc}))
         ~else_:simple
 
     let simple_encode link_mode =

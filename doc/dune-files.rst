@@ -341,6 +341,8 @@ compilation is not available.
 - ``shared_object`` for producing object files that can be dynamically
   loaded into an application. This mode can be used to write a plugin
   in OCaml for a non-OCaml application.
+- ``js`` for producing Javascript from bytecode executables, see
+  :ref:`explicit-js-mode`.
 
 For instance the following ``executables`` stanza will produce byte
 code executables and native shared objects:
@@ -359,6 +361,7 @@ Additionally, you can use the following short-hands:
 - ``shared_object`` for ``(best shared_object)``
 - ``byte`` for ``(byte exe)``
 - ``native`` for ``(native exe)``
+- ``js`` for ``(byte js)``
 
 For instance the following ``modes`` fields are all equivalent:
 
@@ -381,6 +384,7 @@ native/best      object        .exe%{ext_obj}
 byte             shared_object .bc%{ext_dll}
 native/best      shared_object %{ext_dll}
 byte             c             .bc.c
+byte             js            .bc.js
 ================ ============= =================
 
 Where ``%{ext_obj}`` and ``%{ext_dll}`` are the extensions for object

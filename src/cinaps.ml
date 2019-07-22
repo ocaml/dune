@@ -127,6 +127,7 @@ let gen_rules sctx t ~dir ~scope ~dir_kind =
       ~requires_compile:(Lib.Compile.direct_requires compile_info)
       ~requires_link:(Lib.Compile.requires_link compile_info)
       ~flags:(Ocaml_flags.of_list ["-w"; "-24"])
+      ~js_of_ocaml:None
       ~dynlink:false
       ~package:None
   in

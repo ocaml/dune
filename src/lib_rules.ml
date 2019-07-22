@@ -279,10 +279,6 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
     let obj_dir = Compilation_context.obj_dir cctx in
     let flags = Compilation_context.flags cctx in
     let modules = Compilation_context.modules cctx in
-    let explicit_js_mode =
-      Dune_project.explicit_js_mode
-        (Scope.project (Compilation_context.scope cctx))
-    in
     let js_of_ocaml = lib.buildable.js_of_ocaml in
     let { Lib_config. ext_obj; has_native; natdynlink_supported; _ } =
       ctx.lib_config in
@@ -308,9 +304,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
      Mode.Dict.Set.iter modes ~f:(fun mode ->
        build_lib lib ~expander ~flags ~dir ~mode ~cm_files));
     (* Build *.cma.js *)
-    if (explicit_js_mode && Mode_conf.Set.mem lib.modes Js) ||
-       (not explicit_js_mode && modes.byte)
-    then
+    if modes.byte then
       SC.add_rules sctx ~dir (
         let src =
           Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext Mode.Byte) in
@@ -361,13 +355,6 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
     let cctx =
       let requires_compile = Lib.Compile.direct_requires compile_info in
       let requires_link    = Lib.Compile.requires_link compile_info in
-      let js_of_ocaml =
-        let js_of_ocaml = lib.buildable.js_of_ocaml in
-        if Dune_project.explicit_js_mode (Scope.project scope) then
-          Option.some_if (Mode_conf.Set.mem lib.modes Js) js_of_ocaml
-        else
-          Some js_of_ocaml
-      in
       let dynlink =
         Dynlink_supported.get lib.dynlink ctx.supports_shared_libraries in
       Compilation_context.create ()
@@ -383,7 +370,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
         ~preprocessing:pp
         ~no_keep_locs:lib.no_keep_locs
         ~opaque
-        ~js_of_ocaml
+        ~js_of_ocaml:(Some lib.buildable.js_of_ocaml)
         ~dynlink
         ?stdlib:lib.stdlib
         ~package:(Option.map lib.public ~f:(fun p -> p.package))

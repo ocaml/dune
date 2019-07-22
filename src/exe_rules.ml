@@ -80,7 +80,7 @@ let executables_rules ~sctx ~dir ~dir_kind ~expander
     if L.Set.mem exes.modes L.byte         &&
        not (L.Set.mem exes.modes L.native) &&
        not (L.Set.mem exes.modes L.exe) then
-      Exe.Linkage.Js.NonJs Exe.Linkage.custom :: l
+      Exe.Linkage.Js.Non_js Exe.Linkage.custom :: l
     else
       l
   in

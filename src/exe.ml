@@ -24,7 +24,7 @@ module Linkage = struct
     type linkage = t
     type t =
       | Js
-      | NonJs of linkage
+      | Non_js of linkage
   end
 
   let byte =
@@ -124,7 +124,7 @@ module Linkage = struct
   let of_user_config (ctx : Context.t) (m : Dune_file.Executables.Link_mode.t) =
     match m.mode with
     | Js -> Js.Js
-    | _ -> NonJs (of_user_config ctx m)
+    | _ -> Non_js (of_user_config ctx m)
 end
 
 let exe_path_from_name cctx ~name ~(linkage : Linkage.t) =
@@ -231,7 +231,7 @@ let build_and_link_many
       match linkage with
       | Linkage.Js.Js ->
         link_js ~name ~cm_files ~promote cctx
-      | NonJs linkage ->
+      | Non_js linkage ->
         link_exe cctx
           ~loc
           ~name

@@ -16,7 +16,7 @@ module Linkage : sig
     type linkage
     type t =
       | Js
-      | NonJs of linkage
+      | Non_js of linkage
   end with type linkage := t
 
   (** Byte compilation, exetension [.bc] *)

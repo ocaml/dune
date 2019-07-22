@@ -361,6 +361,13 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
     let cctx =
       let requires_compile = Lib.Compile.direct_requires compile_info in
       let requires_link    = Lib.Compile.requires_link compile_info in
+      let js_of_ocaml =
+        let js_of_ocaml = lib.buildable.js_of_ocaml in
+        if Dune_project.explicit_js_mode (Scope.project scope) then
+          Option.some_if (Mode_conf.Set.mem lib.modes Js) js_of_ocaml
+        else
+          Some js_of_ocaml
+      in
       let dynlink =
         Dynlink_supported.get lib.dynlink ctx.supports_shared_libraries in
       Compilation_context.create ()
@@ -376,7 +383,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
         ~preprocessing:pp
         ~no_keep_locs:lib.no_keep_locs
         ~opaque
-        ~js_of_ocaml:lib.buildable.js_of_ocaml
+        ~js_of_ocaml
         ~dynlink
         ?stdlib:lib.stdlib
         ~package:(Option.map lib.public ~f:(fun p -> p.package))

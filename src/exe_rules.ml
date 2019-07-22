@@ -96,6 +96,13 @@ let executables_rules ~sctx ~dir ~dir_kind ~expander
   let cctx =
     let requires_compile = Lib.Compile.direct_requires compile_info in
     let requires_link = Lib.Compile.requires_link compile_info in
+    let js_of_ocaml =
+      let js_of_ocaml = exes.buildable.js_of_ocaml in
+      if Dune_project.explicit_js_mode (Scope.project scope) then
+        Option.some_if (List.mem ~set:linkages Exe.Linkage.Js.Js) js_of_ocaml
+      else
+        Some js_of_ocaml
+    in
     let dynlink =
       Dune_file.Executables.Link_mode.Set.exists exes.modes ~f:(fun mode ->
         match mode.kind with
@@ -113,7 +120,7 @@ let executables_rules ~sctx ~dir ~dir_kind ~expander
       ~requires_link
       ~requires_compile
       ~preprocessing:pp
-      ~js_of_ocaml:exes.buildable.js_of_ocaml
+      ~js_of_ocaml
       ~opaque:(SC.opaque sctx)
       ~dynlink
       ~package:exes.package

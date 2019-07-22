@@ -91,6 +91,7 @@ let setup sctx ~dir =
       ~requires_link:(lazy requires)
       ~requires_compile:requires
       ~flags
+      ~js_of_ocaml:None
       ~dynlink:false
       ~package:None
   in

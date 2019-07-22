@@ -13,6 +13,12 @@ Check that .bc.js rule is generated only if js mode is used.
    js_of_ocaml .js/stdlib/stdlib.cma.js
      jsoo_link b.bc.js
 
+We also check that .cmo.js rules are not generated if not specified.
+
+  $ dune build --display short _build/default/.a.eobjs/byte/a.cmo.js
+  Error: Don't know how to build _build/default/.a.eobjs/byte/a.cmo.js
+  [1]
+
 Same for libraries.
 
   $ dune build --display short _build/default/.foo.objs/foo.cma.js

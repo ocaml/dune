@@ -144,6 +144,7 @@ module Stanza = struct
         ~requires_compile
         ~requires_link
         ~flags
+        ~js_of_ocaml:None
         ~dynlink:false
         ~package:None
     in

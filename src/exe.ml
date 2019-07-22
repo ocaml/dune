@@ -63,13 +63,13 @@ module Linkage = struct
   let of_user_config (ctx : Context.t) (m : Dune_file.Executables.Link_mode.t) =
     let wanted_mode : Mode.t =
       match m.mode with
-      | Byte -> Byte
+      | Byte   -> Byte
       | Native -> Native
       | Best   -> Native
     in
     let real_mode : Mode.t =
       match m.mode with
-      | Byte -> Byte
+      | Byte   -> Byte
       | Native -> Native
       | Best   -> if Option.is_some ctx.ocamlopt then Native else Byte
     in
@@ -207,9 +207,10 @@ let build_and_link_many
       ?link_flags
       cctx
   =
-  let modules = CC.modules cctx in
+  let modules = Compilation_context.modules cctx in
   let dep_graphs = Dep_rules.rules cctx ~modules in
   Module_compilation.build_all cctx ~dep_graphs;
+
   let link_time_code_gen = Link_time_code_gen.handle_special_libs cctx in
   List.iter programs ~f:(fun { Program.name; main_module_name ; loc } ->
     let cm_files =

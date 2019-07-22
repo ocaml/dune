@@ -1545,11 +1545,12 @@ module Executables = struct
 
     let decode =
       if_list
-        ~then_:(enter
-                  (let+ mode = Mode_conf.decode
-                   and+ kind = Binary_kind.decode
-                   and+ loc = loc in
-                   {mode; kind; loc}))
+        ~then_:
+          (enter
+             (let+ mode = Mode_conf.decode
+              and+ kind = Binary_kind.decode
+              and+ loc = loc in
+              {mode; kind; loc}))
         ~else_:simple
 
     let simple_encode link_mode =

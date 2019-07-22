@@ -186,7 +186,7 @@ end = struct
         inline_tests t ~dir
         |> Dune_env.Stanza.Inline_tests.to_string
       in
-      Pform.Map.singleton "inline-tests" (Values [String str])
+      Pform.Map.singleton "inline_tests" (Values [String str])
     in
     expander
     |> Expander.add_bindings ~bindings

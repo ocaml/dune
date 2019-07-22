@@ -52,7 +52,7 @@ module Stanza = struct
 
   let inline_tests_field =
     field_o
-    "inline-tests"
+    "inline_tests"
       (Syntax.since Stanza.syntax (1, 11) >>>
       Inline_tests.decode)
 

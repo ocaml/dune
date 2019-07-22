@@ -8,7 +8,7 @@
 - Do not put the `<package>.install` files in the source tree unless `-p` or
   `--promote-install-files` is passed on the command line (#2329, @diml)
 
-- Add a new `inline-tests` field in the env stanza to control inline-tests
+- Add a new `inline_tests` field in the env stanza to control inline_tests
   framework with a variable (#2313, @mlasson review and original idea by @diml)
 
 - Change `implicit_transive_deps` to be false. Implicit transitive deps now must

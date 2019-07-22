@@ -501,8 +501,8 @@ context or can be the description of an opam switch, as follows:
   are meant to be executed on the host machine, such as preprocessors.
 
 - ``(paths (<var1> <val1>) .. (<varN> <valN>))`` allows to set the value of
-  PATH-like variables in this context. For each variable, the value is specified
-  using the :ref:`ordered-set-language`.
+  PATH-like variables in this context (in particular, of ``PATH`` itself). For
+  each variable, the value is specified using the :ref:`ordered-set-language`.
 
 Both ``(default ...)`` and ``(opam ...)`` accept a ``targets`` field in order to
 setup cross compilation. See :ref:`advanced-cross-compilation` for more

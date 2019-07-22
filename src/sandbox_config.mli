@@ -58,4 +58,7 @@ module Partial : sig
   val no_sandboxing : t
 
   val needs_sandboxing : t
+
+  val disallow : Sandbox_mode.t -> t
+
 end

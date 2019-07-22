@@ -1,5 +1,6 @@
 open! Stdune
 
+(* ['a t] represents a total map from [Sandbox_mode.t] to ['a] *)
 type 'a gen = {
   none : 'a;
   symlink : 'a;
@@ -80,6 +81,8 @@ module Partial = struct
     let copy = merge_field "copy" (fun t -> t.copy) in
     { none; symlink; copy }
 
+  let no_information = { none = None; symlink = None; copy = None }
+
   let no_special_requirements = {
     none = Some true;
     symlink = Some true;
@@ -92,11 +95,16 @@ module Partial = struct
     copy = Some false;
   }
 
-  let needs_sandboxing = {
-    none = Some false;
-    symlink = None;
-    copy = None;
-  }
+  let needs_sandboxing = { no_information with none = Some false; }
+
+  let disallow (mode : Sandbox_mode.t) =
+    match mode with
+    | None ->
+      { no_information with none = Some false }
+    | Some Symlink ->
+      { no_information with symlink = Some false }
+    | Some Copy ->
+      { no_information with copy = Some false }
 end
 
 let disallow (t : Sandbox_mode.t) = match t with

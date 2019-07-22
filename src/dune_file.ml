@@ -249,6 +249,15 @@ module Dep_conf = struct
     | Env_var sw -> Env_var sw
     | Sandbox_config s -> Sandbox_config s
 
+  let decode_sandbox_config =
+    located (list (sum [
+      "none", return Sandbox_config.Partial.no_sandboxing;
+      "always", return Sandbox_config.Partial.needs_sandboxing;
+      "preserve_file_kind",
+      return (Sandbox_config.Partial.disallow Sandbox_mode.symlink);
+    ]))
+    >>| fun (loc, x) -> Sandbox_config.Partial.merge ~loc x
+
   let decode =
     let decode =
       let sw = String_with_vars.decode in
@@ -269,6 +278,7 @@ module Dep_conf = struct
            and+ x = sw in
            Source_tree x)
         ; "env_var", (sw >>| fun x -> Env_var x)
+        ; "sandbox", (decode_sandbox_config >>| fun x -> Sandbox_config x)
         ]
     in
     if_list

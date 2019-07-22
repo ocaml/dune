@@ -125,17 +125,21 @@ let rec ocaml_flags t ~profile ~expander =
     t.ocaml_flags <- Some flags;
     flags
 
-let inline_tests t ~profile =
+let rec inline_tests t ~profile =
   match t.inline_tests with
   | Some x -> x
   | None ->
     let state : Dune_env.Stanza.Inline_tests.t =
       match find_config t ~profile with
       | None | Some {inline_tests = None; _} ->
-        if profile = "release" then
-          Disabled
-        else
-          Enabled
+        begin match t.inherit_from with
+        | None ->
+          if profile = "release" then
+            Disabled
+          else
+            Enabled
+        | Some (lazy t) -> inline_tests t ~profile
+        end
       | Some {inline_tests = Some s; _} -> s
     in
     t.inline_tests <- Some state;

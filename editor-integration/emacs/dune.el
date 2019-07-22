@@ -62,7 +62,8 @@
              '("library" "executable" "executables" "rule" "toplevel"
                "ocamllex" "ocamlyacc" "menhir" "alias" "install"
                "copy_files" "copy_files#" "include" "tests" "test" "dirs"
-               "env" "ignored_subdirs" "include_subdirs" "data_only_dirs")
+               "env" "ignored_subdirs" "include_subdirs" "data_only_dirs"
+               "cinaps")
              ) "\\(?:\\_>\\|[[:space:]]\\)"))
   "Stanzas in dune files.")
 
@@ -89,6 +90,8 @@
        "targets" "action" "deps" "mode" "fallback" "locks"
        ;; + for "menhir":
        "merge_into"
+       ;; + for "cinaps":
+       "files"
        ;; + for "alias"
        "enabled_if"
        ;; + for env

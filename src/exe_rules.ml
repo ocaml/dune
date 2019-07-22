@@ -53,12 +53,13 @@ let executables_rules ~sctx ~dir ~dir_kind ~expander
           ])
   in
 
+  let explicit_js_mode = Dune_project.explicit_js_mode (Scope.project scope) in
+
   let linkages =
     let module L = Dune_file.Executables.Link_mode in
     let ctx = SC.context sctx in
     let l =
       let has_native = Option.is_some ctx.ocamlopt in
-      let explicit_js_mode = Dune_project.explicit_js_mode (Scope.project scope) in
       let modes =
         let f = function {L.mode = Js; _} -> true | _ -> false in
         if L.Set.exists exes.modes ~f then
@@ -98,7 +99,7 @@ let executables_rules ~sctx ~dir ~dir_kind ~expander
     let requires_link = Lib.Compile.requires_link compile_info in
     let js_of_ocaml =
       let js_of_ocaml = exes.buildable.js_of_ocaml in
-      if Dune_project.explicit_js_mode (Scope.project scope) then
+      if explicit_js_mode then
         Option.some_if (List.mem ~set:linkages Exe.Linkage.Js.Js) js_of_ocaml
       else
         Some js_of_ocaml

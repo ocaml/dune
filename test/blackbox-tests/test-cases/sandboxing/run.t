@@ -52,3 +52,26 @@ Some errors:
   Hint: dune files require fewer parentheses than jbuild files.
   If you just converted this file from a jbuild file, try removing these parentheses.
   [1]
+
+When we don't pass [preserve_file_kind], the rules can observe the file kind changing based on sandbox mode chosen:
+
+  $ rm -rf _build
+  $ echo text-file > text-file
+  $ true > dune
+  $ echo '(rule (target t) (deps text-file) (action (bash "find text-file -printf '%y' > t")))' >> dune
+
+  $ dune build t --sandbox symlink
+  $ cat _build/default/t
+  l
+
+  $ dune build t --sandbox none
+  $ cat _build/default/t
+  f
+
+When we pass [preserve_file_kind], the file type seen by the rule is preserved:
+
+  $ true > dune
+  $ echo '(rule (target t) (deps text-file (sandbox preserve_file_kind)) (action (bash "find text-file -printf '%y' > t")))' >> dune
+  $ dune build t --sandbox symlink
+  $ cat _build/default/t
+  f

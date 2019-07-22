@@ -1904,7 +1904,6 @@
   (alias exe-name-mangle)
   (alias exec-cmd)
   (alias exec-missing)
-  (alias explicit_js_mode)
   (alias external-lib-deps)
   (alias extra-lang-line)
   (alias fallback-dune)

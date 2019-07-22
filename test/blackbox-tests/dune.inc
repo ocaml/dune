@@ -1706,7 +1706,6 @@
   (alias exe-name-mangle)
   (alias exec-cmd)
   (alias exec-missing)
-  (alias explicit_js_mode)
   (alias external-lib-deps)
   (alias extra-lang-line)
   (alias fallback-dune)
@@ -2029,6 +2028,6 @@
  (name runtest-disabled)
  (deps (alias cinaps) (alias envs-and-contexts)))
 
-(alias (name runtest-js) (deps (alias js_of_ocaml)))
+(alias (name runtest-js) (deps (alias explicit_js_mode) (alias js_of_ocaml)))
 
 (alias (name runtest-coq) (deps (alias coq)))

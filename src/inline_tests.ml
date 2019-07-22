@@ -310,8 +310,6 @@ include Sub_system.Register_end_point(
           | Javascript -> None
         )
       in
-      let linkages =
-        List.map ~f:(fun linkage -> Exe.Linkage.Js.Non_js linkage) linkages in
       Exe.build_and_link cctx
         ~program:{ name; main_module_name = Module.name main_module ; loc }
         ~linkages

@@ -20,13 +20,6 @@ module Linkage = struct
     ; flags : string list
     }
 
-  module Js = struct
-    type linkage = t
-    type t =
-      | Js
-      | Non_js of linkage
-  end
-
   let byte =
     { mode  = Byte
     ; ext   = ".bc"
@@ -50,6 +43,12 @@ module Linkage = struct
     | None   -> custom
     | Some _ -> native
 
+  let js =
+    { mode = Byte
+    ; ext = ".bc.js"
+    ; flags = []
+    }
+
   let make ~mode ~ext ?(flags=[]) () =
     { mode
     ; ext
@@ -64,14 +63,12 @@ module Linkage = struct
   let of_user_config (ctx : Context.t) (m : Dune_file.Executables.Link_mode.t) =
     let wanted_mode : Mode.t =
       match m.mode with
-      | Js -> assert false
       | Byte -> Byte
       | Native -> Native
       | Best   -> Native
     in
     let real_mode : Mode.t =
       match m.mode with
-      | Js -> assert false
       | Byte -> Byte
       | Native -> Native
       | Best   -> if Option.is_some ctx.ocamlopt then Native else Byte
@@ -88,10 +85,15 @@ module Linkage = struct
       | Native , Object        -> ".exe" ^ ctx.lib_config.ext_obj
       | Byte   , Shared_object -> ".bc"  ^ ctx.lib_config.ext_dll
       | Native , Shared_object ->          ctx.lib_config.ext_dll
+      | Byte   , Js            -> ".bc.js"
+      | Native , Js            -> User_error.raise ~loc:m.loc
+                                    [ Pp.text "Javascript generation only \
+                                               supports bytecode!" ]
     in
     let flags =
       match m.kind with
       | C -> c_flags
+      | Js -> []
       | Exe ->
         begin
           match wanted_mode, real_mode with
@@ -120,11 +122,6 @@ module Linkage = struct
     ; mode = real_mode
     ; flags
     }
-
-  let of_user_config (ctx : Context.t) (m : Dune_file.Executables.Link_mode.t) =
-    match m.mode with
-    | Js -> Js.Js
-    | _ -> Non_js (of_user_config ctx m)
 end
 
 let exe_path_from_name cctx ~name ~(linkage : Linkage.t) =
@@ -228,10 +225,9 @@ let build_and_link_many
         ~ext_obj:ctx.lib_config.ext_obj
     in
     List.iter linkages ~f:(fun linkage ->
-      match linkage with
-      | Linkage.Js.Js ->
+      if linkage = Linkage.js then
         link_js ~name ~cm_files ~promote cctx
-      | Non_js linkage ->
+      else
         link_exe cctx
           ~loc
           ~name

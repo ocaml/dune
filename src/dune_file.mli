@@ -167,7 +167,6 @@ module Mode_conf : sig
     | Byte
     | Native
     | Best (** [Native] if available and [Byte] if not *)
-    | Js
 
   val decode : t Dune_lang.Decoder.t
   val compare : t -> t -> Ordering.t

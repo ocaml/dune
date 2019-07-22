@@ -61,7 +61,7 @@ let executables_rules ~sctx ~dir ~dir_kind ~expander
     let l =
       let has_native = Option.is_some ctx.ocamlopt in
       let modes =
-        let f = function {L.mode = Js; _} -> true | _ -> false in
+        let f = function {L.kind = Js; _} -> true | _ -> false in
         if L.Set.exists exes.modes ~f then
           L.Set.add exes.modes L.byte_exe
         else if not explicit_js_mode && L.Set.mem exes.modes L.byte_exe then
@@ -81,7 +81,7 @@ let executables_rules ~sctx ~dir ~dir_kind ~expander
     if L.Set.mem exes.modes L.byte         &&
        not (L.Set.mem exes.modes L.native) &&
        not (L.Set.mem exes.modes L.exe) then
-      Exe.Linkage.Js.Non_js Exe.Linkage.custom :: l
+      Exe.Linkage.custom :: l
     else
       l
   in
@@ -100,7 +100,7 @@ let executables_rules ~sctx ~dir ~dir_kind ~expander
     let js_of_ocaml =
       let js_of_ocaml = exes.buildable.js_of_ocaml in
       if explicit_js_mode then
-        Option.some_if (List.mem ~set:linkages Exe.Linkage.Js.Js) js_of_ocaml
+        Option.some_if (List.mem ~set:linkages Exe.Linkage.js) js_of_ocaml
       else
         Some js_of_ocaml
     in

@@ -19,24 +19,18 @@ We also check that .cmo.js rules are not generated if not specified.
   Error: Don't know how to build _build/default/.a.eobjs/byte/a.cmo.js
   [1]
 
-Same for libraries.
+JS compilation of libraries is always available to avoid having to annotate
+every dependency of an executable.
 
   $ dune build --display short _build/default/.foo.objs/foo.cma.js
   Error: Don't know how to build _build/default/.foo.objs/foo.cma.js
   [1]
 
-  $ dune build --display short _build/default/.bar.objs/bar.cma.js
-        ocamlc .bar.objs/byte/bar.{cmi,cmo,cmt}
-      ocamldep .bar.objs/d.ml.d
-        ocamlc .bar.objs/byte/bar__D.{cmi,cmo,cmt}
-        ocamlc bar.cma
-   js_of_ocaml .bar.objs/bar.cma.js
-
 Check that js targets are attached to @all, but not for tests that do not
 specify js mode (#1940).
 
   $ dune clean
-  $ dune build --display short @@all
+  $ dune build --display short @@all | grep js_of_ocaml
       ocamldep $ext_lib.eobjs/a.ml.d
         ocamlc $ext_lib.eobjs/byte/a.{cmi,cmo,cmt}
         ocamlc a.bc
@@ -67,19 +61,6 @@ specify js mode (#1940).
       ocamlopt foo.{a,cmxa}
       ocamlopt foo.cmxs
 
-In the following test, the executable efoo has js mode enabled but it depends
-on the library foo that does not have it enabled. One can compile the bytecode
-executable:
+Check that building a JS-enabled executable that depends on a library works.
 
-  $ dune build --display short sub/efoo.bc
-      ocamldep sub/.efoo.eobjs/efoo.ml.d
-        ocamlc sub/.efoo.eobjs/byte/efoo.{cmi,cmo,cmt}
-        ocamlc sub/efoo.bc
-
-But not the JS:
-
-  $ dune build --display short sub/efoo.bc.js
-   js_of_ocaml sub/efoo.bc.runtime.js
-  Error: No rule found for .foo.objs/foo.cma.js
-   js_of_ocaml sub/.efoo.eobjs/byte/efoo.cmo.js
-  [1]
+  $ dune build --display short e.bc.js

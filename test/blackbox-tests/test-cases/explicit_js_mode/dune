@@ -11,11 +11,12 @@
  (name foo)
  (modules c))
 
-(library
- (name bar)
- (modules d)
- (modes js))
-
 (test
+ (name d)
+ (modules d))
+
+(executable
  (name e)
- (modules e))
+ (modules e)
+ (modes js)
+ (libraries foo))

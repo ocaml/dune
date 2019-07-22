@@ -8,3 +8,7 @@
 (library
  (name foo_simple)
  (inline_tests (backend backend_simple)))
+
+(env (ignore-inline-tests (inline_tests ignored))
+     (enable-inline-tests (inline_tests enabled))
+     (disable-inline-tests (inline_tests disabled)))

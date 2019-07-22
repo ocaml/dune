@@ -6,6 +6,16 @@
 
   $ env -u OCAMLRUNPARAM dune runtest simple --profile release
 
+  $ env -u OCAMLRUNPARAM dune runtest simple --profile disable-inline-tests
+
+  $ env -u OCAMLRUNPARAM dune runtest simple --profile ignore-inline-tests
+
+  $ env -u OCAMLRUNPARAM dune runtest simple --profile enable-inline-tests
+           run alias simple/runtest (exit 2)
+  (cd _build/default/simple && .foo_simple.inline-tests/run.exe)
+  Fatal error: exception File "simple/.foo_simple.inline-tests/run.ml-gen", line 1, characters 40-46: Assertion failed
+  [1]
+
   $ dune runtest missing-backend
   File "missing-backend/dune", line 3, characters 1-15:
   3 |  (inline_tests))

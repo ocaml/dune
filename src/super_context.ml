@@ -153,6 +153,10 @@ end = struct
     in
     Env_node.local_binaries node ~profile:t.profile ~expander
 
+  let inline_tests ({profile; _} as t) ~dir =
+    let node = get t ~dir in
+    Env_node.inline_tests node ~profile
+
   let bin_artifacts t ~dir =
     let expander =
       expander_for_artifacts t ~context_expander:t.expander ~dir
@@ -177,7 +181,16 @@ end = struct
       expander_for_artifacts t ~context_expander:t.expander ~dir
     in
     let bin_artifacts_host = bin_artifacts_host t ~dir in
-    Expander.set_bin_artifacts expander ~bin_artifacts_host
+    let bindings =
+      let str =
+        inline_tests t ~dir
+        |> Dune_env.Stanza.Inline_tests.to_string
+      in
+      Pform.Map.singleton "inline_tests" (Values [String str])
+    in
+    expander
+    |> Expander.add_bindings ~bindings
+    |> Expander.set_bin_artifacts ~bin_artifacts_host
 
   let ocaml_flags t ~dir =
     Env_node.ocaml_flags (get t ~dir)

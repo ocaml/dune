@@ -814,6 +814,12 @@ Fields supported in ``<settings>`` are:
   be inferred from the basename of ``<filepath>`` by dropping the ``.exe``
   suffix if it exists.
 
+- ``(inline_tests <state>)`` where state is either ``enabled``, ``disabled`` or
+  ``ignored``. This field is available since Dune 1.11. It controls the value
+  of the variable ``%{inline_tests}`` that is read by the inline test framework.
+  The default value is ``disabled`` for the ``release`` profile and ``enabled``
+  otherwise.
+
 .. _dune-subdirs:
 
 dirs (since 1.6)

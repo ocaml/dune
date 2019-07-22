@@ -302,12 +302,12 @@ include Sub_system.Register_end_point(
           then Mode_conf.Set.add info.modes Byte
           else info.modes
         in
-        List.filter_map (Mode_conf.Set.to_list modes) ~f:(fun (mode : Mode_conf.t) ->
+        List.map (Mode_conf.Set.to_list modes) ~f:(fun (mode : Mode_conf.t) ->
           match mode with
-          | Native -> Some Exe.Linkage.native
-          | Best -> Some (Exe.Linkage.native_or_custom (Super_context.context sctx))
-          | Byte -> Some Exe.Linkage.byte
-          | Javascript -> None
+          | Native -> Exe.Linkage.native
+          | Best -> Exe.Linkage.native_or_custom (Super_context.context sctx)
+          | Byte -> Exe.Linkage.byte
+          | Javascript -> Exe.Linkage.js
         )
       in
       Exe.build_and_link cctx

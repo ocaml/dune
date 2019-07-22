@@ -11,9 +11,19 @@ build. Dune fails to detect that:
   b
   b
 
-(the correct result is "a" followed by "b")
+  $ true > dune
+  $ echo '(rule (target a) (deps) (action (bash "echo a > a")))' >> dune
+  $ echo '(rule (target b) (deps) (action (bash "echo b > b")))' >> dune
+  $ echo '(rule (target c) (deps a b) (action (bash "cat a b > c")))' >> dune
+  $ dune build c
+  $ cat _build/default/c
+  b
+  b
 
-Some day, we should use the mtimes check from jenga to detect it.
+(it's not obvious what the correct result is on the first invocation, but the second
+invocation is clearly broken (it uses a wrongly cached result))
+
+Some day, we should use the mtimes check from jenga to detect this.
 
 These rules clearly depend on sandboxing. Specifying that makes the build
 well-behaved:

@@ -533,6 +533,9 @@ let implicit_transitive_deps_default ~(lang : Lang.Instance.t) =
 let wrapped_executables_default ~(lang : Lang.Instance.t) =
   lang.version >= (2, 0)
 
+let explicit_js_mode_default ~(lang : Lang.Instance.t) =
+  lang.version >= (2, 0)
+
 let anonymous = lazy (
   let lang = get_dune_lang () in
   let name = Name.anonymous_root in
@@ -548,6 +551,7 @@ let anonymous = lazy (
   in
   let implicit_transitive_deps = implicit_transitive_deps_default ~lang in
   let wrapped_executables = wrapped_executables_default ~lang in
+  let explicit_js_mode = explicit_js_mode_default ~lang in
   let root = Path.Source.root in
   let file_key = File_key.make ~root ~name in
   { name
@@ -572,7 +576,7 @@ let anonymous = lazy (
   ; generate_opam_files = false
   ; file_key
   ; dialects = Dialect.DB.builtin
-  ; explicit_js_mode = false
+  ; explicit_js_mode
   })
 
 let default_name ~dir ~packages =

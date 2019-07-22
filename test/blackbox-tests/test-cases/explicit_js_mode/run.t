@@ -36,7 +36,7 @@ Check that js targets are attached to @all, but not for tests that do not
 specify js mode (#1940).
 
   $ dune clean
-  $ dune build --display short @all
+  $ dune build --display short @@all
       ocamldep $ext_lib.eobjs/a.ml.d
         ocamlc $ext_lib.eobjs/byte/a.{cmi,cmo,cmt}
         ocamlc a.bc
@@ -66,3 +66,20 @@ specify js mode (#1940).
       ocamlopt .foo.objs/native/foo__C.{cmx,o}
       ocamlopt foo.{a,cmxa}
       ocamlopt foo.cmxs
+
+In the following test, the executable efoo has js mode enabled but it depends
+on the library foo that does not have it enabled. One can compile the bytecode
+executable:
+
+  $ dune build --display short sub/efoo.bc
+      ocamldep sub/.efoo.eobjs/efoo.ml.d
+        ocamlc sub/.efoo.eobjs/byte/efoo.{cmi,cmo,cmt}
+        ocamlc sub/efoo.bc
+
+But not the JS:
+
+  $ dune build --display short sub/efoo.bc.js
+   js_of_ocaml sub/efoo.bc.runtime.js
+  Error: No rule found for .foo.objs/foo.cma.js
+   js_of_ocaml sub/.efoo.eobjs/byte/efoo.cmo.js
+  [1]

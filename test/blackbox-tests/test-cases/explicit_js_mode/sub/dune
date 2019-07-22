@@ -1,0 +1,5 @@
+(executable
+ (name efoo)
+ (modes js)
+ (libraries foo)
+ (modules efoo))

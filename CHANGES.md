@@ -15,8 +15,7 @@
   is done to prevent the accidental collision with library dependencies of the
   executable. (#2364, fixes #2292, @rgrinberg)
 
-- New compilation mode `js` for libraries and modules in order to explicitly
-  enable Javascript targets. (#1941, @nojb)
+- Enable `(explicit_js_mode)` by default. (#1941, @nojb)
 
 1.11.0 (unreleased)
 -------------------
@@ -110,6 +109,10 @@
 - Add a new `inline_tests` field in the env stanza to control inline_tests
   framework with a variable (#2313, @mlasson, original idea by @diml, review
   by @rgrinberg).
+
+- New binary kind `js` for executables in order to explicitly enable Javascript
+  targets, and a switch `(explicit_js_mode)` to require this mode in order to
+  declare JS targets corresponding to executables. (#1941, @nojb)
 
 1.10.0 (04/06/2019)
 -------------------

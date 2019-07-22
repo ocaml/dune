@@ -64,11 +64,3 @@ module Dict : sig
     val iter : t -> f:(mode -> unit) -> unit
   end
 end with type mode := t
-
-module Js : sig
-  type mode_ = t
-  type t =
-    | Js
-    | Mode of mode_
-  val to_mode : t -> mode_
-end with type mode_ := t

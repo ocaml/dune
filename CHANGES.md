@@ -105,7 +105,7 @@
   1.9 (#2421, fixes #2399, @emillon)
 
 - Add a new `inline_tests` field in the env stanza to control inline_tests
-  framework with a variable (#2313, @mlasson, original idea by @diml, revinw
+  framework with a variable (#2313, @mlasson, original idea by @diml, review
   by @rgrinberg).
 
 1.10.0 (04/06/2019)

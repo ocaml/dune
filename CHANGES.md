@@ -15,6 +15,9 @@
   is done to prevent the accidental collision with library dependencies of the
   executable. (#2364, fixes #2292, @rgrinberg)
 
+- New compilation mode `js` for libraries and modules in order to explicitly
+  enable Javascript targets. (#1941, @nojb)
+
 1.11.0 (unreleased)
 -------------------
 

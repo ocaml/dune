@@ -32,7 +32,8 @@ Same for libraries.
         ocamlc bar.cma
    js_of_ocaml .bar.objs/bar.cma.js
 
-Check that js targets are attached to @all
+Check that js targets are attached to @all, but not for tests that do not
+specify js mode (#1940).
 
   $ dune clean
   $ dune build --display short @all
@@ -48,6 +49,9 @@ Check that js targets are attached to @all
       ocamldep .bar.objs/d.ml.d
         ocamlc .bar.objs/byte/bar__D.{cmi,cmo,cmt}
         ocamlc bar.cma
+      ocamldep .e.eobjs/e.ml.d
+        ocamlc .e.eobjs/byte/e.{cmi,cmo,cmt}
+        ocamlc e.bc
         ocamlc .foo.objs/byte/foo.{cmi,cmo,cmt}
       ocamlopt .foo.objs/native/foo.{cmx,o}
       ocamldep .foo.objs/c.ml.d
@@ -57,6 +61,8 @@ Check that js targets are attached to @all
       ocamlopt a.exe
    js_of_ocaml .js/stdlib/stdlib.cma.js
      jsoo_link b.bc.js
+      ocamlopt .e.eobjs/native/e.{cmx,o}
+      ocamlopt e.exe
       ocamlopt .foo.objs/native/foo__C.{cmx,o}
       ocamlopt foo.{a,cmxa}
       ocamlopt foo.cmxs

@@ -15,3 +15,7 @@
  (name bar)
  (modules d)
  (modes js))
+
+(test
+ (name e)
+ (modules e))

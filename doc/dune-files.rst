@@ -342,7 +342,7 @@ compilation is not available.
   loaded into an application. This mode can be used to write a plugin
   in OCaml for a non-OCaml application.
 - ``js`` for producing Javascript from bytecode executables, see
-  `Explicit JS mode`_.
+  :ref:`explicit-js-mode`.
 
 For instance the following ``executables`` stanza will produce byte
 code executables and native shared objects:

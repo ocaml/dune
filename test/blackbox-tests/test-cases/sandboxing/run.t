@@ -22,26 +22,23 @@ Some day, we should use the mtimes check from jenga to detect it.
   $ echo '(rule (target b) (deps (sandbox always)) (action (bash "echo a > a; echo a > b")))' >> dune
   $ echo '(rule (target c) (deps a b) (action (bash "cat a b > c")))' >> dune
   $ dune build c
-  Internal error, please report upstream including the contents of _build/log.
-  Description:
-  ("This rule forbids all sandboxing modes (but it also requires sandboxing)",
-  {})
-  Backtrace:
-  Raised at file "src/stdune/code_error.ml", line 9, characters 2-29
-  Called from file "src/build_system.ml", line 1459, characters 6-118
-  Called from file "src/fiber/fiber.ml", line 112, characters 7-12
-  Re-raised at file "src/stdune/exn.ml", line 39, characters 38-65
-  Called from file "src/fiber/fiber.ml", line 82, characters 8-15
-  Re-raised at file "src/stdune/exn.ml", line 39, characters 38-65
-  Called from file "src/fiber/fiber.ml", line 82, characters 8-15
-  Re-raised at file "src/stdune/exn.ml", line 39, characters 38-65
-  Called from file "src/fiber/fiber.ml", line 82, characters 8-15
-  
-  I must not segfault.  Uncertainty is the mind-killer.  Exceptions are
-  the little-death that brings total obliteration.  I will fully express
-  my cases.  Execution will pass over me and through me.  And when it
-  has gone past, I will unwind the stack along its path.  Where the
-  cases are handled there will be nothing.  Only I will remain.
+  $ cat _build/default/c
+  a
+  a
+
+Errors
+
+  $ rm -rf _build
+  $ true > dune
+  $ echo '(rule (target a) (deps (sandbox always none)) (action (bash "echo a > a")))' >> dune
+  $ dune build a
+  File "dune", line 1, characters 23-44:
+  1 | (rule (target a) (deps (sandbox always none)) (action (bash "echo a > a")))
+                             ^^^^^^^^^^^^^^^^^^^^^
+  Error: Inconsistent sandboxing configuration. Sandboxing mode none is both
+  allowed and disallowed
+  Hint: dune files require fewer parentheses than jbuild files.
+  If you just converted this file from a jbuild file, try removing these parentheses.
   [1]
   $ cat _build/default/c
   cat: _build/default/c: No such file or directory

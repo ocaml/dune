@@ -32,13 +32,6 @@ val needs_sandboxing : t
 *)
 val default : t
 
-(** The default sandboxing config for user rules.
-
-    We currently assume that user rules must not be sandboxed, but that's a
-    terrible assumption.
-*)
-val user_rule : t
-
 val disallow : Sandbox_mode.t -> t
 
 val mem : t -> Sandbox_mode.t -> bool

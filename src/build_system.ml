@@ -1371,7 +1371,8 @@ end = struct
   let evaluate_action_and_dynamic_deps =
     Memo.exec evaluate_action_and_dynamic_deps_memo
 
-  let select_sandbox_mode (config : Sandbox_config.t) ~sandboxing_preference =
+  let select_sandbox_mode
+        (config : Sandbox_config.t) ~loc ~sandboxing_preference =
     match
       List.find_map sandboxing_preference ~f:(fun preference ->
         match (preference, config) with
@@ -1388,9 +1389,14 @@ end = struct
                 work on Windows." [])
         | _, _ -> None) with
     | None ->
-      Code_error.raise
-        "This rule forbids all sandboxing \
-         modes (but it also requires sandboxing)" []
+      (* This is not trivial to reach because the user rules are checked
+         at parse time and [sandboxing_preference] always includes all possible
+         modes. However, it can still be reached if multiple sandbox config
+         specs are combined into an unsatisfiable one. *)
+      User_error.raise
+        ~loc
+        [ Pp.text "This rule forbids all sandboxing \
+                   modes (but it also requires sandboxing)" ]
     | Some choice -> choice
 
   let evaluate_rule (rule : Internal_rule.t) =
@@ -1457,6 +1463,7 @@ end = struct
     let prev_trace = Trace.get (Path.build head_target) in
     let sandbox_mode =
       select_sandbox_mode
+        ~loc:(rule_loc ~file_tree:t.file_tree ~info ~dir)
         (Dep.Set.sandbox_config deps)
         ~sandboxing_preference:t.sandboxing_preference
     in

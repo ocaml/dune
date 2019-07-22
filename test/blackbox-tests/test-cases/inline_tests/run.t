@@ -4,6 +4,7 @@
   Fatal error: exception File "simple/.foo_simple.inline-tests/run.ml-gen", line 1, characters 40-46: Assertion failed
   [1]
 
+The expected behavior for the following three tests is to output nothing: the tests are disabled or ignored. 
   $ env -u OCAMLRUNPARAM dune runtest simple --profile release
 
   $ env -u OCAMLRUNPARAM dune runtest simple --profile disable-inline-tests

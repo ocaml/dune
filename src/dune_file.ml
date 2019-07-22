@@ -250,13 +250,16 @@ module Dep_conf = struct
     | Sandbox_config s -> Sandbox_config s
 
   let decode_sandbox_config =
-    located (list (sum [
-      "none", return Sandbox_config.Partial.no_sandboxing;
-      "always", return Sandbox_config.Partial.needs_sandboxing;
-      "preserve_file_kind",
+    let+ () = Syntax.since Stanza.syntax (1, 11)
+    and+ (loc, x) =
+      located (list (sum [
+        "none", return Sandbox_config.Partial.no_sandboxing;
+        "always", return Sandbox_config.Partial.needs_sandboxing;
+        "preserve_file_kind",
       return (Sandbox_config.Partial.disallow Sandbox_mode.symlink);
-    ]))
-    >>| fun (loc, x) -> Sandbox_config.Partial.merge ~loc x
+      ]))
+    in
+    Sandbox_config.Partial.merge ~loc x
 
   let decode =
     let decode =

@@ -23,8 +23,6 @@ build. Dune fails to detect that:
 (it's not obvious what the correct result is on the first invocation, but the second
 invocation is clearly broken (it uses a wrongly cached result))
 
-Some day, we should use the mtimes check from jenga to detect this.
-
 These rules clearly depend on sandboxing. Specifying that makes the build
 well-behaved:
 

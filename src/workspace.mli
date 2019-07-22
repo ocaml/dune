@@ -18,7 +18,7 @@ module Context : sig
       ; toolchain    : string option
       ; name         : string
       ; host_context : string option
-      ; add_to_path  : string list
+      ; paths        : (string * Ordered_set_lang.t) list
       }
   end
   module Opam : sig

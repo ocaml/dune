@@ -54,7 +54,7 @@ module Context = struct
       ; toolchain    : string option
       ; name         : string
       ; host_context : string option
-      ; add_to_path  : string list
+      ; paths        : (string * Ordered_set_lang.t) list
       }
 
     let t ~profile =
@@ -65,9 +65,10 @@ module Context = struct
         field_o "host" (Syntax.since syntax (1, 10) >>> string)
       and+ toolchain =
         field_o "toolchain" (Syntax.since syntax (1, 5) >>> string)
-      and+ add_to_path =
-        field "add-to-path" ~default:[]
-          (Syntax.since Stanza.syntax (1, 12) >>> list string)
+      and+ paths =
+        field "paths" ~default:[]
+          (Syntax.since Stanza.syntax (1, 11) >>>
+           list (pair string Ordered_set_lang.decode))
       and+ loc = loc
       in
       Option.iter
@@ -85,7 +86,7 @@ module Context = struct
       ; name = "default"
       ; host_context
       ; toolchain
-      ; add_to_path
+      ; paths
       }
   end
 
@@ -183,7 +184,7 @@ module Context = struct
       ; host_context = None
       ; env = None
       ; toolchain = None
-      ; add_to_path = []
+      ; paths = []
       }
 end
 

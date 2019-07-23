@@ -1,14 +1,8 @@
 open! Stdune
 
-type 'a gen = {
-  none : 'a;
-  symlink : 'a;
-  copy : 'a;
-}
-
 (** A set of sandbox modes in which the rule is expected
     to work correctly. *)
-type t = bool gen
+type t = Sandbox_mode.Set.t
 
 val compare : t -> t -> Ordering.t
 
@@ -37,14 +31,14 @@ val disallow : Sandbox_mode.t -> t
 val mem : t -> Sandbox_mode.t -> bool
 
 module Partial : sig
-  type t = bool option gen
+  type t = bool option Sandbox_mode.Dict.t
 
   (** [merge] distributes across [inter] when there is no error, but it can
       detect a nonsensical configuration where [inter] can't.
 
       Can raise a User_error.
   *)
-  val merge : loc:Loc.t -> t list -> bool gen
+  val merge : loc:Loc.t -> t list -> Sandbox_mode.Set.t
 
   val no_special_requirements : t
 

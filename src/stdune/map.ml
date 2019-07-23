@@ -227,7 +227,7 @@ module Make(Key : Key) : S with type key = Key.t = struct
           Some (
             match v with
             | None -> entries
-            | Some x -> List.rev_append x entries))
+            | Some x -> List.append x entries))
   end
 
   exception Found of Key.t

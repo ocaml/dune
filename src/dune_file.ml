@@ -641,35 +641,28 @@ module Auto_format = struct
   let syntax =
     Syntax.create ~name:"fmt"
       ~desc:"integration with automatic formatters"
-      [ (1, 1) ]
+      [ (1, 2) ]
 
   type language =
-    | Ocaml
-    | Reason
+    | Dialect of string
     | Dune
 
   let language_to_dyn =
     let open Dyn.Encoder in
     function
-    | Ocaml -> constr "ocaml" []
-    | Reason -> constr "reason" []
+    | Dialect name -> constr "dialect" [string name]
     | Dune -> constr "dune" []
 
-  let language =
-    sum
-      [ ("ocaml", return Ocaml)
-      ; ("reason", return Reason)
-      ; ("dune",
-         let+ () = Syntax.since syntax (1, 1) in
-         Dune)
-      ]
+  let language = function
+    | "dune" -> Dune
+    | s -> Dialect s
 
   type enabled_for =
     | Default of Syntax.Version.t
     | Only of language list
 
   let enabled_for_field =
-    let+ r = field_o "enabled_for" (repeat language)
+    let+ r = field_o "enabled_for" (repeat (map ~f:language string))
     and+ version = Syntax.get_exn syntax
     in
     match r with
@@ -700,22 +693,22 @@ module Auto_format = struct
   let key =
     Dune_project.Extension.register syntax dparse_args to_dyn
 
-  let enabled_languages config =
+  let includes config =
     match config.enabled_for with
     | Default ver ->
       let in_1_0 =
-        [Ocaml; Reason]
+        [Dialect "ocaml"; Dialect "reason"]
       in
-      let extra =
-        match Syntax.Version.compare ver (1, 1) with
-        | Lt -> []
-        | Eq | Gt -> [Dune]
-      in
-      in_1_0 @ extra
-    | Only l -> l
-
-  let includes config language =
-    List.mem language ~set:(enabled_languages config)
+      begin match Syntax.Version.compare ver (1, 1) with
+      | Lt ->
+        fun language -> List.mem language ~set:in_1_0
+      | Eq ->
+        fun language -> List.mem language ~set:(Dune :: in_1_0)
+      | Gt ->
+        fun _ -> true
+      end
+    | Only l ->
+      fun language -> List.mem language ~set:l
 
   let loc t = t.loc
 end
@@ -1533,6 +1526,7 @@ module Executables = struct
 
     let byte   = byte_exe
     let native = native_exe
+    let js     = make Byte Js
 
     let installable_modes =
       [exe; native; byte]
@@ -1543,6 +1537,7 @@ module Executables = struct
       ; "shared_object" , shared_object
       ; "byte"          , byte
       ; "native"        , native
+      ; "js"            , js
       ]
 
     let simple =
@@ -1555,7 +1550,7 @@ module Executables = struct
              (let+ mode = Mode_conf.decode
               and+ kind = Binary_kind.decode
               and+ loc = loc in
-              { mode; kind; loc}))
+              {mode; kind; loc}))
         ~else_:simple
 
     let simple_encode link_mode =

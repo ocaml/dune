@@ -36,5 +36,7 @@ module Create : sig
 
   val string_list : string list -> value
 
+  val normalise_field_order : (string * value) list -> (string * value) list
+
   val of_bindings : (string * value) list -> file:Path.t -> t
 end

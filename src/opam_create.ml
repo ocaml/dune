@@ -68,6 +68,28 @@ let package_fields
   optional @ dep_fields
 
 let opam_fields project (package : Package.t) =
+  let dune_version = Dune_project.dune_version project in
+  let dune_name = Package.Name.of_string "dune" in
+  let package =
+    if dune_version < (1, 11) || Package.Name.equal package.name dune_name then
+      package
+    else
+      let dune_dep =
+        let dune_version = Syntax.Version.to_string dune_version in
+        let constraint_ : Package.Dependency.Constraint.t =
+          Uop (Gte, QVar dune_version) in
+        { Package.Dependency.
+          name = dune_name
+        ; constraint_ = Some constraint_
+        }
+      in
+      let is_dune_depend (pkg : Package.Dependency.t) =
+        Package.Name.equal pkg.name dune_dep.name in
+      if List.exists package.depends ~f:is_dune_depend then
+        package
+      else
+        { package with depends = dune_dep :: package.depends }
+  in
   let package_fields = package_fields package in
   let open Opam_file.Create in
   let optional_fields =
@@ -97,12 +119,18 @@ let opam_fields project (package : Package.t) =
     ; "build", default_build_command project
     ]
   in
-  List.concat
-    [ fields
-    ; list_fields
-    ; optional_fields
-    ; package_fields
-    ]
+  let fields =
+    List.concat
+      [ fields
+      ; list_fields
+      ; optional_fields
+      ; package_fields
+      ]
+  in
+  if Dune_project.dune_version project < (1, 11) then
+    fields
+  else
+    Opam_file.Create.normalise_field_order fields
 
 let opam_template sctx ~pkg =
   let file_tree = Super_context.file_tree sctx in
@@ -118,9 +146,10 @@ let opam_template sctx ~pkg =
 
 let add_rule sctx ~project ~pkg =
   let open Build.O in
-  let opam_path = Local_package.opam_file pkg in
+  let build_dir = Super_context.build_dir sctx in
+  let opam_path = Path.Build.append_source build_dir (Package.opam_file pkg) in
   let opam_rule =
-    (match opam_template sctx ~pkg:(Local_package.package pkg) with
+    (match opam_template sctx ~pkg with
      | Some p -> Build.contents (Path.build p)
      | None -> Build.return "")
     >>>
@@ -132,8 +161,7 @@ let add_rule sctx ~project ~pkg =
       in
       let existing_vars_template = Opam_file.existing_variables opamfile in
       let generated_fields =
-        let package = Local_package.package pkg in
-        opam_fields project package
+        opam_fields project pkg
         |> List.filter ~f:(fun (v, _) ->
           not (String.Set.mem existing_vars_template v))
         |> Opam_file.Create.of_bindings ~file:opam_path
@@ -145,7 +173,7 @@ let add_rule sctx ~project ~pkg =
         template)
     >>> Build.write_file_dyn opam_path
   in
-  let dir = Local_package.build_dir pkg in
+  let dir = Path.Build.append_source build_dir pkg.path in
   let mode =
     Dune_file.Rule.Mode.Promote
       { lifetime = Unlimited
@@ -170,10 +198,9 @@ let add_rules sctx ~dir =
     |> Scope.project
   in
   if Dune_project.generate_opam_files project then begin
-    Local_package.defined_in sctx ~dir
-    |> List.iter ~f:(fun pkg ->
-      let package = Local_package.package pkg in
-      match package.kind with
+    Dune_project.packages project
+    |> Package.Name.Map.iter ~f:(fun (pkg : Package.t) ->
+      match pkg.kind with
       | Dune _ -> add_rule sctx ~project ~pkg
       | Opam -> ())
   end

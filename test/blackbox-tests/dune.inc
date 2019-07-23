@@ -23,6 +23,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name allow_approximate_merlin)
+ (deps (package dune) (source_tree test-cases/allow_approximate_merlin))
+ (action
+  (chdir
+   test-cases/allow_approximate_merlin
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name bad-alias-error)
  (deps (package dune) (source_tree test-cases/bad-alias-error))
  (action
@@ -197,6 +205,14 @@
  (action
   (chdir
    test-cases/dev-flag-1103
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
+ (name dialects)
+ (deps (package dune) (source_tree test-cases/dialects))
+ (action
+  (chdir
+   test-cases/dialects
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
@@ -449,6 +465,14 @@
  (action
   (chdir
    test-cases/exec-missing
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
+ (name explicit_js_mode)
+ (deps (package dune) (source_tree test-cases/explicit_js_mode))
+ (action
+  (chdir
+   test-cases/explicit_js_mode
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
@@ -879,6 +903,14 @@
  (action
   (chdir
    test-cases/install-libdir
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
+ (name install-multiple-contexts)
+ (deps (package dune) (source_tree test-cases/install-multiple-contexts))
+ (action
+  (chdir
+   test-cases/install-multiple-contexts
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
@@ -1622,6 +1654,7 @@
   (alias action-modifying-a-dependency)
   (alias aliases)
   (alias all-alias)
+  (alias allow_approximate_merlin)
   (alias bad-alias-error)
   (alias block-strings)
   (alias byte-code-only)
@@ -1642,6 +1675,7 @@
   (alias depend-on-the-universe)
   (alias deps-conf-vars)
   (alias dev-flag-1103)
+  (alias dialects)
   (alias dir-target-dep)
   (alias double-echo)
   (alias dune-build-dir-exec-1101)
@@ -1725,6 +1759,7 @@
   (alias inline_tests)
   (alias install-dry-run)
   (alias install-libdir)
+  (alias install-multiple-contexts)
   (alias install-partial-package)
   (alias install-rule-order)
   (alias install-with-var)
@@ -1819,6 +1854,7 @@
   (alias action-modifying-a-dependency)
   (alias aliases)
   (alias all-alias)
+  (alias allow_approximate_merlin)
   (alias bad-alias-error)
   (alias block-strings)
   (alias byte-code-only)
@@ -1838,6 +1874,7 @@
   (alias depend-on-the-universe)
   (alias deps-conf-vars)
   (alias dev-flag-1103)
+  (alias dialects)
   (alias dir-target-dep)
   (alias double-echo)
   (alias dune-build-dir-exec-1101)
@@ -1913,6 +1950,7 @@
   (alias include-loop)
   (alias include-qualified)
   (alias inline_tests)
+  (alias install-multiple-contexts)
   (alias install-partial-package)
   (alias install-rule-order)
   (alias install-with-var)
@@ -1989,6 +2027,6 @@
  (name runtest-disabled)
  (deps (alias cinaps) (alias envs-and-contexts)))
 
-(alias (name runtest-js) (deps (alias js_of_ocaml)))
+(alias (name runtest-js) (deps (alias explicit_js_mode) (alias js_of_ocaml)))
 
 (alias (name runtest-coq) (deps (alias coq)))

@@ -126,6 +126,13 @@ module Stanza = struct
     let requires_compile = Lib.Compile.direct_requires compile_info in
     let requires_link = Lib.Compile.requires_link compile_info in
     let obj_dir = Source.obj_dir source in
+    let flags =
+      let project = Scope.project scope in
+      let dune_version = Dune_project.dune_version project in
+      let profile = Super_context.profile sctx in
+      Ocaml_flags.append_common
+        (Ocaml_flags.default ~dune_version ~profile) ["-w"; "-24"]
+    in
     let cctx =
       Compilation_context.create ()
         ~super_context:sctx
@@ -136,9 +143,8 @@ module Stanza = struct
         ~opaque:false
         ~requires_compile
         ~requires_link
-        ~flags:(Ocaml_flags.append_common
-                  (Ocaml_flags.default ~profile:(Super_context.profile sctx))
-                  ["-w"; "-24"])
+        ~flags
+        ~js_of_ocaml:None
         ~dynlink:false
         ~package:None
     in

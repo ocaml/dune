@@ -53,12 +53,23 @@ let executables_rules ~sctx ~dir ~dir_kind ~expander
           ])
   in
 
+  let explicit_js_mode = Dune_project.explicit_js_mode (Scope.project scope) in
+
   let linkages =
     let module L = Dune_file.Executables.Link_mode in
     let ctx = SC.context sctx in
     let l =
       let has_native = Option.is_some ctx.ocamlopt in
-      List.filter_map (L.Set.to_list exes.modes) ~f:(fun (mode : L.t) ->
+      let modes =
+        let f = function {L.kind = Js; _} -> true | _ -> false in
+        if L.Set.exists exes.modes ~f then
+          L.Set.add exes.modes L.byte_exe
+        else if not explicit_js_mode && L.Set.mem exes.modes L.byte_exe then
+          L.Set.add exes.modes L.js
+        else
+          exes.modes
+      in
+      List.filter_map (L.Set.to_list modes) ~f:(fun (mode : L.t) ->
         match has_native, mode.mode with
         | false, Native ->
           None
@@ -86,6 +97,13 @@ let executables_rules ~sctx ~dir ~dir_kind ~expander
   let cctx =
     let requires_compile = Lib.Compile.direct_requires compile_info in
     let requires_link = Lib.Compile.requires_link compile_info in
+    let js_of_ocaml =
+      let js_of_ocaml = exes.buildable.js_of_ocaml in
+      if explicit_js_mode then
+        Option.some_if (List.mem ~set:linkages Exe.Linkage.js) js_of_ocaml
+      else
+        Some js_of_ocaml
+    in
     let dynlink =
       Dune_file.Executables.Link_mode.Set.exists exes.modes ~f:(fun mode ->
         match mode.kind with
@@ -103,7 +121,7 @@ let executables_rules ~sctx ~dir ~dir_kind ~expander
       ~requires_link
       ~requires_compile
       ~preprocessing:pp
-      ~js_of_ocaml:exes.buildable.js_of_ocaml
+      ~js_of_ocaml
       ~opaque:(SC.opaque sctx)
       ~dynlink
       ~package:exes.package
@@ -117,27 +135,13 @@ let executables_rules ~sctx ~dir ~dir_kind ~expander
     ~link_flags
     ~promote:exes.promote;
 
-  let flags =
-    match Modules.alias_module modules with
-    | None -> Ocaml_flags.common flags
-    | Some m ->
-      Ocaml_flags.prepend_common
-        ["-open"; Module.Name.to_string (Module.name m)] flags
-      |> Ocaml_flags.common
-  in
-
   (cctx,
-   let objs_dirs =
-     Obj_dir.public_cmi_dir obj_dir
-     |> Path.build
-     |> Path.Set.singleton
-   in
    Merlin.make ()
      ~requires:requires_compile
      ~flags
+     ~modules
      ~preprocess:(Dune_file.Buildable.single_preprocess exes.buildable)
-     (* only public_dir? *)
-     ~objs_dirs)
+     ~obj_dir)
 
 let rules ~sctx ~dir ~dir_contents ~scope ~expander ~dir_kind
       (exes : Dune_file.Executables.t) =

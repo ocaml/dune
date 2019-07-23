@@ -3,16 +3,6 @@ open! Import
 
 module Outputs : module type of struct include Action_intf.Outputs end
 
-module Make_mapper (Src : Action_intf.Ast) (Dst : Action_intf.Ast) : sig
-  val map
-    : Src.t
-    -> dir:Src.path
-    -> f_program:(dir:Src.path -> Src.program -> Dst.program)
-    -> f_string:(dir:Src.path -> Src.string -> Dst.string)
-    -> f_path:(dir:Src.path -> Src.path -> Dst.path)
-    -> Dst.t
-end
-
 (** result of the lookup of a program, the path to it or information about the
     failure and possibly a hint how to fix it *)
 module Prog : sig
@@ -24,13 +14,13 @@ module Prog : sig
       ; loc     : Loc.t option
       }
 
-      val create
-        :  ?hint:string
-        -> context:string
-        -> program:string
-        -> loc:Loc.t option
-        -> unit
-        -> t
+    val create
+      :  ?hint:string
+      -> context:string
+      -> program:string
+      -> loc:Loc.t option
+      -> unit
+      -> t
 
     val raise : t -> _
   end
@@ -41,11 +31,13 @@ end
 include Action_intf.Ast
   with type program = Prog.t
   with type path    = Path.t
+  with type target  = Path.Build.t
   with type string  = string
 
 include Action_intf.Helpers
   with type program := Prog.t
   with type path    := Path.t
+  with type target  := Path.Build.t
   with type string  := string
   with type t       := t
 
@@ -55,6 +47,7 @@ module For_shell : sig
   include Action_intf.Ast
     with type program := string
     with type path    := string
+    with type target  := string
     with type string  := string
 
   val encode : t Dune_lang.Encoder.t
@@ -81,6 +74,7 @@ module Unresolved : sig
   include Action_intf.Ast
     with type program := Program.t
     with type path    := Path.t
+    with type target  := Path.Build.t
     with type string  := string
 
   val resolve : t -> f:(Loc.t option -> string -> Path.t) -> action
@@ -89,7 +83,7 @@ end with type action := t
 (** Return a sandboxed version of an action *)
 val sandbox
   :  t
-  -> sandboxed:(Path.t -> Path.t)
+  -> sandboxed:(Path.Build.t -> Path.Build.t)
   -> deps:Dep.Set.t
   -> targets:Path.Build.t list
   -> eval_pred:Dep.eval_pred

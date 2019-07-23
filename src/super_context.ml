@@ -40,6 +40,7 @@ type t =
        workspace. It is used as default at the root of every project
        in the workspace. *)
     default_env : Env_node.t Lazy.t
+  ; projects_by_key : Dune_project.t Dune_project.File_key.Map.t
   }
 
 let context t = t.context
@@ -79,6 +80,9 @@ let installed_libs t = t.installed_libs
 
 let find_scope_by_dir t dir = Scope.DB.find_by_dir t.scopes dir
 let find_scope_by_name t name = Scope.DB.find_by_name t.scopes name
+let find_scope_by_project t = Scope.DB.find_by_project t.scopes
+let find_project_by_key t =
+  Dune_project.File_key.Map.find_exn t.projects_by_key
 
 module External_env = Env
 
@@ -149,6 +153,10 @@ end = struct
     in
     Env_node.local_binaries node ~profile:t.profile ~expander
 
+  let inline_tests ({profile; _} as t) ~dir =
+    let node = get t ~dir in
+    Env_node.inline_tests node ~profile
+
   let bin_artifacts t ~dir =
     let expander =
       expander_for_artifacts t ~context_expander:t.expander ~dir
@@ -173,7 +181,16 @@ end = struct
       expander_for_artifacts t ~context_expander:t.expander ~dir
     in
     let bin_artifacts_host = bin_artifacts_host t ~dir in
-    Expander.set_bin_artifacts expander ~bin_artifacts_host
+    let bindings =
+      let str =
+        inline_tests t ~dir
+        |> Dune_env.Stanza.Inline_tests.to_string
+      in
+      Pform.Map.singleton "inline_tests" (Values [String str])
+    in
+    expander
+    |> Expander.add_bindings ~bindings
+    |> Expander.set_bin_artifacts ~bin_artifacts_host
 
   let ocaml_flags t ~dir =
     Env_node.ocaml_flags (get t ~dir)
@@ -420,7 +437,7 @@ let create
           src_dir = dir
         ; ctx_dir
         ; data = stanzas
-        ; scope = Scope.DB.find_by_name scopes (Dune_project.name project)
+        ; scope = Scope.DB.find_by_project scopes project
         ; kind
         ; dune_version
         })
@@ -495,6 +512,9 @@ let create
                     }
   in
   let dir_status_db = Dir_status.DB.make file_tree ~stanzas_per_dir in
+  let projects_by_key =
+    Dune_project.File_key.Map.of_list_map_exn projects
+      ~f:(fun project -> (Dune_project.file_key project, project)) in
   { context
   ; expander
   ; host
@@ -526,6 +546,7 @@ let create
   ; default_env
   ; external_lib_deps_mode
   ; dir_status_db
+  ; projects_by_key
   }
 
 module Libs = struct
@@ -643,20 +664,6 @@ module Deps = struct
         [Bindings.Named (s, List.concat l)])
 end
 
-module Scope_key = struct
-  let of_string sctx key =
-    match String.rsplit2 key ~on:'@' with
-    | None ->
-      (key, public_libs sctx)
-    | Some (key, scope) ->
-      ( key
-      , Scope.libs (find_scope_by_name sctx
-                      (Dune_project.Name.of_encoded_string scope)))
-
-  let to_string key scope =
-    sprintf "%s@%s" key (Dune_project.Name.to_encoded_string scope)
-end
-
 module Action = struct
   open Build.O
   module U = Action_unexpanded
@@ -700,30 +707,24 @@ module Action = struct
       | Infer -> U.Infer.partial t ~all_targets:true
       | Static { targets = targets_written_by_user; multiplicity = _ } ->
         let targets_written_by_user =
-          Path.Set.of_list targets_written_by_user
+          Path.Build.Set.of_list targets_written_by_user
         in
         let { U.Infer.Outcome. deps; targets } =
           U.Infer.partial t ~all_targets:false
         in
-        { deps; targets = Path.Set.union targets targets_written_by_user }
+        { deps
+        ; targets = Path.Build.Set.union targets targets_written_by_user
+        }
       | Forbidden _ ->
         let { U.Infer.Outcome. deps; targets = _ } =
           U.Infer.partial t ~all_targets:false
         in
-        { deps; targets = Path.Set.empty }
+        { U.Infer.Outcome.
+          deps
+        ; targets = Path.Build.Set.empty
+        }
     in
-    let targets =
-      Path.Set.fold ~init:[] targets
-        ~f:(fun p acc ->
-          match Path.as_in_build_dir p with
-          | Some p -> p :: acc
-          | None ->
-            User_error.raise ~loc
-              [ Pp.textf "target %s is outside the build \
-                          directory. This is not allowed."
-                  (Path.to_string_maybe_quoted p)
-              ])
-    in
+    let targets = Path.Build.Set.to_list targets in
     List.iter targets ~f:(fun target ->
       if Path.Build.(<>) (Path.Build.parent_exn target) targets_dir then
         User_error.raise ~loc

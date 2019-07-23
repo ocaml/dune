@@ -173,6 +173,19 @@ module Source_kind = struct
       ]
 end
 
+module File_key = struct
+  type t = string
+
+  module Map = String.Map
+
+  let of_string s = s
+  let to_string s = s
+
+  let make ~name ~root =
+    let digest = Digest.generic (name, root) |> Digest.to_string in
+    String.take digest 12
+end
+
 type t =
   { name            : Name.t
   ; root            : Path.Source.t
@@ -194,6 +207,9 @@ type t =
   ; dune_version    : Syntax.Version.t
   ; allow_approx_merlin : bool
   ; generate_opam_files : bool
+  ; file_key : File_key.t
+  ; dialects        : Dialect.DB.t
+  ; explicit_js_mode : bool
   }
 
 let equal = (==)
@@ -212,9 +228,12 @@ let name t = t.name
 let root t = t.root
 let stanza_parser t = t.stanza_parser
 let file t = t.project_file.file
+let file_key t = t.file_key
 let implicit_transitive_deps t = t.implicit_transitive_deps
 let allow_approx_merlin t = t.allow_approx_merlin
 let generate_opam_files t = t.generate_opam_files
+let dialects t = t.dialects
+let explicit_js_mode t = t.explicit_js_mode
 
 let to_dyn
       { name ; root ; version ; source; license; authors
@@ -222,7 +241,8 @@ let to_dyn
       ; bug_reports ; maintainers
       ; extension_args = _; stanza_parser = _ ; packages
       ; implicit_transitive_deps ; wrapped_executables ; dune_version
-      ; allow_approx_merlin ; generate_opam_files } =
+      ; allow_approx_merlin ; generate_opam_files
+      ; file_key ; dialects ; explicit_js_mode } =
   let open Dyn.Encoder in
   record
     [ "name", Name.to_dyn name
@@ -245,6 +265,9 @@ let to_dyn
     ; "dune_version", Syntax.Version.to_dyn dune_version
     ; "allow_approx_merlin", bool allow_approx_merlin
     ; "generate_opam_files", bool generate_opam_files
+    ; "file_key", string file_key
+    ; "dialects", Dialect.DB.to_dyn dialects
+    ; "explicit_js_mode", bool explicit_js_mode
     ]
 
 let find_extension_args t key =
@@ -510,6 +533,9 @@ let implicit_transitive_deps_default ~(lang : Lang.Instance.t) =
 let wrapped_executables_default ~(lang : Lang.Instance.t) =
   lang.version >= (2, 0)
 
+let explicit_js_mode_default ~(lang : Lang.Instance.t) =
+  lang.version >= (2, 0)
+
 let anonymous = lazy (
   let lang = get_dune_lang () in
   let name = Name.anonymous_root in
@@ -525,9 +551,12 @@ let anonymous = lazy (
   in
   let implicit_transitive_deps = implicit_transitive_deps_default ~lang in
   let wrapped_executables = wrapped_executables_default ~lang in
-  { name          = name
+  let explicit_js_mode = explicit_js_mode_default ~lang in
+  let root = Path.Source.root in
+  let file_key = File_key.make ~root ~name in
+  { name
   ; packages      = Package.Name.Map.empty
-  ; root          = Path.Source.root
+  ; root
   ; source        = None
   ; license       = None
   ; homepage      = None
@@ -545,6 +574,9 @@ let anonymous = lazy (
   ; dune_version = lang.version
   ; allow_approx_merlin = true
   ; generate_opam_files = false
+  ; file_key
+  ; dialects = Dialect.DB.builtin
+  ; explicit_js_mode
   })
 
 let default_name ~dir ~packages =
@@ -610,6 +642,10 @@ let parse ~dir ~lang ~opam_packages ~file =
      and+ () = Versioned_file.no_more_lang
      and+ generate_opam_files = field_o_b "generate_opam_files"
                                   ~check:(Syntax.since Stanza.syntax (1, 10))
+     and+ dialects = multi_field "dialect"
+                       (Syntax.since Stanza.syntax (1, 11) >>> located Dialect.decode)
+     and+ explicit_js_mode =
+       field_b "explicit_js_mode" ~check:(Syntax.since Stanza.syntax (1, 11))
      in
      let homepage =
        match homepage, source with
@@ -690,12 +726,21 @@ let parse ~dir ~lang ~opam_packages ~file =
      let wrapped_executables =
        Option.value wrapped_executables
          ~default:(wrapped_executables_default ~lang) in
+     let dune_version = lang.version in
      let allow_approx_merlin =
-       Option.value ~default:false allow_approx_merlin in
+       Option.value ~default:(dune_version < (1, 9)) allow_approx_merlin in
      let generate_opam_files =
        Option.value ~default:false generate_opam_files in
+     let root = dir in
+     let file_key = File_key.make ~name ~root in
+     let dialects =
+       List.fold_left
+         ~f:(fun dialects (loc, dialect) -> Dialect.DB.add dialects ~loc dialect)
+         ~init:Dialect.DB.builtin dialects
+     in
      { name
-     ; root = dir
+     ; file_key
+     ; root
      ; version
      ; source
      ; license
@@ -711,9 +756,11 @@ let parse ~dir ~lang ~opam_packages ~file =
      ; parsing_context
      ; implicit_transitive_deps
      ; wrapped_executables
-     ; dune_version = lang.version
+     ; dune_version
      ; allow_approx_merlin
      ; generate_opam_files
+     ; dialects
+     ; explicit_js_mode
      })
 
 let load_dune_project ~dir opam_packages =
@@ -735,10 +782,14 @@ let make_jbuilder_project ~dir opam_packages =
     }
   in
   let parsing_context, stanza_parser, extension_args =
-    interpret_lang_and_extensions ~lang ~explicit_extensions:[] ~project_file
+    interpret_lang_and_extensions ~lang ~explicit_extensions:[] ~project_file in
+  let root = dir in
+  let file_key = File_key.make ~root ~name
   in
+  let dialects = Dialect.DB.builtin in
   { name
-  ; root = dir
+  ; root
+  ; file_key
   ; version = None
   ; source = None
   ; license = None
@@ -757,6 +808,8 @@ let make_jbuilder_project ~dir opam_packages =
   ; allow_approx_merlin = true
   ; generate_opam_files = false
   ; wrapped_executables = false
+  ; dialects
+  ; explicit_js_mode = false
   }
 
 let load ~dir ~files =

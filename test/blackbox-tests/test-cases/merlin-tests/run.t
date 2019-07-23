@@ -34,7 +34,7 @@
   S $LIB_PREFIX/lib/ocaml
   S .
   S subdir
-  FLG -ppx '$PPX/fcfe04ecb8bb41c1143a3b9acec18678/ppx.exe --as-ppx --cookie '\''library-name="foo"'\'''
+  FLG -ppx '$PPX/7e13e649a7f0a21347eded34e394c6e8/ppx.exe --as-ppx --cookie '\''library-name="foo"'\'''
   FLG -open Foo -w -40 -open Bar -w -40
 
 Make sure a ppx directive is generated
@@ -50,7 +50,7 @@ Make sure pp flag is correct and variables are expanded
   B ../_build/default/pp-with-expand/.foobar.eobjs/byte
   S .
   FLG -pp '$PP/_build/default/pp/pp.exe -nothing'
-  FLG -w @a-4-29-40-41-42-44-45-48-58-59-60-66-40 -strict-sequence -strict-formats -short-paths -keep-locs
+  FLG -w @1..3@5..28@30..39@43@46..47@49..57@61..62-40 -strict-sequence -strict-formats -short-paths -keep-locs
 
 We want future-syntax to either be applied, or not, depending on OCaml version.
 Adding the `echo` with expected output to the set of lines is a way of achieving that.
@@ -60,7 +60,7 @@ Adding the `echo` with expected output to the set of lines is a way of achieving
   B ../_build/default/future-syntax/.pp_future_syntax.eobjs/byte
   EXCLUDE_QUERY_DIR
   FLG -pp '$BIN/ocaml-syntax-shims'
-  FLG -w @a-4-29-40-41-42-44-45-48-58-59-60-66-40 -strict-sequence -strict-formats -short-paths -keep-locs
+  FLG -w @1..3@5..28@30..39@43@46..47@49..57@61..62-40 -strict-sequence -strict-formats -short-paths -keep-locs
   S .
   sanitize_dot_merlin alias print-merlins-future-syntax
 

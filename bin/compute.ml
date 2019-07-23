@@ -58,7 +58,8 @@ let term =
   | `Error msg ->
     `Error (true, msg)
   | `Result res ->
-    Format.printf "%a\n%!" Dyn.pp res;
+    Ansi_color.print (Dyn.pp res);
+    print_newline ();
     `Ok ()
   | `List ->
     let fns = Memo.registered_functions () in

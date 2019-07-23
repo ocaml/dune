@@ -72,6 +72,14 @@ let setup sctx ~dir =
     |> Lib.DB.resolve db >>| (fun utop -> utop :: libs)
     >>= Lib.closure ~linking:true
   in
+  let flags =
+    let project = Scope.project scope in
+    let dune_version = Dune_project.dune_version project in
+    (Ocaml_flags.append_common
+       (Ocaml_flags.default ~dune_version
+          ~profile:(Super_context.profile sctx))
+       ["-w"; "-24"])
+  in
   let cctx =
     Compilation_context.create ()
       ~super_context:sctx
@@ -82,9 +90,8 @@ let setup sctx ~dir =
       ~opaque:false
       ~requires_link:(lazy requires)
       ~requires_compile:requires
-      ~flags:(Ocaml_flags.append_common
-                (Ocaml_flags.default ~profile:(Super_context.profile sctx))
-                ["-w"; "-24"])
+      ~flags
+      ~js_of_ocaml:None
       ~dynlink:false
       ~package:None
   in

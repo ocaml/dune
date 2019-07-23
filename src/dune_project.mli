@@ -52,7 +52,21 @@ end
 
 type t
 
+module File_key : sig
+  (** File_key encodes the project in a unique way to be used as part of file
+      path. *)
+  type t
+
+  val to_string : t -> string
+
+  val of_string : string -> t
+
+  module Map : Map.S with type key = t
+end
+
 val to_dyn : t -> Dyn.t
+
+val file_key : t -> File_key.t
 
 val packages : t -> Package.t Package.Name.Map.t
 val version : t -> string option
@@ -68,6 +82,8 @@ val authors : t -> string list
 val stanza_parser : t -> Stanza.t list Dune_lang.Decoder.t
 val allow_approx_merlin : t -> bool
 val generate_opam_files : t -> bool
+val dialects : t -> Dialect.DB.t
+val explicit_js_mode : t -> bool
 
 val equal : t -> t -> bool
 val hash : t -> int

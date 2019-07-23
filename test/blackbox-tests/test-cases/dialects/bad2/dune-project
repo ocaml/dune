@@ -1,0 +1,11 @@
+(lang dune 1.11)
+
+(dialect
+ (name d)
+ (implementation (extension foo))
+ (interface (extension bar)))
+
+(dialect
+ (name d2)
+ (implementation (extension foo))
+ (interface (extension bar2)))

@@ -9,7 +9,8 @@ type t =
   ; mutable ocaml_flags   : Ocaml_flags.t option
   ; mutable c_flags       : (unit, string list) Build.t C.Kind.Dict.t option
   ; mutable external_     : Env.t option
-  ; mutable bin_artifacts     : Artifacts.Bin.t option
+  ; mutable bin_artifacts : Artifacts.Bin.t option
+  ; mutable inline_tests  : Dune_env.Stanza.Inline_tests.t option;
   }
 
 let scope t = t.scope
@@ -24,6 +25,7 @@ let make ~dir ~inherit_from ~scope ~config =
   ; external_ = None
   ; bin_artifacts = None
   ; local_binaries = None
+  ; inline_tests = None
   }
 
 let find_config t ~profile =
@@ -43,12 +45,11 @@ let rec local_binaries t ~profile ~expander =
       match find_config t ~profile with
       | None -> default
       | Some cfg ->
-        let dir = Path.build t.dir in
         default @
         List.map cfg.binaries
-          ~f:(File_binding.Unexpanded.expand ~dir ~f:(fun template ->
+          ~f:(File_binding.Unexpanded.expand ~dir:t.dir ~f:(fun template ->
             Expander.expand expander ~mode:Single ~template
-            |> Value.to_string ~dir))
+            |> Value.to_string ~dir:(Path.build t.dir)))
     in
     t.local_binaries <- Some local_binaries;
     local_binaries
@@ -105,7 +106,10 @@ let rec ocaml_flags t ~profile ~expander =
   | None ->
     let default =
       match t.inherit_from with
-      | None -> Ocaml_flags.default ~profile
+      | None ->
+        let project = Scope.project t.scope in
+        let dune_version = Dune_project.dune_version project in
+        Ocaml_flags.default ~profile ~dune_version
       | Some (lazy t) -> ocaml_flags t ~profile ~expander
     in
     let flags =
@@ -120,6 +124,26 @@ let rec ocaml_flags t ~profile ~expander =
     in
     t.ocaml_flags <- Some flags;
     flags
+
+let rec inline_tests t ~profile =
+  match t.inline_tests with
+  | Some x -> x
+  | None ->
+    let state : Dune_env.Stanza.Inline_tests.t =
+      match find_config t ~profile with
+      | None | Some {inline_tests = None; _} ->
+        begin match t.inherit_from with
+        | None ->
+          if profile = "release" then
+            Disabled
+          else
+            Enabled
+        | Some (lazy t) -> inline_tests t ~profile
+        end
+      | Some {inline_tests = Some s; _} -> s
+    in
+    t.inline_tests <- Some state;
+    state
 
 let rec c_flags t ~profile ~expander ~default_context_flags =
   match t.c_flags with

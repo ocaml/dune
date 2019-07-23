@@ -209,7 +209,7 @@ module Run (P : PARAMS) : sig end = struct
 
     let mock_module : Module.t =
       let source =
-        let impl = Module.File.make OCaml (Path.build (mock_ml base)) in
+        let impl = Module.File.make Dialect.ocaml (Path.build (mock_ml base)) in
         Module.Source.make ~impl name
       in
       Module.of_source ~visibility:Public ~kind:Impl source
@@ -228,7 +228,7 @@ module Run (P : PARAMS) : sig end = struct
       in
       Modules.singleton_exe mock_module
     in
-    let dep_graphs = Ocamldep.rules cctx ~modules in
+    let dep_graphs = Dep_rules.rules cctx ~modules in
 
     Modules.iter_no_vlib modules ~f:(fun m ->
       Module_compilation.ocamlc_i

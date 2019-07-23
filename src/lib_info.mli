@@ -13,7 +13,7 @@ module Status : sig
   type t =
     | Installed
     | Public  of Dune_project.Name.t * Package.t
-    | Private of Dune_project.Name.t
+    | Private of Dune_project.t
 
   val pp : t Fmt.t
 

@@ -34,14 +34,14 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
             | String s ->
               if Filename.dirname s <> Filename.current_dir_name then
                 not_in_dir ~error_loc s;
-              Path.relative ~error_loc (Path.build dir) s
+              Path.Build.relative ~error_loc dir s
             | Path p ->
               if Option.compare Path.compare
                    (Path.parent p) (Some (Path.build dir))
                  <> Eq
               then
                 not_in_dir ~error_loc (Path.to_string p);
-              p
+              Path.as_in_build_dir_exn p
             | Dir p ->
               not_in_dir ~error_loc (Path.to_string p)
         in

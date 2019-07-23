@@ -87,7 +87,7 @@ And fixable files can be promoted:
   Promoting _build/default/enabled/.formatted/ocaml_file.ml to enabled/ocaml_file.ml.
   Promoting _build/default/enabled/.formatted/reason_file.re to enabled/reason_file.re.
   $ cat enabled/ocaml_file.ml
-  Sys.argv: ../install/default/bin/ocamlformat --impl enabled/ocaml_file.ml --name ../../enabled/ocaml_file.ml -o enabled/.formatted/ocaml_file.ml
+  Sys.argv: ../install/default/bin/ocamlformat --impl enabled/ocaml_file.ml
   ocamlformat output
   $ cat enabled/reason_file.re
   Sys.argv: ../install/default/bin/refmt enabled/reason_file.re

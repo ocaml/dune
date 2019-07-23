@@ -198,12 +198,10 @@ include Sub_system.Register_end_point(
           ; dir
           ; stanza = lib
           ; scope
-          ; modules
+          ; source_modules
           ; compile_info = _
           } = c
       in
-      let source_modules =
-        Modules.fold_user_written modules ~init:[] ~f:(fun x xs -> x :: xs) in
 
       let loc = lib.buildable.loc in
 
@@ -279,9 +277,7 @@ include Sub_system.Register_end_point(
                  ~dep_kind:Required
                  ~targets:(Forbidden "inline test generators")
                  ~targets_dir:dir)))
-        >>^ (fun actions ->
-          Action.with_stdout_to (Path.build target)
-            (Action.progn actions))
+        >>^ (fun actions -> Action.with_stdout_to target (Action.progn actions))
         >>>
         Build.action_dyn ~targets:[target] ());
 
@@ -296,7 +292,7 @@ include Sub_system.Register_end_point(
           ~requires_compile:runner_libs
           ~requires_link:(lazy runner_libs)
           ~flags:(Ocaml_flags.of_list ["-w"; "-24"; "-g"])
-          ~js_of_ocaml:lib.buildable.js_of_ocaml
+          ~js_of_ocaml:(Some lib.buildable.js_of_ocaml)
           ~dynlink:false
           ~package:(Option.map lib.public ~f:(fun p -> p.package));
       in
@@ -306,12 +302,12 @@ include Sub_system.Register_end_point(
           then Mode_conf.Set.add info.modes Byte
           else info.modes
         in
-        List.filter_map (Mode_conf.Set.to_list modes) ~f:(fun (mode : Mode_conf.t) ->
+        List.map (Mode_conf.Set.to_list modes) ~f:(fun (mode : Mode_conf.t) ->
           match mode with
-          | Native -> Some Exe.Linkage.native
-          | Best -> Some (Exe.Linkage.native_or_custom (Super_context.context sctx))
-          | Byte -> Some Exe.Linkage.byte
-          | Javascript -> None
+          | Native -> Exe.Linkage.native
+          | Best -> Exe.Linkage.native_or_custom (Super_context.context sctx)
+          | Byte -> Exe.Linkage.byte
+          | Javascript -> Exe.Linkage.js
         )
       in
       Exe.build_and_link cctx

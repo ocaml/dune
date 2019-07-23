@@ -329,7 +329,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
     in
     let obj_dir = Library.obj_dir ~dir lib in
     Check_rules.add_obj_dir sctx ~obj_dir;
-    let vimpl = Virtual_rules.impl sctx ~lib ~dir ~scope in
+    let vimpl = Virtual_rules.impl sctx ~lib ~scope in
     Option.iter vimpl ~f:(Virtual_rules.setup_copy_rules_for_impl ~sctx ~dir);
     (* Preprocess before adding the alias module as it doesn't need
        preprocessing *)
@@ -344,11 +344,13 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
         ~dir_kind
     in
 
+    let source_modules =
+      Modules.fold_user_written modules ~init:[] ~f:(fun m acc -> m :: acc)
+    in
     let modules =
       Modules.map_user_written modules ~f:(Preprocessing.pp_module pp)
     in
     let modules = Vimpl.impl_modules vimpl modules in
-    let alias_module = Modules.alias_module modules in
 
     let cctx =
       let requires_compile = Lib.Compile.direct_requires compile_info in
@@ -368,23 +370,15 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
         ~preprocessing:pp
         ~no_keep_locs:lib.no_keep_locs
         ~opaque
-        ~js_of_ocaml:lib.buildable.js_of_ocaml
+        ~js_of_ocaml:(Some lib.buildable.js_of_ocaml)
         ~dynlink
         ?stdlib:lib.stdlib
         ~package:(Option.map lib.public ~f:(fun p -> p.package))
+        ?vimpl
     in
 
     let requires_compile = Compilation_context.requires_compile cctx in
-
-    let dep_graphs =
-      let modules = Compilation_context.modules cctx in
-      let dep_graphs = Ocamldep.rules cctx ~modules in
-      match vimpl with
-      | None -> dep_graphs
-      | Some impl ->
-        let vlib = Vimpl.vlib_dep_graph impl in
-        Dep_graph.Ml_kind.merge_for_impl ~vlib ~impl:dep_graphs
-    in
+    let dep_graphs = Dep_rules.rules cctx ~modules in
 
     gen_wrapped_compat_modules lib cctx;
     Module_compilation.build_all cctx ~dep_graphs;
@@ -402,36 +396,23 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
     Odoc.setup_library_odoc_rules sctx lib ~obj_dir ~requires:requires_compile
       ~modules ~dep_graphs ~scope;
 
-    let flags =
-      match alias_module with
-      | None -> Ocaml_flags.common flags
-      | Some m ->
-        Ocaml_flags.prepend_common
-          ["-open"; Module.Name.to_string (Module.name m)] flags
-        |> Ocaml_flags.common
-    in
-
     Sub_system.gen_rules
       { super_context = sctx
       ; dir
       ; stanza = lib
       ; scope
-      ; modules
+      ; source_modules
       ; compile_info
       };
 
-    (cctx,
-     let objs_dirs =
-       Obj_dir.of_local obj_dir
-       |> Obj_dir.all_cmis
-       |> Path.Set.of_list
-     in
-     Merlin.make ()
-       ~requires:requires_compile
-       ~flags
-       ~preprocess:(Buildable.single_preprocess lib.buildable)
-       ~libname:(snd lib.name)
-       ~objs_dirs
+    ( cctx
+    , Merlin.make ()
+        ~requires:requires_compile
+        ~flags
+        ~modules
+        ~preprocess:(Buildable.single_preprocess lib.buildable)
+        ~libname:(snd lib.name)
+        ~obj_dir
     )
 
   let rules (lib : Library.t) ~dir_contents ~dir ~expander ~scope

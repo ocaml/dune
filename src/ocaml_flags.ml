@@ -6,32 +6,62 @@ let default_ocamlc_flags   = ["-g"]
 let default_ocamlopt_flags = ["-g"]
 
 let dev_mode_warnings =
-  "@a" ^
-  String.concat ~sep:""
-    (List.map ~f:(sprintf "-%d")
-       [ 4
-       ; 29
-       ; 40
-       ; 41
-       ; 42
-       ; 44
-       ; 45
-       ; 48
-       ; 58
-       ; 59
-       ; 60
-       ; 66
-       ])
-
-let default_warnings =
-  "-40"
+  (* New warnings should be introduced here *)
+  let all =
+    Int.Set.diff
+      (Int.Set.of_list (List.init 62 ~f:succ))
+      (Int.Set.of_list
+         [ 4
+         ; 29
+         ; 40
+         ; 41
+         ; 42
+         ; 44
+         ; 45
+         ; 48
+         ; 58
+         ; 59
+         ; 60
+         ])
+  in
+  let warnings_range ws =
+    let wrange_to_flag (x, y) =
+      if x = y then
+        sprintf "@%d" x
+      else
+        sprintf "@%d..%d" x y
+    in
+    let (acc, last_range) =
+      Int.Set.fold ws ~init:([], None) ~f:(fun x (acc, last_range) ->
+        match last_range with
+        | None ->
+          assert (acc = []);
+          [], Some (x, x)
+        | Some (l, u) ->
+          if succ u = x then
+            acc, Some (l, succ u)
+          else
+            wrange_to_flag (l, u) :: acc, Some (x, x))
+    in
+    let acc =
+      match last_range with
+      | None -> acc
+      | Some (x, y) -> wrange_to_flag (x, y) :: acc
+    in
+    List.rev acc
+    |> String.concat ~sep:""
+  in
+  fun ~dune_version:_ -> warnings_range all
 
 let vendored_warnings =
   ["-w"; "-a"]
 
-let default_flags ~profile =
+let default_warnings =
+  "-40"
+
+let default_flags ~dune_version ~profile =
   if profile = "dev" then
-    [ "-w"; dev_mode_warnings ^ default_warnings
+    [ "-w"; dev_mode_warnings ~dune_version ^ default_warnings
     ; "-strict-sequence"
     ; "-strict-formats"
     ; "-short-paths"
@@ -72,8 +102,8 @@ let empty =
 let of_list l =
   { empty with common = Build.arr (fun () -> l) }
 
-let default ~profile =
-  { common = Build.return (default_flags ~profile)
+let default ~dune_version ~profile =
+  { common = Build.return (default_flags ~dune_version ~profile)
   ; specific =
       { byte   = Build.return default_ocamlc_flags
       ; native = Build.return default_ocamlopt_flags

@@ -67,7 +67,9 @@ val local_binaries : t -> dir:Path.Build.t -> File_binding.Expanded.t list
 val dump_env : t -> dir:Path.Build.t -> (unit, Dune_lang.t list) Build.t
 
 val find_scope_by_dir  : t -> Path.Build.t        -> Scope.t
-val find_scope_by_name : t -> Dune_project.Name.t -> Scope.t
+val find_scope_by_name : t -> Dune_project.Name.t -> Scope.t list
+val find_scope_by_project : t -> Dune_project.t -> Scope.t
+val find_project_by_key : t -> Dune_project.File_key.t -> Dune_project.t
 
 (** Tells whether the given source directory is marked as vendored *)
 val dir_is_vendored : t -> Path.Source.t -> bool
@@ -192,12 +194,6 @@ module Pkg_version : sig
     -> (unit, string option) Build.t
 
   val read : t -> Package.t -> (unit, string option) Build.t
-end
-
-module Scope_key : sig
-  val of_string : t -> string -> string * Lib.DB.t
-
-  val to_string : string -> Dune_project.Name.t -> string
 end
 
 val opaque : t -> bool

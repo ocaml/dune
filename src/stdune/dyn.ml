@@ -140,9 +140,7 @@ let rec pp = function
          ; Pp.concat_map ~sep:(Pp.char ',') xs ~f:pp
          ])
 
-let pp fmt t = Pp.render_ignore_tags fmt (pp t)
-
-let to_string t = Format.asprintf "%a" pp t
+let to_string t = Format.asprintf "%a" Pp.render_ignore_tags (pp t)
 
 module Encoder = struct
 

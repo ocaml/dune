@@ -7,6 +7,33 @@ module SC = Super_context
 
 let (++) = Path.Build.relative
 
+module Scope_key : sig
+  val of_string : Super_context.t -> string -> Lib_name.t * Lib.DB.t
+
+  val to_string : Lib_name.t -> Dune_project.t -> string
+end = struct
+  let of_string sctx s =
+    match String.rsplit2 s ~on:'@' with
+    | None ->
+      ( Lib_name.of_string_exn s ~loc:None
+      , Super_context.public_libs sctx
+      )
+    | Some (lib, key) ->
+      let scope =
+        Dune_project.File_key.of_string key
+        |> Super_context.find_project_by_key sctx
+        |> Super_context.find_scope_by_project sctx
+      in
+      ( Lib_name.of_string_exn lib ~loc:None
+      , Scope.libs scope
+      )
+
+  let to_string lib project =
+    let key = Dune_project.file_key project in
+    sprintf "%s@%s" (Lib_name.to_string lib)
+      (Dune_project.File_key.to_string key)
+end
+
 let lib_unique_name lib =
   let name = Lib.name lib in
   let info = Lib.info lib in
@@ -14,8 +41,7 @@ let lib_unique_name lib =
   match status with
   | Installed -> assert false
   | Public _  -> Lib_name.to_string name
-  | Private scope_name ->
-    SC.Scope_key.to_string (Lib_name.to_string name) scope_name
+  | Private project -> Scope_key.to_string name project
 
 let pkg_or_lnu lib =
   match Lib.package lib with
@@ -23,7 +49,7 @@ let pkg_or_lnu lib =
   | None -> lib_unique_name lib
 
 type target =
-  | Lib of Lib.t
+  | Lib of Lib.Local.t
   | Pkg of Package.Name.t
 
 type source = Module | Mld
@@ -42,12 +68,13 @@ module Paths = struct
   let root (context : Context.t) =
     Path.Build.relative context.Context.build_dir "_doc"
 
-  let odocs ctx m =
-    root ctx ++ (
-      match m with
-      | Lib lib -> sprintf "_odoc/lib/%s" (lib_unique_name lib)
-      | Pkg pkg -> sprintf "_odoc/pkg/%s" (Package.Name.to_string pkg)
-    )
+  let odocs ctx = function
+    | Lib lib ->
+      let obj_dir = Lib.Local.obj_dir lib in
+      Obj_dir.odoc_dir obj_dir
+    | Pkg pkg ->
+      root ctx
+      ++ (sprintf "_odoc/pkg/%s" (Package.Name.to_string pkg))
 
   let html_root ctx = root ctx ++ "_html"
 
@@ -55,7 +82,7 @@ module Paths = struct
     html_root ctx ++ (
       match m with
       | Pkg pkg -> Package.Name.to_string pkg
-      | Lib lib -> pkg_or_lnu lib
+      | Lib lib -> pkg_or_lnu (Lib.Local.to_lib lib)
     )
 
   let gen_mld_dir ctx pkg =
@@ -84,12 +111,12 @@ module Dep = struct
           | None -> Dep.Set.empty
         in
         List.fold_left libs ~init ~f:(fun acc (lib : Lib.t) ->
-          if Lib.is_local lib then
+          match Lib.Local.of_lib lib with
+          | None -> acc
+          | Some lib ->
             let dir = Paths.odocs ctx (Lib lib) in
             let alias = alias ~dir in
-            Dep.Set.add acc (Dep.alias alias)
-          else
-            acc)))
+            Dep.Set.add acc (Dep.alias alias))))
 
   let alias ctx m = alias ~dir:(Paths.odocs ctx m)
 
@@ -125,24 +152,25 @@ let odoc sctx =
     ~dir:(Super_context.build_dir sctx) "odoc"
     ~loc:None ~hint:"try: opam install odoc"
 
-let module_deps (m : Module.t) ~doc_dir ~(dep_graphs:Dep_graph.Ml_kind.t) =
+let module_deps (m : Module.t) ~obj_dir
+      ~(dep_graphs:Dep_graph.Ml_kind.t) =
   (if Module.has m ~ml_kind:Intf then
      Dep_graph.deps_of dep_graphs.intf m
    else
      (* When a module has no .mli, use the dependencies for the .ml *)
      Dep_graph.deps_of dep_graphs.impl m)
-  >>^ List.map ~f:(fun m -> Path.build (Module.odoc_file ~doc_dir m))
+  >>^ List.map ~f:(fun m -> Path.build (Obj_dir.Module.odoc obj_dir m))
   |> Build.dyn_paths
 
 let compile_module sctx ~obj_dir (m : Module.t) ~includes:(file_deps, iflags)
-      ~dep_graphs ~doc_dir ~pkg_or_lnu =
-  let odoc_file = Module.odoc_file m ~doc_dir in
+      ~dep_graphs ~pkg_or_lnu =
+  let odoc_file = Obj_dir.Module.odoc obj_dir m in
   add_rule sctx
     (file_deps
      >>>
-     module_deps m ~doc_dir ~dep_graphs
+     module_deps m ~obj_dir ~dep_graphs
      >>>
-     let doc_dir = Path.build doc_dir in
+     let doc_dir = Path.build (Obj_dir.odoc_dir obj_dir) in
      Command.run ~dir:doc_dir (odoc sctx)
        [ A "compile"
        ; A "-I"; Path doc_dir
@@ -169,11 +197,10 @@ let odoc_include_flags ctx pkg requires =
   Command.of_result_map requires ~f:(fun libs ->
     let paths =
       libs |> List.fold_left ~f:(fun paths lib ->
-        if Lib.is_local lib then (
+        match Lib.Local.of_lib lib with
+        | None -> paths
+        | Some lib ->
           Path.Set.add paths (Path.build (Paths.odocs ctx (Lib lib)))
-        ) else (
-          paths
-        )
       ) ~init:Path.Set.empty in
     let paths =
       match pkg with
@@ -213,25 +240,26 @@ let setup_html sctx (odoc_file : odoc) ~pkg ~requires =
 let setup_library_odoc_rules sctx (library : Library.t) ~obj_dir ~scope ~modules
       ~requires ~(dep_graphs:Dep_graph.Ml_kind.t) =
   let lib =
-    Option.value_exn (Lib.DB.find_even_when_hidden (Scope.libs scope)
-                        (Library.best_name library)) in
+    Library.best_name library
+    |> Lib.DB.find_even_when_hidden (Scope.libs scope)
+    |> Option.value_exn
+  in
+  let local_lib = Lib.Local.of_lib_exn lib in
   (* Using the proper package name doesn't actually work since odoc assumes
      that a package contains only 1 library *)
   let pkg_or_lnu = pkg_or_lnu lib in
   let ctx = Super_context.context sctx in
-  let doc_dir = Paths.odocs ctx (Lib lib) in
   let odoc_include_flags = odoc_include_flags ctx (Lib.package lib) requires in
   let includes =
     (Dep.deps ctx (Lib.package lib) requires, odoc_include_flags) in
   let modules_and_odoc_files =
     Modules.fold_no_vlib modules ~init:[] ~f:(fun m acc ->
       let compiled =
-        compile_module sctx ~includes ~dep_graphs ~obj_dir
-          ~doc_dir ~pkg_or_lnu m
+        compile_module sctx ~includes ~dep_graphs ~obj_dir ~pkg_or_lnu m
       in
       compiled :: acc)
   in
-  Dep.setup_deps ctx (Lib lib)
+  Dep.setup_deps ctx (Lib local_lib)
     (List.map modules_and_odoc_files ~f:(fun (_, p) -> Path.build p)
      |> Path.Set.of_list)
 
@@ -306,7 +334,6 @@ let load_all_odoc_rules_pkg sctx ~pkg =
   let ctx = Super_context.context sctx in
   Build_system.load_dir ~dir:(Path.build (Paths.odocs ctx (Pkg pkg)));
   Lib.Local.Set.iter pkg_libs ~f:(fun lib ->
-    let lib = Lib.Local.to_lib lib in
     Build_system.load_dir ~dir:(Path.build (Paths.odocs ctx (Lib lib))));
   pkg_libs
 
@@ -359,17 +386,17 @@ let odocs =
 let setup_lib_html_rules_def =
   let module Input = struct
     module Super_context = Super_context.As_memo_key
-    type t = Super_context.t * Lib.t * Lib.t list Or_exn.t
+    type t = Super_context.t * Lib.Local.t * Lib.t list Or_exn.t
 
     let equal (sc1, l1, r1) (sc2, l2, r2) =
       Super_context.equal sc1 sc2
-      && Lib.equal l1 l2
+      && Lib.Local.equal l1 l2
       && Or_exn.equal (List.equal Lib.equal) r1 r2
 
     let hash (sc, l, r) =
       Hashtbl.hash
         ( Super_context.hash sc
-        , Lib.hash l
+        , Lib.Local.hash l
         , Or_exn.hash (List.hash Lib.hash) r
         )
 
@@ -379,7 +406,7 @@ let setup_lib_html_rules_def =
   let f (sctx, lib, requires) =
     let ctx = Super_context.context sctx in
     let odocs = odocs ctx (Lib lib) in
-    let pkg = Lib.package lib in
+    let pkg = Lib.package (Lib.Local.to_lib lib) in
     List.iter odocs ~f:(setup_html sctx ~pkg ~requires);
     let html_files = List.map ~f:(fun o -> Path.build o.html_file) odocs in
     let static_html = List.map ~f:Path.build (static_html ctx) in
@@ -433,8 +460,9 @@ let setup_pkg_html_rules_def =
     ~visibility:Hidden
     Sync
     (fun (sctx, pkg, (libs : Lib.Local.t list)) ->
-       let libs = (libs :> Lib.t list) in
-       let requires = Lib.closure libs ~linking:false in
+       let requires =
+         let libs = (libs :> Lib.t list) in
+         Lib.closure libs ~linking:false in
        let ctx = Super_context.context sctx in
        List.iter libs ~f:(setup_lib_html_rules sctx ~requires);
        let pkg_odocs = odocs ctx (Pkg pkg) in
@@ -463,7 +491,6 @@ let setup_package_aliases sctx (pkg : Package.t) =
     :: (libs_of_pkg sctx ~pkg:pkg.name
         |> Lib.Local.Set.to_list
         |> List.map ~f:(fun lib ->
-          let lib = Lib.Local.to_lib lib in
           Dep.html_alias ctx (Lib lib)))
     |> List.map ~f:(fun f -> Path.build (Alias.stamp_file f))
     |> Path.Set.of_list
@@ -606,14 +633,15 @@ let init sctx =
            | Some _ -> None
            | None ->
              let scope = SC.find_scope_by_dir sctx w.ctx_dir in
-             Some (Option.value_exn (
-               Lib.DB.find_even_when_hidden (Scope.libs scope)
-                 (Library.best_name l))
-             )
+             Library.best_name l
+             |> Lib.DB.find_even_when_hidden (Scope.libs scope)
+             |> Option.value_exn
+             |> Lib.Local.of_lib_exn
+             |> Option.some
            end
          | _ -> None
        ))
-     |> List.map ~f:(fun (lib : Lib.t) ->
+     |> List.map ~f:(fun (lib : Lib.Local.t) ->
        Lib lib
        |> Dep.html_alias ctx
        |> Alias.stamp_file
@@ -635,8 +663,7 @@ let gen_rules sctx ~dir:_ rest =
       let mlds = Packages.mlds sctx pkg in
       setup_package_odoc_rules sctx ~pkg ~mlds)
   | "_odoc" :: "lib" :: lib :: _ ->
-    let lib, lib_db = SC.Scope_key.of_string sctx lib in
-    let lib = Lib_name.of_string_exn ~loc:None lib in
+    let lib, lib_db = Scope_key.of_string sctx lib in
     (* diml: why isn't [None] some kind of error here? *)
     Option.iter (Lib.DB.find lib_db lib) ~f:(fun lib ->
       (* TODO instead of this hack, call memoized function that
@@ -647,17 +674,21 @@ let gen_rules sctx ~dir:_ rest =
   | "_html" :: lib_unique_name_or_pkg :: _ ->
     (* TODO we can be a better with the error handling in the case where
        lib_unique_name_or_pkg is neither a valid pkg or lnu *)
-    let lib, lib_db = SC.Scope_key.of_string sctx lib_unique_name_or_pkg in
-    let lib = Lib_name.of_string_exn ~loc:None lib in
+    let lib, lib_db = Scope_key.of_string sctx lib_unique_name_or_pkg in
     let setup_pkg_html_rules pkg =
       setup_pkg_html_rules sctx ~pkg ~libs:(
         Lib.Local.Set.to_list (load_all_odoc_rules_pkg sctx ~pkg)) in
     (* diml: why isn't [None] some kind of error here? *)
-    Option.iter (Lib.DB.find lib_db lib) ~f:(fun lib ->
-      match Lib.package lib with
+    let lib =
+      let open Option.O in
+      let* lib = Lib.DB.find lib_db lib in
+      Lib.Local.of_lib lib
+    in
+    Option.iter lib ~f:(fun lib ->
+      match Lib.package (Lib.Local.to_lib lib) with
       | None ->
         setup_lib_html_rules sctx
-          lib ~requires:(Lib.closure ~linking:false [lib])
+          lib ~requires:(Lib.closure ~linking:false [Lib.Local.to_lib lib])
       | Some pkg ->
         setup_pkg_html_rules pkg);
     Option.iter

@@ -163,6 +163,15 @@ module Cst = struct
     | List of Loc.t * t list
     | Comment of Loc.t * Comment.t
 
+  let rec to_dyn =
+    let open Dyn.Encoder in
+    function
+    | Atom (_, a) -> constr "Atom" [Atom.to_dyn a]
+    | Quoted_string (_, s) -> constr "Quoted_string" [string s]
+    | Template t -> constr "Template" [Template.to_dyn t]
+    | List (_, l) -> constr "List" [list to_dyn l]
+    | Comment (_, c) -> constr "Comment" [Comment.to_dyn c]
+
   let loc (Atom (loc, _) | Quoted_string (loc, _) | List (loc, _)
           | Template { loc ; _ } | Comment (loc, _)) = loc
 

@@ -1,16 +1,6 @@
 open! Stdune
 open Import
 
-module Syntax = struct
-  type t = OCaml | Reason
-
-  let to_string = function
-    | OCaml -> "ocaml"
-    | Reason -> "reason"
-
-  let to_dyn t = Dyn.Encoder.string (to_string t)
-end
-
 module Name = struct
   module T = struct
     type t = string
@@ -46,21 +36,14 @@ module Name = struct
   let to_local_lib_name s =
     Lib_name.Local.of_string_exn s
 
-  let basename n ~(ml_kind : Ml_kind.t) ~(syntax : Syntax.t) =
-    let ext =
-      match syntax, ml_kind with
-      | Reason, Intf -> ".rei"
-      | Reason, Impl -> ".re"
-      | OCaml, Intf -> ".mli"
-      | OCaml, Impl -> ".ml"
-    in
-    String.lowercase n ^ ext
+  let basename n ~(ml_kind : Ml_kind.t) ~(dialect : Dialect.t) =
+    String.lowercase n ^ Dialect.extension dialect ml_kind
 end
 
 module File = struct
   type t =
-    { path   : Path.t
-    ; syntax : Syntax.t
+    { path    : Path.t
+    ; dialect : Dialect.t
     }
 
   let path t = t.path
@@ -69,13 +52,13 @@ module File = struct
     let path = Path.relative src_dir (Path.basename t.path) in
     { t with path }
 
-  let make syntax path = { syntax; path }
+  let make dialect path = { dialect; path }
 
-  let to_dyn { path; syntax } =
+  let to_dyn { path; dialect } =
     let open Dyn.Encoder in
     record
       [ "path", Path.to_dyn path
-      ; "syntax", Syntax.to_dyn syntax
+      ; "dialect", Dialect.to_dyn dialect
       ]
 
 end
@@ -240,14 +223,6 @@ let file t ~(ml_kind : Ml_kind.t) =
 
 let obj_name t = t.obj_name
 
-let odoc_file t ~doc_dir =
-  let base =
-    match t.visibility with
-    | Public -> doc_dir
-    | Private -> Utils.library_private_dir ~obj_dir:doc_dir
-  in
-  Path.Build.relative base (t.obj_name ^ ".odoc")
-
 let iter t ~f =
   Ml_kind.Dict.iteri t.source.files
     ~f:(fun kind -> Option.iter ~f:(f kind))
@@ -284,7 +259,7 @@ let wrapped_compat t =
     let impl =
       Some (
         { File.
-          syntax = OCaml
+          dialect = Dialect.ocaml
         ; path =
             (* Option.value_exn cannot fail because we disallow wrapped
                compatibility mode for virtual libraries. That means none of the
@@ -363,8 +338,8 @@ let decode ~src_dir =
     in
     let file exists ml_kind =
       if exists then
-        let basename = Name.basename name ~ml_kind ~syntax:OCaml in
-        Some (File.make Syntax.OCaml (Path.relative src_dir basename))
+        let basename = Name.basename name ~ml_kind ~dialect:Dialect.ocaml in
+        Some (File.make Dialect.ocaml (Path.relative src_dir basename))
       else
         None
     in
@@ -391,27 +366,12 @@ let pped =
     { file with path = pp_path })
 
 let ml_source =
-  map_files ~f:(fun _ f ->
-    match f.syntax with
-    | OCaml  -> f
-    | Reason ->
-      let path =
-        let base, ext = Path.split_extension f.path in
-        let suffix =
-          match ext with
-          | ".re"  -> ".re.ml"
-          | ".rei" -> ".re.mli"
-          | _     ->
-            User_error.raise
-              ~loc:(Loc.in_file
-                      (Path.source (Path.drop_build_context_exn f.path)))
-              [ Pp.textf "Unknown file extension for reason source file: %S"
-                  ext
-              ]
-        in
-        Path.extend_basename base ~suffix
-      in
-      File.make OCaml path)
+  map_files ~f:(fun ml_kind f ->
+    match Dialect.ml_suffix f.dialect ml_kind with
+    | None -> f
+    | Some suffix ->
+      let path = Path.extend_basename f.path ~suffix in
+      File.make Dialect.ocaml path)
 
 let set_src_dir t ~src_dir =
   map_files t ~f:(fun _ -> File.set_src_dir ~src_dir)
@@ -420,7 +380,7 @@ let generated ~src_dir name =
   let basename = String.uncapitalize (Name.to_string name) in
   let source =
     let impl =
-      File.make OCaml (Path.relative src_dir (basename ^ ml_gen)) in
+      File.make Dialect.ocaml (Path.relative src_dir (basename ^ ml_gen)) in
     Source.make ~impl name in
   of_source
     ~visibility:Public

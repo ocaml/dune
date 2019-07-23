@@ -5,6 +5,24 @@ open! No_io
 
 module Library = Dune_file.Library
 
+module Package_paths = struct
+  let opam_file (ctx : Context.t) pkg =
+    Path.Build.append_source ctx.build_dir (Package.opam_file pkg)
+
+  let meta_file (ctx : Context.t) pkg =
+    Path.Build.append_source ctx.build_dir (Package.meta_file pkg)
+
+  let build_dir (ctx : Context.t) (pkg : Package.t) =
+    Path.Build.append_source ctx.build_dir pkg.path
+
+  let dune_package_file ctx pkg =
+    Path.Build.relative (build_dir ctx pkg)
+      (Package.Name.to_string pkg.name ^ ".dune-package")
+
+  let meta_template ctx pkg =
+    Path.Build.extend_basename (meta_file ctx pkg) ~suffix:".template"
+end
+
 module Stanzas_to_entries : sig
   val stanzas_to_entries
     : Super_context.t
@@ -158,21 +176,19 @@ end = struct
     let keep_if = keep_if ~external_lib_deps_mode in
     let init =
       Super_context.packages sctx
-      |> Package.Name.Map.map ~f:(fun pkg ->
-        let local_package = Local_package.make ~ctx ~pkg in
+      |> Package.Name.Map.map ~f:(fun (pkg : Package.t) ->
         let files = Super_context.source_files sctx ~src_path:pkg.path in
         let pkg_dir = Path.Build.append_source ctx.build_dir pkg.path in
         let init =
-          let meta_file = Local_package.meta_file local_package in
-          let dune_package_file =
-            Local_package.dune_package_file local_package in
+          let meta_file = Package_paths.meta_file ctx pkg in
+          let dune_package_file = Package_paths.dune_package_file ctx pkg in
           (None, Install.Entry.make Lib meta_file ~dst:"META")
           :: (None, Install.Entry.make Lib dune_package_file ~dst:"dune-package")
           :: (match pkg.kind with
             | Dune false -> []
             | Dune true
             | Opam ->
-              let opam_file = Local_package.opam_file local_package in
+              let opam_file = Package_paths.opam_file ctx pkg in
               [None, Install.Entry.make Lib opam_file ~dst:"opam"])
         in
         String.Set.fold files ~init ~f:(fun fn acc ->
@@ -250,11 +266,11 @@ end = struct
     Memo.exec memo
 end
 
-let gen_dune_package sctx ~version ~(pkg : Local_package.t) =
+let gen_dune_package sctx ~version ~pkg =
   let ctx = Super_context.context sctx in
-  let dune_package_file = Local_package.dune_package_file pkg in
-  let meta_template = Local_package.meta_template pkg in
-  let name = Local_package.name pkg in
+  let dune_package_file = Package_paths.dune_package_file ctx pkg in
+  let meta_template = Package_paths.meta_template ctx pkg in
+  let name = pkg.name in
   let dune_version = Syntax.greatest_supported_version Stanza.syntax in
   Build.if_file_exists (Path.build meta_template)
     ~then_:(Build.return Dune_package.Or_meta.Use_meta)
@@ -269,7 +285,7 @@ let gen_dune_package sctx ~version ~(pkg : Local_package.t) =
             Path.Build.L.relative pkg_root subdir
           in
           let libs =
-            Super_context.libs_of_package sctx (Local_package.name pkg)
+            Super_context.libs_of_package sctx pkg.name
             |> Lib.Local.Set.to_list
             |> List.map ~f:(fun lib ->
               let dir_contents =
@@ -347,16 +363,13 @@ let init_meta sctx ~dir =
   Super_context.find_scope_by_dir sctx dir
   |> Scope.project
   |> Dune_project.packages
-  |> Package.Name.Map.iter ~f:(fun pkg ->
-    let pkg = Local_package.make ~ctx ~pkg in
+  |> Package.Name.Map.iter ~f:(fun (pkg : Package.t) ->
     let libs =
-      Super_context.libs_of_package sctx (Local_package.name pkg) in
-    let path = Local_package.build_dir pkg in
-    let pkg_name = Local_package.name pkg in
-    let meta = Local_package.meta_file pkg in
-    let meta_template = Path.build (Local_package.meta_template pkg) in
+      Super_context.libs_of_package sctx pkg.name in
+    let path = Package_paths.build_dir ctx pkg in
+    let meta = Package_paths.meta_file ctx pkg in
+    let meta_template = Path.build (Package_paths.meta_template ctx pkg) in
     let version =
-      let pkg = Local_package.package pkg in
       let get = pkg_version ~pkg ~path in
       Super_context.Pkg_version.set sctx pkg get
     in
@@ -382,7 +395,7 @@ let init_meta sctx ~dir =
                   [ Pp.textf
                       "Package %s defines virtual library %s and \
                        has a META template. This is not allowed."
-                      (Package.Name.to_string (Local_package.name pkg))
+                      (Package.Name.to_string pkg.name)
                       (Lib_name.to_string name)
                   ]
             })
@@ -391,7 +404,7 @@ let init_meta sctx ~dir =
     let meta_contents =
       version >>^ fun version ->
       Gen_meta.gen
-        ~package:(Package.Name.to_string pkg_name)
+        ~package:(Package.Name.to_string pkg.name)
         ~version
         (Lib.Local.Set.to_list libs
          |> List.map ~f:Lib.Local.to_lib)
@@ -481,31 +494,32 @@ let package_source_files sctx package =
     ~f:(fun (_loc, entry) -> entry.Install.Entry.src)
     (install_entries sctx package)
 
-let install_rules sctx package =
-  let install_paths = Local_package.install_paths package in
+let install_rules sctx (package : Package.t) =
+  let install_paths =
+    Install.Section.Paths.make ~package:package.name ~destdir:Path.root ()
+  in
   let entries =
-    install_entries sctx (Local_package.package package)
+    install_entries sctx package
     |> symlink_installed_artifacts_to_build_install sctx ~install_paths
   in
   let ctx = Super_context.context sctx in
-  let package_name = Local_package.name package in
-  let pkg_build_dir = Local_package.build_dir package in
+  let pkg_build_dir = Package_paths.build_dir ctx package in
   let install_file =
     Path.Build.relative
       pkg_build_dir
-      (Utils.install_file ~package:package_name
+      (Utils.install_file ~package:package.name
          ~findlib_toolchain:ctx.findlib_toolchain)
   in
   let files = Install.files entries in
   let target_alias =
-    Build_system.Alias.package_install ~context:ctx ~pkg:package_name
+    Build_system.Alias.package_install ~context:ctx ~pkg:package.name
   in
   let () =
     Rules.Produce.Alias.add_deps
       target_alias
       files
       ~dyn_deps:
-        (Build_system.package_deps package_name files
+        (Build_system.package_deps package.name files
          >>^ fun packages ->
          Package.Name.Set.to_list packages
          |> List.map ~f:(fun pkg ->
@@ -536,13 +550,13 @@ let install_rules sctx package =
      >>>
      Build.write_file_dyn install_file)
 
-let install_alias (ctx : Context.t) (package : Local_package.t) =
+let install_alias (ctx : Context.t) (package : Package.t) =
   if not ctx.implicit then
     let install_fn =
-      Utils.install_file ~package:(Local_package.name package)
+      Utils.install_file ~package:package.name
         ~findlib_toolchain:ctx.findlib_toolchain
     in
-    let path = Local_package.build_dir package in
+    let path = Package_paths.build_dir ctx package in
     let install_alias = Alias.install ~dir:path in
     let install_file = Path.relative (Path.build path) install_fn in
     Rules.Produce.Alias.add_deps install_alias (Path.Set.singleton install_file)
@@ -564,7 +578,6 @@ let memo =
     Sync
     (fun (sctx, pkg) ->
        let ctx = Super_context.context sctx in
-       let pkg = Local_package.make ~ctx ~pkg in
        let context_name = ctx.name in
        let rules = Memo.lazy_ (fun () ->
          Rules.collect_unit (fun () ->
@@ -578,7 +591,7 @@ let memo =
               [
                 Dir_set.subtree
                   (Config.local_install_dir ~context:context_name);
-                Dir_set.singleton (Local_package.build_dir pkg);
+                Dir_set.singleton (Package_paths.build_dir ctx pkg);
                 Dir_set.singleton ctx.build_dir
               ])
            ,

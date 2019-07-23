@@ -16,7 +16,7 @@ let eol = '\n' | eof
 
 let ext = '.' ['a'-'z' 'A'-'Z' '0'-'9']+
 
-let abs_path = '/' ['a'-'z' 'A'-'Z' '0'-'9' '-' '_' '/']+
+let abs_path = '/' ['a'-'z' 'A'-'Z' '0'-'9' '.' '-' '_' '/']+
 
 rule file = parse
  | eof { [] }

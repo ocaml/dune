@@ -3,7 +3,12 @@
  (inline_tests
   (deps
    (source_tree ../unit-tests/findlib-db)
-   (source_tree ../unit-tests/toolchain.d)))
+   (source_tree ../unit-tests/toolchain.d)
+   ;; *.ml needed for expect tests
+   ;; CR-someday aalekseyev: maybe ppx_expect should somehow tell
+   ;; dune about this
+   (glob_files *.ml)
+   ))
  (libraries stdune dune wp_dune
             ;; This is because of the (implicit_transitive_deps false)
             ;; in dune-project

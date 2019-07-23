@@ -250,7 +250,7 @@ module Dep_conf = struct
     | Sandbox_config s -> Sandbox_config s
 
   let decode_sandbox_config =
-    let+ () = Syntax.since Stanza.syntax (1, 11)
+    let+ () = Syntax.since Stanza.syntax (1, 12)
     and+ (loc, x) =
       located (list (sum [
         "none", return Sandbox_config.Partial.no_sandboxing;

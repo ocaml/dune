@@ -472,23 +472,6 @@ let install_entries sctx (package : Package.t) =
   let packages = Stanzas_to_entries.stanzas_to_entries sctx in
   Package.Name.Map.Multi.find packages package.name
 
-let install_entries =
-  let memo =
-    Memo.create
-      ~input:(module Sctx_and_package)
-      ~output:(
-        Simple (module struct
-          type t = (Loc.t option * Install.Entry.t) list
-          let to_dyn _ = Dyn.Opaque
-        end))
-      "install-entries"
-      ~doc:"install entries"
-      ~visibility:Hidden
-      Sync
-      (fun (sctx, package) -> install_entries sctx package)
-  in
-  fun sctx package -> Memo.exec memo (sctx, package)
-
 let package_source_files sctx package =
   List.map
     ~f:(fun (_loc, entry) -> entry.Install.Entry.src)

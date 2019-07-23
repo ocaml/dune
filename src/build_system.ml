@@ -1374,19 +1374,21 @@ end = struct
         (config : Sandbox_config.t) ~loc ~sandboxing_preference =
     match
       List.find_map sandboxing_preference ~f:(fun preference ->
-        match (preference, config) with
-        | None, { none = true; _ } ->
-          Some None
-        | Some Sandbox_mode.Copy, { copy = true; _ } ->
-          Some (Some Sandbox_mode.Copy)
-        | Some Symlink, { symlink = true; copy; _ } ->
-          (if copy then
-             Some (Some (if Sys.win32 then Copy else Symlink))
-           else
-             Code_error.raise
-               "This rule requires sandboxing with symlinks, but that won't \
-                work on Windows." [])
-        | _, _ -> None) with
+        match Sandbox_mode.Set.mem config preference with
+        | false -> None
+        | true ->
+          match preference with
+          | Some Symlink ->
+            if Sandbox_mode.Set.mem config Sandbox_mode.copy then
+              Some
+                (if Sys.win32 then Sandbox_mode.copy else Sandbox_mode.symlink)
+            else
+              User_error.raise ~loc
+                [ Pp.text "This rule requires sandboxing with symlinks, but \
+                           that won't work on Windows." ]
+          | _ ->
+            Some preference
+      ) with
     | None ->
       (* This is not trivial to reach because the user rules are checked
          at parse time and [sandboxing_preference] always includes all possible

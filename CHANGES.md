@@ -15,13 +15,13 @@
   is done to prevent the accidental collision with library dependencies of the
   executable. (#2364, fixes #2292, @rgrinberg)
 
+- Enable `(explicit_js_mode)` by default. (#1941, @nojb)
+
 - Add a new config option `sandboxing_preference`, the cli argument `--sandbox`,
   and the dep spec `sandbox` in dune language. These let the user control the level of
   sandboxing done by dune per rule and globally. The rule specification takes precedence.
   The global configuration merely specifies the default. 
   (#2213, @aalekseyev)
-
-- Enable `(explicit_js_mode)` by default. (#1941, @nojb)
 
 1.11.0 (unreleased)
 -------------------

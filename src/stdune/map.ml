@@ -219,6 +219,15 @@ module Make(Key : Key) : S with type key = Key.t = struct
         | Some xs -> Some (x :: xs))
 
     let find t k = Option.value (find t k) ~default:[]
+
+    let add_all t k = function
+      | [] -> t
+      | entries ->
+        update t k ~f:(fun v ->
+          Some (
+            match v with
+            | None -> entries
+            | Some x -> List.append x entries))
   end
 
   exception Found of Key.t

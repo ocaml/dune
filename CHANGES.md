@@ -17,7 +17,7 @@
 
 - Enable `(explicit_js_mode)` by default. (#1941, @nojb)
 
-1.11.0 (unreleased)
+1.11.0 (23/07/2019)
 -------------------
 
 - Don't select all local implementations in `dune utop`. Instead, let the

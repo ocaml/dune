@@ -5,7 +5,11 @@ open! No_io
 
 module Library = Dune_file.Library
 
-module Stanzas_to_entries = struct
+module Stanzas_to_entries : sig
+  val stanzas_to_entries
+    : Super_context.t
+    -> (Loc.t option * Install.Entry.t) list Package.Name.Map.t
+end = struct
   let lib_ppxs sctx ~(lib : Dune_file.Library.t) ~scope ~dir_kind =
     match lib.kind with
     | Normal | Ppx_deriver _ -> []
@@ -227,6 +231,23 @@ module Stanzas_to_entries = struct
           | _ -> []
         in
         Package.Name.Map.Multi.add_all acc package.name new_entries)
+
+  let stanzas_to_entries =
+    let memo =
+      Memo.create
+        ~input:(module Super_context.As_memo_key)
+        ~output:(
+          Simple (module struct
+            type t = (Loc.t option * Install.Entry.t) list Package.Name.Map.t
+            let to_dyn _ = Dyn.Opaque
+          end))
+        "stanzas-to-entries"
+        ~doc:"install entries for all packages"
+        ~visibility:Hidden
+        Sync
+        stanzas_to_entries
+    in
+    Memo.exec memo
 end
 
 let gen_dune_package sctx ~version ~(pkg : Local_package.t) =

@@ -196,14 +196,14 @@ end = struct
       match res with
       | None -> acc
       | Some (stanza, package) ->
-        let expander = Super_context.expander sctx ~dir in
-        let path_expander =
-          File_binding.Unexpanded.expand ~dir
-            ~f:(Expander.expand_str expander)
-        in
         let new_entries =
           match (stanza : Stanza.t) with
           | Dune_file.Install i ->
+            let expander = Super_context.expander sctx ~dir in
+            let path_expander =
+              File_binding.Unexpanded.expand ~dir
+                ~f:(Expander.expand_str expander)
+            in
             let section = i.section in
             List.map i.files ~f:(fun unexpanded ->
               let fb = path_expander unexpanded in

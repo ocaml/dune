@@ -154,7 +154,7 @@ module Set = struct
   let dirs t =
     fold t ~init:Path.Set.empty ~f:(fun f acc ->
       match f with
-      | Alias a -> Path.Set.add acc (Path.build (Alias.dir a))
+      | Alias a -> Path.Set.add acc (Path.build (Alias.stamp_file_dir a))
       | Glob g -> Path.Set.add acc (File_selector.dir g)
       | File f -> Path.Set.add acc (Path.parent_exn f)
       | Universe

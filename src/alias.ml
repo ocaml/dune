@@ -61,15 +61,18 @@ let suffix = "-" ^ String.make 32 '0'
 let name t = t.name
 let dir  t = t.dir
 
-let fully_qualified_name t = Path.Build.relative t.dir t.name
-
 (* Where we store stamp files for aliases *)
 let alias_dir = Path.Build.(relative root ".aliases")
 
-let stamp_file t =
+let stamp_file_dir t =
   let local = Path.Build.local t.dir in
+  Path.Build.append_local alias_dir local
+
+let fully_qualified_name t = Path.Build.relative t.dir t.name
+
+let stamp_file t =
   Path.Build.relative
-    (Path.Build.append_local alias_dir local)
+    (stamp_file_dir t)
     (t.name ^ suffix)
 
 let find_dir_specified_on_command_line ~dir ~file_tree =

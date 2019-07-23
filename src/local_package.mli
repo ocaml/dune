@@ -5,13 +5,13 @@ open Stdune
 
 type t
 
+val make : ctx:Context.t -> pkg:Package.t -> t
+
 val hash : t -> int
 
 val to_dyn : t Dyn.Encoder.t
 
 val build_dir : t -> Path.Build.t
-
-val of_sctx : Super_context.t -> t Package.Name.Map.t
 
 val meta_file : t -> Path.Build.t
 
@@ -26,5 +26,3 @@ val install_paths : t -> Install.Section.Paths.t
 val package : t -> Package.t
 
 val meta_template : t -> Path.Build.t
-
-val defined_in : Super_context.t -> dir:Path.Build.t -> t list

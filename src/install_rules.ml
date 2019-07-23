@@ -153,9 +153,9 @@ module Stanzas_to_entries = struct
       Super_context.external_lib_deps_mode sctx in
     let keep_if = keep_if ~external_lib_deps_mode in
     let init =
-      Local_package.of_sctx sctx
-      |> Package.Name.Map.map ~f:(fun (local_package : Local_package.t) ->
-        let pkg = Local_package.package local_package in
+      Super_context.packages sctx
+      |> Package.Name.Map.map ~f:(fun pkg ->
+        let local_package = Local_package.make ~ctx ~pkg in
         let files = Super_context.source_files sctx ~src_path:pkg.path in
         let pkg_dir = Path.Build.append_source ctx.build_dir pkg.path in
         let init =
@@ -322,8 +322,12 @@ let pkg_version ~path ~(pkg : Package.t) =
     ]
 
 let init_meta sctx ~dir =
-  Local_package.defined_in sctx ~dir
-  |> List.iter ~f:(fun pkg ->
+  let ctx = Super_context.context sctx in
+  Super_context.find_scope_by_dir sctx dir
+  |> Scope.project
+  |> Dune_project.packages
+  |> Package.Name.Map.iter ~f:(fun pkg ->
+    let pkg = Local_package.make ~ctx ~pkg in
     let libs =
       Super_context.libs_of_package sctx (Local_package.name pkg) in
     let path = Local_package.build_dir pkg in
@@ -423,17 +427,16 @@ let promote_install_file (ctx : Context.t) =
 
 module Sctx_and_package = struct
   module Super_context = Super_context.As_memo_key
-  type t = Super_context.t * Local_package.t
+  type t = Super_context.t * Package.t
 
-  let hash (x, y) = Hashtbl.hash (Super_context.hash x, Local_package.hash y)
+  let hash (x, y) = Hashtbl.hash (Super_context.hash x, Package.hash y)
   let equal (x1, y1) (x2, y2) = (x1 == x2 && y1 == y2)
   let to_dyn _ = Dyn.Opaque
 end
 
-let install_entries sctx package =
-  let name = Local_package.name package in
+let install_entries sctx (package : Package.t) =
   let packages = Stanzas_to_entries.stanzas_to_entries sctx in
-  Package.Name.Map.Multi.find packages name
+  Package.Name.Map.Multi.find packages package.name
 
 let install_entries =
   let memo =
@@ -460,7 +463,7 @@ let package_source_files sctx package =
 let install_rules sctx package =
   let install_paths = Local_package.install_paths package in
   let entries =
-    install_entries sctx package
+    install_entries sctx (Local_package.package package)
     |> symlink_installed_artifacts_to_build_install sctx ~install_paths
   in
   let ctx = Super_context.context sctx in
@@ -540,6 +543,7 @@ let memo =
     Sync
     (fun (sctx, pkg) ->
        let ctx = Super_context.context sctx in
+       let pkg = Local_package.make ~ctx ~pkg in
        let context_name = ctx.name in
        let rules = Memo.lazy_ (fun () ->
          Rules.collect_unit (fun () ->
@@ -577,7 +581,7 @@ let scheme_per_ctx_memo =
     ~visibility:Hidden
     Sync
     (fun sctx ->
-       let packages = Local_package.of_sctx sctx in
+       let packages = Super_context.packages sctx in
        let scheme =
          Scheme.all (
            List.map (Package.Name.Map.to_list packages)
@@ -594,11 +598,10 @@ let gen_rules sctx ~dir =
 
 let packages =
   let f sctx =
-    Package.Name.Map.foldi (Local_package.of_sctx sctx)
-      ~init:[]
-      ~f:(fun name pkg acc ->
-        List.fold_left (package_source_files sctx pkg)
-          ~init:acc ~f:(fun acc path -> (path, name) :: acc))
+    Super_context.packages sctx
+    |> Package.Name.Map.foldi ~init:[] ~f:(fun name pkg acc ->
+      List.fold_left (package_source_files sctx pkg)
+        ~init:acc ~f:(fun acc path -> (path, name) :: acc))
     |> Path.Build.Map.of_list_fold
          ~init:Package.Name.Set.empty
          ~f:Package.Name.Set.add

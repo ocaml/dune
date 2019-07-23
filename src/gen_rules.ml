@@ -57,7 +57,6 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
   (* We need to instantiate Install_rules earlier to avoid issues whenever
    * Super_context is used too soon.
    * See: https://github.com/ocaml/dune/pull/1354#issuecomment-427922592 *)
-  module Lib_rules = Lib_rules.Gen(P)
 
   let sctx = P.sctx
 
@@ -89,7 +88,8 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
         For_stanza.empty_none
       | Library lib ->
         let cctx, merlin =
-          Lib_rules.rules lib ~dir ~scope ~dir_contents ~expander ~dir_kind in
+          Lib_rules.rules lib ~sctx ~dir ~scope ~dir_contents ~expander
+            ~dir_kind in
         { For_stanza.
           merlin = Some merlin
         ; cctx = Some (lib.buildable.loc, cctx)

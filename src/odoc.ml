@@ -326,13 +326,11 @@ let setup_toplevel_index_rule sctx =
     (Build.write_file (Paths.toplevel_index ctx) html)
 
 let libs_of_pkg sctx ~pkg =
-  match Package.Name.Map.find (SC.libs_by_package sctx) pkg with
-  | None -> Lib.Local.Set.empty
-  | Some (_, libs) ->
-    (* Filter out all implementations of virtual libraries *)
-    Lib.Local.Set.filter libs ~f:(fun lib ->
-      let lib = Lib.Local.to_lib lib in
-      not (Lib.is_impl lib))
+  SC.libs_of_package sctx pkg
+  |> (* Filter out all implementations of virtual libraries *)
+  Lib.Local.Set.filter ~f:(fun lib ->
+    let lib = Lib.Local.to_lib lib in
+    not (Lib.is_impl lib))
 
 let load_all_odoc_rules_pkg sctx ~pkg =
   let pkg_libs = libs_of_pkg sctx ~pkg in

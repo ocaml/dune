@@ -24,6 +24,9 @@ module Linkage : sig
   (** [native] if supported, [custom] if not *)
   val native_or_custom : Context.t -> t
 
+  (** Javascript compilation, extension [.bc.js] *)
+  val js : t
+
   val make
     :  mode:Mode.t
     -> ext:string

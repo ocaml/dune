@@ -27,7 +27,7 @@ val create
   -> ?no_keep_locs         : bool
   -> opaque                : bool
   -> ?stdlib               : Dune_file.Library.Stdlib.t
-  -> ?js_of_ocaml          : Dune_file.Js_of_ocaml.t
+  -> js_of_ocaml           : Dune_file.Js_of_ocaml.t option
   -> dynlink               : bool
   -> package               : Package.t option
   -> ?vimpl                : Vimpl.t

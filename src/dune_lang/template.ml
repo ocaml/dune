@@ -129,3 +129,31 @@ let remove_locs t =
         | Var v -> Var { v with loc = Loc.none }
         | Text _ as s -> s)
   }
+
+let dyn_of_var_syntax =
+  let open Dyn.Encoder in
+  function
+  | Dollar_brace -> constr "Dollar_brace" []
+  | Dollar_paren -> constr "Dollar_paren" []
+  | Percent -> constr "Percent" []
+
+let dyn_of_var { loc = _; name; payload; syntax } =
+  let open Dyn.Encoder in
+  record
+    [ "name", string name
+    ; "payload", option string payload
+    ; "syntax", dyn_of_var_syntax syntax
+    ]
+
+let dyn_of_part =
+  let open Dyn.Encoder in
+  function
+  | Text s -> constr "Text" [string s]
+  | Var v -> constr "Var" [dyn_of_var v]
+
+let to_dyn { quoted ; parts; loc = _ } =
+  let open Dyn.Encoder in
+  record
+    [ "quoted", bool quoted
+    ; "parts", list dyn_of_part parts
+    ]

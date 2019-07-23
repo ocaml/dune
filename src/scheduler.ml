@@ -523,11 +523,31 @@ let with_chdir t ~dir ~f =
 
 let t_var : t Fiber.Var.t = Fiber.Var.create ()
 
+type status_line_config =
+  { message   : User_message.Style.t Pp.t option
+  ; show_jobs : bool
+  }
+
+let status_line_generator = ref (fun () -> { message = None; show_jobs = false; })
+
 let update_status_line () =
-  Console.update_status_line ~running_jobs:(Event.pending_jobs ())
+  let gen_status_line = !status_line_generator () in
+  match gen_status_line with
+  | { message = None; _ } ->
+    Console.clear_status_line ();
+  | { message = Some status_line; show_jobs } ->
+    let status_line =
+      if show_jobs then
+        Pp.seq status_line
+          (Pp.verbatim (Printf.sprintf " (jobs: %u)" (Event.pending_jobs ())))
+      else
+        status_line
+    in
+    Console.update_status_line status_line
 
 let set_status_line_generator gen =
-  Console.set_status_line_generator ~running_jobs:(Event.pending_jobs ()) gen
+  status_line_generator := gen;
+  update_status_line ()
 
 let set_concurrency n =
   let t = Fiber.Var.get_exn t_var in
@@ -647,7 +667,7 @@ end = struct
     let* () = Fiber.yield () in
     let count = Event.pending_jobs () in
     if count = 0 then begin
-      Console.hide_status_line ();
+      Console.clear_status_line ();
       Fiber.return Done
     end else begin
       update_status_line ();
@@ -746,7 +766,7 @@ let poll ?log ?config ~once ~finally () =
       Exit
   in
   let wait msg =
-    let old_generator = Console.get_status_line_generator () in
+    let old_generator = !status_line_generator in
     set_status_line_generator
       (fun () ->
          { message = Some (Pp.seq msg

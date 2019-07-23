@@ -47,7 +47,6 @@ let context t = t.context
 let stanzas t = t.stanzas
 let stanzas_in t ~dir = Path.Build.Map.find t.stanzas_per_dir dir
 let packages t = t.packages
-let libs_by_package t = t.libs_by_package
 let artifacts t = t.artifacts
 let file_tree t = t.file_tree
 let build_dir t = t.context.build_dir
@@ -61,6 +60,11 @@ let to_dyn_concise t =
 let to_dyn t = Context.to_dyn t.context
 
 let host t = Option.value t.host ~default:t
+
+let libs_of_package t pkg_name =
+  match Package.Name.Map.find t.libs_by_package pkg_name with
+  | None -> Lib.Local.Set.empty
+  | Some (_, libs) -> libs
 
 let internal_lib_names t =
   List.fold_left t.stanzas ~init:Lib_name.Set.empty
@@ -153,6 +157,10 @@ end = struct
     in
     Env_node.local_binaries node ~profile:t.profile ~expander
 
+  let inline_tests ({profile; _} as t) ~dir =
+    let node = get t ~dir in
+    Env_node.inline_tests node ~profile
+
   let bin_artifacts t ~dir =
     let expander =
       expander_for_artifacts t ~context_expander:t.expander ~dir
@@ -177,7 +185,16 @@ end = struct
       expander_for_artifacts t ~context_expander:t.expander ~dir
     in
     let bin_artifacts_host = bin_artifacts_host t ~dir in
-    Expander.set_bin_artifacts expander ~bin_artifacts_host
+    let bindings =
+      let str =
+        inline_tests t ~dir
+        |> Dune_env.Stanza.Inline_tests.to_string
+      in
+      Pform.Map.singleton "inline_tests" (Values [String str])
+    in
+    expander
+    |> Expander.add_bindings ~bindings
+    |> Expander.set_bin_artifacts ~bin_artifacts_host
 
   let ocaml_flags t ~dir =
     Env_node.ocaml_flags (get t ~dir)

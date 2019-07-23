@@ -387,7 +387,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
         ~preprocessing:pp
         ~no_keep_locs:lib.no_keep_locs
         ~opaque
-        ~js_of_ocaml:lib.buildable.js_of_ocaml
+        ~js_of_ocaml:(Some lib.buildable.js_of_ocaml)
         ~dynlink
         ?stdlib:lib.stdlib
         ~package:(Option.map lib.public ~f:(fun p -> p.package))

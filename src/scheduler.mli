@@ -25,8 +25,13 @@ val poll
 (** Wait for the following process to terminate *)
 val wait_for_process : int -> Unix.process_status Fiber.t
 
+type status_line_config =
+  { message   : User_message.Style.t Pp.t option
+  ; show_jobs : bool
+  }
+
 (** Set the status line generator for the current scheduler *)
-val set_status_line_generator : (unit -> Console.status_line_config) -> unit
+val set_status_line_generator : (unit -> status_line_config) -> unit
 
 val set_concurrency : int -> unit
 

@@ -55,6 +55,7 @@ let generate_and_compile_module cctx ~precompiled_cmi ~name:basename
       ~requires_link:(lazy requires)
       ~flags:Ocaml_flags.empty
       ~opaque
+      ~js_of_ocaml:None
       ~dynlink:(Compilation_context.dynlink cctx)
       ~package:(Compilation_context.package cctx)
       ()

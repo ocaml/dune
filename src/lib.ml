@@ -1153,8 +1153,8 @@ end = struct
               | Some (ts, file) ->
                 (Ok ts, Ok file)
               | None ->
-                let e = Error.no_solution_found_for_select ~loc in
-                (e, e)
+                let e () = Error.no_solution_found_for_select ~loc in
+                (e (), e ())
             in
             (res, { Resolved_select. src_fn; dst_fn = result_fn }
                   :: acc_selects)

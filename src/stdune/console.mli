@@ -1,3 +1,6 @@
+(** Manage printing user message and keeping progress information in the status line *)
+
+
 module Display : sig
 
     type t =
@@ -17,19 +20,15 @@ val print_user_message
   -> User_message.t
   -> unit
 
-type status_line_config =
-  { message   : User_message.Style.t Pp.t option
-  ; show_jobs : bool
-  }
-
 val init : Display.t -> unit
 
 (** / *)
 (** Everything below this line requires [init] to have been called earlier. *)
 
-val get_status_line_generator : unit -> (unit -> status_line_config)
-val set_status_line_generator : (unit -> status_line_config) -> running_jobs:int -> unit
+val update_status_line : User_message.Style.t Pp.t -> unit
+(** Update the status line if the display is in progress mode. *)
 
-val update_status_line : running_jobs:int -> unit
-val hide_status_line : unit -> unit
+val clear_status_line : unit -> unit
+(** Clear the status line *)
+
 val display : unit -> Display.t

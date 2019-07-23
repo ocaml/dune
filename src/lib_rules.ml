@@ -393,8 +393,7 @@ module Gen (P : sig val sctx : Super_context.t end) = struct
     if not (Library.is_virtual lib) then (
       setup_build_archives lib ~cctx ~dep_graphs ~expander);
 
-    Odoc.setup_library_odoc_rules sctx lib ~obj_dir ~requires:requires_compile
-      ~modules ~dep_graphs ~scope;
+    Odoc.setup_library_odoc_rules cctx lib ~dep_graphs;
 
     Sub_system.gen_rules
       { super_context = sctx

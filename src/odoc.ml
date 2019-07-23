@@ -237,9 +237,9 @@ let setup_html sctx (odoc_file : odoc) ~pkg ~requires =
             ]
        :: dune_keep))
 
-let setup_library_odoc_rules sctx (library : Library.t) ~obj_dir ~scope ~modules
-      ~requires ~(dep_graphs:Dep_graph.Ml_kind.t) =
+let setup_library_odoc_rules cctx (library : Library.t) ~dep_graphs =
   let lib =
+    let scope = Compilation_context.scope cctx in
     Library.best_name library
     |> Lib.DB.find_even_when_hidden (Scope.libs scope)
     |> Option.value_exn
@@ -248,8 +248,12 @@ let setup_library_odoc_rules sctx (library : Library.t) ~obj_dir ~scope ~modules
   (* Using the proper package name doesn't actually work since odoc assumes
      that a package contains only 1 library *)
   let pkg_or_lnu = pkg_or_lnu lib in
+  let sctx = Compilation_context.super_context cctx in
   let ctx = Super_context.context sctx in
+  let requires = Compilation_context.requires_compile cctx in
   let odoc_include_flags = odoc_include_flags ctx (Lib.package lib) requires in
+  let obj_dir = Compilation_context.obj_dir cctx in
+  let modules = Compilation_context.modules cctx in
   let includes =
     (Dep.deps ctx (Lib.package lib) requires, odoc_include_flags) in
   let modules_and_odoc_files =

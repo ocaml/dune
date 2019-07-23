@@ -280,10 +280,10 @@ corresponding to every ``test`` stanza). In order to better control the
 compilation of JS targets, this behaviour can be turned off by using
 ``(explicit_js_mode)`` in the ``dune-project`` file.
 
-When explicit JS mode is enabled, an explicit `js` mode needs to be added to the
-``(modes ...)`` field of executables in order to trigger JS
-compilation. Explicit JS targets declared like this will be attached to the
-``@all`` alias.
+When explicit JS mode is enabled, an explicit ``js`` mode needs to be
+added to the ``(modes ...)`` field of executables in order to trigger
+JS compilation. Explicit JS targets declared like this will be
+attached to the ``@all`` alias.
 
 Starting from dune 2.0 this new behaviour will be the default and JS compilation
 of binaries will need to be explicitly declared.

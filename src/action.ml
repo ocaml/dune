@@ -219,3 +219,41 @@ let sandbox t ~sandboxed ~mode ~deps ~targets ~eval_pred : t =
     ; Progn (List.filter_map targets ~f:(fun path ->
         Some (Rename (sandboxed path, path))))
     ]
+
+type is_useful_to_sandbox =
+  | Clearly_not
+  | Maybe
+
+let is_useful_to_sandbox =
+  let rec loop t =
+    match t with
+    | Chdir (_, t) ->
+      loop t
+    | Setenv (_, _, t) ->
+      loop t
+    | Redirect (_, _, t) ->
+      loop t
+    | Ignore (_, t) ->
+      loop t
+    | Progn l -> List.exists l ~f:loop
+    | Echo _ -> false
+    | Cat _ -> false
+    | Copy _ -> false
+    | Symlink _ -> false
+    | Copy_and_add_line_directive _ -> false
+    | Write_file _ -> false
+    | Rename _ -> false
+    | Remove_tree _ -> false
+    | Diff _ -> false
+    | Mkdir _ -> false
+    | Digest_files _ -> false
+    | Merge_files_into _ -> false
+    | Run _ -> true
+    | System _ -> true
+    | Bash _ -> true
+  in
+  fun t -> match loop t with
+    | true ->
+      Maybe
+    | false ->
+      Clearly_not

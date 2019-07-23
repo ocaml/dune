@@ -1,7 +1,7 @@
 If an action does not respect the dependency specification, it results in a broken
 build. Dune fails to detect that:
 
-  $ echo '(lang dune 1.11)' > dune-project
+  $ echo '(lang dune 1.12)' > dune-project
   $ true > dune
   $ echo '(rule (target a) (deps) (action (bash "echo a | tee a > b")))' >> dune
   $ echo '(rule (target b) (deps) (action (bash "echo b | tee a > b")))' >> dune

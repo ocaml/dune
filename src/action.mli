@@ -89,3 +89,9 @@ val sandbox
   -> targets:Path.Build.t list
   -> eval_pred:Dep.eval_pred
   -> t
+
+type is_useful_to_sandbox =
+  | Clearly_not
+  | Maybe
+
+val is_useful_to_sandbox : t -> is_useful_to_sandbox

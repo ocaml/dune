@@ -1463,10 +1463,13 @@ end = struct
     let head_target = List.hd targets_as_list in
     let prev_trace = Trace.get (Path.build head_target) in
     let sandbox_mode =
-      select_sandbox_mode
-        ~loc:(rule_loc ~file_tree:t.file_tree ~info ~dir)
-        (Dep.Set.sandbox_config deps)
-        ~sandboxing_preference:t.sandboxing_preference
+      match Action.is_useful_to_sandbox action with
+      | Clearly_not -> Sandbox_mode.none
+      | Maybe ->
+        select_sandbox_mode
+          ~loc:(rule_loc ~file_tree:t.file_tree ~info ~dir)
+          (Dep.Set.sandbox_config deps)
+          ~sandboxing_preference:t.sandboxing_preference
     in
     let rule_digest =
       let env =

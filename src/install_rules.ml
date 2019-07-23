@@ -248,7 +248,7 @@ let gen_dune_package sctx ~version ~(pkg : Local_package.t) =
             Path.Build.L.relative pkg_root subdir
           in
           let libs =
-            Local_package.libs pkg
+            Super_context.libs_of_package sctx (Local_package.name pkg)
             |> Lib.Local.Set.to_list
             |> List.map ~f:(fun lib ->
               let dir_contents =
@@ -324,7 +324,8 @@ let pkg_version ~path ~(pkg : Package.t) =
 let init_meta sctx ~dir =
   Local_package.defined_in sctx ~dir
   |> List.iter ~f:(fun pkg ->
-    let libs = Local_package.libs pkg in
+    let libs =
+      Super_context.libs_of_package sctx (Local_package.name pkg) in
     let path = Local_package.build_dir pkg in
     let pkg_name = Local_package.name pkg in
     let meta = Local_package.meta_file pkg in
@@ -338,21 +339,28 @@ let init_meta sctx ~dir =
     gen_dune_package sctx ~version ~pkg;
 
     let template =
+      (* XXX this should really be lazy as it's only necessary for the then
+         clause. There's no way to express this in the build arrow however. *)
+      let vlib =
+        Lib.Local.Set.find libs ~f:(fun lib ->
+          let info = Lib.Local.info lib in
+          Option.is_some (Lib_info.virtual_ info))
+      in
       Build.if_file_exists meta_template
-        ~then_:(
-          match Local_package.virtual_lib pkg with
-          | Some lib ->
-            let lib = Lib.Local.to_lib lib in
-            Build.fail { fail = fun () ->
-              User_error.raise ~loc:(Loc.in_file meta_template)
-                [ Pp.textf "Package %s defines virtual library %s and \
-                            has a META template. This is not allowed."
-                    (Package.Name.to_string (Local_package.name pkg))
-                    (Lib_name.to_string (Lib.name lib))
-                ]
-            }
-          | None ->
-            Build.lines_of meta_template)
+        ~then_:(match vlib with
+          | None -> Build.lines_of meta_template
+          | Some vlib ->
+            Build.fail {
+              fail = fun () ->
+                let name = Lib.name (Lib.Local.to_lib vlib) in
+                User_error.raise ~loc:(Loc.in_file meta_template)
+                  [ Pp.textf
+                      "Package %s defines virtual library %s and \
+                       has a META template. This is not allowed."
+                      (Package.Name.to_string (Local_package.name pkg))
+                      (Lib_name.to_string name)
+                  ]
+            })
         ~else_:(Build.return ["# DUNE_GEN"])
     in
     let meta_contents =

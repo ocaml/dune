@@ -23,11 +23,7 @@ val name : t -> Package.Name.t
 
 val install_paths : t -> Install.Section.Paths.t
 
-val libs : t -> Lib.Local.Set.t
-
 val package : t -> Package.t
-
-val virtual_lib : t -> Lib.Local.t option
 
 val meta_template : t -> Path.Build.t
 

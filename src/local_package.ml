@@ -3,8 +3,6 @@ open Stdune
 type t =
   { ctx_build_dir : Path.Build.t
   ; pkg : Package.t
-  ; libs : Lib.Local.Set.t
-  ; virtual_lib : Lib.Local.t option Lazy.t
   }
 
 let to_dyn t = Package.to_dyn t.pkg
@@ -34,27 +32,10 @@ module Of_sctx = struct
   let def =
     let f sctx =
       let ctx = Super_context.context sctx in
-      let libs_of =
-        let libs = Super_context.libs_by_package sctx in
-        fun (pkg : Package.t) ->
-          match Package.Name.Map.find libs pkg.name with
-          | Some (_, libs) -> libs
-          | None -> Lib.Local.Set.empty
-      in
       Super_context.packages sctx
       |> Package.Name.Map.map ~f:(fun (pkg : Package.t) ->
-        let libs = libs_of pkg in
-        let virtual_lib = lazy (
-          Lib.Local.Set.find libs ~f:(fun l ->
-            let l = Lib.Local.to_lib l in
-            let info = Lib.info l in
-            let virtual_ = Lib_info.virtual_ info in
-            Option.is_some virtual_)
-        ) in
         { pkg
         ; ctx_build_dir = ctx.build_dir
-        ; libs
-        ; virtual_lib
         }
       )
     in
@@ -68,8 +49,6 @@ module Of_sctx = struct
 end
 
 let of_sctx sctx = Memo.exec Of_sctx.def sctx
-
-let libs t = t.libs
 
 let package t = t.pkg
 let opam_file t =
@@ -86,8 +65,6 @@ let dune_package_file t =
 
 let install_paths t =
   Install.Section.Paths.make ~package:t.pkg.name ~destdir:Path.root ()
-
-let virtual_lib t = Lazy.force t.virtual_lib
 
 let meta_template t =
   Path.Build.extend_basename (meta_file t) ~suffix:".template"

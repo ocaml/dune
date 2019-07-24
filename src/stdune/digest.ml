@@ -10,7 +10,10 @@ let compare x y = Ordering.of_int (D.compare x y)
 
 let to_string = D.to_hex
 
-let from_hex = D.from_hex
+let from_hex s =
+  match D.from_hex s with
+  | s -> Some s
+  | exception (Invalid_argument _) -> None
 
 let string = D.string
 

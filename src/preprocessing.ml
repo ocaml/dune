@@ -336,7 +336,13 @@ let get_rules sctx key =
   let pps, pp_names =
     let names, lib_db =
       match Digest.from_hex key with
-      | key ->
+      | None ->
+        User_error.raise
+          [ Pp.textf "invalid ppx key for %s"
+              (Path.Build.to_string_maybe_quoted exe)
+
+          ]
+      | Some key ->
         let { Key.Decoded.pps; project } = Key.decode key in
         let lib_db =
           match project with
@@ -344,52 +350,6 @@ let get_rules sctx key =
           | Some project -> Scope.libs (SC.find_scope_by_project sctx project)
         in
         (pps, lib_db)
-      | exception _ ->
-        (* Still support the old scheme for backward compatibility *)
-
-        (* DUNE2 get rid of this crud *)
-        let module Scope_key = struct
-          let of_string sctx key =
-            match String.rsplit2 key ~on:'@' with
-            | None ->
-              (key, Super_context.public_libs sctx)
-            | Some (key, scope) ->
-              let scope =
-                let name = Dune_project.Name.of_encoded_string scope in
-                match Super_context.find_scope_by_name sctx name with
-                | [x] -> x
-                | [] -> assert false
-                | p1 :: p2 :: _ ->
-                  let file p =
-                    Scope.project p
-                    |> Dune_project.file
-                    |> Path.Source.to_string
-                    |> Pp.textf "- %s"
-                  in
-                  User_error.raise
-                    [ Pp.textf "jbuild projects must have unique names. \
-                                The project %s is defined in:"
-                        (Dune_project.Name.to_string_hum name)
-                    ; file p1
-                    ; file p2
-                    ]
-              in
-              (key, Scope.libs scope)
-        end in
-
-        let (key, lib_db) = Scope_key.of_string sctx key in
-        let names =
-          match key with
-          | "+none+" -> []
-          | _ -> String.split key ~on:'+'
-        in
-        let names =
-          match List.rev names with
-          | [] -> []
-          | driver :: rest -> List.sort rest ~compare:String.compare @ [driver]
-        in
-        let names = List.map names ~f:(Lib_name.of_string_exn ~loc:None) in
-        (names, lib_db)
     in
     let pps =
       Lib.DB.resolve_pps lib_db (List.map names ~f:(fun x -> (Loc.none, x)))

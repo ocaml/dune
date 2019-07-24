@@ -46,18 +46,12 @@ Same, but with error pointing to .ppx
 
   $ dune build --root driver-tests .ppx/foo.ppx1+foo.ppx2/ppx.exe
   Entering directory 'driver-tests'
-  File "_build/default/.ppx/foo.ppx1+foo.ppx2/ppx.exe", line 1, characters 0-0:
-  Error: Failed to create on-demand ppx rewriter for foo.ppx1 and foo.ppx2; too
-  many incompatible ppx drivers were found: foo.driver2 and foo.driver1.
+  Error: invalid ppx key for default/.ppx/foo.ppx1+foo.ppx2/ppx.exe
   [1]
 
   $ dune build --root driver-tests .ppx/foo.ppx-other/ppx.exe
   Entering directory 'driver-tests'
-  File "_build/default/.ppx/foo.ppx-other/ppx.exe", line 1, characters 0-0:
-  Error: Failed to create on-demand ppx rewriter for foo.ppx-other; no ppx
-  driver were found. It seems that foo.ppx-other is not compatible with Dune.
-  Examples of ppx rewriters that are compatible with Dune are ones using
-  ocaml-migrate-parsetree, ppxlib or ppx_driver.
+  Error: invalid ppx key for default/.ppx/foo.ppx-other/ppx.exe
   [1]
 
 Test the argument syntax

@@ -1,18 +1,3 @@
-ppx artifacts installed for rewriters
-
-  $ dune build --root ppx
-  Entering directory 'ppx'
-  File "ppx-old/jbuild", line 1, characters 0-0:
-  Warning: jbuild files are deprecated, please convert this file to a dune file
-  instead.
-  Note: You can use "dune upgrade" to convert your project to dune.
-  File "_build/default/.ppx/foo.ppx_rewriter_jbuild/ppx.exe", line 1, characters 0-0:
-  Error: Failed to create on-demand ppx rewriter for foo.ppx_rewriter_jbuild;
-  no ppx driver were found. It seems that foo.ppx_rewriter_jbuild is not
-  compatible with Dune. Examples of ppx rewriters that are compatible with Dune
-  are ones using ocaml-migrate-parsetree, ppxlib or ppx_driver.
-  [1]
-
 stubs and js files installed
 
   $ dune build --root stubs

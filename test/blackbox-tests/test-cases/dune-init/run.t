@@ -10,7 +10,7 @@ Can build the public library
 
   $ cd _test_lib_dir && touch test_lib.opam && dune build
   Info: Creating file dune-project with this contents:
-  | (lang dune 1.11)
+  | (lang dune 1.12)
   | (name test_lib)
   $ cat ./_test_lib_dir/dune
   (library
@@ -61,7 +61,7 @@ Can build an executable
 
   $ cd _test_bin_dir && touch test_bin.opam && dune build
   Info: Creating file dune-project with this contents:
-  | (lang dune 1.11)
+  | (lang dune 1.12)
   | (name test_bin)
 
 Can run the created executable
@@ -141,7 +141,7 @@ Can build the combo project
 
   $ cd _test_lib_exe_dir && touch test_bin.opam && dune build
   Info: Creating file dune-project with this contents:
-  | (lang dune 1.11)
+  | (lang dune 1.12)
   | (name test_bin)
 
 Can run the combo project
@@ -174,7 +174,7 @@ Can build the multiple library project
 
   $ cd _test_lib && touch test_lib1.opam && dune build
   Info: Creating file dune-project with this contents:
-  | (lang dune 1.11)
+  | (lang dune 1.12)
   | (name test_lib1)
 
 Clan up the multiple library project
@@ -301,7 +301,7 @@ Can init and build a new executable project
 
   $ cd test_exec_proj && dune build
   Info: Creating file dune-project with this contents:
-  | (lang dune 1.11)
+  | (lang dune 1.12)
   | (name test_exec_proj)
   $ rm -rf ./test_exec_proj
 
@@ -322,7 +322,7 @@ Can init and build a new library project
 
   $ cd test_lib_proj && dune build
   Info: Creating file dune-project with this contents:
-  | (lang dune 1.11)
+  | (lang dune 1.12)
   | (name test_lib_proj)
 Can init and build a project using Esy
 

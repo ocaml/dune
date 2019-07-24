@@ -242,9 +242,9 @@ let setup_html sctx (odoc_file : odoc) ~pkg ~requires =
             ]
        :: dune_keep))
 
-let setup_library_odoc_rules sctx (library : Library.t) ~obj_dir ~scope ~modules
-      ~requires ~(dep_graphs:Dep_graph.Ml_kind.t) =
+let setup_library_odoc_rules cctx (library : Library.t) ~dep_graphs =
   let lib =
+    let scope = Compilation_context.scope cctx in
     Library.best_name library
     |> Lib.DB.find_even_when_hidden (Scope.libs scope)
     |> Option.value_exn
@@ -253,8 +253,12 @@ let setup_library_odoc_rules sctx (library : Library.t) ~obj_dir ~scope ~modules
   (* Using the proper package name doesn't actually work since odoc assumes
      that a package contains only 1 library *)
   let pkg_or_lnu = pkg_or_lnu lib in
+  let sctx = Compilation_context.super_context cctx in
   let ctx = Super_context.context sctx in
+  let requires = Compilation_context.requires_compile cctx in
   let odoc_include_flags = odoc_include_flags ctx (Lib.package lib) requires in
+  let obj_dir = Compilation_context.obj_dir cctx in
+  let modules = Compilation_context.modules cctx in
   let includes =
     (Dep.deps ctx (Lib.package lib) requires, odoc_include_flags) in
   let modules_and_odoc_files =
@@ -374,17 +378,52 @@ let static_html ctx =
   ; toplevel_index ctx
   ]
 
-let odocs =
-  let odoc_pred =
-    Glob.of_string_exn (Loc.of_pos __POS__) "*.odoc"
-    |> Glob.to_pred
-  in
-  fun ctx target ->
-    let dir = Paths.odocs ctx target in
-    File_selector.create ~dir:(Path.build dir) odoc_pred
-    |> Build_system.eval_pred
-    |> Path.Set.fold ~init:[] ~f:(fun d acc ->
-      create_odoc ctx (Path.as_in_build_dir_exn d) ~target :: acc)
+let check_mlds_no_dupes ~pkg ~mlds =
+  match
+    List.map mlds ~f:(fun mld ->
+      (Filename.chop_extension (Path.Build.basename mld), mld))
+    |> String.Map.of_list
+  with
+  | Ok m -> m
+  | Error (_, p1, p2) ->
+    User_error.raise
+      [ Pp.textf "Package %s has two mld's with the same basename %s, %s"
+          (Package.Name.to_string pkg)
+          (Path.to_string_maybe_quoted (Path.build p1))
+          (Path.to_string_maybe_quoted (Path.build p2))
+      ]
+
+let odocs sctx target =
+  let ctx = Super_context.context sctx in
+  let dir = Paths.odocs ctx target in
+  match target with
+  | Pkg pkg ->
+    let mlds =
+      let mlds = Packages.mlds sctx pkg in
+      let mlds = check_mlds_no_dupes ~pkg ~mlds in
+      if String.Map.mem mlds "index" then
+        mlds
+      else
+        let gen_mld = Paths.gen_mld_dir ctx pkg ++ "index.mld" in
+        String.Map.add_exn mlds "index" gen_mld
+    in
+    String.Map.values mlds
+    |> List.map ~f:(fun mld ->
+      Mld.create mld
+      |> Mld.odoc_file ~doc_dir:dir
+      |> create_odoc ctx ~target)
+  | Lib lib ->
+    let info = Lib.Local.info lib in
+    let dir = Lib_info.src_dir info in
+    let modules =
+      let name = Lib_info.name info in
+      Dir_contents.get sctx ~dir
+      |> Dir_contents.modules_of_library ~name
+    in
+    let obj_dir = Lib_info.obj_dir info in
+    Modules.fold_no_vlib modules ~init:[] ~f:(fun m acc ->
+      let odoc = Obj_dir.Module.odoc obj_dir m in
+      create_odoc ctx ~target odoc :: acc)
 
 let setup_lib_html_rules_def =
   let module Input = struct
@@ -408,7 +447,7 @@ let setup_lib_html_rules_def =
   in
   let f (sctx, lib, requires) =
     let ctx = Super_context.context sctx in
-    let odocs = odocs ctx (Lib lib) in
+    let odocs = odocs sctx (Lib lib) in
     let pkg = Lib.package (Lib.Local.to_lib lib) in
     List.iter odocs ~f:(setup_html sctx ~pkg ~requires);
     let html_files = List.map ~f:(fun o -> Path.build o.html_file) odocs in
@@ -468,12 +507,12 @@ let setup_pkg_html_rules_def =
          Lib.closure libs ~linking:false in
        let ctx = Super_context.context sctx in
        List.iter libs ~f:(setup_lib_html_rules sctx ~requires);
-       let pkg_odocs = odocs ctx (Pkg pkg) in
+       let pkg_odocs = odocs sctx (Pkg pkg) in
        List.iter pkg_odocs ~f:(setup_html sctx ~pkg:(Some pkg) ~requires);
        let odocs =
          List.concat (
            pkg_odocs
-           :: (List.map libs ~f:(fun lib -> odocs ctx (Lib lib)))
+           :: (List.map libs ~f:(fun lib -> odocs sctx (Lib lib)))
          ) in
        let html_files = List.map ~f:(fun o -> (Path.build o.html_file)) odocs in
        let static_html = List.map ~f:Path.build (static_html ctx) in
@@ -544,44 +583,26 @@ let default_index ~pkg entry_modules =
   );
   Buffer.contents b
 
-let check_mlds_no_dupes ~pkg ~mlds =
-  match
-    List.map mlds ~f:(fun mld ->
-      (Filename.chop_extension (Path.Build.basename mld), mld))
-    |> String.Map.of_list
-  with
-  | Ok m -> m
-  | Error (_, p1, p2) ->
-    User_error.raise
-      [ Pp.textf "Package %s has two mld's with the same basename %s, %s"
-          (Package.Name.to_string pkg)
-          (Path.to_string_maybe_quoted (Path.build p1))
-          (Path.to_string_maybe_quoted (Path.build p2))
-      ]
-
 let setup_package_odoc_rules_def =
   let module Input = struct
 
     module Super_context = Super_context.As_memo_key
 
-    type t = Super_context.t * Package.Name.t * Path.Build.t list
+    type t = Super_context.t * Package.Name.t
 
-    let hash (sctx, p, ps) =
+    let hash (sctx, p) =
       Hashtbl.hash
         ( Super_context.hash sctx
         , Package.Name.hash p
-        , List.hash Path.Build.hash ps
         )
 
-    let equal (s1, x1, y1) (s2, x2, y2) =
+    let equal (s1, x1) (s2, x2) =
       Super_context.equal s1 s2
       && Package.Name.equal x1 x2
-      && List.equal Path.Build.equal y1 y2
 
-    let to_dyn (_, name, paths) =
+    let to_dyn (_, name) =
       Dyn.Tuple
         [ Package.Name.to_dyn name
-        ; Dyn.List (List.map ~f:Path.Build.to_dyn paths)
         ]
   end
   in
@@ -592,7 +613,8 @@ let setup_package_odoc_rules_def =
     ~input:(module Input)
     ~visibility:Hidden
     Sync
-    (fun (sctx, pkg, mlds) ->
+    (fun (sctx, pkg) ->
+       let mlds = Packages.mlds sctx pkg in
        let mlds = check_mlds_no_dupes ~pkg ~mlds in
        let ctx = Super_context.context sctx in
        let mlds =
@@ -615,8 +637,8 @@ let setup_package_odoc_rules_def =
        ) in
        Dep.setup_deps ctx (Pkg pkg) (Path.set_of_build_paths_list odocs))
 
-let setup_package_odoc_rules sctx ~pkg ~mlds =
-  Memo.With_implicit_output.exec setup_package_odoc_rules_def (sctx, pkg, mlds)
+let setup_package_odoc_rules sctx ~pkg =
+  Memo.With_implicit_output.exec setup_package_odoc_rules_def (sctx, pkg)
 
 let init sctx =
   let stanzas = SC.stanzas sctx in
@@ -662,9 +684,7 @@ let gen_rules sctx ~dir:_ rest =
     let pkg = Package.Name.of_string pkg in
     let packages = Super_context.packages sctx in
     Package.Name.Map.find packages pkg
-    |> Option.iter ~f:(fun _ ->
-      let mlds = Packages.mlds sctx pkg in
-      setup_package_odoc_rules sctx ~pkg ~mlds)
+    |> Option.iter ~f:(fun _ -> setup_package_odoc_rules sctx ~pkg)
   | "_odoc" :: "lib" :: lib :: _ ->
     let lib, lib_db = Scope_key.of_string sctx lib in
     (* diml: why isn't [None] some kind of error here? *)

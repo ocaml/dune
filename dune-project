@@ -1,4 +1,4 @@
-(lang dune 1.11)
+(lang dune 1.12)
 (name dune)
 
 (implicit_transitive_deps false)

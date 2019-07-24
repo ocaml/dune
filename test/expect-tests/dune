@@ -7,7 +7,7 @@
     ;; *.ml needed for expect tests
     ;; CR-someday aalekseyev: maybe ppx_expect should somehow tell
     ;; dune about this
-    (glob_files *.ml)   
+    (glob_files *.ml)
    ))
  (libraries dune_tests_common stdune dune wp_dune fiber dune_lang memo
             ;; This is because of the (implicit_transitive_deps false)

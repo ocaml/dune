@@ -379,7 +379,7 @@
 
 (alias
  (name env-bins)
- (deps (package dune) (source_tree test-cases/env-bins))
+ (deps (package dune) (source_tree test-cases/env-bins) (sandbox none))
  (action
   (chdir
    test-cases/env-bins

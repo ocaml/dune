@@ -154,6 +154,8 @@ module Build : sig
   (** set the build directory. Can only be called once and must be done before
       paths are converted to strings elsewhere. *)
   val set_build_dir : Kind.t -> unit
+
+  val split_sandbox_root : t -> t option * t
 end
 
 type t = private
@@ -217,6 +219,7 @@ val extract_build_dir_first_component     : t -> (string * Local.t) option
     ]}
 *)
 val extract_build_context_dir     : t -> (t * Source.t) option
+val extract_build_context_dir_maybe_sandboxed : t -> (t * Source.t) option
 val extract_build_context_dir_exn : t -> (t * Source.t)
 
 (** Drop the "_build/blah" prefix *)

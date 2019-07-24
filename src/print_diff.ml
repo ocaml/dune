@@ -6,8 +6,8 @@ open Fiber.O
 let print ?(skip_trailing_cr=Sys.win32) path1 path2 =
   let dir, file1, file2 =
     match
-      Path.extract_build_context_dir path1,
-      Path.extract_build_context_dir path2
+      Path.extract_build_context_dir_maybe_sandboxed path1,
+      Path.extract_build_context_dir_maybe_sandboxed path2
     with
     | Some (dir1, f1), Some (dir2, f2) when Path.equal dir1 dir2 ->
       (dir1, Path.source f1, Path.source f2)

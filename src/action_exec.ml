@@ -142,15 +142,17 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to =
       Fiber.return ()
     else begin
       let is_copied_from_source_tree file =
-        match Path.drop_build_context file with
+        match Path.extract_build_context_dir_maybe_sandboxed file with
         | None -> false
-        | Some file -> Path.exists (Path.source file)
+        | Some (_, file) -> Path.exists (Path.source file)
       in
       if is_copied_from_source_tree file1 &&
          not (is_copied_from_source_tree file2) then begin
         Promotion.File.register
-          { src = Path.as_in_build_dir_exn file2
-          ; dst = Option.value_exn (Path.drop_build_context file1)
+          { src = snd (Path.Build.split_sandbox_root (
+              Path.as_in_build_dir_exn file2))
+          ; dst = snd (Option.value_exn (
+              Path.extract_build_context_dir_maybe_sandboxed file1))
           }
       end;
       if mode = Binary then

@@ -1,1 +1,1 @@
-val main : unit -> unit
+(** Main module *)

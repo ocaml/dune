@@ -35,6 +35,8 @@
 - Actions which introduce targets where new targets are forbidden (e.g.
   preprocessing) are now an error instead of a warning. (#2442, @rgrinberg)
 
+- No longer install a `jbuilder` binary. (#2441, @diml)
+
 1.11.0 (23/07/2019)
 -------------------
 

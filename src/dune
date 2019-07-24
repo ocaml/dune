@@ -12,7 +12,6 @@
               opam_file_format
               dune_lang
               ocaml_config
-              wp
               catapult)
  (synopsis    "Internal Dune library, do not use!")
  (preprocess  future_syntax))

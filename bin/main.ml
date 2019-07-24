@@ -25,11 +25,7 @@ let build_targets =
     ]
   in
   let name_ = Arg.info [] ~docv:"TARGET" in
-  let default_target =
-    match Wp.t with
-    | Dune     -> "@@default"
-    | Jbuilder -> "@install"
-  in
+  let default_target = "@@default" in
   let term =
     let+ common = Common.term
     and+ targets = Arg.(value & pos_all string [default_target] name_)
@@ -173,7 +169,7 @@ let default =
        ; `Blocks Common.help_secs
        ])
 
-let main () =
+let () =
   Colors.setup_err_formatter_colors ();
   try
     match Term.eval_choice default all ~catch:false with

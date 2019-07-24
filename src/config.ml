@@ -29,10 +29,7 @@ let inside_ci = Option.is_some (Env.get Env.initial "CI")
 let show_full_command_on_error () =
   inside_dune || inside_ci || !Clflags.always_show_command_line
 
-let default_build_profile =
-  match Wp.t with
-  | Dune     -> "dev"
-  | Jbuilder -> "release"
+let default_build_profile = "dev"
 
 open Stanza.Decoder
 
@@ -151,17 +148,7 @@ include Versioned_file.Make(struct type t = unit end)
 let () = Lang.register syntax ()
 
 let load_config_file p =
-  match Wp.t with
-  | Dune -> load p ~f:(fun _lang -> decode)
-  | Jbuilder ->
-    Io.with_lexbuf_from_file p ~f:(fun lb ->
-      match Dune_lexer.maybe_first_line lb with
-      | None ->
-        parse (enter decode)
-          (Univ_map.singleton (Syntax.key syntax) (0, 0))
-          (Dune_lang.Io.load p ~mode:Many_as_one ~lexer:Dune_lang.Lexer.jbuild_token)
-      | Some first_line ->
-        parse_contents lb first_line ~f:(fun _lang -> decode))
+  load p ~f:(fun _lang -> decode)
 
 let load_user_config_file () =
   if Path.exists user_config_file then

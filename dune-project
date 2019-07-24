@@ -19,7 +19,6 @@
   base-unix
   base-threads)
  (conflicts
-  (jbuilder (<> "transition"))
   (odoc (< 1.3.0))
   (dune-release (< 1.3.0)))
  (synopsis "Fast, portable and opinionated build system")

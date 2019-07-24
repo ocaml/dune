@@ -200,14 +200,6 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
- (name dev-flag-1103)
- (deps (package dune) (source_tree test-cases/dev-flag-1103))
- (action
-  (chdir
-   test-cases/dev-flag-1103
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
-
-(alias
  (name dialects)
  (deps (package dune) (source_tree test-cases/dialects))
  (action
@@ -1674,7 +1666,6 @@
   (alias dep-vars)
   (alias depend-on-the-universe)
   (alias deps-conf-vars)
-  (alias dev-flag-1103)
   (alias dialects)
   (alias dir-target-dep)
   (alias double-echo)
@@ -1873,7 +1864,6 @@
   (alias dep-vars)
   (alias depend-on-the-universe)
   (alias deps-conf-vars)
-  (alias dev-flag-1103)
   (alias dialects)
   (alias dir-target-dep)
   (alias double-echo)

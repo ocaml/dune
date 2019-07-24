@@ -192,13 +192,11 @@ let build_self_stubs lib ~sctx ~expander ~dir ~o_files =
        single invocation to build both the static and dynamic
        libraries *)
     ocamlmklib
-      (* CR-someday aalekseyev: why [no_sandboxing]? *)
-      ~sandbox:Sandbox_config.no_sandboxing
+      ~sandbox:Sandbox_config.no_special_requirements
       ~custom:false ~targets:[static; dynamic]
   end else begin
     ocamlmklib
-      (* CR-someday aalekseyev: why [no_sandboxing]? *)
-      ~sandbox:Sandbox_config.no_sandboxing
+      ~sandbox:Sandbox_config.no_special_requirements
       ~custom:true ~targets:[static];
     (* We can't tell ocamlmklib to build only the dll, so we
        sandbox the action to avoid overriding the static archive *)

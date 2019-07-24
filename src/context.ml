@@ -558,15 +558,10 @@ let extend_paths t ~env =
     List.map ~f t
   in
   let vars =
-    let cwd = Sys.getcwd () in
-    let of_filename_relative_to_cwd s =
-      if Filename.is_relative s then
-        Filename.concat cwd s
-      else
-        s
-    in
+    let to_absolute_filename s =
+      Path.of_string s |> Path.to_absolute_filename in
     let sep = String.make 1 Bin.path_sep in
-    let f l = String.concat ~sep (List.map ~f:of_filename_relative_to_cwd l) in
+    let f l = String.concat ~sep (List.map ~f:to_absolute_filename l) in
     Env.Map.of_list_reduce t ~f:List.append |> Env.Map.map ~f
   in
   Env.extend ~vars env

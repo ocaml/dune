@@ -228,6 +228,7 @@ val drop_build_context_exn : t -> Source.t
 
 (** Drop the "_build/blah" prefix if present, return [t] otherwise *)
 val drop_optional_build_context : t -> t
+val drop_optional_build_context_maybe_sandboxed : t -> t
 
 (** Drop the "_build/blah" prefix if present, return [t] if it's a source file,
     otherwise fail. *)

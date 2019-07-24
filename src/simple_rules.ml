@@ -118,11 +118,7 @@ let copy_files sctx ~dir ~expander ~src_dir (def: Copy_files.t) =
   Path.Set.map files ~f:(fun file_src ->
     let basename = Path.basename file_src in
     let file_dst = Path.Build.relative dir basename in
-    (* with sandboxing, some expect test fails with:
-       -  #line 1 "include/bar.h"
-       +  #line 1 "1a0210e62c0acf83a7b2119b6ab36462/build/default/include/bar.h"
-    *)
-    SC.add_rule ~sandbox:Sandbox_config.no_sandboxing sctx ~loc ~dir
+    SC.add_rule sctx ~loc ~dir
       ((if def.add_line_directive
         then Build.copy_and_add_line_directive
         else Build.copy)

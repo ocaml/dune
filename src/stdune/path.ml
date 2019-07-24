@@ -1042,6 +1042,11 @@ let drop_optional_build_context t =
   | None -> t
   | Some (_, t) -> in_source_tree t
 
+let drop_optional_build_context_maybe_sandboxed t =
+  match extract_build_context_dir_maybe_sandboxed t with
+  | None -> t
+  | Some (_, t) -> in_source_tree t
+
 let drop_optional_build_context_src_exn t =
   match t with
   | External _ ->

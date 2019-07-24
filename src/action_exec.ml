@@ -94,7 +94,7 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to =
     Io.with_file_in src ~f:(fun ic ->
       Path.build dst
       |> Io.with_file_out ~f:(fun oc ->
-        let fn = Path.drop_optional_build_context src in
+        let fn = Path.drop_optional_build_context_maybe_sandboxed src in
         output_string oc
           (Utils.line_directive
              ~filename:(Path.to_string fn)

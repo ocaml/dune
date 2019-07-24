@@ -567,7 +567,7 @@ let extend_paths t ~env =
       Env.Map.map ~f env
     | Error (var, (_, _), (loc, _)) ->
       User_error.raise ~loc
-        [ Pp.textf "the environment variable %S can appear at most once \
+        [ Pp.textf "the variable %S can appear at most once \
                     in this stanza." var
         ]
   in

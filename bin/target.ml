@@ -87,7 +87,8 @@ let resolve_path path ~(setup : Dune.Main.build_system) =
      | None ->
        match
          List.filter_map setup.workspace.contexts ~f:(fun ctx ->
-           let path = Path.append (Path.build ctx.Context.build_dir) path in
+           let path =
+             Path.append_source (Path.build ctx.Context.build_dir) src in
            if Build_system.is_target path then
              Some (File path)
            else

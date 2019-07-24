@@ -17,6 +17,9 @@
 
 - Enable `(explicit_js_mode)` by default. (#1941, @nojb)
 
+- Stop symlinking object files to main directory for stanzas defined `jbuild`
+  files (#2440, @rgrinerg)
+
 1.11.0 (23/07/2019)
 -------------------
 

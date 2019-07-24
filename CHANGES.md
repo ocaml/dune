@@ -17,6 +17,9 @@
 
 - Enable `(explicit_js_mode)` by default. (#1941, @nojb)
 
+- Stop symlinking object files to main directory for stanzas defined `jbuild`
+  files (#2440, @rgrinerg)
+
 - Add a new config option `sandboxing_preference`, the cli argument `--sandbox`,
   and the dep spec `sandbox` in dune language. These let the user control the level of
   sandboxing done by dune per rule and globally. The rule specification takes precedence.

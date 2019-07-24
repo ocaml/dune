@@ -106,23 +106,6 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) =
             Option.value_exn (Obj_dir.Module.cmt_file obj_dir m ~ml_kind) in
           (fn :: other_targets, A "-bin-annot")
       in
-      if CC.dir_kind cctx = Jbuild then begin
-        (* Symlink the object files in the original directory for
-           backward compatibility *)
-        let old_dst =
-          (Module.obj_name m) ^ (Cm_kind.ext cm_kind)
-          |> Path.Build.relative dir
-        in
-        SC.add_rule sctx ~dir
-          ~sandbox
-          (Build.symlink ~src:(Path.build dst) ~dst:old_dst);
-        List.iter other_targets ~f:(fun in_obj_dir ->
-          let in_dir = Path.Build.relative dir
-                         (Path.Build.basename in_obj_dir) in
-          SC.add_rule sctx ~dir
-            ~sandbox
-            (Build.symlink ~src:(Path.build in_obj_dir) ~dst:in_dir))
-      end;
       let opaque_arg =
         let intf_only = cm_kind = Cmi && not (Module.has m ~ml_kind:Impl) in
         if opaque

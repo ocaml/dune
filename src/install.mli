@@ -34,21 +34,7 @@ module Section : sig
   module Paths : sig
     type section = t
 
-    type t =
-      { lib          : Path.t
-      ; lib_root     : Path.t
-      ; libexec      : Path.t
-      ; libexec_root : Path.t
-      ; bin          : Path.t
-      ; sbin         : Path.t
-      ; toplevel     : Path.t
-      ; share        : Path.t
-      ; share_root   : Path.t
-      ; etc          : Path.t
-      ; doc          : Path.t
-      ; stublibs     : Path.t
-      ; man          : Path.t
-      }
+    type t
 
     val make
       :  package:Package.Name.t

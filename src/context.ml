@@ -561,8 +561,15 @@ let extend_paths t ~env =
     let to_absolute_filename s =
       Path.of_string s |> Path.to_absolute_filename in
     let sep = String.make 1 Bin.path_sep in
-    let f l = String.concat ~sep (List.map ~f:to_absolute_filename l) in
-    Env.Map.of_list_reduce t ~f:List.append |> Env.Map.map ~f
+   match Env.Map.of_list t with
+    | Ok env ->
+      let f l = String.concat ~sep (List.map ~f:to_absolute_filename l) in
+      Env.Map.map ~f env
+    | Error (var, _, _) ->
+      User_error.raise
+        [ Pp.textf "The environment variable %S appears twice in\
+                    the (paths ...) stanza." var
+        ]
   in
   Env.extend ~vars env
 

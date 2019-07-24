@@ -439,8 +439,11 @@ let symlink_installed_artifacts_to_build_install
   let install_dir = Config.local_install_dir ~context:ctx.name in
   List.map entries ~f:(fun (loc, entry) ->
     let dst =
-      Path.append (Path.build install_dir)
-        (Install.Entry.relative_installed_path entry ~paths:install_paths)
+      let relative =
+        Install.Entry.relative_installed_path entry ~paths:install_paths
+        |> Path.as_in_source_tree_exn
+      in
+      Path.append_source (Path.build install_dir) relative
       |> Path.as_in_build_dir_exn
     in
     let loc =

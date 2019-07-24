@@ -17,7 +17,7 @@
 
 - Enable `(explicit_js_mode)` by default. (#1941, @nojb)
 
-1.11.0 (unreleased)
+1.11.0 (23/07/2019)
 -------------------
 
 - Don't select all local implementations in `dune utop`. Instead, let the
@@ -86,7 +86,7 @@
 - Workspaces with non unique project names are now supported. (#2377, fix #2325,
   @rgrinberg)
 
-- Improve opam generation to include the `dune` dependncies with the minimum
+- Improve opam generation to include the `dune` dependencies with the minimum
   constraint set based on the dune language version specified in the
   `dune-project` file. (2383, @avsm)
 

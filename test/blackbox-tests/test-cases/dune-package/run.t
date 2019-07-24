@@ -1,6 +1,6 @@
   $ dune build
   $ cat _build/install/default/lib/a/dune-package
-  (lang dune 1.11)
+  (lang dune 1.12)
   (name a)
   (library
    (name a)

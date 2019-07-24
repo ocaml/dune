@@ -1,3 +1,4 @@
 (alias
  (name default)
- (action (run hello.sh)))
+ (deps bin/hello.exe)
+ (action (run hello.exe)))

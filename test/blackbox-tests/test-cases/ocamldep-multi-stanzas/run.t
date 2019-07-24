@@ -16,10 +16,19 @@
   library, executable, and executables stanzas in this jbuild file. Note that
   each module cannot appear in more than one "modules" field - it must belong
   to a single library or executable.
-  Error: Multiple rules generated for _build/default/lib.cmo:
-  - <internal location>
-  - <internal location>
-  [1]
+  Entering directory 'jbuild'
+      ocamldep .lib.objs/lib.ml.d
+        ocamlc .lib.objs/byte/lib.{cmi,cmo,cmt}
+      ocamlopt .lib.objs/native/lib.{cmx,o}
+      ocamlopt lib.{a,cmxa}
+      ocamldep .test.eobjs/lib.ml.d
+      ocamldep .test.eobjs/test.ml.d
+        ocamlc .test.eobjs/byte/lib.{cmi,cmo,cmt}
+        ocamlc .test.eobjs/byte/test.{cmi,cmo,cmt}
+      ocamlopt .test.eobjs/native/lib.{cmx,o}
+      ocamlopt .test.eobjs/native/test.{cmx,o}
+      ocamlopt test.exe
+  foo bar
 
   $ dune build src/a.cma --debug-dep --display short --root jbuild
   Entering directory 'jbuild'

@@ -68,10 +68,11 @@ let make (d : _ Dir_with_dune.t)
               let s = validate ~loc s in
               let s' = Filename.basename s in
               if s' <> s then begin
-                (* DUNE2: make this an error *)
-                User_warning.emit ~loc
-                  [ Pp.text "relative part of stub are no longer \
-                             necessary and are ignored."
+                User_error.raise ~loc
+                  [ Pp.text
+                      "relative part of stub is not necessary and should be \
+                       removed. To include sources in subdirectories, \
+                       use the include_subdirs stanza"
                   ]
               end;
               s'

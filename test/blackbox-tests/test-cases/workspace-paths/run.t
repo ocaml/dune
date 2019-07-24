@@ -4,13 +4,13 @@
 
   $ mkdir sub
   $ cat > sub/dune-workspace <<EOF
-  > (lang dune 1.11)
+  > (lang dune 1.12)
   > (context
   >  (default
   >    (paths (FOO a) (FOO b))))
   > EOF
   $ cat > sub/dune-project <<EOF
-  > (lang dune 1.11)
+  > (lang dune 1.12)
   > EOF
   $ dune build --root sub
   Entering directory 'sub'

@@ -67,7 +67,7 @@ module Context = struct
         field_o "toolchain" (Syntax.since syntax (1, 5) >>> string)
       and+ paths =
         field "paths" ~default:[]
-          (Syntax.since Stanza.syntax (1, 11) >>>
+          (Syntax.since Stanza.syntax (1, 12) >>>
            list (pair (located string) Ordered_set_lang.decode))
       and+ loc = loc
       in

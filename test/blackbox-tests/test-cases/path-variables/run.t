@@ -39,8 +39,8 @@ This registers the dependency:
   $ dune build --root jbuild @test-path
   Entering directory 'jbuild'
   File "jbuild", line 1, characters 0-0:
-  Warning: jbuild files are deprecated, please convert this file to a dune file
-  instead.
+  Warning: jbuild files are not allowed inside Dune 2.0 projects, please
+  convert this file to a dune file instead.
   Note: You can use "dune upgrade" to convert your project to dune.
   dynamic-contents
 
@@ -52,8 +52,8 @@ This does not:
   $ dune build --root jbuild @test-path-no-dep
   Entering directory 'jbuild'
   File "jbuild", line 1, characters 0-0:
-  Warning: jbuild files are deprecated, please convert this file to a dune file
-  instead.
+  Warning: jbuild files are not allowed inside Dune 2.0 projects, please
+  convert this file to a dune file instead.
   Note: You can use "dune upgrade" to convert your project to dune.
   ../../file-that-does-not-exist
   ../..
@@ -66,8 +66,8 @@ This form does not exist, but displays an hint:
   $ dune build --root jbuild-invalid @test-dep
   Entering directory 'jbuild-invalid'
   File "jbuild", line 1, characters 0-0:
-  Warning: jbuild files are deprecated, please convert this file to a dune file
-  instead.
+  Warning: jbuild files are not allowed inside Dune 2.0 projects, please
+  convert this file to a dune file instead.
   Note: You can use "dune upgrade" to convert your project to dune.
   File "jbuild", line 5, characters 16-37:
   5 |    (action (cat ${dep:generated-file}))))

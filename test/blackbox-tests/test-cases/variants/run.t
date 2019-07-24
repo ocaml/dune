@@ -41,7 +41,7 @@ Check that variant data is installed in the dune package file.
   $ dune build --root dune-package
   Entering directory 'dune-package'
   $ cat  dune-package/_build/install/default/lib/a/dune-package
-  (lang dune 1.12)
+  (lang dune 2.0)
   (name a)
   (library
    (name a)
@@ -66,7 +66,7 @@ Check that variant data is installed in the dune package file.
       (impl))
      (wrapped true))))
   $ cat  dune-package/_build/install/default/lib/b/dune-package
-  (lang dune 1.12)
+  (lang dune 2.0)
   (name b)
   (library
    (name b)

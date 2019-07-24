@@ -1,12 +1,12 @@
   $ dune exec ./test.exe --debug-dep --display short --root jbuild --profile release
   Entering directory 'jbuild'
   File "jbuild", line 1, characters 0-0:
-  Warning: jbuild files are deprecated, please convert this file to a dune file
-  instead.
+  Warning: jbuild files are not allowed inside Dune 2.0 projects, please
+  convert this file to a dune file instead.
   Note: You can use "dune upgrade" to convert your project to dune.
   File "src/jbuild", line 1, characters 0-0:
-  Warning: jbuild files are deprecated, please convert this file to a dune file
-  instead.
+  Warning: jbuild files are not allowed inside Dune 2.0 projects, please
+  convert this file to a dune file instead.
   Note: You can use "dune upgrade" to convert your project to dune.
   File "jbuild", line 1, characters 0-0:
   Error: Module "Lib" is used in several stanzas:
@@ -21,12 +21,12 @@
   $ dune build src/a.cma --debug-dep --display short --root jbuild
   Entering directory 'jbuild'
   File "jbuild", line 1, characters 0-0:
-  Warning: jbuild files are deprecated, please convert this file to a dune file
-  instead.
+  Warning: jbuild files are not allowed inside Dune 2.0 projects, please
+  convert this file to a dune file instead.
   Note: You can use "dune upgrade" to convert your project to dune.
   File "src/jbuild", line 1, characters 0-0:
-  Warning: jbuild files are deprecated, please convert this file to a dune file
-  instead.
+  Warning: jbuild files are not allowed inside Dune 2.0 projects, please
+  convert this file to a dune file instead.
   Note: You can use "dune upgrade" to convert your project to dune.
   File "src/jbuild", line 1, characters 0-0:
   Error: Module "X" is used in several stanzas:

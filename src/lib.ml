@@ -175,7 +175,40 @@ module Error = struct
           (Lib_name.to_string not_vlib)
           (Lib_name.to_string impl)
       ]
+
+  let vlib_known_implementation_mismatch ~loc ~name ~variant ~vlib_name =
+    make ~loc
+      [ Pp.textf "Virtual library %S does not know about implementation %S with \
+                  variant %S. Instead of using (variant %s) here, you need to \
+                  reference it in the virtual library project, using the \
+                  external_variant stanza:"
+          (Lib_name.to_string vlib_name)
+          (Lib_name.to_string name)
+          (Variant.to_string variant)
+          (Variant.to_string variant)
+      ; Pp.textf
+          "(external_variant\n\
+          \  (virtual_library %s)\n\
+          \  (variant %s)\n\
+          \  (implementation %s))"
+          (Lib_name.to_string vlib_name)
+          (Variant.to_string variant)
+          (Lib_name.to_string name)
+      ]
+
+  let vlib_variant_conflict ~loc ~name ~known_impl_name ~variant ~vlib_name =
+    make ~loc
+      [ Pp.textf "Implementation %S cannot have variant %S for virtual library \
+      %S as it is already defined for implementation %S."
+          (Lib_name.to_string name)
+          (Variant.to_string variant)
+          (Lib_name.to_string vlib_name)
+          (Lib_name.to_string known_impl_name)
+      ]
+
+
 end
+
 
 (* Types *)
 
@@ -908,49 +941,37 @@ end = struct
       resolve_dep db (name : Lib_name.t) ~allow_private_deps ~loc ~stack in
 
     let implements =
-      Lib_info.implements info
-      |> Option.map ~f:(fun ((loc,  _) as name) ->
-        let* vlib = resolve name in
-        let virtual_ = Lib_info.virtual_ vlib.info in
-        match virtual_ with
-        | None ->
-          Error.not_virtual_lib ~loc ~impl:info ~not_vlib:vlib.info
-        | Some _ ->
-          let variant = Lib_info.variant info in
-          match variant with
-          | None -> Ok vlib
-          | Some variant ->
-            (* If the library is an implementation tagged with a
-               variant, we must make sure that that it implements a
-               library that is part of the same project *)
-            let status_vlib = Lib_info.status vlib.info in
-            if Option.equal Dune_project.Name.equal
-                 (Lib_info.Status.project_name status)
-                 (Lib_info.Status.project_name status_vlib)
-            then
-              Ok vlib
-            else
-              let name = Lib_info.name info in
-              let name_vlib = Lib_info.name vlib.info in
-              User_error.raise ~loc
-                [ Pp.textf
-                    "Library implementation %s with variant %s implements a \
-                     library outside the project. Instead of using \
-                     (variant %S) here, you need to reference it in the \
-                     virtual library project, using the external_variant \
-                     stanza:"
-                    (Lib_name.to_string name)
-                    (Variant.to_string variant)
-                    (Variant.to_string variant)
-                ; Pp.textf
-                    "(external_variant\n\
-                    \  (virtual_library %s)\n\
-                    \  (variant %S)\n\
-                    \  (implementation %s))"
-                    (Lib_name.to_string name_vlib)
-                    (Variant.to_string variant)
-                    (Lib_name.to_string name)
-                ])
+      let open Option.O in
+      let+ ((loc, _) as name) = Lib_info.implements info in
+      let open Result.O in
+      let* vlib = resolve name in
+      let virtual_ = Lib_info.virtual_ vlib.info in
+      match virtual_ with
+      | None ->
+        Error.not_virtual_lib ~loc ~impl:info ~not_vlib:vlib.info
+      | Some _ ->
+        let variant = Lib_info.variant info in
+        begin match variant with
+        | None -> Ok vlib
+        | Some variant ->
+          (* If the library is an implementation tagged with a variant, we must
+              make sure that that it's correctly part of the virtual library's
+              known implementations. *)
+          let name = Lib_info.name info in
+          let vlib_name = Lib_info.name vlib.info in
+          let vlib_impls = Lib_info.known_implementations vlib.info in
+          let* (_, impl_name) =
+            match Variant.Map.find vlib_impls variant with
+            | None -> Error.vlib_known_implementation_mismatch
+                        ~loc ~name ~variant ~vlib_name
+            | Some impl_name -> Ok impl_name
+          in
+          if Lib_name.equal impl_name name then
+            Ok vlib
+          else
+            Error.vlib_variant_conflict
+              ~loc ~name ~known_impl_name:impl_name ~variant ~vlib_name
+        end
     in
     let resolve_impl impl_name =
       let* impl = resolve impl_name in
@@ -1132,8 +1153,8 @@ end = struct
               | Some (ts, file) ->
                 (Ok ts, Ok file)
               | None ->
-                let e = Error.no_solution_found_for_select ~loc in
-                (e, e)
+                let e () = Error.no_solution_found_for_select ~loc in
+                (e (), e ())
             in
             (res, { Resolved_select. src_fn; dst_fn = result_fn }
                   :: acc_selects)

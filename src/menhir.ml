@@ -209,33 +209,33 @@ module Run (P : PARAMS) : sig end = struct
 
     let mock_module : Module.t =
       let source =
-        let impl = Module.File.make OCaml (Path.build (mock_ml base)) in
+        let impl = Module.File.make Dialect.ocaml (Path.build (mock_ml base)) in
         Module.Source.make ~impl name
       in
       Module.of_source ~visibility:Public ~kind:Impl source
     in
 
-    (* The following incantation allows the mock [.ml] file to be preprocessed
-       by the user-specified [ppx] rewriters. *)
+    let modules =
+      (* The following incantation allows the mock [.ml] file to be preprocessed
+         by the user-specified [ppx] rewriters. *)
 
-    let mock_module =
-      Preprocessing.pp_module_as
-        (Compilation_context.preprocessing cctx)
-        name
-        mock_module
-        ~lint:false
+      let mock_module =
+        Preprocessing.pp_module_as
+          (Compilation_context.preprocessing cctx)
+          name
+          mock_module
+          ~lint:false
+      in
+      Modules.singleton_exe mock_module
     in
+    let dep_graphs = Dep_rules.rules cctx ~modules in
 
-    let dep_graphs =
-      let modules = Modules.singleton mock_module in
-      Ocamldep.rules cctx ~modules
-    in
-
-    Module_compilation.ocamlc_i
-      ~dep_graphs
-      cctx
-      mock_module
-      ~output:(inferred_mli base);
+    Modules.iter_no_vlib modules ~f:(fun m ->
+      Module_compilation.ocamlc_i
+        ~dep_graphs
+        cctx
+        m
+        ~output:(inferred_mli base));
 
     (* 3. A second invocation of Menhir reads the inferred [.mli] file. *)
 

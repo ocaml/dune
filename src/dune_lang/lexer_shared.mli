@@ -1,8 +1,12 @@
+open Stdune
+
 module Token : sig
   module Comment : sig
     type t =
       | Lines of string list
       | Legacy
+
+    val to_dyn : t -> Dyn.t
   end
 
   type t =

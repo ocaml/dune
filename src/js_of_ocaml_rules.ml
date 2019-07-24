@@ -179,18 +179,27 @@ let setup_separate_compilation_rules sctx components =
             (js_of_ocaml_rule
                sctx ~dir ~flags:(As (standard sctx)) ~spec ~target))
 
-let build_exe cc ~js_of_ocaml ~src ~(cm : Path.t list Build.s) ~flags =
+let build_exe cc ~js_of_ocaml ~src ~(cm : Path.t list Build.s) ~flags ~promote =
   let {Dune_file.Js_of_ocaml.javascript_files; _} = js_of_ocaml in
+  let dir = Compilation_context.dir cc in
+  let sctx = Compilation_context.super_context cc in
   let javascript_files =
-    List.map javascript_files
-      ~f:(Path.relative (Path.build (Compilation_context.dir cc))) in
+    List.map javascript_files ~f:(Path.relative (Path.build dir))
+  in
   let mk_target ext = Path.Build.extend_basename src ~suffix:ext in
   let target = mk_target ".js" in
   let standalone_runtime = mk_target ".runtime.js" in
-  if separate_compilation_enabled (Compilation_context.super_context cc) then
-    [ link_rule cc ~runtime:standalone_runtime ~target cm
-    ; standalone_runtime_rule
-        cc ~javascript_files ~target:standalone_runtime ~flags
-    ]
-  else
-    [ exe_rule cc ~javascript_files ~src ~target ~flags ]
+  let mode : Dune_file.Rule.Mode.t =
+    match promote with
+    | None -> Standard
+    | Some p -> Promote p
+  in
+  if separate_compilation_enabled sctx then begin
+    SC.add_rule sctx ~dir
+      (standalone_runtime_rule
+         cc ~javascript_files ~target:standalone_runtime ~flags);
+    SC.add_rule sctx ~dir ~mode
+      (link_rule cc ~runtime:standalone_runtime ~target cm)
+  end else
+    SC.add_rule sctx ~dir ~mode
+      (exe_rule cc ~javascript_files ~src ~target ~flags)

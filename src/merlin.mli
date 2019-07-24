@@ -7,11 +7,12 @@ type t
 
 val make
   :  ?requires:Lib.t list Or_exn.t
-  -> ?flags:(unit, string list) Build.t
+  -> flags:Ocaml_flags.t
   -> ?preprocess:Dune_file.Preprocess.t
   -> ?libname:Lib_name.Local.t
   -> ?source_dirs: Path.Source.Set.t
-  -> ?objs_dirs:Path.Set.t
+  -> modules:Modules.t
+  -> obj_dir:Path.Build.t Obj_dir.t
   -> unit
   -> t
 

@@ -4,7 +4,6 @@ open Stdune
 type t = Module.Name.Set.t Ml_kind.Dict.t
 
 val to_dyn : t -> Dyn.t
-val pp : t Fmt.t
 
 val rules
   :  dir:Path.Build.t

@@ -29,7 +29,7 @@ module Infer : sig
   module Outcome : sig
     type t =
       { deps    : Path.Set.t
-      ; targets : Path.Set.t
+      ; targets : Path.Build.Set.t
       }
   end
 

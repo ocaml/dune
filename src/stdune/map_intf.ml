@@ -124,5 +124,7 @@ module type S = sig
     val cons : 'a t -> key -> 'a -> 'a t
 
     val find : 'a t -> key -> 'a list
+
+    val add_all : 'a t -> key -> 'a list -> 'a t
   end
 end

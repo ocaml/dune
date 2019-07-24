@@ -8,9 +8,9 @@ type t =
   }
 
 let to_log_string { name ; recursive; dir ; contexts = _ } =
-  sprintf "- %s alias %s%s/%s"
+  sprintf "- %salias %s%s/%s"
     (if recursive then "recursive " else "")
-    (if recursive then "@@" else "@")
+    (if recursive then "@" else "@@")
     (Path.Source.to_string_maybe_quoted dir)
     name
 

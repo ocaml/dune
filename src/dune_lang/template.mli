@@ -31,3 +31,5 @@ val pp : File_syntax.t -> t -> _ Pp.t
 val pp_split_strings : Format.formatter -> t -> unit
 
 val remove_locs : t -> t
+
+val to_dyn : t -> Dyn.t

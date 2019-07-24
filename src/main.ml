@@ -24,7 +24,7 @@ let package_install_file w pkg =
 
 let setup_env ~capture_outputs =
   let env =
-    if capture_outputs || not (Lazy.force Ansi_color.stderr_supports_color) then
+    if not capture_outputs || not (Lazy.force Ansi_color.stderr_supports_color) then
       Env.initial
     else
       Colors.setup_env_for_colors Env.initial
@@ -34,14 +34,13 @@ let setup_env ~capture_outputs =
 let scan_workspace ?(log=Log.no_log)
       ?workspace ?workspace_file
       ?x
-      ?ignore_promoted_rules
       ?(capture_outputs=true)
       ?profile
       ~ancestor_vcs
       () =
   let env = setup_env ~capture_outputs in
   let conf =
-    Dune_load.load ?ignore_promoted_rules ~ancestor_vcs ()
+    Dune_load.load ~ancestor_vcs ()
   in
   let workspace =
     match workspace with
@@ -66,8 +65,8 @@ let scan_workspace ?(log=Log.no_log)
 
   let+ contexts = Context.create ~env workspace in
   List.iter contexts ~f:(fun (ctx : Context.t) ->
-    Log.infof log "@[<1>Dune context:@,%a@]@." Dyn.pp
-      (Context.to_dyn ctx));
+    Log.infof log "@[<1>Dune context:@,%a@]@." Pp.render_ignore_tags
+      (Dyn.pp (Context.to_dyn ctx)));
   { contexts
   ; conf
   ; env
@@ -88,7 +87,7 @@ let init_build_system ?only_packages ?external_lib_deps_mode w =
   let rule_done  = ref 0 in
   let rule_total = ref 0 in
   let gen_status_line () =
-    { Console.
+    { Scheduler.
       message = Some (Pp.verbatim
                         (sprintf "Done: %u/%u" !rule_done !rule_total))
     ; show_jobs = true

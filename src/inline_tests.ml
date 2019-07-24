@@ -90,13 +90,13 @@ module Backend = struct
       let f x = Lib_name.encode (Lib.name x.lib) in
       ((1, 0),
        record_fields @@
-         [ field_l "runner_libraries" lib (Result.ok_exn t.runner_libraries)
-         ; field_i "flags" Ordered_set_lang.Unexpanded.encode_and_upgrade
-             t.info.flags
-         ; field_o "generate_runner" Action_dune_lang.encode_and_upgrade
-             (Option.map t.info.generate_runner ~f:snd)
-         ; field_l "extends" f (Result.ok_exn t.extends)
-         ])
+       [ field_l "runner_libraries" lib (Result.ok_exn t.runner_libraries)
+       ; field_i "flags" Ordered_set_lang.Unexpanded.encode_and_upgrade
+           t.info.flags
+       ; field_o "generate_runner" Action_dune_lang.encode_and_upgrade
+           (Option.map t.info.generate_runner ~f:snd)
+       ; field_l "extends" f (Result.ok_exn t.extends)
+       ])
   end
   include M
   include Sub_system.Register_backend(M)
@@ -198,17 +198,17 @@ include Sub_system.Register_end_point(
           ; dir
           ; stanza = lib
           ; scope
-          ; modules
+          ; source_modules
           ; compile_info = _
           } = c
       in
-      let source_modules =
-        Modules.fold_user_written modules ~init:[] ~f:(fun x xs -> x :: xs) in
 
       let loc = lib.buildable.loc in
 
+      let lib_name = snd lib.name in
+
       let inline_test_name =
-        sprintf "%s.inline-tests" (Lib_name.Local.to_string (snd lib.name))
+        sprintf "%s.inline-tests" (Lib_name.Local.to_string lib_name)
       in
 
       let inline_test_dir = Path.Build.relative dir ("." ^ inline_test_name) in
@@ -224,7 +224,7 @@ include Sub_system.Register_end_point(
         Module.generated ~src_dir name
       in
 
-      let modules = Modules.singleton main_module in
+      let modules = Modules.singleton_exe main_module in
 
       let bindings =
         Pform.Map.singleton "library-name"
@@ -277,9 +277,7 @@ include Sub_system.Register_end_point(
                  ~dep_kind:Required
                  ~targets:(Forbidden "inline test generators")
                  ~targets_dir:dir)))
-        >>^ (fun actions ->
-          Action.with_stdout_to (Path.build target)
-            (Action.progn actions))
+        >>^ (fun actions -> Action.with_stdout_to target (Action.progn actions))
         >>>
         Build.action_dyn ~targets:[target] ());
 
@@ -294,7 +292,7 @@ include Sub_system.Register_end_point(
           ~requires_compile:runner_libs
           ~requires_link:(lazy runner_libs)
           ~flags:(Ocaml_flags.of_list ["-w"; "-24"; "-g"])
-          ~js_of_ocaml:lib.buildable.js_of_ocaml
+          ~js_of_ocaml:(Some lib.buildable.js_of_ocaml)
           ~dynlink:false
           ~package:(Option.map lib.public ~f:(fun p -> p.package));
       in
@@ -304,18 +302,19 @@ include Sub_system.Register_end_point(
           then Mode_conf.Set.add info.modes Byte
           else info.modes
         in
-        List.filter_map (Mode_conf.Set.to_list modes) ~f:(fun (mode : Mode_conf.t) ->
+        List.map (Mode_conf.Set.to_list modes) ~f:(fun (mode : Mode_conf.t) ->
           match mode with
-          | Native -> Some Exe.Linkage.native
-          | Best -> Some (Exe.Linkage.native_or_custom (Super_context.context sctx))
-          | Byte -> Some Exe.Linkage.byte
-          | Javascript -> None
+          | Native -> Exe.Linkage.native
+          | Best -> Exe.Linkage.native_or_custom (Super_context.context sctx)
+          | Byte -> Exe.Linkage.byte
+          | Javascript -> Exe.Linkage.js
         )
       in
       Exe.build_and_link cctx
         ~program:{ name; main_module_name = Module.name main_module ; loc }
         ~linkages
-        ~link_flags:(Build.return ["-linkall"]);
+        ~link_flags:(Build.return ["-linkall"])
+        ~promote:None;
 
       let flags =
         let flags =
@@ -366,6 +365,6 @@ include Sub_system.Register_end_point(
                     |> List.map ~f:(fun fn ->
                       A.diff ~optional:true
                         fn (Path.extend_basename fn ~suffix:".corrected"))))))))
-end)
+  end)
 
 let linkme = ()

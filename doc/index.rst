@@ -18,6 +18,7 @@ Welcome to dune's documentation!
    tests
    foreign-code
    documentation
+   installation
    usage
    advanced-topics
    configurator

@@ -21,8 +21,6 @@ let to_dyn { dir ; predicate } =
     ; "predicate", Predicate.to_dyn predicate
     ]
 
-let pp fmt t = Dyn.pp fmt (to_dyn t)
-
 let encode { dir; predicate } =
   let open Dune_lang.Encoder in
   record

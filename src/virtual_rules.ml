@@ -69,91 +69,11 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
       end
     end
   in
-  let copy_all_deps =
-    match Lib.Local.of_lib vlib with
-    | Some vlib ->
-      let vlib_obj_dir = Lib.Local.obj_dir vlib in
-      fun m ->
-        if Module.visibility m = Public && Module.kind m <> Alias then
-          List.iter [Intf; Impl] ~f:(fun ml_kind ->
-            Module.source m ~ml_kind
-            |> Option.iter ~f:(fun f ->
-              let kind = Obj_dir.Module.Dep.Transitive in
-              let src =
-                Path.build (Obj_dir.Module.dep vlib_obj_dir f ~kind) in
-              let dst = Obj_dir.Module.dep impl_obj_dir f ~kind in
-              copy_to_obj_dir ~src ~dst)
-          );
-    | None ->
-      (* we only need to copy the .all-deps files for local libraries. for
-         remote libraries, we just use ocamlobjinfo *)
-      let vlib_dep_graph = Vimpl.vlib_dep_graph vimpl in
-      fun m ->
-        List.iter [Intf; Impl] ~f:(fun ml_kind ->
-          let dep_graph = Ml_kind.Dict.get vlib_dep_graph ml_kind in
-          let deps = Dep_graph.deps_of dep_graph m in
-          Module.source m ~ml_kind |> Option.iter ~f:(fun source ->
-            let open Build.O in
-            deps >>^ (fun modules ->
-              modules
-              |> List.map ~f:(fun m -> Module.Name.to_string (Module.name m))
-              |> String.concat ~sep:"\n")
-            >>>
-            Build.write_file_dyn
-              (Obj_dir.Module.dep impl_obj_dir source ~kind:Transitive)
-            |> add_rule))
-  in
   let vlib_modules = Vimpl.vlib_modules vimpl in
   Modules.iter_no_vlib vlib_modules
-    ~f:(fun m -> copy_objs m; copy_all_deps m)
+    ~f:(fun m -> copy_objs m)
 
-
-let external_dep_graph sctx ~impl_cm_kind ~impl_obj_dir ~vlib_modules =
-  let dir = Obj_dir.dir impl_obj_dir in
-  let ocamlobjinfo =
-    let ctx = Super_context.context sctx in
-    fun m cm_kind ->
-      let unit =
-        Obj_dir.Module.cm_file_unsafe impl_obj_dir m ~kind:cm_kind
-        |> Path.build
-      in
-      Ocamlobjinfo.rules ~dir ~ctx ~unit
-  in
-  let vlib_obj_map =
-    Modules.fold_no_vlib vlib_modules ~init:Module.Name.Map.empty
-      ~f:(fun m acc ->
-        Module.Name.Map.add_exn acc (Module.real_unit_name m) m)
-  in
-  Ml_kind.Dict.of_func (fun ~ml_kind ->
-    let cm_kind =
-      match ml_kind with
-      | Impl -> impl_cm_kind
-      | Intf -> Cm_kind.Cmi
-    in
-    let deps_from_objinfo ~for_module (ocamlobjinfo : Ocamlobjinfo.t) =
-      Module.Name.Set.to_list ocamlobjinfo.intf
-      |> List.filter_map ~f:(fun dep ->
-        if Module.real_unit_name for_module = dep then
-          None (* no cycles *)
-        else
-          Module.Name.Map.find vlib_obj_map dep)
-    in
-    let per_module = Modules.obj_map vlib_modules ~f:(fun m ->
-      if Module.kind m = Alias
-      || (ml_kind = Intf && not (Module.has m ~ml_kind:Intf))
-      || (ml_kind = Impl && not (Module.has m ~ml_kind:Impl))
-      then
-        Build.return []
-      else
-        let (write, read) = ocamlobjinfo m cm_kind in
-        Super_context.add_rule sctx ~dir write;
-        let open Build.O in
-        Build.memoize "ocamlobjinfo" @@
-        read >>^ deps_from_objinfo ~for_module:m)
-    in
-    Dep_graph.make ~dir ~per_module)
-
-let impl sctx ~dir ~(lib : Dune_file.Library.t) ~scope =
+let impl sctx ~(lib : Dune_file.Library.t) ~scope =
   Option.map lib.implements ~f:begin fun (loc, implements) ->
     match Lib.DB.find (Scope.libs scope) implements with
     | None ->
@@ -204,22 +124,5 @@ let impl sctx ~dir ~(lib : Dune_file.Library.t) ~scope =
           in
           (modules, foreign_objects)
       in
-      let vlib_dep_graph =
-        match virtual_ with
-        | Local ->
-          let obj_dir =
-            Lib.Local.of_lib_exn vlib
-            |> Lib.Local.obj_dir
-          in
-          Ocamldep.graph_of_remote_lib ~obj_dir ~modules:vlib_modules
-        | External _ ->
-          let impl_obj_dir = Dune_file.Library.obj_dir ~dir lib in
-          let impl_cm_kind =
-            let { Mode.Dict. byte; native = _ } = Lib_info.modes info in
-            Mode.cm_kind (if byte then Byte else Native)
-          in
-          external_dep_graph sctx ~impl_cm_kind ~impl_obj_dir ~vlib_modules
-      in
-      Vimpl.make
-        ~impl:lib ~vlib ~vlib_modules ~vlib_dep_graph ~vlib_foreign_objects
+      Vimpl.make ~impl:lib ~vlib ~vlib_modules ~vlib_foreign_objects
   end

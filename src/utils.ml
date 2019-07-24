@@ -29,26 +29,6 @@ let bash_exn =
             needed_to
         ]
 
-let library_object_directory ~dir name =
-  Path.Build.relative dir ("." ^ Lib_name.Local.to_string name ^ ".objs")
-
-let library_native_dir ~obj_dir =
-  Path.Build.relative obj_dir "native"
-
-let library_byte_dir ~obj_dir =
-  Path.Build.relative obj_dir "byte"
-
-let library_public_cmi_dir ~obj_dir =
-  Path.Build.relative obj_dir "public_cmi"
-
-let library_private_dir ~obj_dir =
-  Path.Build.relative obj_dir "private"
-
-(* Use "eobjs" rather than "objs" to avoid a potential conflict with a
-   library of the same name *)
-let executable_object_directory ~dir name =
-  Path.Build.relative dir ("." ^ name ^ ".eobjs")
-
 let not_found fmt ?loc ?context ?hint x =
   User_error.raise ?loc
     (Pp.textf fmt (String.maybe_quoted x)

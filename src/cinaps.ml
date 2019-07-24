@@ -101,7 +101,7 @@ let gen_rules sctx t ~dir ~scope ~dir_kind =
       ~dir_kind
   in
   let modules =
-    Modules.exe modules
+    Modules.exe_unwrapped modules
     |> Modules.map_user_written ~f:(Preprocessing.pp_module preprocess)
   in
 
@@ -127,12 +127,14 @@ let gen_rules sctx t ~dir ~scope ~dir_kind =
       ~requires_compile:(Lib.Compile.direct_requires compile_info)
       ~requires_link:(Lib.Compile.requires_link compile_info)
       ~flags:(Ocaml_flags.of_list ["-w"; "-24"])
+      ~js_of_ocaml:None
       ~dynlink:false
       ~package:None
   in
   Exe.build_and_link cctx
     ~program:{ name; main_module_name; loc }
-    ~linkages:[Exe.Linkage.native_or_custom (Super_context.context sctx)];
+    ~linkages:[Exe.Linkage.native_or_custom (Super_context.context sctx)]
+    ~promote:None;
 
   Super_context.add_alias_action sctx ~dir ~loc:(Some loc) ~stamp:"cinaps"
     (Alias.runtest ~dir)

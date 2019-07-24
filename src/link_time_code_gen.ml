@@ -42,6 +42,7 @@ let generate_and_compile_module cctx ~precompiled_cmi ~name:basename
     Ocaml_version.supports_opaque_for_mli
       (Super_context.context sctx).version
   in
+  let modules = Modules.singleton_exe module_ in
   let cctx =
     Compilation_context.create
       ~super_context:sctx
@@ -49,11 +50,12 @@ let generate_and_compile_module cctx ~precompiled_cmi ~name:basename
       ~scope:(Compilation_context.scope cctx)
       ~dir_kind:(Compilation_context.dir_kind cctx)
       ~obj_dir
-      ~modules:(Modules.singleton module_)
+      ~modules
       ~requires_compile:requires
       ~requires_link:(lazy requires)
       ~flags:Ocaml_flags.empty
       ~opaque
+      ~js_of_ocaml:None
       ~dynlink:(Compilation_context.dynlink cctx)
       ~package:(Compilation_context.package cctx)
       ()

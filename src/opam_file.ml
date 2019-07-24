@@ -87,6 +87,62 @@ module Create = struct
   let list f xs = List (nopos, List.map ~f xs)
   let string_list xs = list string xs
 
+  let normalise_field_order =
+    let normal_field_order =
+      let fields =
+        [| (* Extracted from opam/src/format/opamFile.ml *)
+          "opam-version"
+        ; "name"
+        ; "version"
+        ; "synopsis"
+        ; "description"
+        ; "maintainer"
+        ; "authors"
+        ; "author"
+        ; "license"
+        ; "tags"
+        ; "homepage"
+        ; "doc"
+        ; "bug-reports"
+        ; "depends"
+        ; "depopts"
+        ; "conflicts"
+        ; "conflict-class"
+        ; "available"
+        ; "flags"
+        ; "setenv"
+        ; "build"
+        ; "run-test"
+        ; "install"
+        ; "remove"
+        ; "substs"
+        ; "patches"
+        ; "build-env"
+        ; "features"
+        ; "messages"
+        ; "post-messages"
+        ; "depexts"
+        ; "libraries"
+        ; "syntax"
+        ; "dev-repo"
+        ; "pin-depends"
+        ; "extra-files"
+        |] in
+      let table = lazy (
+        let table = Hashtbl.create (Array.length fields) in
+        Array.iteri fields ~f:(fun i field -> Hashtbl.add_exn table field i);
+        table
+      ) in
+      fun key -> Hashtbl.find (Lazy.force table) key
+    in
+    fun vars ->
+      List.stable_sort vars ~compare:(fun (x, _) (y, _) ->
+        match normal_field_order x, normal_field_order y with
+        | Some x, Some y -> Int.compare x y
+        | Some _, None -> Lt
+        | None, Some _ -> Gt
+        | None, None -> Eq)
+
   let of_bindings vars ~file =
     let file_contents =
       List.map vars ~f:(fun (var, value) ->

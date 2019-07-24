@@ -10,77 +10,86 @@ module Key : sig
   (* This module implements a bi-directional function between
      [encoded] and [decoded] *)
   type encoded = Digest.t
-  type decoded =
-    { pps   : Lib_name.t list
-    ; scope : Dune_project.Name.t option
-    }
+  module Decoded : sig
+    type t = private
+      { pps   : Lib_name.t list
+      ; project : Dune_project.t option
+      }
 
-  val of_libs : dir_kind:Dune_lang.File_syntax.t -> Lib.t list -> decoded
+    val of_libs : dir_kind:Dune_lang.File_syntax.t -> Lib.t list -> t
+  end
 
   (* [decode y] fails if there hasn't been a previous call to [encode]
      such that [encode x = y]. *)
-  val encode : decoded -> encoded
-  val decode : encoded -> decoded
+  val encode : Decoded.t -> encoded
+  val decode : encoded -> Decoded.t
 end = struct
   type encoded = Digest.t
-  type decoded =
-    { pps   : Lib_name.t list
-    ; scope : Dune_project.Name.t option
-    }
+  module Decoded = struct
+    type t =
+      { pps   : Lib_name.t list
+      ; project : Dune_project.t option
+      }
 
-  let reverse_table : (encoded, decoded) Hashtbl.t = Hashtbl.create 128
+    let equal x y =
+      List.equal Lib_name.equal x.pps y.pps
+      && Option.equal Dune_project.equal x.project y.project
 
-  let of_libs ~dir_kind libs =
-    let pps =
-      (let compare a b = Lib_name.compare (Lib.name a) (Lib.name b) in
-       match (dir_kind : Dune_lang.File_syntax.t) with
-       | Dune -> List.sort libs ~compare
-       | Jbuild ->
-         match List.rev libs with
-         | last :: others -> List.sort others ~compare @ [last]
-         | [] -> [])
-      |> List.map ~f:Lib.name
-    in
-    let scope =
-      List.fold_left libs ~init:None ~f:(fun acc lib ->
-        let scope_for_key =
-          let info = Lib.info lib in
-          let status = Lib_info.status info in
-          match status with
-          | Private scope_name   -> Some scope_name
-          | Public _ | Installed -> None
-        in
-        let open Dune_project.Name.Infix in
-        match acc, scope_for_key with
-        | Some a, Some b -> assert (a = b); acc
-        | Some _, None   -> acc
-        | None  , Some _ -> scope_for_key
-        | None  , None   -> None)
-    in
-    { pps; scope }
+    let to_string { pps; project } =
+      let s = String.enumerate_and (List.map pps ~f:Lib_name.to_string) in
+      match project with
+      | None -> s
+      | Some project ->
+        let name = Dune_project.name project in
+        sprintf "%s (in project: %s)" s
+          (Dune_project.Name.to_string_hum name)
 
-  let encode x =
-    let y = Digest.generic x in
+    let of_libs ~dir_kind libs =
+      let pps =
+        (let compare a b = Lib_name.compare (Lib.name a) (Lib.name b) in
+         match (dir_kind : Dune_lang.File_syntax.t) with
+         | Dune -> List.sort libs ~compare
+         | Jbuild ->
+           match List.rev libs with
+           | last :: others -> List.sort others ~compare @ [last]
+           | [] -> [])
+        |> List.map ~f:Lib.name
+      in
+      let project =
+        List.fold_left libs ~init:None ~f:(fun acc lib ->
+          let scope_for_key =
+            let info = Lib.info lib in
+            let status = Lib_info.status info in
+            match status with
+            | Private scope_name   -> Some scope_name
+            | Public _ | Installed -> None
+          in
+          match acc, scope_for_key with
+          | Some a, Some b -> assert (Dune_project.equal a b); acc
+          | Some _, None   -> acc
+          | None  , Some _ -> scope_for_key
+          | None  , None   -> None)
+      in
+      { pps; project }
+  end
+
+  let reverse_table : (encoded, Decoded.t) Hashtbl.t =
+    Hashtbl.create 128
+
+  let encode ({ Decoded. pps; project } as x) =
+    let y = Digest.generic (pps, Option.map ~f:Dune_project.file_key project) in
     match Hashtbl.find reverse_table y with
     | None ->
       Hashtbl.set reverse_table y x;
       y
     | Some x' ->
-      if x = x' then
+      if Decoded.equal x x' then
         y
       else begin
-        let to_string { pps; scope } =
-          let s = String.enumerate_and (List.map pps ~f:Lib_name.to_string) in
-          match scope with
-          | None -> s
-          | Some scope ->
-            sprintf "%s (in project: %s)" s
-              (Dune_project.Name.to_string_hum scope)
-        in
         User_error.raise
           [ Pp.textf "Hash collision between set of ppx drivers:"
-          ; Pp.textf "- cache : %s" (to_string x')
-          ; Pp.textf "- fetch : %s" (to_string x)
+          ; Pp.textf "- cache : %s" (Decoded.to_string x')
+          ; Pp.textf "- fetch : %s" (Decoded.to_string x)
           ]
       end
 
@@ -432,16 +441,47 @@ let get_rules sctx key ~dir_kind =
     let names, lib_db =
       match Digest.from_hex key with
       | key ->
-        let { Key.pps; scope } = Key.decode key in
+        let { Key.Decoded.pps; project } = Key.decode key in
         let lib_db =
-          match scope with
+          match project with
           | None -> SC.public_libs sctx
-          | Some name -> Scope.libs (SC.find_scope_by_name sctx name)
+          | Some project -> Scope.libs (SC.find_scope_by_project sctx project)
         in
         (pps, lib_db)
       | exception _ ->
         (* Still support the old scheme for backward compatibility *)
-        let (key, lib_db) = SC.Scope_key.of_string sctx key in
+
+        (* DUNE2 get rid of this crud *)
+        let module Scope_key = struct
+          let of_string sctx key =
+            match String.rsplit2 key ~on:'@' with
+            | None ->
+              (key, Super_context.public_libs sctx)
+            | Some (key, scope) ->
+              let scope =
+                let name = Dune_project.Name.of_encoded_string scope in
+                match Super_context.find_scope_by_name sctx name with
+                | [x] -> x
+                | [] -> assert false
+                | p1 :: p2 :: _ ->
+                  let file p =
+                    Scope.project p
+                    |> Dune_project.file
+                    |> Path.Source.to_string
+                    |> Pp.textf "- %s"
+                  in
+                  User_error.raise
+                    [ Pp.textf "jbuild projects must have unique names. \
+                               The project %s is defined in:"
+                        (Dune_project.Name.to_string_hum name)
+                    ; file p1
+                    ; file p2
+                    ]
+                    in
+              (key, Scope.libs scope)
+        end in
+
+        let (key, lib_db) = Scope_key.of_string sctx key in
         let names =
           match key with
           | "+none+" -> []
@@ -469,7 +509,8 @@ let gen_rules sctx components =
   | _ -> ()
 
 let ppx_driver_exe sctx libs ~dir_kind =
-  let key = Digest.to_string (Key.of_libs ~dir_kind libs |> Key.encode) in
+  let key =
+    Digest.to_string (Key.Decoded.of_libs ~dir_kind libs |> Key.encode) in
   ppx_exe sctx ~key ~dir_kind
 
 module Compat_ppx_exe_kind = struct
@@ -577,25 +618,6 @@ let ppx_driver_and_flags sctx ~lib_name ~expander ~scope ~loc ~dir_kind ~flags
 
 let workspace_root_var = String_with_vars.virt_var __POS__ "workspace_root"
 
-
-(* Generate rules for the reason modules in [modules] and return a
-   a new module with only OCaml sources *)
-let setup_reason_rules sctx ~dir (m : Module.t) =
-  let refmt = Refmt.get sctx ~loc:None ~dir in
-  let rule input output = Refmt.to_ocaml_ast refmt ~input ~output in
-  let ml = Module.ml_source m in
-  Module.iter m ~f:(fun ml_kind f ->
-    match f.syntax with
-    | OCaml  ->
-      ()
-    | Reason ->
-      let ml =
-        Option.value_exn (Module.file ml ~ml_kind)
-        |> Path.as_in_build_dir_exn
-      in
-      SC.add_rule sctx ~dir (rule f.path ml));
-  ml
-
 let promote_correction fn build ~suffix =
   Build.progn
     [ build
@@ -633,7 +655,25 @@ let action_for_pp sctx ~dep_kind ~loc ~expander ~action ~src ~target =
   >>^ fun action ->
   match target with
   | None -> action
-  | Some dst -> Action.with_stdout_to (Path.build dst) action
+  | Some dst -> Action.with_stdout_to dst action
+
+(* Generate rules for the dialect modules in [modules] and return a
+   a new module with only OCaml sources *)
+let setup_dialect_rules sctx ~dir ~dep_kind ~expander (m : Module.t) =
+  let ml = Module.ml_source m in
+  Module.iter m ~f:(fun ml_kind f ->
+    match Dialect.preprocess f.dialect ml_kind with
+    | None -> ()
+    | Some (loc, action) ->
+      let src = Path.as_in_build_dir_exn f.path in
+      let dst =
+        Option.value_exn (Module.file ml ~ml_kind)
+        |> Path.as_in_build_dir_exn
+      in
+      SC.add_rule sctx ~dir
+        (action_for_pp sctx ~dep_kind ~loc ~expander ~action ~src ~target:(Some dst))
+  );
+  ml
 
 let lint_module sctx ~dir ~expander ~dep_kind ~lint ~lib_name ~scope ~dir_kind =
   Staged.stage (
@@ -691,7 +731,7 @@ let lint_module sctx ~dir ~expander ~dep_kind ~lint ~lib_name ~scope ~dir_kind =
                          Command.run ~dir:(Path.build (SC.build_dir sctx))
                            (Ok (Path.build exe))
                            [ args
-                           ; Ml_kind.ppx_driver_flag ml_kind
+                           ; Command.Ml_kind.ppx_driver_flag ml_kind
                            ; Dep src.path
                            ; Command.Args.dyn flags
                            ]))))))
@@ -720,7 +760,7 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess
     with
     | No_preprocessing ->
       (fun m ~lint ->
-         let ast = setup_reason_rules sctx ~dir m in
+         let ast = setup_dialect_rules sctx ~dir ~dep_kind ~expander m in
          if lint then lint_module ~ast ~source:m;
          ast)
     | Action (loc, action) ->
@@ -732,7 +772,7 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess
              in
              SC.add_rule sctx ~loc ~dir
                (preprocessor_deps >>> action))
-           |> setup_reason_rules sctx ~dir
+           |> setup_dialect_rules sctx ~dir ~dep_kind ~expander
          in
          if lint then lint_module ~ast ~source:m;
          ast)
@@ -755,7 +795,7 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess
                  ~standard:(Build.return ["--as-ppx"]))), args)
         in
         (fun m ~lint ->
-           let ast = setup_reason_rules sctx ~dir m in
+           let ast = setup_dialect_rules sctx ~dir ~dep_kind ~expander m in
            if lint then lint_module ~ast ~source:m;
            pped_module ast ~f:(fun ml_kind src dst ->
              SC.add_rule sctx ~loc ~dir
@@ -770,7 +810,7 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess
                          (Ok (Path.build exe))
                          [ args
                          ; A "-o"; Target dst
-                         ; Ml_kind.ppx_driver_flag ml_kind; Dep (Path.build src)
+                         ; Command.Ml_kind.ppx_driver_flag ml_kind; Dep (Path.build src)
                          ; Command.Args.dyn flags
                          ])))))
       end else begin
@@ -804,7 +844,7 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess
         in
         let pp = Some pp_flags in
         (fun m ~lint ->
-           let ast = setup_reason_rules sctx ~dir m in
+           let ast = setup_dialect_rules sctx ~dir ~dep_kind ~expander m in
            if lint then lint_module ~ast ~source:m;
            Module.set_pp ast pp)
       end)

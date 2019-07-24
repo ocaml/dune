@@ -57,7 +57,6 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
   (* We need to instantiate Install_rules earlier to avoid issues whenever
    * Super_context is used too soon.
    * See: https://github.com/ocaml/dune/pull/1354#issuecomment-427922592 *)
-  module Lib_rules = Lib_rules.Gen(P)
 
   let sctx = P.sctx
 
@@ -67,9 +66,12 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
     Dune_project.find_extension_args project Auto_format.key
     |> Option.iter ~f
 
-  let gen_format_rules sctx ~output_dir =
+  let gen_format_rules sctx ~expander ~output_dir =
+    let scope = SC.find_scope_by_dir sctx output_dir in
+    let project = Scope.project scope in
+    let dialects = Dune_project.dialects project in
     with_format sctx ~dir:output_dir
-      ~f:(Format_rules.gen_rules_output sctx ~output_dir)
+      ~f:(Format_rules.gen_rules_output sctx ~dialects ~expander ~output_dir)
 
   (* Stanza *)
 
@@ -86,7 +88,8 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
         For_stanza.empty_none
       | Library lib ->
         let cctx, merlin =
-          Lib_rules.rules lib ~dir ~scope ~dir_contents ~expander ~dir_kind in
+          Lib_rules.rules lib ~sctx ~dir ~scope ~dir_contents ~expander
+            ~dir_kind in
         { For_stanza.
           merlin = Some merlin
         ; cctx = Some (lib.buildable.loc, cctx)
@@ -138,8 +141,9 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
         }
       | Install { Install_conf. section = _; files; package = _ } ->
         List.map files ~f:(fun fb ->
-          File_binding.Unexpanded.expand_src ~dir:(Path.build ctx_dir)
-            fb ~f:(Expander.expand_str expander))
+          File_binding.Unexpanded.expand_src ~dir:ctx_dir
+            fb ~f:(Expander.expand_str expander)
+          |> Path.build)
         |> Path.Set.of_list
         |> Rules.Produce.Alias.add_deps (Alias.all ~dir:ctx_dir);
         For_stanza.empty_none
@@ -161,7 +165,8 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
     in
     let allow_approx_merlin =
       let dune_project = Scope.project scope in
-      Dune_project.allow_approx_merlin dune_project in
+      let dir_is_vendored = Super_context.dir_is_vendored sctx src_dir in
+      dir_is_vendored || Dune_project.allow_approx_merlin dune_project in
     Option.iter (Merlin.merge_all ~allow_approx_merlin merlins)
       ~f:(fun m ->
         let more_src_dirs =
@@ -211,6 +216,7 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
         |> SC.add_rules ~dir:ctx_dir sctx
       | _ -> ());
     let dyn_deps =
+      (* DUNE2: no need to filter out js targets anymore *)
       let pred =
         let id = lazy (
           let open Dyn.Encoder in
@@ -220,9 +226,15 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
         List.iter js_targets ~f:(fun js_target ->
           assert (Path.Build.equal (Path.Build.parent_exn js_target)
                     ctx_dir));
-        Predicate.create ~id ~f:(fun basename ->
-          not (List.exists js_targets ~f:(fun js_target ->
-            String.equal (Path.Build.basename js_target) basename)))
+        let f =
+          if Dune_project.explicit_js_mode (Scope.project scope) then
+            fun _ -> true
+          else
+            fun basename ->
+              not (List.exists js_targets ~f:(fun js_target ->
+                String.equal (Path.Build.basename js_target) basename))
+        in
+        Predicate.create ~id ~f
       in
       File_selector.create ~dir:(Path.build ctx_dir) pred
       |> Build.paths_matching ~loc:Loc.none
@@ -257,13 +269,14 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
          let subdirs = [".formatted"; ".bin"; ".utop"] in
          begin match List.last comps with
          | Some ".formatted" ->
-           gen_format_rules sctx ~output_dir:dir
+           let expander = Super_context.expander sctx ~dir in
+           gen_format_rules sctx ~expander ~output_dir:dir
          | Some ".bin" ->
            let src_dir = Path.Build.parent_exn dir in
            (Super_context.local_binaries sctx ~dir:src_dir
             |> List.iter ~f:(fun t ->
               let loc = File_binding.Expanded.src_loc t in
-              let src = File_binding.Expanded.src_path t in
+              let src = Path.build (File_binding.Expanded.src t) in
               let dst = File_binding.Expanded.dst_path t ~dir in
               Super_context.add_rule sctx ~loc ~dir (Build.symlink ~src ~dst)))
          | _ ->

@@ -9,6 +9,7 @@ let () = Hooks.End_of_build.always Memo.reset
 module Fs : sig
   val mkdir_p : Path.Build.t -> unit
   val mkdir_p_or_check_exists : loc:Loc.t option -> Path.t -> unit
+  val assert_exists : loc:Loc.t option -> Path.t -> unit
 end = struct
   let mkdir_p_def =
     Memo.create
@@ -195,7 +196,7 @@ module Alias0 = struct
 
   let dep_rec_internal ~name ~dir ~ctx_dir =
     Build.lazy_no_targets (lazy (
-      File_tree.Dir.fold dir ~traverse_ignored_dirs:false
+      File_tree.Dir.fold dir ~traverse:Sub_dirs.Status.Set.normal_only
         ~init:(Build.return true)
         ~f:(fun dir acc ->
           let path = Path.Build.append_source ctx_dir (File_tree.Dir.path dir) in
@@ -841,7 +842,7 @@ end = struct
                  Build.dyn_path_set (Build.arr Fn.id)
                  >>^ (fun dyn_deps ->
                    let deps = Path.Set.union deps dyn_deps in
-                   Action.with_stdout_to (Path.build path)
+                   Action.with_stdout_to path
                      (Action.digest_files (Path.Set.to_list deps)))
                  >>>
                  Build.action_dyn () ~targets:[path])
@@ -1277,7 +1278,7 @@ and get_rule t path =
 let all_targets t =
   String.Map.to_list t.contexts
   |> List.fold_left ~init:Path.Build.Set.empty ~f:(fun acc (_, ctx) ->
-    File_tree.fold t.file_tree ~traverse_ignored_dirs:true ~init:acc
+    File_tree.fold t.file_tree ~traverse:Sub_dirs.Status.Set.all ~init:acc
       ~f:(fun dir acc ->
         match
           load_dir
@@ -1480,12 +1481,16 @@ end = struct
             action
           | Some sandbox_dir ->
             Path.rm_rf (Path.build sandbox_dir);
-            let sandboxed path = Path.sandbox_managed_paths ~sandbox_dir path in
+            let sandboxed path : Path.Build.t =
+              Path.Build.append_local sandbox_dir
+                (Path.Build.local path)
+            in
             Dep.Set.dirs deps
             |> Path.Set.iter ~f:(fun p ->
-              sandboxed p
-              |> Fs.mkdir_p_or_check_exists ~loc);
-            Fs.mkdir_p_or_check_exists ~loc (sandboxed (Path.build dir));
+              match Path.as_in_build_dir p with
+               | None -> Fs.assert_exists ~loc p
+               | Some p -> Fs.mkdir_p (sandboxed p));
+            Fs.mkdir_p (sandboxed dir);
             Action.sandbox action
               ~sandboxed
               ~deps
@@ -1663,12 +1668,9 @@ let process_memcycle exn =
   in
   match List.last cycle with
   | None ->
-    let frames : string list =
-      Memo.Cycle_error.get exn
-      |> List.map ~f:(Format.asprintf "%a" Memo.Stack_frame.pp)
-    in
+    let frames = Memo.Cycle_error.get exn in
     Code_error.raise "dependency cycle that does not involve any files"
-      ["frames", Dyn.Encoder.(list string) frames]
+      ["frames", Dyn.Encoder.(list Memo.Stack_frame.to_dyn) frames]
   | Some last ->
     let first = List.hd cycle in
     let cycle = if last = first then cycle else last :: cycle in

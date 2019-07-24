@@ -5,12 +5,8 @@ open Import
 open Dune_file
 
 val setup_library_odoc_rules
-  :  Super_context.t
+  :  Compilation_context.t
   -> Library.t
-  -> obj_dir:Path.Build.t Obj_dir.t
-  -> scope:Scope.t
-  -> modules:Modules.t
-  -> requires:Lib.t list Or_exn.t
   -> dep_graphs:Dep_graph.Ml_kind.t
   -> unit
 

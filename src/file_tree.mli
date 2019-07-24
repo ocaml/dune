@@ -42,11 +42,15 @@ module Dir : sig
      or [jbuild-ignore] file in one of its ancestor directories. *)
   val ignored : t -> bool
 
+  (** Whether this directory is vendored or sits within a vendored
+      directory *)
+  val vendored : t -> bool
+
   val vcs : t -> Vcs.t option
 
   val fold
     :  t
-    -> traverse_ignored_dirs:bool
+    -> traverse:Sub_dirs.Status.Set.t
     -> init:'a
     -> f:(t -> 'a -> 'a)
     -> 'a
@@ -72,12 +76,12 @@ val load
   -> ancestor_vcs:Vcs.t option
   -> t
 
-(** Passing [~traverse_ignored_dirs:true] to this functions causes the
+(** Passing [~traverse_data_only_dirs:true] to this functions causes the
     whole source tree to be deeply scanned, including ignored
     sub-trees. *)
 val fold
   :  t
-  -> traverse_ignored_dirs:bool
+  -> traverse:Sub_dirs.Status.Set.t
   -> init:'a
   -> f:(Dir.t -> 'a -> 'a)
   -> 'a
@@ -98,6 +102,10 @@ val files_of : t -> Path.Source.t -> Path.Source.Set.t
 
 (** [true] iff the path is a directory *)
 val dir_exists : t -> Path.Source.t -> bool
+
+(** [dir_is_vendored t path] tells whether [path] is a vendored directory.
+    Returns [None] if it doesn't describe a directory within [t]. *)
+val dir_is_vendored : t -> Path.Source.t -> bool option
 
 (** [true] iff the path is a file *)
 val file_exists : t -> Path.Source.t -> bool

@@ -27,13 +27,14 @@ val context   : t -> Context.t
 val stanzas   : t -> Stanzas.t Dir_with_dune.t list
 val stanzas_in : t -> dir:Path.Build.t -> Stanzas.t Dir_with_dune.t option
 val packages  : t -> Package.t Package.Name.Map.t
-val libs_by_package : t -> (Package.t * Lib.Local.Set.t) Package.Name.Map.t
 val file_tree : t -> File_tree.t
 val artifacts : t -> Artifacts.t
 val build_dir : t -> Path.Build.t
 val profile   : t -> string
 val host : t -> t
 val external_lib_deps_mode : t -> bool
+
+val libs_of_package : t -> Package.Name.t -> Lib.Local.Set.t
 
 (** All public libraries of the workspace *)
 val public_libs : t -> Lib.DB.t
@@ -67,7 +68,12 @@ val local_binaries : t -> dir:Path.Build.t -> File_binding.Expanded.t list
 val dump_env : t -> dir:Path.Build.t -> (unit, Dune_lang.t list) Build.t
 
 val find_scope_by_dir  : t -> Path.Build.t        -> Scope.t
-val find_scope_by_name : t -> Dune_project.Name.t -> Scope.t
+val find_scope_by_name : t -> Dune_project.Name.t -> Scope.t list
+val find_scope_by_project : t -> Dune_project.t -> Scope.t
+val find_project_by_key : t -> Dune_project.File_key.t -> Dune_project.t
+
+(** Tells whether the given source directory is marked as vendored *)
+val dir_is_vendored : t -> Path.Source.t -> bool
 
 val add_rule
   :  t
@@ -189,12 +195,6 @@ module Pkg_version : sig
     -> (unit, string option) Build.t
 
   val read : t -> Package.t -> (unit, string option) Build.t
-end
-
-module Scope_key : sig
-  val of_string : t -> string -> string * Lib.DB.t
-
-  val to_string : string -> Dune_project.Name.t -> string
 end
 
 val opaque : t -> bool

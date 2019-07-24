@@ -40,7 +40,6 @@ module Main = struct
       ?workspace_file:(Option.map ~f:Arg.Path.path common.workspace_file)
       ?x:common.x
       ?profile:common.profile
-      ~ignore_promoted_rules:common.ignore_promoted_rules
       ~capture_outputs:common.capture_outputs
       ~ancestor_vcs:common.root.ancestor_vcs
       ()

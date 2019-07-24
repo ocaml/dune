@@ -134,6 +134,67 @@ module Stdlib = struct
       lib_interface t
 end
 
+module Mangle = struct
+  module Lib = struct
+    type kind =
+      | Has_lib_interface
+      | Implementation of Lib_name.Local.t
+      | Neither
+
+    type t =
+      { main_module_name : Module.Name.t
+      ; kind : kind
+      }
+  end
+
+  type t =
+    | Lib of Lib.t
+    | Exe
+
+  let of_lib ~main_module_name ~modules ~(lib : Dune_file.Library.t) =
+    let kind : Lib.kind =
+      if Option.is_some lib.implements then
+        Implementation (snd lib.name)
+      else if Module.Name.Map.mem modules main_module_name then
+        Has_lib_interface
+      else
+        Neither
+    in
+    Lib { main_module_name ; kind }
+
+  let prefix t : Module.Name.t Visibility.Map.t =
+    match t with
+    | Lib { main_module_name ; kind } ->
+      begin match kind with
+      | Has_lib_interface
+      | Neither -> Visibility.Map.make_both main_module_name
+      | Implementation lib ->
+        { private_ =
+            sprintf "%s__%s__"
+              (Module.Name.to_string main_module_name)
+              (Lib_name.Local.to_string lib)
+            |> Module.Name.of_string
+        ; public = main_module_name
+        }
+      end
+    | Exe ->
+      sprintf "dune__exe"
+      |> Module.Name.of_string
+      |> Visibility.Map.make_both
+
+  let make_alias_module t ~src_dir =
+    let prefix = prefix t in
+    let name =
+      match t with
+      | Lib { kind = Has_lib_interface; _ } ->
+        Module.Name.add_suffix prefix.public "__"
+      | Lib { kind = Implementation _ ; _ } ->
+        prefix.private_
+      | _ -> prefix.public
+    in
+    Module.generated_alias ~src_dir name
+end
+
 module Wrapped = struct
   type t =
     { modules : Module.Name_map.t
@@ -181,61 +242,27 @@ module Wrapped = struct
     ; alias_module = f alias_module
     }
 
-  let make_alias_module ~src_dir ~implements ~lib_name
-        ~main_module_name ~modules =
-    if implements then
-      let name =
-        Module.Name.add_suffix main_module_name
-          (sprintf  "__%s__" (Lib_name.Local.to_string lib_name))
-      in
-      Module.generated_alias ~src_dir name
-    else if Module.Name.Map.mem modules main_module_name then
-      (* This module needs an implementation for non-dune
-         users of the library:
-
-         https://github.com/ocaml/dune/issues/567 *)
-      let name = Module.Name.add_suffix main_module_name "__" in
-      Module.generated_alias ~src_dir name
-    else
-      Module.generated_alias ~src_dir main_module_name
-
-  let wrap_modules ~modules ~lib ~main_module_name =
-    let prefix =
-      if not (Dune_file.Library.is_impl lib) then
-        fun _ -> main_module_name
-      else
-        (* for implementations we need to pick a different prefix for private
-           modules. This is to guarantee that the private modules will never
-           collide with the names of modules in the virtual library. *)
-        let private_module_prefix =
-          if Dune_file.Library.is_impl lib then
-            Module.Name.of_string
-              (sprintf "%s__%s"
-                 (Module.Name.to_string main_module_name)
-                 (Lib_name.Local.to_string (snd lib.name)))
-          else
-            main_module_name
-        in
-        fun m ->
-          match Module.visibility m with
-          | Private -> private_module_prefix
-          | Public -> main_module_name
-    in
-    let open Module.Name.Infix in
+  let wrap_modules prefix ~main_module_name ~modules =
     Module.Name.Map.map modules ~f:(fun (m : Module.t) ->
       if Module.name m = main_module_name then
         m
       else
-        Module.with_wrapper m ~main_module_name:(prefix m))
+        let visibility = Module.visibility m in
+        let prefix = Visibility.Map.find prefix visibility in
+        Module.with_wrapper m ~main_module_name:prefix)
 
   let make ~src_dir ~lib ~modules ~main_module_name ~wrapped =
+    let mangle = Mangle.of_lib ~main_module_name ~lib ~modules in
     let (modules, wrapped_compat) =
+      let prefix = Mangle.prefix mangle in
+      let wrapped_modules =
+        wrap_modules prefix ~main_module_name ~modules in
       match (wrapped : Mode.t) with
       | Simple false -> assert false
       | Simple true ->
-        (wrap_modules ~modules ~main_module_name ~lib, Module.Name.Map.empty)
+        (wrapped_modules, Module.Name.Map.empty)
       | Yes_with_transition _ ->
-        ( wrap_modules ~modules ~main_module_name ~lib
+        ( wrapped_modules
         , Module.Name.Map.remove modules main_module_name
           |> Module.Name.Map.filter_map ~f:(fun m ->
             match Module.visibility m with
@@ -243,17 +270,28 @@ module Wrapped = struct
             | Private -> None)
         )
     in
-    let alias_module =
-      let (_, lib_name) = lib.name in
-      let implements = Dune_file.Library.is_impl lib in
-      make_alias_module ~main_module_name ~src_dir ~lib_name
-        ~modules ~implements
-    in
+    let alias_module = Mangle.make_alias_module ~src_dir mangle in
     { modules
     ; alias_module
     ; wrapped_compat
     ; main_module_name
     ; wrapped
+    }
+
+  let exe ~src_dir ~modules =
+    let mangle = Mangle.Exe in
+    let prefix = Mangle.prefix mangle in
+    let alias_module = Mangle.make_alias_module mangle ~src_dir in
+    let modules =
+      Module.Name.Map.map modules ~f:(fun m ->
+        Module.with_wrapper m ~main_module_name:prefix.public)
+    in
+    { modules
+    ; wrapped_compat = Module.Name.Map.empty
+    ; alias_module
+    (* XXX exe's don't have a main module, but this is harmless *)
+    ; main_module_name = Module.name alias_module
+    ; wrapped = Simple true
     }
 
   let obj_map { modules; wrapped_compat; alias_module; main_module_name = _
@@ -324,6 +362,10 @@ module Wrapped = struct
     | Alias
     | Wrapped_compat -> None
     | _ -> Some t.alias_module
+
+  let relocate_alias_module t ~src_dir =
+    let alias_module = Module.set_src_dir t.alias_module ~src_dir in
+    { t with alias_module }
 end
 
 type t =
@@ -443,8 +485,6 @@ let rec lib_interface = function
   | Stdlib w -> Stdlib.lib_interface w
   | Impl { impl = _; vlib } -> lib_interface vlib
 
-let exe m = Unwrapped m
-
 let rec main_module_name = function
   | Singleton m -> Some (Module.name m)
   | Unwrapped _ -> None
@@ -527,7 +567,18 @@ let rec find_dep t ~of_ name =
     | Impl_or_lib -> Some m
     | Vlib -> Option.some_if (Module.visibility m = Public) m
 
-let singleton m = Singleton m
+let singleton_exe m =
+  Singleton (
+    let mangle = Mangle.Exe in
+    let main_module_name = (Mangle.prefix mangle).public in
+    Module.with_wrapper m ~main_module_name
+  )
+
+let exe_unwrapped m = Unwrapped m
+let exe_wrapped ~src_dir ~modules =
+  match as_singleton modules with
+  | None -> Wrapped (Wrapped.exe ~src_dir ~modules)
+  | Some m -> singleton_exe m
 
 let rec impl_only = function
   | Stdlib w -> Stdlib.impl_only w
@@ -623,15 +674,36 @@ let version_installed t ~install_dir =
   in
   loop t
 
-let rec obj_map t ~f =
-  match t with
-  | Singleton m -> Module.Obj_map.add_exn Module.Obj_map.empty m (f m)
-  | Unwrapped m ->
-    Module.Name.Map.fold m ~init:Module.Obj_map.empty ~f:(fun m acc ->
-      Module.Obj_map.add_exn acc m (f m))
-  | Wrapped w -> Wrapped.obj_map w ~f
-  | Stdlib w -> Stdlib.obj_map w ~f
-  | Impl { impl ; vlib = _ } -> obj_map impl ~f
+module Sourced_module = struct
+  type t =
+    | Normal of Module.t
+    | Imported_from_vlib of Module.t
+    | Impl_of_virtual_module of Module.t Ml_kind.Dict.t
+end
+
+let rec obj_map
+  : 'a. t -> f:(Sourced_module.t -> 'a) -> 'a Module.Obj_map.t
+  = fun t ~f ->
+    let normal m = f (Sourced_module.Normal m) in
+    match t with
+    | Singleton m ->
+      Module.Obj_map.add_exn Module.Obj_map.empty m (normal m)
+    | Unwrapped m ->
+      Module.Name.Map.fold m ~init:Module.Obj_map.empty ~f:(fun m acc ->
+        Module.Obj_map.add_exn acc m (normal m))
+    | Wrapped w -> Wrapped.obj_map w ~f:normal
+    | Stdlib w -> Stdlib.obj_map w ~f:normal
+    | Impl { vlib; impl } ->
+      Module.Obj_map.merge (obj_map vlib ~f:Fn.id) (obj_map impl ~f:Fn.id)
+        ~f:(fun _ vlib impl ->
+          match vlib, impl with
+          | None, None -> assert false
+          | Some (Normal m), None -> Some (f (Sourced_module.Imported_from_vlib m))
+          | None, Some (Normal m) -> Some (f (Normal m))
+          | Some (Normal intf), Some (Normal impl) ->
+            Some (f (Sourced_module.Impl_of_virtual_module { intf; impl }))
+          | Some (Imported_from_vlib _ | Impl_of_virtual_module _), _
+          | _ , Some (Imported_from_vlib _ | Impl_of_virtual_module _) -> assert false)
 
 (* TODO perhaps return only public modules? *)
 let entry_modules = function
@@ -684,3 +756,8 @@ let is_stdlib_alias t m =
 let exit_module = function
   | Stdlib w -> Stdlib.exit_module w
   | _ -> None
+
+let relocate_alias_module t ~src_dir =
+  match t with
+  | Wrapped t -> Wrapped (Wrapped.relocate_alias_module t ~src_dir)
+  | s -> s

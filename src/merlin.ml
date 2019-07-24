@@ -37,7 +37,7 @@ module Preprocess = struct
       if Action_dune_lang.compare_no_locs a1 a2 <> Ordering.Eq then
         warn_dropped_pp loc ~allow_approx_merlin
           ~reason:"this action preprocessor is not equivalent to other \
-                   preproocessor specifications.";
+                   preprocessor specifications.";
       Action (loc, a1)
     | Pps _, Action (loc, _)
     | Action (loc, _), Pps _ ->
@@ -106,17 +106,31 @@ type t =
 
 let make
       ?(requires=Ok [])
-      ?(flags=Build.return [])
+      ~flags
       ?(preprocess=Dune_file.Preprocess.No_preprocessing)
       ?libname
       ?(source_dirs=Path.Source.Set.empty)
-      ?(objs_dirs=Path.Set.empty)
+      ~modules
+      ~obj_dir
       () =
   (* Merlin shouldn't cause the build to fail, so we just ignore errors *)
   let requires =
     match requires with
     | Ok    l -> Lib.Set.of_list l
     | Error _ -> Lib.Set.empty
+  in
+  let objs_dirs =
+    Obj_dir.byte_dir obj_dir
+    |> Path.build
+    |> Path.Set.singleton
+  in
+  let flags =
+    match Modules.alias_module modules with
+    | None -> Ocaml_flags.common flags
+    | Some m ->
+      Ocaml_flags.prepend_common
+        ["-open"; Module.Name.to_string (Module.name m)] flags
+      |> Ocaml_flags.common
   in
   { requires
   ; flags      = Build.catch flags    ~on_error:(fun _ -> [])

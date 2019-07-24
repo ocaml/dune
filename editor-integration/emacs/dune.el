@@ -62,7 +62,8 @@
              '("library" "executable" "executables" "rule" "toplevel"
                "ocamllex" "ocamlyacc" "menhir" "alias" "install"
                "copy_files" "copy_files#" "include" "tests" "test" "dirs"
-               "env" "ignored_subdirs" "include_subdirs" "data_only_dirs")
+               "env" "ignored_subdirs" "include_subdirs" "data_only_dirs"
+               "cinaps" "coqlib" "coq.theory" "coq.pp")
              ) "\\(?:\\_>\\|[[:space:]]\\)"))
   "Stanzas in dune files.")
 
@@ -74,7 +75,7 @@
        "install_c_headers" "modes" "no_dynlink" "kind"
        "ppx_runtime_libraries" "virtual_deps" "js_of_ocaml" "flags"
        "ocamlc_flags" "ocamlopt_flags" "library_flags" "c_flags"
-       "cxx_flags" "c_library_flags" "self_build_stubs_archive"
+       "cxx_flags" "c_library_flags" "self_build_stubs_archive" "inline_tests"
        "modules_without_implementation" "private_modules"
        ;; + special_builtin_support
        "special_builtin_support" "build_info" "data_module" "api_version"
@@ -89,6 +90,8 @@
        "targets" "action" "deps" "mode" "fallback" "locks"
        ;; + for "menhir":
        "merge_into"
+       ;; + for "cinaps":
+       "files"
        ;; + for "alias"
        "enabled_if"
        ;; + for env

@@ -86,7 +86,7 @@ module Targets : sig
 
   type static =
     {
-      targets : Path.t list;
+      targets : Path.Build.t list;
       multiplicity : Dune_file.Rule.Targets.Multiplicity.t;
     }
 

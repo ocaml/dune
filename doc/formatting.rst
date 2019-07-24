@@ -9,6 +9,9 @@ Dune can be set up to run automatic formatters for source code.
 It can use ocamlformat_ to format OCaml source code (``*.ml`` and ``*.mli``
 files) and refmt_ to format Reason source code (``*.re`` and ``*.rei`` files).
 
+Furthermore it can be used to format code of any defined dialect (see
+:ref:`dialects-main`).
+
 .. _ocamlformat: https://github.com/ocaml-ppx/ocamlformat
 .. _refmt: https://github.com/facebook/reason/tree/master/src/refmt
 
@@ -19,7 +22,7 @@ This feature is enabled by adding the following to the ``dune-project`` file:
 
 .. code:: scheme
 
-    (using fmt 1.1)
+    (using fmt 1.2)
 
 Formatting a project
 ====================
@@ -53,20 +56,25 @@ As usual with promotion, it is possible to combine these two steps by running
 Only enabling it for certain languages
 ======================================
 
-By default, formatting will be enabled for all languages present in the project
-that dune knows about. This is not always desirable, for example if in a mixed
-Reason/OCaml project, one only wants to format the Reason files to avoid pulling
-``ocamlformat`` as a dependency.
+By default, formatting will be enabled for all languages and dialects present in
+the project that dune knows about. This is not always desirable, for example if
+in a mixed Reason/OCaml project, one only wants to format the Reason files to
+avoid pulling ``ocamlformat`` as a dependency.
 
 In these cases, it is possible to use the ``enabled_for`` argument to restrict
 the languages that are considered for formatting.
 
 .. code:: scheme
 
-    (using fmt 1.1 (enabled_for reason))
+    (using fmt 1.2 (enabled_for reason))
 
 Version history
 ===============
+
+1.2
+---
+
+* Format :ref:`dialects-main`.
 
 1.1
 ---

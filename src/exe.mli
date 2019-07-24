@@ -24,6 +24,9 @@ module Linkage : sig
   (** [native] if supported, [custom] if not *)
   val native_or_custom : Context.t -> t
 
+  (** Javascript compilation, extension [.bc.js] *)
+  val js : t
+
   val make
     :  mode:Mode.t
     -> ext:string
@@ -41,6 +44,7 @@ end
 val build_and_link
   :  program:Program.t
   -> linkages:Linkage.t list
+  -> promote:Dune_file.Promote.t option
   -> ?link_flags:(unit, string list) Build.t
   -> Compilation_context.t
   -> unit
@@ -48,6 +52,7 @@ val build_and_link
 val build_and_link_many
   :  programs:Program.t list
   -> linkages:Linkage.t list
+  -> promote:Dune_file.Promote.t option
   -> ?link_flags:(unit, string list) Build.t
   -> Compilation_context.t
   -> unit

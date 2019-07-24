@@ -165,10 +165,7 @@ let module_deps (m : Module.t) ~obj_dir
 let compile_module sctx ~obj_dir (m : Module.t) ~includes:(file_deps, iflags)
       ~dep_graphs ~pkg_or_lnu =
   let odoc_file = Obj_dir.Module.odoc obj_dir m in
-  (* sandboxing breaks with errors like:
-     Error: exception Sys_error("_build/.sandbox/c6c6d243cda677ac18f785bc647e343c/build/.aliases/default/_doc/_odoc/pkg/foo/.odoc-all-00000000000000000000000000000000: No such file or directory"
-  *)
-  add_rule ~sandbox:Sandbox_config.no_sandboxing sctx
+  add_rule sctx
     (file_deps
      >>>
      module_deps m ~obj_dir ~dep_graphs
@@ -224,9 +221,7 @@ let setup_html sctx (odoc_file : odoc) ~pkg ~requires =
         Build.create_file (odoc_file.html_dir ++ Config.dune_keep_fname) in
       odoc_file.html_dir, [dune_keep]
   in
-  (* Sandboxing fails with errors like:
-     Error: exception Sys_error("_build/.sandbox/f04b07b43dff46d0376c51d684c93380/build/.aliases/default/_doc/_odoc/pkg/foo/.odoc-all-00000000000000000000000000000000: No such file or directory") *)
-  add_rule ~sandbox:Sandbox_config.no_sandboxing sctx
+  add_rule sctx
     (deps
      >>>
      Build.progn (

@@ -18,7 +18,19 @@
 - Enable `(explicit_js_mode)` by default. (#1941, @nojb)
 
 - Stop symlinking object files to main directory for stanzas defined `jbuild`
-  files (#2440, @rgrinerg)
+  files (#2440, @rgrinberg)
+
+- Library names are now validated in a strict fashion. Previously, invalid names
+  would be allowed for unwrapped libraries (#2442, @rgrinberg)
+
+- mli only modules must now be explicitly declared. This was previously a
+  warning that is now an error. (#2442, @rgrinberg)
+
+- Modules filtered out from the module list via the Ordered Set Language must
+  now be actual modules. (#2442, @rgrinberg)
+
+- Actions which introduce targets where new targets are forbidden (e.g.
+  preprocessing) are now an error instead of a warning. (#2442, @rgrinberg)
 
 1.11.0 (23/07/2019)
 -------------------

@@ -695,11 +695,8 @@ module Action = struct
       | [] -> ()
       | x :: _ ->
         let loc = String_with_vars.loc x in
-        (* DUNE2: make this an error *)
-        User_warning.emit ~loc
-          [ Pp.textf "%s must not have targets, this target will be ignored."
-              (String.capitalize context)
-          ; Pp.textf "This will become an error in the future."
+        User_error.raise ~loc
+          [ Pp.textf "%s must not have targets." (String.capitalize context)
           ]
     end;
     let t, forms =

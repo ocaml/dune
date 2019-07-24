@@ -44,13 +44,11 @@ let load_sources ~dune_version ~dir ~files =
     | Unrecognized -> acc
     | Not_allowed_until version ->
       let loc = Loc.in_dir (Path.build dir) in
-      (* DUNE2: make this an error *)
-      User_warning.emit ~loc
+      User_error.raise ~loc
         [ Pp.textf "Source file %s with extension %s is not allowed \
                     before version %s"
             fn (Filename.extension fn) (Syntax.Version.to_string version)
-        ];
-      acc
+        ]
     | Recognized (obj, kind) ->
       let path = Path.Build.relative dir fn in
       C.Kind.Dict.update acc kind ~f:(fun v ->

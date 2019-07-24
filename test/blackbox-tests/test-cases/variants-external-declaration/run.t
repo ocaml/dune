@@ -6,7 +6,7 @@ declared in the virtual library definition.
   $ dune build -p vlibfoo-ext
 
   $ cat _build/install/default/lib/vlibfoo-ext/dune-package
-  (lang dune 1.11)
+  (lang dune 1.12)
   (name vlibfoo-ext)
   (library
    (name vlibfoo-ext)

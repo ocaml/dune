@@ -38,7 +38,7 @@ The expected behavior for the following three tests is to output nothing: the te
   backend_mbc1
 
   $ dune runtest dune-file
-  (lang dune 1.11)
+  (lang dune 1.12)
   (name foo)
   (library
    (name foo)

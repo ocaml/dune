@@ -28,40 +28,15 @@ module Stanzas_to_entries : sig
     : Super_context.t
     -> (Loc.t option * Install.Entry.t) list Package.Name.Map.t
 end = struct
-  let lib_ppxs sctx ~(lib : Dune_file.Library.t) ~scope ~dir_kind =
+  let lib_ppxs sctx ~(lib : Dune_file.Library.t) =
     match lib.kind with
     | Normal | Ppx_deriver _ -> []
     | Ppx_rewriter _ ->
       let name = Dune_file.Library.best_name lib in
-      match (dir_kind : Dune_lang.File_syntax.t) with
-      | Dune ->
-        [Preprocessing.get_compat_ppx_exe sctx ~name ~kind:Dune]
-      | Jbuild ->
-        let driver =
-          let deps =
-            List.concat_map lib.buildable.libraries
-              ~f:Dune_file.Lib_dep.to_lib_names
-          in
-          match
-            List.filter deps ~f:(fun lib_name ->
-              match Lib_name.to_string lib_name with
-              | "ppx_driver" | "ppxlib" | "ppx_type_conv" -> true
-              | _ -> false)
-          with
-          | [] -> None
-          | l ->
-            match Scope.name scope
-                , List.mem ~set:l (Lib_name.of_string_exn ~loc:None "ppxlib")
-            with
-            | Named "ppxlib", _ | _, true ->
-              Some "ppxlib.runner"
-            | _ ->
-              Some "ppx_driver.runner"
-        in
-        [Preprocessing.get_compat_ppx_exe sctx ~name ~kind:(Jbuild driver)]
+      [Preprocessing.get_compat_ppx_exe sctx ~name]
 
   let lib_install_files sctx ~dir_contents ~dir ~sub_dir:lib_subdir
-        ~scope ~dir_kind (lib : Library.t) =
+        (lib : Library.t) =
     let loc = lib.buildable.loc in
     let obj_dir = Dune_file.Library.obj_dir lib ~dir in
     let make_entry section ?sub_dir ?dst fn =
@@ -132,7 +107,7 @@ end = struct
       )
     in
     let archives = Lib_archives.make ~ctx ~dir_contents ~dir lib in
-    let execs = lib_ppxs sctx ~lib ~scope ~dir_kind in
+    let execs = lib_ppxs sctx ~lib in
     List.concat
       [ sources
       ; List.map module_files ~f:(fun (visibility, file) ->
@@ -201,7 +176,7 @@ end = struct
       )
     in
     Dir_with_dune.deep_fold stanzas ~init ~f:(fun d stanza acc ->
-      let { Dir_with_dune. ctx_dir = dir; scope ; kind = dir_kind; _ } = d in
+      let { Dir_with_dune. ctx_dir = dir; scope ; _ } = d in
       let res =
         let open Option.O in
         let* stanza = keep_if stanza ~scope in
@@ -232,8 +207,7 @@ end = struct
           | Dune_file.Library lib ->
             let sub_dir = (Option.value_exn lib.public).sub_dir in
             let dir_contents = Dir_contents.get sctx ~dir in
-            lib_install_files sctx ~dir ~sub_dir lib ~scope
-              ~dir_kind ~dir_contents
+            lib_install_files sctx ~dir ~sub_dir lib ~dir_contents
           | Dune_file.Coq.T coqlib ->
             Coq_rules.install_rules ~sctx ~dir coqlib
           | Dune_file.Documentation d ->

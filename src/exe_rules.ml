@@ -26,7 +26,6 @@ let executables_rules ~sctx ~dir ~dir_kind ~expander
       ~preprocessor_deps
       ~lint:exes.buildable.lint
       ~lib_name:None
-      ~dir_kind
   in
   let modules =
     Modules.map_user_written modules ~f:(fun m ->

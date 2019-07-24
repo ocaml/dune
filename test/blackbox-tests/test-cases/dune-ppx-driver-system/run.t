@@ -186,14 +186,22 @@ Test using installed drivers
       ocamlopt .testdriver.objs/native/testdriver.{cmx,o}
       ocamlopt testdriver.{a,cmxa}
       ocamlopt testdriver.cmxs
-      ocamlopt .ppx/jbuild/631757a4a4789e0bd29628f7a73480f7/ppx.exe
+      ocamlopt .ppx/631757a4a4789e0bd29628f7a73480f7/ppx.exe
            ppx test_ppx_args.pp.ml
-      ocamldep .test_ppx_args.objs/test_ppx_args.pp.ml.d
-        ocamlc .test_ppx_args.objs/byte/test_ppx_args.{cmi,cmo,cmt}
-        ocamlc test_ppx_args.cma
-      ocamlopt .test_ppx_args.objs/native/test_ppx_args.{cmx,o}
-      ocamlopt test_ppx_args.{a,cmxa}
-      ocamlopt test_ppx_args.cmxs
+  .ppx/631757a4a4789e0bd29628f7a73480f7/ppx.exe
+  --cookie
+  library-name="test_ppx_args"
+  -o
+  test_ppx_args.pp.ml
+  --impl
+  test_ppx_args.ml
+  --as-ppx
+  File "jbuild", line 13, characters 14-32:
+  13 |   (preprocess (pps (testdriver)))))
+                     ^^^^^^^^^^^^^^^^^^
+  Error: Rule failed to generate the following targets:
+  - test_ppx_args.pp.ml
+  [1]
 
   $ dune build --display short --root jbuild-driver @install
   Entering directory 'jbuild-driver'

@@ -193,7 +193,7 @@ let pp_flag_of_action sctx ~expander ~loc ~action
     end
   | _ -> Build.return None
 
-let pp_flags sctx ~expander ~dir_kind { preprocess; libname; _ }
+let pp_flags sctx ~expander { preprocess; libname; _ }
   : (unit, string option) Build.t =
   let scope = Expander.scope expander in
   match Dune_file.Preprocess.remove_future_syntax preprocess
@@ -202,7 +202,7 @@ let pp_flags sctx ~expander ~dir_kind { preprocess; libname; _ }
   with
   | Pps { loc; pps; flags; staged = _ } -> begin
     match Preprocessing.get_ppx_driver sctx ~loc ~expander ~lib_name:libname
-            ~flags ~scope ~dir_kind pps
+            ~flags ~scope pps
     with
     | Error _exn ->
       Build.return None
@@ -221,7 +221,7 @@ let pp_flags sctx ~expander ~dir_kind { preprocess; libname; _ }
   | No_preprocessing ->
     Build.return None
 
-let dot_merlin sctx ~dir ~more_src_dirs ~expander ~dir_kind
+let dot_merlin sctx ~dir ~more_src_dirs ~expander
       ({ requires; flags; _ } as t) =
   Path.Build.drop_build_context dir
   |> Option.iter ~f:(fun remaindir ->
@@ -240,7 +240,7 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander ~dir_kind
        Build.create_file (Path.Build.relative dir ".merlin-exists"));
     Path.Set.singleton (Path.build merlin_file)
     |> Rules.Produce.Alias.add_deps (Alias.check ~dir);
-    let pp_flags = pp_flags sctx ~expander ~dir_kind t in
+    let pp_flags = pp_flags sctx ~expander t in
     SC.add_rule sctx ~dir
       ~mode:(Promote
                { lifetime = Until_clean
@@ -291,6 +291,6 @@ let merge_all ~allow_approx_merlin = function
   | init :: ts ->
     Some (List.fold_left ~init ~f:(merge_two ~allow_approx_merlin) ts)
 
-let add_rules sctx ~dir ~more_src_dirs ~expander ~dir_kind merlin =
+let add_rules sctx ~dir ~more_src_dirs ~expander merlin =
   if (SC.context sctx).merlin then
-    dot_merlin sctx ~dir ~more_src_dirs ~expander ~dir_kind merlin
+    dot_merlin sctx ~dir ~more_src_dirs ~expander merlin

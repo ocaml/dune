@@ -148,7 +148,7 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
         |> Rules.Produce.Alias.add_deps (Alias.all ~dir:ctx_dir);
         For_stanza.empty_none
       | Cinaps.T cinaps ->
-        Cinaps.gen_rules sctx cinaps ~dir ~scope ~dir_kind;
+        Cinaps.gen_rules sctx cinaps ~dir ~scope;
         For_stanza.empty_none
       | _ ->
         For_stanza.empty_none
@@ -175,7 +175,7 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
             Path.Build.drop_build_context_exn (Dir_contents.dir dc))
           |> List.rev_append source_dirs
         in
-        Merlin.add_rules sctx ~dir:ctx_dir ~more_src_dirs ~expander ~dir_kind
+        Merlin.add_rules sctx ~dir:ctx_dir ~more_src_dirs ~expander
           (Merlin.add_source_dir m src_dir));
     let build_dir = Super_context.build_dir sctx in
     List.iter stanzas ~f:(fun stanza ->

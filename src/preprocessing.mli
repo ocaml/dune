@@ -18,7 +18,6 @@ val make
   -> preprocessor_deps:(unit, unit) Build.t
   -> lib_name:Lib_name.Local.t option
   -> scope:Scope.t
-  -> dir_kind:Dune_lang.File_syntax.t
   -> t
 
 (** Setup the preprocessing rules for the following modules and
@@ -42,23 +41,13 @@ val get_ppx_driver
   -> scope:Scope.t
   -> lib_name:Lib_name.Local.t option
   -> flags:String_with_vars.t list
-  -> dir_kind:Dune_lang.File_syntax.t
   -> (Loc.t * Lib_name.t) list
   -> (Path.Build.t * string list) Or_exn.t
-
-module Compat_ppx_exe_kind : sig
-  (** [Dune] for directories using a [dune] file, and [Jbuild driver]
-      for directories using a [jbuild] file. *)
-  type t =
-    | Dune
-    | Jbuild of string option
-end
 
 (** Compatibility [ppx.exe] program for the findlib method. *)
 val get_compat_ppx_exe
   :  Super_context.t
   -> name:Lib_name.t
-  -> kind:Compat_ppx_exe_kind.t
   -> Path.Build.t
 
 val gen_rules : Super_context.t -> string list -> unit

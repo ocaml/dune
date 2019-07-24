@@ -191,7 +191,6 @@ val reach_for_running : ?from:t -> t -> string
 val descendant : t -> of_:t -> t option
 val is_descendant : t -> of_:t -> bool
 
-val append : t -> t -> t
 val append_local : t -> Local.t -> t
 val append_source : t -> Source.t -> t
 
@@ -243,6 +242,7 @@ val is_in_build_dir : t -> bool
 (** [is_in_build_dir t = is_managed t && not (is_in_build_dir t)] *)
 val is_in_source_tree : t -> bool
 val as_in_source_tree : t -> Source.t option
+val as_in_source_tree_exn : t -> Source.t
 val as_in_build_dir : t -> Build.t option
 val as_in_build_dir_exn : t -> Build.t
 

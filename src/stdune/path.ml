@@ -914,16 +914,6 @@ let append_local a b =
 let append_local = append_local
 let append_source = append_local
 
-let append a b =
-  match b with
-  | In_build_dir _ | External _ ->
-    Code_error.raise "Path.append called with directory that's \
-                    not in the source tree"
-      [ "a", to_dyn a
-      ; "b", to_dyn b
-      ]
-  | In_source_tree b -> append_local a b
-
 let basename t =
   match kind t with
   | In_source_dir t -> Local.basename t
@@ -963,6 +953,14 @@ let as_in_source_tree = function
   | In_source_tree s -> Some s
   | In_build_dir _
   | External _ -> None
+
+let as_in_source_tree_exn t =
+  match as_in_source_tree t with
+  | Some t -> t
+  | None ->
+    Code_error.raise
+      "[as_in_source_tree_exn] called on something not in source tree"
+      ["t", to_dyn t]
 
 let as_in_build_dir = function
   | In_build_dir b -> Some b

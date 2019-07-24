@@ -51,8 +51,8 @@ let insert_after_build_dir_exn p s =
   |> Path.to_dyn
   |> print_dyn
 
-let append x y =
-  Path.append x y
+let append_source x y =
+  Path.append_source x y
   |> Path.to_dyn
   |> print_dyn
 
@@ -106,110 +106,110 @@ let%expect_test _ =
   |}]
 
 let%expect_test _ =
-is_descendant (r "foo") ~of_:(r "bar/");
-[%expect{|
+  is_descendant (r "foo") ~of_:(r "bar/");
+  [%expect{|
 false
 |}]
 
 let%expect_test _ =
-is_descendant (r "foo/") ~of_:(r "bar");
-[%expect{|
+  is_descendant (r "foo/") ~of_:(r "bar");
+  [%expect{|
 false
 |}]
 
 let%expect_test _ =
-is_descendant (r "glob/foo") ~of_:(r "glob");
-[%expect{|
+  is_descendant (r "glob/foo") ~of_:(r "glob");
+  [%expect{|
 true
 |}]
 
 let%expect_test _ =
-is_descendant (r "glob/foo") ~of_:(r "glob/");
-[%expect{|
+  is_descendant (r "glob/foo") ~of_:(r "glob/");
+  [%expect{|
 true
 |}]
 
 let%expect_test _ =
-is_descendant (e "/foo/bar") ~of_:(e "/foo");
-[%expect{|
+  is_descendant (e "/foo/bar") ~of_:(e "/foo");
+  [%expect{|
 false
 |}]
 
 let%expect_test _ =
-is_descendant (e "/foo/bar") ~of_:(e "/foo/bar");
-[%expect{|
+  is_descendant (e "/foo/bar") ~of_:(e "/foo/bar");
+  [%expect{|
 false
 |}]
 
 let%expect_test _ =
-is_descendant (e "/foo/bar") ~of_:(e "/foo/bar/");
-[%expect{|
+  is_descendant (e "/foo/bar") ~of_:(e "/foo/bar/");
+  [%expect{|
 false
 |}]
 
 let%expect_test _ =
-is_descendant (e "/foo/bar/") ~of_:(e "/foo/bar");
-[%expect{|
+  is_descendant (e "/foo/bar/") ~of_:(e "/foo/bar");
+  [%expect{|
 false
 |}]
 
 let%expect_test _ =
-is_descendant (e "/foo/bar") ~of_:(e "/");
-[%expect{|
+  is_descendant (e "/foo/bar") ~of_:(e "/");
+  [%expect{|
 false
 |}]
 
 let%expect_test _ =
-descendant (r "foo") ~of_:(r "foo/");
-[%expect{|
+  descendant (r "foo") ~of_:(r "foo/");
+  [%expect{|
 Some In_source_tree "."
 |}]
 
 let%expect_test _ =
-descendant (r "foo/") ~of_:(r "foo");
-[%expect{|
+  descendant (r "foo/") ~of_:(r "foo");
+  [%expect{|
 Some In_source_tree "."
 |}]
 
 let%expect_test _ =
-descendant (r "foo/bar") ~of_:(r "foo");
-[%expect{|
+  descendant (r "foo/bar") ~of_:(r "foo");
+  [%expect{|
 Some In_source_tree "bar"
 |}]
 
 let%expect_test _ =
-descendant Path.root ~of_:(r "foo");
-[%expect{|
+  descendant Path.root ~of_:(r "foo");
+  [%expect{|
 None
 |}]
 
 let%expect_test _ =
-descendant Path.root ~of_:Path.root;
-[%expect{|
+  descendant Path.root ~of_:Path.root;
+  [%expect{|
 Some In_source_tree "."
 |}]
 
 let%expect_test _ =
-descendant (r "foo") ~of_:Path.root;
-[%expect{|
+  descendant (r "foo") ~of_:Path.root;
+  [%expect{|
 Some In_source_tree "foo"
 |}]
 
 let%expect_test _ =
-descendant (Path.relative build_dir "foo") ~of_:root;
-[%expect{|
+  descendant (Path.relative build_dir "foo") ~of_:root;
+  [%expect{|
 None
 |}]
 
 let%expect_test _ =
-descendant (Path.relative build_dir "foo") ~of_:(Path.of_string "/foo/bar");
-[%expect{|
+  descendant (Path.relative build_dir "foo") ~of_:(Path.of_string "/foo/bar");
+  [%expect{|
 None
 |}]
 
 let%expect_test _ =
-descendant (Path.relative build_dir "foo/bar") ~of_:build_dir;
-[%expect{|
+  descendant (Path.relative build_dir "foo/bar") ~of_:build_dir;
+  [%expect{|
 Some In_source_tree "foo/bar"
 |}]
 
@@ -221,61 +221,61 @@ Some In_source_tree "bar"
 |}]
 
 let%expect_test _ =
-descendant (Path.relative build_dir "foo/bar") ~of_:(Path.relative build_dir "foo");
-[%expect{|
+  descendant (Path.relative build_dir "foo/bar") ~of_:(Path.relative build_dir "foo");
+  [%expect{|
 Some In_source_tree "bar"
 |}]
 
 let%expect_test _ =
-descendant (Path.of_string "/foo/bar") ~of_:(Path.of_string "/foo");
-[%expect{|
+  descendant (Path.of_string "/foo/bar") ~of_:(Path.of_string "/foo");
+  [%expect{|
 None
 |}]
 
 let%expect_test _ = explode "a/b/c";
-[%expect{|
+  [%expect{|
 Some ["a"; "b"; "c"]
 |}]
 
 let%expect_test _ = explode "a/b";
-[%expect{|
+  [%expect{|
 Some ["a"; "b"]
 |}]
 
 let%expect_test _ = explode "a";
-[%expect{|
+  [%expect{|
 Some ["a"]
 |}]
 
 let%expect_test _ = explode "";
-[%expect{|
+  [%expect{|
 Some []
 |}]
 
 let%expect_test _ = reach "/foo/baz" ~from:"/foo/bar";
-[%expect{|
+  [%expect{|
 "/foo/baz"
 |}]
 
 let%expect_test _ = reach "/foo/bar" ~from:"baz";
-[%expect{|
+  [%expect{|
 "/foo/bar"
 |}]
 
 let%expect_test _ = reach "bar/foo" ~from:"bar/baz/y";
-[%expect{|
+  [%expect{|
 "../../foo"
 |}]
 
 let%expect_test _ =
-relative (Path.of_string "relative") "/absolute/path";
-[%expect{|
+  relative (Path.of_string "relative") "/absolute/path";
+  [%expect{|
 External "/absolute/path"
 |}]
 
 let%expect_test _ =
-relative (Path.of_string "/abs1") "/abs2";
-[%expect{|
+  relative (Path.of_string "/abs1") "/abs2";
+  [%expect{|
 External "/abs2"
 |}]
 
@@ -285,13 +285,13 @@ External "/abs1"
 |}]
 
 let%expect_test _ = relative root "/absolute/path";
-[%expect{|
+  [%expect{|
 External "/absolute/path"
 |}]
 
 let%expect_test _ =
-of_filename_relative_to_initial_cwd "/absolute/path";
-[%expect{|
+  of_filename_relative_to_initial_cwd "/absolute/path";
+  [%expect{|
 External "/absolute/path"
 |}]
 
@@ -299,71 +299,48 @@ let%expect_test _ =
   Path.is_managed (e "relative/path")
   |> Dyn.Encoder.bool
   |> print_dyn;
-[%expect{|
+  [%expect{|
 false
 |}]
 
 let%expect_test _ =
-insert_after_build_dir_exn Path.root "foobar";
-[%expect.unreachable]
+  insert_after_build_dir_exn Path.root "foobar";
+  [%expect.unreachable]
 [@@expect.uncaught_exn {|
   ( "(\"Path.insert_after_build_dir_exn\",\
    \n{path = In_source_tree \".\";\
    \n  insert = \"foobar\"})") |}]
 
 let%expect_test _ =
-insert_after_build_dir_exn Path.build_dir "foobar";
-[%expect{|
+  insert_after_build_dir_exn Path.build_dir "foobar";
+  [%expect{|
 In_build_dir "foobar"
 |}]
 
 let%expect_test _ =
-insert_after_build_dir_exn (Path.relative Path.build_dir "qux") "foobar";
-[%expect{|
+  insert_after_build_dir_exn (Path.relative Path.build_dir "qux") "foobar";
+  [%expect{|
 In_build_dir "foobar/qux"
 |}]
 
 let%expect_test _ =
-append Path.build_dir (Path.relative Path.root "foo");
-[%expect{|
+  append_source Path.build_dir (Path.Source.relative Path.Source.root "foo");
+  [%expect{|
 In_build_dir "foo"
 |}]
 
 let%expect_test _ =
-append Path.build_dir (Path.relative Path.build_dir "foo");
-[%expect.unreachable]
-[@@expect.uncaught_exn {|
-  ( "(\"Path.append called with directory that's not in the source tree\",\
-   \n{a = In_build_dir \".\";\
-   \n  b = In_build_dir \"foo\"})") |}]
-
-let%expect_test _ =
-append Path.root (Path.relative Path.build_dir "foo");
-[%expect.unreachable]
-[@@expect.uncaught_exn {|
-  ( "(\"Path.append called with directory that's not in the source tree\",\
-   \n{a = In_source_tree \".\";\
-   \n  b = In_build_dir \"foo\"})") |}]
-
-let%expect_test _ =
-append Path.root (Path.relative Path.root "foo");
-[%expect{|
+  append_source Path.root (Path.Source.relative Path.Source.root "foo");
+  [%expect{|
 In_source_tree "foo"
 |}]
 
 let%expect_test _ =
-append (Path.of_string "/root") (Path.relative Path.root "foo");
-[%expect{|
+  append_source (Path.of_string "/root")
+    (Path.Source.relative Path.Source.root "foo");
+  [%expect{|
 External "/root/foo"
 |}]
-
-let%expect_test _ =
-append (Path.of_string "/root") (Path.relative Path.build_dir "foo");
-[%expect.unreachable]
-[@@expect.uncaught_exn {|
-  ( "(\"Path.append called with directory that's not in the source tree\",\
-   \n{a = External \"/root\";\
-   \n  b = In_build_dir \"foo\"})") |}]
 
 let%expect_test _ =
   Path.rm_rf (Path.of_string "/does/not/exist/foo/bar/baz")
@@ -387,14 +364,14 @@ None
 |}]
 
 let%expect_test _ =
-drop_build_context (e "/foo/bar");
-[%expect{|
+  drop_build_context (e "/foo/bar");
+  [%expect{|
 None
 |}]
 
 let%expect_test _ =
-drop_build_context Path.build_dir;
-[%expect{|
+  drop_build_context Path.build_dir;
+  [%expect{|
 None
 |}]
 
@@ -424,7 +401,7 @@ let%expect_test _ =
 
 let%expect_test _ =
   reach_for_running (Path.relative build_dir "foo/baz")
-          ~from:(Path.relative build_dir "foo/bar/baz");
+    ~from:(Path.relative build_dir "foo/bar/baz");
   [%expect{|
 "../../baz"
 |}]
@@ -445,20 +422,20 @@ let%expect_test _ =
 
 let%expect_test _ =
   relative Path.root "_build";
-    [%expect{|
+  [%expect{|
 In_build_dir "."
 |}]
 
 let%expect_test _ =
   (* This is not right, but kind of annoying to fix :/ *)
   relative (r "foo") "../_build";
-    [%expect{|
+  [%expect{|
 In_build_dir "."
 |}]
 
 let%expect_test _ =
   local_part (Path.of_string "/c/d");
-    [%expect{|
+  [%expect{|
 "c/d"
 |}]
 

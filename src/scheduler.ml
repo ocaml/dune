@@ -754,6 +754,12 @@ let go ?log ?config f =
 
 type exit_or_continue = Exit | Continue
 
+let maybe_clear_screen ~config =
+  match config with
+  | Some { Config.terminal_persistence = Clear_on_rebuild; _} ->
+     Console.reset_terminal ()
+  | _ -> ()
+
 let poll ?log ?config ~once ~finally () =
   let t = prepare ?log ?config () in
   let watcher = File_watcher.create () in
@@ -774,6 +780,7 @@ let poll ?log ?config ~once ~finally () =
          ; show_jobs = false
          });
     let res = block_waiting_for_changes () in
+    maybe_clear_screen ~config;
     set_status_line_generator old_generator;
     res
   in

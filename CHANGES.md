@@ -17,9 +17,11 @@
 
 - Enable `(explicit_js_mode)` by default. (#1941, @nojb)
 
+- Add an option to clear the console in-between builds with 
+ `--terminal-persistence=clear-on-rebuild`
+
 1.11.0 (unreleased)
 -------------------
-
 - Don't select all local implementations in `dune utop`. Instead, let the
   default implementation selection do its job. (#2327, fixes #2323, @TheLortex,
   review by @rgrinberg)

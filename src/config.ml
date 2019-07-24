@@ -40,6 +40,31 @@ open Stanza.Decoder
    files for simplicity *)
 let syntax = Stanza.syntax
 
+module Terminal_persistence = struct
+  type t =
+    | Preserve
+    | Clear_on_rebuild
+
+  let all = [ 
+      "preserve", Preserve; 
+      "clear-on-rebuild", Clear_on_rebuild 
+  ]
+
+  let of_string = function
+    | "preserve" -> Ok Preserve
+    | "clear-on-rebuild" -> Ok Clear_on_rebuild
+    | _ -> Error "invalid terminal-persistence value, must be 'preserve' or 'clear-on-rebuild'"
+
+  let to_string = function
+    | Preserve -> "preserve"
+    | Clear_on_rebuild -> "clear-on-rebuild"
+
+  let decode = plain_string (fun ~loc s ->
+    match of_string s with
+    | Error m -> User_error.raise ~loc [ Pp.text m ]
+    | Ok s -> s)
+end
+
 module Display = struct
   include Stdune.Console.Display
   let decode = enum all
@@ -81,6 +106,7 @@ module type S = sig
   type t =
     { display     : Display.t     field
     ; concurrency : Concurrency.t field
+    ; terminal_persistence: Terminal_persistence.t  field
     }
 end
 
@@ -95,20 +121,24 @@ let merge t (partial : Partial.t) =
   in
   { display     = field t.display     partial.display
   ; concurrency = field t.concurrency partial.concurrency
+  ; terminal_persistence = field t.terminal_persistence partial.terminal_persistence
   }
 
 let default =
   { display     = if inside_dune then Quiet   else Progress
   ; concurrency = if inside_dune then Fixed 1 else Auto
+  ; terminal_persistence = Terminal_persistence.Preserve
   }
 
 let decode =
   let+ display = field "display" Display.decode ~default:default.display
   and+ concurrency = field "jobs" Concurrency.decode ~default:default.concurrency
+  and+ terminal_persistence = field "terminal-persistence" Terminal_persistence.decode ~default:default.terminal_persistence
   and+ () = Versioned_file.no_more_lang
   in
   { display
   ; concurrency
+  ; terminal_persistence
   }
 
 let decode = fields decode
@@ -140,10 +170,23 @@ let load_user_config_file () =
     default
 
 let adapt_display config ~output_is_a_tty =
-  if config.display = Progress &&
-     not output_is_a_tty &&
-     not inside_emacs
-  then
-    { config with display = Quiet }
-  else
+  (* Progress isn't meaningful if inside a terminal (or emacs),
+   * so reset the display to Quiet if the output is getting 
+   * piped to a file or something. *)
+  let config = if config.display = Progress &&
+      not output_is_a_tty && 
+      not inside_emacs
+    then
+      { config with display = Quiet }
+    else
+      config 
+  in 
+  (* Similarly, terminal clearing is meaningless if stderr doesn't
+   * support ANSI codes, so revert-back to Preserve in that case *)
+  if config.terminal_persistence = Clear_on_rebuild &&
+      (not output_is_a_tty) 
+  then 
+    { config with terminal_persistence = Terminal_persistence.Preserve }
+  else 
     config
+

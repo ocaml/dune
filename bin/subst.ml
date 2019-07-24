@@ -66,6 +66,7 @@ let term =
     let config : Config.t =
       { display     = Quiet
       ; concurrency = Fixed 1
+      ; terminal_persistence  = Preserve
       }
     in
     Path.set_root (Path.External.cwd ());

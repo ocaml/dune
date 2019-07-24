@@ -10,18 +10,13 @@ include Dune_lang.Conv with type t := t
 module Local : sig
   type t
 
-  type result =
-    | Ok of t
-    | Warn of t
-    | Invalid
-
   val encode : t Dune_lang.Encoder.t
-  val decode_loc : (Loc.t * result) Dune_lang.Decoder.t
-  val validate : (Loc.t * result) -> wrapped:bool option -> t
+  val decode_loc : (Loc.t * (t, unit) Result.t) Dune_lang.Decoder.t
+  val validate : (Loc.t * (t, unit) Result.t) -> t
 
   val of_string_exn : string -> t
 
-  val of_string : string -> result
+  val of_string : string -> (t, unit) Result.t
 
   val to_string : t -> string
 
@@ -42,7 +37,7 @@ val pp_quoted : t Fmt.t
 
 val of_local : (Loc.t * Local.t) -> t
 
-val to_local : t -> Local.result
+val to_local : t -> (Local.t, unit) Result.t
 
 val split : t -> Package.Name.t * string list
 

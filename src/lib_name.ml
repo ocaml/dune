@@ -6,26 +6,24 @@ let decode = Dune_lang.Decoder.string
 module Local = struct
   type t = string
 
-  type result =
-    | Ok of t
-    | Warn of t
-    | Invalid
-
   let valid_char = function
     | 'A'..'Z' | 'a'..'z' | '_' | '0'..'9' -> true
     | _ -> false
 
   let of_string (name : string) =
     match name with
-    | "" -> Invalid
+    | "" -> Error ()
     | (s : string) ->
       if s.[0] = '.' then
-        Invalid
+        Error ()
       else
         let len = String.length s in
         let rec loop warn i =
           if i = len - 1 then
-            if warn then Warn s else Ok s
+            if warn then
+              Error ()
+            else
+              Ok s
           else
             let c = String.unsafe_get s i in
             if valid_char c then
@@ -33,15 +31,14 @@ module Local = struct
             else if c = '.' then
               loop true (i + 1)
             else
-              Invalid
+              Error ()
         in
         loop false 0
 
   let of_string_exn s =
     match of_string s with
     | Ok s -> s
-    | Warn _
-    | Invalid ->
+    | Error () ->
       Code_error.raise "Lib_name.Local.of_string_exn got invalid name"
         [ "name", String s ]
 
@@ -57,24 +54,10 @@ module Local = struct
     Pp.text "library names must be non-empty and composed only of the \
              following characters: 'A'..'Z', 'a'..'z', '_' or '0'..'9'"
 
-  let wrapped_warning ~loc ~is_error =
-    User_warning.emit ~loc ~hints:[valid_format_doc] ~is_error
-      [ Pp.text "Invalid library name."
-      ; Pp.text "This is temporary allowed for libraries with (wrapped false)."
-      ; Pp.text "It will not be supported in the future. Please choose \
-                 a valid name field."
-      ]
-
-  let validate (loc, res) ~wrapped =
-    match res, wrapped with
-    | Ok s, _ -> s
-    | Warn _, None
-    | Warn _, Some true -> wrapped_warning ~loc ~is_error:true; assert false
-    | Warn s, Some false ->
-      (* DUNE2: turn this into an error *)
-      wrapped_warning ~loc ~is_error:false;
-      s
-    | Invalid, _ ->
+  let validate (loc, res) =
+    match res with
+    | Ok s -> s
+    | Error () ->
       User_error.raise ~loc ~hints:[valid_format_doc]
         [ Pp.text "Invalid library name." ]
 

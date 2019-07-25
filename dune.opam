@@ -34,6 +34,7 @@ depends: [
 conflicts: [
   "odoc" {< "1.3.0"}
   "dune-release" {< "1.3.0"}
+  "jbuilder" {= "transition"}
 ]
 dev-repo: "git+https://github.com/ocaml/dune.git"
 build: [

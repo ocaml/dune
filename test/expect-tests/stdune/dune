@@ -3,9 +3,7 @@
  (inline_tests
   (deps
    (source_tree ../unit-tests/findlib-db)
-   (source_tree ../unit-tests/toolchain.d)
-   (glob_files *.ml)
-   ))
+   (source_tree ../unit-tests/toolchain.d)))
  (libraries stdune dune_tests_common
             ;; This is because of the (implicit_transitive_deps false)
             ;; in dune-project

@@ -1,6 +1,6 @@
 (library
  (name dune_dag_unit_tests)
- (inline_tests (deps (glob_files *.ml)))
+ (inline_tests)
  (libraries dune_tests_common stdune dag
             ;; This is because of the (implicit_transitive_deps false)
             ;; in dune-project

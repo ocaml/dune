@@ -1438,6 +1438,8 @@ end = struct
   let start_rule t _rule =
     t.hook Rule_started
 
+  (* Same as [rename] except that if the source doesn't exist we
+     delete the destination *)
   let rename_optional_file ~src ~dst =
     let src = (Path.Build.to_string src) in
     let dst = (Path.Build.to_string dst) in

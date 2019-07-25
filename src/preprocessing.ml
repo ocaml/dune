@@ -422,12 +422,7 @@ let build_ppx_driver sctx ~dep_kind ~target ~dir_kind ~pps ~pp_names =
      >>>
      Build.write_file_dyn ml);
   add_rule
-    (* Sandboxing breaks with an error like this:
-
-       File ".ppx/foo.ppx_rewriter_dune/ppx.ml", line 1, characters 9-35:
-       Error: Unbound module Foo_ppx_rewriter_dune
-       [1] *)
-    ~sandbox:Sandbox_config.no_sandboxing
+    ~sandbox:Sandbox_config.no_special_requirements
     (Build.S.seqs
        [Build.record_lib_deps
           (Lib_deps.info ~kind:dep_kind (Lib_deps.of_pps pp_names));
@@ -438,7 +433,12 @@ let build_ppx_driver sctx ~dep_kind ~target ~dir_kind ~pps ~pp_names =
           ; A "-w"; A "-24"
           ; Command.of_result
               (Result.map driver_and_libs ~f:(fun (_driver, libs) ->
-                 Lib.L.compile_and_link_flags ~mode ~compile:libs ~link:libs))
+                 Command.Args.S
+                   [ Lib.L.compile_and_link_flags ~mode ~compile:libs ~link:libs
+                   ; Hidden_deps
+                       (Lib_file_deps.deps libs
+                          ~groups:[Cmi; Cmx])
+                   ]))
           ; Dep (Path.build ml)
           ]))
 

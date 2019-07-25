@@ -1,0 +1,5 @@
+(lang dune 1.12)
+
+(context
+ (default
+   (paths (PATH bin :standard) (FOO a b /c \ b))))

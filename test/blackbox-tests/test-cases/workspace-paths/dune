@@ -1,0 +1,8 @@
+(alias
+ (name default)
+ (deps bin/hello.exe)
+ (action (run hello.exe)))
+
+;; Note that if you try the above on Windows it will fail because the program in
+;; the (run ...)  action is supposed to **not** contain the .exe extension, but
+;; if we remove it then it will fail on Unix systems.

@@ -540,11 +540,38 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
   in
   native :: List.filter_opt others
 
+let extend_paths t ~env =
+  let module Eval =
+    Ordered_set_lang.Make(String)
+      (struct
+        type t = string
+        type key = string
+        let key x = x
+      end)
+  in
+  let t =
+    let f (var, t) =
+      let parse ~loc:_ s = s in
+      let standard = Env.path env |> List.map ~f:Path.to_string in
+      var, Eval.eval t ~parse ~standard
+    in
+    List.map ~f t
+  in
+  let vars =
+    let to_absolute_filename s =
+      Path.of_string s |> Path.to_absolute_filename in
+    let sep = String.make 1 Bin.path_sep in
+    let env = Env.Map.of_list_exn t in
+    let f l = String.concat ~sep (List.map ~f:to_absolute_filename l) in
+    Env.Map.map ~f env
+  in
+  Env.extend ~vars env
+
 let opam_config_var t var =
   opam_config_var ~env:t.env ~cache:t.opam_var_cache var
 
 let default ~merlin ~env_nodes ~env ~targets =
-  let path = Env.path Env.initial in
+  let path = Env.path env in
   create ~kind:Default ~path ~env ~env_nodes ~merlin ~targets
 
 let opam_version =
@@ -611,7 +638,7 @@ let create_for_opam ~root ~env ~env_nodes ~targets ~profile
   in
   let path =
     match Env.Map.find vars "PATH" with
-    | None   -> Env.path Env.initial
+    | None   -> Env.path env
     | Some s -> Bin.parse_path s
   in
   let env = Env.extend env ~vars in
@@ -629,7 +656,7 @@ let instantiate_context env (workspace : Workspace.t)
   in
   match context with
   | Default { targets; name; host_context = _; profile; env = _
-            ; toolchain ; loc = _ } ->
+            ; toolchain ; paths; loc = _ } ->
     let merlin =
       workspace.merlin_context = Some (Workspace.Context.name context)
     in
@@ -638,11 +665,13 @@ let instantiate_context env (workspace : Workspace.t)
       | Some _ -> toolchain
       | None -> Env.get env "OCAMLFIND_TOOLCHAIN"
     in
+    let env = extend_paths ~env paths in
     default ~env ~env_nodes ~profile ~targets ~name ~merlin ~host_context
       ~host_toolchain
   | Opam { base = { targets; name; host_context = _; profile; env = _
-                  ; toolchain; loc = _ }
+                  ; toolchain; paths; loc = _ }
          ; switch; root; merlin } ->
+    let env = extend_paths ~env paths in
     create_for_opam ~root ~env_nodes ~env ~profile ~switch ~name ~merlin
       ~targets ~host_context ~host_toolchain:toolchain
 

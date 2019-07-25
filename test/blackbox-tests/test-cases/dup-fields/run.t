@@ -25,6 +25,5 @@ For backward compatibility, it is only a warning in jbuild files:
   File "jbuild", line 4, characters 2-21:
   4 |   (action (echo bar))))
         ^^^^^^^^^^^^^^^^^^^
-  Warning: Field "action" is present several times, previous occurrences are
-  ignored.
-  bar
+  Error: Field "action" is present too many times
+  [1]

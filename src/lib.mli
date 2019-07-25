@@ -92,7 +92,8 @@ module Lib_and_module : sig
   module L : sig
     type nonrec t = t list
     val of_libs : lib list -> t
-    val link_flags : t -> mode:Mode.t -> _ Command.Args.t
+    val link_flags :
+      t -> lib_config:Lib_config.t -> mode:Mode.t -> _ Command.Args.t
   end
 end with type lib := t
 

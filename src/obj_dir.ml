@@ -314,6 +314,9 @@ module Module = struct
     let ext = Cm_kind.ext kind in
     obj_file t m ~kind ~ext
 
+  let o_file_unsafe t m ~ext_obj =
+    obj_file t m ~kind:Cmx ~ext:ext_obj
+
   let cm_file t m ~(kind : Cm_kind.t) =
     let has_impl = Module.has m ~ml_kind:Impl in
     match kind with

@@ -385,26 +385,26 @@ let get_cookies ~loc ~expander ~lib_name libs =
       Expander.add_bindings expander ~bindings,
       Some ("library-name", (library_name, Lib_name.of_local (loc, lib_name)))
   in
-  try
-    Ok (
-      List.concat_map libs ~f:(fun t ->
-        let info = Lib.info t in
-        let kind = Lib_info.kind info in
-        match kind with
-        | Normal -> []
-        | Ppx_rewriter {cookies}
-        | Ppx_deriver {cookies} ->
-          List.map ~f:(fun {Lib_kind.Ppx_args.Cookie.name; value} ->
-            (name, (Expander.expand_str expander value, Lib.name t)))
-            cookies
-      )
-      |> (fun l ->
-        match library_name_cookie with
-        | None -> l
-        | Some cookie -> cookie :: l
-      )
-      |> String.Map.of_list_reducei ~f:
-           (fun name ((val1, lib1) as res) (val2, lib2) ->
+  Result.try_with begin fun () ->
+    List.concat_map libs ~f:(fun t ->
+      let info = Lib.info t in
+      let kind = Lib_info.kind info in
+      match kind with
+      | Normal -> []
+      | Ppx_rewriter {cookies}
+      | Ppx_deriver {cookies} ->
+        List.map ~f:(fun {Lib_kind.Ppx_args.Cookie.name; value} ->
+          (name, (Expander.expand_str expander value, Lib.name t)))
+          cookies
+    )
+    |> (fun l ->
+      match library_name_cookie with
+      | None -> l
+      | Some cookie -> cookie :: l
+    )
+    |> String.Map.of_list_reducei
+         ~f:(fun name ((val1, lib1) as res)
+              (val2, lib2) ->
               if String.equal val1 val2 then
                 res
               else
@@ -418,14 +418,12 @@ let get_cookies ~loc ~expander ~lib_name libs =
                       lib1 val1
                       lib2 val2
                   ])
-      |> String.Map.foldi ~init:[]
-           ~f:(fun name (value, _) acc -> (name, value) :: acc)
-      |> List.rev
-      |> List.concat_map ~f:
-           (fun (name, value) ->
-              ["--cookie"; sprintf "%s=%S" name value]
-           ))
-  with exn -> Error exn
+    |> String.Map.foldi ~init:[]
+         ~f:(fun name (value, _) acc -> (name, value) :: acc)
+    |> List.rev
+    |> List.concat_map ~f:(fun (name, value) ->
+      ["--cookie"; sprintf "%s=%S" name value])
+  end
 
 let ppx_driver_and_flags_internal sctx ~loc ~expander ~lib_name ~flags libs =
   let open Result.O in

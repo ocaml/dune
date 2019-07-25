@@ -49,7 +49,7 @@ let () =
     syntax
     (return [ "cinaps", decode >>| fun x -> [T x]])
 
-let gen_rules sctx t ~dir ~scope ~dir_kind =
+let gen_rules sctx t ~dir ~scope =
   let loc = t.loc in
   let name = "cinaps" in
   let cinaps_dir = Path.Build.relative dir ".cinaps" in
@@ -98,7 +98,6 @@ let gen_rules sctx t ~dir ~scope ~dir_kind =
                             ~expander t.preprocessor_deps)
       ~lib_name:None
       ~scope
-      ~dir_kind
   in
   let modules =
     Modules.exe_unwrapped modules

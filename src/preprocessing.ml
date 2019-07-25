@@ -16,7 +16,7 @@ module Key : sig
       ; project : Dune_project.t option
       }
 
-    val of_libs : dir_kind:Dune_lang.File_syntax.t -> Lib.t list -> t
+    val of_libs : Lib.t list -> t
   end
 
   (* [decode y] fails if there hasn't been a previous call to [encode]
@@ -44,15 +44,10 @@ end = struct
         sprintf "%s (in project: %s)" s
           (Dune_project.Name.to_string_hum name)
 
-    let of_libs ~dir_kind libs =
+    let of_libs libs =
       let pps =
         (let compare a b = Lib_name.compare (Lib.name a) (Lib.name b) in
-         match (dir_kind : Dune_lang.File_syntax.t) with
-         | Dune -> List.sort libs ~compare
-         | Jbuild ->
-           match List.rev libs with
-           | last :: others -> List.sort others ~compare @ [last]
-           | [] -> [])
+         List.sort libs ~compare)
         |> List.map ~f:Lib.name
       in
       let project =
@@ -207,13 +202,13 @@ module Driver = struct
       let f x = Lib_name.encode (Lib.name (Lazy.force x.lib)) in
       ((1, 0),
        record_fields @@
-         [ field_i "flags" Ordered_set_lang.Unexpanded.encode_and_upgrade
-             t.info.flags
-         ; field_i "lint_flags" Ordered_set_lang.Unexpanded.encode_and_upgrade
-             t.info.lint_flags
-         ; field "main" string t.info.main
-         ; field_l "replaces" f (Result.ok_exn t.replaces)
-         ])
+       [ field_i "flags" Ordered_set_lang.Unexpanded.encode_and_upgrade
+           t.info.flags
+       ; field_i "lint_flags" Ordered_set_lang.Unexpanded.encode_and_upgrade
+           t.info.lint_flags
+       ; field "main" string t.info.main
+       ; field_l "replaces" f (Result.ok_exn t.replaces)
+       ])
   end
   include M
   include Sub_system.Register_backend(M)
@@ -286,113 +281,14 @@ module Driver = struct
       Error exn
 end
 
-module Jbuild_driver = struct
-  (* This module is used to implement the jbuild handling of ppx
-     drivers.  It doesn't implement exactly the same algorithm, but it
-     should be enough for all jbuilder packages out there.
+let ppx_exe sctx ~key =
+  Path.Build.relative (SC.build_dir sctx) (".ppx/" ^ key ^ "/ppx.exe")
 
-     It works as follow: given the list of ppx rewriters specified by
-     the user, check whether the last one is named [ppxlib.runner] or
-     [ppx_driver.runner]. If it isn't, assume the driver is
-     ocaml-migrate-parsetree and use some hard-coded driver
-     information. If it is, use the corresponding hardcoded driver
-     information. *)
-
-  let make name info : (Lib_name.t * Driver.t) Lazy.t = lazy (
-    let info =
-      let parsing_context =
-        Univ_map.singleton (Syntax.key Stanza.syntax) (0, 0)
-      in
-      let fname = Printf.sprintf "<internal-%s>" name in
-      Dune_lang.parse_string ~mode:Single ~fname info
-        ~lexer:Dune_lang.Lexer.jbuild_token
-      |> Dune_lang.Decoder.parse Driver.Info.parse parsing_context
-    in
-    (Lib_name.of_string_exn ~loc:None name,
-     { info
-     ; lib = lazy (assert false)
-     ; replaces = Ok []
-     }))
-  let omp = make "ocaml-migrate-parsetree" {|
-    ((main       Migrate_parsetree.Driver.run_main)
-     (flags      (--dump-ast))
-     (lint_flags (--null)))
-  |}
-  let ppxlib = make "ppxlib" {|
-    ((main       Ppxlib.Driver.standalone)
-     (flags      (-diff-cmd - -dump-ast))
-     (lint_flags (-diff-cmd - -null    )))
-  |}
-  let ppx_driver = make "ppx_driver" {|
-    ((main       Ppx_driver.standalone)
-     (flags      (-diff-cmd - -dump-ast))
-     (lint_flags (-diff-cmd - -null    )))
-  |}
-
-  let drivers =
-    let name = Lib_name.of_string_exn ~loc:None in
-    [ name "ocaml-migrate-parsetree.driver-main" , omp
-    ; name "ppxlib.runner"                       , ppxlib
-    ; name "ppx_driver.runner"                   , ppx_driver
-    ]
-
-  let get_driver pps =
-    let driver =
-      match List.last pps with
-      | None -> omp
-      | Some (_, pp) -> Option.value (List.assoc drivers pp) ~default:omp
-    in
-    snd (Lazy.force driver)
-
-  (* For building the driver *)
-  let analyse_pps pps ~get_name =
-    let driver, rev_others =
-      match List.rev pps with
-      | [] -> (omp, [])
-      | pp :: rev_rest as rev_pps ->
-        match List.assoc drivers (get_name pp) with
-        | None        -> (omp   , rev_pps )
-        | Some driver -> (driver, rev_rest)
-    in
-    let driver_name, driver = Lazy.force driver in
-    (driver, driver_name, rev_others)
-end
-
-let ppx_exe sctx ~key ~dir_kind =
-  match (dir_kind : Dune_lang.File_syntax.t) with
-  | Dune ->
-    Path.Build.relative (SC.build_dir sctx) (".ppx/" ^ key ^ "/ppx.exe")
-  | Jbuild ->
-    Path.Build.relative (SC.build_dir sctx) (".ppx/jbuild/" ^ key ^ "/ppx.exe")
-
-let build_ppx_driver sctx ~dep_kind ~target ~dir_kind ~pps ~pp_names =
+let build_ppx_driver sctx ~dep_kind ~target ~pps ~pp_names =
   let ctx = SC.context sctx in
   let mode = Context.best_mode ctx in
   let compiler = Option.value_exn (Context.compiler ctx mode) in
-  let jbuild_driver, pps, pp_names =
-    match (dir_kind : Dune_lang.File_syntax.t) with
-    | Dune -> (None, pps, pp_names)
-    | Jbuild ->
-      match pps with
-      | Error _ ->
-        let driver, driver_name, pp_names =
-          Jbuild_driver.analyse_pps pp_names ~get_name:Fn.id
-        in
-        (Some driver, pps, driver_name :: pp_names)
-      | Ok pps ->
-        let driver, driver_name, pps =
-          Jbuild_driver.analyse_pps pps ~get_name:Lib.name
-        in
-        let pp_names = driver_name :: List.map pps ~f:Lib.name in
-        let pps =
-          let open Result.O in
-          let+ driver =
-            Lib.DB.resolve_pps (SC.public_libs sctx) [(Loc.none, driver_name)]
-          in
-          driver @ pps
-        in
-        (Some driver, pps, pp_names)
-  in
+  let jbuild_driver, pps, pp_names = (None, pps, pp_names) in
   let driver_and_libs =
     let open Result.O in
     Result.map_error ~f:(fun e ->
@@ -435,12 +331,18 @@ let build_ppx_driver sctx ~dep_kind ~target ~dir_kind ~pps ~pp_names =
           ; Dep (Path.build ml)
           ]))
 
-let get_rules sctx key ~dir_kind =
-  let exe = ppx_exe sctx ~key ~dir_kind in
+let get_rules sctx key =
+  let exe = ppx_exe sctx ~key in
   let pps, pp_names =
     let names, lib_db =
       match Digest.from_hex key with
-      | key ->
+      | None ->
+        User_error.raise
+          [ Pp.textf "invalid ppx key for %s"
+              (Path.Build.to_string_maybe_quoted exe)
+
+          ]
+      | Some key ->
         let { Key.Decoded.pps; project } = Key.decode key in
         let lib_db =
           match project with
@@ -448,92 +350,22 @@ let get_rules sctx key ~dir_kind =
           | Some project -> Scope.libs (SC.find_scope_by_project sctx project)
         in
         (pps, lib_db)
-      | exception _ ->
-        (* Still support the old scheme for backward compatibility *)
-
-        (* DUNE2 get rid of this crud *)
-        let module Scope_key = struct
-          let of_string sctx key =
-            match String.rsplit2 key ~on:'@' with
-            | None ->
-              (key, Super_context.public_libs sctx)
-            | Some (key, scope) ->
-              let scope =
-                let name = Dune_project.Name.of_encoded_string scope in
-                match Super_context.find_scope_by_name sctx name with
-                | [x] -> x
-                | [] -> assert false
-                | p1 :: p2 :: _ ->
-                  let file p =
-                    Scope.project p
-                    |> Dune_project.file
-                    |> Path.Source.to_string
-                    |> Pp.textf "- %s"
-                  in
-                  User_error.raise
-                    [ Pp.textf "jbuild projects must have unique names. \
-                               The project %s is defined in:"
-                        (Dune_project.Name.to_string_hum name)
-                    ; file p1
-                    ; file p2
-                    ]
-                    in
-              (key, Scope.libs scope)
-        end in
-
-        let (key, lib_db) = Scope_key.of_string sctx key in
-        let names =
-          match key with
-          | "+none+" -> []
-          | _ -> String.split key ~on:'+'
-        in
-        let names =
-          match List.rev names with
-          | [] -> []
-          | driver :: rest -> List.sort rest ~compare:String.compare @ [driver]
-        in
-        let names = List.map names ~f:(Lib_name.of_string_exn ~loc:None) in
-        (names, lib_db)
     in
     let pps =
       Lib.DB.resolve_pps lib_db (List.map names ~f:(fun x -> (Loc.none, x)))
     in
     (pps, names)
   in
-  build_ppx_driver sctx ~pps ~pp_names ~dep_kind:Required ~target:exe ~dir_kind
+  build_ppx_driver sctx ~pps ~pp_names ~dep_kind:Required ~target:exe
 
 let gen_rules sctx components =
   match components with
-  | [key] -> get_rules sctx key ~dir_kind:Dune
-  | ["jbuild"; key] -> get_rules sctx key ~dir_kind:Jbuild
+  | [key] -> get_rules sctx key
   | _ -> ()
 
-let ppx_driver_exe sctx libs ~dir_kind =
-  let key =
-    Digest.to_string (Key.Decoded.of_libs ~dir_kind libs |> Key.encode) in
-  ppx_exe sctx ~key ~dir_kind
-
-module Compat_ppx_exe_kind = struct
-  type t =
-    | Dune
-    | Jbuild of string option
-end
-
-let get_compat_ppx_exe sctx ~name ~kind =
-  let name = Lib_name.to_string name in
-  let sctx = SC.host sctx in
-  match (kind : Compat_ppx_exe_kind.t) with
-  | Dune ->
-    ppx_exe sctx ~key:name ~dir_kind:Dune
-  | Jbuild driver ->
-    (* We know both [name] and [driver] are public libraries, so we
-       don't add the scope key. *)
-    let key =
-      match driver with
-      | None -> name
-      | Some d -> sprintf "%s+%s" name d
-    in
-    ppx_exe sctx ~key ~dir_kind:Jbuild
+let ppx_driver_exe sctx libs =
+  let key = Digest.to_string (Key.Decoded.of_libs libs |> Key.encode) in
+  ppx_exe sctx ~key
 
 let get_cookies ~loc ~expander ~lib_name libs =
   let expander, library_name_cookie =
@@ -548,26 +380,26 @@ let get_cookies ~loc ~expander ~lib_name libs =
       Expander.add_bindings expander ~bindings,
       Some ("library-name", (library_name, Lib_name.of_local (loc, lib_name)))
   in
-  try
-    Ok (
-      List.concat_map libs ~f:(fun t ->
-        let info = Lib.info t in
-        let kind = Lib_info.kind info in
-        match kind with
-        | Normal -> []
-        | Ppx_rewriter {cookies}
-        | Ppx_deriver {cookies} ->
-          List.map ~f:(fun {Lib_kind.Ppx_args.Cookie.name; value} ->
-            (name, (Expander.expand_str expander value, Lib.name t)))
-            cookies
-      )
-      |> (fun l ->
-        match library_name_cookie with
-        | None -> l
-        | Some cookie -> cookie :: l
-      )
-      |> String.Map.of_list_reducei ~f:
-           (fun name ((val1, lib1) as res) (val2, lib2) ->
+  Result.try_with begin fun () ->
+    List.concat_map libs ~f:(fun t ->
+      let info = Lib.info t in
+      let kind = Lib_info.kind info in
+      match kind with
+      | Normal -> []
+      | Ppx_rewriter {cookies}
+      | Ppx_deriver {cookies} ->
+        List.map ~f:(fun {Lib_kind.Ppx_args.Cookie.name; value} ->
+          (name, (Expander.expand_str expander value, Lib.name t)))
+          cookies
+    )
+    |> (fun l ->
+      match library_name_cookie with
+      | None -> l
+      | Some cookie -> cookie :: l
+    )
+    |> String.Map.of_list_reducei
+         ~f:(fun name ((val1, lib1) as res)
+              (val2, lib2) ->
               if String.equal val1 val2 then
                 res
               else
@@ -581,37 +413,29 @@ let get_cookies ~loc ~expander ~lib_name libs =
                       lib1 val1
                       lib2 val2
                   ])
-      |> String.Map.foldi ~init:[]
-           ~f:(fun name (value, _) acc -> (name, value) :: acc)
-      |> List.rev
-      |> List.concat_map ~f:
-           (fun (name, value) ->
-              ["--cookie"; sprintf "%s=%S" name value]
-           ))
-  with exn -> Error exn
+    |> String.Map.foldi ~init:[]
+         ~f:(fun name (value, _) acc -> (name, value) :: acc)
+    |> List.rev
+    |> List.concat_map ~f:(fun (name, value) ->
+      ["--cookie"; sprintf "%s=%S" name value])
+  end
 
-let ppx_driver_and_flags_internal sctx ~loc ~expander ~lib_name ~flags
-      ~dir_kind libs =
+let ppx_driver_and_flags_internal sctx ~loc ~expander ~lib_name ~flags libs =
   let open Result.O in
   let flags = List.map ~f:(Expander.expand_str expander) flags in
   let+ cookies = get_cookies ~loc ~lib_name ~expander libs in
   let sctx = SC.host sctx in
-  ppx_driver_exe sctx libs ~dir_kind, flags @ cookies
+  ppx_driver_exe sctx libs, flags @ cookies
 
-let ppx_driver_and_flags sctx ~lib_name ~expander ~scope ~loc ~dir_kind ~flags
-      pps =
+let ppx_driver_and_flags sctx ~lib_name ~expander ~scope ~loc ~flags pps =
   let open Result.O in
   let* libs = Lib.DB.resolve_pps (Scope.libs scope) pps in
   let* exe, flags = ppx_driver_and_flags_internal sctx ~loc ~expander ~lib_name
-                      ~flags ~dir_kind libs in
+                      ~flags libs in
   let+ driver =
-    match (dir_kind : Dune_lang.File_syntax.t) with
-    | Dune ->
-      Lib.closure libs ~linking:true
-      >>=
-      Driver.select ~loc:(User_file (loc, pps))
-    | Jbuild ->
-      Ok (Jbuild_driver.get_driver pps)
+    Lib.closure libs ~linking:true
+    >>=
+    Driver.select ~loc:(User_file (loc, pps))
   in
   (exe, driver, flags)
 
@@ -675,7 +499,7 @@ let setup_dialect_rules sctx ~dir ~dep_kind ~expander (m : Module.t) =
   );
   ml
 
-let lint_module sctx ~dir ~expander ~dep_kind ~lint ~lib_name ~scope ~dir_kind =
+let lint_module sctx ~dir ~expander ~dep_kind ~lint ~lib_name ~scope =
   Staged.stage (
     let alias = Alias.lint ~dir in
     let add_alias fn build =
@@ -704,8 +528,8 @@ let lint_module sctx ~dir ~expander ~dep_kind ~lint ~lib_name ~scope ~dir_kind =
           let driver_and_flags =
             let open Result.O in
             let+ (exe, driver, driver_flags) =
-              ppx_driver_and_flags sctx ~expander ~loc ~lib_name ~flags
-                ~dir_kind ~scope pps
+              ppx_driver_and_flags sctx ~expander ~loc ~lib_name ~flags ~scope
+                pps
             in
             let flags =
               let bindings =
@@ -744,13 +568,13 @@ type t = (Module.t -> lint:bool -> Module.t) Per_module.t
 let dummy = Per_module.for_all (fun m ~lint:_ -> m)
 
 let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess
-      ~preprocessor_deps ~lib_name ~scope ~dir_kind =
+      ~preprocessor_deps ~lib_name ~scope =
   let preprocessor_deps =
     Build.memoize "preprocessor deps" preprocessor_deps
   in
   let lint_module =
     Staged.unstage (lint_module sctx ~dir ~expander ~dep_kind
-                      ~lint ~lib_name ~scope ~dir_kind)
+                      ~lint ~lib_name ~scope)
   in
   Per_module.map preprocess ~f:(fun pp ->
     match Dune_file.Preprocess.remove_future_syntax
@@ -782,7 +606,7 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess
         let driver_and_flags =
           let open Result.O in
           let+ (exe, driver, flags) = ppx_driver_and_flags sctx ~expander ~loc
-                                        ~lib_name ~flags ~dir_kind ~scope pps in
+                                        ~lib_name ~flags ~scope pps in
           let args : _ Command.Args.t = S [ As flags ] in
           (exe,
            (let bindings =
@@ -817,7 +641,7 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess
         let pp_flags = Build.of_result (
           let open Result.O in
           let+ (exe, driver, flags) =
-            ppx_driver_and_flags sctx ~expander ~loc ~scope ~dir_kind ~flags
+            ppx_driver_and_flags sctx ~expander ~loc ~scope ~flags
               ~lib_name pps
           in
           Build.memoize "ppx command"
@@ -855,8 +679,12 @@ let pp_module t ?(lint=true) m =
 let pp_module_as t ?(lint=true) name m =
   Per_module.get t name m ~lint
 
-let get_ppx_driver sctx ~loc ~expander ~scope ~lib_name ~flags ~dir_kind pps =
+let get_ppx_driver sctx ~loc ~expander ~scope ~lib_name ~flags pps =
   let open Result.O in
   let* libs = Lib.DB.resolve_pps (Scope.libs scope) pps in
-  ppx_driver_and_flags_internal sctx ~loc ~expander ~lib_name ~flags ~dir_kind
-    libs
+  ppx_driver_and_flags_internal sctx ~loc ~expander ~lib_name ~flags libs
+
+let ppx_exe sctx ~scope pp =
+  let open Result.O in
+  let+ libs = Lib.DB.resolve_pps (Scope.libs scope) [Loc.none, pp] in
+  ppx_driver_exe sctx libs

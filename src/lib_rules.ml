@@ -345,7 +345,6 @@ let library_rules (lib : Library.t) ~sctx ~dir_contents ~dir ~expander ~scope
         (Super_context.Deps.interpret sctx ~expander lib.buildable.preprocessor_deps)
       ~lint:lib.buildable.lint
       ~lib_name:(Some (snd lib.name))
-      ~dir_kind
   in
 
   let source_modules =

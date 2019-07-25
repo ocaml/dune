@@ -3,6 +3,7 @@ open Stdune
 type file =
   { mutable digest        : Digest.t
   ; mutable timestamp     : float
+  ; mutable size          : int
   ; mutable permissions   : Unix.file_perm
   ; mutable stats_checked : int
   }
@@ -17,7 +18,7 @@ let db_file = Path.relative Path.build_dir ".digest-db"
 module P = Persistent.Make(struct
     type nonrec t = t
     let name = "DIGEST-DB"
-    let version = 2
+    let version = 3
   end)
 
 let needs_dumping = ref false
@@ -70,6 +71,7 @@ let refresh fn =
     ~data:{ digest
           ; timestamp = stat.st_mtime
           ; stats_checked = cache.checked_key
+          ; size = stat.st_size
           ; permissions
           };
   digest
@@ -92,6 +94,10 @@ let file fn =
       if stat.st_perm <> x.permissions then begin
         dirty := true;
         x.permissions <- stat.st_perm
+      end;
+      if stat.st_size <> x.size then begin
+        dirty := true;
+        x.size <- stat.st_size
       end;
       if !dirty then
         x.digest <- path_stat_digest fn stat;

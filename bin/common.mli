@@ -8,6 +8,7 @@ val root : t -> Workspace_root.t
 val config : t -> Dune.Config.t
 val only_packages : t -> Dune.Package.Name.Set.t option
 val watch : t -> bool
+val default_target : t -> string
 
 val prefix_target : t -> string -> string
 

@@ -52,6 +52,7 @@ let root t = t.root
 let config t = t.config
 let only_packages t = t.only_packages
 let watch t = t.watch
+let default_target t = t.default_target
 
 let prefix_target common s = common.target_prefix ^ s
 

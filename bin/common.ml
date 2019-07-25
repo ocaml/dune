@@ -339,6 +339,10 @@ let term =
     Arg.(value
          & opt (some arg) None
          & info ["sandbox"]
+             ~env:(
+               Arg.env_var
+                 ~doc:"Sandboxing mode to use by default. (see --sandbox)"
+                 "DUNE_SANDBOX")
              ~doc:(
                Printf.sprintf
                  "Sandboxing mode to use by default. Some actions require \

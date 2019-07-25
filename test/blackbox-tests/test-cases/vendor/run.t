@@ -1,6 +1,6 @@
 Vendored directories should be traversed to find targets so that they are built when they are depend upon
 
-  $ dune build --root duniverse
+  $ dune build --root duniverse --debug-dependency-path
   Entering directory 'duniverse'
 
 Aliases should not be resolved in vendored sub directories

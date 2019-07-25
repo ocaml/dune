@@ -299,10 +299,17 @@ Can init and build a new executable project
   dune
   test_exec_proj.ml
 
-  $ cd test_exec_proj && dune build
+  $ dune exec --root test_exec_proj ./bin/main.exe
+  Entering directory 'test_exec_proj'
   Info: Creating file dune-project with this contents:
   | (lang dune 2.0)
   | (name test_exec_proj)
+  Entering directory 'test_exec_proj'
+  Hello, World!
+
+  $ dune exec --root test_exec_proj ./test/test_exec_proj.exe
+  Entering directory 'test_exec_proj'
+  Entering directory 'test_exec_proj'
   $ rm -rf ./test_exec_proj
 
 Can init and build a new library project

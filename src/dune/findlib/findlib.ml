@@ -423,6 +423,22 @@ module Discovered_package = struct
   type t =
     | Dune of Dune_package.t
     | Findlib of Meta_source.t
+
+  let builtin_for_dune =
+    Dune
+      { name = Opam_package.Name.of_string "dune"
+      ; entries =
+          [ Deprecated_library_name
+              { loc = Loc.of_pos __POS__
+              ; old_public_name =
+                  Lib_name.of_string_exn "dune.configurator" ~loc:None
+              ; new_public_name =
+                  Lib_name.of_string_exn "dune-configurator" ~loc:None
+              }
+          ]
+      ; version = None
+      ; dir = Path.root
+      }
 end
 
 (* Search for a <package>/{META,dune-package} file in the findlib search path,
@@ -431,10 +447,13 @@ let find_and_acknowledge_package t ~fq_name =
   let root_name = Lib_name.root_lib fq_name in
   let rec loop dirs : Discovered_package.t option =
     match dirs with
-    | [] ->
-      Lib_name.Map.find t.builtins root_name
-      |> Option.map ~f:(fun meta ->
-             Discovered_package.Findlib (Meta_source.internal t ~meta))
+    | [] -> (
+      match Lib_name.to_string root_name with
+      | "dune" -> Some Discovered_package.builtin_for_dune
+      | _ ->
+        Lib_name.Map.find t.builtins root_name
+        |> Option.map ~f:(fun meta ->
+               Discovered_package.Findlib (Meta_source.internal t ~meta)) )
     | dir :: dirs -> (
       let dir = Path.relative dir (Lib_name.to_string root_name) in
       let dune = Path.relative dir "dune-package" in

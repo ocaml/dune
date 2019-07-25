@@ -107,7 +107,10 @@ case "$TARGET" in
         exit 1;
       fi
       opam list
-      opam pin add dune . --no-action
+      version=$(head -1 CHANGES.md |cut -d' ' -f 1)
+      for i in *.opam; do
+          opam pin add ${i/.opam}.${version} . --no-action
+      done
       opam_install_test_deps
       echo -en "travis_fold:end:opam.deps\r"
     fi

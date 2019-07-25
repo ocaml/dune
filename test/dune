@@ -163,28 +163,3 @@
  (deps
   (alias_rec blackbox-tests/runtest-no-deps)
   (alias_rec unit-tests/runtest)))
-
-;; Control the list of public libraries
-;;
-;; This test is to make sure we don't accidently publicize internal
-;; libraries for which we are not ready to commit to a stable API
-
-(rule
- (targets dune-public-libs)
- (deps
-  (package dune))
- (action
-  (system
-    "dune installed-libraries |   cut -d' ' -f1 |   grep 'dune[.]' |   grep -v '[.]_' > %{targets}\n")))
-
-;; Think twice before adding elements to this list!
-
-(rule
- (with-stdout-to
-  dune-public-libs.expected
-  (echo "dune.configurator\n")))
-
-(alias
- (name runtest)
- (action
-  (diff dune-public-libs.expected dune-public-libs)))

@@ -5,5 +5,5 @@
   (package dune-build-info))
  (action
   (progn
-   (run %{exe:../../../test/blackbox-tests/cram.exe} -test %{dep:run.t})
+   (run cram -test %{dep:run.t})
    (diff? run.t run.t.corrected))))

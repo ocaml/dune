@@ -1,0 +1,12 @@
+(ocamllex extract_obj)
+
+(library
+ (name configurator)
+ (public_name dune-configurator)
+ (preprocess future_syntax)
+ (libraries dune-private-libs.stdune dune-private-libs.ocaml-config
+            dune-private-libs.dune-lang dune-private-libs.caml)
+ (flags
+  (:standard
+   -safe-string
+   (:include flags/flags.sexp))))

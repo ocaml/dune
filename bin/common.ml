@@ -44,6 +44,15 @@ type t =
   ; promote_install_files : bool
   }
 
+let workspace_file t = t.workspace_file
+let x t = t.x
+let profile t = t.profile
+let capture_outputs t = t.capture_outputs
+let root t = t.root
+let config t = t.config
+let only_packages t = t.only_packages
+let watch t = t.watch
+
 let prefix_target common s = common.target_prefix ^ s
 
 let set_dirs c =

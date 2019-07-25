@@ -1,31 +1,13 @@
-type t =
-  { debug_dep_path        : bool
-  ; debug_findlib         : bool
-  ; debug_backtraces      : bool
-  ; profile               : string option
-  ; workspace_file        : Arg.Path.t option
-  ; root                  : Workspace_root.t
-  ; target_prefix         : string
-  ; only_packages         : Dune.Package.Name.Set.t option
-  ; capture_outputs       : bool
-  ; x                     : string option
-  ; diff_command          : string option
-  ; auto_promote          : bool
-  ; force                 : bool
-  ; ignore_promoted_rules : bool
-  ; build_dir             : string
-  ; no_print_directory    : bool
-  ; store_orig_src_dir    : bool
-  ; (* Original arguments for the external-lib-deps hint *)
-    orig_args             : string list
-  ; config                : Dune.Config.t
-  ; default_target        : string
-  (* For build & runtest only *)
-  ; watch : bool
-  ; stats_trace_file : string option
-  ; always_show_command_line : bool
-  ; promote_install_files : bool
-  }
+type t
+
+val workspace_file : t -> Arg.Path.t option
+val x : t -> string option
+val profile : t -> string option
+val capture_outputs : t -> bool
+val root : t -> Workspace_root.t
+val config : t -> Dune.Config.t
+val only_packages : t -> Dune.Package.Name.Set.t option
+val watch : t -> bool
 
 val prefix_target : t -> string -> string
 

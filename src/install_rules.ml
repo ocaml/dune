@@ -28,14 +28,16 @@ module Stanzas_to_entries : sig
     : Super_context.t
     -> (Loc.t option * Install.Entry.t) list Package.Name.Map.t
 end = struct
-  let lib_ppxs sctx ~(lib : Dune_file.Library.t) =
+  let lib_ppxs sctx ~scope ~(lib : Dune_file.Library.t) =
     match lib.kind with
     | Normal | Ppx_deriver _ -> []
     | Ppx_rewriter _ ->
       let name = Dune_file.Library.best_name lib in
-      [Preprocessing.get_compat_ppx_exe sctx ~name]
+      [Preprocessing.ppx_exe sctx ~scope name
+       |> Result.ok_exn
+      ]
 
-  let lib_install_files sctx ~dir_contents ~dir ~sub_dir:lib_subdir
+  let lib_install_files sctx ~scope ~dir_contents ~dir ~sub_dir:lib_subdir
         (lib : Library.t) =
     let loc = lib.buildable.loc in
     let obj_dir = Dune_file.Library.obj_dir lib ~dir in
@@ -107,7 +109,7 @@ end = struct
       )
     in
     let archives = Lib_archives.make ~ctx ~dir_contents ~dir lib in
-    let execs = lib_ppxs sctx ~lib in
+    let execs = lib_ppxs sctx ~scope ~lib in
     List.concat
       [ sources
       ; List.map module_files ~f:(fun (visibility, file) ->
@@ -207,7 +209,7 @@ end = struct
           | Dune_file.Library lib ->
             let sub_dir = (Option.value_exn lib.public).sub_dir in
             let dir_contents = Dir_contents.get sctx ~dir in
-            lib_install_files sctx ~dir ~sub_dir lib ~dir_contents
+            lib_install_files sctx ~scope ~dir ~sub_dir lib ~dir_contents
           | Dune_file.Coq.T coqlib ->
             Coq_rules.install_rules ~sctx ~dir coqlib
           | Dune_file.Documentation d ->

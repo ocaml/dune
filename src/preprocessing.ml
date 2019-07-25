@@ -688,3 +688,8 @@ let get_ppx_driver sctx ~loc ~expander ~scope ~lib_name ~flags pps =
   let open Result.O in
   let* libs = Lib.DB.resolve_pps (Scope.libs scope) pps in
   ppx_driver_and_flags_internal sctx ~loc ~expander ~lib_name ~flags libs
+
+let ppx_exe sctx ~scope pp =
+  let open Result.O in
+  let+ libs = Lib.DB.resolve_pps (Scope.libs scope) [Loc.none, pp] in
+  ppx_driver_exe sctx libs

@@ -13,5 +13,4 @@
 This test is broken because ppx_driver doesn't support migrate custom arguments
 #  $ dune build ./w_ppx_driver_flags.exe --display short
   $ dune build && dune exec -- ocamlfind opt -package fooppx -ppxopt "fooppx,-flag" -linkpkg w_omp_driver.ml -o w_omp_driver.exe
-  Error: invalid ppx key for default/.ppx/fooppx/ppx.exe
-  [1]
+  pass -arg to fooppx

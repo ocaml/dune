@@ -63,3 +63,9 @@ val action_for_pp
   -> src:Path.Build.t
   -> target:Path.Build.t option
   -> ('a, Action.t) Build.t
+
+val ppx_exe
+  :  Super_context.t
+  -> scope:Scope.t
+  -> Lib_name.t
+  -> Path.Build.t Or_exn.t

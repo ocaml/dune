@@ -367,11 +367,6 @@ let ppx_driver_exe sctx libs =
   let key = Digest.to_string (Key.Decoded.of_libs libs |> Key.encode) in
   ppx_exe sctx ~key
 
-let get_compat_ppx_exe sctx ~name =
-  let name = Lib_name.to_string name in
-  let sctx = SC.host sctx in
-  ppx_exe sctx ~key:name
-
 let get_cookies ~loc ~expander ~lib_name libs =
   let expander, library_name_cookie =
     match lib_name with

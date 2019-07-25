@@ -44,12 +44,6 @@ val get_ppx_driver
   -> (Loc.t * Lib_name.t) list
   -> (Path.Build.t * string list) Or_exn.t
 
-(** Compatibility [ppx.exe] program for the findlib method. *)
-val get_compat_ppx_exe
-  :  Super_context.t
-  -> name:Lib_name.t
-  -> Path.Build.t
-
 val gen_rules : Super_context.t -> string list -> unit
 
 val chdir : Action_unexpanded.t -> Action_unexpanded.t

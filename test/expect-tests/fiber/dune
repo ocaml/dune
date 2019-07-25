@@ -1,6 +1,6 @@
 (library
  (name dune_fiber_tests)
- (inline_tests (deps (glob_files *.ml)))
+ (inline_tests)
  (libraries dune_tests_common stdune fiber dune wp_dune
             ;; This is because of the (implicit_transitive_deps false)
             ;; in dune-project

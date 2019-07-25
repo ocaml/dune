@@ -1,6 +1,6 @@
 (library
  (name dune_memo_unit_tests)
- (inline_tests (deps (glob_files *.ml)))
+ (inline_tests)
  (libraries dune_tests_common stdune dune_lang fiber memo
             ;; This is because of the (implicit_transitive_deps false)
             ;; in dune-project

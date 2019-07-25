@@ -228,8 +228,7 @@ let check_invalid_module_listing ~(buildable : Buildable.t) ~intf_only
     if missing_intf_only <> [] then begin
       match Ordered_set_lang.loc buildable.modules_without_implementation with
       | None ->
-        (* DUNE2: turn this into an error *)
-        User_warning.emit ~loc:buildable.loc
+        User_error.raise ~loc:buildable.loc
           [ Pp.text "Some modules don't have an implementation."
           ; Pp.textf
               "You need to add the following field to this stanza:\
@@ -248,8 +247,7 @@ let check_invalid_module_listing ~(buildable : Buildable.t) ~intf_only
                Dune_lang.to_string ~syntax:Dune (List (tag :: modules)))
           ]
       | Some loc ->
-        (* DUNE2: turn this into an error *)
-        User_warning.emit ~loc
+        User_error.raise ~loc
           [ Pp.text "The following modules must be listed here as they don't \
                      have an implementation:"
           ; (line_list missing_intf_only)
@@ -303,8 +301,7 @@ let eval ~modules:(all_modules : Module.Source.t Module.Name.Map.t)
     eval ~standard:Module.Name.Map.empty private_modules
   in
   Module.Name.Map.iteri !fake_modules ~f:(fun m loc ->
-    (* DUNE2: make this an error *)
-    User_warning.emit ~loc
+    User_error.raise ~loc
       [ Pp.textf "Module %s is excluded but it doesn't exist."
           (Module.Name.to_string m)
       ]

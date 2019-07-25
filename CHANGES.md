@@ -20,8 +20,24 @@
 - Add an option to clear the console in-between builds with 
  `--terminal-persistence=clear-on-rebuild`
 
-1.11.0 (unreleased)
+- Stop symlinking object files to main directory for stanzas defined `jbuild`
+  files (#2440, @rgrinberg)
+
+- Library names are now validated in a strict fashion. Previously, invalid names
+  would be allowed for unwrapped libraries (#2442, @rgrinberg)
+
+- mli only modules must now be explicitly declared. This was previously a
+  warning that is now an error. (#2442, @rgrinberg)
+
+- Modules filtered out from the module list via the Ordered Set Language must
+  now be actual modules. (#2442, @rgrinberg)
+
+- Actions which introduce targets where new targets are forbidden (e.g.
+  preprocessing) are now an error instead of a warning. (#2442, @rgrinberg)
+
+1.11.0 (23/07/2019)
 -------------------
+
 - Don't select all local implementations in `dune utop`. Instead, let the
   default implementation selection do its job. (#2327, fixes #2323, @TheLortex,
   review by @rgrinberg)
@@ -88,7 +104,7 @@
 - Workspaces with non unique project names are now supported. (#2377, fix #2325,
   @rgrinberg)
 
-- Improve opam generation to include the `dune` dependncies with the minimum
+- Improve opam generation to include the `dune` dependencies with the minimum
   constraint set based on the dune language version specified in the
   `dune-project` file. (2383, @avsm)
 

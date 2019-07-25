@@ -47,7 +47,6 @@ let context t = t.context
 let stanzas t = t.stanzas
 let stanzas_in t ~dir = Path.Build.Map.find t.stanzas_per_dir dir
 let packages t = t.packages
-let libs_by_package t = t.libs_by_package
 let artifacts t = t.artifacts
 let file_tree t = t.file_tree
 let build_dir t = t.context.build_dir
@@ -61,6 +60,11 @@ let to_dyn_concise t =
 let to_dyn t = Context.to_dyn t.context
 
 let host t = Option.value t.host ~default:t
+
+let libs_of_package t pkg_name =
+  match Package.Name.Map.find t.libs_by_package pkg_name with
+  | None -> Lib.Local.Set.empty
+  | Some (_, libs) -> libs
 
 let internal_lib_names t =
   List.fold_left t.stanzas ~init:Lib_name.Set.empty
@@ -691,11 +695,8 @@ module Action = struct
       | [] -> ()
       | x :: _ ->
         let loc = String_with_vars.loc x in
-        (* DUNE2: make this an error *)
-        User_warning.emit ~loc
-          [ Pp.textf "%s must not have targets, this target will be ignored."
-              (String.capitalize context)
-          ; Pp.textf "This will become an error in the future."
+        User_error.raise ~loc
+          [ Pp.textf "%s must not have targets." (String.capitalize context)
           ]
     end;
     let t, forms =

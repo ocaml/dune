@@ -368,8 +368,7 @@ end = struct
               List.sort ~compare
                 (b.Buildable.loc :: List.map rest ~f:(fun b -> b.Buildable.loc))
             in
-            (* DUNE2: make this an error *)
-            User_warning.emit ~loc:(Loc.drop_position b.loc)
+            User_error.raise ~loc:(Loc.drop_position b.loc)
               [ Pp.textf "Module %S is used in several stanzas:"
                   (Module.Name.to_string name)
               ; Pp.enumerate locs ~f:(fun loc ->
@@ -381,8 +380,7 @@ end = struct
                    file. Note that each module cannot appear in more \
                    than one \"modules\" field - it must belong to a \
                    single library or executable."
-              ];
-            b)
+              ])
     in
     { Dir_modules. libraries; executables; rev_map }
 

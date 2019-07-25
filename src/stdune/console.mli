@@ -31,4 +31,5 @@ val update_status_line : User_message.Style.t Pp.t -> unit
 val clear_status_line : unit -> unit
 (** Clear the status line *)
 
+val reset_terminal : unit -> unit
 val display : unit -> Display.t

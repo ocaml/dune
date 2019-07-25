@@ -344,6 +344,12 @@ let term =
          & flag
          & info ["debug-backtraces"] ~docs
              ~doc:{|Always print exception backtraces.|})
+  and+ terminal_persistence = 
+    Arg.(value 
+         & opt (some (enum (Config.Terminal_persistence.all))) None
+         & info ["terminal-persistence"] ~docs ~docv:"MODE" ~doc: {|
+         Changes how the log of build results are displayed to the 
+         console between rebuilds while in --watch mode. |})
   and+ display =
     one_of
       (let+ verbose =
@@ -462,6 +468,7 @@ let term =
     Config.merge config
       { display
       ; concurrency
+      ; terminal_persistence
       }
   in
   let config =

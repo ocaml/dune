@@ -173,6 +173,7 @@ let bootstrap () =
       let config : Config.t =
         { display     = Quiet
         ; concurrency = Fixed 1
+        ; terminal_persistence = Preserve
         }
       in
       Scheduler.go ~config Watermarks.subst;
@@ -191,10 +192,11 @@ let bootstrap () =
       | Error msg -> raise (Arg.Bad msg)
       | Ok c -> concurrency := Some c
     in
+    let terminal_persistence = Some Config.Terminal_persistence.Preserve in
     let profile = ref None in
     Arg.parse
       [ "-j"           , String concurrency_arg, "JOBS concurrency"
-      ; "--release"        , Unit (fun () -> profile := Some "release"),
+      ; "--release"    , Unit (fun () -> profile := Some "release"),
         " set release mode"
       ; "--display"    , display_mode          , " set the display mode"
       ; "--subst"      , Unit subst            ,
@@ -216,6 +218,7 @@ let bootstrap () =
       Config.merge config
         { display     = !display
         ; concurrency = !concurrency
+        ; terminal_persistence
         }
     in
     let config =

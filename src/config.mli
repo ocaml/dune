@@ -34,6 +34,17 @@ val default_build_profile : string
 
 (** Dune configuration *)
 
+module Terminal_persistence: sig
+  type t =
+    | Preserve
+    | Clear_on_rebuild
+
+  val all: (string * t) list 
+  val of_string: string -> (t, string) result
+  val to_string: t -> string
+  val decode : t Dune_lang.Decoder.t
+end
+
 module Display : sig
   type t = Stdune.Console.Display.t =
     | Progress (** Single interactive status line *)
@@ -60,6 +71,7 @@ module type S = sig
   type t =
     { display     : Display.t     field
     ; concurrency : Concurrency.t field
+    ; terminal_persistence : Terminal_persistence.t  field
     }
 end
 

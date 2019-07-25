@@ -17,6 +17,9 @@
 
 - Enable `(explicit_js_mode)` by default. (#1941, @nojb)
 
+- Add an option to clear the console in-between builds with 
+ `--terminal-persistence=clear-on-rebuild`
+
 - Stop symlinking object files to main directory for stanzas defined `jbuild`
   files (#2440, @rgrinberg)
 

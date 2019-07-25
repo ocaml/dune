@@ -550,10 +550,10 @@ let extend_paths t ~env =
       end)
   in
   let t =
-    let f ((loc, var), t) =
+    let f (var, t) =
       let parse ~loc:_ s = s in
       let standard = Env.path env |> List.map ~f:Path.to_string in
-      var, (loc, Eval.eval t ~parse ~standard)
+      var, Eval.eval t ~parse ~standard
     in
     List.map ~f t
   in
@@ -561,15 +561,9 @@ let extend_paths t ~env =
     let to_absolute_filename s =
       Path.of_string s |> Path.to_absolute_filename in
     let sep = String.make 1 Bin.path_sep in
-   match Env.Map.of_list t with
-    | Ok env ->
-      let f (_, l) = String.concat ~sep (List.map ~f:to_absolute_filename l) in
-      Env.Map.map ~f env
-    | Error (var, (_, _), (loc, _)) ->
-      User_error.raise ~loc
-        [ Pp.textf "the variable %S can appear at most once \
-                    in this stanza." var
-        ]
+    let env = Env.Map.of_list_exn t in
+    let f l = String.concat ~sep (List.map ~f:to_absolute_filename l) in
+    Env.Map.map ~f env
   in
   Env.extend ~vars env
 

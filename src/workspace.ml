@@ -54,7 +54,7 @@ module Context = struct
       ; toolchain    : string option
       ; name         : string
       ; host_context : string option
-      ; paths        : ((Loc.t * string) * Ordered_set_lang.t) list
+      ; paths        : (string * Ordered_set_lang.t) list
       }
 
     let t ~profile =
@@ -66,9 +66,19 @@ module Context = struct
       and+ toolchain =
         field_o "toolchain" (Syntax.since syntax (1, 5) >>> string)
       and+ paths =
+        let f l =
+          match Env.Map.of_list (List.map ~f:(fun ((loc, s), _) -> s, loc) l) with
+          | Ok _ ->
+            List.map ~f:(fun ((_, s), x) -> s, x) l
+          | Error (var, _, loc) ->
+            User_error.raise ~loc
+              [ Pp.textf "the variable %S can appear at most once \
+                          in this stanza." var
+              ]
+        in
         field "paths" ~default:[]
           (Syntax.since Stanza.syntax (1, 12) >>>
-           list (pair (located string) Ordered_set_lang.decode))
+           map ~f (list (pair (located string) Ordered_set_lang.decode)))
       and+ loc = loc
       in
       Option.iter

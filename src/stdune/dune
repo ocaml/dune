@@ -1,6 +1,6 @@
 (library
  (name stdune)
- (public_name dune._stdune)
+ (public_name dune-private-libs.stdune)
  (synopsis "[Internal] Standard library of Dune")
  (preprocess future_syntax)
  (libraries dune_caml unix)

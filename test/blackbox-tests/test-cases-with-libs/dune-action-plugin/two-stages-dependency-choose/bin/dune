@@ -1,3 +1,0 @@
-(executables
- (names client)
- (libraries dune._dune_action_plugin))

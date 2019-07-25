@@ -87,23 +87,6 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
- (name configurator)
- (deps (package dune) (source_tree test-cases/configurator))
- (action
-  (chdir
-   test-cases/configurator
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected))))
- (enabled_if (<> %{ocaml-config:system} win)))
-
-(alias
- (name configurator-gh1166)
- (deps (package dune) (source_tree test-cases/configurator-gh1166))
- (action
-  (chdir
-   test-cases/configurator-gh1166
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
-
-(alias
  (name contents-depends-on-glob)
  (deps (package dune) (source_tree test-cases/contents-depends-on-glob))
  (action
@@ -1338,7 +1321,10 @@
 
 (alias
  (name pkg-config-quoting)
- (deps (package dune) (source_tree test-cases/pkg-config-quoting))
+ (deps
+  (package dune)
+  (source_tree test-cases/pkg-config-quoting)
+  (package dune-configurator))
  (action
   (chdir
    test-cases/pkg-config-quoting
@@ -1744,7 +1730,10 @@
 
 (alias
  (name vlib)
- (deps (package dune) (source_tree test-cases/vlib))
+ (deps
+  (package dune)
+  (source_tree test-cases/vlib)
+  (package dune-configurator))
  (action
   (chdir
    test-cases/vlib
@@ -1829,8 +1818,6 @@
   (alias c-stubs)
   (alias check-alias)
   (alias cmdliner-dep-conf)
-  (alias configurator)
-  (alias configurator-gh1166)
   (alias contents-depends-on-glob)
   (alias copy-files-non-sub-dir-error)
   (alias copy_files)
@@ -2047,8 +2034,6 @@
   (alias c-stubs)
   (alias check-alias)
   (alias cmdliner-dep-conf)
-  (alias configurator)
-  (alias configurator-gh1166)
   (alias contents-depends-on-glob)
   (alias copy-files-non-sub-dir-error)
   (alias copy_files)

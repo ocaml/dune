@@ -43,8 +43,6 @@ for free.
 
 (package
  (name dune-build-info)
- (depends
-  (dune (>= 1.11)))
  (synopsis "Embed build informations inside executable")
  (description "\
 The build-info library allows to access information about how the
@@ -53,4 +51,45 @@ was built or the list of statically linked libraries with their
 versions.  It supports reporting the version from the version control
 system during development to get an precise reference of when the
 executable was built.
+"))
+
+(package
+ (name dune-private-libs)
+ (synopsis "Private libraries of Dune")
+ (description "\
+!!!!!!!!!!!!!!!!!!!!!!
+!!!!! DO NOT USE !!!!!
+!!!!!!!!!!!!!!!!!!!!!!
+
+This package contains code that is shared between various dune-xxx
+packages. However, it is not meant for public comsumption and provides
+no stability guarantee.
+"))
+
+(package
+ (name dune-configurator)
+ (depends
+  (dune-private-libs (= "\%{version}\%")))
+ (synopsis "Helper library for gathering system configuration")
+ (description "\
+dune-configurator is a small library that helps writing OCaml scripts that
+test features available on the system, in order to generate config.h
+files for instance.
+Among other things, dune-configurator allows one to:
+- test if a C program compiles
+- query pkg-config
+- import #define from OCaml header files
+- generate config.h file
+"))
+
+(package
+ (name dune-action-plugin)
+ (depends
+  (dune-private-libs (= "\%{version}\%")))
+ (synopsis "API for writing dynamic Dune actions")
+ (description "\
+dune-action-plugin provides an API for writing dynamic Dune actions.
+Dynamic dune actions do not need to declare their dependencies
+upfront; they are instead discovered automatically during the
+execution of the action.
 "))

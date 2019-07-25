@@ -64,11 +64,12 @@ module Test = struct
     ; coq : bool
     ; external_deps : bool
     ; disable_sandboxing : bool
+    ; additional_deps : Dune_lang.t list
     }
 
   let make ?env ?skip_ocaml ?(skip_platforms = []) ?(enabled = true)
       ?(js = false) ?(coq = false) ?(external_deps = false)
-      ?(disable_sandboxing = false) name =
+      ?(disable_sandboxing = false) ?(additional_deps = []) name =
     let external_deps = external_deps || coq in
     { name
     ; env
@@ -79,6 +80,7 @@ module Test = struct
     ; js
     ; coq
     ; disable_sandboxing
+    ; additional_deps
     }
 
   let pp_sexp fmt t =
@@ -112,9 +114,9 @@ module Test = struct
     alias t.name ?enabled_if
       ~deps:
         (List.concat
-           [ [ Sexp.strings [ "package"; "dune" ]
-             ; Sexp.strings [ "source_tree"; sprintf "test-cases/%s" t.name ]
-             ]
+           [ Sexp.strings [ "package"; "dune" ]
+             :: Sexp.strings [ "source_tree"; sprintf "test-cases/%s" t.name ]
+             :: t.additional_deps
            ; ( if t.disable_sandboxing then
                [ Sexp.strings [ "sandbox"; "none" ] ]
              else
@@ -173,6 +175,10 @@ let exclusions =
     (* for the following tests sandboxing is disabled because absolute paths
        end up appearing in the output if we sandbox *)
   ; make "env-bins" ~disable_sandboxing:true
+  ; make "vlib"
+      ~additional_deps:[ Sexp.strings [ "package"; "dune-configurator" ] ]
+  ; make "pkg-config-quoting"
+      ~additional_deps:[ Sexp.strings [ "package"; "dune-configurator" ] ]
   ]
 
 let all_tests =

@@ -1,6 +1,6 @@
 (library
  (name ocaml_config)
- (public_name dune._ocaml_config)
+ (public_name dune-private-libs.ocaml-config)
  (preprocess future_syntax)
  (libraries stdune)
  (synopsis "[Internal] Interpret the output of 'ocamlc -config'"))

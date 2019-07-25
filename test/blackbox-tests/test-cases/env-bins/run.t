@@ -6,7 +6,6 @@ Basic test that we can use private binaries as public ones
   PATH:
   	_build/default/test/blackbox-tests/test-cases/env-bins/private-bin-import/_build/default/using-priv/.bin
   	_build/default/test/blackbox-tests/test-cases/env-bins/private-bin-import/_build/install/default/bin
-  	_build/default/test/blackbox-tests/.bin
   	_build/default/.bin
   	_build/install/default/bin
   priv-renamed alias using-priv/runtest
@@ -14,7 +13,6 @@ Basic test that we can use private binaries as public ones
   PATH:
   	_build/default/test/blackbox-tests/test-cases/env-bins/private-bin-import/_build/default/using-priv/.bin
   	_build/default/test/blackbox-tests/test-cases/env-bins/private-bin-import/_build/install/default/bin
-  	_build/default/test/blackbox-tests/.bin
   	_build/default/.bin
   	_build/install/default/bin
 
@@ -35,7 +33,6 @@ Nest env binaries
   	_build/default/test/blackbox-tests/test-cases/env-bins/nested-env/_build/default/using-priv/nested/.bin
   	_build/default/test/blackbox-tests/test-cases/env-bins/nested-env/_build/default/using-priv/.bin
   	_build/default/test/blackbox-tests/test-cases/env-bins/nested-env/_build/install/default/bin
-  	_build/default/test/blackbox-tests/.bin
   	_build/default/.bin
   	_build/install/default/bin
   priv-renamed alias using-priv/nested/runtest
@@ -44,7 +41,6 @@ Nest env binaries
   	_build/default/test/blackbox-tests/test-cases/env-bins/nested-env/_build/default/using-priv/nested/.bin
   	_build/default/test/blackbox-tests/test-cases/env-bins/nested-env/_build/default/using-priv/.bin
   	_build/default/test/blackbox-tests/test-cases/env-bins/nested-env/_build/install/default/bin
-  	_build/default/test/blackbox-tests/.bin
   	_build/default/.bin
   	_build/install/default/bin
   priv-renamed-nested alias using-priv/nested/runtest
@@ -53,6 +49,5 @@ Nest env binaries
   	_build/default/test/blackbox-tests/test-cases/env-bins/nested-env/_build/default/using-priv/nested/.bin
   	_build/default/test/blackbox-tests/test-cases/env-bins/nested-env/_build/default/using-priv/.bin
   	_build/default/test/blackbox-tests/test-cases/env-bins/nested-env/_build/install/default/bin
-  	_build/default/test/blackbox-tests/.bin
   	_build/default/.bin
   	_build/install/default/bin

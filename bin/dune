@@ -5,3 +5,7 @@
  (libraries memo dune_lang fiber stdune unix dune_manager dune cmdliner
    threads.posix build_info)
  (preprocess future_syntax))
+
+(deprecated_library_name
+ (old_public_name dune.configurator)
+ (new_public_name dune-configurator))

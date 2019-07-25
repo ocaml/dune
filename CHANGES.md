@@ -35,6 +35,8 @@
 - Actions which introduce targets where new targets are forbidden (e.g.
   preprocessing) are now an error instead of a warning. (#2442, @rgrinberg)
 
+- No longer install a `jbuilder` binary. (#2441, @diml)
+
 - Stub names are no longer allowed relative paths. This was previously a warning
   and is now an error (#2443, @rgrinberg).
 

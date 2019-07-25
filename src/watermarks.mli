@@ -4,4 +4,4 @@
 
     This is only used when a package is pinned. *)
 
-val subst : ?name:string -> unit -> unit Fiber.t
+val subst : unit -> unit Fiber.t

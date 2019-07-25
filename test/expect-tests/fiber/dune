@@ -1,7 +1,7 @@
 (library
  (name dune_fiber_tests)
  (inline_tests)
- (libraries dune_tests_common stdune fiber dune wp_dune
+ (libraries dune_tests_common stdune fiber dune
             ;; This is because of the (implicit_transitive_deps false)
             ;; in dune-project
             ppx_expect.config

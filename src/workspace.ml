@@ -287,28 +287,15 @@ let default ?x ?profile () =
 
 let load ?x ?profile p =
   let x = Option.map x ~f:(fun s -> Context.Target.Named s) in
-  match Wp.t with
-  | Dune ->
-    Io.with_lexbuf_from_file p ~f:(fun lb ->
-      if Dune_lexer.eof_reached lb then
-        default ?x ?profile ()
-      else
-        let first_line = Dune_lexer.first_line lb in
-        parse_contents lb first_line ~f:(fun _lang -> t ?x ?profile ()))
-  | Jbuilder ->
-    let sexp =
-      Dune_lang.Io.load p ~mode:Many_as_one ~lexer:Dune_lang.Lexer.jbuild_token
-    in
-    parse
-      (enter (t ?x ?profile ()))
-      (Univ_map.singleton (Syntax.key syntax) (0, 0))
-      sexp
+  Io.with_lexbuf_from_file p ~f:(fun lb ->
+    if Dune_lexer.eof_reached lb then
+      default ?x ?profile ()
+    else
+      let first_line = Dune_lexer.first_line lb in
+      parse_contents lb first_line ~f:(fun _lang -> t ?x ?profile ()))
 
 let default ?x ?profile () =
   let x = Option.map x ~f:(fun s -> Context.Target.Named s) in
   default ?x ?profile ()
 
-let filename =
-  match Wp.t with
-  | Dune     -> "dune-workspace"
-  | Jbuilder -> "jbuild-workspace"
+let filename = "dune-workspace"

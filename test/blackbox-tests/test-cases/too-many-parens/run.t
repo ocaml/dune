@@ -3,61 +3,43 @@ are readable.
 
   $ dune build --root a
   Entering directory 'a'
-  File "dune", line 1, characters 12-72:
-  1 | (executable (
+  File "dune", line 2, characters 2-14:
   2 |   (name hello)
-  3 |   (public_name hello)
-  4 |   (libraries (lib))
-  5 | ))
+        ^^^^^^^^^^^^
   Error: Atom expected
-  Hint: dune files require fewer parentheses than jbuild files.
-  If you just converted this file from a jbuild file, try removing these parentheses.
   [1]
 
   $ dune build --root b
   Entering directory 'b'
-  File "dune", line 3, characters 12-17:
+  File "dune", line 3, characters 13-16:
   3 |  (libraries (lib)))
-                  ^^^^^
+                   ^^^
   Error: 'select' expected
-  Hint: dune files require fewer parentheses than jbuild files.
-  If you just converted this file from a jbuild file, try removing these parentheses.
   [1]
 
   $ dune build --root c
   Entering directory 'c'
-  File "dune", line 3, characters 7-14:
+  File "dune", line 3, characters 8-9:
   3 |  (deps (x y z)))
-             ^^^^^^^
+              ^
   Error: Unknown constructor x
-  Hint: dune files require fewer parentheses than jbuild files.
-  If you just converted this file from a jbuild file, try removing these parentheses.
   [1]
 
 Checking that extra long stanzas (over 10 lines) are truncated in the middle, and the two blocks are aligned.
   $ dune build --root d
   Entering directory 'd'
-  File "dune", line 3, characters 13-192:
-   3 |   (libraries (a
-   4 |               b
-   5 |               c
-  ....
-  12 |               j
-  13 |               k
-  14 |               l)
+  File "dune", line 3, characters 14-15:
+  3 |   (libraries (a
+                    ^
   Error: 'select' expected
-  Hint: dune files require fewer parentheses than jbuild files.
-  If you just converted this file from a jbuild file, try removing these parentheses.
   [1]
 
 When the inner syntax is wrong, do not warn about the parens:
 
   $ dune build --root e
   Entering directory 'e'
-  File "dune", line 3, characters 7-15:
+  File "dune", line 3, characters 8-12:
   3 |  (deps (glob *)) ; this form doesn't exist
-             ^^^^^^^^
+              ^^^^
   Error: Unknown constructor glob
-  Hint: dune files require fewer parentheses than jbuild files.
-  If you just converted this file from a jbuild file, try removing these parentheses.
   [1]

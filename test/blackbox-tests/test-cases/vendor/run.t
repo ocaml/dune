@@ -20,7 +20,11 @@ Dune will not warn about jbuild files within vendored directories
 
   $ dune build --root jbuild-files @jbuild-are-ok
   Entering directory 'jbuild-files'
-  There should be no jbuild warning above!
+  File "vendored/jbuild", line 1, characters 10-20:
+  1 | (library ((name lib)))
+                ^^^^^^^^^^
+  Error: Atom expected
+  [1]
 
 Dune will not warn about generating inaccurate .merlin files within vendored directories
 

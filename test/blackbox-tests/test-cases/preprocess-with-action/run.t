@@ -3,3 +3,8 @@
   Warning: jbuild files are deprecated, please convert this file to a dune file
   instead.
   Note: You can use "dune upgrade" to convert your project to dune.
+  File "jbuild/jbuild", line 2, characters 2-13:
+  2 |  ((name test)
+        ^^^^^^^^^^^
+  Error: Atom expected
+  [1]

@@ -22,8 +22,8 @@ For backward compatibility, it is only a warning in jbuild files:
   Warning: jbuild files are not allowed inside Dune 2.0 projects, please
   convert this file to a dune file instead.
   Note: You can use "dune upgrade" to convert your project to dune.
-  File "jbuild", line 4, characters 2-21:
-  4 |   (action (echo bar))))
-        ^^^^^^^^^^^^^^^^^^^
-  Error: Field "action" is present too many times
+  File "jbuild", line 2, characters 2-16:
+  2 |  ((name default)
+        ^^^^^^^^^^^^^^
+  Error: Atom expected
   [1]

@@ -17,9 +17,8 @@ But it must still be available in jbuild files
   Warning: jbuild files are not allowed inside Dune 2.0 projects, please
   convert this file to a dune file instead.
   Note: You can use "dune upgrade" to convert your project to dune.
-  File "jbuild", line 4, characters 23-42:
-  4 | (write-file target.txt ${findlib:pkg:file})
-                             ^^^^^^^^^^^^^^^^^^^
-  Error: Library "pkg" not found.
-  Hint: try: dune external-lib-deps --missing --root in-jbuild target.txt
+  File "jbuild", line 1, characters 0-18:
+  1 | (jbuild_version 1)
+      ^^^^^^^^^^^^^^^^^^
+  Error: 'jbuild_version' was deleted in version 1.0 of the dune language
   [1]

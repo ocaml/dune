@@ -175,26 +175,10 @@ Test using installed drivers
   Warning: jbuild files are not allowed inside Dune 2.0 projects, please
   convert this file to a dune file instead.
   Note: You can use "dune upgrade" to convert your project to dune.
-        ocamlc .testdriver.objs/byte/testdriver.{cmi,cmo,cmt}
-        ocamlc testdriver.cma
-      ocamlopt .testdriver.objs/native/testdriver.{cmx,o}
-      ocamlopt testdriver.{a,cmxa}
-      ocamlopt testdriver.cmxs
-      ocamlopt .ppx/631757a4a4789e0bd29628f7a73480f7/ppx.exe
-           ppx test_ppx_args.pp.ml
-  .ppx/631757a4a4789e0bd29628f7a73480f7/ppx.exe
-  --cookie
-  library-name="test_ppx_args"
-  -o
-  test_ppx_args.pp.ml
-  --impl
-  test_ppx_args.ml
-  --as-ppx
-  File "jbuild", line 13, characters 14-32:
-  13 |   (preprocess (pps (testdriver)))))
-                     ^^^^^^^^^^^^^^^^^^
-  Error: Rule failed to generate the following targets:
-  - test_ppx_args.pp.ml
+  File "jbuild", line 2, characters 2-19:
+  2 |  ((name testdriver)
+        ^^^^^^^^^^^^^^^^^
+  Error: Atom expected
   [1]
 
   $ dune build --display short --root jbuild-driver @install
@@ -203,24 +187,17 @@ Test using installed drivers
   Warning: jbuild files are not allowed inside Dune 2.0 projects, please
   convert this file to a dune file instead.
   Note: You can use "dune upgrade" to convert your project to dune.
+  File "jbuild", line 2, characters 2-19:
+  2 |  ((name testdriver)
+        ^^^^^^^^^^^^^^^^^
+  Error: Atom expected
+  [1]
   $ OCAMLPATH=jbuild-driver/_build/install/default/lib dune build --root use-external-driver driveruser.cma
   Entering directory 'use-external-driver'
-           ppx driveruser.pp.ml
-  .ppx/631757a4a4789e0bd29628f7a73480f7/ppx.exe
-  -arg1
-  -arg2
-  -foo
-  bar
-  --cookie
-  library-name="driveruser"
-  -o
-  driveruser.pp.ml
-  --impl
-  driveruser.ml
-  --as-ppx
-  File "dune", line 6, characters 13-53:
+  File "dune", line 6, characters 24-34:
   6 |  (preprocess (pps -arg1 testdriver -arg2 -- -foo bar)))
-                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  Error: Rule failed to generate the following targets:
-  - driveruser.pp.ml
+                              ^^^^^^^^^^
+  Error: Library "testdriver" not found.
+  Hint: try: dune external-lib-deps --missing --root use-external-driver
+    driveruser.cma
   [1]

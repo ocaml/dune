@@ -32,46 +32,9 @@ module Decoder = struct
 
   exception Parens_no_longer_necessary of Loc.t * exn
 
-  let switch_file_kind ~jbuild ~dune =
-    file_kind () >>= function
-    | Jbuild -> jbuild
-    | Dune -> dune
+  let record = fields
 
-  let parens_removed_in_dune_generic ~is_record t =
-    switch_file_kind
-      ~jbuild:(enter t)
-      ~dune:(
-        try_
-          t
-          (function
-            | Parens_no_longer_necessary _ as exn -> raise exn
-            | exn ->
-              try_
-                (enter
-                   (let* loc = loc in
-                    let* _ =
-                      if is_record then
-                        peek >>= function
-                        | Some (List _) ->
-                          raise (Parens_no_longer_necessary (loc, exn))
-                        | _ -> t
-                      else
-                        t
-                    in
-                    raise (Parens_no_longer_necessary (loc, exn))))
-                (function
-                  | Parens_no_longer_necessary _ as exn -> raise exn
-                  | _ -> raise exn))
-      )
-
-  let record parse =
-    parens_removed_in_dune_generic (fields parse) ~is_record:true
-
-  let parens_removed_in_dune t =
-    parens_removed_in_dune_generic t ~is_record:false
-
-  let list parse =
-    parens_removed_in_dune (repeat parse)
+  let list = repeat
 
   let field name ?default t = field name ?default t
   let field_o name t = field_o name t

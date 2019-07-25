@@ -159,71 +159,39 @@ module Pkg = struct
 end
 
 module Pps_and_flags = struct
-  module Jbuild_syntax = struct
-    let of_string ~loc s =
-      if String.is_prefix s ~prefix:"-" then
-        Right [String_with_vars.make_text loc s]
-      else
-        Left (loc, Lib_name.of_string_exn ~loc:(Some loc) s)
-
-    let item =
-      peek_exn >>= function
-      | Template { loc; _ } ->
-        User_error.raise ~loc
-          [ Pp.text "No variables allowed in the preprocessors field" ]
-      | Atom _ | Quoted_string _ -> plain_string of_string
-      | List _ ->
-        list (plain_string (fun ~loc str ->
-          String_with_vars.make_text loc str))
-        >>| (fun x -> Right x)
-
-    let split l =
-      let pps, flags = List.partition_map l ~f:Fn.id in
-      (pps, List.concat flags)
-
-    let decode = list item >>| split
-  end
-
-  module Dune_syntax = struct
-    let decode =
-      let+ l, flags =
-        until_keyword "--"
-          ~before:String_with_vars.decode
-          ~after:(repeat String_with_vars.decode)
-      and+ syntax_version = Syntax.get_exn Stanza.syntax
-      in
-      let pps, more_flags =
-        List.partition_map l ~f:(fun s ->
-          match String_with_vars.is_prefix ~prefix:"-" s with
-          | Yes ->
-            Right s
-          | No | Unknown _ ->
-            let loc = String_with_vars.loc s in
-            match String_with_vars.text_only s with
-            | None ->
-              User_error.raise ~loc
-                [ Pp.text "No variables allowed in ppx library names" ]
-            | Some txt ->
-              Left (loc, Lib_name.of_string_exn ~loc:(Some loc) txt)
-        )
-      in
-      let all_flags = more_flags @ Option.value flags ~default:[] in
-      if syntax_version < (1, 10) then
-        List.iter ~f:
-          (fun flag ->
-             if String_with_vars.has_vars flag then
-               Syntax.Error.since (String_with_vars.loc flag)
-                 Stanza.syntax
-                 (1, 10)
-                 ~what:"Using variables in pps flags"
-          ) all_flags;
-      (pps, all_flags)
-  end
-
   let decode =
-    switch_file_kind
-      ~jbuild:Jbuild_syntax.decode
-      ~dune:Dune_syntax.decode
+    let+ l, flags =
+      until_keyword "--"
+        ~before:String_with_vars.decode
+        ~after:(repeat String_with_vars.decode)
+    and+ syntax_version = Syntax.get_exn Stanza.syntax
+    in
+    let pps, more_flags =
+      List.partition_map l ~f:(fun s ->
+        match String_with_vars.is_prefix ~prefix:"-" s with
+        | Yes ->
+          Right s
+        | No | Unknown _ ->
+          let loc = String_with_vars.loc s in
+          match String_with_vars.text_only s with
+          | None ->
+            User_error.raise ~loc
+              [ Pp.text "No variables allowed in ppx library names" ]
+          | Some txt ->
+            Left (loc, Lib_name.of_string_exn ~loc:(Some loc) txt)
+      )
+    in
+    let all_flags = more_flags @ Option.value flags ~default:[] in
+    if syntax_version < (1, 10) then
+      List.iter ~f:
+        (fun flag ->
+           if String_with_vars.has_vars flag then
+             Syntax.Error.since (String_with_vars.loc flag)
+               Stanza.syntax
+               (1, 10)
+               ~what:"Using variables in pps flags"
+        ) all_flags;
+    (pps, all_flags)
 end
 
 module Dep_conf = struct
@@ -640,7 +608,7 @@ module Lib_deps = struct
       : kind Lib_name.Map.t);
     t
 
-  let decode = parens_removed_in_dune decode
+  let decode = decode
 
   let of_pps pps =
     List.map pps ~f:(fun pp -> Lib_dep.of_lib_name (Loc.none, pp))
@@ -1870,11 +1838,6 @@ module Rule = struct
     ; enabled_if
     }
 
-  let jbuild_syntax =
-    peek_exn >>= function
-    | List (_, (Atom _ :: _)) -> short_form
-    | _ -> record long_form
-
   let dune_syntax =
     peek_exn >>= function
     | List (_, Atom (loc, A s) :: _) -> begin
@@ -1891,10 +1854,7 @@ module Rule = struct
       User_error.raise ~loc:(Dune_lang.Ast.loc sexp)
         [ Pp.textf "S-expression of the form (<atom> ...) expected" ]
 
-  let decode =
-    switch_file_kind
-      ~jbuild:jbuild_syntax
-      ~dune:dune_syntax
+  let decode = dune_syntax
 
   type lex_or_yacc =
     { modules : string list
@@ -1902,23 +1862,7 @@ module Rule = struct
     ; enabled_if : Blang.t
     }
 
-  let ocamllex_jbuild =
-    peek_exn >>= function
-    | List (_, Atom (_, _) :: _) ->
-      enter (
-        let+ modules = repeat string in
-        { modules
-        ; mode  = Standard
-        ; enabled_if = Blang.true_
-        }
-      )
-    | _ ->
-      record
-        (let+ modules = field "modules" (list string)
-         and+ mode = Mode.field in
-         { modules; mode; enabled_if = Blang.true_ })
-
-  let ocamllex_dune =
+  let ocamllex =
     if_eos
       ~then_:(
         return
@@ -1941,11 +1885,6 @@ module Rule = struct
             ; mode  = Standard
             ; enabled_if = Blang.true_
             }))
-
-  let ocamllex =
-    switch_file_kind
-      ~jbuild:ocamllex_jbuild
-      ~dune:ocamllex_dune
 
   let ocamlyacc = ocamllex
 
@@ -2048,24 +1987,6 @@ module Menhir = struct
     Dune_project.Extension.register_simple
       syntax
       (return [ "menhir", decode >>| fun x -> [T x] ])
-
-  (* Syntax for jbuild files *)
-  let jbuild_syntax =
-    record
-      (let+ merge_into = field_o "merge_into" string
-       and+ flags = field_oslu "flags"
-       and+ modules = field "modules" (list string)
-       and+ mode = Rule.Mode.field
-       and+ loc = loc
-       in
-       { merge_into
-       ; flags
-       ; modules
-       ; mode
-       ; loc
-       ; infer = false
-       ; enabled_if = Blang.true_
-       })
 end
 
 module Coqpp = struct
@@ -2421,35 +2342,17 @@ module Stanzas = struct
        [Toplevel t])
     ]
 
-  let jbuild_parser =
-    (* The menhir stanza was part of the vanilla jbuild
-       syntax. Starting from Dune 1.0, it is presented as an
-       extension with its own version. *)
-    let stanzas =
-      stanzas @
-      [ "menhir",
-        (let+ loc = loc
-         and+ x = Menhir.jbuild_syntax in
-         [Menhir.T { x with loc }])
-      ]
-    in
-    Syntax.set Stanza.syntax (0, 0) (sum stanzas)
-
   let () =
     Dune_project.Lang.register Stanza.syntax stanzas
 
-  let parser ~kind project =
-    let syntax_parser (syntax : Dune_lang.File_syntax.t) =
-      match syntax with
-      | Jbuild -> jbuild_parser
-      | Dune   -> Dune_project.stanza_parser project
-    in
-    Dune_project.set project (syntax_parser kind)
+  let parser project =
+    let syntax_parser = Dune_project.stanza_parser project in
+    Dune_project.set project syntax_parser
 
   let parse parser = Dune_lang.Decoder.parse parser Univ_map.empty
 
-  let of_ast ~kind (project : Dune_project.t) sexp =
-    let parser = parser ~kind project in
+  let of_ast (project : Dune_project.t) sexp =
+    let parser = parser project in
     parse parser sexp
 
   exception Include_loop of Path.Source.t * (Loc.t * Path.Source.t) list
@@ -2475,9 +2378,9 @@ module Stanzas = struct
           ~current_file ~include_stack sexps
       | stanza -> [stanza])
 
-  let parse ~file ~kind (project : Dune_project.t) sexps =
-    let stanza_parser = parser ~kind project in
-    let lexer = Dune_lang.Lexer.of_syntax kind in
+  let parse ~file (project : Dune_project.t) sexps =
+    let stanza_parser = parser project in
+    let lexer = Dune_lang.Lexer.token in
     let stanzas =
       try
         parse_file_includes ~stanza_parser ~lexer ~include_stack:[]

@@ -10,8 +10,8 @@ project.
   Warning: jbuild files are deprecated, please convert this file to a dune file
   instead.
   Note: You can use "dune upgrade" to convert your project to dune.
-  From dune-file/a/b/: ../../..
-  From dune-file/a/: ../..
-  From jbuild/a/b/: ../../..
-  From jbuild/a/: ../..
-  From root: .
+  File "jbuild-file/a/jbuild", line 2, characters 3-17:
+  2 |   ((name runtest)
+         ^^^^^^^^^^^^^^
+  Error: Atom expected
+  [1]

@@ -42,7 +42,11 @@ This registers the dependency:
   Warning: jbuild files are not allowed inside Dune 2.0 projects, please
   convert this file to a dune file instead.
   Note: You can use "dune upgrade" to convert your project to dune.
-  dynamic-contents
+  File "jbuild", line 4, characters 3-19:
+  4 |   ((name test-path)
+         ^^^^^^^^^^^^^^^^
+  Error: Atom expected
+  [1]
 
 ${path-no-dep:string}
 ---------------------
@@ -55,8 +59,11 @@ This does not:
   Warning: jbuild files are not allowed inside Dune 2.0 projects, please
   convert this file to a dune file instead.
   Note: You can use "dune upgrade" to convert your project to dune.
-  ../../file-that-does-not-exist
-  ../..
+  File "jbuild", line 4, characters 3-19:
+  4 |   ((name test-path)
+         ^^^^^^^^^^^^^^^^
+  Error: Atom expected
+  [1]
 
 ${dep:string}
 --------------
@@ -69,8 +76,8 @@ This form does not exist, but displays an hint:
   Warning: jbuild files are not allowed inside Dune 2.0 projects, please
   convert this file to a dune file instead.
   Note: You can use "dune upgrade" to convert your project to dune.
-  File "jbuild", line 5, characters 16-37:
-  5 |    (action (cat ${dep:generated-file}))))
-                      ^^^^^^^^^^^^^^^^^^^^^
-  Error: %{dep:..} is only available since version 1.0 of the dune language
+  File "jbuild", line 4, characters 3-18:
+  4 |   ((name test-dep)
+         ^^^^^^^^^^^^^^^
+  Error: Atom expected
   [1]

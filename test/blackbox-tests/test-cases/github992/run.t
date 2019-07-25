@@ -27,7 +27,8 @@ argument of "package".
   Warning: jbuild files are not allowed inside Dune 2.0 projects, please
   convert this file to a dune file instead.
   Note: You can use "dune upgrade" to convert your project to dune.
-  File "jbuild", line 3, characters 2-15:
-  3 |   (package foo)))
-        ^^^^^^^^^^^^^
-  Warning: This field is useless without a (public_name ...) field.
+  File "jbuild", line 2, characters 2-12:
+  2 |  ((name foo)
+        ^^^^^^^^^^
+  Error: Atom expected
+  [1]

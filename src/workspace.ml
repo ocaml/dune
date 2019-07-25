@@ -156,16 +156,6 @@ module Context = struct
          Opam x)
       ]
 
-  let t ~profile ~x =
-    switch_file_kind
-      ~jbuild:
-        (* jbuild-workspace files *)
-        (peek_exn >>= function
-         | List (_, List _ :: _) ->
-           Dune_lang.Decoder.record (Opam.t ~profile ~x) >>| fun x -> Opam x
-         | _ -> t ~profile ~x)
-      ~dune:(t ~profile ~x)
-
   let env = function
     | Default d -> d.env
     | Opam o -> o.base.env

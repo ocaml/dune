@@ -355,7 +355,9 @@ include Sub_system.Register_end_point(
                (Super_context.resolve_program ~dir sctx ~loc:(Some loc) runner,
                 Dep exe)
            in
-           Super_context.Deps.interpret sctx info.deps ~expander
+           Build.fanout
+             (Super_context.Deps.interpret sctx info.deps ~expander)
+             (Build.paths source_files)
            >>^ ignore
            >>>
            Build.progn

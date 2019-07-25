@@ -120,7 +120,8 @@ let resolve_targets_mixed ~log common (setup : Dune.Main.build_system)
       List.map user_targets ~f:(function
         | String s -> resolve_target common ~setup s
         | Path p -> resolve_path p ~setup) in
-    if common.config.display = Verbose then begin
+    let config = Common.config common in
+    if config.display = Verbose then begin
       Log.info log "Actual targets:";
       List.concat_map targets ~f:(function
         | Ok targets -> targets

@@ -805,12 +805,8 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess
            let ast = setup_dialect_rules sctx ~dir ~dep_kind ~expander m in
            if lint then lint_module ~ast ~source:m;
            pped_module ast ~f:(fun ml_kind src dst ->
-             (* Sandboxing breaks with an error like this:
-                Error: rename: _build/.sandbox/d9599ccb22f1fc9fc448f0d987648907/build/default/driveruser.pp.ml: No such file or directory
-
-                instead of the expected "rule failed to generate targets"
-             *)
-             SC.add_rule ~sandbox:Sandbox_config.no_sandboxing sctx ~loc ~dir
+             SC.add_rule
+               ~sandbox:Sandbox_config.no_special_requirements sctx ~loc ~dir
                (promote_correction ~suffix:corrected_suffix
                   (Option.value_exn (Module.file m ~ml_kind))
                   (preprocessor_deps >>^ ignore

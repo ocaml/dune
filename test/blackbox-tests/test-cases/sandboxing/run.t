@@ -73,3 +73,15 @@ When we pass [preserve_file_kind], the file type seen by the rule is preserved:
   $ dune build t --sandbox symlink
   $ cat _build/default/t
   f
+
+If rule fails to generate targets, we give a good error message, even with sandboxing:
+
+  $ true > dune
+  $ echo '(rule (target t) (deps (sandbox always)) (action (bash ":")))' >> dune
+  $ dune build t
+  File "dune", line 1, characters 0-61:
+  1 | (rule (target t) (deps (sandbox always)) (action (bash ":")))
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  Error: Rule failed to generate the following targets:
+  - t
+  [1]

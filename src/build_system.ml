@@ -1438,6 +1438,16 @@ end = struct
   let start_rule t _rule =
     t.hook Rule_started
 
+  let rename_optional_file ~src ~dst =
+    let src = (Path.Build.to_string src) in
+    let dst = (Path.Build.to_string dst) in
+    match Unix.rename src dst with
+    | () -> ()
+    | exception Unix.Unix_error ((ENOENT | ENOTDIR), _, _) ->
+      (match Unix.unlink dst with
+       | exception Unix.Unix_error (ENOENT, _, _) -> ()
+       | () -> ())
+
   let execute_rule_impl rule =
     let t = t () in
     let { Internal_rule.
@@ -1517,10 +1527,10 @@ end = struct
           Path.unlink_no_err (Path.build p));
         pending_targets := Path.Build.Set.union targets !pending_targets;
         let loc = Rule.Info.loc info in
-        let action =
+        let sandboxed, action =
           match sandbox with
           | None ->
-            action
+            None, action
           | Some (sandbox_dir, sandbox_mode) ->
             Path.rm_rf (Path.build sandbox_dir);
             let sandboxed path : Path.Build.t =
@@ -1533,18 +1543,26 @@ end = struct
                | None -> Fs.assert_exists ~loc p
                | Some p -> Fs.mkdir_p (sandboxed p));
             Fs.mkdir_p (sandboxed dir);
+            Some sandboxed,
             Action.sandbox action
               ~sandboxed
               ~mode:sandbox_mode
               ~deps
-              ~targets:targets_as_list
               ~eval_pred
         in
         let chdirs = Action.chdirs action in
         Path.Set.iter chdirs ~f:Fs.(mkdir_p_or_check_exists ~loc);
         let+ () =
           with_locks locks ~f:(fun () ->
-            Action_exec.exec ~context ~env ~targets action)
+            Fiber.map (Action_exec.exec ~context ~env ~targets action)
+              ~f:(fun () ->
+                match sandboxed with
+                | None -> ()
+                | Some sandboxed ->
+                  List.iter targets_as_list ~f:(fun target ->
+                    rename_optional_file ~src:(sandboxed target) ~dst:target)
+              )
+          )
         in
         Option.iter sandbox ~f:(fun (p, _mode) -> Path.rm_rf (Path.build p));
         (* All went well, these targets are no longer pending *)

@@ -205,7 +205,7 @@ let maybe_sandbox_path f p =
   | None -> p
   | Some p -> Path.build (f p)
 
-let sandbox t ~sandboxed ~mode ~deps ~targets ~eval_pred : t =
+let sandbox t ~sandboxed ~mode ~deps ~eval_pred : t =
   let link = link_function ~mode in
   Progn
     [ prepare_managed_paths ~sandboxed ~link deps ~eval_pred
@@ -216,8 +216,6 @@ let sandbox t ~sandboxed ~mode ~deps ~targets ~eval_pred : t =
         ~f_target:(fun ~dir:_ -> sandboxed)
         ~f_program:(fun ~dir:_ ->
           Result.map ~f:(maybe_sandbox_path sandboxed))
-    ; Progn (List.filter_map targets ~f:(fun path ->
-        Some (Rename (sandboxed path, path))))
     ]
 
 type is_useful_to_sandbox =

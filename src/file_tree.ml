@@ -265,8 +265,15 @@ let load ?(warn_when_seeing_jbuild_file=true) path ~ancestor_vcs =
               if fn = "dune" then
                 ignore (Dune_project.ensure_project_file_exists project
                         : Dune_project.created_or_already_exist)
+              else if Dune_project.dune_version project >= (2, 0) then
+                User_warning.emit ~loc:(Loc.in_file (Path.source file))
+                  [ Pp.text "jbuild files are not allowed inside Dune \
+                             2.0 projects, please convert this file to \
+                             a dune file instead."
+                  ; Pp.text "Note: You can use \"dune upgrade\" to \
+                             convert your project to dune."
+                  ]
               else if warn_about_jbuild then
-                (* DUNE2: turn this into an error *)
                 User_warning.emit ~loc:(Loc.in_file (Path.source file))
                   [ Pp.text "jbuild files are deprecated, please \
                              convert this file to a dune file instead."

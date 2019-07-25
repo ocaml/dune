@@ -992,10 +992,6 @@ module Library = struct
   module Wrapped = struct
     include Wrapped
 
-    let value = function
-      | Inherited.From _ -> None
-      | This s -> Some (to_bool s)
-
     let default = Simple true
 
     let make ~wrapped ~implements ~special_builtin_support : t Inherited.t =
@@ -1117,13 +1113,12 @@ module Library = struct
          let open Syntax.Version.Infix in
          match name, public with
          | Some (loc, res), _ ->
-           let wrapped = Wrapped.value wrapped in
-           (loc, Lib_name.Local.validate (loc, res) ~wrapped)
+           (loc, Lib_name.Local.validate (loc, res))
          | None, Some { name = (loc, name) ; _ }  ->
            if dune_version >= (1, 1) then
              match Lib_name.to_local name with
              | Ok m -> (loc, m)
-             | Warn _ | Invalid ->
+             | Error ()->
                User_error.raise ~loc
                  [ Pp.textf "Invalid library name."
                  ; Pp.text
@@ -2127,7 +2122,7 @@ module Coq = struct
        in
        let name =
          let (loc, res) = name in
-         (loc, Lib_name.Local.validate (loc, res) ~wrapped:None)
+         (loc, Lib_name.Local.validate (loc, res))
        in
        { name
        ; public

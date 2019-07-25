@@ -250,67 +250,36 @@ module Dune_project = struct
     if s <> t.contents then Io.write_file file s
 end
 
-let get_name ~files ~(dune_project : Dune_project.t option) ?name () =
+let get_name ~files ~(dune_project : Dune_project.t option) () =
   let package_names =
     List.filter_map files ~f:(fun fn ->
       match Path.parent fn with
       | Some p when Path.is_root p -> begin
-        let fn = Path.basename fn in
-        match Filename.split_extension fn with
-        | s, ".opam" -> Some s
-        | _ -> None
-      end
+          let fn = Path.basename fn in
+          match Filename.split_extension fn with
+          | s, ".opam" -> Some s
+          | _ -> None
+        end
       | _ -> None)
   in
   if package_names = [] then
     User_error.raise
       [ Pp.textf "No <package>.opam files found." ];
   let (loc, name) =
-    match Wp.t with
-    | Dune -> begin
-        assert (Option.is_none name);
-        match dune_project with
-        | None ->
-          User_error.raise
-            [ Pp.text "There is no dune-project file in the current \
-                        directory, please add one with a (name <name>) field in it."
-            ]
-            ~hints:[Pp.text "dune subst must be executed from the root \
-                             of the project."]
-        | Some { name = None; _ } ->
-          User_error.raise
-            [ Pp.textf "The project name is not defined, please add a \
-                        (name <name>) field to your dune-project file." ]
-        | Some { name = Some n; _ } -> (n.loc_of_arg, n.arg)
-      end
-    | Jbuilder ->
-      match name with
-      | Some name -> (Loc.none, name)
-      | None ->
-        match dune_project with
-        | Some { name = Some n; _ } -> (n.loc_of_arg, n.arg)
-        | _ ->
-          let name =
-            let prefix = String.longest_prefix package_names in
-            if prefix = "" then
-              None
-            else
-              match String.drop_suffix prefix ~suffix:"-"
-                  , String.drop_suffix prefix ~suffix:"_" with
-              | Some _, Some _ -> assert false
-              | None, None ->
-                Option.some_if (List.mem ~set:package_names prefix) prefix
-              | (Some _ as p), None
-              | None, (Some _ as p) -> p
-          in
-          match name with
-          | Some name -> (Loc.none, name)
-          | None ->
-            User_error.raise
-              [ Pp.text "Cannot determine name automatically."
-              ; Pp.text "You must pass a [--name] command line \
-                         argument."
-              ]
+    match dune_project with
+    | None ->
+      User_error.raise
+        [ Pp.text "There is no dune-project file in the current \
+                   directory, please add one with a (name <name>) \
+                   field in it."
+        ]
+        ~hints:[Pp.text "dune subst must be executed from the root \
+                         of the project."]
+    | Some { name = None; _ } ->
+      User_error.raise
+        [ Pp.textf "The project name is not defined, please add a \
+                    (name <name>) field to your dune-project file." ]
+    | Some { name = Some n; _ } -> (n.loc_of_arg, n.arg)
   in
   if not (List.mem name ~set:package_names) then begin
     if Loc.is_none loc then
@@ -325,7 +294,7 @@ let get_name ~files ~(dune_project : Dune_project.t option) ?name () =
   end;
   name
 
-let subst ?name vcs =
+let subst vcs =
   let+ ((version, commit), files) =
     Fiber.fork_and_join
       (fun () ->
@@ -340,14 +309,14 @@ let subst ?name vcs =
     else
       None
   in
-  let name = get_name ~files ~dune_project ?name () in
+  let name = get_name ~files ~dune_project () in
   let watermarks = make_watermark_map ~name ~version ~commit in
   Option.iter dune_project ~f:(Dune_project.subst ~map:watermarks ~version);
   List.iter files ~f:(fun path ->
     if is_a_source_file path && not (Path.equal path Dune_project.file) then
       subst_file path ~map:watermarks)
 
-let subst ?name () =
+let subst () =
   match
     Sys.readdir "."
     |> Array.to_list
@@ -355,4 +324,4 @@ let subst ?name () =
     |> Vcs.Kind.of_dir_contents
   with
   | None -> Fiber.return ()
-  | Some kind -> subst ?name { kind; root = Path.root }
+  | Some kind -> subst { kind; root = Path.root }

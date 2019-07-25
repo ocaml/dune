@@ -213,48 +213,20 @@ module Options_implied_by_dash_p = struct
       in
       Option.value x ~default:Default
     and+ profile =
-      Term.ret @@
-      let+ dev =
-        Term.ret @@
-        let+ dev =
-          Arg.(value
-               & flag
-               & info ["dev"] ~docs
-                   ~doc:{|Same as $(b,--profile dev)|})
-        in
-        match dev, Wp.t with
-        | false, (Dune | Jbuilder) -> `Ok false
-        | true, Jbuilder -> `Ok true
-        | true, Dune ->
-          `Error
-            (true, "--dev is no longer accepted as it is now the default.")
-      and+ profile =
-        let doc =
-          "Build profile. dev if unspecified or release if -p is set." in
-        Arg.(value
-             & opt (some string) None
-             & info ["profile"] ~docs
-                 ~env:(Arg.env_var ~doc "DUNE_PROFILE")
-                 ~doc:
-                   (sprintf
-                      {|Select the build profile, for instance $(b,dev) or
-                        $(b,release). The default is $(b,%s).|}
-                      Config.default_build_profile))
-      in
-      match dev, profile with
-      | false, x    -> `Ok x
-      | true , None -> `Ok (Some "dev")
-      | true , Some _ ->
-        `Error (true,
-                "Cannot use --dev and --profile simultaneously")
-    and+ default_target =
-      let default =
-        match Wp.t with
-        | Dune     -> "@@default"
-        | Jbuilder -> "@install"
-      in
+      let doc =
+        "Build profile. dev if unspecified or release if -p is set." in
       Arg.(value
-           & opt string default
+           & opt (some string) None
+           & info ["profile"] ~docs
+               ~env:(Arg.env_var ~doc "DUNE_PROFILE")
+               ~doc:
+                 (sprintf
+                    {|Select the build profile, for instance $(b,dev) or
+                        $(b,release). The default is $(b,%s).|}
+                    Config.default_build_profile))
+    and+ default_target =
+      Arg.(value
+           & opt string "@@default"
            & info ["default-target"] ~docs ~docv:"TARGET"
                ~doc:{|Set the default target that when none is specified to
                       $(b,dune build).|})
@@ -265,14 +237,11 @@ module Options_implied_by_dash_p = struct
            & flag
            & info ["always-show-command-line"] ~docs ~doc)
     and+ promote_install_files =
-      if Wp.dune2 then
-        let doc =
-          "Promote the generated <package>.install files to the source tree" in
-        Arg.(value
-             & flag
-             & info ["promote-install-files"] ~docs ~doc)
-      else
-        Term.const true
+      let doc =
+        "Promote the generated <package>.install files to the source tree" in
+      Arg.(value
+           & flag
+           & info ["promote-install-files"] ~docs ~doc)
     in
     { root
     ; only_packages
@@ -369,6 +338,12 @@ let term =
          & flag
          & info ["debug-backtraces"] ~docs
              ~doc:{|Always print exception backtraces.|})
+  and+ terminal_persistence =
+    Arg.(value
+         & opt (some (enum (Config.Terminal_persistence.all))) None
+         & info ["terminal-persistence"] ~docs ~docv:"MODE" ~doc: {|
+         Changes how the log of build results are displayed to the
+         console between rebuilds while in --watch mode. |})
   and+ display =
     one_of
       (let+ verbose =
@@ -489,6 +464,7 @@ let term =
       ; concurrency
       ; sandboxing_preference =
           Option.map sandboxing_preference ~f:(fun x -> [x])
+      ; terminal_persistence
       }
   in
   let config =

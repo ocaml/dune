@@ -4,7 +4,6 @@ module Kind : sig
   type t =
     | Explicit
     | Dune_workspace
-    | Jbuild_workspace
     | Dune_project
     | Cwd
 end

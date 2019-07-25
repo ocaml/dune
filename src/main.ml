@@ -176,6 +176,7 @@ let bootstrap () =
       let config : Config.t =
         { display     = Quiet
         ; concurrency = Fixed 1
+        ; terminal_persistence = Preserve
         ; sandboxing_preference = []
         }
       in
@@ -195,10 +196,11 @@ let bootstrap () =
       | Error msg -> raise (Arg.Bad msg)
       | Ok c -> concurrency := Some c
     in
+    let terminal_persistence = Some Config.Terminal_persistence.Preserve in
     let profile = ref None in
     Arg.parse
       [ "-j"           , String concurrency_arg, "JOBS concurrency"
-      ; "--release"        , Unit (fun () -> profile := Some "release"),
+      ; "--release"    , Unit (fun () -> profile := Some "release"),
         " set release mode"
       ; "--display"    , display_mode          , " set the display mode"
       ; "--subst"      , Unit subst            ,
@@ -221,6 +223,7 @@ let bootstrap () =
         { display     = !display
         ; concurrency = !concurrency
         ; sandboxing_preference = None
+        ; terminal_persistence
         }
     in
     let config =

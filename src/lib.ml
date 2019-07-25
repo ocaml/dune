@@ -496,7 +496,6 @@ module Lib_and_module = struct
     type nonrec t = t list
 
     let link_flags ts ~(lib_config : Lib_config.t) ~mode =
-      ignore lib_config;
       let libs = List.filter_map ts ~f:(function
         | Lib lib -> Some lib
         | Module _ -> None) in

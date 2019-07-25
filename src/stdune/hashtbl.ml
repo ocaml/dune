@@ -91,7 +91,23 @@ module Make(H : sig
       |> List.sort ~compare:(fun (k, _) (k', _) -> Dyn.compare k k')
     )
 
+  let filteri_inplace t ~f =
+    (* Surely there's a more performant way of writing this.
+       (e.g. using filter_map_inplace), but starting with a simple thing
+       for now, in part because [filter_map_inplace] is not available
+       in 4.02. *)
+    let to_delete =
+      ref []
+    in
+    iter t ~f:(fun ~key ~data -> match f ~key ~data with
+      | false -> to_delete := key :: !to_delete
+      | true -> ());
+    List.iter !to_delete ~f:(fun k ->
+      remove t k)
+
   let iter t ~f = iter t ~f:(fun ~key:_ ~data -> f data)
+
+
 end
 
 let hash = MoreLabels.Hashtbl.hash

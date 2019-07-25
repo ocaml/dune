@@ -19,4 +19,6 @@ module type S = sig
   val keys : _ t -> key list
 
   val to_dyn : ('v -> Dyn.t) -> 'v t -> Dyn.t
+
+  val filteri_inplace : 'a t -> f:(key:key -> data:'a -> bool) -> unit
 end

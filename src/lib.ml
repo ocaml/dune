@@ -504,7 +504,11 @@ module Lib_and_module = struct
          List.map ts ~f:(function
            | Lib t ->
              let archives = Lib_info.archives t.info in
-             Command.Args.Deps (Mode.Dict.get archives mode)
+             let archive_files = L.archive_files [t] ~mode in
+             Command.Args.S [
+               Command.Args.Deps (Mode.Dict.get archives mode);
+               Command.Args.Hidden_deps (Dep.Set.of_files archive_files);
+             ]
            | Module (obj_dir, m) ->
              Dep (Obj_dir.Module.cm_file_unsafe obj_dir m
                     ~kind:(Mode.cm_kind mode))

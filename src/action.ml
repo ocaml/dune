@@ -181,7 +181,11 @@ let prepare_managed_paths ~link ~sandboxed deps ~eval_pred =
         | None ->
           (* This can actually raise if we try to sandbox the "copy from
              source dir" rules. There is no reason to do that though. *)
-          assert (not (Path.is_in_source_tree path));
+          if (Path.is_in_source_tree path)
+          then
+            Code_error.raise
+              "Action depends on source tree. All actions should depend on the \
+               copies in build directory instead" ["path", Path.to_dyn path];
           acc
         | Some p -> link path (sandboxed p) :: acc)
   in

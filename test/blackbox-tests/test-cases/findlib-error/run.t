@@ -14,8 +14,8 @@ But it must still be available in jbuild files
   $ dune build --root in-jbuild target.txt
   Entering directory 'in-jbuild'
   File "jbuild", line 1, characters 0-0:
-  Warning: jbuild files are deprecated, please convert this file to a dune file
-  instead.
+  Warning: jbuild files are not allowed inside Dune 2.0 projects, please
+  convert this file to a dune file instead.
   Note: You can use "dune upgrade" to convert your project to dune.
   File "jbuild", line 4, characters 23-42:
   4 | (write-file target.txt ${findlib:pkg:file})

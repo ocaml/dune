@@ -1,10 +1,7 @@
-(lang dune 1.11)
+(lang dune 2.0)
 (name dune)
 
-(implicit_transitive_deps false)
 (generate_opam_files true)
-(wrapped_executables true)
-(explicit_js_mode)
 
 (license MIT)
 (maintainers "Jane Street Group, LLC <opensource@janestreet.com>")

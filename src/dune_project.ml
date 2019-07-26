@@ -168,7 +168,8 @@ module Source_kind = struct
          match String.split ~on:'/' s with
          | [user; repo] -> Github (user,repo)
          | _ ->
-           User_error.raise ~loc [ Pp.textf "GitHub repository must be of form user/repo" ])
+           User_error.raise ~loc
+             [ Pp.textf "GitHub repository must be of form user/repo" ])
       ; "uri", string >>| fun s -> Url s
       ]
 end
@@ -615,11 +616,11 @@ let parse ~dir ~lang ~opam_packages ~file =
      and+ homepage = field_o "homepage"
                        (Syntax.since Stanza.syntax (1, 10) >>> string)
      and+ documentation = field_o "documentation"
-                       (Syntax.since Stanza.syntax (1, 10) >>> string)
+                            (Syntax.since Stanza.syntax (1, 10) >>> string)
      and+ bug_reports = field_o "bug_reports"
                           (Syntax.since Stanza.syntax (1, 10) >>> string)
      and+ maintainers = field "maintainers" ~default:[]
-                         (Syntax.since Stanza.syntax (1, 10) >>> repeat string)
+                          (Syntax.since Stanza.syntax (1, 10) >>> repeat string)
      and+ explicit_extensions =
        multi_field "using"
          (let+ loc = loc
@@ -642,8 +643,9 @@ let parse ~dir ~lang ~opam_packages ~file =
      and+ () = Versioned_file.no_more_lang
      and+ generate_opam_files = field_o_b "generate_opam_files"
                                   ~check:(Syntax.since Stanza.syntax (1, 10))
-     and+ dialects = multi_field "dialect"
-                       (Syntax.since Stanza.syntax (1, 11) >>> located Dialect.decode)
+     and+ dialects =
+       multi_field "dialect"
+         (Syntax.since Stanza.syntax (1, 11) >>> located Dialect.decode)
      and+ explicit_js_mode =
        field_o_b "explicit_js_mode" ~check:(Syntax.since Stanza.syntax (1, 11))
      in
@@ -667,16 +669,17 @@ let parse ~dir ~lang ~opam_packages ~file =
          | [p], Some (Named name) ->
            if Package.Name.to_string p.name <> name then
              User_error.raise ~loc:p.loc
-               [ Pp.textf "when a single package is defined, it must have the same \
-                name as the project name: %s" name ];
+               [ Pp.textf "when a single package is defined, it must have the \
+                           same name as the project name: %s" name ];
          | _, _ -> ()
          end;
          match
            Package.Name.Map.of_list_map packages ~f:(fun p -> p.name, p)
          with
          | Error (_, _, p) ->
-           User_error.raise ~loc:p.loc [ Pp.textf "package %s is already defined"
-             (Package.Name.to_string p.name) ]
+           User_error.raise ~loc:p.loc
+             [ Pp.textf "package %s is already defined"
+                 (Package.Name.to_string p.name) ]
          | Ok packages ->
            Package.Name.Map.merge packages opam_packages
              ~f:(fun _name dune opam ->
@@ -737,8 +740,8 @@ let parse ~dir ~lang ~opam_packages ~file =
      let root = dir in
      let file_key = File_key.make ~name ~root in
      let dialects =
-       List.fold_left
-         ~f:(fun dialects (loc, dialect) -> Dialect.DB.add dialects ~loc dialect)
+       List.fold_left ~f:(fun dialects (loc, dialect) ->
+         Dialect.DB.add dialects ~loc dialect)
          ~init:Dialect.DB.builtin dialects
      in
      { name

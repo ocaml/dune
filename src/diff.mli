@@ -6,7 +6,6 @@ module Mode : sig
   type t =
     | Binary      (** no diffing, just raw comparison      *)
     | Text        (** diffing after newline normalization  *)
-    | Text_jbuild (** diffing but no newline normalization *)
 end
 
 type 'path t =

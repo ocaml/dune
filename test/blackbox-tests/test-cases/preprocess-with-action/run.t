@@ -1,10 +1,12 @@
-  $ dune runtest
-  File "jbuild/jbuild", line 1, characters 0-0:
-  Warning: jbuild files are deprecated, please convert this file to a dune file
-  instead.
-  Note: You can use "dune upgrade" to convert your project to dune.
-  File "jbuild/jbuild", line 2, characters 2-13:
-  2 |  ((name test)
-        ^^^^^^^^^^^
-  Error: Atom expected
-  [1]
+  $ dune runtest --display short
+      ocamllex pp/pp.ml
+      ocamldep pp/.pp.eobjs/pp.ml.d
+        ocamlc pp/.pp.eobjs/byte/pp.{cmi,cmo,cmt}
+      ocamlopt pp/.pp.eobjs/native/pp.{cmx,o}
+      ocamlopt pp/pp.exe
+            pp dune/test.pp.ml
+      ocamldep dune/.test.eobjs/test.pp.ml.d
+        ocamlc dune/.test.eobjs/byte/test.{cmi,cmo,cmt}
+      ocamlopt dune/.test.eobjs/native/test.{cmx,o}
+      ocamlopt dune/test.exe
+          test dune/test.output

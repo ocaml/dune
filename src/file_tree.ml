@@ -225,8 +225,13 @@ let readdir path =
 
 let load ?(warn_when_seeing_jbuild_file=true) path ~ancestor_vcs =
   let open Result.O in
+  let nb_path_visited = ref 0 in
   let rec walk path ~dirs_visited ~project:parent_project ~vcs ~(dir_status : Sub_dirs.Status.t)
     : (_, _) Result.t =
+    incr nb_path_visited;
+    if !nb_path_visited mod 100 = 0 then
+      Console.update_status_line
+        (Pp.verbatim (Printf.sprintf "scanned %i directories" !nb_path_visited));
     let+ { dirs; files } = readdir path in
     let project =
       if dir_status = Data_only then
@@ -347,14 +352,17 @@ let load ?(warn_when_seeing_jbuild_file=true) path ~ancestor_vcs =
     in
     Dir.create ~path ~contents ~status:dir_status ~project ~vcs
   in
-  match
+  let walk =
     walk path
       ~dirs_visited:(File.Map.singleton (File.of_source_path path) path)
       ~dir_status:Normal
       ~project:(Lazy.force Dune_project.anonymous)
       ~vcs:ancestor_vcs
-  with
-  | Ok dir -> dir
+  in
+  Console.clear_status_line ();
+  match walk with
+  | Ok dir ->
+    dir
   | Error m ->
     User_error.raise [ Pp.textf "Unable to load source %s.@.Reason:%s@."
       (Path.Source.to_string_maybe_quoted path) (Unix.error_message m) ]

@@ -1,6 +1,9 @@
 2.0.0 (unreleased)
 ------------------
 
+- Indicate the progress of the initial file tree loading (#2459, fixes #2374,
+  @bobot)
+
 - Build `.cm[ox]` files for executables more eagerly. This speeds up builds at
   the cost of building unnecessary artifacts in some cases. Some of these extra
   artifacts can fail to built, so this is a breaking change. (#2268, @rgrinberg)

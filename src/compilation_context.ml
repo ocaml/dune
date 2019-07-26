@@ -47,7 +47,6 @@ type t =
   ; scope                : Scope.t
   ; expander             : Expander.t
   ; obj_dir              : Path.Build.t Obj_dir.t
-  ; dir_kind             : Dune_lang.File_syntax.t
   ; modules              : Modules.t
   ; flags                : Ocaml_flags.t
   ; requires_compile     : Lib.t list Or_exn.t
@@ -68,7 +67,6 @@ let super_context        t = t.super_context
 let scope                t = t.scope
 let expander             t = t.expander
 let dir                  t = Obj_dir.dir t.obj_dir
-let dir_kind             t = t.dir_kind
 let obj_dir              t = t.obj_dir
 let modules              t = t.modules
 let flags                t = t.flags
@@ -88,7 +86,6 @@ let vimpl                t = t.vimpl
 let context              t = Super_context.context t.super_context
 
 let create ~super_context ~scope ~expander ~obj_dir
-      ?(dir_kind=Dune_lang.File_syntax.Dune)
       ~modules ~flags ~requires_compile ~requires_link
       ?(preprocessing=Preprocessing.dummy) ?(no_keep_locs=false)
       ~opaque ?stdlib ~js_of_ocaml ~dynlink ?sandbox ~package ?vimpl () =
@@ -102,7 +99,6 @@ let create ~super_context ~scope ~expander ~obj_dir
   ; scope
   ; expander
   ; obj_dir
-  ; dir_kind
   ; modules
   ; flags
   ; requires_compile

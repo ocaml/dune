@@ -48,7 +48,6 @@ let generate_and_compile_module cctx ~precompiled_cmi ~name:basename
       ~super_context:sctx
       ~expander:(Compilation_context.expander cctx)
       ~scope:(Compilation_context.scope cctx)
-      ~dir_kind:(Compilation_context.dir_kind cctx)
       ~obj_dir
       ~modules
       ~requires_compile:requires

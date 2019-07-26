@@ -16,16 +16,6 @@ When compiling vendored code, all warnings should be disabled
   Entering directory 'warnings'
   There should be no OCaml warning above!
 
-Dune will not warn about jbuild files within vendored directories
-
-  $ dune build --root jbuild-files @jbuild-are-ok
-  Entering directory 'jbuild-files'
-  File "vendored/jbuild", line 1, characters 10-20:
-  1 | (library ((name lib)))
-                ^^^^^^^^^^
-  Error: Atom expected
-  [1]
-
 Dune will not warn about generating inaccurate .merlin files within vendored directories
 
   $ dune build --root inaccurate-merlin @inaccurate-merlins-are-ok

@@ -645,7 +645,7 @@ let parse ~dir ~lang ~opam_packages ~file =
      and+ dialects = multi_field "dialect"
                        (Syntax.since Stanza.syntax (1, 11) >>> located Dialect.decode)
      and+ explicit_js_mode =
-       field_b "explicit_js_mode" ~check:(Syntax.since Stanza.syntax (1, 11))
+       field_o_b "explicit_js_mode" ~check:(Syntax.since Stanza.syntax (1, 11))
      in
      let homepage =
        match homepage, source with
@@ -729,6 +729,9 @@ let parse ~dir ~lang ~opam_packages ~file =
      let dune_version = lang.version in
      let allow_approx_merlin =
        Option.value ~default:(dune_version < (1, 9)) allow_approx_merlin in
+     let explicit_js_mode =
+       Option.value explicit_js_mode
+         ~default:(explicit_js_mode_default ~lang) in
      let generate_opam_files =
        Option.value ~default:false generate_opam_files in
      let root = dir in

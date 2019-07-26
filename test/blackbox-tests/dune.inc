@@ -1127,14 +1127,6 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
- (name ocamllex-jbuild)
- (deps (package dune) (source_tree test-cases/ocamllex-jbuild))
- (action
-  (chdir
-   test-cases/ocamllex-jbuild
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
-
-(alias
  (name odig-files-workspace)
  (deps (package dune) (source_tree test-cases/odig-files-workspace))
  (action
@@ -1793,7 +1785,6 @@
   (alias ocaml-config-macro)
   (alias ocaml-syntax)
   (alias ocamldep-multi-stanzas)
-  (alias ocamllex-jbuild)
   (alias odig-files-workspace)
   (alias odoc)
   (alias odoc-package-mld-link)
@@ -1981,7 +1972,6 @@
   (alias ocaml-config-macro)
   (alias ocaml-syntax)
   (alias ocamldep-multi-stanzas)
-  (alias ocamllex-jbuild)
   (alias odig-files-workspace)
   (alias old-dune-subsystem)
   (alias optional)

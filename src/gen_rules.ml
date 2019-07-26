@@ -77,7 +77,7 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
 
   let gen_rules dir_contents cctxs
         { Dir_with_dune. src_dir; ctx_dir; data = stanzas
-        ; scope; dune_version = _; kind = _ } =
+        ; scope; dune_version = _; } =
     let expander =
       Super_context.expander sctx ~dir:ctx_dir in
     let for_stanza stanza =

@@ -12,8 +12,8 @@
   Error: Module "Lib" is used in several stanzas:
   - jbuild:2
   - jbuild:6
-  To remove this warning, you must specify an explicit "modules" field in every
-  library, executable, and executables stanzas in this jbuild file. Note that
+  To fix this error, you must specify an explicit "modules" field in every
+  library, executable, and executables stanzas in this dune file. Note that
   each module cannot appear in more than one "modules" field - it must belong
   to a single library or executable.
   [1]
@@ -32,8 +32,8 @@
   Error: Module "X" is used in several stanzas:
   - src/jbuild:1
   - src/jbuild:2
-  To remove this warning, you must specify an explicit "modules" field in every
-  library, executable, and executables stanzas in this jbuild file. Note that
+  To fix this error, you must specify an explicit "modules" field in every
+  library, executable, and executables stanzas in this dune file. Note that
   each module cannot appear in more than one "modules" field - it must belong
   to a single library or executable.
   [1]

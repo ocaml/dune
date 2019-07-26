@@ -53,6 +53,9 @@
 - Modules may no longer belong to more than one stanza. This was previously
   allowed only in stanzas defined in `jbuild` files. (#2458, @rgrinberg)
 
+- Remove support for `jbuild-ignore` files. They have been replaced by the the
+  `dirs` stanza in `dune` files. (#2456, @rgrinberg)
+
 1.11.0 (23/07/2019)
 -------------------
 

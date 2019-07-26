@@ -299,14 +299,6 @@ let load ?(warn_when_seeing_jbuild_file=true) path ~ancestor_vcs =
                     (Path.Source.to_string_maybe_quoted path)
                 ]
           in
-          let sub_dirs =
-            if String.Set.mem files "jbuild-ignore" then
-              Sub_dirs.add_data_only_dirs sub_dirs
-                ~dirs:(load_jbuild_ignore (
-                  Path.Source.relative path "jbuild-ignore"))
-            else
-              sub_dirs
-          in
           (dune_file, sub_dirs)
       in
       let sub_dirs =

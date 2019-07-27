@@ -113,6 +113,7 @@ let gen_rules sctx t ~dir ~scope =
        :: t.libraries)
       ~pps:(Dune_file.Preprocess_map.pps t.preprocess)
       ~variants:None
+      ~optional:false
   in
 
   let cctx =

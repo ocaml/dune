@@ -137,8 +137,19 @@ end = struct
             Lib.DB.available (Scope.libs scope)
               (Dune_file.Library.best_name lib)
           | Dune_file.Documentation _
-          | Dune_file.Install _
-          | Dune_file.Executables { install_conf = Some _; _ } -> true
+          | Dune_file.Install _ -> true
+          | Dune_file.Executables ({ install_conf = Some _; _ } as exes) ->
+            let compile_info =
+              Lib.DB.resolve_user_written_deps_for_exes
+                (Scope.libs scope)
+                exes.names
+                exes.buildable.libraries
+                ~pps:(Dune_file.Preprocess_map.pps exes.buildable.preprocess)
+                ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
+                ~variants:exes.variants
+                ~optional:exes.optional
+            in
+            Result.is_ok (Lib.Compile.direct_requires compile_info)
           | Dune_file.Coq.T d -> Option.is_some d.public
           | _ -> false) stanza
 

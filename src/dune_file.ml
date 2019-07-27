@@ -1590,6 +1590,7 @@ module Executables = struct
     ; link_flags : Ordered_set_lang.Unexpanded.t
     ; link_deps  : Dep_conf.t list
     ; modes      : Link_mode.Set.t
+    ; optional   : bool
     ; buildable  : Buildable.t
     ; variants   : (Loc.t * Variant.Set.t) option
     ; package    : Package.t option
@@ -1604,6 +1605,7 @@ module Executables = struct
     and+ link_deps = field "link_deps" (repeat Dep_conf.decode) ~default:[]
     and+ link_flags = field_oslu "link_flags"
     and+ modes = field "modes" Link_mode.Set.decode ~default:Link_mode.Set.default
+    and+ optional = field_b "optional" ~check:(Syntax.since Stanza.syntax (2, 0))
     and+ variants = variants_field
     and+ promote =
       field_o "promote" (Syntax.since Stanza.syntax (1, 11) >>> Promote.decode)
@@ -1646,6 +1648,7 @@ module Executables = struct
       ; link_flags
       ; link_deps
       ; modes
+      ; optional
       ; buildable
       ; variants
       ; package = Names.package names
@@ -2153,6 +2156,7 @@ module Tests = struct
              link_flags
            ; link_deps = []
            ; modes
+           ; optional = false
            ; buildable
            ; names
            ; variants

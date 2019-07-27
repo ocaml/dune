@@ -41,3 +41,7 @@ val keys : ('k, _) t -> 'k list
 val foldi : ('k, 'v) t -> init:'init -> f:('k -> 'v -> 'init -> 'init) -> 'init
 
 val fold : (_, 'v) t -> init:'init -> f:('v -> 'init -> 'init) -> 'init
+
+val to_dyn : ('v -> Dyn.t) -> (_, 'v) t -> Dyn.t
+
+val find_or_add : ('k, 'v) t -> 'k -> f:('k -> 'v) -> 'v

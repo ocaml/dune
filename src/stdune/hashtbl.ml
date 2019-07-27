@@ -83,6 +83,12 @@ module Make(H : sig
     | Some p -> Result.Error p
 
   let keys t = foldi t ~init:[] ~f:(fun key _ acc -> key :: acc)
+
+  let to_dyn f t =
+    Dyn.Map (
+      foldi t ~init:[] ~f:(fun key data acc ->
+        (H.to_dyn key, f data) :: acc)
+    )
 end
 
 open MoreLabels.Hashtbl

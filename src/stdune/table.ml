@@ -72,3 +72,11 @@ let foldi (type input) (type output) ((module T) : (input, output) t) ~init ~f =
 
 let fold (type input) (type output) ((module T) : (input, output) t) ~init ~f =
   T.H.fold T.value ~init ~f
+
+let to_dyn (type input) (type output) (f : output -> Dyn.t)
+      ((module T) : (input, output) t) =
+  T.H.to_dyn f T.value
+
+let find_or_add (type input) (type output) ((module T) : (input, output) t)
+      (k : input) ~f =
+  T.H.find_or_add T.value k ~f

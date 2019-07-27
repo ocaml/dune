@@ -15,4 +15,6 @@ module type S = sig
 
   val of_list_exn : (key * 'a) list -> 'a t
   val keys : _ t -> key list
+
+  val to_dyn : ('v -> Dyn.t) -> 'v t -> Dyn.t
 end

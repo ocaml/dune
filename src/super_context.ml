@@ -380,7 +380,9 @@ let get_installed_binaries stanzas ~(context : Context.t) =
   Dir_with_dune.deep_fold stanzas ~init:Path.Build.Set.empty
     ~f:(fun d stanza acc ->
       match (stanza : Stanza.t) with
-      | Dune_file.Install { section = Bin; files; _ } ->
+      | Dune_file.Install { section = Bin; files; _ }
+      | Dune_file.Executables
+          { install_conf = Some { section = Bin; files; _ }; _ } ->
         List.fold_left files ~init:acc ~f:(fun acc fb ->
           let p =
             File_binding.Unexpanded.destination_relative_to_install_path

@@ -80,6 +80,14 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
         ; scope; dune_version = _; } =
     let expander =
       Super_context.expander sctx ~dir:ctx_dir in
+    let files_to_install { Install_conf. section = _; files; package = _ } =
+      List.map files ~f:(fun fb ->
+        File_binding.Unexpanded.expand_src ~dir:ctx_dir
+          fb ~f:(Expander.expand_str expander)
+        |> Path.build)
+      |> Path.Set.of_list
+      |> Rules.Produce.Alias.add_deps (Alias.all ~dir:ctx_dir);
+    in
     let for_stanza stanza =
       let dir = ctx_dir in
       match stanza with
@@ -96,6 +104,7 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
         ; source_dirs = None
         }
       | Executables exes ->
+        Option.iter exes.install_conf ~f:files_to_install;
         let cctx, merlin =
           Exe_rules.rules exes ~sctx ~dir ~scope ~expander ~dir_contents
         in
@@ -135,13 +144,8 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
         ; js = None
         ; source_dirs = Some source_dir
         }
-      | Install { Install_conf. section = _; files; package = _ } ->
-        List.map files ~f:(fun fb ->
-          File_binding.Unexpanded.expand_src ~dir:ctx_dir
-            fb ~f:(Expander.expand_str expander)
-          |> Path.build)
-        |> Path.Set.of_list
-        |> Rules.Produce.Alias.add_deps (Alias.all ~dir:ctx_dir);
+      | Install i ->
+        files_to_install i;
         For_stanza.empty_none
       | Cinaps.T cinaps ->
         Cinaps.gen_rules sctx cinaps ~dir ~scope;

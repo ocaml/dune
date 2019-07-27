@@ -137,7 +137,8 @@ end = struct
             Lib.DB.available (Scope.libs scope)
               (Dune_file.Library.best_name lib)
           | Dune_file.Documentation _
-          | Dune_file.Install _ -> true
+          | Dune_file.Install _
+          | Dune_file.Executables { install_conf = Some _; _ } -> true
           | Dune_file.Coq.T d -> Option.is_some d.public
           | _ -> false) stanza
 
@@ -191,7 +192,8 @@ end = struct
       | Some (stanza, package) ->
         let new_entries =
           match (stanza : Stanza.t) with
-          | Dune_file.Install i ->
+          | Dune_file.Install i
+          | Dune_file.Executables { install_conf = Some i; _ } ->
             let expander = Super_context.expander sctx ~dir in
             let path_expander =
               File_binding.Unexpanded.expand ~dir

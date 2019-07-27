@@ -357,6 +357,7 @@ module Executables : sig
     ; variants   : (Loc.t * Variant.Set.t) option
     ; package    : Package.t option
     ; promote    : Promote.t option
+    ; install_conf : File_binding.Unexpanded.t Install_conf.t option
     }
 end
 

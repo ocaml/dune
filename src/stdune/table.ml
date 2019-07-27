@@ -34,6 +34,14 @@ let create (type key) (type value)
 let find (type input) (type output) ((module T) : (input, output) t) x =
   T.H.find T.value x
 
+let find_exn (type input) (type output) (t : (input, output) t) key =
+  let (module T) = t in
+  match find t key with
+  | Some v -> v
+  | None ->
+    Code_error.raise "Table.find_exn: key doesn't exist"
+      ["key", T.Key.to_dyn key]
+
 let set (type input) (type output) ((module T) : (input, output) t) k v =
   T.H.set T.value k v
 

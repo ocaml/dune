@@ -24,6 +24,8 @@ val create : (module Key with type t = 'k) -> int -> ('k, 'v) t
 
 val find : ('k, 'v) t -> 'k -> 'v option
 
+val find_exn : ('k, 'v) t -> 'k -> 'v
+
 val set : ('k, 'v) t -> 'k -> 'v -> unit
 
 val add_exn : ('k, 'v) t -> 'k -> 'v -> unit

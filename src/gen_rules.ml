@@ -367,15 +367,15 @@ let gen ~contexts
       Package.Name.Map.filter packages ~f:(fun { Package.name; _ } ->
         Package.Name.Set.mem pkgs name)
   in
-  let sctxs = Hashtbl.create 4 in
+  let sctxs = Table.create (module String) 4 in
   List.iter contexts ~f:(fun c ->
-    Hashtbl.add_exn sctxs c.Context.name (Fiber.Ivar.create ()));
+    Table.add_exn sctxs c.Context.name (Fiber.Ivar.create ()));
   let make_sctx (context : Context.t) : _ Fiber.t =
     let host () =
       match context.for_host with
       | None -> Fiber.return None
       | Some h ->
-        Fiber.Ivar.read (Hashtbl.find_exn sctxs h.name)
+        Fiber.Ivar.read (Table.find_exn sctxs h.name)
         >>| Option.some
     in
 
@@ -403,8 +403,7 @@ let gen ~contexts
     in
     let module P = struct let sctx = sctx end in
     let module M = Gen(P) in
-    let+ () =
-      Fiber.Ivar.fill (Hashtbl.find_exn sctxs context.name) sctx in
+    let+ () = Fiber.Ivar.fill (Table.find_exn sctxs context.name) sctx in
     (context.name, (module M : Gen))
   in
   let+ contexts = Fiber.parallel_map contexts ~f:make_sctx in

@@ -89,6 +89,8 @@ module Make(H : sig
       foldi t ~init:[] ~f:(fun key data acc ->
         (H.to_dyn key, f data) :: acc)
     )
+
+  let iter t ~f = iter t ~f:(fun ~key:_ ~data -> f data)
 end
 
 open MoreLabels.Hashtbl

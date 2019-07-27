@@ -80,3 +80,9 @@ let to_dyn (type input) (type output) (f : output -> Dyn.t)
 let find_or_add (type input) (type output) ((module T) : (input, output) t)
       (k : input) ~f =
   T.H.find_or_add T.value k ~f
+
+let remove (type input) (type output) ((module T) : (input, output) t) k =
+  T.H.remove T.value k
+
+let iter (type input) (type output) ((module T) : (input, output) t) ~f =
+  T.H.iter T.value ~f

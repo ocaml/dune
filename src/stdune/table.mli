@@ -45,3 +45,7 @@ val fold : (_, 'v) t -> init:'init -> f:('v -> 'init -> 'init) -> 'init
 val to_dyn : ('v -> Dyn.t) -> (_, 'v) t -> Dyn.t
 
 val find_or_add : ('k, 'v) t -> 'k -> f:('k -> 'v) -> 'v
+
+val remove : ('k, _) t -> 'k -> unit
+
+val iter : (_, 'v) t -> f:('v -> unit) -> unit

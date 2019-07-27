@@ -14,4 +14,5 @@ module type S = sig
   val foldi : 'a t -> init:'b -> f:(key -> 'a -> 'b -> 'b) -> 'b
 
   val of_list_exn : (key * 'a) list -> 'a t
+  val keys : _ t -> key list
 end

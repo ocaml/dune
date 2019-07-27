@@ -376,16 +376,16 @@ module Extension = struct
         Univ_map.t * Stanza.Parser.t list
     }
 
-  let extensions = Hashtbl.create 32
+  let extensions = Table.create (module String) 32
 
   let register ?(experimental=false) syntax stanzas arg_to_dyn =
     let name = Syntax.name syntax in
-    if Hashtbl.mem extensions name then
+    if Table.mem extensions name then
       Code_error.raise "Dune_project.Extension.register: already registered"
         [ "name", Dyn.Encoder.string name ];
     let key = Univ_map.Key.create ~name arg_to_dyn in
     let ext = { syntax; stanzas; experimental; key } in
-    Hashtbl.add_exn extensions name (Extension ext);
+    Table.add_exn extensions name (Extension ext);
     key
 
   let register_simple ?experimental syntax stanzas =
@@ -399,12 +399,12 @@ module Extension = struct
     ()
 
   let instantiate ~loc ~parse_args (name_loc, name) (ver_loc, ver) =
-    match Hashtbl.find extensions name with
+    match Table.find extensions name with
     | None ->
       User_error.raise ~loc:name_loc
         [ Pp.textf "Unknown extension %S." name ]
         ~hints:(User_message.did_you_mean name
-                  ~candidates:(Hashtbl.keys extensions))
+                  ~candidates:(Table.keys extensions))
     | Some t ->
       Syntax.check_supported (syntax t) (ver_loc, ver);
       { extension = t
@@ -417,7 +417,7 @@ module Extension = struct
      automatically available at their latest version.  When used, dune
      will automatically edit the dune-project file. *)
   let automatic ~project_file ~f =
-    Hashtbl.foldi extensions ~init:[] ~f:(fun name extension acc ->
+    Table.foldi extensions ~init:[] ~f:(fun name extension acc ->
       if f name then
         let version =
           if is_experimental extension then

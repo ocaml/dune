@@ -31,3 +31,9 @@ val add_exn : ('k, 'v) t -> 'k -> 'v -> unit
 val add : ('k, 'v) t -> 'k -> 'v -> (unit, 'v) Result.t
 
 val clear : ('k, 'v) t -> unit
+
+val mem : ('k, _) t -> 'k -> bool
+
+val keys : ('k, _) t -> 'k list
+
+val foldi : ('k, 'v) t -> init:'init -> f:('k -> 'v -> 'init -> 'init) -> 'init

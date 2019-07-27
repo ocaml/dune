@@ -52,3 +52,12 @@ let add t k v =
 
 let clear (type input) (type output) ((module T) : (input, output) t) =
   T.H.clear T.value
+
+let mem (type input) (type output) ((module T) : (input, output) t) k =
+  T.H.mem T.value k
+
+let keys (type input) (type output) ((module T) : (input, output) t) =
+  T.H.keys T.value
+
+let foldi (type input) (type output) ((module T) : (input, output) t) ~init ~f =
+  T.H.foldi T.value ~init ~f

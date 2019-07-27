@@ -81,6 +81,8 @@ module Make(H : sig
     match find t key with
     | None -> set t key data; Result.Ok ()
     | Some p -> Result.Error p
+
+  let keys t = foldi t ~init:[] ~f:(fun key _ acc -> key :: acc)
 end
 
 open MoreLabels.Hashtbl

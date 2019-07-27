@@ -69,3 +69,6 @@ let keys (type input) (type output) ((module T) : (input, output) t) =
 
 let foldi (type input) (type output) ((module T) : (input, output) t) ~init ~f =
   T.H.foldi T.value ~init ~f
+
+let fold (type input) (type output) ((module T) : (input, output) t) ~init ~f =
+  T.H.fold T.value ~init ~f

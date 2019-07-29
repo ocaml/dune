@@ -46,25 +46,11 @@ let invalidate_cached_timestamps () =
     cache.checked_key <- cache.checked_key + 1
   end
 
-let dir_digest (stat : Unix.stats) =
-  Digest.generic
-    ( stat.st_size
-    , stat.st_perm
-    , stat.st_mtime
-    , stat.st_ctime
-    )
-
-let path_stat_digest fn stat =
-  if stat.Unix.st_kind = Unix.S_DIR then
-    dir_digest stat
-  else
-    Digest.generic (Digest.file fn, stat.st_perm)
 
 let refresh fn =
   let cache = Lazy.force cache in
-  let stat = Path.stat fn in
+  let stat, digest = Digest.path_stat_digest fn in
   let permissions = stat.st_perm in
-  let digest = path_stat_digest fn stat in
   needs_dumping := true;
   Path.Table.replace cache.table ~key:fn
     ~data:{ digest
@@ -94,7 +80,7 @@ let file fn =
         x.permissions <- stat.st_perm
       end;
       if !dirty then
-        x.digest <- path_stat_digest fn stat;
+        x.digest <- snd (Digest.path_stat_digest ~stat fn);
       x.stats_checked <- cache.checked_key;
       x.digest
     end

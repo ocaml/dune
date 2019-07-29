@@ -216,11 +216,11 @@ val ignore : ('a, 'b) t -> ('a, unit) t
 well as equivalents of the functions from the arrow-based API. *)
 module S : sig
   module O : sig
-    val (let+)  : 'a s -> ('a -> 'b) -> 'b s
-    val (and+)  : 'a s -> 'b s -> ('a * 'b) s
-    val ( >>> ) : unit s -> 'a s -> 'a s
-    val ( >>^ ) : 'a s -> ('a -> 'b) -> 'b s
-    val ( &&& ) : 'a s -> 'b s -> ('a * 'b) s
+    val (let+)   : 'a s -> ('a -> 'b) -> 'b s
+    val (and+)   : 'a s -> 'b s -> ('a * 'b) s
+    val ( >>> )  : unit s -> 'a s -> 'a s
+    val ( >>^ )  : 'a s -> ('a -> 'b) -> 'b s
+    val ( &&& )  : 'a s -> 'b s -> ('a * 'b) s
   end
 
   val apply  : 'a s        -> ('a -> 'b) s -> 'b s
@@ -228,6 +228,7 @@ module S : sig
   val seq    : unit s      -> 'a s         -> 'a s
   val seqs   : unit s list -> 'a s         -> 'a s
   val ignore : 'a s        -> unit s
+  val lift   : f:('a -> 'b -> 'c) -> 'a s -> 'b s -> 'c s
 
   (* In future this will likely replace the [Dyn_deps] constructor. *)
   val dyn_deps : ('a * Dep.Set.t) s -> 'a s

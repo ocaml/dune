@@ -192,7 +192,7 @@ module Alias0 = struct
       let dir = (Path.Build.append_source (Path.Build.(relative root) ctx) dir) in
       Path.build (stamp_file (make ~dir name))))
 
-  open Build.O
+  open Build.S.O
 
   let dep_rec_internal ~name ~dir ~ctx_dir =
     Build.lazy_no_targets (lazy (
@@ -201,12 +201,7 @@ module Alias0 = struct
         ~f:(fun dir acc ->
           let path = Path.Build.append_source ctx_dir (File_tree.Dir.path dir) in
           let fn = stamp_file (make ~dir:path name) in
-          acc
-          >>>
-          let fn = Path.build fn in
-          Build.if_file_exists fn
-            ~then_:(Build.path fn >>^ Fn.const false)
-            ~else_:(Build.arr Fn.id))))
+          Build.S.lift ~f:(&&) acc (Build.file_exists (Path.build fn)))))
 
   let dep_rec t ~loc ~file_tree =
     let ctx_dir, src_dir =
@@ -230,7 +225,7 @@ module Alias0 = struct
           ]
 
   let dep_rec_multi_contexts ~dir:src_dir ~name ~file_tree ~contexts =
-    let open Build.O in
+    let open Build.S.O in
     let dir = find_dir_specified_on_command_line ~dir:src_dir ~file_tree in
     Build.all (List.map contexts ~f:(fun ctx ->
       let ctx_dir = Path.Build.(relative root) ctx in
@@ -778,8 +773,8 @@ end = struct
                    let deps = Path.Set.union deps dyn_deps in
                    Action.with_stdout_to path
                      (Action.digest_files (Path.Set.to_list deps)))
-                 >>>
-                 Build.action_dyn () ~targets:[path])
+                 |>
+                 Build.S.action_dyn () ~targets:[path])
               :: rules))
     in
     (fun ~subdirs_to_keep ->
@@ -1574,7 +1569,7 @@ let eval_pred = Pred.eval
 
 let shim_of_build_goal request =
   let request =
-    let open Build.O in
+    let open Build.S.O in
     request >>^ fun () ->
     Action.Progn []
   in
@@ -1585,7 +1580,7 @@ let shim_of_build_goal request =
 let build_request ~request =
   let result = Fdecl.create () in
   let request =
-    let open Build.O in
+    let open Build.S.O in
     request >>^ fun res ->
     Fdecl.set result res
   in
@@ -1680,7 +1675,7 @@ let package_deps pkg files =
         Path.Set.fold action_deps ~init:acc ~f:loop
       end
   in
-  let open Build.O in
+  let open Build.S.O in
   Build.paths_for_rule files >>^ fun () ->
   (* We know that at this point of execution, all the relevant ivars
      have been filled *)

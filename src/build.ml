@@ -435,6 +435,7 @@ module S = struct
   let ignore  x = x >>^ (fun _ -> ())
   let seq   x y = (x &&& y) >>^ (fun ((), y) -> y)
   let seqs xs y = seq (ignore (all xs)) y
+  let lift ~f x y = apply x (map y ~f:(fun b a -> f a b))
 
   let dyn_deps x = x >>> (Dyn_deps (arr (fun (_args, deps) -> deps))) >>> (arr fst)
   let from_arrow x a = a >>> x

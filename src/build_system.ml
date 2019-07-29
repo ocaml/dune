@@ -1409,7 +1409,7 @@ end = struct
     let* () =
       if force then Result.Error (Failure "build is forced") else Result.Ok ()
     in
-    let+ _, targets = Dune_memory.search memory key in
+    let+ _, targets = Dune_memory.Memory.search memory key in
     targets
 
   let execute_rule_impl rule =
@@ -1526,7 +1526,7 @@ end = struct
             let targets, targets_digest =
               compute_targets_digest_after_rule_execution ~info targets_as_list
             in
-            ignore (Dune_memory.promote memory targets rule_digest [] None);
+            ignore (Dune_memory.Memory.promote memory targets rule_digest [] None);
             Trace.set (Path.build head_target) {rule_digest; targets_digest} )
       else Fiber.return ()
     in

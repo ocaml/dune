@@ -47,7 +47,7 @@ module Stdlib = struct
       and+ modules = modules ~src_dir ()
       and+ exit_module = field_o "exit_module" Module.Name.decode
       and+ unwrapped = field ~default:[] "unwrapped"
-                         (list (enter Module.Name.decode))
+                         (repeat (enter Module.Name.decode))
       in
       let unwrapped = Module.Name.Set.of_list unwrapped in
       { modules
@@ -405,7 +405,7 @@ module Old_format = struct
       and+ alias_module = field_o "alias_module" (Module.decode ~src_dir)
       and+ main_module_name = field_o "main_module_name" Module.Name.decode
       and+ modules =
-        field ~default:[] "modules" (list (enter (Module.decode ~src_dir)))
+        field ~default:[] "modules" (repeat (enter (Module.decode ~src_dir)))
       and+ wrapped = field "wrapped" Mode.decode
       in
       let modules =

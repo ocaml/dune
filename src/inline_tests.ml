@@ -35,12 +35,12 @@ module Backend = struct
       open Dune_lang.Decoder
 
       let parse =
-        record
+        fields
           (let+ loc = loc
-           and+ runner_libraries = field "runner_libraries" (list (located Lib_name.decode)) ~default:[]
+           and+ runner_libraries = field "runner_libraries" (repeat (located Lib_name.decode)) ~default:[]
            and+ flags = Ordered_set_lang.Unexpanded.field "flags"
            and+ generate_runner = field_o "generate_runner" (located Action_dune_lang.decode)
-           and+ extends = field "extends" (list (located Lib_name.decode)) ~default:[]
+           and+ extends = field "extends" (repeat (located Lib_name.decode)) ~default:[]
            and+ file_kind = Stanza.file_kind ()
            in
            { loc
@@ -131,7 +131,7 @@ include Sub_system.Register_end_point(
       module Set = struct
         include O.Set
 
-        let decode = list decode >>| of_list
+        let decode = repeat decode >>| of_list
 
         let default = of_list [Best]
       end
@@ -172,12 +172,12 @@ include Sub_system.Register_end_point(
         if_eos
           ~then_:(loc >>| empty)
           ~else_:
-            (record
+            (fields
                (let+ loc = loc
-                and+ deps = field "deps" (list Dep_conf.decode) ~default:[]
+                and+ deps = field "deps" (repeat Dep_conf.decode) ~default:[]
                 and+ flags = Ordered_set_lang.Unexpanded.field "flags"
                 and+ backend = field_o "backend" (located Lib_name.decode)
-                and+ libraries = field "libraries" (list (located Lib_name.decode)) ~default:[]
+                and+ libraries = field "libraries" (repeat (located Lib_name.decode)) ~default:[]
                 and+ modes = field "modes"
                                (Syntax.since syntax (1, 11) >>>
                                 Mode_conf.Set.decode)

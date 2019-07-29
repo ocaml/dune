@@ -131,13 +131,13 @@ module Lib = struct
   let decode ~(lang : Vfile.Lang.Instance.t) ~base =
     let open Dune_lang.Decoder in
     let path = Dpath.Local.decode ~dir:base in
-    let field_l s x = field ~default:[] s (list x) in
+    let field_l s x = field ~default:[] s (repeat x) in
     let libs s = field_l s (located Lib_name.decode) in
     let paths s = field_l s path in
     let mode_paths name =
       field ~default:Mode.Dict.List.empty
         name (Mode.Dict.List.decode path) in
-    record (
+    fields (
       let* main_module_name = field_o "main_module_name" Module.Name.decode in
       let* implements = field_o "implements" (located Lib_name.decode) in
       let* default_implementation =

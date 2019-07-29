@@ -96,6 +96,6 @@ module Unexpanded = struct
               "invalid format, <name> or (<name> as <install-as>) expected" ]
 
     let decode =
-      let open Dune_lang.Decoder in list decode_file
+      let open Dune_lang.Decoder in repeat decode_file
   end
 end

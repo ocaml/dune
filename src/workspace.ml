@@ -59,7 +59,7 @@ module Context = struct
 
     let t ~profile =
       let+ env = env_field
-      and+ targets = field "targets" (list Target.t) ~default:[Target.Native]
+      and+ targets = field "targets" (repeat Target.t) ~default:[Target.Native]
       and+ profile = field "profile" string ~default:profile
       and+ host_context =
         field_o "host" (Syntax.since syntax (1, 10) >>> string)
@@ -78,7 +78,7 @@ module Context = struct
         in
         field "paths" ~default:[]
           (Syntax.since Stanza.syntax (1, 12) >>>
-           map ~f (list (pair (located string) Ordered_set_lang.decode)))
+           map ~f (repeat (pair (located string) Ordered_set_lang.decode)))
       and+ loc = loc
       in
       Option.iter

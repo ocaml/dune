@@ -47,7 +47,7 @@ module T = struct
 
   let decode =
     let open Dune_lang.Decoder in
-    record
+    fields
       (let+ root = field "root" Dpath.decode
        and+ kind = field "kind" Kind.decode
        in

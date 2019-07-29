@@ -125,9 +125,9 @@ module Dict = struct
 
     let decode f =
       let open Dune_lang.Decoder in
-      record (
-        let+ byte = field ~default:[] "byte" (list f)
-        and+ native = field ~default:[] "native" (list f)
+      fields (
+        let+ byte = field ~default:[] "byte" (repeat f)
+        and+ native = field ~default:[] "native" (repeat f)
         in
         { byte
         ; native

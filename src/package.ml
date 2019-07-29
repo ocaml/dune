@@ -244,7 +244,7 @@ let decode ~dir =
     field ~default:[] "conflicts" (repeat Dependency.decode)
   and+ depopts =
     field ~default:[] "depopts" (repeat Dependency.decode)
-  and+ tags = field "tags" (list string) ~default:[]
+  and+ tags = field "tags" (enter (repeat string)) ~default:[]
   in
   { name
   ; loc

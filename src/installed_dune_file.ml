@@ -63,7 +63,7 @@ let of_sexp =
       (let* version = version in
        set (Syntax.key Stanza.syntax) version
          (let+ parsing_context = get_all
-          and+ sub_systems = list raw
+          and+ sub_systems = enter (repeat raw)
           in
           parse_sub_systems ~parsing_context sub_systems))
     ]

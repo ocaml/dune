@@ -820,12 +820,6 @@ module Decoder = struct
 
   let raw = next Fn.id
 
-  let unit =
-    next
-      (function
-        | List (_, []) -> ()
-        | sexp -> User_error.raise ~loc:(Ast.loc sexp) [ Pp.text "() expected" ])
-
   let basic desc f =
     next (function
       | Template { loc; _ } | List (loc, _) | Quoted_string (loc, _) ->
@@ -838,21 +832,9 @@ module Decoder = struct
 
   let string = plain_string (fun ~loc:_ x -> x)
 
-  let char = plain_string (fun ~loc x ->
-    if String.length x = 1 then
-      x.[0]
-    else
-      User_error.raise ~loc [ Pp.text "character expected" ])
-
   let int =
     basic "Integer" (fun s ->
       match int_of_string s with
-      | x -> Ok x
-      | exception _ -> Result.Error ())
-
-  let float =
-    basic "Float" (fun s ->
-      match float_of_string s with
       | x -> Ok x
       | exception _ -> Result.Error ())
 
@@ -868,10 +850,6 @@ module Decoder = struct
        b >>= fun b ->
        c >>= fun c ->
        return (a, b, c))
-
-  let list t = enter (repeat t)
-
-  let array t = list t >>| Array.of_list
 
   let option t =
     enter
@@ -1036,8 +1014,6 @@ module Decoder = struct
       ; unparsed = Name.Map.empty
       }
     )
-
-  let record t = enter (fields t)
 
   type kind =
     | Values of Loc.t * string option

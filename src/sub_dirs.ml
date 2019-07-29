@@ -104,18 +104,19 @@ let decode =
   let ignored_sub_dirs =
     let open Dune_lang.Decoder in
     let ignored =
-      plain_string (fun ~loc dn ->
-        if Filename.dirname dn <> Filename.current_dir_name ||
-           match dn with
-           | "" | "." | ".." -> true
-           | _ -> false
-        then
-          User_error.raise ~loc [ Pp.textf "Invalid sub-directory name %S" dn ]
-        else
-          dn)
-      |> list
-      >>| (fun l ->
-        Predicate_lang.of_string_set (String.Set.of_list l))
+      let+ l =
+        enter (repeat (plain_string (fun ~loc dn ->
+          if Filename.dirname dn <> Filename.current_dir_name ||
+             match dn with
+             | "" | "." | ".." -> true
+             | _ -> false
+          then
+            User_error.raise ~loc
+              [ Pp.textf "Invalid sub-directory name %S" dn ]
+          else
+            dn)))
+      in
+      Predicate_lang.of_string_set (String.Set.of_list l)
     in
     let+ version = Syntax.get_exn Stanza.syntax
     and+ (loc, ignored) = located ignored

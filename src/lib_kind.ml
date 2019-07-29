@@ -39,7 +39,7 @@ module Ppx_args = struct
   let decode =
     let open Dune_lang.Decoder in
     let args =
-      let+ cookies = field "cookies" (list Cookie.decode) ~default:[] in
+      let+ cookies = field "cookies" (repeat Cookie.decode) ~default:[] in
       {cookies}
     in
     fields args

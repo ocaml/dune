@@ -400,7 +400,7 @@ module Name_map = struct
 
   let decode ~src_dir =
     let open Dune_lang.Decoder in
-    let+ modules = list (enter (decode ~src_dir)) in
+    let+ modules = repeat (enter (decode ~src_dir)) in
     Name.Map.of_list_map_exn
       ~f:(fun m -> (name m, m)) modules
 

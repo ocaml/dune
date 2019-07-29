@@ -523,6 +523,8 @@ let with_chdir t ~dir ~f =
 
 let t_var : t Fiber.Var.t = Fiber.Var.create ()
 
+let info () = Fiber.Var.get_exn t_var
+
 type status_line_config =
   { message   : User_message.Style.t Pp.t option
   ; show_jobs : bool

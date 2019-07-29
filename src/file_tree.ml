@@ -72,22 +72,6 @@ module Dune_file = struct
       ({ contents; kind }, sub_dirs))
 end
 
-let load_jbuild_ignore path =
-  let path = Path.source path in
-  List.filteri (Io.lines_of_file path) ~f:(fun i fn ->
-    if Filename.dirname fn = Filename.current_dir_name then
-      true
-    else begin
-      User_warning.emit ~loc:(Loc.of_pos
-                                ( Path.to_string path
-                                , i + 1, 0
-                                , String.length fn
-                                ))
-        [ Pp.textf "subdirectory expression %s ignored" fn ];
-      false
-    end)
-  |> String.Set.of_list
-
 module Dir = struct
   type t =
     { path     : Path.Source.t

@@ -10,7 +10,6 @@ type t =
 
 let generate_and_compile_module cctx ~precompiled_cmi ~name:basename
       ~lib ~code ~requires =
-  let open Build.O in
   let sctx       = CC.super_context cctx in
   let obj_dir    = CC.obj_dir       cctx in
   let dir        = CC.dir           cctx in
@@ -37,7 +36,7 @@ let generate_and_compile_module cctx ~precompiled_cmi ~name:basename
       |> Option.value_exn
       |> Path.as_in_build_dir_exn
     in
-    code >>> Build.write_file_dyn ml);
+    code |> Build.S.write_file_dyn ml);
   let opaque =
     Ocaml_version.supports_opaque_for_mli
       (Super_context.context sctx).version

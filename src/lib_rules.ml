@@ -1,6 +1,6 @@
 open! Stdune
 open Import
-open Build.O
+open Build.S.O
 open! No_io
 
 module Buildable = Dune_file.Buildable
@@ -92,7 +92,7 @@ let gen_wrapped_compat_modules (lib : Library.t) cctx =
     let loc = lib.buildable.loc in
     let sctx = Compilation_context.super_context cctx in
     Build.return contents
-    >>> Build.write_file_dyn (Path.as_in_build_dir_exn source_path)
+    |> Build.S.write_file_dyn (Path.as_in_build_dir_exn source_path)
     |> Super_context.add_rule sctx ~loc ~dir:(Compilation_context.dir cctx)
   )
 

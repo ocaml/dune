@@ -1,6 +1,6 @@
 open! Stdune
 open Import
-open Build.O
+open Build.S.O
 open! No_io
 
 module Library = Dune_file.Library
@@ -297,8 +297,8 @@ let gen_dune_package sctx ~version ~pkg =
     |> Format.asprintf "%a@."
          (Fmt.list ~pp_sep:Fmt.nl
             (Dune_lang.Deprecated.pp (Stanza.File_kind.of_syntax dune_version))))
-  >>>
-  Build.write_file_dyn  dune_package_file
+  |>
+  Build.S.write_file_dyn dune_package_file
   |> Super_context.add_rule sctx ~dir:ctx.build_dir
 
 type version_method =
@@ -405,8 +405,8 @@ let init_meta sctx ~dir =
          Format.pp_close_box ppf ();
          Format.pp_print_flush ppf ();
          Buffer.contents buf)
-       >>>
-       Build.write_file_dyn meta))
+       |>
+       Build.S.write_file_dyn meta))
 
 let symlink_installed_artifacts_to_build_install
       sctx (entries : (Loc.t option * Install.Entry.t) list)
@@ -509,8 +509,8 @@ let install_rules sctx (package : Package.t) =
                    ~paths:install_paths ~prefix)
        in
        Install.gen_install_file entries)
-     >>>
-     Build.write_file_dyn install_file)
+     |>
+     Build.S.write_file_dyn install_file)
 
 let install_alias (ctx : Context.t) (package : Package.t) =
   if not ctx.implicit then

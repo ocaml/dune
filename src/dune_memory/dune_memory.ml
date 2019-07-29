@@ -128,7 +128,7 @@ let promote memory paths key metadata repo =
       dest
     in
     let tmp = hardlink path in
-    let effective_hash = Digest.file tmp in
+    let effective_hash = snd (Digest.path_stat_digest tmp) in
     if Digest.compare effective_hash expected_hash != Ordering.Eq then (
       Log.infof memory.log "hash mismatch: %s != %s"
         (Digest.to_string effective_hash)

@@ -542,11 +542,11 @@ let compute_targets_digest_after_rule_execution ~info targets =
     List.partition_map targets ~f:(fun fn ->
       let fn = Path.build fn in
       match Cached_digest.refresh fn with
-      | digest -> Left digest
+      | digest -> Left (fn, digest)
       | exception (Unix.Unix_error _ | Sys_error _) -> Right fn)
   in
   match bad with
-  | [] -> Digest.generic good
+  | [] -> (good, Digest.generic (List.map ~f:snd good))
   | missing ->
     User_error.raise ?loc:(Rule.Info.loc info)
       [ Pp.textf "Rule failed to generate the following targets:"
@@ -1402,10 +1402,18 @@ end = struct
     let action_deps = Dep.Set.union static_action_deps dynamic_action_deps in
     Fiber.return (action, action_deps)
 
-  let start_rule t _rule =
-    t.hook Rule_started
+  let start_rule t _rule = t.hook Rule_started
+
+  let lookup_cache memory force key =
+    let open Result.O in
+    let* () =
+      if force then Result.Error (Failure "build is forced") else Result.Ok ()
+    in
+    let+ _, targets = Dune_memory.search memory key in
+    targets
 
   let execute_rule_impl rule =
+    let log = Scheduler.log (Scheduler.info ()) in
     let t = t () in
     let { Internal_rule.
           dir
@@ -1469,49 +1477,58 @@ end = struct
         prev_trace.targets_digest <> targets_digest
       | _ -> true
     in
+    (* FIXME: do not recreate memory each time *)
+    let memory = Result.ok_exn (Dune_memory.make ~log ()) in
     let* () =
-      if force || something_changed then begin
-        List.iter targets_as_list ~f:(fun p ->
-          Path.unlink_no_err (Path.build p));
-        pending_targets := Path.Build.Set.union targets !pending_targets;
-        let loc = Rule.Info.loc info in
-        let action =
-          match sandbox_dir with
-          | None ->
-            action
-          | Some sandbox_dir ->
-            Path.rm_rf (Path.build sandbox_dir);
-            let sandboxed path : Path.Build.t =
-              Path.Build.append_local sandbox_dir
-                (Path.Build.local path)
+      if force || something_changed then (
+        match lookup_cache memory force rule_digest with
+        | Result.Ok files ->
+           let f (dest, source) =
+             Log.infof log "retrieve %s from cache" (Path.to_string dest);
+             Unix.link (Path.to_string source) (Path.to_string dest)
+           in
+           List.iter ~f files;
+           Fiber.return ()
+        |  Result.Error _ ->
+            List.iter targets_as_list ~f:(fun p ->
+                Path.unlink_no_err (Path.build p)) ;
+            pending_targets := Path.Build.Set.union targets !pending_targets ;
+            let loc = Rule.Info.loc info in
+            let action =
+              match sandbox_dir with
+              | None ->
+                  action
+              | Some sandbox_dir ->
+                  Path.rm_rf (Path.build sandbox_dir) ;
+                  let sandboxed path : Path.Build.t =
+                    Path.Build.append_local sandbox_dir (Path.Build.local path)
+                  in
+                  Dep.Set.dirs deps
+                  |> Path.Set.iter ~f:(fun p ->
+                         match Path.as_in_build_dir p with
+                         | None ->
+                             Fs.assert_exists ~loc p
+                         | Some p ->
+                             Fs.mkdir_p (sandboxed p)) ;
+                  Fs.mkdir_p (sandboxed dir) ;
+                  Action.sandbox action ~sandboxed ~deps
+                    ~targets:targets_as_list ~eval_pred
             in
-            Dep.Set.dirs deps
-            |> Path.Set.iter ~f:(fun p ->
-              match Path.as_in_build_dir p with
-               | None -> Fs.assert_exists ~loc p
-               | Some p -> Fs.mkdir_p (sandboxed p));
-            Fs.mkdir_p (sandboxed dir);
-            Action.sandbox action
-              ~sandboxed
-              ~deps
-              ~targets:targets_as_list
-              ~eval_pred
-        in
-        let chdirs = Action.chdirs action in
-        Path.Set.iter chdirs ~f:Fs.(mkdir_p_or_check_exists ~loc);
-        let+ () =
-          with_locks locks ~f:(fun () ->
-            Action_exec.exec ~context ~env ~targets action)
-        in
-        Option.iter sandbox_dir ~f:(fun p -> Path.rm_rf (Path.build p));
-        (* All went well, these targets are no longer pending *)
-        pending_targets := Path.Build.Set.diff !pending_targets targets;
-        let targets_digest =
-          compute_targets_digest_after_rule_execution ~info targets_as_list
-        in
-        Trace.set (Path.build head_target) { rule_digest; targets_digest }
-      end else
-        Fiber.return ()
+            let chdirs = Action.chdirs action in
+            Path.Set.iter chdirs ~f:Fs.(mkdir_p_or_check_exists ~loc) ;
+            let+ () =
+              with_locks locks ~f:(fun () ->
+                  Action_exec.exec ~context ~env ~targets action)
+            in
+            Option.iter sandbox_dir ~f:(fun p -> Path.rm_rf (Path.build p)) ;
+            (* All went well, these targets are no longer pending *)
+            pending_targets := Path.Build.Set.diff !pending_targets targets ;
+            let targets, targets_digest =
+              compute_targets_digest_after_rule_execution ~info targets_as_list
+            in
+            ignore (Dune_memory.promote memory targets rule_digest [] None);
+            Trace.set (Path.build head_target) {rule_digest; targets_digest} )
+      else Fiber.return ()
     in
     let+ () =
       match mode with

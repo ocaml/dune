@@ -427,10 +427,7 @@ let ignore x = x >>^ ignore
 
 module S = struct
   open O
-  module O = struct
-    let (and+) = (&&&)
-    let (let+) = (>>^)
-  end
+
   let apply x f = (x &&& f) >>^ (fun (x, f) -> f x)
   let map  x ~f = apply x (return f)
   let ignore  x = x >>^ (fun _ -> ())
@@ -438,4 +435,10 @@ module S = struct
   let seqs xs y = seq (ignore (all xs)) y
 
   let dyn_deps x = x >>> (Dyn_deps (arr (fun (_args, deps) -> deps))) >>> (arr fst)
+
+  module O = struct
+    let (and+) = (&&&)
+    let (let+) = (>>^)
+    let ( >>> ) x y = seq x y
+  end
 end

@@ -164,23 +164,24 @@ let link_exe
            |> Build.dyn_paths
        )
      in
-     Build.S.seqs
-       [ prefix
-       ; Build.of_result_map requires ~f:(fun libs ->
-         Build.paths (Lib.L.archive_files libs ~mode))
-       ] (Command.run ~dir:(Path.build ctx.build_dir)
-           (Ok compiler)
-           [ Command.Args.dyn ocaml_flags
-           ; A "-o"; Target exe
-           ; As linkage.flags
-           ; Command.Args.dyn link_flags
-           ; Command.of_result_map link_time_code_gen
-               ~f:(fun { Link_time_code_gen.to_link; force_linkall } ->
-                 S [ As (if force_linkall then ["-linkall"] else [])
-                   ; Lib.Lib_and_module.L.link_flags to_link ~mode
-                   ])
-           ; Dyn (Build.S.map top_sorted_cms ~f:(fun x -> Command.Args.Deps x))
-           ]))
+     let open Build.S.O in
+     prefix
+     >>>
+     Build.S.seq (Build.of_result_map requires ~f:(fun libs ->
+       Build.paths (Lib.L.archive_files libs ~mode)))
+       (Command.run ~dir:(Path.build ctx.build_dir)
+          (Ok compiler)
+          [ Command.Args.dyn ocaml_flags
+          ; A "-o"; Target exe
+          ; As linkage.flags
+          ; Command.Args.dyn link_flags
+          ; Command.of_result_map link_time_code_gen
+              ~f:(fun { Link_time_code_gen.to_link; force_linkall } ->
+                S [ As (if force_linkall then ["-linkall"] else [])
+                  ; Lib.Lib_and_module.L.link_flags to_link ~mode
+                  ])
+          ; Dyn (Build.S.map top_sorted_cms ~f:(fun x -> Command.Args.Deps x))
+          ]))
 
 let link_js ~name ~cm_files ~promote cctx =
   let sctx     = CC.super_context cctx in

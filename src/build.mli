@@ -216,8 +216,9 @@ val ignore : ('a, 'b) t -> ('a, unit) t
 well as equivalents of the functions from the arrow-based API. *)
 module S : sig
   module O : sig
-    val (let+) : 'a s -> ('a -> 'b) -> 'b s
-    val (and+) : 'a s -> 'b s -> ('a * 'b) s
+    val (let+)  : 'a s -> ('a -> 'b) -> 'b s
+    val (and+)  : 'a s -> 'b s -> ('a * 'b) s
+    val ( >>> ) : unit s -> 'a s -> 'a s
   end
 
   val apply  : 'a s        -> ('a -> 'b) s -> 'b s

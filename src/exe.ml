@@ -1,5 +1,6 @@
 open! Stdune
 open Import
+open Build.S.O
 
 module CC = Compilation_context
 module SC = Super_context
@@ -164,7 +165,6 @@ let link_exe
            |> Build.dyn_paths
        )
      in
-     let open Build.S.O in
      prefix
      >>>
      Build.S.seq (Build.of_result_map requires ~f:(fun libs ->

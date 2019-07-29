@@ -439,6 +439,7 @@ module S = struct
   module O = struct
     let (and+) = (&&&)
     let (let+) = (>>^)
-    let ( >>> ) x y = seq x y
+    let ( >>> ) = seq
+    let ( >>^ ) x y = map x ~f:y
   end
 end

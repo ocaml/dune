@@ -1,6 +1,6 @@
 open! Stdune
 open Import
-open Build.O
+open Build.S.O
 
 type t =
   { dir        : Path.Build.t

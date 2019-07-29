@@ -219,6 +219,7 @@ module S : sig
     val (let+)  : 'a s -> ('a -> 'b) -> 'b s
     val (and+)  : 'a s -> 'b s -> ('a * 'b) s
     val ( >>> ) : unit s -> 'a s -> 'a s
+    val ( >>^ ) : 'a s -> ('a -> 'b) -> 'b s
   end
 
   val apply  : 'a s        -> ('a -> 'b) s -> 'b s

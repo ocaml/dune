@@ -215,7 +215,7 @@ let load ?(warn_when_seeing_jbuild_file=true) path ~ancestor_vcs =
     incr nb_path_visited;
     if !nb_path_visited mod 100 = 0 then
       Console.update_status_line
-        (Pp.verbatim (Printf.sprintf "scanned %i directories" !nb_path_visited));
+        (Pp.verbatim (Printf.sprintf "Scanned %i directories" !nb_path_visited));
     let+ { dirs; files } = readdir path in
     let project =
       if dir_status = Data_only then

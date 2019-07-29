@@ -60,7 +60,7 @@
   and the dep spec `sandbox` in dune language. These let the user control the level of
   sandboxing done by dune per rule and globally. The rule specification takes precedence.
   The global configuration merely specifies the default. 
-  (#2213, @aalekseyev)
+  (#2213, @aalekseyev, @jdimino)
 
 1.11.0 (23/07/2019)
 -------------------

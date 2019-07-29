@@ -608,8 +608,6 @@ module Lib_deps = struct
       : kind Lib_name.Map.t);
     t
 
-  let decode = decode
-
   let of_pps pps =
     List.map pps ~f:(fun pp -> Lib_dep.of_lib_name (Loc.none, pp))
 

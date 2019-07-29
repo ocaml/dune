@@ -7,6 +7,7 @@ type t
 module Spec : sig
   type t
   val decode : t Dune_lang.Decoder.fields_parser
+  val standard : t
 end
 
 val make

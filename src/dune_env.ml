@@ -41,6 +41,14 @@ module Stanza = struct
     ; inline_tests   : Inline_tests.t option
     }
 
+  let empty_config = {
+    flags = Ocaml_flags.Spec.standard
+  ; c_flags =  C.Kind.Dict.make_both Ordered_set_lang.Unexpanded.standard
+  ; env_vars = Env.empty
+  ; binaries = []
+  ; inline_tests = None
+  }
+
   type pattern =
     | Profile of string
     | Any
@@ -100,7 +108,10 @@ module Stanza = struct
     in
     { loc; rules }
 
+  let empty = { loc = Loc.none; rules = [] }
+
   let find t ~profile =
+    Option.value ~default:empty_config @@
     List.find_map t.rules ~f:(fun (pat, cfg) ->
       match pat with
       | Any -> Some cfg

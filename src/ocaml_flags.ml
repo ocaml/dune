@@ -78,6 +78,11 @@ type 'a t' =
 module Spec = struct
   type t = Ordered_set_lang.Unexpanded.t t'
 
+  let standard = {
+    common = Ordered_set_lang.Unexpanded.standard
+  ; specific = Mode.Dict.make_both Ordered_set_lang.Unexpanded.standard
+  }
+
   let decode =
     let open Dune_lang.Decoder in
     let field_oslu = Ordered_set_lang.Unexpanded.field in

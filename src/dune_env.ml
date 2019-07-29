@@ -100,11 +100,17 @@ module Stanza = struct
     in
     { loc; rules }
 
+  let empty = { loc = Loc.none; rules = [] }
+
   let find t ~profile =
     List.find_map t.rules ~f:(fun (pat, cfg) ->
       match pat with
       | Any -> Some cfg
       | Profile a -> Option.some_if (a = profile) cfg)
+
+  let env_vars t ~profile =
+    match find t ~profile with | None ->Env.empty | Some c -> c.env_vars
+
 
 end
 

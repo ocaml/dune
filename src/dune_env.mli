@@ -36,7 +36,10 @@ module Stanza : sig
 
   val decode : t Dune_lang.Decoder.t
 
+  val empty : t
+
   val find : t -> profile:string -> config option
+  val env_vars : t -> profile:string -> Env.t
 end
 
 type stanza +=

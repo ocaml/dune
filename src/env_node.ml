@@ -4,7 +4,7 @@ type t =
   { dir                   : Path.Build.t
   ; inherit_from          : t Lazy.t option
   ; scope                 : Scope.t
-  ; config                : Dune_env.Stanza.t option
+  ; config                : Dune_env.Stanza.t
   ; mutable local_binaries : File_binding.Expanded.t list option
   ; mutable ocaml_flags   : Ocaml_flags.t option
   ; mutable c_flags       : (unit, string list) Build.t C.Kind.Dict.t option
@@ -29,8 +29,7 @@ let make ~dir ~inherit_from ~scope ~config =
   }
 
 let find_config t ~profile =
-  let open Option.O in
-  t.config >>= Dune_env.Stanza.find ~profile
+  Dune_env.Stanza.find t.config ~profile
 
 let rec local_binaries t ~profile ~expander =
   match t.local_binaries with

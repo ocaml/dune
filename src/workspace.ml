@@ -6,7 +6,7 @@ open Stanza.Decoder
 let syntax = Stanza.syntax
 
 let env_field =
-  field_o "env"
+  field "env" ~default:Dune_env.Stanza.empty
     (Syntax.since syntax (1, 1) >>>
      Dune_env.Stanza.decode)
 
@@ -50,7 +50,7 @@ module Context = struct
       { loc          : Loc.t
       ; profile      : string
       ; targets      : Target.t list
-      ; env          : Dune_env.Stanza.t option
+      ; env          : Dune_env.Stanza.t
       ; toolchain    : string option
       ; name         : string
       ; host_context : string option
@@ -192,7 +192,7 @@ module Context = struct
                     ~default:Config.default_build_profile
       ; name = "default"
       ; host_context = None
-      ; env = None
+      ; env = Dune_env.Stanza.empty
       ; toolchain = None
       ; paths = []
       }
@@ -201,7 +201,7 @@ end
 type t =
   { merlin_context : string option
   ; contexts       : Context.t list
-  ; env            : Dune_env.Stanza.t option
+  ; env            : Dune_env.Stanza.t
   }
 
 include Versioned_file.Make(struct type t = unit end)
@@ -299,7 +299,7 @@ let t ?x ?profile () = fields (t ?x ?profile ())
 let default ?x ?profile () =
   { merlin_context = Some "default"
   ; contexts = [Context.default ?x ?profile ()]
-  ; env = None
+  ; env = Dune_env.Stanza.empty
   }
 
 let load ?x ?profile p =

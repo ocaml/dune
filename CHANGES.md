@@ -50,6 +50,9 @@
   would not do this normalization for rules defined in jbuild files. (#2457,
   @rgrinberg)
 
+- Modules may no longer belong to more than one stanza. This was previously
+  allowed only in stanzas defined in `jbuild` files. (#2458, @rgrinberg)
+
 1.11.0 (23/07/2019)
 -------------------
 

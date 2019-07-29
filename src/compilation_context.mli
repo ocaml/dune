@@ -18,7 +18,6 @@ val create
   -> scope                 : Scope.t
   -> expander              : Expander.t
   -> obj_dir               : Path.Build.t Obj_dir.t
-  -> ?dir_kind             : Dune_lang.File_syntax.t
   -> modules               : Modules.t
   -> flags                 : Ocaml_flags.t
   -> requires_compile      : Lib.t list Or_exn.t
@@ -43,7 +42,6 @@ val expander             : t -> Expander.t
 val context              : t -> Context.t
 val scope                : t -> Scope.t
 val dir                  : t -> Path.Build.t
-val dir_kind             : t -> Dune_lang.File_syntax.t
 val obj_dir              : t -> Path.Build.t Obj_dir.t
 val modules              : t -> Modules.t
 val flags                : t -> Ocaml_flags.t

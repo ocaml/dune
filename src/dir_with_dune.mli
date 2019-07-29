@@ -6,7 +6,6 @@ type 'data t =
   ; ctx_dir         : Path.Build.t  (** [_build/context-name/src_dir] *)
   ; data            : 'data
   ; scope           : Scope.t
-  ; kind            : Dune_lang.File_syntax.t
   ; dune_version    : Syntax.Version.t
   }
 

@@ -6,6 +6,5 @@ val rules
   -> dir_contents:Dir_contents.t
   -> scope:Scope.t
   -> expander:Expander.t
-  -> dir_kind:Dune_lang.File_syntax.t
   -> Dune_file.Executables.t
   -> Compilation_context.t * Merlin.t

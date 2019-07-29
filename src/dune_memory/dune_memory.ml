@@ -213,8 +213,10 @@ let search memory key =
   let path = FSSchemeImpl.path (path_meta memory) key in
   let f () =
     let open Result.O in
-    Io.with_file_in path ~f:(fun input ->
-        Csexp.parse (Stream.of_channel input) |> Result.map_error ~f:error )
+    ( try
+        Io.with_file_in path ~f:(fun input ->
+            Csexp.parse (Stream.of_channel input) |> Result.map_error ~f:error)
+      with Sys_error _ -> Result.Error (error "no cached file") )
     >>= (function
           | Sexp.List l ->
               Result.ok l

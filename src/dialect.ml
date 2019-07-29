@@ -88,7 +88,9 @@ let ocaml =
     ; extension
     ; preprocess = None
     ; format = Some (Loc.none, format kind, [ ".ocamlformat"
-                                            ; ".ocamlformat-ignore" ])
+                                            ; ".ocamlformat-ignore"
+                                            ; ".ocamlformat-enable"
+                                            ])
     }
   in
   let intf = file_kind Ml_kind.Intf ".mli" in

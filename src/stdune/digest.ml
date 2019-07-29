@@ -25,6 +25,6 @@ let path_stat_digest ?stat p =
   let stat = match stat with Some s -> s | None -> Path.stat p in
   let digest =
     if stat.Unix.st_kind = Unix.S_DIR then dir_digest stat
-    else generic (file p, stat.st_perm)
+    else generic (file p, stat.st_perm land 0o100 (* Only take USR_X in account *))
   in
   (stat, digest)

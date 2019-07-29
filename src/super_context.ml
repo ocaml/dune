@@ -252,7 +252,7 @@ let source_files t ~src_path =
 (* DUNE2: delete this since we have formalised version management via
    the vcs *)
 module Pkg_version = struct
-  open Build.O
+  open Build.S.O
 
   let file sctx (p : Package.t) =
     Path.Build.relative (Path.Build.append_source sctx.context.build_dir p.path)
@@ -274,7 +274,7 @@ module Pkg_version = struct
       ((get >>^ fun v ->
         (Dune_lang.Encoder.(option string) v
          |> Dune_lang.to_string ~syntax:Dune))
-       >>> Build.write_file_dyn fn);
+       |> Build.S.write_file_dyn fn);
     read_file fn
 end
 
@@ -325,14 +325,14 @@ let c_flags t ~dir ~expander ~flags =
         let default = C.Kind.Dict.get default kind in
         let c = Expander.expand_and_eval_set expander
                   flags ~standard:default in
-        let open Build.O in (c >>^ fun l -> l @ ccg)
+        let open Build.S.O in (c >>^ fun l -> l @ ccg)
       end)
 
 let local_binaries t ~dir = Env.local_binaries t.env_context ~dir
 
 let dump_env t ~dir =
   let t = t.env_context in
-  let open Build.O in
+  let open Build.S.O in
   let o_dump = Ocaml_flags.dump (Env.ocaml_flags t ~dir) in
   let c_dump =
     let c_flags = Env.c_flags t ~dir in
@@ -554,7 +554,7 @@ let create
   }
 
 module Libs = struct
-  open Build.O
+  open Build.S.O
 
   let gen_select_rules t ~dir compile_info =
     List.iter (Lib.Compile.resolved_selects compile_info) ~f:(fun rs ->
@@ -586,7 +586,7 @@ module Libs = struct
 end
 
 module Deps = struct
-  open Build.O
+  open Build.S.O
   open Dune_file.Dep_conf
 
   let make_alias expander s =
@@ -669,7 +669,6 @@ module Deps = struct
 end
 
 module Action = struct
-  open Build.O
   module U = Action_unexpanded
 
   let map_exe sctx =
@@ -683,9 +682,11 @@ module Action = struct
           Path.append_source (Path.build host.context.build_dir) exe
         | _ -> exe
 
+  (* TODO: Replace with functorial implementation *)
   let run sctx ~loc ~expander ~dep_kind ~targets:targets_written_by_user
         ~targets_dir t
     : (Path.t Bindings.t, Action.t) Build.t =
+    let open Build.O in
     let dir = Expander.dir expander in
     let map_exe = map_exe sctx in
     begin match (targets_written_by_user : Expander.Targets.t) with
@@ -771,6 +772,13 @@ module Action = struct
     match Expander.Resolved_forms.failures forms with
     | [] -> build
     | fail :: _ -> Build.fail fail >>> build
+
+    module S = struct
+      let run sctx ~loc ~expander ~dep_kind ~targets:targets_written_by_user
+            ~targets_dir t bindings
+        : Action.t Build.s = Build.S.from_arrow (run sctx ~loc ~expander
+          ~dep_kind ~targets:targets_written_by_user ~targets_dir t) bindings
+    end
 end
 
 let opaque t =

@@ -75,7 +75,6 @@ let setup_module_rules t =
   let path = Source.source_path t.source in
   let requires_compile = Compilation_context.requires_compile t.cctx in
   let main_ml =
-    let open Build.O in
     Build.of_result_map requires_compile ~f:(fun libs ->
       Build.arr (fun () ->
         let include_dirs = Path.Set.to_list (Lib.L.include_paths libs) in
@@ -84,7 +83,7 @@ let setup_module_rules t =
         Source.pp_ml fmt t.source ~include_dirs;
         Format.pp_print_flush fmt ();
         Buffer.contents b))
-    >>> Build.write_file_dyn path
+    |> Build.S.write_file_dyn path
   in
   Super_context.add_rule sctx ~dir main_ml
 

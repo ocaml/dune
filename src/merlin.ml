@@ -271,8 +271,8 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander
           ~flags
           ~src_dirs
           ~obj_dirs)
-      >>>
-      Build.write_file_dyn merlin_file))
+      |>
+      Build.S.write_file_dyn merlin_file))
 
 let merge_two ~allow_approx_merlin a b =
   { requires = Lib.Set.union a.requires b.requires

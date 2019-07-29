@@ -171,7 +171,7 @@ let add_rule sctx ~project ~pkg =
          %s\n%s"
         (OpamPrinter.opamfile generated_fields)
         template)
-    >>> Build.write_file_dyn opam_path
+    |> Build.S.write_file_dyn opam_path
   in
   let dir = Path.Build.append_source build_dir pkg.path in
   let mode =

@@ -1,6 +1,6 @@
 open! Stdune
 open Import
-open Build.O
+open Build.S.O
 open Dune_file
 
 module SC = Super_context
@@ -314,8 +314,8 @@ let build_ppx_driver sctx ~dep_kind ~target ~pps ~pp_names =
   add_rule
     (Build.of_result_map driver_and_libs ~f:(fun (driver, _) ->
        Build.return (sprintf "let () = %s ()\n" driver.info.main))
-     >>>
-     Build.write_file_dyn ml);
+     |>
+     Build.S.write_file_dyn ml);
   add_rule
     (Build.S.seqs
        [Build.record_lib_deps
@@ -464,8 +464,8 @@ let action_for_pp sctx ~dep_kind ~loc ~expander ~action ~src ~target =
   in
   Build.path (Path.build src)
   >>^ (fun _ -> Bindings.empty)
-  >>>
-  SC.Action.run sctx
+  |>
+  SC.Action.S.run sctx
     action
     ~loc
     ~expander
@@ -475,7 +475,7 @@ let action_for_pp sctx ~dep_kind ~loc ~expander ~action ~src ~target =
   |> (fun action ->
     match target with
     | None -> action
-    | Some dst -> action >>> Build.action_dyn () ~targets:[dst])
+    | Some dst -> action |> Build.S.action_dyn () ~targets:[dst])
   >>^ fun action ->
   match target with
   | None -> action

@@ -247,7 +247,7 @@ let build_alias_module ~loc ~alias_module ~dir ~cctx =
   in
   Super_context.add_rule ~loc sctx ~dir (
     Build.arr alias_file
-    >>> Build.write_file_dyn (Path.as_in_build_dir_exn file)
+    |> Build.S.write_file_dyn (Path.as_in_build_dir_exn file)
   );
   let cctx = Compilation_context.for_alias_module cctx in
   build_module cctx alias_module

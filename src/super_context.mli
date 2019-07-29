@@ -82,7 +82,7 @@ val add_rule
   -> ?locks:Path.t list
   -> ?loc:Loc.t
   -> dir:Path.Build.t
-  -> (unit, Action.t) Build.t
+  -> Action.t Build.s
   -> unit
 val add_rule_get_targets
   :  t
@@ -91,13 +91,13 @@ val add_rule_get_targets
   -> ?locks:Path.t list
   -> ?loc:Loc.t
   -> dir:Path.Build.t
-  -> (unit, Action.t) Build.t
+  -> Action.t Build.s
   -> Path.Build.Set.t
 val add_rules
   :  t
   -> ?sandbox:bool
   -> dir:Path.Build.t
-  -> (unit, Action.t) Build.t list
+  -> Action.t Build.s list
   -> unit
 val add_alias_action
   :  t
@@ -106,7 +106,7 @@ val add_alias_action
   -> loc:Loc.t option
   -> ?locks:Path.t list
   -> stamp:_
-  -> (unit, Action.t) Build.t
+  -> Action.t Build.s
   -> unit
 
 val source_files : t -> src_path:Path.Source.t -> String.Set.t
@@ -155,7 +155,7 @@ module Deps : sig
     :  t
     -> expander:Expander.t
     -> Dep_conf.t list
-    -> (unit, unit) Build.t
+    -> unit Build.s
 
   (** Evaluates to the actual list of dependencies, ignoring aliases,
       and registers them as the action dependencies.
@@ -165,7 +165,7 @@ module Deps : sig
     :  t
     -> expander:Expander.t
     -> Dep_conf.t Bindings.t
-    -> (unit, Path.t Bindings.t) Build.t
+    -> Path.t Bindings.t Build.s
 end
 
 (** Interpret action written in jbuild files *)
@@ -185,16 +185,30 @@ module Action : sig
     -> (Path.t Bindings.t, Action.t) Build.t
 
   val map_exe : t -> Path.t -> Path.t
+
+  module S : sig
+    (* A non-arrow equivalent of [run]. *)
+    val run
+      :  t
+      -> loc:Loc.t
+      -> expander:Expander.t
+      -> dep_kind:Lib_deps_info.Kind.t
+      -> targets:Expander.Targets.t
+      -> targets_dir:Path.Build.t
+      -> Action_unexpanded.t
+      -> Path.t Bindings.t Build.s
+      -> Action.t Build.s
+  end
 end
 
 module Pkg_version : sig
   val set
     :  t
     -> Package.t
-    -> (unit, string option) Build.t
-    -> (unit, string option) Build.t
+    -> string option Build.s
+    -> string option Build.s
 
-  val read : t -> Package.t -> (unit, string option) Build.t
+  val read : t -> Package.t -> string option Build.s
 end
 
 val opaque : t -> bool

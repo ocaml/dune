@@ -56,7 +56,7 @@ val action_for_pp
   -> action:Action_unexpanded.t
   -> src:Path.Build.t
   -> target:Path.Build.t option
-  -> ('a, Action.t) Build.t
+  -> Action.t Build.s
 
 val ppx_exe
   :  Super_context.t

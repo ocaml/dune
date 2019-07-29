@@ -174,6 +174,7 @@ let action ?dir ~targets action =
   | None -> action
   | Some dir -> Action.Chdir (dir, action)
 
+(* TODO: Replace with functorial implementation *)
 let action_dyn ?dir ~targets () =
   match dir with
   | None -> Targets (Path.Build.Set.of_list targets)
@@ -185,6 +186,7 @@ let action_dyn ?dir ~targets () =
 let write_file fn s =
   action ~targets:[fn] (Write_file (fn, s))
 
+(* TODO: Replace with functorial implementation *)
 let write_file_dyn fn =
   Targets (Path.Build.Set.singleton fn)
   >>^ fun s ->
@@ -435,8 +437,9 @@ module S = struct
   let seqs xs y = seq (ignore (all xs)) y
 
   let dyn_deps x = x >>> (Dyn_deps (arr (fun (_args, deps) -> deps))) >>> (arr fst)
-  let write_file_dyn p s = Targets (Path.Build.Set.singleton p) >>>
-    map s ~f:(fun s -> Action.Write_file (p, s))
+  let from_arrow x a = a >>> x
+  let write_file_dyn p = from_arrow (write_file_dyn p)
+  let action_dyn ?dir ~targets () = from_arrow (action_dyn ?dir ~targets ())
 
   module O = struct
     let (and+) = (&&&)

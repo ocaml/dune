@@ -232,6 +232,20 @@ module S : sig
   (* In future this will likely replace the [Dyn_deps] constructor. *)
   val dyn_deps : ('a * Dep.Set.t) s -> 'a s
 
-  (** Create a file with the given contents. *)
+  (* Turn an arrow to a function *)
+  (* TODO: This is a temporary helper function -- to be deleted. *)
+  val from_arrow : ('a, 'b) t -> 'a s -> 'b s
+
+  (* Equivalent of Build.write_file_dyn. *)
+  (* TODO: This is a temporary helper function -- to be deleted. *)
   val write_file_dyn : Path.Build.t -> string s -> Action.t s
+
+  (* Equivalent of Build.action_dyn. *)
+  (* TODO: This is a temporary helper function -- to be deleted. *)
+  val action_dyn
+  :  ?dir:Path.t
+  -> targets:Path.Build.t list
+  -> unit
+  -> Action.t s
+  -> Action.t s
 end

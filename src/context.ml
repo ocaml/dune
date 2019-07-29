@@ -64,7 +64,7 @@ type t =
   ; findlib                 : Findlib.t
   ; findlib_toolchain       : string option
   ; arch_sixtyfour          : bool
-  ; opam_var_cache          : (string, string) Hashtbl.t
+  ; opam_var_cache          : (string, string) Table.t
   ; ocaml_config            : Ocaml_config.t
   ; version_string          : string
   ; version                 : Ocaml_version.t
@@ -97,7 +97,7 @@ type t =
   ; cmxs_magic_number       : string
   ; cmt_magic_number        : string
   ; supports_shared_libraries : Dynlink_supported.By_the_os.t
-  ; which_cache             : (string, Path.t option) Hashtbl.t
+  ; which_cache             : (string, Path.t option) Table.t
   ; lib_config : Lib_config.t
   }
 
@@ -129,9 +129,9 @@ let to_dyn t : Dyn.t =
       Bool (Dynlink_supported.By_the_os.get t.lib_config.natdynlink_supported)
     ; "supports_shared_libraries",
       Bool (Dynlink_supported.By_the_os.get t.supports_shared_libraries)
-    ; "opam_vars", Hashtbl.to_dyn string string t.opam_var_cache
+    ; "opam_vars", Table.to_dyn string t.opam_var_cache
     ; "ocaml_config", Ocaml_config.to_dyn t.ocaml_config
-    ; "which", Hashtbl.to_dyn string (option path) t.which_cache
+    ; "which", Table.to_dyn (option path) t.which_cache
     ]
 
 let to_dyn_concise t : Dyn.t = String t.name
@@ -141,7 +141,7 @@ let compare a b = compare a.name b.name
 let opam = lazy (Bin.which ~path:(Env.path Env.initial) "opam")
 
 let opam_config_var ~env ~cache var =
-  match Hashtbl.find cache var with
+  match Table.find cache var with
   | Some _ as x -> Fiber.return x
   | None ->
     match Lazy.force opam with
@@ -152,12 +152,12 @@ let opam_config_var ~env ~cache var =
       >>| function
       | Ok s ->
         let s = String.trim s in
-        Hashtbl.set cache var s;
+        Table.set cache var s;
         Some s
       | Error _ -> None
 
 let which ~cache ~path x =
-  Hashtbl.find_or_add cache x ~f:(Bin.which ~path)
+  Table.find_or_add cache x ~f:(Bin.which ~path)
 
 let ocamlpath_sep =
   if Sys.cygwin then
@@ -208,15 +208,15 @@ let ocamlfind_printconf_path ~env ~ocamlfind ~toolchain =
 
 let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       ~host_context ~host_toolchain ~profile =
-  let opam_var_cache = Hashtbl.create 128 in
+  let opam_var_cache = Table.create (module String) 128 in
   (match kind with
    | Opam { root = Some root; _ } ->
-     Hashtbl.set opam_var_cache "root" root
+     Table.set opam_var_cache "root" root
    | _ -> ());
   let prog_not_found_in_path prog =
     Utils.program_not_found prog ~context:name ~loc:None
   in
-  let which_cache = Hashtbl.create 128 in
+  let which_cache = Table.create (module String) 128 in
   let which x = which ~cache:which_cache ~path x in
   let which_exn x =
     match which x with

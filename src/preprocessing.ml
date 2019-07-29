@@ -68,14 +68,14 @@ end = struct
       { pps; project }
   end
 
-  let reverse_table : (encoded, Decoded.t) Hashtbl.t =
-    Hashtbl.create 128
+  let reverse_table : (Digest.t, Decoded.t) Table.t =
+    Table.create (module Digest) 128
 
   let encode ({ Decoded. pps; project } as x) =
     let y = Digest.generic (pps, Option.map ~f:Dune_project.file_key project) in
-    match Hashtbl.find reverse_table y with
+    match Table.find reverse_table y with
     | None ->
-      Hashtbl.set reverse_table y x;
+      Table.set reverse_table y x;
       y
     | Some x' ->
       if Decoded.equal x x' then
@@ -89,7 +89,7 @@ end = struct
       end
 
   let decode y =
-    match Hashtbl.find reverse_table y with
+    match Table.find reverse_table y with
     | Some x -> x
     | None ->
       User_error.raise

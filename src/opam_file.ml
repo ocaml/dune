@@ -129,11 +129,11 @@ module Create = struct
         ; "extra-files"
         |] in
       let table = lazy (
-        let table = Hashtbl.create (Array.length fields) in
-        Array.iteri fields ~f:(fun i field -> Hashtbl.add_exn table field i);
+        let table = Table.create (module String) (Array.length fields) in
+        Array.iteri fields ~f:(fun i field -> Table.add_exn table field i);
         table
       ) in
-      fun key -> Hashtbl.find (Lazy.force table) key
+      fun key -> Table.find (Lazy.force table) key
     in
     fun vars ->
       List.stable_sort vars ~compare:(fun (x, _) (y, _) ->

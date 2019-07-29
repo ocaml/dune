@@ -45,7 +45,7 @@ let compare x y =
 let equal x y = compare x y = Eq
 
 let hash { dir ; name } =
-  Hashtbl.hash (Path.Build.hash dir, String.hash name)
+  Tuple.T2.hash Path.Build.hash String.hash (dir, name)
 
 let pp fmt t = Path.Build.pp fmt (Path.Build.relative t.dir t.name)
 
@@ -82,12 +82,12 @@ let find_dir_specified_on_command_line ~dir ~file_tree =
       ]
   | Some dir -> dir
 
-let standard_aliases = Hashtbl.create 7
+let standard_aliases = Table.create (module String) 7
 
-let is_standard name = Hashtbl.mem standard_aliases name
+let is_standard name = Table.mem standard_aliases name
 
 let make_standard name =
-  Hashtbl.add_exn standard_aliases name ();
+  Table.add_exn standard_aliases name ();
   make name
 
 let default     = make_standard "default"

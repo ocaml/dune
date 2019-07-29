@@ -38,14 +38,14 @@ module Make(Data : sig type t end) = struct
         }
     end
 
-    let langs = Hashtbl.create 32
+    let langs = Table.create (module String) 32
 
     let register syntax data =
       let name = Syntax.name syntax in
-      if Hashtbl.mem langs name then
+      if Table.mem langs name then
         Code_error.raise "Versioned_file.Lang.register: already registered"
           [ "name", Dyn.Encoder.string name ];
-      Hashtbl.add_exn langs name { syntax; data }
+      Table.add_exn langs name { syntax; data }
 
     let parse first_line : Instance.t =
       let { Dune_lexer.
@@ -56,12 +56,12 @@ module Make(Data : sig type t end) = struct
       let ver =
         Dune_lang.Decoder.parse Syntax.Version.decode Univ_map.empty
           (Atom (ver_loc, Dune_lang.Atom.of_string ver)) in
-      match Hashtbl.find langs name with
+      match Table.find langs name with
       | None ->
         User_error.raise ~loc:name_loc
           [ Pp.textf "Unknown language %S." name ]
           ~hints:(User_message.did_you_mean name
-                    ~candidates:(Hashtbl.keys langs))
+                    ~candidates:(Table.keys langs))
       | Some t ->
         Syntax.check_supported t.syntax (ver_loc, ver);
         { syntax  = t.syntax
@@ -70,7 +70,7 @@ module Make(Data : sig type t end) = struct
         }
 
     let get_exn name : Instance.t =
-      let t = Hashtbl.find_exn langs name in
+      let t = Table.find_exn langs name in
       { syntax  = t.syntax
       ; data    = t.data
       ; version = Syntax.greatest_supported_version t.syntax

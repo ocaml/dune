@@ -2,6 +2,8 @@ open Stdune
 
 type t
 
+val hash : t -> int
+
 val of_string_exn : loc:Loc.t option -> string -> t
 val to_string : t -> string
 

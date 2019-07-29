@@ -85,7 +85,7 @@ type t =
   ; (** Misc *)
     arch_sixtyfour : bool
 
-  ; opam_var_cache : (string, string) Hashtbl.t
+  ; opam_var_cache : (string, string) Table.t
 
   ; ocaml_config            : Ocaml_config.t
   ; version_string          : string
@@ -121,7 +121,7 @@ type t =
 
   ; supports_shared_libraries : Dynlink_supported.By_the_os.t
 
-  ; which_cache             : (string, Path.t option) Hashtbl.t
+  ; which_cache             : (string, Path.t option) Table.t
   ; lib_config : Lib_config.t
   }
 

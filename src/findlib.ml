@@ -165,7 +165,7 @@ type t =
   ; packages   : ( Lib_name.t
                  , ( Sub_system_info.t Dune_package.Lib.t
                    , Unavailable_reason.t) result
-                 ) Hashtbl.t
+                 ) Table.t
   }
 
 module Package = struct
@@ -381,7 +381,7 @@ end = struct
       let dir, res =
         parse_package db ~meta_file ~name:full_name ~parent_dir:dir ~vars
       in
-      Hashtbl.set db.packages full_name res;
+      Table.set db.packages full_name res;
       List.iter meta.subs ~f:(fun (meta : Meta.Simplified.t) ->
         let full_name =
           match meta.name with
@@ -426,23 +426,23 @@ let find_and_acknowledge_package t ~fq_name =
   in
   match loop t.paths with
   | None ->
-    Hashtbl.set t.packages root_name (Error Not_found)
+    Table.set t.packages root_name (Error Not_found)
   | Some (Findlib findlib_package) ->
     Meta_source.parse_and_acknowledge findlib_package t
   | Some (Dune pkg) ->
     List.iter pkg.libs ~f:(fun lib ->
-      Hashtbl.set t.packages (Dune_package.Lib.name lib) (Ok lib))
+      Table.set t.packages (Dune_package.Lib.name lib) (Ok lib))
 
 let find t name =
-  match Hashtbl.find t.packages name with
+  match Table.find t.packages name with
   | Some x -> x
   | None ->
     find_and_acknowledge_package t ~fq_name:name;
-    match Hashtbl.find t.packages name with
+    match Table.find t.packages name with
     | Some x -> x
     | None ->
       let res = Error Unavailable_reason.Not_found in
-      Hashtbl.set t.packages name res;
+      Table.set t.packages name res;
       res
 
 let available t name = Result.is_ok (find t name)
@@ -476,7 +476,7 @@ let load_all_packages t =
 
 let all_packages t =
   load_all_packages t;
-  Hashtbl.fold t.packages ~init:[] ~f:(fun x acc ->
+  Table.fold t.packages ~init:[] ~f:(fun x acc ->
     match x with
     | Ok p    -> p :: acc
     | Error _ -> acc)
@@ -486,12 +486,12 @@ let create ~stdlib_dir ~paths ~version =
   { stdlib_dir
   ; paths
   ; builtins = Meta.builtins ~stdlib_dir ~version
-  ; packages = Hashtbl.create 1024
+  ; packages = Table.create (module Lib_name) 1024
   }
 
 let all_unavailable_packages t =
   load_all_packages t;
-  Hashtbl.foldi t.packages ~init:[] ~f:(fun name x acc ->
+  Table.foldi t.packages ~init:[] ~f:(fun name x acc ->
     match x with
     | Ok    _ -> acc
     | Error e -> ((name, e) :: acc))

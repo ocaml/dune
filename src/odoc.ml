@@ -1,7 +1,7 @@
 open! Stdune
 open Import
 open Dune_file
-open Build.O
+open Build.S.O
 
 module SC = Super_context
 

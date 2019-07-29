@@ -12,7 +12,7 @@ let man =
 let info = Term.info "printenv" ~doc ~man
 
 let dump sctx ~dir =
-  let open Build.O in
+  let open Build.S.O in
   Super_context.dump_env sctx ~dir
   >>^ fun env ->
   ((Super_context.context sctx).name, env)

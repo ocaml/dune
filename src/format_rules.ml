@@ -1,7 +1,7 @@
 open Import
 
 let add_diff sctx loc alias ~dir ~input ~output =
-  let open Build.O in
+  let open Build.S.O in
   let action = Action.diff input output in
   Super_context.add_alias_action sctx alias ~dir ~loc:(Some loc) ~locks:[]
     ~stamp:input

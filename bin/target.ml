@@ -13,7 +13,7 @@ type resolve_input =
   | String of string
 
 let request (setup : Dune.Main.build_system) targets =
-  let open Build.O in
+  let open Build.S.O in
   List.fold_left targets ~init:(Build.return ()) ~f:(fun acc target ->
     acc >>>
     match target with

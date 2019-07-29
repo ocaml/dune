@@ -28,7 +28,7 @@ module Dir_rules = struct
     let union x y =
       { deps = Path.Set.union x.deps y.deps;
         dyn_deps =
-          (let open Build.O in
+          (let open Build.S.O in
            Build.fanout x.dyn_deps y.dyn_deps >>^ fun (a, b) ->
            Path.Set.union a b);
         actions = Appendable_list.(@) x.actions y.actions;

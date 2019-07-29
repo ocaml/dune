@@ -220,6 +220,7 @@ module S : sig
     val (and+)  : 'a s -> 'b s -> ('a * 'b) s
     val ( >>> ) : unit s -> 'a s -> 'a s
     val ( >>^ ) : 'a s -> ('a -> 'b) -> 'b s
+    val ( &&& ) : 'a s -> 'b s -> ('a * 'b) s
   end
 
   val apply  : 'a s        -> ('a -> 'b) s -> 'b s

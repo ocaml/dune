@@ -441,5 +441,6 @@ module S = struct
     let (let+) = (>>^)
     let ( >>> ) = seq
     let ( >>^ ) x y = map x ~f:y
+    let ( &&& ) x y = apply x (map y ~f:(fun x y -> (y, x)))
   end
 end

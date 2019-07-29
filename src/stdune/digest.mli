@@ -15,3 +15,5 @@ val string : string -> t
 val to_string_raw : t -> string
 
 val generic : 'a -> t
+
+val path_stat_digest : ?stat:Unix.stats -> Path.t -> Unix.stats * t

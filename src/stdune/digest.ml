@@ -17,3 +17,14 @@ let string = D.string
 let to_string_raw s = s
 
 let generic a = string (Marshal.to_string a [])
+
+let dir_digest (stat : Unix.stats) =
+  generic (stat.st_size, stat.st_perm, stat.st_mtime, stat.st_ctime)
+
+let path_stat_digest ?stat p =
+  let stat = match stat with Some s -> s | None -> Path.stat p in
+  let digest =
+    if stat.Unix.st_kind = Unix.S_DIR then dir_digest stat
+    else generic (file p, stat.st_perm)
+  in
+  (stat, digest)

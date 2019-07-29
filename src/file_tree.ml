@@ -72,22 +72,6 @@ module Dune_file = struct
       ({ contents; kind }, sub_dirs))
 end
 
-let load_jbuild_ignore path =
-  let path = Path.source path in
-  List.filteri (Io.lines_of_file path) ~f:(fun i fn ->
-    if Filename.dirname fn = Filename.current_dir_name then
-      true
-    else begin
-      User_warning.emit ~loc:(Loc.of_pos
-                                ( Path.to_string path
-                                , i + 1, 0
-                                , String.length fn
-                                ))
-        [ Pp.textf "subdirectory expression %s ignored" fn ];
-      false
-    end)
-  |> String.Set.of_list
-
 module Dir = struct
   type t =
     { path     : Path.Source.t
@@ -298,14 +282,6 @@ let load ?(warn_when_seeing_jbuild_file=true) path ~ancestor_vcs =
                             This is not allowed"
                     (Path.Source.to_string_maybe_quoted path)
                 ]
-          in
-          let sub_dirs =
-            if String.Set.mem files "jbuild-ignore" then
-              Sub_dirs.add_data_only_dirs sub_dirs
-                ~dirs:(load_jbuild_ignore (
-                  Path.Source.relative path "jbuild-ignore"))
-            else
-              sub_dirs
           in
           (dune_file, sub_dirs)
       in

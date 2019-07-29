@@ -188,6 +188,10 @@ let upgrade_stanza stanza =
   in
   upgrade stanza
 
+let load_jbuild_ignore path =
+  let path = Path.source path in
+  String.Set.of_list (Io.lines_of_file path)
+
 let upgrade_file todo file sexps comments ~look_for_jbuild_ignore =
   let dir = Path.Source.parent_exn file in
   let new_file =
@@ -208,7 +212,7 @@ let upgrade_file todo file sexps comments ~look_for_jbuild_ignore =
             && Path.exists (Path.source jbuild_ignore)) then
       (sexps, [])
     else begin
-      let data_only_dirs = File_tree.load_jbuild_ignore jbuild_ignore in
+      let data_only_dirs = load_jbuild_ignore jbuild_ignore in
       let stanza =
         Dune_lang.add_loc ~loc:Loc.none
           (List (Dune_lang.atom "data_only_dirs"

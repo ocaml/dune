@@ -33,7 +33,7 @@ let gen_rules_output sctx (config : Dune_file.Auto_format.t)
   let alias_formatted = Alias.fmt ~dir:output_dir in
   let resolve_program =
     Super_context.resolve_program ~dir sctx ~loc:(Some loc) in
-  let depend_on_files named = depend_on_files ~named (Path.source source_dir) in
+  let depend_on_files named = depend_on_files ~named (Path.build dir) in
   let setup_formatting file =
     let input_basename = Path.Source.basename file in
     let input = Path.Build.relative dir input_basename in

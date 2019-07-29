@@ -20,7 +20,7 @@
 
 - Enable `(explicit_js_mode)` by default. (#1941, @nojb)
 
-- Add an option to clear the console in-between builds with 
+- Add an option to clear the console in-between builds with
  `--terminal-persistence=clear-on-rebuild`
 
 - Stop symlinking object files to main directory for stanzas defined `jbuild`
@@ -45,6 +45,10 @@
 
 - Define (paths ...) fields in (context ...) definitions in order to set or
   extend any PATH-like variable in the context environment. (#2426, @nojb)
+
+- The `diff` action will always normalize newlines before diffing. Perviousy, it
+  would not do this normalization for rules defined in jbuild files. (#2457,
+  @rgrinberg)
 
 1.11.0 (23/07/2019)
 -------------------

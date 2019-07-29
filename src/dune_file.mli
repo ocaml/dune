@@ -112,6 +112,12 @@ module Dep_conf : sig
     | Package of String_with_vars.t
     | Universe
     | Env_var of String_with_vars.t
+    (* [Sandbox_config] is a way to declare that your action also depends
+       on there being a clean filesystem around its deps.
+       (or, if you require [no_sandboxing], it's that your action depends on
+       something undeclared (e.g. absolute path of cwd) and you want to
+       allow it) *)
+    | Sandbox_config of Sandbox_config.t
 
   val remove_locs : t -> t
 

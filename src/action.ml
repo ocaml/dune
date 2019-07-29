@@ -173,26 +173,46 @@ let chdirs =
   in
   fun t -> loop Path.Set.empty t
 
-let symlink_managed_paths sandboxed deps ~eval_pred =
+let prepare_managed_paths ~link ~sandboxed deps ~eval_pred =
   let steps =
     Path.Set.fold (Dep.Set.paths deps ~eval_pred) ~init:[]
       ~f:(fun path acc ->
         match Path.as_in_build_dir path with
         | None ->
-          assert (not (Path.is_in_source_tree path));
+          (* This can actually raise if we try to sandbox the "copy from
+             source dir" rules. There is no reason to do that though. *)
+          if (Path.is_in_source_tree path)
+          then
+            Code_error.raise
+              "Action depends on source tree. All actions should depend on the \
+               copies in build directory instead" ["path", Path.to_dyn path];
           acc
-        | Some p -> Symlink (path, sandboxed p) :: acc)
+        | Some p -> link path (sandboxed p) :: acc)
   in
   Progn steps
+
+let link_function ~(mode : Sandbox_mode.some) : path -> target -> t =
+  match mode with
+  | Symlink ->
+    if Sys.win32 then
+      Code_error.raise
+        "Don't have symlinks on win32, but [Symlink] sandboxing \
+         mode was selected. To use emulation via copy, the [Copy] sandboxing \
+         mode should be selected." []
+    else
+      (fun a b -> Symlink (a, b))
+  | Copy ->
+    (fun a b -> Copy (a, b))
 
 let maybe_sandbox_path f p =
   match Path.as_in_build_dir p with
   | None -> p
   | Some p -> Path.build (f p)
 
-let sandbox t ~sandboxed ~deps ~targets ~eval_pred : t =
+let sandbox t ~sandboxed ~mode ~deps ~eval_pred : t =
+  let link = link_function ~mode in
   Progn
-    [ symlink_managed_paths sandboxed deps ~eval_pred
+    [ prepare_managed_paths ~sandboxed ~link deps ~eval_pred
     ; map t
         ~dir:Path.root
         ~f_string:(fun ~dir:_ x -> x)
@@ -200,6 +220,42 @@ let sandbox t ~sandboxed ~deps ~targets ~eval_pred : t =
         ~f_target:(fun ~dir:_ -> sandboxed)
         ~f_program:(fun ~dir:_ ->
           Result.map ~f:(maybe_sandbox_path sandboxed))
-    ; Progn (List.filter_map targets ~f:(fun path ->
-        Some (Rename (sandboxed path, path))))
     ]
+
+type is_useful_to_sandbox =
+  | Clearly_not
+  | Maybe
+
+let is_useful_to_sandbox =
+  let rec loop t =
+    match t with
+    | Chdir (_, t) ->
+      loop t
+    | Setenv (_, _, t) ->
+      loop t
+    | Redirect (_, _, t) ->
+      loop t
+    | Ignore (_, t) ->
+      loop t
+    | Progn l -> List.exists l ~f:loop
+    | Echo _ -> false
+    | Cat _ -> false
+    | Copy _ -> false
+    | Symlink _ -> false
+    | Copy_and_add_line_directive _ -> false
+    | Write_file _ -> false
+    | Rename _ -> false
+    | Remove_tree _ -> false
+    | Diff _ -> false
+    | Mkdir _ -> false
+    | Digest_files _ -> false
+    | Merge_files_into _ -> false
+    | Run _ -> true
+    | System _ -> true
+    | Bash _ -> true
+  in
+  fun t -> match loop t with
+    | true ->
+      Maybe
+    | false ->
+      Clearly_not

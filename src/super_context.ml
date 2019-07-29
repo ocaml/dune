@@ -633,6 +633,9 @@ module Deps = struct
       let var = Expander.expand_str expander var_sw in
       Build.env_var var
       >>^ fun () -> []
+    | Sandbox_config sandbox_config ->
+      Build.dep (Dep.sandbox_config sandbox_config)
+      >>^ fun () -> []
 
   let make_interpreter ~f t ~expander l =
     let forms = Expander.Resolved_forms.empty () in

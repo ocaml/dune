@@ -39,7 +39,7 @@ module Terminal_persistence: sig
     | Preserve
     | Clear_on_rebuild
 
-  val all: (string * t) list 
+  val all: (string * t) list
   val of_string: string -> (t, string) result
   val to_string: t -> string
   val decode : t Dune_lang.Decoder.t
@@ -65,6 +65,10 @@ module Concurrency : sig
   val to_string : t -> string
 end
 
+module Sandboxing_preference : sig
+  type t = Sandbox_mode.t list
+end
+
 module type S = sig
   type 'a field
 
@@ -72,6 +76,7 @@ module type S = sig
     { display     : Display.t     field
     ; concurrency : Concurrency.t field
     ; terminal_persistence : Terminal_persistence.t  field
+    ; sandboxing_preference : Sandboxing_preference.t field
     }
 end
 

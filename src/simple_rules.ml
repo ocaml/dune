@@ -63,7 +63,12 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
     in
     let bindings = dep_bindings ~extra_bindings rule.deps in
     let expander = Expander.add_bindings expander ~bindings in
-    SC.add_rule_get_targets sctx ~dir ~mode:rule.mode ~loc:rule.loc
+    SC.add_rule_get_targets sctx
+      (* user rules may have extra requirements, in which case they will be
+         specified as a part of rule.deps, which will be correctly taken care of
+         by the build arrow *)
+      ~sandbox:Sandbox_config.no_special_requirements
+      ~dir ~mode:rule.mode ~loc:rule.loc
       ~locks:(interpret_locks ~expander rule.locks)
       (SC.Deps.interpret_named sctx ~expander rule.deps
        >>>
@@ -74,7 +79,8 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
          ~expander
          ~dep_kind:Required
          ~targets
-         ~targets_dir:dir)
+         ~targets_dir:dir
+      )
   end else
     Path.Build.Set.empty
 

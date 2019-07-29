@@ -98,6 +98,19 @@ module Concurrency = struct
     | Fixed n -> string_of_int n
 end
 
+module Sandboxing_preference = struct
+  type t = Sandbox_mode.t list
+
+  let decode =
+    repeat (
+      plain_string (fun ~loc s ->
+        match Sandbox_mode.of_string s with
+        | Error m ->
+          User_error.raise ~loc [ Pp.text m ]
+        | Ok s -> s))
+
+end
+
 module type S = sig
   type 'a field
 
@@ -105,6 +118,7 @@ module type S = sig
     { display     : Display.t     field
     ; concurrency : Concurrency.t field
     ; terminal_persistence: Terminal_persistence.t  field
+    ; sandboxing_preference : Sandboxing_preference.t field
     }
 end
 
@@ -121,26 +135,31 @@ let merge t (partial : Partial.t) =
   ; concurrency = field t.concurrency partial.concurrency
   ; terminal_persistence =
       field t.terminal_persistence partial.terminal_persistence
+  ; sandboxing_preference =
+      field t.sandboxing_preference partial.sandboxing_preference
   }
 
 let default =
   { display     = if inside_dune then Quiet   else Progress
   ; concurrency = if inside_dune then Fixed 1 else Auto
   ; terminal_persistence = Terminal_persistence.Preserve
+  ; sandboxing_preference = []
   }
 
 let decode =
   let+ display = field "display" Display.decode ~default:default.display
-  and+ concurrency =
-    field "jobs" Concurrency.decode ~default:default.concurrency
+  and+ concurrency = field "jobs" Concurrency.decode ~default:default.concurrency
   and+ terminal_persistence =
-    field "terminal-persistence" Terminal_persistence.decode
-      ~default:default.terminal_persistence
+    field "terminal-persistence" Terminal_persistence.decode ~default:default.terminal_persistence
+  and+ sandboxing_preference =
+    field "sandboxing_preference"
+      Sandboxing_preference.decode ~default:default.sandboxing_preference
   and+ () = Versioned_file.no_more_lang
   in
   { display
   ; concurrency
   ; terminal_persistence
+  ; sandboxing_preference
   }
 
 let decode = fields decode
@@ -164,9 +183,10 @@ let load_user_config_file () =
 let adapt_display config ~output_is_a_tty =
   (* Progress isn't meaningful if inside a terminal (or emacs), so reset the
      display to Quiet if the output is getting piped to a file or something. *)
-  let config = if config.display = Progress &&
-                  not output_is_a_tty &&
-                  not inside_emacs
+  let config =
+    if config.display = Progress &&
+       not output_is_a_tty &&
+       not inside_emacs
     then
       { config with display = Quiet }
     else

@@ -371,7 +371,7 @@
 
 (alias
  (name env-bins)
- (deps (package dune) (source_tree test-cases/env-bins))
+ (deps (package dune) (source_tree test-cases/env-bins) (sandbox none))
  (action
   (chdir
    test-cases/env-bins
@@ -1315,6 +1315,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name sandboxing)
+ (deps (package dune) (source_tree test-cases/sandboxing))
+ (action
+  (chdir
+   test-cases/sandboxing
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name scope-bug)
  (deps (package dune) (source_tree test-cases/scope-bug))
  (action
@@ -1807,6 +1815,7 @@
   (alias redirections)
   (alias reporting-of-cycles)
   (alias rule-target-external)
+  (alias sandboxing)
   (alias scope-bug)
   (alias scope-ppx-bug)
   (alias select)
@@ -1987,6 +1996,7 @@
   (alias redirections)
   (alias reporting-of-cycles)
   (alias rule-target-external)
+  (alias sandboxing)
   (alias scope-bug)
   (alias select)
   (alias several-packages)

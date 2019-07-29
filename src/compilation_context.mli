@@ -28,7 +28,6 @@ val create
   -> ?stdlib               : Dune_file.Library.Stdlib.t
   -> js_of_ocaml           : Dune_file.Js_of_ocaml.t option
   -> dynlink               : bool
-  -> ?sandbox              : bool
   -> package               : Package.t option
   -> ?vimpl                : Vimpl.t
   -> unit
@@ -54,7 +53,7 @@ val opaque               : t -> bool
 val stdlib               : t -> Dune_file.Library.Stdlib.t option
 val js_of_ocaml          : t -> Dune_file.Js_of_ocaml.t option
 val dynlink              : t -> bool
-val sandbox              : t -> bool option
+val sandbox              : t -> Sandbox_config.t
 val package              : t -> Package.t option
 val vimpl                : t -> Vimpl.t option
 

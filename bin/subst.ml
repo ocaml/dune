@@ -55,6 +55,7 @@ let term =
     { display     = Quiet
     ; concurrency = Fixed 1
     ; terminal_persistence  = Preserve
+    ; sandboxing_preference = []
     }
   in
   Path.set_root (Path.External.cwd ());

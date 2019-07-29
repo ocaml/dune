@@ -310,13 +310,15 @@ let build_ppx_driver sctx ~dep_kind ~target ~pps ~pp_names =
      and for all at the point where the driver is defined. *)
   let dir = Path.Build.parent_exn target in
   let ml = Path.Build.relative dir "_ppx.ml" in
-  let add_rule = SC.add_rule sctx ~dir in
+  let add_rule ~sandbox = SC.add_rule ~sandbox sctx ~dir in
   add_rule
+    ~sandbox:Sandbox_config.default
     (Build.of_result_map driver_and_libs ~f:(fun (driver, _) ->
        Build.return (sprintf "let () = %s ()\n" driver.info.main))
      >>>
      Build.write_file_dyn ml);
   add_rule
+    ~sandbox:Sandbox_config.no_special_requirements
     (Build.S.seqs
        [Build.record_lib_deps
           (Lib_deps.info ~kind:dep_kind (Lib_deps.of_pps pp_names));
@@ -327,7 +329,12 @@ let build_ppx_driver sctx ~dep_kind ~target ~pps ~pp_names =
           ; A "-w"; A "-24"
           ; Command.of_result
               (Result.map driver_and_libs ~f:(fun (_driver, libs) ->
-                 Lib.L.compile_and_link_flags ~mode ~compile:libs ~link:libs))
+                 Command.Args.S
+                   [ Lib.L.compile_and_link_flags ~mode ~compile:libs ~link:libs
+                   ; Hidden_deps
+                       (Lib_file_deps.deps libs
+                          ~groups:[Cmi; Cmx])
+                   ]))
           ; Dep (Path.build ml)
           ]))
 
@@ -622,7 +629,8 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess
            let ast = setup_dialect_rules sctx ~dir ~dep_kind ~expander m in
            if lint then lint_module ~ast ~source:m;
            pped_module ast ~f:(fun ml_kind src dst ->
-             SC.add_rule sctx ~loc ~dir
+             SC.add_rule
+               ~sandbox:Sandbox_config.no_special_requirements sctx ~loc ~dir
                (promote_correction ~suffix:corrected_suffix
                   (Option.value_exn (Module.file m ~ml_kind))
                   (preprocessor_deps >>^ ignore

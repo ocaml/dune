@@ -50,7 +50,10 @@ module Main = struct
     let open Fiber.O in
     let only_packages = Common.only_packages common in
     scan_workspace ~log common
-    >>= init_build_system ?external_lib_deps_mode ?only_packages
+    >>= init_build_system
+          ~sandboxing_preference:((Common.config common).sandboxing_preference)
+          ?external_lib_deps_mode
+          ?only_packages
 end
 
 module Log = struct

@@ -181,7 +181,8 @@ let add_rule sctx ~project ~pkg =
       ; only = None
       }
   in
-  Super_context.add_rule sctx ~mode ~dir opam_rule;
+  Super_context.add_rule
+    sctx ~mode ~dir opam_rule;
   let aliases =
     [ Alias.install ~dir
     ; Alias.runtest ~dir

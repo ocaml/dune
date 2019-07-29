@@ -322,11 +322,15 @@ include Sub_system.Register_end_point(
             backend.Backend.info.flags) @ [info.flags]
         in
         let expander = Expander.add_bindings expander ~bindings in
-        List.map flags ~f:(
-          Expander.expand_and_eval_set expander ~standard:(Build.return []))
-        |> Build.all
-        >>^ List.concat
+        let open Build.S.O in
+        let+ l =
+          List.map flags ~f:(
+            Expander.expand_and_eval_set expander ~standard:(Build.return []))
+          |> Build.all
+        in
+        Command.Args.As (List.concat l)
       in
+      let source_files = List.concat_map source_modules ~f:Module.sources in
       Mode_conf.Set.iter info.modes ~f:(fun (mode : Mode_conf.t) ->
         let ext = match mode with
           | Native | Best -> ".exe"
@@ -341,30 +345,30 @@ include Sub_system.Register_end_point(
           ~loc:(Some info.loc)
           (Alias.runtest ~dir)
           ~stamp:("ppx-runner", name)
-          (let module A = Action in
-           let exe =
-             Path.Build.relative inline_test_dir (name ^ ext)
-             |> Path.build
+          (let exe =
+             Path.build (Path.Build.relative inline_test_dir (name ^ ext))
            in
-           Build.path exe >>>
+           let exe, runner_args =
+             match custom_runner with
+             | None -> Ok exe, Command.Args.As []
+             | Some runner ->
+               (Super_context.resolve_program ~dir sctx ~loc:(Some loc) runner,
+                Dep exe)
+           in
            Build.fanout
              (Super_context.Deps.interpret sctx info.deps ~expander)
-             flags
-           >>^ fun (_deps, flags) ->
-           let exe, runner_args = match custom_runner with
-             | None -> Ok exe, []
-             | Some runner ->
-               Super_context.resolve_program ~dir sctx ~loc:(Some loc) runner
-             , [ Path.reach ~from:(Path.build dir) exe ]
-           in
-           A.chdir (Path.build dir)
-             (A.progn
-                (A.run exe (runner_args @ flags) ::
-                 (List.concat_map source_modules ~f:(fun m ->
-                    Module.sources m
-                    |> List.map ~f:(fun fn ->
-                      A.diff ~optional:true
-                        fn (Path.extend_basename fn ~suffix:".corrected"))))))))
+             (Build.paths source_files)
+           >>^ ignore
+           >>>
+           Build.progn
+             (Command.run exe ~dir:(Path.build dir)
+                [ runner_args
+                ; Dyn flags
+                ]
+              :: List.map source_files ~f:(fun fn ->
+                Build.return
+                  (Action.diff ~optional:true
+                     fn (Path.extend_basename fn ~suffix:".corrected"))))))
   end)
 
 let linkme = ()

@@ -80,11 +80,19 @@ module Unresolved : sig
   val resolve : t -> f:(Loc.t option -> string -> Path.t) -> action
 end with type action := t
 
-(** Return a sandboxed version of an action *)
+(** Return a sandboxed version of an action.
+    It takes care of preparing deps in the sandbox, but it does not copy the
+    targets back out. It's the responsibility of the caller to do that. *)
 val sandbox
   :  t
   -> sandboxed:(Path.Build.t -> Path.Build.t)
+  -> mode:Sandbox_mode.some
   -> deps:Dep.Set.t
-  -> targets:Path.Build.t list
   -> eval_pred:Dep.eval_pred
   -> t
+
+type is_useful_to_sandbox =
+  | Clearly_not
+  | Maybe
+
+val is_useful_to_sandbox : t -> is_useful_to_sandbox

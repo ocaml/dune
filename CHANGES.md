@@ -56,6 +56,12 @@
 - Remove support for `jbuild-ignore` files. They have been replaced by the the
   `dirs` stanza in `dune` files. (#2456, @rgrinberg)
 
+- Add a new config option `sandboxing_preference`, the cli argument `--sandbox`,
+  and the dep spec `sandbox` in dune language. These let the user control the level of
+  sandboxing done by dune per rule and globally. The rule specification takes precedence.
+  The global configuration merely specifies the default. 
+  (#2213, @aalekseyev, @jdimino)
+
 1.11.0 (23/07/2019)
 -------------------
 

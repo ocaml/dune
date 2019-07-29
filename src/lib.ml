@@ -495,7 +495,7 @@ module Lib_and_module = struct
   module L = struct
     type nonrec t = t list
 
-    let link_flags ts ~mode =
+    let link_flags ts ~(lib_config : Lib_config.t) ~mode =
       let libs = List.filter_map ts ~f:(function
         | Lib lib -> Some lib
         | Module _ -> None) in
@@ -504,10 +504,20 @@ module Lib_and_module = struct
          List.map ts ~f:(function
            | Lib t ->
              let archives = Lib_info.archives t.info in
-             Command.Args.Deps (Mode.Dict.get archives mode)
+             let archive_files = L.archive_files [t] ~mode in
+             Command.Args.S [
+               Command.Args.Deps (Mode.Dict.get archives mode);
+               Command.Args.Hidden_deps (Dep.Set.of_files archive_files);
+             ]
            | Module (obj_dir, m) ->
-             Dep (Obj_dir.Module.cm_file_unsafe obj_dir m
-                    ~kind:(Mode.cm_kind mode))
+             Command.Args.S [
+               Dep (Obj_dir.Module.cm_file_unsafe obj_dir m
+                      ~kind:(Mode.cm_kind mode));
+               Command.Args.Hidden_deps (Dep.Set.of_files [
+                 Obj_dir.Module.o_file_unsafe
+                   obj_dir m ~ext_obj:lib_config.ext_obj
+               ]);
+             ]
          ))
 
     let of_libs l = List.map l ~f:(fun x -> Lib x)

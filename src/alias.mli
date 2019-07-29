@@ -18,6 +18,7 @@ val make : string -> dir:Path.Build.t -> t
 *)
 val name : t -> string
 val dir : t -> Path.Build.t
+val stamp_file_dir : t -> Path.Build.t
 
 val to_dyn : t -> Dyn.t
 

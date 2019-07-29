@@ -1,6 +1,6 @@
 open! Stdune
 open Import
-open Build.O
+open Build.S.O
 open! No_io
 
 module SC = Super_context
@@ -158,11 +158,11 @@ let pp_flag_of_action sctx ~expander ~loc ~action
     begin match args with
     | None -> Build.return None
     | Some args ->
-      let action : (Path.t Bindings.t, Action.t) Build.t =
+      let action : Path.t Bindings.t Build.s -> Action.t Build.s =
         let targets_dir = Expander.dir expander in
         let targets = Expander.Targets.Forbidden "preprocessing actions" in
         let action = Preprocessing.chdir (Run (exe, args)) in
-        Super_context.Action.run sctx
+        Super_context.Action.S.run sctx
           ~loc
           ~expander
           ~dep_kind:Optional
@@ -182,7 +182,7 @@ let pp_flag_of_action sctx ~expander ~loc ~action
           |> Option.some
       in
       Build.return Bindings.empty
-      >>>
+      |>
       action
       >>^ begin function
       | Run (exe, args) -> pp_of_action exe args

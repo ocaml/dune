@@ -37,6 +37,7 @@ module Stanza = struct
     { flags          : Ocaml_flags.Spec.t
     ; c_flags        : Ordered_set_lang.Unexpanded.t C.Kind.Dict.t
     ; env_vars       : Env.t
+    ; paths          : (string * Ordered_set_lang.t) list
     ; binaries       : File_binding.Unexpanded.t list
     ; inline_tests   : Inline_tests.t option
     }
@@ -68,10 +69,26 @@ module Stanza = struct
          User_error.raise ~loc
            [ Pp.textf "Variable %s is specified several times" k ])
 
+  let paths_field =
+    let f l =
+      match Env.Map.of_list (List.map ~f:(fun ((loc, s), _) -> s, loc) l) with
+      | Ok _ ->
+        List.map ~f:(fun ((_, s), x) -> s, x) l
+      | Error (var, _, loc) ->
+        User_error.raise ~loc
+          [ Pp.textf "the variable %S can appear at most once \
+                      in this stanza." var
+          ]
+    in
+    field "paths" ~default:[]
+      (Syntax.since Stanza.syntax (1, 12) >>>
+       map ~f (list (pair (located string) Ordered_set_lang.decode)))
+
   let config =
     let+ flags = Ocaml_flags.Spec.decode
     and+ c_flags = c_flags ~since:(Some (1, 7))
     and+ env_vars = env_vars_field
+    and+ paths = paths_field
     and+ binaries = field ~default:[] "binaries"
                       (Syntax.since Stanza.syntax (1, 6)
                        >>> File_binding.Unexpanded.L.decode)
@@ -80,6 +97,7 @@ module Stanza = struct
     { flags
     ; c_flags
     ; env_vars
+    ; paths
     ; binaries
     ; inline_tests
     }
@@ -107,6 +125,9 @@ module Stanza = struct
       match pat with
       | Any -> Some cfg
       | Profile a -> Option.some_if (a = profile) cfg)
+
+  let paths t ~profile =
+    match find t ~profile with | None -> [] | Some c -> c.paths
 
   let env_vars t ~profile =
     match find t ~profile with | None ->Env.empty | Some c -> c.env_vars

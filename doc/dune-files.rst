@@ -812,6 +812,15 @@ Fields supported in ``<settings>`` are:
   corresponding variables to the environment in which the build commands are
   executed, and under which ``dune exec`` runs.
 
+- ``(paths (<var1> <val1>) .. (<varN> <valN>))`` allows to set the value of any
+  ``PATH``-like variables in this context. If ``PATH`` itself is modified in
+  this way, its value will be used to resolve binaries in the workspace,
+  including finding the compiler and related tools. These variables will also be
+  passed as part of the environment to any program launched by ``dune``. For
+  each variable, the value is specified using the :ref:`ordered-set-language`.
+  Relative paths are interpreted with respect to the directory in which the file
+  they written is. At the moment, the environnement variable `PATH` and
+  `OCAMLPATH` are only supported in ``dune-workspace`` files.
 
 - ``(binaries <filepath> (<filepath> as <name>))``. This will make the binary at
   ``<filepath>`` as ``<name>``. If the ``<name>`` isn't provided, then it will

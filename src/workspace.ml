@@ -54,7 +54,6 @@ module Context = struct
       ; toolchain    : string option
       ; name         : string
       ; host_context : string option
-      ; paths        : (string * Ordered_set_lang.t) list
       }
 
     let t ~profile =
@@ -65,20 +64,6 @@ module Context = struct
         field_o "host" (Syntax.since syntax (1, 10) >>> string)
       and+ toolchain =
         field_o "toolchain" (Syntax.since syntax (1, 5) >>> string)
-      and+ paths =
-        let f l =
-          match Env.Map.of_list (List.map ~f:(fun ((loc, s), _) -> s, loc) l) with
-          | Ok _ ->
-            List.map ~f:(fun ((_, s), x) -> s, x) l
-          | Error (var, _, loc) ->
-            User_error.raise ~loc
-              [ Pp.textf "the variable %S can appear at most once \
-                          in this stanza." var
-              ]
-        in
-        field "paths" ~default:[]
-          (Syntax.since Stanza.syntax (1, 12) >>>
-           map ~f (list (pair (located string) Ordered_set_lang.decode)))
       and+ loc = loc
       in
       Option.iter
@@ -96,7 +81,6 @@ module Context = struct
       ; name = "default"
       ; host_context
       ; toolchain
-      ; paths
       }
   end
 
@@ -194,7 +178,6 @@ module Context = struct
       ; host_context = None
       ; env = Dune_env.Stanza.empty
       ; toolchain = None
-      ; paths = []
       }
 end
 

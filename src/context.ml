@@ -646,8 +646,8 @@ let instantiate_context env (workspace : Workspace.t)
     }
   in
   match context with
-  | Default { targets; name; host_context = _; profile; env = _
-            ; toolchain ; paths; loc = _ } ->
+  | Default { targets; name; host_context = _; profile; env = workspace_env
+            ; toolchain ; loc = _ } ->
     let merlin =
       workspace.merlin_context = Some (Workspace.Context.name context)
     in
@@ -656,12 +656,14 @@ let instantiate_context env (workspace : Workspace.t)
       | Some _ -> toolchain
       | None -> Env.get env "OCAMLFIND_TOOLCHAIN"
     in
+    let paths = Dune_env.Stanza.paths workspace_env ~profile in
     let env = extend_paths ~env paths in
     default ~env ~env_nodes ~profile ~targets ~name ~merlin ~host_context
       ~host_toolchain
-  | Opam { base = { targets; name; host_context = _; profile; env = _
-                  ; toolchain; paths; loc = _ }
+  | Opam { base = { targets; name; host_context = _; profile
+                  ; env =  workspace_env ; toolchain; loc = _ }
          ; switch; root; merlin } ->
+    let paths = Dune_env.Stanza.paths workspace_env ~profile in
     let env = extend_paths ~env paths in
     create_for_opam ~root ~env_nodes ~env ~profile ~switch ~name ~merlin
       ~targets ~host_context ~host_toolchain:toolchain

@@ -45,8 +45,7 @@ let main () =
     [("--root", Arg.String (fill_option "--root" root), "root directory")]
     (fun a ->
       if !cmd = None then cmd := Some a
-      else if !current = Array.length Sys.argv then current := !Arg.current - 1
-      )
+      else if !current = Array.length Sys.argv then current := !Arg.current - 1)
     usage ;
   let root = Option.map ~f:Path.of_string !root
   and cmd = unwrap_option "command" !cmd in
@@ -58,11 +57,13 @@ let main () =
   | "promote" ->
       let usage = ""
       and metadata = ref None
+      and key = ref None
       and files = ref (Array.make 0 "") in
       Arg.parse_argv ?current:(Some current) Sys.argv
         [ ( "--metadata"
           , Arg.String (fill_option "--metadata" metadata)
-          , "metadata" ) ]
+          , "metadata" )
+        ; ("--key", Arg.String (fill_option "--key" key), "key") ]
         (fun f -> files := Array.append !files (Array.make 1 f))
         usage ;
       let open Result.O in
@@ -71,33 +72,24 @@ let main () =
           (Array.map
              ~f:(fun p ->
                let p = Path.of_string p in
-               (p, Digest.file p) )
+               (p, Digest.file p))
              !files)
-      in
+      and key = unwrap_option "key" !key in
       Result.ok_exn
         ( parse_metadata (unwrap_option ~default:"()" "--metadata" !metadata)
         >>| fun metadata ->
         List.iter
           ~f:(fun p -> Printf.printf "%s\n" (promotion_to_string p))
-          (promote memory produced
-             (key (* FIXME: consumed files *) [] metadata
-                (List.map ~f:fst produced))
-             metadata None) )
+          (promote memory produced (key_of_string key) metadata None) )
   | "search" ->
-      let open Result.O in
       Result.ok_exn
-        ( parse_metadata Sys.argv.(3)
-        >>= fun metadata ->
-        search memory
-          (key (* FIXME: consumed files *) [] metadata
-             (* FIXME: produced files *) [])
-        >>| function
-        | _, paths ->
-            List.iter
-              ~f:(fun (sym, act) ->
-                Printf.printf "%s: %s\n" (Path.to_string sym)
-                  (Path.to_string act) )
-              paths )
+        (let open Result.O in
+        search memory (key_of_string Sys.argv.(3))
+        >>| fun (_, paths) ->
+        List.iter
+          ~f:(fun (sym, act) ->
+            Printf.printf "%s: %s\n" (Path.to_string sym) (Path.to_string act))
+          paths)
   | "trim" ->
       let freed, files = trim memory 1 in
       Printf.printf "freed %i bytes\n" freed ;

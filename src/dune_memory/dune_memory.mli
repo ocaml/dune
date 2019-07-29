@@ -2,7 +2,7 @@ open Stdune
 
 type memory
 
-type key
+type key = Digest.t
 
 type metadata = Sexp.t list
 
@@ -18,8 +18,6 @@ type promotion =
   | Already_promoted of Path.t * Path.t
   | Promoted of Path.t * Path.t
   | Hash_mismatch of Path.t * Digest.t * Digest.t
-
-val key : (Path.t * Digest.t) list -> metadata -> Path.t list -> key
 
 val promotion_to_string : promotion -> string
 

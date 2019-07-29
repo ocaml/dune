@@ -12,23 +12,6 @@ type promotion =
   | Promoted of Path.t * Path.t
   | Hash_mismatch of Path.t * Digest.t * Digest.t
 
-let compare a b : ordering =
-  let a = Path.to_string a and b = Path.to_string b in
-  let lena = String.length a and lenb = String.length b in
-  let len = min lena lenb in
-  let rec loop i =
-    if i = len then Int.compare lena lenb
-    else
-      match Char.compare a.[i] b.[i] with
-      | 0 ->
-          loop (i + 1)
-      | x when x < 0 ->
-          Ordering.Lt
-      | _ ->
-          Ordering.Gt
-  in
-  loop 0
-
 let error s = User_error.E (User_error.make [Pp.textf "%s" s])
 
 let with_lock memory f =
@@ -37,25 +20,6 @@ let with_lock memory f =
   in
   let finally () = Stdune.Lockf.unlock lock in
   Exn.protect ~f ~finally
-
-let key consumed metadata produced =
-  let consumed =
-    List.sort ~compare:(fun (p1, _) (p2, _) -> compare p1 p2) consumed
-  and produced = List.sort ~compare produced in
-  let key =
-    Sexp.List
-      [ Sexp.List
-          (List.map
-             ~f:(fun (p, h) ->
-               Sexp.List
-                 [Sexp.Atom (Path.to_string p); Sexp.Atom (Digest.to_string h)]
-               )
-             consumed)
-      ; Sexp.List metadata
-      ; Sexp.List
-          (List.map ~f:(fun p -> Sexp.Atom (Path.to_string p)) produced) ]
-  in
-  Digest.string (Csexp.to_string key)
 
 let key_to_string = Digest.to_string
 

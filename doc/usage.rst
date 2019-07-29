@@ -492,7 +492,7 @@ context or can be the description of an opam switch, as follows:
   ``--profile``
 
 - ``(env <env>)`` to set the environment for a particular context. This is of
-  higher precedence than the toplevel ``env`` stanza in the workspace file. This
+  higher precedence than the root ``env`` stanza in the workspace file. This
   field the same options as the :ref:`dune-env` stanza.
 
 - ``(toolchain <findlib_coolchain>)`` set findlib toolchain for the context.

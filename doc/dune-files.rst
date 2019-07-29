@@ -1076,9 +1076,9 @@ expanded by dune.
 
 Dune supports the following variables:
 
-- ``project_root`` is the root of the current project. It is typically the
-  toplevel directory of your project and as long as you have a ``dune-project``
-  file there, ``project_root`` is independent of the workspace configuration
+- ``project_root`` is the root of the current project. It is typically the root
+  of your project and as long as you have a ``dune-project`` file there,
+  ``project_root`` is independent of the workspace configuration
 - ``workspace_root`` is the root of the current workspace. Note that
   the value of ``workspace_root`` is not constant and depends on
   whether your project is vendored or not

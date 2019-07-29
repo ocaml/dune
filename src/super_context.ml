@@ -3,7 +3,7 @@ open Import
 
 (* the parts of Super_context sufficient to construct env nodes *)
 module Env_context = struct
-  type data = (Path.Build.t, Env_node.t) Hashtbl.t
+  type data = (Path.Build.t, Env_node.t) Table.t
   type t = {
     env : data;
     profile : string;
@@ -110,7 +110,7 @@ end = struct
       | _ -> None)
 
   let rec get t ~dir ~scope =
-    match Hashtbl.find t.env dir with
+    match Table.find t.env dir with
     | Some node -> node
     | None ->
       let node =
@@ -125,11 +125,11 @@ end = struct
         let config = get_env_stanza t ~dir in
         Env_node.make ~dir ~scope ~config ~inherit_from:(Some inherit_from)
       in
-      Hashtbl.set t.env dir node;
+      Table.set t.env dir node;
       node
 
   let get t ~dir =
-    match Hashtbl.find t.env dir with
+    match Table.find t.env dir with
     | Some node -> node
     | None ->
       let scope =
@@ -450,7 +450,7 @@ let create
       (stanzas.Dir_with_dune.ctx_dir, stanzas))
     |> Path.Build.Map.of_list_exn
   in
-  let env = Hashtbl.create 128 in
+  let env = Table.create (module Path.Build) 128 in
   let default_env = lazy (
     let make ~inherit_from ~config =
       let dir = context.build_dir in

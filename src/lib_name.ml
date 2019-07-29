@@ -85,6 +85,7 @@ let of_local (_loc, t) = t
 
 type t = string
 
+let hash = String.hash
 let compare = String.compare
 
 include (

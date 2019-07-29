@@ -338,7 +338,7 @@ type status =
 type db =
   { parent               : db option
   ; resolve              : Lib_name.t -> resolve_result
-  ; table                : (Lib_name.t, status) Hashtbl.t
+  ; table                : (Lib_name.t, status) Table.t
   ; all                  : Lib_name.t list Lazy.t
   ; stdlib_dir           : Path.t
   }
@@ -939,10 +939,10 @@ end = struct
       let src_dir = Lib_info.src_dir info in
       Dep_stack.create_and_push stack name src_dir
     in
-    Option.iter (Hashtbl.find db.table name) ~f:(fun x ->
+    Option.iter (Table.find db.table name) ~f:(fun x ->
       already_in_table info name x);
     (* Add [id] to the table, to detect loops *)
-    Hashtbl.add_exn db.table name (St_initializing unique_id);
+    Table.add_exn db.table name (St_initializing unique_id);
 
     let status = Lib_info.status info in
     let allow_private_deps = Lib_info.Status.is_private status in
@@ -1073,11 +1073,11 @@ end = struct
       | Some reason ->
         St_hidden (t, src_dir, reason)
     in
-    Hashtbl.replace db.table ~key:name ~data:res;
+    Table.set db.table name res;
     res
 
   let find_internal db (name : Lib_name.t) ~stack : status =
-    match Hashtbl.find db.table name with
+    match Table.find db.table name with
     | Some x -> x
     | None   -> resolve_name db name ~stack
 
@@ -1098,7 +1098,7 @@ end = struct
         match find_internal db' name' ~stack with
         | St_initializing _ as x -> x
         | x ->
-          Hashtbl.add_exn db.table name x;
+          Table.add_exn db.table name x;
           x
       end
     | Found info ->
@@ -1109,7 +1109,7 @@ end = struct
         | None    -> St_not_found
         | Some db -> find_internal db name ~stack
       in
-      Hashtbl.add_exn db.table name res;
+      Table.add_exn db.table name res;
       res
     | Hidden (info, hidden) ->
       match
@@ -1118,7 +1118,7 @@ end = struct
         | Some db -> find_internal db name ~stack
       with
       | St_found _ as x ->
-        Hashtbl.add_exn db.table name x;
+        Table.add_exn db.table name x;
         x
       | _ ->
         instantiate db name info ~stack ~hidden:(Some hidden)
@@ -1474,7 +1474,7 @@ module DB = struct
   let create ?parent ~stdlib_dir ~resolve ~all () =
     { parent
     ; resolve
-    ; table  = Hashtbl.create 1024
+    ; table  = Table.create (module Lib_name) 1024
     ; all    = Lazy.from_fun all
     ; stdlib_dir
     }

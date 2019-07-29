@@ -353,34 +353,34 @@ end = struct
 
     (* Invariant: [!running_count] is equal to the number of
        [Running _] values in [table]. *)
-    let table = Hashtbl.create 128
+    let table = Table.create (module Int) 128
     let running_count = ref 0
 
     let add job =
-      match Hashtbl.find table job.pid with
+      match Table.find table job.pid with
       | None ->
-        Hashtbl.set table job.pid (Running job);
+        Table.set table job.pid (Running job);
         incr running_count;
         if !running_count = 1 then Condition.signal something_is_running_cv
       | Some (Zombie status) ->
-        Hashtbl.remove table job.pid;
+        Table.remove table job.pid;
         Event.send_job_completed job status
       | Some (Running _) ->
         assert false
 
     let remove ~pid status =
-      match Hashtbl.find table pid with
+      match Table.find table pid with
       | None ->
-        Hashtbl.set table pid (Zombie status)
+        Table.set table pid (Zombie status)
       | Some (Running job) ->
         decr running_count;
-        Hashtbl.remove table pid;
+        Table.remove table pid;
         Event.send_job_completed job status
       | Some (Zombie _) ->
         assert false
 
     let iter ~f =
-      Hashtbl.iter table ~f:(fun ~key:_ ~data ->
+      Table.iter table ~f:(fun data ->
         match data with
         | Running job -> f job
         | Zombie _ -> ())

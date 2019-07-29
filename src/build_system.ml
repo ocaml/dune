@@ -554,14 +554,15 @@ let compute_targets_digest_after_rule_execution ~info targets =
 
 let sandbox_dir = Path.Build.relative Path.Build.root ".sandbox"
 
-let locks : (Path.t, Fiber.Mutex.t) Hashtbl.t = Hashtbl.create 32
+let locks : (Path.t, Fiber.Mutex.t) Table.t =
+  Table.create (module Path) 32
 
 let rec with_locks mutexes ~f =
   match mutexes with
   | [] -> f ()
   | m :: mutexes ->
     Fiber.Mutex.with_lock
-      (Hashtbl.find_or_add locks m ~f:(fun _ -> Fiber.Mutex.create ()))
+      (Table.find_or_add locks m ~f:(fun _ -> Fiber.Mutex.create ()))
       (fun () -> with_locks mutexes ~f)
 
 let remove_old_artifacts t ~dir ~(subdirs_to_keep : Subdir_set.t) =

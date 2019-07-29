@@ -9,7 +9,7 @@ type client =
   ; output: out_channel
   ; mutable build_root: Path.t option (* client owned *)
   ; mutable common_metadata: Sexp.t list (* client owned *)
-  ; mutable memory: Dune_memory.memory (* client owned*)
+  ; mutable memory: Dune_memory.Memory.t (* client owned*)
   ; mutable repositories: (string * string * string) list (* client owned *)
   ; mutable version: version option (* client owned*) }
 
@@ -180,7 +180,7 @@ let run ?(port_f = ignore) ?(port = 0) manager =
         Result.List.map ~f:file files
         >>| fun files ->
         let promotions =
-          Dune_memory.promote client.memory files
+          Dune_memory.Memory.promote client.memory files
             (Dune_memory.key_of_string key)
             (metadata @ client.common_metadata)
             (Option.map ~f:(fun (_, remote, commit) -> (remote, commit)) repo)

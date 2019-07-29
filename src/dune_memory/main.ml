@@ -80,11 +80,11 @@ let main () =
         >>| fun metadata ->
         List.iter
           ~f:(fun p -> Printf.printf "%s\n" (promotion_to_string p))
-          (promote memory produced (key_of_string key) metadata None) )
+          (Memory.promote memory produced (key_of_string key) metadata None) )
   | "search" ->
       Result.ok_exn
         (let open Result.O in
-        search memory (key_of_string Sys.argv.(3))
+        Memory.search memory (key_of_string Sys.argv.(3))
         >>| fun (_, paths) ->
         List.iter
           ~f:(fun (sym, act) ->

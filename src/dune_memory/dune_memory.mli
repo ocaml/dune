@@ -1,12 +1,8 @@
 open Stdune
 
-type memory
-
 type key = Digest.t
 
 type metadata = Sexp.t list
-
-val make : ?log:Log.t -> ?root:Path.t -> unit -> (memory, exn) Result.t
 
 val default_root : unit -> Path.t
 
@@ -21,14 +17,24 @@ type promotion =
 
 val promotion_to_string : promotion -> string
 
-val promote :
-     memory
-  -> (Path.t * Digest.t) list
-  -> key
-  -> metadata
-  -> (string * string) option
-  -> promotion list
+module type memory = sig
 
-val search : memory -> key -> (metadata * (Path.t * Path.t) list, exn) Result.t
+  type t
 
-val trim : memory -> int -> int * Path.t list
+  val promote :
+    t
+    -> (Path.t * Digest.t) list
+    -> key
+    -> metadata
+    -> (string * string) option
+    -> promotion list
+
+  val search : t -> key -> (metadata * (Path.t * Path.t) list, exn) Result.t
+
+end
+
+module Memory : memory
+
+val make : ?log:Log.t -> ?root:Path.t -> unit -> (Memory.t, exn) Result.t
+
+val trim : Memory.t -> int -> int * Path.t list

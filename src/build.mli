@@ -228,7 +228,7 @@ module S : sig
   val seq    : unit s      -> 'a s         -> 'a s
   val seqs   : unit s list -> 'a s         -> 'a s
   val ignore : 'a s        -> unit s
-  val lift   : f:('a -> 'b -> 'c) -> 'a s -> 'b s -> 'c s
+  val map2   : f:('a -> 'b -> 'c) -> 'a s -> 'b s -> 'c s
 
   (* In future this will likely replace the [Dyn_deps] constructor. *)
   val dyn_deps : ('a * Dep.Set.t) s -> 'a s

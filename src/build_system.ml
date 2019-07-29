@@ -201,7 +201,7 @@ module Alias0 = struct
         ~f:(fun dir acc ->
           let path = Path.Build.append_source ctx_dir (File_tree.Dir.path dir) in
           let fn = stamp_file (make ~dir:path name) in
-          Build.S.lift ~f:(&&) acc (Build.file_exists (Path.build fn)))))
+          Build.S.map2 ~f:(&&) acc (Build.file_exists (Path.build fn)))))
 
   let dep_rec t ~loc ~file_tree =
     let ctx_dir, src_dir =

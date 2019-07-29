@@ -39,7 +39,9 @@ let ooi_deps cctx ~vlib_obj_map ~(ml_kind : Ml_kind.t) (m : Module.t) =
     ) in
   add_rule (
     let target = Obj_dir.Module.dep obj_dir (Transitive (m, ml_kind)) in
-    Build.S.write_file_dyn target (read >>^ transitive_deps_contents));
+    read
+    >>^ transitive_deps_contents
+    |> Build.S.write_file_dyn target);
   read
 
 let deps_of_module cctx ~ml_kind m =

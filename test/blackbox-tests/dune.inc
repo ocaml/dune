@@ -1429,14 +1429,6 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
- (name too-many-parens)
- (deps (package dune) (source_tree test-cases/too-many-parens))
- (action
-  (chdir
-   test-cases/too-many-parens
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
-
-(alias
  (name toplevel-stanza)
  (deps (package dune) (source_tree test-cases/toplevel-stanza))
  (action
@@ -1821,7 +1813,6 @@
   (alias tests-stanza)
   (alias tests-stanza-action)
   (alias tests-stanza-action-syntax-version)
-  (alias too-many-parens)
   (alias toplevel-stanza)
   (alias trace-file)
   (alias transitive-deps-mode)
@@ -2000,7 +1991,6 @@
   (alias tests-stanza)
   (alias tests-stanza-action)
   (alias tests-stanza-action-syntax-version)
-  (alias too-many-parens)
   (alias toplevel-stanza)
   (alias trace-file)
   (alias transitive-deps-mode)

@@ -88,6 +88,7 @@ module Make(H : sig
     Dyn.Map (
       foldi t ~init:[] ~f:(fun key data acc ->
         (H.to_dyn key, f data) :: acc)
+      |> List.sort ~compare:(fun (k, _) (k', _) -> Dyn.compare k k')
     )
 
   let iter t ~f = iter t ~f:(fun ~key:_ ~data -> f data)

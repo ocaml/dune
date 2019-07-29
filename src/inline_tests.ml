@@ -32,7 +32,7 @@ module Backend = struct
       *)
       let syntax = Stanza.syntax
 
-      open Stanza.Decoder
+      open Dune_lang.Decoder
 
       let parse =
         record
@@ -118,7 +118,7 @@ include Sub_system.Register_end_point(
         let to_dyn _ = Dyn.opaque
       end
       include T
-      open Stanza.Decoder
+      open Dune_lang.Decoder
 
       let decode =
         enum
@@ -166,7 +166,7 @@ include Sub_system.Register_end_point(
 
       let syntax = Stanza.syntax
 
-      open Stanza.Decoder
+      open Dune_lang.Decoder
 
       let parse =
         if_eos

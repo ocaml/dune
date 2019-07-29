@@ -27,7 +27,7 @@ let of_string_exn loc repr =
   | Ok t -> t
 
 let decode =
-  let open Stanza.Decoder in
+  let open Dune_lang.Decoder in
   plain_string (fun ~loc str ->
     of_string_exn loc str)
 

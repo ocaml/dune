@@ -3,7 +3,7 @@ open Import
 type stanza = Stanza.t = ..
 
 module Stanza = struct
-  open Stanza.Decoder
+  open Dune_lang.Decoder
   let c_flags ~since =
     let check =
       Option.map since ~f:(fun since ->

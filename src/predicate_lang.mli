@@ -7,7 +7,7 @@ type t
 
 val to_dyn : t -> Dyn.t
 
-val decode : t Stanza.Decoder.t
+val decode : t Dune_lang.Decoder.t
 
 val empty : t
 

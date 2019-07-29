@@ -33,6 +33,6 @@ module Unexpanded : sig
     -> Install.Dst.t
 
   module L : sig
-    val decode : t list Stanza.Decoder.t
+    val decode : t list Dune_lang.Decoder.t
   end
 end

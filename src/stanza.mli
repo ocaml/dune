@@ -27,38 +27,3 @@ end
 
 (** Whether we are parsing a [jbuild] or [dune] file. *)
 val file_kind : unit -> (File_kind.t, _) Dune_lang.Decoder.parser
-
-(** Overlay for [Dune_lang.Decoder] where lists and records don't require
-   an extra level of parentheses in Dune files.
-
-    Additionally, [field_xxx] functions only warn about duplicated
-    fields in jbuild files, for backward compatibility. *)
-module Decoder : sig
-  include module type of struct include Dune_lang.Decoder end
-
-  (* DUNE2: get rid of this *)
-  exception Parens_no_longer_necessary of Loc.t * exn
-
-  val record : 'a fields_parser -> 'a t
-  val list : 'a t -> 'a list t
-
-  val field
-    :  string
-    -> ?default:'a
-    -> 'a t
-    -> 'a fields_parser
-  val field_o
-    :  string
-    -> 'a t
-    -> 'a option fields_parser
-
-  val field_b
-    :  ?check:(unit t)
-    -> string
-    -> bool fields_parser
-
-  val field_o_b
-    :  ?check:(unit t)
-    -> string
-    -> bool option fields_parser
-end

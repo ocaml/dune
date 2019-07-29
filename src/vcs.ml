@@ -21,7 +21,7 @@ module Kind = struct
   let equal = (=)
 
   let decode =
-    Stanza.Decoder.enum
+    Dune_lang.Decoder.enum
       [ "git", Git
       ; "hg", Hg
       ]
@@ -46,7 +46,7 @@ module T = struct
   let hash t = Path.hash t.root
 
   let decode =
-    let open Stanza.Decoder in
+    let open Dune_lang.Decoder in
     record
       (let+ root = field "root" Dpath.decode
        and+ kind = field "kind" Kind.decode

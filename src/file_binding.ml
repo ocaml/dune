@@ -60,7 +60,7 @@ module Unexpanded = struct
   module L = struct
 
     let decode_file =
-      let open Stanza.Decoder in
+      let open Dune_lang.Decoder in
       let decode =
         let+ is_atom =
           peek_exn >>| function
@@ -96,6 +96,6 @@ module Unexpanded = struct
               "invalid format, <name> or (<name> as <install-as>) expected" ]
 
     let decode =
-      let open Stanza.Decoder in list decode_file
+      let open Dune_lang.Decoder in list decode_file
   end
 end

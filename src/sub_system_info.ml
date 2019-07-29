@@ -1,5 +1,5 @@
 open Stdune
-open Stanza.Decoder
+open Dune_lang.Decoder
 
 type t = ..
 type sub_system = t = ..

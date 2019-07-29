@@ -79,7 +79,7 @@ module Spec = struct
   type t = Ordered_set_lang.Unexpanded.t t'
 
   let decode =
-    let open Stanza.Decoder in
+    let open Dune_lang.Decoder in
     let field_oslu = Ordered_set_lang.Unexpanded.field in
     let+ common = field_oslu "flags"
     and+ byte = field_oslu "ocamlc_flags"

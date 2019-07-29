@@ -43,4 +43,4 @@ val eval
 val status : String.Set.t Status.Map.t -> dir:string -> Status.Or_ignored.t
 
 val decode
-  : (Predicate_lang.t Status.Map.t * Dune_lang.Ast.t list) Stanza.Decoder.t
+  : (Predicate_lang.t Status.Map.t * Dune_lang.Ast.t list) Dune_lang.Decoder.t

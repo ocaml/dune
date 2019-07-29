@@ -100,7 +100,7 @@ let eval (t : _ Status.Map.t) ~dirs =
       ]
 
 let decode =
-  let open Stanza.Decoder in
+  let open Dune_lang.Decoder in
   let ignored_sub_dirs =
     let open Dune_lang.Decoder in
     let ignored =

@@ -22,7 +22,7 @@ let syntax =
     ]
 
 let decode =
-  let open Stanza.Decoder in
+  let open Dune_lang.Decoder in
   fields
     (let+ loc = loc
      and+ files =
@@ -44,7 +44,7 @@ let decode =
      })
 
 let () =
-  let open Stanza.Decoder in
+  let open Dune_lang.Decoder in
   Dune_project.Extension.register_simple
     syntax
     (return [ "cinaps", decode >>| fun x -> [T x]])

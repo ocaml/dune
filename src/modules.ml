@@ -12,7 +12,7 @@ module Common = struct
   end
 
   module Decode = struct
-    open Stanza.Decoder
+    open Dune_lang.Decoder
     let main_module_name = field "main_module_name" Module.Name.decode
     let modules ?(name="modules") ~src_dir () =
       field ~default:Module.Name.Map.empty name
@@ -40,7 +40,7 @@ module Stdlib = struct
       ]
 
   let decode ~src_dir =
-    let open Stanza.Decoder in
+    let open Dune_lang.Decoder in
     let open Common.Decode in
     fields (
       let+ main_module_name = main_module_name
@@ -217,7 +217,7 @@ module Wrapped = struct
       ]
 
   let decode ~src_dir =
-    let open Stanza.Decoder in
+    let open Dune_lang.Decoder in
     let open Common.Decode in
     fields (
       let+ main_module_name = main_module_name
@@ -399,7 +399,7 @@ let as_singleton m =
 (* Pre-1.11 encoding *)
 module Old_format = struct
   let decode ~implements ~src_dir =
-    let open Stanza.Decoder in
+    let open Dune_lang.Decoder in
     fields (
       let+ loc = loc
       and+ alias_module = field_o "alias_module" (Module.decode ~src_dir)
@@ -442,7 +442,7 @@ let decode ~version ~src_dir ~implements =
   if version <= (1, 10) then
     Old_format.decode ~implements ~src_dir
   else
-    let open Stanza.Decoder in
+    let open Dune_lang.Decoder in
     sum
       [ "singleton", (
           let+ m = Module.decode ~src_dir in

@@ -85,7 +85,7 @@ module Kind = struct
   let encode t = Dune_lang.Encoder.string (to_string t)
 
   let decode =
-    let open Stanza.Decoder in
+    let open Dune_lang.Decoder in
     enum
       [ "intf_only", Intf_only
       ; "virtual", Virtual
@@ -399,7 +399,7 @@ module Name_map = struct
   let to_dyn = Name.Map.to_dyn to_dyn
 
   let decode ~src_dir =
-    let open Stanza.Decoder in
+    let open Dune_lang.Decoder in
     let+ modules = list (enter (decode ~src_dir)) in
     Name.Map.of_list_map_exn
       ~f:(fun m -> (name m, m)) modules

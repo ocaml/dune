@@ -1,6 +1,6 @@
 open! Stdune
 open Import
-open Stanza.Decoder
+open Dune_lang.Decoder
 
 (* This file defines the jbuild types as well as the S-expression
    syntax for the various supported version of the specification.
@@ -838,7 +838,7 @@ module External_variant = struct
     }
 
   let decode =
-    let open Stanza.Decoder in
+    let open Dune_lang.Decoder in
     record (
       let+ loc = loc
       and+ variant = field "variant" Variant.decode
@@ -2182,7 +2182,7 @@ module Toplevel = struct
     }
 
   let decode =
-    let open Stanza.Decoder in
+    let open Dune_lang.Decoder in
     record (
       let+ loc = loc
       and+ name = field "name" string

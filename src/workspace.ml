@@ -1,5 +1,5 @@
 open! Stdune
-open Stanza.Decoder
+open Dune_lang.Decoder
 
 (* workspace files use the same version numbers as dune-project files
    for simplicity *)

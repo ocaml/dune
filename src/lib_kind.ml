@@ -8,7 +8,7 @@ module Ppx_args = struct
       }
 
     let decode =
-      let open Stanza.Decoder in
+      let open Dune_lang.Decoder in
       let* () = Syntax.since Stanza.syntax (1, 10) in
       enter
         (
@@ -37,7 +37,7 @@ module Ppx_args = struct
     }
 
   let decode =
-    let open Stanza.Decoder in
+    let open Dune_lang.Decoder in
     let args =
       let+ cookies = field "cookies" (list Cookie.decode) ~default:[] in
       {cookies}

@@ -26,18 +26,3 @@ end
 let file_kind () =
   let open Dune_lang.Decoder in
   Syntax.get_exn syntax >>| File_kind.of_syntax
-
-module Decoder = struct
-  include Dune_lang.Decoder
-
-  exception Parens_no_longer_necessary of Loc.t * exn
-
-  let record = fields
-
-  let list = repeat
-
-  let field name ?default t = field name ?default t
-  let field_o name t = field_o name t
-  let field_b ?check name = field_b name ?check
-  let field_o_b ?check name = field_o_b name ?check
-end

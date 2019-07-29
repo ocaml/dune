@@ -135,7 +135,7 @@ module Driver = struct
       *)
       let syntax = Stanza.syntax
 
-      open Stanza.Decoder
+      open Dune_lang.Decoder
 
       let parse =
         record

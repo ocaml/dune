@@ -435,6 +435,8 @@ module S = struct
   let seqs xs y = seq (ignore (all xs)) y
 
   let dyn_deps x = x >>> (Dyn_deps (arr (fun (_args, deps) -> deps))) >>> (arr fst)
+  let write_file_dyn p s = Targets (Path.Build.Set.singleton p) >>>
+    map s ~f:(fun s -> Action.Write_file (p, s))
 
   module O = struct
     let (and+) = (&&&)

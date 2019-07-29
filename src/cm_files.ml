@@ -29,11 +29,11 @@ let unsorted_objects_and_cms t ~mode =
 
 let top_sorted_cms t ~mode =
   let kind = Mode.cm_kind mode in
-  let open Build.O in
+  let open Build.S.O in
   t.top_sorted_modules
   >>^ Obj_dir.Module.L.cm_files t.obj_dir ~kind
 
 let top_sorted_objects_and_cms t ~mode =
-  let open Build.O in
+  let open Build.S.O in
   t.top_sorted_modules
   >>^ objects_and_cms t ~mode

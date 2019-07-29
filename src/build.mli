@@ -160,7 +160,7 @@ val action_dyn
   -> (Action.t, Action.t) t
 
 (** Create a file with the given contents. *)
-val write_file : Path.Build.t -> string -> (unit, Action.t) t
+val write_file : Path.Build.t -> string -> Action.t s
 val write_file_dyn : Path.Build.t -> (string, Action.t) t
 
 val copy : src:Path.t -> dst:Path.Build.t -> (unit, Action.t) t
@@ -231,4 +231,7 @@ module S : sig
 
   (* In future this will likely replace the [Dyn_deps] constructor. *)
   val dyn_deps : ('a * Dep.Set.t) s -> 'a s
+
+  (** Create a file with the given contents. *)
+  val write_file_dyn : Path.Build.t -> string s -> Action.t s
 end

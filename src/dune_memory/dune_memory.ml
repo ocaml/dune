@@ -149,7 +149,7 @@ let promote memory paths key metadata repo =
       ~f:(fun metadata (remote, commit) ->
         metadata
         @ [ Sexp.List [Sexp.Atom "repo"; Sexp.Atom remote]
-          ; Sexp.List [Sexp.Atom "commit_id"; Sexp.Atom commit] ] )
+          ; Sexp.List [Sexp.Atom "commit_id"; Sexp.Atom commit] ])
       repo metadata
   in
   let promote (path, expected_hash) =
@@ -203,9 +203,9 @@ let promote memory paths key metadata repo =
                                       [ Sexp.Atom (Path.to_string o)
                                       ; Sexp.Atom (Path.to_string p) ])
                              | _ ->
-                                 None )
+                                 None)
                            res) ] ])) ;
-        res )
+        res)
   in
   with_lock memory f
 
@@ -219,7 +219,7 @@ let search memory key =
           | Sexp.List l ->
               Result.ok l
           | _ ->
-              Result.Error (error "invalid metadata") )
+              Result.Error (error "invalid metadata"))
     >>= function
     | [ Sexp.List (Sexp.Atom s_metadata :: metadata)
       ; Sexp.List [Sexp.Atom s_produced; Sexp.List produced] ] -> (
@@ -233,7 +233,7 @@ let search memory key =
                 Result.Ok (Path.of_string f, Path.of_string t)
             | _ ->
                 Result.Error
-                  (error "invalid metadata scheme in produced files list") )
+                  (error "invalid metadata scheme in produced files list"))
           >>| function produced -> (metadata, produced) )
     | _ ->
         Result.Error (error "invalid metadata scheme")

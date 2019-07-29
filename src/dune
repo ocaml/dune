@@ -13,7 +13,8 @@
               dune_lang
               ocaml_config
               wp
-              catapult)
+              catapult
+              dune_memory)
  (synopsis    "Internal Dune library, do not use!")
  (preprocess  future_syntax))
 

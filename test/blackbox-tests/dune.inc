@@ -1623,6 +1623,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name workspace-paths)
+ (deps (package dune) (source_tree test-cases/workspace-paths))
+ (action
+  (chdir
+   test-cases/workspace-paths
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name workspaces)
  (deps (package dune) (source_tree test-cases/workspaces))
  (action
@@ -1844,6 +1852,7 @@
   (alias vlib-default-impl)
   (alias vlib-wrong-default-impl)
   (alias windows-diff)
+  (alias workspace-paths)
   (alias workspaces)
   (alias wrapped-false-main-module-name)
   (alias wrapped-transition)))
@@ -2019,6 +2028,7 @@
   (alias vlib-default-impl)
   (alias vlib-wrong-default-impl)
   (alias windows-diff)
+  (alias workspace-paths)
   (alias workspaces)
   (alias wrapped-false-main-module-name)
   (alias wrapped-transition)))

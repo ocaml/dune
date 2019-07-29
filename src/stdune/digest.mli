@@ -6,7 +6,7 @@ val compare : t -> t -> Ordering.t
 
 val to_string : t -> string
 
-val from_hex : string -> t
+val from_hex : string -> t option
 
 val file : Path.t -> t
 

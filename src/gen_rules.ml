@@ -77,7 +77,7 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
 
   let gen_rules dir_contents cctxs
         { Dir_with_dune. src_dir; ctx_dir; data = stanzas
-        ; scope; kind = dir_kind ; dune_version = _ } =
+        ; scope; dune_version = _; } =
     let expander =
       Super_context.expander sctx ~dir:ctx_dir in
     let for_stanza stanza =
@@ -88,8 +88,7 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
         For_stanza.empty_none
       | Library lib ->
         let cctx, merlin =
-          Lib_rules.rules lib ~sctx ~dir ~scope ~dir_contents ~expander
-            ~dir_kind in
+          Lib_rules.rules lib ~sctx ~dir ~scope ~dir_contents ~expander in
         { For_stanza.
           merlin = Some merlin
         ; cctx = Some (lib.buildable.loc, cctx)
@@ -98,9 +97,7 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
         }
       | Executables exes ->
         let cctx, merlin =
-          Exe_rules.rules exes
-            ~sctx ~dir ~scope ~expander
-            ~dir_contents ~dir_kind
+          Exe_rules.rules exes ~sctx ~dir ~scope ~expander ~dir_contents
         in
         { For_stanza.
           merlin = Some merlin
@@ -118,7 +115,6 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
       | Tests tests ->
         let cctx, merlin =
           Test_rules.rules tests ~sctx ~dir ~scope ~expander ~dir_contents
-            ~dir_kind
         in
         { For_stanza.
           merlin = Some merlin
@@ -148,7 +144,7 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
         |> Rules.Produce.Alias.add_deps (Alias.all ~dir:ctx_dir);
         For_stanza.empty_none
       | Cinaps.T cinaps ->
-        Cinaps.gen_rules sctx cinaps ~dir ~scope ~dir_kind;
+        Cinaps.gen_rules sctx cinaps ~dir ~scope;
         For_stanza.empty_none
       | _ ->
         For_stanza.empty_none
@@ -175,7 +171,7 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
             Path.Build.drop_build_context_exn (Dir_contents.dir dc))
           |> List.rev_append source_dirs
         in
-        Merlin.add_rules sctx ~dir:ctx_dir ~more_src_dirs ~expander ~dir_kind
+        Merlin.add_rules sctx ~dir:ctx_dir ~more_src_dirs ~expander
           (Merlin.add_source_dir m src_dir));
     let build_dir = Super_context.build_dir sctx in
     List.iter stanzas ~f:(fun stanza ->

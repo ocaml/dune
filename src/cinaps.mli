@@ -20,5 +20,4 @@ val gen_rules
   -> t
   -> dir:Path.Build.t
   -> scope:Scope.t
-  -> dir_kind:Dune_lang.File_syntax.t
   -> unit

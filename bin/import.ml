@@ -35,29 +35,33 @@ module Main = struct
   include Dune.Main
 
   let scan_workspace ~log (common : Common.t) =
-    scan_workspace
-      ~log
-      ?workspace_file:(Option.map ~f:Arg.Path.path common.workspace_file)
-      ?x:common.x
-      ?profile:common.profile
-      ~capture_outputs:common.capture_outputs
-      ~ancestor_vcs:common.root.ancestor_vcs
-      ()
+    let workspace_file =
+      Common.workspace_file common
+      |> Option.map ~f:Arg.Path.path
+    in
+    let x = Common.x common in
+    let profile = Common.profile common in
+    let capture_outputs = Common.capture_outputs common in
+    let ancestor_vcs = (Common.root common).ancestor_vcs in
+    scan_workspace ~log ?workspace_file ?x ?profile ~capture_outputs
+      ~ancestor_vcs ()
 
-  let setup ~log ?external_lib_deps_mode (common : Common.t) =
+  let setup ~log ?external_lib_deps_mode common =
     let open Fiber.O in
+    let only_packages = Common.only_packages common in
     scan_workspace ~log common
     >>= init_build_system
-          ~sandboxing_preference:(common.config.sandboxing_preference)
+          ~sandboxing_preference:((Common.config common).sandboxing_preference)
           ?external_lib_deps_mode
-          ?only_packages:common.only_packages
+          ?only_packages
 end
 
 module Log = struct
   include Stdune.Log
 
-  let create (common : Common.t) =
-    Log.create ~display:common.config.display ()
+  let create common =
+    let display = (Common.config common).display in
+    Log.create ~display ()
 end
 
 module Scheduler = struct
@@ -65,23 +69,26 @@ module Scheduler = struct
   open Fiber.O
 
   let go ?log ~(common : Common.t) f =
+    let config = Common.config common in
     let f () =
-      Main.set_concurrency ?log common.config >>= f
+      Main.set_concurrency ?log config >>= f
     in
-    Scheduler.go ?log ~config:common.config f
+    Scheduler.go ?log ~config f
 
   let poll ?log ~(common : Common.t) ~once ~finally () =
+    let config = Common.config common in
     let once () =
-      let* () = Main.set_concurrency ?log common.config in
+      let* () = Main.set_concurrency ?log config in
       once ()
     in
-    Scheduler.poll ?log ~config:common.config ~once ~finally ()
+    Scheduler.poll ?log ~config ~once ~finally ()
 end
 
 let restore_cwd_and_execve (common : Common.t) prog argv env =
   let prog =
     if Filename.is_relative prog then
-      Filename.concat common.root.dir prog
+      let root = Common.root common in
+      Filename.concat root.dir prog
     else
       prog
   in

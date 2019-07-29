@@ -332,55 +332,28 @@ end = struct
           (List.concat_map libs ~f:(fun (l, m) -> by_name l.buildable m))
           (List.concat_map exes ~f:(fun (e, m) -> by_name e.buildable m))
       in
-      match d.kind with
-      | Dune -> begin
-          match Module.Name.Map.of_list rev_modules with
-          | Ok x -> x
-          | Error (name, _, _) ->
-            let open Module.Name.Infix in
-            let locs =
-              List.filter_map rev_modules ~f:(fun (n, b) ->
-                Option.some_if (n = name) b.loc)
-              |> List.sort ~compare
-            in
-            User_error.raise ~loc:(Loc.drop_position (List.hd locs))
-              [ Pp.textf "Module %S is used in several stanzas:"
-                  (Module.Name.to_string name)
-              ; Pp.enumerate locs ~f:(fun loc ->
-                  Pp.verbatim (Loc.to_file_colon_line loc))
-              ; Pp.text
-                  "To fix this error, you must specify an explicit \
-                   \"modules\" field in every library, executable, and \
-                   executables stanzas in this dune file. Note that \
-                   each module cannot appear in more than one \
-                   \"modules\" field - it must belong to a single \
-                   library or executable."
-              ]
-        end
-      | Jbuild ->
-        Module.Name.Map.of_list_multi rev_modules
-        |> Module.Name.Map.mapi ~f:(fun name buildables ->
-          match buildables with
-          | [] -> assert false
-          | [b] -> b
-          | b :: rest ->
-            let locs =
-              List.sort ~compare
-                (b.Buildable.loc :: List.map rest ~f:(fun b -> b.Buildable.loc))
-            in
-            User_error.raise ~loc:(Loc.drop_position b.loc)
-              [ Pp.textf "Module %S is used in several stanzas:"
-                  (Module.Name.to_string name)
-              ; Pp.enumerate locs ~f:(fun loc ->
-                  Pp.verbatim (Loc.to_file_colon_line loc))
-              ; Pp.text
-                  "To remove this warning, you must specify an \
-                   explicit \"modules\" field in every library, \
-                   executable, and executables stanzas in this jbuild \
-                   file. Note that each module cannot appear in more \
-                   than one \"modules\" field - it must belong to a \
-                   single library or executable."
-              ])
+      match Module.Name.Map.of_list rev_modules with
+      | Ok x -> x
+      | Error (name, _, _) ->
+        let open Module.Name.Infix in
+        let locs =
+          List.filter_map rev_modules ~f:(fun (n, b) ->
+            Option.some_if (n = name) b.loc)
+          |> List.sort ~compare
+        in
+        User_error.raise ~loc:(Loc.drop_position (List.hd locs))
+          [ Pp.textf "Module %S is used in several stanzas:"
+              (Module.Name.to_string name)
+          ; Pp.enumerate locs ~f:(fun loc ->
+              Pp.verbatim (Loc.to_file_colon_line loc))
+          ; Pp.text
+              "To fix this error, you must specify an explicit \
+               \"modules\" field in every library, executable, and \
+               executables stanzas in this dune file. Note that \
+               each module cannot appear in more than one \
+               \"modules\" field - it must belong to a single \
+               library or executable."
+          ]
     in
     { Dir_modules. libraries; executables; rev_map }
 
@@ -391,7 +364,6 @@ end = struct
         ; src_dir
         ; scope = _
         ; data = stanzas
-        ; kind = _
         ; dune_version = _
         } =
     (* Interpret a few stanzas in order to determine the list of

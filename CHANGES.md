@@ -1,6 +1,9 @@
 2.0.0 (unreleased)
 ------------------
 
+- Indicate the progress of the initial file tree loading (#2459, fixes #2374,
+  @bobot)
+
 - Build `.cm[ox]` files for executables more eagerly. This speeds up builds at
   the cost of building unnecessary artifacts in some cases. Some of these extra
   artifacts can fail to built, so this is a breaking change. (#2268, @rgrinberg)
@@ -17,7 +20,7 @@
 
 - Enable `(explicit_js_mode)` by default. (#1941, @nojb)
 
-- Add an option to clear the console in-between builds with 
+- Add an option to clear the console in-between builds with
  `--terminal-persistence=clear-on-rebuild`
 
 - Stop symlinking object files to main directory for stanzas defined `jbuild`
@@ -39,6 +42,19 @@
 
 - Stub names are no longer allowed relative paths. This was previously a warning
   and is now an error (#2443, @rgrinberg).
+
+- Define (paths ...) fields in (context ...) definitions in order to set or
+  extend any PATH-like variable in the context environment. (#2426, @nojb)
+
+- The `diff` action will always normalize newlines before diffing. Perviousy, it
+  would not do this normalization for rules defined in jbuild files. (#2457,
+  @rgrinberg)
+
+- Modules may no longer belong to more than one stanza. This was previously
+  allowed only in stanzas defined in `jbuild` files. (#2458, @rgrinberg)
+
+- Remove support for `jbuild-ignore` files. They have been replaced by the the
+  `dirs` stanza in `dune` files. (#2456, @rgrinberg)
 
 - Add a new config option `sandboxing_preference`, the cli argument `--sandbox`,
   and the dep spec `sandbox` in dune language. These let the user control the level of

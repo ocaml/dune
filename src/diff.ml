@@ -4,15 +4,9 @@ module Mode = struct
   type t =
     | Binary
     | Text
-    | Text_jbuild
-
-  let of_kind : Dune_lang.File_syntax.t -> t =
-    function
-    | Jbuild -> Text_jbuild
-    | Dune   -> Text
 
   let compare_files = function
-    | Text_jbuild | Binary -> Io.compare_files
+    | Binary -> Io.compare_files
     | Text -> Io.compare_text_files
 end
 
@@ -27,10 +21,8 @@ let decode path ~optional =
   let open Dune_lang.Decoder in
   let+ file1 = path
   and+ file2 = path
-  and+ kind = Stanza.file_kind ()
   in
-  let mode = Mode.of_kind kind in
-  { optional ; file1; file2; mode }
+  { optional ; file1; file2; mode = Text }
 
 let decode_binary path =
   let open Dune_lang.Decoder in

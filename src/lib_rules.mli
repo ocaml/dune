@@ -8,5 +8,4 @@ val rules
   -> dir:Path.Build.t
   -> expander:Expander.t
   -> scope:Scope.t
-  -> dir_kind:Dune_lang.File_syntax.t
   -> Compilation_context.t * Merlin.t

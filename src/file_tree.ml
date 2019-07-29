@@ -72,22 +72,6 @@ module Dune_file = struct
       ({ contents; kind }, sub_dirs))
 end
 
-let load_jbuild_ignore path =
-  let path = Path.source path in
-  List.filteri (Io.lines_of_file path) ~f:(fun i fn ->
-    if Filename.dirname fn = Filename.current_dir_name then
-      true
-    else begin
-      User_warning.emit ~loc:(Loc.of_pos
-                                ( Path.to_string path
-                                , i + 1, 0
-                                , String.length fn
-                                ))
-        [ Pp.textf "subdirectory expression %s ignored" fn ];
-      false
-    end)
-  |> String.Set.of_list
-
 module Dir = struct
   type t =
     { path     : Path.Source.t
@@ -225,8 +209,13 @@ let readdir path =
 
 let load ?(warn_when_seeing_jbuild_file=true) path ~ancestor_vcs =
   let open Result.O in
+  let nb_path_visited = ref 0 in
   let rec walk path ~dirs_visited ~project:parent_project ~vcs ~(dir_status : Sub_dirs.Status.t)
     : (_, _) Result.t =
+    incr nb_path_visited;
+    if !nb_path_visited mod 100 = 0 then
+      Console.update_status_line
+        (Pp.verbatim (Printf.sprintf "scanned %i directories" !nb_path_visited));
     let+ { dirs; files } = readdir path in
     let project =
       if dir_status = Data_only then
@@ -294,14 +283,6 @@ let load ?(warn_when_seeing_jbuild_file=true) path ~ancestor_vcs =
                     (Path.Source.to_string_maybe_quoted path)
                 ]
           in
-          let sub_dirs =
-            if String.Set.mem files "jbuild-ignore" then
-              Sub_dirs.add_data_only_dirs sub_dirs
-                ~dirs:(load_jbuild_ignore (
-                  Path.Source.relative path "jbuild-ignore"))
-            else
-              sub_dirs
-          in
           (dune_file, sub_dirs)
       in
       let sub_dirs =
@@ -347,14 +328,17 @@ let load ?(warn_when_seeing_jbuild_file=true) path ~ancestor_vcs =
     in
     Dir.create ~path ~contents ~status:dir_status ~project ~vcs
   in
-  match
+  let walk =
     walk path
       ~dirs_visited:(File.Map.singleton (File.of_source_path path) path)
       ~dir_status:Normal
       ~project:(Lazy.force Dune_project.anonymous)
       ~vcs:ancestor_vcs
-  with
-  | Ok dir -> dir
+  in
+  Console.clear_status_line ();
+  match walk with
+  | Ok dir ->
+    dir
   | Error m ->
     User_error.raise [ Pp.textf "Unable to load source %s.@.Reason:%s@."
       (Path.Source.to_string_maybe_quoted path) (Unix.error_message m) ]

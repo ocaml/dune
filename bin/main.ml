@@ -7,7 +7,7 @@ let run_build_command ~log ~common ~targets =
     let* setup = Main.setup ~log common in
     do_build setup (targets setup)
   in
-  if common.watch then begin
+  if Common.watch common then begin
     let once () =
       Cached_digest.invalidate_cached_timestamps ();
       once ()
@@ -25,10 +25,14 @@ let build_targets =
     ]
   in
   let name_ = Arg.info [] ~docv:"TARGET" in
-  let default_target = "@@default" in
   let term =
     let+ common = Common.term
-    and+ targets = Arg.(value & pos_all string [default_target] name_)
+    and+ targets = Arg.(value & pos_all string [] name_)
+    in
+    let targets =
+      match targets with
+      | [] -> [Common.default_target common]
+      | _ :: _ -> targets
     in
     Common.set_common common ~targets;
     let log = Log.create common in

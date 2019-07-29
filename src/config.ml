@@ -43,14 +43,15 @@ module Terminal_persistence = struct
     | Clear_on_rebuild
 
   let all = [
-      "preserve", Preserve;
-      "clear-on-rebuild", Clear_on_rebuild
+    "preserve", Preserve;
+    "clear-on-rebuild", Clear_on_rebuild
   ]
 
   let of_string = function
     | "preserve" -> Ok Preserve
     | "clear-on-rebuild" -> Ok Clear_on_rebuild
-    | _ -> Error "invalid terminal-persistence value, must be 'preserve' or 'clear-on-rebuild'"
+    | _ -> Error "invalid terminal-persistence value, \
+                  must be 'preserve' or 'clear-on-rebuild'"
 
   let to_string = function
     | Preserve -> "preserve"
@@ -132,7 +133,8 @@ let merge t (partial : Partial.t) =
   in
   { display     = field t.display     partial.display
   ; concurrency = field t.concurrency partial.concurrency
-  ; terminal_persistence = field t.terminal_persistence partial.terminal_persistence
+  ; terminal_persistence =
+      field t.terminal_persistence partial.terminal_persistence
   ; sandboxing_preference =
       field t.sandboxing_preference partial.sandboxing_preference
   }
@@ -147,7 +149,8 @@ let default =
 let decode =
   let+ display = field "display" Display.decode ~default:default.display
   and+ concurrency = field "jobs" Concurrency.decode ~default:default.concurrency
-  and+ terminal_persistence = field "terminal-persistence" Terminal_persistence.decode ~default:default.terminal_persistence
+  and+ terminal_persistence =
+    field "terminal-persistence" Terminal_persistence.decode ~default:default.terminal_persistence
   and+ sandboxing_preference =
     field "sandboxing_preference"
       Sandboxing_preference.decode ~default:default.sandboxing_preference
@@ -178,21 +181,21 @@ let load_user_config_file () =
     default
 
 let adapt_display config ~output_is_a_tty =
-  (* Progress isn't meaningful if inside a terminal (or emacs),
-   * so reset the display to Quiet if the output is getting
-   * piped to a file or something. *)
-  let config = if config.display = Progress &&
-      not output_is_a_tty &&
-      not inside_emacs
+  (* Progress isn't meaningful if inside a terminal (or emacs), so reset the
+     display to Quiet if the output is getting piped to a file or something. *)
+  let config =
+    if config.display = Progress &&
+       not output_is_a_tty &&
+       not inside_emacs
     then
       { config with display = Quiet }
     else
       config
   in
-  (* Similarly, terminal clearing is meaningless if stderr doesn't
-   * support ANSI codes, so revert-back to Preserve in that case *)
+  (* Similarly, terminal clearing is meaningless if stderr doesn't support ANSI
+     codes, so revert-back to Preserve in that case *)
   if config.terminal_persistence = Clear_on_rebuild &&
-      (not output_is_a_tty)
+     (not output_is_a_tty)
   then
     { config with terminal_persistence = Terminal_persistence.Preserve }
   else

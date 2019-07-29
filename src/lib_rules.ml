@@ -338,7 +338,7 @@ let setup_build_archives (lib : Dune_file.Library.t)
     build_shared ~sctx lib ~dir ~flags
 
 let library_rules (lib : Library.t) ~sctx ~dir_contents ~dir ~expander ~scope
-      ~compile_info ~dir_kind =
+      ~compile_info =
   let dep_kind =
     if lib.optional then Lib_deps_info.Kind.Optional else Required
   in
@@ -360,7 +360,6 @@ let library_rules (lib : Library.t) ~sctx ~dir_contents ~dir ~expander ~scope
         (Super_context.Deps.interpret sctx ~expander lib.buildable.preprocessor_deps)
       ~lint:lib.buildable.lint
       ~lib_name:(Some (snd lib.name))
-      ~dir_kind
   in
 
   let source_modules =
@@ -382,7 +381,6 @@ let library_rules (lib : Library.t) ~sctx ~dir_contents ~dir ~expander ~scope
       ~super_context:sctx
       ~expander
       ~scope
-      ~dir_kind
       ~obj_dir
       ~modules
       ~flags
@@ -436,14 +434,13 @@ let library_rules (lib : Library.t) ~sctx ~dir_contents ~dir ~expander ~scope
   )
 
 let rules (lib : Library.t) ~sctx ~dir_contents ~dir ~expander ~scope
-      ~dir_kind : Compilation_context.t * Merlin.t =
+      : Compilation_context.t * Merlin.t =
   let compile_info =
     Lib.DB.get_compile_info (Scope.libs scope) (Library.best_name lib)
       ~allow_overlaps:lib.buildable.allow_overlapping_dependencies
   in
   let f () =
     library_rules lib ~sctx ~dir_contents ~dir ~scope ~expander ~compile_info
-      ~dir_kind
   in
   Super_context.Libs.gen_select_rules sctx compile_info ~dir;
   Super_context.Libs.with_lib_deps sctx compile_info ~dir ~f

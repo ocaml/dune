@@ -434,7 +434,7 @@ let create
   in
   let stanzas =
     List.map stanzas
-      ~f:(fun { Dune_load.Dune_file. dir; project; stanzas; kind } ->
+      ~f:(fun { Dune_load.Dune_file. dir; project; stanzas; kind = _ } ->
         let ctx_dir = Path.Build.append_source context.build_dir dir in
         let dune_version = Dune_project.dune_version project in
         { Dir_with_dune.
@@ -442,7 +442,6 @@ let create
         ; ctx_dir
         ; data = stanzas
         ; scope = Scope.DB.find_by_project scopes project
-        ; kind
         ; dune_version
         })
   in

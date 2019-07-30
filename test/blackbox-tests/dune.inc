@@ -874,6 +874,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name incremental-rebuilds)
+ (deps (package dune) (source_tree test-cases/incremental-rebuilds))
+ (action
+  (chdir
+   test-cases/incremental-rebuilds
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name inline_tests)
  (deps (package dune) (source_tree test-cases/inline_tests))
  (action
@@ -1747,6 +1755,7 @@
   (alias ignored_subdirs)
   (alias include-loop)
   (alias include-qualified)
+  (alias incremental-rebuilds)
   (alias inline_tests)
   (alias install-dry-run)
   (alias install-libdir)
@@ -1939,6 +1948,7 @@
   (alias ignored_subdirs)
   (alias include-loop)
   (alias include-qualified)
+  (alias incremental-rebuilds)
   (alias inline_tests)
   (alias install-multiple-contexts)
   (alias install-partial-package)

@@ -32,18 +32,13 @@ let compare_no_loc t1 t2 =
   | Ordering.Lt | Gt as a -> a
   | Eq -> Bool.compare t1.quoted t2.quoted
 
-let var_enclosers = function
-  | Percent      -> "%{", "}"
-  | Dollar_brace -> "${", "}"
-  | Dollar_paren -> "$(", ")"
-
 module Pp : sig
   val to_string : t -> string
 end = struct
   let buf = Buffer.create 16
 
-  let add_var { loc = _; syntax; name; payload } =
-    let before, after = var_enclosers syntax in
+  let add_var { loc = _; syntax = _; name; payload } =
+    let before, after = "%{", "}" in
     Buffer.add_string buf before;
     Buffer.add_string buf name;
     begin match payload with
@@ -89,8 +84,8 @@ end
 
 let to_string = Pp.to_string
 
-let string_of_var { loc = _; syntax; name; payload } =
-  let before, after = var_enclosers syntax in
+let string_of_var { loc = _; syntax = _; name; payload } =
+  let before, after = "%{", "}" in
   match payload with
   | None -> before ^ name ^ after
   | Some p -> before ^ name ^ ":" ^ p ^ after

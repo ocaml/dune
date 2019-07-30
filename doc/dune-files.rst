@@ -810,8 +810,8 @@ Fields supported in ``<settings>`` are:
 
 - ``(env-vars (<var1> <val1>) .. (<varN> <valN>))``. This will add the
   corresponding variables to the environment in which the build commands are
-  executed, and under which ``dune exec`` runs. At the moment, this mechanism is
-  only supported in ``dune-workspace`` files.
+  executed, and under which ``dune exec`` runs.
+
 
 - ``(binaries <filepath> (<filepath> as <name>))``. This will make the binary at
   ``<filepath>`` as ``<name>``. If the ``<name>`` isn't provided, then it will

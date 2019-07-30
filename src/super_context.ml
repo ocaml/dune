@@ -103,6 +103,7 @@ end = struct
   include Env_context
 
   let get_env_stanza t ~dir =
+    Option.value ~default:Dune_env.Stanza.empty @@
     let open Option.O in
     let* stanza = Path.Build.Map.find t.stanzas_per_dir dir in
     List.find_map stanza.data ~f:(function
@@ -460,16 +461,9 @@ let create
         ~inherit_from
         ~config
     in
-    match context.env_nodes with
-    | { context = None; workspace = None } ->
-      make ~config:(Some { loc = Loc.none; rules = [] }) ~inherit_from:None
-    | { context = Some _ as config; workspace = None }
-    | { context = None; workspace = Some _ as config } ->
-      make ~config ~inherit_from:None
-    | { context = Some _ as context ; workspace = Some _ as workspace } ->
-      make ~config:context
-        ~inherit_from:(Some (lazy (make ~inherit_from:None
-                                     ~config:workspace)))
+    make ~config:context.env_nodes.context
+      ~inherit_from:(Some (lazy (make ~inherit_from:None
+                                   ~config:context.env_nodes.workspace)))
   )
   in
   let artifacts =

@@ -14,7 +14,7 @@ module Context : sig
       { loc          : Loc.t
       ; profile      : string
       ; targets      : Target.t list
-      ; env          : Dune_env.Stanza.t option
+      ; env          : Dune_env.Stanza.t
       ; toolchain    : string option
       ; name         : string
       ; host_context : string option
@@ -40,7 +40,7 @@ module Context : sig
 
   val name : t -> string
 
-  val env : t -> Dune_env.Stanza.t option
+  val env : t -> Dune_env.Stanza.t
 
   val host_context : t -> string option
 end
@@ -51,7 +51,7 @@ end
 type t = private
   { merlin_context : string option
   ; contexts       : Context.t list
-  ; env            : Dune_env.Stanza.t option
+  ; env            : Dune_env.Stanza.t
   }
 
 val load : ?x:string -> ?profile:string -> Path.t -> t

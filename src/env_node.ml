@@ -4,7 +4,7 @@ type t =
   { dir                   : Path.Build.t
   ; inherit_from          : t Lazy.t option
   ; scope                 : Scope.t
-  ; config                : Dune_env.Stanza.t option
+  ; config                : Dune_env.Stanza.t
   ; mutable local_binaries : File_binding.Expanded.t list option
   ; mutable ocaml_flags   : Ocaml_flags.t option
   ; mutable c_flags       : (unit, string list) Build.t C.Kind.Dict.t option
@@ -29,8 +29,7 @@ let make ~dir ~inherit_from ~scope ~config =
   }
 
 let find_config t ~profile =
-  let open Option.O in
-  t.config >>= Dune_env.Stanza.find ~profile
+  Dune_env.Stanza.find t.config ~profile
 
 let rec local_binaries t ~profile ~expander =
   match t.local_binaries with
@@ -42,14 +41,11 @@ let rec local_binaries t ~profile ~expander =
       | Some (lazy t) -> local_binaries t ~profile ~expander
     in
     let local_binaries =
-      match find_config t ~profile with
-      | None -> default
-      | Some cfg ->
-        default @
-        List.map cfg.binaries
-          ~f:(File_binding.Unexpanded.expand ~dir:t.dir ~f:(fun template ->
-            Expander.expand expander ~mode:Single ~template
-            |> Value.to_string ~dir:(Path.build t.dir)))
+      default @
+      List.map (find_config t ~profile).binaries
+        ~f:(File_binding.Unexpanded.expand ~dir:t.dir ~f:(fun template ->
+          Expander.expand expander ~mode:Single ~template
+          |> Value.to_string ~dir:(Path.build t.dir)))
     in
     t.local_binaries <- Some local_binaries;
     local_binaries
@@ -64,11 +60,9 @@ let rec external_ t ~profile ~default =
       | Some (lazy t) -> external_ t ~default ~profile
     in
     let (env, have_binaries) =
-      match find_config t ~profile with
-      | None -> (default, false)
-      | Some cfg ->
-        ( Env.extend_env default cfg.env_vars
-        , not (List.is_empty cfg.binaries)
+      let cfg = find_config t ~profile in
+      ( Env.extend_env default cfg.env_vars
+      , not (List.is_empty cfg.binaries)
         )
     in
     let env =
@@ -113,14 +107,12 @@ let rec ocaml_flags t ~profile ~expander =
       | Some (lazy t) -> ocaml_flags t ~profile ~expander
     in
     let flags =
-      match find_config t ~profile with
-      | None -> default
-      | Some cfg ->
-        let expander = Expander.set_dir expander ~dir:t.dir in
-        Ocaml_flags.make
-          ~spec:cfg.flags
-          ~default
-          ~eval:(Expander.expand_and_eval_set expander)
+      let cfg = find_config t ~profile in
+      let expander = Expander.set_dir expander ~dir:t.dir in
+      Ocaml_flags.make
+        ~spec:cfg.flags
+        ~default
+        ~eval:(Expander.expand_and_eval_set expander)
     in
     t.ocaml_flags <- Some flags;
     flags
@@ -131,7 +123,7 @@ let rec inline_tests t ~profile =
   | None ->
     let state : Dune_env.Stanza.Inline_tests.t =
       match find_config t ~profile with
-      | None | Some {inline_tests = None; _} ->
+      | {inline_tests = None; _} ->
         begin match t.inherit_from with
         | None ->
           if profile = "release" then
@@ -140,7 +132,7 @@ let rec inline_tests t ~profile =
             Enabled
         | Some (lazy t) -> inline_tests t ~profile
         end
-      | Some {inline_tests = Some s; _} -> s
+      | {inline_tests = Some s; _} -> s
     in
     t.inline_tests <- Some state;
     state
@@ -155,13 +147,11 @@ let rec c_flags t ~profile ~expander ~default_context_flags =
       | Some (lazy t) -> c_flags t ~profile ~expander ~default_context_flags
     in
     let flags =
-      match find_config t ~profile with
-      | None -> default
-      | Some cfg ->
-        let expander = Expander.set_dir expander ~dir:t.dir in
-        C.Kind.Dict.mapi cfg.c_flags ~f:(fun ~kind f ->
-          let default = C.Kind.Dict.get default kind in
-          Expander.expand_and_eval_set expander f ~standard:default)
+      let cfg = find_config t ~profile in
+      let expander = Expander.set_dir expander ~dir:t.dir in
+      C.Kind.Dict.mapi cfg.c_flags ~f:(fun ~kind f ->
+        let default = C.Kind.Dict.get default kind in
+        Expander.expand_and_eval_set expander f ~standard:default)
     in
     t.c_flags <- Some flags;
     flags

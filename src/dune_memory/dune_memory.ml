@@ -93,7 +93,7 @@ module type memory = sig
     -> (string * string) option
     -> promotion list
 
-  val search : t -> key -> (metadata * (Path.t * Path.t) list, exn) Result.t
+  val search : t -> key -> (metadata * (Path.t * Path.t) list, string) Result.t
 end
 
 module Memory = struct
@@ -117,6 +117,7 @@ module Memory = struct
     Collision.search (FSSchemeImpl.path (path_files memory) hash) file
 
   let promote memory paths key metadata repo =
+    let open Result.O in
     let metadata =
       apply
         ~f:(fun metadata (remote, commit) ->
@@ -139,46 +140,46 @@ module Memory = struct
       let tmp = hardlink path in
       let effective_hash = snd (Digest.path_stat_digest tmp) in
       if Digest.compare effective_hash expected_hash != Ordering.Eq then (
-        Log.infof memory.log "hash mismatch: %s != %s"
-          (Digest.to_string effective_hash)
-          (Digest.to_string expected_hash) ;
-        Hash_mismatch (path, expected_hash, effective_hash) )
+        let message =
+          Printf.sprintf "hash mismatch: %s != %s"
+            (Digest.to_string effective_hash)
+            (Digest.to_string expected_hash)
+        in
+        Log.infof memory.log "%s" message ;
+        Result.Error message )
       else
         match search memory effective_hash tmp with
         | Collision.Found p ->
             Unix.unlink (Path.to_string tmp) ;
-            Already_promoted (path, p)
+            Result.Ok (Already_promoted (path, p))
         | Collision.Not_found p ->
             mkpath (Path.parent_exn p) ;
             let dest = Path.to_string p in
             Unix.rename (Path.to_string tmp) dest ;
             (* Remove write permissions *)
-            Unix.chmod dest ((Unix.stat dest).st_perm land 0o555) ;
-            Promoted (path, p)
+            Unix.chmod dest (stat.st_perm land 0o555) ;
+            Result.Ok (Promoted (path, p))
     in
     let f () =
-      unix (fun () ->
-          let res = List.map ~f:promote paths
-          and metadata_path = FSSchemeImpl.path (path_meta memory) key in
-          mkpath (Path.parent_exn metadata_path) ;
-          Io.write_file metadata_path
-            (Csexp.to_string
-               (Sexp.List
-                  [ Sexp.List (Sexp.Atom "metadata" :: metadata)
+      Result.List.map ~f:promote paths
+      >>| fun promoted ->
+      let metadata_path = FSSchemeImpl.path (path_meta memory) key in
+      mkpath (Path.parent_exn metadata_path) ;
+      Io.write_file metadata_path
+        (Csexp.to_string
+           (Sexp.List
+              [ Sexp.List (Sexp.Atom "metadata" :: metadata)
+              ; Sexp.List
+                  [ Sexp.Atom "produced-files"
                   ; Sexp.List
-                      [ Sexp.Atom "produced-files"
-                      ; Sexp.List
-                          (List.filter_map
-                             ~f:(function
-                               | Promoted (o, p) | Already_promoted (o, p) ->
-                                   Some
-                                     (Sexp.List
-                                        [ Sexp.Atom (Path.to_string o)
-                                        ; Sexp.Atom (Path.to_string p) ])
-                               | _ ->
-                                   None)
-                             res) ] ])) ;
-          res)
+                      (List.map
+                         ~f:(function
+                           | Promoted (o, p) | Already_promoted (o, p) ->
+                               Sexp.List
+                                 [ Sexp.Atom (Path.to_string o)
+                                 ; Sexp.Atom (Path.to_string p) ])
+                         promoted) ] ])) ;
+      promoted
     in
     with_lock memory f
 
@@ -188,41 +189,36 @@ module Memory = struct
       let open Result.O in
       ( try
           Io.with_file_in path ~f:(fun input ->
-              Csexp.parse (Stream.of_channel input)
-              |> Result.map_error ~f:error)
-        with Sys_error _ -> Result.Error (error "no cached file") )
+              Csexp.parse (Stream.of_channel input))
+        with Sys_error _ -> Result.Error "no cached file" )
       >>= (function
-            | Sexp.List l ->
-                Result.ok l
-            | _ ->
-                Result.Error (error "invalid metadata"))
+            | Sexp.List l -> Result.ok l | _ -> Result.Error "invalid metadata")
       >>= function
       | [ Sexp.List (Sexp.Atom s_metadata :: metadata)
         ; Sexp.List [Sexp.Atom s_produced; Sexp.List produced] ] -> (
           if
             (not (String.equal s_metadata "metadata"))
             && String.equal s_produced "produced-files"
-          then Result.Error (error "invalid metadata scheme: wrong key")
+          then Result.Error "invalid metadata scheme: wrong key"
           else
             Result.List.map produced ~f:(function
               | Sexp.List [Sexp.Atom f; Sexp.Atom t] ->
                   Result.Ok (Path.of_string f, Path.of_string t)
               | _ ->
-                  Result.Error
-                    (error "invalid metadata scheme in produced files list"))
+                  Result.Error "invalid metadata scheme in produced files list")
             >>| function produced -> (metadata, produced) )
       | _ ->
-          Result.Error (error "invalid metadata scheme")
+          Result.Error "invalid metadata scheme"
     in
     with_lock memory f
 end
 
 let make ?log ?(root = default_root ()) () =
-  if Path.basename root <> "v2" then
-    Result.Error (error "unable to read dune-memory")
+  if Path.basename root <> "v2" then Result.Error "unable to read dune-memory"
   else
     Result.ok
-      {Memory.root; Memory.log= (match log with Some log -> log | None -> Log.no_log)}
+      { Memory.root
+      ; Memory.log= (match log with Some log -> log | None -> Log.no_log) }
 
 let trim memory free =
   let path = Memory.path_files memory in
@@ -241,4 +237,5 @@ let trim memory free =
       Unix.unlink (Path.to_string path) ;
       (freed + size, path :: res) )
   in
-  Memory.with_lock memory (fun () -> List.fold_left ~init:(0, []) ~f:delete files)
+  Memory.with_lock memory (fun () ->
+      List.fold_left ~init:(0, []) ~f:delete files)

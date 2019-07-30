@@ -18,23 +18,21 @@ type promotion =
 val promotion_to_string : promotion -> string
 
 module type memory = sig
-
   type t
 
   val promote :
-    t
+       t
     -> (Path.t * Digest.t) list
     -> key
     -> metadata
     -> (string * string) option
-    -> promotion list
+    -> (promotion list, string) Result.t
 
-  val search : t -> key -> (metadata * (Path.t * Path.t) list, exn) Result.t
-
+  val search : t -> key -> (metadata * (Path.t * Path.t) list, string) Result.t
 end
 
 module Memory : memory
 
-val make : ?log:Log.t -> ?root:Path.t -> unit -> (Memory.t, exn) Result.t
+val make : ?log:Log.t -> ?root:Path.t -> unit -> (Memory.t, string) Result.t
 
 val trim : Memory.t -> int -> int * Path.t list

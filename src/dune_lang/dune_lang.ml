@@ -20,46 +20,45 @@ let atom s = Atom (Atom.of_string s)
 
 let unsafe_atom_of_string s = atom s
 
-let rec to_string t ~syntax =
+let rec to_string t =
   match t with
-  | Atom a -> Atom.print a syntax
-  | Quoted_string s -> Escape.quoted s ~syntax
+  | Atom a -> Atom.print a
+  | Quoted_string s -> Escape.quoted s
   | List l ->
-    Printf.sprintf "(%s)" (List.map l ~f:(to_string ~syntax)
+    Printf.sprintf "(%s)" (List.map l ~f:to_string
                            |> String.concat ~sep:" ")
-  | Template t -> Template.to_string t ~syntax
+  | Template t -> Template.to_string t
 
-let rec pp syntax = function
-  | Atom s -> Pp.verbatim (Atom.print s syntax)
-  | Quoted_string s -> Pp.verbatim (Escape.quoted ~syntax s)
+let rec pp = function
+  | Atom s -> Pp.verbatim (Atom.print s)
+  | Quoted_string s -> Pp.verbatim (Escape.quoted s)
   | List [] -> Pp.verbatim "()"
   | List l ->
     let open Pp.O in
     Pp.box ~indent:1
       (Pp.char '(' ++
-       Pp.hvbox (Pp.concat_map l ~sep:Pp.space ~f:(pp syntax)) ++
+       Pp.hvbox (Pp.concat_map l ~sep:Pp.space ~f:pp) ++
        Pp.char ')')
-  | Template t -> Template.pp syntax t
+  | Template t -> Template.pp t
 
 module Deprecated = struct
-  let pp syntax ppf t = Pp.render_ignore_tags ppf (pp syntax t)
+  let pp ppf t = Pp.render_ignore_tags ppf (pp t)
 
   let pp_print_quoted_string ppf s =
-    let syntax = File_syntax.Dune in
     if String.contains s '\n' then begin
       match String.split s ~on:'\n' with
-      | [] -> Format.pp_print_string ppf (Escape.quoted ~syntax s)
+      | [] -> Format.pp_print_string ppf (Escape.quoted s)
       | first :: rest ->
         Format.fprintf ppf "@[<hv 1>\"@{<atom>%s"
-          (Escape.escaped ~syntax first);
+          (Escape.escaped first);
         List.iter rest ~f:(fun s ->
-          Format.fprintf ppf "@,\\n%s" (Escape.escaped ~syntax s));
+          Format.fprintf ppf "@,\\n%s" (Escape.escaped s));
         Format.fprintf ppf "@}\"@]"
     end else
-      Format.pp_print_string ppf (Escape.quoted ~syntax s)
+      Format.pp_print_string ppf (Escape.quoted s)
 
   let rec pp_split_strings ppf = function
-    | Atom s -> Format.pp_print_string ppf (Atom.print s File_syntax.Dune)
+    | Atom s -> Format.pp_print_string ppf (Atom.print s)
     | Quoted_string s -> pp_print_quoted_string ppf s
     | List [] ->
       Format.pp_print_string ppf "()"
@@ -1114,7 +1113,7 @@ let rec to_dyn =
   | List s -> List (List.map s ~f:to_dyn)
   | Quoted_string s -> string s
   | Template t ->
-    constr "template" [string (Template.to_string ~syntax:Dune t)]
+    constr "template" [string (Template.to_string t)]
 
 module Io = struct
   let load ?lexer path ~mode =

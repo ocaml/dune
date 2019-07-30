@@ -45,7 +45,7 @@ module Template : sig
 
   val string_of_var : var -> string
 
-  val to_string : t -> syntax:File_syntax.t -> string
+  val to_string : t -> string
 
   val remove_locs : t -> t
 end
@@ -66,14 +66,14 @@ val atom_or_quoted_string : string -> t
 val unsafe_atom_of_string : string -> t
 
 (** Serialize a S-expression *)
-val to_string : t -> syntax:File_syntax.t -> string
+val to_string : t -> string
 
 (** Serialize a S-expression using indentation to improve readability *)
-val pp : File_syntax.t -> t -> _ Pp.t
+val pp : t -> _ Pp.t
 
 module Deprecated : sig
   (** Serialize a S-expression using indentation to improve readability *)
-  val pp : File_syntax.t -> Format.formatter -> t -> unit
+  val pp : Format.formatter -> t -> unit
 
   (** Same as [pp ~syntax:Dune], but split long strings. The formatter
       must have been prepared with [prepare_formatter]. *)

@@ -59,7 +59,7 @@ module File = struct
     let pp s =
       match Cst.to_sexp s with
       | None -> Pp.nop
-      | Some s -> Dune_lang.pp Dune s
+      | Some s -> Dune_lang.pp s
 
     let libraries_conflict (a: Dune_file.Library.t) (b: Dune_file.Library.t) =
       a.name = b.name

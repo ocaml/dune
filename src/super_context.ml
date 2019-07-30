@@ -273,7 +273,7 @@ module Pkg_version = struct
     add_rule sctx ~dir:(build_dir sctx)
       ((get >>^ fun v ->
         (Dune_lang.Encoder.(option string) v
-         |> Dune_lang.to_string ~syntax:Dune))
+         |> Dune_lang.to_string))
        >>> Build.write_file_dyn fn);
     read_file fn
 end

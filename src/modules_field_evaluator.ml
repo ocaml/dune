@@ -244,7 +244,7 @@ let check_invalid_module_listing ~(buildable : Buildable.t) ~intf_only
                  |> uncapitalized
                  |> List.map ~f:Dune_lang.Encoder.string
                in
-               Dune_lang.to_string ~syntax:Dune (List (tag :: modules)))
+               Dune_lang.to_string (List (tag :: modules)))
           ]
       | Some loc ->
         User_error.raise ~loc

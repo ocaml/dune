@@ -217,11 +217,10 @@ module Dune_project = struct
       | Some v ->
         (* There is a [version] field, overwrite its argument *)
         replace_text v.loc_of_arg.start.pos_cnum v.loc_of_arg.stop.pos_cnum
-          (Dune_lang.to_string (Dune_lang.atom_or_quoted_string version)
-             ~syntax:Dune)
+          (Dune_lang.to_string (Dune_lang.atom_or_quoted_string version))
       | None ->
         let version_field =
-          Dune_lang.to_string ~syntax:Dune
+          Dune_lang.to_string
             (List [ Dune_lang.atom "version"
                   ; Dune_lang.atom_or_quoted_string version
                   ])

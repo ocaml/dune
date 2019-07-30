@@ -313,7 +313,7 @@ module Project_file_edit = struct
         match t.project_name with
         | Anonymous _ -> lines
         | Named s ->
-          lines @ [Dune_lang.to_string ~syntax:Dune
+          lines @ [Dune_lang.to_string
                      (List [ Dune_lang.atom "name"
                            ; Dune_lang.atom_or_quoted_string s
                            ])]
@@ -439,7 +439,7 @@ module Extension = struct
                  dune_project_edited := true;
                  ignore (
                    Project_file_edit.append project_file
-                     (Dune_lang.to_string ~syntax:Dune
+                     (Dune_lang.to_string
                         (List [ Dune_lang.atom "using"
                               ; Dune_lang.atom name
                               ; Dune_lang.atom

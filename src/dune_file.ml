@@ -220,11 +220,11 @@ module Dep_conf = struct
   let decode_sandbox_config =
     let+ () = Syntax.since Stanza.syntax (1, 12)
     and+ (loc, x) =
-      located (list (sum [
+      located (repeat (sum [
         "none", return Sandbox_config.Partial.no_sandboxing;
         "always", return Sandbox_config.Partial.needs_sandboxing;
         "preserve_file_kind",
-      return (Sandbox_config.Partial.disallow Sandbox_mode.symlink);
+        return (Sandbox_config.Partial.disallow Sandbox_mode.symlink);
       ]))
     in
     Sandbox_config.Partial.merge ~loc x
@@ -422,7 +422,7 @@ module Per_module = struct
             let+ x =
               repeat
                 (let+ (pp, names) = pair a (repeat module_name) in
-                (names, pp))
+                 (names, pp))
             in
             of_mapping x ~default
             |> function
@@ -1599,7 +1599,7 @@ module Executables = struct
   let common =
     let+ buildable = Buildable.decode
     and+ (_ : bool) = field "link_executables" ~default:true
-                       (Syntax.deleted_in Stanza.syntax (1, 0) >>> bool)
+                        (Syntax.deleted_in Stanza.syntax (1, 0) >>> bool)
     and+ link_deps = field "link_deps" (repeat Dep_conf.decode) ~default:[]
     and+ link_flags = field_oslu "link_flags"
     and+ modes = field "modes" Link_mode.Set.decode ~default:Link_mode.Set.default

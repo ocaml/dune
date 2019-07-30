@@ -29,8 +29,8 @@ module Env_nodes = struct
 
   let extra_env ~profile env_nodes =
     Env.extend_env
-      (Dune_env.Stanza.find env_nodes.context ~profile).env_vars
       (Dune_env.Stanza.find env_nodes.workspace ~profile).env_vars
+      (Dune_env.Stanza.find env_nodes.context ~profile).env_vars
 end
 
 type t =
@@ -407,7 +407,6 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
         Option.value ~default:Env.empty
           (Option.map findlib_config ~f:Findlib.Config.env)
       )
-    |> Env.extend_env (Env_nodes.extra_env ~profile env_nodes)
     in
     let stdlib_dir = Path.of_string (Ocaml_config.standard_library ocfg) in
     let natdynlink_supported = Ocaml_config.natdynlink_supported ocfg in
@@ -646,9 +645,15 @@ let instantiate_context env (workspace : Workspace.t)
     ; workspace = workspace.env
     }
   in
+  let env =
+    Env.extend_env env
+      (Env_nodes.extra_env
+         ~profile:(Workspace.Context.profile context) env_nodes)
+  in
+  let env = extend_paths ~env (Workspace.Context.paths context) in
   match context with
   | Default { targets; name; host_context = _; profile; env = _
-            ; toolchain ; paths; loc = _ } ->
+            ; toolchain ; paths = _; loc = _ } ->
     let merlin =
       workspace.merlin_context = Some (Workspace.Context.name context)
     in
@@ -657,13 +662,11 @@ let instantiate_context env (workspace : Workspace.t)
       | Some _ -> toolchain
       | None -> Env.get env "OCAMLFIND_TOOLCHAIN"
     in
-    let env = extend_paths ~env paths in
     default ~env ~env_nodes ~profile ~targets ~name ~merlin ~host_context
       ~host_toolchain
   | Opam { base = { targets; name; host_context = _; profile; env = _
-                  ; toolchain; paths; loc = _ }
+                  ; toolchain; paths = _; loc = _ }
          ; switch; root; merlin } ->
-    let env = extend_paths ~env paths in
     create_for_opam ~root ~env_nodes ~env ~profile ~switch ~name ~merlin
       ~targets ~host_context ~host_toolchain:toolchain
 

@@ -120,6 +120,10 @@ module Memory = struct
     in
     let promote (path, expected_hash) =
       Log.infof memory.log "promote %s" (Path.to_string path) ;
+      let stat = Unix.lstat (Path.to_string path) in
+      ( if stat.st_kind != S_REG then Result.Error "invalid file type"
+      else Result.Ok stat )
+      >>= fun stat ->
       let hardlink path =
         let tmp = path_tmp memory in
         (* dune-memory uses a single writer model, the promoted file name can be constant *)

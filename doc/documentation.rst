@@ -95,7 +95,7 @@ with a single package.
 
 .. code-block:: lisp
 
-   (documentation ())
+   (documentation)
 
 This stanza will attach three mld files to package foo. The ``mld`` files should
 be named ``foo.mld``, ``bar.mld``, and ``baz.mld``
@@ -103,8 +103,8 @@ be named ``foo.mld``, ``bar.mld``, and ``baz.mld``
 .. code-block:: lisp
 
    (documentation
-    ((package foo)
-     (mld_files (foo bar baz))))
+    (package foo)
+     (mld_files foo bar baz))
 
 This stanza will attach all mld files excluding ``wip.mld`` in the current
 directory to the inferred package:
@@ -112,6 +112,6 @@ directory to the inferred package:
 .. code-block:: lisp
 
    (documentation
-    ((mld_files (:standard \ wip))))
+    (mld_files :standard \ wip))
 
 .. _odoc: https://github.com/ocaml-doc/odoc

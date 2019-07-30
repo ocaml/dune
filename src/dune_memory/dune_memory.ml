@@ -11,9 +11,6 @@ let default_root () =
 type promotion =
   | Already_promoted of Path.t * Path.t
   | Promoted of Path.t * Path.t
-  | Hash_mismatch of Path.t * Digest.t * Digest.t
-
-let error s = User_error.E (User_error.make [Pp.textf "%s" s])
 
 let key_to_string = Digest.to_string
 
@@ -26,11 +23,6 @@ let promotion_to_string = function
   | Promoted (original, promoted) ->
       Printf.sprintf "%s promoted as %s" (Path.to_string original)
         (Path.to_string promoted)
-  | Hash_mismatch (original, expected, effective) ->
-      Printf.sprintf "hash for %s mismatch: expected %s got %s"
-        (Path.to_string original)
-        (Digest.to_string expected)
-        (Digest.to_string effective)
 
 (* How to handle collisions. E.g. another version could assume collisions are not possible *)
 module Collision = struct
@@ -91,7 +83,7 @@ module type memory = sig
     -> key
     -> metadata
     -> (string * string) option
-    -> promotion list
+    -> (promotion list, string) Result.t
 
   val search : t -> key -> (metadata * (Path.t * Path.t) list, string) Result.t
 end

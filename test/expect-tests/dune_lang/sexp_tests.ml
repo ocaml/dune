@@ -23,7 +23,7 @@ let%expect_test _ =
 
 let of_sexp =
   let open Dune_lang.Decoder in
-  record (field "foo" int)
+  enter (fields (field "foo" int))
 
 let%expect_test _ =
   begin try
@@ -36,7 +36,7 @@ Error: Field "foo" is present too many times
 |}]
 
 let of_sexp : int list t =
-  record (multi_field "foo" int)
+  enter (fields (multi_field "foo" int))
 
 let%expect_test _ =
   parse of_sexp Univ_map.empty (Lazy.force sexp)

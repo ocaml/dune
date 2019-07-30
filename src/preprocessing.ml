@@ -135,10 +135,10 @@ module Driver = struct
       *)
       let syntax = Stanza.syntax
 
-      open Stanza.Decoder
+      open Dune_lang.Decoder
 
       let parse =
-        record
+        fields
           (let+ loc = loc
            and+ flags = Ordered_set_lang.Unexpanded.field "flags"
            and+ as_ppx_flags =
@@ -149,7 +149,7 @@ module Driver = struct
            and+ lint_flags = Ordered_set_lang.Unexpanded.field "lint_flags"
            and+ main = field "main" string
            and+ replaces =
-             field "replaces" (list (located (Lib_name.decode))) ~default:[]
+             field "replaces" (repeat (located (Lib_name.decode))) ~default:[]
            and+ file_kind = Stanza.file_kind ()
            in
            { loc

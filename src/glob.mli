@@ -8,7 +8,7 @@ val hash : t -> int
 
 val to_dyn : t Dyn.Encoder.t
 
-val decode : t Stanza.Decoder.t
+val decode : t Dune_lang.Decoder.t
 
 val test : t -> string -> bool
 

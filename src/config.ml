@@ -31,7 +31,7 @@ let show_full_command_on_error () =
 
 let default_build_profile = "dev"
 
-open Stanza.Decoder
+open Dune_lang.Decoder
 
 (* the configuration file use the same version numbers as dune-project
    files for simplicity *)

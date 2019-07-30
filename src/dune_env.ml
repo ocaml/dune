@@ -3,7 +3,7 @@ open Import
 type stanza = Stanza.t = ..
 
 module Stanza = struct
-  open Stanza.Decoder
+  open Dune_lang.Decoder
   let c_flags ~since =
     let check =
       Option.map since ~f:(fun since ->
@@ -61,7 +61,7 @@ module Stanza = struct
     "env-vars"
       ~default:Env.empty
       (Syntax.since Stanza.syntax (1, 5) >>>
-       located (list (pair string string)) >>| fun (loc, pairs) ->
+       located (repeat (pair string string)) >>| fun (loc, pairs) ->
        match Env.Map.of_list pairs with
        | Ok vars -> Env.extend Env.empty ~vars
        | Error (k, _, _) ->

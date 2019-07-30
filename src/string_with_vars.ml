@@ -117,24 +117,13 @@ end
 
 let decode =
   let open Dune_lang.Decoder in
-  let jbuild =
-    raw >>| function
-    | Template _ as t ->
-      Code_error.raise "Unexpected dune template from a jbuild file"
-        [ "t", Dune_lang.to_dyn (Dune_lang.Ast.remove_locs t)
-        ]
-    | Atom(loc, A s) -> Jbuild.parse s ~loc ~quoted:false
-    | Quoted_string (loc, s) -> Jbuild.parse s ~loc ~quoted:true
-    | List (loc, _) -> User_error.raise ~loc [ Pp.text "Atom expected" ]
-  in
-  let dune =
+  let template_parser =
     raw >>| function
     | Template t -> t
     | Atom(loc, A s) -> literal ~quoted:false ~loc s
     | Quoted_string (loc, s) -> literal ~quoted:true ~loc s
     | List (loc, _) -> User_error.raise ~loc [ Pp.text "Unexpected list" ]
   in
-  let template_parser = Stanza.Decoder.switch_file_kind ~jbuild ~dune in
   let+ syntax_version = Syntax.get_exn Stanza.syntax
   and+ template = template_parser
   in

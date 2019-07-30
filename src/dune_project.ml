@@ -162,7 +162,7 @@ module Source_kind = struct
     | Url u -> Format.pp_print_string fmt u
 
   let decode =
-    let open Stanza.Decoder in
+    let open Dune_lang.Decoder in
     sum
       ["github", plain_string (fun ~loc s ->
          match String.split ~on:'/' s with

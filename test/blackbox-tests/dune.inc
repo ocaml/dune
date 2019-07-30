@@ -1127,14 +1127,6 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
- (name ocamllex-jbuild)
- (deps (package dune) (source_tree test-cases/ocamllex-jbuild))
- (action
-  (chdir
-   test-cases/ocamllex-jbuild
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
-
-(alias
  (name odig-files-workspace)
  (deps (package dune) (source_tree test-cases/odig-files-workspace))
  (action
@@ -1434,14 +1426,6 @@
  (action
   (chdir
    test-cases/tests-stanza-action-syntax-version
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
-
-(alias
- (name too-many-parens)
- (deps (package dune) (source_tree test-cases/too-many-parens))
- (action
-  (chdir
-   test-cases/too-many-parens
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
@@ -1793,7 +1777,6 @@
   (alias ocaml-config-macro)
   (alias ocaml-syntax)
   (alias ocamldep-multi-stanzas)
-  (alias ocamllex-jbuild)
   (alias odig-files-workspace)
   (alias odoc)
   (alias odoc-package-mld-link)
@@ -1830,7 +1813,6 @@
   (alias tests-stanza)
   (alias tests-stanza-action)
   (alias tests-stanza-action-syntax-version)
-  (alias too-many-parens)
   (alias toplevel-stanza)
   (alias trace-file)
   (alias transitive-deps-mode)
@@ -1981,7 +1963,6 @@
   (alias ocaml-config-macro)
   (alias ocaml-syntax)
   (alias ocamldep-multi-stanzas)
-  (alias ocamllex-jbuild)
   (alias odig-files-workspace)
   (alias old-dune-subsystem)
   (alias optional)
@@ -2010,7 +1991,6 @@
   (alias tests-stanza)
   (alias tests-stanza-action)
   (alias tests-stanza-action-syntax-version)
-  (alias too-many-parens)
   (alias toplevel-stanza)
   (alias trace-file)
   (alias transitive-deps-mode)

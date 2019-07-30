@@ -16,16 +16,13 @@
   ;
   
   (rule
-   (deps
-    (:< x)
-    y
-    z) ; abc
+   (deps x y z) ; abc
    (targets z)
    ; def
    (action
     (with-stdout-to
      z
-     (run echo %{<})))
+     (run echo ${<})))
    (mode fallback))
   
   ; other
@@ -41,11 +38,10 @@
 
   $ cat dune.inc
   (rule
-   (deps
-    (:< a))
+   (deps a)
    (targets b)
    (action
-    (copy %{<} %{targets})))
+    (copy ${<} ${@})))
 
   $ cat foo.opam
   build: [

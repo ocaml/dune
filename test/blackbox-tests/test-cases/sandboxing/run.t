@@ -42,13 +42,11 @@ Some errors:
   $ true > dune
   $ echo '(rule (target a) (deps (sandbox always none)) (action (bash "echo a > a")))' >> dune
   $ dune build a
-  File "dune", line 1, characters 23-44:
+  File "dune", line 1, characters 32-43:
   1 | (rule (target a) (deps (sandbox always none)) (action (bash "echo a > a")))
-                             ^^^^^^^^^^^^^^^^^^^^^
+                                      ^^^^^^^^^^^
   Error: Inconsistent sandboxing configuration. Sandboxing mode none is both
   allowed and disallowed
-  Hint: dune files require fewer parentheses than jbuild files.
-  If you just converted this file from a jbuild file, try removing these parentheses.
   [1]
 
 When we don't pass [preserve_file_kind], the rules can observe the file kind changing based on sandbox mode chosen:

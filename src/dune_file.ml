@@ -1,6 +1,6 @@
 open! Stdune
 open Import
-open Stanza.Decoder
+open Dune_lang.Decoder
 
 (* This file defines the jbuild types as well as the S-expression
    syntax for the various supported version of the specification.
@@ -63,7 +63,7 @@ let library_variants =
 let variants_field =
   field_o "variants" (
     let* () = Syntax.since library_variants (0, 1) in
-    located (list Variant.decode >>| Variant.Set.of_list))
+    located (repeat Variant.decode >>| Variant.Set.of_list))
 
 (* Parse and resolve "package" fields *)
 module Pkg = struct
@@ -159,71 +159,39 @@ module Pkg = struct
 end
 
 module Pps_and_flags = struct
-  module Jbuild_syntax = struct
-    let of_string ~loc s =
-      if String.is_prefix s ~prefix:"-" then
-        Right [String_with_vars.make_text loc s]
-      else
-        Left (loc, Lib_name.of_string_exn ~loc:(Some loc) s)
-
-    let item =
-      peek_exn >>= function
-      | Template { loc; _ } ->
-        User_error.raise ~loc
-          [ Pp.text "No variables allowed in the preprocessors field" ]
-      | Atom _ | Quoted_string _ -> plain_string of_string
-      | List _ ->
-        list (plain_string (fun ~loc str ->
-          String_with_vars.make_text loc str))
-        >>| (fun x -> Right x)
-
-    let split l =
-      let pps, flags = List.partition_map l ~f:Fn.id in
-      (pps, List.concat flags)
-
-    let decode = list item >>| split
-  end
-
-  module Dune_syntax = struct
-    let decode =
-      let+ l, flags =
-        until_keyword "--"
-          ~before:String_with_vars.decode
-          ~after:(repeat String_with_vars.decode)
-      and+ syntax_version = Syntax.get_exn Stanza.syntax
-      in
-      let pps, more_flags =
-        List.partition_map l ~f:(fun s ->
-          match String_with_vars.is_prefix ~prefix:"-" s with
-          | Yes ->
-            Right s
-          | No | Unknown _ ->
-            let loc = String_with_vars.loc s in
-            match String_with_vars.text_only s with
-            | None ->
-              User_error.raise ~loc
-                [ Pp.text "No variables allowed in ppx library names" ]
-            | Some txt ->
-              Left (loc, Lib_name.of_string_exn ~loc:(Some loc) txt)
-        )
-      in
-      let all_flags = more_flags @ Option.value flags ~default:[] in
-      if syntax_version < (1, 10) then
-        List.iter ~f:
-          (fun flag ->
-             if String_with_vars.has_vars flag then
-               Syntax.Error.since (String_with_vars.loc flag)
-                 Stanza.syntax
-                 (1, 10)
-                 ~what:"Using variables in pps flags"
-          ) all_flags;
-      (pps, all_flags)
-  end
-
   let decode =
-    switch_file_kind
-      ~jbuild:Jbuild_syntax.decode
-      ~dune:Dune_syntax.decode
+    let+ l, flags =
+      until_keyword "--"
+        ~before:String_with_vars.decode
+        ~after:(repeat String_with_vars.decode)
+    and+ syntax_version = Syntax.get_exn Stanza.syntax
+    in
+    let pps, more_flags =
+      List.partition_map l ~f:(fun s ->
+        match String_with_vars.is_prefix ~prefix:"-" s with
+        | Yes ->
+          Right s
+        | No | Unknown _ ->
+          let loc = String_with_vars.loc s in
+          match String_with_vars.text_only s with
+          | None ->
+            User_error.raise ~loc
+              [ Pp.text "No variables allowed in ppx library names" ]
+          | Some txt ->
+            Left (loc, Lib_name.of_string_exn ~loc:(Some loc) txt)
+      )
+    in
+    let all_flags = more_flags @ Option.value flags ~default:[] in
+    if syntax_version < (1, 10) then
+      List.iter ~f:
+        (fun flag ->
+           if String_with_vars.has_vars flag then
+             Syntax.Error.since (String_with_vars.loc flag)
+               Stanza.syntax
+               (1, 10)
+               ~what:"Using variables in pps flags"
+        ) all_flags;
+    (pps, all_flags)
 end
 
 module Dep_conf = struct
@@ -252,11 +220,11 @@ module Dep_conf = struct
   let decode_sandbox_config =
     let+ () = Syntax.since Stanza.syntax (1, 12)
     and+ (loc, x) =
-      located (list (sum [
+      located (repeat (sum [
         "none", return Sandbox_config.Partial.no_sandboxing;
         "always", return Sandbox_config.Partial.needs_sandboxing;
         "preserve_file_kind",
-      return (Sandbox_config.Partial.disallow Sandbox_mode.symlink);
+        return (Sandbox_config.Partial.disallow Sandbox_mode.symlink);
       ]))
     in
     Sandbox_config.Partial.merge ~loc x
@@ -453,7 +421,7 @@ module Per_module = struct
       sum [ "per_module",
             let+ x =
               repeat
-                (let+ (pp, names) = pair a (list module_name) in
+                (let+ (pp, names) = pair a (repeat module_name) in
                  (names, pp))
             in
             of_mapping x ~default
@@ -503,9 +471,9 @@ module Js_of_ocaml = struct
     }
 
   let decode =
-    record
+    fields
       (let+ flags = field_oslu "flags"
-       and+ javascript_files = field "javascript_files" (list string) ~default:[]
+       and+ javascript_files = field "javascript_files" (repeat string) ~default:[]
        in
        { flags; javascript_files })
 
@@ -640,8 +608,6 @@ module Lib_deps = struct
       : kind Lib_name.Map.t);
     t
 
-  let decode = parens_removed_in_dune decode
-
   let of_pps pps =
     List.map pps ~f:(fun pp -> Lib_dep.of_lib_name (Loc.none, pp))
 
@@ -706,7 +672,7 @@ module Auto_format = struct
 
   let dparse_args =
     let+ loc = loc
-    and+ enabled_for = record enabled_for_field
+    and+ enabled_for = fields enabled_for_field
     in
     ({loc; enabled_for}, [])
 
@@ -752,7 +718,7 @@ module Buildable = struct
     and+ preprocess =
       field "preprocess" Preprocess_map.decode ~default:Preprocess_map.default
     and+ preprocessor_deps =
-      field "preprocessor_deps" (list Dep_conf.decode) ~default:[]
+      field "preprocessor_deps" (repeat Dep_conf.decode) ~default:[]
     and+ lint = field "lint" Lint.decode ~default:Lint.default
     and+ modules = modules_field "modules"
     and+ modules_without_implementation =
@@ -848,7 +814,7 @@ module Mode_conf = struct
   module Set = struct
     include O.Set
 
-    let decode = list decode >>| of_list
+    let decode = repeat decode >>| of_list
 
     let default = of_list [Byte; Best]
 
@@ -870,8 +836,8 @@ module External_variant = struct
     }
 
   let decode =
-    let open Stanza.Decoder in
-    record (
+    let open Dune_lang.Decoder in
+    fields (
       let+ loc = loc
       and+ variant = field "variant" Variant.decode
       and+ virtual_lib = field "virtual_library" Lib_name.decode
@@ -977,7 +943,7 @@ module Library = struct
     let decode =
       fields
         (let+ modules_before_stdlib =
-           field "modules_before_stdlib" (list module_name) ~default:[]
+           field "modules_before_stdlib" (repeat module_name) ~default:[]
          and+ exit_module =
            field_o "exit_module" module_name
          and+ internal_modules =
@@ -1049,23 +1015,23 @@ module Library = struct
     }
 
   let decode =
-    record
+    fields
       (let+ buildable = Buildable.decode
        and+ loc = loc
        and+ name = field_o "name" Lib_name.Local.decode_loc
        and+ public = Public_lib.public_name_field
        and+ synopsis = field_o "synopsis" string
        and+ install_c_headers =
-         field "install_c_headers" (list string) ~default:[]
+         field "install_c_headers" (repeat string) ~default:[]
        and+ ppx_runtime_libraries =
-         field "ppx_runtime_libraries" (list (located Lib_name.decode)) ~default:[]
+         field "ppx_runtime_libraries" (repeat (located Lib_name.decode)) ~default:[]
        and+ c_flags = Dune_env.Stanza.c_flags ~since:None
        and+ c_names = field_o "c_names" Ordered_set_lang.decode
        and+ cxx_names = field_o "cxx_names" Ordered_set_lang.decode
        and+ library_flags = field_oslu "library_flags"
        and+ c_library_flags = field_oslu "c_library_flags"
        and+ virtual_deps =
-         field "virtual_deps" (list (located Lib_name.decode)) ~default:[]
+         field "virtual_deps" (repeat (located Lib_name.decode)) ~default:[]
        and+ modes = field "modes" Mode_conf.Set.decode ~default:Mode_conf.Set.default
        and+ kind = field "kind" Lib_kind.decode ~default:Lib_kind.Normal
        and+ wrapped = Wrapped.field
@@ -1280,7 +1246,7 @@ module Install_conf = struct
     }
 
   let decode =
-    record
+    fields
       (let+ section = field "section" Install.Section.decode
        and+ files = field "files" File_binding.Unexpanded.L.decode
        and+ package = Pkg.field "install"
@@ -1387,8 +1353,8 @@ module Executables = struct
 
     let multi_fields =
       map_validate
-        (let+ names = field_o "names" (list (located string))
-         and+ pub_names = field_o "public_names" (list public_name) in
+        (let+ names = field_o "names" (repeat (located string))
+         and+ pub_names = field_o "public_names" (repeat public_name) in
          (names, pub_names))
         ~f:(fun (names, public_names) ->
           match names, public_names with
@@ -1594,7 +1560,7 @@ module Executables = struct
       include O.Set
 
       let decode =
-        located (list decode) >>| fun (loc, l) ->
+        located (repeat decode) >>| fun (loc, l) ->
         match l with
         | [] -> User_error.raise ~loc [ Pp.textf "No linking mode defined" ]
         | l ->
@@ -1634,7 +1600,7 @@ module Executables = struct
     let+ buildable = Buildable.decode
     and+ (_ : bool) = field "link_executables" ~default:true
                         (Syntax.deleted_in Stanza.syntax (1, 0) >>> bool)
-    and+ link_deps = field "link_deps" (list Dep_conf.decode) ~default:[]
+    and+ link_deps = field "link_deps" (repeat Dep_conf.decode) ~default:[]
     and+ link_flags = field_oslu "link_flags"
     and+ modes = field "modes" Link_mode.Set.decode ~default:Link_mode.Set.default
     and+ variants = variants_field
@@ -1691,7 +1657,7 @@ module Executables = struct
   let (single, multi) =
     let stanza = "executable" in
     let make multi =
-      record
+      fields
         (let+ names =
            Names.make ~multi ~stanza ~allow_omit_names_version:(1, 1)
          and+ f = common
@@ -1718,7 +1684,7 @@ module Rule = struct
 
     let decode_static =
       let+ syntax_version = Syntax.get_exn Stanza.syntax
-      and+ targets = list String_with_vars.decode
+      and+ targets = repeat String_with_vars.decode
       in
       if syntax_version < (1, 3) then
         List.iter targets ~f:(fun target ->
@@ -1835,7 +1801,7 @@ module Rule = struct
     and+ targets = Targets.fields_parser
     and+ deps =
       field "deps" (Bindings.decode Dep_conf.decode) ~default:Bindings.empty
-    and+ locks = field "locks" (list String_with_vars.decode) ~default:[]
+    and+ locks = field "locks" (repeat String_with_vars.decode) ~default:[]
     and+ mode =
       (* DUNE2: forbid (fallback) *)
       map_validate
@@ -1870,11 +1836,6 @@ module Rule = struct
     ; enabled_if
     }
 
-  let jbuild_syntax =
-    peek_exn >>= function
-    | List (_, (Atom _ :: _)) -> short_form
-    | _ -> record long_form
-
   let dune_syntax =
     peek_exn >>= function
     | List (_, Atom (loc, A s) :: _) -> begin
@@ -1891,10 +1852,7 @@ module Rule = struct
       User_error.raise ~loc:(Dune_lang.Ast.loc sexp)
         [ Pp.textf "S-expression of the form (<atom> ...) expected" ]
 
-  let decode =
-    switch_file_kind
-      ~jbuild:jbuild_syntax
-      ~dune:dune_syntax
+  let decode = dune_syntax
 
   type lex_or_yacc =
     { modules : string list
@@ -1902,23 +1860,7 @@ module Rule = struct
     ; enabled_if : Blang.t
     }
 
-  let ocamllex_jbuild =
-    peek_exn >>= function
-    | List (_, Atom (_, _) :: _) ->
-      enter (
-        let+ modules = repeat string in
-        { modules
-        ; mode  = Standard
-        ; enabled_if = Blang.true_
-        }
-      )
-    | _ ->
-      record
-        (let+ modules = field "modules" (list string)
-         and+ mode = Mode.field in
-         { modules; mode; enabled_if = Blang.true_ })
-
-  let ocamllex_dune =
+  let ocamllex =
     if_eos
       ~then_:(
         return
@@ -1929,8 +1871,8 @@ module Rule = struct
       ~else_:(
         if_list
           ~then_:(
-            record
-              (let+ modules = field "modules" (list string)
+            fields
+              (let+ modules = field "modules" (repeat string)
                and+ mode = Mode.field
                and+ enabled_if = enabled_if ~since:(Some (1, 4))
                in
@@ -1941,11 +1883,6 @@ module Rule = struct
             ; mode  = Standard
             ; enabled_if = Blang.true_
             }))
-
-  let ocamllex =
-    switch_file_kind
-      ~jbuild:ocamllex_jbuild
-      ~dune:ocamllex_dune
 
   let ocamlyacc = ocamllex
 
@@ -2018,10 +1955,10 @@ module Menhir = struct
       ]
 
   let decode =
-    record
+    fields
       (let+ merge_into = field_o "merge_into" string
        and+ flags = field_oslu "flags"
-       and+ modules = field "modules" (list string)
+       and+ modules = field "modules" (repeat string)
        and+ mode = Rule.Mode.field
        and+ infer = field_o_b "infer" ~check:(Syntax.since syntax (2, 0))
        and+ menhir_syntax = Syntax.get_exn syntax
@@ -2048,24 +1985,6 @@ module Menhir = struct
     Dune_project.Extension.register_simple
       syntax
       (return [ "menhir", decode >>| fun x -> [T x] ])
-
-  (* Syntax for jbuild files *)
-  let jbuild_syntax =
-    record
-      (let+ merge_into = field_o "merge_into" string
-       and+ flags = field_oslu "flags"
-       and+ modules = field "modules" (list string)
-       and+ mode = Rule.Mode.field
-       and+ loc = loc
-       in
-       { merge_into
-       ; flags
-       ; modules
-       ; mode
-       ; loc
-       ; infer = false
-       ; enabled_if = Blang.true_
-       })
 end
 
 module Coqpp = struct
@@ -2076,8 +1995,8 @@ module Coqpp = struct
     }
 
   let decode =
-    record
-      (let+ modules = field "modules" (list string)
+    fields
+      (let+ modules = field "modules" (repeat string)
        and+ loc = loc in
        { modules
        ; loc
@@ -2109,7 +2028,7 @@ module Coq = struct
       [ 0, 1 ]
 
   let decode =
-    record
+    fields
       (let+ name = field "name" Lib_name.Local.decode_loc
        and+ loc = loc
        and+ public = Public_lib.public_name_field
@@ -2117,7 +2036,7 @@ module Coq = struct
        and+ flags = field_oslu "flags"
        and+ modules = modules_field "modules"
        and+ libraries =
-         field "libraries" (list (located Lib_name.decode)) ~default:[]
+         field "libraries" (repeat (located Lib_name.decode)) ~default:[]
        and+ enabled_if = enabled_if ~since:None
        in
        let name =
@@ -2182,12 +2101,12 @@ module Alias_conf = struct
         s)
 
   let decode =
-    record
+    fields
       (let+ name = field "name" alias_name
        and+ loc = loc
        and+ package = field_o "package" Pkg.decode
        and+ action = field_o "action" (located Action_dune_lang.decode)
-       and+ locks = field "locks" (list String_with_vars.decode) ~default:[]
+       and+ locks = field "locks" (repeat String_with_vars.decode) ~default:[]
        and+ deps = field "deps" (Bindings.decode Dep_conf.decode) ~default:Bindings.empty
        and+ enabled_if = field "enabled_if" Blang.decode ~default:Blang.true_
        in
@@ -2212,13 +2131,13 @@ module Tests = struct
     }
 
   let gen_parse names =
-    record
+    fields
       (let+ buildable = Buildable.decode
        and+ link_flags = field_oslu "link_flags"
        and+ variants = variants_field
        and+ names = names
        and+ package = field_o "package" Pkg.decode
-       and+ locks = field "locks" (list String_with_vars.decode) ~default:[]
+       and+ locks = field "locks" (repeat String_with_vars.decode) ~default:[]
        and+ modes = field "modes" Executables.Link_mode.Set.decode
                       ~default:Executables.Link_mode.Set.default
        and+ deps =
@@ -2247,7 +2166,7 @@ module Tests = struct
        ; action
        })
 
-  let multi = gen_parse (field "names" (list (located string)))
+  let multi = gen_parse (field "names" (repeat (located string)))
 
   let single = gen_parse (field "name" (located string) >>| List.singleton)
 end
@@ -2261,13 +2180,13 @@ module Toplevel = struct
     }
 
   let decode =
-    let open Stanza.Decoder in
-    record (
+    let open Dune_lang.Decoder in
+    fields (
       let+ loc = loc
       and+ name = field "name" string
       and+ variants = variants_field
       and+ libraries =
-        field "libraries" (list (located Lib_name.decode)) ~default:[]
+        field "libraries" (repeat (located Lib_name.decode)) ~default:[]
       in
       { name
       ; libraries
@@ -2294,7 +2213,7 @@ module Documentation = struct
     }
 
   let decode =
-    record
+    fields
       (let+ package = Pkg.field "documentation"
        and+ mld_files = Ordered_set_lang.field "mld_files"
        and+ loc = loc in
@@ -2421,35 +2340,17 @@ module Stanzas = struct
        [Toplevel t])
     ]
 
-  let jbuild_parser =
-    (* The menhir stanza was part of the vanilla jbuild
-       syntax. Starting from Dune 1.0, it is presented as an
-       extension with its own version. *)
-    let stanzas =
-      stanzas @
-      [ "menhir",
-        (let+ loc = loc
-         and+ x = Menhir.jbuild_syntax in
-         [Menhir.T { x with loc }])
-      ]
-    in
-    Syntax.set Stanza.syntax (0, 0) (sum stanzas)
-
   let () =
     Dune_project.Lang.register Stanza.syntax stanzas
 
-  let parser ~kind project =
-    let syntax_parser (syntax : Dune_lang.File_syntax.t) =
-      match syntax with
-      | Jbuild -> jbuild_parser
-      | Dune   -> Dune_project.stanza_parser project
-    in
-    Dune_project.set project (syntax_parser kind)
+  let parser project =
+    let syntax_parser = Dune_project.stanza_parser project in
+    Dune_project.set project syntax_parser
 
   let parse parser = Dune_lang.Decoder.parse parser Univ_map.empty
 
-  let of_ast ~kind (project : Dune_project.t) sexp =
-    let parser = parser ~kind project in
+  let of_ast (project : Dune_project.t) sexp =
+    let parser = parser project in
     parse parser sexp
 
   exception Include_loop of Path.Source.t * (Loc.t * Path.Source.t) list
@@ -2475,9 +2376,9 @@ module Stanzas = struct
           ~current_file ~include_stack sexps
       | stanza -> [stanza])
 
-  let parse ~file ~kind (project : Dune_project.t) sexps =
-    let stanza_parser = parser ~kind project in
-    let lexer = Dune_lang.Lexer.of_syntax kind in
+  let parse ~file (project : Dune_project.t) sexps =
+    let stanza_parser = parser project in
+    let lexer = Dune_lang.Lexer.token in
     let stanzas =
       try
         parse_file_includes ~stanza_parser ~lexer ~include_stack:[]

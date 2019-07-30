@@ -372,11 +372,13 @@ module Decoder : sig
       <values>...)] *)
   val fields : 'a fields_parser -> 'a t
 
-  (** [record fp = enter (fields fp)] *)
-  val record : 'a fields_parser -> 'a t
-
-  (** Consume the next element of the input as a string, int, char, ... *)
-  include Combinators.S with type 'a t := 'a t
+  (** Consume the next element of the input as a string, int, bool, ... *)
+  val string : string t
+  val int    : int t
+  val bool   : bool t
+  val pair   : 'a t -> 'b t -> ('a * 'b) t
+  val triple : 'a t -> 'b t -> 'c t -> ('a * 'b * 'c) t
+  val option : 'a t -> 'a option t
 
   (** Unparsed next element of the input *)
   val raw : ast t

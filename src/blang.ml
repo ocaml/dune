@@ -79,7 +79,7 @@ let ops =
   ]
 
 let decode =
-  let open Stanza.Decoder in
+  let open Dune_lang.Decoder in
   let ops =
     List.map ops ~f:(fun (name, op) ->
       ( name

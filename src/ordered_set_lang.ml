@@ -28,11 +28,11 @@ type t = ast_expanded generic
 let loc t = t.loc
 
 module Parse = struct
-  open Stanza.Decoder
+  open Dune_lang.Decoder
   open Ast
 
   let generic ~inc ~elt =
-    let open Stanza.Decoder in
+    let open Dune_lang.Decoder in
     let rec one (kind : Dune_lang.File_syntax.t) =
       peek_exn >>= function
       | Atom (loc, A "\\") -> User_error.raise ~loc [ Pp.text "unexpected \\" ]
@@ -94,7 +94,7 @@ end
 
 
 let decode =
-  let open Stanza.Decoder in
+  let open Dune_lang.Decoder in
   let+ context = get_all
   and+ (loc, ast) =
     located (Parse.without_include
@@ -252,7 +252,7 @@ module Unexpanded = struct
   type ast = (String_with_vars.t, Ast.unexpanded) Ast.t
   type t = ast generic
   let decode : t Dune_lang.Decoder.t =
-    let open Stanza.Decoder in
+    let open Dune_lang.Decoder in
     let+ context = get_all
     and+ (loc, ast) =
       located (
@@ -391,7 +391,7 @@ module Unexpanded = struct
           in
           Path.Map.find_exn files_contents path
         in
-        let open Stanza.Decoder in
+        let open Dune_lang.Decoder in
         parse
           (Parse.without_include ~elt:(String_with_vars.decode >>| f_elems))
           context

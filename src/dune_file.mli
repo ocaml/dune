@@ -517,12 +517,11 @@ module Stanzas : sig
 
   type syntax = OCaml | Plain
 
-  (** [of_ast ~kind project ast] is the list of [Stanza.t]s derived from
+  (** [of_ast project ast] is the list of [Stanza.t]s derived from
       decoding the [ast] according to the syntax given by [kind] in the context
       of the [project] *)
   val of_ast
-    :  kind:Dune_lang.File_syntax.t
-    -> Dune_project.t
+    :  Dune_project.t
     -> Dune_lang.Ast.t
     -> Stanza.t list
 
@@ -539,7 +538,6 @@ module Stanzas : sig
       current [project]. *)
   val parse
     :  file:Path.Source.t
-    -> kind:Dune_lang.File_syntax.t
     -> Dune_project.t
     -> Dune_lang.Ast.t list
     -> t

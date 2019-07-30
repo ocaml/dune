@@ -75,11 +75,24 @@ When we pass [preserve_file_kind], the file type seen by the rule is preserved:
 If rule fails to generate targets, we give a good error message, even with sandboxing:
 
   $ true > dune
-  $ echo '(rule (target t) (deps (sandbox always)) (action (echo ":")))' >> dune
+  $ echo '(rule (target t) (deps (sandbox always)) (action (run true)))' >> dune
   $ dune build t
   File "dune", line 1, characters 0-61:
-  1 | (rule (target t) (deps (sandbox always)) (action (echo ":")))
+  1 | (rule (target t) (deps (sandbox always)) (action (run true)))
       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  Error: Rule failed to generate the following targets:
+  - t
+  [1]
+
+If rule is configured to require sandboxing, but clearly needs none,
+we give an error message:
+
+  $ true > dune
+  $ echo '(rule (target t) (deps (sandbox always)) (action (echo "")))' >> dune
+  $ dune build t
+  File "dune", line 1, characters 0-60:
+  1 | (rule (target t) (deps (sandbox always)) (action (echo "")))
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   Error: Rule dependencies are configured to require sandboxing, but the rule
   has no actions that could potentially require sandboxing.
   [1]

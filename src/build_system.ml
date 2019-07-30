@@ -1407,7 +1407,7 @@ end = struct
   let lookup_cache memory force key =
     let open Result.O in
     let* () =
-      if force then Result.Error (Failure "build is forced") else Result.Ok ()
+      if force then Result.Error "build is forced" else Result.Ok ()
     in
     let+ _, targets = Dune_memory.Memory.search memory key in
     targets
@@ -1478,7 +1478,7 @@ end = struct
       | _ -> true
     in
     (* FIXME: do not recreate memory each time *)
-    let memory = Result.ok_exn (Dune_memory.make ~log ()) in
+    let memory = match Dune_memory.make ~log () with Result.Ok m -> m | Result.Error e -> User_error.raise [Pp.textf "%s" e] in
     let* () =
       if force || something_changed then (
         match lookup_cache memory force rule_digest with

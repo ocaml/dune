@@ -178,13 +178,12 @@ let run ?(port_f = ignore) ?(port = 0) manager =
         repo
         >>= fun repo ->
         Result.List.map ~f:file files
-        >>| fun files ->
-        let promotions =
-          Dune_memory.Memory.promote client.memory files
-            (Dune_memory.key_of_string key)
-            (metadata @ client.common_metadata)
-            (Option.map ~f:(fun (_, remote, commit) -> (remote, commit)) repo)
-        in
+        >>= fun files ->
+        Dune_memory.Memory.promote client.memory files
+          (Dune_memory.key_of_string key)
+          (metadata @ client.common_metadata)
+          (Option.map ~f:(fun (_, remote, commit) -> (remote, commit)) repo)
+        >>| fun promotions ->
         match List.filter_map ~f promotions with
         | [] ->
             ()
@@ -345,15 +344,20 @@ let run ?(port_f = ignore) ?(port = 0) manager =
         ; build_root= None
         ; common_metadata= []
         ; repositories= []
-        ; memory= Result.ok_exn (Dune_memory.make ?root:manager.root ()) }
+        ; memory=
+            ( match Dune_memory.make ?root:manager.root () with
+            | Result.Ok m ->
+                m
+            | Result.Error e ->
+                User_error.raise [Pp.textf "%s" e] ) }
       in
       let tid = Thread.create client_thread client in
-      manager.clients
-      <- ( match Clients.add manager.clients client.fd (client, tid) with
-         | Result.Ok v ->
-             v
-         | Result.Error _ ->
-             User_error.raise [Pp.textf "duplicate socket"] )
+      manager.clients <-
+        ( match Clients.add manager.clients client.fd (client, tid) with
+        | Result.Ok v ->
+            v
+        | Result.Error _ ->
+            User_error.raise [Pp.textf "duplicate socket"] )
     done
   in
   try Exn.protect ~f ~finally

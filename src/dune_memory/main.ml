@@ -7,18 +7,18 @@ capabilities in stdune yet. *)
 let parse_metadata s =
   let open Result.O in
   let s = Stream.of_string s in
-  Result.map_error
-    ~f:(fun s -> User_error.E (User_error.make [Pp.textf "%s" s]))
-    (Csexp.parse s)
+  Csexp.parse s
   >>= function
-  | Sexp.List l ->
-      Result.Ok l
-  | _ ->
-      Result.Error
-        (User_error.E (User_error.make [Pp.textf "metadata must be a list"]))
+  | Sexp.List l -> Result.Ok l | _ -> Result.Error "metadata must be a list"
 
 let usage =
   Printf.sprintf "Usage: %s [OPTIONS] command [ARGUMENTS]" Sys.argv.(0)
+
+let lift_result = function
+  | Result.Ok r ->
+      r
+  | Result.Error e ->
+      User_error.raise [Pp.textf "%s" e]
 
 let fill_option name ref s =
   match !ref with
@@ -50,7 +50,7 @@ let main () =
   let root = Option.map ~f:Path.of_string !root
   and cmd = unwrap_option "command" !cmd in
   let memory =
-    Result.ok_exn
+    lift_result
       (make ~log:(Log.create ~path:(Path.of_string "/tmp/log") ()) ?root ())
   in
   match cmd with
@@ -75,14 +75,16 @@ let main () =
                (p, Digest.file p))
              !files)
       and key = unwrap_option "key" !key in
-      Result.ok_exn
+      lift_result
         ( parse_metadata (unwrap_option ~default:"()" "--metadata" !metadata)
-        >>| fun metadata ->
+        >>= fun metadata ->
+        Memory.promote memory produced (key_of_string key) metadata None
+        >>| fun promotions ->
         List.iter
           ~f:(fun p -> Printf.printf "%s\n" (promotion_to_string p))
-          (Memory.promote memory produced (key_of_string key) metadata None) )
+          promotions )
   | "search" ->
-      Result.ok_exn
+      lift_result
         (let open Result.O in
         Memory.search memory (key_of_string Sys.argv.(3))
         >>| fun (_, paths) ->

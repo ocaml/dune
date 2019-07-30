@@ -54,23 +54,23 @@ When we don't pass [preserve_file_kind], the rules can observe the file kind cha
   $ rm -rf _build
   $ echo text-file > text-file
   $ true > dune
-  $ echo '(rule (target t) (deps text-file) (action (bash "find text-file -printf '%y' > t")))' >> dune
+  $ echo '(rule (deps text-file) (target t) (action (with-stdout-to %{target} (run file -h text-file))))' >> dune
 
   $ dune build t --sandbox symlink
-  $ cat _build/default/t
-  l
+  $ cat _build/default/t | grep -Eo 'link|ASCII'
+  link
 
   $ dune build t --sandbox none
-  $ cat _build/default/t
-  f
+  $ cat _build/default/t | grep -Eo 'link|ASCII'
+  ASCII
 
 When we pass [preserve_file_kind], the file type seen by the rule is preserved:
 
   $ true > dune
-  $ echo '(rule (target t) (deps text-file (sandbox preserve_file_kind)) (action (bash "find text-file -printf '%y' > t")))' >> dune
+  $ echo '(rule (target t) (deps text-file (sandbox preserve_file_kind)) (action (with-stdout-to %{target} (run file -h text-file))))' >> dune
   $ dune build t --sandbox symlink
-  $ cat _build/default/t
-  f
+  $ cat _build/default/t | grep -Eo 'link|ASCII'
+  ASCII
 
 If rule fails to generate targets, we give a good error message, even with sandboxing:
 

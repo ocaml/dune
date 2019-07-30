@@ -95,6 +95,10 @@ let cons_path t ~dir =
   make (Map.update t.vars "PATH"
           ~f:(fun _PATH -> Some (Bin.cons_path dir ~_PATH)))
 
+let cons_paths t ~paths =
+  make (Map.union t.vars paths
+          ~f:(fun _ v1 v2 -> Some (String.concat ~sep:Bin.path_sep_s [v2; v1])))
+
 let path env =
   match get env "PATH" with
   | None   -> []

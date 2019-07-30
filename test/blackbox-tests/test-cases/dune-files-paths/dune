@@ -1,0 +1,7 @@
+(alias
+ (name default)
+ (action (run bin/hello.exe)))
+
+(env
+  (_ (paths (FOO a)))
+)

@@ -4,6 +4,8 @@ let path_sep =
   else
     ':'
 
+let path_sep_s = String.make 1 path_sep
+
 let parse_path ?(sep=path_sep) s =
   String.split s ~on:sep
   |> List.filter_map ~f:(function

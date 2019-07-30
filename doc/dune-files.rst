@@ -810,17 +810,22 @@ Fields supported in ``<settings>`` are:
 
 - ``(env-vars (<var1> <val1>) .. (<varN> <valN>))``. This will add the
   corresponding variables to the environment in which the build commands are
-  executed, and under which ``dune exec`` runs.
+  executed, and under which ``dune exec`` runs. If two parents directories
+  specify the same environment variables the value of the deepest directory is
+  used.
 
-- ``(paths (<var1> <val1>) .. (<varN> <valN>))`` allows to set the value of any
-  ``PATH``-like variables in this context. If ``PATH`` itself is modified in
-  this way, its value will be used to resolve binaries in the workspace,
-  including finding the compiler and related tools. These variables will also be
-  passed as part of the environment to any program launched by ``dune``. For
-  each variable, the value is specified using the :ref:`ordered-set-language`.
-  Relative paths are interpreted with respect to the directory in which the file
-  they written is. At the moment, the environnement variable `PATH` and
-  `OCAMLPATH` are only supported in ``dune-workspace`` files.
+  - ``(paths (<var1> <val1>) .. (<varN> <valN>))`` allows to update the value of
+  any ``PATH``-like variables in this context. These variables will be passed as
+  part of the environment to any program launched by ``dune``. Dune itself
+  doesn't use the new environement variable (e.g. ``PATH`` to resolve binaries in
+  the workspace). For each variable, the value is specified using the
+  :ref:`ordered-set-language`. In ``dune-workspace`` files the given value
+  replace the environment variables received by dune at start-up and `:default`
+  is the value of the latter. In ``dune`` files the values are appended,
+  contrary to `env-vars` the specification of all the `dune` files considered
+  are used. The order in which the path are appended in non-specified for
+  different `dune` files. Relative paths are interpreted with respect to the
+  directory of the file they are written in.
 
 - ``(binaries <filepath> (<filepath> as <name>))``. This will make the binary at
   ``<filepath>`` as ``<name>``. If the ``<name>`` isn't provided, then it will

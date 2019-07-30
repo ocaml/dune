@@ -40,4 +40,6 @@ val iter : t -> f:(string -> string -> unit) -> unit
 
 val cons_path : t -> dir:Path.t -> t
 
+val cons_paths : t -> paths:string Map.t -> t
+
 val path : t -> Path.t list

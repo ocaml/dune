@@ -396,6 +396,20 @@ let get_installed_binaries stanzas ~(context : Context.t) =
             acc)
       | _ -> acc)
 
+let extend_paths stanzas ~(context : Context.t) env =
+  Dir_with_dune.deep_fold stanzas ~init:env
+    ~f:(fun d stanza env ->
+      match stanza with
+      | Dune_env.T c ->
+        let paths =
+          Dune_env.Stanza.paths c
+            ~profile:context.profile
+            ~dir:d.Dir_with_dune.src_dir
+            ~default_env:External_env.empty (* no default, since always appended *)
+        in
+        External_env.cons_paths env ~paths
+      | _ -> env)
+
 let create
       ~(context:Context.t)
       ?host
@@ -451,21 +465,6 @@ let create
       (stanzas.Dir_with_dune.ctx_dir, stanzas))
     |> Path.Build.Map.of_list_exn
   in
-  let env = Table.create (module Path.Build) 128 in
-  let default_env = lazy (
-    let make ~inherit_from ~config =
-      let dir = context.build_dir in
-      Env_node.make
-        ~dir
-        ~scope:(Scope.DB.find_by_dir scopes dir)
-        ~inherit_from
-        ~config
-    in
-    make ~config:context.env_nodes.context
-      ~inherit_from:(Some (lazy (make ~inherit_from:None
-                                   ~config:context.env_nodes.workspace)))
-  )
-  in
   let artifacts =
     let public_libs = ({
       context;
@@ -482,6 +481,22 @@ let create
           )
     }
   in
+  let env = Table.create (module Path.Build) 128 in
+  let default_env = lazy (
+    let make ~inherit_from ~config =
+      let dir = context.build_dir in
+      Env_node.make
+        ~dir
+        ~scope:(Scope.DB.find_by_dir scopes dir)
+        ~inherit_from
+        ~config
+    in
+      make ~config:context.env_nodes.context
+        ~inherit_from:(Some (lazy (make ~inherit_from:None
+                                     ~config:context.env_nodes.workspace)))
+  )
+  in
+  let context_env = extend_paths stanzas ~context context.env in
   let expander =
     let artifacts_host =
       match host with
@@ -498,7 +513,7 @@ let create
                       env;
                       profile = context.profile;
                       scopes;
-                      context_env = context.env;
+                      context_env;
                       default_env;
                       stanzas_per_dir;
                       host = Option.map host ~f:(fun x -> x.env_context);

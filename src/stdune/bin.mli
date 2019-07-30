@@ -4,6 +4,9 @@
     environment variables *)
 val path_sep : char
 
+(** {!path_sep} converted into string *)
+val path_sep_s : string
+
 (** Parse a [PATH] like variable *)
 val parse_path : ?sep:char -> string -> Path.t list
 

@@ -126,8 +126,38 @@ module Stanza = struct
       | Any -> Some cfg
       | Profile a -> Option.some_if (a = profile) cfg)
 
-  let paths t ~profile =
-    match find t ~profile with | None -> [] | Some c -> c.paths
+  let paths t ~dir ~profile ~default_env =
+    let t = match find t ~profile with | None -> [] | Some c -> c.paths in
+    let module Eval =
+      Ordered_set_lang.Make(String)
+        (struct
+          type t = string
+          type key = string
+          let key x = x
+        end)
+    in
+    let t =
+      let f (var, t) =
+        let parse ~loc:_ s = s in
+        let standard = Env.path default_env |> List.map ~f:Path.to_string in
+        var, Eval.eval t ~parse ~standard
+      in
+      List.map ~f t
+    in
+    let vars =
+      let to_absolute_filename s =
+        if Filename.is_relative s then
+          Path.Source.relative dir s |> Path.source |> Path.to_absolute_filename
+        else
+          s
+      in
+      let env = Env.Map.of_list_exn t in
+      let f l = String.concat ~sep:Bin.path_sep_s
+                  (List.map ~f:to_absolute_filename l)
+      in
+      Env.Map.map ~f env
+    in
+    vars
 
   let env_vars t ~profile =
     match find t ~profile with | None ->Env.empty | Some c -> c.env_vars

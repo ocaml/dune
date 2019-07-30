@@ -51,7 +51,6 @@ module Bin = struct
     { context
     ; local_bins
     }
-
 end
 
 module Public_libs = struct

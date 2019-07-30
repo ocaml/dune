@@ -41,8 +41,14 @@ module Stanza : sig
 
   val find : t -> profile:string -> config option
 
-  val paths : t -> profile:string -> (string * Ordered_set_lang.t) list
+  val paths : t
+    -> dir:Path.Source.t
+    -> profile:string
+    -> default_env:Env.t
+    -> string Env.Map.t
+
   val env_vars : t -> profile:string -> Env.t
+
 end
 
 type stanza +=

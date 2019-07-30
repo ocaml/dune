@@ -194,6 +194,7 @@ module Alias0 = struct
 
   open Build.S.O
 
+  (* The resulting [bool] is [true] if we found no targets. *)
   let dep_rec_internal ~name ~dir ~ctx_dir =
     Build.lazy_no_targets (lazy (
       File_tree.Dir.fold dir ~traverse:Sub_dirs.Status.Set.normal_only
@@ -201,7 +202,10 @@ module Alias0 = struct
         ~f:(fun dir acc ->
           let path = Path.Build.append_source ctx_dir (File_tree.Dir.path dir) in
           let fn = stamp_file (make ~dir:path name) in
-          Build.S.map2 ~f:(&&) acc (Build.file_exists (Path.build fn)))))
+          let fn = Path.build fn in
+          Build.S.apply acc (Build.if_file_exists fn
+            ~then_:(Build.path fn >>> Build.return (Fn.const false))
+            ~else_:(Build.return Fn.id)))))
 
   let dep_rec t ~loc ~file_tree =
     let ctx_dir, src_dir =

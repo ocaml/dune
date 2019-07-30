@@ -229,6 +229,8 @@ module S : sig
   val seqs   : unit s list -> 'a s         -> 'a s
   val ignore : 'a s        -> unit s
   val map2   : f:('a -> 'b -> 'c) -> 'a s -> 'b s -> 'c s
+  (* We now do memoization for the input ['a s] to avoid duplication of work. *)
+  val all    : ('a s -> 'b s) list -> 'a s -> 'b list s
 
   (* In future this will likely replace the [Dyn_deps] constructor. *)
   val dyn_deps : ('a * Dep.Set.t) s -> 'a s

@@ -436,6 +436,9 @@ module S = struct
   let seq   x y = (x &&& y) >>^ (fun ((), y) -> y)
   let seqs xs y = seq (ignore (all xs)) y
   let map2 ~f x y = apply x (map y ~f:(fun b a -> f a b))
+  let rec all fs x = let x = memoize "Build.S.all input" x in match fs with
+    | [] -> return []
+    | f :: fs -> map2 ~f:(fun x xs -> x :: xs) (f x) (all fs x)
 
   let dyn_deps x = x >>> (Dyn_deps (arr (fun (_args, deps) -> deps))) >>> (arr fst)
   let from_arrow x a = a >>> x

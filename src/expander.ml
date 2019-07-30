@@ -232,7 +232,7 @@ type expansion_kind =
   | Static
 
 let cc_of_c_flags t (cc : (unit, string list) Build.t C.Kind.Dict.t) =
-  let open Build.O in
+  let open Build.S.O in
   C.Kind.Dict.map cc ~f:(fun cc ->
     cc >>^ fun flags ->
     Value.L.strings (t.c_compiler :: flags))
@@ -264,7 +264,7 @@ let expand_and_record acc ~map_exe ~dep_kind ~scope
     | Static -> error_expansion_kind
     | Dynamic d -> d
   in
-  let open Build.O in
+  let open Build.S.O in
   match (expansion : Pform.Expansion.t) with
   | Var (Project_root | First_dep | Deps | Targets | Target | Named_local
         | Values _)
@@ -347,7 +347,7 @@ let expand_and_record acc ~map_exe ~dep_kind ~scope
               (Dune_project.packages (Scope.project scope))
               (Package.Name.of_string s) with
       | Some p ->
-        let open Build.O in
+        let open Build.S.O in
         let x =
           read_package p >>^ function
           | None   -> [Value.String ""]
@@ -535,7 +535,7 @@ let add_ddeps_and_bindings t ~dynamic_expansions ~deps_written_by_user =
   { t with expand_var }
 
 let expand_and_eval_set t set ~standard =
-  let open Build.O in
+  let open Build.S.O in
   let dir = Path.build (dir t) in
   let parse ~loc:_ s = s in
   let standard =

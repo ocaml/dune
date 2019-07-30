@@ -1,7 +1,7 @@
 open! Stdune
 open Import
 open Dune_file
-open Build.O
+open Build.S.O
 open! No_io
 
 module SC = Super_context
@@ -268,18 +268,18 @@ include Sub_system.Register_end_point(
         in
         let expander = Expander.add_bindings expander ~bindings in
         Build.return Bindings.empty
-        >>>
-        Build.all
+        |> (* TODO: Simplify above *)
+        Build.S.all
           (List.filter_map backends ~f:(fun (backend : Backend.t) ->
              Option.map backend.info.generate_runner ~f:(fun (loc, action) ->
-               SC.Action.run sctx action ~loc
+               SC.Action.S.run sctx action ~loc
                  ~expander
                  ~dep_kind:Required
                  ~targets:(Forbidden "inline test generators")
                  ~targets_dir:dir)))
         >>^ (fun actions -> Action.with_stdout_to target (Action.progn actions))
-        >>>
-        Build.action_dyn ~targets:[target] ());
+        |>
+        Build.S.action_dyn ~targets:[target] ());
 
       let cctx =
         Compilation_context.create ()

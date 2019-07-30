@@ -13,7 +13,6 @@ val key_of_string : string -> key
 type promotion =
   | Already_promoted of Path.t * Path.t
   | Promoted of Path.t * Path.t
-  | Hash_mismatch of Path.t * Digest.t * Digest.t
 
 val promotion_to_string : promotion -> string
 

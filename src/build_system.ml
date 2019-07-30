@@ -1481,6 +1481,8 @@ end = struct
     let memory = match Dune_memory.make ~log () with Result.Ok m -> m | Result.Error e -> User_error.raise [Pp.textf "%s" e] in
     let* () =
       if force || something_changed then (
+        List.iter targets_as_list ~f:(fun p ->
+                                      Path.unlink_no_err (Path.build p)) ;
         match lookup_cache memory force rule_digest with
         | Result.Ok files ->
            let f (dest, source) =
@@ -1489,9 +1491,8 @@ end = struct
            in
            List.iter ~f files;
            Fiber.return ()
-        |  Result.Error _ ->
-            List.iter targets_as_list ~f:(fun p ->
-                Path.unlink_no_err (Path.build p)) ;
+        |  Result.Error e ->
+            Log.infof log "cache miss: %s" e ;
             pending_targets := Path.Build.Set.union targets !pending_targets ;
             let loc = Rule.Info.loc info in
             let action =

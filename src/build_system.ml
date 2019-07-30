@@ -1488,8 +1488,10 @@ end = struct
            let retrieve (dest, source, _) =
              Log.infof log "retrieve %s from cache" (Path.to_string dest);
              Unix.link (Path.to_string source) (Path.to_string dest)
+           and digest (_, _, digest) = digest
            in
            List.iter ~f:retrieve files;
+           Trace.set (Path.build head_target) {rule_digest; targets_digest=Digest.generic (List.map ~f:digest files)} ;
            Fiber.return ()
         |  Result.Error e ->
             Log.infof log "cache miss: %s" e ;

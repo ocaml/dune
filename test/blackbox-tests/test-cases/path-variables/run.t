@@ -72,5 +72,5 @@ This form does not exist, but displays an hint:
   File "jbuild", line 5, characters 16-37:
   5 |    (action (cat ${dep:generated-file}))))
                       ^^^^^^^^^^^^^^^^^^^^^
-  Error: ${dep:..} is only available since version 1.0 of the dune language
+  Error: %{dep:..} is only available since version 1.0 of the dune language
   [1]

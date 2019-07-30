@@ -126,7 +126,7 @@ module Test = struct
               []);
          ])
       ) ~action
-    |> Dune_lang.pp Dune
+    |> Dune_lang.pp
     |> Pp.render_ignore_tags fmt
 end
 
@@ -196,7 +196,7 @@ let pp_group fmt (name, tests) =
   alias name ~deps:(
     (List.map tests ~f:(fun (t : Test.t) ->
        Sexp.strings ["alias"; t.name])))
-  |> Dune_lang.pp Dune
+  |> Dune_lang.pp
   |> Pp.render_ignore_tags fmt
 
 let () =

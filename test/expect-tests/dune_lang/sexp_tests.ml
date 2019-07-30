@@ -12,7 +12,7 @@ let sexp = lazy (Dune_lang.parse_string ~fname:"" ~mode:Single {|
 
 let print_ast ast =
   let no_loc = Dune_lang.Ast.remove_locs ast in
-  print (Dune_lang.pp Dune no_loc)
+  print (Dune_lang.pp no_loc)
 
 let%expect_test _ =
   Lazy.force sexp
@@ -273,7 +273,7 @@ let dyn_of_sexp (S (syntax, dlang)) =
         (syntax, dlang)
     ]
 
-let print_sexp ppf (S (syntax, sexp)) = Dune_lang.Deprecated.pp syntax ppf sexp
+let print_sexp ppf (S (_, sexp)) = Dune_lang.Deprecated.pp ppf sexp
 
 type round_trip_result =
   | Round_trip_success
@@ -292,7 +292,7 @@ let test syntax sexp =
     (S (syntax, sexp),
     let s =
       Format.asprintf "%a"
-        (fun ppf x -> Pp.render_ignore_tags ppf (Dune_lang.pp syntax x)) sexp
+        (fun ppf x -> Pp.render_ignore_tags ppf (Dune_lang.pp x)) sexp
     in
     match
       Dune_lang.parse_string s ~mode:Single ~fname:""

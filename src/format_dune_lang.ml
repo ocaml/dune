@@ -38,7 +38,7 @@ let pp_simple fmt t =
   Dune_lang.Cst.abstract t
   |> Option.value_exn
   |> Dune_lang.Ast.remove_locs
-  |> Dune_lang.Deprecated.pp Dune fmt
+  |> Dune_lang.Deprecated.pp fmt
 
 let print_wrapped_list fmt =
   Format.fprintf fmt "(@[<hov 1>%a@])"

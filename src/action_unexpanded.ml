@@ -24,7 +24,7 @@ let check_mkdir loc path =
       [ Pp.text
           "(mkdir ...) is not supported for paths outside of the workspace:"
       ; Pp.seq (Pp.verbatim "  ")
-          (Dune_lang.pp Dune
+          (Dune_lang.pp
              (List
                 [Dune_lang.unsafe_atom_of_string "mkdir"; Dpath.encode path]))
       ]

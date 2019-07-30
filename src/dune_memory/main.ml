@@ -89,8 +89,9 @@ let main () =
         Memory.search memory (key_of_string Sys.argv.(3))
         >>| fun (_, paths) ->
         List.iter
-          ~f:(fun (sym, act) ->
-            Printf.printf "%s: %s\n" (Path.to_string sym) (Path.to_string act))
+          ~f:(fun (sym, act, d) ->
+            Printf.printf "%s: %s (%s)\n" (Path.to_string sym)
+              (Path.to_string act) (Digest.to_string d))
           paths)
   | "trim" ->
       let freed, files = trim memory 1 in

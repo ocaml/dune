@@ -27,7 +27,8 @@ module type memory = sig
     -> (string * string) option
     -> (promotion list, string) Result.t
 
-  val search : t -> key -> (metadata * (Path.t * Path.t) list, string) Result.t
+  val search :
+    t -> key -> (metadata * (Path.t * Path.t * Digest.t) list, string) Result.t
 end
 
 module Memory : memory

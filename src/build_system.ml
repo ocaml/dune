@@ -1485,11 +1485,11 @@ end = struct
                                       Path.unlink_no_err (Path.build p)) ;
         match lookup_cache memory force rule_digest with
         | Result.Ok files ->
-           let f (dest, source) =
+           let retrieve (dest, source, _) =
              Log.infof log "retrieve %s from cache" (Path.to_string dest);
              Unix.link (Path.to_string source) (Path.to_string dest)
            in
-           List.iter ~f files;
+           List.iter ~f:retrieve files;
            Fiber.return ()
         |  Result.Error e ->
             Log.infof log "cache miss: %s" e ;

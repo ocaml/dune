@@ -121,7 +121,6 @@ let decode =
     and+ (loc, ignored) = located ignored
     in
     if version >= (1, 6) then begin
-      (* DUNE2: make this an error *)
       User_warning.emit ~loc
         [ Pp.text
             "ignored_subdirs is deprecated in 1.6. Use dirs to specify \

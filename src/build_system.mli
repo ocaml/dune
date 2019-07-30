@@ -14,6 +14,7 @@ type hook =
 (** Initializes the build system. This must be called first. *)
 val init
   :  contexts:Context.t list
+  -> ?memory:Dune_memory.Memory.t
   -> file_tree:File_tree.t
   -> hook:(hook -> unit)
   -> unit

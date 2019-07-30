@@ -420,6 +420,7 @@ type t =
   ; hook : hook -> unit
   ; (* Package files are part of *)
     packages : (Path.Build.t -> Package.Name.Set.t) Fdecl.t
+  ; memory : Dune_memory.Memory.t option
   }
 
 let t = ref None
@@ -1404,13 +1405,17 @@ end = struct
 
   let start_rule t _rule = t.hook Rule_started
 
-  let lookup_cache memory force key =
-    let open Result.O in
-    let* () =
-      if force then Result.Error "build is forced" else Result.Ok ()
-    in
-    let+ _, targets = Dune_memory.Memory.search memory key in
-    targets
+  let lookup_cache = function
+    | None ->
+       fun _ _ -> Result.Error "memory is not enabled"
+    | Some memory ->
+       fun force key ->
+             let open Result.O in
+             let* () =
+               if force then Result.Error "build is forced" else Result.Ok ()
+             in
+             let+ _, targets = Dune_memory.Memory.search memory key in
+             targets
 
   let execute_rule_impl rule =
     let log = Scheduler.log (Scheduler.info ()) in
@@ -1477,13 +1482,11 @@ end = struct
         prev_trace.targets_digest <> targets_digest
       | _ -> true
     in
-    (* FIXME: do not recreate memory each time *)
-    let memory = match Dune_memory.make ~log () with Result.Ok m -> m | Result.Error e -> User_error.raise [Pp.textf "%s" e] in
     let* () =
       if force || something_changed then (
         List.iter targets_as_list ~f:(fun p ->
                                       Path.unlink_no_err (Path.build p)) ;
-        match lookup_cache memory force rule_digest with
+        match lookup_cache (get_build_system ()).memory force rule_digest with
         | Result.Ok files ->
            let retrieve (dest, source, _) =
              Log.infof log "retrieve %s from cache" (Path.to_string dest);
@@ -1529,7 +1532,9 @@ end = struct
             let targets, targets_digest =
               compute_targets_digest_after_rule_execution ~info targets_as_list
             in
-            ignore (Dune_memory.Memory.promote memory targets rule_digest [] None);
+            Option.iter
+              (get_build_system ()).memory
+              ~f:(fun memory -> ignore (Dune_memory.Memory.promote memory targets rule_digest [] None));
             Trace.set (Path.build head_target) {rule_digest; targets_digest} )
       else Fiber.return ()
     in
@@ -1971,7 +1976,7 @@ let load_dir_and_produce_its_rules ~dir =
 
 let load_dir ~dir = load_dir_and_produce_its_rules ~dir
 
-let init ~contexts ~file_tree ~hook =
+let init ~contexts ?memory ~file_tree ~hook =
   let contexts =
     List.map contexts ~f:(fun c -> (c.Context.name, c))
     |> String.Map.of_list_exn
@@ -1984,6 +1989,7 @@ let init ~contexts ~file_tree ~hook =
     ; gen_rules = Fdecl.create ()
     ; init_rules = Fdecl.create ()
     ; hook
+    ; memory
     }
   in
   set t

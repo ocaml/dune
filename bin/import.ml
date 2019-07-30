@@ -30,6 +30,12 @@ module Cached_digest  = Dune.Cached_digest
 
 include Common.Let_syntax
 
+(* FIXME: leverage fibers to actually connect in the background *)
+let make_memory ?log () =
+  match Dune_memory.make ?log () with
+  | Result.Ok m -> Fiber.return m
+  | Result.Error e -> User_error.raise [Pp.textf "%s" e]
+
 module Main = struct
 
   include Dune.Main
@@ -46,10 +52,13 @@ module Main = struct
 
   let setup ~log ?external_lib_deps_mode (common : Common.t) =
     let open Fiber.O in
+    make_memory ~log ()
+    >>= fun memory ->
     scan_workspace ~log common
     >>= init_build_system
           ?external_lib_deps_mode
           ?only_packages:common.only_packages
+          ~memory
 end
 
 module Log = struct

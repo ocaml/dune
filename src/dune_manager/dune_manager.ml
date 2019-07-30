@@ -91,7 +91,7 @@ let find_highest_common_version (a : version list) (b : version list) :
         | Some a, Some b ->
             Some (min a b)
         | _ ->
-            None )
+            None)
       a b
   in
   Int_map.max_binding common
@@ -202,7 +202,7 @@ let run ?(port_f = ignore) ?(port = 0) manager =
                      [ Sexp.Atom "cannot-read-dune-memory"
                      ; Sexp.List [Sexp.Atom "supported-formats"; Sexp.Atom "v2"]
                      ]) ;
-                "unable to read Dune memory" )
+                "unable to read Dune memory")
           ( Dune_memory.make ~root:(Path.of_string dir) ()
           >>| fun memory -> client.memory <- memory )
     | args ->
@@ -287,7 +287,7 @@ let run ?(port_f = ignore) ?(port = 0) manager =
                :: (List.map ~f:(function maj, min ->
                        Sexp.List
                          [ Sexp.Atom (string_of_int maj)
-                         ; Sexp.Atom (string_of_int min) ] ))
+                         ; Sexp.Atom (string_of_int min) ]))
                     my_versions )) ;
           Log.infof manager.log "accept client: %s" (peer_name client.peer) ;
           let rec input =

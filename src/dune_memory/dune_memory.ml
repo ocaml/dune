@@ -43,6 +43,8 @@ end
 module type FSScheme = sig
   val path : Path.t -> Digest.t -> Path.t
 
+  val digest : Path.t -> Digest.t
+
   val list : Path.t -> Path.t list
 end
 
@@ -52,6 +54,12 @@ module FirstTwoCharsSubdir : FSScheme = struct
     let hash = Digest.to_string hash in
     let short_hash = String.sub hash ~pos:0 ~len:2 in
     Path.L.relative root [short_hash; hash]
+
+  let digest path =
+    try Digest.from_hex (Path.basename (fst (Path.split_extension path)))
+    with Invalid_argument _ ->
+      Code_error.raise "strange cached file path (not a valid hash)"
+        [(Path.to_string path, Path.to_dyn path)]
 
   let list root =
     let f dir =
@@ -85,7 +93,8 @@ module type memory = sig
     -> (string * string) option
     -> (promotion list, string) Result.t
 
-  val search : t -> key -> (metadata * (Path.t * Path.t) list, string) Result.t
+  val search :
+    t -> key -> (metadata * (Path.t * Path.t * Digest.t) list, string) Result.t
 end
 
 module Memory = struct
@@ -199,7 +208,8 @@ module Memory = struct
           else
             Result.List.map produced ~f:(function
               | Sexp.List [Sexp.Atom f; Sexp.Atom t] ->
-                  Result.Ok (Path.of_string f, Path.of_string t)
+                  let f = Path.of_string f and t = Path.of_string t in
+                  Result.Ok (f, t, FSSchemeImpl.digest t)
               | _ ->
                   Result.Error "invalid metadata scheme in produced files list")
             >>| function produced -> (metadata, produced) )

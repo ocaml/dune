@@ -5,7 +5,7 @@ FAQ
 Why do many dune projects contain a Makefile?
 =============================================
 
-Many dune projects contain a toplevel `Makefile`. It is often only there for
+Many dune projects contain a root `Makefile`. It is often only there for
 convenience, for the following reasons:
 
 1. there are many different build systems out there, all with a different CLI.

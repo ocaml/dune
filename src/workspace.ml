@@ -1,5 +1,5 @@
 open! Stdune
-open Stanza.Decoder
+open Dune_lang.Decoder
 
 (* workspace files use the same version numbers as dune-project files
    for simplicity *)
@@ -59,7 +59,7 @@ module Context = struct
 
     let t ~profile =
       let+ env = env_field
-      and+ targets = field "targets" (list Target.t) ~default:[Target.Native]
+      and+ targets = field "targets" (repeat Target.t) ~default:[Target.Native]
       and+ profile = field "profile" string ~default:profile
       and+ host_context =
         field_o "host" (Syntax.since syntax (1, 10) >>> string)
@@ -78,7 +78,7 @@ module Context = struct
         in
         field "paths" ~default:[]
           (Syntax.since Stanza.syntax (1, 12) >>>
-           map ~f (list (pair (located string) Ordered_set_lang.decode)))
+           map ~f (repeat (pair (located string) Ordered_set_lang.decode)))
       and+ loc = loc
       in
       Option.iter
@@ -155,16 +155,6 @@ module Context = struct
         (fields (Opam.t ~profile ~x) >>| fun x ->
          Opam x)
       ]
-
-  let t ~profile ~x =
-    switch_file_kind
-      ~jbuild:
-        (* jbuild-workspace files *)
-        (peek_exn >>= function
-         | List (_, List _ :: _) ->
-           Dune_lang.Decoder.record (Opam.t ~profile ~x) >>| fun x -> Opam x
-         | _ -> t ~profile ~x)
-      ~dune:(t ~profile ~x)
 
   let env = function
     | Default d -> d.env

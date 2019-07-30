@@ -101,6 +101,11 @@ let build_c_file (lib : Library.t) ~sctx ~dir ~expander ~includes (loc, src, dst
   let c_flags =
     (Super_context.c_flags sctx ~dir ~expander ~flags:lib.c_flags).c in
   Super_context.add_rule sctx ~loc ~dir
+    (* With sandboxing we get errors like:
+       bar.c:2:19: fatal error: foo.cxx: No such file or directory
+       #include "foo.cxx"
+    *)
+    ~sandbox:Sandbox_config.no_sandboxing
     (
       let src = Path.build (C.Source.path src) in
       Command.run
@@ -119,7 +124,7 @@ let build_c_file (lib : Library.t) ~sctx ~dir ~expander ~includes (loc, src, dst
 
 let build_cxx_file
       (lib : Library.t) ~sctx ~dir ~expander ~includes (loc, src, dst) =
-    let ctx = Super_context.context sctx in
+  let ctx = Super_context.context sctx in
   let output_param =
     if ctx.ccomp_type = "msvc" then
       [Command.Args.Concat ("", [A "/Fo"; Target dst])]
@@ -127,19 +132,23 @@ let build_cxx_file
       [A "-o"; Target dst]
   in
   let cxx_flags = (Super_context.c_flags sctx ~dir ~expander ~flags:lib.c_flags).cxx in
-  Super_context.add_rule sctx ~loc ~dir (
-    let src = Path.build (C.Source.path src) in
-    Command.run
-      (* We have to execute the rule in the library directory as
-         the .o is produced in the current directory *)
-      ~dir:(Path.build dir)
-      (Super_context.resolve_program ~loc:None ~dir sctx ctx.c_compiler)
-      ([ Command.Args.S [A "-I"; Path ctx.stdlib_dir]
-       ; includes
-       ; Command.Args.dyn cxx_flags
-       ] @ output_param @
-       [ A "-c"; Dep src
-       ]));
+  Super_context.add_rule sctx ~loc ~dir
+    (* this seems to work with sandboxing, but for symmetry with [build_c_file]
+       disabling that here too *)
+    ~sandbox:Sandbox_config.no_sandboxing
+    (
+      let src = Path.build (C.Source.path src) in
+      Command.run
+        (* We have to execute the rule in the library directory as
+           the .o is produced in the current directory *)
+        ~dir:(Path.build dir)
+        (Super_context.resolve_program ~loc:None ~dir sctx ctx.c_compiler)
+        ([ Command.Args.S [A "-I"; Path ctx.stdlib_dir]
+         ; includes
+         ; Command.Args.dyn cxx_flags
+         ] @ output_param @
+         [ A "-c"; Dep src
+         ]));
   dst
 
 let ocamlmklib (lib : Library.t) ~sctx ~dir ~expander ~o_files ~sandbox ~custom
@@ -182,12 +191,18 @@ let build_self_stubs lib ~sctx ~expander ~dir ~o_files =
     (* If we build for both modes and support dynlink, use a
        single invocation to build both the static and dynamic
        libraries *)
-    ocamlmklib ~sandbox:false ~custom:false ~targets:[static; dynamic]
+    ocamlmklib
+      ~sandbox:Sandbox_config.no_special_requirements
+      ~custom:false ~targets:[static; dynamic]
   end else begin
-    ocamlmklib ~sandbox:false ~custom:true ~targets:[static];
+    ocamlmklib
+      ~sandbox:Sandbox_config.no_special_requirements
+      ~custom:true ~targets:[static];
     (* We can't tell ocamlmklib to build only the dll, so we
        sandbox the action to avoid overriding the static archive *)
-    ocamlmklib ~sandbox:true ~custom:false ~targets:[dynamic]
+    ocamlmklib
+      ~sandbox:Sandbox_config.needs_sandboxing
+      ~custom:false ~targets:[dynamic]
   end
 
 let build_o_files lib ~sctx ~(c_sources : C.Sources.t)

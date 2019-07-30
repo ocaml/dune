@@ -63,10 +63,12 @@ module Test = struct
     ; js             : bool
     ; coq            : bool
     ; external_deps  : bool
+    ; disable_sandboxing : bool
     }
 
-  let make ?env ?skip_ocaml ?(skip_platforms=[]) ?(enabled=true) ?(js=false) ?(coq=false)
-        ?(external_deps=false) name =
+  let make
+        ?env ?skip_ocaml ?(skip_platforms=[]) ?(enabled=true) ?(js=false) ?(coq=false)
+        ?(external_deps=false) ?(disable_sandboxing=false) name =
     { name
     ; env
     ; skip_ocaml
@@ -75,6 +77,7 @@ module Test = struct
     ; enabled
     ; js
     ; coq
+    ; disable_sandboxing
     }
 
   let pp_sexp fmt t =
@@ -98,7 +101,6 @@ module Test = struct
                       (skip_version @ ["-test"; "run.t"])))
             ; Sexp.strings ["diff?"; "run.t"; "run.t.corrected"]
             ]
-
         ]
     in
     let action =
@@ -112,12 +114,19 @@ module Test = struct
     alias t.name
       ?enabled_if
       ~deps:(
-        [ Sexp.strings ["package"; "dune"]
-        ; Sexp.strings [ "source_tree"
-                       ; sprintf "test-cases/%s" t.name]
-        ]
+        (List.concat  [
+           [ Sexp.strings ["package"; "dune"]
+           ; Sexp.strings [ "source_tree"
+                          ; sprintf "test-cases/%s" t.name]
+           ];
+           (if t.disable_sandboxing then [
+              Sexp.strings ["sandbox"; "none"]
+            ]
+            else
+              []);
+         ])
       ) ~action
-    |> Dune_lang.pp Dune
+    |> Dune_lang.pp
     |> Pp.render_ignore_tags fmt
 end
 
@@ -166,6 +175,9 @@ let exclusions =
   ; make "env-cflags" ~skip_ocaml:"<4.06.0"
   ; make "wrapped-transition" ~skip_ocaml:"<4.06.0"
   ; make "explicit_js_mode" ~external_deps:true ~js:true
+  (* for the following tests sandboxing is disabled because absolute paths end up
+     appearing in the output if we sandbox *)
+  ; make "env-bins" ~disable_sandboxing:true
   ]
 
 let all_tests = lazy (
@@ -184,7 +196,7 @@ let pp_group fmt (name, tests) =
   alias name ~deps:(
     (List.map tests ~f:(fun (t : Test.t) ->
        Sexp.strings ["alias"; t.name])))
-  |> Dune_lang.pp Dune
+  |> Dune_lang.pp
   |> Pp.render_ignore_tags fmt
 
 let () =

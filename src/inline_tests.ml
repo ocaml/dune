@@ -32,15 +32,15 @@ module Backend = struct
       *)
       let syntax = Stanza.syntax
 
-      open Stanza.Decoder
+      open Dune_lang.Decoder
 
       let parse =
-        record
+        fields
           (let+ loc = loc
-           and+ runner_libraries = field "runner_libraries" (list (located Lib_name.decode)) ~default:[]
+           and+ runner_libraries = field "runner_libraries" (repeat (located Lib_name.decode)) ~default:[]
            and+ flags = Ordered_set_lang.Unexpanded.field "flags"
            and+ generate_runner = field_o "generate_runner" (located Action_dune_lang.decode)
-           and+ extends = field "extends" (list (located Lib_name.decode)) ~default:[]
+           and+ extends = field "extends" (repeat (located Lib_name.decode)) ~default:[]
            and+ file_kind = Stanza.file_kind ()
            in
            { loc
@@ -118,7 +118,7 @@ include Sub_system.Register_end_point(
         let to_dyn _ = Dyn.opaque
       end
       include T
-      open Stanza.Decoder
+      open Dune_lang.Decoder
 
       let decode =
         enum
@@ -131,7 +131,7 @@ include Sub_system.Register_end_point(
       module Set = struct
         include O.Set
 
-        let decode = list decode >>| of_list
+        let decode = repeat decode >>| of_list
 
         let default = of_list [Best]
       end
@@ -166,18 +166,18 @@ include Sub_system.Register_end_point(
 
       let syntax = Stanza.syntax
 
-      open Stanza.Decoder
+      open Dune_lang.Decoder
 
       let parse =
         if_eos
           ~then_:(loc >>| empty)
           ~else_:
-            (record
+            (fields
                (let+ loc = loc
-                and+ deps = field "deps" (list Dep_conf.decode) ~default:[]
+                and+ deps = field "deps" (repeat Dep_conf.decode) ~default:[]
                 and+ flags = Ordered_set_lang.Unexpanded.field "flags"
                 and+ backend = field_o "backend" (located Lib_name.decode)
-                and+ libraries = field "libraries" (list (located Lib_name.decode)) ~default:[]
+                and+ libraries = field "libraries" (repeat (located Lib_name.decode)) ~default:[]
                 and+ modes = field "modes"
                                (Syntax.since syntax (1, 11) >>>
                                 Mode_conf.Set.decode)
@@ -322,11 +322,15 @@ include Sub_system.Register_end_point(
             backend.Backend.info.flags) @ [info.flags]
         in
         let expander = Expander.add_bindings expander ~bindings in
-        List.map flags ~f:(
-          Expander.expand_and_eval_set expander ~standard:(Build.return []))
-        |> Build.all
-        >>^ List.concat
+        let open Build.S.O in
+        let+ l =
+          List.map flags ~f:(
+            Expander.expand_and_eval_set expander ~standard:(Build.return []))
+          |> Build.all
+        in
+        Command.Args.As (List.concat l)
       in
+      let source_files = List.concat_map source_modules ~f:Module.sources in
       Mode_conf.Set.iter info.modes ~f:(fun (mode : Mode_conf.t) ->
         let ext = match mode with
           | Native | Best -> ".exe"
@@ -341,30 +345,30 @@ include Sub_system.Register_end_point(
           ~loc:(Some info.loc)
           (Alias.runtest ~dir)
           ~stamp:("ppx-runner", name)
-          (let module A = Action in
-           let exe =
-             Path.Build.relative inline_test_dir (name ^ ext)
-             |> Path.build
+          (let exe =
+             Path.build (Path.Build.relative inline_test_dir (name ^ ext))
            in
-           Build.path exe >>>
+           let exe, runner_args =
+             match custom_runner with
+             | None -> Ok exe, Command.Args.As []
+             | Some runner ->
+               (Super_context.resolve_program ~dir sctx ~loc:(Some loc) runner,
+                Dep exe)
+           in
            Build.fanout
              (Super_context.Deps.interpret sctx info.deps ~expander)
-             flags
-           >>^ fun (_deps, flags) ->
-           let exe, runner_args = match custom_runner with
-             | None -> Ok exe, []
-             | Some runner ->
-               Super_context.resolve_program ~dir sctx ~loc:(Some loc) runner
-             , [ Path.reach ~from:(Path.build dir) exe ]
-           in
-           A.chdir (Path.build dir)
-             (A.progn
-                (A.run exe (runner_args @ flags) ::
-                 (List.concat_map source_modules ~f:(fun m ->
-                    Module.sources m
-                    |> List.map ~f:(fun fn ->
-                      A.diff ~optional:true
-                        fn (Path.extend_basename fn ~suffix:".corrected"))))))))
+             (Build.paths source_files)
+           >>^ ignore
+           >>>
+           Build.progn
+             (Command.run exe ~dir:(Path.build dir)
+                [ runner_args
+                ; Dyn flags
+                ]
+              :: List.map source_files ~f:(fun fn ->
+                Build.return
+                  (Action.diff ~optional:true
+                     fn (Path.extend_basename fn ~suffix:".corrected"))))))
   end)
 
 let linkme = ()

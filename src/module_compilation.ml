@@ -46,7 +46,8 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) =
         (* symlink the .cmi into the public interface directory *)
         if Module.visibility m <> Visibility.Private
         && (Obj_dir.need_dedicated_public_dir obj_dir) then
-          SC.add_rule sctx ~sandbox:false ~dir
+          SC.add_rule sctx
+            ~dir
             (Build.symlink
                ~src:(Path.build (Obj_dir.Module.cm_file_unsafe obj_dir m ~kind:Cmi))
                ~dst:(Obj_dir.Module.cm_public_file_unsafe obj_dir m ~kind:Cmi)
@@ -136,7 +137,7 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) =
           flags @ pp_flags
       in
       let modules = Compilation_context.modules cctx in
-      SC.add_rule sctx ?sandbox ~dir
+      SC.add_rule sctx ~sandbox ~dir
         (Build.S.seqs [Build.paths extra_deps; other_cm_files]
            (Command.run ~dir:(Path.build dir) (Ok compiler)
               [ Command.Args.dyn flags
@@ -195,7 +196,7 @@ let ocamlc_i ?(flags=[]) ~dep_graphs cctx (m : Module.t) ~output =
   in
   let ocaml_flags = Ocaml_flags.get_for_cm (CC.flags cctx) ~cm_kind:Cmo in
   let modules = Compilation_context.modules cctx in
-  SC.add_rule sctx ?sandbox ~dir
+  SC.add_rule sctx ~sandbox ~dir
     (Build.S.seq cm_deps
        (Build.S.map ~f:(Action.with_stdout_to output)
           (Command.run (Ok ctx.ocamlc) ~dir:(Path.build ctx.build_dir)

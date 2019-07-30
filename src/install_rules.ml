@@ -296,7 +296,7 @@ let gen_dune_package sctx ~version ~pkg =
     Dune_package.Or_meta.encode ~dune_version pkg
     |> Format.asprintf "%a@."
          (Fmt.list ~pp_sep:Fmt.nl
-            (Dune_lang.Deprecated.pp (Stanza.File_kind.of_syntax dune_version))))
+            Dune_lang.Deprecated.pp))
   >>>
   Build.write_file_dyn  dune_package_file
   |> Super_context.add_rule sctx ~dir:ctx.build_dir

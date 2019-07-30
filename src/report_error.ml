@@ -26,17 +26,7 @@ let rec tag_handler ppf (style : User_message.Style.t) pp =
 
 let render ppf pp = Pp.render ppf pp ~tag_handler
 
-let rec get_printer = function
-  | Stanza.Decoder.Parens_no_longer_necessary (loc, exn) ->
-    let hint =
-      "dune files require fewer parentheses than jbuild files.\n\
-       If you just converted this file from a jbuild file, try removing these parentheses."
-    in
-    let printer = get_printer exn in
-    { printer with
-      loc = Some loc
-    ; hint = Some hint
-    }
+let get_printer = function
   | User_error.E msg ->
     { loc = msg.loc
     ; backtrace = false

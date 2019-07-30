@@ -100,6 +100,7 @@ module Module : sig
   (** Same as [cm_file] but doesn't raise if [cm_kind] is [Cmo] or [Cmx] and the
       module has no implementation.*)
   val cm_file_unsafe : 'path t -> Module.t -> kind:Cm_kind.t -> 'path
+  val o_file_unsafe : 'path t -> Module.t -> ext_obj:string -> 'path
   val cm_public_file_unsafe : 'path t -> Module.t -> kind:Cm_kind.t -> 'path
 
   (** Either the .cmti, or .cmt if the module has no interface *)

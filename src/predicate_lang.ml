@@ -19,7 +19,7 @@ module Ast = struct
   let not_union a = compl (union a)
 
   let decode elt =
-    let open Stanza.Decoder in
+    let open Dune_lang.Decoder in
     let elt = let+ e = elt in Element e in
     let rec one (kind : Dune_lang.File_syntax.t) =
       peek_exn >>= function
@@ -90,7 +90,7 @@ let to_dyn t =
   Ast.to_dyn (fun _ -> Dyn.Encoder.string "opaque") t
 
 let decode : t Dune_lang.Decoder.t =
-  let open Stanza.Decoder in
+  let open Dune_lang.Decoder in
   Ast.decode (Glob.decode >>| Glob.test)
 
 let empty = Ast.Union []

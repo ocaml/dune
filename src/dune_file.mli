@@ -112,6 +112,12 @@ module Dep_conf : sig
     | Package of String_with_vars.t
     | Universe
     | Env_var of String_with_vars.t
+    (* [Sandbox_config] is a way to declare that your action also depends
+       on there being a clean filesystem around its deps.
+       (or, if you require [no_sandboxing], it's that your action depends on
+       something undeclared (e.g. absolute path of cwd) and you want to
+       allow it) *)
+    | Sandbox_config of Sandbox_config.t
 
   val remove_locs : t -> t
 
@@ -511,12 +517,11 @@ module Stanzas : sig
 
   type syntax = OCaml | Plain
 
-  (** [of_ast ~kind project ast] is the list of [Stanza.t]s derived from
+  (** [of_ast project ast] is the list of [Stanza.t]s derived from
       decoding the [ast] according to the syntax given by [kind] in the context
       of the [project] *)
   val of_ast
-    :  kind:Dune_lang.File_syntax.t
-    -> Dune_project.t
+    :  Dune_project.t
     -> Dune_lang.Ast.t
     -> Stanza.t list
 
@@ -533,7 +538,6 @@ module Stanzas : sig
       current [project]. *)
   val parse
     :  file:Path.Source.t
-    -> kind:Dune_lang.File_syntax.t
     -> Dune_project.t
     -> Dune_lang.Ast.t list
     -> t

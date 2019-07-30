@@ -1076,9 +1076,9 @@ expanded by dune.
 
 Dune supports the following variables:
 
-- ``project_root`` is the root of the current project. It is typically the
-  toplevel directory of your project and as long as you have a ``dune-project``
-  file there, ``project_root`` is independent of the workspace configuration
+- ``project_root`` is the root of the current project. It is typically the root
+  of your project and as long as you have a ``dune-project`` file there,
+  ``project_root`` is independent of the workspace configuration
 - ``workspace_root`` is the root of the current workspace. Note that
   the value of ``workspace_root`` is not constant and depends on
   whether your project is vendored or not
@@ -1413,8 +1413,7 @@ introduced in 4.08, allowing the user to define custom let operators.
 Dependency specification
 ------------------------
 
-Dependencies in ``dune`` files can be specified using one of the following
-syntax:
+Dependencies in ``dune`` files can be specified using one of the following:
 
 - ``(:name <dependencies>)`` will bind the the list of dependencies to the
   ``name`` variable. This variable will be available as ``%{name}`` in actions.
@@ -1429,7 +1428,6 @@ syntax:
   :ref:`glob <glob>` for details
 
 .. _source_tree:
-
 - ``(source_tree <dir>)``: depend on all source files in the subtree with root
   ``<dir>``
 
@@ -1445,6 +1443,12 @@ syntax:
 - ``(env_var <var>)``: depend on the value of the environment variable ``<var>``.
   If this variable becomes set, becomes unset, or changes value, the target
   will be rebuilt.
+- ``(sandbox <config>)``: require a particular sandboxing configuration.
+  Config can be one (or many) of:
+  - ``always``: the action requires a clean environment.
+  - ``none``: the action must run in the build directory.
+  - ``preserve_file_kind``: the action needs the files it reads to look
+    like normal files (so dune won't use symlinks for sandboxing)
 
 In all these cases, the argument supports `Variables expansion`_.
 

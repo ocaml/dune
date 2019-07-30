@@ -6,7 +6,7 @@ type t
 
 module Spec : sig
   type t
-  val decode : t Stanza.Decoder.fields_parser
+  val decode : t Dune_lang.Decoder.fields_parser
 end
 
 val make

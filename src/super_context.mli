@@ -77,7 +77,7 @@ val dir_is_vendored : t -> Path.Source.t -> bool
 
 val add_rule
   :  t
-  -> ?sandbox:bool
+  -> ?sandbox:Sandbox_config.t
   -> ?mode:Dune_file.Rule.Mode.t
   -> ?locks:Path.t list
   -> ?loc:Loc.t
@@ -86,7 +86,7 @@ val add_rule
   -> unit
 val add_rule_get_targets
   :  t
-  -> ?sandbox:bool
+  -> ?sandbox:Sandbox_config.t
   -> ?mode:Dune_file.Rule.Mode.t
   -> ?locks:Path.t list
   -> ?loc:Loc.t
@@ -95,7 +95,7 @@ val add_rule_get_targets
   -> Path.Build.Set.t
 val add_rules
   :  t
-  -> ?sandbox:bool
+  -> ?sandbox:Sandbox_config.t
   -> dir:Path.Build.t
   -> (unit, Action.t) Build.t list
   -> unit

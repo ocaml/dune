@@ -11,7 +11,7 @@ module Dune_file = struct
     }
 
   let parse sexps ~dir ~file ~project ~kind =
-    let stanzas = Stanzas.parse ~file ~kind project sexps in
+    let stanzas = Stanzas.parse ~file project sexps in
     let stanzas =
       if !Clflags.ignore_promoted_rules then
         List.filter stanzas ~f:(function

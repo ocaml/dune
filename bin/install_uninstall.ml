@@ -183,7 +183,7 @@ module File_ops_real(W : Workspace) : File_operations = struct
         in
         Format.pp_open_vbox ppf 0;
         List.iter dp ~f:(fun x ->
-          Dune_lang.Deprecated.pp Dune ppf x;
+          Dune_lang.Deprecated.pp ppf x;
           Format.pp_print_cut ppf ());
         Format.pp_close_box ppf ())
 

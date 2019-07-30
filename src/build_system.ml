@@ -120,7 +120,6 @@ module Internal_rule = struct
       ; info             : Rule.Info.t
       ; dir              : Path.Build.t
       ; env              : Env.t option
-      ; sandbox          : bool
       ; locks            : Path.t list
       ; (* Reverse dependencies discovered so far, labelled by the
            requested target *)
@@ -166,7 +165,6 @@ module Internal_rule = struct
     ; info        = Internal
     ; dir         = Path.Build.root
     ; env         = None
-    ; sandbox     = false
     ; locks       = []
     ; rev_deps    = []
     ; transitive_rev_deps = Id.Set.empty
@@ -420,6 +418,7 @@ type t =
   ; hook : hook -> unit
   ; (* Package files are part of *)
     packages : (Path.Build.t -> Package.Name.Set.t) Fdecl.t
+  ; sandboxing_preference : Sandbox_mode.t list
   }
 
 let t = ref None
@@ -655,7 +654,6 @@ end = struct
         ; env
         ; build
         ; targets
-        ; sandbox
         ; mode
         ; locks
         ; info
@@ -673,7 +671,6 @@ end = struct
       ; build
       ; context
       ; env
-      ; sandbox
       ; locks
       ; mode
       ; info
@@ -695,7 +692,11 @@ end = struct
     |> List.map ~f:(fun path ->
       let ctx_path = Path.Build.append_source ctx_dir path in
       let build = Build.copy ~src:(Path.source path) ~dst:ctx_path in
-      Pre_rule.make build ~context:None ~env:None ~info:Source_file_copy)
+      Pre_rule.make
+        (* There's an [assert false] in [prepare_managed_paths] that blows up
+           if we try to sandbox this. *)
+        ~sandbox:Sandbox_config.no_sandboxing
+        build ~context:None ~env:None ~info:Source_file_copy)
 
   let compile_rules ~dir rules =
     List.concat_map rules ~f:(fun rule ->
@@ -1274,7 +1275,9 @@ end = struct
       | File f -> build_file f
       | Glob g -> Pred.build g
       | Universe
-      | Env _ -> Fiber.return ())
+      | Env _ -> Fiber.return ()
+      | Sandbox_config _ -> Fiber.return ()
+    )
 
   let eval_pred = Pred.eval
 
@@ -1298,6 +1301,36 @@ end = struct
 
   let evaluate_action_and_dynamic_deps =
     Memo.exec evaluate_action_and_dynamic_deps_memo
+
+  let select_sandbox_mode
+        (config : Sandbox_config.t) ~loc ~sandboxing_preference =
+    match
+      List.find_map sandboxing_preference ~f:(fun preference ->
+        match Sandbox_mode.Set.mem config preference with
+        | false -> None
+        | true ->
+          match preference with
+          | Some Symlink ->
+            if Sandbox_mode.Set.mem config Sandbox_mode.copy then
+              Some
+                (if Sys.win32 then Sandbox_mode.copy else Sandbox_mode.symlink)
+            else
+              User_error.raise ~loc
+                [ Pp.text "This rule requires sandboxing with symlinks, but \
+                           that won't work on Windows." ]
+          | _ ->
+            Some preference
+      ) with
+    | None ->
+      (* This is not trivial to reach because the user rules are checked
+         at parse time and [sandboxing_preference] always includes all possible
+         modes. However, it can still be reached if multiple sandbox config
+         specs are combined into an unsatisfiable one. *)
+      User_error.raise
+        ~loc
+        [ Pp.text "This rule forbids all sandboxing \
+                   modes (but it also requires sandboxing)" ]
+    | Some choice -> choice
 
   let evaluate_rule (rule : Internal_rule.t) =
     let* static_deps = Fiber.Once.get rule.static_deps in
@@ -1338,6 +1371,18 @@ end = struct
   let start_rule t _rule =
     t.hook Rule_started
 
+  (* Same as [rename] except that if the source doesn't exist we
+     delete the destination *)
+  let rename_optional_file ~src ~dst =
+    let src = (Path.Build.to_string src) in
+    let dst = (Path.Build.to_string dst) in
+    match Unix.rename src dst with
+    | () -> ()
+    | exception Unix.Unix_error ((ENOENT | ENOTDIR), _, _) ->
+      (match Unix.unlink dst with
+       | exception Unix.Unix_error (ENOENT, _, _) -> ()
+       | () -> ())
+
   let execute_rule_impl rule =
     let t = t () in
     let { Internal_rule.
@@ -1346,7 +1391,6 @@ end = struct
         ; env
         ; context
         ; mode
-        ; sandbox
         ; locks
         ; id = _
         ; static_deps = _
@@ -1362,6 +1406,15 @@ end = struct
     let targets_as_list  = Path.Build.Set.to_list targets  in
     let head_target = List.hd targets_as_list in
     let prev_trace = Trace.get (Path.build head_target) in
+    let sandbox_mode =
+      match Action.is_useful_to_sandbox action with
+      | Clearly_not -> Sandbox_mode.none
+      | Maybe ->
+        select_sandbox_mode
+          ~loc:(rule_loc ~file_tree:t.file_tree ~info ~dir)
+          (Dep.Set.sandbox_config deps)
+          ~sandboxing_preference:t.sandboxing_preference
+    in
     let rule_digest =
       let env =
         match env, context with
@@ -1370,7 +1423,7 @@ end = struct
         | None, Some c -> c.env
       in
       let trace =
-        ( Dep.Set.trace deps ~env ~eval_pred
+        ( Dep.Set.trace deps ~sandbox_mode ~env ~eval_pred
         , List.map targets_as_list ~f:(fun p -> Path.to_string (Path.build p))
         , Option.map context ~f:(fun c -> c.name)
         , Action.for_shell action
@@ -1384,11 +1437,12 @@ end = struct
       | l -> Some (Digest.generic l)
       | exception (Unix.Unix_error _ | Sys_error _) -> None
     in
-    let sandbox_dir =
-      if sandbox then
+    let sandbox =
+      match sandbox_mode with
+      | Some mode ->
         let digest = Digest.to_string rule_digest in
-        Some (Path.Build.relative sandbox_dir digest)
-      else
+        Some (Path.Build.relative sandbox_dir digest, mode)
+      | None ->
         None
     in
     let force =
@@ -1408,11 +1462,11 @@ end = struct
           Path.unlink_no_err (Path.build p));
         pending_targets := Path.Build.Set.union targets !pending_targets;
         let loc = Rule.Info.loc info in
-        let action =
-          match sandbox_dir with
+        let sandboxed, action =
+          match sandbox with
           | None ->
-            action
-          | Some sandbox_dir ->
+            None, action
+          | Some (sandbox_dir, sandbox_mode) ->
             Path.rm_rf (Path.build sandbox_dir);
             let sandboxed path : Path.Build.t =
               Path.Build.append_local sandbox_dir
@@ -1424,19 +1478,28 @@ end = struct
                | None -> Fs.assert_exists ~loc p
                | Some p -> Fs.mkdir_p (sandboxed p));
             Fs.mkdir_p (sandboxed dir);
+            Some sandboxed,
             Action.sandbox action
               ~sandboxed
+              ~mode:sandbox_mode
               ~deps
-              ~targets:targets_as_list
               ~eval_pred
         in
         let chdirs = Action.chdirs action in
         Path.Set.iter chdirs ~f:Fs.(mkdir_p_or_check_exists ~loc);
         let+ () =
           with_locks locks ~f:(fun () ->
-            Action_exec.exec ~context ~env ~targets action)
+            Fiber.map (Action_exec.exec ~context ~env ~targets action)
+              ~f:(fun () ->
+                match sandboxed with
+                | None -> ()
+                | Some sandboxed ->
+                  List.iter targets_as_list ~f:(fun target ->
+                    rename_optional_file ~src:(sandboxed target) ~dst:target)
+              )
+          )
         in
-        Option.iter sandbox_dir ~f:(fun p -> Path.rm_rf (Path.build p));
+        Option.iter sandbox ~f:(fun (p, _mode) -> Path.rm_rf (Path.build p));
         (* All went well, these targets are no longer pending *)
         pending_targets := Path.Build.Set.diff !pending_targets targets;
         let targets_digest =
@@ -1884,7 +1947,7 @@ let load_dir_and_produce_its_rules ~dir =
 
 let load_dir ~dir = load_dir_and_produce_its_rules ~dir
 
-let init ~contexts ~file_tree ~hook =
+let init ~contexts ~file_tree ~hook ~sandboxing_preference =
   let contexts =
     List.map contexts ~f:(fun c -> (c.Context.name, c))
     |> String.Map.of_list_exn
@@ -1897,6 +1960,7 @@ let init ~contexts ~file_tree ~hook =
     ; gen_rules = Fdecl.create ()
     ; init_rules = Fdecl.create ()
     ; hook
+    ; sandboxing_preference = sandboxing_preference @ Sandbox_mode.all
     }
   in
   set t

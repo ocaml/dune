@@ -3,7 +3,7 @@ Project Layout and Metadata Specification
 *****************************************
 
 A typical dune project will have a ``dune-project`` and one or more
-``<package>.opam`` file at toplevel as well as ``dune`` files wherever
+``<package>.opam`` file at the root as well as ``dune`` files wherever
 interesting things are: libraries, executables, tests, documents to install,
 etc...
 

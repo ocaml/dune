@@ -59,7 +59,7 @@ module File = struct
     let pp s =
       match Cst.to_sexp s with
       | None -> Pp.nop
-      | Some s -> Dune_lang.pp Dune s
+      | Some s -> Dune_lang.pp s
 
     let libraries_conflict (a: Dune_file.Library.t) (b: Dune_file.Library.t) =
       a.name = b.name
@@ -82,9 +82,7 @@ module File = struct
       | _ -> false
 
     let csts_conflict project (a : Cst.t) (b : Cst.t) =
-      let of_ast =
-        Dune_file.Stanzas.of_ast ~kind:Dune_lang.File_syntax.Dune project
-      in
+      let of_ast = Dune_file.Stanzas.of_ast project in
       begin
         let open Option.O in
         let* a_ast = Cst.abstract a in

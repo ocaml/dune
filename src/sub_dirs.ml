@@ -100,28 +100,28 @@ let eval (t : _ Status.Map.t) ~dirs =
       ]
 
 let decode =
-  let open Stanza.Decoder in
+  let open Dune_lang.Decoder in
   let ignored_sub_dirs =
     let open Dune_lang.Decoder in
     let ignored =
-      plain_string (fun ~loc dn ->
-        if Filename.dirname dn <> Filename.current_dir_name ||
-           match dn with
-           | "" | "." | ".." -> true
-           | _ -> false
-        then
-          User_error.raise ~loc [ Pp.textf "Invalid sub-directory name %S" dn ]
-        else
-          dn)
-      |> list
-      >>| (fun l ->
-        Predicate_lang.of_string_set (String.Set.of_list l))
+      let+ l =
+        enter (repeat (plain_string (fun ~loc dn ->
+          if Filename.dirname dn <> Filename.current_dir_name ||
+             match dn with
+             | "" | "." | ".." -> true
+             | _ -> false
+          then
+            User_error.raise ~loc
+              [ Pp.textf "Invalid sub-directory name %S" dn ]
+          else
+            dn)))
+      in
+      Predicate_lang.of_string_set (String.Set.of_list l)
     in
     let+ version = Syntax.get_exn Stanza.syntax
     and+ (loc, ignored) = located ignored
     in
     if version >= (1, 6) then begin
-      (* DUNE2: make this an error *)
       User_warning.emit ~loc
         [ Pp.text
             "ignored_subdirs is deprecated in 1.6. Use dirs to specify \

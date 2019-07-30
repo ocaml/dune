@@ -1,5 +1,5 @@
 open Stdune
-open Stanza.Decoder
+open Dune_lang.Decoder
 
 type 'a one =
   | Unnamed of 'a
@@ -37,39 +37,30 @@ let to_dyn dyn_of_a bindings =
         Dyn.List (string (":" ^ name) :: List.map ~f:dyn_of_a bindings))
   )
 
-let jbuild elem =
-  list (elem >>| fun x -> Unnamed x)
-
-let dune elem =
-  parens_removed_in_dune (
-    let+ l =
-      repeat
-        (if_paren_colon_form
-           ~then_:(
-             let+ values = repeat elem in
-             fun (loc, name) -> Left (loc, name, values))
-           ~else_:(elem >>| Either.right))
-    in
-    let rec loop vars acc = function
-      | [] -> List.rev acc
-      | Right x :: l -> loop vars (Unnamed x :: acc) l
-      | Left (loc, name, values) :: l ->
-        let vars =
-          if not (String.Set.mem vars name) then
-            String.Set.add vars name
-          else
-            User_error.raise ~loc
-              [ Pp.textf "Variable %s is defined for the second time."
-                  name ]
-        in
-        loop vars (Named (name, values) :: acc) l
-    in
-    loop String.Set.empty [] l)
-
 let decode elem =
-  switch_file_kind
-    ~jbuild:(jbuild elem)
-    ~dune:(dune elem)
+  let+ l =
+    repeat
+      (if_paren_colon_form
+         ~then_:(
+           let+ values = repeat elem in
+           fun (loc, name) -> Left (loc, name, values))
+         ~else_:(elem >>| Either.right))
+  in
+  let rec loop vars acc = function
+    | [] -> List.rev acc
+    | Right x :: l -> loop vars (Unnamed x :: acc) l
+    | Left (loc, name, values) :: l ->
+      let vars =
+        if not (String.Set.mem vars name) then
+          String.Set.add vars name
+        else
+          User_error.raise ~loc
+            [ Pp.textf "Variable %s is defined for the second time."
+                name ]
+      in
+      loop vars (Named (name, values) :: acc) l
+  in
+  loop String.Set.empty [] l
 
 let encode encode bindings =
   Dune_lang.List (

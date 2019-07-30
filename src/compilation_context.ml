@@ -58,7 +58,7 @@ type t =
   ; stdlib               : Dune_file.Library.Stdlib.t option
   ; js_of_ocaml          : Dune_file.Js_of_ocaml.t option
   ; dynlink              : bool
-  ; sandbox              : bool option
+  ; sandbox              : Sandbox_config.t
   ; package              : Package.t option
   ; vimpl                : Vimpl.t option
   }
@@ -88,12 +88,21 @@ let context              t = Super_context.context t.super_context
 let create ~super_context ~scope ~expander ~obj_dir
       ~modules ~flags ~requires_compile ~requires_link
       ?(preprocessing=Preprocessing.dummy) ?(no_keep_locs=false)
-      ~opaque ?stdlib ~js_of_ocaml ~dynlink ?sandbox ~package ?vimpl () =
+      ~opaque ?stdlib ~js_of_ocaml ~dynlink ~package ?vimpl () =
   let requires_compile =
     if Dune_project.implicit_transitive_deps (Scope.project scope) then
       Lazy.force requires_link
     else
       requires_compile
+  in
+  let sandbox =
+    (* With sandboxing, there are a few build errors in ocaml platform
+       1162238ae like:
+       File "ocaml_modules/ocamlgraph/src/pack.ml", line 1:
+       Error: The implementation ocaml_modules/ocamlgraph/src/pack.ml
+       does not match the interface ocaml_modules/ocamlgraph/src/.graph.objs/byte/graph__Pack.cmi:
+    *)
+    Sandbox_config.no_sandboxing
   in
   { super_context
   ; scope
@@ -124,9 +133,13 @@ let for_alias_module t =
   let sandbox =
     let ctx = Super_context.context t.super_context in
     (* If the compiler reads the cmi for module alias even with [-w -49
-    -no-alias-deps], we must sandbox the build of the alias module since the
-    modules it references are built after. *)
-    Ocaml_version.always_reads_alias_cmi ctx.version
+       -no-alias-deps], we must sandbox the build of the alias module since the
+       modules it references are built after. *)
+    if Ocaml_version.always_reads_alias_cmi ctx.version
+    then
+      Sandbox_config.needs_sandboxing
+    else
+      Sandbox_config.no_special_requirements
   in
   { t with
     flags =
@@ -134,7 +147,7 @@ let for_alias_module t =
         ["-w"; "-49"; "-nopervasives"; "-nostdlib"]
   ; includes     = Includes.empty
   ; stdlib       = None
-  ; sandbox      = Some sandbox
+  ; sandbox      = sandbox
   }
 
 let for_wrapped_compat t =

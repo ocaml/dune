@@ -273,7 +273,7 @@ module Pkg_version = struct
     add_rule sctx ~dir:(build_dir sctx)
       ((get >>^ fun v ->
         (Dune_lang.Encoder.(option string) v
-         |> Dune_lang.to_string ~syntax:Dune))
+         |> Dune_lang.to_string))
        >>> Build.write_file_dyn fn);
     read_file fn
 end
@@ -632,6 +632,9 @@ module Deps = struct
     | Env_var var_sw ->
       let var = Expander.expand_str expander var_sw in
       Build.env_var var
+      >>^ fun () -> []
+    | Sandbox_config sandbox_config ->
+      Build.dep (Dep.sandbox_config sandbox_config)
       >>^ fun () -> []
 
   let make_interpreter ~f t ~expander l =

@@ -6,12 +6,14 @@ type t = private
   | Alias of Alias.t
   | Glob of File_selector.t
   | Universe
+  | Sandbox_config of Sandbox_config.t
 
 val file : Path.t -> t
 val env : Env.Var.t -> t
 val universe : t
 val glob : File_selector.t -> t
 val alias : Alias.t -> t
+val sandbox_config : Sandbox_config.t -> t
 
 val compare : t -> t -> Ordering.t
 
@@ -26,6 +28,8 @@ module Set : sig
 
   val has_universe : t -> bool
 
+  val sandbox_config : t -> Sandbox_config.t
+
   val of_files : Path.t list -> t
 
   val of_files_set : Path.Set.t -> t
@@ -34,7 +38,8 @@ module Set : sig
 
   val encode : t -> Dune_lang.t
 
-  val trace : t -> env:Env.t -> eval_pred:eval_pred -> Trace.t
+  val trace :
+    t -> sandbox_mode:Sandbox_mode.t -> env:Env.t -> eval_pred:eval_pred -> Trace.t
 
   val add_paths : t -> Path.Set.t -> t
 

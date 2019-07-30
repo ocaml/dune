@@ -77,23 +77,9 @@ If rule fails to generate targets, we give a good error message, even with sandb
   $ true > dune
   $ echo '(rule (target t) (deps (sandbox always)) (action (echo ":")))' >> dune
   $ dune build t
-  File "src/dep.ml", line 68, characters 6-12: Assertion failed
-  Backtrace:
-  Raised at file "src/dep.ml", line 68, characters 6-53
-  Called from file "list.ml", line 99, characters 22-25
-  Called from file "src/stdune/list.ml" (inlined), line 5, characters 19-33
-  Called from file "src/stdune/list.ml", line 39, characters 29-39
-  Called from file "src/dep.ml", line 125, characters 6-74
-  Called from file "src/build_system.ml", line 1426, characters 10-58
-  Called from file "src/fiber/fiber.ml", line 112, characters 7-12
-  Re-raised at file "src/stdune/exn.ml", line 39, characters 38-65
-  Called from file "src/fiber/fiber.ml", line 82, characters 8-15
-  Re-raised at file "src/stdune/exn.ml", line 39, characters 38-65
-  Called from file "src/fiber/fiber.ml", line 82, characters 8-15
-  
-  I must not segfault.  Uncertainty is the mind-killer.  Exceptions are
-  the little-death that brings total obliteration.  I will fully express
-  my cases.  Execution will pass over me and through me.  And when it
-  has gone past, I will unwind the stack along its path.  Where the
-  cases are handled there will be nothing.  Only I will remain.
+  File "dune", line 1, characters 0-61:
+  1 | (rule (target t) (deps (sandbox always)) (action (echo ":")))
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  Error: Rule dependencies are configured to require sandboxing, but the rule
+  has no actions that could potentially require sandboxing.
   [1]

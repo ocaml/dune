@@ -1408,7 +1408,19 @@ end = struct
     let prev_trace = Trace.get (Path.build head_target) in
     let sandbox_mode =
       match Action.is_useful_to_sandbox action with
-      | Clearly_not -> Sandbox_mode.none
+      | Clearly_not ->
+        let config = (Dep.Set.sandbox_config deps) in
+        if Sandbox_config.mem config Sandbox_mode.none
+        then
+          Sandbox_mode.none
+        else
+          User_error.raise
+            ~loc:(rule_loc ~file_tree:t.file_tree ~info ~dir)
+            [
+              Pp.text
+                "Rule dependencies are configured to require sandboxing, but the rule has \
+                 no actions that could potentially require sandboxing."
+            ]
       | Maybe ->
         select_sandbox_mode
           ~loc:(rule_loc ~file_tree:t.file_tree ~info ~dir)

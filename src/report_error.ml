@@ -47,7 +47,7 @@ let get_printer = function
                           including the contents of _build/log.@}\n\
                           Description:%a%a\n"
         Pp.render_ignore_tags
-        (Dyn.pp (Code_error.to_dyn t))
+        (Dyn.pp (Code_error.to_dyn_without_loc t))
         maybe_pp_loc
         t.loc
     in

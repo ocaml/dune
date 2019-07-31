@@ -2,12 +2,14 @@ open Import
 
 module Simplified = struct
   type destination = Dev_null | File of string
+  type source = string
 
   type t =
     | Run of string * string list
     | Chdir of string
     | Setenv of string * string
-    | Redirect of t list * Action.Outputs.t * destination
+    | Redirect_out of t list * Action.Outputs.t * destination
+    | Redirect_in of t list * Action.Inputs.t * source
     | Sh of string
 end
 open Simplified
@@ -35,10 +37,12 @@ let simplify act =
       loop act (Chdir p :: mkdir p :: acc)
     | Setenv (k, v, act) ->
       loop act (Setenv (k, v) :: acc)
-    | Redirect (outputs, fn, act) ->
-      Redirect (block act, outputs, File fn) :: acc
+    | Redirect_out (outputs, fn, act) ->
+      Redirect_out (block act, outputs, File fn) :: acc
+    | Redirect_in (inputs, fn, act) ->
+      Redirect_in (block act, inputs, fn) :: acc
     | Ignore (outputs, act) ->
-      Redirect (block act, outputs, Dev_null) :: acc
+      Redirect_out (block act, outputs, Dev_null) :: acc
     | Progn l ->
       List.fold_left l ~init:acc ~f:(fun acc act -> loop act acc)
     | Echo xs -> echo (String.concat xs ~sep:"")
@@ -49,15 +53,15 @@ let simplify act =
     | Symlink (x, y) ->
       Run ("ln", ["-s"; x; y]) :: Run ("rm", ["-f"; y]) :: acc
     | Copy_and_add_line_directive (x, y) ->
-      Redirect (echo (Utils.line_directive ~filename:x ~line_number:1) @
-                [cat x], Stdout, File y)
+      Redirect_out (echo (Utils.line_directive ~filename:x ~line_number:1) @
+                    [cat x], Stdout, File y)
       :: acc
     | System x ->
       Sh x :: acc
     | Bash x ->
       Run ("bash", ["-e"; "-u"; "-o"; "pipefail"; "-c"; x]) :: acc
     | Write_file (x, y) ->
-      Redirect (echo y, Stdout, File x) :: acc
+      Redirect_out (echo y, Stdout, File x) :: acc
     | Rename (x, y) ->
       Run ("mv", [x; y]) :: acc
     | Remove_tree x ->
@@ -93,7 +97,24 @@ let simplify act =
 
 let quote s = Pp.verbatim (String.quote_for_shell s)
 
-let rec pp = function
+let rec block l =
+  match l with
+  | [x] -> pp x
+  | l ->
+    Pp.box
+      (Pp.concat
+         [ Pp.hvbox ~indent:2
+             (Pp.concat
+                [ Pp.char '{'
+                ; Pp.space
+                ; Pp.hvbox (Pp.concat_map l ~sep:Pp.space
+                              ~f:(fun x -> Pp.seq (pp x) (Pp.char ';')))
+                ])
+         ; Pp.space
+         ; Pp.char '}'
+         ])
+
+and pp = function
   | Run (prog, args) ->
     Pp.hovbox ~indent:2
       (Pp.concat
@@ -111,24 +132,19 @@ let rec pp = function
     Pp.concat [Pp.verbatim k; Pp.verbatim "="; quote v]
   | Sh s ->
     Pp.verbatim s
-  | Redirect (l, outputs, dest) ->
-    let body =
-      match l with
-      | [x] -> pp x
-      | l ->
-        Pp.box
-          (Pp.concat
-             [ Pp.hvbox ~indent:2
-                 (Pp.concat
-                    [ Pp.char '{'
-                    ; Pp.space
-                    ; Pp.hvbox (Pp.concat_map l ~sep:Pp.space
-                                  ~f:(fun x -> Pp.seq (pp x) (Pp.char ';')))
-                    ])
-             ; Pp.space
-             ; Pp.char '}'
-             ])
-    in
+  | Redirect_in (l, inputs, src) ->
+    let body = block l in
+    Pp.hovbox ~indent:2
+      (Pp.concat
+         [ body
+         ; Pp.space
+         ; Pp.verbatim (match inputs with
+             | Stdin -> "<")
+         ; Pp.space
+         ; quote src
+         ])
+  | Redirect_out (l, outputs, dest) ->
+    let body = block l in
     Pp.hovbox ~indent:2
       (Pp.concat
          [ body

@@ -204,7 +204,7 @@ let symlink ~src ~dst =
   action ~targets:[dst] (Symlink (src, dst))
 
 let create_file fn =
-  action ~targets:[fn] (Redirect (Stdout, fn, Progn []))
+  action ~targets:[fn] (Redirect_out (Stdout, fn, Progn []))
 
 let remove_tree dir =
   arr (fun _ -> Action.Remove_tree dir)

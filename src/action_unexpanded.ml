@@ -126,8 +126,10 @@ module Partial = struct
       let value = E.string ~expander value in
       let expander = Expander.set_env expander ~var ~value in
       Setenv (var, value, expand t ~expander ~map_exe)
-    | Redirect (outputs, fn, t) ->
-      Redirect (outputs, E.target ~expander fn, expand t ~map_exe ~expander)
+    | Redirect_out (outputs, fn, t) ->
+      Redirect_out (outputs, E.target ~expander fn, expand t ~map_exe ~expander)
+    | Redirect_in (inputs, fn, t) ->
+      Redirect_in (inputs, E.path ~expander fn, expand t ~map_exe ~expander)
     | Ignore (outputs, t) ->
       Ignore (outputs, expand t ~expander ~map_exe)
     | Progn l -> Progn (List.map l ~f:(expand ~expander ~map_exe))
@@ -245,8 +247,10 @@ let rec partial_expand t ~map_exe ~expander : Partial.t =
       | Right _ -> Expander.hide_env expander ~var
     in
     Setenv (Left var, value, partial_expand t ~expander ~map_exe)
-  | Redirect (outputs, fn, t) ->
-    Redirect (outputs, E.target ~expander fn, partial_expand t ~expander ~map_exe)
+  | Redirect_out (outputs, fn, t) ->
+    Redirect_out (outputs, E.target ~expander fn, partial_expand t ~expander ~map_exe)
+  | Redirect_in (inputs, fn, t) ->
+    Redirect_in (inputs, E.path ~expander fn, partial_expand t ~expander ~map_exe)
   | Ignore (outputs, t) ->
     Ignore (outputs, partial_expand t ~expander ~map_exe)
   | Progn l -> Progn (List.map l ~f:(partial_expand ~map_exe ~expander))
@@ -343,7 +347,8 @@ module Infer = struct
     let rec infer acc t =
       match t with
       | Run (prog, _) -> acc +<! prog
-      | Redirect (_, fn, t)  -> infer (acc +@+ fn) t
+      | Redirect_out (_, fn, t)  -> infer (acc +@+ fn) t
+      | Redirect_in (_, fn, t) -> infer (acc +< fn) t
       | Cat fn               -> acc +< fn
       | Write_file (fn, _)  -> acc +@+ fn
       | Rename (src, dst) -> acc +<+ src +@+ dst

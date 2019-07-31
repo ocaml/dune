@@ -7,6 +7,11 @@ module Outputs = struct
     | Outputs (** Both Stdout and Stderr *)
 end
 
+module Inputs = struct
+  type t =
+    | Stdin
+end
+
 module type Ast = sig
   type program
   type path
@@ -19,7 +24,8 @@ module type Ast = sig
     | Setenv         of string * string * t
     (* It's not possible to use a build path here since jbuild supports
        redirecting to /dev/null. In dune files this is replaced with %{null} *)
-    | Redirect       of Outputs.t * target * t
+    | Redirect_out   of Outputs.t * target * t
+    | Redirect_in    of Inputs.t * path * t
     | Ignore         of Outputs.t * t
     | Progn          of t list
     | Echo           of string list
@@ -51,6 +57,7 @@ module type Helpers = sig
   val with_stdout_to : target -> t -> t
   val with_stderr_to : target -> t -> t
   val with_outputs_to : target -> t -> t
+  val with_stdin_from : path -> t -> t
   val ignore_stdout : t -> t
   val ignore_stderr : t -> t
   val ignore_outputs : t -> t

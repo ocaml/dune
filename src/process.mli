@@ -37,6 +37,17 @@ module Output : sig
   val multi_use : t -> t
 end
 
+module Input : sig
+  (** Where to redirect stdin *)
+  type t
+
+  val stdin : t
+
+  val file : Path.t -> t
+  val release : t -> unit
+  val multi_use : t -> t
+end
+
 (** Why a Fiber.t was run *)
 type purpose =
   | Internal_job
@@ -47,6 +58,7 @@ val run
   :  ?dir:Path.t
   -> ?stdout_to:Output.t
   -> ?stderr_to:Output.t
+  -> ?stdin_from:Input.t
   -> env:Env.t
   -> ?purpose:purpose
   -> (unit, 'a) failure_mode
@@ -58,6 +70,7 @@ val run
 val run_capture
   :  ?dir:Path.t
   -> ?stderr_to:Output.t
+  -> ?stdin_from:Input.t
   -> env:Env.t
   -> ?purpose:purpose
   -> (string, 'a) failure_mode
@@ -67,6 +80,7 @@ val run_capture
 val run_capture_line
   :  ?dir:Path.t
   -> ?stderr_to:Output.t
+  -> ?stdin_from:Input.t
   -> env:Env.t
   -> ?purpose:purpose
   -> (string, 'a) failure_mode
@@ -76,6 +90,7 @@ val run_capture_line
 val run_capture_lines
   :  ?dir:Path.t
   -> ?stderr_to:Output.t
+  -> ?stdin_from:Input.t
   -> env:Env.t
   -> ?purpose:purpose
   -> (string list, 'a) failure_mode

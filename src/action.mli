@@ -2,6 +2,7 @@ open! Stdune
 open! Import
 
 module Outputs : module type of struct include Action_intf.Outputs end
+module Inputs : module type of struct include Action_intf.Inputs end
 
 (** result of the lookup of a program, the path to it or information about the
     failure and possibly a hint how to fix it *)

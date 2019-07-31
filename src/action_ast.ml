@@ -83,7 +83,8 @@ struct
            in
            translate_to_ignore fn Outputs t)
         ; "with-stdin-from",
-          (let+ fn = path
+          (Syntax.since Stanza.syntax (2, 0) >>>
+           let+ fn = path
            and+ t = t
            in
            Redirect_in (Stdin, fn, t))

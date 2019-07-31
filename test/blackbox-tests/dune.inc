@@ -1331,6 +1331,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name rule-target-inferrence)
+ (deps (package dune) (source_tree test-cases/rule-target-inferrence))
+ (action
+  (chdir
+   test-cases/rule-target-inferrence
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name sandboxing)
  (deps (package dune) (source_tree test-cases/sandboxing))
  (action
@@ -1833,6 +1841,7 @@
   (alias redirections)
   (alias reporting-of-cycles)
   (alias rule-target-external)
+  (alias rule-target-inferrence)
   (alias sandboxing)
   (alias scope-bug)
   (alias scope-ppx-bug)
@@ -2016,6 +2025,7 @@
   (alias redirections)
   (alias reporting-of-cycles)
   (alias rule-target-external)
+  (alias rule-target-inferrence)
   (alias sandboxing)
   (alias scope-bug)
   (alias select)

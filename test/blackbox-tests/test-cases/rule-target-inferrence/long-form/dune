@@ -1,0 +1,7 @@
+(rule
+ (action (write-file b "It should work as well!")))
+
+(alias
+ (name infer)
+ (deps b)
+ (action (cat %{deps})))

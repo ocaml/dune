@@ -414,12 +414,9 @@ module Infer = struct
       | Digest_files l ->
           List.fold_left l ~init:acc ~f:( +< )
       | Diff { optional; file1; file2; mode = _ } ->
-          if optional then
-            acc
-          else
-            acc +< file1 +< file2
+        if optional then acc +< file1 else acc +< file1 +< file2
       | Merge_files_into (sources, _extras, target) ->
-          List.fold_left sources ~init:acc ~f:( +< ) +@+ target
+        List.fold_left sources ~init:acc ~f:( +< ) +@+ target
       | Echo _ | System _ | Bash _ | Remove_tree _ | Mkdir _ ->
           acc
 

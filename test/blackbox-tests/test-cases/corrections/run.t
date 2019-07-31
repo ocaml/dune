@@ -12,11 +12,8 @@ It's OK if there's no correction:
   > EOF
   $ dune build @no_correction
 
-# CR-someday aalekseyev:
-# Weird: if dependency is missing, dune fails to report a correction.
-# This is an idiom used in the wild,
-# and in fact the docs suggest that one should do something like this,
-# and you can't even specify optional targets at all.
+Dependency on the first argument of diff? is automatically added
+and dune correctly complains
 
   $ cat > dune <<EOF
   > (alias (name correction1)
@@ -27,15 +24,6 @@ It's OK if there's no correction:
   > )
   > EOF
 
-  $ dune build @correction1
-
-  $ dune build text-file
-  $ dune build @correction1
-
-The correction shines through once the source file is created in the build dir:
-
-  $ rm -r _build
-  $ dune build text-file
   $ dune build @correction1
   File "text-file", line 1, characters 0-0:
   Error: Files _build/default/text-file and _build/default/text-file-corrected

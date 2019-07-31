@@ -212,11 +212,17 @@ module Package = struct
   let to_dune t =
     let loc = loc t in
     let add_loc x = (loc, x) in
-    let sub_systems =
-      match dune_file t with
-      | None -> Sub_system_name.Map.empty
-      | Some p -> Installed_dune_file.load p
+    let () =
+      dune_file t
+      |> Option.iter ~f:(fun p ->
+        User_warning.emit ~loc:(Loc.in_file p)
+          [ Pp.text
+              ".dune files are ignored since 2.0. Reinstall the library with \
+               dune >= 2.0 to get rid of this warning and enable support for \
+               the subsystem this library provides."
+          ])
     in
+    let sub_systems = Sub_system_name.Map.empty in
     let archives = archives t in
     let obj_dir = Obj_dir.make_external_no_private ~dir:t.dir in
     let modes : Mode.Dict.Set.t =

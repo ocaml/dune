@@ -1,23 +1,13 @@
 module type S = Hashtbl_intf.S
 
-include struct
-  [@@@warning "-32"]
-
-  let find_opt t key =
-    match MoreLabels.Hashtbl.find t key with
-    | x -> Some x
-    | exception Not_found -> None
-
-  let find_exn t key = Option.value_exn (find_opt t key)
-end
-
 module Make(H : sig
     include Hashable.S
     val to_dyn : t -> Dyn.t
   end) = struct
-  include MoreLabels.Hashtbl.Make(H)
+  module Table = MoreLabels.Hashtbl.Make(H)
 
   include struct
+    open Table
     [@@@warning "-32"]
 
     let find_opt t key =
@@ -25,6 +15,7 @@ module Make(H : sig
       | x -> Some x
       | exception Not_found -> None
   end
+  include Table
 
   include struct
     let find = find_opt

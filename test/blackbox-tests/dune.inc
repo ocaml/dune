@@ -1623,6 +1623,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name with-stdin-from)
+ (deps (package dune) (source_tree test-cases/with-stdin-from))
+ (action
+  (chdir
+   test-cases/with-stdin-from
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name workspace-paths)
  (deps (package dune) (source_tree test-cases/workspace-paths))
  (action
@@ -1852,6 +1860,7 @@
   (alias vlib-default-impl)
   (alias vlib-wrong-default-impl)
   (alias windows-diff)
+  (alias with-stdin-from)
   (alias workspace-paths)
   (alias workspaces)
   (alias wrapped-false-main-module-name)
@@ -2028,6 +2037,7 @@
   (alias vlib-default-impl)
   (alias vlib-wrong-default-impl)
   (alias windows-diff)
+  (alias with-stdin-from)
   (alias workspace-paths)
   (alias workspaces)
   (alias wrapped-false-main-module-name)

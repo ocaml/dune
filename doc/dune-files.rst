@@ -1574,6 +1574,7 @@ The following constructions are available:
   ``stdout`` and ``stderr``)
 - ``(ignore-<outputs> <DSL)`` to ignore the output, where
   ``<outputs>`` is one of: ``stdout``, ``stderr`` or ``outputs``
+- ``(with-stdin-from <file> <DSL>)`` to redirect the input from a file
 - ``(progn <DSL>...)`` to execute several commands in sequence
 - ``(echo <string>)`` to output a string on stdout
 - ``(write-file <file> <string>)`` writes ``<string>`` to ``<file>``

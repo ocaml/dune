@@ -530,7 +530,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
   in
   native :: List.filter_opt others
 
-let extend_paths t ~env =
+let extend_paths t ~env ~build_dir =
   let module Eval =
     Ordered_set_lang.Make(String)
       (struct
@@ -549,7 +549,13 @@ let extend_paths t ~env =
   in
   let vars =
     let to_absolute_filename s =
-      Path.of_string s |> Path.to_absolute_filename in
+      if Filename.is_relative s then
+        Path.Build.relative build_dir s
+        |> Path.build
+        |> Path.to_absolute_filename
+      else
+        s
+    in
     let sep = String.make 1 Bin.path_sep in
     let env = Env.Map.of_list_exn t in
     let f l = String.concat ~sep (List.map ~f:to_absolute_filename l) in
@@ -650,7 +656,9 @@ let instantiate_context env (workspace : Workspace.t)
       (Env_nodes.extra_env
          ~profile:(Workspace.Context.profile context) env_nodes)
   in
-  let env = extend_paths ~env (Workspace.Context.paths context) in
+  let build_dir =
+    Path.Build.relative Path.Build.root (Workspace.Context.name context) in
+  let env = extend_paths ~env ~build_dir (Workspace.Context.paths context) in
   match context with
   | Default { targets; name; host_context = _; profile; env = _
             ; toolchain ; paths = _; loc = _ } ->

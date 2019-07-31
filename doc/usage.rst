@@ -504,7 +504,7 @@ context or can be the description of an opam switch, as follows:
   ``PATH``-like variables in this context. These variables are passed as part of
   the environment to any program launched by ``dune``. For each variable, the
   value is specified using the :ref:`ordered-set-language`. Relative paths are
-  interpreted with respect to the workspace root, see :ref:`finding-root`.
+  interpreted with respect to the context build directory.
 
 
 If environment variables, such as ``PATH``, are modified in the `dune-workspace`

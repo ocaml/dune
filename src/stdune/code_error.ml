@@ -9,11 +9,14 @@ exception E of t
 let raise ?loc message data =
   raise (E { message; data ; loc })
 
-let to_dyn { loc = _; message; data } : Dyn.t =
-  Tuple
-    [ String message
-    ; Record data
-    ]
+let to_dyn { loc; message; data } : Dyn.t =
+  let fields = [Dyn.String message; Record data] in
+  let fields =
+    match loc with
+    | None -> fields
+    | Some loc -> Loc0.to_dyn loc :: fields
+  in
+  Tuple fields
 
 let () =
   Printexc.register_printer (function

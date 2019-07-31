@@ -322,12 +322,28 @@ let%expect_test _ =
 let%expect_test _ =
   test Dune (t [Text "x%{"]);
   [%expect.unreachable]
-[@@expect.uncaught_exn {| ("(\"Invalid text in unquoted template\", {s = \"x%{\"})") |}]
+[@@expect.uncaught_exn {|
+  ( "({pos_fname = \"<none>\";\
+   \n   start = {pos_lnum = 1;\
+   \n             pos_bol = 0;\
+   \n             pos_cnum = 0};\
+   \n   stop = {pos_lnum = 1;\
+   \n            pos_bol = 0;\
+   \n            pos_cnum = 0}},\
+   \n\"Invalid text in unquoted template\", {s = \"x%{\"})") |}]
 
 let%expect_test _ =
 test Dune (t [Text "x%"; Text "{"]);
 [%expect.unreachable]
-[@@expect.uncaught_exn {| ("(\"Invalid text in unquoted template\", {s = \"x%{\"})") |}]
+[@@expect.uncaught_exn {|
+  ( "({pos_fname = \"<none>\";\
+   \n   start = {pos_lnum = 1;\
+   \n             pos_bol = 0;\
+   \n             pos_cnum = 0};\
+   \n   stop = {pos_lnum = 1;\
+   \n            pos_bol = 0;\
+   \n            pos_cnum = 0}},\
+   \n\"Invalid text in unquoted template\", {s = \"x%{\"})") |}]
 
 let%expect_test _ =
   (* This round trip failure is expected *)

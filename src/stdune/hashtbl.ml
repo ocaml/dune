@@ -4,9 +4,10 @@ module Make(H : sig
     include Hashable.S
     val to_dyn : t -> Dyn.t
   end) = struct
-  include MoreLabels.Hashtbl.Make(H)
+  module Table = MoreLabels.Hashtbl.Make(H)
 
   include struct
+    open Table
     [@@@warning "-32"]
 
     let find_opt t key =
@@ -14,6 +15,7 @@ module Make(H : sig
       | x -> Some x
       | exception Not_found -> None
   end
+  include Table
 
   include struct
     let find = find_opt

@@ -34,7 +34,7 @@ let exec_run ~ectx ~dir ~env ~stdout_to ~stderr_to ~stdin_from prog args =
     prog args
 
 let exec_echo stdout_to str =
-  Fiber.return (output_string (Process.Output.channel stdout_to) str)
+  Fiber.return (output_string (Process.Io.out_channel stdout_to) str)
 
 let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to ~stdin_from =
   match (t : Action.t) with
@@ -63,7 +63,7 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to ~stdin_from =
   | Echo strs -> exec_echo stdout_to (String.concat strs ~sep:" ")
   | Cat fn ->
     Io.with_file_in fn ~f:(fun ic ->
-      Io.copy_channels ic (Process.Output.channel stdout_to));
+      Io.copy_channels ic (Process.Io.out_channel stdout_to));
     Fiber.return ()
   | Copy (src, dst) ->
     let dst = Path.build dst in
@@ -184,7 +184,7 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to ~stdin_from =
     Fiber.return ()
 
 and redirect_out outputs fn t ~ectx ~dir ~env ~stdout_to ~stderr_to ~stdin_from =
-  let out = Process.Output.file fn in
+  let out = Process.Io.file fn Process.Io.Out in
   let stdout_to, stderr_to =
     match outputs with
     | Stdout -> (out, stderr_to)
@@ -192,17 +192,17 @@ and redirect_out outputs fn t ~ectx ~dir ~env ~stdout_to ~stderr_to ~stdin_from 
     | Outputs -> (out, out)
   in
   exec t ~ectx ~dir ~env ~stdout_to ~stderr_to ~stdin_from >>| fun () ->
-  Process.Output.release out
+  Process.Io.release out
 
 and redirect_in inputs fn t ~ectx ~dir ~env
       ~stdout_to ~stderr_to ~stdin_from:_ =
-  let in_ = Process.Input.file fn in
+  let in_ = Process.Io.file fn Process.Io.In in
   let stdin_from =
     match inputs with
     | Stdin -> in_
   in
   exec t ~ectx ~dir ~env ~stdout_to ~stderr_to ~stdin_from >>| fun () ->
-  Process.Input.release in_
+  Process.Io.release in_
 
 and exec_list l ~ectx ~dir ~env ~stdout_to ~stderr_to ~stdin_from =
   match l with
@@ -212,9 +212,9 @@ and exec_list l ~ectx ~dir ~env ~stdout_to ~stderr_to ~stdin_from =
     exec t ~ectx ~dir ~env ~stdout_to ~stderr_to ~stdin_from
   | t :: rest ->
     let* () =
-      let stdout_to = Process.Output.multi_use stdout_to in
-      let stderr_to = Process.Output.multi_use stderr_to in
-      let stdin_from = Process.Input.multi_use stdin_from in
+      let stdout_to = Process.Io.multi_use stdout_to in
+      let stderr_to = Process.Io.multi_use stderr_to in
+      let stdin_from = Process.Io.multi_use stdin_from in
       exec t ~ectx ~dir ~env ~stdout_to ~stderr_to ~stdin_from
     in
     exec_list rest ~ectx ~dir ~env ~stdout_to ~stderr_to ~stdin_from
@@ -229,6 +229,6 @@ let exec ~targets ~context ~env t =
   let purpose = Process.Build_job targets in
   let ectx = { purpose; context } in
   exec t ~ectx ~dir:Path.root ~env
-    ~stdout_to:Process.Output.stdout
-    ~stderr_to:Process.Output.stderr
-    ~stdin_from:Process.Input.stdin
+    ~stdout_to:Process.Io.stdout
+    ~stderr_to:Process.Io.stderr
+    ~stdin_from:Process.Io.stdin

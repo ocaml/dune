@@ -49,10 +49,9 @@ end = struct
     end;
     Buffer.add_string buf after
 
-  (* TODO use the loc for the error *)
-  let check_valid_unquoted s ~loc:_ =
+  let check_valid_unquoted s ~loc =
     if not (Atom.is_valid (Atom.of_string s) Dune) then
-      Code_error.raise "Invalid text in unquoted template"
+      Code_error.raise ~loc "Invalid text in unquoted template"
         ["s", String s]
 
   let to_string { parts; quoted; loc } =

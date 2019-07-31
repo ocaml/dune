@@ -19,22 +19,6 @@ let of_lexbuf lexbuf : t =
   ; stop  = Lexing.lexeme_end_p   lexbuf
   }
 
-let dyn_of_position_no_file (p : Lexing.position) =
-  let open Dyn in
-  Record
-    [ "pos_lnum", Int p.pos_lnum
-    ; "pos_bol", Int p.pos_bol
-    ; "pos_cnum", Int p.pos_cnum
-    ]
-
-let to_dyn t =
-  let open Dyn in
-  Record
-    [ "pos_fname", String t.start.pos_fname
-    ; "start", dyn_of_position_no_file t.start
-    ; "stop", dyn_of_position_no_file t.stop
-    ]
-
 let equal_position
       { Lexing.pos_fname = f_a; pos_lnum = l_a
       ; pos_bol = b_a; pos_cnum = c_a }

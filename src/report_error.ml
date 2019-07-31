@@ -40,11 +40,16 @@ let get_printer = function
           (User_message.pp { msg with loc = None; hints = [] })
     }
   | Code_error.E t ->
+    let maybe_pp_loc fmt =
+      Option.iter ~f:(Format.fprintf fmt "@.%a" Loc.print) in
     let pp = fun ppf ->
       Format.fprintf ppf "@{<error>Internal error, please report upstream \
                           including the contents of _build/log.@}\n\
-                          Description:%a\n"
-        Pp.render_ignore_tags (Dyn.pp (Code_error.to_dyn t))
+                          Description:%a%a\n"
+        Pp.render_ignore_tags
+        (Dyn.pp (Code_error.to_dyn_without_loc t))
+        maybe_pp_loc
+        t.loc
     in
     make_printer ~backtrace:true pp
   | Unix.Unix_error (err, func, fname) ->

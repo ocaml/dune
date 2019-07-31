@@ -65,7 +65,8 @@
 - Remove support for old style subsystems. Dune will now emit a warning to
   reinstall the library with the old style subsystem. (#2480, @rgrinberg)
 
-- Add action (with-stdin-from ...). (#2487, @nojb)
+- Add action (with-stdin-from <file> <action>) to redirect input from <file>
+  when performing <action>. (#2487, @nojb)
 
 1.11.0 (23/07/2019)
 -------------------

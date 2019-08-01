@@ -5,7 +5,7 @@ OPAMYES="true"; export OPAMYES
 
 OPAM_VERSION="2.0.5"
 
-ODOC="odoc.1.4.0"
+ODOC="odoc.1.4.1"
 
 TARGET="$1"; shift
 

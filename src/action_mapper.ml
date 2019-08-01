@@ -22,8 +22,10 @@ module Make
       Chdir (f_path ~dir fn, f t ~dir:fn)
     | Setenv (var, value, t) ->
       Setenv (f_string ~dir var, f_string ~dir value, f t ~dir)
-    | Redirect (outputs, fn, t) ->
-      Redirect (outputs, f_target ~dir fn, f t ~dir)
+    | Redirect_out (outputs, fn, t) ->
+      Redirect_out (outputs, f_target ~dir fn, f t ~dir)
+    | Redirect_in (inputs, fn, t) ->
+      Redirect_in (inputs, f_path ~dir fn, f t ~dir)
     | Ignore (outputs, t) ->
       Ignore (outputs, f t ~dir)
     | Progn l -> Progn (List.map l ~f:(fun t -> f t ~dir))

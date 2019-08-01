@@ -13,6 +13,13 @@ module Outputs = struct
     | Outputs -> "outputs"
 end
 
+module Inputs = struct
+  include Action_intf.Inputs
+
+  let to_string = function
+    | Stdin -> "stdin"
+end
+
 module type Target_intf = sig
   include Dune_lang.Conv
 
@@ -36,7 +43,7 @@ struct
     if Target.is_dev_null fn then
       Ignore (output, action)
     else
-      Redirect (output, fn, action)
+      Redirect_out (output, fn, action)
 
   let decode =
     let path = Path.decode in
@@ -75,6 +82,12 @@ struct
            and+ t = t
            in
            translate_to_ignore fn Outputs t)
+        ; "with-stdin-from",
+          (Syntax.since Stanza.syntax (2, 0) >>>
+           let+ fn = path
+           and+ t = t
+           in
+           Redirect_in (Stdin, fn, t))
         ; "ignore-stdout",
           (t >>| fun t -> Ignore (Stdout, t))
         ; "ignore-stderr",
@@ -136,9 +149,14 @@ struct
       List (atom "run" :: program a :: List.map xs ~f:string)
     | Chdir (a, r) -> List [atom "chdir" ; path a ; encode r]
     | Setenv (k, v, r) -> List [atom "setenv" ; string k ; string v ; encode r]
-    | Redirect (outputs, fn, r) ->
+    | Redirect_out (outputs, fn, r) ->
       List [ atom (sprintf "with-%s-to" (Outputs.to_string outputs))
            ; target fn
+           ; encode r
+           ]
+    | Redirect_in (inputs, fn, r) ->
+      List [ atom (sprintf "with-%s-from" (Inputs.to_string inputs))
+           ; path fn
            ; encode r
            ]
     | Ignore (outputs, r) ->
@@ -181,9 +199,10 @@ struct
   let run prog args = Run (prog, args)
   let chdir path t = Chdir (path, t)
   let setenv var value t = Setenv (var, value, t)
-  let with_stdout_to path t = Redirect (Stdout, path, t)
-  let with_stderr_to path t = Redirect (Stderr, path, t)
-  let with_outputs_to path t = Redirect (Outputs, path, t)
+  let with_stdout_to path t = Redirect_out (Stdout, path, t)
+  let with_stderr_to path t = Redirect_out (Stderr, path, t)
+  let with_outputs_to path t = Redirect_out (Outputs, path, t)
+  let with_stdin_from path t = Redirect_in (Stdin, path, t)
   let ignore_stdout t = Ignore (Stdout, t)
   let ignore_stderr t = Ignore (Stderr, t)
   let ignore_outputs t = Ignore (Outputs, t)

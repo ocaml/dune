@@ -41,7 +41,7 @@ let run (vcs : Vcs.t) args =
         ~var:"GIT_DIR"
         ~value:(Filename.concat (Path.to_absolute_filename vcs.root) ".git"))
     ~dir:vcs.root
-    ~stdout_to:(Process.Output.file Config.dev_null)
+    ~stdout_to:(Process.Io.file Config.dev_null Process.Io.Out)
 
 type action =
   | Init

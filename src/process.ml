@@ -30,52 +30,93 @@ let map_result
       | 0 -> Ok (f ())
       | n -> Error n
 
-module Output = struct
-  type t =
-    { kind     : kind
-    ; fd       : Unix.file_descr Lazy.t
-    ; channel  : out_channel Lazy.t
-    ; mutable status : status
-    }
+module Io = struct
+  type input = Input
+  type output = Output
 
-  and kind =
+  type 'a mode =
+    | In  : input  mode
+    | Out : output mode
+
+  type kind =
     | File of Path.t
     | Terminal
 
-  and status =
+  type status =
     | Keep_open
     | Close_after_exec
     | Closed
 
-  let terminal oc =
-    let fd = Unix.descr_of_out_channel oc in
+  type 'a channel =
+    | In_chan  : in_channel  -> input  channel
+    | Out_chan : out_channel -> output channel
+
+  let descr_of_channel : type a. a channel -> _ = function
+    | In_chan ic -> Unix.descr_of_in_channel ic
+    | Out_chan oc -> Unix.descr_of_out_channel oc
+
+  let mode_of_channel : type a. a channel -> a mode = function
+    | In_chan _ -> In
+    | Out_chan _ -> Out
+
+  let channel_of_descr : type a. _ -> a mode -> a channel = fun fd mode ->
+    match mode with
+    | In -> In_chan (Unix.in_channel_of_descr fd)
+    | Out -> Out_chan (Unix.out_channel_of_descr fd)
+
+  let close_channel : type a. a channel -> unit = function
+    | Out_chan ch -> close_out ch
+    | In_chan ch  -> close_in ch
+
+  type 'a t =
+    { kind     : kind
+    ; mode     : 'a mode
+    ; fd       : Unix.file_descr Lazy.t
+    ; channel  : 'a channel Lazy.t
+    ; mutable status : status
+    }
+
+  let terminal ch =
+    let fd = descr_of_channel ch in
     { kind = Terminal
+    ; mode = mode_of_channel ch
     ; fd = lazy fd
-    ; channel = lazy stdout
+    ; channel = lazy ch
     ; status = Keep_open
     }
-  let stdout = terminal stdout
-  let stderr = terminal stderr
+  let stdout = terminal (Out_chan stdout)
+  let stderr = terminal (Out_chan stderr)
+  let stdin  = terminal (In_chan  stdin)
 
-  let file fn =
-    let fd =
-      lazy (Unix.openfile (Path.to_string fn)
-              [O_WRONLY; O_CREAT; O_TRUNC; O_SHARE_DELETE] 0o666)
+  let file : type a. _ -> a mode -> a t = fun fn mode ->
+    let flags =
+      match mode with
+      | Out -> [Unix.O_WRONLY; O_CREAT; O_TRUNC; O_SHARE_DELETE]
+      | In -> [O_RDONLY; O_SHARE_DELETE]
     in
+    let fd = lazy (Unix.openfile (Path.to_string fn) flags 0o666) in
+    let channel = lazy (channel_of_descr (Lazy.force fd) mode) in
     { kind = File fn
+    ; mode
     ; fd
-    ; channel = lazy (Unix.out_channel_of_descr (Lazy.force fd))
+    ; channel
     ; status = Close_after_exec
     }
 
-  let flush t =
-    if Lazy.is_val t.channel then flush (Lazy.force t.channel)
+  let flush : type a. a t -> unit = fun t ->
+    if Lazy.is_val t.channel then
+      match Lazy.force t.channel with
+      | Out_chan oc ->
+        flush oc
+      | In_chan _ ->
+        ()
 
   let fd t =
     flush t;
     Lazy.force t.fd
 
-  let channel t = Lazy.force t.channel
+  let out_channel = function
+    | {channel = lazy (Out_chan oc); _} -> oc
 
   let release t =
     match t.status with
@@ -84,7 +125,7 @@ module Output = struct
     | Close_after_exec ->
       t.status <- Closed;
       if Lazy.is_val t.channel then
-        close_out (Lazy.force t.channel)
+        close_channel (Lazy.force t.channel)
       else
         Unix.close (Lazy.force t.fd)
 
@@ -114,12 +155,20 @@ module Temp = struct
     tmp_files := Path.Set.remove !tmp_files fn
 end
 
-let command_line_enclosers ~dir ~(stdout_to:Output.t) ~(stderr_to:Output.t) =
+let command_line_enclosers ~dir
+      ~(stdout_to:Io.output Io.t)
+      ~(stderr_to:Io.output Io.t)
+      ~(stdin_from:Io.input Io.t) =
   let quote fn = String.quote_for_shell (Path.to_string fn) in
   let prefix, suffix =
     match dir with
     | None -> "", ""
     | Some dir -> sprintf "(cd %s && " (quote dir), ")"
+  in
+  let suffix =
+    match stdin_from.kind with
+    | Terminal -> suffix
+    | File fn -> suffix ^ " < " ^ quote fn
   in
   let suffix =
     match stdout_to.kind, stderr_to.kind with
@@ -137,12 +186,13 @@ let command_line_enclosers ~dir ~(stdout_to:Output.t) ~(stderr_to:Output.t) =
   in
   (prefix, suffix)
 
-let command_line ~prog ~args ~dir ~stdout_to ~stderr_to =
+let command_line ~prog ~args ~dir ~stdout_to ~stderr_to ~stdin_from =
   let s =
     List.map (prog :: args) ~f:String.quote_for_shell
     |> String.concat ~sep:" "
   in
-  let prefix, suffix = command_line_enclosers ~dir ~stdout_to ~stderr_to in
+  let prefix, suffix =
+    command_line_enclosers ~dir ~stdout_to ~stderr_to ~stdin_from in
   prefix ^ s ^ suffix
 
 module Fancy = struct
@@ -215,13 +265,14 @@ module Fancy = struct
       :: colorize_args rest
     | x :: rest -> Pp.verbatim (String.quote_for_shell x) :: colorize_args rest
 
-  let command_line ~prog ~args ~dir ~stdout_to ~stderr_to =
+  let command_line ~prog ~args ~dir ~stdout_to ~stderr_to ~stdin_from =
     let open Pp.O in
     let prog = colorize_prog (String.quote_for_shell prog) in
     let pp =
       Pp.concat ~sep:(Pp.char ' ') (prog :: colorize_args args)
     in
-    let prefix, suffix = command_line_enclosers ~dir ~stdout_to ~stderr_to in
+    let prefix, suffix =
+      command_line_enclosers ~dir ~stdout_to ~stderr_to ~stdin_from in
     Pp.verbatim prefix ++ pp ++ Pp.verbatim suffix
 
   let pp_purpose = function
@@ -408,8 +459,8 @@ module Exit_status = struct
         :: Option.to_list output)
 end
 
-let run_internal ?dir ?(stdout_to=Output.stdout) ?(stderr_to=Output.stderr)
-      ~env ~purpose fail_mode prog args =
+let run_internal ?dir ?(stdout_to=Io.stdout) ?(stderr_to=Io.stderr)
+      ?(stdin_from=Io.stdin) ~env ~purpose fail_mode prog args =
   let* scheduler = Scheduler.wait_for_available_job () in
   let display = Console.display () in
   let dir =
@@ -425,14 +476,15 @@ let run_internal ?dir ?(stdout_to=Output.stdout) ?(stderr_to=Output.stderr)
   let ok_codes = accepted_codes fail_mode in
   let prog_str = Path.reach_for_running ?from:dir prog in
   let command_line =
-    command_line ~prog:prog_str ~args ~dir ~stdout_to ~stderr_to
+    command_line ~prog:prog_str ~args ~dir ~stdout_to ~stderr_to ~stdin_from
   in
   let fancy_command_line =
     match display with
     | Verbose ->
       let open Pp.O in
       let cmdline =
-        Fancy.command_line ~prog:prog_str ~args ~dir ~stdout_to ~stderr_to
+        Fancy.command_line ~prog:prog_str ~args ~dir
+          ~stdout_to ~stderr_to ~stdin_from
       in
       Console.print_user_message
         (User_message.make
@@ -449,7 +501,7 @@ let run_internal ?dir ?(stdout_to=Output.stdout) ?(stderr_to=Output.stderr)
       | Not_supported -> (args, None)
       | Zero_terminated_strings arg ->
         let fn = Temp.create "responsefile" ".data" in
-        Io.with_file_out fn ~f:(fun oc ->
+        Stdune.Io.with_file_out fn ~f:(fun oc ->
           List.iter args ~f:(fun arg ->
             output_string oc arg;
             output_char oc '\000'));
@@ -462,10 +514,10 @@ let run_internal ?dir ?(stdout_to=Output.stdout) ?(stderr_to=Output.stderr)
     match stdout_to.kind, stderr_to.kind with
     | (Terminal, _ | _, Terminal) when !Clflags.capture_outputs ->
       let fn = Temp.create "dune" ".output" in
-      let terminal = Output.file fn in
-      let get (out : Output.t) =
+      let terminal = Io.file fn Io.Out in
+      let get (out : Io.output Io.t) =
         if out.kind = Terminal then begin
-          Output.flush out;
+          Io.flush out;
           terminal
         end else
           out
@@ -478,8 +530,9 @@ let run_internal ?dir ?(stdout_to=Output.stdout) ?(stderr_to=Output.stderr)
     (* Output.fd might create the file with Unix.openfile. We need to
        make sure to call it before doing the chdir as the path might
        be relative. *)
-    let stdout = Output.fd stdout_to in
-    let stderr = Output.fd stderr_to in
+    let stdout = Io.fd stdout_to in
+    let stderr = Io.fd stderr_to in
+    let stdin = Io.fd stdin_from in
     fun () ->
       Spawn.spawn ()
         ~prog:prog_str
@@ -487,14 +540,15 @@ let run_internal ?dir ?(stdout_to=Output.stdout) ?(stderr_to=Output.stderr)
         ~env:(Spawn.Env.of_array (Env.to_unix env))
         ~stdout
         ~stderr
+        ~stdin
   in
   let pid =
     match dir with
     | None -> run ()
     | Some dir -> Scheduler.with_chdir scheduler ~dir ~f:run
   in
-  Output.release stdout_to;
-  Output.release stderr_to;
+  Io.release stdout_to;
+  Io.release stderr_to;
   let+ exit_status =
     Stats.with_process ~program:prog_str ~args (Scheduler.wait_for_process pid)
   in
@@ -503,7 +557,7 @@ let run_internal ?dir ?(stdout_to=Output.stdout) ?(stderr_to=Output.stderr)
     match output_filename with
     | None -> ""
     | Some fn ->
-      let s = Io.read_file fn in
+      let s = Stdune.Io.read_file fn in
       Temp.destroy fn;
       s
   in
@@ -524,48 +578,50 @@ let run_internal ?dir ?(stdout_to=Output.stdout) ?(stderr_to=Output.stderr)
     Exit_status.handle_non_verbose exit_status ~prog:prog_str ~command_line
       ~output ~purpose ~display
 
-let run ?dir ?stdout_to ?stderr_to ~env ?(purpose=Internal_job) fail_mode
-      prog args =
+let run ?dir ?stdout_to ?stderr_to ?stdin_from ~env
+      ?(purpose=Internal_job) fail_mode prog args =
   map_result fail_mode
-    (run_internal ?dir ?stdout_to ?stderr_to ~env ~purpose fail_mode prog args)
+    (run_internal ?dir ?stdout_to ?stderr_to ?stdin_from
+       ~env ~purpose fail_mode prog args)
     ~f:ignore
 
-let run_capture_gen ?dir ?stderr_to ~env ?(purpose=Internal_job) fail_mode
-      prog args ~f =
+let run_capture_gen ?dir ?stderr_to ?stdin_from ~env ?(purpose=Internal_job)
+      fail_mode prog args ~f =
   let fn = Temp.create "dune" ".output" in
   map_result fail_mode
-    (run_internal ?dir ~stdout_to:(Output.file fn) ?stderr_to
+    (run_internal ?dir ~stdout_to:(Io.file fn Io.Out) ?stderr_to ?stdin_from
        ~env ~purpose fail_mode prog args)
     ~f:(fun () ->
       let x = f fn in
       Temp.destroy fn;
       x)
 
-let run_capture = run_capture_gen ~f:Io.read_file
-let run_capture_lines = run_capture_gen ~f:Io.lines_of_file
+let run_capture = run_capture_gen ~f:Stdune.Io.read_file
+let run_capture_lines = run_capture_gen ~f:Stdune.Io.lines_of_file
 
-let run_capture_line ?dir ?stderr_to ~env ?(purpose=Internal_job) fail_mode
-      prog args =
-  run_capture_gen ?dir ?stderr_to ~env ~purpose fail_mode prog args ~f:(fun fn ->
-    match Io.lines_of_file fn with
-    | [x] -> x
-    | l ->
-      let cmdline =
-        let prog = Path.reach_for_running ?from:dir prog in
-        let prog_display = String.concat (prog :: args) ~sep:" " in
-        match dir with
-        | None -> prog_display
-        | Some dir -> sprintf "cd %s && %s" (Path.to_string dir) prog_display
-      in
-      match l with
-      | [] ->
-        User_error.raise
-          [ Pp.textf "Command returned nothing: %s" cmdline ]
-      | _ ->
-        User_error.raise
-          [ Pp.textf "command returned too many lines: %s" cmdline
-          ; Pp.vbox
-              (Pp.concat_map l ~sep:Pp.cut
-                 ~f:(fun line ->
-                   Pp.seq (Pp.verbatim "> ") (Pp.verbatim line)))
-          ])
+let run_capture_line ?dir ?stderr_to ?stdin_from ~env ?(purpose=Internal_job)
+      fail_mode prog args =
+  run_capture_gen ?dir ?stderr_to ?stdin_from ~env ~purpose fail_mode prog args
+    ~f:(fun fn ->
+      match Stdune.Io.lines_of_file fn with
+      | [x] -> x
+      | l ->
+        let cmdline =
+          let prog = Path.reach_for_running ?from:dir prog in
+          let prog_display = String.concat (prog :: args) ~sep:" " in
+          match dir with
+          | None -> prog_display
+          | Some dir -> sprintf "cd %s && %s" (Path.to_string dir) prog_display
+        in
+        match l with
+        | [] ->
+          User_error.raise
+            [ Pp.textf "Command returned nothing: %s" cmdline ]
+        | _ ->
+          User_error.raise
+            [ Pp.textf "command returned too many lines: %s" cmdline
+            ; Pp.vbox
+                (Pp.concat_map l ~sep:Pp.cut
+                   ~f:(fun line ->
+                     Pp.seq (Pp.verbatim "> ") (Pp.verbatim line)))
+            ])

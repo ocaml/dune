@@ -141,7 +141,7 @@ let auto_concurrency =
                | Some prog ->
                  let* result =
                    Process.run_capture (Accept All) prog args ~env:Env.initial
-                     ~stderr_to:(Process.Output.file Config.dev_null)
+                     ~stderr_to:(Process.Io.file Config.dev_null Process.Io.Out)
                  in
                  match result with
                  | Error _ -> loop rest

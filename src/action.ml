@@ -2,6 +2,7 @@ open! Stdune
 open Import
 
 module Outputs = Action_ast.Outputs
+module Inputs = Action_ast.Inputs
 
 module Prog = struct
   module Not_found = struct
@@ -141,7 +142,8 @@ let fold_one_step t ~init:acc ~f =
   match t with
   | Chdir (_, t)
   | Setenv (_, _, t)
-  | Redirect (_, _, t)
+  | Redirect_out (_, _, t)
+  | Redirect_in (_, _, t)
   | Ignore (_, t) -> f acc t
   | Progn l -> List.fold_left l ~init:acc ~f
   | Run _
@@ -233,7 +235,9 @@ let is_useful_to_sandbox =
       loop t
     | Setenv (_, _, t) ->
       loop t
-    | Redirect (_, _, t) ->
+    | Redirect_out (_, _, t) ->
+      loop t
+    | Redirect_in (_, _, t) ->
       loop t
     | Ignore (_, t) ->
       loop t

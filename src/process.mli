@@ -14,27 +14,36 @@ type ('a, 'b) failure_mode =
   (** Accept the following non-zero exit codes, and return [Error
       code] if the process exists with one of these codes. *)
 
-module Output : sig
-  (** Where to redirect stdout/stderr *)
-  type t
+module Io : sig
+  (** Where to redirect stdout/stderr/stdin *)
+  type input = Input
+  type output = Output
 
-  val stdout : t
-  val stderr : t
+  type 'a mode =
+    | In : input mode
+    | Out : output mode
 
-  (** Create a [t] representing redirecting the output to a file. The
-      returned output can only be used by a single call to {!run}. If
-      you want to use it multiple times, you need to use [clone]. *)
-  val file : Path.t -> t
+  type 'a t
 
-  (** Call this when you no longer need this output *)
-  val release : t -> unit
+  val stdout : output t
+  val stderr : output t
+  val stdin : input t
 
   (** Return a buffered channel for this output. The channel is
       created lazily. *)
-  val channel : t -> out_channel
+  val out_channel : output t -> out_channel
+
+  (** Create a [t] representing redirecting the input or to a file or reading
+      input from the file. The returned channel can only be used by a single
+      call to {!run}. If you want to use it multiple times, you need to use
+      [clone]. *)
+  val file : Path.t -> 'a mode -> 'a t
+
+  (** Call this when you no longer need this redirection *)
+  val release : 'a t -> unit
 
   (** [multi_use t] returns a copy for which [release] does nothing *)
-  val multi_use : t -> t
+  val multi_use : 'a t -> 'a t
 end
 
 (** Why a Fiber.t was run *)
@@ -42,11 +51,13 @@ type purpose =
   | Internal_job
   | Build_job of Path.Build.Set.t
 
-(** [run ?dir ?stdout_to prog args] spawns a sub-process and wait for its termination *)
+(** [run ?dir ?stdout_to prog args] spawns a sub-process and wait for its
+    termination *)
 val run
   :  ?dir:Path.t
-  -> ?stdout_to:Output.t
-  -> ?stderr_to:Output.t
+  -> ?stdout_to:Io.output Io.t
+  -> ?stderr_to:Io.output Io.t
+  -> ?stdin_from:Io.input Io.t
   -> env:Env.t
   -> ?purpose:purpose
   -> (unit, 'a) failure_mode
@@ -57,7 +68,8 @@ val run
 (** Run a command and capture its output *)
 val run_capture
   :  ?dir:Path.t
-  -> ?stderr_to:Output.t
+  -> ?stderr_to:Io.output Io.t
+  -> ?stdin_from:Io.input Io.t
   -> env:Env.t
   -> ?purpose:purpose
   -> (string, 'a) failure_mode
@@ -66,7 +78,8 @@ val run_capture
   -> 'a Fiber.t
 val run_capture_line
   :  ?dir:Path.t
-  -> ?stderr_to:Output.t
+  -> ?stderr_to:Io.output Io.t
+  -> ?stdin_from:Io.input Io.t
   -> env:Env.t
   -> ?purpose:purpose
   -> (string, 'a) failure_mode
@@ -75,7 +88,8 @@ val run_capture_line
   -> 'a Fiber.t
 val run_capture_lines
   :  ?dir:Path.t
-  -> ?stderr_to:Output.t
+  -> ?stderr_to:Io.output Io.t
+  -> ?stdin_from:Io.input Io.t
   -> env:Env.t
   -> ?purpose:purpose
   -> (string list, 'a) failure_mode

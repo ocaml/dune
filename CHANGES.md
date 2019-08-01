@@ -1,6 +1,9 @@
 2.0.0 (unreleased)
 ------------------
 
+- Infer targets for rule stanzas expressed in long form (#2494, fixes #2469,
+  @NathanReb)
+
 - Indicate the progress of the initial file tree loading (#2459, fixes #2374,
   @bobot)
 

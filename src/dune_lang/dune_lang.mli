@@ -433,8 +433,11 @@ module Decoder : sig
     -> 'a t
     -> 'a option fields_parser
 
+  (** Parser for mutually exclusive fields. If [default] is provided, allow
+      fields absence. *)
   val fields_mutually_exclusive
     : ?on_dup:(Univ_map.t -> string -> Ast.t list -> unit)
+    -> ?default:'a
     -> (string * 'a t) list
     -> 'a fields_parser
 

@@ -1703,6 +1703,7 @@ module Rule = struct
 
     let fields_parser =
       fields_mutually_exclusive
+        ~default:Infer
         [ "targets", decode_static
         ; "target", decode_one_static
         ]

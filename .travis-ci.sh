@@ -3,7 +3,7 @@
 PATH=~/ocaml/bin:$PATH; export PATH
 OPAMYES="true"; export OPAMYES
 
-OPAM_VERSION="2.0.3"
+OPAM_VERSION="2.0.5"
 
 ODOC="odoc.1.4.0"
 

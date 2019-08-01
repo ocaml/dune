@@ -90,7 +90,7 @@ Here's a complete example of a dune file with opam metadata specification:
     (description "A longer description")
     (depends
      (alcotest :with-test)
-     (dune (and :build (> 1.5)))
+     (dune (> 1.5))
      (foo (and :dev (> 1.5) (< 2.0)))
      (uri (>= 1.9.0))
      (uri (< 2.0.0))

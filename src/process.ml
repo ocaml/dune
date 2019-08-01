@@ -31,8 +31,8 @@ let map_result
       | n -> Error n
 
 module Io = struct
-  type input
-  type output
+  type input = Input
+  type output = Output
 
   type 'a mode =
     | In  : input  mode

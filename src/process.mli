@@ -16,8 +16,8 @@ type ('a, 'b) failure_mode =
 
 module Io : sig
   (** Where to redirect stdout/stderr/stdin *)
-  type input
-  type output
+  type input = Input
+  type output = Output
 
   type 'a mode =
     | In : input mode

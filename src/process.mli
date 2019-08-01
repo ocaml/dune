@@ -33,9 +33,10 @@ module Io : sig
       created lazily. *)
   val out_channel : output t -> out_channel
 
-  (** Create a [t] representing redirecting the output to a file. The
-      returned output can only be used by a single call to {!run}. If
-      you want to use it multiple times, you need to use [clone]. *)
+  (** Create a [t] representing redirecting the input or to a file or reading
+      input from the file. The returned channel can only be used by a single
+      call to {!run}. If you want to use it multiple times, you need to use
+      [clone]. *)
   val file : Path.t -> 'a mode -> 'a t
 
   (** Call this when you no longer need this redirection *)

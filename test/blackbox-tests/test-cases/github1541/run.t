@@ -4,22 +4,42 @@ This demonstrates error messages whennever a pform isn't expanded
 
 for libraries:
 
-  $ echo '(rule (with-stdout-to dummy1 (echo "%{lib:fakelib:bar.ml}")))' > dune
-  $ dune build ./dummy1
-  File "dune", line 1, characters 38-57:
-  1 | (rule (with-stdout-to dummy1 (echo "%{lib:fakelib:bar.ml}")))
-                                            ^^^^^^^^^^^^^^^^^^^
+  $ echo '(rule (with-stdout-to dummy (echo "%{lib:fakelib:bar.ml}")))' > dune
+  $ dune build ./dummy
+  File "dune", line 1, characters 37-56:
+  1 | (rule (with-stdout-to dummy (echo "%{lib:fakelib:bar.ml}")))
+                                           ^^^^^^^^^^^^^^^^^^^
   Error: Library "fakelib" not found.
-  Hint: try: dune external-lib-deps --missing ./dummy1
+  Hint: try: dune external-lib-deps --missing ./dummy
   [1]
 
 for binaries:
 
-  $ echo '(rule (with-stdout-to dummy2 (echo "%{bin:fakebin}")))' > dune
-  $ dune build ./dummy2
-  File "dune", line 1, characters 38-50:
-  1 | (rule (with-stdout-to dummy2 (echo "%{bin:fakebin}")))
-                                            ^^^^^^^^^^^^
+  $ echo '(rule (with-stdout-to dummy (echo "%{bin:fakebin}")))' > dune
+  $ dune build ./dummy
+  File "dune", line 1, characters 37-49:
+  1 | (rule (with-stdout-to dummy (echo "%{bin:fakebin}")))
+                                           ^^^^^^^^^^^^
   Error: Program fakebin not found in the tree or in PATH
    (context: default)
+  [1]
+
+for libraries in the deps field:
+
+  $ echo '(rule (deps %{lib:fakelib:bar.ml}) (target dummy) (action (with-stdout-to %{target} (echo foo))))' > dune
+  $ dune build ./dummy
+  File "dune", line 1, characters 14-33:
+  1 | (rule (deps %{lib:fakelib:bar.ml}) (target dummy) (action (with-stdout-to %{target} (echo foo))))
+                    ^^^^^^^^^^^^^^^^^^^
+  Error: Unknown macro %{lib:..}
+  [1]
+
+for binaries in the deps field:
+
+  $ echo '(rule (deps %{bin:foobar}) (target dummy) (action (with-stdout-to %{target} (echo foo))))' > dune
+  $ dune build ./dummy
+  File "dune", line 1, characters 14-25:
+  1 | (rule (deps %{bin:foobar}) (target dummy) (action (with-stdout-to %{target} (echo foo))))
+                    ^^^^^^^^^^^
+  Error: Unknown macro %{bin:..}
   [1]

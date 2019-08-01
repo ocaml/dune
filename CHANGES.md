@@ -62,6 +62,9 @@
   The global configuration merely specifies the default. 
   (#2213, @aalekseyev, @jdimino)
 
+- Remove support for old style subsystems. Dune will now emit a warning to
+  reinstall the library with the old style subsystem. (#2480, @rgrinberg)
+
 1.11.0 (23/07/2019)
 -------------------
 

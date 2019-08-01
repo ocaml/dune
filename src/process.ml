@@ -117,7 +117,6 @@ module Io = struct
 
   let out_channel = function
     | {channel = lazy (Out_chan oc); _} -> oc
-    | _ -> .
 
   let release t =
     match t.status with

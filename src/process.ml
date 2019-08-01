@@ -157,7 +157,9 @@ module Temp = struct
 end
 
 let command_line_enclosers ~dir
-      ~(stdout_to:Io.output Io.t) ~(stderr_to:Io.output Io.t) ~(stdin_from:Io.input Io.t) =
+      ~(stdout_to:Io.output Io.t)
+      ~(stderr_to:Io.output Io.t)
+      ~(stdin_from:Io.input Io.t) =
   let quote fn = String.quote_for_shell (Path.to_string fn) in
   let prefix, suffix =
     match dir with
@@ -270,7 +272,8 @@ module Fancy = struct
     let pp =
       Pp.concat ~sep:(Pp.char ' ') (prog :: colorize_args args)
     in
-    let prefix, suffix = command_line_enclosers ~dir ~stdout_to ~stderr_to ~stdin_from in
+    let prefix, suffix =
+      command_line_enclosers ~dir ~stdout_to ~stderr_to ~stdin_from in
     Pp.verbatim prefix ++ pp ++ Pp.verbatim suffix
 
   let pp_purpose = function
@@ -583,8 +586,8 @@ let run ?dir ?stdout_to ?stderr_to ?stdin_from ~env
        ~env ~purpose fail_mode prog args)
     ~f:ignore
 
-let run_capture_gen ?dir ?stderr_to ?stdin_from ~env ?(purpose=Internal_job) fail_mode
-      prog args ~f =
+let run_capture_gen ?dir ?stderr_to ?stdin_from ~env ?(purpose=Internal_job)
+      fail_mode prog args ~f =
   let fn = Temp.create "dune" ".output" in
   map_result fail_mode
     (run_internal ?dir ~stdout_to:(Io.file fn Io.Out) ?stderr_to ?stdin_from
@@ -597,28 +600,29 @@ let run_capture_gen ?dir ?stderr_to ?stdin_from ~env ?(purpose=Internal_job) fai
 let run_capture = run_capture_gen ~f:Stdune.Io.read_file
 let run_capture_lines = run_capture_gen ~f:Stdune.Io.lines_of_file
 
-let run_capture_line ?dir ?stderr_to ?stdin_from ~env ?(purpose=Internal_job) fail_mode
-      prog args =
-  run_capture_gen ?dir ?stderr_to ?stdin_from ~env ~purpose fail_mode prog args ~f:(fun fn ->
-    match Stdune.Io.lines_of_file fn with
-    | [x] -> x
-    | l ->
-      let cmdline =
-        let prog = Path.reach_for_running ?from:dir prog in
-        let prog_display = String.concat (prog :: args) ~sep:" " in
-        match dir with
-        | None -> prog_display
-        | Some dir -> sprintf "cd %s && %s" (Path.to_string dir) prog_display
-      in
-      match l with
-      | [] ->
-        User_error.raise
-          [ Pp.textf "Command returned nothing: %s" cmdline ]
-      | _ ->
-        User_error.raise
-          [ Pp.textf "command returned too many lines: %s" cmdline
-          ; Pp.vbox
-              (Pp.concat_map l ~sep:Pp.cut
-                 ~f:(fun line ->
-                   Pp.seq (Pp.verbatim "> ") (Pp.verbatim line)))
-          ])
+let run_capture_line ?dir ?stderr_to ?stdin_from ~env ?(purpose=Internal_job)
+      fail_mode prog args =
+  run_capture_gen ?dir ?stderr_to ?stdin_from ~env ~purpose fail_mode prog args
+    ~f:(fun fn ->
+      match Stdune.Io.lines_of_file fn with
+      | [x] -> x
+      | l ->
+        let cmdline =
+          let prog = Path.reach_for_running ?from:dir prog in
+          let prog_display = String.concat (prog :: args) ~sep:" " in
+          match dir with
+          | None -> prog_display
+          | Some dir -> sprintf "cd %s && %s" (Path.to_string dir) prog_display
+        in
+        match l with
+        | [] ->
+          User_error.raise
+            [ Pp.textf "Command returned nothing: %s" cmdline ]
+        | _ ->
+          User_error.raise
+            [ Pp.textf "command returned too many lines: %s" cmdline
+            ; Pp.vbox
+                (Pp.concat_map l ~sep:Pp.cut
+                   ~f:(fun line ->
+                     Pp.seq (Pp.verbatim "> ") (Pp.verbatim line)))
+            ])

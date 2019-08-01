@@ -159,9 +159,9 @@ let exclusions =
   ; make "private-public-overlap" ~external_deps:true
   ; make "reason" ~external_deps:true
   ; make "menhir"~external_deps:true
-  ; make "utop" ~external_deps:true
-  ; make "utop-default" ~external_deps:true ~skip_ocaml:"<4.05.0"
-  ; make "utop-default-implementation"
+  ; make "utop" ~external_deps:true ~enabled:false
+  ; make "utop-default" ~external_deps:true ~skip_ocaml:"<4.05.0" ~enabled:false
+  ; make "utop-default-implementation" ~enabled:false
       ~external_deps:true ~skip_ocaml:"<4.05.0"
   ; make "toplevel-stanza" ~skip_ocaml:"<4.05.0"
   ; make "configurator" ~skip_platforms:[Win]

@@ -1872,9 +1872,6 @@
   (alias unreadable-src)
   (alias upgrader)
   (alias use-meta)
-  (alias utop)
-  (alias utop-default)
-  (alias utop-default-implementation)
   (alias variants)
   (alias variants-external-declaration)
   (alias variants-external-declaration-conflict)
@@ -2075,7 +2072,12 @@
 
 (alias
  (name runtest-disabled)
- (deps (alias cinaps) (alias envs-and-contexts)))
+ (deps
+  (alias cinaps)
+  (alias envs-and-contexts)
+  (alias utop)
+  (alias utop-default)
+  (alias utop-default-implementation)))
 
 (alias (name runtest-js) (deps (alias explicit_js_mode) (alias js_of_ocaml)))
 

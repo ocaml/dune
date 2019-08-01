@@ -571,7 +571,7 @@ let () =
     ~exe:"boot.exe"
     ~main:"let () = Main.bootstrap ()"
     ~dirs
-    ~flags:"-I +threads"
+    ~flags:"-I +threads -custom"
     ~byte_flags:"unix.cma threads.cma"
     ~native_flags:None
     ~pp

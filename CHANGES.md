@@ -68,6 +68,9 @@
 - Add action (with-stdin-from <file> <action>) to redirect input from <file>
   when performing <action>. (#2487, @nojb)
 
+- Change the automatically generated odoc index to only list public modules.
+  This only affects unwrapped libraries (#2479, @rgrinberg)
+
 1.11.0 (23/07/2019)
 -------------------
 

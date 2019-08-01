@@ -705,20 +705,21 @@ let rec obj_map
           | Some (Imported_from_vlib _ | Impl_of_virtual_module _), _
           | _ , Some (Imported_from_vlib _ | Impl_of_virtual_module _) -> assert false)
 
-(* TODO perhaps return only public modules? *)
-let entry_modules = function
-  | Stdlib w -> Stdlib.lib_interface w |> Option.to_list
-  | Singleton m -> [m]
-  | Unwrapped m -> Module.Name.Map.values m
-  | Wrapped m ->
-    (* we assume this is never called for implementations *)
-    begin match Wrapped.lib_interface m with
-    | Some m -> [m]
-    | None -> [m.alias_module]
-    end
-  | Impl i ->
-    Code_error.raise "entry_modules: not defined for implementations"
-      ["impl", dyn_of_impl i]
+let entry_modules t =
+  List.filter ~f:(fun m -> Module.visibility m = Public) (
+    match t with
+    | Stdlib w -> Stdlib.lib_interface w |> Option.to_list
+    | Singleton m -> [m]
+    | Unwrapped m -> Module.Name.Map.values m
+    | Wrapped m ->
+      (* we assume this is never called for implementations *)
+      begin match Wrapped.lib_interface m with
+      | Some m -> [m]
+      | None -> [m.alias_module]
+      end
+    | Impl i ->
+      Code_error.raise "entry_modules: not defined for implementations"
+        ["impl", dyn_of_impl i])
 
 let virtual_module_names =
   fold_no_vlib ~init:Module.Name.Set.empty ~f:(fun m acc ->

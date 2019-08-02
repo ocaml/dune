@@ -622,9 +622,10 @@ The following constructions are available:
 - ``(diff <file1> <file2>)`` is similar to ``(run diff <file1>
   <file2>)`` but is better and allows promotion.  See `Diffing and
   promotion`_ for more details
-- ``(diff? <file1> <file2>)`` is the same as ``(diff <file1>
-  <file2>)`` except that it is ignored when ``<file1>`` or ``<file2>``
-  doesn't exists
+- ``(diff? <file1> <file2>)`` is similar to ``(diff <file1>
+  <file2>)`` except that ``<file2>`` should be produced by a part of the
+  same action rather than be a dependency, is optional and will
+  be consumed by ``diff?``.
 - ``(cmp <file1> <file2>)`` is similar to ``(run cmp <file1>
   <file2>)`` but allows promotion.  See `Diffing and promotion`_ for
   more details

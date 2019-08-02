@@ -6,13 +6,7 @@ include Cmdliner.Arg
 let package_name =
   conv ((fun p -> Ok (Package.Name.of_string p)), Package.Name.pp)
 
-module Path : sig
-  type t
-  val path : t -> Path.t
-  val arg : t -> string
-
-  val conv : t conv
-end = struct
+module Path = struct
   type t = string
 
   let path p = Path.of_filename_relative_to_initial_cwd p
@@ -31,17 +25,7 @@ let profile = conv (
 , (fun fmt t -> Format.pp_print_string fmt (Profile.to_string t))
 )
 
-module Dep : sig
-  type t = Dune_file.Dep_conf.t
-
-  val conv : t conv
-
-  val file : string -> t
-  val alias : string -> t
-  val alias_rec : string -> t
-
-  val to_string_maybe_quoted : t -> string
-end = struct
+module Dep = struct
   module Dep_conf = Dune_file.Dep_conf
 
   type t = Dep_conf.t

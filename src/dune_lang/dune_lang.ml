@@ -1048,7 +1048,7 @@ module Decoder = struct
   [@@inline never]
 
   let fields_mutually_exclusive
-        ?on_dup fields ((Fields (loc, _, _) : _ context) as ctx) state =
+        ?on_dup ?default fields ((Fields (loc, _, _) : _ context) as ctx) state =
     let res, state =
       traverse ~f:(fun (name, parser) ->
         field_o name ?on_dup parser
@@ -1060,7 +1060,10 @@ module Decoder = struct
         ~f:(function (name, Some x) -> Some(name, x) | (_, None) -> None) with
     | [] ->
       let names = List.map fields ~f:fst in
-      fields_missing_need_exactly_one loc names
+      ( match default with
+        | None -> fields_missing_need_exactly_one loc names
+        | Some default -> default, state
+      )
     | [ (_name, res) ] ->
       res, state
     | (_ :: _ :: _ as results) ->

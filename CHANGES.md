@@ -99,6 +99,11 @@
   already end in .exe. Second, when resolving binary names, .opt variants are no
   longer chosen automatically. (#2543, @nojb)
 
+- Make `(diff? x y)` move the correction file (`y`) away from the build 
+  directory to promotion staging area.
+  This makes corrections work with sandboxing and in general reduces build 
+  directory pollution. (#2486, @aalekseyev, fixes #2482)
+
 1.11.0 (23/07/2019)
 -------------------
 

@@ -65,14 +65,12 @@ Promotion should work when sandboxing is used:
 
   $ dune build @correction1 --sandbox copy
   File "text-file", line 1, characters 0-0:
-  Error: Files
-  _build/.sandbox/150b972ad59fdd3e13294c94880afcfd/default/text-file and
-  _build/.sandbox/150b972ad59fdd3e13294c94880afcfd/default/text-file-corrected
+  Error: Files _build/default/text-file and _build/default/text-file-corrected
   differ.
   [1]
 
   $ dune promote
-  Skipping promotion of _build/default/text-file-corrected to text-file as the file is missing.
+  Promoting _build/default/text-file-corrected to text-file.
 
 Dependency on the second argument of diff? is *not* automatically added.
 This is fine because we think of it as an intermediate file rather than dep.

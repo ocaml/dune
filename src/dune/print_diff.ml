@@ -18,8 +18,8 @@ let print ?(skip_trailing_cr = Sys.win32) path1 path2 =
   let fallback () =
     User_error.raise ~loc
       [ Pp.textf "Files %s and %s differ."
-          (Path.to_string_maybe_quoted path1)
-          (Path.to_string_maybe_quoted path2)
+          (Path.to_string_maybe_quoted (Path.drop_optional_sandbox_root path1))
+          (Path.to_string_maybe_quoted (Path.drop_optional_sandbox_root path2))
       ]
   in
   let normal_diff () =

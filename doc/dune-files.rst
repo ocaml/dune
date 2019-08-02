@@ -305,7 +305,7 @@ Executables can also be linked as object or shared object files. See
 - ``js_of_ocaml``. See the section about `js_of_ocaml`_
 
 - ``flags``, ``ocamlc_flags`` and ``ocamlopt_flags``. See the section about
-   specifying `OCaml flags`_
+  specifying `OCaml flags`_
 
 - ``(modules_without_implementation <modules>)`` is the same as the
   corresponding field of `library`_
@@ -317,7 +317,7 @@ Executables can also be linked as object or shared object files. See
 
 - ``(promote <options>)`` allows to promote the linked executables to
   the source tree. The options are the same as for the :ref:`rule
-  promote mode <_promote>`. Adding ``(promote (until-clean))`` to an
+  promote mode <promote>`. Adding ``(promote (until-clean))`` to an
   ``executable`` stanza will cause Dune to copy the ``.exe`` files to
   the source tree and ``dune clean`` to delete them
 
@@ -482,17 +482,16 @@ field. The following modes are available:
 - ``promote`` or ``(promote <options>)``, in this mode, the files
   in the source tree will be ignored. Once the rule has been executed,
   the targets will be copied back to the source tree
+  The following options are available:
 
-     The following options are available:
-     - ``(until-clean)`` means that ``dune clean`` will remove the
-     promoted files from the source tree
-     - ``(into <dir>)`` means that the files are promoted in ``<dir>``
-     instead of the current directory. This feature is available since
-     Dune 1.8
-     - ``(only <predicate>)`` means that only a subset of the targets
-     should be promoted. The argument is a predicate in a syntax
-     similar to the argument of :ref:`(dirs ...) <dune-subdirs>`. This
-     feature is available since dune 1.10
+  - ``(until-clean)`` means that ``dune clean`` will remove the promoted files
+    from the source tree.
+  - ``(into <dir>)`` means that the files are promoted in ``<dir>`` instead of
+    the current directory. This feature is available since Dune 1.8.
+  - ``(only <predicate>)`` means that only a subset of the targets
+    should be promoted. The argument is a predicate in a syntax
+    similar to the argument of :ref:`(dirs ...) <dune-subdirs>`. This
+    feature is available since dune 1.10.
 
 - ``promote-until-clean`` is the same as ``(promote (until-clean))``
 - ``(promote-into <dir>)`` is the same as ``(promote (into <dir>))``
@@ -902,7 +901,7 @@ instead of this stanza. For example:
 .. _dune-vendored_dirs:
 
 vendored_dirs (since 1.11)
--------------------------
+--------------------------
 
 Dune supports vendoring of other dune-based projects natively since simply
 copying a project into a subdirectory of your own project will work. Simply
@@ -1417,6 +1416,8 @@ Dependency specification
 
 Dependencies in ``dune`` files can be specified using one of the following:
 
+.. _source_tree:
+
 - ``(:name <dependencies>)`` will bind the the list of dependencies to the
   ``name`` variable. This variable will be available as ``%{name}`` in actions.
 - ``(file <filename>)`` or simply ``<filename>``: depend on this file
@@ -1428,8 +1429,6 @@ Dependencies in ``dune`` files can be specified using one of the following:
   ``(alias src/runtest)``, ``(alias src/foo/bar/runtest)``, ...
 - ``(glob_files <glob>)``: depend on all files matched by ``<glob>``, see the
   :ref:`glob <glob>` for details
-
-.. _source_tree:
 - ``(source_tree <dir>)``: depend on all source files in the subtree with root
   ``<dir>``
 
@@ -1450,7 +1449,7 @@ Dependencies in ``dune`` files can be specified using one of the following:
   - ``always``: the action requires a clean environment.
   - ``none``: the action must run in the build directory.
   - ``preserve_file_kind``: the action needs the files it reads to look
-    like normal files (so dune won't use symlinks for sandboxing)
+  like normal files (so dune won't use symlinks for sandboxing)
 
 In all these cases, the argument supports `Variables expansion`_.
 

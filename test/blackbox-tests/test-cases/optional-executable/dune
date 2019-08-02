@@ -1,0 +1,10 @@
+(executable
+ (public_name x)
+ (libraries does-not-exist)
+ (optional)
+)
+
+(alias
+ (name run-x)
+ (action (run %{exe:x.exe}))
+)

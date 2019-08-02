@@ -379,8 +379,7 @@ let get_installed_binaries stanzas ~(context : Context.t) =
   in
   Dir_with_dune.deep_fold stanzas ~init:Path.Build.Set.empty
     ~f:(fun d stanza acc ->
-      match (stanza : Stanza.t) with
-      | Dune_file.Install { section = Bin; files; _ } ->
+      let binaries_from_install files =
         List.fold_left files ~init:acc ~f:(fun acc fb ->
           let p =
             File_binding.Unexpanded.destination_relative_to_install_path
@@ -394,6 +393,24 @@ let get_installed_binaries stanzas ~(context : Context.t) =
             Path.Build.Set.add acc (Path.Build.append_local install_dir p)
           else
             acc)
+      in
+      match (stanza : Stanza.t) with
+      | Dune_file.Install { section = Bin; files; _ } ->
+        binaries_from_install files
+      | Dune_file.Executables
+          ({ install_conf = Some { section = Bin; files; _ }; _ } as exes) ->
+        let compile_info =
+          Lib.DB.resolve_user_written_deps_for_exes
+            (Scope.libs d.scope)
+            exes.names
+            exes.buildable.libraries
+            ~pps:(Dune_file.Preprocess_map.pps exes.buildable.preprocess)
+            ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
+            ~variants:exes.variants
+            ~optional:exes.optional
+        in
+        let available = Result.is_ok (Lib.Compile.direct_requires compile_info) in
+        if available then binaries_from_install files else acc
       | _ -> acc)
 
 let create

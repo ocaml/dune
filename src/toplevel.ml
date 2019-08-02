@@ -122,6 +122,7 @@ module Stanza = struct
         ~pps:[]
         ~allow_overlaps:false
         ~variants:toplevel.variants
+        ~optional:false
     in
     let requires_compile = Lib.Compile.direct_requires compile_info in
     let requires_link = Lib.Compile.requires_link compile_info in

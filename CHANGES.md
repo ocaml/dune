@@ -1,6 +1,8 @@
 2.0.0 (unreleased)
 ------------------
 
+- Add field `(optional)` for executable stanzas (#2463, fixes #2433, @bobot)
+
 - Infer targets for rule stanzas expressed in long form (#2494, fixes #2469,
   @NathanReb)
 

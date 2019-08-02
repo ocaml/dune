@@ -1677,12 +1677,13 @@ module DB = struct
       Compile.for_lib t lib
 
   let resolve_user_written_deps_for_exes t exes
-        ?(allow_overlaps=false) deps ~pps ~variants =
+        ?(allow_overlaps=false) deps ~pps ~variants
+        ~optional =
     let lib_deps_info =
       Compile.make_lib_deps_info
         ~user_written_deps:deps
         ~pps
-        ~kind:Required
+        ~kind:(if optional then Optional else Required)
     in
     let res, pps, resolved_selects =
       Resolve.resolve_user_deps t (Lib_info.Deps.of_lib_deps deps) ~pps

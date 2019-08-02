@@ -1590,10 +1590,12 @@ module Executables = struct
     ; link_flags : Ordered_set_lang.Unexpanded.t
     ; link_deps  : Dep_conf.t list
     ; modes      : Link_mode.Set.t
+    ; optional   : bool
     ; buildable  : Buildable.t
     ; variants   : (Loc.t * Variant.Set.t) option
     ; package    : Package.t option
     ; promote    : Promote.t option
+    ; install_conf : File_binding.Unexpanded.t Install_conf.t option
     }
 
   let common =
@@ -1603,6 +1605,7 @@ module Executables = struct
     and+ link_deps = field "link_deps" (repeat Dep_conf.decode) ~default:[]
     and+ link_flags = field_oslu "link_flags"
     and+ modes = field "modes" Link_mode.Set.decode ~default:Link_mode.Set.default
+    and+ optional = field_b "optional" ~check:(Syntax.since Stanza.syntax (2, 0))
     and+ variants = variants_field
     and+ promote =
       field_o "promote" (Syntax.since Stanza.syntax (1, 11) >>> Promote.decode)
@@ -1621,19 +1624,8 @@ module Executables = struct
     fun names ~multi ->
       let has_public_name = Names.has_public_name names in
       let private_names = Names.names names in
-      let t =
-        { names = private_names
-        ; link_flags
-        ; link_deps
-        ; modes
-        ; buildable
-        ; variants
-        ; package = Names.package names
-        ; promote
-        }
-      in
       let install_conf =
-        match Link_mode.Set.best_install_mode t.modes with
+        match Link_mode.Set.best_install_mode modes with
         | None when has_public_name ->
           User_error.raise ~loc:buildable.loc
             [ Pp.textf "No installable mode found for %s."
@@ -1652,7 +1644,17 @@ module Executables = struct
           in
           Names.install_conf names ~ext
       in
-      (t, install_conf)
+      { names = private_names
+      ; link_flags
+      ; link_deps
+      ; modes
+      ; optional
+      ; buildable
+      ; variants
+      ; package = Names.package names
+      ; promote
+      ; install_conf
+      }
 
   let (single, multi) =
     let stanza = "executable" in
@@ -2154,11 +2156,13 @@ module Tests = struct
              link_flags
            ; link_deps = []
            ; modes
+           ; optional = false
            ; buildable
            ; names
            ; variants
            ; package = None
            ; promote = None
+           ; install_conf = None;
            }
        ; locks
        ; package
@@ -2259,10 +2263,7 @@ module Stanzas = struct
 
   let rules l = List.map l ~f:(fun x -> Rule x)
 
-  let execs (exe, install) =
-    match install with
-    | None -> [Executables exe]
-    | Some i -> [Executables exe; Install i]
+  let execs exe = [Executables exe]
 
   type Stanza.t += Include of Loc.t * string
 
@@ -2418,6 +2419,7 @@ let stanza_package = function
   | Library { public = Some { package; _ }; _ }
   | Alias { package = Some package ;  _ }
   | Install { package; _ }
+  | Executables { install_conf = Some { package; _ }; _ }
   | Documentation { package; _ }
   | Tests { package = Some package; _} ->
     Some package

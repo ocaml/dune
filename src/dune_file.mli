@@ -353,10 +353,12 @@ module Executables : sig
     ; link_flags : Ordered_set_lang.Unexpanded.t
     ; link_deps  : Dep_conf.t list
     ; modes      : Link_mode.Set.t
+    ; optional   : bool
     ; buildable  : Buildable.t
     ; variants   : (Loc.t * Variant.Set.t) option
     ; package    : Package.t option
     ; promote    : Promote.t option
+    ; install_conf : File_binding.Unexpanded.t Install_conf.t option
     }
 end
 

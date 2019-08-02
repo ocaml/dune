@@ -313,6 +313,8 @@ Executables can also be linked as object or shared object files. See
 - ``(allow_overlapping_dependencies)`` is the same as the
   corresponding field of `library`_
 
+- ``(optional)`` is the same as the corresponding field of `library`_
+
 - ``(promote <options>)`` allows to promote the linked executables to
   the source tree. The options are the same as for the :ref:`rule
   promote mode <_promote>`. Adding ``(promote (until-clean))`` to an

@@ -201,6 +201,7 @@ module DB : sig
     -> Dune_file.Lib_dep.t list
     -> pps:(Loc.t * Lib_name.t) list
     -> variants: (Loc.t * Variant.Set.t) option
+    -> optional:bool
     -> Compile.t
 
   val resolve_pps

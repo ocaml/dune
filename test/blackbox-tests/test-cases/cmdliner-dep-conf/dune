@@ -1,0 +1,15 @@
+(alias
+ (name foo)
+ (action (echo Hello!)))
+
+(rule
+ (targets foo.txt)
+ (mode promote-until-clean)
+ (action
+  (with-stdout-to %{targets} (echo "Foo"))))
+
+(rule
+ (targets @bar)
+ (mode promote-until-clean)
+ (action
+  (with-stdout-to %{targets} (echo "Bar"))))

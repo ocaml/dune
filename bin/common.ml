@@ -37,7 +37,7 @@ type t =
   ; (* Original arguments for the external-lib-deps hint *)
     orig_args             : string list
   ; config                : Dune.Config.t
-  ; default_target        : string
+  ; default_target        : Arg.Dep.t
   (* For build & runtest only *)
   ; watch : bool
   ; stats_trace_file : string option
@@ -79,7 +79,7 @@ let set_common_other c ~targets =
     List.concat
       [ ["dune"; "external-lib-deps"; "--missing"]
       ; c.orig_args
-      ; targets
+      ; List.map ~f:Arg.Dep.to_string_maybe_quoted targets
       ];
   Clflags.always_show_command_line :=
     c.always_show_command_line;
@@ -167,7 +167,7 @@ module Options_implied_by_dash_p = struct
     ; ignore_promoted_rules : bool
     ; config_file : config_file
     ; profile : Profile.t option
-    ; default_target : string
+    ; default_target : Arg.Dep.t
     ; always_show_command_line : bool
     ; promote_install_files : bool
     }
@@ -237,7 +237,7 @@ module Options_implied_by_dash_p = struct
                     (Profile.to_string Dune.Profile.default)))
     and+ default_target =
       Arg.(value
-           & opt string "@@default"
+           & opt dep (Dep.alias "default")
            & info ["default-target"] ~docs ~docv:"TARGET"
                ~doc:{|Set the default target that when none is specified to
                       $(b,dune build).|})
@@ -283,7 +283,7 @@ module Options_implied_by_dash_p = struct
     ; ignore_promoted_rules = true
     ; config_file = No_config
     ; profile = Some Profile.Release
-    ; default_target = "@install"
+    ; default_target = Arg.Dep.alias_rec "install"
     ; always_show_command_line = true
     ; promote_install_files = true
     }

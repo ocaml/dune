@@ -10,7 +10,7 @@ type t =
 
 type resolve_input =
   | Path of Path.t
-  | String of string
+  | Dep of Arg.Dep.t
 
 let request (setup : Dune.Main.build_system) targets =
   let open Build.O in
@@ -61,7 +61,7 @@ let target_hint (_setup : Dune.Main.build_system) path =
 let resolve_path path ~(setup : Dune.Main.build_system) =
   let checked = Util.check_path setup.workspace.contexts path in
   let can't_build path =
-    Error (path, target_hint setup path);
+    Error (target_hint setup path);
   in
   let as_source_dir src =
     if Dune.File_tree.dir_exists setup.workspace.conf.file_tree src then
@@ -104,22 +104,54 @@ let resolve_path path ~(setup : Dune.Main.build_system) =
   | In_install_dir _ ->
     build ()
 
-let resolve_target common ~(setup : Dune.Main.build_system) s =
-  match Alias.of_string common s ~contexts:setup.workspace.contexts with
-  | Some a -> Ok [Alias a]
-  | None ->
-    let path = Path.relative Path.root (Common.prefix_target common s) in
-    resolve_path path ~setup
+let expand_path common ~(setup : Dune.Main.build_system) ctx sv =
+  let sctx = String.Map.find_exn setup.scontexts (Context.name ctx) in
+  let dir =
+    Path.Build.relative ctx.Context.build_dir
+      (String.concat ~sep:Filename.dir_sep (Common.root common).to_cwd)
+  in
+  let expander = Dune.Super_context.expander sctx ~dir in
+  Path.relative Path.root (Common.prefix_target common (Dune.Expander.expand_str expander sv))
 
-let resolve_targets_mixed ~log common (setup : Dune.Main.build_system)
-      user_targets =
+let resolve_alias common ~recursive sv ~(setup : Dune.Main.build_system) =
+  match Dune.String_with_vars.text_only sv with
+  | Some s ->
+    Ok [Alias (Alias.of_string common ~recursive s
+                 ~contexts:setup.workspace.contexts)]
+  | None ->
+    Error [ Pp.text "alias cannot contain variables" ]
+
+let resolve_target common ~setup = function
+  | Dune.Dune_file.Dep_conf.Alias sv as dep ->
+    Result.map_error ~f:(fun hints -> dep, hints)
+      (resolve_alias common ~recursive:false sv ~setup)
+  | Alias_rec sv as dep ->
+    Result.map_error ~f:(fun hints -> dep, hints)
+      (resolve_alias common ~recursive:true sv ~setup)
+  | File sv as dep ->
+    let f ctx =
+      let path = expand_path common ~setup ctx sv in
+      Result.map_error ~f:(fun hints -> dep, hints)
+        (resolve_path path ~setup)
+    in
+    Result.List.concat_map ~f setup.workspace.contexts
+  | dep ->
+    Error (dep, [])
+
+let resolve_targets_mixed ~log common setup user_targets =
   match user_targets with
   | [] -> []
   | _ ->
     let targets =
       List.map user_targets ~f:(function
-        | String s -> resolve_target common ~setup s
-        | Path p -> resolve_path p ~setup) in
+        | Dep d ->
+          resolve_target common ~setup d
+        | Path p ->
+          Result.map_error
+            ~f:(fun hints -> Arg.Dep.file (Path.to_string p), hints)
+            (resolve_path p ~setup)
+      )
+    in
     let config = Common.config common in
     if config.display = Verbose then begin
       Log.info log "Actual targets:";
@@ -131,16 +163,16 @@ let resolve_targets_mixed ~log common (setup : Dune.Main.build_system)
     targets
 
 let resolve_targets ~log common (setup : Dune.Main.build_system) user_targets =
-  List.map ~f:(fun s -> String s) user_targets
+  List.map ~f:(fun dep -> Dep dep) user_targets
   |> resolve_targets_mixed ~log common setup
 
 let resolve_targets_exn ~log common setup user_targets =
   resolve_targets ~log common setup user_targets
   |> List.concat_map ~f:(function
-    | Error (path, hints) ->
+    | Error (dep, hints) ->
       User_error.raise
         [ Pp.textf "Don't know how to build %s"
-            (Path.to_string_maybe_quoted path) ]
+            (Arg.Dep.to_string_maybe_quoted dep) ]
         ~hints
     | Ok targets ->
       targets)

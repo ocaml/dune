@@ -19,6 +19,20 @@ General tests
   $ cat x
   toto
 
+The correction file stays on the filesystem even after promotion and
+can be depended on by other actions.
+
+  $ cat _build/default/x.gen
+  toto
+
+  $ printf titi > x
+  $ dune build --display short @blah x.gen.copy
+  File "x", line 1, characters 0-0:
+  Error: Files _build/default/x and _build/default/x.gen differ.
+  [1]
+  $ cat _build/default/x.gen.copy
+  toto
+
 Otherwise this test fails on OSX
   $ dune clean --display short
 

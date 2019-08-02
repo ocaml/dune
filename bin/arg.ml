@@ -74,9 +74,8 @@ module Dep = struct
 
   let string_of_alias ~recursive sv =
     let prefix = if recursive then "@" else "@@" in
-    match String_with_vars.text_only sv with
-    | Some s -> Some (prefix ^ s)
-    | None -> None
+    String_with_vars.text_only sv
+    |> Option.map ~f:(fun s -> prefix ^ s)
 
   let printer ppf t =
     let s =

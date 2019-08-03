@@ -201,6 +201,7 @@ case "x-foo":
     "Dave Tucker"
   ]
   license: "MIT"
+  tags: ["org:mirage" "org:xapi-project" "git"]
   homepage: "https://github.com/mirage/ocaml-github"
   doc: "https://mirage.github.io/ocaml-github/"
   bug-reports: "https://github.com/mirage/ocaml-github/issues"
@@ -256,6 +257,7 @@ the end.
     "Dave Tucker"
   ]
   license: "MIT"
+  tags: ["org:mirage" "org:xapi-project" "git"]
   homepage: "https://github.com/mirage/ocaml-github"
   doc: "https://mirage.github.io/ocaml-github/"
   bug-reports: "https://github.com/mirage/ocaml-github/issues"

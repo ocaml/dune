@@ -3,24 +3,23 @@
 PATH=~/ocaml/bin:$PATH; export PATH
 OPAMYES="true"; export OPAMYES
 
-OPAM_VERSION="2.0.3"
+OPAM_VERSION="2.0.5"
 
-ODOC="odoc.1.4.0"
+ODOC="odoc.1.4.1"
 
 TARGET="$1"; shift
 
 opam_install_test_deps () {
     opam install \
          ocamlfind \
-         utop \
          ppxlib \
          ppx_expect \
          $ODOC \
          menhir \
-         ocaml-migrate-parsetree \
-         js_of_ocaml-ppx \
-         js_of_ocaml-compiler \
-         coq
+         ocaml-migrate-parsetree
+         # js_of_ocaml-ppx \
+         # js_of_ocaml-compiler \
+         # coq
 }
 
 case "$TARGET" in
@@ -116,8 +115,8 @@ case "$TARGET" in
     if [ $WITH_OPAM -eq 1 ] ; then
       cat $RUNTEST_NO_DEPS;
       _boot/install/default/bin/dune runtest && \
-      _boot/install/default/bin/dune build @test/blackbox-tests/runtest-js && \
-      _boot/install/default/bin/dune build @test/blackbox-tests/runtest-coq && \
+      # _boot/install/default/bin/dune build @test/blackbox-tests/runtest-js && \
+      # _boot/install/default/bin/dune build @test/blackbox-tests/runtest-coq && \
       ! _boot/install/default/bin/dune build @test/fail-with-background-jobs-running
       RESULT=$?
       if [ $UPDATE_OPAM -eq 0 ] ; then

@@ -67,8 +67,9 @@ module Test = struct
     }
 
   let make
-        ?env ?skip_ocaml ?(skip_platforms=[]) ?(enabled=true) ?(js=false) ?(coq=false)
-        ?(external_deps=false) ?(disable_sandboxing=false) name =
+        ?env ?skip_ocaml ?(skip_platforms=[]) ?(enabled=true) ?(js=false)
+        ?(coq=false) ?(external_deps=false) ?(disable_sandboxing=false) name =
+    let external_deps = external_deps || coq in
     { name
     ; env
     ; skip_ocaml
@@ -135,7 +136,7 @@ let exclusions =
   let odoc = make ~external_deps:true ~skip_ocaml:"4.02.3" in
   [ make "js_of_ocaml" ~external_deps:true ~js:true
       ~env:("NODE", Sexp.parse "%{bin:node}")
-  ; make "coq" ~external_deps:true ~coq:true
+  ; make "coq" ~coq:true
   ; make "github25" ~env:("OCAMLPATH", Dune_lang.atom "./findlib-packages")
   ; odoc "odoc"
   ; odoc "odoc-package-mld-link"
@@ -158,9 +159,9 @@ let exclusions =
   ; make "private-public-overlap" ~external_deps:true
   ; make "reason" ~external_deps:true
   ; make "menhir"~external_deps:true
-  ; make "utop" ~external_deps:true
-  ; make "utop-default" ~external_deps:true ~skip_ocaml:"<4.05.0"
-  ; make "utop-default-implementation"
+  ; make "utop" ~external_deps:true ~enabled:false
+  ; make "utop-default" ~external_deps:true ~skip_ocaml:"<4.05.0" ~enabled:false
+  ; make "utop-default-implementation" ~enabled:false
       ~external_deps:true ~skip_ocaml:"<4.05.0"
   ; make "toplevel-stanza" ~skip_ocaml:"<4.05.0"
   ; make "configurator" ~skip_platforms:[Win]

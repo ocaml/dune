@@ -1,1 +1,1 @@
-let message = "foo has fake"
+let message = "foo has fake" ^ Fakefoobar.dontexists

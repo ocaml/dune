@@ -2319,7 +2319,7 @@ module Stanzas = struct
             loc.Loc.start.pos_lnum
         in
         User_error.raise ~loc
-          [ Pp.text "Recursive inclusion of jbuild files detected:"
+          [ Pp.text "Recursive inclusion of dune files detected:"
           ; Pp.textf "File %s is included from %s"
               (Path.Source.to_string_maybe_quoted file)
               (line_loc last)

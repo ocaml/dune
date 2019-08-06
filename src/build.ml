@@ -88,6 +88,8 @@ let rec all = function
     >>>
     arr (fun (x, y) -> x :: y)
 
+let ignore x = x >>^ ignore
+
 let lazy_no_targets t = Lazy_no_targets t
 
 let deps d = Deps d
@@ -162,10 +164,35 @@ let of_result_map ?targets res ~f =
 let memoize name t =
   Memo { name; t; state = Unevaluated }
 
+(* This is to force the rules to be loaded for directories without
+   files when depending on [(source_tree x)]. Otherwise, we wouldn't
+   clean up stale directories in directories that contain no file. *)
+let depend_on_dir_without_files =
+  let pred = Predicate.create ~id:(lazy (String "false")) ~f:(fun _ -> false) in
+  fun dir ->
+    Paths_glob (File_selector.create ~dir pred) |> ignore
+
 let source_tree ~dir ~file_tree =
   let (prefix_with, dir) = Path.extract_build_context_dir_exn dir in
-  let paths = File_tree.files_recursively_in file_tree dir ~prefix_with in
-  path_set paths >>^ fun _ -> paths
+  let paths, dirs_without_files =
+    let init = Path.Set.empty, arr Fn.id in
+    match File_tree.find_dir file_tree dir with
+    | None -> init
+    | Some dir ->
+      File_tree.Dir.fold dir ~init ~traverse:Sub_dirs.Status.Set.all
+        ~f:(fun dir (acc_files, acc_dirs_without_files) ->
+          let path = Path.append_source prefix_with (File_tree.Dir.path dir) in
+          let files = File_tree.Dir.files dir in
+          match String.Set.is_empty files with
+          | true ->
+            (acc_files,
+             depend_on_dir_without_files path >>> acc_dirs_without_files)
+          | false ->
+            (String.Set.fold files ~init:acc_files ~f:(fun fn acc ->
+               Path.Set.add acc (Path.relative path fn)),
+             acc_dirs_without_files))
+  in
+  dirs_without_files >>> path_set paths >>^ fun _ -> paths
 
 let action ?dir ~targets action =
   Targets (Path.Build.Set.of_list targets)
@@ -422,8 +449,6 @@ let exec ~(eval_pred : Dep.eval_pred) (t : ('a, 'b) t) (x : 'a)
   let dyn_deps = ref Dep.Set.empty in
   let result = exec dyn_deps t x in
   (result, !dyn_deps)
-
-let ignore x = x >>^ ignore
 
 module S = struct
   open O

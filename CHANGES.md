@@ -82,6 +82,10 @@
 - Change default target from `@install` to `@all`. (#2449, fixes #1220,
   @rgrinberg)
 
+- Cleanup stale directories when using `(source_tree ...)` in the
+  presence of directories with only sub-directories and no files
+  (#2514, fixes #2499, @diml)
+
 1.11.0 (23/07/2019)
 -------------------
 

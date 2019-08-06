@@ -55,6 +55,12 @@ let config =
   ; `P {|Set the maximum number of jobs Dune might run in parallel.
            This can also be set from the command line via $(b,-j NUMBER).|}
   ; `P {|The default for this value is 4.|}
+  ; `S "SANDBOXING"
+  ; `P {|Syntax: $(b,\(sandboxing_preference MODE ...\))|}
+  ; `P {|Controls the sandboxing mode perference order used by dune. Dune will
+use the earliest item from this list that's allowed by the action dependency
+specification, or fall back on the hard-coded default. See $(b,man dune-build)
+ for the description of individual modes.|}
   ; Common.footer
   ]
 

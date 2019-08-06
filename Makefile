@@ -37,6 +37,9 @@ test-all:
 check:
 	$(BIN) build @check
 
+fmt:
+	$(BIN) build @fmt --auto-promote
+
 promote:
 	$(BIN) promote
 

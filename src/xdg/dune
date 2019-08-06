@@ -1,1 +1,2 @@
-(library (name xdg))
+(library
+ (name xdg))

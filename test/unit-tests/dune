@@ -5,4 +5,5 @@
 
 (alias
  (name runtest)
- (action (run ./sexp_tests.exe)))
+ (action
+  (run ./sexp_tests.exe)))

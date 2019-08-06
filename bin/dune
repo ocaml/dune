@@ -1,6 +1,6 @@
 (executable
- (name        main)
+ (name main)
  (public_name dune)
- (package     dune)
- (libraries   memo dune_lang fiber stdune unix dune cmdliner build_info)
- (preprocess  future_syntax))
+ (package dune)
+ (libraries memo dune_lang fiber stdune unix dune cmdliner build_info)
+ (preprocess future_syntax))

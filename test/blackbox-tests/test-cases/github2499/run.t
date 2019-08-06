@@ -25,4 +25,3 @@ Reproduction case for #2499: dune doesn't cleanup stale directories
   $ dune build list
   $ cat _build/default/list
   data/a/x
-  data/b/x

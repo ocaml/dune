@@ -110,11 +110,5 @@ val dir_is_vendored : t -> Path.Source.t -> bool option
 (** [true] iff the path is a file *)
 val file_exists : t -> Path.Source.t -> bool
 
-val files_recursively_in
-  :  t
-  -> prefix_with:Path.t
-  -> Path.Source.t
-  -> Path.Set.t
-
 (** Load a [jbuild-ignore] file *)
 val load_jbuild_ignore : Path.Source.t -> String.Set.t

@@ -1,3 +1,13 @@
+1.11.1 (unreleased)
+-------------------
+
+- Fix config file dependencies of ocamlformat (#2471, fixes #2646,
+  @nojb)
+
+- Cleanup stale directories when using `(source_tree ...)` in the
+  presence of directories with only sub-directories and no files
+  (#2514, fixes #2499, @diml)
+
 1.11.0 (23/07/2019)
 -------------------
 

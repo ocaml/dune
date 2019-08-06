@@ -394,13 +394,3 @@ let dir_exists t path = Option.is_some (find_dir t path)
 
 let dir_is_vendored t path =
   Option.map ~f:(fun dir -> Dir.vendored dir) (find_dir t path)
-
-let files_recursively_in t ~prefix_with path =
-  match find_dir t path with
-  | None -> Path.Set.empty
-  | Some dir ->
-    Dir.fold dir ~init:Path.Set.empty ~traverse:Sub_dirs.Status.Set.all
-      ~f:(fun dir acc ->
-        let path = Path.append_source prefix_with (Dir.path dir) in
-        String.Set.fold (Dir.files dir) ~init:acc ~f:(fun fn acc ->
-          Path.Set.add acc (Path.relative path fn)))

@@ -22,7 +22,7 @@ val is_local : t -> bool
 
 val info : t -> Path.t Lib_info.t
 
-val main_module_name : t -> Module.Name.t option Or_exn.t
+val main_module_name : t -> Module_name.t option Or_exn.t
 val wrapped : t -> Wrapped.t option Or_exn.t
 
 (** [is_impl lib] returns [true] if the library is an implementation

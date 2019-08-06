@@ -28,8 +28,8 @@ let make ~vlib ~impl ~vlib_modules ~vlib_foreign_objects =
     Modules.obj_map vlib_modules ~f:(function
       | Normal m -> m
       | _ -> assert false)
-    |> Module.Obj_map.fold ~init:Module.Name.Map.empty ~f:(fun m acc ->
-      Module.Name.Map.add_exn acc (Module.real_unit_name m) m)
+    |> Module.Obj_map.fold ~init:Module_name.Map.empty ~f:(fun m acc ->
+      Module_name.Map.add_exn acc (Module.real_unit_name m) m)
   ) in
   { impl
   ; impl_cm_kind

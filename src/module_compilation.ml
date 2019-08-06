@@ -25,7 +25,7 @@ let opens modules m =
   match Modules.alias_for modules m with
   | None -> Command.Args.S []
   | Some (m : Module.t) ->
-    As ["-open"; Module.Name.to_string (Module.name m)]
+    As ["-open"; Module_name.to_string (Module.name m)]
 
 let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) =
   let sctx     = CC.super_context cctx in
@@ -235,15 +235,15 @@ let build_alias_module ~loc ~alias_module ~dir ~cctx =
       |> Option.value_exn
     in
     Modules.for_alias modules
-    |> Module.Name.Map.values
+    |> Module_name.Map.values
     |> List.map ~f:(fun (m : Module.t) ->
-      let name = Module.Name.to_string (Module.name m) in
+      let name = Module_name.to_string (Module.name m) in
       sprintf "(** @canonical %s.%s *)\n\
                module %s = %s\n"
-        (Module.Name.to_string main_module_name)
+        (Module_name.to_string main_module_name)
         name
         name
-        (Module.Name.to_string (Module.real_unit_name m)))
+        (Module_name.to_string (Module.real_unit_name m)))
     |> String.concat ~sep:"\n"
   in
   Super_context.add_rule ~loc sctx ~dir (

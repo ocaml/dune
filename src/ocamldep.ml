@@ -7,7 +7,7 @@ module SC = Super_context
 
 let parse_module_names ~(unit : Module.t) ~modules words =
   List.filter_map words ~f:(fun m ->
-    let m = Module.Name.of_string m in
+    let m = Module_name.of_string m in
     Modules.find_dep modules ~of_:unit m)
 
 let parse_deps_exn ~file lines =
@@ -40,15 +40,15 @@ let interpret_deps cctx ~unit deps =
   let stdlib = CC.stdlib cctx in
   if Option.is_none stdlib then
     Modules.main_module_name modules
-    |> Option.iter ~f:(fun (main_module_name : Module.Name.t) ->
-      if Module.Name.Infix.(Module.name unit <> main_module_name)
+    |> Option.iter ~f:(fun (main_module_name : Module_name.t) ->
+      if Module_name.Infix.(Module.name unit <> main_module_name)
       && not (Module.kind unit = Alias)
       && List.exists deps ~f:(fun x -> Module.name x = main_module_name) then
         User_error.raise
           [ Pp.textf "Module %s in directory %s depends on %s."
-              (Module.Name.to_string (Module.name unit))
+              (Module_name.to_string (Module.name unit))
               (Path.to_string_maybe_quoted (Path.build dir))
-              (Module.Name.to_string main_module_name)
+              (Module_name.to_string main_module_name)
           ; Pp.textf "This doesn't make sense to me."
           ; Pp.nop
           ; Pp.textf "%s is the main module of the library and is the \
@@ -56,7 +56,7 @@ let interpret_deps cctx ~unit deps =
                       library. Consequently, it should be the one \
                       depending on all the other modules in the \
                       library."
-              (Module.Name.to_string main_module_name)
+              (Module_name.to_string main_module_name)
           ]);
   match Modules.alias_for modules unit with
   | None -> deps
@@ -107,7 +107,7 @@ let deps_of ~cctx ~ml_kind unit =
       >>^ (fun modules ->
         (build_paths modules,
          List.map modules ~f:(fun m ->
-           Module.Name.to_string (Module.name m))
+           Module_name.to_string (Module.name m))
         ))
       >>> Build.merge_files_dyn ~target:all_deps_file);
   let all_deps_file = Path.build all_deps_file in

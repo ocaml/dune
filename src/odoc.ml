@@ -563,7 +563,7 @@ let default_index ~pkg entry_modules =
       | [ x ] ->
         sprintf
           "The entry point of this library is the module:\n{!module-%s}.\n"
-          (Module.Name.to_string (Module.name x))
+          (Module_name.to_string (Module.name x))
       | _ ->
         sprintf
           "This library exposes the following toplevel modules:\n\
@@ -571,8 +571,8 @@ let default_index ~pkg entry_modules =
           (modules
            |> List.filter ~f:(fun m -> Module.visibility m = Visibility.Public)
            |> List.sort ~compare:(fun x y ->
-             Module.Name.compare (Module.name x) (Module.name y))
-           |> List.map ~f:(fun m -> Module.Name.to_string (Module.name m))
+             Module_name.compare (Module.name x) (Module.name y))
+           |> List.map ~f:(fun m -> Module_name.to_string (Module.name m))
            |> String.concat ~sep:" ")
     );
   );

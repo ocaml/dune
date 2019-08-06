@@ -75,14 +75,14 @@ let gen_wrapped_compat_modules (lib : Library.t) cctx =
     | Simple _ -> assert false
     | Yes_with_transition r -> r)
   in
-  Module.Name.Map.iteri wrapped_compat ~f:(fun name m ->
+  Module_name.Map.iteri wrapped_compat ~f:(fun name m ->
     let main_module_name =
       match Library.main_module_name lib with
-      | This (Some mmn) -> Module.Name.to_string mmn
+      | This (Some mmn) -> Module_name.to_string mmn
       | _ -> assert false
     in
     let contents =
-      let name = Module.Name.to_string name in
+      let name = Module_name.to_string name in
       let hidden_name = sprintf "%s__%s" main_module_name name in
       let real_name = sprintf "%s.%s" main_module_name name in
       sprintf {|[@@@deprecated "%s. Use %s instead."] include %s|}

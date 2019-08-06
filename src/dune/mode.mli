@@ -68,6 +68,8 @@ module Dict : sig
   module Set : sig
     type nonrec t = bool t
 
+    val to_dyn : t -> Dyn.t
+
     val encode : t -> Dune_lang.t list
 
     val all : t

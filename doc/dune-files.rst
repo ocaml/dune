@@ -1729,7 +1729,7 @@ This is controlled by:
 
 - ``dune --sandbox <...>`` cli flag (see ``man dune-build``)
 - ``DUNE_SANDBOX`` environment (see ``man dune-build``)
-- ``(sandbox ..)`` field in the dune config (see ``man dune-config``)
+- ``(sandboxing_preference ..)`` field in the dune config (see ``man dune-config``)
     
 Locks
 -----

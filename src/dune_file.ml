@@ -271,7 +271,7 @@ module Dep_conf = struct
       List [ Dune_lang.unsafe_atom_of_string "glob_files"
            ; String_with_vars.encode t ]
     | Source_tree t ->
-      List [ Dune_lang.unsafe_atom_of_string "files_recursively_in"
+      List [ Dune_lang.unsafe_atom_of_string "source_tree"
            ; String_with_vars.encode t ]
     | Package t ->
       List [ Dune_lang.unsafe_atom_of_string "package"

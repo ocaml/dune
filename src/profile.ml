@@ -25,6 +25,10 @@ let is_release = function
   | Release -> true
   | _ -> false
 
+let is_inline_test = function
+  | Release -> false
+  | _ -> true
+
 let decode =
   let open Dune_lang.Decoder in
   let+ name = string in

@@ -11,6 +11,8 @@ val is_dev : t -> bool
 
 val is_release : t -> bool
 
+val is_inline_test : t -> bool
+
 val to_string : t -> string
 
 val of_string : string -> t (* TODO add error handling *)

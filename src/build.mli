@@ -87,7 +87,7 @@ val declare_targets : Path.Build.Set.t -> ('a, 'a) t
 val source_tree
   :  dir:Path.t
   -> file_tree:File_tree.t
-  -> ('a, Path.Set.t) t
+  -> (unit, Path.Set.t) t
 
 (** Record dynamic dependencies *)
 val dyn_paths : ('a, Path.t list) t -> ('a, 'a) t

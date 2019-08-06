@@ -78,7 +78,7 @@ dune: $(BIN)
 	$(BIN) $(RUN_ARGS)
 
 .PHONY: default install uninstall reinstall clean test doc
-.PHONY: promote accept-corrections opam-release dune check
+.PHONY: promote accept-corrections opam-release dune check fmt
 
 opam-release:
 	dune-release distrib --skip-build --skip-lint --skip-tests

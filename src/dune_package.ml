@@ -25,7 +25,7 @@ module Lib = struct
     ; default_implementation  : (Loc.t * Lib_name.t)  option
     ; implements       : (Loc.t * Lib_name.t) option
     ; modules          : Modules.t option
-    ; main_module_name : Module.Name.t option
+    ; main_module_name : Module_name.t option
     ; requires         : (Loc.t * Lib_name.t) list
     ; version          : string option
     ; modes            : Mode.Dict.Set.t
@@ -118,7 +118,7 @@ module Lib = struct
         (pair Variant.encode (no_loc Lib_name.encode)) known_implementations
     ; field_o "default_implementation"
         (no_loc Lib_name.encode) default_implementation
-    ; field_o "main_module_name" Module.Name.encode main_module_name
+    ; field_o "main_module_name" Module_name.encode main_module_name
     ; field_l "modes" sexp (Mode.Dict.Set.encode modes)
     ; field_l "obj_dir" sexp (Obj_dir.encode obj_dir)
     ; field_o "modules" Modules.encode modules
@@ -138,7 +138,7 @@ module Lib = struct
       field ~default:Mode.Dict.List.empty
         name (Mode.Dict.List.decode path) in
     fields (
-      let* main_module_name = field_o "main_module_name" Module.Name.decode in
+      let* main_module_name = field_o "main_module_name" Module_name.decode in
       let* implements = field_o "implements" (located Lib_name.decode) in
       let* default_implementation =
         field_o "default_implementation" (located Lib_name.decode) in

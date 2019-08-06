@@ -29,7 +29,7 @@ val pp_module :  t -> ?lint:bool -> Module.t -> Module.t
 val pp_module_as
   :  t
   -> ?lint:bool
-  -> Module.Name.t
+  -> Module_name.t
   -> Module.t
   -> Module.t
 

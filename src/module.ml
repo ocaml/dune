@@ -1,45 +1,6 @@
 open! Stdune
 open Import
 
-module Name = struct
-  module T = struct
-    type t = string
-    let compare = compare
-  end
-
-  include T
-
-  let decode = Dune_lang.Decoder.string
-  let encode = Dune_lang.Encoder.string
-
-  let to_dyn = Dyn.Encoder.string
-
-  let add_suffix = (^)
-
-  let of_string = String.capitalize
-  let to_string x = x
-
-  let uncapitalize = String.uncapitalize
-
-  let pp_quote fmt x = Format.fprintf fmt "%S" x
-
-  module Set = struct
-    include String.Set
-    let to_dyn t = Dyn.Set (List.map ~f:(fun s -> Dyn.String s) (to_list t))
-  end
-  module Map = String.Map
-  module Infix = Comparator.Operators(T)
-
-  let of_local_lib_name s =
-    of_string (Lib_name.Local.to_string s)
-
-  let to_local_lib_name s =
-    Lib_name.Local.of_string_exn s
-
-  let basename n ~(ml_kind : Ml_kind.t) ~(dialect : Dialect.t) =
-    String.lowercase n ^ Dialect.extension dialect ml_kind
-end
-
 module File = struct
   type t =
     { path    : Path.t
@@ -107,14 +68,14 @@ end
 (* Only the source of a module, not yet associated to a library *)
 module Source = struct
   type t =
-    { name : Name.t
+    { name : Module_name.t
     ; files : File.t option Ml_kind.Dict.t
     }
 
   let to_dyn { name; files } =
     let open Dyn.Encoder in
     record
-      [ "name", Name.to_dyn name
+      [ "name", Module_name.to_dyn name
       ; "files", Ml_kind.Dict.to_dyn (option File.to_dyn) files
       ]
 
@@ -122,7 +83,7 @@ module Source = struct
     begin match impl, intf with
     | None, None ->
       Code_error.raise "Module.Source.make called with no files"
-        [ "name", Dyn.Encoder.string name
+        [ "name", Module_name.to_dyn name
         ]
     | Some _, _
     | _, Some _ -> ()
@@ -171,7 +132,7 @@ let of_source ?obj_name ~visibility ~(kind : Kind.t)
   | (Impl | Intf_only), _ -> ()
   | _, _ ->
     Code_error.raise "Module.of_source: invalid kind, visibility combination"
-      [ "name", Name.to_dyn source.name
+      [ "name", Module_name.to_dyn source.name
       ; "kind", Kind.to_dyn kind
       ; "visibility", Visibility.to_dyn visibility
       ]
@@ -183,7 +144,7 @@ let of_source ?obj_name ~visibility ~(kind : Kind.t)
   | (Intf_only | Virtual), _, None ->
     let open Dyn.Encoder in
     Code_error.raise "Module.make: invalid kind, impl, intf combination"
-      [ "name", Name.to_dyn source.name
+      [ "name", Module_name.to_dyn source.name
       ; "kind", Kind.to_dyn kind
       ; "intf", (option File.to_dyn) source.files.intf
       ; "impl", (option File.to_dyn) source.files.impl
@@ -207,7 +168,7 @@ let of_source ?obj_name ~visibility ~(kind : Kind.t)
   ; kind
   }
 
-let real_unit_name t = Name.of_string (Filename.basename t.obj_name)
+let real_unit_name t = Module_name.of_string (Filename.basename t.obj_name)
 
 let has t ~ml_kind =
   match (ml_kind : Ml_kind.t) with
@@ -228,9 +189,15 @@ let iter t ~f =
     ~f:(fun kind -> Option.iter ~f:(f kind))
 
 let with_wrapper t ~main_module_name =
-  { t with obj_name
-           = sprintf "%s__%s"
-               (String.uncapitalize main_module_name) t.source.name
+  let lowercase_name n =
+    Module_name.to_string n
+    |> String.uncapitalize
+  in
+  { t with
+    obj_name
+    = sprintf "%s__%s"
+        (lowercase_name main_module_name)
+        (Module_name.to_string t.source.name)
   }
 
 let map_files t ~f =
@@ -267,7 +234,7 @@ let wrapped_compat t =
                a source dir *)
             Path.L.relative (src_dir t)
               [ ".wrapped_compat"
-              ; Name.to_string t.source.name ^ ml_gen
+              ; Module_name.to_string t.source.name ^ ml_gen
               ]
         }
       )
@@ -318,7 +285,7 @@ let encode
     | Impl_vmodule | Alias | Impl | Virtual | Intf_only -> Some kind
   in
   record_fields
-    [ field "name" Name.encode name
+    [ field "name" Module_name.encode name
     ; field "obj_name" string obj_name
     ; field "visibility" Visibility.encode visibility
     ; field_o "kind" Kind.encode kind
@@ -326,10 +293,15 @@ let encode
     ; field_b "intf" (has t ~ml_kind:Intf)
     ]
 
+
+let module_basename n ~(ml_kind : Ml_kind.t) ~(dialect : Dialect.t) =
+  let n = Module_name.to_string n in
+  String.lowercase n ^ Dialect.extension dialect ml_kind
+
 let decode ~src_dir =
   let open Dune_lang.Decoder in
   fields (
-    let+ name = field "name" Name.decode
+    let+ name = field "name" Module_name.decode
     and+ obj_name = field "obj_name" string
     and+ visibility = field "visibility" Visibility.decode
     and+ kind = field_o "kind" Kind.decode
@@ -338,7 +310,8 @@ let decode ~src_dir =
     in
     let file exists ml_kind =
       if exists then
-        let basename = Name.basename name ~ml_kind ~dialect:Dialect.ocaml in
+        let basename =
+          module_basename name ~ml_kind ~dialect:Dialect.ocaml in
         Some (File.make Dialect.ocaml (Path.relative src_dir basename))
       else
         None
@@ -377,7 +350,7 @@ let set_src_dir t ~src_dir =
   map_files t ~f:(fun _ -> File.set_src_dir ~src_dir)
 
 let generated ~src_dir name =
-  let basename = String.uncapitalize (Name.to_string name) in
+  let basename = String.uncapitalize (Module_name.to_string name) in
   let source =
     let impl =
       File.make Dialect.ocaml (Path.relative src_dir (basename ^ ml_gen)) in
@@ -394,24 +367,24 @@ let generated_alias ~src_dir name =
   { t with kind = Alias }
 
 module Name_map = struct
-  type nonrec t = t Name.Map.t
+  type nonrec t = t Module_name.Map.t
 
-  let to_dyn = Name.Map.to_dyn to_dyn
+  let to_dyn = Module_name.Map.to_dyn to_dyn
 
   let decode ~src_dir =
     let open Dune_lang.Decoder in
     let+ modules = repeat (enter (decode ~src_dir)) in
-    Name.Map.of_list_map_exn
+    Module_name.Map.of_list_map_exn
       ~f:(fun m -> (name m, m)) modules
 
   let encode t =
-    Name.Map.values t
+    Module_name.Map.values t
     |> List.map ~f:(fun x -> Dune_lang.List (encode x))
 
-  let singleton m = Name.Map.singleton (name m) m
+  let singleton m = Module_name.Map.singleton (name m) m
 
   let impl_only =
-    Name.Map.fold ~init:[] ~f:(fun m acc ->
+    Module_name.Map.fold ~init:[] ~f:(fun m acc ->
       if has m ~ml_kind:Impl then
         m :: acc
       else
@@ -419,13 +392,13 @@ module Name_map = struct
 
   let of_list_exn modules =
     List.map modules ~f:(fun m -> (name m, m))
-    |> Name.Map.of_list_exn
+    |> Module_name.Map.of_list_exn
 
   let add t module_ =
-    Name.Map.set t (name module_) module_
+    Module_name.Map.set t (name module_) module_
 
   let by_obj =
-    Name.Map.fold ~init:Name.Map.empty ~f:(fun m acc ->
+    Module_name.Map.fold ~init:Module_name.Map.empty ~f:(fun m acc ->
       let obj = real_unit_name m in
-      Name.Map.add_exn acc obj m)
+      Module_name.Map.add_exn acc obj m)
 end

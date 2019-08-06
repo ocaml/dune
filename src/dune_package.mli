@@ -19,7 +19,7 @@ module Lib : sig
   val archives : _ t -> Path.t list Mode.Dict.t
   val virtual_ : _ t -> bool
   val modules : _ t -> Modules.t option
-  val main_module_name : _ t -> Module.Name.t option
+  val main_module_name : _ t -> Module_name.t option
   val plugins : _ t -> Path.t list Mode.Dict.t
   val jsoo_runtime : _ t -> Path.t list
   val implements : _ t -> (Loc.t * Lib_name.t) option
@@ -46,7 +46,7 @@ module Lib : sig
     -> foreign_objects:Path.t list
     -> foreign_archives:Path.t list Mode.Dict.t
     -> jsoo_runtime:Path.t list
-    -> main_module_name:Module.Name.t option
+    -> main_module_name:Module_name.t option
     -> sub_systems:'a Sub_system_name.Map.t
     -> requires:(Loc.t * Lib_name.t) list
     -> ppx_runtime_deps:(Loc.t * Lib_name.t) list

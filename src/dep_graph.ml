@@ -35,7 +35,7 @@ let top_closed t modules =
       [ Pp.textf "dependency cycle between modules in %s:"
           (Path.Build.to_string t.dir)
       ; Pp.chain cycle ~f:(fun m ->
-          Pp.verbatim (Module.Name.to_string (Module.name m)))
+          Pp.verbatim (Module_name.to_string (Module.name m)))
       ]
 
 let top_closed_implementations t modules =

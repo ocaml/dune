@@ -11,7 +11,7 @@ module Source = struct
     }
 
   let main_module t =
-    let main_module_name = Module.Name.of_string t.name in
+    let main_module_name = Module_name.of_string t.name in
     let src_dir = Path.build t.dir in
     Module.generated ~src_dir main_module_name
 

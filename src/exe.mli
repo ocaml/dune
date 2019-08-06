@@ -4,7 +4,7 @@ open Stdune
 module Program : sig
   type t =
     { name             : string
-    ; main_module_name : Module.Name.t
+    ; main_module_name : Module_name.t
     ; loc              : Loc.t
     }
 end

@@ -55,7 +55,7 @@ let gen_rules sctx t ~dir ~scope =
   let cinaps_dir = Path.Build.relative dir ".cinaps" in
   let cinaps_ml = Path.Build.relative cinaps_dir "_cinaps.ml-gen" in
   let cinaps_exe = Path.Build.relative cinaps_dir "cinaps.exe" in
-  let main_module_name = Module.Name.of_string "_cinaps" in
+  let main_module_name = Module_name.of_string "_cinaps" in
 
   (* Files checked by cinaps *)
   let cinapsed_files =
@@ -82,7 +82,7 @@ let gen_rules sctx t ~dir ~scope =
   let obj_dir = Obj_dir.make_exe ~dir:cinaps_dir ~name:"cinaps" in
 
   let modules =
-    Module.Name.Map.singleton main_module_name
+    Module_name.Map.singleton main_module_name
       (Module.generated main_module_name ~src_dir:(Path.build cinaps_dir))
   in
 

@@ -32,7 +32,7 @@ let module_name =
         String.iter s ~f:(function
           | 'A'..'Z' | 'a'..'z' | '0'..'9' | '\'' | '_' -> ()
           | _ -> raise_notrace Exit);
-        Module.Name.of_string s
+        Module_name.of_string s
       with Exit ->
         invalid_module_name ~loc name)
 
@@ -413,7 +413,7 @@ let enabled_if ~since =
   field "enabled_if" ~default:Blang.true_ decode
 
 module Per_module = struct
-  include Per_item.Make(Module.Name)
+  include Per_item.Make(Module_name)
 
   let decode ~default a =
     peek_exn >>= function
@@ -430,7 +430,7 @@ module Per_module = struct
             | Error (name, _, _) ->
               User_error.raise ~loc
                 [ Pp.textf "module %s present in two different sets"
-                    (Module.Name.to_string name) ]
+                    (Module_name.to_string name) ]
           ]
     | _ -> a >>| for_all
 end
@@ -668,7 +668,7 @@ module Buildable = struct
 
   let single_preprocess t =
     if Per_module.is_constant t.preprocess then
-      Per_module.get t.preprocess (Module.Name.of_string "")
+      Per_module.get t.preprocess (Module_name.of_string "")
     else
       Preprocess.No_preprocessing
 end
@@ -849,8 +849,8 @@ module Library = struct
 
   module Stdlib = struct
     type t =
-      { modules_before_stdlib : Module.Name.Set.t
-      ; exit_module : Module.Name.t option
+      { modules_before_stdlib : Module_name.Set.t
+      ; exit_module : Module_name.t option
       ; internal_modules : Glob.t
       }
 
@@ -873,7 +873,7 @@ module Library = struct
          and+ internal_modules =
            field "internal_modules" Glob.decode ~default:Glob.empty
          in
-         { modules_before_stdlib = Module.Name.Set.of_list modules_before_stdlib
+         { modules_before_stdlib = Module_name.Set.of_list modules_before_stdlib
          ; exit_module
          ; internal_modules
          })
@@ -1149,7 +1149,7 @@ module Library = struct
       (snd t.name)
 
   module Main_module_name = struct
-    type t = Module.Name.t option Inherited.t
+    type t = Module_name.t option Inherited.t
   end
 
   let main_module_name t : Main_module_name.t =
@@ -1159,7 +1159,7 @@ module Library = struct
     | None, From _ -> assert false (* cannot inherit for normal libs *)
     | None, This (Simple false) -> This None
     | None, This (Simple true | Yes_with_transition _) ->
-      This (Some (Module.Name.of_local_lib_name (snd t.name)))
+      This (Some (Module_name.of_local_lib_name (snd t.name)))
 end
 
 module Install_conf = struct

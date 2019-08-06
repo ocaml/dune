@@ -40,7 +40,7 @@ module Preprocess : sig
     t -> for_:Pp_flag_consumer.t -> Ocaml_version.t -> Without_future_syntax.t
 end
 
-module Per_module : Per_item.S with type key = Module.Name.t
+module Per_module : Per_item.S with type key = Module_name.t
 
 module Preprocess_map : sig
   type t = Preprocess.t Per_module.t
@@ -52,7 +52,7 @@ module Preprocess_map : sig
 
   (** [find module_name] find the preprocessing specification for a
       given module *)
-  val find : Module.Name.t -> t -> Preprocess.t
+  val find : Module_name.t -> t -> Preprocess.t
 
   val pps : t -> (Loc.t * Lib_name.t) list
 end
@@ -199,9 +199,9 @@ module Library : sig
         the other modules. We cannot generate an implicit one as that
         would break hard-coded names inside the compiler. *)
     type t =
-      { modules_before_stdlib : Module.Name.Set.t
+      { modules_before_stdlib : Module_name.Set.t
       (** Modules that the Stdlib module depend on. *)
-      ; exit_module : Module.Name.t option
+      ; exit_module : Module_name.t option
       (** Modules that's implicitely added by the compiler at the
           end when linking an executable *)
       ; internal_modules : Glob.t
@@ -273,7 +273,7 @@ module Library : sig
   val obj_dir : dir:Path.Build.t -> t -> Path.Build.t Obj_dir.t
 
   module Main_module_name : sig
-    type t = Module.Name.t option Inherited.t
+    type t = Module_name.t option Inherited.t
   end
 
   val main_module_name : t -> Main_module_name.t

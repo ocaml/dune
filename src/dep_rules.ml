@@ -2,7 +2,7 @@ open! Import
 open Build.O
 
 let transitive_deps_contents modules =
-  List.map modules ~f:(fun m -> Module.Name.to_string (Module.name m))
+  List.map modules ~f:(fun m -> Module_name.to_string (Module.name m))
   |> String.concat ~sep:"\n"
 
 let ooi_deps cctx ~vlib_obj_map ~(ml_kind : Ml_kind.t) (m : Module.t) =
@@ -30,12 +30,12 @@ let ooi_deps cctx ~vlib_obj_map ~(ml_kind : Ml_kind.t) (m : Module.t) =
   let read =
     Build.memoize "ocamlobjinfo" (
       read >>^ fun (ooi : Ocamlobjinfo.t) ->
-      Module.Name.Set.to_list ooi.intf
+      Module_name.Set.to_list ooi.intf
       |> List.filter_map ~f:(fun dep ->
         if Module.real_unit_name m = dep then
           None
         else
-          Module.Name.Map.find vlib_obj_map dep)
+          Module_name.Map.find vlib_obj_map dep)
     ) in
   add_rule (
     let target = Obj_dir.Module.dep obj_dir (Transitive (m, ml_kind)) in

@@ -29,7 +29,7 @@ val modules_of_executables
   -> Modules.t
 
 (** Find out what buildable a module is part of *)
-val lookup_module : t -> Module.Name.t -> Dune_file.Buildable.t option
+val lookup_module : t -> Module_name.t -> Dune_file.Buildable.t option
 
 (** All mld files attached to this documentation stanza *)
 val mlds : t -> Dune_file.Documentation.t -> Path.Build.t list

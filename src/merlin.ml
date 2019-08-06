@@ -129,7 +129,7 @@ let make
     | None -> Ocaml_flags.common flags
     | Some m ->
       Ocaml_flags.prepend_common
-        ["-open"; Module.Name.to_string (Module.name m)] flags
+        ["-open"; Module_name.to_string (Module.name m)] flags
       |> Ocaml_flags.common
   in
   { requires

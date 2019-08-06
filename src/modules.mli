@@ -7,7 +7,7 @@ val to_dyn : t -> Dyn.t
 
 val lib
   : src_dir:Path.Build.t
-  -> main_module_name:Module.Name.t option
+  -> main_module_name:Module_name.t option
   -> wrapped:Wrapped.t
   -> lib:Dune_file.Library.t
   -> modules: Module.Name_map.t
@@ -23,9 +23,9 @@ val decode
 
 val impl : t -> vlib:t -> t
 
-val find_dep : t -> of_:Module.t -> Module.Name.t -> Module.t option
+val find_dep : t -> of_:Module.t -> Module_name.t -> Module.t option
 
-val find : t -> Module.Name.t -> Module.t option
+val find : t -> Module_name.t -> Module.t option
 
 val compat_for_exn : t -> Module.t -> Module.t
 
@@ -77,10 +77,10 @@ val entry_modules : t -> Module.t list
 
 (** Returns the main module name if it exists. It exist for libraries with
    [(wrapped true)] or one module libraries. *)
-val main_module_name : t -> Module.Name.t option
+val main_module_name : t -> Module_name.t option
 
 (** Returns only the virtual module names in the library *)
-val virtual_module_names : t -> Module.Name.Set.t
+val virtual_module_names : t -> Module_name.Set.t
 
 (** Returns the alias module if it exists. This module only exists for [(wrapped
     true)] and when there is more than 1 module. *)

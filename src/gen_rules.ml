@@ -61,9 +61,9 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
   let sctx = P.sctx
 
   let with_format sctx ~dir ~f =
-    let scope = SC.find_scope_by_dir sctx dir in
-    let project = Scope.project scope in
-    Dune_project.find_extension_args project Auto_format.key
+    SC.find_scope_by_dir sctx dir
+    |> Scope.project
+    |> Dune_project.format_config
     |> Option.iter ~f
 
   let gen_format_rules sctx ~expander ~output_dir =

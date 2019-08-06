@@ -24,10 +24,10 @@ let depend_on_files ~named dir =
 
 let formatted = ".formatted"
 
-let gen_rules_output sctx (config : Dune_file.Auto_format.t)
+let gen_rules_output sctx (config : Format_config.t)
       ~dialects ~expander ~output_dir =
   assert (formatted = Path.Build.basename output_dir);
-  let loc = Dune_file.Auto_format.loc config in
+  let loc = Format_config.loc config in
   let dir = Path.Build.parent_exn output_dir in
   let source_dir = Path.Build.drop_build_context_exn dir in
   let alias_formatted = Alias.fmt ~dir:output_dir in
@@ -42,7 +42,7 @@ let gen_rules_output sctx (config : Dune_file.Auto_format.t)
     let formatter =
       let input = Path.build input in
       match Path.Source.basename file with
-      | "dune" when Dune_file.Auto_format.includes config Dune ->
+      | "dune" when Format_config.includes config Dune ->
         let exe = resolve_program "dune" in
         let args = [Command.Args.A "format-dune-file"; Dep input] in
         let dir = Path.build dir in
@@ -52,8 +52,9 @@ let gen_rules_output sctx (config : Dune_file.Auto_format.t)
         let open Option.O in
         let* (dialect, kind) = Dialect.DB.find_by_extension dialects ext in
         let* () =
-          Option.some_if (Dune_file.Auto_format.includes
-                            config (Dialect (Dialect.name dialect))) ()
+          Option.some_if
+            (Format_config.includes
+               config (Dialect (Dialect.name dialect))) ()
         in
         let+ (loc, action, extra_deps) =
           match Dialect.format dialect kind with

@@ -211,6 +211,7 @@ type t =
   ; file_key : File_key.t
   ; dialects        : Dialect.DB.t
   ; explicit_js_mode : bool
+  ; format_config : Format_config.t option
   }
 
 let equal = (==)
@@ -243,7 +244,7 @@ let to_dyn
       ; extension_args = _; stanza_parser = _ ; packages
       ; implicit_transitive_deps ; wrapped_executables ; dune_version
       ; allow_approx_merlin ; generate_opam_files
-      ; file_key ; dialects ; explicit_js_mode } =
+      ; file_key ; dialects ; explicit_js_mode ; format_config } =
   let open Dyn.Encoder in
   record
     [ "name", Name.to_dyn name
@@ -269,6 +270,7 @@ let to_dyn
     ; "file_key", string file_key
     ; "dialects", Dialect.DB.to_dyn dialects
     ; "explicit_js_mode", bool explicit_js_mode
+    ; "format_config", (option Format_config.to_dyn) format_config
     ]
 
 let find_extension_args t key =
@@ -537,6 +539,17 @@ let wrapped_executables_default ~(lang : Lang.Instance.t) =
 let explicit_js_mode_default ~(lang : Lang.Instance.t) =
   lang.version >= (2, 0)
 
+let format_extension_key =
+  Extension.register
+    Format_config.syntax
+    Format_config.dparse_args
+    Format_config.to_dyn
+
+let format_config t =
+  let ext = find_extension_args t format_extension_key in
+  let dune_lang = t.format_config in
+  Format_config.of_config ~ext ~dune_lang
+
 let anonymous = lazy (
   let lang = get_dune_lang () in
   let name = Name.anonymous_root in
@@ -578,6 +591,7 @@ let anonymous = lazy (
   ; file_key
   ; dialects = Dialect.DB.builtin
   ; explicit_js_mode
+  ; format_config = None
   })
 
 let default_name ~dir ~packages =
@@ -648,6 +662,7 @@ let parse ~dir ~lang ~opam_packages ~file =
          (Syntax.since Stanza.syntax (1, 11) >>> located Dialect.decode)
      and+ explicit_js_mode =
        field_o_b "explicit_js_mode" ~check:(Syntax.since Stanza.syntax (1, 11))
+     and+ format_config = Format_config.field
      in
      let homepage =
        match homepage, source with
@@ -767,6 +782,7 @@ let parse ~dir ~lang ~opam_packages ~file =
      ; generate_opam_files
      ; dialects
      ; explicit_js_mode
+     ; format_config
      })
 
 let load_dune_project ~dir opam_packages =
@@ -816,6 +832,7 @@ let make_jbuilder_project ~dir opam_packages =
   ; wrapped_executables = false
   ; dialects
   ; explicit_js_mode = false
+  ; format_config = None
   }
 
 let load ~dir ~files =
